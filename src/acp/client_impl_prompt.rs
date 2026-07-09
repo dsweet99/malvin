@@ -31,6 +31,7 @@ impl AgentClient {
             do_trace_split,
             stdout_bracket_label,
             single_attempt,
+            append_trace,
         } = opts;
         let session = self
             .coder_session
@@ -48,6 +49,7 @@ impl AgentClient {
             who,
             do_trace_split,
             stdout_bracket_label,
+            append_trace,
         };
         run_coder_prompt_with_retries(self, dispatch, llm_phase, single_attempt).await
     }
@@ -116,6 +118,7 @@ mod tests {
                     do_trace_split: None,
                     stdout_bracket_label: None,
                     single_attempt: true,
+                    append_trace: false,
                 },
             )
             .await

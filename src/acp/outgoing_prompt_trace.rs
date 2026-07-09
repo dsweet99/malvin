@@ -4,6 +4,7 @@
 pub struct UniformOutgoingTrace<'a> {
     pub trace_who: &'a str,
     pub stdout_bracket_label: Option<&'a str>,
+    pub append_trace: bool,
 }
 
 /// Configuration options for [`crate::AgentClient::run_coder_prompt`].
@@ -19,6 +20,8 @@ pub struct CoderPromptOptions<'a> {
     pub stdout_bracket_label: Option<&'a str>,
     /// When true, skip client-level prompt retries (gate kpop outer loop owns retries).
     pub single_attempt: bool,
+    /// When true, append to the trace file instead of truncating (multi-turn sessions).
+    pub append_trace: bool,
 }
 
 /// How outgoing `session/prompt` text is mirrored to the trace file and (when tee is on) stdout.
@@ -42,6 +45,7 @@ fn coder_prompt_options_default_and_trace_variants_construct() {
     let uniform = OutgoingPromptTrace::Uniform(UniformOutgoingTrace {
         trace_who: "coder",
         stdout_bracket_label: None,
+        append_trace: false,
     });
     let split = OutgoingPromptTrace::DoSplit(DoPromptTraceSplit {
         header: "h",

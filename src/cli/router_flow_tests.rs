@@ -6,19 +6,31 @@ use crate::flow_prompt_join_test_helpers::{
     flow_test_artifacts_no_checks,
 };
 use crate::router_flow::router_flow_prompt::{
-    build_router_b_prompt, build_router_coder_run, build_router_coder_run_with_store,
+    build_router_b_prompt, build_router_c_prompt, build_router_coder_run, build_router_coder_run_with_store,
     combine_router_acp_prompt_header_and_user, combine_router_prompt_file_and_user,
     combine_router_raw_header_and_user, prepare_router_prompt_store,
 };
-use crate::prompts::{HEADER_MD, PromptStore, ROUTER_B_MD, ROUTER_MD};
+use crate::prompts::{
+    HEADER_MD, PromptStore, ROUTER_A_MD, ROUTER_B_SIMPLE_MD, ROUTER_C_MD,
+};
+
+fn write_router_mock_prompt_files(prompt_root: &std::path::Path) {
+    std::fs::write(prompt_root.join(HEADER_MD), "CODING_HDR\n").expect("header");
+    std::fs::write(prompt_root.join(ROUTER_A_MD), "ROUTER_HDR\n").expect("router_a");
+    std::fs::write(prompt_root.join(ROUTER_B_SIMPLE_MD), "ROUTER_B_HDR\n").expect("router_b_simple");
+    std::fs::write(
+        prompt_root.join(crate::prompts::ROUTER_B_COMPLEX_MD),
+        "ROUTER_B_COMPLEX_HDR\n",
+    )
+    .expect("router_b_complex");
+    std::fs::write(prompt_root.join(ROUTER_C_MD), "ROUTER_C_HDR\n").expect("router_c");
+    std::fs::write(prompt_root.join("kpop_common.md"), "").expect("kpop_common");
+}
 
 fn mock_router_prompt_store(tmp: &tempfile::TempDir) -> PromptStore {
     let prompt_root = tmp.path().join("prompts");
     std::fs::create_dir_all(&prompt_root).expect("mkdir");
-    std::fs::write(prompt_root.join(HEADER_MD), "CODING_HDR\n").expect("header");
-    std::fs::write(prompt_root.join(ROUTER_MD), "ROUTER_HDR\n").expect("router");
-    std::fs::write(prompt_root.join(ROUTER_B_MD), "ROUTER_B_HDR\n").expect("router_b");
-    std::fs::write(prompt_root.join("kpop_common.md"), "").expect("kpop_common");
+    write_router_mock_prompt_files(&prompt_root);
     PromptStore::with_root(prompt_root)
 }
 
@@ -43,8 +55,10 @@ fn combine_router_prompt_file_and_user_joins_rendered_template_and_request() {
 fn prepare_router_prompt_store_loads_default_templates() {
     let store = prepare_router_prompt_store().expect("store");
     assert!(store.validate_exists(HEADER_MD).is_ok());
-    assert!(store.validate_exists(ROUTER_MD).is_ok());
-    assert!(store.validate_exists(ROUTER_B_MD).is_ok());
+    assert!(store.validate_exists(ROUTER_A_MD).is_ok());
+    assert!(store.validate_exists(ROUTER_B_SIMPLE_MD).is_ok());
+    assert!(store.validate_exists(crate::prompts::ROUTER_B_COMPLEX_MD).is_ok());
+    assert!(store.validate_exists(ROUTER_C_MD).is_ok());
 }
 
 #[test]
@@ -53,7 +67,8 @@ fn build_router_coder_run_succeeds_without_checks_in_non_git_workspace() {
     let artifacts = flow_test_artifacts_no_checks(&tmp);
     let run = build_router_coder_run(&artifacts, "USER_TOKEN").expect("run");
     assert!(run.combined.contains("Know thyself"));
-    assert!(run.combined.contains("Act autonomously"));
+    assert!(run.combined.contains("COMPLEXITY_SCORE"));
+    assert!(run.combined.contains("CODING_TASK"));
     assert!(
         run.combined.contains("Context Prep"),
         "router prompt must include standard header content"
@@ -83,7 +98,8 @@ fn build_router_coder_run_default_store_produces_dual_headers() {
     let artifacts = flow_test_artifacts(&tmp);
     let run = build_router_coder_run(&artifacts, "USER_TOKEN").expect("run");
     assert!(run.combined.contains("Know thyself"));
-    assert!(run.combined.contains("Act autonomously"));
+    assert!(run.combined.contains("COMPLEXITY_SCORE"));
+    assert!(run.combined.contains("CODING_TASK"));
     assert!(
         run.combined.contains("Context Prep"),
         "router prompt must include standard header content"
@@ -116,7 +132,7 @@ fn combine_router_raw_header_and_user_joins_rendered_router_header_and_request()
     let tmp = tempfile::tempdir().expect("tempdir");
     let prompt_root = tmp.path().join("prompts");
     std::fs::create_dir_all(&prompt_root).expect("mkdir");
-    std::fs::write(prompt_root.join(ROUTER_MD), "ROUTER_TOKEN\n").expect("router");
+    std::fs::write(prompt_root.join(ROUTER_A_MD), "ROUTER_TOKEN\n").expect("router_a");
     let artifacts = flow_test_artifacts(&tmp);
     let store = PromptStore::with_root(prompt_root);
     let (combined, header, user) =
@@ -143,9 +159,12 @@ fn build_router_b_prompt_renders_without_unresolved_braces() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
     let store = prepare_router_prompt_store().expect("store");
-    let body = build_router_b_prompt(&store, &artifacts).expect("router_b");
-    assert!(body.contains("CONTINUE_ROUTER"));
+    let body = build_router_b_prompt(&store, &artifacts, ROUTER_B_SIMPLE_MD).expect("router_b");
+    assert!(!body.contains("CONTINUE_ROUTER"));
     assert!(!body.contains("{{"));
+    let router_c = build_router_c_prompt(&store, &artifacts).expect("router_c");
+    assert!(router_c.contains("CONTINUE_ROUTER"));
+    assert!(!router_c.contains("{{"));
 }
 
 #[test]

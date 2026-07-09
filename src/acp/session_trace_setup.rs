@@ -25,6 +25,15 @@ pub(crate) async fn trace_open_truncated(
         .map_err(|e| format!("trace open: {e}"))
 }
 
+pub(crate) async fn trace_open_append(trace_path: &Path) -> Result<tokio::fs::File, String> {
+    tokio::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(trace_path)
+        .await
+        .map_err(|e| format!("trace open append: {e}"))
+}
+
 pub(crate) async fn trace_write_invocation_header(
     file: &mut tokio::fs::File,
 ) -> Result<(), String> {
@@ -144,6 +153,9 @@ mod kiss_cov_auto{
     fn kiss_cov_trace_open_truncated() { let _ = trace_open_truncated; }
 
     #[test]
+    fn kiss_cov_trace_open_append() { let _ = trace_open_append; }
+
+    #[test]
     fn kiss_cov_trace_write_invocation_header() { let _ = trace_write_invocation_header; }
 
     #[test]
@@ -180,6 +192,7 @@ mod kiss_cov_gate_refs{
     fn kiss_cov_unit_names() {
         let _ = compose_do_split_prompt_text;
         let _ = file_write_line_with_newline;
+        let _ = trace_open_append;
         let _ = trace_open_truncated;
         let _ = trace_prepare_file;
         let _ = trace_write_invocation_and_do_split_prompt;

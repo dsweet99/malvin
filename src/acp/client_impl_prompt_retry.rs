@@ -108,6 +108,7 @@ pub(crate) async fn run_one_coder_prompt_attempt(
         who: dispatch.who,
         do_trace_split: dispatch.do_trace_split,
         stdout_bracket_label: dispatch.stdout_bracket_label,
+        append_trace: dispatch.append_trace,
     };
     let t0 = Instant::now();
     let prompt_res = if coder_prompt_skip_dispatch(dispatch.full_prompt) {

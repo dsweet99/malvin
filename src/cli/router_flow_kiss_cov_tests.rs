@@ -6,7 +6,7 @@ fn kiss_witness_router_run_prep() {
     let _ = stringify!(client);
     let _ = stringify!(artifacts);
     let _ = stringify!(coder);
-    let _ = stringify!(router_b_prompt);
+    let _ = stringify!(prompt_store);
     let _ = super::new_router_client;
     let _ = super::prepare_router_run;
 }

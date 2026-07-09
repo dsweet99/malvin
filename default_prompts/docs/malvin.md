@@ -134,7 +134,7 @@ Every agent-backed command creates `~/.malvin_home/logs/<hash>/<timestamp>_<toke
 | File | Role |
 |------|------|
 | `plan.md` or `request.md` | Copy of user input for this run |
-| `kpop.log`, `do.log`, `router.log`, `router_b.log`, `inspire.log`, … | Per-prompt transcripts |
+| `kpop.log`, `do.log`, `router_1.log`, `router_2.log`, `inspire.log`, … | Per-iteration or per-prompt transcripts |
 | `stdout.log` | Tee of agent stdout (unless `--no-tee`) — **narrative** channel |
 | `trace.jsonl` | ACP-shaped audit record — **authoritative** for semantics (tool results, shrink/fork, LLM usage) |
 | `prompts.log` | Outgoing prompts (names only, or full bodies with `--verbose`) |

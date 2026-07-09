@@ -96,6 +96,7 @@ impl AcpSession {
             OutgoingPromptTrace::Uniform(UniformOutgoingTrace {
                 trace_who: who,
                 stdout_bracket_label,
+                append_trace: false,
             }),
         )
         .await
@@ -125,7 +126,7 @@ impl AcpSession {
             .await
     }
 
-    async fn prompt_impl(
+    pub(crate) async fn prompt_impl(
         &self,
         text: &str,
         trace_path: &Path,

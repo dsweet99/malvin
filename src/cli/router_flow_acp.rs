@@ -2,64 +2,35 @@ use crate::agent_backend::{
     agent_backend_attach_run_timing_for_session, agent_backend_set_implement_display_name,
     agent_backend_set_run_timing, AgentBackend,
 };
-use crate::artifacts::RunArtifacts;
-use crate::router_flow::router_wants_continue;
+use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
+use crate::cli::SharedOpts;
+use crate::prompts::PromptStore;
+use crate::router_flow::router_flow_parse::router_wants_continue;
 use crate::router_flow::router_flow_prompt;
 use crate::run_timing::acp_post_run::RunTimingSessionEnd;
+
+#[path = "router_flow_acp_support.rs"]
+mod router_flow_acp_support;
+
+use router_flow_acp_support::{
+    abort_router_acp_session, end_router_acp_session, router_iteration_log_path,
+    run_router_turns, snapshot_iteration_backups, RouterAcpSessionCtx,
+};
 
 pub(crate) struct RouterAcpIterationOutcome {
     pub acp_result: Result<(), String>,
     pub wants_continue: bool,
+    pub iteration_backups: SessionDotfileBackups,
 }
 
 pub(crate) struct RouterAcpIterationInput<'a> {
     pub client: &'a mut AgentBackend,
     pub artifacts: &'a RunArtifacts,
     pub coder: &'a router_flow_prompt::RouterCoderRun,
-    pub router_b_prompt: &'a str,
+    pub prompt_store: &'a PromptStore,
+    pub shared: &'a SharedOpts,
+    pub agent_loop: usize,
     pub session_end: RunTimingSessionEnd,
-}
-
-async fn run_router_coder_prompt(
-    client: &mut AgentBackend,
-    artifacts: &RunArtifacts,
-    coder: &router_flow_prompt::RouterCoderRun,
-) -> Result<(), String> {
-    client
-        .run_coder_prompt(
-            &coder.combined,
-            &artifacts.log_path("router"),
-            "router",
-            crate::acp::CoderPromptOptions {
-                llm_phase: Some(crate::run_timing::TimingPhase::Implement),
-                do_trace_split: None,
-                stdout_bracket_label: None,
-                ..Default::default()
-            },
-        )
-        .await
-        .map_err(|e| e.to_string())
-}
-
-async fn run_router_b_coder_prompt(
-    client: &mut AgentBackend,
-    artifacts: &RunArtifacts,
-    router_b_prompt: &str,
-) -> Result<(), String> {
-    client
-        .run_coder_prompt(
-            router_b_prompt,
-            &artifacts.log_path("router_b"),
-            "router_b",
-            crate::acp::CoderPromptOptions {
-                llm_phase: Some(crate::run_timing::TimingPhase::Implement),
-                do_trace_split: None,
-                stdout_bracket_label: None,
-                ..Default::default()
-            },
-        )
-        .await
-        .map_err(|e| e.to_string())
 }
 
 pub(crate) async fn run_router_acp_iteration(
@@ -69,45 +40,53 @@ pub(crate) async fn run_router_acp_iteration(
         client,
         artifacts,
         coder,
-        router_b_prompt,
+        prompt_store,
+        shared,
+        agent_loop,
         session_end,
     } = input;
+    let work_dir = artifacts.work_dir.as_path();
+    let log_path = router_iteration_log_path(artifacts, agent_loop);
     let timing = agent_backend_attach_run_timing_for_session(client);
-    if let Err(e) = client.begin_coder_session(&artifacts.work_dir).await {
+    if let Err(e) = client.begin_coder_session(work_dir).await {
         agent_backend_set_run_timing(client, None);
         return RouterAcpIterationOutcome {
             acp_result: Err(e.to_string()),
             wants_continue: false,
+            iteration_backups: snapshot_iteration_backups(work_dir),
         };
     }
     agent_backend_set_implement_display_name(client, "router");
-    let router_res = run_router_coder_prompt(client, artifacts, coder).await;
-    let (run_res, wants_continue) = match router_res {
-        Ok(()) => {
-            let b_res = run_router_b_coder_prompt(client, artifacts, router_b_prompt).await;
-            let wants_continue = b_res.is_ok()
-                && client
-                    .last_coder_prompt_agent_response()
-                    .is_some_and(|text| router_wants_continue(&text));
-            (b_res, wants_continue)
-        }
-        Err(e) => (Err(e), false),
+
+    let mut session_ctx = RouterAcpSessionCtx {
+        client,
+        artifacts,
+        coder,
+        prompt_store,
+        shared,
+        log_path: log_path.as_path(),
+        timing: &timing,
+        session_end,
     };
-    let end_res = client.end_coder_session().await.map_err(|e| e.to_string());
-    let merged =
-        crate::acp_post_run::prefer_primary_over_secondary(run_res, end_res, "end coder session");
-    let acp_result = crate::acp_post_run::emit_run_timing_after_backend(
-        crate::acp_post_run::RunTimingAfterBackend {
-            backend: client,
-            run_dir: &artifacts.run_dir,
-            timing: &timing,
-            agent_result: merged,
-            session_end,
+    match run_router_turns(&mut session_ctx).await {
+        Ok(iteration_backups) => {
+            let wants_continue = session_ctx
+                .client
+                .last_coder_prompt_agent_response()
+                .as_deref()
+                .is_some_and(router_wants_continue);
+            let acp_result = end_router_acp_session(&mut session_ctx, Ok(())).await;
+            RouterAcpIterationOutcome {
+                acp_result,
+                wants_continue,
+                iteration_backups,
+            }
+        }
+        Err(e) => RouterAcpIterationOutcome {
+            acp_result: abort_router_acp_session(&mut session_ctx, e).await,
+            wants_continue: false,
+            iteration_backups: snapshot_iteration_backups(work_dir),
         },
-    );
-    RouterAcpIterationOutcome {
-        acp_result,
-        wants_continue,
     }
 }
 
@@ -118,23 +97,15 @@ mod kiss_static_fn_item_refs {
     #[test]
     fn kiss_static_fn_item_refs() {
         let _ = run_router_acp_iteration;
-        let _ = stringify!(run_router_coder_prompt);
-        let _ = stringify!(run_router_b_coder_prompt);
+        let _ = super::router_flow_acp_support::run_router_turns;
+        let _ = super::router_flow_acp_support::run_router_a_coder_prompt;
+        let _ = super::router_flow_acp_support::maybe_run_router_init;
+        let _ = super::router_flow_acp_support::iteration_backups_after_router_a;
+        let _ = std::any::type_name::<super::router_flow_acp_support::RouterAInitSnapshotInput>();
+        let _ = super::router_flow_acp_support::workspace_has_valid_checks;
         let _: Option<RouterAcpIterationInput> = None;
         let _: Option<RouterAcpIterationOutcome> = None;
-        let _ = stringify!(client);
-        let _ = stringify!(artifacts);
-        let _ = stringify!(coder);
-        let _ = stringify!(router_b_prompt);
-        let _ = stringify!(session_end);
-        let _ = stringify!(acp_result);
-        let _ = stringify!(wants_continue);
-        let _ = stringify!(timing);
-        let _ = stringify!(router_res);
-        let _ = stringify!(run_res);
-        let _ = stringify!(b_res);
-        let _ = stringify!(end_res);
-        let _ = stringify!(merged);
+        let _: Option<super::router_flow_acp_support::RouterAcpSessionCtx<'_>> = None;
     }
 }
 

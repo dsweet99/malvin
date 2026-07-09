@@ -1,7 +1,8 @@
 use std::path::Path;
 
 use crate::acp::{
-    outgoing_prompt_trace::DoPromptTraceSplit, retries_noun, AcpSession, AgentError,
+    outgoing_prompt_trace::{DoPromptTraceSplit, OutgoingPromptTrace}, retries_noun, AcpSession,
+    AgentError,
 };
 
 pub(crate) struct CoderSessionPromptDispatch<'a> {
@@ -11,6 +12,7 @@ pub(crate) struct CoderSessionPromptDispatch<'a> {
     pub who: &'a str,
     pub do_trace_split: Option<(&'a str, &'a str)>,
     pub stdout_bracket_label: Option<&'a str>,
+    pub append_trace: bool,
 }
 
 pub(crate) async fn dispatch_coder_session_prompt(
@@ -20,11 +22,16 @@ pub(crate) async fn dispatch_coder_session_prompt(
         None => {
             dispatch
                 .session
-                .prompt(
+                .prompt_impl(
                     dispatch.full_prompt,
                     dispatch.log_path,
-                    dispatch.who,
-                    dispatch.stdout_bracket_label,
+                    OutgoingPromptTrace::Uniform(
+                        crate::acp::outgoing_prompt_trace::UniformOutgoingTrace {
+                            trace_who: dispatch.who,
+                            stdout_bracket_label: dispatch.stdout_bracket_label,
+                            append_trace: dispatch.append_trace,
+                        },
+                    ),
                 )
                 .await
         }

@@ -5,7 +5,9 @@ use crate::cli::flow_prompt_combine::{
 };
 use crate::orchestrator::workflow_context_paths_only;
 use crate::prompt_stratification::WorkflowRenderContext;
-use crate::prompts::{enforce_no_unresolved_braces, HEADER_MD, PromptError, PromptStore, ROUTER_B_MD, ROUTER_MD};
+use crate::prompts::{
+    enforce_no_unresolved_braces, HEADER_MD, PromptError, PromptStore, ROUTER_A_MD, ROUTER_C_MD,
+};
 
 pub(crate) struct RouterCoderRun {
     pub combined: String,
@@ -21,10 +23,16 @@ pub fn prepare_router_prompt_store() -> Result<PromptStore, String> {
         .validate_exists(HEADER_MD)
         .map_err(|e: PromptError| e.0)?;
     store
-        .validate_exists(ROUTER_MD)
+        .validate_exists(ROUTER_A_MD)
         .map_err(|e: PromptError| e.0)?;
     store
-        .validate_exists(ROUTER_B_MD)
+        .validate_exists(crate::prompts::ROUTER_B_SIMPLE_MD)
+        .map_err(|e: PromptError| e.0)?;
+    store
+        .validate_exists(crate::prompts::ROUTER_B_COMPLEX_MD)
+        .map_err(|e: PromptError| e.0)?;
+    store
+        .validate_exists(ROUTER_C_MD)
         .map_err(|e: PromptError| e.0)?;
     Ok(store)
 }
@@ -56,7 +64,7 @@ pub fn combine_router_raw_header_and_user(
         artifacts,
         text,
         command: "router",
-        mode_template: ROUTER_MD,
+        mode_template: ROUTER_A_MD,
     })
 }
 
@@ -70,7 +78,7 @@ pub(crate) fn build_router_coder_run_with_store(
         artifacts,
         text,
         command: "router",
-        mode_template: ROUTER_MD,
+        mode_template: ROUTER_A_MD,
     })?;
     Ok(RouterCoderRun {
         combined: run.combined,
@@ -78,6 +86,7 @@ pub(crate) fn build_router_coder_run_with_store(
     })
 }
 
+#[cfg(test)]
 pub(crate) fn build_router_coder_run(
     artifacts: &RunArtifacts,
     text: &str,
@@ -89,18 +98,26 @@ pub(crate) fn build_router_coder_run(
 pub(crate) fn build_router_b_prompt(
     store: &PromptStore,
     artifacts: &RunArtifacts,
+    template: &str,
 ) -> Result<String, String> {
     let ctx = workflow_context_paths_only(artifacts, "router");
     let body = store
-        .render_prompt_only(ROUTER_B_MD, ctx.as_map())
+        .render_prompt_only(template, ctx.as_map())
         .map_err(|e: PromptError| e.0)?;
     enforce_no_unresolved_braces(&body).map_err(|e: PromptError| e.0)?;
     Ok(body.trim().to_string())
 }
 
-pub(crate) fn build_router_b_prompt_for_run(artifacts: &RunArtifacts) -> Result<String, String> {
-    let store = prepare_router_prompt_store()?;
-    build_router_b_prompt(&store, artifacts)
+pub(crate) fn build_router_c_prompt(
+    store: &PromptStore,
+    artifacts: &RunArtifacts,
+) -> Result<String, String> {
+    let ctx = workflow_context_paths_only(artifacts, "router");
+    let body = store
+        .render_prompt_only(ROUTER_C_MD, ctx.as_map())
+        .map_err(|e: PromptError| e.0)?;
+    enforce_no_unresolved_braces(&body).map_err(|e: PromptError| e.0)?;
+    Ok(body.trim().to_string())
 }
 
 #[cfg(test)]

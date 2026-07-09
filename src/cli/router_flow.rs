@@ -1,4 +1,4 @@
-//! Default-route flow: dual-header `router.md` then bare `router_b.md` on one coder session per outer loop.
+//! Default-route flow: dual-header `router_a.md`, then bare `router_b_*` and `router_c.md` on one coder session per outer loop.
 
 use crate::artifacts::{RunArtifacts, resolve_user_md_request};
 use crate::cli::cli_request::require_cli_request;
@@ -6,7 +6,10 @@ use crate::agent_backend::{build_agent_backend, AgentBackend};
 use crate::cli::run_emit::{emit_run_startup_sequence, RunStartupEmitOpts};
 use crate::cli::workflow_kpop_shared::effective_max_loops;
 use crate::cli::{SharedOpts, WorkflowCliOptions};
+use crate::prompts::PromptStore;
 pub(crate) mod router_flow_prompt;
+#[path = "router_flow_parse.rs"]
+pub(crate) mod router_flow_parse;
 #[path = "router_flow_acp.rs"]
 pub(crate) mod router_flow_acp;
 #[path = "router_flow_loop.rs"]
@@ -29,18 +32,7 @@ struct RouterRunPrep {
     client: AgentBackend,
     artifacts: RunArtifacts,
     coder: router_flow_prompt::RouterCoderRun,
-    router_b_prompt: String,
-}
-
-#[must_use]
-pub(crate) fn router_wants_continue(agent_text: &str) -> bool {
-    let trimmed = agent_text.trim();
-    if trimmed == "CONTINUE_ROUTER" {
-        return true;
-    }
-    trimmed
-        .lines()
-        .any(|line| line.trim() == "CONTINUE_ROUTER")
+    prompt_store: PromptStore,
 }
 
 fn new_router_client(shared: &SharedOpts, workflow: WorkflowCliOptions) -> Result<AgentBackend, String> {
@@ -68,13 +60,13 @@ async fn prepare_router_run(
     .map_err(|e| e.to_string())?;
     crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
     client.ensure_authenticated().map_err(|e| e.to_string())?;
-    let coder = router_flow_prompt::build_router_coder_run(&artifacts, &text)?;
-    let router_b_prompt = router_flow_prompt::build_router_b_prompt_for_run(&artifacts)?;
+    let prompt_store = prepare_router_prompt_store()?;
+    let coder = router_flow_prompt::build_router_coder_run_with_store(&prompt_store, &artifacts, &text)?;
     Ok(RouterRunPrep {
         client,
         artifacts,
         coder,
-        router_b_prompt,
+        prompt_store,
     })
 }
 
@@ -101,7 +93,8 @@ pub async fn run_router(
         client: &mut prep.client,
         artifacts: &prep.artifacts,
         coder: &prep.coder,
-        router_b_prompt: &prep.router_b_prompt,
+        prompt_store: &prep.prompt_store,
+        shared,
         max_loops,
     })
     .await?;
@@ -117,40 +110,6 @@ pub async fn run_router(
     }
     r?;
     Ok(())
-}
-
-#[cfg(test)]
-mod router_wants_continue_tests {
-    use super::router_wants_continue;
-
-    #[test]
-    fn exact_continue_marker() {
-        assert!(router_wants_continue("CONTINUE_ROUTER"));
-    }
-
-    #[test]
-    fn continue_marker_with_trailing_newlines() {
-        assert!(router_wants_continue("CONTINUE_ROUTER\n\n"));
-    }
-
-    #[test]
-    fn continue_marker_on_own_line() {
-        assert!(router_wants_continue("CONTINUE_ROUTER\n"));
-    }
-
-    #[test]
-    fn report_text_does_not_continue() {
-        assert!(!router_wants_continue(
-            "Summary\n\nEvidence shows the fix works.\n"
-        ));
-    }
-
-    #[test]
-    fn inline_continue_token_without_own_line_does_not_continue() {
-        assert!(!router_wants_continue(
-            "Please output CONTINUE_ROUTER when done."
-        ));
-    }
 }
 
 #[cfg(test)]
@@ -172,6 +131,9 @@ mod kiss_cov_gate_refs {
         let _: Option<RouterRunPrep> = None;
         let _ = new_router_client;
         let _ = prepare_router_run;
+        let _ = router_flow_parse::parse_complexity_score;
+        let _ = router_flow_parse::parse_coding_task;
+        let _ = router_flow_parse::router_wants_continue;
     }
 }
 

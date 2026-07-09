@@ -34,9 +34,9 @@ pub(crate) fn install_mock_router_agent_env_with_script(
 pub(crate) fn install_mock_router_agent_env(
     workspace: &std::path::Path,
     mock: &std::path::Path,
-    continue_after_router_b: bool,
+    continue_after_router_c: bool,
 ) -> crate::test_utils::SavedEnvVars {
-    write_mock_router_agent(mock, continue_after_router_b);
+    write_mock_router_agent(mock, continue_after_router_c);
     install_mock_router_agent_env_with_script(workspace, mock)
 }
 
@@ -72,18 +72,23 @@ rl.on('line', (line) => {
 }
 
 #[cfg(unix)]
-pub(crate) fn write_mock_router_agent(path: &std::path::Path, continue_after_router_b: bool) {
+pub(crate) fn write_mock_router_agent(path: &std::path::Path, continue_after_router_c: bool) {
     use std::os::unix::fs::PermissionsExt;
 
-    let b_text = if continue_after_router_b {
+    let c_text = if continue_after_router_c {
         "CONTINUE_ROUTER\\n"
     } else {
-        "router_b done\\n"
+        "router_c done\\n"
     };
     let handler = format!(
         r"    if (!global.pc) global.pc = 0;
     global.pc++;
-    const text = global.pc % 2 === 1 ? 'router phase\\n' : '{b_text}';
+    const responses = [
+      'router_a phase\nCOMPLEXITY_SCORE: 2\nCODING_TASK: NO\n',
+      'router_b done\n',
+      '{c_text}'
+    ];
+    const text = responses[(global.pc - 1) % responses.length];
     console.log(JSON.stringify({{ jsonrpc: '2.0', method: 'session/update', params: {{ update: {{ sessionUpdate: 'agent_message_chunk', content: {{ type: 'text', text }} }} }} }}));"
     );
     let script = format!(

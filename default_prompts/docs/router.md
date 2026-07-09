@@ -1,6 +1,6 @@
 # malvin (default route)
 
-Two-prompt agent sessions with autonomous routing: `header.md` + `router.md` + user request, then bare `router_b.md` on the same session. Outer `--max-loops` restarts with a new agent when `router_b` replies `CONTINUE_ROUTER`.
+Three-prompt agent sessions with autonomous routing: `header.md` + `router_a.md` + user request, then bare `router_b_simple.md` or `router_b_complex.md`, then bare `router_c.md` on the same session. Outer `--max-loops` restarts with a new agent when `router_c` replies `CONTINUE_ROUTER`.
 
 ## Summary
 
@@ -8,14 +8,14 @@ Two-prompt agent sessions with autonomous routing: `header.md` + `router.md` + u
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
 | Output | Styled stdout on a TTY (same startup chrome as `kpop` / `tidy`) |
-| Logs | `router.log` and `router_b.log` under `~/.malvin_home/logs/<hash>/<run>/` |
+| Logs | `router_1.log`, `router_2.log`, … under `~/.malvin_home/logs/<hash>/<run>/` (all turns in one file per outer loop) |
 | Requires | No `.malvin/checks` at startup |
 
 ## Intention
 
 Let the agent read the user request and decide how to satisfy it — including invoking other malvin commands such as `kpop` or `inspire`. Suitable when the right workflow is not known upfront.
 
-After the work prompt, `router_b.md` asks for either an evidence report or the literal token `CONTINUE_ROUTER` to request another agent session (until `--max-loops` is exhausted).
+Turn 1 (`router_a`) classifies complexity and whether the task is coding. When `CODING_TASK: YES` and `.malvin/checks` is missing, malvin runs `init` (separate kpop subprocess) before turn 2. After the work prompts, `router_c.md` asks for either an evidence report or the literal token `CONTINUE_ROUTER` to request another agent session (until `--max-loops` is exhausted).
 
 ## Usage
 
@@ -49,16 +49,19 @@ See `malvin --doc`. Notable for the default route:
 
 ## Prompt workflow
 
-Each outer loop iteration opens one coder session and sends two prompts:
+Each outer loop iteration opens one coder session and sends three prompts:
 
 | Turn | Piece | Role |
 |------|-------|------|
 | 1 | `header.md` | Standard Malvin coding context (log-reading, calibration, sandbox rules) |
-| 1 | `router.md` | Autonomous routing brief; points agent at `kpop` / `inspire` |
+| 1 | `router_a.md` | Classify complexity (`COMPLEXITY_SCORE: 1-10`) and coding (`CODING_TASK: YES\|NO`) |
 | 1 | User request | Appended after headers |
-| 2 | `router_b.md` | Bare follow-up: evidence report **or** `CONTINUE_ROUTER` |
+| 2 | `router_b_simple.md` or `router_b_complex.md` | Bare work brief (`COMPLEXITY_SCORE <= 3` → simple; `> 3` → complex) |
+| 3 | `router_c.md` | Bare follow-up: evidence report **or** `CONTINUE_ROUTER` |
 
-When the agent’s `router_b` reply contains a line exactly equal to `CONTINUE_ROUTER` (or the whole reply trimmed is `CONTINUE_ROUTER`), malvin tears down the session and starts a new outer loop with the same `router.md` assembly. Otherwise the run finishes.
+After turn 1, malvin parses `COMPLEXITY_SCORE` and `CODING_TASK` from the agent response (each alone on its own line). Parse failure aborts the run. Dotfile backup runs after that parse, before turn 2.
+
+When the agent’s `router_c` reply contains a line exactly equal to `CONTINUE_ROUTER` (or the whole reply trimmed is `CONTINUE_ROUTER`), malvin tears down the session and starts a new outer loop with the same `router_a` assembly. Otherwise the run finishes.
 
 ### Required template keys
 
@@ -66,7 +69,7 @@ When the agent’s `router_b` reply contains a line exactly equal to `CONTINUE_R
 |-----|-------------|--------------|
 | `logs_dir` | `header.md` | `malvin_logs_root(work_dir)` |
 | `current_state` | `header.md` | `format_current_state(...)` |
-| `user_request_path` | `router.md` | `format_prompt_path(plan_path, work_dir)` |
+| `user_request_path` | `router_a.md` | `format_prompt_path(plan_path, work_dir)` |
 | `malvin_command` | metadata | literal `"router"` |
 
 No implement, review, concerns, learn, or summary phases.
@@ -74,7 +77,8 @@ No implement, review, concerns, learn, or summary phases.
 ## Session behavior
 
 - Ensures `~/.malvin_home/config.toml` exists with defaults (same as `do`).
-- Backs up `.gitignore`, `.malvin/checks`, `.malvin/config.toml`, and `~/.malvin_home/config.toml` before each outer loop iteration; restores session dotfiles after each iteration and at run end.
+- Backs up `.gitignore`, `.malvin/checks`, `.malvin/config.toml`, and `~/.malvin_home/config.toml` after `router_a` parsing (before turn 2); restores session dotfiles after each iteration and at run end.
+- When `CODING_TASK: YES` and checks are missing, runs `malvin init` via a separate kpop agent between turns 1 and 2 (coder session stays open).
 - Checks `result.md` for `ABORT:` after the outer loop completes.
 
 ## Related commands

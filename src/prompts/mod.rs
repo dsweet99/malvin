@@ -6,7 +6,9 @@ mod store;
 mod template;
 pub use template::*;
 
-pub use defaults::{DO_HEADER_MD, HEADER_MD, ROUTER_B_MD, ROUTER_MD};
+pub use defaults::{
+    DO_HEADER_MD, HEADER_MD, ROUTER_A_MD, ROUTER_B_COMPLEX_MD, ROUTER_B_SIMPLE_MD, ROUTER_C_MD,
+};
 
 #[allow(unused_imports)]
 pub(crate) use defaults::{DEFAULT_PROMPTS, REQUIRED_PROMPTS, default_file};
