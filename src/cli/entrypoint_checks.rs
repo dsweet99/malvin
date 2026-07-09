@@ -9,10 +9,6 @@ pub fn ensure_malvin_checks_for_command(cmd: &Commands) -> Result<(), String> {
         | Commands::Delight(_)
         | Commands::Priors(_)
         | Commands::Revise(_) => Ok(()),
-        Commands::Logs(_) => {
-            let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-            crate::malvin_config_file::ensure_malvin_config_file(&cwd)
-        }
         Commands::Do(_) | Commands::Init(_) => {
             let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
             crate::repo_gates::ensure_default_malvin_config_file(&cwd)

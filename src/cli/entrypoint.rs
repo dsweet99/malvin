@@ -1,4 +1,3 @@
-use super::models_cmd;
 use super::{
     Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_init, run_router, run_tidy,
 };
@@ -158,9 +157,7 @@ pub(crate) fn dispatch_command(
         Commands::Inspire(inspire) | Commands::Adaptix(inspire) => {
             super::entrypoint_commands::run_inspire_command(inspire, &shared)
         }
-        cmd @ (Commands::Models(_) | Commands::Logs(_)) => {
-            dispatch_agent_free(cmd)
-        }
+        Commands::Models(models) => dispatch_models(models),
     }
 }
 
@@ -192,17 +189,11 @@ pub fn dispatch_default_route(
     })
 }
 
-fn dispatch_agent_free(command: Commands) -> Result<(), String> {
-    match command {
-        Commands::Models(models) => {
-            if models.mini {
-                run_async_cli(models_cmd::run_mini_models)
-            } else {
-                models_cmd::run_models(models)
-            }
-        }
-        Commands::Logs(logs) => super::logs_cmd::run_logs(logs),
-        _ => Err("dispatch_agent_free: unexpected command".to_string()),
+fn dispatch_models(models: super::models_cmd::ModelsArgs) -> Result<(), String> {
+    if models.mini {
+        run_async_cli(super::models_cmd::run_mini_models)
+    } else {
+        super::models_cmd::run_models(models)
     }
 }
 

@@ -139,7 +139,6 @@ fn apply_gate_loop_command_defaults(
         | Commands::Inspire(_)
         | Commands::Adaptix(_)
         | Commands::Models(_)
-        | Commands::Logs(_)
         | Commands::Init(_) => {}
     }
 }
@@ -150,7 +149,7 @@ pub fn apply_workspace_config_defaults(
 ) -> Result<(), String> {
     if matches!(
         cli.command,
-        Some(Commands::Do(_) | Commands::Models(_) | Commands::Logs(_))
+        Some(Commands::Do(_) | Commands::Models(_))
     ) || (cli.command.is_none() && cli.request.is_some())
     {
         if cli.shared.mini {

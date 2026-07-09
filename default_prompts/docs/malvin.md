@@ -17,7 +17,7 @@ malvin [OPTIONS] <COMMAND>
 
 Bare `malvin REQUEST` runs autonomous routing (decides among `kpop` and `inspire`). Use subcommands for named workflows. For KPop investigation, use `malvin kpop REQUEST`.
 
-Use subcommands: `kpop`, `do`, `inspire`, `tidy`, `delight`, `priors`, `explain`, `revise`, `models`, `logs`.
+Use subcommands: `kpop`, `do`, `inspire`, `tidy`, `delight`, `priors`, `explain`, `revise`, `models`.
 
 ## Commands
 
@@ -33,7 +33,6 @@ Use subcommands: `kpop`, `do`, `inspire`, `tidy`, `delight`, `priors`, `explain`
 | `explain` | Explain code or concepts as a LaTeX PDF via the KPop gate loop |
 | `revise` | Revise an existing document in place via the KPop gate loop |
 | `models` | List models via the Cursor agent CLI |
-| `logs` | Inspect and prune run-log retention under `~/.malvin_home/logs/` |
 
 Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prompts/docs/<command>.md`).
 
@@ -161,7 +160,7 @@ Top-level keys include `mem_limit_gb` and `theme`.
 
 ## Log retention
 
-Before most agent-backed commands create a new run directory, malvin may prune older directories under `~/.malvin_home/logs/<hash>/` according to `~/.malvin_home/config.toml` `[logs]` settings (`max_count`, `max_age_days`, `max_bytes`). Set `max_count = 0` for unlimited run count (byte and age caps still apply). Use `malvin logs status` to inspect retention state and `malvin logs gc` (with optional `--dry-run`) to prune manually without starting an agent session. Agent-backed commands (including `malvin do` and `tidy`) ensure the home config file exists with defaults. After upgrading to a build with default `max_count = 1000`, the next GC-enabled command or `malvin logs gc` may delete excess oldest runs once.
+Before most agent-backed commands create a new run directory, malvin may prune older directories under `~/.malvin_home/logs/<hash>/` according to `~/.malvin_home/config.toml` `[logs]` settings (`max_count`, `max_age_days`, `max_bytes`). Set `max_count = 0` for unlimited run count (byte and age caps still apply). Agent-backed commands (including `malvin do` and `tidy`) ensure the home config file exists with defaults. After upgrading to a build with default `max_count = 1000`, the next GC-enabled command may delete excess oldest runs once.
 
 ## External dependencies
 
