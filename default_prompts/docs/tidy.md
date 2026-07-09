@@ -51,7 +51,7 @@ See `malvin --doc`.
 
 **Gate loop (when agent runs):**
 
-1. Each outer iteration renders `tidy_constraints.md` through `kpop_program.md` into `plan.md`, then runs one KPop session (`header.md` + `kpop_common.md`).
+1. Each outer iteration renders `tidy_constraints.md` through `kpop_program.md` into `request.md`, then runs one KPop session (`header.md` + `kpop_common.md`).
 2. Agent logs hypotheses and test results to `_kpop/exp_log_<iteration>.md`.
 3. Early exit when workspace gates pass.
 4. Tidy does **not** recheck gates after a fully exhausted loop (`recheck_gates_after_exhausted: false`).
@@ -61,13 +61,13 @@ See `malvin --doc`.
 | Artifact | Role |
 |----------|------|
 | `tidy_constraints.md` | Implicit goal: pass workspace quality gates |
-| `kpop_program.md` | Rendered into `plan.md` — scope + quality gates |
+| `kpop_program.md` | Rendered into `request.md` — scope + quality gates |
 | `kpop_common.md` | Popper method; log to experiment log |
 | `header.md` | Prepended on each session |
 
 ## Artifacts
 
-- `~/.malvin_home/logs/<hash>/<run>/plan.md` — rendered tidy KPop request (not a user-authored plan)
+- `~/.malvin_home/logs/<hash>/<run>/request.md` — rendered tidy KPop request (not a user-authored plan)
 - `quality_gates.log`, `_kpop/exp_log_*.md`, `kpop.log`, `stdout.log` (when agent runs)
 
 ## Examples

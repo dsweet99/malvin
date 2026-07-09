@@ -96,3 +96,18 @@ fn kpop_block_without_prepend_rules_never_includes_header() {
     assert!(!out.contains(header.trim()));
     assert!(out.contains("brief"));
 }
+
+#[test]
+fn kpop_block_allows_user_request_with_double_braces() {
+    let (_tmp, store) = kpop_turn_test_store();
+    let base = kpop_turn_test_context();
+    let request = "Expand {{ code_extra }} in router_b_* templates.";
+    let prompts = KpopTurnPrompts {
+        store: &store,
+        base: &base,
+        request_text: request,
+        prepend_rules_once: false,
+    };
+    let gate = prompts.kpop_engine_single_turn_prompt(5).expect("gate prompt");
+    assert!(gate.contains(request));
+}

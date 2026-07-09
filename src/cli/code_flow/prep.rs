@@ -53,8 +53,13 @@ mod tests {
             !text.contains("{{"),
             "code kpop request must expand all placeholders: {text:?}"
         );
+        let plan_name = artifacts
+            .plan_path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .expect("plan filename");
         assert!(
-            text.contains("plan.md"),
+            text.contains(plan_name),
             "expected plan_path in code_constraints request: {text:?}"
         );
         assert!(

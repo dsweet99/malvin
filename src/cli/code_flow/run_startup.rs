@@ -75,7 +75,13 @@ mod tests {
         )
         .expect("prepared");
         std::env::set_current_dir(old).expect("restore cwd");
-        assert!(prepared.request_text.contains("plan.md"));
+        let plan_name = prepared
+            .artifacts
+            .plan_path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .expect("plan filename");
+        assert!(prepared.request_text.contains(plan_name));
         assert_eq!(prepared.startup_emit_request, "plan.md");
         let user_request_disk = crate::artifacts::user_request_path(&prepared.artifacts);
         assert!(

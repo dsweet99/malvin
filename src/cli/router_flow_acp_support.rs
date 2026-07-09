@@ -9,6 +9,10 @@ use crate::cli::checks_discovery_flow::{ensure_malvin_checks_discovered, ChecksD
 use crate::cli::SharedOpts;
 use crate::prompts::{PromptStore, ROUTER_B_COMPLEX_MD, ROUTER_B_SIMPLE_MD};
 use crate::router_flow::router_flow_prompt;
+use super::router_flow_coder_prompts::{
+    run_router_a_coder_prompt, run_router_b_coder_prompt, run_router_c_coder_prompt,
+};
+use super::router_flow_post::{maybe_run_router_post_c_gates, RouterTurnsOutcome};
 use crate::run_timing::acp_post_run::RunTimingSessionEnd;
 use std::sync::{Arc, Mutex};
 
@@ -84,72 +88,6 @@ pub(crate) fn iteration_backups_after_router_a(
     }
 }
 
-pub(crate) async fn run_router_a_coder_prompt(
-    client: &mut AgentBackend,
-    coder: &router_flow_prompt::RouterCoderRun,
-    log_path: &std::path::Path,
-) -> Result<(), String> {
-    client
-        .run_coder_prompt(
-            &coder.combined,
-            log_path,
-            "router_a",
-            crate::acp::CoderPromptOptions {
-                llm_phase: Some(crate::run_timing::TimingPhase::Implement),
-                do_trace_split: None,
-                stdout_bracket_label: None,
-                ..Default::default()
-            },
-        )
-        .await
-        .map_err(|e| e.to_string())
-}
-
-pub(crate) async fn run_router_b_coder_prompt(
-    client: &mut AgentBackend,
-    router_b_prompt: &str,
-    log_path: &std::path::Path,
-    label: &str,
-) -> Result<(), String> {
-    client
-        .run_coder_prompt(
-            router_b_prompt,
-            log_path,
-            label,
-            crate::acp::CoderPromptOptions {
-                llm_phase: Some(crate::run_timing::TimingPhase::Implement),
-                do_trace_split: None,
-                stdout_bracket_label: None,
-                append_trace: true,
-                ..Default::default()
-            },
-        )
-        .await
-        .map_err(|e| e.to_string())
-}
-
-pub(crate) async fn run_router_c_coder_prompt(
-    client: &mut AgentBackend,
-    router_c_prompt: &str,
-    log_path: &std::path::Path,
-) -> Result<(), String> {
-    client
-        .run_coder_prompt(
-            router_c_prompt,
-            log_path,
-            "router_c",
-            crate::acp::CoderPromptOptions {
-                llm_phase: Some(crate::run_timing::TimingPhase::Implement),
-                do_trace_split: None,
-                stdout_bracket_label: None,
-                append_trace: true,
-                ..Default::default()
-            },
-        )
-        .await
-        .map_err(|e| e.to_string())
-}
-
 pub(crate) async fn maybe_run_router_init(
     work_dir: &std::path::Path,
     shared: &SharedOpts,
@@ -175,7 +113,7 @@ pub(crate) const fn router_b_template_and_label(complexity_score: u8) -> (&'stat
 
 pub(crate) async fn run_router_turns(
     ctx: &mut RouterAcpSessionCtx<'_>,
-) -> Result<SessionDotfileBackups, String> {
+) -> Result<RouterTurnsOutcome, String> {
     run_router_a_coder_prompt(ctx.client, ctx.coder, ctx.log_path).await?;
     let agent_text = ctx
         .client
@@ -197,12 +135,25 @@ pub(crate) async fn run_router_turns(
         pre_init_backups,
     )?;
     let (b_md, router_b_label) = router_b_template_and_label(complexity_score);
-    let b_body = router_flow_prompt::build_router_b_prompt(ctx.prompt_store, ctx.artifacts, b_md)?;
+    let b_body = router_flow_prompt::build_router_b_prompt(
+        ctx.prompt_store,
+        ctx.artifacts,
+        b_md,
+        coding_task,
+    )?;
     run_router_b_coder_prompt(ctx.client, &b_body, ctx.log_path, router_b_label).await?;
     let router_c_prompt =
         router_flow_prompt::build_router_c_prompt(ctx.prompt_store, ctx.artifacts)?;
     run_router_c_coder_prompt(ctx.client, &router_c_prompt, ctx.log_path).await?;
-    Ok(iteration_backups)
+    let gate_wants_continue = maybe_run_router_post_c_gates(
+        work_dir,
+        ctx.artifacts.run_dir.as_path(),
+        coding_task,
+    );
+    Ok(RouterTurnsOutcome {
+        iteration_backups,
+        gate_wants_continue,
+    })
 }
 
 pub(crate) fn emit_router_acp_timing(

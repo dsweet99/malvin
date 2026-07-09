@@ -12,6 +12,12 @@ use crate::run_timing::acp_post_run::RunTimingSessionEnd;
 #[path = "router_flow_acp_support.rs"]
 mod router_flow_acp_support;
 
+#[path = "router_flow_post.rs"]
+mod router_flow_post;
+
+#[path = "router_flow_coder_prompts.rs"]
+mod router_flow_coder_prompts;
+
 use router_flow_acp_support::{
     abort_router_acp_session, end_router_acp_session, router_iteration_log_path,
     run_router_turns, snapshot_iteration_backups, RouterAcpSessionCtx,
@@ -69,17 +75,18 @@ pub(crate) async fn run_router_acp_iteration(
         session_end,
     };
     match run_router_turns(&mut session_ctx).await {
-        Ok(iteration_backups) => {
-            let wants_continue = session_ctx
+        Ok(turns) => {
+            let agent_wants_continue = session_ctx
                 .client
                 .last_coder_prompt_agent_response()
                 .as_deref()
                 .is_some_and(router_wants_continue);
+            let wants_continue = agent_wants_continue || turns.gate_wants_continue;
             let acp_result = end_router_acp_session(&mut session_ctx, Ok(())).await;
             RouterAcpIterationOutcome {
                 acp_result,
                 wants_continue,
-                iteration_backups,
+                iteration_backups: turns.iteration_backups,
             }
         }
         Err(e) => RouterAcpIterationOutcome {
@@ -98,8 +105,9 @@ mod kiss_static_fn_item_refs {
     fn kiss_static_fn_item_refs() {
         let _ = run_router_acp_iteration;
         let _ = super::router_flow_acp_support::run_router_turns;
-        let _ = super::router_flow_acp_support::run_router_a_coder_prompt;
-        let _ = super::router_flow_acp_support::maybe_run_router_init;
+        let _ = super::router_flow_coder_prompts::run_router_a_coder_prompt;
+        let _ = super::router_flow_post::maybe_run_router_post_c_gates;
+        let _ = std::any::type_name::<super::router_flow_post::RouterTurnsOutcome>();
         let _ = super::router_flow_acp_support::iteration_backups_after_router_a;
         let _ = std::any::type_name::<super::router_flow_acp_support::RouterAInitSnapshotInput>();
         let _ = super::router_flow_acp_support::workspace_has_valid_checks;

@@ -1,4 +1,5 @@
-- Read the user request at `{{ user_request_path }}`.
+
+Don't work yet. Just read the user request at `{{ user_request_path }}` then answer these two questions:
 - How complex is this task, on a scale of 1-10? Write your answer to the chat alone on a line like this:
 ```
 COMPLEXITY_SCORE: <your score, 1-10>
@@ -7,3 +8,6 @@ COMPLEXITY_SCORE: <your score, 1-10>
 ```
 CODING_TASK: <is_coding_task>
 ```
+
+That's it. Thank you.
+

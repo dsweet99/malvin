@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use super::PromptError;
 use super::defaults::{DEFAULT_PROMPTS, HEADER_MD, REQUIRED_PROMPTS, default_file};
-use super::enforce_no_unresolved_braces_in;
+use super::enforce_template_placeholders_resolved_in;
 use super::render_template;
 
 #[derive(Debug, Clone, Copy)]
@@ -164,9 +164,8 @@ impl PromptStore {
         let prompt_text = self.prompt_text(filename)?;
         let mut render_context: HashMap<String, String> = context.clone();
         render_context.insert("coding_rules".to_string(), String::new());
-        let out = render_template(&prompt_text, &render_context);
-        enforce_no_unresolved_braces_in(&out, Some(filename))?;
-        Ok(out)
+        enforce_template_placeholders_resolved_in(&prompt_text, &render_context, Some(filename))?;
+        Ok(render_template(&prompt_text, &render_context))
     }
 
     /// # Errors
@@ -179,9 +178,8 @@ impl PromptStore {
     ) -> Result<String, PromptError> {
         let prompt_text = self.prompt_text(filename)?;
         let render_context: HashMap<String, String> = context.clone();
-        let out = render_template(&prompt_text, &render_context);
-        enforce_no_unresolved_braces_in(&out, Some(filename))?;
-        Ok(out)
+        enforce_template_placeholders_resolved_in(&prompt_text, &render_context, Some(filename))?;
+        Ok(render_template(&prompt_text, &render_context))
     }
 
     pub(crate) fn load_header(&self) -> String {
@@ -200,9 +198,8 @@ pub fn render_header(
     context: &std::collections::HashMap<String, String>,
 ) -> Result<String, PromptError> {
     let header_raw = store.load_header();
-    let header_expanded = render_template(&header_raw, context);
-    enforce_no_unresolved_braces_in(&header_expanded, Some(HEADER_MD))?;
-    Ok(header_expanded)
+    enforce_template_placeholders_resolved_in(&header_raw, context, Some(HEADER_MD))?;
+    Ok(render_template(&header_raw, context))
 }
 
 /// # Errors

@@ -138,9 +138,6 @@ impl MiniAgentClient {
             return Err(AgentError("begin_coder_session was not called".into()));
         }
 
-        crate::prompts::enforce_no_unresolved_braces_in(prompt, opts.stdout_bracket_label)
-            .map_err(|e| AgentError(e.0))?;
-
         let mini_constraints = default_file("mini_constraints.md").unwrap_or("");
         let effective_prompt = if self.session.as_ref().is_some_and(|s| !s.constraints_prepended) {
             format!("{mini_constraints}\n\n{prompt}")

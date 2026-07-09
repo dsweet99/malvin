@@ -2,11 +2,11 @@
 
 use crate::artifacts::{RunArtifacts, resolve_user_md_request};
 use crate::cli::cli_request::require_cli_request;
-use crate::agent_backend::{build_agent_backend, AgentBackend};
+use crate::agent_backend::{agent_backend_set_implement_display_name, build_agent_backend, AgentBackend};
 use crate::cli::run_emit::{emit_run_startup_sequence, RunStartupEmitOpts};
 use crate::cli::workflow_kpop_shared::effective_max_loops;
 use crate::cli::{SharedOpts, WorkflowCliOptions};
-use crate::prompts::PromptStore;
+use crate::prompts::{PromptStore, ROUTER_D_MD};
 pub(crate) mod router_flow_prompt;
 #[path = "router_flow_parse.rs"]
 pub(crate) mod router_flow_parse;
@@ -70,6 +70,35 @@ async fn prepare_router_run(
     })
 }
 
+pub(crate) async fn run_router_d_session(
+    client: &mut AgentBackend,
+    prompt_store: &PromptStore,
+    artifacts: &RunArtifacts,
+) -> Result<(), String> {
+    let work_dir = artifacts.work_dir.as_path();
+    client
+        .begin_coder_session(work_dir)
+        .await
+        .map_err(|e| e.to_string())?;
+    agent_backend_set_implement_display_name(client, "router");
+    let prompt = router_flow_prompt::build_router_d_prompt(prompt_store, artifacts)?;
+    client
+        .run_coder_prompt(
+            &prompt,
+            &artifacts.log_path("router_d"),
+            "router_d",
+            crate::acp::CoderPromptOptions {
+                llm_phase: Some(crate::run_timing::TimingPhase::Implement),
+                do_trace_split: None,
+                stdout_bracket_label: Some(ROUTER_D_MD),
+                ..Default::default()
+            },
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+    client.end_coder_session().await.map_err(|e| e.to_string())
+}
+
 pub async fn run_router(
     router_args: RouterArgs,
     shared: &SharedOpts,
@@ -97,6 +126,13 @@ pub async fn run_router(
         shared,
         max_loops,
     })
+    .await?;
+
+    run_router_d_session(
+        &mut prep.client,
+        &prep.prompt_store,
+        &prep.artifacts,
+    )
     .await?;
 
     let r = crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
@@ -134,6 +170,8 @@ mod kiss_cov_gate_refs {
         let _ = router_flow_parse::parse_complexity_score;
         let _ = router_flow_parse::parse_coding_task;
         let _ = router_flow_parse::router_wants_continue;
+        let _ = router_flow_prompt::build_router_d_prompt;
+        let _ = super::run_router_d_session;
     }
 }
 

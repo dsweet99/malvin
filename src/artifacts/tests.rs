@@ -39,6 +39,31 @@ fn create_run_artifacts_from_text_uses_base_dir_as_work_dir() {
 }
 
 #[test]
+fn create_run_artifacts_use_random_plan_request_filenames() {
+    let tmp = tempfile::tempdir().unwrap();
+    let source = tmp.path().join("plan.md");
+    std::fs::write(&source, "from file").unwrap();
+    let from_copy = create_run_artifacts(&source, Some(tmp.path())).unwrap();
+    let from_text = create_run_artifacts_from_text("from text", Some(tmp.path())).unwrap();
+    for art in [&from_copy, &from_text] {
+        let name = art
+            .plan_path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .expect("plan filename");
+        assert!(
+            name.starts_with("plan_")
+                && std::path::Path::new(name)
+                    .extension()
+                    .is_some_and(|ext| ext.eq_ignore_ascii_case("md"))
+                && name.len() == "plan_XXXXX.md".len(),
+            "expected plan_<5 alnum>.md, got {name:?}"
+        );
+        assert_ne!(name, "plan.md");
+    }
+}
+
+#[test]
 fn create_run_artifacts_opts_without_gc_skips_prune() {
     let tmp = tempfile::tempdir().unwrap();
     let logs = crate::malvin_logs_root(tmp.path());

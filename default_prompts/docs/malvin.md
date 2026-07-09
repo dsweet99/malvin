@@ -133,7 +133,7 @@ Every agent-backed command creates `~/.malvin_home/logs/<hash>/<timestamp>_<toke
 
 | File | Role |
 |------|------|
-| `plan.md` or `request.md` | Copy of user input for this run |
+| `plan_<random>.md` or `request.md` | Copy of user input for this run |
 | `kpop.log`, `do.log`, `router_1.log`, `router_2.log`, `inspire.log`, … | Per-iteration or per-prompt transcripts |
 | `stdout.log` | Tee of agent stdout (unless `--no-tee`) — **narrative** channel |
 | `trace.jsonl` | ACP-shaped audit record — **authoritative** for semantics (tool results, shrink/fork, LLM usage) |
@@ -193,7 +193,7 @@ malvin kpop notes/question.md
 
 `tidy`, `delight`, `priors`, `explain`, and `revise` share an outer **gate loop** implemented in `kpop_engine`:
 
-1. For each outer iteration (budget: `effective_max_loops(--max-loops) + 1` iterations), malvin may run one KPop agent session. Scope comes from that command’s constraints file (`tidy_constraints.md`, etc.) rendered through `kpop_program.md` into `plan.md`. Within the session, malvin sends one prompt: `header.md` + `kpop_common.md` (Popper loop).
+1. For each outer iteration (budget: `effective_max_loops(--max-loops) + 1` iterations), malvin may run one KPop agent session. Scope comes from that command’s constraints file (`tidy_constraints.md`, etc.) rendered through `kpop_program.md` into `request.md`. Within the session, malvin sends one prompt: `header.md` + `kpop_common.md` (Popper loop).
 2. Hypotheses and test results go to `~/.malvin_home/logs/<hash>/<run>/_kpop/exp_log_<n>.md`.
 3. Malvin exits early when workspace quality gates pass (`tidy`). Document workflows (`delight`, `priors`, `explain`, `revise`) run until `--max-loops` is exhausted. `kpop` investigation runs until its own loop budget is exhausted.
 4. Otherwise the loop continues until the outer budget is exhausted; `tidy` may exit without recheck depending on configuration.

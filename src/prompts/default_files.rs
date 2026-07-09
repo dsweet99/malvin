@@ -1,5 +1,6 @@
 use super::{
     DO_HEADER_MD, HEADER_MD, ROUTER_A_MD, ROUTER_B_COMPLEX_MD, ROUTER_B_SIMPLE_MD, ROUTER_C_MD,
+    ROUTER_CODE_EXTRA_MD, ROUTER_D_MD,
 };
 
 fn default_constraints_prompt(name: &str) -> Option<&'static str> {
@@ -46,6 +47,10 @@ pub fn default_file(name: &str) -> Option<&'static str> {
             ROUTER_B_SIMPLE_MD => Some(include_str!("../../default_prompts/router_b_simple.md")),
             ROUTER_B_COMPLEX_MD => Some(include_str!("../../default_prompts/router_b_complex.md")),
             ROUTER_C_MD => Some(include_str!("../../default_prompts/router_c.md")),
+            ROUTER_CODE_EXTRA_MD => {
+                Some(include_str!("../../default_prompts/router_code_extra.md"))
+            }
+            ROUTER_D_MD => Some(include_str!("../../default_prompts/router_d.md")),
             _ => None,
         })
 }

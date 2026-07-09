@@ -37,7 +37,7 @@ pub use startup_tag::startup_request_tag_label;
 
 pub use crate::malvin_constants::{QUALITY_GATES_LOG, SANDBOX_OOM_JSON, STDOUT_LOG, TRACE_JSONL};
 
-/// One workflow run: isolated `.malvin/logs/<stamp>_<token>/` with copied plan.
+/// One workflow run: isolated `.malvin/logs/<stamp>_<token>/` with copied user request.
 #[derive(Debug, Clone)]
 pub struct RunArtifacts {
     pub run_dir: PathBuf,

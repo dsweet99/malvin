@@ -116,6 +116,15 @@ fn build_router_coder_run_default_store_produces_dual_headers() {
 }
 
 #[test]
+fn build_router_coder_run_allows_user_request_with_double_braces() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = flow_test_artifacts(&tmp);
+    let user = "Expand {{ code_checks }} and {{ code_extra }} in templates.";
+    let run = build_router_coder_run(&artifacts, user).expect("run");
+    assert!(run.combined.contains(user));
+}
+
+#[test]
 fn combine_router_acp_prompt_joins_rendered_header_and_request() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let store = mock_router_prompt_store(&tmp);
@@ -154,12 +163,16 @@ fn router_coder_run_exposes_combined_and_trace_split() {
     assert_eq!(trace_user, "TRACE_USER");
 }
 
+#[cfg(test)]
+#[path = "router_flow_prompt_tests.rs"]
+mod router_flow_prompt_tests;
+
 #[test]
 fn build_router_b_prompt_renders_without_unresolved_braces() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
     let store = prepare_router_prompt_store().expect("store");
-    let body = build_router_b_prompt(&store, &artifacts, ROUTER_B_SIMPLE_MD).expect("router_b");
+    let body = build_router_b_prompt(&store, &artifacts, ROUTER_B_SIMPLE_MD, false).expect("router_b");
     assert!(!body.contains("CONTINUE_ROUTER"));
     assert!(!body.contains("{{"));
     let router_c = build_router_c_prompt(&store, &artifacts).expect("router_c");

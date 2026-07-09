@@ -11,6 +11,8 @@ pub const ROUTER_A_MD: &str = "router_a.md";
 pub const ROUTER_B_SIMPLE_MD: &str = "router_b_simple.md";
 pub const ROUTER_B_COMPLEX_MD: &str = "router_b_complex.md";
 pub const ROUTER_C_MD: &str = "router_c.md";
+pub const ROUTER_CODE_EXTRA_MD: &str = "router_code_extra.md";
+pub const ROUTER_D_MD: &str = "router_d.md";
 
 pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD, "kpop_program.md"];
 
@@ -34,6 +36,8 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     ROUTER_B_SIMPLE_MD,
     ROUTER_B_COMPLEX_MD,
     ROUTER_C_MD,
+    ROUTER_CODE_EXTRA_MD,
+    ROUTER_D_MD,
 ];
 
 #[cfg(test)]
@@ -153,7 +157,7 @@ mod router_header_embed_tests {
         let run = build_router_coder_run(&artifacts, "user body").expect("run");
         assert!(!run.combined.contains("{{"));
         let store = prepare_router_prompt_store().expect("store");
-        let router_b = build_router_b_prompt(&store, &artifacts, ROUTER_B_SIMPLE_MD).expect("router_b");
+        let router_b = build_router_b_prompt(&store, &artifacts, ROUTER_B_SIMPLE_MD, false).expect("router_b");
         assert!(!router_b.contains("{{"));
         let router_c = build_router_c_prompt(&store, &artifacts).expect("router_c");
         assert!(!router_c.contains("{{"));

@@ -3,6 +3,12 @@ use std::path::{Path, PathBuf};
 
 use super::RunArtifacts;
 
+const RANDOM_PLAN_ID_LEN: usize = 5;
+
+fn random_plan_request_filename() -> String {
+    format!("plan_{}.md", crate::alnum_id::random_alnum(RANDOM_PLAN_ID_LEN))
+}
+
 pub(crate) fn ensure_quality_gates_log_file(artifacts: &RunArtifacts) -> std::io::Result<()> {
     let path = artifacts.quality_gates_log_path();
     std::fs::write(&path, "")
@@ -44,7 +50,7 @@ pub fn create_run_artifacts_opts(
     opts: crate::run_id::RunDirOptions,
 ) -> std::io::Result<RunArtifacts> {
     let run_dir = crate::run_id::create_run_dir(base_dir, opts)?;
-    let plan_target = run_dir.join("plan.md");
+    let plan_target = run_dir.join(random_plan_request_filename());
     std::fs::copy(plan_source, &plan_target)?;
     let artifacts = RunArtifacts {
         run_dir,
@@ -80,7 +86,7 @@ pub fn create_run_artifacts_from_text_opts(
 ) -> std::io::Result<RunArtifacts> {
     let work_dir = base_dir.unwrap_or_else(|| Path::new(".")).to_path_buf();
     let run_dir = crate::run_id::create_run_dir(base_dir, opts)?;
-    let plan_target = run_dir.join("plan.md");
+    let plan_target = run_dir.join(random_plan_request_filename());
     std::fs::write(&plan_target, plan_text)?;
     let artifacts = RunArtifacts {
         run_dir,

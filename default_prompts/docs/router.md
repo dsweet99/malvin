@@ -33,8 +33,8 @@ Exactly **one shell argument**. Quote for internal spaces. Literal text, or an e
 
 | Form | Work directory | Stored as |
 |------|----------------|-----------|
-| Literal | `.` (cwd) | `plan.md` in run dir |
-| `path/to/file.md` | Parent of file | `plan.md` |
+| Literal | `.` (cwd) | `plan_<random>.md` in run dir |
+| `path/to/file.md` | Parent of file | `plan_<random>.md` |
 
 ## Global options
 

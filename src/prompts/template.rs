@@ -25,6 +25,24 @@ pub(crate) fn is_spaced_brace_placeholder_inner(raw: &str) -> bool {
             .all(|c| c.is_ascii_alphanumeric() || c == '_')
 }
 
+/// Returns each `{{ key }}` placeholder in `template` whose key is absent from `context`.
+#[must_use]
+pub fn unresolved_template_placeholders(
+    template: &str,
+    context: &HashMap<String, String>,
+) -> Vec<String> {
+    unresolved_spaced_brace_placeholders(template)
+        .into_iter()
+        .filter(|placeholder| {
+            let key = placeholder
+                .trim_start_matches("{{")
+                .trim_end_matches("}}")
+                .trim();
+            !context.contains_key(key)
+        })
+        .collect()
+}
+
 /// Returns each remaining `{{ key }}` placeholder in `text` (spaces required around `key`).
 #[must_use]
 pub fn unresolved_spaced_brace_placeholders(text: &str) -> Vec<String> {
@@ -103,6 +121,16 @@ pub fn substitute_template(template: &str, context: &HashMap<String, String>) ->
 
 #[cfg(test)]
 mod template_kiss {
+    #[test]
+    fn unresolved_template_placeholders_detects_missing_context_keys() {
+        let mut ctx = std::collections::HashMap::new();
+        ctx.insert("present".to_string(), "v".to_string());
+        assert_eq!(
+            super::unresolved_template_placeholders("x {{ present }} y {{ missing }} z", &ctx),
+            vec!["{{ missing }}".to_string()]
+        );
+    }
+
     #[test]
     fn malformed_brace_placeholders_rejects_unspaced_key() {
         let _ = crate::prompts::render_mbc2_for_scheduled_kpop_block;

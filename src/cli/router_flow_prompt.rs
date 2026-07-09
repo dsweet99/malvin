@@ -4,9 +4,10 @@ use crate::cli::flow_prompt_combine::{
     combine_mode_header_and_user, combine_prompt_file_and_user, DualHeaderPromptInput,
 };
 use crate::orchestrator::workflow_context_paths_only;
-use crate::prompt_stratification::WorkflowRenderContext;
+use crate::prompt_stratification::{join_labeled_strata, PromptStratum, WorkflowRenderContext};
 use crate::prompts::{
-    enforce_no_unresolved_braces, HEADER_MD, PromptError, PromptStore, ROUTER_A_MD, ROUTER_C_MD,
+    render_header, HEADER_MD, PromptError, PromptStore, ROUTER_A_MD, ROUTER_C_MD,
+    ROUTER_CODE_EXTRA_MD, ROUTER_D_MD,
 };
 
 pub(crate) struct RouterCoderRun {
@@ -33,6 +34,12 @@ pub fn prepare_router_prompt_store() -> Result<PromptStore, String> {
         .map_err(|e: PromptError| e.0)?;
     store
         .validate_exists(ROUTER_C_MD)
+        .map_err(|e: PromptError| e.0)?;
+    store
+        .validate_exists(ROUTER_CODE_EXTRA_MD)
+        .map_err(|e: PromptError| e.0)?;
+    store
+        .validate_exists(ROUTER_D_MD)
         .map_err(|e: PromptError| e.0)?;
     Ok(store)
 }
@@ -95,16 +102,40 @@ pub(crate) fn build_router_coder_run(
     build_router_coder_run_with_store(&store, artifacts, text)
 }
 
+fn router_code_checks_text(work_dir: &std::path::Path) -> Result<String, String> {
+    let commands = crate::repo_gates::gate_command_lines(work_dir)?;
+    Ok(commands.join("\n"))
+}
+
+fn render_router_code_extra(
+    store: &PromptStore,
+    artifacts: &RunArtifacts,
+) -> Result<String, String> {
+    let work_dir = artifacts.work_dir.as_path();
+    let mut ctx = workflow_context_paths_only(artifacts, "router");
+    ctx.insert("code_checks".to_string(), router_code_checks_text(work_dir)?);
+    let body = store
+        .render_prompt_only(ROUTER_CODE_EXTRA_MD, ctx.as_map())
+        .map_err(|e: PromptError| e.0)?;
+    Ok(body.trim().to_string())
+}
+
 pub(crate) fn build_router_b_prompt(
     store: &PromptStore,
     artifacts: &RunArtifacts,
     template: &str,
+    coding_task: bool,
 ) -> Result<String, String> {
-    let ctx = workflow_context_paths_only(artifacts, "router");
+    let mut ctx = workflow_context_paths_only(artifacts, "router");
+    let code_extra = if coding_task {
+        render_router_code_extra(store, artifacts)?
+    } else {
+        String::new()
+    };
+    ctx.insert("code_extra".to_string(), code_extra);
     let body = store
         .render_prompt_only(template, ctx.as_map())
         .map_err(|e: PromptError| e.0)?;
-    enforce_no_unresolved_braces(&body).map_err(|e: PromptError| e.0)?;
     Ok(body.trim().to_string())
 }
 
@@ -116,8 +147,22 @@ pub(crate) fn build_router_c_prompt(
     let body = store
         .render_prompt_only(ROUTER_C_MD, ctx.as_map())
         .map_err(|e: PromptError| e.0)?;
-    enforce_no_unresolved_braces(&body).map_err(|e: PromptError| e.0)?;
     Ok(body.trim().to_string())
+}
+
+pub(crate) fn build_router_d_prompt(
+    store: &PromptStore,
+    artifacts: &RunArtifacts,
+) -> Result<String, String> {
+    let ctx = workflow_context_paths_only(artifacts, "router");
+    let header = render_header(store, ctx.as_map()).map_err(|e: PromptError| e.0)?;
+    let body = store
+        .render_prompt_only(ROUTER_D_MD, ctx.as_map())
+        .map_err(|e: PromptError| e.0)?;
+    Ok(join_labeled_strata([
+        (PromptStratum::WorkflowHeader, header),
+        (PromptStratum::GateLoopBlock, body.trim().to_string()),
+    ]))
 }
 
 #[cfg(test)]

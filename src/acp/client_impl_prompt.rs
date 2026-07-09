@@ -39,9 +39,6 @@ impl AgentClient {
             .ok_or_else(|| AgentError("begin_coder_session was not called".to_string()))?
             .clone();
 
-        crate::prompts::enforce_no_unresolved_braces_in(prompt, stdout_bracket_label)
-            .map_err(|e| AgentError(e.0))?;
-
         let dispatch = CoderSessionPromptDispatch {
             session: &session,
             full_prompt: prompt,
@@ -85,46 +82,8 @@ impl AgentClient {
 #[cfg(test)]
 mod tests {
     use super::AgentClient;
-    use crate::acp::test_captive_session::captive_cat_acp_session_for_tests;
-    use crate::acp::{AgentIoOptions, outgoing_prompt_trace::CoderPromptOptions};
+    use crate::acp::{AgentIoOptions};
     use crate::support_paths::DEFAULT_MAX_ACP_RETRIES;
-
-    #[tokio::test]
-    async fn run_coder_prompt_rejects_unresolved_braces_before_retry() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let cwd = tmp.path();
-        let mut client = AgentClient::with_max_acp_retries(
-            "m".into(),
-            AgentIoOptions {
-                force: false,
-                no_tee: true,
-                raw_output: true,
-                show_thoughts_on_stdout: false,
-                emit_stdout_markdown: false,
-                log_full_outgoing_prompts: false,
-            },
-            DEFAULT_MAX_ACP_RETRIES,
-        );
-        client.coder_session = Some(captive_cat_acp_session_for_tests(cwd));
-        client.coder_session_cwd = Some(cwd.to_path_buf());
-        let log = tmp.path().join("coder.log");
-        let err = client
-            .run_coder_prompt(
-                "hello {{ unresolved }}",
-                &log,
-                "test",
-                CoderPromptOptions {
-                    llm_phase: None,
-                    do_trace_split: None,
-                    stdout_bracket_label: None,
-                    single_attempt: true,
-                    append_trace: false,
-                },
-            )
-            .await
-            .expect_err("unresolved braces");
-        assert!(err.0.contains("{{"));
-    }
 
     #[tokio::test]
     async fn end_coder_session_is_noop_without_open_session() {

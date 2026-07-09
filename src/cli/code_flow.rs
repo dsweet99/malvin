@@ -42,7 +42,7 @@ pub struct CodeArgs {
     /// Deprecated: use `--trust-the-plan` (hidden).
     #[arg(short = 'f', default_value_t = false, hide = true)]
     pub fast: bool,
-    /// Request text or path to an existing `.md` file → `.malvin/logs/.../plan.md`.
+    /// Request text or path to an existing `.md` file → `.malvin/logs/.../plan_<random>.md`.
     #[arg(value_name = "PLAN", num_args = 1..)]
     pub requests: Vec<String>,
 }

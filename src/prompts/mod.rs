@@ -8,6 +8,7 @@ pub use template::*;
 
 pub use defaults::{
     DO_HEADER_MD, HEADER_MD, ROUTER_A_MD, ROUTER_B_COMPLEX_MD, ROUTER_B_SIMPLE_MD, ROUTER_C_MD,
+    ROUTER_CODE_EXTRA_MD, ROUTER_D_MD,
 };
 
 #[allow(unused_imports)]
@@ -33,12 +34,32 @@ pub fn enforce_no_unresolved_braces_in(
     if template::unresolved_spaced_brace_placeholders(text).is_empty() {
         Ok(())
     } else {
-        let msg = prompt_file.map_or_else(
-            || UNRESOLVED_BRACES_MSG.to_string(),
-            |name| format!("{UNRESOLVED_BRACES_MSG} (in {name})"),
-        );
-        Err(PromptError(msg))
+        Err(unresolved_braces_error(prompt_file))
     }
+}
+
+/// # Errors
+///
+/// Returns [`PromptError`] when `template` contains `{{ key }}` placeholders whose keys are
+/// missing from `context`.
+pub fn enforce_template_placeholders_resolved_in(
+    template: &str,
+    context: &std::collections::HashMap<String, String>,
+    prompt_file: Option<&str>,
+) -> Result<(), PromptError> {
+    if template::unresolved_template_placeholders(template, context).is_empty() {
+        Ok(())
+    } else {
+        Err(unresolved_braces_error(prompt_file))
+    }
+}
+
+fn unresolved_braces_error(prompt_file: Option<&str>) -> PromptError {
+    let msg = prompt_file.map_or_else(
+        || UNRESOLVED_BRACES_MSG.to_string(),
+        |name| format!("{UNRESOLVED_BRACES_MSG} (in {name})"),
+    );
+    PromptError(msg)
 }
 
 #[derive(Debug, thiserror::Error)]
