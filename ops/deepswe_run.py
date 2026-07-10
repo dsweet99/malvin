@@ -3756,7 +3756,7 @@ def _test_parse_task_dir_does_not_require_test_sh() -> None:
         (task_dir / "instruction.md").write_text("do something\n", encoding="utf-8")
         spec = parse_task_dir(task_dir)
         assert spec.task_id == "no-tests"
-        assert spec.test_sh == task_dir / "tests" / "test.sh"
+        assert spec.test_sh == spec.task_dir / "tests" / "test.sh"
         assert not spec.test_sh.is_file()
 
 
