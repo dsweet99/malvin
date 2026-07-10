@@ -875,6 +875,7 @@ def precommit_install_hooks_command(workspace: Path) -> str | None:
 _UV_BOOTSTRAP_SHELL = (
     "command -v uv >/dev/null 2>&1 || python3 -m pip install --no-cache-dir uv"
 )
+_UV_PROJECT_VENV = ".venv"
 
 
 def _pyproject_has_uv_dev_group(workspace: Path) -> bool:
@@ -886,17 +887,86 @@ def _pyproject_has_uv_dev_group(workspace: Path) -> bool:
     return isinstance(groups, dict) and "dev" in groups
 
 
+def _read_pyproject_build_system_requires(pyproject: Path) -> list[str]:
+    """Return ``[build-system].requires`` entries from ``pyproject.toml``."""
+    if not pyproject.is_file():
+        return []
+    raw = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    build_system = raw.get("build-system")
+    if not isinstance(build_system, dict):
+        return []
+    requires = build_system.get("requires")
+    if not isinstance(requires, list):
+        return []
+    return [req for req in requires if isinstance(req, str) and req.strip()]
+
+
+def _workspace_has_ruff_signal(workspace: Path) -> bool:
+    """True when ruff is likely used by malvin quality gates for this workspace."""
+    pyproject = workspace / "pyproject.toml"
+    if pyproject.is_file():
+        raw = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+        groups = raw.get("dependency-groups")
+        if isinstance(groups, dict):
+            dev = groups.get("dev")
+            if isinstance(dev, list) and any(
+                isinstance(dep, str) and dep.split("[", 1)[0].strip() == "ruff" for dep in dev
+            ):
+                return True
+    lockfile = workspace / "uv.lock"
+    if lockfile.is_file():
+        return 'name = "ruff"' in lockfile.read_text(encoding="utf-8")
+    return False
+
+
+_UV_OFFLINE_SMOKE_PREFIX = "UV_OFFLINE=1 UV_NO_SYNC=1"
+
+
 def uv_sync_dev_command(workspace: Path) -> str | None:
-    """Return shell steps to warm a uv dev venv when the workspace uses uv.
+    """Return shell steps to warm a uv venv when the workspace uses uv.
 
     Callers must run the returned command in ``/app`` during image build with network
     access so later offline ``uv sync`` / ``uv run`` gates can succeed.
     """
     if not (workspace / "uv.lock").is_file():
         return None
-    if not _pyproject_has_uv_dev_group(workspace):
+    sync = "uv sync --group dev" if _pyproject_has_uv_dev_group(workspace) else "uv sync"
+    return f"{_UV_BOOTSTRAP_SHELL} && {sync}"
+
+
+def uv_pip_build_system_command(workspace: Path) -> str | None:
+    """Return shell steps to cache ``[build-system].requires`` for offline ``uv run``."""
+    if not (workspace / "uv.lock").is_file():
         return None
-    return f"{_UV_BOOTSTRAP_SHELL} && uv sync --group dev"
+    requires = _read_pyproject_build_system_requires(workspace / "pyproject.toml")
+    if not requires:
+        return None
+    quoted = " ".join(shlex.quote(req) for req in requires)
+    return (
+        f"{_UV_BOOTSTRAP_SHELL} && uv pip install --python {_UV_PROJECT_VENV} {quoted}"
+    )
+
+
+def uv_editable_install_command(workspace: Path) -> str | None:
+    """Return shell steps to pre-install the project editable for offline rebuilds."""
+    if not (workspace / "uv.lock").is_file():
+        return None
+    return (
+        f"{_UV_BOOTSTRAP_SHELL} && uv pip install --python {_UV_PROJECT_VENV} "
+        "-e . --no-build-isolation"
+    )
+
+
+def uv_offline_smoke_commands(workspace: Path) -> list[str]:
+    """Gate-equivalent offline checks to run at image build after cache warming."""
+    if not (workspace / "uv.lock").is_file():
+        return []
+    commands: list[str] = []
+    sync = "uv sync --offline --group dev" if _pyproject_has_uv_dev_group(workspace) else "uv sync --offline"
+    commands.append(f"{_UV_OFFLINE_SMOKE_PREFIX} {sync}")
+    if _workspace_has_ruff_signal(workspace):
+        commands.append(f"{_UV_OFFLINE_SMOKE_PREFIX} uv run ruff check")
+    return commands
 
 
 def workspace_image_warm_commands(workspace: Path) -> list[str]:
@@ -908,6 +978,21 @@ def workspace_image_warm_commands(workspace: Path) -> list[str]:
     uv_sync = uv_sync_dev_command(workspace)
     if uv_sync:
         commands.append(uv_sync)
+    build_system = uv_pip_build_system_command(workspace)
+    if build_system:
+        commands.append(build_system)
+    editable = uv_editable_install_command(workspace)
+    if editable:
+        commands.append(editable)
+    smoke = uv_offline_smoke_commands(workspace)
+    if smoke and build_system:
+        # ``uv sync --offline`` reconciles the venv to the lockfile and drops
+        # build-system packages that are not declared as runtime deps.
+        commands.append(smoke[0])
+        commands.append(build_system)
+        commands.extend(smoke[1:])
+    else:
+        commands.extend(smoke)
     return commands
 
 
@@ -1172,12 +1257,17 @@ def _test_uv_sync_dev_command() -> None:
         root = Path(tmp)
         assert uv_sync_dev_command(root) is None
         (root / "uv.lock").write_text("# lock\n", encoding="utf-8")
-        assert uv_sync_dev_command(root) is None
+        cmd = uv_sync_dev_command(root)
+        assert cmd is not None
+        assert cmd.endswith("uv sync")
         (root / "pyproject.toml").write_text(
             '[project]\nname = "demo"\nversion = "0.1.0"\n',
             encoding="utf-8",
         )
-        assert uv_sync_dev_command(root) is None
+        cmd = uv_sync_dev_command(root)
+        assert cmd is not None
+        assert "pip install" in cmd and "uv" in cmd
+        assert cmd.endswith("uv sync")
         (root / "pyproject.toml").write_text(
             '[project]\nname = "demo"\nversion = "0.1.0"\n'
             "[dependency-groups]\ndev = [\"pytest\"]\n",
@@ -1187,6 +1277,65 @@ def _test_uv_sync_dev_command() -> None:
         assert cmd is not None
         assert "pip install" in cmd and "uv" in cmd
         assert cmd.endswith("uv sync --group dev")
+
+
+def _test_uv_pip_build_system_command() -> None:
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        assert uv_pip_build_system_command(root) is None
+        (root / "uv.lock").write_text("# lock\n", encoding="utf-8")
+        (root / "pyproject.toml").write_text(
+            '[project]\nname = "demo"\nversion = "0.1.0"\n',
+            encoding="utf-8",
+        )
+        assert uv_pip_build_system_command(root) is None
+        (root / "pyproject.toml").write_text(
+            '[project]\nname = "demo"\nversion = "0.1.0"\n'
+            '[build-system]\nrequires = ["setuptools>=69.2", "setuptools-scm[toml]>=8.0"]\n',
+            encoding="utf-8",
+        )
+        cmd = uv_pip_build_system_command(root)
+        assert cmd is not None
+        assert "uv pip install --python .venv" in cmd
+        assert shlex.quote("setuptools-scm[toml]>=8.0") in cmd
+
+
+def _test_uv_editable_install_command() -> None:
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        assert uv_editable_install_command(root) is None
+        (root / "uv.lock").write_text("# lock\n", encoding="utf-8")
+        cmd = uv_editable_install_command(root)
+        assert cmd is not None
+        assert "uv pip install --python .venv -e . --no-build-isolation" in cmd
+
+
+def _test_uv_offline_smoke_commands() -> None:
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        assert uv_offline_smoke_commands(root) == []
+        (root / "uv.lock").write_text("# lock\n", encoding="utf-8")
+        (root / "pyproject.toml").write_text(
+            '[project]\nname = "demo"\nversion = "0.1.0"\n',
+            encoding="utf-8",
+        )
+        smoke = uv_offline_smoke_commands(root)
+        assert smoke == ["UV_OFFLINE=1 UV_NO_SYNC=1 uv sync --offline"]
+        (root / "pyproject.toml").write_text(
+            '[project]\nname = "demo"\nversion = "0.1.0"\n'
+            "[dependency-groups]\ndev = [\"ruff\"]\n",
+            encoding="utf-8",
+        )
+        smoke = uv_offline_smoke_commands(root)
+        assert len(smoke) == 2
+        assert smoke[0] == "UV_OFFLINE=1 UV_NO_SYNC=1 uv sync --offline --group dev"
+        assert smoke[1] == "UV_OFFLINE=1 UV_NO_SYNC=1 uv run ruff check"
 
 
 def _test_workspace_image_warm_commands() -> None:
@@ -1200,13 +1349,28 @@ def _test_workspace_image_warm_commands() -> None:
         (root / "uv.lock").write_text("# lock\n", encoding="utf-8")
         (root / "pyproject.toml").write_text(
             '[project]\nname = "demo"\nversion = "0.1.0"\n'
-            "[dependency-groups]\ndev = [\"pytest\"]\n",
+            '[build-system]\nrequires = ["setuptools>=69.2"]\n'
+            "[dependency-groups]\ndev = [\"ruff\"]\n",
             encoding="utf-8",
         )
         cmds = workspace_image_warm_commands(root)
         assert cmds == [
             "pre-commit install-hooks",
             f"{_UV_BOOTSTRAP_SHELL} && uv sync --group dev",
+            (
+                f"{_UV_BOOTSTRAP_SHELL} && uv pip install --python {_UV_PROJECT_VENV} "
+                f"{shlex.quote('setuptools>=69.2')}"
+            ),
+            (
+                f"{_UV_BOOTSTRAP_SHELL} && uv pip install --python {_UV_PROJECT_VENV} "
+                "-e . --no-build-isolation"
+            ),
+            "UV_OFFLINE=1 UV_NO_SYNC=1 uv sync --offline --group dev",
+            (
+                f"{_UV_BOOTSTRAP_SHELL} && uv pip install --python {_UV_PROJECT_VENV} "
+                f"{shlex.quote('setuptools>=69.2')}"
+            ),
+            "UV_OFFLINE=1 UV_NO_SYNC=1 uv run ruff check",
         ]
 
 
@@ -1578,6 +1742,9 @@ def run_self_tests() -> None:
     _test_hybrid_pnpm_runtime_sync_skipped()
     _test_precommit_install_hooks_command()
     _test_uv_sync_dev_command()
+    _test_uv_pip_build_system_command()
+    _test_uv_editable_install_command()
+    _test_uv_offline_smoke_commands()
     _test_workspace_image_warm_commands()
     _test_registry_image_cache_bust_commands()
     _test_registry_image_cache_bust_aiomonitor_shape()

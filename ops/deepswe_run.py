@@ -497,8 +497,13 @@ def timestamp_dir() -> str:
 
 
 def apply_in_sandbox_runner_env() -> None:
-    """Pin uv to offline mode for agent/grade sandboxes without PyPI egress."""
+    """Pin uv to offline mode for agent/grade sandboxes without PyPI egress.
+
+    ``UV_NO_SYNC`` skips network sync before ``uv run``; image-build cache warming
+    must already populate ``.venv`` and ``~/.cache/uv`` (see ``workspace_image_warm_commands``).
+    """
     os.environ["UV_OFFLINE"] = "1"
+    os.environ["UV_NO_SYNC"] = "1"
 
 
 def run_cmd(
@@ -4150,25 +4155,34 @@ def _test_resolve_malvin_cmd_prefers_repo_target() -> None:
 
 
 def _test_apply_in_sandbox_runner_env() -> None:
-    saved = os.environ.get("UV_OFFLINE")
+    saved_offline = os.environ.get("UV_OFFLINE")
+    saved_no_sync = os.environ.get("UV_NO_SYNC")
     try:
         os.environ.pop("UV_OFFLINE", None)
+        os.environ.pop("UV_NO_SYNC", None)
         apply_in_sandbox_runner_env()
         assert os.environ.get("UV_OFFLINE") == "1"
+        assert os.environ.get("UV_NO_SYNC") == "1"
     finally:
-        if saved is None:
+        if saved_offline is None:
             os.environ.pop("UV_OFFLINE", None)
         else:
-            os.environ["UV_OFFLINE"] = saved
+            os.environ["UV_OFFLINE"] = saved_offline
+        if saved_no_sync is None:
+            os.environ.pop("UV_NO_SYNC", None)
+        else:
+            os.environ["UV_NO_SYNC"] = saved_no_sync
 
 
 def _test_run_task_in_sandbox_sets_uv_offline() -> None:
     from sandbox_prep import SandboxPrepResult
 
-    saved = os.environ.get("UV_OFFLINE")
+    saved_offline = os.environ.get("UV_OFFLINE")
+    saved_no_sync = os.environ.get("UV_NO_SYNC")
     mod = sys.modules[__name__]
     try:
         os.environ.pop("UV_OFFLINE", None)
+        os.environ.pop("UV_NO_SYNC", None)
         with (
             patch.object(
                 mod,
@@ -4203,11 +4217,16 @@ def _test_run_task_in_sandbox_sets_uv_offline() -> None:
                     malvin_args=(),
                 )
         assert os.environ.get("UV_OFFLINE") == "1"
+        assert os.environ.get("UV_NO_SYNC") == "1"
     finally:
-        if saved is None:
+        if saved_offline is None:
             os.environ.pop("UV_OFFLINE", None)
         else:
-            os.environ["UV_OFFLINE"] = saved
+            os.environ["UV_OFFLINE"] = saved_offline
+        if saved_no_sync is None:
+            os.environ.pop("UV_NO_SYNC", None)
+        else:
+            os.environ["UV_NO_SYNC"] = saved_no_sync
 
 
 def _test_relay_subprocess_stdout_sets_force_tee_env() -> None:

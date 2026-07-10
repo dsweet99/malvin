@@ -217,6 +217,7 @@ def workspace_mount_ignore() -> list[str]:
     """Exclude sandbox ephemeral paths when uploading a reused DeepSWE workspace to Modal."""
     return [
         ".stestr/",
+        ".venv/",
         "__pycache__/",
         ".pytest_cache/",
         "*.pyc",
@@ -1762,6 +1763,10 @@ def _looks_like_image_prep_failure(msg: str) -> bool:
             "pre-commit",
             "install-hooks",
             "uv sync",
+            "uv pip",
+            "uv run",
+            "offline smoke",
+            "build-system",
         )
     ):
         return True
@@ -1781,8 +1786,10 @@ def format_modal_image_prep_error(task_id: str, exc: BaseException) -> str:
         lower = msg.lower()
         if any(token in lower for token in ("pre-commit", "install-hooks")):
             hint = "check pre-commit install-hooks during image build (network on)"
-        elif "uv sync" in lower:
-            hint = "check uv sync --group dev during image build (network on)"
+        elif any(token in lower for token in ("uv sync", "uv pip", "uv run", "offline smoke")):
+            hint = (
+                "check uv sync / build-system / editable prewarm / offline smoke during image build"
+            )
         else:
             hint = "check registry cache bust / pyproject.toml reconcile"
         return format_prep_error(
@@ -2353,10 +2360,10 @@ def harbor_agent_image(
     )
     preinstall = offline_check_tool_install_commands(checks)
     if preinstall:
-        augmented = augmented.run_commands(*preinstall).env({"UV_NO_SYNC": "1"})
+        augmented = augmented.run_commands(*preinstall)
     augmented = warm_offline_workspace_layer(augmented, workspace)
     return mount_agent_context(
-        augmented,
+        augmented.env({"UV_NO_SYNC": "1"}),
         task_dir=spec.task_dir,
         workspace=workspace,
         deepswe_run_py=deepswe_run_py,
@@ -3960,6 +3967,7 @@ def _test_upload_ignore_patterns() -> None:
     workspace_ignores = workspace_mount_ignore()
     assert "target/" in malvin_ignores
     assert ".stestr/" in workspace_ignores
+    assert ".venv/" in workspace_ignores
     assert "__pycache__/" in workspace_ignores
     assert "reports/" in malvin_ignores
     assert ".malvin/" in malvin_ignores
@@ -4047,7 +4055,7 @@ def _test_format_modal_image_prep_error() -> None:
         "aiomonitor-task-snapshots-diff",
         Exception("uv sync --group dev failed: Failed to download pydantic==2.12.5"),
     )
-    assert "uv sync --group dev during image build" in uv_err
+    assert "uv sync / build-system / editable prewarm / offline smoke during image build" in uv_err
 
 
 def _test_warm_offline_workspace_layer() -> None:
@@ -4079,11 +4087,14 @@ def _test_warm_offline_workspace_layer() -> None:
             encoding="utf-8",
         )
         warmed = warm_offline_workspace_layer(recorder, workspace)
-        assert len(recorder.calls) == 3
-        hook_joined = " ".join(recorder.calls[1][1])
-        uv_joined = " ".join(recorder.calls[2][1])
-        assert "pre-commit install-hooks" in hook_joined
-        assert "uv sync --group dev" in uv_joined
+        assert len(recorder.calls) == 5
+        run_joined = " ".join(
+            " ".join(call[1]) for call in recorder.calls if call[0] == "run_commands"
+        )
+        assert "pre-commit install-hooks" in run_joined
+        assert "uv sync --group dev" in run_joined
+        assert "uv pip install --python .venv -e . --no-build-isolation" in run_joined
+        assert "UV_OFFLINE=1 UV_NO_SYNC=1 uv sync --offline --group dev" in run_joined
 
 
 def _test_warm_precommit_hooks_layer() -> None:
@@ -4186,6 +4197,9 @@ def _test_harbor_agent_image_warms_precommit_hooks() -> None:
             call for call in uv_recorder.calls if call[0] == "run_commands" and "uv sync --group dev" in " ".join(call[1])
         ]
         assert uv_cmds
+        env_calls = [call for call in uv_recorder.calls if call[0] == "env"]
+        assert env_calls
+        assert env_calls[-1][1][0].get("UV_NO_SYNC") == "1"
 
 
 def _test_harbor_image_aiomonitor_pydantic_reconcile() -> None:
