@@ -861,6 +861,17 @@ def _pydantic_v1_eviction_command() -> str:
     )
 
 
+def precommit_install_hooks_command(workspace: Path) -> str | None:
+    """Return shell steps to warm pre-commit hooks when the workspace declares them.
+
+    Callers must run the returned command in ``/app`` during image build with network
+    access. Requires ``pre-commit`` on PATH; image build fails if it is missing.
+    """
+    if (workspace / ".pre-commit-config.yaml").is_file():
+        return "pre-commit install-hooks"
+    return None
+
+
 def registry_image_cache_bust_commands(
     dockerfile: Path | None = None,
     workspace: Path | None = None,
@@ -1101,6 +1112,18 @@ def _test_hybrid_pnpm_runtime_sync_skipped() -> None:
         return
     sync = workspace_sync_commands_from_dockerfile(dockerfile)
     assert sync == [], sync
+
+
+def _test_precommit_install_hooks_command() -> None:
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        assert precommit_install_hooks_command(root) is None
+        (root / ".pre-commit-config.yaml").write_text("repos: []\n", encoding="utf-8")
+        cmd = precommit_install_hooks_command(root)
+        assert cmd is not None
+        assert cmd == "pre-commit install-hooks"
 
 
 def _test_registry_image_cache_bust_commands() -> None:
@@ -1469,6 +1492,7 @@ def run_self_tests() -> None:
     _test_dockerfile_image_build_commands_fastapi()
     _test_hybrid_poetry_runtime_sync_skipped()
     _test_hybrid_pnpm_runtime_sync_skipped()
+    _test_precommit_install_hooks_command()
     _test_registry_image_cache_bust_commands()
     _test_registry_image_cache_bust_aiomonitor_shape()
     _test_registry_image_cache_bust_pydantic_v1_legitimate()

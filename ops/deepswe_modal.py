@@ -73,6 +73,7 @@ from modal_sandbox_lifecycle import release_modal_sandbox
 from sandbox_prep import (
     dockerfile_image_build_commands,
     format_prep_error,
+    precommit_install_hooks_command,
     registry_image_cache_bust_commands,
 )
 from deepswe_run import (
@@ -1758,6 +1759,8 @@ def _looks_like_image_prep_failure(msg: str) -> bool:
             "namespace drift",
             "probe",
             "not installed",
+            "pre-commit",
+            "install-hooks",
         )
     ):
         return True
@@ -1774,11 +1777,16 @@ def format_modal_image_prep_error(task_id: str, exc: BaseException) -> str:
     """Map Modal image-build failures to short-abort dependency prep messages."""
     msg = str(exc)
     if _looks_like_image_prep_failure(msg):
+        lower = msg.lower()
+        if any(token in lower for token in ("pre-commit", "install-hooks")):
+            hint = "check pre-commit install-hooks during image build (network on)"
+        else:
+            hint = "check registry cache bust / pyproject.toml reconcile"
         return format_prep_error(
             task_id,
             phase="image build",
             detail=msg,
-            hint="check registry cache bust / pyproject.toml reconcile",
+            hint=hint,
         )
     return f"Modal solve failed: {msg}"
 
@@ -2299,6 +2307,20 @@ def offline_agent_checks(checks: str) -> str:
     return body + ("\n" if body and not body.endswith("\n") else "")
 
 
+def warm_precommit_hooks_layer(image: modal.Image, workspace: Path) -> modal.Image:
+    """Bake workspace at build time and warm ``~/.cache/pre-commit`` for offline gates."""
+    cmd = precommit_install_hooks_command(workspace)
+    if cmd is None:
+        return image
+    click.echo("Warming pre-commit hook environments at image build...")
+    return image.add_local_dir(
+        str(workspace.resolve()),
+        remote_path=APP_REMOTE,
+        copy=True,
+        ignore=workspace_mount_ignore(),
+    ).run_commands(_image_build_shell_command(cmd))
+
+
 def harbor_agent_image(
     spec: Any,
     workspace: Path,
@@ -2321,6 +2343,7 @@ def harbor_agent_image(
     preinstall = offline_check_tool_install_commands(checks)
     if preinstall:
         augmented = augmented.run_commands(*preinstall).env({"UV_NO_SYNC": "1"})
+    augmented = warm_precommit_hooks_layer(augmented, workspace)
     return mount_agent_context(
         augmented,
         task_dir=spec.task_dir,
@@ -4001,6 +4024,93 @@ def _test_format_modal_image_prep_error() -> None:
     assert "sandbox image build failed" in modal_im
     assert "some-task" in modal_im
 
+    precommit_err = format_modal_image_prep_error(
+        "aiomonitor-task-snapshots-diff",
+        Exception("pre-commit install-hooks failed: Couldn't connect to server github.com"),
+    )
+    assert "sandbox image build failed" in precommit_err
+    assert "aiomonitor-task-snapshots-diff" in precommit_err
+    assert "pre-commit install-hooks" in precommit_err
+
+
+def _test_warm_precommit_hooks_layer() -> None:
+    import tempfile
+
+    recorder = _RecordingImage()
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        assert warm_precommit_hooks_layer(recorder, workspace) is recorder
+        assert recorder.calls == []
+
+        (workspace / ".pre-commit-config.yaml").write_text("repos: []\n", encoding="utf-8")
+        warmed = warm_precommit_hooks_layer(recorder, workspace)
+        assert warmed is recorder
+        assert len(recorder.calls) == 2
+        assert recorder.calls[0][0] == "add_local_dir"
+        assert recorder.calls[0][2]["copy"] is True
+        assert recorder.calls[0][2]["remote_path"] == APP_REMOTE
+        assert recorder.calls[1][0] == "run_commands"
+        joined = " ".join(recorder.calls[1][1])
+        assert "pre-commit install-hooks" in joined
+        assert f"cd {APP_REMOTE}" in joined
+
+
+def _test_harbor_agent_image_warms_precommit_hooks() -> None:
+    import tempfile
+
+    malvin_repo = malvin_repo_root()
+    deepswe_run_py = Path(__file__).resolve().parent / "deepswe_run.py"
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp) / "workspace"
+        workspace.mkdir()
+        task_dir = Path(tmp) / "task"
+        task_dir.mkdir()
+        (task_dir / "task.toml").write_text("[task]\n", encoding="utf-8")
+        (task_dir / "instruction.md").write_text("Do work\n", encoding="utf-8")
+        spec = MagicMock()
+        spec.task_dir = task_dir
+        spec.docker_image = None
+        base_recorder = _RecordingImage()
+        with patch(f"{__name__}.harbor_image", return_value=base_recorder), patch(
+            f"{__name__}.mount_local_toolchain",
+            side_effect=lambda image, **kwargs: image,
+        ), patch(f"{__name__}.mount_agent_context", side_effect=lambda image, **kwargs: image):
+            harbor_agent_image(
+                spec,
+                workspace,
+                dockerfile=Path("/nonexistent/Dockerfile"),
+                malvin_repo=malvin_repo,
+                deepswe_run_py=deepswe_run_py,
+            )
+        assert not any(call[0] == "add_local_dir" and call[2].get("copy") for call in base_recorder.calls)
+
+        (workspace / ".pre-commit-config.yaml").write_text("repos: []\n", encoding="utf-8")
+        warm_recorder = _RecordingImage()
+        with patch(f"{__name__}.harbor_image", return_value=warm_recorder), patch(
+            f"{__name__}.mount_local_toolchain",
+            side_effect=lambda image, **kwargs: image,
+        ), patch(f"{__name__}.mount_agent_context", side_effect=lambda image, **kwargs: image):
+            harbor_agent_image(
+                spec,
+                workspace,
+                dockerfile=Path("/nonexistent/Dockerfile"),
+                malvin_repo=malvin_repo,
+                deepswe_run_py=deepswe_run_py,
+            )
+        warm_calls = [
+            call
+            for call in warm_recorder.calls
+            if call[0] == "add_local_dir" and call[2].get("copy") is True
+        ]
+        assert len(warm_calls) == 1
+        hook_cmds = [
+            call for call in warm_recorder.calls if call[0] == "run_commands" and "install-hooks" in " ".join(call[1])
+        ]
+        assert hook_cmds
+        warm_idx = warm_recorder.calls.index(warm_calls[0])
+        hook_idx = warm_recorder.calls.index(hook_cmds[0])
+        assert warm_idx < hook_idx
+
 
 def _test_harbor_image_aiomonitor_pydantic_reconcile() -> None:
     tasks_root = default_deepswe_tasks_root()
@@ -4363,6 +4473,8 @@ def run_harvest_sandbox_unit_tests() -> None:
 def run_harbor_modal_probe_unit_tests() -> None:
     """Harbor image, modal probe, sandbox app, and self-test flag unit tests."""
     _test_format_modal_image_prep_error()
+    _test_warm_precommit_hooks_layer()
+    _test_harbor_agent_image_warms_precommit_hooks()
     _test_harbor_image_aiomonitor_pydantic_reconcile()
     _test_harbor_image_registry_skips_bulk_pip_replay()
     _test_harbor_image_prefers_registry_for_fastapi_task()
