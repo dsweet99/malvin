@@ -18,6 +18,7 @@ Two-phase prep enforces a strict contract for Python tasks:
 
 from __future__ import annotations
 
+import base64
 import re
 import shlex
 import subprocess
@@ -680,6 +681,27 @@ def _mandatory_probe_command(declared: DeclaredDeps) -> str:
     return f"python3 -c {shlex.quote(body)}"
 
 
+MANDATORY_PROBE_SCRIPT_PATH = "/tmp/malvin_mandatory_probe.py"
+
+
+def mandatory_probe_script_write_command(declared: DeclaredDeps) -> str:
+    """Write mandatory probe source to a fixed path (Modal/Docker image-build safe)."""
+    encoded = base64.b64encode(_mandatory_probe_python(declared).encode()).decode()
+    return f"echo {shlex.quote(encoded)} | base64 -d > {MANDATORY_PROBE_SCRIPT_PATH}"
+
+
+def mandatory_probe_script_run_command() -> str:
+    return f"python3 {MANDATORY_PROBE_SCRIPT_PATH}"
+
+
+def mandatory_probe_script_commands(declared: DeclaredDeps) -> list[str]:
+    """Return write-then-run shell steps for image-build mandatory probes."""
+    return [
+        mandatory_probe_script_write_command(declared),
+        mandatory_probe_script_run_command(),
+    ]
+
+
 _HTTPX_DRIFT_FIX = "'starlette==1.0.0' 'click==8.3.1' 'typer==0.25.1'"
 
 
@@ -748,9 +770,15 @@ def _reconcile_declared_deps_commands(
     if declared.bulk_pins and not registry_pull:
         pkg_args = [f"'{name}=={ver}'" for name, ver in sorted(declared.bulk_pins.items())]
         cmds.append("pip install --no-cache-dir --force-reinstall " + " ".join(pkg_args))
+    reconcile_names = set(declared.constraints) | set(declared.lockfile_pins)
+    if registry_pull:
+        # Modal base-image layering can downgrade Harbor bulk pins (e.g. aiohttp,
+        # pydantic) after registry pull; reconcile declared pins without replaying
+        # every Dockerfile pip step.
+        reconcile_names |= set(declared.bulk_pins)
+    covered = {name.lower() for name in declared.bulk_pins} if not registry_pull else set()
     extras: list[str] = []
-    covered = {name.lower() for name in declared.bulk_pins}
-    for name in sorted(set(declared.constraints) | set(declared.lockfile_pins)):
+    for name in sorted(reconcile_names):
         if name in covered:
             continue
         pip_spec = declared.pip_install_spec(name)
@@ -845,8 +873,9 @@ def registry_image_cache_bust_commands(
     aiomonitor ``pydantic>=2.0.0``), reconcile commands install them unconditionally
     after bulk pin replay — not only when bulk pins are absent.
 
-    With ``registry_pull=True``, skip Dockerfile bulk-pin ``--force-reinstall`` because
-    Harbor registry images already ship those pins; reconcile pyproject/lockfile gaps only.
+    With ``registry_pull=True``, skip Dockerfile bulk-pin replay (full ``RUN pip install``
+    replay) because Harbor registry images already ship those pins; still reconcile
+    declared bulk pins when Modal base-image layering may have clobbered them.
     """
     declared = (
         declared_python_dependencies(workspace.resolve(), dockerfile)
@@ -861,7 +890,7 @@ def registry_image_cache_bust_commands(
         f"{_httpx_drift_probe_command()} || "
         f"pip install --no-cache-dir --force-reinstall {_HTTPX_DRIFT_FIX}"
     )
-    cmds.append(_mandatory_probe_command(declared))
+    cmds.extend(mandatory_probe_script_commands(declared))
     return cmds
 
 
@@ -1084,12 +1113,13 @@ RUN pip install --no-cache-dir -e ".[all]" && pip install --no-cache-dir pytest 
         dockerfile = Path(tmp) / "Dockerfile"
         dockerfile.write_text(text, encoding="utf-8")
         cmds = registry_image_cache_bust_commands(dockerfile)
-    assert len(cmds) >= 3, cmds
+    assert len(cmds) >= 4, cmds
     assert cmds[0].startswith("python3 -c") or cmds[0].startswith("pip install")
     joined = " ".join(cmds)
     assert "starlette==1.0.0" in joined
     assert "pydantic==2.13.4" not in joined
-    assert cmds[-1].startswith("python3 -c")
+    assert cmds[-1] == f"python3 {MANDATORY_PROBE_SCRIPT_PATH}", cmds
+    assert "base64 -d" in cmds[-2], cmds
 
 
 def _test_registry_image_cache_bust_aiomonitor_shape() -> None:
@@ -1115,8 +1145,12 @@ def _test_registry_image_cache_bust_aiomonitor_shape() -> None:
     assert "pydantic" in joined, cmds
     assert "pydantic==2.12.5" not in joined, cmds
     assert "pydantic==2.13.4" not in joined, cmds
-    bulk_replay = [cmd for cmd in cmds if "--force-reinstall" in cmd and "pytest" in cmd]
-    assert not bulk_replay, cmds
+    assert "aiohttp==3.10.10" in joined, cmds
+    dockerfile_replay = [
+        cmd for cmd in cmds if cmd.startswith("pip install") and "pytest==8.3.3" in cmd
+    ]
+    assert len(dockerfile_replay) == 1, cmds
+    assert "aiohttp==3.10.10" in dockerfile_replay[0], cmds
 
 
 def _test_registry_image_cache_bust_pydantic_v1_legitimate() -> None:
@@ -1133,7 +1167,7 @@ def _test_registry_image_cache_bust_pydantic_v1_legitimate() -> None:
     joined = " ".join(cmds)
     assert "pydantic==1.10.26" in joined, cmds
     assert "pydantic>=2" not in joined, cmds
-    assert cmds[-1].startswith("python3 -c"), cmds
+    assert cmds[-1] == f"python3 {MANDATORY_PROBE_SCRIPT_PATH}", cmds
 
 
 def _test_run_post_prep_probes_structured_error() -> None:
@@ -1301,6 +1335,28 @@ def _test_mandatory_probe_fails_when_version_unknown() -> None:
             assert exc.code == 1, f"expected exit 1, got {exc.code}"
 
 
+def _test_mandatory_probe_script_commands_builder_safe() -> None:
+    declared = DeclaredDeps(
+        {"pytest": "8.0.0"},
+        {"pydantic": ">=2.0.0", "aioconsole": "==0.8.1"},
+        (),
+        {},
+    )
+    cmds = mandatory_probe_script_commands(declared)
+    joined = " ".join(cmds)
+    assert "checks = [" not in joined, joined
+    assert "base64 -d" in joined, joined
+    assert cmds[-1] == f"python3 {MANDATORY_PROBE_SCRIPT_PATH}", cmds
+
+
+def _test_mandatory_probe_script_write_roundtrip() -> None:
+    declared = DeclaredDeps({}, {"pydantic": ">=2.0.0", "aiomonitor": "==0.7.1"}, (), {})
+    write_cmd = mandatory_probe_script_write_command(declared)
+    expected = _mandatory_probe_python(declared)
+    payload = shlex.split(write_cmd.split("|")[0].removeprefix("echo ").strip())[0]
+    assert base64.b64decode(payload).decode() == expected, write_cmd
+
+
 def _test_declared_deps_skip_marker_gated_backports() -> None:
     import tempfile
 
@@ -1427,6 +1483,8 @@ def run_self_tests() -> None:
     _test_effective_spec_prefers_pyproject_constraint_over_lockfile()
     _test_effective_spec_exact_pyproject_beats_lockfile()
     _test_mandatory_probe_fails_when_version_unknown()
+    _test_mandatory_probe_script_commands_builder_safe()
+    _test_mandatory_probe_script_write_roundtrip()
     _test_registry_image_cache_bust_adaptix_pydantic_pin()
     _test_pydantic_pins_for_cache_bust_reads_requirements()
     _test_collect_pip_install_intents_bash_lc()

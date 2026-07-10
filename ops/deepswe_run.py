@@ -289,9 +289,10 @@ def audit_task_entry(
         spec.dockerfile.read_text(encoding="utf-8") if spec.dockerfile.is_file() else ""
     )
     intents = collect_pip_install_intents(dockerfile_text) if dockerfile_text else []
+    audit_workspace = workspace if workspace is not None else resolve_materialized_workspace(spec)
     pins = pins_for_task(
         spec.dockerfile if spec.dockerfile.is_file() else None,
-        task_dir / "environment",
+        audit_workspace if audit_workspace is not None else task_dir / "environment",
     )
     baseline = harbor_baseline_check_lines(spec.tests_dir)
     runnable = [line for line in baseline if is_runnable_check_line(line)]
@@ -306,7 +307,6 @@ def audit_task_entry(
         failures.append("no_runnable_baseline")
     if runnable and patch_targets:
         failures.append("patch_surface_with_baseline")
-    audit_workspace = workspace if workspace is not None else resolve_materialized_workspace(spec)
     if audit_workspace is None and language == "python" and spec.docker_image:
         failures.append("no_materialized_workspace")
     declared_package_count: int | None = None
@@ -4510,12 +4510,15 @@ def _test_audit_task_entry_uses_materialized_workspace() -> None:
         workspace=workspace,
     )
     cache_bust = entry["cache_bust"]
-    assert len(cache_bust) == 3, cache_bust
+    assert len(cache_bust) == 4, cache_bust
     assert cache_bust[0].startswith("pip install"), cache_bust
     assert "pydantic>=2.0.0" in cache_bust[0], cache_bust
+    assert cache_bust[-1].startswith("python3 /tmp/malvin_mandatory_probe.py"), cache_bust
     assert "pydantic==2.12.5" not in " ".join(cache_bust), cache_bust
-    bulk_replay = [cmd for cmd in cache_bust if "--force-reinstall" in cmd and "pytest" in cmd]
-    assert not bulk_replay, cache_bust
+    assert "aiohttp==3.10.10" in cache_bust[0], cache_bust
+    reconcile_cmds = [cmd for cmd in cache_bust if cmd.startswith("pip install")]
+    assert len(reconcile_cmds) == 1, cache_bust
+    assert "pytest==8.3.3" in reconcile_cmds[0], cache_bust
     assert entry["materialized_workspace"] is True, entry
     assert entry["declared_package_count"] == 25, entry
 
