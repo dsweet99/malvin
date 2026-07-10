@@ -73,6 +73,7 @@ from modal_sandbox_lifecycle import release_modal_sandbox
 from sandbox_prep import (
     dockerfile_image_build_commands,
     format_prep_error,
+    lint_gate_tool_pins,
     registry_image_cache_bust_commands,
     workspace_image_warm_commands,
 )
@@ -80,6 +81,7 @@ from deepswe_run import (
     apply_patch,
     default_deepswe_results_dir,
     default_deepswe_tasks_root,
+    discover_deepswe_checks,
     find_latest_malvin_log,
     malvin_needs_task_plan,
     materialize_workspace,
@@ -2289,15 +2291,24 @@ def run_deepswe_run_in_sandbox(
         release_modal_sandbox(sandbox)
 
 
-def offline_check_tool_install_commands(checks: str) -> list[str]:
+def offline_check_tool_install_commands(
+    checks: str,
+    workspace: Path | None = None,
+) -> list[str]:
     """Image-build pip installs so network-blocked agent sandboxes can run quality gates."""
+    pins = lint_gate_tool_pins(workspace) if workspace is not None else {}
     pkgs: list[str] = []
     if "mypy" in checks:
-        pkgs.extend(["mypy", "uv"])
+        pkgs.append(f"mypy=={pins['mypy']}" if "mypy" in pins else "mypy")
+        pkgs.append("uv")
     if "ruff" in checks:
-        pkgs.append("ruff")
+        pkgs.append(f"ruff=={pins['ruff']}" if "ruff" in pins else "ruff")
     if "pytest" in checks:
         pkgs.append("aggdraw")
+    if "pre-commit" in checks and "pre-commit" not in {pkg.split("==", 1)[0] for pkg in pkgs}:
+        pkgs.append(
+            f"pre-commit=={pins['pre-commit']}" if "pre-commit" in pins else "pre-commit"
+        )
     if not pkgs:
         return []
     ordered = list(dict.fromkeys(pkgs))
@@ -2358,7 +2369,11 @@ def harbor_agent_image(
         augmented,
         malvin_repo=malvin_repo,
     )
-    preinstall = offline_check_tool_install_commands(checks)
+    agent_checks = checks or discover_deepswe_checks(workspace)
+    preinstall = offline_check_tool_install_commands(
+        agent_checks,
+        workspace=workspace,
+    )
     if preinstall:
         augmented = augmented.run_commands(*preinstall)
     augmented = warm_offline_workspace_layer(augmented, workspace)
@@ -3863,6 +3878,8 @@ def _test_validate_toolchain_repos() -> None:
 
 
 def _test_offline_check_tool_install_commands() -> None:
+    import tempfile
+
     cmds = offline_check_tool_install_commands("uv run mypy\npytest -sv tests\nruff check .")
     assert len(cmds) == 1
     assert "mypy" in cmds[0]
@@ -3870,6 +3887,16 @@ def _test_offline_check_tool_install_commands() -> None:
     assert "aggdraw" in cmds[0]
     assert "uv" in cmds[0]
     assert offline_check_tool_install_commands("cargo nextest run") == []
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        req_dir = root / "requirements"
+        req_dir.mkdir()
+        (req_dir / "lint.txt").write_text("ruff==0.9.1\nmypy==1.14.0\n", encoding="utf-8")
+        pinned = offline_check_tool_install_commands("ruff check .\nmypy src/", workspace=root)
+        assert pinned == [
+            "python3 -m pip install --break-system-packages "
+            "mypy==1.14.0 uv ruff==0.9.1"
+        ]
 
 
 def _test_offline_agent_checks() -> None:

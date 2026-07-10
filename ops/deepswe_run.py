@@ -72,6 +72,7 @@ from sandbox_prep import (
     pins_for_task,
     prepare_task_sandbox,
     registry_image_cache_bust_commands,
+    tox_lint_check_commands,
 )
 from toolchain_repos import (
     malvin_repo_root,
@@ -921,10 +922,13 @@ def discover_deepswe_check_lines(
     signal_lines: list[str] = []
     precommit = precommit_hook_entries(root)
     makefile = makefile_gate_targets(root)
+    tox_lint = tox_lint_check_commands(root)
     if precommit:
         signal_lines.extend(supplement_makefile_signals(precommit, makefile))
     else:
         signal_lines.extend(makefile)
+    if tox_lint:
+        signal_lines.extend(tox_lint)
     signal_lines.extend(existing_malvin_checks_lines(root))
     return dedupe_check_lines(signal_lines)
 
@@ -3661,6 +3665,21 @@ def _test_discover_deepswe_checks_precommit() -> None:
         assert lines == ["ruff check ."]
 
 
+def _test_discover_deepswe_checks_tox_lint() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "tox.ini").write_text(
+            "[testenv:lint]\n"
+            "deps = -r requirements/lint.txt\n"
+            "commands =\n"
+            "  ruff check src/ --fix\n"
+            "  mypy src/\n",
+            encoding="utf-8",
+        )
+        lines = discover_deepswe_check_lines(root)
+        assert lines == ["ruff check src/ --fix", "mypy src/"]
+
+
 def _test_discover_deepswe_checks_existing_malvin_checks() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -4949,6 +4968,7 @@ def run_self_tests() -> None:
     _test_discover_deepswe_checks_stestr_repo()
     _test_discover_deepswe_checks_stestr_drops_stale_pytest()
     _test_discover_deepswe_checks_precommit()
+    _test_discover_deepswe_checks_tox_lint()
     _test_discover_deepswe_checks_existing_malvin_checks()
     _test_harbor_patch_check_lines()
     _test_harbor_baseline_adaptix_if_mode()

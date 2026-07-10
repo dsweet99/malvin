@@ -940,6 +940,83 @@ def _pydantic_v1_eviction_command() -> str:
     )
 
 
+_LINT_GATE_TOOLS = ("ruff", "mypy", "pre-commit")
+
+
+def tox_lint_section_text(tox_text: str) -> str | None:
+    """Return the body of ``[testenv:lint]`` from a ``tox.ini`` string."""
+    lines = tox_text.splitlines()
+    start: int | None = None
+    for index, line in enumerate(lines):
+        if line.strip() == "[testenv:lint]":
+            start = index + 1
+            break
+    if start is None:
+        return None
+    section_lines: list[str] = []
+    for line in lines[start:]:
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            break
+        section_lines.append(line)
+    return "\n".join(section_lines) if section_lines else ""
+
+
+def tox_lint_check_commands(workspace: Path) -> list[str]:
+    """Return ``commands`` from ``[testenv:lint]`` when present."""
+    tox_path = workspace / "tox.ini"
+    if not tox_path.is_file():
+        return []
+    section = tox_lint_section_text(tox_path.read_text(encoding="utf-8"))
+    if section is None:
+        return []
+    commands: list[str] = []
+    in_commands = False
+    for raw in section.splitlines():
+        line = raw.rstrip()
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if re.match(r"^commands\s*=", stripped, re.I):
+            in_commands = True
+            continue
+        if in_commands:
+            if line and not line[0].isspace():
+                in_commands = False
+                continue
+            if stripped:
+                commands.append(stripped)
+    return commands
+
+
+def lint_gate_tool_pins(workspace: Path) -> dict[str, str]:
+    """Return pinned lint-gate tool versions declared by the workspace."""
+    candidates = (
+        workspace / "requirements" / "lint.txt",
+        workspace / "requirements" / "dev.txt",
+        workspace / "requirements" / "raw" / "lint.txt",
+    )
+    for path in candidates:
+        pins = _pins_from_requirements_file(path)
+        tools = {name: pins[name] for name in _LINT_GATE_TOOLS if name in pins}
+        if tools:
+            return tools
+    return {}
+
+
+def workspace_lint_tool_install_command(workspace: Path) -> str | None:
+    """Install tox lint-gate CLIs at image build for offline malvin quality gates."""
+    if (workspace / "uv.lock").is_file():
+        return None
+    if not tox_lint_check_commands(workspace):
+        return None
+    pins = lint_gate_tool_pins(workspace)
+    if not pins:
+        return None
+    args = " ".join(shlex.quote(f"{name}=={version}") for name, version in sorted(pins.items()))
+    return f"python3 -m pip install --no-cache-dir {args}"
+
+
 PRECOMMIT_WARM_SCRIPT_PATH = "/tmp/malvin_precommit_warm.sh"
 
 
@@ -1088,6 +1165,9 @@ def uv_offline_smoke_commands(workspace: Path) -> list[str]:
 def workspace_image_warm_commands(workspace: Path) -> list[str]:
     """Shell commands to warm offline agent quality gates at Modal image build."""
     commands: list[str] = []
+    lint_install = workspace_lint_tool_install_command(workspace)
+    if lint_install:
+        commands.append(lint_install)
     uv_sync = uv_sync_dev_command(workspace)
     if uv_sync:
         commands.append(uv_sync)
@@ -1355,6 +1435,51 @@ def _test_hybrid_pnpm_runtime_sync_skipped() -> None:
     assert sync == [], sync
 
 
+def _test_tox_lint_check_commands() -> None:
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        assert tox_lint_check_commands(root) == []
+        (root / "tox.ini").write_text(
+            "[testenv:lint]\n"
+            "commands =\n"
+            "  ruff check src/ --fix\n"
+            "  mypy src/\n",
+            encoding="utf-8",
+        )
+        assert tox_lint_check_commands(root) == [
+            "ruff check src/ --fix",
+            "mypy src/",
+        ]
+
+
+def _test_workspace_lint_tool_install_command() -> None:
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        assert workspace_lint_tool_install_command(root) is None
+        req_dir = root / "requirements"
+        req_dir.mkdir()
+        (req_dir / "lint.txt").write_text(
+            "ruff==0.9.1\nmypy==1.14.0\npre-commit==4.0.1\n",
+            encoding="utf-8",
+        )
+        (root / "tox.ini").write_text(
+            "[testenv:lint]\n"
+            "deps = -r requirements/lint.txt\n"
+            "commands =\n"
+            "  ruff check src/ --fix\n",
+            encoding="utf-8",
+        )
+        cmd = workspace_lint_tool_install_command(root)
+        assert cmd is not None
+        assert "ruff==0.9.1" in cmd
+        assert "mypy==1.14.0" in cmd
+        assert "pre-commit==4.0.1" in cmd
+
+
 def _test_precommit_install_hooks_command() -> None:
     import tempfile
 
@@ -1495,6 +1620,17 @@ def _test_workspace_image_warm_commands() -> None:
         assert len(precommit_only) == 2
         assert "base64 -d" in precommit_only[0]
         assert precommit_only[1] == f"bash {PRECOMMIT_WARM_SCRIPT_PATH}"
+        req_dir = root / "requirements"
+        req_dir.mkdir()
+        (req_dir / "lint.txt").write_text("ruff==0.9.1\nmypy==1.14.0\n", encoding="utf-8")
+        (root / "tox.ini").write_text(
+            "[testenv:lint]\ncommands =\n  ruff check src/ --fix\n",
+            encoding="utf-8",
+        )
+        lint_warm = workspace_image_warm_commands(root)
+        assert lint_warm[0].startswith("python3 -m pip install --no-cache-dir")
+        assert "ruff==0.9.1" in lint_warm[0]
+        assert len(lint_warm) == 3
         (root / "uv.lock").write_text("# lock\n", encoding="utf-8")
         (root / "pyproject.toml").write_text(
             '[project]\nname = "demo"\nversion = "0.1.0"\n'
@@ -1928,6 +2064,8 @@ def run_self_tests() -> None:
     _test_dockerfile_image_build_commands_fastapi()
     _test_hybrid_poetry_runtime_sync_skipped()
     _test_hybrid_pnpm_runtime_sync_skipped()
+    _test_tox_lint_check_commands()
+    _test_workspace_lint_tool_install_command()
     _test_precommit_install_hooks_command()
     _test_precommit_pin_from_workspace_pyproject()
     _test_uv_sync_dev_command()
