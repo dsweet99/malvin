@@ -1765,6 +1765,8 @@ def _looks_like_image_prep_failure(msg: str) -> bool:
         token in lower for token in ("image", "build", "pip", "run_command", "run_commands")
     ):
         return True
+    if "image build for im-" in lower:
+        return True
     return False
 
 
@@ -1800,6 +1802,7 @@ def harbor_image(
             registry_image_cache_bust_commands(
                 dockerfile if dockerfile.is_file() else None,
                 workspace=workspace,
+                registry_pull=True,
             )
         )
         if build_cmds:
@@ -2488,81 +2491,82 @@ def run_modal_eval(
     agent_artifacts: Path | None = None
     deepswe_run_py = Path(__file__).resolve().parent / "deepswe_run.py"
     try:
-        sandbox_timeout = agent_sandbox_timeout_sec(
-            spec, skip_grade=skip_grade, grade_only=grade_only,
-        )
-        if grade_only:
-            grade_img = mount_eval_context(
-                harbor_image(spec, dockerfile=spec.dockerfile, workspace=workspace),
-                task_dir=spec.task_dir,
-                workspace=workspace,
-                tests_dir=spec.tests_dir,
-                deepswe_run_py=deepswe_run_py,
+        with modal.enable_output():
+            sandbox_timeout = agent_sandbox_timeout_sec(
+                spec, skip_grade=skip_grade, grade_only=grade_only,
             )
-            agent_result, grade_result = run_deepswe_run_in_sandbox(
-                grade_img,
-                command=malvin_command,
-                malvin_argv=list(malvin_args),
-                grade_only=True,
-                skip_grade=False,
-                cursor_secrets=[],
-                artifacts_dir=run_root,
-                spec=spec,
-                timeout=sandbox_timeout,
-            )
-        else:
-            if malvin_needs_task_plan(malvin_command):
-                write_task_plan(spec, workspace, dry_run=False)
-            malvin_repo = validate_toolchain_repos()
-            with stage_malvin_repo(malvin_repo) as malvin_staged:
-                agent_img = harbor_agent_image(
-                    spec,
-                    workspace,
-                    dockerfile=spec.dockerfile,
-                    malvin_repo=malvin_staged,
+            if grade_only:
+                grade_img = mount_eval_context(
+                    harbor_image(spec, dockerfile=spec.dockerfile, workspace=workspace),
+                    task_dir=spec.task_dir,
+                    workspace=workspace,
+                    tests_dir=spec.tests_dir,
                     deepswe_run_py=deepswe_run_py,
                 )
-                agent_artifacts = run_root / "agent_sandbox"
-                if skip_grade:
-                    click.echo("Running malvin agent in Modal sandbox (Cursor API allowlist)...")
-                    agent_result, grade_result = run_deepswe_run_in_sandbox(
-                        agent_img,
-                        command=malvin_command,
-                        malvin_argv=list(malvin_args),
-                        grade_only=False,
-                        skip_grade=True,
-                        cursor_secrets=cursor_secrets(),
-                        artifacts_dir=agent_artifacts,
-                        harvest_workspace=workspace,
-                        spec=spec,
-                        timeout=sandbox_timeout,
-                    )
-                else:
-                    click.echo(
-                        "Running malvin agent and Harbor grade in Modal sandbox "
-                        "(two execs: agent then grade after file injection)..."
-                    )
-                    agent_result, grade_result = run_deepswe_run_in_sandbox(
-                        agent_img,
-                        command=malvin_command,
-                        malvin_argv=list(malvin_args),
-                        grade_only=False,
-                        skip_grade=False,
-                        cursor_secrets=cursor_secrets(),
-                        artifacts_dir=agent_artifacts,
-                        harvest_workspace=workspace,
-                        spec=spec,
-                        timeout=sandbox_timeout,
-                        tests_dir=spec.tests_dir,
-                        task_dir=spec.task_dir,
-                    )
-            if agent_result is None:
-                agent_result = {"exit_code": 1}
-            agent_result["runtime"] = "modal-sandbox"
-            if skip_grade:
-                grade_result = {"pass": None, "reward": None, "skipped": True}
+                agent_result, grade_result = run_deepswe_run_in_sandbox(
+                    grade_img,
+                    command=malvin_command,
+                    malvin_argv=list(malvin_args),
+                    grade_only=True,
+                    skip_grade=False,
+                    cursor_secrets=[],
+                    artifacts_dir=run_root,
+                    spec=spec,
+                    timeout=sandbox_timeout,
+                )
             else:
-                grade_result["runtime"] = "modal-sandbox"
+                if malvin_needs_task_plan(malvin_command):
+                    write_task_plan(spec, workspace, dry_run=False)
+                malvin_repo = validate_toolchain_repos()
+                with stage_malvin_repo(malvin_repo) as malvin_staged:
+                    agent_img = harbor_agent_image(
+                        spec,
+                        workspace,
+                        dockerfile=spec.dockerfile,
+                        malvin_repo=malvin_staged,
+                        deepswe_run_py=deepswe_run_py,
+                    )
+                    agent_artifacts = run_root / "agent_sandbox"
+                    if skip_grade:
+                        click.echo("Running malvin agent in Modal sandbox (Cursor API allowlist)...")
+                        agent_result, grade_result = run_deepswe_run_in_sandbox(
+                            agent_img,
+                            command=malvin_command,
+                            malvin_argv=list(malvin_args),
+                            grade_only=False,
+                            skip_grade=True,
+                            cursor_secrets=cursor_secrets(),
+                            artifacts_dir=agent_artifacts,
+                            harvest_workspace=workspace,
+                            spec=spec,
+                            timeout=sandbox_timeout,
+                        )
+                    else:
+                        click.echo(
+                            "Running malvin agent and Harbor grade in Modal sandbox "
+                            "(two execs: agent then grade after file injection)..."
+                        )
+                        agent_result, grade_result = run_deepswe_run_in_sandbox(
+                            agent_img,
+                            command=malvin_command,
+                            malvin_argv=list(malvin_args),
+                            grade_only=False,
+                            skip_grade=False,
+                            cursor_secrets=cursor_secrets(),
+                            artifacts_dir=agent_artifacts,
+                            harvest_workspace=workspace,
+                            spec=spec,
+                            timeout=sandbox_timeout,
+                            tests_dir=spec.tests_dir,
+                            task_dir=spec.task_dir,
+                        )
+                if agent_result is None:
+                    agent_result = {"exit_code": 1}
+                agent_result["runtime"] = "modal-sandbox"
+                if skip_grade:
+                    grade_result = {"pass": None, "reward": None, "skipped": True}
+                else:
+                    grade_result["runtime"] = "modal-sandbox"
     except Exception as exc:
         modal_error = format_modal_image_prep_error(spec.task_id, exc)
         click.echo(modal_error, err=True)
@@ -3987,6 +3991,16 @@ def _test_format_modal_image_prep_error() -> None:
     unrelated = format_modal_image_prep_error("other-task", Exception("network timeout"))
     assert unrelated.startswith("Modal solve failed:")
 
+    modal_im = format_modal_image_prep_error(
+        "some-task",
+        Exception(
+            "Image build for im-uX3X2rdFKFurf17rG14CkD failed. "
+            "See build logs for more details."
+        ),
+    )
+    assert "sandbox image build failed" in modal_im
+    assert "some-task" in modal_im
+
 
 def _test_harbor_image_aiomonitor_pydantic_reconcile() -> None:
     tasks_root = default_deepswe_tasks_root()
@@ -4011,6 +4025,7 @@ def _test_harbor_image_aiomonitor_pydantic_reconcile() -> None:
         result = harbor_image(spec, dockerfile=spec.dockerfile, workspace=workspace)
     assert result == "final-image"
     cache_bust.assert_called_once()
+    assert cache_bust.call_args.kwargs.get("registry_pull") is True, cache_bust.call_args
     run_args = pulled.run_commands.call_args[0]
     joined = " ".join(run_args)
     assert "pydantic" in joined, joined

@@ -413,9 +413,12 @@ class DeclaredDeps:
         key = name.lower()
         if key in self.bulk_pins:
             return f"=={self.bulk_pins[key]}"
+        constraint = self.constraints.get(key)
+        if constraint is not None:
+            return constraint
         if key in self.lockfile_pins:
             return f"=={self.lockfile_pins[key]}"
-        return self.constraints.get(key)
+        return None
 
     def pip_install_spec(self, name: str) -> str | None:
         """Return a pip package argument for *name*, or None when not declared."""
@@ -639,14 +642,16 @@ def _mandatory_probe_python(declared: DeclaredDeps) -> str:
         "        errors.append(f'{display_name}: not installed (expected {spec_str})')\n"
         "        continue\n"
         "    mod = importlib.import_module(import_name)\n"
-        "    version = getattr(mod, '__version__', None)\n"
+        "    version = None\n"
+        "    try:\n"
+        "        from importlib.metadata import version as pkg_version\n"
+        "        version = pkg_version(display_name)\n"
+        "    except Exception:\n"
+        "        pass\n"
         "    if version is None:\n"
-        "        try:\n"
-        "            from importlib.metadata import version as pkg_version\n"
-        "            version = pkg_version(display_name)\n"
-        "        except Exception:\n"
-        "            version = None\n"
+        "        version = getattr(mod, '__version__', None)\n"
         "    if version is None:\n"
+        "        errors.append(f'{display_name}: installed but version unknown (expected {spec_str})')\n"
         "        continue\n"
         "    try:\n"
         "        from packaging.specifiers import SpecifierSet\n"
@@ -654,10 +659,12 @@ def _mandatory_probe_python(declared: DeclaredDeps) -> str:
         "        normalized = spec_str if spec_str[:2] in ('==', '>=', '<=', '!=', '>', '<') else f'=={spec_str}'\n"
         "        if Version(version) not in SpecifierSet(normalized):\n"
         "            errors.append(f'{display_name} {version} violates {spec_str}')\n"
-        "    except Exception:\n"
+        "    except Exception as exc:\n"
         "        if display_name == 'pydantic' and spec_str.startswith('>=2'):\n"
         "            if str(version).startswith('1.'):\n"
         "                errors.append(f'pydantic {version} violates {spec_str}')\n"
+        "            continue\n"
+        "        errors.append(f'{display_name}: version check failed ({version!r} vs {spec_str}: {exc})')\n"
         "if importlib.util.find_spec('httpx'):\n"
         "    import httpx\n"
         "    if httpx.__name__ != 'httpx':\n"
@@ -690,28 +697,55 @@ _PROBE_VIOLATION_RE = re.compile(
 )
 
 
-def _parse_probe_stderr(detail: str) -> tuple[str | None, str | None, str | None]:
-    """Return ``(package, observed, expected)`` parsed from mandatory-probe stderr."""
+def _parse_probe_stderr_fragments(detail: str) -> list[tuple[str | None, str | None, str | None]]:
+    """Return one ``(package, observed, expected)`` tuple per probe stderr fragment."""
+    parsed: list[tuple[str | None, str | None, str | None]] = []
     for fragment in detail.replace(";", "\n").splitlines():
         fragment = fragment.strip()
         if not fragment:
             continue
         match = _PROBE_VIOLATION_RE.search(fragment)
         if match:
-            return match.group("package"), match.group("observed"), match.group("expected")
+            parsed.append(
+                (match.group("package"), match.group("observed"), match.group("expected"))
+            )
+            continue
         if "namespace drift" in fragment:
-            return "httpx", fragment, "httpx"
-        if fragment.endswith(")") and "not installed" in fragment:
-            pkg_match = re.match(r"(\S+):", fragment)
-            if pkg_match:
-                return pkg_match.group(1), "not installed", fragment
+            parsed.append(("httpx", fragment, "httpx"))
+            continue
+        pkg_match = re.match(r"(\S+):", fragment)
+        if pkg_match:
+            pkg = pkg_match.group(1)
+            if "not installed" in fragment:
+                parsed.append((pkg, "not installed", fragment))
+                continue
+            if "import check failed" in fragment:
+                parsed.append((pkg, "import failed", fragment))
+                continue
+            if "version unknown" in fragment:
+                parsed.append((pkg, "unknown", fragment))
+                continue
+            if "version check failed" in fragment:
+                parsed.append((pkg, "check failed", fragment))
+    return parsed
+
+
+def _parse_probe_stderr(detail: str) -> tuple[str | None, str | None, str | None]:
+    """Return the first ``(package, observed, expected)`` parsed from mandatory-probe stderr."""
+    fragments = _parse_probe_stderr_fragments(detail)
+    if fragments:
+        return fragments[0]
     return None, None, None
 
 
-def _reconcile_declared_deps_commands(declared: DeclaredDeps) -> list[str]:
+def _reconcile_declared_deps_commands(
+    declared: DeclaredDeps,
+    *,
+    registry_pull: bool = False,
+) -> list[str]:
     """Force-reinstall declared pins and pyproject/lockfile packages at image build."""
     cmds: list[str] = []
-    if declared.bulk_pins:
+    if declared.bulk_pins and not registry_pull:
         pkg_args = [f"'{name}=={ver}'" for name, ver in sorted(declared.bulk_pins.items())]
         cmds.append("pip install --no-cache-dir --force-reinstall " + " ".join(pkg_args))
     extras: list[str] = []
@@ -740,7 +774,16 @@ def run_post_prep_probes(
     if code == 0:
         return []
     observed_text = detail.strip() or "probe failed"
-    package, observed, expected = _parse_probe_stderr(observed_text)
+    fragments = _parse_probe_stderr_fragments(observed_text)
+    if not fragments:
+        return [
+            format_prep_error(
+                task_id,
+                phase=phase,
+                detail=observed_text,
+                hint="check registry cache bust / pyproject.toml reconcile",
+            )
+        ]
     return [
         format_prep_error(
             task_id,
@@ -748,9 +791,10 @@ def run_post_prep_probes(
             package=package,
             observed=observed,
             expected=expected,
-            detail=observed_text if package is None else None,
+            detail=None if package is not None else observed_text,
             hint="check registry cache bust / pyproject.toml reconcile",
         )
+        for package, observed, expected in fragments
     ]
 
 
@@ -779,8 +823,11 @@ def _pydantic_v1_eviction_command() -> str:
         "python3 -c \""
         "import importlib.util, sys; "
         "spec=importlib.util.find_spec('pydantic'); "
+        "ver = None; "
+        "exec('try:\\n from importlib.metadata import version as pkg_version\\n ver=pkg_version(\\\"pydantic\\\")\\nexcept Exception: pass') if spec else None; "
         "import pydantic; "
-        "sys.exit(1 if pydantic.__version__.startswith('1.') else 0)"
+        "ver = ver or getattr(pydantic, '__version__', ''); "
+        "sys.exit(1 if str(ver).startswith('1.') else 0)"
         "\" 2>/dev/null || "
         "pip install --no-cache-dir 'pydantic>=2,<3'"
     )
@@ -789,12 +836,17 @@ def _pydantic_v1_eviction_command() -> str:
 def registry_image_cache_bust_commands(
     dockerfile: Path | None = None,
     workspace: Path | None = None,
+    *,
+    registry_pull: bool = False,
 ) -> list[str]:
     """Modal registry cache bust: reconcile declared deps, drift fixes, mandatory probe.
 
     When ``pyproject.toml`` declares packages omitted from Dockerfile bulk pins (e.g.
     aiomonitor ``pydantic>=2.0.0``), reconcile commands install them unconditionally
     after bulk pin replay — not only when bulk pins are absent.
+
+    With ``registry_pull=True``, skip Dockerfile bulk-pin ``--force-reinstall`` because
+    Harbor registry images already ship those pins; reconcile pyproject/lockfile gaps only.
     """
     declared = (
         declared_python_dependencies(workspace.resolve(), dockerfile)
@@ -802,7 +854,7 @@ def registry_image_cache_bust_commands(
         else DeclaredDeps({}, {}, (), {})
     )
     cmds: list[str] = []
-    cmds.extend(_reconcile_declared_deps_commands(declared))
+    cmds.extend(_reconcile_declared_deps_commands(declared, registry_pull=registry_pull))
     if not declared.package_names():
         cmds.append(_pydantic_v1_eviction_command())
     cmds.append(
@@ -1055,10 +1107,16 @@ def _test_registry_image_cache_bust_aiomonitor_shape() -> None:
     declared = declared_python_dependencies(workspace, dockerfile)
     assert "pydantic" in declared.constraints, declared
     assert declared.constraints["pydantic"] == ">=2.0.0", declared
-    cmds = registry_image_cache_bust_commands(dockerfile, workspace=workspace)
+    assert declared.effective_spec("pydantic") == ">=2.0.0", declared
+    cmds = registry_image_cache_bust_commands(
+        dockerfile, workspace=workspace, registry_pull=True
+    )
     joined = " ".join(cmds)
     assert "pydantic" in joined, cmds
+    assert "pydantic==2.12.5" not in joined, cmds
     assert "pydantic==2.13.4" not in joined, cmds
+    bulk_replay = [cmd for cmd in cmds if "--force-reinstall" in cmd and "pytest" in cmd]
+    assert not bulk_replay, cmds
 
 
 def _test_registry_image_cache_bust_pydantic_v1_legitimate() -> None:
@@ -1100,6 +1158,147 @@ def _test_run_post_prep_probes_structured_error() -> None:
     assert "pydantic" in errors[0]
     assert "1.10.26" in errors[0]
     assert ">=2.0.0" in errors[0]
+
+
+def _test_run_post_prep_probes_multi_violation_errors() -> None:
+    import sys
+    import tempfile
+    from unittest.mock import patch
+
+    stderr = (
+        "pydantic 2.13.4 violates ==2.12.5; "
+        "terminaltables 3.1.0 violates ==3.1.10"
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        declared = DeclaredDeps({}, {"pydantic": ">=2.0.0"}, (), {"terminaltables": "3.1.10"})
+        mod = sys.modules[__name__]
+        with patch.object(mod, "_run_shell", return_value=(1, stderr, False)):
+            errors = run_post_prep_probes(
+                workspace, declared, task_id="multi-probe", phase="runtime probe"
+            )
+    assert len(errors) == 2, errors
+    assert any("pydantic" in err and "2.13.4" in err for err in errors), errors
+    assert any("terminaltables" in err and "3.1.0" in err for err in errors), errors
+
+
+def _test_run_post_prep_probes_mixed_import_and_violation_errors() -> None:
+    import sys
+    import tempfile
+    from unittest.mock import patch
+
+    stderr = (
+        "backports.strenum: import check failed (No module named 'backports'); "
+        "pydantic 1.10.26 violates >=2.0.0"
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        declared = DeclaredDeps(
+            {},
+            {"pydantic": ">=2.0.0", "backports.strenum": "==1.3.1"},
+            (),
+            {},
+        )
+        mod = sys.modules[__name__]
+        with patch.object(mod, "_run_shell", return_value=(1, stderr, False)):
+            errors = run_post_prep_probes(
+                workspace, declared, task_id="mixed-probe", phase="runtime probe"
+            )
+    assert len(errors) == 2, errors
+    assert any("backports.strenum" in err for err in errors), errors
+    assert any("pydantic" in err and "1.10.26" in err for err in errors), errors
+
+
+def _test_mandatory_probe_fails_on_invalid_version_string() -> None:
+    import importlib.util
+    import types
+    from unittest.mock import patch
+
+    fake_mod = types.ModuleType("badver")
+    fake_mod.__version__ = "not-a-version"
+    fake_mod.__spec__ = importlib.util.spec_from_loader("badver", loader=None)
+    probe_body = _mandatory_probe_python(
+        DeclaredDeps({}, {"badver": "==1.0.0"}, (), {})
+    )
+    with (
+        patch.dict(sys.modules, {"badver": fake_mod}),
+        patch("importlib.metadata.version", return_value="not-a-version"),
+    ):
+        try:
+            exec(probe_body, {})  # noqa: S102
+            raise AssertionError("expected probe to exit 1 on invalid version")
+        except SystemExit as exc:
+            assert exc.code == 1, f"expected exit 1, got {exc.code}"
+
+
+def _test_mandatory_probe_prefers_metadata_over_stale_module_version() -> None:
+    body = _mandatory_probe_python(
+        DeclaredDeps({}, {"terminaltables": "==3.1.10"}, (), {})
+    )
+    assert "pkg_version(display_name)" in body
+    assert body.index("pkg_version(display_name)") < body.index("__version__")
+
+
+def _test_mandatory_probe_runtime_metadata_wins_over_stale_version() -> None:
+    import importlib.util
+    import types
+    from unittest.mock import patch
+
+    fake_mod = types.ModuleType("terminaltables")
+    fake_mod.__version__ = "3.1.0"
+    fake_mod.__spec__ = importlib.util.spec_from_loader("terminaltables", loader=None)
+    probe_body = _mandatory_probe_python(
+        DeclaredDeps({}, {"terminaltables": "==3.1.10"}, (), {})
+    )
+    with (
+        patch.dict(sys.modules, {"terminaltables": fake_mod}),
+        patch("importlib.metadata.version", return_value="3.1.10"),
+    ):
+        try:
+            exec(probe_body, {})  # noqa: S102
+        except SystemExit as exc:
+            assert exc.code in (0, None), f"probe failed with exit {exc.code}"
+
+
+def _test_effective_spec_prefers_pyproject_constraint_over_lockfile() -> None:
+    declared = DeclaredDeps(
+        {},
+        {"pydantic": ">=2.0.0"},
+        (),
+        {"pydantic": "2.12.5"},
+    )
+    assert declared.effective_spec("pydantic") == ">=2.0.0"
+
+
+def _test_effective_spec_exact_pyproject_beats_lockfile() -> None:
+    declared = DeclaredDeps(
+        {},
+        {"pydantic": "==2.12.5"},
+        (),
+        {"pydantic": "2.13.4"},
+    )
+    assert declared.effective_spec("pydantic") == "==2.12.5"
+
+
+def _test_mandatory_probe_fails_when_version_unknown() -> None:
+    import importlib.util
+    import types
+    from unittest.mock import patch
+
+    fake_mod = types.ModuleType("silentpkg")
+    fake_mod.__spec__ = importlib.util.spec_from_loader("silentpkg", loader=None)
+    probe_body = _mandatory_probe_python(
+        DeclaredDeps({}, {"silentpkg": "==9.9.9"}, (), {})
+    )
+    with (
+        patch.dict(sys.modules, {"silentpkg": fake_mod}),
+        patch("importlib.metadata.version", side_effect=Exception("no metadata")),
+    ):
+        try:
+            exec(probe_body, {})  # noqa: S102
+            raise AssertionError("expected probe to exit 1 when version unknown")
+        except SystemExit as exc:
+            assert exc.code == 1, f"expected exit 1, got {exc.code}"
 
 
 def _test_declared_deps_skip_marker_gated_backports() -> None:
@@ -1220,6 +1419,14 @@ def run_self_tests() -> None:
     _test_declared_deps_skip_marker_gated_backports()
     _test_mandatory_probe_no_crash_on_dotted_import_name()
     _test_run_post_prep_probes_structured_error()
+    _test_run_post_prep_probes_multi_violation_errors()
+    _test_run_post_prep_probes_mixed_import_and_violation_errors()
+    _test_mandatory_probe_prefers_metadata_over_stale_module_version()
+    _test_mandatory_probe_runtime_metadata_wins_over_stale_version()
+    _test_mandatory_probe_fails_on_invalid_version_string()
+    _test_effective_spec_prefers_pyproject_constraint_over_lockfile()
+    _test_effective_spec_exact_pyproject_beats_lockfile()
+    _test_mandatory_probe_fails_when_version_unknown()
     _test_registry_image_cache_bust_adaptix_pydantic_pin()
     _test_pydantic_pins_for_cache_bust_reads_requirements()
     _test_collect_pip_install_intents_bash_lc()

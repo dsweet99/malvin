@@ -18,8 +18,8 @@ in-sandbox ``run_task()`` per exec; inner enforcement is primary. Modal sandbox 
 and local Docker ``subprocess.run`` timeouts are outer backstops with 900s headroom.
 
 Before the agent phase, ``prepare_task_sandbox`` (``sandbox_prep.py``) runs offline
-editable replay and declared-dependency verification probes against the mounted
-workspace. Prep failures short-abort before malvin or grade in a known-bad env.
+editable replay and the same mandatory dependency probe used during Modal registry
+image build. Prep failures short-abort before malvin or grade in a known-bad env.
 Modal image build reconciles declared deps when network is available.
 
 Reused DeepSWE workspaces may accumulate root-owned sandbox dirs (``.stestr``,
@@ -39,6 +39,7 @@ Examples::
 Local unit tests (no agent run)::
 
     python ops/deepswe_run.py self-test
+    python ops/deepswe_run.py prep aiomonitor-task-snapshots-diff
 """
 
 from __future__ import annotations
@@ -63,6 +64,7 @@ import click
 
 from sandbox_prep import (
     collect_pip_install_intents,
+    declared_python_dependencies,
     format_prep_error,
     pins_for_task,
     prepare_task_sandbox,
@@ -269,10 +271,17 @@ def goal_task_ids(deepswe_opt: Path | None = None) -> list[str]:
     return ids
 
 
+def resolve_materialized_workspace(spec: TaskSpec) -> Path | None:
+    """Return a materialized task checkout when present under the default results dir."""
+    workspace = default_deepswe_results_dir() / spec.task_id / "workspace"
+    return workspace if workspace.is_dir() else None
+
+
 def audit_task_entry(
     task_dir: Path,
     *,
     require_python_baseline: bool,
+    workspace: Path | None = None,
 ) -> dict[str, Any]:
     """Collect harness audit fields for one Harbor task."""
     spec = parse_task_dir(task_dir)
@@ -297,15 +306,29 @@ def audit_task_entry(
         failures.append("no_runnable_baseline")
     if runnable and patch_targets:
         failures.append("patch_surface_with_baseline")
+    audit_workspace = workspace if workspace is not None else resolve_materialized_workspace(spec)
+    if audit_workspace is None and language == "python" and spec.docker_image:
+        failures.append("no_materialized_workspace")
+    declared_package_count: int | None = None
+    dockerfile = spec.dockerfile if spec.dockerfile.is_file() else None
+    cache_bust: list[str] | None = None
+    if audit_workspace is not None and dockerfile is not None:
+        declared_package_count = len(
+            declared_python_dependencies(audit_workspace, dockerfile).package_names()
+        )
+        cache_bust = registry_image_cache_bust_commands(
+            dockerfile,
+            audit_workspace,
+            registry_pull=bool(spec.docker_image),
+        )
     return {
         "task_id": spec.task_id,
         "language": language,
         "pip_intents": intents,
         "pins": pins,
-        "cache_bust": registry_image_cache_bust_commands(
-            spec.dockerfile if spec.dockerfile.is_file() else None,
-            task_dir / "environment",
-        ),
+        "cache_bust": cache_bust,
+        "materialized_workspace": audit_workspace is not None,
+        "declared_package_count": declared_package_count,
         "baseline": baseline,
         "runnable_baseline": runnable,
         "patch_surface_count": len(patch_targets),
@@ -317,6 +340,7 @@ def run_deepswe_audit(
     *,
     goal_only: bool = True,
     report: bool = False,
+    verbose: bool = False,
 ) -> int:
     """Audit Harbor tasks for harness readiness; exit 1 when goal tasks fail."""
     tasks_root = default_deepswe_tasks_root()
@@ -341,11 +365,23 @@ def run_deepswe_audit(
         if entry["failures"]:
             failed += 1
         baseline_preview = entry["runnable_baseline"][:1]
-        click.echo(
+        line = (
             f"{task_id}\t{status}\tbaseline={baseline_preview!r}\t"
             f"pins={len(entry['pins'])}\tpatch_surface={entry['patch_surface_count']}\t"
             f"failures={entry['failures']}"
         )
+        if verbose:
+            cache_bust = entry.get("cache_bust")
+            line += (
+                f"\tcache_bust={len(cache_bust) if cache_bust is not None else 'unavailable'}"
+                f"\tmaterialized={entry.get('materialized_workspace')}"
+            )
+            declared_count = entry.get("declared_package_count")
+            if declared_count is not None:
+                line += f"\tdeclared_packages={declared_count}"
+            if cache_bust:
+                line += f"\tcache_bust_0={cache_bust[0][:96]!r}"
+        click.echo(line)
     if failed:
         click.echo(f"audit failed: {failed}/{len(task_ids)} tasks", err=True)
         return 1
@@ -2505,6 +2541,14 @@ def _print_evaluation_summary(
     click.echo(f"pass: {grade_result.get('pass')}")
     if agent_result:
         click.echo(f"malvin exit: {agent_result.get('exit_code')}")
+        if agent_result.get("prep_failed"):
+            click.echo("prep_failed: true")
+            probe_count = agent_result.get("probe_error_count")
+            if isinstance(probe_count, int) and probe_count > 0:
+                click.echo(f"probe_errors: {probe_count}")
+            prep_error = agent_result.get("error")
+            if isinstance(prep_error, str) and prep_error.strip():
+                click.echo(f"prep_error: {prep_error}")
         if agent_result.get("timed_out"):
             click.echo("agent timed_out: true")
         click.echo(f"agent_seconds: {agent_result.get('agent_seconds', 0):.1f}")
@@ -2513,6 +2557,11 @@ def _print_evaluation_summary(
             click.echo("--- agent stdout ---")
             click.echo(agent_stdout.rstrip())
             click.echo("--- end agent stdout ---")
+    if grade_result.get("prep_failed"):
+        click.echo("prep_failed: true")
+        prep_error = grade_result.get("error")
+        if isinstance(prep_error, str) and prep_error.strip():
+            click.echo(f"prep_error: {prep_error}")
     if grade_result.get("timed_out"):
         click.echo("grade timed_out: true")
     click.echo(f"artifacts: {run_root.resolve()}")
@@ -2711,21 +2760,26 @@ def run_task(
     )
 
     if not prep_result.ok:
-        err_msg = (
-            prep_result.probe_errors[0]
-            if prep_result.probe_errors
-            else (
-                prep_result.sync_warnings[0]
-                if prep_result.sync_warnings
-                else format_prep_error(spec.task_id, phase="runtime prep", detail="unknown")
-            )
-        )
-        click.echo(err_msg, err=True)
+        err_lines = list(prep_result.probe_errors)
+        if not err_lines and prep_result.sync_warnings:
+            err_lines = [prep_result.sync_warnings[0]]
+        if not err_lines:
+            err_lines = [
+                format_prep_error(spec.task_id, phase="runtime prep", detail="unknown")
+            ]
+        for err in err_lines:
+            click.echo(err, err=True)
+        err_msg = "; ".join(err_lines)
         agent_result: dict[str, Any] | None = None
         if grade_only:
             agent_result = None
         elif not skip_grade or not grade_only:
-            agent_result = {"exit_code": 1, "error": err_msg, "prep_failed": True}
+            agent_result = {
+                "exit_code": 1,
+                "error": err_msg,
+                "prep_failed": True,
+                "probe_error_count": len(err_lines),
+            }
         grade_result: dict[str, Any]
         if skip_grade:
             grade_result = {"pass": None, "reward": None, "skipped": True}
@@ -3093,9 +3147,83 @@ def self_test_cmd() -> None:
     is_flag=True,
     help="Informational report for the full catalog (no failure on missing Python baseline).",
 )
-def audit_cmd(goal_tasks: bool, report: bool) -> None:
+@click.option(
+    "--verbose",
+    is_flag=True,
+    help="Include cache-bust command count per task.",
+)
+def audit_cmd(goal_tasks: bool, report: bool, verbose: bool) -> None:
     """Audit Harbor task harness readiness (baseline checks, pins, patch_surface policy)."""
-    raise SystemExit(run_deepswe_audit(goal_only=goal_tasks and not report, report=report))
+    raise SystemExit(
+        run_deepswe_audit(goal_only=goal_tasks and not report, report=report, verbose=verbose)
+    )
+
+
+@cli.command("prep")
+@click.argument("task_name", required=False)
+@click.option(
+    "--task",
+    "task_dir",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=None,
+    help="Path to a DeepSWE task directory (contains task.toml).",
+)
+@click.option(
+    "--workspace",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=None,
+    help="Git checkout for the task repo (default: <results-dir>/<task-id>/workspace).",
+)
+@click.option(
+    "--reset",
+    "reset_workspace_flag",
+    is_flag=True,
+    help="Hard reset workspace to base_commit before prep.",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Print sync commands without executing.",
+)
+def prep_cmd(
+    task_name: str | None,
+    task_dir: Path | None,
+    workspace: Path | None,
+    reset_workspace_flag: bool,
+    dry_run: bool,
+) -> None:
+    """Materialize workspace and run runtime sandbox prep (no malvin agent or grade)."""
+    if task_dir is None:
+        if task_name is None:
+            raise click.ClickException("prep requires TASK_NAME or --task PATH")
+        task_dir = resolve_local_task_dir(task_name)
+    task_language = read_task_language(task_dir)
+    if task_language != "python":
+        raise click.ClickException(
+            f"prep supports python tasks only (task language is {task_language!r})"
+        )
+    spec = parse_task_dir(task_dir)
+    results_root = default_deepswe_results_dir()
+    workspace = workspace or (results_root / spec.task_id / "workspace")
+    click.echo(f"Task: {spec.task_id}")
+    click.echo(f"Workspace: {workspace.resolve()}")
+    materialize_workspace(spec, workspace, dry_run=dry_run)
+    if reset_workspace_flag:
+        reset_workspace(spec, workspace, dry_run=dry_run)
+    prep_result = prepare_task_sandbox(
+        spec,
+        workspace,
+        dry_run=dry_run,
+        verify_probes=True,
+    )
+    if not prep_result.ok:
+        err_lines = list(prep_result.probe_errors)
+        if not err_lines and prep_result.sync_warnings:
+            err_lines = list(prep_result.sync_warnings)
+        for err in err_lines:
+            click.echo(err, err=True)
+        raise SystemExit(1)
+    click.echo("prep passed")
 
 
 @cli.command("solve")
@@ -4297,6 +4425,122 @@ def _test_prepare_task_sandbox_probe_failure() -> None:
         assert probe_err in (agent.get("error") or ""), agent
 
 
+def _test_prepare_task_sandbox_probe_failure_multi_error() -> None:
+    from sandbox_prep import SandboxPrepResult
+
+    probe_errs = (
+        "sandbox runtime probe failed (timeout-test) — pydantic 2.13.4 violates ==2.12.5",
+        "sandbox runtime probe failed (timeout-test) — terminaltables 3.1.0 violates ==3.1.10",
+    )
+    captured: list[dict[str, Any]] = []
+
+    def fake_prep(*_args: Any, **_kwargs: Any) -> SandboxPrepResult:
+        return SandboxPrepResult(
+            sync_commands=("pip install -e . --no-deps",),
+            sync_warnings=(),
+            probe_errors=probe_errs,
+            ok=False,
+        )
+
+    def capture_artifacts(
+        _run_root: Path,
+        metadata: dict[str, Any],
+        *_args: Any,
+        **_kwargs: Any,
+    ) -> None:
+        captured.append(metadata)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        task_dir, workspace = _minimal_timeout_task_tree(Path(tmp))
+        run_root = Path(tmp) / "run"
+        run_root.mkdir()
+        mod = sys.modules[__name__]
+        with (
+            patch.object(mod, "prepare_task_sandbox", fake_prep),
+            patch.object(mod, "_write_host_run_artifacts", capture_artifacts),
+            patch.object(mod, "_print_evaluation_summary"),
+            patch.object(mod, "_exit_from_evaluation", side_effect=SystemExit(1)),
+        ):
+            try:
+                run_task(
+                    local_task_name=None,
+                    task_dir=task_dir,
+                    workspace=workspace,
+                    results_dir=run_root,
+                    malvin_command="hello",
+                    runtime="host",
+                    skip_materialize=True,
+                    grade_only=False,
+                    skip_grade=False,
+                    apply_solution=False,
+                    reset_workspace_flag=False,
+                    docker_image=None,
+                    dry_run=False,
+                    malvin_args=(),
+                )
+            except SystemExit as exc:
+                assert exc.code == 1
+            else:
+                raise AssertionError("expected SystemExit from prep failure")
+        assert captured, "expected metadata write"
+        prep = captured[0].get("sandbox_prep") or {}
+        assert prep.get("ok") is False, prep
+        assert list(prep.get("probe_errors") or []) == list(probe_errs), prep
+        agent = captured[0].get("agent") or {}
+        assert agent.get("prep_failed") is True, agent
+        joined = agent.get("error") or ""
+        assert probe_errs[0] in joined and probe_errs[1] in joined, agent
+
+
+def _test_audit_task_entry_uses_materialized_workspace() -> None:
+    tasks_root = default_deepswe_tasks_root()
+    task_dir = tasks_root / "aiomonitor-task-snapshots-diff"
+    workspace = (
+        Path.home()
+        / ".malvin_home"
+        / "deepswe-results"
+        / "aiomonitor-task-snapshots-diff"
+        / "workspace"
+    )
+    if not task_dir.is_dir() or not workspace.is_dir():
+        return
+    entry = audit_task_entry(
+        task_dir,
+        require_python_baseline=False,
+        workspace=workspace,
+    )
+    cache_bust = entry["cache_bust"]
+    assert len(cache_bust) == 3, cache_bust
+    assert cache_bust[0].startswith("pip install"), cache_bust
+    assert "pydantic>=2.0.0" in cache_bust[0], cache_bust
+    assert "pydantic==2.12.5" not in " ".join(cache_bust), cache_bust
+    bulk_replay = [cmd for cmd in cache_bust if "--force-reinstall" in cmd and "pytest" in cmd]
+    assert not bulk_replay, cache_bust
+    assert entry["materialized_workspace"] is True, entry
+    assert entry["declared_package_count"] == 25, entry
+
+
+def _test_audit_task_entry_flags_missing_materialized_workspace() -> None:
+    import sys
+    from unittest.mock import patch
+
+    tasks_root = default_deepswe_tasks_root()
+    task_dir = tasks_root / "aiomonitor-task-snapshots-diff"
+    if not task_dir.is_dir():
+        return
+    mod = sys.modules[__name__]
+    with patch.object(mod, "resolve_materialized_workspace", return_value=None):
+        entry = audit_task_entry(
+            task_dir,
+            require_python_baseline=False,
+            workspace=None,
+        )
+    assert "no_materialized_workspace" in entry["failures"], entry
+    assert entry["materialized_workspace"] is False, entry
+    assert entry["declared_package_count"] is None, entry
+    assert entry["cache_bust"] is None, entry
+
+
 def _minimal_timeout_task_tree(
     tmp: Path,
     *,
@@ -4631,6 +4875,9 @@ def run_self_tests() -> None:
     _test_ensure_deepswe_malvin_config_skips_default_memory()
     _test_prepare_task_sandbox_dry_run()
     _test_prepare_task_sandbox_probe_failure()
+    _test_prepare_task_sandbox_probe_failure_multi_error()
+    _test_audit_task_entry_uses_materialized_workspace()
+    _test_audit_task_entry_flags_missing_materialized_workspace()
     _test_remaining_sec_floors_at_zero()
     _test_run_with_timeout_kills_slow_command()
     _test_exit_after_agent_timeout_grade_pass()
