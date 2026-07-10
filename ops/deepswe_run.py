@@ -22,6 +22,9 @@ editable replay and the same mandatory dependency probe used during Modal regist
 image build. Prep failures short-abort before malvin or grade in a known-bad env.
 Modal image build reconciles declared deps when network is available.
 
+In-sandbox runs (``--runtime in-sandbox``) set ``UV_OFFLINE=1`` so ``uv`` never
+attempts PyPI downloads during malvin quality gates or agent commands.
+
 Reused DeepSWE workspaces may accumulate root-owned sandbox dirs (``.stestr``,
 ``.malvin/acp_spawn``); ``reset_workspace`` removes them via Docker when
 the host user cannot unlink them.
@@ -491,6 +494,11 @@ def validate_verifier_paths(spec: TaskSpec) -> None:
 
 def timestamp_dir() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+
+def apply_in_sandbox_runner_env() -> None:
+    """Pin uv to offline mode for agent/grade sandboxes without PyPI egress."""
+    os.environ["UV_OFFLINE"] = "1"
 
 
 def run_cmd(
@@ -2695,6 +2703,8 @@ def run_task(
     elif task_dir is None:
         raise click.ClickException("Provide solve TASK_NAME or run --task PATH")
     in_sandbox = runtime == "in-sandbox"
+    if in_sandbox:
+        apply_in_sandbox_runner_env()
     spec = parse_task_dir(task_dir)
     results_root = results_dir or default_deepswe_results_dir()
     run_root = results_root if in_sandbox else results_root / spec.task_id / timestamp_dir()
@@ -4139,6 +4149,67 @@ def _test_resolve_malvin_cmd_prefers_repo_target() -> None:
         assert resolve_malvin_cmd() == str(debug)
 
 
+def _test_apply_in_sandbox_runner_env() -> None:
+    saved = os.environ.get("UV_OFFLINE")
+    try:
+        os.environ.pop("UV_OFFLINE", None)
+        apply_in_sandbox_runner_env()
+        assert os.environ.get("UV_OFFLINE") == "1"
+    finally:
+        if saved is None:
+            os.environ.pop("UV_OFFLINE", None)
+        else:
+            os.environ["UV_OFFLINE"] = saved
+
+
+def _test_run_task_in_sandbox_sets_uv_offline() -> None:
+    from sandbox_prep import SandboxPrepResult
+
+    saved = os.environ.get("UV_OFFLINE")
+    mod = sys.modules[__name__]
+    try:
+        os.environ.pop("UV_OFFLINE", None)
+        with (
+            patch.object(
+                mod,
+                "prepare_task_sandbox",
+                return_value=SandboxPrepResult((), (), (), True, False),
+            ),
+            patch.object(mod, "run_malvin", return_value={"exit_code": 0, "agent_seconds": 0.0}),
+            patch.object(mod, "write_task_plan"),
+            patch.object(mod, "ensure_deepswe_malvin_config"),
+            patch.object(mod, "_write_host_run_artifacts"),
+            patch.object(mod, "_print_evaluation_summary"),
+            patch.object(mod, "_exit_from_evaluation"),
+        ):
+            with tempfile.TemporaryDirectory() as tmp:
+                task_dir, workspace = _minimal_timeout_task_tree(Path(tmp), agent_timeout_sec=60.0)
+                run_root = Path(tmp) / "run"
+                run_root.mkdir()
+                run_task(
+                    local_task_name=None,
+                    task_dir=task_dir,
+                    workspace=workspace,
+                    results_dir=run_root,
+                    malvin_command="route",
+                    runtime="in-sandbox",
+                    skip_materialize=True,
+                    grade_only=False,
+                    skip_grade=True,
+                    apply_solution=False,
+                    reset_workspace_flag=False,
+                    docker_image=None,
+                    dry_run=False,
+                    malvin_args=(),
+                )
+        assert os.environ.get("UV_OFFLINE") == "1"
+    finally:
+        if saved is None:
+            os.environ.pop("UV_OFFLINE", None)
+        else:
+            os.environ["UV_OFFLINE"] = saved
+
+
 def _test_relay_subprocess_stdout_sets_force_tee_env() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         captured: dict[str, Any] = {}
@@ -4905,6 +4976,8 @@ def run_self_tests() -> None:
     _test_run_malvin_uses_plan_name_not_at_notation()
     _test_run_malvin_do_uses_prompt_not_plan()
     _test_resolve_malvin_cmd_prefers_repo_target()
+    _test_apply_in_sandbox_runner_env()
+    _test_run_task_in_sandbox_sets_uv_offline()
     _test_relay_subprocess_stdout_sets_force_tee_env()
     _test_run_command_accepts_hello()
     _test_hello_host_relays_stdout()
