@@ -4076,7 +4076,7 @@ def _test_warm_offline_workspace_layer() -> None:
         assert recorder.calls[0][2]["remote_path"] == APP_REMOTE
         assert recorder.calls[1][0] == "run_commands"
         joined = " ".join(recorder.calls[1][1])
-        assert "pre-commit install-hooks" in joined
+        assert "install-hooks" in joined
         assert f"cd {APP_REMOTE}" in joined
 
         recorder = _RecordingImage()
@@ -4091,7 +4091,7 @@ def _test_warm_offline_workspace_layer() -> None:
         run_joined = " ".join(
             " ".join(call[1]) for call in recorder.calls if call[0] == "run_commands"
         )
-        assert "pre-commit install-hooks" in run_joined
+        assert "install-hooks" in run_joined
         assert "uv sync --group dev" in run_joined
         assert "uv pip install --python .venv -e . --no-build-isolation" in run_joined
         assert "UV_OFFLINE=1 UV_NO_SYNC=1 uv sync --offline --group dev" in run_joined
@@ -4115,7 +4115,7 @@ def _test_warm_precommit_hooks_layer() -> None:
         assert recorder.calls[0][2]["remote_path"] == APP_REMOTE
         assert recorder.calls[1][0] == "run_commands"
         joined = " ".join(recorder.calls[1][1])
-        assert "pre-commit install-hooks" in joined
+        assert "install-hooks" in joined
         assert f"cd {APP_REMOTE}" in joined
 
 

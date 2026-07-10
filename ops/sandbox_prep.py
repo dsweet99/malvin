@@ -377,6 +377,53 @@ def read_pydantic_pins_from_requirements(requirements_path: Path) -> tuple[str |
     )
 
 
+def _precommit_pin_from_workspace(workspace: Path) -> str | None:
+    """Return a pinned ``pre-commit`` version declared by the workspace, if any."""
+    workspace = workspace.resolve()
+    candidates: list[Path] = []
+    req_dir = workspace / "requirements"
+    if req_dir.is_dir():
+        candidates.extend(sorted(req_dir.rglob("*.txt")))
+    for name in ("requirements.txt", "dev-requirements.txt", "lint-requirements.txt"):
+        path = workspace / name
+        if path.is_file():
+            candidates.append(path)
+    seen: set[Path] = set()
+    for path in candidates:
+        resolved = path.resolve()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        pin = _pins_from_requirements_file(path).get("pre-commit")
+        if pin:
+            return pin
+    pyproject = workspace / "pyproject.toml"
+    if pyproject.is_file():
+        raw = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+        dep_lists: list[list[str]] = []
+        optional = raw.get("project", {}).get("optional-dependencies")
+        if isinstance(optional, dict):
+            dep_lists.extend(
+                deps for deps in optional.values() if isinstance(deps, list)
+            )
+        groups = raw.get("dependency-groups")
+        if isinstance(groups, dict):
+            dep_lists.extend(deps for deps in groups.values() if isinstance(deps, list))
+        for deps in dep_lists:
+            for dep in deps:
+                if not isinstance(dep, str):
+                    continue
+                parsed = _parse_dependency_spec(dep.split(";", 1)[0].strip())
+                if parsed and parsed[0] == "pre-commit" and parsed[1].startswith("=="):
+                    return parsed[1][2:]
+    lockfile = workspace / "uv.lock"
+    if lockfile.is_file():
+        for match in _UV_LOCK_PACKAGE_RE.finditer(lockfile.read_text(encoding="utf-8")):
+            if match.group(1).lower() == "pre-commit":
+                return match.group(2)
+    return None
+
+
 def pins_for_task(
     dockerfile: Path | None,
     workspace: Path | None = None,
@@ -897,11 +944,21 @@ def precommit_install_hooks_command(workspace: Path) -> str | None:
     """Return shell steps to warm pre-commit hooks when the workspace declares them.
 
     Callers must run the returned command in ``/app`` during image build with network
-    access. Requires ``pre-commit`` on PATH; image build fails if it is missing.
+    access. Bootstraps ``pre-commit`` from workspace pins when it is not already on
+    PATH or in ``.venv/bin/`` (e.g. Adaptix declares hooks but Dockerfile omits lint deps).
     """
-    if (workspace / ".pre-commit-config.yaml").is_file():
-        return "pre-commit install-hooks"
-    return None
+    if not (workspace / ".pre-commit-config.yaml").is_file():
+        return None
+    pin = _precommit_pin_from_workspace(workspace)
+    pip_spec = shlex.quote(f"pre-commit=={pin}" if pin else "pre-commit")
+    venv_precommit = shlex.quote(f"{_UV_PROJECT_VENV}/bin/pre-commit")
+    return (
+        "PRE_COMMIT=; "
+        "command -v pre-commit >/dev/null 2>&1 && PRE_COMMIT=pre-commit || "
+        f"test -x {venv_precommit} && PRE_COMMIT={venv_precommit} || "
+        f"(python3 -m pip install --no-cache-dir {pip_spec} && PRE_COMMIT=pre-commit); "
+        'test -n "$PRE_COMMIT" && "$PRE_COMMIT" install-hooks'
+    )
 
 
 _UV_BOOTSTRAP_SHELL = (
@@ -1004,9 +1061,6 @@ def uv_offline_smoke_commands(workspace: Path) -> list[str]:
 def workspace_image_warm_commands(workspace: Path) -> list[str]:
     """Shell commands to warm offline agent quality gates at Modal image build."""
     commands: list[str] = []
-    precommit = precommit_install_hooks_command(workspace)
-    if precommit:
-        commands.append(precommit)
     uv_sync = uv_sync_dev_command(workspace)
     if uv_sync:
         commands.append(uv_sync)
@@ -1016,6 +1070,9 @@ def workspace_image_warm_commands(workspace: Path) -> list[str]:
     editable = uv_editable_install_command(workspace)
     if editable:
         commands.append(editable)
+    precommit = precommit_install_hooks_command(workspace)
+    if precommit:
+        commands.append(precommit)
     smoke = uv_offline_smoke_commands(workspace)
     if smoke and build_system:
         # ``uv sync --offline`` reconciles the venv to the lockfile and drops
@@ -1281,7 +1338,28 @@ def _test_precommit_install_hooks_command() -> None:
         (root / ".pre-commit-config.yaml").write_text("repos: []\n", encoding="utf-8")
         cmd = precommit_install_hooks_command(root)
         assert cmd is not None
-        assert cmd == "pre-commit install-hooks"
+        assert "install-hooks" in cmd
+        assert "pip install --no-cache-dir pre-commit" in cmd
+        req_dir = root / "requirements"
+        req_dir.mkdir()
+        (req_dir / "lint.txt").write_text("pre-commit==4.0.1\n", encoding="utf-8")
+        pinned = precommit_install_hooks_command(root)
+        assert pinned is not None
+        assert "pre-commit==4.0.1" in pinned
+        assert ".venv/bin/pre-commit" in pinned
+
+
+def _test_precommit_pin_from_workspace_pyproject() -> None:
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "pyproject.toml").write_text(
+            '[project]\nname = "demo"\nversion = "0.1.0"\n'
+            "[dependency-groups]\ndev = [\"pre-commit==3.5.0\"]\n",
+            encoding="utf-8",
+        )
+        assert _precommit_pin_from_workspace(root) == "3.5.0"
 
 
 def _test_uv_sync_dev_command() -> None:
@@ -1379,7 +1457,10 @@ def _test_workspace_image_warm_commands() -> None:
         root = Path(tmp)
         assert workspace_image_warm_commands(root) == []
         (root / ".pre-commit-config.yaml").write_text("repos: []\n", encoding="utf-8")
-        assert workspace_image_warm_commands(root) == ["pre-commit install-hooks"]
+        precommit_only = workspace_image_warm_commands(root)
+        assert len(precommit_only) == 1
+        assert "install-hooks" in precommit_only[0]
+        assert "pip install --no-cache-dir pre-commit" in precommit_only[0]
         (root / "uv.lock").write_text("# lock\n", encoding="utf-8")
         (root / "pyproject.toml").write_text(
             '[project]\nname = "demo"\nversion = "0.1.0"\n'
@@ -1389,7 +1470,6 @@ def _test_workspace_image_warm_commands() -> None:
         )
         cmds = workspace_image_warm_commands(root)
         assert cmds == [
-            "pre-commit install-hooks",
             f"{_UV_BOOTSTRAP_SHELL} && uv sync --group dev",
             (
                 f"{_UV_BOOTSTRAP_SHELL} && uv pip install --python {_UV_PROJECT_VENV} "
@@ -1399,6 +1479,7 @@ def _test_workspace_image_warm_commands() -> None:
                 f"{_UV_BOOTSTRAP_SHELL} && uv pip install --python {_UV_PROJECT_VENV} "
                 "-e . --no-build-isolation"
             ),
+            precommit_only[0],
             "UV_OFFLINE=1 UV_NO_SYNC=1 uv sync --offline --group dev",
             (
                 f"{_UV_BOOTSTRAP_SHELL} && uv pip install --python {_UV_PROJECT_VENV} "
@@ -1753,10 +1834,15 @@ def _test_registry_image_cache_bust_adaptix_pydantic_pin() -> None:
             "pydantic==2.10.3\npydantic-core==2.27.1\n",
             encoding="utf-8",
         )
+        (req_dir / "lint.txt").write_text("pre-commit==4.0.1\n", encoding="utf-8")
+        (workspace / ".pre-commit-config.yaml").write_text("repos: []\n", encoding="utf-8")
         cmds = registry_image_cache_bust_commands(dockerfile, workspace=workspace)
+        precommit = precommit_install_hooks_command(workspace)
     assert any("pydantic==2.10.3" in c for c in cmds), cmds
     assert any("pydantic-core==2.27.1" in c for c in cmds), cmds
     assert not any("pydantic==2.13.4" in c for c in cmds), cmds
+    assert precommit is not None
+    assert "pre-commit==4.0.1" in precommit
 
 
 def _test_pydantic_pins_for_cache_bust_reads_requirements() -> None:
@@ -1805,6 +1891,7 @@ def run_self_tests() -> None:
     _test_hybrid_poetry_runtime_sync_skipped()
     _test_hybrid_pnpm_runtime_sync_skipped()
     _test_precommit_install_hooks_command()
+    _test_precommit_pin_from_workspace_pyproject()
     _test_uv_sync_dev_command()
     _test_uv_pip_build_system_command()
     _test_uv_editable_install_command()
