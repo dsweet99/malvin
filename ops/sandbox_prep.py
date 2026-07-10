@@ -940,25 +940,52 @@ def _pydantic_v1_eviction_command() -> str:
     )
 
 
-def precommit_install_hooks_command(workspace: Path) -> str | None:
-    """Return shell steps to warm pre-commit hooks when the workspace declares them.
+PRECOMMIT_WARM_SCRIPT_PATH = "/tmp/malvin_precommit_warm.sh"
 
-    Callers must run the returned command in ``/app`` during image build with network
-    access. Bootstraps ``pre-commit`` from workspace pins when it is not already on
-    PATH or in ``.venv/bin/`` (e.g. Adaptix declares hooks but Dockerfile omits lint deps).
-    """
+
+def _precommit_warm_script_body(workspace: Path) -> str:
+    """Bash script to bootstrap ``pre-commit`` and warm hook environments."""
+    pin = _precommit_pin_from_workspace(workspace)
+    pip_spec = f"pre-commit=={pin}" if pin else "pre-commit"
+    venv_bin = f"{_UV_PROJECT_VENV}/bin/pre-commit"
+    return (
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        "if command -v pre-commit >/dev/null 2>&1; then\n"
+        "  pre-commit install-hooks\n"
+        f"elif test -x {shlex.quote(venv_bin)}; then\n"
+        f"  PATH={shlex.quote(_UV_PROJECT_VENV + '/bin')}:\"$PATH\" pre-commit install-hooks\n"
+        "else\n"
+        f"  python3 -m pip install --no-cache-dir {shlex.quote(pip_spec)}\n"
+        "  pre-commit install-hooks\n"
+        "fi\n"
+    )
+
+
+def precommit_warm_script_write_command(workspace: Path) -> str | None:
+    """Write pre-commit warm script to a fixed path (Modal/Docker image-build safe)."""
     if not (workspace / ".pre-commit-config.yaml").is_file():
         return None
-    pin = _precommit_pin_from_workspace(workspace)
-    pip_spec = shlex.quote(f"pre-commit=={pin}" if pin else "pre-commit")
-    venv_precommit = shlex.quote(f"{_UV_PROJECT_VENV}/bin/pre-commit")
-    return (
-        "PRE_COMMIT=; "
-        "command -v pre-commit >/dev/null 2>&1 && PRE_COMMIT=pre-commit || "
-        f"test -x {venv_precommit} && PRE_COMMIT={venv_precommit} || "
-        f"(python3 -m pip install --no-cache-dir {pip_spec} && PRE_COMMIT=pre-commit); "
-        'test -n "$PRE_COMMIT" && "$PRE_COMMIT" install-hooks'
-    )
+    encoded = base64.b64encode(_precommit_warm_script_body(workspace).encode()).decode()
+    return f"echo {shlex.quote(encoded)} | base64 -d > {PRECOMMIT_WARM_SCRIPT_PATH}"
+
+
+def precommit_warm_script_run_command() -> str:
+    return f"bash {PRECOMMIT_WARM_SCRIPT_PATH}"
+
+
+def precommit_warm_script_commands(workspace: Path) -> list[str]:
+    """Return write-then-run shell steps for image-build pre-commit hook warming."""
+    write = precommit_warm_script_write_command(workspace)
+    if write is None:
+        return []
+    return [write, precommit_warm_script_run_command()]
+
+
+def precommit_install_hooks_command(workspace: Path) -> str | None:
+    """Backward-compatible alias returning only the run step."""
+    commands = precommit_warm_script_commands(workspace)
+    return commands[-1] if commands else None
 
 
 _UV_BOOTSTRAP_SHELL = (
@@ -1070,9 +1097,8 @@ def workspace_image_warm_commands(workspace: Path) -> list[str]:
     editable = uv_editable_install_command(workspace)
     if editable:
         commands.append(editable)
-    precommit = precommit_install_hooks_command(workspace)
-    if precommit:
-        commands.append(precommit)
+    precommit_cmds = precommit_warm_script_commands(workspace)
+    commands.extend(precommit_cmds)
     smoke = uv_offline_smoke_commands(workspace)
     if smoke and build_system:
         # ``uv sync --offline`` reconciles the venv to the lockfile and drops
@@ -1335,18 +1361,26 @@ def _test_precommit_install_hooks_command() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         assert precommit_install_hooks_command(root) is None
+        assert precommit_warm_script_commands(root) == []
         (root / ".pre-commit-config.yaml").write_text("repos: []\n", encoding="utf-8")
-        cmd = precommit_install_hooks_command(root)
-        assert cmd is not None
-        assert "install-hooks" in cmd
-        assert "pip install --no-cache-dir pre-commit" in cmd
+        cmds = precommit_warm_script_commands(root)
+        assert len(cmds) == 2
+        assert "base64 -d" in cmds[0]
+        assert cmds[1] == f"bash {PRECOMMIT_WARM_SCRIPT_PATH}"
+        body = base64.b64decode(
+            shlex.split(cmds[0].split("|")[0].removeprefix("echo ").strip())[0]
+        ).decode()
+        assert "pre-commit install-hooks" in body
+        assert "pip install --no-cache-dir pre-commit" in body
+        assert "PRE_COMMIT" not in body
         req_dir = root / "requirements"
         req_dir.mkdir()
         (req_dir / "lint.txt").write_text("pre-commit==4.0.1\n", encoding="utf-8")
-        pinned = precommit_install_hooks_command(root)
-        assert pinned is not None
-        assert "pre-commit==4.0.1" in pinned
-        assert ".venv/bin/pre-commit" in pinned
+        pinned_body = base64.b64decode(
+            shlex.split(precommit_warm_script_commands(root)[0].split("|")[0].removeprefix("echo ").strip())[0]
+        ).decode()
+        assert "pre-commit==4.0.1" in pinned_body
+        assert ".venv/bin/pre-commit" in pinned_body
 
 
 def _test_precommit_pin_from_workspace_pyproject() -> None:
@@ -1458,9 +1492,9 @@ def _test_workspace_image_warm_commands() -> None:
         assert workspace_image_warm_commands(root) == []
         (root / ".pre-commit-config.yaml").write_text("repos: []\n", encoding="utf-8")
         precommit_only = workspace_image_warm_commands(root)
-        assert len(precommit_only) == 1
-        assert "install-hooks" in precommit_only[0]
-        assert "pip install --no-cache-dir pre-commit" in precommit_only[0]
+        assert len(precommit_only) == 2
+        assert "base64 -d" in precommit_only[0]
+        assert precommit_only[1] == f"bash {PRECOMMIT_WARM_SCRIPT_PATH}"
         (root / "uv.lock").write_text("# lock\n", encoding="utf-8")
         (root / "pyproject.toml").write_text(
             '[project]\nname = "demo"\nversion = "0.1.0"\n'
@@ -1469,6 +1503,7 @@ def _test_workspace_image_warm_commands() -> None:
             encoding="utf-8",
         )
         cmds = workspace_image_warm_commands(root)
+        precommit_script = precommit_warm_script_commands(root)
         assert cmds == [
             f"{_UV_BOOTSTRAP_SHELL} && uv sync --group dev",
             (
@@ -1479,7 +1514,7 @@ def _test_workspace_image_warm_commands() -> None:
                 f"{_UV_BOOTSTRAP_SHELL} && uv pip install --python {_UV_PROJECT_VENV} "
                 "-e . --no-build-isolation"
             ),
-            precommit_only[0],
+            *precommit_script,
             "UV_OFFLINE=1 UV_NO_SYNC=1 uv sync --offline --group dev",
             (
                 f"{_UV_BOOTSTRAP_SHELL} && uv pip install --python {_UV_PROJECT_VENV} "
@@ -1837,12 +1872,15 @@ def _test_registry_image_cache_bust_adaptix_pydantic_pin() -> None:
         (req_dir / "lint.txt").write_text("pre-commit==4.0.1\n", encoding="utf-8")
         (workspace / ".pre-commit-config.yaml").write_text("repos: []\n", encoding="utf-8")
         cmds = registry_image_cache_bust_commands(dockerfile, workspace=workspace)
-        precommit = precommit_install_hooks_command(workspace)
+        precommit = precommit_warm_script_commands(workspace)
     assert any("pydantic==2.10.3" in c for c in cmds), cmds
     assert any("pydantic-core==2.27.1" in c for c in cmds), cmds
     assert not any("pydantic==2.13.4" in c for c in cmds), cmds
-    assert precommit is not None
-    assert "pre-commit==4.0.1" in precommit
+    assert precommit
+    pinned_body = base64.b64decode(
+        shlex.split(precommit[0].split("|")[0].removeprefix("echo ").strip())[0]
+    ).decode()
+    assert "pre-commit==4.0.1" in pinned_body
 
 
 def _test_pydantic_pins_for_cache_bust_reads_requirements() -> None:

@@ -4070,14 +4070,15 @@ def _test_warm_offline_workspace_layer() -> None:
         (workspace / ".pre-commit-config.yaml").write_text("repos: []\n", encoding="utf-8")
         warmed = warm_offline_workspace_layer(recorder, workspace)
         assert warmed is recorder
-        assert len(recorder.calls) == 2
+        assert len(recorder.calls) == 3
         assert recorder.calls[0][0] == "add_local_dir"
         assert recorder.calls[0][2]["copy"] is True
         assert recorder.calls[0][2]["remote_path"] == APP_REMOTE
-        assert recorder.calls[1][0] == "run_commands"
-        joined = " ".join(recorder.calls[1][1])
-        assert "install-hooks" in joined
-        assert f"cd {APP_REMOTE}" in joined
+        run_joined = " ".join(
+            " ".join(call[1]) for call in recorder.calls if call[0] == "run_commands"
+        )
+        assert "malvin_precommit_warm" in run_joined
+        assert f"cd {APP_REMOTE}" in run_joined
 
         recorder = _RecordingImage()
         (workspace / "uv.lock").write_text("# lock\n", encoding="utf-8")
@@ -4087,11 +4088,11 @@ def _test_warm_offline_workspace_layer() -> None:
             encoding="utf-8",
         )
         warmed = warm_offline_workspace_layer(recorder, workspace)
-        assert len(recorder.calls) == 5
+        assert len(recorder.calls) == 6
         run_joined = " ".join(
             " ".join(call[1]) for call in recorder.calls if call[0] == "run_commands"
         )
-        assert "install-hooks" in run_joined
+        assert "malvin_precommit_warm" in run_joined
         assert "uv sync --group dev" in run_joined
         assert "uv pip install --python .venv -e . --no-build-isolation" in run_joined
         assert "UV_OFFLINE=1 UV_NO_SYNC=1 uv sync --offline --group dev" in run_joined
@@ -4109,14 +4110,15 @@ def _test_warm_precommit_hooks_layer() -> None:
         (workspace / ".pre-commit-config.yaml").write_text("repos: []\n", encoding="utf-8")
         warmed = warm_precommit_hooks_layer(recorder, workspace)
         assert warmed is recorder
-        assert len(recorder.calls) == 2
+        assert len(recorder.calls) == 3
         assert recorder.calls[0][0] == "add_local_dir"
         assert recorder.calls[0][2]["copy"] is True
         assert recorder.calls[0][2]["remote_path"] == APP_REMOTE
-        assert recorder.calls[1][0] == "run_commands"
-        joined = " ".join(recorder.calls[1][1])
-        assert "install-hooks" in joined
-        assert f"cd {APP_REMOTE}" in joined
+        run_joined = " ".join(
+            " ".join(call[1]) for call in recorder.calls if call[0] == "run_commands"
+        )
+        assert "malvin_precommit_warm" in run_joined
+        assert f"cd {APP_REMOTE}" in run_joined
 
 
 def _test_harbor_agent_image_warms_precommit_hooks() -> None:
@@ -4168,7 +4170,9 @@ def _test_harbor_agent_image_warms_precommit_hooks() -> None:
         ]
         assert len(warm_calls) == 1
         hook_cmds = [
-            call for call in warm_recorder.calls if call[0] == "run_commands" and "install-hooks" in " ".join(call[1])
+            call
+            for call in warm_recorder.calls
+            if call[0] == "run_commands" and "malvin_precommit_warm" in " ".join(call[1])
         ]
         assert hook_cmds
         warm_idx = warm_recorder.calls.index(warm_calls[0])
