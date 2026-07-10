@@ -73,8 +73,8 @@ from modal_sandbox_lifecycle import release_modal_sandbox
 from sandbox_prep import (
     dockerfile_image_build_commands,
     format_prep_error,
-    precommit_install_hooks_command,
     registry_image_cache_bust_commands,
+    workspace_image_warm_commands,
 )
 from deepswe_run import (
     apply_patch,
@@ -1761,6 +1761,7 @@ def _looks_like_image_prep_failure(msg: str) -> bool:
             "not installed",
             "pre-commit",
             "install-hooks",
+            "uv sync",
         )
     ):
         return True
@@ -1780,6 +1781,8 @@ def format_modal_image_prep_error(task_id: str, exc: BaseException) -> str:
         lower = msg.lower()
         if any(token in lower for token in ("pre-commit", "install-hooks")):
             hint = "check pre-commit install-hooks during image build (network on)"
+        elif "uv sync" in lower:
+            hint = "check uv sync --group dev during image build (network on)"
         else:
             hint = "check registry cache bust / pyproject.toml reconcile"
         return format_prep_error(
@@ -2307,18 +2310,26 @@ def offline_agent_checks(checks: str) -> str:
     return body + ("\n" if body and not body.endswith("\n") else "")
 
 
-def warm_precommit_hooks_layer(image: modal.Image, workspace: Path) -> modal.Image:
-    """Bake workspace at build time and warm ``~/.cache/pre-commit`` for offline gates."""
-    cmd = precommit_install_hooks_command(workspace)
-    if cmd is None:
+def warm_offline_workspace_layer(image: modal.Image, workspace: Path) -> modal.Image:
+    """Bake workspace at build time and warm offline gate environments."""
+    commands = workspace_image_warm_commands(workspace)
+    if not commands:
         return image
-    click.echo("Warming pre-commit hook environments at image build...")
-    return image.add_local_dir(
+    click.echo("Warming offline workspace environments at image build...")
+    image = image.add_local_dir(
         str(workspace.resolve()),
         remote_path=APP_REMOTE,
         copy=True,
         ignore=workspace_mount_ignore(),
-    ).run_commands(_image_build_shell_command(cmd))
+    )
+    for cmd in commands:
+        image = image.run_commands(_image_build_shell_command(cmd))
+    return image
+
+
+def warm_precommit_hooks_layer(image: modal.Image, workspace: Path) -> modal.Image:
+    """Backward-compatible alias for :func:`warm_offline_workspace_layer`."""
+    return warm_offline_workspace_layer(image, workspace)
 
 
 def harbor_agent_image(
@@ -2343,7 +2354,7 @@ def harbor_agent_image(
     preinstall = offline_check_tool_install_commands(checks)
     if preinstall:
         augmented = augmented.run_commands(*preinstall).env({"UV_NO_SYNC": "1"})
-    augmented = warm_precommit_hooks_layer(augmented, workspace)
+    augmented = warm_offline_workspace_layer(augmented, workspace)
     return mount_agent_context(
         augmented,
         task_dir=spec.task_dir,
@@ -4032,6 +4043,48 @@ def _test_format_modal_image_prep_error() -> None:
     assert "aiomonitor-task-snapshots-diff" in precommit_err
     assert "pre-commit install-hooks" in precommit_err
 
+    uv_err = format_modal_image_prep_error(
+        "aiomonitor-task-snapshots-diff",
+        Exception("uv sync --group dev failed: Failed to download pydantic==2.12.5"),
+    )
+    assert "uv sync --group dev during image build" in uv_err
+
+
+def _test_warm_offline_workspace_layer() -> None:
+    import tempfile
+
+    recorder = _RecordingImage()
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        assert warm_offline_workspace_layer(recorder, workspace) is recorder
+        assert recorder.calls == []
+
+        (workspace / ".pre-commit-config.yaml").write_text("repos: []\n", encoding="utf-8")
+        warmed = warm_offline_workspace_layer(recorder, workspace)
+        assert warmed is recorder
+        assert len(recorder.calls) == 2
+        assert recorder.calls[0][0] == "add_local_dir"
+        assert recorder.calls[0][2]["copy"] is True
+        assert recorder.calls[0][2]["remote_path"] == APP_REMOTE
+        assert recorder.calls[1][0] == "run_commands"
+        joined = " ".join(recorder.calls[1][1])
+        assert "pre-commit install-hooks" in joined
+        assert f"cd {APP_REMOTE}" in joined
+
+        recorder = _RecordingImage()
+        (workspace / "uv.lock").write_text("# lock\n", encoding="utf-8")
+        (workspace / "pyproject.toml").write_text(
+            '[project]\nname = "demo"\nversion = "0.1.0"\n'
+            "[dependency-groups]\ndev = [\"pytest\"]\n",
+            encoding="utf-8",
+        )
+        warmed = warm_offline_workspace_layer(recorder, workspace)
+        assert len(recorder.calls) == 3
+        hook_joined = " ".join(recorder.calls[1][1])
+        uv_joined = " ".join(recorder.calls[2][1])
+        assert "pre-commit install-hooks" in hook_joined
+        assert "uv sync --group dev" in uv_joined
+
 
 def _test_warm_precommit_hooks_layer() -> None:
     import tempfile
@@ -4110,6 +4163,29 @@ def _test_harbor_agent_image_warms_precommit_hooks() -> None:
         warm_idx = warm_recorder.calls.index(warm_calls[0])
         hook_idx = warm_recorder.calls.index(hook_cmds[0])
         assert warm_idx < hook_idx
+
+        uv_recorder = _RecordingImage()
+        (workspace / "uv.lock").write_text("# lock\n", encoding="utf-8")
+        (workspace / "pyproject.toml").write_text(
+            '[project]\nname = "demo"\nversion = "0.1.0"\n'
+            "[dependency-groups]\ndev = [\"pytest\"]\n",
+            encoding="utf-8",
+        )
+        with patch(f"{__name__}.harbor_image", return_value=uv_recorder), patch(
+            f"{__name__}.mount_local_toolchain",
+            side_effect=lambda image, **kwargs: image,
+        ), patch(f"{__name__}.mount_agent_context", side_effect=lambda image, **kwargs: image):
+            harbor_agent_image(
+                spec,
+                workspace,
+                dockerfile=Path("/nonexistent/Dockerfile"),
+                malvin_repo=malvin_repo,
+                deepswe_run_py=deepswe_run_py,
+            )
+        uv_cmds = [
+            call for call in uv_recorder.calls if call[0] == "run_commands" and "uv sync --group dev" in " ".join(call[1])
+        ]
+        assert uv_cmds
 
 
 def _test_harbor_image_aiomonitor_pydantic_reconcile() -> None:
@@ -4473,6 +4549,7 @@ def run_harvest_sandbox_unit_tests() -> None:
 def run_harbor_modal_probe_unit_tests() -> None:
     """Harbor image, modal probe, sandbox app, and self-test flag unit tests."""
     _test_format_modal_image_prep_error()
+    _test_warm_offline_workspace_layer()
     _test_warm_precommit_hooks_layer()
     _test_harbor_agent_image_warms_precommit_hooks()
     _test_harbor_image_aiomonitor_pydantic_reconcile()

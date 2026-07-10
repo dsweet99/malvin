@@ -872,6 +872,45 @@ def precommit_install_hooks_command(workspace: Path) -> str | None:
     return None
 
 
+_UV_BOOTSTRAP_SHELL = (
+    "command -v uv >/dev/null 2>&1 || python3 -m pip install --no-cache-dir uv"
+)
+
+
+def _pyproject_has_uv_dev_group(workspace: Path) -> bool:
+    pyproject = workspace / "pyproject.toml"
+    if not pyproject.is_file():
+        return False
+    raw = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    groups = raw.get("dependency-groups")
+    return isinstance(groups, dict) and "dev" in groups
+
+
+def uv_sync_dev_command(workspace: Path) -> str | None:
+    """Return shell steps to warm a uv dev venv when the workspace uses uv.
+
+    Callers must run the returned command in ``/app`` during image build with network
+    access so later offline ``uv sync`` / ``uv run`` gates can succeed.
+    """
+    if not (workspace / "uv.lock").is_file():
+        return None
+    if not _pyproject_has_uv_dev_group(workspace):
+        return None
+    return f"{_UV_BOOTSTRAP_SHELL} && uv sync --group dev"
+
+
+def workspace_image_warm_commands(workspace: Path) -> list[str]:
+    """Shell commands to warm offline agent quality gates at Modal image build."""
+    commands: list[str] = []
+    precommit = precommit_install_hooks_command(workspace)
+    if precommit:
+        commands.append(precommit)
+    uv_sync = uv_sync_dev_command(workspace)
+    if uv_sync:
+        commands.append(uv_sync)
+    return commands
+
+
 def registry_image_cache_bust_commands(
     dockerfile: Path | None = None,
     workspace: Path | None = None,
@@ -1124,6 +1163,51 @@ def _test_precommit_install_hooks_command() -> None:
         cmd = precommit_install_hooks_command(root)
         assert cmd is not None
         assert cmd == "pre-commit install-hooks"
+
+
+def _test_uv_sync_dev_command() -> None:
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        assert uv_sync_dev_command(root) is None
+        (root / "uv.lock").write_text("# lock\n", encoding="utf-8")
+        assert uv_sync_dev_command(root) is None
+        (root / "pyproject.toml").write_text(
+            '[project]\nname = "demo"\nversion = "0.1.0"\n',
+            encoding="utf-8",
+        )
+        assert uv_sync_dev_command(root) is None
+        (root / "pyproject.toml").write_text(
+            '[project]\nname = "demo"\nversion = "0.1.0"\n'
+            "[dependency-groups]\ndev = [\"pytest\"]\n",
+            encoding="utf-8",
+        )
+        cmd = uv_sync_dev_command(root)
+        assert cmd is not None
+        assert "pip install" in cmd and "uv" in cmd
+        assert cmd.endswith("uv sync --group dev")
+
+
+def _test_workspace_image_warm_commands() -> None:
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        assert workspace_image_warm_commands(root) == []
+        (root / ".pre-commit-config.yaml").write_text("repos: []\n", encoding="utf-8")
+        assert workspace_image_warm_commands(root) == ["pre-commit install-hooks"]
+        (root / "uv.lock").write_text("# lock\n", encoding="utf-8")
+        (root / "pyproject.toml").write_text(
+            '[project]\nname = "demo"\nversion = "0.1.0"\n'
+            "[dependency-groups]\ndev = [\"pytest\"]\n",
+            encoding="utf-8",
+        )
+        cmds = workspace_image_warm_commands(root)
+        assert cmds == [
+            "pre-commit install-hooks",
+            f"{_UV_BOOTSTRAP_SHELL} && uv sync --group dev",
+        ]
 
 
 def _test_registry_image_cache_bust_commands() -> None:
@@ -1493,6 +1577,8 @@ def run_self_tests() -> None:
     _test_hybrid_poetry_runtime_sync_skipped()
     _test_hybrid_pnpm_runtime_sync_skipped()
     _test_precommit_install_hooks_command()
+    _test_uv_sync_dev_command()
+    _test_workspace_image_warm_commands()
     _test_registry_image_cache_bust_commands()
     _test_registry_image_cache_bust_aiomonitor_shape()
     _test_registry_image_cache_bust_pydantic_v1_legitimate()
