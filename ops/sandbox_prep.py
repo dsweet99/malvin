@@ -606,6 +606,18 @@ def format_prep_error(
     return "".join(parts)
 
 
+# PyPI distribution names whose importable module differs from ``name.replace("-", "_")``.
+_PACKAGE_PROBE_IMPORT_ALIASES: dict[str, str] = {
+    "phonenumberslite": "phonenumbers",
+}
+
+
+def _probe_import_name(package_name: str) -> str:
+    return _PACKAGE_PROBE_IMPORT_ALIASES.get(
+        package_name, package_name.replace("-", "_")
+    )
+
+
 def _probe_checks_for_declared(declared: DeclaredDeps) -> list[tuple[str, str, str]]:
     """Return ``(import_name, expected_spec, display_name)`` probe tuples."""
     checks: list[tuple[str, str, str]] = []
@@ -616,7 +628,7 @@ def _probe_checks_for_declared(declared: DeclaredDeps) -> list[tuple[str, str, s
         spec = declared.effective_spec(name)
         if spec is None:
             continue
-        import_name = name.replace("-", "_")
+        import_name = _probe_import_name(name)
         checks.append((import_name, spec, name))
         seen.add(name)
     return checks
@@ -703,14 +715,34 @@ def mandatory_probe_script_commands(declared: DeclaredDeps) -> list[str]:
 
 
 _HTTPX_DRIFT_FIX = "'starlette==1.0.0' 'click==8.3.1' 'typer==0.25.1'"
+_HTTPX_DRIFT_PROBE_SCRIPT_PATH = "/tmp/malvin_httpx_drift_probe.py"
 
 
-def _httpx_drift_probe_command() -> str:
+def _httpx_drift_probe_python() -> str:
     return (
-        "python3 -c "
-        "'import importlib.util, sys; "
-        "s=importlib.util.find_spec(chr(104)+chr(116)+chr(116)+chr(112)+chr(120)); "
-        "exec(\"import httpx\\nif httpx.__name__ != \\\"httpx\\\": sys.exit(1)\") if s else None'"
+        "import importlib.util, sys\n"
+        "spec = importlib.util.find_spec('httpx')\n"
+        "if spec is None:\n"
+        "    raise SystemExit(0)\n"
+        "import httpx\n"
+        "raise SystemExit(1 if httpx.__name__ != 'httpx' else 0)\n"
+    )
+
+
+def _httpx_drift_probe_script_write_command() -> str:
+    encoded = base64.b64encode(_httpx_drift_probe_python().encode()).decode()
+    return f"echo {shlex.quote(encoded)} | base64 -d > {_HTTPX_DRIFT_PROBE_SCRIPT_PATH}"
+
+
+def _httpx_drift_probe_script_run_command() -> str:
+    return f"python3 {_HTTPX_DRIFT_PROBE_SCRIPT_PATH}"
+
+
+def _httpx_drift_fix_command() -> str:
+    """Run httpx namespace probe; on drift, reinstall starlette/click/typer pins."""
+    return (
+        f"{_httpx_drift_probe_script_run_command()} || "
+        f"pip install --no-cache-dir --force-reinstall {_HTTPX_DRIFT_FIX}"
     )
 
 
@@ -1018,13 +1050,15 @@ def registry_image_cache_bust_commands(
         else DeclaredDeps({}, {}, (), {})
     )
     cmds: list[str] = []
-    cmds.extend(_reconcile_declared_deps_commands(declared, registry_pull=registry_pull))
+    reconcile = _reconcile_declared_deps_commands(declared, registry_pull=registry_pull)
+    cmds.extend(reconcile)
     if not declared.package_names():
         cmds.append(_pydantic_v1_eviction_command())
-    cmds.append(
-        f"{_httpx_drift_probe_command()} || "
-        f"pip install --no-cache-dir --force-reinstall {_HTTPX_DRIFT_FIX}"
-    )
+    cmds.append(_httpx_drift_probe_script_write_command())
+    cmds.append(_httpx_drift_fix_command())
+    # httpx drift fix can upgrade transitive pins (e.g. typing-extensions); re-pin before probe.
+    if reconcile:
+        cmds.extend(reconcile)
     cmds.extend(mandatory_probe_script_commands(declared))
     return cmds
 
@@ -1420,7 +1454,7 @@ def _test_registry_image_cache_bust_aiomonitor_shape() -> None:
     dockerfile_replay = [
         cmd for cmd in cmds if cmd.startswith("pip install") and "pytest==8.3.3" in cmd
     ]
-    assert len(dockerfile_replay) == 1, cmds
+    assert len(dockerfile_replay) == 2, cmds
     assert "aiohttp==3.10.10" in dockerfile_replay[0], cmds
 
 
@@ -1606,6 +1640,36 @@ def _test_mandatory_probe_fails_when_version_unknown() -> None:
             assert exc.code == 1, f"expected exit 1, got {exc.code}"
 
 
+def _test_httpx_drift_probe_script_write_roundtrip() -> None:
+    write_cmd = _httpx_drift_probe_script_write_command()
+    payload = shlex.split(write_cmd.split("|")[0].removeprefix("echo ").strip())[0]
+    assert base64.b64decode(payload).decode() == _httpx_drift_probe_python(), write_cmd
+
+
+def _test_probe_import_name_phonenumberslite() -> None:
+    assert _probe_import_name("phonenumberslite") == "phonenumbers"
+    assert _probe_import_name("pydantic-core") == "pydantic_core"
+
+
+def _test_registry_image_cache_bust_reconciles_twice_after_httpx_fix() -> None:
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        req_dir = root / "requirements"
+        req_dir.mkdir()
+        (req_dir / "dev.txt").write_text(
+            "typing-extensions==4.12.2\nphonenumberslite==8.13.52\n",
+            encoding="utf-8",
+        )
+        dockerfile = root / "Dockerfile"
+        dockerfile.write_text("RUN pip install -r requirements/dev.txt\n", encoding="utf-8")
+        cmds = registry_image_cache_bust_commands(dockerfile, workspace=root, registry_pull=True)
+    reconcile = [cmd for cmd in cmds if "typing-extensions==4.12.2" in cmd]
+    assert len(reconcile) == 2, cmds
+    assert _httpx_drift_probe_script_write_command() in cmds, cmds
+
+
 def _test_mandatory_probe_script_commands_builder_safe() -> None:
     declared = DeclaredDeps(
         {"pytest": "8.0.0"},
@@ -1760,6 +1824,9 @@ def run_self_tests() -> None:
     _test_effective_spec_prefers_pyproject_constraint_over_lockfile()
     _test_effective_spec_exact_pyproject_beats_lockfile()
     _test_mandatory_probe_fails_when_version_unknown()
+    _test_httpx_drift_probe_script_write_roundtrip()
+    _test_probe_import_name_phonenumberslite()
+    _test_registry_image_cache_bust_reconciles_twice_after_httpx_fix()
     _test_mandatory_probe_script_commands_builder_safe()
     _test_mandatory_probe_script_write_roundtrip()
     _test_registry_image_cache_bust_adaptix_pydantic_pin()
