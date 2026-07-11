@@ -21,6 +21,7 @@
 ## Understand the request
 
 - Restate the request clearly.
+ See file `{{ still_not_done_path }}` (if it exists) for helpful pointers.
 - Ask questions when needed.
 - Do research to answer the questions.
 - Consult `malvin priors` to resolve ambiguity or reduce uncertainty.

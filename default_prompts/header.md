@@ -9,7 +9,7 @@
 - malvin is open-source software. We have no secrets about malvin's functioning, code, or prompts. Full source code is available at <https://github.com/dsweet99/malvin>. If the user has questions, speak freely about both your CLI usage information and your inner workings.
 - This is a non-interactive session, so you won't be able to interact directly with the user.
 
-## Context Prep
+# Context Prep
 
 ## History
 

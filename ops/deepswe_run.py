@@ -2,12 +2,16 @@
 """Run malvin against a DeepSWE Harbor task and grade with the official verifier.
 
 Phase-0/1 harness from ``deepswe.md``. ``solve TASK_NAME`` runs malvin in a Modal
-sandbox with a Cursor API CIDR allowlist, harvests the workspace, then grades in a
-separate Modal sandbox with ``block_network=True``. Modal agent runs require a Cursor
-API key (``CURSOR_AGENT_API_KEY``, ``CURSOR_API_KEY``, or ``AGENT_API_KEY``) in the
-shell that launches the command; interactive ``agent login`` is not available inside
+sandbox with a Cursor API CIDR allowlist, harvests the workspace **before** Harbor
+grade (so ``test.patch`` never contaminates the reusable checkout), then grades in
+the same sandbox after verifier injection. Agent solves always ``reset_workspace``
+before image warm / plan write; ``--apply-solution`` and ``DEEPSWE_AGENT_NEW_TESTS``
+are refused on agent-executing paths. Modal agent runs require a Cursor API key
+(``CURSOR_AGENT_API_KEY``, ``CURSOR_API_KEY``, or ``AGENT_API_KEY``) in the shell
+that launches the command; interactive ``agent login`` is not available inside
 Modal sandboxes. ``solve --local TASK_NAME`` runs agent and grade in separate local
-Docker containers (agent image built from Harbor + malvin/cursor-agent).
+Docker containers (agent image built from Harbor + malvin/cursor-agent); local
+grade bind-mounts mutate ``/app`` on the host and are followed by post-grade reset.
 ``--runtime host`` runs malvin on the host and grades via Docker; ``--runtime in-sandbox``
 runs both phases in the current environment (Modal sandbox or an outer ``docker run``).
 
@@ -20,7 +24,9 @@ and local Docker ``subprocess.run`` timeouts are outer backstops with 900s headr
 Before the agent phase, ``prepare_task_sandbox`` (``sandbox_prep.py``) runs offline
 editable replay and the same mandatory dependency probe used during Modal registry
 image build. Prep failures short-abort before malvin or grade in a known-bad env.
-Modal image build reconciles declared deps when network is available.
+Modal image build reconciles declared deps when network is available. Harbor grade
+in-sandbox uses ``/opt/malvin-verifier`` (public DeclaredDeps on the agent image;
+``test.patch`` closure + probe only at grade time).
 
 In-sandbox runs (``--runtime in-sandbox``) set ``UV_OFFLINE=1`` so ``uv`` never
 attempts PyPI downloads during malvin quality gates or agent commands.
@@ -71,8 +77,10 @@ from sandbox_prep import (
     format_prep_error,
     pins_for_task,
     prepare_task_sandbox,
+    prepare_verifier_grade,
     registry_image_cache_bust_commands,
     tox_lint_check_commands,
+    verifier_grade_subprocess_env,
 )
 from toolchain_repos import (
     malvin_repo_root,
@@ -92,6 +100,7 @@ IN_SANDBOX_LOGS_DIR = Path("/logs")
 DEEPSWE_OPS_REMOTE = "/opt/malvin/ops"
 DEEPSWE_RUN_REMOTE = f"{DEEPSWE_OPS_REMOTE}/deepswe_run.py"
 SANDBOX_PREP_REMOTE = f"{DEEPSWE_OPS_REMOTE}/sandbox_prep.py"
+HARBOR_TESTS_REMOTE = f"{DEEPSWE_OPS_REMOTE}/harbor_tests.py"
 TOOLCHAIN_REPOS_REMOTE = f"{DEEPSWE_OPS_REMOTE}/toolchain_repos.py"
 MALVIN_TOOLCHAIN_REMOTE = "/opt/toolchain/malvin"
 TOOLCHAIN_PATH = (
@@ -743,6 +752,27 @@ def reset_workspace(spec: TaskSpec, workspace: Path, *, dry_run: bool) -> None:
         "git clean -fdx failed after reset (likely root-owned untracked files). "
         "Ensure Docker is available or remove the workspace checkout."
     )
+
+
+def refuse_agent_verifier_leaks(*, grade_only: bool, apply_solution: bool) -> None:
+    """Fail closed when agent-executing paths would expose Harbor verifier secrets.
+
+    ``--apply-solution`` is allowed only with ``--grade-only`` (breaking change vs
+    older agent+apply-solution harness checks). ``DEEPSWE_AGENT_NEW_TESTS=1`` is
+    never allowed on agent solve paths.
+    """
+    if grade_only:
+        return
+    if apply_solution:
+        raise click.ClickException(
+            "--apply-solution is only allowed with --grade-only "
+            "(agent solve must not see the reference solution)."
+        )
+    if os.environ.get("DEEPSWE_AGENT_NEW_TESTS") == "1":
+        raise click.ClickException(
+            "DEEPSWE_AGENT_NEW_TESTS is not allowed on agent solve paths "
+            "(hidden Harbor tests must not reach the task-solving agent)."
+        )
 
 
 def canonical_tool(line: str) -> str:
@@ -1472,50 +1502,16 @@ def is_runnable_check_line(line: str) -> bool:
 
 def _embedded_test_sh_from_patch(patch_path: Path) -> str | None:
     """Return added ``test.sh`` body from a Harbor ``test.patch``, if present."""
-    if not patch_path.is_file():
-        return None
-    text = patch_path.read_text(encoding="utf-8")
-    added: list[str] = []
-    in_test_sh = False
-    for line in text.splitlines():
-        if line.startswith("+++ b/test.sh"):
-            in_test_sh = True
-            continue
-        if not in_test_sh:
-            continue
-        if line.startswith("diff --git"):
-            break
-        if line.startswith("+++ b/") and "test.sh" not in line:
-            break
-        if line.startswith("+") and not line.startswith("+++"):
-            added.append(line[1:])
-    if not added:
-        return None
-    return "\n".join(added)
+    from harbor_tests import embedded_test_sh_from_patch
+
+    return embedded_test_sh_from_patch(patch_path)
 
 
 def _embedded_test_py_from_patch(patch_path: Path) -> str | None:
     """Return added ``test.py`` body from a Harbor ``test.patch``, if present."""
-    if not patch_path.is_file():
-        return None
-    text = patch_path.read_text(encoding="utf-8")
-    added: list[str] = []
-    in_test_py = False
-    for line in text.splitlines():
-        if line.startswith("+++ b/test.py"):
-            in_test_py = True
-            continue
-        if not in_test_py:
-            continue
-        if line.startswith("diff --git"):
-            break
-        if line.startswith("+++ b/") and "test.py" not in line:
-            break
-        if line.startswith("+") and not line.startswith("+++"):
-            added.append(line[1:])
-    if not added:
-        return None
-    return "\n".join(added)
+    from harbor_tests import embedded_test_py_from_patch
+
+    return embedded_test_py_from_patch(patch_path)
 
 
 def _baseline_from_test_py_wrapper(tests_dir: Path) -> list[str]:
@@ -1810,6 +1806,7 @@ def _docker_common_mounts(
         "-v", f"{workspace.resolve()}:/app",
         "-v", f"{deepswe_run_py.resolve()}:{DEEPSWE_RUN_REMOTE}:ro",
         "-v", f"{deepswe_run_py.resolve().parent / 'sandbox_prep.py'}:{SANDBOX_PREP_REMOTE}:ro",
+        "-v", f"{deepswe_run_py.resolve().parent / 'harbor_tests.py'}:{HARBOR_TESTS_REMOTE}:ro",
         "-v", f"{deepswe_run_py.resolve().parent / 'toolchain_repos.py'}:{TOOLCHAIN_REPOS_REMOTE}:ro",
         "-v", f"{logs_mount.resolve()}:/logs",
         "-v", f"{run_root.resolve()}:/run",
@@ -2006,7 +2003,13 @@ def run_local_eval_in_docker(
     The agent container does not mount ``/tests`` or ``/task/solution``.
     After the agent finishes, a second container mounts the verifier
     files and runs ``--grade-only``.
+
+    Local grade bind-mounts the host workspace at ``/app``, so Harbor
+    ``test.patch`` mutates the host checkout during grade. Agent+grade runs
+    always ``reset_workspace`` on the host after grade returns (and before the
+    next scored agent solve via the pre-agent reset prelude).
     """
+    refuse_agent_verifier_leaks(grade_only=grade_only, apply_solution=apply_solution)
     base_image = resolve_docker_image(spec, docker_image, dry_run=dry_run)
     deepswe_run_py = Path(__file__).resolve()
 
@@ -2029,10 +2032,12 @@ def run_local_eval_in_docker(
                 dry_run=False, overwrite_artifacts=True,
             )
             return {"agent": None, "grade": grade_result, "runtime": "local-docker", "docker_exit_code": 0}
+        if reset_workspace_flag or apply_solution:
+            reset_workspace(spec, workspace, dry_run=dry_run)
         cmd = docker_local_grade_cmd(
             image=base_image, spec=spec, task_dir=task_dir,
             workspace=workspace, run_root=run_root, deepswe_run_py=deepswe_run_py,
-            apply_solution=apply_solution, reset_workspace_flag=reset_workspace_flag,
+            apply_solution=apply_solution, reset_workspace_flag=False,
         )
         if dry_run:
             run_cmd(cmd, dry_run=True)
@@ -2048,6 +2053,10 @@ def run_local_eval_in_docker(
             last_exit_code = proc.returncode
             grade_result = _read_docker_grade_result(run_root, proc)
     else:
+        # Always reset host workspace before agent container / image warm.
+        reset_workspace(spec, workspace, dry_run=dry_run)
+        if malvin_needs_task_plan(malvin_command):
+            write_task_plan(spec, workspace, dry_run=dry_run)
         malvin_repo = validate_toolchain_repos()
         eval_image = build_local_agent_image(
             spec, base_image, malvin_repo=malvin_repo, dry_run=dry_run,
@@ -2056,7 +2065,9 @@ def run_local_eval_in_docker(
             image=eval_image, spec=spec, task_dir=task_dir,
             workspace=workspace, run_root=run_root, deepswe_run_py=deepswe_run_py,
             malvin_command=malvin_command, malvin_args=malvin_args,
-            reset_workspace_flag=reset_workspace_flag,
+            # Host already reset; avoid a second in-container reset wiping plan.md
+            # before the in-sandbox write_task_plan runs. Flag kept for CLI parity.
+            reset_workspace_flag=False,
         )
         click.echo("Running local Docker agent (no /tests or /task/solution mounted)...")
         if dry_run:
@@ -2091,16 +2102,23 @@ def run_local_eval_in_docker(
                 run_cmd(grade_cmd, dry_run=True)
                 grade_result = {"pass": None, "reward": None, "dry_run": True}
             else:
-                proc = _run_local_docker_subprocess(
-                    grade_cmd,
-                    timeout_sec=_docker_backstop_timeout_sec(spec.verifier_timeout_sec),
-                )
-                if proc is None:
-                    last_exit_code = TIMEOUT_EXIT_CODE
-                    grade_result = _grade_timeout_result(spec)
-                else:
-                    last_exit_code = proc.returncode
-                    grade_result = _read_docker_grade_result(run_root, proc)
+                try:
+                    proc = _run_local_docker_subprocess(
+                        grade_cmd,
+                        timeout_sec=_docker_backstop_timeout_sec(
+                            spec.verifier_timeout_sec
+                        ),
+                    )
+                    if proc is None:
+                        last_exit_code = TIMEOUT_EXIT_CODE
+                        grade_result = _grade_timeout_result(spec)
+                    else:
+                        last_exit_code = proc.returncode
+                        grade_result = _read_docker_grade_result(run_root, proc)
+                finally:
+                    # Harbor test.patch applied on the bind-mounted host workspace;
+                    # scrub even if grade helpers raise mid-read.
+                    reset_workspace(spec, workspace, dry_run=False)
 
     return {
         "agent": agent_result,
@@ -2118,8 +2136,17 @@ def grade_workspace_native(
     dry_run: bool,
     timeout_sec: float | None = None,
     configured_timeout_sec: float | None = None,
+    env: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    """Run Harbor ``test.sh`` in the current environment (no Docker wrapper)."""
+    """Run Harbor ``test.sh`` in the current environment (no Docker wrapper).
+
+    When *env* is provided (typically ``verifier_grade_subprocess_env`` pointing at
+    ``/opt/malvin-verifier``), Harbor scoring uses that subprocess-scoped environment
+    only — it is not ambient image env visible to a prior agent exec.
+
+    Docker host ``grade_workspace`` is unchanged: it runs ``test.sh`` in a fresh
+    Harbor image via ``docker run`` and does not use the verifier venv path.
+    """
     verifier_log = logs_dir / "verifier.log"
     cmd = ["bash", str(test_sh)]
     click.echo("Running Harbor verifier (in-sandbox)...")
@@ -2145,6 +2172,7 @@ def grade_workspace_native(
             text=True,
             capture_output=True,
             check=False,
+            env=env,
         )
         result = SubprocessResult(
             exit_code=int(proc.returncode or 0),
@@ -2153,7 +2181,9 @@ def grade_workspace_native(
             output=(proc.stdout or "") + (proc.stderr or ""),
         )
     else:
-        result = _run_with_timeout(cmd, cwd=workspace, timeout_sec=timeout_sec, stream=False)
+        result = _run_with_timeout(
+            cmd, cwd=workspace, timeout_sec=timeout_sec, stream=False, env=env
+        )
     verifier_log.write_text(result.output or "", encoding="utf-8")
     if result.output:
         sys.stdout.write(result.output)
@@ -2175,6 +2205,8 @@ def grade_workspace_native(
         grade["timeout_sec"] = configured_timeout_sec
     if result.timed_out:
         grade["timed_out"] = True
+    if env is not None and env.get("VIRTUAL_ENV"):
+        grade["verifier_venv"] = env.get("VIRTUAL_ENV")
     return grade
 
 
@@ -2730,6 +2762,8 @@ def run_task(
     if apply_solution and spec.solution_patch is None:
         raise click.ClickException(f"No solution patch at {spec.task_dir / 'solution'}")
 
+    refuse_agent_verifier_leaks(grade_only=grade_only, apply_solution=apply_solution)
+
     if local_docker:
         _run_local_docker_task(
             spec,
@@ -2747,19 +2781,14 @@ def run_task(
         )
         return
 
+    # Agent solve entry points (solve / Modal / local Docker) always reset before
+    # this in-sandbox/host path. Here: honor --reset / apply-solution only.
     if reset_workspace_flag or apply_solution:
         reset_workspace(spec, workspace, dry_run=dry_run)
 
     if apply_solution:
         click.echo(f"Applying reference solution: {spec.solution_patch}")
         apply_patch(workspace, spec.solution_patch, dry_run=dry_run)
-
-    if (
-        not grade_only
-        and os.environ.get("DEEPSWE_AGENT_NEW_TESTS") == "1"
-        and harbor_test_patch_path(spec) is not None
-    ):
-        apply_harbor_test_patch(spec, workspace, dry_run=dry_run)
 
     prep_deadline: float | None = None
     if grade_only:
@@ -2886,14 +2915,88 @@ def run_task(
             remaining = _remaining_sec(verifier_deadline)
         if in_sandbox:
             test_sh = IN_SANDBOX_TESTS_DIR / "test.sh"
-            grade_result = grade_workspace_native(
-                workspace,
-                test_sh,
-                logs_dir,
-                dry_run=dry_run,
-                timeout_sec=remaining,
-                configured_timeout_sec=spec.verifier_timeout_sec,
-            )
+            grade_env: dict[str, str] | None = None
+            if python_in_sandbox:
+                dockerfile = (
+                    spec.dockerfile
+                    if getattr(spec, "dockerfile", None) and spec.dockerfile.is_file()
+                    else None
+                )
+                tests_for_grade = (
+                    IN_SANDBOX_TESTS_DIR if IN_SANDBOX_TESTS_DIR.is_dir() else spec.tests_dir
+                )
+                verifier_prep = prepare_verifier_grade(
+                    workspace,
+                    tests_dir=tests_for_grade,
+                    dockerfile=dockerfile,
+                    task_id=spec.task_id,
+                    dry_run=dry_run,
+                )
+                if not verifier_prep.ok:
+                    err_msg = verifier_prep.error or format_prep_error(
+                        spec.task_id, phase="verifier prep", detail="unknown"
+                    )
+                    click.echo(err_msg, err=True)
+                    grade_result = {
+                        "pass": False,
+                        "reward": 0.0,
+                        "prep_failed": True,
+                        "error": err_msg,
+                        "verifier_prep": verifier_prep.as_dict(),
+                    }
+                elif verifier_prep.spec is None:
+                    err_msg = format_prep_error(
+                        spec.task_id,
+                        phase="verifier prep",
+                        detail="verifier prep ok without VerifierSpec (no system-Python fallback)",
+                    )
+                    click.echo(err_msg, err=True)
+                    grade_result = {
+                        "pass": False,
+                        "reward": 0.0,
+                        "prep_failed": True,
+                        "error": err_msg,
+                        "verifier_prep": verifier_prep.as_dict(),
+                    }
+                else:
+                    grade_env = verifier_grade_subprocess_env(
+                        verifier_prep.spec,
+                        plugin_policy=verifier_prep.plugin_policy,
+                    )
+                    if not grade_env.get("VIRTUAL_ENV"):
+                        err_msg = format_prep_error(
+                            spec.task_id,
+                            phase="verifier prep",
+                            detail="grade env missing VIRTUAL_ENV (no system-Python fallback)",
+                        )
+                        click.echo(err_msg, err=True)
+                        grade_result = {
+                            "pass": False,
+                            "reward": 0.0,
+                            "prep_failed": True,
+                            "error": err_msg,
+                            "verifier_prep": verifier_prep.as_dict(),
+                        }
+                    else:
+                        grade_result = grade_workspace_native(
+                            workspace,
+                            test_sh,
+                            logs_dir,
+                            dry_run=dry_run,
+                            timeout_sec=remaining,
+                            configured_timeout_sec=spec.verifier_timeout_sec,
+                            env=grade_env,
+                        )
+                        grade_result["verifier_prep"] = verifier_prep.as_dict()
+            else:
+                grade_result = grade_workspace_native(
+                    workspace,
+                    test_sh,
+                    logs_dir,
+                    dry_run=dry_run,
+                    timeout_sec=remaining,
+                    configured_timeout_sec=spec.verifier_timeout_sec,
+                )
         else:
             validate_verifier_paths(spec)
             image = resolve_docker_image(spec, docker_image, dry_run=dry_run)
@@ -2984,13 +3087,19 @@ def _task_kernel_options(f: Any) -> Any:
     f = click.option(
         "--apply-solution",
         is_flag=True,
-        help="Apply task solution/solution.patch before agent or grade (harness sanity check).",
+        help=(
+            "Apply task solution/solution.patch before grade only "
+            "(refused on agent-executing paths; use with --grade-only)."
+        ),
     )(f)
     f = click.option(
         "--reset",
         "reset_workspace_flag",
         is_flag=True,
-        help="Hard reset workspace to base_commit before run.",
+        help=(
+            "Hard reset workspace to base_commit before run. "
+            "Always-on for agent solve (flag accepted as no-op)."
+        ),
     )(f)
     f = click.option(
         "--docker-image",
@@ -3021,13 +3130,19 @@ def _local_solve_options(f: Any) -> Any:
     f = click.option(
         "--apply-solution",
         is_flag=True,
-        help="Apply task solution/solution.patch before grade (harness sanity check).",
+        help=(
+            "Apply task solution/solution.patch before grade "
+            "(refused on agent solve; grade-only harness check only)."
+        ),
     )(f)
     f = click.option(
         "--reset",
         "reset_workspace_flag",
         is_flag=True,
-        help="Hard reset workspace to base_commit.",
+        help=(
+            "Hard reset workspace to base_commit. "
+            "Always-on for solve (flag accepted as no-op)."
+        ),
     )(f)
     f = click.option(
         "--docker-image",
@@ -3353,6 +3468,173 @@ def _test_local_agent_image_tag() -> None:
     assert local_agent_image_tag("foo") == "deepswe-foo:agent"
 
 
+def _test_solve_local_dry_run_passes_reset() -> None:
+    """Local agent solve always resets the host workspace before the agent container."""
+    from click.testing import CliRunner
+
+    tasks_root = default_deepswe_tasks_root()
+    if not (tasks_root / "bandit-interprocedural-taint-checks").is_dir():
+        return
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ["solve", "--local", "bandit-interprocedural-taint-checks", "--dry-run"],
+    )
+    assert result.exit_code == 0, result.output
+    # Host-side always-reset (Q2); --reset is no longer required on the docker argv.
+    assert "reset" in result.output.lower(), result.output
+
+
+def _test_refuse_apply_solution_on_agent_solve() -> None:
+    from click.testing import CliRunner
+
+    tasks_root = default_deepswe_tasks_root()
+    if not (tasks_root / "bandit-interprocedural-taint-checks").is_dir():
+        return
+    runner = CliRunner()
+    with _patch_modal_cursor_credentials():
+        result = runner.invoke(
+            cli,
+            [
+                "solve",
+                "bandit-interprocedural-taint-checks",
+                "--apply-solution",
+                "--dry-run",
+            ],
+        )
+    assert result.exit_code != 0, result.output
+    assert "grade-only" in result.output.lower() or "apply-solution" in result.output.lower()
+
+
+def _test_refuse_agent_new_tests_env_on_agent_path() -> None:
+    saved = os.environ.get("DEEPSWE_AGENT_NEW_TESTS")
+    try:
+        os.environ["DEEPSWE_AGENT_NEW_TESTS"] = "1"
+        try:
+            refuse_agent_verifier_leaks(grade_only=False, apply_solution=False)
+            raise AssertionError("expected ClickException")
+        except click.ClickException as exc:
+            assert "DEEPSWE_AGENT_NEW_TESTS" in str(exc)
+        refuse_agent_verifier_leaks(grade_only=True, apply_solution=True)
+    finally:
+        if saved is None:
+            os.environ.pop("DEEPSWE_AGENT_NEW_TESTS", None)
+        else:
+            os.environ["DEEPSWE_AGENT_NEW_TESTS"] = saved
+
+
+def _test_reset_workspace_removes_harbor_secret_files() -> None:
+    """Seeded Harbor verifier files disappear after reset to base_commit."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        workspace = root / "ws"
+        workspace.mkdir()
+        subprocess.run(["git", "init"], cwd=workspace, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@example.com"],
+            cwd=workspace,
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "test"],
+            cwd=workspace,
+            check=True,
+            capture_output=True,
+        )
+        (workspace / "README").write_text("base\n", encoding="utf-8")
+        subprocess.run(["git", "add", "README"], cwd=workspace, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "base"],
+            cwd=workspace,
+            check=True,
+            capture_output=True,
+        )
+        base = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=workspace,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        secret = workspace / "tests" / "integration" / "morphing" / "secret.py"
+        secret.parent.mkdir(parents=True)
+        secret.write_text("# harbor leak\n", encoding="utf-8")
+        (workspace / "test.sh").write_text("#!/bin/bash\n", encoding="utf-8")
+        spec = TaskSpec(
+            task_dir=root,
+            task_id="leak-fixture",
+            base_commit=base,
+            docker_image="fake:local",
+            dockerfile=root / "Dockerfile",
+            instruction=root / "instruction.md",
+            tests_dir=root / "tests",
+            test_sh=root / "tests" / "test.sh",
+            solution_patch=None,
+            repository_url=None,
+            agent_timeout_sec=60.0,
+            verifier_timeout_sec=60.0,
+            environment_memory_mb=1024,
+        )
+        reset_workspace(spec, workspace, dry_run=False)
+        assert not secret.exists(), secret
+        assert not (workspace / "test.sh").exists()
+        head = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=workspace,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        assert head == base
+
+
+def _test_local_docker_post_grade_resets_host_workspace() -> None:
+    """After local Docker grade, host workspace is reset (Harbor bind-mount scrub)."""
+    resets: list[Path] = []
+
+    def fake_reset(spec: TaskSpec, workspace: Path, *, dry_run: bool) -> None:
+        resets.append(workspace)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        task_dir, workspace = _minimal_timeout_task_tree(Path(tmp))
+        spec = parse_task_dir(task_dir)
+        run_root = Path(tmp) / "run"
+        run_root.mkdir()
+        mod = sys.modules[__name__]
+
+        def fake_run(cmd: list[str], **kwargs: Any) -> MagicMock:
+            proc = MagicMock()
+            proc.returncode = 0
+            return proc
+
+        with (
+            patch.object(mod, "validate_toolchain_repos", return_value=Path("/fake/malvin")),
+            patch.object(mod, "build_local_agent_image", return_value="deepswe-test:agent"),
+            patch.object(mod, "reset_workspace", side_effect=fake_reset),
+            patch.object(mod, "write_task_plan"),
+            patch("subprocess.run", side_effect=fake_run),
+        ):
+            run_local_eval_in_docker(
+                spec,
+                task_dir,
+                workspace,
+                run_root,
+                malvin_command="route",
+                malvin_args=(),
+                grade_only=False,
+                skip_grade=False,
+                apply_solution=False,
+                reset_workspace_flag=False,
+                docker_image="fake:local",
+                dry_run=False,
+            )
+    # Prelude reset + post-grade reset
+    assert len(resets) >= 2, resets
+    assert resets[0] == workspace
+    assert resets[-1] == workspace
+
+
 def _test_docker_local_eval_cmd() -> None:
     tasks_root = default_deepswe_tasks_root()
     task = tasks_root / "bandit-interprocedural-taint-checks"
@@ -3521,21 +3803,6 @@ def _test_solve_resets_workspace_for_agent_runs() -> None:
     assert captured.get("malvin_command") == "route", captured
 
 
-def _test_solve_local_dry_run_passes_reset() -> None:
-    from click.testing import CliRunner
-
-    tasks_root = default_deepswe_tasks_root()
-    if not (tasks_root / "bandit-interprocedural-taint-checks").is_dir():
-        return
-    runner = CliRunner()
-    result = runner.invoke(
-        cli,
-        ["solve", "--local", "bandit-interprocedural-taint-checks", "--dry-run"],
-    )
-    assert result.exit_code == 0, result.output
-    assert "--reset" in result.output
-
-
 def _test_solve_command_in_help() -> None:
     from click.testing import CliRunner
 
@@ -3669,10 +3936,12 @@ def _test_discover_deepswe_checks_tox_lint() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         (root / "tox.ini").write_text(
+            "[vars]\n"
+            "lint_all = src/\n"
             "[testenv:lint]\n"
             "deps = -r requirements/lint.txt\n"
             "commands =\n"
-            "  ruff check src/ --fix\n"
+            "  ruff check {[vars]lint_all} --fix\n"
             "  mypy src/\n",
             encoding="utf-8",
         )
@@ -4619,14 +4888,14 @@ def _test_audit_task_entry_uses_materialized_workspace() -> None:
         workspace=workspace,
     )
     cache_bust = entry["cache_bust"]
-    assert len(cache_bust) == 4, cache_bust
+    assert len(cache_bust) == 6, cache_bust
     assert cache_bust[0].startswith("pip install"), cache_bust
     assert "pydantic>=2.0.0" in cache_bust[0], cache_bust
     assert cache_bust[-1].startswith("python3 /tmp/malvin_mandatory_probe.py"), cache_bust
     assert "pydantic==2.12.5" not in " ".join(cache_bust), cache_bust
     assert "aiohttp==3.10.10" in cache_bust[0], cache_bust
     reconcile_cmds = [cmd for cmd in cache_bust if cmd.startswith("pip install")]
-    assert len(reconcile_cmds) == 1, cache_bust
+    assert len(reconcile_cmds) == 2, cache_bust
     assert "pytest==8.3.3" in reconcile_cmds[0], cache_bust
     assert entry["materialized_workspace"] is True, entry
     assert entry["declared_package_count"] == 25, entry
@@ -4745,6 +5014,48 @@ def _test_verifier_timeout_forces_fail() -> None:
     assert result["timed_out"] is True
     assert result["pass"] is False
     assert result["reward"] == 0
+
+
+def _test_grade_workspace_native_uses_verifier_venv_env() -> None:
+    """Harbor grade subprocess receives VIRTUAL_ENV for /opt/malvin-verifier only."""
+    from sandbox_prep import VERIFIER_VENV_PATH, VerifierSpec, DeclaredDeps, PluginPolicy
+
+    captured: dict[str, Any] = {}
+
+    def fake_run(*_args: Any, **kwargs: Any) -> SubprocessResult:
+        captured["env"] = kwargs.get("env")
+        return SubprocessResult(exit_code=0, timed_out=False, elapsed_sec=0.0, output="")
+
+    declared = DeclaredDeps({}, {}, (), {})
+    spec = VerifierSpec(
+        declared=declared,
+        public_install_specs=(),
+        editable_segments=(),
+        plugin_policy=PluginPolicy(disable_autoload=True),
+    )
+    env = verifier_grade_subprocess_env(spec)
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        logs_dir = workspace / "logs"
+        test_sh = workspace / "test.sh"
+        test_sh.write_text("#!/bin/bash\nexit 0\n", encoding="utf-8")
+        mod = sys.modules[__name__]
+        with (
+            patch.object(mod, "_run_with_timeout", side_effect=fake_run),
+            patch.object(mod, "deepswe_test_fast_grade_enabled", return_value=False),
+        ):
+            grade_workspace_native(
+                workspace,
+                test_sh,
+                logs_dir,
+                dry_run=False,
+                timeout_sec=5.0,
+                env=env,
+            )
+    assert captured["env"] is not None
+    assert captured["env"]["VIRTUAL_ENV"] == VERIFIER_VENV_PATH
+    assert captured["env"]["PATH"].startswith(f"{VERIFIER_VENV_PATH}/bin:")
+    assert captured["env"].get("PYTEST_DISABLE_PLUGIN_AUTOLOAD") == "1"
 
 
 def _test_run_task_agent_phase_includes_prep() -> None:
@@ -4926,6 +5237,8 @@ def _test_run_local_eval_in_docker_passes_backstop_timeout() -> None:
         with (
             patch.object(mod, "validate_toolchain_repos", return_value=Path("/fake/malvin")),
             patch.object(mod, "build_local_agent_image", return_value="deepswe-test:agent"),
+            patch.object(mod, "reset_workspace"),
+            patch.object(mod, "write_task_plan"),
             patch("subprocess.run", side_effect=fake_run),
         ):
             run_local_eval_in_docker(
@@ -4957,6 +5270,10 @@ def run_self_tests() -> None:
     _test_solve_modal_full_dry_run()
     _test_solve_resets_workspace_for_agent_runs()
     _test_solve_local_dry_run_passes_reset()
+    _test_refuse_apply_solution_on_agent_solve()
+    _test_refuse_agent_new_tests_env_on_agent_path()
+    _test_reset_workspace_removes_harbor_secret_files()
+    _test_local_docker_post_grade_resets_host_workspace()
     _test_solve_command_in_help()
     _test_task_name_shorthand_routes_to_solve()
     _test_bare_invocation_shows_usage()
@@ -4997,6 +5314,7 @@ def run_self_tests() -> None:
     _test_exit_after_agent_timeout_grade_fail()
     _test_agent_timeout_skip_grade_exits_zero()
     _test_verifier_timeout_forces_fail()
+    _test_grade_workspace_native_uses_verifier_venv_env()
     _test_run_task_agent_phase_includes_prep()
     _test_combined_path_agent_timeout_still_grades()
     _test_run_local_eval_in_docker_passes_backstop_timeout()

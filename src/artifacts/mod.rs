@@ -117,6 +117,12 @@ pub fn user_request_path(artifacts: &RunArtifacts) -> PathBuf {
     artifacts.run_dir.join("user_request.md")
 }
 
+/// Run-directory note of work still left undone (router continue path).
+#[must_use]
+pub fn still_not_done_path(artifacts: &RunArtifacts) -> PathBuf {
+    artifacts.run_dir.join("still_not_done.md")
+}
+
 pub(crate) fn work_dir_for_path(path: &Path) -> PathBuf {
     path.parent()
         .filter(|p| !p.as_os_str().is_empty())

@@ -19,10 +19,12 @@ Two-phase prep enforces a strict contract for Python tasks:
 from __future__ import annotations
 
 import base64
+import os
 import re
 import shlex
 import subprocess
 import sys
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -34,6 +36,14 @@ try:
     import tomllib
 except ModuleNotFoundError:  # pragma: no cover - py310
     import tomli as tomllib  # type: ignore[no-redef]
+
+from harbor_tests import (
+    added_python_sources_from_patch,
+    collect_only_pytest_command,
+    distribution_name_for_import,
+    harbor_imports_from_tests_dir,
+    resolve_harbor_test_sh_body,
+)
 
 TIMEOUT_EXIT_CODE = 124
 
@@ -653,6 +663,539 @@ def format_prep_error(
     return "".join(parts)
 
 
+VERIFIER_VENV_PATH = "/opt/malvin-verifier"
+VERIFIER_PYTHON = f"{VERIFIER_VENV_PATH}/bin/python"
+VERIFIER_PIP = f"{VERIFIER_VENV_PATH}/bin/pip"
+
+
+def _verifier_pip(spec: VerifierSpec | None = None, *, venv_path: str | None = None) -> str:
+    """Pip binary inside the verifier venv (honors ``spec.venv_path`` overrides)."""
+    root = venv_path
+    if root is None and spec is not None:
+        root = spec.venv_path
+    if root is None:
+        root = VERIFIER_VENV_PATH
+    return f"{root}/bin/pip"
+
+
+@dataclass(frozen=True)
+class PluginPolicy:
+    """Grade-subprocess-only pytest plugin policy (never bake into agent image env).
+
+    ``as_env`` sets ``PYTEST_DISABLE_PLUGIN_AUTOLOAD`` and optional ``-p`` allowlist
+    tokens. Callers that merge into an existing env must append allowlist tokens to
+    any pre-existing ``PYTEST_ADDOPTS`` (see ``verifier_grade_subprocess_env``).
+    ``MALVIN_VERIFIER_PLUGIN_ALLOWLIST`` is debug metadata only; pytest does not read it.
+    """
+
+    disable_autoload: bool = False
+    allowlist: tuple[str, ...] = ()
+
+    def as_env(self) -> dict[str, str]:
+        if not self.disable_autoload:
+            return {}
+        env = {"PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"}
+        if self.allowlist:
+            # Re-enable selected plugins after autoload disable (consumed by pytest).
+            env["PYTEST_ADDOPTS"] = " ".join(f"-p {name}" for name in self.allowlist)
+            env["MALVIN_VERIFIER_PLUGIN_ALLOWLIST"] = ",".join(self.allowlist)
+        return env
+
+
+def _merge_pytest_addopts(existing: str | None, addition: str | None) -> str:
+    """Append *addition* tokens to *existing* ``PYTEST_ADDOPTS`` without dropping either."""
+    parts = [p for p in ((existing or "").strip(), (addition or "").strip()) if p]
+    return " ".join(parts)
+
+
+@dataclass(frozen=True)
+class VerifierSpec:
+    """Public + grade-only Harbor verifier dependency discovery result.
+
+    Public fields may appear on the agent image. Grade-only fields (``harbor_imports``,
+    closure install specs, plugin policy, unmapped imports) are verifier secrets —
+    persist them only in grade-phase / host metadata, never in agent-readable
+    ``sandbox_prep`` payloads.
+    """
+
+    declared: DeclaredDeps
+    public_install_specs: tuple[str, ...]
+    editable_segments: tuple[str, ...]
+    harbor_imports: tuple[str, ...] = ()
+    grade_closure_install_specs: tuple[str, ...] = ()
+    unmapped_imports: tuple[str, ...] = ()
+    test_sh_body: str | None = None
+    plugin_policy: PluginPolicy | None = None
+    venv_path: str = VERIFIER_VENV_PATH
+
+    def public_view(self) -> dict[str, Any]:
+        """Agent-safe summary: no ``test.patch``-derived import or closure fields."""
+        return {
+            "venv_path": self.venv_path,
+            "public_install_specs": list(self.public_install_specs),
+            "editable_segments": list(self.editable_segments),
+            "declared_packages": sorted(self.declared.package_names()),
+        }
+
+    def grade_view(self) -> dict[str, Any]:
+        """Host/grade-only view including secret discovery fields."""
+        payload = self.public_view()
+        payload.update(
+            {
+                "harbor_imports": list(self.harbor_imports),
+                "grade_closure_install_specs": list(self.grade_closure_install_specs),
+                "unmapped_imports": list(self.unmapped_imports),
+                "plugin_policy": (
+                    {
+                        "disable_autoload": self.plugin_policy.disable_autoload,
+                        "allowlist": list(self.plugin_policy.allowlist),
+                    }
+                    if self.plugin_policy
+                    else None
+                ),
+            }
+        )
+        return payload
+
+
+def _public_install_specs(declared: DeclaredDeps) -> tuple[str, ...]:
+    specs: list[str] = []
+    for name in sorted(declared.package_names()):
+        spec = declared.pip_install_spec(name)
+        if spec:
+            specs.append(spec)
+    return tuple(specs)
+
+
+def discover_verifier_spec(
+    workspace: Path,
+    tests_dir: Path | None = None,
+    dockerfile: Path | None = None,
+) -> VerifierSpec:
+    """Discover public DeclaredDeps and optional grade-only Harbor import closure.
+
+    When ``tests_dir`` is None (agent image path), grade-only fields stay empty so
+    ``test.patch`` secrets are never ingested.
+
+    ``grade_closure_install_specs`` lists declared pin specs required by Harbor
+    imports (even when those pins are already in ``public_install_specs``). Grade
+    prep may reinstall them into ``/opt/malvin-verifier``; agent-image materialize
+    never runs those grade-only commands. Unmapped third-party imports are recorded
+    for probe handling and are never invented as unpinned PyPI installs.
+    """
+    workspace = workspace.resolve()
+    declared = declared_python_dependencies(workspace, dockerfile)
+    public_specs = _public_install_specs(declared)
+    harbor_imports = harbor_imports_from_tests_dir(tests_dir)
+    closure: list[str] = []
+    unmapped: list[str] = []
+    for import_name in harbor_imports:
+        dist = distribution_name_for_import(import_name)
+        spec = declared.pip_install_spec(dist)
+        if spec is None:
+            # Also try the raw import root (e.g. already hyphenated).
+            spec = declared.pip_install_spec(import_name)
+        if spec is None:
+            unmapped.append(import_name)
+            continue
+        # Harbor need-set from declared pins (may overlap public specs; grade-only apply).
+        if spec not in closure:
+            closure.append(spec)
+    test_sh = resolve_harbor_test_sh_body(tests_dir)
+    return VerifierSpec(
+        declared=declared,
+        public_install_specs=public_specs,
+        editable_segments=declared.editable_segments,
+        harbor_imports=harbor_imports,
+        grade_closure_install_specs=tuple(closure),
+        unmapped_imports=tuple(unmapped),
+        test_sh_body=test_sh,
+    )
+
+
+def verifier_venv_materialize_public_commands(spec: VerifierSpec) -> list[str]:
+    """Create ``/opt/malvin-verifier`` and install **public** DeclaredDeps only."""
+    pip_bin = _verifier_pip(spec)
+    commands = [
+        f"python3 -m venv {shlex.quote(spec.venv_path)}",
+        f"{shlex.quote(pip_bin)} install --upgrade pip setuptools wheel",
+    ]
+    if spec.public_install_specs:
+        pkgs = " ".join(shlex.quote(s) for s in spec.public_install_specs)
+        commands.append(
+            f"{shlex.quote(pip_bin)} install --no-cache-dir {pkgs}"
+        )
+    for segment in spec.editable_segments:
+        # Replay editable installs into the verifier venv with --no-deps (pin fidelity).
+        rewritten = _rewrite_pip_segment_python(segment, pip_bin)
+        if "--no-deps" not in rewritten:
+            rewritten += " --no-deps"
+        commands.append(rewritten)
+    return commands
+
+
+def _rewrite_pip_segment_python(segment: str, pip_bin: str) -> str:
+    """Point a Dockerfile pip segment at *pip_bin*."""
+    out = segment.strip()
+    replacements = (
+        ("python3 -m pip", pip_bin),
+        ("python -m pip", pip_bin),
+        ("pip3 ", f"{pip_bin} "),
+        ("pip ", f"{pip_bin} "),
+    )
+    for old, new in replacements:
+        if old in out:
+            return out.replace(old, new, 1)
+    if out.startswith(pip_bin):
+        return out
+    return f"{pip_bin} {out}" if not out.startswith("pip") else out.replace("pip", pip_bin, 1)
+
+
+def verifier_venv_apply_grade_closure_commands(spec: VerifierSpec) -> list[str]:
+    """Install grade-only closure specs into the verifier venv (requires ``/tests``)."""
+    if not spec.grade_closure_install_specs:
+        return []
+    pkgs = " ".join(shlex.quote(s) for s in spec.grade_closure_install_specs)
+    pip_bin = _verifier_pip(spec)
+    return [f"{shlex.quote(pip_bin)} install --no-cache-dir {pkgs}"]
+
+
+def _plugin_closure_probe_python() -> str:
+    return (
+        "import importlib.metadata, sys\n"
+        "ok, errors = [], []\n"
+        "eps = importlib.metadata.entry_points()\n"
+        "group = eps.select(group='pytest11') if hasattr(eps, 'select') else eps.get('pytest11', [])\n"
+        "for ep in group:\n"
+        "    try:\n"
+        "        ep.load()\n"
+        "        ok.append(ep.name)\n"
+        "    except Exception as exc:\n"
+        "        errors.append(f'{ep.name}: {type(exc).__name__}: {exc}')\n"
+        "print('PLUGIN_OK:' + ','.join(ok))\n"
+        "if errors:\n"
+        "    print('PLUGIN_CONFLICTS:' + '; '.join(errors))\n"
+        "    sys.exit(2)\n"
+        "sys.exit(0)\n"
+    )
+
+
+def _parse_plugin_probe_names(stdout: str, *, prefix: str) -> tuple[str, ...]:
+    """Parse ``PLUGIN_OK:a,b`` or conflict names from ``PLUGIN_CONFLICTS:name: Err; ...``."""
+    for line in (stdout or "").splitlines():
+        line = line.strip()
+        if not line.startswith(prefix):
+            continue
+        payload = line[len(prefix) :].strip()
+        if not payload:
+            return ()
+        if prefix.startswith("PLUGIN_CONFLICTS"):
+            names: list[str] = []
+            for part in payload.split(";"):
+                part = part.strip()
+                if not part:
+                    continue
+                names.append(part.split(":", 1)[0].strip())
+            return tuple(n for n in names if n)
+        return tuple(n for n in payload.split(",") if n.strip())
+    return ()
+
+
+def _materialize_harbor_probe_tree(tests_dir: Path | None, dest: Path) -> tuple[str, ...]:
+    """Write Harbor hidden ``.py`` sources from ``test.patch`` hunks into *dest*.
+
+    Prefer parse-added-hunks (plan Q6). *dest* must be outside ``/app`` so agent
+    remounts never see the files. Returns relative paths written.
+    """
+    if tests_dir is None:
+        return ()
+    written: list[str] = []
+    patch_path = tests_dir / "test.patch"
+    for rel, body in added_python_sources_from_patch(patch_path).items():
+        target = dest / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        text = body if body.endswith("\n") else body + "\n"
+        target.write_text(text, encoding="utf-8")
+        written.append(rel)
+    return tuple(written)
+
+
+def probe_verifier_env(
+    spec: VerifierSpec,
+    *,
+    workspace: Path,
+    task_id: str = "unknown",
+    dry_run: bool = False,
+    run_collect: bool = True,
+    tests_dir: Path | None = None,
+) -> tuple[bool, str | None, PluginPolicy | None]:
+    """Probe verifier venv collect/import + pytest plugin closure.
+
+    Returns ``(ok, error_message, plugin_policy)``. On plugin conflicts with declared
+    pins, returns a grade-subprocess-only ``PluginPolicy`` that disables autoload.
+    Does **not** run full Harbor ``test.sh`` (avoids reward / patch side effects).
+
+    When ``tests_dir`` is set, materializes ``test.patch`` Python hunks into a temp
+    tree outside ``/app`` before collect-only so Adaptix-class ImportErrors are not
+    masked by pre-apply missing paths.
+    """
+    python_bin = f"{spec.venv_path}/bin/python"
+    if dry_run:
+        return True, None, None
+    if not Path(python_bin).is_file():
+        return (
+            False,
+            format_prep_error(
+                task_id,
+                phase="verifier prep",
+                detail=(
+                    f"verifier venv missing at {spec.venv_path} "
+                    "(no system-Python fallback)"
+                ),
+            ),
+            None,
+        )
+
+    if spec.unmapped_imports:
+        # Q7: never invent unpinned PyPI installs; abort rather than silent drop.
+        return (
+            False,
+            format_prep_error(
+                task_id,
+                phase="verifier prep",
+                detail=(
+                    "unmapped Harbor imports (no DeclaredDeps pin): "
+                    + ", ".join(spec.unmapped_imports)
+                ),
+            ),
+            None,
+        )
+
+    policy: PluginPolicy | None = None
+    plugin_cmd = [python_bin, "-c", _plugin_closure_probe_python()]
+    plugin_proc = subprocess.run(
+        plugin_cmd,
+        cwd=str(workspace),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if plugin_proc.returncode == 2:
+        detail = (plugin_proc.stdout or plugin_proc.stderr or "").strip()
+        # Prefer disabling conflicting plugins for Harbor grade over upgrading pins.
+        # Re-enable plugins that loaded cleanly via allowlist (-p name) after autoload off.
+        allow = _parse_plugin_probe_names(plugin_proc.stdout or "", prefix="PLUGIN_OK:")
+        policy = PluginPolicy(disable_autoload=True, allowlist=allow)
+        # Re-check collect with policy applied below.
+    elif plugin_proc.returncode != 0:
+        detail = (plugin_proc.stderr or plugin_proc.stdout or "plugin probe failed").strip()
+        return (
+            False,
+            format_prep_error(task_id, phase="verifier prep", detail=detail),
+            None,
+        )
+
+    if run_collect:
+        collect_cmd = collect_only_pytest_command(python_bin, spec.test_sh_body)
+        env = verifier_grade_subprocess_env(spec, plugin_policy=policy)
+        # Materialize hidden tests outside /app (never leave them in the agent workspace).
+        with tempfile.TemporaryDirectory(prefix="malvin-verifier-probe-") as tmp:
+            probe_root = Path(tmp)
+            written = _materialize_harbor_probe_tree(tests_dir, probe_root)
+            collect_cwd = probe_root if written else workspace
+            collect_proc = subprocess.run(
+                ["bash", "-lc", collect_cmd],
+                cwd=str(collect_cwd),
+                text=True,
+                capture_output=True,
+                check=False,
+                env=env,
+            )
+            if collect_proc.returncode != 0:
+                err = (collect_proc.stderr or collect_proc.stdout or "").strip()
+                if "ModuleNotFoundError" in err or "ImportError" in err:
+                    return (
+                        False,
+                        format_prep_error(
+                            task_id, phase="verifier prep", detail=err[:800]
+                        ),
+                        policy,
+                    )
+                # Missing collect paths only soft-succeed when we could not materialize
+                # them from Harbor ``test.patch`` (true pre-apply gap). If we wrote the
+                # hunks and collect still cannot find them, fail closed.
+                err_l = err.lower()
+                missing_path = (
+                    "file or directory not found" in err_l
+                    or "no such file or directory" in err_l
+                )
+                if missing_path and not written:
+                    return True, None, policy
+                if missing_path and written:
+                    return (
+                        False,
+                        format_prep_error(
+                            task_id,
+                            phase="verifier prep",
+                            detail=(
+                                "collect-only missing path after materializing "
+                                f"test.patch hunks ({', '.join(written)}): {err[:600]}"
+                            ),
+                        ),
+                        policy,
+                    )
+                # Fail closed: plugin policy alone does not green-light a failed collect.
+                # Policy is still returned so callers can inspect it, but ok=False.
+                return (
+                    False,
+                    format_prep_error(
+                        task_id, phase="verifier prep", detail=err[:800]
+                    ),
+                    policy,
+                )
+    return True, None, policy
+
+
+def verifier_grade_subprocess_env(
+    spec: VerifierSpec,
+    *,
+    base_env: dict[str, str] | None = None,
+    plugin_policy: PluginPolicy | None = None,
+) -> dict[str, str]:
+    """Subprocess env for Harbor ``test.sh`` inside ``/opt/malvin-verifier`` only."""
+    env = dict(base_env) if base_env is not None else os.environ.copy()
+    env["VIRTUAL_ENV"] = spec.venv_path
+    env["PATH"] = f"{spec.venv_path}/bin:" + env.get("PATH", "")
+    policy = plugin_policy if plugin_policy is not None else spec.plugin_policy
+    if policy is not None:
+        policy_env = policy.as_env()
+        added_opts = policy_env.pop("PYTEST_ADDOPTS", None)
+        env.update(policy_env)
+        if added_opts:
+            env["PYTEST_ADDOPTS"] = _merge_pytest_addopts(
+                env.get("PYTEST_ADDOPTS"), added_opts
+            )
+    return env
+
+
+@dataclass
+class VerifierPrepResult:
+    ok: bool
+    error: str | None = None
+    spec: VerifierSpec | None = None
+    plugin_policy: PluginPolicy | None = None
+    public_venv_present: bool = False
+
+    def as_dict(self) -> dict[str, Any]:
+        """Agent-safe status only (no rich grade-only VerifierSpec fields)."""
+        return {
+            "ok": self.ok,
+            "error": self.error,
+            "public_venv_present": self.public_venv_present,
+            "venv_path": VERIFIER_VENV_PATH,
+        }
+
+
+def prepare_verifier_grade(
+    workspace: Path,
+    *,
+    tests_dir: Path | None,
+    dockerfile: Path | None = None,
+    task_id: str = "unknown",
+    dry_run: bool = False,
+) -> VerifierPrepResult:
+    """Grade-only prep: apply ``test.patch`` closure + probe. Not for pre-agent path."""
+    if tests_dir is None or not tests_dir.exists():
+        return VerifierPrepResult(
+            ok=False,
+            error=format_prep_error(
+                task_id,
+                phase="verifier prep",
+                detail="tests_dir missing for grade prep",
+            ),
+        )
+    spec = discover_verifier_spec(workspace, tests_dir=tests_dir, dockerfile=dockerfile)
+    public_present = Path(f"{spec.venv_path}/bin/python").is_file()
+    if dry_run:
+        return VerifierPrepResult(
+            ok=True, spec=spec, public_venv_present=public_present
+        )
+    # Local Docker grade uses the Harbor base image (no Modal bake). Materialize
+    # the public verifier venv here when missing so grade never falls back to
+    # system Python.
+    if not public_present:
+        for command in verifier_venv_materialize_public_commands(spec):
+            code, detail, _timed_out = _run_shell(command, workspace)
+            if code != 0:
+                return VerifierPrepResult(
+                    ok=False,
+                    error=format_prep_error(
+                        task_id,
+                        phase="verifier prep",
+                        detail=detail or f"public venv materialize failed: {command}",
+                    ),
+                    spec=spec,
+                    public_venv_present=False,
+                )
+        public_present = Path(f"{spec.venv_path}/bin/python").is_file()
+        if not public_present:
+            return VerifierPrepResult(
+                ok=False,
+                error=format_prep_error(
+                    task_id,
+                    phase="verifier prep",
+                    detail=f"verifier venv missing after materialize at {spec.venv_path}",
+                ),
+                spec=spec,
+                public_venv_present=False,
+            )
+    for command in verifier_venv_apply_grade_closure_commands(spec):
+        code, detail, _timed_out = _run_shell(command, workspace)
+        if code != 0:
+            return VerifierPrepResult(
+                ok=False,
+                error=format_prep_error(
+                    task_id,
+                    phase="verifier prep",
+                    detail=detail or f"closure install failed: {command}",
+                ),
+                spec=spec,
+                public_venv_present=public_present,
+            )
+    ok, err, policy = probe_verifier_env(
+        spec,
+        workspace=workspace,
+        tests_dir=tests_dir,
+        task_id=task_id,
+        dry_run=False,
+    )
+    if not ok:
+        return VerifierPrepResult(
+            ok=False,
+            error=err,
+            spec=spec,
+            plugin_policy=policy,
+            public_venv_present=public_present,
+        )
+    final_spec = VerifierSpec(
+        declared=spec.declared,
+        public_install_specs=spec.public_install_specs,
+        editable_segments=spec.editable_segments,
+        harbor_imports=spec.harbor_imports,
+        grade_closure_install_specs=spec.grade_closure_install_specs,
+        unmapped_imports=spec.unmapped_imports,
+        test_sh_body=spec.test_sh_body,
+        plugin_policy=policy,
+        venv_path=spec.venv_path,
+    )
+    return VerifierPrepResult(
+        ok=True,
+        spec=final_spec,
+        plugin_policy=policy,
+        public_venv_present=public_present,
+    )
+
+
 # PyPI distribution names whose importable module differs from ``name.replace("-", "_")``.
 _PACKAGE_PROBE_IMPORT_ALIASES: dict[str, str] = {
     "phonenumberslite": "phonenumbers",
@@ -941,14 +1484,16 @@ def _pydantic_v1_eviction_command() -> str:
 
 
 _LINT_GATE_TOOLS = ("ruff", "mypy", "pre-commit")
+_TOX_RUNNER_TOOLS = ("tox", "invoke")
+_TOX_VARS_RE = re.compile(r"\{\[vars\]([^\}]+)\}")
 
 
-def tox_lint_section_text(tox_text: str) -> str | None:
-    """Return the body of ``[testenv:lint]`` from a ``tox.ini`` string."""
+def _tox_ini_section_text(tox_text: str, header: str) -> str | None:
+    """Return the body of a tox.ini section named *header* (e.g. ``[vars]``)."""
     lines = tox_text.splitlines()
     start: int | None = None
     for index, line in enumerate(lines):
-        if line.strip() == "[testenv:lint]":
+        if line.strip() == header:
             start = index + 1
             break
     if start is None:
@@ -962,14 +1507,49 @@ def tox_lint_section_text(tox_text: str) -> str | None:
     return "\n".join(section_lines) if section_lines else ""
 
 
+def tox_lint_section_text(tox_text: str) -> str | None:
+    """Return the body of ``[testenv:lint]`` from a ``tox.ini`` string."""
+    return _tox_ini_section_text(tox_text, "[testenv:lint]")
+
+
+def tox_ini_vars(tox_text: str) -> dict[str, str]:
+    """Parse ``[vars]`` substitutions from a tox.ini string."""
+    section = _tox_ini_section_text(tox_text, "[vars]")
+    if section is None:
+        return {}
+    vars_map: dict[str, str] = {}
+    for raw in section.splitlines():
+        stripped = raw.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        vars_map[key.strip()] = value.strip()
+    return vars_map
+
+
+def expand_tox_vars(command: str, vars_map: dict[str, str]) -> str:
+    """Replace ``{[vars]name}`` placeholders using *vars_map*."""
+
+    def _replace(match: re.Match[str]) -> str:
+        return vars_map.get(match.group(1).strip(), match.group(0))
+
+    return _TOX_VARS_RE.sub(_replace, command)
+
+
+def workspace_has_justfile(workspace: Path) -> bool:
+    return (workspace / "justfile").is_file() or (workspace / "Justfile").is_file()
+
+
 def tox_lint_check_commands(workspace: Path) -> list[str]:
-    """Return ``commands`` from ``[testenv:lint]`` when present."""
+    """Return ``commands`` from ``[testenv:lint]`` when present (tox vars expanded)."""
     tox_path = workspace / "tox.ini"
     if not tox_path.is_file():
         return []
-    section = tox_lint_section_text(tox_path.read_text(encoding="utf-8"))
+    tox_text = tox_path.read_text(encoding="utf-8")
+    section = tox_lint_section_text(tox_text)
     if section is None:
         return []
+    vars_map = tox_ini_vars(tox_text)
     commands: list[str] = []
     in_commands = False
     for raw in section.splitlines():
@@ -985,7 +1565,7 @@ def tox_lint_check_commands(workspace: Path) -> list[str]:
                 in_commands = False
                 continue
             if stripped:
-                commands.append(stripped)
+                commands.append(expand_tox_vars(stripped, vars_map))
     return commands
 
 
@@ -1002,6 +1582,69 @@ def lint_gate_tool_pins(workspace: Path) -> dict[str, str]:
         if tools:
             return tools
     return {}
+
+
+def tox_runner_tool_pins(workspace: Path) -> dict[str, str]:
+    """Return pinned tox/invoke versions from workspace requirements, if any."""
+    candidates = (
+        workspace / "requirements" / "runner.txt",
+        workspace / "requirements" / "dev.txt",
+        workspace / "requirements" / "raw" / "runner.txt",
+    )
+    for path in candidates:
+        pins = _pins_from_requirements_file(path)
+        tools = {name: pins[name] for name in _TOX_RUNNER_TOOLS if name in pins}
+        if tools:
+            return tools
+    return {}
+
+
+def just_install_command(workspace: Path) -> str | None:
+    """Install the ``just`` binary when the workspace has a justfile.
+
+    Prefers a prebuilt GitHub release tarball over ``cargo install`` so image
+    builds do not recompile the Rust crate on every warm layer.
+    """
+    if not workspace_has_justfile(workspace):
+        return None
+    # Keep the URL pinned; bump intentionally when upgrading just.
+    just_version = "1.40.0"
+    archive = f"just-{just_version}-x86_64-unknown-linux-musl.tar.gz"
+    url = (
+        "https://github.com/casey/just/releases/download/"
+        f"{just_version}/{archive}"
+    )
+    return (
+        "command -v just >/dev/null 2>&1 || "
+        f"(curl -fsSL {shlex.quote(url)} -o /tmp/just.tgz && "
+        "tar -xzf /tmp/just.tgz -C /usr/local/bin just && "
+        "chmod +x /usr/local/bin/just && rm -f /tmp/just.tgz)"
+    )
+
+
+def tox_runner_install_command(workspace: Path) -> str | None:
+    """Install tox/invoke when the workspace uses tox or just recipes that call them."""
+    needs_tox = (workspace / "tox.ini").is_file() or workspace_has_justfile(workspace)
+    if not needs_tox:
+        return None
+    pins = tox_runner_tool_pins(workspace)
+    if pins:
+        args = " ".join(
+            shlex.quote(f"{name}=={version}") for name, version in sorted(pins.items())
+        )
+    else:
+        args = "tox"
+    return (
+        "command -v tox >/dev/null 2>&1 || "
+        f"python3 -m pip install --no-cache-dir {args}"
+    )
+
+
+def tox_lint_env_warm_command(workspace: Path) -> str | None:
+    """Pre-create the tox lint env at image build so offline ``just lint`` / ``tox -e lint`` work."""
+    if not tox_lint_check_commands(workspace):
+        return None
+    return "tox -e lint --notest"
 
 
 def workspace_lint_tool_install_command(workspace: Path) -> str | None:
@@ -1162,9 +1805,36 @@ def uv_offline_smoke_commands(workspace: Path) -> list[str]:
     return commands
 
 
-def workspace_image_warm_commands(workspace: Path) -> list[str]:
+def workspace_declared_repin_command(
+    workspace: Path,
+    dockerfile: Path | None = None,
+) -> str | None:
+    """Force-reinstall declared bulk pins after warm pip installs that may clobber them.
+
+    Example: installing tox upgrades ``packaging``, which then fails the mandatory probe
+    against Adaptix's ``packaging==24.2`` pin.
+    """
+    if dockerfile is None or not dockerfile.is_file():
+        return None
+    declared = declared_python_dependencies(workspace.resolve(), dockerfile)
+    if not declared.bulk_pins:
+        return None
+    pkg_args = [f"'{name}=={ver}'" for name, ver in sorted(declared.bulk_pins.items())]
+    return "pip install --no-cache-dir --force-reinstall " + " ".join(pkg_args)
+
+
+def workspace_image_warm_commands(
+    workspace: Path,
+    dockerfile: Path | None = None,
+) -> list[str]:
     """Shell commands to warm offline agent quality gates at Modal image build."""
     commands: list[str] = []
+    just_install = just_install_command(workspace)
+    if just_install:
+        commands.append(just_install)
+    tox_runner = tox_runner_install_command(workspace)
+    if tox_runner:
+        commands.append(tox_runner)
     lint_install = workspace_lint_tool_install_command(workspace)
     if lint_install:
         commands.append(lint_install)
@@ -1179,6 +1849,13 @@ def workspace_image_warm_commands(workspace: Path) -> list[str]:
         commands.append(editable)
     precommit_cmds = precommit_warm_script_commands(workspace)
     commands.extend(precommit_cmds)
+    tox_lint_env = tox_lint_env_warm_command(workspace)
+    if tox_lint_env:
+        commands.append(tox_lint_env)
+    # Tox/lint pip installs can upgrade transitive pins (e.g. packaging); restore declared pins.
+    repin = workspace_declared_repin_command(workspace, dockerfile)
+    if repin:
+        commands.append(repin)
     smoke = uv_offline_smoke_commands(workspace)
     if smoke and build_system:
         # ``uv sync --offline`` reconciles the venv to the lockfile and drops
@@ -1442,16 +2119,48 @@ def _test_tox_lint_check_commands() -> None:
         root = Path(tmp)
         assert tox_lint_check_commands(root) == []
         (root / "tox.ini").write_text(
+            "[vars]\n"
+            "lint_all = src/ tests/\n"
+            "lint_mypy = src/\n"
             "[testenv:lint]\n"
             "commands =\n"
-            "  ruff check src/ --fix\n"
-            "  mypy src/\n",
+            "  ruff check {[vars]lint_all} --fix\n"
+            "  mypy {[vars]lint_mypy}\n",
             encoding="utf-8",
         )
         assert tox_lint_check_commands(root) == [
-            "ruff check src/ --fix",
+            "ruff check src/ tests/ --fix",
             "mypy src/",
         ]
+
+
+def _test_just_and_tox_runner_install_commands() -> None:
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        assert just_install_command(root) is None
+        assert tox_runner_install_command(root) is None
+        (root / "justfile").write_text("lint:\n    tox -e lint\n", encoding="utf-8")
+        just_cmd = just_install_command(root)
+        assert just_cmd is not None
+        assert "github.com/casey/just/releases" in just_cmd
+        assert "cargo install just" not in just_cmd
+        tox_cmd = tox_runner_install_command(root)
+        assert tox_cmd is not None
+        assert "tox" in tox_cmd
+        req_dir = root / "requirements"
+        req_dir.mkdir()
+        (req_dir / "runner.txt").write_text("tox==4.23.2\ninvoke==2.2.0\n", encoding="utf-8")
+        pinned = tox_runner_install_command(root)
+        assert pinned is not None
+        assert "tox==4.23.2" in pinned
+        assert "invoke==2.2.0" in pinned
+        (root / "tox.ini").write_text(
+            "[testenv:lint]\ncommands =\n  ruff check src/\n",
+            encoding="utf-8",
+        )
+        assert tox_lint_env_warm_command(root) == "tox -e lint --notest"
 
 
 def _test_workspace_lint_tool_install_command() -> None:
@@ -1609,6 +2318,29 @@ def _test_uv_offline_smoke_commands() -> None:
         assert smoke[1] == "UV_OFFLINE=1 UV_NO_SYNC=1 uv run ruff check"
 
 
+def _test_workspace_declared_repin_command() -> None:
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        assert workspace_declared_repin_command(root) is None
+        dockerfile = root / "Dockerfile"
+        dockerfile.write_text(
+            "RUN pip install -r requirements/test_extra_new.txt\n",
+            encoding="utf-8",
+        )
+        req_dir = root / "requirements"
+        req_dir.mkdir()
+        (req_dir / "test_extra_new.txt").write_text(
+            "packaging==24.2\npydantic==2.10.3\n",
+            encoding="utf-8",
+        )
+        cmd = workspace_declared_repin_command(root, dockerfile)
+        assert cmd is not None
+        assert "packaging==24.2" in cmd
+        assert "pydantic==2.10.3" in cmd
+
+
 def _test_workspace_image_warm_commands() -> None:
     import tempfile
 
@@ -1628,9 +2360,14 @@ def _test_workspace_image_warm_commands() -> None:
             encoding="utf-8",
         )
         lint_warm = workspace_image_warm_commands(root)
-        assert lint_warm[0].startswith("python3 -m pip install --no-cache-dir")
-        assert "ruff==0.9.1" in lint_warm[0]
-        assert len(lint_warm) == 3
+        assert any("tox" in cmd for cmd in lint_warm)
+        assert any("ruff==0.9.1" in cmd for cmd in lint_warm)
+        assert any(cmd == "tox -e lint --notest" for cmd in lint_warm)
+        assert len(lint_warm) == 5
+        (root / "justfile").write_text("lint:\n    tox -e lint\n", encoding="utf-8")
+        with_just = workspace_image_warm_commands(root)
+        assert any("github.com/casey/just/releases" in cmd for cmd in with_just)
+        assert len(with_just) == 6
         (root / "uv.lock").write_text("# lock\n", encoding="utf-8")
         (root / "pyproject.toml").write_text(
             '[project]\nname = "demo"\nversion = "0.1.0"\n'
@@ -1640,7 +2377,9 @@ def _test_workspace_image_warm_commands() -> None:
         )
         cmds = workspace_image_warm_commands(root)
         precommit_script = precommit_warm_script_commands(root)
-        assert cmds == [
+        assert cmds[0] == just_install_command(root)
+        assert "tox" in cmds[1]
+        assert cmds[2:5] == [
             f"{_UV_BOOTSTRAP_SHELL} && uv sync --group dev",
             (
                 f"{_UV_BOOTSTRAP_SHELL} && uv pip install --python {_UV_PROJECT_VENV} "
@@ -1650,14 +2389,10 @@ def _test_workspace_image_warm_commands() -> None:
                 f"{_UV_BOOTSTRAP_SHELL} && uv pip install --python {_UV_PROJECT_VENV} "
                 "-e . --no-build-isolation"
             ),
-            *precommit_script,
-            "UV_OFFLINE=1 UV_NO_SYNC=1 uv sync --offline --group dev",
-            (
-                f"{_UV_BOOTSTRAP_SHELL} && uv pip install --python {_UV_PROJECT_VENV} "
-                f"{shlex.quote('setuptools>=69.2')}"
-            ),
-            "UV_OFFLINE=1 UV_NO_SYNC=1 uv run ruff check",
         ]
+        assert cmds[5:7] == precommit_script
+        assert "tox -e lint --notest" in cmds
+        assert "UV_OFFLINE=1 UV_NO_SYNC=1 uv run ruff check" in cmds[-1]
 
 
 def _test_registry_image_cache_bust_commands() -> None:
@@ -2055,6 +2790,946 @@ def _test_dockerfile_bulk_pip_commands_fastapi() -> None:
     assert all('-e "' not in cmd for cmd in bulk)
 
 
+def _fixture_verifier_adaptix() -> Path:
+    return Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "verifier_adaptix"
+
+
+def _test_discover_verifier_spec_public_vs_grade() -> None:
+    fixture = _fixture_verifier_adaptix()
+    workspace = fixture / "workspace"
+    tests_dir = fixture / "tests"
+    dockerfile = fixture / "environment" / "Dockerfile"
+    public = discover_verifier_spec(workspace, tests_dir=None, dockerfile=dockerfile)
+    assert public.harbor_imports == ()
+    assert public.grade_closure_install_specs == ()
+    assert "typing-extensions==4.12.2" in public.public_install_specs or any(
+        s.startswith("typing-extensions") for s in public.public_install_specs
+    )
+    # Public layer is DeclaredDeps only — never Harbor patch secret tokens.
+    public_joined = " ".join(public.public_install_specs)
+    assert "NoExtraItems" not in public_joined
+    assert "test_aliases" not in public_joined
+    assert "test.patch" not in public_joined
+    # Declared pins include typeguard from requirements; public specs may list it.
+    grade = discover_verifier_spec(workspace, tests_dir=tests_dir, dockerfile=dockerfile)
+    assert "pytest" in grade.harbor_imports
+    assert "typeguard" in grade.harbor_imports
+    assert "typing_extensions" in grade.harbor_imports
+    assert "os" not in grade.harbor_imports
+    view = public.public_view()
+    assert "harbor_imports" not in view
+    assert "grade_closure_install_specs" not in view
+
+
+def _test_verifier_venv_materialize_public_no_patch_only_names() -> None:
+    fixture = _fixture_verifier_adaptix()
+    workspace = fixture / "workspace"
+    tests_dir = fixture / "tests"
+    dockerfile = fixture / "environment" / "Dockerfile"
+    # Invent a patch-only import absent from declared pins.
+    grade = discover_verifier_spec(workspace, tests_dir=tests_dir, dockerfile=dockerfile)
+    public = discover_verifier_spec(workspace, tests_dir=None, dockerfile=dockerfile)
+    cmds = verifier_venv_materialize_public_commands(public)
+    joined = "\n".join(cmds)
+    assert VERIFIER_VENV_PATH in joined
+    assert "venv" in joined
+    # Public install line(s) may only mention public DeclaredDeps pins.
+    public_names = {
+        s.split("==", 1)[0].split("[", 1)[0].lower() for s in public.public_install_specs
+    }
+    for line in cmds:
+        if "install" not in line or "--upgrade" in line or " -e " in f" {line} ":
+            continue
+        for token in line.split():
+            if "==" not in token:
+                continue
+            pkg = token.split("==", 1)[0].split("[", 1)[0].lower()
+            assert pkg in public_names, (pkg, public_names, line)
+    for secret_name in ("NoExtraItems", "test_aliases", "test.patch"):
+        assert secret_name not in joined
+    # Unmapped names must not be invented as bare pip installs on public path.
+    for name in grade.unmapped_imports:
+        assert f" {name} " not in f" {joined} "
+        assert f"/{name}" not in joined
+        assert not any(
+            tok == name or tok.startswith(f"{name}==") for tok in joined.split()
+        )
+
+
+def _test_verifier_grade_closure_commands_include_mapped() -> None:
+    fixture = _fixture_verifier_adaptix()
+    grade = discover_verifier_spec(
+        fixture / "workspace",
+        tests_dir=fixture / "tests",
+        dockerfile=fixture / "environment" / "Dockerfile",
+    )
+    # Declared-mapped Harbor imports must appear in grade-only closure commands.
+    assert grade.grade_closure_install_specs, grade.harbor_imports
+    closure_cmds = verifier_venv_apply_grade_closure_commands(grade)
+    assert closure_cmds, grade.grade_closure_install_specs
+    joined = "\n".join(closure_cmds)
+    assert "typeguard" in joined or any(
+        "typeguard" in s for s in grade.grade_closure_install_specs
+    )
+    assert "typing-extensions" in joined or any(
+        "typing-extensions" in s for s in grade.grade_closure_install_specs
+    )
+    public_cmds = "\n".join(verifier_venv_materialize_public_commands(grade))
+    assert "typing-extensions" in public_cmds or any(
+        "typing-extensions" in s for s in grade.public_install_specs
+    )
+    assert "harbor_imports" not in public_cmds
+    assert "PLUGIN_CONFLICTS" not in public_cmds
+
+
+def _test_probe_verifier_env_plugin_conflict_reports_verifier_prep() -> None:
+    """Missing verifier venv fails closed (no system-Python fallback)."""
+    import tempfile
+
+    declared = DeclaredDeps(
+        bulk_pins={"typing-extensions": "4.12.2"},
+        constraints={},
+        editable_segments=(),
+        lockfile_pins={},
+    )
+    spec = VerifierSpec(
+        declared=declared,
+        public_install_specs=("typing-extensions==4.12.2",),
+        editable_segments=(),
+        harbor_imports=("typeguard",),
+        test_sh_body="python -m pytest -q\n",
+        venv_path="/tmp/malvin-verifier-does-not-exist",
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        ok, err, policy = probe_verifier_env(
+            spec,
+            workspace=Path(tmp),
+            task_id="fixture-adaptix",
+            dry_run=False,
+            run_collect=False,
+        )
+    assert ok is False
+    assert err is not None
+    assert "verifier prep" in err
+    assert "missing" in err.lower() or "no system-python" in err.lower()
+    assert policy is None
+
+
+def _test_prepare_verifier_grade_materialize_when_missing() -> None:
+    """Missing ``/opt/malvin-verifier``: materialize before probe; fail closed if absent."""
+    import sys
+    import tempfile
+    from unittest.mock import patch
+
+    fixture = _fixture_verifier_adaptix()
+    workspace = fixture / "workspace"
+    tests_dir = fixture / "tests"
+    dockerfile = fixture / "environment" / "Dockerfile"
+    mod = sys.modules[__name__]
+    real_discover = discover_verifier_spec
+
+    with tempfile.TemporaryDirectory() as tmp:
+        venv_path = Path(tmp) / "malvin-verifier"
+        calls: list[str] = []
+
+        def discover_with_tmp_venv(
+            ws: Path,
+            tests_dir: Path | None = None,
+            dockerfile: Path | None = None,
+        ) -> VerifierSpec:
+            spec = real_discover(ws, tests_dir=tests_dir, dockerfile=dockerfile)
+            return VerifierSpec(
+                declared=spec.declared,
+                public_install_specs=spec.public_install_specs,
+                editable_segments=spec.editable_segments,
+                harbor_imports=spec.harbor_imports,
+                grade_closure_install_specs=spec.grade_closure_install_specs,
+                unmapped_imports=spec.unmapped_imports,
+                test_sh_body=spec.test_sh_body,
+                plugin_policy=spec.plugin_policy,
+                venv_path=str(venv_path),
+            )
+
+        def shell_ok_no_create(
+            command: str, _workspace: Path, timeout_sec: float | None = None
+        ) -> tuple[int, str, bool]:
+            del timeout_sec
+            calls.append(command)
+            return 0, "", False
+
+        with (
+            patch.object(mod, "discover_verifier_spec", side_effect=discover_with_tmp_venv),
+            patch.object(mod, "_run_shell", side_effect=shell_ok_no_create),
+            patch.object(mod, "probe_verifier_env") as probe,
+        ):
+            result = prepare_verifier_grade(
+                workspace,
+                tests_dir=tests_dir,
+                dockerfile=dockerfile,
+                task_id="mat-missing",
+            )
+            probe.assert_not_called()
+        assert result.ok is False
+        assert result.error is not None
+        assert "verifier prep" in result.error
+        assert "missing" in result.error.lower()
+        assert calls, "expected public materialize commands when venv absent"
+        assert any(str(venv_path) in c for c in calls)
+        assert not (venv_path / "bin" / "python").is_file()
+
+        calls.clear()
+
+        def shell_fail(
+            command: str, _workspace: Path, timeout_sec: float | None = None
+        ) -> tuple[int, str, bool]:
+            del timeout_sec
+            calls.append(command)
+            return 1, "venv create failed", False
+
+        with (
+            patch.object(mod, "discover_verifier_spec", side_effect=discover_with_tmp_venv),
+            patch.object(mod, "_run_shell", side_effect=shell_fail),
+            patch.object(mod, "probe_verifier_env") as probe,
+        ):
+            result = prepare_verifier_grade(
+                workspace,
+                tests_dir=tests_dir,
+                dockerfile=dockerfile,
+                task_id="mat-fail",
+            )
+            probe.assert_not_called()
+        assert result.ok is False
+        assert result.error is not None
+        assert "verifier prep" in result.error
+        assert calls, "expected materialize attempt before fail-closed"
+
+
+def _test_probe_verifier_env_unmapped_imports_fail_closed() -> None:
+    """Q7: unmapped Harbor imports abort at verifier prep (no invented PyPI pins)."""
+    import tempfile
+
+    declared = DeclaredDeps(
+        bulk_pins={"pytest": "8.0.0"},
+        constraints={},
+        editable_segments=(),
+        lockfile_pins={},
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        venv = root / "venv"
+        subprocess.run(
+            [sys.executable, "-m", "venv", str(venv)],
+            check=True,
+            capture_output=True,
+        )
+        spec = VerifierSpec(
+            declared=declared,
+            public_install_specs=("pytest==8.0.0",),
+            editable_segments=(),
+            unmapped_imports=("only_in_patch",),
+            test_sh_body="python -m pytest -q\n",
+            venv_path=str(venv),
+        )
+        ok, err, _policy = probe_verifier_env(
+            spec,
+            workspace=root,
+            task_id="unmapped",
+            dry_run=False,
+            run_collect=False,
+        )
+    assert ok is False
+    assert err is not None
+    assert "verifier prep" in err
+    assert "only_in_patch" in err
+
+
+def _test_prepare_task_sandbox_does_not_call_probe_verifier() -> None:
+    import inspect
+
+    source = inspect.getsource(prepare_task_sandbox)
+    assert "probe_verifier_env" not in source
+    assert "prepare_verifier_grade" not in source
+    assert "discover_verifier_spec" not in source
+
+
+def _test_probe_verifier_env_missing_collect_path_does_not_abort() -> None:
+    """Collect-only against paths absent from disk *and* ``test.patch`` must not abort."""
+    declared = DeclaredDeps(
+        bulk_pins={"pytest": "8.0.0"},
+        constraints={},
+        editable_segments=(),
+        lockfile_pins={},
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        venv = root / "venv"
+        subprocess.run(
+            [sys.executable, "-m", "venv", str(venv)],
+            check=True,
+            capture_output=True,
+        )
+        pip = venv / "bin" / "pip"
+        subprocess.run(
+            [str(pip), "install", "--no-cache-dir", "pytest==8.0.0"],
+            check=True,
+            capture_output=True,
+        )
+        spec = VerifierSpec(
+            declared=declared,
+            public_install_specs=("pytest==8.0.0",),
+            editable_segments=(),
+            test_sh_body="python -m pytest tests/missing_hidden_from_patch.py -q\n",
+            venv_path=str(venv),
+        )
+        ok, err, _policy = probe_verifier_env(
+            spec,
+            workspace=root,
+            task_id="probe-missing-path",
+            dry_run=False,
+            run_collect=True,
+            tests_dir=None,
+        )
+    assert ok is True, err
+    assert err is None
+
+
+def _test_probe_plugin_conflict_failed_collect_aborts() -> None:
+    """PLUGIN_CONFLICTS must not soft-succeed when collect-only still fails."""
+    from unittest.mock import MagicMock, patch
+
+    declared = DeclaredDeps(
+        bulk_pins={"pytest": "8.0.0"},
+        constraints={},
+        editable_segments=(),
+        lockfile_pins={},
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        venv = root / "malvin-verifier"
+        subprocess.run(
+            [sys.executable, "-m", "venv", str(venv)],
+            check=True,
+            capture_output=True,
+        )
+        spec = VerifierSpec(
+            declared=declared,
+            public_install_specs=("pytest==8.0.0",),
+            editable_segments=(),
+            test_sh_body="python -m pytest tests/test_aliases.py -q\n",
+            venv_path=str(venv),
+        )
+        plugin_out = MagicMock(
+            returncode=2,
+            stdout=(
+                "PLUGIN_OK:\n"
+                "PLUGIN_CONFLICTS:typeguard: ImportError: NoExtraItems\n"
+            ),
+            stderr="",
+        )
+        collect_out = MagicMock(
+            returncode=1,
+            stdout="",
+            stderr="INTERNALERROR> collection failed for unknown reason\n",
+        )
+
+        def fake_run(cmd, **kwargs):  # type: ignore[no-untyped-def]
+            if isinstance(cmd, list) and len(cmd) >= 3 and cmd[1] == "-c":
+                return plugin_out
+            return collect_out
+
+        with patch("subprocess.run", side_effect=fake_run):
+            ok, err, policy = probe_verifier_env(
+                spec,
+                workspace=root,
+                task_id="plugin-softpass",
+                dry_run=False,
+                run_collect=True,
+                tests_dir=None,
+            )
+    assert ok is False, "plugin conflict + failed collect must fail closed"
+    assert err is not None and "verifier prep" in err
+    assert "INTERNALERROR" in err or "collection failed" in err
+    assert policy is not None
+    assert policy.disable_autoload is True
+
+
+def _test_modified_hunk_context_imports_in_verifier_spec() -> None:
+    """Modified test.patch hunks must surface context-line third-party imports."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        workspace = root / "workspace"
+        workspace.mkdir()
+        (workspace / "pyproject.toml").write_text(
+            "[project]\nname='x'\nversion='0'\n"
+            "dependencies=['only-in-context-pkg==1.0.0']\n",
+            encoding="utf-8",
+        )
+        tests = root / "tests"
+        tests.mkdir()
+        (tests / "test.patch").write_text(
+            "diff --git a/tests/test_mod.py b/tests/test_mod.py\n"
+            "--- a/tests/test_mod.py\n"
+            "+++ b/tests/test_mod.py\n"
+            "@@ -1,3 +1,5 @@\n"
+            " import only_in_context_pkg\n"
+            " def test_a():\n"
+            "     assert True\n"
+            "+def test_b():\n"
+            "+    assert True\n",
+            encoding="utf-8",
+        )
+        (tests / "test.sh").write_text(
+            "#!/bin/bash\npython -m pytest tests/test_mod.py -q\n",
+            encoding="utf-8",
+        )
+        grade = discover_verifier_spec(workspace, tests_dir=tests, dockerfile=None)
+        public = discover_verifier_spec(workspace, tests_dir=None, dockerfile=None)
+    assert "only_in_context_pkg" in grade.harbor_imports
+    assert "only_in_context_pkg" not in public.harbor_imports
+    assert any("only-in-context-pkg" in s for s in grade.grade_closure_install_specs)
+    assert "only_in_context_pkg" in grade.grade_view()["harbor_imports"]
+    assert "harbor_imports" not in grade.public_view()
+    assert "unmapped_imports" not in grade.public_view()
+
+
+def _test_adaptix_prepatch_materialize_catches_importerror() -> None:
+    """Production Harbor timing: no test file on disk; patch hunks must fail prep."""
+    fixture = _fixture_verifier_adaptix()
+    dockerfile = fixture / "environment" / "Dockerfile"
+    tests_dir = fixture / "tests"
+    grade = discover_verifier_spec(
+        fixture / "workspace",
+        tests_dir=tests_dir,
+        dockerfile=dockerfile,
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        venv = root / "malvin-verifier"
+        workspace = root / "app"
+        workspace.mkdir()
+        # Intentionally do NOT write tests/test_aliases.py into workspace (pre-patch).
+        subprocess.run(
+            [sys.executable, "-m", "venv", str(venv)],
+            check=True,
+            capture_output=True,
+        )
+        pip = venv / "bin" / "pip"
+        install = subprocess.run(
+            [
+                str(pip),
+                "install",
+                "--no-cache-dir",
+                "typing-extensions==4.12.2",
+                "typeguard==4.4.1",
+                "pytest==8.3.4",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert install.returncode == 0, install.stderr
+        conflict_spec = VerifierSpec(
+            declared=grade.declared,
+            public_install_specs=grade.public_install_specs,
+            editable_segments=(),
+            harbor_imports=grade.harbor_imports,
+            grade_closure_install_specs=grade.grade_closure_install_specs,
+            unmapped_imports=(),
+            test_sh_body=grade.test_sh_body
+            or "python -m pytest tests/test_aliases.py -q\n",
+            venv_path=str(venv),
+        )
+        ok, err, policy = probe_verifier_env(
+            conflict_spec,
+            workspace=workspace,
+            tests_dir=tests_dir,
+            task_id="adaptix-prepatch",
+            dry_run=False,
+            run_collect=True,
+        )
+    # Must not soft-succeed: patch hunks are materialized, ImportError must fail prep
+    # (or a plugin policy must be produced that grades would apply).
+    if ok:
+        assert policy is not None
+        assert policy.disable_autoload is True
+        grade_env = verifier_grade_subprocess_env(
+            conflict_spec, plugin_policy=policy
+        )
+        assert grade_env.get("VIRTUAL_ENV") == str(venv)
+    else:
+        assert err is not None and "verifier prep" in err
+        assert (
+            "ImportError" in err
+            or "ModuleNotFoundError" in err
+            or "NoExtraItems" in err
+        )
+
+
+def _test_verifier_pip_honors_spec_venv_path() -> None:
+    declared = DeclaredDeps(
+        bulk_pins={"pytest": "8.0.0"},
+        constraints={},
+        editable_segments=(),
+        lockfile_pins={},
+    )
+    spec = VerifierSpec(
+        declared=declared,
+        public_install_specs=("pytest==8.0.0",),
+        editable_segments=(),
+        venv_path="/tmp/custom-malvin-verifier",
+    )
+    cmds = "\n".join(verifier_venv_materialize_public_commands(spec))
+    assert "/tmp/custom-malvin-verifier/bin/pip" in cmds
+    assert "/opt/malvin-verifier/bin/pip" not in cmds
+    closure = VerifierSpec(
+        declared=declared,
+        public_install_specs=("pytest==8.0.0",),
+        editable_segments=(),
+        grade_closure_install_specs=("pytest==8.0.0",),
+        venv_path="/tmp/custom-malvin-verifier",
+    )
+    assert all(
+        "/tmp/custom-malvin-verifier/bin/pip" in c
+        for c in verifier_venv_apply_grade_closure_commands(closure)
+    )
+
+
+def _test_prepare_verifier_grade_materialize_creates_real_venv() -> None:
+    """End-to-end: missing venv → real ``python -m venv`` via production commands."""
+    from unittest.mock import patch
+
+    fixture = _fixture_verifier_adaptix()
+    with tempfile.TemporaryDirectory() as tmp:
+        venv_path = Path(tmp) / "malvin-verifier"
+        workspace = fixture / "workspace"
+        tests_dir = fixture / "tests"
+        dockerfile = fixture / "environment" / "Dockerfile"
+        mod = sys.modules[__name__]
+
+        def discover_tmp(
+            ws: Path,
+            tests_dir: Path | None = None,
+            dockerfile: Path | None = None,
+        ) -> VerifierSpec:
+            _ = (ws, tests_dir, dockerfile)
+            # Empty public specs keep the e2e light (venv create + pip upgrade only).
+            return VerifierSpec(
+                declared=DeclaredDeps({}, {}, (), {}),
+                public_install_specs=(),
+                editable_segments=(),
+                harbor_imports=(),
+                grade_closure_install_specs=(),
+                unmapped_imports=(),
+                test_sh_body="python -m pytest -q\n",
+                venv_path=str(venv_path),
+            )
+
+        with (
+            patch.object(mod, "discover_verifier_spec", side_effect=discover_tmp),
+            patch.object(
+                mod,
+                "probe_verifier_env",
+                return_value=(True, None, None),
+            ),
+        ):
+            # Do NOT mock _run_shell — exercise real materialize commands.
+            result = prepare_verifier_grade(
+                workspace,
+                tests_dir=tests_dir,
+                dockerfile=dockerfile,
+                task_id="mat-e2e",
+            )
+        assert (venv_path / "bin" / "python").is_file(), result.error
+        assert result.ok is True
+        assert result.public_venv_present is True
+
+
+def _test_discover_grade_closure_records_declared_harbor_imports() -> None:
+    """Mapped Harbor imports fill grade_closure; unmapped stay out of install commands."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        workspace = root / "ws"
+        workspace.mkdir()
+        tests_dir = root / "tests"
+        tests_dir.mkdir()
+        (tests_dir / "test.patch").write_text(
+            "diff --git a/t.py b/t.py\n"
+            "--- /dev/null\n"
+            "+++ b/t.py\n"
+            "@@ -0,0 +1,2 @@\n"
+            "+import requests\n"
+            "+import only_in_patch\n",
+            encoding="utf-8",
+        )
+        dockerfile = root / "Dockerfile"
+        dockerfile.write_text(
+            "FROM x\nRUN pip install --no-cache-dir requests==2.31.0\n",
+            encoding="utf-8",
+        )
+        grade = discover_verifier_spec(
+            workspace, tests_dir=tests_dir, dockerfile=dockerfile
+        )
+        public = discover_verifier_spec(workspace, tests_dir=None, dockerfile=dockerfile)
+    assert any(s.startswith("requests==") for s in grade.grade_closure_install_specs)
+    assert "only_in_patch" in grade.unmapped_imports
+    assert "only_in_patch" not in "\n".join(
+        verifier_venv_apply_grade_closure_commands(grade)
+    )
+    assert public.grade_closure_install_specs == ()
+    assert public.harbor_imports == ()
+    assert any(s.startswith("requests==") for s in grade.public_install_specs)
+
+
+def _test_adaptix_conflict_fixture_yields_plugin_policy_or_verifier_prep() -> None:
+    """Adaptix pin conflict: collect ImportError fails verifier prep (or plugin policy)."""
+    import tempfile
+
+    fixture = _fixture_verifier_adaptix()
+    dockerfile = fixture / "environment" / "Dockerfile"
+    grade = discover_verifier_spec(
+        fixture / "workspace",
+        tests_dir=fixture / "tests",
+        dockerfile=dockerfile,
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        venv = root / "malvin-verifier"
+        workspace = root / "app"
+        tests = workspace / "tests"
+        tests.mkdir(parents=True)
+        # Harbor hidden test (from fixture patch) needs NoExtraItems; pin is 4.12.2.
+        (tests / "test_aliases.py").write_text(
+            "from typing_extensions import NoExtraItems\n"
+            "import typeguard\n"
+            "import pytest\n"
+            "def test_smoke():\n"
+            "    assert NoExtraItems is not None\n",
+            encoding="utf-8",
+        )
+        subprocess.run(
+            [sys.executable, "-m", "venv", str(venv)],
+            check=True,
+            capture_output=True,
+        )
+        pip = venv / "bin" / "pip"
+        install = subprocess.run(
+            [
+                str(pip),
+                "install",
+                "--no-cache-dir",
+                "typing-extensions==4.12.2",
+                "typeguard==4.4.1",
+                "pytest==8.3.4",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert install.returncode == 0, install.stderr
+        conflict_spec = VerifierSpec(
+            declared=grade.declared,
+            public_install_specs=grade.public_install_specs,
+            editable_segments=(),
+            harbor_imports=grade.harbor_imports,
+            grade_closure_install_specs=grade.grade_closure_install_specs,
+            unmapped_imports=(),
+            test_sh_body="python -m pytest tests/test_aliases.py -q\n",
+            venv_path=str(venv),
+        )
+        ok, err, policy = probe_verifier_env(
+            conflict_spec,
+            workspace=workspace,
+            tests_dir=fixture / "tests",
+            task_id="adaptix-fixture",
+            dry_run=False,
+            run_collect=True,
+        )
+    if ok:
+        assert policy is not None
+        assert policy.disable_autoload is True
+        assert policy.as_env().get("PYTEST_DISABLE_PLUGIN_AUTOLOAD") == "1"
+        # Success path must use the verifier venv, never ambient system Python.
+        assert conflict_spec.venv_path != ""
+        assert Path(f"{conflict_spec.venv_path}/bin/python").is_file()
+        grade_env = verifier_grade_subprocess_env(
+            conflict_spec, plugin_policy=policy
+        )
+        assert grade_env.get("VIRTUAL_ENV") == conflict_spec.venv_path
+        assert grade_env.get("VIRTUAL_ENV") != sys.prefix
+    else:
+        assert err is not None and "verifier prep" in err
+        assert "ImportError" in err or "ModuleNotFoundError" in err or "NoExtraItems" in err
+
+
+def _test_adaptix_import_error_never_soft_succeeds_on_system_python() -> None:
+    """Adaptix-class ImportError: never ok=True when verifier venv is absent (system Python)."""
+    import tempfile
+
+    fixture = _fixture_verifier_adaptix()
+    dockerfile = fixture / "environment" / "Dockerfile"
+    grade = discover_verifier_spec(
+        fixture / "workspace",
+        tests_dir=fixture / "tests",
+        dockerfile=dockerfile,
+    )
+    # Point at a missing venv — probe must fail closed, not silently use sys.executable.
+    missing = VerifierSpec(
+        declared=grade.declared,
+        public_install_specs=grade.public_install_specs,
+        editable_segments=(),
+        harbor_imports=grade.harbor_imports,
+        grade_closure_install_specs=grade.grade_closure_install_specs,
+        unmapped_imports=(),
+        test_sh_body="python -m pytest tests/test_aliases.py -q\n",
+        venv_path="/tmp/malvin-verifier-adaptix-missing-venv",
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        ok, err, policy = probe_verifier_env(
+            missing,
+            workspace=Path(tmp),
+            task_id="adaptix-no-system",
+            dry_run=False,
+            run_collect=True,
+        )
+    assert ok is False
+    assert err is not None and "verifier prep" in err
+    assert "no system-python" in err.lower() or "missing" in err.lower()
+    assert policy is None
+    # prepare_verifier_grade must also fail closed (materialize cannot create /opt).
+    with tempfile.TemporaryDirectory() as tmp:
+        venv_path = Path(tmp) / "absent-verifier"
+        calls: list[str] = []
+        mod = sys.modules[__name__]
+        real_discover = discover_verifier_spec
+
+        def discover_missing(
+            ws: Path,
+            tests_dir: Path | None = None,
+            dockerfile: Path | None = None,
+        ) -> VerifierSpec:
+            spec = real_discover(ws, tests_dir=tests_dir, dockerfile=dockerfile)
+            return VerifierSpec(
+                declared=spec.declared,
+                public_install_specs=spec.public_install_specs,
+                editable_segments=spec.editable_segments,
+                harbor_imports=spec.harbor_imports,
+                grade_closure_install_specs=spec.grade_closure_install_specs,
+                unmapped_imports=(),
+                test_sh_body=spec.test_sh_body,
+                venv_path=str(venv_path),
+            )
+
+        def shell_noop(
+            command: str, _workspace: Path, timeout_sec: float | None = None
+        ) -> tuple[int, str, bool]:
+            del timeout_sec
+            calls.append(command)
+            return 0, "", False
+
+        from unittest.mock import patch
+
+        with (
+            patch.object(mod, "discover_verifier_spec", side_effect=discover_missing),
+            patch.object(mod, "_run_shell", side_effect=shell_noop),
+        ):
+            prep = prepare_verifier_grade(
+                fixture / "workspace",
+                tests_dir=fixture / "tests",
+                dockerfile=dockerfile,
+                task_id="adaptix-grade-no-system",
+            )
+    assert prep.ok is False
+    assert prep.error is not None and "verifier prep" in prep.error
+    assert not (venv_path / "bin" / "python").is_file()
+    # Must not claim success with ambient interpreter.
+    assert prep.public_venv_present is False
+
+
+def _test_plugin_policy_as_env_allowlist_wiring() -> None:
+    policy = PluginPolicy(disable_autoload=True, allowlist=("xdist", "timeout"))
+    env = policy.as_env()
+    assert env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] == "1"
+    assert "-p xdist" in env["PYTEST_ADDOPTS"]
+    assert "-p timeout" in env["PYTEST_ADDOPTS"]
+    assert env["MALVIN_VERIFIER_PLUGIN_ALLOWLIST"] == "xdist,timeout"
+    declared = DeclaredDeps({}, {}, (), {})
+    spec = VerifierSpec(
+        declared=declared,
+        public_install_specs=(),
+        editable_segments=(),
+        plugin_policy=policy,
+    )
+    grade_env = verifier_grade_subprocess_env(
+        spec, base_env={"PATH": "/usr/bin", "PYTEST_ADDOPTS": "-q --maxfail=1"}
+    )
+    assert grade_env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] == "1"
+    assert "VIRTUAL_ENV" in grade_env
+    # Merge must preserve Harbor/base addopts and append allowlist -p tokens.
+    assert "-q" in grade_env["PYTEST_ADDOPTS"]
+    assert "--maxfail=1" in grade_env["PYTEST_ADDOPTS"]
+    assert "-p xdist" in grade_env["PYTEST_ADDOPTS"]
+    assert "-p timeout" in grade_env["PYTEST_ADDOPTS"]
+
+
+def _test_plugin_disable_policy_lets_collect_boot() -> None:
+    """Broken pytest11 entry point: disable-autoload policy → collect-only boots."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        venv = root / "malvin-verifier"
+        workspace = root / "app"
+        tests = workspace / "tests"
+        tests.mkdir(parents=True)
+        (tests / "test_smoke.py").write_text(
+            "def test_ok():\n    assert True\n",
+            encoding="utf-8",
+        )
+        plug = root / "broken_plug_pkg"
+        (plug / "broken_plug").mkdir(parents=True)
+        (plug / "broken_plug" / "__init__.py").write_text("", encoding="utf-8")
+        (plug / "broken_plug" / "plugin.py").write_text(
+            "raise ImportError('NoExtraItems is missing from typing_extensions')\n",
+            encoding="utf-8",
+        )
+        (plug / "pyproject.toml").write_text(
+            "[project]\n"
+            "name = 'broken-plug'\n"
+            "version = '0.0.1'\n"
+            "[project.entry-points.pytest11]\n"
+            "broken = 'broken_plug.plugin'\n"
+            "[build-system]\n"
+            "requires = ['setuptools']\n"
+            "build-backend = 'setuptools.build_meta'\n",
+            encoding="utf-8",
+        )
+        subprocess.run(
+            [sys.executable, "-m", "venv", str(venv)],
+            check=True,
+            capture_output=True,
+        )
+        pip = str(venv / "bin" / "pip")
+        python = str(venv / "bin" / "python")
+        install = subprocess.run(
+            [pip, "install", "--no-cache-dir", "pytest==8.3.4", str(plug)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert install.returncode == 0, install.stderr
+        # Autoload must fail collect without policy (broken entry point).
+        bare = subprocess.run(
+            [python, "-m", "pytest", "--collect-only", "-q", "tests/test_smoke.py"],
+            cwd=str(workspace),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert bare.returncode != 0, bare.stdout + bare.stderr
+        declared = DeclaredDeps(
+            bulk_pins={"pytest": "8.3.4"},
+            constraints={},
+            editable_segments=(),
+            lockfile_pins={},
+        )
+        spec = VerifierSpec(
+            declared=declared,
+            public_install_specs=("pytest==8.3.4",),
+            editable_segments=(),
+            test_sh_body="python -m pytest tests/test_smoke.py -q\n",
+            venv_path=str(venv),
+        )
+        ok, err, policy = probe_verifier_env(
+            spec,
+            workspace=workspace,
+            task_id="plugin-disable-boot",
+            dry_run=False,
+            run_collect=True,
+        )
+    assert ok is True, err
+    assert err is None
+    assert policy is not None
+    assert policy.disable_autoload is True
+    assert "broken" not in policy.allowlist
+    grade_env = verifier_grade_subprocess_env(spec, plugin_policy=policy)
+    assert grade_env.get("PYTEST_DISABLE_PLUGIN_AUTOLOAD") == "1"
+
+
+def _test_verifier_prep_result_as_dict_excludes_secrets() -> None:
+    """Behavioral spy: agent-safe as_dict never carries grade-only VerifierSpec fields."""
+    declared = DeclaredDeps(
+        bulk_pins={"pytest": "8.3.4"},
+        constraints={},
+        editable_segments=(),
+        lockfile_pins={},
+    )
+    policy = PluginPolicy(disable_autoload=True, allowlist=("timeout",))
+    spec = VerifierSpec(
+        declared=declared,
+        public_install_specs=("pytest==8.3.4",),
+        editable_segments=(),
+        harbor_imports=("typeguard", "secret_mod"),
+        grade_closure_install_specs=("typeguard==4.4.1",),
+        unmapped_imports=("secret_mod",),
+        test_sh_body="python -m pytest -q\n",
+        plugin_policy=policy,
+    )
+    result = VerifierPrepResult(
+        ok=True, spec=spec, plugin_policy=policy, public_venv_present=True
+    )
+    payload = result.as_dict()
+    dumped = str(payload)
+    for forbidden in (
+        "harbor_imports",
+        "grade_closure",
+        "unmapped",
+        "plugin_policy",
+        "test_sh_body",
+        "typeguard",
+        "secret_mod",
+        "PYTEST_DISABLE",
+        "NoExtraItems",
+    ):
+        assert forbidden not in dumped, dumped
+    assert payload["ok"] is True
+    assert payload["public_venv_present"] is True
+    assert payload["venv_path"] == VERIFIER_VENV_PATH
+
+
+def _test_leakage_public_view_excludes_patch_only_imports() -> None:
+    fixture = _fixture_verifier_adaptix()
+    public = discover_verifier_spec(
+        fixture / "workspace",
+        tests_dir=None,
+        dockerfile=fixture / "environment" / "Dockerfile",
+    )
+    grade = discover_verifier_spec(
+        fixture / "workspace",
+        tests_dir=fixture / "tests",
+        dockerfile=fixture / "environment" / "Dockerfile",
+    )
+    view = public.public_view()
+    for key in (
+        "harbor_imports",
+        "grade_closure_install_specs",
+        "unmapped_imports",
+        "plugin_policy",
+        "test_sh_body",
+    ):
+        assert key not in view
+    assert "NoExtraItems" not in str(view)
+    assert grade.harbor_imports
+    assert public.harbor_imports == ()
+    # Agent check discovery must not take tests_dir (Modal harbor_agent_image contract).
+    modal_src = (Path(__file__).resolve().parent / "deepswe_modal.py").read_text(
+        encoding="utf-8"
+    )
+    assert "discover_deepswe_checks(workspace)" in modal_src
+    assert "discover_deepswe_checks(workspace, tests_dir" not in modal_src
+
+
 def run_self_tests() -> None:
     _test_parse_dockerfile_run_commands_multiline()
     _test_workspace_sync_commands_bandit()
@@ -2065,6 +3740,7 @@ def run_self_tests() -> None:
     _test_hybrid_poetry_runtime_sync_skipped()
     _test_hybrid_pnpm_runtime_sync_skipped()
     _test_tox_lint_check_commands()
+    _test_just_and_tox_runner_install_commands()
     _test_workspace_lint_tool_install_command()
     _test_precommit_install_hooks_command()
     _test_precommit_pin_from_workspace_pyproject()
@@ -2072,6 +3748,7 @@ def run_self_tests() -> None:
     _test_uv_pip_build_system_command()
     _test_uv_editable_install_command()
     _test_uv_offline_smoke_commands()
+    _test_workspace_declared_repin_command()
     _test_workspace_image_warm_commands()
     _test_registry_image_cache_bust_commands()
     _test_registry_image_cache_bust_aiomonitor_shape()
@@ -2098,6 +3775,26 @@ def run_self_tests() -> None:
     _test_dockerfile_bulk_pip_commands_fastapi()
     _test_workspace_sync_commands_fastapi_task_dockerfile()
     _test_should_replay_skips_apt_and_git()
+    _test_discover_verifier_spec_public_vs_grade()
+    _test_verifier_venv_materialize_public_no_patch_only_names()
+    _test_verifier_grade_closure_commands_include_mapped()
+    _test_probe_verifier_env_plugin_conflict_reports_verifier_prep()
+    _test_prepare_verifier_grade_materialize_when_missing()
+    _test_probe_verifier_env_unmapped_imports_fail_closed()
+    _test_prepare_task_sandbox_does_not_call_probe_verifier()
+    _test_probe_verifier_env_missing_collect_path_does_not_abort()
+    _test_probe_plugin_conflict_failed_collect_aborts()
+    _test_modified_hunk_context_imports_in_verifier_spec()
+    _test_adaptix_prepatch_materialize_catches_importerror()
+    _test_verifier_pip_honors_spec_venv_path()
+    _test_prepare_verifier_grade_materialize_creates_real_venv()
+    _test_discover_grade_closure_records_declared_harbor_imports()
+    _test_adaptix_conflict_fixture_yields_plugin_policy_or_verifier_prep()
+    _test_adaptix_import_error_never_soft_succeeds_on_system_python()
+    _test_plugin_policy_as_env_allowlist_wiring()
+    _test_plugin_disable_policy_lets_collect_boot()
+    _test_verifier_prep_result_as_dict_excludes_secrets()
+    _test_leakage_public_view_excludes_patch_only_imports()
     click.echo("sandbox_prep self-tests passed")
 
 

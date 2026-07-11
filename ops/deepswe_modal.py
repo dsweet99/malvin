@@ -72,9 +72,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from modal_sandbox_lifecycle import release_modal_sandbox
 from sandbox_prep import (
     dockerfile_image_build_commands,
+    discover_verifier_spec,
     format_prep_error,
     lint_gate_tool_pins,
     registry_image_cache_bust_commands,
+    tox_runner_tool_pins,
+    verifier_venv_materialize_public_commands,
     workspace_image_warm_commands,
 )
 from deepswe_run import (
@@ -87,6 +90,7 @@ from deepswe_run import (
     materialize_workspace,
     parse_task_dir,
     validate_verifier_paths,
+    refuse_agent_verifier_leaks,
     reset_workspace,
     timestamp_dir,
     write_task_plan,
@@ -100,6 +104,7 @@ from toolchain_repos import (
 DEEPSWE_OPS_REMOTE = "/opt/malvin/ops"
 DEEPSWE_RUN_REMOTE = f"{DEEPSWE_OPS_REMOTE}/deepswe_run.py"
 SANDBOX_PREP_REMOTE = f"{DEEPSWE_OPS_REMOTE}/sandbox_prep.py"
+HARBOR_TESTS_REMOTE = f"{DEEPSWE_OPS_REMOTE}/harbor_tests.py"
 TOOLCHAIN_REPOS_REMOTE = f"{DEEPSWE_OPS_REMOTE}/toolchain_repos.py"
 TASK_REMOTE = "/task"
 
@@ -220,6 +225,7 @@ def workspace_mount_ignore() -> list[str]:
     return [
         ".stestr/",
         ".venv/",
+        ".tox/",
         "__pycache__/",
         ".pytest_cache/",
         "*.pyc",
@@ -1803,6 +1809,46 @@ def format_modal_image_prep_error(task_id: str, exc: BaseException) -> str:
     return f"Modal solve failed: {msg}"
 
 
+def _ops_local_files(deepswe_run_py: Path) -> list[tuple[Path, str]]:
+    """Local ops modules mounted into Modal / Docker sandboxes."""
+    parent = deepswe_run_py.resolve().parent
+    return [
+        (deepswe_run_py.resolve(), DEEPSWE_RUN_REMOTE),
+        (parent / "sandbox_prep.py", SANDBOX_PREP_REMOTE),
+        (parent / "harbor_tests.py", HARBOR_TESTS_REMOTE),
+        (parent / "toolchain_repos.py", TOOLCHAIN_REPOS_REMOTE),
+    ]
+
+
+def _materialize_public_verifier_venv(
+    image: modal.Image,
+    workspace: Path,
+    dockerfile: Path | None,
+) -> modal.Image:
+    """Bake public DeclaredDeps into ``/opt/malvin-verifier`` (isolated from agent warm)."""
+    if not hasattr(image, "run_commands"):
+        return image
+    df = dockerfile if dockerfile is not None and dockerfile.is_file() else None
+    spec = discover_verifier_spec(workspace, tests_dir=None, dockerfile=df)
+    commands = verifier_venv_materialize_public_commands(spec)
+    if not commands:
+        return image
+    click.echo("Materializing public verifier venv at /opt/malvin-verifier...")
+    # Editable segments need /app; pins alone do not. Copy workspace for build only.
+    # Runtime remounts replace /app; /opt/malvin-verifier survives outside /app.
+    if spec.editable_segments and hasattr(image, "add_local_dir"):
+        image = image.add_local_dir(
+            str(workspace.resolve()),
+            remote_path=APP_REMOTE,
+            copy=True,
+            ignore=workspace_mount_ignore(),
+        )
+    if not hasattr(image, "run_commands"):
+        return image
+    # Isolated layer: agent warm must not rm -rf or overwrite this path.
+    return image.run_commands(*_image_build_shell_commands(commands, workdir=APP_REMOTE))
+
+
 def harbor_image(
     spec: Any,
     *,
@@ -1830,6 +1876,10 @@ def harbor_image(
                 f"Re-running {len(build_cmds)} registry cache-bust pip step(s) after pull..."
             )
             base = base.run_commands(*_image_build_shell_commands(build_cmds, workdir=None))
+        if workspace is not None:
+            base = _materialize_public_verifier_venv(
+                base, workspace, dockerfile if dockerfile.is_file() else None
+            )
         return base
     if dockerfile.is_file():
         click.echo(f"Building Modal image from {dockerfile} (may take several minutes)...")
@@ -1841,6 +1891,8 @@ def harbor_image(
                 "(Modal layer cache bust)..."
             )
             base = base.run_commands(*_image_build_shell_commands(build_cmds))
+        if workspace is not None:
+            base = _materialize_public_verifier_venv(base, workspace, dockerfile)
         return base
     raise click.ClickException(
         "task.toml missing environment.docker_image and no environment/Dockerfile to build"
@@ -1870,7 +1922,7 @@ def mount_eval_context(
     prepared = image.run_commands(
         "python3 -m pip install --break-system-packages click"
     )
-    return (
+    result = (
         prepared.add_local_dir(
             str(workspace.resolve()),
             remote_path=APP_REMOTE,
@@ -1878,16 +1930,10 @@ def mount_eval_context(
         )
         .add_local_dir(str(tests_dir.resolve()), remote_path=TESTS_REMOTE)
         .add_local_dir(str(task_dir.resolve()), remote_path=TASK_REMOTE)
-        .add_local_file(str(deepswe_run_py.resolve()), remote_path=DEEPSWE_RUN_REMOTE)
-        .add_local_file(
-            str(deepswe_run_py.resolve().parent / "sandbox_prep.py"),
-            remote_path=SANDBOX_PREP_REMOTE,
-        )
-        .add_local_file(
-            str(deepswe_run_py.resolve().parent / "toolchain_repos.py"),
-            remote_path=TOOLCHAIN_REPOS_REMOTE,
-        )
     )
+    for local_path, remote in _ops_local_files(deepswe_run_py):
+        result = result.add_local_file(str(local_path), remote_path=remote)
+    return result
 
 
 def mount_agent_context(
@@ -1914,20 +1960,72 @@ def mount_agent_context(
         )
         .add_local_file(str(task_dir_resolved / "task.toml"), remote_path=f"{TASK_REMOTE}/task.toml")
         .add_local_file(str(task_dir_resolved / "instruction.md"), remote_path=f"{TASK_REMOTE}/instruction.md")
-        .add_local_file(str(deepswe_run_py.resolve()), remote_path=DEEPSWE_RUN_REMOTE)
-        .add_local_file(
-            str(deepswe_run_py.resolve().parent / "sandbox_prep.py"),
-            remote_path=SANDBOX_PREP_REMOTE,
-        )
-        .add_local_file(
-            str(deepswe_run_py.resolve().parent / "toolchain_repos.py"),
-            remote_path=TOOLCHAIN_REPOS_REMOTE,
-        )
     )
+    for local_path, remote in _ops_local_files(deepswe_run_py):
+        result = result.add_local_file(str(local_path), remote_path=remote)
     env_dir = task_dir_resolved / "environment"
     if env_dir.is_dir():
         result = result.add_local_dir(str(env_dir), remote_path=f"{TASK_REMOTE}/environment")
     return result
+
+
+AGENT_PGID_PATH = "/tmp/malvin-agent-pgid"
+
+
+def agent_process_tree_cleanup_script(*, pgid_path: str = AGENT_PGID_PATH) -> str:
+    """Shell that signals only the recorded agent process group (no blanket pkill)."""
+    return (
+        f"pgid=$(cat {pgid_path} 2>/dev/null) || exit 0; "
+        'case "$pgid" in (*[!0-9]*|"") exit 0 ;; esac; '
+        "kill -- -\"$pgid\" 2>/dev/null || kill \"$pgid\" 2>/dev/null || true"
+    )
+
+
+def wrap_agent_exec_argv(argv: list[str]) -> list[str]:
+    """Record the agent exec process-group id before ``exec``.
+
+    Uses ``setsid`` so the recorded PID is a real session/process-group leader.
+    Pre-inject cleanup can then ``kill -- -$pgid`` without unscoped ``pkill``.
+    """
+    import shlex
+
+    body = " ".join(shlex.quote(part) for part in argv)
+    inner = f"echo $$ > {AGENT_PGID_PATH}; exec {body}"
+    return ["setsid", "bash", "-c", inner]
+
+
+def cleanup_agent_process_tree(sandbox: modal.Sandbox) -> None:
+    """Best-effort: signal only the recorded agent process group before inject.
+
+    Ignores missing PID file / already-exited trees. Does not use blanket
+    ``pkill -f`` / ``killall`` (would risk Modal infra or the grade exec).
+    """
+    script = agent_process_tree_cleanup_script()
+    try:
+        proc = sandbox.exec(
+            "bash",
+            "-lc",
+            script,
+            stdout=StreamType.PIPE,
+            stderr=StreamType.PIPE,
+            workdir=APP_REMOTE,
+            text=False,
+            bufsize=0,
+        )
+        proc.wait()
+    except Exception as exc:
+        click.echo(f"Pre-inject agent process cleanup skipped: {exc}", err=True)
+
+
+def _safe_harvest_workspace(
+    sandbox: modal.Sandbox,
+    harvest_workspace: Path,
+) -> dict[str, Any]:
+    try:
+        return harvest_sandbox_workspace(sandbox, harvest_workspace)
+    except Exception as exc:
+        click.echo(f"Workspace harvest failed: {exc}", err=True)
+        return {"harvested": False, "error": str(exc)}
 
 
 def inject_verifier_files(sandbox: modal.Sandbox, tests_dir: Path, task_dir: Path) -> None:
@@ -2163,10 +2261,13 @@ def run_deepswe_run_in_sandbox(
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     """Run agent and grade as two execs in one Modal sandbox.
 
-    The agent image is built without ``/tests`` or ``/task/solution``.
-    After the agent exec completes, verifier files are injected via
-    ``sandbox.filesystem.write_bytes``, then a second exec runs
-    ``--grade-only``.
+    Isolation contract:
+    - Agent image has no ``/tests`` or ``/task/solution``.
+    - After agent wait: scoped process-tree cleanup, then harvest ``/app`` onto
+      ``harvest_workspace`` (pre-grade only — never after Harbor ``test.patch``).
+    - Then inject verifier files and run ``--grade-only``.
+    - Grade artifacts via ``persist_grading_artifacts`` / log harvest; do not
+      tar post-grade ``/app`` back onto the reusable agent workspace.
     """
     sandbox: modal.Sandbox | None = None
     run_logs_remote = f"{LOGS_REMOTE}/run"
@@ -2218,7 +2319,9 @@ def run_deepswe_run_in_sandbox(
                 sandbox, run_logs_remote=run_logs_remote, grade_only=True,
             )
         else:
-            agent_argv = [*base_argv, "--skip-grade", "--command", command, *malvin_argv]
+            agent_argv = wrap_agent_exec_argv(
+                [*base_argv, "--skip-grade", "--command", command, *malvin_argv]
+            )
             proc = sandbox.exec(
                 *agent_argv,
                 stdout=StreamType.PIPE, stderr=StreamType.PIPE,
@@ -2234,6 +2337,15 @@ def run_deepswe_run_in_sandbox(
                 agent_result = {"exit_code": int(proc.returncode or 0)}
             elif "exit_code" not in agent_result:
                 agent_result["exit_code"] = int(proc.returncode or 0)
+
+            # Always clear residual agent children before /tests appears.
+            click.echo("Clearing residual agent process tree before verifier inject...")
+            cleanup_agent_process_tree(sandbox)
+
+            # Harvest agent /app before Harbor test.patch mutates the tree.
+            if harvest_workspace is not None:
+                harvest_info = _safe_harvest_workspace(sandbox, harvest_workspace)
+                agent_result["workspace_harvest"] = harvest_info
 
             if skip_grade:
                 grade_result = {"pass": None, "reward": None, "skipped": True}
@@ -2266,16 +2378,7 @@ def run_deepswe_run_in_sandbox(
                 run_logs_remote=run_logs_remote,
                 grade_result=grade_result,
             )
-        if harvest_workspace is not None:
-            try:
-                harvest_info = harvest_sandbox_workspace(sandbox, harvest_workspace)
-            except Exception as exc:
-                harvest_info = {"harvested": False, "error": str(exc)}
-                click.echo(f"Workspace harvest failed: {exc}", err=True)
-            if agent_result is not None:
-                agent_result["workspace_harvest"] = harvest_info
-            elif not grade_only:
-                agent_result = {"workspace_harvest": harvest_info}
+        # Do not harvest post-grade /app onto the reusable agent workspace.
         if artifacts_dir is not None:
             try:
                 harvest = harvest_sandbox_logs(sandbox, artifacts_dir)
@@ -2297,6 +2400,7 @@ def offline_check_tool_install_commands(
 ) -> list[str]:
     """Image-build pip installs so network-blocked agent sandboxes can run quality gates."""
     pins = lint_gate_tool_pins(workspace) if workspace is not None else {}
+    runner_pins = tox_runner_tool_pins(workspace) if workspace is not None else {}
     pkgs: list[str] = []
     if "mypy" in checks:
         pkgs.append(f"mypy=={pins['mypy']}" if "mypy" in pins else "mypy")
@@ -2309,6 +2413,13 @@ def offline_check_tool_install_commands(
         pkgs.append(
             f"pre-commit=={pins['pre-commit']}" if "pre-commit" in pins else "pre-commit"
         )
+    if "tox" in checks or "just" in checks:
+        if "tox" in runner_pins:
+            pkgs.append(f"tox=={runner_pins['tox']}")
+        else:
+            pkgs.append("tox")
+        if "invoke" in runner_pins:
+            pkgs.append(f"invoke=={runner_pins['invoke']}")
     if not pkgs:
         return []
     ordered = list(dict.fromkeys(pkgs))
@@ -2328,9 +2439,13 @@ def offline_agent_checks(checks: str) -> str:
     return body + ("\n" if body and not body.endswith("\n") else "")
 
 
-def warm_offline_workspace_layer(image: modal.Image, workspace: Path) -> modal.Image:
+def warm_offline_workspace_layer(
+    image: modal.Image,
+    workspace: Path,
+    dockerfile: Path | None = None,
+) -> modal.Image:
     """Bake workspace at build time and warm offline gate environments."""
-    commands = workspace_image_warm_commands(workspace)
+    commands = workspace_image_warm_commands(workspace, dockerfile=dockerfile)
     if not commands:
         return image
     click.echo("Warming offline workspace environments at image build...")
@@ -2340,9 +2455,9 @@ def warm_offline_workspace_layer(image: modal.Image, workspace: Path) -> modal.I
         copy=True,
         ignore=workspace_mount_ignore(),
     )
-    for cmd in commands:
-        image = image.run_commands(_image_build_shell_command(cmd))
-    return image
+    # Batch into one Modal layer so warm steps do not each rebuild a full image.
+    joined = " && ".join(commands)
+    return image.run_commands(_image_build_shell_command(joined))
 
 
 def warm_precommit_hooks_layer(image: modal.Image, workspace: Path) -> modal.Image:
@@ -2376,7 +2491,9 @@ def harbor_agent_image(
     )
     if preinstall:
         augmented = augmented.run_commands(*preinstall)
-    augmented = warm_offline_workspace_layer(augmented, workspace)
+    augmented = warm_offline_workspace_layer(
+        augmented, workspace, dockerfile=dockerfile if dockerfile.is_file() else None
+    )
     return mount_agent_context(
         augmented.env({"UV_NO_SYNC": "1"}),
         task_dir=spec.task_dir,
@@ -2507,7 +2624,14 @@ def run_modal_eval(
     malvin_args: tuple[str, ...] = (),
     dry_run: bool = False,
 ) -> None:
-    """Run agent + Harbor grade on Modal (library entry for ``deepswe_run solve``)."""
+    """Run agent + Harbor grade on Modal (library entry for ``deepswe_run solve``).
+
+    Agent-solve contract:
+    - Always ``reset_workspace`` after materialize and before ``write_task_plan`` /
+      ``harbor_agent_image`` (``--reset`` is an accepted always-on no-op).
+    - Refuse ``--apply-solution`` and ``DEEPSWE_AGENT_NEW_TESTS`` on agent paths.
+    - Sandbox harvest is pre-grade only (see ``run_deepswe_run_in_sandbox``).
+    """
     spec = parse_task_dir(task_dir)
     validate_verifier_paths(spec)
     results_root = results_dir or default_deepswe_results_dir()
@@ -2520,6 +2644,7 @@ def run_modal_eval(
     click.echo(f"Artifacts: {run_root.resolve()}")
 
     require_cursor_credentials_for_agent(grade_only=grade_only)
+    refuse_agent_verifier_leaks(grade_only=grade_only, apply_solution=apply_solution)
 
     if dry_run:
         click.echo("Dry run: would materialize workspace")
@@ -2534,7 +2659,9 @@ def run_modal_eval(
         return
 
     materialize_workspace(spec, workspace, dry_run=False)
-    if reset_flag or apply_solution:
+    # Agent solve: always reset before plan write / image warm (Q2).
+    # Grade-only: reset when requested or when applying the reference solution.
+    if not grade_only or reset_flag or apply_solution:
         reset_workspace(spec, workspace, dry_run=False)
     if apply_solution:
         if spec.solution_patch is None:
@@ -2690,13 +2817,19 @@ def run_modal_eval(
 @click.option(
     "--apply-solution",
     is_flag=True,
-    help="Apply reference solution.patch before agent or grade.",
+    help=(
+        "Apply reference solution.patch before grade. "
+        "Only valid with --grade-only (agent+apply-solution is refused)."
+    ),
 )
 @click.option(
     "--reset",
     "reset_flag",
     is_flag=True,
-    help="Hard reset workspace to base_commit before run.",
+    help=(
+        "Hard reset workspace to base_commit before run. "
+        "Always-on for agent solve (flag accepted as no-op)."
+    ),
 )
 @click.argument("malvin_args", nargs=-1, type=click.UNPROCESSED)
 @click.pass_context
@@ -3492,7 +3625,10 @@ def _test_persist_grading_artifacts() -> None:
 
 
 def _test_tier_a_before_workspace_harvest() -> None:
-    """Grading artifacts must survive workspace tar harvest failures."""
+    """Grading artifacts must survive workspace tar harvest failures.
+
+    Harvest runs pre-grade (after agent); a harvest failure must not skip grade.
+    """
     fake_proc = MagicMock(stdout=iter([]), stderr=iter([]), returncode=0)
     fake_proc.wait.return_value = None
     fake_sandbox = MagicMock()
@@ -3538,6 +3674,173 @@ def _test_tier_a_before_workspace_harvest() -> None:
         assert grade_result["reward"] == 1
         assert agent_result is not None
         assert agent_result["workspace_harvest"]["harvested"] is False
+
+
+def _test_agent_grade_call_order_cleanup_harvest_inject() -> None:
+    """Agent wait → scoped cleanup → harvest → inject → grade; no post-grade workspace harvest."""
+    order: list[str] = []
+    fake_proc = MagicMock(stdout=iter([]), stderr=iter([]), returncode=0)
+    fake_proc.wait.return_value = None
+    fake_sandbox = MagicMock()
+
+    def fake_exec(*args: Any, **kwargs: Any) -> Any:
+        joined = " ".join(str(a) for a in args)
+        if "malvin-agent-pgid" in joined and "kill" in joined:
+            order.append("cleanup")
+        elif "--grade-only" in joined:
+            order.append("grade")
+        elif "setsid" in joined or "--skip-grade" in joined or "echo $$" in joined:
+            order.append("agent")
+        return fake_proc
+
+    fake_sandbox.exec.side_effect = fake_exec
+    metadata = json.dumps({"grade": {"reward": 1, "pass": True}, "agent": {"exit_code": 0}})
+    fake_sandbox.filesystem.read_text.return_value = metadata
+    fake_sandbox.filesystem.read_bytes.return_value = b"patch"
+    image = MagicMock()
+
+    def fake_harvest(*_a: Any, **_k: Any) -> dict[str, Any]:
+        order.append("harvest")
+        return {"harvested": True}
+
+    def fake_inject(*_a: Any, **_k: Any) -> None:
+        order.append("inject")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        artifacts_dir = Path(tmp) / "agent_sandbox"
+        workspace = Path(tmp) / "workspace"
+        t_dir = Path(tmp) / "tests"
+        t_dir.mkdir()
+        (t_dir / "test.sh").write_text("#!/bin/bash\n", encoding="utf-8")
+        task = Path(tmp) / "task"
+        task.mkdir()
+        with patch.object(modal.Sandbox, "create", return_value=fake_sandbox):
+            with patch(
+                f"{__name__}.resolve_agent_sandbox_cidrs",
+                return_value=["9.9.9.9/32"],
+            ):
+                with patch(f"{__name__}.pin_cursor_api_hosts_in_sandbox"):
+                    with patch(f"{__name__}.harvest_sandbox_workspace", fake_harvest):
+                        with patch(f"{__name__}.inject_verifier_files", fake_inject):
+                            with patch(
+                                f"{__name__}.harvest_sandbox_logs",
+                                return_value={"harvested": False},
+                            ):
+                                run_deepswe_run_in_sandbox(
+                                    image,
+                                    command="route",
+                                    malvin_argv=[],
+                                    grade_only=False,
+                                    cursor_secrets=[],
+                                    artifacts_dir=artifacts_dir,
+                                    harvest_workspace=workspace,
+                                    tests_dir=t_dir,
+                                    task_dir=task,
+                                )
+    assert order == ["agent", "cleanup", "harvest", "inject", "grade"], order
+    # Workspace harvest must not run again after grade.
+    assert order.count("harvest") == 1
+
+
+def _test_cleanup_agent_process_tree_is_pgid_scoped() -> None:
+    """Cleanup argv must target a recorded pgid/pid, never blanket pkill."""
+    fake_proc = MagicMock(returncode=0)
+    fake_proc.wait.return_value = None
+    fake_sandbox = MagicMock()
+    fake_sandbox.exec.return_value = fake_proc
+    cleanup_agent_process_tree(fake_sandbox)
+    assert fake_sandbox.exec.called
+    args = fake_sandbox.exec.call_args[0]
+    joined = " ".join(str(a) for a in args)
+    assert "pkill" not in joined
+    assert "killall" not in joined
+    assert "kill --" in joined or 'kill --' in joined
+    assert AGENT_PGID_PATH in joined
+    script = agent_process_tree_cleanup_script()
+    assert "kill --" in script
+    assert "pkill" not in script
+    assert "killall" not in script
+
+
+def _test_cleanup_agent_process_tree_kills_local_orphan_tree() -> None:
+    """Empirical (non-Modal): setsid child tree dies under the cleanup script form."""
+    import subprocess
+    import time
+
+    def _alive(pid: int) -> bool:
+        """True only for a live (non-zombie) process."""
+        try:
+            with open(f"/proc/{pid}/status", encoding="utf-8") as handle:
+                for line in handle:
+                    if line.startswith("State:"):
+                        # Zombie entries remain visible until the parent waits.
+                        return not line.split()[1].startswith("Z")
+        except (FileNotFoundError, ProcessLookupError, PermissionError):
+            # Process can vanish between open and read (race with kill).
+            return False
+        return False
+
+    with tempfile.TemporaryDirectory() as tmp:
+        pgid_file = Path(tmp) / "agent.pgid"
+        child_pid_file = Path(tmp) / "child.pid"
+        # Detach the setsid tree from this test process so the leader is not a
+        # Popen-waited zombie after SIGTERM (production sandbox has no parent wait).
+        launcher = subprocess.run(
+            [
+                "bash",
+                "-c",
+                (
+                    "setsid bash -c "
+                    f"'echo $$ > {pgid_file}; "
+                    f"sleep 120 & echo $! > {child_pid_file}; "
+                    "exec sleep 120' "
+                    "</dev/null >/dev/null 2>&1 &"
+                ),
+            ],
+            check=False,
+        )
+        assert launcher.returncode == 0
+        pgid: int | None = None
+        for _ in range(100):
+            if pgid_file.is_file():
+                text = pgid_file.read_text(encoding="utf-8").strip()
+                if text.isdigit():
+                    pgid = int(text)
+                    if _alive(pgid):
+                        break
+            time.sleep(0.05)
+        assert pgid is not None, "setsid leader did not write pgid file"
+        assert _alive(pgid), f"leader {pgid} not running before cleanup"
+        child_pid: int | None = None
+        for _ in range(50):
+            if child_pid_file.is_file():
+                child_text = child_pid_file.read_text(encoding="utf-8").strip()
+                if child_text.isdigit():
+                    child_pid = int(child_text)
+                    if _alive(child_pid):
+                        break
+            time.sleep(0.05)
+        assert child_pid is not None and _alive(child_pid), "background child not running"
+        script = agent_process_tree_cleanup_script(pgid_path=str(pgid_file))
+        assert "pkill" not in script
+        assert "killall" not in script
+        subprocess.run(["bash", "-lc", script], check=False)
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline and (_alive(pgid) or _alive(child_pid)):
+            time.sleep(0.05)
+        assert not _alive(pgid), f"pgid {pgid} still alive after cleanup"
+        assert not _alive(child_pid), f"orphan child {child_pid} still alive after cleanup"
+
+
+def _test_wrap_agent_exec_records_pgid() -> None:
+    wrapped = wrap_agent_exec_argv(["python3", "x.py", "--skip-grade"])
+    assert wrapped[0] == "setsid"
+    assert "bash" in wrapped
+    joined = " ".join(wrapped)
+    assert AGENT_PGID_PATH in joined
+    assert "echo $$" in joined
+    assert "--skip-grade" in joined
+    assert "setsid" in joined
 
 
 def _test_load_agent_sandbox_metadata() -> None:
@@ -3684,14 +3987,18 @@ def _test_agent_sandbox_network() -> None:
     assert mock_create.call_args.kwargs["cpu"] == AGENT_SANDBOX_CPU
     assert mock_create.call_args.kwargs["memory"] == AGENT_SANDBOX_MEMORY_MIB
     assert "block_network" not in mock_create.call_args.kwargs
-    assert fake_sandbox.exec.call_count == 2
+    # agent (setsid-wrapped) + scoped cleanup + grade
+    assert fake_sandbox.exec.call_count == 3, fake_sandbox.exec.call_count
     first_exec_argv = fake_sandbox.exec.call_args_list[0].args
-    assert first_exec_argv[0] == "python3"
-    assert "--runtime" in first_exec_argv
-    assert "in-sandbox" in first_exec_argv
-    assert "--skip-grade" in first_exec_argv
-    second_exec_argv = fake_sandbox.exec.call_args_list[1].args
-    assert "--grade-only" in second_exec_argv
+    assert first_exec_argv[0] == "setsid"
+    agent_script = first_exec_argv[-1]
+    assert "python3" in agent_script
+    assert "--skip-grade" in agent_script
+    assert AGENT_PGID_PATH in agent_script
+    cleanup_argv = fake_sandbox.exec.call_args_list[1].args
+    assert AGENT_PGID_PATH in " ".join(str(a) for a in cleanup_argv)
+    grade_exec_argv = fake_sandbox.exec.call_args_list[2].args
+    assert "--grade-only" in grade_exec_argv
     assert agent_result["exit_code"] == 0
     assert grade_result["reward"] == 0
     fake_sandbox.detach.assert_called_once()
@@ -3814,9 +4121,14 @@ def _test_mount_eval_context_recipe() -> None:
     workspace_upload = uploads[0]
     assert workspace_upload[2]["ignore"] == workspace_mount_ignore()
     file_uploads = [call for call in recorder.calls if call[0] == "add_local_file"]
-    assert len(file_uploads) == 3
+    assert len(file_uploads) == 4
     remote_paths = {call[2]["remote_path"] for call in file_uploads}
-    assert remote_paths == {DEEPSWE_RUN_REMOTE, SANDBOX_PREP_REMOTE, TOOLCHAIN_REPOS_REMOTE}
+    assert remote_paths == {
+        DEEPSWE_RUN_REMOTE,
+        SANDBOX_PREP_REMOTE,
+        HARBOR_TESTS_REMOTE,
+        TOOLCHAIN_REPOS_REMOTE,
+    }
     pip_cmds = [call for call in recorder.calls if call[0] == "run_commands"]
     assert pip_cmds
     assert "click" in pip_cmds[0][1][0]
@@ -3841,6 +4153,37 @@ def _test_mount_agent_context_excludes_tests() -> None:
     assert f"{TASK_REMOTE}/task.toml" in remote_files
     assert f"{TASK_REMOTE}/instruction.md" in remote_files
     assert DEEPSWE_RUN_REMOTE in remote_files
+    assert HARBOR_TESTS_REMOTE in remote_files
+    assert SANDBOX_PREP_REMOTE in remote_files
+
+
+def _test_harbor_agent_image_materializes_public_verifier_venv() -> None:
+    """Public verifier venv commands appear on agent image; no test.patch secrets."""
+    fixture = (
+        Path(__file__).resolve().parent.parent
+        / "tests"
+        / "fixtures"
+        / "verifier_adaptix"
+    )
+    workspace = fixture / "workspace"
+    dockerfile = fixture / "environment" / "Dockerfile"
+    spec = discover_verifier_spec(workspace, tests_dir=None, dockerfile=dockerfile)
+    cmds = verifier_venv_materialize_public_commands(spec)
+    joined = "\n".join(cmds)
+    assert "/opt/malvin-verifier" in joined
+    assert "test.patch" not in joined
+    assert "NoExtraItems" not in joined
+    # Agent warm must not destroy the verifier venv.
+    warm = "\n".join(workspace_image_warm_commands(workspace, dockerfile=dockerfile))
+    assert "rm -rf /opt/malvin-verifier" not in warm
+    assert "malvin-verifier" not in warm
+
+
+def _test_no_pytest_disable_in_harbor_agent_image_env() -> None:
+    import inspect
+
+    source = inspect.getsource(harbor_agent_image)
+    assert "PYTEST_DISABLE_PLUGIN_AUTOLOAD" not in source
 
 
 def _test_inject_verifier_files() -> None:
@@ -3995,6 +4338,7 @@ def _test_upload_ignore_patterns() -> None:
     assert "target/" in malvin_ignores
     assert ".stestr/" in workspace_ignores
     assert ".venv/" in workspace_ignores
+    assert ".tox/" in workspace_ignores
     assert "__pycache__/" in workspace_ignores
     assert "reports/" in malvin_ignores
     assert ".malvin/" in malvin_ignores
@@ -4097,13 +4441,12 @@ def _test_warm_offline_workspace_layer() -> None:
         (workspace / ".pre-commit-config.yaml").write_text("repos: []\n", encoding="utf-8")
         warmed = warm_offline_workspace_layer(recorder, workspace)
         assert warmed is recorder
-        assert len(recorder.calls) == 3
+        assert len(recorder.calls) == 2
         assert recorder.calls[0][0] == "add_local_dir"
         assert recorder.calls[0][2]["copy"] is True
         assert recorder.calls[0][2]["remote_path"] == APP_REMOTE
-        run_joined = " ".join(
-            " ".join(call[1]) for call in recorder.calls if call[0] == "run_commands"
-        )
+        assert recorder.calls[1][0] == "run_commands"
+        run_joined = " ".join(recorder.calls[1][1])
         assert "malvin_precommit_warm" in run_joined
         assert f"cd {APP_REMOTE}" in run_joined
 
@@ -4115,10 +4458,8 @@ def _test_warm_offline_workspace_layer() -> None:
             encoding="utf-8",
         )
         warmed = warm_offline_workspace_layer(recorder, workspace)
-        assert len(recorder.calls) == 6
-        run_joined = " ".join(
-            " ".join(call[1]) for call in recorder.calls if call[0] == "run_commands"
-        )
+        assert len(recorder.calls) == 2
+        run_joined = " ".join(recorder.calls[1][1])
         assert "malvin_precommit_warm" in run_joined
         assert "uv sync --group dev" in run_joined
         assert "uv pip install --python .venv -e . --no-build-isolation" in run_joined
@@ -4137,13 +4478,12 @@ def _test_warm_precommit_hooks_layer() -> None:
         (workspace / ".pre-commit-config.yaml").write_text("repos: []\n", encoding="utf-8")
         warmed = warm_precommit_hooks_layer(recorder, workspace)
         assert warmed is recorder
-        assert len(recorder.calls) == 3
+        assert len(recorder.calls) == 2
         assert recorder.calls[0][0] == "add_local_dir"
         assert recorder.calls[0][2]["copy"] is True
         assert recorder.calls[0][2]["remote_path"] == APP_REMOTE
-        run_joined = " ".join(
-            " ".join(call[1]) for call in recorder.calls if call[0] == "run_commands"
-        )
+        assert recorder.calls[1][0] == "run_commands"
+        run_joined = " ".join(recorder.calls[1][1])
         assert "malvin_precommit_warm" in run_joined
         assert f"cd {APP_REMOTE}" in run_joined
 
@@ -4246,20 +4586,27 @@ def _test_harbor_image_aiomonitor_pydantic_reconcile() -> None:
     if not task.is_dir() or not workspace.is_dir():
         return
     spec = parse_task_dir(task)
-    registry = MagicMock(return_value=MagicMock())
-    pulled = registry.return_value
-    pulled.run_commands = MagicMock(return_value="final-image")
+    pulled = MagicMock(name="pulled-image")
+    pulled.run_commands.return_value = pulled
+    pulled.add_local_dir.return_value = pulled
+    registry = MagicMock(return_value=pulled)
     with patch.object(modal.Image, "from_registry", registry), patch(
         f"{__name__}.registry_image_cache_bust_commands",
         wraps=registry_image_cache_bust_commands,
     ) as cache_bust:
         result = harbor_image(spec, dockerfile=spec.dockerfile, workspace=workspace)
-    assert result == "final-image"
+    assert result is pulled
     cache_bust.assert_called_once()
     assert cache_bust.call_args.kwargs.get("registry_pull") is True, cache_bust.call_args
-    run_args = pulled.run_commands.call_args[0]
-    joined = " ".join(run_args)
+    assert pulled.run_commands.call_count >= 1
+    first_args = pulled.run_commands.call_args_list[0][0]
+    joined = " ".join(first_args)
     assert "pydantic" in joined, joined
+    # Public verifier venv materialize is a separate layer after cache-bust.
+    materialize_joined = " ".join(
+        " ".join(call[0]) for call in pulled.run_commands.call_args_list
+    )
+    assert "/opt/malvin-verifier" in materialize_joined
 
 
 def _test_harbor_image_registry_skips_bulk_pip_replay() -> None:
@@ -4476,6 +4823,7 @@ def _test_run_modal_eval_modal_agent_modal_grade() -> None:
         fake_grade = {"pass": True, "reward": 1}
         with (
             patch(f"{__name__}.materialize_workspace"),
+            patch(f"{__name__}.reset_workspace"),
             patch(f"{__name__}.write_task_plan"),
             patch(f"{__name__}.validate_toolchain_repos", return_value=Path("/m")),
             patch(f"{__name__}.stage_malvin_repo", side_effect=_fake_stage_malvin_repo),
@@ -4564,6 +4912,10 @@ def run_agent_toolchain_unit_tests() -> None:
     _test_read_remote_bytes()
     _test_persist_grading_artifacts()
     _test_tier_a_before_workspace_harvest()
+    _test_agent_grade_call_order_cleanup_harvest_inject()
+    _test_cleanup_agent_process_tree_is_pgid_scoped()
+    _test_cleanup_agent_process_tree_kills_local_orphan_tree()
+    _test_wrap_agent_exec_records_pgid()
     _test_load_agent_sandbox_metadata()
 
 
@@ -4588,6 +4940,8 @@ def run_harvest_sandbox_unit_tests() -> None:
     _test_extract_tar_over_workspace_skips_unremovable()
     _test_mount_eval_context_recipe()
     _test_mount_agent_context_excludes_tests()
+    _test_harbor_agent_image_materializes_public_verifier_venv()
+    _test_no_pytest_disable_in_harbor_agent_image_env()
     _test_inject_verifier_files()
 
 

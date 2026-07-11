@@ -161,6 +161,17 @@ mod router_header_embed_tests {
         assert!(!router_b.contains("{{"));
         let router_c = build_router_c_prompt(&store, &artifacts).expect("router_c");
         assert!(!router_c.contains("{{"));
+        assert!(
+            router_c.contains("still_not_done.md"),
+            "router_c must expand still_not_done_path; got:\n{router_c}"
+        );
+        let router_b_complex =
+            build_router_b_prompt(&store, &artifacts, ROUTER_B_COMPLEX_MD, true).expect("router_b_complex");
+        assert!(!router_b_complex.contains("{{"));
+        assert!(
+            router_b_complex.contains("still_not_done.md"),
+            "router_b_complex must expand still_not_done_path; got:\n{router_b_complex}"
+        );
         assert!(default_file(ROUTER_A_MD).is_some());
         assert!(default_file(ROUTER_B_SIMPLE_MD).is_some());
         assert!(default_file(ROUTER_B_COMPLEX_MD).is_some());
