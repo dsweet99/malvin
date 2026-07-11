@@ -39,7 +39,7 @@ Examples::
 
     python ops/deepswe_run.py tasks
     python ops/deepswe_run.py solve bandit-interprocedural-taint-checks
-    python ops/deepswe_run.py solve --test bandit-interprocedural-taint-checks  # harness smoke: sandbox+deps+grade, no malvin
+    python ops/deepswe_run.py solve --test bandit-interprocedural-taint-checks  # smoke: malvin init + .malvin/checks, then grade
     python ops/deepswe_run.py solve --local bandit-interprocedural-taint-checks
     python ops/deepswe_run.py hello bandit-interprocedural-taint-checks  # Modal auth + CIDR smoke (no grade)
     python ops/deepswe_run.py run --task ../deep-swe/tasks/bandit-interprocedural-taint-checks
@@ -58,6 +58,7 @@ import ast
 import json
 import os
 import re
+import shlex
 import shutil
 import signal
 import subprocess
@@ -804,6 +805,38 @@ def precommit_hook_entries(root: Path) -> list[str]:
     return out
 
 
+_PRECOMMIT_HOOK_ID_RE = re.compile(r"^(?:-\s*)?id:\s*\S+")
+
+
+def precommit_config_has_hook_ids(root: Path) -> bool:
+    """True when ``.pre-commit-config.yaml`` declares at least one hook ``id:``."""
+    path = root / ".pre-commit-config.yaml"
+    if not path.is_file():
+        return False
+    for line in path.read_text(encoding="utf-8").splitlines():
+        trimmed = line.strip()
+        if not trimmed or trimmed.startswith("#"):
+            continue
+        if _PRECOMMIT_HOOK_ID_RE.match(trimmed):
+            return True
+    return False
+
+
+def precommit_agent_check_commands(root: Path) -> list[str]:
+    """Agent-safe gates from pre-commit: ``entry:`` lines, else meta-runner.
+
+    Id-only configs (common upstream style) have no ``entry:`` commands. Seed
+    ``pre-commit run --all-files`` so init-checks smoke still exercises the
+    same hook tooling image warm already installs.
+    """
+    entries = precommit_hook_entries(root)
+    if entries:
+        return entries
+    if precommit_config_has_hook_ids(root):
+        return ["pre-commit run --all-files"]
+    return []
+
+
 def next_makefile_recipe(lines_iter: list[str], index: int) -> tuple[str | None, int]:
     while index < len(lines_iter):
         line = lines_iter[index]
@@ -951,7 +984,7 @@ def discover_deepswe_check_lines(
         return dedupe_check_lines(lines)
 
     signal_lines: list[str] = []
-    precommit = precommit_hook_entries(root)
+    precommit = precommit_agent_check_commands(root)
     makefile = makefile_gate_targets(root)
     tox_lint = tox_lint_check_commands(root)
     if precommit:
@@ -2291,9 +2324,62 @@ def malvin_needs_task_plan(command: str) -> bool:
     return command in ("code", "route")
 
 
+def agent_phase_needs_cursor_credentials(
+    command: str | None,
+    *,
+    grade_only: bool,
+) -> bool:
+    """True when the agent phase may spawn a Cursor ACP session."""
+    if grade_only:
+        return False
+    # Pre-seeded ``init-checks`` uses ``malvin init`` fast path (no agent).
+    return command != "init-checks"
+
+
 def hello_probe_cmd(malvin_cmd: str, malvin_args: tuple[str, ...]) -> list[str]:
     """Argv for a one-turn Cursor connectivity probe with stdout tee."""
     return [malvin_cmd, "do", "Hello", *malvin_args]
+
+
+def runnable_check_command_lines(checks_text: str) -> list[str]:
+    """Non-comment, non-empty command lines from a ``.malvin/checks`` body."""
+    return [
+        line.strip()
+        for line in checks_text.splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    ]
+
+
+def write_deepswe_agent_checks(workspace: Path, *, dry_run: bool = False) -> str:
+    """Pre-seed agent-safe ``.malvin/checks`` (repo signals only; no Harbor tests_dir).
+
+    Makes ``malvin init`` take its documented fast path (no LLM discovery).
+    """
+    checks_text = discover_deepswe_checks(workspace)
+    lines = runnable_check_command_lines(checks_text)
+    if not lines:
+        raise click.ClickException(
+            f"No agent-safe quality checks discovered under {workspace}; "
+            "refusing init-checks smoke that would require LLM discovery"
+        )
+    checks_path = workspace / ".malvin" / "checks"
+    click.echo(f"Pre-seeding {checks_path} ({len(lines)} command(s))")
+    if dry_run:
+        return checks_text
+    checks_path.parent.mkdir(parents=True, exist_ok=True)
+    checks_path.write_text(checks_text, encoding="utf-8")
+    return checks_text
+
+
+def init_checks_cmd(malvin_cmd: str = MALVIN_CMD) -> list[str]:
+    """Argv for ``malvin init && set -euo pipefail && source .malvin/checks``.
+
+    ``set -e`` makes ``source`` fail-fast (bare ``source`` is fail-open).
+    """
+    script = (
+        f"{shlex.quote(malvin_cmd)} init && set -euo pipefail && source .malvin/checks"
+    )
+    return ["bash", "-lc", script]
 
 
 def _relay_subprocess_stdout(cmd: list[str], *, cwd: Path) -> tuple[int, str]:
@@ -2356,6 +2442,13 @@ def run_malvin(
         cmd = [MALVIN_CMD, "do", *malvin_args]
     elif command == "hello":
         cmd = hello_probe_cmd(MALVIN_CMD, malvin_args)
+    elif command == "init-checks":
+        write_deepswe_agent_checks(workspace, dry_run=dry_run)
+        cmd = init_checks_cmd(MALVIN_CMD)
+        if malvin_args:
+            click.echo(
+                f"Note: ignoring extra malvin args for init-checks: {malvin_args!r}"
+            )
     elif command in ("code", "route"):
         plan = workspace / "plan.md"
         if not dry_run and not plan.is_file():
@@ -2459,7 +2552,10 @@ def run_modal_solve(
             "Use --local for local Docker instead."
         ) from exc
 
-    require_cursor_credentials_for_agent(grade_only=grade_only)
+    require_cursor_credentials_for_agent(
+        grade_only=grade_only,
+        malvin_command=malvin_command,
+    )
     run_modal_eval(
         task_dir=task_dir,
         malvin_command=malvin_command,
@@ -3059,12 +3155,13 @@ def _task_kernel_options(f: Any) -> Any:
     f = click.option(
         "--command",
         "malvin_command",
-        type=click.Choice(["route", "do", "hello"]),
+        type=click.Choice(["route", "do", "hello", "init-checks"]),
         default="route",
         show_default=True,
         help=(
             "malvin entrypoint for the agent phase "
-            "(route: bare `malvin plan.md` autonomous routing)."
+            "(route: bare `malvin plan.md`; init-checks: "
+            "`malvin init` then source `.malvin/checks`)."
         ),
     )(f)
     f = click.option(
@@ -3132,8 +3229,8 @@ def _local_solve_options(f: Any) -> Any:
         "test_harness",
         is_flag=True,
         help=(
-            "Harness smoke test: skip malvin; set up the Modal/Docker sandbox, "
-            "install dependencies, and run the grader on the current workspace."
+            "Harness smoke: run `malvin init && source .malvin/checks` instead of "
+            "`malvin plan.md` (exposes agent dependency problems), then Harbor grade."
         ),
     )(f)
     f = click.option(
@@ -3399,10 +3496,10 @@ def solve(
         task_dir=None,
         workspace=None,
         results_dir=None,
-        malvin_command="route",
+        malvin_command="init-checks" if test_harness else "route",
         runtime="host",
         skip_materialize=False,
-        grade_only=test_harness,
+        grade_only=False,
         skip_grade=skip_grade,
         apply_solution=apply_solution,
         reset_workspace_flag=reset_workspace_flag,
@@ -3795,7 +3892,7 @@ def _test_solve_modal_full_dry_run() -> None:
 
 
 def _test_solve_test_flag_modal_dry_run() -> None:
-    """``solve --test`` skips malvin and runs grade-only harness on Modal."""
+    """``solve --test`` runs init-checks smoke then Harbor grade on Modal."""
     from click.testing import CliRunner
 
     tasks_root = default_deepswe_tasks_root()
@@ -3807,7 +3904,7 @@ def _test_solve_test_flag_modal_dry_run() -> None:
     def fake_modal_eval(**kwargs: Any) -> None:
         captured.update(kwargs)
 
-    # No Cursor credentials: grade-only harness must not require them.
+    # Pre-seeded init-checks must not require Cursor credentials.
     saved = {
         key: os.environ.get(key)
         for key in ("CURSOR_AGENT_API_KEY", "CURSOR_API_KEY", "AGENT_API_KEY")
@@ -3821,8 +3918,9 @@ def _test_solve_test_flag_modal_dry_run() -> None:
         )
         assert result.exit_code == 0, result.output
         assert "Runtime: modal" in result.output
-        assert "Dry run: grade-only on Modal (block_network sandbox)" in result.output
-        assert "Dry run: malvin agent in Modal sandbox" not in result.output
+        assert "Dry run: malvin agent in Modal sandbox (Cursor API allowlist)" in result.output
+        assert "Dry run: Harbor grade in same Modal sandbox (in-sandbox runtime)" in result.output
+        assert "Dry run: grade-only on Modal (block_network sandbox)" not in result.output
         assert "Cursor API key required" not in result.output
 
         with patch("deepswe_modal.run_modal_eval", fake_modal_eval):
@@ -3831,8 +3929,9 @@ def _test_solve_test_flag_modal_dry_run() -> None:
                 ["solve", "--test", "bandit-interprocedural-taint-checks"],
             )
         assert patched.exit_code == 0, patched.output
-        assert captured.get("grade_only") is True, captured
+        assert captured.get("grade_only") is False, captured
         assert captured.get("skip_grade") is False, captured
+        assert captured.get("malvin_command") == "init-checks", captured
     finally:
         for key, value in saved.items():
             if value is None:
@@ -3860,7 +3959,8 @@ def _test_solve_test_flag_in_help() -> None:
     result = runner.invoke(cli, ["solve", "--help"])
     assert result.exit_code == 0, result.output
     assert "--test" in result.output
-    assert "Harness smoke test" in result.output
+    assert "malvin init" in result.output
+    assert ".malvin/checks" in result.output
 
 
 def _test_solve_resets_workspace_for_agent_runs() -> None:
@@ -4016,6 +4116,49 @@ def _test_discover_deepswe_checks_precommit() -> None:
         )
         lines = discover_deepswe_check_lines(root)
         assert lines == ["ruff check ."]
+
+
+def _test_discover_deepswe_checks_precommit_id_only_meta() -> None:
+    """Id-only pre-commit configs seed the meta-runner (bandit-style)."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / ".pre-commit-config.yaml").write_text(
+            "repos:\n"
+            "- repo: https://github.com/psf/black-pre-commit-mirror\n"
+            "  rev: 25.12.0\n"
+            "  hooks:\n"
+            "  - id: black\n"
+            "    args: [--line-length=79]\n",
+            encoding="utf-8",
+        )
+        assert precommit_hook_entries(root) == []
+        assert precommit_config_has_hook_ids(root) is True
+        assert precommit_agent_check_commands(root) == ["pre-commit run --all-files"]
+        lines = discover_deepswe_check_lines(root)
+        assert lines == ["pre-commit run --all-files"]
+
+
+def _test_write_deepswe_agent_checks_bandit_like_id_only() -> None:
+    """Documented bandit shape: id-only pre-commit + pep8 tox must pre-seed."""
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        (workspace / ".pre-commit-config.yaml").write_text(
+            "repos:\n"
+            "- repo: https://github.com/psf/black-pre-commit-mirror\n"
+            "  rev: 25.12.0\n"
+            "  hooks:\n"
+            "  - id: black\n",
+            encoding="utf-8",
+        )
+        (workspace / "tox.ini").write_text(
+            "[tox]\nenvlist = py310,pep8\n"
+            "[testenv:pep8]\ncommands = flake8 {posargs} bandit\n",
+            encoding="utf-8",
+        )
+        text = write_deepswe_agent_checks(workspace, dry_run=False)
+        assert "pre-commit run --all-files" in text
+        assert runnable_check_command_lines(text)
+        assert (workspace / ".malvin" / "checks").is_file()
 
 
 def _test_discover_deepswe_checks_tox_lint() -> None:
@@ -4516,6 +4659,67 @@ def _test_run_malvin_do_uses_prompt_not_plan() -> None:
         with patch("subprocess.run", fake_run):
             run_malvin(workspace, command="do", malvin_args=("Hello",), dry_run=False)
         assert captured["cmd"] == [MALVIN_CMD, "do", "Hello"]
+
+
+def _test_init_checks_cmd_uses_fail_fast_source() -> None:
+    cmd = init_checks_cmd("/opt/toolchain/malvin/target/release/malvin")
+    assert cmd[:2] == ["bash", "-lc"]
+    script = cmd[2]
+    assert "init" in script
+    assert "set -euo pipefail" in script
+    assert "source .malvin/checks" in script
+
+
+def _test_write_deepswe_agent_checks_preseeds_file() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        (workspace / "Makefile").write_text("lint:\n\truff check .\n", encoding="utf-8")
+        text = write_deepswe_agent_checks(workspace, dry_run=False)
+        checks = workspace / ".malvin" / "checks"
+        assert checks.is_file()
+        assert checks.read_text(encoding="utf-8") == text
+        assert runnable_check_command_lines(text)
+
+
+def _test_write_deepswe_agent_checks_refuses_empty() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        try:
+            write_deepswe_agent_checks(workspace, dry_run=False)
+        except click.ClickException as exc:
+            assert "No agent-safe quality checks" in str(exc)
+        else:
+            raise AssertionError("expected ClickException for empty discovery")
+
+
+def _test_run_malvin_init_checks_preseeds_then_shells() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        (workspace / "Makefile").write_text("lint:\n\truff check .\n", encoding="utf-8")
+        captured: dict[str, list[str]] = {}
+
+        def fake_run(cmd: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+            captured["cmd"] = cmd
+            return subprocess.CompletedProcess(cmd, 0)
+
+        with patch("subprocess.run", fake_run):
+            result = run_malvin(
+                workspace,
+                command="init-checks",
+                malvin_args=(),
+                dry_run=False,
+            )
+        assert result["exit_code"] == 0
+        assert (workspace / ".malvin" / "checks").is_file()
+        assert captured["cmd"][:2] == ["bash", "-lc"]
+        assert "source .malvin/checks" in captured["cmd"][2]
+
+
+def _test_agent_phase_needs_cursor_credentials() -> None:
+    assert agent_phase_needs_cursor_credentials(None, grade_only=True) is False
+    assert agent_phase_needs_cursor_credentials("init-checks", grade_only=False) is False
+    assert agent_phase_needs_cursor_credentials("route", grade_only=False) is True
+    assert agent_phase_needs_cursor_credentials("hello", grade_only=False) is True
 
 
 def _test_resolve_malvin_cmd_prefers_repo_target() -> None:
@@ -5374,6 +5578,8 @@ def run_self_tests() -> None:
     _test_discover_deepswe_checks_stestr_repo()
     _test_discover_deepswe_checks_stestr_drops_stale_pytest()
     _test_discover_deepswe_checks_precommit()
+    _test_discover_deepswe_checks_precommit_id_only_meta()
+    _test_write_deepswe_agent_checks_bandit_like_id_only()
     _test_discover_deepswe_checks_tox_lint()
     _test_discover_deepswe_checks_existing_malvin_checks()
     _test_harbor_patch_check_lines()
@@ -5421,6 +5627,11 @@ def run_self_tests() -> None:
     _test_scan_class_level_attributes_skips_non_utf8()
     _test_run_malvin_uses_plan_name_not_at_notation()
     _test_run_malvin_do_uses_prompt_not_plan()
+    _test_init_checks_cmd_uses_fail_fast_source()
+    _test_write_deepswe_agent_checks_preseeds_file()
+    _test_write_deepswe_agent_checks_refuses_empty()
+    _test_run_malvin_init_checks_preseeds_then_shells()
+    _test_agent_phase_needs_cursor_credentials()
     _test_resolve_malvin_cmd_prefers_repo_target()
     _test_apply_in_sandbox_runner_env()
     _test_run_task_in_sandbox_sets_uv_offline()

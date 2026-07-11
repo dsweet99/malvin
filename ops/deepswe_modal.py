@@ -81,6 +81,7 @@ from sandbox_prep import (
     workspace_image_warm_commands,
 )
 from deepswe_run import (
+    agent_phase_needs_cursor_credentials,
     apply_patch,
     default_deepswe_results_dir,
     default_deepswe_tasks_root,
@@ -2533,9 +2534,16 @@ def cursor_credentials_available() -> bool:
     return bool(os.environ.get(MODAL_CURSOR_SECRET_NAME_ENV))
 
 
-def require_cursor_credentials_for_agent(*, grade_only: bool) -> None:
+def require_cursor_credentials_for_agent(
+    *,
+    grade_only: bool,
+    malvin_command: str | None = None,
+) -> None:
     """Fail fast on the host when Modal agent runs lack Cursor credentials."""
-    if grade_only:
+    if not agent_phase_needs_cursor_credentials(
+        malvin_command,
+        grade_only=grade_only,
+    ):
         return
     if not cursor_credentials_available():
         raise click.ClickException(_CURSOR_CREDENTIALS_ERROR)
@@ -2657,7 +2665,10 @@ def run_modal_eval(
     click.echo(f"Workspace: {workspace.resolve()}")
     click.echo(f"Artifacts: {run_root.resolve()}")
 
-    require_cursor_credentials_for_agent(grade_only=grade_only)
+    require_cursor_credentials_for_agent(
+        grade_only=grade_only,
+        malvin_command=malvin_command,
+    )
     refuse_agent_verifier_leaks(grade_only=grade_only, apply_solution=apply_solution)
 
     if dry_run:
@@ -2819,7 +2830,7 @@ def run_modal_eval(
 @click.option(
     "--command",
     "malvin_command",
-    type=click.Choice(["route", "do", "hello"]),
+    type=click.Choice(["route", "do", "hello", "init-checks"]),
     default="route",
     show_default=True,
 )
@@ -3572,6 +3583,10 @@ def _test_require_cursor_credentials_for_agent() -> None:
     saved = {key: os.environ.pop(key, None) for key in keys}
     try:
         require_cursor_credentials_for_agent(grade_only=True)
+        require_cursor_credentials_for_agent(
+            grade_only=False,
+            malvin_command="init-checks",
+        )
         try:
             require_cursor_credentials_for_agent(grade_only=False)
         except click.ClickException as exc:
