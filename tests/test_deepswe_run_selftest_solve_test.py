@@ -25,8 +25,12 @@ def test_deepswe_write_deepswe_agent_checks_preseeds_file() -> None:
     deepswe_run._test_write_deepswe_agent_checks_preseeds_file()
 
 
-def test_deepswe_write_deepswe_agent_checks_refuses_empty() -> None:
-    deepswe_run._test_write_deepswe_agent_checks_refuses_empty()
+def test_deepswe_write_deepswe_agent_checks_ecosystem_fallback() -> None:
+    deepswe_run._test_write_deepswe_agent_checks_ecosystem_fallback()
+
+
+def test_deepswe_evaluation_smoke_allows_reward_zero() -> None:
+    deepswe_run._test_evaluation_smoke_allows_reward_zero()
 
 
 def test_deepswe_run_malvin_init_checks_preseeds_then_shells() -> None:

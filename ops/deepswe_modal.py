@@ -86,6 +86,7 @@ from deepswe_run import (
     default_deepswe_results_dir,
     default_deepswe_tasks_root,
     discover_deepswe_checks,
+    evaluation_smoke_allows_reward_zero,
     find_latest_malvin_log,
     malvin_needs_task_plan,
     materialize_workspace,
@@ -2612,6 +2613,11 @@ def finalize_modal_eval(
     click.echo(f"pass: {grade_result.get('pass')}")
     if agent_result:
         click.echo(f"malvin exit: {agent_result.get('exit_code')}")
+        if agent_result.get("prep_failed"):
+            click.echo("prep_failed: true")
+            prep_error = agent_result.get("error")
+            if isinstance(prep_error, str) and prep_error.strip():
+                click.echo(f"prep_error: {prep_error}")
         if agent_result.get("timed_out"):
             click.echo("agent timed_out: true")
         click.echo(f"agent_seconds: {agent_result.get('agent_seconds', 0):.1f}")
@@ -2620,11 +2626,24 @@ def finalize_modal_eval(
             click.echo("--- agent stdout ---")
             click.echo(agent_stdout.rstrip())
             click.echo("--- end agent stdout ---")
+    if grade_result.get("prep_failed"):
+        click.echo("prep_failed: true")
+        prep_error = grade_result.get("error")
+        if isinstance(prep_error, str) and prep_error.strip():
+            click.echo(f"prep_error: {prep_error}")
     if grade_result.get("timed_out"):
         click.echo("grade timed_out: true")
     click.echo(f"artifacts: {run_root.resolve()}")
 
+    if grade_result.get("prep_failed") or (agent_result or {}).get("prep_failed"):
+        raise SystemExit(1)
     if grade_result.get("pass") is False:
+        if evaluation_smoke_allows_reward_zero(
+            malvin_command if not grade_only else None,
+            grade_result,
+            agent_result,
+        ):
+            return
         raise SystemExit(1)
     if agent_result and not agent_result.get("timed_out"):
         if agent_result.get("exit_code") not in (0, None):
