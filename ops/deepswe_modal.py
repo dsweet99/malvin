@@ -1984,14 +1984,28 @@ def agent_process_tree_cleanup_script(*, pgid_path: str = AGENT_PGID_PATH) -> st
 def wrap_agent_exec_argv(argv: list[str]) -> list[str]:
     """Record the agent exec process-group id before ``exec``.
 
-    Uses ``setsid`` so the recorded PID is a real session/process-group leader.
-    Pre-inject cleanup can then ``kill -- -$pgid`` without unscoped ``pkill``.
+    Uses in-process ``os.setsid`` (not util-linux ``setsid``) so Modal's
+    ``sandbox.exec`` waits on the same PID that becomes the agent. Bare
+    ``setsid(1)`` can fork-and-return when the exec'd process is already a
+    session/group leader, which made agent exec exit 0 immediately with no
+    stdout while malvin never ran. Pre-inject cleanup can then
+    ``kill -- -$pgid`` without unscoped ``pkill``.
     """
-    import shlex
+    import json
 
-    body = " ".join(shlex.quote(part) for part in argv)
-    inner = f"echo $$ > {AGENT_PGID_PATH}; exec {body}"
-    return ["setsid", "bash", "-c", inner]
+    if not argv:
+        raise ValueError("wrap_agent_exec_argv requires a non-empty argv")
+    launcher = (
+        "import os\n"
+        "try:\n"
+        "    os.setsid()\n"
+        "except OSError:\n"
+        "    pass\n"
+        f"open({AGENT_PGID_PATH!r}, 'w').write(str(os.getpid()) + '\\n')\n"
+        f"argv = {json.dumps(list(argv))}\n"
+        "os.execvp(argv[0], argv)\n"
+    )
+    return ["python3", "-c", launcher]
 
 
 def cleanup_agent_process_tree(sandbox: modal.Sandbox) -> None:
@@ -3689,8 +3703,9 @@ def _test_agent_grade_call_order_cleanup_harvest_inject() -> None:
             order.append("cleanup")
         elif "--grade-only" in joined:
             order.append("grade")
-        elif "setsid" in joined or "--skip-grade" in joined or "echo $$" in joined:
-            order.append("agent")
+        elif "--skip-grade" in joined or "os.setsid" in joined or AGENT_PGID_PATH in joined:
+            if "kill" not in joined:
+                order.append("agent")
         return fake_proc
 
     fake_sandbox.exec.side_effect = fake_exec
@@ -3834,13 +3849,38 @@ def _test_cleanup_agent_process_tree_kills_local_orphan_tree() -> None:
 
 def _test_wrap_agent_exec_records_pgid() -> None:
     wrapped = wrap_agent_exec_argv(["python3", "x.py", "--skip-grade"])
-    assert wrapped[0] == "setsid"
-    assert "bash" in wrapped
-    joined = " ".join(wrapped)
-    assert AGENT_PGID_PATH in joined
-    assert "echo $$" in joined
-    assert "--skip-grade" in joined
-    assert "setsid" in joined
+    assert wrapped[0] == "python3"
+    assert wrapped[1] == "-c"
+    launcher = wrapped[2]
+    assert AGENT_PGID_PATH in launcher
+    assert "os.setsid()" in launcher
+    assert "os.execvp" in launcher
+    assert "--skip-grade" in launcher
+    assert "x.py" in launcher
+    # Must not use util-linux setsid(1) (fork-and-return race under Modal).
+    assert wrapped[0] != "setsid"
+    assert "setsid" not in wrapped[:2]
+
+
+def _test_wrap_agent_exec_runs_and_records_pgid_locally() -> None:
+    """Wrapper must wait for the payload and leave a pgid file (non-Modal)."""
+    import subprocess
+
+    with tempfile.TemporaryDirectory() as tmp:
+        marker = Path(tmp) / "ran"
+        pgid_path = Path(tmp) / "agent.pgid"
+        payload = [
+            "python3",
+            "-c",
+            f"open({str(marker)!r}, 'w').write('ok')",
+        ]
+        with patch(f"{__name__}.AGENT_PGID_PATH", str(pgid_path)):
+            wrapped = wrap_agent_exec_argv(payload)
+        proc = subprocess.run(wrapped, check=False, capture_output=True, text=True)
+        assert proc.returncode == 0, proc.stderr
+        assert marker.is_file(), "payload did not run (Modal-style early exit regression)"
+        assert pgid_path.is_file()
+        assert pgid_path.read_text(encoding="utf-8").strip().isdigit()
 
 
 def _test_load_agent_sandbox_metadata() -> None:
@@ -3987,12 +4027,13 @@ def _test_agent_sandbox_network() -> None:
     assert mock_create.call_args.kwargs["cpu"] == AGENT_SANDBOX_CPU
     assert mock_create.call_args.kwargs["memory"] == AGENT_SANDBOX_MEMORY_MIB
     assert "block_network" not in mock_create.call_args.kwargs
-    # agent (setsid-wrapped) + scoped cleanup + grade
+    # agent (in-process setsid wrapper) + scoped cleanup + grade
     assert fake_sandbox.exec.call_count == 3, fake_sandbox.exec.call_count
     first_exec_argv = fake_sandbox.exec.call_args_list[0].args
-    assert first_exec_argv[0] == "setsid"
-    agent_script = first_exec_argv[-1]
-    assert "python3" in agent_script
+    assert first_exec_argv[0] == "python3"
+    assert first_exec_argv[1] == "-c"
+    agent_script = first_exec_argv[2]
+    assert "os.setsid()" in agent_script
     assert "--skip-grade" in agent_script
     assert AGENT_PGID_PATH in agent_script
     cleanup_argv = fake_sandbox.exec.call_args_list[1].args
@@ -4916,6 +4957,7 @@ def run_agent_toolchain_unit_tests() -> None:
     _test_cleanup_agent_process_tree_is_pgid_scoped()
     _test_cleanup_agent_process_tree_kills_local_orphan_tree()
     _test_wrap_agent_exec_records_pgid()
+    _test_wrap_agent_exec_runs_and_records_pgid_locally()
     _test_load_agent_sandbox_metadata()
 
 
