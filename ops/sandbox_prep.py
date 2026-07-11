@@ -229,6 +229,9 @@ def _is_network_only_segment(segment: str) -> bool:
         or "pnpm install" in lower
         or "npm ci" in lower
         or "npm install" in lower
+        or "cargo fetch" in lower
+        or "cargo build" in lower
+        or "go mod" in lower
     )
 
 
@@ -363,6 +366,251 @@ def collect_pinned_packages(workspace: Path, intents: list[str]) -> dict[str, st
     return pins
 
 
+_PIP_OPTION_WITH_VALUE = frozenset(
+    {
+        "-c",
+        "--constraint",
+        "-e",
+        "--editable",
+        "-f",
+        "--find-links",
+        "-i",
+        "--index-url",
+        "--extra-index-url",
+        "--trusted-host",
+        "-r",
+        "--requirement",
+        "-t",
+        "--target",
+        "--platform",
+        "--python-version",
+        "--implementation",
+        "--abi",
+        "--root",
+        "--prefix",
+        "--src",
+        "--config-settings",
+        "--global-option",
+        "--no-binary",
+        "--only-binary",
+    }
+)
+
+
+def collect_unpinned_package_names(intents: list[str]) -> frozenset[str]:
+    """Bare distribution names from bulk ``pip install`` intents (no ``==`` pin)."""
+    names: set[str] = set()
+    for intent in intents:
+        if not _is_bulk_pip_segment(intent):
+            continue
+        try:
+            tokens = shlex.split(intent)
+        except ValueError:
+            continue
+        install_at = None
+        for idx, tok in enumerate(tokens):
+            if tok == "install":
+                install_at = idx
+                break
+        if install_at is None:
+            continue
+        i = install_at + 1
+        while i < len(tokens):
+            tok = tokens[i]
+            if tok.startswith("-"):
+                opt = tok.split("=", 1)[0]
+                if opt in _PIP_OPTION_WITH_VALUE and "=" not in tok:
+                    i += 2
+                    continue
+                i += 1
+                continue
+            if tok.startswith(("/", ".", "~")) or tok.endswith((".txt", ".in")):
+                i += 1
+                continue
+            # Strip extras / environment markers / version operators for the name.
+            bare = tok.split(";", 1)[0].strip()
+            bare = bare.split("[", 1)[0].strip()
+            if "@" in bare:
+                i += 1
+                continue
+            name_match = re.match(r"^([A-Za-z0-9][\w.-]*)", bare)
+            if not name_match:
+                i += 1
+                continue
+            name = _normalize_package_name(name_match.group(1))
+            rest = bare[len(name_match.group(1)) :].strip()
+            # Pinned == versions are handled by collect_pinned_packages.
+            if rest.startswith("=="):
+                i += 1
+                continue
+            names.add(name)
+            i += 1
+    return frozenset(names)
+
+
+_EDITABLE_TARGET_RE = re.compile(
+    r"(?:^|\s)(?:-e|--editable)(?:\s*=\s*|\s+)(\S+)",
+)
+
+
+def _editable_target_paths(segment: str, workspace: Path) -> list[Path]:
+    """Local paths targeted by ``pip install -e`` / ``--editable`` in *segment*."""
+    paths: list[Path] = []
+    for match in _EDITABLE_TARGET_RE.finditer(segment):
+        raw = match.group(1).strip().strip("'\"")
+        raw = raw.split("[", 1)[0].strip()
+        if not raw or raw.startswith(("git+", "http://", "https://", "svn+", "hg+")):
+            continue
+        if raw.startswith("file:"):
+            raw = raw[len("file:") :]
+            if raw.startswith("//"):
+                raw = raw[2:]
+        candidate = Path(raw)
+        if not candidate.is_absolute():
+            candidate = (workspace / candidate).resolve()
+        else:
+            candidate = candidate.resolve()
+        if candidate.is_file():
+            candidate = candidate.parent
+        if candidate.is_dir():
+            paths.append(candidate)
+    return paths
+
+
+def _read_distribution_name(project_root: Path) -> str | None:
+    """Return the packaging distribution name declared at *project_root*, if any."""
+    pyproject = project_root / "pyproject.toml"
+    if pyproject.is_file():
+        try:
+            raw = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+        except (OSError, tomllib.TOMLDecodeError, TypeError):
+            raw = {}
+        project = raw.get("project") if isinstance(raw, dict) else None
+        if isinstance(project, dict):
+            name = project.get("name")
+            if isinstance(name, str) and name.strip():
+                return _normalize_package_name(name)
+        tool = raw.get("tool") if isinstance(raw, dict) else None
+        if isinstance(tool, dict):
+            poetry = tool.get("poetry")
+            if isinstance(poetry, dict):
+                name = poetry.get("name")
+                if isinstance(name, str) and name.strip():
+                    return _normalize_package_name(name)
+    setup_cfg = project_root / "setup.cfg"
+    if setup_cfg.is_file():
+        try:
+            text = setup_cfg.read_text(encoding="utf-8")
+        except OSError:
+            text = ""
+        match = re.search(
+            r"(?m)^\s*name\s*=\s*([A-Za-z0-9][\w.-]*)\s*$",
+            text,
+        )
+        if match:
+            return _normalize_package_name(match.group(1))
+    for pattern in (
+        r"""(?m)^\s*name\s*=\s*['"]([^'"]+)['"]""",
+        r"""(?m)^\s*NAME\s*=\s*['"]([^'"]+)['"]""",
+    ):
+        setup_py = project_root / "setup.py"
+        if not setup_py.is_file():
+            break
+        try:
+            text = setup_py.read_text(encoding="utf-8")
+        except OSError:
+            break
+        match = re.search(pattern, text)
+        if match:
+            return _normalize_package_name(match.group(1))
+    return None
+
+
+def _top_level_txt_roots(project_root: Path) -> set[str]:
+    """Import roots listed in egg-info / dist-info ``top_level.txt`` files."""
+    roots: set[str] = set()
+    for path in project_root.glob("*.egg-info/top_level.txt"):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        for line in text.splitlines():
+            name = line.strip()
+            if name:
+                roots.add(name.split(".", 1)[0])
+    for path in project_root.glob("*.dist-info/top_level.txt"):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        for line in text.splitlines():
+            name = line.strip()
+            if name:
+                roots.add(name.split(".", 1)[0])
+    return roots
+
+
+def _filesystem_package_roots(project_root: Path) -> set[str]:
+    """Heuristic import roots from common src-/flat- layouts under *project_root*."""
+    roots: set[str] = set()
+    skip = {
+        "tests",
+        "test",
+        "docs",
+        "doc",
+        "examples",
+        "example",
+        "scripts",
+        "benchmarks",
+        "benchmark",
+        "build",
+        "dist",
+        "requirements",
+        "venv",
+        ".venv",
+        "node_modules",
+        "__pycache__",
+    }
+    src = project_root / "src"
+    search_roots = [src] if src.is_dir() else [project_root]
+    for base in search_roots:
+        try:
+            entries = list(base.iterdir())
+        except OSError:
+            continue
+        for entry in entries:
+            if not entry.is_dir() or entry.name.startswith(".") or entry.name in skip:
+                continue
+            if (entry / "__init__.py").is_file() or (entry / "__init__.pyi").is_file():
+                roots.add(entry.name)
+    return roots
+
+
+def import_roots_provided_by_project(project_root: Path) -> set[str]:
+    """Import roots satisfied by installing the project at *project_root* editable."""
+    roots = set(_top_level_txt_roots(project_root))
+    roots |= _filesystem_package_roots(project_root)
+    dist_name = _read_distribution_name(project_root)
+    if dist_name:
+        roots.add(dist_name.replace("-", "_"))
+        # Harbor / DeclaredDeps keys often use the distribution spelling.
+        roots.add(dist_name)
+    return {r for r in roots if r}
+
+
+def editable_provided_import_roots(
+    workspace: Path,
+    editable_segments: tuple[str, ...],
+) -> set[str]:
+    """Union of import roots provided by Dockerfile editable install targets."""
+    provided: set[str] = set()
+    workspace = workspace.resolve()
+    for segment in editable_segments:
+        for path in _editable_target_paths(segment, workspace):
+            provided |= import_roots_provided_by_project(path)
+    return provided
+
+
 def requirements_paths_from_dockerfile(dockerfile: Path) -> list[str]:
     """Return ``-r`` requirements paths referenced by Dockerfile bulk pip installs."""
     if not dockerfile.is_file():
@@ -462,9 +710,15 @@ class DeclaredDeps:
     constraints: dict[str, str]
     editable_segments: tuple[str, ...]
     lockfile_pins: dict[str, str]
+    unpinned_names: frozenset[str] = frozenset()
 
     def package_names(self) -> set[str]:
-        keys = set(self.bulk_pins) | set(self.constraints) | set(self.lockfile_pins)
+        keys = (
+            set(self.bulk_pins)
+            | set(self.constraints)
+            | set(self.lockfile_pins)
+            | set(self.unpinned_names)
+        )
         return {name.lower() for name in keys}
 
     def effective_spec(self, name: str) -> str | None:
@@ -483,6 +737,8 @@ class DeclaredDeps:
         key = name.lower()
         spec = self.effective_spec(key)
         if spec is None:
+            if key in self.unpinned_names:
+                return key
             return None
         if spec.startswith(("==", ">=", "<=", "!=", ">", "<")):
             return f"{key}{spec}"
@@ -502,8 +758,6 @@ def _parse_dependency_spec(raw: str) -> tuple[str, str] | None:
         return None
     name = _normalize_package_name(match.group(1))
     spec = match.group(2).strip()
-    if not spec:
-        return None
     return name, spec
 
 
@@ -573,11 +827,15 @@ def _environment_marker_applies(marker: str | None) -> bool:
     return False
 
 
-def _read_pyproject_dependencies(pyproject: Path) -> dict[str, str]:
+def _read_pyproject_dependencies(
+    pyproject: Path,
+) -> tuple[dict[str, str], frozenset[str]]:
+    """Return ``(versioned_constraints, bare_unpinned_names)`` from ``[project]`` deps."""
     if not pyproject.is_file():
-        return {}
+        return {}, frozenset()
     raw = tomllib.loads(pyproject.read_text(encoding="utf-8"))
     constraints: dict[str, str] = {}
+    bare: set[str] = set()
     project = raw.get("project") or {}
     for dep in project.get("dependencies") or []:
         if not isinstance(dep, str):
@@ -588,8 +846,11 @@ def _read_pyproject_dependencies(pyproject: Path) -> dict[str, str]:
         name, spec, marker = parsed
         if not _environment_marker_applies(marker):
             continue
-        constraints[name] = spec
-    return constraints
+        if not spec:
+            bare.add(name)
+        else:
+            constraints[name] = spec
+    return constraints, frozenset(bare)
 
 
 def _read_uv_lock_pins(lock_path: Path, names: set[str]) -> dict[str, str]:
@@ -624,12 +885,18 @@ def declared_python_dependencies(
     dockerfile_text = dockerfile.read_text(encoding="utf-8") if dockerfile and dockerfile.is_file() else ""
     intents = collect_pip_install_intents(dockerfile_text) if dockerfile_text else []
     bulk_pins = collect_pinned_packages(workspace, intents) if intents else {}
-    constraints = _read_pyproject_dependencies(workspace / "pyproject.toml")
+    constraints, pyproject_bare = _read_pyproject_dependencies(workspace / "pyproject.toml")
     for key in bulk_pins:
         constraints.pop(key, None)
+    unpinned = collect_unpinned_package_names(intents) if intents else frozenset()
+    unpinned = frozenset(
+        name
+        for name in (unpinned | pyproject_bare)
+        if name not in bulk_pins and name not in constraints
+    )
     lockfile_pins = _read_uv_lock_pins(
         workspace / "uv.lock",
-        {name.lower() for name in constraints} | set(bulk_pins),
+        {name.lower() for name in constraints} | set(bulk_pins) | set(unpinned),
     )
     editable_segments = _editable_segments_from_dockerfile(dockerfile_text) if dockerfile_text else ()
     return DeclaredDeps(
@@ -637,6 +904,7 @@ def declared_python_dependencies(
         constraints=constraints,
         editable_segments=editable_segments,
         lockfile_pins=lockfile_pins,
+        unpinned_names=unpinned,
     )
 
 
@@ -781,15 +1049,29 @@ def discover_verifier_spec(
     imports (even when those pins are already in ``public_install_specs``). Grade
     prep may reinstall them into ``/opt/malvin-verifier``; agent-image materialize
     never runs those grade-only commands. Unmapped third-party imports are recorded
-    for probe handling and are never invented as unpinned PyPI installs.
+    for probe handling and are never invented as unpinned PyPI installs. Imports
+    satisfied by Dockerfile editable installs are not unmapped (the editable replay
+    provides them).
     """
     workspace = workspace.resolve()
     declared = declared_python_dependencies(workspace, dockerfile)
     public_specs = _public_install_specs(declared)
     harbor_imports = harbor_imports_from_tests_dir(tests_dir)
+    editable_imports = editable_provided_import_roots(workspace, declared.editable_segments)
+    editable_imports_normalized = {
+        name.replace("-", "_").lower() for name in editable_imports
+    } | {name.lower() for name in editable_imports}
     closure: list[str] = []
     unmapped: list[str] = []
     for import_name in harbor_imports:
+        import_key = import_name.replace("-", "_").lower()
+        if (
+            import_name in editable_imports
+            or import_key in editable_imports_normalized
+            or import_name.lower() in editable_imports_normalized
+        ):
+            # Satisfied by pip install -e replay into the verifier venv.
+            continue
         dist = distribution_name_for_import(import_name)
         spec = declared.pip_install_spec(dist)
         if spec is None:
@@ -860,6 +1142,24 @@ def verifier_venv_apply_grade_closure_commands(spec: VerifierSpec) -> list[str]:
     return [f"{shlex.quote(pip_bin)} install --no-cache-dir {pkgs}"]
 
 
+def verifier_venv_replay_editable_commands(spec: VerifierSpec) -> list[str]:
+    """Replay Dockerfile editables into the verifier venv against the live workspace.
+
+    Image-build materialize may have installed editables against a copied ``/app``.
+    Runtime remounts replace ``/app``, so grade prep must re-link editables offline.
+    """
+    pip_bin = _verifier_pip(spec)
+    commands: list[str] = []
+    for segment in spec.editable_segments:
+        rewritten = _rewrite_pip_segment_python(segment, pip_bin)
+        if "--no-deps" not in rewritten:
+            rewritten += " --no-deps"
+        if "--no-build-isolation" not in rewritten:
+            rewritten += " --no-build-isolation"
+        commands.append(rewritten)
+    return commands
+
+
 def _plugin_closure_probe_python() -> str:
     return (
         "import importlib.metadata, sys\n"
@@ -918,6 +1218,141 @@ def _materialize_harbor_probe_tree(tests_dir: Path | None, dest: Path) -> tuple[
         target.write_text(text, encoding="utf-8")
         written.append(rel)
     return tuple(written)
+
+
+_MISSING_MODULE_RE = re.compile(
+    r"No module named ['\"]([^'\"]+)['\"]"
+)
+_CANNOT_IMPORT_FROM_RE = re.compile(
+    r"cannot import name ['\"][^'\"]+['\"] from ['\"]([^'\"]+)['\"]"
+)
+
+
+def _missing_module_from_import_error(err: str) -> str | None:
+    """Best-effort module path extracted from a pytest collect ImportError."""
+    match = _MISSING_MODULE_RE.search(err)
+    if match:
+        return match.group(1)
+    match = _CANNOT_IMPORT_FROM_RE.search(err)
+    if match:
+        return match.group(1)
+    # Truncated traces often end mid-statement: ``from pwnlib.tubes.mux import``.
+    match = re.search(
+        r"^\s*from\s+([A-Za-z_][\w.]*)\s+import\b",
+        err,
+        re.MULTILINE,
+    )
+    if match:
+        return match.group(1)
+    # Detail truncation may cut before ``import``: ``from pwnlib.tubes.mux``.
+    match = re.search(r"^\s*from\s+([A-Za-z_][\w.]*)\s*$", err, re.MULTILINE)
+    if match:
+        return match.group(1)
+    match = re.search(r"^\s*import\s+([A-Za-z_][\w.]*)\b", err, re.MULTILINE)
+    if match:
+        return match.group(1)
+    return None
+
+
+def collect_import_error_is_editable_feature_gap(
+    err: str,
+    provided_roots: set[str],
+) -> bool:
+    """True when collect ImportError is a missing workspace submodule (pre-solution).
+
+    Top-level missing packages (``No module named 'pwnlib'``) remain prep failures
+    when detected explicitly. Missing feature submodules and truncated
+    ``from <editable_root>...`` traces soft-succeed after a prior top-level import
+    probe has already confirmed the editable root is importable.
+
+    Explicit ``No module named '<third_party>'`` always fails closed, even when the
+    traceback also shows ``from <editable_root>`` frames (e.g. pwntools → socks).
+    """
+    if not provided_roots:
+        return False
+    roots = {r.replace("-", "_").lower() for r in provided_roots} | {
+        r.lower() for r in provided_roots
+    }
+    # Any explicit missing module outside editable roots is a real dep gap.
+    for match in _MISSING_MODULE_RE.finditer(err):
+        missing_mod = match.group(1)
+        missing_root = missing_mod.split(".", 1)[0].replace("-", "_").lower()
+        if missing_root not in roots:
+            return False
+        # Explicit top-level miss of an editable root ⇒ install failed.
+        if "." not in missing_mod:
+            return False
+    missing = _missing_module_from_import_error(err)
+    if missing is not None:
+        parts = [p for p in missing.split(".") if p]
+        if parts:
+            root = parts[0].replace("-", "_").lower()
+            if root in roots and len(parts) > 1:
+                return True
+    # Truncated pytest traces: ``from pwnlib`` cut before submodule / ModuleNotFound.
+    # Only soft-succeed when no third-party No module named was found above.
+    for root in roots:
+        if re.search(rf"(?m)^\s*from\s+{re.escape(root)}\.", err):
+            return True
+        if re.search(rf"(?m)^\s*from\s+{re.escape(root)}\s+import\b", err):
+            return True
+        if re.search(rf"(?m)^\s*from\s+{re.escape(root)}\s*$", err):
+            return True
+    return False
+
+
+def _probe_editable_roots_importable(
+    python_bin: str,
+    provided_roots: set[str],
+    *,
+    workspace: Path,
+    harbor_imports: tuple[str, ...] = (),
+) -> str | None:
+    """Return an error detail when Harbor-needed editable roots cannot be imported.
+
+    Only probes import roots that Harbor tests actually import and that editable
+    discovery claims to provide (e.g. ``pwnlib``, not the ``pwntools`` dist name).
+    """
+    harbor = {h.replace("-", "_").lower() for h in harbor_imports} | {
+        h.lower() for h in harbor_imports
+    }
+    provided_norm = {
+        r.replace("-", "_").lower(): r for r in provided_roots if "-" not in r
+    }
+    candidates = sorted(
+        {
+            provided_norm[h]
+            for h in harbor
+            if h in provided_norm and provided_norm[h].isidentifier()
+        }
+    )
+    if not candidates:
+        return None
+    script = (
+        "import importlib, sys\n"
+        f"roots = {candidates!r}\n"
+        "errors = []\n"
+        "for r in roots:\n"
+        "    try:\n"
+        "        importlib.import_module(r)\n"
+        "    except Exception as exc:\n"
+        "        errors.append(f'{r}: {type(exc).__name__}: {exc}')\n"
+        "if errors:\n"
+        "    print('; '.join(errors))\n"
+        "    sys.exit(1)\n"
+        "sys.exit(0)\n"
+    )
+    proc = subprocess.run(
+        [python_bin, "-c", script],
+        cwd=str(workspace),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if proc.returncode == 0:
+        return None
+    missing = (proc.stdout or proc.stderr or "").strip() or "unknown"
+    return f"editable import roots not importable in verifier venv: {missing}"
 
 
 def probe_verifier_env(
@@ -996,6 +1431,21 @@ def probe_verifier_env(
         )
 
     if run_collect:
+        provided = editable_provided_import_roots(workspace, spec.editable_segments)
+        editable_err = _probe_editable_roots_importable(
+            python_bin,
+            provided,
+            workspace=workspace,
+            harbor_imports=spec.harbor_imports,
+        )
+        if editable_err:
+            return (
+                False,
+                format_prep_error(
+                    task_id, phase="verifier prep", detail=editable_err
+                ),
+                policy,
+            )
         collect_cmd = collect_only_pytest_command(python_bin, spec.test_sh_body)
         env = verifier_grade_subprocess_env(spec, plugin_policy=policy)
         # Materialize hidden tests outside /app (never leave them in the agent workspace).
@@ -1014,6 +1464,9 @@ def probe_verifier_env(
             if collect_proc.returncode != 0:
                 err = (collect_proc.stderr or collect_proc.stdout or "").strip()
                 if "ModuleNotFoundError" in err or "ImportError" in err:
+                    if collect_import_error_is_editable_feature_gap(err, provided):
+                        # Harbor tests importing not-yet-implemented workspace APIs.
+                        return True, None, policy
                     return (
                         False,
                         format_prep_error(
@@ -1149,6 +1602,20 @@ def prepare_verifier_grade(
                 spec=spec,
                 public_venv_present=False,
             )
+    # Always re-link editables to the mounted workspace (image bake may be stale).
+    for command in verifier_venv_replay_editable_commands(spec):
+        code, detail, _timed_out = _run_shell(command, workspace)
+        if code != 0:
+            return VerifierPrepResult(
+                ok=False,
+                error=format_prep_error(
+                    task_id,
+                    phase="verifier prep",
+                    detail=detail or f"editable replay failed: {command}",
+                ),
+                spec=spec,
+                public_venv_present=public_present,
+            )
     for command in verifier_venv_apply_grade_closure_commands(spec):
         code, detail, _timed_out = _run_shell(command, workspace)
         if code != 0:
@@ -1198,7 +1665,17 @@ def prepare_verifier_grade(
 
 # PyPI distribution names whose importable module differs from ``name.replace("-", "_")``.
 _PACKAGE_PROBE_IMPORT_ALIASES: dict[str, str] = {
+    "beautifulsoup4": "bs4",
+    "opencv-python": "cv2",
     "phonenumberslite": "phonenumbers",
+    "pillow": "PIL",
+    "pyelftools": "elftools",
+    "pyserial": "serial",
+    "pysocks": "socks",
+    "python-dateutil": "dateutil",
+    "pyyaml": "yaml",
+    "scikit-image": "skimage",
+    "scikit-learn": "sklearn",
 }
 
 
@@ -1225,7 +1702,13 @@ def _probe_checks_for_declared(declared: DeclaredDeps) -> list[tuple[str, str, s
 
 
 def _mandatory_probe_python(declared: DeclaredDeps) -> str:
-    """Python source run by image-build and runtime verification probes."""
+    """Python source run by image-build and runtime verification probes.
+
+    Prefer ``importlib.metadata.version(distribution)`` so packages whose import
+    root differs from the distribution name (``pyelftools`` → ``elftools``) still
+    pass when the pin is installed. Fall back to import-based discovery only when
+    metadata is absent.
+    """
     checks = _probe_checks_for_declared(declared)
     check_lines = [f"    ({import_name!r}, {spec!r}, {display!r})," for import_name, spec, display in checks]
     checks_literal = "\n".join(check_lines) if check_lines else ""
@@ -1236,22 +1719,22 @@ def _mandatory_probe_python(declared: DeclaredDeps) -> str:
         f"{checks_literal}\n"
         "]\n"
         "for import_name, spec_str, display_name in checks:\n"
-        "    try:\n"
-        "        spec = importlib.util.find_spec(import_name)\n"
-        "    except (ImportError, ModuleNotFoundError, ValueError) as exc:\n"
-        "        errors.append(f'{display_name}: import check failed ({exc})')\n"
-        "        continue\n"
-        "    if spec is None:\n"
-        "        errors.append(f'{display_name}: not installed (expected {spec_str})')\n"
-        "        continue\n"
-        "    mod = importlib.import_module(import_name)\n"
         "    version = None\n"
         "    try:\n"
         "        from importlib.metadata import version as pkg_version\n"
         "        version = pkg_version(display_name)\n"
         "    except Exception:\n"
-        "        pass\n"
+        "        version = None\n"
         "    if version is None:\n"
+        "        try:\n"
+        "            spec = importlib.util.find_spec(import_name)\n"
+        "        except (ImportError, ModuleNotFoundError, ValueError) as exc:\n"
+        "            errors.append(f'{display_name}: import check failed ({exc})')\n"
+        "            continue\n"
+        "        if spec is None:\n"
+        "            errors.append(f'{display_name}: not installed (expected {spec_str})')\n"
+        "            continue\n"
+        "        mod = importlib.import_module(import_name)\n"
         "        version = getattr(mod, '__version__', None)\n"
         "    if version is None:\n"
         "        errors.append(f'{display_name}: installed but version unknown (expected {spec_str})')\n"
@@ -2636,6 +3119,17 @@ def _test_httpx_drift_probe_script_write_roundtrip() -> None:
 def _test_probe_import_name_phonenumberslite() -> None:
     assert _probe_import_name("phonenumberslite") == "phonenumbers"
     assert _probe_import_name("pydantic-core") == "pydantic_core"
+    assert _probe_import_name("pyelftools") == "elftools"
+    assert _probe_import_name("pyserial") == "serial"
+
+
+def _test_mandatory_probe_uses_metadata_before_import() -> None:
+    """Distribution metadata satisfies probes when the import root differs from the dist name."""
+    declared = DeclaredDeps({}, {"pyelftools": ">=0.32"}, (), {})
+    body = _mandatory_probe_python(declared)
+    meta_at = body.index("pkg_version(display_name)")
+    import_at = body.index("find_spec(import_name)")
+    assert meta_at < import_at, body[:400]
 
 
 def _test_registry_image_cache_bust_reconciles_twice_after_httpx_fix() -> None:
@@ -3382,6 +3876,133 @@ def _test_discover_grade_closure_records_declared_harbor_imports() -> None:
     assert any(s.startswith("requests==") for s in grade.public_install_specs)
 
 
+def _test_editable_project_satisfies_harbor_import() -> None:
+    """Dockerfile ``pip install -e .`` provides Harbor imports without DeclaredDeps pins."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        workspace = root / "ws"
+        workspace.mkdir()
+        (workspace / "mypkg").mkdir()
+        (workspace / "mypkg" / "__init__.py").write_text("", encoding="utf-8")
+        (workspace / "pyproject.toml").write_text(
+            '[project]\nname = "my-pkg"\nversion = "0.1.0"\n',
+            encoding="utf-8",
+        )
+        tests_dir = root / "tests"
+        tests_dir.mkdir()
+        (tests_dir / "test.patch").write_text(
+            "diff --git a/t.py b/t.py\n"
+            "--- /dev/null\n"
+            "+++ b/t.py\n"
+            "@@ -0,0 +1,1 @@\n"
+            "+import mypkg\n",
+            encoding="utf-8",
+        )
+        dockerfile = root / "Dockerfile"
+        dockerfile.write_text(
+            "FROM x\nRUN pip install -e .\n",
+            encoding="utf-8",
+        )
+        grade = discover_verifier_spec(
+            workspace, tests_dir=tests_dir, dockerfile=dockerfile
+        )
+    assert "mypkg" in grade.harbor_imports
+    assert grade.unmapped_imports == ()
+    assert grade.editable_segments
+    assert any("-e" in seg for seg in grade.editable_segments)
+
+
+def _test_unpinned_dockerfile_package_declared() -> None:
+    """Bare ``pip install pytest`` becomes an unpinned DeclaredDeps name."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        workspace = root / "ws"
+        workspace.mkdir()
+        (workspace / "pyproject.toml").write_text(
+            '[project]\nname = "demo"\nversion = "0.1.0"\n',
+            encoding="utf-8",
+        )
+        dockerfile = root / "Dockerfile"
+        dockerfile.write_text(
+            "FROM x\nRUN pip install --no-cache-dir pytest\nRUN pip install -e .\n",
+            encoding="utf-8",
+        )
+        declared = declared_python_dependencies(workspace, dockerfile)
+        tests_dir = root / "tests"
+        tests_dir.mkdir()
+        (tests_dir / "test.patch").write_text(
+            "diff --git a/t.py b/t.py\n"
+            "--- /dev/null\n"
+            "+++ b/t.py\n"
+            "@@ -0,0 +1,2 @@\n"
+            "+import pytest\n"
+            "+import demo\n",
+            encoding="utf-8",
+        )
+        grade = discover_verifier_spec(
+            workspace, tests_dir=tests_dir, dockerfile=dockerfile
+        )
+    assert "pytest" in declared.unpinned_names
+    assert declared.pip_install_spec("pytest") == "pytest"
+    assert "pytest" in grade.public_install_specs
+    assert grade.unmapped_imports == ()
+
+
+def _test_cargo_and_go_mod_skipped_in_offline_sync() -> None:
+    """Network language package fetches are not replayed in offline sandbox sync."""
+    cargo_runs = parse_dockerfile_run_commands("FROM x\nRUN cargo fetch\n")
+    go_runs = parse_dockerfile_run_commands("FROM x\nRUN go mod download\n")
+    assert _sync_commands_from_runs(cargo_runs, offline_editable=False) == []
+    assert _sync_commands_from_runs(go_runs, offline_editable=False) == []
+    assert _sync_commands_from_runs(cargo_runs, offline_editable=True) == []
+
+
+def _test_collect_import_error_editable_feature_gap() -> None:
+    provided = {"pwnlib", "pwn", "pwntools"}
+    assert collect_import_error_is_editable_feature_gap(
+        "ModuleNotFoundError: No module named 'pwnlib.tubes.mux'",
+        provided,
+    )
+    assert not collect_import_error_is_editable_feature_gap(
+        "ModuleNotFoundError: No module named 'pwnlib'",
+        provided,
+    )
+    assert collect_import_error_is_editable_feature_gap(
+        "tests/test_mux.py:17: in <module>\n    from pwnlib\n",
+        provided,
+    )
+    # Third-party miss must not soft-succeed just because traceback mentions pwnlib.
+    assert not collect_import_error_is_editable_feature_gap(
+        "File \"/app/pwnlib/context/__init__.py\", line 21, in <module>\n"
+        "    import socks\n"
+        "ModuleNotFoundError: No module named 'socks'\n",
+        provided,
+    )
+
+
+def _test_bare_pyproject_deps_become_unpinned() -> None:
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "pyproject.toml").write_text(
+            '[project]\nname = "demo"\nversion = "0.1.0"\n'
+            'dependencies = ["pysocks", "requests>=2.0"]\n',
+            encoding="utf-8",
+        )
+        dockerfile = root / "Dockerfile"
+        dockerfile.write_text("FROM x\nRUN pip install -e .\n", encoding="utf-8")
+        declared = declared_python_dependencies(root, dockerfile)
+    assert "pysocks" in declared.unpinned_names
+    assert declared.constraints.get("requests") == ">=2.0"
+    assert declared.pip_install_spec("pysocks") == "pysocks"
+
+
+
 def _test_adaptix_conflict_fixture_yields_plugin_policy_or_verifier_prep() -> None:
     """Adaptix pin conflict: collect ImportError fails verifier prep (or plugin policy)."""
     import tempfile
@@ -3766,6 +4387,7 @@ def run_self_tests() -> None:
     _test_mandatory_probe_fails_when_version_unknown()
     _test_httpx_drift_probe_script_write_roundtrip()
     _test_probe_import_name_phonenumberslite()
+    _test_mandatory_probe_uses_metadata_before_import()
     _test_registry_image_cache_bust_reconciles_twice_after_httpx_fix()
     _test_mandatory_probe_script_commands_builder_safe()
     _test_mandatory_probe_script_write_roundtrip()
@@ -3789,6 +4411,11 @@ def run_self_tests() -> None:
     _test_verifier_pip_honors_spec_venv_path()
     _test_prepare_verifier_grade_materialize_creates_real_venv()
     _test_discover_grade_closure_records_declared_harbor_imports()
+    _test_editable_project_satisfies_harbor_import()
+    _test_unpinned_dockerfile_package_declared()
+    _test_cargo_and_go_mod_skipped_in_offline_sync()
+    _test_collect_import_error_editable_feature_gap()
+    _test_bare_pyproject_deps_become_unpinned()
     _test_adaptix_conflict_fixture_yields_plugin_policy_or_verifier_prep()
     _test_adaptix_import_error_never_soft_succeeds_on_system_python()
     _test_plugin_policy_as_env_allowlist_wiring()
