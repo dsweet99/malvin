@@ -39,6 +39,7 @@ Examples::
 
     python ops/deepswe_run.py tasks
     python ops/deepswe_run.py solve bandit-interprocedural-taint-checks
+    python ops/deepswe_run.py solve --test bandit-interprocedural-taint-checks  # harness smoke: sandbox+deps+grade, no malvin
     python ops/deepswe_run.py solve --local bandit-interprocedural-taint-checks
     python ops/deepswe_run.py hello bandit-interprocedural-taint-checks  # Modal auth + CIDR smoke (no grade)
     python ops/deepswe_run.py run --task ../deep-swe/tasks/bandit-interprocedural-taint-checks
@@ -2442,6 +2443,7 @@ def run_modal_solve(
     *,
     task_dir: Path,
     malvin_command: str = "route",
+    grade_only: bool = False,
     skip_grade: bool,
     apply_solution: bool,
     reset_workspace_flag: bool,
@@ -2457,11 +2459,11 @@ def run_modal_solve(
             "Use --local for local Docker instead."
         ) from exc
 
-    require_cursor_credentials_for_agent(grade_only=False)
+    require_cursor_credentials_for_agent(grade_only=grade_only)
     run_modal_eval(
         task_dir=task_dir,
         malvin_command=malvin_command,
-        grade_only=False,
+        grade_only=grade_only,
         skip_grade=skip_grade,
         apply_solution=apply_solution,
         reset_flag=reset_workspace_flag,
@@ -2490,6 +2492,7 @@ def _run_solve_local_docker_fallback(
     task_dir: Path,
     *,
     malvin_command: str = "route",
+    grade_only: bool = False,
     skip_grade: bool,
     apply_solution: bool,
     reset_workspace_flag: bool,
@@ -2514,7 +2517,7 @@ def _run_solve_local_docker_fallback(
         run_root,
         malvin_command=malvin_command,
         malvin_args=malvin_args,
-        grade_only=False,
+        grade_only=grade_only,
         skip_grade=skip_grade,
         apply_solution=apply_solution,
         reset_workspace_flag=reset_workspace_flag,
@@ -2717,6 +2720,7 @@ def run_task(
                 run_modal_solve(
                     task_dir=task_dir,
                     malvin_command=malvin_command,
+                    grade_only=grade_only,
                     skip_grade=skip_grade,
                     apply_solution=apply_solution,
                     reset_workspace_flag=reset_workspace_flag,
@@ -2733,6 +2737,7 @@ def run_task(
                 _run_solve_local_docker_fallback(
                     task_dir,
                     malvin_command=malvin_command,
+                    grade_only=grade_only,
                     skip_grade=skip_grade,
                     apply_solution=apply_solution,
                     reset_workspace_flag=reset_workspace_flag,
@@ -3123,6 +3128,15 @@ def _local_solve_options(f: Any) -> Any:
         help="Run in a local Docker container instead of Modal (default: Modal).",
     )(f)
     f = click.option(
+        "--test",
+        "test_harness",
+        is_flag=True,
+        help=(
+            "Harness smoke test: skip malvin; set up the Modal/Docker sandbox, "
+            "install dependencies, and run the grader on the current workspace."
+        ),
+    )(f)
+    f = click.option(
         "--skip-grade",
         is_flag=True,
         help="Skip Harbor verifier grading (agent phase only).",
@@ -3368,6 +3382,7 @@ def solve(
     ctx: click.Context,
     task_name: str,
     use_local_docker: bool,
+    test_harness: bool,
     skip_grade: bool,
     apply_solution: bool,
     reset_workspace_flag: bool,
@@ -3376,6 +3391,8 @@ def solve(
     malvin_args: tuple[str, ...],
 ) -> None:
     """Run malvin and Harbor grade (Modal by default; --local for Docker)."""
+    if test_harness and skip_grade:
+        raise click.ClickException("Use either --test or --skip-grade, not both")
     reset_workspace_flag = True
     run_task(
         local_task_name=task_name,
@@ -3385,7 +3402,7 @@ def solve(
         malvin_command="route",
         runtime="host",
         skip_materialize=False,
-        grade_only=False,
+        grade_only=test_harness,
         skip_grade=skip_grade,
         apply_solution=apply_solution,
         reset_workspace_flag=reset_workspace_flag,
@@ -3775,6 +3792,75 @@ def _test_solve_modal_full_dry_run() -> None:
     assert "Dry run: malvin agent in Modal sandbox (Cursor API allowlist)" in result.output
     assert "Dry run: Harbor grade in same Modal sandbox (in-sandbox runtime)" in result.output
     assert "Running agent on host" not in result.output
+
+
+def _test_solve_test_flag_modal_dry_run() -> None:
+    """``solve --test`` skips malvin and runs grade-only harness on Modal."""
+    from click.testing import CliRunner
+
+    tasks_root = default_deepswe_tasks_root()
+    if not (tasks_root / "bandit-interprocedural-taint-checks").is_dir():
+        return
+    runner = CliRunner()
+    captured: dict[str, Any] = {}
+
+    def fake_modal_eval(**kwargs: Any) -> None:
+        captured.update(kwargs)
+
+    # No Cursor credentials: grade-only harness must not require them.
+    saved = {
+        key: os.environ.get(key)
+        for key in ("CURSOR_AGENT_API_KEY", "CURSOR_API_KEY", "AGENT_API_KEY")
+    }
+    for key in saved:
+        os.environ.pop(key, None)
+    try:
+        result = runner.invoke(
+            cli,
+            ["solve", "--test", "bandit-interprocedural-taint-checks", "--dry-run"],
+        )
+        assert result.exit_code == 0, result.output
+        assert "Runtime: modal" in result.output
+        assert "Dry run: grade-only on Modal (block_network sandbox)" in result.output
+        assert "Dry run: malvin agent in Modal sandbox" not in result.output
+        assert "Cursor API key required" not in result.output
+
+        with patch("deepswe_modal.run_modal_eval", fake_modal_eval):
+            patched = runner.invoke(
+                cli,
+                ["solve", "--test", "bandit-interprocedural-taint-checks"],
+            )
+        assert patched.exit_code == 0, patched.output
+        assert captured.get("grade_only") is True, captured
+        assert captured.get("skip_grade") is False, captured
+    finally:
+        for key, value in saved.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+
+def _test_solve_test_flag_rejects_skip_grade() -> None:
+    from click.testing import CliRunner
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ["solve", "--test", "--skip-grade", "bandit-interprocedural-taint-checks"],
+    )
+    assert result.exit_code != 0
+    assert "not both" in result.output.lower()
+
+
+def _test_solve_test_flag_in_help() -> None:
+    from click.testing import CliRunner
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["solve", "--help"])
+    assert result.exit_code == 0, result.output
+    assert "--test" in result.output
+    assert "Harness smoke test" in result.output
 
 
 def _test_solve_resets_workspace_for_agent_runs() -> None:
@@ -5268,6 +5354,9 @@ def run_self_tests() -> None:
     _test_solve_modal_dry_run()
     _test_solve_modal_missing_credentials()
     _test_solve_modal_full_dry_run()
+    _test_solve_test_flag_modal_dry_run()
+    _test_solve_test_flag_rejects_skip_grade()
+    _test_solve_test_flag_in_help()
     _test_solve_resets_workspace_for_agent_runs()
     _test_solve_local_dry_run_passes_reset()
     _test_refuse_apply_solution_on_agent_solve()
