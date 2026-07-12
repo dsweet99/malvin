@@ -15,10 +15,7 @@ pub fn kpop_emit_startup(
     let request = crate::cli::cli_request::require_cli_request(kpop.first_request(), "kpop")?;
     crate::cli::run_emit::emit_run_startup_sequence(
         artifacts,
-        crate::cli::run_emit::RunStartupEmitOpts {
-            tee_stdout: shared.tee_startup_stdout(),
-            host_resources: true,
-        },
+        crate::cli::run_emit::RunStartupEmitOpts::from_shared(shared, true),
         &request,
     )
 }
@@ -56,6 +53,7 @@ max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
     kpop_emit_startup(&kpop, &shared, &artifacts).expect("startup");
     let log = std::fs::read_to_string(artifacts.run_dir.join("command.log")).expect("log");
     assert!(log.contains("Memory:"));
+    assert!(log.contains("Model: auto, Mini: no"));
     assert!(artifacts.run_dir.starts_with(crate::malvin_logs_root(tmp.path())));
 }
 

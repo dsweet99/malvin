@@ -30,11 +30,27 @@ pub fn echo_primary_to_stdout(plan_path: &Path, echo_plain: bool) -> Result<(), 
 
 pub fn emit_host_resources_line(run_dir: &Path, echo_stdout: bool) -> Result<(), String> {
     let line = format_host_resources_line();
+    append_command_log_line(run_dir, echo_stdout, &line)
+}
+
+/// Format the startup model/mini prelude line (`Model: …, Mini: yes|no`).
+#[must_use]
+pub fn format_model_mini_line(model: &str, mini: bool) -> String {
+    let display_model = if mini {
+        crate::agent_backend::mini::resolve_mini_model(model)
+    } else {
+        model.to_string()
+    };
+    let mini_label = if mini { "yes" } else { "no" };
+    format!("Model: {display_model}, Mini: {mini_label}")
+}
+
+fn append_command_log_line(run_dir: &Path, echo_stdout: bool, line: &str) -> Result<(), String> {
     if echo_stdout {
-        print_stdout_line(WHO_U, &line);
+        print_stdout_line(WHO_U, line);
     }
     let log_path = run_dir.join("command.log");
-    let formatted = format!("{}\n", format_line(WHO_U, &line));
+    let formatted = format!("{}\n", format_line(WHO_U, line));
     let mut file = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
@@ -48,6 +64,20 @@ pub fn emit_host_resources_line(run_dir: &Path, echo_stdout: bool) -> Result<(),
 pub struct RunStartupEmitOpts {
     pub tee_stdout: bool,
     pub host_resources: bool,
+    pub model: String,
+    pub mini: bool,
+}
+
+impl RunStartupEmitOpts {
+    #[must_use]
+    pub fn from_shared(shared: &super::SharedOpts, host_resources: bool) -> Self {
+        Self {
+            tee_stdout: shared.tee_startup_stdout(),
+            host_resources,
+            model: shared.model.clone(),
+            mini: shared.mini,
+        }
+    }
 }
 
 pub fn emit_run_startup_sequence(
@@ -61,6 +91,11 @@ pub fn emit_run_startup_sequence(
     if opts.host_resources && !crate::acp::test_no_real_agent_enabled() {
         emit_host_resources_line(&artifacts.run_dir, opts.tee_stdout)?;
     }
+    append_command_log_line(
+        &artifacts.run_dir,
+        opts.tee_stdout,
+        &format_model_mini_line(&opts.model, opts.mini),
+    )?;
     echo_primary_to_stdout(&artifacts.plan_path, opts.tee_stdout)?;
     print_stdout_line(
         MALVIN_WHO,
@@ -71,8 +106,12 @@ pub fn emit_run_startup_sequence(
 
 #[cfg(test)]
 mod tests {
-    use super::{emit_host_resources_line, emit_run_startup_sequence, RunStartupEmitOpts};
+    use super::{
+        append_command_log_line, emit_host_resources_line, emit_run_startup_sequence,
+        format_model_mini_line, RunStartupEmitOpts,
+    };
     use crate::output::{format_who_tag_delim, WHO_U};
+    use crate::support_paths::MINI_DEFAULT_MODEL;
 
     #[test]
     fn emit_command_line_uses_user_who_tag() {
@@ -102,6 +141,41 @@ mod tests {
     }
 
     #[test]
+    fn format_model_mini_line_reports_yes_and_no() {
+        assert_eq!(
+            format_model_mini_line("composer-2", false),
+            "Model: composer-2, Mini: no"
+        );
+        assert_eq!(
+            format_model_mini_line("openai/gpt-4o", true),
+            "Model: openai/gpt-4o, Mini: yes"
+        );
+    }
+
+    #[test]
+    fn format_model_mini_line_resolves_mini_auto() {
+        assert_eq!(
+            format_model_mini_line("auto", true),
+            format!("Model: {MINI_DEFAULT_MODEL}, Mini: yes")
+        );
+        assert_eq!(format_model_mini_line("auto", false), "Model: auto, Mini: no");
+    }
+
+    #[test]
+    fn append_model_mini_line_uses_user_who_tag() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let run_dir = tmp.path().join("run");
+        std::fs::create_dir_all(&run_dir).expect("mkdir");
+        std::fs::write(run_dir.join("command.log"), "existing\n").expect("seed");
+        let line = format_model_mini_line("auto", true);
+        append_command_log_line(&run_dir, false, &line).expect("emit");
+        let text = std::fs::read_to_string(run_dir.join("command.log")).expect("read");
+        let delim = format_who_tag_delim(WHO_U);
+        assert!(text.contains("existing"));
+        assert!(text.contains(&format!(" {delim}Model: {MINI_DEFAULT_MODEL}, Mini: yes")));
+    }
+
+    #[test]
     fn emit_run_startup_sequence_includes_host_resources_when_requested() {
         crate::test_utils::clear_test_no_real_agent_env();
         let tmp = tempfile::tempdir().expect("tempdir");
@@ -112,6 +186,8 @@ mod tests {
             RunStartupEmitOpts {
                 tee_stdout: false,
                 host_resources: true,
+                model: "composer-2".into(),
+                mini: false,
             },
             "hi",
         )
@@ -120,6 +196,13 @@ mod tests {
         assert!(log.contains("Command:"));
         assert!(log.contains("Memory:"));
         assert!(log.contains("CPUs:"));
+        assert!(log.contains("Model: composer-2, Mini: no"));
+        let memory_pos = log.find("Memory:").expect("memory");
+        let model_pos = log.find("Model:").expect("model");
+        assert!(
+            model_pos > memory_pos,
+            "Model line must follow Memory; got {log:?}"
+        );
     }
 
     #[test]
@@ -132,6 +215,8 @@ mod tests {
             RunStartupEmitOpts {
                 tee_stdout: false,
                 host_resources: false,
+                model: "auto".into(),
+                mini: true,
             },
             "code",
         )
@@ -139,5 +224,6 @@ mod tests {
         let log = std::fs::read_to_string(artifacts.run_dir.join("command.log")).expect("log");
         assert!(log.contains("Command:"));
         assert!(!log.contains("Memory:"));
+        assert!(log.contains(&format!("Model: {MINI_DEFAULT_MODEL}, Mini: yes")));
     }
 }

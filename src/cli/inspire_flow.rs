@@ -71,10 +71,7 @@ fn inspire_emit_startup(
     let request = require_cli_request(inspire.request.as_ref(), "inspire")?;
     crate::cli::run_emit::emit_run_startup_sequence(
         artifacts,
-        crate::cli::run_emit::RunStartupEmitOpts {
-            tee_stdout: shared.tee_startup_stdout(),
-            host_resources: true,
-        },
+        crate::cli::run_emit::RunStartupEmitOpts::from_shared(shared, true),
         &request,
     )
 }

@@ -39,6 +39,7 @@ pub use trace::{record_http_exchange, MiniTraceSink};
 pub use acp_trace_shim::MiniHttpExchangeRecord;
 
 pub use client::{MiniAgentClient, MiniLoopConfig};
+pub use model_resolve::resolve_mini_model;
 pub use retry_fork::MiniRetryStrategy;
 pub use terminal::{MiniPhase, MiniTerminalReason, MiniTerminalRecord};
 pub use loop_driver::{

@@ -99,6 +99,8 @@ mod tests {
             crate::cli::run_emit::RunStartupEmitOpts {
                 tee_stdout: false,
                 host_resources: true,
+                model: crate::config::DEFAULT_CLI_MODEL.into(),
+                mini: false,
             },
             &prepared.startup_emit_request,
         )

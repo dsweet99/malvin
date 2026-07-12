@@ -124,10 +124,7 @@ mod inspire_tests {
         };
         crate::cli::run_emit::emit_run_startup_sequence(
             &artifacts,
-            crate::cli::run_emit::RunStartupEmitOpts {
-                tee_stdout: shared.tee_startup_stdout(),
-                host_resources: true,
-            },
+            crate::cli::run_emit::RunStartupEmitOpts::from_shared(&shared, true),
             "topic",
         )
         .expect("startup");

@@ -24,10 +24,7 @@ pub async fn run_tidy(
 
     emit_run_startup_sequence(
         &prepared.artifacts,
-        RunStartupEmitOpts {
-            tee_stdout: shared.tee_startup_stdout(),
-            host_resources: true,
-        },
+        RunStartupEmitOpts::from_shared(shared, true),
         &prepared.startup_emit_request,
     )?;
 

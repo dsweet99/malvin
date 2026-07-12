@@ -108,10 +108,7 @@ pub async fn run_router(
     let request = require_cli_request(router_args.request.as_ref(), "")?;
     emit_run_startup_sequence(
         &prep.artifacts,
-        RunStartupEmitOpts {
-            tee_stdout: shared.tee_startup_stdout(),
-            host_resources: true,
-        },
+        RunStartupEmitOpts::from_shared(shared, true),
         &request,
     )?;
     prep.client

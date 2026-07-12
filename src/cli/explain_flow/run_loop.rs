@@ -143,10 +143,7 @@ fn emit_explain_startup(
 ) -> Result<(), String> {
     emit_run_startup_sequence(
         &prepared.inner.artifacts,
-        RunStartupEmitOpts {
-            tee_stdout: shared.tee_startup_stdout(),
-            host_resources: true,
-        },
+        RunStartupEmitOpts::from_shared(shared, true),
         &prepared.inner.startup_emit_request,
     )
 }
