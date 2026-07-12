@@ -4,7 +4,7 @@ use super::{
     load_malvin_config, merge_missing_keys, open_malvin_config,
     parse_agent_config, parse_template_value, read_on_disk_config_value, write_config_value,
 };
-use crate::support_paths::{DEFAULT_CLI_MODEL, MINI_DEFAULT_MODEL};
+use crate::support_paths::DEFAULT_CLI_MODEL;
 use crate::test_utils::with_isolated_home;
 use crate::workspace_paths::malvin_config_path;
 
@@ -38,7 +38,6 @@ fn open_malvin_config_creates_file_with_all_sections() {
         assert!(text.contains("[agent]"));
         assert!(!text.contains("mpc"));
         assert_eq!(cfg.agent.model, DEFAULT_CLI_MODEL);
-        assert_eq!(cfg.agent.model_mini, MINI_DEFAULT_MODEL);
                 assert_eq!(cfg.agent.max_loops, DEFAULT_MAX_LOOPS);
         assert_eq!(cfg.agent.max_loops_code, DEFAULT_MAX_LOOPS_CODE);
         assert!(text.contains("theme"));
@@ -61,7 +60,7 @@ fn open_malvin_config_merges_missing_agent_in_memory_only() {
         let after = std::fs::read_to_string(&path).expect("read after");
         assert_eq!(before, after, "existing config.toml must never be rewritten");
         assert_eq!(cfg.mem_limit_gb, 6);
-                assert_eq!(cfg.agent.model_mini, MINI_DEFAULT_MODEL);
+                assert_eq!(cfg.agent.model, DEFAULT_CLI_MODEL);
     });
 }
 
@@ -69,12 +68,12 @@ fn open_malvin_config_merges_missing_agent_in_memory_only() {
 fn parse_agent_config_reads_values() {
     let text = r#"
 [agent]
-model = "gpt-5"
+model = "cursor:gpt-5"
 max_loops = 3
 max_acp_retries = 5
 "#;
     let agent = parse_agent_config(text).expect("parse");
-    assert_eq!(agent.model, "gpt-5");
+    assert_eq!(agent.model, "cursor:gpt-5");
         assert_eq!(agent.max_loops, 3);
     assert_eq!(agent.max_acp_retries, 5);
 }
@@ -83,7 +82,7 @@ max_acp_retries = 5
 fn parse_agent_config_accepts_string_numbers() {
     let text = r#"
 [agent]
-model = "m"
+model = "cursor:m"
 max_loops = "2"
 max_acp_retries = "4"
 "#;
@@ -132,7 +131,7 @@ fn load_malvin_config_reads_light_theme() {
 fn parse_agent_config_reads_max_loops_code() {
     let text = r#"
 [agent]
-model = "m"
+model = "cursor:m"
 max_loops = 1
 max_loops_code = 4
 "#;

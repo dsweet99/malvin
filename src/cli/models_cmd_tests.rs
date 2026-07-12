@@ -88,7 +88,7 @@ fn run_models_reads_fake_agent_models_output() {
     perms.set_mode(0o755);
     std::fs::set_permissions(&agent, perms).expect("chmod fake agent");
     let _guard = set_fake_command_dir(tmp.path());
-    run_models(ModelsArgs { mini: false }).expect("fake agent models");
+    run_models(ModelsArgs {}, crate::config::DEFAULT_CLI_MODEL).expect("fake agent models");
     let path = resolve_models_cli().expect("fake agent on fake PATH");
     assert_eq!(path, agent);
 }
@@ -107,8 +107,8 @@ pub(crate) async fn run_mini_models_prints_openrouter_rows_and_footer() {
     run_mini_models().await.expect("mini models");
     let out = take_captured_stdout();
     drop(guards);
-    assert!(out.contains("anthropic/claude-sonnet-4\tClaude Sonnet 4"));
-    assert!(out.contains("Default mini model: nvidia/nemotron-3-ultra-550b-a55b:free"));
+    assert!(out.contains("openrouter:anthropic/claude-sonnet-4\tClaude Sonnet 4"));
+    assert!(out.contains("Current:"));
 }
 
 #[test]
@@ -188,8 +188,8 @@ pub(crate) fn print_mini_models_formats_tab_separated_rows() {
         },
     ]);
     let out = take_captured_stdout();
-    assert!(out.contains("a/b\tAB"));
-    assert!(out.contains("c/d\tCD"));
+    assert!(out.contains("openrouter:a/b\tAB"));
+    assert!(out.contains("openrouter:c/d\tCD"));
 }
 
 #[test]
@@ -199,4 +199,23 @@ pub(crate) fn kiss_cov_mini_models_test_helpers() {
     drop(guards);
     let _ = mini_models_env_guards;
     let _ = mount_mini_models_mock;
+}
+
+#[test]
+fn current_model_label_reads_config_or_default() {
+    use super::models_cmd::test_hooks::{current_model_label, print_current_footer};
+    use crate::output::{enable_stdout_capture, take_captured_stdout};
+
+    crate::test_utils::with_isolated_home(|work| {
+        let cwd = std::env::current_dir().expect("cwd");
+        std::env::set_current_dir(work).expect("chdir");
+        crate::malvin_config_file::open_malvin_config(work).expect("seed");
+        let label = current_model_label();
+        assert!(label.starts_with("cursor:"), "{label}");
+        enable_stdout_capture();
+        print_current_footer();
+        let out = take_captured_stdout();
+        assert!(out.contains("Current:"), "{out}");
+        std::env::set_current_dir(cwd).expect("restore");
+    });
 }

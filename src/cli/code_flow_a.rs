@@ -89,7 +89,7 @@ pub fn new_agent_client(
     io: crate::acp::AgentIoOptions,
 ) -> crate::acp::AgentClient {
     crate::acp::AgentClient::with_max_acp_retries(
-        shared.model.clone(),
+        crate::model_id::provider_slug(&shared.model),
         io,
         shared.max_acp_retries,
     )

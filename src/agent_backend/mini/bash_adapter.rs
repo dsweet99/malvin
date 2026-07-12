@@ -8,7 +8,7 @@ use crate::malvin_sandbox::malvin_std_command;
 pub fn ensure_bash_on_path() -> Result<(), String> {
     let path = which_bash()?;
     if !path.is_file() {
-        return Err("bash is not available on PATH (required for --mini)".to_string());
+        return Err("bash is not available on PATH (required for openrouter: models)".to_string());
     }
     Ok(())
 }
@@ -19,11 +19,11 @@ fn which_bash() -> Result<std::path::PathBuf, String> {
         .output()
         .map_err(|e| format!("failed to probe bash on PATH: {e}"))?;
     if !output.status.success() {
-        return Err("bash is not available on PATH (required for --mini)".to_string());
+        return Err("bash is not available on PATH (required for openrouter: models)".to_string());
     }
     let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
     if path.is_empty() {
-        return Err("bash is not available on PATH (required for --mini)".to_string());
+        return Err("bash is not available on PATH (required for openrouter: models)".to_string());
     }
     Ok(std::path::PathBuf::from(path))
 }

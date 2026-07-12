@@ -2,6 +2,7 @@ use super::{
     dispatch_command, finish_entrypoint, prepare_cli_output, run_async_cli, Exit, entrypoint_from,
 };
 use crate::cli::args::GlobalOpts;
+use crate::test_utils::with_isolated_home;
 
 #[test]
 fn prepare_cli_output_applies_color_and_background_flags() {
@@ -16,53 +17,75 @@ fn prepare_cli_output_applies_color_and_background_flags() {
 
 #[test]
 fn entrypoint_from_init_doc_argv_exits_success() {
-    assert_eq!(entrypoint_from(["malvin", "init", "--doc"]), Exit::Success);
+    with_isolated_home(|_| {
+        assert_eq!(entrypoint_from(["malvin", "init", "--doc"]), Exit::Success);
+    });
 }
 
 #[test]
 fn entrypoint_from_doc_argv_exits_success() {
-    assert_eq!(entrypoint_from(["malvin", "--doc"]), Exit::Success);
+    with_isolated_home(|_| {
+        assert_eq!(entrypoint_from(["malvin", "--doc"]), Exit::Success);
+    });
 }
 
 #[test]
 fn entrypoint_from_background_suppresses_stdout() {
-    crate::output::set_stdout_suppressed(false);
-    assert_eq!(entrypoint_from(["malvin", "--background", "--doc"]), Exit::Success);
-    assert!(crate::output::stdout_suppressed());
-    crate::output::set_stdout_suppressed(false);
+    with_isolated_home(|_| {
+        crate::output::set_stdout_suppressed(false);
+        assert_eq!(
+            entrypoint_from(["malvin", "--background", "--doc"]),
+            Exit::Success
+        );
+        assert!(crate::output::stdout_suppressed());
+        crate::output::set_stdout_suppressed(false);
+    });
 }
 
 #[test]
 fn entrypoint_from_bare_malvin_exits_success() {
-    assert_eq!(entrypoint_from(["malvin"]), Exit::Success);
+    with_isolated_home(|_| {
+        assert_eq!(entrypoint_from(["malvin"]), Exit::Success);
+    });
 }
 
 #[test]
 fn entrypoint_from_code_is_deprecated() {
-    assert_eq!(entrypoint_from(["malvin", "code"]), Exit::Failure);
+    with_isolated_home(|_| {
+        assert_eq!(entrypoint_from(["malvin", "code"]), Exit::Failure);
+    });
 }
 
 #[test]
 fn entrypoint_from_inspire_without_request_exits_success() {
-    assert_eq!(entrypoint_from(["malvin", "inspire"]), Exit::Success);
+    with_isolated_home(|_| {
+        assert_eq!(entrypoint_from(["malvin", "inspire"]), Exit::Success);
+    });
 }
 
 #[test]
 fn entrypoint_from_no_color_disables_stdout_color() {
-    assert_eq!(entrypoint_from(["malvin", "--no-color", "--doc"]), Exit::Success);
-    assert!(!crate::output::stdout_use_color());
+    with_isolated_home(|_| {
+        assert_eq!(
+            entrypoint_from(["malvin", "--no-color", "--doc"]),
+            Exit::Success
+        );
+        assert!(!crate::output::stdout_use_color());
+    });
 }
 
 #[test]
 fn entrypoint_from_no_color_and_background_apply_together() {
-    crate::output::set_stdout_suppressed(false);
-    assert_eq!(
-        entrypoint_from(["malvin", "--no-color", "--background", "--doc"]),
-        Exit::Success
-    );
-    assert!(!crate::output::stdout_use_color());
-    assert!(crate::output::stdout_suppressed());
-    crate::output::set_stdout_suppressed(false);
+    with_isolated_home(|_| {
+        crate::output::set_stdout_suppressed(false);
+        assert_eq!(
+            entrypoint_from(["malvin", "--no-color", "--background", "--doc"]),
+            Exit::Success
+        );
+        assert!(!crate::output::stdout_use_color());
+        assert!(crate::output::stdout_suppressed());
+        crate::output::set_stdout_suppressed(false);
+    });
 }
 
 #[test]

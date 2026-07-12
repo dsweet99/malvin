@@ -2,9 +2,22 @@
 
 const MALVIN_MD: &str = include_str!("../default_prompts/docs/malvin.md");
 
+fn isolated_home() -> tempfile::TempDir {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    std::fs::create_dir_all(tmp.path().join("home")).expect("mkdir home");
+    tmp
+}
+
+fn malvin_cmd(home_root: &std::path::Path) -> std::process::Command {
+    let mut cmd = std::process::Command::new(env!("CARGO_BIN_EXE_malvin"));
+    cmd.env("HOME", home_root.join("home"));
+    cmd
+}
+
 #[test]
 fn malvin_doc_prints_full_malvin_md() {
-    let output = std::process::Command::new(env!("CARGO_BIN_EXE_malvin"))
+    let tmp = isolated_home();
+    let output = malvin_cmd(tmp.path())
         .arg("--doc")
         .output()
         .expect("spawn malvin --doc");
@@ -18,14 +31,15 @@ fn malvin_doc_prints_full_malvin_md() {
 
 #[test]
 fn malvin_code_is_deprecated() {
-    let bin = env!("CARGO_BIN_EXE_malvin");
+    let tmp = isolated_home();
+    let bin_home = tmp.path();
     for args in [
         &["code"][..],
         &["code", "plan.md"][..],
         &["code", "--help"][..],
         &["code", "--doc"][..],
     ] {
-        let out = std::process::Command::new(bin)
+        let out = malvin_cmd(bin_home)
             .args(args)
             .output()
             .unwrap_or_else(|e| panic!("spawn malvin {args:?}: {e}"));
@@ -45,12 +59,12 @@ fn malvin_code_is_deprecated() {
 
 #[test]
 fn malvin_inspire_without_request_shows_short_usage_and_exits_zero() {
-    let bin = env!("CARGO_BIN_EXE_malvin");
-    let bare = std::process::Command::new(bin)
+    let tmp = isolated_home();
+    let bare = malvin_cmd(tmp.path())
         .args(["inspire"])
         .output()
         .expect("spawn malvin inspire");
-    let help = std::process::Command::new(bin)
+    let help = malvin_cmd(tmp.path())
         .args(["inspire", "--help"])
         .output()
         .expect("spawn malvin inspire --help");
@@ -91,11 +105,11 @@ fn malvin_inspire_without_request_shows_short_usage_and_exits_zero() {
 
 #[test]
 fn bare_malvin_shows_commands_only_and_exits_zero() {
-    let bin = env!("CARGO_BIN_EXE_malvin");
-    let bare = std::process::Command::new(bin)
+    let tmp = isolated_home();
+    let bare = malvin_cmd(tmp.path())
         .output()
         .expect("spawn malvin");
-    let help = std::process::Command::new(bin)
+    let help = malvin_cmd(tmp.path())
         .arg("--help")
         .output()
         .expect("spawn malvin --help");

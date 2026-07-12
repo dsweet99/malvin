@@ -6,6 +6,7 @@ use clap::{ArgMatches, CommandFactory, FromArgMatches};
 use super::config_loop::subcommand_flag_from_command_line;
 use super::{Cli, Commands, SharedOpts};
 use crate::malvin_config_file::AgentConfig;
+use crate::model_id::require_prefixed_model;
 
 pub(crate) fn global_flag_from_command_line(matches: &ArgMatches, id: &str) -> bool {
     matches
@@ -30,15 +31,6 @@ pub(crate) fn apply_loop_defaults(
     }
     if !subcommand_flag_from_command_line(matches, subcommand, "max_hypotheses") {
         *loops.max_hypotheses = loops.config_max_hypotheses;
-    }
-}
-
-fn apply_mini_model_default(matches: &ArgMatches, shared: &mut SharedOpts, agent: &AgentConfig) {
-    if !shared.mini {
-        return;
-    }
-    if !global_flag_from_command_line(matches, "model") {
-        shared.model = agent.model_mini.clone();
     }
 }
 
@@ -143,34 +135,55 @@ fn apply_gate_loop_command_defaults(
     }
 }
 
+fn finalize_shared_model(matches: &ArgMatches, shared: &mut SharedOpts) -> Result<(), String> {
+    let _ = matches;
+    // CLI `--model` and config-sourced values both require a prefix (Q1=a, Q5=c).
+    shared.model = require_prefixed_model(&shared.model)?;
+    Ok(())
+}
+
+fn load_agent_config(matches: &ArgMatches) -> Result<AgentConfig, String> {
+    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
+    // Bare on-disk `model` only fails when that value would be used (Q5=c).
+    // An explicit CLI `--model` may still override a legacy bare config.
+    if global_flag_from_command_line(matches, "model") {
+        return Ok(crate::malvin_config_file::load_agent_config_lenient(&cwd));
+    }
+    crate::malvin_config_file::load_agent_config_strict(&cwd)
+}
+
+fn apply_shared_and_finalize(
+    matches: &ArgMatches,
+    shared: &mut SharedOpts,
+    agent: &AgentConfig,
+) -> Result<(), String> {
+    apply_shared_config_defaults(matches, shared, agent);
+    finalize_shared_model(matches, shared)
+}
+
+const fn uses_lightweight_config_path(cli: &Cli) -> bool {
+    matches!(
+        cli.command,
+        Some(Commands::Do(_) | Commands::Models(_))
+    ) || (cli.command.is_none() && cli.request.is_some())
+}
+
 pub fn apply_workspace_config_defaults(
     matches: &ArgMatches,
     cli: &mut Cli,
 ) -> Result<(), String> {
-    if matches!(
-        cli.command,
-        Some(Commands::Do(_) | Commands::Models(_))
-    ) || (cli.command.is_none() && cli.request.is_some())
-    {
-        if cli.shared.mini {
-            let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-            let agent = crate::malvin_config_file::load_malvin_config(&cwd).agent;
-            apply_mini_model_default(matches, &mut cli.shared, &agent);
-            cli.shared.mini_max_transport_retries = agent.max_mini_transport_retries;
-        }
-        return Ok(());
+    if uses_lightweight_config_path(cli) {
+        let agent = load_agent_config(matches)?;
+        return apply_shared_and_finalize(matches, &mut cli.shared, &agent);
     }
-
-    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    let agent = crate::malvin_config_file::load_malvin_config(&cwd).agent;
-
     let Some(command) = cli.command.as_mut() else {
-        return Ok(());
+        // Bare `malvin` / help-style paths: validate clap default `--model` only.
+        return finalize_shared_model(matches, &mut cli.shared);
     };
+    let agent = load_agent_config(matches)?;
     apply_shared_config_defaults(matches, &mut cli.shared, &agent);
-    apply_mini_model_default(matches, &mut cli.shared, &agent);
     apply_gate_loop_command_defaults(matches, command, &agent);
-    Ok(())
+    finalize_shared_model(matches, &mut cli.shared)
 }
 
 pub(crate) fn apply_shared_config_defaults(

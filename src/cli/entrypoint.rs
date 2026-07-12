@@ -161,7 +161,7 @@ pub(crate) fn dispatch_command(
         Commands::Inspire(inspire) | Commands::Adaptix(inspire) => {
             super::entrypoint_commands::run_inspire_command(inspire, &shared)
         }
-        Commands::Models(models) => dispatch_models(models),
+        Commands::Models(models) => dispatch_models(models, &shared),
     }
 }
 
@@ -193,12 +193,11 @@ pub fn dispatch_default_route(
     })
 }
 
-fn dispatch_models(models: super::models_cmd::ModelsArgs) -> Result<(), String> {
-    if models.mini {
-        run_async_cli(super::models_cmd::run_mini_models)
-    } else {
-        super::models_cmd::run_models(models)
-    }
+fn dispatch_models(
+    models: super::models_cmd::ModelsArgs,
+    shared: &super::SharedOpts,
+) -> Result<(), String> {
+    super::models_cmd::run_models(models, &shared.model)
 }
 
 #[cfg(test)]

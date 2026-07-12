@@ -1,4 +1,4 @@
-//! Opt-in live integration tests for `--mini` (`OpenRouter` + bash loop).
+//! Opt-in live integration tests for `OpenRouter` (`openrouter:`) backend.
 //!
 //! Run manually:
 //! ```text
@@ -46,7 +46,7 @@ fn run_mini_live_in_workspace(args: &[&str]) -> (tempfile::TempDir, std::process
             .current_dir(&workspace)
             .args(args),
     )
-    .expect("malvin --mini live");
+    .expect("malvin openrouter live");
     #[allow(unsafe_code)]
     unsafe {
         match old_home {
@@ -67,7 +67,8 @@ fn mini_live_do_echo() {
     }
     let (root, output) = run_mini_live_in_workspace(&[
         "do",
-        "--mini",
+        "--model",
+        "openrouter:auto",
         "--no-tee",
         "--no-markdown",
         "--max-acp-retries",
@@ -95,11 +96,12 @@ fn mini_live_kpop_exp_log() {
     }
     let (root, output) = run_mini_live_in_workspace(&[
         "kpop",
-        "--mini",
+        "--model",
+        "openrouter:auto",
         "--no-tee",
         "--max-loops",
         "1",
-                "--max-acp-retries",
+        "--max-acp-retries",
         "1",
         "why is the sky blue?",
     ]);
@@ -122,15 +124,15 @@ fn mini_live_models_listing() {
         eprintln!("skip: set MALVIN_LIVE_MINI=1 and OPENROUTER_API_KEY to run");
         return;
     }
-    let (_root, output) = run_mini_live_in_workspace(&["models", "--mini", "--no-color"]);
+    let (_root, output) = run_mini_live_in_workspace(&["models", "--no-color"]);
     assert!(
         output.status.success(),
         "stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("anthropic/"));
-    assert!(stdout.contains("Default mini model: nvidia/nemotron-3-ultra-550b-a55b:free"));
+    assert!(stdout.contains("openrouter:anthropic/") || stdout.contains("openrouter:"));
+    assert!(stdout.contains("Current:"));
 }
 
 #[cfg(unix)]

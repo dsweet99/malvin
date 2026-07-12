@@ -142,6 +142,7 @@ pub use test_poll::{
     test_post_teardown_poll_interval, test_post_teardown_wait_budget, test_wait_until_async,
 };
 pub mod config;
+pub mod model_id;
 mod kpop_test_stubs;
 mod kpop_turn_prompts;
 pub use kpop_test_stubs::{

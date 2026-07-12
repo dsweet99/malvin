@@ -1,12 +1,21 @@
 //! `kpop` subcommand contract tests.
 
+mod common;
+
 use malvin::cli::{parse_cli_with_config_defaults, Cli, Commands};
 use clap::CommandFactory;
+use common::with_isolated_home;
 
 fn parse(argv: &[&str]) -> Cli {
-    parse_cli_with_config_defaults(argv)
-        .expect("parse")
-        .0
+    let mut out = None;
+    with_isolated_home(|_work, _home| {
+        out = Some(
+            parse_cli_with_config_defaults(argv)
+                .expect("parse")
+                .0,
+        );
+    });
+    out.expect("parsed under isolated home")
 }
 
 fn help_lists_subcommand_line(help: &str, name: &str) -> bool {

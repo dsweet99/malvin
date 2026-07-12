@@ -82,7 +82,7 @@ impl MiniAgentClient {
             return Ok(());
         }
         Err(AuthError(
-            "OPENROUTER_API_KEY is not set (required for --mini)".into(),
+            "OPENROUTER_API_KEY is not set (required for openrouter: models)".into(),
         ))
     }
 

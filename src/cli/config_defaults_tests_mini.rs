@@ -1,62 +1,100 @@
 use super::{
-    apply_workspace_config_defaults, config_defaults_tests::with_seeded_agent_config, Cli, Commands,
+    apply_workspace_config_defaults, config_defaults_tests::with_seeded_agent_config, Cli,
 };
 use clap::{CommandFactory, FromArgMatches};
 
 #[test]
-fn apply_mini_model_default_uses_model_mini_when_mini_and_no_cli_model() {
-    with_seeded_agent_config(|| {
-        let matches = Cli::command().get_matches_from(["malvin", "--mini", "code", "hello"]);
-        let mut cli = Cli::from_arg_matches(&matches).expect("cli");
-        apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
-        assert_eq!(cli.shared.model, "cfg-mini-model");
-    });
+fn mini_flag_is_unknown_argument() {
+    let err = Cli::command()
+        .try_get_matches_from(["malvin", "--mini", "code", "hello"])
+        .expect_err("removed --mini");
+    let msg = err.to_string();
+    assert!(
+        msg.contains("unexpected argument") || msg.contains("--mini"),
+        "{msg}"
+    );
 }
 
 #[test]
-fn apply_mini_model_default_respects_cli_model_override() {
+fn openrouter_model_selects_without_mini_flag() {
     with_seeded_agent_config(|| {
         let matches = Cli::command().get_matches_from([
-            "malvin", "--mini", "--model", "openai/gpt-4o", "code", "hello",
+            "malvin",
+            "--model",
+            "openrouter:openai/gpt-4o",
+            "code",
+            "hello",
         ]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
-        assert_eq!(cli.shared.model, "openai/gpt-4o");
+        assert_eq!(cli.shared.model, "openrouter:openai/gpt-4o");
     });
 }
 
 #[test]
-fn apply_mini_model_default_ignored_without_mini_flag() {
+fn bare_cli_model_is_rejected() {
     with_seeded_agent_config(|| {
-        let matches = Cli::command().get_matches_from(["malvin", "code", "hello"]);
+        let matches =
+            Cli::command().get_matches_from(["malvin", "--model", "auto", "code", "hello"]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
-        apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
-        assert_eq!(cli.shared.model, "cfg-model");
+        let err = apply_workspace_config_defaults(&matches, &mut cli).expect_err("bare");
+        assert!(err.contains("cursor:") || err.contains("openrouter:"), "{err}");
     });
 }
 
 #[test]
-fn apply_mini_model_default_for_do_when_mini() {
-    with_seeded_agent_config(|| {
-        let matches = Cli::command().get_matches_from(["malvin", "do", "--mini", "hello"]);
+fn bare_config_model_is_rejected() {
+    use crate::test_utils::with_isolated_home;
+    use crate::workspace_paths::malvin_config_path;
+    with_isolated_home(|work| {
+        let path = malvin_config_path(work);
+        std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+        std::fs::write(
+            &path,
+            r#"
+[agent]
+model = "auto"
+"#,
+        )
+        .expect("write");
+        std::env::set_current_dir(work).expect("cd");
+        let matches = Cli::command().get_matches_from(["malvin", "do", "hello"]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
-        apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
-        assert_eq!(cli.shared.model, "cfg-mini-model");
+        let err = apply_workspace_config_defaults(&matches, &mut cli).expect_err("bare config");
+        assert!(err.contains("cursor:") || err.contains("openrouter:"), "{err}");
+        let after = std::fs::read_to_string(&path).expect("read");
+        assert!(after.contains("model = \"auto\""), "must not rewrite config");
     });
 }
 
 #[test]
-fn apply_kpop_sequential_mini_model_default() {
-    with_seeded_agent_config(|| {
-        let matches = Cli::command().get_matches_from(["malvin", "--mini", "kpop", "a.md", "b.md"]);
+fn cli_model_overrides_bare_config_model() {
+    use crate::test_utils::with_isolated_home;
+    use crate::workspace_paths::malvin_config_path;
+    with_isolated_home(|work| {
+        let path = malvin_config_path(work);
+        std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+        std::fs::write(
+            &path,
+            r#"
+[agent]
+model = "auto"
+max_loops = 9
+"#,
+        )
+        .expect("write");
+        std::env::set_current_dir(work).expect("cd");
+        let matches = Cli::command().get_matches_from([
+            "malvin",
+            "--model",
+            "cursor:composer-2",
+            "kpop",
+            "hello",
+        ]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
-        apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
-        assert_eq!(cli.shared.model, "cfg-mini-model");
-        match cli.command.expect("command") {
-            Commands::Kpop(kpop) => {
-                assert_eq!(kpop.requests.as_slice(), &["a.md", "b.md"]);
-            }
-            other => panic!("expected kpop, got {other:?}"),
-        }
+        apply_workspace_config_defaults(&matches, &mut cli).expect("cli model wins");
+        assert_eq!(cli.shared.model, "cursor:composer-2");
+        let after = std::fs::read_to_string(&path).expect("read");
+        assert!(after.contains("model = \"auto\""), "must not rewrite config");
     });
 }

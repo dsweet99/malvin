@@ -65,7 +65,7 @@ max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
 
 #[test]
 fn models_command_rejects_session_name() {
-    assert!(!command_accepts_session_name(&Commands::Models(ModelsArgs { mini: false })));
+    assert!(!command_accepts_session_name(&Commands::Models(ModelsArgs {})));
 }
 
 #[test]
@@ -115,43 +115,54 @@ fn explain_command_rejects_session_name() {
 fn kpop_with_name_parses() {
     use crate::cli::config_defaults::parse_cli_with_config_defaults;
 
-    let (cli, _) =
-        parse_cli_with_config_defaults(["malvin", "--name", "probe", "kpop", "investigate cache"])
-            .expect("parse kpop");
-    let command = cli.command.expect("kpop subcommand");
-    assert!(command_accepts_session_name(&command));
+    crate::test_utils::with_isolated_home(|_| {
+        let (cli, _) = parse_cli_with_config_defaults([
+            "malvin",
+            "--name",
+            "probe",
+            "kpop",
+            "investigate cache",
+        ])
+        .expect("parse kpop");
+        let command = cli.command.expect("kpop subcommand");
+        assert!(command_accepts_session_name(&command));
+    });
 }
 
 #[test]
 fn models_rejects_name_flag() {
     use crate::test_stderr_capture::capture_stderr_output;
 
-    let stderr = capture_stderr_output(|| {
-        assert_eq!(
-            entrypoint_from(["malvin", "--name", "probe", "models"]),
-            Exit::Failure
+    crate::test_utils::with_isolated_home(|_| {
+        let stderr = capture_stderr_output(|| {
+            assert_eq!(
+                entrypoint_from(["malvin", "--name", "probe", "models"]),
+                Exit::Failure
+            );
+        });
+        assert!(
+            stderr.contains("only supported for"),
+            "stderr must reject --name on models; got: {stderr:?}"
         );
     });
-    assert!(
-        stderr.contains("only supported for"),
-        "stderr must reject --name on models; got: {stderr:?}"
-    );
 }
 
 #[test]
 fn inspire_rejects_name_flag() {
     use crate::test_stderr_capture::capture_stderr_output;
 
-    let stderr = capture_stderr_output(|| {
-        assert_eq!(
-            entrypoint_from(["malvin", "--name", "probe", "inspire", "topic"]),
-            Exit::Failure
+    crate::test_utils::with_isolated_home(|_| {
+        let stderr = capture_stderr_output(|| {
+            assert_eq!(
+                entrypoint_from(["malvin", "--name", "probe", "inspire", "topic"]),
+                Exit::Failure
+            );
+        });
+        assert!(
+            stderr.contains("only supported for"),
+            "stderr must reject --name on inspire; got: {stderr:?}"
         );
     });
-    assert!(
-        stderr.contains("only supported for"),
-        "stderr must reject --name on inspire; got: {stderr:?}"
-    );
 }
 
 #[test]

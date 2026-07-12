@@ -8,11 +8,11 @@ List model ids for malvin runs. No malvin prompts and no run directory under `~/
 |---|---|
 | Agent session | None |
 | `.malvin/` | Not required |
-| Output | Model list + default model footer (see below) |
+| Output | Prefixed model list + `Current:` footer (see below) |
 
 ## Intention
 
-Discover valid `--model` values for other malvin commands via the Cursor agent CLI.
+Discover valid `--model` values for other malvin commands. Cursor ACP models use the `cursor:` prefix; OpenRouter (malvin-mini) models use the `openrouter:` prefix.
 
 ## Usage
 
@@ -27,15 +27,14 @@ See `malvin --doc`. Only `--no-color` materially affects output formatting. Glob
 ## Behavior
 
 1. Resolve `agent` or `cursor-agent` on `PATH`.
-2. Run `<binary> models`.
-3. Strip ANSI escapes and trailing “Tip:” banner lines.
-4. Parse bullet-list model names when possible; otherwise print cleaned stdout verbatim.
-5. Print blank line and: `Default model: auto`.
+2. Run `<binary> models` and print each id with a `cursor:` prefix.
+3. Fetch OpenRouter models (when available) and print each id with an `openrouter:` prefix.
+4. Print blank line and: `Current: <model>` (from `~/.malvin_home/config.toml`, else `cursor:auto`).
 
 ## Examples
 
 ```text
 malvin models
 malvin --no-color models
-malvin --model sonnet-4 kpop plan.md    # --model applies to agent subcommands, not models
+malvin --model cursor:sonnet-4 kpop plan.md    # --model applies to agent subcommands, not models
 ```

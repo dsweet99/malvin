@@ -23,7 +23,6 @@ pub(crate) fn summarize_shared_opts(max_acp_retries: u32) -> SharedOpts {
         max_acp_retries,
         doc: false,
         name: None,
-        mini: false,
         mini_max_bash_turns: 32,
         mini_max_http_turns: 32,
         mini_max_bash_execs: 128,

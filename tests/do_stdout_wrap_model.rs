@@ -74,8 +74,8 @@ fn do_forwards_default_model_and_force_to_agent() {
         .map(|w| w[1].as_str())
         .collect();
     assert!(
-        model_values == vec![DEFAULT_CLI_MODEL],
-        "expected exactly one forwarded --model {DEFAULT_CLI_MODEL}; argv={argv:?}"
+        model_values == vec!["auto"],
+        "expected exactly one forwarded --model auto (slug for {DEFAULT_CLI_MODEL}); argv={argv:?}"
     );
     let force_count = argv.iter().filter(|arg| arg.as_str() == "--force").count();
     assert!(
@@ -91,7 +91,7 @@ fn do_forwards_default_model_and_force_to_agent() {
 #[cfg_attr(unix, test)]
 fn do_respects_no_force_and_explicit_model_flags() {
     let (out, argv) =
-        run_malvin_with_captured_argv(&["--no-force", "--model", "composer-x", "do", "say hi"]);
+        run_malvin_with_captured_argv(&["--no-force", "--model", "cursor:composer-x", "do", "say hi"]);
     assert!(out.status.success(), "malvin do failed: {out:?}");
     let model_values: Vec<&str> = argv
         .windows(2)

@@ -27,31 +27,16 @@ fn run_malvin_path_timed(
     command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin")
 }
 
-fn assert_malvin_subcommand_not_kiss_gated_without_auth(
-    args: &[&str],
-    work_dir: Option<&std::path::Path>,
-) {
+fn isolated_path_and_home() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
     let path_root = tempfile::tempdir().unwrap();
     let isolated_bin = path_root.path().join("bin");
     std::fs::create_dir_all(&isolated_bin).unwrap();
-    #[cfg(unix)]
-    let out = run_malvin_path_timed(&isolated_bin, |c| {
-        clear_agent_api_env(c);
-        if let Some(work_dir) = work_dir {
-            c.current_dir(work_dir);
-        }
-        c.args(args);
-    });
-    #[cfg(not(unix))]
-    let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
-        .env("PATH", &isolated_bin)
-        .env_remove("CURSOR_AGENT_API_KEY")
-        .env_remove("CURSOR_API_KEY")
-        .env_remove("AGENT_API_KEY")
-        .env_remove("MALVIN_AGENT_ACP_BIN")
-        .args(args)
-        .output()
-        .expect("spawn malvin");
+    let isolated_home = path_root.path().join("home");
+    std::fs::create_dir_all(&isolated_home).unwrap();
+    (path_root, isolated_bin, isolated_home)
+}
+
+fn assert_auth_failure_not_kiss_precheck(out: &std::process::Output) {
     assert!(
         !out.status.success(),
         "expected non-zero exit; stdout/stderr: {out:?}"
@@ -72,13 +57,44 @@ fn assert_malvin_subcommand_not_kiss_gated_without_auth(
     );
 }
 
+fn assert_malvin_subcommand_not_kiss_gated_without_auth(
+    args: &[&str],
+    work_dir: Option<&std::path::Path>,
+) {
+    let (_root, isolated_bin, isolated_home) = isolated_path_and_home();
+    #[cfg(unix)]
+    let out = run_malvin_path_timed(&isolated_bin, |c| {
+        clear_agent_api_env(c);
+        c.env("HOME", &isolated_home);
+        if let Some(work_dir) = work_dir {
+            c.current_dir(work_dir);
+        }
+        c.args(args);
+    });
+    #[cfg(not(unix))]
+    let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
+        .env("PATH", &isolated_bin)
+        .env("HOME", &isolated_home)
+        .env_remove("CURSOR_AGENT_API_KEY")
+        .env_remove("CURSOR_API_KEY")
+        .env_remove("AGENT_API_KEY")
+        .env_remove("MALVIN_AGENT_ACP_BIN")
+        .args(args)
+        .output()
+        .expect("spawn malvin");
+    assert_auth_failure_not_kiss_precheck(&out);
+}
+
 #[cfg(unix)]
 fn spawn_code_without_kiss_or_auth(work_dir: &std::path::Path) -> std::process::Output {
     let path_root = tempfile::tempdir().expect("tempdir");
     let isolated_bin = path_root.path().join("bin");
     std::fs::create_dir_all(&isolated_bin).expect("mkdir bin");
+    let isolated_home = path_root.path().join("home");
+    std::fs::create_dir_all(&isolated_home).expect("mkdir home");
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
     cmd.env("PATH", &isolated_bin)
+        .env("HOME", &isolated_home)
         .current_dir(work_dir)
         .args(["code", "plan.md"]);
     clear_agent_api_env(&mut cmd);

@@ -95,8 +95,13 @@ pub fn mini_loop_config(max_http_turns: u32, max_http_retries: u32) -> MiniLoopC
 
 #[must_use]
 pub fn shared_opts(mini: bool) -> SharedOpts {
+    let model = if mini {
+        "openrouter:auto".into()
+    } else {
+        "cursor:auto".into()
+    };
     SharedOpts {
-        model: "auto".into(),
+        model,
         no_force: false,
         no_tenacious: false,
         no_tee: true,
@@ -105,7 +110,6 @@ pub fn shared_opts(mini: bool) -> SharedOpts {
         max_acp_retries: 3,
         doc: false,
         name: None,
-        mini,
         mini_max_bash_turns: 32,
         mini_max_http_turns: 32,
         mini_max_bash_execs: 128,
@@ -114,6 +118,11 @@ pub fn shared_opts(mini: bool) -> SharedOpts {
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
     }
+}
+
+#[must_use]
+pub fn openrouter_shared_opts() -> SharedOpts {
+    shared_opts(true)
 }
 
 #[allow(unsafe_code)]

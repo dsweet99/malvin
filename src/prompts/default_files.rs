@@ -71,7 +71,7 @@ mod tests {
     fn default_file_mini_constraints_embedded() {
         let text = default_file("mini_constraints.md").expect("mini_constraints");
         assert!(text.contains("```bash"));
-        assert!(text.contains("--mini"));
+        assert!(text.contains("openrouter:"));
     }
 
     #[test]

@@ -216,7 +216,6 @@ fn router_client_uses_kpop_style_agent_io_not_do_style() {
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
         name: None,
-        mini: false,
         mini_max_bash_turns: 32,
         mini_max_http_turns: 32,
         mini_max_bash_execs: 128,

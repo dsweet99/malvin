@@ -15,7 +15,6 @@ pub(super) fn write_agent_config(work_dir: &std::path::Path) {
             .lines()
             .filter(|line| {
                 !line.starts_with("model =")
-                    && !line.starts_with("\"model-mini\"")
                     && !line.starts_with("max_loops =")
                     && !line.starts_with("max_loops_code =")
                     && !line.starts_with("max_acp_retries =")
@@ -25,7 +24,7 @@ pub(super) fn write_agent_config(work_dir: &std::path::Path) {
             .join("\n");
     }
     text.push_str(
-        "\n[agent]\nmodel = \"cfg-model\"\n\"model-mini\" = \"cfg-mini-model\"\nmax_loops = 9\nmax_loops_code = 7\nmax_acp_retries = 8\n",
+        "\n[agent]\nmodel = \"cursor:cfg-model\"\nmax_loops = 9\nmax_loops_code = 7\nmax_acp_retries = 8\n",
     );
     std::fs::write(&path, text).expect("write");
 }
@@ -50,7 +49,7 @@ fn write_agent_config_adds_agent_section_to_partial_file() {
         write_agent_config(work);
         let text = std::fs::read_to_string(&path).expect("read");
         assert!(text.contains("[agent]"));
-        assert!(text.contains("model = \"cfg-model\""));
+        assert!(text.contains("model = \"cursor:cfg-model\""));
     });
 }
 
@@ -84,8 +83,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
     assert!(!subcommand_flag_from_command_line(&matches, "missing", "max_loops"));
 
     let agent = AgentConfig {
-        model: "cfg".into(),
-        model_mini: "cfg-mini".into(),
+        model: "cursor:cfg".into(),
         max_loops: 8,
         max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
         max_loops_code: 6,
@@ -103,7 +101,6 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
         max_acp_retries: 1,
         doc: false,
         name: None,
-        mini: false,
         mini_max_bash_turns: 32,
         mini_max_http_turns: 32,
         mini_max_bash_execs: 128,
@@ -113,7 +110,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
         mini_max_shrink_passes: 0,
     };
     apply_shared_config_defaults(&matches, &mut shared, &agent);
-    assert_eq!(shared.model, "cfg");
+    assert_eq!(shared.model, "cursor:cfg");
     assert_eq!(shared.max_acp_retries, 6);
 
     let mut max_loops = 1_usize;
@@ -137,7 +134,7 @@ fn apply_workspace_config_defaults_overrides_unset_flags() {
         let matches = Cli::command().get_matches_from(["malvin", "kpop", "hello"]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
-        assert_eq!(cli.shared.model, "cfg-model");
+        assert_eq!(cli.shared.model, "cursor:cfg-model");
         assert_eq!(cli.shared.max_acp_retries, 8);
         match cli.command.expect("command") {
             Commands::Kpop(kpop) => assert_eq!(kpop.max_loops, 9),
@@ -150,12 +147,12 @@ fn apply_workspace_config_defaults_overrides_unset_flags() {
 fn apply_workspace_config_defaults_respects_explicit_cli_flags() {
     with_seeded_agent_config(|| {
         let matches = Cli::command().get_matches_from([
-            "malvin", "--model", "cli-model", "--max-acp-retries", "2", "kpop",
+            "malvin", "--model", "cursor:cli-model", "--max-acp-retries", "2", "kpop",
             "--max-loops", "3", "hello",
         ]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
-        assert_eq!(cli.shared.model, "cli-model");
+        assert_eq!(cli.shared.model, "cursor:cli-model");
         assert_eq!(cli.shared.max_acp_retries, 2);
         match cli.command.expect("command") {
             Commands::Kpop(kpop) => assert_eq!(kpop.max_loops, 3),
@@ -226,7 +223,7 @@ fn apply_workspace_config_defaults_for_inspire() {
         let inspire = Cli::command().get_matches_from(["malvin", "inspire", "ideas"]);
         let mut inspire_cli = Cli::from_arg_matches(&inspire).expect("cli");
         apply_workspace_config_defaults(&inspire, &mut inspire_cli).expect("apply");
-        assert_eq!(inspire_cli.shared.model, "cfg-model");
+        assert_eq!(inspire_cli.shared.model, "cursor:cfg-model");
     });
 }
 

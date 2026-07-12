@@ -3,8 +3,7 @@ mem_limit_gb = 4
 theme = "dark"
 
 [agent]
-model = "auto"
-"model-mini" = "nvidia/nemotron-3-ultra-550b-a55b:free"
+model = "cursor:auto"
 max_loops = 1
 max_hypotheses = 5
 max_loops_code = 3

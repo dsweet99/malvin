@@ -37,7 +37,7 @@ pub fn build_agent_backend_with_tee(
     workflow: WorkflowCliOptions,
     tee: AgentStdoutTeeFlags,
 ) -> Result<AgentBackend, String> {
-    if shared.mini {
+    if crate::model_id::uses_openrouter_backend(&shared.model) {
         Ok(AgentBackend::Mini(new_mini_client(shared, workflow, tee)?))
     } else {
         Ok(AgentBackend::Acp(new_agent_client(

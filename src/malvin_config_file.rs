@@ -6,7 +6,7 @@ use crate::log_gc_config::{LogsGcConfig, parse_logs_gc_config};
 use crate::terminal_palette::TerminalTheme;
 use crate::mem_limit_config::{default_mem_limit_gb, parse_mem_limit_gb};
 use crate::output::print_log_warning;
-use crate::support_paths::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES, MINI_DEFAULT_MODEL};
+use crate::support_paths::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use crate::workspace_paths::malvin_config_path;
 
 #[path = "malvin_config_open.rs"]
@@ -15,7 +15,9 @@ mod malvin_config_open;
 mod malvin_config_agent;
 #[path = "malvin_config_top.rs"]
 mod malvin_config_top;
-pub use malvin_config_open::ensure_malvin_config_file_if_missing;
+pub use malvin_config_open::{
+    ensure_malvin_config_file_if_missing, load_agent_config_lenient, load_agent_config_strict,
+};
 use malvin_config_open::create_malvin_config_from_template;
 pub(crate) use malvin_config_agent::parse_agent_config;
 pub(crate) use malvin_config_top::parse_theme;
@@ -32,7 +34,6 @@ const DEFAULT_MALVIN_CONFIG_TEMPLATE: &str = include_str!(concat!(
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AgentConfig {
     pub model: String,
-    pub model_mini: String,
     /// Hypothesis steps per `KPop` agent session.
     pub max_hypotheses: usize,
     /// Gate-loop budget for kpop.
@@ -47,7 +48,6 @@ impl Default for AgentConfig {
     fn default() -> Self {
         Self {
             model: DEFAULT_CLI_MODEL.to_string(),
-            model_mini: MINI_DEFAULT_MODEL.to_string(),
             max_hypotheses: DEFAULT_MAX_HYPOTHESES,
             max_loops: DEFAULT_MAX_LOOPS,
             max_loops_code: DEFAULT_MAX_LOOPS_CODE,
@@ -99,6 +99,8 @@ pub fn open_malvin_config(work_dir: &Path) -> Result<MalvinConfig, String> {
     }
     let mut on_disk = read_on_disk_config_value(&path)?;
     merge_missing_keys(&mut on_disk, &template);
+    // Soft parse: bare `model` does not block open/ensure. Command paths that *use* config
+    // `model` enforce prefixes via [`load_agent_config_strict`] (Q5=c).
     Ok(parse_malvin_config(
         &toml::to_string(&on_disk).map_err(|e| e.to_string())?,
     ))

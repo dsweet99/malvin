@@ -3,7 +3,7 @@
 use super::backend::AgentBackend;
 use super::factory::build_agent_backend;
 use super::mini::{LlmBackend, MiniAgentClient, MockScript, MockStep};
-use super::test_support::{install_openrouter_test_key, mini_loop_config, shared_opts, test_io};
+use super::test_support::{install_openrouter_test_key, mini_loop_config, openrouter_shared_opts, shared_opts, test_io};
 use crate::cli::WorkflowCliOptions;
 use malvin_mini::CompletionResponse;
 
@@ -43,10 +43,10 @@ fn kiss_cov_backend_tests_helpers() {
 }
 
 #[test]
-fn build_agent_backend_selects_mini_when_mini_true() {
+fn build_agent_backend_selects_mini_for_openrouter_model() {
     install_openrouter_test_key();
     let backend = build_agent_backend(
-        &shared_opts(true),
+        &openrouter_shared_opts(),
         WorkflowCliOptions { force: false },
         false,
         "code",
