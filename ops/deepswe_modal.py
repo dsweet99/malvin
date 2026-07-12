@@ -115,9 +115,12 @@ LOGS_REMOTE = "/logs"
 APP_REMOTE = "/app"
 TESTS_REMOTE = "/tests"
 MALVIN_TOOLCHAIN_REMOTE = "/opt/toolchain/malvin"
+# Keep Harbor project venvs (``ENV VIRTUAL_ENV=/opt/venv``) ahead of system
+# python. A bare toolchain PATH overwrite otherwise shadows ``/opt/venv/bin`` and
+# breaks PYTHONPATH layout smokes that import the app against Harbor deps.
 TOOLCHAIN_PATH = (
-    "/root/.cargo/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin"
-    ":/usr/sbin:/usr/bin:/sbin:/bin"
+    "/root/.cargo/bin:/root/.local/bin:/opt/venv/bin:/usr/local/sbin"
+    ":/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 )
 
 CURSOR_API_HOSTS = (
@@ -1832,7 +1835,7 @@ def _materialize_public_verifier_venv(
         return image
     df = dockerfile if dockerfile is not None and dockerfile.is_file() else None
     spec = discover_verifier_spec(workspace, tests_dir=None, dockerfile=df)
-    commands = verifier_venv_materialize_public_commands(spec)
+    commands = verifier_venv_materialize_public_commands(spec, workspace=workspace)
     if not commands:
         return image
     click.echo("Materializing public verifier venv at /opt/malvin-verifier...")
@@ -2371,6 +2374,10 @@ def run_deepswe_run_in_sandbox(
                 click.echo("Injecting verifier files into sandbox...")
                 inject_verifier_files(sandbox, tests_dir, task_dir)
                 grade_argv = [*base_argv, "--grade-only"]
+                # Harness smoke (solve --test / init-checks): verifier prep is the
+                # grade signal — skip long Harbor test.sh (often hits 1800s budget).
+                if command == "init-checks":
+                    grade_argv.append("--smoke-grade")
                 grade_proc = sandbox.exec(
                     *grade_argv,
                     stdout=StreamType.PIPE, stderr=StreamType.PIPE,

@@ -300,6 +300,19 @@ def pytest_args_from_test_sh(script: str | None) -> tuple[str, ...]:
     return ()
 
 
+def test_sh_invokes_pytest(script: str | None) -> bool:
+    """True when Harbor ``test.sh`` directly invokes pytest (not stestr/custom runners)."""
+    if not script:
+        return False
+    for raw in script.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if _PYTEST_INVOCATION_RE.search(line):
+            return True
+    return False
+
+
 def collect_only_pytest_command(
     python_bin: str,
     script: str | None,

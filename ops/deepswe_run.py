@@ -105,9 +105,12 @@ SANDBOX_PREP_REMOTE = f"{DEEPSWE_OPS_REMOTE}/sandbox_prep.py"
 HARBOR_TESTS_REMOTE = f"{DEEPSWE_OPS_REMOTE}/harbor_tests.py"
 TOOLCHAIN_REPOS_REMOTE = f"{DEEPSWE_OPS_REMOTE}/toolchain_repos.py"
 MALVIN_TOOLCHAIN_REMOTE = "/opt/toolchain/malvin"
+# Keep Harbor project venvs (``ENV VIRTUAL_ENV=/opt/venv``) on PATH. A bare
+# toolchain overwrite otherwise shadows ``/opt/venv/bin`` and breaks PYTHONPATH
+# layout imports that need Harbor-installed deps (e.g. joblib).
 TOOLCHAIN_PATH = (
-    "/root/.cargo/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin"
-    ":/usr/sbin:/usr/bin:/sbin:/bin"
+    "/root/.cargo/bin:/root/.local/bin:/opt/venv/bin:/usr/local/sbin"
+    ":/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 )
 CURSOR_ENV_KEYS = ("CURSOR_AGENT_API_KEY", "CURSOR_API_KEY", "AGENT_API_KEY")
 TIMEOUT_EXIT_CODE = 124
@@ -599,6 +602,7 @@ EPHEMERAL_CACHE_DIR_NAMES = (
     ".ruff_cache",
     ".hypothesis",
     "coverage",
+    "htmlcov",
 )
 SANDBOX_ARTIFACT_DIR_NAMES = (
     ".stestr",
@@ -2351,7 +2355,7 @@ def runnable_check_command_lines(checks_text: str) -> list[str]:
 
 
 def _pyproject_project_name(workspace: Path) -> str | None:
-    """Return ``[project].name`` from ``pyproject.toml`` when present."""
+    """Return a packaging distribution name from ``pyproject.toml`` when present."""
     path = workspace / "pyproject.toml"
     if not path.is_file():
         return None
@@ -2360,11 +2364,17 @@ def _pyproject_project_name(workspace: Path) -> str | None:
     except (OSError, tomllib.TOMLDecodeError):
         return None
     project = data.get("project")
-    if not isinstance(project, dict):
-        return None
-    name = project.get("name")
-    if isinstance(name, str) and name.strip():
-        return name.strip()
+    if isinstance(project, dict):
+        name = project.get("name")
+        if isinstance(name, str) and name.strip():
+            return name.strip()
+    tool = data.get("tool")
+    if isinstance(tool, dict):
+        poetry = tool.get("poetry")
+        if isinstance(poetry, dict):
+            name = poetry.get("name")
+            if isinstance(name, str) and name.strip():
+                return name.strip()
     return None
 
 
@@ -2373,24 +2383,123 @@ def ecosystem_offline_smoke_commands(workspace: Path) -> list[str]:
 
     Prefer Dockerfile/registry-baked toolchains: cargo/go module caches and an
     already-installed Python env. Never invent task-id branches.
+
+    Avoid ``pip check``: Harbor images often carry unrelated transitive conflicts
+    (e.g. poetry/virtualenv) that do not mean the task package failed to install.
+
+    When the workspace itself provides import roots (``ENV PYTHONPATH`` / src layout
+    / flat package dir), prefer ``import <root>`` over ``importlib.metadata.version``:
+    Harbor often exposes the package without installing the distribution.
     """
     root = workspace.resolve()
     if (root / "Cargo.toml").is_file():
         return ["cargo metadata --offline --format-version 1"]
     if (root / "go.mod").is_file():
         return ["go list ./..."]
+
+    from sandbox_prep import (
+        _filesystem_package_roots,
+        _read_distribution_name,
+        _top_level_txt_roots,
+    )
+
+    # Only real layout roots — not synthetic dist names from import_roots_provided_by_project.
+    # Manifest-only names would make ``import demo_pkg`` fake-pass the preference while the
+    # package is neither on disk nor installed (Harbor PYTHONPATH / flat src cases need the
+    # filesystem signal; installed-only distros still use importlib.metadata below).
+    layout_roots = sorted(
+        r
+        for r in (_filesystem_package_roots(root) | _top_level_txt_roots(root))
+        if r.isidentifier() and "-" not in r
+    )
     project_name = _pyproject_project_name(root)
+    if project_name is None:
+        project_name = _read_distribution_name(root)
+
+    if layout_roots:
+        mod = layout_roots[0]
+        if project_name is not None:
+            dist_import = project_name.replace("-", "_")
+            if dist_import in layout_roots:
+                mod = dist_import
+        probe = f"import {mod}; print({mod}.__name__)"
+        return [_harbor_venv_python_c(probe)]
+
     if project_name is not None:
         probe = (
             "import importlib.metadata as m; "
             f"print(m.version({project_name!r}))"
         )
-        return [f"python -c {shlex.quote(probe)}"]
+        return [_harbor_venv_python_c(probe)]
+
+    nested = _nested_python_package_smoke_module(root)
+    if nested is not None:
+        probe = f"import {nested}; print({nested}.__name__)"
+        return [_harbor_venv_python_c(probe)]
+
     if (root / "pyproject.toml").is_file() or (root / "setup.py").is_file():
-        return ["python -m pip check"]
+        # Last-resort Python packaging signal without pip check.
+        return [_harbor_venv_python_c("import sys; print(sys.version.split()[0])")]
     if (root / "package.json").is_file():
         return ["node -e \"require('./package.json')\""]
     return ["true"]
+
+
+def _nested_python_package_smoke_module(workspace: Path) -> str | None:
+    """Return an importable module name from a shallow nested ``pyproject.toml``.
+
+    Monorepos (``libs/core/pyproject.toml``) often have no root packaging metadata.
+    Prefer a non-test package so init-checks exercise the installed editable without
+    invoking nested ``make`` / ``uv run`` toolchains that need offline warm.
+    """
+    from sandbox_prep import _read_distribution_name
+
+    candidates: list[tuple[int, int, str]] = []
+    for pyproject in workspace.rglob("pyproject.toml"):
+        rel = pyproject.relative_to(workspace)
+        if any(part.startswith(".") for part in rel.parts):
+            continue
+        if len(rel.parts) > 3:
+            continue
+        parent = pyproject.parent
+        name = _read_distribution_name(parent)
+        if not name:
+            continue
+        lowered = name.lower()
+        if "test" in lowered:
+            continue
+        mod = name.replace("-", "_")
+        if not (parent / mod).is_dir() and not (parent / "src" / mod).is_dir():
+            continue
+        parent_key = parent.name.lower().replace("-", "_")
+        # Prefer ``libs/core``-style layouts over sibling packages not in Dockerfile
+        # editables (langchain monorepo also has ``libs/langchain``).
+        rank = 0
+        if parent_key in {"core", "src"}:
+            rank -= 10
+        if parent_key == mod or parent_key == name.lower():
+            rank -= 5
+        candidates.append((rank, len(rel.parts), mod))
+    if not candidates:
+        return None
+    candidates.sort()
+    return candidates[0][2]
+
+
+def _harbor_venv_python_c(probe: str) -> str:
+    """Run a ``python -c`` probe, preferring Harbor ``VIRTUAL_ENV`` when present.
+
+    Modal toolchain layers rewrite ``PATH`` for cargo/cursor-agent and can drop
+    Harbor's ``/opt/venv/bin``. ``ENV VIRTUAL_ENV`` from the Dockerfile usually
+    survives; use that interpreter so PYTHONPATH layouts still see Harbor deps.
+    """
+    script = (
+        'if [ -n "${VIRTUAL_ENV:-}" ] && [ -x "${VIRTUAL_ENV}/bin/python" ]; then\n'
+        f'  exec "${{VIRTUAL_ENV}}/bin/python" -c {shlex.quote(probe)}\n'
+        "fi\n"
+        f"exec python -c {shlex.quote(probe)}\n"
+    )
+    return f"bash -lc {shlex.quote(script)}"
 
 
 def write_deepswe_agent_checks(workspace: Path, *, dry_run: bool = False) -> str:
@@ -2774,15 +2883,23 @@ def evaluation_smoke_allows_reward_zero(
 
     Harness smoke success is prep + agent + grade completion, not solving the
     Harbor task. Still fail closed on prep failures and agent errors.
+
+    Grade-phase timeouts after a successful verifier prep are treated as smoke-ok
+    when the agent also succeeded: some Harbor ``test.sh`` suites exceed the
+    task.toml verifier budget even when dependencies are correctly installed
+    (evidence: bandit-interprocedural full ``pytest tests/``).
     """
     if malvin_command != "init-checks":
         return False
     if grade_result.get("prep_failed") or (agent_result or {}).get("prep_failed"):
         return False
-    if (agent_result or {}).get("timed_out") or grade_result.get("timed_out"):
-        return False
     if agent_result and agent_result.get("exit_code") not in (0, None):
         return False
+    if (agent_result or {}).get("timed_out"):
+        return False
+    verifier_prep = grade_result.get("verifier_prep") or {}
+    if grade_result.get("timed_out"):
+        return verifier_prep.get("ok") is True or verifier_prep == {}
     reward = grade_result.get("reward")
     return reward == 0 or reward == 0.0
 
@@ -2882,6 +2999,7 @@ def run_task(
     malvin_args: tuple[str, ...],
     extra_args: tuple[str, ...] = (),
     use_local_docker: bool = False,
+    smoke_grade: bool = False,
 ) -> None:
     """Run malvin on a DeepSWE task and grade with Harbor ``tests/test.sh``."""
     if extra_args:
@@ -3163,16 +3281,32 @@ def run_task(
                             "verifier_prep": verifier_prep.as_dict(),
                         }
                     else:
-                        grade_result = grade_workspace_native(
-                            workspace,
-                            test_sh,
-                            logs_dir,
-                            dry_run=dry_run,
-                            timeout_sec=remaining,
-                            configured_timeout_sec=spec.verifier_timeout_sec,
-                            env=grade_env,
-                        )
-                        grade_result["verifier_prep"] = verifier_prep.as_dict()
+                        if smoke_grade:
+                            click.echo(
+                                "Smoke grade: verifier prep OK — skipping Harbor test.sh"
+                            )
+                            verifier_dir = logs_dir / "verifier"
+                            verifier_dir.mkdir(parents=True, exist_ok=True)
+                            (verifier_dir / "reward.txt").write_text(
+                                "0\n", encoding="utf-8"
+                            )
+                            grade_result = {
+                                "pass": False,
+                                "reward": 0,
+                                "smoke_grade": True,
+                                "verifier_prep": verifier_prep.as_dict(),
+                            }
+                        else:
+                            grade_result = grade_workspace_native(
+                                workspace,
+                                test_sh,
+                                logs_dir,
+                                dry_run=dry_run,
+                                timeout_sec=remaining,
+                                configured_timeout_sec=spec.verifier_timeout_sec,
+                                env=grade_env,
+                            )
+                            grade_result["verifier_prep"] = verifier_prep.as_dict()
             else:
                 grade_result = grade_workspace_native(
                     workspace,
@@ -3271,6 +3405,14 @@ def _task_kernel_options(f: Any) -> Any:
         "--grade-only",
         is_flag=True,
         help="Skip agent; grade the current workspace tree.",
+    )(f)
+    f = click.option(
+        "--smoke-grade",
+        is_flag=True,
+        help=(
+            "After successful verifier prep, skip Harbor test.sh and emit reward 0. "
+            "Used by solve --test (init-checks) harness smoke."
+        ),
     )(f)
     f = click.option(
         "--apply-solution",
@@ -3417,6 +3559,7 @@ def run_task_cli(
     runtime: str,
     skip_materialize: bool,
     grade_only: bool,
+    smoke_grade: bool,
     skip_grade: bool,
     apply_solution: bool,
     reset_workspace_flag: bool,
@@ -3435,6 +3578,7 @@ def run_task_cli(
         runtime=runtime,
         skip_materialize=skip_materialize,
         grade_only=grade_only,
+        smoke_grade=smoke_grade,
         skip_grade=skip_grade,
         apply_solution=apply_solution,
         reset_workspace_flag=reset_workspace_flag,
@@ -4655,6 +4799,7 @@ def _test_purge_root_owned_ephemeral_caches_docker_cmd() -> None:
         assert find_expr in shell
         assert "__pycache__" in shell
         assert ".stestr" in shell
+        assert "htmlcov" in shell
         assert "acp_spawn" in shell
 
 
@@ -4788,10 +4933,82 @@ def _test_write_deepswe_agent_checks_ecosystem_fallback() -> None:
         text = write_deepswe_agent_checks(workspace, dry_run=False)
         assert "importlib.metadata" in text
         assert "demo-pkg" in text
+        # Synthetic dist names must not trigger import preference (no layout).
+        assert "import demo_pkg" not in text
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        # Poetry name alone (no package dir): still metadata, not a fake import.
+        (workspace / "pyproject.toml").write_text(
+            '[tool.poetry]\nname = "igel"\nversion = "0.7.0"\n',
+            encoding="utf-8",
+        )
+        text = write_deepswe_agent_checks(workspace, dry_run=False)
+        assert "importlib.metadata" in text
+        assert "igel" in text
+        assert "import igel" not in text
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        # Poetry name + filesystem package (Harbor PYTHONPATH layout): prefer import.
+        (workspace / "pyproject.toml").write_text(
+            '[tool.poetry]\nname = "igel"\nversion = "0.7.0"\n'
+            '[build-system]\nrequires = ["poetry-core"]\n'
+            'build-backend = "poetry.core.masonry.api"\n',
+            encoding="utf-8",
+        )
+        (workspace / "igel").mkdir()
+        (workspace / "igel" / "__init__.py").write_text("", encoding="utf-8")
+        text = write_deepswe_agent_checks(workspace, dry_run=False)
+        assert "importlib.metadata" not in text
+        assert "import igel" in text
+        assert "VIRTUAL_ENV" in text
+        assert "pip check" not in text
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        (workspace / "setup.cfg").write_text("[metadata]\nname = banditlike\n", encoding="utf-8")
+        (workspace / "setup.py").write_text("from setuptools import setup\nsetup()\n", encoding="utf-8")
+        (workspace / "banditlike").mkdir()
+        (workspace / "banditlike" / "__init__.py").write_text("", encoding="utf-8")
+        text = write_deepswe_agent_checks(workspace, dry_run=False)
+        assert "pip check" not in text
+        assert "import banditlike" in text or "banditlike" in text
+        assert "VIRTUAL_ENV" in text
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        # Monorepo without root pyproject: prefer libs/core over sibling packages.
+        core = workspace / "libs" / "core"
+        core.mkdir(parents=True)
+        (core / "pyproject.toml").write_text(
+            '[project]\nname = "langchain-core"\nversion = "0"\n',
+            encoding="utf-8",
+        )
+        (core / "langchain_core").mkdir()
+        (core / "langchain_core" / "__init__.py").write_text("", encoding="utf-8")
+        sibling = workspace / "libs" / "langchain"
+        sibling.mkdir(parents=True)
+        (sibling / "pyproject.toml").write_text(
+            '[project]\nname = "langchain"\nversion = "0"\n',
+            encoding="utf-8",
+        )
+        (sibling / "langchain").mkdir()
+        (sibling / "langchain" / "__init__.py").write_text("", encoding="utf-8")
+        (workspace / ".malvin").mkdir()
+        (workspace / ".malvin" / "checks").write_text(
+            "make -C libs/core format lint\n", encoding="utf-8"
+        )
+        text = write_deepswe_agent_checks(workspace, dry_run=False)
+        assert "import langchain_core" in text
+        assert "make -C" not in text
     with tempfile.TemporaryDirectory() as tmp:
         workspace = Path(tmp)
         text = write_deepswe_agent_checks(workspace, dry_run=False)
         assert runnable_check_command_lines(text) == ["true"]
+
+
+def _test_harbor_venv_python_c_prefers_virtual_env() -> None:
+    cmd = _harbor_venv_python_c("import igel; print(igel.__name__)")
+    assert "VIRTUAL_ENV" in cmd
+    assert "import igel" in cmd
+    assert cmd.startswith("bash -lc")
 
 
 def _test_evaluation_smoke_allows_reward_zero() -> None:
@@ -4819,6 +5036,27 @@ def _test_evaluation_smoke_allows_reward_zero() -> None:
         "init-checks",
         {"pass": False, "reward": 0},
         {"exit_code": 1},
+    )
+    # Grade budget exhausted after successful verifier prep: smoke-ok for init-checks.
+    assert evaluation_smoke_allows_reward_zero(
+        "init-checks",
+        {
+            "pass": False,
+            "reward": 0,
+            "timed_out": True,
+            "verifier_prep": {"ok": True},
+        },
+        {"exit_code": 0},
+    )
+    assert not evaluation_smoke_allows_reward_zero(
+        "init-checks",
+        {
+            "pass": False,
+            "reward": 0,
+            "timed_out": True,
+            "verifier_prep": {"ok": False},
+        },
+        {"exit_code": 0},
     )
     _exit_from_evaluation(
         {"pass": False, "reward": 0},
@@ -5775,6 +6013,7 @@ def run_self_tests() -> None:
     _test_init_checks_cmd_uses_fail_fast_source()
     _test_write_deepswe_agent_checks_preseeds_file()
     _test_write_deepswe_agent_checks_ecosystem_fallback()
+    _test_harbor_venv_python_c_prefers_virtual_env()
     _test_evaluation_smoke_allows_reward_zero()
     _test_run_malvin_init_checks_preseeds_then_shells()
     _test_agent_phase_needs_cursor_credentials()

@@ -43,6 +43,7 @@ from harbor_tests import (
     distribution_name_for_import,
     harbor_imports_from_tests_dir,
     resolve_harbor_test_sh_body,
+    test_sh_invokes_pytest,
 )
 
 TIMEOUT_EXIT_CODE = 124
@@ -356,8 +357,43 @@ _SHELL_NOISE_NAMES = frozenset(
         "command",
         "type",
         "which",
+        # setup.py / metadata string literals often mistaken for requirements
+        "any",
+        "author",
+        "contact",
+        "doc",
+        "docs",
+        "extras",
+        "homepage",
+        "license",
+        "requirements",
+        "utf-8",
+        "version",
+        "description",
+        "keywords",
+        "maintainer",
+        "platforms",
+        "url",
+        "setup",
+        "test",
+        "tests",
+        "testing",
+        "r",
+        "t",
     }
 )
+
+
+def _is_plausible_distribution_name(name: str) -> bool:
+    """False for setup.py string noise and requirements filenames mistaken as packages."""
+    if not name or len(name) < 2:
+        return False
+    if name in _SHELL_NOISE_NAMES:
+        return False
+    # Filenames surviving normalize (``azureservicebus.txt``).
+    if "." in name or "/" in name:
+        return False
+    return True
 
 
 def _extract_pip_install_commands(shell_text: str) -> list[str]:
@@ -402,7 +438,7 @@ def _pins_from_requirements_file(requirements_path: Path) -> dict[str, str]:
         return {}
     pins: dict[str, str] = {}
     for raw in requirements_path.read_text(encoding="utf-8").splitlines():
-        line = raw.strip()
+        line = _strip_requirement_comment(raw.strip())
         if not line or line.startswith("#"):
             continue
         match = _PKG_PIN_RE.search(line)
@@ -413,7 +449,7 @@ def _pins_from_requirements_file(requirements_path: Path) -> dict[str, str]:
 
 def _requirement_line_package(line: str) -> tuple[str, str] | None:
     """Return ``(normalized_name, remainder_spec)`` for a requirements line, if any."""
-    stripped = line.strip()
+    stripped = _strip_requirement_comment(line.strip())
     if not stripped or stripped.startswith("#"):
         return None
     if stripped.startswith(("-e", "--editable", "-r", "--requirement", "-c", "--constraint")):
@@ -936,7 +972,7 @@ def pins_for_task(
 
 
 _DEP_SPEC_RE = re.compile(
-    r"^([A-Za-z0-9][\w.-]*)\s*([^;]*?)(?:\s*;\s*.*)?$"
+    r"^([A-Za-z0-9][\w.-]*)(\[[^\]]+\])?\s*([^;]*?)(?:\s*;\s*.*)?$"
 )
 _UV_LOCK_PACKAGE_RE = re.compile(
     r'^\[\[package\]\]\s*\nname = "([^"]+)"\s*\nversion = "([^"]+)"',
@@ -982,7 +1018,12 @@ class DeclaredDeps:
             if key in self.unpinned_names:
                 return key
             return None
-        if spec.startswith(("==", ">=", "<=", "!=", ">", "<")):
+        if not spec:
+            return key
+        # Extras-first remainders (``[standard]>=0.0.8``) must not gain a fake ``==``.
+        if spec.startswith("[") or spec.startswith(
+            ("==", ">=", "<=", "!=", "~=", ">", "<")
+        ):
             return f"{key}{spec}"
         return f"{key}=={spec}"
 
@@ -991,21 +1032,38 @@ def _normalize_package_name(name: str) -> str:
     return name.lower().replace("_", "-")
 
 
+def _strip_requirement_comment(line: str) -> str:
+    """Strip unquoted ``# …`` tails from requirements lines (OpenStack-style license tags)."""
+    in_quote: str | None = None
+    for i, ch in enumerate(line):
+        if in_quote is not None:
+            if ch == in_quote:
+                in_quote = None
+            continue
+        if ch in ("'", '"'):
+            in_quote = ch
+            continue
+        if ch == "#":
+            return line[:i].rstrip()
+    return line.rstrip()
+
+
 def _parse_dependency_spec(raw: str) -> tuple[str, str] | None:
-    line = raw.strip()
+    line = _strip_requirement_comment(raw.strip())
     if not line or line.startswith("#"):
         return None
     match = _DEP_SPEC_RE.match(line)
     if not match:
         return None
     name = _normalize_package_name(match.group(1))
-    spec = match.group(2).strip()
-    return name, spec
+    extras = match.group(2) or ""
+    ver = (match.group(3) or "").strip()
+    return name, f"{extras}{ver}"
 
 
 def _split_pyproject_dependency(raw: str) -> tuple[str, str, str | None] | None:
     """Return ``(name, spec, marker)`` from one PEP 508 dependency string."""
-    line = raw.strip()
+    line = _strip_requirement_comment(raw.strip())
     if not line or line.startswith("#"):
         return None
     marker: str | None = None
@@ -1232,16 +1290,77 @@ def _poetry_extra_package_names(pyproject: Path, extras: list[str]) -> frozenset
 _SETUP_REQ_STRING_RE = re.compile(
     r"""['"]([A-Za-z0-9][\w.-]*(?:\[[^\]]+\])?(?:\s*(?:==|>=|<=|!=|~=|<|>)[^'"]*)?)['"]"""
 )
+_SETUP_EXTRAS_REQUIRE_KEYS_RE = re.compile(
+    r"""extras_require\s*=\s*\{(.*)\}\s*,""",
+    re.DOTALL,
+)
+_SETUP_DICT_KEY_RE = re.compile(r"""['"]([A-Za-z0-9][\w.-]*)['"]\s*:""")
 
 
-def _requirement_names_from_setup_py(setup_py: Path) -> frozenset[str]:
-    """Best-effort package names from quoted requirement strings in ``setup.py``."""
+def _extras_require_keys_from_setup_py(setup_py: Path) -> frozenset[str]:
+    """Return ``extras_require`` dict keys (setuptools extra names, not packages)."""
     if not setup_py.is_file():
         return frozenset()
     try:
         text = setup_py.read_text(encoding="utf-8")
     except OSError:
         return frozenset()
+    match = _SETUP_EXTRAS_REQUIRE_KEYS_RE.search(text)
+    if not match:
+        return frozenset()
+    return frozenset(
+        _normalize_package_name(key)
+        for key in _SETUP_DICT_KEY_RE.findall(match.group(1))
+    )
+
+
+def _requirement_files_for_setuptools_extra(workspace: Path, extra: str) -> list[Path]:
+    """Conventional requirement-file locations for a setuptools extra name."""
+    candidates = (
+        workspace / "requirements" / "extras" / f"{extra}.txt",
+        workspace / "requirements" / "extras" / extra,
+        workspace / "requirements" / f"{extra}.txt",
+        workspace / "requirements" / extra,
+    )
+    return [path for path in candidates if path.is_file()]
+
+
+def _specs_from_setuptools_extra_files(
+    workspace: Path,
+    extras: list[str],
+) -> tuple[dict[str, str], dict[str, str], frozenset[str]]:
+    """Return ``(pins, constraints, bare_names)`` from requirements files for *extras*.
+
+    Celery/Kombu-style projects map ``extras_require`` values to
+    ``requirements/extras/<name>.txt`` instead of inline PEP 508 strings. Prefer
+    those files over scraping setup.py string literals (which otherwise picks up
+    the extra *keys* as fake PyPI names).
+    """
+    pins: dict[str, str] = {}
+    constraints: dict[str, str] = {}
+    bare: set[str] = set()
+    for extra in extras:
+        for req_path in _requirement_files_for_setuptools_extra(workspace, extra):
+            pins.update(_pins_from_requirements_file(req_path))
+            constraints.update(_constraints_from_requirements_file(req_path))
+            bare |= set(_unpinned_from_requirements_file(req_path))
+    return pins, constraints, frozenset(bare)
+
+
+def _requirement_names_from_setup_py(setup_py: Path) -> frozenset[str]:
+    """Best-effort package names from quoted requirement strings in ``setup.py``.
+
+    Accepts versioned PEP 508 strings anywhere, and bare names only when the whole
+    line is a list item (``\"aiofiles\",``). That drops ``name='pkg'``, ``hasattr``
+    string args, and other metadata noise while keeping inline extras bodies (gql).
+    """
+    if not setup_py.is_file():
+        return frozenset()
+    try:
+        text = setup_py.read_text(encoding="utf-8")
+    except OSError:
+        return frozenset()
+    extra_keys = _extras_require_keys_from_setup_py(setup_py)
     names: set[str] = set()
     for match in _SETUP_REQ_STRING_RE.finditer(text):
         raw = match.group(1).split(";", 1)[0].strip()
@@ -1250,10 +1369,23 @@ def _requirement_names_from_setup_py(setup_py: Path) -> frozenset[str]:
         if not name_match:
             continue
         name = _normalize_package_name(name_match.group(1))
-        if name in _SHELL_NOISE_NAMES or name in {"gql", "returns"}:
+        if not _is_plausible_distribution_name(name) or name in {"gql", "returns"}:
             continue
+        # Extra *keys* are not installable distributions (e.g. kombu ``msgpack``).
+        if name in extra_keys:
+            continue
+        has_version = any(
+            op in raw for op in ("==", ">=", "<=", "!=", "~=", ">", "<")
+        )
+        if not has_version:
+            line_start = text.rfind("\n", 0, match.start()) + 1
+            line_end = text.find("\n", match.end())
+            line = text[line_start : line_end if line_end != -1 else None].strip()
+            # Bare requirement list items only: ``"aiofiles",``
+            if not re.fullmatch(r"""['"][^'"]+['"]\s*,?""", line):
+                continue
         # Skip obvious non-requirement string literals.
-        if name_match.group(1)[0].isupper() and "==" not in raw and ">=" not in raw:
+        if name_match.group(1)[0].isupper() and not has_version:
             continue
         names.add(name)
     return frozenset(names)
@@ -1295,8 +1427,46 @@ def declared_python_dependencies(
             unpinned |= extra_bare
             unpinned |= _poetry_extra_package_names(workspace / "pyproject.toml", extras)
     if extras_requested:
-        # setuptools extras_require bodies are often only in setup.py (e.g. gql).
+        # Prefer requirements/extras/<name>.txt (kombu/celery style) so extra *keys*
+        # are not mistaken for PyPI names. Still scrape setup.py for inline PEP 508
+        # bodies (e.g. gql); that scraper skips extras_require keys.
+        extra_pins, extra_constraints, extra_bare = _specs_from_setuptools_extra_files(
+            workspace,
+            extras_requested,
+        )
+        for name, ver in extra_pins.items():
+            bulk_pins.setdefault(name, ver)
+            constraints.pop(name, None)
+        for name, spec in extra_constraints.items():
+            if name not in bulk_pins:
+                constraints.setdefault(name, spec)
+        unpinned |= extra_bare
         unpinned |= _requirement_names_from_setup_py(workspace / "setup.py")
+    # Celery/Kombu: install_requires often lives in requirements/default.txt via
+    # ``reqs('default.txt')``. Editable verifier replay uses ``--no-deps``, so
+    # absorb that file when an editable install is present and Dockerfile never
+    # ``-r``'d it.
+    if editable_seed:
+        default_req = workspace / "requirements" / "default.txt"
+        if default_req.is_file():
+            for name, ver in _pins_from_requirements_file(default_req).items():
+                bulk_pins.setdefault(name, ver)
+                constraints.pop(name, None)
+            for name, spec in _constraints_from_requirements_file(default_req).items():
+                if name not in bulk_pins:
+                    constraints.setdefault(name, spec)
+            unpinned |= _unpinned_from_requirements_file(default_req)
+        # Editable replay uses ``--no-deps``, so absorb each editable target's
+        # ``[project].dependencies`` (langchain monorepo: ``libs/core`` → pydantic).
+        for segment in editable_seed:
+            for target in _editable_target_paths(segment, workspace):
+                pkg_constraints, pkg_bare = _read_pyproject_dependencies(
+                    target / "pyproject.toml"
+                )
+                for name, spec in pkg_constraints.items():
+                    if name not in bulk_pins:
+                        constraints.setdefault(name, spec)
+                unpinned |= pkg_bare
     # Poetry declares runtime deps even when the Dockerfile uses pip -e / poetry install.
     unpinned |= _poetry_dependency_names(
         workspace / "pyproject.toml",
@@ -1314,7 +1484,7 @@ def declared_python_dependencies(
         for name in unpinned
         if name not in bulk_pins
         and name not in constraints
-        and name not in _SHELL_NOISE_NAMES
+        and _is_plausible_distribution_name(name)
     )
     lockfile_pins = _read_uv_lock_pins(
         workspace / "uv.lock",
@@ -1327,13 +1497,10 @@ def declared_python_dependencies(
         if segment not in seen_edit:
             seen_edit.add(segment)
             editable_segments.append(segment)
-    # PYTHONPATH-only images still need an editable replay into the verifier venv.
-    if (
-        dockerfile_text
-        and pythonpath_entries_from_dockerfile(dockerfile_text, workspace)
-        and not editable_segments
-    ):
-        editable_segments.append("pip install --no-deps -e .")
+    # Harbor PYTHONPATH images expose the project without an editable install.
+    # Do not synthesize ``pip install -e .`` here: that forces a build (often
+    # needing ``[build-system].requires`` like Cython) that Harbor never runs.
+    # Verifier grade injects Dockerfile PYTHONPATH via VerifierSpec instead.
     return DeclaredDeps(
         bulk_pins=bulk_pins,
         constraints=constraints,
@@ -1430,6 +1597,8 @@ class VerifierSpec:
     test_sh_body: str | None = None
     plugin_policy: PluginPolicy | None = None
     venv_path: str = VERIFIER_VENV_PATH
+    # Absolute host/sandbox paths from Dockerfile ``ENV PYTHONPATH`` (Harbor layout).
+    grade_pythonpath: tuple[str, ...] = ()
 
     def public_view(self) -> dict[str, Any]:
         """Agent-safe summary: no ``test.patch``-derived import or closure fields."""
@@ -1448,6 +1617,7 @@ class VerifierSpec:
                 "harbor_imports": list(self.harbor_imports),
                 "grade_closure_install_specs": list(self.grade_closure_install_specs),
                 "unmapped_imports": list(self.unmapped_imports),
+                "grade_pythonpath": list(self.grade_pythonpath),
                 "plugin_policy": (
                     {
                         "disable_autoload": self.plugin_policy.disable_autoload,
@@ -1491,9 +1661,22 @@ def discover_verifier_spec(
     workspace = workspace.resolve()
     declared = declared_python_dependencies(workspace, dockerfile)
     editable_segments = list(declared.editable_segments)
-    # Verifier collect runs outside /app; ensure the package-under-test is installed
-    # into the verifier venv whenever the workspace layout provides import roots.
-    if import_roots_provided_by_project(workspace):
+    dockerfile_text = (
+        dockerfile.read_text(encoding="utf-8")
+        if dockerfile is not None and dockerfile.is_file()
+        else ""
+    )
+    pythonpath_entries = (
+        pythonpath_entries_from_dockerfile(dockerfile_text, workspace)
+        if dockerfile_text
+        else []
+    )
+    grade_pythonpath = tuple(str(p) for p in pythonpath_entries)
+    # Verifier collect runs outside /app; install the package-under-test into the
+    # verifier venv when needed. Harbor PYTHONPATH images already expose the
+    # project without a build — prefer that over synthesizing ``pip install -e .``
+    # (which often needs Cython / other build-system deps Harbor never installs).
+    if import_roots_provided_by_project(workspace) and not pythonpath_entries:
         covers_workspace = False
         for segment in editable_segments:
             for path in _editable_target_paths(segment, workspace):
@@ -1552,10 +1735,15 @@ def discover_verifier_spec(
         grade_closure_install_specs=tuple(closure),
         unmapped_imports=tuple(unmapped),
         test_sh_body=test_sh,
+        grade_pythonpath=grade_pythonpath,
     )
 
 
-def verifier_venv_materialize_public_commands(spec: VerifierSpec) -> list[str]:
+def verifier_venv_materialize_public_commands(
+    spec: VerifierSpec,
+    *,
+    workspace: Path | None = None,
+) -> list[str]:
     """Create ``/opt/malvin-verifier`` and install **public** DeclaredDeps only."""
     pip_bin = _verifier_pip(spec)
     commands = [
@@ -1566,6 +1754,10 @@ def verifier_venv_materialize_public_commands(spec: VerifierSpec) -> list[str]:
         pkgs = " ".join(shlex.quote(s) for s in spec.public_install_specs)
         commands.append(
             f"{shlex.quote(pip_bin)} install --no-cache-dir {pkgs}"
+        )
+    if workspace is not None and spec.editable_segments:
+        commands.extend(
+            verifier_venv_build_system_commands(workspace, spec=spec)
         )
     for segment in spec.editable_segments:
         # Replay editable installs into the verifier venv with --no-deps (pin fidelity).
@@ -1618,6 +1810,94 @@ def verifier_venv_replay_editable_commands(spec: VerifierSpec) -> list[str]:
             rewritten += " --no-build-isolation"
         commands.append(rewritten)
     return commands
+
+
+def _distribution_name_from_requirement(req: str) -> str:
+    """Best-effort PEP 508 name token for dedupe (ignores extras/markers/versions)."""
+    token = req.split(";", 1)[0].strip()
+    token = token.split("[", 1)[0].strip()
+    for sep in ("===", "==", ">=", "<=", "!=", "~=", ">", "<"):
+        if sep in token:
+            token = token.split(sep, 1)[0].strip()
+            break
+    return _normalize_package_name(token)
+
+
+def _editable_offline_seed_specs(
+    workspace: Path,
+    *,
+    dockerfile: Path | None = None,
+    editable_segments: tuple[str, ...] | None = None,
+) -> list[str]:
+    """Packages required in the target env before offline ``--no-build-isolation`` editables.
+
+    Hatchling imports ``editables`` at editable-build time even when it is absent
+    from ``[build-system].requires`` (python-statemachine: requires = [\"hatchling\"] only).
+
+    Build backends are collected from the workspace root pyproject and from every local
+    path targeted by Dockerfile / verifier ``pip install -e`` segments (langchain-style
+    monorepos keep hatchling under ``libs/*/pyproject.toml``, not the repo root).
+    """
+    pyprojects: list[Path] = [workspace / "pyproject.toml"]
+    segments: list[str] = []
+    if editable_segments:
+        segments.extend(editable_segments)
+    elif dockerfile is not None and dockerfile.is_file():
+        segments.extend(
+            _editable_segments_from_dockerfile(dockerfile.read_text(encoding="utf-8"))
+        )
+    for segment in segments:
+        for target in _editable_target_paths(segment, workspace):
+            pyprojects.append(target / "pyproject.toml")
+    requires: list[str] = []
+    seen_names: set[str] = set()
+    for pyproject in pyprojects:
+        for req in _read_pyproject_build_system_requires(pyproject):
+            name = _distribution_name_from_requirement(req)
+            if name in seen_names:
+                continue
+            seen_names.add(name)
+            requires.append(req)
+    if "editables" not in seen_names:
+        requires.append("editables")
+    return requires
+
+
+def default_pip_editable_seed_command(
+    workspace: Path,
+    dockerfile: Path | None,
+) -> str | None:
+    """Seed default ``pip`` with build backends before offline Dockerfile editable replay.
+
+    Image warm installs Hatchling/editables into ``.venv`` via uv, but agent Prep sync
+    replays Dockerfile ``pip install -e`` against system/default pip. Without this seed,
+    ``--no-build-isolation`` fails with ``ModuleNotFoundError: editables``.
+    """
+    if dockerfile is None or not dockerfile.is_file():
+        return None
+    if not workspace_sync_commands_from_dockerfile(dockerfile, offline_editable=True):
+        return None
+    specs = _editable_offline_seed_specs(workspace, dockerfile=dockerfile)
+    if not specs:
+        return None
+    pkgs = " ".join(shlex.quote(s) for s in specs)
+    return f"pip install --no-cache-dir {pkgs}"
+
+
+def verifier_venv_build_system_commands(
+    workspace: Path,
+    *,
+    venv_path: str | None = None,
+    spec: VerifierSpec | None = None,
+) -> list[str]:
+    """Install build backends (+ ``editables``) into the verifier venv before editable replay."""
+    segments = spec.editable_segments if spec is not None else None
+    requires = _editable_offline_seed_specs(workspace, editable_segments=segments)
+    if not requires:
+        return []
+    pip_bin = _verifier_pip(spec, venv_path=venv_path)
+    pkgs = " ".join(shlex.quote(r) for r in requires)
+    return [f"{shlex.quote(pip_bin)} install --no-cache-dir {pkgs}"]
 
 
 def _plugin_closure_probe_python() -> str:
@@ -1767,23 +2047,33 @@ def _probe_editable_roots_importable(
     *,
     workspace: Path,
     harbor_imports: tuple[str, ...] = (),
+    env: dict[str, str] | None = None,
 ) -> str | None:
     """Return an error detail when Harbor-needed editable roots cannot be imported.
 
     Only probes import roots that Harbor tests actually import and that editable
     discovery claims to provide (e.g. ``pwnlib``, not the ``pwntools`` dist name).
+
+    Import spelling comes from Harbor AST (``IPython``), not from the distribution
+    name (``ipython``): ``import_roots_provided_by_project`` may list both, and
+    case folding would otherwise probe the wrong module.
     """
-    harbor = {h.replace("-", "_").lower() for h in harbor_imports} | {
-        h.lower() for h in harbor_imports
-    }
+    harbor_original: dict[str, str] = {}
+    for raw in harbor_imports:
+        key = raw.replace("-", "_").lower()
+        # Prefer mixed-case AST spellings when duplicates appear.
+        prev = harbor_original.get(key)
+        if prev is None or (prev.lower() == prev and raw.lower() != raw):
+            harbor_original[key] = raw
+    harbor = set(harbor_original)
     provided_norm = {
-        r.replace("-", "_").lower(): r for r in provided_roots if "-" not in r
+        r.replace("-", "_").lower() for r in provided_roots if "-" not in r
     }
     candidates = sorted(
         {
-            provided_norm[h]
+            harbor_original[h]
             for h in harbor
-            if h in provided_norm and provided_norm[h].isidentifier()
+            if h in provided_norm and harbor_original[h].isidentifier()
         }
     )
     if not candidates:
@@ -1808,6 +2098,7 @@ def _probe_editable_roots_importable(
         text=True,
         capture_output=True,
         check=False,
+        env=env,
     )
     if proc.returncode == 0:
         return None
@@ -1895,12 +2186,24 @@ def probe_verifier_env(
         provided = editable_provided_import_roots(
             workspace,
             spec.editable_segments,
+            dockerfile=None,
         )
+        # Include PYTHONPATH roots claimed by Harbor Dockerfile layout.
+        if spec.grade_pythonpath:
+            for entry in spec.grade_pythonpath:
+                provided |= import_roots_provided_by_project(Path(entry))
+                path = Path(entry)
+                if path.name == "src" or (path / "src").is_dir():
+                    provided |= _filesystem_package_roots(
+                        path if path.name == "src" else path / "src"
+                    )
+        grade_env = verifier_grade_subprocess_env(spec, plugin_policy=policy)
         editable_err = _probe_editable_roots_importable(
             python_bin,
             provided,
             workspace=workspace,
             harbor_imports=spec.harbor_imports,
+            env=grade_env,
         )
         if editable_err:
             return (
@@ -1910,8 +2213,12 @@ def probe_verifier_env(
                 ),
                 policy,
             )
+        # stestr / custom Harbor runners never call pytest; do not invent a pytest
+        # collect probe (bandit test-requirements has no pytest pin).
+        if not test_sh_invokes_pytest(spec.test_sh_body):
+            return True, None, policy
         collect_cmd = collect_only_pytest_command(python_bin, spec.test_sh_body)
-        env = verifier_grade_subprocess_env(spec, plugin_policy=policy)
+        env = grade_env
         # Materialize hidden tests outside /app (never leave them in the agent workspace).
         with tempfile.TemporaryDirectory(prefix="malvin-verifier-probe-") as tmp:
             probe_root = Path(tmp)
@@ -2005,6 +2312,21 @@ def verifier_grade_subprocess_env(
     env = dict(base_env) if base_env is not None else os.environ.copy()
     env["VIRTUAL_ENV"] = spec.venv_path
     env["PATH"] = f"{spec.venv_path}/bin:" + env.get("PATH", "")
+    if spec.grade_pythonpath:
+        # Harbor PYTHONPATH layouts (e.g. ``ENV PYTHONPATH=/app/src``) expose the
+        # package without an editable install; preserve that for grade/collect.
+        existing = env.get("PYTHONPATH", "")
+        merged = list(spec.grade_pythonpath)
+        if existing:
+            merged.extend(p for p in existing.split(":") if p)
+        # Deduplicate while preserving order.
+        seen: set[str] = set()
+        ordered: list[str] = []
+        for part in merged:
+            if part not in seen:
+                seen.add(part)
+                ordered.append(part)
+        env["PYTHONPATH"] = ":".join(ordered)
     policy = plugin_policy if plugin_policy is not None else spec.plugin_policy
     if policy is not None:
         policy_env = policy.as_env()
@@ -2063,7 +2385,9 @@ def prepare_verifier_grade(
     # the public verifier venv here when missing so grade never falls back to
     # system Python.
     if not public_present:
-        for command in verifier_venv_materialize_public_commands(spec):
+        for command in verifier_venv_materialize_public_commands(
+            spec, workspace=workspace
+        ):
             code, detail, _timed_out = _run_shell(command, workspace)
             if code != 0:
                 return VerifierPrepResult(
@@ -2088,6 +2412,21 @@ def prepare_verifier_grade(
                 spec=spec,
                 public_venv_present=False,
             )
+    # Seed build backends before offline ``--no-build-isolation`` editable replay.
+    if spec.editable_segments:
+        for command in verifier_venv_build_system_commands(workspace, spec=spec):
+            code, detail, _timed_out = _run_shell(command, workspace)
+            if code != 0:
+                return VerifierPrepResult(
+                    ok=False,
+                    error=format_prep_error(
+                        task_id,
+                        phase="verifier prep",
+                        detail=detail or f"build-system install failed: {command}",
+                    ),
+                    spec=spec,
+                    public_venv_present=public_present,
+                )
     # Always re-link editables to the mounted workspace (image bake may be stale).
     for command in verifier_venv_replay_editable_commands(spec):
         code, detail, _timed_out = _run_shell(command, workspace)
@@ -2140,6 +2479,7 @@ def prepare_verifier_grade(
         test_sh_body=spec.test_sh_body,
         plugin_policy=policy,
         venv_path=spec.venv_path,
+        grade_pythonpath=spec.grade_pythonpath,
     )
     return VerifierPrepResult(
         ok=True,
@@ -2228,8 +2568,19 @@ def _mandatory_probe_python(declared: DeclaredDeps) -> str:
         "    try:\n"
         "        from packaging.specifiers import SpecifierSet\n"
         "        from packaging.version import Version\n"
-        "        normalized = spec_str if spec_str[:2] in ('==', '>=', '<=', '!=', '>', '<') else f'=={spec_str}'\n"
-        "        if Version(version) not in SpecifierSet(normalized):\n"
+        "        _ops = ('==', '>=', '<=', '!=', '~=', '>', '<')\n"
+        "        ver_spec = spec_str\n"
+        "        if ver_spec.startswith('['):\n"
+        "            end = ver_spec.find(']')\n"
+        "            if end != -1:\n"
+        "                ver_spec = ver_spec[end + 1 :].lstrip()\n"
+        "        if not ver_spec:\n"
+        "            continue\n"
+        "        normalized = (\n"
+        "            ver_spec if any(ver_spec.startswith(op) for op in _ops)\n"
+        "            else f'=={ver_spec}'\n"
+        "        )\n"
+        "        if Version(str(version)) not in SpecifierSet(normalized):\n"
         "            errors.append(f'{display_name} {version} violates {spec_str}')\n"
         "    except Exception as exc:\n"
         "        if display_name == 'pydantic' and spec_str.startswith('>=2'):\n"
@@ -2633,20 +2984,27 @@ PRECOMMIT_WARM_SCRIPT_PATH = "/tmp/malvin_precommit_warm.sh"
 
 
 def _precommit_warm_script_body(workspace: Path) -> str:
-    """Bash script to bootstrap ``pre-commit`` and warm hook environments."""
+    """Bash script to bootstrap ``pre-commit`` and warm hook environments.
+
+    ``install-hooks`` is best-effort: configs often pin ``default_language_version``
+    to interpreters absent from Harbor images (e.g. python3.8). Failing closed on
+    that aborts image build even when ``--test`` only needs ecosystem smoke.
+    """
     pin = _precommit_pin_from_workspace(workspace)
     pip_spec = f"pre-commit=={pin}" if pin else "pre-commit"
     venv_bin = f"{_UV_PROJECT_VENV}/bin/pre-commit"
+    soft = ' || echo "malvin: pre-commit install-hooks failed (continuing)" >&2'
     return (
         "#!/usr/bin/env bash\n"
         "set -euo pipefail\n"
         "if command -v pre-commit >/dev/null 2>&1; then\n"
-        "  pre-commit install-hooks\n"
+        f"  pre-commit install-hooks{soft}\n"
         f"elif test -x {shlex.quote(venv_bin)}; then\n"
-        f"  PATH={shlex.quote(_UV_PROJECT_VENV + '/bin')}:\"$PATH\" pre-commit install-hooks\n"
+        f"  PATH={shlex.quote(_UV_PROJECT_VENV + '/bin')}:\"$PATH\" "
+        f"pre-commit install-hooks{soft}\n"
         "else\n"
         f"  python3 -m pip install --no-cache-dir {shlex.quote(pip_spec)}\n"
-        "  pre-commit install-hooks\n"
+        f"  pre-commit install-hooks{soft}\n"
         "fi\n"
     )
 
@@ -2753,24 +3111,36 @@ def uv_pip_build_system_command(workspace: Path) -> str | None:
 
 
 def uv_editable_install_command(workspace: Path) -> str | None:
-    """Return shell steps to pre-install the project editable for offline rebuilds."""
+    """Return shell steps to pre-install the project editable for offline rebuilds.
+
+    Hatchling editable installs need the ``editables`` package even when it is not
+    listed in ``[build-system].requires``; install it before ``-e .``.
+    """
     if not (workspace / "uv.lock").is_file():
         return None
     return (
-        f"{_UV_BOOTSTRAP_SHELL} && uv pip install --python {_UV_PROJECT_VENV} "
-        "-e . --no-build-isolation"
+        f"{_UV_BOOTSTRAP_SHELL} && "
+        f"uv pip install --python {_UV_PROJECT_VENV} editables && "
+        f"uv pip install --python {_UV_PROJECT_VENV} -e . --no-build-isolation"
     )
 
 
 def uv_offline_smoke_commands(workspace: Path) -> list[str]:
-    """Gate-equivalent offline checks to run at image build after cache warming."""
+    """Gate-equivalent offline checks to run at image build after cache warming.
+
+    Lint smokes (``uv run ruff check``) soft-fail like pre-commit hook install:
+    a missing console script must not abort the image build after deps warmed.
+    """
     if not (workspace / "uv.lock").is_file():
         return []
     commands: list[str] = []
     sync = "uv sync --offline --group dev" if _pyproject_has_uv_dev_group(workspace) else "uv sync --offline"
     commands.append(f"{_UV_OFFLINE_SMOKE_PREFIX} {sync}")
     if _workspace_has_ruff_signal(workspace):
-        commands.append(f"{_UV_OFFLINE_SMOKE_PREFIX} uv run ruff check")
+        commands.append(
+            f"{_UV_OFFLINE_SMOKE_PREFIX} uv run ruff check "
+            '|| echo "malvin: uv run ruff check failed (continuing)" >&2'
+        )
     return commands
 
 
@@ -2778,18 +3148,34 @@ def workspace_declared_repin_command(
     workspace: Path,
     dockerfile: Path | None = None,
 ) -> str | None:
-    """Force-reinstall declared bulk pins after warm pip installs that may clobber them.
+    """Force-reinstall declared pins after warm pip installs that may clobber them.
 
     Example: installing tox upgrades ``packaging``, which then fails the mandatory probe
     against Adaptix's ``packaging==24.2`` pin.
+
+    Bulk pins and pyproject/lockfile constraints share one ``pip install`` so transitive
+    deps of bulk packages cannot float past declared ranges (httpx: ``twine`` pulling
+    ``rich`` 15 while ``rich>=10,<15`` is declared).
     """
     if dockerfile is None or not dockerfile.is_file():
         return None
     declared = declared_python_dependencies(workspace.resolve(), dockerfile)
-    if not declared.bulk_pins:
+    specs: list[str] = []
+    covered: set[str] = set()
+    for name, ver in sorted(declared.bulk_pins.items()):
+        specs.append(f"'{name}=={ver}'")
+        covered.add(name.lower())
+    for name in sorted(set(declared.constraints) | set(declared.lockfile_pins)):
+        key = name.lower()
+        if key in covered:
+            continue
+        pip_spec = declared.pip_install_spec(name)
+        if pip_spec:
+            specs.append(f"'{pip_spec}'")
+            covered.add(key)
+    if not specs:
         return None
-    pkg_args = [f"'{name}=={ver}'" for name, ver in sorted(declared.bulk_pins.items())]
-    return "pip install --no-cache-dir --force-reinstall " + " ".join(pkg_args)
+    return "pip install --no-cache-dir --force-reinstall " + " ".join(specs)
 
 
 def workspace_image_warm_commands(
@@ -2807,6 +3193,11 @@ def workspace_image_warm_commands(
     lint_install = workspace_lint_tool_install_command(workspace)
     if lint_install:
         commands.append(lint_install)
+    # Seed system/default pip before uv warm so offline Prep sync (-e --no-build-isolation)
+    # finds hatchling/editables outside .venv.
+    pip_seed = default_pip_editable_seed_command(workspace, dockerfile)
+    if pip_seed:
+        commands.append(pip_seed)
     uv_sync = uv_sync_dev_command(workspace)
     if uv_sync:
         commands.append(uv_sync)
@@ -3005,6 +3396,73 @@ def _test_bash_lc_pip_intents_ignore_shell_noise() -> None:
     assert "pint" in unpinned
     assert "fi" not in unpinned
     assert "if" not in unpinned
+
+
+def _test_requirement_inline_comments_stripped_for_pip() -> None:
+    """OpenStack-style ``pkg>=1 # MIT`` must not reach pip install args."""
+    assert _strip_requirement_comment("beautifulsoup4>=4.8.0 # MIT") == "beautifulsoup4>=4.8.0"
+    assert _requirement_line_package("beautifulsoup4>=4.8.0 # MIT") == (
+        "beautifulsoup4",
+        ">=4.8.0",
+    )
+    assert _parse_dependency_spec("PyYAML>=5.3.1 # MIT") == ("pyyaml", ">=5.3.1")
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "requirements.txt").write_text(
+            "beautifulsoup4>=4.8.0 # MIT\nPyYAML>=5.3.1 # MIT\n",
+            encoding="utf-8",
+        )
+        dockerfile = root / "Dockerfile"
+        dockerfile.write_text(
+            "FROM x\nRUN pip install -r requirements.txt\n",
+            encoding="utf-8",
+        )
+        declared = declared_python_dependencies(root, dockerfile)
+        soup = declared.pip_install_spec("beautifulsoup4")
+        assert soup == "beautifulsoup4>=4.8.0"
+        assert "#" not in soup
+        cmds = registry_image_cache_bust_commands(
+            dockerfile, workspace=root, registry_pull=True
+        )
+        joined = " ".join(cmds)
+        assert "# MIT" not in joined
+        assert "beautifulsoup4>=4.8.0" in joined
+
+
+def _test_pep508_extras_preserved_in_pip_install_spec() -> None:
+    """``fastapi-cli[standard] >=0.0.8`` must not become ``fastapi-cli==[standard]…``."""
+    import tempfile
+
+    assert _parse_dependency_spec("fastapi-cli[standard] >=0.0.8") == (
+        "fastapi-cli",
+        "[standard]>=0.0.8",
+    )
+    assert _parse_dependency_spec("uvicorn[standard] >=0.12.0") == (
+        "uvicorn",
+        "[standard]>=0.12.0",
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "pyproject.toml").write_text(
+            '[project]\nname = "demo"\nversion = "0"\n'
+            "dependencies = [\n"
+            '  "fastapi-cli[standard] >=0.0.8",\n'
+            '  "uvicorn[standard] >=0.12.0",\n'
+            "]\n",
+            encoding="utf-8",
+        )
+        dockerfile = root / "Dockerfile"
+        dockerfile.write_text("FROM x\nRUN pip install -e .\n", encoding="utf-8")
+        declared = declared_python_dependencies(root, dockerfile)
+        assert declared.pip_install_spec("fastapi-cli") == "fastapi-cli[standard]>=0.0.8"
+        assert declared.pip_install_spec("uvicorn") == "uvicorn[standard]>=0.12.0"
+        cmds = registry_image_cache_bust_commands(
+            dockerfile, workspace=root, registry_pull=True
+        )
+        joined = " ".join(cmds)
+        assert "fastapi-cli==[" not in joined
+        assert "uvicorn==[" not in joined
+        assert "fastapi-cli[standard]>=0.0.8" in joined
 
 
 def _test_requirements_editable_and_constraints_declared() -> None:
@@ -3359,7 +3817,106 @@ def _test_uv_editable_install_command() -> None:
         (root / "uv.lock").write_text("# lock\n", encoding="utf-8")
         cmd = uv_editable_install_command(root)
         assert cmd is not None
+        assert "uv pip install --python .venv editables" in cmd
         assert "uv pip install --python .venv -e . --no-build-isolation" in cmd
+
+
+def _test_default_pip_editable_seed_for_offline_sync() -> None:
+    """Dockerfile ``pip install -e`` + hatchling ⇒ system pip gets editables at warm."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        dockerfile = root / "Dockerfile"
+        dockerfile.write_text(
+            'FROM x\nRUN pip install -e ".[diagrams]"\n',
+            encoding="utf-8",
+        )
+        (root / "pyproject.toml").write_text(
+            '[project]\nname = "demo"\nversion = "0"\n'
+            '[build-system]\nrequires = ["hatchling"]\n'
+            'build-backend = "hatchling.build"\n',
+            encoding="utf-8",
+        )
+        seed = default_pip_editable_seed_command(root, dockerfile)
+        assert seed is not None
+        assert "pip install --no-cache-dir" in seed
+        assert "hatchling" in seed
+        assert "editables" in seed
+        warm = workspace_image_warm_commands(root, dockerfile=dockerfile)
+        assert seed in warm
+        venv_cmds = verifier_venv_build_system_commands(root)
+        assert len(venv_cmds) == 1
+        assert "hatchling" in venv_cmds[0]
+        assert "editables" in venv_cmds[0]
+        # No Dockerfile editables ⇒ no system-pip seed.
+        bare = root / "Dockerfile.bare"
+        bare.write_text("FROM x\nRUN pip install pytest\n", encoding="utf-8")
+        assert default_pip_editable_seed_command(root, bare) is None
+
+
+def _test_editable_seed_reads_monorepo_build_backends() -> None:
+    """Editable targets under libs/*/pyproject.toml must contribute hatchling seeds."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        core = root / "libs" / "core"
+        core.mkdir(parents=True)
+        (core / "pyproject.toml").write_text(
+            '[project]\nname = "langchain-core"\nversion = "0"\n'
+            '[build-system]\nrequires = ["hatchling"]\n'
+            'build-backend = "hatchling.build"\n',
+            encoding="utf-8",
+        )
+        dockerfile = root / "Dockerfile"
+        dockerfile.write_text(
+            "FROM x\nRUN pip install -e libs/core\n",
+            encoding="utf-8",
+        )
+        seed = default_pip_editable_seed_command(root, dockerfile)
+        assert seed is not None
+        assert "hatchling" in seed
+        assert "editables" in seed
+        specs = _editable_offline_seed_specs(root, dockerfile=dockerfile)
+        assert any("hatchling" in s for s in specs)
+        empty = DeclaredDeps({}, {}, (), {})
+        venv_cmds = verifier_venv_build_system_commands(
+            root,
+            spec=VerifierSpec(
+                declared=empty,
+                public_install_specs=(),
+                editable_segments=("pip install -e libs/core",),
+            ),
+        )
+        assert venv_cmds and "hatchling" in venv_cmds[0]
+
+
+def _test_editable_target_project_deps_enter_declared() -> None:
+    """``pip install -e libs/core --no-deps`` still needs libs/core's pydantic pin."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        core = root / "libs" / "core"
+        core.mkdir(parents=True)
+        (core / "pyproject.toml").write_text(
+            '[project]\nname = "langchain-core"\nversion = "0"\n'
+            'dependencies = ["pydantic>=2.7.4,<3.0.0", "tenacity"]\n'
+            '[build-system]\nrequires = ["hatchling"]\n'
+            'build-backend = "hatchling.build"\n',
+            encoding="utf-8",
+        )
+        dockerfile = root / "Dockerfile"
+        dockerfile.write_text(
+            "FROM x\nRUN pip install -e libs/core\n",
+            encoding="utf-8",
+        )
+        declared = declared_python_dependencies(root, dockerfile)
+        assert declared.effective_spec("pydantic") == ">=2.7.4,<3.0.0"
+        assert "tenacity" in declared.unpinned_names or declared.effective_spec("tenacity")
+        specs = _public_install_specs(declared)
+        assert any(s.startswith("pydantic") for s in specs)
 
 
 def _test_uv_offline_smoke_commands() -> None:
@@ -3383,7 +3940,8 @@ def _test_uv_offline_smoke_commands() -> None:
         smoke = uv_offline_smoke_commands(root)
         assert len(smoke) == 2
         assert smoke[0] == "UV_OFFLINE=1 UV_NO_SYNC=1 uv sync --offline --group dev"
-        assert smoke[1] == "UV_OFFLINE=1 UV_NO_SYNC=1 uv run ruff check"
+        assert smoke[1].startswith("UV_OFFLINE=1 UV_NO_SYNC=1 uv run ruff check")
+        assert "continuing" in smoke[1]
 
 
 def _test_workspace_declared_repin_command() -> None:
@@ -3407,6 +3965,24 @@ def _test_workspace_declared_repin_command() -> None:
         assert cmd is not None
         assert "packaging==24.2" in cmd
         assert "pydantic==2.10.3" in cmd
+
+        # Constraints not in Dockerfile bulk pins must share the same force-reinstall
+        # (twine→rich must not float past rich>=10,<15).
+        (root / "pyproject.toml").write_text(
+            '[project]\nname = "httpx"\nversion = "0"\n'
+            'dependencies = ["rich>=10,<15", "httpcore==1.*"]\n',
+            encoding="utf-8",
+        )
+        (req_dir / "test_extra_new.txt").write_text(
+            "twine==6.1.0\nmkdocs==1.6.1\n",
+            encoding="utf-8",
+        )
+        cmd = workspace_declared_repin_command(root, dockerfile)
+        assert cmd is not None
+        assert "twine==6.1.0" in cmd
+        assert "rich>=10,<15" in cmd
+        assert "httpcore==1.*" in cmd
+        assert cmd.count("pip install") == 1
 
 
 def _test_workspace_image_warm_commands() -> None:
@@ -3454,13 +4030,75 @@ def _test_workspace_image_warm_commands() -> None:
                 f"{shlex.quote('setuptools>=69.2')}"
             ),
             (
-                f"{_UV_BOOTSTRAP_SHELL} && uv pip install --python {_UV_PROJECT_VENV} "
+                f"{_UV_BOOTSTRAP_SHELL} && "
+                f"uv pip install --python {_UV_PROJECT_VENV} editables && "
+                f"uv pip install --python {_UV_PROJECT_VENV} "
                 "-e . --no-build-isolation"
             ),
         ]
         assert cmds[5:7] == precommit_script
         assert "tox -e lint --notest" in cmds
-        assert "UV_OFFLINE=1 UV_NO_SYNC=1 uv run ruff check" in cmds[-1]
+        assert "uv run ruff check" in cmds[-1]
+        assert "continuing" in cmds[-1]
+
+
+def _test_setuptools_extra_requirement_files_not_extra_keys() -> None:
+    """Kombu-style extras map to requirements files; extra keys are not PyPI names."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "setup.py").write_text(
+            "from setuptools import setup\n"
+            "setup(\n"
+            "    name='demo',\n"
+            "    extras_require={\n"
+            "        'msgpack': extras('msgpack.txt'),\n"
+            "        'redis': extras('redis.txt'),\n"
+            "        'azureservicebus': extras('azureservicebus.txt'),\n"
+            "    },\n"
+            ")\n",
+            encoding="utf-8",
+        )
+        extras_dir = root / "requirements" / "extras"
+        extras_dir.mkdir(parents=True)
+        (extras_dir / "msgpack.txt").write_text("msgpack==1.1.2\n", encoding="utf-8")
+        (extras_dir / "redis.txt").write_text(
+            "redis>=4.5.2,!=4.5.5,<7.1\n",
+            encoding="utf-8",
+        )
+        (extras_dir / "azureservicebus.txt").write_text(
+            "azure-servicebus>=7.12.0\n",
+            encoding="utf-8",
+        )
+        dockerfile = root / "Dockerfile"
+        dockerfile.write_text(
+            'FROM x\nRUN pip install -e ".[msgpack,redis]"\n'
+            "RUN pip install -r requirements/test.txt\n",
+            encoding="utf-8",
+        )
+        (root / "requirements").mkdir(exist_ok=True)
+        (root / "requirements" / "test.txt").write_text(
+            "pytest==9.0.2\n",
+            encoding="utf-8",
+        )
+        (root / "requirements" / "default.txt").write_text(
+            "amqp>=5.1.1,<6.0.0\nvine==5.1.0\npackaging\n",
+            encoding="utf-8",
+        )
+        declared = declared_python_dependencies(root, dockerfile)
+        names = declared.package_names()
+        assert "msgpack" in names
+        assert declared.pip_install_spec("msgpack") == "msgpack==1.1.2"
+        assert declared.pip_install_spec("redis") == "redis>=4.5.2,!=4.5.5,<7.1"
+        assert declared.pip_install_spec("vine") == "vine==5.1.0"
+        assert "packaging" in names
+        # Extra keys that were not requested must not become install specs.
+        assert "azureservicebus" not in names
+        # Scraped setup.py must not treat extras_require keys / metadata as packages.
+        scraped = _requirement_names_from_setup_py(root / "setup.py")
+        assert "msgpack" not in scraped
+        assert "redis" not in scraped
+        assert "azureservicebus" not in scraped
+        assert "demo" not in scraped
 
 
 def _test_registry_image_cache_bust_commands() -> None:
@@ -3601,6 +4239,122 @@ def _test_run_post_prep_probes_mixed_import_and_violation_errors() -> None:
     assert len(errors) == 2, errors
     assert any("backports.strenum" in err for err in errors), errors
     assert any("pydantic" in err and "1.10.26" in err for err in errors), errors
+
+
+def _test_mandatory_probe_accepts_single_char_version_ops() -> None:
+    """Constraints like ``>4.6`` / ``<7`` must not become ``==>4.6`` / ``==<7``."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        # Installed packages satisfying the constraints.
+        (workspace / "pkg_a.py").write_text("__version__ = '4.9.0'\n", encoding="utf-8")
+        probe_body = _mandatory_probe_python(
+            DeclaredDeps(
+                {},
+                {"pexpect": ">4.6", "hypothesis": "<7"},
+                (),
+                {},
+            )
+        )
+        # Monkeypatch metadata to return satisfying versions without real installs.
+        wrapped = (
+            "import importlib.metadata as _im\n"
+            "_orig = _im.version\n"
+            "def _fake(name):\n"
+            "    if name == 'pexpect':\n"
+            "        return '4.9.0'\n"
+            "    if name == 'hypothesis':\n"
+            "        return '6.156.6'\n"
+            "    return _orig(name)\n"
+            "_im.version = _fake\n"
+            + probe_body
+        )
+        proc = subprocess.run(
+            [sys.executable, "-c", wrapped],
+            cwd=str(workspace),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    assert proc.returncode == 0, proc.stderr
+
+
+def _test_mandatory_probe_strips_pep508_extras_before_specifier() -> None:
+    """Remainders like ``[standard]>=0.0.8`` must not become ``==[standard]…``."""
+    probe_body = _mandatory_probe_python(
+        DeclaredDeps(
+            {},
+            {
+                "fastapi-cli": "[standard]>=0.0.8",
+                "uvicorn": "[standard]>=0.12.0",
+            },
+            (),
+            {},
+        )
+    )
+    assert "ver_spec.startswith('[')" in probe_body
+    wrapped = (
+        "import importlib.metadata as _im\n"
+        "def _fake(name):\n"
+        "    if name == 'fastapi-cli':\n"
+        "        return '0.0.29'\n"
+        "    if name == 'uvicorn':\n"
+        "        return '0.51.0'\n"
+        "    raise _im.PackageNotFoundError(name)\n"
+        "_im.version = _fake\n"
+        + probe_body
+    )
+    proc = subprocess.run(
+        [sys.executable, "-c", wrapped],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert "Invalid specifier" not in proc.stderr
+
+
+def _test_precommit_warm_soft_fails_install_hooks() -> None:
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / ".pre-commit-config.yaml").write_text("repos: []\n", encoding="utf-8")
+        body = _precommit_warm_script_body(root)
+    assert "install-hooks" in body
+    assert "continuing" in body
+    assert "|| echo" in body
+
+
+def _test_pythonpath_dockerfile_skips_synthetic_editable() -> None:
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        src = root / "src" / "demo_pkg"
+        src.mkdir(parents=True)
+        (src / "__init__.py").write_text("", encoding="utf-8")
+        (root / "pyproject.toml").write_text(
+            "[project]\nname = 'demo-pkg'\nversion = '0.1.0'\n"
+            "[build-system]\nrequires = ['setuptools', 'cython']\n"
+            "build-backend = 'setuptools.build_meta'\n",
+            encoding="utf-8",
+        )
+        dockerfile = root / "Dockerfile"
+        dockerfile.write_text(
+            "FROM x\nENV PYTHONPATH=/app/src\n"
+            "RUN pip install attrs numpy\n",
+            encoding="utf-8",
+        )
+        declared = declared_python_dependencies(root, dockerfile)
+        assert not any("-e" in s for s in declared.editable_segments), declared
+        spec = discover_verifier_spec(root, tests_dir=None, dockerfile=dockerfile)
+        assert not any("-e" in s for s in spec.editable_segments), spec
+        assert any(str(root / "src") == p or p.endswith("/src") for p in spec.grade_pythonpath)
+        env = verifier_grade_subprocess_env(spec, base_env={})
+        assert "PYTHONPATH" in env
+        assert "src" in env["PYTHONPATH"]
 
 
 def _test_mandatory_probe_fails_on_invalid_version_string() -> None:
@@ -4499,6 +5253,29 @@ def _test_editable_project_satisfies_harbor_import() -> None:
     assert any("-e" in seg for seg in grade.editable_segments)
 
 
+def _test_probe_editable_roots_prefers_harbor_import_case() -> None:
+    """Dist name ``ipython`` must not override Harbor import spelling ``IPython``."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "IPython").mkdir()
+        (root / "IPython" / "__init__.py").write_text("x = 1\n", encoding="utf-8")
+        python = sys.executable
+        err = _probe_editable_roots_importable(
+            python,
+            {"ipython", "IPython"},
+            workspace=root,
+            harbor_imports=("IPython",),
+        )
+        assert err is None, err
+
+
+def _test_non_pytest_test_sh_skips_collect_probe() -> None:
+    assert not test_sh_invokes_pytest("#!/bin/bash\nbash /app/test.sh base\n")
+    assert test_sh_invokes_pytest("python -m pytest tests/ -q\n")
+
+
 def _test_unpinned_dockerfile_package_declared() -> None:
     """Bare ``pip install pytest`` becomes an unpinned DeclaredDeps name."""
     import tempfile
@@ -4941,6 +5718,8 @@ def run_self_tests() -> None:
     _test_workspace_sync_commands_bandit()
     _test_workspace_sync_commands_fastapi()
     _test_bash_lc_pip_intents_ignore_shell_noise()
+    _test_requirement_inline_comments_stripped_for_pip()
+    _test_pep508_extras_preserved_in_pip_install_spec()
     _test_requirements_editable_and_constraints_declared()
     _test_poetry_extra_and_runtime_deps_declared()
     _test_fixture_imports_not_unmapped_for_workspace_project()
@@ -4957,7 +5736,11 @@ def run_self_tests() -> None:
     _test_uv_sync_dev_command()
     _test_uv_pip_build_system_command()
     _test_uv_editable_install_command()
+    _test_default_pip_editable_seed_for_offline_sync()
+    _test_editable_seed_reads_monorepo_build_backends()
+    _test_editable_target_project_deps_enter_declared()
     _test_uv_offline_smoke_commands()
+    _test_setuptools_extra_requirement_files_not_extra_keys()
     _test_workspace_declared_repin_command()
     _test_workspace_image_warm_commands()
     _test_registry_image_cache_bust_commands()
@@ -4971,6 +5754,10 @@ def run_self_tests() -> None:
     _test_mandatory_probe_prefers_metadata_over_stale_module_version()
     _test_mandatory_probe_runtime_metadata_wins_over_stale_version()
     _test_mandatory_probe_fails_on_invalid_version_string()
+    _test_mandatory_probe_accepts_single_char_version_ops()
+    _test_mandatory_probe_strips_pep508_extras_before_specifier()
+    _test_precommit_warm_soft_fails_install_hooks()
+    _test_pythonpath_dockerfile_skips_synthetic_editable()
     _test_effective_spec_prefers_pyproject_constraint_over_lockfile()
     _test_effective_spec_exact_pyproject_beats_lockfile()
     _test_mandatory_probe_fails_when_version_unknown()
@@ -5001,6 +5788,8 @@ def run_self_tests() -> None:
     _test_prepare_verifier_grade_materialize_creates_real_venv()
     _test_discover_grade_closure_records_declared_harbor_imports()
     _test_editable_project_satisfies_harbor_import()
+    _test_probe_editable_roots_prefers_harbor_import_case()
+    _test_non_pytest_test_sh_skips_collect_probe()
     _test_unpinned_dockerfile_package_declared()
     _test_cargo_and_go_mod_skipped_in_offline_sync()
     _test_collect_import_error_editable_feature_gap()
