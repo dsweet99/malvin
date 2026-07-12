@@ -313,30 +313,87 @@ def dockerfile_bulk_pip_commands(dockerfile: Path) -> list[str]:
     return commands
 
 
-_REQUIREMENTS_FILE_RE = re.compile(r"-r\s+(\S+)")
+_REQUIREMENTS_FILE_RE = re.compile(r"(?:^|\s)-r\s+(\S+)")
 _PKG_PIN_RE = re.compile(
     r"(?<![\w.-])([a-zA-Z0-9][a-zA-Z0-9._-]*)==([\d][\w.]*(?:\+[\w.-]+)?)"
 )
 _BASH_LC_RE = re.compile(r"""bash\s+-lc\s+(["'])(.*)\1""", re.DOTALL)
+# Isolate real pip-install commands inside messy shell (conditionals, bash -lc).
+_PIP_INSTALL_CMD_RE = re.compile(
+    r"(?:(?:python3?|\$\{?PYTHON[^}\s]*\}?)\s+-m\s+)?pip3?\s+install\b[^;\n]*",
+    re.IGNORECASE,
+)
 _PYDANTIC_PIN_RE = re.compile(r"^pydantic==([\d.]+)\s*(?:#.*)?$", re.MULTILINE)
 _PYDANTIC_CORE_PIN_RE = re.compile(r"^pydantic-core==([\d.]+)\s*(?:#.*)?$", re.MULTILINE)
+_SHELL_NOISE_NAMES = frozenset(
+    {
+        "fi",
+        "if",
+        "then",
+        "else",
+        "elif",
+        "do",
+        "done",
+        "for",
+        "while",
+        "in",
+        "pip",
+        "pip3",
+        "python",
+        "python3",
+        "install",
+        "true",
+        "false",
+        "apt-get",
+        "apt",
+        "npm",
+        "yarn",
+        "poetry",
+        "uv",
+        "bash",
+        "sh",
+        "sudo",
+        "command",
+        "type",
+        "which",
+    }
+)
+
+
+def _extract_pip_install_commands(shell_text: str) -> list[str]:
+    """Return normalized ``pip install …`` commands found in *shell_text*."""
+    found: list[str] = []
+    for match in _PIP_INSTALL_CMD_RE.finditer(shell_text):
+        cmd = " ".join(match.group(0).split()).rstrip('"').rstrip("'")
+        if cmd:
+            found.append(cmd)
+    return found
 
 
 def collect_pip_install_intents(dockerfile_text: str) -> list[str]:
     """Return pip install shell segments from Dockerfile RUN lines (incl. ``bash -lc``)."""
     intents: list[str] = []
+    seen: set[str] = set()
+
+    def _add(command: str) -> None:
+        normalized = " ".join(command.split())
+        if not normalized or normalized in seen:
+            return
+        if not _is_pip_install_segment(normalized):
+            return
+        seen.add(normalized)
+        intents.append(normalized)
+
     for run in parse_dockerfile_run_commands(dockerfile_text):
         for segment in _split_shell_segments(run):
-            if _is_pip_install_segment(segment):
-                intents.append(segment)
+            _add(segment)
             bash_match = _BASH_LC_RE.search(segment)
-            if not bash_match:
-                continue
-            inner = bash_match.group(2)
-            for part in re.split(r"[;&]", inner):
-                part = part.strip()
-                if part and _is_pip_install_segment(part):
-                    intents.append(part)
+            if bash_match:
+                for cmd in _extract_pip_install_commands(bash_match.group(2)):
+                    _add(cmd)
+            else:
+                for cmd in _extract_pip_install_commands(segment):
+                    _add(cmd)
     return intents
 
 
@@ -354,6 +411,78 @@ def _pins_from_requirements_file(requirements_path: Path) -> dict[str, str]:
     return pins
 
 
+def _requirement_line_package(line: str) -> tuple[str, str] | None:
+    """Return ``(normalized_name, remainder_spec)`` for a requirements line, if any."""
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#"):
+        return None
+    if stripped.startswith(("-e", "--editable", "-r", "--requirement", "-c", "--constraint")):
+        return None
+    if stripped.startswith(("-", ".", "/", "~")):
+        return None
+    dep = stripped.split(";", 1)[0].strip()
+    dep = dep.split("[", 1)[0].strip()
+    if "@" in dep:
+        return None
+    match = re.match(r"^([A-Za-z0-9][\w.-]*)(.*)$", dep)
+    if not match:
+        return None
+    name = _normalize_package_name(match.group(1))
+    if name in _SHELL_NOISE_NAMES:
+        return None
+    return name, match.group(2).strip()
+
+
+def _constraints_from_requirements_file(requirements_path: Path) -> dict[str, str]:
+    """Collect non-``==`` version constraints (``>=``, ``~=``, …) from a requirements file."""
+    if not requirements_path.is_file():
+        return {}
+    constraints: dict[str, str] = {}
+    for raw in requirements_path.read_text(encoding="utf-8").splitlines():
+        parsed = _requirement_line_package(raw)
+        if not parsed:
+            continue
+        name, rest = parsed
+        if not rest or rest.startswith("=="):
+            continue
+        if rest.startswith((">=", "<=", "!=", "~=", ">", "<")):
+            constraints[name] = rest
+    return constraints
+
+
+def _unpinned_from_requirements_file(requirements_path: Path) -> frozenset[str]:
+    """Bare package names (no version operator) from a requirements file."""
+    if not requirements_path.is_file():
+        return frozenset()
+    names: set[str] = set()
+    for raw in requirements_path.read_text(encoding="utf-8").splitlines():
+        parsed = _requirement_line_package(raw)
+        if not parsed:
+            continue
+        name, rest = parsed
+        if not rest:
+            names.add(name)
+    return frozenset(names)
+
+
+def _editable_lines_from_requirements_file(requirements_path: Path) -> list[str]:
+    """Return synthetic ``pip install -e …`` intents for editable lines in *requirements_path*."""
+    if not requirements_path.is_file():
+        return []
+    lines: list[str] = []
+    for raw in requirements_path.read_text(encoding="utf-8").splitlines():
+        stripped = raw.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if stripped.startswith("-e ") or stripped.startswith("--editable "):
+            target = stripped.split(None, 1)[1].strip()
+            lines.append(f"pip install -e {target}")
+        elif stripped.startswith("-e=") or stripped.startswith("--editable="):
+            target = stripped.split("=", 1)[1].strip()
+            lines.append(f"pip install -e {target}")
+    return lines
+
+
 def collect_pinned_packages(workspace: Path, intents: list[str]) -> dict[str, str]:
     """Collect ``name==version`` pins from pip intents and referenced ``-r`` files."""
     pins: dict[str, str] = {}
@@ -365,6 +494,45 @@ def collect_pinned_packages(workspace: Path, intents: list[str]) -> dict[str, st
             pins[match.group(1).lower()] = match.group(2)
     return pins
 
+
+def collect_requirement_constraints(workspace: Path, intents: list[str]) -> dict[str, str]:
+    """Collect non-equality version constraints from referenced requirements files."""
+    constraints: dict[str, str] = {}
+    workspace = workspace.resolve()
+    for intent in intents:
+        for req_match in _REQUIREMENTS_FILE_RE.finditer(intent):
+            constraints.update(
+                _constraints_from_requirements_file(workspace / req_match.group(1))
+            )
+    return constraints
+
+
+def collect_requirement_unpinned_names(workspace: Path, intents: list[str]) -> frozenset[str]:
+    """Bare names from referenced requirements files (and nested ``-r`` editables handled elsewhere)."""
+    names: set[str] = set()
+    workspace = workspace.resolve()
+    for intent in intents:
+        for req_match in _REQUIREMENTS_FILE_RE.finditer(intent):
+            names |= set(
+                _unpinned_from_requirements_file(workspace / req_match.group(1))
+            )
+    return frozenset(names)
+
+
+def collect_requirement_editable_intents(workspace: Path, intents: list[str]) -> list[str]:
+    """Editable install intents declared inside ``-r`` requirements files."""
+    found: list[str] = []
+    seen: set[str] = set()
+    workspace = workspace.resolve()
+    for intent in intents:
+        for req_match in _REQUIREMENTS_FILE_RE.finditer(intent):
+            for editable in _editable_lines_from_requirements_file(
+                workspace / req_match.group(1)
+            ):
+                if editable not in seen:
+                    seen.add(editable)
+                    found.append(editable)
+    return found
 
 _PIP_OPTION_WITH_VALUE = frozenset(
     {
@@ -398,15 +566,19 @@ _PIP_OPTION_WITH_VALUE = frozenset(
 
 
 def collect_unpinned_package_names(intents: list[str]) -> frozenset[str]:
-    """Bare distribution names from bulk ``pip install`` intents (no ``==`` pin)."""
+    """Bare distribution names from ``pip install`` intents (bulk or alongside ``-e``)."""
     names: set[str] = set()
     for intent in intents:
-        if not _is_bulk_pip_segment(intent):
+        if not _is_pip_install_segment(intent):
             continue
         try:
             tokens = shlex.split(intent)
         except ValueError:
-            continue
+            # Tolerate trailing quote noise from Dockerfile string wrapping.
+            try:
+                tokens = shlex.split(intent.rstrip('"').rstrip("'"))
+            except ValueError:
+                continue
         install_at = None
         for idx, tok in enumerate(tokens):
             if tok == "install":
@@ -416,7 +588,7 @@ def collect_unpinned_package_names(intents: list[str]) -> frozenset[str]:
             continue
         i = install_at + 1
         while i < len(tokens):
-            tok = tokens[i]
+            tok = tokens[i].rstrip('"').rstrip("'")
             if tok.startswith("-"):
                 opt = tok.split("=", 1)[0]
                 if opt in _PIP_OPTION_WITH_VALUE and "=" not in tok:
@@ -438,6 +610,9 @@ def collect_unpinned_package_names(intents: list[str]) -> frozenset[str]:
                 i += 1
                 continue
             name = _normalize_package_name(name_match.group(1))
+            if name in _SHELL_NOISE_NAMES:
+                i += 1
+                continue
             rest = bare[len(name_match.group(1)) :].strip()
             # Pinned == versions are handled by collect_pinned_packages.
             if rest.startswith("=="):
@@ -598,16 +773,83 @@ def import_roots_provided_by_project(project_root: Path) -> set[str]:
     return {r for r in roots if r}
 
 
+def dockerfile_uses_poetry_install(dockerfile_text: str) -> bool:
+    """True when a Dockerfile RUN installs the project via Poetry."""
+    return bool(re.search(r"\bpoetry\s+install\b", dockerfile_text, re.IGNORECASE))
+
+
+def pythonpath_entries_from_dockerfile(
+    dockerfile_text: str,
+    workspace: Path,
+) -> list[Path]:
+    """Resolve ``ENV PYTHONPATH=…`` entries that fall under *workspace*."""
+    workspace = workspace.resolve()
+    paths: list[Path] = []
+    for match in re.finditer(
+        r"(?im)^\s*ENV\s+PYTHONPATH=(\S+)",
+        dockerfile_text,
+    ):
+        raw = match.group(1).strip().strip("'\"")
+        for part in raw.split(":"):
+            part = part.strip()
+            if not part:
+                continue
+            if part in ("/app", "."):
+                paths.append(workspace)
+                continue
+            if part.startswith("/app/"):
+                rel = part[len("/app/") :]
+                candidate = (workspace / rel).resolve()
+            else:
+                candidate = Path(part)
+                if not candidate.is_absolute():
+                    candidate = (workspace / candidate).resolve()
+            if candidate == workspace or workspace in candidate.parents or candidate.is_dir():
+                paths.append(candidate)
+    return paths
+
+
+def workspace_mount_provided_import_roots(
+    workspace: Path,
+    dockerfile: Path | None = None,
+) -> set[str]:
+    """Import roots satisfied by the mounted workspace (editable, PYTHONPATH, or layout).
+
+    Harbor grades run with ``cwd=/app``. Flat layouts are importable via ``sys.path``;
+    ``ENV PYTHONPATH`` and Poetry installs also expose the project without a separate
+    DeclaredDeps pin. Always include filesystem/distribution roots for the workspace
+    itself so package-under-test imports are not marked unmapped.
+    """
+    workspace = workspace.resolve()
+    provided = import_roots_provided_by_project(workspace)
+    if dockerfile is None or not dockerfile.is_file():
+        return provided
+    text = dockerfile.read_text(encoding="utf-8")
+    for path in pythonpath_entries_from_dockerfile(text, workspace):
+        provided |= import_roots_provided_by_project(path)
+        # src-layout roots when PYTHONPATH points at src/
+        provided |= _filesystem_package_roots(
+            path if path.name != "src" else path.parent
+        )
+        if path.name == "src" or (path / "src").is_dir():
+            provided |= _filesystem_package_roots(
+                path if path.name == "src" else path / "src"
+            )
+    return provided
+
+
 def editable_provided_import_roots(
     workspace: Path,
     editable_segments: tuple[str, ...],
+    dockerfile: Path | None = None,
 ) -> set[str]:
-    """Union of import roots provided by Dockerfile editable install targets."""
+    """Union of import roots from editable installs plus the mounted workspace project."""
     provided: set[str] = set()
     workspace = workspace.resolve()
     for segment in editable_segments:
         for path in _editable_target_paths(segment, workspace):
             provided |= import_roots_provided_by_project(path)
+    provided |= workspace_mount_provided_import_roots(workspace, dockerfile)
     return provided
 
 
@@ -876,6 +1118,147 @@ def _editable_segments_from_dockerfile(dockerfile_text: str) -> tuple[str, ...]:
     return tuple(segments)
 
 
+def _extras_names_from_editable_target(target: str) -> list[str]:
+    """Return extras names from an editable target like ``.[test,dev]`` or ``pkg[extra]``."""
+    match = re.search(r"\[([^\]]+)\]", target)
+    if not match:
+        return []
+    return [part.strip() for part in match.group(1).split(",") if part.strip()]
+
+
+def _optional_dependency_specs_from_pyproject(
+    pyproject: Path,
+    extras: list[str],
+) -> tuple[dict[str, str], frozenset[str]]:
+    """Return ``(constraints, bare_names)`` from ``[project.optional-dependencies]`` extras."""
+    if not extras or not pyproject.is_file():
+        return {}, frozenset()
+    try:
+        raw = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError, TypeError):
+        return {}, frozenset()
+    optional = (raw.get("project") or {}).get("optional-dependencies") or {}
+    if not isinstance(optional, dict):
+        return {}, frozenset()
+    constraints: dict[str, str] = {}
+    bare: set[str] = set()
+    for extra in extras:
+        deps = optional.get(extra) or optional.get(extra.replace("-", "_")) or []
+        if not isinstance(deps, list):
+            continue
+        for dep in deps:
+            if not isinstance(dep, str):
+                continue
+            parsed = _split_pyproject_dependency(dep)
+            if not parsed:
+                continue
+            name, spec, marker = parsed
+            if not _environment_marker_applies(marker):
+                continue
+            if not spec:
+                bare.add(name)
+            else:
+                constraints[name] = spec
+    return constraints, frozenset(bare)
+
+
+def _poetry_dependency_names(
+    pyproject: Path,
+    *,
+    include_groups: tuple[str, ...] = ("dev",),
+    include_optional: bool = False,
+) -> frozenset[str]:
+    """Distribution names declared under Poetry dependencies / groups / extras tables."""
+    if not pyproject.is_file():
+        return frozenset()
+    try:
+        raw = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError, TypeError):
+        return frozenset()
+    tool = raw.get("tool") or {}
+    poetry = tool.get("poetry") if isinstance(tool, dict) else None
+    if not isinstance(poetry, dict):
+        return frozenset()
+    names: set[str] = set()
+
+    def _absorb(section: object, *, optional_ok: bool) -> None:
+        if not isinstance(section, dict):
+            return
+        for key, value in section.items():
+            if not isinstance(key, str):
+                continue
+            if key.lower() == "python":
+                continue
+            if isinstance(value, dict) and value.get("optional") and not optional_ok:
+                continue
+            names.add(_normalize_package_name(key))
+
+    _absorb(poetry.get("dependencies"), optional_ok=include_optional)
+    group = poetry.get("group")
+    if isinstance(group, dict):
+        for group_name in include_groups:
+            block = group.get(group_name)
+            if isinstance(block, dict):
+                _absorb(block.get("dependencies"), optional_ok=True)
+    _absorb(poetry.get("dev-dependencies"), optional_ok=True)
+    return frozenset(names)
+
+
+def _poetry_extra_package_names(pyproject: Path, extras: list[str]) -> frozenset[str]:
+    """Package names listed in Poetry ``extras.<name> = [...]`` for requested extras."""
+    if not extras or not pyproject.is_file():
+        return frozenset()
+    try:
+        raw = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError, TypeError):
+        return frozenset()
+    poetry = ((raw.get("tool") or {}).get("poetry") or {})
+    if not isinstance(poetry, dict):
+        return frozenset()
+    extra_table = poetry.get("extras")
+    if not isinstance(extra_table, dict):
+        return frozenset()
+    names: set[str] = set()
+    for extra in extras:
+        listed = extra_table.get(extra) or extra_table.get(extra.replace("_", "-"))
+        if not isinstance(listed, list):
+            continue
+        for item in listed:
+            if isinstance(item, str) and item.strip():
+                names.add(_normalize_package_name(item.strip()))
+    return frozenset(names)
+
+
+_SETUP_REQ_STRING_RE = re.compile(
+    r"""['"]([A-Za-z0-9][\w.-]*(?:\[[^\]]+\])?(?:\s*(?:==|>=|<=|!=|~=|<|>)[^'"]*)?)['"]"""
+)
+
+
+def _requirement_names_from_setup_py(setup_py: Path) -> frozenset[str]:
+    """Best-effort package names from quoted requirement strings in ``setup.py``."""
+    if not setup_py.is_file():
+        return frozenset()
+    try:
+        text = setup_py.read_text(encoding="utf-8")
+    except OSError:
+        return frozenset()
+    names: set[str] = set()
+    for match in _SETUP_REQ_STRING_RE.finditer(text):
+        raw = match.group(1).split(";", 1)[0].strip()
+        bare = raw.split("[", 1)[0].strip()
+        name_match = re.match(r"^([A-Za-z0-9][\w.-]*)", bare)
+        if not name_match:
+            continue
+        name = _normalize_package_name(name_match.group(1))
+        if name in _SHELL_NOISE_NAMES or name in {"gql", "returns"}:
+            continue
+        # Skip obvious non-requirement string literals.
+        if name_match.group(1)[0].isupper() and "==" not in raw and ">=" not in raw:
+            continue
+        names.add(name)
+    return frozenset(names)
+
+
 def declared_python_dependencies(
     workspace: Path,
     dockerfile: Path | None = None,
@@ -884,25 +1267,77 @@ def declared_python_dependencies(
     workspace = workspace.resolve()
     dockerfile_text = dockerfile.read_text(encoding="utf-8") if dockerfile and dockerfile.is_file() else ""
     intents = collect_pip_install_intents(dockerfile_text) if dockerfile_text else []
+    req_editables = collect_requirement_editable_intents(workspace, intents) if intents else []
     bulk_pins = collect_pinned_packages(workspace, intents) if intents else {}
     constraints, pyproject_bare = _read_pyproject_dependencies(workspace / "pyproject.toml")
+    req_constraints = collect_requirement_constraints(workspace, intents) if intents else {}
+    for name, spec in req_constraints.items():
+        constraints.setdefault(name, spec)
     for key in bulk_pins:
         constraints.pop(key, None)
     unpinned = collect_unpinned_package_names(intents) if intents else frozenset()
+    unpinned |= collect_requirement_unpinned_names(workspace, intents) if intents else frozenset()
+    unpinned |= pyproject_bare
+    # Expand extras referenced by editable installs (Dockerfile or requirements -e).
+    editable_seed = list(_editable_segments_from_dockerfile(dockerfile_text)) if dockerfile_text else []
+    editable_seed.extend(req_editables)
+    extras_requested: list[str] = []
+    for segment in editable_seed:
+        for match in _EDITABLE_TARGET_RE.finditer(segment):
+            extras = _extras_names_from_editable_target(match.group(1))
+            extras_requested.extend(extras)
+            extra_constraints, extra_bare = _optional_dependency_specs_from_pyproject(
+                workspace / "pyproject.toml",
+                extras,
+            )
+            for name, spec in extra_constraints.items():
+                constraints.setdefault(name, spec)
+            unpinned |= extra_bare
+            unpinned |= _poetry_extra_package_names(workspace / "pyproject.toml", extras)
+    if extras_requested:
+        # setuptools extras_require bodies are often only in setup.py (e.g. gql).
+        unpinned |= _requirement_names_from_setup_py(workspace / "setup.py")
+    # Poetry declares runtime deps even when the Dockerfile uses pip -e / poetry install.
+    unpinned |= _poetry_dependency_names(
+        workspace / "pyproject.toml",
+        include_groups=("dev",) if (
+            dockerfile_text and dockerfile_uses_poetry_install(dockerfile_text)
+        ) else (),
+        include_optional=bool(extras_requested),
+    )
+    if dockerfile_text and dockerfile_uses_poetry_install(dockerfile_text):
+        # Poetry installs the project itself into the env.
+        if "pip install -e ." not in editable_seed:
+            editable_seed.append("pip install -e .")
     unpinned = frozenset(
         name
-        for name in (unpinned | pyproject_bare)
-        if name not in bulk_pins and name not in constraints
+        for name in unpinned
+        if name not in bulk_pins
+        and name not in constraints
+        and name not in _SHELL_NOISE_NAMES
     )
     lockfile_pins = _read_uv_lock_pins(
         workspace / "uv.lock",
         {name.lower() for name in constraints} | set(bulk_pins) | set(unpinned),
     )
-    editable_segments = _editable_segments_from_dockerfile(dockerfile_text) if dockerfile_text else ()
+    # Deduplicate editable segments while preserving order.
+    seen_edit: set[str] = set()
+    editable_segments: list[str] = []
+    for segment in editable_seed:
+        if segment not in seen_edit:
+            seen_edit.add(segment)
+            editable_segments.append(segment)
+    # PYTHONPATH-only images still need an editable replay into the verifier venv.
+    if (
+        dockerfile_text
+        and pythonpath_entries_from_dockerfile(dockerfile_text, workspace)
+        and not editable_segments
+    ):
+        editable_segments.append("pip install --no-deps -e .")
     return DeclaredDeps(
         bulk_pins=bulk_pins,
         constraints=constraints,
-        editable_segments=editable_segments,
+        editable_segments=tuple(editable_segments),
         lockfile_pins=lockfile_pins,
         unpinned_names=unpinned,
     )
@@ -1050,14 +1485,39 @@ def discover_verifier_spec(
     prep may reinstall them into ``/opt/malvin-verifier``; agent-image materialize
     never runs those grade-only commands. Unmapped third-party imports are recorded
     for probe handling and are never invented as unpinned PyPI installs. Imports
-    satisfied by Dockerfile editable installs are not unmapped (the editable replay
-    provides them).
+    satisfied by Dockerfile editable installs or the mounted workspace project are
+    not unmapped (editable replay / workspace layout provides them).
     """
     workspace = workspace.resolve()
     declared = declared_python_dependencies(workspace, dockerfile)
+    editable_segments = list(declared.editable_segments)
+    # Verifier collect runs outside /app; ensure the package-under-test is installed
+    # into the verifier venv whenever the workspace layout provides import roots.
+    if import_roots_provided_by_project(workspace):
+        covers_workspace = False
+        for segment in editable_segments:
+            for path in _editable_target_paths(segment, workspace):
+                if path.resolve() == workspace:
+                    covers_workspace = True
+                    break
+            if covers_workspace:
+                break
+        if not covers_workspace:
+            editable_segments.append("pip install --no-deps -e .")
+            declared = DeclaredDeps(
+                bulk_pins=declared.bulk_pins,
+                constraints=declared.constraints,
+                editable_segments=tuple(editable_segments),
+                lockfile_pins=declared.lockfile_pins,
+                unpinned_names=declared.unpinned_names,
+            )
     public_specs = _public_install_specs(declared)
     harbor_imports = harbor_imports_from_tests_dir(tests_dir)
-    editable_imports = editable_provided_import_roots(workspace, declared.editable_segments)
+    editable_imports = editable_provided_import_roots(
+        workspace,
+        declared.editable_segments,
+        dockerfile=dockerfile,
+    )
     editable_imports_normalized = {
         name.replace("-", "_").lower() for name in editable_imports
     } | {name.lower() for name in editable_imports}
@@ -1391,8 +1851,9 @@ def probe_verifier_env(
             None,
         )
 
-    if spec.unmapped_imports:
-        # Q7: never invent unpinned PyPI installs; abort rather than silent drop.
+    if spec.unmapped_imports and not run_collect:
+        # Q7: never invent unpinned PyPI installs; abort rather than silent drop
+        # when we cannot empirically verify via collect-only.
         return (
             False,
             format_prep_error(
@@ -1431,7 +1892,10 @@ def probe_verifier_env(
         )
 
     if run_collect:
-        provided = editable_provided_import_roots(workspace, spec.editable_segments)
+        provided = editable_provided_import_roots(
+            workspace,
+            spec.editable_segments,
+        )
         editable_err = _probe_editable_roots_importable(
             python_bin,
             provided,
@@ -1467,6 +1931,28 @@ def probe_verifier_env(
                     if collect_import_error_is_editable_feature_gap(err, provided):
                         # Harbor tests importing not-yet-implemented workspace APIs.
                         return True, None, policy
+                    missing = _missing_module_from_import_error(err)
+                    if missing is not None:
+                        missing_root = missing.split(".", 1)[0]
+                        unmapped_norm = {
+                            u.replace("-", "_").lower() for u in spec.unmapped_imports
+                        } | {u.lower() for u in spec.unmapped_imports}
+                        if (
+                            missing_root.replace("-", "_").lower() in unmapped_norm
+                            or missing_root.lower() in unmapped_norm
+                        ):
+                            return (
+                                False,
+                                format_prep_error(
+                                    task_id,
+                                    phase="verifier prep",
+                                    detail=(
+                                        "unmapped Harbor imports (no DeclaredDeps pin): "
+                                        + ", ".join(spec.unmapped_imports)
+                                    ),
+                                ),
+                                policy,
+                            )
                     return (
                         False,
                         format_prep_error(
@@ -2503,6 +2989,105 @@ RUN pip install --no-cache-dir -e ".[all]" && pip install --no-cache-dir pytest
     sync = _sync_commands_from_runs(runs)
     assert len(sync) == 1, sync
     assert '-e ".[all]"' in sync[0] and "--no-deps" in sync[0]
+
+
+def _test_bash_lc_pip_intents_ignore_shell_noise() -> None:
+    text = (
+        "FROM x\n"
+        'RUN bash -lc "if [ -f requirements.txt ]; then pip install -r requirements.txt; fi; '
+        'pip install --no-cache-dir -e . pytest pint"\n'
+    )
+    intents = collect_pip_install_intents(text)
+    joined = " ".join(intents)
+    assert "pip install --no-cache-dir -e . pytest pint" in joined
+    unpinned = collect_unpinned_package_names(intents)
+    assert "pytest" in unpinned
+    assert "pint" in unpinned
+    assert "fi" not in unpinned
+    assert "if" not in unpinned
+
+
+def _test_requirements_editable_and_constraints_declared() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "requirements.txt").write_text(
+            "-e .[cli]\nfixtures>=3.0.0\nrich\n",
+            encoding="utf-8",
+        )
+        (root / "pyproject.toml").write_text(
+            '[project]\nname = "demo"\nversion = "0"\n'
+            'optional-dependencies = { cli = ["click>=8"] }\n',
+            encoding="utf-8",
+        )
+        dockerfile = root / "Dockerfile"
+        dockerfile.write_text(
+            "FROM x\nRUN pip install -r requirements.txt\n",
+            encoding="utf-8",
+        )
+        declared = declared_python_dependencies(root, dockerfile)
+        assert any("-e" in seg for seg in declared.editable_segments)
+        assert "fixtures" in declared.constraints or "fixtures" in declared.package_names()
+        assert "rich" in declared.package_names()
+        assert "click" in declared.package_names()
+
+
+def _test_poetry_extra_and_runtime_deps_declared() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "pyproject.toml").write_text(
+            "[tool.poetry]\n"
+            'name = "demo"\n'
+            'version = "0"\n'
+            'dependencies.python = "^3.10"\n'
+            'dependencies.rich = ">=14"\n'
+            'dependencies.pytest = { version = ">=8", optional = true }\n'
+            'extras.check = [ "pytest" ]\n',
+            encoding="utf-8",
+        )
+        (root / "demo").mkdir()
+        (root / "demo" / "__init__.py").write_text("", encoding="utf-8")
+        dockerfile = root / "Dockerfile"
+        dockerfile.write_text(
+            'FROM x\nRUN pip install -e ".[check]"\n',
+            encoding="utf-8",
+        )
+        declared = declared_python_dependencies(root, dockerfile)
+        assert "rich" in declared.package_names()
+        assert "pytest" in declared.package_names()
+
+
+def _test_fixture_imports_not_unmapped_for_workspace_project() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        workspace = root / "ws"
+        workspace.mkdir()
+        (workspace / "pkg").mkdir()
+        (workspace / "pkg" / "__init__.py").write_text("", encoding="utf-8")
+        (workspace / "pyproject.toml").write_text(
+            '[project]\nname = "pkg"\nversion = "0"\n',
+            encoding="utf-8",
+        )
+        tests = root / "tests"
+        tests.mkdir()
+        (tests / "test.patch").write_text(
+            "diff --git a/fixtures/sample.py b/fixtures/sample.py\n"
+            "--- /dev/null\n"
+            "+++ b/fixtures/sample.py\n"
+            "@@ -0,0 +1,1 @@\n"
+            "+import flask\n"
+            "diff --git a/tests/test_pkg.py b/tests/test_pkg.py\n"
+            "--- /dev/null\n"
+            "+++ b/tests/test_pkg.py\n"
+            "@@ -0,0 +1,1 @@\n"
+            "+import pkg\n",
+            encoding="utf-8",
+        )
+        dockerfile = root / "Dockerfile"
+        dockerfile.write_text("FROM x\nRUN pip install pytest\n", encoding="utf-8")
+        spec = discover_verifier_spec(workspace, tests_dir=tests, dockerfile=dockerfile)
+        assert "flask" not in spec.harbor_imports
+        assert "pkg" not in spec.unmapped_imports
+        assert any("-e" in seg for seg in spec.editable_segments)
 
 
 def _test_editable_pip_segment_ignores_dirty_equals() -> None:
@@ -4355,6 +4940,10 @@ def run_self_tests() -> None:
     _test_parse_dockerfile_run_commands_multiline()
     _test_workspace_sync_commands_bandit()
     _test_workspace_sync_commands_fastapi()
+    _test_bash_lc_pip_intents_ignore_shell_noise()
+    _test_requirements_editable_and_constraints_declared()
+    _test_poetry_extra_and_runtime_deps_declared()
+    _test_fixture_imports_not_unmapped_for_workspace_project()
     _test_editable_pip_segment_ignores_dirty_equals()
     _test_infra_abort_dockerfile_sync_is_offline()
     _test_dockerfile_image_build_commands_fastapi()

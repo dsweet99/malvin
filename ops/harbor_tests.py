@@ -177,6 +177,7 @@ _IMPORT_TO_DISTRIBUTION: dict[str, str] = {
     "bs4": "beautifulsoup4",
     "cv2": "opencv-python",
     "dateutil": "python-dateutil",
+    "graphql": "graphql-core",
     "PIL": "pillow",
     "yaml": "pyyaml",
     "skimage": "scikit-image",
@@ -216,22 +217,64 @@ def top_level_imports_from_source(source: str) -> set[str]:
     return names
 
 
+# Path segments whose Python sources are analysis samples / fixtures, not test code
+# that the verifier imports at collection time (e.g. bandit challenge fixtures).
+_ANALYSIS_SAMPLE_SEGMENTS = frozenset(
+    {
+        "fixtures",
+        "fixture",
+        "examples",
+        "example",
+        "samples",
+        "sample",
+        "testdata",
+        "test_data",
+        "data_files",
+    }
+)
+
+# Import roots that are almost always local packages, never Harbor third-party deps.
+_LOCAL_IMPORT_ROOTS = frozenset({"tests", "test", "conftest", "challenge"})
+
+
+def is_analysis_sample_path(path: str | Path) -> bool:
+    """True when *path* looks like fixture/sample code rather than a test module."""
+    parts = Path(str(path)).parts
+    return any(part.lower() in _ANALYSIS_SAMPLE_SEGMENTS for part in parts)
+
+
 def harbor_imports_from_tests_dir(tests_dir: Path | None) -> tuple[str, ...]:
-    """Third-party top-level imports discovered from Harbor patch / test sources."""
+    """Third-party top-level imports discovered from Harbor patch / test sources.
+
+    Skips analysis-sample paths (``fixtures/``, ``examples/``, …) whose imports are
+    code under test, not verifier runtime dependencies.
+    """
     if tests_dir is None:
         return ()
     found: set[str] = set()
     patch_path = tests_dir / "test.patch"
-    for _path, body in added_python_sources_from_patch(patch_path).items():
+    for rel_path, body in added_python_sources_from_patch(patch_path).items():
+        if is_analysis_sample_path(rel_path):
+            continue
         found |= top_level_imports_from_source(body)
     for py_path in sorted(tests_dir.rglob("*.py")):
+        try:
+            rel = py_path.relative_to(tests_dir)
+        except ValueError:
+            rel = py_path
+        if is_analysis_sample_path(rel):
+            continue
         try:
             body = py_path.read_text(encoding="utf-8")
         except OSError:
             continue
         found |= top_level_imports_from_source(body)
     third_party = sorted(
-        name for name in found if name and not is_stdlib_module(name)
+        name
+        for name in found
+        if name
+        and name not in _LOCAL_IMPORT_ROOTS
+        and not is_stdlib_module(name)
     )
     return tuple(third_party)
 
@@ -349,6 +392,35 @@ def run_self_tests() -> None:
         (root / "test.patch").write_text(mod_patch.read_text(encoding="utf-8"), encoding="utf-8")
         mod_harbor = harbor_imports_from_tests_dir(root)
         assert "only_in_context_pkg" in mod_harbor
+
+        # Analysis fixture paths must not contribute third-party Harbor imports.
+        fixture_patch = root / "fixture.patch"
+        fixture_patch.write_text(
+            "diff --git a/challenge/fixtures/sample.py b/challenge/fixtures/sample.py\n"
+            "--- /dev/null\n"
+            "+++ b/challenge/fixtures/sample.py\n"
+            "@@ -0,0 +1,2 @@\n"
+            "+import flask\n"
+            "+import django\n"
+            "diff --git a/tests/test_real.py b/tests/test_real.py\n"
+            "--- /dev/null\n"
+            "+++ b/tests/test_real.py\n"
+            "@@ -0,0 +1,2 @@\n"
+            "+import pytest\n"
+            "+import bandit\n",
+            encoding="utf-8",
+        )
+        (root / "test.patch").write_text(
+            fixture_patch.read_text(encoding="utf-8"), encoding="utf-8"
+        )
+        fixture_harbor = harbor_imports_from_tests_dir(root)
+        assert "flask" not in fixture_harbor
+        assert "django" not in fixture_harbor
+        assert "pytest" in fixture_harbor
+        assert "bandit" in fixture_harbor
+        assert "tests" not in fixture_harbor
+        assert is_analysis_sample_path("challenge/fixtures/x.py")
+        assert distribution_name_for_import("graphql") == "graphql-core"
     print("harbor_tests self-tests passed")
 
 
