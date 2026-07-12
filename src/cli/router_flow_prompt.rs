@@ -6,7 +6,7 @@ use crate::cli::flow_prompt_combine::{
 use crate::orchestrator::workflow_context_paths_only;
 use crate::prompt_stratification::{join_labeled_strata, PromptStratum, WorkflowRenderContext};
 use crate::prompts::{
-    render_header, HEADER_MD, PromptError, PromptStore, ROUTER_A_MD, ROUTER_C_MD,
+    render_header, HEADER_MD, PromptError, PromptStore, ROUTER_A_1_MD, ROUTER_A_2_MD, ROUTER_C_MD,
     ROUTER_CODE_EXTRA_MD, ROUTER_D_MD,
 };
 
@@ -24,7 +24,10 @@ pub fn prepare_router_prompt_store() -> Result<PromptStore, String> {
         .validate_exists(HEADER_MD)
         .map_err(|e: PromptError| e.0)?;
     store
-        .validate_exists(ROUTER_A_MD)
+        .validate_exists(ROUTER_A_1_MD)
+        .map_err(|e: PromptError| e.0)?;
+    store
+        .validate_exists(ROUTER_A_2_MD)
         .map_err(|e: PromptError| e.0)?;
     store
         .validate_exists(crate::prompts::ROUTER_B_SIMPLE_MD)
@@ -71,7 +74,7 @@ pub fn combine_router_raw_header_and_user(
         artifacts,
         text,
         command: "router",
-        mode_template: ROUTER_A_MD,
+        mode_template: ROUTER_A_1_MD,
     })
 }
 
@@ -85,7 +88,7 @@ pub(crate) fn build_router_coder_run_with_store(
         artifacts,
         text,
         command: "router",
-        mode_template: ROUTER_A_MD,
+        mode_template: ROUTER_A_1_MD,
     })?;
     Ok(RouterCoderRun {
         combined: run.combined,
@@ -116,6 +119,17 @@ fn render_router_code_extra(
     ctx.insert("code_checks".to_string(), router_code_checks_text(work_dir)?);
     let body = store
         .render_prompt_only(ROUTER_CODE_EXTRA_MD, ctx.as_map())
+        .map_err(|e: PromptError| e.0)?;
+    Ok(body.trim().to_string())
+}
+
+pub(crate) fn build_router_a_2_prompt(
+    store: &PromptStore,
+    artifacts: &RunArtifacts,
+) -> Result<String, String> {
+    let ctx = workflow_context_paths_only(artifacts, "router");
+    let body = store
+        .render_prompt_only(ROUTER_A_2_MD, ctx.as_map())
         .map_err(|e: PromptError| e.0)?;
     Ok(body.trim().to_string())
 }

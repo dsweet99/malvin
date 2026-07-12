@@ -105,7 +105,7 @@ mod kiss_static_fn_item_refs {
     fn kiss_static_fn_item_refs() {
         let _ = run_router_acp_iteration;
         let _ = super::router_flow_acp_support::run_router_turns;
-        let _ = super::router_flow_coder_prompts::run_router_a_coder_prompt;
+        let _ = super::router_flow_coder_prompts::run_router_a_1_coder_prompt;
         let _ = super::router_flow_post::maybe_run_router_post_c_gates;
         let _ = std::any::type_name::<super::router_flow_post::RouterTurnsOutcome>();
         let _ = super::router_flow_acp_support::iteration_backups_after_router_a;

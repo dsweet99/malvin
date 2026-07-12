@@ -110,16 +110,12 @@ mod unix_cov {
                 let log_text =
                     std::fs::read_to_string(artifacts.log_path("router_1")).expect("read router log");
                 assert!(
-                    log_text.contains("router_a phase"),
-                    "router_1.log must retain router_a turn; got: {log_text}"
+                    log_text.contains("router_a_1 phase") && log_text.contains("router_a_2 phase"),
+                    "router_1.log must retain a_1 and a_2 turns; got: {log_text}"
                 );
                 assert!(
-                    log_text.contains("router_b done"),
-                    "router_1.log must retain router_b turn; got: {log_text}"
-                );
-                assert!(
-                    log_text.contains("router_c done"),
-                    "router_1.log must retain router_c turn; got: {log_text}"
+                    log_text.contains("router_b done") && log_text.contains("router_c done"),
+                    "router_1.log must retain b and c turns; got: {log_text}"
                 );
             });
         });
@@ -167,8 +163,7 @@ mod unix_cov {
                 let _env = install_mock_router_agent_env_with_script(workspace, &mock);
                 let (shared, workflow) = test_router_shared();
                 let (mut client, artifacts, coder, prompt_store) =
-                    router_boot_client_artifacts(workspace, &shared, workflow)
-                        .expect("boot");
+                    router_boot_client_artifacts(workspace, &shared, workflow).expect("boot");
                 let RouterAcpIterationOutcome {
                     acp_result,
                     wants_continue,
@@ -195,5 +190,6 @@ mod unix_cov {
 fn kiss_cov_unix_cov_test_names() {
     let _ = stringify!(run_router_acp_iteration_executes_mock_agent_without_continue);
     let _ = stringify!(run_router_acp_iteration_wants_continue_when_router_c_emits_marker);
+    let _ = stringify!(run_router_acp_iteration_aborts_before_a2_on_bad_complexity);
     let _ = stringify!(run_router_acp_iteration_propagates_begin_session_failure);
 }

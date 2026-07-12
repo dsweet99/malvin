@@ -10,7 +10,8 @@ use crate::cli::SharedOpts;
 use crate::prompts::{PromptStore, ROUTER_B_COMPLEX_MD, ROUTER_B_SIMPLE_MD};
 use crate::router_flow::router_flow_prompt;
 use super::router_flow_coder_prompts::{
-    run_router_a_coder_prompt, run_router_b_coder_prompt, run_router_c_coder_prompt,
+    run_router_a_1_coder_prompt, run_router_a_2_coder_prompt, run_router_b_coder_prompt,
+    run_router_c_coder_prompt,
 };
 use super::router_flow_post::{maybe_run_router_post_c_gates, RouterTurnsOutcome};
 use crate::run_timing::acp_post_run::RunTimingSessionEnd;
@@ -110,13 +111,7 @@ pub(crate) const fn router_b_template_and_label(complexity_score: u8) -> (&'stat
 pub(crate) async fn run_router_turns(
     ctx: &mut RouterAcpSessionCtx<'_>,
 ) -> Result<RouterTurnsOutcome, String> {
-    run_router_a_coder_prompt(ctx.client, ctx.coder, ctx.log_path).await?;
-    let agent_text = ctx
-        .client
-        .last_coder_prompt_agent_response()
-        .ok_or_else(|| "router_a: missing agent response".to_string())?;
-    let complexity_score = crate::router_flow::router_flow_parse::parse_complexity_score(&agent_text)?;
-    let coding_task = crate::router_flow::router_flow_parse::parse_coding_task(&agent_text)?;
+    let (complexity_score, coding_task) = run_router_classify_turns(ctx).await?;
     let work_dir = ctx.artifacts.work_dir.as_path();
     let had_checks = workspace_has_valid_checks(work_dir)?;
     let pre_init_backups = SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)?;
@@ -130,6 +125,43 @@ pub(crate) async fn run_router_turns(
         .snapshot_mode(),
         pre_init_backups,
     )?;
+    run_router_work_turns(ctx, complexity_score, coding_task).await?;
+    let gate_wants_continue = maybe_run_router_post_c_gates(
+        work_dir,
+        ctx.artifacts.run_dir.as_path(),
+        coding_task,
+    );
+    Ok(RouterTurnsOutcome {
+        iteration_backups,
+        gate_wants_continue,
+    })
+}
+
+async fn run_router_classify_turns(
+    ctx: &mut RouterAcpSessionCtx<'_>,
+) -> Result<(u8, bool), String> {
+    run_router_a_1_coder_prompt(ctx.client, ctx.coder, ctx.log_path).await?;
+    let a1_text = ctx
+        .client
+        .last_coder_prompt_agent_response()
+        .ok_or_else(|| "router_a_1: missing agent response".to_string())?;
+    let complexity_score =
+        crate::router_flow::router_flow_parse::parse_complexity_score(&a1_text)?;
+    let a2_body = router_flow_prompt::build_router_a_2_prompt(ctx.prompt_store, ctx.artifacts)?;
+    run_router_a_2_coder_prompt(ctx.client, &a2_body, ctx.log_path).await?;
+    let a2_text = ctx
+        .client
+        .last_coder_prompt_agent_response()
+        .ok_or_else(|| "router_a_2: missing agent response".to_string())?;
+    let coding_task = crate::router_flow::router_flow_parse::parse_coding_task(&a2_text)?;
+    Ok((complexity_score, coding_task))
+}
+
+async fn run_router_work_turns(
+    ctx: &mut RouterAcpSessionCtx<'_>,
+    complexity_score: u8,
+    coding_task: bool,
+) -> Result<(), String> {
     let (b_md, router_b_label) = router_b_template_and_label(complexity_score);
     let b_body = router_flow_prompt::build_router_b_prompt(
         ctx.prompt_store,
@@ -141,15 +173,7 @@ pub(crate) async fn run_router_turns(
     let router_c_prompt =
         router_flow_prompt::build_router_c_prompt(ctx.prompt_store, ctx.artifacts)?;
     run_router_c_coder_prompt(ctx.client, &router_c_prompt, ctx.log_path).await?;
-    let gate_wants_continue = maybe_run_router_post_c_gates(
-        work_dir,
-        ctx.artifacts.run_dir.as_path(),
-        coding_task,
-    );
-    Ok(RouterTurnsOutcome {
-        iteration_backups,
-        gate_wants_continue,
-    })
+    Ok(())
 }
 
 pub(crate) fn emit_router_acp_timing(

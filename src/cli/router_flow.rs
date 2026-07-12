@@ -1,4 +1,4 @@
-//! Default-route flow: dual-header `router_a.md`, then bare `router_b_*` and `router_c.md` on one coder session per outer loop.
+//! Default-route flow: dual-header `router_a_1.md`, bare `router_a_2.md`, then bare `router_b_*` and `router_c.md` on one coder session per outer loop.
 
 use crate::artifacts::{RunArtifacts, resolve_user_md_request};
 use crate::cli::cli_request::require_cli_request;

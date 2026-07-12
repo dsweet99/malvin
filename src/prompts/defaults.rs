@@ -7,7 +7,8 @@ pub use default_files::default_file;
 
 pub const HEADER_MD: &str = "header.md";
 pub const DO_HEADER_MD: &str = "do_header.md";
-pub const ROUTER_A_MD: &str = "router_a.md";
+pub const ROUTER_A_1_MD: &str = "router_a_1.md";
+pub const ROUTER_A_2_MD: &str = "router_a_2.md";
 pub const ROUTER_B_SIMPLE_MD: &str = "router_b_simple.md";
 pub const ROUTER_B_COMPLEX_MD: &str = "router_b_complex.md";
 pub const ROUTER_C_MD: &str = "router_c.md";
@@ -32,7 +33,8 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "mini_constraints.md",
     HEADER_MD,
     DO_HEADER_MD,
-    ROUTER_A_MD,
+    ROUTER_A_1_MD,
+    ROUTER_A_2_MD,
     ROUTER_B_SIMPLE_MD,
     ROUTER_B_COMPLEX_MD,
     ROUTER_C_MD,
@@ -118,14 +120,15 @@ mod router_header_embed_tests {
     use std::path::Path;
 
     use super::{
-        default_file, DO_HEADER_MD, HEADER_MD, ROUTER_A_MD, ROUTER_B_COMPLEX_MD, ROUTER_B_SIMPLE_MD,
-        ROUTER_C_MD,
+        default_file, DO_HEADER_MD, HEADER_MD, ROUTER_A_1_MD, ROUTER_A_2_MD, ROUTER_B_COMPLEX_MD,
+        ROUTER_B_SIMPLE_MD, ROUTER_C_MD,
     };
     use crate::artifacts::create_run_artifacts;
     use crate::orchestrator::workflow_context_paths_only;
     use crate::prompts::{PromptStore, render_header};
     use crate::router_flow::router_flow_prompt::{
-        build_router_b_prompt, build_router_c_prompt, build_router_coder_run, prepare_router_prompt_store,
+        build_router_a_2_prompt, build_router_b_prompt, build_router_c_prompt,
+        build_router_coder_run, prepare_router_prompt_store,
     };
 
     #[test]
@@ -147,16 +150,19 @@ mod router_header_embed_tests {
         let header = render_header(&store, ctx.as_map()).expect("header");
         assert!(!header.contains("{{"), "header must expand all placeholders");
         let paths_ctx = workflow_context_paths_only(&artifacts, "router");
-        let router_body = store
-            .render_prompt_only(ROUTER_A_MD, paths_ctx.as_map())
-            .expect("router_a");
+        let router_a_1 = store
+            .render_prompt_only(ROUTER_A_1_MD, paths_ctx.as_map())
+            .expect("router_a_1");
         assert!(
-            !router_body.contains("{{"),
-            "router_a.md must expand user_request_path"
+            !router_a_1.contains("{{"),
+            "router_a_1.md must expand user_request_path"
         );
         let run = build_router_coder_run(&artifacts, "user body").expect("run");
         assert!(!run.combined.contains("{{"));
         let store = prepare_router_prompt_store().expect("store");
+        let router_a_2 = build_router_a_2_prompt(&store, &artifacts).expect("router_a_2");
+        assert!(!router_a_2.contains("{{"));
+        assert!(router_a_2.contains("CODING_TASK"));
         let router_b = build_router_b_prompt(&store, &artifacts, ROUTER_B_SIMPLE_MD, false).expect("router_b");
         assert!(!router_b.contains("{{"));
         let router_c = build_router_c_prompt(&store, &artifacts).expect("router_c");
@@ -172,7 +178,8 @@ mod router_header_embed_tests {
             router_b_complex.contains("still_not_done.md"),
             "router_b_complex must expand still_not_done_path; got:\n{router_b_complex}"
         );
-        assert!(default_file(ROUTER_A_MD).is_some());
+        assert!(default_file(ROUTER_A_1_MD).is_some());
+        assert!(default_file(ROUTER_A_2_MD).is_some());
         assert!(default_file(ROUTER_B_SIMPLE_MD).is_some());
         assert!(default_file(ROUTER_B_COMPLEX_MD).is_some());
         assert!(default_file(ROUTER_C_MD).is_some());

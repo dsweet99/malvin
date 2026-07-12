@@ -11,20 +11,25 @@ use crate::router_flow::router_flow_prompt::{
     combine_router_raw_header_and_user, prepare_router_prompt_store,
 };
 use crate::prompts::{
-    HEADER_MD, PromptStore, ROUTER_A_MD, ROUTER_B_SIMPLE_MD, ROUTER_C_MD,
+    HEADER_MD, PromptStore, ROUTER_A_1_MD, ROUTER_A_2_MD, ROUTER_B_SIMPLE_MD, ROUTER_C_MD,
 };
 
 fn write_router_mock_prompt_files(prompt_root: &std::path::Path) {
-    std::fs::write(prompt_root.join(HEADER_MD), "CODING_HDR\n").expect("header");
-    std::fs::write(prompt_root.join(ROUTER_A_MD), "ROUTER_HDR\n").expect("router_a");
-    std::fs::write(prompt_root.join(ROUTER_B_SIMPLE_MD), "ROUTER_B_HDR\n").expect("router_b_simple");
-    std::fs::write(
-        prompt_root.join(crate::prompts::ROUTER_B_COMPLEX_MD),
+    write_prompt(prompt_root, HEADER_MD, "CODING_HDR\n");
+    write_prompt(prompt_root, ROUTER_A_1_MD, "ROUTER_HDR\n");
+    write_prompt(prompt_root, ROUTER_A_2_MD, "ROUTER_A_2_HDR\n");
+    write_prompt(prompt_root, ROUTER_B_SIMPLE_MD, "ROUTER_B_HDR\n");
+    write_prompt(
+        prompt_root,
+        crate::prompts::ROUTER_B_COMPLEX_MD,
         "ROUTER_B_COMPLEX_HDR\n",
-    )
-    .expect("router_b_complex");
-    std::fs::write(prompt_root.join(ROUTER_C_MD), "ROUTER_C_HDR\n").expect("router_c");
-    std::fs::write(prompt_root.join("kpop_common.md"), "").expect("kpop_common");
+    );
+    write_prompt(prompt_root, ROUTER_C_MD, "ROUTER_C_HDR\n");
+    write_prompt(prompt_root, "kpop_common.md", "");
+}
+
+fn write_prompt(prompt_root: &std::path::Path, name: &str, body: &str) {
+    std::fs::write(prompt_root.join(name), body).unwrap_or_else(|_| panic!("write {name}"));
 }
 
 fn mock_router_prompt_store(tmp: &tempfile::TempDir) -> PromptStore {
@@ -55,7 +60,8 @@ fn combine_router_prompt_file_and_user_joins_rendered_template_and_request() {
 fn prepare_router_prompt_store_loads_default_templates() {
     let store = prepare_router_prompt_store().expect("store");
     assert!(store.validate_exists(HEADER_MD).is_ok());
-    assert!(store.validate_exists(ROUTER_A_MD).is_ok());
+    assert!(store.validate_exists(ROUTER_A_1_MD).is_ok());
+    assert!(store.validate_exists(ROUTER_A_2_MD).is_ok());
     assert!(store.validate_exists(ROUTER_B_SIMPLE_MD).is_ok());
     assert!(store.validate_exists(crate::prompts::ROUTER_B_COMPLEX_MD).is_ok());
     assert!(store.validate_exists(ROUTER_C_MD).is_ok());
@@ -68,7 +74,10 @@ fn build_router_coder_run_succeeds_without_checks_in_non_git_workspace() {
     let run = build_router_coder_run(&artifacts, "USER_TOKEN").expect("run");
     assert!(run.combined.contains("Know thyself"));
     assert!(run.combined.contains("COMPLEXITY_SCORE"));
-    assert!(run.combined.contains("CODING_TASK"));
+    assert!(
+        !run.combined.contains("CODING_TASK"),
+        "router_a_1 must not ask for CODING_TASK"
+    );
     assert!(
         run.combined.contains("Context Prep"),
         "router prompt must include standard header content"
@@ -99,7 +108,10 @@ fn build_router_coder_run_default_store_produces_dual_headers() {
     let run = build_router_coder_run(&artifacts, "USER_TOKEN").expect("run");
     assert!(run.combined.contains("Know thyself"));
     assert!(run.combined.contains("COMPLEXITY_SCORE"));
-    assert!(run.combined.contains("CODING_TASK"));
+    assert!(
+        !run.combined.contains("CODING_TASK"),
+        "router_a_1 must not ask for CODING_TASK"
+    );
     assert!(
         run.combined.contains("Context Prep"),
         "router prompt must include standard header content"
@@ -141,7 +153,7 @@ fn combine_router_raw_header_and_user_joins_rendered_router_header_and_request()
     let tmp = tempfile::tempdir().expect("tempdir");
     let prompt_root = tmp.path().join("prompts");
     std::fs::create_dir_all(&prompt_root).expect("mkdir");
-    std::fs::write(prompt_root.join(ROUTER_A_MD), "ROUTER_TOKEN\n").expect("router_a");
+    std::fs::write(prompt_root.join(ROUTER_A_1_MD), "ROUTER_TOKEN\n").expect("router_a_1");
     let artifacts = flow_test_artifacts(&tmp);
     let store = PromptStore::with_root(prompt_root);
     let (combined, header, user) =

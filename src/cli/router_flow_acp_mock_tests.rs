@@ -84,7 +84,8 @@ pub(crate) fn write_mock_router_agent(path: &std::path::Path, continue_after_rou
         r"    if (!global.pc) global.pc = 0;
     global.pc++;
     const responses = [
-      'router_a phase\nCOMPLEXITY_SCORE: 2\nCODING_TASK: NO\n',
+      'router_a_1 phase\nCOMPLEXITY_SCORE: 2\n',
+      'router_a_2 phase\nCODING_TASK: NO\n',
       'router_b done\n',
       '{c_text}'
     ];
@@ -102,6 +103,28 @@ pub(crate) fn write_mock_router_agent(path: &std::path::Path, continue_after_rou
 }
 
 #[cfg(unix)]
+pub(crate) fn write_mock_router_agent_bad_complexity(path: &std::path::Path) {
+    use std::os::unix::fs::PermissionsExt;
+
+    let handler = r"    if (!global.pc) global.pc = 0;
+    global.pc++;
+    const responses = [
+      'router_a_1 phase\nCOMPLEXITY_SCORE: not-a-number\n',
+      'router_a_2 phase\nmust not reach\n'
+    ];
+    const text = responses[(global.pc - 1) % responses.length];
+    console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text } } } }));";
+    let script = format!(
+        "#!/usr/bin/env node\n{}\n",
+        crate::acp_mock_js("", handler)
+    );
+    std::fs::write(path, script.as_bytes()).expect("write mock");
+    let mut perms = std::fs::metadata(path).expect("meta").permissions();
+    perms.set_mode(0o755);
+    std::fs::set_permissions(path, perms).expect("chmod");
+}
+
+#[cfg(unix)]
 #[test]
 fn kiss_cov_mock_router_agent_helpers() {
     let tmp = tempfile::tempdir().expect("tempdir");
@@ -111,4 +134,7 @@ fn kiss_cov_mock_router_agent_helpers() {
     let fail = tmp.path().join("mock-fail");
     write_mock_router_agent_session_fail(&fail);
     assert!(fail.is_file());
+    let bad = tmp.path().join("mock-bad");
+    write_mock_router_agent_bad_complexity(&bad);
+    assert!(bad.is_file());
 }

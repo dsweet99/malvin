@@ -120,13 +120,65 @@ fn kiss_cov_router_acp_session_ctx_construct_destructure() {
 
 #[cfg(unix)]
 #[test]
+fn run_router_acp_iteration_aborts_before_a2_on_bad_complexity() {
+    crate::test_utils::enable_test_fast_teardown();
+    crate::test_utils::with_isolated_home(|workspace| {
+        crate::test_utils::block_on_test_async(async {
+            crate::seed_malvin_checks(workspace, "true\n");
+            let mock = workspace.join("mock-router-agent-bad-a1");
+            super::router_flow_acp_mock_tests::write_mock_router_agent_bad_complexity(&mock);
+            let _env = super::router_flow_acp_mock_tests::install_mock_router_agent_env_with_script(
+                workspace, &mock,
+            );
+            let (shared, workflow) = super::router_flow_acp_tests::test_router_shared();
+            let (mut client, artifacts, coder, prompt_store) =
+                super::router_flow_acp_tests::router_boot_client_artifacts(
+                    workspace, &shared, workflow,
+                )
+                .expect("boot");
+            let outcome = run_router_acp_iteration(RouterAcpIterationInput {
+                client: &mut client,
+                artifacts: &artifacts,
+                coder: &coder,
+                prompt_store: &prompt_store,
+                shared: &shared,
+                agent_loop: 1,
+                session_end: crate::run_timing::acp_post_run::RunTimingSessionEnd::Finalize,
+            })
+            .await;
+            let err = outcome
+                .acp_result
+                .expect_err("must fail on bad COMPLEXITY_SCORE");
+            assert!(
+                err.contains("COMPLEXITY_SCORE"),
+                "error must mention COMPLEXITY_SCORE; got: {err}"
+            );
+            assert!(!outcome.wants_continue);
+            let log_text =
+                std::fs::read_to_string(artifacts.log_path("router_1")).expect("read router log");
+            assert!(
+                log_text.contains("router_a_1 phase"),
+                "router_1.log must retain router_a_1 turn; got: {log_text}"
+            );
+            assert!(
+                !log_text.contains("router_a_2 phase") && !log_text.contains("must not reach"),
+                "router_a_2 must not run after a1 parse failure; got: {log_text}"
+            );
+        });
+    });
+}
+
+#[cfg(unix)]
+#[test]
 fn kiss_cov_router_flow_acp_test_helpers() {
     let _ = super::router_flow_acp_tests::test_router_shared;
     let _ = super::router_flow_acp_tests::router_boot_client_artifacts;
     let _ = super::router_flow_acp_mock_tests::install_mock_router_agent_env;
     let _ = super::router_flow_acp_mock_tests::write_mock_router_agent;
     let _ = super::router_flow_acp_mock_tests::write_mock_router_agent_session_fail;
+    let _ = super::router_flow_acp_mock_tests::write_mock_router_agent_bad_complexity;
     let _ = stringify!(run_router_acp_iteration_executes_mock_agent_without_continue);
     let _ = stringify!(run_router_acp_iteration_wants_continue_when_router_c_emits_marker);
+    let _ = stringify!(run_router_acp_iteration_aborts_before_a2_on_bad_complexity);
     let _ = stringify!(run_router_acp_iteration_propagates_begin_session_failure);
 }

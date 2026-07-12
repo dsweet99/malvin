@@ -23,16 +23,18 @@ fn parse_scored_line(agent_text: &str, prefix: &str) -> Option<String> {
 /// Returns an error when `COMPLEXITY_SCORE` is missing, malformed, or outside 1–10.
 pub(crate) fn parse_complexity_score(agent_text: &str) -> Result<u8, String> {
     let value = parse_scored_line(agent_text, "COMPLEXITY_SCORE:").ok_or_else(|| {
-        "router_a: missing or malformed COMPLEXITY_SCORE in agent response".to_string()
+        "router_a_1: missing or malformed COMPLEXITY_SCORE in agent response".to_string()
     })?;
     let score: u32 = value.parse().map_err(|_| {
-        "router_a: missing or malformed COMPLEXITY_SCORE in agent response".to_string()
+        "router_a_1: missing or malformed COMPLEXITY_SCORE in agent response".to_string()
     })?;
     if !(1..=10).contains(&score) {
-        return Err("router_a: missing or malformed COMPLEXITY_SCORE in agent response".to_string());
+        return Err(
+            "router_a_1: missing or malformed COMPLEXITY_SCORE in agent response".to_string(),
+        );
     }
     u8::try_from(score).map_err(|_| {
-        "router_a: missing or malformed COMPLEXITY_SCORE in agent response".to_string()
+        "router_a_1: missing or malformed COMPLEXITY_SCORE in agent response".to_string()
     })
 }
 
@@ -40,12 +42,13 @@ pub(crate) fn parse_complexity_score(agent_text: &str) -> Result<u8, String> {
 ///
 /// Returns an error when `CODING_TASK` is missing or not `YES`/`NO`.
 pub(crate) fn parse_coding_task(agent_text: &str) -> Result<bool, String> {
-    let value = parse_scored_line(agent_text, "CODING_TASK:")
-        .ok_or_else(|| "router_a: missing or malformed CODING_TASK in agent response".to_string())?;
+    let value = parse_scored_line(agent_text, "CODING_TASK:").ok_or_else(|| {
+        "router_a_2: missing or malformed CODING_TASK in agent response".to_string()
+    })?;
     match value.as_str() {
         "YES" => Ok(true),
         "NO" => Ok(false),
-        _ => Err("router_a: missing or malformed CODING_TASK in agent response".to_string()),
+        _ => Err("router_a_2: missing or malformed CODING_TASK in agent response".to_string()),
     }
 }
 
