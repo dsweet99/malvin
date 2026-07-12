@@ -149,6 +149,10 @@ pub(crate) mod test_hooks {
         models_cmd_parse::looks_like_tip_banner_line(lowercase_trimmed)
     }
 
+    pub fn is_models_section_header(line: &str) -> bool {
+        models_cmd_parse::is_non_model_banner_line(line)
+    }
+
     pub fn models_display_lines(text: &str) -> Option<Vec<String>> {
         models_cmd_parse::models_display_lines(text, "")
     }

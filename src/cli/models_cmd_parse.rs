@@ -32,7 +32,7 @@ pub(super) fn models_display_lines(text: &str, prefix: &str) -> Option<Vec<Strin
     let mut out = Vec::new();
     for line in text.lines() {
         let t = line.trim();
-        if t.is_empty() {
+        if t.is_empty() || is_non_model_banner_line(t) {
             continue;
         }
         if let Some((name, rest)) = parse_model_line(t) {
@@ -42,6 +42,14 @@ pub(super) fn models_display_lines(text: &str, prefix: &str) -> Option<Vec<Strin
         }
     }
     if out.is_empty() { None } else { Some(out) }
+}
+
+/// Banners / status lines from `cursor-agent models` are not model rows.
+///
+/// Examples: `Available models`, `No models available for this account.`
+pub(super) fn is_non_model_banner_line(line: &str) -> bool {
+    let low = line.trim().to_ascii_lowercase();
+    low == "available models" || low.starts_with("no models")
 }
 
 pub(super) fn print_parsed_or_fallback_prefixed(text: &str, prefix: &str) {
@@ -74,4 +82,51 @@ pub(super) fn parse_model_line(line: &str) -> Option<(&str, String)> {
         return Some((name, rest));
     }
     None
+}
+
+#[cfg(test)]
+mod banner_tests {
+    use super::{is_non_model_banner_line, models_display_lines};
+
+    #[test]
+    fn models_display_lines_skips_available_models_header() {
+        // Live `cursor-agent models` starts with this banner; whitespace fallback used to
+        // emit `cursor:Available\tmodels`, which is not a model id.
+        let text = "Available models\n\nauto - Auto (current, default)\n";
+        let lines = models_display_lines(text, "").expect("non-empty");
+        assert_eq!(
+            lines,
+            vec!["auto\tAuto (current, default)".to_string()],
+            "header must not become a fake model row: {lines:?}"
+        );
+        assert!(
+            !lines.iter().any(|l| l.to_ascii_lowercase().contains("available")),
+            "must not keep Available header: {lines:?}"
+        );
+        assert!(is_non_model_banner_line("Available models"));
+    }
+
+    #[test]
+    fn models_display_lines_skips_no_models_available_status() {
+        // Clean-HOME `cursor-agent models` can print this status; whitespace parse used to
+        // emit a fake `No` model id (shown as `cursor:No` with the cursor prefix).
+        let text = "No models available for this account.\n";
+        assert!(
+            models_display_lines(text, "cursor:").is_none(),
+            "status line must not become a model row"
+        );
+        let mixed = "No models available for this account.\nauto - Auto (current, default)\n";
+        let lines = models_display_lines(mixed, "cursor:").expect("keep real rows");
+        assert_eq!(
+            lines,
+            vec!["cursor:auto\tAuto (current, default)".to_string()]
+        );
+        assert!(
+            !lines.iter().any(|l| l.starts_with("cursor:No")),
+            "must not keep No-models status as a row: {lines:?}"
+        );
+        assert!(is_non_model_banner_line(
+            "No models available for this account."
+        ));
+    }
 }

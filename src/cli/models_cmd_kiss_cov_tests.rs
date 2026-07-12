@@ -60,6 +60,12 @@ fn kiss_cov_models_branchy_executable_witness() {
     assert!(looks_like_tip_banner_line("tip use tls"));
     assert!(!looks_like_tip_banner_line("tip of the day"));
     assert!(!looks_like_tip_banner_line("see tip: inline"));
+    assert!(is_models_section_header("Available models"));
+    assert!(is_models_section_header("available models"));
+    assert!(is_models_section_header(
+        "No models available for this account."
+    ));
+    assert!(!is_models_section_header("auto - Auto"));
     assert!(models_display_lines("   \n").is_none());
     assert!(parse_model_line("singleword").is_none());
     print_parsed_or_fallback("   \n");
