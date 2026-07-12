@@ -41,15 +41,12 @@ Examples::
     python ops/deepswe_run.py solve bandit-interprocedural-taint-checks
     python ops/deepswe_run.py solve --test bandit-interprocedural-taint-checks  # smoke: malvin init + .malvin/checks, then grade
     python ops/deepswe_run.py solve --local bandit-interprocedural-taint-checks
-    python ops/deepswe_run.py hello bandit-interprocedural-taint-checks  # Modal auth + CIDR smoke (no grade)
-    python ops/deepswe_run.py run --task ../deep-swe/tasks/bandit-interprocedural-taint-checks
-    python ops/deepswe_run.py run --task ../deep-swe/tasks/bandit-interprocedural-taint-checks --grade-only
-    python ops/deepswe_run.py run --task /task --workspace /app --runtime in-sandbox --command route
+    python ops/deepswe_run.py solve --task /task --workspace /app --runtime in-sandbox --command route
+    python ops/deepswe_run.py solve --task ../deep-swe/tasks/bandit-interprocedural-taint-checks --grade-only
 
 Local unit tests (no agent run)::
 
     python ops/deepswe_run.py self-test
-    python ops/deepswe_run.py prep aiomonitor-task-snapshots-diff
 """
 
 from __future__ import annotations
@@ -352,59 +349,6 @@ def audit_task_entry(
         "patch_surface_count": len(patch_targets),
         "failures": failures,
     }
-
-
-def run_deepswe_audit(
-    *,
-    goal_only: bool = True,
-    report: bool = False,
-    verbose: bool = False,
-) -> int:
-    """Audit Harbor tasks for harness readiness; exit 1 when goal tasks fail."""
-    tasks_root = default_deepswe_tasks_root()
-    if not tasks_root.is_dir():
-        raise click.ClickException(f"DeepSWE tasks directory not found: {tasks_root}")
-    if goal_only and not report:
-        task_ids = goal_task_ids()
-    else:
-        task_ids = list_deepswe_tasks()
-    failed = 0
-    for task_id in task_ids:
-        task_dir = tasks_root / task_id
-        if not task_dir.is_dir():
-            click.echo(f"{task_id}\tMISSING")
-            failed += 1
-            continue
-        entry = audit_task_entry(
-            task_dir,
-            require_python_baseline=goal_only and not report,
-        )
-        status = "ok" if not entry["failures"] else "FAIL"
-        if entry["failures"]:
-            failed += 1
-        baseline_preview = entry["runnable_baseline"][:1]
-        line = (
-            f"{task_id}\t{status}\tbaseline={baseline_preview!r}\t"
-            f"pins={len(entry['pins'])}\tpatch_surface={entry['patch_surface_count']}\t"
-            f"failures={entry['failures']}"
-        )
-        if verbose:
-            cache_bust = entry.get("cache_bust")
-            line += (
-                f"\tcache_bust={len(cache_bust) if cache_bust is not None else 'unavailable'}"
-                f"\tmaterialized={entry.get('materialized_workspace')}"
-            )
-            declared_count = entry.get("declared_package_count")
-            if declared_count is not None:
-                line += f"\tdeclared_packages={declared_count}"
-            if cache_bust:
-                line += f"\tcache_bust_0={cache_bust[0][:96]!r}"
-        click.echo(line)
-    if failed:
-        click.echo(f"audit failed: {failed}/{len(task_ids)} tasks", err=True)
-        return 1
-    click.echo(f"audit passed: {len(task_ids)} tasks")
-    return 0
 
 
 def list_deepswe_tasks() -> list[str]:
@@ -1872,7 +1816,7 @@ def docker_local_agent_cmd(
 ) -> list[str]:
     """Docker command for the agent phase — no /tests or /task/solution mounted."""
     inner = [
-        "python3", DEEPSWE_RUN_REMOTE, "run",
+        "python3", DEEPSWE_RUN_REMOTE, "solve",
         "--task", "/task",
         "--workspace", "/app",
         "--runtime", "in-sandbox",
@@ -1911,7 +1855,7 @@ def docker_local_grade_cmd(
 ) -> list[str]:
     """Docker command for the grade phase — /tests and /task/solution now available."""
     inner = [
-        "python3", DEEPSWE_RUN_REMOTE, "run",
+        "python3", DEEPSWE_RUN_REMOTE, "solve",
         "--task", "/task",
         "--workspace", "/app",
         "--runtime", "in-sandbox",
@@ -1952,7 +1896,7 @@ def docker_local_eval_cmd(
 ) -> list[str]:
     """Legacy single-container command. Used only by grade-only path."""
     inner = [
-        "python3", DEEPSWE_RUN_REMOTE, "run",
+        "python3", DEEPSWE_RUN_REMOTE, "solve",
         "--task", "/task",
         "--workspace", "/app",
         "--runtime", "in-sandbox",
@@ -2564,28 +2508,6 @@ def _relay_subprocess_stdout(cmd: list[str], *, cwd: Path) -> tuple[int, str]:
     return int(proc.returncode or 0), "".join(chunks)
 
 
-def run_hello_probe_on_host(
-    malvin_args: tuple[str, ...],
-    *,
-    dry_run: bool,
-) -> None:
-    """Run ``malvin do Hello`` on the host and relay agent stdout to local stdout."""
-    cmd = hello_probe_cmd(MALVIN_CMD, malvin_args)
-    click.echo(f"Running agent: {' '.join(cmd)}")
-    if dry_run:
-        run_cmd(cmd, cwd=Path.cwd(), dry_run=True)
-        return
-    exit_code, agent_stdout = _relay_subprocess_stdout(cmd, cwd=Path.cwd())
-    click.echo("\n=== Hello probe ===")
-    click.echo(f"malvin exit: {exit_code}")
-    if agent_stdout.strip():
-        click.echo("--- agent stdout ---")
-        click.echo(agent_stdout.rstrip())
-        click.echo("--- end agent stdout ---")
-    if exit_code != 0:
-        raise SystemExit(exit_code)
-
-
 def run_malvin(
     workspace: Path,
     *,
@@ -3043,7 +2965,7 @@ def run_task(
                 )
             return
     elif task_dir is None:
-        raise click.ClickException("Provide solve TASK_NAME or run --task PATH")
+        raise click.ClickException("Provide solve TASK_NAME or --task PATH")
     in_sandbox = runtime == "in-sandbox"
     if in_sandbox:
         apply_in_sandbox_runner_env()
@@ -3351,7 +3273,7 @@ def run_task(
 
 
 def _task_kernel_options(f: Any) -> Any:
-    """Click options for the path-based ``run`` subcommand."""
+    """Click options for path-based ``solve --task`` (and shared flags)."""
     f = click.option(
         "--task",
         "task_dir",
@@ -3445,7 +3367,7 @@ def _task_kernel_options(f: Any) -> Any:
 
 
 def _local_solve_options(f: Any) -> Any:
-    """Click options for the ``solve TASK_NAME`` subcommand."""
+    """Click options unique to name-based ``solve TASK_NAME`` (Modal / --local)."""
     f = click.option(
         "--local",
         "use_local_docker",
@@ -3460,66 +3382,6 @@ def _local_solve_options(f: Any) -> Any:
             "Harness smoke: run `malvin init && source .malvin/checks` instead of "
             "`malvin plan.md` (exposes agent dependency problems), then Harbor grade."
         ),
-    )(f)
-    f = click.option(
-        "--skip-grade",
-        is_flag=True,
-        help="Skip Harbor verifier grading (agent phase only).",
-    )(f)
-    f = click.option(
-        "--apply-solution",
-        is_flag=True,
-        help=(
-            "Apply task solution/solution.patch before grade "
-            "(refused on agent solve; grade-only harness check only)."
-        ),
-    )(f)
-    f = click.option(
-        "--reset",
-        "reset_workspace_flag",
-        is_flag=True,
-        help=(
-            "Hard reset workspace to base_commit. "
-            "Always-on for solve (flag accepted as no-op)."
-        ),
-    )(f)
-    f = click.option(
-        "--docker-image",
-        default=None,
-        help="Override Harbor docker image tag.",
-    )(f)
-    f = click.option(
-        "--dry-run",
-        is_flag=True,
-        help="Print commands without executing.",
-    )(f)
-    f = click.argument("malvin_args", nargs=-1, type=click.UNPROCESSED)(f)
-    return f
-
-
-def _hello_options(f: Any) -> Any:
-    """Click options for the ``hello TASK_NAME`` connectivity probe (no grading)."""
-    f = click.option(
-        "--host",
-        "run_on_host",
-        is_flag=True,
-        help="Run malvin do Hello on this machine (no Modal/Docker/task workspace).",
-    )(f)
-    f = click.option(
-        "--local",
-        "use_local_docker",
-        is_flag=True,
-        help="Run in a local Docker container instead of Modal (default: Modal).",
-    )(f)
-    f = click.option(
-        "--docker-image",
-        default=None,
-        help="Override Harbor docker image tag.",
-    )(f)
-    f = click.option(
-        "--dry-run",
-        is_flag=True,
-        help="Print commands without executing.",
     )(f)
     f = click.argument("malvin_args", nargs=-1, type=click.UNPROCESSED)(f)
     return f
@@ -3539,54 +3401,6 @@ class TaskAliasGroup(click.Group):
 @click.group(cls=TaskAliasGroup)
 def cli() -> None:
     """Run malvin on a DeepSWE task and grade with Harbor ``tests/test.sh``."""
-
-
-@cli.command(
-    "run",
-    context_settings={
-        "ignore_unknown_options": True,
-        "allow_extra_args": True,
-    },
-)
-@_task_kernel_options
-@click.pass_context
-def run_task_cli(
-    ctx: click.Context,
-    task_dir: Path | None,
-    workspace: Path | None,
-    results_dir: Path | None,
-    malvin_command: str,
-    runtime: str,
-    skip_materialize: bool,
-    grade_only: bool,
-    smoke_grade: bool,
-    skip_grade: bool,
-    apply_solution: bool,
-    reset_workspace_flag: bool,
-    docker_image: str | None,
-    dry_run: bool,
-) -> None:
-    """Run malvin on a task directory (path-based harness entry point)."""
-    if task_dir is None:
-        raise click.ClickException("run requires --task PATH")
-    run_task(
-        local_task_name=None,
-        task_dir=task_dir,
-        workspace=workspace,
-        results_dir=results_dir,
-        malvin_command=malvin_command,
-        runtime=runtime,
-        skip_materialize=skip_materialize,
-        grade_only=grade_only,
-        smoke_grade=smoke_grade,
-        skip_grade=skip_grade,
-        apply_solution=apply_solution,
-        reset_workspace_flag=reset_workspace_flag,
-        docker_image=docker_image,
-        dry_run=dry_run,
-        malvin_args=(),
-        extra_args=tuple(ctx.args),
-    )
 
 
 @cli.command("tasks")
@@ -3611,115 +3425,69 @@ def self_test_cmd() -> None:
     run_self_tests()
 
 
-@cli.command("audit")
-@click.option(
-    "--goal-tasks/--all-tasks",
-    default=True,
-    help="Audit the 34 Python goal tasks (default) or full catalog with --all-tasks.",
+@cli.command(
+    "solve",
+    context_settings={
+        "ignore_unknown_options": True,
+        "allow_extra_args": True,
+    },
 )
-@click.option(
-    "--report",
-    is_flag=True,
-    help="Informational report for the full catalog (no failure on missing Python baseline).",
-)
-@click.option(
-    "--verbose",
-    is_flag=True,
-    help="Include cache-bust command count per task.",
-)
-def audit_cmd(goal_tasks: bool, report: bool, verbose: bool) -> None:
-    """Audit Harbor task harness readiness (baseline checks, pins, patch_surface policy)."""
-    raise SystemExit(
-        run_deepswe_audit(goal_only=goal_tasks and not report, report=report, verbose=verbose)
-    )
-
-
-@cli.command("prep")
 @click.argument("task_name", required=False)
-@click.option(
-    "--task",
-    "task_dir",
-    type=click.Path(exists=True, file_okay=False, path_type=Path),
-    default=None,
-    help="Path to a DeepSWE task directory (contains task.toml).",
-)
-@click.option(
-    "--workspace",
-    type=click.Path(file_okay=False, path_type=Path),
-    default=None,
-    help="Git checkout for the task repo (default: <results-dir>/<task-id>/workspace).",
-)
-@click.option(
-    "--reset",
-    "reset_workspace_flag",
-    is_flag=True,
-    help="Hard reset workspace to base_commit before prep.",
-)
-@click.option(
-    "--dry-run",
-    is_flag=True,
-    help="Print sync commands without executing.",
-)
-def prep_cmd(
-    task_name: str | None,
-    task_dir: Path | None,
-    workspace: Path | None,
-    reset_workspace_flag: bool,
-    dry_run: bool,
-) -> None:
-    """Materialize workspace and run runtime sandbox prep (no malvin agent or grade)."""
-    if task_dir is None:
-        if task_name is None:
-            raise click.ClickException("prep requires TASK_NAME or --task PATH")
-        task_dir = resolve_local_task_dir(task_name)
-    task_language = read_task_language(task_dir)
-    if task_language != "python":
-        raise click.ClickException(
-            f"prep supports python tasks only (task language is {task_language!r})"
-        )
-    spec = parse_task_dir(task_dir)
-    results_root = default_deepswe_results_dir()
-    workspace = workspace or (results_root / spec.task_id / "workspace")
-    click.echo(f"Task: {spec.task_id}")
-    click.echo(f"Workspace: {workspace.resolve()}")
-    materialize_workspace(spec, workspace, dry_run=dry_run)
-    if reset_workspace_flag:
-        reset_workspace(spec, workspace, dry_run=dry_run)
-    prep_result = prepare_task_sandbox(
-        spec,
-        workspace,
-        dry_run=dry_run,
-        verify_probes=True,
-    )
-    if not prep_result.ok:
-        err_lines = list(prep_result.probe_errors)
-        if not err_lines and prep_result.sync_warnings:
-            err_lines = list(prep_result.sync_warnings)
-        for err in err_lines:
-            click.echo(err, err=True)
-        raise SystemExit(1)
-    click.echo("prep passed")
-
-
-@cli.command("solve")
-@click.argument("task_name")
+@_task_kernel_options
 @_local_solve_options
 @click.pass_context
 def solve(
     ctx: click.Context,
-    task_name: str,
-    use_local_docker: bool,
-    test_harness: bool,
+    *,
+    task_name: str | None,
+    task_dir: Path | None,
+    workspace: Path | None,
+    results_dir: Path | None,
+    malvin_command: str,
+    runtime: str,
+    skip_materialize: bool,
+    grade_only: bool,
+    smoke_grade: bool,
     skip_grade: bool,
     apply_solution: bool,
     reset_workspace_flag: bool,
     docker_image: str | None,
     dry_run: bool,
+    use_local_docker: bool,
+    test_harness: bool,
     malvin_args: tuple[str, ...],
 ) -> None:
-    """Run malvin and Harbor grade (Modal by default; --local for Docker)."""
+    """Run malvin and Harbor grade (Modal by default; --local for Docker; --task for path-based)."""
     if test_harness and skip_grade:
         raise click.ClickException("Use either --test or --skip-grade, not both")
+    if test_harness:
+        malvin_command = "init-checks"
+    if task_dir is not None:
+        if task_name is not None:
+            raise click.ClickException("Use either solve TASK_NAME or --task, not both")
+        if use_local_docker:
+            raise click.ClickException("--local requires TASK_NAME (not --task)")
+        run_task(
+            local_task_name=None,
+            task_dir=task_dir,
+            workspace=workspace,
+            results_dir=results_dir,
+            malvin_command=malvin_command,
+            runtime=runtime,
+            skip_materialize=skip_materialize,
+            grade_only=grade_only,
+            smoke_grade=smoke_grade,
+            skip_grade=skip_grade,
+            apply_solution=apply_solution,
+            reset_workspace_flag=reset_workspace_flag,
+            docker_image=docker_image,
+            dry_run=dry_run,
+            malvin_args=malvin_args,
+            extra_args=tuple(ctx.args),
+        )
+        return
+    if task_name is None:
+        raise click.ClickException("solve requires TASK_NAME or --task PATH")
     reset_workspace_flag = True
     run_task(
         local_task_name=task_name,
@@ -3733,47 +3501,6 @@ def solve(
         skip_grade=skip_grade,
         apply_solution=apply_solution,
         reset_workspace_flag=reset_workspace_flag,
-        docker_image=docker_image,
-        dry_run=dry_run,
-        malvin_args=malvin_args,
-        extra_args=tuple(ctx.args),
-        use_local_docker=use_local_docker,
-    )
-
-
-@cli.command("hello")
-@click.argument("task_name", required=False)
-@_hello_options
-@click.pass_context
-def hello(
-    ctx: click.Context,
-    task_name: str | None,
-    run_on_host: bool,
-    use_local_docker: bool,
-    docker_image: str | None,
-    dry_run: bool,
-    malvin_args: tuple[str, ...],
-) -> None:
-    """Run malvin do Hello (Cursor connectivity probe). Default: full Modal sandbox smoke test (auth + CIDR allowlist, no Harbor grade). Use ``--host`` for a local probe."""
-    if run_on_host:
-        if use_local_docker:
-            raise click.ClickException("Use either --host or --local, not both")
-        run_hello_probe_on_host(malvin_args + tuple(ctx.args), dry_run=dry_run)
-        return
-    if not task_name:
-        raise click.ClickException("TASK_NAME is required unless --host is set")
-    run_task(
-        local_task_name=task_name,
-        task_dir=None,
-        workspace=None,
-        results_dir=None,
-        malvin_command="hello",
-        runtime="host",
-        skip_materialize=False,
-        grade_only=False,
-        skip_grade=True,
-        apply_solution=False,
-        reset_workspace_flag=True,
         docker_image=docker_image,
         dry_run=dry_run,
         malvin_args=malvin_args,
@@ -4225,7 +3952,8 @@ def _test_solve_command_in_help() -> None:
     runner = CliRunner()
     result = runner.invoke(cli, ["--help"])
     assert result.exit_code == 0, result.output
-    for name in ("solve", "hello", "tasks", "run", "self-test"):
+    assert set(cli.commands) == {"solve", "tasks", "self-test"}
+    for name in ("solve", "tasks", "self-test"):
         assert name in result.output, name
     assert "--task" not in result.output.split("Commands:")[0]
 
@@ -5208,75 +4936,14 @@ def _test_relay_subprocess_stdout_sets_force_tee_env() -> None:
         assert captured["env"].get("MALVIN_FORCE_STDOUT_TEE") == "1"
 
 
-def _test_run_command_accepts_hello() -> None:
+def _test_solve_path_accepts_hello_command() -> None:
     with tempfile.TemporaryDirectory() as tmp:
-        run_cmd = cli.get_command(click.Context(cli), "run")
-        ctx = run_cmd.make_context(  # type: ignore[union-attr]
-            "run",
+        solve_cmd = cli.get_command(click.Context(cli), "solve")
+        ctx = solve_cmd.make_context(  # type: ignore[union-attr]
+            "solve",
             ["--task", tmp, "--command", "hello", "--dry-run"],
         )
         assert ctx.params["malvin_command"] == "hello"
-
-
-def _test_hello_host_relays_stdout() -> None:
-    from click.testing import CliRunner
-
-    runner = CliRunner()
-
-    def fake_relay(cmd: list[str], *, cwd: Path) -> tuple[int, str]:
-        assert "do" in cmd and "Hello" in cmd
-        return 0, "agent said hi\n"
-
-    with patch(f"{__name__}._relay_subprocess_stdout", fake_relay):
-        result = runner.invoke(cli, ["hello", "--host"])
-    assert result.exit_code == 0, result.output
-    assert "agent said hi" in result.output
-    assert "--- agent stdout ---" in result.output
-
-
-def _test_hello_host_rejects_local() -> None:
-    from click.testing import CliRunner
-
-    runner = CliRunner()
-    result = runner.invoke(cli, ["hello", "--host", "--local"])
-    assert result.exit_code != 0
-    assert "not both" in result.output.lower()
-
-
-def _test_hello_modal_dry_run() -> None:
-    """``hello TASK`` runs malvin do Hello on Modal without Harbor grading."""
-    from click.testing import CliRunner
-
-    tasks_root = default_deepswe_tasks_root()
-    if not (tasks_root / "bandit-interprocedural-taint-checks").is_dir():
-        return
-    runner = CliRunner()
-    captured: dict[str, Any] = {}
-
-    def fake_modal_eval(**kwargs: Any) -> None:
-        captured.update(kwargs)
-
-    with _patch_modal_cursor_credentials(), patch("deepswe_modal.run_modal_eval", fake_modal_eval):
-        result = runner.invoke(
-            cli,
-            ["hello", "bandit-interprocedural-taint-checks", "--dry-run"],
-        )
-    assert result.exit_code == 0, result.output
-    assert captured.get("malvin_command") == "hello", captured
-    assert captured.get("malvin_args") == (), captured
-    assert captured.get("reset_flag") is True, captured
-    assert captured.get("skip_grade") is True, captured
-    assert captured.get("grade_only") is False, captured
-    assert "Harbor grade" not in result.output, result.output
-
-
-def _test_hello_command_in_help() -> None:
-    from click.testing import CliRunner
-
-    runner = CliRunner()
-    result = runner.invoke(cli, ["--help"])
-    assert result.exit_code == 0, result.output
-    assert "hello" in result.output
 
 
 def _test_local_grade_only_apply_solution() -> None:
@@ -5294,11 +4961,11 @@ def _test_local_grade_only_apply_solution() -> None:
     os.environ["DEEPSWE_TEST_FAST_GRADE"] = "1"
     try:
         runner = CliRunner()
-        with patch("deepswe_run.reset_workspace"), patch("deepswe_run.apply_patch"):
+        with patch(f"{__name__}.reset_workspace"), patch(f"{__name__}.apply_patch"):
             result = runner.invoke(
                 cli,
                 [
-                    "run",
+                    "solve",
                     "--task",
                     str(task),
                     "--grade-only",
@@ -6021,11 +5688,7 @@ def run_self_tests() -> None:
     _test_apply_in_sandbox_runner_env()
     _test_run_task_in_sandbox_sets_uv_offline()
     _test_relay_subprocess_stdout_sets_force_tee_env()
-    _test_run_command_accepts_hello()
-    _test_hello_host_relays_stdout()
-    _test_hello_host_rejects_local()
-    _test_hello_modal_dry_run()
-    _test_hello_command_in_help()
+    _test_solve_path_accepts_hello_command()
     _test_local_grade_only_apply_solution()
     click.echo("deepswe_run self-tests passed")
 

@@ -2316,7 +2316,7 @@ def run_deepswe_run_in_sandbox(
             pin_cursor_api_hosts_in_sandbox(sandbox, allowlist)
 
         base_argv = [
-            "python3", DEEPSWE_RUN_REMOTE, "run",
+            "python3", DEEPSWE_RUN_REMOTE, "solve",
             "--task", TASK_REMOTE,
             "--workspace", APP_REMOTE,
             "--runtime", "in-sandbox",
@@ -4023,7 +4023,7 @@ def _test_grade_in_sandbox_network() -> None:
     exec_argv = fake_sandbox.exec.call_args.args
     assert exec_argv[0] == "python3"
     assert exec_argv[1] == DEEPSWE_RUN_REMOTE
-    assert exec_argv[2] == "run"
+    assert exec_argv[2] == "solve"
     assert "--grade-only" in exec_argv
     exec_kwargs = fake_sandbox.exec.call_args.kwargs
     assert exec_kwargs["text"] is False
