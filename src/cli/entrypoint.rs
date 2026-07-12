@@ -42,6 +42,10 @@ pub fn print_command_error(message: &str) {
         print_stderr_line(MALVIN_WHO, &display);
         return;
     }
+    if super::error_run_log::command_error_already_emitted(message) {
+        return;
+    }
+    super::error_run_log::note_command_error_emitted(message);
     super::error_run_log::append_command_error_to_run_log(message);
     print_log_error(message);
 }

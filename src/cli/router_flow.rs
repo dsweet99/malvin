@@ -128,12 +128,15 @@ pub async fn run_router(
     })
     .await?;
 
-    run_router_d_session(
-        &mut prep.client,
-        &prep.prompt_store,
-        &prep.artifacts,
-    )
-    .await?;
+    // Classify/work failures must not run router_d (summarizer) before surfacing the error.
+    if loop_outcome.last_acp.is_ok() {
+        run_router_d_session(
+            &mut prep.client,
+            &prep.prompt_store,
+            &prep.artifacts,
+        )
+        .await?;
+    }
 
     let r = crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
         loop_outcome.last_acp,

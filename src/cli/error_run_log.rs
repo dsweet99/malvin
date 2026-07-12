@@ -9,6 +9,7 @@ use std::sync::Mutex;
 use crate::output::{ERROR_WHO, format_line};
 
 static COMMAND_ERROR_RUN_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
+static LAST_EMITTED_COMMAND_ERROR: Mutex<Option<String>> = Mutex::new(None);
 
 /// Remember `.malvin/logs/<stamp>/` for [`append_command_error_to_run_log`].
 pub fn set_command_error_run_dir(path: Option<PathBuf>) {
@@ -29,6 +30,26 @@ pub fn command_error_run_dir() -> Option<PathBuf> {
 /// Clears the directory installed by [`set_command_error_run_dir`].
 pub fn clear_command_error_run_dir() {
     set_command_error_run_dir(None);
+    *LAST_EMITTED_COMMAND_ERROR
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
+}
+
+/// True when [`note_command_error_emitted`] already recorded this exact message.
+#[must_use]
+pub fn command_error_already_emitted(message: &str) -> bool {
+    LAST_EMITTED_COMMAND_ERROR
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .as_deref()
+        == Some(message)
+}
+
+/// Record that a fatal command error was already shown (stderr + optional run log).
+pub fn note_command_error_emitted(message: &str) {
+    *LAST_EMITTED_COMMAND_ERROR
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(message.to_string());
 }
 
 /// Appends one timestamped malvin line to `malvin_error.log` under the bound run directory, when set.
@@ -85,5 +106,16 @@ mod tests {
             text.contains(&format_who_tag_delim(ERROR_WHO)),
             "expected error tag in log line: {text:?}"
         );
+    }
+
+    #[test]
+    fn command_error_emit_dedupes_identical_message() {
+        clear_command_error_run_dir();
+        assert!(!command_error_already_emitted("dup"));
+        note_command_error_emitted("dup");
+        assert!(command_error_already_emitted("dup"));
+        assert!(!command_error_already_emitted("other"));
+        clear_command_error_run_dir();
+        assert!(!command_error_already_emitted("dup"));
     }
 }

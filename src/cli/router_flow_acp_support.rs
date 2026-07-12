@@ -202,6 +202,10 @@ pub(crate) async fn abort_router_acp_session(
     ctx: &mut RouterAcpSessionCtx<'_>,
     err: String,
 ) -> Result<(), String> {
+    // Surface classify/work failures immediately (before session teardown / router_d).
+    crate::output::print_log_error(&err);
+    crate::cli::error_run_log::note_command_error_emitted(&err);
+    crate::cli::error_run_log::append_command_error_to_run_log(&err);
     agent_backend_set_run_timing(ctx.client, None);
     end_router_acp_session(ctx, Err(err)).await
 }
