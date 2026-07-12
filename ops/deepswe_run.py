@@ -4948,7 +4948,7 @@ def _test_solve_path_accepts_hello_command() -> None:
 
 def _test_local_grade_only_apply_solution() -> None:
     """Integration: grade-only apply-solution path (Harbor stubbed when fast-grade env set)."""
-    if skip_docker_selftests():
+    if skip_docker_selftests() or not docker_daemon_available():
         return
     tasks_root = default_deepswe_tasks_root()
     task = tasks_root / "bandit-interprocedural-taint-checks"

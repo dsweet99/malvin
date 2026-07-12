@@ -60,6 +60,7 @@ fn prepend_standard_path_for_child_merges_nonempty_path() {
         let merged = path.to_string_lossy();
         assert!(merged.contains("/custom/bin"));
         assert!(merged.contains("/usr/bin"));
+        assert!(merged.contains("/opt/homebrew/bin"));
     });
 }
 
@@ -70,7 +71,7 @@ fn prepend_standard_path_for_child_uses_prefix_when_path_missing() {
         prepend_standard_path_for_child(&mut cmd);
         assert_eq!(
             cmd_env(&cmd, "PATH").expect("PATH"),
-            "/usr/bin:/bin:/usr/local/bin"
+            "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin"
         );
     });
 }

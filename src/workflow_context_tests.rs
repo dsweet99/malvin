@@ -170,6 +170,7 @@ fn resolve_user_brief_path_uses_context_override() {
     std::fs::write(&plan, "p").expect("write");
     let artifacts = crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
     let override_path = tmp.path().join("user_request.md");
+    std::fs::write(&override_path, "u").expect("write");
     let mut ctx = HashMap::new();
     insert_formatted(
         &mut ctx,
@@ -178,7 +179,7 @@ fn resolve_user_brief_path_uses_context_override() {
         tmp.path(),
     );
     let resolved = resolve_user_brief_path(&artifacts, &WorkflowRenderContext::from(ctx));
-    assert_eq!(resolved, override_path.canonicalize().unwrap_or_else(|_| override_path));
+    assert_eq!(resolved, override_path.canonicalize().expect("canonicalize"));
 }
 
 #[test]

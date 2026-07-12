@@ -44,11 +44,13 @@ pub fn write_failing_gate_tools(bin_dir: &Path, trace: &Path) {
 
 #[cfg(unix)]
 fn write_failing_command_env_trace(path: &Path, tool_name: &str) {
+    // Keep shell `${VAR:-}` out of the `format!` template so clippy does not treat it as a Rust format arg.
+    const TRACE_ASSIGN: &str = r#"trace="${MALVIN_TEST_GATE_TRACE:-}""#;
     std::fs::write(
         path,
         format!(
             "#!/usr/bin/env sh\n\
-trace=\"${{MALVIN_TEST_GATE_TRACE:-}}\"\n\
+{TRACE_ASSIGN}\n\
 if [ -n \"$trace\" ]; then echo \"{tool_name} $@\" >> \"$trace\"; fi\n\
 exit 1\n"
         ),

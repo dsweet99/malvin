@@ -21,8 +21,9 @@ const PARENT_ENV_KEYS: &[&str] = &[
 ];
 
 /// Prepend common locations so `#!/usr/bin/env node` mock agents resolve when `PATH` is minimal.
+/// Includes Homebrew on Apple Silicon (`/opt/homebrew/bin`) and Intel (`/usr/local/bin`).
 pub(crate) fn prepend_standard_path_for_child(cmd: &mut Command) {
-    const PREFIX: &str = "/usr/bin:/bin:/usr/local/bin";
+    const PREFIX: &str = "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin";
     let merged = match std::env::var_os("PATH") {
         Some(p) if !p.is_empty() => {
             let mut o = OsString::from(PREFIX);

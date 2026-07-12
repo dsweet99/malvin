@@ -3823,6 +3823,10 @@ def _test_cleanup_agent_process_tree_kills_local_orphan_tree() -> None:
     import subprocess
     import time
 
+    # Requires Linux /proc for liveness and util-linux ``setsid`` for the orphan tree.
+    if sys.platform != "linux" or shutil.which("setsid") is None or not Path("/proc").is_dir():
+        return
+
     def _alive(pid: int) -> bool:
         """True only for a live (non-zombie) process."""
         try:

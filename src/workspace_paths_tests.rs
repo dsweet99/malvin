@@ -36,6 +36,9 @@ fn malvin_data_root_uses_git_toplevel_when_inside_repo() {
         .unwrap()
         .success());
     let sub = repo.join("src");
+    // git rev-parse --show-toplevel returns a canonical path; on macOS that is
+    // /private/var/... while tempfile paths often stay under /var/... .
+    let repo = repo.canonicalize().expect("canonicalize");
     assert_eq!(malvin_data_root(&sub), repo);
     assert_eq!(malvin_checks_path(&sub), repo.join(".malvin").join("checks"));
     assert_eq!(
