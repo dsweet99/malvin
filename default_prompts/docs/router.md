@@ -71,7 +71,7 @@ When the agent’s `router_c` reply contains a line exactly equal to `CONTINUE_R
 | `logs_dir` | `header.md` | `malvin_logs_root(work_dir)` |
 | `current_state` | `header.md` | `format_current_state(...)` |
 | `user_request_path` | `router_a_1.md` | `format_prompt_path(plan_path, work_dir)` |
-| `malvin_command` | metadata | literal `"router"` |
+| `malvin_command` | metadata | `malvin --model=<active_model>` (e.g. `malvin --model=cursor:auto`) |
 
 No implement, review, concerns, learn, or summary phases.
 

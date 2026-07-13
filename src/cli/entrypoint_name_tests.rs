@@ -65,7 +65,7 @@ max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
 
 #[test]
 fn models_command_rejects_session_name() {
-    assert!(!command_accepts_session_name(&Commands::Models(ModelsArgs {})));
+    assert!(!command_accepts_session_name(&Commands::Models(ModelsArgs::default())));
 }
 
 #[test]

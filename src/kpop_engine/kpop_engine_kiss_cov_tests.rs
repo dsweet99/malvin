@@ -86,6 +86,7 @@ fn kiss_cov_kpop_engine_loop_params_types() {
         mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
+        no_download: false,
     };
     let workflow = WorkflowCliOptions { force: false };
     let loop_params = KPopEngineParams {

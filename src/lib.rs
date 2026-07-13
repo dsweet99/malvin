@@ -142,6 +142,7 @@ pub use test_poll::{
     test_post_teardown_poll_interval, test_post_teardown_wait_budget, test_wait_until_async,
 };
 pub mod config;
+pub mod local_llm;
 pub mod model_id;
 mod kpop_test_stubs;
 mod kpop_turn_prompts;
@@ -164,7 +165,7 @@ pub mod orchestrator;
 pub use orchestrator::{
     Orchestrator, WorkflowConfig, WorkflowError, check_abort, fail_on_abort_for_artifacts,
 };
-pub use workflow_context::{format_prompt_path, workflow_context_paths_only};
+pub use workflow_context::{format_malvin_command, format_prompt_path, workflow_context_paths_only};
 #[cfg(test)]
 pub use workflow_context::workflow_context;
 pub mod observability;

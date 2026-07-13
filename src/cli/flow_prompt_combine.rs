@@ -6,7 +6,7 @@ pub(crate) struct DualHeaderPromptInput<'a> {
     pub store: &'a PromptStore,
     pub artifacts: &'a RunArtifacts,
     pub text: &'a str,
-    pub command: &'a str,
+    pub model: &'a str,
     pub mode_template: &'a str,
 }
 
@@ -33,10 +33,10 @@ pub(crate) fn combine_acp_prompt_header_and_user(
     store: &PromptStore,
     artifacts: &RunArtifacts,
     text: &str,
-    command: &str,
+    model: &str,
 ) -> Result<(String, String, String), String> {
     use crate::orchestrator::workflow_context_paths_only;
-    let context = workflow_context_paths_only(artifacts, command);
+    let context = workflow_context_paths_only(artifacts, model);
     let header = render_header(store, context.as_map()).map_err(|e: PromptError| e.0)?;
     let user = text.trim_end().to_string();
     let combined = join_labeled_strata([
@@ -50,7 +50,7 @@ pub(crate) fn combine_mode_header_and_user(
     input: DualHeaderPromptInput<'_>,
 ) -> Result<(String, String, String), String> {
     use crate::orchestrator::workflow_context_paths_only;
-    let context = workflow_context_paths_only(input.artifacts, input.command);
+    let context = workflow_context_paths_only(input.artifacts, input.model);
     combine_prompt_file_and_user(
         input.store,
         input.text,
@@ -68,7 +68,7 @@ pub(crate) fn build_dual_header_coder_run_with_store(
     input: DualHeaderPromptInput<'_>,
 ) -> Result<DualHeaderCoderRun, String> {
     let (_, coding_header, _) =
-        combine_acp_prompt_header_and_user(input.store, input.artifacts, "", input.command)?;
+        combine_acp_prompt_header_and_user(input.store, input.artifacts, "", input.model)?;
     let (_, mode_header, user) = combine_mode_header_and_user(input)?;
     let combined = join_labeled_strata([
         (PromptStratum::WorkflowHeader, &coding_header),

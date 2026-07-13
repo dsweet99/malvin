@@ -1,4 +1,4 @@
-//! Malvin-side mini agent client (`OpenRouter` + bash loop).
+//! Malvin-side mini agent client (`OpenRouter` / `local:` + bash loop).
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -13,6 +13,8 @@ use super::model_resolve::resolve_mini_model;
 use super::retry_fork::MiniRetryStrategy;
 use super::trace::MiniTraceSink;
 use crate::acp::{AgentError, AgentIoOptions, AuthError, CoderPromptOptions};
+use crate::local_llm::{ensure_local_sidecar, local_openrouter_config, LocalSidecarHandle};
+use crate::model_id::uses_local_backend;
 use crate::prompts::default_file;
 
 pub struct MiniLoopConfig {
@@ -25,6 +27,7 @@ pub struct MiniLoopConfig {
     pub max_shrink_passes: u32,
     pub retry_strategy: MiniRetryStrategy,
     pub expects_investigation: bool,
+    pub allow_download: bool,
 }
 
 pub struct MiniAgentClient {
@@ -37,25 +40,38 @@ pub struct MiniAgentClient {
     pub(crate) timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
     pub(crate) trace: MiniTraceSink,
     prompt_counter: u32,
+    /// Kept alive so Drop tears down the MLX sidecar with the client.
+    local_sidecar: Option<LocalSidecarHandle>,
 }
 
 impl MiniAgentClient {
     pub fn new(config: MiniLoopConfig, io: AgentIoOptions) -> Result<Self, String> {
         ensure_bash_on_path()?;
-        let openrouter_config =
-            malvin_mini::OpenRouterConfig::from_env(resolve_mini_model(&config.model))?;
-        let client = OpenRouterClient::new(openrouter_config)
-            .map_err(|e| format!("OpenRouter client init failed: {e}"))?;
+        let (llm, local_sidecar) = if uses_local_backend(&config.model) {
+            let sidecar = ensure_local_sidecar(&config.model, config.allow_download)?;
+            let openrouter_config =
+                local_openrouter_config(sidecar.model_slug(), sidecar.base_url());
+            let client = OpenRouterClient::new(openrouter_config)
+                .map_err(|e| format!("local sidecar client init failed: {e}"))?;
+            (LlmBackend::Http(client), Some(sidecar))
+        } else {
+            let openrouter_config =
+                malvin_mini::OpenRouterConfig::from_env(resolve_mini_model(&config.model))?;
+            let client = OpenRouterClient::new(openrouter_config)
+                .map_err(|e| format!("OpenRouter client init failed: {e}"))?;
+            (LlmBackend::Http(client), None)
+        };
         Ok(Self {
             config,
             io,
             prompts_log_run_dir: None,
-            llm: LlmBackend::Http(client),
+            llm,
             session: None,
             last_response: None,
             timing: None,
             trace: MiniTraceSink::new(None, io),
             prompt_counter: 0,
+            local_sidecar,
         })
     }
 
@@ -71,13 +87,17 @@ impl MiniAgentClient {
             timing: None,
             trace: MiniTraceSink::new(None, io),
             prompt_counter: 0,
+            local_sidecar: None,
         }
     }
 
     /// # Errors
     ///
-    /// Returns [`AuthError`] when `OPENROUTER_API_KEY` is missing.
+    /// Returns [`AuthError`] when `OPENROUTER_API_KEY` is missing for `openrouter:` models.
     pub fn ensure_authenticated(&self) -> Result<(), AuthError> {
+        if uses_local_backend(&self.config.model) {
+            return Ok(());
+        }
         if std::env::var("OPENROUTER_API_KEY").is_ok() {
             return Ok(());
         }
@@ -89,6 +109,11 @@ impl MiniAgentClient {
     #[must_use]
     pub const fn has_open_coder_session(&self) -> bool {
         self.session.is_some()
+    }
+
+    #[must_use]
+    pub const fn has_local_sidecar(&self) -> bool {
+        self.local_sidecar.is_some()
     }
 
     #[must_use]
@@ -176,42 +201,5 @@ impl MiniAgentClient {
 }
 
 #[cfg(test)]
-mod client_tests {
-    use super::*;
-    use crate::agent_backend::mini::{LlmBackend, MockScript, MockStep};
-
-    #[test]
-    fn mini_new_mock_skips_openrouter_init() {
-        let client = MiniAgentClient::new_mock(
-            MiniLoopConfig {
-                model: "m".into(),
-                max_http_turns: 4,
-                max_bash_execs: 128,
-                max_http_retries: 1,
-                max_transport_retries: 3,
-                max_gate_retries: 1,
-                max_shrink_passes: 0,
-                retry_strategy: MiniRetryStrategy::CumulativeTranscript,
-                expects_investigation: false,
-            },
-            AgentIoOptions {
-                force: false,
-                no_tee: true,
-                raw_output: true,
-                show_thoughts_on_stdout: false,
-                emit_stdout_markdown: false,
-                log_full_outgoing_prompts: false,
-            },
-            LlmBackend::Mock(std::sync::Mutex::new(MockScript {
-                responses: vec![MockStep::Ok(malvin_mini::CompletionResponse {
-                    content: "ok".into(),
-                    usage: None,
-                    reasoning: None,
-                })],
-                call_count: 0,
-                on_response: None,
-            })),
-        );
-        assert!(!client.has_open_coder_session());
-    }
-}
+#[path = "client_tests.rs"]
+mod client_tests;

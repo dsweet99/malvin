@@ -82,6 +82,7 @@ mod review_plan_embed_tests {
 mod advice_path_embed_tests {
     use std::path::Path;
 
+    use crate::config::DEFAULT_CLI_MODEL;
     use crate::artifacts::create_run_artifacts;
     use crate::orchestrator::workflow_context_paths_only;
     use crate::prompts::{PromptStore, render_header};
@@ -101,7 +102,7 @@ mod advice_path_embed_tests {
             create_run_artifacts(Path::new(&plan_path), Some(tmp.path())).expect("artifacts");
         let store = PromptStore::default_store();
         store.ensure_defaults().expect("defaults");
-        let ctx = workflow_context_paths_only(&artifacts, "code");
+        let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL);
         let header = render_header(&store, ctx.as_map()).expect("header");
         assert!(!header.contains("{{"), "header must expand all placeholders");
         assert!(
@@ -123,12 +124,13 @@ mod router_header_embed_tests {
         default_file, DO_HEADER_MD, HEADER_MD, ROUTER_A_1_MD, ROUTER_A_2_MD, ROUTER_B_COMPLEX_MD,
         ROUTER_B_SIMPLE_MD, ROUTER_C_MD,
     };
+    use crate::config::DEFAULT_CLI_MODEL;
     use crate::artifacts::create_run_artifacts;
     use crate::orchestrator::workflow_context_paths_only;
     use crate::prompts::{PromptStore, render_header};
     use crate::router_flow::router_flow_prompt::{
         build_router_a_2_prompt, build_router_b_prompt, build_router_c_prompt,
-        build_router_coder_run, prepare_router_prompt_store,
+        build_router_coder_run, prepare_router_prompt_store, RouterBPromptInput,
     };
 
     #[test]
@@ -146,10 +148,10 @@ mod router_header_embed_tests {
             create_run_artifacts(Path::new(&plan_path), Some(tmp.path())).expect("artifacts");
         let store = PromptStore::default_store();
         store.ensure_defaults().expect("defaults");
-        let ctx = workflow_context_paths_only(&artifacts, "router");
+        let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL);
         let header = render_header(&store, ctx.as_map()).expect("header");
         assert!(!header.contains("{{"), "header must expand all placeholders");
-        let paths_ctx = workflow_context_paths_only(&artifacts, "router");
+        let paths_ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL);
         let router_a_1 = store
             .render_prompt_only(ROUTER_A_1_MD, paths_ctx.as_map())
             .expect("router_a_1");
@@ -157,22 +159,33 @@ mod router_header_embed_tests {
             !router_a_1.contains("{{"),
             "router_a_1.md must expand user_request_path"
         );
-        let run = build_router_coder_run(&artifacts, "user body").expect("run");
+        let run = build_router_coder_run(&artifacts, "user body", DEFAULT_CLI_MODEL).expect("run");
         assert!(!run.combined.contains("{{"));
         let store = prepare_router_prompt_store().expect("store");
-        let router_a_2 = build_router_a_2_prompt(&store, &artifacts).expect("router_a_2");
+        let router_a_2 = build_router_a_2_prompt(&store, &artifacts, DEFAULT_CLI_MODEL).expect("router_a_2");
         assert!(!router_a_2.contains("{{"));
         assert!(router_a_2.contains("CODING_TASK"));
-        let router_b = build_router_b_prompt(&store, &artifacts, ROUTER_B_SIMPLE_MD, false).expect("router_b");
+        let router_b = build_router_b_prompt(RouterBPromptInput {
+            store: &store,
+            artifacts: &artifacts,
+            template: ROUTER_B_SIMPLE_MD,
+            coding_task: false,
+            model: DEFAULT_CLI_MODEL,
+        }).expect("router_b");
         assert!(!router_b.contains("{{"));
-        let router_c = build_router_c_prompt(&store, &artifacts).expect("router_c");
+        let router_c = build_router_c_prompt(&store, &artifacts, DEFAULT_CLI_MODEL).expect("router_c");
         assert!(!router_c.contains("{{"));
         assert!(
             router_c.contains("still_not_done.md"),
             "router_c must expand still_not_done_path; got:\n{router_c}"
         );
-        let router_b_complex =
-            build_router_b_prompt(&store, &artifacts, ROUTER_B_COMPLEX_MD, true).expect("router_b_complex");
+        let router_b_complex = build_router_b_prompt(RouterBPromptInput {
+            store: &store,
+            artifacts: &artifacts,
+            template: ROUTER_B_COMPLEX_MD,
+            coding_task: true,
+            model: DEFAULT_CLI_MODEL,
+        }).expect("router_b_complex");
         assert!(!router_b_complex.contains("{{"));
         assert!(
             router_b_complex.contains("still_not_done.md"),

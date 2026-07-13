@@ -57,7 +57,7 @@ fn kpop_workflow_context_exp_log_is_under_home_malvin_logs() {
     let art = create_kpop_run_artifacts("kpop body", Some(tmp.path())).unwrap();
     let exp_path = art.exp_log_path();
     assert!(exp_path.is_file());
-    let ctx = crate::workflow_context::workflow_context_paths_only(&art, "kpop");
+    let ctx = crate::workflow_context::workflow_context_paths_only(&art, crate::config::DEFAULT_CLI_MODEL);
     let exp_log = ctx.get("exp_log").unwrap_or_else(|| panic!("missing exp_log: {ctx:?}"));
     let kpop_log_dir = ctx.get("kpop_log_dir").unwrap();
     let home_logs = crate::malvin_home_logs_root();
@@ -91,7 +91,7 @@ fn kpop_exp_log_path_from_repo_root_work_dir() {
     .unwrap();
     let exp_path = art.exp_log_path();
     assert!(exp_path.is_file());
-    let ctx = crate::workflow_context::workflow_context_paths_only(&art, "kpop");
+    let ctx = crate::workflow_context::workflow_context_paths_only(&art, crate::config::DEFAULT_CLI_MODEL);
     let exp_log = ctx.get("exp_log").cloned().unwrap_or_default();
     let kpop_log_dir = ctx.get("kpop_log_dir").cloned().unwrap_or_default();
     assert!(

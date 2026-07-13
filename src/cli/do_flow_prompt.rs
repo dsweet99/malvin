@@ -36,20 +36,22 @@ pub fn combine_do_acp_prompt_header_and_user(
     store: &PromptStore,
     artifacts: &RunArtifacts,
     text: &str,
+    model: &str,
 ) -> Result<(String, String, String), String> {
-    combine_acp_prompt_header_and_user(store, artifacts, text, "do")
+    combine_acp_prompt_header_and_user(store, artifacts, text, model)
 }
 
 pub fn combine_do_raw_header_and_user(
     store: &PromptStore,
     artifacts: &RunArtifacts,
     text: &str,
+    model: &str,
 ) -> Result<(String, String, String), String> {
     combine_mode_header_and_user(DualHeaderPromptInput {
         store,
         artifacts,
         text,
-        command: "do",
+        model,
         mode_template: DO_HEADER_MD,
     })
 }
@@ -58,12 +60,13 @@ pub(crate) fn build_do_coder_run_with_store(
     store: &PromptStore,
     artifacts: &RunArtifacts,
     text: &str,
+    model: &str,
 ) -> Result<DoCoderRun, String> {
     let run = build_dual_header_coder_run_with_store(DualHeaderPromptInput {
         store,
         artifacts,
         text,
-        command: "do",
+        model,
         mode_template: DO_HEADER_MD,
     })?;
     Ok(DoCoderRun {
@@ -72,9 +75,13 @@ pub(crate) fn build_do_coder_run_with_store(
     })
 }
 
-pub(crate) fn build_do_coder_run(artifacts: &RunArtifacts, text: &str) -> Result<DoCoderRun, String> {
+pub(crate) fn build_do_coder_run(
+    artifacts: &RunArtifacts,
+    text: &str,
+    model: &str,
+) -> Result<DoCoderRun, String> {
     let store = prepare_do_prompt_store()?;
-    build_do_coder_run_with_store(&store, artifacts, text)
+    build_do_coder_run_with_store(&store, artifacts, text, model)
 }
 
 #[cfg(test)]

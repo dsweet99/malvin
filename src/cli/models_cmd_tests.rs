@@ -88,7 +88,7 @@ fn run_models_reads_fake_agent_models_output() {
     perms.set_mode(0o755);
     std::fs::set_permissions(&agent, perms).expect("chmod fake agent");
     let _guard = set_fake_command_dir(tmp.path());
-    run_models(ModelsArgs {}, crate::config::DEFAULT_CLI_MODEL).expect("fake agent models");
+    run_models(ModelsArgs::default(), crate::config::DEFAULT_CLI_MODEL).expect("fake agent models");
     let path = resolve_models_cli().expect("fake agent on fake PATH");
     assert_eq!(path, agent);
 }

@@ -60,7 +60,7 @@ pub async fn run_delight(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
-    let prepared = prepare_delight_kpop_run(&delight.out_path, delight.guidance.as_ref(), workflow)?;
+    let prepared = prepare_delight_kpop_run(&delight.out_path, delight.guidance.as_ref(), workflow, &shared.model)?;
     delight.out_path =
         crate::cli::default_output_path::path_relative_to_cwd(&prepared.resolved_out_path)?;
     error_run_log::set_command_error_run_dir(Some(prepared.inner.artifacts.run_dir.clone()));
@@ -90,7 +90,7 @@ pub async fn run_delight(
             workflow,
             store: prepared.inner.store(),
             artifacts: prepared.inner.artifacts(),
-            malvin_command: "malvin delight",
+            model: &shared.model,
         },
     )
     .await;

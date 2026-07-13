@@ -98,15 +98,21 @@ fn insert_current_state(
     );
 }
 
+/// CLI prefix for prompt templates (`{{ malvin_command }} inspire`, etc.).
+#[must_use]
+pub fn format_malvin_command(model: &str) -> String {
+    format!("malvin --model={model}")
+}
+
 #[must_use]
 pub fn workflow_context_paths_only(
     artifacts: &RunArtifacts,
-    malvin_command: &str,
+    model: &str,
 ) -> WorkflowRenderContext {
     let mut context = HashMap::new();
     insert_artifact_paths(&mut context, artifacts);
     insert_current_state(&mut context, artifacts, &artifacts.work_dir);
-    context.insert("malvin_command".to_string(), malvin_command.to_string());
+    context.insert("malvin_command".to_string(), format_malvin_command(model));
     WorkflowRenderContext::new(context)
 }
 
@@ -119,9 +125,9 @@ pub fn workflow_context_paths_only(
 pub fn workflow_context(
     artifacts: &RunArtifacts,
     prompts: &PromptStore,
-    malvin_command: &str,
+    model: &str,
 ) -> Result<WorkflowRenderContext, PromptError> {
-    let mut context = workflow_context_paths_only(artifacts, malvin_command);
+    let mut context = workflow_context_paths_only(artifacts, model);
     context.insert(
         "quality_gates".to_string(),
         crate::repo_gates::prompt_quality_gates_markdown_ephemeral(&artifacts.work_dir)

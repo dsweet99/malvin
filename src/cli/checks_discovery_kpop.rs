@@ -56,7 +56,7 @@ pub(super) async fn run_checks_discovery_kpop(
     let request_text = checks_discovery_kpop_request(&store, artifacts)?;
     std::fs::write(&artifacts.plan_path, &request_text).map_err(|e| e.to_string())?;
     let malvin_checks_backup = backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
-    let context = kpop_workflow_context_without_gates(artifacts, kpop_command)?;
+    let context = kpop_workflow_context_without_gates(artifacts, &shared.model)?;
     let prepared = KPopEnginePrepared {
         artifacts: artifacts.clone(),
         context,

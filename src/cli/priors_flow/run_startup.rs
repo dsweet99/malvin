@@ -13,11 +13,12 @@ pub fn prepare_priors_kpop_run(
     request: &str,
     out_path: &str,
     workflow: crate::cli::WorkflowCliOptions,
+    model: &str,
 ) -> Result<PriorsKpopPrepared, String> {
     let preflight = priors_preflight(request, out_path)?;
     let store = prepare_priors_kpop_prompt_store(workflow)?;
     let (inner, resolved_out_path) =
-        materialize_priors_kpop_prepared(preflight, store, request.to_string())?;
+        materialize_priors_kpop_prepared(preflight, store, request.to_string(), model)?;
     Ok(PriorsKpopPrepared {
         inner,
         resolved_out_path,
@@ -63,6 +64,7 @@ mod tests {
                 "ground this request",
                 "priors.md",
                 crate::cli::WorkflowCliOptions { force: true },
+                crate::config::DEFAULT_CLI_MODEL,
             )
             .expect("prepare without checks");
             assert!(!prepared.inner.context.contains_key("quality_gates"));
@@ -89,6 +91,7 @@ mod tests {
                 "request text",
                 "priors.md",
                 crate::cli::WorkflowCliOptions { force: true },
+                crate::config::DEFAULT_CLI_MODEL,
             )
             .expect("default collision must allocate sibling");
             assert!(

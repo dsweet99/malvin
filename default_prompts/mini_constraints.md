@@ -1,4 +1,4 @@
-## Mini agent constraints (`openrouter:` backend)
+## Mini agent constraints (`openrouter:` / `local:` backend)
 
 - Put every shell action in a ` ```bash ` fenced block. Do not claim you ran a command in prose without a fence.
 - Do not insert informational-only "echo" commands into bash blocks. Use echo if it's needed but not simply to describe what you're doing.

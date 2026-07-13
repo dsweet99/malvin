@@ -56,6 +56,12 @@ fn build_agent_backend_selects_mini_for_openrouter_model() {
 }
 
 #[test]
+fn uses_mini_backend_for_local_prefix() {
+    assert!(crate::model_id::uses_mini_backend("local:qwen35_9b_q4"));
+    assert!(crate::model_id::uses_local_backend("local:nemotron_cascade2"));
+}
+
+#[test]
 fn agent_backend_ensure_authenticated_mini_succeeds_with_test_key() {
     install_openrouter_test_key();
     let backend = AgentBackend::Mini(mock_mini_client());

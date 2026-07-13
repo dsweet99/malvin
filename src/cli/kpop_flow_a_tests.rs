@@ -38,7 +38,7 @@ fn finish_kpop_prepared_succeeds_without_checks_in_non_git_workspace() {
             requests: vec!["no gates needed".into()],
         };
         let early = prepare_kpop_artifacts(&kpop).expect("early artifacts");
-        let prepared = finish_kpop_prepared(early).expect("prepared");
+        let prepared = finish_kpop_prepared(early, crate::config::DEFAULT_CLI_MODEL).expect("prepared");
         assert!(!prepared.context.contains_key("quality_gates"));
     });
 }
@@ -67,7 +67,7 @@ fn prepare_and_finish_kpop_artifacts_skips_nested_gitignore_in_non_git_workspace
             early.artifacts.work_dir.canonicalize().expect("work_dir"),
             work.canonicalize().expect("work")
         );
-        let prepared = finish_kpop_prepared(early).expect("prepared");
+        let prepared = finish_kpop_prepared(early, crate::config::DEFAULT_CLI_MODEL).expect("prepared");
         assert!(
             prepared
                 .context

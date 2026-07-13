@@ -86,6 +86,7 @@ fn smoke_agent_io_options_maps_flags() {
         mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
+        no_download: false,
     };
     let io = agent_io_options(
         &shared,
@@ -124,6 +125,7 @@ fn smoke_new_agent_client_maps_max_acp_retries() {
         mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
+        no_download: false,
     };
     let client = new_agent_client(
         &shared,

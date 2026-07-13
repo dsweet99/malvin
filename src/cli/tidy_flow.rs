@@ -71,7 +71,10 @@ mod tests {
         crate::seed_malvin_checks(tmp.path(), "true\n");
         let old = crate::test_utils::save_cwd();
         std::env::set_current_dir(tmp.path()).expect("chdir");
-        let prepared = prepare_tidy_kpop_run(crate::cli::WorkflowCliOptions { force: false })
+        let prepared = prepare_tidy_kpop_run(
+            crate::cli::WorkflowCliOptions { force: false },
+            crate::config::DEFAULT_CLI_MODEL,
+        )
         .expect("prepared");
         crate::cli::run_emit::emit_run_startup_sequence(
             &prepared.artifacts,
@@ -106,7 +109,10 @@ mod tests {
         let (_bin, _guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "kiss", 1);
         let old = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(tmp.path()).expect("chdir");
-        let prepared = prepare_tidy_kpop_run(crate::cli::WorkflowCliOptions { force: false })
+        let prepared = prepare_tidy_kpop_run(
+            crate::cli::WorkflowCliOptions { force: false },
+            crate::config::DEFAULT_CLI_MODEL,
+        )
         .expect("prepared");
         let backups =
             crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snapshot");

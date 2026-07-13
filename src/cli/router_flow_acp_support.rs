@@ -147,7 +147,7 @@ async fn run_router_classify_turns(
         .ok_or_else(|| "router_a_1: missing agent response".to_string())?;
     let complexity_score =
         crate::router_flow::router_flow_parse::parse_complexity_score(&a1_text)?;
-    let a2_body = router_flow_prompt::build_router_a_2_prompt(ctx.prompt_store, ctx.artifacts)?;
+    let a2_body = router_flow_prompt::build_router_a_2_prompt(ctx.prompt_store, ctx.artifacts, &ctx.shared.model)?;
     run_router_a_2_coder_prompt(ctx.client, &a2_body, ctx.log_path).await?;
     let a2_text = ctx
         .client
@@ -163,15 +163,16 @@ async fn run_router_work_turns(
     coding_task: bool,
 ) -> Result<(), String> {
     let (b_md, router_b_label) = router_b_template_and_label(complexity_score);
-    let b_body = router_flow_prompt::build_router_b_prompt(
-        ctx.prompt_store,
-        ctx.artifacts,
-        b_md,
+    let b_body = router_flow_prompt::build_router_b_prompt(router_flow_prompt::RouterBPromptInput {
+        store: ctx.prompt_store,
+        artifacts: ctx.artifacts,
+        template: b_md,
         coding_task,
-    )?;
+        model: &ctx.shared.model,
+    })?;
     run_router_b_coder_prompt(ctx.client, &b_body, ctx.log_path, router_b_label).await?;
     let router_c_prompt =
-        router_flow_prompt::build_router_c_prompt(ctx.prompt_store, ctx.artifacts)?;
+        router_flow_prompt::build_router_c_prompt(ctx.prompt_store, ctx.artifacts, &ctx.shared.model)?;
     run_router_c_coder_prompt(ctx.client, &router_c_prompt, ctx.log_path).await?;
     Ok(())
 }

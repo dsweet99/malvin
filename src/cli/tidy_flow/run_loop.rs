@@ -19,7 +19,7 @@ pub async fn run_tidy(
         crate::cli::checks_discovery_flow::ChecksDiscoveryOpts::TIDY_LAZY,
     )
     .await?;
-    let prepared = prepare_tidy_kpop_run(workflow)?;
+    let prepared = prepare_tidy_kpop_run(workflow, &shared.model)?;
     error_run_log::set_command_error_run_dir(Some(prepared.artifacts.run_dir.clone()));
 
     emit_run_startup_sequence(
@@ -47,7 +47,7 @@ pub async fn run_tidy(
             workflow,
             store: prepared.store(),
             artifacts: prepared.artifacts(),
-            malvin_command: "malvin tidy",
+            model: &shared.model,
         },
     )
     .await;

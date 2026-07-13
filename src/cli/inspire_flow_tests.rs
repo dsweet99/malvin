@@ -81,6 +81,7 @@ mod inspire_tests {
         mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
+        no_download: false,
         };
         let client = crate::cli::build_agent(
             &shared,
@@ -119,6 +120,7 @@ mod inspire_tests {
         mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
+        no_download: false,
         };
         crate::cli::run_emit::emit_run_startup_sequence(
             &artifacts,

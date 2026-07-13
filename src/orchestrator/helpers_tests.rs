@@ -113,14 +113,17 @@ fn insert_artifact_paths_populates_context() {
         plan_path,
         work_dir: tmp.path().to_path_buf(),
     };
-    let ctx = workflow_context_paths_only(&artifacts, "code");
+    let ctx = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL);
     assert!(ctx.contains_key("plan_path"));
     assert!(ctx.contains_key("kpop_log_dir"));
     assert!(ctx.contains_key("review_path"));
     assert!(ctx.contains_key("result_path"));
     assert!(ctx.contains_key("still_not_done_path"));
     assert!(ctx.contains_key("quality_gates_log"));
-    assert_eq!(ctx.get("malvin_command").map(String::as_str), Some("code"));
+    assert_eq!(
+        ctx.get("malvin_command").map(String::as_str),
+        Some(crate::format_malvin_command(crate::config::DEFAULT_CLI_MODEL).as_str()),
+    );
     assert!(
         ctx.get("still_not_done_path")
             .expect("still_not_done_path")

@@ -1,7 +1,7 @@
 //! External kiss witnesses for [`super`] (must be `*_tests.rs` for kiss).
 
-fn kiss_witness_copy<T: Copy>(value: T) -> T {
-    value
+fn kiss_witness_clone<T: Clone>(value: &T) -> T {
+    value.clone()
 }
 
 #[test]
@@ -14,16 +14,16 @@ fn kiss_cov_models_args_clap_parse_and_destructure() {
     let cli = Cli::try_parse_from(["malvin", "models"]).expect("parse models");
     match cli.command {
         Some(Commands::Models(args)) => {
-            assert_eq!(models_args_marker(args), "models");
-            let _args = kiss_witness_copy(args);
+            assert_eq!(models_args_marker(&args), "models");
+            let _args = kiss_witness_clone(&args);
         }
         _ => panic!("expected Models subcommand"),
     }
     let reparse = Cli::try_parse_from(["malvin", "models"]).expect("reparse");
     if let Some(Commands::Models(second)) = reparse.command {
-        assert_eq!(models_args_marker(second), "models");
-        assert_eq!(format!("{second:?}"), "ModelsArgs");
-        let _second = kiss_witness_copy(second);
+        assert_eq!(models_args_marker(&second), "models");
+        assert!(format!("{second:?}").starts_with("ModelsArgs"));
+        let _second = kiss_witness_clone(&second);
     } else {
         panic!("second parse should yield Models");
     }
@@ -32,7 +32,7 @@ fn kiss_cov_models_args_clap_parse_and_destructure() {
     let matches = Cli::command().get_matches_from(["malvin", "models"]);
     let sub = matches.subcommand_matches("models").expect("models matches");
     let _parsed = ModelsArgs::from_arg_matches(sub).expect("models from_arg_matches");
-    let _copied = kiss_witness_copy(ModelsArgs {});
+    let _cloned = kiss_witness_clone(&ModelsArgs::default());
 }
 
 #[test]
@@ -40,8 +40,8 @@ fn kiss_cov_models_cmd_run_helpers() {
     use super::test_hooks::*;
     use super::ModelsArgs;
 
-    let args = ModelsArgs {};
-    assert_eq!(format!("{args:?}"), "ModelsArgs");
+    let args = ModelsArgs::default();
+    assert!(format!("{args:?}").starts_with("ModelsArgs"));
     let trimmed = trim_trailing_tip_lines("line\nTip: drop\n");
     assert_eq!(trimmed, "line");
     let (name, desc) = parse_model_line("gpt-4 — stable").expect("parse");
@@ -110,7 +110,7 @@ fn kiss_cov_run_models_surfaces_agent_failure() {
     perms.set_mode(0o755);
     std::fs::set_permissions(&agent, perms).expect("chmod");
     let _guard = set_fake_command_dir(tmp.path());
-    let err = run_models(ModelsArgs {}, crate::config::DEFAULT_CLI_MODEL).expect_err("failing agent");
+    let err = run_models(ModelsArgs::default(), crate::config::DEFAULT_CLI_MODEL).expect_err("failing agent");
     assert!(err.contains("models"));
 }
 
@@ -134,8 +134,8 @@ fn kiss_cov_run_models_fake_agent_branchy_executable() {
     perms.set_mode(0o755);
     std::fs::set_permissions(&agent, perms).expect("chmod");
     let _guard = set_fake_command_dir(tmp.path());
-    if run_models(ModelsArgs {}, crate::config::DEFAULT_CLI_MODEL).is_ok() {
-        let again = run_models(ModelsArgs {}, crate::config::DEFAULT_CLI_MODEL);
+    if run_models(ModelsArgs::default(), crate::config::DEFAULT_CLI_MODEL).is_ok() {
+        let again = run_models(ModelsArgs::default(), crate::config::DEFAULT_CLI_MODEL);
         assert!(again.is_ok() || again.is_err());
     } else {
         panic!("fake agent models should succeed");
@@ -173,7 +173,7 @@ fn kiss_cov_models_mini_branch_witness() {
     use super::test_hooks::EnvGuard;
     use super::{run_mini_models, ModelsArgs};
 
-    let args = ModelsArgs {};
+    let args = ModelsArgs::default();
     let _ = args;
     let _guard = EnvGuard::set("MALVIN_KISS_COV_MINI", None);
     let _ = run_mini_models;

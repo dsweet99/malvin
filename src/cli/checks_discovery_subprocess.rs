@@ -34,7 +34,7 @@ pub(super) fn append_subprocess_shared_opts(cmd: &mut Command, shared: &SharedOp
         cmd.arg("--verbose");
     }
     cmd.args(["--max-acp-retries", &shared.max_acp_retries.to_string()]);
-    if crate::model_id::uses_openrouter_backend(&shared.model) {
+    if crate::model_id::uses_mini_backend(&shared.model) {
         cmd.args([
             "--mini-max-http-turns",
             &shared.mini_max_http_turns.to_string(),

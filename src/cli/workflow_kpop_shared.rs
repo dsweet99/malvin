@@ -34,24 +34,24 @@ pub(crate) fn kpop_engine_loop_iterations(max_loops: usize) -> usize {
 }
 pub(crate) fn kpop_workflow_context(
     artifacts: &RunArtifacts,
-    workflow: &str,
+    model: &str,
 ) -> Result<WorkflowRenderContext, String> {
-    kpop_workflow_context_with_gates(artifacts, workflow, true)
+    kpop_workflow_context_with_gates(artifacts, model, true)
 }
 
 pub(crate) fn kpop_workflow_context_without_gates(
     artifacts: &RunArtifacts,
-    workflow: &str,
+    model: &str,
 ) -> Result<WorkflowRenderContext, String> {
-    kpop_workflow_context_with_gates(artifacts, workflow, false)
+    kpop_workflow_context_with_gates(artifacts, model, false)
 }
 
 fn kpop_workflow_context_with_gates(
     artifacts: &RunArtifacts,
-    workflow: &str,
+    model: &str,
     include_quality_gates: bool,
 ) -> Result<WorkflowRenderContext, String> {
-    let mut context = crate::orchestrator::workflow_context_paths_only(artifacts, workflow);
+    let mut context = crate::orchestrator::workflow_context_paths_only(artifacts, model);
     if include_quality_gates {
         context.insert(
             "quality_gates".to_string(),

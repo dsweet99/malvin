@@ -7,9 +7,9 @@
 
 ## Tools
 
-- Run `malvin inspire --help` to learn the idea generator.
-- Run `malvin kpop --help` to learn the empirical reasoner that hypothesizes and falsifies.
-- Run `malvin priors --help` to learn how to reduce uncertainty and ground decisions in good priors.
+- Run `{{ malvin_command }} inspire --help` to learn the idea generator.
+- Run `{{ malvin_command }} kpop --help` to learn the empirical reasoner that hypothesizes and falsifies.
+- Run `{{ malvin_command }} priors --help` to learn how to reduce uncertainty and ground decisions in good priors.
 
 ## Strategies
 
@@ -24,7 +24,7 @@
  See file `{{ still_not_done_path }}` (if it exists) for helpful pointers.
 - Ask questions when needed.
 - Do research to answer the questions.
-- Consult `malvin priors` to resolve ambiguity or reduce uncertainty.
+- Consult `{{ malvin_command }} priors` to resolve ambiguity or reduce uncertainty.
 {{ code_extra }}
 
 ## Goal: epistemic decoupling
@@ -34,18 +34,18 @@
 
 ## Process
 
-- For correctness, falsify frequently and vigorously; `malvin kpop` helps with this.
-- For performance, generate ideas with `malvin inspire`, falsify them, and use the best survivors.
-- For regularization, lean on `malvin priors` to reduce uncertainty effectively, and choose simplicity when possible.
+- For correctness, falsify frequently and vigorously; `{{ malvin_command }} kpop` helps with this.
+- For performance, generate ideas with `{{ malvin_command }} inspire`, falsify them, and use the best survivors.
+- For regularization, lean on `{{ malvin_command }} priors` to reduce uncertainty effectively, and choose simplicity when possible.
 
 ## Big requests
 
 - If a request seems too large to handle, write a plan file in `{{ malvin_output_path }}`.
-- You may hand off pieces of work to another malvin with `malvin PLAN_PATH`, but avoid infinite recursion and excessive memory use.
+- You may hand off pieces of work to another malvin with `{{ malvin_command }} PLAN_PATH`, but avoid infinite recursion and excessive memory use.
 
  # Done
 When you are done, describe any remaining work or uncertainty.
- - Call `malvin kpop` here. Instruct kpop to be rigorous and critical. Wait for its answer before you proceed.
+ - Call `{{ malvin_command }} kpop` here. Instruct kpop to be rigorous and critical. Wait for its answer before you proceed.
  - Summarize kpop's results here.
  
  

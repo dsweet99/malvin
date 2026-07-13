@@ -10,24 +10,26 @@ pub(crate) type CodeKpopPrepared = KPopEnginePrepared;
 
 fn code_kpop_workflow_context(
     artifacts: &crate::artifacts::RunArtifacts,
+    model: &str,
 ) -> Result<crate::prompt_stratification::WorkflowRenderContext, String> {
-    crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(artifacts, "code")
+    crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(artifacts, model)
 }
 
 pub(crate) fn prepare_code_kpop_run(
     workflow: crate::cli::WorkflowCliOptions,
     cli_request: &str,
+    model: &str,
 ) -> Result<CodeKpopPrepared, String> {
     let store = prepare_code_kpop_prompt_store(workflow)?;
     let (plan_text, work_dir) = resolve_user_md_request(cli_request)?;
     let artifacts =
         create_run_artifacts_from_text(&plan_text, Some(work_dir.as_path())).map_err(|e| e.to_string())?;
-    let request_text = code_kpop_request(&store, &artifacts)?;
+    let request_text = code_kpop_request(&store, &artifacts, model)?;
     let user_request_disk = crate::artifacts::user_request_path(&artifacts);
     std::fs::write(&user_request_disk, &request_text).map_err(|e| e.to_string())?;
     let malvin_checks_backup =
         backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
-    let mut context = code_kpop_workflow_context(&artifacts)?;
+    let mut context = code_kpop_workflow_context(&artifacts, model)?;
     context.insert(
         "user_request_path".to_string(),
         crate::workflow_context::format_prompt_path(&user_request_disk, &artifacts.work_dir),
@@ -72,6 +74,7 @@ mod tests {
                 
             },
             "plan.md",
+            crate::config::DEFAULT_CLI_MODEL,
         )
         .expect("prepared");
         std::env::set_current_dir(old).expect("restore cwd");

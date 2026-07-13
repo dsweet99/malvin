@@ -59,7 +59,7 @@ pub async fn run_code(
     if cli_request.is_empty() {
         return Err("malvin code: missing required REQUEST (text or path)".into());
     }
-    let prepared = prepare_code_kpop_run(workflow, cli_request)?;
+    let prepared = prepare_code_kpop_run(workflow, cli_request, &shared.model)?;
     error_run_log::set_command_error_run_dir(Some(prepared.artifacts.run_dir.clone()));
 
     emit_code_run_startup(shared, &prepared)?;
@@ -129,6 +129,7 @@ mod tests {
         let prepared = super::super::run_startup::prepare_code_kpop_run(
             WorkflowCliOptions { force: false },
             "ship it",
+            DEFAULT_CLI_MODEL,
         )
         .expect("prepared");
         let shared = SharedOpts {
@@ -148,6 +149,7 @@ mod tests {
         mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
+        no_download: false,
         };
         let workflow = WorkflowCliOptions { force: false };
         let params = crate::cli::kpop_summarize::code_outer_loop_summarize_params(
@@ -160,7 +162,7 @@ mod tests {
         );
         std::env::set_current_dir(old).expect("restore cwd");
         assert!(params.agent_ran);
-        assert_eq!(params.malvin_command, "malvin code");
+        assert_eq!(params.model, DEFAULT_CLI_MODEL);
         assert!(std::ptr::eq(params.store, &raw const *prepared.store()));
         assert!(std::ptr::eq(params.artifacts, &raw const *prepared.artifacts()));
     }

@@ -19,16 +19,23 @@ pub struct ExplainKpopPrepared {
 
 fn explain_kpop_workflow_context(
     artifacts: &crate::artifacts::RunArtifacts,
+    model: &str,
 ) -> Result<crate::prompt_stratification::WorkflowRenderContext, String> {
-    crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(artifacts, "explain")
+    crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(artifacts, model)
+}
+
+pub struct ExplainKpopPrepareOpts<'a> {
+    pub workflow: crate::cli::WorkflowCliOptions,
+    pub model: &'a str,
 }
 
 pub fn prepare_explain_kpop_run(
     request: Option<&String>,
     out_path: &str,
     out_path_explicit: bool,
-    workflow: crate::cli::WorkflowCliOptions,
+    opts: ExplainKpopPrepareOpts<'_>,
 ) -> Result<ExplainKpopPrepared, String> {
+    let ExplainKpopPrepareOpts { workflow, model } = opts;
     let request_arg = require_cli_request(request, "explain")?;
     let (request_text, request_work_dir, outputs, preflight_snapshot) =
         explain_preflight(&request_arg, out_path, out_path_explicit)?;
@@ -53,7 +60,7 @@ pub fn prepare_explain_kpop_run(
     std::fs::write(&artifacts.plan_path, &request_body).map_err(|e| e.to_string())?;
     let malvin_checks_backup =
         backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
-    let context = explain_kpop_workflow_context(&artifacts)?;
+    let context = explain_kpop_workflow_context(&artifacts, model)?;
     let inner = KPopEnginePrepared {
         artifacts,
         context,
@@ -77,6 +84,17 @@ mod tests {
     use super::*;
 
     #[test]
+    fn kiss_cov_explain_prepare_opts() {
+        let opts = ExplainKpopPrepareOpts {
+            workflow: crate::cli::WorkflowCliOptions { force: true },
+            model: crate::config::DEFAULT_CLI_MODEL,
+        };
+        let ExplainKpopPrepareOpts { workflow, model } = opts;
+        assert!(workflow.force);
+        assert_eq!(model, crate::config::DEFAULT_CLI_MODEL);
+    }
+
+    #[test]
     fn kiss_cov_explain_run_startup() {
         let _ = explain_kpop_workflow_context;
         let _ = prepare_explain_kpop_run;
@@ -93,7 +111,10 @@ mod tests {
                 Some(&"topic".to_string()),
                 "explain.tex",
                 false,
-                crate::cli::WorkflowCliOptions { force: true },
+                ExplainKpopPrepareOpts {
+                    workflow: crate::cli::WorkflowCliOptions { force: true },
+                    model: crate::config::DEFAULT_CLI_MODEL,
+                },
             )
             .expect("prepare without checks");
             assert!(!prepared.inner.context.contains_key("quality_gates"));
@@ -112,7 +133,10 @@ mod tests {
                 None,
                 "explain.tex",
                 false,
-                crate::cli::WorkflowCliOptions { force: true },
+                ExplainKpopPrepareOpts {
+                    workflow: crate::cli::WorkflowCliOptions { force: true },
+                    model: crate::config::DEFAULT_CLI_MODEL,
+                },
             ) else {
                 panic!("missing request must fail");
             };
@@ -136,7 +160,10 @@ mod tests {
                 Some(&"topic".to_string()),
                 "explain.tex",
                 false,
-                crate::cli::WorkflowCliOptions { force: true },
+                ExplainKpopPrepareOpts {
+                    workflow: crate::cli::WorkflowCliOptions { force: true },
+                    model: crate::config::DEFAULT_CLI_MODEL,
+                },
             )
             .expect("auto out-path must not allocate explain siblings");
             assert!(
@@ -172,7 +199,10 @@ mod tests {
                 Some(&"topic".to_string()),
                 "explain.tex",
                 true,
-                crate::cli::WorkflowCliOptions { force: true },
+                ExplainKpopPrepareOpts {
+                    workflow: crate::cli::WorkflowCliOptions { force: true },
+                    model: crate::config::DEFAULT_CLI_MODEL,
+                },
             )
             .expect("explicit default collision must allocate sibling");
             assert!(

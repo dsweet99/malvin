@@ -134,6 +134,7 @@ fn code_summarize_prepared_fixture() -> (
     let prepared = crate::cli::code_flow::prepare_code_kpop_run(
         crate::cli::WorkflowCliOptions { force: false },
         "ship it",
+        crate::config::DEFAULT_CLI_MODEL,
     )
     .expect("prepared");
     (tmp, old, prepared)
@@ -152,7 +153,7 @@ fn code_outer_loop_summarize_params_wires_code_command() {
         &prepared,
     );
     std::env::set_current_dir(old).expect("restore cwd");
-    assert_eq!(params.malvin_command, "malvin code");
+    assert_eq!(params.model, crate::config::DEFAULT_CLI_MODEL);
     assert!(params.agent_ran);
 }
 
@@ -176,6 +177,7 @@ fn maybe_run_inline_summarize_on_kpop_loop_runs_on_last_iteration() {
                 client: &mut client,
                 store,
                 artifacts,
+                model: shared.model.as_str(),
                 agent_loop: 2,
                 max_loops: 2,
                 will_exit_after_this_loop: true,
@@ -212,7 +214,7 @@ async fn run_gate_inline_summarize_first_iteration(
         client: &mut client,
         store,
         artifacts,
-        malvin_command: "malvin code",
+        model: shared.model.as_str(),
         iteration: 1,
         total_iterations: 3,
     })

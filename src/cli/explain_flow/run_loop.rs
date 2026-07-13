@@ -86,7 +86,10 @@ pub async fn run_explain(
         explain.request.as_ref(),
         &explain.out_path,
         explain.out_path_explicit,
-        workflow,
+        super::run_startup::ExplainKpopPrepareOpts {
+            workflow,
+            model: &shared.model,
+        },
     )?;
     if explain.out_path_explicit {
         explain.out_path =
@@ -187,7 +190,7 @@ async fn finish_explain_run(input: ExplainFinishInput<'_>) -> Result<(), String>
             workflow,
             store: prepared.inner.store(),
             artifacts: prepared.inner.artifacts(),
-            malvin_command: "malvin explain",
+            model: &shared.model,
         },
     )
     .await;

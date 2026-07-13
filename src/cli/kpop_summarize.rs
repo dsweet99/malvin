@@ -26,7 +26,7 @@ pub(crate) struct OuterLoopSummarizeParams<'a> {
     pub workflow: WorkflowCliOptions,
     pub store: &'a PromptStore,
     pub artifacts: &'a RunArtifacts,
-    pub malvin_command: &'a str,
+    pub model: &'a str,
 }
 
 /// Inputs for [`code_outer_loop_summarize_params`].
@@ -37,7 +37,7 @@ pub(crate) struct CodeOuterLoopSummarizeInputs<'a> {
 }
 
 #[must_use]
-pub(crate) const fn code_outer_loop_summarize_params<'a>(
+pub(crate) fn code_outer_loop_summarize_params<'a>(
     inputs: CodeOuterLoopSummarizeInputs<'a>,
     prepared: &'a crate::cli::code_flow::CodeKpopPrepared,
 ) -> OuterLoopSummarizeParams<'a> {
@@ -47,7 +47,7 @@ pub(crate) const fn code_outer_loop_summarize_params<'a>(
         workflow: inputs.workflow,
         store: prepared.store(),
         artifacts: prepared.artifacts(),
-        malvin_command: "malvin code",
+        model: &inputs.shared.model,
     }
 }
 
@@ -58,7 +58,7 @@ pub(crate) struct KpopOuterLoopSummarizeInputs<'a> {
 }
 
 #[must_use]
-pub(crate) const fn kpop_outer_loop_summarize_params<'a>(
+pub(crate) fn kpop_outer_loop_summarize_params<'a>(
     inputs: KpopOuterLoopSummarizeInputs<'a>,
     store: &'a PromptStore,
     artifacts: &'a RunArtifacts,
@@ -69,7 +69,7 @@ pub(crate) const fn kpop_outer_loop_summarize_params<'a>(
         workflow: WorkflowCliOptions { force: false },
         store,
         artifacts,
-        malvin_command: "malvin kpop",
+        model: &inputs.shared.model,
     }
 }
 
@@ -183,10 +183,10 @@ pub(crate) fn insert_summarize_log_context(
 pub(crate) fn render_kpop_summarize_prompt(
     store: &PromptStore,
     artifacts: &RunArtifacts,
-    malvin_command: &str,
+    model: &str,
 ) -> Result<String, String> {
     let mut ctx =
-        crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(artifacts, malvin_command)?;
+        crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(artifacts, model)?;
     insert_summarize_log_context(&mut ctx, artifacts, kpop_flows_ran(artifacts));
     let header = render_header(store, ctx.as_map()).map_err(|e: PromptError| e.0)?;
     let body = store
@@ -224,10 +224,10 @@ pub(crate) async fn run_inline_summarize_coder_prompt(
     client: &mut AgentBackend,
     store: &PromptStore,
     artifacts: &RunArtifacts,
-    malvin_command: &str,
+    model: &str,
 ) -> Result<(), String> {
     agent_backend_set_implement_display_name(client, "summary");
-    let prompt = render_kpop_summarize_prompt(store, artifacts, malvin_command)?;
+    let prompt = render_kpop_summarize_prompt(store, artifacts, model)?;
     run_summarize_coder_prompt(client, artifacts, &prompt).await
 }
 

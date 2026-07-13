@@ -1,8 +1,8 @@
-//! Model slug resolution for the `OpenRouter` (malvin-mini) backend.
+//! Model slug resolution for the malvin-mini HTTP backend (`openrouter:` / `local:`).
 
 pub use crate::support_paths::MINI_DEFAULT_MODEL;
 
-/// Resolve an `OpenRouter` model id to the provider slug (strips `openrouter:` when present).
+/// Resolve a mini model id to the provider / sidecar slug.
 #[must_use]
 pub fn resolve_mini_model(model: &str) -> String {
     let slug = crate::model_id::provider_slug(model);
@@ -30,5 +30,6 @@ mod tests {
             "openai/gpt-4o"
         );
         assert_eq!(resolve_mini_model("openai/gpt-4o"), "openai/gpt-4o");
+        assert_eq!(resolve_mini_model("local:qwen35_9b_q4"), "qwen35_9b_q4");
     }
 }

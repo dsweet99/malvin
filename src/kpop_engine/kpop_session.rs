@@ -142,13 +142,12 @@ pub(super) async fn run_kpop_engine_coder_turn(
         )
         .await;
     if prompt_result.is_ok() {
-        let malvin_command = format!("malvin {}", params.command);
         prompt_result = crate::cli::kpop_summarize::maybe_run_gate_inline_summarize(
             crate::cli::kpop_summarize::GateInlineSummarizeCtx {
                 client: ctx.iteration.client,
                 store: prepared.store(),
                 artifacts: prepared.artifacts(),
-                malvin_command: &malvin_command,
+                model: &params.shared.model,
                 iteration: ctx.iteration.iteration,
                 total_iterations: ctx.iteration.total_iterations,
             },

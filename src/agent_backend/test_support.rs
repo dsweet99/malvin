@@ -90,6 +90,7 @@ pub fn mini_loop_config(max_http_turns: u32, max_http_retries: u32) -> MiniLoopC
         max_shrink_passes: 0,
         retry_strategy: MiniRetryStrategy::CumulativeTranscript,
         expects_investigation: false,
+        allow_download: true,
     }
 }
 
@@ -117,6 +118,7 @@ pub fn shared_opts(mini: bool) -> SharedOpts {
         mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
+        no_download: false,
     }
 }
 

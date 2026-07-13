@@ -88,6 +88,7 @@ pub(crate) fn test_kpop_args(max_loops: usize) -> (crate::cli::KpopArgs, crate::
         mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
+        no_download: false,
     };
     let workflow = WorkflowCliOptions { force: false };
     (kpop, shared, workflow)
@@ -182,6 +183,7 @@ mod unix_cov {
                     store: &store,
                     client: &mut client,
                     prepared: &prepared,
+                    model: shared.model.as_str(),
                 })
                 .await;
                 assert!(outcome.agent_ran);
@@ -208,6 +210,7 @@ mod unix_cov {
                     store: &store,
                     client: &mut client,
                     prepared: &prepared,
+                    model: shared.model.as_str(),
                 })
                 .await;
                 assert!(outcome.agent_ran, "mock agent loop should set agent_ran");

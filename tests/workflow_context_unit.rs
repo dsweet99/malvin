@@ -4,6 +4,8 @@ use std::path::Path;
 
 use malvin::artifacts::create_run_artifacts;
 use common::with_isolated_home;
+use malvin::config::DEFAULT_CLI_MODEL;
+use malvin::format_malvin_command;
 use malvin::workflow_context::{
     format_prompt_path, workflow_context_paths_only,
 };
@@ -14,7 +16,7 @@ fn workflow_context_paths_include_plan() {
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "p").expect("write");
     let artifacts = create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
-    let ctx = workflow_context_paths_only(&artifacts, "code");
+    let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL);
     assert!(ctx.contains_key("plan_path"));
 }
 
@@ -33,7 +35,7 @@ fn workflow_context_paths_include_review_and_gates_log() {
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "p").expect("write");
     let artifacts = create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
-    let ctx = workflow_context_paths_only(&artifacts, "tidy");
+    let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL);
     assert!(ctx.contains_key("review_path"));
     assert!(ctx.contains_key("quality_gates_log"));
     assert_eq!(
@@ -49,7 +51,7 @@ fn workflow_context_paths_use_relative_prompt_paths() {
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "p").expect("write");
     let artifacts = create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
-    let ctx = workflow_context_paths_only(&artifacts, "tidy");
+    let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL);
     let advice = ctx.get("advice_path").expect("advice_path");
     assert!(
         advice.starts_with("./"),
@@ -80,7 +82,10 @@ fn workflow_context_paths_use_relative_prompt_paths() {
             "{key} should reference malvin paths, got {path:?}"
         );
     }
-    assert_eq!(ctx.get("malvin_command").map(String::as_str), Some("tidy"));
+    assert_eq!(
+        ctx.get("malvin_command").map(String::as_str),
+        Some(format_malvin_command(DEFAULT_CLI_MODEL).as_str()),
+    );
 }
 
 #[test]
@@ -89,7 +94,7 @@ fn workflow_context_paths_include_quality_gates_log_alias() {
         let plan = work.join("plan.md");
         std::fs::write(&plan, "p").expect("write");
         let artifacts = create_run_artifacts(&plan, Some(work)).expect("artifacts");
-        let ctx = workflow_context_paths_only(&artifacts, "tidy");
+        let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL);
         assert!(ctx.contains_key("quality_gates_log"));
         assert_eq!(
             ctx.get("quality_gates_path").map(String::as_str),

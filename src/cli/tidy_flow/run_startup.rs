@@ -11,12 +11,14 @@ pub type TidyKpopPrepared = KPopEnginePrepared;
 
 fn tidy_kpop_workflow_context(
     artifacts: &crate::artifacts::RunArtifacts,
+    model: &str,
 ) -> Result<crate::prompt_stratification::WorkflowRenderContext, String> {
-    crate::cli::workflow_kpop_shared::kpop_workflow_context(artifacts, "tidy")
+    crate::cli::workflow_kpop_shared::kpop_workflow_context(artifacts, model)
 }
 
 pub fn prepare_tidy_kpop_run(
     workflow: crate::cli::WorkflowCliOptions,
+    model: &str,
 ) -> Result<TidyKpopPrepared, String> {
     let store = prepare_tidy_kpop_prompt_store(workflow)?;
     let work_dir = Path::new(".").to_path_buf();
@@ -26,7 +28,7 @@ pub fn prepare_tidy_kpop_run(
     std::fs::write(&artifacts.plan_path, &request_text).map_err(|e| e.to_string())?;
     let malvin_checks_backup =
         backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
-    let context = tidy_kpop_workflow_context(&artifacts)?;
+    let context = tidy_kpop_workflow_context(&artifacts, model)?;
     Ok(KPopEnginePrepared {
         artifacts,
         context,

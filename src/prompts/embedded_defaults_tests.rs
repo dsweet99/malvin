@@ -38,7 +38,7 @@ fn default_embedded_placeholder_context() -> HashMap<String, String> {
         ("plan_path".to_string(), "/p".to_string()),
         ("result_path".to_string(), "/r".to_string()),
         ("malvin_output_path".to_string(), "/logs/run".to_string()),
-        ("malvin_command".to_string(), "code".to_string()),
+        ("malvin_command".to_string(), "malvin --model=cursor:auto".to_string()),
         ("quality_gates".to_string(), String::new()),
         (
             "quality_gates_log".to_string(),

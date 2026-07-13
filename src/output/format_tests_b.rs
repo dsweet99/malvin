@@ -47,7 +47,9 @@ fn outgoing_prompt_log_who_tag_uses_stem_bracket_keeps_md() {
     let path = tmp.path().join("stdout.log");
     set_stdout_log_path(Some(path.clone()));
     init_stdout_style(true);
+    crate::output::enable_stdout_capture();
     print_outgoing_prompt_log("bug_fix", "bug_fix.md");
+    let live = crate::output::take_captured_stdout();
     set_stdout_log_path(None);
     let text = std::fs::read_to_string(path).expect("read stdout log");
     let delim = super::format_who_tag_delim(WHO_U);
@@ -58,6 +60,10 @@ fn outgoing_prompt_log_who_tag_uses_stem_bracket_keeps_md() {
     assert!(
         !text.contains(">bug_fix"),
         "who tag must not include legacy directional stem: {text:?}"
+    );
+    assert!(
+        live.is_empty(),
+        "print_outgoing_prompt_log must not print live terminal lines; got {live:?}"
     );
 }
 

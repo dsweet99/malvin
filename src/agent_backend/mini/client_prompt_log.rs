@@ -29,13 +29,12 @@ pub fn write_prompt_log(ctx: PromptLogWrite<'_>) -> Result<(), AgentError> {
 }
 
 fn emit_stdout_line(client: &MiniAgentClient, label: &str, prompt: &str, who: &str) {
-    if client.trace.plain_lines {
+    if client.trace.plain_lines || client.io.raw_output {
         return;
     }
+    crate::output::print_outgoing_prompt_log(who, label);
     if client.io.log_full_outgoing_prompts {
-        crate::output::print_stdout_line(label, prompt);
-    } else {
-        crate::output::print_stdout_line(label, &format!("[{who}]"));
+        crate::output::append_outgoing_prompt_log_lines(prompt);
     }
 }
 
@@ -112,6 +111,47 @@ mod tests {
                 on_response: None,
             })),
         )
+    }
+
+    #[tokio::test]
+    async fn mini_prompt_log_bracket_goes_to_stdout_log_not_live_terminal() {
+        let _guard = crate::output::STDOUT_LOG_TEST_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let mut client = test_client(false);
+        client.io.raw_output = false;
+        let log = tmp.path().join("router_d.log");
+        let log_path = log.clone();
+        crate::output::set_stdout_log_path(Some(tmp.path().join("stdout.log")));
+        crate::output::enable_stdout_capture();
+        write_prompt_log(PromptLogWrite {
+            client: &client,
+            prompt: "body",
+            log_path: &log_path,
+            who: "router_d",
+            opts: &CoderPromptOptions {
+                stdout_bracket_label: Some("router_d.md"),
+                ..Default::default()
+            },
+        })
+        .expect("write");
+        let live = crate::output::take_captured_stdout();
+        let stdout = std::fs::read_to_string(tmp.path().join("stdout.log")).unwrap_or_default();
+        let delim = crate::output::format_who_tag_delim(crate::output::WHO_U);
+        assert!(
+            stdout.contains(&format!("{delim}[router_d.md...]")),
+            "bracket summary must land in stdout.log like ACP: {stdout:?}"
+        );
+        assert!(
+            live.is_empty(),
+            "outgoing prompt bracket must not hit live terminal; got {live:?}"
+        );
+        assert!(
+            !live.contains("[router_d") && !stdout.contains(&format!("{}|[router_d]", "r")),
+            "legacy r|[router_d] live form must stay gone"
+        );
+        crate::output::set_stdout_log_path(None);
     }
 
     #[tokio::test]

@@ -9,6 +9,7 @@ pub(crate) struct InlineSummarizeOnKpopLoopCtx<'a> {
     pub client: &'a mut AgentBackend,
     pub store: &'a PromptStore,
     pub artifacts: &'a RunArtifacts,
+    pub model: &'a str,
     pub agent_loop: usize,
     pub max_loops: usize,
     pub will_exit_after_this_loop: bool,
@@ -34,7 +35,7 @@ pub(crate) async fn maybe_run_inline_summarize_on_kpop_loop(
         ctx.client,
         ctx.store,
         ctx.artifacts,
-        "malvin kpop",
+        ctx.model,
     )
     .await;
     let end_res = ctx.client.end_coder_session().await.map_err(|e| e.to_string());
@@ -46,7 +47,7 @@ pub(crate) struct GateInlineSummarizeCtx<'a> {
     pub client: &'a mut AgentBackend,
     pub store: &'a PromptStore,
     pub artifacts: &'a RunArtifacts,
-    pub malvin_command: &'a str,
+    pub model: &'a str,
     pub iteration: usize,
     pub total_iterations: usize,
 }
@@ -65,7 +66,7 @@ pub(crate) async fn maybe_run_gate_inline_summarize(
         ctx.client,
         ctx.store,
         ctx.artifacts,
-        ctx.malvin_command,
+        ctx.model,
     )
     .await
 }

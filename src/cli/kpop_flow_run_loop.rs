@@ -23,6 +23,7 @@ pub(crate) struct RunKpopAgentLoopsParams<'a> {
     pub store: &'a PromptStore,
     pub client: &'a mut crate::agent_backend::AgentBackend,
     pub prepared: &'a KpopPrepared,
+    pub model: &'a str,
 }
 
 pub(crate) struct RunKpopAgentLoopsOutcome {
@@ -100,6 +101,7 @@ async fn finish_kpop_loop_iteration(
             client: params.client,
             store: params.store,
             artifacts: &params.prepared.artifacts,
+            model: params.model,
             agent_loop,
             max_loops,
             will_exit_after_this_loop: exit.will_exit_after_this_loop,

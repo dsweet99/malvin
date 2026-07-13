@@ -134,7 +134,7 @@ fn workflow_context_paths_only_includes_current_state() {
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "p").expect("write");
     let artifacts = crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
-    let ctx = workflow_context_paths_only(&artifacts, "code");
+    let ctx = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL);
     assert!(ctx.contains_key("current_state"));
     assert!(ctx.get("current_state").expect("state").contains("User:"));
 }
@@ -208,7 +208,7 @@ fn workflow_context_returns_plan_path_and_quality_gates() {
         crate::artifacts::create_run_artifacts(&plan_path, Some(tmp.path())).expect("artifacts");
     let store = crate::prompts::PromptStore::default_store();
     store.ensure_defaults().expect("defaults");
-    let ctx = super::workflow_context(&artifacts, &store, "code").expect("context");
+    let ctx = super::workflow_context(&artifacts, &store, crate::config::DEFAULT_CLI_MODEL).expect("context");
     assert!(ctx.contains_key("plan_path"));
     assert!(ctx.contains_key("quality_gates"));
 }

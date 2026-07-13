@@ -42,6 +42,7 @@ fn kpop_emit_startup_creates_malvin_run_under_root() {
         mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
+        no_download: false,
     };
     let kpop = crate::cli::KpopArgs {
         max_loops: 1,
@@ -93,7 +94,7 @@ fn kpop_markdown_fixture_context() -> WorkflowRenderContext {
             "./.malvin/logs/run42/still_not_done.md",
         ),
         ("exp_log", ".malvin/logs/run42/_kpop/exp_log_run42.md"),
-        ("malvin_command", "kpop"),
+        ("malvin_command", "malvin --model=cursor:auto"),
         ("quality_gates", ""),
         ("quality_gates_log", "./.malvin/logs/run42/quality_gates.log"),
         ("advice_path", "./.malvin/advice.md"),

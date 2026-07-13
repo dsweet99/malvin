@@ -63,6 +63,7 @@ fn smoke_cov_cli_cli_units_1b() {
         mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
+        no_download: false,
     };
     let _ = shared.model;
     let _ = stringify!(prepare_kpop_artifacts);

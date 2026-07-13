@@ -95,6 +95,7 @@ fn explain_gate_outcome_fixture() -> (
         mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
+        no_download: false,
     };
     let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snap");
     (tmp, prepared, shared, backups)
@@ -138,6 +139,7 @@ fn explain_gate_outcome_fails_when_agent_ran_with_missing_output() {
         mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
+        no_download: false,
     };
     let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snap");
     let missing_tex = tmp.path().join("missing.tex");

@@ -1,17 +1,19 @@
-//! Prefixed model ids: `cursor:…` (ACP) and `openrouter:…` (malvin-mini).
+//! Prefixed model ids: `cursor:…` (ACP), `openrouter:…` / `local:…` (malvin-mini).
 
 use crate::support_paths::MINI_DEFAULT_MODEL;
 
 pub const CURSOR_PREFIX: &str = "cursor:";
 pub const OPENROUTER_PREFIX: &str = "openrouter:";
+pub const LOCAL_PREFIX: &str = "local:";
 
 pub const UNPREFIXED_MODEL_MESSAGE: &str =
-    "model id must use a `cursor:` or `openrouter:` prefix (for example `cursor:auto` or `openrouter:nvidia/nemotron-3-ultra-550b-a55b:free`)";
+    "model id must use a `cursor:`, `openrouter:`, or `local:` prefix (for example `cursor:auto`, `openrouter:nvidia/nemotron-3-ultra-550b-a55b:free`, or `local:qwen35_9b_q4`)";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModelBackend {
     Cursor,
     OpenRouter,
+    Local,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,12 +29,23 @@ impl ParsedModel {
         match self.backend {
             ModelBackend::Cursor => format!("{CURSOR_PREFIX}{}", self.slug),
             ModelBackend::OpenRouter => format!("{OPENROUTER_PREFIX}{}", self.slug),
+            ModelBackend::Local => format!("{LOCAL_PREFIX}{}", self.slug),
         }
     }
 
     #[must_use]
     pub const fn is_openrouter(&self) -> bool {
         matches!(self.backend, ModelBackend::OpenRouter)
+    }
+
+    #[must_use]
+    pub const fn is_local(&self) -> bool {
+        matches!(self.backend, ModelBackend::Local)
+    }
+
+    #[must_use]
+    pub const fn uses_mini_http(&self) -> bool {
+        matches!(self.backend, ModelBackend::OpenRouter | ModelBackend::Local)
     }
 }
 
@@ -51,6 +64,9 @@ pub fn parse_model_id(raw: &str) -> Result<ParsedModel, String> {
     }
     if let Some(slug) = raw.strip_prefix(OPENROUTER_PREFIX) {
         return parsed(ModelBackend::OpenRouter, slug);
+    }
+    if let Some(slug) = raw.strip_prefix(LOCAL_PREFIX) {
+        return parsed(ModelBackend::Local, slug);
     }
     Err(UNPREFIXED_MODEL_MESSAGE.to_string())
 }
@@ -79,7 +95,7 @@ pub fn require_config_model(raw: &str) -> Result<String, String> {
     require_prefixed_model(raw)
 }
 
-/// Resolve the provider slug passed to Cursor ACP or `OpenRouter`.
+/// Resolve the provider slug passed to Cursor ACP, `OpenRouter`, or the local sidecar.
 #[must_use]
 pub fn provider_slug(raw: &str) -> String {
     match parse_model_id(raw) {
@@ -105,6 +121,19 @@ pub fn uses_openrouter_backend(raw: &str) -> bool {
         .unwrap_or(false)
 }
 
+#[must_use]
+pub fn uses_local_backend(raw: &str) -> bool {
+    parse_model_id(raw).map(|p| p.is_local()).unwrap_or(false)
+}
+
+/// True when the model runs through malvin-mini HTTP (`openrouter:` or `local:`).
+#[must_use]
+pub fn uses_mini_backend(raw: &str) -> bool {
+    parse_model_id(raw)
+        .map(|p| p.uses_mini_http())
+        .unwrap_or(false)
+}
+
 /// Validate a CLI `--model` value (must already be prefixed).
 ///
 /// # Errors
@@ -119,7 +148,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parse_cursor_and_openrouter() {
+    fn parse_cursor_openrouter_and_local() {
         let c = parse_model_id("cursor:auto").expect("cursor");
         assert_eq!(c.backend, ModelBackend::Cursor);
         assert_eq!(c.slug, "auto");
@@ -128,6 +157,11 @@ mod tests {
         let o = parse_model_id("openrouter:org/model").expect("or");
         assert!(o.is_openrouter());
         assert_eq!(o.slug, "org/model");
+
+        let local = parse_model_id("local:qwen35_9b_q4").expect("local");
+        assert!(local.is_local());
+        assert!(local.uses_mini_http());
+        assert_eq!(local.canonical(), "local:qwen35_9b_q4");
     }
 
     #[test]
@@ -135,6 +169,7 @@ mod tests {
         assert!(parse_model_id("auto").is_err());
         assert!(parse_model_id("cursor:").is_err());
         assert!(parse_model_id("openrouter:").is_err());
+        assert!(parse_model_id("local:").is_err());
     }
 
     #[test]
@@ -146,6 +181,10 @@ mod tests {
             "openrouter:x/y"
         );
         assert_eq!(
+            require_config_model("local:qwen35_9b_q4").expect("ok"),
+            "local:qwen35_9b_q4"
+        );
+        assert_eq!(
             require_config_model("").expect("default"),
             crate::support_paths::DEFAULT_CLI_MODEL
         );
@@ -154,13 +193,24 @@ mod tests {
     #[test]
     fn provider_slug_resolves_openrouter_auto() {
         assert_eq!(provider_slug("cursor:auto"), "auto");
-        assert_eq!(
-            provider_slug("openrouter:auto"),
-            MINI_DEFAULT_MODEL
-        );
+        assert_eq!(provider_slug("openrouter:auto"), MINI_DEFAULT_MODEL);
         assert_eq!(
             provider_slug("openrouter:openai/gpt-4o"),
             "openai/gpt-4o"
         );
+        assert_eq!(provider_slug("local:qwen35_9b_q4"), "qwen35_9b_q4");
+    }
+
+    #[test]
+    fn uses_mini_backend_covers_openrouter_and_local() {
+        assert!(uses_mini_backend("openrouter:x"));
+        assert!(uses_mini_backend("local:qwen35_9b_q4"));
+        assert!(!uses_mini_backend("cursor:auto"));
+        assert!(uses_local_backend("local:nemotron_cascade2"));
+        assert!(!uses_local_backend("openrouter:x"));
+        assert!(uses_openrouter_backend("openrouter:org/m"));
+        assert!(!uses_openrouter_backend("local:qwen35_9b_q4"));
+        let parsed: ParsedModel = parse_model_id("cursor:auto").expect("cursor");
+        assert_eq!(parsed.backend, ModelBackend::Cursor);
     }
 }

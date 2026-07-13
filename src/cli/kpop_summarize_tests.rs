@@ -30,6 +30,7 @@ pub(crate) fn summarize_shared_opts(max_acp_retries: u32) -> SharedOpts {
         mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
+        no_download: false,
     }
 }
 
@@ -66,7 +67,7 @@ fn kpop_outer_loop_summarize_params_builds_kpop_context() {
     let shared = summarize_shared_opts(DEFAULT_MAX_ACP_RETRIES);
     let params = kpop_outer_loop_summarize_params(kpop_inputs(&shared), &store, &artifacts);
     assert!(params.agent_ran);
-    assert_eq!(params.malvin_command, "malvin kpop");
+    assert_eq!(params.model, DEFAULT_CLI_MODEL);
     assert!(!params.workflow.force);
     assert!(std::ptr::eq(params.store, &raw const store));
     assert!(std::ptr::eq(params.artifacts, &raw const artifacts));
@@ -76,7 +77,7 @@ fn kpop_outer_loop_summarize_params_builds_kpop_context() {
 fn render_kpop_summarize_prompt_includes_activity_heading() {
     let (tmp, artifacts, store, _shared) = summarize_test_workspace();
     let _ = tmp;
-    let prompt = render_kpop_summarize_prompt(&store, &artifacts, "malvin kpop").expect("render");
+    let prompt = render_kpop_summarize_prompt(&store, &artifacts, DEFAULT_CLI_MODEL).expect("render");
     assert!(prompt.contains("Summarize the activity"));
     assert!(prompt.contains("Executive summary"));
     assert!(!prompt.contains("{{"));

@@ -1,10 +1,11 @@
-//! `malvin models` — list Cursor and `OpenRouter` models with prefixes.
+//! `malvin models` — list Cursor, `OpenRouter`, and `local:` models with prefixes.
 
 use std::path::PathBuf;
 
 use crate::agent_or_cursor_agent_bin;
 use crate::ansi_strip::strip_ansi_escapes;
-use crate::model_id::{CURSOR_PREFIX, OPENROUTER_PREFIX};
+use crate::local_llm::{download_local_model, local_model_listings};
+use crate::model_id::{CURSOR_PREFIX, LOCAL_PREFIX, OPENROUTER_PREFIX};
 use crate::output::{MALVIN_WHO, print_stdout_line};
 use clap::Args;
 
@@ -12,11 +13,15 @@ use clap::Args;
 mod models_cmd_parse;
 use models_cmd_parse::{print_parsed_or_fallback_prefixed, trim_trailing_tip_lines};
 
-#[derive(Args, Debug, Clone, Copy, Default)]
-pub struct ModelsArgs {}
+#[derive(Args, Debug, Clone, Default)]
+pub struct ModelsArgs {
+    /// Optional words: `download local:<id>` fetches a model into `~/.malvin_home/model_cache`.
+    #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+    pub words: Vec<String>,
+}
 
 #[cfg(test)]
-pub(crate) const fn models_args_marker(_args: ModelsArgs) -> &'static str {
+pub(crate) const fn models_args_marker(_args: &ModelsArgs) -> &'static str {
     "models"
 }
 
@@ -32,8 +37,13 @@ fn print_current_footer(current_model: &str) {
     print_stdout_line(MALVIN_WHO, &format!("Current: {current_model}"));
 }
 
-/// Print Cursor and `OpenRouter` models with prefixes and a `Current:` footer.
-pub fn run_models(_args: ModelsArgs, current_model: &str) -> Result<(), String> {
+/// Print Cursor, `OpenRouter`, and `local:` models with prefixes and a `Current:` footer.
+///
+/// When `words` is `download <local:id>`, downloads that model into the cache instead.
+pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
+    if !args.words.is_empty() {
+        return run_models_action(&args.words);
+    }
     print_cursor_models()?;
     // OpenRouter listing is best-effort when the API key / network is unavailable.
     match list_openrouter_models_sync() {
@@ -42,8 +52,28 @@ pub fn run_models(_args: ModelsArgs, current_model: &str) -> Result<(), String> 
             print_stdout_line(MALVIN_WHO, &format!("(openrouter models unavailable: {e})"));
         }
     }
+    print_local_models();
     print_current_footer(current_model);
     Ok(())
+}
+
+fn run_models_action(words: &[String]) -> Result<(), String> {
+    match words {
+        [action, model] if action == "download" => {
+            let path = download_local_model(model)?;
+            print_stdout_line(
+                MALVIN_WHO,
+                &format!("downloaded {model} -> {}", path.display()),
+            );
+            Ok(())
+        }
+        [action] if action == "download" => Err(
+            "usage: malvin models download local:<id> (e.g. local:qwen35_9b_q4)".into(),
+        ),
+        _ => Err(format!(
+            "unknown models action {words:?}; try `malvin models` or `malvin models download local:<id>`"
+        )),
+    }
 }
 
 fn list_openrouter_models_sync() -> Result<Vec<malvin_mini::ModelListing>, String> {
@@ -102,6 +132,15 @@ fn print_openrouter_models(models: &[malvin_mini::ModelListing]) {
         print_stdout_line(
             MALVIN_WHO,
             &format!("{OPENROUTER_PREFIX}{}\t{}", model.id, model.name),
+        );
+    }
+}
+
+fn print_local_models() {
+    for model in local_model_listings() {
+        print_stdout_line(
+            MALVIN_WHO,
+            &format!("{LOCAL_PREFIX}{}\t{}", model.id, model.name),
         );
     }
 }
@@ -173,6 +212,10 @@ pub(crate) mod test_hooks {
         super::print_openrouter_models(models);
     }
 
+    pub fn print_local_models_for_test() {
+        super::print_local_models();
+    }
+
     pub fn current_model_label() -> String {
         crate::config::DEFAULT_CLI_MODEL.to_string()
     }
@@ -185,3 +228,22 @@ pub(crate) mod test_hooks {
 #[cfg(test)]
 #[path = "models_cmd_kiss_cov_tests.rs"]
 mod models_cmd_kiss_cov_tests;
+
+#[cfg(test)]
+mod local_models_tests {
+    use super::*;
+
+    #[test]
+    fn run_models_action_rejects_bad_usage() {
+        let err = run_models_action(&["download".into()]).expect_err("usage");
+        assert!(err.contains("usage"));
+        let err = run_models_action(&["nope".into()]).expect_err("unknown");
+        assert!(err.contains("unknown"));
+    }
+
+    #[test]
+    fn models_args_default_has_empty_words() {
+        let args = ModelsArgs::default();
+        assert!(args.words.is_empty());
+    }
+}

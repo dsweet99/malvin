@@ -92,6 +92,7 @@ mod tests {
         let prepared = prepare_code_kpop_run(
             crate::cli::WorkflowCliOptions { force: false },
             "ship it",
+            crate::config::DEFAULT_CLI_MODEL,
         )
         .expect("prepared");
         crate::cli::run_emit::emit_run_startup_sequence(
@@ -130,6 +131,7 @@ mod tests {
         let prepared = prepare_code_kpop_run(
             crate::cli::WorkflowCliOptions { force: false },
             "ship it",
+            crate::config::DEFAULT_CLI_MODEL,
         )
         .expect("prepared");
         let backups =

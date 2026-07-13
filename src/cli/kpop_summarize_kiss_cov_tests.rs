@@ -19,6 +19,7 @@ fn kiss_cov_kpop_summarize_privates() {
         mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
+        no_download: false,
     };
     let inputs = crate::cli::kpop_summarize::KpopOuterLoopSummarizeInputs {
         agent_ran: true,
@@ -41,10 +42,10 @@ fn kiss_cov_kpop_summarize_privates() {
         workflow: _,
         store: _,
         artifacts: _,
-        malvin_command,
+        model,
     } = params;
     assert!(params_agent_ran);
-    assert_eq!(malvin_command, "malvin kpop");
+    assert_eq!(model, crate::config::DEFAULT_CLI_MODEL);
     let _ = crate::cli::kpop_summarize::run_summarize_coder_prompt;
     let _ = crate::cli::kpop_summarize::run_outer_loop_summarize_if_warranted;
     let _ = crate::cli::kpop_summarize::render_kpop_summarize_prompt;

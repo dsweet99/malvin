@@ -19,8 +19,9 @@ pub fn prepare_code_kpop_prompt_store(
 pub fn code_kpop_request(
     store: &PromptStore,
     artifacts: &crate::artifacts::RunArtifacts,
+    model: &str,
 ) -> Result<String, String> {
-    let context = crate::orchestrator::workflow_context_paths_only(artifacts, "code");
+    let context = crate::orchestrator::workflow_context_paths_only(artifacts, model);
     render_repo_program(
         store,
         "code_constraints.md",
@@ -48,7 +49,7 @@ mod tests {
         crate::seed_malvin_checks(tmp.path(), "true\n");
         let store = PromptStore::default_store();
         store.ensure_defaults().expect("defaults");
-        let text = code_kpop_request(&store, &artifacts).expect("request");
+        let text = code_kpop_request(&store, &artifacts, crate::config::DEFAULT_CLI_MODEL).expect("request");
         assert!(
             !text.contains("{{"),
             "code kpop request must expand all placeholders: {text:?}"
