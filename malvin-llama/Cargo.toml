@@ -1,0 +1,22 @@
+[package]
+name = "malvin-llama"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "In-process llama.cpp Metal wrapper for malvin local: models"
+
+[dependencies]
+encoding_rs = "0.8"
+
+[target.'cfg(all(target_os = "macos", target_arch = "aarch64"))'.dependencies]
+llama-cpp-2 = { version = "=0.1.151", default-features = false, features = ["metal", "common"] }
+
+[lints.rust]
+# llama.cpp FFI lives only in this crate; parent crates keep unsafe_code = deny.
+unsafe_code = "allow"
+
+[lints.clippy]
+pedantic = "warn"
+nursery = "warn"
+multiple_crate_versions = "allow"
+cargo_common_metadata = "allow"
