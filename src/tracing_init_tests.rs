@@ -27,6 +27,32 @@ fn malvin_log_accepts_tracing_level_filters_debug() {
 }
 
 #[test]
+fn llama_cpp_crate_targets_drop_info_keep_warn() {
+    use tracing::subscriber::Subscriber;
+
+    let info_cs = tracing::callsite! {
+        name: "llama_info_filtered",
+        kind: tracing::metadata::Kind::EVENT,
+        target: "llama-cpp-2",
+        level: tracing::Level::INFO,
+        fields: message,
+    };
+    let warn_cs = tracing::callsite! {
+        name: "llama_warn_kept",
+        kind: tracing::metadata::Kind::EVENT,
+        target: "llama-cpp-2",
+        level: tracing::Level::WARN,
+        fields: message,
+    };
+    let sub = MalvinTracingSubscriber;
+    assert!(!sub.enabled(info_cs.metadata()));
+    assert!(sub.enabled(warn_cs.metadata()));
+    assert!(is_llama_cpp_crate_target("llama-cpp-2"));
+    assert!(is_llama_cpp_crate_target("llama-cpp-2::log"));
+    assert!(!is_llama_cpp_crate_target("malvin::z"));
+}
+
+#[test]
 fn emit_malvin_tracing_log_routes_by_level() {
     crate::output::clear_captured_stderr_lines();
     emit_malvin_tracing_log(Level::ERROR, "err-level");

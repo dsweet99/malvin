@@ -156,7 +156,7 @@ During live ACP sessions, malvin may defer agent stdout lines briefly before wri
 
 ## Home config (`~/.malvin_home/config.toml`)
 
-Top-level keys include `mem_limit_gb` and `theme`.
+Top-level keys include `mem_limit_gb`, `context_size` (local llama.cpp `n_ctx`, default 8192), and `theme`.
 
 ## Log retention
 

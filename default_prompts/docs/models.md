@@ -37,7 +37,7 @@ See `malvin --doc`. Only `--no-color` materially affects output formatting. Glob
 
 `local:` models run **in-process** under the agent sandbox USS cap. Before load, malvin requires `mem_limit_gb` in `~/.malvin_home/config.toml` to meet the model floor (Nano ≥ 6, Qwen ≥ 8). The default template is `4`, which is too small for either model — raise it first or `ensure_local_engine` fails with a clear error.
 
-Context window is fixed at `n_ctx=8192` for v1; prompts that tokenize to ≥8192 tokens fail fast with a clear error. Rebuild/install from this workspace (`cargo install --path .`) if your PATH `malvin` still lists MLX / Cascade2 ids.
+Context window defaults to `context_size = 8192` in `~/.malvin_home/config.toml` (llama.cpp `n_ctx` / `n_ctx_seq`). Raise it for longer prompts; larger windows need more `mem_limit_gb` headroom. Prompts that tokenize to ≥ `context_size` tokens fail fast with a clear error. Rebuild/install from this workspace (`cargo install --path .`) if your PATH `malvin` still lists MLX / Cascade2 ids.
 
 Root `kiss check` ignores `malvin-llama/` (see `.kissignore`); structural cleanliness is verified with `cd malvin-llama && kiss check` (local threshold). Qwen end-to-end smoke is optional (same engine path as Nano).
 

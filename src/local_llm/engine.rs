@@ -3,7 +3,8 @@
 use std::sync::Arc;
 
 use malvin_llama::{
-    complete as llama_complete, load_engine, ChatTurn, CompleteRequest, LocalEngine,
+    complete as llama_complete, load_engine_with_context_size, ChatTurn, CompleteRequest,
+    LocalEngine,
 };
 use malvin_mini::{
     ChatMessage, ChatRole, CompletionResponse, HttpExchangeMeta, OpenRouterError,
@@ -120,7 +121,9 @@ pub fn ensure_local_engine(
     let spec = require_known_local_slug(&slug)?;
     require_mem_limit_for_local(spec)?;
     let gguf = ensure_model_cached(spec, policy)?;
-    let engine = load_engine(&gguf)?;
+    let work_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+    let context_size = crate::malvin_config_file::load_malvin_config(&work_dir).context_size;
+    let engine = load_engine_with_context_size(&gguf, context_size)?;
     Ok(LocalCompletionEngine {
         engine: Arc::new(engine),
         model_slug: slug,
