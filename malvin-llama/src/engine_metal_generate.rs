@@ -19,26 +19,43 @@ pub struct SampleTokensArgs<'a, 'ctx> {
     pub batch: &'a mut LlamaBatch<'static>,
     pub sampler: &'a mut LlamaSampler,
     pub max_tokens: i32,
+    /// Absolute KV position after the prompt (full prompt length, not last chunk size).
+    pub prompt_n_tokens: i32,
 }
 
+/// Decode the full prompt in chunks of `ctx.n_batch()` so prompts larger than the
+/// default llama.cpp `n_batch` (2048) do not trip `n_tokens_all <= n_batch`.
 pub fn decode_prompt(args: &mut DecodePromptArgs<'_, '_>) -> Result<(), String> {
-    args.batch.clear();
+    let n_batch = args.ctx.n_batch().max(1) as usize;
     let last = args.tokens.len() - 1;
-    for (i, token) in args.tokens.iter().enumerate() {
-        args.batch
-            .add(*token, i32::try_from(i).unwrap_or(0), &[0], i == last)
-            .map_err(|e| format!("batch add: {e}"))?;
+    let mut pos = 0usize;
+    while pos < args.tokens.len() {
+        args.batch.clear();
+        let end = (pos + n_batch).min(args.tokens.len());
+        for (offset, token) in args.tokens[pos..end].iter().enumerate() {
+            let i = pos + offset;
+            args.batch
+                .add(
+                    *token,
+                    i32::try_from(i).unwrap_or(0),
+                    &[0],
+                    i == last,
+                )
+                .map_err(|e| format!("batch add: {e}"))?;
+        }
+        args.ctx
+            .decode(args.batch)
+            .map_err(|e| format!("llama_decode prompt: {e}"))?;
+        pos = end;
     }
-    args.ctx
-        .decode(args.batch)
-        .map_err(|e| format!("llama_decode prompt: {e}"))
+    Ok(())
 }
 
 pub fn sample_tokens(args: &mut SampleTokensArgs<'_, '_>) -> Result<String, String> {
     let mut decoder = UTF_8.new_decoder();
     let mut out = String::new();
-    // Sequence position after the prompt batch (not the logits-row index).
-    let mut n_pos = args.batch.n_tokens();
+    // Absolute sequence position after the full prompt (not last-chunk batch size).
+    let mut n_pos = args.prompt_n_tokens;
     for _ in 0..args.max_tokens.max(1) {
         // llama_sampler_sample idx is the logits row (-1 = last), not KV position.
         let token = args.sampler.sample(args.ctx, -1);

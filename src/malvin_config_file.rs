@@ -20,7 +20,8 @@ pub use malvin_config_open::{
 };
 use malvin_config_open::create_malvin_config_from_template;
 pub(crate) use malvin_config_agent::parse_agent_config;
-pub(crate) use malvin_config_top::parse_theme;
+pub(crate) use malvin_config_top::{parse_context_size, parse_theme};
+pub use malvin_config_top::DEFAULT_CONTEXT_SIZE;
 
 pub const DEFAULT_MAX_HYPOTHESES: usize = 5;
 pub const DEFAULT_MAX_LOOPS: usize = 1;
@@ -60,6 +61,8 @@ impl Default for AgentConfig {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MalvinConfig {
     pub mem_limit_gb: u64,
+    /// Local llama.cpp context window (`n_ctx` / `n_ctx_seq`).
+    pub context_size: u32,
     pub theme: TerminalTheme,
     pub logs: LogsGcConfig,
     pub agent: AgentConfig,
@@ -173,6 +176,10 @@ pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
         print_log_warning(&format!("could not parse mem_limit_gb: {msg}"));
         default_mem_limit_gb()
     });
+    let context_size = parse_context_size(text).unwrap_or_else(|msg| {
+        print_log_warning(&format!("could not parse context_size: {msg}"));
+        DEFAULT_CONTEXT_SIZE
+    });
     let logs = parse_logs_gc_config(text).unwrap_or_else(|msg| {
         print_log_warning(&format!("could not parse [logs]: {msg}"));
         LogsGcConfig::default()
@@ -187,6 +194,7 @@ pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
     });
     MalvinConfig {
         mem_limit_gb,
+        context_size,
         theme,
         logs,
         agent,

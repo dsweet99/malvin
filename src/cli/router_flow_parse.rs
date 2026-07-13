@@ -9,6 +9,79 @@ pub(crate) fn router_wants_continue(agent_text: &str) -> bool {
         .any(|line| line.trim() == "CONTINUE_ROUTER")
 }
 
+/// True for short greeting/social utterances that should not enter the coding router.
+///
+/// Uses a whole-utterance allowlist (not substring matching) so asks like
+/// `"fix bug"` or `"Hello world program"` stay on the normal coding path.
+#[must_use]
+pub(crate) fn is_trivial_social_request(text: &str) -> bool {
+    let trimmed = text.trim();
+    if trimmed.is_empty() || trimmed.len() > 40 {
+        return false;
+    }
+    let lower = trimmed.to_ascii_lowercase();
+    if trivial_social_has_code_cue(&lower) {
+        return false;
+    }
+    let normalized = normalize_trivial_social_utterance(&lower);
+    TRIVIAL_SOCIAL_ALLOWLIST.contains(&normalized.as_str())
+}
+
+const TRIVIAL_SOCIAL_ALLOWLIST: &[&str] = &[
+    "hello",
+    "hi",
+    "hey",
+    "thanks",
+    "thank you",
+    "thankyou",
+    "good morning",
+    "good afternoon",
+    "good evening",
+    "yo",
+    "sup",
+    "howdy",
+];
+
+fn trivial_social_has_code_cue(lower: &str) -> bool {
+    const CUES: &[&str] = &[
+        "/",
+        "`",
+        "::",
+        ".rs",
+        ".py",
+        ".md",
+        "fix ",
+        "fix\n",
+        "bug",
+        "implement",
+        "refactor",
+        "test",
+        "pr #",
+        "src/",
+        "http://",
+        "https://",
+    ];
+    // Also reject leading "fix" / trailing code words without requiring a trailing space.
+    if lower == "fix" || lower.starts_with("fix ") {
+        return true;
+    }
+    CUES.iter().any(|cue| lower.contains(cue))
+}
+
+fn normalize_trivial_social_utterance(lower: &str) -> String {
+    let mapped: String = lower
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c.is_whitespace() {
+                c
+            } else {
+                ' '
+            }
+        })
+        .collect();
+    mapped.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
 fn parse_scored_line(agent_text: &str, prefix: &str) -> Option<String> {
     agent_text.lines().find_map(|line| {
         let trimmed = line.trim();
@@ -83,6 +156,38 @@ mod router_wants_continue_tests {
         assert!(!router_wants_continue(
             "Please output CONTINUE_ROUTER when done."
         ));
+    }
+}
+
+#[cfg(test)]
+mod trivial_social_request_tests {
+    use super::is_trivial_social_request;
+
+    #[test]
+    fn allowlist_greetings_match() {
+        assert!(is_trivial_social_request("Hello"));
+        assert!(is_trivial_social_request("hello!"));
+        assert!(is_trivial_social_request("  hi  "));
+        assert!(is_trivial_social_request("thanks"));
+        assert!(is_trivial_social_request("Thank you"));
+        assert!(is_trivial_social_request("good morning"));
+    }
+
+    #[test]
+    fn coding_asks_are_not_trivial() {
+        assert!(!is_trivial_social_request("fix bug"));
+        assert!(!is_trivial_social_request("Fix the bug"));
+        assert!(!is_trivial_social_request("hi, fix src/foo.rs"));
+        assert!(!is_trivial_social_request("Hello world program"));
+        assert!(!is_trivial_social_request("thanks for reviewing PR #12"));
+        assert!(!is_trivial_social_request("implement the feature"));
+    }
+
+    #[test]
+    fn empty_and_long_requests_are_not_trivial() {
+        assert!(!is_trivial_social_request(""));
+        assert!(!is_trivial_social_request("   "));
+        assert!(!is_trivial_social_request(&"hello ".repeat(20)));
     }
 }
 

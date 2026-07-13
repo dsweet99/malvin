@@ -1,4 +1,6 @@
 mem_limit_gb = 4
+# Local llama.cpp context window (n_ctx / n_ctx_seq). Larger values need more mem_limit_gb.
+context_size = 8192
 # Terminal color palette: "dark" (default) or "light" (for pale backgrounds).
 theme = "dark"
 

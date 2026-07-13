@@ -20,6 +20,22 @@ pub(crate) fn malvin_log_accepts_tracing_level(level: tracing::Level) -> bool {
     level <= tracing::Level::INFO
 }
 
+/// llama.cpp / ggml INFO dumps are extremely verbose; keep WARN+ on the malvin logger.
+#[must_use]
+pub(crate) fn malvin_log_accepts_tracing_metadata(metadata: &tracing::Metadata<'_>) -> bool {
+    let level = *metadata.level();
+    if is_llama_cpp_crate_target(metadata.target()) {
+        return level <= tracing::Level::WARN;
+    }
+    malvin_log_accepts_tracing_level(level)
+}
+
+fn is_llama_cpp_crate_target(target: &str) -> bool {
+    // llama-cpp-2 routes ggml/llama callbacks through Metadata target "llama-cpp-2"
+    // (module detail is a field, not the tracing target).
+    target == "llama-cpp-2" || target.starts_with("llama-cpp-2::")
+}
+
 pub(crate) fn emit_malvin_tracing_log(level: tracing::Level, msg: &str) {
     if msg.is_empty() {
         return;
@@ -32,13 +48,12 @@ pub(crate) fn emit_malvin_tracing_log(level: tracing::Level, msg: &str) {
 }
 
 pub(crate) fn process_malvin_tracing_event(event: &tracing::Event<'_>) {
-    let level = *event.metadata().level();
-    if !malvin_log_accepts_tracing_level(level) {
+    if !malvin_log_accepts_tracing_metadata(event.metadata()) {
         return;
     }
     let mut msg = String::new();
     event.record(&mut LogFieldVisitor(&mut msg));
-    emit_malvin_tracing_log(level, &msg);
+    emit_malvin_tracing_log(*event.metadata().level(), &msg);
 }
 
 struct MalvinTracingSubscriber;
@@ -49,7 +64,7 @@ impl tracing::Subscriber for MalvinTracingSubscriber {
     }
 
     fn enabled(&self, metadata: &tracing::Metadata<'_>) -> bool {
-        malvin_log_accepts_tracing_level(*metadata.level())
+        malvin_log_accepts_tracing_metadata(metadata)
     }
 
     fn event(&self, event: &tracing::Event<'_>) {

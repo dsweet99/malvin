@@ -13,7 +13,10 @@ mod engine_metal_generate;
 mod engine_stub;
 
 pub use chat::ChatTurn;
-pub use engine::{complete, load_engine, CompleteRequest, LocalEngine};
+pub use engine::{
+    complete, load_engine, load_engine_with_context_size, CompleteRequest, LocalEngine,
+    DEFAULT_CONTEXT_SIZE,
+};
 
 #[cfg(test)]
 #[path = "kiss_cov_tests.rs"]
