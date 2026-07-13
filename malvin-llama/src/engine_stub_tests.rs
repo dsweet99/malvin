@@ -1,23 +1,31 @@
-//! Kiss coverage for stub engine (must be `*_tests.rs`).
+//! Stub engine unit tests (non-Metal targets).
 
 use super::InnerEngine;
 use crate::engine::CompleteRequest;
 
 #[test]
-fn kiss_cov_stub_inner_engine_type() {
-    let _: Option<InnerEngine> = None;
-    let err = InnerEngine::load(std::path::Path::new("/nope.gguf"));
-    assert!(err.is_err());
-    let _ = InnerEngine::load;
-    if let Ok(eng) = err {
-        let _ = eng.complete(&CompleteRequest {
+fn stub_load_rejects_any_path() {
+    let err = InnerEngine::load(std::path::Path::new("/nope.gguf"))
+        .err()
+        .expect("stub load must fail on non-Metal targets");
+    assert!(
+        err.contains("Apple Silicon"),
+        "load error should name the platform requirement: {err}"
+    );
+}
+
+#[test]
+fn stub_complete_rejects_without_metal() {
+    let eng = InnerEngine;
+    let err = eng
+        .complete(&CompleteRequest {
             turns: &[],
             max_tokens: 1,
-        });
-    }
-    let _ = (
-        stringify!(InnerEngine),
-        stringify!(load),
-        stringify!(complete),
+        })
+        .err()
+        .expect("stub complete must fail on non-Metal targets");
+    assert!(
+        err.contains("Apple Silicon"),
+        "complete error should name the platform requirement: {err}"
     );
 }

@@ -58,7 +58,7 @@ import tempfile
 import threading
 import time
 from contextlib import contextmanager
-from datetime import datetime, timezone
+import datetime
 from pathlib import Path
 from typing import Any, Iterator, TextIO
 from unittest.mock import MagicMock, patch
@@ -102,12 +102,14 @@ from toolchain_repos import (
     malvin_repo_root,
     validate_toolchain_repos,
 )
+from tox_gates import ensure_tox_offline_skip_flags
 
 DEEPSWE_OPS_REMOTE = "/opt/malvin/ops"
 DEEPSWE_RUN_REMOTE = f"{DEEPSWE_OPS_REMOTE}/deepswe_run.py"
 SANDBOX_PREP_REMOTE = f"{DEEPSWE_OPS_REMOTE}/sandbox_prep.py"
 HARBOR_TESTS_REMOTE = f"{DEEPSWE_OPS_REMOTE}/harbor_tests.py"
 TOOLCHAIN_REPOS_REMOTE = f"{DEEPSWE_OPS_REMOTE}/toolchain_repos.py"
+TOX_GATES_REMOTE = f"{DEEPSWE_OPS_REMOTE}/tox_gates.py"
 TASK_REMOTE = "/task"
 
 APP_NAME = "deepswe-modal"
@@ -167,8 +169,8 @@ def read_cursor_api_allowlist_cache() -> list[str] | None:
             return None
         ts = payload.get("timestamp_utc")
         if isinstance(ts, str):
-            cached_at = datetime.fromisoformat(ts.replace("Z", "+00:00"))
-            age = (datetime.now(timezone.utc) - cached_at).total_seconds()
+            cached_at = datetime.datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            age = (datetime.datetime.now(datetime.timezone.utc) - cached_at).total_seconds()
             if age > ALLOWLIST_CACHE_TTL_SEC:
                 return None
         return [str(cidr) for cidr in cidrs]
@@ -182,7 +184,7 @@ def write_cursor_api_allowlist_cache(cidrs: list[str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "cidrs": cidrs,
-        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "timestamp_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
     }
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
@@ -1822,6 +1824,7 @@ def _ops_local_files(deepswe_run_py: Path) -> list[tuple[Path, str]]:
         (parent / "sandbox_prep.py", SANDBOX_PREP_REMOTE),
         (parent / "harbor_tests.py", HARBOR_TESTS_REMOTE),
         (parent / "toolchain_repos.py", TOOLCHAIN_REPOS_REMOTE),
+        (parent / "tox_gates.py", TOX_GATES_REMOTE),
     ]
 
 
@@ -1978,11 +1981,17 @@ AGENT_PGID_PATH = "/tmp/malvin-agent-pgid"
 
 
 def agent_process_tree_cleanup_script(*, pgid_path: str = AGENT_PGID_PATH) -> str:
-    """Shell that signals only the recorded agent process group (no blanket pkill)."""
+    """Shell that signals only the recorded agent process group (no blanket pkill).
+
+    Sends SIGTERM to the group, briefly waits, then SIGKILL so stubborn or
+    slow-to-exit children cannot survive past pre-inject cleanup.
+    """
     return (
         f"pgid=$(cat {pgid_path} 2>/dev/null) || exit 0; "
         'case "$pgid" in (*[!0-9]*|"") exit 0 ;; esac; '
-        "kill -- -\"$pgid\" 2>/dev/null || kill \"$pgid\" 2>/dev/null || true"
+        'kill -TERM -- -"$pgid" 2>/dev/null || kill -TERM "$pgid" 2>/dev/null || true; '
+        "sleep 0.05; "
+        'kill -KILL -- -"$pgid" 2>/dev/null || kill -KILL "$pgid" 2>/dev/null || true'
     )
 
 
@@ -1994,7 +2003,7 @@ def wrap_agent_exec_argv(argv: list[str]) -> list[str]:
     ``setsid(1)`` can fork-and-return when the exec'd process is already a
     session/group leader, which made agent exec exit 0 immediately with no
     stdout while malvin never ran. Pre-inject cleanup can then
-    ``kill -- -$pgid`` without unscoped ``pkill``.
+    ``kill -TERM/--KILL -- -$pgid`` without unscoped ``pkill``.
     """
     import json
 
@@ -2457,7 +2466,7 @@ def offline_agent_checks(checks: str) -> str:
         if stripped == "uv run mypy":
             rewritten.append("mypy")
         else:
-            rewritten.append(line)
+            rewritten.append(ensure_tox_offline_skip_flags(line) if stripped else line)
     body = "\n".join(rewritten)
     return body + ("\n" if body and not body.endswith("\n") else "")
 
@@ -2607,7 +2616,7 @@ def finalize_modal_eval(
         "agent": agent_result,
         "grade": grade_result,
         "malvin_log_dir": str(malvin_log.resolve()) if malvin_log else None,
-        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "timestamp_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
     }
     if modal_error:
         metadata["modal_error"] = modal_error
@@ -3810,10 +3819,11 @@ def _test_cleanup_agent_process_tree_is_pgid_scoped() -> None:
     joined = " ".join(str(a) for a in args)
     assert "pkill" not in joined
     assert "killall" not in joined
-    assert "kill --" in joined or 'kill --' in joined
+    assert "kill -TERM --" in joined or "kill -KILL --" in joined
     assert AGENT_PGID_PATH in joined
     script = agent_process_tree_cleanup_script()
-    assert "kill --" in script
+    assert "kill -TERM --" in script
+    assert "kill -KILL --" in script
     assert "pkill" not in script
     assert "killall" not in script
 
@@ -3884,6 +3894,7 @@ def _test_cleanup_agent_process_tree_kills_local_orphan_tree() -> None:
         script = agent_process_tree_cleanup_script(pgid_path=str(pgid_file))
         assert "pkill" not in script
         assert "killall" not in script
+        assert "kill -KILL --" in script
         subprocess.run(["bash", "-lc", script], check=False)
         deadline = time.monotonic() + 2.0
         while time.monotonic() < deadline and (_alive(pgid) or _alive(child_pid)):
@@ -4207,13 +4218,14 @@ def _test_mount_eval_context_recipe() -> None:
     workspace_upload = uploads[0]
     assert workspace_upload[2]["ignore"] == workspace_mount_ignore()
     file_uploads = [call for call in recorder.calls if call[0] == "add_local_file"]
-    assert len(file_uploads) == 4
+    assert len(file_uploads) == 5
     remote_paths = {call[2]["remote_path"] for call in file_uploads}
     assert remote_paths == {
         DEEPSWE_RUN_REMOTE,
         SANDBOX_PREP_REMOTE,
         HARBOR_TESTS_REMOTE,
         TOOLCHAIN_REPOS_REMOTE,
+        TOX_GATES_REMOTE,
     }
     pip_cmds = [call for call in recorder.calls if call[0] == "run_commands"]
     assert pip_cmds
@@ -4329,11 +4341,13 @@ def _test_offline_check_tool_install_commands() -> None:
 
 
 def _test_offline_agent_checks() -> None:
-    raw = "uv run mypy\npytest -sv tests\nruff check .\n"
+    raw = "uv run mypy\npytest -sv tests\nruff check .\ntox run -e pep8\n"
     out = offline_agent_checks(raw)
     assert "uv run mypy" not in out
     assert "mypy\n" in out
     assert "pytest -sv tests" in out
+    assert "tox run -e pep8 --skip-missing-interpreters true" in out
+    assert "--skip-env-install --skip-pkg-install" in out
 
 
 def _test_read_remote_file() -> None:

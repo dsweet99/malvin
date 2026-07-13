@@ -2960,13 +2960,6 @@ def tox_runner_install_command(workspace: Path) -> str | None:
     )
 
 
-def tox_lint_env_warm_command(workspace: Path) -> str | None:
-    """Pre-create the tox lint env at image build so offline ``just lint`` / ``tox -e lint`` work."""
-    if not tox_lint_check_commands(workspace):
-        return None
-    return "tox -e lint --notest"
-
-
 def workspace_lint_tool_install_command(workspace: Path) -> str | None:
     """Install tox lint-gate CLIs at image build for offline malvin quality gates."""
     if (workspace / "uv.lock").is_file():
@@ -3209,9 +3202,13 @@ def workspace_image_warm_commands(
         commands.append(editable)
     precommit_cmds = precommit_warm_script_commands(workspace)
     commands.extend(precommit_cmds)
-    tox_lint_env = tox_lint_env_warm_command(workspace)
-    if tox_lint_env:
-        commands.append(tox_lint_env)
+    from tox_gates import tox_gate_env_warm_command
+
+    tox_gate_env = tox_gate_env_warm_command(workspace)
+    if tox_gate_env:
+        commands.append(tox_gate_env)
+    elif tox_lint_check_commands(workspace):
+        commands.append("tox -e lint --notest --skip-missing-interpreters true")
     # Tox/lint pip installs can upgrade transitive pins (e.g. packaging); restore declared pins.
     repin = workspace_declared_repin_command(workspace, dockerfile)
     if repin:
@@ -3682,11 +3679,6 @@ def _test_just_and_tox_runner_install_commands() -> None:
         assert pinned is not None
         assert "tox==4.23.2" in pinned
         assert "invoke==2.2.0" in pinned
-        (root / "tox.ini").write_text(
-            "[testenv:lint]\ncommands =\n  ruff check src/\n",
-            encoding="utf-8",
-        )
-        assert tox_lint_env_warm_command(root) == "tox -e lint --notest"
 
 
 def _test_workspace_lint_tool_install_command() -> None:
@@ -4006,7 +3998,10 @@ def _test_workspace_image_warm_commands() -> None:
         lint_warm = workspace_image_warm_commands(root)
         assert any("tox" in cmd for cmd in lint_warm)
         assert any("ruff==0.9.1" in cmd for cmd in lint_warm)
-        assert any(cmd == "tox -e lint --notest" for cmd in lint_warm)
+        assert any(
+            cmd == "tox run -e lint --notest --skip-missing-interpreters true"
+            for cmd in lint_warm
+        )
         assert len(lint_warm) == 5
         (root / "justfile").write_text("lint:\n    tox -e lint\n", encoding="utf-8")
         with_just = workspace_image_warm_commands(root)
@@ -4037,7 +4032,7 @@ def _test_workspace_image_warm_commands() -> None:
             ),
         ]
         assert cmds[5:7] == precommit_script
-        assert "tox -e lint --notest" in cmds
+        assert any("tox run -e lint --notest" in cmd for cmd in cmds)
         assert "uv run ruff check" in cmds[-1]
         assert "continuing" in cmds[-1]
 

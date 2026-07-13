@@ -86,6 +86,11 @@ from toolchain_repos import (
     resolve_malvin_cmd,
     validate_toolchain_repos,
 )
+from tox_gates import (
+    ensure_tox_offline_skip_flags,
+    is_tox_invocation,
+    tox_gate_check_commands,
+)
 
 try:
     import tomllib
@@ -101,6 +106,7 @@ DEEPSWE_RUN_REMOTE = f"{DEEPSWE_OPS_REMOTE}/deepswe_run.py"
 SANDBOX_PREP_REMOTE = f"{DEEPSWE_OPS_REMOTE}/sandbox_prep.py"
 HARBOR_TESTS_REMOTE = f"{DEEPSWE_OPS_REMOTE}/harbor_tests.py"
 TOOLCHAIN_REPOS_REMOTE = f"{DEEPSWE_OPS_REMOTE}/toolchain_repos.py"
+TOX_GATES_REMOTE = f"{DEEPSWE_OPS_REMOTE}/tox_gates.py"
 MALVIN_TOOLCHAIN_REMOTE = "/opt/toolchain/malvin"
 # Keep Harbor project venvs (``ENV VIRTUAL_ENV=/opt/venv``) on PATH. A bare
 # toolchain overwrite otherwise shadows ``/opt/venv/bin`` and breaks PYTHONPATH
@@ -726,9 +732,25 @@ def refuse_agent_verifier_leaks(*, grade_only: bool, apply_solution: bool) -> No
 
 
 def canonical_tool(line: str) -> str:
-    """First whitespace-delimited token, lowercased (for deduping check command lines)."""
+    """First whitespace-delimited token, lowercased (for deduping check command lines).
+
+    Tox environments are distinct gates (``tox run -e pep8`` vs ``-e py312``), so
+    key those by the ``-e``/``--env`` value instead of the bare ``tox`` token.
+    """
     parts = line.strip().split()
-    return parts[0].lower() if parts else ""
+    if not parts:
+        return ""
+    tool = parts[0].lower()
+    tox_tokens = parts
+    if tool in {"python", "python3"} and len(parts) >= 3 and parts[1] == "-m" and parts[2] == "tox":
+        tool = "tox"
+        tox_tokens = parts[2:]
+    if tool == "tox":
+        for index, part in enumerate(tox_tokens):
+            if part in {"-e", "--env"} and index + 1 < len(tox_tokens):
+                return f"tox:{tox_tokens[index + 1]}"
+        return "tox"
+    return tool
 
 
 def parse_yaml_scalar(raw: str) -> str:
@@ -934,15 +956,20 @@ def discover_deepswe_check_lines(
     signal_lines: list[str] = []
     precommit = precommit_agent_check_commands(root)
     makefile = makefile_gate_targets(root)
-    tox_lint = tox_lint_check_commands(root)
+    tox_gates = tox_gate_check_commands(root)
+    tox_lint = [] if tox_gates else tox_lint_check_commands(root)
     if precommit:
         signal_lines.extend(supplement_makefile_signals(precommit, makefile))
     else:
         signal_lines.extend(makefile)
-    if tox_lint:
+    if tox_gates:
+        signal_lines.extend(tox_gates)
+    elif tox_lint:
         signal_lines.extend(tox_lint)
     signal_lines.extend(existing_malvin_checks_lines(root))
-    return dedupe_check_lines(signal_lines)
+    return dedupe_check_lines(
+        [ensure_tox_offline_skip_flags(line) for line in signal_lines]
+    )
 
 
 def discover_deepswe_checks(
@@ -1195,16 +1222,18 @@ def write_task_plan(
     *,
     dry_run: bool = False,
 ) -> None:
-    """Copy task instruction to workspace ``plan.md``.
+    """Copy task instruction to workspace ``plan.md`` and pre-seed ``.malvin/checks``.
 
-    Quality gates (``.malvin/checks``) are left to malvin's checks-discovery flow.
+    Pre-seeding makes ``malvin init`` take the fast path and ensures tox gate lines
+    include offline ``--skip-env-install`` / ``--skip-pkg-install`` flags.
     """
     plan = workspace / "plan.md"
     if dry_run:
         click.echo(f"Writing {plan} from {spec.instruction}")
-        return
-    shutil.copyfile(spec.instruction, plan)
-    click.echo(f"Writing {plan}")
+    else:
+        shutil.copyfile(spec.instruction, plan)
+        click.echo(f"Writing {plan}")
+    write_deepswe_agent_checks(workspace, dry_run=dry_run)
 
 
 def write_plan_and_checks(
@@ -1790,6 +1819,7 @@ def _docker_common_mounts(
         "-v", f"{deepswe_run_py.resolve().parent / 'sandbox_prep.py'}:{SANDBOX_PREP_REMOTE}:ro",
         "-v", f"{deepswe_run_py.resolve().parent / 'harbor_tests.py'}:{HARBOR_TESTS_REMOTE}:ro",
         "-v", f"{deepswe_run_py.resolve().parent / 'toolchain_repos.py'}:{TOOLCHAIN_REPOS_REMOTE}:ro",
+        "-v", f"{deepswe_run_py.resolve().parent / 'tox_gates.py'}:{TOX_GATES_REMOTE}:ro",
         "-v", f"{logs_mount.resolve()}:/logs",
         "-v", f"{run_root.resolve()}:/run",
     ]
@@ -1923,6 +1953,7 @@ def docker_local_eval_cmd(
         "-v", f"{deepswe_run_py.resolve()}:{DEEPSWE_RUN_REMOTE}:ro",
         "-v", f"{deepswe_run_py.resolve().parent / 'sandbox_prep.py'}:{SANDBOX_PREP_REMOTE}:ro",
         "-v", f"{deepswe_run_py.resolve().parent / 'toolchain_repos.py'}:{TOOLCHAIN_REPOS_REMOTE}:ro",
+        "-v", f"{deepswe_run_py.resolve().parent / 'tox_gates.py'}:{TOX_GATES_REMOTE}:ro",
         "-v", f"{(run_root / 'verifier_logs').resolve()}:/logs",
         "-v", f"{run_root.resolve()}:/run",
         "-w", "/app",
@@ -2451,19 +2482,21 @@ def write_deepswe_agent_checks(workspace: Path, *, dry_run: bool = False) -> str
 
     Makes ``malvin init`` take its documented fast path (no LLM discovery).
 
-    Prefer manifest-driven offline ecosystem smoke (``importlib.metadata`` /
-    ``cargo metadata --offline`` / ``go list``) so init-checks exercises install
-    health without network-bound lint toolchains. When no packaging manifest
-    exists, fall back to discoverable repo gates (Makefile / pre-commit / tox),
-    else ``true``.
+    Prefer discoverable repo gates (Makefile / pre-commit / offline tox). When a
+    packaging manifest exists but tox gate envs are present, prefer those tox
+    lines (with ``--skip-env-install`` / ``--skip-pkg-install``) over import
+    smoke so agent sandboxes can run real quality gates without PyPI. Otherwise
+    fall back to manifest-driven offline ecosystem smoke, else ``true``.
     """
-    lines = ecosystem_offline_smoke_commands(workspace)
-    if lines == ["true"]:
-        discovered = runnable_check_command_lines(
-            discover_deepswe_checks(workspace)
-        )
-        if discovered:
+    discovered = runnable_check_command_lines(discover_deepswe_checks(workspace))
+    tox_gates = [line for line in discovered if _is_tox_check_line(line)]
+    if tox_gates:
+        lines = discovered
+    else:
+        lines = ecosystem_offline_smoke_commands(workspace)
+        if lines == ["true"] and discovered:
             lines = discovered
+    lines = [ensure_tox_offline_skip_flags(line) for line in lines]
     checks_text = "\n".join(lines) + "\n"
     checks_path = workspace / ".malvin" / "checks"
     click.echo(f"Pre-seeding {checks_path} ({len(lines)} command(s))")
@@ -2472,6 +2505,10 @@ def write_deepswe_agent_checks(workspace: Path, *, dry_run: bool = False) -> str
     checks_path.parent.mkdir(parents=True, exist_ok=True)
     checks_path.write_text(checks_text, encoding="utf-8")
     return checks_text
+
+
+def _is_tox_check_line(command: str) -> bool:
+    return is_tox_invocation(command)
 
 
 def init_checks_cmd(malvin_cmd: str = MALVIN_CMD) -> list[str]:
@@ -4113,8 +4150,16 @@ def _test_write_deepswe_agent_checks_bandit_like_id_only() -> None:
             "[testenv:pep8]\ncommands = flake8 {posargs} bandit\n",
             encoding="utf-8",
         )
+        (workspace / "pyproject.toml").write_text(
+            "[project]\nname='bandit'\nversion='0'\n", encoding="utf-8"
+        )
+        (workspace / "bandit").mkdir()
+        (workspace / "bandit" / "__init__.py").write_text("", encoding="utf-8")
         text = write_deepswe_agent_checks(workspace, dry_run=False)
         assert "pre-commit run --all-files" in text
+        assert "tox run -e pep8 --skip-missing-interpreters true" in text
+        assert "tox run -e py310 --skip-missing-interpreters true" in text
+        assert "command -v python3.10" in text
         assert runnable_check_command_lines(text)
         assert (workspace / ".malvin" / "checks").is_file()
 
@@ -4133,7 +4178,37 @@ def _test_discover_deepswe_checks_tox_lint() -> None:
             encoding="utf-8",
         )
         lines = discover_deepswe_check_lines(root)
-        assert lines == ["ruff check src/ --fix", "mypy src/"]
+        assert lines == [
+            "tox run -e lint --skip-missing-interpreters true "
+            "--skip-env-install --skip-pkg-install"
+        ]
+
+
+def _test_discover_deepswe_checks_tox_envlist_offline_flags() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "tox.ini").write_text(
+            "[tox]\nenvlist = pep8,py310\n"
+            "[testenv:format]\ncommands = pre-commit run --all-files\n"
+            "[testenv:pep8]\ncommands = flake8 bandit\n",
+            encoding="utf-8",
+        )
+        lines = discover_deepswe_check_lines(root)
+        assert lines == [
+            (
+                "tox run -e pep8 --skip-missing-interpreters true "
+                "--skip-env-install --skip-pkg-install"
+            ),
+            (
+                "if command -v python3.10 >/dev/null 2>&1; then "
+                "tox run -e py310 --skip-missing-interpreters true "
+                "--skip-env-install --skip-pkg-install; fi"
+            ),
+            (
+                "tox run -e format --skip-missing-interpreters true "
+                "--skip-env-install --skip-pkg-install"
+            ),
+        ]
 
 
 def _test_discover_deepswe_checks_existing_malvin_checks() -> None:
@@ -4216,9 +4291,11 @@ def _test_write_task_plan() -> None:
             environment_memory_mb=4096,
         )
         write_task_plan(spec, workspace, dry_run=False)
-        assert not (workspace / ".malvin" / "checks").exists()
         plan_text = (workspace / "plan.md").read_text(encoding="utf-8")
         assert plan_text == "fix it\n"
+        checks = workspace / ".malvin" / "checks"
+        assert checks.is_file()
+        assert runnable_check_command_lines(checks.read_text(encoding="utf-8"))
 
 
 def _test_write_plan_and_checks_discovers() -> None:
@@ -4354,7 +4431,7 @@ def _test_write_plan_and_checks_includes_patch_surface_probe() -> None:
             environment_memory_mb=4096,
         )
         write_task_plan(spec, workspace, dry_run=False)
-        assert not (workspace / ".malvin" / "checks").exists()
+        assert (workspace / ".malvin" / "checks").is_file()
         assert not (workspace / ".malvin" / "patch_surface_probe.py").exists()
 
 
@@ -5631,6 +5708,7 @@ def run_self_tests() -> None:
     _test_discover_deepswe_checks_precommit_id_only_meta()
     _test_write_deepswe_agent_checks_bandit_like_id_only()
     _test_discover_deepswe_checks_tox_lint()
+    _test_discover_deepswe_checks_tox_envlist_offline_flags()
     _test_discover_deepswe_checks_existing_malvin_checks()
     _test_harbor_patch_check_lines()
     _test_harbor_baseline_adaptix_if_mode()

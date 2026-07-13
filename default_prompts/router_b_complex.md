@@ -38,10 +38,11 @@
 - For performance, generate ideas with `{{ malvin_command }} inspire`, falsify them, and use the best survivors.
 - For regularization, lean on `{{ malvin_command }} priors` to reduce uncertainty effectively, and choose simplicity when possible.
 
-## Big requests
+## Large or many requests
 
-- If a request seems too large to handle, write a plan file in `{{ malvin_output_path }}`.
-- You may hand off pieces of work to another malvin with `{{ malvin_command }} PLAN_PATH`, but avoid infinite recursion and excessive memory use.
+If a request seems too large to handle in-context, write a plan file, todo list, or table in `{{ malvin_output_path }}`. You might have already done that in a previous iteration. Take a look.
+
+
 
  # Done
 When you are done, describe any remaining work or uncertainty.
