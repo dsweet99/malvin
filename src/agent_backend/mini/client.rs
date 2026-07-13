@@ -13,7 +13,7 @@ use super::model_resolve::resolve_mini_model;
 use super::retry_fork::MiniRetryStrategy;
 use super::trace::MiniTraceSink;
 use crate::acp::{AgentError, AgentIoOptions, AuthError, CoderPromptOptions};
-use crate::local_llm::{ensure_local_sidecar, local_openrouter_config, LocalSidecarHandle};
+use crate::local_llm::{ensure_local_engine, DownloadPolicy};
 use crate::model_id::uses_local_backend;
 use crate::prompts::default_file;
 
@@ -40,26 +40,21 @@ pub struct MiniAgentClient {
     pub(crate) timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
     pub(crate) trace: MiniTraceSink,
     prompt_counter: u32,
-    /// Kept alive so Drop tears down the MLX sidecar with the client.
-    local_sidecar: Option<LocalSidecarHandle>,
 }
 
 impl MiniAgentClient {
     pub fn new(config: MiniLoopConfig, io: AgentIoOptions) -> Result<Self, String> {
         ensure_bash_on_path()?;
-        let (llm, local_sidecar) = if uses_local_backend(&config.model) {
-            let sidecar = ensure_local_sidecar(&config.model, config.allow_download)?;
-            let openrouter_config =
-                local_openrouter_config(sidecar.model_slug(), sidecar.base_url());
-            let client = OpenRouterClient::new(openrouter_config)
-                .map_err(|e| format!("local sidecar client init failed: {e}"))?;
-            (LlmBackend::Http(client), Some(sidecar))
+        let llm = if uses_local_backend(&config.model) {
+            let policy = download_policy(config.allow_download);
+            let engine = ensure_local_engine(&config.model, policy)?;
+            LlmBackend::Local(engine)
         } else {
             let openrouter_config =
                 malvin_mini::OpenRouterConfig::from_env(resolve_mini_model(&config.model))?;
             let client = OpenRouterClient::new(openrouter_config)
                 .map_err(|e| format!("OpenRouter client init failed: {e}"))?;
-            (LlmBackend::Http(client), None)
+            LlmBackend::Http(client)
         };
         Ok(Self {
             config,
@@ -71,7 +66,6 @@ impl MiniAgentClient {
             timing: None,
             trace: MiniTraceSink::new(None, io),
             prompt_counter: 0,
-            local_sidecar,
         })
     }
 
@@ -87,7 +81,6 @@ impl MiniAgentClient {
             timing: None,
             trace: MiniTraceSink::new(None, io),
             prompt_counter: 0,
-            local_sidecar: None,
         }
     }
 
@@ -112,8 +105,8 @@ impl MiniAgentClient {
     }
 
     #[must_use]
-    pub const fn has_local_sidecar(&self) -> bool {
-        self.local_sidecar.is_some()
+    pub const fn has_local_engine(&self) -> bool {
+        matches!(self.llm, LlmBackend::Local(_))
     }
 
     #[must_use]
@@ -197,6 +190,14 @@ impl MiniAgentClient {
         self.prompt_counter += 1;
 
         run_coder_prompt_with_gate_retries(self, prompt, &driver_config, opts).await
+    }
+}
+
+const fn download_policy(allow: bool) -> DownloadPolicy {
+    if allow {
+        DownloadPolicy::Allow
+    } else {
+        DownloadPolicy::Deny
     }
 }
 

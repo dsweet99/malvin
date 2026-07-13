@@ -37,7 +37,7 @@ fn mini_new_mock_skips_openrouter_init() {
         })),
     );
     assert!(!client.has_open_coder_session());
-    assert!(!client.has_local_sidecar());
+    assert!(!client.has_local_engine());
 }
 
 #[test]

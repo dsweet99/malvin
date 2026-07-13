@@ -2,7 +2,7 @@
 
 pub use crate::support_paths::MINI_DEFAULT_MODEL;
 
-/// Resolve a mini model id to the provider / sidecar slug.
+/// Resolve a mini model id to the provider / local slug.
 #[must_use]
 pub fn resolve_mini_model(model: &str) -> String {
     let slug = crate::model_id::provider_slug(model);

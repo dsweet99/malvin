@@ -43,6 +43,7 @@ impl ParsedModel {
         matches!(self.backend, ModelBackend::Local)
     }
 
+    /// True when the model uses the malvin-mini agent loop (`openrouter:` HTTP or `local:` in-process).
     #[must_use]
     pub const fn uses_mini_http(&self) -> bool {
         matches!(self.backend, ModelBackend::OpenRouter | ModelBackend::Local)
@@ -95,7 +96,7 @@ pub fn require_config_model(raw: &str) -> Result<String, String> {
     require_prefixed_model(raw)
 }
 
-/// Resolve the provider slug passed to Cursor ACP, `OpenRouter`, or the local sidecar.
+/// Resolve the provider slug passed to Cursor ACP, `OpenRouter`, or local llama.cpp.
 #[must_use]
 pub fn provider_slug(raw: &str) -> String {
     match parse_model_id(raw) {
@@ -126,7 +127,7 @@ pub fn uses_local_backend(raw: &str) -> bool {
     parse_model_id(raw).map(|p| p.is_local()).unwrap_or(false)
 }
 
-/// True when the model runs through malvin-mini HTTP (`openrouter:` or `local:`).
+/// True when the model runs through the malvin-mini agent loop (`openrouter:` or `local:`).
 #[must_use]
 pub fn uses_mini_backend(raw: &str) -> bool {
     parse_model_id(raw)
@@ -206,7 +207,7 @@ mod tests {
         assert!(uses_mini_backend("openrouter:x"));
         assert!(uses_mini_backend("local:qwen35_9b_q4"));
         assert!(!uses_mini_backend("cursor:auto"));
-        assert!(uses_local_backend("local:nemotron_cascade2"));
+        assert!(uses_local_backend("local:nemotron3_nano_4b"));
         assert!(!uses_local_backend("openrouter:x"));
         assert!(uses_openrouter_backend("openrouter:org/m"));
         assert!(!uses_openrouter_backend("local:qwen35_9b_q4"));

@@ -58,7 +58,7 @@ fn build_agent_backend_selects_mini_for_openrouter_model() {
 #[test]
 fn uses_mini_backend_for_local_prefix() {
     assert!(crate::model_id::uses_mini_backend("local:qwen35_9b_q4"));
-    assert!(crate::model_id::uses_local_backend("local:nemotron_cascade2"));
+    assert!(crate::model_id::uses_local_backend("local:nemotron3_nano_4b"));
 }
 
 #[test]

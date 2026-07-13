@@ -39,6 +39,7 @@ pub struct LlmCompletionOutcome {
 
 pub enum LlmBackend {
     Http(malvin_mini::OpenRouterClient),
+    Local(crate::local_llm::LocalCompletionEngine),
     Mock(std::sync::Mutex<MockScript>),
 }
 
@@ -65,6 +66,10 @@ impl LlmBackend {
                     result: meta.result,
                     http: meta.http,
                 }
+            }
+            Self::Local(engine) => {
+                let (result, http) = engine.complete(messages).await;
+                LlmCompletionOutcome { result, http }
             }
             Self::Mock(script) => {
                 let mut g = script.lock().unwrap_or_else(std::sync::PoisonError::into_inner);

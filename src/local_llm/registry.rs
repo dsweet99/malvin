@@ -1,8 +1,7 @@
-//! Static catalog of supported `local:` model ids.
+//! Static catalog of supported `local:` GGUF model ids.
 
 use malvin_mini::ModelListing;
 
-use super::cache::is_model_cached;
 use crate::model_id::LOCAL_PREFIX;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -11,28 +10,39 @@ pub struct LocalModelSpec {
     pub slug: &'static str,
     /// Human-readable name for `malvin models`.
     pub display_name: &'static str,
-    /// Hugging Face repo id used for download.
+    /// Hugging Face repo id.
     pub hf_repo: &'static str,
     /// Directory name under `~/.malvin_home/model_cache/`.
     pub cache_dirname: &'static str,
-    /// Loader kind understood by the Python sidecar.
-    pub loader: &'static str,
+    /// GGUF filename within the cache directory.
+    pub gguf_filename: &'static str,
+    /// Direct resolve URL for the GGUF artifact.
+    pub resolve_url: &'static str,
+    /// Minimum `mem_limit_gb` for in-sandbox load (weights + runtime headroom).
+    pub min_mem_limit_gb: u64,
 }
 
 pub const LOCAL_MODELS: &[LocalModelSpec] = &[
     LocalModelSpec {
         slug: "qwen35_9b_q4",
-        display_name: "Qwen3.5-9B MLX 4-bit",
-        hf_repo: "mlx-community/Qwen3.5-9B-MLX-4bit",
-        cache_dirname: "Qwen3.5-9B-MLX-4bit",
-        loader: "mlx_lm",
+        display_name: "Qwen3.5-9B Q4_K_M GGUF",
+        hf_repo: "unsloth/Qwen3.5-9B-GGUF",
+        cache_dirname: "Qwen3.5-9B-GGUF",
+        gguf_filename: "Qwen3.5-9B-Q4_K_M.gguf",
+        resolve_url: "https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main/Qwen3.5-9B-Q4_K_M.gguf",
+        // ~5.3 GiB on disk; Metal residency needs headroom above the GGUF size.
+        min_mem_limit_gb: 8,
     },
     LocalModelSpec {
-        slug: "nemotron_cascade2",
-        display_name: "Nemotron Cascade 2 JANG_2L",
-        hf_repo: "JANGQ-AI/Nemotron-Cascade-2-30B-A3B-JANG_2L",
-        cache_dirname: "Nemotron-Cascade-2-30B-A3B-JANG_2L",
-        loader: "jang",
+        slug: "nemotron3_nano_4b",
+        display_name: "Nemotron-3-Nano-4B Q4_K_M GGUF",
+        hf_repo: "nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF",
+        cache_dirname: "NVIDIA-Nemotron-3-Nano-4B-GGUF",
+        gguf_filename: "NVIDIA-Nemotron3-Nano-4B-Q4_K_M.gguf",
+        resolve_url:
+            "https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF/resolve/main/NVIDIA-Nemotron3-Nano-4B-Q4_K_M.gguf",
+        // ~2.6 GiB on disk; keep margin for context + agent USS.
+        min_mem_limit_gb: 6,
     },
 ];
 
@@ -59,16 +69,9 @@ pub fn require_known_local_slug(slug: &str) -> Result<&'static LocalModelSpec, S
 pub fn local_model_listings() -> Vec<ModelListing> {
     LOCAL_MODELS
         .iter()
-        .map(|spec| {
-            let status = if is_model_cached(spec) {
-                "cached"
-            } else {
-                "needs download"
-            };
-            ModelListing {
-                id: spec.slug.to_string(),
-                name: format!("{} ({status})", spec.display_name),
-            }
+        .map(|spec| ModelListing {
+            id: spec.slug.to_string(),
+            name: spec.display_name.to_string(),
         })
         .collect()
 }
@@ -78,44 +81,38 @@ mod tests {
     use super::*;
 
     #[test]
-    fn catalog_contains_v1_models() {
+    fn catalog_contains_v1_gguf_models() {
         assert!(lookup_local_model("qwen35_9b_q4").is_some());
-        assert!(lookup_local_model("nemotron_cascade2").is_some());
+        assert!(lookup_local_model("nemotron3_nano_4b").is_some());
+        assert!(lookup_local_model("nemotron_cascade2").is_none());
         assert!(lookup_local_model("missing").is_none());
         assert!(require_known_local_slug("nope").is_err());
-        let spec: &LocalModelSpec = lookup_local_model("qwen35_9b_q4").expect("qwen");
-        assert_eq!(spec.slug, "qwen35_9b_q4");
-        assert!(!spec.display_name.is_empty());
+        let spec = lookup_local_model("qwen35_9b_q4").expect("qwen");
+        assert!(
+            std::path::Path::new(spec.gguf_filename)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("gguf"))
+        );
+        assert!(spec.resolve_url.starts_with("https://"));
         assert!(spec.hf_repo.contains('/'));
-        assert!(!spec.cache_dirname.is_empty());
-        assert_eq!(spec.loader, "mlx_lm");
     }
 
     #[test]
-    fn listings_use_local_slugs() {
+    fn listings_have_no_cache_status() {
         let rows = local_model_listings();
         assert_eq!(rows.len(), 2);
         assert_eq!(rows[0].id, "qwen35_9b_q4");
-        assert!(rows[0].name.contains("Qwen"));
-        let spec = LocalModelSpec {
-            slug: "x",
-            display_name: "X",
-            hf_repo: "org/x",
-            cache_dirname: "x",
-            loader: "mlx_lm",
-        };
-        assert_eq!(spec.slug, "x");
-        let LocalModelSpec {
-            slug,
-            display_name,
-            hf_repo,
-            cache_dirname,
-            loader,
-        } = *lookup_local_model("qwen35_9b_q4").expect("spec");
-        assert_eq!(slug, "qwen35_9b_q4");
-        assert!(!display_name.is_empty());
-        assert!(hf_repo.contains('/'));
-        assert!(!cache_dirname.is_empty());
-        assert_eq!(loader, "mlx_lm");
+        assert!(!rows[0].name.contains("cached"));
+        assert!(!rows[0].name.contains("download"));
+        assert_eq!(rows[1].id, "nemotron3_nano_4b");
+    }
+
+    #[test]
+    fn min_mem_floors_exceed_gguf_disk_size_gb() {
+        let qwen = lookup_local_model("qwen35_9b_q4").expect("qwen");
+        let nano = lookup_local_model("nemotron3_nano_4b").expect("nano");
+        assert!(qwen.min_mem_limit_gb >= 8);
+        assert!(nano.min_mem_limit_gb >= 6);
+        assert!(qwen.min_mem_limit_gb > nano.min_mem_limit_gb);
     }
 }
