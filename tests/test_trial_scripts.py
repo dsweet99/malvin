@@ -12,7 +12,13 @@ import deepswe_run
 def test_build_agent_script_route_has_init_then_plan() -> None:
     script = deepswe_run.build_agent_script("route")
     assert "malvin init" in script
-    assert "malvin plan.md" in script
+    assert "malvin --git plan.md" in script
+    assert deepswe_run.RUNTIME_INSTALL_DENYLIST_RE.search(script) is None
+
+
+def test_build_agent_script_code_uses_git() -> None:
+    script = deepswe_run.build_agent_script("code")
+    assert "malvin --git code plan.md" in script
     assert deepswe_run.RUNTIME_INSTALL_DENYLIST_RE.search(script) is None
 
 

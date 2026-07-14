@@ -162,7 +162,12 @@ def build_agent_script(
             body = f"# ignored malvin_args: {extra}\n" + body
     elif malvin_command in ("route", "code"):
         # End-state: explicit malvin init before plan.md (Q9).
-        plan_cmd = f"{q} plan.md" if malvin_command == "route" else f"{q} code plan.md"
+        # ``--git`` lets the agent commit (DeepSWE solve needs it).
+        plan_cmd = (
+            f"{q} --git plan.md"
+            if malvin_command == "route"
+            else f"{q} --git code plan.md"
+        )
         if extra:
             plan_cmd = f"{plan_cmd} {extra}"
         body = f"{q} init\n{plan_cmd}\n"
@@ -2477,7 +2482,7 @@ def grade_workspace(
 
 
 def malvin_needs_task_plan(command: str) -> bool:
-    """True when the agent phase reads task ``plan.md`` (bare ``malvin plan.md``)."""
+    """True when the agent phase reads task ``plan.md`` (``malvin --git plan.md``)."""
     return command in ("code", "route")
 
 
@@ -2810,10 +2815,12 @@ def run_malvin(
             raise click.ClickException(f"Missing plan.md in workspace: {plan}")
         q = shlex.quote(MALVIN_CMD)
         extras = " ".join(shlex.quote(a) for a in malvin_args)
+        plan_q = shlex.quote(plan.name)
+        # ``--git`` lets the agent commit (DeepSWE solve needs it).
         if command == "route":
-            plan_part = f"{q} {shlex.quote(plan.name)}"
+            plan_part = f"{q} --git {plan_q}"
         else:
-            plan_part = f"{q} code {shlex.quote(plan.name)}"
+            plan_part = f"{q} --git code {plan_q}"
         if extras:
             plan_part = f"{plan_part} {extras}"
         # Explicit init before plan (end-state agent script parity; Q9).
@@ -3424,7 +3431,7 @@ def _task_kernel_options(f: Any) -> Any:
         show_default=True,
         help=(
             "malvin entrypoint for the agent phase "
-            "(route: bare `malvin plan.md`; init-checks: "
+            "(route: `malvin --git plan.md`; init-checks: "
             "`malvin init` then source `.malvin/checks`)."
         ),
     )(f)
@@ -3502,7 +3509,7 @@ def _local_solve_options(f: Any) -> Any:
         is_flag=True,
         help=(
             "Harness smoke: run `malvin init && source .malvin/checks` instead of "
-            "`malvin plan.md` (exposes agent dependency problems), then Harbor grade."
+            "`malvin --git plan.md` (exposes agent dependency problems), then Harbor grade."
         ),
     )(f)
     f = click.argument("malvin_args", nargs=-1, type=click.UNPROCESSED)(f)
@@ -3884,7 +3891,7 @@ def _test_docker_local_eval_cmd() -> None:
 def _test_trial_scripts_deny_runtime_installs() -> None:
     agent = build_agent_script("route")
     assert "malvin init" in agent
-    assert "malvin plan.md" in agent
+    assert "malvin --git plan.md" in agent
     assert RUNTIME_INSTALL_DENYLIST_RE.search(agent) is None
     init_checks = build_agent_script("init-checks")
     assert "source .malvin/checks" in init_checks
@@ -4852,6 +4859,7 @@ def _test_run_malvin_uses_plan_name_not_at_notation() -> None:
         assert captured["cmd"][:2] == ["bash", "-lc"]
         script = captured["cmd"][2]
         assert "plan.md" in script
+        assert "--git" in script
         assert " init " in f" {script} " or script.endswith("init") or "init &&" in script
         assert "@plan.md" not in script
         assert "@" not in script.split("plan.md")[0][-2:] if "plan.md" in script else True
