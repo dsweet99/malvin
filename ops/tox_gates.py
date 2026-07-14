@@ -6,8 +6,11 @@ import re
 import shlex
 from pathlib import Path
 
+# Intentional omission: mypy/typecheck. DeepSWE pristine snapshots often fail
+# upstream type gates (stub skew); solve --test smoke must not require them.
+# Lint/pep8/format/ruff remain preferred offline agent checks.
 _TOX_GATE_ENV_RE = re.compile(
-    r"^(?:pep8|format|lint|linters|typecheck|mypy|ruff|style|check|tests?|unit|"
+    r"^(?:pep8|format|lint|linters|ruff|style|check|tests?|unit|"
     r"py\d{2,3}|py3\d{1,2})$",
     re.I,
 )
@@ -314,8 +317,37 @@ def _test_tox_gate_precommit_warm_command() -> None:
         assert ".tox/*/" not in cmd
 
 
+def _test_tox_gate_env_names_omit_mypy_typecheck() -> None:
+    """mypy/typecheck are not agent tox-gate envs (pristine DeepSWE often fails them)."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "tox.ini").write_text(
+            "[tox]\nenvlist = mypy,typecheck,lint\n"
+            "[testenv:mypy]\ncommands = mypy gql\n"
+            "[testenv:typecheck]\ncommands = mypy src\n"
+            "[testenv:lint]\ncommands = ruff check .\n",
+            encoding="utf-8",
+        )
+        assert tox_gate_env_names(root) == ["lint"]
+        assert tox_gate_check_commands(root) == [
+            "tox run -e lint --skip-missing-interpreters true "
+            "--skip-env-install --skip-pkg-install"
+        ]
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "tox.ini").write_text(
+            "[tox]\nenvlist = mypy\n[testenv:mypy]\ncommands = mypy gql tests\n",
+            encoding="utf-8",
+        )
+        assert tox_gate_env_names(root) == []
+        assert tox_gate_check_commands(root) == []
+
+
 if __name__ == "__main__":
     _test_tox_gate_check_commands_offline_flags()
     _test_clamp_tox_version_and_image_build_pip()
     _test_tox_gate_precommit_warm_command()
+    _test_tox_gate_env_names_omit_mypy_typecheck()
     print("tox_gates self-test: ok")

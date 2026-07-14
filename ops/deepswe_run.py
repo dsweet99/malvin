@@ -2655,6 +2655,46 @@ def _harbor_venv_python_c(probe: str) -> str:
     return f"bash -lc {shlex.quote(script)}"
 
 
+_OMITTED_TOX_TYPECHECK_ENVS = frozenset({"mypy", "typecheck"})
+
+
+def _strip_omitted_tox_typecheck_envs(command: str) -> str | None:
+    """Drop mypy/typecheck from tox ``-e`` lists; return None if no envs remain.
+
+    Authorship may see leftover combined lines (``lint,mypy`` / ``mypy,lint``).
+    Keep any non-omitted envs so lint continues to run.
+    """
+    if not is_tox_invocation(command):
+        return command
+    parts = command.split()
+    out: list[str] = []
+    i = 0
+    saw_e = False
+    kept_any = False
+    while i < len(parts):
+        if parts[i] == "-e" and i + 1 < len(parts):
+            saw_e = True
+            envs = [e.strip() for e in parts[i + 1].split(",") if e.strip()]
+            kept = [e for e in envs if e.lower() not in _OMITTED_TOX_TYPECHECK_ENVS]
+            if kept:
+                out.extend(["-e", ",".join(kept)])
+                kept_any = True
+            i += 2
+            continue
+        out.append(parts[i])
+        i += 1
+    if saw_e and not kept_any:
+        return None
+    return " ".join(out)
+
+
+def _is_omitted_tox_typecheck_line(command: str) -> bool:
+    """True when tox ``-e`` lists become empty after dropping mypy/typecheck."""
+    if not is_tox_invocation(command):
+        return False
+    return _strip_omitted_tox_typecheck_envs(command) is None
+
+
 def write_deepswe_agent_checks(workspace: Path, *, dry_run: bool = False) -> str:
     """Pre-seed agent-safe ``.malvin/checks`` (repo signals only; no Harbor tests_dir).
 
@@ -2665,8 +2705,16 @@ def write_deepswe_agent_checks(workspace: Path, *, dry_run: bool = False) -> str
     lines (with ``--skip-env-install`` / ``--skip-pkg-install``) over import
     smoke so agent sandboxes can run real quality gates without PyPI. Otherwise
     fall back to manifest-driven offline ecosystem smoke, else ``true``.
+
+    Tox ``mypy`` / ``typecheck`` envs are not preferential agent gates (see
+    ``ops.tox_gates``); pristine DeepSWE trees often fail them under stub skew.
     """
-    discovered = runnable_check_command_lines(discover_deepswe_checks(workspace))
+    discovered: list[str] = []
+    for line in runnable_check_command_lines(discover_deepswe_checks(workspace)):
+        rewritten = _strip_omitted_tox_typecheck_envs(line)
+        if rewritten is None:
+            continue
+        discovered.append(rewritten)
     tox_gates = [line for line in discovered if _is_tox_check_line(line)]
     if tox_gates:
         lines = discovered
@@ -4664,12 +4712,14 @@ def _test_reset_workspace_removes_user_pycache() -> None:
             environment_memory_mb=4096,
         )
         # Host-owned caches are removed by git clean; Docker purge is out of scope here.
-        with patch("deepswe_run.purge_root_owned_ephemeral_caches", return_value=False):
+        mod = sys.modules[__name__]
+        with patch.object(mod, "purge_root_owned_ephemeral_caches", return_value=False):
             reset_workspace(spec, workspace, dry_run=False)
         assert not cache.exists(), cache
 
 
 def _test_purge_root_owned_ephemeral_caches_docker_cmd() -> None:
+    mod = sys.modules[__name__]
     with tempfile.TemporaryDirectory() as tmp:
         workspace = Path(tmp)
         captured: dict[str, list[str]] = {}
@@ -4678,8 +4728,8 @@ def _test_purge_root_owned_ephemeral_caches_docker_cmd() -> None:
             captured["cmd"] = cmd
             return subprocess.CompletedProcess(cmd, 0)
 
-        with patch("deepswe_run.docker_daemon_available", return_value=True):
-            with patch("deepswe_run.subprocess.run", side_effect=fake_run):
+        with patch.object(mod, "docker_daemon_available", return_value=True):
+            with patch.object(mod.subprocess, "run", side_effect=fake_run):
                 assert purge_root_owned_ephemeral_caches(workspace)
         cmd = captured["cmd"]
         assert cmd[0:2] == ["docker", "run"]
@@ -4697,6 +4747,7 @@ def _test_purge_root_owned_ephemeral_caches_docker_cmd() -> None:
 
 
 def _test_git_clean_would_remove_and_docker_purge_targets() -> None:
+    mod = sys.modules[__name__]
     with tempfile.TemporaryDirectory() as tmp:
         workspace = Path(tmp)
         run_cmd(["git", "init", "-q"], cwd=workspace, env=_GIT_TEST_IDENTITY)
@@ -4717,12 +4768,9 @@ def _test_git_clean_would_remove_and_docker_purge_targets() -> None:
             captured["input"] = kwargs.get("input")
             return subprocess.CompletedProcess(cmd, 0, "", "")
 
-        with patch("deepswe_run.docker_daemon_available", return_value=True):
-            with patch(
-                "deepswe_run.git_clean_would_remove",
-                return_value=["challenge"],
-            ):
-                with patch("deepswe_run.subprocess.run", side_effect=fake_run):
+        with patch.object(mod, "docker_daemon_available", return_value=True):
+            with patch.object(mod, "git_clean_would_remove", return_value=["challenge"]):
+                with patch.object(mod.subprocess, "run", side_effect=fake_run):
                     assert docker_purge_git_clean_targets(workspace)
         cmd = captured["cmd"]
         assert cmd[0:2] == ["docker", "run"]
@@ -4899,6 +4947,72 @@ def _test_write_deepswe_agent_checks_preseeds_file() -> None:
         assert "pip install" not in text
         assert_no_runtime_installs(text, label=".malvin/checks")
         assert runnable_check_command_lines(text)
+
+
+def _test_write_deepswe_agent_checks_mypy_only_falls_back_to_import() -> None:
+    """Sole tox mypy must not win over ecosystem import smoke for init-checks."""
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        (workspace / "tox.ini").write_text(
+            "[tox]\nenvlist = mypy\n[testenv:mypy]\ncommands = mypy gql tests\n",
+            encoding="utf-8",
+        )
+        (workspace / "pyproject.toml").write_text(
+            '[project]\nname = "gql"\nversion = "0"\n',
+            encoding="utf-8",
+        )
+        (workspace / "gql").mkdir()
+        (workspace / "gql" / "__init__.py").write_text("", encoding="utf-8")
+        text = write_deepswe_agent_checks(workspace, dry_run=False)
+        assert "tox run -e mypy" not in text
+        assert "import gql" in text
+    with tempfile.TemporaryDirectory() as tmp:
+        # Leftover authored mypy checks must not poison the next seed.
+        workspace = Path(tmp)
+        (workspace / "tox.ini").write_text(
+            "[tox]\nenvlist = mypy\n[testenv:mypy]\ncommands = mypy gql\n",
+            encoding="utf-8",
+        )
+        (workspace / "pyproject.toml").write_text(
+            '[project]\nname = "gql"\nversion = "0"\n',
+            encoding="utf-8",
+        )
+        (workspace / "gql").mkdir()
+        (workspace / "gql" / "__init__.py").write_text("", encoding="utf-8")
+        malvin_dir = workspace / ".malvin"
+        malvin_dir.mkdir()
+        (malvin_dir / "checks").write_text(
+            "tox run -e mypy --skip-missing-interpreters true "
+            "--skip-env-install --skip-pkg-install\n",
+            encoding="utf-8",
+        )
+        text = write_deepswe_agent_checks(workspace, dry_run=False)
+        assert "tox run -e mypy" not in text
+        assert "import gql" in text
+    with tempfile.TemporaryDirectory() as tmp:
+        # Combined leftover: keep lint, drop mypy from the -e list.
+        workspace = Path(tmp)
+        (workspace / "tox.ini").write_text(
+            "[tox]\nenvlist = lint\n[testenv:lint]\ncommands = ruff check .\n",
+            encoding="utf-8",
+        )
+        (workspace / "pyproject.toml").write_text(
+            '[project]\nname = "demo"\nversion = "0"\n',
+            encoding="utf-8",
+        )
+        (workspace / "demo").mkdir()
+        (workspace / "demo" / "__init__.py").write_text("", encoding="utf-8")
+        malvin_dir = workspace / ".malvin"
+        malvin_dir.mkdir()
+        (malvin_dir / "checks").write_text(
+            "tox run -e lint,mypy --skip-missing-interpreters true "
+            "--skip-env-install --skip-pkg-install\n",
+            encoding="utf-8",
+        )
+        text = write_deepswe_agent_checks(workspace, dry_run=False)
+        assert "mypy" not in text
+        assert "tox run -e lint " in text or "tox run -e lint\n" in text
+        assert "lint" in text
 
 
 def _test_write_deepswe_agent_checks_ecosystem_fallback() -> None:
@@ -5605,6 +5719,18 @@ def _test_run_local_eval_in_docker_passes_backstop_timeout() -> None:
     assert captured == [6300.0, 2700.0], captured
 
 
+def _run_host_orchestration_self_tests() -> None:
+    """Trial-script, host-preseed, and smoke-grade witnesses (Phase 1–3 invariants)."""
+    _test_trial_scripts_deny_runtime_installs()
+    _test_host_preseed_init_checks()
+    _test_init_checks_cmd_uses_fail_fast_source()
+    _test_write_deepswe_agent_checks_preseeds_file()
+    _test_write_deepswe_agent_checks_mypy_only_falls_back_to_import()
+    _test_write_deepswe_agent_checks_ecosystem_fallback()
+    _test_evaluation_smoke_allows_reward_zero()
+    _test_run_malvin_init_checks_preseeds_then_shells()
+
+
 def run_self_tests() -> None:
     _test_malvin_repo_root()
     _test_default_deepswe_tasks_root()
@@ -5656,8 +5782,7 @@ def run_self_tests() -> None:
     _test_malvin_mem_limit_gb_from_task_memory()
     _test_ensure_deepswe_malvin_config_seeds_home_config()
     _test_ensure_deepswe_malvin_config_skips_default_memory()
-    _test_trial_scripts_deny_runtime_installs()
-    _test_host_preseed_init_checks()
+    _run_host_orchestration_self_tests()
     _test_audit_task_entry_uses_materialized_workspace()
     _test_audit_task_entry_flags_missing_materialized_workspace()
     _test_remaining_sec_floors_at_zero()
@@ -5685,12 +5810,7 @@ def run_self_tests() -> None:
     _test_scan_class_level_attributes_skips_non_utf8()
     _test_run_malvin_uses_plan_name_not_at_notation()
     _test_run_malvin_do_uses_prompt_not_plan()
-    _test_init_checks_cmd_uses_fail_fast_source()
-    _test_write_deepswe_agent_checks_preseeds_file()
-    _test_write_deepswe_agent_checks_ecosystem_fallback()
     _test_harbor_venv_python_c_prefers_virtual_env()
-    _test_evaluation_smoke_allows_reward_zero()
-    _test_run_malvin_init_checks_preseeds_then_shells()
     _test_agent_phase_needs_cursor_credentials()
     _test_resolve_malvin_cmd_prefers_repo_target()
     _test_apply_in_sandbox_runner_env()
