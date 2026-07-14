@@ -60,7 +60,7 @@ Each outer loop iteration opens one coder session and sends four prompts:
 | 3 | `router_b_simple.md` or `router_b_complex.md` | Bare work brief (`COMPLEXITY_SCORE <= 3` → simple; `> 3` → complex) |
 | 4 | `router_c.md` | Bare follow-up: evidence report **or** `CONTINUE_ROUTER` |
 
-After turn 1, malvin parses `COMPLEXITY_SCORE` from the agent response (alone on its own line). Parse failure aborts the run immediately. After turn 2, malvin parses `CODING_TASK` the same way. Dotfile backup runs after that parse, before turn 3.
+After turn 1, malvin parses `COMPLEXITY_SCORE` from the agent response (label may appear mid-line; markdown decoration and glued trailing prose around the integer are tolerated; range templates like `1-10` are rejected; last valid match wins). Parse failure aborts the run immediately. After turn 2, malvin parses `CODING_TASK` the same way (`YES`/`NO` as whole tokens; last valid match wins). Dotfile backup runs after that parse, before turn 3.
 
 When the agent’s `router_c` reply contains a line exactly equal to `CONTINUE_ROUTER` (or the whole reply trimmed is `CONTINUE_ROUTER`), malvin tears down the session and starts a new outer loop with the same `router_a_1` assembly. Otherwise the run finishes.
 
