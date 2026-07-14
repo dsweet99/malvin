@@ -5,6 +5,7 @@ use crate::cli::flow_prompt_combine::{
 };
 use crate::prompt_stratification::WorkflowRenderContext;
 use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptError, PromptStore};
+use crate::workflow_context::PromptModelOpts;
 
 pub(crate) struct DoCoderRun {
     pub combined: String,
@@ -36,22 +37,23 @@ pub fn combine_do_acp_prompt_header_and_user(
     store: &PromptStore,
     artifacts: &RunArtifacts,
     text: &str,
-    model: &str,
+    opts: PromptModelOpts<'_>,
 ) -> Result<(String, String, String), String> {
-    combine_acp_prompt_header_and_user(store, artifacts, text, model)
+    combine_acp_prompt_header_and_user(store, artifacts, text, opts)
 }
 
 pub fn combine_do_raw_header_and_user(
     store: &PromptStore,
     artifacts: &RunArtifacts,
     text: &str,
-    model: &str,
+    opts: PromptModelOpts<'_>,
 ) -> Result<(String, String, String), String> {
     combine_mode_header_and_user(DualHeaderPromptInput {
         store,
         artifacts,
         text,
-        model,
+        model: opts.model,
+        git: opts.git,
         mode_template: DO_HEADER_MD,
     })
 }
@@ -60,13 +62,14 @@ pub(crate) fn build_do_coder_run_with_store(
     store: &PromptStore,
     artifacts: &RunArtifacts,
     text: &str,
-    model: &str,
+    opts: PromptModelOpts<'_>,
 ) -> Result<DoCoderRun, String> {
     let run = build_dual_header_coder_run_with_store(DualHeaderPromptInput {
         store,
         artifacts,
         text,
-        model,
+        model: opts.model,
+        git: opts.git,
         mode_template: DO_HEADER_MD,
     })?;
     Ok(DoCoderRun {
@@ -78,10 +81,10 @@ pub(crate) fn build_do_coder_run_with_store(
 pub(crate) fn build_do_coder_run(
     artifacts: &RunArtifacts,
     text: &str,
-    model: &str,
+    opts: PromptModelOpts<'_>,
 ) -> Result<DoCoderRun, String> {
     let store = prepare_do_prompt_store()?;
-    build_do_coder_run_with_store(&store, artifacts, text, model)
+    build_do_coder_run_with_store(&store, artifacts, text, opts)
 }
 
 #[cfg(test)]

@@ -41,11 +41,15 @@ pub(in crate) fn prepare_kpop_artifacts(kpop: &KpopArgs) -> Result<KpopArtifacts
     Ok(KpopArtifactsEarly { artifacts, text })
 }
 
-pub(in crate) fn finish_kpop_prepared(early: KpopArtifactsEarly, model: &str) -> Result<KpopPrepared, String> {
+pub(in crate) fn finish_kpop_prepared(
+    early: KpopArtifactsEarly,
+    model: &str,
+    git: bool,
+) -> Result<KpopPrepared, String> {
     use crate::orchestrator::workflow_context_paths_only;
     let session_dotfile_backups =
         SessionDotfileBackups::snapshot_after_ensuring_home_config(&early.artifacts.work_dir)?;
-    let context = workflow_context_paths_only(&early.artifacts, model);
+    let context = workflow_context_paths_only(&early.artifacts, model, git);
     Ok(KpopPrepared {
         artifacts: early.artifacts,
         context,
@@ -65,7 +69,7 @@ pub(crate) fn kpop_boot_store_client_prepared(
     let emit_stdout_markdown = shared.acp_stdout_markdown_enabled();
     let mut client = build_agent_backend(shared, workflow, emit_stdout_markdown, "kpop")?;
     client.ensure_authenticated().map_err(|e| e.to_string())?;
-    let prepared = finish_kpop_prepared(early, &shared.model)?;
+    let prepared = finish_kpop_prepared(early, &shared.model, shared.git)?;
     client.set_prompts_log_run_dir(Some(prepared.artifacts.run_dir.clone()));
     crate::cli::error_run_log::set_command_error_run_dir(Some(prepared.artifacts.run_dir.clone()));
     Ok((store, client, prepared))
@@ -135,6 +139,7 @@ pub async fn run_kpop(
             client: &mut client,
             prepared: &prepared,
             model: &shared.model,
+            git: shared.git,
         },
     )
     .await;

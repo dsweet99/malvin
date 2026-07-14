@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use super::{
-    format_prompt_path, insert_artifact_paths, insert_current_state, insert_formatted,
-    resolve_nonexistent_path, resolve_path_against_base, resolve_user_brief_path,
-    workflow_context_paths_only,
+    format_git_extra, format_prompt_path, insert_artifact_paths, insert_current_state,
+    insert_formatted, resolve_nonexistent_path, resolve_path_against_base, resolve_user_brief_path,
+    workflow_context_paths_only, GIT_EXTRA_ENABLED,
 };
 use crate::prompt_stratification::WorkflowRenderContext;
 
@@ -134,9 +134,26 @@ fn workflow_context_paths_only_includes_current_state() {
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "p").expect("write");
     let artifacts = crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
-    let ctx = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL);
+    let ctx = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, false);
     assert!(ctx.contains_key("current_state"));
     assert!(ctx.get("current_state").expect("state").contains("User:"));
+}
+
+#[test]
+fn workflow_context_paths_only_sets_git_extra_from_flag() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let plan = tmp.path().join("plan.md");
+    std::fs::write(&plan, "p").expect("write");
+    let artifacts = crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
+    let off = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, false);
+    assert_eq!(off.get("git_extra").map(String::as_str), Some(""));
+    let on = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, true);
+    assert_eq!(
+        on.get("git_extra").map(String::as_str),
+        Some(GIT_EXTRA_ENABLED)
+    );
+    assert_eq!(format_git_extra(false), "");
+    assert_eq!(format_git_extra(true), GIT_EXTRA_ENABLED);
 }
 
 #[test]

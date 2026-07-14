@@ -184,9 +184,10 @@ pub(crate) fn render_kpop_summarize_prompt(
     store: &PromptStore,
     artifacts: &RunArtifacts,
     model: &str,
+    git: bool,
 ) -> Result<String, String> {
     let mut ctx =
-        crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(artifacts, model)?;
+        crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(artifacts, model, git)?;
     insert_summarize_log_context(&mut ctx, artifacts, kpop_flows_ran(artifacts));
     let header = render_header(store, ctx.as_map()).map_err(|e: PromptError| e.0)?;
     let body = store
@@ -224,10 +225,10 @@ pub(crate) async fn run_inline_summarize_coder_prompt(
     client: &mut AgentBackend,
     store: &PromptStore,
     artifacts: &RunArtifacts,
-    model: &str,
+    opts: crate::workflow_context::PromptModelOpts<'_>,
 ) -> Result<(), String> {
     agent_backend_set_implement_display_name(client, "summary");
-    let prompt = render_kpop_summarize_prompt(store, artifacts, model)?;
+    let prompt = render_kpop_summarize_prompt(store, artifacts, opts.model, opts.git)?;
     run_summarize_coder_prompt(client, artifacts, &prompt).await
 }
 

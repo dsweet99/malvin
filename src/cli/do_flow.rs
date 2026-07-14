@@ -73,7 +73,11 @@ async fn prepare_do_run(
     .map_err(|e| e.to_string())?;
     crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
     client.ensure_authenticated().map_err(|e| e.to_string())?;
-    let coder = do_flow_prompt::build_do_coder_run(&artifacts, &text, &shared.model)?;
+    let coder = do_flow_prompt::build_do_coder_run(
+        &artifacts,
+        &text,
+        crate::workflow_context::PromptModelOpts::new(&shared.model, shared.git),
+    )?;
     let session_dotfile_backups =
         SessionDotfileBackups::snapshot_after_ensuring_home_config(&artifacts.work_dir)?;
     Ok(DoRunPrep {

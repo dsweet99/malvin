@@ -50,6 +50,7 @@ Malvin enforces a sandbox memory limit (see `Sandbox memory:` in Current state).
 - Prefer targeted checks while iterating; reserve full quality gates for a final sequential pass.
 - Malvin's built-in quality gate runner already executes `.malvin/checks` lines one at a time. Do not duplicate gate commands in parallel during the same turn.
 
+{{ git_extra }}
 ---
 
 ## Communication

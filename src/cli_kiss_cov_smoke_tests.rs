@@ -64,6 +64,7 @@ fn smoke_cov_cli_cli_units_1b() {
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
         no_download: false,
+        git: false,
     };
     let _ = shared.model;
     let _ = stringify!(prepare_kpop_artifacts);

@@ -82,6 +82,7 @@ mod inspire_tests {
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
         no_download: false,
+            git: false,
         };
         let client = crate::cli::build_agent(
             &shared,
@@ -121,6 +122,7 @@ mod inspire_tests {
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
         no_download: false,
+            git: false,
         };
         crate::cli::run_emit::emit_run_startup_sequence(
             &artifacts,

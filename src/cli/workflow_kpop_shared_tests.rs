@@ -33,7 +33,7 @@ fn kpop_engine_loop_iterations_is_one_plus_max_loops() {
 #[test]
 fn kpop_workflow_context_includes_quality_gates() {
     let (_tmp, _store, artifacts) = kpop_render_fixture("code");
-    let ctx = kpop_workflow_context(&artifacts, crate::config::DEFAULT_CLI_MODEL).expect("context");
+    let ctx = kpop_workflow_context(&artifacts, crate::config::DEFAULT_CLI_MODEL, false).expect("context");
     assert!(ctx.contains_key("quality_gates"));
 }
 
@@ -110,7 +110,7 @@ fn gate_iteration_context_overrides_exp_log() {
     crate::seed_malvin_checks(tmp.path(), "true\n");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
-    let base = kpop_workflow_context(&artifacts, crate::config::DEFAULT_CLI_MODEL).expect("ctx");
+    let base = kpop_workflow_context(&artifacts, crate::config::DEFAULT_CLI_MODEL, false).expect("ctx");
     let iter_log = artifacts.gate_exp_log_path(2);
     let ctx = gate_iteration_context(&base, &artifacts, &iter_log, 2);
     let exp = ctx.get("exp_log").expect("exp_log");

@@ -34,26 +34,32 @@ fn default_store_with_unset_home() -> String {
 }
 
 fn default_embedded_placeholder_context() -> HashMap<String, String> {
-    HashMap::from([
+    let mut ctx = HashMap::from([
         ("plan_path".to_string(), "/p".to_string()),
         ("result_path".to_string(), "/r".to_string()),
         ("malvin_output_path".to_string(), "/logs/run".to_string()),
         ("malvin_command".to_string(), "malvin --model=cursor:auto".to_string()),
         ("quality_gates".to_string(), String::new()),
-        (
-            "quality_gates_log".to_string(),
-            "/q/quality_gates.log".to_string(),
-        ),
         ("advice_path".to_string(), "./.malvin/advice.md".to_string()),
-        (
-            "logs_dir".to_string(),
-            "/home/.malvin_home/logs/abc123".to_string(),
-        ),
-        (
-            "current_state".to_string(),
-            "User: test\nDate/time: now\nSandbox memory: limit 4 GiB\nRetry: not a retry".to_string(),
-        ),
-    ])
+        ("git_extra".to_string(), String::new()),
+    ]);
+    insert_header_runtime_placeholders(&mut ctx);
+    ctx
+}
+
+fn insert_header_runtime_placeholders(ctx: &mut HashMap<String, String>) {
+    ctx.insert(
+        "quality_gates_log".to_string(),
+        "/q/quality_gates.log".to_string(),
+    );
+    ctx.insert(
+        "logs_dir".to_string(),
+        "/home/.malvin_home/logs/abc123".to_string(),
+    );
+    ctx.insert(
+        "current_state".to_string(),
+        "User: test\nDate/time: now\nSandbox memory: limit 4 GiB\nRetry: not a retry".to_string(),
+    );
 }
 
 fn default_prompt_store_with_unset_home() -> (super::PromptStore, HashMap<String, String>) {

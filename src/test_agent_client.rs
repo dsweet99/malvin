@@ -66,7 +66,7 @@ pub fn tidy_test_session(label: &str) -> TidyTestSession {
         
     };
     let store = crate::cli::tidy_flow::prepare_tidy_kpop_prompt_store(workflow).expect("store");
-    let mut context = crate::workflow_context::workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL);
+    let mut context = crate::workflow_context::workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, false);
     context.insert(
         "quality_gates".to_string(),
         crate::repo_gates::prompt_quality_gates_markdown_ephemeral(tmp.path())

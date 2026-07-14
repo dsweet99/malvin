@@ -148,6 +148,7 @@ pub(super) async fn run_kpop_engine_coder_turn(
                 store: prepared.store(),
                 artifacts: prepared.artifacts(),
                 model: &params.shared.model,
+                git: params.shared.git,
                 iteration: ctx.iteration.iteration,
                 total_iterations: ctx.iteration.total_iterations,
             },

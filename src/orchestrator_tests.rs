@@ -118,7 +118,7 @@ fn workflow_context_review_path_points_to_artifact() {
             plan_path,
             work_dir: work.to_path_buf(),
         };
-        let ctx = crate::cli::workflow_kpop_shared::kpop_workflow_context(&artifacts, crate::config::DEFAULT_CLI_MODEL)
+        let ctx = crate::cli::workflow_kpop_shared::kpop_workflow_context(&artifacts, crate::config::DEFAULT_CLI_MODEL, false)
             .expect("kpop_workflow_context");
 
         let review_path = ctx
@@ -163,7 +163,7 @@ fn workflow_context_includes_malvin_command() {
             plan_path,
             work_dir: work.to_path_buf(),
         };
-        let ctx = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL);
+        let ctx = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, false);
         assert_eq!(
             ctx.get("malvin_command").map(String::as_str),
             Some(crate::format_malvin_command(crate::config::DEFAULT_CLI_MODEL).as_str()),

@@ -34,6 +34,7 @@ fn router_client_uses_kpop_style_agent_io_not_do_style() {
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
         no_download: false,
+        git: false,
     };
     let backend = build_agent_backend(
         &shared,
@@ -81,6 +82,7 @@ fn openrouter_router_client_is_mini_with_styled_not_raw_output() {
                 mini_max_gate_retries: 0,
                 mini_max_shrink_passes: 0,
                 no_download: false,
+                git: false,
             };
             let backend = build_agent_backend(
                 &shared,

@@ -13,16 +13,29 @@ pub struct DelightKpopPrepared {
 fn delight_kpop_workflow_context(
     artifacts: &crate::artifacts::RunArtifacts,
     model: &str,
+    git: bool,
 ) -> Result<crate::prompt_stratification::WorkflowRenderContext, String> {
-    crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(artifacts, model)
+    crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(artifacts, model, git)
+}
+
+pub struct DelightKpopPrepareOpts<'a> {
+    pub out_path: &'a str,
+    pub guidance: Option<&'a String>,
+    pub workflow: crate::cli::WorkflowCliOptions,
+    pub model: &'a str,
+    pub git: bool,
 }
 
 pub fn prepare_delight_kpop_run(
-    out_path: &str,
-    guidance: Option<&String>,
-    workflow: crate::cli::WorkflowCliOptions,
-    model: &str,
+    opts: DelightKpopPrepareOpts<'_>,
 ) -> Result<DelightKpopPrepared, String> {
+    let DelightKpopPrepareOpts {
+        out_path,
+        guidance,
+        workflow,
+        model,
+        git,
+    } = opts;
     let (resolved_out_path, work_dir) = delight_preflight(out_path)?;
     let store = prepare_delight_kpop_prompt_store(workflow)?;
     let artifacts =
@@ -37,7 +50,7 @@ pub fn prepare_delight_kpop_run(
     std::fs::write(&artifacts.plan_path, &request_text).map_err(|e| e.to_string())?;
     let malvin_checks_backup =
         backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
-    let context = delight_kpop_workflow_context(&artifacts, model)?;
+    let context = delight_kpop_workflow_context(&artifacts, model, git)?;
     let inner = KPopEnginePrepared {
         artifacts,
         context,
@@ -55,6 +68,30 @@ pub fn prepare_delight_kpop_run(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn kiss_cov_delight_prepare_opts_destructure() {
+        let guidance = String::from("hint");
+        let opts = DelightKpopPrepareOpts {
+            out_path: "pitch.md",
+            guidance: Some(&guidance),
+            workflow: crate::cli::WorkflowCliOptions { force: true },
+            model: crate::config::DEFAULT_CLI_MODEL,
+            git: true,
+        };
+        let DelightKpopPrepareOpts {
+            out_path,
+            guidance,
+            workflow,
+            model,
+            git,
+        } = opts;
+        assert_eq!(out_path, "pitch.md");
+        assert_eq!(guidance.map(String::as_str), Some("hint"));
+        assert!(workflow.force);
+        assert_eq!(model, crate::config::DEFAULT_CLI_MODEL);
+        assert!(git);
+    }
 
     #[test]
     fn kiss_cov_delight_run_startup() {
@@ -88,12 +125,13 @@ mod tests {
             let cwd = std::env::current_dir().expect("cwd");
             std::env::set_current_dir(work).expect("chdir");
             std::fs::write(work.join("pitch.md"), "body\n").expect("write");
-            let prepared = prepare_delight_kpop_run(
-                "pitch.md",
-                None,
-                crate::cli::WorkflowCliOptions { force: true },
-                crate::config::DEFAULT_CLI_MODEL,
-            )
+            let prepared = prepare_delight_kpop_run(DelightKpopPrepareOpts {
+                out_path: "pitch.md",
+                guidance: None,
+                workflow: crate::cli::WorkflowCliOptions { force: true },
+                model: crate::config::DEFAULT_CLI_MODEL,
+                git: false,
+            })
             .expect("prepare without checks");
             assert!(!prepared.inner.context.contains_key("quality_gates"));
             std::env::set_current_dir(cwd).expect("restore");
@@ -108,12 +146,13 @@ mod tests {
             std::fs::write(work.join("pitch.md"), "existing\n").expect("write");
             let logs_root = crate::workspace_paths::malvin_logs_root(work);
             let runs_before = crate::log_gc::list_run_dirs(&logs_root).len();
-            let prepared = prepare_delight_kpop_run(
-                "pitch.md",
-                None,
-                crate::cli::WorkflowCliOptions { force: true },
-                crate::config::DEFAULT_CLI_MODEL,
-            )
+            let prepared = prepare_delight_kpop_run(DelightKpopPrepareOpts {
+                out_path: "pitch.md",
+                guidance: None,
+                workflow: crate::cli::WorkflowCliOptions { force: true },
+                model: crate::config::DEFAULT_CLI_MODEL,
+                git: false,
+            })
             .expect("default collision must allocate sibling");
             assert!(
                 prepared.resolved_out_path.ends_with("pitch_1.md"),

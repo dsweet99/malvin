@@ -60,7 +60,7 @@ pub async fn run_revise(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
-    let prepared = prepare_revise_kpop_run(&revise.doc_path, workflow, &shared.model)?;
+    let prepared = prepare_revise_kpop_run(&revise.doc_path, workflow, &shared.model, shared.git)?;
     error_run_log::set_command_error_run_dir(Some(prepared.inner.artifacts.run_dir.clone()));
 
     emit_run_startup_sequence(

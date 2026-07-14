@@ -71,7 +71,7 @@ fn prepare_router_prompt_store_loads_default_templates() {
 fn build_router_coder_run_succeeds_without_checks_in_non_git_workspace() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts_no_checks(&tmp);
-    let run = build_router_coder_run(&artifacts, "USER_TOKEN", DEFAULT_CLI_MODEL).expect("run");
+    let run = build_router_coder_run(&artifacts, "USER_TOKEN", crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false)).expect("run");
     assert!(run.combined.contains("Know thyself"));
     assert!(run.combined.contains("COMPLEXITY_SCORE"));
     assert!(
@@ -94,7 +94,7 @@ fn build_router_coder_run_combines_both_headers_and_user() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
     let store = mock_router_prompt_store(&tmp);
-    let run = build_router_coder_run_with_store(&store, &artifacts, "USER_TOKEN\n\n", DEFAULT_CLI_MODEL).expect("run");
+    let run = build_router_coder_run_with_store(&store, &artifacts, "USER_TOKEN\n\n", crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false)).expect("run");
     assert_dual_workflow_header_join(&run.combined, "CODING_HDR", "ROUTER_HDR", "USER_TOKEN");
     let (trace_header, trace_user) = &run.header_user_for_trace;
     assert_header_user_join(trace_header, "CODING_HDR", "ROUTER_HDR");
@@ -105,7 +105,7 @@ fn build_router_coder_run_combines_both_headers_and_user() {
 fn build_router_coder_run_default_store_produces_dual_headers() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
-    let run = build_router_coder_run(&artifacts, "USER_TOKEN", DEFAULT_CLI_MODEL).expect("run");
+    let run = build_router_coder_run(&artifacts, "USER_TOKEN", crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false)).expect("run");
     assert!(run.combined.contains("Know thyself"));
     assert!(run.combined.contains("COMPLEXITY_SCORE"));
     assert!(
@@ -132,7 +132,7 @@ fn build_router_coder_run_allows_user_request_with_double_braces() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
     let user = "Expand {{ code_checks }} and {{ code_extra }} in templates.";
-    let run = build_router_coder_run(&artifacts, user, DEFAULT_CLI_MODEL).expect("run");
+    let run = build_router_coder_run(&artifacts, user, crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false)).expect("run");
     assert!(run.combined.contains(user));
 }
 
@@ -142,7 +142,7 @@ fn combine_router_acp_prompt_joins_rendered_header_and_request() {
     let store = mock_router_prompt_store(&tmp);
     let artifacts = flow_test_artifacts(&tmp);
     let (combined, header, user) =
-        combine_router_acp_prompt_header_and_user(&store, &artifacts, "USER_TOKEN", DEFAULT_CLI_MODEL).expect("combine");
+        combine_router_acp_prompt_header_and_user(&store, &artifacts, "USER_TOKEN", crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false)).expect("combine");
     assert_eq!(header, "CODING_HDR");
     assert_eq!(user, "USER_TOKEN");
     assert_header_user_join(&combined, "CODING_HDR", "USER_TOKEN");
@@ -157,7 +157,7 @@ fn combine_router_raw_header_and_user_joins_rendered_router_header_and_request()
     let artifacts = flow_test_artifacts(&tmp);
     let store = PromptStore::with_root(prompt_root);
     let (combined, header, user) =
-        combine_router_raw_header_and_user(&store, &artifacts, "USER_RAW_TOKEN\n\n", DEFAULT_CLI_MODEL)
+        combine_router_raw_header_and_user(&store, &artifacts, "USER_RAW_TOKEN\n\n", crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false))
             .expect("combine");
     assert_eq!(header, "ROUTER_TOKEN");
     assert_eq!(user, "USER_RAW_TOKEN");
@@ -168,7 +168,7 @@ fn combine_router_raw_header_and_user_joins_rendered_router_header_and_request()
 fn router_coder_run_exposes_combined_and_trace_split() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
-    let run = build_router_coder_run(&artifacts, "TRACE_USER", DEFAULT_CLI_MODEL).expect("run");
+    let run = build_router_coder_run(&artifacts, "TRACE_USER", crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false)).expect("run");
     assert!(!run.combined.is_empty());
     let (trace_header, trace_user) = run.header_user_for_trace;
     assert!(trace_header.contains("Know thyself"));

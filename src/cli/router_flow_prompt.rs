@@ -4,6 +4,7 @@ use crate::cli::flow_prompt_combine::{
     combine_mode_header_and_user, combine_prompt_file_and_user, DualHeaderPromptInput,
 };
 use crate::orchestrator::workflow_context_paths_only;
+use crate::workflow_context::PromptModelOpts;
 use crate::prompt_stratification::{join_labeled_strata, PromptStratum, WorkflowRenderContext};
 use crate::prompts::{
     render_header, HEADER_MD, PromptError, PromptStore, ROUTER_A_1_MD, ROUTER_A_2_MD, ROUTER_C_MD,
@@ -60,22 +61,23 @@ pub fn combine_router_acp_prompt_header_and_user(
     store: &PromptStore,
     artifacts: &RunArtifacts,
     text: &str,
-    model: &str,
+    opts: PromptModelOpts<'_>,
 ) -> Result<(String, String, String), String> {
-    combine_acp_prompt_header_and_user(store, artifacts, text, model)
+    combine_acp_prompt_header_and_user(store, artifacts, text, opts)
 }
 
 pub fn combine_router_raw_header_and_user(
     store: &PromptStore,
     artifacts: &RunArtifacts,
     text: &str,
-    model: &str,
+    opts: PromptModelOpts<'_>,
 ) -> Result<(String, String, String), String> {
     combine_mode_header_and_user(DualHeaderPromptInput {
         store,
         artifacts,
         text,
-        model,
+        model: opts.model,
+        git: opts.git,
         mode_template: ROUTER_A_1_MD,
     })
 }
@@ -84,13 +86,14 @@ pub(crate) fn build_router_coder_run_with_store(
     store: &PromptStore,
     artifacts: &RunArtifacts,
     text: &str,
-    model: &str,
+    opts: PromptModelOpts<'_>,
 ) -> Result<RouterCoderRun, String> {
     let run = build_dual_header_coder_run_with_store(DualHeaderPromptInput {
         store,
         artifacts,
         text,
-        model,
+        model: opts.model,
+        git: opts.git,
         mode_template: ROUTER_A_1_MD,
     })?;
     Ok(RouterCoderRun {
@@ -103,10 +106,10 @@ pub(crate) fn build_router_coder_run_with_store(
 pub(crate) fn build_router_coder_run(
     artifacts: &RunArtifacts,
     text: &str,
-    model: &str,
+    opts: PromptModelOpts<'_>,
 ) -> Result<RouterCoderRun, String> {
     let store = prepare_router_prompt_store()?;
-    build_router_coder_run_with_store(&store, artifacts, text, model)
+    build_router_coder_run_with_store(&store, artifacts, text, opts)
 }
 
 fn router_code_checks_text(work_dir: &std::path::Path) -> Result<String, String> {
@@ -118,9 +121,10 @@ fn render_router_code_extra(
     store: &PromptStore,
     artifacts: &RunArtifacts,
     model: &str,
+    git: bool,
 ) -> Result<String, String> {
     let work_dir = artifacts.work_dir.as_path();
-    let mut ctx = workflow_context_paths_only(artifacts, model);
+    let mut ctx = workflow_context_paths_only(artifacts, model, git);
     ctx.insert("code_checks".to_string(), router_code_checks_text(work_dir)?);
     let body = store
         .render_prompt_only(ROUTER_CODE_EXTRA_MD, ctx.as_map())
@@ -132,8 +136,9 @@ pub(crate) fn build_router_a_2_prompt(
     store: &PromptStore,
     artifacts: &RunArtifacts,
     model: &str,
+    git: bool,
 ) -> Result<String, String> {
-    let ctx = workflow_context_paths_only(artifacts, model);
+    let ctx = workflow_context_paths_only(artifacts, model, git);
     let body = store
         .render_prompt_only(ROUTER_A_2_MD, ctx.as_map())
         .map_err(|e: PromptError| e.0)?;
@@ -146,6 +151,7 @@ pub(crate) struct RouterBPromptInput<'a> {
     pub template: &'a str,
     pub coding_task: bool,
     pub model: &'a str,
+    pub git: bool,
 }
 
 pub(crate) fn build_router_b_prompt(input: RouterBPromptInput<'_>) -> Result<String, String> {
@@ -155,10 +161,11 @@ pub(crate) fn build_router_b_prompt(input: RouterBPromptInput<'_>) -> Result<Str
         template,
         coding_task,
         model,
+        git,
     } = input;
-    let mut ctx = workflow_context_paths_only(artifacts, model);
+    let mut ctx = workflow_context_paths_only(artifacts, model, git);
     let code_extra = if coding_task {
-        render_router_code_extra(store, artifacts, model)?
+        render_router_code_extra(store, artifacts, model, git)?
     } else {
         String::new()
     };
@@ -173,8 +180,9 @@ pub(crate) fn build_router_c_prompt(
     store: &PromptStore,
     artifacts: &RunArtifacts,
     model: &str,
+    git: bool,
 ) -> Result<String, String> {
-    let ctx = workflow_context_paths_only(artifacts, model);
+    let ctx = workflow_context_paths_only(artifacts, model, git);
     let body = store
         .render_prompt_only(ROUTER_C_MD, ctx.as_map())
         .map_err(|e: PromptError| e.0)?;
@@ -185,8 +193,9 @@ pub(crate) fn build_router_d_prompt(
     store: &PromptStore,
     artifacts: &RunArtifacts,
     model: &str,
+    git: bool,
 ) -> Result<String, String> {
-    let ctx = workflow_context_paths_only(artifacts, model);
+    let ctx = workflow_context_paths_only(artifacts, model, git);
     let header = render_header(store, ctx.as_map()).map_err(|e: PromptError| e.0)?;
     let body = store
         .render_prompt_only(ROUTER_D_MD, ctx.as_map())

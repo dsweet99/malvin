@@ -135,7 +135,7 @@ fn code_summarize_prepared_fixture() -> (
         crate::cli::WorkflowCliOptions { force: false },
         "ship it",
         crate::config::DEFAULT_CLI_MODEL,
-    )
+            false)
     .expect("prepared");
     (tmp, old, prepared)
 }
@@ -178,6 +178,7 @@ fn maybe_run_inline_summarize_on_kpop_loop_runs_on_last_iteration() {
                 store,
                 artifacts,
                 model: shared.model.as_str(),
+            git: false,
                 agent_loop: 2,
                 max_loops: 2,
                 will_exit_after_this_loop: true,
@@ -215,6 +216,7 @@ async fn run_gate_inline_summarize_first_iteration(
         store,
         artifacts,
         model: shared.model.as_str(),
+            git: false,
         iteration: 1,
         total_iterations: 3,
     })

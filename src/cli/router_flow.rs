@@ -61,7 +61,12 @@ async fn prepare_router_run(
     crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let prompt_store = prepare_router_prompt_store()?;
-    let coder = router_flow_prompt::build_router_coder_run_with_store(&prompt_store, &artifacts, &text, &shared.model)?;
+    let coder = router_flow_prompt::build_router_coder_run_with_store(
+        &prompt_store,
+        &artifacts,
+        &text,
+        crate::workflow_context::PromptModelOpts::new(&shared.model, shared.git),
+    )?;
     Ok(RouterRunPrep {
         client,
         artifacts,
@@ -74,7 +79,7 @@ pub(crate) async fn run_router_d_session(
     client: &mut AgentBackend,
     prompt_store: &PromptStore,
     artifacts: &RunArtifacts,
-    model: &str,
+    opts: crate::workflow_context::PromptModelOpts<'_>,
 ) -> Result<(), String> {
     let work_dir = artifacts.work_dir.as_path();
     client
@@ -82,7 +87,8 @@ pub(crate) async fn run_router_d_session(
         .await
         .map_err(|e| e.to_string())?;
     agent_backend_set_implement_display_name(client, "router");
-    let prompt = router_flow_prompt::build_router_d_prompt(prompt_store, artifacts, model)?;
+    let prompt =
+        router_flow_prompt::build_router_d_prompt(prompt_store, artifacts, opts.model, opts.git)?;
     client
         .run_coder_prompt(
             &prompt,
@@ -123,6 +129,23 @@ async fn maybe_run_trivial_social_as_do(
     Ok(true)
 }
 
+async fn maybe_run_router_d_after_loops(
+    prep: &mut RouterRunPrep,
+    shared: &SharedOpts,
+    loop_ok: bool,
+) -> Result<(), String> {
+    if !loop_ok {
+        return Ok(());
+    }
+    run_router_d_session(
+        &mut prep.client,
+        &prep.prompt_store,
+        &prep.artifacts,
+        crate::workflow_context::PromptModelOpts::new(&shared.model, shared.git),
+    )
+    .await
+}
+
 pub async fn run_router(
     router_args: RouterArgs,
     shared: &SharedOpts,
@@ -154,15 +177,7 @@ pub async fn run_router(
     .await?;
 
     // Classify/work failures must not run router_d (summarizer) before surfacing the error.
-    if loop_outcome.last_acp.is_ok() {
-        run_router_d_session(
-            &mut prep.client,
-            &prep.prompt_store,
-            &prep.artifacts,
-            &shared.model,
-        )
-        .await?;
-    }
+    maybe_run_router_d_after_loops(&mut prep, shared, loop_outcome.last_acp.is_ok()).await?;
 
     let r = crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
         loop_outcome.last_acp,
@@ -201,6 +216,7 @@ mod kiss_cov_gate_refs {
         let _ = router_flow_parse::parse_coding_task;
         let _ = router_flow_parse::router_wants_continue;
         let _ = router_flow_parse::is_trivial_social_request;
+        let _ = maybe_run_router_d_after_loops;
         let _ = router_flow_prompt::build_router_d_prompt;
         let _ = super::run_router_d_session;
     }

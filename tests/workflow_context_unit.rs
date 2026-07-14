@@ -16,7 +16,7 @@ fn workflow_context_paths_include_plan() {
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "p").expect("write");
     let artifacts = create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
-    let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL);
+    let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL, false);
     assert!(ctx.contains_key("plan_path"));
 }
 
@@ -35,7 +35,7 @@ fn workflow_context_paths_include_review_and_gates_log() {
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "p").expect("write");
     let artifacts = create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
-    let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL);
+    let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL, false);
     assert!(ctx.contains_key("review_path"));
     assert!(ctx.contains_key("quality_gates_log"));
     assert_eq!(
@@ -51,7 +51,7 @@ fn workflow_context_paths_use_relative_prompt_paths() {
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "p").expect("write");
     let artifacts = create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
-    let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL);
+    let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL, false);
     let advice = ctx.get("advice_path").expect("advice_path");
     assert!(
         advice.starts_with("./"),
@@ -94,7 +94,7 @@ fn workflow_context_paths_include_quality_gates_log_alias() {
         let plan = work.join("plan.md");
         std::fs::write(&plan, "p").expect("write");
         let artifacts = create_run_artifacts(&plan, Some(work)).expect("artifacts");
-        let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL);
+        let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL, false);
         assert!(ctx.contains_key("quality_gates_log"));
         assert_eq!(
             ctx.get("quality_gates_path").map(String::as_str),

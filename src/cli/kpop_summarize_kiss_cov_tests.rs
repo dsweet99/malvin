@@ -20,6 +20,7 @@ fn kiss_cov_kpop_summarize_privates() {
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
         no_download: false,
+        git: false,
     };
     let inputs = crate::cli::kpop_summarize::KpopOuterLoopSummarizeInputs {
         agent_ran: true,

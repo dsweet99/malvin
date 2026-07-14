@@ -93,7 +93,7 @@ mod tests {
             crate::cli::WorkflowCliOptions { force: false },
             "ship it",
             crate::config::DEFAULT_CLI_MODEL,
-        )
+            false)
         .expect("prepared");
         crate::cli::run_emit::emit_run_startup_sequence(
             &prepared.artifacts,
@@ -132,7 +132,7 @@ mod tests {
             crate::cli::WorkflowCliOptions { force: false },
             "ship it",
             crate::config::DEFAULT_CLI_MODEL,
-        )
+            false)
         .expect("prepared");
         let backups =
             crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snapshot");

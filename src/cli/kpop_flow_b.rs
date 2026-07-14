@@ -43,6 +43,7 @@ fn kpop_emit_startup_creates_malvin_run_under_root() {
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
         no_download: false,
+        git: false,
     };
     let kpop = crate::cli::KpopArgs {
         max_loops: 1,
@@ -107,6 +108,7 @@ fn kpop_markdown_fixture_context() -> WorkflowRenderContext {
             "current_state",
             "User: test\nDate/time: now\nSandbox memory: limit 4 GiB\nRetry: not a retry",
         ),
+        ("git_extra", ""),
     ]
     .into_iter()
     .map(|(k, v)| (k.to_string(), v.to_string()))

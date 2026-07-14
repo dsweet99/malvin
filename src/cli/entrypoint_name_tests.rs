@@ -5,6 +5,27 @@ use crate::cli::args_bug_kpop::KpopArgs;
 use crate::cli::models_cmd::ModelsArgs;
 
 #[test]
+fn shared_opts_parses_git_flag_default_off() {
+    use clap::Parser;
+    let cli = crate::cli::Cli::try_parse_from(["malvin", "--doc"]).expect("parse");
+    assert!(!cli.shared.git);
+}
+
+#[test]
+fn shared_opts_parses_git_flag_on() {
+    use clap::Parser;
+    let cli = crate::cli::Cli::try_parse_from(["malvin", "--git", "--doc"]).expect("parse");
+    assert!(cli.shared.git);
+}
+
+#[test]
+fn help_lists_git_flag() {
+    use clap::CommandFactory;
+    let help = crate::cli::Cli::command().render_help().to_string();
+    assert!(help.contains("--git"), "help={help}");
+}
+
+#[test]
 fn shared_opts_parses_name_equals_form() {
     use clap::Parser;
     let cli = crate::cli::Cli::try_parse_from(["malvin", "--name=foo", "--doc"]).expect("parse");

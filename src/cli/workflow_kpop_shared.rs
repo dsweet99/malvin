@@ -32,26 +32,13 @@ pub(crate) fn kpop_engine_loop_iterations(max_loops: usize) -> usize {
     }
     base.saturating_add(1)
 }
-pub(crate) fn kpop_workflow_context(
-    artifacts: &RunArtifacts,
-    model: &str,
-) -> Result<WorkflowRenderContext, String> {
-    kpop_workflow_context_with_gates(artifacts, model, true)
-}
-
-pub(crate) fn kpop_workflow_context_without_gates(
-    artifacts: &RunArtifacts,
-    model: &str,
-) -> Result<WorkflowRenderContext, String> {
-    kpop_workflow_context_with_gates(artifacts, model, false)
-}
-
 fn kpop_workflow_context_with_gates(
     artifacts: &RunArtifacts,
-    model: &str,
+    opts: crate::workflow_context::PromptModelOpts<'_>,
     include_quality_gates: bool,
 ) -> Result<WorkflowRenderContext, String> {
-    let mut context = crate::orchestrator::workflow_context_paths_only(artifacts, model);
+    let mut context =
+        crate::orchestrator::workflow_context_paths_only(artifacts, opts.model, opts.git);
     if include_quality_gates {
         context.insert(
             "quality_gates".to_string(),
@@ -59,6 +46,30 @@ fn kpop_workflow_context_with_gates(
         );
     }
     Ok(context)
+}
+
+pub(crate) fn kpop_workflow_context(
+    artifacts: &RunArtifacts,
+    model: &str,
+    git: bool,
+) -> Result<WorkflowRenderContext, String> {
+    kpop_workflow_context_with_gates(
+        artifacts,
+        crate::workflow_context::PromptModelOpts::new(model, git),
+        true,
+    )
+}
+
+pub(crate) fn kpop_workflow_context_without_gates(
+    artifacts: &RunArtifacts,
+    model: &str,
+    git: bool,
+) -> Result<WorkflowRenderContext, String> {
+    kpop_workflow_context_with_gates(
+        artifacts,
+        crate::workflow_context::PromptModelOpts::new(model, git),
+        false,
+    )
 }
 
 pub fn write_checks_do_not_pass_to_review_path(review_path: &Path) -> Result<(), String> {

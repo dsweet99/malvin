@@ -62,7 +62,13 @@ pub async fn run_priors(
 ) -> Result<(), String> {
     let request_arg =
         crate::cli::cli_request::require_cli_request(priors.request.as_ref(), "priors")?;
-    let prepared = prepare_priors_kpop_run(&request_arg, &priors.out_path, workflow, &shared.model)?;
+    let prepared = prepare_priors_kpop_run(super::run_startup::PriorsKpopPrepareOpts {
+        request: &request_arg,
+        out_path: &priors.out_path,
+        workflow,
+        model: &shared.model,
+        git: shared.git,
+    })?;
     priors.out_path =
         crate::cli::default_output_path::path_relative_to_cwd(&prepared.resolved_out_path)?;
     error_run_log::set_command_error_run_dir(Some(prepared.inner.artifacts.run_dir.clone()));

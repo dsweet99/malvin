@@ -1,13 +1,21 @@
 use crate::artifacts::RunArtifacts;
 use crate::prompt_stratification::{join_labeled_strata, PromptStratum, WorkflowRenderContext};
 use crate::prompts::{PromptError, PromptStore, render_header};
+use crate::workflow_context::PromptModelOpts;
 
 pub(crate) struct DualHeaderPromptInput<'a> {
     pub store: &'a PromptStore,
     pub artifacts: &'a RunArtifacts,
     pub text: &'a str,
     pub model: &'a str,
+    pub git: bool,
     pub mode_template: &'a str,
+}
+
+impl<'a> DualHeaderPromptInput<'a> {
+    const fn prompt_opts(&self) -> PromptModelOpts<'a> {
+        PromptModelOpts::new(self.model, self.git)
+    }
 }
 
 pub(crate) fn combine_prompt_file_and_user(
@@ -33,10 +41,10 @@ pub(crate) fn combine_acp_prompt_header_and_user(
     store: &PromptStore,
     artifacts: &RunArtifacts,
     text: &str,
-    model: &str,
+    opts: PromptModelOpts<'_>,
 ) -> Result<(String, String, String), String> {
     use crate::orchestrator::workflow_context_paths_only;
-    let context = workflow_context_paths_only(artifacts, model);
+    let context = workflow_context_paths_only(artifacts, opts.model, opts.git);
     let header = render_header(store, context.as_map()).map_err(|e: PromptError| e.0)?;
     let user = text.trim_end().to_string();
     let combined = join_labeled_strata([
@@ -50,7 +58,7 @@ pub(crate) fn combine_mode_header_and_user(
     input: DualHeaderPromptInput<'_>,
 ) -> Result<(String, String, String), String> {
     use crate::orchestrator::workflow_context_paths_only;
-    let context = workflow_context_paths_only(input.artifacts, input.model);
+    let context = workflow_context_paths_only(input.artifacts, input.model, input.git);
     combine_prompt_file_and_user(
         input.store,
         input.text,
@@ -68,7 +76,7 @@ pub(crate) fn build_dual_header_coder_run_with_store(
     input: DualHeaderPromptInput<'_>,
 ) -> Result<DualHeaderCoderRun, String> {
     let (_, coding_header, _) =
-        combine_acp_prompt_header_and_user(input.store, input.artifacts, "", input.model)?;
+        combine_acp_prompt_header_and_user(input.store, input.artifacts, "", input.prompt_opts())?;
     let (_, mode_header, user) = combine_mode_header_and_user(input)?;
     let combined = join_labeled_strata([
         (PromptStratum::WorkflowHeader, &coding_header),

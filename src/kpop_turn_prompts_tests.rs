@@ -21,6 +21,7 @@ fn kpop_turn_test_context() -> WorkflowRenderContext {
             "current_state".to_string(),
             "User: test\nRetry: not a retry".to_string(),
         ),
+        ("git_extra".to_string(), String::new()),
     ]))
 }
 

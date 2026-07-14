@@ -59,7 +59,7 @@ pub async fn run_code(
     if cli_request.is_empty() {
         return Err("malvin code: missing required REQUEST (text or path)".into());
     }
-    let prepared = prepare_code_kpop_run(workflow, cli_request, &shared.model)?;
+    let prepared = prepare_code_kpop_run(workflow, cli_request, &shared.model, shared.git)?;
     error_run_log::set_command_error_run_dir(Some(prepared.artifacts.run_dir.clone()));
 
     emit_code_run_startup(shared, &prepared)?;
@@ -130,7 +130,7 @@ mod tests {
             WorkflowCliOptions { force: false },
             "ship it",
             DEFAULT_CLI_MODEL,
-        )
+            false)
         .expect("prepared");
         let shared = SharedOpts {
             model: DEFAULT_CLI_MODEL.into(),
@@ -150,6 +150,7 @@ mod tests {
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
         no_download: false,
+            git: false,
         };
         let workflow = WorkflowCliOptions { force: false };
         let params = crate::cli::kpop_summarize::code_outer_loop_summarize_params(

@@ -13,14 +13,16 @@ pub struct ReviseKpopPrepared {
 fn revise_kpop_workflow_context(
     artifacts: &crate::artifacts::RunArtifacts,
     model: &str,
+    git: bool,
 ) -> Result<crate::prompt_stratification::WorkflowRenderContext, String> {
-    crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(artifacts, model)
+    crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(artifacts, model, git)
 }
 
 pub fn prepare_revise_kpop_run(
     doc_path: &str,
     workflow: crate::cli::WorkflowCliOptions,
     model: &str,
+    git: bool,
 ) -> Result<ReviseKpopPrepared, String> {
     let (resolved_doc_path, work_dir) = revise_preflight(doc_path)?;
     let store = prepare_revise_kpop_prompt_store(workflow)?;
@@ -30,7 +32,7 @@ pub fn prepare_revise_kpop_run(
     std::fs::write(&artifacts.plan_path, &request_text).map_err(|e| e.to_string())?;
     let malvin_checks_backup =
         backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
-    let context = revise_kpop_workflow_context(&artifacts, model)?;
+    let context = revise_kpop_workflow_context(&artifacts, model, git)?;
     let inner = KPopEnginePrepared {
         artifacts,
         context,
@@ -85,7 +87,7 @@ mod tests {
                 "doc.md",
                 crate::cli::WorkflowCliOptions { force: true },
                 crate::config::DEFAULT_CLI_MODEL,
-            )
+            false)
             .expect("prepare without checks");
             assert!(!prepared.inner.context.contains_key("quality_gates"));
             std::env::set_current_dir(cwd).expect("restore");
@@ -103,7 +105,7 @@ mod tests {
                 "missing.md",
                 crate::cli::WorkflowCliOptions { force: true },
                 crate::config::DEFAULT_CLI_MODEL,
-            ) else {
+            false) else {
                 panic!("preflight must fail");
             };
             assert!(err.contains("not an existing file"));

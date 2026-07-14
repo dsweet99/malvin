@@ -109,6 +109,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
         no_download: false,
+        git: false,
     };
     apply_shared_config_defaults(&matches, &mut shared, &agent);
     assert_eq!(shared.model, "cursor:cfg");

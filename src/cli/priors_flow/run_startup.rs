@@ -1,4 +1,5 @@
 use crate::kpop_engine::KPopEnginePrepared;
+use crate::workflow_context::PromptModelOpts;
 
 use super::prep::{
     materialize_priors_kpop_prepared, prepare_priors_kpop_prompt_store, priors_preflight,
@@ -9,16 +10,32 @@ pub struct PriorsKpopPrepared {
     pub resolved_out_path: std::path::PathBuf,
 }
 
+pub struct PriorsKpopPrepareOpts<'a> {
+    pub request: &'a str,
+    pub out_path: &'a str,
+    pub workflow: crate::cli::WorkflowCliOptions,
+    pub model: &'a str,
+    pub git: bool,
+}
+
 pub fn prepare_priors_kpop_run(
-    request: &str,
-    out_path: &str,
-    workflow: crate::cli::WorkflowCliOptions,
-    model: &str,
+    opts: PriorsKpopPrepareOpts<'_>,
 ) -> Result<PriorsKpopPrepared, String> {
+    let PriorsKpopPrepareOpts {
+        request,
+        out_path,
+        workflow,
+        model,
+        git,
+    } = opts;
     let preflight = priors_preflight(request, out_path)?;
     let store = prepare_priors_kpop_prompt_store(workflow)?;
-    let (inner, resolved_out_path) =
-        materialize_priors_kpop_prepared(preflight, store, request.to_string(), model)?;
+    let (inner, resolved_out_path) = materialize_priors_kpop_prepared(
+        preflight,
+        store,
+        request.to_string(),
+        PromptModelOpts::new(model, git),
+    )?;
     Ok(PriorsKpopPrepared {
         inner,
         resolved_out_path,
@@ -28,6 +45,29 @@ pub fn prepare_priors_kpop_run(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn kiss_cov_priors_prepare_opts_destructure() {
+        let opts = PriorsKpopPrepareOpts {
+            request: "ground this",
+            out_path: "priors.md",
+            workflow: crate::cli::WorkflowCliOptions { force: false },
+            model: crate::config::DEFAULT_CLI_MODEL,
+            git: true,
+        };
+        let PriorsKpopPrepareOpts {
+            request,
+            out_path,
+            workflow,
+            model,
+            git,
+        } = opts;
+        assert_eq!(request, "ground this");
+        assert_eq!(out_path, "priors.md");
+        assert!(!workflow.force);
+        assert_eq!(model, crate::config::DEFAULT_CLI_MODEL);
+        assert!(git);
+    }
 
     #[test]
     fn kiss_cov_priors_run_startup() {
@@ -60,12 +100,13 @@ mod tests {
             let cwd = std::env::current_dir().expect("cwd");
             std::env::set_current_dir(work).expect("chdir");
             std::fs::write(work.join("priors.md"), "body\n").expect("write");
-            let prepared = prepare_priors_kpop_run(
-                "ground this request",
-                "priors.md",
-                crate::cli::WorkflowCliOptions { force: true },
-                crate::config::DEFAULT_CLI_MODEL,
-            )
+            let prepared = prepare_priors_kpop_run(PriorsKpopPrepareOpts {
+                request: "ground this request",
+                out_path: "priors.md",
+                workflow: crate::cli::WorkflowCliOptions { force: true },
+                model: crate::config::DEFAULT_CLI_MODEL,
+                git: false,
+            })
             .expect("prepare without checks");
             assert!(!prepared.inner.context.contains_key("quality_gates"));
             assert!(
@@ -87,12 +128,13 @@ mod tests {
             std::fs::write(work.join("priors.md"), "existing\n").expect("write");
             let logs_root = crate::workspace_paths::malvin_logs_root(work);
             let runs_before = crate::log_gc::list_run_dirs(&logs_root).len();
-            let prepared = prepare_priors_kpop_run(
-                "request text",
-                "priors.md",
-                crate::cli::WorkflowCliOptions { force: true },
-                crate::config::DEFAULT_CLI_MODEL,
-            )
+            let prepared = prepare_priors_kpop_run(PriorsKpopPrepareOpts {
+                request: "request text",
+                out_path: "priors.md",
+                workflow: crate::cli::WorkflowCliOptions { force: true },
+                model: crate::config::DEFAULT_CLI_MODEL,
+                git: false,
+            })
             .expect("default collision must allocate sibling");
             assert!(
                 prepared.resolved_out_path.ends_with("priors_1.md"),

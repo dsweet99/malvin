@@ -89,6 +89,7 @@ pub async fn run_explain(
         super::run_startup::ExplainKpopPrepareOpts {
             workflow,
             model: &shared.model,
+            git: shared.git,
         },
     )?;
     if explain.out_path_explicit {

@@ -1,4 +1,4 @@
-//! Shared CLI flags (`SharedOpts`) are parsed globally for every subcommand. `model`, `no_force`, `no_tenacious`, `no_tee`, and `max_acp_retries` affect `malvin code`, `malvin kpop`, `malvin inspire`, and `malvin do`. `--verbose` logs full outgoing agent prompts to stdout and `prompts.log` (default is prompt name only). `--no-markdown` disables styled ACP stdout for subcommands that use `acp_stdout_markdown_enabled()` (`code`, `kpop`, `tidy` when the agent runs, `inspire`, and `do` on a TTY). It is a no-op for `models` (no agent). Piped `malvin do` output stays plain regardless of `--no-markdown`.
+//! Shared CLI flags (`SharedOpts`) are parsed globally for every subcommand. `model`, `no_force`, `no_tenacious`, `no_tee`, and `max_acp_retries` affect `malvin code`, `malvin kpop`, `malvin inspire`, and `malvin do`. `--verbose` logs full outgoing agent prompts to stdout and `prompts.log` (default is prompt name only). `--no-markdown` disables styled ACP stdout for subcommands that use `acp_stdout_markdown_enabled()` (`code`, `kpop`, `tidy` when the agent runs, `inspire`, and `do` on a TTY). It is a no-op for `models` (no agent). Piped `malvin do` output stays plain regardless of `--no-markdown`. `--git` sets `{{ git_extra }}` so prompt templates may permit `git commit` (default off).
 
 pub use crate::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use clap::Args;
@@ -79,6 +79,9 @@ pub struct SharedOpts {
     /// Session name for this malvin process (default: random five-character id).
     #[arg(long, global = true)]
     pub name: Option<String>,
+    /// Allow the agent to run `git commit` (sets `{{ git_extra }}` in prompt templates).
+    #[arg(long, global = true, default_value_t = false)]
+    pub git: bool,
 }
 
 impl SharedOpts {
@@ -115,6 +118,7 @@ impl SharedOpts {
             mini_max_gate_retries: 0,
             mini_max_shrink_passes: 0,
             no_download: false,
+            git: false,
         }
     }
 }

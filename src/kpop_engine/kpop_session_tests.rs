@@ -28,12 +28,14 @@ pub(crate) fn prepared_context_for_mode(
             crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(
                 artifacts,
                 command,
+                false,
             )
             .expect("paths context")
         }
         PreparedContextMode::Workflow => crate::cli::workflow_kpop_shared::kpop_workflow_context(
             artifacts,
             command,
+            false,
         )
         .expect("workflow context"),
     }

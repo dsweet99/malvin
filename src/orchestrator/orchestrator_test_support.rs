@@ -55,7 +55,7 @@ pub fn workflow_ctx_for_smoke(
     let artifacts =
         create_run_artifacts_from_text(run_artifact_body, Some(tmp.path())).expect("art");
     let store = PromptStore::default_store();
-    let ctx = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL);
+    let ctx = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, false);
     (artifacts, store, ctx)
 }
 

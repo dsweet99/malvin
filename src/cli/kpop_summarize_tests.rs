@@ -31,6 +31,7 @@ pub(crate) fn summarize_shared_opts(max_acp_retries: u32) -> SharedOpts {
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
         no_download: false,
+        git: false,
     }
 }
 
@@ -77,7 +78,7 @@ fn kpop_outer_loop_summarize_params_builds_kpop_context() {
 fn render_kpop_summarize_prompt_includes_activity_heading() {
     let (tmp, artifacts, store, _shared) = summarize_test_workspace();
     let _ = tmp;
-    let prompt = render_kpop_summarize_prompt(&store, &artifacts, DEFAULT_CLI_MODEL).expect("render");
+    let prompt = render_kpop_summarize_prompt(&store, &artifacts, DEFAULT_CLI_MODEL, false).expect("render");
     assert!(prompt.contains("Summarize the activity"));
     assert!(prompt.contains("Executive summary"));
     assert!(!prompt.contains("{{"));

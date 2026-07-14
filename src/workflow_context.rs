@@ -104,15 +104,44 @@ pub fn format_malvin_command(model: &str) -> String {
     format!("malvin --model={model}")
 }
 
+/// Value for `{{ git_extra }}` when `--git` is enabled.
+pub const GIT_EXTRA_ENABLED: &str = "You may run 'git commit'.";
+
+/// Model id and `--git` template options for prompt rendering.
+#[derive(Clone, Copy, Debug)]
+pub struct PromptModelOpts<'a> {
+    pub model: &'a str,
+    pub git: bool,
+}
+
+impl<'a> PromptModelOpts<'a> {
+    #[must_use]
+    pub const fn new(model: &'a str, git: bool) -> Self {
+        Self { model, git }
+    }
+}
+
+/// Template text for `{{ git_extra }}` from the `--git` flag.
+#[must_use]
+pub const fn format_git_extra(git: bool) -> &'static str {
+    if git {
+        GIT_EXTRA_ENABLED
+    } else {
+        ""
+    }
+}
+
 #[must_use]
 pub fn workflow_context_paths_only(
     artifacts: &RunArtifacts,
     model: &str,
+    git: bool,
 ) -> WorkflowRenderContext {
     let mut context = HashMap::new();
     insert_artifact_paths(&mut context, artifacts);
     insert_current_state(&mut context, artifacts, &artifacts.work_dir);
     context.insert("malvin_command".to_string(), format_malvin_command(model));
+    context.insert("git_extra".to_string(), format_git_extra(git).to_string());
     WorkflowRenderContext::new(context)
 }
 
@@ -127,7 +156,7 @@ pub fn workflow_context(
     prompts: &PromptStore,
     model: &str,
 ) -> Result<WorkflowRenderContext, PromptError> {
-    let mut context = workflow_context_paths_only(artifacts, model);
+    let mut context = workflow_context_paths_only(artifacts, model, false);
     context.insert(
         "quality_gates".to_string(),
         crate::repo_gates::prompt_quality_gates_markdown_ephemeral(&artifacts.work_dir)

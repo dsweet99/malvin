@@ -20,13 +20,15 @@ pub struct ExplainKpopPrepared {
 fn explain_kpop_workflow_context(
     artifacts: &crate::artifacts::RunArtifacts,
     model: &str,
+    git: bool,
 ) -> Result<crate::prompt_stratification::WorkflowRenderContext, String> {
-    crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(artifacts, model)
+    crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(artifacts, model, git)
 }
 
 pub struct ExplainKpopPrepareOpts<'a> {
     pub workflow: crate::cli::WorkflowCliOptions,
     pub model: &'a str,
+    pub git: bool,
 }
 
 pub fn prepare_explain_kpop_run(
@@ -35,7 +37,7 @@ pub fn prepare_explain_kpop_run(
     out_path_explicit: bool,
     opts: ExplainKpopPrepareOpts<'_>,
 ) -> Result<ExplainKpopPrepared, String> {
-    let ExplainKpopPrepareOpts { workflow, model } = opts;
+    let ExplainKpopPrepareOpts { workflow, model, git } = opts;
     let request_arg = require_cli_request(request, "explain")?;
     let (request_text, request_work_dir, outputs, preflight_snapshot) =
         explain_preflight(&request_arg, out_path, out_path_explicit)?;
@@ -60,7 +62,7 @@ pub fn prepare_explain_kpop_run(
     std::fs::write(&artifacts.plan_path, &request_body).map_err(|e| e.to_string())?;
     let malvin_checks_backup =
         backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
-    let context = explain_kpop_workflow_context(&artifacts, model)?;
+    let context = explain_kpop_workflow_context(&artifacts, model, git)?;
     let inner = KPopEnginePrepared {
         artifacts,
         context,
@@ -88,10 +90,12 @@ mod tests {
         let opts = ExplainKpopPrepareOpts {
             workflow: crate::cli::WorkflowCliOptions { force: true },
             model: crate::config::DEFAULT_CLI_MODEL,
+            git: false,
         };
-        let ExplainKpopPrepareOpts { workflow, model } = opts;
+        let ExplainKpopPrepareOpts { workflow, model, git } = opts;
         assert!(workflow.force);
         assert_eq!(model, crate::config::DEFAULT_CLI_MODEL);
+        assert!(!git);
     }
 
     #[test]
@@ -114,6 +118,7 @@ mod tests {
                 ExplainKpopPrepareOpts {
                     workflow: crate::cli::WorkflowCliOptions { force: true },
                     model: crate::config::DEFAULT_CLI_MODEL,
+                    git: false,
                 },
             )
             .expect("prepare without checks");
@@ -136,6 +141,7 @@ mod tests {
                 ExplainKpopPrepareOpts {
                     workflow: crate::cli::WorkflowCliOptions { force: true },
                     model: crate::config::DEFAULT_CLI_MODEL,
+                    git: false,
                 },
             ) else {
                 panic!("missing request must fail");
@@ -163,6 +169,7 @@ mod tests {
                 ExplainKpopPrepareOpts {
                     workflow: crate::cli::WorkflowCliOptions { force: true },
                     model: crate::config::DEFAULT_CLI_MODEL,
+                    git: false,
                 },
             )
             .expect("auto out-path must not allocate explain siblings");
@@ -202,6 +209,7 @@ mod tests {
                 ExplainKpopPrepareOpts {
                     workflow: crate::cli::WorkflowCliOptions { force: true },
                     model: crate::config::DEFAULT_CLI_MODEL,
+                    git: false,
                 },
             )
             .expect("explicit default collision must allocate sibling");
