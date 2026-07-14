@@ -2,14 +2,15 @@
 """Run DeepSWE Harbor verifier (and optionally malvin agent) on Modal.
 
 No local Docker required for grading: builds a Modal Image from the task
-Harbor Dockerfile (or pulls the registry image) and execs ``deepswe_run.py``
-once inside a sandbox (agent + grade in one command when not ``--grade-only``).
+Harbor Dockerfile (or pulls the registry image) and execs host-prepared bash
+scripts (``agent.sh`` / ``grade.sh`` or smoke stub) inside a sandbox. Containers
+never re-enter ``deepswe_run.py`` and never install packages at trial runtime.
 
 The default ``solve`` path runs malvin and Harbor grade in one Modal sandbox with a
-Cursor API ``outbound_cidr_allowlist`` (``deepswe_run.py --runtime in-sandbox``). Grade-only
-runs use a separate ``block_network`` sandbox. Open egress remains
-available via ``run_deepswe_run_in_sandbox(open_network=True)`` for diagnostics.
-malvin is built from local source (``MALVIN_REPO``) when an in-sandbox agent image is required.
+Cursor API ``outbound_cidr_allowlist``. Grade-only runs use a separate
+``block_network`` sandbox. Combined agent→grade keeps two execs in the same
+allowlist sandbox (network not widened for grade). Image-build warm via
+``sandbox_prep`` remains build-time only.
 
 Prerequisites: Modal CLI authenticated; Cursor API key in ``CURSOR_AGENT_API_KEY``,
 ``CURSOR_API_KEY``, or ``AGENT_API_KEY``; malvin repo at parent of ``ops/``; DeepSWE task at
@@ -17,9 +18,6 @@ Prerequisites: Modal CLI authenticated; Cursor API key in ``CURSOR_AGENT_API_KEY
 
 Modal agent sandboxes do not inherit interactive ``agent login`` sessions from the
 host. Export a Cursor API key in the shell that launches this command.
-
-``--mini`` with OpenRouter on Modal is **not** implemented yet; local/host ``--mini``
-remains a separate path.
 
 Artifacts land under ``~/.malvin_home/deepswe-results/<task_id>/modal_<timestamp>/``
 (``metadata.json``, ``reward.txt``). Workspace: ``.../workspace``.
@@ -88,14 +86,14 @@ from deepswe_run import (
     discover_deepswe_checks,
     evaluation_smoke_allows_reward_zero,
     find_latest_malvin_log,
-    malvin_needs_task_plan,
+    host_preseed_agent_files,
     materialize_workspace,
     parse_task_dir,
     validate_verifier_paths,
     refuse_agent_verifier_leaks,
     reset_workspace,
     timestamp_dir,
-    write_task_plan,
+    write_trial_scripts,
 )
 from modal_sandbox_app import lookup_sandbox_app, test_sandbox_app_lookup
 from toolchain_repos import (
@@ -105,11 +103,11 @@ from toolchain_repos import (
 from tox_gates import ensure_tox_offline_skip_flags
 
 DEEPSWE_OPS_REMOTE = "/opt/malvin/ops"
-DEEPSWE_RUN_REMOTE = f"{DEEPSWE_OPS_REMOTE}/deepswe_run.py"
-SANDBOX_PREP_REMOTE = f"{DEEPSWE_OPS_REMOTE}/sandbox_prep.py"
-HARBOR_TESTS_REMOTE = f"{DEEPSWE_OPS_REMOTE}/harbor_tests.py"
-TOOLCHAIN_REPOS_REMOTE = f"{DEEPSWE_OPS_REMOTE}/toolchain_repos.py"
-TOX_GATES_REMOTE = f"{DEEPSWE_OPS_REMOTE}/tox_gates.py"
+DEEPSWE_RUN_REMOTE = f"{DEEPSWE_OPS_REMOTE}/deepswe_run.py"  # legacy constant for tests
+TRIAL_SCRIPTS_REMOTE = "/opt/malvin/trial_scripts"
+AGENT_SCRIPT_NAME = "agent.sh"
+GRADE_SCRIPT_NAME = "grade.sh"
+SMOKE_GRADE_SCRIPT_NAME = "smoke_grade.sh"
 TASK_REMOTE = "/task"
 
 APP_NAME = "deepswe-modal"
@@ -1816,16 +1814,17 @@ def format_modal_image_prep_error(task_id: str, exc: BaseException) -> str:
     return f"Modal solve failed: {msg}"
 
 
-def _ops_local_files(deepswe_run_py: Path) -> list[tuple[Path, str]]:
-    """Local ops modules mounted into Modal / Docker sandboxes."""
-    parent = deepswe_run_py.resolve().parent
-    return [
-        (deepswe_run_py.resolve(), DEEPSWE_RUN_REMOTE),
-        (parent / "sandbox_prep.py", SANDBOX_PREP_REMOTE),
-        (parent / "harbor_tests.py", HARBOR_TESTS_REMOTE),
-        (parent / "toolchain_repos.py", TOOLCHAIN_REPOS_REMOTE),
-        (parent / "tox_gates.py", TOX_GATES_REMOTE),
-    ]
+def _ops_local_files(_deepswe_run_py: Path | None = None) -> list[tuple[Path, str]]:
+    """Ops modules mounted for trial exec — empty; harness is not re-entered."""
+    return []
+
+
+def inject_trial_scripts(sandbox: modal.Sandbox, scripts_dir: Path) -> None:
+    """Upload host-prepared agent/grade bash scripts into the sandbox."""
+    for path in scripts_dir.iterdir():
+        if path.is_file() and path.suffix == ".sh":
+            remote = f"{TRIAL_SCRIPTS_REMOTE}/{path.name}"
+            sandbox.filesystem.write_bytes(path.read_bytes(), remote)
 
 
 def _materialize_public_verifier_venv(
@@ -1924,14 +1923,12 @@ def mount_eval_context(
     task_dir: Path,
     workspace: Path,
     tests_dir: Path,
-    deepswe_run_py: Path,
+    deepswe_run_py: Path | None = None,
 ) -> modal.Image:
-    """Layer workspace, tests, task metadata, and ``deepswe_run.py`` for one remote exec."""
-    prepared = image.run_commands(
-        "python3 -m pip install --break-system-packages click"
-    )
-    result = (
-        prepared.add_local_dir(
+    """Layer workspace, tests, and task metadata for grade exec (no harness py)."""
+    del deepswe_run_py  # retained for call-site compatibility; unused
+    return (
+        image.add_local_dir(
             str(workspace.resolve()),
             remote_path=APP_REMOTE,
             ignore=workspace_mount_ignore(),
@@ -1939,9 +1936,6 @@ def mount_eval_context(
         .add_local_dir(str(tests_dir.resolve()), remote_path=TESTS_REMOTE)
         .add_local_dir(str(task_dir.resolve()), remote_path=TASK_REMOTE)
     )
-    for local_path, remote in _ops_local_files(deepswe_run_py):
-        result = result.add_local_file(str(local_path), remote_path=remote)
-    return result
 
 
 def mount_agent_context(
@@ -1949,19 +1943,17 @@ def mount_agent_context(
     *,
     task_dir: Path,
     workspace: Path,
-    deepswe_run_py: Path,
+    deepswe_run_py: Path | None = None,
 ) -> modal.Image:
     """Layer workspace and non-secret task files for the agent phase.
 
     Unlike ``mount_eval_context``, this omits ``/tests`` and ``/task/solution``
     so the agent cannot access verifier files during execution.
     """
+    del deepswe_run_py  # retained for call-site compatibility; unused
     task_dir_resolved = task_dir.resolve()
-    prepared = image.run_commands(
-        "python3 -m pip install --break-system-packages click"
-    )
     result = (
-        prepared.add_local_dir(
+        image.add_local_dir(
             str(workspace.resolve()),
             remote_path=APP_REMOTE,
             ignore=workspace_mount_ignore(),
@@ -1969,8 +1961,6 @@ def mount_agent_context(
         .add_local_file(str(task_dir_resolved / "task.toml"), remote_path=f"{TASK_REMOTE}/task.toml")
         .add_local_file(str(task_dir_resolved / "instruction.md"), remote_path=f"{TASK_REMOTE}/instruction.md")
     )
-    for local_path, remote in _ops_local_files(deepswe_run_py):
-        result = result.add_local_file(str(local_path), remote_path=remote)
     env_dir = task_dir_resolved / "environment"
     if env_dir.is_dir():
         result = result.add_local_dir(str(env_dir), remote_path=f"{TASK_REMOTE}/environment")
@@ -2245,30 +2235,166 @@ def parse_deepswe_run_result(
     *,
     run_logs_remote: str,
     grade_only: bool,
+    agent_exit_code: int | None = None,
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
-    """Read ``metadata.json`` written by ``deepswe_run.py --runtime in-sandbox``."""
-    metadata_text = read_remote_file(sandbox, f"{run_logs_remote}/metadata.json")
-    if metadata_text:
-        metadata = json.loads(metadata_text)
-        agent_result = metadata.get("agent")
-        grade_result = metadata.get("grade") or {}
-        if grade_only:
-            agent_result = None
-        return agent_result, grade_result
+    """Derive agent status from bash exit code and grade from Harbor ``reward.txt``.
 
+    Prefer ``reward.txt`` when present (trial scripts write it). Legacy harness
+    ``metadata.json`` is only used when reward is absent.
+    """
     reward_text = read_remote_file(sandbox, f"{LOGS_REMOTE}/verifier/reward.txt")
     reward: int | None = None
     if reward_text is not None:
         stripped = reward_text.strip()
         if stripped in {"0", "1"}:
             reward = int(stripped)
-    model_patch = read_remote_bytes(sandbox, f"{LOGS_REMOTE}/artifacts/model.patch")
-    grade_result = {
-        "pass": reward == 1,
-        "reward": reward,
-        "model_patch_bytes": len(model_patch) if model_patch else 0,
-    }
-    return None, grade_result
+
+    metadata_text = read_remote_file(sandbox, f"{run_logs_remote}/metadata.json")
+    agent_result: dict[str, Any] | None = None
+    grade_result: dict[str, Any] = {}
+    if metadata_text:
+        metadata = json.loads(metadata_text)
+        agent_result = metadata.get("agent")
+        grade_result = dict(metadata.get("grade") or {})
+        if grade_only:
+            agent_result = None
+
+    if reward is not None:
+        model_patch = read_remote_bytes(sandbox, f"{LOGS_REMOTE}/artifacts/model.patch")
+        grade_result = {
+            **grade_result,
+            "pass": reward == 1,
+            "reward": reward,
+            "model_patch_bytes": len(model_patch) if model_patch else 0,
+        }
+    elif not grade_result:
+        model_patch = read_remote_bytes(sandbox, f"{LOGS_REMOTE}/artifacts/model.patch")
+        grade_result = {
+            "pass": False,
+            "reward": None,
+            "model_patch_bytes": len(model_patch) if model_patch else 0,
+        }
+
+    if not grade_only and agent_result is None and agent_exit_code is not None:
+        agent_result = {"exit_code": int(agent_exit_code)}
+    return agent_result, grade_result
+
+
+def _execute_trial_bash_in_sandbox(
+    sandbox: modal.Sandbox,
+    *,
+    command: str,
+    grade_only: bool,
+    skip_grade: bool,
+    run_logs_remote: str,
+    artifacts_dir: Path | None,
+    harvest_workspace: Path | None,
+    tests_dir: Path | None,
+    task_dir: Path | None,
+    scripts_dir: Path | None,
+) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    """Agent/grade bash-script phases after sandbox create (kept out of try width)."""
+    smoke = command == "init-checks"
+    if scripts_dir is not None:
+        inject_trial_scripts(sandbox, scripts_dir)
+
+    if grade_only:
+        grade_name = SMOKE_GRADE_SCRIPT_NAME if smoke else GRADE_SCRIPT_NAME
+        proc = sandbox.exec(
+            "bash", f"{TRIAL_SCRIPTS_REMOTE}/{grade_name}",
+            stdout=StreamType.PIPE, stderr=StreamType.PIPE,
+            workdir=APP_REMOTE, text=False, bufsize=0,
+        )
+        click.echo(f"Running Modal grade script ({grade_name})...")
+        stream_process_output(proc, sys.stdout, sys.stderr)
+        proc.wait()
+        agent_result, grade_result = parse_deepswe_run_result(
+            sandbox,
+            run_logs_remote=run_logs_remote,
+            grade_only=True,
+            agent_exit_code=None,
+        )
+        if smoke:
+            grade_result["smoke_grade"] = True
+    else:
+        agent_argv = wrap_agent_exec_argv(
+            ["bash", f"{TRIAL_SCRIPTS_REMOTE}/{AGENT_SCRIPT_NAME}"]
+        )
+        proc = sandbox.exec(
+            *agent_argv,
+            stdout=StreamType.PIPE, stderr=StreamType.PIPE,
+            workdir=APP_REMOTE, text=False, bufsize=0,
+        )
+        click.echo("Running Modal agent script (bash agent.sh; no /tests)...")
+        stream_process_output(proc, sys.stdout, sys.stderr)
+        proc.wait()
+        agent_exit = int(proc.returncode or 0)
+        agent_result, _ = parse_deepswe_run_result(
+            sandbox,
+            run_logs_remote=run_logs_remote,
+            grade_only=False,
+            agent_exit_code=agent_exit,
+        )
+        if agent_result is None:
+            agent_result = {"exit_code": agent_exit}
+        elif "exit_code" not in agent_result:
+            agent_result["exit_code"] = agent_exit
+
+        click.echo("Clearing residual agent process tree before verifier inject...")
+        cleanup_agent_process_tree(sandbox)
+
+        if harvest_workspace is not None:
+            harvest_info = _safe_harvest_workspace(sandbox, harvest_workspace)
+            agent_result["workspace_harvest"] = harvest_info
+
+        if skip_grade:
+            grade_result = {"pass": None, "reward": None, "skipped": True}
+        else:
+            assert tests_dir is not None, "tests_dir required for grade injection"
+            assert task_dir is not None, "task_dir required for grade injection"
+            click.echo("Injecting verifier files into sandbox...")
+            inject_verifier_files(sandbox, tests_dir, task_dir)
+            grade_name = SMOKE_GRADE_SCRIPT_NAME if smoke else GRADE_SCRIPT_NAME
+            if scripts_dir is not None:
+                inject_trial_scripts(sandbox, scripts_dir)
+            grade_proc = sandbox.exec(
+                "bash", f"{TRIAL_SCRIPTS_REMOTE}/{grade_name}",
+                stdout=StreamType.PIPE, stderr=StreamType.PIPE,
+                workdir=APP_REMOTE, text=False, bufsize=0,
+            )
+            click.echo(f"Running Modal grade script ({grade_name})...")
+            stream_process_output(grade_proc, sys.stdout, sys.stderr)
+            grade_proc.wait()
+            _, grade_result = parse_deepswe_run_result(
+                sandbox,
+                run_logs_remote=run_logs_remote,
+                grade_only=True,
+                agent_exit_code=None,
+            )
+            if smoke:
+                grade_result["smoke_grade"] = True
+
+    if agent_result is None and not grade_only:
+        agent_result = {"exit_code": int(proc.returncode or 0)}
+    elif agent_result is not None and "exit_code" not in agent_result:
+        agent_result["exit_code"] = int(proc.returncode or 0)
+    if artifacts_dir is not None:
+        persist_grading_artifacts(
+            sandbox,
+            artifacts_dir,
+            run_logs_remote=run_logs_remote,
+            grade_result=grade_result,
+        )
+        try:
+            harvest = harvest_sandbox_logs(sandbox, artifacts_dir)
+        except Exception as exc:
+            harvest = {"harvested": False, "error": str(exc)}
+            click.echo(f"Sandbox log harvest failed: {exc}", err=True)
+        if grade_only:
+            grade_result["harvest"] = harvest
+        elif agent_result is not None:
+            agent_result["harvest"] = harvest
+    return agent_result, grade_result
 
 
 def run_deepswe_run_in_sandbox(
@@ -2286,17 +2412,19 @@ def run_deepswe_run_in_sandbox(
     spec: Any | None = None,
     tests_dir: Path | None = None,
     task_dir: Path | None = None,
+    scripts_dir: Path | None = None,
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
-    """Run agent and grade as two execs in one Modal sandbox.
+    """Run agent and grade as two bash-script execs in one Modal sandbox.
 
     Isolation contract:
     - Agent image has no ``/tests`` or ``/task/solution``.
     - After agent wait: scoped process-tree cleanup, then harvest ``/app`` onto
       ``harvest_workspace`` (pre-grade only — never after Harbor ``test.patch``).
-    - Then inject verifier files and run ``--grade-only``.
+    - Then inject verifier files and run the host-prepared grade/smoke script.
     - Grade artifacts via ``persist_grading_artifacts`` / log harvest; do not
       tar post-grade ``/app`` back onto the reusable agent workspace.
     """
+    del malvin_argv  # scripts are host-prepared; argv retained for call-site compat
     sandbox: modal.Sandbox | None = None
     run_logs_remote = f"{LOGS_REMOTE}/run"
     try:
@@ -2323,105 +2451,18 @@ def run_deepswe_run_in_sandbox(
         allowlist = network.get("outbound_cidr_allowlist")
         if allowlist:
             pin_cursor_api_hosts_in_sandbox(sandbox, allowlist)
-
-        base_argv = [
-            "python3", DEEPSWE_RUN_REMOTE, "solve",
-            "--task", TASK_REMOTE,
-            "--workspace", APP_REMOTE,
-            "--runtime", "in-sandbox",
-            "--skip-materialize",
-            "--results-dir", run_logs_remote,
-        ]
-
-        if grade_only:
-            argv = [*base_argv, "--grade-only"]
-            proc = sandbox.exec(
-                *argv,
-                stdout=StreamType.PIPE, stderr=StreamType.PIPE,
-                workdir=APP_REMOTE, text=False, bufsize=0,
-            )
-            click.echo("Running deepswe_run.py on Modal (grade-only exec)...")
-            stream_process_output(proc, sys.stdout, sys.stderr)
-            proc.wait()
-            agent_result, grade_result = parse_deepswe_run_result(
-                sandbox, run_logs_remote=run_logs_remote, grade_only=True,
-            )
-        else:
-            agent_argv = wrap_agent_exec_argv(
-                [*base_argv, "--skip-grade", "--command", command, *malvin_argv]
-            )
-            proc = sandbox.exec(
-                *agent_argv,
-                stdout=StreamType.PIPE, stderr=StreamType.PIPE,
-                workdir=APP_REMOTE, text=False, bufsize=0,
-            )
-            click.echo("Running deepswe_run.py on Modal (agent exec — no /tests or /task/solution)...")
-            stream_process_output(proc, sys.stdout, sys.stderr)
-            proc.wait()
-            agent_result, _ = parse_deepswe_run_result(
-                sandbox, run_logs_remote=run_logs_remote, grade_only=False,
-            )
-            if agent_result is None:
-                agent_result = {"exit_code": int(proc.returncode or 0)}
-            elif "exit_code" not in agent_result:
-                agent_result["exit_code"] = int(proc.returncode or 0)
-
-            # Always clear residual agent children before /tests appears.
-            click.echo("Clearing residual agent process tree before verifier inject...")
-            cleanup_agent_process_tree(sandbox)
-
-            # Harvest agent /app before Harbor test.patch mutates the tree.
-            if harvest_workspace is not None:
-                harvest_info = _safe_harvest_workspace(sandbox, harvest_workspace)
-                agent_result["workspace_harvest"] = harvest_info
-
-            if skip_grade:
-                grade_result = {"pass": None, "reward": None, "skipped": True}
-            else:
-                assert tests_dir is not None, "tests_dir required for grade injection"
-                assert task_dir is not None, "task_dir required for grade injection"
-                click.echo("Injecting verifier files into sandbox...")
-                inject_verifier_files(sandbox, tests_dir, task_dir)
-                grade_argv = [*base_argv, "--grade-only"]
-                # Harness smoke (solve --test / init-checks): verifier prep is the
-                # grade signal — skip long Harbor test.sh (often hits 1800s budget).
-                if command == "init-checks":
-                    grade_argv.append("--smoke-grade")
-                grade_proc = sandbox.exec(
-                    *grade_argv,
-                    stdout=StreamType.PIPE, stderr=StreamType.PIPE,
-                    workdir=APP_REMOTE, text=False, bufsize=0,
-                )
-                click.echo("Running deepswe_run.py on Modal (grade exec)...")
-                stream_process_output(grade_proc, sys.stdout, sys.stderr)
-                grade_proc.wait()
-                _, grade_result = parse_deepswe_run_result(
-                    sandbox, run_logs_remote=run_logs_remote, grade_only=True,
-                )
-
-        if agent_result is None and not grade_only:
-            agent_result = {"exit_code": int(proc.returncode or 0)}
-        elif agent_result is not None and "exit_code" not in agent_result:
-            agent_result["exit_code"] = int(proc.returncode or 0)
-        if artifacts_dir is not None:
-            persist_grading_artifacts(
-                sandbox,
-                artifacts_dir,
-                run_logs_remote=run_logs_remote,
-                grade_result=grade_result,
-            )
-        # Do not harvest post-grade /app onto the reusable agent workspace.
-        if artifacts_dir is not None:
-            try:
-                harvest = harvest_sandbox_logs(sandbox, artifacts_dir)
-            except Exception as exc:
-                harvest = {"harvested": False, "error": str(exc)}
-                click.echo(f"Sandbox log harvest failed: {exc}", err=True)
-            if grade_only:
-                grade_result["harvest"] = harvest
-            elif agent_result is not None:
-                agent_result["harvest"] = harvest
-        return agent_result, grade_result
+        return _execute_trial_bash_in_sandbox(
+            sandbox,
+            command=command,
+            grade_only=grade_only,
+            skip_grade=skip_grade,
+            run_logs_remote=run_logs_remote,
+            artifacts_dir=artifacts_dir,
+            harvest_workspace=harvest_workspace,
+            tests_dir=tests_dir,
+            task_dir=task_dir,
+            scripts_dir=scripts_dir,
+        )
     finally:
         release_modal_sandbox(sandbox)
 
@@ -2431,6 +2472,8 @@ def offline_check_tool_install_commands(
     workspace: Path | None = None,
 ) -> list[str]:
     """Image-build pip installs so network-blocked agent sandboxes can run quality gates."""
+    from tox_gates import clamp_tox_version, image_build_pip_install_command
+
     pins = lint_gate_tool_pins(workspace) if workspace is not None else {}
     runner_pins = tox_runner_tool_pins(workspace) if workspace is not None else {}
     pkgs: list[str] = []
@@ -2447,15 +2490,15 @@ def offline_check_tool_install_commands(
         )
     if "tox" in checks or "just" in checks:
         if "tox" in runner_pins:
-            pkgs.append(f"tox=={runner_pins['tox']}")
+            pkgs.append(f"tox=={clamp_tox_version(runner_pins['tox'])}")
         else:
-            pkgs.append("tox")
+            pkgs.append(f"tox=={clamp_tox_version(None)}")
         if "invoke" in runner_pins:
             pkgs.append(f"invoke=={runner_pins['invoke']}")
     if not pkgs:
         return []
     ordered = list(dict.fromkeys(pkgs))
-    return [f"python3 -m pip install --break-system-packages {' '.join(ordered)}"]
+    return [image_build_pip_install_command(" ".join(ordered))]
 
 
 def offline_agent_checks(checks: str) -> str:
@@ -2503,13 +2546,14 @@ def harbor_agent_image(
     *,
     dockerfile: Path,
     malvin_repo: Path,
-    deepswe_run_py: Path,
+    deepswe_run_py: Path | None = None,
     checks: str = "",
 ) -> modal.Image:
-    """Harbor task image plus local malvin, cursor-agent, and deepswe_run."""
+    """Harbor task image plus local malvin and cursor-agent (no harness re-entry)."""
+    del deepswe_run_py  # call-site compatibility; trials use host bash scripts
     base = harbor_image(spec, dockerfile=dockerfile, workspace=workspace)
     augmented = base.run_commands(
-        "apt-get update -qq && apt-get install -y -qq curl build-essential pkg-config libssl-dev python3-pip",
+        "apt-get update -qq && apt-get install -y -qq curl build-essential pkg-config libssl-dev",
         "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y",
     )
     augmented = mount_local_toolchain(
@@ -2530,7 +2574,6 @@ def harbor_agent_image(
         augmented.env({"UV_NO_SYNC": "1"}),
         task_dir=spec.task_dir,
         workspace=workspace,
-        deepswe_run_py=deepswe_run_py,
     )
 
 
@@ -2714,7 +2757,7 @@ def run_modal_eval(
             click.echo("Dry run: malvin agent in Modal sandbox (Cursor API allowlist)")
             if not skip_grade:
                 click.echo(
-                    "Dry run: Harbor grade in same Modal sandbox (in-sandbox runtime)"
+                    "Dry run: Harbor grade in same Modal sandbox (host-prepared bash scripts)"
                 )
         return
 
@@ -2732,19 +2775,26 @@ def run_modal_eval(
     grade_result: dict[str, Any] = {"pass": None, "reward": None}
     modal_error: str | None = None
     agent_artifacts: Path | None = None
-    deepswe_run_py = Path(__file__).resolve().parent / "deepswe_run.py"
+    scripts_dir = run_root / "scripts"
     try:
         with modal.enable_output():
             sandbox_timeout = agent_sandbox_timeout_sec(
                 spec, skip_grade=skip_grade, grade_only=grade_only,
             )
             if grade_only:
+                write_trial_scripts(
+                    scripts_dir,
+                    malvin_command=malvin_command,
+                    malvin_args=malvin_args,
+                    smoke_grade=malvin_command == "init-checks",
+                    write_agent=False,
+                    write_grade=True,
+                )
                 grade_img = mount_eval_context(
                     harbor_image(spec, dockerfile=spec.dockerfile, workspace=workspace),
                     task_dir=spec.task_dir,
                     workspace=workspace,
                     tests_dir=spec.tests_dir,
-                    deepswe_run_py=deepswe_run_py,
                 )
                 agent_result, grade_result = run_deepswe_run_in_sandbox(
                     grade_img,
@@ -2756,10 +2806,20 @@ def run_modal_eval(
                     artifacts_dir=run_root,
                     spec=spec,
                     timeout=sandbox_timeout,
+                    scripts_dir=scripts_dir,
                 )
             else:
-                if malvin_needs_task_plan(malvin_command):
-                    write_task_plan(spec, workspace, dry_run=False)
+                host_preseed_agent_files(
+                    spec, workspace, malvin_command=malvin_command, dry_run=False
+                )
+                write_trial_scripts(
+                    scripts_dir,
+                    malvin_command=malvin_command,
+                    malvin_args=malvin_args,
+                    smoke_grade=malvin_command == "init-checks",
+                    write_agent=True,
+                    write_grade=not skip_grade,
+                )
                 malvin_repo = validate_toolchain_repos()
                 with stage_malvin_repo(malvin_repo) as malvin_staged:
                     agent_img = harbor_agent_image(
@@ -2767,7 +2827,6 @@ def run_modal_eval(
                         workspace,
                         dockerfile=spec.dockerfile,
                         malvin_repo=malvin_staged,
-                        deepswe_run_py=deepswe_run_py,
                     )
                     agent_artifacts = run_root / "agent_sandbox"
                     if skip_grade:
@@ -2783,6 +2842,7 @@ def run_modal_eval(
                             harvest_workspace=workspace,
                             spec=spec,
                             timeout=sandbox_timeout,
+                            scripts_dir=scripts_dir,
                         )
                     else:
                         click.echo(
@@ -2802,6 +2862,7 @@ def run_modal_eval(
                             timeout=sandbox_timeout,
                             tests_dir=spec.tests_dir,
                             task_dir=spec.task_dir,
+                            scripts_dir=scripts_dir,
                         )
                 if agent_result is None:
                     agent_result = {"exit_code": 1}
@@ -3751,9 +3812,9 @@ def _test_agent_grade_call_order_cleanup_harvest_inject() -> None:
         joined = " ".join(str(a) for a in args)
         if "malvin-agent-pgid" in joined and "kill" in joined:
             order.append("cleanup")
-        elif "--grade-only" in joined:
+        elif GRADE_SCRIPT_NAME in joined or SMOKE_GRADE_SCRIPT_NAME in joined:
             order.append("grade")
-        elif "--skip-grade" in joined or "os.setsid" in joined or AGENT_PGID_PATH in joined:
+        elif AGENT_SCRIPT_NAME in joined or "os.setsid" in joined or AGENT_PGID_PATH in joined:
             if "kill" not in joined:
                 order.append("agent")
         return fake_proc
@@ -4036,10 +4097,9 @@ def _test_grade_in_sandbox_network() -> None:
     assert mock_create.call_args.kwargs["memory"] == GRADE_SANDBOX_MEMORY_MIB
     assert fake_sandbox.exec.call_count == 1
     exec_argv = fake_sandbox.exec.call_args.args
-    assert exec_argv[0] == "python3"
-    assert exec_argv[1] == DEEPSWE_RUN_REMOTE
-    assert exec_argv[2] == "solve"
-    assert "--grade-only" in exec_argv
+    assert exec_argv[0] == "bash"
+    assert GRADE_SCRIPT_NAME in exec_argv[1]
+    assert DEEPSWE_RUN_REMOTE not in exec_argv
     exec_kwargs = fake_sandbox.exec.call_args.kwargs
     assert exec_kwargs["text"] is False
     assert exec_kwargs["bufsize"] == 0
@@ -4090,12 +4150,14 @@ def _test_agent_sandbox_network() -> None:
     assert first_exec_argv[1] == "-c"
     agent_script = first_exec_argv[2]
     assert "os.setsid()" in agent_script
-    assert "--skip-grade" in agent_script
+    assert AGENT_SCRIPT_NAME in agent_script
+    assert DEEPSWE_RUN_REMOTE not in agent_script
     assert AGENT_PGID_PATH in agent_script
     cleanup_argv = fake_sandbox.exec.call_args_list[1].args
     assert AGENT_PGID_PATH in " ".join(str(a) for a in cleanup_argv)
     grade_exec_argv = fake_sandbox.exec.call_args_list[2].args
-    assert "--grade-only" in grade_exec_argv
+    assert grade_exec_argv[0] == "bash"
+    assert GRADE_SCRIPT_NAME in grade_exec_argv[1]
     assert agent_result["exit_code"] == 0
     assert grade_result["reward"] == 0
     fake_sandbox.detach.assert_called_once()
@@ -4205,31 +4267,21 @@ def _test_extract_tar_over_workspace_skips_unremovable() -> None:
 def _test_mount_eval_context_recipe() -> None:
     malvin_repo = malvin_repo_root()
     recorder = _RecordingImage()
-    deepswe_run_py = Path(__file__).resolve().parent / "deepswe_run.py"
     mount_eval_context(
         recorder,
         task_dir=malvin_repo,
         workspace=malvin_repo,
         tests_dir=malvin_repo / "tests",
-        deepswe_run_py=deepswe_run_py,
     )
     uploads = [call for call in recorder.calls if call[0] == "add_local_dir"]
     assert len(uploads) == 3
     workspace_upload = uploads[0]
     assert workspace_upload[2]["ignore"] == workspace_mount_ignore()
     file_uploads = [call for call in recorder.calls if call[0] == "add_local_file"]
-    assert len(file_uploads) == 5
-    remote_paths = {call[2]["remote_path"] for call in file_uploads}
-    assert remote_paths == {
-        DEEPSWE_RUN_REMOTE,
-        SANDBOX_PREP_REMOTE,
-        HARBOR_TESTS_REMOTE,
-        TOOLCHAIN_REPOS_REMOTE,
-        TOX_GATES_REMOTE,
-    }
+    assert file_uploads == []
     pip_cmds = [call for call in recorder.calls if call[0] == "run_commands"]
-    assert pip_cmds
-    assert "click" in pip_cmds[0][1][0]
+    assert pip_cmds == []
+
 
 
 def _test_mount_agent_context_excludes_tests() -> None:
@@ -4250,9 +4302,8 @@ def _test_mount_agent_context_excludes_tests() -> None:
     remote_files = {call[2]["remote_path"] for call in file_uploads}
     assert f"{TASK_REMOTE}/task.toml" in remote_files
     assert f"{TASK_REMOTE}/instruction.md" in remote_files
-    assert DEEPSWE_RUN_REMOTE in remote_files
-    assert HARBOR_TESTS_REMOTE in remote_files
-    assert SANDBOX_PREP_REMOTE in remote_files
+    assert DEEPSWE_RUN_REMOTE not in remote_files
+    assert all('/opt/malvin/ops/' not in p for p in remote_files)
 
 
 def _test_harbor_agent_image_materializes_public_verifier_venv() -> None:
@@ -4327,6 +4378,7 @@ def _test_offline_check_tool_install_commands() -> None:
     assert "ruff" in cmds[0]
     assert "aggdraw" in cmds[0]
     assert "uv" in cmds[0]
+    assert "/opt/venv/bin/python -m pip install" in cmds[0]
     assert offline_check_tool_install_commands("cargo nextest run") == []
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -4334,10 +4386,16 @@ def _test_offline_check_tool_install_commands() -> None:
         req_dir.mkdir()
         (req_dir / "lint.txt").write_text("ruff==0.9.1\nmypy==1.14.0\n", encoding="utf-8")
         pinned = offline_check_tool_install_commands("ruff check .\nmypy src/", workspace=root)
-        assert pinned == [
-            "python3 -m pip install --break-system-packages "
-            "mypy==1.14.0 uv ruff==0.9.1"
-        ]
+        assert len(pinned) == 1
+        assert "mypy==1.14.0" in pinned[0]
+        assert "ruff==0.9.1" in pinned[0]
+        assert "uv" in pinned[0]
+        assert "/opt/venv/bin/python -m pip install" in pinned[0]
+        (req_dir / "runner.txt").write_text("tox==4.23.2\n", encoding="utf-8")
+        tox_cmds = offline_check_tool_install_commands("tox run -e lint", workspace=root)
+        assert len(tox_cmds) == 1
+        assert "tox==4.42.0" in tox_cmds[0]
+        assert "tox==4.23.2" not in tox_cmds[0]
 
 
 def _test_offline_agent_checks() -> None:
@@ -4924,7 +4982,7 @@ def _test_run_modal_eval_modal_agent_modal_grade() -> None:
         with (
             patch(f"{__name__}.materialize_workspace"),
             patch(f"{__name__}.reset_workspace"),
-            patch(f"{__name__}.write_task_plan"),
+            patch(f"{__name__}.host_preseed_agent_files"),
             patch(f"{__name__}.validate_toolchain_repos", return_value=Path("/m")),
             patch(f"{__name__}.stage_malvin_repo", side_effect=_fake_stage_malvin_repo),
             patch(f"{__name__}.harbor_agent_image", return_value=MagicMock()),

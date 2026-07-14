@@ -1,39 +1,34 @@
 #!/usr/bin/env python3
 """Run malvin against a DeepSWE Harbor task and grade with the official verifier.
 
-Phase-0/1 harness from ``deepswe.md``. ``solve TASK_NAME`` runs malvin in a Modal
-sandbox with a Cursor API CIDR allowlist, harvests the workspace **before** Harbor
-grade (so ``test.patch`` never contaminates the reusable checkout), then grades in
-the same sandbox after verifier injection. Agent solves always ``reset_workspace``
-before image warm / plan write; ``--apply-solution`` and ``DEEPSWE_AGENT_NEW_TESTS``
-are refused on agent-executing paths. Modal agent runs require a Cursor API key
-(``CURSOR_AGENT_API_KEY``, ``CURSOR_API_KEY``, or ``AGENT_API_KEY``) in the shell
-that launches the command; interactive ``agent login`` is not available inside
-Modal sandboxes. ``solve --local TASK_NAME`` runs agent and grade in separate local
-Docker containers (agent image built from Harbor + malvin/cursor-agent); local
-grade bind-mounts mutate ``/app`` on the host and are followed by post-grade reset.
-``--runtime host`` runs malvin on the host and grades via Docker; ``--runtime in-sandbox``
-runs both phases in the current environment (Modal sandbox or an outer ``docker run``).
+``solve TASK_NAME`` orchestrates on the **host**: materialize/reset workspace, pre-seed
+``plan.md`` / ``.malvin/checks``, warm the task image (build-time only), write
+``agent.sh`` / ``grade.sh`` (or smoke stub), then run those bash scripts inside
+local Docker or a Modal sandbox. Containers never re-enter this harness and never
+install packages at trial runtime — the Harbor image is trusted as already set up
+(``sandbox_prep`` warm remains image-build only).
 
-Harbor per-phase timeouts from ``task.toml`` (``agent.timeout_sec``, ``verifier.timeout_sec``)
-are enforced in ``run_task()`` via monotonic phase deadlines covering prep, plan, config,
-malvin, and grade. Default ``solve`` (Modal) and ``solve --local`` (Docker) invoke
-in-sandbox ``run_task()`` per exec; inner enforcement is primary. Modal sandbox lifetime
-and local Docker ``subprocess.run`` timeouts are outer backstops with 900s headroom.
+Agent solves always ``reset_workspace`` before image warm / plan write;
+``--apply-solution`` and ``DEEPSWE_AGENT_NEW_TESTS`` are refused on agent-executing
+paths. Modal agent runs require a Cursor API key (``CURSOR_AGENT_API_KEY``,
+``CURSOR_API_KEY``, or ``AGENT_API_KEY``); interactive ``agent login`` is not
+available inside Modal sandboxes. ``solve --local`` runs agent and grade in
+separate local Docker containers; grade bind-mounts mutate ``/app`` on the host
+and are followed by post-grade reset. ``--runtime host`` runs malvin on the host
+and grades via Docker (ambient env; no verifier-venv materialize).
 
-Before the agent phase, ``prepare_task_sandbox`` (``sandbox_prep.py``) runs offline
-editable replay and the same mandatory dependency probe used during Modal registry
-image build. Prep failures short-abort before malvin or grade in a known-bad env.
-Modal image build reconciles declared deps when network is available. Harbor grade
-in-sandbox uses ``/opt/malvin-verifier`` (public DeclaredDeps on the agent image;
-``test.patch`` closure + probe only at grade time).
+Harbor per-phase timeouts from ``task.toml`` are enforced via monotonic deadlines
+covering plan, config, malvin, and grade. Modal sandbox lifetime and local Docker
+``subprocess.run`` timeouts are outer backstops with 900s headroom.
 
-In-sandbox runs (``--runtime in-sandbox``) set ``UV_OFFLINE=1`` so ``uv`` never
-attempts PyPI downloads during malvin quality gates or agent commands.
+In-sandbox / agent scripts set ``UV_OFFLINE=1`` so ``uv`` never attempts PyPI
+downloads during malvin quality gates. Host-prepared scripts pass a widened install
+deny-list (no pip/uv/apt/npm/cargo install, curl/wget bootstrap).
 
 Reused DeepSWE workspaces may accumulate root-owned sandbox dirs (``.stestr``,
-``.malvin/acp_spawn``); ``reset_workspace`` removes them via Docker when
-the host user cannot unlink them.
+``.malvin/acp_spawn``) or other root-owned untracked trees; ``reset_workspace``
+removes ephemeral caches via Docker and, if host ``git clean`` still fails,
+deletes ``git clean -fdx`` targets as root inside Alpine.
 
 Examples::
 
@@ -41,7 +36,6 @@ Examples::
     python ops/deepswe_run.py solve bandit-interprocedural-taint-checks
     python ops/deepswe_run.py solve --test bandit-interprocedural-taint-checks  # smoke: malvin init + .malvin/checks, then grade
     python ops/deepswe_run.py solve --local bandit-interprocedural-taint-checks
-    python ops/deepswe_run.py solve --task /task --workspace /app --runtime in-sandbox --command route
     python ops/deepswe_run.py solve --task ../deep-swe/tasks/bandit-interprocedural-taint-checks --grade-only
 
 Local unit tests (no agent run)::
@@ -70,17 +64,8 @@ from unittest.mock import MagicMock, patch
 
 import click
 
-from sandbox_prep import (
-    collect_pip_install_intents,
-    declared_python_dependencies,
-    format_prep_error,
-    pins_for_task,
-    prepare_task_sandbox,
-    prepare_verifier_grade,
-    registry_image_cache_bust_commands,
-    tox_lint_check_commands,
-    verifier_grade_subprocess_env,
-)
+from sandbox_prep import tox_lint_check_commands
+
 from toolchain_repos import (
     malvin_repo_root,
     resolve_malvin_cmd,
@@ -102,11 +87,9 @@ MALVIN_CMD = resolve_malvin_cmd()
 IN_SANDBOX_TESTS_DIR = Path("/tests")
 IN_SANDBOX_LOGS_DIR = Path("/logs")
 DEEPSWE_OPS_REMOTE = "/opt/malvin/ops"
-DEEPSWE_RUN_REMOTE = f"{DEEPSWE_OPS_REMOTE}/deepswe_run.py"
-SANDBOX_PREP_REMOTE = f"{DEEPSWE_OPS_REMOTE}/sandbox_prep.py"
-HARBOR_TESTS_REMOTE = f"{DEEPSWE_OPS_REMOTE}/harbor_tests.py"
-TOOLCHAIN_REPOS_REMOTE = f"{DEEPSWE_OPS_REMOTE}/toolchain_repos.py"
-TOX_GATES_REMOTE = f"{DEEPSWE_OPS_REMOTE}/tox_gates.py"
+DEEPSWE_RUN_REMOTE = f"{DEEPSWE_OPS_REMOTE}/deepswe_run.py"  # legacy; not used for trial exec
+TRIAL_SCRIPTS_REMOTE = "/opt/malvin/trial_scripts"
+MALVIN_BIN_REMOTE = "/root/.cargo/bin/malvin"
 MALVIN_TOOLCHAIN_REMOTE = "/opt/toolchain/malvin"
 # Keep Harbor project venvs (``ENV VIRTUAL_ENV=/opt/venv``) on PATH. A bare
 # toolchain overwrite otherwise shadows ``/opt/venv/bin`` and breaks PYTHONPATH
@@ -115,6 +98,160 @@ TOOLCHAIN_PATH = (
     "/root/.cargo/bin:/root/.local/bin:/opt/venv/bin:/usr/local/sbin"
     ":/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 )
+
+RUNTIME_INSTALL_DENYLIST_RE = re.compile(
+    r"(?:"
+    r"\bpip3?\s+install\b"
+    r"|\buv\s+pip\b"
+    r"|\buv\s+sync\b"
+    r"|\bapt-get\s+install\b"
+    r"|\bnpm\s+install\b"
+    r"|\bcargo\s+install\b"
+    r"|\bcurl\s+"
+    r"|\bwget\s+"
+    r")",
+    re.IGNORECASE,
+)
+
+# Keep Harbor VIRTUAL_ENV /opt/venv on PATH (same contract as deepswe_run.TOOLCHAIN_PATH).
+
+AGENT_SCRIPT_NAME = "agent.sh"
+GRADE_SCRIPT_NAME = "grade.sh"
+SMOKE_GRADE_SCRIPT_NAME = "smoke_grade.sh"
+
+
+class RuntimeInstallForbiddenError(ValueError):
+    """Raised when a host-prepared script would install packages at trial runtime."""
+
+
+def assert_no_runtime_installs(script: str, *, label: str = "script") -> None:
+    """Fail if *script* contains any Q8 trial-runtime install / bootstrap form."""
+    match = RUNTIME_INSTALL_DENYLIST_RE.search(script)
+    if match:
+        raise RuntimeInstallForbiddenError(
+            f"{label} contains forbidden trial-runtime install pattern: {match.group(0)!r}"
+        )
+
+
+def _agent_env_preamble() -> str:
+    return (
+        "set -euo pipefail\n"
+        f'export PATH="{TOOLCHAIN_PATH}"\n'
+        'export UV_OFFLINE="${UV_OFFLINE:-1}"\n'
+        'export UV_NO_SYNC="${UV_NO_SYNC:-1}"\n'
+        "cd /app\n"
+    )
+
+
+def build_agent_script(
+    malvin_command: str,
+    *,
+    malvin_cmd: str = "malvin",
+    malvin_args: tuple[str, ...] = (),
+) -> str:
+    """Return agent-phase bash for ``route`` / ``init-checks`` / ``do`` / ``hello``."""
+    q = shlex.quote(malvin_cmd)
+    extra = " ".join(shlex.quote(a) for a in malvin_args)
+    if malvin_command == "init-checks":
+        body = (
+            f"{q} init\n"
+            "set -euo pipefail\n"
+            "source .malvin/checks\n"
+        )
+        if malvin_args:
+            body = f"# ignored malvin_args: {extra}\n" + body
+    elif malvin_command in ("route", "code"):
+        # End-state: explicit malvin init before plan.md (Q9).
+        plan_cmd = f"{q} plan.md" if malvin_command == "route" else f"{q} code plan.md"
+        if extra:
+            plan_cmd = f"{plan_cmd} {extra}"
+        body = f"{q} init\n{plan_cmd}\n"
+    elif malvin_command == "do":
+        if not malvin_args:
+            raise ValueError("malvin do requires a prompt argument")
+        body = f"{q} do {extra}\n"
+    elif malvin_command == "hello":
+        body = f"{q} --version\n"
+    else:
+        raise ValueError(f"Unknown malvin command for agent script: {malvin_command!r}")
+    script = _agent_env_preamble() + body
+    assert_no_runtime_installs(script, label="agent.sh")
+    return script
+
+
+def build_grade_script() -> str:
+    """Harbor grade: run ``/tests/test.sh`` with Harbor directory conventions."""
+    script = (
+        "set -euo pipefail\n"
+        f'export PATH="{TOOLCHAIN_PATH}"\n'
+        'export UV_OFFLINE="${UV_OFFLINE:-1}"\n'
+        'export UV_NO_SYNC="${UV_NO_SYNC:-1}"\n'
+        "mkdir -p /logs/verifier /logs/artifacts\n"
+        "cd /app\n"
+        "bash /tests/test.sh\n"
+    )
+    assert_no_runtime_installs(script, label="grade.sh")
+    return script
+
+
+def build_smoke_grade_script() -> str:
+    """Init-checks smoke: write reward 0 and skip long Harbor ``test.sh``."""
+    script = (
+        "set -euo pipefail\n"
+        "mkdir -p /logs/verifier /logs/artifacts\n"
+        "printf '0\\n' > /logs/verifier/reward.txt\n"
+    )
+    assert_no_runtime_installs(script, label="smoke_grade.sh")
+    return script
+
+
+def write_trial_scripts(
+    scripts_dir: Path,
+    *,
+    malvin_command: str,
+    malvin_cmd: str = "malvin",
+    malvin_args: tuple[str, ...] = (),
+    smoke_grade: bool = False,
+    write_agent: bool = True,
+    write_grade: bool = True,
+) -> dict[str, Path]:
+    """Write agent/grade bash scripts under *scripts_dir*; return path map."""
+    scripts_dir.mkdir(parents=True, exist_ok=True)
+    out: dict[str, Path] = {}
+    if write_agent:
+        agent_path = scripts_dir / AGENT_SCRIPT_NAME
+        agent_path.write_text(
+            build_agent_script(
+                malvin_command, malvin_cmd=malvin_cmd, malvin_args=malvin_args
+            ),
+            encoding="utf-8",
+        )
+        agent_path.chmod(0o755)
+        out["agent"] = agent_path
+    if write_grade:
+        if smoke_grade:
+            grade_path = scripts_dir / SMOKE_GRADE_SCRIPT_NAME
+            grade_path.write_text(build_smoke_grade_script(), encoding="utf-8")
+        else:
+            grade_path = scripts_dir / GRADE_SCRIPT_NAME
+            grade_path.write_text(build_grade_script(), encoding="utf-8")
+        grade_path.chmod(0o755)
+        out["grade"] = grade_path
+    return out
+
+
+def resolve_host_malvin_binary() -> Path | None:
+    """Best-effort path to a host ``malvin`` binary for container copy-in."""
+    which = shutil.which("malvin")
+    if which:
+        path = Path(which)
+        if path.is_file():
+            return path.resolve()
+    cargo = Path.home() / ".cargo" / "bin" / "malvin"
+    if cargo.is_file():
+        return cargo.resolve()
+    return None
+
 CURSOR_ENV_KEYS = ("CURSOR_AGENT_API_KEY", "CURSOR_API_KEY", "AGENT_API_KEY")
 TIMEOUT_EXIT_CODE = 124
 LOCAL_DOCKER_HEADROOM_SEC = 900
@@ -304,17 +441,9 @@ def audit_task_entry(
     require_python_baseline: bool,
     workspace: Path | None = None,
 ) -> dict[str, Any]:
-    """Collect harness audit fields for one Harbor task."""
+    """Collect harness audit fields for one Harbor task (no install-derived fields)."""
     spec = parse_task_dir(task_dir)
-    dockerfile_text = (
-        spec.dockerfile.read_text(encoding="utf-8") if spec.dockerfile.is_file() else ""
-    )
-    intents = collect_pip_install_intents(dockerfile_text) if dockerfile_text else []
     audit_workspace = workspace if workspace is not None else resolve_materialized_workspace(spec)
-    pins = pins_for_task(
-        spec.dockerfile if spec.dockerfile.is_file() else None,
-        audit_workspace if audit_workspace is not None else task_dir / "environment",
-    )
     baseline = harbor_baseline_check_lines(spec.tests_dir)
     runnable = [line for line in baseline if is_runnable_check_line(line)]
     patch_targets = patch_surface_targets(
@@ -330,26 +459,10 @@ def audit_task_entry(
         failures.append("patch_surface_with_baseline")
     if audit_workspace is None and language == "python" and spec.docker_image:
         failures.append("no_materialized_workspace")
-    declared_package_count: int | None = None
-    dockerfile = spec.dockerfile if spec.dockerfile.is_file() else None
-    cache_bust: list[str] | None = None
-    if audit_workspace is not None and dockerfile is not None:
-        declared_package_count = len(
-            declared_python_dependencies(audit_workspace, dockerfile).package_names()
-        )
-        cache_bust = registry_image_cache_bust_commands(
-            dockerfile,
-            audit_workspace,
-            registry_pull=bool(spec.docker_image),
-        )
     return {
         "task_id": spec.task_id,
         "language": language,
-        "pip_intents": intents,
-        "pins": pins,
-        "cache_bust": cache_bust,
         "materialized_workspace": audit_workspace is not None,
-        "declared_package_count": declared_package_count,
         "baseline": baseline,
         "runnable_baseline": runnable,
         "patch_surface_count": len(patch_targets),
@@ -622,6 +735,58 @@ def purge_root_owned_ephemeral_caches(workspace: Path, *, dry_run: bool = False)
     return True
 
 
+def git_clean_would_remove(workspace: Path) -> list[str]:
+    """Return relative paths ``git clean -fdx`` would delete (dry-run parse)."""
+    ws = str(workspace.resolve())
+    proc = run_cmd(
+        ["git", "-c", f"safe.directory={ws}", "clean", "-fdxn"],
+        cwd=workspace,
+        check=False,
+    )
+    if proc.returncode != 0:
+        return []
+    paths: list[str] = []
+    for line in (proc.stdout or "").splitlines():
+        if line.startswith("Would remove "):
+            paths.append(line[len("Would remove ") :].rstrip("/"))
+    return paths
+
+
+def docker_purge_git_clean_targets(workspace: Path, *, dry_run: bool = False) -> bool:
+    """Delete ``git clean -fdx`` targets as root via Docker when the host cannot unlink them."""
+    if dry_run or not docker_daemon_available():
+        return False
+    paths = git_clean_would_remove(workspace)
+    if not paths:
+        return True
+    ws = str(workspace.resolve())
+    # Write a NUL-separated list so Alpine can xargs-rm without ARG_MAX issues.
+    listing = "\0".join(paths) + "\0"
+    cmd = [
+        "docker",
+        "run",
+        *DOCKER_RUN_FAST_ARGS,
+        "-i",
+        "-v",
+        f"{ws}:/app",
+        "-w",
+        "/app",
+        DOCKER_EPHEMERAL_PURGE_IMAGE,
+        "sh",
+        "-c",
+        "xargs -0 rm -rf --",
+    ]
+    proc = subprocess.run(cmd, input=listing, capture_output=True, text=True, check=False)
+    if proc.returncode != 0:
+        click.echo(
+            "Warning: Docker root git-clean purge failed: "
+            f"{proc.stderr or proc.stdout}",
+            err=True,
+        )
+        return False
+    return True
+
+
 def git_clean(workspace: Path, *, dry_run: bool = False) -> bool:
     ws = str(workspace.resolve())
     proc = run_cmd(
@@ -703,6 +868,12 @@ def reset_workspace(spec: TaskSpec, workspace: Path, *, dry_run: bool) -> None:
         return
     click.echo("git clean failed; retrying after Docker ephemeral purge", err=True)
     if purge_root_owned_ephemeral_caches(workspace) and git_clean(workspace):
+        return
+    click.echo(
+        "git clean still failing; removing clean targets via Docker as root",
+        err=True,
+    )
+    if docker_purge_git_clean_targets(workspace) and git_clean(workspace):
         return
     raise click.ClickException(
         "git clean -fdx failed after reset (likely root-owned untracked files). "
@@ -1754,7 +1925,12 @@ def build_local_agent_image(
     malvin_repo: Path,
     dry_run: bool,
 ) -> str:
-    """Extend the Harbor base image with Linux malvin and cursor-agent."""
+    """Extend the Harbor base image with Linux malvin and cursor-agent.
+
+    Prefers copying a host ``malvin`` binary (no trial-runtime install). Falls back
+    to ``cargo install`` at **image build** time only. Never installs click or
+    re-enters ``deepswe_run.py``.
+    """
     agent_tag = local_agent_image_tag(spec.task_id)
     if not dry_run:
         probe = subprocess.run(
@@ -1768,11 +1944,30 @@ def build_local_agent_image(
     if dry_run:
         click.echo(f"Would build local agent image {agent_tag} from {base_image}")
         return agent_tag
+    host_malvin = resolve_host_malvin_binary()
+    if host_malvin is not None:
+        dockerfile = f"""\
+FROM {base_image}
+RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq curl ca-certificates
+COPY malvin_bin {MALVIN_BIN_REMOTE}
+RUN chmod 755 {MALVIN_BIN_REMOTE}
+RUN curl -fsSL https://cursor.com/install | bash
+ENV PATH="{TOOLCHAIN_PATH}"
+"""
+        click.echo(
+            f"Building local agent image {agent_tag} from {base_image} "
+            f"(copy malvin from {host_malvin}; cursor-agent; may take several minutes)..."
+        )
+        with tempfile.TemporaryDirectory(prefix="deepswe-agent-") as tmp:
+            build_dir = Path(tmp)
+            (build_dir / "Dockerfile").write_text(dockerfile, encoding="utf-8")
+            shutil.copy2(host_malvin, build_dir / "malvin_bin")
+            run_cmd(["docker", "build", "-t", agent_tag, str(build_dir)])
+        return agent_tag
     dockerfile = f"""\
 FROM {base_image}
 RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \\
-    curl build-essential pkg-config libssl-dev python3-pip
-RUN pip3 install --break-system-packages click
+    curl build-essential pkg-config libssl-dev
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${{PATH}}"
 COPY malvin {MALVIN_TOOLCHAIN_REMOTE}
@@ -1782,7 +1977,7 @@ ENV PATH="{TOOLCHAIN_PATH}"
 """
     click.echo(
         f"Building local agent image {agent_tag} from {base_image} "
-        "(malvin/cursor-agent; may take several minutes)..."
+        "(malvin via cargo install / cursor-agent; may take several minutes)..."
     )
     with tempfile.TemporaryDirectory(prefix="deepswe-agent-") as tmp:
         build_dir = Path(tmp)
@@ -1809,66 +2004,43 @@ def _docker_common_mounts(
     *,
     workspace: Path,
     run_root: Path,
-    deepswe_run_py: Path,
+    scripts_dir: Path,
 ) -> list[str]:
-    """Volume mounts shared by both agent and grade containers."""
+    """Volume mounts shared by both agent and grade containers (no harness py)."""
     logs_mount = run_root / "verifier_logs"
     return [
         "-v", f"{workspace.resolve()}:/app",
-        "-v", f"{deepswe_run_py.resolve()}:{DEEPSWE_RUN_REMOTE}:ro",
-        "-v", f"{deepswe_run_py.resolve().parent / 'sandbox_prep.py'}:{SANDBOX_PREP_REMOTE}:ro",
-        "-v", f"{deepswe_run_py.resolve().parent / 'harbor_tests.py'}:{HARBOR_TESTS_REMOTE}:ro",
-        "-v", f"{deepswe_run_py.resolve().parent / 'toolchain_repos.py'}:{TOOLCHAIN_REPOS_REMOTE}:ro",
-        "-v", f"{deepswe_run_py.resolve().parent / 'tox_gates.py'}:{TOX_GATES_REMOTE}:ro",
+        "-v", f"{scripts_dir.resolve()}:{TRIAL_SCRIPTS_REMOTE}:ro",
         "-v", f"{logs_mount.resolve()}:/logs",
         "-v", f"{run_root.resolve()}:/run",
     ]
 
 
-def _docker_pip_preamble() -> str:
-    return (
-        "pip3 install --break-system-packages click >/dev/null 2>&1 || "
-        "pip install --break-system-packages click >/dev/null 2>&1 || true; "
-    )
-
-
 def docker_local_agent_cmd(
     *,
     image: str,
-    spec: TaskSpec,
     task_dir: Path,
     workspace: Path,
     run_root: Path,
-    deepswe_run_py: Path,
-    malvin_command: str,
-    malvin_args: tuple[str, ...],
-    reset_workspace_flag: bool,
+    scripts_dir: Path,
 ) -> list[str]:
-    """Docker command for the agent phase — no /tests or /task/solution mounted."""
-    inner = [
-        "python3", DEEPSWE_RUN_REMOTE, "solve",
-        "--task", "/task",
-        "--workspace", "/app",
-        "--runtime", "in-sandbox",
-        "--skip-materialize",
-        "--results-dir", "/run",
-        "--skip-grade",
-    ]
-    if reset_workspace_flag:
-        inner.append("--reset")
-    inner.extend(["--command", malvin_command, *malvin_args])
-    shell = _docker_pip_preamble() + " ".join(inner)
+    """Docker command for the agent phase — bash agent.sh only; no harness re-entry."""
     task_dir_resolved = task_dir.resolve()
     return [
         "docker", "run", "--rm",
         *cursor_env_docker_args(),
-        *_docker_common_mounts(workspace=workspace, run_root=run_root, deepswe_run_py=deepswe_run_py),
+        *_docker_common_mounts(
+            workspace=workspace, run_root=run_root, scripts_dir=scripts_dir
+        ),
         "-v", f"{(task_dir_resolved / 'task.toml')}:/task/task.toml:ro",
         "-v", f"{(task_dir_resolved / 'instruction.md')}:/task/instruction.md:ro",
         "-v", f"{(task_dir_resolved / 'environment')}:/task/environment:ro",
+        "-e", "UV_OFFLINE=1",
+        "-e", "UV_NO_SYNC=1",
+        "-e", f"PATH={TOOLCHAIN_PATH}",
         "-w", "/app",
         image,
-        "bash", "-lc", shell,
+        "bash", f"{TRIAL_SCRIPTS_REMOTE}/{AGENT_SCRIPT_NAME}",
     ]
 
 
@@ -1879,33 +2051,24 @@ def docker_local_grade_cmd(
     task_dir: Path,
     workspace: Path,
     run_root: Path,
-    deepswe_run_py: Path,
-    apply_solution: bool,
-    reset_workspace_flag: bool,
+    scripts_dir: Path,
+    smoke_grade: bool = False,
 ) -> list[str]:
-    """Docker command for the grade phase — /tests and /task/solution now available."""
-    inner = [
-        "python3", DEEPSWE_RUN_REMOTE, "solve",
-        "--task", "/task",
-        "--workspace", "/app",
-        "--runtime", "in-sandbox",
-        "--skip-materialize",
-        "--results-dir", "/run",
-        "--grade-only",
-    ]
-    if apply_solution:
-        inner.append("--apply-solution")
-    if reset_workspace_flag:
-        inner.append("--reset")
-    shell = _docker_pip_preamble() + " ".join(inner)
+    """Docker command for the grade phase — bash grade.sh / smoke stub only."""
+    script_name = SMOKE_GRADE_SCRIPT_NAME if smoke_grade else GRADE_SCRIPT_NAME
     return [
         "docker", "run", "--rm",
-        *_docker_common_mounts(workspace=workspace, run_root=run_root, deepswe_run_py=deepswe_run_py),
+        *_docker_common_mounts(
+            workspace=workspace, run_root=run_root, scripts_dir=scripts_dir
+        ),
         "-v", f"{spec.tests_dir.resolve()}:/tests:ro",
         "-v", f"{task_dir.resolve()}:/task:ro",
+        "-e", "UV_OFFLINE=1",
+        "-e", "UV_NO_SYNC=1",
+        "-e", f"PATH={TOOLCHAIN_PATH}",
         "-w", "/app",
         image,
-        "bash", "-lc", shell,
+        "bash", f"{TRIAL_SCRIPTS_REMOTE}/{script_name}",
     ]
 
 
@@ -1916,66 +2079,50 @@ def docker_local_eval_cmd(
     task_dir: Path,
     workspace: Path,
     run_root: Path,
-    deepswe_run_py: Path,
-    malvin_command: str,
-    malvin_args: tuple[str, ...],
-    grade_only: bool,
-    skip_grade: bool,
-    apply_solution: bool,
-    reset_workspace_flag: bool,
+    scripts_dir: Path,
+    smoke_grade: bool = False,
 ) -> list[str]:
     """Legacy single-container command. Used only by grade-only path."""
-    inner = [
-        "python3", DEEPSWE_RUN_REMOTE, "solve",
-        "--task", "/task",
-        "--workspace", "/app",
-        "--runtime", "in-sandbox",
-        "--skip-materialize",
-        "--results-dir", "/run",
-    ]
-    if grade_only:
-        inner.append("--grade-only")
-    if skip_grade:
-        inner.append("--skip-grade")
-    if apply_solution:
-        inner.append("--apply-solution")
-    if reset_workspace_flag:
-        inner.append("--reset")
-    if not grade_only:
-        inner.extend(["--command", malvin_command, *malvin_args])
-    shell = _docker_pip_preamble() + " ".join(inner)
+    script_name = SMOKE_GRADE_SCRIPT_NAME if smoke_grade else GRADE_SCRIPT_NAME
     return [
         "docker", "run", "--rm",
         *cursor_env_docker_args(),
         "-v", f"{workspace.resolve()}:/app",
         "-v", f"{spec.tests_dir.resolve()}:/tests:ro",
         "-v", f"{task_dir.resolve()}:/task:ro",
-        "-v", f"{deepswe_run_py.resolve()}:{DEEPSWE_RUN_REMOTE}:ro",
-        "-v", f"{deepswe_run_py.resolve().parent / 'sandbox_prep.py'}:{SANDBOX_PREP_REMOTE}:ro",
-        "-v", f"{deepswe_run_py.resolve().parent / 'toolchain_repos.py'}:{TOOLCHAIN_REPOS_REMOTE}:ro",
-        "-v", f"{deepswe_run_py.resolve().parent / 'tox_gates.py'}:{TOX_GATES_REMOTE}:ro",
+        "-v", f"{scripts_dir.resolve()}:{TRIAL_SCRIPTS_REMOTE}:ro",
         "-v", f"{(run_root / 'verifier_logs').resolve()}:/logs",
         "-v", f"{run_root.resolve()}:/run",
+        "-e", "UV_OFFLINE=1",
+        "-e", "UV_NO_SYNC=1",
+        "-e", f"PATH={TOOLCHAIN_PATH}",
         "-w", "/app",
         image,
-        "bash", "-lc", shell,
+        "bash", f"{TRIAL_SCRIPTS_REMOTE}/{script_name}",
     ]
 
 
 def _read_docker_grade_result(run_root: Path, proc: subprocess.CompletedProcess[str]) -> dict[str, Any]:
-    metadata_path = run_root / "metadata.json"
-    if metadata_path.is_file():
-        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-        return metadata.get("grade") or {}
+    """Prefer Harbor ``reward.txt``; fall back to legacy ``metadata.json`` grade."""
     reward_path = run_root / "verifier_logs" / "verifier" / "reward.txt"
     reward: int | None = None
     if reward_path.is_file():
         text = reward_path.read_text(encoding="utf-8").strip()
         if text in {"0", "1"}:
             reward = int(text)
+    if reward is not None:
+        return {
+            "pass": reward == 1,
+            "reward": reward,
+            "verifier_exit_code": proc.returncode,
+        }
+    metadata_path = run_root / "metadata.json"
+    if metadata_path.is_file():
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        return metadata.get("grade") or {}
     return {
-        "pass": reward == 1,
-        "reward": reward,
+        "pass": False,
+        "reward": None,
         "verifier_exit_code": proc.returncode,
     }
 
@@ -1996,6 +2143,24 @@ def _run_local_docker_subprocess(
         return None
 
 
+def host_preseed_agent_files(
+    spec: TaskSpec,
+    workspace: Path,
+    *,
+    malvin_command: str,
+    dry_run: bool = False,
+) -> None:
+    """Pre-seed workspace files on the host before container/sandbox trial exec (Q10).
+
+    Full solve / route: ``write_task_plan`` (plan.md + checks).
+    ``init-checks`` / ``solve --test``: ``write_deepswe_agent_checks`` only.
+    """
+    if malvin_needs_task_plan(malvin_command):
+        write_task_plan(spec, workspace, dry_run=dry_run)
+    elif malvin_command == "init-checks":
+        write_deepswe_agent_checks(workspace, dry_run=dry_run)
+
+
 def run_local_eval_in_docker(
     spec: TaskSpec,
     task_dir: Path,
@@ -2011,11 +2176,11 @@ def run_local_eval_in_docker(
     docker_image: str | None,
     dry_run: bool,
 ) -> dict[str, Any]:
-    """Run agent and grade in separate local Docker containers.
+    """Run agent and grade in separate local Docker containers via host bash scripts.
 
     The agent container does not mount ``/tests`` or ``/task/solution``.
     After the agent finishes, a second container mounts the verifier
-    files and runs ``--grade-only``.
+    files and runs the host-prepared grade script (or smoke stub).
 
     Local grade bind-mounts the host workspace at ``/app``, so Harbor
     ``test.patch`` mutates the host checkout during grade. Agent+grade runs
@@ -2024,7 +2189,8 @@ def run_local_eval_in_docker(
     """
     refuse_agent_verifier_leaks(grade_only=grade_only, apply_solution=apply_solution)
     base_image = resolve_docker_image(spec, docker_image, dry_run=dry_run)
-    deepswe_run_py = Path(__file__).resolve()
+    scripts_dir = run_root / "scripts"
+    smoke = malvin_command == "init-checks"
 
     agent_result: dict[str, Any] | None = None
     grade_result: dict[str, Any]
@@ -2039,7 +2205,6 @@ def run_local_eval_in_docker(
                 spec, workspace, "local-docker", malvin_command, malvin_args,
                 None, grade_result, None, grade_only=True, docker_image=base_image,
             )
-            metadata["sandbox_prep"] = {"fast_selftest_stub": True}
             _write_host_run_artifacts(
                 run_root, metadata, grade_result, logs_dir,
                 dry_run=False, overwrite_artifacts=True,
@@ -2047,10 +2212,19 @@ def run_local_eval_in_docker(
             return {"agent": None, "grade": grade_result, "runtime": "local-docker", "docker_exit_code": 0}
         if reset_workspace_flag or apply_solution:
             reset_workspace(spec, workspace, dry_run=dry_run)
+        if apply_solution and spec.solution_patch is not None:
+            apply_patch(workspace, spec.solution_patch, dry_run=dry_run)
+        write_trial_scripts(
+            scripts_dir,
+            malvin_command=malvin_command,
+            smoke_grade=False,
+            write_agent=False,
+            write_grade=True,
+        )
         cmd = docker_local_grade_cmd(
             image=base_image, spec=spec, task_dir=task_dir,
-            workspace=workspace, run_root=run_root, deepswe_run_py=deepswe_run_py,
-            apply_solution=apply_solution, reset_workspace_flag=False,
+            workspace=workspace, run_root=run_root, scripts_dir=scripts_dir,
+            smoke_grade=False,
         )
         if dry_run:
             run_cmd(cmd, dry_run=True)
@@ -2068,24 +2242,29 @@ def run_local_eval_in_docker(
     else:
         # Always reset host workspace before agent container / image warm.
         reset_workspace(spec, workspace, dry_run=dry_run)
-        if malvin_needs_task_plan(malvin_command):
-            write_task_plan(spec, workspace, dry_run=dry_run)
+        host_preseed_agent_files(
+            spec, workspace, malvin_command=malvin_command, dry_run=dry_run
+        )
+        write_trial_scripts(
+            scripts_dir,
+            malvin_command=malvin_command,
+            malvin_args=malvin_args,
+            smoke_grade=smoke,
+            write_agent=True,
+            write_grade=not skip_grade,
+        )
         malvin_repo = validate_toolchain_repos()
         eval_image = build_local_agent_image(
             spec, base_image, malvin_repo=malvin_repo, dry_run=dry_run,
         )
         agent_cmd = docker_local_agent_cmd(
-            image=eval_image, spec=spec, task_dir=task_dir,
-            workspace=workspace, run_root=run_root, deepswe_run_py=deepswe_run_py,
-            malvin_command=malvin_command, malvin_args=malvin_args,
-            # Host already reset; avoid a second in-container reset wiping plan.md
-            # before the in-sandbox write_task_plan runs. Flag kept for CLI parity.
-            reset_workspace_flag=False,
+            image=eval_image, task_dir=task_dir,
+            workspace=workspace, run_root=run_root, scripts_dir=scripts_dir,
         )
-        click.echo("Running local Docker agent (no /tests or /task/solution mounted)...")
+        click.echo("Running local Docker agent (bash agent.sh; no /tests)...")
         if dry_run:
             run_cmd(agent_cmd, dry_run=True)
-            agent_result = {"dry_run": True}
+            agent_result = {"dry_run": True, "exit_code": 0}
         else:
             proc = _run_local_docker_subprocess(
                 agent_cmd,
@@ -2096,21 +2275,21 @@ def run_local_eval_in_docker(
                 agent_result = _agent_timeout_result(spec)
             else:
                 last_exit_code = proc.returncode
-                metadata_path = run_root / "metadata.json"
-                if metadata_path.is_file():
-                    agent_result = json.loads(metadata_path.read_text(encoding="utf-8")).get("agent")
-                else:
-                    agent_result = {"exit_code": proc.returncode}
+                agent_result = {"exit_code": proc.returncode}
 
         if skip_grade:
             grade_result = {"pass": None, "reward": None, "skipped": True}
         else:
             grade_cmd = docker_local_grade_cmd(
                 image=base_image, spec=spec, task_dir=task_dir,
-                workspace=workspace, run_root=run_root, deepswe_run_py=deepswe_run_py,
-                apply_solution=apply_solution, reset_workspace_flag=False,
+                workspace=workspace, run_root=run_root, scripts_dir=scripts_dir,
+                smoke_grade=smoke,
             )
-            click.echo("Running local Docker grade...")
+            click.echo(
+                "Running local Docker smoke grade..."
+                if smoke
+                else "Running local Docker grade..."
+            )
             if dry_run:
                 run_cmd(grade_cmd, dry_run=True)
                 grade_result = {"pass": None, "reward": None, "dry_run": True}
@@ -2128,6 +2307,8 @@ def run_local_eval_in_docker(
                     else:
                         last_exit_code = proc.returncode
                         grade_result = _read_docker_grade_result(run_root, proc)
+                        if smoke:
+                            grade_result["smoke_grade"] = True
                 finally:
                     # Harbor test.patch applied on the bind-mounted host workspace;
                     # scrub even if grade helpers raise mid-read.
@@ -2153,12 +2334,9 @@ def grade_workspace_native(
 ) -> dict[str, Any]:
     """Run Harbor ``test.sh`` in the current environment (no Docker wrapper).
 
-    When *env* is provided (typically ``verifier_grade_subprocess_env`` pointing at
-    ``/opt/malvin-verifier``), Harbor scoring uses that subprocess-scoped environment
-    only — it is not ambient image env visible to a prior agent exec.
-
-    Docker host ``grade_workspace`` is unchanged: it runs ``test.sh`` in a fresh
-    Harbor image via ``docker run`` and does not use the verifier venv path.
+    Uses ambient env (or an optional *env* overlay). Does not materialize a
+    verifier venv or install packages. Docker host ``grade_workspace`` is
+    unchanged: it runs ``test.sh`` in a Harbor image via ``docker run``.
     """
     verifier_log = logs_dir / "verifier.log"
     cmd = ["bash", str(test_sh)]
@@ -2497,6 +2675,16 @@ def write_deepswe_agent_checks(workspace: Path, *, dry_run: bool = False) -> str
         if lines == ["true"] and discovered:
             lines = discovered
     lines = [ensure_tox_offline_skip_flags(line) for line in lines]
+    safe: list[str] = []
+    for line in lines:
+        if RUNTIME_INSTALL_DENYLIST_RE.search(line):
+            click.echo(
+                f"Omitting install-unsafe check line from .malvin/checks: {line}",
+                err=True,
+            )
+            continue
+        safe.append(line)
+    lines = safe or ["true"]
     checks_text = "\n".join(lines) + "\n"
     checks_path = workspace / ".malvin" / "checks"
     click.echo(f"Pre-seeding {checks_path} ({len(lines)} command(s))")
@@ -2504,6 +2692,7 @@ def write_deepswe_agent_checks(workspace: Path, *, dry_run: bool = False) -> str
         return checks_text
     checks_path.parent.mkdir(parents=True, exist_ok=True)
     checks_path.write_text(checks_text, encoding="utf-8")
+    assert_no_runtime_installs(checks_text, label=".malvin/checks")
     return checks_text
 
 
@@ -2571,10 +2760,16 @@ def run_malvin(
         plan = workspace / "plan.md"
         if not dry_run and not plan.is_file():
             raise click.ClickException(f"Missing plan.md in workspace: {plan}")
+        q = shlex.quote(MALVIN_CMD)
+        extras = " ".join(shlex.quote(a) for a in malvin_args)
         if command == "route":
-            cmd = [MALVIN_CMD, plan.name, *malvin_args]
+            plan_part = f"{q} {shlex.quote(plan.name)}"
         else:
-            cmd = [MALVIN_CMD, command, plan.name, *malvin_args]
+            plan_part = f"{q} code {shlex.quote(plan.name)}"
+        if extras:
+            plan_part = f"{plan_part} {extras}"
+        # Explicit init before plan (end-state agent script parity; Q9).
+        cmd = ["bash", "-lc", f"{q} init && {plan_part}"]
     else:
         raise click.ClickException(f"Unknown malvin command: {command!r}")
     click.echo(f"Running agent: {' '.join(cmd)}")
@@ -2840,13 +3035,9 @@ def evaluation_smoke_allows_reward_zero(
 ) -> bool:
     """True when ``solve --test`` (init-checks) completed grade with reward 0.
 
-    Harness smoke success is prep + agent + grade completion, not solving the
-    Harbor task. Still fail closed on prep failures and agent errors.
-
-    Grade-phase timeouts after a successful verifier prep are treated as smoke-ok
-    when the agent also succeeded: some Harbor ``test.sh`` suites exceed the
-    task.toml verifier budget even when dependencies are correctly installed
-    (evidence: bandit-interprocedural full ``pytest tests/``).
+    Harness smoke success is agent + smoke-grade completion, not solving the
+    Harbor task. Fail closed on agent errors. Timed-out smoke grades after a
+    successful agent are smoke-ok (legacy verifier_prep gate removed).
     """
     if malvin_command != "init-checks":
         return False
@@ -2856,9 +3047,8 @@ def evaluation_smoke_allows_reward_zero(
         return False
     if (agent_result or {}).get("timed_out"):
         return False
-    verifier_prep = grade_result.get("verifier_prep") or {}
     if grade_result.get("timed_out"):
-        return verifier_prep.get("ok") is True or verifier_prep == {}
+        return True
     reward = grade_result.get("reward")
     return reward == 0 or reward == 0.0
 
@@ -3050,222 +3240,70 @@ def run_task(
         click.echo(f"Applying reference solution: {spec.solution_patch}")
         apply_patch(workspace, spec.solution_patch, dry_run=dry_run)
 
-    prep_deadline: float | None = None
+    phase_deadline: float | None = None
     if grade_only:
-        prep_deadline = time.monotonic() + spec.verifier_timeout_sec
+        phase_deadline = time.monotonic() + spec.verifier_timeout_sec
     elif not grade_only:
-        prep_deadline = time.monotonic() + spec.agent_timeout_sec
-
-    task_language = read_task_language(task_dir)
-    python_in_sandbox = in_sandbox and task_language == "python"
-    prep_result = prepare_task_sandbox(
-        spec,
-        workspace,
-        dry_run=dry_run,
-        deadline=prep_deadline,
-        offline_editable=python_in_sandbox,
-        verify_probes=python_in_sandbox,
-    )
-
-    if not prep_result.ok:
-        err_lines = list(prep_result.probe_errors)
-        if not err_lines and prep_result.sync_warnings:
-            err_lines = [prep_result.sync_warnings[0]]
-        if not err_lines:
-            err_lines = [
-                format_prep_error(spec.task_id, phase="runtime prep", detail="unknown")
-            ]
-        for err in err_lines:
-            click.echo(err, err=True)
-        err_msg = "; ".join(err_lines)
-        agent_result: dict[str, Any] | None = None
-        if grade_only:
-            agent_result = None
-        elif not skip_grade or not grade_only:
-            agent_result = {
-                "exit_code": 1,
-                "error": err_msg,
-                "prep_failed": True,
-                "probe_error_count": len(err_lines),
-            }
-        grade_result: dict[str, Any]
-        if skip_grade:
-            grade_result = {"pass": None, "reward": None, "skipped": True}
-        else:
-            grade_result = {
-                "pass": False,
-                "reward": 0.0,
-                "prep_failed": True,
-                "error": err_msg,
-            }
-        malvin_log = find_latest_malvin_log(workspace)
-        metadata = _build_run_metadata(
-            spec,
-            workspace,
-            runtime,
-            malvin_command,
-            malvin_args,
-            agent_result,
-            grade_result,
-            malvin_log,
-            grade_only=grade_only,
-            docker_image=spec.docker_image if not in_sandbox else None,
-        )
-        metadata["sandbox_prep"] = prep_result.as_dict()
-        _write_host_run_artifacts(
-            run_root, metadata, grade_result, logs_dir, dry_run=dry_run, overwrite_artifacts=True
-        )
-        _print_evaluation_summary(grade_result, agent_result, run_root)
-        _exit_from_evaluation(
-            grade_result, agent_result, malvin_command=malvin_command
-        )
-        return
+        phase_deadline = time.monotonic() + spec.agent_timeout_sec
 
     agent_result: dict[str, Any] | None = None
-    if grade_only and prep_result.timed_out:
-        agent_result = None
-    elif not grade_only:
-        if prep_result.timed_out:
-            agent_result = _agent_timeout_result(spec)
+    if not grade_only:
+        agent_deadline = phase_deadline
+        assert agent_deadline is not None
+        agent_timed_out = False
+        if _remaining_sec(agent_deadline) <= 0:
+            agent_timed_out = True
         else:
-            agent_deadline = prep_deadline
-            assert agent_deadline is not None
-            agent_timed_out = False
-            if malvin_needs_task_plan(malvin_command):
+            host_preseed_agent_files(
+                spec, workspace, malvin_command=malvin_command, dry_run=dry_run
+            )
+        if not agent_timed_out:
+            if _remaining_sec(agent_deadline) <= 0:
+                agent_timed_out = True
+            else:
+                ensure_deepswe_malvin_config(spec, dry_run=dry_run)
                 if _remaining_sec(agent_deadline) <= 0:
                     agent_timed_out = True
-                else:
-                    write_task_plan(spec, workspace, dry_run=dry_run)
-            elif malvin_command == "hello":
-                pass
-            if not agent_timed_out:
-                if _remaining_sec(agent_deadline) <= 0:
+        if not agent_timed_out:
+            remaining = _remaining_sec(agent_deadline)
+            if remaining <= 0:
+                agent_timed_out = True
+            else:
+                agent_result = run_malvin(
+                    workspace,
+                    command=malvin_command,
+                    malvin_args=malvin_args,
+                    dry_run=dry_run,
+                    timeout_sec=remaining,
+                    configured_timeout_sec=spec.agent_timeout_sec,
+                )
+                if agent_result.get("timed_out"):
                     agent_timed_out = True
-                else:
-                    ensure_deepswe_malvin_config(spec, dry_run=dry_run)
-                    if _remaining_sec(agent_deadline) <= 0:
-                        agent_timed_out = True
-            if not agent_timed_out:
-                remaining = _remaining_sec(agent_deadline)
-                if remaining <= 0:
-                    agent_timed_out = True
-                else:
-                    agent_result = run_malvin(
-                        workspace,
-                        command=malvin_command,
-                        malvin_args=malvin_args,
-                        dry_run=dry_run,
-                        timeout_sec=remaining,
-                        configured_timeout_sec=spec.agent_timeout_sec,
-                    )
-                    if agent_result.get("timed_out"):
-                        agent_timed_out = True
-            if agent_timed_out and agent_result is None:
-                agent_result = _agent_timeout_result(spec)
+        if agent_timed_out and agent_result is None:
+            agent_result = _agent_timeout_result(spec)
 
     grade_result: dict[str, Any]
     if skip_grade:
         grade_result = {"pass": None, "reward": None, "skipped": True}
-    elif grade_only and prep_result.timed_out:
-        grade_result = _grade_timeout_result(spec)
     else:
         if grade_only:
-            assert prep_deadline is not None
-            remaining = _remaining_sec(prep_deadline)
+            assert phase_deadline is not None
+            remaining = _remaining_sec(phase_deadline)
         else:
             verifier_deadline = time.monotonic() + spec.verifier_timeout_sec
             remaining = _remaining_sec(verifier_deadline)
         if in_sandbox:
             test_sh = IN_SANDBOX_TESTS_DIR / "test.sh"
-            grade_env: dict[str, str] | None = None
-            if python_in_sandbox:
-                dockerfile = (
-                    spec.dockerfile
-                    if getattr(spec, "dockerfile", None) and spec.dockerfile.is_file()
-                    else None
-                )
-                tests_for_grade = (
-                    IN_SANDBOX_TESTS_DIR if IN_SANDBOX_TESTS_DIR.is_dir() else spec.tests_dir
-                )
-                verifier_prep = prepare_verifier_grade(
-                    workspace,
-                    tests_dir=tests_for_grade,
-                    dockerfile=dockerfile,
-                    task_id=spec.task_id,
-                    dry_run=dry_run,
-                )
-                if not verifier_prep.ok:
-                    err_msg = verifier_prep.error or format_prep_error(
-                        spec.task_id, phase="verifier prep", detail="unknown"
-                    )
-                    click.echo(err_msg, err=True)
-                    grade_result = {
-                        "pass": False,
-                        "reward": 0.0,
-                        "prep_failed": True,
-                        "error": err_msg,
-                        "verifier_prep": verifier_prep.as_dict(),
-                    }
-                elif verifier_prep.spec is None:
-                    err_msg = format_prep_error(
-                        spec.task_id,
-                        phase="verifier prep",
-                        detail="verifier prep ok without VerifierSpec (no system-Python fallback)",
-                    )
-                    click.echo(err_msg, err=True)
-                    grade_result = {
-                        "pass": False,
-                        "reward": 0.0,
-                        "prep_failed": True,
-                        "error": err_msg,
-                        "verifier_prep": verifier_prep.as_dict(),
-                    }
-                else:
-                    grade_env = verifier_grade_subprocess_env(
-                        verifier_prep.spec,
-                        plugin_policy=verifier_prep.plugin_policy,
-                    )
-                    if not grade_env.get("VIRTUAL_ENV"):
-                        err_msg = format_prep_error(
-                            spec.task_id,
-                            phase="verifier prep",
-                            detail="grade env missing VIRTUAL_ENV (no system-Python fallback)",
-                        )
-                        click.echo(err_msg, err=True)
-                        grade_result = {
-                            "pass": False,
-                            "reward": 0.0,
-                            "prep_failed": True,
-                            "error": err_msg,
-                            "verifier_prep": verifier_prep.as_dict(),
-                        }
-                    else:
-                        if smoke_grade:
-                            click.echo(
-                                "Smoke grade: verifier prep OK — skipping Harbor test.sh"
-                            )
-                            verifier_dir = logs_dir / "verifier"
-                            verifier_dir.mkdir(parents=True, exist_ok=True)
-                            (verifier_dir / "reward.txt").write_text(
-                                "0\n", encoding="utf-8"
-                            )
-                            grade_result = {
-                                "pass": False,
-                                "reward": 0,
-                                "smoke_grade": True,
-                                "verifier_prep": verifier_prep.as_dict(),
-                            }
-                        else:
-                            grade_result = grade_workspace_native(
-                                workspace,
-                                test_sh,
-                                logs_dir,
-                                dry_run=dry_run,
-                                timeout_sec=remaining,
-                                configured_timeout_sec=spec.verifier_timeout_sec,
-                                env=grade_env,
-                            )
-                            grade_result["verifier_prep"] = verifier_prep.as_dict()
+            if smoke_grade:
+                click.echo("Smoke grade: skipping Harbor test.sh (reward 0)")
+                verifier_dir = logs_dir / "verifier"
+                verifier_dir.mkdir(parents=True, exist_ok=True)
+                (verifier_dir / "reward.txt").write_text("0\n", encoding="utf-8")
+                grade_result = {
+                    "pass": False,
+                    "reward": 0,
+                    "smoke_grade": True,
+                }
             else:
                 grade_result = grade_workspace_native(
                     workspace,
@@ -3301,7 +3339,6 @@ def run_task(
         grade_only=grade_only,
         docker_image=spec.docker_image if not in_sandbox else None,
     )
-    metadata["sandbox_prep"] = prep_result.as_dict()
     _write_host_run_artifacts(run_root, metadata, grade_result, logs_dir, dry_run=dry_run, overwrite_artifacts=True)
     _print_evaluation_summary(grade_result, agent_result, run_root)
     _exit_from_evaluation(
@@ -3499,6 +3536,9 @@ def solve(
         raise click.ClickException("Use either --test or --skip-grade, not both")
     if test_harness:
         malvin_command = "init-checks"
+        smoke_grade = True
+    elif malvin_command == "init-checks":
+        smoke_grade = True
     if task_dir is not None:
         if task_name is not None:
             raise click.ClickException("Use either solve TASK_NAME or --task, not both")
@@ -3749,23 +3789,19 @@ def _test_docker_local_eval_cmd() -> None:
     if not task.is_dir():
         return
     spec = parse_task_dir(task)
-    deepswe_run_py = Path(__file__).resolve()
+    scripts_dir = Path("/tmp/run/scripts")
     agent_cmd = docker_local_agent_cmd(
         image="deepswe-test:agent",
-        spec=spec,
         task_dir=task,
         workspace=Path("/tmp/ws"),
         run_root=Path("/tmp/run"),
-        deepswe_run_py=deepswe_run_py,
-        malvin_command="route",
-        malvin_args=(),
-        reset_workspace_flag=False,
+        scripts_dir=scripts_dir,
     )
     agent_joined = " ".join(agent_cmd)
-    assert "--runtime in-sandbox" in agent_joined
-    assert "--skip-grade" in agent_joined
-    assert DEEPSWE_RUN_REMOTE in agent_joined
-    assert "--command route" in agent_joined
+    assert "bash" in agent_cmd
+    assert f"{TRIAL_SCRIPTS_REMOTE}/{AGENT_SCRIPT_NAME}" in agent_joined
+    assert DEEPSWE_RUN_REMOTE not in agent_joined
+    assert "deepswe_run.py" not in agent_joined
     assert "/tests:ro" not in agent_joined
     assert "task.toml" in agent_joined
     assert "instruction.md" in agent_joined
@@ -3776,14 +3812,65 @@ def _test_docker_local_eval_cmd() -> None:
         task_dir=task,
         workspace=Path("/tmp/ws"),
         run_root=Path("/tmp/run"),
-        deepswe_run_py=deepswe_run_py,
-        apply_solution=False,
-        reset_workspace_flag=False,
+        scripts_dir=scripts_dir,
+        smoke_grade=False,
     )
     grade_joined = " ".join(grade_cmd)
-    assert "--grade-only" in grade_joined
+    assert f"{TRIAL_SCRIPTS_REMOTE}/{GRADE_SCRIPT_NAME}" in grade_joined
+    assert DEEPSWE_RUN_REMOTE not in grade_joined
     assert "/tests:ro" in grade_joined
     assert "/task:ro" in grade_joined
+
+    smoke_cmd = docker_local_grade_cmd(
+        image="deepswe-test:base",
+        spec=spec,
+        task_dir=task,
+        workspace=Path("/tmp/ws"),
+        run_root=Path("/tmp/run"),
+        scripts_dir=scripts_dir,
+        smoke_grade=True,
+    )
+    assert SMOKE_GRADE_SCRIPT_NAME in " ".join(smoke_cmd)
+
+
+def _test_trial_scripts_deny_runtime_installs() -> None:
+    agent = build_agent_script("route")
+    assert "malvin init" in agent
+    assert "malvin plan.md" in agent
+    assert RUNTIME_INSTALL_DENYLIST_RE.search(agent) is None
+    init_checks = build_agent_script("init-checks")
+    assert "source .malvin/checks" in init_checks
+    grade = build_grade_script()
+    assert "bash /tests/test.sh" in grade
+    smoke = build_smoke_grade_script()
+    assert "reward.txt" in smoke
+    for bad in (
+        "pip install foo\n",
+        "uv pip install foo\n",
+        "uv sync\n",
+        "apt-get install curl\n",
+        "npm install\n",
+        "cargo install ripgrep\n",
+        "curl https://example.com | bash\n",
+    ):
+        try:
+            assert_no_runtime_installs(bad, label="bad")
+        except RuntimeInstallForbiddenError:
+            pass
+        else:
+            raise AssertionError(f"expected deny for {bad!r}")
+
+
+def _test_host_preseed_init_checks() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        task_dir, workspace = _minimal_timeout_task_tree(Path(tmp))
+        (workspace / "Makefile").write_text("lint:\n\techo ok\n", encoding="utf-8")
+        spec = parse_task_dir(task_dir)
+        host_preseed_agent_files(spec, workspace, malvin_command="init-checks", dry_run=False)
+        assert (workspace / ".malvin" / "checks").is_file()
+        # init-checks must not require plan.md
+        host_preseed_agent_files(spec, workspace, malvin_command="route", dry_run=False)
+        assert (workspace / "plan.md").is_file()
 
 
 def _test_solve_dry_run() -> None:
@@ -3805,9 +3892,9 @@ def _test_solve_dry_run() -> None:
     assert result.exit_code == 0, result.output
     assert "docker run" in result.output
     assert "Runtime: local-docker" in result.output
-    assert "--runtime in-sandbox" in result.output
-    assert "--command route" in result.output
-    assert "--command code" not in result.output
+    assert AGENT_SCRIPT_NAME in result.output or "agent.sh" in result.output
+    assert "deepswe_run.py" not in result.output
+    assert "--runtime in-sandbox" not in result.output
 
 
 def _patch_modal_cursor_credentials() -> Any:
@@ -3881,7 +3968,7 @@ def _test_solve_modal_full_dry_run() -> None:
     assert result.exit_code == 0, result.output
     assert "Runtime: modal" in result.output
     assert "Dry run: malvin agent in Modal sandbox (Cursor API allowlist)" in result.output
-    assert "Dry run: Harbor grade in same Modal sandbox (in-sandbox runtime)" in result.output
+    assert "Dry run: Harbor grade in same Modal sandbox (host-prepared bash scripts)" in result.output
     assert "Running agent on host" not in result.output
 
 
@@ -3913,7 +4000,7 @@ def _test_solve_test_flag_modal_dry_run() -> None:
         assert result.exit_code == 0, result.output
         assert "Runtime: modal" in result.output
         assert "Dry run: malvin agent in Modal sandbox (Cursor API allowlist)" in result.output
-        assert "Dry run: Harbor grade in same Modal sandbox (in-sandbox runtime)" in result.output
+        assert "Dry run: Harbor grade in same Modal sandbox (host-prepared bash scripts)" in result.output
         assert "Dry run: grade-only on Modal (block_network sandbox)" not in result.output
         assert "Cursor API key required" not in result.output
 
@@ -4477,8 +4564,9 @@ def _test_solve_modal_spend_limit_falls_back_to_local_dry_run() -> None:
     assert result.exit_code == 0, result.output
     assert "Modal workspace spend limit reached" in result.output
     assert "local-docker (Modal spend-limit fallback)" in result.output
-    assert "--command route" in result.output
-    assert "--command code" not in result.output
+    assert AGENT_SCRIPT_NAME in result.output or "agent.sh" in result.output
+    assert "deepswe_run.py" not in result.output
+    assert "--runtime in-sandbox" not in result.output
 
 
 def _test_tasks_command() -> None:
@@ -4608,6 +4696,40 @@ def _test_purge_root_owned_ephemeral_caches_docker_cmd() -> None:
         assert "acp_spawn" in shell
 
 
+def _test_git_clean_would_remove_and_docker_purge_targets() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        run_cmd(["git", "init", "-q"], cwd=workspace, env=_GIT_TEST_IDENTITY)
+        run_cmd(
+            ["git", "commit", "--allow-empty", "-m", "init", "-q"],
+            cwd=workspace,
+            env=_GIT_TEST_IDENTITY,
+        )
+        junk = workspace / "challenge" / "fixtures"
+        junk.mkdir(parents=True)
+        (junk / "taint.py").write_text("x = 1\n", encoding="utf-8")
+        would = git_clean_would_remove(workspace)
+        assert any(p == "challenge" or p.startswith("challenge/") for p in would)
+        captured: dict[str, Any] = {}
+
+        def fake_run(cmd: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+            captured["cmd"] = cmd
+            captured["input"] = kwargs.get("input")
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+
+        with patch("deepswe_run.docker_daemon_available", return_value=True):
+            with patch(
+                "deepswe_run.git_clean_would_remove",
+                return_value=["challenge"],
+            ):
+                with patch("deepswe_run.subprocess.run", side_effect=fake_run):
+                    assert docker_purge_git_clean_targets(workspace)
+        cmd = captured["cmd"]
+        assert cmd[0:2] == ["docker", "run"]
+        assert "-i" in cmd
+        assert "xargs -0 rm -rf --" in cmd
+        assert captured["input"] == "challenge\0"
+
 def _test_purge_root_owned_sandbox_artifacts_docker() -> None:
     if skip_docker_selftests() or not docker_daemon_available():
         return
@@ -4679,8 +4801,65 @@ def _test_run_malvin_uses_plan_name_not_at_notation() -> None:
 
         with patch("subprocess.run", fake_run):
             run_malvin(workspace, command="route", malvin_args=(), dry_run=False)
-        assert captured["cmd"][1] == "plan.md"
-        assert "@" not in captured["cmd"][1]
+        assert captured["cmd"][:2] == ["bash", "-lc"]
+        script = captured["cmd"][2]
+        assert "plan.md" in script
+        assert " init " in f" {script} " or script.endswith("init") or "init &&" in script
+        assert "@plan.md" not in script
+        assert "@" not in script.split("plan.md")[0][-2:] if "plan.md" in script else True
+
+
+def _test_evaluation_smoke_allows_reward_zero() -> None:
+    assert evaluation_smoke_allows_reward_zero(
+        "init-checks",
+        {"pass": False, "reward": 0},
+        {"exit_code": 0},
+    )
+    assert evaluation_smoke_allows_reward_zero(
+        "init-checks",
+        {"pass": False, "reward": 0.0},
+        {"exit_code": 0},
+    )
+    assert not evaluation_smoke_allows_reward_zero(
+        "route",
+        {"pass": False, "reward": 0},
+        {"exit_code": 0},
+    )
+    assert not evaluation_smoke_allows_reward_zero(
+        "init-checks",
+        {"pass": False, "reward": 0, "prep_failed": True},
+        {"exit_code": 0},
+    )
+    assert not evaluation_smoke_allows_reward_zero(
+        "init-checks",
+        {"pass": False, "reward": 0},
+        {"exit_code": 1},
+    )
+    # Grade budget exhausted after successful agent: smoke-ok for init-checks.
+    assert evaluation_smoke_allows_reward_zero(
+        "init-checks",
+        {
+            "pass": False,
+            "reward": 0,
+            "timed_out": True,
+        },
+        {"exit_code": 0},
+    )
+    _exit_from_evaluation(
+        {"pass": False, "reward": 0},
+        {"exit_code": 0},
+        malvin_command="init-checks",
+    )
+    try:
+        _exit_from_evaluation(
+            {"pass": False, "reward": 0, "prep_failed": True},
+            {"exit_code": 0},
+            malvin_command="init-checks",
+        )
+    except SystemExit as exc:
+        assert exc.code == 1
+    else:
+        raise AssertionError("expected SystemExit(1) on prep_failed")
 
 
 def _test_run_malvin_do_uses_prompt_not_plan() -> None:
@@ -4709,11 +4888,16 @@ def _test_init_checks_cmd_uses_fail_fast_source() -> None:
 def _test_write_deepswe_agent_checks_preseeds_file() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         workspace = Path(tmp)
-        (workspace / "Makefile").write_text("lint:\n\truff check .\n", encoding="utf-8")
+        (workspace / "Makefile").write_text(
+            "lint:\n\tpip install foo\n\truff check .\n",
+            encoding="utf-8",
+        )
         text = write_deepswe_agent_checks(workspace, dry_run=False)
         checks = workspace / ".malvin" / "checks"
         assert checks.is_file()
         assert checks.read_text(encoding="utf-8") == text
+        assert "pip install" not in text
+        assert_no_runtime_installs(text, label=".malvin/checks")
         assert runnable_check_command_lines(text)
 
 
@@ -4816,70 +5000,6 @@ def _test_harbor_venv_python_c_prefers_virtual_env() -> None:
     assert cmd.startswith("bash -lc")
 
 
-def _test_evaluation_smoke_allows_reward_zero() -> None:
-    assert evaluation_smoke_allows_reward_zero(
-        "init-checks",
-        {"pass": False, "reward": 0},
-        {"exit_code": 0},
-    )
-    assert evaluation_smoke_allows_reward_zero(
-        "init-checks",
-        {"pass": False, "reward": 0.0},
-        {"exit_code": 0},
-    )
-    assert not evaluation_smoke_allows_reward_zero(
-        "route",
-        {"pass": False, "reward": 0},
-        {"exit_code": 0},
-    )
-    assert not evaluation_smoke_allows_reward_zero(
-        "init-checks",
-        {"pass": False, "reward": 0, "prep_failed": True},
-        {"exit_code": 0},
-    )
-    assert not evaluation_smoke_allows_reward_zero(
-        "init-checks",
-        {"pass": False, "reward": 0},
-        {"exit_code": 1},
-    )
-    # Grade budget exhausted after successful verifier prep: smoke-ok for init-checks.
-    assert evaluation_smoke_allows_reward_zero(
-        "init-checks",
-        {
-            "pass": False,
-            "reward": 0,
-            "timed_out": True,
-            "verifier_prep": {"ok": True},
-        },
-        {"exit_code": 0},
-    )
-    assert not evaluation_smoke_allows_reward_zero(
-        "init-checks",
-        {
-            "pass": False,
-            "reward": 0,
-            "timed_out": True,
-            "verifier_prep": {"ok": False},
-        },
-        {"exit_code": 0},
-    )
-    _exit_from_evaluation(
-        {"pass": False, "reward": 0},
-        {"exit_code": 0},
-        malvin_command="init-checks",
-    )
-    try:
-        _exit_from_evaluation(
-            {"pass": False, "reward": 0, "prep_failed": True},
-            {"exit_code": 0},
-            malvin_command="init-checks",
-        )
-    except SystemExit as exc:
-        assert exc.code == 1
-    else:
-        raise AssertionError("expected SystemExit(1) on prep_failed")
-
-
 def _test_run_malvin_init_checks_preseeds_then_shells() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         workspace = Path(tmp)
@@ -4941,37 +5061,30 @@ def _test_apply_in_sandbox_runner_env() -> None:
 
 
 def _test_run_task_in_sandbox_sets_uv_offline() -> None:
-    from sandbox_prep import SandboxPrepResult
-
-    saved_offline = os.environ.get("UV_OFFLINE")
-    saved_no_sync = os.environ.get("UV_NO_SYNC")
-    mod = sys.modules[__name__]
-    try:
-        os.environ.pop("UV_OFFLINE", None)
-        os.environ.pop("UV_NO_SYNC", None)
-        with (
-            patch.object(
-                mod,
-                "prepare_task_sandbox",
-                return_value=SandboxPrepResult((), (), (), True, False),
-            ),
-            patch.object(mod, "run_malvin", return_value={"exit_code": 0, "agent_seconds": 0.0}),
-            patch.object(mod, "write_task_plan"),
-            patch.object(mod, "ensure_deepswe_malvin_config"),
-            patch.object(mod, "_write_host_run_artifacts"),
-            patch.object(mod, "_print_evaluation_summary"),
-            patch.object(mod, "_exit_from_evaluation"),
-        ):
-            with tempfile.TemporaryDirectory() as tmp:
-                task_dir, workspace = _minimal_timeout_task_tree(Path(tmp), agent_timeout_sec=60.0)
-                run_root = Path(tmp) / "run"
-                run_root.mkdir()
+    with tempfile.TemporaryDirectory() as tmp:
+        task_dir, workspace = _minimal_timeout_task_tree(Path(tmp))
+        run_root = Path(tmp) / "run"
+        run_root.mkdir()
+        mod = sys.modules[__name__]
+        saved_offline = os.environ.get("UV_OFFLINE")
+        saved_no_sync = os.environ.get("UV_NO_SYNC")
+        try:
+            os.environ.pop("UV_OFFLINE", None)
+            os.environ.pop("UV_NO_SYNC", None)
+            with (
+                patch.object(mod, "run_malvin", return_value={"exit_code": 0}),
+                patch.object(mod, "host_preseed_agent_files"),
+                patch.object(mod, "ensure_deepswe_malvin_config"),
+                patch.object(mod, "_write_host_run_artifacts"),
+                patch.object(mod, "_print_evaluation_summary"),
+                patch.object(mod, "_exit_from_evaluation"),
+            ):
                 run_task(
                     local_task_name=None,
                     task_dir=task_dir,
                     workspace=workspace,
                     results_dir=run_root,
-                    malvin_command="route",
+                    malvin_command="hello",
                     runtime="in-sandbox",
                     skip_materialize=True,
                     grade_only=False,
@@ -4982,17 +5095,19 @@ def _test_run_task_in_sandbox_sets_uv_offline() -> None:
                     dry_run=False,
                     malvin_args=(),
                 )
-        assert os.environ.get("UV_OFFLINE") == "1"
-        assert os.environ.get("UV_NO_SYNC") == "1"
-    finally:
-        if saved_offline is None:
-            os.environ.pop("UV_OFFLINE", None)
-        else:
-            os.environ["UV_OFFLINE"] = saved_offline
-        if saved_no_sync is None:
-            os.environ.pop("UV_NO_SYNC", None)
-        else:
-            os.environ["UV_NO_SYNC"] = saved_no_sync
+            assert os.environ.get("UV_OFFLINE") == "1"
+            assert os.environ.get("UV_NO_SYNC") == "1"
+        finally:
+            if saved_offline is None:
+                os.environ.pop("UV_OFFLINE", None)
+            else:
+                os.environ["UV_OFFLINE"] = saved_offline
+            if saved_no_sync is None:
+                os.environ.pop("UV_NO_SYNC", None)
+            else:
+                os.environ["UV_NO_SYNC"] = saved_no_sync
+
+
 
 
 def _test_relay_subprocess_stdout_sets_force_tee_env() -> None:
@@ -5121,170 +5236,10 @@ def _test_ensure_deepswe_malvin_config_skips_default_memory() -> None:
         assert not (home / ".malvin_home" / "config.toml").exists()
 
 
-def _test_prepare_task_sandbox_dry_run() -> None:
-    with tempfile.TemporaryDirectory() as tmp:
-        workspace = Path(tmp)
-        dockerfile = workspace / "Dockerfile"
-        dockerfile.write_text(
-            "RUN git clone https://example.com/repo .\n"
-            "RUN pip install -e .\n",
-            encoding="utf-8",
-        )
-        spec = TaskSpec(
-            task_dir=workspace,
-            task_id="fake",
-            base_commit="HEAD",
-            docker_image="fake:local",
-            dockerfile=dockerfile,
-            instruction=workspace / "instruction.md",
-            tests_dir=workspace / "tests",
-            test_sh=workspace / "tests" / "test.sh",
-            solution_patch=None,
-            repository_url=None,
-            agent_timeout_sec=3600.0,
-            verifier_timeout_sec=1800.0,
-            environment_memory_mb=4096,
-        )
-        result = prepare_task_sandbox(
-            spec,
-            workspace,
-            dry_run=True,
-        )
-        assert len(result.sync_commands) == 1, result
-        assert "-e" in result.sync_commands[0]
-        assert result.ok is True
 
 
-def _test_prepare_task_sandbox_probe_failure() -> None:
-    from sandbox_prep import SandboxPrepResult
-
-    probe_err = (
-        "sandbox runtime probe failed (timeout-test) — pydantic 1.10.26 violates >=2.0.0"
-    )
-    captured: list[dict[str, Any]] = []
-
-    def fake_prep(*_args: Any, **_kwargs: Any) -> SandboxPrepResult:
-        return SandboxPrepResult(
-            sync_commands=("pip install -e . --no-deps",),
-            sync_warnings=(),
-            probe_errors=(probe_err,),
-            ok=False,
-        )
-
-    def capture_artifacts(
-        _run_root: Path,
-        metadata: dict[str, Any],
-        *_args: Any,
-        **_kwargs: Any,
-    ) -> None:
-        captured.append(metadata)
-
-    with tempfile.TemporaryDirectory() as tmp:
-        task_dir, workspace = _minimal_timeout_task_tree(Path(tmp))
-        run_root = Path(tmp) / "run"
-        run_root.mkdir()
-        mod = sys.modules[__name__]
-        with (
-            patch.object(mod, "prepare_task_sandbox", fake_prep),
-            patch.object(mod, "_write_host_run_artifacts", capture_artifacts),
-            patch.object(mod, "_print_evaluation_summary"),
-            patch.object(mod, "_exit_from_evaluation", side_effect=SystemExit(1)),
-        ):
-            try:
-                run_task(
-                    local_task_name=None,
-                    task_dir=task_dir,
-                    workspace=workspace,
-                    results_dir=run_root,
-                    malvin_command="hello",
-                    runtime="host",
-                    skip_materialize=True,
-                    grade_only=False,
-                    skip_grade=False,
-                    apply_solution=False,
-                    reset_workspace_flag=False,
-                    docker_image=None,
-                    dry_run=False,
-                    malvin_args=(),
-                )
-            except SystemExit as exc:
-                assert exc.code == 1
-            else:
-                raise AssertionError("expected SystemExit from prep failure")
-        assert captured, "expected metadata write"
-        prep = captured[0].get("sandbox_prep") or {}
-        assert prep.get("ok") is False, prep
-        assert probe_err in (prep.get("probe_errors") or []), prep
-        agent = captured[0].get("agent") or {}
-        assert agent.get("prep_failed") is True, agent
-        assert probe_err in (agent.get("error") or ""), agent
 
 
-def _test_prepare_task_sandbox_probe_failure_multi_error() -> None:
-    from sandbox_prep import SandboxPrepResult
-
-    probe_errs = (
-        "sandbox runtime probe failed (timeout-test) — pydantic 2.13.4 violates ==2.12.5",
-        "sandbox runtime probe failed (timeout-test) — terminaltables 3.1.0 violates ==3.1.10",
-    )
-    captured: list[dict[str, Any]] = []
-
-    def fake_prep(*_args: Any, **_kwargs: Any) -> SandboxPrepResult:
-        return SandboxPrepResult(
-            sync_commands=("pip install -e . --no-deps",),
-            sync_warnings=(),
-            probe_errors=probe_errs,
-            ok=False,
-        )
-
-    def capture_artifacts(
-        _run_root: Path,
-        metadata: dict[str, Any],
-        *_args: Any,
-        **_kwargs: Any,
-    ) -> None:
-        captured.append(metadata)
-
-    with tempfile.TemporaryDirectory() as tmp:
-        task_dir, workspace = _minimal_timeout_task_tree(Path(tmp))
-        run_root = Path(tmp) / "run"
-        run_root.mkdir()
-        mod = sys.modules[__name__]
-        with (
-            patch.object(mod, "prepare_task_sandbox", fake_prep),
-            patch.object(mod, "_write_host_run_artifacts", capture_artifacts),
-            patch.object(mod, "_print_evaluation_summary"),
-            patch.object(mod, "_exit_from_evaluation", side_effect=SystemExit(1)),
-        ):
-            try:
-                run_task(
-                    local_task_name=None,
-                    task_dir=task_dir,
-                    workspace=workspace,
-                    results_dir=run_root,
-                    malvin_command="hello",
-                    runtime="host",
-                    skip_materialize=True,
-                    grade_only=False,
-                    skip_grade=False,
-                    apply_solution=False,
-                    reset_workspace_flag=False,
-                    docker_image=None,
-                    dry_run=False,
-                    malvin_args=(),
-                )
-            except SystemExit as exc:
-                assert exc.code == 1
-            else:
-                raise AssertionError("expected SystemExit from prep failure")
-        assert captured, "expected metadata write"
-        prep = captured[0].get("sandbox_prep") or {}
-        assert prep.get("ok") is False, prep
-        assert list(prep.get("probe_errors") or []) == list(probe_errs), prep
-        agent = captured[0].get("agent") or {}
-        assert agent.get("prep_failed") is True, agent
-        joined = agent.get("error") or ""
-        assert probe_errs[0] in joined and probe_errs[1] in joined, agent
 
 
 def _test_audit_task_entry_uses_materialized_workspace() -> None:
@@ -5304,18 +5259,15 @@ def _test_audit_task_entry_uses_materialized_workspace() -> None:
         require_python_baseline=False,
         workspace=workspace,
     )
-    cache_bust = entry["cache_bust"]
-    assert len(cache_bust) == 6, cache_bust
-    assert cache_bust[0].startswith("pip install"), cache_bust
-    assert "pydantic>=2.0.0" in cache_bust[0], cache_bust
-    assert cache_bust[-1].startswith("python3 /tmp/malvin_mandatory_probe.py"), cache_bust
-    assert "pydantic==2.12.5" not in " ".join(cache_bust), cache_bust
-    assert "aiohttp==3.10.10" in cache_bust[0], cache_bust
-    reconcile_cmds = [cmd for cmd in cache_bust if cmd.startswith("pip install")]
-    assert len(reconcile_cmds) == 2, cache_bust
-    assert "pytest==8.3.3" in reconcile_cmds[0], cache_bust
+    assert "pip_intents" not in entry
+    assert "pins" not in entry
+    assert "cache_bust" not in entry
+    assert "declared_package_count" not in entry
     assert entry["materialized_workspace"] is True, entry
-    assert entry["declared_package_count"] >= 25, entry
+    assert entry["language"] == "python", entry
+    assert "baseline" in entry
+    assert "failures" in entry
+
 
 
 def _test_audit_task_entry_flags_missing_materialized_workspace() -> None:
@@ -5335,8 +5287,9 @@ def _test_audit_task_entry_flags_missing_materialized_workspace() -> None:
         )
     assert "no_materialized_workspace" in entry["failures"], entry
     assert entry["materialized_workspace"] is False, entry
-    assert entry["declared_package_count"] is None, entry
-    assert entry["cache_bust"] is None, entry
+    assert "declared_package_count" not in entry
+    assert "cache_bust" not in entry
+    assert "pip_intents" not in entry
 
 
 def _minimal_timeout_task_tree(
@@ -5433,24 +5386,15 @@ def _test_verifier_timeout_forces_fail() -> None:
     assert result["reward"] == 0
 
 
-def _test_grade_workspace_native_uses_verifier_venv_env() -> None:
-    """Harbor grade subprocess receives VIRTUAL_ENV for /opt/malvin-verifier only."""
-    from sandbox_prep import VERIFIER_VENV_PATH, VerifierSpec, DeclaredDeps, PluginPolicy
-
+def _test_grade_workspace_native_ambient_env() -> None:
+    """Harbor grade uses optional env overlay; no verifier-venv materialize."""
     captured: dict[str, Any] = {}
 
     def fake_run(*_args: Any, **kwargs: Any) -> SubprocessResult:
         captured["env"] = kwargs.get("env")
         return SubprocessResult(exit_code=0, timed_out=False, elapsed_sec=0.0, output="")
 
-    declared = DeclaredDeps({}, {}, (), {})
-    spec = VerifierSpec(
-        declared=declared,
-        public_install_specs=(),
-        editable_segments=(),
-        plugin_policy=PluginPolicy(disable_autoload=True),
-    )
-    env = verifier_grade_subprocess_env(spec)
+    env = {"VIRTUAL_ENV": "/opt/venv", "PATH": "/opt/venv/bin:/usr/bin"}
     with tempfile.TemporaryDirectory() as tmp:
         workspace = Path(tmp)
         logs_dir = workspace / "logs"
@@ -5469,20 +5413,13 @@ def _test_grade_workspace_native_uses_verifier_venv_env() -> None:
                 timeout_sec=5.0,
                 env=env,
             )
-    assert captured["env"] is not None
-    assert captured["env"]["VIRTUAL_ENV"] == VERIFIER_VENV_PATH
-    assert captured["env"]["PATH"].startswith(f"{VERIFIER_VENV_PATH}/bin:")
-    assert captured["env"].get("PYTEST_DISABLE_PLUGIN_AUTOLOAD") == "1"
+    assert captured["env"] is env
+    assert captured["env"]["VIRTUAL_ENV"] == "/opt/venv"
 
 
-def _test_run_task_agent_phase_includes_prep() -> None:
-    from sandbox_prep import SandboxPrepResult
 
+def _test_run_task_agent_phase_respects_deadline() -> None:
     captured: list[dict[str, Any]] = []
-
-    def slow_prep(*_args: Any, **_kwargs: Any) -> SandboxPrepResult:
-        time.sleep(2.0)
-        return SandboxPrepResult((), (), (), True, False)
 
     def slow_malvin(*_args: Any, **kwargs: Any) -> dict[str, Any]:
         remaining = kwargs.get("timeout_sec")
@@ -5509,15 +5446,13 @@ def _test_run_task_agent_phase_includes_prep() -> None:
         captured.append(metadata)
 
     with tempfile.TemporaryDirectory() as tmp:
-        task_dir, workspace = _minimal_timeout_task_tree(Path(tmp), agent_timeout_sec=2.5)
+        task_dir, workspace = _minimal_timeout_task_tree(Path(tmp), agent_timeout_sec=1.0)
         run_root = Path(tmp) / "run"
         run_root.mkdir()
-        t0 = time.monotonic()
         mod = sys.modules[__name__]
         with (
-            patch.object(mod, "prepare_task_sandbox", slow_prep),
             patch.object(mod, "run_malvin", slow_malvin),
-            patch.object(mod, "write_task_plan"),
+            patch.object(mod, "host_preseed_agent_files"),
             patch.object(mod, "ensure_deepswe_malvin_config"),
             patch.object(mod, "_write_host_run_artifacts", capture_artifacts),
             patch.object(mod, "_print_evaluation_summary"),
@@ -5539,20 +5474,15 @@ def _test_run_task_agent_phase_includes_prep() -> None:
                 dry_run=False,
                 malvin_args=(),
             )
-        elapsed = time.monotonic() - t0
-        assert elapsed < 3.5, elapsed
         assert captured, "expected metadata write"
         agent = captured[0].get("agent") or {}
         assert agent.get("timed_out") is True
+        assert "sandbox_prep" not in captured[0]
+
 
 
 def _test_combined_path_agent_timeout_still_grades() -> None:
-    from sandbox_prep import SandboxPrepResult
-
     grade_calls: list[float | None] = []
-
-    def fast_prep(*_args: Any, **_kwargs: Any) -> SandboxPrepResult:
-        return SandboxPrepResult((), (), (), True, False)
 
     def timeout_malvin(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
         return {
@@ -5572,9 +5502,8 @@ def _test_combined_path_agent_timeout_still_grades() -> None:
         run_root.mkdir()
         mod = sys.modules[__name__]
         with (
-            patch.object(mod, "prepare_task_sandbox", fast_prep),
             patch.object(mod, "run_malvin", timeout_malvin),
-            patch.object(mod, "write_task_plan"),
+            patch.object(mod, "host_preseed_agent_files"),
             patch.object(mod, "ensure_deepswe_malvin_config"),
             patch.object(mod, "grade_workspace", capture_grade),
             patch.object(mod, "_write_host_run_artifacts"),
@@ -5598,6 +5527,7 @@ def _test_combined_path_agent_timeout_still_grades() -> None:
                 malvin_args=(),
             )
     assert len(grade_calls) == 1
+
 
 
 def _test_finalize_modal_eval_skips_agent_exit_on_timed_out() -> None:
@@ -5726,9 +5656,8 @@ def run_self_tests() -> None:
     _test_malvin_mem_limit_gb_from_task_memory()
     _test_ensure_deepswe_malvin_config_seeds_home_config()
     _test_ensure_deepswe_malvin_config_skips_default_memory()
-    _test_prepare_task_sandbox_dry_run()
-    _test_prepare_task_sandbox_probe_failure()
-    _test_prepare_task_sandbox_probe_failure_multi_error()
+    _test_trial_scripts_deny_runtime_installs()
+    _test_host_preseed_init_checks()
     _test_audit_task_entry_uses_materialized_workspace()
     _test_audit_task_entry_flags_missing_materialized_workspace()
     _test_remaining_sec_floors_at_zero()
@@ -5737,8 +5666,8 @@ def run_self_tests() -> None:
     _test_exit_after_agent_timeout_grade_fail()
     _test_agent_timeout_skip_grade_exits_zero()
     _test_verifier_timeout_forces_fail()
-    _test_grade_workspace_native_uses_verifier_venv_env()
-    _test_run_task_agent_phase_includes_prep()
+    _test_grade_workspace_native_ambient_env()
+    _test_run_task_agent_phase_respects_deadline()
     _test_combined_path_agent_timeout_still_grades()
     _test_run_local_eval_in_docker_passes_backstop_timeout()
     _test_finalize_modal_eval_skips_agent_exit_on_timed_out()
@@ -5747,6 +5676,7 @@ def run_self_tests() -> None:
     _test_solve_modal_spend_limit_falls_back_to_local_dry_run()
     _test_ephemeral_cache_find_expr()
     _test_purge_root_owned_ephemeral_caches_docker_cmd()
+    _test_git_clean_would_remove_and_docker_purge_targets()
     _test_repair_workspace_submodules_noop_without_gitmodules()
     _test_repair_workspace_submodules_after_stale_gitdir()
     _test_reset_workspace_removes_user_pycache()

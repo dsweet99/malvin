@@ -2943,21 +2943,27 @@ def just_install_command(workspace: Path) -> str | None:
 
 
 def tox_runner_install_command(workspace: Path) -> str | None:
-    """Install tox/invoke when the workspace uses tox or just recipes that call them."""
+    """Install tox/invoke when the workspace uses tox or just recipes that call them.
+
+    Always installs (no soft ``command -v`` skip). Tox is clamped to
+    :data:`tox_gates.MIN_TOX_FOR_SKIP_ENV_INSTALL` so offline agent checks that
+    inject ``--skip-env-install`` resolve a capable runner under TOOLCHAIN_PATH.
+    """
+    from tox_gates import clamp_tox_version, image_build_pip_install_command
+
     needs_tox = (workspace / "tox.ini").is_file() or workspace_has_justfile(workspace)
     if not needs_tox:
         return None
-    pins = tox_runner_tool_pins(workspace)
+    pins = dict(tox_runner_tool_pins(workspace))
+    if "tox" in pins:
+        pins["tox"] = clamp_tox_version(pins["tox"])
     if pins:
         args = " ".join(
             shlex.quote(f"{name}=={version}") for name, version in sorted(pins.items())
         )
     else:
-        args = "tox"
-    return (
-        "command -v tox >/dev/null 2>&1 || "
-        f"python3 -m pip install --no-cache-dir {args}"
-    )
+        args = shlex.quote(f"tox=={clamp_tox_version(None)}")
+    return image_build_pip_install_command(args)
 
 
 def workspace_lint_tool_install_command(workspace: Path) -> str | None:
@@ -3202,13 +3208,16 @@ def workspace_image_warm_commands(
         commands.append(editable)
     precommit_cmds = precommit_warm_script_commands(workspace)
     commands.extend(precommit_cmds)
-    from tox_gates import tox_gate_env_warm_command
+    from tox_gates import tox_gate_env_warm_command, tox_gate_precommit_warm_command
 
     tox_gate_env = tox_gate_env_warm_command(workspace)
     if tox_gate_env:
         commands.append(tox_gate_env)
     elif tox_lint_check_commands(workspace):
         commands.append("tox -e lint --notest --skip-missing-interpreters true")
+    tox_pc = tox_gate_precommit_warm_command(workspace)
+    if tox_pc:
+        commands.append(tox_pc)
     # Tox/lint pip installs can upgrade transitive pins (e.g. packaging); restore declared pins.
     repin = workspace_declared_repin_command(workspace, dockerfile)
     if repin:
@@ -3677,8 +3686,16 @@ def _test_just_and_tox_runner_install_commands() -> None:
         (req_dir / "runner.txt").write_text("tox==4.23.2\ninvoke==2.2.0\n", encoding="utf-8")
         pinned = tox_runner_install_command(root)
         assert pinned is not None
-        assert "tox==4.23.2" in pinned
+        # 4.23.2 predates --skip-env-install; clamp to the offline floor.
+        assert "tox==4.42.0" in pinned
+        assert "tox==4.23.2" not in pinned
         assert "invoke==2.2.0" in pinned
+        assert "/opt/venv/bin/python -m pip install" in pinned
+        assert "command -v tox" not in pinned
+        (req_dir / "runner.txt").write_text("tox==4.50.0\n", encoding="utf-8")
+        newer = tox_runner_install_command(root)
+        assert newer is not None
+        assert "tox==4.50.0" in newer
 
 
 def _test_workspace_lint_tool_install_command() -> None:
@@ -4002,11 +4019,12 @@ def _test_workspace_image_warm_commands() -> None:
             cmd == "tox run -e lint --notest --skip-missing-interpreters true"
             for cmd in lint_warm
         )
-        assert len(lint_warm) == 5
+        assert any(".tox/lint/bin/python" in cmd and "pre_commit" in cmd for cmd in lint_warm)
+        assert len(lint_warm) == 6
         (root / "justfile").write_text("lint:\n    tox -e lint\n", encoding="utf-8")
         with_just = workspace_image_warm_commands(root)
         assert any("github.com/casey/just/releases" in cmd for cmd in with_just)
-        assert len(with_just) == 6
+        assert len(with_just) == 7
         (root / "uv.lock").write_text("# lock\n", encoding="utf-8")
         (root / "pyproject.toml").write_text(
             '[project]\nname = "demo"\nversion = "0.1.0"\n'

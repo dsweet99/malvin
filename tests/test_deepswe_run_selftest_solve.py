@@ -61,5 +61,9 @@ def test_deepswe_grade_only_apply_solution_fast_stub() -> None:
     deepswe_run._test_local_grade_only_apply_solution()
 
 
-def test_deepswe_prepare_task_sandbox_dry_run() -> None:
-    deepswe_run._test_prepare_task_sandbox_dry_run()
+def test_deepswe_trial_scripts_deny_runtime_installs() -> None:
+    deepswe_run._test_trial_scripts_deny_runtime_installs()
+
+
+def test_deepswe_host_preseed_init_checks() -> None:
+    deepswe_run._test_host_preseed_init_checks()

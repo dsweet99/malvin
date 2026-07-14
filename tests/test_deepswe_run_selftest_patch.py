@@ -45,6 +45,10 @@ def test_deepswe_purge_root_owned_ephemeral_caches_docker_cmd() -> None:
     deepswe_run._test_purge_root_owned_ephemeral_caches_docker_cmd()
 
 
+def test_deepswe_git_clean_would_remove_and_docker_purge_targets() -> None:
+    deepswe_run._test_git_clean_would_remove_and_docker_purge_targets()
+
+
 def test_deepswe_parse_task_dir_does_not_require_test_sh() -> None:
     deepswe_run._test_parse_task_dir_does_not_require_test_sh()
 
