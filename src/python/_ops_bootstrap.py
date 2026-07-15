@@ -9,6 +9,9 @@ library imports resolve to the implementation modules.
 When Modal (or ``importlib``) loads ``ops/foo.py`` under the basename
 ``foo``, a normal ``from foo import …`` would circular-import the partial
 shim. ``load_library`` clears that partial and loads ``src/python/foo.py``.
+
+Ops entry scripts insert ``src/python`` on ``sys.path`` before importing this
+module (it lives here, not under ``ops/``).
 """
 
 from __future__ import annotations
@@ -18,8 +21,8 @@ import sys
 from pathlib import Path
 from types import ModuleType
 
-_OPS_DIR = Path(__file__).resolve().parent
-_SRC_PYTHON = _OPS_DIR.parent / "src" / "python"
+_SRC_PYTHON = Path(__file__).resolve().parent
+_OPS_DIR = _SRC_PYTHON.parent.parent / "ops"
 
 
 def ensure_src_python_path() -> Path:

@@ -36,7 +36,7 @@ def load_ops_entry(modname: str) -> ModuleType:
     """
     root = malvin_repo_root()
     ops_dir = root / "ops"
-    boot_path = ops_dir / "_ops_bootstrap.py"
+    boot_path = root / "src" / "python" / "_ops_bootstrap.py"
     entry_path = ops_dir / f"{modname}.py"
     if not entry_path.is_file():
         raise ImportError(f"ops entry missing: {entry_path}")
@@ -67,7 +67,13 @@ def load_ops_entry(modname: str) -> ModuleType:
         raise ImportError(f"cannot load ops entry: {entry_path}")
     mod = importlib.util.module_from_spec(spec)
     sys.modules[unique] = mod
-    spec.loader.exec_module(mod)
+    # Keep ops/ free of regenerable bytecode; ops holds CLI scripts only.
+    prev_dwb = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    try:
+        spec.loader.exec_module(mod)
+    finally:
+        sys.dont_write_bytecode = prev_dwb
     return mod
 
 

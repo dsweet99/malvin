@@ -3,7 +3,13 @@
 
 from __future__ import annotations
 
-from _ops_bootstrap import load_library
+import sys
+from pathlib import Path
+
+_src = Path(__file__).resolve().parents[1] / "src" / "python"
+if str(_src) not in sys.path:
+    sys.path.insert(0, str(_src))
+from _ops_bootstrap import load_library  # noqa: E402
 
 _lib = load_library("diagnose_cidr_gap_modal")
 app = _lib.app

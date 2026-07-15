@@ -1,4 +1,4 @@
-"""Coverage for ``ops/_ops_bootstrap.py`` path + library loading."""
+"""Coverage for ``src/python/_ops_bootstrap.py`` path + library loading."""
 
 from __future__ import annotations
 
@@ -9,10 +9,9 @@ from types import ModuleType
 
 import pytest
 
-# Bootstrap lives under ops/; load it explicitly without putting ops ahead of
-# src/python for other flat imports.
-_OPS = Path(__file__).resolve().parents[1] / "ops"
-_BOOTSTRAP_PATH = _OPS / "_ops_bootstrap.py"
+_ROOT = Path(__file__).resolve().parents[1]
+_OPS = _ROOT / "ops"
+_BOOTSTRAP_PATH = _ROOT / "src" / "python" / "_ops_bootstrap.py"
 
 
 def _load_bootstrap() -> ModuleType:
@@ -30,7 +29,7 @@ def test_ensure_src_python_path_prefers_library() -> None:
     if ops not in sys.path:
         sys.path.insert(0, ops)
     root = boot.ensure_src_python_path()
-    assert root == _OPS.parent / "src" / "python"
+    assert root == _ROOT / "src" / "python"
     assert str(root) == sys.path[0]
     assert ops not in sys.path or sys.path.index(str(root)) < sys.path.index(ops)
 
