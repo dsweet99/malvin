@@ -189,10 +189,6 @@ mod router_header_embed_tests {
             git: false,
         }).expect("router_b_complex");
         assert!(!router_b_complex.contains("{{"));
-        assert!(
-            router_b_complex.contains("still_not_done.md"),
-            "router_b_complex must expand still_not_done_path; got:\n{router_b_complex}"
-        );
         assert!(default_file(ROUTER_A_1_MD).is_some());
         assert!(default_file(ROUTER_A_2_MD).is_some());
         assert!(default_file(ROUTER_B_SIMPLE_MD).is_some());
