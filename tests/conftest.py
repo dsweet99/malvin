@@ -9,9 +9,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-OPS = Path(__file__).resolve().parents[1] / "ops"
-if str(OPS) not in sys.path:
-    sys.path.insert(0, str(OPS))
+_REPO = Path(__file__).resolve().parents[1]
+_SRC_PYTHON = _REPO / "src" / "python"
+if str(_SRC_PYTHON) not in sys.path:
+    sys.path.insert(0, str(_SRC_PYTHON))
 
 
 def _modal_credentials_configured() -> bool:

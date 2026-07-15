@@ -9,14 +9,10 @@ from deepswe_run import _test_is_modal_spend_limit_error as _deepswe_run__test_i
 from deepswe_modal import _test_is_modal_spend_limit_error as _deepswe_modal__test_is_modal_spend_limit_error
 from deepswe_modal import _test_sandbox_app as _deepswe_modal__test_sandbox_app
 from malvin_modal import _test_sandbox_app as _malvin_modal__test_sandbox_app
-from deepswe_run import cli as _deepswe_run_cli
-from malvin_modal import cli as _malvin_modal_cli
 from deepswe_modal import cursor_credentials_available as _deepswe_modal_cursor_credentials_available
 from malvin_modal import cursor_credentials_available as _malvin_modal_cursor_credentials_available
 from deepswe_modal import cursor_secrets as _deepswe_modal_cursor_secrets
 from malvin_modal import cursor_secrets as _malvin_modal_cursor_secrets
-from deepswe_modal import main as _deepswe_modal_main
-from malvin_modal import main as _malvin_modal_main
 from deepswe_modal import relay_stream as _deepswe_modal_relay_stream
 from malvin_modal import relay_stream as _malvin_modal_relay_stream
 from deepswe_modal import require_cursor_credentials_for_agent as _deepswe_modal_require_cursor_credentials_for_agent
@@ -32,6 +28,18 @@ from deepswe_modal import stream_process_output as _deepswe_modal_stream_process
 from malvin_modal import stream_process_output as _malvin_modal_stream_process_output
 from deepswe_run import write_metadata as _deepswe_run_write_metadata
 from deepswe_modal import write_metadata as _deepswe_modal_write_metadata
+from deepswe_run import dispatch_solve as _deepswe_run_dispatch_solve
+from deepswe_modal import dispatch_main as _deepswe_modal_dispatch_main
+from malvin_modal import dispatch_cli as _malvin_modal_dispatch_cli
+from toolchain_repos import load_ops_entry
+
+_ops_deepswe_run = load_ops_entry("deepswe_run")
+_ops_malvin_modal = load_ops_entry("malvin_modal")
+_ops_deepswe_modal = load_ops_entry("deepswe_modal")
+_deepswe_run_cli = _ops_deepswe_run.cli
+_malvin_modal_cli = _ops_malvin_modal.cli
+_deepswe_modal_main = _ops_deepswe_modal.main
+_malvin_modal_main = _ops_malvin_modal.main
 
 
 def test_ops_colliding_name_kiss_coverage() -> None:
@@ -68,5 +76,7 @@ def test_ops_colliding_name_kiss_coverage() -> None:
         _malvin_modal_stream_process_output()
         _deepswe_run_write_metadata()
         _deepswe_modal_write_metadata()
+        _deepswe_run_dispatch_solve()
+        _deepswe_modal_dispatch_main()
+        _malvin_modal_dispatch_cli()
     assert True
-

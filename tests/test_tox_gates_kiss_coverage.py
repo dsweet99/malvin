@@ -1,4 +1,4 @@
-"""Kiss coverage witnesses for ops/tox_gates.py."""
+"""Kiss coverage witnesses for src/python/tox_gates.py."""
 from __future__ import annotations
 
 import tox_gates as _mod

@@ -45,6 +45,7 @@ from harbor_tests import (
     resolve_harbor_test_sh_body,
     test_sh_invokes_pytest,
 )
+from toolchain_repos import malvin_repo_root
 
 TIMEOUT_EXIT_CODE = 124
 
@@ -3566,7 +3567,7 @@ def _test_editable_pip_segment_ignores_dirty_equals() -> None:
 
 def _test_infra_abort_dockerfile_sync_is_offline() -> None:
     """INFRA_ABORT_TASKS must not replay network-fetching pip in agent sandbox prep."""
-    tasks_root = Path(__file__).resolve().parent.parent.parent / "deep-swe" / "tasks"
+    tasks_root = malvin_repo_root().parent / "deep-swe" / "tasks"
     if not tasks_root.is_dir():
         return
     slugs = (
@@ -3610,7 +3611,7 @@ RUN pip install --no-cache-dir -e ".[all]" && pip install --no-cache-dir pytest 
 
 
 def _test_workspace_sync_commands_fastapi_task_dockerfile() -> None:
-    tasks_root = Path(__file__).resolve().parent.parent.parent / "deep-swe" / "tasks"
+    tasks_root = malvin_repo_root().parent / "deep-swe" / "tasks"
     dockerfile = tasks_root / "fastapi-deprecation-response-headers" / "environment" / "Dockerfile"
     if not dockerfile.is_file():
         return
@@ -3627,7 +3628,7 @@ def _test_should_replay_skips_apt_and_git() -> None:
 
 
 def _test_hybrid_poetry_runtime_sync_skipped() -> None:
-    tasks_root = Path(__file__).resolve().parent.parent.parent / "deep-swe" / "tasks"
+    tasks_root = malvin_repo_root().parent / "deep-swe" / "tasks"
     dockerfile = tasks_root / "textual-kitty-key-phases" / "environment" / "Dockerfile"
     if not dockerfile.is_file():
         return
@@ -3636,7 +3637,7 @@ def _test_hybrid_poetry_runtime_sync_skipped() -> None:
 
 
 def _test_hybrid_pnpm_runtime_sync_skipped() -> None:
-    tasks_root = Path(__file__).resolve().parent.parent.parent / "deep-swe" / "tasks"
+    tasks_root = malvin_repo_root().parent / "deep-swe" / "tasks"
     dockerfile = tasks_root / "koota-entity-snapshot-rollback" / "environment" / "Dockerfile"
     if not dockerfile.is_file():
         return
@@ -4134,7 +4135,7 @@ RUN pip install --no-cache-dir -e ".[all]" && pip install --no-cache-dir pytest 
 
 
 def _test_registry_image_cache_bust_aiomonitor_shape() -> None:
-    tasks_root = Path(__file__).resolve().parent.parent.parent / "deep-swe" / "tasks"
+    tasks_root = malvin_repo_root().parent / "deep-swe" / "tasks"
     dockerfile = tasks_root / "aiomonitor-task-snapshots-diff" / "environment" / "Dockerfile"
     workspace = (
         Path.home()
@@ -4574,7 +4575,7 @@ def _test_mandatory_probe_no_crash_on_dotted_import_name() -> None:
 def _test_registry_image_cache_bust_adaptix_pydantic_pin() -> None:
     import tempfile
 
-    tasks_root = Path(__file__).resolve().parent.parent.parent / "deep-swe" / "tasks"
+    tasks_root = malvin_repo_root().parent / "deep-swe" / "tasks"
     dockerfile = tasks_root / "adaptix-name-mapping-aliases" / "environment" / "Dockerfile"
     if not dockerfile.is_file():
         return
@@ -4626,7 +4627,7 @@ RUN bash -lc "if [ -f requirements.txt ]; then pip install -r requirements.txt; 
 
 
 def _test_dockerfile_bulk_pip_commands_fastapi() -> None:
-    tasks_root = Path(__file__).resolve().parent.parent.parent / "deep-swe" / "tasks"
+    tasks_root = malvin_repo_root().parent / "deep-swe" / "tasks"
     dockerfile = tasks_root / "fastapi-deprecation-response-headers" / "environment" / "Dockerfile"
     if not dockerfile.is_file():
         return
@@ -4637,7 +4638,7 @@ def _test_dockerfile_bulk_pip_commands_fastapi() -> None:
 
 
 def _fixture_verifier_adaptix() -> Path:
-    return Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "verifier_adaptix"
+    return malvin_repo_root() / "tests" / "fixtures" / "verifier_adaptix"
 
 
 def _test_discover_verifier_spec_public_vs_grade() -> None:

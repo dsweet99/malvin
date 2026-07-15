@@ -1,4 +1,4 @@
-"""Kiss coverage witnesses for ops/sandbox_prep.py."""
+"""Kiss coverage witnesses for src/python/sandbox_prep.py."""
 from __future__ import annotations
 
 import sandbox_prep as _mod

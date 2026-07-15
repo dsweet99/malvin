@@ -1,4 +1,4 @@
-"""Kiss coverage witnesses for ops/harbor_tests.py."""
+"""Kiss coverage witnesses for src/python/harbor_tests.py."""
 from __future__ import annotations
 
 import harbor_tests as _mod

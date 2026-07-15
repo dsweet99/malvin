@@ -19,22 +19,22 @@ import diagnose_cidr_observed_modal
 import observe_agent_peers_modal
 import probe_cidr_connectivity_modal
 import probe_cursor_agent_modal
-from diagnose_cidr_dns_modal import main as diagnose_cidr_dns_main
-from diagnose_cidr_dns_only_modal import main as diagnose_cidr_dns_only_main
-from diagnose_cidr_gap_modal import main as diagnose_cidr_gap_main, run_https
-from diagnose_cidr_modal import main as diagnose_cidr_main
-from diagnose_cidr_observed_modal import main as diagnose_cidr_observed_main
-from observe_agent_peers_modal import (
-    main as observe_agent_peers_main,
-    observe_agent_peers_entry,
-    observe_in_sandbox,
-)
-from probe_cidr_connectivity_modal import main as probe_cidr_connectivity_main
-from probe_cursor_agent_modal import (
-    main as probe_cursor_agent_main,
-    probe_cursor_agent_entry,
-    probe_in_sandbox,
-)
+from diagnose_cidr_dns_modal import run_diagnose_cidr_dns as diagnose_cidr_dns_main
+from diagnose_cidr_dns_only_modal import run_diagnose_cidr_dns_only as diagnose_cidr_dns_only_main
+from diagnose_cidr_gap_modal import run_diagnose_cidr_gap as diagnose_cidr_gap_main, run_https
+from diagnose_cidr_modal import run_diagnose_cidr as diagnose_cidr_main
+from diagnose_cidr_observed_modal import run_diagnose_cidr_observed as diagnose_cidr_observed_main
+from observe_agent_peers_modal import observe_in_sandbox
+from probe_cidr_connectivity_modal import run_probe_cidr_connectivity as probe_cidr_connectivity_main
+from probe_cursor_agent_modal import probe_in_sandbox
+from toolchain_repos import load_ops_entry
+
+_ops_observe = load_ops_entry("observe_agent_peers_modal")
+_ops_probe_cursor = load_ops_entry("probe_cursor_agent_modal")
+observe_agent_peers_main = _ops_observe.main
+observe_agent_peers_entry = _ops_observe.observe_agent_peers_entry
+probe_cursor_agent_main = _ops_probe_cursor.main
+probe_cursor_agent_entry = _ops_probe_cursor.probe_cursor_agent_entry
 
 
 def _sandbox_proc(stdout: str = "{}", returncode: int = 0) -> MagicMock:
@@ -179,7 +179,7 @@ def test_observe_agent_peers_main() -> None:
 
 
 def test_observe_agent_peers_entry() -> None:
-    with patch.object(observe_agent_peers_modal, "main") as mock_main:
+    with patch.object(_ops_observe, "main") as mock_main:
         observe_agent_peers_entry("--task", "/tmp/task")
     mock_main.main.assert_called_once()
 
@@ -210,7 +210,7 @@ def test_probe_cursor_agent_main() -> None:
 
 
 def test_probe_cursor_agent_entry() -> None:
-    with patch.object(probe_cursor_agent_modal, "main") as mock_main:
+    with patch.object(_ops_probe_cursor, "main") as mock_main:
         probe_cursor_agent_entry("--task", "/tmp/task", "--quick")
     mock_main.main.assert_called_once()
 

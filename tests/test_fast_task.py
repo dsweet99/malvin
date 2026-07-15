@@ -4,23 +4,27 @@ from __future__ import annotations
 
 import fast_task
 from click.testing import CliRunner
+from toolchain_repos import load_ops_entry
 
 
 def test_fast_task_self_tests_via_cli() -> None:
+    cli = load_ops_entry("fast_task").fast_task_cli
     runner = CliRunner()
-    result = runner.invoke(fast_task.fast_task_cli, ["self-test"], catch_exceptions=False)
+    result = runner.invoke(cli, ["self-test"], catch_exceptions=False)
     assert result.exit_code == 0, result.output
     assert "ALL fast_task self-tests OK" in result.output
 
 
 def test_fast_task_cli_tasks() -> None:
+    cli = load_ops_entry("fast_task").fast_task_cli
     runner = CliRunner()
-    result = runner.invoke(fast_task.fast_task_cli, ["tasks"])
+    result = runner.invoke(cli, ["tasks"])
     assert result.exit_code == 0, result.output
     assert "FT-01" in result.output
 
 
 def test_fast_task_kiss_coverage_witnesses() -> None:
+    ops = load_ops_entry("fast_task")
     _ = (
         fast_task.ft_default_results_dir,
         fast_task.ft_timestamp_dir,
@@ -44,10 +48,13 @@ def test_fast_task_kiss_coverage_witnesses() -> None:
         fast_task.ft_print_evaluation_summary,
         fast_task.ft_exit_from_evaluation,
         fast_task.ft_run_solve,
-        fast_task.fast_task_cli,
-        fast_task.fast_tasks_list_cmd,
-        fast_task.fast_task_solve,
-        fast_task.fast_task_selftest_cmd,
+        fast_task.ft_cli_list_tasks,
+        fast_task.ft_cli_solve,
+        fast_task.ft_cli_self_test,
+        ops.fast_task_cli,
+        ops.fast_tasks_list_cmd,
+        ops.fast_task_solve,
+        ops.fast_task_selftest_cmd,
         fast_task.run_fast_task_self_tests,
         fast_task._ft_test_list_and_resolve_tasks,
         fast_task._ft_test_stage_workspace_isolated,

@@ -1,4 +1,4 @@
-"""Kiss coverage witnesses for ops/toolchain_repos.py."""
+"""Kiss coverage witnesses for src/python/toolchain_repos.py."""
 from __future__ import annotations
 
 import toolchain_repos as _mod
