@@ -106,29 +106,6 @@ pub(crate) async fn run_router_d_session(
     client.end_coder_session().await.map_err(|e| e.to_string())
 }
 
-async fn maybe_run_trivial_social_as_do(
-    request: &str,
-    shared: &SharedOpts,
-    workflow: WorkflowCliOptions,
-) -> Result<bool, String> {
-    let (text, _work_dir) = resolve_user_md_request(request)?;
-    // Shared (all backends): greetings must not enter the tenacious coding router.
-    // Local models otherwise mis-label Hello as CODING_TASK:YES / CONTINUE_ROUTER and hang.
-    if !router_flow_parse::is_trivial_social_request(&text) {
-        return Ok(false);
-    }
-    crate::do_flow::run_do(
-        crate::do_flow::DoArgs {
-            thoughts: false,
-            request: Some(request.to_string()),
-        },
-        shared,
-        workflow,
-    )
-    .await?;
-    Ok(true)
-}
-
 async fn maybe_run_router_d_after_loops(
     prep: &mut RouterRunPrep,
     shared: &SharedOpts,
@@ -152,9 +129,6 @@ pub async fn run_router(
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
     let request = require_cli_request(router_args.request.as_ref(), "")?;
-    if maybe_run_trivial_social_as_do(&request, shared, workflow).await? {
-        return Ok(());
-    }
 
     let mut prep = prepare_router_run(&router_args, shared, workflow).await?;
     emit_run_startup_sequence(
@@ -211,11 +185,9 @@ mod kiss_cov_gate_refs {
         let _: Option<RouterRunPrep> = None;
         let _ = new_router_client;
         let _ = prepare_router_run;
-        let _ = maybe_run_trivial_social_as_do;
         let _ = router_flow_parse::parse_complexity_score;
         let _ = router_flow_parse::parse_coding_task;
         let _ = router_flow_parse::router_wants_continue;
-        let _ = router_flow_parse::is_trivial_social_request;
         let _ = maybe_run_router_d_after_loops;
         let _ = router_flow_prompt::build_router_d_prompt;
         let _ = super::run_router_d_session;

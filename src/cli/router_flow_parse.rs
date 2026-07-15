@@ -9,48 +9,6 @@ pub(crate) fn router_wants_continue(agent_text: &str) -> bool {
         .any(|line| line.trim() == "CONTINUE_ROUTER")
 }
 
-/// True for short greetings that should not enter the coding router (whole-utterance allowlist).
-#[must_use]
-pub(crate) fn is_trivial_social_request(text: &str) -> bool {
-    let trimmed = text.trim();
-    if trimmed.is_empty() || trimmed.len() > 40 {
-        return false;
-    }
-    let lower = trimmed.to_ascii_lowercase();
-    if trivial_social_has_code_cue(&lower) {
-        return false;
-    }
-    let normalized = normalize_trivial_social_utterance(&lower);
-    TRIVIAL_SOCIAL_ALLOWLIST.contains(&normalized.as_str())
-}
-
-const TRIVIAL_SOCIAL_ALLOWLIST: &[&str] = &[
-    "hello", "hi", "hey", "thanks", "thank you", "thankyou", "good morning", "good afternoon",
-    "good evening", "yo", "sup", "howdy",
-];
-
-fn trivial_social_has_code_cue(lower: &str) -> bool {
-    const CUES: &[&str] = &[
-        "/", "`", "::", ".rs", ".py", ".md", "fix ", "fix\n", "bug", "implement", "refactor",
-        "test", "pr #", "src/", "http://", "https://",
-    ];
-    lower == "fix" || lower.starts_with("fix ") || CUES.iter().any(|cue| lower.contains(cue))
-}
-
-fn normalize_trivial_social_utterance(lower: &str) -> String {
-    let mapped: String = lower
-        .chars()
-        .map(|c| {
-            if c.is_ascii_alphanumeric() || c.is_whitespace() {
-                c
-            } else {
-                ' '
-            }
-        })
-        .collect();
-    mapped.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
 const SCORE_LABEL_DECORATION: &[char] = &['*', '`', '_', '"', '\'', ' ', '\t'];
 
 /// Mid-line `LABEL`/`LABEL:`; last valid match wins (tolerates markdown / spaces around `:`).
@@ -156,30 +114,6 @@ mod router_wants_continue_tests {
         assert!(!router_wants_continue(
             "Please output CONTINUE_ROUTER when done."
         ));
-    }
-}
-
-#[cfg(test)]
-mod trivial_social_request_tests {
-    use super::is_trivial_social_request;
-
-    #[test]
-    fn social_vs_coding_requests() {
-        assert!(is_trivial_social_request("Hello"));
-        assert!(is_trivial_social_request("hello!"));
-        assert!(is_trivial_social_request("  hi  "));
-        assert!(is_trivial_social_request("thanks"));
-        assert!(is_trivial_social_request("Thank you"));
-        assert!(is_trivial_social_request("good morning"));
-        assert!(!is_trivial_social_request("fix bug"));
-        assert!(!is_trivial_social_request("Fix the bug"));
-        assert!(!is_trivial_social_request("hi, fix src/foo.rs"));
-        assert!(!is_trivial_social_request("Hello world program"));
-        assert!(!is_trivial_social_request("thanks for reviewing PR #12"));
-        assert!(!is_trivial_social_request("implement the feature"));
-        assert!(!is_trivial_social_request(""));
-        assert!(!is_trivial_social_request("   "));
-        assert!(!is_trivial_social_request(&"hello ".repeat(20)));
     }
 }
 
