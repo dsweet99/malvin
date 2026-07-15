@@ -20,13 +20,14 @@
 
 ## Understand the request
 
+- See file `{{ still_not_done_path }}` (if it exists) for helpful pointers.
 - Restate the request clearly.
- See file `{{ still_not_done_path }}` (if it exists) for helpful pointers.
-- Ask questions about unclear or uncertain points. Question the level of specificity: Interpret too narrowly, and you miss the point. Interpret too broadly and you make a mess.
+  - Highlight contradiction, ambiguity, or uncertainty.
+  - Find boundaries of scope.
 - Consult `{{ malvin_command }} priors` to resolve ambiguity or reduce uncertainty.
-- Do research to answer the questions. Use kpop.
-
-{{ code_extra }}
+- Do research to answer the questions.
+- Use `{{ malvin_command }} kpop` to define a set of conditions/tests/validations that will certify that you have fulfilled the request.
+{{ code_extra }} 
 
 ## Goal: epistemic decoupling
 - Convince the user that the request is satisfied in a completely objective way.
