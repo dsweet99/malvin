@@ -51,6 +51,11 @@ def fast_tasks_list_cmd() -> None:
 )
 @click.option("--dry-run", is_flag=True, help="Stage + print cmds; skip docker run")
 @click.option("--skip-grade", is_flag=True, help="Skip host grading after the agent")
+@click.option(
+    "--cursor",
+    is_flag=True,
+    help="Skip malvin; run cursor-agent --force -p < plan.md in the container",
+)
 @click.pass_context
 def fast_task_solve(
     ctx: click.Context,
@@ -60,6 +65,7 @@ def fast_task_solve(
     base_image: str,
     dry_run: bool,
     skip_grade: bool,
+    cursor: bool,
 ) -> None:
     """Run malvin on TASK_ID in Docker; report host-graded reward."""
     _lib.ft_cli_solve(
@@ -69,6 +75,7 @@ def fast_task_solve(
         base_image=base_image,
         dry_run=dry_run,
         skip_grade=skip_grade,
+        use_cursor=cursor,
         malvin_args=tuple(ctx.args),
     )
 

@@ -34,15 +34,13 @@ impl ChecksDiscoveryOpts {
     };
 }
 
-fn checks_file_has_commands(work_dir: &Path) -> Result<(), String> {
+fn checks_file_present(work_dir: &Path) -> Result<(), String> {
     let path = malvin_checks_path(work_dir);
     if !path.is_file() {
         return Err("checks discovery: .malvin/checks still missing".to_string());
     }
-    let lines = load_malvin_checks(&path)?;
-    if lines.is_empty() {
-        return Err("checks discovery: .malvin/checks has no commands".to_string());
-    }
+    // Present empty / comment-only checks are accepted (zero runnable commands OK).
+    load_malvin_checks(&path)?;
     Ok(())
 }
 
@@ -51,15 +49,15 @@ fn checks_already_valid(work_dir: &Path) -> Result<bool, String> {
     if !path.is_file() {
         return Ok(false);
     }
-    let lines = load_malvin_checks(&path)?;
-    Ok(!lines.is_empty())
+    load_malvin_checks(&path)?;
+    Ok(true)
 }
 
 fn finish_checks_discovery(work_dir: &Path) -> Result<(), String> {
-    checks_file_has_commands(work_dir)
+    checks_file_present(work_dir)
 }
 
-/// Run checks discovery `KPop` when `.malvin/checks` is missing or has no commands.
+/// Run checks discovery `KPop` when `.malvin/checks` is missing.
 pub(crate) async fn ensure_malvin_checks_discovered(
     work_dir: &Path,
     shared: &SharedOpts,
@@ -164,18 +162,24 @@ mod tests {
     }
 
     #[test]
-    fn finish_checks_discovery_fails_when_comment_only() {
+    fn finish_checks_discovery_accepts_comment_only() {
         let tmp = tempfile::tempdir().expect("tempdir");
         crate::seed_malvin_checks(tmp.path(), "# only\n");
-        let err = finish_checks_discovery(tmp.path()).unwrap_err();
-        assert!(err.contains("has no commands"), "{err:?}");
+        finish_checks_discovery(tmp.path()).expect("comment-only ok");
     }
 
     #[test]
-    fn checks_already_valid_false_when_comment_only() {
+    fn finish_checks_discovery_accepts_empty_file() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        crate::seed_malvin_checks(tmp.path(), "");
+        finish_checks_discovery(tmp.path()).expect("empty file ok");
+    }
+
+    #[test]
+    fn checks_already_valid_true_when_comment_only() {
         crate::test_utils::with_isolated_home(|tmp| {
             crate::seed_malvin_checks(tmp, "# only\n");
-            assert!(!checks_already_valid(tmp).expect("read"));
+            assert!(checks_already_valid(tmp).expect("read"));
         });
     }
 

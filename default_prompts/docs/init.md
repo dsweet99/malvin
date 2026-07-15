@@ -8,8 +8,8 @@ Discover how the workspace runs quality gates today and write `.malvin/checks` (
 |---|---|
 | Input | None |
 | Prompt | `init_constraints.md` |
-| Agent | KPop checks-discovery session when `.malvin/checks` is missing or has no commands |
-| Fast path | If `.malvin/checks` already has at least one command line, **no agent** |
+| Agent | KPop checks-discovery session when `.malvin/checks` is missing |
+| Fast path | If `.malvin/checks` already exists (including empty or comment-only), **no agent** |
 | Requires | Cursor agent CLI only when discovery runs |
 
 ## Intention
@@ -26,9 +26,9 @@ No positional arguments. Work directory is always `.` (cwd).
 
 ## Behavior
 
-1. If `.malvin/checks` is missing or contains only comments, malvin runs a KPop session scoped by `init_constraints.md`. The agent inspects existing repo tooling (for example `.pre-commit-config.yaml`, `Makefile`, CI workflows) and writes `.malvin/checks` at the repo git root.
-2. If the agent session completes but `.malvin/checks` still has no commands, malvin exits with an error.
-3. If `.malvin/checks` already has at least one command line, malvin exits successfully without spawning an agent.
+1. If `.malvin/checks` is missing, malvin runs a KPop session scoped by `init_constraints.md`. The agent inspects existing repo tooling (for example `.pre-commit-config.yaml`, `Makefile`, CI workflows) and writes `.malvin/checks` at the repo git root.
+2. If `.malvin/checks` is present after discovery — including an empty or comment-only file with zero runnable commands — malvin exits successfully. A missing file still fails.
+3. If `.malvin/checks` already exists, malvin exits successfully without spawning an agent.
 
 Delete `.malvin/checks` to trigger discovery again.
 

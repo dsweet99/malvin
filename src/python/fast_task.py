@@ -9,6 +9,7 @@ Usage::
 
     python ops/fast_task.py solve FT-01
     python ops/fast_task.py solve FT-01 --dry-run
+    python ops/fast_task.py solve FT-01 --cursor
     python ops/fast_task.py tasks
     python ops/fast_task.py self-test
 
@@ -45,6 +46,8 @@ TOOLCHAIN_PATH = (
 )
 CURSOR_ENV_KEYS = ("CURSOR_AGENT_API_KEY", "CURSOR_API_KEY", "AGENT_API_KEY")
 LEAK_NAME_MARKERS = ("grade.py", "goldens", "golden", "solution")
+# Shell form required so stdin redirect works under `docker run … -w /app`.
+CURSOR_AGENT_SHELL = "cursor-agent --force -p < plan.md"
 
 
 def ft_default_results_dir() -> Path:
@@ -274,6 +277,7 @@ def ft_docker_agent_cmd(
     image: str,
     workspace: Path,
     malvin_args: tuple[str, ...] = (),
+    use_cursor: bool = False,
 ) -> list[str]:
     """Agent-phase ``docker run`` argv: workspace-only mount at ``/app``."""
     ws = workspace.resolve()
@@ -298,10 +302,12 @@ def ft_docker_agent_cmd(
         "-w",
         "/app",
         image,
-        "malvin",
-        *malvin_args,
-        "plan.md",
     ]
+    if use_cursor:
+        # Skip malvin (and thus router init): shell stdin from plan.md.
+        cmd.extend(["sh", "-c", CURSOR_AGENT_SHELL])
+    else:
+        cmd.extend(["malvin", *malvin_args, "plan.md"])
     ft_assert_agent_cmd_nonleak(cmd, task_parent=ws.parent)
     return cmd
 
@@ -469,6 +475,7 @@ def ft_run_solve(
     malvin_args: tuple[str, ...] = (),
     dry_run: bool = False,
     skip_grade: bool = False,
+    use_cursor: bool = False,
 ) -> dict[str, Any]:
     """Stage workspace, run agent in Docker, grade on host; return result dict."""
     task_dir = ft_resolve_task_dir(task_id)
@@ -482,7 +489,10 @@ def ft_run_solve(
         dry_run=dry_run,
     )
     cmd = ft_docker_agent_cmd(
-        image=image, workspace=workspace, malvin_args=malvin_args
+        image=image,
+        workspace=workspace,
+        malvin_args=malvin_args,
+        use_cursor=use_cursor,
     )
     click.echo(f"Staged workspace: {workspace}")
     click.echo(f"Agent command: {ft_redact_cmd_for_display(cmd)}")
@@ -500,7 +510,8 @@ def ft_run_solve(
         if not ft_docker_available():
             raise click.ClickException("Docker daemon is not available")
         ft_preflight_workspace_mount(image=image, workspace=workspace)
-        click.echo("Running malvin in local Docker (workspace-only mount)...")
+        agent_label = "cursor-agent" if use_cursor else "malvin"
+        click.echo(f"Running {agent_label} in local Docker (workspace-only mount)...")
         code, captured = ft_relay_subprocess_stdout(cmd)
         agent_result = {
             "exit_code": code,
@@ -552,6 +563,7 @@ def ft_cli_solve(
     dry_run: bool,
     skip_grade: bool,
     malvin_args: tuple[str, ...],
+    use_cursor: bool = False,
 ) -> None:
     """Run malvin on TASK_ID in Docker; report host-graded reward."""
     result = ft_run_solve(
@@ -562,6 +574,7 @@ def ft_cli_solve(
         malvin_args=malvin_args,
         dry_run=dry_run,
         skip_grade=skip_grade,
+        use_cursor=use_cursor,
     )
     if not skip_grade and not dry_run:
         ft_exit_from_evaluation(result["grade"], result["agent"])
@@ -579,6 +592,7 @@ def run_fast_task_self_tests() -> None:
     _ft_test_stage_workspace_isolated()
     _ft_test_dockerfile_nonleak()
     _ft_test_docker_agent_cmd_nonleak()
+    _ft_test_docker_agent_cmd_cursor()
     _ft_test_assert_agent_cmd_rejects_task_root()
     _ft_test_grade_on_host_starter_reward_zero()
     _ft_test_solve_help_and_dry_run()
@@ -636,6 +650,8 @@ def _ft_test_docker_agent_cmd_nonleak() -> None:
         cmd = ft_docker_agent_cmd(image=DEFAULT_IMAGE, workspace=ws)
         assert cmd[0] == "docker"
         assert "plan.md" in cmd
+        assert "malvin" in cmd
+        assert "cursor-agent" not in " ".join(cmd)
         mount = None
         for i, token in enumerate(cmd):
             if token == "-v":
@@ -649,6 +665,23 @@ def _ft_test_docker_agent_cmd_nonleak() -> None:
         assert "goldens" not in joined
         assert "GIT_CONFIG_KEY_0=safe.directory" in cmd
         assert "GIT_CONFIG_VALUE_0=/app" in cmd
+
+
+def _ft_test_docker_agent_cmd_cursor() -> None:
+    with tempfile.TemporaryDirectory(prefix="ft-cursor-") as tmp:
+        ws = Path(tmp) / "workspace"
+        ws.mkdir()
+        (ws / "plan.md").write_text("x\n", encoding="utf-8")
+        cmd = ft_docker_agent_cmd(
+            image=DEFAULT_IMAGE, workspace=ws, use_cursor=True, malvin_args=("--verbose",)
+        )
+        joined = " ".join(cmd)
+        assert "sh" in cmd
+        assert "-c" in cmd
+        assert CURSOR_AGENT_SHELL in cmd
+        assert "cursor-agent --force -p < plan.md" in joined
+        assert "malvin" not in cmd
+        assert "--verbose" not in cmd
 
 
 def _ft_test_assert_agent_cmd_rejects_task_root() -> None:
@@ -706,6 +739,7 @@ def _ft_test_solve_help_and_dry_run() -> None:
     help_result = runner.invoke(cli, ["solve", "--help"])
     assert help_result.exit_code == 0, help_result.output
     assert "TASK_ID" in help_result.output
+    assert "--cursor" in help_result.output
     with tempfile.TemporaryDirectory(prefix="ft-dry-") as tmp:
         result = runner.invoke(
             cli,
@@ -726,8 +760,37 @@ def _ft_test_solve_help_and_dry_run() -> None:
         assert meta_paths, result.output
         meta = json.loads(meta_paths[0].read_text(encoding="utf-8"))
         joined_cmd = " ".join(meta["docker_cmd"])
+        assert "malvin" in meta["docker_cmd"]
+        assert "plan.md" in meta["docker_cmd"]
+        assert "cursor-agent" not in joined_cmd
         assert "grade.py" not in joined_cmd
         assert "goldens" not in joined_cmd
+
+        cursor_tmp = Path(tmp) / "cursor"
+        cursor_tmp.mkdir()
+        cursor_result = runner.invoke(
+            cli,
+            [
+                "solve",
+                "FT-01",
+                "--cursor",
+                "--dry-run",
+                "--skip-grade",
+                "--results-dir",
+                str(cursor_tmp),
+            ],
+            catch_exceptions=False,
+        )
+        assert cursor_result.exit_code == 0, cursor_result.output
+        cursor_meta_paths = list(cursor_tmp.glob("FT-01/*/metadata.json"))
+        assert cursor_meta_paths, cursor_result.output
+        cursor_meta = json.loads(cursor_meta_paths[0].read_text(encoding="utf-8"))
+        cursor_cmd = cursor_meta["docker_cmd"]
+        cursor_joined = " ".join(cursor_cmd)
+        assert "cursor-agent --force -p < plan.md" in cursor_joined
+        assert "malvin" not in cursor_cmd
+        assert "grade.py" not in cursor_joined
+        assert "goldens" not in cursor_joined
 
 
 _FT_RELAY_SPY_SEEN: list[str] = []
