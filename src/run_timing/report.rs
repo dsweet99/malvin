@@ -44,9 +44,12 @@ pub(super) fn to_json_value(r: &RunTiming) -> Value {
             "implement": r.implement_display_name,
         },
         "tool_calls_ms": ms(r.tool_calls),
-        "phases_ms": {
-            "implement": ms(r.implement),
-        }
+        "tool_calls_by_type_ms": {
+            "read": ms(r.tool_calls_read), "search": ms(r.tool_calls_search),
+            "edit": ms(r.tool_calls_edit), "execute": ms(r.tool_calls_execute),
+            "other": ms(r.tool_calls_other),
+        },
+        "phases_ms": { "implement": ms(r.implement) }
     });
     if let Some(cost) = cost_stats(&r.tx_costs, r.unknown_tx_count) {
         if let Some(map) = obj.as_object_mut() {

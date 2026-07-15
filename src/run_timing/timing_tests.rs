@@ -99,14 +99,47 @@ fn attach_new_run_timing_and_finalize_json_only() {
 #[test]
 fn tool_call_wall_duration_accumulates_in_run_timing() {
     let mut r = RunTiming::default();
-    r.add_tool_call_wall(Duration::from_millis(30));
-    r.add_tool_call_wall(Duration::from_millis(20));
+    r.add_tool_call_wall("read", Duration::from_millis(30));
+    r.add_tool_call_wall("execute", Duration::from_millis(20));
+    let json = report::to_json_value(&r);
     assert_eq!(
-        report::to_json_value(&r)
-            .get("tool_calls_ms")
+        json.get("tool_calls_ms")
             .and_then(serde_json::Value::as_u64),
         Some(50)
     );
+    let by_type = json.get("tool_calls_by_type_ms").expect("by_type");
+    assert_eq!(by_type.get("read").and_then(serde_json::Value::as_u64), Some(30));
+    assert_eq!(
+        by_type.get("execute").and_then(serde_json::Value::as_u64),
+        Some(20)
+    );
+    assert_eq!(
+        by_type.get("search").and_then(serde_json::Value::as_u64),
+        Some(0)
+    );
+    assert_eq!(by_type.get("edit").and_then(serde_json::Value::as_u64), Some(0));
+    assert_eq!(
+        by_type.get("other").and_then(serde_json::Value::as_u64),
+        Some(0)
+    );
+}
+
+#[test]
+fn tool_call_kinds_accumulate_in_independent_buckets() {
+    let mut r = RunTiming::default();
+    r.add_tool_call_wall("read", Duration::from_millis(40));
+    r.add_tool_call_wall("search", Duration::from_millis(25));
+    r.add_tool_call_wall("edit", Duration::from_millis(10));
+    r.add_tool_call_wall("execute", Duration::from_millis(15));
+    r.add_tool_call_wall("mystery", Duration::from_millis(5));
+    let json = report::to_json_value(&r);
+    let by_type = &json["tool_calls_by_type_ms"];
+    assert_eq!(by_type["read"].as_u64(), Some(40));
+    assert_eq!(by_type["search"].as_u64(), Some(25));
+    assert_eq!(by_type["edit"].as_u64(), Some(10));
+    assert_eq!(by_type["execute"].as_u64(), Some(15));
+    assert_eq!(by_type["other"].as_u64(), Some(5));
+    assert_eq!(json["tool_calls_ms"].as_u64(), Some(95));
 }
 
 #[test]

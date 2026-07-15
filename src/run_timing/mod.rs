@@ -20,6 +20,9 @@ pub enum TimingPhase {
     Implement,
 }
 
+/// Wire keys for per-type tool-call wall durations (ACP kinds + `other`).
+pub const TOOL_CALL_TYPE_MS_KEYS: [&str; 5] = ["read", "search", "edit", "execute", "other"];
+
 #[derive(Debug, Clone)]
 pub struct RunTiming {
     wall_start: Option<Instant>,
@@ -29,6 +32,11 @@ pub struct RunTiming {
     implement: Duration,
     implement_display_name: &'static str,
     tool_calls: Duration,
+    tool_calls_read: Duration,
+    tool_calls_search: Duration,
+    tool_calls_edit: Duration,
+    tool_calls_execute: Duration,
+    tool_calls_other: Duration,
     pub(crate) tx_costs: Vec<f64>,
     pub(crate) unknown_tx_count: u32,
 }
@@ -43,6 +51,11 @@ impl Default for RunTiming {
             implement: Duration::ZERO,
             implement_display_name: "implement",
             tool_calls: Duration::ZERO,
+            tool_calls_read: Duration::ZERO,
+            tool_calls_search: Duration::ZERO,
+            tool_calls_edit: Duration::ZERO,
+            tool_calls_execute: Duration::ZERO,
+            tool_calls_other: Duration::ZERO,
             tx_costs: Vec::new(),
             unknown_tx_count: 0,
         }
@@ -50,8 +63,18 @@ impl Default for RunTiming {
 }
 
 impl RunTiming {
-    pub const fn add_tool_call_wall(&mut self, d: Duration) {
+    /// Adds wall time for one completed tool call, attributed by ACP wire `kind`.
+    /// Unknown kinds accumulate under `other`. Aggregate `tool_calls` is always updated.
+    pub fn add_tool_call_wall(&mut self, kind: &str, d: Duration) {
         self.tool_calls = self.tool_calls.saturating_add(d);
+        let bucket = match kind {
+            "read" => &mut self.tool_calls_read,
+            "search" => &mut self.tool_calls_search,
+            "edit" => &mut self.tool_calls_edit,
+            "execute" => &mut self.tool_calls_execute,
+            _ => &mut self.tool_calls_other,
+        };
+        *bucket = bucket.saturating_add(d);
     }
 }
 

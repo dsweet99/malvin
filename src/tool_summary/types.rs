@@ -50,13 +50,14 @@ impl ToolSummaryTracker {
             return;
         };
         let elapsed = rec.started.elapsed();
+        let kind = rec.kind.as_str();
         let Some(timing) = self.run_timing.as_ref() else {
             return;
         };
         timing
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .add_tool_call_wall(elapsed);
+            .add_tool_call_wall(kind, elapsed);
     }
 }
 
