@@ -97,8 +97,34 @@ def ft_stage_workspace(task_dir: Path, run_root: Path) -> Path:
     if dst.exists():
         shutil.rmtree(dst)
     shutil.copytree(src, dst, ignore=_ft_copy_ignore)
+    ft_ensure_staged_git(dst)
     ft_assert_stage_isolated(dst)
     return dst.resolve()
+
+
+def ft_ensure_staged_git(workspace: Path) -> None:
+    """``git init`` staged workspace so malvin uses ``/app/.malvin/checks`` (git layout).
+
+    Non-git workspaces resolve primary checks to ``~/.malvin/checks``, while
+    discovery agents typically write the legacy path ``cwd/.malvin/checks``.
+    Staging always strips ``.git`` via ``_ft_copy_ignore``, so init here.
+    """
+    ws = workspace.resolve()
+    git_dir = ws / ".git"
+    if git_dir.exists():
+        return
+    proc = subprocess.run(
+        ["git", "init"],
+        cwd=ws,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout or "").strip()
+        raise click.ClickException(
+            f"git init failed for staged workspace {ws}: {detail}"
+        )
 
 
 def ft_assert_stage_isolated(staged: Path) -> None:
@@ -261,6 +287,13 @@ def ft_docker_agent_cmd(
         f"PATH={TOOLCHAIN_PATH}",
         "-e",
         "MALVIN_FORCE_STDOUT_TEE=1",
+        # Host-owned bind mount often looks "dubious" to container git-as-root.
+        "-e",
+        "GIT_CONFIG_COUNT=1",
+        "-e",
+        "GIT_CONFIG_KEY_0=safe.directory",
+        "-e",
+        "GIT_CONFIG_VALUE_0=/app",
         "-w",
         "/app",
         image,
@@ -413,9 +446,13 @@ def ft_exit_from_evaluation(
     grade_result: dict[str, Any],
     agent_result: dict[str, Any] | None,
 ) -> None:
-    """Exit non-zero when reward is not 1 (or agent failed without timeout)."""
-    if grade_result.get("pass") is False:
-        raise SystemExit(1)
+    """Exit non-zero when the agent failed (timeout excepted).
+
+    Reward is reported in the evaluation summary but does not determine the
+    harness exit code: a completed grade with ``reward: 0`` is still success
+    for ``solve`` as a runner.
+    """
+    _ = grade_result  # reward/pass are observational; not harness failure
     if agent_result and not agent_result.get("timed_out"):
         code = agent_result.get("exit_code")
         if code not in (0, None):
@@ -601,6 +638,7 @@ def _ft_test_stage_workspace_isolated() -> None:
         run_root = Path(tmp)
         staged = ft_stage_workspace(task_dir, run_root)
         assert (staged / "plan.md").is_file()
+        assert (staged / ".git").exists(), "staged workspace must be a git repo"
         names = {p.name for p in staged.rglob("*")}
         assert "grade.py" not in names
         assert "goldens" not in names
@@ -640,6 +678,8 @@ def _ft_test_docker_agent_cmd_nonleak() -> None:
         joined = " ".join(cmd)
         assert "grade.py" not in joined
         assert "goldens" not in joined
+        assert "GIT_CONFIG_KEY_0=safe.directory" in cmd
+        assert "GIT_CONFIG_VALUE_0=/app" in cmd
 
 
 def _ft_test_assert_agent_cmd_rejects_task_root() -> None:
@@ -785,11 +825,8 @@ def _ft_test_helpers_and_cli_surface() -> None:
 
 
 def _ft_test_exit_from_evaluation() -> None:
-    try:
-        ft_exit_from_evaluation({"pass": False, "reward": 0}, {"exit_code": 0})
-        raise AssertionError("expected SystemExit on fail")
-    except SystemExit as exc:
-        assert exc.code == 1
+    # Reward 0 must not fail the harness (user: don't require reward value).
+    ft_exit_from_evaluation({"pass": False, "reward": 0}, {"exit_code": 0})
     try:
         ft_exit_from_evaluation(
             {"pass": True, "reward": 1},
@@ -799,6 +836,10 @@ def _ft_test_exit_from_evaluation() -> None:
     except SystemExit as exc:
         assert exc.code == 3
     ft_exit_from_evaluation({"pass": True, "reward": 1}, {"exit_code": 0})
+    ft_exit_from_evaluation(
+        {"pass": False, "reward": 0},
+        {"exit_code": 2, "timed_out": True},
+    )
 
 
 def _ft_test_ensure_agent_image_dry_run() -> None:

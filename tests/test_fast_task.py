@@ -28,6 +28,7 @@ def test_fast_task_kiss_coverage_witnesses() -> None:
         fast_task.ft_resolve_task_dir,
         fast_task._ft_copy_ignore,
         fast_task.ft_stage_workspace,
+        fast_task.ft_ensure_staged_git,
         fast_task.ft_assert_stage_isolated,
         fast_task.ft_resolve_malvin_binary,
         fast_task.ft_dockerfile_for_agent,
