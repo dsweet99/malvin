@@ -11,6 +11,7 @@ pub(crate) fn test_router_shared() -> (SharedOpts, WorkflowCliOptions) {
         model: crate::config::DEFAULT_CLI_MODEL.into(),
         no_force: true,
         no_tenacious: true,
+        gates: false,
         no_tee: true,
         no_markdown: true,
         verbose: false,

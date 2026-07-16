@@ -6,6 +6,7 @@ fn kiss_cov_kpop_summarize_privates() {
         model: crate::config::DEFAULT_CLI_MODEL.into(),
         no_force: true,
         no_tenacious: false,
+        gates: false,
         no_tee: true,
         no_markdown: true,
         verbose: false,

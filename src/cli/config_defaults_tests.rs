@@ -95,6 +95,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
         model: "old".into(),
         no_force: false,
         no_tenacious: false,
+        gates: false,
         no_tee: false,
         no_markdown: false,
         verbose: false,

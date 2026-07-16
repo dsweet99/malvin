@@ -23,6 +23,7 @@ fn emit_code_run_startup(
 struct CodeGateFinish<'a> {
     shared: &'a SharedOpts,
     prepared: &'a super::run_startup::CodeKpopPrepared,
+    behavior: KPopHardConstraints,
     agent_ran: bool,
     gates_ok: bool,
     run_timing: Option<&'a std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
@@ -43,7 +44,7 @@ fn code_gate_outcome(finish: CodeGateFinish<'_>) -> Result<(), String> {
             "malvin code",
             finish.prepared,
             finish.last_backups,
-            KPopHardConstraints::CODE,
+            finish.behavior,
         )
     };
     crate::cli::workflow_kpop_shared::prefer_gate_outcome_over_summarize(gate_r, finish.summarize_res)
@@ -65,6 +66,7 @@ pub async fn run_code(
     emit_code_run_startup(shared, &prepared)?;
 
     let max_loops = effective_code_max_loops(code.max_loops);
+    let behavior = KPopHardConstraints::CODE.with_workspace_quality_gates(shared.gates);
     let (gates_ok, agent_ran, run_timing, last_backups) = run_kpop_engine(KPopEngineParams {
         command: "code",
         shared,
@@ -72,7 +74,7 @@ pub async fn run_code(
         prepared: &prepared,
         max_loops,
         max_hypotheses: code.max_hypotheses,
-        behavior: KPopHardConstraints::CODE,
+        behavior,
     })
     .await?;
 
@@ -90,6 +92,7 @@ pub async fn run_code(
     let r = code_gate_outcome(CodeGateFinish {
         shared,
         prepared: &prepared,
+        behavior,
         agent_ran,
         gates_ok,
         run_timing: run_timing.as_ref(),
@@ -136,6 +139,7 @@ mod tests {
             model: DEFAULT_CLI_MODEL.into(),
             no_force: true,
             no_tenacious: false,
+            gates: false,
             no_tee: true,
             no_markdown: true,
             verbose: false,

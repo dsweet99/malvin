@@ -13,7 +13,9 @@ use super::router_flow_coder_prompts::{
     run_router_a_1_coder_prompt, run_router_a_2_coder_prompt, run_router_b_coder_prompt,
     run_router_c_coder_prompt,
 };
-use super::router_flow_post::{maybe_run_router_post_c_gates, RouterTurnsOutcome};
+use super::router_flow_post::{
+    maybe_run_router_post_c_gates, RouterPostCGates, RouterTurnsOutcome,
+};
 use crate::run_timing::acp_post_run::RunTimingSessionEnd;
 use std::sync::{Arc, Mutex};
 
@@ -129,7 +131,10 @@ pub(crate) async fn run_router_turns(
     let gate_wants_continue = maybe_run_router_post_c_gates(
         work_dir,
         ctx.artifacts.run_dir.as_path(),
-        coding_task,
+        RouterPostCGates {
+            coding_task,
+            enabled: ctx.shared.gates,
+        },
     );
     Ok(RouterTurnsOutcome {
         iteration_backups,

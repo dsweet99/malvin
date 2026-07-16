@@ -50,6 +50,7 @@ fn smoke_cov_cli_cli_units_1b() {
         model: crate::config::DEFAULT_CLI_MODEL.into(),
         no_force: false,
         no_tenacious: false,
+        gates: false,
         no_tee: false,
         no_markdown: false,
         verbose: false,

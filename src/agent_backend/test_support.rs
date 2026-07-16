@@ -105,6 +105,7 @@ pub fn shared_opts(mini: bool) -> SharedOpts {
         model,
         no_force: false,
         no_tenacious: false,
+        gates: false,
         no_tee: true,
         no_markdown: true,
         verbose: false,

@@ -1,4 +1,4 @@
-//! Shared CLI flags (`SharedOpts`) are parsed globally for every subcommand. `model`, `no_force`, `no_tenacious`, `no_tee`, and `max_acp_retries` affect `malvin code`, `malvin kpop`, `malvin inspire`, and `malvin do`. `--verbose` logs full outgoing agent prompts to stdout and `prompts.log` (default is prompt name only). `--no-markdown` disables styled ACP stdout for subcommands that use `acp_stdout_markdown_enabled()` (`code`, `kpop`, `tidy` when the agent runs, `inspire`, and `do` on a TTY). It is a no-op for `models` (no agent). Piped `malvin do` output stays plain regardless of `--no-markdown`. `--git` sets `{{ git_extra }}` so prompt templates may permit `git commit` (default off).
+//! Shared CLI flags (`SharedOpts`) are parsed globally for every subcommand. `model`, `no_force`, `no_tenacious`, `no_tee`, and `max_acp_retries` affect `malvin code`, `malvin kpop`, `malvin inspire`, and `malvin do`. `--gates` enables harness-run quality gates for the default route and `code`; `tidy` always runs them. `--verbose` logs full outgoing agent prompts to stdout and `prompts.log` (default is prompt name only). `--no-markdown` disables styled ACP stdout for subcommands that use `acp_stdout_markdown_enabled()` (`code`, `kpop`, `tidy` when the agent runs, `inspire`, and `do` on a TTY). It is a no-op for `models` (no agent). Piped `malvin do` output stays plain regardless of `--no-markdown`. `--git` sets `{{ git_extra }}` so prompt templates may permit `git commit` (default off).
 
 pub use crate::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use clap::Args;
@@ -29,6 +29,9 @@ pub struct SharedOpts {
     /// Don't expand gate-loop budgets to tenacious limits [default: tenacious on].
     #[arg(long = "no-tenacious", global = true, default_value_t = false)]
     pub no_tenacious: bool,
+    /// Run workspace quality gates in the harness and treat failures as loop/exit criteria.
+    #[arg(long, global = true, default_value_t = false)]
+    pub gates: bool,
     #[arg(
         long,
         global = true,
@@ -104,6 +107,7 @@ impl SharedOpts {
             model: crate::config::DEFAULT_CLI_MODEL.into(),
             no_force: true,
             no_tenacious: false,
+            gates: false,
             no_tee: true,
             no_markdown: true,
             verbose: false,

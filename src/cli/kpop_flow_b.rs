@@ -29,6 +29,7 @@ fn kpop_emit_startup_creates_malvin_run_under_root() {
         model: crate::config::DEFAULT_CLI_MODEL.into(),
         no_force: true,
         no_tenacious: false,
+        gates: false,
         no_tee: true,
         no_markdown: true,
         verbose: false,

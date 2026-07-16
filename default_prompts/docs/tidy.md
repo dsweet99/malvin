@@ -39,7 +39,7 @@ Restore normal loop/retry budgets (global flag; see `malvin --doc`).
 
 ## Global options
 
-See `malvin --doc`.
+See `malvin --doc`. Tidy always runs workspace gates; the global `--gates` option does not change tidy behavior.
 
 ## Workflow
 

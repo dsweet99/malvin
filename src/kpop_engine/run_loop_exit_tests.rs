@@ -5,6 +5,21 @@ use super::run_loop_tests::gate_early_exit_fixture;
 use super::{KPopEngineEarlyExitCtx, KpopEngineLoopIterationCtx};
 
 #[test]
+fn exhausted_loop_accepts_skipped_workspace_gates() {
+    use super::super::kpop_session_tests::{
+        loop_params, prepared_fixture, shared_workflow, PreparedContextMode,
+    };
+
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let (prepared, backups) =
+        prepared_fixture("code", tmp.path(), false, PreparedContextMode::Empty);
+    let (shared, _) = shared_workflow();
+    let behavior = KPopHardConstraints::CODE.with_workspace_quality_gates(false);
+    let params = loop_params("code", &shared, &prepared, behavior);
+    assert!(super::exhausted_loop_gate_ok(&params, &backups));
+}
+
+#[test]
 fn gate_loop_early_exit_requires_passing_gates() {
     let (_tmp, artifacts, backups, _bin, _guard) = gate_early_exit_fixture();
     let gate_ctx = GateLoopExitCtx {

@@ -1,4 +1,4 @@
-use super::{maybe_run_router_post_c_gates, RouterTurnsOutcome};
+use super::{maybe_run_router_post_c_gates, RouterPostCGates, RouterTurnsOutcome};
 use crate::artifacts::{
     GitignoreBackup, MalvinChecksBackup, MalvinConfigBackup, MalvinConfigWorkspaceBackup,
     SessionDotfileBackups, VisionBackup,
@@ -26,7 +26,31 @@ fn maybe_run_router_post_c_gates_skips_when_not_coding_task() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let run_dir = tmp.path().join("run");
     std::fs::create_dir_all(&run_dir).expect("run dir");
-    assert!(!maybe_run_router_post_c_gates(tmp.path(), &run_dir, false));
+    assert!(!maybe_run_router_post_c_gates(
+        tmp.path(),
+        &run_dir,
+        RouterPostCGates {
+            coding_task: false,
+            enabled: true,
+        },
+    ));
+}
+
+#[test]
+fn maybe_run_router_post_c_gates_skips_when_gates_are_off() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    crate::seed_malvin_checks(tmp.path(), "false\n");
+    let run_dir = tmp.path().join("run");
+    std::fs::create_dir_all(&run_dir).expect("run dir");
+    assert!(!maybe_run_router_post_c_gates(
+        tmp.path(),
+        &run_dir,
+        RouterPostCGates {
+            coding_task: true,
+            enabled: false,
+        },
+    ));
+    assert!(!run_dir.join("quality_gates.log").exists());
 }
 
 #[test]
@@ -40,7 +64,14 @@ fn maybe_run_router_post_c_gates_passes_when_checks_succeed() {
     crate::seed_malvin_checks(tmp.path(), "true\n");
     let run_dir = tmp.path().join("run");
     std::fs::create_dir_all(&run_dir).expect("run dir");
-    assert!(!maybe_run_router_post_c_gates(tmp.path(), &run_dir, true));
+    assert!(!maybe_run_router_post_c_gates(
+        tmp.path(),
+        &run_dir,
+        RouterPostCGates {
+            coding_task: true,
+            enabled: true,
+        },
+    ));
 }
 
 #[test]
@@ -54,7 +85,14 @@ fn maybe_run_router_post_c_gates_wants_continue_when_check_fails() {
     crate::seed_malvin_checks(tmp.path(), "false\n");
     let run_dir = tmp.path().join("run");
     std::fs::create_dir_all(&run_dir).expect("run dir");
-    assert!(maybe_run_router_post_c_gates(tmp.path(), &run_dir, true));
+    assert!(maybe_run_router_post_c_gates(
+        tmp.path(),
+        &run_dir,
+        RouterPostCGates {
+            coding_task: true,
+            enabled: true,
+        },
+    ));
     let qlog = std::fs::read_to_string(run_dir.join("quality_gates.log")).expect("quality_gates.log");
     assert!(qlog.contains("false"));
 }

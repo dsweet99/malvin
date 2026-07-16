@@ -60,6 +60,14 @@ impl KPopHardConstraints {
     };
 
     #[must_use]
+    pub const fn with_workspace_quality_gates(mut self, gates: bool) -> Self {
+        if !gates {
+            self.skip_workspace_quality_gates = true;
+        }
+        self
+    }
+
+    #[must_use]
     pub const fn consecutive_kpop_solved_to_exit(self) -> usize {
         match self.exit {
             KPopHardConstraintsExit::CodeTidy => 2,
@@ -111,6 +119,25 @@ mod tests {
         assert!(KPopHardConstraints::TIDY.require_passing_gates_for_exit());
         const { assert!(!KPopHardConstraints::CODE.skip_workspace_quality_gates); }
         const { assert!(!KPopHardConstraints::TIDY.skip_workspace_quality_gates); }
+    }
+
+    #[test]
+    fn cli_gates_only_disable_behavior() {
+        assert!(
+            KPopHardConstraints::CODE
+                .with_workspace_quality_gates(false)
+                .skip_workspace_quality_gates
+        );
+        assert!(
+            !KPopHardConstraints::CODE
+                .with_workspace_quality_gates(true)
+                .skip_workspace_quality_gates
+        );
+        assert!(
+            KPopHardConstraints::DELIGHT
+                .with_workspace_quality_gates(true)
+                .skip_workspace_quality_gates
+        );
     }
 
     #[test]

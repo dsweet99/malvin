@@ -90,13 +90,13 @@ fn exhausted_loop_gate_ok(
     params: &super::params::KPopEngineParams<'_>,
     last_backups: &SessionDotfileBackups,
 ) -> bool {
-    params.behavior.recheck_gates_after_exhausted
-        && !params.behavior.skip_workspace_quality_gates
-        && run_gate_workspace_gates_with_fresh_backups(
+    params.behavior.skip_workspace_quality_gates
+        || (params.behavior.recheck_gates_after_exhausted
+            && run_gate_workspace_gates_with_fresh_backups(
             params.prepared.artifacts(),
             last_backups,
             params.behavior,
-        )
+        ))
 }
 
 fn prepare_kpop_engine_loop(work_dir: &Path) -> Result<SessionDotfileBackups, String> {

@@ -60,6 +60,10 @@ By default malvin passes `--force` to `cursor-agent` so tool calls proceed witho
 
 By default the bare route and gate-loop commands (`kpop`, `tidy`, `delight`, `priors`, `explain`, `revise`) expand to `--max-loops=9999` and `--max-acp-retries=9999`. `--no-tenacious` restores normal loop/retry budgets.
 
+### `--gates`
+
+Run workspace quality gates directly in the malvin harness and treat failures as loop or exit criteria. This is off by default and applies to bare `malvin REQUEST` and the deprecated `malvin code` workflow. Agent prompts still include available `.malvin/checks` guidance when this option is off. `malvin tidy` always runs gates and does not honor this option.
+
 ### `--no-tee`
 
 By default malvin tees agent stdout to the terminal (and `stdout.log` in the run dir). `--no-tee` suppresses live streaming; logs are still written under `~/.malvin_home/logs/`.
@@ -106,7 +110,7 @@ Only **`malvin tidy`** requires `.malvin/checks` at gate-loop time. Use **`malvi
 
 `tidy` runs workspace quality gates from `.malvin/checks` at the repo git root (one shell command per non-empty, non-comment line). Full-line comments starting with `#` are ignored. Mid-loop gate iterations do **not** run discovery; they error if checks are absent.
 
-Other commands (`do`, bare `malvin REQUEST`, `kpop`, `inspire`, `delight`, `priors`, `explain`, `revise`) do not require `.malvin/checks` at startup and may run outside a git repo. `header.md` notes about checks lines are advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
+Other commands (`do`, bare `malvin REQUEST`, `kpop`, `inspire`, `delight`, `priors`, `explain`, `revise`) do not require `.malvin/checks` at startup and may run outside a git repo. With `--gates`, a coding bare route runs workspace gates after its work turns and continues its outer loop when they fail. Without `--gates` (the default), malvin does not run those checks directly. `header.md` notes about checks lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
 
 ### `-h` / `--help`
 

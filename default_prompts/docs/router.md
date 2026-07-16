@@ -44,6 +44,7 @@ See `malvin --doc`. Notable for the default route:
 |------|--------|
 | `--max-loops` | Outer router sessions (default `1`; tenacious expands to `9999`) |
 | `--no-tenacious` | Keep default `--max-loops=1` and normal `--max-acp-retries` |
+| `--gates` | Run workspace quality gates after coding work and continue when they fail (default: off) |
 | `--no-tee` | Disables live streaming |
 | `--verbose` | Full prompt bodies in `prompts.log` |
 
@@ -62,7 +63,7 @@ Each outer loop iteration opens one coder session and sends four prompts:
 
 After turn 1, malvin parses `COMPLEXITY_SCORE` from the agent response (label may appear mid-line; markdown decoration and glued trailing prose around the integer are tolerated; range templates like `1-10` are rejected; last valid match wins). Parse failure aborts the run immediately. After turn 2, malvin parses `CODING_TASK` the same way (`YES`/`NO` as whole tokens; last valid match wins). Dotfile backup runs after that parse, before turn 3.
 
-When the agent’s `router_c` reply contains a line exactly equal to `CONTINUE_ROUTER` (or the whole reply trimmed is `CONTINUE_ROUTER`), malvin tears down the session and starts a new outer loop with the same `router_a_1` assembly. Otherwise the run finishes.
+When the agent’s `router_c` reply contains a line exactly equal to `CONTINUE_ROUTER` (or the whole reply trimmed is `CONTINUE_ROUTER`), malvin tears down the session and starts a new outer loop with the same `router_a_1` assembly. With `--gates`, malvin also runs `.malvin/checks` after turn 4 for coding tasks and starts another outer iteration when a check fails. Without `--gates` (the default), no post-turn harness gate run occurs. Agent-visible check guidance is unchanged.
 
 ### Required template keys
 

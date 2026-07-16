@@ -6,12 +6,17 @@ pub(crate) struct RouterTurnsOutcome {
     pub gate_wants_continue: bool,
 }
 
+pub(crate) struct RouterPostCGates {
+    pub coding_task: bool,
+    pub enabled: bool,
+}
+
 pub(crate) fn maybe_run_router_post_c_gates(
     work_dir: &std::path::Path,
     run_dir: &std::path::Path,
-    coding_task: bool,
+    options: RouterPostCGates,
 ) -> bool {
-    if !coding_task {
+    if !options.coding_task || !options.enabled {
         return false;
     }
     match run_repo_workspace_gates(work_dir, RepoGateOutput::Tagged, Some(run_dir)) {

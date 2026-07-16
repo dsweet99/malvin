@@ -146,7 +146,7 @@ def ft_assert_stage_isolated(staged: Path) -> None:
 
 
 def ft_resolve_malvin_binary() -> Path | None:
-    """Best-effort host ``malvin`` binary path for image copy-in."""
+    """Best-effort host ``malvin`` binary path for run-time bind mount."""
     which = shutil.which("malvin")
     if which:
         path = Path(which)
@@ -159,15 +159,17 @@ def ft_resolve_malvin_binary() -> Path | None:
 
 
 def ft_dockerfile_for_agent(base_image: str = DEFAULT_BASE_IMAGE) -> str:
-    """Dockerfile text for the reusable fast-task agent image (no grade material)."""
+    """Dockerfile text for the reusable fast-task agent image (no grade material).
+
+    Malvin is not baked into the image; ``ft_docker_agent_cmd`` bind-mounts the
+    host binary at run time so evals always use the current build.
+    """
     return f"""\
 FROM {base_image}
 RUN apt-get update -qq \\
     && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq curl ca-certificates git \\
     && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir pytest
-COPY malvin_bin {MALVIN_BIN_REMOTE}
-RUN chmod 755 {MALVIN_BIN_REMOTE}
 RUN curl -fsSL https://cursor.com/install | bash
 ENV PATH="{TOOLCHAIN_PATH}"
 WORKDIR /app
@@ -219,21 +221,15 @@ def ft_ensure_agent_image(
     if probe.returncode == 0:
         click.echo(f"Using local agent image {image}")
         return image
-    host_malvin = ft_resolve_malvin_binary()
-    if host_malvin is None:
-        raise click.ClickException(
-            "No host malvin binary found (PATH or ~/.cargo/bin/malvin) to copy into the image"
-        )
     click.echo(
         f"Building agent image {image} from {base_image} "
-        f"(copy malvin from {host_malvin}; cursor-agent; pytest)..."
+        f"(cursor-agent; pytest; malvin mounted at run time)..."
     )
     with tempfile.TemporaryDirectory(prefix="malvin-fast-task-img-") as tmp:
         build_dir = Path(tmp)
         (build_dir / "Dockerfile").write_text(
             ft_dockerfile_for_agent(base_image), encoding="utf-8"
         )
-        shutil.copy2(host_malvin, build_dir / "malvin_bin")
         proc = subprocess.run(
             ["docker", "build", "-t", image, str(build_dir)],
             check=False,
@@ -276,18 +272,32 @@ def ft_docker_agent_cmd(
     *,
     image: str,
     workspace: Path,
+    malvin_binary: Path | None = None,
     malvin_args: tuple[str, ...] = (),
     use_cursor: bool = False,
 ) -> list[str]:
     """Agent-phase ``docker run`` argv: workspace-only mount at ``/app``."""
     ws = workspace.resolve()
+    volume_mounts: list[str] = ["-v", f"{ws}:/app"]
+    if not use_cursor:
+        if malvin_binary is None:
+            raise click.ClickException(
+                "malvin_binary is required when not using --cursor"
+            )
+        host_malvin = malvin_binary.resolve()
+        if not host_malvin.is_file():
+            raise click.ClickException(f"Host malvin binary not found: {host_malvin}")
+        volume_mounts = [
+            "-v",
+            f"{host_malvin}:{MALVIN_BIN_REMOTE}:ro",
+            *volume_mounts,
+        ]
     cmd = [
         "docker",
         "run",
         "--rm",
         *ft_cursor_env_args(),
-        "-v",
-        f"{ws}:/app",
+        *volume_mounts,
         "-e",
         f"PATH={TOOLCHAIN_PATH}",
         "-e",
@@ -488,9 +498,18 @@ def ft_run_solve(
         base_image=base_image,
         dry_run=dry_run,
     )
+    host_malvin: Path | None = None
+    if not use_cursor:
+        host_malvin = ft_resolve_malvin_binary()
+        if host_malvin is None:
+            raise click.ClickException(
+                "No host malvin binary found (PATH or ~/.cargo/bin/malvin); "
+                "build malvin on the host or use --cursor"
+            )
     cmd = ft_docker_agent_cmd(
         image=image,
         workspace=workspace,
+        malvin_binary=host_malvin,
         malvin_args=malvin_args,
         use_cursor=use_cursor,
     )
@@ -633,7 +652,8 @@ def _ft_test_stage_workspace_isolated() -> None:
 def _ft_test_dockerfile_nonleak() -> None:
     text = ft_dockerfile_for_agent()
     assert "pytest" in text
-    assert "malvin_bin" in text
+    assert "malvin_bin" not in text
+    assert MALVIN_BIN_REMOTE not in text
     ft_assert_dockerfile_nonleak(text)
     try:
         ft_assert_dockerfile_nonleak("COPY goldens /leak")
@@ -647,19 +667,23 @@ def _ft_test_docker_agent_cmd_nonleak() -> None:
         ws = Path(tmp) / "workspace"
         ws.mkdir()
         (ws / "plan.md").write_text("x\n", encoding="utf-8")
-        cmd = ft_docker_agent_cmd(image=DEFAULT_IMAGE, workspace=ws)
+        host_malvin = Path(tmp) / "malvin"
+        host_malvin.write_bytes(b"\x7fELF")
+        cmd = ft_docker_agent_cmd(
+            image=DEFAULT_IMAGE,
+            workspace=ws,
+            malvin_binary=host_malvin,
+        )
         assert cmd[0] == "docker"
         assert "plan.md" in cmd
         assert "malvin" in cmd
         assert "cursor-agent" not in " ".join(cmd)
-        mount = None
-        for i, token in enumerate(cmd):
-            if token == "-v":
-                mount = cmd[i + 1]
-                break
-        assert mount is not None
-        assert mount.endswith(":/app")
-        assert str(ws.resolve()) in mount
+        mounts = [cmd[i + 1] for i, token in enumerate(cmd) if token == "-v"]
+        assert len(mounts) == 2
+        assert any(m.endswith(":/app") and str(ws.resolve()) in m for m in mounts)
+        assert any(
+            m == f"{host_malvin.resolve()}:{MALVIN_BIN_REMOTE}:ro" for m in mounts
+        )
         joined = " ".join(cmd)
         assert "grade.py" not in joined
         assert "goldens" not in joined

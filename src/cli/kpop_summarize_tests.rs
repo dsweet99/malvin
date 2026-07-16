@@ -17,6 +17,7 @@ pub(crate) fn summarize_shared_opts(max_acp_retries: u32) -> SharedOpts {
         model: DEFAULT_CLI_MODEL.into(),
         no_force: true,
         no_tenacious: false,
+        gates: false,
         no_tee: true,
         no_markdown: true,
         verbose: false,

@@ -73,6 +73,7 @@ fn kiss_cov_kpop_engine_loop_params_types() {
         model: crate::config::DEFAULT_CLI_MODEL.into(),
         no_force: false,
         no_tenacious: false,
+        gates: false,
         no_tee: true,
         no_markdown: false,
         verbose: false,

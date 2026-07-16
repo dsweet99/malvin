@@ -75,6 +75,7 @@ pub(crate) fn test_kpop_args(max_loops: usize) -> (crate::cli::KpopArgs, crate::
         model: DEFAULT_CLI_MODEL.into(),
         no_force: true,
         no_tenacious: true,
+        gates: false,
         no_tee: true,
         no_markdown: true,
         verbose: false,
