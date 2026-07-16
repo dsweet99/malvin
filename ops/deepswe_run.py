@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Any
 
 import click
 
@@ -44,48 +45,20 @@ def deepswe_run_self_test_cmd() -> None:
 @_lib._task_kernel_options
 @_lib._local_solve_options
 @click.pass_context
-def deepswe_run_solve(
-    ctx: click.Context,
-    *,
-    task_name: str | None,
-    task_dir: Path | None,
-    workspace: Path | None,
-    results_dir: Path | None,
-    malvin_command: str,
-    runtime: str,
-    skip_materialize: bool,
-    grade_only: bool,
-    smoke_grade: bool,
-    skip_grade: bool,
-    apply_solution: bool,
-    reset_workspace_flag: bool,
-    docker_image: str | None,
-    dry_run: bool,
-    use_local_docker: bool,
-    test_harness: bool,
-    malvin_args: tuple[str, ...],
-) -> None:
+def deepswe_run_solve(ctx: click.Context, **kwargs: Any) -> None:
     """Run malvin and Harbor grade (Modal by default; --local for Docker; --task for path-based)."""
-    _lib.dispatch_solve(
-        ctx,
-        task_name=task_name,
-        task_dir=task_dir,
-        workspace=workspace,
-        results_dir=results_dir,
-        malvin_command=malvin_command,
-        runtime=runtime,
-        skip_materialize=skip_materialize,
-        grade_only=grade_only,
-        smoke_grade=smoke_grade,
-        skip_grade=skip_grade,
-        apply_solution=apply_solution,
-        reset_workspace_flag=reset_workspace_flag,
-        docker_image=docker_image,
-        dry_run=dry_run,
-        use_local_docker=use_local_docker,
-        test_harness=test_harness,
-        malvin_args=malvin_args,
-    )
+    use_cursor = bool(kwargs.pop("use_cursor", False))
+    test_harness = bool(kwargs.get("test_harness", False))
+    malvin_command = kwargs.get("malvin_command", "route")
+    if use_cursor and test_harness:
+        raise click.ClickException("Use either --test or --cursor, not both")
+    if use_cursor:
+        if malvin_command not in ("route", "code"):
+            raise click.ClickException(
+                f"--cursor only applies to route/code, not --command {malvin_command}"
+            )
+        kwargs["malvin_command"] = "cursor"
+    _lib.dispatch_solve(ctx, **kwargs)
 
 
 cli = deepswe_run_cli

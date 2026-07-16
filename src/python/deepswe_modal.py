@@ -2754,7 +2754,13 @@ def run_modal_eval(
         if grade_only:
             click.echo("Dry run: grade-only on Modal (block_network sandbox)")
         else:
-            click.echo("Dry run: malvin agent in Modal sandbox (Cursor API allowlist)")
+            if malvin_command == "cursor":
+                click.echo(
+                    "Dry run: agent.sh would run `cursor --force -p < plan.md` "
+                    "(skip malvin init)"
+                )
+            else:
+                click.echo("Dry run: malvin agent in Modal sandbox (Cursor API allowlist)")
             if not skip_grade:
                 click.echo(
                     "Dry run: Harbor grade in same Modal sandbox (host-prepared bash scripts)"

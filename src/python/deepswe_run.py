@@ -143,16 +143,24 @@ def _agent_env_preamble() -> str:
     )
 
 
+# Request-literal agent shell for ``solve --cursor`` (stdin plan; skip malvin).
+CURSOR_SOLVE_SHELL = "cursor --force -p < plan.md"
+
+
 def build_agent_script(
     malvin_command: str,
     *,
     malvin_cmd: str = "malvin",
     malvin_args: tuple[str, ...] = (),
 ) -> str:
-    """Return agent-phase bash for ``route`` / ``init-checks`` / ``do`` / ``hello``."""
+    """Return agent-phase bash for ``route`` / ``init-checks`` / ``do`` / ``hello`` / ``cursor``."""
     q = shlex.quote(malvin_cmd)
     extra = " ".join(shlex.quote(a) for a in malvin_args)
-    if malvin_command == "init-checks":
+    if malvin_command == "cursor":
+        body = f"{CURSOR_SOLVE_SHELL}\n"
+        if malvin_args:
+            body = f"# ignored malvin_args: {extra}\n" + body
+    elif malvin_command == "init-checks":
         body = (
             f"{q} init\n"
             "set -euo pipefail\n"
@@ -2483,7 +2491,7 @@ def grade_workspace(
 
 def malvin_needs_task_plan(command: str) -> bool:
     """True when the agent phase reads task ``plan.md`` (``malvin --git plan.md``)."""
-    return command in ("code", "route")
+    return command in ("code", "route", "cursor")
 
 
 def agent_phase_needs_cursor_credentials(
@@ -2796,7 +2804,14 @@ def run_malvin(
     timeout_sec: float | None = None,
     configured_timeout_sec: float | None = None,
 ) -> dict[str, Any]:
-    if command == "do":
+    if command == "cursor":
+        plan = workspace / "plan.md"
+        if not dry_run and not plan.is_file():
+            raise click.ClickException(f"Missing plan.md in workspace: {plan}")
+        if malvin_args:
+            click.echo(f"Note: ignoring extra malvin args for --cursor: {malvin_args!r}")
+        cmd = ["bash", "-lc", CURSOR_SOLVE_SHELL]
+    elif command == "do":
         if not malvin_args:
             raise click.ClickException("malvin do requires a prompt argument")
         cmd = [MALVIN_CMD, "do", *malvin_args]
@@ -2909,7 +2924,7 @@ def run_modal_solve(
     apply_solution: bool,
     reset_workspace_flag: bool,
     dry_run: bool,
-    malvin_args: tuple[str, ...],
+    malvin_args: tuple[str, ...]
 ) -> None:
     """Dispatch task-name solves to Modal (lazy import keeps self-test Modal-free)."""
     try:
@@ -2962,7 +2977,7 @@ def _run_solve_local_docker_fallback(
     reset_workspace_flag: bool,
     docker_image: str | None,
     dry_run: bool,
-    malvin_args: tuple[str, ...],
+    malvin_args: tuple[str, ...]
 ) -> None:
     """Run solve in local Docker when Modal billing blocks sandbox creation."""
     spec = parse_task_dir(task_dir)
@@ -3140,7 +3155,7 @@ def _run_local_docker_task(
     apply_solution: bool,
     reset_workspace_flag: bool,
     docker_image: str | None,
-    dry_run: bool,
+    dry_run: bool
 ) -> None:
     local_result = run_local_eval_in_docker(
         spec,
@@ -3154,7 +3169,7 @@ def _run_local_docker_task(
         apply_solution=apply_solution,
         reset_workspace_flag=reset_workspace_flag or apply_solution,
         docker_image=docker_image,
-        dry_run=dry_run,
+        dry_run=dry_run
     )
     agent_result = local_result.get("agent")
     grade_result = local_result.get("grade") or {}
@@ -3203,7 +3218,7 @@ def run_task(
     malvin_args: tuple[str, ...],
     extra_args: tuple[str, ...] = (),
     use_local_docker: bool = False,
-    smoke_grade: bool = False,
+    smoke_grade: bool = False
 ) -> None:
     """Run malvin on a DeepSWE task and grade with Harbor ``tests/test.sh``."""
     if extra_args:
@@ -3225,7 +3240,7 @@ def run_task(
                     apply_solution=apply_solution,
                     reset_workspace_flag=reset_workspace_flag,
                     dry_run=dry_run,
-                    malvin_args=malvin_args,
+                    malvin_args=malvin_args
                 )
             except Exception as exc:
                 if not _is_modal_spend_limit_error(exc):
@@ -3243,7 +3258,7 @@ def run_task(
                     reset_workspace_flag=reset_workspace_flag,
                     docker_image=docker_image,
                     dry_run=dry_run,
-                    malvin_args=malvin_args,
+                    malvin_args=malvin_args
                 )
             return
     elif task_dir is None:
@@ -3282,7 +3297,7 @@ def run_task(
             apply_solution=apply_solution,
             reset_workspace_flag=reset_workspace_flag,
             docker_image=docker_image,
-            dry_run=dry_run,
+            dry_run=dry_run
         )
         return
 
@@ -3330,7 +3345,7 @@ def run_task(
                     malvin_args=malvin_args,
                     dry_run=dry_run,
                     timeout_sec=remaining,
-                    configured_timeout_sec=spec.agent_timeout_sec,
+                    configured_timeout_sec=spec.agent_timeout_sec
                 )
                 if agent_result.get("timed_out"):
                     agent_timed_out = True
@@ -3492,6 +3507,15 @@ def _task_kernel_options(f: Any) -> Any:
         is_flag=True,
         help="Print commands without executing.",
     )(f)
+    f = click.option(
+        "--cursor",
+        "use_cursor",
+        is_flag=True,
+        help=(
+            "Skip malvin init; run "
+            f"`{CURSOR_SOLVE_SHELL}` instead of `malvin --git plan.md`."
+        ),
+    )(f)
     return f
 
 
@@ -3608,7 +3632,7 @@ def dispatch_solve(
         task_dir=None,
         workspace=None,
         results_dir=None,
-        malvin_command="init-checks" if test_harness else "route",
+        malvin_command=malvin_command,
         runtime="host",
         skip_materialize=False,
         grade_only=False,
@@ -3879,6 +3903,10 @@ def _test_trial_scripts_deny_runtime_installs() -> None:
     assert "malvin init" in agent
     assert "malvin --git plan.md" in agent
     assert RUNTIME_INSTALL_DENYLIST_RE.search(agent) is None
+    cursor = build_agent_script("cursor")
+    assert CURSOR_SOLVE_SHELL in cursor
+    assert "malvin init" not in cursor
+    assert "malvin --git plan.md" not in cursor
     init_checks = build_agent_script("init-checks")
     assert "source .malvin/checks" in init_checks
     grade = build_grade_script()
@@ -3991,6 +4019,20 @@ def _test_solve_modal_dry_run() -> None:
     assert "docker run" not in result.output
     assert "Dry run: would materialize workspace" in result.output
     assert "Dry run: malvin agent in Modal sandbox" in result.output
+    with _patch_modal_cursor_credentials():
+        cursor = runner.invoke(
+            _ops_cli(),
+            [
+                "solve",
+                "--cursor",
+                "bandit-interprocedural-taint-checks",
+                "--dry-run",
+            ],
+        )
+    assert cursor.exit_code == 0, cursor.output
+    assert CURSOR_SOLVE_SHELL in cursor.output
+    assert "skip malvin init" in cursor.output.lower()
+    assert "malvin agent in Modal sandbox" not in cursor.output
 
 
 def _test_solve_modal_full_dry_run() -> None:
@@ -4072,6 +4114,12 @@ def _test_solve_test_flag_rejects_skip_grade() -> None:
     )
     assert result.exit_code != 0
     assert "not both" in result.output.lower()
+    cursor_clash = runner.invoke(
+        _ops_cli(),
+        ["solve", "--test", "--cursor", "bandit-interprocedural-taint-checks"],
+    )
+    assert cursor_clash.exit_code != 0
+    assert "not both" in cursor_clash.output.lower()
 
 
 def _test_solve_test_flag_in_help() -> None:
@@ -4083,6 +4131,8 @@ def _test_solve_test_flag_in_help() -> None:
     assert "--test" in result.output
     assert "malvin init" in result.output
     assert ".malvin/checks" in result.output
+    assert "--cursor" in result.output
+    assert "cursor --force -p" in result.output
 
 
 def _test_solve_resets_workspace_for_agent_runs() -> None:
@@ -5129,6 +5179,12 @@ def _test_run_malvin_init_checks_preseeds_then_shells() -> None:
         assert (workspace / ".malvin" / "checks").is_file()
         assert captured["cmd"][:2] == ["bash", "-lc"]
         assert "source .malvin/checks" in captured["cmd"][2]
+        (workspace / "plan.md").write_text("# plan\n", encoding="utf-8")
+        cursor = run_malvin(
+            workspace, command="cursor", malvin_args=(), dry_run=True
+        )
+        assert cursor.get("dry_run") is True
+        assert cursor.get("exit_code") == 0
 
 
 def _test_agent_phase_needs_cursor_credentials() -> None:
@@ -5136,6 +5192,7 @@ def _test_agent_phase_needs_cursor_credentials() -> None:
     assert agent_phase_needs_cursor_credentials("init-checks", grade_only=False) is False
     assert agent_phase_needs_cursor_credentials("route", grade_only=False) is True
     assert agent_phase_needs_cursor_credentials("hello", grade_only=False) is True
+    assert agent_phase_needs_cursor_credentials("cursor", grade_only=False) is True
 
 
 def _test_resolve_malvin_cmd_prefers_repo_target() -> None:
