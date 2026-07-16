@@ -3,13 +3,22 @@ use crate::flow_prompt_join_test_helpers::flow_test_artifacts;
 use crate::router_flow::router_flow_prompt::{
     build_router_b_prompt, build_router_c_prompt, prepare_router_prompt_store, RouterBPromptInput,
 };
-use crate::prompts::ROUTER_B_SIMPLE_MD;
+use crate::prompts::{PromptStore, ROUTER_B_SIMPLE_MD};
 
 #[test]
 fn build_router_b_prompt_expands_malvin_command_with_active_model() {
+    // Default router_b_simple.md no longer embeds {{ malvin_command }}; use a
+    // local template so this still checks model expansion through RouterBPromptInput.
     let tmp = tempfile::tempdir().expect("tempdir");
+    let prompt_root = tmp.path().join("prompts");
+    std::fs::create_dir_all(&prompt_root).expect("mkdir prompts");
+    std::fs::write(
+        prompt_root.join(ROUTER_B_SIMPLE_MD),
+        "Use {{ malvin_command }} kpop\n{{ code_extra }}\n",
+    )
+    .expect("write router_b_simple");
+    let store = PromptStore::with_root(prompt_root);
     let artifacts = flow_test_artifacts(&tmp);
-    let store = prepare_router_prompt_store().expect("store");
     let body = build_router_b_prompt(RouterBPromptInput {
         store: &store,
         artifacts: &artifacts,
