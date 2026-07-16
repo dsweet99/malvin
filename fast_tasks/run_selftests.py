@@ -21,7 +21,6 @@ TASK_IDS = [
     "FT-08",
     "FT-20",
     "FT-15",
-    "FT-23",
 ]
 DROPPED = {
     "FT-02",
@@ -36,6 +35,7 @@ DROPPED = {
     "FT-19",
     "FT-21",
     "FT-22",
+    "FT-23",
 }
 FORBIDDEN_IMPORT_ROOTS = {"malvin", "ops", "src"}
 

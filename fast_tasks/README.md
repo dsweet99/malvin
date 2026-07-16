@@ -1,6 +1,6 @@
 # Fast tasks
 
-Eleven short-horizon, binary-graded micro-eval tasks (survivors from `../fast_tasks.md`, plus `FT-23`).
+Ten short-horizon, binary-graded micro-eval tasks (survivors from `../fast_tasks.md`).
 
 ## Layout
 
@@ -13,7 +13,7 @@ Each task id lives under `fast_tasks/<ID>/`:
 | `grade.py` | Self-contained Harbor-style grader (outside agent work_dir). |
 | `goldens/` | Grader-only expected values / hidden tests (not agent-visible when using plan path above). |
 
-Task ids: `FT-01`, `FT-03`, `FT-13`, `FT-12`, `FT-05`, `FT-09`, `FT-17`, `FT-08`, `FT-20`, `FT-15`, `FT-23`.
+Task ids: `FT-01`, `FT-03`, `FT-13`, `FT-12`, `FT-05`, `FT-09`, `FT-17`, `FT-08`, `FT-20`, `FT-15`.
 
 ## Grader CLI
 
