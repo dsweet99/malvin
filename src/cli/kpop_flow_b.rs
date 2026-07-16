@@ -91,10 +91,6 @@ fn kpop_markdown_fixture_context() -> WorkflowRenderContext {
         ("kpop_log_dir", "./.malvin/logs/run42/_kpop"),
         ("review_path", "./.malvin/logs/run42/review.md"),
         ("result_path", "./.malvin/logs/run42/result.md"),
-        (
-            "still_not_done_path",
-            "./.malvin/logs/run42/still_not_done.md",
-        ),
         ("exp_log", ".malvin/logs/run42/_kpop/exp_log_run42.md"),
         ("malvin_command", "malvin --model=cursor:auto"),
         ("quality_gates", ""),

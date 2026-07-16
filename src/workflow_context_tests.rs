@@ -114,18 +114,10 @@ fn insert_artifact_paths_populates_expected_keys() {
     assert!(ctx.contains_key("advice_path"));
     assert!(ctx.contains_key("logs_dir"));
     assert!(ctx.contains_key("user_request_path"));
-    assert!(ctx.contains_key("still_not_done_path"));
     assert_eq!(
         ctx.get("user_request_path").map(String::as_str),
         ctx.get("plan_path").map(String::as_str),
     );
-    let still = ctx.get("still_not_done_path").expect("still_not_done_path");
-    assert!(
-        still.ends_with("still_not_done.md"),
-        "still_not_done_path must name still_not_done.md; got {still:?}"
-    );
-    let expected = format_prompt_path(&crate::artifacts::still_not_done_path(&artifacts), tmp.path());
-    assert_eq!(still, &expected);
 }
 
 #[test]

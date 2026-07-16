@@ -43,12 +43,6 @@ fn insert_review_artifact_paths(
         &artifacts.artifact_result_md(),
         base,
     );
-    insert_formatted(
-        context,
-        "still_not_done_path",
-        &crate::artifacts::still_not_done_path(artifacts),
-        base,
-    );
 }
 
 fn insert_kpop_and_workspace_paths(

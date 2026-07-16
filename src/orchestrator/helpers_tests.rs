@@ -118,17 +118,10 @@ fn insert_artifact_paths_populates_context() {
     assert!(ctx.contains_key("kpop_log_dir"));
     assert!(ctx.contains_key("review_path"));
     assert!(ctx.contains_key("result_path"));
-    assert!(ctx.contains_key("still_not_done_path"));
     assert!(ctx.contains_key("quality_gates_log"));
     assert_eq!(
         ctx.get("malvin_command").map(String::as_str),
         Some(crate::format_malvin_command(crate::config::DEFAULT_CLI_MODEL).as_str()),
-    );
-    assert!(
-        ctx.get("still_not_done_path")
-            .expect("still_not_done_path")
-            .ends_with("still_not_done.md"),
-        "still_not_done_path must end with still_not_done.md"
     );
 }
 

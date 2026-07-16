@@ -18,19 +18,6 @@ fn log_path_sanitizes_slashes_and_backslashes() {
 }
 
 #[test]
-fn still_not_done_path_is_under_run_dir() {
-    let r = RunArtifacts {
-        run_dir: PathBuf::from("/tmp/run"),
-        plan_path: PathBuf::from("/tmp/run/plan.md"),
-        work_dir: PathBuf::from("/work"),
-    };
-    assert_eq!(
-        still_not_done_path(&r),
-        PathBuf::from("/tmp/run/still_not_done.md")
-    );
-}
-
-#[test]
 fn create_run_artifacts_relative_plan_uses_dot_work_dir() {
     let _guard = crate::test_utils::test_env_lock();
     let tmp = tempfile::tempdir().unwrap();
