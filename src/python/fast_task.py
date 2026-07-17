@@ -706,8 +706,6 @@ def _ft_test_docker_agent_cmd_cursor() -> None:
         assert "cursor-agent --force -p < plan.md" in joined
         assert "malvin" not in cmd
         assert "--verbose" not in cmd
-
-
 def _ft_test_assert_agent_cmd_rejects_task_root() -> None:
     task_dir = ft_resolve_task_dir("FT-01")
     bad = [
