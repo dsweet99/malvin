@@ -1,4 +1,4 @@
-use crate::ChatMessage;
+use crate::malvin_mini::ChatMessage;
 
 /// Remove every odd-indexed word from the 25%-75% middle region of `content`.
 #[must_use]
@@ -32,7 +32,7 @@ pub fn shrink_messages(messages: &[ChatMessage]) -> Vec<ChatMessage> {
 }
 
 #[must_use]
-pub fn is_prompt_too_long_error(err: &crate::OpenRouterError) -> bool {
+pub fn is_prompt_too_long_error(err: &crate::malvin_mini::OpenRouterError) -> bool {
     err.to_string()
         .to_ascii_lowercase()
         .contains("prompt is too long")
@@ -41,8 +41,8 @@ pub fn is_prompt_too_long_error(err: &crate::OpenRouterError) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{is_prompt_too_long_error, shrink_messages, shrink_prompt_content};
-    use crate::{ChatMessage, ChatRole};
-    use crate::OpenRouterError;
+    use crate::malvin_mini::{ChatMessage, ChatRole};
+    use crate::malvin_mini::OpenRouterError;
 
     #[test]
     fn shrink_prompt_content_removes_odd_indexed_words_in_middle_region() {

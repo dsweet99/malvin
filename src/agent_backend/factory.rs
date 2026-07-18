@@ -98,9 +98,19 @@ mod tests {
     }
 
     #[test]
-    fn workspace_cargo_toml_lists_malvin_mini_member() {
+    fn malvin_crate_embeds_malvin_mini_module_not_path_dep() {
         let text = std::fs::read_to_string("Cargo.toml").expect("Cargo.toml");
-        assert!(text.contains("malvin-mini"));
-        assert!(text.contains("[workspace]"));
+        assert!(
+            !text.contains("malvin-mini ="),
+            "malvin must not path-depend on a separate malvin-mini crate"
+        );
+        assert!(
+            !text.contains("[workspace]"),
+            "single-crate publish: no workspace members"
+        );
+        assert!(
+            std::path::Path::new("src/malvin_mini/mod.rs").is_file(),
+            "malvin-mini sources must live under src/malvin_mini"
+        );
     }
 }

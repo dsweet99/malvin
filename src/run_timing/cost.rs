@@ -1,4 +1,4 @@
-use malvin_mini::ResponseUsage;
+use crate::malvin_mini::ResponseUsage;
 
 use super::RunTiming;
 

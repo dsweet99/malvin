@@ -199,7 +199,7 @@ fn write_json_and_print_summary_creates_file() {
 #[test]
 fn run_timing_json_includes_cost_block_under_mini() {
     use crate::run_timing::{RunTiming, TimingPhase};
-    use malvin_mini::ResponseUsage;
+    use crate::malvin_mini::ResponseUsage;
 
     let mut r = RunTiming::default();
     r.record_mini_http_cost(&ResponseUsage {

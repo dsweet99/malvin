@@ -3,7 +3,7 @@
 use crate::acp::AgentIoOptions;
 use crate::cli::SharedOpts;
 use crate::agent_backend::mini::{LlmBackend, MiniTraceSink, MockScript, MockStep};
-use malvin_mini::CompletionResponse;
+use crate::malvin_mini::CompletionResponse;
 
 #[must_use]
 pub fn mini_done_response() -> CompletionResponse {

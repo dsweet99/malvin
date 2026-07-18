@@ -1,4 +1,4 @@
-//! External kiss witnesses for malvin-mini openrouter modules.
+//! External kiss witnesses for `malvin_mini` openrouter modules.
 
 use super::client::OpenRouterClient;
 

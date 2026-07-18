@@ -1,6 +1,6 @@
 //! Mock LLM backend for mini bash-loop tests.
 
-use malvin_mini::{ChatMessage, CompletionResponse, OpenRouterError};
+use crate::malvin_mini::{ChatMessage, CompletionResponse, OpenRouterError};
 
 pub enum MockStep {
     Ok(CompletionResponse),
@@ -18,7 +18,7 @@ pub struct MockScript {
 }
 
 pub enum LlmBackend {
-    Http(malvin_mini::OpenRouterClient),
+    Http(crate::malvin_mini::OpenRouterClient),
     Mock(std::sync::Mutex<MockScript>),
 }
 
@@ -51,7 +51,7 @@ impl LlmBackend {
 
 #[cfg(test)]
 mod tests {
-    use malvin_mini::{ChatMessage, ChatRole, CompletionResponse};
+    use crate::malvin_mini::{ChatMessage, ChatRole, CompletionResponse};
 
     use super::{LlmBackend, MockScript, MockStep};
 

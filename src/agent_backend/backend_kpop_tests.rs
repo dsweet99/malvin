@@ -11,7 +11,7 @@ use super::{
 };
 use crate::acp::KpopFlowOnceArgs;
 use crate::kpop_multiturn_prompts::{KpopMultiturnPrompts, SmokeKpopBuilder};
-use malvin_mini::CompletionResponse;
+use crate::malvin_mini::CompletionResponse;
 
 fn mock_backend(responses: Vec<MockStep>, max_http_retries: u32) -> AgentBackend {
     AgentBackend::Mini(MiniAgentClient::new_mock(

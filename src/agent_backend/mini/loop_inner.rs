@@ -2,7 +2,7 @@
 
 use std::time::Instant;
 
-use malvin_mini::{ChatMessage, ChatRole, CompletionResponse};
+use crate::malvin_mini::{ChatMessage, ChatRole, CompletionResponse};
 
 use crate::agent_backend::mini::bash_adapter::{format_observation, run_bash_command, BashExecResult};
 use crate::agent_backend::mini::fence_parser::{

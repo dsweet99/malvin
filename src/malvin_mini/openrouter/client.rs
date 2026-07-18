@@ -1,7 +1,7 @@
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderValue};
 
-use crate::config::OpenRouterConfig;
-use crate::error::OpenRouterError;
+use crate::malvin_mini::config::OpenRouterConfig;
+use crate::malvin_mini::error::OpenRouterError;
 
 pub struct OpenRouterClient {
     http: reqwest::Client,
@@ -25,7 +25,7 @@ impl OpenRouterClient {
     }
 
     #[must_use]
-    pub(super) fn http(&self) -> &reqwest::Client {
+    pub(super) const fn http(&self) -> &reqwest::Client {
         &self.http
     }
 }
@@ -60,7 +60,7 @@ mod tests {
     use std::time::Duration;
 
     use super::{build_request_headers, OpenRouterClient};
-    use crate::config::OpenRouterConfig;
+    use crate::malvin_mini::config::OpenRouterConfig;
 
     #[test]
     fn build_request_headers_includes_auth_and_referer() {
