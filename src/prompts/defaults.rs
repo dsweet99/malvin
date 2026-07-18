@@ -172,6 +172,7 @@ mod router_header_embed_tests {
             coding_task: false,
             model: DEFAULT_CLI_MODEL,
             git: false,
+            gates: false,
         }).expect("router_b");
         assert!(!router_b.contains("{{"));
         let router_c = build_router_c_prompt(&store, &artifacts, DEFAULT_CLI_MODEL, false).expect("router_c");
@@ -183,6 +184,7 @@ mod router_header_embed_tests {
             coding_task: true,
             model: DEFAULT_CLI_MODEL,
             git: false,
+            gates: true,
         }).expect("router_b_complex");
         assert!(!router_b_complex.contains("{{"));
         assert!(default_file(ROUTER_A_1_MD).is_some());

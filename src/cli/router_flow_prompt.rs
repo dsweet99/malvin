@@ -117,15 +117,29 @@ fn router_code_checks_text(work_dir: &std::path::Path) -> Result<String, String>
     Ok(commands.join("\n"))
 }
 
-fn render_router_code_extra(
-    store: &PromptStore,
-    artifacts: &RunArtifacts,
-    model: &str,
+struct RouterCodeExtraInput<'a> {
+    store: &'a PromptStore,
+    artifacts: &'a RunArtifacts,
+    model: &'a str,
     git: bool,
-) -> Result<String, String> {
-    let work_dir = artifacts.work_dir.as_path();
+    gates: bool,
+}
+
+fn render_router_code_extra(input: RouterCodeExtraInput<'_>) -> Result<String, String> {
+    let RouterCodeExtraInput {
+        store,
+        artifacts,
+        model,
+        git,
+        gates,
+    } = input;
     let mut ctx = workflow_context_paths_only(artifacts, model, git);
-    ctx.insert("code_checks".to_string(), router_code_checks_text(work_dir)?);
+    let code_checks = if gates {
+        router_code_checks_text(artifacts.work_dir.as_path())?
+    } else {
+        String::new()
+    };
+    ctx.insert("code_checks".to_string(), code_checks);
     let body = store
         .render_prompt_only(ROUTER_CODE_EXTRA_MD, ctx.as_map())
         .map_err(|e: PromptError| e.0)?;
@@ -152,6 +166,7 @@ pub(crate) struct RouterBPromptInput<'a> {
     pub coding_task: bool,
     pub model: &'a str,
     pub git: bool,
+    pub gates: bool,
 }
 
 pub(crate) fn build_router_b_prompt(input: RouterBPromptInput<'_>) -> Result<String, String> {
@@ -162,10 +177,17 @@ pub(crate) fn build_router_b_prompt(input: RouterBPromptInput<'_>) -> Result<Str
         coding_task,
         model,
         git,
+        gates,
     } = input;
     let mut ctx = workflow_context_paths_only(artifacts, model, git);
     let code_extra = if coding_task {
-        render_router_code_extra(store, artifacts, model, git)?
+        render_router_code_extra(RouterCodeExtraInput {
+            store,
+            artifacts,
+            model,
+            git,
+            gates,
+        })?
     } else {
         String::new()
     };

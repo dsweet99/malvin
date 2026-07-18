@@ -175,6 +175,7 @@ async fn run_router_work_turns(
         coding_task,
         model: &ctx.shared.model,
         git: ctx.shared.git,
+        gates: ctx.shared.gates,
     })?;
     run_router_b_coder_prompt(ctx.client, &b_body, ctx.log_path, router_b_label).await?;
     let router_c_prompt =

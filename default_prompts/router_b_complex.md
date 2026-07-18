@@ -1,12 +1,9 @@
 
 
-You must act autonomously without further input from the user.
-
-# Actions
+Satisfy the user request.
 
 {{ code_extra }}
 
-- Satisfiy the user request.
 
 
  

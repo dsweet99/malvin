@@ -26,6 +26,7 @@ fn build_router_b_prompt_expands_malvin_command_with_active_model() {
         coding_task: false,
         model: "composer-2",
         git: false,
+        gates: false,
     })
     .expect("router_b");
     assert!(body.contains("malvin --model=composer-2"));
@@ -44,6 +45,7 @@ fn build_router_b_prompt_renders_without_unresolved_braces() {
         coding_task: false,
         model: DEFAULT_CLI_MODEL,
         git: false,
+        gates: false,
     })
     .expect("router_b");
     assert!(!body.contains("CONTINUE_ROUTER"));
@@ -66,8 +68,30 @@ fn build_router_b_prompt_includes_code_checks_when_coding_task() {
         coding_task: true,
         model: DEFAULT_CLI_MODEL,
         git: false,
-    }).expect("router_b");
+        gates: true,
+    })
+    .expect("router_b");
     assert!(body.contains("echo ROUTER_CHECK_LINE"));
+    assert!(!body.contains("{{"));
+}
+
+#[test]
+fn build_router_b_prompt_omits_code_checks_when_gates_disabled() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = flow_test_artifacts(&tmp);
+    crate::seed_malvin_checks(tmp.path(), "echo ROUTER_CHECK_LINE\n");
+    let store = prepare_router_prompt_store().expect("store");
+    let body = build_router_b_prompt(RouterBPromptInput {
+        store: &store,
+        artifacts: &artifacts,
+        template: ROUTER_B_SIMPLE_MD,
+        coding_task: true,
+        model: DEFAULT_CLI_MODEL,
+        git: false,
+        gates: false,
+    })
+    .expect("router_b");
+    assert!(!body.contains("echo ROUTER_CHECK_LINE"));
     assert!(!body.contains("{{"));
 }
 
