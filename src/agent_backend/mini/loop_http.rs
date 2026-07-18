@@ -2,7 +2,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use malvin_mini::{ChatMessage, CompletionResponse};
+use crate::malvin_mini::{ChatMessage, CompletionResponse};
 
 use super::loop_mock::LlmBackend;
 use crate::acp::AgentError;
@@ -50,7 +50,7 @@ pub async fn complete_with_http_retries(req: HttpRetryRequest<'_>) -> Result<Com
 
 #[cfg(test)]
 mod tests {
-    use malvin_mini::{ChatMessage, ChatRole, CompletionResponse};
+    use crate::malvin_mini::{ChatMessage, ChatRole, CompletionResponse};
 
     use super::{complete_with_http_retries, HttpRetryRequest};
     use super::super::loop_mock::{LlmBackend, MockScript, MockStep};

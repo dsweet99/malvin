@@ -1121,9 +1121,10 @@ dependencies = [
  "futures",
  "libc",
  "libproc",
- "malvin-mini",
  "rand 0.8.5",
+ "reqwest",
  "rusqlite",
+ "serde",
  "serde_json",
  "tempfile",
  "termimad",
@@ -1134,17 +1135,6 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "unicode-width 0.2.2",
-]
-
-[[package]]
-name = "malvin-mini"
-version = "0.1.0"
-dependencies = [
- "reqwest",
- "serde",
- "serde_json",
- "thiserror 1.0.69",
- "tokio",
  "wiremock",
 ]
 

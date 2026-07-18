@@ -9,7 +9,7 @@ pub struct LoopDriverConfig {
 }
 
 pub struct LoopDriverSession {
-    pub messages: Vec<malvin_mini::ChatMessage>,
+    pub messages: Vec<crate::malvin_mini::ChatMessage>,
     pub cwd: std::path::PathBuf,
 }
 

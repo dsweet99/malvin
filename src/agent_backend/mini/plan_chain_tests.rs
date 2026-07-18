@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use malvin_mini::{ChatMessage, CompletionResponse};
+use crate::malvin_mini::{ChatMessage, CompletionResponse};
 
 use super::{LlmBackend, MiniAgentClient, MiniLoopConfig, MockScript, MockStep};
 use crate::acp::CoderPromptOptions;

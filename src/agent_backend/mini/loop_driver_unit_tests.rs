@@ -1,7 +1,7 @@
 use super::{
     classify_turn, exhausted_error, push_user_prompt, TurnAction, TurnContext, LoopDriverSession,
 };
-use malvin_mini::ChatRole;
+use crate::malvin_mini::ChatRole;
 
 #[test]
 fn classify_turn_detects_mini_done_and_no_fence_nudge() {

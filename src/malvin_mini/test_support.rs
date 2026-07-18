@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use crate::config::OpenRouterConfig;
+use crate::malvin_mini::config::OpenRouterConfig;
 use wiremock::matchers::{body_string_contains, method};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 

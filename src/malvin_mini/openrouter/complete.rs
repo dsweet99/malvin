@@ -1,8 +1,8 @@
 use super::client::{build_request_headers, OpenRouterClient};
 use super::serde_types::{ChatCompletionRequest, ChatCompletionResponse, ChatChoiceMessage};
 use super::types::{ChatMessage, CompletionResponse};
-use crate::error::OpenRouterError;
-use crate::prompt_shrink::{is_prompt_too_long_error, shrink_messages};
+use crate::malvin_mini::error::OpenRouterError;
+use crate::malvin_mini::prompt_shrink::{is_prompt_too_long_error, shrink_messages};
 
 impl OpenRouterClient {
     /// # Errors
@@ -76,7 +76,7 @@ fn parse_completion_body(text: &str) -> Result<CompletionResponse, OpenRouterErr
 #[cfg(test)]
 mod tests {
     use super::{map_http_status, parse_completion_body};
-    use crate::error::OpenRouterError;
+    use crate::malvin_mini::error::OpenRouterError;
 
     #[test]
     fn map_http_status_maps_known_codes() {

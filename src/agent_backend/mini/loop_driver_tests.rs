@@ -2,7 +2,7 @@ use super::{
     run_inner_loop, LoopDriverConfig, LoopDriverRun, LoopDriverSession, MockStep,
 };
 use crate::agent_backend::test_support::{mini_test_trace, mock_llm};
-use malvin_mini::{ChatRole, CompletionResponse, ResponseUsage};
+use crate::malvin_mini::{ChatRole, CompletionResponse, ResponseUsage};
 
 fn test_config() -> LoopDriverConfig {
     LoopDriverConfig {

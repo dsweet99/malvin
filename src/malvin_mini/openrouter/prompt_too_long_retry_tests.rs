@@ -1,12 +1,12 @@
 use super::client::OpenRouterClient;
 use super::types::{ChatMessage, ChatRole};
-use crate::error::OpenRouterError;
-use crate::test_support::{
+use crate::malvin_mini::error::OpenRouterError;
+use crate::malvin_mini::test_support::{
     mount_prompt_too_long_once, mount_prompt_too_long_then_success, openrouter_test_config,
 };
 use wiremock::MockServer;
 
-fn twelve_word_prompt() -> Vec<ChatMessage> {
+pub(super) fn twelve_word_prompt() -> Vec<ChatMessage> {
     vec![ChatMessage {
         role: ChatRole::User,
         content: "w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11".into(),
@@ -14,7 +14,7 @@ fn twelve_word_prompt() -> Vec<ChatMessage> {
 }
 
 #[tokio::test]
-async fn openrouter_complete_surfaces_invalid_referer_header_errors() {
+pub(super) async fn openrouter_complete_surfaces_invalid_referer_header_errors() {
     let server = MockServer::start().await;
     let mut config = openrouter_test_config(&server.uri());
     config.http_referer = Some("bad\nreferer".into());
@@ -24,7 +24,7 @@ async fn openrouter_complete_surfaces_invalid_referer_header_errors() {
 }
 
 #[tokio::test]
-async fn openrouter_prompt_too_long_stops_when_shrink_makes_no_change() {
+pub(super) async fn openrouter_prompt_too_long_stops_when_shrink_makes_no_change() {
     let server = MockServer::start().await;
     mount_prompt_too_long_once(&server).await;
     let client = OpenRouterClient::new(openrouter_test_config(&server.uri())).expect("client");
@@ -37,7 +37,7 @@ async fn openrouter_prompt_too_long_stops_when_shrink_makes_no_change() {
 }
 
 #[tokio::test]
-async fn openrouter_retries_after_prompt_too_long_by_shrinking_middle_odd_words() {
+pub(super) async fn openrouter_retries_after_prompt_too_long_by_shrinking_middle_odd_words() {
     let server = MockServer::start().await;
     mount_prompt_too_long_then_success(&server).await;
     let client = OpenRouterClient::new(openrouter_test_config(&server.uri())).expect("client");

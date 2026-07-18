@@ -37,6 +37,8 @@
 mod log_gc;
 mod log_gc_config;
 mod malvin_config_file;
+/// OpenRouter HTTP transport formerly published as the `malvin-mini` crate.
+pub mod malvin_mini;
 mod gate_loop_session;
 mod sequential_requests;
 mod sandbox_oom;

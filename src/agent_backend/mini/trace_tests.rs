@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use malvin_mini::ResponseUsage;
+use crate::malvin_mini::ResponseUsage;
 
 use super::trace::format_mini_bash_tool_line;
 use super::MiniTraceSink;

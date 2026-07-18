@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use malvin_mini::OpenRouterClient;
+use crate::malvin_mini::OpenRouterClient;
 
 use super::bash_adapter::ensure_bash_on_path;
 use super::client_prompt_log::{write_prompt_log, PromptLogWrite};
@@ -39,7 +39,7 @@ impl MiniAgentClient {
     pub fn new(config: MiniLoopConfig, io: AgentIoOptions) -> Result<Self, String> {
         ensure_bash_on_path()?;
         let openrouter_config =
-            malvin_mini::OpenRouterConfig::from_env(resolve_mini_model(&config.model))?;
+            crate::malvin_mini::OpenRouterConfig::from_env(resolve_mini_model(&config.model))?;
         let client = OpenRouterClient::new(openrouter_config)
             .map_err(|e| format!("OpenRouter client init failed: {e}"))?;
         Ok(Self {
@@ -235,7 +235,7 @@ mod client_tests {
                 log_full_outgoing_prompts: false,
             },
             LlmBackend::Mock(std::sync::Mutex::new(MockScript {
-                responses: vec![MockStep::Ok(malvin_mini::CompletionResponse {
+                responses: vec![MockStep::Ok(crate::malvin_mini::CompletionResponse {
                     content: "ok".into(),
                     usage: None,
                 })],

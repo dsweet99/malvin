@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use malvin_mini::{ChatMessage, CompletionResponse};
+use crate::malvin_mini::{ChatMessage, CompletionResponse};
 
 use super::{LlmBackend, MiniAgentClient, MiniLoopConfig, MockScript, MockStep};
 use crate::acp::CoderPromptOptions;
@@ -20,7 +20,7 @@ struct RetryPollutionObservation {
 fn count_user_messages_with_marker(messages: &[ChatMessage], marker: &str) -> usize {
     messages
         .iter()
-        .filter(|m| matches!(m.role, malvin_mini::ChatRole::User) && m.content.contains(marker))
+        .filter(|m| matches!(m.role, crate::malvin_mini::ChatRole::User) && m.content.contains(marker))
         .count()
 }
 
