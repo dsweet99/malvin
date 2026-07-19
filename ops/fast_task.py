@@ -56,6 +56,15 @@ def fast_tasks_list_cmd() -> None:
     is_flag=True,
     help="Skip malvin; run cursor-agent --force -p < plan.md in the container",
 )
+@click.option(
+    "--main",
+    "use_main",
+    is_flag=True,
+    help=(
+        "Mount host malvin-main as the container malvin binary "
+        "(do not rebuild or modify the local binary)"
+    ),
+)
 @click.pass_context
 def fast_task_solve(
     ctx: click.Context,
@@ -66,6 +75,7 @@ def fast_task_solve(
     dry_run: bool,
     skip_grade: bool,
     cursor: bool,
+    use_main: bool,
 ) -> None:
     """Run malvin on TASK_ID in Docker; report host-graded reward."""
     _lib.ft_cli_solve(
@@ -76,6 +86,7 @@ def fast_task_solve(
         dry_run=dry_run,
         skip_grade=skip_grade,
         use_cursor=cursor,
+        use_main=use_main,
         malvin_args=tuple(ctx.args),
     )
 

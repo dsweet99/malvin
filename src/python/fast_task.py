@@ -10,6 +10,7 @@ Usage::
     python ops/fast_task.py solve FT-01
     python ops/fast_task.py solve FT-01 --dry-run
     python ops/fast_task.py solve FT-01 --cursor
+    python ops/fast_task.py solve FT-01 --main
     python ops/fast_task.py tasks
     python ops/fast_task.py self-test
 
@@ -147,12 +148,22 @@ def ft_assert_stage_isolated(staged: Path) -> None:
 
 def ft_resolve_malvin_binary() -> Path | None:
     """Best-effort host ``malvin`` binary path for run-time bind mount."""
-    which = shutil.which("malvin")
+    return _ft_resolve_host_binary("malvin")
+
+
+def ft_resolve_malvin_main_binary() -> Path | None:
+    """Best-effort host ``malvin-main`` binary path for ``--main`` bind mount."""
+    return _ft_resolve_host_binary("malvin-main")
+
+
+def _ft_resolve_host_binary(name: str) -> Path | None:
+    """Resolve ``name`` from PATH or ``~/.cargo/bin/<name>``."""
+    which = shutil.which(name)
     if which:
         path = Path(which)
         if path.is_file():
             return path.resolve()
-    cargo = Path.home() / ".cargo" / "bin" / "malvin"
+    cargo = Path.home() / ".cargo" / "bin" / name
     if cargo.is_file():
         return cargo.resolve()
     return None
@@ -486,8 +497,11 @@ def ft_run_solve(
     dry_run: bool = False,
     skip_grade: bool = False,
     use_cursor: bool = False,
+    use_main: bool = False,
 ) -> dict[str, Any]:
     """Stage workspace, run agent in Docker, grade on host; return result dict."""
+    if use_cursor and use_main:
+        raise click.ClickException("--cursor and --main are mutually exclusive")
     task_dir = ft_resolve_task_dir(task_id)
     root = (results_dir or ft_default_results_dir()).resolve()
     run_root = root / task_id / ft_timestamp_dir()
@@ -500,12 +514,20 @@ def ft_run_solve(
     )
     host_malvin: Path | None = None
     if not use_cursor:
-        host_malvin = ft_resolve_malvin_binary()
-        if host_malvin is None:
-            raise click.ClickException(
-                "No host malvin binary found (PATH or ~/.cargo/bin/malvin); "
-                "build malvin on the host or use --cursor"
-            )
+        if use_main:
+            host_malvin = ft_resolve_malvin_main_binary()
+            if host_malvin is None:
+                raise click.ClickException(
+                    "No host malvin-main binary found "
+                    "(PATH or ~/.cargo/bin/malvin-main)"
+                )
+        else:
+            host_malvin = ft_resolve_malvin_binary()
+            if host_malvin is None:
+                raise click.ClickException(
+                    "No host malvin binary found (PATH or ~/.cargo/bin/malvin); "
+                    "build malvin on the host or use --cursor / --main"
+                )
     cmd = ft_docker_agent_cmd(
         image=image,
         workspace=workspace,
@@ -529,7 +551,12 @@ def ft_run_solve(
         if not ft_docker_available():
             raise click.ClickException("Docker daemon is not available")
         ft_preflight_workspace_mount(image=image, workspace=workspace)
-        agent_label = "cursor-agent" if use_cursor else "malvin"
+        if use_cursor:
+            agent_label = "cursor-agent"
+        elif use_main:
+            agent_label = "malvin-main"
+        else:
+            agent_label = "malvin"
         click.echo(f"Running {agent_label} in local Docker (workspace-only mount)...")
         code, captured = ft_relay_subprocess_stdout(cmd)
         agent_result = {
@@ -583,6 +610,7 @@ def ft_cli_solve(
     skip_grade: bool,
     malvin_args: tuple[str, ...],
     use_cursor: bool = False,
+    use_main: bool = False,
 ) -> None:
     """Run malvin on TASK_ID in Docker; report host-graded reward."""
     result = ft_run_solve(
@@ -594,6 +622,7 @@ def ft_cli_solve(
         dry_run=dry_run,
         skip_grade=skip_grade,
         use_cursor=use_cursor,
+        use_main=use_main,
     )
     if not skip_grade and not dry_run:
         ft_exit_from_evaluation(result["grade"], result["agent"])
@@ -615,6 +644,8 @@ def run_fast_task_self_tests() -> None:
     _ft_test_assert_agent_cmd_rejects_task_root()
     _ft_test_grade_on_host_starter_reward_zero()
     _ft_test_solve_help_and_dry_run()
+    _ft_test_solve_main_dry_run()
+    _ft_test_resolve_malvin_main_binary()
     _ft_test_relay_streams_before_wait()
     _ft_test_print_evaluation_includes_reward()
     _ft_test_helpers_and_cli_surface()
@@ -762,6 +793,7 @@ def _ft_test_solve_help_and_dry_run() -> None:
     assert help_result.exit_code == 0, help_result.output
     assert "TASK_ID" in help_result.output
     assert "--cursor" in help_result.output
+    assert "--main" in help_result.output
     with tempfile.TemporaryDirectory(prefix="ft-dry-") as tmp:
         result = runner.invoke(
             cli,
@@ -813,6 +845,67 @@ def _ft_test_solve_help_and_dry_run() -> None:
         assert "malvin" not in cursor_cmd
         assert "grade.py" not in cursor_joined
         assert "goldens" not in cursor_joined
+
+
+def _ft_test_solve_main_dry_run() -> None:
+    """``--main`` mounts host malvin-main at the container malvin path."""
+    from toolchain_repos import load_ops_entry
+
+    main_bin = ft_resolve_malvin_main_binary()
+    assert main_bin is not None, "malvin-main must be installed for this test"
+    cli = load_ops_entry("fast_task").fast_task_cli
+    runner = CliRunner()
+    with tempfile.TemporaryDirectory(prefix="ft-main-") as tmp:
+        result = runner.invoke(
+            cli,
+            [
+                "solve",
+                "FT-01",
+                "--main",
+                "--dry-run",
+                "--skip-grade",
+                "--results-dir",
+                tmp,
+            ],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.output
+        meta_paths = list(Path(tmp).glob("FT-01/*/metadata.json"))
+        assert meta_paths, result.output
+        meta = json.loads(meta_paths[0].read_text(encoding="utf-8"))
+        cmd = meta["docker_cmd"]
+        joined = " ".join(cmd)
+        assert "malvin" in cmd
+        assert "plan.md" in cmd
+        assert "cursor-agent" not in joined
+        mounts = [cmd[i + 1] for i, token in enumerate(cmd) if token == "-v"]
+        assert any(
+            m == f"{main_bin.resolve()}:{MALVIN_BIN_REMOTE}:ro" for m in mounts
+        ), mounts
+        conflict = runner.invoke(
+            cli,
+            [
+                "solve",
+                "FT-01",
+                "--main",
+                "--cursor",
+                "--dry-run",
+                "--skip-grade",
+                "--results-dir",
+                tmp,
+            ],
+        )
+        assert conflict.exit_code != 0
+        assert "mutually exclusive" in conflict.output
+
+
+def _ft_test_resolve_malvin_main_binary() -> None:
+    path = ft_resolve_malvin_main_binary()
+    assert path is not None
+    assert path.is_file()
+    assert path.name == "malvin-main"
+    missing = _ft_resolve_host_binary("malvin-main-does-not-exist-xyz")
+    assert missing is None
 
 
 _FT_RELAY_SPY_SEEN: list[str] = []
@@ -868,6 +961,7 @@ def _ft_test_helpers_and_cli_surface() -> None:
 
     assert ft_timestamp_dir()
     _ = ft_resolve_malvin_binary()
+    _ = ft_resolve_malvin_main_binary()
     _ = ft_docker_available()
     args = ft_cursor_env_args()
     assert isinstance(args, list)
