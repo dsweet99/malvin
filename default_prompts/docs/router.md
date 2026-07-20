@@ -1,6 +1,6 @@
 # malvin (default route)
 
-Four-prompt agent sessions with autonomous routing: `header.md` + `router_a_1.md` + user request, then bare `router_a_2.md`, then bare `router_b_simple.md` or `router_b_complex.md`, then bare `router_c.md` on the same session. Outer `--max-loops` restarts with a new agent when `router_c` replies `CONTINUE_ROUTER`.
+Four-prompt agent sessions with autonomous routing: `header.md` + `router_a_1.md` + user request, then bare `router_a_2.md`, then bare `router_b.md`, then bare `router_c.md` on the same session. Outer `--max-loops` restarts with a new agent when `router_c` replies `CONTINUE_ROUTER`.
 
 ## Summary
 
@@ -15,7 +15,7 @@ Four-prompt agent sessions with autonomous routing: `header.md` + `router_a_1.md
 
 Let the agent read the user request and decide how to satisfy it — including invoking other malvin commands such as `kpop` or `inspire`. Suitable when the right workflow is not known upfront.
 
-Turn 1 (`router_a_1`) classifies complexity. Turn 2 (`router_a_2`) classifies whether the task is coding. When `CODING_TASK: YES` and `.malvin/checks` is missing, malvin runs `init` (separate kpop subprocess) before turn 3. After the work prompts, `router_c.md` asks for either an evidence report or the literal token `CONTINUE_ROUTER` to request another agent session (until `--max-loops` is exhausted).
+Turn 1 (`router_a_1`) classifies complexity. Turn 2 (`router_a_2`) classifies whether the task is coding. When `CODING_TASK: YES` and `.malvin/checks` is missing, malvin runs `init` (separate kpop subprocess) before turn 3. Complexity is collected but not used to select the work prompt. After the work prompts, `router_c.md` asks for either an evidence report or the literal token `CONTINUE_ROUTER` to request another agent session (until `--max-loops` is exhausted).
 
 ## Usage
 
@@ -58,7 +58,7 @@ Each outer loop iteration opens one coder session and sends four prompts:
 | 1 | `router_a_1.md` | Classify complexity (`COMPLEXITY_SCORE: 1-10`) |
 | 1 | User request | Appended after headers |
 | 2 | `router_a_2.md` | Bare classify coding (`CODING_TASK: YES\|NO`) |
-| 3 | `router_b_simple.md` or `router_b_complex.md` | Bare work brief (`COMPLEXITY_SCORE <= 3` → simple; `> 3` → complex) |
+| 3 | `router_b.md` | Bare work brief (same for every complexity score) |
 | 4 | `router_c.md` | Bare follow-up: evidence report **or** `CONTINUE_ROUTER` |
 
 After turn 1, malvin parses `COMPLEXITY_SCORE` from the agent response (label may appear mid-line; markdown decoration and glued trailing prose around the integer are tolerated; range templates like `1-10` are rejected; last valid match wins). Parse failure aborts the run immediately. After turn 2, malvin parses `CODING_TASK` the same way (`YES`/`NO` as whole tokens; last valid match wins). Dotfile backup runs after that parse, before turn 3.

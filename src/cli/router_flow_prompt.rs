@@ -31,10 +31,7 @@ pub fn prepare_router_prompt_store() -> Result<PromptStore, String> {
         .validate_exists(ROUTER_A_2_MD)
         .map_err(|e: PromptError| e.0)?;
     store
-        .validate_exists(crate::prompts::ROUTER_B_SIMPLE_MD)
-        .map_err(|e: PromptError| e.0)?;
-    store
-        .validate_exists(crate::prompts::ROUTER_B_COMPLEX_MD)
+        .validate_exists(crate::prompts::ROUTER_B_MD)
         .map_err(|e: PromptError| e.0)?;
     store
         .validate_exists(ROUTER_C_MD)

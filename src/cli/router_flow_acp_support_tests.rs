@@ -8,7 +8,7 @@ use crate::artifacts::{MalvinChecksBackup, SessionDotfileBackups};
 use crate::cli::error_run_log::{
     clear_command_error_run_dir, command_error_run_dir, set_command_error_run_dir,
 };
-use crate::prompts::{ROUTER_B_COMPLEX_MD, ROUTER_B_SIMPLE_MD};
+use crate::prompts::ROUTER_B_MD;
 
 #[test]
 fn router_a_init_snapshot_mode_selects_refresh_only_for_coding_without_checks() {
@@ -39,15 +39,8 @@ fn router_a_init_snapshot_mode_selects_refresh_only_for_coding_without_checks() 
 }
 
 #[test]
-fn router_b_template_and_label_selects_by_score() {
-    assert_eq!(
-        router_b_template_and_label(3),
-        (ROUTER_B_SIMPLE_MD, "router_b_simple")
-    );
-    assert_eq!(
-        router_b_template_and_label(4),
-        (ROUTER_B_COMPLEX_MD, "router_b_complex")
-    );
+fn router_b_template_and_label_is_always_router_b() {
+    assert_eq!(router_b_template_and_label(), (ROUTER_B_MD, "router_b"));
 }
 
 #[test]

@@ -11,19 +11,14 @@ use crate::router_flow::router_flow_prompt::{
     combine_router_raw_header_and_user, prepare_router_prompt_store,
 };
 use crate::prompts::{
-    HEADER_MD, PromptStore, ROUTER_A_1_MD, ROUTER_A_2_MD, ROUTER_B_SIMPLE_MD, ROUTER_C_MD,
+    HEADER_MD, PromptStore, ROUTER_A_1_MD, ROUTER_A_2_MD, ROUTER_B_MD, ROUTER_C_MD,
 };
 
 fn write_router_mock_prompt_files(prompt_root: &std::path::Path) {
     write_prompt(prompt_root, HEADER_MD, "CODING_HDR\n");
     write_prompt(prompt_root, ROUTER_A_1_MD, "ROUTER_HDR\n");
     write_prompt(prompt_root, ROUTER_A_2_MD, "ROUTER_A_2_HDR\n");
-    write_prompt(prompt_root, ROUTER_B_SIMPLE_MD, "ROUTER_B_HDR\n");
-    write_prompt(
-        prompt_root,
-        crate::prompts::ROUTER_B_COMPLEX_MD,
-        "ROUTER_B_COMPLEX_HDR\n",
-    );
+    write_prompt(prompt_root, ROUTER_B_MD, "ROUTER_B_HDR\n");
     write_prompt(prompt_root, ROUTER_C_MD, "ROUTER_C_HDR\n");
     write_prompt(prompt_root, "kpop_common.md", "");
 }
@@ -62,8 +57,7 @@ fn prepare_router_prompt_store_loads_default_templates() {
     assert!(store.validate_exists(HEADER_MD).is_ok());
     assert!(store.validate_exists(ROUTER_A_1_MD).is_ok());
     assert!(store.validate_exists(ROUTER_A_2_MD).is_ok());
-    assert!(store.validate_exists(ROUTER_B_SIMPLE_MD).is_ok());
-    assert!(store.validate_exists(crate::prompts::ROUTER_B_COMPLEX_MD).is_ok());
+    assert!(store.validate_exists(ROUTER_B_MD).is_ok());
     assert!(store.validate_exists(ROUTER_C_MD).is_ok());
 }
 

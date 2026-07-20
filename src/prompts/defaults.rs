@@ -9,8 +9,7 @@ pub const HEADER_MD: &str = "header.md";
 pub const DO_HEADER_MD: &str = "do_header.md";
 pub const ROUTER_A_1_MD: &str = "router_a_1.md";
 pub const ROUTER_A_2_MD: &str = "router_a_2.md";
-pub const ROUTER_B_SIMPLE_MD: &str = "router_b_simple.md";
-pub const ROUTER_B_COMPLEX_MD: &str = "router_b_complex.md";
+pub const ROUTER_B_MD: &str = "router_b.md";
 pub const ROUTER_C_MD: &str = "router_c.md";
 pub const ROUTER_CODE_EXTRA_MD: &str = "router_code_extra.md";
 pub const ROUTER_D_MD: &str = "router_d.md";
@@ -35,8 +34,7 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     DO_HEADER_MD,
     ROUTER_A_1_MD,
     ROUTER_A_2_MD,
-    ROUTER_B_SIMPLE_MD,
-    ROUTER_B_COMPLEX_MD,
+    ROUTER_B_MD,
     ROUTER_C_MD,
     ROUTER_CODE_EXTRA_MD,
     ROUTER_D_MD,
@@ -121,8 +119,8 @@ mod router_header_embed_tests {
     use std::path::Path;
 
     use super::{
-        default_file, DO_HEADER_MD, HEADER_MD, ROUTER_A_1_MD, ROUTER_A_2_MD, ROUTER_B_COMPLEX_MD,
-        ROUTER_B_SIMPLE_MD, ROUTER_C_MD,
+        default_file, DO_HEADER_MD, HEADER_MD, ROUTER_A_1_MD, ROUTER_A_2_MD, ROUTER_B_MD,
+        ROUTER_C_MD,
     };
     use crate::config::DEFAULT_CLI_MODEL;
     use crate::artifacts::create_run_artifacts;
@@ -168,7 +166,7 @@ mod router_header_embed_tests {
         let router_b = build_router_b_prompt(RouterBPromptInput {
             store: &store,
             artifacts: &artifacts,
-            template: ROUTER_B_SIMPLE_MD,
+            template: ROUTER_B_MD,
             coding_task: false,
             model: DEFAULT_CLI_MODEL,
             git: false,
@@ -177,20 +175,19 @@ mod router_header_embed_tests {
         assert!(!router_b.contains("{{"));
         let router_c = build_router_c_prompt(&store, &artifacts, DEFAULT_CLI_MODEL, false).expect("router_c");
         assert!(!router_c.contains("{{"));
-        let router_b_complex = build_router_b_prompt(RouterBPromptInput {
+        let router_b_coding = build_router_b_prompt(RouterBPromptInput {
             store: &store,
             artifacts: &artifacts,
-            template: ROUTER_B_COMPLEX_MD,
+            template: ROUTER_B_MD,
             coding_task: true,
             model: DEFAULT_CLI_MODEL,
             git: false,
             gates: true,
-        }).expect("router_b_complex");
-        assert!(!router_b_complex.contains("{{"));
+        }).expect("router_b coding");
+        assert!(!router_b_coding.contains("{{"));
         assert!(default_file(ROUTER_A_1_MD).is_some());
         assert!(default_file(ROUTER_A_2_MD).is_some());
-        assert!(default_file(ROUTER_B_SIMPLE_MD).is_some());
-        assert!(default_file(ROUTER_B_COMPLEX_MD).is_some());
+        assert!(default_file(ROUTER_B_MD).is_some());
         assert!(default_file(ROUTER_C_MD).is_some());
         assert!(default_file(DO_HEADER_MD).is_some());
         assert!(default_file(HEADER_MD).is_some());

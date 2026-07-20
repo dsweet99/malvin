@@ -7,7 +7,7 @@ use crate::artifacts::{
 };
 use crate::cli::checks_discovery_flow::ensure_malvin_checks_discovered_via_init_subprocess;
 use crate::cli::SharedOpts;
-use crate::prompts::{PromptStore, ROUTER_B_COMPLEX_MD, ROUTER_B_SIMPLE_MD};
+use crate::prompts::{PromptStore, ROUTER_B_MD};
 use crate::router_flow::router_flow_prompt;
 use super::router_flow_coder_prompts::{
     run_router_a_1_coder_prompt, run_router_a_2_coder_prompt, run_router_b_coder_prompt,
@@ -102,18 +102,14 @@ pub(crate) async fn maybe_run_router_init(
     ensure_malvin_checks_discovered_via_init_subprocess(work_dir, shared).await
 }
 
-pub(crate) const fn router_b_template_and_label(complexity_score: u8) -> (&'static str, &'static str) {
-    if complexity_score > 3 {
-        (ROUTER_B_COMPLEX_MD, "router_b_complex")
-    } else {
-        (ROUTER_B_SIMPLE_MD, "router_b_simple")
-    }
+pub(crate) const fn router_b_template_and_label() -> (&'static str, &'static str) {
+    (ROUTER_B_MD, "router_b")
 }
 
 pub(crate) async fn run_router_turns(
     ctx: &mut RouterAcpSessionCtx<'_>,
 ) -> Result<RouterTurnsOutcome, String> {
-    let (complexity_score, coding_task) = run_router_classify_turns(ctx).await?;
+    let (_complexity_score, coding_task) = run_router_classify_turns(ctx).await?;
     let work_dir = ctx.artifacts.work_dir.as_path();
     let had_checks = workspace_has_valid_checks(work_dir)?;
     let pre_init_backups = SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)?;
@@ -127,7 +123,7 @@ pub(crate) async fn run_router_turns(
         .snapshot_mode(),
         pre_init_backups,
     )?;
-    run_router_work_turns(ctx, complexity_score, coding_task).await?;
+    run_router_work_turns(ctx, coding_task).await?;
     let gate_wants_continue = maybe_run_router_post_c_gates(
         work_dir,
         ctx.artifacts.run_dir.as_path(),
@@ -164,10 +160,9 @@ async fn run_router_classify_turns(
 
 async fn run_router_work_turns(
     ctx: &mut RouterAcpSessionCtx<'_>,
-    complexity_score: u8,
     coding_task: bool,
 ) -> Result<(), String> {
-    let (b_md, router_b_label) = router_b_template_and_label(complexity_score);
+    let (b_md, router_b_label) = router_b_template_and_label();
     let b_body = router_flow_prompt::build_router_b_prompt(router_flow_prompt::RouterBPromptInput {
         store: ctx.prompt_store,
         artifacts: ctx.artifacts,
