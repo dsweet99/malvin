@@ -31,6 +31,8 @@ TASK_IDS = [
     "FT-31",
     "FT-32",
     "FT-33",
+    "FT-34",
+    "FT-35",
 ]
 DROPPED = {
     "FT-02",
