@@ -18,6 +18,15 @@ pub use engine::{
     DEFAULT_CONTEXT_SIZE,
 };
 
+/// True when this build can run `local:` models via Apple Silicon Metal llama.cpp.
+///
+/// Matches the compile gate used to select the Metal engine versus the stub: Metal is
+/// the only supported local GPU backend in this malvin version.
+#[must_use]
+pub const fn metal_backend_supported() -> bool {
+    cfg!(all(target_os = "macos", target_arch = "aarch64"))
+}
+
 #[cfg(test)]
 #[path = "kiss_cov_tests.rs"]
 mod kiss_cov_tests;

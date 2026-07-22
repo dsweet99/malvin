@@ -230,20 +230,5 @@ pub(crate) mod test_hooks {
 mod models_cmd_kiss_cov_tests;
 
 #[cfg(test)]
-mod local_models_tests {
-    use super::*;
-
-    #[test]
-    fn run_models_action_rejects_bad_usage() {
-        let err = run_models_action(&["download".into()]).expect_err("usage");
-        assert!(err.contains("usage"));
-        let err = run_models_action(&["nope".into()]).expect_err("unknown");
-        assert!(err.contains("unknown"));
-    }
-
-    #[test]
-    fn models_args_default_has_empty_words() {
-        let args = ModelsArgs::default();
-        assert!(args.words.is_empty());
-    }
-}
+#[path = "models_cmd_local_tests.rs"]
+mod models_cmd_local_tests;

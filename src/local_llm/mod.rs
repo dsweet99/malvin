@@ -9,7 +9,8 @@ pub use cache::{is_model_cached, model_cache_dir, model_cache_path, model_cache_
 pub use download::{download_local_model, ensure_model_cached, DownloadPolicy};
 pub use engine::{ensure_local_engine, LocalCompletionEngine};
 pub use registry::{
-    lookup_local_model, local_model_listings, require_known_local_slug, LocalModelSpec,
+    local_backend_supported, lookup_local_model, local_model_listings, require_known_local_slug,
+    LocalModelSpec,
 };
 
 #[cfg(test)]

@@ -28,4 +28,6 @@ fn kiss_cov_local_model_spec_type() {
     assert!(resolve_url.starts_with("https://"));
     assert!(min_mem_limit_gb >= 1);
     let _ = stringify!(LocalModelSpec);
+    let _ = stringify!(local_backend_supported);
+    let _ = super::local_backend_supported();
 }

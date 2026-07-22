@@ -1,5 +1,13 @@
 //! Root-level kiss coverage witnesses for platform engine modules.
 
+#[test]
+fn kiss_cov_metal_backend_supported_matches_cfg() {
+    assert_eq!(
+        crate::metal_backend_supported(),
+        cfg!(all(target_os = "macos", target_arch = "aarch64"))
+    );
+}
+
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 mod metal_witnesses {
     use crate::engine::{complete, load_engine};

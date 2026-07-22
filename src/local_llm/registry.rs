@@ -65,8 +65,18 @@ pub fn require_known_local_slug(slug: &str) -> Result<&'static LocalModelSpec, S
     })
 }
 
+/// True when `local:` models can run (Apple Silicon Metal). Used to omit them from listings.
+#[must_use]
+pub const fn local_backend_supported() -> bool {
+    malvin_llama::metal_backend_supported()
+}
+
+/// Listings for `malvin models`. Empty when Metal is unavailable (no runnable local backend).
 #[must_use]
 pub fn local_model_listings() -> Vec<ModelListing> {
+    if !local_backend_supported() {
+        return Vec::new();
+    }
     LOCAL_MODELS
         .iter()
         .map(|spec| ModelListing {
@@ -100,11 +110,26 @@ mod tests {
     #[test]
     fn listings_have_no_cache_status() {
         let rows = local_model_listings();
-        assert_eq!(rows.len(), 2);
-        assert_eq!(rows[0].id, "qwen35_9b_q4");
-        assert!(!rows[0].name.contains("cached"));
-        assert!(!rows[0].name.contains("download"));
-        assert_eq!(rows[1].id, "nemotron3_nano_4b");
+        if local_backend_supported() {
+            assert_eq!(rows.len(), 2);
+            assert_eq!(rows[0].id, "qwen35_9b_q4");
+            assert!(!rows[0].name.contains("cached"));
+            assert!(!rows[0].name.contains("download"));
+            assert_eq!(rows[1].id, "nemotron3_nano_4b");
+        } else {
+            assert!(
+                rows.is_empty(),
+                "non-Metal hosts must omit local: listings"
+            );
+        }
+    }
+
+    #[test]
+    fn local_backend_supported_matches_metal_compile_gate() {
+        assert_eq!(
+            local_backend_supported(),
+            cfg!(all(target_os = "macos", target_arch = "aarch64"))
+        );
     }
 
     #[test]
