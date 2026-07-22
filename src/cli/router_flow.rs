@@ -153,17 +153,16 @@ pub async fn run_router(
     // Classify/work failures must not run router_d (summarizer) before surfacing the error.
     maybe_run_router_d_after_loops(&mut prep, shared, loop_outcome.last_acp.is_ok()).await?;
 
-    let r = crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
+    // Mirror kpop: restore/check-abort, then print TIMING/COST from run_timing.json.
+    let r = crate::acp_post_run::merge_acp_restore_check_abort_then_print_timing(
         loop_outcome.last_acp,
-        prep.artifacts.work_dir.as_path(),
+        &prep.artifacts,
         &loop_outcome.last_backups,
-        &prep.artifacts.artifact_result_md(),
     );
     if r.is_ok() {
         crate::cli::error_run_log::clear_command_error_run_dir();
     }
-    r?;
-    Ok(())
+    r
 }
 
 #[cfg(test)]

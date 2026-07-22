@@ -53,6 +53,9 @@ mod router_flow_tests;
 #[path = "acp_post_run_tests.rs"]
 mod acp_post_run_tests;
 #[cfg(test)]
+#[path = "acp_post_run_timing_print_tests.rs"]
+mod acp_post_run_timing_print_tests;
+#[cfg(test)]
 #[path = "workflow_kpop_shared_tests.rs"]
 mod workflow_kpop_shared_tests;
 #[cfg(test)]
