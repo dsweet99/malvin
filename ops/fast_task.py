@@ -65,6 +65,11 @@ def fast_tasks_list_cmd() -> None:
         "(do not rebuild or modify the local binary)"
     ),
 )
+@click.option(
+    "--model",
+    default=None,
+    help="Model id passed through to malvin (ignored with --cursor)",
+)
 @click.pass_context
 def fast_task_solve(
     ctx: click.Context,
@@ -76,8 +81,12 @@ def fast_task_solve(
     skip_grade: bool,
     cursor: bool,
     use_main: bool,
+    model: str | None,
 ) -> None:
     """Run malvin on TASK_ID in Docker; report host-graded reward."""
+    malvin_args = tuple(ctx.args)
+    if model is not None:
+        malvin_args = ("--model", model, *malvin_args)
     _lib.ft_cli_solve(
         task_id,
         results_dir=results_dir,
@@ -87,7 +96,7 @@ def fast_task_solve(
         skip_grade=skip_grade,
         use_cursor=cursor,
         use_main=use_main,
-        malvin_args=tuple(ctx.args),
+        malvin_args=malvin_args,
     )
 
 

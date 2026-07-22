@@ -11,6 +11,7 @@ Usage::
     python ops/fast_task.py solve FT-01 --dry-run
     python ops/fast_task.py solve FT-01 --cursor
     python ops/fast_task.py solve FT-01 --main
+    python ops/fast_task.py solve FT-01 --model cursor:auto
     python ops/fast_task.py tasks
     python ops/fast_task.py self-test
 
@@ -794,6 +795,7 @@ def _ft_test_solve_help_and_dry_run() -> None:
     assert "TASK_ID" in help_result.output
     assert "--cursor" in help_result.output
     assert "--main" in help_result.output
+    assert "--model" in help_result.output
     with tempfile.TemporaryDirectory(prefix="ft-dry-") as tmp:
         result = runner.invoke(
             cli,
@@ -819,6 +821,33 @@ def _ft_test_solve_help_and_dry_run() -> None:
         assert "cursor-agent" not in joined_cmd
         assert "grade.py" not in joined_cmd
         assert "goldens" not in joined_cmd
+
+        model_tmp = Path(tmp) / "model"
+        model_tmp.mkdir()
+        model_result = runner.invoke(
+            cli,
+            [
+                "solve",
+                "FT-01",
+                "--model",
+                "cursor:composer",
+                "--dry-run",
+                "--skip-grade",
+                "--results-dir",
+                str(model_tmp),
+            ],
+            catch_exceptions=False,
+        )
+        assert model_result.exit_code == 0, model_result.output
+        model_meta_paths = list(model_tmp.glob("FT-01/*/metadata.json"))
+        assert model_meta_paths, model_result.output
+        model_cmd = json.loads(model_meta_paths[0].read_text(encoding="utf-8"))[
+            "docker_cmd"
+        ]
+        assert "malvin" in model_cmd
+        mi = model_cmd.index("malvin")
+        assert model_cmd[mi + 1 : mi + 3] == ["--model", "cursor:composer"]
+        assert model_cmd[-1] == "plan.md"
 
         cursor_tmp = Path(tmp) / "cursor"
         cursor_tmp.mkdir()
