@@ -97,6 +97,7 @@ def fast_task_solve(
         use_cursor=cursor,
         use_main=use_main,
         malvin_args=malvin_args,
+        timeout_sec=_lib.DEFAULT_AGENT_TIMEOUT_SEC,
     )
 
 

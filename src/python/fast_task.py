@@ -24,9 +24,11 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -41,6 +43,10 @@ REPO_ROOT = malvin_repo_root()
 FAST_TASKS_ROOT = REPO_ROOT / "fast_tasks"
 DEFAULT_IMAGE = "malvin-fast-task:local"
 DEFAULT_BASE_IMAGE = "python:3.12-slim"
+DEFAULT_AGENT_TIMEOUT_SEC = 10 * 60
+TIMEOUT_EXIT_CODE = 124
+_KILL_GRACE_SEC = 2.0
+_POLL_INTERVAL_SEC = 0.1
 MALVIN_BIN_REMOTE = "/root/.cargo/bin/malvin"
 TOOLCHAIN_PATH = (
     "/root/.cargo/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin"
@@ -365,8 +371,34 @@ def ft_assert_agent_cmd_nonleak(
             )
 
 
-def ft_relay_subprocess_stdout(cmd: list[str]) -> tuple[int, str]:
-    """Run *cmd*, stream merged stdout/stderr live, return (exit_code, capture)."""
+def _ft_kill_process_group(proc: subprocess.Popen[Any]) -> None:
+    """SIGTERM then SIGKILL the process group started for *proc*."""
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    grace_deadline = time.monotonic() + _KILL_GRACE_SEC
+    while proc.poll() is None and time.monotonic() < grace_deadline:
+        time.sleep(_POLL_INTERVAL_SEC)
+    if proc.poll() is None:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+
+def ft_relay_subprocess_stdout(
+    cmd: list[str],
+    *,
+    timeout_sec: float = DEFAULT_AGENT_TIMEOUT_SEC,
+) -> tuple[int, str, bool]:
+    """Run *cmd*, stream merged stdout/stderr live.
+
+    Returns ``(exit_code, capture, timed_out)``. On wall-clock expiry the
+    process group is killed and ``timed_out`` is True with exit code 124.
+    """
+    if timeout_sec <= 0:
+        return TIMEOUT_EXIT_CODE, "", True
     env = os.environ.copy()
     env.setdefault("MALVIN_FORCE_STDOUT_TEE", "1")
     proc = subprocess.Popen(
@@ -376,15 +408,33 @@ def ft_relay_subprocess_stdout(cmd: list[str]) -> tuple[int, str]:
         text=True,
         bufsize=1,
         env=env,
+        start_new_session=True,
     )
     chunks: list[str] = []
     assert proc.stdout is not None
-    for line in proc.stdout:
-        sys.stdout.write(line)
-        sys.stdout.flush()
-        chunks.append(line)
-    proc.wait()
-    return int(proc.returncode or 0), "".join(chunks)
+    deadline = time.monotonic() + timeout_sec
+    timed_out = False
+
+    def _reader() -> None:
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            sys.stdout.write(line)
+            sys.stdout.flush()
+            chunks.append(line)
+
+    reader = threading.Thread(target=_reader, daemon=True)
+    reader.start()
+    while proc.poll() is None:
+        if time.monotonic() >= deadline:
+            timed_out = True
+            _ft_kill_process_group(proc)
+            proc.wait()
+            break
+        time.sleep(_POLL_INTERVAL_SEC)
+    reader.join(timeout=_KILL_GRACE_SEC)
+    if timed_out:
+        return TIMEOUT_EXIT_CODE, "".join(chunks), True
+    return int(proc.returncode or 0), "".join(chunks), False
 
 
 def ft_preflight_workspace_mount(*, image: str, workspace: Path) -> None:
@@ -499,10 +549,13 @@ def ft_run_solve(
     skip_grade: bool = False,
     use_cursor: bool = False,
     use_main: bool = False,
+    timeout_sec: float = DEFAULT_AGENT_TIMEOUT_SEC,
 ) -> dict[str, Any]:
     """Stage workspace, run agent in Docker, grade on host; return result dict."""
     if use_cursor and use_main:
         raise click.ClickException("--cursor and --main are mutually exclusive")
+    if timeout_sec <= 0:
+        raise click.ClickException("timeout_sec must be positive")
     task_dir = ft_resolve_task_dir(task_id)
     root = (results_dir or ft_default_results_dir()).resolve()
     run_root = root / task_id / ft_timestamp_dir()
@@ -538,6 +591,7 @@ def ft_run_solve(
     )
     click.echo(f"Staged workspace: {workspace}")
     click.echo(f"Agent command: {ft_redact_cmd_for_display(cmd)}")
+    click.echo(f"Agent timeout: {timeout_sec:.0f}s")
 
     t0 = time.monotonic()
     if dry_run:
@@ -546,6 +600,8 @@ def ft_run_solve(
             "exit_code": 0,
             "agent_seconds": 0.0,
             "dry_run": True,
+            "timed_out": False,
+            "timeout_sec": timeout_sec,
             "stdout": "",
         }
     else:
@@ -559,10 +615,16 @@ def ft_run_solve(
         else:
             agent_label = "malvin"
         click.echo(f"Running {agent_label} in local Docker (workspace-only mount)...")
-        code, captured = ft_relay_subprocess_stdout(cmd)
+        code, captured, timed_out = ft_relay_subprocess_stdout(
+            cmd, timeout_sec=timeout_sec
+        )
+        if timed_out:
+            click.echo(f"Agent timed out after {timeout_sec:.0f}s")
         agent_result = {
             "exit_code": code,
             "agent_seconds": time.monotonic() - t0,
+            "timed_out": timed_out,
+            "timeout_sec": timeout_sec,
             "stdout": captured,
         }
 
@@ -612,6 +674,7 @@ def ft_cli_solve(
     malvin_args: tuple[str, ...],
     use_cursor: bool = False,
     use_main: bool = False,
+    timeout_sec: float = DEFAULT_AGENT_TIMEOUT_SEC,
 ) -> None:
     """Run malvin on TASK_ID in Docker; report host-graded reward."""
     result = ft_run_solve(
@@ -624,6 +687,7 @@ def ft_cli_solve(
         skip_grade=skip_grade,
         use_cursor=use_cursor,
         use_main=use_main,
+        timeout_sec=timeout_sec,
     )
     if not skip_grade and not dry_run:
         ft_exit_from_evaluation(result["grade"], result["agent"])
@@ -648,6 +712,7 @@ def run_fast_task_self_tests() -> None:
     _ft_test_solve_main_dry_run()
     _ft_test_resolve_malvin_main_binary()
     _ft_test_relay_streams_before_wait()
+    _ft_test_relay_timeout_kills_slow_command()
     _ft_test_print_evaluation_includes_reward()
     _ft_test_helpers_and_cli_surface()
     _ft_test_exit_from_evaluation()
@@ -796,6 +861,7 @@ def _ft_test_solve_help_and_dry_run() -> None:
     assert "--cursor" in help_result.output
     assert "--main" in help_result.output
     assert "--model" in help_result.output
+    assert DEFAULT_AGENT_TIMEOUT_SEC == 600
     with tempfile.TemporaryDirectory(prefix="ft-dry-") as tmp:
         result = runner.invoke(
             cli,
@@ -812,9 +878,12 @@ def _ft_test_solve_help_and_dry_run() -> None:
         assert result.exit_code == 0, result.output
         assert "Agent command:" in result.output
         assert "Would ensure agent image" in result.output
+        assert f"Agent timeout: {DEFAULT_AGENT_TIMEOUT_SEC}s" in result.output
         meta_paths = list(Path(tmp).glob("FT-01/*/metadata.json"))
         assert meta_paths, result.output
         meta = json.loads(meta_paths[0].read_text(encoding="utf-8"))
+        assert meta["agent"]["timeout_sec"] == DEFAULT_AGENT_TIMEOUT_SEC
+        assert meta["agent"]["timed_out"] is False
         joined_cmd = " ".join(meta["docker_cmd"])
         assert "malvin" in meta["docker_cmd"]
         assert "plan.md" in meta["docker_cmd"]
@@ -959,12 +1028,30 @@ def _ft_test_relay_streams_before_wait() -> None:
     cmd = [sys.executable, "-c", "print('stream-line-1', flush=True)"]
     sys.stdout.write = _ft_relay_stdout_spy  # type: ignore[method-assign]
     try:
-        code, captured = ft_relay_subprocess_stdout(cmd)
+        code, captured, timed_out = ft_relay_subprocess_stdout(cmd, timeout_sec=5.0)
     finally:
         sys.stdout.write = _FT_RELAY_SPY_ORIG  # type: ignore[method-assign]
     assert code == 0
+    assert timed_out is False
     assert "stream-line-1" in captured
     assert any("stream-line-1" in chunk for chunk in _FT_RELAY_SPY_SEEN)
+
+
+def _ft_test_relay_timeout_kills_slow_command() -> None:
+    """Claim: relay kills a slow child and reports timed_out with exit 124."""
+    cmd = [sys.executable, "-c", "import time; time.sleep(30)"]
+    t0 = time.monotonic()
+    code, _captured, timed_out = ft_relay_subprocess_stdout(cmd, timeout_sec=0.3)
+    elapsed = time.monotonic() - t0
+    assert timed_out is True
+    assert code == TIMEOUT_EXIT_CODE
+    assert elapsed < 5.0
+    zero_code, zero_out, zero_to = ft_relay_subprocess_stdout(
+        ["true"], timeout_sec=0.0
+    )
+    assert zero_to is True
+    assert zero_code == TIMEOUT_EXIT_CODE
+    assert zero_out == ""
 
 
 def _ft_test_print_evaluation_includes_reward() -> None:

@@ -45,6 +45,7 @@ def test_fast_task_kiss_coverage_witnesses() -> None:
         fast_task.ft_docker_agent_cmd,
         fast_task.ft_assert_agent_cmd_nonleak,
         fast_task.ft_relay_subprocess_stdout,
+        fast_task._ft_kill_process_group,
         fast_task.ft_preflight_workspace_mount,
         fast_task.ft_grade_on_host,
         fast_task.ft_print_evaluation_summary,
@@ -71,6 +72,7 @@ def test_fast_task_kiss_coverage_witnesses() -> None:
         fast_task._ft_relay_stdout_spy,
         fast_task._ft_echo_capture,
         fast_task._ft_test_relay_streams_before_wait,
+        fast_task._ft_test_relay_timeout_kills_slow_command,
         fast_task._ft_test_print_evaluation_includes_reward,
         fast_task._ft_test_helpers_and_cli_surface,
         fast_task._ft_test_exit_from_evaluation,
@@ -80,5 +82,7 @@ def test_fast_task_kiss_coverage_witnesses() -> None:
         fast_task.ft_redact_cmd_for_display,
         fast_task._ft_test_redact_cmd_for_display,
         fast_task._ft_test_preflight_requires_host_plan,
+        fast_task.DEFAULT_AGENT_TIMEOUT_SEC,
+        fast_task.TIMEOUT_EXIT_CODE,
     )
     assert True
