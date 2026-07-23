@@ -14,6 +14,7 @@ pub(crate) fn openrouter_test_config(base_url: &str) -> OpenRouterConfig {
         http_referer: Some("https://malvin.test".into()),
         request_timeout: Duration::from_secs(30),
         base_url: base_url.into(),
+        max_tokens: Some(8192),
     }
 }
 

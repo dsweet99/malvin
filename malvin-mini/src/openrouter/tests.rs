@@ -80,6 +80,7 @@ pub(crate) async fn openrouter_error_maps_billing_failure() {
     assert!(matches!(err, OpenRouterError::BillingFailure { .. }));
 }
 
+
 #[tokio::test]
 pub(crate) async fn openrouter_mock_http_complete_returns_usage() {
     let server = MockServer::start().await;
@@ -135,6 +136,7 @@ fn openrouter_private_response_types_round_trip_serialization() {
             message: Some(ChatChoiceMessage {
                 content: Some("ok".into()),
                 reasoning: None,
+                reasoning_details: None,
             }),
         }],
         usage: Some(ResponseUsage {
@@ -165,9 +167,11 @@ fn kiss_cov_openrouter_private_serde_types() {
             role: ChatRole::User,
             content: "hi".into(),
         }],
+        max_tokens: Some(8192),
     };
     let req_json = serde_json::to_string(&req).expect("serialize request");
     assert!(req_json.contains("anthropic/claude-sonnet-4"));
+    assert!(req_json.contains("max_tokens"));
 
     let resp_json = r#"{"choices":[{"message":{"content":"ok"}}],"usage":{"total_tokens":1}}"#;
     let resp: ChatCompletionResponse = serde_json::from_str(resp_json).expect("deserialize");

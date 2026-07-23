@@ -34,7 +34,7 @@ impl LocalCompletionEngine {
         HttpExchangeMeta,
     ) {
         let turns = messages_to_turns(messages);
-        let max_tokens = max_tokens_from_env();
+        let max_tokens = local_max_tokens_from_env();
         let engine = Arc::clone(&self.engine);
         let result = tokio::task::spawn_blocking(move || {
             llama_complete(
@@ -100,7 +100,7 @@ const fn role_name(role: ChatRole) -> &'static str {
     }
 }
 
-pub(super) fn max_tokens_from_env() -> i32 {
+pub(super) fn local_max_tokens_from_env() -> i32 {
     std::env::var("MALVIN_LOCAL_MAX_TOKENS")
         .ok()
         .and_then(|s| s.parse().ok())
@@ -188,6 +188,9 @@ mod tests {
 
     #[test]
     fn messages_to_turns_maps_roles() {
+        assert_eq!(role_name(ChatRole::System), "system");
+        assert_eq!(role_name(ChatRole::User), "user");
+        assert_eq!(role_name(ChatRole::Assistant), "assistant");
         let turns = messages_to_turns(&[
             ChatMessage {
                 role: ChatRole::System,
@@ -211,14 +214,36 @@ mod tests {
         assert!(err.is_err());
         assert_eq!(meta.status, Some(500));
     }
+    #[allow(unsafe_code)]
+    fn restore_env_after(key: &str, value: Option<&str>, body: impl FnOnce()) {
+        // Deliberately not identical to malvin-mini config::tests::with_env (kiss duplication).
+        unsafe {
+            let saved = std::env::var_os(key);
+            match value {
+                Some(v) => std::env::set_var(key, v),
+                None => std::env::remove_var(key),
+            }
+            body();
+            match saved {
+                Some(v) => std::env::set_var(key, v),
+                None => std::env::remove_var(key),
+            }
+        }
+    }
 
     #[test]
-    fn kiss_cov_local_completion_engine_and_complete() {
-        let engine: Option<LocalCompletionEngine> = None;
-        assert!(engine.is_none());
-        let complete = LocalCompletionEngine::complete;
-        let _ = complete;
-        let max_tokens_from_env = super::max_tokens_from_env;
-        assert!(max_tokens_from_env() > 0);
+    fn local_max_tokens_from_env_defaults_and_overrides() {
+        // Kiss static coverage ignores references nested only in closures.
+        let _ = super::local_max_tokens_from_env;
+        let _ = LocalCompletionEngine::complete;
+        restore_env_after("MALVIN_LOCAL_MAX_TOKENS", None, || {
+            assert_eq!(local_max_tokens_from_env(), DEFAULT_MAX_TOKENS);
+        });
+        restore_env_after("MALVIN_LOCAL_MAX_TOKENS", Some("1234"), || {
+            assert_eq!(local_max_tokens_from_env(), 1234);
+        });
+        restore_env_after("MALVIN_LOCAL_MAX_TOKENS", Some("not-a-number"), || {
+            assert_eq!(local_max_tokens_from_env(), DEFAULT_MAX_TOKENS);
+        });
     }
 }

@@ -14,6 +14,7 @@ fn kiss_witness_openrouter_test_fns() {
         openrouter_tests::openrouter_error_maps_429_rate_limit,
         openrouter_tests::openrouter_error_maps_500_server_error,
         openrouter_tests::openrouter_error_maps_billing_failure,
+        super::fetch_completion_tests::openrouter_retries_with_affordable_max_tokens,
         openrouter_tests::openrouter_mock_http_complete_returns_usage,
         openrouter_tests::openrouter_mock_http_complete_returns_usage_cost,
         openrouter_tests::openrouter_error_on_non_200_request_failed,
@@ -55,10 +56,16 @@ fn kiss_witness_openrouter_request_response_types() {
     let req = ChatCompletionRequest {
         model: "m",
         messages: &msgs,
+        max_tokens: Some(8192),
     };
-    let ChatCompletionRequest { model, messages } = req;
+    let ChatCompletionRequest {
+        model,
+        messages,
+        max_tokens,
+    } = req;
     assert_eq!(model, "m");
     assert_eq!(messages.len(), 1);
+    assert_eq!(max_tokens, Some(8192));
 
     let resp = ChatCompletionResponse {
         choices: vec![],

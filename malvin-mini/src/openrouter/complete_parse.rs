@@ -73,7 +73,7 @@ pub(crate) fn parse_completion_body(text: &str) -> Result<CompletionResponse, Op
         .and_then(|c| c.message.as_ref())
         .ok_or(OpenRouterError::MissingContent)?;
     let content = message.text_content().ok_or(OpenRouterError::MissingContent)?;
-    let reasoning = message.reasoning.clone();
+    let reasoning = message.reasoning_text();
     Ok(CompletionResponse {
         content,
         usage: parsed.usage,
@@ -202,9 +202,17 @@ mod tests {
     }
 
     #[test]
-    fn parse_completion_body_falls_back_to_reasoning() {
+    fn parse_completion_body_does_not_promote_reasoning_to_content() {
         let body = r#"{"choices":[{"message":{"content":"","reasoning":"think"}}]}"#;
-        let resp = parse_completion_body(body).expect("parse reasoning");
-        assert_eq!(resp.content, "think");
+        let err = parse_completion_body(body).expect_err("empty content");
+        assert!(matches!(err, OpenRouterError::MissingContent));
+    }
+
+    #[test]
+    fn parse_completion_body_reads_reasoning_details() {
+        let body = r#"{"choices":[{"message":{"content":"answer","reasoning_details":[{"text":"step1"},{"summary":"step2"}]}}]}"#;
+        let resp = parse_completion_body(body).expect("parse");
+        assert_eq!(resp.content, "answer");
+        assert_eq!(resp.reasoning.as_deref(), Some("step1\nstep2"));
     }
 }

@@ -83,6 +83,7 @@ mod tests {
             http_referer: None,
             request_timeout: Duration::from_secs(30),
             base_url: "https://openrouter.ai/api/v1".into(),
+            max_tokens: Some(8192),
         };
         let headers = super::build_catalog_request_headers(&config).expect("headers");
         assert!(headers.get("authorization").is_none());
@@ -96,6 +97,7 @@ mod tests {
             http_referer: Some("https://malvin.test".into()),
             request_timeout: Duration::from_secs(30),
             base_url: "https://openrouter.ai/api/v1".into(),
+            max_tokens: Some(8192),
         };
         let headers = build_request_headers(&config).expect("headers");
         assert_eq!(
@@ -116,6 +118,7 @@ mod tests {
             http_referer: None,
             request_timeout: Duration::from_secs(30),
             base_url: "https://openrouter.ai/api/v1".into(),
+            max_tokens: Some(8192),
         };
         let client = OpenRouterClient::new(config).expect("client");
         assert_eq!(client.config().model, "m");

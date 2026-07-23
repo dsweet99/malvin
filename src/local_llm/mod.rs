@@ -16,3 +16,4 @@ pub use registry::{
 #[cfg(test)]
 #[path = "registry_kiss_cov_tests.rs"]
 mod registry_kiss_cov_tests;
+

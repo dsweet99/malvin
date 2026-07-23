@@ -2,6 +2,9 @@ use std::time::Duration;
 
 const DEFAULT_BASE_URL: &str = "https://openrouter.ai/api/v1";
 const DEFAULT_REQUEST_TIMEOUT_SECS: u64 = 120;
+/// Default completion cap. Uncapped provider defaults (often 65536) can fail when
+/// account credit cannot reserve that many tokens.
+const DEFAULT_MAX_TOKENS: u32 = 4096;
 
 #[must_use]
 pub fn request_timeout_from_secs_str(s: Option<&str>) -> Duration {
@@ -18,6 +21,7 @@ pub struct OpenRouterConfig {
     pub http_referer: Option<String>,
     pub request_timeout: Duration,
     pub base_url: String,
+    pub max_tokens: Option<u32>,
 }
 
 impl OpenRouterConfig {
@@ -40,13 +44,24 @@ impl OpenRouterConfig {
         let request_timeout = request_timeout_from_secs_str(
             std::env::var("OPENROUTER_REQUEST_TIMEOUT").ok().as_deref(),
         );
+        let max_tokens = max_tokens_from_env();
         Self {
             model,
             api_key,
             http_referer,
             request_timeout,
             base_url,
+            max_tokens,
         }
+    }
+}
+
+#[must_use]
+pub fn max_tokens_from_env() -> Option<u32> {
+    match std::env::var("OPENROUTER_MAX_TOKENS") {
+        Ok(raw) if raw.eq_ignore_ascii_case("none") || raw == "0" => None,
+        Ok(raw) => raw.parse::<u32>().ok().filter(|n| *n > 0),
+        Err(_) => Some(DEFAULT_MAX_TOKENS),
     }
 }
 
@@ -83,6 +98,7 @@ mod tests {
                         assert_eq!(cfg.http_referer.as_deref(), Some("https://example.test"));
                         assert_eq!(cfg.base_url, "https://custom.test/v1");
                         assert_eq!(cfg.request_timeout, Duration::from_secs(45));
+                        assert_eq!(cfg.max_tokens, Some(4096));
                     });
                 });
             });
@@ -116,7 +132,10 @@ mod tests {
 
     #[test]
     fn kiss_cov_openrouter_config_from_env_for_listing() {
+        // Kiss ignores references nested only inside closures (e.g. with_env).
+        let _ = OpenRouterConfig::from_env;
         let _ = OpenRouterConfig::from_env_for_listing;
+        let _ = OpenRouterConfig::from_env_parts;
     }
 
     #[test]
@@ -129,5 +148,39 @@ mod tests {
             request_timeout_from_secs_str(None),
             Duration::from_secs(DEFAULT_REQUEST_TIMEOUT_SECS)
         );
+    }
+
+    #[test]
+    fn max_tokens_from_env_defaults_and_overrides() {
+        // Kiss static coverage ignores references nested only in closures.
+        let _ = super::max_tokens_from_env;
+        with_env("OPENROUTER_MAX_TOKENS", None, || {
+            assert_eq!(max_tokens_from_env(), Some(DEFAULT_MAX_TOKENS));
+        });
+        with_env("OPENROUTER_MAX_TOKENS", Some("4096"), || {
+            assert_eq!(max_tokens_from_env(), Some(4096));
+        });
+        with_env("OPENROUTER_MAX_TOKENS", Some("none"), || {
+            assert_eq!(max_tokens_from_env(), None);
+        });
+        with_env("OPENROUTER_MAX_TOKENS", Some("0"), || {
+            assert_eq!(max_tokens_from_env(), None);
+        });
+    }
+
+    #[test]
+    fn max_tokens_from_env_rejects_invalid_and_zero_padded() {
+        with_env("OPENROUTER_MAX_TOKENS", Some("NONE"), || {
+            assert_eq!(max_tokens_from_env(), None);
+        });
+        with_env("OPENROUTER_MAX_TOKENS", Some("not-a-number"), || {
+            assert_eq!(max_tokens_from_env(), None);
+        });
+        with_env("OPENROUTER_MAX_TOKENS", Some("00"), || {
+            assert_eq!(max_tokens_from_env(), None);
+        });
+        with_env("OPENROUTER_MAX_TOKENS", Some("8192"), || {
+            assert_eq!(max_tokens_from_env(), Some(8192));
+        });
     }
 }
