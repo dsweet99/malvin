@@ -54,11 +54,21 @@ impl OpenRouterError {
     }
 }
 
+/// True when a provider/HTTP body indicates the *input prompt* exceeded context budget
+/// (distinct from completion `max_tokens` affordability).
+#[must_use]
+pub fn body_indicates_prompt_too_long(body: &str) -> bool {
+    let lower = body.to_ascii_lowercase();
+    lower.contains("prompt is too long")
+        || lower.contains("prompt tokens limit exceeded")
+        || (lower.contains("prompt token") && lower.contains("limit exceeded"))
+        || (lower.contains("context length") && lower.contains("exceed"))
+        || (lower.contains("maximum context length") && lower.contains("exceed"))
+}
+
 #[must_use]
 pub fn is_prompt_too_long_error(err: &OpenRouterError) -> bool {
-    err.to_string()
-        .to_ascii_lowercase()
-        .contains("prompt is too long")
+    body_indicates_prompt_too_long(&err.to_string())
 }
 
 #[cfg(test)]
@@ -139,6 +149,14 @@ mod tests {
             body: r#"{"error":"prompt is too long"}"#.into(),
         };
         assert!(super::is_prompt_too_long_error(&err));
+        let live = OpenRouterError::ProviderError {
+            provider: "Provider".into(),
+            detail: "Prompt tokens limit exceeded: 21287 > 13840".into(),
+        };
+        assert!(super::is_prompt_too_long_error(&live));
+        assert!(super::body_indicates_prompt_too_long(
+            "Prompt tokens limit exceeded: 21287 > 13840"
+        ));
         assert!(!super::is_prompt_too_long_error(&OpenRouterError::RateLimited {
             body: "slow".into()
         }));
@@ -146,6 +164,9 @@ mod tests {
 
     #[test]
     fn kiss_cov_is_prompt_too_long_error() {
-        let _ = super::is_prompt_too_long_error;
+        let _ = (
+            super::is_prompt_too_long_error,
+            super::body_indicates_prompt_too_long,
+        );
     }
 }

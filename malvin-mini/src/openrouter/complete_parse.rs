@@ -1,7 +1,7 @@
 use crate::openrouter::serde_types::ChatCompletionResponse;
 use crate::openrouter::http_exchange::CompletionWithMeta;
 use crate::openrouter::types::CompletionResponse;
-use crate::error::{is_prompt_too_long_error, OpenRouterError};
+use crate::error::{body_indicates_prompt_too_long, is_prompt_too_long_error, OpenRouterError};
 
 use super::super::provider_error::{provider_fatal_from_body, provider_transport_from_body};
 use super::{completion_with_meta, transport_meta};
@@ -35,6 +35,18 @@ fn parse_http_body_result(
 }
 
 pub(crate) fn outcome_from_http_body(status: u16, text: String, message_count: usize) -> CompletionWithMeta {
+    // Prompt-budget overflows must become ContextOverflow *before* provider envelopes
+    // classify them as fatal ProviderError (which skips session shrink recovery).
+    if body_indicates_prompt_too_long(&text) {
+        return http_body_outcome_with_meta(
+            status,
+            text.clone(),
+            Err(OpenRouterError::ContextOverflow {
+                body: text,
+                message_count,
+            }),
+        );
+    }
     if let Some(outcome) = provider_envelope_outcome(status, text.clone()) {
         return outcome;
     }
@@ -199,6 +211,15 @@ mod tests {
             err.to_string(),
             "Nvidia: Conversation roles must alternate user/assistant/user/assistant/..."
         );
+    }
+
+    #[test]
+    fn outcome_from_http_body_maps_prompt_token_limit_to_context_overflow() {
+        let body = r#"{"error":{"message":"Provider returned error","metadata":{"provider_name":"Provider","raw":"Prompt tokens limit exceeded: 21287 > 13840"}}}"#;
+        let meta = outcome_from_http_body(400, body.into(), 4);
+        let err = meta.result.expect_err("overflow");
+        assert!(err.is_context_overflow());
+        assert!(!err.is_transport_retryable());
     }
 
     #[test]

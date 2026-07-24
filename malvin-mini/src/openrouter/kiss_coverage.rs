@@ -32,7 +32,8 @@ fn kiss_witness_openrouter_test_fns() {
         prompt_too_long_retry_tests::twelve_word_prompt,
         prompt_too_long_retry_tests::openrouter_complete_surfaces_invalid_referer_header_errors,
         prompt_too_long_retry_tests::openrouter_prompt_too_long_maps_to_context_overflow,
-        prompt_too_long_retry_tests::openrouter_prompt_too_long_does_not_retry_in_transport,
+        prompt_too_long_retry_tests::openrouter_prompt_token_limit_maps_to_context_overflow,
+        prompt_too_long_retry_tests::openrouter_prompt_too_long_shrink_retries_to_success,
     );
 }
 

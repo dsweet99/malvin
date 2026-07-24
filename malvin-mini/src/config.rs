@@ -91,14 +91,16 @@ mod tests {
             with_env("OPENROUTER_HTTP_REFERER", Some("https://example.test"), || {
                 with_env("OPENROUTER_BASE_URL", Some("https://custom.test/v1"), || {
                     with_env("OPENROUTER_REQUEST_TIMEOUT", Some("45"), || {
-                        let cfg =
-                            OpenRouterConfig::from_env("model-x".into()).expect("from_env");
-                        assert_eq!(cfg.model, "model-x");
-                        assert_eq!(cfg.api_key, "sk-test");
-                        assert_eq!(cfg.http_referer.as_deref(), Some("https://example.test"));
-                        assert_eq!(cfg.base_url, "https://custom.test/v1");
-                        assert_eq!(cfg.request_timeout, Duration::from_secs(45));
-                        assert_eq!(cfg.max_tokens, Some(4096));
+                        with_env("OPENROUTER_MAX_TOKENS", None, || {
+                            let cfg =
+                                OpenRouterConfig::from_env("model-x".into()).expect("from_env");
+                            assert_eq!(cfg.model, "model-x");
+                            assert_eq!(cfg.api_key, "sk-test");
+                            assert_eq!(cfg.http_referer.as_deref(), Some("https://example.test"));
+                            assert_eq!(cfg.base_url, "https://custom.test/v1");
+                            assert_eq!(cfg.request_timeout, Duration::from_secs(45));
+                            assert_eq!(cfg.max_tokens, Some(4096));
+                        });
                     });
                 });
             });

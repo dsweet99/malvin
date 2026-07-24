@@ -1,13 +1,21 @@
 use super::client::{build_request_headers, OpenRouterClient};
 use super::serde_types::ChatCompletionRequest;
 use super::http_exchange::{CompletionWithMeta, HttpExchangeMeta};
-use super::types::{ChatMessage, ChatRole};
+use super::types::ChatMessage;
 use crate::error::OpenRouterError;
 
 #[path = "complete_parse.rs"]
 mod complete_parse;
+#[path = "complete_prompt_shape.rs"]
+mod complete_prompt_shape;
 
 pub(crate) use complete_parse::{map_http_status, outcome_from_http_body};
+#[allow(unused_imports)] // re-exported for sibling unit-test modules
+pub(crate) use complete_prompt_shape::shrink_prompt_messages;
+use complete_prompt_shape::{
+    maybe_retry_local_shape, marker_response_missing_label, with_tool_use_system_reminder,
+    LocalRetryBudget,
+};
 
 pub(crate) fn completion_with_meta(result: Result<super::types::CompletionResponse, OpenRouterError>, http: HttpExchangeMeta) -> CompletionWithMeta {
     CompletionWithMeta { result, http }
@@ -47,29 +55,60 @@ impl OpenRouterClient {
     /// # Errors
     ///
     /// Returns [`OpenRouterError`] on HTTP or API failures. Context-length failures return
-    /// [`OpenRouterError::ContextOverflow`] without mutating messages.
+    /// [`OpenRouterError::ContextOverflow`]. When the prompt is too long, this method shrinks
+    /// a local copy of the message list (drop oldest non-system, or truncate the sole survivor)
+    /// and retries a bounded number of times before surfacing overflow.
     ///
     /// When the provider rejects the reserved `max_tokens` for credit reasons, retries once
     /// with the affordable token cap parsed from the error body.
     ///
     /// When the body is HTTP 200 but assistant `content` is empty because completion hit
-    /// `finish_reason=length` (common when reasoning tokens consume the cap), retries once
-    /// with a higher `max_tokens`.
+    /// `finish_reason=length` (common when reasoning tokens consume the cap), doubles
+    /// `max_tokens` (capped) and retries inside the same local loop so later shape
+    /// recovery can still run if the bump remains empty.
     pub async fn complete(&self, messages: &[ChatMessage]) -> CompletionWithMeta {
-        let messages = with_tool_use_system_reminder(messages);
+        let mut working = with_tool_use_system_reminder(messages);
         let mut max_tokens = self.config().max_tokens;
-        let first = self.complete_with_max_tokens(&messages, max_tokens).await;
-        if let Some(afford) = affordable_max_tokens_from_outcome(&first)
-            && max_tokens.is_none_or(|requested| afford < requested)
-            && afford > 0
-        {
-            max_tokens = Some(afford);
-            return self.complete_with_max_tokens(&messages, max_tokens).await;
+        let mut budget = LocalRetryBudget {
+            shrink_passes: 0,
+            missing_shape_passes: 0,
+            marker_miss_passes: 0,
+            fail_epoch_passes: 0,
+            max_shrink: 32,
+            // Thought-only / empty-content stalls need more than one shape mutate
+            // (progress cue → strip reminder → shrink) before surfacing MissingContent.
+            max_missing: 3,
+            max_marker: 8,
+            max_fail_epoch: 4,
+        };
+
+        loop {
+            let outcome = self.complete_with_max_tokens(&working, max_tokens).await;
+            if let Some(afford) = affordable_max_tokens_from_outcome(&outcome)
+                && max_tokens.is_none_or(|requested| afford < requested)
+                && afford > 0
+            {
+                max_tokens = Some(afford);
+                return self.complete_with_max_tokens(&working, max_tokens).await;
+            }
+            if let Some(bumped) = length_truncated_max_tokens_bump(&outcome, max_tokens) {
+                max_tokens = Some(bumped);
+                continue;
+            }
+            if maybe_retry_local_shape(&outcome, &mut working, &mut budget) {
+                continue;
+            }
+            // Marker turns must not leak prose/bash into the router parse.
+            if let Ok(response) = outcome.result.as_ref()
+                && marker_response_missing_label(&working, &response.content)
+            {
+                return completion_with_meta(
+                    Err(OpenRouterError::MissingContent),
+                    outcome.http.clone(),
+                );
+            }
+            return outcome;
         }
-        if let Some(bumped) = length_truncated_max_tokens_bump(&first, max_tokens) {
-            return self.complete_with_max_tokens(&messages, Some(bumped)).await;
-        }
-        first
     }
 
     async fn complete_with_max_tokens(
@@ -90,52 +129,55 @@ impl OpenRouterClient {
     ) -> Result<(u16, String), CompletionWithMeta> {
         let url = completion_post_url(&self.config().base_url);
         let body = ChatCompletionRequest {
-            model: &self.config().model,
+            model: self.config().model.as_str(),
             messages,
             max_tokens,
         };
         let headers = match build_request_headers(self.config()) {
             Ok(h) => h,
-            Err(e) => return Err(completion_with_meta(Err(e), transport_meta(None, None))),
+            Err(err) => {
+                return Err(completion_with_meta(
+                    Err(err),
+                    transport_meta(None, None),
+                ));
+            }
         };
-        let resp = match post_chat_completion(self, url, &body, headers).await {
-            Ok(response) => response,
-            Err(meta) => return Err(meta),
-        };
-        let status = resp.status().as_u16();
-        match resp.text().await {
+        let response = post_chat_completion(self, url, &body, headers).await?;
+        let status = response.status().as_u16();
+        match response.text().await {
             Ok(text) => Ok((status, text)),
-            Err(e) => Err(transport_failure_meta(Some(status), e)),
+            Err(err) => Err(transport_failure_meta(Some(status), err)),
         }
     }
 }
 
 fn affordable_max_tokens_from_outcome(outcome: &CompletionWithMeta) -> Option<u32> {
-    let err = outcome.result.as_ref().err()?;
-    if !err.is_billing_failure() {
+    let Err(OpenRouterError::BillingFailure { body, .. }) = outcome.result.as_ref() else {
         return None;
-    }
-    parse_affordable_max_tokens(&err.to_string())
+    };
+    parse_affordable_max_tokens(body)
 }
 
 fn parse_affordable_max_tokens(text: &str) -> Option<u32> {
-    let lower = text.to_ascii_lowercase();
-    let key = "can only afford ";
-    let start = lower.find(key)? + key.len();
-    let digits: String = lower[start..]
+    const NEEDLE: &str = "can only afford ";
+    let start = text.find(NEEDLE)? + NEEDLE.len();
+    let digits: String = text[start..]
         .chars()
         .take_while(|c| c.is_ascii_digit())
         .collect();
-    digits.parse::<u32>().ok().filter(|n| *n > 0)
+    digits.parse().ok()
 }
 
-/// If MissingContent came from a length-truncated completion, propose a larger cap.
+fn finish_reason_is_length(body: &str) -> bool {
+    body.contains("\"finish_reason\":\"length\"") || body.contains("\"finish_reason\": \"length\"")
+}
+
 fn length_truncated_max_tokens_bump(
     outcome: &CompletionWithMeta,
     current: Option<u32>,
 ) -> Option<u32> {
-    let err = outcome.result.as_ref().err()?;
-    if !matches!(err, OpenRouterError::MissingContent) {
+    let missing = matches!(outcome.result, Err(OpenRouterError::MissingContent));
+    if !missing {
         return None;
     }
     let body = outcome.http.body.as_deref()?;
@@ -145,38 +187,6 @@ fn length_truncated_max_tokens_bump(
     let base = current.unwrap_or(4096);
     let bumped = base.saturating_mul(2).clamp(8192, 32_768);
     (bumped > base).then_some(bumped)
-}
-
-fn finish_reason_is_length(body: &str) -> bool {
-    let Ok(value) = serde_json::from_str::<serde_json::Value>(body) else {
-        return body.to_ascii_lowercase().contains("\"finish_reason\":\"length\"");
-    };
-    value
-        .pointer("/choices/0/finish_reason")
-        .and_then(serde_json::Value::as_str)
-        .is_some_and(|reason| reason.eq_ignore_ascii_case("length"))
-}
-
-/// Short, domain-agnostic reminder: keep orientation current and finish unpaid probes.
-/// Avoid tool-syntax prescriptions here; those belong in the harness, not the model preamble.
-fn with_tool_use_system_reminder(messages: &[ChatMessage]) -> Vec<ChatMessage> {
-    const REMINDER: &str = "State the problem and rival readings before acting. \
-Prefer short, targeted trials. Study each outcome against a prior prediction. \
-Do not stop while unpaid operational probes remain. Stay inside the working \
-context named in the request.";
-    if messages
-        .first()
-        .is_some_and(|m| matches!(m.role, ChatRole::System))
-    {
-        return messages.to_vec();
-    }
-    let mut out = Vec::with_capacity(messages.len() + 1);
-    out.push(ChatMessage {
-        role: ChatRole::System,
-        content: REMINDER.to_string(),
-    });
-    out.extend_from_slice(messages);
-    out
 }
 
 #[cfg(test)]

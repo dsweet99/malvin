@@ -21,7 +21,7 @@ pub(crate) fn openrouter_test_config(base_url: &str) -> OpenRouterConfig {
 pub(crate) async fn mount_prompt_too_long_once(server: &MockServer) {
     Mock::given(method("POST"))
         .respond_with(prompt_too_long_template())
-        .expect(1)
+        .expect(1..)
         .mount(server)
         .await;
 }
@@ -55,12 +55,32 @@ pub(crate) async fn mount_prompt_too_long_then_success(server: &MockServer) {
         .await;
 }
 
+/// First POST still contains the oldest user message → overflow; after local drop, success.
+pub(crate) async fn mount_prompt_too_long_then_success_after_drop(server: &MockServer) {
+    Mock::given(method("POST"))
+        .and(body_string_contains("drop-me-old"))
+        .respond_with(prompt_too_long_template())
+        .up_to_n_times(1)
+        .expect(1)
+        .mount(server)
+        .await;
+    // Local act-pressure may retry the shrunk prompt several times before returning.
+    Mock::given(method("POST"))
+        .and(body_string_contains("keep-user"))
+        .and(body_string_contains("keep-assistant"))
+        .respond_with(ok_completion_template())
+        .expect(1..)
+        .mount(server)
+        .await;
+}
+
 #[cfg(test)]
 mod tests {
     use std::time::Duration;
 
     use super::{
-        mount_prompt_too_long_once, mount_prompt_too_long_then_success, ok_completion_template,
+        mount_prompt_too_long_once, mount_prompt_too_long_then_success,
+        mount_prompt_too_long_then_success_after_drop, ok_completion_template,
         openrouter_test_config, prompt_too_long_template,
     };
     use wiremock::MockServer;
@@ -119,6 +139,7 @@ mod tests {
             openrouter_test_config,
             mount_prompt_too_long_once,
             mount_prompt_too_long_then_success,
+            mount_prompt_too_long_then_success_after_drop,
             prompt_too_long_template,
             ok_completion_template,
             openrouter_test_config_sets_defaults,
