@@ -1,4 +1,4 @@
-//! `malvin explain` runs the kpop gate-loop workflow with composed `explain_constraints.md`.
+//! `malvin explain` runs Review (`KPop`) → Plan (`KPop`) → Work until chat LGTM.
 
 #[cfg(unix)]
 mod common;
@@ -6,8 +6,8 @@ mod common;
 #[cfg(unix)]
 use common::{
     ExplainSpawn, acp_mock_explain_kpop_empty_pdf_js, acp_mock_explain_agent_ran_without_output_js,
-    acp_mock_explain_kpop_steps_js, bin_path_with_fake_kiss, combined_cli_output,
-    seed_git_kiss_cargo_gate_workspace, seed_stale_default_explain_outputs,
+    acp_mock_explain_kpop_steps_js, acp_mock_explain_lgtm_first_review_js, bin_path_with_fake_kiss,
+    combined_cli_output, seed_git_kiss_cargo_gate_workspace, seed_stale_default_explain_outputs,
     spawn_explain, test_home_workspace, workspace_kiss_check_only, cached_mock_executable,
 };
 
@@ -18,14 +18,14 @@ fn explain_succeeds_when_agent_writes_valid_tex_and_pdf() {
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
     let path = bin_path_with_fake_kiss(&root);
-    let mock = cached_mock_executable( &acp_mock_explain_kpop_steps_js());
+    let mock = cached_mock_executable(&acp_mock_explain_kpop_steps_js());
     let out = spawn_explain(&ExplainSpawn {
         workspace: &workspace,
         home: &home,
         mock: &mock,
         path_var: &path,
         request: "gate loop exit",
-        extra_args: &["--max-loops", "1"],
+        extra_args: &["--max-loops", "2"],
     });
     assert!(
         out.status.success(),
@@ -45,19 +45,19 @@ fn explain_runs_kpop_when_gates_already_pass() {
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
     let path = bin_path_with_fake_kiss(&root);
-    let mock = cached_mock_executable( &acp_mock_explain_kpop_steps_js());
+    let mock = cached_mock_executable(&acp_mock_explain_kpop_steps_js());
     let out = spawn_explain(&ExplainSpawn {
         workspace: &workspace,
         home: &home,
         mock: &mock,
         path_var: &path,
         request: "gate loop exit",
-        extra_args: &["--max-loops", "1"],
+        extra_args: &["--max-loops", "2"],
     });
     let combined = combined_cli_output(&out);
     assert!(
         combined.contains("KPOP_LOG:"),
-        "explain must run kpop even when gates pass before agent: status={:?} combined={combined:?}",
+        "explain must run kpop review/plan even when gates pass before agent: status={:?} combined={combined:?}",
         out.status,
     );
 }
@@ -69,19 +69,19 @@ fn explain_writes_custom_out_path() {
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
     let path = bin_path_with_fake_kiss(&root);
-    let mock = cached_mock_executable( &acp_mock_explain_kpop_steps_js());
+    let mock = cached_mock_executable(&acp_mock_explain_kpop_steps_js());
     let out = spawn_explain(&ExplainSpawn {
         workspace: &workspace,
         home: &home,
         mock: &mock,
         path_var: &path,
         request: "gate loop exit",
-        extra_args: &["--max-loops", "1", "--out-path", "docs/paper.tex"],
+        extra_args: &["--max-loops", "2", "--out-path", "docs/paper.tex"],
     });
     let combined = combined_cli_output(&out);
     assert!(
         combined.contains("KPOP_LOG:"),
-        "explain with custom out-path must enter kpop gate loop: status={:?} combined={combined:?}",
+        "explain with custom out-path must enter review/plan kpop: status={:?} combined={combined:?}",
         out.status,
     );
     assert!(
@@ -97,7 +97,7 @@ fn explain_fails_when_request_missing() {
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
     let path = bin_path_with_fake_kiss(&root);
-    let mock = cached_mock_executable( &acp_mock_explain_kpop_steps_js());
+    let mock = cached_mock_executable(&acp_mock_explain_kpop_steps_js());
     let mut cmd = std::process::Command::new(env!("CARGO_BIN_EXE_malvin"));
     cmd.current_dir(&workspace)
         .env("HOME", &home)
@@ -124,14 +124,14 @@ fn explain_auto_mode_leaves_stale_default_outputs_untouched() {
     workspace_kiss_check_only(&workspace);
     seed_stale_default_explain_outputs(&workspace);
     let path = bin_path_with_fake_kiss(&root);
-    let mock = cached_mock_executable( &acp_mock_explain_kpop_steps_js());
+    let mock = cached_mock_executable(&acp_mock_explain_kpop_steps_js());
     let out = spawn_explain(&ExplainSpawn {
         workspace: &workspace,
         home: &home,
         mock: &mock,
         path_var: &path,
         request: "topic",
-        extra_args: &["--max-loops", "1"],
+        extra_args: &["--max-loops", "2"],
     });
     let combined = combined_cli_output(&out);
     assert!(
@@ -154,7 +154,7 @@ fn explain_fails_when_agent_solves_but_output_missing() {
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
     let path = bin_path_with_fake_kiss(&root);
-    let mock = cached_mock_executable( &acp_mock_explain_agent_ran_without_output_js());
+    let mock = cached_mock_executable(&acp_mock_explain_agent_ran_without_output_js());
     let out = spawn_explain(&ExplainSpawn {
         workspace: &workspace,
         home: &home,
@@ -173,14 +173,41 @@ fn explain_kpop_fails_when_post_session_pdf_empty() {
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
     let path = bin_path_with_fake_kiss(&root);
-    let mock = cached_mock_executable( &acp_mock_explain_kpop_empty_pdf_js());
+    let mock = cached_mock_executable(&acp_mock_explain_kpop_empty_pdf_js());
     let out = spawn_explain(&ExplainSpawn {
         workspace: &workspace,
         home: &home,
         mock: &mock,
         path_var: &path,
         request: "topic",
-        extra_args: &["--max-loops", "1"],
+        extra_args: &["--max-loops", "2"],
     });
     assert!(!out.status.success(), "expected failure for empty pdf: {out:?}");
+}
+
+#[cfg(unix)]
+#[test]
+fn explain_lgtm_on_first_review_skips_plan_and_work() {
+    let (root, home, workspace) = test_home_workspace();
+    seed_git_kiss_cargo_gate_workspace(&workspace);
+    workspace_kiss_check_only(&workspace);
+    let path = bin_path_with_fake_kiss(&root);
+    let mock = cached_mock_executable(&acp_mock_explain_lgtm_first_review_js());
+    let out = spawn_explain(&ExplainSpawn {
+        workspace: &workspace,
+        home: &home,
+        mock: &mock,
+        path_var: &path,
+        request: "topic",
+        extra_args: &["--max-loops", "1", "--out-path", "docs/paper.tex"],
+    });
+    let combined = combined_cli_output(&out);
+    assert!(
+        out.status.success(),
+        "LGTM on first review must succeed without plan/work: {combined:?}"
+    );
+    assert!(
+        combined.contains("KPOP_LOG:"),
+        "review kpop must still run: {combined:?}"
+    );
 }

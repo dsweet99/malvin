@@ -75,36 +75,6 @@ pub(crate) fn run_kpop_command(
     })
 }
 
-pub(crate) fn revise_args_for_explain_output(explain: &ExplainArgs, doc_path: &str) -> ReviseArgs {
-    ReviseArgs {
-        doc_path: doc_path.to_string(),
-        max_loops: explain.max_loops,
-        max_hypotheses: explain.max_hypotheses,
-        tenacious: explain.tenacious,
-    }
-}
-
-pub(crate) async fn run_explain_then_revise(
-    mut explain: ExplainArgs,
-    shared: &SharedOpts,
-    workflow: WorkflowCliOptions,
-) -> Result<(), String> {
-    let request = explain.request.clone();
-    let revise_template = revise_args_for_explain_output(&explain, "");
-    run_explain(&mut explain, shared, workflow).await?;
-    let request_arg = crate::cli::cli_request::require_cli_request(request.as_ref(), "explain")?;
-    let doc_path = super::explain_flow::explain_revise_doc_path(&request_arg, &explain.out_path)?;
-    run_revise(
-        ReviseArgs {
-            doc_path,
-            ..revise_template
-        },
-        shared,
-        workflow,
-    )
-    .await
-}
-
 pub(crate) fn run_delight_command(
     mut delight: DelightArgs,
     shared: &mut SharedOpts,
@@ -183,8 +153,8 @@ pub(crate) fn run_explain_command(
         matches,
     });
     run_async_cli(|| {
-        run_explain_then_revise(
-            explain,
+        run_explain(
+            &mut explain,
             shared,
             WorkflowCliOptions {
                 force: !shared.no_force,

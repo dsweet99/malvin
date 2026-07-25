@@ -2,30 +2,39 @@
 
 use std::path::Path;
 
-use crate::log_gc_config::{LogsGcConfig, parse_logs_gc_config};
-use crate::terminal_palette::TerminalTheme;
-use crate::mem_limit_config::{default_mem_limit_gb, parse_mem_limit_gb};
+use crate::log_gc_config::LogsGcConfig;
 use crate::output::print_log_warning;
 use crate::support_paths::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
+use crate::terminal_palette::TerminalTheme;
 use crate::workspace_paths::malvin_config_path;
 
 #[path = "malvin_config_open.rs"]
 mod malvin_config_open;
 #[path = "malvin_config_agent.rs"]
 mod malvin_config_agent;
+#[path = "malvin_config_review.rs"]
+mod malvin_config_review;
 #[path = "malvin_config_top.rs"]
 mod malvin_config_top;
+#[path = "malvin_config_parse.rs"]
+mod malvin_config_parse;
 pub use malvin_config_open::{
     ensure_malvin_config_file_if_missing, load_agent_config_lenient, load_agent_config_strict,
 };
 use malvin_config_open::create_malvin_config_from_template;
 pub(crate) use malvin_config_agent::parse_agent_config;
+pub(crate) use malvin_config_review::parse_review_config;
 pub(crate) use malvin_config_top::{parse_context_size, parse_theme};
 pub use malvin_config_top::DEFAULT_CONTEXT_SIZE;
+pub(crate) use malvin_config_parse::{
+    parse_malvin_config, read_string, read_u32, read_u64, read_usize,
+};
 
 pub const DEFAULT_MAX_HYPOTHESES: usize = 5;
 pub const DEFAULT_MAX_LOOPS: usize = 1;
 pub const DEFAULT_MAX_LOOPS_CODE: usize = 3;
+/// Built-in default for explain Review/Plan `KPop` sessions when CLI and `[review]` are unset.
+pub const DEFAULT_EXPLAIN_MAX_HYPOTHESES: usize = 10;
 
 const DEFAULT_MALVIN_CONFIG_TEMPLATE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -58,6 +67,13 @@ impl Default for AgentConfig {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ReviewConfig {
+    /// Hypothesis budget for explain Review and Plan `KPop` sessions.
+    /// `None` means use [`DEFAULT_EXPLAIN_MAX_HYPOTHESES`].
+    pub max_hypotheses: Option<usize>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MalvinConfig {
     pub mem_limit_gb: u64,
@@ -66,6 +82,7 @@ pub struct MalvinConfig {
     pub theme: TerminalTheme,
     pub logs: LogsGcConfig,
     pub agent: AgentConfig,
+    pub review: ReviewConfig,
 }
 
 /// Ensure `~/.malvin_home/config.toml` exists and contains every known key (writes missing defaults).
@@ -169,60 +186,6 @@ pub(crate) fn merge_missing_keys(into: &mut toml::Value, template: &toml::Value)
         }
         _ => false,
     }
-}
-
-pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
-    let mem_limit_gb = parse_mem_limit_gb(text).unwrap_or_else(|msg| {
-        print_log_warning(&format!("could not parse mem_limit_gb: {msg}"));
-        default_mem_limit_gb()
-    });
-    let context_size = parse_context_size(text).unwrap_or_else(|msg| {
-        print_log_warning(&format!("could not parse context_size: {msg}"));
-        DEFAULT_CONTEXT_SIZE
-    });
-    let logs = parse_logs_gc_config(text).unwrap_or_else(|msg| {
-        print_log_warning(&format!("could not parse [logs]: {msg}"));
-        LogsGcConfig::default()
-    });
-    let agent = parse_agent_config(text).unwrap_or_else(|msg| {
-        print_log_warning(&format!("could not parse [agent]: {msg}"));
-        AgentConfig::default()
-    });
-    let theme = parse_theme(text).unwrap_or_else(|msg| {
-        print_log_warning(&format!("could not parse theme: {msg}"));
-        TerminalTheme::Dark
-    });
-    MalvinConfig {
-        mem_limit_gb,
-        context_size,
-        theme,
-        logs,
-        agent,
-    }
-}
-
-pub(crate) fn read_string(value: Option<&toml::Value>) -> Option<String> {
-    value?.as_str().map(str::to_string)
-}
-
-fn parse_toml_integer(value: Option<&toml::Value>) -> Option<i64> {
-    let v = value?;
-    if let Some(i) = v.as_integer() {
-        return Some(i);
-    }
-    v.as_str()?.parse().ok()
-}
-
-pub(crate) fn read_usize(value: Option<&toml::Value>) -> Option<usize> {
-    parse_toml_integer(value).and_then(|i| usize::try_from(i).ok())
-}
-
-pub(crate) fn read_u32(value: Option<&toml::Value>) -> Option<u32> {
-    parse_toml_integer(value).and_then(|i| u32::try_from(i).ok())
-}
-
-pub(crate) fn read_u64(value: Option<&toml::Value>) -> Option<u64> {
-    parse_toml_integer(value).and_then(|i| u64::try_from(i).ok())
 }
 
 #[cfg(test)]

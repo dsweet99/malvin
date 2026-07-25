@@ -1,7 +1,8 @@
 use super::{
-    explain_kpop_request, explain_output_paths, explain_pdf_path_from_tex, explain_preflight,
-    explain_resolved_output_paths, explain_revise_doc_path, prepare_explain_kpop_prompt_store,
-    ExplainKpopRequestInput, EXPLAIN_PDF_BASENAME, EXPLAIN_TEX_BASENAME,
+    explain_kpop_request, explain_output_paths, explain_pdf_path_from_tex, explain_plan_request,
+    explain_preflight, explain_resolved_output_paths, explain_work_request,
+    prepare_explain_kpop_prompt_store, ExplainKpopRequestInput, ExplainWorkPromptParts,
+    EXPLAIN_PDF_BASENAME, EXPLAIN_TEX_BASENAME,
 };
 use crate::artifacts::create_kpop_run_artifacts;
 use crate::cli::WorkflowCliOptions;
@@ -84,6 +85,9 @@ fn explain_kpop_request_renders_request_and_output_paths() {
     assert!(rendered.contains("docs/paper.pdf"));
     assert!(rendered.contains("Satisfy all constraints"));
     assert!(rendered.contains("Scope Constraints"));
+    assert!(rendered.contains("Role: explain review"));
+    assert!(rendered.contains("Do not write or compile"));
+    assert!(!rendered.contains("Write LaTeX source to"));
 }
 
 #[test]
@@ -103,8 +107,47 @@ fn explain_kpop_request_auto_mode_instructs_snake_case_title_naming() {
         },
     )
     .expect("render");
-    assert!(rendered.contains("snake case"));
+    assert!(rendered.contains("Locate existing explanation products"));
+    assert!(rendered.contains("snake_case") || rendered.contains("snake case"));
+    assert!(!rendered.contains("Write LaTeX source and compile"));
     assert!(!rendered.contains("docs/paper.tex"));
+}
+
+#[test]
+fn explain_plan_request_embeds_review() {
+    let store = prepare_explain_kpop_prompt_store(WorkflowCliOptions { force: true }).expect("store");
+    let rendered = explain_plan_request(&store, "gap: missing abstract").expect("render");
+    assert!(rendered.contains("gap: missing abstract"));
+    assert!(rendered.contains("Role: explain plan"));
+    assert!(!rendered.contains("{{"));
+}
+
+#[test]
+fn explain_work_request_embeds_review_plan_and_write_instruction() {
+    let store = prepare_explain_kpop_prompt_store(WorkflowCliOptions { force: true }).expect("store");
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = create_kpop_run_artifacts("explain", Some(tmp.path())).expect("artifacts");
+    let outputs = explain_resolved_output_paths(tmp.path(), "docs/paper.tex").expect("resolve");
+    let rendered = explain_work_request(
+        &store,
+        &artifacts,
+        ExplainWorkPromptParts {
+            paths: ExplainKpopRequestInput {
+                request_text: "topic",
+                request_work_dir: tmp.path(),
+                outputs: &outputs,
+                out_path_explicit: true,
+            },
+            review: "review text",
+            plan: "plan text",
+        },
+    )
+    .expect("render");
+    assert!(rendered.contains("review text"));
+    assert!(rendered.contains("plan text"));
+    assert!(rendered.contains("Write LaTeX source to"));
+    assert!(rendered.contains("docs/paper.tex"));
+    assert!(!rendered.contains("{{"));
 }
 
 #[test]
@@ -136,28 +179,5 @@ fn explain_preflight_md_file_uses_parent_work_dir() {
         assert_eq!(outputs.tex_path.file_name().unwrap(), EXPLAIN_TEX_BASENAME);
         assert_eq!(outputs.pdf_path.file_name().unwrap(), EXPLAIN_PDF_BASENAME);
         assert!(outputs.tex_path.ends_with("notes/explain.tex"));
-    });
-}
-
-#[test]
-fn explain_revise_doc_path_uses_resolved_tex_in_request_work_dir() {
-    let _guard = crate::test_utils::test_env_lock();
-    let tmp = tempfile::tempdir().unwrap();
-    with_cwd(tmp.path(), || {
-        let cwd = std::env::current_dir().expect("cwd");
-        let md_path = cwd.join("notes/topic.md");
-        std::fs::create_dir_all(md_path.parent().unwrap()).unwrap();
-        std::fs::write(&md_path, "Explain this\n").unwrap();
-        let doc_path = explain_revise_doc_path("notes/topic.md", EXPLAIN_TEX_BASENAME).unwrap();
-        assert_eq!(doc_path, "notes/explain.tex");
-    });
-}
-
-#[test]
-fn explain_revise_doc_path_uses_custom_out_path_in_cwd() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    with_cwd(tmp.path(), || {
-        let doc_path = explain_revise_doc_path("topic", "docs/paper.tex").expect("resolve");
-        assert_eq!(doc_path, "docs/paper.tex");
     });
 }

@@ -57,10 +57,27 @@ fn apply_code_workflow_loop_defaults(
     );
 }
 
+fn apply_explain_loop_defaults(
+    matches: &ArgMatches,
+    explain: &mut crate::cli::explain_flow::ExplainArgs,
+    agent: &AgentConfig,
+    review: &crate::malvin_config_file::ReviewConfig,
+) {
+    if !subcommand_flag_from_command_line(matches, "explain", "max_loops") {
+        explain.max_loops = agent.max_loops_code;
+    }
+    if !subcommand_flag_from_command_line(matches, "explain", "max_hypotheses") {
+        explain.max_hypotheses = review
+            .max_hypotheses
+            .unwrap_or(crate::malvin_config_file::DEFAULT_EXPLAIN_MAX_HYPOTHESES);
+    }
+}
+
 fn apply_gate_loop_command_defaults(
     matches: &ArgMatches,
     command: &mut Commands,
     agent: &AgentConfig,
+    review: &crate::malvin_config_file::ReviewConfig,
 ) {
     match command {
         Commands::Code(code) => apply_code_workflow_loop_defaults(
@@ -109,15 +126,7 @@ fn apply_gate_loop_command_defaults(
                 agent,
             },
         ),
-        Commands::Explain(explain) => apply_code_workflow_loop_defaults(
-            matches,
-            CodeWorkflowLoopMut {
-                subcommand: "explain",
-                max_loops: &mut explain.max_loops,
-                max_hypotheses: &mut explain.max_hypotheses,
-                agent,
-            },
-        ),
+        Commands::Explain(explain) => apply_explain_loop_defaults(matches, explain, agent, review),
         Commands::Revise(revise) => apply_code_workflow_loop_defaults(
             matches,
             CodeWorkflowLoopMut {
@@ -181,8 +190,10 @@ pub fn apply_workspace_config_defaults(
         return finalize_shared_model(matches, &mut cli.shared);
     };
     let agent = load_agent_config(matches)?;
+    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
+    let review = crate::malvin_config_file::load_malvin_config(&cwd).review;
     apply_shared_config_defaults(matches, &mut cli.shared, &agent);
-    apply_gate_loop_command_defaults(matches, command, &agent);
+    apply_gate_loop_command_defaults(matches, command, &agent, &review);
     finalize_shared_model(matches, &mut cli.shared)
 }
 
@@ -218,6 +229,10 @@ pub fn parse_cli_with_config_defaults(
 #[cfg(test)]
 #[path = "config_defaults_tests.rs"]
 mod config_defaults_tests;
+
+#[cfg(test)]
+#[path = "config_defaults_tests_explain.rs"]
+mod config_defaults_tests_explain;
 
 #[cfg(test)]
 #[path = "config_defaults_tests_mini.rs"]

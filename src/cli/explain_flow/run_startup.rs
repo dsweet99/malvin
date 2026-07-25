@@ -178,8 +178,12 @@ mod tests {
                 "default out-path without CLI flag must use auto naming"
             );
             assert!(
-                prepared.inner.request_text.contains("snake case"),
-                "auto prompt must instruct title-based naming"
+                prepared.inner.request_text.contains("Locate existing explanation products"),
+                "auto review prompt must locate products, not write them"
+            );
+            assert!(
+                !prepared.inner.request_text.contains("Write LaTeX source and compile"),
+                "review compose must not include write instructions"
             );
             assert!(
                 !work.join("explain_1.tex").exists(),

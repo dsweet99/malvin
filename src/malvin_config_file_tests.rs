@@ -228,6 +228,7 @@ fn parse_malvin_config_falls_back_when_values_invalid_or_missing() {
         theme: cfg.theme,
         logs: cfg.logs,
         agent: cfg.agent.clone(),
+        review: cfg.review.clone(),
     };
     assert_eq!(full.agent, cfg.agent);
     assert_eq!(read_string(None), None);

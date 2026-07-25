@@ -46,6 +46,8 @@ impl KPopHardConstraints {
         skip_workspace_quality_gates: true,
         exit: KPopHardConstraintsExit::CodeTidy,
     };
+    /// Historical EXPLAIN gate-engine profile (explain now uses Review→Plan→Work).
+    #[allow(dead_code)]
     pub const EXPLAIN: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: false,

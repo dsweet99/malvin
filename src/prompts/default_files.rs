@@ -3,18 +3,26 @@ use super::{
     ROUTER_CODE_EXTRA_MD, ROUTER_D_MD,
 };
 
-fn default_constraints_prompt(name: &str) -> Option<&'static str> {
+fn default_explain_prompt(name: &str) -> Option<&'static str> {
     match name {
+        "explain_constraints.md" => Some(include_str!("../../default_prompts/explain_constraints.md")),
+        "explain_plan.md" => Some(include_str!("../../default_prompts/explain_plan.md")),
+        "explain_work.md" => Some(include_str!("../../default_prompts/explain_work.md")),
+        _ => None,
+    }
+}
+
+fn default_constraints_prompt(name: &str) -> Option<&'static str> {
+    default_explain_prompt(name).or_else(|| match name {
         "tidy_constraints.md" => Some(include_str!("../../default_prompts/tidy_constraints.md")),
         "code_constraints.md" => Some(include_str!("../../default_prompts/code_constraints.md")),
         "init_constraints.md" => Some(include_str!("../../default_prompts/init_constraints.md")),
         "delight_constraints.md" => Some(include_str!("../../default_prompts/delight_constraints.md")),
         "priors_constraints.md" => Some(include_str!("../../default_prompts/priors_constraints.md")),
-        "explain_constraints.md" => Some(include_str!("../../default_prompts/explain_constraints.md")),
         "revise_constraints.md" => Some(include_str!("../../default_prompts/revise_constraints.md")),
         "mini_constraints.md" => Some(include_str!("../../default_prompts/mini_constraints.md")),
         _ => None,
-    }
+    })
 }
 
 fn default_mbc2_prompt(name: &str) -> Option<&'static str> {
@@ -27,6 +35,10 @@ fn default_mbc2_prompt(name: &str) -> Option<&'static str> {
 fn default_kpop_prompt(name: &str) -> Option<&'static str> {
     default_mbc2_prompt(name).or_else(|| match name {
         "kpop.md" | "kpop_common.md" => Some(include_str!("../../default_prompts/kpop_common.md")),
+        "explain_kpop_common.md" => {
+            Some(include_str!("../../default_prompts/explain_kpop_common.md"))
+        }
+        "explain_kpop_turn.md" => Some(include_str!("../../default_prompts/explain_kpop_turn.md")),
         "kpop_program.md" => Some(include_str!("../../default_prompts/kpop_program.md")),
         "kpop_program_creative.md" => {
             Some(include_str!("../../default_prompts/kpop_program_creative.md"))

@@ -1,15 +1,14 @@
 use clap::Args;
 
-#[path = "explain_flow/prep.rs"]
 mod prep;
-#[path = "explain_flow/run_startup.rs"]
 mod run_startup;
-#[path = "explain_flow/run_loop.rs"]
+pub(crate) mod kpop_phase;
+pub(crate) mod work;
+mod outputs;
+mod finish;
 mod run_loop;
 
 pub use run_loop::run_explain;
-
-pub(crate) use prep::explain_revise_doc_path;
 
 #[must_use]
 pub(crate) fn effective_explain_max_loops(max_loops: usize) -> usize {
@@ -23,11 +22,11 @@ pub struct ExplainArgs {
     /// Workspace path for the LaTeX output (PDF is the same path with `.pdf`; default basename stays in the request work directory).
     #[arg(long, default_value = "explain.tex")]
     pub out_path: String,
-    /// Maximum gate-loop iterations before stopping.
+    /// Maximum outer review/plan/work iterations before stopping.
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE)]
     pub max_loops: usize,
-    /// Number of hypotheses per `KPop` round.
-    #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES)]
+    /// Number of hypotheses per Review or Plan `KPop` session.
+    #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_EXPLAIN_MAX_HYPOTHESES)]
     pub max_hypotheses: usize,
     /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
     #[arg(long, default_value_t = crate::cli::loop_opts::DEFAULT_TENACIOUS)]
@@ -91,7 +90,7 @@ mod tests {
 
     #[test]
     fn kiss_cov_explain_gate_helpers() {
-        let _ = super::run_loop::validate_explain_output;
+        let _ = super::outputs::validate_explain_output;
         let _ = super::run_startup::prepare_explain_kpop_run;
         let _: Option<super::run_startup::ExplainKpopPrepared> = None;
     }

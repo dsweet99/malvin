@@ -1,6 +1,6 @@
 # malvin explain
 
-Produce a short, reader-friendly **LaTeX explanation** via the KPop gate loop scoped by `explain_constraints.md`. The agent writes `explain.tex` and compiles `explain.pdf` in the request work directory. On success, malvin automatically runs `malvin revise` on the same `--out-path` `.tex` file.
+Produce a short, reader-friendly **LaTeX explanation** via an outer **Review → Plan → Work** loop. Review and Plan are one-shot in-process KPop sessions (separate experiment logs). Work is a coder turn. Success is chat `LGTM` from Review, with non-empty `.tex` and `.pdf`. Explain does **not** run `malvin revise`.
 
 ## Summary
 
@@ -8,10 +8,11 @@ Produce a short, reader-friendly **LaTeX explanation** via the KPop gate loop sc
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
 | Output | `explain.tex` and `explain.pdf` in the request work directory (override with `--out-path`) |
-| Loop | Full gate-kpop loop (`KPopHardConstraints::EXPLAIN`) |
-| Fast path | **None** — always runs the agent (like `delight`, unlike `tidy`) |
-| Exit policy | Valid non-empty tex and pdf outputs; workspace gates need not pass |
-| Requires | No `.malvin/checks` preflight (document workflow, like `delight` / `revise`) |
+| Loop | Outer `effective_max_loops(--max-loops)` iterations of Review → (LGTM stop \| Plan → Work) |
+| Review / Plan | In-process KPop (exactly one session each); soft constraints from `explain_constraints.md` via `kpop_program_creative.md` for Review |
+| Work | Coder session with `explain_work.md` |
+| Exit policy | Review chat is exactly `LGTM`, then non-empty tex/pdf; workspace gates need not pass |
+| Requires | No `.malvin/checks` preflight (document workflow) |
 
 ## Intention
 
@@ -41,11 +42,15 @@ With the default basename `explain.tex`, outputs stay in the request work direct
 
 ### `--max-loops <N>` (default: 3)
 
-Outer gate-loop budget (`max(N, 1) + 1` iterations). `0` is treated as `1`.
+Outer review/plan/work iteration budget (`max(N, 1)`). This is **not** the KPop engine `N+1` gate budget. `0` is treated as `1`. Exhausting the budget without Review `LGTM` is failure.
+
+### `--max-hypotheses <N>` (default: 10)
+
+Hypothesis budget for **each** Review and Plan KPop session (fresh experiment log per phase, so budgets do not share). Precedence: CLI flag &gt; config `review.max_hypotheses` &gt; built-in **10**. Does **not** use `agent.max_hypotheses`.
 
 ### `--tenacious` (default: on)
 
-Sets `--max-acp-retries=9999` and `--max-loops=9999`.
+Sets `--max-acp-retries=9999` and `--max-loops=9999` (outer review/plan/work budget).
 
 ### `--no-tenacious`
 
@@ -55,13 +60,24 @@ Restore normal loop/retry budgets (global flag; see `malvin --doc`).
 
 See `malvin --doc`.
 
+## Loop contract
+
+Each outer iteration:
+
+1. **Review** (in-process KPop, once): judge lack-of-satisfaction of `explain_constraints.md`. Chat is exactly `LGTM` or a failure-focused gap list. Missing/empty products ⇒ never `LGTM`. Empty chat ⇒ fail.
+2. If Review chat is `LGTM` → validate non-empty tex/pdf → success (skip Plan and Work).
+3. **Plan** (in-process KPop, once): consume the review; chat is the work plan. Empty chat ⇒ fail.
+4. **Work** (coder): execute `explain_work.md` with `{{ review }}` and `{{ plan }}`.
+
+Review and Plan each use a distinct `exp_log` path every outer iteration.
+
 ## Success criteria
 
 All of the following must hold:
 
-1. Agent completed within the `--max-loops` budget.
-2. After the session, the resolved `--out-path` and its derived `.pdf` exist and each has size &gt; 0.
-3. The decoupled `malvin revise` workflow runs automatically on the same `--out-path` `.tex` file (prose clarity pass via `revise_constraints.md`).
+1. Review returned exactly `LGTM` within the `--max-loops` outer budget.
+2. The resolved `--out-path` and its derived `.pdf` exist and each has size &gt; 0.
+3. Explain does **not** chain into `malvin revise` (run `malvin revise` yourself for a prose pass).
 
 On success, malvin prints `DONE` to stdout.
 
@@ -71,7 +87,7 @@ On success, malvin prints `DONE` to stdout.
 |---------|------|
 | `malvin inspire` | One-shot MBC2 ideation |
 | `malvin delight` | Author a feature pitch |
-| `malvin revise` | Prose clarity pass on an existing document (runs automatically after `explain`; also available standalone) |
+| `malvin revise` | Prose clarity pass on an existing document (standalone; not auto-run after explain) |
 
 ## Examples
 

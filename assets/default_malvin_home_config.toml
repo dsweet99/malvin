@@ -13,6 +13,10 @@ max_acp_retries = 3
 # Retries per OpenRouter HTTP completion for all non-billing failures (429, 5xx, 4xx, transport, JSON decode, provider capacity).
 max_mini_transport_retries = 3
 
+[review]
+# Hypothesis budget for `malvin explain` Review and Plan KPop sessions (not agent.max_hypotheses).
+max_hypotheses = 10
+
 [logs]
 # Max run directories per workspace bucket; 0 = unlimited.
 max_count = 1000

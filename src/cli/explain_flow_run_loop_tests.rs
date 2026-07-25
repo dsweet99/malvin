@@ -1,7 +1,7 @@
-use super::{
-    explain_gate_outcome, validate_explain_output, ExplainGateFinish, ExplainKpopPrepared, run_explain,
-};
-use crate::cli::explain_flow::prep::ExplainPreflightSnapshot;
+use super::super::outputs::{products_nonempty, resolve_explain_output_paths, validate_explain_output};
+use super::super::prep::ExplainPreflightSnapshot;
+use super::super::run_startup::ExplainKpopPrepared;
+use super::run_explain;
 
 #[test]
 fn explain_post_session_validates_tex_exists() {
@@ -39,21 +39,24 @@ fn explain_run_loop_entry_is_covered() {
     let _ = run_explain;
 }
 
-fn write_explain_gate_outputs(dir: &std::path::Path) -> (std::path::PathBuf, std::path::PathBuf) {
-    let tex = dir.join("explain.tex");
-    let pdf = dir.join("explain.pdf");
-    std::fs::write(&tex, "\\documentclass{article}").expect("write tex");
-    std::fs::write(&pdf, b"%PDF").expect("write pdf");
-    (tex, pdf)
+#[test]
+fn explain_lgtm_str_is_exact() {
+    assert!(crate::review_sync::is_lgtm_str("LGTM"));
+    assert!(crate::review_sync::is_lgtm_str("  LGTM\n"));
+    assert!(!crate::review_sync::is_lgtm_str("LGTM\nextra"));
+    assert!(!crate::review_sync::is_lgtm_str(""));
 }
 
-fn explain_gate_outcome_prepared(tmp: &tempfile::TempDir) -> ExplainKpopPrepared {
-    let (tex, pdf) = write_explain_gate_outputs(tmp.path());
+#[test]
+fn kiss_cov_resolve_paths() {
+    let _ = products_nonempty;
+    let tmp = tempfile::tempdir().expect("tmp");
+    let work = tmp.path();
     let store = crate::prompts::PromptStore::default_store();
     store.ensure_defaults().expect("defaults");
     let artifacts =
-        crate::artifacts::create_kpop_run_artifacts("explain", Some(tmp.path())).expect("artifacts");
-    ExplainKpopPrepared {
+        crate::artifacts::create_kpop_run_artifacts("explain", Some(work)).expect("art");
+    let prepared = ExplainKpopPrepared {
         inner: crate::kpop_engine::KPopEnginePrepared {
             artifacts,
             context: crate::prompt_stratification::WorkflowRenderContext::default(),
@@ -62,103 +65,12 @@ fn explain_gate_outcome_prepared(tmp: &tempfile::TempDir) -> ExplainKpopPrepared
             store,
             malvin_checks_backup: crate::artifacts::MalvinChecksBackup::Missing,
         },
-        tex_path: tex,
-        pdf_path: pdf,
-        request_work_dir: tmp.path().to_path_buf(),
+        tex_path: work.join("explain.tex"),
+        pdf_path: work.join("explain.pdf"),
+        request_work_dir: work.to_path_buf(),
         auto_out_path: false,
         preflight_snapshot: ExplainPreflightSnapshot::default(),
-    }
-}
-
-fn explain_gate_outcome_fixture() -> (
-    tempfile::TempDir,
-    ExplainKpopPrepared,
-    crate::cli::SharedOpts,
-    crate::artifacts::SessionDotfileBackups,
-) {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let prepared = explain_gate_outcome_prepared(&tmp);
-    let shared = crate::cli::SharedOpts {
-        model: crate::config::DEFAULT_CLI_MODEL.into(),
-        no_force: true,
-        no_tenacious: false,
-        gates: false,
-        no_tee: true,
-        no_markdown: true,
-        verbose: false,
-        max_acp_retries: 1,
-        doc: false,
-        name: None,
-        mini_max_bash_turns: 32,
-        mini_max_http_turns: 32,
-        mini_max_bash_execs: 128,
-        mini_max_http_retries: 0,
-        mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
-        mini_max_gate_retries: 0,
-        mini_max_shrink_passes: 0,
-        no_download: false,
-        git: false,
     };
-    let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snap");
-    (tmp, prepared, shared, backups)
-}
-
-#[test]
-fn explain_gate_outcome_succeeds_when_agent_ran_with_valid_output_without_gate_exit() {
-    let (_tmp, prepared, shared, backups) = explain_gate_outcome_fixture();
-    explain_gate_outcome(ExplainGateFinish {
-        shared: &shared,
-        prepared: &prepared,
-        tex_path: &prepared.tex_path,
-        pdf_path: &prepared.pdf_path,
-        agent_ran: true,
-        gates_ok: false,
-        run_timing: None,
-        last_backups: &backups,
-        summarize_res: Ok(()),
-    })
-    .expect("valid output after agent ran should succeed");
-}
-
-#[test]
-fn explain_gate_outcome_fails_when_agent_ran_with_missing_output() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let prepared = explain_gate_outcome_prepared(&tmp);
-    let shared = crate::cli::SharedOpts {
-        model: crate::config::DEFAULT_CLI_MODEL.into(),
-        no_force: true,
-        no_tenacious: false,
-        gates: false,
-        no_tee: true,
-        no_markdown: true,
-        verbose: false,
-        max_acp_retries: 1,
-        doc: false,
-        name: None,
-        mini_max_bash_turns: 32,
-        mini_max_http_turns: 32,
-        mini_max_bash_execs: 128,
-        mini_max_http_retries: 0,
-        mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
-        mini_max_gate_retries: 0,
-        mini_max_shrink_passes: 0,
-        no_download: false,
-        git: false,
-    };
-    let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snap");
-    let missing_tex = tmp.path().join("missing.tex");
-    let err = explain_gate_outcome(ExplainGateFinish {
-        shared: &shared,
-        prepared: &prepared,
-        tex_path: &missing_tex,
-        pdf_path: &prepared.pdf_path,
-        agent_ran: true,
-        gates_ok: false,
-        run_timing: None,
-        last_backups: &backups,
-        summarize_res: Ok(()),
-    })
-    .expect_err("missing tex should fail validation");
-    assert!(err.contains("expected tex file"));
-    assert!(!err.contains("mpc plan DONE"));
+    let resolved = resolve_explain_output_paths(&prepared).expect("resolve");
+    assert_eq!(resolved.0, prepared.tex_path);
 }

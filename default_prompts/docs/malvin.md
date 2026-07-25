@@ -30,7 +30,7 @@ Use subcommands: `kpop`, `do`, `inspire`, `tidy`, `delight`, `priors`, `explain`
 | `tidy` | Fix quality gates via the KPop gate loop (`tidy_constraints.md`) |
 | `delight` | Author a user-delighting feature pitch via the KPop gate loop |
 | `priors` | Ground a request in good priors via the KPop gate loop |
-| `explain` | Explain code or concepts as a LaTeX PDF via the KPop gate loop |
+| `explain` | Explain code or concepts as a LaTeX PDF via Review → Plan → Work |
 | `revise` | Revise an existing document in place via the KPop gate loop |
 | `models` | List models via the Cursor agent CLI |
 
@@ -194,11 +194,13 @@ malvin kpop notes/question.md
 
 ## Gate-loop commands (shared pattern)
 
-`tidy`, `delight`, `priors`, `explain`, and `revise` share an outer **gate loop** implemented in `kpop_engine`:
+`tidy`, `delight`, `priors`, and `revise` share an outer **gate loop** implemented in `kpop_engine`:
 
 1. For each outer iteration (budget: `effective_max_loops(--max-loops) + 1` iterations), malvin may run one KPop agent session. Scope comes from that command’s constraints file (`tidy_constraints.md`, etc.) rendered through `kpop_program.md` into `request.md`. Within the session, malvin sends one prompt: `header.md` + `kpop_common.md` (Popper loop).
 2. Hypotheses and test results go to `~/.malvin_home/logs/<hash>/<run>/_kpop/exp_log_<n>.md`.
-3. Malvin exits early when workspace quality gates pass (`tidy`). Document workflows (`delight`, `priors`, `explain`, `revise`) run until `--max-loops` is exhausted. `kpop` investigation runs until its own loop budget is exhausted.
+3. Malvin exits early when workspace quality gates pass (`tidy`). Document workflows (`delight`, `priors`, `revise`) run until `--max-loops` is exhausted. `kpop` investigation runs until its own loop budget is exhausted.
 4. Otherwise the loop continues until the outer budget is exhausted; `tidy` may exit without recheck depending on configuration.
+
+`malvin explain` uses a different outer loop: Review (in-process KPop) → stop on chat `LGTM` → else Plan (in-process KPop) → Work (coder), for `effective_max_loops(--max-loops)` iterations (not `N+1`). See `malvin explain --doc`.
 
 See `malvin tidy --doc`, `malvin delight --doc`, `malvin priors --doc`, `malvin explain --doc`, and `malvin revise --doc` for command-specific behavior.

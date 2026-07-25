@@ -19,6 +19,8 @@ pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD, "kpop_program.md"];
 pub const DEFAULT_PROMPTS: &[&str] = &[
     "kpop_common.md",
     "kpop_block.md",
+    "explain_kpop_common.md",
+    "explain_kpop_turn.md",
     "mbc2.md",
     "kpop_program.md",
     "kpop_program_creative.md",
@@ -28,6 +30,9 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "init_constraints.md",
     "delight_constraints.md",
     "priors_constraints.md",
+    "explain_constraints.md",
+    "explain_plan.md",
+    "explain_work.md",
     "revise_constraints.md",
     "mini_constraints.md",
     HEADER_MD,

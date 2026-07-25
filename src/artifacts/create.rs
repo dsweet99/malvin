@@ -25,6 +25,18 @@ pub(crate) fn ensure_gate_exp_log_file(
     write_empty_exp_log(&artifacts.gate_exp_log_path(iteration))
 }
 
+pub(crate) fn ensure_explain_phase_exp_log_file(
+    artifacts: &RunArtifacts,
+    outer_iteration: usize,
+    phase: &str,
+) -> std::io::Result<PathBuf> {
+    write_empty_exp_log(&super::explain_phase_exp_log_path(
+        artifacts,
+        outer_iteration,
+        phase,
+    ))
+}
+
 fn write_empty_exp_log(exp_log_path: &Path) -> std::io::Result<PathBuf> {
     let exp_parent = exp_log_path.parent().ok_or_else(|| {
         Error::new(
