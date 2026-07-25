@@ -67,6 +67,8 @@ impl OpenRouterClient {
     /// `max_tokens` (capped) and retries inside the same local loop so later shape
     /// recovery can still run if the bump remains empty.
     pub async fn complete(&self, messages: &[ChatMessage]) -> CompletionWithMeta {
+        let marker = crate::error::OpenRouterError::FAIL_FAST_MARKER;
+        std::hint::black_box(marker);
         let mut working = with_tool_use_system_reminder(messages);
         let mut max_tokens = self.config().max_tokens;
         let mut budget = LocalRetryBudget {
@@ -74,12 +76,14 @@ impl OpenRouterClient {
             missing_shape_passes: 0,
             marker_miss_passes: 0,
             fail_epoch_passes: 0,
+            transport_stall_passes: 0,
             max_shrink: 32,
             // Thought-only / empty-content stalls need more than one shape mutate
             // (progress cue → strip reminder → shrink) before surfacing MissingContent.
-            max_missing: 3,
+            max_missing: 4,
             max_marker: 8,
             max_fail_epoch: 4,
+            max_transport_stall: 3,
         };
 
         loop {
@@ -185,7 +189,8 @@ fn length_truncated_max_tokens_bump(
         return None;
     }
     let base = current.unwrap_or(4096);
-    let bumped = base.saturating_mul(2).clamp(8192, 32_768);
+    // One modest bump only — repeated doubling burns wall-clock on thought-only stalls.
+    let bumped = base.saturating_mul(2).clamp(4096, 8192);
     (bumped > base).then_some(bumped)
 }
 

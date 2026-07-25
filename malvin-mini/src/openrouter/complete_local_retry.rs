@@ -20,10 +20,12 @@ pub(crate) struct LocalRetryBudget {
     pub missing_shape_passes: u32,
     pub marker_miss_passes: u32,
     pub fail_epoch_passes: u32,
+    pub transport_stall_passes: u32,
     pub max_shrink: u32,
     pub max_missing: u32,
     pub max_marker: u32,
     pub max_fail_epoch: u32,
+    pub max_transport_stall: u32,
 }
 
 pub(crate) fn maybe_retry_local_shape(
@@ -33,6 +35,7 @@ pub(crate) fn maybe_retry_local_shape(
 ) -> bool {
     try_shrink_on_overflow(outcome, working, budget)
         || try_mutate_on_missing(outcome, working, budget)
+        || try_mutate_on_transport_stall(outcome, working, budget)
         || try_mutate_on_marker_miss(outcome, working, budget)
         || try_act_pressure_retry(outcome, working, budget)
 }
@@ -70,6 +73,29 @@ fn try_mutate_on_missing(
         && mutate_messages_after_missing_content(working)
     {
         budget.missing_shape_passes += 1;
+        true
+    } else {
+        false
+    }
+}
+
+/// Request timeouts / transport stalls often mean thought-only generation burned the
+/// wall-clock. Nudge toward an Act and retry locally before surfacing to the gate.
+fn try_mutate_on_transport_stall(
+    outcome: &CompletionWithMeta,
+    working: &mut Vec<ChatMessage>,
+    budget: &mut LocalRetryBudget,
+) -> bool {
+    let stalled = outcome.result.as_ref().err().is_some_and(|e| {
+        matches!(e, OpenRouterError::Transport(_))
+            || matches!(e, OpenRouterError::ProviderTransport { .. })
+    });
+    if stalled
+        && budget.transport_stall_passes < budget.max_transport_stall
+        && !is_short_form_marker_turn(working)
+        && mutate_messages_after_missing_content(working)
+    {
+        budget.transport_stall_passes += 1;
         true
     } else {
         false

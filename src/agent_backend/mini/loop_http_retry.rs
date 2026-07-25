@@ -35,16 +35,9 @@ impl HttpRetryCounters {
             return HttpRetryStep::Stop(HttpCompletionError::ContextOverflow);
         }
         self.last_error = err.to_string();
-        if err.is_provider_error() {
-            return HttpRetryStep::Stop(HttpCompletionError::Exhausted(exhaustion_message(
-                1,
-                limits.transport,
-                &self.last_error,
-            )));
-        }
-        if err.is_billing_failure()
-            && BudgetScopeLayer::MiniTransportRetry.billing_fails_immediately()
-        {
+        // Billing, provider-fatal, and MissingContent (after local complete() recovery)
+        // return false from is_transport_retryable — fail fast with attempt count 1.
+        if !err.is_transport_retryable() {
             return HttpRetryStep::Stop(HttpCompletionError::Exhausted(exhaustion_message(
                 1,
                 limits.transport,
@@ -206,5 +199,14 @@ mod kiss_witness {
             ),
             HttpRetryStep::Stop(HttpCompletionError::Exhausted(_))
         ));
+        let mut missing = HttpRetryCounters {
+            transport_failures: 0,
+            last_error: String::new(),
+        };
+        assert!(matches!(
+            missing.next(&OpenRouterError::MissingContent, limits),
+            HttpRetryStep::Stop(HttpCompletionError::Exhausted(_))
+        ));
+        assert_eq!(missing.transport_failures, 0);
     }
 }

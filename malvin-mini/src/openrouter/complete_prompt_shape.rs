@@ -15,18 +15,13 @@ use complete_act_detect::{
     history_has_exterior_without_artifact_act, latest_observation_has_nonzero_exit,
 };
 
-const STUDY_REMINDER: &str = "State the problem and rival readings, then act with a short \
-targeted trial grounded in the named working context. Study the outcome against a prior \
-prediction. Freeze capital is only recorded outcomes of request-named probes you ran \
-this session on the current artifact. Unrun request-named probes are unpaid silence; a \
-private probe that asserts the written reading does not pay them. Empty freeze capital \
-licenses only Acts that revise the named working artifact or run a request-named probe; \
-exterior Observe before that Act is null Study. After a named-working-artifact revision, \
-only a request-named probe outcome that postdates that revision pays freeze capital; other \
-post-revision Observe is null Study. After a live probe fails, the only licensed next step \
-is an Act that revises the artifact into that probe's acceptance region, then re-runs it; \
-exterior Observe and closing reports are null Study. Demotion of a live fail is unmet. \
-When freeze capital is green, emit the closing report and halt.";
+const STUDY_REMINDER: &str = "Look hard for unmet evidence first. Act with a short targeted \
+trial in the named working context, then Study against a prior prediction. Freeze capital is \
+only recorded outcomes of request-named probes on the current artifact; private probes that \
+assert the written reading do not pay. After a named-working-artifact revision, only a \
+post-revision request-named probe outcome pays. When independence from sealed work is \
+required, regenerate live name-bindings locally and isolation-assay. When freeze capital is \
+green, emit the closing report and halt.";
 
 const FAIL_EPOCH_CUE: &str = "A nonzero exit is a failed live probe. The only licensed next \
 step is an Act that revises the named working artifact into that probe's acceptance \
@@ -76,11 +71,12 @@ pub(super) fn mutate_messages_after_missing_content(messages: &mut Vec<ChatMessa
     inject_thought_only_progress_cue(messages)
         || strip_injected_study_reminder(messages)
         || shrink_prompt_messages(messages)
+        || append_act_nudge_user(messages)
 }
 
 fn inject_thought_only_progress_cue(messages: &mut Vec<ChatMessage>) -> bool {
     const CUE: &str = "Thought-only responses are non-progress. Emit observable content \
-and a short targeted trial grounded in the named working context, then Study.";
+and a short targeted Act fence grounded in the named working context, then Study.";
     if messages.iter().any(|m| {
         matches!(m.role, ChatRole::System) && m.content.contains("Thought-only responses")
     }) {
@@ -93,6 +89,21 @@ and a short targeted trial grounded in the named working context, then Study.";
             content: CUE.to_string(),
         },
     );
+    true
+}
+
+fn append_act_nudge_user(messages: &mut Vec<ChatMessage>) -> bool {
+    const NUDGE: &str = "Emit an Act fence now that revises the named working artifact or \
+runs a request-named probe. Exterior Observe and closing reports are null Study.";
+    if messages.iter().any(|m| {
+        matches!(m.role, ChatRole::User) && m.content.contains("Emit an Act fence now that revises")
+    }) {
+        return false;
+    }
+    messages.push(ChatMessage {
+        role: ChatRole::User,
+        content: NUDGE.to_string(),
+    });
     true
 }
 
@@ -155,10 +166,12 @@ fn strip_injected_study_reminder(messages: &mut Vec<ChatMessage>) -> bool {
             && (m.content.contains("request-named")
                 || m.content.contains("request-derived")
                 || m.content.contains("nonzero exit is a failed live probe")
-                || m.content.contains("Exterior contact before revising"))
+                || m.content.contains("Exterior contact before revising")
+                || m.content.contains("Look hard for unmet evidence"))
             && (m.content.contains("rival readings")
                 || m.content.contains("acceptance region")
-                || m.content.contains("request-named probe"))
+                || m.content.contains("request-named probe")
+                || m.content.contains("Freeze capital is"))
     }) else {
         return false;
     };

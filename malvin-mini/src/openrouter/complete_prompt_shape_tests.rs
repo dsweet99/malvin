@@ -33,10 +33,12 @@ fn fail_epoch_forces_act_after_nonzero_exit_without_fence() {
         missing_shape_passes: 0,
         marker_miss_passes: 0,
         fail_epoch_passes: 0,
+        transport_stall_passes: 0,
         max_shrink: 32,
         max_missing: 1,
         max_marker: 1,
         max_fail_epoch: 2,
+        max_transport_stall: 2,
     };
     assert!(maybe_retry_local_shape(&outcome, &mut working, &mut budget));
     assert_eq!(budget.fail_epoch_passes, 1);
@@ -85,10 +87,12 @@ fn maybe_retry_local_shape_marker_miss_then_stops() {
         missing_shape_passes: 0,
         marker_miss_passes: 0,
         fail_epoch_passes: 0,
+        transport_stall_passes: 0,
         max_shrink: 32,
         max_missing: 1,
         max_marker: 3,
         max_fail_epoch: 2,
+        max_transport_stall: 2,
     };
     assert!(maybe_retry_local_shape(&outcome, &mut working, &mut budget));
     assert_eq!(budget.marker_miss_passes, 1);
@@ -139,10 +143,12 @@ fn budget(max_fail: u32) -> LocalRetryBudget {
         missing_shape_passes: 0,
         marker_miss_passes: 0,
         fail_epoch_passes: 0,
+        transport_stall_passes: 0,
         max_shrink: 32,
         max_missing: 3,
         max_marker: 1,
         max_fail_epoch: max_fail,
+        max_transport_stall: 2,
     }
 }
 

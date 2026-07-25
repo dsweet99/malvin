@@ -30,6 +30,8 @@ pub enum OpenRouterError {
 }
 
 impl OpenRouterError {
+    pub const FAIL_FAST_MARKER: &'static str = "MALVIN_MINI_MISSING_CONTENT_FAIL_FAST_V1";
+
     #[must_use]
     pub const fn is_billing_failure(&self) -> bool {
         matches!(self, Self::BillingFailure { .. })
@@ -41,11 +43,15 @@ impl OpenRouterError {
     }
 
     /// True for every error that should consume the mini transport retry budget.
+    ///
+    /// `MissingContent` is handled inside `complete` with local shape retries; after that
+    /// budget is exhausted, outer ACP/gate transport retries only burn wall time.
     #[must_use]
     pub const fn is_transport_retryable(&self) -> bool {
         !self.is_billing_failure()
             && !self.is_context_overflow()
             && !self.is_provider_error()
+            && !matches!(self, Self::MissingContent) // MALVIN_MINI_MISSING_CONTENT_FAIL_FAST_V1
     }
 
     #[must_use]
@@ -123,7 +129,7 @@ mod tests {
             body: "teapot".into()
         }
         .is_transport_retryable());
-        assert!(OpenRouterError::MissingContent.is_transport_retryable());
+        assert!(!OpenRouterError::MissingContent.is_transport_retryable());
         let json = OpenRouterError::Json(serde_json::from_str::<serde_json::Value>("not json").unwrap_err());
         assert!(json.is_transport_retryable());
         assert!(OpenRouterError::ProviderTransport {

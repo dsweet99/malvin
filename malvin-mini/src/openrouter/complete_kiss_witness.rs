@@ -58,9 +58,10 @@
             Err(OpenRouterError::MissingContent),
             transport_meta(Some(200), Some(body.into())),
         );
-        assert_eq!(length_truncated_max_tokens_bump(&outcome, Some(2048)), Some(8192));
-        assert_eq!(length_truncated_max_tokens_bump(&outcome, Some(16384)), Some(32768));
-        assert_eq!(length_truncated_max_tokens_bump(&outcome, Some(32768)), None);
+        assert_eq!(length_truncated_max_tokens_bump(&outcome, Some(2048)), Some(4096));
+        assert_eq!(length_truncated_max_tokens_bump(&outcome, Some(4096)), Some(8192));
+        assert_eq!(length_truncated_max_tokens_bump(&outcome, Some(8192)), None);
+        assert_eq!(length_truncated_max_tokens_bump(&outcome, Some(16384)), None);
         let stop = completion_with_meta(
             Err(OpenRouterError::MissingContent),
             transport_meta(
@@ -83,10 +84,10 @@
         assert_eq!(out.len(), 2);
         assert!(matches!(out[0].role, ChatRole::System));
         assert!(out[0].content.contains("request-named"));
-        assert!(out[0].content.contains("acceptance region"));
+        assert!(out[0].content.contains("Look hard for unmet"));
         assert!(out[0].content.contains("closing report"));
-        assert!(out[0].content.contains("rival readings"));
         assert!(out[0].content.contains("private probe"));
+        assert!(out[0].content.contains("isolation-assay"));
         let already = [
             ChatMessage {
                 role: ChatRole::System,

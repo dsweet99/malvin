@@ -46,6 +46,11 @@ pub(crate) fn agent_string_is_openrouter_billing_failure(msg: &str) -> bool {
         .contains("openrouter billing/credit failure")
 }
 
+pub(crate) fn agent_string_is_openrouter_missing_content(msg: &str) -> bool {
+    msg.to_ascii_lowercase()
+        .contains("openrouter response missing assistant content")
+}
+
 /// Max spawn attempts for `session/new` JSON-RPC Internal (`code=-32603`).
 /// Decoupled from tenacious [`crate::cli::loop_opts::TENACIOUS_MAX_ACP_RETRIES`].
 pub(crate) const SESSION_NEW_INTERNAL_MAX_SPAWN_ATTEMPTS: u32 = 5;
@@ -145,6 +150,7 @@ pub(crate) fn plan_agent_retry(
     if agent_string_is_upgrade_plan(last_error)
         || agent_string_is_cannot_use_model(last_error)
         || agent_string_is_openrouter_billing_failure(last_error)
+        || agent_string_is_openrouter_missing_content(last_error)
     {
         return Err(AgentError(last_error.to_string()));
     }
