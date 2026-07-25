@@ -1,0 +1,25 @@
+# Definition: KPop
+
+[
+KPop is short for "Karl Popper".
+You may or may not be solving a repo coding problem, so the Repo Coding Rules may or may not apply.
+KPop may be referenced later on like a command, "KPop: <problem statement or question>"
+]
+
+Apply this method to the user's problem.
+
+The user request is in `{{ user_request_path }}`.
+
+Repeat until you think you've solved the problem:
+LOOP_START
+
+- **Hypothesize**: Hypothesize one falsifiable explanation of the cause of the problem.
+- **Predict**: Define a falsifying test. If the hypothesis were true, what outcome would the test produce?
+- **Falsify**: Run the test. If falsified, reject the hypothesis.
+
+LOOP_END
+
+Log your hypotheses and test results -- as they become available -- to `{{ exp_log }}`. Be sure to log hypotheses and results
+as you generate them. They are valuable. The user and other agents will want to read them.
+
+When you are all done, append a brief executive summary and a super-brief tl;dr to the experiment log only. Do **not** echo the summary or tl;dr to the agent chat.
