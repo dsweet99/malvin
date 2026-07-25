@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "max_runtime_minutes",
+    "max_memory_mb",
+    "n_seeds",
+    "primary_metric",
+    "steps"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "max_runtime_minutes": {
+      "type": "number"
+    },
+    "max_memory_mb": {
+      "type": "number"
+    },
+    "n_seeds": {
+      "type": "integer"
+    },
+    "primary_metric": {
+      "type": "string",
+      "enum": [
+        "auroc",
+        "f1"
+      ]
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

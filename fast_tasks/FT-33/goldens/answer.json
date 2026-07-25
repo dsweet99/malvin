@@ -1,0 +1,10 @@
+{
+  "coap_documentation_id_low": 64998,
+  "coap_documentation_id_high": 64999,
+  "new_top_level_media_type": "haptics",
+  "nuts_level1_regions": 92,
+  "nuts_level2_regions": 244,
+  "nuts_level3_regions": 1165,
+  "time_ordered_uuid_example": "017f22e2-79b0-7cc3-98c4-dc0c0c07398f",
+  "answer": 184
+}
