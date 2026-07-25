@@ -15,6 +15,39 @@ use super::run_startup::{prepare_explain_kpop_run, ExplainKpopPrepared};
 use super::work::{run_explain_work, ExplainWorkParams};
 use super::{effective_explain_max_loops, ExplainArgs};
 
+/// Review chat acceptance for explain.
+///
+/// Cursor streams intermediate `agent_message_chunk` prose before the deliverable. Chunks are often
+/// concatenated without newlines, so the captured chat can end with `.LGTM` glued onto the prior
+/// sentence rather than a bare `LGTM` line.
+#[must_use]
+pub(crate) fn explain_review_chat_is_lgtm(chat: &str) -> bool {
+    if is_lgtm_str(chat) {
+        return true;
+    }
+    if chat
+        .lines()
+        .rev()
+        .map(str::trim)
+        .find(|line| !line.is_empty())
+        .is_some_and(|line| {
+            let line = line.strip_prefix('\u{FEFF}').unwrap_or(line).trim();
+            line == "LGTM"
+        })
+    {
+        return true;
+    }
+    let t = chat.trim();
+    let t = t.strip_prefix('\u{FEFF}').unwrap_or(t).trim();
+    // Streamed final deliverable glued onto the previous sentence (no separating newline).
+    t.strip_suffix("LGTM").is_some_and(|prefix| {
+        prefix
+            .as_bytes()
+            .last()
+            .is_some_and(|b| matches!(b, b'.' | b'!' | b'?'))
+    })
+}
+
 pub async fn run_explain(
     explain: &mut ExplainArgs,
     shared: &SharedOpts,
@@ -84,7 +117,7 @@ async fn run_outer_iteration(
     mut ctx: OuterIterationCtx<'_>,
 ) -> Result<Option<Result<(), String>>, String> {
     let review_chat = run_review_phase(&ctx).await?;
-    if is_lgtm_str(&review_chat) {
+    if explain_review_chat_is_lgtm(&review_chat) {
         return Ok(Some(finish_on_lgtm(&mut ctx).await));
     }
     let plan_chat = run_plan_phase(&ctx, &review_chat).await?;

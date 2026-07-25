@@ -14,11 +14,16 @@ fn fn_witnesses() {
     let _ = run_plan_phase;
     let _ = run_work_phase;
     let _ = finish_on_lgtm;
+    let _ = explain_review_chat_is_lgtm;
     let _ = products_nonempty;
     let _ = resolve_explain_output_paths;
     let _ = validate_explain_output;
     let _ = emit_explain_startup;
     let _ = finish_explain_success;
+    assert!(explain_review_chat_is_lgtm("preamble\nLGTM"));
+    assert!(explain_review_chat_is_lgtm("probes complete.LGTM"));
+    assert!(!explain_review_chat_is_lgtm("- gap\n"));
+    assert!(!explain_review_chat_is_lgtm("Almost LGTM"));
 }
 
 #[test]

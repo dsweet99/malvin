@@ -48,6 +48,31 @@ fn explain_lgtm_str_is_exact() {
 }
 
 #[test]
+fn explain_review_chat_is_lgtm_accepts_final_line() {
+    use super::explain_review_chat_is_lgtm;
+    assert!(explain_review_chat_is_lgtm("LGTM"));
+    assert!(explain_review_chat_is_lgtm("  LGTM\n"));
+    assert!(explain_review_chat_is_lgtm(
+        "Checks passed.\nProducts nonempty.\nLGTM\n"
+    ));
+    assert!(explain_review_chat_is_lgtm(
+        "The chat deliverable must be exactly LGTM.\nLGTM"
+    ));
+    // Observed Cursor streaming: no newline before the deliverable.
+    assert!(explain_review_chat_is_lgtm(
+        "Logging KPop iterations as I probe products, cold entry, and settle-and-stop.LGTM"
+    ));
+    assert!(!explain_review_chat_is_lgtm(""));
+    assert!(!explain_review_chat_is_lgtm(
+        "- Missing products: no tex/pdf pair.\n- Fix cold entry."
+    ));
+    assert!(!explain_review_chat_is_lgtm("LGTM\nextra trailing gap"));
+    assert!(!explain_review_chat_is_lgtm("Almost LGTM"));
+    assert!(!explain_review_chat_is_lgtm("NOT_LGTM"));
+    assert!(!explain_review_chat_is_lgtm("return LGTM"));
+}
+
+#[test]
 fn kiss_cov_resolve_paths() {
     let _ = products_nonempty;
     let tmp = tempfile::tempdir().expect("tmp");

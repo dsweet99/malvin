@@ -7,8 +7,8 @@
 - Misinterpretable "this" (or "that", "these", "those") are uses of these pronouns where it may be unclear what the antecedent is. It's better to reference it explicitly, "blah blah pretzels. These pretzels are making me thirsty." is better than "blah blah pretzels. These are making me thirsty."
 - Unnecessary intro: It is not necessary to say "X matters because" or "X is important because". We can just tell the reader about the importance directly.
 - Unsubstantiated throw-away: An extra phrase that sounds like "there's more to the story", that you're referring to something well-known that the reader should know, but there's no support in the text through reference or data. Like "and related settings".
-- Cold entry: An abstract or early section that opens with a definition, mechanism statement, or toy case before placing the topic in its working landscape or under the concrete pressure that forces the move. Classic situating is allowed; cheerleading ("X matters because") is not.
-- Settle-and-stop: Adjacent stretches that each finish one point and could be reordered without harming the argument. Parallel co-reasons under one claim are fine; a sequence of independent notes is not.
+- Cold entry: An abstract or early section whose first sentence opens with a definition, mechanism statement, or toy case before placing the topic in its working landscape or under the concrete pressure that forces the move. Warming an earlier stretch does not license opening a later one on a definition, mechanism, or toy. Classic situating is allowed; cheerleading ("X matters because") is not.
+- Settle-and-stop: Adjacent stretches that each finish one point and could be reordered without harming the argument, or a later move that is not forced by what earlier stretches established. Parallel co-reasons under one claim are fine; a sequence of independent notes is not.
 
 ## Constraints
 - Write in plain English. Use complete sentences.
@@ -27,7 +27,7 @@
 - Introduce terms at the time of first use, prefereably in a natural way.
 - Claims should come with stated evidence or citation. Hypotheses should be labeled as such.
 - Attempt to falsify every claim and hypothesis.
-- Make sure sentences flow naturally from one to the next. Use good transitions. Carry one through-line so adjacent stretches advance that line.
+- Make sure sentences flow naturally from one to the next. Use good transitions. Carry one through-line so adjacent stretches advance that line because the later move is forced by what earlier stretches established.
 
 ## Visual Design Rules
 Apply these to the document overall and to each figure or other complex element of the document.

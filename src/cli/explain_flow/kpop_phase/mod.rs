@@ -16,7 +16,10 @@ pub(crate) const EXPLAIN_PHASE_PLAN: &str = "plan";
 pub(crate) const REVIEW_CHAT_RULES: &str = "\
 Judge lack-of-satisfaction. Do not edit. The entire agent chat body must be exactly `LGTM` \
 (and only LGTM) when nothing fails, or else a failure-focused gap list. Missing/empty products \
-⇒ never LGTM.
+⇒ never LGTM. Probe cold entry (first sentence of any early stretch opens on a \
+definition, mechanism, or toy before landscape/pressure; a warm earlier stretch \
+does not license a cold later opening) and settle-and-stop (later moves not forced \
+by what earlier stretches established); fail the review when either appears.
 ";
 
 pub(crate) const PLAN_CHAT_RULES: &str = "\

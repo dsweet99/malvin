@@ -1,22 +1,21 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use crate::artifacts::resolve_user_md_request;
 use crate::prompts::{PromptError, PromptStore};
 
 use super::super::{WorkflowCliOptions, prepare_kpop_prompt_store};
-use crate::cli::default_output_path::allocate_default_tex_pdf_pair;
 use crate::kpop_program::render_creative_program;
 
 #[path = "prep_discover.rs"]
 pub(crate) mod prep_discover;
 #[path = "prep_output.rs"]
 mod prep_output;
+#[path = "prep_preflight.rs"]
+mod prep_preflight;
 
-pub(crate) use prep_discover::{
-    discover_explain_outputs_in_work_dir, resolve_explain_search_dir, snapshot_tex_pdf_in_dir,
-};
+pub(crate) use prep_discover::discover_explain_outputs_in_work_dir;
 pub(crate) use prep_output::{explain_locate_instruction, explain_output_instruction};
+pub(crate) use prep_preflight::explain_preflight;
 
 pub(crate) const EXPLAIN_TEX_BASENAME: &str = "explain.tex";
 pub(crate) const EXPLAIN_PDF_BASENAME: &str = "explain.pdf";
@@ -115,6 +114,11 @@ compile LaTeX. Do **not** satisfy constraints by authoring the paper.
 Hard rule — no product, no LGTM: if the resolved `.tex` / `.pdf` are missing or empty, emit a \
 failure-focused gap list of everything that needs doing. Never return LGTM when products are \
 missing or empty.
+
+When products exist, explicitly check: (1) cold entry — first sentence of any early \
+stretch opens on a definition, mechanism, or toy before landscape/pressure (a warm \
+earlier stretch does not license a cold later opening); (2) settle-and-stop — later \
+moves not forced by what earlier stretches established. Fail the review if either appears.
 ";
 
 pub(crate) fn explain_kpop_request(
@@ -173,73 +177,6 @@ pub(crate) fn explain_work_request(
     store
         .render_prompt_only("explain_work.md", &ctx)
         .map_err(|e: PromptError| e.0)
-}
-
-fn explain_auto_preflight(
-    text: String,
-    request_work_dir: PathBuf,
-) -> Result<(String, PathBuf, ExplainResolvedOutputs, ExplainPreflightSnapshot), String> {
-    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    let search_dir = resolve_explain_search_dir(&request_work_dir, &cwd);
-    let snapshot = ExplainPreflightSnapshot {
-        pre_existing_tex_pdf: if search_dir.is_dir() {
-            snapshot_tex_pdf_in_dir(&search_dir)?
-        } else {
-            std::collections::HashSet::default()
-        },
-    };
-    let outputs = ExplainResolvedOutputs {
-        tex_path: search_dir.join(EXPLAIN_TEX_BASENAME),
-        pdf_path: search_dir.join(EXPLAIN_PDF_BASENAME),
-    };
-    Ok((text, request_work_dir, outputs, snapshot))
-}
-
-fn explain_explicit_preflight(
-    text: String,
-    request_work_dir: PathBuf,
-    out_path: &str,
-) -> Result<(String, PathBuf, ExplainResolvedOutputs, ExplainPreflightSnapshot), String> {
-    let mut outputs = explain_resolved_output_paths(&request_work_dir, out_path)?;
-    if out_path == EXPLAIN_TEX_BASENAME {
-        let (tex, pdf) = allocate_default_tex_pdf_pair(
-            &outputs.tex_path,
-            &outputs.pdf_path,
-            "explain",
-        )?;
-        outputs.tex_path = tex;
-        outputs.pdf_path = pdf;
-    } else {
-        for path in [&outputs.tex_path, &outputs.pdf_path] {
-            if path.exists() {
-                return Err(format!(
-                    "malvin explain: `{}` already exists; refusing to overwrite",
-                    path.display()
-                ));
-            }
-        }
-    }
-    for path in [&outputs.tex_path, &outputs.pdf_path] {
-        if let Some(parent) = path.parent() {
-            if !parent.as_os_str().is_empty() {
-                std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-            }
-        }
-    }
-    Ok((text, request_work_dir, outputs, ExplainPreflightSnapshot::default()))
-}
-
-pub(crate) fn explain_preflight(
-    request: &str,
-    out_path: &str,
-    out_path_explicit: bool,
-) -> Result<(String, PathBuf, ExplainResolvedOutputs, ExplainPreflightSnapshot), String> {
-    let (text, request_work_dir) = resolve_user_md_request(request)?;
-    if out_path_explicit {
-        explain_explicit_preflight(text, request_work_dir, out_path)
-    } else {
-        explain_auto_preflight(text, request_work_dir)
-    }
 }
 
 #[cfg(test)]
