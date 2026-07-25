@@ -15,22 +15,23 @@ use complete_act_detect::{
     history_has_exterior_without_artifact_act, latest_observation_has_nonzero_exit,
 };
 
-const STUDY_REMINDER: &str = "Look hard for unmet evidence first. Act with a short targeted \
-trial in the named working context, then Study against a prior prediction. Freeze capital is \
-only recorded outcomes of request-named probes on the current artifact; private probes that \
-assert the written reading do not pay. After a named-working-artifact revision, only a \
-post-revision request-named probe outcome pays. When independence from sealed work is \
-required, regenerate live name-bindings locally and isolation-assay. When freeze capital is \
-green, emit the closing report and halt.";
+const STUDY_REMINDER: &str = "Look hard for unmet evidence first. Form a prediction, Act with a \
+short targeted trial in the named working context, then Study the outcome. Only recorded \
+outcomes of request-named checks on the current artifact pay; private asserts do not. After a \
+named-working-artifact revision, only a post-revision request-named check pays. When \
+independence from sealed work is required, regenerate live name-bindings and isolation-assay. \
+When request-named checks and hard-constraint exhibits are green, emit the closing report and \
+halt.";
 
-const FAIL_EPOCH_CUE: &str = "A nonzero exit is a failed live probe. The only licensed next \
-step is an Act that revises the named working artifact into that probe's acceptance \
-region, then re-runs the same probe. Exterior Observe and closing reports are null Study \
-until that probe is green.";
+const FAIL_EPOCH_CUE: &str = "A nonzero exit is a failed live check. Trap, poison, or \
+non-binding stories about that check are unlicensed. Do not invent outcomes of checks you \
+have not run. Predict that the same check will turn green, Act only into that check's \
+acceptance region, then re-run it. Exterior Observe and closing reports are null Study \
+until that check is green.";
 
 const EXTERIOR_BEFORE_ACT_CUE: &str = "Exterior contact before revising the named working \
 artifact is null Study. Emit an Act that revises that artifact or runs a request-named \
-probe in that context before any further exterior Observe.";
+check in that context before any further exterior Observe.";
 
 /// Short domain-agnostic Study reminder (not for marker turns).
 /// Prefer fail-epoch after a red observation; else block exterior-before-Act.
@@ -165,13 +166,14 @@ fn strip_injected_study_reminder(messages: &mut Vec<ChatMessage>) -> bool {
         matches!(m.role, ChatRole::System)
             && (m.content.contains("request-named")
                 || m.content.contains("request-derived")
-                || m.content.contains("nonzero exit is a failed live probe")
+                || m.content.contains("nonzero exit is a failed live")
                 || m.content.contains("Exterior contact before revising")
                 || m.content.contains("Look hard for unmet evidence"))
             && (m.content.contains("rival readings")
                 || m.content.contains("acceptance region")
-                || m.content.contains("request-named probe")
-                || m.content.contains("Freeze capital is"))
+                || m.content.contains("request-named")
+                || m.content.contains("Freeze capital is")
+                || m.content.contains("private asserts"))
     }) else {
         return false;
     };

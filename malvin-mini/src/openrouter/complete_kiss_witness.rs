@@ -70,6 +70,14 @@
             ),
         );
         assert_eq!(length_truncated_max_tokens_bump(&stop, Some(2048)), None);
+        let reasoned = completion_with_meta(
+            Err(OpenRouterError::MissingContent),
+            transport_meta(
+                Some(200),
+                Some(r#"{"choices":[{"finish_reason":"length","message":{"content":null,"reasoning":"t"}}]}"#.into()),
+            ),
+        );
+        assert_eq!(length_truncated_max_tokens_bump(&reasoned, Some(2048)), None);
     }
 
     #[test]
@@ -86,7 +94,7 @@
         assert!(out[0].content.contains("request-named"));
         assert!(out[0].content.contains("Look hard for unmet"));
         assert!(out[0].content.contains("closing report"));
-        assert!(out[0].content.contains("private probe"));
+        assert!(out[0].content.contains("private asserts"));
         assert!(out[0].content.contains("isolation-assay"));
         let already = [
             ChatMessage {

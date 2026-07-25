@@ -42,8 +42,10 @@ pub(crate) fn agent_string_is_cannot_use_model(msg: &str) -> bool {
 }
 
 pub(crate) fn agent_string_is_openrouter_billing_failure(msg: &str) -> bool {
-    msg.to_ascii_lowercase()
-        .contains("openrouter billing/credit failure")
+    let text = msg.to_ascii_lowercase();
+    text.contains("openrouter billing/credit failure")
+        // Pre-classifier / ProviderError phrasing observed under empty balance.
+        || text.contains("insufficient credits")
 }
 
 pub(crate) fn agent_string_is_openrouter_missing_content(msg: &str) -> bool {

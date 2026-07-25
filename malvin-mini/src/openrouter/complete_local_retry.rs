@@ -38,6 +38,37 @@ pub(crate) fn maybe_retry_local_shape(
         || try_mutate_on_transport_stall(outcome, working, budget)
         || try_mutate_on_marker_miss(outcome, working, budget)
         || try_act_pressure_retry(outcome, working, budget)
+        || try_unpaid_zero_fence_as_missing(outcome, working, budget)
+}
+
+fn try_unpaid_zero_fence_as_missing(
+    outcome: &CompletionWithMeta,
+    working: &mut Vec<ChatMessage>,
+    budget: &mut LocalRetryBudget,
+) -> bool {
+    let Ok(response) = outcome.result.as_ref() else {
+        return false;
+    };
+    if budget.fail_epoch_passes < budget.max_fail_epoch
+        || budget.missing_shape_passes >= budget.max_missing
+        || is_short_form_marker_turn(working)
+        || response_has_act_fence(response.content.as_str())
+        || !serious_unpaid_debt(working, response.content.as_str())
+    {
+        return false;
+    }
+    if mutate_messages_after_missing_content(working) {
+        budget.missing_shape_passes += 1;
+        true
+    } else {
+        false
+    }
+}
+
+fn serious_unpaid_debt(messages: &[ChatMessage], pending: &str) -> bool {
+    (latest_observation_has_nonzero_exit(messages) && !response_has_act_fence(pending))
+        || history_has_exterior_without_artifact_act(messages, Some(pending))
+        || (artifact_act_lacks_following_observation(messages) && !response_has_act_fence(pending))
 }
 
 fn try_shrink_on_overflow(
@@ -133,23 +164,38 @@ fn try_act_pressure_retry(
         return false;
     }
     let content = response.content.as_str();
-    let injected = if latest_observation_has_nonzero_exit(working)
-        && !response_has_act_fence(content)
-    {
-        inject_fail_epoch_act_cue(working)
-    } else if history_has_exterior_without_artifact_act(working, Some(content)) {
-        inject_exterior_before_act_cue(working)
-    } else if artifact_act_lacks_following_observation(working)
-        && !response_has_act_fence(content)
-    {
-        inject_probe_after_act_cue(working)
-    } else if !history_has_any_artifact_act(working) && !response_has_act_fence(content) {
-        inject_unpaid_silence_act_cue(working)
-    } else {
-        false
-    };
-    if injected {
-        budget.fail_epoch_passes += 1;
+    if !needs_act_pressure(working, content) {
+        return false;
     }
-    injected
+    if inject_act_pressure_cue(working, content) {
+        budget.fail_epoch_passes += 1;
+        return true;
+    }
+    // Cues already present under serious unpaid debt: mark pressure exhausted so
+    // MissingContent-shaped recovery can run in the same maybe_retry pass.
+    if serious_unpaid_debt(working, content) {
+        budget.fail_epoch_passes = budget.max_fail_epoch;
+    }
+    false
+}
+
+fn needs_act_pressure(messages: &[ChatMessage], content: &str) -> bool {
+    serious_unpaid_debt(messages, content)
+        || (!history_has_any_artifact_act(messages) && !response_has_act_fence(content))
+}
+
+fn inject_act_pressure_cue(messages: &mut Vec<ChatMessage>, content: &str) -> bool {
+    if latest_observation_has_nonzero_exit(messages) && !response_has_act_fence(content) {
+        return inject_fail_epoch_act_cue(messages);
+    }
+    if history_has_exterior_without_artifact_act(messages, Some(content)) {
+        return inject_exterior_before_act_cue(messages);
+    }
+    if artifact_act_lacks_following_observation(messages) && !response_has_act_fence(content) {
+        return inject_probe_after_act_cue(messages);
+    }
+    if !history_has_any_artifact_act(messages) && !response_has_act_fence(content) {
+        return inject_unpaid_silence_act_cue(messages);
+    }
+    false
 }

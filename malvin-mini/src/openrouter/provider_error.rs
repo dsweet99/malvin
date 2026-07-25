@@ -37,6 +37,8 @@ fn is_credit_affordability_error(detail: &str, raw_detail: &str) -> bool {
     (combined.contains("more credits") && combined.contains("max_tokens"))
         || combined.contains("requires more credits")
         || combined.contains("can only afford")
+        // Account-empty / balance-zero copy (not max_tokens affordability).
+        || combined.contains("insufficient credits")
 }
 
 fn parse_provider_error_envelope(body: &str) -> Option<(String, String, String, String)> {

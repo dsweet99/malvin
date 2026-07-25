@@ -188,10 +188,18 @@ fn length_truncated_max_tokens_bump(
     if !finish_reason_is_length(body) {
         return None;
     }
+    // Reasoning-only empties burn wall-clock if we keep raising the cap; prefer shape cues.
+    if body_has_reasoning(body) {
+        return None;
+    }
     let base = current.unwrap_or(4096);
     // One modest bump only — repeated doubling burns wall-clock on thought-only stalls.
     let bumped = base.saturating_mul(2).clamp(4096, 8192);
     (bumped > base).then_some(bumped)
+}
+
+fn body_has_reasoning(body: &str) -> bool {
+    body.contains("\"reasoning\"") || body.contains("\"reasoning_details\"")
 }
 
 #[cfg(test)]

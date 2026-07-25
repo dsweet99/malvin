@@ -1,9 +1,7 @@
 use crate::acp::{
-    AgentRetryOutcome, IterableClosedStream, agent_error_requires_coder_session_teardown,
+    AgentRetryOutcome, agent_error_requires_coder_session_teardown,
     agent_string_is_cannot_use_model, agent_string_is_openrouter_billing_failure,
-    agent_string_is_upgrade_plan,
-    emit_operational_upgrade_plan_stop, iterable_closed_stream_from_buffer,
-    operational_iterable_closed_for_emit, operational_iterable_closed_log_line,
+    agent_string_is_upgrade_plan, emit_operational_upgrade_plan_stop,
     operational_upgrade_plan_for_emit, plan_agent_retry, retries_noun,
     upgrade_plan_stream_from_buffer,
 };
@@ -24,6 +22,14 @@ fn openrouter_billing_failure_substring_is_detected_case_insensitively() {
 fn openrouter_billing_errors_do_not_retry_even_with_high_max() {
     let msg = "mini OpenRouter HTTP failed after 1 transport attempts (limit 3): OpenRouter billing/credit failure (402): no credits";
     let err = plan_agent_retry(msg, 1, 9999).expect_err("billing must fail fast");
+    assert_eq!(err.0, msg);
+}
+
+#[test]
+fn insufficient_credits_provider_phrasing_fails_fast() {
+    let msg = "mini OpenRouter HTTP failed after 1 transport attempts (limit 3): Provider: Insufficient credits. Add more using https://openrouter.ai/settings/credits";
+    assert!(agent_string_is_openrouter_billing_failure(msg));
+    let err = plan_agent_retry(msg, 1, 9999).expect_err("insufficient credits must fail fast");
     assert_eq!(err.0, msg);
 }
 
@@ -71,40 +77,6 @@ fn cannot_use_model_fails_fast_even_when_error_also_looks_retriable() {
     let msg = "rpc [unavailable]: Cannot use this model";
     let err = plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS).expect_err("model error must beat retriable match");
     assert_eq!(err.0, msg);
-}
-
-#[test]
-fn iterable_closed_stream_from_buffer_and_operational_iterable_closed_for_emit() {
-    assert_eq!(
-        iterable_closed_stream_from_buffer("Error: T: WritableIterable is closed"),
-        Some(IterableClosedStream::Writable)
-    );
-    assert_eq!(
-        iterable_closed_stream_from_buffer("Error: T: ReadableIterable is closed"),
-        Some(IterableClosedStream::Readable)
-    );
-    assert_eq!(
-        operational_iterable_closed_for_emit("partial", Some(IterableClosedStream::Writable)),
-        Some("acp: WritableIterable is closed")
-    );
-    assert_eq!(
-        operational_iterable_closed_for_emit("partial", Some(IterableClosedStream::Readable)),
-        Some("acp: ReadableIterable is closed")
-    );
-    assert_eq!(operational_iterable_closed_for_emit("ok", None), None);
-}
-
-#[test]
-fn operational_iterable_closed_log_line_detection() {
-    assert_eq!(
-        operational_iterable_closed_log_line("\n\nError: T: WritableIterable is closed"),
-        Some("acp: WritableIterable is closed")
-    );
-    assert_eq!(
-        operational_iterable_closed_log_line("ReadableIterable is closed"),
-        Some("acp: ReadableIterable is closed")
-    );
-    assert_eq!(operational_iterable_closed_log_line("invalid json"), None);
 }
 
 #[test]
@@ -235,15 +207,4 @@ fn emit_operational_upgrade_plan_stop_prints_once() {
         "stderr: {stderr:?}"
     );
     assert_eq!(stderr.matches(crate::acp::UPGRADE_PLAN_STOP_MESSAGE).count(), 1);
-}
-
-#[test]
-fn operational_iterable_closed_for_emit_uses_stream_kind_message() {
-    assert_eq!(
-        operational_iterable_closed_for_emit(
-            "partial",
-            Some(IterableClosedStream::Writable)
-        ),
-        Some("acp: WritableIterable is closed")
-    );
 }

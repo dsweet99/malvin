@@ -47,7 +47,13 @@ fn fail_epoch_forces_act_after_nonzero_exit_without_fence() {
     assert!(maybe_retry_local_shape(&outcome, &mut working, &mut budget));
     assert_eq!(budget.fail_epoch_passes, 2);
     assert!(working.iter().any(|m| m.content.contains("Emit an Act fence now")));
-    // Nudge already present — further mutate exhausted.
+    // Act-pressure exhausted → unpaid zero-fence consumes MissingContent-shaped budget.
+    assert!(maybe_retry_local_shape(&outcome, &mut working, &mut budget));
+    assert_eq!(budget.missing_shape_passes, 1);
+    assert!(working.iter().any(|m| {
+        matches!(m.role, ChatRole::System) && m.content.contains("Thought-only responses")
+    }));
+    // Missing budget exhausted — no further local mutate.
     assert!(!maybe_retry_local_shape(&outcome, &mut working, &mut budget));
 }
 
@@ -59,7 +65,7 @@ fn reminder_switches_to_fail_epoch_cue_after_nonzero_exit() {
     }];
     let study = with_tool_use_system_reminder(&green);
     assert!(study[0].content.contains("request-named"));
-    assert!(study[0].content.contains("private probe"));
+    assert!(study[0].content.contains("private asserts"));
     assert!(!study[0].content.contains("nonzero exit"));
 
     let red = vec![ChatMessage {
@@ -67,7 +73,7 @@ fn reminder_switches_to_fail_epoch_cue_after_nonzero_exit() {
         content: "Exit code 1\nstdout:\nFAILED\nstderr:\n".into(),
     }];
     let cue = with_tool_use_system_reminder(&red);
-    assert!(cue[0].content.contains("nonzero exit is a failed live probe"));
+    assert!(cue[0].content.contains("nonzero exit is a failed live check"));
     assert!(cue[0].content.contains("acceptance region"));
 }
 

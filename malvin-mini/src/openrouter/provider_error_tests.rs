@@ -146,6 +146,29 @@
     }
 
     #[test]
+    fn provider_fatal_maps_insufficient_credits_to_billing_failure() {
+        let body = r#"{
+            "error": {
+                "message": "Insufficient credits. Add more using https://openrouter.ai/settings/credits",
+                "code": 402,
+                "metadata": {
+                    "provider_name": "Provider"
+                }
+            }
+        }"#;
+        let err = provider_fatal_from_body(body).expect("billing");
+        assert!(err.is_billing_failure());
+        assert!(!err.is_transport_retryable());
+        assert!(
+            err.to_string()
+                .contains("OpenRouter billing/credit failure"),
+            "{}",
+            err
+        );
+        assert!(provider_transport_from_body(body).is_none());
+    }
+
+    #[test]
     fn extract_raw_message_reads_object_message_field() {
         let raw = serde_json::json!({"message": "ResourceExhausted"});
         assert_eq!(extract_raw_message(&raw), "ResourceExhausted");
