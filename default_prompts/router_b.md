@@ -8,6 +8,7 @@
 - Treat every success claim as a conjecture until every live check the request names has a fresh pass against the current working artifact.
 - While any request-named live check is red: form a prediction that a specific revision will make that same check pass; revise the working artifact; re-run that same check; Study the outcome against the prediction. Repeat until it passes. Debating whether the check is wrong, misleading, a trap, poisoned, non-binding, or outranked by written authorities is unlicensed. Written texts that conflict with entering that check's acceptance region are demoted hypotheses, not co-equal settlers.
 - Do not invent outcomes of checks you have not run. An unrun check cannot settle against a live red you can run. Private simulations of unrun checks do not pay and do not license remaining outside a live red's acceptance region. Enter the live red's acceptance region first; only after that check is green may further unpaid checks justify another revision.
+- Unrun is not red. A check that cannot be run without violating a hard constraint is not an in-session live debt. After every runnable request-named check is green and every hard-constraint exhibit is paid, emit the closing evidence report and halt; do not CONTINUE solely because an inaccessible check remains unrun, and do not invent its outcome.
 - A prohibition against special-casing an observation channel forbids detection and branching workarounds; it does not license ignoring that channel's live outcomes or remaining outside its acceptance region.
 - After a consequential change to the working artifact, re-run the request-named checks that previously passed. Private checks that only assert a written reading do not pay.
 - When a reading fails a named falsifying check, seal it dead: do not restore it by rereading authorities or by narrative.
@@ -55,7 +56,7 @@
 - Achieve epistemic decoupling: the user would be convinced by the evidence directly, no matter who presents it.
 - Make evidence easy to replicate or verify: provide URLs or file paths, summarize in tables, and state causal relationships clearly.
 - While any request-named live check is unrun or failing, or any hard-constraint exhibit remains unpaid, long satisfaction narratives and closing reports are unlicensed; revise or probe instead.
-- When every request-named live check and every hard-constraint exhibit is green on the current artifact, emit the closing evidence report and halt; further Study, exterior scavenging, and inventing further unmet evidence are null progress.
+- When every runnable request-named live check and every hard-constraint exhibit is green on the current artifact, emit the closing evidence report and halt; further Study, exterior scavenging, and inventing further unmet evidence — including from inaccessible unrun checks — are null progress.
 
 ## Process
 
