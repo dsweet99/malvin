@@ -1,6 +1,9 @@
+mod review_lgtm;
+
+pub(crate) use review_lgtm::explain_review_chat_is_lgtm;
+
 use crate::cli::error_run_log;
 use crate::cli::{SharedOpts, WorkflowCliOptions};
-use crate::review_sync::is_lgtm_str;
 use crate::run_timing::attach_new_run_timing;
 
 use super::finish::{emit_explain_startup, finish_explain_success, ExplainSuccessInput};
@@ -14,39 +17,6 @@ use super::prep::{
 use super::run_startup::{prepare_explain_kpop_run, ExplainKpopPrepared};
 use super::work::{run_explain_work, ExplainWorkParams};
 use super::{effective_explain_max_loops, ExplainArgs};
-
-/// Review chat acceptance for explain.
-///
-/// Cursor streams intermediate `agent_message_chunk` prose before the deliverable. Chunks are often
-/// concatenated without newlines, so the captured chat can end with `.LGTM` glued onto the prior
-/// sentence rather than a bare `LGTM` line.
-#[must_use]
-pub(crate) fn explain_review_chat_is_lgtm(chat: &str) -> bool {
-    if is_lgtm_str(chat) {
-        return true;
-    }
-    if chat
-        .lines()
-        .rev()
-        .map(str::trim)
-        .find(|line| !line.is_empty())
-        .is_some_and(|line| {
-            let line = line.strip_prefix('\u{FEFF}').unwrap_or(line).trim();
-            line == "LGTM"
-        })
-    {
-        return true;
-    }
-    let t = chat.trim();
-    let t = t.strip_prefix('\u{FEFF}').unwrap_or(t).trim();
-    // Streamed final deliverable glued onto the previous sentence (no separating newline).
-    t.strip_suffix("LGTM").is_some_and(|prefix| {
-        prefix
-            .as_bytes()
-            .last()
-            .is_some_and(|b| matches!(b, b'.' | b'!' | b'?'))
-    })
-}
 
 pub async fn run_explain(
     explain: &mut ExplainArgs,
@@ -72,6 +42,19 @@ pub async fn run_explain(
         {
             return done;
         }
+    }
+    // Closing review: the last work pass may have paid gaps after that loop's review.
+    let mut closing = OuterIterationCtx {
+        explain,
+        shared,
+        workflow,
+        prepared: &prepared,
+        outer: max_outer.saturating_add(1),
+        run_timing: &run_timing,
+    };
+    let closing_chat = run_review_phase(&closing).await?;
+    if explain_review_chat_is_lgtm(&closing_chat) {
+        return finish_on_lgtm(&mut closing).await;
     }
     Err(format!(
         "malvin explain: exhausted --max-loops={max_outer} without LGTM review"

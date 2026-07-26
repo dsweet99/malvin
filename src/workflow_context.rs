@@ -64,6 +64,7 @@ fn insert_kpop_and_workspace_paths(
         base,
     );
     insert_formatted(context, "malvin_output_path", &artifacts.run_dir, base);
+    insert_formatted(context, "workspace_dir", &artifacts.run_dir, base);
     insert_formatted(
         context,
         "logs_dir",

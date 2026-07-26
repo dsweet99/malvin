@@ -67,6 +67,7 @@ fn workflow_context_paths_use_relative_prompt_paths() {
         "review_prep_path",
         "result_path",
         "malvin_output_path",
+        "workspace_dir",
         "quality_gates_log",
         "kpop_log_dir",
         "exp_log",

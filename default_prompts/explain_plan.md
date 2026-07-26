@@ -6,4 +6,4 @@ Consume this review criticism:
 
 {{ review }}
 
-Write a concrete work plan that addresses every failure in the review. Put the **entire** plan in the agent chat body (and only the plan—no executive summary, no tl;dr echo).
+Write a concrete work plan that addresses every failure in the review. Put the **entire** plan in the agent chat body (and only the plan—no executive summary, no tl;dr echo). Prefer edits that restore ordinary paragraph-to-paragraph argumentation: situate before defining, end each non-final paragraph on a claim the next opening continues, keep same-move continuity inside sentences (no topic-adjacent colon/semicolon staples), apply the full prose and figure lattice from the constraints, and never instruct the author to insert review jargon or review-lattice surface words into the paper.

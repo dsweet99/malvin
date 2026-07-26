@@ -115,10 +115,26 @@ Hard rule — no product, no LGTM: if the resolved `.tex` / `.pdf` are missing o
 failure-focused gap list of everything that needs doing. Never return LGTM when products are \
 missing or empty.
 
-When products exist, explicitly check: (1) cold entry — first sentence of any early \
-stretch opens on a definition, mechanism, or toy before landscape/pressure (a warm \
-earlier stretch does not license a cold later opening); (2) settle-and-stop — later \
-moves not forced by what earlier stretches established. Fail the review if either appears.
+When products exist, hard-fail if any of these fail: (1) cold entry — first sentence of the \
+abstract or of any section opens on a definition, mechanism, notation dump, or toy before \
+situating the working setting and naming the concrete obstacle, bound, or open question that \
+forces the next move (a warm earlier stretch does not license a cold later opening, even if \
+it promised that toy); (2) unpaid debt — between adjacent paragraphs and between sections, \
+each non-final stretch must end on a claim or question that the next opening takes as subject \
+or premise (same referent) and continues or answers in ordinary prose; fail if that opening \
+ignores the claim and starts a new locally complete topic, or introduces a fresh symbol \
+before payment; (3) settle-and-stop — fail if adjacent stretches can be reordered or \
+independently deleted without breaking a load-bearing claim (apply an independence \
+self-check); (4) topic-adjacent join — fail if a colon/semicolon clause or next sentence is \
+on-topic but does not continue or cash the same move (if deleting it leaves no hanging \
+obligation, fail); (5) review metalanguage — fail if prose, section titles, captions, or \
+abstracts name the review checks or use review-lattice surface words as continuity \
+scaffolding (including “pressure”, “settle”, “debt”, “through-line”, “landscape”, close \
+paraphrases such as “budget pressure” / “what remains to settle”, or labeled checks such as \
+“cold entry”, “unpaid debt”, “settle-and-stop”, or “the debt is paid”); (6) broken figures — \
+text overlap, clipped nodes/arrows, or unreadable labels. Once these hard checks pass, return \
+`LGTM`. Do not fail for residual synonymy, mild hedges, or optional polish; \
+explain_constraints still lists those as Work authoring goals.
 ";
 
 pub(crate) fn explain_kpop_request(

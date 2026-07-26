@@ -23,6 +23,7 @@ fn fn_witnesses() {
     assert!(explain_review_chat_is_lgtm("preamble\nLGTM"));
     assert!(explain_review_chat_is_lgtm("probes complete.LGTM"));
     assert!(!explain_review_chat_is_lgtm("- gap\n"));
+    assert!(!explain_review_chat_is_lgtm("- gap\nLGTM"));
     assert!(!explain_review_chat_is_lgtm("Almost LGTM"));
 }
 

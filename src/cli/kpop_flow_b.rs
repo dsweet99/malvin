@@ -97,6 +97,7 @@ fn kpop_markdown_fixture_context() -> WorkflowRenderContext {
         ("quality_gates_log", "./.malvin/logs/run42/quality_gates.log"),
         ("advice_path", "./.malvin/advice.md"),
         ("logs_dir", "./.malvin/logs/run42"),
+        ("workspace_dir", "./.malvin/logs/run42"),
         (
             "user_request_path",
             "./.malvin/logs/run42/request.md",

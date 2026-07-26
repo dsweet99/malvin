@@ -7,8 +7,11 @@
 - Misinterpretable "this" (or "that", "these", "those") are uses of these pronouns where it may be unclear what the antecedent is. It's better to reference it explicitly, "blah blah pretzels. These pretzels are making me thirsty." is better than "blah blah pretzels. These are making me thirsty."
 - Unnecessary intro: It is not necessary to say "X matters because" or "X is important because". We can just tell the reader about the importance directly.
 - Unsubstantiated throw-away: An extra phrase that sounds like "there's more to the story", that you're referring to something well-known that the reader should know, but there's no support in the text through reference or data. Like "and related settings".
-- Cold entry: An abstract or early section whose first sentence opens with a definition, mechanism statement, or toy case before placing the topic in its working landscape or under the concrete pressure that forces the move. Warming an earlier stretch does not license opening a later one on a definition, mechanism, or toy. Classic situating is allowed; cheerleading ("X matters because") is not.
-- Settle-and-stop: Adjacent stretches that each finish one point and could be reordered without harming the argument, or a later move that is not forced by what earlier stretches established. Parallel co-reasons under one claim are fine; a sequence of independent notes is not.
+- Cold entry: An abstract or section whose first sentence opens with a definition, mechanism statement, notation dump, or toy case before situating the topic in its working setting and naming the concrete obstacle, bound, or open question that forces the move. Warming an earlier stretch does not license opening a later one on a definition, mechanism, notation, or toy—even if the earlier stretch promised that toy. Classic situating is allowed; cheerleading ("X matters because") is not.
+- Unpaid debt: A non-final paragraph or section that does not leave a claim or question the next opening sentence takes as its subject or premise and continues or answers, or a next opening that ignores that claim and starts a new locally complete topic, or that introduces a fresh symbol before paying that claim. Apply between adjacent paragraphs as well as between sections.
+- Settle-and-stop: Adjacent paragraphs or sections that each finish one point and could be reordered or independently deleted without harming a named argumentative obligation. Parallel co-reasons under one claim are fine; a sequence of independent notes is not.
+- Topic-adjacent join: A clause after a colon or semicolon, or a next sentence, that stays on-topic but does not continue or cash the same move as what precedes it. If deleting the trailing part leaves no hanging obligation in what precedes it, the join fails: split with an explicit hinge, or rewrite so the second half continues or cashes the first. Same-move continuity applies inside sentences, not only between paragraphs.
+- Review metalanguage: Naming the review checks inside the paper’s prose or section titles, or using review-lattice surface words as if they were ordinary scientific English—including “pressure”, “settle”, “debt”, “through-line”, “landscape”, close paraphrases used as continuity scaffolding (for example “budget pressure”, “ranking pressure”, “what remains to settle”, “working landscape”), and labeled check names (“cold entry”, “unpaid debt”, “settle-and-stop”, “the debt is paid”). Continuity must read as ordinary peer argumentation. Exception: a coinciding field term (for example a defined “loss landscape”) may appear only after it is introduced as that domain object—never as situating or continuity scaffolding.
 
 ## Constraints
 - Write in plain English. Use complete sentences.
@@ -22,12 +25,19 @@
 - No unnecessary intros
 - No unsubstantiated throw-aways
 - No cold entry
+- No unpaid debt
 - No settle-and-stop
+- No topic-adjacent joins
+- No review metalanguage in the document
 - No vague, underprecise, wishy-washy, or hedgy language. Replace them with clear, precise, supported claims (whatever they may be) or just remove them.
 - Introduce terms at the time of first use, prefereably in a natural way.
 - Claims should come with stated evidence or citation. Hypotheses should be labeled as such.
 - Attempt to falsify every claim and hypothesis.
-- Make sure sentences flow naturally from one to the next. Use good transitions. Carry one through-line so adjacent stretches advance that line because the later move is forced by what earlier stretches established.
+- Make sure sentences flow naturally from one to the next. Use good transitions. Carry one continuous argument so each non-final paragraph leaves a claim the next opening sentence takes as subject or premise.
+- Opening order: the first sentence of the abstract and of every section situates the working setting and names, in ordinary scientific English, the concrete obstacle, bound, or open question that forces the next move; only afterward may a definition, mechanism, notation, or toy appear. Do not use banned review-lattice words to perform this situating.
+- Claim chain: end each non-final paragraph on a claim or question; open the next by taking that same referent as subject or premise and continuing or answering it.
+- Same-move joins: every colon, semicolon, or tightly paired next sentence must continue or cash the preceding move; reject topic-adjacent staples.
+- Independence self-check: if swapping or deleting an adjacent non-final pair leaves the argument intact, rewrite until those edits would break a load-bearing claim.
 
 ## Visual Design Rules
 Apply these to the document overall and to each figure or other complex element of the document.

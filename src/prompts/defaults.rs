@@ -112,6 +112,16 @@ mod advice_path_embed_tests {
             header.contains(".malvin_home/logs"),
             "header must render logs_dir to home logs bucket"
         );
+        let workspace = ctx.get("workspace_dir").expect("workspace_dir");
+        assert_eq!(
+            Some(workspace.as_str()),
+            ctx.get("malvin_output_path").map(String::as_str),
+            "workspace_dir should be the per-run log directory"
+        );
+        assert!(
+            header.contains(workspace),
+            "header must render workspace_dir to the per-run log directory"
+        );
         assert!(
             header.contains("User:"),
             "header must render current_state from workflow context"

@@ -1,5 +1,14 @@
 //! Explain Review/Plan: one in-process `KPop` session each (not `run_kpop_engine`).
 
+mod chat_rules;
+
+pub(crate) use chat_rules::{
+    explain_kpop_chat_rules, EXPLAIN_PHASE_PLAN, EXPLAIN_PHASE_REVIEW,
+};
+
+#[cfg(test)]
+pub(crate) use chat_rules::{PLAN_CHAT_RULES, REVIEW_CHAT_RULES};
+
 use crate::acp::{AgentError, CoderPromptOptions};
 use crate::agent_backend::{agent_backend_set_run_timing, build_agent_backend, AgentBackend};
 use crate::artifacts::{ensure_explain_phase_exp_log_file, SessionDotfileBackups};
@@ -9,31 +18,6 @@ use crate::kpop_engine::KPopEnginePrepared;
 use crate::prompt_stratification::{join_labeled_strata, PromptStratum};
 use crate::prompts::{render_header, PromptError};
 use crate::run_timing::TimingPhase;
-
-pub(crate) const EXPLAIN_PHASE_REVIEW: &str = "review";
-pub(crate) const EXPLAIN_PHASE_PLAN: &str = "plan";
-
-pub(crate) const REVIEW_CHAT_RULES: &str = "\
-Judge lack-of-satisfaction. Do not edit. The entire agent chat body must be exactly `LGTM` \
-(and only LGTM) when nothing fails, or else a failure-focused gap list. Missing/empty products \
-⇒ never LGTM. Probe cold entry (first sentence of any early stretch opens on a \
-definition, mechanism, or toy before landscape/pressure; a warm earlier stretch \
-does not license a cold later opening) and settle-and-stop (later moves not forced \
-by what earlier stretches established); fail the review when either appears.
-";
-
-pub(crate) const PLAN_CHAT_RULES: &str = "\
-Put the plan only in the agent chat body. Do not edit files. Do not echo an executive summary \
-or tl;dr to chat.
-";
-
-pub(crate) fn explain_kpop_chat_rules(phase: &str) -> &'static str {
-    if phase == EXPLAIN_PHASE_PLAN {
-        PLAN_CHAT_RULES
-    } else {
-        REVIEW_CHAT_RULES
-    }
-}
 
 pub(crate) struct ExplainKpopPhaseParams<'a> {
     pub shared: &'a SharedOpts,

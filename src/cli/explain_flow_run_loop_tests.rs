@@ -66,6 +66,13 @@ fn explain_review_chat_is_lgtm_accepts_final_line() {
     assert!(!explain_review_chat_is_lgtm(
         "- Missing products: no tex/pdf pair.\n- Fix cold entry."
     ));
+    // Gap list must not accept even when a trailing LGTM is streamed after bullets.
+    assert!(!explain_review_chat_is_lgtm(
+        "- Fix cold entry in section 2.\n- Pay unpaid debt at section 3.\nLGTM"
+    ));
+    assert!(!explain_review_chat_is_lgtm(
+        "- Fix cold entry before landscape/pressure.LGTM"
+    ));
     assert!(!explain_review_chat_is_lgtm("LGTM\nextra trailing gap"));
     assert!(!explain_review_chat_is_lgtm("Almost LGTM"));
     assert!(!explain_review_chat_is_lgtm("NOT_LGTM"));
