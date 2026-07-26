@@ -15,16 +15,18 @@ adjacent paragraphs and between sections (each non-final stretch ends on a claim
 opening takes as subject or premise—same referent—and continues or answers; fail if that \
 opening ignores it and starts a new locally complete topic); (3) settle-and-stop (adjacent \
 stretches reorderable or independently deletable without breaking a load-bearing claim; apply \
-an independence self-check); (4) topic-adjacent join (a colon/semicolon clause or next \
-sentence that is on-topic but does not continue or cash the same move—if deleting it leaves \
-no hanging obligation, fail); (5) review metalanguage (prose, section titles, captions, or \
+an independence self-check); (4) topic-adjacent join (a colon/semicolon clause that is \
+on-topic but does not continue or cash the same move as the clause before the punctuation—if \
+deleting the trailing clause leaves no hanging obligation, fail; ordinary claim-chain next \
+sentences are not this failure); (5) review metalanguage (prose, section titles, captions, or \
 abstracts name review checks or use review-lattice surface words as continuity scaffolding, \
-including “pressure”, “settle”, “debt”, “through-line”, “landscape”, close paraphrases such as \
-“budget pressure” / “what remains to settle”, or labeled checks such as “cold entry”, “unpaid \
-debt”, “settle-and-stop”, or “the debt is paid”); (6) broken figures (text overlap, clipped \
-nodes/arrows, or unreadable labels). Once these hard checks pass, return `LGTM`—do not fail \
-for residual synonymy, mild hedges, optional polish, or other authoring goals already listed \
-in explain_constraints (Work owns those).
+including “pressure”, “settle”, “debt”, “through-line”, “landscape”, “co-reason”, \
+close paraphrases such as “budget pressure” / “what remains to settle” / “three co-reasons”, \
+or labeled checks such as “cold entry”, “unpaid debt”, “settle-and-stop”, or “the debt is \
+paid”); (6) broken figures (text overlap, clipped nodes/arrows, or unreadable labels). Once \
+these hard checks pass, return `LGTM`—do not fail for residual synonymy, mild hedges, \
+optional polish, or other authoring goals already listed in explain_constraints (Work owns \
+those).
 ";
 
 pub(crate) const PLAN_CHAT_RULES: &str = "\

@@ -125,16 +125,18 @@ or premise (same referent) and continues or answers in ordinary prose; fail if t
 ignores the claim and starts a new locally complete topic, or introduces a fresh symbol \
 before payment; (3) settle-and-stop — fail if adjacent stretches can be reordered or \
 independently deleted without breaking a load-bearing claim (apply an independence \
-self-check); (4) topic-adjacent join — fail if a colon/semicolon clause or next sentence is \
-on-topic but does not continue or cash the same move (if deleting it leaves no hanging \
-obligation, fail); (5) review metalanguage — fail if prose, section titles, captions, or \
+self-check); (4) topic-adjacent join — fail if a colon/semicolon clause is on-topic but does \
+not continue or cash the same move as the clause before the punctuation (if deleting the \
+trailing clause leaves no hanging obligation, fail; ordinary claim-chain next sentences are \
+not this failure); (5) review metalanguage — fail if prose, section titles, captions, or \
 abstracts name the review checks or use review-lattice surface words as continuity \
-scaffolding (including “pressure”, “settle”, “debt”, “through-line”, “landscape”, close \
-paraphrases such as “budget pressure” / “what remains to settle”, or labeled checks such as \
-“cold entry”, “unpaid debt”, “settle-and-stop”, or “the debt is paid”); (6) broken figures — \
-text overlap, clipped nodes/arrows, or unreadable labels. Once these hard checks pass, return \
-`LGTM`. Do not fail for residual synonymy, mild hedges, or optional polish; \
-explain_constraints still lists those as Work authoring goals.
+scaffolding (including “pressure”, “settle”, “debt”, “through-line”, “landscape”, \
+“co-reason”, close paraphrases such as “budget pressure” / “what remains to settle” / \
+“three co-reasons”, or labeled checks such as “cold entry”, “unpaid debt”, \
+“settle-and-stop”, or “the debt is paid”); (6) broken figures — text overlap, clipped \
+nodes/arrows, or unreadable labels. Once these hard checks pass, return `LGTM`. Do not fail \
+for residual synonymy, mild hedges, or optional polish; explain_constraints still lists those \
+as Work authoring goals.
 ";
 
 pub(crate) fn explain_kpop_request(
