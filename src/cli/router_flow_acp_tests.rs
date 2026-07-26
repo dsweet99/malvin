@@ -59,7 +59,11 @@ pub(crate) fn router_boot_client_artifacts(
     )
     .map_err(|e| e.to_string())?;
     let prompt_store = prepare_router_prompt_store()?;
-    let coder = build_router_coder_run(&artifacts, "investigate task", crate::workflow_context::PromptModelOpts::new(crate::config::DEFAULT_CLI_MODEL, false))?;
+    let coder = build_router_coder_run(
+        &artifacts,
+        "investigate task",
+        crate::workflow_context::PromptModelOpts::new(crate::config::DEFAULT_CLI_MODEL, false),
+    )?;
     Ok((client, artifacts, coder, prompt_store))
 }
 
@@ -73,7 +77,7 @@ fn kiss_cov_router_acp_iteration_input_type_name() {
 mod unix_cov {
     use super::super::router_flow_acp_mock_tests::{
         install_mock_router_agent_env, install_mock_router_agent_env_with_script,
-        write_mock_router_agent_session_fail,
+        write_mock_router_agent_missing_requirements, write_mock_router_agent_session_fail,
     };
     use super::{
         router_boot_client_artifacts, run_router_acp_iteration, test_router_shared,
@@ -82,19 +86,18 @@ mod unix_cov {
     use crate::run_timing::acp_post_run::RunTimingSessionEnd;
 
     #[test]
-    fn run_router_acp_iteration_executes_mock_agent_without_continue() {
+    fn run_router_acp_iteration_executes_mock_agent_full_sequence() {
         crate::test_utils::enable_test_fast_teardown();
         crate::test_utils::with_isolated_home(|workspace| {
             crate::test_utils::block_on_test_async(async {
                 crate::seed_malvin_checks(workspace, "true\n");
                 let mock = workspace.join("mock-router-agent");
-                let _env = install_mock_router_agent_env(workspace, &mock, false);
+                let _env = install_mock_router_agent_env(workspace, &mock);
                 let (shared, workflow) = test_router_shared();
                 let (mut client, artifacts, coder, prompt_store) =
                     router_boot_client_artifacts(workspace, &shared, workflow).expect("boot");
                 let RouterAcpIterationOutcome {
                     acp_result,
-                    wants_continue,
                     ..
                 } = run_router_acp_iteration(RouterAcpIterationInput {
                     client: &mut client,
@@ -107,49 +110,61 @@ mod unix_cov {
                 })
                 .await;
                 acp_result.expect("acp");
-                assert!(!wants_continue);
                 assert!(artifacts.log_path("router_1").is_file());
                 let log_text =
                     std::fs::read_to_string(artifacts.log_path("router_1")).expect("read router log");
                 assert!(
-                    log_text.contains("router_a_1 phase") && log_text.contains("router_a_2 phase"),
-                    "router_1.log must retain a_1 and a_2 turns; got: {log_text}"
+                    log_text.contains("router_requirements phase")
+                        && log_text.contains("router_kpop_group phase")
+                        && log_text.contains("router_work done"),
+                    "router_1.log must retain requirements → group → work; got: {log_text}"
                 );
-                assert!(
-                    log_text.contains("router_b done") && log_text.contains("router_c done"),
-                    "router_1.log must retain b and c turns; got: {log_text}"
+                assert!(crate::artifacts::review_requirements_json(&artifacts).is_file());
+                let counts_path = workspace.join(
+                    super::super::router_flow_acp_mock_tests::ROUTER_MOCK_SESSION_COUNTS_FILE,
+                );
+                let counts_raw =
+                    std::fs::read_to_string(&counts_path).expect("read mock session counts");
+                let counts: serde_json::Value =
+                    serde_json::from_str(&counts_raw).expect("parse mock session counts");
+                assert_eq!(
+                    counts.get("begins").and_then(serde_json::Value::as_u64),
+                    Some(1),
+                    "exactly one session/new (begin) around the full sequence: {counts_raw}"
+                );
+                assert_eq!(
+                    counts.get("prompts").and_then(serde_json::Value::as_u64),
+                    Some(3),
+                    "requirements + one group KPop + work prompts: {counts_raw}"
                 );
             });
         });
     }
 
     #[test]
-    fn run_router_acp_iteration_wants_continue_when_router_c_emits_marker() {
+    fn run_router_acp_iteration_aborts_when_requirements_json_missing() {
         crate::test_utils::enable_test_fast_teardown();
         crate::test_utils::with_isolated_home(|workspace| {
             crate::test_utils::block_on_test_async(async {
                 crate::seed_malvin_checks(workspace, "true\n");
-                let mock = workspace.join("mock-router-agent");
-                let _env = install_mock_router_agent_env(workspace, &mock, true);
+                let mock = workspace.join("mock-router-agent-bad");
+                write_mock_router_agent_missing_requirements(&mock);
+                let _env = install_mock_router_agent_env_with_script(workspace, &mock);
                 let (shared, workflow) = test_router_shared();
                 let (mut client, artifacts, coder, prompt_store) =
                     router_boot_client_artifacts(workspace, &shared, workflow).expect("boot");
-                let RouterAcpIterationOutcome {
-                    acp_result,
-                    wants_continue,
-                    ..
-                } = run_router_acp_iteration(RouterAcpIterationInput {
-                    client: &mut client,
-                    artifacts: &artifacts,
-                    coder: &coder,
-                    prompt_store: &prompt_store,
-                    shared: &shared,
-                    agent_loop: 1,
-                    session_end: RunTimingSessionEnd::AccumulateRun,
-                })
-                .await;
-                acp_result.expect("acp");
-                assert!(wants_continue);
+                let RouterAcpIterationOutcome { acp_result, .. } =
+                    run_router_acp_iteration(RouterAcpIterationInput {
+                        client: &mut client,
+                        artifacts: &artifacts,
+                        coder: &coder,
+                        prompt_store: &prompt_store,
+                        shared: &shared,
+                        agent_loop: 1,
+                        session_end: RunTimingSessionEnd::Finalize,
+                    })
+                    .await;
+                assert!(acp_result.is_err());
             });
         });
     }
@@ -166,22 +181,18 @@ mod unix_cov {
                 let (shared, workflow) = test_router_shared();
                 let (mut client, artifacts, coder, prompt_store) =
                     router_boot_client_artifacts(workspace, &shared, workflow).expect("boot");
-                let RouterAcpIterationOutcome {
-                    acp_result,
-                    wants_continue,
-                    ..
-                } = run_router_acp_iteration(RouterAcpIterationInput {
-                    client: &mut client,
-                    artifacts: &artifacts,
-                    coder: &coder,
-                    prompt_store: &prompt_store,
-                    shared: &shared,
-                    agent_loop: 1,
-                    session_end: RunTimingSessionEnd::Finalize,
-                })
-                .await;
+                let RouterAcpIterationOutcome { acp_result, .. } =
+                    run_router_acp_iteration(RouterAcpIterationInput {
+                        client: &mut client,
+                        artifacts: &artifacts,
+                        coder: &coder,
+                        prompt_store: &prompt_store,
+                        shared: &shared,
+                        agent_loop: 1,
+                        session_end: RunTimingSessionEnd::Finalize,
+                    })
+                    .await;
                 assert!(acp_result.is_err());
-                assert!(!wants_continue);
             });
         });
     }
@@ -190,8 +201,7 @@ mod unix_cov {
 #[cfg(unix)]
 #[test]
 fn kiss_cov_unix_cov_test_names() {
-    let _ = stringify!(run_router_acp_iteration_executes_mock_agent_without_continue);
-    let _ = stringify!(run_router_acp_iteration_wants_continue_when_router_c_emits_marker);
-    let _ = stringify!(run_router_acp_iteration_aborts_before_a2_on_bad_complexity);
+    let _ = stringify!(run_router_acp_iteration_executes_mock_agent_full_sequence);
+    let _ = stringify!(run_router_acp_iteration_aborts_when_requirements_json_missing);
     let _ = stringify!(run_router_acp_iteration_propagates_begin_session_failure);
 }

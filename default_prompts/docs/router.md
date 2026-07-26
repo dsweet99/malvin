@@ -1,6 +1,6 @@
 # malvin (default route)
 
-Four-prompt agent sessions with autonomous routing: `header.md` + `router_a_1.md` + user request, then bare `router_a_2.md`, then bare `router_b.md`, then bare `router_c.md` on the same session. Outer `--max-loops` restarts with a new agent when `router_c` replies `CONTINUE_ROUTER`.
+One coder session: `header.md` + `router_requirements.md` + user request, then one KPop-shaped gap-analysis prompt per requirements group, then `router_work.md`. The agent is torn down after the work turn.
 
 ## Summary
 
@@ -8,14 +8,13 @@ Four-prompt agent sessions with autonomous routing: `header.md` + `router_a_1.md
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
 | Output | Styled stdout on a TTY (same startup chrome as `kpop` / `tidy`) |
-| Logs | `router_1.log`, `router_2.log`, … under `~/.malvin_home/logs/<hash>/<run>/` (all turns in one file per outer loop) |
+| Logs | `router_1.log` under `~/.malvin_home/logs/<hash>/<run>/` (all turns in one file) |
+| Contract file | `review_requirements.json` in the malvin run directory (`{{ review_requirements_path }}`) |
 | Requires | No `.malvin/checks` at startup |
 
 ## Intention
 
-Let the agent read the user request and decide how to satisfy it — including invoking other malvin commands such as `kpop` or `inspire`. Suitable when the right workflow is not known upfront.
-
-Turn 1 (`router_a_1`) classifies complexity. Turn 2 (`router_a_2`) classifies whether the task is coding. When `CODING_TASK: YES` and `.malvin/checks` is missing, malvin runs `init` (separate kpop subprocess) before turn 3. Complexity is collected but not used to select the work prompt. After the work prompts, `router_c.md` asks for either an evidence report or the literal token `CONTINUE_ROUTER` to request another agent session (until `--max-loops` is exhausted).
+Read the user request, invent a small set of grouped review requirements, gap-analyze each group with the KPop method (residual plan written to chat), then execute the planned work in the same session.
 
 ## Usage
 
@@ -42,28 +41,38 @@ See `malvin --doc`. Notable for the default route:
 
 | Flag | Effect |
 |------|--------|
-| `--max-loops` | Outer router sessions (default `1`; tenacious expands to `9999`) |
-| `--no-tenacious` | Keep default `--max-loops=1` and normal `--max-acp-retries` |
-| `--gates` | Run workspace quality gates after coding work and continue when they fail (default: off) |
+| `--gates` | Inject workspace check command text into the final `router_work.md` prompt (default: off). Does **not** restart the agent when checks fail. |
+| `--no-tenacious` | Keep normal `--max-acp-retries` (default tenacious expands ACP retries only) |
 | `--no-tee` | Disables live streaming |
 | `--verbose` | Full prompt bodies in `prompts.log` |
+| `--max-loops` | Legacy no-op on the default route (single session; kept for CLI compatibility) |
 
 ## Prompt workflow
 
-Each outer loop iteration opens one coder session and sends four prompts:
+Malvin opens one coder session and sends:
 
 | Turn | Piece | Role |
 |------|-------|------|
-| 1 | `header.md` | Standard Malvin coding context (log-reading, calibration, sandbox rules) |
-| 1 | `router_a_1.md` | Classify complexity (`COMPLEXITY_SCORE: 1-10`) |
+| 1 | `header.md` | Standard Malvin coding context |
+| 1 | `router_requirements.md` | Write grouped review requirements JSON only |
 | 1 | User request | Appended after headers |
-| 2 | `router_a_2.md` | Bare classify coding (`CODING_TASK: YES\|NO`) |
-| 3 | `router_b.md` | Bare work brief (same for every complexity score) |
-| 4 | `router_c.md` | Bare follow-up: evidence report **or** `CONTINUE_ROUTER` |
+| 2… | `kpop_common.md` + `router_kpop_group.md` | One turn per group: residual plan to chat; hypotheses to that group's `_kpop` exp log (`want` = `DEFAULT_MAX_HYPOTHESES`) |
+| last | `router_work.md` | Execute the residual plans already in chat; optional `{{ code_extra }}` when `--gates` |
 
-After turn 1, malvin parses `COMPLEXITY_SCORE` from the agent response (label may appear mid-line; markdown decoration and glued trailing prose around the integer are tolerated; range templates like `1-10` are rejected; last valid match wins). Parse failure aborts the run immediately. After turn 2, malvin parses `CODING_TASK` the same way (`YES`/`NO` as whole tokens; last valid match wins). Dotfile backup runs after that parse, before turn 3.
+After turn 1, malvin loads and validates `review_requirements.json`. Missing, malformed, or over-limit files fail the run. Schema:
 
-When the agent’s `router_c` reply contains a line exactly equal to `CONTINUE_ROUTER` (or the whole reply trimmed is `CONTINUE_ROUTER`), malvin tears down the session and starts a new outer loop with the same `router_a_1` assembly. With `--gates`, malvin also runs `.malvin/checks` after turn 4 for coding tasks and starts another outer iteration when a check fails. Without `--gates` (the default), no post-turn harness gate run occurs. Agent-visible check guidance is unchanged.
+```json
+{
+  "groups": [
+    {
+      "title": "optional short label",
+      "requirements": ["...", "..."]
+    }
+  ]
+}
+```
+
+Validation: `groups.len() ∈ 0..=5`; each group's `requirements.len() ∈ 1..=5`; requirement strings non-empty after trim. Zero groups skips per-group KPop and still sends the final work prompt.
 
 ### Required template keys
 
@@ -72,17 +81,18 @@ When the agent’s `router_c` reply contains a line exactly equal to `CONTINUE_R
 | `logs_dir` | `header.md` | `malvin_logs_root(work_dir)` |
 | `current_state` | `header.md` | `format_current_state(...)` |
 | `git_extra` | `header.md` | `--git` → `You may run 'git commit'.`; otherwise `""` |
-| `user_request_path` | `router_a_1.md` | `format_prompt_path(plan_path, work_dir)` |
-| `malvin_command` | metadata | `malvin --model=<active_model>` (e.g. `malvin --model=cursor:auto`) |
-
-No implement, review, concerns, learn, or summary phases.
+| `user_request_path` | `router_requirements.md` | `format_prompt_path(plan_path, work_dir)` |
+| `review_requirements_path` | `router_requirements.md` | run-dir `review_requirements.json` |
+| `malvin_command` | work / tools | `malvin --model=<active_model>` |
+| `want` / `exp_log` / `group_*` | `router_kpop_group.md` | per-group prompt assembly |
+| `code_extra` | `router_work.md` | `router_code_extra.md` when `--gates` |
 
 ## Session behavior
 
 - Ensures `~/.malvin_home/config.toml` exists with defaults (same as `do`).
-- Backs up `.gitignore`, `.malvin/checks`, `.malvin/config.toml`, and `~/.malvin_home/config.toml` after `router_a_2` parsing (before turn 3); restores session dotfiles after each iteration and at run end.
-- When `CODING_TASK: YES` and checks are missing, runs `malvin init` via a separate kpop agent between turns 2 and 3 (coder session stays open).
-- Checks `result.md` for `ABORT:` after the outer loop completes.
+- Backs up `.gitignore`, `.malvin/checks`, `.malvin/config.toml`, and `~/.malvin_home/config.toml` at session start; restores session dotfiles at run end.
+- Does **not** auto-run `malvin init` between turns.
+- Checks `result.md` for `ABORT:` after the session completes.
 
 ## Related commands
 
@@ -96,6 +106,6 @@ No implement, review, concerns, learn, or summary phases.
 
 ```text
 malvin "Figure out why tests fail and fix them"
-malvin --max-loops 3 notes/task.md
+malvin --gates notes/task.md
 malvin --no-tenacious "Quick one-shot route"
 ```

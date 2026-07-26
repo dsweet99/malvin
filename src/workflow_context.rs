@@ -43,6 +43,12 @@ fn insert_review_artifact_paths(
         &artifacts.artifact_result_md(),
         base,
     );
+    insert_formatted(
+        context,
+        "review_requirements_path",
+        &crate::artifacts::review_requirements_json(artifacts),
+        base,
+    );
 }
 
 fn insert_kpop_and_workspace_paths(

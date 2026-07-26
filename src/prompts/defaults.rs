@@ -7,12 +7,10 @@ pub use default_files::default_file;
 
 pub const HEADER_MD: &str = "header.md";
 pub const DO_HEADER_MD: &str = "do_header.md";
-pub const ROUTER_A_1_MD: &str = "router_a_1.md";
-pub const ROUTER_A_2_MD: &str = "router_a_2.md";
-pub const ROUTER_B_MD: &str = "router_b.md";
-pub const ROUTER_C_MD: &str = "router_c.md";
+pub const ROUTER_REQUIREMENTS_MD: &str = "router_requirements.md";
+pub const ROUTER_KPOP_GROUP_MD: &str = "router_kpop_group.md";
+pub const ROUTER_WORK_MD: &str = "router_work.md";
 pub const ROUTER_CODE_EXTRA_MD: &str = "router_code_extra.md";
-pub const ROUTER_D_MD: &str = "router_d.md";
 
 pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD, "kpop_program.md"];
 
@@ -37,12 +35,10 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "mini_constraints.md",
     HEADER_MD,
     DO_HEADER_MD,
-    ROUTER_A_1_MD,
-    ROUTER_A_2_MD,
-    ROUTER_B_MD,
-    ROUTER_C_MD,
+    ROUTER_REQUIREMENTS_MD,
+    ROUTER_KPOP_GROUP_MD,
+    ROUTER_WORK_MD,
     ROUTER_CODE_EXTRA_MD,
-    ROUTER_D_MD,
 ];
 
 #[cfg(test)]
@@ -134,16 +130,16 @@ mod router_header_embed_tests {
     use std::path::Path;
 
     use super::{
-        default_file, DO_HEADER_MD, HEADER_MD, ROUTER_A_1_MD, ROUTER_A_2_MD, ROUTER_B_MD,
-        ROUTER_C_MD,
+        default_file, DO_HEADER_MD, HEADER_MD, ROUTER_KPOP_GROUP_MD, ROUTER_REQUIREMENTS_MD,
+        ROUTER_WORK_MD,
     };
     use crate::config::DEFAULT_CLI_MODEL;
     use crate::artifacts::create_run_artifacts;
     use crate::orchestrator::workflow_context_paths_only;
     use crate::prompts::{PromptStore, render_header};
     use crate::router_flow::router_flow_prompt::{
-        build_router_a_2_prompt, build_router_b_prompt, build_router_c_prompt,
-        build_router_coder_run, prepare_router_prompt_store, RouterBPromptInput,
+        build_router_coder_run, build_router_kpop_group_prompt, build_router_work_prompt,
+        prepare_router_prompt_store, RouterKpopGroupPromptInput, RouterWorkPromptInput,
     };
 
     #[test]
@@ -165,45 +161,60 @@ mod router_header_embed_tests {
         let header = render_header(&store, ctx.as_map()).expect("header");
         assert!(!header.contains("{{"), "header must expand all placeholders");
         let paths_ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL, false);
-        let router_a_1 = store
-            .render_prompt_only(ROUTER_A_1_MD, paths_ctx.as_map())
-            .expect("router_a_1");
         assert!(
-            !router_a_1.contains("{{"),
-            "router_a_1.md must expand user_request_path"
+            paths_ctx.get("review_requirements_path").is_some(),
+            "context must expose review_requirements_path"
         );
-        let run = build_router_coder_run(&artifacts, "user body", crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false)).expect("run");
+        let router_requirements = store
+            .render_prompt_only(ROUTER_REQUIREMENTS_MD, paths_ctx.as_map())
+            .expect("router_requirements");
+        assert!(
+            !router_requirements.contains("{{"),
+            "router_requirements.md must expand review_requirements_path"
+        );
+        assert!(router_requirements.contains("review_requirements.json"));
+        let run = build_router_coder_run(
+            &artifacts,
+            "user body",
+            crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false),
+        )
+        .expect("run");
         assert!(!run.combined.contains("{{"));
         let store = prepare_router_prompt_store().expect("store");
-        let router_a_2 = build_router_a_2_prompt(&store, &artifacts, DEFAULT_CLI_MODEL, false).expect("router_a_2");
-        assert!(!router_a_2.contains("{{"));
-        assert!(router_a_2.contains("CODING_TASK"));
-        let router_b = build_router_b_prompt(RouterBPromptInput {
+        let group = build_router_kpop_group_prompt(RouterKpopGroupPromptInput {
             store: &store,
             artifacts: &artifacts,
-            template: ROUTER_B_MD,
-            coding_task: false,
+            model: DEFAULT_CLI_MODEL,
+            git: false,
+            group_index: 1,
+            group_title: "Checks",
+            group_requirements: "- gates pass",
+            want: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
+            exp_log: &artifacts.gate_exp_log_path(1),
+        })
+        .expect("kpop group");
+        assert!(!group.contains("{{"));
+        let work = build_router_work_prompt(RouterWorkPromptInput {
+            store: &store,
+            artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
             git: false,
             gates: false,
-        }).expect("router_b");
-        assert!(!router_b.contains("{{"));
-        let router_c = build_router_c_prompt(&store, &artifacts, DEFAULT_CLI_MODEL, false).expect("router_c");
-        assert!(!router_c.contains("{{"));
-        let router_b_coding = build_router_b_prompt(RouterBPromptInput {
+        })
+        .expect("work");
+        assert!(!work.contains("{{"));
+        let work_gates = build_router_work_prompt(RouterWorkPromptInput {
             store: &store,
             artifacts: &artifacts,
-            template: ROUTER_B_MD,
-            coding_task: true,
             model: DEFAULT_CLI_MODEL,
             git: false,
             gates: true,
-        }).expect("router_b coding");
-        assert!(!router_b_coding.contains("{{"));
-        assert!(default_file(ROUTER_A_1_MD).is_some());
-        assert!(default_file(ROUTER_A_2_MD).is_some());
-        assert!(default_file(ROUTER_B_MD).is_some());
-        assert!(default_file(ROUTER_C_MD).is_some());
+        })
+        .expect("work gates");
+        assert!(!work_gates.contains("{{"));
+        assert!(default_file(ROUTER_REQUIREMENTS_MD).is_some());
+        assert!(default_file(ROUTER_KPOP_GROUP_MD).is_some());
+        assert!(default_file(ROUTER_WORK_MD).is_some());
         assert!(default_file(DO_HEADER_MD).is_some());
         assert!(default_file(HEADER_MD).is_some());
     }
@@ -225,4 +236,3 @@ mod do_header_tests {
         assert!(!s.contains("You'll\n find"));
     }
 }
-

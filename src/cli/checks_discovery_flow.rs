@@ -10,12 +10,8 @@ use super::SharedOpts;
 
 #[path = "checks_discovery_kpop.rs"]
 mod checks_discovery_kpop;
-#[path = "checks_discovery_subprocess.rs"]
-mod checks_discovery_subprocess;
 
 use checks_discovery_kpop::run_checks_discovery_kpop;
-
-pub(crate) use checks_discovery_subprocess::ensure_malvin_checks_discovered_via_init_subprocess;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct ChecksDiscoveryOpts {

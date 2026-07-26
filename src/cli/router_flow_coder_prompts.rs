@@ -1,7 +1,7 @@
 use crate::agent_backend::AgentBackend;
 use crate::router_flow::router_flow_prompt;
 
-pub(crate) async fn run_router_a_1_coder_prompt(
+pub(crate) async fn run_router_requirements_coder_prompt(
     client: &mut AgentBackend,
     coder: &router_flow_prompt::RouterCoderRun,
     log_path: &std::path::Path,
@@ -10,7 +10,7 @@ pub(crate) async fn run_router_a_1_coder_prompt(
         .run_coder_prompt(
             &coder.combined,
             log_path,
-            "router_a_1",
+            "router_requirements",
             crate::acp::CoderPromptOptions {
                 llm_phase: Some(crate::run_timing::TimingPhase::Implement),
                 do_trace_split: None,
@@ -22,39 +22,18 @@ pub(crate) async fn run_router_a_1_coder_prompt(
         .map_err(|e| e.to_string())
 }
 
-pub(crate) async fn run_router_a_2_coder_prompt(
+pub(crate) async fn run_router_kpop_group_coder_prompt(
     client: &mut AgentBackend,
-    router_a_2_prompt: &str,
+    prompt: &str,
     log_path: &std::path::Path,
+    group_index: usize,
 ) -> Result<(), String> {
+    let label = format!("router_kpop_group_{group_index}");
     client
         .run_coder_prompt(
-            router_a_2_prompt,
+            prompt,
             log_path,
-            "router_a_2",
-            crate::acp::CoderPromptOptions {
-                llm_phase: Some(crate::run_timing::TimingPhase::Implement),
-                do_trace_split: None,
-                stdout_bracket_label: None,
-                append_trace: true,
-                ..Default::default()
-            },
-        )
-        .await
-        .map_err(|e| e.to_string())
-}
-
-pub(crate) async fn run_router_b_coder_prompt(
-    client: &mut AgentBackend,
-    router_b_prompt: &str,
-    log_path: &std::path::Path,
-    label: &str,
-) -> Result<(), String> {
-    client
-        .run_coder_prompt(
-            router_b_prompt,
-            log_path,
-            label,
+            &label,
             crate::acp::CoderPromptOptions {
                 llm_phase: Some(crate::run_timing::TimingPhase::Implement),
                 do_trace_split: None,
@@ -67,16 +46,16 @@ pub(crate) async fn run_router_b_coder_prompt(
         .map_err(|e| e.to_string())
 }
 
-pub(crate) async fn run_router_c_coder_prompt(
+pub(crate) async fn run_router_work_coder_prompt(
     client: &mut AgentBackend,
-    router_c_prompt: &str,
+    prompt: &str,
     log_path: &std::path::Path,
 ) -> Result<(), String> {
     client
         .run_coder_prompt(
-            router_c_prompt,
+            prompt,
             log_path,
-            "router_c",
+            "router_work",
             crate::acp::CoderPromptOptions {
                 llm_phase: Some(crate::run_timing::TimingPhase::Implement),
                 do_trace_split: None,
@@ -95,9 +74,8 @@ mod kiss_cov_gate_refs {
 
     #[test]
     fn kiss_cov_unit_names() {
-        let _ = run_router_a_1_coder_prompt;
-        let _ = run_router_a_2_coder_prompt;
-        let _ = run_router_b_coder_prompt;
-        let _ = run_router_c_coder_prompt;
+        let _ = run_router_requirements_coder_prompt;
+        let _ = run_router_kpop_group_coder_prompt;
+        let _ = run_router_work_coder_prompt;
     }
 }

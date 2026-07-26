@@ -167,14 +167,13 @@ pub(crate) fn dispatch_command(
 
 pub fn dispatch_default_route(
     request: String,
-    max_loops: usize,
+    _max_loops: usize,
     shared: &mut SharedOpts,
     matches: &clap::ArgMatches,
 ) -> Result<(), String> {
     use crate::router_flow::RouterArgs;
-    let mut max_loops = max_loops;
+    // Default route is a single agent lifetime; tenacious only expands ACP retries.
     super::loop_opts::apply_default_route_tenacious(
-        &mut max_loops,
         &mut shared.max_acp_retries,
         shared.no_tenacious,
         matches,
@@ -183,7 +182,6 @@ pub fn dispatch_default_route(
         run_router(
             RouterArgs {
                 request: Some(request),
-                max_loops,
             },
             shared,
             WorkflowCliOptions {

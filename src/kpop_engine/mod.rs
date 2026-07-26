@@ -12,9 +12,7 @@ pub(crate) use kpop_session_finish::{
 pub(crate) use prepared::KPopEnginePrepared;
 pub(crate) use behavior::KPopHardConstraints;
 pub(crate) use params::KPopEngineParams;
-pub(crate) use run_loop::{
-    restore_carry_forward_before_iteration_snapshot, run_kpop_engine,
-};
+pub(crate) use run_loop::run_kpop_engine;
 
 #[cfg(test)]
 pub(crate) use kpop_session::run_kpop_hard_constraints_after_session;

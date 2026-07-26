@@ -12,7 +12,6 @@ fn kiss_cov_router_flow_loop_privates() {
     let _ = stringify!(coder);
     let _ = stringify!(prompt_store);
     let _ = stringify!(shared);
-    let _ = stringify!(max_loops);
     let _ = stringify!(last_acp);
     let _ = stringify!(last_backups);
     let _ = stringify!(work_dir);
@@ -35,7 +34,7 @@ fn kiss_cov_router_flow_loop_live_outcome_fields() {
         crate::test_utils::block_on_test_async(async {
             crate::seed_malvin_checks(workspace, "true\n");
             let mock = workspace.join("mock-router-agent");
-            let _env = install_mock_router_agent_env(workspace, &mock, true);
+            let _env = install_mock_router_agent_env(workspace, &mock);
             let (shared, workflow) = test_router_shared();
             let (mut client, artifacts, coder, prompt_store) =
                 router_boot_client_artifacts(workspace, &shared, workflow).expect("boot");
@@ -45,7 +44,6 @@ fn kiss_cov_router_flow_loop_live_outcome_fields() {
                 coder: &coder,
                 prompt_store: &prompt_store,
                 shared: &shared,
-                max_loops: 2,
             };
             let RouterAgentLoopInput {
                 client: _,
@@ -53,7 +51,6 @@ fn kiss_cov_router_flow_loop_live_outcome_fields() {
                 coder: _,
                 prompt_store: _,
                 shared: _,
-                max_loops: _,
             } = input;
             let outcome = run_router_agent_loops(input).await.expect("loops");
             let RouterAgentLoopOutcome {
@@ -67,7 +64,5 @@ fn kiss_cov_router_flow_loop_live_outcome_fields() {
 #[cfg(unix)]
 #[test]
 fn kiss_cov_router_flow_loop_test_helpers() {
-    let _ = stringify!(run_router_agent_loops_single_iteration_without_continue);
-    let _ = stringify!(run_router_agent_loops_stops_early_on_non_continue_even_with_budget);
-    let _ = stringify!(run_router_agent_loops_runs_second_iteration_when_router_c_continues);
+    let _ = stringify!(run_router_agent_loops_single_session_requirements_to_work);
 }

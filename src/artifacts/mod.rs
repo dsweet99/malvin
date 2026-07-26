@@ -133,6 +133,12 @@ pub fn user_request_path(artifacts: &RunArtifacts) -> PathBuf {
     artifacts.run_dir.join("user_request.md")
 }
 
+/// Agent-written grouped review requirements JSON for the default route.
+#[must_use]
+pub fn review_requirements_json(artifacts: &RunArtifacts) -> PathBuf {
+    artifacts.run_dir.join("review_requirements.json")
+}
+
 pub(crate) fn work_dir_for_path(path: &Path) -> PathBuf {
     path.parent()
         .filter(|p| !p.as_os_str().is_empty())

@@ -34,9 +34,8 @@ pub(crate) fn install_mock_router_agent_env_with_script(
 pub(crate) fn install_mock_router_agent_env(
     workspace: &std::path::Path,
     mock: &std::path::Path,
-    continue_after_router_c: bool,
 ) -> crate::test_utils::SavedEnvVars {
-    write_mock_router_agent(mock, continue_after_router_c);
+    write_mock_router_agent(mock);
     install_mock_router_agent_env_with_script(workspace, mock)
 }
 
@@ -71,30 +70,80 @@ rl.on('line', (line) => {
     std::fs::set_permissions(path, perms).expect("chmod");
 }
 
+/// Workspace-relative path where the mock writes `session/new` + prompt counts.
 #[cfg(unix)]
-pub(crate) fn write_mock_router_agent(path: &std::path::Path, continue_after_router_c: bool) {
+pub(crate) const ROUTER_MOCK_SESSION_COUNTS_FILE: &str = ".malvin_router_mock_session_counts.json";
+
+/// Writes one group JSON on the requirements turn, then answers group `KPop` + work turns.
+/// Counts `session/new` and `session/prompt` into [`ROUTER_MOCK_SESSION_COUNTS_FILE`] under cwd.
+#[cfg(unix)]
+pub(crate) fn write_mock_router_agent(path: &std::path::Path) {
     use std::os::unix::fs::PermissionsExt;
 
-    let c_text = if continue_after_router_c {
-        "CONTINUE_ROUTER\\n"
-    } else {
-        "router_c done\\n"
-    };
-    let handler = format!(
-        r"    if (!global.pc) global.pc = 0;
-    global.pc++;
-    const responses = [
-      'router_a_1 phase\nCOMPLEXITY_SCORE: 2\n',
-      'router_a_2 phase\nCODING_TASK: NO\n',
-      'router_b done\n',
-      '{c_text}'
-    ];
-    const text = responses[(global.pc - 1) % responses.length];
-    console.log(JSON.stringify({{ jsonrpc: '2.0', method: 'session/update', params: {{ update: {{ sessionUpdate: 'agent_message_chunk', content: {{ type: 'text', text }} }} }} }}));"
-    );
     let script = format!(
-        "#!/usr/bin/env node\n{}\n",
-        crate::acp_mock_js("", &handler)
+        r#"#!/usr/bin/env node
+const fs = require('fs');
+const path = require('path');
+const countsPath = path.resolve(process.cwd(), '{ROUTER_MOCK_SESSION_COUNTS_FILE}');
+const counts = {{ begins: 0, prompts: 0, ends: 0 }};
+function flushCounts() {{
+  try {{ fs.writeFileSync(countsPath, JSON.stringify(counts)); }} catch (e) {{}}
+}}
+process.on('exit', () => {{ counts.ends += 1; flushCounts(); }});
+const readline = require('readline');
+const rl = readline.createInterface({{ input: process.stdin, crlfDelay: Infinity }});
+rl.on('line', (line) => {{
+  line = line.trim();
+  if (!line) return;
+  let msg;
+  try {{ msg = JSON.parse(line); }} catch (e) {{ return; }}
+  const mid = msg.method;
+  const rid = msg.id;
+  if (mid === 'initialize') {{
+    console.log(JSON.stringify({{ jsonrpc: '2.0', id: rid, result: {{}} }}));
+  }} else if (mid === 'authenticate') {{
+    console.log(JSON.stringify({{ jsonrpc: '2.0', id: rid, result: {{}} }}));
+  }} else if (mid === 'session/new') {{
+    counts.begins += 1;
+    flushCounts();
+    console.log(JSON.stringify({{ jsonrpc: '2.0', id: rid, result: {{ sessionId: 't1' }} }}));
+  }} else if (mid === 'session/prompt') {{
+    counts.prompts += 1;
+    flushCounts();
+    if (!global.pc) global.pc = 0;
+    global.pc++;
+    const promptText = (msg.params && msg.params.prompt)
+      ? (Array.isArray(msg.params.prompt)
+          ? msg.params.prompt.map(p => (p && p.text) || '').join('\n')
+          : String(msg.params.prompt))
+      : '';
+    if (global.pc === 1) {{
+      let outPath = null;
+      const abs = promptText.match(/(\/[^\s`"']+review_requirements\.json)/);
+      const rel = promptText.match(/(\.\/[^\s`"']+review_requirements\.json)/);
+      if (abs) outPath = abs[1];
+      else if (rel) outPath = rel[1];
+      if (outPath) {{
+        const resolved = path.isAbsolute(outPath) ? outPath : path.resolve(process.cwd(), outPath);
+        fs.mkdirSync(path.dirname(resolved), {{ recursive: true }});
+        fs.writeFileSync(resolved, JSON.stringify({{
+          groups: [{{ title: 'G1', requirements: ['satisfy mock requirement'] }}]
+        }}));
+      }}
+    }}
+    const responses = [
+      'router_requirements phase\nwrote review_requirements.json\n',
+      'router_kpop_group phase\nresidual plan: do the mock work\n',
+      'router_work done\n'
+    ];
+    const text = responses[Math.min(global.pc - 1, responses.length - 1)];
+    console.log(JSON.stringify({{ jsonrpc: '2.0', method: 'session/update', params: {{ update: {{ sessionUpdate: 'agent_message_chunk', content: {{ type: 'text', text }} }} }} }}));
+    console.log(JSON.stringify({{ jsonrpc: '2.0', id: rid, result: {{ stopReason: 'end' }} }}));
+  }} else if (rid != null) {{
+    console.log(JSON.stringify({{ jsonrpc: '2.0', id: rid, result: {{}} }}));
+  }}
+}});
+"#
     );
     std::fs::write(path, script.as_bytes()).expect("write mock");
     let mut perms = std::fs::metadata(path).expect("meta").permissions();
@@ -102,15 +151,16 @@ pub(crate) fn write_mock_router_agent(path: &std::path::Path, continue_after_rou
     std::fs::set_permissions(path, perms).expect("chmod");
 }
 
+/// Requirements turn that does not write JSON (parse should fail).
 #[cfg(unix)]
-pub(crate) fn write_mock_router_agent_bad_complexity(path: &std::path::Path) {
+pub(crate) fn write_mock_router_agent_missing_requirements(path: &std::path::Path) {
     use std::os::unix::fs::PermissionsExt;
 
     let handler = r"    if (!global.pc) global.pc = 0;
     global.pc++;
     const responses = [
-      'router_a_1 phase\nCOMPLEXITY_SCORE: not-a-number\n',
-      'router_a_2 phase\nmust not reach\n'
+      'router_requirements phase\nforgot to write json\n',
+      'must not reach\n'
     ];
     const text = responses[(global.pc - 1) % responses.length];
     console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text } } } }));";
@@ -129,12 +179,12 @@ pub(crate) fn write_mock_router_agent_bad_complexity(path: &std::path::Path) {
 fn kiss_cov_mock_router_agent_helpers() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let mock = tmp.path().join("mock");
-    write_mock_router_agent(&mock, true);
+    write_mock_router_agent(&mock);
     assert!(mock.is_file());
     let fail = tmp.path().join("mock-fail");
     write_mock_router_agent_session_fail(&fail);
     assert!(fail.is_file());
     let bad = tmp.path().join("mock-bad");
-    write_mock_router_agent_bad_complexity(&bad);
+    write_mock_router_agent_missing_requirements(&bad);
     assert!(bad.is_file());
 }

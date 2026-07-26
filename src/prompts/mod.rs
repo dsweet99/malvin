@@ -7,8 +7,8 @@ mod template;
 pub use template::*;
 
 pub use defaults::{
-    DO_HEADER_MD, HEADER_MD, ROUTER_A_1_MD, ROUTER_A_2_MD, ROUTER_B_MD, ROUTER_C_MD,
-    ROUTER_CODE_EXTRA_MD, ROUTER_D_MD,
+    DO_HEADER_MD, HEADER_MD, ROUTER_CODE_EXTRA_MD, ROUTER_KPOP_GROUP_MD, ROUTER_REQUIREMENTS_MD,
+    ROUTER_WORK_MD,
 };
 
 #[allow(unused_imports)]

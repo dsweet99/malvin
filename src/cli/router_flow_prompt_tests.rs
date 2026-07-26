@@ -1,107 +1,117 @@
 use crate::config::DEFAULT_CLI_MODEL;
 use crate::flow_prompt_join_test_helpers::flow_test_artifacts;
 use crate::router_flow::router_flow_prompt::{
-    build_router_b_prompt, build_router_c_prompt, prepare_router_prompt_store, RouterBPromptInput,
+    build_router_kpop_group_prompt, build_router_work_prompt, prepare_router_prompt_store,
+    RouterKpopGroupPromptInput, RouterWorkPromptInput,
 };
-use crate::prompts::{PromptStore, ROUTER_B_MD};
+use crate::prompts::PromptStore;
 
 #[test]
-fn build_router_b_prompt_expands_malvin_command_with_active_model() {
-    // Default router_b.md no longer embeds {{ malvin_command }}; use a
-    // local template so this still checks model expansion through RouterBPromptInput.
+fn build_router_work_prompt_expands_malvin_command_with_active_model() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let prompt_root = tmp.path().join("prompts");
     std::fs::create_dir_all(&prompt_root).expect("mkdir prompts");
     std::fs::write(
-        prompt_root.join(ROUTER_B_MD),
+        prompt_root.join("router_work.md"),
         "Use {{ malvin_command }} kpop\n{{ code_extra }}\n",
     )
-    .expect("write router_b");
+    .expect("write router_work");
+    std::fs::write(
+        prompt_root.join("router_code_extra.md"),
+        "- Make sure the code checks all pass:\n```\n{{ code_checks }}\n```\n",
+    )
+    .expect("write code_extra");
     let store = PromptStore::with_root(prompt_root);
     let artifacts = flow_test_artifacts(&tmp);
-    let body = build_router_b_prompt(RouterBPromptInput {
+    let body = build_router_work_prompt(RouterWorkPromptInput {
         store: &store,
         artifacts: &artifacts,
-        template: ROUTER_B_MD,
-        coding_task: false,
         model: "composer-2",
         git: false,
         gates: false,
     })
-    .expect("router_b");
+    .expect("router_work");
     assert!(body.contains("malvin --model=composer-2"));
     assert!(!body.contains("{{ malvin_command }}"));
 }
 
 #[test]
-fn build_router_b_prompt_renders_without_unresolved_braces() {
+fn build_router_work_prompt_renders_without_unresolved_braces() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
     let store = prepare_router_prompt_store().expect("store");
-    let body = build_router_b_prompt(RouterBPromptInput {
+    let body = build_router_work_prompt(RouterWorkPromptInput {
         store: &store,
         artifacts: &artifacts,
-        template: ROUTER_B_MD,
-        coding_task: false,
         model: DEFAULT_CLI_MODEL,
         git: false,
         gates: false,
     })
-    .expect("router_b");
+    .expect("router_work");
     assert!(!body.contains("CONTINUE_ROUTER"));
     assert!(!body.contains("{{"));
-    let router_c = build_router_c_prompt(&store, &artifacts, DEFAULT_CLI_MODEL, false).expect("router_c");
-    assert!(router_c.contains("CONTINUE_ROUTER"));
-    assert!(!router_c.contains("{{"));
+    assert!(
+        crate::artifacts::review_requirements_json(&artifacts)
+            .file_name()
+            .is_some_and(|n| n == "review_requirements.json")
+    );
 }
 
 #[test]
-fn build_router_b_prompt_includes_code_checks_when_coding_task() {
+fn build_router_work_prompt_includes_code_checks_when_gates_enabled() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
     crate::seed_malvin_checks(tmp.path(), "echo ROUTER_CHECK_LINE\n");
     let store = prepare_router_prompt_store().expect("store");
-    let body = build_router_b_prompt(RouterBPromptInput {
+    let body = build_router_work_prompt(RouterWorkPromptInput {
         store: &store,
         artifacts: &artifacts,
-        template: ROUTER_B_MD,
-        coding_task: true,
         model: DEFAULT_CLI_MODEL,
         git: false,
         gates: true,
     })
-    .expect("router_b");
+    .expect("router_work");
     assert!(body.contains("echo ROUTER_CHECK_LINE"));
     assert!(!body.contains("{{"));
 }
 
 #[test]
-fn build_router_b_prompt_omits_code_checks_when_gates_disabled() {
+fn build_router_work_prompt_omits_code_checks_when_gates_disabled() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
     crate::seed_malvin_checks(tmp.path(), "echo ROUTER_CHECK_LINE\n");
     let store = prepare_router_prompt_store().expect("store");
-    let body = build_router_b_prompt(RouterBPromptInput {
+    let body = build_router_work_prompt(RouterWorkPromptInput {
         store: &store,
         artifacts: &artifacts,
-        template: ROUTER_B_MD,
-        coding_task: true,
         model: DEFAULT_CLI_MODEL,
         git: false,
         gates: false,
     })
-    .expect("router_b");
+    .expect("router_work");
     assert!(!body.contains("echo ROUTER_CHECK_LINE"));
     assert!(!body.contains("{{"));
 }
 
 #[test]
-fn build_router_d_prompt_renders_without_unresolved_braces() {
+fn build_router_kpop_group_prompt_expands_review_keys_without_unresolved_braces() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
     let store = prepare_router_prompt_store().expect("store");
-    let body = crate::router_flow::router_flow_prompt::build_router_d_prompt(&store, &artifacts, DEFAULT_CLI_MODEL, false)
-        .expect("router_d");
-    assert!(body.contains("Summarize your work"));
+    let exp = artifacts.gate_exp_log_path(1);
+    let body = build_router_kpop_group_prompt(RouterKpopGroupPromptInput {
+        store: &store,
+        artifacts: &artifacts,
+        model: DEFAULT_CLI_MODEL,
+        git: false,
+        group_index: 1,
+        group_title: "Checks",
+        group_requirements: "- gates pass",
+        want: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
+        exp_log: &exp,
+    })
+    .expect("kpop group");
     assert!(!body.contains("{{"));
+    assert!(body.contains("gates pass"));
+    assert!(body.contains(&format!("{}", crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES)));
 }

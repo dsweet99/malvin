@@ -34,7 +34,7 @@ pub struct Cli {
     pub command: Option<Commands>,
     /// Existing `.md` path or literal text (bare `malvin REQUEST` autonomous routing).
     pub request: Option<String>,
-    /// Maximum outer-loop iterations for bare `malvin REQUEST` (stops early unless `CONTINUE_ROUTER` is emitted).
+    /// Legacy no-op for bare `malvin REQUEST` (single-session route; kept for CLI compatibility).
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS)]
     pub max_loops: usize,
 }

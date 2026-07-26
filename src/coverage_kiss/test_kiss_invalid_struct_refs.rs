@@ -231,7 +231,3 @@ fn kiss_invalid_struct_value_refs_gate10_5() {
     let _ = crate::cli::repo_checks::tests_gates_unix::test_scan_for_extension_handles_symlink_cycles;
 }
 
-#[test]
-fn kiss_invalid_struct_value_refs_gate10_6() {
-    let _ = crate::cli::checks_discovery_flow::ensure_malvin_checks_discovered;
-}

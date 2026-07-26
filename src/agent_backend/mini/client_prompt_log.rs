@@ -121,7 +121,7 @@ mod tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         let mut client = test_client(false);
         client.io.raw_output = false;
-        let log = tmp.path().join("router_d.log");
+        let log = tmp.path().join("router_work.log");
         let log_path = log.clone();
         crate::output::set_stdout_log_path(Some(tmp.path().join("stdout.log")));
         crate::output::enable_stdout_capture();
@@ -129,9 +129,9 @@ mod tests {
             client: &client,
             prompt: "body",
             log_path: &log_path,
-            who: "router_d",
+            who: "router_work",
             opts: &CoderPromptOptions {
-                stdout_bracket_label: Some("router_d.md"),
+                stdout_bracket_label: Some("router_work.md"),
                 ..Default::default()
             },
         })
@@ -140,7 +140,7 @@ mod tests {
         let stdout = std::fs::read_to_string(tmp.path().join("stdout.log")).unwrap_or_default();
         let delim = crate::output::format_who_tag_delim(crate::output::WHO_U);
         assert!(
-            stdout.contains(&format!("{delim}[router_d.md...]")),
+            stdout.contains(&format!("{delim}[router_work.md...]")),
             "bracket summary must land in stdout.log like ACP: {stdout:?}"
         );
         assert!(
@@ -148,8 +148,8 @@ mod tests {
             "outgoing prompt bracket must not hit live terminal; got {live:?}"
         );
         assert!(
-            !live.contains("[router_d") && !stdout.contains(&format!("{}|[router_d]", "r")),
-            "legacy r|[router_d] live form must stay gone"
+            !live.contains("[router_work") && !stdout.contains(&format!("{}|[router_work]", "r")),
+            "legacy r|[router_work] live form must stay gone"
         );
         crate::output::set_stdout_log_path(None);
     }

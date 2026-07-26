@@ -1,12 +1,11 @@
-//! Default-route flow: dual-header `router_a_1.md`, bare `router_a_2.md`, then bare `router_b.md` and `router_c.md` on one coder session per outer loop.
+//! Default-route flow: dual-header `router_requirements.md`, then per-group `KPop` gap analysis, then `router_work.md` on one coder session.
 
 use crate::artifacts::{RunArtifacts, resolve_user_md_request};
 use crate::cli::cli_request::require_cli_request;
-use crate::agent_backend::{agent_backend_set_implement_display_name, build_agent_backend, AgentBackend};
+use crate::agent_backend::{build_agent_backend, AgentBackend};
 use crate::cli::run_emit::{emit_run_startup_sequence, RunStartupEmitOpts};
-use crate::cli::workflow_kpop_shared::effective_max_loops;
 use crate::cli::{SharedOpts, WorkflowCliOptions};
-use crate::prompts::{PromptStore, ROUTER_D_MD};
+use crate::prompts::PromptStore;
 pub(crate) mod router_flow_prompt;
 #[path = "router_flow_parse.rs"]
 pub(crate) mod router_flow_parse;
@@ -25,7 +24,6 @@ pub use router_flow_prompt::{
 pub struct RouterArgs {
     /// Existing `.md` path or literal text
     pub request: Option<String>,
-    pub max_loops: usize,
 }
 
 struct RouterRunPrep {
@@ -75,54 +73,6 @@ async fn prepare_router_run(
     })
 }
 
-pub(crate) async fn run_router_d_session(
-    client: &mut AgentBackend,
-    prompt_store: &PromptStore,
-    artifacts: &RunArtifacts,
-    opts: crate::workflow_context::PromptModelOpts<'_>,
-) -> Result<(), String> {
-    let work_dir = artifacts.work_dir.as_path();
-    client
-        .begin_coder_session(work_dir)
-        .await
-        .map_err(|e| e.to_string())?;
-    agent_backend_set_implement_display_name(client, "router");
-    let prompt =
-        router_flow_prompt::build_router_d_prompt(prompt_store, artifacts, opts.model, opts.git)?;
-    client
-        .run_coder_prompt(
-            &prompt,
-            &artifacts.log_path("router_d"),
-            "router_d",
-            crate::acp::CoderPromptOptions {
-                llm_phase: Some(crate::run_timing::TimingPhase::Implement),
-                do_trace_split: None,
-                stdout_bracket_label: Some(ROUTER_D_MD),
-                ..Default::default()
-            },
-        )
-        .await
-        .map_err(|e| e.to_string())?;
-    client.end_coder_session().await.map_err(|e| e.to_string())
-}
-
-async fn maybe_run_router_d_after_loops(
-    prep: &mut RouterRunPrep,
-    shared: &SharedOpts,
-    loop_ok: bool,
-) -> Result<(), String> {
-    if !loop_ok {
-        return Ok(());
-    }
-    run_router_d_session(
-        &mut prep.client,
-        &prep.prompt_store,
-        &prep.artifacts,
-        crate::workflow_context::PromptModelOpts::new(&shared.model, shared.git),
-    )
-    .await
-}
-
 pub async fn run_router(
     router_args: RouterArgs,
     shared: &SharedOpts,
@@ -139,19 +89,14 @@ pub async fn run_router(
     prep.client
         .set_prompts_log_run_dir(Some(prep.artifacts.run_dir.clone()));
 
-    let max_loops = effective_max_loops(router_args.max_loops);
     let loop_outcome = router_flow_loop::run_router_agent_loops(router_flow_loop::RouterAgentLoopInput {
         client: &mut prep.client,
         artifacts: &prep.artifacts,
         coder: &prep.coder,
         prompt_store: &prep.prompt_store,
         shared,
-        max_loops,
     })
     .await?;
-
-    // Classify/work failures must not run router_d (summarizer) before surfacing the error.
-    maybe_run_router_d_after_loops(&mut prep, shared, loop_outcome.last_acp.is_ok()).await?;
 
     // Mirror kpop: restore/check-abort, then print TIMING/COST from run_timing.json.
     let r = crate::acp_post_run::merge_acp_restore_check_abort_then_print_timing(
@@ -184,12 +129,8 @@ mod kiss_cov_gate_refs {
         let _: Option<RouterRunPrep> = None;
         let _ = new_router_client;
         let _ = prepare_router_run;
-        let _ = router_flow_parse::parse_complexity_score;
-        let _ = router_flow_parse::parse_coding_task;
-        let _ = router_flow_parse::router_wants_continue;
-        let _ = maybe_run_router_d_after_loops;
-        let _ = router_flow_prompt::build_router_d_prompt;
-        let _ = super::run_router_d_session;
+        let _ = router_flow_parse::load_review_requirements;
+        let _ = router_flow_parse::parse_review_requirements_json;
     }
 }
 

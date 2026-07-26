@@ -23,7 +23,7 @@ Use subcommands: `kpop`, `do`, `inspire`, `tidy`, `delight`, `priors`, `explain`
 
 | Command | Purpose |
 |---------|---------|
-| *(default)* | Bare `malvin REQUEST` — autonomous routing among `kpop` / `inspire` (`--max-loops`, `CONTINUE_ROUTER`) |
+| *(default)* | Bare `malvin REQUEST` — requirements JSON → per-group KPop gap analysis → work (one session) |
 | `kpop` | KPop investigation (Popperian hypothesis loop) |
 | `do` | One-shot agent turn (non-looping) |
 | `inspire` | One-shot MBC2 boundary exploration (batch ideation) |
@@ -58,11 +58,11 @@ By default malvin passes `--force` to `cursor-agent` so tool calls proceed witho
 
 ### `--no-tenacious`
 
-By default the bare route and gate-loop commands (`kpop`, `tidy`, `delight`, `priors`, `explain`, `revise`) expand to `--max-loops=9999` and `--max-acp-retries=9999`. `--no-tenacious` restores normal loop/retry budgets.
+By default gate-loop commands (`kpop`, `tidy`, `delight`, `priors`, `explain`, `revise`) expand to `--max-loops=9999` and `--max-acp-retries=9999`. The bare default route expands `--max-acp-retries=9999` only (single session; `--max-loops` is a no-op there). `--no-tenacious` restores normal budgets.
 
 ### `--gates`
 
-Run workspace quality gates directly in the malvin harness and treat failures as loop or exit criteria. This is off by default and applies to bare `malvin REQUEST` and the deprecated `malvin code` workflow. Agent prompts still include available `.malvin/checks` guidance when this option is off. `malvin tidy` always runs gates and does not honor this option.
+Inject workspace check command text into agent prompts and, for workflows that use harness gates as loop criteria, treat failures as loop or exit criteria. Off by default. On bare `malvin REQUEST`, `--gates` only injects check text into the final work prompt (it does not restart the agent). `malvin tidy` always runs gates and does not honor this option. Agent prompts may still include available `.malvin/checks` guidance when this option is off.
 
 ### `--no-tee`
 

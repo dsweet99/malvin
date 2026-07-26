@@ -1,175 +1,206 @@
-#[must_use]
-pub(crate) fn router_wants_continue(agent_text: &str) -> bool {
-    let trimmed = agent_text.trim();
-    if trimmed == "CONTINUE_ROUTER" {
-        return true;
-    }
-    trimmed
-        .lines()
-        .any(|line| line.trim() == "CONTINUE_ROUTER")
+//! Parse agent-written `review_requirements.json` for the default route.
+
+use std::path::Path;
+
+pub const MAX_REVIEW_REQUIREMENT_GROUPS: usize = 5;
+pub const MAX_REQUIREMENTS_PER_GROUP: usize = 5;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReviewRequirements {
+    pub groups: Vec<ReviewRequirementGroup>,
 }
 
-const SCORE_LABEL_DECORATION: &[char] = &['*', '`', '_', '"', '\'', ' ', '\t'];
-
-/// Mid-line `LABEL`/`LABEL:`; last valid match wins (tolerates markdown / spaces around `:`).
-fn last_labeled_value<T>(
-    agent_text: &str,
-    label: &str,
-    mut parse: impl FnMut(&str) -> Option<T>,
-) -> Option<T> {
-    let mut from = 0;
-    let mut best = None;
-    while let Some(rel) = agent_text[from..].find(label) {
-        let start = from + rel;
-        from = start + label.len();
-        if labeled_token_has_alnum_prefix(agent_text, start) {
-            continue;
-        }
-        let mut rest = &agent_text[start + label.len()..];
-        rest = rest.trim_start_matches(SCORE_LABEL_DECORATION);
-        let Some(after_colon) = rest.strip_prefix(':') else {
-            continue;
-        };
-        let value = after_colon.trim_start_matches(SCORE_LABEL_DECORATION);
-        if value.is_empty() {
-            continue;
-        }
-        if let Some(parsed) = parse(value) {
-            best = Some(parsed);
-        }
-    }
-    best
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReviewRequirementGroup {
+    pub title: Option<String>,
+    pub requirements: Vec<String>,
 }
 
-fn labeled_token_has_alnum_prefix(agent_text: &str, start: usize) -> bool {
-    if start == 0 {
-        return false;
+impl ReviewRequirementGroup {
+    #[must_use]
+    pub fn title_trimmed(&self) -> String {
+        self.title.as_deref().map_or("", str::trim)
+            .to_string()
     }
-    agent_text[..start]
-        .chars()
-        .next_back()
-        .is_some_and(|c| c.is_ascii_alphanumeric() || c == '_')
-}
 
-fn parse_u8_in_range_1_10(value: &str) -> Option<u8> {
-    let digits: String = value.chars().take_while(char::is_ascii_digit).collect();
-    if digits.is_empty() {
-        return None;
+    #[must_use]
+    pub fn requirements_bullet_list(&self) -> String {
+        self.requirements
+            .iter()
+            .map(|r| format!("- {r}"))
+            .collect::<Vec<_>>()
+            .join("\n")
     }
-    let rest = &value[digits.len()..];
-    // Reject range templates such as "1-10" or "1/10".
-    if rest.starts_with('-') || rest.starts_with('/') {
-        return None;
-    }
-    let score: u8 = digits.parse().ok()?;
-    (1..=10).contains(&score).then_some(score)
-}
-
-fn parse_yes_no_token(value: &str) -> Option<bool> {
-    if let Some(rest) = value.strip_prefix("YES") {
-        if token_boundary_after_label(rest) {
-            return Some(true);
-        }
-    }
-    if let Some(rest) = value.strip_prefix("NO") {
-        if token_boundary_after_label(rest) {
-            return Some(false);
-        }
-    }
-    None
-}
-
-fn token_boundary_after_label(rest: &str) -> bool {
-    !rest.chars().next().is_some_and(|c| c.is_ascii_alphabetic())
 }
 
 /// # Errors
-/// Returns an error when `COMPLEXITY_SCORE` is missing, malformed, or outside 1–10.
-pub(crate) fn parse_complexity_score(agent_text: &str) -> Result<u8, String> {
-    last_labeled_value(agent_text, "COMPLEXITY_SCORE", parse_u8_in_range_1_10).ok_or_else(|| {
-        "router_a_1: missing or malformed COMPLEXITY_SCORE in agent response".to_string()
-    })
+/// Returns an error when the file is missing, not valid JSON, or violates group/requirement caps.
+pub(crate) fn load_review_requirements(path: &Path) -> Result<ReviewRequirements, String> {
+    let raw = std::fs::read_to_string(path).map_err(|e| {
+        format!(
+            "review_requirements: missing or unreadable file at {}: {e}",
+            path.display()
+        )
+    })?;
+    parse_review_requirements_json(&raw)
 }
 
 /// # Errors
-/// Returns an error when `CODING_TASK` is missing or not `YES`/`NO`.
-pub(crate) fn parse_coding_task(agent_text: &str) -> Result<bool, String> {
-    last_labeled_value(agent_text, "CODING_TASK", parse_yes_no_token).ok_or_else(|| {
-        "router_a_2: missing or malformed CODING_TASK in agent response".to_string()
-    })
+/// Returns an error when JSON is malformed or violates group/requirement caps.
+pub(crate) fn parse_review_requirements_json(raw: &str) -> Result<ReviewRequirements, String> {
+    let value: serde_json::Value = serde_json::from_str(raw).map_err(|e| {
+        format!("review_requirements: malformed JSON: {e}")
+    })?;
+    let groups_val = value
+        .get("groups")
+        .ok_or_else(|| "review_requirements: missing top-level \"groups\" array".to_string())?;
+    let groups_arr = groups_val
+        .as_array()
+        .ok_or_else(|| "review_requirements: \"groups\" must be an array".to_string())?;
+    let mut groups = Vec::with_capacity(groups_arr.len());
+    for (i, group_val) in groups_arr.iter().enumerate() {
+        groups.push(parse_group(i, group_val)?);
+    }
+    let parsed = ReviewRequirements { groups };
+    validate_review_requirements(&parsed)?;
+    Ok(parsed)
 }
 
-#[cfg(test)]
-mod router_wants_continue_tests {
-    use super::router_wants_continue;
+fn parse_group(index: usize, value: &serde_json::Value) -> Result<ReviewRequirementGroup, String> {
+    let obj = value.as_object().ok_or_else(|| {
+        format!("review_requirements: group {index} must be an object")
+    })?;
+    let title = match obj.get("title") {
+        None => None,
+        Some(serde_json::Value::Null) => None,
+        Some(serde_json::Value::String(s)) => Some(s.clone()),
+        Some(_) => {
+            return Err(format!(
+                "review_requirements: group {index} \"title\" must be a string when present"
+            ));
+        }
+    };
+    let reqs_val = obj.get("requirements").ok_or_else(|| {
+        format!("review_requirements: group {index} missing \"requirements\" array")
+    })?;
+    let reqs_arr = reqs_val.as_array().ok_or_else(|| {
+        format!("review_requirements: group {index} \"requirements\" must be an array")
+    })?;
+    let mut requirements = Vec::with_capacity(reqs_arr.len());
+    for (j, req) in reqs_arr.iter().enumerate() {
+        let s = req.as_str().ok_or_else(|| {
+            format!("review_requirements: group {index} requirement {j} must be a string")
+        })?;
+        requirements.push(s.to_string());
+    }
+    Ok(ReviewRequirementGroup { title, requirements })
+}
 
-    #[test]
-    fn continue_marker_forms() {
-        assert!(router_wants_continue("CONTINUE_ROUTER"));
-        assert!(router_wants_continue("CONTINUE_ROUTER\n\n"));
-        assert!(router_wants_continue("CONTINUE_ROUTER\n"));
-        assert!(!router_wants_continue(
-            "Summary\n\nEvidence shows the fix works.\n"
-        ));
-        assert!(!router_wants_continue(
-            "Please output CONTINUE_ROUTER when done."
+fn validate_review_requirements(parsed: &ReviewRequirements) -> Result<(), String> {
+    if parsed.groups.len() > MAX_REVIEW_REQUIREMENT_GROUPS {
+        return Err(format!(
+            "review_requirements: too many groups ({}); max is {MAX_REVIEW_REQUIREMENT_GROUPS}",
+            parsed.groups.len()
         ));
     }
+    for (i, group) in parsed.groups.iter().enumerate() {
+        let n = group.requirements.len();
+        if n == 0 || n > MAX_REQUIREMENTS_PER_GROUP {
+            return Err(format!(
+                "review_requirements: group {i} has {n} requirements; each group must have 1..={MAX_REQUIREMENTS_PER_GROUP}"
+            ));
+        }
+        for (j, req) in group.requirements.iter().enumerate() {
+            if req.trim().is_empty() {
+                return Err(format!(
+                    "review_requirements: group {i} requirement {j} is empty after trim"
+                ));
+            }
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
-mod parse_router_a_tokens_tests {
+mod review_requirements_parse_tests {
     use super::{
-        labeled_token_has_alnum_prefix, last_labeled_value, parse_coding_task,
-        parse_complexity_score, parse_u8_in_range_1_10, parse_yes_no_token,
-        token_boundary_after_label,
+        load_review_requirements, parse_review_requirements_json, ReviewRequirementGroup,
+        ReviewRequirements, MAX_REQUIREMENTS_PER_GROUP, MAX_REVIEW_REQUIREMENT_GROUPS,
     };
 
     #[test]
-    fn parse_complexity_and_coding_flexible_forms() {
-        assert_eq!(parse_complexity_score("analysis\nCOMPLEXITY_SCORE: 3\n").unwrap(), 3);
-        assert_eq!(
-            parse_complexity_score("done\n```\nCOMPLEXITY_SCORE: 7\n```\n").unwrap(),
-            7
-        );
-        // Session 20260712_173852_20umca3f: mid-line glue, digits stuck to prose.
-        assert_eq!(
-            parse_complexity_score("score.COMPLEXITY_SCORE: 4I'll check").unwrap(),
-            4
-        );
-        assert_eq!(parse_complexity_score("**COMPLEXITY_SCORE** : `5`").unwrap(), 5);
-        assert_eq!(
-            parse_complexity_score("COMPLEXITY_SCORE: 1-10\nCOMPLEXITY_SCORE: 2\n").unwrap(),
-            2
-        );
-        assert!(parse_u8_in_range_1_10("1-10").is_none());
-        assert!(parse_complexity_score("COMPLEXITY_SCORE: 11\n").is_err());
-        assert!(parse_complexity_score("COMPLEXITY_SCORE: 0\n").is_err());
-        assert!(parse_complexity_score("no score\n").is_err());
-        assert!(parse_complexity_score("COMPLEEXITY_SCORE: 1\n").is_err());
-        assert!(parse_coding_task("CODING_TASK: YES\n").unwrap());
-        assert!(!parse_coding_task("CODING_TASK: NO\n").unwrap());
-        assert!(parse_coding_task("done.CODING_TASK: YES'll").unwrap());
-        assert!(!parse_coding_task("`CODING_TASK`: **NO**").unwrap());
-        assert!(parse_coding_task("CODING_TASK: YES\nCODING_TASK: NO\n").is_ok_and(|v| !v));
-        assert!(parse_coding_task("CODING_TASK: NOTHING\n").is_err());
-        assert!(parse_coding_task("CODING_TASK: maybe\n").is_err());
-        assert!(parse_coding_task("no token\n").is_err());
+    fn kiss_cov_review_requirements_structs() {
+        let group = ReviewRequirementGroup {
+            title: Some(" t ".to_string()),
+            requirements: vec!["a".to_string()],
+        };
+        let ReviewRequirementGroup {
+            title,
+            requirements,
+        } = group.clone();
+        assert_eq!(title.as_deref(), Some(" t "));
+        assert_eq!(requirements, ["a"]);
+        assert_eq!(group.title_trimmed(), "t");
+        assert_eq!(group.requirements_bullet_list(), "- a");
+        let reqs = ReviewRequirements {
+            groups: vec![group],
+        };
+        let ReviewRequirements { groups } = reqs;
+        assert_eq!(groups.len(), 1);
     }
 
     #[test]
-    fn score_helpers_named_for_kiss_coverage() {
-        assert_eq!(parse_u8_in_range_1_10("8x"), Some(8));
-        assert_eq!(parse_yes_no_token("YES"), Some(true));
-        assert_eq!(parse_yes_no_token("NO"), Some(false));
-        assert!(parse_yes_no_token("maybe").is_none());
-        assert!(token_boundary_after_label(""));
-        assert!(!token_boundary_after_label("THING"));
-        assert!(!labeled_token_has_alnum_prefix("COMPLEXITY_SCORE", 0));
-        assert!(labeled_token_has_alnum_prefix("XCOMPLEXITY_SCORE", 1));
-        assert_eq!(
-            last_labeled_value(".COMPLEXITY_SCORE: 9", "COMPLEXITY_SCORE", parse_u8_in_range_1_10),
-            Some(9)
+    fn accepts_zero_one_and_five_groups() {
+        let zero = parse_review_requirements_json(r#"{"groups":[]}"#).expect("zero");
+        assert!(zero.groups.is_empty());
+
+        let one = parse_review_requirements_json(
+            r#"{"groups":[{"title":"A","requirements":["do thing"]}]}"#,
+        )
+        .expect("one");
+        assert_eq!(one.groups.len(), 1);
+        assert_eq!(one.groups[0].title_trimmed(), "A");
+        assert_eq!(one.groups[0].requirements_bullet_list(), "- do thing");
+
+        let five_raw = format!(
+            r#"{{"groups":[{}]}}"#,
+            (0..MAX_REVIEW_REQUIREMENT_GROUPS)
+                .map(|i| format!(r#"{{"title":"g{i}","requirements":["req-1"]}}"#))
+                .collect::<Vec<_>>()
+                .join(",")
         );
+        let parsed = parse_review_requirements_json(&five_raw).expect("five");
+        assert_eq!(parsed.groups.len(), MAX_REVIEW_REQUIREMENT_GROUPS);
+    }
+
+    #[test]
+    fn rejects_six_groups_and_six_requirements() {
+        let six_groups = format!(
+            r#"{{"groups":[{}]}}"#,
+            (0..=MAX_REVIEW_REQUIREMENT_GROUPS)
+                .map(|i| format!(r#"{{"requirements":["r{i}"]}}"#))
+                .collect::<Vec<_>>()
+                .join(",")
+        );
+        assert!(parse_review_requirements_json(&six_groups).is_err());
+
+        let six_reqs = format!(
+            r#"{{"groups":[{{"requirements":[{}]}}]}}"#,
+            (0..=MAX_REQUIREMENTS_PER_GROUP)
+                .map(|i| format!(r#""r{i}""#))
+                .collect::<Vec<_>>()
+                .join(",")
+        );
+        assert!(parse_review_requirements_json(&six_reqs).is_err());
+    }
+
+    #[test]
+    fn rejects_missing_malformed_and_empty_requirement() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let missing = tmp.path().join("nope.json");
+        assert!(load_review_requirements(&missing).is_err());
+        assert!(parse_review_requirements_json("not json").is_err());
+        assert!(parse_review_requirements_json(r#"{"groups":[{"requirements":[""]}]}"#).is_err());
+        assert!(parse_review_requirements_json(r#"{"groups":[{"requirements":[]}]}"#).is_err());
     }
 }
