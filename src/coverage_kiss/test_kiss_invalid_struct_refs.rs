@@ -203,6 +203,7 @@ fn kiss_invalid_struct_value_refs_gate10_4() {
     let _ = crate::agent_backend::mini::loop_driver_tests::loop_driver_single_fence_runs_bash_and_appends_observation;
     let _ = crate::agent_backend::mini::loop_driver_tests::loop_driver_mini_done_line_terminates;
     let _ = crate::agent_backend::mini::loop_driver_tests::loop_driver_mini_done_inside_fence_still_runs_bash;
+    let _ = crate::agent_backend::mini::loop_driver_tests::loop_driver_new_history_uses_fact_kinds_after_bash_observation;
 }
 
 #[test]

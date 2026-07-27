@@ -1,11 +1,22 @@
+use crate::openrouter::memory_format::RESPONSE_HEADING;
 use crate::openrouter::types::{ChatMessage, ChatRole};
 
 pub(super) use super::complete_act_inputs::{
     latest_observation_has_nonzero_exit, previous_response_text,
 };
 
+/// Pending/current wire text scoped to `## RESPONSE` when present so fences inside
+/// `## NEW_HISTORY` do not count as Act evidence.
+fn response_section_or_raw(content: &str) -> &str {
+    match content.find(RESPONSE_HEADING) {
+        Some(i) => content[i + RESPONSE_HEADING.len()..].trim(),
+        None => content,
+    }
+}
+
 pub(super) fn response_has_act_fence(content: &str) -> bool {
-    content.contains("```bash") || content.contains("``` bash")
+    let body = response_section_or_raw(content);
+    body.contains("```bash") || body.contains("``` bash")
 }
 
 pub(super) fn bash_fence_bodies<'a>(
@@ -87,15 +98,13 @@ pub(super) fn history_has_exterior_without_artifact_act(
     messages: &[ChatMessage],
     pending: Option<&str>,
 ) -> bool {
-    // Prefer Previous response (+ pending draft); fall back to Assistant scan for legacy lists.
+    // Previous response (+ pending RESPONSE body only). No durable-transcript Assistant scan.
     let mut bodies = Vec::new();
     if let Some(prev) = previous_response_text(messages) {
         push_bash_bodies(prev, &mut bodies);
-    } else {
-        bodies = bash_fence_bodies(messages, None);
     }
     if let Some(content) = pending {
-        push_bash_bodies(content, &mut bodies);
+        push_bash_bodies(response_section_or_raw(content), &mut bodies);
     }
     bodies.iter().any(|b| body_looks_exterior(b))
         && !bodies.iter().any(|b| body_looks_artifact_revision(b))
@@ -207,5 +216,29 @@ fn looks_runnable(s: &str) -> bool {
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.' | '/'))
         && (s.split_whitespace().count() >= 2 || s.contains(" -") || s.contains(" --") || first.contains('/'))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{response_has_act_fence, response_section_or_raw};
+
+    #[test]
+    fn response_has_act_fence_ignores_new_history_fences() {
+        let wire = "## NEW_HISTORY\n```bash\ncurl https://ex.com\n```\n\n## RESPONSE\nNo act here.\n";
+        assert!(!response_has_act_fence(wire));
+        assert!(!response_section_or_raw(wire).contains("curl"));
+    }
+
+    #[test]
+    fn response_has_act_fence_sees_response_fences() {
+        let wire = "## NEW_HISTORY\n- note\n\n## RESPONSE\n```bash\necho hi\n```\n";
+        assert!(response_has_act_fence(wire));
+    }
+
+    #[test]
+    fn response_has_act_fence_legacy_raw_when_no_sections() {
+        assert!(response_has_act_fence("```bash\necho x\n```"));
+        assert!(!response_has_act_fence("prose only"));
+    }
 }
 
