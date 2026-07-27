@@ -8,7 +8,6 @@ pub fn constraints_basename(workflow: &str) -> Option<&'static str> {
         "tidy" => Some("tidy_constraints.md"),
         "explain" => Some("explain_constraints.md"),
         "delight" => Some("delight_constraints.md"),
-        "priors" => Some("priors_constraints.md"),
         _ => None,
     }
 }
@@ -23,7 +22,6 @@ mod tests {
         assert_eq!(constraints_basename("tidy"), Some("tidy_constraints.md"));
         assert_eq!(constraints_basename("explain"), Some("explain_constraints.md"));
         assert_eq!(constraints_basename("delight"), Some("delight_constraints.md"));
-        assert_eq!(constraints_basename("priors"), Some("priors_constraints.md"));
         assert_eq!(constraints_basename("kpop"), None);
     }
 }

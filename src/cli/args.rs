@@ -5,7 +5,6 @@ use clap::{Parser, Subcommand};
 use super::shared_opts::SharedOpts;
 use super::delight_flow::DelightArgs;
 use super::explain_flow::ExplainArgs;
-use super::priors_flow::PriorsArgs;
 use super::init_flow::InitArgs;
 use super::tidy_flow::TidyArgs;
 
@@ -59,8 +58,6 @@ pub enum Commands {
     Tidy(TidyArgs),
     /// Author a user-delighting feature pitch
     Delight(DelightArgs),
-    /// Ground a request in good priors
-    Priors(PriorsArgs),
     /// Explain code or concepts via LaTeX PDF
     Explain(ExplainArgs),
     /// List available models

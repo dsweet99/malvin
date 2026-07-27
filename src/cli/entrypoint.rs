@@ -3,7 +3,7 @@ use super::{
 };
 
 /// Commands that accept `--name` acquire a session name lock before substantive work.
-/// Bare `malvin REQUEST`, `kpop`, `do`, `tidy`, `delight`, and `priors` accept `--name`.
+/// Bare `malvin REQUEST`, `kpop`, `do`, `tidy`, and `delight` accept `--name`.
 pub(crate) const fn command_accepts_session_name(command: &Commands) -> bool {
     matches!(
         command,
@@ -11,7 +11,6 @@ pub(crate) const fn command_accepts_session_name(command: &Commands) -> bool {
             | Commands::Code(_)
             | Commands::Tidy(_)
             | Commands::Delight(_)
-            | Commands::Priors(_)
             | Commands::Kpop(_)
     )
 }
@@ -21,7 +20,7 @@ pub(crate) const fn unsupported_name_error(command: &Commands) -> Option<&'stati
         return None;
     }
     Some(
-        "`--name` is only supported for bare `malvin REQUEST`, `kpop`, `do`, `tidy`, `delight`, and `priors`",
+        "`--name` is only supported for bare `malvin REQUEST`, `kpop`, `do`, `tidy`, and `delight`",
     )
 }
 
@@ -143,7 +142,7 @@ pub(crate) fn dispatch_command(
                 )
             })
         }
-        cmd @ (Commands::Delight(_) | Commands::Priors(_) | Commands::Explain(_)) => {
+        cmd @ (Commands::Delight(_) | Commands::Explain(_)) => {
             super::entrypoint_commands::dispatch_plan_authoring_gate(cmd, &mut shared, matches)
         }
         Commands::Do(do_cmd) => run_async_cli(|| {

@@ -21,7 +21,6 @@ Earlier in this same session you wrote residual plans into the chat for each req
 
 - Run `{{ malvin_command }} inspire --help` to learn the idea generator.
 - Run `{{ malvin_command }} kpop --help` to learn the empirical reasoner that hypothesizes and falsifies.
-- Run `{{ malvin_command }} priors --help` to learn how to reduce uncertainty and ground decisions in good priors.
 
 {{ code_extra }}
 

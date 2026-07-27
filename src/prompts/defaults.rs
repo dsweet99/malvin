@@ -27,7 +27,6 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "code_constraints.md",
     "init_constraints.md",
     "delight_constraints.md",
-    "priors_constraints.md",
     "explain_constraints.md",
     "explain_plan.md",
     "explain_work.md",

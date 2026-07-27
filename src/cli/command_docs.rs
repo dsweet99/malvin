@@ -11,7 +11,6 @@ const fn gate_loop_command_doc(cmd: &Commands) -> Option<&'static str> {
         Commands::Kpop(_) => Some(include_str!("../../default_prompts/docs/kpop.md")),
         Commands::Tidy(_) => Some(include_str!("../../default_prompts/docs/tidy.md")),
         Commands::Delight(_) => Some(include_str!("../../default_prompts/docs/delight.md")),
-        Commands::Priors(_) => Some(include_str!("../../default_prompts/docs/priors.md")),
         Commands::Explain(_) => Some(include_str!("../../default_prompts/docs/explain.md")),
         _ => None,
     }

@@ -104,20 +104,6 @@ fn delight_command_accepts_session_name() {
 }
 
 #[test]
-fn priors_command_accepts_session_name() {
-    use crate::cli::priors_flow::PriorsArgs;
-    assert!(command_accepts_session_name(
-        &Commands::Priors(PriorsArgs {
-            request: Some("topic".to_string()),
-            out_path: "priors.md".to_string(),
-            max_loops: 1,
-            max_hypotheses: 5,
-            tenacious: false,
-        }),
-    ));
-}
-
-#[test]
 fn explain_command_rejects_session_name() {
     use crate::cli::explain_flow::ExplainArgs;
     assert!(!command_accepts_session_name(

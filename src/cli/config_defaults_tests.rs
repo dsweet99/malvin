@@ -172,7 +172,6 @@ fn assert_workflow_defaults(argv: &[&str]) {
         Commands::Code(a) => assert_eq!(a.max_loops, 7),
         Commands::Tidy(a) => assert_eq!(a.max_loops, 7),
         Commands::Delight(a) => assert_eq!(a.max_loops, 7),
-        Commands::Priors(a) => assert_eq!(a.max_loops, 7),
         Commands::Explain(a) => assert_eq!(a.max_loops, 7),
         other => panic!("unexpected command {other:?}"),
     }
@@ -184,7 +183,6 @@ fn apply_workspace_config_defaults_for_workflow_commands() {
         assert_workflow_defaults(&["malvin", "code", "hello"]);
         assert_workflow_defaults(&["malvin", "tidy"]);
         assert_workflow_defaults(&["malvin", "delight"]);
-        assert_workflow_defaults(&["malvin", "priors", "topic"]);
         assert_workflow_defaults(&["malvin", "explain", "topic"]);
     });
 }
@@ -193,13 +191,6 @@ fn apply_workspace_config_defaults_for_workflow_commands() {
 fn config_defaults_apply_to_delight() {
     with_seeded_agent_config(|| {
         assert_workflow_defaults(&["malvin", "delight"]);
-    });
-}
-
-#[test]
-fn config_defaults_apply_to_priors() {
-    with_seeded_agent_config(|| {
-        assert_workflow_defaults(&["malvin", "priors", "topic"]);
     });
 }
 

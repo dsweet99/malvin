@@ -120,15 +120,6 @@ fn smoke_cov_cli_cli_delight_flow_units() {
 }
 
 #[test]
-fn smoke_cov_cli_cli_priors_flow_units() {
-    let _: Option<crate::cli::priors_flow::PriorsArgs> = None;
-    let _ = crate::cli::priors_flow::run_priors;
-    let _ = crate::cli::priors_flow::effective_priors_max_loops;
-    let _ = crate::kpop_engine::KPopHardConstraints::PRIORS;
-    let _ = crate::cli::entrypoint_commands::run_priors_command;
-}
-
-#[test]
 fn smoke_cov_cli_cli_explain_flow_units() {
     let _: Option<crate::cli::explain_flow::ExplainArgs> = None;
     let _ = crate::cli::explain_flow::run_explain;

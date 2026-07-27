@@ -125,30 +125,6 @@ fn print_doc_delight_writes_subcommand_md() {
 }
 
 #[test]
-fn priors_doc_parses_without_out_path() {
-    let cli = Cli::try_parse_from(["malvin", "priors", "topic", "--doc"]).expect("parse");
-    assert!(cli.shared.doc);
-    match cli.command.as_ref() {
-        Some(Commands::Priors(p)) => assert_eq!(p.out_path, "priors.md"),
-        _ => panic!("expected Priors"),
-    }
-}
-
-#[test]
-fn print_doc_priors_writes_subcommand_md() {
-    use crate::cli::priors_flow::PriorsArgs;
-    let cmd = Commands::Priors(PriorsArgs {
-        request: Some("topic".to_string()),
-        out_path: "priors.md".to_string(),
-        max_loops: 3,
-        max_hypotheses: 5,
-        tenacious: true,
-    });
-    let out = capture_doc(Some(&cmd)).expect("capture");
-    assert!(out.starts_with(b"# malvin priors"));
-}
-
-#[test]
 fn malvin_doc_embeds_name_section() {
     let out = capture_doc(None).expect("capture");
     let text = String::from_utf8(out).expect("utf8");
