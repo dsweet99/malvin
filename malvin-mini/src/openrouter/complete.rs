@@ -20,6 +20,8 @@ mod complete_local_retry;
 mod complete_section_shape;
 #[path = "complete_marker_shape.rs"]
 mod complete_marker_shape;
+#[path = "complete_requirements_shape.rs"]
+mod complete_requirements_shape;
 #[path = "complete_prompt_shape.rs"]
 mod complete_prompt_shape;
 
@@ -27,7 +29,10 @@ pub(crate) use complete_parse::{map_http_status, outcome_from_http_body};
 #[allow(unused_imports)] // re-exported for sibling unit-test modules
 pub(crate) use complete_prompt_shrink::shrink_prompt_messages;
 pub(crate) use complete_local_retry::{maybe_retry_local_shape, LocalRetryBudget};
-use complete_prompt_shape::{marker_response_missing_label, with_tool_use_system_reminder};
+use complete_prompt_shape::{
+    force_requirements_abs_write_response, marker_response_missing_label,
+    with_tool_use_system_reminder,
+};
 
 pub(crate) fn completion_with_meta(result: Result<super::types::CompletionResponse, OpenRouterError>, http: HttpExchangeMeta) -> CompletionWithMeta {
     CompletionWithMeta { result, http }
@@ -83,22 +88,7 @@ impl OpenRouterClient {
         std::hint::black_box(marker);
         let mut working = with_tool_use_system_reminder(messages);
         let mut max_tokens = self.config().max_tokens;
-        let mut budget = LocalRetryBudget {
-            shrink_passes: 0,
-            missing_shape_passes: 0,
-            marker_miss_passes: 0,
-            fail_epoch_passes: 0,
-            transport_stall_passes: 0,
-            section_shape_passes: 0,
-            max_shrink: 32,
-            // Thought-only / empty-content stalls need more than one shape mutate
-            // (progress cue → strip reminder → shrink) before surfacing MissingContent.
-            max_missing: 4,
-            max_marker: 8,
-            max_fail_epoch: 4,
-            max_transport_stall: 3,
-            max_section_shape: 4,
-        };
+        let mut budget = LocalRetryBudget::for_complete();
 
         loop {
             let outcome = self.complete_with_max_tokens(&working, max_tokens).await;
@@ -116,20 +106,11 @@ impl OpenRouterClient {
             if maybe_retry_local_shape(&outcome, &mut working, &mut budget) {
                 continue;
             }
-            // Marker turns must not leak prose/bash into the router parse.
-            if let Ok(response) = outcome.result.as_ref()
-                && marker_response_missing_label(&working, &response.content)
-            {
-                return completion_with_meta(
-                    Err(OpenRouterError::MissingContent),
-                    outcome.http.clone(),
-                );
-            }
-            return outcome;
+            return finalize_complete_outcome(outcome, &working);
         }
     }
 
-    async fn complete_with_max_tokens(
+    pub(crate) async fn complete_with_max_tokens(
         &self,
         messages: &[ChatMessage],
         max_tokens: Option<u32>,
@@ -167,6 +148,36 @@ impl OpenRouterClient {
             Err(err) => Err(transport_failure_meta(Some(status), err)),
         }
     }
+}
+
+pub(crate) fn finalize_complete_outcome(
+    outcome: CompletionWithMeta,
+    working: &[ChatMessage],
+) -> CompletionWithMeta {
+    // Marker turns must not leak prose/bash into the router parse.
+    if let Ok(response) = outcome.result.as_ref()
+        && marker_response_missing_label(working, &response.content)
+    {
+        return completion_with_meta(
+            Err(OpenRouterError::MissingContent),
+            outcome.http.clone(),
+        );
+    }
+    // Last resort: requirements listing still has no abs-path bash write.
+    // Synthesize an executable fence so the mini loop materializes the JSON.
+    if let Ok(response) = outcome.result.as_ref()
+        && let Some(forced) = force_requirements_abs_write_response(working, &response.content)
+    {
+        return completion_with_meta(
+            Ok(super::types::CompletionResponse {
+                content: forced,
+                usage: response.usage.clone(),
+                reasoning: response.reasoning.clone(),
+            }),
+            outcome.http.clone(),
+        );
+    }
+    outcome
 }
 
 fn affordable_max_tokens_from_outcome(outcome: &CompletionWithMeta) -> Option<u32> {
@@ -219,3 +230,7 @@ fn body_has_reasoning(body: &str) -> bool {
 #[cfg(test)]
 #[path = "complete_kiss_witness.rs"]
 mod complete_kiss_witness;
+
+#[cfg(test)]
+#[path = "complete_finalize_tests.rs"]
+mod complete_finalize_tests;

@@ -141,6 +141,7 @@ fn kiss_witness_openrouter_http_exchange_types() {
     let _ = super::complete::completion_with_meta;
     let _ = super::complete::transport_meta;
     let _ = super::complete::transport_failure_meta;
+    let _ = super::complete::finalize_complete_outcome;
     let _ = stringify!(outcome_from_http_body);
     let _ = stringify!(provider_fatal_from_body);
     let _ = super::provider_error::provider_fatal_from_body;
@@ -151,4 +152,9 @@ fn kiss_witness_openrouter_http_exchange_types() {
     let _ = stringify!(completion_with_meta_and_transport_meta_helpers);
     let _ = stringify!(kiss_witness_completion_post_url);
     let _ = stringify!(kiss_witness_transport_failure_meta);
+    let _ = stringify!(complete_with_max_tokens);
+    let _ = stringify!(finalize_complete_outcome);
+    let _ = stringify!(post_chat_completion);
+    let _ = stringify!(body_has_reasoning);
+    let _ = stringify!(for_complete);
 }

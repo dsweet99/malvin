@@ -1,5 +1,4 @@
 //! Unit tests for completion helpers.
-
     use crate::error::OpenRouterError;
 
     use super::{

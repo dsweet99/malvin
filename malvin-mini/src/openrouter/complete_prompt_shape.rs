@@ -7,6 +7,14 @@ use super::complete_prompt_shrink::shrink_prompt_messages;
 pub(super) use super::complete_marker_shape::{
     is_short_form_marker_turn, marker_response_missing_label, mutate_messages_after_marker_miss,
 };
+#[allow(unused_imports)] // re-exported for unit tests and sibling modules
+pub(super) use super::complete_requirements_shape::{
+    expected_path_from_messages, expected_review_requirements_path,
+    force_requirements_abs_write_response, inject_requirements_path_nudge,
+    inject_requirements_schema_nudge, new_request_is_requirements_only,
+    requirements_path_needs_retry, response_has_object_shaped_requirements,
+    session_is_requirements_listing, REQUIREMENTS_ONLY_CUE,
+};
 
 const STUDY_REMINDER: &str = "Look hard for unmet evidence first. Form a prediction, Act with a \
 short targeted trial in the named working context, then Study the outcome. Only recorded \
@@ -29,12 +37,6 @@ check in that context before any further exterior Observe.";
 /// After a green live observation, do not demand another Act; allow fence-less advance/close.
 const GREEN_OBSERVATION_CUE: &str = "The latest live observation exited 0. Do not emit another \
 Act fence unless a named check is still unpaid. Prefer a fence-less reply that advances or closes.";
-
-/// Requirements-listing turns: write string-schema JSON and pause; do not explore/fix product code.
-const REQUIREMENTS_ONLY_CUE: &str = "This New request is requirements-listing only. Write \
-review_requirements.json using the schema where each requirement is a plain string (not an \
-object with id/description). Do not explore or edit product source. After a successful \
-write and schema probe, Pause with a fence-less reply.";
 
 /// Residual-plan / gap-analysis turns: plan in chat; do not implement product changes.
 const PLAN_ONLY_CUE: &str = "This New request is gap-analysis / residual planning only. Write \
@@ -87,44 +89,77 @@ fn cue_already_present(messages: &[ChatMessage]) -> bool {
 }
 
 pub(super) fn select_study_act_cue(messages: &[ChatMessage]) -> Option<&'static str> {
-    if latest_observation_has_nonzero_exit(messages) {
-        return Some(FAIL_EPOCH_CUE);
-    }
-    if history_has_exterior_without_artifact_act(messages, None) {
-        return Some(EXTERIOR_BEFORE_ACT_CUE);
-    }
-    if latest_observation_has_zero_exit(messages) {
-        return Some(GREEN_OBSERVATION_CUE);
-    }
-    if new_request_is_requirements_only(messages) {
-        return Some(REQUIREMENTS_ONLY_CUE);
-    }
-    if new_request_is_plan_only(messages) {
-        return Some(PLAN_ONLY_CUE);
-    }
-    Some(STUDY_REMINDER)
+    // Requirements / plan-only beats exterior/green so listing turns stay on schema,
+    // not Act-fence thrash from incidental Observe. Detect from any assembled message
+    // so bash observations do not drop requirements mode.
+    Some(study_act_cue_for(messages))
 }
 
-fn new_request_is_requirements_only(messages: &[ChatMessage]) -> bool {
-    use super::complete_act_inputs::new_request_text;
-    new_request_text(messages).is_some_and(|t| {
-        t.contains("review_requirements")
-            && (t.contains("Do not start implementing")
-                || t.contains("output nothing else of substance")
-                || t.contains("Write **only** the JSON")
-                || t.contains("Write only the JSON"))
-    })
+fn study_act_cue_for(messages: &[ChatMessage]) -> &'static str {
+    if latest_observation_has_nonzero_exit(messages) {
+        return FAIL_EPOCH_CUE;
+    }
+    if session_is_requirements_listing(messages) {
+        return REQUIREMENTS_ONLY_CUE;
+    }
+    if new_request_is_plan_only(messages) || session_is_plan_only(messages) {
+        return PLAN_ONLY_CUE;
+    }
+    if history_has_exterior_without_artifact_act(messages, None) {
+        return EXTERIOR_BEFORE_ACT_CUE;
+    }
+    if latest_observation_has_zero_exit(messages) {
+        return GREEN_OBSERVATION_CUE;
+    }
+    STUDY_REMINDER
 }
 
 fn new_request_is_plan_only(messages: &[ChatMessage]) -> bool {
     use super::complete_act_inputs::new_request_text;
-    new_request_text(messages).is_some_and(|t| {
-        t.contains("Do not edit product files in this turn")
-            || (t.contains("residual plan") && t.contains("Do not implement"))
-    })
+    new_request_text(messages).is_some_and(request_text_is_plan_only)
+}
+
+fn request_text_is_plan_only(t: &str) -> bool {
+    t.contains("Do not edit product files in this turn")
+        || t.contains("gap-analysis / residual planning only")
+        || (t.contains("residual plan") && t.contains("Do not implement"))
+        || (t.contains("KPOP") && t.contains("Do not implement"))
+        || (t.contains("KPop") && t.contains("Do not edit product files"))
+}
+
+pub(super) fn session_is_plan_only(messages: &[ChatMessage]) -> bool {
+    if new_request_is_plan_only(messages) {
+        return true;
+    }
+    if messages
+        .iter()
+        .any(|m| m.content.contains("gap-analysis / residual planning only"))
+    {
+        return true;
+    }
+    use super::complete_act_inputs::{new_request_text, previous_response_text};
+    let Some(new_req) = new_request_text(messages) else {
+        return false;
+    };
+    if !new_req.contains("Exit code ") {
+        return false;
+    }
+    let Some(prev) = previous_response_text(messages) else {
+        return false;
+    };
+    let prev_l = prev.to_ascii_lowercase();
+    prev_l.contains("residual plan")
+        || prev_l.contains("gap analysis")
+        || prev_l.contains("kpop_solved")
+        || prev_l.contains("## step")
 }
 
 pub(super) fn mutate_messages_after_missing_content(messages: &mut Vec<ChatMessage>) -> bool {
+    if session_is_requirements_listing(messages) || session_is_plan_only(messages) {
+        return inject_thought_only_progress_cue(messages)
+            || strip_injected_study_reminder(messages)
+            || shrink_prompt_messages(messages);
+    }
     inject_thought_only_progress_cue(messages)
         || strip_injected_study_reminder(messages)
         || shrink_prompt_messages(messages)

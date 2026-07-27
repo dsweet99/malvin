@@ -26,12 +26,14 @@ fn fail_epoch_forces_act_after_nonzero_exit_without_fence() {
         fail_epoch_passes: 0,
         transport_stall_passes: 0,
         section_shape_passes: 0,
+        requirements_schema_passes: 0,
         max_shrink: 32,
         max_missing: 1,
         max_marker: 1,
         max_fail_epoch: 2,
         max_transport_stall: 2,
         max_section_shape: 4,
+        max_requirements_schema: 3,
     };
     assert!(maybe_retry_local_shape(&outcome, &mut working, &mut budget));
     assert_eq!(budget.fail_epoch_passes, 1);
@@ -68,12 +70,14 @@ fn exterior_without_act_forces_retry() {
         fail_epoch_passes: 0,
         transport_stall_passes: 0,
         section_shape_passes: 0,
+        requirements_schema_passes: 0,
         max_shrink: 32,
         max_missing: 3,
         max_marker: 1,
         max_fail_epoch: 4,
         max_transport_stall: 2,
         max_section_shape: 4,
+        max_requirements_schema: 3,
     };
     assert!(maybe_retry_local_shape(&outcome, &mut working, &mut b));
     assert!(working[0].content.contains("exterior contact before revising"));
@@ -99,12 +103,14 @@ fn unpaid_silence_close_forces_act() {
         fail_epoch_passes: 0,
         transport_stall_passes: 0,
         section_shape_passes: 0,
+        requirements_schema_passes: 0,
         max_shrink: 32,
         max_missing: 3,
         max_marker: 1,
         max_fail_epoch: 4,
         max_transport_stall: 2,
         max_section_shape: 4,
+        max_requirements_schema: 3,
     };
     assert!(maybe_retry_local_shape(&outcome, &mut working, &mut b));
     assert!(working[0].content.contains("Freeze capital is unpaid silence"));
@@ -131,12 +137,14 @@ fn probe_after_act_forces_retry_on_close() {
         fail_epoch_passes: 0,
         transport_stall_passes: 0,
         section_shape_passes: 0,
+        requirements_schema_passes: 0,
         max_shrink: 32,
         max_missing: 3,
         max_marker: 1,
         max_fail_epoch: 4,
         max_transport_stall: 2,
         max_section_shape: 4,
+        max_requirements_schema: 3,
     };
     assert!(maybe_retry_local_shape(&outcome, &mut working, &mut b));
     assert!(working[0].content.contains("revised without a following"));
@@ -171,12 +179,14 @@ fn private_exit_close_still_forces_probe_when_request_names_probe() {
         fail_epoch_passes: 0,
         transport_stall_passes: 0,
         section_shape_passes: 0,
+        requirements_schema_passes: 0,
         max_shrink: 32,
         max_missing: 3,
         max_marker: 1,
         max_fail_epoch: 4,
         max_transport_stall: 2,
         max_section_shape: 4,
+        max_requirements_schema: 3,
     };
     assert!(maybe_retry_local_shape(&outcome, &mut working, &mut b));
     assert!(working[0].content.contains("revised without a following"));
@@ -210,12 +220,14 @@ fn green_observation_skips_act_pressure_when_debt_paid() {
         fail_epoch_passes: 0,
         transport_stall_passes: 0,
         section_shape_passes: 0,
+        requirements_schema_passes: 0,
         max_shrink: 32,
         max_missing: 3,
         max_marker: 1,
         max_fail_epoch: 4,
         max_transport_stall: 2,
         max_section_shape: 4,
+        max_requirements_schema: 3,
     };
     assert!(!maybe_retry_local_shape(&outcome, &mut working, &mut b));
     assert_eq!(b.fail_epoch_passes, 0);

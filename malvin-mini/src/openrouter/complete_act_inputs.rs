@@ -32,13 +32,20 @@ pub(crate) fn observation_reports_zero_exit(content: &str) -> bool {
     saw_exit
 }
 
-/// Last User message content that is not a local Act nudge.
+/// Last User message content that is not a local Act / requirements shape nudge.
 pub(crate) fn new_request_text(messages: &[ChatMessage]) -> Option<&str> {
     messages.iter().rev().find_map(|m| {
         if !matches!(m.role, ChatRole::User) {
             return None;
         }
-        if m.content.contains("Emit an Act fence now that revises") {
+        if m.content.contains("Emit an Act fence now that revises")
+            || m.content.contains("requirements entries were objects")
+            || m.content.contains("was not written to the named absolute path")
+            || m.content.contains("was not written via bash to the named absolute path")
+            || m.content.contains("was not written via ```bash to the named absolute path")
+            || m.content.contains("omitted the required wire sections")
+            || m.content.contains("Wire format still wrong")
+        {
             return None;
         }
         Some(m.content.as_str())

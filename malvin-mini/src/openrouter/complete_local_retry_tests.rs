@@ -28,12 +28,14 @@ fn maybe_retry_local_shape_marker_miss_then_stops() {
         fail_epoch_passes: 0,
         transport_stall_passes: 0,
         section_shape_passes: 0,
+        requirements_schema_passes: 0,
         max_shrink: 32,
         max_missing: 1,
         max_marker: 3,
         max_fail_epoch: 2,
         max_transport_stall: 2,
         max_section_shape: 4,
+        max_requirements_schema: 3,
     };
     assert!(maybe_retry_local_shape(&outcome, &mut working, &mut budget));
     assert_eq!(budget.marker_miss_passes, 1);
@@ -79,12 +81,14 @@ fn maybe_retry_local_shape_missing_content_mutates() {
         fail_epoch_passes: 0,
         transport_stall_passes: 0,
         section_shape_passes: 0,
+        requirements_schema_passes: 0,
         max_shrink: 32,
         max_missing: 3,
         max_marker: 1,
         max_fail_epoch: 2,
         max_transport_stall: 2,
         max_section_shape: 4,
+        max_requirements_schema: 3,
     };
     assert!(maybe_retry_local_shape(&outcome, &mut working, &mut b));
     assert!(working[0].content.contains("Thought-only responses"));
@@ -113,12 +117,14 @@ fn section_shape_retry_on_missing_new_history() {
         fail_epoch_passes: 0,
         transport_stall_passes: 0,
         section_shape_passes: 0,
+        requirements_schema_passes: 0,
         max_shrink: 32,
         max_missing: 3,
         max_marker: 1,
         max_fail_epoch: 4,
         max_transport_stall: 2,
         max_section_shape: 4,
+        max_requirements_schema: 3,
     };
     assert!(maybe_retry_local_shape(&outcome, &mut working, &mut b));
     assert_eq!(b.section_shape_passes, 1);
