@@ -1,7 +1,8 @@
 use super::{
-    classify_turn, exhausted_error, push_user_prompt, TurnAction, LoopDriverConfig,
+    classify_turn, exhausted_error, stage_user_prompt, TurnAction, LoopDriverConfig,
     LoopDriverSession,
 };
+use crate::agent_backend::mini::memory_assemble::build_sticky_header;
 use crate::agent_backend::mini::terminal::MiniTerminalReason;
 use crate::agent_backend::test_support::loop_driver_config;
 use malvin_mini::ChatRole;
@@ -36,21 +37,40 @@ fn classify_turn_detects_mini_done_and_fenceless_completion() {
 }
 
 #[test]
-fn push_user_prompt_prepends_constraints() {
+fn classify_ignores_fences_only_when_passed_response_body() {
+    // NEW_HISTORY fences must not reach classify; callers pass RESPONSE only.
+    let config = loop_driver_config(8, 1);
+    let history_with_fence = "```bash\necho should_not_run\n```";
+    assert!(matches!(
+        classify_turn(history_with_fence, &config, false).0,
+        TurnAction::RunBash(_)
+    ));
+    let response_only = "summary without fences";
+    assert!(matches!(
+        classify_turn(response_only, &config, false).0,
+        TurnAction::Done(MiniTerminalReason::FencelessComplete)
+    ));
+}
+
+#[test]
+fn stage_user_prompt_sets_pending_new_request() {
     let mut session = LoopDriverSession {
-        messages: vec![],
+        history: String::new(),
+        previous_response: String::new(),
+        pending_new_request: None,
         cwd: std::env::temp_dir(),
-        constraints_prepended: false,
         bash_commands_this_prompt: vec![],
         prompt_index: 0,
-    llm_model_slug: String::new(),
+        llm_model_slug: String::new(),
+        section_shape_nudged: false,
     };
     let config = loop_driver_config(8, 1);
-    push_user_prompt(&mut session, &config, "task");
-    let user = session.messages.first().expect("user");
-    assert!(user.content.contains("constraints"));
-    assert!(user.content.contains("task"));
-    assert!(matches!(user.role, ChatRole::User));
+    stage_user_prompt(&mut session, &config, "task");
+    assert_eq!(session.pending_new_request.as_deref(), Some("task"));
+    let header = build_sticky_header(config.mini_constraints, "");
+    assert!(header.contains("constraints"));
+    assert!(header.contains("NEW_HISTORY"));
+    let _ = ChatRole::User;
 }
 
 #[test]

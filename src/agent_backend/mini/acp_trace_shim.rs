@@ -147,7 +147,8 @@ pub(crate) fn emit_mini_retry_fork(trace: &AcpJsonlTrace, ledger: &super::retry_
         "miniRetryFork": {
             "prompt_index": ledger.prompt_index,
             "attempt": ledger.attempt,
-            "message_checkpoint_len": ledger.message_checkpoint_len,
+            "history_chars": ledger.history.len(),
+            "previous_response_chars": ledger.previous_response.len(),
             "workspace_manifest_hash": ledger.workspace_manifest_hash,
             "bash_commands": ledger.bash_commands,
             "outcome": ledger.outcome.as_str(),

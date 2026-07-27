@@ -4,7 +4,7 @@ use crate::agent_backend::mini::terminal::{MiniPhase, MiniTerminalReason};
 use super::loop_inner_bash::{append_bash_observation, BashObservationInput};
 use super::loop_inner_classify::classify_turn;
 use super::loop_inner_finish::{
-    append_assistant_message, finish_done_turn, finish_exhausted, TerminalEmitCtx,
+    finish_done_turn, finish_exhausted, persist_turn_memory, TerminalEmitCtx,
 };
 use super::loop_inner_http::complete_turn_with_recovery;
 use super::loop_inner_types::{CompleteTurnRequest, LoopCounters, TurnAction};
@@ -29,21 +29,26 @@ pub(crate) async fn run_investigate_turn(
     counters: &mut LoopCounters,
     transcript: &mut String,
 ) -> Result<InvestigateStep, AgentError> {
-    let response = complete_turn_with_recovery(req, counters).await?;
+    let consolidated = complete_turn_with_recovery(req, counters).await?;
     counters.http_turn_count += 1;
     counters.investigate_http_turns += 1;
 
-    let assistant_text = response.content.clone();
-    append_assistant_message(req.session, transcript, &assistant_text);
+    let response_body = consolidated.response.clone();
+    persist_turn_memory(
+        req.session,
+        transcript,
+        &consolidated.new_history,
+        &response_body,
+    );
 
     let (action, warnings) =
-        classify_turn(&assistant_text, req.config, counters.had_bash_this_prompt);
+        classify_turn(&response_body, req.config, counters.had_bash_this_prompt);
     match action {
         TurnAction::Done(reason) => {
             let outcome = finish_done_turn(
                 req.trace,
-                &assistant_text,
-                response.reasoning.as_deref(),
+                &response_body,
+                consolidated.reasoning.as_deref(),
                 TerminalEmitCtx {
                     reason,
                     http_turn_count: counters.http_turn_count,
@@ -55,8 +60,8 @@ pub(crate) async fn run_investigate_turn(
         }
         TurnAction::RunBash(fences) => {
             let input = BashTurnInput {
-                assistant_text: &assistant_text,
-                reasoning: response.reasoning.as_deref(),
+                assistant_text: &response_body,
+                reasoning: consolidated.reasoning.as_deref(),
                 fences: &fences,
                 stream_warnings: !warnings.is_empty(),
             };
@@ -134,13 +139,24 @@ pub(crate) async fn run_wind_down_turn(
     counters: &mut LoopCounters,
     transcript: &mut String,
 ) -> Result<WindDownStep, AgentError> {
-    let response = complete_turn_with_recovery(req, counters).await?;
+    // Wind-down after bash: pending_new_request is the observation; if missing, stage a wind-down cue.
+    if req.session.pending_new_request.is_none() {
+        req.session.pending_new_request =
+            Some("Continue and close out without further bash fences.".into());
+        req.session.section_shape_nudged = false;
+    }
+    let consolidated = complete_turn_with_recovery(req, counters).await?;
     counters.http_turn_count += 1;
 
-    let assistant_text = response.content.clone();
-    append_assistant_message(req.session, transcript, &assistant_text);
+    let response_body = consolidated.response.clone();
+    persist_turn_memory(
+        req.session,
+        transcript,
+        &consolidated.new_history,
+        &response_body,
+    );
 
-    let (action, _) = classify_turn(&assistant_text, req.config, counters.had_bash_this_prompt);
+    let (action, _) = classify_turn(&response_body, req.config, counters.had_bash_this_prompt);
     match action {
         TurnAction::Done(reason) => {
             let reason = if reason == MiniTerminalReason::FencelessPremature {
@@ -150,8 +166,8 @@ pub(crate) async fn run_wind_down_turn(
             };
             let outcome = finish_done_turn(
                 req.trace,
-                &assistant_text,
-                response.reasoning.as_deref(),
+                &response_body,
+                consolidated.reasoning.as_deref(),
                 TerminalEmitCtx {
                     reason,
                     http_turn_count: counters.http_turn_count,

@@ -1,27 +1,29 @@
-//! Transcript–workspace fork state (see `concepts.md` §2).
+//! Paired checkpoint of mini memory state and workspace manifest at a gate-attempt boundary.
 
 use std::hash::{Hash, Hasher};
 use std::path::Path;
 
-/// Paired checkpoint of transcript length and workspace manifest at a gate-attempt boundary.
+/// Checkpoint of `(history, previous_response)` plus workspace manifest hash.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ForkState {
-    pub message_checkpoint_len: usize,
+    pub history: String,
+    pub previous_response: String,
     pub workspace_manifest_hash: String,
 }
 
 impl ForkState {
     #[must_use]
-    pub fn capture(cwd: &Path, message_checkpoint_len: usize) -> Self {
+    pub fn capture(cwd: &Path, history: &str, previous_response: &str) -> Self {
         Self {
-            message_checkpoint_len,
+            history: history.to_string(),
+            previous_response: previous_response.to_string(),
             workspace_manifest_hash: workspace_manifest_hash(cwd),
         }
     }
 
     #[must_use]
-    pub const fn transcript_matches(&self, current_len: usize) -> bool {
-        self.message_checkpoint_len == current_len
+    pub fn memory_matches(&self, history: &str, previous_response: &str) -> bool {
+        self.history == history && self.previous_response == previous_response
     }
 
     #[must_use]
@@ -30,23 +32,13 @@ impl ForkState {
     }
 
     #[must_use]
-    pub fn is_diverged(&self, current_len: usize, current_hash: &str) -> bool {
-        !self.transcript_matches(current_len) || !self.workspace_matches(current_hash)
-    }
-}
-
-impl From<ForkState> for (usize, String) {
-    fn from(state: ForkState) -> Self {
-        (state.message_checkpoint_len, state.workspace_manifest_hash)
-    }
-}
-
-impl From<(usize, String)> for ForkState {
-    fn from((message_checkpoint_len, workspace_manifest_hash): (usize, String)) -> Self {
-        Self {
-            message_checkpoint_len,
-            workspace_manifest_hash,
-        }
+    pub fn is_diverged(
+        &self,
+        history: &str,
+        previous_response: &str,
+        current_hash: &str,
+    ) -> bool {
+        !self.memory_matches(history, previous_response) || !self.workspace_matches(current_hash)
     }
 }
 

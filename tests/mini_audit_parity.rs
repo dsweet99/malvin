@@ -2,13 +2,12 @@
 
 mod common;
 
-use common::mini_test_helpers::{mock_llm, trace_with_run_dir};
+use common::mini_test_helpers::{mock_llm, parity_session, trace_with_run_dir};
 use common::observability_parity::{
     assert_acp_trace_schema, trace_contains_substring,
 };
 use malvin::agent_backend::mini::{
-    run_inner_loop, LoopDriverConfig, LoopDriverRun, LoopDriverSession,
-    MiniPhase, MiniTerminalReason, MockStep,
+    run_inner_loop, LoopDriverConfig, LoopDriverRun, MiniPhase, MiniTerminalReason, MockStep,
 };
 use malvin_mini::CompletionResponse;
 
@@ -16,17 +15,10 @@ use malvin_mini::CompletionResponse;
 async fn mini_audit_fenceless_complete_emits_mini_terminal() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let trace = trace_with_run_dir(&tmp, true);
-    let mut session = LoopDriverSession {
-        messages: vec![],
-        cwd: tmp.path().to_path_buf(),
-        constraints_prepended: false,
-        bash_commands_this_prompt: vec![],
-        prompt_index: 0,
-    llm_model_slug: String::new(),
-    };
+    let mut session = parity_session(tmp.path());
     let out = run_inner_loop(LoopDriverRun {
         llm: &mock_llm(vec![MockStep::Ok(CompletionResponse {
-            content: "done without fence".into(),
+            content: malvin_mini::format_wire_turn("- progress", "done without fence"),
             usage: None,
             reasoning: None,
         })]),
@@ -65,17 +57,10 @@ async fn mini_audit_fenceless_complete_emits_mini_terminal() {
 async fn mini_audit_mini_done_emits_mini_terminal() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let trace = trace_with_run_dir(&tmp, true);
-    let mut session = LoopDriverSession {
-        messages: vec![],
-        cwd: tmp.path().to_path_buf(),
-        constraints_prepended: false,
-        bash_commands_this_prompt: vec![],
-        prompt_index: 0,
-    llm_model_slug: String::new(),
-    };
+    let mut session = parity_session(tmp.path());
     run_inner_loop(LoopDriverRun {
         llm: &mock_llm(vec![MockStep::Ok(CompletionResponse {
-            content: "MINI_DONE\n".into(),
+            content: malvin_mini::format_wire_turn("- progress", "MINI_DONE\n"),
             usage: None,
             reasoning: None,
         })]),
@@ -108,14 +93,7 @@ async fn mini_audit_mini_done_emits_mini_terminal() {
 async fn mini_audit_context_overflow_with_zero_shrink_passes() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let trace = trace_with_run_dir(&tmp, true);
-    let mut session = LoopDriverSession {
-        messages: vec![],
-        cwd: tmp.path().to_path_buf(),
-        constraints_prepended: false,
-        bash_commands_this_prompt: vec![],
-        prompt_index: 0,
-    llm_model_slug: String::new(),
-    };
+    let mut session = parity_session(tmp.path());
     match run_inner_loop(LoopDriverRun {
         llm: &mock_llm(vec![MockStep::ContextOverflow]),
         session: &mut session,
@@ -149,23 +127,16 @@ async fn mini_audit_context_overflow_with_zero_shrink_passes() {
 async fn mini_audit_wind_down_after_bash_on_last_http_turn() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let trace = trace_with_run_dir(&tmp, true);
-    let mut session = LoopDriverSession {
-        messages: vec![],
-        cwd: tmp.path().to_path_buf(),
-        constraints_prepended: false,
-        bash_commands_this_prompt: vec![],
-        prompt_index: 0,
-    llm_model_slug: String::new(),
-    };
+    let mut session = parity_session(tmp.path());
     let out = run_inner_loop(LoopDriverRun {
         llm: &mock_llm(vec![
             MockStep::Ok(CompletionResponse {
-                content: "```bash\necho wind > wind.txt\n```".into(),
+                content: malvin_mini::format_wire_turn("- progress", "```bash\necho wind > wind.txt\n```"),
                 usage: None,
                 reasoning: None,
             }),
             MockStep::Ok(CompletionResponse {
-                content: "wind down summary".into(),
+                content: malvin_mini::format_wire_turn("- progress", "wind down summary"),
                 usage: None,
                 reasoning: None,
             }),
@@ -203,17 +174,10 @@ async fn mini_audit_no_tee_stdout_empty_trace_populated() {
     let log_path = tmp.path().join("stdout.log");
     malvin::output::set_stdout_log_path(Some(log_path.clone()));
     let trace = trace_with_run_dir(&tmp, true);
-    let mut session = LoopDriverSession {
-        messages: vec![],
-        cwd: std::env::temp_dir(),
-        constraints_prepended: false,
-        bash_commands_this_prompt: vec![],
-        prompt_index: 0,
-    llm_model_slug: String::new(),
-    };
+    let mut session = parity_session(tmp.path());
     run_inner_loop(LoopDriverRun {
         llm: &mock_llm(vec![MockStep::Ok(CompletionResponse {
-            content: "MINI_DONE".into(),
+            content: malvin_mini::format_wire_turn("- progress", "MINI_DONE"),
             usage: None,
             reasoning: None,
         })]),

@@ -39,7 +39,7 @@ async fn observability_parity_trace_acp_schema_after_mock_run() {
     let config = parity_loop_config("MINI_CONSTRAINTS_MARKER");
     let out = run_inner_loop(LoopDriverRun {
         llm: &mock_llm(vec![MockStep::Ok(CompletionResponse {
-            content: "MINI_DONE\n".into(),
+            content: malvin_mini::format_wire_turn("- progress", "MINI_DONE\n"),
             usage: None,
             reasoning: None,
         })]),
@@ -67,11 +67,11 @@ async fn observability_parity_trace_acp_schema_after_mock_run() {
 async fn observability_parity_fenceless_completes_in_one_turn() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let trace = trace_with_run_dir(&tmp, true);
-    let mut session = parity_session(std::env::temp_dir().as_path());
+    let mut session = parity_session(tmp.path());
     let config = parity_loop_config("MINI_CONSTRAINTS_MARKER");
     let out = run_inner_loop(LoopDriverRun {
         llm: &mock_llm(vec![MockStep::Ok(CompletionResponse {
-            content: "informational answer".into(),
+            content: malvin_mini::format_wire_turn("- progress", "informational answer"),
             usage: None,
             reasoning: None,
         })]),

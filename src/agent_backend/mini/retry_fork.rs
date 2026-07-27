@@ -41,7 +41,8 @@ impl ForkOutcome {
 pub struct RetryForkLedger {
     pub prompt_index: u32,
     pub attempt: u32,
-    pub message_checkpoint_len: usize,
+    pub history: String,
+    pub previous_response: String,
     pub workspace_manifest_hash: String,
     pub bash_commands: Vec<String>,
     pub outcome: ForkOutcome,
@@ -52,7 +53,8 @@ impl RetryForkLedger {
     #[must_use]
     pub fn checkpoint(&self) -> ForkState {
         ForkState {
-            message_checkpoint_len: self.message_checkpoint_len,
+            history: self.history.clone(),
+            previous_response: self.previous_response.clone(),
             workspace_manifest_hash: self.workspace_manifest_hash.clone(),
         }
     }
@@ -78,31 +80,32 @@ mod tests {
     use super::*;
 
     #[test]
-    fn fork_outcome_and_strategy_wire_names() {
-        assert_eq!(ForkOutcome::Failed.as_str(), "failed");
-        assert_eq!(MiniRetryStrategy::WorkspaceSnapshot.as_str(), "workspace-snapshot");
-        let ledger = RetryForkLedger {
-            prompt_index: 1,
-            attempt: 2,
-            message_checkpoint_len: 3,
-            workspace_manifest_hash: "h".into(),
-            bash_commands: vec!["echo".into()],
-            outcome: ForkOutcome::Failed,
-            strategy: MiniRetryStrategy::WorkspaceSnapshot,
-        };
-        assert_eq!(ledger.attempt, 2);
-        assert_eq!(
-            ledger.checkpoint(),
-            ForkState {
-                message_checkpoint_len: 3,
-                workspace_manifest_hash: "h".into(),
-            }
-        );
-    }
-
-    #[test]
     fn divergence_observation_empty_commands() {
         let obs = build_divergence_observation(&[], "boom", "git:abc");
         assert!(obs.contains("(none)"));
+        assert!(obs.contains("boom"));
+        assert!(obs.contains("git:abc"));
+    }
+
+    #[test]
+    fn ledger_checkpoint_round_trip() {
+        let ledger = RetryForkLedger {
+            prompt_index: 1,
+            attempt: 2,
+            history: "h".into(),
+            previous_response: "p".into(),
+            workspace_manifest_hash: "git:x".into(),
+            bash_commands: vec![],
+            outcome: ForkOutcome::Failed,
+            strategy: MiniRetryStrategy::WorkspaceSnapshot,
+        };
+        assert_eq!(
+            ledger.checkpoint(),
+            ForkState {
+                history: "h".into(),
+                previous_response: "p".into(),
+                workspace_manifest_hash: "git:x".into(),
+            }
+        );
     }
 }

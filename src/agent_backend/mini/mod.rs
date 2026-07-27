@@ -8,6 +8,7 @@ mod client_prompt_log;
 mod context_recovery;
 mod fence_parser;
 mod loop_driver;
+mod memory_assemble;
 mod model_resolve;
 mod retry_fork;
 mod terminal;

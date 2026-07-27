@@ -6,14 +6,13 @@ mod common;
 
 use std::time::Duration;
 
-use common::mini_test_helpers::{mock_llm, trace_with_run_dir};
+use common::mini_test_helpers::{parity_session, mock_llm, trace_with_run_dir};
 use common::observability_parity::{
     assert_audit_contains, assert_stdout_lacks_substring, assert_stdout_tool_vocab,
     trace_contains_substring,
 };
 use malvin::agent_backend::mini::{
-    record_http_exchange, run_inner_loop, LoopDriverConfig, LoopDriverRun, LoopDriverSession,
-    MiniHttpExchangeRecord, MiniTerminalReason, MiniTraceSink, MockStep,
+    record_http_exchange, run_inner_loop, LoopDriverConfig, LoopDriverRun,     MiniHttpExchangeRecord, MiniTerminalReason, MiniTraceSink, MockStep,
 };
 use malvin::observability::audit_only_session_update_fields;
 use malvin_mini::CompletionResponse;
@@ -61,17 +60,10 @@ async fn contract_mini_terminal_in_trace_not_stdout() {
     let log_path = tmp.path().join("stdout.log");
     malvin::output::set_stdout_log_path(Some(log_path.clone()));
     let trace = trace_with_run_dir(&tmp, false);
-    let mut session = LoopDriverSession {
-        messages: vec![],
-        cwd: tmp.path().to_path_buf(),
-        constraints_prepended: false,
-        bash_commands_this_prompt: vec![],
-        prompt_index: 0,
-        llm_model_slug: String::new(),
-    };
+    let mut session = parity_session(tmp.path());
     let out = run_inner_loop(LoopDriverRun {
         llm: &mock_llm(vec![MockStep::Ok(CompletionResponse {
-            content: "done without fence".into(),
+            content: malvin_mini::format_wire_turn("- progress", "done without fence"),
             usage: None,
             reasoning: None,
         })]),

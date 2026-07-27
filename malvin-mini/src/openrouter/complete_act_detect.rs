@@ -1,25 +1,8 @@
 use crate::openrouter::types::{ChatMessage, ChatRole};
 
-pub(super) fn latest_observation_has_nonzero_exit(messages: &[ChatMessage]) -> bool {
-    messages.iter().rev().find_map(|m| {
-        matches!(m.role, ChatRole::User)
-            .then(|| observation_reports_nonzero_exit(&m.content))
-            .filter(|found| *found)
-    }).is_some()
-}
-
-fn observation_reports_nonzero_exit(content: &str) -> bool {
-    for line in content.lines() {
-        let Some(rest) = line.trim().strip_prefix("Exit code ") else { continue };
-        let code: String = rest.chars().take_while(|c| c.is_ascii_digit() || *c == '-').collect();
-        if let Ok(n) = code.parse::<i32>()
-            && n != 0
-        {
-            return true;
-        }
-    }
-    false
-}
+pub(super) use super::complete_act_inputs::{
+    latest_observation_has_nonzero_exit, previous_response_text,
+};
 
 pub(super) fn response_has_act_fence(content: &str) -> bool {
     content.contains("```bash") || content.contains("``` bash")
@@ -104,7 +87,16 @@ pub(super) fn history_has_exterior_without_artifact_act(
     messages: &[ChatMessage],
     pending: Option<&str>,
 ) -> bool {
-    let bodies = bash_fence_bodies(messages, pending);
+    // Prefer Previous response (+ pending draft); fall back to Assistant scan for legacy lists.
+    let mut bodies = Vec::new();
+    if let Some(prev) = previous_response_text(messages) {
+        push_bash_bodies(prev, &mut bodies);
+    } else {
+        bodies = bash_fence_bodies(messages, None);
+    }
+    if let Some(content) = pending {
+        push_bash_bodies(content, &mut bodies);
+    }
     bodies.iter().any(|b| body_looks_exterior(b))
         && !bodies.iter().any(|b| body_looks_artifact_revision(b))
 }

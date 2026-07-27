@@ -93,9 +93,7 @@
         assert!(matches!(out[0].role, ChatRole::System));
         assert!(out[0].content.contains("request-named"));
         assert!(out[0].content.contains("Look hard for unmet"));
-        assert!(out[0].content.contains("closing report"));
         assert!(out[0].content.contains("private asserts"));
-        assert!(out[0].content.contains("isolation-assay"));
         let already = [
             ChatMessage {
                 role: ChatRole::System,
@@ -107,8 +105,9 @@
             },
         ];
         let kept = with_tool_use_system_reminder(&already);
-        assert_eq!(kept.len(), 2);
+        assert_eq!(kept.len(), 3);
         assert_eq!(kept[0].content, "existing");
+        assert!(kept[1].content.contains("Look hard") || kept[1].content.contains("Exterior"));
     }
 
     #[test]

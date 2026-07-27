@@ -1,7 +1,5 @@
 //! Single gate-attempt execution for [`super::client_gate_retry`].
 
-use malvin_mini::{ChatMessage, ChatRole};
-
 use super::client::MiniAgentClient;
 use super::client_gate_retry::{
     ForkLedgerBuild, GateAttemptOutcome, GateAttemptRun,
@@ -25,7 +23,11 @@ pub(super) async fn run_one_gate_attempt(
         attempt,
     } = run;
     let session = client.session.as_mut().expect("session checked above");
-    let checkpoint = ForkState::capture(session.cwd.as_path(), session.messages.len());
+    let checkpoint = ForkState::capture(
+        session.cwd.as_path(),
+        &session.history,
+        &session.previous_response,
+    );
     session.bash_commands_this_prompt.clear();
 
     let result = run_inner_loop(LoopDriverRun {
@@ -78,12 +80,12 @@ pub(super) async fn run_one_gate_attempt(
 }
 
 pub(super) fn build_fork_ledger(input: ForkLedgerBuild) -> RetryForkLedger {
-    let (message_checkpoint_len, workspace_manifest_hash) = input.checkpoint.into();
     RetryForkLedger {
         prompt_index: input.prompt_index,
         attempt: input.attempt,
-        message_checkpoint_len,
-        workspace_manifest_hash,
+        history: input.checkpoint.history.clone(),
+        previous_response: input.checkpoint.previous_response.clone(),
+        workspace_manifest_hash: input.checkpoint.workspace_manifest_hash.clone(),
         bash_commands: input.bash_commands,
         outcome: input.outcome,
         strategy: input.strategy,
@@ -104,15 +106,14 @@ fn apply_retry_strategy(
                 last_error,
                 &checkpoint.workspace_manifest_hash,
             );
-            session.messages.push(ChatMessage {
-                role: ChatRole::User,
-                content: obs,
-            });
+            session.pending_new_request = Some(obs);
+            session.section_shape_nudged = false;
         }
         MiniRetryStrategy::WorkspaceSnapshot => {
-            session
-                .messages
-                .truncate(checkpoint.message_checkpoint_len);
+            session.history = checkpoint.history;
+            session.previous_response = checkpoint.previous_response;
+            session.pending_new_request = None;
+            session.section_shape_nudged = false;
         }
     }
 }

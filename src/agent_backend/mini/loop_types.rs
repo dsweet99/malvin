@@ -15,14 +15,19 @@ pub struct LoopDriverConfig {
     pub expects_investigation: bool,
 }
 
+/// Durable mini conversation state: chat-state History + Previous RESPONSE body.
 pub struct LoopDriverSession {
-    pub messages: Vec<malvin_mini::ChatMessage>,
+    pub history: String,
+    pub previous_response: String,
+    /// Event that triggers the next consolidate (user text, bash obs, divergence).
+    pub pending_new_request: Option<String>,
     pub cwd: std::path::PathBuf,
-    pub constraints_prepended: bool,
     pub bash_commands_this_prompt: Vec<String>,
     pub prompt_index: u32,
     /// Resolved `OpenRouter` model slug for this session (`MALVIN_LLM` in bash).
     pub llm_model_slug: String,
+    /// One section-shape nudge already used for the current pending request.
+    pub section_shape_nudged: bool,
 }
 
 pub struct LoopDriverOutcome {
@@ -39,7 +44,8 @@ pub struct LoopDriverRun<'a> {
     pub timing: Option<&'a std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
     pub llm_phase: Option<crate::run_timing::TimingPhase>,
     pub single_attempt: bool,
-    /// Gate-iteration attempt (1-based). Cumulative-transcript retries skip re-pushing the user prompt when > 1.
+    /// Gate-iteration attempt (1-based). Cumulative retries skip re-setting the user prompt when > 1
+    /// if a divergence New request is already pending.
     pub gate_attempt: u32,
     pub retry_strategy: MiniRetryStrategy,
 }
@@ -62,14 +68,16 @@ mod tests {
         };
         assert_eq!(config.max_http_turns, 1);
         let session = LoopDriverSession {
-            messages: vec![],
+            history: String::new(),
+            previous_response: String::new(),
+            pending_new_request: None,
             cwd: std::env::temp_dir(),
-            constraints_prepended: false,
             bash_commands_this_prompt: vec![],
             prompt_index: 0,
             llm_model_slug: String::new(),
+            section_shape_nudged: false,
         };
-        assert!(session.messages.is_empty());
+        assert!(session.history.is_empty());
         let outcome = LoopDriverOutcome {
             final_assistant_text: "done".into(),
             terminal: MiniTerminalRecord::new(

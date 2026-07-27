@@ -1,19 +1,8 @@
 use super::super::types::{ChatMessage, ChatRole};
-
-#[path = "complete_prompt_shrink.rs"]
-mod complete_prompt_shrink;
-#[path = "complete_act_detect.rs"]
-mod complete_act_detect;
-#[path = "complete_fail_epoch.rs"]
-mod complete_fail_epoch;
-#[path = "complete_local_retry.rs"]
-mod complete_local_retry;
-
-pub(crate) use complete_prompt_shrink::shrink_prompt_messages;
-pub(crate) use complete_local_retry::{maybe_retry_local_shape, LocalRetryBudget};
-use complete_act_detect::{
+use super::complete_act_detect::{
     history_has_exterior_without_artifact_act, latest_observation_has_nonzero_exit,
 };
+use super::complete_prompt_shrink::shrink_prompt_messages;
 
 const STUDY_REMINDER: &str = "Look hard for unmet evidence first. Form a prediction, Act with a \
 short targeted trial in the named working context, then Study the outcome. Only recorded \
@@ -34,27 +23,52 @@ artifact is null Study. Emit an Act that revises that artifact or runs a request
 check in that context before any further exterior Observe.";
 
 /// Short domain-agnostic Study reminder (not for marker turns).
-/// Prefer fail-epoch after a red observation; else block exterior-before-Act.
+/// Prefer fail-epoch after a red New-request observation; else block exterior-before-Act
+/// from Previous response. When a sticky Header System already leads, inject the cue as
+/// the next System message so Header + cue coexist.
 pub(super) fn with_tool_use_system_reminder(messages: &[ChatMessage]) -> Vec<ChatMessage> {
-    if messages.first().is_some_and(|m| matches!(m.role, ChatRole::System))
-        || is_short_form_marker_turn(messages)
-    {
+    if is_short_form_marker_turn(messages) {
         return messages.to_vec();
     }
-    let reminder = if latest_observation_has_nonzero_exit(messages) {
+    if cue_already_present(messages) {
+        return messages.to_vec();
+    }
+    let reminder = select_study_act_cue(messages);
+    let mut out = Vec::with_capacity(messages.len() + 1);
+    if messages.first().is_some_and(|m| matches!(m.role, ChatRole::System)) {
+        out.push(messages[0].clone());
+        out.push(ChatMessage {
+            role: ChatRole::System,
+            content: reminder.to_string(),
+        });
+        out.extend_from_slice(&messages[1..]);
+    } else {
+        out.push(ChatMessage {
+            role: ChatRole::System,
+            content: reminder.to_string(),
+        });
+        out.extend_from_slice(messages);
+    }
+    out
+}
+
+fn cue_already_present(messages: &[ChatMessage]) -> bool {
+    messages.iter().any(|m| {
+        matches!(m.role, ChatRole::System)
+            && (m.content.contains("nonzero exit is a failed live check")
+                || m.content.contains("Exterior contact before revising")
+                || m.content.contains("Look hard for unmet evidence first"))
+    })
+}
+
+pub(super) fn select_study_act_cue(messages: &[ChatMessage]) -> &'static str {
+    if latest_observation_has_nonzero_exit(messages) {
         FAIL_EPOCH_CUE
     } else if history_has_exterior_without_artifact_act(messages, None) {
         EXTERIOR_BEFORE_ACT_CUE
     } else {
         STUDY_REMINDER
-    };
-    let mut out = Vec::with_capacity(messages.len() + 1);
-    out.push(ChatMessage {
-        role: ChatRole::System,
-        content: reminder.to_string(),
-    });
-    out.extend_from_slice(messages);
-    out
+    }
 }
 
 pub(super) fn is_short_form_marker_turn(messages: &[ChatMessage]) -> bool {

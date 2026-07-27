@@ -32,7 +32,10 @@ mod loop_types;
 mod loop_driver_unit_tests;
 #[cfg(test)]
 #[path = "loop_driver_tests.rs"]
-mod loop_driver_tests;
+pub(crate) mod loop_driver_tests;
+#[cfg(test)]
+#[path = "loop_driver_sticky_tests.rs"]
+pub(crate) mod loop_driver_sticky_tests;
 #[cfg(test)]
 #[path = "loop_driver_no_fence_tests.rs"]
 mod loop_driver_no_fence_tests;
@@ -47,7 +50,7 @@ pub(crate) use loop_inner_classify::classify_turn;
 #[cfg(test)]
 pub(crate) use loop_inner_finish::exhausted_error;
 #[cfg(test)]
-pub(crate) use loop_inner_prompt::push_user_prompt;
+pub(crate) use loop_inner_prompt::stage_user_prompt;
 #[cfg(test)]
 pub(crate) use loop_inner_types::TurnAction;
 pub use loop_mock::{LlmBackend, MockScript, MockStep};

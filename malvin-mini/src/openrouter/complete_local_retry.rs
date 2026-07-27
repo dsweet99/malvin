@@ -1,10 +1,11 @@
 use crate::error::OpenRouterError;
 use crate::openrouter::http_exchange::CompletionWithMeta;
 use crate::openrouter::types::ChatMessage;
-use super::{
+use super::complete_prompt_shape::{
     is_short_form_marker_turn, marker_response_missing_label, mutate_messages_after_marker_miss,
-    mutate_messages_after_missing_content, shrink_prompt_messages,
+    mutate_messages_after_missing_content,
 };
+use super::complete_prompt_shrink::shrink_prompt_messages;
 use super::complete_act_detect::{
     artifact_act_lacks_following_observation, history_has_any_artifact_act,
     history_has_exterior_without_artifact_act, latest_observation_has_nonzero_exit,

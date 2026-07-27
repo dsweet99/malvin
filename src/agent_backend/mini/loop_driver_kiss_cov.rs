@@ -31,7 +31,7 @@ fn kiss_witness_loop_driver_tests() {
     let _ = stringify!(loop_driver_single_fence_runs_bash_and_appends_observation);
     let _ = stringify!(loop_driver_mini_done_line_terminates);
     let _ = stringify!(loop_driver_mini_done_inside_fence_still_runs_bash);
-    let _ = stringify!(loop_driver_prepends_mini_constraints);
+    let _ = stringify!(loop_driver_sticky_header_includes_constraints);
     let _ = stringify!(loop_driver_mock_http_retry_on_429);
     let _ = stringify!(loop_driver_fenceless_completes_in_one_turn);
     let _ = stringify!(loop_driver_fenceless_no_nudge_in_prompts_log);

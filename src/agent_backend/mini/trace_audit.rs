@@ -5,7 +5,7 @@ use super::acp_trace_shim::{
     emit_mini_prompt_shrink, emit_mini_prompt_shrink_stalled, emit_mini_retry_fork,
     emit_mini_terminal,
 };
-use super::context_recovery::{DROP_STRATEGY_OLDEST_WHOLE, ShrinkEvent};
+use super::context_recovery::{DROP_STRATEGY_HISTORY_FIRST, ShrinkEvent};
 use super::retry_fork::RetryForkLedger;
 use super::terminal::MiniTerminalRecord;
 use super::trace::{emit_audit, MiniTraceSink};
@@ -26,7 +26,7 @@ pub(crate) fn emit_prompt_shrink(sink: &MiniTraceSink, event: &ShrinkEvent) {
                 messages_before: event.messages_before,
                 messages_after: event.messages_after,
                 bytes_removed: event.bytes_removed,
-                strategy: DROP_STRATEGY_OLDEST_WHOLE,
+                strategy: DROP_STRATEGY_HISTORY_FIRST,
             },
         );
     });

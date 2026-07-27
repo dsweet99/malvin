@@ -1,7 +1,8 @@
 use super::{
-    marker_response_missing_label, maybe_retry_local_shape, mutate_messages_after_marker_miss,
-    with_tool_use_system_reminder, LocalRetryBudget,
+    marker_response_missing_label, mutate_messages_after_marker_miss,
+    with_tool_use_system_reminder,
 };
+use super::super::complete_local_retry::{maybe_retry_local_shape, LocalRetryBudget};
 use crate::error::OpenRouterError;
 use crate::openrouter::{
     ChatMessage, ChatRole, CompletionResponse, CompletionWithMeta, HttpExchangeMeta,

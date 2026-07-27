@@ -207,8 +207,8 @@ fn kiss_invalid_struct_value_refs_gate10_4() {
 
 #[test]
 fn kiss_invalid_struct_value_refs_gate10_5() {
-    let _ = crate::agent_backend::mini::loop_driver_tests::loop_driver_prepends_mini_constraints;
-    let _ = crate::agent_backend::mini::loop_driver_tests::loop_driver_mock_http_retry_on_429;
+    let _ = crate::agent_backend::mini::loop_driver::loop_driver_sticky_tests::loop_driver_sticky_header_includes_constraints;
+    let _ = crate::agent_backend::mini::loop_driver::loop_driver_sticky_tests::loop_driver_mock_http_retry_on_429;
     let _ = crate::agent_backend::mini::loop_http_retry_tests::complete_with_http_retries_non_billing_errors_exhaust_transport_budget;
     let _ = crate::agent_backend::mini::loop_http_retry_tests::complete_with_http_retries_succeeds_on_second_mock_attempt;
     let _ = crate::agent_backend::mini::loop_http_retry_tests::complete_with_http_retries_maps_context_overflow;

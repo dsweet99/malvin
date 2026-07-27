@@ -122,12 +122,14 @@ impl MiniAgentClient {
         crate::malvin_sandbox::note_active_mini_session(cwd).map_err(AgentError)?;
         self.trace.run_dir = self.prompts_log_run_dir.clone();
         self.session = Some(LoopDriverSession {
-            messages: vec![],
+            history: String::new(),
+            previous_response: String::new(),
+            pending_new_request: None,
             cwd: cwd.to_path_buf(),
-            constraints_prepended: false,
             bash_commands_this_prompt: vec![],
             prompt_index: 0,
             llm_model_slug: resolve_mini_model(&self.config.model),
+            section_shape_nudged: false,
         });
         self.prompt_counter = 0;
         Ok(())
@@ -157,11 +159,8 @@ impl MiniAgentClient {
         }
 
         let mini_constraints = default_file("mini_constraints.md").unwrap_or("");
-        let effective_prompt = if self.session.as_ref().is_some_and(|s| !s.constraints_prepended) {
-            format!("{mini_constraints}\n\n{prompt}")
-        } else {
-            prompt.to_string()
-        };
+        // Constraints live in the sticky Header each call; prompt log still shows request text.
+        let effective_prompt = prompt.to_string();
 
         self.trace.plain_lines = opts.do_trace_split.is_some();
 

@@ -44,19 +44,25 @@ fn kiss_witness_fence_parser_and_loop_types() {
     assert_eq!(max_http_retries, 1);
     assert_eq!(mini_constraints, "c");
     let session = super::loop_driver::LoopDriverSession {
-        messages: vec![],
-        cwd: std::env::temp_dir(),
-        constraints_prepended: false,
-        bash_commands_this_prompt: vec![],
-        prompt_index: 0,
-    llm_model_slug: String::new(),
-    };
+            history: String::new(),
+            previous_response: String::new(),
+            pending_new_request: None,
+            cwd: std::env::temp_dir(),
+            bash_commands_this_prompt: vec![],
+            prompt_index: 0,
+            llm_model_slug: String::new(),
+            section_shape_nudged: false,
+        };
     let super::loop_driver::LoopDriverSession {
-        messages,
+        history,
+        previous_response,
+        pending_new_request,
         cwd: _,
         ..
     } = session;
-    assert!(messages.is_empty());
+    assert!(history.is_empty());
+    assert!(previous_response.is_empty());
+    assert!(pending_new_request.is_none());
     let _ = stringify!(LoopDriverOutcome);
     let _: Option<super::loop_driver::LoopDriverRun<'_>> = None;
     let _ = stringify!(llm);
@@ -66,7 +72,7 @@ fn kiss_witness_fence_parser_and_loop_types() {
     let _ = stringify!(trace);
     let _ = stringify!(timing);
     let _ = stringify!(llm_phase);
-    let _ = stringify!(should_push_user_prompt);
+    let _ = stringify!(should_stage_user_prompt);
     let _ = stringify!(gate_attempt);
     let _ = stringify!(retry_strategy);
     let _ = stringify!(llm_model_slug);
@@ -89,7 +95,9 @@ fn kiss_witness_mini_audit_and_recovery_types() {
     let _ = std::mem::size_of::<super::context_recovery::ShrinkEvent>();
     let _ = std::mem::size_of::<super::fence_parser::FenceParseWarning>();
     let _ = super::retry_fork::build_divergence_observation;
-    let _ = super::context_recovery::shrink_one_whole_message;
+    let _ = super::context_recovery::shrink_session_memory;
+    let _ = stringify!(super::loop_inner_http::ConsolidatedTurn);
+    let _ = stringify!(super::loop_inner_http::complete_turn_with_recovery);
     let event = super::context_recovery::ShrinkEvent {
         attempt: 1,
         messages_before: 2,
@@ -150,7 +158,8 @@ fn kiss_witness_trace_audit_emitters() {
         &super::retry_fork::RetryForkLedger {
             prompt_index: 0,
             attempt: 1,
-            message_checkpoint_len: 0,
+            history: String::new(),
+            previous_response: String::new(),
             workspace_manifest_hash: "h".into(),
             bash_commands: vec![],
             outcome: super::retry_fork::ForkOutcome::Succeeded,
@@ -165,7 +174,7 @@ fn kiss_witness_loop_driver_and_client_helpers() {
     let _ = stringify!(loop_driver_single_fence_runs_bash_and_appends_observation);
     let _ = stringify!(loop_driver_mini_done_line_terminates);
     let _ = stringify!(loop_driver_mini_done_inside_fence_still_runs_bash);
-    let _ = stringify!(loop_driver_prepends_mini_constraints);
+    let _ = stringify!(loop_driver_sticky_header_includes_constraints);
     let _ = stringify!(loop_driver_mock_http_retry_on_429);
     let _ = stringify!(loop_driver_fenceless_completes_in_one_turn);
     let _ = stringify!(loop_driver_fenceless_no_nudge_in_prompts_log);

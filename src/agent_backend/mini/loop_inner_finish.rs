@@ -1,7 +1,5 @@
 //! Terminal emission helpers for the inner bash-fence loop.
 
-use malvin_mini::{ChatMessage, ChatRole};
-
 use crate::agent_backend::mini::terminal::{
     MiniPhase, MiniTerminalReason, MiniTerminalRecord,
 };
@@ -16,17 +14,18 @@ pub(crate) struct TerminalEmitCtx {
     pub phase_at_exit: MiniPhase,
 }
 
-pub(crate) fn append_assistant_message(
+pub(crate) fn persist_turn_memory(
     session: &mut LoopDriverSession,
     transcript: &mut String,
-    assistant_text: &str,
+    new_history: &str,
+    response: &str,
 ) {
-    transcript.push_str(assistant_text);
+    session.history = new_history.to_string();
+    session.previous_response = response.to_string();
+    session.pending_new_request = None;
+    session.section_shape_nudged = false;
+    transcript.push_str(response);
     transcript.push('\n');
-    session.messages.push(ChatMessage {
-        role: ChatRole::Assistant,
-        content: assistant_text.to_string(),
-    });
 }
 
 pub(crate) fn finish_done_turn(

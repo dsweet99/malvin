@@ -12,7 +12,7 @@ use malvin_mini::CompletionResponse;
 #[must_use]
 pub fn mini_done_response() -> CompletionResponse {
     CompletionResponse {
-        content: "MINI_DONE".into(),
+        content: malvin_mini::format_wire_turn("- done", "MINI_DONE"),
         usage: None,
         reasoning: None,
     }
@@ -20,8 +20,19 @@ pub fn mini_done_response() -> CompletionResponse {
 
 #[must_use]
 pub fn completion(content: impl Into<String>) -> CompletionResponse {
+    let body = content.into();
     CompletionResponse {
-        content: content.into(),
+        content: malvin_mini::format_wire_turn("- progress", &body),
+        usage: None,
+        reasoning: None,
+    }
+}
+
+/// Wire a RESPONSE body into the required `NEW_HISTORY` / `RESPONSE` sections.
+#[must_use]
+pub fn wire_response(response: &str) -> CompletionResponse {
+    CompletionResponse {
+        content: malvin_mini::format_wire_turn("- progress", response),
         usage: None,
         reasoning: None,
     }
@@ -69,12 +80,14 @@ pub fn loop_driver_config(max_http_turns: u32, max_http_retries: u32) -> LoopDri
 #[must_use]
 pub fn loop_session(cwd: PathBuf) -> LoopDriverSession {
     LoopDriverSession {
-        messages: vec![],
+        history: String::new(),
+        previous_response: String::new(),
+        pending_new_request: None,
         cwd,
-        constraints_prepended: false,
         bash_commands_this_prompt: vec![],
         prompt_index: 0,
         llm_model_slug: String::new(),
+        section_shape_nudged: false,
     }
 }
 

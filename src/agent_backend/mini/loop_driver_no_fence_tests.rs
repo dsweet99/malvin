@@ -9,18 +9,20 @@ use malvin_mini::CompletionResponse;
 #[tokio::test]
 async fn loop_driver_fenceless_completes_in_one_turn() {
     let llm = mock_llm(vec![MockStep::Ok(CompletionResponse {
-        content: "informational answer".into(),
+        content: malvin_mini::format_wire_turn("- progress", "informational answer"),
         usage: None,
                     reasoning: None,
     })]);
     let mut session = LoopDriverSession {
-        messages: vec![],
-        cwd: std::env::temp_dir(),
-        constraints_prepended: false,
-        bash_commands_this_prompt: vec![],
-        prompt_index: 0,
-    llm_model_slug: String::new(),
-    };
+            history: String::new(),
+            previous_response: String::new(),
+            pending_new_request: None,
+            cwd: std::env::temp_dir(),
+            bash_commands_this_prompt: vec![],
+            prompt_index: 0,
+            llm_model_slug: String::new(),
+            section_shape_nudged: false,
+        };
     let out = run_inner_loop(LoopDriverRun {
         llm: &llm,
         session: &mut session,
@@ -45,10 +47,8 @@ async fn loop_driver_fenceless_completes_in_one_turn() {
     .expect("single-turn fenceless must not re-call LLM");
     assert_eq!(out.final_assistant_text, "informational answer");
     assert!(
-        !session
-            .messages
-            .iter()
-            .any(|m| m.content.contains("your last response had no ```bash``` block")),
+        !session.previous_response.contains("your last response had no ```bash``` block")
+            && !session.history.contains("your last response had no ```bash``` block"),
         "no-fence nudge must not be injected"
     );
 }
@@ -65,18 +65,20 @@ async fn loop_driver_fenceless_no_nudge_in_prompts_log() {
         log_full_outgoing_prompts: false,
     });
     let llm = mock_llm(vec![MockStep::Ok(CompletionResponse {
-        content: "done in one turn".into(),
+        content: malvin_mini::format_wire_turn("- progress", "done in one turn"),
         usage: None,
                     reasoning: None,
     })]);
     let mut session = LoopDriverSession {
-        messages: vec![],
-        cwd: std::env::temp_dir(),
-        constraints_prepended: false,
-        bash_commands_this_prompt: vec![],
-        prompt_index: 0,
-    llm_model_slug: String::new(),
-    };
+            history: String::new(),
+            previous_response: String::new(),
+            pending_new_request: None,
+            cwd: std::env::temp_dir(),
+            bash_commands_this_prompt: vec![],
+            prompt_index: 0,
+            llm_model_slug: String::new(),
+            section_shape_nudged: false,
+        };
     run_inner_loop(LoopDriverRun {
         llm: &llm,
         session: &mut session,

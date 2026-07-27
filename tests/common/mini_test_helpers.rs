@@ -32,12 +32,14 @@ pub fn mock_llm(
 
 pub fn parity_session(cwd: &std::path::Path) -> malvin::agent_backend::mini::LoopDriverSession {
     malvin::agent_backend::mini::LoopDriverSession {
-        messages: vec![],
+        history: String::new(),
+        previous_response: String::new(),
+        pending_new_request: None,
         cwd: cwd.to_path_buf(),
-        constraints_prepended: false,
         bash_commands_this_prompt: vec![],
         prompt_index: 0,
         llm_model_slug: String::new(),
+        section_shape_nudged: false,
     }
 }
 
@@ -69,15 +71,18 @@ pub async fn run_parity_bash_loop(
     let config = parity_loop_config("c");
     let llm = mock_llm(vec![
         malvin::agent_backend::mini::MockStep::Ok(malvin_mini::CompletionResponse {
-            content: format!(
-                "{fence_comment}\n```bash\ncat {}\n```",
-                target.display()
+            content: malvin_mini::format_wire_turn(
+                "- progress",
+                &format!(
+                    "{fence_comment}\n```bash\ncat {}\n```",
+                    target.display()
+                ),
             ),
             usage: None,
             reasoning: None,
         }),
         malvin::agent_backend::mini::MockStep::Ok(malvin_mini::CompletionResponse {
-            content: "done".into(),
+            content: malvin_mini::format_wire_turn("- progress", "done"),
             usage: None,
             reasoning: None,
         }),

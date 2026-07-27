@@ -3,7 +3,7 @@
 use super::loop_inner_phases::{
     run_investigate_turn, run_wind_down_turn, InvestigateStep, WindDownStep,
 };
-use super::loop_inner_prompt::push_user_prompt;
+use super::loop_inner_prompt::stage_user_prompt;
 use super::loop_inner_types::{CompleteTurnRequest, LoopCounters, LoopPhase};
 use super::loop_types::{LoopDriverOutcome, LoopDriverRun};
 use crate::agent_backend::mini::retry_fork::MiniRetryStrategy;
@@ -23,8 +23,9 @@ pub async fn run_inner_loop(run: LoopDriverRun<'_>) -> Result<LoopDriverOutcome,
         gate_attempt,
         retry_strategy,
     } = run;
-    if should_push_user_prompt(gate_attempt, retry_strategy) {
-        push_user_prompt(session, config, user_prompt);
+    if should_stage_user_prompt(gate_attempt, retry_strategy, session.pending_new_request.is_some())
+    {
+        stage_user_prompt(session, config, user_prompt);
     }
     session.bash_commands_this_prompt.clear();
 
@@ -78,8 +79,16 @@ enum WindDownPhaseResult {
     Failed(AgentError),
 }
 
-fn should_push_user_prompt(gate_attempt: u32, retry_strategy: MiniRetryStrategy) -> bool {
-    gate_attempt <= 1 || retry_strategy != MiniRetryStrategy::CumulativeTranscript
+fn should_stage_user_prompt(
+    gate_attempt: u32,
+    retry_strategy: MiniRetryStrategy,
+    has_pending: bool,
+) -> bool {
+    if gate_attempt > 1 && retry_strategy == MiniRetryStrategy::CumulativeTranscript {
+        // Divergence New request already staged; do not overwrite.
+        return !has_pending;
+    }
+    true
 }
 
 async fn run_investigate_phase(

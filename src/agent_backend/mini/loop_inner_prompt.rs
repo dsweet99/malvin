@@ -1,36 +1,12 @@
-//! User prompt push for the inner bash-fence loop.
-
-use malvin_mini::{ChatMessage, ChatRole};
-
-use crate::prompt_stratification::{join_labeled_strata, PromptStratum};
+//! Stage New request for the inner bash-fence loop.
 
 use super::loop_types::{LoopDriverConfig, LoopDriverSession};
 
-pub(crate) fn push_user_prompt(
+pub(crate) fn stage_user_prompt(
     session: &mut LoopDriverSession,
-    config: &LoopDriverConfig,
+    _config: &LoopDriverConfig,
     user_prompt: &str,
 ) {
-    let content = if !session.constraints_prepended && !config.mini_constraints.is_empty() {
-        session.constraints_prepended = true;
-        let model_line = if session.llm_model_slug.is_empty() {
-            String::new()
-        } else {
-            format!(
-                "Your OpenRouter model slug is `{}`. When asked which LLM you are, name this slug.",
-                session.llm_model_slug
-            )
-        };
-        join_labeled_strata([
-            (PromptStratum::MiniConstraints, config.mini_constraints),
-            (PromptStratum::PlaceholderContext, model_line.as_str()),
-            (PromptStratum::UserRequest, user_prompt),
-        ])
-    } else {
-        user_prompt.to_string()
-    };
-    session.messages.push(ChatMessage {
-        role: ChatRole::User,
-        content,
-    });
+    session.pending_new_request = Some(user_prompt.to_string());
+    session.section_shape_nudged = false;
 }

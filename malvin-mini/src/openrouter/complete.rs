@@ -6,16 +6,24 @@ use crate::error::OpenRouterError;
 
 #[path = "complete_parse.rs"]
 mod complete_parse;
+#[path = "complete_prompt_shrink.rs"]
+mod complete_prompt_shrink;
+#[path = "complete_act_inputs.rs"]
+mod complete_act_inputs;
+#[path = "complete_act_detect.rs"]
+mod complete_act_detect;
+#[path = "complete_fail_epoch.rs"]
+mod complete_fail_epoch;
+#[path = "complete_local_retry.rs"]
+mod complete_local_retry;
 #[path = "complete_prompt_shape.rs"]
 mod complete_prompt_shape;
 
 pub(crate) use complete_parse::{map_http_status, outcome_from_http_body};
 #[allow(unused_imports)] // re-exported for sibling unit-test modules
-pub(crate) use complete_prompt_shape::shrink_prompt_messages;
-use complete_prompt_shape::{
-    maybe_retry_local_shape, marker_response_missing_label, with_tool_use_system_reminder,
-    LocalRetryBudget,
-};
+pub(crate) use complete_prompt_shrink::shrink_prompt_messages;
+pub(crate) use complete_local_retry::{maybe_retry_local_shape, LocalRetryBudget};
+use complete_prompt_shape::{marker_response_missing_label, with_tool_use_system_reminder};
 
 pub(crate) fn completion_with_meta(result: Result<super::types::CompletionResponse, OpenRouterError>, http: HttpExchangeMeta) -> CompletionWithMeta {
     CompletionWithMeta { result, http }

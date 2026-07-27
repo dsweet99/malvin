@@ -1,8 +1,6 @@
-//! Bash observation append for the inner bash-fence loop.
+//! Bash observation as New request for the inner bash-fence loop.
 
 use std::time::Instant;
-
-use malvin_mini::{ChatMessage, ChatRole};
 
 use crate::agent_backend::mini::bash_adapter::{format_observation, run_bash_command, BashExecResult};
 use crate::agent_backend::mini::fence_parser::BashFence;
@@ -45,13 +43,9 @@ pub(crate) fn append_bash_observation(
         results.push(result);
     }
     let observation = format_observation(&results);
-    session.messages.push(ChatMessage {
-        role: ChatRole::User,
-        content: observation,
-    });
-    if let Some(last) = session.messages.last() {
-        transcript.push_str(&last.content);
-        transcript.push('\n');
-    }
+    transcript.push_str(&observation);
+    transcript.push('\n');
+    session.pending_new_request = Some(observation);
+    session.section_shape_nudged = false;
     Ok(())
 }
