@@ -108,6 +108,8 @@ fn child_health_transport_errors_require_coder_session_teardown() {
         "acp stdout closed",
         "acp: WritableIterable is closed",
         "Error: T: Connection stalled",
+        "Error: RetriableError: [unavailable] PING timed out",
+        "Error: RetriableError: [canceled] http/2 stream closed with error code CANCEL (0x8)",
     ] {
         assert!(
             agent_error_requires_coder_session_teardown(msg),
@@ -115,6 +117,33 @@ fn child_health_transport_errors_require_coder_session_teardown() {
         );
     }
     assert!(!agent_error_requires_coder_session_teardown("request timed out"));
+}
+
+#[test]
+fn cursor_http2_transport_errors_are_detected_and_normalized() {
+    use crate::acp::{
+        agent_string_is_cursor_http2_transport_error, cursor_http2_transport_error_message,
+    };
+    assert!(agent_string_is_cursor_http2_transport_error(
+        "Error: RetriableError: [unavailable] PING timed out"
+    ));
+    assert_eq!(
+        cursor_http2_transport_error_message(
+            "Error: RetriableError: [unavailable] PING timed out"
+        ),
+        Some("RetriableError: [unavailable] PING timed out")
+    );
+    assert!(agent_string_is_cursor_http2_transport_error(
+        "Error: RetriableError: [canceled] http/2 stream closed with error code CANCEL (0x8)"
+    ));
+    assert_eq!(
+        cursor_http2_transport_error_message(
+            "\n\nError: RetriableError: [canceled] http/2 stream closed with error code CANCEL (0x8)"
+        ),
+        Some("RetriableError: [canceled] http/2 stream closed with error code CANCEL (0x8)")
+    );
+    assert!(!agent_string_is_cursor_http2_transport_error("wrote review_requirements.json"));
+    assert!(cursor_http2_transport_error_message("ok").is_none());
 }
 
 #[test]

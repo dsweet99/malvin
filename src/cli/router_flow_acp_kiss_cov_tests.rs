@@ -85,7 +85,11 @@ fn kiss_cov_router_flow_acp_test_helpers() {
     let _ = super::router_flow_acp_mock_tests::write_mock_router_agent;
     let _ = super::router_flow_acp_mock_tests::write_mock_router_agent_session_fail;
     let _ = super::router_flow_acp_mock_tests::write_mock_router_agent_missing_requirements;
+    let _ = super::router_flow_acp_ping_mock_tests::write_mock_router_agent_requirements_ping_timeout;
+    let _ = super::router_flow_acp_ping_mock_tests::write_mock_router_agent_requirements_ping_then_ok;
     let _ = stringify!(run_router_acp_iteration_executes_mock_agent_full_sequence);
     let _ = stringify!(run_router_acp_iteration_aborts_when_requirements_json_missing);
+    let _ = stringify!(run_router_acp_iteration_reports_ping_timeout_not_missing_requirements);
+    let _ = stringify!(run_router_acp_iteration_retries_requirements_after_ping_timeout);
     let _ = stringify!(run_router_acp_iteration_propagates_begin_session_failure);
 }

@@ -53,6 +53,9 @@ TOOLCHAIN_PATH = (
     ":/usr/sbin:/usr/bin:/sbin:/bin"
 )
 CURSOR_ENV_KEYS = ("CURSOR_AGENT_API_KEY", "CURSOR_API_KEY", "AGENT_API_KEY")
+OPENROUTER_ENV_KEYS = ("OPENROUTER_API_KEY", "OPENROUTER_MAX_TOKENS")
+# Host secrets forwarded into the agent container (and redacted in logs).
+DOCKER_SECRET_ENV_KEYS = CURSOR_ENV_KEYS + OPENROUTER_ENV_KEYS
 LEAK_NAME_MARKERS = ("grade.py", "goldens", "golden", "solution")
 # Shell form required so stdin redirect works under `docker run … -w /app`.
 CURSOR_AGENT_SHELL = "cursor-agent --force -p < plan.md"
@@ -258,9 +261,9 @@ def ft_ensure_agent_image(
 
 
 def ft_cursor_env_args() -> list[str]:
-    """``docker run -e`` args for Cursor API keys present on the host."""
+    """``docker run -e`` args for Cursor/OpenRouter secrets present on the host."""
     args: list[str] = []
-    for key in CURSOR_ENV_KEYS:
+    for key in DOCKER_SECRET_ENV_KEYS:
         value = os.environ.get(key)
         if value:
             args.extend(["-e", f"{key}={value}"])
@@ -268,11 +271,11 @@ def ft_cursor_env_args() -> list[str]:
 
 
 def ft_redact_cmd_tokens(cmd: list[str]) -> list[str]:
-    """Return *cmd* with Cursor API key values replaced by ``***``."""
+    """Return *cmd* with Docker secret env values replaced by ``***``."""
     out: list[str] = []
     for token in cmd:
         redacted = token
-        for key in CURSOR_ENV_KEYS:
+        for key in DOCKER_SECRET_ENV_KEYS:
             prefix = f"{key}="
             if redacted.startswith(prefix) and len(redacted) > len(prefix):
                 redacted = prefix + "***"
@@ -282,7 +285,7 @@ def ft_redact_cmd_tokens(cmd: list[str]) -> list[str]:
 
 
 def ft_redact_cmd_for_display(cmd: list[str]) -> str:
-    """Join *cmd* for logs, redacting Cursor API key values."""
+    """Join *cmd* for logs, redacting Docker secret env values."""
     return " ".join(ft_redact_cmd_tokens(cmd))
 
 
@@ -1143,12 +1146,19 @@ def _ft_test_redact_cmd_for_display() -> None:
         "-e",
         "CURSOR_API_KEY=super-secret",
         "-e",
+        "OPENROUTER_API_KEY=or-secret",
+        "-e",
+        "OPENROUTER_MAX_TOKENS=8192",
+        "-e",
         "PATH=/bin",
         "img",
     ]
     shown = ft_redact_cmd_for_display(cmd)
     assert "super-secret" not in shown
+    assert "or-secret" not in shown
     assert "CURSOR_API_KEY=***" in shown
+    assert "OPENROUTER_API_KEY=***" in shown
+    assert "OPENROUTER_MAX_TOKENS=***" in shown
     assert "PATH=/bin" in shown
 
 

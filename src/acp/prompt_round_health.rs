@@ -7,6 +7,7 @@ const UPGRADE_PLAN_WINDOW: usize = 128;
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct PromptRoundHealth {
     upgrade_plan_seen: bool,
+    cursor_http2_transport_error: Option<&'static str>,
     agent_text_acc: String,
     full_agent_response: String,
 }
@@ -14,6 +15,7 @@ pub struct PromptRoundHealth {
 impl PromptRoundHealth {
     pub fn reset(&mut self) {
         self.upgrade_plan_seen = false;
+        self.cursor_http2_transport_error = None;
         self.agent_text_acc.clear();
         self.full_agent_response.clear();
     }
@@ -42,6 +44,10 @@ impl PromptRoundHealth {
         };
         self.full_agent_response.push_str(text);
         self.append_agent_text_for_upgrade_plan(text);
+        if self.cursor_http2_transport_error.is_none() {
+            self.cursor_http2_transport_error =
+                crate::acp::cursor_http2_transport_error_message(&self.full_agent_response);
+        }
     }
 
     fn append_agent_text_for_upgrade_plan(&mut self, text: &str) {
@@ -66,8 +72,25 @@ impl PromptRoundHealth {
         self.upgrade_plan_seen
     }
 
+    /// Cursor HTTP/2 PING/CANCEL `RetriableError` streamed during this prompt, if any.
+    #[must_use]
+    pub const fn cursor_http2_transport_error(&self) -> Option<&'static str> {
+        self.cursor_http2_transport_error
+    }
+
     #[must_use]
     pub fn agent_response_text(&self) -> &str {
         &self.full_agent_response
     }
+}
+
+/// Upgrade-plan or Cursor HTTP/2 transport `RetriableError` after a successful ACP `end_turn`.
+#[must_use]
+pub(crate) fn prompt_round_post_ok_error(health: &PromptRoundHealth) -> Option<String> {
+    if health.upgrade_plan_seen() {
+        return Some(crate::acp::UPGRADE_PLAN_STOP_MESSAGE.to_string());
+    }
+    health
+        .cursor_http2_transport_error()
+        .map(str::to_string)
 }

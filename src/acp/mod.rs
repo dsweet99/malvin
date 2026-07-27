@@ -213,7 +213,7 @@ pub(crate) use ops_body_kpop::*;
 
 #[path = "prompt_round_health.rs"]
 mod prompt_round_health;
-pub(crate) use prompt_round_health::PromptRoundHealth;
+pub(crate) use prompt_round_health::{prompt_round_post_ok_error, PromptRoundHealth};
 
 #[path = "ops_body_kpop_mt.rs"]
 mod ops_body_kpop_mt;

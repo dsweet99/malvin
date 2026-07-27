@@ -23,6 +23,16 @@ fn kiss_cov_prompt_round_health_private_helpers() {
     });
     health.record_session_update(&serde_json::json!({ "params": { "update": update } }));
     assert!(!health.agent_response_text().is_empty());
+    assert!(crate::acp::prompt_round_post_ok_error(&health).is_none());
+    let mut ping = crate::acp::PromptRoundHealth::default();
+    ping.record_session_update(&serde_json::json!({
+        "params": { "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": { "text": "Error: RetriableError: [unavailable] PING timed out", "type": "text" }
+        }}
+    }));
+    assert!(crate::acp::prompt_round_post_ok_error(&ping)
+        .is_some_and(|e| e.contains("PING timed out")));
 }
 
 #[test]

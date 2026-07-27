@@ -150,15 +150,17 @@ impl AcpSession {
 
         match res {
             Ok(()) => {
-                let upgrade = self
-                    .0
-                    .prompt_round_health
-                    .lock()
-                    .unwrap_or_else(std::sync::PoisonError::into_inner)
-                    .upgrade_plan_seen();
-                if upgrade {
+                let err = {
+                    let health = self
+                        .0
+                        .prompt_round_health
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner);
+                    crate::acp::prompt_round_post_ok_error(&health)
+                };
+                if let Some(err) = err {
                     self.reset_prompt_inflight().await;
-                    return Err(crate::acp::UPGRADE_PLAN_STOP_MESSAGE.to_string());
+                    return Err(err);
                 }
                 Ok(())
             }

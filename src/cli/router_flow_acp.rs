@@ -147,5 +147,13 @@ mod router_flow_acp_kiss_cov_tests;
 pub(crate) mod router_flow_acp_mock_tests;
 
 #[cfg(test)]
+#[path = "router_flow_acp_ping_mock_tests.rs"]
+pub(crate) mod router_flow_acp_ping_mock_tests;
+
+#[cfg(test)]
 #[path = "router_flow_acp_tests.rs"]
 pub(crate) mod router_flow_acp_tests;
+
+#[cfg(test)]
+#[path = "router_flow_acp_ping_tests.rs"]
+mod router_flow_acp_ping_tests;
