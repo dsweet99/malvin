@@ -16,6 +16,10 @@ mod complete_act_detect;
 mod complete_fail_epoch;
 #[path = "complete_local_retry.rs"]
 mod complete_local_retry;
+#[path = "complete_section_shape.rs"]
+mod complete_section_shape;
+#[path = "complete_marker_shape.rs"]
+mod complete_marker_shape;
 #[path = "complete_prompt_shape.rs"]
 mod complete_prompt_shape;
 
@@ -85,6 +89,7 @@ impl OpenRouterClient {
             marker_miss_passes: 0,
             fail_epoch_passes: 0,
             transport_stall_passes: 0,
+            section_shape_passes: 0,
             max_shrink: 32,
             // Thought-only / empty-content stalls need more than one shape mutate
             // (progress cue → strip reminder → shrink) before surfacing MissingContent.
@@ -92,6 +97,7 @@ impl OpenRouterClient {
             max_marker: 8,
             max_fail_epoch: 4,
             max_transport_stall: 3,
+            max_section_shape: 4,
         };
 
         loop {

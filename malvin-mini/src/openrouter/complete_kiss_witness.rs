@@ -113,7 +113,8 @@
     #[test]
     fn with_tool_use_system_reminder_skips_short_form_marker_turns() {
         use super::super::types::{ChatMessage, ChatRole};
-        use super::complete_prompt_shape::{looks_like_marker_prompt, with_tool_use_system_reminder};
+        use super::complete_marker_shape::looks_like_marker_prompt;
+        use super::complete_prompt_shape::with_tool_use_system_reminder;
         assert!(looks_like_marker_prompt(
             "Write COMPLEXITY_SCORE: n then Pause."
         ));

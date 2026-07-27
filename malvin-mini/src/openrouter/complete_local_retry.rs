@@ -1,6 +1,7 @@
 use crate::error::OpenRouterError;
 use crate::openrouter::http_exchange::CompletionWithMeta;
 use crate::openrouter::types::ChatMessage;
+use super::super::memory_format::parse_history_response;
 use super::complete_prompt_shape::{
     is_short_form_marker_turn, marker_response_missing_label, mutate_messages_after_marker_miss,
     mutate_messages_after_missing_content,
@@ -11,10 +12,12 @@ use super::complete_act_detect::{
     history_has_exterior_without_artifact_act, latest_observation_has_nonzero_exit,
     response_has_act_fence,
 };
+use super::complete_act_inputs::latest_observation_has_zero_exit;
 use super::complete_fail_epoch::{
     inject_exterior_before_act_cue, inject_fail_epoch_act_cue, inject_probe_after_act_cue,
     inject_unpaid_silence_act_cue,
 };
+use super::complete_section_shape::inject_section_shape_nudge;
 
 pub(crate) struct LocalRetryBudget {
     pub shrink_passes: u32,
@@ -22,11 +25,13 @@ pub(crate) struct LocalRetryBudget {
     pub marker_miss_passes: u32,
     pub fail_epoch_passes: u32,
     pub transport_stall_passes: u32,
+    pub section_shape_passes: u32,
     pub max_shrink: u32,
     pub max_missing: u32,
     pub max_marker: u32,
     pub max_fail_epoch: u32,
     pub max_transport_stall: u32,
+    pub max_section_shape: u32,
 }
 
 pub(crate) fn maybe_retry_local_shape(
@@ -38,6 +43,7 @@ pub(crate) fn maybe_retry_local_shape(
         || try_mutate_on_missing(outcome, working, budget)
         || try_mutate_on_transport_stall(outcome, working, budget)
         || try_mutate_on_marker_miss(outcome, working, budget)
+        || try_section_shape_retry(outcome, working, budget)
         || try_act_pressure_retry(outcome, working, budget)
         || try_unpaid_zero_fence_as_missing(outcome, working, budget)
 }
@@ -161,11 +167,16 @@ fn try_act_pressure_retry(
     let Ok(response) = outcome.result.as_ref() else {
         return false;
     };
-    if budget.fail_epoch_passes >= budget.max_fail_epoch || is_short_form_marker_turn(working) {
-        return false;
-    }
     let content = response.content.as_str();
-    if !needs_act_pressure(working, content) {
+    // Guard early: exhausted budget, marker turn, unparseable wire, or no unpaid pressure.
+    // Do not drown section-shape recovery with Act cues on unparseable wire turns.
+    // Green observation + no unpaid debt: allow fence-less advance (avoid review Act thrash).
+    if budget.fail_epoch_passes >= budget.max_fail_epoch
+        || is_short_form_marker_turn(working)
+        || parse_history_response(content).is_err()
+        || (latest_observation_has_zero_exit(working) && !serious_unpaid_debt(working, content))
+        || !needs_act_pressure(working, content)
+    {
         return false;
     }
     if inject_act_pressure_cue(working, content) {
@@ -178,6 +189,28 @@ fn try_act_pressure_retry(
         budget.fail_epoch_passes = budget.max_fail_epoch;
     }
     false
+}
+
+fn try_section_shape_retry(
+    outcome: &CompletionWithMeta,
+    working: &mut Vec<ChatMessage>,
+    budget: &mut LocalRetryBudget,
+) -> bool {
+    let Ok(response) = outcome.result.as_ref() else {
+        return false;
+    };
+    if budget.section_shape_passes >= budget.max_section_shape
+        || is_short_form_marker_turn(working)
+        || parse_history_response(response.content.as_str()).is_ok()
+    {
+        return false;
+    }
+    if inject_section_shape_nudge(working) {
+        budget.section_shape_passes += 1;
+        true
+    } else {
+        false
+    }
 }
 
 fn needs_act_pressure(messages: &[ChatMessage], content: &str) -> bool {
@@ -200,3 +233,11 @@ fn inject_act_pressure_cue(messages: &mut Vec<ChatMessage>, content: &str) -> bo
     }
     false
 }
+
+#[cfg(test)]
+#[path = "complete_local_retry_tests.rs"]
+mod complete_local_retry_tests;
+
+#[cfg(test)]
+#[path = "complete_local_retry_act_tests.rs"]
+mod complete_local_retry_act_tests;

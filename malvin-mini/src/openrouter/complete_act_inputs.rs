@@ -7,6 +7,31 @@ pub(crate) fn latest_observation_has_nonzero_exit(messages: &[ChatMessage]) -> b
     new_request_text(messages).is_some_and(observation_reports_nonzero_exit)
 }
 
+/// Exit code 0 on the New request (last non-nudge User).
+pub(crate) fn latest_observation_has_zero_exit(messages: &[ChatMessage]) -> bool {
+    new_request_text(messages).is_some_and(observation_reports_zero_exit)
+}
+
+pub(crate) fn observation_reports_zero_exit(content: &str) -> bool {
+    let mut saw_exit = false;
+    for line in content.lines() {
+        let Some(rest) = line.trim().strip_prefix("Exit code ") else {
+            continue;
+        };
+        saw_exit = true;
+        let code: String = rest
+            .chars()
+            .take_while(|c| c.is_ascii_digit() || *c == '-')
+            .collect();
+        if let Ok(n) = code.parse::<i32>()
+            && n != 0
+        {
+            return false;
+        }
+    }
+    saw_exit
+}
+
 /// Last User message content that is not a local Act nudge.
 pub(crate) fn new_request_text(messages: &[ChatMessage]) -> Option<&str> {
     messages.iter().rev().find_map(|m| {

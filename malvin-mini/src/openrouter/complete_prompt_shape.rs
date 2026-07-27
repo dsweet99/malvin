@@ -2,7 +2,11 @@ use super::super::types::{ChatMessage, ChatRole};
 use super::complete_act_detect::{
     history_has_exterior_without_artifact_act, latest_observation_has_nonzero_exit,
 };
+use super::complete_act_inputs::latest_observation_has_zero_exit;
 use super::complete_prompt_shrink::shrink_prompt_messages;
+pub(super) use super::complete_marker_shape::{
+    is_short_form_marker_turn, marker_response_missing_label, mutate_messages_after_marker_miss,
+};
 
 const STUDY_REMINDER: &str = "Look hard for unmet evidence first. Form a prediction, Act with a \
 short targeted trial in the named working context, then Study the outcome. Only recorded \
@@ -22,10 +26,26 @@ const EXTERIOR_BEFORE_ACT_CUE: &str = "Exterior contact before revising the name
 artifact is null Study. Emit an Act that revises that artifact or runs a request-named \
 check in that context before any further exterior Observe.";
 
+/// After a green live observation, do not demand another Act; allow fence-less advance/close.
+const GREEN_OBSERVATION_CUE: &str = "The latest live observation exited 0. Do not emit another \
+Act fence unless a named check is still unpaid. Prefer a fence-less reply that advances or closes.";
+
+/// Requirements-listing turns: write string-schema JSON and pause; do not explore/fix product code.
+const REQUIREMENTS_ONLY_CUE: &str = "This New request is requirements-listing only. Write \
+review_requirements.json using the schema where each requirement is a plain string (not an \
+object with id/description). Do not explore or edit product source. After a successful \
+write and schema probe, Pause with a fence-less reply.";
+
+/// Residual-plan / gap-analysis turns: plan in chat; do not implement product changes.
+const PLAN_ONLY_CUE: &str = "This New request is gap-analysis / residual planning only. Write \
+the residual plan into the chat. Do not edit product files. Prefer a fence-less reply once \
+the plan is written.";
+
 /// Short domain-agnostic Study reminder (not for marker turns).
 /// Prefer fail-epoch after a red New-request observation; else block exterior-before-Act
-/// from Previous response. When a sticky Header System already leads, inject the cue as
-/// the next System message so Header + cue coexist.
+/// from Previous response. After a green observation, inject a no-extra-Act cue so the
+/// session can leave review/Act loops. When a sticky Header System already leads, inject
+/// the cue as the next System message so Header + cue coexist.
 pub(super) fn with_tool_use_system_reminder(messages: &[ChatMessage]) -> Vec<ChatMessage> {
     if is_short_form_marker_turn(messages) {
         return messages.to_vec();
@@ -33,7 +53,9 @@ pub(super) fn with_tool_use_system_reminder(messages: &[ChatMessage]) -> Vec<Cha
     if cue_already_present(messages) {
         return messages.to_vec();
     }
-    let reminder = select_study_act_cue(messages);
+    let Some(reminder) = select_study_act_cue(messages) else {
+        return messages.to_vec();
+    };
     let mut out = Vec::with_capacity(messages.len() + 1);
     if messages.first().is_some_and(|m| matches!(m.role, ChatRole::System)) {
         out.push(messages[0].clone());
@@ -57,29 +79,49 @@ fn cue_already_present(messages: &[ChatMessage]) -> bool {
         matches!(m.role, ChatRole::System)
             && (m.content.contains("nonzero exit is a failed live check")
                 || m.content.contains("Exterior contact before revising")
-                || m.content.contains("Look hard for unmet evidence first"))
+                || m.content.contains("Look hard for unmet evidence first")
+                || m.content.contains("latest live observation exited 0")
+                || m.content.contains("requirements-listing only")
+                || m.content.contains("gap-analysis / residual planning only"))
     })
 }
 
-pub(super) fn select_study_act_cue(messages: &[ChatMessage]) -> &'static str {
+pub(super) fn select_study_act_cue(messages: &[ChatMessage]) -> Option<&'static str> {
     if latest_observation_has_nonzero_exit(messages) {
-        FAIL_EPOCH_CUE
-    } else if history_has_exterior_without_artifact_act(messages, None) {
-        EXTERIOR_BEFORE_ACT_CUE
-    } else {
-        STUDY_REMINDER
+        return Some(FAIL_EPOCH_CUE);
     }
+    if history_has_exterior_without_artifact_act(messages, None) {
+        return Some(EXTERIOR_BEFORE_ACT_CUE);
+    }
+    if latest_observation_has_zero_exit(messages) {
+        return Some(GREEN_OBSERVATION_CUE);
+    }
+    if new_request_is_requirements_only(messages) {
+        return Some(REQUIREMENTS_ONLY_CUE);
+    }
+    if new_request_is_plan_only(messages) {
+        return Some(PLAN_ONLY_CUE);
+    }
+    Some(STUDY_REMINDER)
 }
 
-pub(super) fn is_short_form_marker_turn(messages: &[ChatMessage]) -> bool {
-    messages
-        .iter()
-        .any(|m| matches!(m.role, ChatRole::User) && looks_like_marker_prompt(&m.content))
+fn new_request_is_requirements_only(messages: &[ChatMessage]) -> bool {
+    use super::complete_act_inputs::new_request_text;
+    new_request_text(messages).is_some_and(|t| {
+        t.contains("review_requirements")
+            && (t.contains("Do not start implementing")
+                || t.contains("output nothing else of substance")
+                || t.contains("Write **only** the JSON")
+                || t.contains("Write only the JSON"))
+    })
 }
 
-pub(super) fn looks_like_marker_prompt(content: &str) -> bool {
-    (content.contains("COMPLEXITY_SCORE") || content.contains("CODING_TASK"))
-        && content.contains("Pause")
+fn new_request_is_plan_only(messages: &[ChatMessage]) -> bool {
+    use super::complete_act_inputs::new_request_text;
+    new_request_text(messages).is_some_and(|t| {
+        t.contains("Do not edit product files in this turn")
+            || (t.contains("residual plan") && t.contains("Do not implement"))
+    })
 }
 
 pub(super) fn mutate_messages_after_missing_content(messages: &mut Vec<ChatMessage>) -> bool {
@@ -122,59 +164,6 @@ runs a request-named probe. Exterior Observe and closing reports are null Study.
     true
 }
 
-pub(super) fn marker_response_missing_label(messages: &[ChatMessage], content: &str) -> bool {
-    let Some(prompt) = messages.iter().rev().find_map(|m| {
-        (matches!(m.role, ChatRole::User) && looks_like_marker_prompt(&m.content))
-            .then_some(m.content.as_str())
-    }) else {
-        return false;
-    };
-    if prompt.contains("COMPLEXITY_SCORE") && !content.contains("COMPLEXITY_SCORE") {
-        return true;
-    }
-    if prompt.contains("CODING_TASK") && !content.contains("CODING_TASK") {
-        return true;
-    }
-    let trimmed = content.trim();
-    if trimmed.is_empty() || trimmed == "Pause" || trimmed == "Pause." {
-        return true;
-    }
-    // Marker turns forbid code fences around the label line.
-    content.contains("```")
-}
-
-pub(super) fn mutate_messages_after_marker_miss(messages: &mut Vec<ChatMessage>) -> bool {
-    const STERILE: &str = "Emit only the required marker line. No other text before Pause.";
-    let Some(prompt) = messages.iter().rev().find_map(|m| {
-        (matches!(m.role, ChatRole::User) && looks_like_marker_prompt(&m.content))
-            .then_some(m.content.as_str())
-    }) else {
-        return false;
-    };
-    // Already on the minimal marker prompt — no further local shape left.
-    if prompt.starts_with("Output exactly one") {
-        return false;
-    }
-    let minimal = if prompt.contains("COMPLEXITY_SCORE") {
-        "Output exactly one line then Pause:\n\nCOMPLEXITY_SCORE: <1-10>\n\nPause."
-    } else if prompt.contains("CODING_TASK") {
-        "Output exactly one of the two marker lines then Pause:\n\nCODING_TASK: YES\n\nor\n\nCODING_TASK: NO\n\nPause."
-    } else {
-        return false;
-    };
-    *messages = vec![
-        ChatMessage {
-            role: ChatRole::System,
-            content: STERILE.to_string(),
-        },
-        ChatMessage {
-            role: ChatRole::User,
-            content: minimal.to_string(),
-        },
-    ];
-    true
-}
-
 fn strip_injected_study_reminder(messages: &mut Vec<ChatMessage>) -> bool {
     let Some(idx) = messages.iter().position(|m| {
         matches!(m.role, ChatRole::System)
@@ -182,12 +171,18 @@ fn strip_injected_study_reminder(messages: &mut Vec<ChatMessage>) -> bool {
                 || m.content.contains("request-derived")
                 || m.content.contains("nonzero exit is a failed live")
                 || m.content.contains("Exterior contact before revising")
-                || m.content.contains("Look hard for unmet evidence"))
+                || m.content.contains("Look hard for unmet evidence")
+                || m.content.contains("latest live observation exited 0")
+                || m.content.contains("requirements-listing only")
+                || m.content.contains("gap-analysis / residual planning only"))
             && (m.content.contains("rival readings")
                 || m.content.contains("acceptance region")
                 || m.content.contains("request-named")
                 || m.content.contains("Freeze capital is")
-                || m.content.contains("private asserts"))
+                || m.content.contains("private asserts")
+                || m.content.contains("fence-less reply")
+                || m.content.contains("plain string")
+                || m.content.contains("Do not edit product files"))
     }) else {
         return false;
     };
