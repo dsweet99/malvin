@@ -123,6 +123,7 @@ fn investigate_bash_turn(
             trace: req.trace,
             transcript,
             counters,
+            timing: req.timing,
         },
     )?;
     if counters.investigate_http_turns

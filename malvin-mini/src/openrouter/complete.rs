@@ -20,6 +20,8 @@ mod complete_local_retry;
 mod complete_section_shape;
 #[path = "complete_marker_shape.rs"]
 mod complete_marker_shape;
+#[path = "complete_requirements_path.rs"]
+mod complete_requirements_path;
 #[path = "complete_requirements_shape.rs"]
 mod complete_requirements_shape;
 #[path = "complete_prompt_shape.rs"]

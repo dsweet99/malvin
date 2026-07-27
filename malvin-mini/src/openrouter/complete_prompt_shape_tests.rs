@@ -148,6 +148,29 @@ Do **not** start implementing. output nothing else of substance — Pause."
 }
 
 #[test]
+fn path_retry_ignores_bash_sketch_in_new_history() {
+    let path = "/root/.malvin_home/logs/run/review_requirements.json";
+    let msgs = vec![ChatMessage {
+        role: ChatRole::User,
+        content: format!(
+            "Write **only** the JSON file at `{path}`. \
+Do **not** start implementing. output nothing else of substance — Pause."
+        ),
+    }];
+    // Model sketched a write in NEW_HISTORY (never executed) and claimed success in RESPONSE.
+    let wire = format!(
+        "## NEW_HISTORY\n- planned write:\n```bash\ncat > {path} << 'EOF'\n{{\"groups\":[]}}\nEOF\n```\n\n\
+## RESPONSE\nReview requirements written. One group with five requirements.\n"
+    );
+    assert!(
+        super::requirements_path_needs_retry(&wire, Some(path)),
+        "bash inside NEW_HISTORY must not count as an executed abs-path write"
+    );
+    let forced = super::force_requirements_abs_write_response(&msgs, &wire).expect("force");
+    assert!(forced.contains(&format!("cat > {path}")));
+}
+
+#[test]
 fn session_listing_detects_constraints_in_any_message() {
     let msgs = vec![
         ChatMessage {

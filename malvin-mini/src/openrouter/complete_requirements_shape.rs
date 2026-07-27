@@ -1,5 +1,10 @@
+//! Requirements-listing cues, session detection, force-write, and nudge injectors.
+
 use super::super::types::{ChatMessage, ChatRole};
 use super::complete_act_inputs::new_request_text;
+use super::complete_requirements_path::{
+    expected_review_requirements_path, requirements_path_needs_retry,
+};
 
 /// Requirements-listing turns: write string-schema JSON and pause; do not explore/fix product code.
 pub(super) const REQUIREMENTS_ONLY_CUE: &str = "This New request is requirements-listing only. \
@@ -123,29 +128,6 @@ assert all(isinstance(r, str) for g in d.get('groups', []) for r in g.get('requi
     ))
 }
 
-/// True when assistant text still shows object-shaped `requirements` entries.
-pub(super) fn response_has_object_shaped_requirements(content: &str) -> bool {
-    let lower = content.to_ascii_lowercase();
-    if !lower.contains("\"requirements\"") {
-        return false;
-    }
-    let array_opens_object = [
-        "\"requirements\":[{",
-        "\"requirements\": [{",
-        "\"requirements\":[\n{",
-        "\"requirements\": [\n{",
-        "\"requirements\":[\r\n{",
-        "\"requirements\": [\r\n{",
-    ];
-    if array_opens_object.iter().any(|p| lower.contains(p)) {
-        return true;
-    }
-    // Object fields commonly used instead of plain strings.
-    lower.contains("\"requirements\"")
-        && (lower.contains("\"id\":") || lower.contains("\"description\":"))
-        && lower.contains('{')
-}
-
 pub(super) fn inject_requirements_schema_nudge(messages: &mut Vec<ChatMessage>) -> bool {
     if messages.iter().any(|m| {
         matches!(m.role, ChatRole::User)
@@ -158,69 +140,6 @@ pub(super) fn inject_requirements_schema_nudge(messages: &mut Vec<ChatMessage>) 
         content: REQUIREMENTS_SCHEMA_NUDGE.to_string(),
     });
     true
-}
-
-/// Absolute `…/review_requirements.json` path named in the New request, if any.
-pub(super) fn expected_review_requirements_path(new_request: &str) -> Option<&str> {
-    for token in new_request.split_whitespace() {
-        let cleaned = token.trim_matches(|c: char| {
-            matches!(c, '`' | '"' | '\'' | ',' | '.' | ';' | ':' | ')' | '(' | ']' | '[')
-        });
-        if cleaned.ends_with("review_requirements.json") && cleaned.starts_with('/') {
-            return Some(cleaned);
-        }
-    }
-    // Fallback: scan for `/…/review_requirements.json` substrings (markdown paths).
-    let needle = "review_requirements.json";
-    let mut search = new_request;
-    while let Some(idx) = search.find(needle) {
-        let abs_end = idx + needle.len();
-        let before = &search[..idx];
-        if let Some(slash) = before.rfind('/') {
-            // Walk left to start of path.
-            let mut start = slash;
-            while start > 0 {
-                let ch = before.as_bytes()[start - 1] as char;
-                if ch.is_whitespace() || matches!(ch, '`' | '"' | '\'' | '(' | '[') {
-                    break;
-                }
-                start -= 1;
-            }
-            if before.as_bytes().get(start) == Some(&b'/') {
-                let path = &search[start..abs_end];
-                if path.starts_with('/') {
-                    return Some(path);
-                }
-            }
-        }
-        search = &search[abs_end..];
-    }
-    None
-}
-
-/// `expected` is the absolute path when known; `None` still retries until an abs write appears.
-pub(super) fn requirements_path_needs_retry(content: &str, expected: Option<&str>) -> bool {
-    !content_has_abs_requirements_write(content, expected)
-}
-
-/// True when assistant content shows a bash (or equivalent) write to the expected path.
-pub(super) fn content_has_abs_requirements_write(content: &str, expected: Option<&str>) -> bool {
-    let has_fence = content.contains("```bash") || content.contains("```sh");
-    match expected {
-        Some(path) => {
-            let mentions_path = content.contains(path);
-            let write_verb = content.contains("cat >")
-                || content.contains("tee ")
-                || content.contains("write_text")
-                || content.contains(".write(");
-            has_fence && mentions_path && write_verb
-        }
-        None => {
-            has_fence
-                && (content.contains("cat > /") || content.contains("tee /"))
-                && content.contains("review_requirements.json")
-        }
-    }
 }
 
 pub(super) fn inject_requirements_path_nudge(

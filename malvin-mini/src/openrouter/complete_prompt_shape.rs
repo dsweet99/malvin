@@ -8,12 +8,15 @@ pub(super) use super::complete_marker_shape::{
     is_short_form_marker_turn, marker_response_missing_label, mutate_messages_after_marker_miss,
 };
 #[allow(unused_imports)] // re-exported for unit tests and sibling modules
-pub(super) use super::complete_requirements_shape::{
-    expected_path_from_messages, expected_review_requirements_path,
-    force_requirements_abs_write_response, inject_requirements_path_nudge,
-    inject_requirements_schema_nudge, new_request_is_requirements_only,
+pub(super) use super::complete_requirements_path::{
+    content_has_abs_requirements_write, expected_review_requirements_path,
     requirements_path_needs_retry, response_has_object_shaped_requirements,
-    session_is_requirements_listing, REQUIREMENTS_ONLY_CUE,
+};
+#[allow(unused_imports)] // re-exported for unit tests and sibling modules
+pub(super) use super::complete_requirements_shape::{
+    expected_path_from_messages, force_requirements_abs_write_response,
+    inject_requirements_path_nudge, inject_requirements_schema_nudge,
+    new_request_is_requirements_only, session_is_requirements_listing, REQUIREMENTS_ONLY_CUE,
 };
 
 const STUDY_REMINDER: &str = "Look hard for unmet evidence first. Form a prediction, Act with a \
