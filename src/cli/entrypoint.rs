@@ -143,10 +143,7 @@ pub(crate) fn dispatch_command(
                 )
             })
         }
-        cmd @ (Commands::Delight(_)
-        | Commands::Priors(_)
-        | Commands::Explain(_)
-        | Commands::Revise(_)) => {
+        cmd @ (Commands::Delight(_) | Commands::Priors(_) | Commands::Explain(_)) => {
             super::entrypoint_commands::dispatch_plan_authoring_gate(cmd, &mut shared, matches)
         }
         Commands::Do(do_cmd) => run_async_cli(|| {

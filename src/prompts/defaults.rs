@@ -31,7 +31,6 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "explain_constraints.md",
     "explain_plan.md",
     "explain_work.md",
-    "revise_constraints.md",
     "mini_constraints.md",
     HEADER_MD,
     DO_HEADER_MD,

@@ -3,7 +3,6 @@ use super::*;
 #[test]
 fn kiss_cov_entrypoint_command_wrappers() {
     let _ = run_explain_command;
-    let _ = run_revise_command;
     let _ = run_delight_command;
     let _ = run_priors_command;
 }
@@ -43,19 +42,6 @@ fn kiss_cov_priors_entrypoint_branch() {
     let cmd = Commands::Priors(crate::cli::priors_flow::PriorsArgs {
         request: Some("topic".to_string()),
         out_path: "priors.md".to_string(),
-        max_loops: 1,
-        max_hypotheses: 5,
-        tenacious: true,
-    });
-    let _ = super::super::entrypoint::dispatch_command;
-    let _ = cmd;
-}
-
-#[test]
-fn kiss_cov_revise_entrypoint_branch() {
-    use crate::cli::args::Commands;
-    let cmd = Commands::Revise(crate::cli::revise_flow::ReviseArgs {
-        doc_path: "doc.md".to_string(),
         max_loops: 1,
         max_hypotheses: 5,
         tenacious: true,

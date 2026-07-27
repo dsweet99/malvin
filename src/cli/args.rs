@@ -6,7 +6,6 @@ use super::shared_opts::SharedOpts;
 use super::delight_flow::DelightArgs;
 use super::explain_flow::ExplainArgs;
 use super::priors_flow::PriorsArgs;
-use super::revise_flow::ReviseArgs;
 use super::init_flow::InitArgs;
 use super::tidy_flow::TidyArgs;
 
@@ -64,8 +63,6 @@ pub enum Commands {
     Priors(PriorsArgs),
     /// Explain code or concepts via LaTeX PDF
     Explain(ExplainArgs),
-    /// Revise a document in place
-    Revise(ReviseArgs),
     /// List available models
     Models(ModelsArgs),
 }

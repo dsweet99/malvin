@@ -5,7 +5,6 @@ use crate::cli::Cli;
 use crate::cli::{Commands, InspireArgs, KpopArgs};
 use crate::cli::delight_flow::DelightArgs;
 use crate::cli::explain_flow::ExplainArgs;
-use crate::cli::revise_flow::ReviseArgs;
 use crate::cli::models_cmd::ModelsArgs;
 use clap::Parser;
 
@@ -147,28 +146,6 @@ fn print_doc_priors_writes_subcommand_md() {
     });
     let out = capture_doc(Some(&cmd)).expect("capture");
     assert!(out.starts_with(b"# malvin priors"));
-}
-
-#[test]
-fn revise_doc_parses_with_doc_path_when_doc_flag_set() {
-    let cli = Cli::try_parse_from(["malvin", "revise", "doc.md", "--doc"]).expect("parse");
-    assert!(cli.shared.doc);
-    match cli.command.as_ref() {
-        Some(Commands::Revise(r)) => assert_eq!(r.doc_path, "doc.md"),
-        _ => panic!("expected Revise"),
-    }
-}
-
-#[test]
-fn print_doc_revise_writes_subcommand_md() {
-    let cmd = Commands::Revise(ReviseArgs {
-        doc_path: "doc.md".to_string(),
-        max_loops: 3,
-        max_hypotheses: 5,
-        tenacious: true,
-    });
-    let out = capture_doc(Some(&cmd)).expect("capture");
-    assert!(out.starts_with(b"# malvin revise"));
 }
 
 #[test]

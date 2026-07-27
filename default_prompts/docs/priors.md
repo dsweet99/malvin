@@ -11,7 +11,7 @@ Ground a user request in **good priors** via the KPop gate loop scoped by `prior
 | Loop | Full gate-kpop loop (`KPopHardConstraints::PRIORS`) |
 | Fast path | **None** — always runs the agent (unlike `tidy`) |
 | Exit policy | Valid non-empty output at `--out-path`; workspace gates need not pass |
-| Requires | No `.malvin/checks` preflight at CLI entry (document workflow, like `delight` / `explain` / `revise`) |
+| Requires | No `.malvin/checks` preflight at CLI entry (document workflow, like `delight` / `explain`) |
 
 ## Intention
 

@@ -19,7 +19,6 @@ fn default_constraints_prompt(name: &str) -> Option<&'static str> {
         "init_constraints.md" => Some(include_str!("../../default_prompts/init_constraints.md")),
         "delight_constraints.md" => Some(include_str!("../../default_prompts/delight_constraints.md")),
         "priors_constraints.md" => Some(include_str!("../../default_prompts/priors_constraints.md")),
-        "revise_constraints.md" => Some(include_str!("../../default_prompts/revise_constraints.md")),
         "mini_constraints.md" => Some(include_str!("../../default_prompts/mini_constraints.md")),
         _ => None,
     })
@@ -93,7 +92,6 @@ mod tests {
         assert!(default_constraints_prompt("delight_constraints.md").is_some());
         assert!(default_constraints_prompt("priors_constraints.md").is_some());
         assert!(default_constraints_prompt("explain_constraints.md").is_some());
-        assert!(default_constraints_prompt("revise_constraints.md").is_some());
         assert!(default_constraints_prompt("missing.md").is_none());
         assert!(default_kpop_prompt("mbc2.md").is_some());
         assert!(default_kpop_prompt("missing.md").is_none());

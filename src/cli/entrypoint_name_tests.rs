@@ -209,27 +209,3 @@ fn explain_rejects_name_before_preflight() {
         );
     });
 }
-
-#[test]
-fn revise_rejects_name_before_preflight() {
-    use crate::test_stderr_capture::capture_stderr_output;
-
-    crate::test_utils::with_isolated_home(|work| {
-        std::env::set_current_dir(work).expect("chdir");
-        let checks = work.join(".malvin/checks");
-        let stderr = capture_stderr_output(|| {
-            assert_eq!(
-                entrypoint_from(["malvin", "--name", "probe", "revise", "doc.md"]),
-                Exit::Failure
-            );
-        });
-        assert!(
-            stderr.contains("only supported for"),
-            "stderr must reject --name on revise; got: {stderr:?}"
-        );
-        assert!(
-            !checks.exists(),
-            "revise --name must reject before writing .malvin/checks"
-        );
-    });
-}

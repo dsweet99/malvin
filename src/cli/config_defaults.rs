@@ -127,15 +127,6 @@ fn apply_gate_loop_command_defaults(
             },
         ),
         Commands::Explain(explain) => apply_explain_loop_defaults(matches, explain, agent, review),
-        Commands::Revise(revise) => apply_code_workflow_loop_defaults(
-            matches,
-            CodeWorkflowLoopMut {
-                subcommand: "revise",
-                max_loops: &mut revise.max_loops,
-                max_hypotheses: &mut revise.max_hypotheses,
-                agent,
-            },
-        ),
         Commands::Do(_)
         | Commands::Inspire(_)
         | Commands::Adaptix(_)

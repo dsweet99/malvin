@@ -11,7 +11,7 @@ Author a **user-delighting feature pitch** via the KPop gate loop scoped by `del
 | Loop | Full gate-kpop loop (`KPopHardConstraints::DELIGHT`) |
 | Fast path | **None** — always runs the agent (unlike `tidy`) |
 | Exit policy | Valid non-empty output at `--out-path`; workspace gates need not pass |
-| Requires | No `.malvin/checks` preflight at CLI entry (document workflow, like `explain` / `revise`) |
+| Requires | No `.malvin/checks` preflight at CLI entry (document workflow, like `explain`) |
 
 ## Intention
 

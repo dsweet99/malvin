@@ -174,7 +174,6 @@ fn assert_workflow_defaults(argv: &[&str]) {
         Commands::Delight(a) => assert_eq!(a.max_loops, 7),
         Commands::Priors(a) => assert_eq!(a.max_loops, 7),
         Commands::Explain(a) => assert_eq!(a.max_loops, 7),
-        Commands::Revise(a) => assert_eq!(a.max_loops, 7),
         other => panic!("unexpected command {other:?}"),
     }
 }
@@ -187,7 +186,6 @@ fn apply_workspace_config_defaults_for_workflow_commands() {
         assert_workflow_defaults(&["malvin", "delight"]);
         assert_workflow_defaults(&["malvin", "priors", "topic"]);
         assert_workflow_defaults(&["malvin", "explain", "topic"]);
-        assert_workflow_defaults(&["malvin", "revise", "doc.md"]);
     });
 }
 

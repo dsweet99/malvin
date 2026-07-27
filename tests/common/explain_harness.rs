@@ -24,8 +24,8 @@ pub fn assert_default_explain_sibling_outputs(workspace: &Path) {
     assert_eq!(stale, "STALE\n", "original explain.tex must be untouched");
     let tex = std::fs::read_to_string(workspace.join("explain_1.tex")).expect("read allocated tex");
     assert!(
-        tex.contains("Revised"),
-        "explain must chain malvin revise on allocated path: {tex:?}"
+        tex.contains("Explain") || tex.contains("document"),
+        "allocated explain.tex must contain explanation body: {tex:?}"
     );
 }
 

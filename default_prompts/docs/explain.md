@@ -1,6 +1,6 @@
 # malvin explain
 
-Produce a short, reader-friendly **LaTeX explanation** via an outer **Review → Plan → Work** loop. Review and Plan are one-shot in-process KPop sessions (separate experiment logs). Work is a coder turn. Success is chat `LGTM` from Review, with non-empty `.tex` and `.pdf`. Explain does **not** run `malvin revise`.
+Produce a short, reader-friendly **LaTeX explanation** via an outer **Review → Plan → Work** loop. Review and Plan are one-shot in-process KPop sessions (separate experiment logs). Work is a coder turn. Success is chat `LGTM` from Review, with non-empty `.tex` and `.pdf`.
 
 ## Summary
 
@@ -77,7 +77,6 @@ All of the following must hold:
 
 1. Review returned exactly `LGTM` within the `--max-loops` outer budget.
 2. The resolved `--out-path` and its derived `.pdf` exist and each has size &gt; 0.
-3. Explain does **not** chain into `malvin revise` (run `malvin revise` yourself for a prose pass).
 
 On success, malvin prints `DONE` to stdout.
 
@@ -87,7 +86,6 @@ On success, malvin prints `DONE` to stdout.
 |---------|------|
 | `malvin inspire` | One-shot MBC2 ideation |
 | `malvin delight` | Author a feature pitch |
-| `malvin revise` | Prose clarity pass on an existing document (standalone; not auto-run after explain) |
 
 ## Examples
 

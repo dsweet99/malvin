@@ -139,14 +139,6 @@ fn priors_skips_external_linter_preflight() {
 }
 
 #[test]
-fn revise_skips_external_linter_preflight() {
-    let work = tempfile::tempdir().unwrap();
-    std::fs::create_dir_all(work.path().join(".git")).unwrap();
-    std::fs::write(work.path().join("doc.md"), "# Doc\n").unwrap();
-    assert_malvin_subcommand_not_kiss_gated_without_auth(&["revise", "doc.md"], Some(work.path()));
-}
-
-#[test]
 fn explain_skips_external_linter_preflight() {
     let work = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(work.path().join(".git")).unwrap();

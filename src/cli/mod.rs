@@ -22,7 +22,6 @@ pub(crate) mod tidy_flow;
 pub(crate) mod delight_flow;
 pub(crate) mod explain_flow;
 pub(crate) mod priors_flow;
-pub(crate) mod revise_flow;
 
 pub(crate) mod code_flow;
 mod code_flow_a;
@@ -96,6 +95,5 @@ pub use loop_opts::{TENACIOUS_MAX_ACP_RETRIES, TENACIOUS_MAX_LOOPS};
 pub use delight_flow::run_delight;
 pub use explain_flow::run_explain;
 pub use priors_flow::run_priors;
-pub use revise_flow::run_revise;
 pub use init_flow::run_init;
 pub use tidy_flow::run_tidy;
