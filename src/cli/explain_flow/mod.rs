@@ -1,14 +1,9 @@
 use clap::Args;
 
-mod prep;
-mod run_startup;
-pub(crate) mod kpop_phase;
-pub(crate) mod work;
-mod outputs;
-mod finish;
-mod run_loop;
+pub(crate) mod prep;
+mod run;
 
-pub use run_loop::run_explain;
+pub use run::run_explain;
 
 #[must_use]
 pub(crate) fn effective_explain_max_loops(max_loops: usize) -> usize {
@@ -22,10 +17,10 @@ pub struct ExplainArgs {
     /// Workspace path for the LaTeX output (PDF is the same path with `.pdf`; default basename stays in the request work directory).
     #[arg(long, default_value = "explain.tex")]
     pub out_path: String,
-    /// Maximum outer review/plan/work iterations before stopping.
+    /// Outer router session budget (`effective_max_loops`).
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE)]
     pub max_loops: usize,
-    /// Number of hypotheses per Review or Plan `KPop` session.
+    /// Retained for CLI compatibility; unused by the router wrapper.
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_EXPLAIN_MAX_HYPOTHESES)]
     pub max_hypotheses: usize,
     /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
@@ -86,13 +81,6 @@ mod tests {
     #[test]
     fn explain_effective_max_loops_is_at_least_one() {
         assert_eq!(effective_explain_max_loops(0), 1);
-    }
-
-    #[test]
-    fn kiss_cov_explain_gate_helpers() {
-        let _ = super::outputs::validate_explain_output;
-        let _ = super::run_startup::prepare_explain_kpop_run;
-        let _: Option<super::run_startup::ExplainKpopPrepared> = None;
     }
 
     #[test]

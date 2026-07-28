@@ -25,6 +25,14 @@ fn gate_exp_log_path_is_scoped_per_iteration() {
 }
 
 #[test]
+fn trace_jsonl_path_is_under_run_dir() {
+    let tmp = tempfile::tempdir().unwrap();
+    let art = create_run_artifacts_from_text("plan", Some(tmp.path())).unwrap();
+    let trace = art.trace_jsonl_path();
+    assert_eq!(trace, art.run_dir.join(crate::malvin_constants::TRACE_JSONL));
+}
+
+#[test]
 fn create_run_artifacts_scaffolds_kpop_exp_log_under_run_dir() {
     let tmp = tempfile::tempdir().unwrap();
     let art = create_run_artifacts_from_text("plan", Some(tmp.path())).unwrap();

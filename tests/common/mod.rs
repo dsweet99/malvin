@@ -39,9 +39,7 @@ mod kpop_harness;
 #[cfg(unix)]
 mod tidy_harness;
 #[cfg(unix)]
-mod acp_delight_kpop;
-#[cfg(unix)]
-mod acp_explain_kpop;
+mod acp_router_mock;
 #[cfg(unix)]
 mod delight_harness;
 #[cfg(unix)]
@@ -73,9 +71,7 @@ pub use acp_do::*;
 pub use acp_do_dotfiles::*;
 pub use acp_tidy_kpop::*;
 #[cfg(unix)]
-pub use acp_delight_kpop::*;
-#[cfg(unix)]
-pub use acp_explain_kpop::*;
+pub use acp_router_mock::*;
 #[cfg(unix)]
 pub use delight_harness::*;
 #[cfg(unix)]

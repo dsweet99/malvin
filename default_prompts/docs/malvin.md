@@ -28,8 +28,8 @@ Use subcommands: `kpop`, `do`, `inspire`, `tidy`, `delight`, `explain`, `models`
 | `do` | One-shot agent turn (non-looping) |
 | `inspire` | One-shot MBC2 boundary exploration (batch ideation) |
 | `tidy` | Fix quality gates via the KPop gate loop (`tidy_constraints.md`) |
-| `delight` | Author a user-delighting feature pitch via the KPop gate loop |
-| `explain` | Explain code or concepts as a LaTeX PDF via Review → Plan → Work |
+| `delight` | Author a user-delighting feature pitch via a composed default-router request |
+| `explain` | Explain code or concepts as a LaTeX PDF via a composed default-router request |
 | `models` | List models via the Cursor agent CLI |
 
 Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prompts/docs/<command>.md`).
@@ -157,7 +157,7 @@ During live ACP sessions, malvin may defer agent stdout lines briefly before wri
 
 ## Home config (`~/.malvin_home/config.toml`)
 
-Top-level keys include `mem_limit_gb`, `context_size` (local llama.cpp `n_ctx`, default 8192), and `theme`. Sections include `[agent]`, `[review]` (explain Review/Plan hypothesis budget), `[default_workflow]` (`max_hypotheses` for bare `malvin REQUEST` multi-group KPop, default 5), and `[logs]`.
+Top-level keys include `mem_limit_gb`, `context_size` (local llama.cpp `n_ctx`, default 8192), and `theme`. Sections include `[agent]`, `[review]` (legacy explain hypothesis budget; unused by the router wrapper), `[default_workflow]` (`max_hypotheses` for bare `malvin REQUEST` multi-group KPop, default 5), and `[logs]`.
 
 ## Log retention
 
@@ -189,15 +189,15 @@ malvin kpop req_1.md req_2.md req_3.md
 malvin kpop notes/question.md
 ```
 
-## Gate-loop commands (shared pattern)
+## Gate-loop and router-backed commands
 
-`tidy` and `delight` share an outer **gate loop** implemented in `kpop_engine`:
+`tidy` uses an outer **gate loop** implemented in `kpop_engine`:
 
-1. For each outer iteration (budget: `effective_max_loops(--max-loops) + 1` iterations), malvin may run one KPop agent session. Scope comes from that command’s constraints file (`tidy_constraints.md`, etc.) rendered through `kpop_program.md` into `request.md`. Within the session, malvin sends one prompt: `header.md` + `kpop_common.md` (Popper loop).
+1. For each outer iteration (budget: `effective_max_loops(--max-loops) + 1` iterations), malvin may run one KPop agent session. Scope comes from `tidy_constraints.md` rendered through `kpop_program.md` into `request.md`. Within the session, malvin sends one prompt: `header.md` + `kpop_common.md` (Popper loop).
 2. Hypotheses and test results go to `~/.malvin_home/logs/<hash>/<run>/_kpop/exp_log_<n>.md`.
-3. Malvin exits early when workspace quality gates pass (`tidy`). Document workflows (`delight`) run until `--max-loops` is exhausted. `kpop` investigation runs until its own loop budget is exhausted.
+3. Malvin exits early when workspace quality gates pass (`tidy`). `kpop` investigation runs until its own loop budget is exhausted.
 4. Otherwise the loop continues until the outer budget is exhausted; `tidy` may exit without recheck depending on configuration.
 
-`malvin explain` uses a different outer loop: Review (in-process KPop) → stop on chat `LGTM` → else Plan (in-process KPop) → Work (coder), for `effective_max_loops(--max-loops)` iterations (not `N+1`). See `malvin explain --doc`.
+`malvin delight` and `malvin explain` are thin wrappers: each composes a request (embedding the user guidance/request and output paths) and invokes the **default router** (same engine as bare `malvin REQUEST`). See `malvin delight --doc`, `malvin explain --doc`, and the default-route `--doc`.
 
-See `malvin tidy --doc`, `malvin delight --doc`, and `malvin explain --doc` for command-specific behavior.
+See `malvin tidy --doc` for tidy-specific behavior.

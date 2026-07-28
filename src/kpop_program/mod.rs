@@ -31,6 +31,7 @@ pub(crate) fn render_repo_program(
     })
 }
 
+#[allow(dead_code)]
 pub(crate) fn render_creative_program(
     store: &PromptStore,
     constraints_prompt: &str,

@@ -88,7 +88,7 @@ fn kiss_invalid_struct_value_refs_4() {
     let _ = crate::cli::flow_prompt_combine::DualHeaderCoderRun;
     let _ = crate::cli::flow_prompt_combine::DualHeaderPromptInput;
     let _ = crate::cli::flow_prompt_combine::build_dual_header_coder_run_with_store;
-    let _ = crate::cli::explain_flow::run_startup::ExplainKpopPrepared;
+    let _ = crate::cli::explain_flow::prep::ExplainResolvedOutputs;
     let _ = crate::kpop_flow::kpop_flow_a::KpopPrepared;
 }
 
@@ -122,7 +122,7 @@ fn kiss_invalid_struct_value_refs_6() {
     let _ = crate::active_agent_heartbeat::ActiveAgentStatsSource;
     let _ = crate::cli::bug_id_lookup::BugLogMatch;
     let _ = crate::cli::bug_id_lookup::BugIdResolved;
-    let _ = crate::cli::explain_flow::run_loop::ExplainFinishInput;
+    let _ = crate::router_flow::RouterArgs;
 }
 
 #[test]

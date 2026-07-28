@@ -1,21 +1,8 @@
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use crate::prompts::{PromptError, PromptStore};
-
-use super::super::{WorkflowCliOptions, prepare_kpop_prompt_store};
-use crate::kpop_program::render_creative_program;
-
-#[path = "prep_discover.rs"]
-pub(crate) mod prep_discover;
-#[path = "prep_output.rs"]
-mod prep_output;
-#[path = "prep_preflight.rs"]
-mod prep_preflight;
-
-pub(crate) use prep_discover::discover_explain_outputs_in_work_dir;
-pub(crate) use prep_output::{explain_locate_instruction, explain_output_instruction};
-pub(crate) use prep_preflight::explain_preflight;
+use crate::artifacts::resolve_user_md_request;
+use crate::cli::cli_request::require_cli_request;
+use crate::cli::default_output_path::allocate_default_tex_pdf_pair;
 
 pub(crate) const EXPLAIN_TEX_BASENAME: &str = "explain.tex";
 pub(crate) const EXPLAIN_PDF_BASENAME: &str = "explain.pdf";
@@ -26,16 +13,8 @@ pub(crate) struct ExplainResolvedOutputs {
     pub pdf_path: PathBuf,
 }
 
-#[derive(Debug, Clone, Default)]
-pub(crate) struct ExplainPreflightSnapshot {
-    pub pre_existing_tex_pdf: std::collections::HashSet<PathBuf>,
-}
-
-pub(crate) struct ExplainKpopRequestInput<'a> {
-    pub request_text: &'a str,
-    pub request_work_dir: &'a Path,
-    pub outputs: &'a ExplainResolvedOutputs,
-    pub out_path_explicit: bool,
+pub(crate) fn explain_pdf_path_from_tex(tex_path: &Path) -> PathBuf {
+    tex_path.with_extension("pdf")
 }
 
 fn resolve_explain_output_in_cwd(work_dir: &Path, basename: &str, cwd: &Path) -> PathBuf {
@@ -48,10 +27,6 @@ fn resolve_explain_output_in_cwd(work_dir: &Path, basename: &str, cwd: &Path) ->
     } else {
         cwd.join(rel)
     }
-}
-
-pub(crate) fn explain_pdf_path_from_tex(tex_path: &Path) -> PathBuf {
-    tex_path.with_extension("pdf")
 }
 
 pub(crate) fn explain_resolved_output_paths(
@@ -80,126 +55,73 @@ pub(crate) fn explain_resolved_output_paths(
     })
 }
 
-#[cfg(test)]
-pub(crate) fn explain_output_paths(work_dir: &Path) -> ExplainResolvedOutputs {
-    explain_resolved_output_paths(work_dir, EXPLAIN_TEX_BASENAME)
-        .expect("default explain output paths must resolve")
+/// Compose the router REQUEST for `malvin explain` (embeds the user request).
+pub(crate) fn compose_explain_router_request(
+    request_text: &str,
+    tex_display: &str,
+    pdf_display: &str,
+) -> String {
+    format!(
+        "Explain the following topic in a short technical LaTeX paper for an intelligent nonspecialist.\n\
+         Write LaTeX source to `{tex_display}` and compile a PDF to `{pdf_display}` (both non-empty).\n\
+         Prefer plain English; introduce field terms at first use. Back claims with evidence or citation; label hypotheses.\n\
+         Assume the reader will not read underlying source code; explain the algorithms, mathematics, or design ideas.\n\
+         Do not overwrite unrelated workspace files.\n\
+         \n\
+         User request:\n\n\
+         {request_text}\n"
+    )
 }
 
-pub(crate) fn prepare_explain_kpop_prompt_store(
-    workflow: WorkflowCliOptions,
-) -> Result<PromptStore, String> {
-    let store = prepare_kpop_prompt_store(workflow, true)?;
-    for name in [
-        "kpop_program_creative.md",
-        "explain_constraints.md",
-        "explain_plan.md",
-        "explain_work.md",
-        "explain_kpop_common.md",
-        "explain_kpop_turn.md",
-    ] {
-        store
-            .validate_exists(name)
-            .map_err(|e: PromptError| e.0)?;
+pub(crate) fn explain_preflight(
+    request: Option<&String>,
+    out_path: &str,
+    out_path_explicit: bool,
+) -> Result<(String, ExplainResolvedOutputs), String> {
+    let raw = require_cli_request(request, "explain")?;
+    let (text, request_work_dir) = resolve_user_md_request(&raw)?;
+    let mut outputs = explain_resolved_output_paths(&request_work_dir, out_path)?;
+    if out_path == EXPLAIN_TEX_BASENAME || !out_path_explicit {
+        let (tex, pdf) =
+            allocate_default_tex_pdf_pair(&outputs.tex_path, &outputs.pdf_path, "explain")?;
+        outputs.tex_path = tex;
+        outputs.pdf_path = pdf;
+    } else {
+        for path in [&outputs.tex_path, &outputs.pdf_path] {
+            if path.exists() {
+                return Err(format!(
+                    "malvin explain: `{}` already exists; refusing to overwrite",
+                    path.display()
+                ));
+            }
+        }
     }
-    Ok(store)
-}
-
-const EXPLAIN_REVIEW_JUDGE_PREFACE: &str = "\
-Role: explain review.
-
-Judge lack-of-satisfaction of the constraints below. Do **not** edit files. Do **not** write or \
-compile LaTeX. Do **not** satisfy constraints by authoring the paper.
-
-Hard rule — no product, no LGTM: if the resolved `.tex` / `.pdf` are missing or empty, emit a \
-failure-focused gap list of everything that needs doing. Never return LGTM when products are \
-missing or empty.
-
-When products exist, hard-fail if any of these fail: (1) cold entry — first sentence of the \
-abstract or of any section opens on a definition, mechanism, notation dump, or toy before \
-situating the working setting and naming the concrete obstacle, bound, or open question that \
-forces the next move (a warm earlier stretch does not license a cold later opening, even if \
-it promised that toy); (2) unpaid debt — between adjacent paragraphs and between sections, \
-each non-final stretch must end on a claim or question that the next opening takes as subject \
-or premise (same referent) and continues or answers in ordinary prose; fail if that opening \
-ignores the claim and starts a new locally complete topic, or introduces a fresh symbol \
-before payment; (3) settle-and-stop — fail if adjacent stretches can be reordered or \
-independently deleted without breaking a load-bearing claim (apply an independence \
-self-check); (4) topic-adjacent join — fail if a colon/semicolon clause is on-topic but does \
-not continue or cash the same move as the clause before the punctuation (if deleting the \
-trailing clause leaves no hanging obligation, fail; ordinary claim-chain next sentences are \
-not this failure); (5) review metalanguage — fail if prose, section titles, captions, or \
-abstracts name the review checks or use review-lattice surface words as continuity \
-scaffolding (including “pressure”, “settle”, “debt”, “through-line”, “landscape”, \
-“co-reason”, close paraphrases such as “budget pressure” / “what remains to settle” / \
-“three co-reasons”, or labeled checks such as “cold entry”, “unpaid debt”, \
-“settle-and-stop”, or “the debt is paid”); (6) broken figures — text overlap, clipped \
-nodes/arrows, or unreadable labels. Once these hard checks pass, return `LGTM`. Do not fail \
-for residual synonymy, mild hedges, or optional polish; explain_constraints still lists those \
-as Work authoring goals.
-";
-
-pub(crate) fn explain_kpop_request(
-    store: &PromptStore,
-    artifacts: &crate::artifacts::RunArtifacts,
-    input: ExplainKpopRequestInput<'_>,
-) -> Result<String, String> {
-    let workspace_root = artifacts.work_dir.as_path();
-    let mut ctx = HashMap::new();
-    ctx.insert("explain_request".to_string(), input.request_text.to_string());
-    ctx.insert(
-        "explain_locate_instruction".to_string(),
-        explain_locate_instruction(
-            input.out_path_explicit,
-            input.request_work_dir,
-            input.outputs,
-            workspace_root,
-        ),
-    );
-    let creative = render_creative_program(store, "explain_constraints.md", &ctx, artifacts)?;
-    Ok(format!("{EXPLAIN_REVIEW_JUDGE_PREFACE}\n{creative}"))
-}
-
-pub(crate) fn explain_plan_request(store: &PromptStore, review: &str) -> Result<String, String> {
-    let mut ctx = HashMap::new();
-    ctx.insert("review".to_string(), review.to_string());
-    store
-        .render_prompt_only("explain_plan.md", &ctx)
-        .map_err(|e: PromptError| e.0)
-}
-
-pub(crate) struct ExplainWorkPromptParts<'a> {
-    pub paths: ExplainKpopRequestInput<'a>,
-    pub review: &'a str,
-    pub plan: &'a str,
-}
-
-pub(crate) fn explain_work_request(
-    store: &PromptStore,
-    artifacts: &crate::artifacts::RunArtifacts,
-    parts: ExplainWorkPromptParts<'_>,
-) -> Result<String, String> {
-    let workspace_root = artifacts.work_dir.as_path();
-    let mut ctx = HashMap::new();
-    ctx.insert("review".to_string(), parts.review.to_string());
-    ctx.insert("plan".to_string(), parts.plan.to_string());
-    ctx.insert(
-        "explain_output_instruction".to_string(),
-        explain_output_instruction(
-            parts.paths.out_path_explicit,
-            parts.paths.request_work_dir,
-            parts.paths.outputs,
-            workspace_root,
-        ),
-    );
-    store
-        .render_prompt_only("explain_work.md", &ctx)
-        .map_err(|e: PromptError| e.0)
+    for path in [&outputs.tex_path, &outputs.pdf_path] {
+        if let Some(parent) = path.parent() {
+            if !parent.as_os_str().is_empty() {
+                std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            }
+        }
+    }
+    Ok((text, outputs))
 }
 
 #[cfg(test)]
-#[path = "../explain_flow_prep_tests.rs"]
-mod explain_flow_prep_tests;
-#[cfg(test)]
-#[path = "../explain_flow_prep_preflight_tests.rs"]
-mod explain_flow_prep_preflight_tests;
+mod tests {
+    use super::*;
+
+    #[test]
+    fn compose_embeds_user_request_and_out_paths() {
+        let body = compose_explain_router_request("how gates exit", "explain.tex", "explain.pdf");
+        assert!(body.contains("User request:"));
+        assert!(body.contains("how gates exit"));
+        assert!(body.contains("`explain.tex`"));
+        assert!(body.contains("`explain.pdf`"));
+    }
+
+    #[test]
+    fn explain_preflight_requires_request() {
+        let err = explain_preflight(None, EXPLAIN_TEX_BASENAME, false).unwrap_err();
+        assert!(err.contains("explain") && err.contains("REQUEST"));
+    }
+}

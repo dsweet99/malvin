@@ -10,9 +10,7 @@ pub use create::{
     create_kpop_run_artifacts, create_kpop_run_artifacts_opts, create_run_artifacts,
     create_run_artifacts_from_text, create_run_artifacts_from_text_opts, create_run_artifacts_opts,
 };
-pub(crate) use create::{
-    ensure_explain_phase_exp_log_file, ensure_gate_exp_log_file, ensure_quality_gates_log_file,
-};
+pub(crate) use create::{ensure_gate_exp_log_file, ensure_quality_gates_log_file};
 
 pub use crate::session_dotfile_backup::{
     GitignoreBackup, MalvinChecksBackup, MalvinConfigBackup, MalvinConfigWorkspaceBackup,
@@ -109,22 +107,6 @@ impl RunArtifacts {
     pub fn sandbox_oom_json_path(&self) -> PathBuf {
         self.run_dir.join(SANDBOX_OOM_JSON)
     }
-}
-
-/// Explain Review/Plan phase experiment log (separate path per outer iteration + phase).
-#[must_use]
-pub fn explain_phase_exp_log_path(
-    artifacts: &RunArtifacts,
-    outer_iteration: usize,
-    phase: &str,
-) -> PathBuf {
-    let slug = artifacts
-        .run_dir
-        .file_name()
-        .and_then(|s| s.to_str())
-        .unwrap_or("run");
-    let name = format!("exp_log_{slug}_g{outer_iteration}_{phase}.md");
-    artifacts.run_dir.join("_kpop").join(name)
 }
 
 /// On-disk `KPop` user brief for flows where it differs from [`RunArtifacts::plan_path`] (e.g. `code`).

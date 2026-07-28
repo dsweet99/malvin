@@ -34,6 +34,8 @@ impl KPopHardConstraints {
         skip_workspace_quality_gates: false,
         exit: KPopHardConstraintsExit::ChecksDiscovery,
     };
+    /// Historical DELIGHT gate-engine profile (delight now uses the default router).
+    #[allow(dead_code)]
     pub const DELIGHT: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: false,

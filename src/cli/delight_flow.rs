@@ -1,13 +1,11 @@
 use clap::Args;
 
 #[path = "delight_flow/prep.rs"]
-mod prep;
-#[path = "delight_flow/run_startup.rs"]
-mod run_startup;
-#[path = "delight_flow/run_loop.rs"]
-mod run_loop;
+pub(crate) mod prep;
+#[path = "delight_flow/run.rs"]
+mod run;
 
-pub use run_loop::run_delight;
+pub use run::run_delight;
 
 #[must_use]
 pub(crate) fn effective_delight_max_loops(max_loops: usize) -> usize {
@@ -21,10 +19,10 @@ pub struct DelightArgs {
     /// Workspace path for the generated pitch (default `pitch.md` auto-allocates siblings when occupied).
     #[arg(long, default_value = "pitch.md")]
     pub out_path: String,
-    /// Maximum gate-loop iterations before stopping.
+    /// Outer router session budget (`effective_max_loops`).
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE)]
     pub max_loops: usize,
-    /// Number of hypotheses per `KPop` round.
+    /// Retained for CLI compatibility; unused by the router wrapper.
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES)]
     pub max_hypotheses: usize,
     /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
@@ -86,13 +84,6 @@ mod tests {
     #[test]
     fn delight_effective_max_loops_is_at_least_one() {
         assert_eq!(effective_delight_max_loops(0), 1);
-    }
-
-    #[test]
-    fn kiss_cov_delight_gate_helpers() {
-        let _ = super::run_loop::validate_delight_output;
-        let _ = super::run_startup::prepare_delight_kpop_run;
-        let _: Option<super::run_startup::DelightKpopPrepared> = None;
     }
 
     #[test]
