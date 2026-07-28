@@ -6,8 +6,9 @@ use crate::output::print_log_warning;
 use crate::terminal_palette::TerminalTheme;
 
 use super::{
-    parse_agent_config, parse_context_size, parse_review_config, parse_theme, AgentConfig,
-    MalvinConfig, ReviewConfig, DEFAULT_CONTEXT_SIZE,
+    parse_agent_config, parse_context_size, parse_default_workflow_config, parse_review_config,
+    parse_theme, AgentConfig, DefaultWorkflowConfig, MalvinConfig, ReviewConfig,
+    DEFAULT_CONTEXT_SIZE,
 };
 
 pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
@@ -17,6 +18,11 @@ pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
     let logs = parse_or_warn(parse_logs_gc_config(text), "[logs]", LogsGcConfig::default());
     let agent = parse_or_warn(parse_agent_config(text), "[agent]", AgentConfig::default());
     let review = parse_or_warn(parse_review_config(text), "[review]", ReviewConfig::default());
+    let default_workflow = parse_or_warn(
+        parse_default_workflow_config(text),
+        "[default_workflow]",
+        DefaultWorkflowConfig::default(),
+    );
     let theme = parse_or_warn(parse_theme(text), "theme", TerminalTheme::Dark);
     MalvinConfig {
         mem_limit_gb,
@@ -25,6 +31,7 @@ pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
         logs,
         agent,
         review,
+        default_workflow,
     }
 }
 

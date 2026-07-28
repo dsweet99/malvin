@@ -115,9 +115,9 @@ mod unix_cov {
                     std::fs::read_to_string(artifacts.log_path("router_1")).expect("read router log");
                 assert!(
                     log_text.contains("router_requirements phase")
-                        && log_text.contains("router_kpop_group phase")
+                        && log_text.contains("router_kpop phase")
                         && log_text.contains("router_work done"),
-                    "router_1.log must retain requirements → group → work; got: {log_text}"
+                    "router_1.log must retain requirements → kpop → work; got: {log_text}"
                 );
                 assert!(crate::artifacts::review_requirements_json(&artifacts).is_file());
                 let counts_path = workspace.join(
@@ -135,7 +135,7 @@ mod unix_cov {
                 assert_eq!(
                     counts.get("prompts").and_then(serde_json::Value::as_u64),
                     Some(3),
-                    "requirements + one group KPop + work prompts: {counts_raw}"
+                    "requirements + one KPop + work prompts: {counts_raw}"
                 );
             });
         });

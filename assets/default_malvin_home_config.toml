@@ -17,6 +17,10 @@ max_mini_transport_retries = 3
 # Hypothesis budget for `malvin explain` Review and Plan KPop sessions (not agent.max_hypotheses).
 max_hypotheses = 10
 
+[default_workflow]
+# Hypothesis budget for bare `malvin REQUEST` multi-group KPop (not agent.max_hypotheses).
+max_hypotheses = 5
+
 [logs]
 # Max run directories per workspace bucket; 0 = unlimited.
 max_count = 1000

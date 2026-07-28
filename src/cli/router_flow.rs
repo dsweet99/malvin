@@ -1,4 +1,4 @@
-//! Default-route flow: dual-header `router_requirements.md`, then per-group `KPop` gap analysis, then `router_work.md` on one coder session.
+//! Default-route flow: requirements JSON, one multi-group `KPop`, optional work, outer `--max-loops`.
 
 use crate::artifacts::{RunArtifacts, resolve_user_md_request};
 use crate::cli::cli_request::require_cli_request;
@@ -9,6 +9,8 @@ use crate::prompts::PromptStore;
 pub(crate) mod router_flow_prompt;
 #[path = "router_flow_parse.rs"]
 pub(crate) mod router_flow_parse;
+#[path = "router_flow_no_work.rs"]
+pub(crate) mod router_flow_no_work;
 #[path = "router_flow_acp.rs"]
 pub(crate) mod router_flow_acp;
 #[path = "router_flow_loop.rs"]
@@ -24,6 +26,8 @@ pub use router_flow_prompt::{
 pub struct RouterArgs {
     /// Existing `.md` path or literal text
     pub request: Option<String>,
+    /// Outer agent-session budget (`effective_max_loops`).
+    pub max_loops: usize,
 }
 
 struct RouterRunPrep {
@@ -95,6 +99,7 @@ pub async fn run_router(
         coder: &prep.coder,
         prompt_store: &prep.prompt_store,
         shared,
+        max_loops: router_args.max_loops,
     })
     .await?;
 

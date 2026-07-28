@@ -104,9 +104,7 @@ fn build_router_kpop_group_prompt_expands_review_keys_without_unresolved_braces(
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
         git: false,
-        group_index: 1,
-        group_title: "Checks",
-        group_requirements: "- gates pass",
+        groups_block: "### Group 1\nTitle: Checks\n\nRequirements:\n\n- gates pass",
         want: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
         exp_log: &exp,
     })

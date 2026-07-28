@@ -72,14 +72,14 @@ rl.on('line', (line) => {
         const resolved = path.isAbsolute(outPath) ? outPath : path.resolve(process.cwd(), outPath);
         fs.mkdirSync(path.dirname(resolved), { recursive: true });
         fs.writeFileSync(resolved, JSON.stringify({
-          groups: []
+          groups: [{ title: 'G1', requirements: ['ping retry mock'] }]
         }));
       }
     }
-    // Zero groups: requirements then work only (keeps retry coverage under the 1.5s budget).
+    // One group + NO_WORK_REMAINING skips work (keeps retry coverage under the 1.5s budget).
     const responses = [
       'router_requirements phase\nwrote review_requirements.json\n',
-      'router_work done\n'
+      '## NO_WORK_REMAINING 1\n'
     ];
     const text = responses[Math.min(state.phase - 1, responses.length - 1)];
     console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text } } } }));

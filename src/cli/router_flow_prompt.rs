@@ -146,9 +146,7 @@ pub(crate) struct RouterKpopGroupPromptInput<'a> {
     pub artifacts: &'a RunArtifacts,
     pub model: &'a str,
     pub git: bool,
-    pub group_index: usize,
-    pub group_title: &'a str,
-    pub group_requirements: &'a str,
+    pub groups_block: &'a str,
     pub want: usize,
     pub exp_log: &'a Path,
 }
@@ -160,12 +158,7 @@ fn insert_router_kpop_group_fields(
     let base = input.artifacts.work_dir.as_path();
     ctx.insert("exp_log".to_string(), format_prompt_path(input.exp_log, base));
     ctx.insert("want".to_string(), input.want.to_string());
-    ctx.insert("group_index".to_string(), input.group_index.to_string());
-    ctx.insert("group_title".to_string(), input.group_title.to_string());
-    ctx.insert(
-        "group_requirements".to_string(),
-        input.group_requirements.to_string(),
-    );
+    ctx.insert("groups_block".to_string(), input.groups_block.to_string());
 }
 
 pub(crate) fn build_router_kpop_group_prompt(

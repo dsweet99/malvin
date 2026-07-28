@@ -48,9 +48,10 @@ pub fn apply_gate_loop_tenacious(input: GateLoopTenaciousApply<'_>) {
     );
 }
 
-/// Expand bare-route ACP retry budget when tenacious mode is active (default on).
-/// Outer agent restarts are retired; `--max-loops` is ignored for the default route.
+/// Expand bare-route ACP retry and outer `--max-loops` budgets when tenacious mode is active
+/// (default on), unless the matching flag was set explicitly on the command line.
 pub fn apply_default_route_tenacious(
+    max_loops: &mut usize,
     max_acp_retries: &mut u32,
     no_tenacious: bool,
     matches: &ArgMatches,
@@ -59,10 +60,13 @@ pub fn apply_default_route_tenacious(
         tenacious: true,
         no_tenacious,
     });
-    if tier == ReliabilityTier::Tenacious
-        && !global_flag_from_command_line(matches, "max_acp_retries")
-    {
-        *max_acp_retries = TENACIOUS_MAX_ACP_RETRIES;
+    if tier == ReliabilityTier::Tenacious {
+        if !global_flag_from_command_line(matches, "max_loops") {
+            *max_loops = TENACIOUS_MAX_LOOPS;
+        }
+        if !global_flag_from_command_line(matches, "max_acp_retries") {
+            *max_acp_retries = TENACIOUS_MAX_ACP_RETRIES;
+        }
     }
 }
 

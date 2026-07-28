@@ -14,6 +14,8 @@ mod malvin_config_open;
 mod malvin_config_agent;
 #[path = "malvin_config_review.rs"]
 mod malvin_config_review;
+#[path = "malvin_config_default_workflow.rs"]
+mod malvin_config_default_workflow;
 #[path = "malvin_config_top.rs"]
 mod malvin_config_top;
 #[path = "malvin_config_parse.rs"]
@@ -24,6 +26,7 @@ pub use malvin_config_open::{
 use malvin_config_open::create_malvin_config_from_template;
 pub(crate) use malvin_config_agent::parse_agent_config;
 pub(crate) use malvin_config_review::parse_review_config;
+pub(crate) use malvin_config_default_workflow::parse_default_workflow_config;
 pub(crate) use malvin_config_top::{parse_context_size, parse_theme};
 pub use malvin_config_top::DEFAULT_CONTEXT_SIZE;
 pub(crate) use malvin_config_parse::{
@@ -74,6 +77,20 @@ pub struct ReviewConfig {
     pub max_hypotheses: Option<usize>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct DefaultWorkflowConfig {
+    /// Hypothesis budget for bare `malvin REQUEST` multi-group `KPop`.
+    /// `None` means use [`DEFAULT_MAX_HYPOTHESES`].
+    pub max_hypotheses: Option<usize>,
+}
+
+impl DefaultWorkflowConfig {
+    #[must_use]
+    pub fn max_hypotheses_or_default(&self) -> usize {
+        self.max_hypotheses.unwrap_or(DEFAULT_MAX_HYPOTHESES)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MalvinConfig {
     pub mem_limit_gb: u64,
@@ -83,6 +100,7 @@ pub struct MalvinConfig {
     pub logs: LogsGcConfig,
     pub agent: AgentConfig,
     pub review: ReviewConfig,
+    pub default_workflow: DefaultWorkflowConfig,
 }
 
 /// Ensure `~/.malvin_home/config.toml` exists and contains every known key (writes missing defaults).
@@ -195,6 +213,10 @@ mod malvin_config_file_tests_model_mini;
 #[cfg(test)]
 #[path = "malvin_config_file_tests.rs"]
 mod malvin_config_file_tests;
+
+#[cfg(test)]
+#[path = "malvin_config_file_tests_parse.rs"]
+mod malvin_config_file_tests_parse;
 
 #[cfg(test)]
 #[path = "malvin_config_file_tests_no_overwrite.rs"]

@@ -131,9 +131,9 @@ rl.on('line', (line) => {{
         }}));
       }}
     }}
-    const responses = [
+    let responses = [
       'router_requirements phase\nwrote review_requirements.json\n',
-      'router_kpop_group phase\nresidual plan: do the mock work\n',
+      'router_kpop phase\n## Group Work 1\nresidual plan: do the mock work\n',
       'router_work done\n'
     ];
     const text = responses[Math.min(global.pc - 1, responses.length - 1)];
@@ -176,14 +176,18 @@ pub(crate) fn write_mock_router_agent_missing_requirements(path: &std::path::Pat
 
 #[cfg(unix)]
 #[test]
-fn kiss_cov_mock_router_agent_helpers() {
+fn write_mock_router_agent_helpers_produce_executable_scripts() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let mock = tmp.path().join("mock");
     write_mock_router_agent(&mock);
     assert!(mock.is_file());
+    let body = std::fs::read_to_string(&mock).expect("read");
+    assert!(body.contains("Group Work 1"));
     let fail = tmp.path().join("mock-fail");
     write_mock_router_agent_session_fail(&fail);
     assert!(fail.is_file());
+    let fail_body = std::fs::read_to_string(&fail).expect("read fail");
+    assert!(fail_body.contains("session fail"));
     let bad = tmp.path().join("mock-bad");
     write_mock_router_agent_missing_requirements(&bad);
     assert!(bad.is_file());

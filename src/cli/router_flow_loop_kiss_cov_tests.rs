@@ -44,6 +44,7 @@ fn kiss_cov_router_flow_loop_live_outcome_fields() {
                 coder: &coder,
                 prompt_store: &prompt_store,
                 shared: &shared,
+                max_loops: 1,
             };
             let RouterAgentLoopInput {
                 client: _,
@@ -51,6 +52,7 @@ fn kiss_cov_router_flow_loop_live_outcome_fields() {
                 coder: _,
                 prompt_store: _,
                 shared: _,
+                max_loops: _,
             } = input;
             let outcome = run_router_agent_loops(input).await.expect("loops");
             let RouterAgentLoopOutcome {

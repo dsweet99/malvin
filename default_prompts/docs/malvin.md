@@ -23,7 +23,7 @@ Use subcommands: `kpop`, `do`, `inspire`, `tidy`, `delight`, `explain`, `models`
 
 | Command | Purpose |
 |---------|---------|
-| *(default)* | Bare `malvin REQUEST` — requirements JSON → per-group KPop gap analysis → work (one session) |
+| *(default)* | Bare `malvin REQUEST` — requirements JSON → one multi-group KPop → optional work; outer `--max-loops` sessions |
 | `kpop` | KPop investigation (Popperian hypothesis loop) |
 | `do` | One-shot agent turn (non-looping) |
 | `inspire` | One-shot MBC2 boundary exploration (batch ideation) |
@@ -56,11 +56,11 @@ By default malvin passes `--force` to `cursor-agent` so tool calls proceed witho
 
 ### `--no-tenacious`
 
-By default gate-loop commands (`kpop`, `tidy`, `delight`, `explain`) expand to `--max-loops=9999` and `--max-acp-retries=9999`. The bare default route expands `--max-acp-retries=9999` only (single session; `--max-loops` is a no-op there). `--no-tenacious` restores normal budgets.
+By default gate-loop commands (`kpop`, `tidy`, `delight`, `explain`) expand to `--max-loops=9999` and `--max-acp-retries=9999`. The bare default route expands both `--max-loops=9999` and `--max-acp-retries=9999` unless the matching flag was set explicitly on the command line. `--no-tenacious` restores normal budgets.
 
 ### `--gates`
 
-Inject workspace check command text into agent prompts and, for workflows that use harness gates as loop criteria, treat failures as loop or exit criteria. Off by default. On bare `malvin REQUEST`, `--gates` only injects check text into the final work prompt (it does not restart the agent). `malvin tidy` always runs gates and does not honor this option. Agent prompts may still include available `.malvin/checks` guidance when this option is off.
+Inject workspace check command text into agent prompts and, for workflows that use harness gates as loop criteria, treat failures as loop or exit criteria. Off by default. On bare `malvin REQUEST`, `--gates` also runs workspace `.malvin/checks` after each outer agent session: pass stops success; fail continues the outer loop (even when KPop chat said no work remaining); exhausted budget with failing gates fails the run. When work runs, check text is still injected into the work prompt. `malvin tidy` always runs gates and does not honor this option. Agent prompts may still include available `.malvin/checks` guidance when this option is off.
 
 ### `--no-tee`
 
@@ -107,7 +107,7 @@ Only **`malvin tidy`** requires `.malvin/checks` at gate-loop time. Use **`malvi
 
 `tidy` runs workspace quality gates from `.malvin/checks` at the repo git root (one shell command per non-empty, non-comment line). Full-line comments starting with `#` are ignored. Mid-loop gate iterations do **not** run discovery; they error if checks are absent.
 
-Other commands (`do`, bare `malvin REQUEST`, `kpop`, `inspire`, `delight`, `explain`) do not require `.malvin/checks` at startup and may run outside a git repo. With `--gates`, a coding bare route runs workspace gates after its work turns and continues its outer loop when they fail. Without `--gates` (the default), malvin does not run those checks directly. `header.md` notes about checks lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
+Other commands (`do`, bare `malvin REQUEST`, `kpop`, `inspire`, `delight`, `explain`) do not require `.malvin/checks` at startup and may run outside a git repo. With `--gates`, bare `malvin REQUEST` runs workspace gates after each outer session and continues that outer loop when they fail (see `malvin` default-route `--doc`). Without `--gates` (the default), malvin does not run those checks directly on the default route. `header.md` notes about checks lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
 
 ### `-h` / `--help`
 
@@ -157,7 +157,7 @@ During live ACP sessions, malvin may defer agent stdout lines briefly before wri
 
 ## Home config (`~/.malvin_home/config.toml`)
 
-Top-level keys include `mem_limit_gb`, `context_size` (local llama.cpp `n_ctx`, default 8192), and `theme`.
+Top-level keys include `mem_limit_gb`, `context_size` (local llama.cpp `n_ctx`, default 8192), and `theme`. Sections include `[agent]`, `[review]` (explain Review/Plan hypothesis budget), `[default_workflow]` (`max_hypotheses` for bare `malvin REQUEST` multi-group KPop, default 5), and `[logs]`.
 
 ## Log retention
 

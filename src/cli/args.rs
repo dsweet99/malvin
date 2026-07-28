@@ -32,7 +32,7 @@ pub struct Cli {
     pub command: Option<Commands>,
     /// Existing `.md` path or literal text (bare `malvin REQUEST` autonomous routing).
     pub request: Option<String>,
-    /// Legacy no-op for bare `malvin REQUEST` (single-session route; kept for CLI compatibility).
+    /// Outer agent-session budget for bare `malvin REQUEST` (`effective_max_loops`).
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS)]
     pub max_loops: usize,
 }

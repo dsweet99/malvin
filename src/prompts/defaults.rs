@@ -184,9 +184,7 @@ mod router_header_embed_tests {
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
             git: false,
-            group_index: 1,
-            group_title: "Checks",
-            group_requirements: "- gates pass",
+            groups_block: "### Group 1\nTitle: Checks\n\nRequirements:\n\n- gates pass",
             want: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
             exp_log: &artifacts.gate_exp_log_path(1),
         })

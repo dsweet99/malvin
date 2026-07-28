@@ -26,14 +26,12 @@ pub(crate) async fn run_router_kpop_group_coder_prompt(
     client: &mut AgentBackend,
     prompt: &str,
     log_path: &std::path::Path,
-    group_index: usize,
 ) -> Result<(), String> {
-    let label = format!("router_kpop_group_{group_index}");
     client
         .run_coder_prompt(
             prompt,
             log_path,
-            &label,
+            "router_kpop",
             crate::acp::CoderPromptOptions {
                 llm_phase: Some(crate::run_timing::TimingPhase::Implement),
                 do_trace_split: None,

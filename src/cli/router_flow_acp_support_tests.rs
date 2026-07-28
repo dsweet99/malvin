@@ -1,8 +1,8 @@
 //! Tests for [`super::router_flow_acp_support`].
 
 use super::{
-    empty_iteration_backups, router_iteration_log_path, run_one_group_kpop, run_router_turns,
-    snapshot_iteration_backups,
+    empty_iteration_backups, router_iteration_log_path, run_router_turns, snapshot_iteration_backups,
+    RouterTurnsOutcome,
 };
 use crate::artifacts::SessionDotfileBackups;
 use crate::cli::error_run_log::{
@@ -15,7 +15,7 @@ fn kiss_cov_router_acp_support_unit_names() {
     let _ = empty_iteration_backups;
     let _ = snapshot_iteration_backups;
     let _ = run_router_turns;
-    let _ = run_one_group_kpop;
+    let _: Option<RouterTurnsOutcome> = None;
 }
 
 #[test]

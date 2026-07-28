@@ -25,12 +25,15 @@ fn kiss_cov_router_flow_acp_outcome_destructure() {
         acp_result: Ok(()),
         iteration_backups: SessionDotfileBackups::snapshot(std::path::Path::new("/tmp"))
             .expect("snapshot"),
+        all_no_work: false,
     };
     let RouterAcpIterationOutcome {
         acp_result,
         iteration_backups: _,
+        all_no_work,
     } = outcome;
     assert!(acp_result.is_ok());
+    assert!(!all_no_work);
 }
 
 #[cfg(unix)]
@@ -71,6 +74,7 @@ fn kiss_cov_router_flow_acp_live_outcome_fields() {
             let RouterAcpIterationOutcome {
                 acp_result: _,
                 iteration_backups: _,
+                all_no_work: _,
             } = outcome;
         });
     });

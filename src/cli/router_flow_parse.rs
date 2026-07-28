@@ -2,8 +2,8 @@
 
 use std::path::Path;
 
-pub const MAX_REVIEW_REQUIREMENT_GROUPS: usize = 5;
-pub const MAX_REQUIREMENTS_PER_GROUP: usize = 5;
+pub const MAX_REVIEW_REQUIREMENT_GROUPS: usize = 3;
+pub const MAX_REQUIREMENTS_PER_GROUP: usize = 3;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReviewRequirements {
@@ -33,6 +33,32 @@ impl ReviewRequirementGroup {
     }
 }
 
+impl ReviewRequirements {
+    /// Markdown block listing every group for the multi-group `KPop` prompt.
+    #[must_use]
+    pub fn groups_block(&self) -> String {
+        self.groups
+            .iter()
+            .enumerate()
+            .map(|(i, g)| {
+                let title = g.title_trimmed();
+                let title_line = if title.is_empty() {
+                    String::new()
+                } else {
+                    format!("Title: {title}\n\n")
+                };
+                format!(
+                    "### Group {}\n{}Requirements:\n\n{}",
+                    i + 1,
+                    title_line,
+                    g.requirements_bullet_list()
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n\n")
+    }
+}
+
 /// # Errors
 /// Returns an error when the file is missing, not valid JSON, or violates group/requirement caps.
 pub(crate) fn load_review_requirements(path: &Path) -> Result<ReviewRequirements, String> {
@@ -43,6 +69,11 @@ pub(crate) fn load_review_requirements(path: &Path) -> Result<ReviewRequirements
         )
     })?;
     parse_review_requirements_json(&raw)
+}
+
+/// Delete a stale `review_requirements.json` so the next requirements turn cannot reuse it.
+pub(crate) fn clear_review_requirements_json(path: &Path) {
+    let _ = std::fs::remove_file(path);
 }
 
 /// # Errors
@@ -97,10 +128,10 @@ fn parse_group(index: usize, value: &serde_json::Value) -> Result<ReviewRequirem
 }
 
 fn validate_review_requirements(parsed: &ReviewRequirements) -> Result<(), String> {
-    if parsed.groups.len() > MAX_REVIEW_REQUIREMENT_GROUPS {
+    let n_groups = parsed.groups.len();
+    if n_groups == 0 || n_groups > MAX_REVIEW_REQUIREMENT_GROUPS {
         return Err(format!(
-            "review_requirements: too many groups ({}); max is {MAX_REVIEW_REQUIREMENT_GROUPS}",
-            parsed.groups.len()
+            "review_requirements: groups.len() is {n_groups}; must be 1..={MAX_REVIEW_REQUIREMENT_GROUPS}"
         ));
     }
     for (i, group) in parsed.groups.iter().enumerate() {
@@ -145,15 +176,13 @@ mod review_requirements_parse_tests {
         let reqs = ReviewRequirements {
             groups: vec![group],
         };
+        assert!(reqs.groups_block().contains("### Group 1"));
         let ReviewRequirements { groups } = reqs;
         assert_eq!(groups.len(), 1);
     }
 
     #[test]
-    fn accepts_zero_one_and_five_groups() {
-        let zero = parse_review_requirements_json(r#"{"groups":[]}"#).expect("zero");
-        assert!(zero.groups.is_empty());
-
+    fn accepts_one_and_three_groups() {
         let one = parse_review_requirements_json(
             r#"{"groups":[{"title":"A","requirements":["do thing"]}]}"#,
         )
@@ -162,36 +191,38 @@ mod review_requirements_parse_tests {
         assert_eq!(one.groups[0].title_trimmed(), "A");
         assert_eq!(one.groups[0].requirements_bullet_list(), "- do thing");
 
-        let five_raw = format!(
+        let three_raw = format!(
             r#"{{"groups":[{}]}}"#,
             (0..MAX_REVIEW_REQUIREMENT_GROUPS)
                 .map(|i| format!(r#"{{"title":"g{i}","requirements":["req-1"]}}"#))
                 .collect::<Vec<_>>()
                 .join(",")
         );
-        let parsed = parse_review_requirements_json(&five_raw).expect("five");
+        let parsed = parse_review_requirements_json(&three_raw).expect("three");
         assert_eq!(parsed.groups.len(), MAX_REVIEW_REQUIREMENT_GROUPS);
     }
 
     #[test]
-    fn rejects_six_groups_and_six_requirements() {
-        let six_groups = format!(
+    fn rejects_empty_and_four_groups_and_four_requirements() {
+        assert!(parse_review_requirements_json(r#"{"groups":[]}"#).is_err());
+
+        let four_groups = format!(
             r#"{{"groups":[{}]}}"#,
             (0..=MAX_REVIEW_REQUIREMENT_GROUPS)
                 .map(|i| format!(r#"{{"requirements":["r{i}"]}}"#))
                 .collect::<Vec<_>>()
                 .join(",")
         );
-        assert!(parse_review_requirements_json(&six_groups).is_err());
+        assert!(parse_review_requirements_json(&four_groups).is_err());
 
-        let six_reqs = format!(
+        let four_reqs = format!(
             r#"{{"groups":[{{"requirements":[{}]}}]}}"#,
             (0..=MAX_REQUIREMENTS_PER_GROUP)
                 .map(|i| format!(r#""r{i}""#))
                 .collect::<Vec<_>>()
                 .join(",")
         );
-        assert!(parse_review_requirements_json(&six_reqs).is_err());
+        assert!(parse_review_requirements_json(&four_reqs).is_err());
     }
 
     #[test]

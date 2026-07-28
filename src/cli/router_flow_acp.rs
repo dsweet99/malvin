@@ -23,6 +23,7 @@ use router_flow_acp_support::{
 pub(crate) struct RouterAcpIterationOutcome {
     pub acp_result: Result<(), String>,
     pub iteration_backups: SessionDotfileBackups,
+    pub all_no_work: bool,
 }
 
 pub(crate) struct RouterAcpIterationInput<'a> {
@@ -53,6 +54,7 @@ pub(crate) async fn run_router_acp_iteration(
         return RouterAcpIterationOutcome {
             acp_result: Err(e.to_string()),
             iteration_backups: snapshot_iteration_backups(work_dir),
+            all_no_work: false,
         };
     }
     agent_backend_set_implement_display_name(input.client, "router");
@@ -60,13 +62,14 @@ pub(crate) async fn run_router_acp_iteration(
     let run_dir = input.artifacts.run_dir.clone();
 
     match run_router_turns(&mut input, log_path.as_path()).await {
-        Ok(iteration_backups) => {
+        Ok(turns) => {
             let parts: SessionEndParts<'_> =
                 (input.client, &run_dir, &timing, session_end);
             let acp_result = end_router_acp_session(parts, Ok(())).await;
             RouterAcpIterationOutcome {
                 acp_result,
-                iteration_backups,
+                iteration_backups: turns.iteration_backups,
+                all_no_work: turns.all_no_work,
             }
         }
         Err(e) => {
@@ -75,6 +78,7 @@ pub(crate) async fn run_router_acp_iteration(
             RouterAcpIterationOutcome {
                 acp_result: abort_router_acp_session(parts, e).await,
                 iteration_backups: snapshot_iteration_backups(work_dir),
+                all_no_work: false,
             }
         }
     }
@@ -145,6 +149,14 @@ mod router_flow_acp_kiss_cov_tests;
 #[cfg(test)]
 #[path = "router_flow_acp_mock_tests.rs"]
 pub(crate) mod router_flow_acp_mock_tests;
+
+#[cfg(test)]
+#[path = "router_flow_acp_mock_no_work_tests.rs"]
+pub(crate) mod router_flow_acp_mock_no_work_tests;
+
+#[cfg(test)]
+#[path = "router_flow_acp_mock_counting_tests.rs"]
+pub(crate) mod router_flow_acp_mock_counting_tests;
 
 #[cfg(test)]
 #[path = "router_flow_acp_ping_mock_tests.rs"]
