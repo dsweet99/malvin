@@ -120,6 +120,17 @@ fn child_health_transport_errors_require_coder_session_teardown() {
 }
 
 #[test]
+fn mock_agent_mode_keeps_session_after_ping_retriable_error() {
+    crate::test_utils::enable_test_fast_teardown();
+    assert!(!agent_error_requires_coder_session_teardown(
+        "Error: RetriableError: [unavailable] PING timed out"
+    ));
+    assert!(agent_error_requires_coder_session_teardown(
+        "acp child process is not running"
+    ));
+}
+
+#[test]
 fn cursor_http2_transport_errors_are_detected_and_normalized() {
     use crate::acp::{
         agent_string_is_cursor_http2_transport_error, cursor_http2_transport_error_message,

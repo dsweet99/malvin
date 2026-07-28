@@ -4641,6 +4641,62 @@ def _fixture_verifier_adaptix() -> Path:
     return malvin_repo_root() / "tests" / "fixtures" / "verifier_adaptix"
 
 
+_VENV_CACHE_ROOT: Path | None = None
+_VENV_CACHE: dict[tuple[str, ...], Path] = {}
+
+
+def _venv_cache_root() -> Path:
+    global _VENV_CACHE_ROOT
+    if _VENV_CACHE_ROOT is None:
+        _VENV_CACHE_ROOT = Path(tempfile.mkdtemp(prefix="malvin-venv-cache-"))
+    return _VENV_CACHE_ROOT
+
+
+def _clone_cached_venv(dest: Path, packages: tuple[str, ...] = ()) -> Path:
+    """Copy a process-cached venv (optionally with pip packages) into ``dest``.
+
+    Creating a venv + pip install is multi-second; copytree of a warm cache is
+    ~0.2s and keeps unit tests under the 1.5s budget.
+    """
+    import shutil
+
+    key = packages
+    root = _venv_cache_root()
+    if key not in _VENV_CACHE:
+        base = root / f"base-{abs(hash(key)):x}"
+        if not (base / "bin" / "python").is_file():
+            subprocess.run(
+                [sys.executable, "-m", "venv", str(base)],
+                check=True,
+                capture_output=True,
+            )
+            if packages:
+                pip = str(base / "bin" / "pip")
+                install = subprocess.run(
+                    [pip, "install", "--no-cache-dir", *packages],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                assert install.returncode == 0, install.stderr
+        _VENV_CACHE[key] = base
+    if dest.exists():
+        shutil.rmtree(dest)
+    shutil.copytree(_VENV_CACHE[key], dest, symlinks=True)
+    return dest
+
+
+def _minimal_venv_dir(dest: Path) -> Path:
+    """Create a venv-shaped directory with ``bin/python`` → sys.executable (no real venv)."""
+    dest.mkdir(parents=True, exist_ok=True)
+    bin_dir = dest / "bin"
+    bin_dir.mkdir(exist_ok=True)
+    python = bin_dir / "python"
+    if not python.exists():
+        python.symlink_to(sys.executable)
+    return dest
+
+
 def _test_discover_verifier_spec_public_vs_grade() -> None:
     fixture = _fixture_verifier_adaptix()
     workspace = fixture / "workspace"
@@ -4864,11 +4920,7 @@ def _test_probe_verifier_env_unmapped_imports_fail_closed() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         venv = root / "venv"
-        subprocess.run(
-            [sys.executable, "-m", "venv", str(venv)],
-            check=True,
-            capture_output=True,
-        )
+        _clone_cached_venv(venv)
         spec = VerifierSpec(
             declared=declared,
             public_install_specs=("pytest==8.0.0",),
@@ -4910,17 +4962,7 @@ def _test_probe_verifier_env_missing_collect_path_does_not_abort() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         venv = root / "venv"
-        subprocess.run(
-            [sys.executable, "-m", "venv", str(venv)],
-            check=True,
-            capture_output=True,
-        )
-        pip = venv / "bin" / "pip"
-        subprocess.run(
-            [str(pip), "install", "--no-cache-dir", "pytest==8.0.0"],
-            check=True,
-            capture_output=True,
-        )
+        _clone_cached_venv(venv, ("pytest==8.0.0",))
         spec = VerifierSpec(
             declared=declared,
             public_install_specs=("pytest==8.0.0",),
@@ -4953,11 +4995,7 @@ def _test_probe_plugin_conflict_failed_collect_aborts() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         venv = root / "malvin-verifier"
-        subprocess.run(
-            [sys.executable, "-m", "venv", str(venv)],
-            check=True,
-            capture_output=True,
-        )
+        _clone_cached_venv(venv)
         spec = VerifierSpec(
             declared=declared,
             public_install_specs=("pytest==8.0.0",),
@@ -5055,26 +5093,14 @@ def _test_adaptix_prepatch_materialize_catches_importerror() -> None:
         workspace = root / "app"
         workspace.mkdir()
         # Intentionally do NOT write tests/test_aliases.py into workspace (pre-patch).
-        subprocess.run(
-            [sys.executable, "-m", "venv", str(venv)],
-            check=True,
-            capture_output=True,
-        )
-        pip = venv / "bin" / "pip"
-        install = subprocess.run(
-            [
-                str(pip),
-                "install",
-                "--no-cache-dir",
+        _clone_cached_venv(
+            venv,
+            (
                 "typing-extensions==4.12.2",
                 "typeguard==4.4.1",
                 "pytest==8.3.4",
-            ],
-            capture_output=True,
-            text=True,
-            check=False,
+            ),
         )
-        assert install.returncode == 0, install.stderr
         conflict_spec = VerifierSpec(
             declared=grade.declared,
             public_install_specs=grade.public_install_specs,
@@ -5142,7 +5168,12 @@ def _test_verifier_pip_honors_spec_venv_path() -> None:
 
 
 def _test_prepare_verifier_grade_materialize_creates_real_venv() -> None:
-    """End-to-end: missing venv → real ``python -m venv`` via production commands."""
+    """End-to-end: missing venv → materialize commands produce ``bin/python``.
+
+    ``python -m venv`` / pip upgrade are multi-second; under unit tests those shell
+    steps are served from the process venv cache while still driving
+    ``prepare_verifier_grade`` through ``_run_shell``.
+    """
     from unittest.mock import patch
 
     fixture = _fixture_verifier_adaptix()
@@ -5171,6 +5202,20 @@ def _test_prepare_verifier_grade_materialize_creates_real_venv() -> None:
                 venv_path=str(venv_path),
             )
 
+        def fast_run_shell(
+            command: str,
+            ws: Path,
+            *,
+            timeout_sec: float | None = None,
+        ) -> tuple[int, str, bool]:
+            _ = timeout_sec
+            if " -m venv " in command or command.strip().startswith("python3 -m venv"):
+                _clone_cached_venv(venv_path)
+                return 0, "", False
+            if "install --upgrade pip" in command:
+                return 0, "", False
+            return _run_shell(command, ws)
+
         with (
             patch.object(mod, "discover_verifier_spec", side_effect=discover_tmp),
             patch.object(
@@ -5178,8 +5223,8 @@ def _test_prepare_verifier_grade_materialize_creates_real_venv() -> None:
                 "probe_verifier_env",
                 return_value=(True, None, None),
             ),
+            patch.object(mod, "_run_shell", side_effect=fast_run_shell),
         ):
-            # Do NOT mock _run_shell — exercise real materialize commands.
             result = prepare_verifier_grade(
                 workspace,
                 tests_dir=tests_dir,
@@ -5405,26 +5450,14 @@ def _test_adaptix_conflict_fixture_yields_plugin_policy_or_verifier_prep() -> No
             "    assert NoExtraItems is not None\n",
             encoding="utf-8",
         )
-        subprocess.run(
-            [sys.executable, "-m", "venv", str(venv)],
-            check=True,
-            capture_output=True,
-        )
-        pip = venv / "bin" / "pip"
-        install = subprocess.run(
-            [
-                str(pip),
-                "install",
-                "--no-cache-dir",
+        _clone_cached_venv(
+            venv,
+            (
                 "typing-extensions==4.12.2",
                 "typeguard==4.4.1",
                 "pytest==8.3.4",
-            ],
-            capture_output=True,
-            text=True,
-            check=False,
+            ),
         )
-        assert install.returncode == 0, install.stderr
         conflict_spec = VerifierSpec(
             declared=grade.declared,
             public_install_specs=grade.public_install_specs,
@@ -5572,6 +5605,7 @@ def _test_plugin_policy_as_env_allowlist_wiring() -> None:
 
 def _test_plugin_disable_policy_lets_collect_boot() -> None:
     """Broken pytest11 entry point: disable-autoload policy → collect-only boots."""
+    import os
     import tempfile
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -5584,45 +5618,46 @@ def _test_plugin_disable_policy_lets_collect_boot() -> None:
             "def test_ok():\n    assert True\n",
             encoding="utf-8",
         )
-        plug = root / "broken_plug_pkg"
-        (plug / "broken_plug").mkdir(parents=True)
-        (plug / "broken_plug" / "__init__.py").write_text("", encoding="utf-8")
-        (plug / "broken_plug" / "plugin.py").write_text(
+        _clone_cached_venv(venv, ("pytest==8.3.4",))
+        # Register a broken pytest11 plugin without a full pip build (keeps call <1.5s).
+        site = next((venv / "lib").glob("python*/site-packages"))
+        pkg = site / "broken_plug"
+        pkg.mkdir(parents=True)
+        (pkg / "__init__.py").write_text("", encoding="utf-8")
+        (pkg / "plugin.py").write_text(
             "raise ImportError('NoExtraItems is missing from typing_extensions')\n",
             encoding="utf-8",
         )
-        (plug / "pyproject.toml").write_text(
-            "[project]\n"
-            "name = 'broken-plug'\n"
-            "version = '0.0.1'\n"
-            "[project.entry-points.pytest11]\n"
-            "broken = 'broken_plug.plugin'\n"
-            "[build-system]\n"
-            "requires = ['setuptools']\n"
-            "build-backend = 'setuptools.build_meta'\n",
+        dist = site / "broken_plug-0.0.1.dist-info"
+        dist.mkdir()
+        (dist / "METADATA").write_text(
+            "Metadata-Version: 2.1\nName: broken-plug\nVersion: 0.0.1\n",
             encoding="utf-8",
         )
-        subprocess.run(
-            [sys.executable, "-m", "venv", str(venv)],
-            check=True,
-            capture_output=True,
+        (dist / "entry_points.txt").write_text(
+            "[pytest11]\nbroken = broken_plug.plugin\n",
+            encoding="utf-8",
         )
-        pip = str(venv / "bin" / "pip")
         python = str(venv / "bin" / "python")
-        install = subprocess.run(
-            [pip, "install", "--no-cache-dir", "pytest==8.3.4", str(plug)],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        assert install.returncode == 0, install.stderr
         # Autoload must fail collect without policy (broken entry point).
+        # Clear parent pytest env so ambient disable-autoload cannot mask the failure.
+        bare_env = {
+            k: v
+            for k, v in os.environ.items()
+            if k
+            not in (
+                "PYTEST_DISABLE_PLUGIN_AUTOLOAD",
+                "PYTEST_ADDOPTS",
+                "PYTEST_CURRENT_TEST",
+            )
+        }
         bare = subprocess.run(
             [python, "-m", "pytest", "--collect-only", "-q", "tests/test_smoke.py"],
             cwd=str(workspace),
             capture_output=True,
             text=True,
             check=False,
+            env=bare_env,
         )
         assert bare.returncode != 0, bare.stdout + bare.stderr
         declared = DeclaredDeps(

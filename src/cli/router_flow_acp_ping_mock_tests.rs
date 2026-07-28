@@ -72,13 +72,13 @@ rl.on('line', (line) => {
         const resolved = path.isAbsolute(outPath) ? outPath : path.resolve(process.cwd(), outPath);
         fs.mkdirSync(path.dirname(resolved), { recursive: true });
         fs.writeFileSync(resolved, JSON.stringify({
-          groups: [{ title: 'G1', requirements: ['satisfy mock requirement'] }]
+          groups: []
         }));
       }
     }
+    // Zero groups: requirements then work only (keeps retry coverage under the 1.5s budget).
     const responses = [
       'router_requirements phase\nwrote review_requirements.json\n',
-      'router_kpop_group phase\nresidual plan: do the mock work\n',
       'router_work done\n'
     ];
     const text = responses[Math.min(state.phase - 1, responses.length - 1)];

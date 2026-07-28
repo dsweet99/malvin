@@ -41,12 +41,17 @@ def _pytest(ws: Path, impl_file: Path) -> int:
         shutil.copy2(ws / "tests" / "test_normalize.py", td_path / "tests" / "test_normalize.py")
         (td_path / "tests" / "__init__.py").write_text("", encoding="utf-8")
         # Make imports work: tests should import from impl.normalize
+        env = {
+            **os.environ,
+            "PYTHONPATH": str(td_path),
+            "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
+        }
         proc = subprocess.run(
-            [sys.executable, "-m", "pytest", "-q", "tests/test_normalize.py"],
+            [sys.executable, "-m", "pytest", "-q", "tests/test_normalize.py", "-p", "no:cacheprovider"],
             cwd=td_path,
             capture_output=True,
             text=True,
-            env={**dict(**{k: v for k, v in __import__("os").environ.items()}), "PYTHONPATH": str(td_path)},
+            env=env,
         )
         return proc.returncode
 

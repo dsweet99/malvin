@@ -10,7 +10,7 @@ pub(crate) use chat_rules::{
 pub(crate) use chat_rules::{PLAN_CHAT_RULES, REVIEW_CHAT_RULES};
 
 use crate::acp::{AgentError, CoderPromptOptions};
-use crate::agent_backend::{agent_backend_set_run_timing, build_agent_backend, AgentBackend};
+use crate::agent_backend::AgentBackend;
 use crate::artifacts::{ensure_explain_phase_exp_log_file, SessionDotfileBackups};
 use crate::cli::workflow_kpop_shared::{gate_iteration_context, print_kpop_session_log_line};
 use crate::cli::{SharedOpts, WorkflowCliOptions};
@@ -20,14 +20,19 @@ use crate::prompts::{render_header, PromptError};
 use crate::run_timing::TimingPhase;
 
 pub(crate) struct ExplainKpopPhaseParams<'a> {
+    #[allow(dead_code)] // kept for call-site symmetry with pre-reuse API
     pub shared: &'a SharedOpts,
+    #[allow(dead_code)]
     pub workflow: WorkflowCliOptions,
     pub prepared: &'a KPopEnginePrepared,
     pub request_text: &'a str,
     pub max_hypotheses: usize,
     pub outer_iteration: usize,
     pub phase: &'a str,
+    #[allow(dead_code)]
     pub run_timing: &'a std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>,
+    /// Open coder session reused across Review/Plan/Work (caller owns begin/end).
+    pub client: &'a mut AgentBackend,
 }
 
 pub(crate) struct ExplainKpopPhaseResult {
@@ -81,13 +86,13 @@ fn render_explain_kpop_strata(
 }
 
 pub(crate) async fn run_explain_kpop_phase(
-    params: ExplainKpopPhaseParams<'_>,
+    mut params: ExplainKpopPhaseParams<'_>,
 ) -> Result<ExplainKpopPhaseResult, String> {
-    run_explain_kpop_phase_once(params).await
+    run_explain_kpop_phase_once(&mut params).await
 }
 
 pub(crate) async fn run_explain_kpop_phase_once(
-    params: ExplainKpopPhaseParams<'_>,
+    params: &mut ExplainKpopPhaseParams<'_>,
 ) -> Result<ExplainKpopPhaseResult, String> {
     let prepared = params.prepared;
     let exp_log_path = ensure_explain_phase_exp_log_file(
@@ -105,7 +110,7 @@ pub(crate) async fn run_explain_kpop_phase_once(
         phase: params.phase,
         max_hypotheses: params.max_hypotheses,
     })?;
-    let (chat, backups) = run_phase_coder_session(&params, &prompt, &exp_log_path).await?;
+    let (chat, backups) = run_phase_coder_prompt(params, &prompt, &exp_log_path).await?;
     Ok(ExplainKpopPhaseResult {
         chat,
         backups,
@@ -113,93 +118,50 @@ pub(crate) async fn run_explain_kpop_phase_once(
     })
 }
 
-fn open_phase_backend(params: &ExplainKpopPhaseParams<'_>) -> Result<AgentBackend, String> {
-    let mut client = build_agent_backend(
-        params.shared,
-        params.workflow,
-        params.shared.acp_stdout_markdown_enabled(),
-        "explain",
-    )
-    .map_err(|e| e.to_string())?;
-    agent_backend_set_run_timing(&mut client, Some(std::sync::Arc::clone(params.run_timing)));
-    client.set_prompts_log_run_dir(Some(params.prepared.artifacts().run_dir.clone()));
-    client.ensure_authenticated().map_err(|e| e.to_string())?;
-    Ok(client)
-}
-
-async fn run_phase_coder_session(
-    params: &ExplainKpopPhaseParams<'_>,
+async fn run_phase_coder_prompt(
+    params: &mut ExplainKpopPhaseParams<'_>,
     prompt: &str,
     exp_log_path: &std::path::Path,
 ) -> Result<(String, SessionDotfileBackups), String> {
     let work_dir = params.prepared.artifacts().work_dir.as_path();
     let log_label = format!("explain_{}", params.phase);
-    let mut client = open_phase_backend(params)?;
     let session_dotfile_backups =
         SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)?;
-    client
-        .begin_coder_session(work_dir)
-        .await
-        .map_err(|e| e.to_string())?;
-    let prompt_result =
-        run_phase_prompt((&mut client, params, prompt, &log_label, exp_log_path)).await;
+    let client = &mut *params.client;
+    let prompt_result = {
+        let mut prompt_result = client
+            .run_coder_prompt(
+                prompt,
+                params.prepared.artifacts().log_path(&log_label).as_path(),
+                &log_label,
+                CoderPromptOptions {
+                    llm_phase: Some(TimingPhase::Implement),
+                    single_attempt: true,
+                    ..Default::default()
+                },
+            )
+            .await;
+        if prompt_result.is_ok() {
+            prompt_result = crate::kpop_progression::check_hypothesis_budget(
+                exp_log_path,
+                params.max_hypotheses,
+            )
+            .map_err(AgentError);
+        }
+        prompt_result
+    };
     let chat = client
         .last_coder_prompt_agent_response()
         .unwrap_or_default();
-    finalize_phase_session((
-        &mut client,
-        work_dir,
-        &session_dotfile_backups,
-        prompt_result,
-        chat,
-    ))
-    .await
+    finalize_phase_prompt(work_dir, &session_dotfile_backups, prompt_result, chat).await
 }
 
-type PhasePromptArgs<'a> = (
-    &'a mut AgentBackend,
-    &'a ExplainKpopPhaseParams<'a>,
-    &'a str,
-    &'a str,
-    &'a std::path::Path,
-);
-
-async fn run_phase_prompt(args: PhasePromptArgs<'_>) -> Result<(), AgentError> {
-    let (client, params, prompt, log_label, exp_log_path) = args;
-    let mut prompt_result = client
-        .run_coder_prompt(
-            prompt,
-            params.prepared.artifacts().log_path(log_label).as_path(),
-            log_label,
-            CoderPromptOptions {
-                llm_phase: Some(TimingPhase::Implement),
-                single_attempt: true,
-                ..Default::default()
-            },
-        )
-        .await;
-    if prompt_result.is_ok() {
-        prompt_result = crate::kpop_progression::check_hypothesis_budget(
-            exp_log_path,
-            params.max_hypotheses,
-        )
-        .map_err(AgentError);
-    }
-    prompt_result
-}
-
-type PhaseFinalizeArgs<'a> = (
-    &'a mut AgentBackend,
-    &'a std::path::Path,
-    &'a SessionDotfileBackups,
-    Result<(), AgentError>,
-    String,
-);
-
-async fn finalize_phase_session(
-    args: PhaseFinalizeArgs<'_>,
+async fn finalize_phase_prompt(
+    work_dir: &std::path::Path,
+    session_dotfile_backups: &SessionDotfileBackups,
+    prompt_result: Result<(), AgentError>,
+    chat: String,
 ) -> Result<(String, SessionDotfileBackups), String> {
-    let (client, work_dir, session_dotfile_backups, prompt_result, chat) = args;
     let post_agent_backups = if prompt_result.is_ok() {
         Some(SessionDotfileBackups::snapshot_after_ensuring_home_config(
             work_dir,
@@ -207,14 +169,7 @@ async fn finalize_phase_session(
     } else {
         None
     };
-    if let Err(restore_err) = session_dotfile_backups.restore_excluding_malvin_checks(work_dir) {
-        client.end_coder_session().await.ok();
-        return Err(restore_err);
-    }
-    client
-        .end_coder_session()
-        .await
-        .map_err(|e| e.to_string())?;
+    session_dotfile_backups.restore_excluding_malvin_checks(work_dir)?;
     prompt_result.map_err(|e| e.to_string())?;
     let progress = post_agent_backups.unwrap_or_else(|| session_dotfile_backups.clone());
     Ok((

@@ -83,6 +83,13 @@ fn phase_structs() {
         git: false,
     };
     let timing = crate::run_timing::RunTiming::new_arc();
+    let mut client = crate::agent_backend::build_agent_backend(
+        &shared,
+        WorkflowCliOptions { force: true },
+        false,
+        "explain",
+    )
+    .expect("backend");
     let p = ExplainKpopPhaseParams {
         shared: &shared,
         workflow: WorkflowCliOptions { force: true },
@@ -92,8 +99,14 @@ fn phase_structs() {
         outer_iteration: 1,
         phase: EXPLAIN_PHASE_REVIEW,
         run_timing: &timing,
+        client: &mut client,
     };
     assert_eq!(p.phase, EXPLAIN_PHASE_REVIEW);
+    assert_eq!(p.max_hypotheses, 2);
+    assert_eq!(p.outer_iteration, 1);
+    assert!(p.shared.no_force);
+    assert!(p.workflow.force);
+    assert!(p.run_timing.lock().is_ok());
     let backups = SessionDotfileBackups::snapshot(work).expect("snap");
     let result = ExplainKpopPhaseResult {
         chat: String::from("LGTM"),

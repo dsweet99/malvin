@@ -41,10 +41,19 @@ def evaluate(workspace: Path) -> int:
         (td_path / "tests" / "__init__.py").write_text("", encoding="utf-8")
         (td_path / "src" / "__init__.py").write_text("", encoding="utf-8")
         proc = subprocess.run(
-            [sys.executable, "-m", "pytest", "-q", "tests/test_ringbuf_hidden.py"],
+            [
+                sys.executable,
+                "-m",
+                "pytest",
+                "-q",
+                "tests/test_ringbuf_hidden.py",
+                "-p",
+                "no:cacheprovider",
+            ],
             cwd=td_path,
             capture_output=True,
             text=True,
+            env={**os.environ, "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1", "PYTHONPATH": str(td_path)},
         )
         return 1 if proc.returncode == 0 else 0
 

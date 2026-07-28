@@ -172,11 +172,12 @@ def _run_workload(workspace: Path) -> tuple[bool, float, int, str]:
 
 def _public_tests_ok(workspace: Path) -> bool:
     proc = subprocess.run(
-        [sys.executable, "-m", "pytest", "-q", "tests"],
+        [sys.executable, "-m", "pytest", "-q", "tests", "-p", "no:cacheprovider"],
         cwd=workspace,
         capture_output=True,
         text=True,
         check=False,
+        env={**os.environ, "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"},
     )
     return proc.returncode == 0
 
@@ -207,24 +208,32 @@ def _oracle_fix(workspace: Path) -> None:
 
 
 def self_test() -> None:
+    """Contract checks; shrink N_KEYS so each unit-test invocation stays under 1.5s."""
+    global N_KEYS
     src = default_workspace()
-    with tempfile.TemporaryDirectory() as td:
-        fail_ws = Path(td) / "fail"
-        shutil.copytree(src, fail_ws)
-        assert evaluate(fail_ws) == 0, "starter must fail"
+    old_keys = N_KEYS
+    # Keep oracle workload tiny in unit tests; Harbor evaluate still uses N_KEYS.
+    N_KEYS = 2_000
+    try:
+        with tempfile.TemporaryDirectory() as td:
+            fail_ws = Path(td) / "fail"
+            shutil.copytree(src, fail_ws)
+            assert evaluate(fail_ws) == 0, "starter must fail"
 
-        pass_ws = Path(td) / "pass"
-        shutil.copytree(src, pass_ws)
-        _oracle_fix(pass_ws)
-        assert evaluate(pass_ws) == 1, "oracle must pass"
+            pass_ws = Path(td) / "pass"
+            shutil.copytree(src, pass_ws)
+            _oracle_fix(pass_ws)
+            assert evaluate(pass_ws) == 1, "oracle must pass"
 
-        bad = Path(td) / "bad"
-        shutil.copytree(pass_ws, bad)
-        text = (bad / "kvstore" / "diskmap.py").read_text(encoding="utf-8")
-        (bad / "kvstore" / "diskmap.py").write_text(
-            "import sqlite3\n" + text, encoding="utf-8"
-        )
-        assert evaluate(bad) == 0, "sqlite3 import must fail"
+            bad = Path(td) / "bad"
+            shutil.copytree(pass_ws, bad)
+            text = (bad / "kvstore" / "diskmap.py").read_text(encoding="utf-8")
+            (bad / "kvstore" / "diskmap.py").write_text(
+                "import sqlite3\n" + text, encoding="utf-8"
+            )
+            assert evaluate(bad) == 0, "sqlite3 import must fail"
+    finally:
+        N_KEYS = old_keys
     print(f"{TASK_ID} self-test OK")
 
 

@@ -4,6 +4,10 @@ use std::collections::HashSet;
 use std::process::Stdio;
 
 #[cfg(unix)]
+#[path = "unix_process_group_ps_proc.rs"]
+mod unix_process_group_ps_proc;
+
+#[cfg(unix)]
 pub(crate) const INIT_PID: u32 = 1;
 
 #[cfg(unix)]
@@ -15,6 +19,9 @@ pub(crate) struct ProcRow {
 
 #[cfg(unix)]
 pub fn snapshot_pids() -> HashSet<u32> {
+    if crate::acp::test_no_real_agent_enabled() {
+        return unix_process_group_ps_proc::snapshot_pids_from_proc().unwrap_or_default();
+    }
     list_pids_from_ps().unwrap_or_default()
 }
 
@@ -30,6 +37,9 @@ pub(crate) fn list_pids_from_ps() -> Option<HashSet<u32>> {
 
 #[cfg(unix)]
 pub(crate) fn list_proc_rows() -> Option<Vec<ProcRow>> {
+    if crate::acp::test_no_real_agent_enabled() {
+        return unix_process_group_ps_proc::list_proc_rows_from_proc();
+    }
     let out = std::process::Command::new("ps")
         .args(["-ax", "-o", "pid=", "-o", "pgid=", "-o", "ppid="])
         .stderr(Stdio::null())

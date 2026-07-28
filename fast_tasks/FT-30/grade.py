@@ -53,7 +53,7 @@ def _checks_ok(workspace: Path) -> bool:
 
 
 def _run(cmd: list[str], *, cwd: Path, env: dict[str, str] | None = None) -> int:
-    merged = {**os.environ, **(env or {})}
+    merged = {**os.environ, "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1", **(env or {})}
     proc = subprocess.run(
         cmd,
         cwd=cwd,
@@ -77,7 +77,10 @@ def evaluate(workspace: Path) -> int:
         return 0
     if _run(["kiss", "check"], cwd=workspace) != 0:
         return 0
-    if _run([sys.executable, "-m", "pytest", "-q", "tests"], cwd=workspace) != 0:
+    if _run(
+        [sys.executable, "-m", "pytest", "-q", "tests", "-p", "no:cacheprovider"],
+        cwd=workspace,
+    ) != 0:
         return 0
 
     hidden = Path(__file__).resolve().parent / "goldens" / "test_rolling_hidden.py"
@@ -87,7 +90,10 @@ def evaluate(workspace: Path) -> int:
         (td_path / "tests").mkdir()
         shutil.copy2(hidden, td_path / "tests" / "test_rolling_hidden.py")
         (td_path / "pytest.ini").write_text("[pytest]\npythonpath = .\n", encoding="utf-8")
-        if _run([sys.executable, "-m", "pytest", "-q", "tests"], cwd=td_path) != 0:
+        if _run(
+            [sys.executable, "-m", "pytest", "-q", "tests", "-p", "no:cacheprovider"],
+            cwd=td_path,
+        ) != 0:
             return 0
     return 1
 

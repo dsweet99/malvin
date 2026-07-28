@@ -36,6 +36,18 @@ fn take_child_without_tokio_drop(inner: &AcpSessionInner) {
 pub(crate) fn acp_session_drop_teardown(inner: &AcpSessionInner) {
     inner.reader_dead.store(true, Ordering::SeqCst);
     crate::active_agent_heartbeat::unregister_active_agent_process_group(inner.process_group_id);
+    // Explicit shutdown already took the child; skip a second process-table scan in tests.
+    if crate::acp::test_no_real_agent_enabled() {
+        let child_gone = inner
+            .child
+            .try_lock()
+            .map(|slot| slot.is_none())
+            .unwrap_or(false);
+        if child_gone {
+            crate::malvin_sandbox::clear_active_sandbox_session();
+            return;
+        }
+    }
     terminate_agent_process_group_blocking(inner.process_group_id, &inner.spawn_pid_baseline);
     take_child_without_tokio_drop(inner);
     crate::malvin_sandbox::clear_active_sandbox_session();

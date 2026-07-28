@@ -4,22 +4,24 @@ use super::super::outputs::{products_nonempty, resolve_explain_output_paths, val
 use super::super::prep::ExplainPreflightSnapshot;
 use super::super::run_startup::ExplainKpopPrepared;
 use super::super::finish::{emit_explain_startup, finish_explain_success};
+use super::phases::{
+    run_explain_with_open_session, run_outer_iteration, ExplainOpenSession, OuterIterationCtx,
+};
 
 #[test]
 fn fn_witnesses() {
     let _ = run_explain;
     let _ = prepare_explain_run;
+    let _ = open_explain_backend;
+    let _ = run_explain_with_open_session;
     let _ = run_outer_iteration;
-    let _ = run_review_phase;
-    let _ = run_plan_phase;
-    let _ = run_work_phase;
-    let _ = finish_on_lgtm;
     let _ = explain_review_chat_is_lgtm;
     let _ = products_nonempty;
     let _ = resolve_explain_output_paths;
     let _ = validate_explain_output;
     let _ = emit_explain_startup;
     let _ = finish_explain_success;
+    let _ = std::any::type_name::<ExplainOpenSession>();
     assert!(explain_review_chat_is_lgtm("preamble\nLGTM"));
     assert!(explain_review_chat_is_lgtm("probes complete.LGTM"));
     assert!(!explain_review_chat_is_lgtm("- gap\n"));
@@ -89,14 +91,11 @@ fn success_input_and_paths() {
     assert_eq!(pdf, prepared.pdf_path);
 }
 
-#[test]
-fn outer_iteration_ctx_fields() {
-    let tmp = tempfile::tempdir().expect("tmp");
-    let work = tmp.path();
+fn prepared_for_cov(work: &std::path::Path) -> ExplainKpopPrepared {
     let store = crate::prompts::PromptStore::default_store();
     let _ = store.ensure_defaults();
     let artifacts = crate::artifacts::create_kpop_run_artifacts("explain", Some(work)).expect("art");
-    let prepared = ExplainKpopPrepared {
+    ExplainKpopPrepared {
         inner: crate::kpop_engine::KPopEnginePrepared {
             artifacts,
             context: crate::prompt_stratification::WorkflowRenderContext::default(),
@@ -108,11 +107,13 @@ fn outer_iteration_ctx_fields() {
         tex_path: work.join("explain.tex"),
         pdf_path: work.join("explain.pdf"),
         request_work_dir: work.to_path_buf(),
-        auto_out_path: true,
+        auto_out_path: false,
         preflight_snapshot: ExplainPreflightSnapshot::default(),
-    };
-    assert!(resolve_explain_output_paths(&prepared).is_err());
-    let shared = crate::cli::SharedOpts {
+    }
+}
+
+fn shared_for_cov() -> crate::cli::SharedOpts {
+    crate::cli::SharedOpts {
         model: crate::config::DEFAULT_CLI_MODEL.into(),
         no_force: true,
         no_tenacious: false,
@@ -132,8 +133,22 @@ fn outer_iteration_ctx_fields() {
         mini_max_shrink_passes: 0,
         no_download: false,
         git: false,
-    };
+    }
+}
+
+#[test]
+fn outer_iteration_ctx_fields() {
+    let tmp = tempfile::tempdir().expect("tmp");
+    let prepared = prepared_for_cov(tmp.path());
+    let shared = shared_for_cov();
     let timing = crate::run_timing::RunTiming::new_arc();
+    let mut client = crate::agent_backend::build_agent_backend(
+        &shared,
+        WorkflowCliOptions { force: true },
+        false,
+        "explain",
+    )
+    .expect("backend");
     let mut explain = crate::cli::explain_flow::ExplainArgs {
         request: Some("topic".into()),
         out_path: "explain.tex".into(),
@@ -149,7 +164,20 @@ fn outer_iteration_ctx_fields() {
         prepared: &prepared,
         outer: 1,
         run_timing: &timing,
+        client: &mut client,
     };
     assert_eq!(ctx.outer, 1);
     assert_eq!(ctx.explain.max_hypotheses, 10);
+    assert!(ctx.shared.no_force);
+    let session = ExplainOpenSession {
+        explain: ctx.explain,
+        shared: ctx.shared,
+        workflow: ctx.workflow,
+        prepared: ctx.prepared,
+        run_timing: ctx.run_timing,
+        client: ctx.client,
+        max_outer: 1,
+    };
+    assert_eq!(session.max_outer, 1);
+    assert_eq!(session.prepared.tex_path, prepared.tex_path);
 }

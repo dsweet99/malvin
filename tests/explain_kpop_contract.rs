@@ -25,7 +25,7 @@ fn explain_succeeds_when_agent_writes_valid_tex_and_pdf() {
         mock: &mock,
         path_var: &path,
         request: "gate loop exit",
-        extra_args: &["--max-loops", "2"],
+        extra_args: &["--max-loops", "1"],
     });
     assert!(
         out.status.success(),
@@ -52,7 +52,7 @@ fn explain_runs_kpop_when_gates_already_pass() {
         mock: &mock,
         path_var: &path,
         request: "gate loop exit",
-        extra_args: &["--max-loops", "2"],
+        extra_args: &["--max-loops", "1"],
     });
     let combined = combined_cli_output(&out);
     assert!(
@@ -76,7 +76,7 @@ fn explain_writes_custom_out_path() {
         mock: &mock,
         path_var: &path,
         request: "gate loop exit",
-        extra_args: &["--max-loops", "2", "--out-path", "docs/paper.tex"],
+        extra_args: &["--max-loops", "1", "--out-path", "docs/paper.tex"],
     });
     let combined = combined_cli_output(&out);
     assert!(
@@ -131,7 +131,7 @@ fn explain_auto_mode_leaves_stale_default_outputs_untouched() {
         mock: &mock,
         path_var: &path,
         request: "topic",
-        extra_args: &["--max-loops", "2"],
+        extra_args: &["--max-loops", "1"],
     });
     let combined = combined_cli_output(&out);
     assert!(
@@ -174,7 +174,7 @@ fn explain_kpop_fails_when_post_session_pdf_empty() {
     workspace_kiss_check_only(&workspace);
     let path = bin_path_with_fake_kiss(&root);
     let mock = cached_mock_executable(&acp_mock_explain_kpop_empty_pdf_js());
-    // Empty-PDF mock walks review→plan→work→review across max-loops=2; needs >12s.
+    // Empty-PDF mock never LGTMs; one outer loop + closing review is enough to fail.
     let out = common::spawn_explain_with_timeout(
         &ExplainSpawn {
             workspace: &workspace,
@@ -182,7 +182,7 @@ fn explain_kpop_fails_when_post_session_pdf_empty() {
             mock: &mock,
             path_var: &path,
             request: "topic",
-            extra_args: &["--max-loops", "2"],
+            extra_args: &["--max-loops", "1"],
         },
         std::time::Duration::from_secs(25),
     );

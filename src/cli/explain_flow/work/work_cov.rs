@@ -38,12 +38,20 @@ fn explain_work_params_fields() {
         store,
         malvin_checks_backup: crate::artifacts::MalvinChecksBackup::Missing,
     };
+    let mut client = crate::agent_backend::build_agent_backend(
+        &shared,
+        WorkflowCliOptions { force: false },
+        false,
+        "explain",
+    )
+    .expect("backend");
     let p = ExplainWorkParams {
         shared: &shared,
         workflow: WorkflowCliOptions { force: false },
         prepared: &prepared,
         work_request: "w",
         run_timing: &timing,
+        client: &mut client,
     };
     assert!(p.shared.no_force);
     assert!(!p.workflow.force);
