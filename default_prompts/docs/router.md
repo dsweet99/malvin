@@ -76,7 +76,7 @@ Validation: `groups.len() ∈ 1..=3`; each group's `requirements.len() ∈ 1..=3
 
 ### Stop / continue (without `--gates`)
 
-After the KPop turn, malvin parses chat for indexed headings. **`all_no_work`** when every `N` in `1..=groups.len()` has `## NO_WORK_REMAINING N` and no `## Group Work N`. Then skip work and stop success. Otherwise run work and, if outer budget remains, tear down and start another session. Exhausting the budget without `--gates` is success.
+After the KPop turn, malvin parses chat for indexed headings. **`all_no_work`** when every `N` in `1..=groups.len()` has a `NO_WORK_REMAINING N` marker and no `Group Work N` marker. Canonical form is a whole-line `## TOKEN N`; the parser also accepts mid-line glued `##` forms, alternate `#` depth, and bare `TOKEN N` with a non-identifier boundary (wrong index still fails). Then skip work and stop success. Otherwise run work and, if outer budget remains, tear down and start another session. Exhausting the budget without `--gates` is success.
 
 ### Stop / continue (with `--gates`)
 

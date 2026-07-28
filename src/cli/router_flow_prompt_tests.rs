@@ -112,4 +112,12 @@ fn build_router_kpop_group_prompt_expands_review_keys_without_unresolved_braces(
     assert!(!body.contains("{{"));
     assert!(body.contains("gates pass"));
     assert!(body.contains(&format!("{}", crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES)));
+    assert!(
+        body.contains("alone on its own line"),
+        "router KPop must require isolated heading lines: {body}"
+    );
+    assert!(
+        body.contains("experiment log only"),
+        "router KPop must keep summary/tl;dr out of chat: {body}"
+    );
 }
