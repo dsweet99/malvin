@@ -137,7 +137,7 @@ rl.on('line', (line) => {{
       'router_work done\n',
       'router_summarize done\n'
     ];
-    if (promptText.includes('Write a summarize of this entire session')) {{
+    if (promptText.includes('Write a summary of this entire session')) {{
       try {{
         const p = path.resolve(process.cwd(), '.malvin_router_mock_summarize_count');
         let n = 0;

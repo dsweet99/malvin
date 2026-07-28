@@ -63,7 +63,7 @@ rl.on('line', (line) => {{
       '## NO_WORK_REMAINING 1\n',
       'router_summarize done\n'
     ];
-    if (promptText.includes('Write a summarize of this entire session')) {{
+    if (promptText.includes('Write a summary of this entire session')) {{
       try {{
         const p = path.resolve(process.cwd(), '.malvin_router_mock_summarize_count');
         let n = 0;

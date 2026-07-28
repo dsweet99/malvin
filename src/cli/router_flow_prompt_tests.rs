@@ -137,7 +137,7 @@ fn build_router_summarize_prompt_renders_dm_body_without_unresolved_braces() {
     .expect("router_summarize");
     assert!(!body.contains("{{"));
     assert!(
-        body.contains("Write a summarize of this entire session"),
+        body.contains("Write a summary of this entire session"),
         "must render router_summarize.md: {body}"
     );
 }

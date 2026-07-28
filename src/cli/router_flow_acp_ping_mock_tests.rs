@@ -77,7 +77,7 @@ rl.on('line', (line) => {
       }
     }
     // One group + NO_WORK_REMAINING skips work (keeps retry coverage under the 1.5s budget).
-    if (promptText.includes('Write a summarize of this entire session')) {
+    if (promptText.includes('Write a summary of this entire session')) {
       const text = 'router_summarize done\n';
       console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text } } } }));
       console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: { stopReason: 'end' } }));

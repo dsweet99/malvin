@@ -220,7 +220,7 @@ mod router_header_embed_tests {
         .expect("summarize");
         assert!(!summarize.contains("{{"));
         assert!(
-            summarize.contains("Write a summarize of this entire session"),
+            summarize.contains("Write a summary of this entire session"),
             "router_summarize.md body must be rendered: {summarize}"
         );
         assert!(default_file(ROUTER_REQUIREMENTS_MD).is_some());
