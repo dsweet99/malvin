@@ -77,9 +77,16 @@ rl.on('line', (line) => {
       }
     }
     // One group + NO_WORK_REMAINING skips work (keeps retry coverage under the 1.5s budget).
+    if (promptText.includes('Write a summarize of this entire session')) {
+      const text = 'router_summarize done\n';
+      console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text } } } }));
+      console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: { stopReason: 'end' } }));
+      return;
+    }
     const responses = [
       'router_requirements phase\nwrote review_requirements.json\n',
-      '## NO_WORK_REMAINING 1\n'
+      '## NO_WORK_REMAINING 1\n',
+      'router_summarize done\n'
     ];
     const text = responses[Math.min(state.phase - 1, responses.length - 1)];
     console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text } } } }));

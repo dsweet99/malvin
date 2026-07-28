@@ -41,17 +41,20 @@ mod unix_gates {
                         || err.contains("malvin tidy"),
                     "gate failure message, got: {err}"
                 );
-                let counts_path = workspace.join(
-                    crate::router_flow::router_flow_acp::router_flow_acp_mock_tests::ROUTER_MOCK_SESSION_COUNTS_FILE,
-                );
-                let counts_raw =
-                    std::fs::read_to_string(&counts_path).expect("read mock session counts");
-                let counts: serde_json::Value =
-                    serde_json::from_str(&counts_raw).expect("parse mock session counts");
+                let counts: serde_json::Value = serde_json::from_str(
+                    &std::fs::read_to_string(workspace.join(
+                        crate::router_flow::router_flow_acp::router_flow_acp_mock_tests::ROUTER_MOCK_SESSION_COUNTS_FILE,
+                    ))
+                    .expect("counts"),
+                )
+                .expect("parse");
+                assert_eq!(counts["begins"], 2);
+                assert_eq!(counts["prompts"], 5);
                 assert_eq!(
-                    counts.get("begins").and_then(serde_json::Value::as_u64),
-                    Some(2),
-                    "failing gates restart despite all_no_work: {counts_raw}"
+                    std::fs::read_to_string(workspace.join(".malvin_router_mock_summarize_count"))
+                        .unwrap_or_else(|_| "0".into())
+                        .trim(),
+                    "1"
                 );
             });
         });
@@ -85,18 +88,14 @@ mod unix_gates {
                 .await
                 .expect("loops");
                 last_acp.expect("acp");
-                let counts_path = workspace.join(
-                    crate::router_flow::router_flow_acp::router_flow_acp_mock_tests::ROUTER_MOCK_SESSION_COUNTS_FILE,
-                );
-                let counts_raw =
-                    std::fs::read_to_string(&counts_path).expect("read mock session counts");
-                let counts: serde_json::Value =
-                    serde_json::from_str(&counts_raw).expect("parse mock session counts");
-                assert_eq!(
-                    counts.get("begins").and_then(serde_json::Value::as_u64),
-                    Some(1),
-                    "passing gates stop early: {counts_raw}"
-                );
+                let counts: serde_json::Value = serde_json::from_str(
+                    &std::fs::read_to_string(workspace.join(
+                        crate::router_flow::router_flow_acp::router_flow_acp_mock_tests::ROUTER_MOCK_SESSION_COUNTS_FILE,
+                    ))
+                    .expect("counts"),
+                )
+                .expect("parse");
+                assert_eq!(counts["begins"], 1);
             });
         });
     }

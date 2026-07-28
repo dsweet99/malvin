@@ -1,12 +1,21 @@
 //! Kiss identifier refs for [`super`] agent loop driver.
 
-use super::{run_router_agent_loops, RouterAgentLoopInput, RouterAgentLoopOutcome};
+use super::{
+    decide_router_gates_exit, decide_router_loop_exit_no_gates, router_exit_summarize_for,
+    run_router_agent_loops, RouterAgentLoopInput, RouterAgentLoopOutcome, RouterLoopDecision,
+};
+use crate::router_flow::router_flow_acp::RouterExitSummarize;
 
 #[test]
 fn kiss_cov_router_flow_loop_privates() {
     let _: Option<RouterAgentLoopInput> = None;
     let _: Option<RouterAgentLoopOutcome> = None;
     let _ = run_router_agent_loops;
+    let _ = decide_router_loop_exit_no_gates;
+    let _ = decide_router_gates_exit;
+    let _ = router_exit_summarize_for;
+    let _ = RouterExitSummarize::Run;
+    let _ = RouterLoopDecision::Continue;
     let _ = stringify!(client);
     let _ = stringify!(artifacts);
     let _ = stringify!(coder);
@@ -19,6 +28,67 @@ fn kiss_cov_router_flow_loop_privates() {
     let _ = stringify!(iteration_backups);
     let _ = stringify!(session_end);
     let _ = stringify!(iteration);
+    let _ = stringify!(gates);
+    let _ = stringify!(all_no_work);
+    let _ = stringify!(max_loops);
+    let _ = stringify!(backups);
+}
+
+#[test]
+fn router_exit_summarize_only_when_exiting() {
+    assert_eq!(
+        router_exit_summarize_for(&RouterLoopDecision::Continue),
+        RouterExitSummarize::Skip
+    );
+    assert_eq!(
+        router_exit_summarize_for(&RouterLoopDecision::Exit),
+        RouterExitSummarize::Run
+    );
+    assert_eq!(
+        router_exit_summarize_for(&RouterLoopDecision::ExitGatesFailed("x".into())),
+        RouterExitSummarize::Run
+    );
+}
+
+#[test]
+fn decide_router_loop_exit_without_gates() {
+    assert!(matches!(
+        decide_router_loop_exit_no_gates(false, 1, 2),
+        RouterLoopDecision::Continue
+    ));
+    assert!(matches!(
+        decide_router_loop_exit_no_gates(true, 1, 2),
+        RouterLoopDecision::Exit
+    ));
+    assert!(matches!(
+        decide_router_loop_exit_no_gates(false, 2, 2),
+        RouterLoopDecision::Exit
+    ));
+}
+
+#[cfg(unix)]
+#[test]
+fn decide_router_gates_exit_direct_paths() {
+    crate::test_utils::with_isolated_home(|workspace| {
+        let artifacts = crate::artifacts::create_run_artifacts_from_text_opts(
+            "gates exit",
+            Some(workspace),
+            crate::run_id::RunDirOptions::default(),
+        )
+        .expect("artifacts");
+        crate::seed_malvin_checks(workspace, "true\n");
+        let backups_ok =
+            crate::artifacts::SessionDotfileBackups::snapshot(workspace).expect("snap");
+        let ok = decide_router_gates_exit(&artifacts, &backups_ok, 1, 2);
+        assert!(matches!(ok, RouterLoopDecision::Exit));
+        crate::seed_malvin_checks(workspace, "false\n");
+        let backups_bad =
+            crate::artifacts::SessionDotfileBackups::snapshot(workspace).expect("snap");
+        let cont = decide_router_gates_exit(&artifacts, &backups_bad, 1, 3);
+        assert!(matches!(cont, RouterLoopDecision::Continue));
+        let failed = decide_router_gates_exit(&artifacts, &backups_bad, 3, 3);
+        assert!(matches!(failed, RouterLoopDecision::ExitGatesFailed(_)));
+    });
 }
 
 #[cfg(unix)]

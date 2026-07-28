@@ -1,6 +1,6 @@
 use super::{
     DO_HEADER_MD, HEADER_MD, ROUTER_CODE_EXTRA_MD, ROUTER_KPOP_GROUP_MD, ROUTER_REQUIREMENTS_MD,
-    ROUTER_WORK_MD,
+    ROUTER_SUMMARIZE_MD, ROUTER_WORK_MD,
 };
 
 fn default_explain_prompt(name: &str) -> Option<&'static str> {
@@ -57,6 +57,7 @@ fn default_router_prompt(name: &str) -> Option<&'static str> {
         ROUTER_CODE_EXTRA_MD => {
             Some(include_str!("../../default_prompts/router_code_extra.md"))
         }
+        ROUTER_SUMMARIZE_MD => Some(include_str!("../../default_prompts/router_summarize.md")),
         _ => None,
     }
 }

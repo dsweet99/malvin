@@ -46,12 +46,16 @@ mod unix_cov {
                 assert_eq!(
                     counts.get("begins").and_then(serde_json::Value::as_u64),
                     Some(1),
-                    "single begin around requirements → kpop → work: {counts_raw}"
+                    "single begin around requirements → kpop → work → summarize: {counts_raw}"
                 );
                 assert_eq!(
                     counts.get("prompts").and_then(serde_json::Value::as_u64),
-                    Some(3),
-                    "one session serves three prompts: {counts_raw}"
+                    Some(4),
+                    "one session serves four prompts: {counts_raw}"
+                );
+                assert!(
+                    workspace.join(".malvin_router_mock_saw_summarize").is_file(),
+                    "summarize prompt body must reach the open coder session before teardown"
                 );
             });
         });
@@ -98,8 +102,8 @@ mod unix_cov {
                 );
                 assert_eq!(
                     counts.get("prompts").and_then(serde_json::Value::as_u64),
-                    Some(2),
-                    "requirements + one KPop, no work: {counts_raw}"
+                    Some(3),
+                    "requirements + one KPop + summarize, no work: {counts_raw}"
                 );
             });
         });
@@ -119,32 +123,33 @@ mod unix_cov {
                 let (shared, workflow) = test_router_shared();
                 let (mut client, artifacts, coder, prompt_store) =
                     router_boot_client_artifacts(workspace, &shared, workflow).expect("boot");
-                let RouterAgentLoopOutcome { last_acp, .. } = run_router_agent_loops(
-                    RouterAgentLoopInput {
-                        client: &mut client,
-                        artifacts: &artifacts,
-                        coder: &coder,
-                        prompt_store: &prompt_store,
-                        shared: &shared,
-                        max_loops: 2,
-                    },
-                )
+                run_router_agent_loops(RouterAgentLoopInput {
+                    client: &mut client,
+                    artifacts: &artifacts,
+                    coder: &coder,
+                    prompt_store: &prompt_store,
+                    shared: &shared,
+                    max_loops: 2,
+                })
                 .await
-                .expect("loops");
-                last_acp.expect("acp");
-                assert!(artifacts.log_path("router_1").is_file());
-                assert!(artifacts.log_path("router_2").is_file());
-                let counts_path = workspace.join(
-                    crate::router_flow::router_flow_acp::router_flow_acp_mock_tests::ROUTER_MOCK_SESSION_COUNTS_FILE,
-                );
-                let counts_raw =
-                    std::fs::read_to_string(&counts_path).expect("read mock session counts");
-                let counts: serde_json::Value =
-                    serde_json::from_str(&counts_raw).expect("parse mock session counts");
+                .expect("loops")
+                .last_acp
+                .expect("acp");
+                assert!(artifacts.log_path("router_1").is_file() && artifacts.log_path("router_2").is_file());
+                let counts: serde_json::Value = serde_json::from_str(
+                    &std::fs::read_to_string(workspace.join(
+                        crate::router_flow::router_flow_acp::router_flow_acp_mock_tests::ROUTER_MOCK_SESSION_COUNTS_FILE,
+                    ))
+                    .expect("counts"),
+                )
+                .expect("parse");
+                assert_eq!(counts["begins"], 2);
+                assert_eq!(counts["prompts"], 6);
                 assert_eq!(
-                    counts.get("begins").and_then(serde_json::Value::as_u64),
-                    Some(2),
-                    "{counts_raw}"
+                    std::fs::read_to_string(workspace.join(".malvin_router_mock_summarize_count"))
+                        .unwrap_or_else(|_| "0".into())
+                        .trim(),
+                    "1"
                 );
             });
         });

@@ -1,13 +1,19 @@
 //! Kiss identifier refs for [`super`] ACP iteration helpers.
 
-use super::{run_router_acp_iteration, RouterAcpIterationInput, RouterAcpIterationOutcome};
+use super::{
+    finalize_router_acp_iteration, run_router_acp_open_iteration, RouterAcpIterationInput,
+    RouterAcpIterationOutcome, RouterExitSummarize,
+};
 use crate::artifacts::SessionDotfileBackups;
 
 #[test]
 fn kiss_cov_router_flow_acp_privates() {
     let _: Option<RouterAcpIterationInput> = None;
     let _: Option<RouterAcpIterationOutcome> = None;
-    let _ = run_router_acp_iteration;
+    let _ = run_router_acp_open_iteration;
+    let _ = finalize_router_acp_iteration;
+    let _ = RouterExitSummarize::Run;
+    let _ = RouterExitSummarize::Skip;
     let _ = stringify!(client);
     let _ = stringify!(artifacts);
     let _ = stringify!(coder);
@@ -17,6 +23,15 @@ fn kiss_cov_router_flow_acp_privates() {
     let _ = stringify!(session_end);
     let _ = stringify!(acp_result);
     let _ = stringify!(iteration_backups);
+    let _ = stringify!(session_alive);
+    let _ = stringify!(timing);
+    let _ = stringify!(all_no_work);
+    let _ = stringify!(abort_router_acp_session);
+    let _ = stringify!(emit_router_acp_timing);
+    let _ = stringify!(end_router_acp_session);
+    let _ = super::emit_router_acp_timing;
+    let _ = super::end_router_acp_session;
+    let _ = super::abort_router_acp_session;
 }
 
 #[test]
@@ -26,14 +41,20 @@ fn kiss_cov_router_flow_acp_outcome_destructure() {
         iteration_backups: SessionDotfileBackups::snapshot(std::path::Path::new("/tmp"))
             .expect("snapshot"),
         all_no_work: false,
+        session_alive: false,
+        timing: None,
     };
     let RouterAcpIterationOutcome {
         acp_result,
         iteration_backups: _,
         all_no_work,
+        session_alive,
+        timing,
     } = outcome;
     assert!(acp_result.is_ok());
     assert!(!all_no_work);
+    assert!(!session_alive);
+    assert!(timing.is_none());
 }
 
 #[cfg(unix)]
@@ -52,7 +73,7 @@ fn kiss_cov_router_flow_acp_live_outcome_fields() {
                     workspace, &shared, workflow,
                 )
                 .expect("boot");
-            let input = RouterAcpIterationInput {
+            let open = run_router_acp_open_iteration(RouterAcpIterationInput {
                 client: &mut client,
                 artifacts: &artifacts,
                 coder: &coder,
@@ -60,22 +81,25 @@ fn kiss_cov_router_flow_acp_live_outcome_fields() {
                 shared: &shared,
                 agent_loop: 1,
                 session_end: crate::run_timing::acp_post_run::RunTimingSessionEnd::Finalize,
-            };
-            let RouterAcpIterationInput {
-                client: _,
-                artifacts: _,
-                coder: _,
-                prompt_store: _,
-                shared: _,
-                agent_loop: _,
-                session_end: _,
-            } = input;
-            let outcome = run_router_acp_iteration(input).await;
-            let RouterAcpIterationOutcome {
-                acp_result: _,
-                iteration_backups: _,
-                all_no_work: _,
-            } = outcome;
+            })
+            .await;
+            assert!(open.session_alive);
+            let timing = open.timing.expect("timing");
+            finalize_router_acp_iteration(
+                &mut RouterAcpIterationInput {
+                    client: &mut client,
+                    artifacts: &artifacts,
+                    coder: &coder,
+                    prompt_store: &prompt_store,
+                    shared: &shared,
+                    agent_loop: 1,
+                    session_end: crate::run_timing::acp_post_run::RunTimingSessionEnd::Finalize,
+                },
+                timing,
+                RouterExitSummarize::Run,
+            )
+            .await
+            .expect("finalize with summarize");
         });
     });
 }

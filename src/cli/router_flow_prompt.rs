@@ -8,9 +8,15 @@ use crate::workflow_context::{format_prompt_path, PromptModelOpts};
 use crate::prompt_stratification::{join_labeled_strata, PromptStratum, WorkflowRenderContext};
 use crate::prompts::{
     PromptError, PromptStore, HEADER_MD, ROUTER_CODE_EXTRA_MD, ROUTER_KPOP_GROUP_MD,
-    ROUTER_REQUIREMENTS_MD, ROUTER_WORK_MD,
+    ROUTER_REQUIREMENTS_MD, ROUTER_SUMMARIZE_MD, ROUTER_WORK_MD,
 };
 use std::path::Path;
+
+#[path = "router_flow_prompt_summarize.rs"]
+mod router_flow_prompt_summarize;
+pub(crate) use router_flow_prompt_summarize::{
+    build_router_summarize_prompt, RouterSummarizePromptInput,
+};
 
 pub(crate) struct RouterCoderRun {
     pub combined: String,
@@ -36,6 +42,9 @@ pub fn prepare_router_prompt_store() -> Result<PromptStore, String> {
         .map_err(|e: PromptError| e.0)?;
     store
         .validate_exists(ROUTER_CODE_EXTRA_MD)
+        .map_err(|e: PromptError| e.0)?;
+    store
+        .validate_exists(ROUTER_SUMMARIZE_MD)
         .map_err(|e: PromptError| e.0)?;
     store
         .validate_exists("kpop_common.md")
@@ -229,5 +238,6 @@ mod kiss_cov_gate_refs {
         let _ = insert_router_kpop_group_fields;
         let _ = build_router_kpop_group_prompt;
         let _ = build_router_work_prompt;
+        let _ = build_router_summarize_prompt;
     }
 }

@@ -10,7 +10,8 @@ mod unix_cov {
     use super::super::router_flow_acp_tests::{
         router_boot_client_artifacts, test_router_shared,
     };
-    use super::super::{run_router_acp_iteration, RouterAcpIterationInput, RouterAcpIterationOutcome};
+    use super::super::{run_router_acp_open_iteration, RouterAcpIterationInput, RouterAcpIterationOutcome};
+    use crate::router_flow::router_flow_loop::{run_router_agent_loops, RouterAgentLoopInput};
     use crate::run_timing::acp_post_run::RunTimingSessionEnd;
 
     #[test]
@@ -26,7 +27,7 @@ mod unix_cov {
                 let (mut client, artifacts, coder, prompt_store) =
                     router_boot_client_artifacts(workspace, &shared, workflow).expect("boot");
                 let RouterAcpIterationOutcome { acp_result, .. } =
-                    run_router_acp_iteration(RouterAcpIterationInput {
+                    run_router_acp_open_iteration(RouterAcpIterationInput {
                         client: &mut client,
                         artifacts: &artifacts,
                         coder: &coder,
@@ -63,18 +64,19 @@ mod unix_cov {
                 shared.max_acp_retries = 2;
                 let (mut client, artifacts, coder, prompt_store) =
                     router_boot_client_artifacts(workspace, &shared, workflow).expect("boot");
-                let RouterAcpIterationOutcome { acp_result, .. } =
-                    run_router_acp_iteration(RouterAcpIterationInput {
-                        client: &mut client,
-                        artifacts: &artifacts,
-                        coder: &coder,
-                        prompt_store: &prompt_store,
-                        shared: &shared,
-                        agent_loop: 1,
-                        session_end: RunTimingSessionEnd::Finalize,
-                    })
-                    .await;
-                acp_result.expect("requirements should succeed after PING retry");
+                let outcome = run_router_agent_loops(RouterAgentLoopInput {
+                    client: &mut client,
+                    artifacts: &artifacts,
+                    coder: &coder,
+                    prompt_store: &prompt_store,
+                    shared: &shared,
+                    max_loops: 1,
+                })
+                .await
+                .expect("loops");
+                outcome
+                    .last_acp
+                    .expect("requirements should succeed after PING retry");
                 assert!(crate::artifacts::review_requirements_json(&artifacts).is_file());
             });
         });

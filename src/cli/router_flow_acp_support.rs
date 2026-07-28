@@ -21,6 +21,13 @@ pub(crate) struct RouterTurnsOutcome {
     pub all_no_work: bool,
 }
 
+/// Whether the outer router loop should send `router_summarize.md` before teardown.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum RouterExitSummarize {
+    Run,
+    Skip,
+}
+
 pub(crate) fn router_iteration_log_path(artifacts: &RunArtifacts, agent_loop: usize) -> std::path::PathBuf {
     artifacts.log_path(&format!("router_{agent_loop}"))
 }
@@ -73,7 +80,7 @@ pub(crate) async fn run_router_turns(
     })
 }
 
-async fn run_multi_group_kpop(
+pub(crate) async fn run_multi_group_kpop(
     input: &mut RouterAcpIterationInput<'_>,
     log_path: &Path,
     requirements: &ReviewRequirements,

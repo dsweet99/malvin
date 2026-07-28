@@ -69,7 +69,7 @@ Malvin enforces a sandbox memory limit (see `Sandbox memory:` in Current state).
   - Claim (with evidence): “shows”, “demonstrates”, “causes”.
 - Label any statement which is a hypothesis as such.
 
-## Shorthand
+## Macros
 
 - DCC: Don't Change Code
 - RL: Be sure to look at recent logs.
@@ -83,4 +83,13 @@ When communicating to the user:
 - No colloquialisms
 - Write in clear, plain language.
 - Use complete sentences.
-- No agent shorthand or made-up terms.
+- No agent shorthand or made-up terms (e.g., that you invent for thinking / self-talk).
+
+## Direct Messages
+Since you are non-interactive, most of your communications will go to logs for occasional viewing. To send a message directly to the human operator, create a femce like this
+```
+MALVIN_DM_START
+You message to the user
+MALVIN_DM_END
+```
+You should use this for your final, send-of-session summary or for rare urgent status updates.

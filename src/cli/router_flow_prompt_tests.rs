@@ -1,8 +1,9 @@
 use crate::config::DEFAULT_CLI_MODEL;
 use crate::flow_prompt_join_test_helpers::flow_test_artifacts;
 use crate::router_flow::router_flow_prompt::{
-    build_router_kpop_group_prompt, build_router_work_prompt, prepare_router_prompt_store,
-    RouterKpopGroupPromptInput, RouterWorkPromptInput,
+    build_router_kpop_group_prompt, build_router_summarize_prompt, build_router_work_prompt,
+    prepare_router_prompt_store, RouterKpopGroupPromptInput, RouterSummarizePromptInput,
+    RouterWorkPromptInput,
 };
 use crate::prompts::PromptStore;
 
@@ -119,5 +120,24 @@ fn build_router_kpop_group_prompt_expands_review_keys_without_unresolved_braces(
     assert!(
         body.contains("experiment log only"),
         "router KPop must keep summary/tl;dr out of chat: {body}"
+    );
+}
+
+#[test]
+fn build_router_summarize_prompt_renders_dm_body_without_unresolved_braces() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = flow_test_artifacts(&tmp);
+    let store = prepare_router_prompt_store().expect("store");
+    let body = build_router_summarize_prompt(RouterSummarizePromptInput {
+        store: &store,
+        artifacts: &artifacts,
+        model: DEFAULT_CLI_MODEL,
+        git: false,
+    })
+    .expect("router_summarize");
+    assert!(!body.contains("{{"));
+    assert!(
+        body.contains("Write a summarize of this entire session"),
+        "must render router_summarize.md: {body}"
     );
 }

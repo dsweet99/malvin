@@ -11,6 +11,7 @@ pub const ROUTER_REQUIREMENTS_MD: &str = "router_requirements.md";
 pub const ROUTER_KPOP_GROUP_MD: &str = "router_kpop_group.md";
 pub const ROUTER_WORK_MD: &str = "router_work.md";
 pub const ROUTER_CODE_EXTRA_MD: &str = "router_code_extra.md";
+pub const ROUTER_SUMMARIZE_MD: &str = "router_summarize.md";
 
 pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD, "kpop_program.md"];
 
@@ -37,6 +38,7 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     ROUTER_KPOP_GROUP_MD,
     ROUTER_WORK_MD,
     ROUTER_CODE_EXTRA_MD,
+    ROUTER_SUMMARIZE_MD,
 ];
 
 #[cfg(test)]
@@ -129,15 +131,16 @@ mod router_header_embed_tests {
 
     use super::{
         default_file, DO_HEADER_MD, HEADER_MD, ROUTER_KPOP_GROUP_MD, ROUTER_REQUIREMENTS_MD,
-        ROUTER_WORK_MD,
+        ROUTER_SUMMARIZE_MD, ROUTER_WORK_MD,
     };
     use crate::config::DEFAULT_CLI_MODEL;
     use crate::artifacts::create_run_artifacts;
     use crate::orchestrator::workflow_context_paths_only;
     use crate::prompts::{PromptStore, render_header};
     use crate::router_flow::router_flow_prompt::{
-        build_router_coder_run, build_router_kpop_group_prompt, build_router_work_prompt,
-        prepare_router_prompt_store, RouterKpopGroupPromptInput, RouterWorkPromptInput,
+        build_router_coder_run, build_router_kpop_group_prompt, build_router_summarize_prompt,
+        build_router_work_prompt, prepare_router_prompt_store, RouterKpopGroupPromptInput,
+        RouterSummarizePromptInput, RouterWorkPromptInput,
     };
 
     #[test]
@@ -208,9 +211,22 @@ mod router_header_embed_tests {
         })
         .expect("work gates");
         assert!(!work_gates.contains("{{"));
+        let summarize = build_router_summarize_prompt(RouterSummarizePromptInput {
+            store: &store,
+            artifacts: &artifacts,
+            model: DEFAULT_CLI_MODEL,
+            git: false,
+        })
+        .expect("summarize");
+        assert!(!summarize.contains("{{"));
+        assert!(
+            summarize.contains("Write a summarize of this entire session"),
+            "router_summarize.md body must be rendered: {summarize}"
+        );
         assert!(default_file(ROUTER_REQUIREMENTS_MD).is_some());
         assert!(default_file(ROUTER_KPOP_GROUP_MD).is_some());
         assert!(default_file(ROUTER_WORK_MD).is_some());
+        assert!(default_file(ROUTER_SUMMARIZE_MD).is_some());
         assert!(default_file(DO_HEADER_MD).is_some());
         assert!(default_file(HEADER_MD).is_some());
     }

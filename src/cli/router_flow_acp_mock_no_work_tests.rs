@@ -60,8 +60,21 @@ rl.on('line', (line) => {{
     }}
     const responses = [
       'router_requirements phase\nwrote review_requirements.json\n',
-      '## NO_WORK_REMAINING 1\n## NO_WORK_REMAINING 2\n'
+      '## NO_WORK_REMAINING 1\n## NO_WORK_REMAINING 2\n',
+      'router_summarize done\n'
     ];
+    if (promptText.includes('Write a summarize of this entire session')) {{
+      try {{
+        const p = path.resolve(process.cwd(), '.malvin_router_mock_summarize_count');
+        let n = 0;
+        try {{ n = parseInt(fs.readFileSync(p, 'utf8'), 10) || 0; }} catch (e) {{}}
+        fs.writeFileSync(p, String(n + 1));
+      }} catch (e) {{}}
+      const text = 'router_summarize done\n';
+      console.log(JSON.stringify({{ jsonrpc: '2.0', method: 'session/update', params: {{ update: {{ sessionUpdate: 'agent_message_chunk', content: {{ type: 'text', text }} }} }} }}));
+      console.log(JSON.stringify({{ jsonrpc: '2.0', id: rid, result: {{ stopReason: 'end' }} }}));
+      return;
+    }}
     const text = responses[Math.min(global.pc - 1, responses.length - 1)];
     console.log(JSON.stringify({{ jsonrpc: '2.0', method: 'session/update', params: {{ update: {{ sessionUpdate: 'agent_message_chunk', content: {{ type: 'text', text }} }} }} }}));
     console.log(JSON.stringify({{ jsonrpc: '2.0', id: rid, result: {{ stopReason: 'end' }} }}));
@@ -145,15 +158,26 @@ rl.on('line', (line) => {{
       }}
     }}
     let text;
-    if (state.pc === 1) {{
+    if (promptText.includes('Write a summarize of this entire session')) {{
+      try {{
+        const p = path.resolve(process.cwd(), '.malvin_router_mock_summarize_count');
+        let n = 0;
+        try {{ n = parseInt(fs.readFileSync(p, 'utf8'), 10) || 0; }} catch (e) {{}}
+        fs.writeFileSync(p, String(n + 1));
+      }} catch (e) {{}}
+      text = 'router_summarize done\n';
+    }} else if (state.pc === 1) {{
       text = 'router_requirements phase\n';
     }} else if (state.sessions === 1) {{
-      text = '## Group Work 1\nresidual\n';
-    }} else {{
+      if (state.pc === 2) {{
+        text = '## Group Work 1\nresidual\n';
+      }} else {{
+        text = 'router_work done\n';
+      }}
+    }} else if (state.pc === 2) {{
       text = '## NO_WORK_REMAINING 1\n';
-    }}
-    if (state.pc === 3 && state.sessions === 1) {{
-      text = 'router_work done\n';
+    }} else {{
+      text = 'unexpected prompt\n';
     }}
     console.log(JSON.stringify({{ jsonrpc: '2.0', method: 'session/update', params: {{ update: {{ sessionUpdate: 'agent_message_chunk', content: {{ type: 'text', text }} }} }} }}));
     console.log(JSON.stringify({{ jsonrpc: '2.0', id: rid, result: {{ stopReason: 'end' }} }}));

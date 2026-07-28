@@ -8,7 +8,7 @@ pub use template::*;
 
 pub use defaults::{
     DO_HEADER_MD, HEADER_MD, ROUTER_CODE_EXTRA_MD, ROUTER_KPOP_GROUP_MD, ROUTER_REQUIREMENTS_MD,
-    ROUTER_WORK_MD,
+    ROUTER_SUMMARIZE_MD, ROUTER_WORK_MD,
 };
 
 #[allow(unused_imports)]
