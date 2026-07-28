@@ -167,14 +167,8 @@ async fn run_kpop_engine_single_turn(
     let log_path = prepared.artifacts().log_path("kpop");
 
     let prompt = build_kpop_engine_prompt(ctx)?;
-    let max_hypotheses = ctx.iteration.loop_params.max_hypotheses;
-    let exp_log_path = ctx.iteration.exp_log_path.clone();
-    let mut prompt_result =
+    let prompt_result =
         run_kpop_engine_coder_turn(ctx, &prompt, work_dir, log_path.as_path()).await;
-    if prompt_result.is_ok() {
-        prompt_result = crate::kpop_progression::check_hypothesis_budget(&exp_log_path, max_hypotheses)
-            .map_err(AgentError);
-    }
     let post_agent_backups = if prompt_result.is_ok() {
         Some(
             crate::artifacts::SessionDotfileBackups::snapshot_after_ensuring_home_config(

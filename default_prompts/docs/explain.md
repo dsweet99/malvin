@@ -46,7 +46,7 @@ Outer review/plan/work iteration budget (`max(N, 1)`). This is **not** the KPop 
 
 ### `--max-hypotheses <N>` (default: 10)
 
-Hypothesis budget for **each** Review and Plan KPop session (fresh experiment log per phase, so budgets do not share). Precedence: CLI flag &gt; config `review.max_hypotheses` &gt; built-in **10**. Does **not** use `agent.max_hypotheses`.
+Soft hypothesis budget for **each** Review and Plan KPop session (placed in the agent prompt as `{{ max_hypotheses }}`; fresh experiment log per phase, so budgets do not share). Precedence: CLI flag &gt; config `review.max_hypotheses` &gt; built-in **10**. Does **not** use `agent.max_hypotheses`. The harness does not count `## Step` headings against this budget; outer explain success remains Review chat `LGTM`.
 
 ### `--tenacious` (default: on)
 

@@ -22,7 +22,7 @@ fn single_prompt_then_stop() {
     let Some(MultiturnPrompt::KpopBlock(s)) = first else {
         panic!("expected kpop block prompt");
     };
-    assert!(s.contains("stub kpop want="));
+    assert!(s.contains("stub kpop max_hypotheses="));
     assert!(state.next_prompt().expect("after prompt").is_none());
 }
 

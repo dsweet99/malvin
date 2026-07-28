@@ -19,6 +19,8 @@ LOOP_START
 
 LOOP_END
 
+Loop until you think you're done or up to max_hypotheses = `{{ max_hypotheses }}` iterations of the loop.
+
 Log your hypotheses and test results -- as they become available -- to `{{ exp_log }}`. Be sure to log hypotheses and results
 as you generate them. They are valuable. The user and other agents will want to read them.
 

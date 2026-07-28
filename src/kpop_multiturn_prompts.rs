@@ -19,16 +19,12 @@ impl KpopMultiturnPrompts<'_> {
     /// # Errors
     ///
     /// Returns `Err` when prompt assembly fails.
-    pub fn kpop_block(
-        &mut self,
-        want: usize,
-        remaining_after_this_turn: usize,
-    ) -> Result<String, String> {
+    pub fn kpop_block(&mut self, max_hypotheses: usize) -> Result<String, String> {
         match self {
-            Self::Turn(inner) => inner.kpop_block(want, remaining_after_this_turn),
-            Self::StubMt(inner) => inner.kpop_block(want, remaining_after_this_turn),
-            Self::StubEcho(inner) => inner.kpop_block(want, remaining_after_this_turn),
-            Self::StubCapture(inner) => inner.kpop_block(want, remaining_after_this_turn),
+            Self::Turn(inner) => inner.kpop_block(max_hypotheses),
+            Self::StubMt(inner) => inner.kpop_block(max_hypotheses),
+            Self::StubEcho(inner) => inner.kpop_block(max_hypotheses),
+            Self::StubCapture(inner) => inner.kpop_block(max_hypotheses),
             #[cfg(test)]
             Self::Smoke(_) => Ok("k".to_string()),
         }

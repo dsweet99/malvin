@@ -28,7 +28,7 @@ pub const MBC2_SEEK_MAX_STEPS: usize = 10_000;
 pub fn parse_kpop_want(prompt: &str) -> Option<usize> {
     prompt
         .trim()
-        .strip_prefix("stub kpop want=")
+        .strip_prefix("stub kpop max_hypotheses=")
         .and_then(|s| s.parse().ok())
 }
 

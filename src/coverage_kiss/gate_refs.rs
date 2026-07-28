@@ -105,8 +105,9 @@ fn kiss_cov_kpop_turn_kpop_block() {
         request_text: "brief",
         prepend_rules_once: false,
     };
-    let out = prompts.kpop_block(2, 0).expect("kpop prompt");
-    assert!(out.contains("user_request.md"));
+    let out = prompts.kpop_block(2).expect("kpop prompt");
+    assert!(out.contains("brief"));
+    assert!(out.contains("max_hypotheses = `2`"));
 }
 
 #[test]

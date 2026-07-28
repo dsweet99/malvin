@@ -8,7 +8,7 @@
 |---|---|
 | Input | One or more investigation briefs → `request.md` per run dir |
 | Loop | `--max-loops` separate agent **runs** (each with its own experiment log); stops early when a run's log contains `## KPOP_SOLVED` |
-| Per run | Up to `--max-hypotheses` typed `## Step … — KPOP` lines |
+| Per run | Soft `--max-hypotheses` budget in the agent prompt (`{{ max_hypotheses }}`); agent-owned counting |
 | Lookup | `malvin kpop <KPOP_ID>` prints a prior log (no agent) |
 
 ## Intention
@@ -39,7 +39,7 @@ Short id: `M` plus five characters from `a-z` and `0-9` (example: `Ma3bx9`). Mal
 | Flag | Default | Meaning |
 |------|---------|---------|
 | `--max-loops` | 1 | Separate kpop agent runs; stops early when a run's log contains `## KPOP_SOLVED` |
-| `--max-hypotheses` | 5 | `## Step … — KPOP` budget **per** agent run |
+| `--max-hypotheses` | 5 | Soft hypothesis budget for the agent prompt **per** agent run (not harness-counted) |
 | `--tenacious` | on | `--max-acp-retries=9999` and `--max-loops=9999` |
 | `--no-tenacious` | off | Restore normal loop/retry budgets |
 
@@ -54,7 +54,7 @@ Each agent session sends **one prompt**: `header.md` + `kpop_common.md` + `kpop_
 | Piece | Role |
 |-------|------|
 | **kpop_common** | Popper method: hypothesize → predict → falsify; log outcomes to the experiment log |
-| **kpop_block** | Turn budget (`want` = `--max-hypotheses`); may append `## KPOP_SOLVED` |
+| **kpop_block** | User request + may append `## KPOP_SOLVED` to the exp log |
 | **User brief** | Inlined in `kpop_block.md` and on disk at `user_request_path` (`request.md`) |
 
 Per-session artifacts under `_kpop/`:
@@ -83,9 +83,9 @@ Stops when any of:
 
 - A run's experiment log contains `## KPOP_SOLVED` (outer loop exits early)
 - `--max-loops` runs complete
-- Per-run `--max-hypotheses` budget is exhausted (no more `## Step … — KPOP` lines)
 - Internal error
 
+The harness does **not** early-exit or fail when the agent exceeds `--max-hypotheses` step headings; that budget is soft guidance in the prompt.
 ## Artifacts
 
 - `request.md` — input brief

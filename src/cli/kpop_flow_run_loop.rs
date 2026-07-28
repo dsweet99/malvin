@@ -4,9 +4,7 @@ use std::path::PathBuf;
 
 use crate::artifacts::{ensure_gate_exp_log_file, SessionDotfileBackups};
 use crate::cli::KpopArgs;
-use crate::kpop_progression::{
-    agent_declared_success, hypothesis_budget_exhausted, read_exp_log_text, KpopMultiturnState,
-};
+use crate::kpop_progression::{agent_declared_success, read_exp_log_text, KpopMultiturnState};
 use crate::kpop_multiturn_prompts::KpopMultiturnPrompts;
 use crate::prompts::PromptStore;
 use crate::KpopTurnPrompts;
@@ -64,7 +62,6 @@ pub(crate) fn snapshot_kpop_loop_dotfiles_and_exp_log(
 
 pub(crate) struct KpopLoopExitAfterIteration {
     pub(crate) declares_solved: bool,
-    pub(crate) budget_exhausted: bool,
     pub(crate) will_exit_after_this_loop: bool,
 }
 
@@ -72,16 +69,12 @@ pub(crate) fn kpop_loop_exit_after_iteration(
     exp_log_path: &PathBuf,
     agent_loop: usize,
     max_loops: usize,
-    max_hypotheses: usize,
 ) -> Result<KpopLoopExitAfterIteration, String> {
     let text = read_exp_log_text(exp_log_path)?;
     let declares_solved = agent_declared_success(&text);
-    let budget_exhausted = hypothesis_budget_exhausted(&text, max_hypotheses);
-    let stop_outer = declares_solved || budget_exhausted;
     Ok(KpopLoopExitAfterIteration {
         declares_solved,
-        budget_exhausted,
-        will_exit_after_this_loop: stop_outer || agent_loop == max_loops,
+        will_exit_after_this_loop: declares_solved || agent_loop == max_loops,
     })
 }
 
@@ -95,7 +88,6 @@ async fn finish_kpop_loop_iteration(
         &loop_snapshot.exp_log_path,
         agent_loop,
         max_loops,
-        params.kpop.max_hypotheses,
     )?;
     crate::cli::kpop_summarize::maybe_run_inline_summarize_on_kpop_loop(
         crate::cli::kpop_summarize::InlineSummarizeOnKpopLoopCtx {
@@ -110,7 +102,7 @@ async fn finish_kpop_loop_iteration(
         },
     )
     .await?;
-    Ok((exit.declares_solved || exit.budget_exhausted).then_some(true))
+    Ok(exit.declares_solved.then_some(true))
 }
 
 pub(crate) async fn run_kpop_agent_loops(

@@ -60,8 +60,7 @@ pub(crate) fn build_explain_kpop_phase_prompt(
         input.exp_log_path,
         input.outer_iteration,
     );
-    ctx.insert("want", input.max_hypotheses.to_string());
-    ctx.insert("remaining_hypotheses", "0");
+    ctx.insert("max_hypotheses", input.max_hypotheses.to_string());
     ctx.insert("user_request", input.request_text);
     ctx.insert("explain_kpop_chat_rules", explain_kpop_chat_rules(input.phase));
     render_explain_kpop_strata(input.prepared.store(), ctx.as_map())
@@ -110,7 +109,7 @@ pub(crate) async fn run_explain_kpop_phase_once(
         phase: params.phase,
         max_hypotheses: params.max_hypotheses,
     })?;
-    let (chat, backups) = run_phase_coder_prompt(params, &prompt, &exp_log_path).await?;
+    let (chat, backups) = run_phase_coder_prompt(params, &prompt).await?;
     Ok(ExplainKpopPhaseResult {
         chat,
         backups,
@@ -121,35 +120,24 @@ pub(crate) async fn run_explain_kpop_phase_once(
 async fn run_phase_coder_prompt(
     params: &mut ExplainKpopPhaseParams<'_>,
     prompt: &str,
-    exp_log_path: &std::path::Path,
 ) -> Result<(String, SessionDotfileBackups), String> {
     let work_dir = params.prepared.artifacts().work_dir.as_path();
     let log_label = format!("explain_{}", params.phase);
     let session_dotfile_backups =
         SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)?;
     let client = &mut *params.client;
-    let prompt_result = {
-        let mut prompt_result = client
-            .run_coder_prompt(
-                prompt,
-                params.prepared.artifacts().log_path(&log_label).as_path(),
-                &log_label,
-                CoderPromptOptions {
-                    llm_phase: Some(TimingPhase::Implement),
-                    single_attempt: true,
-                    ..Default::default()
-                },
-            )
-            .await;
-        if prompt_result.is_ok() {
-            prompt_result = crate::kpop_progression::check_hypothesis_budget(
-                exp_log_path,
-                params.max_hypotheses,
-            )
-            .map_err(AgentError);
-        }
-        prompt_result
-    };
+    let prompt_result = client
+        .run_coder_prompt(
+            prompt,
+            params.prepared.artifacts().log_path(&log_label).as_path(),
+            &log_label,
+            CoderPromptOptions {
+                llm_phase: Some(TimingPhase::Implement),
+                single_attempt: true,
+                ..Default::default()
+            },
+        )
+        .await;
     let chat = client
         .last_coder_prompt_agent_response()
         .unwrap_or_default();

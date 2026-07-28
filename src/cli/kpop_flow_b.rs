@@ -150,7 +150,7 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
         request_text: "investigate cache",
         prepend_rules_once: true,
     };
-    let kpop = turn.kpop_block(5, 0).unwrap();
+    let kpop = turn.kpop_block(5).unwrap();
     assert_substrings_monotonic(
         &kpop,
         &[
@@ -163,7 +163,7 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
         &kpop,
         &[
             ".malvin/logs/run42/_kpop/exp_log_run42.md",
-            ".malvin/logs/run42/request.md",
+            "max_hypotheses = `5`",
         ],
     );
     assert!(
@@ -179,8 +179,8 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
         "kpop prompt must not include legacy mpc block wording: {kpop:?}"
     );
     assert!(
-        kpop.contains("Complete up to"),
-        "kpop prompt must include block budget wording: {kpop:?}"
+        !kpop.contains("Complete up to"),
+        "kpop prompt must not include harness step-budget ritual: {kpop:?}"
     );
     assert!(
         kpop.contains("investigate cache"),

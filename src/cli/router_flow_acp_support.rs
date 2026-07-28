@@ -79,10 +79,14 @@ async fn run_multi_group_kpop(
     requirements: &ReviewRequirements,
 ) -> Result<(), String> {
     let exp_log = ensure_gate_exp_log_file(input.artifacts, 1).map_err(|e| e.to_string())?;
-    let want = load_malvin_config(input.artifacts.work_dir.as_path())
+    let max_hypotheses = load_malvin_config(input.artifacts.work_dir.as_path())
         .default_workflow
         .max_hypotheses_or_default();
-    let want = if want == 0 { DEFAULT_MAX_HYPOTHESES } else { want };
+    let max_hypotheses = if max_hypotheses == 0 {
+        DEFAULT_MAX_HYPOTHESES
+    } else {
+        max_hypotheses
+    };
     let groups_block = requirements.groups_block();
     let prompt = router_flow_prompt::build_router_kpop_group_prompt(
         router_flow_prompt::RouterKpopGroupPromptInput {
@@ -91,7 +95,7 @@ async fn run_multi_group_kpop(
             model: &input.shared.model,
             git: input.shared.git,
             groups_block: &groups_block,
-            want,
+            max_hypotheses,
             exp_log: &exp_log,
         },
     )?;

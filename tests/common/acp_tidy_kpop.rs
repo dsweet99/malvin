@@ -99,8 +99,9 @@ pub fn acp_mock_kpop_writes_solved_js(chunk: &str) -> String {
         ),
     );
     let body = format!(
-        "{}\n    if (promptText.match(/Complete up to [`]?(\\d+)[`]? KPOP iterations/)) {{\n{iteration}\n    }}",
+        "{}\n    if ({}) {{\n{iteration}\n    }}",
         acp_mock_kpop_prompt_preamble(),
+        acp_mock_kpop_block_match_js(),
     );
     let done = session_update_chunk_line("agent_message_chunk", chunk);
     acp_mock_js("", &format!("{body}\n{done}"))

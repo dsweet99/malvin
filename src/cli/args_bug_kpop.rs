@@ -5,7 +5,7 @@ pub struct KpopArgs {
     /// How many times to run the kpop agent (stops early when the exp log contains `## KPOP_SOLVED`).
     #[arg(long, default_value_t = 1)]
     pub max_loops: usize,
-    /// Total `KPop` hypothesis steps (`## Step` headings in the exp log) per agent run.
+    /// Soft hypothesis budget for the agent prompt (`{{ max_hypotheses }}`); not harness-enforced via exp-log step counts.
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES)]
     pub max_hypotheses: usize,
     /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.

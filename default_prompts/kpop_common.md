@@ -2,15 +2,12 @@
 
 [
 KPop is short for "Karl Popper".
-You may or may not be solving a repo coding problem, so the Repo Coding Rules may or may not apply.
-KPop may be referenced later on like a command, "KPop: <problem statement or question>"
+KPop may be referenced later on like a command, "KPop: <PROBLEM_STATEMENT_OR_QUESTION>"
 ]
 
-Apply this method to the user's problem.
+Apply this method to the PROBLEM_STATEMENT_OR_QUESTION.
 
-The user request is in `{{ user_request_path }}`.
-
-Repeat until you think you've solved the problem:
+Repeat until you think you've solved the PROBLEM_STATEMENT_OR_QUESTION:
 LOOP_START
 
 - **Hypothesize**: Hypothesize one falsifiable explanation of the cause of the problem.
@@ -18,6 +15,8 @@ LOOP_START
 - **Falsify**: Run the test. If falsified, reject the hypothesis.
 
 LOOP_END
+
+Loop until you think you're done or up to max_hypotheses = `{{ max_hypotheses }}` iterations of the loop.
 
 Log your hypotheses and test results -- as they become available -- to `{{ exp_log }}`. Be sure to log hypotheses and results
 as you generate them. They are valuable. The user and other agents will want to read them.

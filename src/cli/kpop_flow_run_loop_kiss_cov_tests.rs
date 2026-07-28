@@ -6,7 +6,7 @@ fn kpop_loop_exit_after_iteration_exits_on_last_loop() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let path = tmp.path().join("exp.md");
         std::fs::write(&path, "").expect("write");
-        let exit = super::kpop_flow_run_loop::kpop_loop_exit_after_iteration(&path, 2, 2, 5)
+        let exit = super::kpop_flow_run_loop::kpop_loop_exit_after_iteration(&path, 2, 2)
             .expect("exit");
         assert!(exit.will_exit_after_this_loop);
         assert!(!exit.declares_solved);
@@ -19,16 +19,15 @@ fn kpop_loop_exit_after_iteration_continues_before_last_loop() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let path = tmp.path().join("exp.md");
         std::fs::write(&path, "").expect("write");
-        let exit = super::kpop_flow_run_loop::kpop_loop_exit_after_iteration(&path, 1, 2, 5)
+        let exit = super::kpop_flow_run_loop::kpop_loop_exit_after_iteration(&path, 1, 2)
             .expect("exit");
         assert!(!exit.declares_solved);
-        assert!(!exit.budget_exhausted);
         assert!(!exit.will_exit_after_this_loop);
     });
 }
 
 #[test]
-fn kpop_loop_exit_after_iteration_stops_outer_loop_when_budget_exhausted() {
+fn kpop_loop_exit_after_iteration_does_not_early_exit_on_step_headings_alone() {
     crate::test_utils::with_isolated_home(|_work| {
         let tmp = tempfile::tempdir().expect("tempdir");
         let path = tmp.path().join("exp.md");
@@ -37,10 +36,22 @@ fn kpop_loop_exit_after_iteration_stops_outer_loop_when_budget_exhausted() {
             "## Step 1 — KPop a\n## Step 2 — KPop b\n## Step 3 — KPop c\n",
         )
         .expect("write");
-        let exit = super::kpop_flow_run_loop::kpop_loop_exit_after_iteration(&path, 1, 3, 3)
+        let exit = super::kpop_flow_run_loop::kpop_loop_exit_after_iteration(&path, 1, 3)
             .expect("exit");
         assert!(!exit.declares_solved);
-        assert!(exit.budget_exhausted);
+        assert!(!exit.will_exit_after_this_loop);
+    });
+}
+
+#[test]
+fn kpop_loop_exit_after_iteration_stops_when_solved() {
+    crate::test_utils::with_isolated_home(|_work| {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let path = tmp.path().join("exp.md");
+        std::fs::write(&path, "## KPOP_SOLVED — done\n").expect("write");
+        let exit = super::kpop_flow_run_loop::kpop_loop_exit_after_iteration(&path, 1, 3)
+            .expect("exit");
+        assert!(exit.declares_solved);
         assert!(exit.will_exit_after_this_loop);
     });
 }

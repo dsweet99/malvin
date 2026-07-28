@@ -15,11 +15,6 @@ async fn multiturn_after_successful_round(
     after: MultiturnRoundAfter<'_, '_>,
 ) -> Result<(), AgentError> {
     restore_session_dotfiles_after_success(after.cwd, after.session_dotfile_backups)?;
-    crate::kpop_progression::check_hypothesis_budget(
-        after.state.exp_log_path(),
-        after.state.max_hypotheses,
-    )
-    .map_err(AgentError)?;
     after.state.record_kpop_block_prompt_completed();
     Ok(())
 }

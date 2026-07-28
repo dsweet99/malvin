@@ -12,7 +12,7 @@ pub struct KpopTurnPrompts<'a> {
 }
 
 impl KpopTurnPrompts<'_> {
-    /// Gate workflow: `header.md` + `kpop_common.md` + `kpop_block.md` in one prompt (`want` = budget).
+    /// Gate workflow: `header.md` + `kpop_common.md` + `kpop_block.md` in one prompt.
     ///
     /// # Errors
     ///
@@ -21,15 +21,14 @@ impl KpopTurnPrompts<'_> {
         self.gate_kpop_single_turn_prompt(max_hypotheses)
     }
 
-    /// Gate workflow: `header.md` + `kpop_common.md` + `kpop_block.md` in one prompt (`want` = budget).
+    /// Gate workflow: `header.md` + `kpop_common.md` + `kpop_block.md` in one prompt.
     ///
     /// # Errors
     ///
     /// Returns `Err` when a prompt template cannot be rendered.
     pub fn gate_kpop_single_turn_prompt(&self, max_hypotheses: usize) -> Result<String, String> {
         let mut ctx = self.base.as_map().clone();
-        ctx.insert("want".to_string(), max_hypotheses.to_string());
-        ctx.insert("remaining_hypotheses".to_string(), "0".to_string());
+        ctx.insert("max_hypotheses".to_string(), max_hypotheses.to_string());
         ctx.insert("user_request".to_string(), self.request_text.to_string());
         let header = self
             .store
@@ -55,17 +54,9 @@ impl KpopTurnPrompts<'_> {
     /// # Errors
     ///
     /// Returns `Err` when a prompt template cannot be rendered.
-    pub fn kpop_block(
-        &mut self,
-        want: usize,
-        remaining_after_this_turn: usize,
-    ) -> Result<String, String> {
+    pub fn kpop_block(&mut self, max_hypotheses: usize) -> Result<String, String> {
         let mut ctx = self.base.as_map().clone();
-        ctx.insert("want".to_string(), want.to_string());
-        ctx.insert(
-            "remaining_hypotheses".to_string(),
-            remaining_after_this_turn.to_string(),
-        );
+        ctx.insert("max_hypotheses".to_string(), max_hypotheses.to_string());
         ctx.insert("user_request".to_string(), self.request_text.to_string());
         let with_rules = self.prepend_rules_once;
         let common = self

@@ -163,6 +163,10 @@ pub fn workflow_context(
         crate::repo_gates::prompt_quality_gates_markdown_ephemeral(&artifacts.work_dir)
             .map_err(PromptError)?,
     );
+    context.insert(
+        "max_hypotheses".to_string(),
+        crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES.to_string(),
+    );
     let kpop_content = prompts.render_prompt_only("kpop_common.md", context.as_map())?;
     context.insert("kpop".to_string(), kpop_content);
     Ok(context)

@@ -147,7 +147,7 @@ pub(crate) struct RouterKpopGroupPromptInput<'a> {
     pub model: &'a str,
     pub git: bool,
     pub groups_block: &'a str,
-    pub want: usize,
+    pub max_hypotheses: usize,
     pub exp_log: &'a Path,
 }
 
@@ -157,7 +157,10 @@ fn insert_router_kpop_group_fields(
 ) {
     let base = input.artifacts.work_dir.as_path();
     ctx.insert("exp_log".to_string(), format_prompt_path(input.exp_log, base));
-    ctx.insert("want".to_string(), input.want.to_string());
+    ctx.insert(
+        "max_hypotheses".to_string(),
+        input.max_hypotheses.to_string(),
+    );
     ctx.insert("groups_block".to_string(), input.groups_block.to_string());
 }
 

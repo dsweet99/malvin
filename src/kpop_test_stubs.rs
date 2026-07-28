@@ -7,8 +7,8 @@ impl MtStubPrompts {
     /// # Errors
     ///
     /// Returns `Err` when prompt assembly fails (stub never fails).
-    pub fn kpop_block(&mut self, want: usize, _: usize) -> Result<String, String> {
-        Ok(format!("stub kpop want={want}"))
+    pub fn kpop_block(&mut self, max_hypotheses: usize) -> Result<String, String> {
+        Ok(format!("stub kpop max_hypotheses={max_hypotheses}"))
     }
 }
 
@@ -19,8 +19,8 @@ impl EchoPrompts {
     /// # Errors
     ///
     /// Returns `Err` when prompt assembly fails (stub never fails).
-    pub fn kpop_block(&mut self, want: usize, _: usize) -> Result<String, String> {
-        Ok(format!("K{want}"))
+    pub fn kpop_block(&mut self, max_hypotheses: usize) -> Result<String, String> {
+        Ok(format!("K{max_hypotheses}"))
     }
 }
 
@@ -41,9 +41,9 @@ impl CaptureWants {
     /// # Errors
     ///
     /// Returns `Err` when prompt assembly fails (stub never fails).
-    pub fn kpop_block(&mut self, want: usize, _: usize) -> Result<String, String> {
-        self.wants.lock().expect("wants lock").push(want);
-        Ok(format!("stub kpop want={want}"))
+    pub fn kpop_block(&mut self, max_hypotheses: usize) -> Result<String, String> {
+        self.wants.lock().expect("wants lock").push(max_hypotheses);
+        Ok(format!("stub kpop max_hypotheses={max_hypotheses}"))
     }
 }
 

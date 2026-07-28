@@ -2,10 +2,10 @@
 
 #[test]
 fn kiss_cov_kpop_progression_counter_wrappers() {
-    let _ = crate::kpop_progression::hypotheses_emitted;
     let _ = crate::kpop_progression::agent_declared_success;
-    let _ = stringify!(hypotheses_emitted);
+    let _ = crate::kpop_progression::read_exp_log_text;
     let _ = stringify!(agent_declared_success);
+    let _ = stringify!(read_exp_log_text);
 }
 
 #[test]

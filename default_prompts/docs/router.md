@@ -56,7 +56,7 @@ Each outer session opens one coder session and sends:
 | 1 | `header.md` | Standard Malvin coding context |
 | 1 | `router_requirements.md` | Write grouped review requirements JSON only |
 | 1 | User request | Appended after headers |
-| 2 | `kpop_common.md` + `router_kpop_group.md` | **One** turn covering all groups; residual plan or `## NO_WORK_REMAINING N` per index; hypotheses to `_kpop` exp log (`want` from `[default_workflow].max_hypotheses`, default 5) |
+| 2 | `kpop_common.md` + `router_kpop_group.md` | **One** turn covering all groups; residual plan or `## NO_WORK_REMAINING N` per index; hypotheses to `_kpop` exp log (`max_hypotheses` from `[default_workflow].max_hypotheses`, default 5) |
 | 3 (optional) | `router_work.md` | Run only when any group has `## Group Work N` or a missing/unclear deliverable; optional `{{ code_extra }}` when `--gates` |
 
 Before turn 1, malvin clears any stale `review_requirements.json`. After turn 1, it loads and validates the file. Missing, malformed, or over-limit files fail the run. Schema:
@@ -93,7 +93,7 @@ After each outer session (whether work ran or was skipped), run workspace gates:
 | Key | Required by | Value source |
 |-----|-------------|--------------|
 | `review_requirements_path` | `router_requirements.md` | run artifacts |
-| `groups_block` / `want` / `exp_log` | `router_kpop_group.md` | multi-group assembly |
+| `groups_block` / `max_hypotheses` / `exp_log` | `router_kpop_group.md` | multi-group assembly |
 | `code_extra` | `router_work.md` | `router_code_extra.md` when `--gates` |
 
 ## Config

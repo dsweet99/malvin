@@ -32,8 +32,11 @@ fn kpop_turn_test_store() -> (tempfile::TempDir, PromptStore) {
     std::fs::create_dir_all(&root).expect("mkdir");
     for (name, body) in [
         ("header.md", "<<hdr plan={{ plan_path }} req={{ user_request_path }}>>\n"),
-        ("kpop_common.md", "<<common exp={{ exp_log }}>>\n"),
-        ("kpop_block.md", "<<block want={{ want }} user={{ user_request }}>>\n"),
+        ("kpop_common.md", "<<common exp={{ exp_log }} max={{ max_hypotheses }}>>\n"),
+        (
+            "kpop_block.md",
+            "<<block max={{ max_hypotheses }} user={{ user_request }}>>\n",
+        ),
     ] {
         std::fs::write(root.join(name), body).expect("write");
     }
@@ -58,7 +61,7 @@ fn kpop_engine_single_turn_prompt_is_header_common_and_block() {
     assert!(gate.contains(request_path));
     assert!(gate.contains(exp_path));
     assert!(gate.contains("investigate cache"));
-    assert!(gate.contains("<<block want=5"));
+    assert!(gate.contains("<<block max=5"));
 }
 
 #[test]
@@ -72,12 +75,12 @@ fn kpop_block_prepends_header_once_then_common_and_block() {
         prepend_rules_once: true,
     };
 
-    let first = prompts.kpop_block(3, 0).expect("first kpop turn");
+    let first = prompts.kpop_block(3).expect("first kpop turn");
     let header = render_header(&store, base.as_map()).expect("header");
     assert!(first.contains(header.trim()));
     assert!(first.contains("brief text"));
 
-    let second = prompts.kpop_block(3, 0).expect("second kpop turn");
+    let second = prompts.kpop_block(3).expect("second kpop turn");
     assert!(!second.contains(header.trim()));
     assert!(second.contains("brief text"));
 }
@@ -93,7 +96,7 @@ fn kpop_block_without_prepend_rules_never_includes_header() {
         prepend_rules_once: false,
     };
 
-    let out = prompts.kpop_block(2, 1).expect("kpop turn");
+    let out = prompts.kpop_block(2).expect("kpop turn");
     let header = render_header(&store, base.as_map()).expect("header");
     assert!(!out.contains(header.trim()));
     assert!(out.contains("brief"));
