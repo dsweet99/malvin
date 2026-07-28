@@ -19,6 +19,20 @@ fn reminder_switches_to_fail_epoch_cue_after_nonzero_exit() {
     let cue = with_tool_use_system_reminder(&red);
     assert!(cue[0].content.contains("nonzero exit is a failed live check"));
     assert!(cue[0].content.contains("acceptance region"));
+    assert!(cue[0].content.contains("identical argv"));
+    assert!(cue[0].content.contains("does not clear the fail epoch"));
+}
+
+#[test]
+fn green_observation_requires_named_checks_still_paid() {
+    let green = vec![ChatMessage {
+        role: ChatRole::User,
+        content: "Exit code 0\nstdout:\nok\nstderr:\n".into(),
+    }];
+    let study = with_tool_use_system_reminder(&green);
+    assert!(study[0].content.contains("latest live observation exited 0"));
+    assert!(study[0].content.contains("exact invocation"));
+    assert!(study[0].content.contains("still unpaid"));
 }
 
 #[test]
@@ -141,6 +155,11 @@ Do **not** start implementing. output nothing else of substance — Pause."
         "cat > /root/.malvin_home/logs/run/review_requirements.json"
     ));
     assert!(forced.contains("\"groups\""));
+    assert!(forced.contains("Plan acceptance"));
+    assert!(forced.contains("documented CLI"));
+    assert!(forced.contains("positional path"));
+    assert!(forced.contains("stdin-only"));
+    assert!(!forced.contains("Satisfy the user request as stated"));
     assert!(!super::requirements_path_needs_retry(
         &forced,
         Some("/root/.malvin_home/logs/run/review_requirements.json")
@@ -185,4 +204,32 @@ Do **not** start implementing."
         },
     ];
     assert!(super::session_is_requirements_listing(&msgs));
+}
+
+#[test]
+fn on_disk_valid_requirements_file_is_detected() {
+    let path = std::env::temp_dir().join(format!(
+        "malvin_req_disk_{}.json",
+        std::process::id()
+    ));
+    std::fs::write(
+        &path,
+        r#"{"groups":[{"title":"t","requirements":["plain string"]}]}"#,
+    )
+    .expect("write");
+    let path_s = path.to_string_lossy().into_owned();
+    assert!(super::complete_requirements_path::requirements_file_on_disk_is_valid(
+        &path_s
+    ));
+    // Force-write must not re-synthesize once the abs path already holds valid JSON.
+    let msgs = vec![ChatMessage {
+        role: ChatRole::User,
+        content: format!(
+            "Write **only** the JSON file at `{path_s}`. \
+Do **not** start implementing. output nothing else of substance — Pause."
+        ),
+    }];
+    let prose = "## NEW_HISTORY\nx\n\n## RESPONSE\nDone. Wrote review_requirements.json.\n";
+    assert!(super::force_requirements_abs_write_response(&msgs, prose).is_none());
+    let _ = std::fs::remove_file(&path);
 }

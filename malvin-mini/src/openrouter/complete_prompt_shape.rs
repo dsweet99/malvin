@@ -10,8 +10,12 @@ pub(super) use super::complete_marker_shape::{
 #[allow(unused_imports)] // re-exported for unit tests and sibling modules
 pub(super) use super::complete_requirements_path::{
     content_has_abs_requirements_write, expected_review_requirements_path,
-    requirements_path_needs_retry, response_has_object_shaped_requirements,
+    requirements_file_on_disk_is_valid, requirements_path_needs_retry,
+    response_has_object_shaped_requirements,
 };
+// Re-export module for disk-validity unit tests.
+#[allow(unused_imports)]
+pub(super) use super::complete_requirements_path;
 #[allow(unused_imports)] // re-exported for unit tests and sibling modules
 pub(super) use super::complete_requirements_shape::{
     expected_path_from_messages, force_requirements_abs_write_response,
@@ -30,16 +34,21 @@ halt.";
 const FAIL_EPOCH_CUE: &str = "A nonzero exit is a failed live check. Trap, poison, or \
 non-binding stories about that check are unlicensed. Do not invent outcomes of checks you \
 have not run. Predict that the same check will turn green, Act only into that check's \
-acceptance region, then re-run it. Exterior Observe and closing reports are null Study \
-until that check is green.";
+acceptance region, then re-run the identical argv. Replacing a red probe with a different \
+command (different flags, positional args, or stdin instead of a documented file path) does \
+not clear the fail epoch. Exterior Observe and closing reports are null Study until that \
+exact check is green.";
 
 const EXTERIOR_BEFORE_ACT_CUE: &str = "Exterior contact before revising the named working \
 artifact is null Study. Emit an Act that revises that artifact or runs a request-named \
 check in that context before any further exterior Observe.";
 
 /// After a green live observation, do not demand another Act; allow fence-less advance/close.
-const GREEN_OBSERVATION_CUE: &str = "The latest live observation exited 0. Do not emit another \
-Act fence unless a named check is still unpaid. Prefer a fence-less reply that advances or closes.";
+const GREEN_OBSERVATION_CUE: &str = "The latest live observation exited 0. That exit pays only \
+for the probe that was run. If a plan-documented or request-named invocation is still unpaid \
+— including an earlier red on a different argv — re-run that exact invocation. Do not emit \
+another Act fence unless a named check is still unpaid. Prefer a fence-less reply that \
+advances or closes only when every named check is paid.";
 
 /// Residual-plan / gap-analysis turns: plan in chat; do not implement product changes.
 const PLAN_ONLY_CUE: &str = "This New request is gap-analysis / residual planning only. Write \

@@ -174,14 +174,18 @@ fn explain_kpop_fails_when_post_session_pdf_empty() {
     workspace_kiss_check_only(&workspace);
     let path = bin_path_with_fake_kiss(&root);
     let mock = cached_mock_executable(&acp_mock_explain_kpop_empty_pdf_js());
-    let out = spawn_explain(&ExplainSpawn {
-        workspace: &workspace,
-        home: &home,
-        mock: &mock,
-        path_var: &path,
-        request: "topic",
-        extra_args: &["--max-loops", "2"],
-    });
+    // Empty-PDF mock walks review→plan→work→review across max-loops=2; needs >12s.
+    let out = common::spawn_explain_with_timeout(
+        &ExplainSpawn {
+            workspace: &workspace,
+            home: &home,
+            mock: &mock,
+            path_var: &path,
+            request: "topic",
+            extra_args: &["--max-loops", "2"],
+        },
+        std::time::Duration::from_secs(25),
+    );
     assert!(!out.status.success(), "expected failure for empty pdf: {out:?}");
 }
 

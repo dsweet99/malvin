@@ -2,7 +2,7 @@ use crate::openrouter::memory_format::RESPONSE_HEADING;
 use crate::openrouter::types::{ChatMessage, ChatRole};
 
 pub(super) use super::complete_act_inputs::{
-    latest_observation_has_nonzero_exit, previous_response_text,
+    latest_observation_has_nonzero_exit, latest_observation_has_zero_exit, previous_response_text,
 };
 
 /// Pending/current wire text scoped to `## RESPONSE` when present so fences inside
@@ -116,129 +116,57 @@ pub(super) fn history_has_any_artifact_act(messages: &[ChatMessage]) -> bool {
         .any(|b| body_looks_artifact_revision(b))
 }
 
-/// After a named-artifact revision, private Exit does not clear debt when the request
-/// names owed runnable spans; only a later request-named-shaped Act's Exit pays.
-pub(crate) fn artifact_act_lacks_following_observation(messages: &[ChatMessage]) -> bool {
-    let Some(rev_i) = last_revision_index(messages) else {
-        return false;
-    };
-    let owed = owed_spans(messages);
-    if owed.is_empty() {
-        return !has_exit_after(messages, rev_i);
-    }
-    !named_probe_exit_after(messages, rev_i, &owed)
-}
-
-fn last_revision_index(messages: &[ChatMessage]) -> Option<usize> {
-    messages.iter().enumerate().rev().find_map(|(i, m)| {
-        (matches!(m.role, ChatRole::Assistant)
-            && bash_fence_bodies(std::slice::from_ref(m), None)
-                .iter()
-                .any(|b| body_looks_artifact_revision(b)))
-        .then_some(i)
-    })
-}
-
-fn has_exit_after(messages: &[ChatMessage], rev_i: usize) -> bool {
-    messages[rev_i + 1..].iter().any(|m| {
-        matches!(m.role, ChatRole::User) && m.content.lines().any(|l| l.starts_with("Exit code "))
-    })
-}
-
-fn named_probe_exit_after(messages: &[ChatMessage], rev_i: usize, owed: &[String]) -> bool {
-    let mut pending = false;
-    for m in &messages[rev_i + 1..] {
-        match m.role {
-            ChatRole::Assistant => {
-                pending = bash_fence_bodies(std::slice::from_ref(m), None)
-                    .iter()
-                    .any(|b| owed.iter().any(|s| norm(b).contains(&norm(s))));
-            }
-            ChatRole::User => {
-                if pending && m.content.lines().any(|l| l.starts_with("Exit code ")) {
-                    return true;
-                }
-                pending = false;
-            }
-            _ => {}
-        }
-    }
-    false
-}
-
-fn norm(s: &str) -> String {
-    s.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
-fn owed_spans(messages: &[ChatMessage]) -> Vec<String> {
-    let Some(req) = messages.iter().find_map(|m| {
-        (matches!(m.role, ChatRole::User)
-            && !m.content.lines().any(|l| l.starts_with("Exit code "))
-            && !m.content.contains("Emit an Act fence now")
-            && m.content.len() > 40)
-        .then_some(m.content.as_str())
-    }) else {
-        return Vec::new();
-    };
-    let mut spans = Vec::new();
-    let mut rest = req;
-    while let Some(start) = rest.find('`') {
-        let after = &rest[start + 1..];
-        let Some(end) = after.find('`') else { break };
-        push_span(&mut spans, after[..end].trim());
-        rest = &after[end + 1..];
-    }
-    for line in req.lines() {
-        push_span(&mut spans, line.trim());
-    }
-    spans
-}
-
-fn push_span(spans: &mut Vec<String>, s: &str) {
-    if !looks_runnable(s) {
-        return;
-    }
-    let n = norm(s);
-    if spans.iter().any(|e| norm(e) == n) {
-        return;
-    }
-    spans.push(s.to_string());
-}
-
-fn looks_runnable(s: &str) -> bool {
-    if s.is_empty() || s.len() > 200 || s.contains('\n') || s.starts_with("http://") || s.starts_with("https://")
-    {
+/// Fence-less RESPONSE that claims a write/create without a bash Act in that same body.
+pub(super) fn response_claims_write_without_fence(content: &str) -> bool {
+    if response_has_act_fence(content) {
         return false;
     }
-    let first = s.split_whitespace().next().unwrap_or("");
-    !first.is_empty()
-        && first
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.' | '/'))
-        && (s.split_whitespace().count() >= 2 || s.contains(" -") || s.contains(" --") || first.contains('/'))
+    let body = response_section_or_raw(content).to_ascii_lowercase();
+    const CLAIMS: &[&str] = &[
+        "i've created",
+        "i have created",
+        "i've written",
+        "i have written",
+        "i wrote",
+        "i created",
+        "successfully created",
+        "successfully wrote",
+        "artifact written",
+        "file is written",
+        "script is created",
+        "is created, executable",
+        "created successfully",
+        "written successfully",
+        "wrote the script",
+        "created the script",
+        "created `bin/",
+        "wrote `bin/",
+    ];
+    CLAIMS.iter().any(|c| body.contains(c))
 }
+
+/// Prose write-claim with no Act fence is unpaid unless the latest green observation
+/// already followed an artifact-revision bash in the previous response.
+pub(super) fn unpaid_prose_write_claim(messages: &[ChatMessage], pending: &str) -> bool {
+    if !response_claims_write_without_fence(pending) {
+        return false;
+    }
+    if !latest_observation_has_zero_exit(messages) {
+        return true;
+    }
+    let Some(prev) = previous_response_text(messages) else {
+        return true;
+    };
+    let mut bodies = Vec::new();
+    push_bash_bodies(response_section_or_raw(prev), &mut bodies);
+    !bodies.iter().any(|b| body_looks_artifact_revision(b))
+}
+
+#[path = "complete_act_detect_owed.rs"]
+mod complete_act_detect_owed;
+pub(crate) use complete_act_detect_owed::artifact_act_lacks_following_observation;
+
 
 #[cfg(test)]
-mod tests {
-    use super::{response_has_act_fence, response_section_or_raw};
-
-    #[test]
-    fn response_has_act_fence_ignores_new_history_fences() {
-        let wire = "## NEW_HISTORY\n```bash\ncurl https://ex.com\n```\n\n## RESPONSE\nNo act here.\n";
-        assert!(!response_has_act_fence(wire));
-        assert!(!response_section_or_raw(wire).contains("curl"));
-    }
-
-    #[test]
-    fn response_has_act_fence_sees_response_fences() {
-        let wire = "## NEW_HISTORY\n- note\n\n## RESPONSE\n```bash\necho hi\n```\n";
-        assert!(response_has_act_fence(wire));
-    }
-
-    #[test]
-    fn response_has_act_fence_legacy_raw_when_no_sections() {
-        assert!(response_has_act_fence("```bash\necho x\n```"));
-        assert!(!response_has_act_fence("prose only"));
-    }
-}
-
+#[path = "complete_act_detect_tests.rs"]
+mod complete_act_detect_tests;

@@ -47,6 +47,8 @@ DEFAULT_AGENT_TIMEOUT_SEC = 10 * 60
 TIMEOUT_EXIT_CODE = 124
 _KILL_GRACE_SEC = 2.0
 _POLL_INTERVAL_SEC = 0.1
+# Optional override for agent wall-clock (seconds), e.g. longer FT-03 streak runs.
+AGENT_TIMEOUT_ENV = "MALVIN_FT_AGENT_TIMEOUT_SEC"
 MALVIN_BIN_REMOTE = "/root/.cargo/bin/malvin"
 TOOLCHAIN_PATH = (
     "/root/.cargo/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin"
@@ -67,6 +69,28 @@ def ft_default_results_dir() -> Path:
     if override:
         return Path(override).expanduser().resolve()
     return (Path.home() / ".malvin_home" / "fast_task_results").resolve()
+
+
+def ft_agent_timeout_sec(explicit: float | None = None) -> float:
+    """Resolve agent timeout: explicit arg, else ``MALVIN_FT_AGENT_TIMEOUT_SEC``, else default."""
+    if explicit is not None:
+        if explicit <= 0:
+            raise click.ClickException("timeout_sec must be positive")
+        return float(explicit)
+    raw = os.environ.get(AGENT_TIMEOUT_ENV)
+    if raw:
+        try:
+            value = float(raw)
+        except ValueError as exc:
+            raise click.ClickException(
+                f"{AGENT_TIMEOUT_ENV} must be a positive number, got {raw!r}"
+            ) from exc
+        if value <= 0:
+            raise click.ClickException(
+                f"{AGENT_TIMEOUT_ENV} must be a positive number, got {raw!r}"
+            )
+        return value
+    return float(DEFAULT_AGENT_TIMEOUT_SEC)
 
 
 def ft_timestamp_dir() -> str:
@@ -183,7 +207,8 @@ def ft_dockerfile_for_agent(base_image: str = DEFAULT_BASE_IMAGE) -> str:
     """Dockerfile text for the reusable fast-task agent image (no grade material).
 
     Malvin is not baked into the image; ``ft_docker_agent_cmd`` bind-mounts the
-    host binary at run time so evals always use the current build.
+    host binary (and a per-run logs dir for mini traces) at run time so evals
+    use the current build.
     """
     return f"""\
 FROM {base_image}
@@ -289,6 +314,18 @@ def ft_redact_cmd_for_display(cmd: list[str]) -> str:
     return " ".join(ft_redact_cmd_tokens(cmd))
 
 
+def ft_run_malvin_logs_dir(workspace: Path) -> Path:
+    """Per-run host dir bind-mounted to container ``/root/.malvin_home/logs``.
+
+    Lives next to the staged workspace (``<run>/malvin_logs``) so mini ACP
+    traces survive ``docker run --rm`` without exposing the host's full
+    ``~/.malvin_home/logs`` tree into the sandbox.
+    """
+    logs = workspace.resolve().parent / "malvin_logs"
+    logs.mkdir(parents=True, exist_ok=True)
+    return logs
+
+
 def ft_docker_agent_cmd(
     *,
     image: str,
@@ -297,9 +334,17 @@ def ft_docker_agent_cmd(
     malvin_args: tuple[str, ...] = (),
     use_cursor: bool = False,
 ) -> list[str]:
-    """Agent-phase ``docker run`` argv: workspace-only mount at ``/app``."""
+    """Agent-phase ``docker run`` argv: workspace + per-run logs mounts."""
     ws = workspace.resolve()
-    volume_mounts: list[str] = ["-v", f"{ws}:/app"]
+    host_logs = ft_run_malvin_logs_dir(ws)
+    # Persist container ``/root/.malvin_home/logs`` on the host so mini ACP
+    # traces (e.g. miniPromptShrink) survive ``docker run --rm``.
+    volume_mounts: list[str] = [
+        "-v",
+        f"{ws}:/app",
+        "-v",
+        f"{host_logs}:/root/.malvin_home/logs",
+    ]
     if not use_cursor:
         if malvin_binary is None:
             raise click.ClickException(
@@ -677,7 +722,7 @@ def ft_cli_solve(
     malvin_args: tuple[str, ...],
     use_cursor: bool = False,
     use_main: bool = False,
-    timeout_sec: float = DEFAULT_AGENT_TIMEOUT_SEC,
+    timeout_sec: float | None = None,
 ) -> None:
     """Run malvin on TASK_ID in Docker; report host-graded reward."""
     result = ft_run_solve(
@@ -690,7 +735,7 @@ def ft_cli_solve(
         skip_grade=skip_grade,
         use_cursor=use_cursor,
         use_main=use_main,
-        timeout_sec=timeout_sec,
+        timeout_sec=ft_agent_timeout_sec(timeout_sec),
     )
     if not skip_grade and not dry_run:
         ft_exit_from_evaluation(result["grade"], result["agent"])
@@ -779,10 +824,17 @@ def _ft_test_docker_agent_cmd_nonleak() -> None:
         assert "malvin" in cmd
         assert "cursor-agent" not in " ".join(cmd)
         mounts = [cmd[i + 1] for i, token in enumerate(cmd) if token == "-v"]
-        assert len(mounts) == 2
+        assert len(mounts) == 3
         assert any(m.endswith(":/app") and str(ws.resolve()) in m for m in mounts)
         assert any(
             m == f"{host_malvin.resolve()}:{MALVIN_BIN_REMOTE}:ro" for m in mounts
+        )
+        host_logs = ft_run_malvin_logs_dir(ws)
+        assert any(m == f"{host_logs}:/root/.malvin_home/logs" for m in mounts)
+        assert host_logs == (ws.resolve().parent / "malvin_logs")
+        assert "malvin_logs" in " ".join(mounts)
+        assert str(Path.home() / ".malvin_home" / "logs") + ":/root" not in " ".join(
+            mounts
         )
         joined = " ".join(cmd)
         assert "grade.py" not in joined
@@ -887,6 +939,37 @@ def _ft_test_solve_help_and_dry_run() -> None:
         meta = json.loads(meta_paths[0].read_text(encoding="utf-8"))
         assert meta["agent"]["timeout_sec"] == DEFAULT_AGENT_TIMEOUT_SEC
         assert meta["agent"]["timed_out"] is False
+
+        env_tmp = Path(tmp) / "env-timeout"
+        env_tmp.mkdir()
+        old = os.environ.get(AGENT_TIMEOUT_ENV)
+        os.environ[AGENT_TIMEOUT_ENV] = "900"
+        try:
+            env_result = runner.invoke(
+                cli,
+                [
+                    "solve",
+                    "FT-01",
+                    "--dry-run",
+                    "--skip-grade",
+                    "--results-dir",
+                    str(env_tmp),
+                ],
+                catch_exceptions=False,
+            )
+        finally:
+            if old is None:
+                os.environ.pop(AGENT_TIMEOUT_ENV, None)
+            else:
+                os.environ[AGENT_TIMEOUT_ENV] = old
+        assert env_result.exit_code == 0, env_result.output
+        assert "Agent timeout: 900s" in env_result.output
+        env_metas = list(env_tmp.glob("FT-01/*/metadata.json"))
+        assert env_metas, env_result.output
+        assert (
+            json.loads(env_metas[0].read_text(encoding="utf-8"))["agent"]["timeout_sec"]
+            == 900.0
+        )
         joined_cmd = " ".join(meta["docker_cmd"])
         assert "malvin" in meta["docker_cmd"]
         assert "plan.md" in meta["docker_cmd"]

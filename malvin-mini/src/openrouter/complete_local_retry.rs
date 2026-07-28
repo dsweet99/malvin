@@ -160,6 +160,9 @@ mod complete_local_retry_tests;
 #[cfg(test)]
 #[path = "complete_local_retry_act_tests.rs"]
 mod complete_local_retry_act_tests;
+#[cfg(test)]
+#[path = "complete_local_retry_act_pressure_tests.rs"]
+mod complete_local_retry_act_pressure_tests;
 
 #[cfg(test)]
 #[path = "complete_local_retry_req_tests.rs"]

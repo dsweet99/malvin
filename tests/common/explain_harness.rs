@@ -30,6 +30,14 @@ pub fn assert_default_explain_sibling_outputs(workspace: &Path) {
 }
 
 pub fn spawn_explain(t: &ExplainSpawn<'_>) -> std::process::Output {
+    spawn_explain_with_timeout(t, MALVIN_TEST_CMD_TIMEOUT)
+}
+
+/// Empty-PDF / multi-loop review paths need headroom beyond the default 12s kill.
+pub fn spawn_explain_with_timeout(
+    t: &ExplainSpawn<'_>,
+    timeout: std::time::Duration,
+) -> std::process::Output {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
     cmd.current_dir(t.workspace)
         .env("HOME", t.home)
@@ -40,5 +48,5 @@ pub fn spawn_explain(t: &ExplainSpawn<'_>) -> std::process::Output {
     args.extend_from_slice(INTEGRATION_TEST_MALVIN_ARGS);
     args.extend_from_slice(t.extra_args);
     cmd.args(args);
-    command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin")
+    command_output_with_timeout(&mut cmd, timeout).expect("spawn malvin")
 }

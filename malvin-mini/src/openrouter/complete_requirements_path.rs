@@ -45,6 +45,47 @@ pub(super) fn requirements_path_needs_retry(content: &str, expected: Option<&str
     !content_has_abs_requirements_write(content, expected)
 }
 
+/// True when `path` already holds valid string-schema review requirements on disk.
+///
+/// After a force-write or an earlier successful fence, later fence-less Pause replies must
+/// not keep path-nudging merely because the RESPONSE body omits another `cat >`.
+pub(super) fn requirements_file_on_disk_is_valid(path: &str) -> bool {
+    let Ok(text) = std::fs::read_to_string(path) else {
+        return false;
+    };
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(&text) else {
+        return false;
+    };
+    let Some(groups) = value.get("groups").and_then(|g| g.as_array()) else {
+        return false;
+    };
+    groups_have_nonempty_string_requirements(groups)
+}
+
+fn groups_have_nonempty_string_requirements(groups: &[serde_json::Value]) -> bool {
+    for group in groups {
+        let Some(reqs) = group.get("requirements").and_then(|r| r.as_array()) else {
+            return false;
+        };
+        if reqs.is_empty() {
+            return false;
+        }
+        for item in reqs {
+            let Some(s) = item.as_str() else {
+                return false;
+            };
+            if s.trim().is_empty() {
+                return false;
+            }
+        }
+    }
+    true
+}
+
+#[cfg(test)]
+#[path = "complete_requirements_path_tests.rs"]
+mod complete_requirements_path_tests;
+
 /// Body that can carry an executable bash fence for requirements writes.
 ///
 /// Mini classify runs on the RESPONSE section only; bash inside NEW_HISTORY is never

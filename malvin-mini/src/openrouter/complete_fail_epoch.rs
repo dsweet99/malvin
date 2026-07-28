@@ -2,8 +2,10 @@ use crate::openrouter::types::{ChatMessage, ChatRole};
 
 pub(super) fn inject_fail_epoch_act_cue(messages: &mut Vec<ChatMessage>) -> bool {
     const CUE: &str = "Null Study under a failed live probe. Emit an Act fence that revises \
-the named working artifact into that probe's acceptance region, then re-run the same probe. \
-Do not continue or close while that probe is red.";
+the named working artifact into that probe's acceptance region, then re-run the identical \
+argv. A substituted probe (different flags, positional args, or stdin instead of a \
+documented file path) does not clear the fail epoch. Do not continue or close while that \
+probe is red.";
     inject_system_cue_or_nudge(
         messages,
         "Null Study under a failed live probe",

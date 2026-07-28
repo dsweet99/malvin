@@ -10,14 +10,19 @@ use super::complete_requirements_path::{
 pub(super) const REQUIREMENTS_ONLY_CUE: &str = "This New request is requirements-listing only. \
 You MUST emit a ```bash fence that writes review_requirements.json with cat > to the exact \
 absolute path named in the New request (never a workspace-relative shortcut unless that exact \
-path is named). Use this JSON shape only: \
+path is named; never /app/review_requirements.json unless that exact absolute path is named). \
+Use this JSON shape only: \
 {\"groups\":[{\"title\":\"short label\",\"requirements\":[\"plain string\", \"another string\"]}]}. \
 Each requirements array entry MUST be a plain string — never an object with id/description/name. \
-Prefer the minimum number of groups; zero groups is allowed when nothing meaningful needs review \
-(for example a single clear bug fix with an explicit acceptance test). \
+Prefer one group when that covers the hard constraints; use at most two unless the request \
+has clearly separable constraint clusters. Zero groups is only for requests that already \
+need no work. \
+Every CLI flag and positional argument named in the plan must appear in some requirement string \
+(do not omit file-path args by assuming stdin-only). \
 Do not explore or edit product source. In the same bash fence, probe with python that asserts \
 isinstance(req, str) for every requirement. Do not claim the file is written without that fence. \
-Only after a live observation of that write may you Pause fence-less.";
+Only after a live observation of that write may you Pause fence-less — do not rewrite the file \
+to any other path after a successful abs-path observation.";
 
 /// Local retry when a requirements-listing reply still embeds object-shaped requirements.
 const REQUIREMENTS_SCHEMA_NUDGE: &str = "Null Study: requirements entries were objects. \
@@ -32,9 +37,9 @@ const REQUIREMENTS_PATH_NUDGE_PREFIX: &str =
 Do not claim success in prose. Emit a bash fence like:\n```bash\ncat > ";
 
 const REQUIREMENTS_PATH_NUDGE_SUFFIX: &str = " << 'EOF'\n\
-{\"groups\":[]}\n\
+{\"groups\":[{\"title\":\"short label\",\"requirements\":[\"plain string\", \"another string\"]}]}\n\
 EOF\n\
-python3 -c \"import json; p=r'''PATH'''; d=json.load(open(p)); assert all(isinstance(r,str) for g in d['groups'] for r in g['requirements'])\"\n\
+python3 -c \"import json; p=r'''PATH'''; d=json.load(open(p)); assert all(isinstance(r,str) for g in d['groups'] for r in g['requirements']); assert d['groups'], 'groups must not be empty for this task'\"\n\
 ```\nReplace PATH with that same absolute path. Wait for the observation, then Pause.";
 
 const REQUIREMENTS_MISSING_WRITE_NUDGE: &str = "Null Study: review_requirements.json was not \
@@ -107,13 +112,18 @@ pub(super) fn force_requirements_abs_write_response(
         return None;
     }
     let path = expected_path_from_messages(messages)?;
+    if super::complete_requirements_path::requirements_file_on_disk_is_valid(&path) {
+        return None;
+    }
     if !requirements_path_needs_retry(content, Some(path.as_str())) {
         return None;
     }
     let json = concat!(
-        "{\"groups\":[{\"title\":\"Request\",\"requirements\":[",
-        "\"Satisfy the user request as stated in the plan.\",",
-        "\"Keep edits within the constraints named in the plan.\"",
+        "{\"groups\":[{\"title\":\"Plan acceptance\",\"requirements\":[",
+        "\"Match the plan's documented CLI exactly: every flag and every positional path ",
+        "(e.g. file args — do not substitute stdin-only).\",",
+        "\"Match the plan's documented stdout/stderr and exit-code contracts exactly.\",",
+        "\"Keep edits within the workspace constraints named in the plan.\"",
         "]}]}"
     );
     let body = format!(

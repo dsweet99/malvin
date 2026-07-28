@@ -9,7 +9,7 @@ use super::super::complete_prompt_shape::{
 use super::super::complete_act_detect::{
     artifact_act_lacks_following_observation, history_has_any_artifact_act,
     history_has_exterior_without_artifact_act, latest_observation_has_nonzero_exit,
-    response_has_act_fence,
+    response_has_act_fence, unpaid_prose_write_claim,
 };
 use super::super::complete_act_inputs::latest_observation_has_zero_exit;
 use super::super::complete_fail_epoch::{
@@ -47,6 +47,7 @@ pub(super) fn serious_unpaid_debt(messages: &[ChatMessage], pending: &str) -> bo
     (latest_observation_has_nonzero_exit(messages) && !response_has_act_fence(pending))
         || history_has_exterior_without_artifact_act(messages, Some(pending))
         || (artifact_act_lacks_following_observation(messages) && !response_has_act_fence(pending))
+        || unpaid_prose_write_claim(messages, pending)
 }
 
 pub(super) fn try_act_pressure_retry(
@@ -146,6 +147,11 @@ pub(super) fn try_requirements_path_retry(
     }
     // Prefer the New-request path only — cue text may mention example paths like /app/….
     let expected = super::super::complete_prompt_shape::expected_path_from_messages(working);
+    if let Some(path) = expected.as_deref()
+        && super::super::complete_requirements_path::requirements_file_on_disk_is_valid(path)
+    {
+        return false;
+    }
     if !requirements_path_needs_retry(response.content.as_str(), expected.as_deref()) {
         return false;
     }
@@ -171,6 +177,9 @@ fn inject_act_pressure_cue(messages: &mut Vec<ChatMessage>, content: &str) -> bo
     }
     if artifact_act_lacks_following_observation(messages) && !response_has_act_fence(content) {
         return inject_probe_after_act_cue(messages);
+    }
+    if unpaid_prose_write_claim(messages, content) {
+        return inject_unpaid_silence_act_cue(messages);
     }
     if !history_has_any_artifact_act(messages) && !response_has_act_fence(content) {
         return inject_unpaid_silence_act_cue(messages);

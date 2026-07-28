@@ -42,6 +42,7 @@ def test_fast_task_kiss_coverage_witnesses() -> None:
         fast_task.ft_docker_available,
         fast_task.ft_ensure_agent_image,
         fast_task.ft_cursor_env_args,
+        fast_task.ft_run_malvin_logs_dir,
         fast_task.ft_docker_agent_cmd,
         fast_task.ft_assert_agent_cmd_nonleak,
         fast_task.ft_relay_subprocess_stdout,
@@ -83,6 +84,8 @@ def test_fast_task_kiss_coverage_witnesses() -> None:
         fast_task._ft_test_redact_cmd_for_display,
         fast_task._ft_test_preflight_requires_host_plan,
         fast_task.DEFAULT_AGENT_TIMEOUT_SEC,
+        fast_task.AGENT_TIMEOUT_ENV,
+        fast_task.ft_agent_timeout_sec,
         fast_task.TIMEOUT_EXIT_CODE,
     )
     assert True
