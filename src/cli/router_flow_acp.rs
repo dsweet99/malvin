@@ -48,6 +48,20 @@ pub(crate) type SessionEndParts<'a> = (
     RunTimingSessionEnd,
 );
 
+/// Open a coder session only when one is not already live (e.g. pre-`Logs:` warm start).
+pub(crate) async fn begin_coder_session_if_needed(
+    client: &mut AgentBackend,
+    work_dir: &Path,
+) -> Result<(), String> {
+    if client.has_open_coder_session() {
+        return Ok(());
+    }
+    client
+        .begin_coder_session(work_dir)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 /// Begin session and run requirements → `KPop` → optional work; leave session open on success.
 pub(crate) async fn run_router_acp_open_iteration(
     mut input: RouterAcpIterationInput<'_>,
@@ -55,10 +69,10 @@ pub(crate) async fn run_router_acp_open_iteration(
     let work_dir = input.artifacts.work_dir.as_path();
     let log_path = router_iteration_log_path(input.artifacts, input.agent_loop);
     let timing = agent_backend_attach_run_timing_for_session(input.client);
-    if let Err(e) = input.client.begin_coder_session(work_dir).await {
+    if let Err(e) = begin_coder_session_if_needed(input.client, work_dir).await {
         agent_backend_set_run_timing(input.client, None);
         return RouterAcpIterationOutcome {
-            acp_result: Err(e.to_string()),
+            acp_result: Err(e),
             iteration_backups: snapshot_iteration_backups(work_dir),
             all_no_work: false,
             session_alive: false,
@@ -174,6 +188,10 @@ pub(crate) mod router_flow_acp_ping_mock_tests;
 #[cfg(test)]
 #[path = "router_flow_acp_tests.rs"]
 pub(crate) mod router_flow_acp_tests;
+
+#[cfg(test)]
+#[path = "router_flow_acp_preopen_tests.rs"]
+mod router_flow_acp_preopen_tests;
 
 #[cfg(test)]
 #[path = "router_flow_acp_ping_tests.rs"]

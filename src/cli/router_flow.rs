@@ -107,13 +107,19 @@ async fn run_router_body(
     request: &str,
 ) -> Result<(), String> {
     let mut prep = prepare_router_run(&router_args, shared, workflow).await?;
+    prep.client
+        .set_prompts_log_run_dir(Some(prep.artifacts.run_dir.clone()));
+    // Idea 3: complete spawn/handshake before the first `Logs:` line so post-Logs silence is not
+    // dominated by ACP initialize + session/new (or Mini session bookkeeping).
+    prep.client
+        .begin_coder_session(&prep.artifacts.work_dir)
+        .await
+        .map_err(|e| e.to_string())?;
     emit_run_startup_sequence(
         &prep.artifacts,
         RunStartupEmitOpts::from_shared(shared, true),
         request,
     )?;
-    prep.client
-        .set_prompts_log_run_dir(Some(prep.artifacts.run_dir.clone()));
 
     let loop_outcome = router_flow_loop::run_router_agent_loops(router_flow_loop::RouterAgentLoopInput {
         client: &mut prep.client,

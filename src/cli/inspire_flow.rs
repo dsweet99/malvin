@@ -106,9 +106,14 @@ pub async fn run_inspire(
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
     let mut prep = prepare_inspire_run(&inspire, shared, workflow).await?;
-    inspire_emit_startup(&inspire, shared, &prep.artifacts)?;
     prep.client
         .set_prompts_log_run_dir(Some(prep.artifacts.run_dir.clone()));
+    // Complete spawn/handshake before the first `Logs:` line (same idea as default router).
+    prep.client
+        .begin_coder_session(&prep.artifacts.work_dir)
+        .await
+        .map_err(|e| e.to_string())?;
+    inspire_emit_startup(&inspire, shared, &prep.artifacts)?;
     let acp_res = run_inspire_acp(&mut prep.client, &prep.artifacts, &prep.prompt).await;
     let r = crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
         acp_res,
@@ -150,9 +155,11 @@ async fn run_inspire_acp(
     prompt: &str,
 ) -> Result<(), String> {
     let timing = agent_backend_attach_run_timing_for_session(client);
-    if let Err(e) = client.begin_coder_session(&artifacts.work_dir).await {
-        agent_backend_set_run_timing(client, None);
-        return Err(e.to_string());
+    if !client.has_open_coder_session() {
+        if let Err(e) = client.begin_coder_session(&artifacts.work_dir).await {
+            agent_backend_set_run_timing(client, None);
+            return Err(e.to_string());
+        }
     }
     agent_backend_set_implement_display_name(client, "inspire");
     let run_res = run_inspire_coder_prompt(client, artifacts, prompt).await;

@@ -12,6 +12,7 @@ fn kiss_cov_router_flow_acp_privates() {
     let _: Option<RouterAcpIterationOutcome> = None;
     let _ = run_router_acp_open_iteration;
     let _ = finalize_router_acp_iteration;
+    let _ = super::begin_coder_session_if_needed;
     let _ = RouterExitSummarize::Run;
     let _ = RouterExitSummarize::Skip;
     let _ = stringify!(client);
