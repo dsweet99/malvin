@@ -66,7 +66,8 @@ pub(crate) async fn do_split_outgoing_trace_preamble<'a>(
         incoming_tag: crate::output::WHO_M.to_string(),
         stdout_replacement_who: "do",
         trace_raw_output: session.0.raw_output,
-        plain_lines: true,
+        // Untagged narrative only for raw `--do` tee; verbose/default-workflow keeps who-tags.
+        plain_lines: session.0.raw_output,
     })
 }
 

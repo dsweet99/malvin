@@ -162,7 +162,9 @@ impl MiniAgentClient {
         // Constraints live in the sticky Header each call; prompt log still shows request text.
         let effective_prompt = prompt.to_string();
 
-        self.trace.plain_lines = opts.do_trace_split.is_some();
+        // `do_trace_split` is outgoing prompt/trace layout only. Untagged narrative is for raw
+        // `--do` tee (`raw_output`); verbose/default-workflow tee keeps who-tags.
+        self.trace.plain_lines = opts.do_trace_split.is_some() && self.io.raw_output;
 
         write_prompt_log(PromptLogWrite {
             client: self,

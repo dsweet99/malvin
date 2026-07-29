@@ -80,6 +80,46 @@ fn do_verbose_stdout_includes_thoughts_like_default_workflow() {
         stdout.contains("agent message"),
         "--verbose --do must still show agent message text; stdout was {stdout:?}"
     );
+    let content_lines: Vec<&str> = stdout
+        .lines()
+        .filter(|l| l.contains("hidden thought") || l.contains("agent message"))
+        .collect();
+    assert!(
+        !content_lines.is_empty(),
+        "expected agent thought/message lines; stdout was {stdout:?}"
+    );
+    assert!(
+        content_lines.iter().all(|l| line_has_who_tag_prefix(l)),
+        "--verbose --do agent lines must use who-tag|; got {content_lines:?} full={stdout:?}"
+    );
+}
+
+#[cfg(unix)]
+fn line_has_who_tag_prefix(line: &str) -> bool {
+    // Who-tag is a single ASCII letter then `|`, optionally after ANSI color codes.
+    let bytes = line.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == 0x1b {
+            i += 1;
+            if i < bytes.len() && bytes[i] == b'[' {
+                i += 1;
+                while i < bytes.len() && !bytes[i].is_ascii_alphabetic() {
+                    i += 1;
+                }
+                if i < bytes.len() {
+                    i += 1;
+                }
+            }
+            continue;
+        }
+        if bytes[i] == b' ' || bytes[i] == b'\t' {
+            i += 1;
+            continue;
+        }
+        return bytes[i].is_ascii_alphabetic() && bytes.get(i + 1) == Some(&b'|');
+    }
+    false
 }
 
 #[cfg_attr(unix, test)]

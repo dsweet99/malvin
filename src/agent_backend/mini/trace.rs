@@ -23,7 +23,7 @@ use crate::tool_summary::{
 pub struct MiniTraceSink {
     pub run_dir: Option<std::path::PathBuf>,
     pub io: AgentIoOptions,
-    /// When true, stdout matches ACP `do` (`plain_lines`): unprefixed assistant text, no tool tee.
+    /// When true, narrative stdout is unprefixed (raw `--do`); when false, who-tagged logger.
     pub plain_lines: bool,
 }
 

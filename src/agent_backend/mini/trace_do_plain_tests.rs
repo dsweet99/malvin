@@ -7,6 +7,36 @@ use crate::output::{
 use super::trace_tests::{trace_sink, with_stdout_log_test_lock};
 
 #[test]
+fn mini_do_styled_stdout_emits_m_tagged_assistant() {
+    with_stdout_log_test_lock(|| {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let log_path = tmp.path().join("stdout.log");
+        crate::output::set_stdout_log_path(Some(log_path.clone()));
+        // Verbose --do: do_trace_split present but raw_output false → plain_lines false.
+        let sink = trace_sink(&tmp, false);
+        assert!(!sink.plain_lines);
+        sink.stream_assistant_chunks("The user is asking what time it is.");
+        let text = std::fs::read_to_string(log_path).expect("stdout log");
+        assert!(
+            text.contains(&format!("{WHO_M}|")),
+            "styled --do must use who-tag logger; got {text:?}"
+        );
+        assert!(
+            text.lines().all(|line| {
+                let Some((ts, rest)) = line.split_once(' ') else {
+                    return false;
+                };
+                crate::output::is_log_timestamp_token(ts)
+                    && rest.chars().next().is_some_and(|c| c.is_ascii_alphabetic())
+                    && rest.as_bytes().get(1) == Some(&b'|')
+            }),
+            "every stdout.log line must be timestamp + who-tag|; got {text:?}"
+        );
+        crate::output::set_stdout_log_path(None);
+    });
+}
+
+#[test]
 fn mini_do_plain_stdout_emits_untagged_assistant() {
     with_stdout_log_test_lock(|| {
         let tmp = tempfile::tempdir().expect("tempdir");

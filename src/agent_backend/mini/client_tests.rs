@@ -4,6 +4,42 @@ use super::*;
 use crate::agent_backend::mini::{LlmBackend, MockScript, MockStep};
 
 #[test]
+fn mini_plain_lines_requires_raw_output_even_with_do_trace_split() {
+    let split = CoderPromptOptions {
+        do_trace_split: Some(("h", "u")),
+        ..Default::default()
+    };
+    let no_split = CoderPromptOptions::default();
+    let styled = AgentIoOptions {
+        force: false,
+        no_tee: true,
+        raw_output: false,
+        show_thoughts_on_stdout: true,
+        emit_stdout_markdown: false,
+        log_full_outgoing_prompts: false,
+    };
+    let raw = AgentIoOptions {
+        raw_output: true,
+        show_thoughts_on_stdout: false,
+        ..styled
+    };
+    // Mirrors MiniAgentClient::run_coder_prompt assignment.
+    let plain = |opts: &CoderPromptOptions<'_>, io: &AgentIoOptions| {
+        opts.do_trace_split.is_some() && io.raw_output
+    };
+    assert!(
+        !plain(&split, &styled),
+        "verbose/default-workflow tee must keep who-tags despite do_trace_split"
+    );
+    assert!(
+        plain(&split, &raw),
+        "raw --do tee still uses plain_lines when do_trace_split is set"
+    );
+    assert!(!plain(&no_split, &raw));
+    assert!(!plain(&no_split, &styled));
+}
+
+#[test]
 fn mini_new_mock_skips_openrouter_init() {
     let client = MiniAgentClient::new_mock(
         MiniLoopConfig {
