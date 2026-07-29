@@ -124,7 +124,10 @@ fn marker_prefix_len(buf: &str, marker: &str) -> usize {
     let max = buf.len().min(marker.len().saturating_sub(1));
     (0..=max)
         .rev()
-        .find(|&n| marker.starts_with(&buf[buf.len() - n..]))
+        .find(|&n| {
+            let start = buf.len() - n;
+            buf.is_char_boundary(start) && marker.starts_with(&buf[start..])
+        })
         .unwrap_or(0)
 }
 
@@ -173,5 +176,35 @@ mod tests {
         feed_do_dm_stdout_text(&format!("{DM_START}\nz\n{DM_END}\n"));
         assert!(take_captured_stdout().is_empty());
         assert!(!do_dm_stdout_mode());
+    }
+
+    #[test]
+    fn streaming_multibyte_outside_fences_does_not_panic() {
+        // Exact narrative fragment from err.md (em dash U+2014 straddles a probed byte offset).
+        const OUTSIDE: &str = "Obtain the current local date and time (with timezone name or numeric offset) and report it clearly to the user—prefer a";
+        reset_do_dm_filter();
+        set_do_dm_stdout_mode(true);
+        enable_stdout_capture();
+        feed_do_dm_stdout_text(OUTSIDE);
+        feed_do_dm_stdout_text(" café 日本語\n");
+        feed_do_dm_stdout_text(&format!("{DM_START}\nbody—ok\n{DM_END}\n"));
+        assert_eq!(take_captured_stdout(), "body—ok");
+        set_do_dm_stdout_mode(false);
+        reset_do_dm_filter();
+    }
+
+    #[test]
+    fn streaming_multibyte_inside_incomplete_end_does_not_panic() {
+        reset_do_dm_filter();
+        set_do_dm_stdout_mode(true);
+        enable_stdout_capture();
+        feed_do_dm_stdout_text(&format!("{DM_START}\nline—one\n"));
+        feed_do_dm_stdout_text("line—two\n");
+        feed_do_dm_stdout_text(&format!("{DM_END}\n"));
+        let out = take_captured_stdout();
+        assert!(out.contains("line—one"), "out={out:?}");
+        assert!(out.contains("line—two"), "out={out:?}");
+        set_do_dm_stdout_mode(false);
+        reset_do_dm_filter();
     }
 }
