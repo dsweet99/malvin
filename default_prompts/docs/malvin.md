@@ -17,7 +17,7 @@ malvin [OPTIONS] <COMMAND>
 
 Bare `malvin REQUEST` runs autonomous routing (requirements, multi-group KPop, optional work). Use subcommands for named workflows.
 
-Use subcommands: `do`, `inspire`, `tidy`, `delight`, `explain`, `models`.
+Use subcommands: `do`, `inspire`, `init`, `tidy`, `delight`, `explain`, `models`.
 
 ## Commands
 
@@ -26,12 +26,13 @@ Use subcommands: `do`, `inspire`, `tidy`, `delight`, `explain`, `models`.
 | *(default)* | Bare `malvin REQUEST` — requirements JSON → one multi-group KPop → optional work; outer `--max-loops` sessions |
 | `do` | One-shot agent turn (non-looping) |
 | `inspire` | One-shot MBC2 boundary exploration (batch ideation) |
+| `init` | Discover quality gates and write `.malvin/checks` |
 | `tidy` | Fix quality gates via the default router with fixed request `Get the gates to pass.` and `--gates` forced on |
 | `delight` | Author a user-delighting feature pitch via a composed default-router request |
 | `explain` | Explain code or concepts as a LaTeX PDF via a composed default-router request |
 | `models` | List models via the Cursor agent CLI |
 
-Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prompts/docs/<command>.md`).
+Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prompts/docs/<command>.md`). The default-route contract (`router.md`) is printed after this overview when you run `malvin --doc`.
 
 ## Global options
 
@@ -47,7 +48,11 @@ Suppress all stdout from malvin and the agent. Run logs under `~/.malvin_home/lo
 
 ### `--model <MODEL>`
 
-Model id passed to the Cursor agent for subcommands that spawn a session. Default: `auto` (see `malvin models`).
+Model id passed to the Cursor agent for subcommands that spawn a session. Default: `cursor:auto` (see `malvin models`).
+
+### `--max-loops <N>` (default: 1)
+
+Outer agent-session budget for bare `malvin REQUEST` (`effective_max_loops`). `0` is treated as `1`. Gate-loop wrappers (`tidy`, `delight`, `explain`) expose their own `--max-loops` with a default of `3`.
 
 ### `--no-force`
 
@@ -77,6 +82,14 @@ Log **full** outgoing prompt bodies to stdout and `prompts.log`. Default: only t
 
 Maximum bounded attempts per ACP spawn or `session/prompt`, with 1s / 3s backoff between tries. `--tenacious` on gate-loop commands sets this to 9999.
 
+### `--no-download`
+
+Do not auto-download `local:` models on first use. If the GGUF is missing from `~/.malvin_home/model_cache/`, the run fails instead of fetching it. Use `malvin models download local:<id>` to fetch explicitly.
+
+### `--git`
+
+Allow the agent to run `git commit` by setting `{{ git_extra }}` in prompt templates. Off by default (agents are otherwise steered away from committing).
+
 ### `--name <NAME>`
 
 Optional session name for bare `malvin REQUEST`, `do`, `tidy`, and `delight`. When omitted on those invocations, malvin assigns a unique five-character id (`[a-z0-9]`). Every command that accepts `--name` acquires a session name lock before substantive work.
@@ -95,7 +108,7 @@ Any lock whose holder PID is dead (or whose contents are not a valid PID) is saf
 
 Print built-in documentation and exit. Does not spawn an agent or create a run directory under `~/.malvin_home/logs/`.
 
-- `malvin --doc` — this overview.
+- `malvin --doc` — this overview, then the default-route contract (`router.md`).
 - `malvin <COMMAND> --doc` — documentation for that subcommand.
 
 Other subcommand arguments (for example `<REQUEST>`) are not required when `--doc` is set.
@@ -106,7 +119,7 @@ Use **`malvin init`** to discover and write `.malvin/checks` explicitly (KPop se
 
 With `--gates` (and always for `malvin tidy`), malvin runs workspace quality gates from `.malvin/checks` at the repo git root (one shell command per non-empty, non-comment line). Full-line comments starting with `#` are ignored.
 
-Other commands (`do`, bare `malvin REQUEST`, `inspire`, `delight`, `explain`) do not require `.malvin/checks` at startup and may run outside a git repo. With `--gates`, bare `malvin REQUEST` and `malvin tidy` run workspace gates after each outer session and continue that outer loop when they fail (see `malvin` default-route `--doc`). Without `--gates` (the default for non-tidy commands), malvin does not run those checks directly on the default route. `header.md` notes about checks lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
+Other commands (`do`, bare `malvin REQUEST`, `inspire`, `delight`, `explain`) do not require `.malvin/checks` at startup and may run outside a git repo. With `--gates`, bare `malvin REQUEST` and `malvin tidy` run workspace gates after each outer session and continue that outer loop when they fail (see the default-route section of `malvin --doc`). Without `--gates` (the default for non-tidy commands), malvin does not run those checks directly on the default route. `header.md` notes about checks lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
 
 ### `-h` / `--help`
 
@@ -174,5 +187,5 @@ malvin inspire "explore API boundaries"
 
 ## Gate-loop and router-backed commands
 
-`malvin tidy`, `malvin delight`, and `malvin explain` are thin wrappers: each composes a request and invokes the **default router** (same engine as bare `malvin REQUEST`). Tidy uses the fixed request `Get the gates to pass.` and forces `--gates` on. See `malvin tidy --doc`, `malvin delight --doc`, `malvin explain --doc`, and the default-route `--doc`.
+`malvin tidy`, `malvin delight`, and `malvin explain` are thin wrappers: each composes a request and invokes the **default router** (same engine as bare `malvin REQUEST`). Tidy uses the fixed request `Get the gates to pass.` and forces `--gates` on. See `malvin tidy --doc`, `malvin delight --doc`, `malvin explain --doc`, and the default-route section of `malvin --doc`.
 

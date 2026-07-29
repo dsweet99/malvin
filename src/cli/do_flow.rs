@@ -21,6 +21,7 @@ pub use do_flow_prompt::{
 /// Arguments for [`run_do`].
 #[derive(Args, Debug)]
 pub struct DoArgs {
+    /// Stream agent thought tokens to stdout
     #[arg(long, default_value_t = false)]
     pub thoughts: bool,
     /// Existing `.md` path or literal text

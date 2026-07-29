@@ -6,6 +6,8 @@ use super::Commands;
 
 pub(crate) const MALVIN_OVERVIEW_DOC: &str = include_str!("../../default_prompts/docs/malvin.md");
 
+pub(crate) const ROUTER_DOC: &str = include_str!("../../default_prompts/docs/router.md");
+
 const fn gate_loop_command_doc(cmd: &Commands) -> Option<&'static str> {
     match cmd {
         Commands::Tidy(_) => Some(include_str!("../../default_prompts/docs/tidy.md")),
@@ -14,9 +16,6 @@ const fn gate_loop_command_doc(cmd: &Commands) -> Option<&'static str> {
         _ => None,
     }
 }
-
-#[cfg(test)]
-pub(crate) const ROUTER_DOC: &str = include_str!("../../default_prompts/docs/router.md");
 
 pub(crate) const fn command_doc_markdown(cmd: &Commands) -> &'static str {
     if let Some(doc) = gate_loop_command_doc(cmd) {
@@ -33,11 +32,13 @@ pub(crate) const fn command_doc_markdown(cmd: &Commands) -> &'static str {
     }
 }
 
-pub(crate) const fn doc_text(command: Option<&Commands>) -> &'static str {
-    match command {
-        Some(cmd) => command_doc_markdown(cmd),
-        None => MALVIN_OVERVIEW_DOC,
-    }
+/// Embedded markdown for `--doc` (overview + default-route contract when `command` is `None`).
+#[must_use]
+pub(crate) fn doc_text(command: Option<&Commands>) -> String {
+    command.map_or_else(
+        || format!("{MALVIN_OVERVIEW_DOC}\n---\n\n{ROUTER_DOC}"),
+        |cmd| command_doc_markdown(cmd).to_string(),
+    )
 }
 
 pub(crate) fn print_doc_to_writer(command: Option<&Commands>, mut out: impl Write) -> Result<(), String> {

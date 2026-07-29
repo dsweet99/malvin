@@ -1,6 +1,7 @@
 //! Smoke: `malvin --doc` prints embedded top-level documentation.
 
 const MALVIN_MD: &str = include_str!("../default_prompts/docs/malvin.md");
+const ROUTER_MD: &str = include_str!("../default_prompts/docs/router.md");
 
 fn isolated_home() -> tempfile::TempDir {
     let tmp = tempfile::tempdir().expect("tempdir");
@@ -15,7 +16,7 @@ fn malvin_cmd(home_root: &std::path::Path) -> std::process::Command {
 }
 
 #[test]
-fn malvin_doc_prints_full_malvin_md() {
+fn malvin_doc_prints_overview_then_router() {
     let tmp = isolated_home();
     let output = malvin_cmd(tmp.path())
         .arg("--doc")
@@ -26,7 +27,12 @@ fn malvin_doc_prints_full_malvin_md() {
         "stderr={}",
         String::from_utf8_lossy(&output.stderr)
     );
-    assert_eq!(output.stdout.as_slice(), MALVIN_MD.as_bytes());
+    let expected = format!("{MALVIN_MD}\n---\n\n{ROUTER_MD}");
+    assert_eq!(output.stdout.as_slice(), expected.as_bytes());
+    let text = String::from_utf8_lossy(&output.stdout);
+    assert!(text.starts_with(MALVIN_MD));
+    assert!(text.contains(ROUTER_MD));
+    assert!(text.contains("# malvin (default route)"));
 }
 
 #[test]

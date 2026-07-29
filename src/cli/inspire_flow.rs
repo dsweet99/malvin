@@ -19,7 +19,7 @@ use crate::run_timing::TimingPhase;
 /// Arguments for [`run_inspire`].
 #[derive(Args, Debug)]
 pub struct InspireArgs {
-    /// Existing `.md` path or literal text → `.malvin/logs/.../plan_<random>.md`.
+    /// Existing `.md` path or literal text → `~/.malvin_home/logs/.../plan_<random>.md`.
     pub request: Option<String>,
 }
 

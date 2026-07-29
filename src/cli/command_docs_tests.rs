@@ -24,9 +24,14 @@ fn subcommand_doc_embeds_have_malvin_heading() {
 }
 
 #[test]
-fn print_doc_none_writes_full_malvin_md() {
+fn print_doc_none_writes_overview_then_router() {
     let out = capture_doc(None).expect("capture");
-    assert_eq!(out.as_slice(), MALVIN_OVERVIEW_DOC.as_bytes());
+    let expected = format!("{MALVIN_OVERVIEW_DOC}\n---\n\n{ROUTER_DOC}");
+    assert_eq!(out.as_slice(), expected.as_bytes());
+    let text = String::from_utf8(out).expect("utf8");
+    assert!(text.starts_with(MALVIN_OVERVIEW_DOC));
+    assert!(text.contains(ROUTER_DOC));
+    assert!(text.contains("# malvin (default route)"));
 }
 
 #[test]
