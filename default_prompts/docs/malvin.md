@@ -50,7 +50,7 @@ Suppress all stdout from malvin and the agent. Run logs under `~/.malvin_home/lo
 
 On the **default router** (bare `malvin REQUEST`, and wrappers that call it: `tidy`, `delight`, `explain`), print only the text between `MALVIN_DM_START` and `MALVIN_DM_END` fences to process stdout. Startup chrome, ACP stream, heartbeats, prompt-name lines, fence markers, and TIMING/COST lines are omitted from stdout. Run-dir logs and stderr are unchanged.
 
-This is **not** the same as `-b` / `--background` (which suppresses all stdout, including DM bodies). It is also **not** required for `malvin --do`: `--do` is always DM-body-only on stdout.
+This is **not** the same as `-b` / `--background` (which suppresses all stdout, including DM bodies). It is also **not** required for plain `malvin --do`: without `--verbose`, `--do` is already DM-body-only on stdout. With `--verbose`, `--do` tees the same live agent log classes as the default workflow (see `-v` / `--verbose` below).
 
 ### `--model <MODEL>`
 
@@ -78,11 +78,11 @@ By default malvin tees agent stdout to the terminal (and `stdout.log` in the run
 
 ### `--no-markdown`
 
-Disable styled markdown rendering of agent stdout for agent-backed subcommands that use the shared ACP client (`tidy` when the agent runs, `delight`, `explain`, `inspire`). No effect on `models`. **`--do` uses plain stdout** on a TTY regardless of this flag; piped `--do` output is always plain.
+Disable styled markdown rendering of agent stdout for agent-backed subcommands that use the shared ACP client (`tidy` when the agent runs, `delight`, `explain`, `inspire`, and `malvin --verbose --do` on a TTY). No effect on `models`. Plain `malvin --do` (DM-body-only) stays unstyled regardless of this flag; piped DM-only `--do` output is always plain.
 
 ### `-v` / `--verbose`
 
-Log **full** outgoing prompt bodies to stdout and `prompts.log`. Default: only the prompt filename is shown.
+Log **full** outgoing prompt bodies to stdout and `prompts.log`. Default: only the prompt filename is shown. For `malvin --do`, also unlock the same live agent stdout log classes as the default workflow (thought tokens and narrative tee); without `--verbose`, `--do` stays DM-body-only.
 
 ### `--max-acp-retries <N>` (default: 3)
 

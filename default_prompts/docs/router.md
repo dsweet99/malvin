@@ -45,8 +45,8 @@ See `malvin --doc`. Notable for the default route:
 | `--gates` | After each outer session’s turns (while the coder session is still open), run workspace `.malvin/checks`. Pass stops success; fail continues (even when chat said no work remaining). Exhausted budget with failing gates fails the run. Also injects check text into `router_work.md` when work runs. |
 | `--no-tenacious` | Keep normal `--max-loops` / `--max-acp-retries` (default tenacious expands both) |
 | `--no-tee` | Disables live streaming |
-| `--quiet` / `-q` | Stdout shows only `MALVIN_DM_*` bodies (not `-b`; `--do` is always DM-only without this flag) |
-| `--verbose` | Full prompt bodies in `prompts.log` |
+| `--quiet` / `-q` | Stdout shows only `MALVIN_DM_*` bodies (not `-b`). Plain `--do` is already DM-body-only without `--verbose` |
+| `--verbose` | Full prompt bodies in `prompts.log`; with `--do`, also same live agent stdout log classes as the default workflow |
 
 ## Prompt workflow
 

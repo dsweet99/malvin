@@ -126,18 +126,19 @@ fn cli_accepts_do_and_passes_request() {
     let cli = Cli::try_parse_from(["malvin", "--do", "fix the bug"]).expect("parse");
     assert!(cli.do_workflow);
     assert_eq!(cli.request.as_deref(), Some("fix the bug"));
-    assert!(!cli.thoughts);
     assert!(cli.command.is_none());
 }
 
 #[test]
-fn cli_accepts_do_thoughts() {
+fn cli_rejects_do_thoughts_flag() {
     use crate::cli::Cli;
 
-    let cli = Cli::try_parse_from(["malvin", "--do", "--thoughts", "z"]).expect("parse");
-    assert!(cli.do_workflow);
-    assert!(cli.thoughts);
-    assert_eq!(cli.request.as_deref(), Some("z"));
+    let err = Cli::try_parse_from(["malvin", "--do", "--thoughts", "z"]).expect_err("parse");
+    let msg = err.to_string();
+    assert!(
+        msg.contains("unexpected argument") || msg.contains("--thoughts"),
+        "expected --thoughts rejected; got {msg}"
+    );
 }
 
 #[test]

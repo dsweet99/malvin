@@ -126,7 +126,7 @@ fn mini_reasoning_trace_without_stdout_when_thoughts_disabled() {
         let stdout = std::fs::read_to_string(log_path).unwrap_or_default();
         assert!(
             stdout.is_empty(),
-            "reasoning must not appear on stdout without --thoughts; got {stdout:?}"
+            "reasoning must not appear on stdout when show_thoughts_on_stdout is false; got {stdout:?}"
         );
         let trace = std::fs::read_to_string(tmp.path().join("trace.jsonl")).expect("trace");
         assert!(trace.contains("agent_thought_chunk"));

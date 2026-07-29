@@ -197,7 +197,6 @@ fn dispatch_after_session(cli: Cli, matches: clap::ArgMatches) -> Exit {
     if cli.do_workflow {
         return finish_entrypoint(dispatch_do_workflow(
             DoArgs {
-                thoughts: cli.thoughts,
                 request: cli.request,
             },
             &cli.shared,

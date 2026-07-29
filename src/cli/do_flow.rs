@@ -20,8 +20,6 @@ pub use do_flow_prompt::{
 /// Arguments for [`run_do`].
 #[derive(Debug)]
 pub struct DoArgs {
-    /// Stream agent thought tokens to stdout
-    pub thoughts: bool,
     /// Existing `.md` path or literal text
     pub request: Option<String>,
 }
@@ -36,21 +34,27 @@ struct DoRunPrep {
 fn new_do_client(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
-    thoughts: bool,
 ) -> Result<AgentBackend, String> {
     let interactive = agent_stdout_tee_enabled();
     let emit_markdown = interactive && shared.acp_stdout_markdown_enabled();
-    let tee = if interactive {
+    let tee = if shared.verbose {
+        // Match default-workflow / router tee style when `--verbose`.
         AgentStdoutTeeFlags {
             emit_stdout_markdown: emit_markdown,
             raw_output: false,
-            show_thoughts_on_stdout: thoughts,
+            show_thoughts_on_stdout: true,
+        }
+    } else if interactive {
+        AgentStdoutTeeFlags {
+            emit_stdout_markdown: emit_markdown,
+            raw_output: false,
+            show_thoughts_on_stdout: false,
         }
     } else {
         AgentStdoutTeeFlags {
             emit_stdout_markdown: false,
             raw_output: true,
-            show_thoughts_on_stdout: thoughts,
+            show_thoughts_on_stdout: false,
         }
     };
     build_agent_backend_with_tee(shared, workflow, tee)
@@ -61,7 +65,7 @@ async fn prepare_do_run(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<DoRunPrep, String> {
-    let client = new_do_client(shared, workflow, do_args.thoughts)?;
+    let client = new_do_client(shared, workflow)?;
     let request = require_cli_request(do_args.request.as_ref(), "--do")?;
     let (text, work_dir) = resolve_user_md_request(&request)?;
     let artifacts = crate::artifacts::create_run_artifacts_from_text_opts(
@@ -94,11 +98,12 @@ pub async fn run_do(
 ) -> Result<(), String> {
     let interactive = agent_stdout_tee_enabled();
     let emit_markdown = interactive && shared.acp_stdout_markdown_enabled();
+    let dm_only = !shared.verbose;
     crate::output::set_do_dm_stdout_opts(crate::output::DoDmStdoutOpts {
-        enabled: true,
-        emit_markdown,
+        enabled: dm_only,
+        emit_markdown: dm_only && emit_markdown,
     });
-    crate::output::set_heartbeat_stdout_suppressed(true);
+    crate::output::set_heartbeat_stdout_suppressed(dm_only);
     let result = run_do_body(do_args, shared, workflow).await;
     crate::output::set_do_dm_stdout_opts(crate::output::DoDmStdoutOpts::default());
     crate::output::set_heartbeat_stdout_suppressed(false);

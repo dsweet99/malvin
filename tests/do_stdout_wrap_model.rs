@@ -3,8 +3,8 @@ mod common;
 #[cfg(unix)]
 use common::{
     DEFAULT_CLI_MODEL, DO_WRAP_COLUMNS, assert_stdout_has_no_chrome, nonempty_stdout_lines,
-    run_do_long_text_mock, run_do_with_mock, run_do_with_mock_and_argv, run_do_wordy_long_mock,
-    run_malvin_with_captured_argv, stdout_lines_preserve_shape,
+    run_do_long_text_mock, run_do_with_mock, run_do_with_mock_and_argv, run_do_with_mock_force_tee,
+    run_do_wordy_long_mock, run_malvin_with_captured_argv, stdout_lines_preserve_shape,
 };
 
 #[cfg_attr(unix, test)]
@@ -37,9 +37,9 @@ fn do_wraps_long_raw_agent_line_when_columns_set() {
 }
 
 #[cfg_attr(unix, test)]
-fn do_stdout_includes_thoughts_only_with_flag() {
-    let out = run_do_with_mock(&["--thoughts"]);
-    assert!(out.status.success(), "malvin do --thoughts failed: {out:?}");
+fn do_stdout_stays_dm_only_without_verbose() {
+    let out = run_do_with_mock(&[]);
+    assert!(out.status.success(), "malvin do failed: {out:?}");
     let stdout = String::from_utf8_lossy(&out.stdout);
     let lines = stdout_lines_preserve_shape(&out.stdout);
     assert!(
@@ -49,7 +49,7 @@ fn do_stdout_includes_thoughts_only_with_flag() {
     assert!(lines.iter().any(|l| l == "agent message"), "got: {lines:?}");
     assert!(
         !stdout.contains("hidden thought"),
-        "--do stdout stays DM-only even with --thoughts; stdout was {stdout:?}"
+        "--do without --verbose stays DM-only; stdout was {stdout:?}"
     );
     assert!(
         !stdout.contains("MALVIN_DM_START") && !stdout.contains("o|"),
@@ -61,6 +61,25 @@ fn do_stdout_includes_thoughts_only_with_flag() {
     );
     assert_stdout_has_no_chrome(&lines);
     assert!(!stdout.contains("\"jsonrpc\""), "stdout was {stdout:?}");
+}
+
+#[cfg_attr(unix, test)]
+fn do_verbose_stdout_includes_thoughts_like_default_workflow() {
+    let out = run_do_with_mock_force_tee(&["--verbose"]);
+    assert!(
+        out.status.success(),
+        "malvin --verbose --do failed: {:?}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains("hidden thought"),
+        "--verbose --do must tee thought tokens like the default workflow; stdout was {stdout:?}"
+    );
+    assert!(
+        stdout.contains("agent message"),
+        "--verbose --do must still show agent message text; stdout was {stdout:?}"
+    );
 }
 
 #[cfg_attr(unix, test)]

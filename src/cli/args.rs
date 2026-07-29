@@ -29,9 +29,6 @@ pub struct Cli {
     /// Respond simply (one-shot agent turn).
     #[arg(long = "do", default_value_t = false)]
     pub do_workflow: bool,
-    /// Stream agent thought tokens to stdout (with `--do`).
-    #[arg(long, default_value_t = false)]
-    pub thoughts: bool,
     #[command(subcommand)]
     pub command: Option<Commands>,
     /// Existing `.md` path or literal text (bare `malvin REQUEST`, or request for `--do`).
