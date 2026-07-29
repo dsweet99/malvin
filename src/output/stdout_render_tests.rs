@@ -114,7 +114,7 @@ fn heartbeat_route_writes_immediate_log_when_no_defer() {
 fn heartbeat_route_respects_stdout_color_gate() {
     use std::time::Instant;
 
-    crate::output::init_stdout_style(true);
+    crate::output::init_stdout_style_for_test(false);
     let (terminal, _disk) =
         super::stdout_heartbeat_test_support::due_heartbeat_render_capture_test(|| {
             crate::output::stdout_heartbeat::try_emit_heartbeat_if_due(Instant::now(), false);

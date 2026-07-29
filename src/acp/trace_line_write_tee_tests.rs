@@ -35,7 +35,7 @@ pub(super) fn with_stdout_log<F: FnOnce()>(color: bool, f: F) -> String {
     let tmp = tempfile::tempdir().unwrap();
     let path = tmp.path().join("stdout.log");
     crate::output::set_stdout_log_path(Some(path.clone()));
-    crate::output::init_stdout_style(color);
+    crate::output::init_stdout_style_for_test(!color);
     f();
     crate::output::set_stdout_log_path(None);
     std::fs::read_to_string(path).unwrap()

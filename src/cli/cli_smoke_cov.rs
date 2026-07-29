@@ -74,8 +74,7 @@ fn smoke_agent_io_options_maps_flags() {
         no_force: false,
         no_tenacious: false,
         gates: false,
-        no_tee: true,
-        no_markdown: false,
+
         quiet: false,
         verbose: false,
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
@@ -101,7 +100,7 @@ fn smoke_agent_io_options_maps_flags() {
         },
     );
     assert!(io.force);
-    assert!(io.no_tee);
+    assert!(!io.no_tee);
     assert!(io.raw_output);
     assert!(!io.show_thoughts_on_stdout);
     assert!(io.emit_stdout_markdown);
@@ -116,8 +115,7 @@ fn smoke_new_agent_client_maps_max_acp_retries() {
         no_force: false,
         no_tenacious: false,
         gates: false,
-        no_tee: true,
-        no_markdown: false,
+
         quiet: false,
         verbose: false,
         max_acp_retries: 7,

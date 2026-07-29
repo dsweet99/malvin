@@ -18,8 +18,7 @@ pub(crate) fn summarize_shared_opts(max_acp_retries: u32) -> SharedOpts {
         no_force: true,
         no_tenacious: false,
         gates: false,
-        no_tee: true,
-        no_markdown: true,
+
         quiet: false,
         verbose: false,
         max_acp_retries,

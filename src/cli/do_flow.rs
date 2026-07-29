@@ -4,8 +4,9 @@ use crate::artifacts::{RunArtifacts, SessionDotfileBackups, resolve_user_md_requ
 use crate::cli::cli_request::require_cli_request;
 use crate::agent_backend::{
     agent_backend_attach_run_timing_for_session, agent_backend_set_implement_display_name,
-    agent_backend_set_run_timing, build_agent_backend_with_tee, AgentBackend,
+    agent_backend_set_run_timing, build_agent_backend, build_agent_backend_with_tee, AgentBackend,
 };
+use crate::cli::run_emit::{emit_command_line, emit_run_startup_sequence, RunStartupEmitOpts};
 use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions};
 use crate::output::agent_stdout_tee_enabled;
 use crate::run_timing::TimingPhase;
@@ -29,22 +30,25 @@ struct DoRunPrep {
     artifacts: RunArtifacts,
     coder: do_flow_prompt::DoCoderRun,
     session_dotfile_backups: SessionDotfileBackups,
+    request_text: String,
 }
 
 fn new_do_client(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<AgentBackend, String> {
+    if shared.verbose {
+        // Same backend + tee construction as the default workflow (`build_agent_backend`).
+        return build_agent_backend(
+            shared,
+            workflow,
+            shared.acp_stdout_markdown_enabled(),
+            "do",
+        );
+    }
     let interactive = agent_stdout_tee_enabled();
     let emit_markdown = interactive && shared.acp_stdout_markdown_enabled();
-    let tee = if shared.verbose {
-        // Match default-workflow / router tee style when `--verbose`.
-        AgentStdoutTeeFlags {
-            emit_stdout_markdown: emit_markdown,
-            raw_output: false,
-            show_thoughts_on_stdout: true,
-        }
-    } else if interactive {
+    let tee = if interactive {
         AgentStdoutTeeFlags {
             emit_stdout_markdown: emit_markdown,
             raw_output: false,
@@ -88,6 +92,7 @@ async fn prepare_do_run(
         artifacts,
         coder,
         session_dotfile_backups,
+        request_text: text,
     })
 }
 
@@ -116,7 +121,16 @@ async fn run_do_body(
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
     let mut prep = prepare_do_run(&do_args, shared, workflow).await?;
-    crate::cli::run_emit::emit_command_line(&prep.artifacts.run_dir, false)?;
+    if shared.verbose {
+        // Same startup logger as the default workflow (`emit_run_startup_sequence`).
+        emit_run_startup_sequence(
+            &prep.artifacts,
+            RunStartupEmitOpts::from_shared(shared, true),
+            &prep.request_text,
+        )?;
+    } else {
+        emit_command_line(&prep.artifacts.run_dir, false)?;
+    }
     prep.client
         .set_prompts_log_run_dir(Some(prep.artifacts.run_dir.clone()));
     let acp_res = run_do_acp(&mut prep.client, &prep.artifacts, prep.coder).await;

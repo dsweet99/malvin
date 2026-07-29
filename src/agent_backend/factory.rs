@@ -1,7 +1,8 @@
 //! Build [`super::backend::AgentBackend`] from CLI options.
 
 use crate::cli::{
-    agent_io_options, new_agent_client, AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions,
+    agent_io_options, default_workflow_stdout_tee_flags, new_agent_client, AgentStdoutTeeFlags,
+    SharedOpts, WorkflowCliOptions,
 };
 
 use super::backend::AgentBackend;
@@ -19,11 +20,7 @@ pub fn build_agent_backend(
     build_agent_backend_with_tee(
         shared,
         workflow,
-        AgentStdoutTeeFlags {
-            emit_stdout_markdown,
-            raw_output: false,
-            show_thoughts_on_stdout: true,
-        },
+        default_workflow_stdout_tee_flags(emit_stdout_markdown),
     )
 }
 

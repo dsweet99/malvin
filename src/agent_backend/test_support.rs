@@ -119,8 +119,7 @@ pub fn shared_opts(mini: bool) -> SharedOpts {
         no_force: false,
         no_tenacious: false,
         gates: false,
-        no_tee: true,
-        no_markdown: true,
+
         quiet: false,
         verbose: false,
         max_acp_retries: 3,

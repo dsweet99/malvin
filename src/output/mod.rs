@@ -187,13 +187,20 @@ pub fn format_line_with_timestamp_ansi(ts: &str, who: &str, line: &str) -> Strin
     stdout_log_pair::tagged_display_line_with_timestamp_ansi(ts, who, line)
 }
 
-/// Call once from the binary entrypoint after parsing CLI. Disables color when `no_color` is true
-/// or when `NO_COLOR` is set. Each stream applies color only when that stream is a terminal.
-pub fn init_stdout_style(no_color: bool) {
-    let disabled_by_env = std::env::var_os("NO_COLOR").is_some();
-    let use_color = !no_color && !disabled_by_env;
+/// Call once from the binary entrypoint after parsing CLI. Disables color when `NO_COLOR` is set.
+/// Each stream applies color only when that stream is a terminal.
+pub fn init_stdout_style() {
+    apply_stdout_style(std::env::var_os("NO_COLOR").is_none());
+}
+
+fn apply_stdout_style(use_color: bool) {
     LOG_USE_COLOR.store(use_color, Ordering::Relaxed);
     crate::output::stdout_heartbeat::spawn_wall_clock_poller_if_needed();
+}
+
+/// Test/helper: set color preference without requiring `NO_COLOR` env mutation.
+pub(crate) fn init_stdout_style_for_test(use_color: bool) {
+    apply_stdout_style(use_color);
 }
 
 pub(crate) fn log_use_color() -> bool {

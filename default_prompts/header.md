@@ -86,7 +86,7 @@ When communicating to the user:
 - No agent shorthand or made-up terms (e.g., that you invent for thinking / self-talk).
 
 ## Direct Messages
-Since you are non-interactive, most of your communications will go to logs for occasional viewing. To send a message directly to the human operator, create a femce like this
+Since you are non-interactive, most of your communications will go to logs for occasional viewing. To send a message directly to the human operator, create a "DM fence" like this
 ```
 MALVIN_DM_START
 You message to the user

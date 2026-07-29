@@ -44,7 +44,7 @@ fn malvin_do_prunes_preexisting_log_dirs() {
         .env("HOME", &home)
         .env("CURSOR_AGENT_API_KEY", "test-key")
         .env("MALVIN_AGENT_ACP_BIN", &mock)
-        .args(["--no-tee", "--do"]);
+        .args(["--do"]);
     cmd.args(INTEGRATION_TEST_MALVIN_ARGS);
     cmd.arg("say hi");
     let out =

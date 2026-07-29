@@ -23,7 +23,7 @@ malvin models download local:<id>
 
 ## Global options
 
-See `malvin --doc`. Only `--no-color` materially affects output formatting. Global `--model` is parsed but **not used** by this subcommand. `--no-download` applies when running agent commands with `local:` models (not this listing).
+See `malvin --doc`. Global `--model` is parsed but **not used** by this subcommand. `--no-download` applies when running agent commands with `local:` models (not this listing). Color follows the `NO_COLOR` environment variable.
 
 ## Behavior
 
@@ -45,7 +45,7 @@ Root `kiss check` ignores `malvin-llama/` (see `.kissignore`); structural cleanl
 
 ```text
 malvin models
-malvin --no-color models
+malvin models
 malvin models download local:qwen35_9b_q4
 malvin --model local:qwen35_9b_q4 do "say hi"
 malvin --model cursor:sonnet-4 inspire plan.md    # --model applies to agent subcommands, not models

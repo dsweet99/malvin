@@ -13,8 +13,7 @@ pub(crate) fn test_router_shared() -> (SharedOpts, WorkflowCliOptions) {
         no_force: true,
         no_tenacious: true,
         gates: false,
-        no_tee: true,
-        no_markdown: true,
+
         quiet: false,
         verbose: false,
         max_acp_retries: 1,

@@ -96,7 +96,7 @@ pub(crate) async fn run_tool_call_lifecycle_tee_fixture() -> (String, String) {
     let stdout_path = tmp.path().join("stdout.log");
     let trace_path = tmp.path().join("tool-trace.log");
     crate::output::set_stdout_log_path(Some(stdout_path.clone()));
-    crate::output::init_stdout_style(true);
+    crate::output::init_stdout_style_for_test(false);
 
     let (mut writer, mut coalesce) = open_coalesce_trace_at(&trace_path).await;
     deliver_tool_call_session_updates(&mut writer, &mut coalesce).await;

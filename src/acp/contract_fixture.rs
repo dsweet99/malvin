@@ -78,7 +78,7 @@ pub async fn contract_acp_tee_tool_fixture(
     stdout_path: &Path,
 ) -> (String, String) {
     crate::output::set_stdout_log_path(Some(stdout_path.to_path_buf()));
-    crate::output::init_stdout_style(false);
+    crate::output::init_stdout_style_for_test(true);
     let mut writer = open_contract_trace_writer(trace_path).await;
     let mut coalesce = TraceChunkCoalescer::default();
     tee_coalesced_tool_execute(&mut writer, &mut coalesce).await;

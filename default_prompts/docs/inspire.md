@@ -28,7 +28,7 @@ Exactly **one shell argument**. Quote for internal spaces. Topic as literal text
 
 ## Global options
 
-See `malvin --doc`. `--no-markdown` styles agent stdout when enabled.
+See `malvin --doc`. Agent stdout uses styled markdown on a TTY.
 
 ## Prompt workflow
 

@@ -7,8 +7,7 @@ fn kiss_cov_kpop_summarize_privates() {
         no_force: true,
         no_tenacious: false,
         gates: false,
-        no_tee: true,
-        no_markdown: true,
+
         quiet: false,
         verbose: false,
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,

@@ -1,5 +1,5 @@
 use super::format_line_stdout_ansi;
-use super::{WHO_B, WHO_U, init_stdout_style, print_outgoing_prompt_log, set_stdout_log_path};
+use super::{WHO_B, WHO_U, init_stdout_style_for_test, print_outgoing_prompt_log, set_stdout_log_path};
 
 #[test]
 fn ansi_error_and_warning_color_entire_display_line() {
@@ -46,7 +46,7 @@ fn outgoing_prompt_log_who_tag_uses_stem_bracket_keeps_md() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let path = tmp.path().join("stdout.log");
     set_stdout_log_path(Some(path.clone()));
-    init_stdout_style(true);
+    init_stdout_style_for_test(false);
     crate::output::enable_stdout_capture();
     print_outgoing_prompt_log("bug_fix", "bug_fix.md");
     let live = crate::output::take_captured_stdout();

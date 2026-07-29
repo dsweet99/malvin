@@ -38,9 +38,6 @@ Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prom
 
 These flags are **global**: they may appear before or after the subcommand name.
 
-### `--no-color`
-
-Disable ANSI color on malvin’s own status and error lines. Does not change the agent’s raw stream.
 
 ### `-b` / `--background`
 
@@ -72,13 +69,7 @@ By default gate-loop commands (`tidy`, `delight`, `explain`) expand to `--max-lo
 
 Inject workspace check command text into agent prompts and, for workflows that use harness gates as loop criteria, treat failures as loop or exit criteria. Off by default. On bare `malvin REQUEST`, `--gates` also runs workspace `.malvin/checks` after each outer agent session: pass stops success; fail continues the outer loop (even when KPop chat said no work remaining); exhausted budget with failing gates fails the run. When work runs, check text is still injected into the work prompt. `malvin tidy` always forces `--gates` on (same harness criteria as bare `malvin REQUEST --gates`). Agent prompts may still include available `.malvin/checks` guidance when this option is off.
 
-### `--no-tee`
 
-By default malvin tees agent stdout to the terminal (and `stdout.log` in the run dir). `--no-tee` suppresses live streaming; logs are still written under `~/.malvin_home/logs/`.
-
-### `--no-markdown`
-
-Disable styled markdown rendering of agent stdout for agent-backed subcommands that use the shared ACP client (`tidy` when the agent runs, `delight`, `explain`, `inspire`, and `malvin --verbose --do` on a TTY). No effect on `models`. Plain `malvin --do` (DM-body-only) stays unstyled regardless of this flag; piped DM-only `--do` output is always plain.
 
 ### `-v` / `--verbose`
 
@@ -144,7 +135,7 @@ Every agent-backed command creates `~/.malvin_home/logs/<hash>/<timestamp>_<toke
 |------|------|
 | `plan_<random>.md` or `request.md` | Copy of user input for this run |
 | `kpop.log`, `do.log`, `router_1.log`, `router_2.log`, `inspire.log`, … | Per-iteration or per-prompt transcripts |
-| `stdout.log` | Tee of agent stdout (unless `--no-tee`) — **narrative** channel |
+| `stdout.log` | Tee of agent stdout — **narrative** channel |
 | `trace.jsonl` | ACP-shaped audit record — **authoritative** for semantics (tool results, shrink/fork, LLM usage) |
 | `prompts.log` | Outgoing prompts (names only, or full bodies with `--verbose`) |
 | `quality_gates.log` | Workspace gate commands and output when gates run |

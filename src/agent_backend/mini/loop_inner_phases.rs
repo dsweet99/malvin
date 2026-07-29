@@ -110,6 +110,8 @@ fn investigate_bash_turn(
     }
     if req.trace.plain_lines {
         req.trace.record_assistant_audit(input.assistant_text);
+        // Keep bash chatter off the plain tee / stdout.log, but still extract DM bodies.
+        req.trace.feed_do_dm_assistant_text(input.assistant_text);
     } else {
         req.trace.stream_assistant_chunks(input.assistant_text);
     }

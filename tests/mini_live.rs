@@ -69,8 +69,6 @@ fn mini_live_do_echo() {
         "--do",
         "--model",
         "openrouter:auto",
-        "--no-tee",
-        "--no-markdown",
         "--max-acp-retries",
         "1",
         "run echo hello in bash",
@@ -98,7 +96,6 @@ fn mini_live_inspire_run() {
         "inspire",
         "--model",
         "openrouter:auto",
-        "--no-tee",
         "--max-acp-retries",
         "1",
         "why is the sky blue?",
@@ -122,7 +119,7 @@ fn mini_live_models_listing() {
         eprintln!("skip: set MALVIN_LIVE_MINI=1 and OPENROUTER_API_KEY to run");
         return;
     }
-    let (_root, output) = run_mini_live_in_workspace(&["models", "--no-color"]);
+    let (_root, output) = run_mini_live_in_workspace(&["models"]);
     assert!(
         output.status.success(),
         "stderr: {}",

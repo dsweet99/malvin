@@ -114,7 +114,7 @@ pub(crate) fn h11_tool_summary_tee_log_matches_stripped_display_when_color_on() 
     let tmp = tempfile::tempdir().unwrap();
     let path = tmp.path().join("stdout.log");
     set_stdout_log_path(Some(path.clone()));
-    crate::output::init_stdout_style(true);
+    crate::output::init_stdout_style_for_test(false);
 
     let plain = "Run cargo test · 1.0s · ✓";
     let display = tool_summary_stdout_display(plain);

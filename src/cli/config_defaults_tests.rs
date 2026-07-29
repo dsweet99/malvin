@@ -96,8 +96,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
         no_force: false,
         no_tenacious: false,
         gates: false,
-        no_tee: false,
-        no_markdown: false,
+
         quiet: false,
         verbose: false,
         max_acp_retries: 1,

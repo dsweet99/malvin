@@ -125,6 +125,17 @@ impl MiniTraceSink {
         });
     }
 
+    /// Feed `--do` DM extractor only (no narrative tee). Used for `plain_lines` bash
+    /// turns that must stay off `stdout.log` while still surfacing DM bodies.
+    pub fn feed_do_dm_assistant_text(&self, text: &str) {
+        if !crate::output::do_dm_stdout_mode() || text.is_empty() {
+            return;
+        }
+        for chunk in assistant_chunks(text) {
+            feed_do_dm_chunk_line(chunk);
+        }
+    }
+
     /// Dual: audit + narrative assistant chunks (`m|` or plain untagged when `plain_lines`).
     pub fn stream_assistant_chunks(&self, text: &str) {
         self.record_assistant_audit(text);
@@ -157,6 +168,14 @@ fn mini_narrative_suppressed(sink: &MiniTraceSink) -> bool {
     narrative_suppressed(sink.io.no_tee)
 }
 
+/// Restore a trailing newline so DM fence markers are whole lines (ACP tee parity).
+fn feed_do_dm_chunk_line(chunk: &str) {
+    let mut terminated = String::with_capacity(chunk.len() + 1);
+    terminated.push_str(chunk);
+    terminated.push('\n');
+    crate::output::feed_do_dm_stdout_text(&terminated);
+}
+
 /// Write one narrative line to stdout / `stdout.log`, respecting suppression flags.
 pub(crate) fn emit_narrative(sink: &MiniTraceSink, who: &str, chunk: &str) {
     assert!(matches!(MINI_NARRATIVE_CHANNEL, ObservabilityChannel::Narrative));
@@ -164,7 +183,7 @@ pub(crate) fn emit_narrative(sink: &MiniTraceSink, who: &str, chunk: &str) {
         return;
     }
     if who == WHO_M {
-        crate::output::feed_do_dm_stdout_text(chunk);
+        feed_do_dm_chunk_line(chunk);
     }
     if sink.plain_lines || sink.io.raw_output {
         let ts = crate::output::timestamp_now_string();

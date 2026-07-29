@@ -165,7 +165,19 @@ fn bare_malvin_shows_commands_only_and_exits_zero() {
         "full help must list options: {help_s}"
     );
     assert!(
-        help_s.contains("--no-color"),
+        help_s.contains("--verbose") || help_s.contains("-v"),
         "full help must list global flags: {help_s}"
+    );
+    assert!(
+        !help_s.contains("--no-color"),
+        "full help must not list removed --no-color: {help_s}"
+    );
+    assert!(
+        !help_s.contains("--no-tee"),
+        "full help must not list removed --no-tee: {help_s}"
+    );
+    assert!(
+        !help_s.contains("--no-markdown"),
+        "full help must not list removed --no-markdown: {help_s}"
     );
 }

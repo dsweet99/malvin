@@ -30,8 +30,7 @@ fn router_client_uses_kpop_style_agent_io_not_do_style() {
         no_force: true,
         no_tenacious: false,
         gates: false,
-        no_tee: true,
-        no_markdown: false,
+
         quiet: false,
         verbose: false,
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
@@ -80,8 +79,7 @@ fn openrouter_router_client_is_mini_with_styled_not_raw_output() {
                 no_force: true,
                 no_tenacious: false,
                 gates: false,
-                no_tee: true,
-                no_markdown: false,
+
                 quiet: false,
                 verbose: false,
                 max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,

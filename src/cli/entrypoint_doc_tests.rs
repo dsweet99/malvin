@@ -5,10 +5,9 @@ use crate::cli::args::GlobalOpts;
 use crate::test_utils::with_isolated_home;
 
 #[test]
-fn prepare_cli_output_applies_color_and_background_flags() {
+fn prepare_cli_output_applies_background_flag() {
     crate::output::set_stdout_suppressed(false);
     prepare_cli_output(&GlobalOpts {
-        no_color: false,
         background: true,
     });
     assert!(crate::output::stdout_suppressed());
@@ -64,27 +63,11 @@ fn entrypoint_from_inspire_without_request_exits_success() {
 }
 
 #[test]
-fn entrypoint_from_no_color_disables_stdout_color() {
-    with_isolated_home(|_| {
-        assert_eq!(
-            entrypoint_from(["malvin", "--no-color", "--doc"]),
-            Exit::Success
-        );
-        assert!(!crate::output::stdout_use_color());
-    });
-}
-
-#[test]
-fn entrypoint_from_no_color_and_background_apply_together() {
+fn entrypoint_from_doc_does_not_suppress_stdout_without_background() {
     with_isolated_home(|_| {
         crate::output::set_stdout_suppressed(false);
-        assert_eq!(
-            entrypoint_from(["malvin", "--no-color", "--background", "--doc"]),
-            Exit::Success
-        );
-        assert!(!crate::output::stdout_use_color());
-        assert!(crate::output::stdout_suppressed());
-        crate::output::set_stdout_suppressed(false);
+        assert_eq!(entrypoint_from(["malvin", "--doc"]), Exit::Success);
+        assert!(!crate::output::stdout_suppressed());
     });
 }
 

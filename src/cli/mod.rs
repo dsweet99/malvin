@@ -31,9 +31,9 @@ pub(crate) mod kpop_summarize;
 
 pub use crate::agent_backend::{build_agent_backend, build_agent_backend_with_tee};
 pub use code_flow_a::{
-    agent_io_options, build_agent, format_code_pre_check_failure, format_pre_check_gate_failure,
-    format_workspace_gate_failure, new_agent_client, prepare_kpop_prompt_store,
-    prepare_prompt_store, AgentStdoutTeeFlags, WorkflowCliOptions,
+    agent_io_options, build_agent, default_workflow_stdout_tee_flags, format_code_pre_check_failure,
+    format_pre_check_gate_failure, format_workspace_gate_failure, new_agent_client,
+    prepare_kpop_prompt_store, prepare_prompt_store, AgentStdoutTeeFlags, WorkflowCliOptions,
 };
 pub(crate) use code_flow::{run_code, CodeArgs};
 

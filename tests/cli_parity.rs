@@ -34,7 +34,7 @@ fn help_option_count(help: &str, option: &str) -> usize {
 }
 
 #[cfg_attr(unix, test)]
-fn help_lists_global_no_markdown_once() {
+fn help_omits_removed_inverse_global_flags() {
     let out = run_root_help_output();
     assert!(
         out.status.success(),
@@ -42,31 +42,13 @@ fn help_lists_global_no_markdown_once() {
         String::from_utf8_lossy(&out.stderr)
     );
     let s = String::from_utf8_lossy(&out.stdout);
-    let no_markdown_option_lines = help_option_count(&s, "--no-markdown");
-    assert_eq!(
-        no_markdown_option_lines, 1,
-        "expected exactly one --no-markdown in root help: {s}"
-    );
-}
-
-#[cfg_attr(unix, test)]
-fn help_no_markdown_description_is_disable_styled_markdown() {
-    let out = run_root_help_output();
-    assert!(
-        out.status.success(),
-        "help failed: stderr={}",
-        String::from_utf8_lossy(&out.stderr)
-    );
-    let s = String::from_utf8_lossy(&out.stdout);
-    let idx = s
-        .lines()
-        .position(|line| line.contains("--no-markdown"))
-        .unwrap_or_else(|| panic!("expected --no-markdown in root help: {s}"));
-    let window = s.lines().skip(idx).take(2).collect::<Vec<_>>().join("\n");
-    assert!(
-        window.contains("Disable styled markdown"),
-        "expected --no-markdown help to say 'Disable styled markdown': {window:?}"
-    );
+    for flag in ["--no-color", "--no-tee", "--no-markdown"] {
+        assert_eq!(
+            help_option_count(&s, flag),
+            0,
+            "expected {flag} removed from root help: {s}"
+        );
+    }
 }
 
 #[cfg_attr(unix, test)]

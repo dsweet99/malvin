@@ -27,7 +27,6 @@ pub fn check_ignored(repo: &std::path::Path, rel_path: &str) -> bool {
 
 #[cfg(unix)]
 pub struct CodeRunOpts {
-    pub no_tee: bool,
     pub trust_plan: bool,
 }
 
@@ -64,9 +63,6 @@ pub fn run_code_with_mock_js_trust_plan_in_workspace(
     }
     args.extend_from_slice(extra_args);
     args.push("ship it");
-    if opts.no_tee {
-        args.insert(0, "--no-tee");
-    }
     let out = command_output_with_timeout(
         Command::new(env!("CARGO_BIN_EXE_malvin"))
             .current_dir(&workspace)
@@ -118,35 +114,30 @@ pub fn assert_review_abort_behavior(
 pub fn run_code_with_mock_js(
     mock_js: &str,
     extra_args: &[&str],
-    no_tee: bool,
 ) -> std::process::Output {
     run_code_with_mock_js_trust_plan(
         mock_js,
         extra_args,
         &CodeRunOpts {
-            no_tee,
             trust_plan: true,
         },
     )
 }
 
 #[cfg(unix)]
-pub fn run_code_max_loops_zero_with_mock_opts(no_tee: bool) -> std::process::Output {
+pub fn run_code_max_loops_zero_with_mock() -> std::process::Output {
     run_code_with_mock_js(
         &acp_mock_code_streaming_update_js(),
         &["--max-loops", "0"],
-        no_tee,
     )
 }
 
 #[cfg(unix)]
-pub fn run_code_max_loops_zero_with_mock() -> std::process::Output {
-    run_code_max_loops_zero_with_mock_opts(true)
-}
-
-#[cfg(unix)]
 pub fn run_code_max_loops_zero_with_mock_stdout() -> std::process::Output {
-    run_code_max_loops_zero_with_mock_opts(false)
+    run_code_with_mock_js(
+        &acp_mock_code_streaming_update_js(),
+        &["--max-loops", "0"],
+    )
 }
 
 #[cfg(unix)]
@@ -155,7 +146,6 @@ pub fn run_code_max_loops_zero_with_mock_without_trust_plan() -> std::process::O
         &acp_mock_code_streaming_update_js(),
         &["--max-loops", "0"],
         &CodeRunOpts {
-            no_tee: true,
             trust_plan: false,
         },
     )

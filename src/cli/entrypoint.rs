@@ -86,7 +86,7 @@ pub(crate) fn prepare_cli_output(global: &crate::cli::args::GlobalOpts) {
         .map(|cwd| crate::malvin_config_file::load_malvin_config(&cwd).theme)
         .unwrap_or_default();
     crate::terminal_palette::init_terminal_theme(theme);
-    crate::output::init_stdout_style(global.no_color);
+    crate::output::init_stdout_style();
     crate::output::set_stdout_suppressed(global.background);
 }
 

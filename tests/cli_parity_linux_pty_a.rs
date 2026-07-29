@@ -23,7 +23,7 @@ mod linux_pty {
     }
 
     #[test]
-    fn inspire_pty_markdown_strips_bold_markers_without_no_markdown() {
+    fn inspire_pty_markdown_strips_bold_markers() {
         let out = run_inspire_bold_markdown_under_openpty(&[]);
         assert!(
             out.status.success(),
@@ -37,24 +37,6 @@ mod linux_pty {
         assert!(
             stdout.contains("\x1b[1m"),
             "expected termimad bold ANSI on TTY stdout: {stdout:?}"
-        );
-        assert!(
-            !stdout.contains("\"jsonrpc\""),
-            "stdout leaked JSON-RPC protocol lines: {stdout:?}"
-        );
-    }
-
-    #[test]
-    fn inspire_pty_no_markdown_preserves_bold_markers() {
-        let out = run_inspire_bold_markdown_under_openpty(&["--no-markdown"]);
-        assert!(
-            out.status.success(),
-            "expected inspire success when agent streams markdown only: {out:?}"
-        );
-        let stdout = String::from_utf8_lossy(&out.stdout);
-        assert!(
-            stdout.contains("**boldline**"),
-            "expected plain stdout to preserve markdown markers: {stdout:?}"
         );
         assert!(
             !stdout.contains("\"jsonrpc\""),

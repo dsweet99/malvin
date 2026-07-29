@@ -5,7 +5,7 @@ use crate::output::stdout_heartbeat::{
     try_emit_heartbeat_if_due,
 };
 use crate::output::{
-    WHO_H, format_who_tag_delim, format_who_tag_prefix, init_stdout_style, is_log_timestamp_token,
+    WHO_H, format_who_tag_delim, format_who_tag_prefix, init_stdout_style_for_test, is_log_timestamp_token,
     print_stdout_line, set_stdout_log_path,
 };
 use crate::time_format::heartbeat_payload_has_wall_clock_prefix;
@@ -55,7 +55,7 @@ fn heartbeat_emits_once_when_interval_not_elapsed() {
 
 #[test]
 fn due_heartbeat_terminal_uses_color_without_wall_clock_prefix() {
-    init_stdout_style(true);
+    init_stdout_style_for_test(false);
     let (terminal, text) = due_heartbeat_render_capture_test(|| {
         try_emit_heartbeat_if_due(Instant::now(), false);
     });
@@ -105,7 +105,7 @@ fn try_emit_heartbeat_if_due_immediate_when_no_active_sink() {
 
 #[test]
 fn heartbeat_logs_during_stdout_silence_when_interval_elapsed() {
-    init_stdout_style(true);
+    init_stdout_style_for_test(false);
     crate::output::stdout_heartbeat::spawn_wall_clock_poller_if_needed();
     let (terminal, text) = due_heartbeat_render_capture_test(|| {
         poll_wall_clock_heartbeat_if_due();
