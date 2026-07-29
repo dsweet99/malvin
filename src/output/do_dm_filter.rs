@@ -1,4 +1,8 @@
 //! Streaming extractor for `MALVIN_DM_START` / `MALVIN_DM_END` bodies.
+//!
+//! Markers count only when alone on their own line (line text equals the marker;
+//! the terminating newline ends the line). START and END must therefore be on
+//! different lines; same-line or inline forms are ignored.
 
 use std::sync::Mutex;
 
@@ -65,70 +69,55 @@ fn drain_do_dm_filter(filter: &mut DmFilter) {
 }
 
 fn take_outside_progress(filter: &mut DmFilter) -> bool {
-    let Some(idx) = filter.buf.find(DM_START) else {
-        keep_marker_prefix(&mut filter.buf, DM_START);
+    let Some(nl) = filter.buf.find('\n') else {
+        keep_outside_incomplete(&mut filter.buf);
         return false;
     };
-    let after = idx + DM_START.len();
-    filter.buf = filter.buf[after..].to_string();
-    strip_leading_newline(&mut filter.buf);
-    filter.inside = true;
+    let line = &filter.buf[..nl];
+    let rest = filter.buf[nl + 1..].to_string();
+    if line == DM_START {
+        filter.buf = rest;
+        filter.inside = true;
+        return true;
+    }
+    filter.buf = rest;
     true
 }
 
 fn take_inside_progress(filter: &mut DmFilter) -> bool {
-    let Some(idx) = filter.buf.find(DM_END) else {
-        emit_safe_inside_prefix(filter);
-        return false;
-    };
-    let mut body = filter.buf[..idx].to_string();
-    if body.ends_with('\n') {
-        body.pop();
+    let mut line_start = 0usize;
+    while let Some(rel) = filter.buf[line_start..].find('\n') {
+        let nl = line_start + rel;
+        let line = &filter.buf[line_start..nl];
+        if line == DM_END {
+            let mut body = filter.buf[..line_start].to_string();
+            if body.ends_with('\n') {
+                body.pop();
+            }
+            super::do_dm_emit::emit_do_dm_body(&body);
+            filter.buf = filter.buf[nl + 1..].to_string();
+            filter.inside = false;
+            return true;
+        }
+        line_start = nl + 1;
     }
-    super::do_dm_emit::emit_do_dm_body(&body);
-    filter.buf = filter.buf[idx + DM_END.len()..].to_string();
-    strip_leading_newline(&mut filter.buf);
-    filter.inside = false;
-    true
+    emit_safe_inside_prefix(filter);
+    false
 }
 
-fn strip_leading_newline(buf: &mut String) {
-    if buf.starts_with('\n') {
-        buf.replace_range(..1, "");
+fn keep_outside_incomplete(buf: &mut String) {
+    if !DM_START.starts_with(buf.as_str()) {
+        buf.clear();
     }
 }
 
 fn emit_safe_inside_prefix(filter: &mut DmFilter) {
-    let keep = marker_prefix_len(&filter.buf, DM_END);
-    let emit_len = filter.buf.len().saturating_sub(keep);
-    if emit_len == 0 {
-        return;
-    }
-    let prefix = &filter.buf[..emit_len];
-    let Some(last_nl) = prefix.rfind('\n') else {
+    let Some(last_nl) = filter.buf.rfind('\n') else {
         return;
     };
     let body = filter.buf[..=last_nl].to_string();
     filter.buf = filter.buf[last_nl + 1..].to_string();
     super::do_dm_emit::emit_do_dm_body(&body);
-}
-
-fn keep_marker_prefix(buf: &mut String, marker: &str) {
-    let keep = marker_prefix_len(buf, marker);
-    if keep < buf.len() {
-        *buf = buf[buf.len() - keep..].to_string();
-    }
-}
-
-fn marker_prefix_len(buf: &str, marker: &str) -> usize {
-    let max = buf.len().min(marker.len().saturating_sub(1));
-    (0..=max)
-        .rev()
-        .find(|&n| {
-            let start = buf.len() - n;
-            buf.is_char_boundary(start) && marker.starts_with(&buf[start..])
-        })
-        .unwrap_or(0)
 }
 
 #[cfg(test)]
@@ -138,34 +127,42 @@ mod tests {
         do_dm_stdout_mode, enable_stdout_capture, set_do_dm_stdout_mode, take_captured_stdout,
     };
 
-    #[test]
-    fn extracts_body_between_fences() {
+    fn with_dm_capture(f: impl FnOnce()) -> String {
+        reset_do_dm_filter();
         set_do_dm_stdout_mode(true);
         enable_stdout_capture();
-        feed_do_dm_stdout_text(&format!("{DM_START}\nhello\n{DM_END}\n"));
-        assert_eq!(take_captured_stdout(), "hello");
+        f();
+        let out = take_captured_stdout();
         set_do_dm_stdout_mode(false);
+        reset_do_dm_filter();
+        out
+    }
+
+    #[test]
+    fn extracts_body_between_fences() {
+        let out = with_dm_capture(|| {
+            feed_do_dm_stdout_text(&format!("{DM_START}\nhello\n{DM_END}\n"));
+        });
+        assert_eq!(out, "hello");
     }
 
     #[test]
     fn ignores_text_outside_fences() {
-        set_do_dm_stdout_mode(true);
-        enable_stdout_capture();
-        feed_do_dm_stdout_text("noise\n");
-        feed_do_dm_stdout_text(&format!("{DM_START}\nonly\n{DM_END}\n"));
-        assert_eq!(take_captured_stdout(), "only");
-        set_do_dm_stdout_mode(false);
+        let out = with_dm_capture(|| {
+            feed_do_dm_stdout_text("noise\n");
+            feed_do_dm_stdout_text(&format!("{DM_START}\nonly\n{DM_END}\n"));
+        });
+        assert_eq!(out, "only");
     }
 
     #[test]
     fn streaming_chunks_across_markers() {
-        set_do_dm_stdout_mode(true);
-        enable_stdout_capture();
-        feed_do_dm_stdout_text("MALVIN_DM_");
-        feed_do_dm_stdout_text("START\nxi\nMALVIN_DM_");
-        feed_do_dm_stdout_text("END\n");
-        assert_eq!(take_captured_stdout(), "xi");
-        set_do_dm_stdout_mode(false);
+        let out = with_dm_capture(|| {
+            feed_do_dm_stdout_text("MALVIN_DM_");
+            feed_do_dm_stdout_text("START\nxi\nMALVIN_DM_");
+            feed_do_dm_stdout_text("END\n");
+        });
+        assert_eq!(out, "xi");
     }
 
     #[test]
@@ -180,31 +177,54 @@ mod tests {
 
     #[test]
     fn streaming_multibyte_outside_fences_does_not_panic() {
-        // Exact narrative fragment from err.md (em dash U+2014 straddles a probed byte offset).
         const OUTSIDE: &str = "Obtain the current local date and time (with timezone name or numeric offset) and report it clearly to the user—prefer a";
-        reset_do_dm_filter();
-        set_do_dm_stdout_mode(true);
-        enable_stdout_capture();
-        feed_do_dm_stdout_text(OUTSIDE);
-        feed_do_dm_stdout_text(" café 日本語\n");
-        feed_do_dm_stdout_text(&format!("{DM_START}\nbody—ok\n{DM_END}\n"));
-        assert_eq!(take_captured_stdout(), "body—ok");
-        set_do_dm_stdout_mode(false);
-        reset_do_dm_filter();
+        let out = with_dm_capture(|| {
+            feed_do_dm_stdout_text(OUTSIDE);
+            feed_do_dm_stdout_text(" café 日本語\n");
+            feed_do_dm_stdout_text(&format!("{DM_START}\nbody—ok\n{DM_END}\n"));
+        });
+        assert_eq!(out, "body—ok");
     }
 
     #[test]
     fn streaming_multibyte_inside_incomplete_end_does_not_panic() {
-        reset_do_dm_filter();
-        set_do_dm_stdout_mode(true);
-        enable_stdout_capture();
-        feed_do_dm_stdout_text(&format!("{DM_START}\nline—one\n"));
-        feed_do_dm_stdout_text("line—two\n");
-        feed_do_dm_stdout_text(&format!("{DM_END}\n"));
-        let out = take_captured_stdout();
+        let out = with_dm_capture(|| {
+            feed_do_dm_stdout_text(&format!("{DM_START}\nline—one\n"));
+            feed_do_dm_stdout_text("line—two\n");
+            feed_do_dm_stdout_text(&format!("{DM_END}\n"));
+        });
         assert!(out.contains("line—one"), "out={out:?}");
         assert!(out.contains("line—two"), "out={out:?}");
-        set_do_dm_stdout_mode(false);
-        reset_do_dm_filter();
+    }
+
+    #[test]
+    fn rejects_same_line_start_and_end() {
+        let out = with_dm_capture(|| {
+            feed_do_dm_stdout_text(&format!("{DM_START} hello {DM_END}\n"));
+            feed_do_dm_stdout_text(&format!("{DM_START}\nreal\n{DM_END}\n"));
+        });
+        assert_eq!(out, "real");
+    }
+
+    #[test]
+    fn rejects_non_alone_marker_forms() {
+        let out = with_dm_capture(|| {
+            feed_do_dm_stdout_text(&format!("x{DM_START}\nnope\n{DM_END}\n"));
+            feed_do_dm_stdout_text(&format!("{DM_START}x\nnope\n{DM_END}\n"));
+            feed_do_dm_stdout_text(&format!(" {DM_START}\nnope\n{DM_END}\n"));
+            // Inline END is body text; a later alone END closes.
+            feed_do_dm_stdout_text(&format!("{DM_START}\nsee {DM_END}\n{DM_END}\n"));
+            feed_do_dm_stdout_text(&format!("{DM_START}\nalone\n{DM_END}\n"));
+        });
+        assert_eq!(out, format!("see {DM_END}\nalone"));
+    }
+
+    #[test]
+    fn rejects_start_and_body_on_one_line() {
+        let out = with_dm_capture(|| {
+            feed_do_dm_stdout_text(&format!("{DM_START} hello\n{DM_END}\n"));
+            feed_do_dm_stdout_text(&format!("{DM_START}\nok\n{DM_END}\n"));
+        });
+        assert_eq!(out, "ok");
     }
 }

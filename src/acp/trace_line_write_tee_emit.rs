@@ -182,5 +182,10 @@ fn feed_do_dm_from_tee(
     if matches!(kind, Some(SessionUpdateChunkKind::Thought)) {
         return;
     }
-    crate::output::feed_do_dm_stdout_text(line);
+    // logical_lines strips terminators; restore them so DM fences can be
+    // recognized as whole lines (marker alone on the line).
+    let mut terminated = String::with_capacity(line.len() + 1);
+    terminated.push_str(line);
+    terminated.push('\n');
+    crate::output::feed_do_dm_stdout_text(&terminated);
 }
