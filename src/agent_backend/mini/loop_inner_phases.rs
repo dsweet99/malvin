@@ -145,7 +145,10 @@ pub(crate) async fn run_wind_down_turn(
     // Wind-down after bash: pending_new_request is the observation; if missing, stage a wind-down cue.
     if req.session.pending_new_request.is_none() {
         req.session.pending_new_request =
-            Some("Continue and close out without further bash fences.".into());
+            Some(
+                "Continue and close out without further bash fences. If History or prior instructions require a MALVIN_DM_START/MALVIN_DM_END fence, put the user-visible answer inside that closed fence in RESPONSE."
+                    .into(),
+            );
         req.session.section_shape_nudged = false;
     }
     let consolidated = complete_turn_with_recovery(req, counters).await?;

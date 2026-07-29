@@ -97,6 +97,21 @@ fn render_default_header(
 }
 
 #[test]
+fn embedded_do_header_is_a_single_text_block_with_closing_newline() {
+    let s = super::default_file(super::DO_HEADER_MD).expect("do header must be embedded");
+    let lower = s.to_ascii_lowercase();
+    assert!(s.ends_with('\n'));
+    assert!(lower.contains("no stream of consciousness"));
+    assert!(lower.contains("do not restate"));
+    assert!(lower.contains("required output format"));
+    assert!(lower.contains("failed response"));
+    assert!(s.contains("MALVIN_DM_START"));
+    assert!(s.contains("MALVIN_DM_END"));
+    assert!(!lower.contains("user request is:"));
+    assert!(!s.contains("You'll\n find"));
+}
+
+#[test]
 fn smoke_cov_embedded_defaults_units() {
     let _: Option<EnvHomeGuard> = None;
     let _ = default_prompt_store_with_unset_home;

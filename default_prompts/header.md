@@ -92,4 +92,5 @@ MALVIN_DM_START
 You message to the user
 MALVIN_DM_END
 ```
-You should use this for your final, send-of-session summary or for rare urgent status updates.
+On the default router, use this for your final, end-of-session summary or for rare urgent status updates.
+When a later `# do mode` section is present in this prompt, that section's DM rules override this paragraph: the user-visible answer must be inside the DM fence.

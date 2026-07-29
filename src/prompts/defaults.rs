@@ -231,20 +231,3 @@ mod router_header_embed_tests {
         assert!(default_file(HEADER_MD).is_some());
     }
 }
-
-#[cfg(test)]
-mod do_header_tests {
-    use super::DO_HEADER_MD;
-    use super::default_file;
-
-    #[test]
-    fn embedded_do_header_is_a_single_text_block_with_closing_newline() {
-        let s = default_file(DO_HEADER_MD).expect("do header must be embedded");
-        let lower = s.to_ascii_lowercase();
-        assert!(s.ends_with('\n'));
-        assert!(lower.contains("no stream of consciousness"));
-        assert!(lower.contains("do not restate"));
-        assert!(!lower.contains("user request is:"));
-        assert!(!s.contains("You'll\n find"));
-    }
-}

@@ -35,10 +35,10 @@ Each reply MUST use this exact section order:
 <replacement chat-state History>
 
 ## RESPONSE
-<body that answers the New request>
+<body that answers the New request; when History or the New request requires MALVIN_DM_START/END, put the user-visible answer inside that closed DM fence>
 
 Chat-state History is a compact durable summary (not a full chat transcript). Preserve:
-objectives and constraints; verified observations; hypotheses with confidence; decisions and reasons;
+objectives and constraints (including any required DM fence); verified observations; hypotheses with confidence; decisions and reasons;
 completed actions and results; failed approaches; unresolved questions; next actions; pointers to
 authoritative logs, files, or commits (prefer pointers over inlining large bodies).
 
