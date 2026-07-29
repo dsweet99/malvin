@@ -7,7 +7,7 @@ Outer agent sessions (`effective_max_loops(--max-loops)`): each session writes `
 | | |
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
-| Output | Styled stdout on a TTY (same startup chrome as `tidy` / `inspire`) |
+| Output | Styled stdout on a TTY (same startup chrome as `tidy` / `inspire`); with `--quiet` / `-q`, only `MALVIN_DM_*` bodies |
 | Logs | `router_N.log` under `~/.malvin_home/logs/<hash>/<run>/` (one file per outer session) |
 | Contract file | `review_requirements.json` in the malvin run directory (`{{ review_requirements_path }}`) |
 | Requires | No `.malvin/checks` at startup (unless `--gates` later needs them) |
@@ -28,7 +28,7 @@ There is no `router` subcommand. Bare `malvin REQUEST` is the default autonomous
 
 ### `<REQUEST>` (required)
 
-Exactly **one shell argument**. Quote for internal spaces. Literal text, or an existing `.md` file path (same rules as `do`).
+Exactly **one shell argument**. Quote for internal spaces. Literal text, or an existing `.md` file path (same rules as `--do`).
 
 | Form | Work directory | Stored as |
 |------|----------------|-----------|
@@ -45,6 +45,7 @@ See `malvin --doc`. Notable for the default route:
 | `--gates` | After each outer session’s turns (while the coder session is still open), run workspace `.malvin/checks`. Pass stops success; fail continues (even when chat said no work remaining). Exhausted budget with failing gates fails the run. Also injects check text into `router_work.md` when work runs. |
 | `--no-tenacious` | Keep normal `--max-loops` / `--max-acp-retries` (default tenacious expands both) |
 | `--no-tee` | Disables live streaming |
+| `--quiet` / `-q` | Stdout shows only `MALVIN_DM_*` bodies (not `-b`; `--do` is always DM-only without this flag) |
 | `--verbose` | Full prompt bodies in `prompts.log` |
 
 ## Prompt workflow

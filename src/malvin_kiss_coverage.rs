@@ -228,8 +228,6 @@ fn kiss_cov_cli_helper_symbols() {
     let _ = stringify!(RouterArgs);
     let _ = stringify!(KPopEnginePrepared);
     let _ = stringify!(InspireRunPrep);
-    let _ = stringify!(OuterLoopSummarizeParams);
-    let _ = stringify!(CodeOuterLoopSummarizeInputs);
     let _ = stringify!(KpopOuterLoopSummarizeInputs);
     let _ = stringify!(RunStartupEmitOpts);
 }

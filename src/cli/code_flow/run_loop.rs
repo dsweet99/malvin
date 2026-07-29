@@ -78,17 +78,6 @@ pub async fn run_code(
     })
     .await?;
 
-    let summarize_res = crate::cli::kpop_summarize::run_outer_loop_summarize_if_warranted(
-        &crate::cli::kpop_summarize::code_outer_loop_summarize_params(
-            crate::cli::kpop_summarize::CodeOuterLoopSummarizeInputs {
-                agent_ran,
-                shared,
-                workflow,
-            },
-            &prepared,
-        ),
-    )
-    .await;
     let r = code_gate_outcome(CodeGateFinish {
         shared,
         prepared: &prepared,
@@ -97,7 +86,7 @@ pub async fn run_code(
         gates_ok,
         run_timing: run_timing.as_ref(),
         last_backups: &last_backups,
-        summarize_res,
+        summarize_res: Ok(()),
     });
 
     if r.is_ok() {
@@ -109,68 +98,11 @@ pub async fn run_code(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::cli::SharedOpts;
-    use crate::config::DEFAULT_CLI_MODEL;
-
     #[test]
     fn code_run_loop_entry_is_covered() {
         let _ = super::run_code;
     }
 
-    #[test]
-    fn code_outer_loop_summarize_params_builds_code_context() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        std::process::Command::new("git")
-            .args(["init"])
-            .current_dir(tmp.path())
-            .status()
-            .expect("git init");
-        crate::seed_malvin_checks(tmp.path(), "true\n");
-        let old = std::env::current_dir().expect("cwd");
-        std::env::set_current_dir(tmp.path()).expect("chdir");
-        let prepared = super::super::run_startup::prepare_code_kpop_run(
-            WorkflowCliOptions { force: false },
-            "ship it",
-            DEFAULT_CLI_MODEL,
-            false)
-        .expect("prepared");
-        let shared = SharedOpts {
-            model: DEFAULT_CLI_MODEL.into(),
-            no_force: true,
-            no_tenacious: false,
-            gates: false,
-            no_tee: true,
-            no_markdown: true,
-            verbose: false,
-            max_acp_retries: 1,
-            doc: false,
-            name: None,
-        mini_max_bash_turns: 32,
-        mini_max_http_turns: 32,
-        mini_max_bash_execs: 128,
-        mini_max_http_retries: 0,
-        mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
-        mini_max_gate_retries: 0,
-        mini_max_shrink_passes: 0,
-        no_download: false,
-            git: false,
-        };
-        let workflow = WorkflowCliOptions { force: false };
-        let params = crate::cli::kpop_summarize::code_outer_loop_summarize_params(
-            crate::cli::kpop_summarize::CodeOuterLoopSummarizeInputs {
-                agent_ran: true,
-                shared: &shared,
-                workflow,
-            },
-            &prepared,
-        );
-        std::env::set_current_dir(old).expect("restore cwd");
-        assert!(params.agent_ran);
-        assert_eq!(params.model, DEFAULT_CLI_MODEL);
-        assert!(std::ptr::eq(params.store, &raw const *prepared.store()));
-        assert!(std::ptr::eq(params.artifacts, &raw const *prepared.artifacts()));
-    }
 }
 
 #[cfg(test)]

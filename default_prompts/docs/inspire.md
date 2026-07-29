@@ -24,7 +24,7 @@ malvin inspire [OPTIONS] <REQUEST>
 
 ### `<REQUEST>` (required)
 
-Exactly **one shell argument**. Quote for internal spaces. Topic as literal text, or an existing `.md` file path (same rules as `do`).
+Exactly **one shell argument**. Quote for internal spaces. Topic as literal text, or an existing `.md` file path (same rules as `--do`).
 
 ## Global options
 
@@ -36,7 +36,7 @@ Exactly **one** coder prompt: rendered `mbc2.md` only (no coding header or repo 
 
 ## Session behavior
 
-- Ensures `~/.malvin_home/config.toml` exists with defaults (same as `do` and `tidy`).
+- Ensures `~/.malvin_home/config.toml` exists with defaults (same as `--do` and `tidy`).
 - Backs up `.gitignore`, `.malvin/checks`, `.malvin/config.toml`, and `~/.malvin_home/config.toml`; restores after the session.
 - Checks `result.md` for `ABORT:` after the session.
 
@@ -44,7 +44,7 @@ Exactly **one** coder prompt: rendered `mbc2.md` only (no coding header or repo 
 
 | Command | When |
 |---------|------|
-| `malvin do` | General single-turn coding task with full header |
+| `malvin --do` | General single-turn coding task with full header |
 
 ## Examples
 

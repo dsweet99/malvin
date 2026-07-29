@@ -28,7 +28,6 @@ pub(crate) async fn open_contract_trace_writer(trace_path: &Path) -> PromptTrace
         upgrade_plan_warned: false,
         work_dir: PathBuf::new(),
         run_timing: None,
-        session_id: String::new(),
         deferred_sink: None,
     }
 }

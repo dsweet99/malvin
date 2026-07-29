@@ -9,7 +9,6 @@ use super::init_flow::InitArgs;
 use super::tidy_flow::TidyArgs;
 
 pub use super::models_cmd::ModelsArgs;
-pub use crate::do_flow::DoArgs;
 pub use crate::inspire_flow::InspireArgs;
 pub use super::shared_opts::GlobalOpts;
 
@@ -20,16 +19,22 @@ pub use super::shared_opts::GlobalOpts;
     version,
     about = "Non-interactive CLI agent, via Cursor ACP",
     disable_help_subcommand = true,
-    after_help = "Bare `malvin REQUEST` runs autonomous routing. Use subcommands for named workflows."
+    after_help = "Bare `malvin REQUEST` runs autonomous routing. Use `--do` for a one-shot turn, or subcommands for named workflows."
 )]
 pub struct Cli {
     #[command(flatten)]
     pub global: GlobalOpts,
     #[command(flatten)]
     pub shared: SharedOpts,
+    /// Respond simply (one-shot agent turn).
+    #[arg(long = "do", default_value_t = false)]
+    pub do_workflow: bool,
+    /// Stream agent thought tokens to stdout (with `--do`).
+    #[arg(long, default_value_t = false)]
+    pub thoughts: bool,
     #[command(subcommand)]
     pub command: Option<Commands>,
-    /// Existing `.md` path or literal text (bare `malvin REQUEST` autonomous routing).
+    /// Existing `.md` path or literal text (bare `malvin REQUEST`, or request for `--do`).
     pub request: Option<String>,
     /// Outer agent-session budget for bare `malvin REQUEST` (`effective_max_loops`).
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS)]
@@ -38,8 +43,6 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// Respond simply
-    Do(DoArgs),
     /// Be creative
     #[command(name = "inspire")]
     Inspire(InspireArgs),

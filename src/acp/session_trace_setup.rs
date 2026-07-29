@@ -112,7 +112,7 @@ pub(crate) async fn trace_write_invocation_and_do_split_prompt(
     .await
 }
 
-/// `malvin do`: disk trace matches the full prompt (combined headers, then user request).
+/// `malvin --do`: disk trace matches the full prompt (combined headers, then user request).
 pub(crate) async fn trace_write_outgoing_prompt_do(
     file: &mut tokio::fs::File,
     parts: DoOutgoingTraceParts<'_>,

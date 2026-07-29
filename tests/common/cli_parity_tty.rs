@@ -93,12 +93,18 @@ pub fn run_inspire_bold_markdown_under_openpty(extra_args: &[&str]) -> std::proc
 
 #[cfg(all(unix, target_os = "linux"))]
 pub fn run_do_under_openpty(global_lead: &[&str]) -> std::process::Output {
+    use super::acp_mock_do_streaming_bold_markdown_js;
     let mut args_line = global_lead.join(" ");
     if !args_line.is_empty() {
         args_line.push(' ');
     }
-    args_line.push_str("do \"say hi\"");
-    run_malvin_under_openpty(&args_line)
+    args_line.push_str("--do \"say hi\"");
+    run_malvin_under_openpty_with_mock(
+        &acp_mock_do_streaming_bold_markdown_js(),
+        &args_line,
+        None,
+    )
+    .output
 }
 
 #[cfg(all(unix, target_os = "linux"))]

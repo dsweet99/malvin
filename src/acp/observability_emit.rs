@@ -73,8 +73,7 @@ mod tests {
             upgrade_plan_warned: false,
             work_dir: dir.path().to_path_buf(),
             run_timing: None,
-            session_id: String::new(),
-            deferred_sink: None,
+                deferred_sink: None,
         };
         assert!(write_audit_trace_line(&mut writer, b"audit line\n").await);
         drop(writer);
@@ -103,8 +102,7 @@ mod tests {
             upgrade_plan_warned: false,
             work_dir: std::path::PathBuf::new(),
             run_timing: None,
-            session_id: String::new(),
-            deferred_sink: None,
+                deferred_sink: None,
         };
         tee_narrative_line(
             &mut writer,

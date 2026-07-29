@@ -7,7 +7,7 @@ pub fn ensure_malvin_checks_for_command(cmd: &Commands) -> Result<(), String> {
         | Commands::Adaptix(_)
         | Commands::Explain(_)
         | Commands::Delight(_) => Ok(()),
-        Commands::Do(_) | Commands::Init(_) => {
+        Commands::Init(_) => {
             let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
             crate::repo_gates::ensure_default_malvin_config_file(&cwd)
         }
@@ -18,6 +18,11 @@ pub fn ensure_malvin_checks_for_command(cmd: &Commands) -> Result<(), String> {
     }
 }
 
+pub fn ensure_malvin_checks_for_do_workflow() -> Result<(), String> {
+    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
+    crate::repo_gates::ensure_default_malvin_config_file(&cwd)
+}
+
 pub fn ensure_malvin_checks_for_default_route() -> Result<(), String> {
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
     crate::repo_gates::ensure_default_malvin_config_file(&cwd)
@@ -25,8 +30,8 @@ pub fn ensure_malvin_checks_for_default_route() -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::ensure_malvin_checks_for_command;
-    use crate::cli::args::{DoArgs, ModelsArgs};
+    use super::{ensure_malvin_checks_for_command, ensure_malvin_checks_for_do_workflow};
+    use crate::cli::args::ModelsArgs;
     use crate::cli::{CodeArgs, Commands};
 
     #[test]
@@ -67,11 +72,7 @@ mod tests {
             );
 
             std::fs::remove_file(&config).expect("remove config");
-            ensure_malvin_checks_for_command(&Commands::Do(DoArgs {
-                thoughts: false,
-                request: None,
-            }))
-            .expect("do must materialize home config");
+            ensure_malvin_checks_for_do_workflow().expect("do must materialize home config");
             assert!(!checks.exists());
             assert!(config.is_file());
             assert!(

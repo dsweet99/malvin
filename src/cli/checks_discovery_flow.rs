@@ -21,7 +21,7 @@ pub(crate) struct ChecksDiscoveryOpts {
 
 impl ChecksDiscoveryOpts {
     /// Historical lazy-discovery profile for tidy (tidy no longer runs discovery; use `init`).
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub const TIDY_LAZY: Self = Self {
         artifact_request: "checks discovery",
         kpop_command: "checks_discover",

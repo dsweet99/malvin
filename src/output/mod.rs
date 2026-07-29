@@ -5,6 +5,9 @@
 pub(crate) mod acp_tee;
 mod acp_tee_markdown;
 pub(crate) mod stderr_log;
+mod do_dm_emit;
+mod do_dm_filter;
+mod do_dm_mode;
 mod stdout_defer;
 mod stdout_display;
 mod stdout_heartbeat;
@@ -43,6 +46,10 @@ pub use stdout_display::{
 };
 pub use stdout_terminal::{set_stdout_suppressed, stdout_suppressed};
 pub use stdout_heartbeat::{set_heartbeat_stdout_suppressed, heartbeat_stdout_suppressed};
+pub use do_dm_mode::{
+    do_dm_stdout_mode, set_do_dm_stdout_mode, set_do_dm_stdout_opts, DoDmStdoutOpts,
+};
+pub use do_dm_filter::{feed_do_dm_stdout_text, DM_END, DM_START};
 
 pub(crate) use acp_tee::{
     flush_stdout_acp_tee_line_with_timestamp, flush_stdout_acp_tool_summary_tee,

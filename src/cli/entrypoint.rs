@@ -1,16 +1,14 @@
 use super::{
     Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_init, run_router, run_tidy,
 };
+use crate::do_flow::DoArgs;
 
 /// Commands that accept `--name` acquire a session name lock before substantive work.
-/// Bare `malvin REQUEST`, `do`, `tidy`, and `delight` accept `--name`.
+/// Bare `malvin REQUEST`, `--do`, `tidy`, and `delight` accept `--name`.
 pub(crate) const fn command_accepts_session_name(command: &Commands) -> bool {
     matches!(
         command,
-        Commands::Do(_)
-            | Commands::Code(_)
-            | Commands::Tidy(_)
-            | Commands::Delight(_)
+        Commands::Code(_) | Commands::Tidy(_) | Commands::Delight(_)
     )
 }
 
@@ -19,7 +17,7 @@ pub(crate) const fn unsupported_name_error(command: &Commands) -> Option<&'stati
         return None;
     }
     Some(
-        "`--name` is only supported for bare `malvin REQUEST`, `do`, `tidy`, and `delight`",
+        "`--name` is only supported for bare `malvin REQUEST`, `--do`, `tidy`, and `delight`",
     )
 }
 
@@ -133,20 +131,26 @@ pub(crate) fn dispatch_command(
         cmd @ (Commands::Delight(_) | Commands::Explain(_)) => {
             super::entrypoint_commands::dispatch_plan_authoring_gate(cmd, &mut shared, matches)
         }
-        Commands::Do(do_cmd) => run_async_cli(|| {
-            run_do(
-                do_cmd,
-                &shared,
-                WorkflowCliOptions {
-                    force: !shared.no_force,
-                },
-            )
-        }),
         Commands::Inspire(inspire) | Commands::Adaptix(inspire) => {
             super::entrypoint_commands::run_inspire_command(inspire, &shared)
         }
         Commands::Models(models) => dispatch_models(models, &shared),
     }
+}
+
+pub fn dispatch_do_workflow(
+    do_args: DoArgs,
+    shared: &SharedOpts,
+) -> Result<(), String> {
+    run_async_cli(|| {
+        run_do(
+            do_args,
+            shared,
+            WorkflowCliOptions {
+                force: !shared.no_force,
+            },
+        )
+    })
 }
 
 pub fn dispatch_default_route(

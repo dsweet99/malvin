@@ -1,7 +1,5 @@
 //! Integration smoke: GC-on for `do` and `code`.
 
-use malvin::output::{format_who_tag_delim, MALVIN_WHO};
-
 mod common;
 
 use std::path::Path;
@@ -46,7 +44,7 @@ fn malvin_do_prunes_preexisting_log_dirs() {
         .env("HOME", &home)
         .env("CURSOR_AGENT_API_KEY", "test-key")
         .env("MALVIN_AGENT_ACP_BIN", &mock)
-        .args(["--no-tee", "do"]);
+        .args(["--no-tee", "--do"]);
     cmd.args(INTEGRATION_TEST_MALVIN_ARGS);
     cmd.arg("say hi");
     let out =
@@ -54,12 +52,8 @@ fn malvin_do_prunes_preexisting_log_dirs() {
     let combined = combined_cli_output(&out);
     assert!(out.status.success(), "malvin do failed: {combined:?}");
     assert!(
-        combined.contains("pruned 1 run log(s)"),
-        "malvin do must GC before creating run dir: {combined:?}"
-    );
-    assert!(
-        combined.contains(&format_who_tag_delim(MALVIN_WHO)),
-        "prune line must use standard malvin logger tag: {combined:?}"
+        !combined.contains("pruned 1 run log(s)"),
+        "--do must not echo o| GC lines on process stdout: {combined:?}"
     );
     assert!(!old.exists(), "malvin do must GC aged seeded run dir");
 }

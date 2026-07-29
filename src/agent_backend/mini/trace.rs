@@ -163,6 +163,9 @@ pub(crate) fn emit_narrative(sink: &MiniTraceSink, who: &str, chunk: &str) {
     if chunk.is_empty() || mini_narrative_suppressed(sink) {
         return;
     }
+    if who == WHO_M {
+        crate::output::feed_do_dm_stdout_text(chunk);
+    }
     if sink.plain_lines || sink.io.raw_output {
         let ts = crate::output::timestamp_now_string();
         crate::acp::print_plain_tee_wrapped_line(

@@ -23,7 +23,7 @@ impl KPopHardConstraints {
         exit: KPopHardConstraintsExit::CodeTidy,
     };
     /// Historical TIDY gate-engine profile (tidy now uses the default router with `--gates`).
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub const TIDY: Self = Self {
         skip_kpop_on_initial_pass: true,
         recheck_gates_after_exhausted: false,
@@ -37,7 +37,7 @@ impl KPopHardConstraints {
         exit: KPopHardConstraintsExit::ChecksDiscovery,
     };
     /// Historical DELIGHT gate-engine profile (delight now uses the default router).
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub const DELIGHT: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: false,
@@ -45,7 +45,7 @@ impl KPopHardConstraints {
         exit: KPopHardConstraintsExit::CodeTidy,
     };
     /// Historical EXPLAIN gate-engine profile (explain now uses Review→Plan→Work).
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub const EXPLAIN: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: false,

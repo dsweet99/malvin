@@ -58,6 +58,17 @@ fn top_level_doc_parses_without_subcommand() {
 }
 
 #[test]
+fn do_doc_parses_with_do_flag() {
+    let cli = Cli::try_parse_from(["malvin", "--do", "--doc"]).expect("parse");
+    assert!(cli.shared.doc);
+    assert!(cli.do_workflow);
+    assert!(cli.command.is_none());
+    let mut buf = Vec::new();
+    super::print_doc_for_cli_to_writer(&cli, &mut buf).expect("write");
+    assert!(buf.starts_with(b"# malvin --do"));
+}
+
+#[test]
 fn inspire_doc_parses_without_request_when_doc_flag_set() {
     let cli = Cli::try_parse_from(["malvin", "inspire", "--doc"]).expect("parse");
     assert!(cli.shared.doc);
@@ -136,7 +147,10 @@ mod kiss_cov_gate_refs {
 
     #[test]
     fn kiss_cov_unit_names() {
-        let _ = doc_text;
-        let _ = print_doc;
+        let _ = doc_text(None);
+        let mut buf = Vec::new();
+        print_doc_to_writer(None, &mut buf).expect("write");
+        assert!(!buf.is_empty());
+        print_doc(None).expect("stdout print_doc");
     }
 }

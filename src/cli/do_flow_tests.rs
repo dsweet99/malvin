@@ -50,7 +50,7 @@ fn build_do_coder_run_succeeds_without_checks_in_non_git_workspace() {
     let artifacts = flow_test_artifacts_no_checks(&tmp);
     let run = build_do_coder_run(&artifacts, "USER_TOKEN", crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false)).expect("run");
     assert!(run.combined.contains("Know thyself"));
-    assert!(run.combined.contains("malvin do"));
+    assert!(run.combined.contains("malvin --do"));
     assert!(
         run.combined.contains("Context Prep"),
         "do prompt must include standard header content"
@@ -80,7 +80,7 @@ fn build_do_coder_run_default_store_produces_dual_headers() {
     let artifacts = flow_test_artifacts(&tmp);
     let run = build_do_coder_run(&artifacts, "USER_TOKEN", crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false)).expect("run");
     assert!(run.combined.contains("Know thyself"));
-    assert!(run.combined.contains("malvin do"));
+    assert!(run.combined.contains("malvin --do"));
     assert!(
         run.combined.contains("Context Prep"),
         "do prompt must include standard header content"
@@ -122,37 +122,27 @@ fn combine_do_raw_header_and_user_joins_rendered_do_header_and_request() {
 #[test]
 fn cli_accepts_do_and_passes_request() {
     use crate::cli::Cli;
-    use crate::cli::Commands;
 
-    let cli = Cli::try_parse_from(["malvin", "do", "fix the bug"]).expect("parse");
-    match cli.command {
-        Some(Commands::Do(d)) => {
-            assert_eq!(d.request.as_deref(), Some("fix the bug"));
-            assert!(!d.thoughts);
-        }
-        _ => panic!("expected Do subcommand"),
-    }
+    let cli = Cli::try_parse_from(["malvin", "--do", "fix the bug"]).expect("parse");
+    assert!(cli.do_workflow);
+    assert_eq!(cli.request.as_deref(), Some("fix the bug"));
+    assert!(!cli.thoughts);
+    assert!(cli.command.is_none());
 }
 
 #[test]
 fn cli_accepts_do_thoughts() {
     use crate::cli::Cli;
-    use crate::cli::Commands;
 
-    let cli = Cli::try_parse_from(["malvin", "do", "--thoughts", "z"]).expect("parse");
-    match cli.command {
-        Some(Commands::Do(d)) => {
-            assert!(d.thoughts);
-            assert_eq!(d.request.as_deref(), Some("z"));
-        }
-        _ => panic!("expected Do subcommand"),
-    }
+    let cli = Cli::try_parse_from(["malvin", "--do", "--thoughts", "z"]).expect("parse");
+    assert!(cli.do_workflow);
+    assert!(cli.thoughts);
+    assert_eq!(cli.request.as_deref(), Some("z"));
 }
 
 #[test]
 fn cli_accepts_all_shared_flags_before_subcommand() {
     use crate::cli::Cli;
-    use crate::cli::Commands;
 
     let cli = Cli::try_parse_from([
         "malvin",
@@ -160,17 +150,15 @@ fn cli_accepts_all_shared_flags_before_subcommand() {
         "composer-2",
         "--no-force",
         "--no-tee",
-        "do",
+        "--do",
         "z",
     ])
     .expect("parse");
     assert_eq!(cli.shared.model, "composer-2");
     assert!(cli.shared.no_tee);
     assert!(cli.shared.no_force);
-    match cli.command {
-        Some(Commands::Do(d)) => assert_eq!(d.request.as_deref(), Some("z")),
-        _ => panic!("expected Do subcommand"),
-    }
+    assert!(cli.do_workflow);
+    assert_eq!(cli.request.as_deref(), Some("z"));
 }
 
 #[test]
@@ -178,29 +166,24 @@ fn cli_accepts_max_acp_retries_global_flag() {
     use crate::cli::Cli;
     use crate::config::DEFAULT_MAX_ACP_RETRIES;
 
-    let cli = Cli::try_parse_from(["malvin", "do", "task"]).expect("parse");
+    let cli = Cli::try_parse_from(["malvin", "--do", "task"]).expect("parse");
     assert_eq!(cli.shared.max_acp_retries, DEFAULT_MAX_ACP_RETRIES);
 
-    let cli = Cli::try_parse_from(["malvin", "--max-acp-retries", "5", "do", "task"]).expect("parse");
+    let cli = Cli::try_parse_from(["malvin", "--max-acp-retries", "5", "--do", "task"]).expect("parse");
     assert_eq!(cli.shared.max_acp_retries, 5);
 }
 
 #[test]
 fn cli_accepts_verbose_short_and_long_global_flags() {
     use crate::cli::Cli;
-    use crate::cli::Commands;
 
-    let cli = Cli::try_parse_from(["malvin", "-v", "do", "x"]).expect("parse");
+    let cli = Cli::try_parse_from(["malvin", "-v", "--do", "x"]).expect("parse");
     assert!(cli.shared.verbose);
-    match cli.command.as_ref() {
-        Some(Commands::Do(d)) => assert_eq!(d.request.as_deref(), Some("x")),
-        _ => panic!("expected Do subcommand"),
-    }
+    assert!(cli.do_workflow);
+    assert_eq!(cli.request.as_deref(), Some("x"));
 
-    let cli = Cli::try_parse_from(["malvin", "do", "--verbose", "y"]).expect("parse");
+    let cli = Cli::try_parse_from(["malvin", "--do", "--verbose", "y"]).expect("parse");
     assert!(cli.shared.verbose);
-    match cli.command {
-        Some(Commands::Do(d)) => assert_eq!(d.request.as_deref(), Some("y")),
-        _ => panic!("expected Do subcommand"),
-    }
+    assert!(cli.do_workflow);
+    assert_eq!(cli.request.as_deref(), Some("y"));
 }

@@ -17,7 +17,6 @@ pub struct ToolSummaryBuild {
 #[derive(Clone, Debug)]
 pub struct AcpTeeBuild {
     pub tee: TeeSinkMeta,
-    pub kind: Option<crate::acp::SessionUpdateChunkKind>,
     pub line: String,
     pub display: Option<String>,
     pub dim_payload: bool,

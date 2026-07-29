@@ -8,7 +8,6 @@ pub fn build_tool_entry(build: ToolSummaryBuild) -> DeferredEntry {
         who: build.tee.who,
         ts: build.tee.ts,
         emit_stdout_markdown: build.tee.emit_stdout_markdown,
-        kind: None,
         payload: DeferredPayload::ToolSummary {
             plain: build.plain,
             display: build.display,
@@ -24,7 +23,6 @@ pub fn build_acp_tee_entry(build: AcpTeeBuild) -> DeferredEntry {
         who: build.tee.who,
         ts: build.tee.ts,
         emit_stdout_markdown: build.tee.emit_stdout_markdown,
-        kind: build.kind,
         payload: DeferredPayload::AcpTee {
             line: build.line,
             display: build.display,
@@ -39,7 +37,6 @@ pub fn build_raw_line_entry(line: String, who: String, ts: String) -> DeferredEn
         who,
         ts,
         emit_stdout_markdown: false,
-        kind: None,
         payload: DeferredPayload::RawLine { line },
     }
 }
@@ -50,7 +47,6 @@ pub fn build_display_log_entry(display: String, log: String) -> DeferredEntry {
         who: String::new(),
         ts: String::new(),
         emit_stdout_markdown: false,
-        kind: None,
         payload: DeferredPayload::DisplayLog { display, log },
     }
 }

@@ -48,11 +48,11 @@ fn do_stdout_includes_thoughts_only_with_flag() {
     );
     assert!(lines.iter().any(|l| l == "agent message"), "got: {lines:?}");
     assert!(
-        lines.iter().any(|l| l == "hidden thought"),
-        "stdout was {stdout:?}"
+        !stdout.contains("hidden thought"),
+        "--do stdout stays DM-only even with --thoughts; stdout was {stdout:?}"
     );
     assert!(
-        !stdout.contains("[hidden thought]"),
+        !stdout.contains("MALVIN_DM_START") && !stdout.contains("o|"),
         "stdout was {stdout:?}"
     );
     assert!(
@@ -60,7 +60,6 @@ fn do_stdout_includes_thoughts_only_with_flag() {
         "did not expect tagged do stdout lines, got: {lines:?}"
     );
     assert_stdout_has_no_chrome(&lines);
-    assert!(stdout.contains("hidden thought"), "stdout was {stdout:?}");
     assert!(!stdout.contains("\"jsonrpc\""), "stdout was {stdout:?}");
 }
 
@@ -91,7 +90,7 @@ fn do_forwards_default_model_and_force_to_agent() {
 #[cfg_attr(unix, test)]
 fn do_respects_no_force_and_explicit_model_flags() {
     let (out, argv) =
-        run_malvin_with_captured_argv(&["--no-force", "--model", "cursor:composer-x", "do", "say hi"]);
+        run_malvin_with_captured_argv(&["--no-force", "--model", "cursor:composer-x", "--do", "say hi"]);
     assert!(out.status.success(), "malvin do failed: {out:?}");
     let model_values: Vec<&str> = argv
         .windows(2)

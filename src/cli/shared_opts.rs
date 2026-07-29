@@ -1,10 +1,12 @@
-//! Shared CLI flags (`SharedOpts`) are parsed globally for every subcommand. `model`, `no_force`, `no_tenacious`, `no_tee`, and `max_acp_retries` affect `malvin code`, `malvin inspire`, and `malvin do`. `--gates` enables harness-run quality gates for the default route; `malvin tidy` always forces them on. `--verbose` logs full outgoing agent prompts to stdout and `prompts.log` (default is prompt name only). `--no-markdown` disables styled ACP stdout for subcommands that use `acp_stdout_markdown_enabled()` (`code`, `tidy`, `inspire`, and `do` on a TTY). It is a no-op for `models` (no agent). Piped `malvin do` output stays plain regardless of `--no-markdown`. `--git` sets `{{ git_extra }}` so prompt templates may permit `git commit` (default off).
+//! Shared CLI flags (`SharedOpts`) are parsed globally for every subcommand. `model`, `no_force`, `no_tenacious`, `no_tee`, and `max_acp_retries` affect `malvin code`, `malvin inspire`, and `malvin --do`. `--gates` enables harness-run quality gates for the default route; `malvin tidy` always forces them on. `--verbose` logs full outgoing agent prompts to stdout and `prompts.log` (default is prompt name only). `--no-markdown` disables styled ACP stdout for subcommands that use `acp_stdout_markdown_enabled()` (`code`, `tidy`, `inspire`, and `--do` on a TTY). It is a no-op for `models` (no agent). Piped `malvin --do` output stays plain regardless of `--no-markdown`. `--quiet` / `-q` restricts default-router stdout (bare `malvin REQUEST`, `tidy`, `delight`, `explain`) to `MALVIN_DM_*` bodies only; `--do` is always DM-only and does not need this flag. `--git` sets `{{ git_extra }}` so prompt templates may permit `git commit` (default off).
 
 pub use crate::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use clap::Args;
 
 const NO_TEE_HELPTEXT: &str = "Omit stdout streaming [default: tee on].";
 const NO_MARKDOWN_HELPTEXT: &str = "Disable styled markdown";
+const QUIET_HELPTEXT: &str =
+    "Stdout: only MALVIN_DM_START/END bodies (default workflow; not -b)";
 
 /// Flags that apply to every subcommand (place before or after the subcommand name).
 #[derive(Args, Debug)]
@@ -46,6 +48,15 @@ pub struct SharedOpts {
         help = NO_MARKDOWN_HELPTEXT
     )]
     pub no_markdown: bool,
+    /// Restrict process stdout to `MALVIN_DM_START`/`MALVIN_DM_END` bodies on the default router.
+    #[arg(
+        short = 'q',
+        long,
+        global = true,
+        default_value_t = false,
+        help = QUIET_HELPTEXT
+    )]
+    pub quiet: bool,
     /// Log full outgoing agent prompt bodies to stdout and `prompts.log` (default: prompt name only).
     #[arg(short, long, global = true, default_value_t = false)]
     pub verbose: bool,
@@ -90,7 +101,7 @@ pub struct SharedOpts {
 impl SharedOpts {
     #[must_use]
     pub(crate) fn tee_startup_stdout(&self) -> bool {
-        !self.no_tee && !crate::output::stdout_suppressed()
+        !self.no_tee && !self.quiet && !crate::output::stdout_suppressed()
     }
 
     #[must_use]
@@ -110,6 +121,7 @@ impl SharedOpts {
             gates: false,
             no_tee: true,
             no_markdown: true,
+            quiet: false,
             verbose: false,
             max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,

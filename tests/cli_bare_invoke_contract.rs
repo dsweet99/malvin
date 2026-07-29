@@ -24,12 +24,21 @@ fn help_lists_subcommand_line(help: &str, name: &str) -> bool {
 }
 
 #[test]
-fn do_subcommand_parses() {
-    let cli = parse(&["malvin", "do", "task"]);
-    match cli.command {
-        Some(Commands::Do(d)) => assert_eq!(d.request.as_deref(), Some("task")),
-        other => panic!("expected do, got {other:?}"),
-    }
+fn do_flag_parses() {
+    let cli = parse(&["malvin", "--do", "task"]);
+    assert!(cli.do_workflow);
+    assert_eq!(cli.request.as_deref(), Some("task"));
+    assert!(cli.command.is_none());
+}
+
+#[test]
+fn do_subcommand_is_removed() {
+    let err = parse_cli_with_config_defaults(["malvin", "do", "task"]).unwrap_err();
+    let msg = err.to_string();
+    assert!(
+        msg.contains("unexpected") || msg.contains("unrecognized"),
+        "expected parse error for removed do subcommand, got: {msg}"
+    );
 }
 
 #[test]
@@ -61,6 +70,7 @@ fn kpop_subcommand_is_removed() {
 fn bare_request_without_subcommand_parses_as_default_route() {
     let cli = parse(&["malvin", "investigate"]);
     assert!(cli.command.is_none());
+    assert!(!cli.do_workflow);
     assert_eq!(cli.request.as_deref(), Some("investigate"));
 }
 
@@ -70,7 +80,8 @@ fn cli_help_does_not_list_kpop_subcommand() {
     let help = cmd.render_help().to_string();
     assert!(!help_lists_subcommand_line(&help, "code"));
     assert!(!help_lists_subcommand_line(&help, "kpop"));
-    assert!(help.contains("do"));
+    assert!(!help_lists_subcommand_line(&help, "do"));
+    assert!(help.contains("--do"));
     assert!(!help.contains("router"));
     assert!(!help.contains("@code"));
 }

@@ -1,6 +1,6 @@
 
 # do mode
-You are in `malvin do` right now.
+You are in `malvin --do` right now.
 
 Read to yourself, please. Use your thoughts for reasoning and understanding.
 Use your response channel only for information that must reach the user.

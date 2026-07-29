@@ -48,7 +48,7 @@ fn kpop_workflow_context_with_gates(
     Ok(context)
 }
 
-#[allow(dead_code)] // Used by tests; production callers prefer `kpop_workflow_context_without_gates`.
+#[cfg(test)]
 pub(crate) fn kpop_workflow_context(
     artifacts: &RunArtifacts,
     model: &str,

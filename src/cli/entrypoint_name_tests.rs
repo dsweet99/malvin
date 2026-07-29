@@ -72,14 +72,22 @@ fn bare_help_does_not_create_name_file() {
 }
 
 #[test]
-fn do_command_accepts_session_name() {
-    use crate::do_flow::DoArgs;
-    assert!(command_accepts_session_name(
-        &Commands::Do(DoArgs {
-            thoughts: false,
-            request: Some("task".into()),
-        }),
-    ));
+fn do_workflow_accepts_session_name_via_entrypoint_rules() {
+    use crate::cli::config_defaults::parse_cli_with_config_defaults;
+
+    crate::test_utils::with_isolated_home(|_| {
+        let (cli, _) = parse_cli_with_config_defaults([
+            "malvin",
+            "--name",
+            "probe",
+            "--do",
+            "say hello",
+        ])
+        .expect("parse --do");
+        assert!(cli.do_workflow);
+        assert_eq!(cli.shared.name.as_deref(), Some("probe"));
+        assert_eq!(cli.request.as_deref(), Some("say hello"));
+    });
 }
 
 #[test]
@@ -125,12 +133,13 @@ fn do_with_name_parses() {
             "malvin",
             "--name",
             "probe",
-            "do",
+            "--do",
             "say hello",
         ])
-        .expect("parse do");
-        let command = cli.command.expect("do subcommand");
-        assert!(command_accepts_session_name(&command));
+        .expect("parse --do");
+        assert!(cli.do_workflow);
+        assert!(cli.command.is_none());
+        assert_eq!(cli.request.as_deref(), Some("say hello"));
     });
 }
 

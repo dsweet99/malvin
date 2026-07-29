@@ -1,4 +1,4 @@
-# malvin do
+# malvin --do
 
 One **single-turn** agent session: no gate loop, no KPop experiment log, no review fan-out.
 
@@ -7,7 +7,7 @@ One **single-turn** agent session: no gate loop, no KPop experiment log, no revi
 | | |
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
-| Output | Plain stdout (no markdown styling) |
+| Output | Plain stdout: only text between `MALVIN_DM_START` / `MALVIN_DM_END` (always on for `--do`; no markdown styling) |
 | Log | `do.log` under `~/.malvin_home/logs/<hash>/<run>/` |
 | Requires | No `.malvin/checks` at startup |
 
@@ -18,14 +18,14 @@ Answer a question, perform a one-off task, or continue informal work without a g
 ## Usage
 
 ```text
-malvin do [OPTIONS] <REQUEST>
+malvin --do [OPTIONS] <REQUEST>
 ```
 
 ## Arguments
 
 ### `<REQUEST>` (required)
 
-Exactly **one shell argument**. Quote for internal spaces (e.g. `malvin do "fix the typo"`). Literal text, or an existing `.md` file path (same rules as bare `malvin REQUEST`).
+Exactly **one shell argument**. Quote for internal spaces (e.g. `malvin --do "fix the typo"`). Literal text, or an existing `.md` file path (same rules as bare `malvin REQUEST`).
 
 | Form | Work directory | Stored as |
 |------|----------------|-----------|
@@ -40,13 +40,15 @@ Stream agent “thought” tokens to stdout in addition to normal output.
 
 ## Global options
 
-See `malvin --doc`. Notable for `do`:
+See `malvin --doc`. Notable for `--do`:
 
-| Flag | Effect on `do` |
+| Flag | Effect on `--do` |
 |------|----------------|
 | `--no-markdown` | Ignored for styling — stdout is always plain |
 | `--no-tee` | Disables live streaming |
+| `--quiet` / `-q` | Not needed: `--do` is always DM-body-only (unlike the default router) |
 | `--verbose` | Full prompt bodies in `prompts.log` |
+| `-b` / `--background` | Suppresses all stdout, including DM bodies |
 
 ## Prompt workflow
 
@@ -70,12 +72,12 @@ No implement, review, concerns, learn, or summary phases.
 
 | Command | When |
 |---------|------|
-| `malvin do Hello` | One-turn Cursor ACP connectivity smoke check |
+| `malvin --do Hello` | One-turn Cursor ACP connectivity smoke check |
 
 ## Examples
 
 ```text
-malvin do Hello
-malvin do "List failing tests and suggest fixes"
-malvin do notes/task.md
+malvin --do Hello
+malvin --do "List failing tests and suggest fixes"
+malvin --do notes/task.md
 ```

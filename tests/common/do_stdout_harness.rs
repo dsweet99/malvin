@@ -24,7 +24,7 @@ pub fn run_do_with_named_mock_bin(
 ) -> (std::process::Output, tempfile::TempDir, std::path::PathBuf) {
     let (root, home, workspace) = test_home_workspace();
     let mock = cached_mock_executable( mock_js);
-    let mut args = vec!["do"];
+    let mut args = vec!["--do"];
     args.extend_from_slice(INTEGRATION_TEST_MALVIN_ARGS);
     args.extend_from_slice(extra_args);
     args.push("say hi");
@@ -63,7 +63,7 @@ pub fn run_do_with_mock(extra_args: &[&str]) -> std::process::Output {
 pub fn run_do_with_mock_force_tee(extra_args: &[&str]) -> std::process::Output {
     let (root, home, workspace) = test_home_workspace();
     let mock = cached_mock_executable( &acp_mock_do_streaming_update_js());
-    let mut args = vec!["do"];
+    let mut args = vec!["--do"];
     args.extend_from_slice(INTEGRATION_TEST_MALVIN_ARGS);
     args.extend_from_slice(extra_args);
     args.push("say hi");
@@ -99,7 +99,7 @@ pub fn run_do_wordy_long_mock(extra_args: &[&str]) -> std::process::Output {
 
 #[cfg(unix)]
 pub fn run_do_with_mock_and_argv(extra_args: &[&str]) -> (std::process::Output, Vec<String>) {
-    let mut args: Vec<&str> = vec!["do"];
+    let mut args: Vec<&str> = vec!["--do"];
     args.extend_from_slice(extra_args);
     args.push("say hi");
     run_malvin_with_captured_argv(&args)

@@ -24,7 +24,6 @@ pub(super) fn trace_writer() -> PromptTraceWriter {
         upgrade_plan_warned: false,
         work_dir: dir.path().to_path_buf(),
         run_timing: None,
-        session_id: String::new(),
         deferred_sink: None,
     }
 }

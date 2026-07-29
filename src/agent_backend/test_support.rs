@@ -121,6 +121,7 @@ pub fn shared_opts(mini: bool) -> SharedOpts {
         gates: false,
         no_tee: true,
         no_markdown: true,
+        quiet: false,
         verbose: false,
         max_acp_retries: 3,
         doc: false,

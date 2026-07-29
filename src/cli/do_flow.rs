@@ -1,4 +1,4 @@
-//! `do` subcommand: one coder ACP prompt with dual headers (`header.md` + `do_header.md`) and user request.
+//! `--do` workflow: one coder ACP prompt with dual headers (`header.md` + `do_header.md`) and user request.
 
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups, resolve_user_md_request};
 use crate::cli::cli_request::require_cli_request;
@@ -9,7 +9,6 @@ use crate::agent_backend::{
 use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions};
 use crate::output::agent_stdout_tee_enabled;
 use crate::run_timing::TimingPhase;
-use clap::Args;
 
 pub(crate) mod do_flow_prompt;
 
@@ -19,10 +18,9 @@ pub use do_flow_prompt::{
 };
 
 /// Arguments for [`run_do`].
-#[derive(Args, Debug)]
+#[derive(Debug)]
 pub struct DoArgs {
     /// Stream agent thought tokens to stdout
-    #[arg(long, default_value_t = false)]
     pub thoughts: bool,
     /// Existing `.md` path or literal text
     pub request: Option<String>,
@@ -64,7 +62,7 @@ async fn prepare_do_run(
     workflow: WorkflowCliOptions,
 ) -> Result<DoRunPrep, String> {
     let client = new_do_client(shared, workflow, do_args.thoughts)?;
-    let request = require_cli_request(do_args.request.as_ref(), "do")?;
+    let request = require_cli_request(do_args.request.as_ref(), "--do")?;
     let (text, work_dir) = resolve_user_md_request(&request)?;
     let artifacts = crate::artifacts::create_run_artifacts_from_text_opts(
         &text,
@@ -94,6 +92,24 @@ pub async fn run_do(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
+    let interactive = agent_stdout_tee_enabled();
+    let emit_markdown = interactive && shared.acp_stdout_markdown_enabled();
+    crate::output::set_do_dm_stdout_opts(crate::output::DoDmStdoutOpts {
+        enabled: true,
+        emit_markdown,
+    });
+    crate::output::set_heartbeat_stdout_suppressed(true);
+    let result = run_do_body(do_args, shared, workflow).await;
+    crate::output::set_do_dm_stdout_opts(crate::output::DoDmStdoutOpts::default());
+    crate::output::set_heartbeat_stdout_suppressed(false);
+    result
+}
+
+async fn run_do_body(
+    do_args: DoArgs,
+    shared: &SharedOpts,
+    workflow: WorkflowCliOptions,
+) -> Result<(), String> {
     let mut prep = prepare_do_run(&do_args, shared, workflow).await?;
     crate::cli::run_emit::emit_command_line(&prep.artifacts.run_dir, false)?;
     prep.client
@@ -118,8 +134,7 @@ async fn run_do_coder_prompt(
     coder: &do_flow_prompt::DoCoderRun,
 ) -> Result<(), String> {
     let (ref header, ref user) = coder.header_user_for_trace;
-    crate::output::set_heartbeat_stdout_suppressed(true);
-    let run = client
+    client
         .run_coder_prompt(
             &coder.combined,
             &artifacts.log_path("do"),
@@ -132,9 +147,7 @@ async fn run_do_coder_prompt(
             },
         )
         .await
-        .map_err(|e| e.to_string());
-    crate::output::set_heartbeat_stdout_suppressed(false);
-    run
+        .map_err(|e| e.to_string())
 }
 
 async fn run_do_acp(

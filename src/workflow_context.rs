@@ -194,6 +194,7 @@ fn resolve_nonexistent_path(abs: &Path) -> PathBuf {
         .unwrap_or_else(|| abs.to_path_buf())
 }
 
+#[cfg(test)]
 pub(crate) fn resolve_prompt_context_path(
     context: &WorkflowRenderContext,
     key: &str,
@@ -207,8 +208,8 @@ pub(crate) fn resolve_prompt_context_path(
 }
 
 /// On-disk user brief path (may differ from [`RunArtifacts::plan_path`]).
+#[cfg(test)]
 #[must_use]
-#[allow(dead_code)]
 pub(crate) fn resolve_user_brief_path(
     artifacts: &RunArtifacts,
     context: &WorkflowRenderContext,

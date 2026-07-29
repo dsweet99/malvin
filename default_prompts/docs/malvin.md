@@ -15,16 +15,16 @@ malvin [OPTIONS] [REQUEST]
 malvin [OPTIONS] <COMMAND>
 ```
 
-Bare `malvin REQUEST` runs autonomous routing (requirements, multi-group KPop, optional work). Use subcommands for named workflows.
+Bare `malvin REQUEST` runs autonomous routing (requirements, multi-group KPop, optional work). Use `--do` for a one-shot turn, or subcommands for named workflows.
 
-Use subcommands: `do`, `inspire`, `init`, `tidy`, `delight`, `explain`, `models`.
+Use `--do` for a one-shot turn. Use subcommands: `inspire`, `init`, `tidy`, `delight`, `explain`, `models`.
 
 ## Commands
 
 | Command | Purpose |
 |---------|---------|
 | *(default)* | Bare `malvin REQUEST` — requirements JSON → one multi-group KPop → optional work; outer `--max-loops` sessions |
-| `do` | One-shot agent turn (non-looping) |
+| `--do` | One-shot agent turn (non-looping) |
 | `inspire` | One-shot MBC2 boundary exploration (batch ideation) |
 | `init` | Discover quality gates and write `.malvin/checks` |
 | `tidy` | Fix quality gates via the default router with fixed request `Get the gates to pass.` and `--gates` forced on |
@@ -32,7 +32,7 @@ Use subcommands: `do`, `inspire`, `init`, `tidy`, `delight`, `explain`, `models`
 | `explain` | Explain code or concepts as a LaTeX PDF via a composed default-router request |
 | `models` | List models via the Cursor agent CLI |
 
-Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prompts/docs/<command>.md`). The default-route contract (`router.md`) is printed after this overview when you run `malvin --doc`.
+Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prompts/docs/<command>.md`); for the one-shot workflow use `malvin --do --doc`. The default-route contract (`router.md`) is printed after this overview when you run `malvin --doc`.
 
 ## Global options
 
@@ -45,6 +45,12 @@ Disable ANSI color on malvin’s own status and error lines. Does not change the
 ### `-b` / `--background`
 
 Suppress all stdout from malvin and the agent. Run logs under `~/.malvin_home/logs/` are unchanged.
+
+### `-q` / `--quiet`
+
+On the **default router** (bare `malvin REQUEST`, and wrappers that call it: `tidy`, `delight`, `explain`), print only the text between `MALVIN_DM_START` and `MALVIN_DM_END` fences to process stdout. Startup chrome, ACP stream, heartbeats, prompt-name lines, fence markers, and TIMING/COST lines are omitted from stdout. Run-dir logs and stderr are unchanged.
+
+This is **not** the same as `-b` / `--background` (which suppresses all stdout, including DM bodies). It is also **not** required for `malvin --do`: `--do` is always DM-body-only on stdout.
 
 ### `--model <MODEL>`
 
@@ -72,7 +78,7 @@ By default malvin tees agent stdout to the terminal (and `stdout.log` in the run
 
 ### `--no-markdown`
 
-Disable styled markdown rendering of agent stdout for agent-backed subcommands that use the shared ACP client (`tidy` when the agent runs, `delight`, `explain`, `inspire`). No effect on `models`. **`do` uses plain stdout** on a TTY regardless of this flag; piped `do` output is always plain.
+Disable styled markdown rendering of agent stdout for agent-backed subcommands that use the shared ACP client (`tidy` when the agent runs, `delight`, `explain`, `inspire`). No effect on `models`. **`--do` uses plain stdout** on a TTY regardless of this flag; piped `--do` output is always plain.
 
 ### `-v` / `--verbose`
 
@@ -92,7 +98,7 @@ Allow the agent to run `git commit` by setting `{{ git_extra }}` in prompt templ
 
 ### `--name <NAME>`
 
-Optional session name for bare `malvin REQUEST`, `do`, `tidy`, and `delight`. When omitted on those invocations, malvin assigns a unique five-character id (`[a-z0-9]`). Every command that accepts `--name` acquires a session name lock before substantive work.
+Optional session name for bare `malvin REQUEST`, `--do`, `tidy`, and `delight`. When omitted on those invocations, malvin assigns a unique five-character id (`[a-z0-9]`). Every command that accepts `--name` acquires a session name lock before substantive work.
 
 Malvin registers the top-level process under this name in a per-user registry at `~/.malvin_home/names/<NAME>` (one line: holder PID). If another live malvin process already holds the same name, the new invocation exits immediately with status 1. Stale or abandoned name files left by crashes, `SIGKILL`, or partial writes are reclaimed automatically on the next acquire — no manual cleanup under `~/.malvin_home/names/`.
 
@@ -110,6 +116,7 @@ Print built-in documentation and exit. Does not spawn an agent or create a run d
 
 - `malvin --doc` — this overview, then the default-route contract (`router.md`).
 - `malvin <COMMAND> --doc` — documentation for that subcommand.
+- `malvin --do --doc` — documentation for the one-shot `--do` workflow.
 
 Other subcommand arguments (for example `<REQUEST>`) are not required when `--doc` is set.
 
@@ -119,7 +126,7 @@ Use **`malvin init`** to discover and write `.malvin/checks` explicitly (KPop se
 
 With `--gates` (and always for `malvin tidy`), malvin runs workspace quality gates from `.malvin/checks` at the repo git root (one shell command per non-empty, non-comment line). Full-line comments starting with `#` are ignored.
 
-Other commands (`do`, bare `malvin REQUEST`, `inspire`, `delight`, `explain`) do not require `.malvin/checks` at startup and may run outside a git repo. With `--gates`, bare `malvin REQUEST` and `malvin tidy` run workspace gates after each outer session and continue that outer loop when they fail (see the default-route section of `malvin --doc`). Without `--gates` (the default for non-tidy commands), malvin does not run those checks directly on the default route. `header.md` notes about checks lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
+Other invocations (`--do`, bare `malvin REQUEST`, `inspire`, `delight`, `explain`) do not require `.malvin/checks` at startup and may run outside a git repo. With `--gates`, bare `malvin REQUEST` and `malvin tidy` run workspace gates after each outer session and continue that outer loop when they fail (see the default-route section of `malvin --doc`). Without `--gates` (the default for non-tidy commands), malvin does not run those checks directly on the default route. `header.md` notes about checks lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
 
 ### `-h` / `--help`
 
@@ -163,7 +170,7 @@ Top-level keys include `mem_limit_gb`, `context_size` (local llama.cpp `n_ctx`, 
 
 ## Log retention
 
-Before most agent-backed commands create a new run directory, malvin may prune older directories under `~/.malvin_home/logs/<hash>/` according to `~/.malvin_home/config.toml` `[logs]` settings (`max_count`, `max_age_days`, `max_bytes`). Set `max_count = 0` for unlimited run count (byte and age caps still apply). Agent-backed commands (including `malvin do` and `tidy`) ensure the home config file exists with defaults. After upgrading to a build with default `max_count = 1000`, the next GC-enabled command may delete excess oldest runs once.
+Before most agent-backed commands create a new run directory, malvin may prune older directories under `~/.malvin_home/logs/<hash>/` according to `~/.malvin_home/config.toml` `[logs]` settings (`max_count`, `max_age_days`, `max_bytes`). Set `max_count = 0` for unlimited run count (byte and age caps still apply). Agent-backed commands (including `malvin --do` and `tidy`) ensure the home config file exists with defaults. After upgrading to a build with default `max_count = 1000`, the next GC-enabled command may delete excess oldest runs once.
 
 ## External dependencies
 
@@ -176,12 +183,12 @@ Several commands accept a positional request. `<REQUEST>` is always exactly **on
 
 | Command | Path argument | Work directory |
 |---------|---------------|----------------|
-| bare `malvin REQUEST`, `do`, `inspire` | Existing `.md` file path (no whitespace; case-sensitive `.md` suffix) reads that file; nonexistent `.md` paths are literal text | Parent of the file, or `.` for literal text |
+| bare `malvin REQUEST`, `--do`, `inspire` | Existing `.md` file path (no whitespace; case-sensitive `.md` suffix) reads that file; nonexistent `.md` paths are literal text | Parent of the file, or `.` for literal text |
 
 Examples:
 
 ```text
-malvin do "fix the typo"
+malvin --do "fix the typo"
 malvin inspire "explore API boundaries"
 ```
 

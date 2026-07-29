@@ -66,7 +66,7 @@ fn mini_live_do_echo() {
         return;
     }
     let (root, output) = run_mini_live_in_workspace(&[
-        "do",
+        "--do",
         "--model",
         "openrouter:auto",
         "--no-tee",

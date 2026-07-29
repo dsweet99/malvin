@@ -58,7 +58,7 @@ model = "auto"
         )
         .expect("write");
         std::env::set_current_dir(work).expect("cd");
-        let matches = Cli::command().get_matches_from(["malvin", "do", "hello"]);
+        let matches = Cli::command().get_matches_from(["malvin", "--do", "hello"]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         let err = apply_workspace_config_defaults(&matches, &mut cli).expect_err("bare config");
         assert!(err.contains("cursor:") || err.contains("openrouter:"), "{err}");

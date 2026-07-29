@@ -83,12 +83,34 @@ pub async fn run_router(
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
     let request = require_cli_request(router_args.request.as_ref(), "")?;
+    if shared.quiet {
+        let interactive = crate::output::agent_stdout_tee_enabled();
+        let emit_markdown = interactive && shared.acp_stdout_markdown_enabled();
+        crate::output::set_do_dm_stdout_opts(crate::output::DoDmStdoutOpts {
+            enabled: true,
+            emit_markdown,
+        });
+        crate::output::set_heartbeat_stdout_suppressed(true);
+    }
+    let result = run_router_body(router_args, shared, workflow, &request).await;
+    if shared.quiet {
+        crate::output::set_do_dm_stdout_opts(crate::output::DoDmStdoutOpts::default());
+        crate::output::set_heartbeat_stdout_suppressed(false);
+    }
+    result
+}
 
+async fn run_router_body(
+    router_args: RouterArgs,
+    shared: &SharedOpts,
+    workflow: WorkflowCliOptions,
+    request: &str,
+) -> Result<(), String> {
     let mut prep = prepare_router_run(&router_args, shared, workflow).await?;
     emit_run_startup_sequence(
         &prep.artifacts,
         RunStartupEmitOpts::from_shared(shared, true),
-        &request,
+        request,
     )?;
     prep.client
         .set_prompts_log_run_dir(Some(prep.artifacts.run_dir.clone()));
@@ -117,11 +139,12 @@ pub async fn run_router(
 
 #[cfg(test)]
 mod kiss_static_fn_item_refs {
-    use super::run_router;
+    use super::{run_router, run_router_body};
 
     #[test]
     fn kiss_static_fn_item_refs() {
         let _ = run_router;
+        let _ = run_router_body;
     }
 }
 

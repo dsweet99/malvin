@@ -3,10 +3,13 @@
 use std::io::{self, Write};
 
 use super::Commands;
+use crate::cli::args::Cli;
 
 pub(crate) const MALVIN_OVERVIEW_DOC: &str = include_str!("../../default_prompts/docs/malvin.md");
 
 pub(crate) const ROUTER_DOC: &str = include_str!("../../default_prompts/docs/router.md");
+
+pub(crate) const DO_DOC: &str = include_str!("../../default_prompts/docs/do.md");
 
 const fn gate_loop_command_doc(cmd: &Commands) -> Option<&'static str> {
     match cmd {
@@ -22,7 +25,6 @@ pub(crate) const fn command_doc_markdown(cmd: &Commands) -> &'static str {
         return doc;
     }
     match cmd {
-        Commands::Do(_) => include_str!("../../default_prompts/docs/do.md"),
         Commands::Inspire(_) | Commands::Adaptix(_) => {
             include_str!("../../default_prompts/docs/inspire.md")
         }
@@ -48,6 +50,22 @@ pub(crate) fn print_doc_to_writer(command: Option<&Commands>, mut out: impl Writ
     Ok(())
 }
 
+pub(crate) fn print_doc_for_cli_to_writer(cli: &Cli, out: impl Write) -> Result<(), String> {
+    if cli.do_workflow {
+        let mut out = out;
+        let text = DO_DOC.replace("{{ advice_path }}", crate::MALVIN_ADVICE_REL);
+        return out
+            .write_all(text.as_bytes())
+            .map_err(|e| format!("stdout: {e}"));
+    }
+    print_doc_to_writer(cli.command.as_ref(), out)
+}
+
+pub(crate) fn print_doc_for_cli(cli: &Cli) -> Result<(), String> {
+    print_doc_for_cli_to_writer(cli, io::stdout().lock())
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
 pub(crate) fn print_doc(command: Option<&Commands>) -> Result<(), String> {
     print_doc_to_writer(command, io::stdout().lock())
 }

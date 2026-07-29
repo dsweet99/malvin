@@ -36,9 +36,6 @@ pub struct PromptTraceWriter {
     /// Session workspace root for relativizing tool-summary paths on stdout.
     pub work_dir: PathBuf,
     pub run_timing: Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
-    /// ACP session id for Cursor `store.db` enrichment (mirrors the sink session).
-    #[allow(dead_code)]
-    pub session_id: String,
     /// Deferred stdout sink; `None` when disabled or in tests that emit immediately.
     pub deferred_sink: Option<crate::deferred_log::SharedDeferSink>,
 }
@@ -102,7 +99,7 @@ pub struct AcpSpawnArgs<'a> {
     pub force: bool,
     /// When true, print each trace line to stdout as it is written (live tee). Set from CLI tee mode.
     pub tee_trace_stdout: bool,
-    /// When true, print raw output without timestamps/prefixes (for raw `malvin do`).
+    /// When true, print raw output without timestamps/prefixes (for raw `malvin --do`).
     pub raw_output: bool,
     /// When true, raw/plain stdout includes thought chunks.
     pub show_thoughts_on_stdout: bool,

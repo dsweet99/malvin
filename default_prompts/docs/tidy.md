@@ -40,7 +40,7 @@ Restore normal loop/retry budgets (global flag; see `malvin --doc`).
 
 ## Global options
 
-See `malvin --doc`. Tidy always enables harness `--gates`, whether or not you pass `--gates` on the CLI.
+See `malvin --doc`. Tidy always enables harness `--gates`, whether or not you pass `--gates` on the CLI. `--quiet` / `-q` applies because tidy invokes the default router (DM-body-only stdout; not the same as `-b`).
 
 ## Workflow
 

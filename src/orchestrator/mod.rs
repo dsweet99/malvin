@@ -34,6 +34,7 @@ mod orchestrator_kiss_coverage;
 #[error("{0}")]
 pub struct WorkflowError(pub String);
 
+#[cfg(test)]
 pub(crate) fn prefer_primary_errors_over_timing(
     workflow_result: Result<(), WorkflowError>,
     end_result: Result<(), WorkflowError>,

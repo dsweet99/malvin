@@ -123,7 +123,7 @@ pub fn set_fake_command_dir(path: &std::path::Path) -> FakeCommandDirGuard {
     }
 }
 
-#[allow(dead_code)]
+#[cfg(test)]
 pub fn run_command_for(command: &str) -> PathBuf {
     test_fake_command_path(command).unwrap_or_else(|| command.into())
 }

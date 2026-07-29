@@ -7,23 +7,34 @@ use super::acp_core::{
 };
 
 pub fn acp_mock_do_streaming_update_js() -> String {
-    let msg = session_update_chunk_line("agent_message_chunk", r"'agent message\n'");
+    let msg = session_update_chunk_line(
+        "agent_message_chunk",
+        r"'MALVIN_DM_START\nagent message\nMALVIN_DM_END\n'",
+    );
     let thought = session_update_chunk_line("agent_thought_chunk", r"'hidden thought\n'");
     acp_mock_js(ARGV_CAPTURE_PREAMBLE, &format!("{msg}\n{thought}"))
 }
 
 pub fn acp_mock_do_streaming_wordy_long_msg_js() -> String {
     let prompt = format!(
-        "    const words = Array(8).fill('abcdefghij').join(' ');\n{}",
-        session_update_chunk_line("agent_message_chunk", r"words + '\n'")
+        "    const words = 'MALVIN_DM_START\\n' + Array(8).fill('abcdefghij').join(' ') + '\\nMALVIN_DM_END\\n';\n{}",
+        session_update_chunk_line("agent_message_chunk", r"words")
     );
     acp_mock_js("", &prompt)
 }
 
 pub fn acp_mock_do_streaming_long_agent_msg_js() -> String {
     let prompt = format!(
-        "    const long = 'a'.repeat(120);\n{}",
-        session_update_chunk_line("agent_message_chunk", r"long + '\n'")
+        "    const long = 'MALVIN_DM_START\\n' + 'a'.repeat(120) + '\\nMALVIN_DM_END\\n';\n{}",
+        session_update_chunk_line("agent_message_chunk", r"long")
+    );
+    acp_mock_js("", &prompt)
+}
+
+pub fn acp_mock_do_streaming_bold_markdown_js() -> String {
+    let prompt = session_update_chunk_line(
+        "agent_message_chunk",
+        r"'MALVIN_DM_START\n**boldline**\nMALVIN_DM_END\n'",
     );
     acp_mock_js("", &prompt)
 }

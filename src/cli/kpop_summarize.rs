@@ -11,44 +11,10 @@ use std::path::{Path, PathBuf};
 
 use crate::artifacts::RunArtifacts;
 use crate::agent_backend::{agent_backend_set_implement_display_name, AgentBackend};
-use crate::cli::{SharedOpts, WorkflowCliOptions};
 use crate::prompts::{render_header, PromptError, PromptStore};
 use crate::run_timing::TimingPhase;
 
 const SUMMARIZE_PROMPT: &str = "kpop_summarize.md";
-
-/// Inputs for [`run_outer_loop_summarize_if_warranted`].
-#[allow(dead_code)] // legacy hook callers still construct params; fields read in unit tests
-pub(crate) struct OuterLoopSummarizeParams<'a> {
-    pub agent_ran: bool,
-    pub shared: &'a SharedOpts,
-    pub workflow: WorkflowCliOptions,
-    pub store: &'a PromptStore,
-    pub artifacts: &'a RunArtifacts,
-    pub model: &'a str,
-}
-
-/// Inputs for [`code_outer_loop_summarize_params`].
-pub(crate) struct CodeOuterLoopSummarizeInputs<'a> {
-    pub agent_ran: bool,
-    pub shared: &'a SharedOpts,
-    pub workflow: WorkflowCliOptions,
-}
-
-#[must_use]
-pub(crate) fn code_outer_loop_summarize_params<'a>(
-    inputs: CodeOuterLoopSummarizeInputs<'a>,
-    prepared: &'a crate::cli::code_flow::CodeKpopPrepared,
-) -> OuterLoopSummarizeParams<'a> {
-    OuterLoopSummarizeParams {
-        agent_ran: inputs.agent_ran,
-        shared: inputs.shared,
-        workflow: inputs.workflow,
-        store: prepared.store(),
-        artifacts: prepared.artifacts(),
-        model: &inputs.shared.model,
-    }
-}
 
 /// True when an exp log file exists and has content from an outer-loop agent session.
 pub(crate) fn exp_log_has_flow_content(path: &Path) -> bool {
@@ -65,7 +31,7 @@ pub(crate) fn kpop_flows_ran(artifacts: &RunArtifacts) -> usize {
 
 /// Whether outer-loop summarize should run once multiple `KPop` flows completed.
 #[must_use]
-#[allow(dead_code)] // unit tests and kiss coverage references
+#[cfg(test)]
 pub(crate) const fn outer_loop_summarize_warranted(kpop_flows_ran: usize) -> bool {
     kpop_flows_ran > 1
 }
@@ -196,9 +162,3 @@ pub(crate) async fn run_inline_summarize_coder_prompt(
     run_summarize_coder_prompt(client, artifacts, &prompt).await
 }
 
-/// Legacy post-loop hook; summarize now runs inline on the last active agent.
-pub(crate) async fn run_outer_loop_summarize_if_warranted(
-    _params: &OuterLoopSummarizeParams<'_>,
-) -> Result<(), String> {
-    Ok(())
-}

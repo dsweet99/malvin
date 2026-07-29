@@ -24,7 +24,6 @@ pub(crate) async fn open_trace_writer(
         upgrade_plan_warned: false,
         work_dir: std::path::PathBuf::new(),
         run_timing: None,
-        session_id: String::new(),
         deferred_sink: None,
     };
     (writer, TraceChunkCoalescer::default())
@@ -47,7 +46,6 @@ pub(crate) fn styled_markdown_trace_writer(
         upgrade_plan_warned: false,
         work_dir,
         run_timing: None,
-        session_id: String::new(),
         deferred_sink: None,
     }
 }

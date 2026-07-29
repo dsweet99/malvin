@@ -67,7 +67,6 @@ pub(crate) fn trace_tee_deferred_line(
                 &mut guard,
                 build_acp_tee_entry(AcpTeeBuild {
                     tee,
-                    kind: ctx.kind,
                     line: rep.to_string(),
                     display: None,
                     dim_payload: false,
@@ -95,7 +94,6 @@ pub(crate) fn trace_tee_deferred_line(
         &mut guard,
         build_acp_tee_entry(AcpTeeBuild {
             tee,
-            kind: ctx.kind,
             line: line.to_string(),
             display: None,
             dim_payload: dim,
@@ -154,6 +152,7 @@ pub(crate) fn tee_narrative_line_impl(
     if !ctx.tee_stdout {
         return;
     }
+    feed_do_dm_from_tee(line, display_line, ctx.kind);
     if writer.plain_lines || writer.raw_output {
         let styled_plain = writer.plain_lines && writer.emit_stdout_markdown && !writer.raw_output;
         if writer.deferred_sink.is_some() && !styled_plain {
@@ -167,4 +166,21 @@ pub(crate) fn tee_narrative_line_impl(
         return;
     }
     trace_tee_immediate_line(writer, line, display_line, ctx);
+}
+
+fn feed_do_dm_from_tee(
+    line: &str,
+    display_line: Option<&str>,
+    kind: Option<SessionUpdateChunkKind>,
+) {
+    if !crate::output::do_dm_stdout_mode() {
+        return;
+    }
+    if display_line.is_some() {
+        return;
+    }
+    if matches!(kind, Some(SessionUpdateChunkKind::Thought)) {
+        return;
+    }
+    crate::output::feed_do_dm_stdout_text(line);
 }

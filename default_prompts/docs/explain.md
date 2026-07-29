@@ -50,7 +50,7 @@ Restore normal loop/retry budgets (global flag; see `malvin --doc`).
 
 ## Global options
 
-See `malvin --doc`.
+See `malvin --doc`. `--quiet` / `-q` applies because explain invokes the default router (DM-body-only stdout; not the same as `-b`).
 
 ## Success criteria
 

@@ -25,7 +25,8 @@ pub struct TidyArgs {
     #[arg(long, default_value_t = crate::cli::loop_opts::DEFAULT_TENACIOUS)]
     pub tenacious: bool,
     /// Deprecated: review fan-out removed; tidy now uses the default router.
-    #[arg(long, short = 'q', default_value_t = false, hide = true)]
+    /// (`-q` is reserved for global `--quiet`.)
+    #[arg(long, default_value_t = false, hide = true)]
     pub quick: bool,
 }
 

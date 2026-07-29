@@ -21,7 +21,7 @@ pub(crate) use router_flow_prompt_summarize::{
 pub(crate) struct RouterCoderRun {
     pub combined: String,
     /// Dual-header parts from prompt assembly; retained for tests (stdout uses uniform trace like kpop).
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub header_user_for_trace: (String, String),
 }
 
@@ -102,6 +102,7 @@ pub(crate) fn build_router_coder_run_with_store(
     })?;
     Ok(RouterCoderRun {
         combined: run.combined,
+        #[cfg(test)]
         header_user_for_trace: run.header_user_for_trace,
     })
 }
@@ -231,6 +232,7 @@ mod kiss_cov_gate_refs {
     fn kiss_cov_unit_names() {
         let run = RouterCoderRun {
             combined: String::new(),
+            #[cfg(test)]
             header_user_for_trace: (String::new(), String::new()),
         };
         assert!(run.combined.is_empty());

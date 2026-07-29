@@ -9,6 +9,7 @@ fn kiss_cov_kpop_summarize_privates() {
         gates: false,
         no_tee: true,
         no_markdown: true,
+        quiet: false,
         verbose: false,
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
@@ -30,10 +31,8 @@ fn kiss_cov_kpop_summarize_privates() {
     let store = crate::prompts::PromptStore::default_store();
     store.ensure_defaults().expect("defaults");
     let _ = crate::cli::kpop_summarize::run_summarize_coder_prompt;
-    let _ = crate::cli::kpop_summarize::run_outer_loop_summarize_if_warranted;
     let _ = crate::cli::kpop_summarize::render_kpop_summarize_prompt;
     let _ = crate::cli::kpop_summarize::exp_log_paths_markdown;
-    let _ = crate::cli::kpop_summarize::outer_loop_summarize_warranted;
     let _ = crate::cli::kpop_summarize::should_inline_outer_loop_summarize_on_gate_iteration;
     let _ = crate::cli::kpop_summarize::list_written_exp_logs;
     let _ = crate::cli::kpop_summarize::kpop_flows_ran;

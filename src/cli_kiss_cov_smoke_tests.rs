@@ -49,6 +49,7 @@ fn smoke_cov_cli_cli_units_1b() {
         gates: false,
         no_tee: false,
         no_markdown: false,
+        quiet: false,
         verbose: false,
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,

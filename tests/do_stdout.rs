@@ -65,8 +65,16 @@ fn do_stdout_omits_outgoing_prompt_bracket_line() {
         "forced tee must not print outgoing user tag on stdout: {stdout:?}"
     );
     assert!(
+        !stdout.contains("o|"),
+        "forced tee must not print o| ops lines on stdout: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("MALVIN_DM_START") && !stdout.contains("MALVIN_DM_END"),
+        "DM fence markers must not appear on stdout: {stdout:?}"
+    );
+    assert!(
         stdout.contains("agent message"),
-        "expected agent output on stdout: {stdout:?}"
+        "expected DM body on stdout: {stdout:?}"
     );
 }
 
@@ -78,7 +86,13 @@ fn do_stdout_shows_plain_output_without_jsonrpc_lines() {
     let lines = stdout_lines_preserve_shape(&out.stdout);
     assert!(
         lines.iter().any(|l| l == "agent message"),
-        "expected raw agent line, got {lines:?}"
+        "expected DM body line, got {lines:?}"
+    );
+    assert!(
+        lines
+            .iter()
+            .all(|l| !l.contains("MALVIN_DM_") && !l.contains("o|") && !l.contains("hidden thought")),
+        "stdout must be DM body only, got {lines:?}"
     );
     assert_stdout_has_no_chrome(&lines);
     assert!(!stdout.contains("hidden thought"), "stdout was {stdout:?}");

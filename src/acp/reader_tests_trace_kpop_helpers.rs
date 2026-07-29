@@ -15,7 +15,6 @@ pub(crate) fn kpop_trace_writer(file: tokio::fs::File) -> PromptTraceWriter {
         upgrade_plan_warned: false,
         work_dir: std::path::PathBuf::new(),
         run_timing: None,
-        session_id: String::new(),
         deferred_sink: None,
     }
 }

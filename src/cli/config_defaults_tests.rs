@@ -98,6 +98,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
         gates: false,
         no_tee: false,
         no_markdown: false,
+        quiet: false,
         verbose: false,
         max_acp_retries: 1,
         doc: false,
@@ -201,7 +202,7 @@ fn apply_workspace_config_defaults_skips_do() {
         std::env::set_current_dir(work).expect("chdir");
         let config_path = crate::malvin_config_path(work);
         assert!(!config_path.exists());
-        let do_matches = Cli::command().get_matches_from(["malvin", "do", "hello"]);
+        let do_matches = Cli::command().get_matches_from(["malvin", "--do", "hello"]);
         let mut do_cli = Cli::from_arg_matches(&do_matches).expect("cli");
         apply_workspace_config_defaults(&do_matches, &mut do_cli).expect("apply");
         assert!(!config_path.exists());

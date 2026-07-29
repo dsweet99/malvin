@@ -108,8 +108,7 @@ fn apply_gate_loop_command_defaults(
             },
         ),
         Commands::Explain(explain) => apply_explain_loop_defaults(matches, explain, agent, review),
-        Commands::Do(_)
-        | Commands::Inspire(_)
+        Commands::Inspire(_)
         | Commands::Adaptix(_)
         | Commands::Models(_)
         | Commands::Init(_) => {}
@@ -143,10 +142,9 @@ fn apply_shared_and_finalize(
 }
 
 const fn uses_lightweight_config_path(cli: &Cli) -> bool {
-    matches!(
-        cli.command,
-        Some(Commands::Do(_) | Commands::Models(_))
-    ) || (cli.command.is_none() && cli.request.is_some())
+    cli.do_workflow
+        || matches!(cli.command, Some(Commands::Models(_)))
+        || (cli.command.is_none() && cli.request.is_some())
 }
 
 pub fn apply_workspace_config_defaults(
