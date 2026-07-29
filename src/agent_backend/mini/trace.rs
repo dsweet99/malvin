@@ -190,20 +190,3 @@ fn assistant_chunks(text: &str) -> Vec<&str> {
     }
     text.split('\n').filter(|s| !s.is_empty()).collect()
 }
-
-/// Legacy helper kept for trace unit tests.
-#[allow(dead_code)]
-pub(crate) fn format_mini_bash_tool_line(
-    command: &str,
-    exit_code: i32,
-    elapsed: Duration,
-    comment: Option<&str>,
-) -> String {
-    format_classified_tool_line(ClassifiedToolLineInput {
-        kind: classify_bash_command(command),
-        command,
-        exit_code,
-        elapsed,
-        comment,
-    })
-}

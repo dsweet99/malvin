@@ -2,8 +2,26 @@ use std::time::Duration;
 
 use malvin_mini::ResponseUsage;
 
-use super::trace::format_mini_bash_tool_line;
+use crate::tool_summary::{
+    classify_bash_command, format_classified_tool_line, ClassifiedToolLineInput,
+};
+
 use super::MiniTraceSink;
+
+fn format_bash_tool_line(
+    command: &str,
+    exit_code: i32,
+    elapsed: Duration,
+    comment: Option<&str>,
+) -> String {
+    format_classified_tool_line(ClassifiedToolLineInput {
+        kind: classify_bash_command(command),
+        command,
+        exit_code,
+        elapsed,
+        comment,
+    })
+}
 
 fn test_io(no_tee: bool) -> crate::acp::AgentIoOptions {
     crate::acp::AgentIoOptions {
@@ -29,23 +47,23 @@ fn parse_trace_lines(path: &std::path::Path) -> Vec<serde_json::Value> {
 }
 
 #[test]
-fn format_mini_bash_tool_line_run_fallback_matches_acp_execute_done_shape() {
-    let line = format_mini_bash_tool_line("echo hi", 0, Duration::from_millis(12), None);
+fn format_bash_tool_line_run_fallback_matches_acp_execute_done_shape() {
+    let line = format_bash_tool_line("echo hi", 0, Duration::from_millis(12), None);
     assert_eq!(line, "Run echo hi · 12ms · ✓");
-    let fail = format_mini_bash_tool_line("false", 1, Duration::from_millis(5), None);
+    let fail = format_bash_tool_line("false", 1, Duration::from_millis(5), None);
     assert_eq!(fail, "Run false · 5ms · ✗ exit 1");
 }
 
 #[test]
-fn format_mini_bash_tool_line_classifies_cat_as_read() {
-    let line = format_mini_bash_tool_line("cat file.txt", 0, Duration::from_millis(3), None);
+fn format_bash_tool_line_classifies_cat_as_read() {
+    let line = format_bash_tool_line("cat file.txt", 0, Duration::from_millis(3), None);
     assert!(line.starts_with("Read file.txt"));
 }
 
 #[test]
-fn format_mini_bash_tool_line_flattens_multiline_commands_to_single_line() {
+fn format_bash_tool_line_flattens_multiline_commands_to_single_line() {
     let command = "cat >> /path/file << 'EOF'\ncontent\nEOF";
-    let line = format_mini_bash_tool_line(command, 0, Duration::from_millis(3), None);
+    let line = format_bash_tool_line(command, 0, Duration::from_millis(3), None);
     assert!(
         !line.contains('\n'),
         "tool summary must be one physical line; got {line:?}"

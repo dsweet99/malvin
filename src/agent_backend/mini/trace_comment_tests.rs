@@ -1,12 +1,21 @@
 use std::time::Duration;
 
-use super::trace::format_mini_bash_tool_line;
+use crate::tool_summary::{
+    classify_bash_command, format_classified_tool_line, ClassifiedToolLineInput,
+};
+
 use super::trace_tests::{trace_sink, with_stdout_log_test_lock};
 
 #[test]
-fn format_mini_bash_tool_line_appends_first_30_chars_of_comment() {
+fn format_bash_tool_line_appends_first_30_chars_of_comment() {
     let comment = "List recent session logs before editing the parser module";
-    let line = format_mini_bash_tool_line("ls -ltr logs", 0, Duration::from_millis(8), Some(comment));
+    let line = format_classified_tool_line(ClassifiedToolLineInput {
+        kind: classify_bash_command("ls -ltr logs"),
+        command: "ls -ltr logs",
+        exit_code: 0,
+        elapsed: Duration::from_millis(8),
+        comment: Some(comment),
+    });
     assert_eq!(line, "Run ls -ltr logs · List recent session logs befor · 8ms · ✓");
 }
 
