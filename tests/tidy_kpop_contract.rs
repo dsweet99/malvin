@@ -1,52 +1,82 @@
-//! `malvin tidy` runs the kpop multiturn workflow with composed program/constraints prompts.
+//! `malvin tidy` is a router-backed request wrapper with `--gates` forced on.
 
 #[cfg(unix)]
 mod common;
 
 #[cfg(unix)]
 use common::{
-    TidySpawn, acp_mock_kpop_tampers_gitignore_writes_solved_js, acp_mock_tidy_kpop_steps_js,
-    bin_path_with_failing_gates, bin_path_with_fake_kiss, bin_path_with_lint_fail_until_n_passes,
+    TidySpawn, acp_mock_router_no_work_js, bin_path_with_failing_gates, bin_path_with_fake_kiss,
     combined_cli_output, fast_test_home_workspace, seed_malvin_checks, spawn_tidy,
     cached_mock_executable,
 };
 
 #[cfg(unix)]
 #[test]
-fn tidy_skips_kpop_when_gates_already_pass() {
+fn tidy_router_succeeds_when_gates_pass() {
     let (root, home, workspace) = fast_test_home_workspace();
     seed_malvin_checks(&workspace, "true\n");
     let path = bin_path_with_fake_kiss(&root);
-    let mock = cached_mock_executable( &acp_mock_tidy_kpop_steps_js());
+    let mock = cached_mock_executable(&acp_mock_router_no_work_js());
     let out = spawn_tidy(&TidySpawn {
         workspace: &workspace,
         home: &home,
         mock: &mock,
         path_var: &path,
-        extra_args: &["--max-loops", "0"],
+        extra_args: &["--max-loops", "1"],
         gate_trace: None,
     });
     let combined = combined_cli_output(&out);
     assert!(
         out.status.success(),
-        "expected tidy success when gates already pass: status={:?} combined={combined:?}",
-        out.status,
+        "tidy must succeed via router when gates pass: {combined:?}"
     );
-    assert!(combined.contains("DONE"), "expected fast-path DONE: {combined:?}");
     assert!(
-        !combined.contains("KPOP_LOG:"),
-        "tidy must skip kpop when gates pass before agent: {combined:?}"
+        combined.contains("Get the gates to pass."),
+        "startup must emit the fixed tidy request: {combined:?}"
+    );
+    assert!(
+        combined.contains("router_requirements") || combined.contains("NO_WORK_REMAINING"),
+        "tidy must run the default router workflow: {combined:?}"
     );
 }
 
 #[cfg(unix)]
 #[test]
-fn tidy_kpop_fails_when_post_session_gates_still_fail() {
+fn tidy_forces_gates_even_without_cli_gates_flag() {
     let (root, home, workspace) = fast_test_home_workspace();
     seed_malvin_checks(&workspace, "lint\n");
     let trace = root.path().join("gate-trace.log");
     let path = bin_path_with_failing_gates(&root, &trace);
-    let mock = cached_mock_executable( &acp_mock_tidy_kpop_steps_js());
+    let mock = cached_mock_executable(&acp_mock_router_no_work_js());
+    let out = spawn_tidy(&TidySpawn {
+        workspace: &workspace,
+        home: &home,
+        mock: &mock,
+        path_var: &path,
+        // No `--gates` in extra_args: tidy must still run harness gates.
+        extra_args: &["--max-loops", "1"],
+        gate_trace: Some(&trace),
+    });
+    let combined = combined_cli_output(&out);
+    assert!(
+        !out.status.success(),
+        "expected tidy to fail when harness gates fail: {combined:?}"
+    );
+    let trace_log = std::fs::read_to_string(&trace).unwrap_or_default();
+    assert!(
+        trace_log.contains("lint"),
+        "expected harness quality gate run without CLI --gates: {trace_log}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn tidy_fails_when_post_session_gates_still_fail() {
+    let (root, home, workspace) = fast_test_home_workspace();
+    seed_malvin_checks(&workspace, "lint\n");
+    let trace = root.path().join("gate-trace.log");
+    let path = bin_path_with_failing_gates(&root, &trace);
+    let mock = cached_mock_executable(&acp_mock_router_no_work_js());
     let out = spawn_tidy(&TidySpawn {
         workspace: &workspace,
         home: &home,
@@ -57,40 +87,11 @@ fn tidy_kpop_fails_when_post_session_gates_still_fail() {
     });
     assert!(
         !out.status.success(),
-        "expected tidy to fail when post-kpop gates fail: {out:?}"
+        "expected tidy to fail when post-router gates fail: {out:?}"
     );
     let trace_log = std::fs::read_to_string(&trace).unwrap_or_default();
     assert!(
         trace_log.contains("lint"),
-        "expected post-kpop quality gate run: {trace_log}"
-    );
-}
-
-#[cfg(unix)]
-#[test]
-fn tidy_gate_loop_restores_session_gitignore_after_early_exit_gates() {
-    let (root, home, workspace) = fast_test_home_workspace();
-    seed_malvin_checks(&workspace, "lint\n");
-    std::fs::write(workspace.join(".gitignore"), "gi\n").expect("gitignore");
-    let trace = root.path().join("gate-trace.log");
-    let path = bin_path_with_lint_fail_until_n_passes(&root, &trace, 1);
-    let mock = cached_mock_executable( &acp_mock_kpop_tampers_gitignore_writes_solved_js());
-    let out = spawn_tidy(&TidySpawn {
-        workspace: &workspace,
-        home: &home,
-        mock: &mock,
-        path_var: &path,
-        extra_args: &["--max-loops", "0"],
-        gate_trace: None,
-    });
-    let combined = combined_cli_output(&out);
-    assert!(
-        out.status.success(),
-        "expected tidy early-exit success with session gitignore restore: {combined:?}"
-    );
-    let gitignore = std::fs::read_to_string(workspace.join(".gitignore")).expect("read");
-    assert_eq!(
-        gitignore, "gi\n",
-        "expected session snapshot gitignore after restore without reconcile, got: {gitignore:?}"
+        "expected post-router quality gate run: {trace_log}"
     );
 }

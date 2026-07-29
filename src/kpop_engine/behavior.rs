@@ -22,6 +22,8 @@ impl KPopHardConstraints {
         skip_workspace_quality_gates: false,
         exit: KPopHardConstraintsExit::CodeTidy,
     };
+    /// Historical TIDY gate-engine profile (tidy now uses the default router with `--gates`).
+    #[allow(dead_code)]
     pub const TIDY: Self = Self {
         skip_kpop_on_initial_pass: true,
         recheck_gates_after_exhausted: false,

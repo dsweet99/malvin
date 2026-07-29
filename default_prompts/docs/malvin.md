@@ -27,7 +27,7 @@ Use subcommands: `kpop`, `do`, `inspire`, `tidy`, `delight`, `explain`, `models`
 | `kpop` | KPop investigation (Popperian hypothesis loop) |
 | `do` | One-shot agent turn (non-looping) |
 | `inspire` | One-shot MBC2 boundary exploration (batch ideation) |
-| `tidy` | Fix quality gates via the KPop gate loop (`tidy_constraints.md`) |
+| `tidy` | Fix quality gates via the default router with fixed request `Get the gates to pass.` and `--gates` forced on |
 | `delight` | Author a user-delighting feature pitch via a composed default-router request |
 | `explain` | Explain code or concepts as a LaTeX PDF via a composed default-router request |
 | `models` | List models via the Cursor agent CLI |
@@ -60,7 +60,7 @@ By default gate-loop commands (`kpop`, `tidy`, `delight`, `explain`) expand to `
 
 ### `--gates`
 
-Inject workspace check command text into agent prompts and, for workflows that use harness gates as loop criteria, treat failures as loop or exit criteria. Off by default. On bare `malvin REQUEST`, `--gates` also runs workspace `.malvin/checks` after each outer agent session: pass stops success; fail continues the outer loop (even when KPop chat said no work remaining); exhausted budget with failing gates fails the run. When work runs, check text is still injected into the work prompt. `malvin tidy` always runs gates and does not honor this option. Agent prompts may still include available `.malvin/checks` guidance when this option is off.
+Inject workspace check command text into agent prompts and, for workflows that use harness gates as loop criteria, treat failures as loop or exit criteria. Off by default. On bare `malvin REQUEST`, `--gates` also runs workspace `.malvin/checks` after each outer agent session: pass stops success; fail continues the outer loop (even when KPop chat said no work remaining); exhausted budget with failing gates fails the run. When work runs, check text is still injected into the work prompt. `malvin tidy` always forces `--gates` on (same harness criteria as bare `malvin REQUEST --gates`). Agent prompts may still include available `.malvin/checks` guidance when this option is off.
 
 ### `--no-tee`
 
@@ -103,11 +103,11 @@ Other subcommand arguments (for example `<REQUEST>`) are not required when `--do
 
 ## Quality gates (`.malvin/checks`)
 
-Only **`malvin tidy`** requires `.malvin/checks` at gate-loop time. Use **`malvin init`** to discover and write `.malvin/checks` explicitly (KPop session from `init_constraints.md`). At `tidy` startup, when the checks file is missing or contains no command lines, malvin runs the same checks-discovery session, then aborts if the agent did not write a checks file with at least one command. Delete `.malvin/checks` to trigger discovery again on the next `init` or `tidy` run.
+Use **`malvin init`** to discover and write `.malvin/checks` explicitly (KPop session from `init_constraints.md`). Delete `.malvin/checks` to trigger discovery again on the next `init` run.
 
-`tidy` runs workspace quality gates from `.malvin/checks` at the repo git root (one shell command per non-empty, non-comment line). Full-line comments starting with `#` are ignored. Mid-loop gate iterations do **not** run discovery; they error if checks are absent.
+With `--gates` (and always for `malvin tidy`), malvin runs workspace quality gates from `.malvin/checks` at the repo git root (one shell command per non-empty, non-comment line). Full-line comments starting with `#` are ignored.
 
-Other commands (`do`, bare `malvin REQUEST`, `kpop`, `inspire`, `delight`, `explain`) do not require `.malvin/checks` at startup and may run outside a git repo. With `--gates`, bare `malvin REQUEST` runs workspace gates after each outer session and continues that outer loop when they fail (see `malvin` default-route `--doc`). Without `--gates` (the default), malvin does not run those checks directly on the default route. `header.md` notes about checks lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
+Other commands (`do`, bare `malvin REQUEST`, `kpop`, `inspire`, `delight`, `explain`) do not require `.malvin/checks` at startup and may run outside a git repo. With `--gates`, bare `malvin REQUEST` and `malvin tidy` run workspace gates after each outer session and continue that outer loop when they fail (see `malvin` default-route `--doc`). Without `--gates` (the default for non-tidy commands), malvin does not run those checks directly on the default route. `header.md` notes about checks lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
 
 ### `-h` / `--help`
 
@@ -191,13 +191,6 @@ malvin kpop notes/question.md
 
 ## Gate-loop and router-backed commands
 
-`tidy` uses an outer **gate loop** implemented in `kpop_engine`:
+`malvin tidy`, `malvin delight`, and `malvin explain` are thin wrappers: each composes a request and invokes the **default router** (same engine as bare `malvin REQUEST`). Tidy uses the fixed request `Get the gates to pass.` and forces `--gates` on. See `malvin tidy --doc`, `malvin delight --doc`, `malvin explain --doc`, and the default-route `--doc`.
 
-1. For each outer iteration (budget: `effective_max_loops(--max-loops) + 1` iterations), malvin may run one KPop agent session. Scope comes from `tidy_constraints.md` rendered through `kpop_program.md` into `request.md`. Within the session, malvin sends one prompt: `header.md` + `kpop_common.md` (Popper loop).
-2. Hypotheses and test results go to `~/.malvin_home/logs/<hash>/<run>/_kpop/exp_log_<n>.md`.
-3. Malvin exits early when workspace quality gates pass (`tidy`). `kpop` investigation runs until its own loop budget is exhausted.
-4. Otherwise the loop continues until the outer budget is exhausted; `tidy` may exit without recheck depending on configuration.
-
-`malvin delight` and `malvin explain` are thin wrappers: each composes a request (embedding the user guidance/request and output paths) and invokes the **default router** (same engine as bare `malvin REQUEST`). See `malvin delight --doc`, `malvin explain --doc`, and the default-route `--doc`.
-
-See `malvin tidy --doc` for tidy-specific behavior.
+`kpop` investigation uses an outer loop until its budget is exhausted (see `malvin kpop --doc`).

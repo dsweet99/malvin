@@ -1,21 +1,12 @@
 use clap::Args;
 
-#[path = "tidy_flow/prep.rs"]
-mod prep;
-#[path = "tidy_flow/run_startup.rs"]
-mod run_startup;
-#[path = "tidy_flow/run_loop.rs"]
-mod run_loop;
+#[path = "tidy_flow/run.rs"]
+mod run;
 
-#[allow(unused_imports)]
-pub use prep::{prepare_tidy_kpop_prompt_store, tidy_kpop_request};
-#[allow(unused_imports)]
-pub use crate::cli::workflow_kpop_shared::{
-    write_checks_do_not_pass_for_artifacts, write_checks_do_not_pass_to_review_path,
-};
-#[allow(unused_imports)]
-pub use run_startup::{prepare_tidy_kpop_run, TidyKpopPrepared};
-pub use run_loop::run_tidy;
+pub use run::run_tidy;
+
+#[cfg(test)]
+pub(crate) use run::{TIDY_ROUTER_REQUEST, tidy_shared_with_gates_forced};
 
 #[must_use]
 pub(crate) fn effective_tidy_max_loops(max_loops: usize) -> usize {
@@ -24,16 +15,16 @@ pub(crate) fn effective_tidy_max_loops(max_loops: usize) -> usize {
 
 #[derive(Args, Debug, Clone)]
 pub struct TidyArgs {
-    /// Maximum gate-loop iterations before stopping.
+    /// Outer router session budget (`effective_max_loops`).
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE)]
     pub max_loops: usize,
-    /// Number of hypotheses per `KPop` round.
+    /// Retained for CLI compatibility; unused by the router wrapper.
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES)]
     pub max_hypotheses: usize,
     /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
     #[arg(long, default_value_t = crate::cli::loop_opts::DEFAULT_TENACIOUS)]
     pub tenacious: bool,
-    /// Deprecated: review fan-out removed; tidy now uses the kpop workflow.
+    /// Deprecated: review fan-out removed; tidy now uses the default router.
     #[arg(long, short = 'q', default_value_t = false, hide = true)]
     pub quick: bool,
 }
@@ -41,89 +32,109 @@ pub struct TidyArgs {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::kpop_engine::run_kpop_hard_constraints_after_session;
+    use crate::cli::SharedOpts;
+    use crate::cli::args::{Cli, Commands};
+    use clap::{CommandFactory, FromArgMatches, Parser};
 
     #[test]
     fn tidy_effective_max_loops_is_at_least_one() {
-        let tidy = TidyArgs {
-            max_loops: 0,
-            max_hypotheses: 5,
-                tenacious: false,
-            quick: false,
+        assert_eq!(effective_tidy_max_loops(0), 1);
+    }
+
+    #[test]
+    fn tidy_router_request_is_get_the_gates_to_pass() {
+        assert_eq!(TIDY_ROUTER_REQUEST, "Get the gates to pass.");
+    }
+
+    #[test]
+    fn tidy_forces_gates_on_regardless_of_cli() {
+        let shared = SharedOpts::test_defaults();
+        assert!(!shared.gates);
+        let forced = tidy_shared_with_gates_forced(&shared);
+        assert!(forced.gates);
+    }
+
+    #[test]
+    fn help_lists_tidy_subcommand() {
+        let help = Cli::command().render_help().to_string();
+        assert!(help.contains("tidy"));
+    }
+
+    #[test]
+    fn tidy_tenacious_expands_loops_and_retries() {
+        use crate::cli::loop_opts::{
+            apply_gate_loop_tenacious, GateLoopTenaciousApply, TENACIOUS_MAX_ACP_RETRIES,
+            TENACIOUS_MAX_LOOPS,
         };
-        assert_eq!(effective_tidy_max_loops(tidy.max_loops), 1);
+        let matches = Cli::command().get_matches_from(["malvin", "tidy", "--tenacious"]);
+        let cli = Cli::from_arg_matches(&matches).expect("parse");
+        let Some(Commands::Tidy(mut tidy)) = cli.command else {
+            panic!("expected Tidy");
+        };
+        let mut shared = cli.shared;
+        apply_gate_loop_tenacious(GateLoopTenaciousApply {
+            subcommand: "tidy",
+            max_loops: &mut tidy.max_loops,
+            tenacious: tidy.tenacious,
+            no_tenacious: shared.no_tenacious,
+            max_acp_retries: &mut shared.max_acp_retries,
+            matches: &matches,
+        });
+        assert_eq!(tidy.max_loops, TENACIOUS_MAX_LOOPS);
+        assert_eq!(shared.max_acp_retries, TENACIOUS_MAX_ACP_RETRIES);
+    }
+
+    #[test]
+    fn tidy_parses_without_positional_request() {
+        let cli = Cli::try_parse_from(["malvin", "tidy"]).expect("parse");
+        match cli.command {
+            Some(Commands::Tidy(t)) => {
+                assert_eq!(t.max_loops, crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE);
+                assert_eq!(
+                    t.max_hypotheses,
+                    crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES
+                );
+                assert!(t.tenacious);
+                assert!(!t.quick);
             }
-
-    #[test]
-    fn kiss_cov_tidy_kpop_helpers() {
-        let _: Option<crate::kpop_engine::KPopEnginePrepared> = None;
-    }
-
-    #[test]
-    fn tidy_startup_logs_host_resources_in_command_log() {
-        crate::test_utils::clear_test_no_real_agent_env();
-        let tmp = tempfile::tempdir().expect("tempdir");
-        std::process::Command::new("git")
-            .args(["init"])
-            .current_dir(tmp.path())
-            .status()
-            .expect("git init");
-        crate::seed_malvin_checks(tmp.path(), "true\n");
-        let old = crate::test_utils::save_cwd();
-        std::env::set_current_dir(tmp.path()).expect("chdir");
-        let prepared = prepare_tidy_kpop_run(
-            crate::cli::WorkflowCliOptions { force: false },
-            crate::config::DEFAULT_CLI_MODEL,
-            false)
-        .expect("prepared");
-        crate::cli::run_emit::emit_run_startup_sequence(
-            &prepared.artifacts,
-            crate::cli::run_emit::RunStartupEmitOpts {
-                tee_stdout: false,
-                host_resources: true,
-                model: crate::config::DEFAULT_CLI_MODEL.into(),
-            },
-            &prepared.startup_emit_request,
-        )
-        .expect("startup");
-        let command_log = prepared.artifacts.run_dir.join("command.log");
-        let log = std::fs::read_to_string(&command_log).expect("log");
-        crate::test_utils::restore_cwd(&old);
-        assert!(log.contains("Memory:"));
-        assert!(log.contains("CPUs:"));
-    }
-
-    #[test]
-    fn tidy_post_kpop_gates_fails_when_gates_fail() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        std::process::Command::new("git")
-            .args(["init"])
-            .current_dir(tmp.path())
-            .status()
-            .expect("git init");
-        let checks = crate::malvin_checks_path(tmp.path());
-        if let Some(parent) = checks.parent() {
-            std::fs::create_dir_all(parent).expect("mkdir");
+            other => panic!("expected Tidy, got {other:?}"),
         }
-        std::fs::write(checks, "kiss\n").expect("checks");
-        let (_bin, _guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "kiss", 1);
-        let old = std::env::current_dir().expect("cwd");
-        std::env::set_current_dir(tmp.path()).expect("chdir");
-        let prepared = prepare_tidy_kpop_run(
-            crate::cli::WorkflowCliOptions { force: false },
-            crate::config::DEFAULT_CLI_MODEL,
-            false)
-        .expect("prepared");
-        let backups =
-            crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snapshot");
-        let err = run_kpop_hard_constraints_after_session(
-            "malvin tidy",
-            &prepared,
-            &backups,
-            crate::kpop_engine::KPopHardConstraints::TIDY,
-        )
-        .expect_err("gates");
-        std::env::set_current_dir(old).expect("restore cwd");
-        assert!(err.contains("quality gates"));
+    }
+
+    #[test]
+    fn tidy_accepts_max_loops_and_max_hypotheses_flags() {
+        let cli = Cli::try_parse_from([
+            "malvin",
+            "tidy",
+            "--max-loops",
+            "7",
+            "--max-hypotheses",
+            "9",
+            "--no-tenacious",
+        ])
+        .expect("parse");
+        // --no-tenacious is global; tidy flag tenacious still defaults true until apply.
+        match cli.command {
+            Some(Commands::Tidy(t)) => {
+                assert_eq!(t.max_loops, 7);
+                assert_eq!(t.max_hypotheses, 9);
+            }
+            other => panic!("expected Tidy, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn tidy_args_clone_preserves_fields() {
+        let tidy = TidyArgs {
+            max_loops: 4,
+            max_hypotheses: 6,
+            tenacious: false,
+            quick: true,
+        };
+        let cloned = tidy.clone();
+        assert_eq!(cloned.max_loops, 4);
+        assert_eq!(cloned.max_hypotheses, 6);
+        assert!(!cloned.tenacious);
+        assert!(cloned.quick);
     }
 }

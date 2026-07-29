@@ -72,7 +72,7 @@ On success, malvin follows the default router exit reporting.
 ## Examples
 
 ```text
-malvin explain "How does malvin tidy exit the gate loop?"
+malvin explain "How does malvin tidy force --gates on the default router?"
 malvin explain docs/notes.md
 malvin explain "topic" --out-path docs/paper.tex
 ```

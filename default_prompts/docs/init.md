@@ -14,7 +14,7 @@ Discover how the workspace runs quality gates today and write `.malvin/checks` (
 
 ## Intention
 
-Bootstrap a repo for `malvin tidy` without running the full tidy gate loop. Use this when you want `.malvin/checks` materialized explicitly instead of waiting for the first `tidy` run.
+Bootstrap a repo for gated workflows (`malvin tidy`, bare `malvin REQUEST --gates`) without running those workflows. Use this when you want `.malvin/checks` materialized explicitly.
 
 ## Usage
 
@@ -38,6 +38,5 @@ Inherits global malvin options (`--model`, `--no-force`, `--verbose`, etc.). No 
 
 ## Notes
 
-- `malvin tidy` runs the same discovery prelude when checks are absent, then continues into the tidy gate loop.
 - Discovery uses repo signals only; malvin does not invent default linters or test runners when the repo provides no signal.
 - Comment lines in `.malvin/checks` start with `#` after trimming and are ignored when running gates.

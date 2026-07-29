@@ -99,16 +99,10 @@ fn smoke_cov_cli_cli_code_flow_units() {
 #[test]
 fn smoke_cov_cli_cli_tidy_flow_units() {
     let _: Option<crate::cli::tidy_flow::TidyArgs> = None;
-    let _: Option<crate::cli::tidy_flow::TidyKpopPrepared> = None;
-    let _ = crate::cli::tidy_flow::prepare_tidy_kpop_prompt_store;
-    let _ = crate::cli::tidy_flow::tidy_kpop_request;
-    let _ = crate::cli::tidy_flow::write_checks_do_not_pass_to_review_path;
-    let _ = crate::cli::tidy_flow::write_checks_do_not_pass_for_artifacts;
-    let _ = crate::cli::workflow_kpop_shared::write_checks_do_not_pass_to_review_path;
-    let _ = crate::cli::workflow_kpop_shared::write_checks_do_not_pass_for_artifacts;
-    let _ = crate::cli::tidy_flow::prepare_tidy_kpop_run;
     let _ = crate::cli::tidy_flow::run_tidy;
     let _ = crate::cli::tidy_flow::effective_tidy_max_loops;
+    let _ = crate::cli::tidy_flow::TIDY_ROUTER_REQUEST;
+    let _ = crate::cli::tidy_flow::tidy_shared_with_gates_forced;
 }
 
 #[test]
