@@ -16,6 +16,10 @@ Earlier in this same session you wrote residual plans into the chat for each req
 
 - Restate every hard constraint in the request before you act.
 - Scope every prohibition to what the request actually states.
+- When the request specifies exact output field names, an exact deliverable shape, or required wording, copy those names and that wording exactly; do not rename, reword, restate, or invent an alternate schema.
+- When residual plans or review lists disagree with the user request’s exact deliverable shape or required wording, follow the user request.
+- Do not invent or replace source materials that are already present in the workspace; check the working directory for existing files before assuming they are missing.
+- Do not declare the request satisfied until every required output file exists on disk with the required contents; describing a write in prose does not count.
 
 ## Tools
 

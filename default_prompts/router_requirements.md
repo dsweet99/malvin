@@ -5,7 +5,7 @@ Generate grouped review requirements for the user request at `{{ user_request_pa
 - Write **only** the JSON file at `{{ review_requirements_path }}`. Do not edit other files.
 - Do **not** start implementing, fixing, or investigating beyond what is needed to list requirements.
 - Use at most **3** groups. Use fewer when that is enough.
-- Each group must have between **1** and **3** requirements (inclusive). Use fewer when that is enough.
+- Each group must have between **1** and **3** requirements (inclusive). Use fewer when that is enough. A group with 4 or more requirements is invalid and fails the run—split into another group (within the group limit) or merge points into fewer requirement strings.
 - Where the user specifies something precisely, follow them precisely.
 - Where there is ambiguity, resolve it with prior domain knowledge (either that you already possess or that you acquire through appropriate research).
 - Requirement strings must be non-empty after trimming.

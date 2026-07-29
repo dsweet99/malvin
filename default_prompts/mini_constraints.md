@@ -4,6 +4,7 @@
 - Do not insert informational-only "echo" commands into bash blocks. Use echo if it's needed but not simply to describe what you're doing.
 - One investigation turn may use multiple bash blocks; malvin runs them in order and returns combined output.
 - When you are done investigating (no more commands needed), reply without bash fences.
+- Creating or updating a required deliverable file requires a bash fence that writes it; prose that only describes the write does not count.
 - Do not emit `MINI_DONE` unless you intend to terminate the inner loop immediately.
 
 ## Direct Messages (when required)
