@@ -25,13 +25,13 @@ mod tests {
 
     #[test]
     fn subcommand_flag_from_command_line_detects_cli_overrides() {
-        let matches = Cli::command().get_matches_from(["malvin", "kpop", "hello"]);
-        assert!(!subcommand_flag_from_command_line(&matches, "kpop", "max_loops"));
+        let matches = Cli::command().get_matches_from(["malvin", "tidy"]);
+        assert!(!subcommand_flag_from_command_line(&matches, "tidy", "max_loops"));
         assert!(!subcommand_flag_from_command_line(&matches, "missing", "max_loops"));
 
         let explicit = Cli::command().get_matches_from([
-            "malvin", "kpop", "--max-loops", "2", "hello",
+            "malvin", "tidy", "--max-loops", "2",
         ]);
-        assert!(subcommand_flag_from_command_line(&explicit, "kpop", "max_loops"));
+        assert!(subcommand_flag_from_command_line(&explicit, "tidy", "max_loops"));
     }
 }

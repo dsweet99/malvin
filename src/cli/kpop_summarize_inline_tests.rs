@@ -1,14 +1,28 @@
 use crate::artifacts::create_kpop_run_artifacts;
 use crate::cli::kpop_summarize::{
     code_outer_loop_summarize_params, insert_summarize_log_context, kpop_flows_ran,
-    kpop_outer_loop_summarize_params, list_written_exp_logs, maybe_run_gate_inline_summarize,
-    maybe_run_inline_summarize_on_kpop_loop, outer_loop_summarize_warranted,
+    list_written_exp_logs, maybe_run_gate_inline_summarize, outer_loop_summarize_warranted,
     run_outer_loop_summarize_if_warranted, should_inline_outer_loop_summarize_on_gate_iteration,
-    should_inline_outer_loop_summarize_on_kpop_loop, CodeOuterLoopSummarizeInputs,
-    GateInlineSummarizeCtx, InlineSummarizeOnKpopLoopCtx,
+    CodeOuterLoopSummarizeInputs, GateInlineSummarizeCtx, OuterLoopSummarizeParams,
 };
+use crate::cli::WorkflowCliOptions;
 use crate::prompt_stratification::WorkflowRenderContext;
-use super::kpop_summarize_tests::{kpop_inputs, summarize_test_workspace, write_exp_logs};
+use super::kpop_summarize_tests::{summarize_test_workspace, write_exp_logs};
+
+fn outer_params<'a>(
+    shared: &'a crate::cli::SharedOpts,
+    store: &'a crate::prompts::PromptStore,
+    artifacts: &'a crate::artifacts::RunArtifacts,
+) -> OuterLoopSummarizeParams<'a> {
+    OuterLoopSummarizeParams {
+        agent_ran: true,
+        shared,
+        workflow: WorkflowCliOptions { force: false },
+        store,
+        artifacts,
+        model: &shared.model,
+    }
+}
 
 #[test]
 fn gate_iteration_inline_summarize_predicate() {
@@ -18,26 +32,14 @@ fn gate_iteration_inline_summarize_predicate() {
 }
 
 #[test]
-fn kpop_loop_inline_summarize_predicate() {
-    assert!(!should_inline_outer_loop_summarize_on_kpop_loop(1, 2, true));
-    assert!(should_inline_outer_loop_summarize_on_kpop_loop(2, 2, true));
-    assert!(!should_inline_outer_loop_summarize_on_kpop_loop(2, 5, false));
-    assert!(should_inline_outer_loop_summarize_on_kpop_loop(2, 5, true));
-}
-
-#[test]
 fn run_outer_loop_summarize_if_warranted_is_noop() {
     let (_tmp, artifacts, store, shared) = summarize_test_workspace();
     write_exp_logs(&artifacts, 2);
     let rt = tokio::runtime::Runtime::new().expect("runtime");
     rt.block_on(async {
-        run_outer_loop_summarize_if_warranted(&kpop_outer_loop_summarize_params(
-            kpop_inputs(&shared),
-            &store,
-            &artifacts,
-        ))
-        .await
-        .expect("noop");
+        run_outer_loop_summarize_if_warranted(&outer_params(&shared, &store, &artifacts))
+            .await
+            .expect("noop");
     });
     assert!(!artifacts.log_path("summary").exists());
 }
@@ -53,7 +55,7 @@ fn outer_loop_summarize_warranted_only_when_kpop_flows_gt_one() {
 fn run_outer_loop_summarize_if_warranted_skips_when_agent_did_not_run() {
     let (_tmp, artifacts, store, shared) = summarize_test_workspace();
     write_exp_logs(&artifacts, 2);
-    let mut params = kpop_outer_loop_summarize_params(kpop_inputs(&shared), &store, &artifacts);
+    let mut params = outer_params(&shared, &store, &artifacts);
     params.agent_ran = false;
     let rt = tokio::runtime::Runtime::new().expect("runtime");
     rt.block_on(async {
@@ -70,13 +72,9 @@ fn run_outer_loop_summarize_if_warranted_skips_single_flow() {
     write_exp_logs(&artifacts, 1);
     let rt = tokio::runtime::Runtime::new().expect("runtime");
     rt.block_on(async {
-        run_outer_loop_summarize_if_warranted(&kpop_outer_loop_summarize_params(
-            kpop_inputs(&shared),
-            &store,
-            &artifacts,
-        ))
-        .await
-        .expect("skip");
+        run_outer_loop_summarize_if_warranted(&outer_params(&shared, &store, &artifacts))
+            .await
+            .expect("skip");
     });
     assert!(!artifacts.log_path("summary").exists());
 }
@@ -132,10 +130,11 @@ fn code_summarize_prepared_fixture() -> (
     let old = std::env::current_dir().expect("cwd");
     std::env::set_current_dir(tmp.path()).expect("chdir");
     let prepared = crate::cli::code_flow::prepare_code_kpop_run(
-        crate::cli::WorkflowCliOptions { force: false },
+        WorkflowCliOptions { force: false },
         "ship it",
         crate::config::DEFAULT_CLI_MODEL,
-            false)
+        false,
+    )
     .expect("prepared");
     (tmp, old, prepared)
 }
@@ -148,47 +147,13 @@ fn code_outer_loop_summarize_params_wires_code_command() {
         CodeOuterLoopSummarizeInputs {
             agent_ran: true,
             shared: &shared,
-            workflow: crate::cli::WorkflowCliOptions { force: false },
+            workflow: WorkflowCliOptions { force: false },
         },
         &prepared,
     );
     std::env::set_current_dir(old).expect("restore cwd");
     assert_eq!(params.model, crate::config::DEFAULT_CLI_MODEL);
     assert!(params.agent_ran);
-}
-
-#[cfg(unix)]
-#[test]
-fn maybe_run_inline_summarize_on_kpop_loop_runs_on_last_iteration() {
-    super::kpop_summarize_mock_tests::with_summarize_mock_agent(|workspace, store, artifacts| {
-        write_exp_logs(artifacts, 2);
-        let shared = super::kpop_summarize_tests::summarize_shared_opts(1);
-        crate::test_utils::block_on_test_async(async {
-            let mut client = crate::agent_backend::build_agent_backend(
-                &shared,
-                crate::cli::WorkflowCliOptions { force: false },
-                false,
-                "kpop",
-            )
-            .map_err(|e| e.to_string())
-            .expect("backend");
-            client.ensure_authenticated().map_err(|e| e.to_string()).expect("auth");
-            maybe_run_inline_summarize_on_kpop_loop(InlineSummarizeOnKpopLoopCtx {
-                client: &mut client,
-                store,
-                artifacts,
-                model: shared.model.as_str(),
-            git: false,
-                agent_loop: 2,
-                max_loops: 2,
-                will_exit_after_this_loop: true,
-            })
-            .await
-            .expect("inline summarize");
-        });
-        assert!(workspace.join("summary_probe.log").is_file());
-        assert!(artifacts.log_path("summary").is_file());
-    });
 }
 
 #[cfg(unix)]
@@ -201,7 +166,7 @@ async fn run_gate_inline_summarize_first_iteration(
     let shared = super::kpop_summarize_tests::summarize_shared_opts(DEFAULT_MAX_ACP_RETRIES);
     let mut client = crate::agent_backend::build_agent_backend(
         &shared,
-        crate::cli::WorkflowCliOptions { force: false },
+        WorkflowCliOptions { force: false },
         false,
         "kpop",
     )
@@ -216,7 +181,7 @@ async fn run_gate_inline_summarize_first_iteration(
         store,
         artifacts,
         model: shared.model.as_str(),
-            git: false,
+        git: false,
         iteration: 1,
         total_iterations: 3,
     })

@@ -70,7 +70,13 @@ async fn run_inline_summarize_on_open_mock_session(
         .begin_coder_session(&artifacts.work_dir)
         .await
         .map_err(|e| e.to_string())?;
-    run_inline_summarize_coder_prompt(&mut client, store, artifacts, crate::workflow_context::PromptModelOpts::new("malvin kpop", false)).await?;
+    run_inline_summarize_coder_prompt(
+        &mut client,
+        store,
+        artifacts,
+        crate::workflow_context::PromptModelOpts::new(crate::config::DEFAULT_CLI_MODEL, false),
+    )
+    .await?;
     client.end_coder_session().await.map_err(|e| e.to_string())?;
     Ok(())
 }

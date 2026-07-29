@@ -2,7 +2,7 @@ use super::{
     command_doc_markdown, print_doc_to_writer, MALVIN_OVERVIEW_DOC, ROUTER_DOC,
 };
 use crate::cli::Cli;
-use crate::cli::{Commands, InspireArgs, KpopArgs};
+use crate::cli::{Commands, InspireArgs};
 use crate::cli::delight_flow::DelightArgs;
 use crate::cli::explain_flow::ExplainArgs;
 use crate::cli::models_cmd::ModelsArgs;
@@ -17,13 +17,6 @@ fn capture_doc(command: Option<&Commands>) -> Result<Vec<u8>, String> {
 #[test]
 fn subcommand_doc_embeds_have_malvin_heading() {
     let md = command_doc_markdown(&Commands::Models(ModelsArgs::default()));
-    assert!(md.starts_with("# malvin "));
-    let md = command_doc_markdown(&Commands::Kpop(KpopArgs {
-        max_loops: 1,
-max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
-        tenacious: false,
-        requests: vec![],
-    }));
     assert!(md.starts_with("# malvin "));
     let md = command_doc_markdown(&Commands::Inspire(InspireArgs { request: None }));
     assert!(md.starts_with("# malvin inspire"));
@@ -45,16 +38,11 @@ fn print_doc_init_writes_subcommand_md() {
 }
 
 #[test]
-fn print_doc_some_writes_subcommand_md() {
-    let cmd = Commands::Kpop(KpopArgs {
-        max_loops: 1,
-max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
-        tenacious: false,
-        requests: vec![],
-    });
+fn print_doc_inspire_writes_subcommand_md() {
+    let cmd = Commands::Inspire(InspireArgs { request: None });
     let out = capture_doc(Some(&cmd)).expect("capture");
     assert_eq!(out.as_slice(), command_doc_markdown(&cmd).as_bytes());
-    assert!(out.starts_with(b"# malvin kpop"));
+    assert!(out.starts_with(b"# malvin inspire"));
 }
 
 #[test]
@@ -65,12 +53,12 @@ fn top_level_doc_parses_without_subcommand() {
 }
 
 #[test]
-fn kpop_doc_parses_without_request_when_doc_flag_set() {
-    let cli = Cli::try_parse_from(["malvin", "kpop", "--doc"]).expect("parse");
+fn inspire_doc_parses_without_request_when_doc_flag_set() {
+    let cli = Cli::try_parse_from(["malvin", "inspire", "--doc"]).expect("parse");
     assert!(cli.shared.doc);
     match cli.command.as_ref() {
-        Some(Commands::Kpop(k)) => assert!(k.requests.is_empty()),
-        _ => panic!("expected Kpop"),
+        Some(Commands::Inspire(i)) => assert!(i.request.is_none()),
+        _ => panic!("expected Inspire"),
     }
 }
 

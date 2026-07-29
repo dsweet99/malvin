@@ -143,7 +143,3 @@ fn malvin_do_is_not_kiss_gated_when_kiss_missing_from_path() {
     assert_malvin_subcommand_not_kiss_gated_without_auth(&["do", "hello"], None);
 }
 
-#[test]
-fn malvin_kpop_is_not_kiss_gated_when_kiss_missing_from_path() {
-    assert_malvin_subcommand_not_kiss_gated_without_auth(&["kpop", "x"], None);
-}

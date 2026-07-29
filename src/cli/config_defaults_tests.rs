@@ -57,13 +57,13 @@ fn write_agent_config_adds_agent_section_to_partial_file() {
 fn apply_loop_defaults_honors_partial_cli_overrides() {
     with_seeded_agent_config(|| {
         let matches = Cli::command().get_matches_from([
-            "malvin", "kpop", "--max-loops", "3", "hello",
+            "malvin", "tidy", "--max-loops", "3",
         ]);
         let mut max_loops = 3_usize;
         let mut max_hypotheses = 5_usize;
         apply_loop_defaults(
             &matches,
-            "kpop",
+            "tidy",
             LoopDefaultMut {
                 max_loops: &mut max_loops,
                 max_hypotheses: &mut max_hypotheses,
@@ -77,9 +77,9 @@ fn apply_loop_defaults_honors_partial_cli_overrides() {
 
 #[test]
 fn flag_and_shared_helpers_detect_and_apply_defaults() {
-    let matches = Cli::command().get_matches_from(["malvin", "kpop", "hello"]);
+    let matches = Cli::command().get_matches_from(["malvin", "tidy"]);
     assert!(!global_flag_from_command_line(&matches, "model"));
-    assert!(!subcommand_flag_from_command_line(&matches, "kpop", "max_loops"));
+    assert!(!subcommand_flag_from_command_line(&matches, "tidy", "max_loops"));
     assert!(!subcommand_flag_from_command_line(&matches, "missing", "max_loops"));
 
     let agent = AgentConfig {
@@ -120,7 +120,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
     let mut max_hypotheses = 1_usize;
     apply_loop_defaults(
         &matches,
-        "kpop",
+        "tidy",
         LoopDefaultMut {
             max_loops: &mut max_loops,
             max_hypotheses: &mut max_hypotheses,
@@ -134,14 +134,14 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
 #[test]
 fn apply_workspace_config_defaults_overrides_unset_flags() {
     with_seeded_agent_config(|| {
-        let matches = Cli::command().get_matches_from(["malvin", "kpop", "hello"]);
+        let matches = Cli::command().get_matches_from(["malvin", "tidy"]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
         assert_eq!(cli.shared.model, "cursor:cfg-model");
         assert_eq!(cli.shared.max_acp_retries, 8);
         match cli.command.expect("command") {
-            Commands::Kpop(kpop) => assert_eq!(kpop.max_loops, 9),
-            other => panic!("expected kpop, got {other:?}"),
+            Commands::Tidy(tidy) => assert_eq!(tidy.max_loops, 7),
+            other => panic!("expected tidy, got {other:?}"),
         }
     });
 }
@@ -150,16 +150,16 @@ fn apply_workspace_config_defaults_overrides_unset_flags() {
 fn apply_workspace_config_defaults_respects_explicit_cli_flags() {
     with_seeded_agent_config(|| {
         let matches = Cli::command().get_matches_from([
-            "malvin", "--model", "cursor:cli-model", "--max-acp-retries", "2", "kpop",
-            "--max-loops", "3", "hello",
+            "malvin", "--model", "cursor:cli-model", "--max-acp-retries", "2", "tidy",
+            "--max-loops", "3",
         ]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
         assert_eq!(cli.shared.model, "cursor:cli-model");
         assert_eq!(cli.shared.max_acp_retries, 2);
         match cli.command.expect("command") {
-            Commands::Kpop(kpop) => assert_eq!(kpop.max_loops, 3),
-            other => panic!("expected kpop, got {other:?}"),
+            Commands::Tidy(tidy) => assert_eq!(tidy.max_loops, 3),
+            other => panic!("expected tidy, got {other:?}"),
         }
     });
 }
@@ -220,16 +220,16 @@ fn apply_workspace_config_defaults_for_inspire() {
 }
 
 #[test]
-fn parse_cli_with_config_defaults_kpop_request() {
+fn parse_cli_with_config_defaults_tidy() {
     crate::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(work).expect("chdir");
-        let (cli, _) = parse_cli_with_config_defaults(["malvin", "kpop", "hello"]).expect("parse");
+        let (cli, _) = parse_cli_with_config_defaults(["malvin", "tidy"]).expect("parse");
         match cli.command.expect("command") {
-            Commands::Kpop(k) => {
-                assert_eq!(k.requests.as_slice(), &["hello"]);
+            Commands::Tidy(t) => {
+                assert!(t.max_loops >= 1);
             }
-            other => panic!("expected kpop, got {other:?}"),
+            other => panic!("expected tidy, got {other:?}"),
         }
         std::env::set_current_dir(cwd).expect("restore cwd");
     });

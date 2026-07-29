@@ -88,8 +88,7 @@ max_loops = 9
             "malvin",
             "--model",
             "cursor:composer-2",
-            "kpop",
-            "hello",
+            "tidy",
         ]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         apply_workspace_config_defaults(&matches, &mut cli).expect("cli model wins");

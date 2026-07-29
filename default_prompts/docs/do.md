@@ -70,7 +70,6 @@ No implement, review, concerns, learn, or summary phases.
 
 | Command | When |
 |---------|------|
-| `malvin kpop` | Hypothesis-driven investigation with `_kpop/` log |
 | `malvin do Hello` | One-turn Cursor ACP connectivity smoke check |
 
 ## Examples

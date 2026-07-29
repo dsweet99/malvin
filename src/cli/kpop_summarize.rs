@@ -3,8 +3,7 @@
 #[path = "kpop_summarize_inline.rs"]
 mod kpop_summarize_inline;
 pub(crate) use kpop_summarize_inline::{
-    maybe_run_gate_inline_summarize, maybe_run_inline_summarize_on_kpop_loop,
-    GateInlineSummarizeCtx, InlineSummarizeOnKpopLoopCtx,
+    maybe_run_gate_inline_summarize, GateInlineSummarizeCtx,
 };
 
 use crate::prompt_stratification::{join_labeled_strata, PromptStratum, WorkflowRenderContext};
@@ -51,28 +50,6 @@ pub(crate) fn code_outer_loop_summarize_params<'a>(
     }
 }
 
-/// Inputs for [`kpop_outer_loop_summarize_params`].
-pub(crate) struct KpopOuterLoopSummarizeInputs<'a> {
-    pub agent_ran: bool,
-    pub shared: &'a SharedOpts,
-}
-
-#[must_use]
-pub(crate) fn kpop_outer_loop_summarize_params<'a>(
-    inputs: KpopOuterLoopSummarizeInputs<'a>,
-    store: &'a PromptStore,
-    artifacts: &'a RunArtifacts,
-) -> OuterLoopSummarizeParams<'a> {
-    OuterLoopSummarizeParams {
-        agent_ran: inputs.agent_ran,
-        shared: inputs.shared,
-        workflow: WorkflowCliOptions { force: false },
-        store,
-        artifacts,
-        model: &inputs.shared.model,
-    }
-}
-
 /// True when an exp log file exists and has content from an outer-loop agent session.
 pub(crate) fn exp_log_has_flow_content(path: &Path) -> bool {
     std::fs::read(path)
@@ -103,19 +80,6 @@ pub(crate) const fn should_inline_outer_loop_summarize_on_gate_iteration(
         return false;
     }
     iteration == total_iterations
-}
-
-/// Whether the current `malvin kpop` loop is the last active agent that should inline summarize.
-#[must_use]
-pub(crate) const fn should_inline_outer_loop_summarize_on_kpop_loop(
-    agent_loop: usize,
-    max_loops: usize,
-    will_exit_after_this_loop: bool,
-) -> bool {
-    if agent_loop < 2 {
-        return false;
-    }
-    agent_loop == max_loops || will_exit_after_this_loop
 }
 
 pub(crate) fn is_written_exp_log_path(path: &Path) -> bool {

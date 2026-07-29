@@ -48,5 +48,5 @@ malvin models
 malvin --no-color models
 malvin models download local:qwen35_9b_q4
 malvin --model local:qwen35_9b_q4 do "say hi"
-malvin --model cursor:sonnet-4 kpop plan.md    # --model applies to agent subcommands, not models
+malvin --model cursor:sonnet-4 inspire plan.md    # --model applies to agent subcommands, not models
 ```

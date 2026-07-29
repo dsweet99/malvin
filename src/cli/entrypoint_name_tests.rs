@@ -1,7 +1,6 @@
 use super::{
     command_accepts_session_name, Commands, Exit, entrypoint_from,
 };
-use crate::cli::args_bug_kpop::KpopArgs;
 use crate::cli::models_cmd::ModelsArgs;
 
 #[test]
@@ -73,13 +72,12 @@ fn bare_help_does_not_create_name_file() {
 }
 
 #[test]
-fn kpop_command_accepts_session_name() {
+fn do_command_accepts_session_name() {
+    use crate::do_flow::DoArgs;
     assert!(command_accepts_session_name(
-        &Commands::Kpop(KpopArgs {
-            max_loops: 1,
-max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
-            tenacious: false,
-            requests: vec!["task".into()],
+        &Commands::Do(DoArgs {
+            thoughts: false,
+            request: Some("task".into()),
         }),
     ));
 }
@@ -119,7 +117,7 @@ fn explain_command_rejects_session_name() {
 }
 
 #[test]
-fn kpop_with_name_parses() {
+fn do_with_name_parses() {
     use crate::cli::config_defaults::parse_cli_with_config_defaults;
 
     crate::test_utils::with_isolated_home(|_| {
@@ -127,11 +125,11 @@ fn kpop_with_name_parses() {
             "malvin",
             "--name",
             "probe",
-            "kpop",
-            "investigate cache",
+            "do",
+            "say hello",
         ])
-        .expect("parse kpop");
-        let command = cli.command.expect("kpop subcommand");
+        .expect("parse do");
+        let command = cli.command.expect("do subcommand");
         assert!(command_accepts_session_name(&command));
     });
 }

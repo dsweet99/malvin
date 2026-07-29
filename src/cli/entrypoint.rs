@@ -3,7 +3,7 @@ use super::{
 };
 
 /// Commands that accept `--name` acquire a session name lock before substantive work.
-/// Bare `malvin REQUEST`, `kpop`, `do`, `tidy`, and `delight` accept `--name`.
+/// Bare `malvin REQUEST`, `do`, `tidy`, and `delight` accept `--name`.
 pub(crate) const fn command_accepts_session_name(command: &Commands) -> bool {
     matches!(
         command,
@@ -11,7 +11,6 @@ pub(crate) const fn command_accepts_session_name(command: &Commands) -> bool {
             | Commands::Code(_)
             | Commands::Tidy(_)
             | Commands::Delight(_)
-            | Commands::Kpop(_)
     )
 }
 
@@ -20,7 +19,7 @@ pub(crate) const fn unsupported_name_error(command: &Commands) -> Option<&'stati
         return None;
     }
     Some(
-        "`--name` is only supported for bare `malvin REQUEST`, `kpop`, `do`, `tidy`, and `delight`",
+        "`--name` is only supported for bare `malvin REQUEST`, `do`, `tidy`, and `delight`",
     )
 }
 
@@ -110,17 +109,6 @@ pub(crate) fn dispatch_command(
                 matches,
             });
             super::entrypoint_commands::run_code_command(code, &shared)
-        }
-        Commands::Kpop(mut kpop) => {
-            super::loop_opts::apply_gate_loop_tenacious(super::loop_opts::GateLoopTenaciousApply {
-                subcommand: "kpop",
-                max_loops: &mut kpop.max_loops,
-                tenacious: kpop.tenacious,
-                no_tenacious: shared.no_tenacious,
-                max_acp_retries: &mut shared.max_acp_retries,
-                matches,
-            });
-            super::entrypoint_commands::run_kpop_command(kpop, &shared, matches)
         }
         Commands::Init(init) => run_async_cli(|| run_init(init, &shared)),
         Commands::Tidy(mut tidy) => {

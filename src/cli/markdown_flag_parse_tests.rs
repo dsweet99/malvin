@@ -8,13 +8,13 @@ fn global_no_markdown_before_code_subcommand() {
 }
 
 #[test]
-fn global_no_markdown_after_shared_flags_before_kpop() {
+fn global_no_markdown_after_shared_flags_before_inspire() {
     let cli = Cli::try_parse_from([
         "malvin",
         "--model",
         "m",
         "--no-markdown",
-        "kpop",
+        "inspire",
         "x",
     ])
     .expect("parse");

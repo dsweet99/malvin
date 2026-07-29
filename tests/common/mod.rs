@@ -15,8 +15,6 @@ mod cli_parity_harness_run;
 #[cfg(all(unix, target_os = "linux"))]
 mod cli_parity_tty_openpty;
 mod cli_parity_tty;
-#[cfg(all(unix, target_os = "linux"))]
-mod cli_parity_tty_kpop;
 #[cfg(unix)]
 mod do_stdout_harness;
 #[cfg(unix)]
@@ -28,14 +26,11 @@ mod integration_cli_args;
 #[cfg(unix)]
 mod enn_hybrid_fixture;
 mod kpop_multiturn_support;
-mod kpop_outer_loop_support;
 #[cfg(unix)]
 mod live_agent;
 mod process;
 #[cfg(unix)]
 mod code_harness;
-#[cfg(unix)]
-mod kpop_harness;
 #[cfg(unix)]
 mod tidy_harness;
 #[cfg(unix)]
@@ -57,8 +52,6 @@ pub use cli_parity_harness_run::*;
 pub use contract::{fresh_workdir, prepend_fake_agent_models_to_path, sleep_child, write_peer_acp_lock};
 #[cfg(all(unix, target_os = "linux"))]
 pub use cli_parity_tty::*;
-#[cfg(all(unix, target_os = "linux"))]
-pub use cli_parity_tty_kpop::run_kpop_multiturn_investigate;
 
 pub use git_test_helpers::{git_commit_all, git_init};
 pub use sandbox_test_helpers::{
@@ -77,7 +70,6 @@ pub use delight_harness::*;
 #[cfg(unix)]
 pub use explain_harness::*;
 pub use kpop_multiturn_support::*;
-pub use kpop_outer_loop_support::*;
 #[cfg(unix)]
 pub use live_agent::{
     command_output_live_agent, command_output_mini_live, live_agent_prereqs_met,
@@ -87,8 +79,6 @@ pub use process::{MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout};
 pub use assert_code_deprecated::assert_code_deprecated;
 #[cfg(unix)]
 pub use code_harness::{spawn_code, CodeSpawn};
-#[cfg(unix)]
-pub use kpop_harness::{spawn_kpop, KpopSpawn};
 #[cfg(unix)]
 pub use tidy_harness::{
     TidySpawn, bin_path_with_failing_gates, bin_path_with_fake_kiss,

@@ -10,7 +10,7 @@ pub struct SessionReaderTelemetry {
     pub raw_output: bool,
     /// When true, raw/plain stdout includes thought chunks.
     pub show_thoughts_on_stdout: bool,
-    /// When true, allow styled markdown on stdout for tagged trace lines (`malvin code` / `malvin kpop`).
+    /// When true, allow styled markdown on stdout for tagged trace lines (markdown-enabled workflows).
     pub emit_stdout_markdown: bool,
     pub prompts_log_run_dir: Option<PathBuf>,
     pub log_full_outgoing_prompts: bool,

@@ -77,9 +77,6 @@ fn kiss_invalid_struct_value_refs_4() {
     let _ = crate::agent_backend::mini::loop_driver::loop_inner_finish::TerminalEmitCtx;
     let _ = crate::agent_backend::mini::loop_driver::loop_types::LoopDriverRun;
     let _ = crate::child_health::evaluate_after_acp_silence;
-    let _ = crate::cli::bug_id_lookup::bug_id_lookup_log::log_tag;
-    let _ = crate::cli::bug_id_lookup::bug_id_lookup_log::missing_log_err_label;
-    let _ = crate::cli::bug_id_lookup::bug_id_lookup_log::fallback_err_label;
     let _ = crate::cli::code_flow::run_loop::CodeGateFinish;
     let _ = crate::cli::do_flow::DoRunPrep;
     let _ = crate::router_flow::RouterRunPrep;
@@ -89,22 +86,14 @@ fn kiss_invalid_struct_value_refs_4() {
     let _ = crate::cli::flow_prompt_combine::DualHeaderPromptInput;
     let _ = crate::cli::flow_prompt_combine::build_dual_header_coder_run_with_store;
     let _ = crate::cli::explain_flow::prep::ExplainResolvedOutputs;
-    let _ = crate::kpop_flow::kpop_flow_a::KpopPrepared;
 }
 
 #[test]
 fn kiss_invalid_struct_value_refs_5() {
-    let _ = crate::kpop_flow::kpop_flow_a::KpopArtifactsEarly;
-    let _ = crate::kpop_flow::kpop_flow_a::KpopAcpMultiturnCtx;
-    let _ = crate::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsParams;
     let _ = crate::router_flow::router_flow_acp::RouterAcpIterationInput;
     let _ = crate::router_flow::router_flow_acp::RouterAcpIterationOutcome;
     let _ = crate::router_flow::router_flow_loop::RouterAgentLoopInput;
     let _ = crate::router_flow::router_flow_loop::RouterAgentLoopOutcome;
-    let _ = crate::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsOutcome;
-    let _ = crate::kpop_flow::kpop_flow_run_loop::KpopLoopSnapshot;
-    let _ = crate::kpop_flow::kpop_flow_run_loop::KpopLoopExitAfterIteration;
-    let _ = crate::cli::kpop_summarize::kpop_summarize_inline::InlineSummarizeOnKpopLoopCtx;
     let _ = crate::cli::kpop_summarize::kpop_summarize_inline::GateInlineSummarizeCtx;
     let _ = crate::kpop_program::RenderRepoProgram;
     let _ = crate::kpop_multiturn_prompts::SmokeKpopBuilder;
@@ -120,8 +109,6 @@ fn kiss_invalid_struct_value_refs_6() {
     let _ = crate::acp::MemWatchHandles;
     let _ = crate::active_agent_heartbeat::ActiveAgentSandbox;
     let _ = crate::active_agent_heartbeat::ActiveAgentStatsSource;
-    let _ = crate::cli::bug_id_lookup::BugLogMatch;
-    let _ = crate::cli::bug_id_lookup::BugIdResolved;
     let _ = crate::router_flow::RouterArgs;
 }
 
@@ -223,9 +210,6 @@ fn kiss_invalid_struct_value_refs_gate10_5() {
     let _ = crate::cli::config_defaults_tests::assert_workflow_defaults;
     let _ = crate::flow_prompt_join_test_helpers::assert_header_user_join;
     let _ = crate::flow_prompt_join_test_helpers::assert_dual_workflow_header_join;
-    let _ = crate::kpop_flow_a_tests::seed_short_id_lookup_fixture;
-    let _ = crate::kpop_flow_a_tests::seed_kpop_multiturn_mock_workspace;
-    let _ = crate::kpop_flow_a_tests::run_kpop_multiturn_mock_once;
     let _ = crate::cli::kpop_summarize_inline_tests::run_gate_inline_summarize_first_iteration;
     let _ = crate::cli::kpop_summarize_mock_tests::write_summarize_fixture_exp_logs;
     let _ = crate::cli::kpop_summarize_mock_tests::run_inline_summarize_on_open_mock_session;

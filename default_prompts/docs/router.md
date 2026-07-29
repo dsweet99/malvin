@@ -7,7 +7,7 @@ Outer agent sessions (`effective_max_loops(--max-loops)`): each session writes `
 | | |
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
-| Output | Styled stdout on a TTY (same startup chrome as `kpop` / `tidy`) |
+| Output | Styled stdout on a TTY (same startup chrome as `tidy` / `inspire`) |
 | Logs | `router_N.log` under `~/.malvin_home/logs/<hash>/<run>/` (one file per outer session) |
 | Contract file | `review_requirements.json` in the malvin run directory (`{{ review_requirements_path }}`) |
 | Requires | No `.malvin/checks` at startup (unless `--gates` later needs them) |

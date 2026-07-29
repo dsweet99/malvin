@@ -6,7 +6,7 @@ use super::exit::Exit;
 use crate::output::{MALVIN_WHO, print_stderr_line};
 
 pub(crate) const CODE_DEPRECATED_MESSAGE: &str =
-    "the `code` command is deprecated; use bare `malvin REQUEST` or `malvin kpop` instead";
+    "the `code` command is deprecated; use bare `malvin REQUEST` or `malvin inspire` instead";
 
 pub(crate) fn exit_if_code_subcommand(args: &[OsString]) -> Option<Exit> {
     if argv_selects_code_subcommand(args) {

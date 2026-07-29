@@ -12,7 +12,7 @@ One **single-turn** MBC2 (boundary exploration) session: structurally distant id
 
 ## Intention
 
-Batch creative exploration separate from the `kpop` hypothesis loop. Use before committing to a long investigation or implementation run.
+Batch creative exploration separate from default-route multi-group KPop. Use before committing to a long investigation or implementation run.
 
 ## Usage
 
@@ -24,7 +24,7 @@ malvin inspire [OPTIONS] <REQUEST>
 
 ### `<REQUEST>` (required)
 
-Exactly **one shell argument**. Quote for internal spaces. Topic as literal text, or an existing `.md` file path (same rules as `do` / `kpop`).
+Exactly **one shell argument**. Quote for internal spaces. Topic as literal text, or an existing `.md` file path (same rules as `do`).
 
 ## Global options
 
@@ -44,7 +44,6 @@ Exactly **one** coder prompt: rendered `mbc2.md` only (no coding header or repo 
 
 | Command | When |
 |---------|------|
-| `malvin kpop` | Hypothesis-driven investigation with `_kpop/exp_log` |
 | `malvin do` | General single-turn coding task with full header |
 
 ## Examples

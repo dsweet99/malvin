@@ -43,7 +43,6 @@ fn entrypoint_request_missing_short_help(cli: &Cli) -> Option<Exit> {
             (inspire.request.as_ref(), "inspire")
         }
         Commands::Explain(explain) => (explain.request.as_ref(), "explain"),
-        Commands::Kpop(kpop) => (kpop.requests.first(), "kpop"),
         _ => return None,
     };
     entrypoint_short_help_when_request_missing(cli.shared.doc, request, subcommand)

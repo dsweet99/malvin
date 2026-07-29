@@ -89,16 +89,6 @@ fn apply_gate_loop_command_defaults(
                 agent,
             },
         ),
-        Commands::Kpop(kpop) => apply_loop_defaults(
-            matches,
-            "kpop",
-            LoopDefaultMut {
-                max_loops: &mut kpop.max_loops,
-                max_hypotheses: &mut kpop.max_hypotheses,
-                config_max_loops: agent.max_loops,
-                config_max_hypotheses: agent.max_hypotheses,
-            },
-        ),
         Commands::Tidy(tidy) => apply_code_workflow_loop_defaults(
             matches,
             CodeWorkflowLoopMut {

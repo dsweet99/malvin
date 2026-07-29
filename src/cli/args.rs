@@ -11,7 +11,6 @@ use super::tidy_flow::TidyArgs;
 pub use super::models_cmd::ModelsArgs;
 pub use crate::do_flow::DoArgs;
 pub use crate::inspire_flow::InspireArgs;
-pub use super::args_bug_kpop::KpopArgs;
 pub use super::shared_opts::GlobalOpts;
 
 #[derive(Parser, Debug)]
@@ -50,8 +49,6 @@ pub enum Commands {
     /// Write code (deprecated; hidden from help)
     #[command(hide = true)]
     Code(crate::cli::code_flow::CodeArgs),
-    /// Reason scientifically
-    Kpop(KpopArgs),
     /// Discover quality gates and write `.malvin/checks`
     Init(InitArgs),
     /// Ensure all checks pass

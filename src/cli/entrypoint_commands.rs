@@ -1,13 +1,11 @@
 use super::{
-    CodeArgs, Commands, KpopArgs, SharedOpts, WorkflowCliOptions, run_inspire, run_code, run_kpop,
-    run_delight, run_explain,
+    CodeArgs, Commands, SharedOpts, WorkflowCliOptions, run_inspire, run_code, run_delight,
+    run_explain,
 };
 use super::delight_flow::DelightArgs;
 use super::explain_flow::ExplainArgs;
-use clap::ArgMatches;
 
 use super::entrypoint::run_async_cli;
-use super::entrypoint_checks::ensure_malvin_checks_for_command;
 
 pub(crate) fn run_inspire_command(
     inspire: crate::inspire_flow::InspireArgs,
@@ -37,39 +35,6 @@ pub(crate) fn run_code_command(mut code: CodeArgs, shared: &SharedOpts) -> Resul
         let code = code.clone();
         let shared = shared.clone();
         run_async_cli(|| run_code(code, &shared, workflow, request))
-    })
-}
-
-pub(crate) fn run_kpop_command(
-    mut kpop: KpopArgs,
-    shared: &SharedOpts,
-    _matches: &ArgMatches,
-) -> Result<(), String> {
-    if kpop.is_lookup() {
-        return run_async_cli(|| {
-            run_kpop(
-                kpop,
-                shared,
-                WorkflowCliOptions {
-                    force: !shared.no_force,
-                },
-            )
-        });
-    }
-    let requests = std::mem::take(&mut kpop.requests);
-    let workflow = WorkflowCliOptions {
-        force: !shared.no_force,
-    };
-    ensure_malvin_checks_for_command(&Commands::Kpop(KpopArgs {
-        max_loops: kpop.max_loops,
-        max_hypotheses: kpop.max_hypotheses,
-        tenacious: kpop.tenacious,
-        requests: vec![],
-    }))?;
-    crate::sequential_requests::run_sequential("kpop", &requests, |request| {
-        let kpop = kpop.with_request(request.to_string());
-        let shared = shared.clone();
-        run_async_cli(|| run_kpop(kpop, &shared, workflow))
     })
 }
 

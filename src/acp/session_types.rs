@@ -27,7 +27,7 @@ pub struct PromptTraceWriter {
     pub raw_output: bool,
     /// When true, raw/plain stdout includes thought chunks.
     pub show_thoughts_on_stdout: bool,
-    /// When true, render agent message payloads as markdown on stdout (`malvin code` / `malvin kpop`).
+    /// When true, render agent message payloads as markdown on stdout (markdown-enabled workflows).
     pub emit_stdout_markdown: bool,
     /// Suppress duplicate operational warnings for iterable-closed within one trace writer.
     pub iterable_closed_warned: bool,
@@ -68,7 +68,7 @@ pub struct AcpSessionInner {
     pub raw_output: bool,
     /// When true, raw/plain stdout includes thought chunks.
     pub show_thoughts_on_stdout: bool,
-    /// When true, allow styled markdown on stdout for tagged trace lines (`malvin code` / `malvin kpop`).
+    /// When true, allow styled markdown on stdout for tagged trace lines (markdown-enabled workflows).
     pub emit_stdout_markdown: bool,
     /// When set, each outgoing prompt appends timestamped lines to `prompts.log` under this directory.
     pub prompts_log_run_dir: Option<PathBuf>,
@@ -106,7 +106,7 @@ pub struct AcpSpawnArgs<'a> {
     pub raw_output: bool,
     /// When true, raw/plain stdout includes thought chunks.
     pub show_thoughts_on_stdout: bool,
-    /// When true, allow styled markdown on stdout for tagged trace lines (`malvin code` / `malvin kpop`).
+    /// When true, allow styled markdown on stdout for tagged trace lines (markdown-enabled workflows).
     pub emit_stdout_markdown: bool,
     /// When set, each outgoing prompt appends timestamped lines to `prompts.log` under this directory.
     pub prompts_log_run_dir: Option<&'a Path>,

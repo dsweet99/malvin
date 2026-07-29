@@ -60,32 +60,6 @@ fn seed_legacy_adaptix_run(work_dir: &Path, home: &Path) -> std::path::PathBuf {
     run_dir
 }
 
-#[test]
-fn kpop_short_id_lookup_works_on_legacy_adaptix_run_dir() {
-    common::with_isolated_home(|work, home| {
-        seed_legacy_adaptix_run(work, home);
-
-        let output = std::process::Command::new(env!("CARGO_BIN_EXE_malvin"))
-            .current_dir(work)
-            .env("HOME", home)
-            .args(["--no-tee", "kpop", KPOP_ID])
-            .output()
-            .expect("spawn malvin kpop");
-        let combined = format!(
-            "{}{}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-        assert!(
-            output.status.success(),
-            "malvin kpop lookup on legacy run must succeed: {combined:?}"
-        );
-        assert!(
-            combined.contains("legacy kpop exp log"),
-            "lookup must dump exp log body: {combined:?}"
-        );
-    });
-}
 
 #[test]
 fn adaptix_subcommand_parses_as_inspire_args() {

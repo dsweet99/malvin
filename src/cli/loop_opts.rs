@@ -88,16 +88,6 @@ pub fn apply_tenacious(
     }
 }
 
-/// Experiment-log iteration index for the `agent_loop`th outer kpop agent (1-based).
-#[must_use]
-pub const fn kpop_agent_loop_exp_iteration(agent_loop: usize, max_loops: usize) -> usize {
-    if max_loops <= 1 {
-        0
-    } else {
-        agent_loop
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -140,11 +130,11 @@ mod tests {
     fn apply_gate_loop_tenacious_expands_unless_opted_out() {
         use clap::CommandFactory;
         use crate::cli::Cli;
-        let matches = Cli::command().get_matches_from(["malvin", "kpop", "hello"]);
+        let matches = Cli::command().get_matches_from(["malvin", "tidy"]);
         let mut loops = 1usize;
         let mut retries = 3u32;
         apply_gate_loop_tenacious(GateLoopTenaciousApply {
-            subcommand: "kpop",
+            subcommand: "tidy",
             max_loops: &mut loops,
             tenacious: true,
             no_tenacious: false,
@@ -170,12 +160,5 @@ mod tests {
         );
         assert_eq!(loops, 3);
         assert_eq!(retries, 5);
-    }
-
-    #[test]
-    fn kpop_agent_loop_exp_iteration_uses_legacy_path_for_single_run() {
-        assert_eq!(kpop_agent_loop_exp_iteration(1, 1), 0);
-        assert_eq!(kpop_agent_loop_exp_iteration(1, 3), 1);
-        assert_eq!(kpop_agent_loop_exp_iteration(2, 3), 2);
     }
 }

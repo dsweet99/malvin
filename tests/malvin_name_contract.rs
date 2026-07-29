@@ -151,7 +151,7 @@ fn entrypoint_duplicate_name_via_binary() {
         std::fs::create_dir_all(names_registry_root()).expect("mkdir names");
         std::fs::write(name_path("probe"), format!("{holder_pid}\n")).expect("peer lock");
         let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
-            .args(["--name", "probe", "kpop", "plan.md"])
+            .args(["--name", "probe", "do", "plan.md"])
             .output()
             .expect("malvin code");
         assert_eq!(out.status.code(), Some(1));

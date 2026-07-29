@@ -1,4 +1,4 @@
-//! `kpop` subcommand contract tests.
+//! CLI subcommand contract tests.
 
 mod common;
 
@@ -21,15 +21,6 @@ fn parse(argv: &[&str]) -> Cli {
 fn help_lists_subcommand_line(help: &str, name: &str) -> bool {
     help.lines()
         .any(|line| line.starts_with(&format!("  {name} ")))
-}
-
-#[test]
-fn kpop_request_parses() {
-    let cli = parse(&["malvin", "kpop", "investigate"]);
-    match cli.command {
-        Some(Commands::Kpop(k)) => assert_eq!(k.requests.as_slice(), &["investigate"]),
-        other => panic!("expected kpop, got {other:?}"),
-    }
 }
 
 #[test]
@@ -57,14 +48,13 @@ fn tidy_subcommand_still_parses() {
 }
 
 #[test]
-fn kpop_subcommand_parses_multiple_requests() {
-    let cli = parse(&["malvin", "kpop", "req_a.md", "req_b.md"]);
-    match cli.command {
-        Some(Commands::Kpop(k)) => {
-            assert_eq!(k.requests.as_slice(), &["req_a.md", "req_b.md"]);
-        }
-        other => panic!("expected kpop, got {other:?}"),
-    }
+fn kpop_subcommand_is_removed() {
+    let err = parse_cli_with_config_defaults(["malvin", "kpop", "investigate"]).unwrap_err();
+    let msg = err.to_string();
+    assert!(
+        msg.contains("unrecognized subcommand") || msg.contains("unexpected"),
+        "expected unknown-subcommand error, got: {msg}"
+    );
 }
 
 #[test]
@@ -75,11 +65,11 @@ fn bare_request_without_subcommand_parses_as_default_route() {
 }
 
 #[test]
-fn cli_help_lists_kpop_subcommand() {
+fn cli_help_does_not_list_kpop_subcommand() {
     let mut cmd = Cli::command();
     let help = cmd.render_help().to_string();
     assert!(!help_lists_subcommand_line(&help, "code"));
-    assert!(help_lists_subcommand_line(&help, "kpop"));
+    assert!(!help_lists_subcommand_line(&help, "kpop"));
     assert!(help.contains("do"));
     assert!(!help.contains("router"));
     assert!(!help.contains("@code"));

@@ -3,7 +3,6 @@
 #[test]
 fn smoke_cov_cli_cli_units_0() {
     let _: Option<crate::cli::CodeArgs> = None;
-    let _: Option<crate::cli::args::KpopArgs> = None;
     let _ = crate::cli::build_agent;
     let _ = crate::cli::prepare_kpop_prompt_store;
     let _ = crate::cli::prepare_prompt_store;
@@ -19,9 +18,6 @@ fn smoke_cov_cli_cli_units_0() {
 
 #[test]
 fn smoke_cov_cli_cli_units_1a() {
-    let _: Option<crate::kpop_flow::KpopPrepared> = None;
-    let _ = crate::kpop_flow::kpop_run_acp_multiturn;
-    let _ = crate::cli::run_kpop;
     let _: Option<crate::repo_checks::RepoGateOutput> = None;
     let _: Option<crate::repo_checks::RepoGateFailure> = None;
     let _ = crate::cli::run_emit::emit_run_startup_sequence;
@@ -68,7 +64,6 @@ fn smoke_cov_cli_cli_units_1b() {
         git: false,
     };
     let _ = shared.model;
-    let _ = stringify!(prepare_kpop_artifacts);
 }
 
 #[test]
@@ -126,23 +121,10 @@ fn smoke_cov_cli_cli_explain_flow_units() {
 }
 
 #[test]
-fn smoke_cov_cli_kpop_flow_run_loop_types() {
-    let outcome = crate::kpop_flow::kpop_flow_run_loop::kpop_loop_abort(true, "e".into());
-    let crate::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsOutcome {
-        acp_result: _,
-        agent_ran,
-    } = outcome;
-    assert!(agent_ran);
-    let _: Option<crate::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsParams<'_>> = None;
-    let _: Option<crate::kpop_flow::kpop_flow_run_loop::KpopLoopSnapshot> = None;
-    let _ = stringify!(KpopLoopExitAfterIteration);
-    let _ = stringify!(kpop);
-    let _ = stringify!(store);
-    let _ = stringify!(client);
-    let _ = stringify!(prepared);
-    let _ = stringify!(backups);
-    let _ = stringify!(exp_iter);
-    let _ = stringify!(exp_log_path);
+fn smoke_cov_cli_kpop_engine_session_types() {
+    let _: Option<crate::kpop_engine::KPopEngineParams> = None;
+    let _: Option<crate::kpop_engine::KPopEngineMultiturnCtx<'_>> = None;
+    let _ = stringify!(run_kpop_engine_session);
 }
 
 #[test]
@@ -162,8 +144,6 @@ fn smoke_cov_cli_cli_symbols_a() {
     let _ = stringify!(DoRunPrep);
     let _ = stringify!(new_do_client);
     let _ = stringify!(RenderRepoProgram);
-    let _: Option<crate::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsParams<'_>> = None;
-    let _: Option<crate::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsOutcome> = None;
     let _: Option<crate::inspire_flow::InspireArgs> = None;
     let _ = stringify!(InspireRunPrep);
     let _ = crate::inspire_flow::render_inspire_prompt;
@@ -192,7 +172,6 @@ fn smoke_cov_cli_cli_symbols_a() {
     let _: Option<crate::router_flow::router_flow_loop::RouterAgentLoopOutcome> = None;
     let _ = stringify!(RouterAcpIterationInput);
     let _ = stringify!(RouterAgentLoopInput);
-    let _: Option<crate::kpop_flow::KpopAcpMultiturnCtx> = None;
 }
 
 #[test]

@@ -64,12 +64,6 @@ mod tests {
             fast: false,
             requests: vec!["req".to_string()],
         };
-        let _kpop = crate::cli::KpopArgs {
-            max_loops: 1,
-            max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
-            tenacious: false,
-            requests: vec!["req".to_string()],
-        };
         assert_eq!(effective_code_max_loops(code.max_loops), 1);
     }
 

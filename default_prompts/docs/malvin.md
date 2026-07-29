@@ -15,16 +15,15 @@ malvin [OPTIONS] [REQUEST]
 malvin [OPTIONS] <COMMAND>
 ```
 
-Bare `malvin REQUEST` runs autonomous routing (decides among `kpop` and `inspire`). Use subcommands for named workflows. For KPop investigation, use `malvin kpop REQUEST`.
+Bare `malvin REQUEST` runs autonomous routing (requirements, multi-group KPop, optional work). Use subcommands for named workflows.
 
-Use subcommands: `kpop`, `do`, `inspire`, `tidy`, `delight`, `explain`, `models`.
+Use subcommands: `do`, `inspire`, `tidy`, `delight`, `explain`, `models`.
 
 ## Commands
 
 | Command | Purpose |
 |---------|---------|
 | *(default)* | Bare `malvin REQUEST` — requirements JSON → one multi-group KPop → optional work; outer `--max-loops` sessions |
-| `kpop` | KPop investigation (Popperian hypothesis loop) |
 | `do` | One-shot agent turn (non-looping) |
 | `inspire` | One-shot MBC2 boundary exploration (batch ideation) |
 | `tidy` | Fix quality gates via the default router with fixed request `Get the gates to pass.` and `--gates` forced on |
@@ -56,7 +55,7 @@ By default malvin passes `--force` to `cursor-agent` so tool calls proceed witho
 
 ### `--no-tenacious`
 
-By default gate-loop commands (`kpop`, `tidy`, `delight`, `explain`) expand to `--max-loops=9999` and `--max-acp-retries=9999`. The bare default route expands both `--max-loops=9999` and `--max-acp-retries=9999` unless the matching flag was set explicitly on the command line. `--no-tenacious` restores normal budgets.
+By default gate-loop commands (`tidy`, `delight`, `explain`) expand to `--max-loops=9999` and `--max-acp-retries=9999`. The bare default route expands both `--max-loops=9999` and `--max-acp-retries=9999` unless the matching flag was set explicitly on the command line. `--no-tenacious` restores normal budgets.
 
 ### `--gates`
 
@@ -68,7 +67,7 @@ By default malvin tees agent stdout to the terminal (and `stdout.log` in the run
 
 ### `--no-markdown`
 
-Disable styled markdown rendering of agent stdout for agent-backed subcommands that use the shared ACP client (`kpop`, `tidy` when the agent runs, `delight`, `explain`, `inspire`). No effect on `models`. **`do` uses plain stdout** on a TTY regardless of this flag; piped `do` output is always plain.
+Disable styled markdown rendering of agent stdout for agent-backed subcommands that use the shared ACP client (`tidy` when the agent runs, `delight`, `explain`, `inspire`). No effect on `models`. **`do` uses plain stdout** on a TTY regardless of this flag; piped `do` output is always plain.
 
 ### `-v` / `--verbose`
 
@@ -80,7 +79,7 @@ Maximum bounded attempts per ACP spawn or `session/prompt`, with 1s / 3s backoff
 
 ### `--name <NAME>`
 
-Optional session name for bare `malvin REQUEST`, `kpop`, `do`, `tidy`, and `delight`. When omitted on those invocations, malvin assigns a unique five-character id (`[a-z0-9]`). Every command that accepts `--name` acquires a session name lock before substantive work.
+Optional session name for bare `malvin REQUEST`, `do`, `tidy`, and `delight`. When omitted on those invocations, malvin assigns a unique five-character id (`[a-z0-9]`). Every command that accepts `--name` acquires a session name lock before substantive work.
 
 Malvin registers the top-level process under this name in a per-user registry at `~/.malvin_home/names/<NAME>` (one line: holder PID). If another live malvin process already holds the same name, the new invocation exits immediately with status 1. Stale or abandoned name files left by crashes, `SIGKILL`, or partial writes are reclaimed automatically on the next acquire — no manual cleanup under `~/.malvin_home/names/`.
 
@@ -107,7 +106,7 @@ Use **`malvin init`** to discover and write `.malvin/checks` explicitly (KPop se
 
 With `--gates` (and always for `malvin tidy`), malvin runs workspace quality gates from `.malvin/checks` at the repo git root (one shell command per non-empty, non-comment line). Full-line comments starting with `#` are ignored.
 
-Other commands (`do`, bare `malvin REQUEST`, `kpop`, `inspire`, `delight`, `explain`) do not require `.malvin/checks` at startup and may run outside a git repo. With `--gates`, bare `malvin REQUEST` and `malvin tidy` run workspace gates after each outer session and continue that outer loop when they fail (see `malvin` default-route `--doc`). Without `--gates` (the default for non-tidy commands), malvin does not run those checks directly on the default route. `header.md` notes about checks lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
+Other commands (`do`, bare `malvin REQUEST`, `inspire`, `delight`, `explain`) do not require `.malvin/checks` at startup and may run outside a git repo. With `--gates`, bare `malvin REQUEST` and `malvin tidy` run workspace gates after each outer session and continue that outer loop when they fail (see `malvin` default-route `--doc`). Without `--gates` (the default for non-tidy commands), malvin does not run those checks directly on the default route. `header.md` notes about checks lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
 
 ### `-h` / `--help`
 
@@ -116,16 +115,6 @@ Print help for the top-level CLI or a subcommand (`malvin <COMMAND> --help`).
 ### `-V` / `--version`
 
 Print malvin’s version.
-
-## `kpop` options
-
-See `malvin kpop --doc`. Key flags:
-
-| Flag | Default | Meaning |
-|------|---------|---------|
-| `--max-loops` | 1 | How many separate kpop agent runs (each with its own experiment log); tidy uses config `max_loops_code` (default 3) when unset |
-| `--tenacious` | on | Sets `--max-acp-retries=9999` and `--max-loops=9999` |
-| `--no-tenacious` | off | Restore normal loop/retry budgets |
 
 ## Run directories and logs
 
@@ -139,7 +128,7 @@ Every agent-backed command creates `~/.malvin_home/logs/<hash>/<timestamp>_<toke
 | `trace.jsonl` | ACP-shaped audit record — **authoritative** for semantics (tool results, shrink/fork, LLM usage) |
 | `prompts.log` | Outgoing prompts (names only, or full bodies with `--verbose`) |
 | `quality_gates.log` | Workspace gate commands and output when gates run |
-| `_kpop/exp_log_*.md` | KPop experiment logs (gate-loop and investigation commands) |
+| `_kpop/exp_log_*.md` | KPop experiment logs (gate-loop and related workflows) |
 | `result.md` | `ABORT:` prefix stops workflows that check it |
 
 ### Narrative vs audit (trust rule)
@@ -174,23 +163,16 @@ Several commands accept a positional request. `<REQUEST>` is always exactly **on
 
 | Command | Path argument | Work directory |
 |---------|---------------|----------------|
-| bare `malvin REQUEST`, `do`, `kpop`, `inspire` | Existing `.md` file path (no whitespace; case-sensitive `.md` suffix) reads that file; nonexistent `.md` paths are literal text | Parent of the file, or `.` for literal text |
-
-### Sequential requests
-
-`malvin kpop` accepts **multiple** positional arguments. Malvin runs each request as a separate invocation in order, waiting for each to finish before starting the next. Each run gets its own directory under `~/.malvin_home/logs/<hash>/`. This matches calling `malvin kpop` once per argument from the shell.
+| bare `malvin REQUEST`, `do`, `inspire` | Existing `.md` file path (no whitespace; case-sensitive `.md` suffix) reads that file; nonexistent `.md` paths are literal text | Parent of the file, or `.` for literal text |
 
 Examples:
 
 ```text
 malvin do "fix the typo"
-malvin kpop "Why does the cache miss?"
-malvin kpop req_1.md req_2.md req_3.md
-malvin kpop notes/question.md
+malvin inspire "explore API boundaries"
 ```
 
 ## Gate-loop and router-backed commands
 
 `malvin tidy`, `malvin delight`, and `malvin explain` are thin wrappers: each composes a request and invokes the **default router** (same engine as bare `malvin REQUEST`). Tidy uses the fixed request `Get the gates to pass.` and forces `--gates` on. See `malvin tidy --doc`, `malvin delight --doc`, `malvin explain --doc`, and the default-route `--doc`.
 
-`kpop` investigation uses an outer loop until its budget is exhausted (see `malvin kpop --doc`).

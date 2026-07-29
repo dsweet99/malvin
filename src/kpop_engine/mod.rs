@@ -19,8 +19,6 @@ pub(crate) use kpop_session::run_kpop_hard_constraints_after_session;
 #[cfg(test)]
 pub(crate) use kpop_session::KPopEngineMultiturnCtx;
 #[cfg(test)]
-pub(crate) use kpop_session::run_kpop_engine_session;
-#[cfg(test)]
 #[path = "kpop_session_tests.rs"]
 mod kpop_session_tests;
 #[cfg(test)]

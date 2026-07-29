@@ -2,7 +2,7 @@
 
 use super::params::KPopEngineIterationParams;
 use super::prepared::KPopEnginePrepared;
-use super::{run_kpop_engine_session, KPopEngineMultiturnCtx, KPopEngineParams, KPopHardConstraints};
+use super::{KPopEngineMultiturnCtx, KPopEngineParams, KPopHardConstraints};
 use crate::agent_backend::AgentBackend;
 use crate::artifacts::SessionDotfileBackups;
 use crate::cli::{SharedOpts, WorkflowCliOptions};
@@ -148,44 +148,4 @@ fn kiss_cov_kpop_engine_multiturn_ctx_reads_iteration_field() {
     assert_eq!(ctx.iteration.iteration, 1);
     assert_eq!(ctx.iteration.total_iterations, 2);
     assert_eq!(ctx.iteration_number(), 1);
-}
-
-#[cfg(unix)]
-#[test]
-fn kiss_cov_run_kpop_engine_session_success_branch() {
-    crate::test_utils::enable_test_fast_teardown();
-    crate::test_utils::with_isolated_home(|work| {
-        let mock = work.join("mock-gate-kpop-agent");
-        let _env =
-            crate::kpop_flow::kpop_flow_run_loop_tests::install_mock_agent_env(work, &mock);
-        let (prepared, backups) =
-            prepared_fixture("code", work, true, PreparedContextMode::PathsOnly);
-        let (shared, _) = shared_workflow();
-        let loop_params = loop_params("code", &shared, &prepared, KPopHardConstraints::CODE);
-        let mut client = agent_backend(&shared, "code");
-        let exp_log_path = prepared.artifacts().gate_exp_log_path(1);
-        let mut iteration_params = build_iteration_params(IterationFixture {
-            loop_params: &loop_params,
-            backups: &backups,
-            client: &mut client,
-            iteration: 1,
-            total_iterations: 1,
-            exp_log_path,
-        });
-        let mut ctx = KPopEngineMultiturnCtx {
-            iteration: &mut iteration_params,
-        };
-        crate::test_utils::block_on_test_async(async {
-            let post = run_kpop_engine_session(&mut ctx).await.expect("successful session");
-            let checks_ok = matches!(
-                post.malvin_checks,
-                crate::session_dotfile_backup::DotfileBackupState::Present(_)
-            ) || matches!(
-                post.malvin_checks,
-                crate::session_dotfile_backup::DotfileBackupState::Missing
-            );
-            assert!(checks_ok);
-            assert_eq!(ctx.iteration_number(), 1);
-        });
-    });
 }

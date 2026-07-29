@@ -60,7 +60,7 @@ fn kiss_witness_cli_and_artifacts_d() {
     let _ = stringify!(seed_home_logs_for_gc_test);
     let _ = stringify!(seed_short_id_lookup_fixture);
     let _ = stringify!(seed_kpop_multiturn_mock_workspace);
-    let _ = stringify!(run_kpop_multiturn_mock_once);
+    let _ = stringify!(run_kpop_multiturn_once);
     let _ = stringify!(run_gate_inline_summarize_first_iteration);
     let _ = stringify!(assert_header_user_join);
     let _ = stringify!(assert_dual_workflow_header_join);

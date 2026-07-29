@@ -20,7 +20,6 @@ Earlier in this same session you wrote residual plans into the chat for each req
 ## Tools
 
 - Run `{{ malvin_command }} inspire --help` to learn the idea generator.
-- Run `{{ malvin_command }} kpop --help` to learn the empirical reasoner that hypothesizes and falsifies.
 
 {{ code_extra }}
 

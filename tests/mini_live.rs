@@ -89,18 +89,16 @@ fn mini_live_do_echo() {
 #[cfg(unix)]
 #[test]
 #[ignore = "live OpenRouter e2e; MALVIN_LIVE_MINI=1 cargo nextest run mini_live -- --ignored"]
-fn mini_live_kpop_exp_log() {
+fn mini_live_inspire_run() {
     if !mini_live_prereqs_met() {
         eprintln!("skip: set MALVIN_LIVE_MINI=1 and OPENROUTER_API_KEY to run");
         return;
     }
     let (root, output) = run_mini_live_in_workspace(&[
-        "kpop",
+        "inspire",
         "--model",
         "openrouter:auto",
         "--no-tee",
-        "--max-loops",
-        "1",
         "--max-acp-retries",
         "1",
         "why is the sky blue?",
@@ -113,7 +111,7 @@ fn mini_live_kpop_exp_log() {
     let workspace = root.path().join("workspace");
     let home = root.path().join("home");
     let run_dir = only_run_dir(&workspace, &home);
-    assert!(run_dir.join("_kpop").is_dir());
+    assert!(run_dir.join("prompts.log").is_file());
 }
 
 #[cfg(unix)]

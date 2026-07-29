@@ -4,8 +4,8 @@ use std::path::Path;
 
 use crate::artifacts::create_kpop_run_artifacts;
 use crate::cli::kpop_summarize::{
-    exp_log_paths_markdown, is_written_exp_log_path, kpop_outer_loop_summarize_params,
-    render_kpop_summarize_prompt, run_summarize_coder_prompt, KpopOuterLoopSummarizeInputs,
+    exp_log_paths_markdown, is_written_exp_log_path, render_kpop_summarize_prompt,
+    run_summarize_coder_prompt,
 };
 use crate::cli::workflow_kpop_shared::prefer_gate_outcome_over_summarize;
 use crate::cli::SharedOpts;
@@ -36,12 +36,6 @@ pub(crate) fn summarize_shared_opts(max_acp_retries: u32) -> SharedOpts {
     }
 }
 
-pub(crate) fn kpop_inputs<'a>(shared: &'a SharedOpts) -> KpopOuterLoopSummarizeInputs<'a> {
-    KpopOuterLoopSummarizeInputs {
-        agent_ran: true,
-        shared,
-    }
-}
 
 pub(crate) fn summarize_test_workspace() -> (tempfile::TempDir, crate::artifacts::RunArtifacts, PromptStore, SharedOpts)
 {
@@ -59,21 +53,6 @@ pub(crate) fn summarize_test_workspace() -> (tempfile::TempDir, crate::artifacts
     (tmp, artifacts, store, shared)
 }
 
-#[test]
-fn kpop_outer_loop_summarize_params_builds_kpop_context() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
-    let artifacts = create_kpop_run_artifacts("kpop", Some(tmp.path())).expect("artifacts");
-    let store = PromptStore::default_store();
-    store.ensure_defaults().expect("defaults");
-    let shared = summarize_shared_opts(DEFAULT_MAX_ACP_RETRIES);
-    let params = kpop_outer_loop_summarize_params(kpop_inputs(&shared), &store, &artifacts);
-    assert!(params.agent_ran);
-    assert_eq!(params.model, DEFAULT_CLI_MODEL);
-    assert!(!params.workflow.force);
-    assert!(std::ptr::eq(params.store, &raw const store));
-    assert!(std::ptr::eq(params.artifacts, &raw const artifacts));
-}
 
 #[test]
 fn render_kpop_summarize_prompt_includes_activity_heading() {
