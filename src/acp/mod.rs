@@ -181,7 +181,7 @@ pub(crate) use wrap_session_prompt::*;
 mod wrap_session_post;
 pub(crate) use wrap_session_post::acp_session_set_run_timing;
 mod session_drop_teardown;
-
+pub(crate) mod shutdown_cancel_reject;
 #[cfg(unix)]
 #[path = "hostile_orphan_test_util.rs"]
 pub mod hostile_orphan_test_util;

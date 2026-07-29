@@ -209,6 +209,10 @@ fn kiss_cov_acp_session_unit_tests() {
     let _ = stringify!(AffiliationCtx);
     let _ = stringify!(TeeStdoutEmit);
     let _ = stringify!(shutdown_cancel_timeout);
+    let _ = stringify!(shutdown_child_wait_timeout);
+    let _ = stringify!(cancel_rejected_as_unsupported);
+    let _ = stringify!(best_effort_session_cancel);
+    let _ = stringify!(wait_killed_child);
     let _ = stringify!(run_coder_prompt_with_retries);
     let _ = stringify!(run_one_coder_prompt_attempt);
 }

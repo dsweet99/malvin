@@ -16,7 +16,8 @@ pub(crate) fn teardown_poll_interval() -> std::time::Duration {
     }
     #[cfg(not(debug_assertions))]
     {
-        std::time::Duration::from_millis(500)
+        // Keep TERM→KILL escalation snappy so post-prompt CLI exit is not multi-second.
+        std::time::Duration::from_millis(100)
     }
 }
 
@@ -31,7 +32,7 @@ pub(crate) fn teardown_total_cap() -> std::time::Duration {
     }
     #[cfg(not(debug_assertions))]
     {
-        std::time::Duration::from_secs(5)
+        std::time::Duration::from_millis(1500)
     }
 }
 
@@ -46,7 +47,8 @@ pub(crate) fn shutdown_cancel_timeout() -> std::time::Duration {
     }
     #[cfg(not(debug_assertions))]
     {
-        std::time::Duration::from_secs(3)
+        // Enough for a fast Method-not-found reject; do not block exit for seconds.
+        std::time::Duration::from_millis(250)
     }
 }
 
@@ -61,8 +63,17 @@ pub(crate) fn teardown_kill_after_polls() -> u32 {
     }
     #[cfg(not(debug_assertions))]
     {
-        3
+        1
     }
+}
+
+/// Cap for `Child::wait` after SIGKILL during [`AcpSession::shutdown`].
+#[must_use]
+pub(crate) fn shutdown_child_wait_timeout() -> std::time::Duration {
+    if test_fast_acp_teardown_enabled() {
+        return std::time::Duration::from_millis(50);
+    }
+    teardown_total_cap()
 }
 
 #[cfg(test)]
@@ -72,11 +83,12 @@ mod kiss_cov_auto {
     #[test]
     fn kiss_cov_teardown_timing_fns() {
         let _ = (
-            test_fast_acp_teardown_enabled,
-            teardown_poll_interval,
-            teardown_total_cap,
-            shutdown_cancel_timeout,
-            teardown_kill_after_polls,
+            test_fast_acp_teardown_enabled(),
+            teardown_poll_interval(),
+            teardown_total_cap(),
+            shutdown_cancel_timeout(),
+            teardown_kill_after_polls(),
+            shutdown_child_wait_timeout(),
         );
     }
 }

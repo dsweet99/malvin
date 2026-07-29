@@ -12,7 +12,9 @@ use unix_process_group_teardown_timing::{
     test_fast_acp_teardown_enabled,
 };
 
-pub(crate) use unix_process_group_teardown_timing::shutdown_cancel_timeout;
+pub(crate) use unix_process_group_teardown_timing::{
+    shutdown_cancel_timeout, shutdown_child_wait_timeout,
+};
 
 #[derive(Default)]
 struct TeardownPollState {

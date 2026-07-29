@@ -36,17 +36,16 @@ fn take_child_without_tokio_drop(inner: &AcpSessionInner) {
 pub(crate) fn acp_session_drop_teardown(inner: &AcpSessionInner) {
     inner.reader_dead.store(true, Ordering::SeqCst);
     crate::active_agent_heartbeat::unregister_active_agent_process_group(inner.process_group_id);
-    // Explicit shutdown already took the child; skip a second process-table scan in tests.
-    if crate::acp::test_no_real_agent_enabled() {
-        let child_gone = inner
-            .child
-            .try_lock()
-            .map(|slot| slot.is_none())
-            .unwrap_or(false);
-        if child_gone {
-            crate::malvin_sandbox::clear_active_sandbox_session();
-            return;
-        }
+    // Explicit `AcpSession::shutdown` already tore down and took the child. Skipping here
+    // avoids stacking a second `teardown_total_cap` wait on Drop of the last handle.
+    let child_gone = inner
+        .child
+        .try_lock()
+        .map(|slot| slot.is_none())
+        .unwrap_or(false);
+    if child_gone {
+        crate::malvin_sandbox::clear_active_sandbox_session();
+        return;
     }
     terminate_agent_process_group_blocking(inner.process_group_id, &inner.spawn_pid_baseline);
     take_child_without_tokio_drop(inner);
@@ -83,6 +82,36 @@ mod unix_regression {
         assert!(
             !pid_alive(pgid),
             "last AcpSession drop must tear down the sandbox child (pgid={pgid})"
+        );
+    }
+
+    #[tokio::test]
+    async fn drop_after_shutdown_skips_second_teardown_wait() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let (session, pgid) = session_with_sleep_child_for_mem_watch(tmp.path());
+        // Simulate completed explicit `shutdown`: OS teardown + take child (skip ACP cancel).
+        crate::acp::unix_process_group_teardown::terminate_agent_process_group(
+            Some(pgid),
+            &session.0.spawn_pid_baseline,
+        )
+        .await;
+        {
+            let mut slot = session.0.child.lock().await;
+            if let Some(mut ch) = slot.take() {
+                let _ = ch.kill().await;
+                let _ = ch.wait().await;
+            }
+        }
+        assert!(
+            !pid_alive(pgid),
+            "post-shutdown simulation must kill sandbox child (pgid={pgid})"
+        );
+        let started = std::time::Instant::now();
+        drop(session);
+        let drop_ms = started.elapsed().as_millis();
+        assert!(
+            drop_ms < 500,
+            "Drop after explicit shutdown must not stack another teardown_total_cap wait (took {drop_ms} ms)"
         );
     }
 

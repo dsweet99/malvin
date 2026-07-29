@@ -56,6 +56,10 @@ fn kiss_invalid_struct_value_refs_3() {
     let _ = crate::acp::rpc_part1::RpcRequestNext;
     let _ = crate::acp::rpc_wait_args::RpcWaitArgs;
     let _ = crate::acp::unix_process_group_teardown_poll::unix_process_group_teardown_timing::shutdown_cancel_timeout;
+    let _ = crate::acp::unix_process_group_teardown_poll::unix_process_group_teardown_timing::shutdown_child_wait_timeout;
+    let _ = crate::acp::shutdown_cancel_reject::cancel_rejected_as_unsupported;
+    let _ = crate::acp::shutdown_cancel_reject::best_effort_session_cancel;
+    let _ = crate::acp::shutdown_cancel_reject::wait_killed_child;
     let _ = crate::acp_transport_tests::shared_handshake::TestReaderLoopSpawn;
     let _ = crate::acp_transport_tests::shared_handshake::HandshakeRunning;
     let _ = crate::acp_transport_tests::shared_harness::InactiveRpcIo;
