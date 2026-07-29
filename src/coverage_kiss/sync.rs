@@ -1,8 +1,5 @@
 #[test]
 fn smoke_review_sync() {
-    assert!(crate::review_sync::is_lgtm_str("LGTM"));
-    assert!(crate::review_sync::is_lgtm_str("\u{FEFF}LGTM"));
-
     let tmp = tempfile::tempdir().expect("tempdir");
     let art = tmp.path().join("artifact_review.md");
     assert!(

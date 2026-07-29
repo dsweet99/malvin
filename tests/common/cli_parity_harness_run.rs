@@ -3,9 +3,8 @@ use std::process::Command;
 
 #[cfg(unix)]
 use super::{
-    INTEGRATION_TEST_MALVIN_ARGS, MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_max_loops_never_lgtm_js,
-    acp_mock_code_streaming_update_js, command_output_with_timeout, test_home_workspace,
-    write_fake_kiss, cached_mock_executable,
+    INTEGRATION_TEST_MALVIN_ARGS, MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_streaming_update_js,
+    command_output_with_timeout, test_home_workspace, write_fake_kiss, cached_mock_executable,
 };
 
 #[cfg(unix)]
@@ -16,12 +15,6 @@ pub fn combined_cli_output(out: &std::process::Output) -> String {
         String::from_utf8_lossy(&out.stderr)
     )
 }
-
-#[cfg(unix)]
-pub const MAX_LOOPS_EXHAUSTED: &str = "Did not receive LGTM for review within max loops.";
-
-#[cfg(unix)]
-const MAX_LOOPS_EXHAUSTION_TEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(45);
 
 pub fn check_ignored(repo: &std::path::Path, rel_path: &str) -> bool {
     Command::new("git")
@@ -46,7 +39,7 @@ fn prep_acp_mock_on_path(
 ) -> (std::path::PathBuf, std::path::PathBuf, String) {
     let bin_dir = root.path().join("bin");
     std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
-    let mock = cached_mock_executable( mock_js);
+    let mock = cached_mock_executable(mock_js);
     write_fake_kiss(&bin_dir.join("kiss"));
     let path = format!(
         "{}:{}",
@@ -117,7 +110,7 @@ pub fn assert_review_abort_behavior(
     );
     assert!(
         !combined.contains(should_stop_prompt),
-        "ABORT should stop before summary after review LGTM: {combined:?}"
+        "ABORT should stop before summary after review: {combined:?}"
     );
 }
 
@@ -140,7 +133,7 @@ pub fn run_code_with_mock_js(
 #[cfg(unix)]
 pub fn run_code_max_loops_zero_with_mock_opts(no_tee: bool) -> std::process::Output {
     run_code_with_mock_js(
-        &acp_mock_code_max_loops_never_lgtm_js(),
+        &acp_mock_code_streaming_update_js(),
         &["--max-loops", "0"],
         no_tee,
     )
@@ -154,29 +147,6 @@ pub fn run_code_max_loops_zero_with_mock() -> std::process::Output {
 #[cfg(unix)]
 pub fn run_code_max_loops_zero_with_mock_stdout() -> std::process::Output {
     run_code_max_loops_zero_with_mock_opts(false)
-}
-
-#[cfg(unix)]
-pub fn run_code_default_max_loops_never_lgtm_with_mock() -> std::process::Output {
-    let (root, home, workspace) = test_home_workspace();
-    let (_bin_dir, mock, path) = prep_acp_mock_on_path(
-        &root,
-        "mock-agent-acp-code-max-loops-default",
-        &acp_mock_code_max_loops_never_lgtm_js(),
-    );
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
-    cmd.current_dir(&workspace)
-        .env("HOME", &home)
-        .env("CURSOR_AGENT_API_KEY", "test-key")
-        .env("MALVIN_AGENT_ACP_BIN", &mock)
-        .env("PATH", path)
-        .args(["code", "--trust-the-plan"]);
-    cmd.args(INTEGRATION_TEST_MALVIN_ARGS);
-    cmd.args(["--no-tee", "ship it"]);
-    let out = command_output_with_timeout(&mut cmd, MAX_LOOPS_EXHAUSTION_TEST_TIMEOUT)
-        .expect("spawn malvin code");
-    let _ = (root, workspace);
-    out
 }
 
 #[cfg(unix)]

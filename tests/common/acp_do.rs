@@ -2,7 +2,8 @@ use super::acp_code_fanout_mocks::review_write_try_counter_body;
 use super::acp_core::{
     ARGV_CAPTURE_PREAMBLE, CONCERNS_PROMPT_MATCH_JS, REVIEW_WRITE_PROMPT_MATCH_JS,
     acp_mock_code_with_run_dir_js, acp_mock_js, chunk_line, session_update_chunk_line,
-    write_artifact_lgtm, write_artifact_non_lgtm, write_review_prep_output, write_workspace_lgtm,
+    write_artifact_problems, write_artifact_review, write_review_prep_output,
+    write_workspace_review,
 };
 
 pub fn acp_mock_do_streaming_update_js() -> String {
@@ -55,18 +56,8 @@ pub fn acp_mock_tidy_fanout_body(review_write_tail: &str) -> String {
 }
 
 #[must_use]
-pub fn acp_mock_tidy_fanout_lgtm_with_abort_js() -> String {
-    let review_tail = format!(
-        "{}\n      fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: review lgtm abort test\\n', 'utf8');",
-        write_artifact_lgtm()
-    );
-    let body = acp_mock_tidy_fanout_body(&review_tail);
-    acp_mock_code_with_run_dir_js(&body)
-}
-
-#[must_use]
 pub fn acp_mock_tidy_abort_after_first_coder_turn_js() -> String {
-    let review_tail = format!("{}\n      {}", write_artifact_lgtm(), chunk_line("review"));
+    let review_tail = format!("{}\n      {}", write_artifact_review(), chunk_line("review"));
     let coder = chunk_line("coder");
     let coder_abort = format!(
         r"      const coderTriesPath = path.join(runDir, '.tidy_coder_tries');
@@ -87,30 +78,30 @@ pub fn acp_mock_tidy_abort_after_first_coder_turn_js() -> String {
 }
 
 #[must_use]
-pub fn acp_mock_tidy_fanout_lgtm_js() -> String {
+pub fn acp_mock_tidy_fanout_reviewed_js() -> String {
     let body = acp_mock_tidy_fanout_body(&format!(
         "{}\n      {}",
-        write_artifact_lgtm(),
+        write_artifact_review(),
         chunk_line("review")
     ));
     acp_mock_code_with_run_dir_js(&body)
 }
 
 #[must_use]
-pub fn acp_mock_tidy_fanout_non_lgtm_js() -> String {
+pub fn acp_mock_tidy_fanout_problems_js() -> String {
     let body = acp_mock_tidy_fanout_body(&format!(
         "{}\n      {}",
-        write_artifact_non_lgtm(),
+        write_artifact_problems(),
         chunk_line("review")
     ));
     acp_mock_code_with_run_dir_js(&body)
 }
 
 #[must_use]
-pub fn acp_mock_tidy_fanout_non_lgtm_then_lgtm_js() -> String {
+pub fn acp_mock_tidy_fanout_problems_then_reviewed_js() -> String {
     let review_tail = review_write_try_counter_body(
-        &write_artifact_non_lgtm(),
-        &write_artifact_lgtm(),
+        &write_artifact_problems(),
+        &write_artifact_review(),
         &chunk_line("review"),
     );
     let body = acp_mock_tidy_fanout_body(&review_tail);
@@ -119,7 +110,7 @@ pub fn acp_mock_tidy_fanout_non_lgtm_then_lgtm_js() -> String {
 
 #[must_use]
 pub fn acp_mock_tidy_review_write_never_writes_artifact_js() -> String {
-    let review_tail = format!("{}\n      {}", write_workspace_lgtm(), chunk_line("review"));
+    let review_tail = format!("{}\n      {}", write_workspace_review(), chunk_line("review"));
     let body = acp_mock_tidy_fanout_body(&review_tail);
     acp_mock_code_with_run_dir_js(&body)
 }
@@ -127,8 +118,8 @@ pub fn acp_mock_tidy_review_write_never_writes_artifact_js() -> String {
 #[must_use]
 pub fn acp_mock_tidy_review_write_succeeds_on_second_attempt_js() -> String {
     let try_counter = review_write_try_counter_body(
-        &write_workspace_lgtm(),
-        &write_artifact_lgtm(),
+        &write_workspace_review(),
+        &write_artifact_review(),
         &chunk_line("review"),
     );
     let body = acp_mock_tidy_fanout_body(&try_counter);
@@ -139,7 +130,7 @@ pub fn acp_mock_tidy_review_write_succeeds_on_second_attempt_js() -> String {
 pub fn acp_mock_tidy_fanout_skips_reviewer_outputs_js() -> String {
     let body = acp_mock_tidy_fanout_branches(
         &chunk_line("reviewer"),
-        &write_artifact_lgtm(),
+        &write_artifact_review(),
         "",
         &chunk_line("coder"),
     );

@@ -34,8 +34,6 @@ pub fn read_artifact_review_for_fanout_attempt(
 
 /// Returns non-empty artifact review text when present.
 ///
-/// Fan-out LGTM must use [`read_artifact_review_for_fanout_attempt`].
-///
 /// # Errors
 ///
 /// Returns `Err` when reading the artifact review file fails.

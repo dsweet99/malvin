@@ -56,11 +56,11 @@ pub fn chunk_line(text: &str) -> String {
     )
 }
 
-pub fn write_artifact_lgtm() -> String {
-    "      fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\\n', 'utf8');".to_string()
+pub fn write_artifact_review() -> String {
+    "      fs.writeFileSync(path.join(runDir, 'review.md'), 'reviewed\\n', 'utf8');".to_string()
 }
 
-pub fn write_artifact_non_lgtm() -> String {
+pub fn write_artifact_problems() -> String {
     "      fs.writeFileSync(path.join(runDir, 'review.md'), 'problems\\n', 'utf8');".to_string()
 }
 
@@ -77,12 +77,12 @@ pub fn review_write_regression_test_body() -> String {
     .to_string()
 }
 
-pub fn code_review_fanout_writes_regression_test_and_non_lgtm() -> String {
+pub fn code_review_fanout_writes_regression_test_and_problems() -> String {
     let prep = write_review_prep_output();
     let write_tail = format!(
         "{}\n      {}\n{}",
         review_write_regression_test_body(),
-        write_artifact_non_lgtm(),
+        write_artifact_problems(),
         chunk_line("reviewed")
     );
     format!(
@@ -100,8 +100,9 @@ pub fn code_review_fanout_writes_regression_test_and_non_lgtm() -> String {
     )
 }
 
-pub fn write_workspace_lgtm() -> String {
-    "      fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\\n', 'utf8');".to_string()
+pub fn write_workspace_review() -> String {
+    "      fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'reviewed\\n', 'utf8');"
+        .to_string()
 }
 
 pub fn write_review_prep_output() -> String {
@@ -120,13 +121,13 @@ pub fn acp_mock_code_fanout_skips_reviewer_outputs_js() -> String {
     }} else if (promptText.includes('KPop: Review in-scope code for these problems')) {{
 {reviewer_skip}
     }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
-{write_lgtm}
+{write_review}
     }} else {{
       // learn, summary
     }}",
         implement = chunk_line("implemented"),
         reviewer_skip = chunk_line("skipped"),
-        write_lgtm = write_artifact_lgtm(),
+        write_review = write_artifact_review(),
     );
     acp_mock_code_with_run_dir_js(&body)
 }
