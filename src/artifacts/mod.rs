@@ -99,11 +99,6 @@ impl RunArtifacts {
     }
 
     #[must_use]
-    pub fn trace_jsonl_path(&self) -> PathBuf {
-        self.run_dir.join(TRACE_JSONL)
-    }
-
-    #[must_use]
     pub fn sandbox_oom_json_path(&self) -> PathBuf {
         self.run_dir.join(SANDBOX_OOM_JSON)
     }

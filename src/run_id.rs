@@ -14,13 +14,6 @@ impl Default for RunDirOptions {
     }
 }
 
-impl RunDirOptions {
-    #[must_use]
-    pub const fn without_gc() -> Self {
-        Self { gc: false }
-    }
-}
-
 /// Creates `~/.malvin_home/logs/<hash>/<timestamp>_<id>/` for `base_dir` (or the current directory).
 ///
 /// # Errors

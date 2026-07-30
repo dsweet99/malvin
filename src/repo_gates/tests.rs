@@ -30,19 +30,6 @@ fn prompt_quality_gates_markdown_matches_checks_file_verbatim() {
 }
 
 #[test]
-fn builtin_gate_command_lines_returns_empty() {
-    let tmp = tempfile::tempdir().unwrap();
-    let w = tmp.path();
-    fs::create_dir(w.join(".git")).unwrap();
-    fs::write(
-        w.join("Cargo.toml"),
-        "[package]\nname = 'm'\nversion = '0.1.0'\n",
-    )
-    .unwrap();
-    assert!(builtin_gate_command_lines(w).is_empty());
-}
-
-#[test]
 fn gate_command_lines_uses_only_malvin_checks_when_present() {
     let tmp = tempfile::tempdir().unwrap();
     let w = tmp.path();
@@ -70,22 +57,6 @@ fn ensure_default_malvin_config_file_writes_template_when_missing() {
         ensure_default_malvin_config_file(work).unwrap();
         assert_eq!(fs::read_to_string(&config_path).unwrap(), text);
     });
-}
-
-#[test]
-fn ensure_default_malvin_checks_file_does_not_seed_when_empty() {
-    let tmp = tempfile::tempdir().unwrap();
-    let w = tmp.path();
-    git_init(w);
-    fs::write(
-        w.join("Cargo.toml"),
-        "[package]\nname = 'm'\nversion = '0.1.0'\n",
-    )
-    .unwrap();
-    let checks_path = crate::malvin_checks_path(w);
-    assert!(!checks_path.exists());
-    ensure_default_malvin_checks_file(w).unwrap();
-    assert!(!checks_path.exists());
 }
 
 #[test]

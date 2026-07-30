@@ -12,23 +12,6 @@ fn abort_result_path(dir: &tempfile::TempDir) -> PathBuf {
 }
 
 #[test]
-fn emit_run_timing_json_only_after_acp_writes_json() {
-    use std::sync::{Arc, Mutex};
-
-    use crate::acp_post_run::emit_run_timing_json_only_after_acp;
-    use crate::run_timing::RUN_TIMING_JSON_FILE;
-
-    let mut client = crate::test_agent_client::smoke_agent_client();
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let run_dir = tmp.path().join("run");
-    std::fs::create_dir_all(&run_dir).expect("mkdir");
-    let timing = Arc::new(Mutex::new(crate::run_timing::RunTiming::default()));
-    emit_run_timing_json_only_after_acp(&mut client, &run_dir, &timing, Ok(()))
-        .expect("emit timing");
-    assert!(run_dir.join(RUN_TIMING_JSON_FILE).is_file());
-}
-
-#[test]
 fn emit_run_timing_after_acp_writes_json() {
     use std::sync::{Arc, Mutex};
     use std::time::Instant;

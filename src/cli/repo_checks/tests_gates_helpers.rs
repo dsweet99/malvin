@@ -91,19 +91,3 @@ pub(super) fn workspace_git_precommit_malvin_checks_cargo_main(work: &Path) {
     }
     fs::write(path, "custom --only\n").expect("checks");
 }
-
-pub(super) fn seed_workspace_builtin_malvin_checks(work: &Path) {
-    if crate::git_worktree_toplevel(work).is_none() {
-        git_init_work(work);
-    }
-    let lines = crate::repo_gates::builtin_gate_command_lines(work);
-    let mut content = lines.join("\n");
-    if !content.is_empty() {
-        content.push('\n');
-    }
-    let path = crate::malvin_checks_path(work);
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).expect("checks parent");
-    }
-    fs::write(path, content).expect("write builtin checks");
-}

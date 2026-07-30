@@ -6,15 +6,6 @@ fn sandbox_spawn_policy_aspect_all_has_five_variants() {
 }
 
 #[test]
-fn sandbox_spawn_policy_aspect_malvin_std_command_flags() {
-    assert!(SandboxSpawnPolicyAspect::ProcessGroupIsolation.applied_by_malvin_std_command());
-    assert!(SandboxSpawnPolicyAspect::MallocArenaCap.applied_by_malvin_std_command());
-    assert!(!SandboxSpawnPolicyAspect::DeadBeforeNextSpawn.applied_by_malvin_std_command());
-    assert!(!SandboxSpawnPolicyAspect::SessionRssMonitor.applied_by_malvin_std_command());
-    assert!(!SandboxSpawnPolicyAspect::AcpSpawnLock.applied_by_malvin_std_command());
-}
-
-#[test]
 fn all_aspects_have_runtime_references() {
     let sources = [
         include_str!("../malvin_sandbox.rs"),

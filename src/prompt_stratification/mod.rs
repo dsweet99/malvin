@@ -57,11 +57,6 @@ impl WorkflowRenderContext {
         &self.0
     }
 
-    #[must_use]
-    pub fn into_map(self) -> HashMap<String, String> {
-        self.0
-    }
-
     pub fn insert(&mut self, key: impl Into<String>, value: impl Into<String>) {
         self.0.insert(key.into(), value.into());
     }

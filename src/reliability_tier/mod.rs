@@ -4,10 +4,6 @@
 //! parsing keeps tenacious expansion on. Production resolves tiers via
 //! [`ReliabilityTier::resolve`] in `apply_gate_loop_tenacious` / `apply_tenacious`.
 
-use crate::cli::{TENACIOUS_MAX_ACP_RETRIES, TENACIOUS_MAX_LOOPS};
-use crate::config::DEFAULT_MAX_ACP_RETRIES;
-use crate::malvin_config_file::DEFAULT_MAX_LOOPS;
-
 /// Cross-cutting reliability tier for outer gate-loop and ACP spawn retry budgets.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ReliabilityTier {
@@ -32,24 +28,6 @@ impl ReliabilityTier {
             Self::Tenacious
         } else {
             Self::Conservative
-        }
-    }
-
-    /// Default outer gate-loop iteration budget for this tier (before explicit CLI overrides).
-    #[must_use]
-    pub const fn default_max_loops(self) -> usize {
-        match self {
-            Self::Tenacious => TENACIOUS_MAX_LOOPS,
-            Self::Conservative => DEFAULT_MAX_LOOPS,
-        }
-    }
-
-    /// Default ACP spawn retry budget for this tier (before explicit CLI overrides).
-    #[must_use]
-    pub const fn default_max_acp_retries(self) -> u32 {
-        match self {
-            Self::Tenacious => TENACIOUS_MAX_ACP_RETRIES,
-            Self::Conservative => DEFAULT_MAX_ACP_RETRIES,
         }
     }
 }

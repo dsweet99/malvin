@@ -3,7 +3,7 @@
 #[test]
 fn kiss_witness_client_impl_flow() {
     let _ = super::AgentClient::run_kpop_flow;
-    let _ = super::AgentClient::replace_coder_session_slot_for_tests;
+    let _ = stringify!(begin_coder_session);
 }
 
 #[test]

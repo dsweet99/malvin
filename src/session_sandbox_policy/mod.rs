@@ -31,15 +31,6 @@ impl SandboxSpawnPolicyAspect {
             Self::AcpSpawnLock,
         ]
     }
-
-    /// Whether `malvin_std_command` / `malvin_tokio_command` apply this aspect directly.
-    #[must_use]
-    pub const fn applied_by_malvin_std_command(self) -> bool {
-        matches!(
-            self,
-            Self::ProcessGroupIsolation | Self::MallocArenaCap
-        )
-    }
 }
 
 #[cfg(test)]

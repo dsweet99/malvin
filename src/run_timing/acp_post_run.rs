@@ -123,21 +123,6 @@ pub fn emit_run_timing_after_acp(req: RunTimingAfterAcp<'_>) -> Result<(), Strin
     merge_acp_and_timing_results(req.acp_result, timing_result)
 }
 
-pub fn emit_run_timing_json_only_after_acp(
-    client: &mut crate::acp::AgentClient,
-    run_dir: &Path,
-    timing: &Arc<Mutex<RunTiming>>,
-    acp_result: Result<(), String>,
-) -> Result<(), String> {
-    emit_run_timing_after_acp(RunTimingAfterAcp {
-        client,
-        run_dir,
-        timing,
-        acp_result,
-        session_end: RunTimingSessionEnd::Finalize,
-    })
-}
-
 pub struct RunTimingAfterBackend<'a> {
     pub backend: &'a mut crate::agent_backend::AgentBackend,
     pub run_dir: &'a Path,

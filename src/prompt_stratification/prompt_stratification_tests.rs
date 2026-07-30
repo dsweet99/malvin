@@ -10,8 +10,7 @@ fn workflow_render_context_round_trip() {
     let mut ctx = WorkflowRenderContext::default();
     ctx.insert("plan_path", "/tmp/plan.md");
     assert_eq!(ctx.as_map().get("plan_path").map(String::as_str), Some("/tmp/plan.md"));
-    let map = ctx.into_map();
-    assert_eq!(map.len(), 1);
+    assert_eq!(ctx.as_map().len(), 1);
 }
 
 #[test]

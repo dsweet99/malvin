@@ -38,20 +38,6 @@ impl BudgetScopeLayer {
         ]
     }
 
-    /// Primary CLI flag controlling this layer, when one exists.
-    #[must_use]
-    pub const fn cli_flag(self) -> Option<&'static str> {
-        match self {
-            Self::MiniTransportRetry => None,
-            Self::MiniHttpTurn => Some("mini-max-http-turns"),
-            Self::MiniBashExec => Some("mini-max-bash-execs"),
-            Self::MiniGateIteration => Some("mini-max-gate-retries"),
-            Self::MiniShrinkPass => Some("mini-max-shrink-passes"),
-            Self::OuterKPopEngineLoop => Some("max-loops"),
-            Self::AcpSpawnRetry => Some("max-acp-retries"),
-        }
-    }
-
     /// Whether `single_attempt: true` forces one try at this layer.
     #[must_use]
     pub const fn respects_single_attempt(self) -> bool {
@@ -59,12 +45,6 @@ impl BudgetScopeLayer {
             self,
             Self::MiniTransportRetry | Self::MiniGateIteration | Self::AcpSpawnRetry
         )
-    }
-
-    /// Whether `OpenRouter` billing/payment failures (402/403) fail immediately without retry.
-    #[must_use]
-    pub const fn billing_fails_immediately(self) -> bool {
-        matches!(self, Self::MiniTransportRetry | Self::MiniGateIteration)
     }
 
     /// Effective attempt budget for this layer given CLI/config limit and `single_attempt`.

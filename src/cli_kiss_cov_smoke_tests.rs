@@ -182,6 +182,6 @@ fn smoke_cov_cli_cli_symbols_b() {
 fn smoke_cov_cli_cross_file_symbols_a() {
     let _ = stringify!(test_scan_for_extension_handles_symlink_cycles);
     let _ = stringify!(doc_text);
-    let _ = stringify!(print_doc);
+    let _ = stringify!(print_doc_for_cli);
     let _ = stringify!(try_append_log_line);
 }

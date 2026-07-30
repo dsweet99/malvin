@@ -73,7 +73,7 @@ fn create_run_artifacts_opts_without_gc_skips_prune() {
     let art = create_run_artifacts_opts(
         &plan,
         Some(tmp.path()),
-        crate::run_id::RunDirOptions::without_gc(),
+        crate::run_id::RunDirOptions { gc: false },
     )
     .unwrap();
     assert!(logs.join("20260101_000000_keepkeep").exists());
@@ -86,7 +86,7 @@ fn create_run_artifacts_from_text_opts_without_gc() {
     let art = create_run_artifacts_from_text_opts(
         "prompt",
         Some(tmp.path()),
-        crate::run_id::RunDirOptions::without_gc(),
+        crate::run_id::RunDirOptions { gc: false },
     )
     .unwrap();
     assert_eq!(art.work_dir, tmp.path());
@@ -98,7 +98,7 @@ fn create_kpop_run_artifacts_opts_without_gc() {
     let art = create_kpop_run_artifacts_opts(
         "kpop body",
         Some(tmp.path()),
-        crate::run_id::RunDirOptions::without_gc(),
+        crate::run_id::RunDirOptions { gc: false },
     )
     .unwrap();
     assert!(art.plan_path.ends_with("request.md"));

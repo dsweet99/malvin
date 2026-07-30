@@ -62,11 +62,6 @@ impl ExperimentLog {
     }
 
     #[must_use]
-    pub fn hypothesis_step_count(&self) -> usize {
-        self.kpop_step_count() + self.mbc2_step_count()
-    }
-
-    #[must_use]
     pub fn kpop_solved_marker_count(&self) -> usize {
         self.text.lines().filter(|line| is_kpop_solved_line(line)).count()
     }

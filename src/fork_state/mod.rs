@@ -20,26 +20,6 @@ impl ForkState {
             workspace_manifest_hash: workspace_manifest_hash(cwd),
         }
     }
-
-    #[must_use]
-    pub fn memory_matches(&self, history: &str, previous_response: &str) -> bool {
-        self.history == history && self.previous_response == previous_response
-    }
-
-    #[must_use]
-    pub fn workspace_matches(&self, current_hash: &str) -> bool {
-        self.workspace_manifest_hash == current_hash
-    }
-
-    #[must_use]
-    pub fn is_diverged(
-        &self,
-        history: &str,
-        previous_response: &str,
-        current_hash: &str,
-    ) -> bool {
-        !self.memory_matches(history, previous_response) || !self.workspace_matches(current_hash)
-    }
 }
 
 /// Best-effort workspace manifest hash from `git status --porcelain` or empty cwd listing.

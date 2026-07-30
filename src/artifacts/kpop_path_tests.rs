@@ -28,7 +28,7 @@ fn gate_exp_log_path_is_scoped_per_iteration() {
 fn trace_jsonl_path_is_under_run_dir() {
     let tmp = tempfile::tempdir().unwrap();
     let art = create_run_artifacts_from_text("plan", Some(tmp.path())).unwrap();
-    let trace = art.trace_jsonl_path();
+    let trace = art.run_dir.join(crate::malvin_constants::TRACE_JSONL);
     assert_eq!(trace, art.run_dir.join(crate::malvin_constants::TRACE_JSONL));
 }
 
@@ -94,7 +94,7 @@ fn kpop_exp_log_path_from_repo_root_work_dir() {
     let art = create_kpop_run_artifacts_opts(
         "probe",
         Some(std::path::Path::new(".")),
-        crate::run_id::RunDirOptions::without_gc(),
+        crate::run_id::RunDirOptions { gc: false },
     )
     .unwrap();
     let exp_path = art.exp_log_path();

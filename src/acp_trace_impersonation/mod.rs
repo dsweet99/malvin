@@ -49,25 +49,6 @@ impl SyntheticAcpSessionUpdate {
             Self::MiniRetryFork,
         ]
     }
-
-    /// ACP `sessionUpdate` wire key when this kind uses a standard envelope; `None` for
-    /// mini extensions (carried on `agent_message_chunk`) and non-session `out` lines.
-    #[must_use]
-    pub const fn session_update_key(self) -> Option<&'static str> {
-        match self {
-            Self::AgentMessageChunk => Some("agent_message_chunk"),
-            Self::AgentThoughtChunk => Some("agent_thought_chunk"),
-            Self::ToolCall => Some("tool_call"),
-            Self::ToolCallUpdate => Some("tool_call_update"),
-            Self::OutRaw
-            | Self::LlmUsage
-            | Self::MiniTerminal
-            | Self::MiniHttpExchange
-            | Self::MiniPromptShrink
-            | Self::MiniPromptShrinkStalled
-            | Self::MiniRetryFork => None,
-        }
-    }
 }
 
 #[cfg(test)]

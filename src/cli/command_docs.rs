@@ -65,11 +65,6 @@ pub(crate) fn print_doc_for_cli(cli: &Cli) -> Result<(), String> {
     print_doc_for_cli_to_writer(cli, io::stdout().lock())
 }
 
-#[cfg_attr(not(test), allow(dead_code))]
-pub(crate) fn print_doc(command: Option<&Commands>) -> Result<(), String> {
-    print_doc_to_writer(command, io::stdout().lock())
-}
-
 #[cfg(test)]
 #[path = "command_docs_tests.rs"]
 mod command_docs_tests;

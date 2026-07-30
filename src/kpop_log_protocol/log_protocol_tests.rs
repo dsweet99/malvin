@@ -5,7 +5,6 @@ fn counts_steps_in_exp_log() {
     let log = ExperimentLog::from_text("## Step 1 — KPop x\n## Step 2 — MBC2 y\n## Step 3 — KPop z\n");
     assert_eq!(log.kpop_step_count(), 2);
     assert_eq!(log.mbc2_step_count(), 1);
-    assert_eq!(log.hypothesis_step_count(), 3);
 }
 
 #[test]

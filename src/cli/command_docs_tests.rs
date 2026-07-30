@@ -143,7 +143,7 @@ fn malvin_doc_embeds_name_section() {
 #[cfg(test)]
 #[allow(unused_imports)]
 mod kiss_cov_gate_refs {
-    use super::super::{doc_text, print_doc, print_doc_to_writer};
+    use super::super::{doc_text, print_doc_to_writer};
 
     #[test]
     fn kiss_cov_unit_names() {
@@ -151,6 +151,5 @@ mod kiss_cov_gate_refs {
         let mut buf = Vec::new();
         print_doc_to_writer(None, &mut buf).expect("write");
         assert!(!buf.is_empty());
-        print_doc(None).expect("stdout print_doc");
     }
 }

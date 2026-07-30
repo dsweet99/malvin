@@ -1,5 +1,5 @@
 use crate::acp::{
-    backoff_after_agent_failure, AgentClient, AgentError, AgentKpopMultiturnCtl, AcpSession,
+    backoff_after_agent_failure, AgentClient, AgentError, AgentKpopMultiturnCtl,
     KpopFlowOnceArgs, retries_noun, run_kpop_flow_once,
     run_kpop_multiturn_once,
 };
@@ -97,13 +97,6 @@ impl AgentClient {
         Err(AgentError(format!(
             "agent acp (kpop multiturn) failed after {retries} {noun}. Last error:\n{last_error}"
         )))
-    }
-}
-
-#[doc(hidden)]
-impl AgentClient {
-    pub fn replace_coder_session_slot_for_tests(&mut self, session: AcpSession) {
-        self.coder_session = Some(session);
     }
 }
 
