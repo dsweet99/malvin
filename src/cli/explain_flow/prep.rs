@@ -114,15 +114,14 @@ mod tests {
     fn compose_embeds_user_request_and_out_paths() {
         let body = compose_explain_router_request("how gates exit", "explain.tex", "explain.pdf")
             .expect("compose explain request");
-        let expected = "Explain the following topic in a short technical LaTeX paper for an intelligent nonspecialist.\n\
-Write LaTeX source to `explain.tex` and compile a PDF to `explain.pdf` (both non-empty).\n\
-Prefer plain English; introduce field terms at first use. Back claims with evidence or citation; label hypotheses.\n\
-Assume the reader will not read underlying source code; explain the algorithms, mathematics, or design ideas.\n\
-Do not overwrite unrelated workspace files.\n\
-\n\
-User request:\n\
-\n\
-how gates exit\n";
+        let expected = crate::prompts::render_template(
+            include_str!("../../../default_prompts/explain_wrapper.md"),
+            &HashMap::from([
+                ("tex_display".to_string(), "explain.tex".to_string()),
+                ("pdf_display".to_string(), "explain.pdf".to_string()),
+                ("request_text".to_string(), "how gates exit".to_string()),
+            ]),
+        );
         assert_eq!(body, expected);
         assert!(body.contains("User request:"));
         assert!(body.contains("how gates exit"));

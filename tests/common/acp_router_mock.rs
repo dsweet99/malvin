@@ -36,7 +36,9 @@ pub fn acp_mock_router_no_work_js() -> String {
       fs.mkdirSync(path.dirname(outAbs), { recursive: true });
       fs.writeFileSync(outAbs, '# Delight pitch\n\nA delightful improvement.\n', 'utf8');
     }
-    const texMatch = promptText.match(/Write LaTeX source to `([^`]+)`/);
+    // Match current explain_wrapper.md ("Put the LaTeX source in `…`") and the older
+    // "Write LaTeX source to `…`" phrasing so mocks stay compatible across wording tweaks.
+    const texMatch = promptText.match(/(?:Put the LaTeX source in|Write LaTeX source to) `([^`]+)`/);
     if (texMatch) {
       let texRel = texMatch[1].replace(/^\.\//, '');
       const texAbs = path.isAbsolute(texRel) ? texRel : path.join(process.cwd(), texRel);
