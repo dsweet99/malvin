@@ -1,6 +1,6 @@
 # malvin explain
 
-Produce a short, reader-friendly **LaTeX explanation** by composing a request and running the **default router** workflow (same path as bare `malvin REQUEST`). The composed request embeds the user request and the `.tex` / `.pdf` output paths.
+Produce a short, reader-friendly **LaTeX explanation** by composing a request and running the **default router** workflow (same path as bare `malvin REQUEST`). The composed request is rendered from `explain_wrapper.md` and embeds the user request and the `.tex` / `.pdf` output paths.
 
 ## Summary
 

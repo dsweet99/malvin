@@ -44,7 +44,7 @@ impl KPopHardConstraints {
         skip_workspace_quality_gates: true,
         exit: KPopHardConstraintsExit::CodeTidy,
     };
-    /// Historical EXPLAIN gate-engine profile (explain now uses Review→Plan→Work).
+    /// Historical EXPLAIN gate-engine profile (explain now uses the default router).
     #[cfg(test)]
     pub const EXPLAIN: Self = Self {
         skip_kpop_on_initial_pass: false,

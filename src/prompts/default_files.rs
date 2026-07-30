@@ -1,26 +1,15 @@
 use super::{
-    DO_HEADER_MD, HEADER_MD, ROUTER_CODE_EXTRA_MD, ROUTER_KPOP_GROUP_MD, ROUTER_REQUIREMENTS_MD,
-    ROUTER_SUMMARIZE_MD, ROUTER_WORK_MD,
+    DO_HEADER_MD, EXPLAIN_WRAPPER_MD, HEADER_MD, ROUTER_CODE_EXTRA_MD, ROUTER_KPOP_GROUP_MD,
+    ROUTER_REQUIREMENTS_MD, ROUTER_SUMMARIZE_MD, ROUTER_WORK_MD,
 };
 
-fn default_explain_prompt(name: &str) -> Option<&'static str> {
-    match name {
-        "explain_constraints.md" => Some(include_str!("../../default_prompts/explain_constraints.md")),
-        "explain_plan.md" => Some(include_str!("../../default_prompts/explain_plan.md")),
-        "explain_work.md" => Some(include_str!("../../default_prompts/explain_work.md")),
-        _ => None,
-    }
-}
-
 fn default_constraints_prompt(name: &str) -> Option<&'static str> {
-    default_explain_prompt(name).or_else(|| match name {
-        "tidy_constraints.md" => Some(include_str!("../../default_prompts/tidy_constraints.md")),
+    match name {
         "code_constraints.md" => Some(include_str!("../../default_prompts/code_constraints.md")),
         "init_constraints.md" => Some(include_str!("../../default_prompts/init_constraints.md")),
-        "delight_constraints.md" => Some(include_str!("../../default_prompts/delight_constraints.md")),
         "mini_constraints.md" => Some(include_str!("../../default_prompts/mini_constraints.md")),
         _ => None,
-    })
+    }
 }
 
 fn default_mbc2_prompt(name: &str) -> Option<&'static str> {
@@ -33,14 +22,7 @@ fn default_mbc2_prompt(name: &str) -> Option<&'static str> {
 fn default_kpop_prompt(name: &str) -> Option<&'static str> {
     default_mbc2_prompt(name).or_else(|| match name {
         "kpop.md" | "kpop_common.md" => Some(include_str!("../../default_prompts/kpop_common.md")),
-        "explain_kpop_common.md" => {
-            Some(include_str!("../../default_prompts/explain_kpop_common.md"))
-        }
-        "explain_kpop_turn.md" => Some(include_str!("../../default_prompts/explain_kpop_turn.md")),
         "kpop_program.md" => Some(include_str!("../../default_prompts/kpop_program.md")),
-        "kpop_program_creative.md" => {
-            Some(include_str!("../../default_prompts/kpop_program_creative.md"))
-        }
         "kpop_summarize.md" => Some(include_str!("../../default_prompts/kpop_summarize.md")),
         "kpop_block.md" => Some(include_str!("../../default_prompts/kpop_block.md")),
         _ => None,
@@ -69,6 +51,7 @@ pub fn default_file(name: &str) -> Option<&'static str> {
         .or_else(|| match name {
             HEADER_MD => Some(include_str!("../../default_prompts/header.md")),
             DO_HEADER_MD => Some(include_str!("../../default_prompts/do_header.md")),
+            EXPLAIN_WRAPPER_MD => Some(include_str!("../../default_prompts/explain_wrapper.md")),
             _ => None,
         })
 }
@@ -85,12 +68,9 @@ mod tests {
     }
 
     #[test]
-    fn default_constraints_prompt_embeds_code_and_tidy() {
-        assert!(default_constraints_prompt("tidy_constraints.md").is_some());
+    fn default_constraints_prompt_embeds_code_and_init() {
         assert!(default_constraints_prompt("code_constraints.md").is_some());
         assert!(default_constraints_prompt("init_constraints.md").is_some());
-        assert!(default_constraints_prompt("delight_constraints.md").is_some());
-        assert!(default_constraints_prompt("explain_constraints.md").is_some());
         assert!(default_constraints_prompt("missing.md").is_none());
         assert!(default_kpop_prompt("mbc2.md").is_some());
         assert!(default_kpop_prompt("missing.md").is_none());

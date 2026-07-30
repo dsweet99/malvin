@@ -12,25 +12,18 @@ pub const ROUTER_KPOP_GROUP_MD: &str = "router_kpop_group.md";
 pub const ROUTER_WORK_MD: &str = "router_work.md";
 pub const ROUTER_CODE_EXTRA_MD: &str = "router_code_extra.md";
 pub const ROUTER_SUMMARIZE_MD: &str = "router_summarize.md";
+pub const EXPLAIN_WRAPPER_MD: &str = "explain_wrapper.md";
 
 pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD, "kpop_program.md"];
 
 pub const DEFAULT_PROMPTS: &[&str] = &[
     "kpop_common.md",
     "kpop_block.md",
-    "explain_kpop_common.md",
-    "explain_kpop_turn.md",
     "mbc2.md",
     "kpop_program.md",
-    "kpop_program_creative.md",
     "kpop_summarize.md",
-    "tidy_constraints.md",
     "code_constraints.md",
     "init_constraints.md",
-    "delight_constraints.md",
-    "explain_constraints.md",
-    "explain_plan.md",
-    "explain_work.md",
     "mini_constraints.md",
     HEADER_MD,
     DO_HEADER_MD,
@@ -39,6 +32,7 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     ROUTER_WORK_MD,
     ROUTER_CODE_EXTRA_MD,
     ROUTER_SUMMARIZE_MD,
+    EXPLAIN_WRAPPER_MD,
 ];
 
 #[cfg(test)]

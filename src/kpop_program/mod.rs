@@ -1,4 +1,4 @@
-//! **`KPopProgram`** — assembles `kpop_program.md` / `kpop_program_creative.md` from soft constraints.
+//! **`KPopProgram`** — assembles `kpop_program.md` from soft constraints.
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -11,8 +11,6 @@ struct RenderRepoProgram<'a> {
     constraints_prompt: &'a str,
     constraints_context: &'a HashMap<String, String>,
     artifacts: &'a RunArtifacts,
-    program_prompt: &'a str,
-    include_quality_gates: bool,
 }
 
 pub(crate) fn render_repo_program(
@@ -26,25 +24,6 @@ pub(crate) fn render_repo_program(
         constraints_prompt,
         constraints_context,
         artifacts,
-        program_prompt: "kpop_program.md",
-        include_quality_gates: true,
-    })
-}
-
-#[cfg(test)]
-pub(crate) fn render_creative_program(
-    store: &PromptStore,
-    constraints_prompt: &str,
-    constraints_context: &HashMap<String, String>,
-    artifacts: &RunArtifacts,
-) -> Result<String, String> {
-    render_program_with_template(RenderRepoProgram {
-        store,
-        constraints_prompt,
-        constraints_context,
-        artifacts,
-        program_prompt: "kpop_program_creative.md",
-        include_quality_gates: false,
     })
 }
 
@@ -53,21 +32,14 @@ fn render_program_with_template(input: RenderRepoProgram<'_>) -> Result<String, 
         .store
         .render_prompt_only(input.constraints_prompt, input.constraints_context)
         .map_err(|e: PromptError| e.0)?;
-    let context = if input.include_quality_gates {
-        kpop_program_context(
-            input.artifacts.work_dir.as_path(),
-            &scope_constraints,
-            input.artifacts,
-        )?
-    } else {
-        kpop_program_context_without_quality_gates(
-            &scope_constraints,
-            input.artifacts,
-        )
-    };
+    let context = kpop_program_context(
+        input.artifacts.work_dir.as_path(),
+        &scope_constraints,
+        input.artifacts,
+    )?;
     input
         .store
-        .render_prompt_only(input.program_prompt, &context)
+        .render_prompt_only("kpop_program.md", &context)
         .map(|s| s.trim().to_string())
         .map_err(|e: PromptError| e.0)
 }
@@ -84,13 +56,6 @@ pub(crate) fn kpop_program_context(
         artifacts,
         quality_gates,
     ))
-}
-
-fn kpop_program_context_without_quality_gates(
-    scope_constraints: &str,
-    artifacts: &RunArtifacts,
-) -> HashMap<String, String> {
-    kpop_program_context_with_quality_gates(scope_constraints, artifacts, String::new())
 }
 
 fn kpop_program_context_with_quality_gates(

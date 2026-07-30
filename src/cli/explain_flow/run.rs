@@ -19,7 +19,7 @@ pub async fn run_explain(
     let tex_display = path_relative_to_cwd(&outputs.tex_path)?;
     let pdf_display = path_relative_to_cwd(&outputs.pdf_path)?;
     explain.out_path = tex_display.clone();
-    let request = compose_explain_router_request(&request_text, &tex_display, &pdf_display);
+    let request = compose_explain_router_request(&request_text, &tex_display, &pdf_display)?;
     run_router(
         RouterArgs {
             request: Some(request),

@@ -1,8 +1,10 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use crate::artifacts::resolve_user_md_request;
 use crate::cli::cli_request::require_cli_request;
 use crate::cli::default_output_path::allocate_default_tex_pdf_pair;
+use crate::prompts::{EXPLAIN_WRAPPER_MD, PromptError, PromptStore};
 
 pub(crate) const EXPLAIN_TEX_BASENAME: &str = "explain.tex";
 pub(crate) const EXPLAIN_PDF_BASENAME: &str = "explain.pdf";
@@ -60,17 +62,15 @@ pub(crate) fn compose_explain_router_request(
     request_text: &str,
     tex_display: &str,
     pdf_display: &str,
-) -> String {
-    format!(
-        "Explain the following topic in a short technical LaTeX paper for an intelligent nonspecialist.\n\
-         Write LaTeX source to `{tex_display}` and compile a PDF to `{pdf_display}` (both non-empty).\n\
-         Prefer plain English; introduce field terms at first use. Back claims with evidence or citation; label hypotheses.\n\
-         Assume the reader will not read underlying source code; explain the algorithms, mathematics, or design ideas.\n\
-         Do not overwrite unrelated workspace files.\n\
-         \n\
-         User request:\n\n\
-         {request_text}\n"
-    )
+) -> Result<String, String> {
+    let ctx = HashMap::from([
+        ("tex_display".to_string(), tex_display.to_string()),
+        ("pdf_display".to_string(), pdf_display.to_string()),
+        ("request_text".to_string(), request_text.to_string()),
+    ]);
+    PromptStore::default_store()
+        .render_prompt_only(EXPLAIN_WRAPPER_MD, &ctx)
+        .map_err(|e: PromptError| e.0)
 }
 
 pub(crate) fn explain_preflight(
@@ -112,7 +112,18 @@ mod tests {
 
     #[test]
     fn compose_embeds_user_request_and_out_paths() {
-        let body = compose_explain_router_request("how gates exit", "explain.tex", "explain.pdf");
+        let body = compose_explain_router_request("how gates exit", "explain.tex", "explain.pdf")
+            .expect("compose explain request");
+        let expected = "Explain the following topic in a short technical LaTeX paper for an intelligent nonspecialist.\n\
+Write LaTeX source to `explain.tex` and compile a PDF to `explain.pdf` (both non-empty).\n\
+Prefer plain English; introduce field terms at first use. Back claims with evidence or citation; label hypotheses.\n\
+Assume the reader will not read underlying source code; explain the algorithms, mathematics, or design ideas.\n\
+Do not overwrite unrelated workspace files.\n\
+\n\
+User request:\n\
+\n\
+how gates exit\n";
+        assert_eq!(body, expected);
         assert!(body.contains("User request:"));
         assert!(body.contains("how gates exit"));
         assert!(body.contains("`explain.tex`"));
