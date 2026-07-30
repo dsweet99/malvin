@@ -21,7 +21,7 @@ fn over_count_cap_at_limit_does_not_prune() {
         max_bytes: None,
     };
     assert!(!over_count_cap(runs.len(), config.max_count));
-    let (removed, _) = prune_run_dirs(&mut runs, &config);
+    let (removed, _) = prune_run_dirs(&mut runs, &config, None);
     assert_eq!(removed, 0);
     assert_eq!(runs.len(), 3);
 }
@@ -40,7 +40,7 @@ fn prune_removes_oldest_when_over_count_cap() {
         max_age_days: 0,
         max_bytes: None,
     };
-    let (removed, _) = prune_run_dirs(&mut runs, &config);
+    let (removed, _) = prune_run_dirs(&mut runs, &config, None);
     assert_eq!(removed, 1);
     assert!(!logs.join(RUN_OLDEST).exists());
 }
@@ -60,7 +60,7 @@ fn max_count_zero_means_unlimited_count() {
         max_bytes: None,
     };
     assert!(!over_count_cap(runs.len(), config.max_count));
-    let (removed, _) = prune_run_dirs(&mut runs, &config);
+    let (removed, _) = prune_run_dirs(&mut runs, &config, None);
     assert_eq!(removed, 0);
 }
 
@@ -78,7 +78,7 @@ fn size_total_matches_direct_dir_size_after_deletes() {
         max_age_days: 0,
         max_bytes: Some(500),
     };
-    let (removed, _) = prune_run_dirs(&mut runs, &config);
+    let (removed, _) = prune_run_dirs(&mut runs, &config, None);
     assert_eq!(removed, 1);
     assert!(runs.is_empty());
 }

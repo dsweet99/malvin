@@ -111,7 +111,7 @@ fn prune_keeps_dated_run_when_arbitrary_subdir_would_sort_newer() {
     std::fs::create_dir_all(logs.join(RUN_NEWEST)).expect("run dir");
     let mut runs = list_run_dirs(&logs);
     runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
-    prune_run_dirs(&mut runs, &config_no_count_cap());
+    prune_run_dirs(&mut runs, &config_no_count_cap(), None);
     assert!(
         logs.join(RUN_NEWEST).is_dir(),
         "GC must not remove dated run dirs in favor of arbitrary log subdirs"
@@ -126,7 +126,7 @@ fn prune_leaves_non_run_log_subdirs_untouched() {
     std::fs::create_dir_all(logs.join("hand_notes")).expect("mkdir");
     let mut runs = list_run_dirs(&logs);
     runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
-    prune_run_dirs(&mut runs, &config_no_count_cap());
+    prune_run_dirs(&mut runs, &config_no_count_cap(), None);
     assert!(logs.join("hand_notes").is_dir());
 }
 
@@ -143,7 +143,7 @@ fn prune_removes_run_dir_when_over_age_limit() {
         max_age_days: 30,
         max_bytes: None,
     };
-    let (removed, _) = prune_run_dirs(&mut runs, &config);
+    let (removed, _) = prune_run_dirs(&mut runs, &config, None);
     assert_eq!(removed, 1);
     assert!(!old.exists());
 }
@@ -171,7 +171,7 @@ fn prune_removes_oldest_when_over_byte_cap() {
         max_age_days: 0,
         max_bytes: Some(3000),
     };
-    let (removed, _) = prune_run_dirs(&mut runs, &config);
+    let (removed, _) = prune_run_dirs(&mut runs, &config, None);
     assert_eq!(removed, 1);
     assert!(!old.exists());
     assert!(new.is_dir());
@@ -206,7 +206,7 @@ fn prune_retries_or_reports_when_delete_fails_and_limits_still_exceeded() {
         max_age_days: 0,
         max_bytes: Some(1000),
     };
-    let (removed, _) = prune_run_dirs(&mut runs, &config);
+    let (removed, _) = prune_run_dirs(&mut runs, &config, None);
 
     std::fs::set_permissions(&oldest, std::fs::Permissions::from_mode(0o700)).expect("restore");
     assert_eq!(

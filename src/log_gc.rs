@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use chrono::{DateTime, NaiveDateTime, Utc};
 
 use crate::output::{MALVIN_WHO, print_log_warning, print_stdout_line};
-use crate::workspace_paths::malvin_logs_root;
+use crate::workspace_paths::{malvin_home_logs_root, malvin_logs_root};
 
 pub use crate::log_gc_config::load_logs_gc_config;
 
@@ -11,6 +11,8 @@ pub use crate::log_gc_config::load_logs_gc_config;
 mod log_gc_format;
 #[path = "log_gc_prune.rs"]
 mod log_gc_prune;
+#[path = "log_gc_buckets.rs"]
+mod log_gc_buckets;
 
 pub(crate) use log_gc_format::format_freed;
 
@@ -70,16 +72,20 @@ pub(crate) fn dir_size_inner(path: &Path) -> std::io::Result<u64> {
 
 fn prune_logs(work_dir: &Path) -> PruneResult {
     let config = load_logs_gc_config(work_dir);
-    let logs_root = malvin_logs_root(work_dir);
-    if !logs_root.is_dir() {
+    let home_logs = malvin_home_logs_root();
+    if !home_logs.is_dir() {
         return PruneResult {
             removed: 0,
             freed: 0,
         };
     }
-    let mut run_dirs = list_run_dirs(&logs_root);
-    run_dirs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
-    let (removed, freed) = log_gc_prune::prune_run_dirs(&mut run_dirs, &config);
+    let keep_bucket = malvin_logs_root(work_dir);
+    let (removed, freed) = log_gc_buckets::prune_all_log_buckets(
+        &home_logs,
+        &config,
+        None,
+        Some(keep_bucket.as_path()),
+    );
     PruneResult { removed, freed }
 }
 
@@ -129,3 +135,7 @@ mod log_gc_tests;
 #[cfg(test)]
 #[path = "log_gc_v1_tests.rs"]
 mod log_gc_v1_tests;
+
+#[cfg(test)]
+#[path = "log_gc_cross_tests.rs"]
+mod log_gc_cross_tests;

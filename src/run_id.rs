@@ -10,8 +10,25 @@ pub struct RunDirOptions {
 
 impl Default for RunDirOptions {
     fn default() -> Self {
-        Self { gc: true }
+        // Cross-workspace GC walks every hash under `~/.malvin_home/logs`. Unit tests
+        // (`cfg!(test)`) and integration/nextest binaries (`target/*/deps/…`) often use
+        // the real home without isolation; that walk can exceed the 1.5s per-test budget.
+        // Production `malvin` binaries are not under `deps/`, so they keep GC on.
+        Self {
+            gc: default_gc_enabled(),
+        }
     }
+}
+
+fn default_gc_enabled() -> bool {
+    if cfg!(test) {
+        return false;
+    }
+    let Ok(exe) = std::env::current_exe() else {
+        return true;
+    };
+    let path = exe.to_string_lossy();
+    !(path.contains("/deps/") || path.contains("\\deps\\"))
 }
 
 /// Creates `~/.malvin_home/logs/<hash>/<timestamp>_<id>/` for `base_dir` (or the current directory).
@@ -95,5 +112,14 @@ mod collision_tests {
         assert!(!id.is_empty());
         let dir = create_run_dir(Some(tmp.path()), RunDirOptions::default()).unwrap();
         assert!(dir.is_dir());
+    }
+
+    #[test]
+    fn default_run_dir_options_disable_gc_under_cfg_test() {
+        assert!(
+            !RunDirOptions::default().gc,
+            "lib unit tests must not walk the real home logs tree by default"
+        );
+        assert!(!default_gc_enabled());
     }
 }

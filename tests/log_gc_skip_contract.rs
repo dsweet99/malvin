@@ -68,8 +68,15 @@ fn malvin_code_artifacts_creation_prunes_preexisting_log_dirs() {
     write_gc_config_age_only(&home);
     let old = seed_old_run(&workspace, &home);
 
-    malvin::artifacts::create_kpop_run_artifacts("code", Some(&workspace))
-        .expect("create code run artifacts");
+    // Integration binaries live under `target/*/deps/`, so `RunDirOptions::default()`
+    // disables GC to avoid walking a large real home. Opt in explicitly under the
+    // isolated test home to assert production prune behavior.
+    malvin::artifacts::create_kpop_run_artifacts_opts(
+        "code",
+        Some(&workspace),
+        malvin::RunDirOptions { gc: true },
+    )
+    .expect("create code run artifacts");
 
     assert!(!old.exists(), "code run dir creation must GC aged seeded run dir");
 }

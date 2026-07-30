@@ -1,4 +1,4 @@
-use super::create_run_artifacts_from_text;
+use super::create_run_artifacts_from_text_opts;
 
 fn seed_home_logs_for_gc_test(work_dir: &std::path::Path) -> std::path::PathBuf {
     let logs = crate::malvin_logs_root(work_dir);
@@ -27,7 +27,12 @@ fn seed_home_logs_for_gc_test(work_dir: &std::path::Path) -> std::path::PathBuf 
 fn create_run_artifacts_from_text_prunes_old_runs_before_new_dir() {
     crate::test_utils::with_isolated_home(|work| {
         let logs = seed_home_logs_for_gc_test(work);
-        let art = create_run_artifacts_from_text("prompt", Some(work)).unwrap();
+        let art = create_run_artifacts_from_text_opts(
+            "prompt",
+            Some(work),
+            crate::run_id::RunDirOptions { gc: true },
+        )
+        .unwrap();
         assert!(!logs.join("20260101_000000_aaaaaaa1").exists());
         assert!(logs.join("20260102_000000_bbbbbbb2").exists());
         assert!(logs.join("20260103_000000_ccccccc3").exists());

@@ -6,17 +6,28 @@ use super::{dir_size, run_dir_timestamp};
 use crate::log_gc_config::LogsGcConfig;
 use crate::output::print_log_warning;
 
-pub(crate) fn prune_run_dirs(run_dirs: &mut Vec<PathBuf>, config: &LogsGcConfig) -> (usize, u64) {
+pub(crate) fn prune_run_dirs(
+    run_dirs: &mut Vec<PathBuf>,
+    config: &LogsGcConfig,
+    protect: Option<&Path>,
+) -> (usize, u64) {
     if run_dirs.is_empty() {
+        return (0, 0);
+    }
+    let count_or_age = over_count_cap(run_dirs.len(), config.max_count)
+        || over_age_limit(run_dirs.last(), config.max_age_days);
+    if !count_or_age && config.max_bytes.is_none() {
         return (0, 0);
     }
     let mut sizes: Vec<u64> = run_dirs.iter().map(|p| dir_size(p)).collect();
     let mut total_bytes: u64 = sizes.iter().copied().sum();
+    if !count_or_age && !over_byte_cap(total_bytes, config.max_bytes) {
+        return (0, 0);
+    }
     let mut removed = 0usize;
     let mut freed = 0u64;
-
     while needs_prune(run_dirs, total_bytes, config) {
-        match remove_oldest_run(run_dirs, &mut sizes, &mut total_bytes) {
+        match remove_oldest_run(run_dirs, &mut sizes, &mut total_bytes, protect) {
             Some(size) => {
                 removed += 1;
                 freed = freed.saturating_add(size);
@@ -79,11 +90,15 @@ fn remove_oldest_run(
     run_dirs: &mut Vec<PathBuf>,
     sizes: &mut Vec<u64>,
     total_bytes: &mut u64,
+    protect: Option<&Path>,
 ) -> Option<u64> {
     let mut idx = run_dirs.len();
     while idx > 0 {
         idx -= 1;
         let path = run_dirs[idx].clone();
+        if protect.is_some_and(|p| p == path.as_path()) {
+            continue;
+        }
         let size = sizes[idx];
         match std::fs::remove_dir_all(&path) {
             Ok(()) => {
