@@ -1,3 +1,5 @@
+[NB: The user request may override any of the direction given between here and the user request, below.]
+
 Write a short technical LaTeX paper for an intelligent nonspecialist on the topic below. Imagine you are teaching a college sophomore.
 
 Put the LaTeX source in `{{ tex_display }}` and a compiled PDF in `{{ pdf_display }}`. Both files must be non-empty.
@@ -8,6 +10,7 @@ Write in complete sentences throughout the paper, including the abstract, sectio
 If the writing is related to coding, assume that the reader will not read the underlying source code. Explain the algorithms, mathematics, or design ideas in plain English. Introduce field terms at first use. Use vocabulary natural to the topic’s field. Do not use process jargon, checklist words, or review slang. Consider using an algobox for (minimal) pseudocode.
 
 When you write the files, use a lowecase, snakecase filename derived from your paper's title. Keep the snakecase title five words or fewer, but shorter is generally better.
+
 
 # How good papers sound
 
