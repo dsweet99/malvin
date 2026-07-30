@@ -5,7 +5,9 @@ Do not overwrite unrelated workspace files.
 
 Write in complete sentences throughout the paper, including the abstract, section openings, and captions. Do not pack several ideas into one colon-led comma chain when separate sentences or a short list would be clearer.
 
-If the writing is related to coding, assume that the reader will not read the underlying source code. Explain the algorithms, mathematics, or design ideas in plain English. Introduce field terms at first use. Use vocabulary natural to the topic’s field. Do not use process jargon, checklist words, or review slang.
+If the writing is related to coding, assume that the reader will not read the underlying source code. Explain the algorithms, mathematics, or design ideas in plain English. Introduce field terms at first use. Use vocabulary natural to the topic’s field. Do not use process jargon, checklist words, or review slang. Consider using an algobox for (minimal) pseudocode.
+
+When you write the files, use a lowecase, snakecase filename derived from your paper's title. Keep the snakecase title five words or fewer, but shorter is generally better.
 
 # How good papers sound
 
