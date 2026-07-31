@@ -8,10 +8,10 @@ Generate grouped review requirements for the user request at `{{ user_request_pa
 - Each group must have between **1** and **3** requirements (inclusive). Use fewer when that is enough. A group with 4 or more requirements is invalid and fails the run—split into another group (within the group limit) or merge points into fewer requirement strings.
 - Where the user specifies something precisely, follow them precisely.
 - Where there is ambiguity, resolve it with
-  1. User request (trumps all)
+  1. User request. First restate ambiguous text clearly.
   2. Immediately available evidence
   3. Prior domain knowledge, either that you already possess or that you acquire through appropriate research.
-  4. Inference or "best guess" based on the above 3 items.
+  4. Inference or pattern-following based on the above 3 items.
 - Requirement strings must be non-empty after trimming.
 - Optional short `title` per group; omit or use `""` when a label adds nothing.
 
