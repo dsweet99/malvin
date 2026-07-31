@@ -31,7 +31,7 @@ def default_reward_out() -> Path:
     return Path(__file__).resolve().parent / "reward.txt"
 
 
-EXPECTED_START_SHA = "1aaaaaf0e5078b0455c4c9521f180f86d7b96f50ba1931388481b681651871e0"
+EXPECTED_START_SHA = "e1cc0aeece80f39bb213d3b2d67ef0f569c2c5a9e8d6f3780c6c4206d0c9f331"
 
 
 def _evaluate_mutable(workspace: Path) -> int:

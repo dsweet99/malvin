@@ -85,6 +85,7 @@ with open(path, newline="") as f:
 
 def _oracle_fix(workspace: Path) -> None:
     p = workspace / "bin" / "csvcut"
+    p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(ORACLE, encoding="utf-8")
     p.chmod(0o755)
 
