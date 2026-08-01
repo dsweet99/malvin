@@ -1,10 +1,11 @@
 mod backend;
 mod backend_ops;
+mod backend_kpop_ops;
 mod factory;
-mod kpop_bridge;
-pub mod mini;
+pub(crate) mod mini_gate_retry;
+pub(crate) mod mini_gate_retry_attempt;
 #[cfg(test)]
-mod test_support;
+pub(crate) mod test_support;
 
 #[cfg(test)]
 #[path = "backend_tests.rs"]
@@ -30,3 +31,4 @@ pub use backend_ops::{
     agent_backend_set_implement_display_name, agent_backend_set_run_timing, agent_backend_timing,
 };
 pub use factory::{build_agent_backend, build_agent_backend_with_tee};
+

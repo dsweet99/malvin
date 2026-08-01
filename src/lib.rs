@@ -33,7 +33,6 @@
     clippy::single_match,
     clippy::needless_pass_by_ref_mut
 )]
-
 mod log_gc;
 mod log_gc_config;
 mod malvin_config_file;
@@ -42,8 +41,14 @@ pub use workflow_name_aliases::{
     canonical_workflow_name, resolve_session_log_path, resolve_workspace_malvin_config_path,
     WORKSPACE_CONFIG_PATHS,
 };
-/// OpenRouter HTTP transport formerly published as the `malvin-mini` crate.
-pub mod malvin_mini;
+/// OpenRouter HTTP transport (revamp-2 component).
+pub mod openrouter_transport;
+/// Shared LLM transport interface and neutral completion types.
+pub mod llm_transport;
+/// In-process malvin-mini agent (revamp-2 component).
+pub mod mini_agent;
+/// Agent interface (malvin → Mini or cursor-agent).
+pub mod agent;
 /// In-process llama.cpp backend formerly the `malvin-llama` workspace crate.
 pub mod malvin_llama;
 mod gate_loop_session;
@@ -191,48 +196,34 @@ pub mod repo_gates;
 pub mod review_sync;
 pub mod run_timing;
 pub mod stdout_log_path;
-
 pub mod acp_post_run {
     pub use crate::run_timing::acp_post_run::*;
 }
-
 #[path = "cli/repo_checks/mod.rs"]
 pub mod repo_checks;
-
 #[path = "cli/source_detect.rs"]
 pub mod source_detect;
-
 #[cfg(test)]
 #[path = "cli/source_detect_kiss_cov_tests.rs"]
 mod source_detect_kiss_cov_tests;
-
-
 #[path = "cli/do_flow.rs"]
 pub mod do_flow;
-
 #[path = "cli/inspire_flow.rs"]
 pub mod inspire_flow;
-
 #[path = "cli/router_flow.rs"]
 pub mod router_flow;
-
 pub mod kpop_engine;
-
 #[path = "cli/mod.rs"]
 pub mod cli;
-
 #[cfg(test)]
 #[path = "lib_test_modules.rs"]
 mod lib_test_modules;
-
 #[cfg(test)]
 #[path = "acp/test_unix_bin.rs"]
 pub mod acp_test_unix_bin;
-
 #[cfg(test)]
 #[path = "acp_session_tests/mod.rs"]
 pub(crate) mod acp_session_unit_tests;
-
 #[cfg(test)] mod acp_tests;
 #[cfg(test)] #[path = "acp_transport_tests/mod.rs"] mod acp_transport_tests;
 #[cfg(test)] mod coverage_kiss;

@@ -6,8 +6,8 @@ use crate::malvin_llama::{
     complete as llama_complete, load_engine_with_context_size, ChatTurn, CompleteRequest,
     LocalEngine,
 };
-use crate::malvin_mini::{
-    ChatMessage, ChatRole, CompletionResponse, HttpExchangeMeta, OpenRouterError,
+use crate::llm_transport::{
+    ChatMessage, ChatRole, CompletionResponse, HttpExchangeMeta, TransportError,
 };
 
 use super::download::{ensure_model_cached, DownloadPolicy};
@@ -30,7 +30,7 @@ impl LocalCompletionEngine {
         &self,
         messages: &[ChatMessage],
     ) -> (
-        Result<CompletionResponse, OpenRouterError>,
+        Result<CompletionResponse, TransportError>,
         HttpExchangeMeta,
     ) {
         let turns = messages_to_turns(messages);
@@ -54,7 +54,7 @@ impl LocalCompletionEngine {
 pub(super) fn map_complete_result(
     result: Result<String, String>,
 ) -> (
-    Result<CompletionResponse, OpenRouterError>,
+    Result<CompletionResponse, TransportError>,
     HttpExchangeMeta,
 ) {
     match result {
@@ -70,10 +70,7 @@ pub(super) fn map_complete_result(
             },
         ),
         Err(e) => (
-            Err(OpenRouterError::RequestFailed {
-                status: 500,
-                body: e,
-            }),
+            Err(TransportError::Engine(e)),
             HttpExchangeMeta {
                 status: Some(500),
                 body: None,

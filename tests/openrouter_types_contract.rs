@@ -1,6 +1,6 @@
 //! Contract: `OpenRouter` types remain usable after `malvin-mini` was folded into `malvin`.
 
-use malvin::malvin_mini::{ChatMessage, ChatRole, CompletionResponse, ResponseUsage};
+use malvin::openrouter_transport::{ChatMessage, ChatRole, CompletionResponse, ResponseUsage};
 
 #[test]
 fn openrouter_types_roundtrip() {

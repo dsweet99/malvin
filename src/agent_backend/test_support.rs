@@ -2,17 +2,17 @@
 
 use std::path::PathBuf;
 
-use crate::agent_backend::mini::{
+use crate::mini_agent::{
     LlmBackend, LoopDriverConfig, LoopDriverSession, MiniLoopConfig, MiniRetryStrategy,
     MiniTraceSink, MockScript, MockStep,
 };
 use crate::cli::SharedOpts;
-use crate::malvin_mini::CompletionResponse;
+use crate::openrouter_transport::CompletionResponse;
 
 #[must_use]
 pub fn mini_done_response() -> CompletionResponse {
     CompletionResponse {
-        content: crate::malvin_mini::format_wire_turn("- done", "MINI_DONE"),
+        content: crate::mini_agent::protocol::format_wire_turn("- done", "MINI_DONE"),
         usage: None,
         reasoning: None,
     }
@@ -22,7 +22,7 @@ pub fn mini_done_response() -> CompletionResponse {
 pub fn completion(content: impl Into<String>) -> CompletionResponse {
     let body = content.into();
     CompletionResponse {
-        content: crate::malvin_mini::format_wire_turn("- progress", &body),
+        content: crate::mini_agent::protocol::format_wire_turn("- progress", &body),
         usage: None,
         reasoning: None,
     }
@@ -32,7 +32,7 @@ pub fn completion(content: impl Into<String>) -> CompletionResponse {
 #[must_use]
 pub fn wire_response(response: &str) -> CompletionResponse {
     CompletionResponse {
-        content: crate::malvin_mini::format_wire_turn("- progress", response),
+        content: crate::mini_agent::protocol::format_wire_turn("- progress", response),
         usage: None,
         reasoning: None,
     }
@@ -72,7 +72,7 @@ pub fn loop_driver_config(max_http_turns: u32, max_http_retries: u32) -> LoopDri
         max_http_retries,
         max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
         max_shrink_passes: 0,
-        mini_constraints: "constraints",
+        mini_constraints: "constraints".into(),
         expects_investigation: false,
     }
 }
@@ -104,6 +104,7 @@ pub fn mini_loop_config(max_http_turns: u32, max_http_retries: u32) -> MiniLoopC
         retry_strategy: MiniRetryStrategy::CumulativeTranscript,
         expects_investigation: false,
         allow_download: true,
+        mini_constraints: "constraints".into(),
     }
 }
 

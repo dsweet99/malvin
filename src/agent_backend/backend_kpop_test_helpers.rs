@@ -3,9 +3,9 @@
 use std::sync::Mutex;
 
 use super::backend::AgentBackend;
-use super::mini::{LlmBackend, MiniAgentClient, MockScript, MockStep};
+use crate::mini_agent::{LlmBackend, MiniAgentClient, MockScript, MockStep};
 use super::test_support::{mini_done_response, mini_loop_config, test_io};
-use crate::malvin_mini::CompletionResponse;
+use crate::openrouter_transport::CompletionResponse;
 
 pub(crate) fn mock_backend(responses: Vec<MockStep>, max_http_retries: u32) -> AgentBackend {
     AgentBackend::Mini(MiniAgentClient::new_mock(

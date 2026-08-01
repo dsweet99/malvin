@@ -9,7 +9,8 @@ fn kiss_cov_kpop_progression_counter_wrappers() {
 }
 
 #[test]
-fn kiss_cov_kpop_bridge_prompt() {
+fn kiss_cov_agent_backend_kpop_ops() {
+    let _ = crate::agent_backend::agent_backend_run_kpop_flow;
     let _ = crate::agent_backend::agent_backend_run_kpop_multiturn;
 }
 

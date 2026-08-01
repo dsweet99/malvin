@@ -203,7 +203,7 @@ fn write_json_and_print_summary_creates_file() {
 #[test]
 fn run_timing_json_includes_cost_block_under_mini() {
     use crate::run_timing::{RunTiming, TimingPhase};
-    use crate::malvin_mini::ResponseUsage;
+    use crate::openrouter_transport::ResponseUsage;
 
     let mut r = RunTiming::default();
     r.record_mini_http_cost(&ResponseUsage {
@@ -231,7 +231,7 @@ fn no_cost_line_when_no_cost_data() {
 fn cost_fields_on_separate_stdout_line_not_timing_line() {
     use super::report_cost_line::format_cost_stdout_line_from_json;
     use crate::run_timing::RunTiming;
-    use crate::malvin_mini::ResponseUsage;
+    use crate::openrouter_transport::ResponseUsage;
 
     let mut r = RunTiming::default();
     r.record_mini_http_cost(&ResponseUsage {

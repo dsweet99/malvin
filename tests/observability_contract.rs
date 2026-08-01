@@ -11,11 +11,11 @@ use common::observability_parity::{
     assert_audit_contains, assert_stdout_lacks_substring, assert_stdout_tool_vocab,
     trace_contains_substring,
 };
-use malvin::agent_backend::mini::{
+use malvin::mini_agent::{
     record_http_exchange, run_inner_loop, LoopDriverConfig, LoopDriverRun,     MiniHttpExchangeRecord, MiniTerminalReason, MiniTraceSink, MockStep,
 };
 use malvin::observability::audit_only_session_update_fields;
-use malvin::malvin_mini::CompletionResponse;
+use malvin::openrouter_transport::CompletionResponse;
 
 #[test]
 fn contract_plain_lines_bash_fence_audit_only_on_stdout() {
@@ -63,7 +63,7 @@ async fn contract_mini_terminal_in_trace_not_stdout() {
     let mut session = parity_session(tmp.path());
     let out = run_inner_loop(LoopDriverRun {
         llm: &mock_llm(vec![MockStep::Ok(CompletionResponse {
-            content: malvin::malvin_mini::format_wire_turn("- progress", "done without fence"),
+            content: malvin::mini_agent::protocol::format_wire_turn("- progress", "done without fence"),
             usage: None,
             reasoning: None,
         })]),
@@ -75,7 +75,7 @@ async fn contract_mini_terminal_in_trace_not_stdout() {
             max_http_retries: 1,
             max_transport_retries: 3,
             max_shrink_passes: 0,
-            mini_constraints: "c",
+            mini_constraints: "c".into(),
             expects_investigation: false,
         },
         trace: &trace,
@@ -83,7 +83,7 @@ async fn contract_mini_terminal_in_trace_not_stdout() {
         llm_phase: None,
         single_attempt: true,
         gate_attempt: 1,
-        retry_strategy: malvin::agent_backend::mini::MiniRetryStrategy::CumulativeTranscript,
+        retry_strategy: malvin::mini_agent::MiniRetryStrategy::CumulativeTranscript,
     })
     .await
     .expect("loop");

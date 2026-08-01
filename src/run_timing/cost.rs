@@ -1,4 +1,4 @@
-use crate::malvin_mini::ResponseUsage;
+use crate::openrouter_transport::ResponseUsage;
 
 use super::RunTiming;
 

@@ -24,7 +24,7 @@ fn stdout_and_phase_test_locks() -> (
 }
 
 fn seed_run_timing_json(run_dir: &std::path::Path) {
-    use crate::malvin_mini::ResponseUsage;
+    use crate::openrouter_transport::ResponseUsage;
 
     let timing = RunTiming::new_arc();
     {

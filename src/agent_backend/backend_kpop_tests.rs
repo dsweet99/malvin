@@ -8,7 +8,7 @@ use super::{
     agent_backend_attach_run_timing_for_session, agent_backend_run_kpop_flow,
     agent_backend_run_kpop_multiturn,
 };
-use super::mini::MockStep;
+use crate::mini_agent::MockStep;
 use crate::acp::{AgentKpopMultiturnCtl, KpopFlowOnceArgs};
 
 #[test]

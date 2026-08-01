@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use crate::acp::{AgentClient, AgentError, AuthError, CoderPromptOptions};
 
-use super::mini::MiniAgentClient;
+use crate::mini_agent::MiniAgentClient;
 
 #[allow(clippy::large_enum_variant)]
 pub enum AgentBackend {
@@ -75,14 +75,14 @@ impl AgentBackend {
     pub const fn prompts_log_run_dir(&self) -> Option<&PathBuf> {
         match self {
             Self::Acp(c) => c.prompts_log_run_dir.as_ref(),
-            Self::Mini(c) => c.prompts_log_run_dir.as_ref(),
+            Self::Mini(c) => c.trace_run_dir.as_ref(),
         }
     }
 
     pub fn set_prompts_log_run_dir(&mut self, dir: Option<PathBuf>) {
         match self {
             Self::Acp(c) => c.prompts_log_run_dir = dir,
-            Self::Mini(c) => c.prompts_log_run_dir = dir,
+            Self::Mini(c) => c.trace_run_dir = dir,
         }
     }
 }

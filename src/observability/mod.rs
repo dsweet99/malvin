@@ -16,7 +16,7 @@
 //! two-channel model above.
 //!
 //! **Where:** narrative emission lives in [`crate::output`]; mini audit emission in
-//! [`crate::agent_backend::mini::trace`] and [`crate::agent_backend::mini::acp_trace_shim`].
+//! [`crate::mini_agent::trace`] and [`crate::mini_agent::acp_trace_shim`].
 
 use crate::malvin_constants::{STDOUT_LOG, TRACE_JSONL};
 pub use crate::output::{WHO_B, WHO_H, WHO_M, WHO_O, WHO_T, WHO_U};

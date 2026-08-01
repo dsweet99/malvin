@@ -2,7 +2,7 @@ use crate::acp_post_run::merge_acp_restore_check_abort_then_print_timing;
 use crate::artifacts::RunArtifacts;
 use crate::output::{STDOUT_LOG_TEST_LOCK, set_stdout_log_path};
 use crate::run_timing::RunTiming;
-use crate::malvin_mini::ResponseUsage;
+use crate::openrouter_transport::ResponseUsage;
 use std::time::Instant;
 
 fn empty_artifacts(work: &tempfile::TempDir) -> (crate::artifacts::SessionDotfileBackups, RunArtifacts) {

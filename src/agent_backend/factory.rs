@@ -6,7 +6,7 @@ use crate::cli::{
 };
 
 use super::backend::AgentBackend;
-use super::mini::{MiniAgentClient, MiniLoopConfig, MiniRetryStrategy};
+use crate::mini_agent::{MiniAgentClient, MiniLoopConfig, MiniRetryStrategy};
 
 /// # Errors
 ///
@@ -85,6 +85,10 @@ fn new_mini_client(
     } else {
         shared.mini_max_shrink_passes
     };
+    let llm = build_mini_llm_backend(&shared.model, !shared.no_download)?;
+    let mini_constraints = crate::prompts::default_file("mini_constraints.md")
+        .unwrap_or("")
+        .to_string();
     MiniAgentClient::new(
         MiniLoopConfig {
             model: shared.model.clone(),
@@ -97,9 +101,31 @@ fn new_mini_client(
             retry_strategy: MiniRetryStrategy::CumulativeTranscript,
             expects_investigation: false,
             allow_download: !shared.no_download,
+            mini_constraints,
         },
         io,
+        llm,
     )
+}
+
+fn build_mini_llm_backend(model: &str, allow_download: bool) -> Result<crate::mini_agent::LlmBackend, String> {
+    use crate::mini_agent::LlmBackend;
+    if crate::model_id::uses_local_backend(model) {
+        let policy = if allow_download {
+            crate::local_llm::DownloadPolicy::Allow
+        } else {
+            crate::local_llm::DownloadPolicy::Deny
+        };
+        let engine = crate::local_llm::ensure_local_engine(model, policy)?;
+        Ok(LlmBackend::Local(engine))
+    } else {
+        let openrouter_config = crate::openrouter_transport::OpenRouterConfig::from_env(
+            crate::mini_agent::resolve_mini_model(model),
+        )?;
+        let client = crate::openrouter_transport::OpenRouterClient::new(openrouter_config)
+            .map_err(|e| format!("OpenRouter client init failed: {e}"))?;
+        Ok(LlmBackend::Http(client))
+    }
 }
 
 #[cfg(test)]
@@ -137,15 +163,31 @@ mod tests {
     }
 
     #[test]
-    fn malvin_crate_embeds_malvin_mini_module_not_path_dep() {
+    fn four_component_boundaries_are_in_tree_modules() {
         let text = std::fs::read_to_string("Cargo.toml").expect("Cargo.toml");
         assert!(
             !text.contains("malvin-mini ="),
             "malvin must not path-depend on a separate malvin-mini crate"
         );
         assert!(
-            std::path::Path::new("src/malvin_mini/mod.rs").is_file(),
-            "malvin-mini sources must live under src/malvin_mini"
+            std::path::Path::new("src/openrouter_transport/mod.rs").is_file(),
+            "OpenRouter transport must live under src/openrouter_transport"
+        );
+        assert!(
+            std::path::Path::new("src/llm_transport/mod.rs").is_file(),
+            "LlmTransport interface must live under src/llm_transport"
+        );
+        assert!(
+            std::path::Path::new("src/mini_agent/mod.rs").is_file(),
+            "malvin-mini agent must live under src/mini_agent"
+        );
+        assert!(
+            std::path::Path::new("src/local_llm/mod.rs").is_file(),
+            "Local LLM transport must live under src/local_llm"
+        );
+        assert!(
+            std::path::Path::new("src/agent/mod.rs").is_file(),
+            "Agent interface must live under src/agent"
         );
     }
 }

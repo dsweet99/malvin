@@ -6,10 +6,10 @@ use common::mini_test_helpers::{mock_llm, parity_session, trace_with_run_dir};
 use common::observability_parity::{
     assert_acp_trace_schema, trace_contains_substring,
 };
-use malvin::agent_backend::mini::{
+use malvin::mini_agent::{
     run_inner_loop, LoopDriverConfig, LoopDriverRun, MiniPhase, MiniTerminalReason, MockStep,
 };
-use malvin::malvin_mini::CompletionResponse;
+use malvin::openrouter_transport::CompletionResponse;
 
 #[tokio::test]
 async fn mini_audit_fenceless_complete_emits_mini_terminal() {
@@ -18,7 +18,7 @@ async fn mini_audit_fenceless_complete_emits_mini_terminal() {
     let mut session = parity_session(tmp.path());
     let out = run_inner_loop(LoopDriverRun {
         llm: &mock_llm(vec![MockStep::Ok(CompletionResponse {
-            content: malvin::malvin_mini::format_wire_turn("- progress", "done without fence"),
+            content: malvin::mini_agent::protocol::format_wire_turn("- progress", "done without fence"),
             usage: None,
             reasoning: None,
         })]),
@@ -30,7 +30,7 @@ async fn mini_audit_fenceless_complete_emits_mini_terminal() {
             max_http_retries: 1,
             max_transport_retries: 3,
             max_shrink_passes: 0,
-            mini_constraints: "c",
+            mini_constraints: "c".into(),
             expects_investigation: false,
         },
         trace: &trace,
@@ -38,7 +38,7 @@ async fn mini_audit_fenceless_complete_emits_mini_terminal() {
         llm_phase: None,
         single_attempt: true,
     gate_attempt: 1,
-    retry_strategy: malvin::agent_backend::mini::MiniRetryStrategy::CumulativeTranscript,
+    retry_strategy: malvin::mini_agent::MiniRetryStrategy::CumulativeTranscript,
     })
     .await
     .expect("loop");
@@ -60,7 +60,7 @@ async fn mini_audit_mini_done_emits_mini_terminal() {
     let mut session = parity_session(tmp.path());
     run_inner_loop(LoopDriverRun {
         llm: &mock_llm(vec![MockStep::Ok(CompletionResponse {
-            content: malvin::malvin_mini::format_wire_turn("- progress", "MINI_DONE\n"),
+            content: malvin::mini_agent::protocol::format_wire_turn("- progress", "MINI_DONE\n"),
             usage: None,
             reasoning: None,
         })]),
@@ -72,7 +72,7 @@ async fn mini_audit_mini_done_emits_mini_terminal() {
             max_http_retries: 1,
             max_transport_retries: 3,
             max_shrink_passes: 0,
-            mini_constraints: "c",
+            mini_constraints: "c".into(),
             expects_investigation: false,
         },
         trace: &trace,
@@ -80,7 +80,7 @@ async fn mini_audit_mini_done_emits_mini_terminal() {
         llm_phase: None,
         single_attempt: true,
     gate_attempt: 1,
-    retry_strategy: malvin::agent_backend::mini::MiniRetryStrategy::CumulativeTranscript,
+    retry_strategy: malvin::mini_agent::MiniRetryStrategy::CumulativeTranscript,
     })
     .await
     .expect("loop");
@@ -104,7 +104,7 @@ async fn mini_audit_context_overflow_with_zero_shrink_passes() {
             max_http_retries: 1,
             max_transport_retries: 3,
             max_shrink_passes: 0,
-            mini_constraints: "c",
+            mini_constraints: "c".into(),
             expects_investigation: false,
         },
         trace: &trace,
@@ -112,7 +112,7 @@ async fn mini_audit_context_overflow_with_zero_shrink_passes() {
         llm_phase: None,
         single_attempt: true,
     gate_attempt: 1,
-    retry_strategy: malvin::agent_backend::mini::MiniRetryStrategy::CumulativeTranscript,
+    retry_strategy: malvin::mini_agent::MiniRetryStrategy::CumulativeTranscript,
     })
     .await
     {
@@ -131,12 +131,12 @@ async fn mini_audit_wind_down_after_bash_on_last_http_turn() {
     let out = run_inner_loop(LoopDriverRun {
         llm: &mock_llm(vec![
             MockStep::Ok(CompletionResponse {
-                content: malvin::malvin_mini::format_wire_turn("- progress", "```bash\necho wind > wind.txt\n```"),
+                content: malvin::mini_agent::protocol::format_wire_turn("- progress", "```bash\necho wind > wind.txt\n```"),
                 usage: None,
                 reasoning: None,
             }),
             MockStep::Ok(CompletionResponse {
-                content: malvin::malvin_mini::format_wire_turn("- progress", "wind down summary"),
+                content: malvin::mini_agent::protocol::format_wire_turn("- progress", "wind down summary"),
                 usage: None,
                 reasoning: None,
             }),
@@ -149,7 +149,7 @@ async fn mini_audit_wind_down_after_bash_on_last_http_turn() {
             max_http_retries: 1,
             max_transport_retries: 3,
             max_shrink_passes: 0,
-            mini_constraints: "c",
+            mini_constraints: "c".into(),
             expects_investigation: false,
         },
         trace: &trace,
@@ -157,7 +157,7 @@ async fn mini_audit_wind_down_after_bash_on_last_http_turn() {
         llm_phase: None,
         single_attempt: true,
     gate_attempt: 1,
-    retry_strategy: malvin::agent_backend::mini::MiniRetryStrategy::CumulativeTranscript,
+    retry_strategy: malvin::mini_agent::MiniRetryStrategy::CumulativeTranscript,
     })
     .await
     .expect("wind down");
@@ -177,7 +177,7 @@ async fn mini_audit_no_tee_stdout_empty_trace_populated() {
     let mut session = parity_session(tmp.path());
     run_inner_loop(LoopDriverRun {
         llm: &mock_llm(vec![MockStep::Ok(CompletionResponse {
-            content: malvin::malvin_mini::format_wire_turn("- progress", "MINI_DONE"),
+            content: malvin::mini_agent::protocol::format_wire_turn("- progress", "MINI_DONE"),
             usage: None,
             reasoning: None,
         })]),
@@ -189,7 +189,7 @@ async fn mini_audit_no_tee_stdout_empty_trace_populated() {
             max_http_retries: 1,
             max_transport_retries: 3,
             max_shrink_passes: 0,
-            mini_constraints: "c",
+            mini_constraints: "c".into(),
             expects_investigation: false,
         },
         trace: &trace,
@@ -197,7 +197,7 @@ async fn mini_audit_no_tee_stdout_empty_trace_populated() {
         llm_phase: None,
         single_attempt: true,
     gate_attempt: 1,
-    retry_strategy: malvin::agent_backend::mini::MiniRetryStrategy::CumulativeTranscript,
+    retry_strategy: malvin::mini_agent::MiniRetryStrategy::CumulativeTranscript,
     })
     .await
     .expect("loop");

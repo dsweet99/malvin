@@ -20,4 +20,34 @@ Malvin is a non-interactive research and coding agent.
     available knowledge relevant to the request, or "best practices" / common practices.
 
 
-# malvin-mini
+# Architecture
+
+```text
+┌──────────────────────────────────────────────────────────────┐
+│ malvin                                                       │
+│  router / do / delight / KPop / quality gates / run dirs     │
+│  log adapters (VISION parity)                                │
+└────────────────────────────┬─────────────────────────────────┘
+                             │ Agent interface
+               ┌─────────────┴─────────────┐
+               ▼                           ▼
+      ┌─────────────────┐         ┌────────────────────┐
+      │ malvin-mini     │         │ cursor-agent       │
+      │ agent           │         │ agent (ACP client) │
+      │  · session      │         │  · session/prompt  │
+      │  · fence loop   │         │  · JSON-RPC to     │
+      │  · bash env     │         │    cursor-agent    │
+      └────────┬────────┘         └────────────────────┘
+               │ Transport interface
+     ┌─────────┴─────────┐
+     ▼                   ▼
+┌─────────────┐   ┌─────────────┐
+│ OpenRouter  │   │ Local LLM   │
+│ transport   │   │ transport   │
+└─────────────┘   └─────────────┘
+                         │
+                  ┌──────┴──────┐
+                  │ malvin-llama│  (engine crate; detail of Local)
+                  └─────────────┘
+```
+

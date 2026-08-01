@@ -10,10 +10,10 @@ use common::observability_parity::{
     assert_acp_trace_schema, assert_stdout_tool_vocab,
     stdout_m_before_t_on_multiturn, trace_contains_substring,
 };
-use malvin::agent_backend::mini::{
+use malvin::mini_agent::{
     run_inner_loop, LoopDriverRun, MiniRetryStrategy, MockStep,
 };
-use malvin::malvin_mini::CompletionResponse;
+use malvin::openrouter_transport::CompletionResponse;
 
 #[tokio::test]
 async fn observability_parity_tool_log_includes_fence_comment() {
@@ -39,7 +39,7 @@ async fn observability_parity_trace_acp_schema_after_mock_run() {
     let config = parity_loop_config("MINI_CONSTRAINTS_MARKER");
     let out = run_inner_loop(LoopDriverRun {
         llm: &mock_llm(vec![MockStep::Ok(CompletionResponse {
-            content: malvin::malvin_mini::format_wire_turn("- progress", "MINI_DONE\n"),
+            content: malvin::mini_agent::protocol::format_wire_turn("- progress", "MINI_DONE\n"),
             usage: None,
             reasoning: None,
         })]),
@@ -71,7 +71,7 @@ async fn observability_parity_fenceless_completes_in_one_turn() {
     let config = parity_loop_config("MINI_CONSTRAINTS_MARKER");
     let out = run_inner_loop(LoopDriverRun {
         llm: &mock_llm(vec![MockStep::Ok(CompletionResponse {
-            content: malvin::malvin_mini::format_wire_turn("- progress", "informational answer"),
+            content: malvin::mini_agent::protocol::format_wire_turn("- progress", "informational answer"),
             usage: None,
             reasoning: None,
         })]),

@@ -1,0 +1,33 @@
+//! Neutral chat/completion types shared by transports and the mini agent.
+
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ChatRole {
+    System,
+    User,
+    Assistant,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChatMessage {
+    pub role: ChatRole,
+    pub content: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ResponseUsage {
+    pub prompt_tokens: Option<u64>,
+    pub completion_tokens: Option<u64>,
+    pub total_tokens: Option<u64>,
+    pub cost: Option<f64>,
+}
+
+/// Completion body used inside Mini/OpenRouter call sites.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CompletionResponse {
+    pub content: String,
+    pub usage: Option<ResponseUsage>,
+    pub reasoning: Option<String>,
+}

@@ -2,10 +2,10 @@
 
 use super::backend::AgentBackend;
 use super::factory::build_agent_backend;
-use super::mini::{LlmBackend, MiniAgentClient, MockScript, MockStep};
+use crate::mini_agent::{LlmBackend, MiniAgentClient, MockScript, MockStep};
 use super::test_support::{install_openrouter_test_key, mini_loop_config, openrouter_shared_opts, shared_opts, test_io};
 use crate::cli::WorkflowCliOptions;
-use crate::malvin_mini::CompletionResponse;
+use crate::openrouter_transport::CompletionResponse;
 
 #[must_use]
 fn mock_mini_client() -> MiniAgentClient {

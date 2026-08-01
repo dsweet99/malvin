@@ -6,7 +6,7 @@ use super::backend_kpop_test_helpers::{
 use super::{
     agent_backend_run_kpop_flow, agent_backend_run_kpop_multiturn,
 };
-use super::mini::MockStep;
+use crate::mini_agent::MockStep;
 use crate::acp::{AgentKpopMultiturnCtl, KpopFlowOnceArgs};
 
 #[test]
@@ -23,7 +23,7 @@ fn agent_backend_run_kpop_flow_mini_stops_on_non_retryable_error() {
         let err = agent_backend_run_kpop_flow(&mut backend, &args, &empty_backups())
             .await
             .expect_err("non-retryable");
-        assert!(err.0.contains("mini agent (kpop flow) failed"));
+        assert!(err.0.contains("agent (kpop flow) failed"));
         assert!(err.0.contains("exhausted"));
     });
 }
@@ -42,7 +42,7 @@ fn agent_backend_run_kpop_flow_mini_reports_failure_after_retries() {
         let err = agent_backend_run_kpop_flow(&mut backend, &args, &empty_backups())
             .await
             .expect_err("kpop flow should fail");
-        assert!(err.0.contains("mini agent (kpop flow) failed"));
+        assert!(err.0.contains("agent (kpop flow) failed"));
     });
 }
 
@@ -65,7 +65,7 @@ fn agent_backend_run_kpop_multiturn_mini_stops_on_non_retryable_error() {
         let err = agent_backend_run_kpop_multiturn(&mut backend, ctl)
             .await
             .expect_err("non-retryable");
-        assert!(err.0.contains("mini agent (kpop multiturn) failed"));
+        assert!(err.0.contains("agent (kpop multiturn) failed"));
         assert!(err.0.contains("exhausted"));
     });
 }
@@ -89,6 +89,6 @@ fn agent_backend_run_kpop_multiturn_mini_reports_failure_after_retries() {
         let err = agent_backend_run_kpop_multiturn(&mut backend, ctl)
             .await
             .expect_err("multiturn fail");
-        assert!(err.0.contains("mini agent (kpop multiturn) failed"));
+        assert!(err.0.contains("agent (kpop multiturn) failed"));
     });
 }
