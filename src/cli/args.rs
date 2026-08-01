@@ -40,6 +40,12 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
+    /// Discover quality gates and write `.malvin/checks`
+    Init(InitArgs),
+    /// Ensure all checks pass
+    Tidy(TidyArgs),
+    /// Explain code or concepts via LaTeX PDF
+    Explain(ExplainArgs),
     /// Be creative
     #[command(name = "inspire")]
     Inspire(InspireArgs),
@@ -49,14 +55,9 @@ pub enum Commands {
     /// Write code (deprecated; hidden from help)
     #[command(hide = true)]
     Code(crate::cli::code_flow::CodeArgs),
-    /// Discover quality gates and write `.malvin/checks`
-    Init(InitArgs),
-    /// Ensure all checks pass
-    Tidy(TidyArgs),
     /// Author a user-delighting feature pitch
+    #[command(hide = true)]
     Delight(DelightArgs),
-    /// Explain code or concepts via LaTeX PDF
-    Explain(ExplainArgs),
     /// List available models
     Models(ModelsArgs),
 }

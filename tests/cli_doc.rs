@@ -153,6 +153,25 @@ fn bare_malvin_shows_commands_only_and_exits_zero() {
         "bare stdout must omit deprecated code subcommand: {bare_s}"
     );
     assert!(
+        !bare_s.lines().any(|line| line.starts_with("  delight ")),
+        "bare stdout must omit hidden delight subcommand: {bare_s}"
+    );
+    let command_names: Vec<&str> = bare_s
+        .lines()
+        .filter_map(|line| {
+            let rest = line.strip_prefix("  ")?;
+            if rest.is_empty() || rest.starts_with(' ') {
+                return None;
+            }
+            rest.split_whitespace().next()
+        })
+        .collect();
+    assert_eq!(
+        command_names,
+        ["init", "tidy", "explain", "inspire", "models"],
+        "bare stdout command order: {bare_s}"
+    );
+    assert!(
         bare_s.contains("malvin --help"),
         "bare stdout must point to --help: {bare_s}"
     );

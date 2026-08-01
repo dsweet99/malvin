@@ -81,6 +81,7 @@ fn cli_help_does_not_list_kpop_subcommand() {
     assert!(!help_lists_subcommand_line(&help, "code"));
     assert!(!help_lists_subcommand_line(&help, "kpop"));
     assert!(!help_lists_subcommand_line(&help, "do"));
+    assert!(!help_lists_subcommand_line(&help, "delight"));
     assert!(help.contains("--do"));
     assert!(!help.contains("router"));
     assert!(!help.contains("@code"));

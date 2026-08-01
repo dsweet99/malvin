@@ -66,7 +66,6 @@ On success, malvin follows the default router exit reporting.
 | Command | When |
 |---------|------|
 | `malvin inspire` | One-shot MBC2 ideation |
-| `malvin delight` | Author a feature pitch (also a router request wrapper) |
 | bare `malvin REQUEST` | Same router engine; explain is a thin request wrapper |
 
 ## Examples

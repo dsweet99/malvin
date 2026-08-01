@@ -87,9 +87,14 @@ mod tests {
     }
 
     #[test]
-    fn help_lists_delight_subcommand() {
+    fn help_hides_delight_but_subcommand_still_parses() {
         let help = Cli::command().render_help().to_string();
-        assert!(help.contains("delight"));
+        assert!(
+            !help.contains("delight"),
+            "delight must be hidden from top-level help"
+        );
+        let cli = Cli::try_parse_from(["malvin", "delight"]).expect("parse");
+        assert!(matches!(cli.command, Some(Commands::Delight(_))));
     }
 
     #[test]
