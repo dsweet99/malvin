@@ -3,16 +3,16 @@
 #[test]
 fn kiss_cov_metal_backend_supported_matches_cfg() {
     assert_eq!(
-        crate::metal_backend_supported(),
+        crate::malvin_llama::metal_backend_supported(),
         cfg!(all(target_os = "macos", target_arch = "aarch64"))
     );
 }
 
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 mod metal_witnesses {
-    use crate::engine::{complete, load_engine};
-    use crate::engine_metal::{InnerEngine, N_CTX};
-    use crate::engine_metal_generate::{decode_prompt, sample_tokens};
+    use crate::malvin_llama::engine::{complete, load_engine};
+    use crate::malvin_llama::engine_metal::{InnerEngine, N_CTX};
+    use crate::malvin_llama::engine_metal_generate::{decode_prompt, sample_tokens};
 
     #[test]
     fn kiss_cov_metal_modules_imported() {
@@ -37,8 +37,8 @@ mod metal_witnesses {
 
 #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
 mod stub_witnesses {
-    use crate::engine::{complete, load_engine};
-    use crate::engine_stub::InnerEngine;
+    use crate::malvin_llama::engine::{complete, load_engine};
+    use crate::malvin_llama::engine_stub::InnerEngine;
 
     #[test]
     fn kiss_cov_stub_module_imported() {

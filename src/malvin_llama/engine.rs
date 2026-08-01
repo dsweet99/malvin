@@ -3,13 +3,13 @@
 use std::path::Path;
 use std::sync::Mutex;
 
-use crate::chat::ChatTurn;
+use crate::malvin_llama::chat::ChatTurn;
 
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
-use crate::engine_metal as platform;
+use crate::malvin_llama::engine_metal as platform;
 
 #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
-use crate::engine_stub as platform;
+use crate::malvin_llama::engine_stub as platform;
 
 /// Default context window (`n_ctx` / `n_ctx_seq`) when callers omit an override.
 pub const DEFAULT_CONTEXT_SIZE: u32 = 8192;

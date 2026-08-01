@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use malvin_llama::{
+use crate::malvin_llama::{
     complete as llama_complete, load_engine_with_context_size, ChatTurn, CompleteRequest,
     LocalEngine,
 };

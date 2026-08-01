@@ -10,7 +10,7 @@ fn kiss_cov_metal_helper_names() {
     let _: Option<InnerEngine> = None;
     assert_eq!(N_CTX, 8192);
     assert_eq!(N_BATCH, 2048);
-    assert_eq!(crate::engine::DEFAULT_CONTEXT_SIZE, N_CTX);
+    assert_eq!(crate::malvin_llama::engine::DEFAULT_CONTEXT_SIZE, N_CTX);
     kiss_cov_bind_metal_fns();
     kiss_cov_stringify_metal_names();
 }

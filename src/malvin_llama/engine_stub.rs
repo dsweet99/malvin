@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use crate::engine::CompleteRequest;
+use crate::malvin_llama::engine::CompleteRequest;
 
 #[derive(Debug)]
 pub struct InnerEngine;
