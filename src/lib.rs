@@ -44,6 +44,8 @@ pub use workflow_name_aliases::{
 };
 /// OpenRouter HTTP transport formerly published as the `malvin-mini` crate.
 pub mod malvin_mini;
+/// In-process llama.cpp backend formerly the `malvin-llama` workspace crate.
+pub mod malvin_llama;
 mod gate_loop_session;
 mod sequential_requests;
 mod sandbox_oom;

@@ -1,10 +1,42 @@
 # malvin
 
+
 ## Installation
 
 ```bash
 cargo install malvin
 ```
+
+## Usage
+
+Most of the time, just ask for what you want like this:
+```bash
+malvin "What time is it?"
+```
+
+malvin will show lots of logs by default. If you just want to see malvin's answer at the end use
+```bash
+malvin -q "Where (geographically) am I?"
+```
+
+Be default, malvin does an "investigation". The larger or more complex the task is, the more helpful this approach is. It permits you to ask difficult questions or ask for complex changes somewhat tersely:
+```bash
+malvin "Speed up my_function.py by at least 3x."
+```
+and expect good results. However, if you want to do something very simple and want a quick response, use
+```bash
+malvin --do "Hello"
+```
+
+You can also provide malvin with a request file instead of a string:
+```bash
+malvin code_review.md
+```
+This can be great for use in CI or cron. In fact, if you want malvin to work totally in the background -- with no stdout -- you can use `-b`:
+```bash
+malvin -b overnight_logs_alerter.md
+```
+Maybe `overnight_logs_alerter.md` tells malvin to scan your prod logs and report weirdness to you via Slack. Note that malvin *always* logs to `~/.malvin_home/logs`. Those logs can be used by you for process improvement. They are always used by malvin as context.
 
 ## Notes
 
@@ -12,49 +44,15 @@ cargo install malvin
 
 ## Speed
 
-`malvin` likes to run unit tests. It does its best to only run what's necessary, but these tools can help speed things up:
+`malvin` likes to run linters and unit tests. It does its best to only run what's necessary, but these tools can help speed things up:
 
 - [Python] [pytest-testmon](https://www.testmon.org) Runs only unit tests affected by code changes
 - [Rust] [cargo-nextest](https://nexte.st) Faster than `cargo test`
 - [Rust] [cargo-difftests](https://github.com/dnbln/cargo-difftests) Re-runs only tests whose executed code changed (LLVM coverage indexes)
 - [Rust] [sccache](https://github.com/mozilla/sccache) Speeds up builds by caching build artifacts
 
-### sccache (Rust builds)
 
-Install once:
+# EXPERIMENTAL - USE AT YOUR OWN RISK
 
-- macOS: `brew install sccache`
-- Linux / other: `./admin/sccache_install.sh` (or `cargo install sccache --locked`)
-
-This repo enables sccache via `.cargo/config.toml` (`rustc-wrapper = "sccache"`). Any `cargo build`, Rust linter, or `cargo nextest` in this tree uses it automatically.
-
-Verify: `./admin/verify_sccache.sh`
-
-### cargo-difftests (selective Rust tests)
-
-Requires nightly Rust, `llvm-tools-preview`, and `cargo-binutils` (`cargo-cov`). One-time install:
-
-```bash
-./admin/difftests_install.sh
-./admin/difftests_verify.sh
-```
-
-Initial profiling pass (slow; builds/tests under `profile.difftests`):
-
-```bash
-./admin/difftests_collect.sh
-```
-
-After code changes, rerun only dirty tests and refresh indexes:
-
-```bash
-./admin/difftests_rerun_dirty.sh
-```
-
-Malvin gate runs use `./admin/malvin_rust_test_gate.sh` (listed in `.malvin/checks`): selective difftests when indexes are warm, full partitioned nextest otherwise. Override with `MALVIN_FORCE_FULL_RUST_TESTS=1` to always run the full suite.
-
-Indexes live in `difftests-index-root/`; work artifacts under `target/tmp/difftests/`. Both are gitignored. Normal `cargo build`, Rust linter, and `cargo nextest` stay uninstrumented; only the difftests scripts use `cargo +nightly difftests`.
-
-## Test isolation
-
-Unit and integration tests must not create, overwrite, or delete the real `~/.malvin_home/config.toml` on the developer machine. Wrap in-process tests with `with_isolated_home` (see `src/test_utils.rs`) or integration harness helpers (`tests/common/workspace.rs`: `with_isolated_home`, `activate_test_home`). Those helpers redirect `$HOME` to a temp directory and set `MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION=1`, which production code checks in test builds before any home-config disk mutation.
+- openrouter: models
+- local: models

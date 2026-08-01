@@ -1,7 +1,7 @@
 //! Kiss coverage tests for [`super`] (filename must be `*_tests.rs`).
 
 use super::{complete, load_engine, load_engine_with_context_size, CompleteRequest, LocalEngine};
-use crate::ChatTurn;
+use crate::malvin_llama::ChatTurn;
 
 #[test]
 fn kiss_cov_local_engine_load_and_complete_names() {

@@ -15,7 +15,7 @@ fail=0
 
 echo "=== timing gate: Rust (threshold ${THRESHOLD}s) ==="
 rust_json="$(mktemp)"
-cargo nextest run --workspace --message-format libtest-json --test-threads 1 >"${rust_json}" 2>&1 || {
+cargo nextest run --message-format libtest-json --test-threads 1 >"${rust_json}" 2>&1 || {
   cat "${rust_json}"
   rm -f "${rust_json}"
   exit 1

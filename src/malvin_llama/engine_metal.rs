@@ -14,15 +14,15 @@ use llama_cpp_2::sampling::LlamaSampler;
 use llama_cpp_2::token::LlamaToken;
 use llama_cpp_2::send_logs_to_tracing;
 
-use crate::chat::ChatTurn;
-use crate::engine::CompleteRequest;
+use crate::malvin_llama::chat::ChatTurn;
+use crate::malvin_llama::engine::CompleteRequest;
 
 /// Default context window for v1 local completions (also the config.toml default).
 pub const N_CTX: u32 = 8192;
-const _: () = assert!(N_CTX == crate::engine::DEFAULT_CONTEXT_SIZE);
+const _: () = assert!(N_CTX == crate::malvin_llama::engine::DEFAULT_CONTEXT_SIZE);
 
 /// Logical decode batch size (llama.cpp default). Prompts longer than this are
-/// submitted in chunks by [`crate::engine_metal_generate::decode_prompt`]; keeping
+/// submitted in chunks by [`crate::malvin_llama::engine_metal_generate::decode_prompt`]; keeping
 /// the default avoids growing logits/embedding buffers with `n_ctx` (important for
 /// Qwen under USS caps).
 pub const N_BATCH: u32 = 2048;
@@ -66,8 +66,8 @@ impl InnerEngine {
             n_ctx: self.n_ctx,
         })?;
         let mut batch = LlamaBatch::new(N_BATCH as usize, 1);
-        crate::engine_metal_generate::decode_prompt(
-            &mut crate::engine_metal_generate::DecodePromptArgs {
+        crate::malvin_llama::engine_metal_generate::decode_prompt(
+            &mut crate::malvin_llama::engine_metal_generate::DecodePromptArgs {
                 ctx: &mut ctx,
                 batch: &mut batch,
                 tokens: &tokens,
@@ -75,8 +75,8 @@ impl InnerEngine {
         )?;
         let mut sampler = build_sampler();
         let prompt_n_tokens = i32::try_from(tokens.len()).unwrap_or(i32::MAX);
-        crate::engine_metal_generate::sample_tokens(
-            &mut crate::engine_metal_generate::SampleTokensArgs {
+        crate::malvin_llama::engine_metal_generate::sample_tokens(
+            &mut crate::malvin_llama::engine_metal_generate::SampleTokensArgs {
                 model: &self.model,
                 ctx: &mut ctx,
                 batch: &mut batch,

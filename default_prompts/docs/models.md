@@ -39,7 +39,7 @@ See `malvin --doc`. Global `--model` is parsed but **not used** by this subcomma
 
 Context window defaults to `context_size = 8192` in `~/.malvin_home/config.toml` (llama.cpp `n_ctx` / `n_ctx_seq`). Raise it for longer prompts; larger windows need more `mem_limit_gb` headroom. Prompts that tokenize to ≥ `context_size` tokens fail fast with a clear error. Rebuild/install from this workspace (`cargo install --path .`) if your PATH `malvin` still lists MLX / Cascade2 ids.
 
-Root `kiss check` ignores `malvin-llama/` (see `.kissignore`); structural cleanliness is verified with `cd malvin-llama && kiss check` (local threshold). Qwen end-to-end smoke is optional (same engine path as Nano).
+Local llama.cpp integration lives in `src/malvin_llama/` (ignored by root `kiss check`; see `.kissignore`). Qwen end-to-end smoke is optional (same engine path as Nano).
 
 ## Examples
 

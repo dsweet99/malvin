@@ -1,7 +1,7 @@
 //! Stub engine unit tests (non-Metal targets).
 
 use super::InnerEngine;
-use crate::engine::{CompleteRequest, DEFAULT_CONTEXT_SIZE};
+use crate::malvin_llama::engine::{CompleteRequest, DEFAULT_CONTEXT_SIZE};
 
 #[test]
 fn stub_load_rejects_any_path() {

@@ -68,7 +68,7 @@ pub fn require_known_local_slug(slug: &str) -> Result<&'static LocalModelSpec, S
 /// True when `local:` models can run (Apple Silicon Metal). Used to omit them from listings.
 #[must_use]
 pub const fn local_backend_supported() -> bool {
-    malvin_llama::metal_backend_supported()
+    crate::malvin_llama::metal_backend_supported()
 }
 
 /// Listings for `malvin models`. Empty when Metal is unavailable (no runnable local backend).
