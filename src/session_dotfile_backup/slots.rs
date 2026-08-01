@@ -30,28 +30,19 @@ const fn labels(spec: &DotfileSpecRow) -> DotfileBackupLabels {
 }
 
 pub(super) fn dotfile_source_path(slot: usize, work_dir: &Path) -> PathBuf {
-    if slot == 3 {
+    if slot == MALVIN_CONFIG_SLOT {
         crate::malvin_config_path(work_dir)
+    } else if DOTFILE_ROWS[slot].rel == crate::MALVIN_CHECKS_REL {
+        crate::resolve_malvin_checks_path(work_dir)
     } else {
         work_dir.join(DOTFILE_ROWS[slot].rel)
     }
 }
 
-const KISSCONFIG_FILE: &str = ".kissconfig";
-const KISSIGNORE_FILE: &str = ".kissignore";
 const GITIGNORE_FILE: &str = ".gitignore";
-const MALVIN_CONFIG_SLOT: usize = 3;
+pub(super) const MALVIN_CONFIG_SLOT: usize = 1;
 
-pub(super) const DOTFILE_ROWS: [DotfileSpecRow; 6] = [
-    DotfileSpecRow {
-        rel: KISSCONFIG_FILE,
-        home_subdir: "kissconfig",
-        mkdir_lbl: "kissconfig backup mkdir",
-        collision_lbl: "kissconfig backup mkdir",
-        restore_lbl: "kissconfig restore",
-        copy_err: ".kissconfig backup copy",
-        restore_copy_err: "kissconfig restore",
-    },
+pub(super) const DOTFILE_ROWS: [DotfileSpecRow; 4] = [
     DotfileSpecRow {
         rel: crate::MALVIN_CHECKS_REL,
         home_subdir: "malvin_checks",
@@ -60,15 +51,6 @@ pub(super) const DOTFILE_ROWS: [DotfileSpecRow; 6] = [
         restore_lbl: "malvin_checks restore",
         copy_err: ".malvin/checks backup copy",
         restore_copy_err: "malvin_checks restore",
-    },
-    DotfileSpecRow {
-        rel: KISSIGNORE_FILE,
-        home_subdir: "kissignore",
-        mkdir_lbl: "kissignore backup mkdir",
-        collision_lbl: "kissignore backup mkdir",
-        restore_lbl: "kissignore restore",
-        copy_err: ".kissignore backup copy",
-        restore_copy_err: "kissignore restore",
     },
     DotfileSpecRow {
         rel: MALVIN_HOME_CONFIG_FILE,
@@ -144,6 +126,9 @@ fn is_ensured_default_malvin_config(bytes: &[u8]) -> bool {
 }
 
 fn restore_malvin_config_missing(dst: &Path, lbls: &DotfileBackupLabels) -> Result<(), String> {
+    if !crate::workspace_paths::home_malvin_config_delete_allowed() {
+        return Ok(());
+    }
     if !dst.exists() {
         return Ok(());
     }

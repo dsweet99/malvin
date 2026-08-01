@@ -25,6 +25,14 @@ fn gate_exp_log_path_is_scoped_per_iteration() {
 }
 
 #[test]
+fn trace_jsonl_path_is_under_run_dir() {
+    let tmp = tempfile::tempdir().unwrap();
+    let art = create_run_artifacts_from_text("plan", Some(tmp.path())).unwrap();
+    let trace = art.run_dir.join(crate::malvin_constants::TRACE_JSONL);
+    assert_eq!(trace, art.run_dir.join(crate::malvin_constants::TRACE_JSONL));
+}
+
+#[test]
 fn create_run_artifacts_scaffolds_kpop_exp_log_under_run_dir() {
     let tmp = tempfile::tempdir().unwrap();
     let art = create_run_artifacts_from_text("plan", Some(tmp.path())).unwrap();
@@ -57,7 +65,7 @@ fn kpop_workflow_context_exp_log_is_under_home_malvin_logs() {
     let art = create_kpop_run_artifacts("kpop body", Some(tmp.path())).unwrap();
     let exp_path = art.exp_log_path();
     assert!(exp_path.is_file());
-    let ctx = crate::workflow_context::workflow_context_paths_only(&art, "kpop");
+    let ctx = crate::workflow_context::workflow_context_paths_only(&art, crate::config::DEFAULT_CLI_MODEL, false);
     let exp_log = ctx.get("exp_log").unwrap_or_else(|| panic!("missing exp_log: {ctx:?}"));
     let kpop_log_dir = ctx.get("kpop_log_dir").unwrap();
     let home_logs = crate::malvin_home_logs_root();
@@ -86,12 +94,12 @@ fn kpop_exp_log_path_from_repo_root_work_dir() {
     let art = create_kpop_run_artifacts_opts(
         "probe",
         Some(std::path::Path::new(".")),
-        crate::run_id::RunDirOptions::without_gc(),
+        crate::run_id::RunDirOptions { gc: false },
     )
     .unwrap();
     let exp_path = art.exp_log_path();
     assert!(exp_path.is_file());
-    let ctx = crate::workflow_context::workflow_context_paths_only(&art, "kpop");
+    let ctx = crate::workflow_context::workflow_context_paths_only(&art, crate::config::DEFAULT_CLI_MODEL, false);
     let exp_log = ctx.get("exp_log").cloned().unwrap_or_default();
     let kpop_log_dir = ctx.get("kpop_log_dir").cloned().unwrap_or_default();
     assert!(

@@ -16,7 +16,7 @@ fn agent_error_and_auth_error_display_via_fmt() {
 }
 
 #[test]
-fn replace_coder_session_slot_for_tests_opens_session() {
+fn coder_session_slot_assignment_opens_session() {
     let rt = tokio::runtime::Runtime::new().expect("runtime");
     rt.block_on(async {
         let tmp = tempfile::tempdir().expect("tempdir");
@@ -32,7 +32,7 @@ fn replace_coder_session_slot_for_tests_opens_session() {
             },
         );
         assert!(!client.has_open_coder_session());
-        client.replace_coder_session_slot_for_tests(captive_cat_acp_session_for_tests(tmp.path()));
+        client.coder_session = Some(captive_cat_acp_session_for_tests(tmp.path()));
         assert!(client.has_open_coder_session());
     });
 }

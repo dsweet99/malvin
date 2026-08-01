@@ -1,6 +1,6 @@
 //! Behavioral smoke tests for CLI helpers.
 
-use super::entrypoint::{require_kiss_for_cli_command, try_tokio_runtime};
+use super::entrypoint::try_tokio_runtime;
 use super::{Cli, Commands};
 
 #[test]
@@ -73,14 +73,22 @@ fn smoke_agent_io_options_maps_flags() {
         model: "m".into(),
         no_force: false,
         no_tenacious: false,
-        no_tee: true,
-        no_markdown: false,
+        gates: false,
+
+        quiet: false,
         verbose: false,
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
         name: None,
-        mini: false,
         mini_max_bash_turns: 32,
+        mini_max_http_turns: 32,
+        mini_max_bash_execs: 128,
+        mini_max_http_retries: 0,
+        mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
+        mini_max_gate_retries: 0,
+        mini_max_shrink_passes: 0,
+        no_download: false,
+        git: false,
     };
     let io = agent_io_options(
         &shared,
@@ -92,7 +100,7 @@ fn smoke_agent_io_options_maps_flags() {
         },
     );
     assert!(io.force);
-    assert!(io.no_tee);
+    assert!(!io.no_tee);
     assert!(io.raw_output);
     assert!(!io.show_thoughts_on_stdout);
     assert!(io.emit_stdout_markdown);
@@ -106,14 +114,22 @@ fn smoke_new_agent_client_maps_max_acp_retries() {
         model: "m".into(),
         no_force: false,
         no_tenacious: false,
-        no_tee: true,
-        no_markdown: false,
+        gates: false,
+
+        quiet: false,
         verbose: false,
         max_acp_retries: 7,
         doc: false,
         name: None,
-        mini: false,
         mini_max_bash_turns: 32,
+        mini_max_http_turns: 32,
+        mini_max_bash_execs: 128,
+        mini_max_http_retries: 0,
+        mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
+        mini_max_gate_retries: 0,
+        mini_max_shrink_passes: 0,
+        no_download: false,
+        git: false,
     };
     let client = new_agent_client(
         &shared,
@@ -132,6 +148,13 @@ fn smoke_new_agent_client_maps_max_acp_retries() {
 }
 
 #[test]
+fn smoke_cli_parse_init_subcommand() {
+    use clap::Parser;
+    let cli = Cli::try_parse_from(["malvin", "init"]).unwrap();
+    assert!(matches!(cli.command, Some(Commands::Init(_))));
+}
+
+#[test]
 fn smoke_cli_parse_models_subcommand() {
     use clap::Parser;
     let cli = Cli::try_parse_from(["malvin", "models"]).unwrap();
@@ -144,23 +167,9 @@ fn smoke_try_tokio_runtime_builds_multi_thread() {
 }
 
 #[test]
-fn smoke_require_kiss_for_cli_command_models_does_not_require_kiss_bin() {
-    use clap::Parser;
-    let cli = Cli::try_parse_from(["malvin", "models"]).unwrap();
-    let cmd = cli.command.as_ref().expect("subcommand");
-    assert!(require_kiss_for_cli_command(cmd).is_ok());
-}
-
-#[test]
 fn smoke_tidy_effective_max_loops() {
     assert_eq!(super::tidy_flow::effective_tidy_max_loops(0), 1);
     assert_eq!(super::tidy_flow::effective_tidy_max_loops(3), 3);
-}
-
-#[test]
-fn smoke_parse_languages() {
-    let langs = crate::init_cmd::parse_languages(&["rust".into(), "python".into()]).expect("parse");
-    assert_eq!(langs.len(), 2);
 }
 
 #[test]
@@ -183,26 +192,11 @@ fn smoke_format_logs_dir_under_run_dir() {
 }
 
 #[test]
-fn smoke_cli_parse_init_subcommand() {
-    use clap::Parser;
-    let cli = Cli::try_parse_from(["malvin", "init", "rust"]).expect("parse");
-    assert!(matches!(cli.command, Some(Commands::Init(_))));
-}
-
-#[test]
 fn smoke_run_emit_echo_primary_noop_when_not_plain() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "plan").expect("write plan");
     super::run_emit::echo_primary_to_stdout(&plan, false).expect("echo");
-}
-
-#[test]
-fn smoke_require_kiss_allows_do_without_kiss_on_path() {
-    use clap::Parser;
-    let cli = Cli::try_parse_from(["malvin", "do", "task"]).expect("parse");
-    let cmd = cli.command.as_ref().expect("subcommand");
-    assert!(require_kiss_for_cli_command(cmd).is_ok());
 }
 
 #[test]
@@ -222,5 +216,10 @@ fn smoke_print_command_error_writes_run_log() {
 #[test]
 fn smoke_prepare_do_prompt_store_loads_defaults() {
     assert!(crate::do_flow::prepare_do_prompt_store().is_ok());
+}
+
+#[test]
+fn smoke_prepare_router_prompt_store_loads_defaults() {
+    assert!(crate::router_flow::prepare_router_prompt_store().is_ok());
 }
 

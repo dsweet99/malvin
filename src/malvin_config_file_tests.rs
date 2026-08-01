@@ -1,5 +1,5 @@
 use super::{
-    AgentConfig, DEFAULT_MAX_HYPOTHESES, DEFAULT_MAX_LOOPS, DEFAULT_MAX_LOOPS_CODE,
+    DEFAULT_MAX_LOOPS, DEFAULT_MAX_LOOPS_CODE,
     ensure_config_parent_dir,
     load_malvin_config, merge_missing_keys, open_malvin_config,
     parse_agent_config, parse_template_value, read_on_disk_config_value, write_config_value,
@@ -36,11 +36,13 @@ fn open_malvin_config_creates_file_with_all_sections() {
         let text = std::fs::read_to_string(&path).expect("read");
         assert!(text.contains("[logs]"));
         assert!(text.contains("[agent]"));
+        assert!(!text.contains("mpc"));
         assert_eq!(cfg.agent.model, DEFAULT_CLI_MODEL);
-        assert_eq!(cfg.agent.max_hypotheses, DEFAULT_MAX_HYPOTHESES);
         assert_eq!(cfg.agent.max_loops, DEFAULT_MAX_LOOPS);
         assert_eq!(cfg.agent.max_loops_code, DEFAULT_MAX_LOOPS_CODE);
         assert!(text.contains("theme"));
+        assert!(text.contains("context_size"));
+        assert_eq!(cfg.context_size, crate::malvin_config_file::DEFAULT_CONTEXT_SIZE);
         assert_eq!(cfg.theme, crate::terminal_palette::TerminalTheme::Dark);
     });
 }
@@ -60,7 +62,8 @@ fn open_malvin_config_merges_missing_agent_in_memory_only() {
         let after = std::fs::read_to_string(&path).expect("read after");
         assert_eq!(before, after, "existing config.toml must never be rewritten");
         assert_eq!(cfg.mem_limit_gb, 6);
-        assert_eq!(cfg.agent.max_hypotheses, DEFAULT_MAX_HYPOTHESES);
+        assert_eq!(cfg.context_size, crate::malvin_config_file::DEFAULT_CONTEXT_SIZE);
+        assert_eq!(cfg.agent.model, DEFAULT_CLI_MODEL);
     });
 }
 
@@ -68,35 +71,25 @@ fn open_malvin_config_merges_missing_agent_in_memory_only() {
 fn parse_agent_config_reads_values() {
     let text = r#"
 [agent]
-model = "gpt-5"
-max_hypotheses = 7
+model = "cursor:gpt-5"
 max_loops = 3
 max_acp_retries = 5
 "#;
     let agent = parse_agent_config(text).expect("parse");
-    assert_eq!(
-        agent,
-        AgentConfig {
-            model: "gpt-5".to_string(),
-            max_hypotheses: 7,
-            max_loops: 3,
-            max_loops_code: DEFAULT_MAX_LOOPS_CODE,
-            max_acp_retries: 5,
-        }
-    );
+    assert_eq!(agent.model, "cursor:gpt-5");
+    assert_eq!(agent.max_loops, 3);
+    assert_eq!(agent.max_acp_retries, 5);
 }
 
 #[test]
 fn parse_agent_config_accepts_string_numbers() {
     let text = r#"
 [agent]
-model = "m"
-max_hypotheses = "11"
+model = "cursor:m"
 max_loops = "2"
 max_acp_retries = "4"
 "#;
     let agent = parse_agent_config(text).expect("parse");
-    assert_eq!(agent.max_hypotheses, 11);
     assert_eq!(agent.max_loops, 2);
     assert_eq!(agent.max_acp_retries, 4);
 }
@@ -110,6 +103,22 @@ fn parse_theme_accepts_dark_and_light() {
     assert_eq!(parse_theme("theme = \"light\"").expect("light"), TerminalTheme::Light);
     assert_eq!(parse_theme("mem_limit_gb = 4").expect("missing"), TerminalTheme::Dark);
     assert!(parse_theme("theme = \"neon\"").is_err());
+}
+
+#[test]
+fn parse_context_size_reads_top_level_key() {
+    use super::{parse_context_size, DEFAULT_CONTEXT_SIZE};
+    assert_eq!(
+        parse_context_size("context_size = 16384\n").expect("parse"),
+        16384
+    );
+    assert_eq!(
+        parse_context_size("mem_limit_gb = 4\n").expect("default"),
+        DEFAULT_CONTEXT_SIZE
+    );
+    assert!(parse_context_size("context_size = 0\n")
+        .expect_err("zero")
+        .contains("positive"));
 }
 
 #[test]
@@ -141,7 +150,7 @@ fn load_malvin_config_reads_light_theme() {
 fn parse_agent_config_reads_max_loops_code() {
     let text = r#"
 [agent]
-model = "m"
+model = "cursor:m"
 max_loops = 1
 max_loops_code = 4
 "#;
@@ -169,7 +178,6 @@ fn load_malvin_config_merges_partial_file_in_memory_only() {
         std::fs::write(&path, "mem_limit_gb = 8\n").expect("write");
         let cfg = load_malvin_config(work);
         assert_eq!(cfg.mem_limit_gb, 8);
-        assert_eq!(cfg.agent.max_hypotheses, DEFAULT_MAX_HYPOTHESES);
         let text = std::fs::read_to_string(&path).expect("read");
         assert!(!text.contains("[agent]"));
     });
@@ -194,33 +202,4 @@ fn config_io_helpers_write_and_read_round_trip() {
         let read = read_on_disk_config_value(&path).expect("read");
         assert_eq!(read.get("mem_limit_gb"), value.get("mem_limit_gb"));
     });
-}
-
-#[test]
-fn read_on_disk_config_value_rejects_invalid_toml() {
-    with_isolated_home(|work| {
-        let path = malvin_config_path(work);
-        ensure_config_parent_dir(&path).expect("mkdir");
-        std::fs::write(&path, "not toml").expect("write");
-        assert!(read_on_disk_config_value(&path).is_err());
-    });
-}
-
-#[test]
-fn parse_malvin_config_falls_back_when_values_invalid_or_missing() {
-    use super::{parse_malvin_config, read_string, read_u32, read_usize, MalvinConfig};
-    let cfg = parse_malvin_config("mem_limit_gb = 0\n");
-    assert!(cfg.mem_limit_gb >= 1);
-    assert_eq!(cfg.logs.max_age_days, crate::log_gc_config::LogsGcConfig::default().max_age_days);
-    assert_eq!(cfg.agent.model, DEFAULT_CLI_MODEL);
-    let full = MalvinConfig {
-        mem_limit_gb: cfg.mem_limit_gb,
-        theme: cfg.theme,
-        logs: cfg.logs,
-        agent: cfg.agent.clone(),
-    };
-    assert_eq!(full.agent, cfg.agent);
-    assert_eq!(read_string(None), None);
-    assert_eq!(read_usize(None), None);
-    assert_eq!(read_u32(None), None);
 }

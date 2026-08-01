@@ -1,24 +1,21 @@
-use std::io::Write;
-
 use super::{
     RepoGateOutput,
     gate_log::{emit_repo_gate_line, emit_repo_gate_warning},
-    kissconfig_warn::warn_kissconfig_test_coverage_if_needed,
 };
 use crate::output::{format_who_tag_delim, MALVIN_WHO, WARNING_WHO};
 use crate::test_stderr_capture::capture_stderr_output;
 
-const KISSCONFIG_COVERAGE_WARN: &str = ".kissconfig gate.test_coverage_threshold is missing or below 90; editing code without sufficient unit test coverage is dangerous.";
+const GATE_WARN_MSG: &str = "quality gate warning for regression test";
 
 #[test]
 fn repo_gate_stderr_progress_must_use_malvin_who_not_warning() {
     let malvin_tag = format_who_tag_delim(MALVIN_WHO);
     let warning_tag = format_who_tag_delim(WARNING_WHO);
     let stderr = capture_stderr_output(|| {
-        emit_repo_gate_line(RepoGateOutput::Stderr, "Running `kiss check`", None);
+        emit_repo_gate_line(RepoGateOutput::Stderr, "Running `make lint`", None);
     });
     assert!(
-        stderr.contains(&malvin_tag) && stderr.contains("kiss check"),
+        stderr.contains(&malvin_tag) && stderr.contains("make lint"),
         "gate progress on Stderr path must use malvin who on stderr, got: {stderr:?}"
     );
     assert!(
@@ -31,7 +28,7 @@ fn repo_gate_stderr_progress_must_use_malvin_who_not_warning() {
 fn quality_gates_log_stderr_gate_warning_must_use_malvin_who_tag() {
     let malvin_tag = format_who_tag_delim(MALVIN_WHO);
     let warning_tag = format_who_tag_delim(WARNING_WHO);
-    let msg = KISSCONFIG_COVERAGE_WARN;
+    let msg = GATE_WARN_MSG;
     let tmp = tempfile::tempdir().expect("tempdir");
     let stderr = capture_stderr_output(|| {
         emit_repo_gate_warning(msg, Some(tmp.path()));
@@ -49,31 +46,9 @@ fn quality_gates_log_stderr_gate_warning_must_use_malvin_who_tag() {
 }
 
 #[test]
-fn kissconfig_coverage_warn_must_use_malvin_who_on_stderr() {
-    let malvin_tag = format_who_tag_delim(MALVIN_WHO);
-    let warning_tag = format_who_tag_delim(WARNING_WHO);
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let cfg = tmp.path().join(".kissconfig");
-    let mut f = std::fs::File::create(&cfg).expect("create .kissconfig");
-    writeln!(f, "[gate]").expect("write");
-    writeln!(f, "test_coverage_threshold = 50").expect("write threshold");
-    let stderr = capture_stderr_output(|| {
-        warn_kissconfig_test_coverage_if_needed(tmp.path(), RepoGateOutput::Tagged, None);
-    });
-    assert!(
-        stderr.contains(&malvin_tag) && stderr.contains("test_coverage_threshold"),
-        "kissconfig coverage warnings must use malvin who on stderr, stderr={stderr:?}"
-    );
-    assert!(
-        !stderr.contains(&warning_tag),
-        "kissconfig coverage must not use warning who, stderr={stderr:?}"
-    );
-}
-
-#[test]
 fn repo_gate_stderr_output_must_match_malvin_log_format() {
     let malvin_tag = format_who_tag_delim(MALVIN_WHO);
-    let msg = KISSCONFIG_COVERAGE_WARN;
+    let msg = GATE_WARN_MSG;
     let tmp = tempfile::tempdir().expect("tempdir");
     let stderr = capture_stderr_output(|| {
         emit_repo_gate_warning(msg, Some(tmp.path()));

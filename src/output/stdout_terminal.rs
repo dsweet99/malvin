@@ -34,6 +34,21 @@ pub(crate) fn print_stdout_display_line(display: &str) {
     if stdout_suppressed() {
         return;
     }
+    if super::do_dm_mode::do_dm_stdout_mode() {
+        return;
+    }
+    emit_stdout_display_line_raw(display);
+}
+
+/// Process-stdout write used for `--do` DM bodies (bypasses DM display suppression).
+pub(crate) fn emit_do_dm_body_line(line: &str) {
+    if stdout_suppressed() {
+        return;
+    }
+    emit_stdout_display_line_raw(line);
+}
+
+fn emit_stdout_display_line_raw(display: &str) {
     #[cfg(test)]
     if CAPTURE_STDOUT.with(|flag| *flag.borrow()) {
         CAPTURED_STDOUT_LINES.with(|lines| lines.borrow_mut().push(display.to_string()));

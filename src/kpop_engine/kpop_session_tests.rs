@@ -1,0 +1,151 @@
+//! Tests for [`super::kpop_session`].
+
+use super::params::KPopEngineIterationParams;
+use super::prepared::KPopEnginePrepared;
+use super::{KPopEngineMultiturnCtx, KPopEngineParams, KPopHardConstraints};
+use crate::agent_backend::AgentBackend;
+use crate::artifacts::SessionDotfileBackups;
+use crate::cli::{SharedOpts, WorkflowCliOptions};
+use crate::config::DEFAULT_MAX_ACP_RETRIES;
+use crate::prompt_stratification::WorkflowRenderContext;
+use std::path::Path;
+
+pub(crate) enum PreparedContextMode {
+    Empty,
+    /// Path keys only — skips ephemeral quality-gates markdown expansion (faster for session smoke tests).
+    PathsOnly,
+    Workflow,
+}
+
+pub(crate) fn prepared_context_for_mode(
+    artifacts: &crate::artifacts::RunArtifacts,
+    command: &str,
+    context_mode: PreparedContextMode,
+) -> WorkflowRenderContext {
+    match context_mode {
+        PreparedContextMode::Empty => WorkflowRenderContext::default(),
+        PreparedContextMode::PathsOnly => {
+            crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(
+                artifacts,
+                command,
+                false,
+            )
+            .expect("paths context")
+        }
+        PreparedContextMode::Workflow => crate::cli::workflow_kpop_shared::kpop_workflow_context(
+            artifacts,
+            command,
+            false,
+        )
+        .expect("workflow context"),
+    }
+}
+
+pub(crate) fn prepared_fixture(
+    command: &str,
+    work: &Path,
+    with_checks: bool,
+    context_mode: PreparedContextMode,
+) -> (KPopEnginePrepared, SessionDotfileBackups) {
+    if with_checks {
+        std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
+        std::fs::write(work.join(".malvin/checks"), "true\n").expect("checks");
+    }
+    let artifacts =
+        crate::artifacts::create_kpop_run_artifacts(command, Some(work)).expect("artifacts");
+    let backups = SessionDotfileBackups::snapshot(work).expect("snapshot");
+    let store = crate::prompts::PromptStore::default_store();
+    store.ensure_defaults().expect("defaults");
+    let context = prepared_context_for_mode(&artifacts, command, context_mode);
+    let prepared = KPopEnginePrepared {
+        artifacts,
+        context,
+        request_text: "req".into(),
+        startup_emit_request: "req".into(),
+        store,
+        malvin_checks_backup: crate::artifacts::MalvinChecksBackup::Missing,
+    };
+    (prepared, backups)
+}
+
+pub(crate) fn shared_workflow() -> (SharedOpts, WorkflowCliOptions) {
+    (
+        crate::cli::kpop_summarize_tests::summarize_shared_opts(DEFAULT_MAX_ACP_RETRIES),
+        WorkflowCliOptions { force: false },
+    )
+}
+
+pub(crate) fn loop_params<'a>(
+    command: &'a str,
+    shared: &'a SharedOpts,
+    prepared: &'a KPopEnginePrepared,
+    behavior: KPopHardConstraints,
+) -> KPopEngineParams<'a> {
+    KPopEngineParams {
+        command,
+        shared,
+        workflow: WorkflowCliOptions { force: false },
+        prepared,
+        max_loops: 1,
+        max_hypotheses: 5,
+        behavior,
+    }
+}
+
+pub(crate) fn agent_backend(shared: &SharedOpts, command: &str) -> AgentBackend {
+    crate::agent_backend::build_agent_backend(
+        shared,
+        WorkflowCliOptions { force: false },
+        false,
+        command,
+    )
+    .expect("backend")
+}
+
+pub(crate) struct IterationFixture<'a> {
+    pub loop_params: &'a KPopEngineParams<'a>,
+    pub backups: &'a SessionDotfileBackups,
+    pub client: &'a mut AgentBackend,
+    pub iteration: usize,
+    pub total_iterations: usize,
+    pub exp_log_path: std::path::PathBuf,
+}
+
+pub(crate) fn build_iteration_params(input: IterationFixture<'_>) -> KPopEngineIterationParams<'_> {
+    KPopEngineIterationParams {
+        loop_params: input.loop_params,
+        session_dotfile_backups: input.backups,
+        client: input.client,
+        iteration: input.iteration,
+        total_iterations: input.total_iterations,
+        exp_log_path: input.exp_log_path,
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn kiss_cov_kpop_engine_multiturn_ctx_reads_iteration_field() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let work = tmp.path();
+    let (_bin, _guard) = crate::test_agent_client::write_fake_gate(work, "agent", 0);
+    let (prepared, backups) =
+        prepared_fixture("code", work, true, PreparedContextMode::Empty);
+    let (shared, _) = shared_workflow();
+    let loop_params = loop_params("code", &shared, &prepared, KPopHardConstraints::CODE);
+    let mut client = agent_backend(&shared, "code");
+    let exp_log_path = prepared.artifacts().gate_exp_log_path(1);
+    let mut iteration_params = build_iteration_params(IterationFixture {
+        loop_params: &loop_params,
+        backups: &backups,
+        client: &mut client,
+        iteration: 1,
+        total_iterations: 2,
+        exp_log_path,
+    });
+    let ctx = KPopEngineMultiturnCtx {
+        iteration: &mut iteration_params,
+    };
+    assert_eq!(ctx.iteration.iteration, 1);
+    assert_eq!(ctx.iteration.total_iterations, 2);
+    assert_eq!(ctx.iteration_number(), 1);
+}

@@ -2,8 +2,10 @@ use std::collections::HashMap;
 use std::path::Path;
 
 pub use crate::workflow_context::{
-    format_prompt_path, workflow_context, workflow_context_paths_only,
+    format_prompt_path, workflow_context_paths_only,
 };
+#[cfg(test)]
+pub use crate::workflow_context::workflow_context;
 pub(crate) use crate::workflow_context::insert_formatted;
 
 /// Removes a review file when it exists; succeeds when `p` is absent.
@@ -105,7 +107,7 @@ mod helpers_kiss_inline {
             plan_path: plan_path.clone(),
             work_dir: tmp.path().to_path_buf(),
         };
-        let ctx = crate::workflow_context::workflow_context_paths_only(&artifacts, "code");
+        let ctx = crate::workflow_context::workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, false);
         assert!(ctx.contains_key("quality_gates_log"));
         let _ = format_prompt_path(&plan_path, &artifacts.work_dir);
     }

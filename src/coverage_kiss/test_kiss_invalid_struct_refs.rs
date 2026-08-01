@@ -56,6 +56,10 @@ fn kiss_invalid_struct_value_refs_3() {
     let _ = crate::acp::rpc_part1::RpcRequestNext;
     let _ = crate::acp::rpc_wait_args::RpcWaitArgs;
     let _ = crate::acp::unix_process_group_teardown_poll::unix_process_group_teardown_timing::shutdown_cancel_timeout;
+    let _ = crate::acp::unix_process_group_teardown_poll::unix_process_group_teardown_timing::shutdown_child_wait_timeout;
+    let _ = crate::acp::shutdown_cancel_reject::cancel_rejected_as_unsupported;
+    let _ = crate::acp::shutdown_cancel_reject::best_effort_session_cancel;
+    let _ = crate::acp::shutdown_cancel_reject::wait_killed_child;
     let _ = crate::acp_transport_tests::shared_handshake::TestReaderLoopSpawn;
     let _ = crate::acp_transport_tests::shared_handshake::HandshakeRunning;
     let _ = crate::acp_transport_tests::shared_harness::InactiveRpcIo;
@@ -68,32 +72,37 @@ fn kiss_invalid_struct_value_refs_3() {
 fn kiss_invalid_struct_value_refs_4() {
     let _ = crate::agent_backend::mini::client_retry_tests::RetryPollutionObservation;
     let _ = crate::agent_backend::mini::loop_driver::loop_http::HttpRetryRequest;
-    let _ = crate::agent_backend::mini::loop_driver::loop_inner::CompleteTurnRequest;
+    let _ = crate::agent_backend::mini::loop_driver::loop_inner_types::CompleteTurnRequest;
+    let _ = crate::agent_backend::mini::loop_driver::loop_inner_types::LoopPhase::Investigate;
+    let _ = crate::agent_backend::mini::client_gate_retry::ForkLedgerBuild;
+    let _ = crate::agent_backend::mini::client_gate_retry::GateAttemptOutcome;
+    let _ = crate::agent_backend::mini::loop_driver::loop_inner_phases::BashTurnInput;
+    let _ = crate::agent_backend::mini::loop_driver::loop_inner_bash::BashObservationInput;
+    let _ = crate::agent_backend::mini::loop_driver::loop_inner_finish::TerminalEmitCtx;
     let _ = crate::agent_backend::mini::loop_driver::loop_types::LoopDriverRun;
     let _ = crate::child_health::evaluate_after_acp_silence;
-    let _ = crate::cli::bug_id_lookup::bug_id_lookup_log::log_tag;
-    let _ = crate::cli::bug_id_lookup::bug_id_lookup_log::missing_log_err_label;
-    let _ = crate::cli::bug_id_lookup::bug_id_lookup_log::fallback_err_label;
     let _ = crate::cli::code_flow::run_loop::CodeGateFinish;
     let _ = crate::cli::do_flow::DoRunPrep;
-    let _ = crate::cli::explain_flow::run_startup::ExplainKpopPrepared;
-    let _ = crate::cli::kpop_flow::kpop_flow_a::KpopPrepared;
+    let _ = crate::router_flow::RouterRunPrep;
+    let _ = crate::cli::config_defaults::LoopDefaultMut;
+    let _ = crate::cli::config_defaults::CodeWorkflowLoopMut;
+    let _ = crate::cli::flow_prompt_combine::DualHeaderCoderRun;
+    let _ = crate::cli::flow_prompt_combine::DualHeaderPromptInput;
+    let _ = crate::cli::flow_prompt_combine::build_dual_header_coder_run_with_store;
+    let _ = crate::cli::explain_flow::prep::ExplainResolvedOutputs;
 }
 
 #[test]
 fn kiss_invalid_struct_value_refs_5() {
-    let _ = crate::cli::kpop_flow::kpop_flow_a::KpopArtifactsEarly;
-    let _ = crate::cli::kpop_flow::kpop_flow_a::KpopAcpMultiturnCtx;
-    let _ = crate::cli::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsParams;
-    let _ = crate::cli::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsOutcome;
-    let _ = crate::cli::kpop_flow::kpop_flow_run_loop::KpopLoopSnapshot;
-    let _ = crate::cli::kpop_flow::kpop_flow_run_loop::KpopLoopExitAfterIteration;
-    let _ = crate::cli::kpop_summarize::kpop_summarize_inline::InlineSummarizeOnKpopLoopCtx;
+    let _ = crate::router_flow::router_flow_acp::RouterAcpIterationInput;
+    let _ = crate::router_flow::router_flow_acp::RouterAcpIterationOutcome;
+    let _ = crate::router_flow::router_flow_loop::RouterAgentLoopInput;
+    let _ = crate::router_flow::router_flow_loop::RouterAgentLoopOutcome;
     let _ = crate::cli::kpop_summarize::kpop_summarize_inline::GateInlineSummarizeCtx;
-    let _ = crate::cli::workflow_kpop_shared::workflow_kpop_render::RenderKpopProgram;
+    let _ = crate::kpop_program::RenderRepoProgram;
     let _ = crate::kpop_multiturn_prompts::SmokeKpopBuilder;
     let _ = crate::kpop_test_stubs::EchoPrompts;
-    let _ = crate::kpop_test_stubs::kpop_block;
+    let _ = crate::kpop_test_stubs::kpop_prompt;
 }
 
 #[test]
@@ -104,9 +113,7 @@ fn kiss_invalid_struct_value_refs_6() {
     let _ = crate::acp::MemWatchHandles;
     let _ = crate::active_agent_heartbeat::ActiveAgentSandbox;
     let _ = crate::active_agent_heartbeat::ActiveAgentStatsSource;
-    let _ = crate::cli::bug_id_lookup::BugLogMatch;
-    let _ = crate::cli::bug_id_lookup::BugIdResolved;
-    let _ = crate::cli::explain_flow::run_loop::ExplainFinishInput;
+    let _ = crate::router_flow::RouterArgs;
 }
 
 #[test]
@@ -170,42 +177,46 @@ fn kiss_invalid_struct_value_refs_gate10_3() {
     let _ = crate::acp_transport_tests::rpc_unit::test_write_rpc_line_fails_after_child_stdin_closed;
     let _ = crate::acp_transport_tests::shared_handshake::write_bad_session_new_mock;
     let _ = crate::acp_transport_tests::shared_handshake::write_authenticate_rejected_but_session_new_ok_mock;
-    let _ = crate::agent_backend::backend_kpop_tests::mock_backend;
+    let _ = crate::agent_backend::backend_kpop_test_helpers::mock_backend;
 }
 
 #[test]
 fn kiss_invalid_struct_value_refs_gate10_4() {
-    let _ = crate::agent_backend::backend_kpop_tests::empty_backups;
+    let _ = crate::agent_backend::backend_kpop_test_helpers::empty_backups;
     let _ = crate::agent_backend::mini::client_retry_tests::count_user_messages_with_marker;
     let _ = crate::agent_backend::mini::client_retry_tests::observe_retry_http_history;
     let _ = crate::agent_backend::mini::client_retry_tests::retry_pollution_mock_client;
     let _ = crate::agent_backend::mini::client_retry_tests::run_retry_pollution_prompt;
     let _ = crate::agent_backend::mini::client_retry_tests::assert_retry_history_is_clean;
     let _ = crate::agent_backend::mini::client_retry_tests::mini_coder_prompt_retry_does_not_pollute_session_history;
-    let _ = crate::agent_backend::mini::loop_driver_no_fence_tests::loop_driver_no_fence_triggers_nudge_before_final;
-    let _ = crate::agent_backend::mini::loop_driver_no_fence_tests::loop_driver_fenceless_after_nudge_without_bash_errors;
+    let _ = crate::agent_backend::mini::loop_driver_no_fence_tests::loop_driver_fenceless_completes_in_one_turn;
+    let _ = crate::agent_backend::mini::loop_driver_no_fence_tests::loop_driver_fenceless_no_nudge_in_prompts_log;
     let _ = crate::agent_backend::mini::loop_driver_tests::loop_driver_single_fence_runs_bash_and_appends_observation;
     let _ = crate::agent_backend::mini::loop_driver_tests::loop_driver_mini_done_line_terminates;
     let _ = crate::agent_backend::mini::loop_driver_tests::loop_driver_mini_done_inside_fence_still_runs_bash;
+    let _ = crate::agent_backend::mini::loop_driver_tests::loop_driver_new_history_uses_fact_kinds_after_bash_observation;
 }
 
 #[test]
 fn kiss_invalid_struct_value_refs_gate10_5() {
-    let _ = crate::agent_backend::mini::loop_driver_tests::loop_driver_prepends_mini_constraints;
-    let _ = crate::agent_backend::mini::loop_driver_tests::loop_driver_mock_http_retry_on_429;
+    let _ = crate::agent_backend::mini::loop_driver::loop_driver_sticky_tests::loop_driver_sticky_header_includes_constraints;
+    let _ = crate::agent_backend::mini::loop_driver::loop_driver_sticky_tests::loop_driver_mock_http_retry_on_429;
+    let _ = crate::agent_backend::mini::loop_http_retry_tests::complete_with_http_retries_non_billing_errors_exhaust_transport_budget;
+    let _ = crate::agent_backend::mini::loop_http_retry_tests::complete_with_http_retries_succeeds_on_second_mock_attempt;
+    let _ = crate::agent_backend::mini::loop_http_retry_tests::complete_with_http_retries_maps_context_overflow;
+    let _ = crate::agent_backend::mini::loop_http_retry_tests::complete_with_http_retries_retries_nvidia_resource_exhausted;
+    let _ = crate::agent_backend::mini::loop_http_retry_tests::complete_with_http_retries_billing_failure_fails_on_first_attempt;
+    let _ = crate::agent_backend::mini::loop_http_retry_tests::complete_with_http_retries_emits_mini_http_exchange_to_trace;
+    let _ = crate::agent_backend::mini::loop_http_retry_tests::kiss_witness_http_retry_types;
+    let _ = crate::agent_backend::mini::trace_stdout_tee_tests::mini_stdout_emits_bash_tool_summary_with_t_tag;
     let _ = crate::agent_backend::mini::trace_tests::stdout_log_tool_t_lines;
     let _ = crate::artifacts::log_gc_hook_tests::seed_home_logs_for_gc_test;
     let _ = crate::cli::config_defaults_tests::assert_workflow_defaults;
-    let _ = crate::cli::kpop_flow_a_tests::seed_short_id_lookup_fixture;
-    let _ = crate::cli::kpop_flow_a_tests::seed_kpop_multiturn_mock_workspace;
-    let _ = crate::cli::kpop_flow_a_tests::run_kpop_multiturn_mock_once;
+    let _ = crate::flow_prompt_join_test_helpers::assert_header_user_join;
+    let _ = crate::flow_prompt_join_test_helpers::assert_dual_workflow_header_join;
     let _ = crate::cli::kpop_summarize_inline_tests::run_gate_inline_summarize_first_iteration;
     let _ = crate::cli::kpop_summarize_mock_tests::write_summarize_fixture_exp_logs;
     let _ = crate::cli::kpop_summarize_mock_tests::run_inline_summarize_on_open_mock_session;
     let _ = crate::cli::repo_checks::tests_gates_unix::test_scan_for_extension_handles_symlink_cycles;
 }
 
-#[test]
-fn kiss_invalid_struct_value_refs_gate10_6() {
-    let _ = crate::repo_gates::discover_init_checks_fixtures::write_repo_files;
-}

@@ -1,5 +1,6 @@
 //! Wall-clock and phase-bucketed LLM wait timing for agent runs.
-//! JSON is always written to [`RUN_TIMING_JSON_FILE`]; `code`/`kpop` also print [`RUN_TIMING_SUMMARY_PREFIX`].
+//!
+//! JSON is always written to [`RUN_TIMING_JSON_FILE`]; `code`/`kpop`/`router` also print [`RUN_TIMING_SUMMARY_PREFIX`] and, when cost data exists, a separate `COST:` line.
 
 mod cost;
 mod report;
@@ -19,6 +20,9 @@ pub enum TimingPhase {
     Implement,
 }
 
+/// Wire keys for per-type tool-call wall durations (ACP kinds + `other`).
+pub const TOOL_CALL_TYPE_MS_KEYS: [&str; 5] = ["read", "search", "edit", "execute", "other"];
+
 #[derive(Debug, Clone)]
 pub struct RunTiming {
     wall_start: Option<Instant>,
@@ -28,6 +32,11 @@ pub struct RunTiming {
     implement: Duration,
     implement_display_name: &'static str,
     tool_calls: Duration,
+    tool_calls_read: Duration,
+    tool_calls_search: Duration,
+    tool_calls_edit: Duration,
+    tool_calls_execute: Duration,
+    tool_calls_other: Duration,
     pub(crate) tx_costs: Vec<f64>,
     pub(crate) unknown_tx_count: u32,
 }
@@ -42,6 +51,11 @@ impl Default for RunTiming {
             implement: Duration::ZERO,
             implement_display_name: "implement",
             tool_calls: Duration::ZERO,
+            tool_calls_read: Duration::ZERO,
+            tool_calls_search: Duration::ZERO,
+            tool_calls_edit: Duration::ZERO,
+            tool_calls_execute: Duration::ZERO,
+            tool_calls_other: Duration::ZERO,
             tx_costs: Vec::new(),
             unknown_tx_count: 0,
         }
@@ -49,8 +63,18 @@ impl Default for RunTiming {
 }
 
 impl RunTiming {
-    pub const fn add_tool_call_wall(&mut self, d: Duration) {
+    /// Adds wall time for one completed tool call, attributed by ACP wire `kind`.
+    /// Unknown kinds accumulate under `other`. Aggregate `tool_calls` is always updated.
+    pub fn add_tool_call_wall(&mut self, kind: &str, d: Duration) {
         self.tool_calls = self.tool_calls.saturating_add(d);
+        let bucket = match kind {
+            "read" => &mut self.tool_calls_read,
+            "search" => &mut self.tool_calls_search,
+            "edit" => &mut self.tool_calls_edit,
+            "execute" => &mut self.tool_calls_execute,
+            _ => &mut self.tool_calls_other,
+        };
+        *bucket = bucket.saturating_add(d);
     }
 }
 
@@ -130,7 +154,7 @@ pub fn attach_new_run_timing(
 
 /// Anchors one wall-clock interval for a gate-kpop `code` loop (shared across iterations).
 #[must_use]
-pub fn attach_gate_kpop_loop_run_timing() -> Arc<Mutex<RunTiming>> {
+pub fn attach_kpop_engine_loop_run_timing() -> Arc<Mutex<RunTiming>> {
     let mut slot = None;
     attach_new_run_timing(&mut slot)
 }
@@ -207,6 +231,9 @@ pub use report::print_summary_from_run_dir;
 mod timing_tests;
 
 #[cfg(test)]
-mod gate_kpop_timing_regressions;
+mod timing_footnote_tests;
+
+#[cfg(test)]
+mod kpop_engine_timing_regressions;
 
 pub mod acp_post_run;

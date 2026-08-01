@@ -3,89 +3,160 @@ use crate::cli::loop_opts::{
     apply_tenacious, tenacious_budget_guard, TenaciousBudgetGuard, TENACIOUS_MAX_ACP_RETRIES,
     TENACIOUS_MAX_LOOPS,
 };
+use crate::cli::tidy_flow::TidyArgs;
+use crate::reliability_tier::{ReliabilityTier, ReliabilityTierFlags};
 use clap::{CommandFactory, FromArgMatches};
 
-fn apply_kpop_tenacious(
-    kpop: &mut crate::cli::KpopArgs,
+fn apply_tidy_tenacious(
+    tidy: &mut TidyArgs,
     shared: &mut crate::cli::SharedOpts,
     guard: TenaciousBudgetGuard,
 ) {
+    let tier = ReliabilityTier::resolve(ReliabilityTierFlags {
+        tenacious: tidy.tenacious,
+        no_tenacious: shared.no_tenacious,
+    });
     apply_tenacious(
-        &mut kpop.max_loops,
+        &mut tidy.max_loops,
         &mut shared.max_acp_retries,
-        kpop.tenacious && !shared.no_tenacious,
+        tier,
         guard,
     );
 }
 
 #[test]
-fn kpop_defaults_to_tenacious_without_explicit_flag() {
-    let matches = Cli::command().get_matches_from(["malvin", "kpop", "investigate"]);
+fn tidy_defaults_to_tenacious_without_explicit_flag() {
+    let matches = Cli::command().get_matches_from(["malvin", "tidy"]);
     let cli = Cli::from_arg_matches(&matches).expect("parse");
-    let Some(Commands::Kpop(mut kpop)) = cli.command else {
-        panic!("expected kpop subcommand");
+    let Some(Commands::Tidy(mut tidy)) = cli.command else {
+        panic!("expected tidy subcommand");
     };
-    assert!(kpop.tenacious);
+    assert!(tidy.tenacious);
     let mut shared = cli.shared;
-    apply_kpop_tenacious(
-        &mut kpop,
+    apply_tidy_tenacious(
+        &mut tidy,
         &mut shared,
-        tenacious_budget_guard(&matches, "kpop"),
+        tenacious_budget_guard(&matches, "tidy"),
     );
-    assert_eq!(kpop.max_loops, TENACIOUS_MAX_LOOPS);
+    assert_eq!(tidy.max_loops, TENACIOUS_MAX_LOOPS);
     assert_eq!(shared.max_acp_retries, TENACIOUS_MAX_ACP_RETRIES);
 }
 
 #[test]
-fn kpop_tenacious_expands_max_loops_and_acp_retries() {
-    let matches = Cli::command().get_matches_from(["malvin", "kpop", "--tenacious", "investigate"]);
+fn tidy_tenacious_expands_max_loops_and_acp_retries() {
+    let matches = Cli::command().get_matches_from(["malvin", "tidy", "--tenacious"]);
     let cli = Cli::from_arg_matches(&matches).expect("parse");
-    let Some(Commands::Kpop(mut kpop)) = cli.command else {
-        panic!("expected kpop subcommand");
+    let Some(Commands::Tidy(mut tidy)) = cli.command else {
+        panic!("expected tidy subcommand");
     };
     let mut shared = cli.shared;
-    apply_kpop_tenacious(
-        &mut kpop,
+    apply_tidy_tenacious(
+        &mut tidy,
         &mut shared,
-        tenacious_budget_guard(&matches, "kpop"),
+        tenacious_budget_guard(&matches, "tidy"),
     );
-    assert_eq!(kpop.max_loops, TENACIOUS_MAX_LOOPS);
+    assert_eq!(tidy.max_loops, TENACIOUS_MAX_LOOPS);
     assert_eq!(shared.max_acp_retries, TENACIOUS_MAX_ACP_RETRIES);
 }
 
 #[test]
-fn kpop_no_tenacious_keeps_normal_budgets() {
-    let matches =
-        Cli::command().get_matches_from(["malvin", "kpop", "--no-tenacious", "investigate"]);
+fn tidy_no_tenacious_keeps_normal_budgets() {
+    let matches = Cli::command().get_matches_from(["malvin", "tidy", "--no-tenacious"]);
     let cli = Cli::from_arg_matches(&matches).expect("parse");
-    let Some(Commands::Kpop(mut kpop)) = cli.command else {
-        panic!("expected kpop subcommand");
+    let Some(Commands::Tidy(mut tidy)) = cli.command else {
+        panic!("expected tidy subcommand");
     };
-    assert!(kpop.tenacious);
+    assert!(tidy.tenacious);
     assert!(cli.shared.no_tenacious);
     let mut shared = cli.shared;
-    apply_kpop_tenacious(
-        &mut kpop,
+    apply_tidy_tenacious(
+        &mut tidy,
         &mut shared,
-        tenacious_budget_guard(&matches, "kpop"),
+        tenacious_budget_guard(&matches, "tidy"),
     );
-    assert_eq!(kpop.max_loops, 1);
+    assert_eq!(tidy.max_loops, crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE);
     assert_eq!(shared.max_acp_retries, crate::config::DEFAULT_MAX_ACP_RETRIES);
 }
 
 #[test]
-fn kpop_explicit_max_loops_is_not_expanded_by_tenacious_default() {
-    let matches = Cli::command().get_matches_from(["malvin", "kpop", "--max-loops", "2", "investigate"]);
+fn tidy_explicit_max_loops_is_not_expanded_by_tenacious_default() {
+    let matches = Cli::command().get_matches_from(["malvin", "tidy", "--max-loops", "2"]);
     let cli = Cli::from_arg_matches(&matches).expect("parse");
-    let Some(Commands::Kpop(mut kpop)) = cli.command else {
-        panic!("expected kpop subcommand");
+    let Some(Commands::Tidy(mut tidy)) = cli.command else {
+        panic!("expected tidy subcommand");
     };
     let mut shared = cli.shared;
-    apply_kpop_tenacious(
-        &mut kpop,
+    apply_tidy_tenacious(
+        &mut tidy,
         &mut shared,
-        tenacious_budget_guard(&matches, "kpop"),
+        tenacious_budget_guard(&matches, "tidy"),
     );
-    assert_eq!(kpop.max_loops, 2);
+    assert_eq!(tidy.max_loops, 2);
+    assert_eq!(shared.max_acp_retries, TENACIOUS_MAX_ACP_RETRIES);
+}
+
+#[test]
+fn default_route_tenacious_expands_max_loops_and_acp_retries() {
+    let matches = Cli::command().get_matches_from(["malvin", "route this"]);
+    let cli = Cli::from_arg_matches(&matches).expect("parse");
+    assert!(cli.command.is_none());
+    let mut shared = cli.shared;
+    let mut max_loops = cli.max_loops;
+    crate::cli::loop_opts::apply_default_route_tenacious(
+        &mut max_loops,
+        &mut shared.max_acp_retries,
+        shared.no_tenacious,
+        &matches,
+    );
+    assert_eq!(shared.max_acp_retries, TENACIOUS_MAX_ACP_RETRIES);
+    assert_eq!(max_loops, TENACIOUS_MAX_LOOPS);
+}
+
+#[test]
+fn default_route_no_tenacious_keeps_normal_budgets() {
+    let matches = Cli::command().get_matches_from(["malvin", "--no-tenacious", "route this"]);
+    let cli = Cli::from_arg_matches(&matches).expect("parse");
+    let mut shared = cli.shared;
+    let mut max_loops = cli.max_loops;
+    crate::cli::loop_opts::apply_default_route_tenacious(
+        &mut max_loops,
+        &mut shared.max_acp_retries,
+        shared.no_tenacious,
+        &matches,
+    );
+    assert_eq!(shared.max_acp_retries, crate::config::DEFAULT_MAX_ACP_RETRIES);
+    assert_eq!(max_loops, crate::malvin_config_file::DEFAULT_MAX_LOOPS);
+}
+
+#[test]
+fn default_route_explicit_max_acp_retries_is_not_expanded_by_tenacious_default() {
+    let matches =
+        Cli::command().get_matches_from(["malvin", "--max-acp-retries", "4", "route this"]);
+    let cli = Cli::from_arg_matches(&matches).expect("parse");
+    let mut shared = cli.shared;
+    let mut max_loops = cli.max_loops;
+    crate::cli::loop_opts::apply_default_route_tenacious(
+        &mut max_loops,
+        &mut shared.max_acp_retries,
+        shared.no_tenacious,
+        &matches,
+    );
+    assert_eq!(shared.max_acp_retries, 4);
+    assert_eq!(max_loops, TENACIOUS_MAX_LOOPS);
+}
+
+#[test]
+fn default_route_explicit_max_loops_is_not_expanded_by_tenacious_default() {
+    let matches = Cli::command().get_matches_from(["malvin", "--max-loops", "2", "route this"]);
+    let cli = Cli::from_arg_matches(&matches).expect("parse");
+    let mut shared = cli.shared;
+    let mut max_loops = cli.max_loops;
+    crate::cli::loop_opts::apply_default_route_tenacious(
+        &mut max_loops,
+        &mut shared.max_acp_retries,
+        shared.no_tenacious,
+        &matches,
+    );
+    assert_eq!(max_loops, 2);
     assert_eq!(shared.max_acp_retries, TENACIOUS_MAX_ACP_RETRIES);
 }

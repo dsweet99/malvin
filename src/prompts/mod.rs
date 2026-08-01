@@ -6,7 +6,10 @@ mod store;
 mod template;
 pub use template::*;
 
-pub use defaults::{DO_HEADER_MD, HEADER_DO_MD, HEADER_MD, PLAN_1A_RESTATE_MD, PLAN_1B_CRITIQUE_MD, PLAN_2_DECISIONS_MD, PLAN_3_REWRITE_MD};
+pub use defaults::{
+    DO_HEADER_MD, EXPLAIN_WRAPPER_MD, HEADER_MD, ROUTER_CODE_EXTRA_MD, ROUTER_KPOP_GROUP_MD,
+    ROUTER_REQUIREMENTS_MD, ROUTER_SUMMARIZE_MD, ROUTER_WORK_MD,
+};
 
 #[allow(unused_imports)]
 pub(crate) use defaults::{DEFAULT_PROMPTS, REQUIRED_PROMPTS, default_file};
@@ -28,15 +31,35 @@ pub fn enforce_no_unresolved_braces_in(
     text: &str,
     prompt_file: Option<&str>,
 ) -> Result<(), PromptError> {
-    if text.contains("{{") {
-        let msg = prompt_file.map_or_else(
-            || UNRESOLVED_BRACES_MSG.to_string(),
-            |name| format!("{UNRESOLVED_BRACES_MSG} (in {name})"),
-        );
-        Err(PromptError(msg))
-    } else {
+    if template::unresolved_spaced_brace_placeholders(text).is_empty() {
         Ok(())
+    } else {
+        Err(unresolved_braces_error(prompt_file))
     }
+}
+
+/// # Errors
+///
+/// Returns [`PromptError`] when `template` contains `{{ key }}` placeholders whose keys are
+/// missing from `context`.
+pub fn enforce_template_placeholders_resolved_in(
+    template: &str,
+    context: &std::collections::HashMap<String, String>,
+    prompt_file: Option<&str>,
+) -> Result<(), PromptError> {
+    if template::unresolved_template_placeholders(template, context).is_empty() {
+        Ok(())
+    } else {
+        Err(unresolved_braces_error(prompt_file))
+    }
+}
+
+fn unresolved_braces_error(prompt_file: Option<&str>) -> PromptError {
+    let msg = prompt_file.map_or_else(
+        || UNRESOLVED_BRACES_MSG.to_string(),
+        |name| format!("{UNRESOLVED_BRACES_MSG} (in {name})"),
+    );
+    PromptError(msg)
 }
 
 #[derive(Debug, thiserror::Error)]

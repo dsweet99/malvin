@@ -2,7 +2,6 @@ use serde_json::Value;
 
 pub const RUN_COST_SUMMARY_PREFIX: &str = "COST: ";
 
-#[must_use]
 pub fn format_cost_stdout_line_from_json(json: &Value) -> Option<String> {
     let cost = json.get("cost")?;
     let total = cost.get("total_cost")?.as_f64()?;

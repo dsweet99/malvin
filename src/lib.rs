@@ -37,6 +37,11 @@
 mod log_gc;
 mod log_gc_config;
 mod malvin_config_file;
+mod workflow_name_aliases;
+pub use workflow_name_aliases::{
+    canonical_workflow_name, resolve_session_log_path, resolve_workspace_malvin_config_path,
+    WORKSPACE_CONFIG_PATHS,
+};
 /// OpenRouter HTTP transport formerly published as the `malvin-mini` crate.
 pub mod malvin_mini;
 mod gate_loop_session;
@@ -75,11 +80,13 @@ pub use malvin_short_id::{
 mod malvin_constants;
 pub mod workspace_paths;
 pub use workspace_paths::{
-    canonical_work_dir_for_logs, find_malvin_logs_root, is_malvin_workspace, malvin_advice_path,
-    malvin_checks_path, malvin_config_path, malvin_home_config_path, malvin_home_logs_root, malvin_logs_root,
-    malvin_user_home_root, read_work_dir_manifest, remove_legacy_malvin_checks_file, workspace_logs_hash,
-    write_work_dir_manifest, MALVIN_ADVICE_REL, MALVIN_CHECKS_REL, MALVIN_CONFIG_REL, MALVIN_DIR,
-    MALVIN_HOME_CONFIG_FILE, MALVIN_LOGS_REL, MALVIN_USER_HOME_DIR, WORK_DIR_MANIFEST,
+    canonical_work_dir_for_logs, find_malvin_logs_root, git_worktree_toplevel, is_malvin_workspace,
+    legacy_malvin_checks_path, malvin_acp_spawn_chamber_dir, malvin_advice_path, malvin_checks_path,
+    malvin_config_path, malvin_data_root, malvin_home_config_path, malvin_home_logs_root,
+    malvin_logs_root, malvin_user_home_root, read_work_dir_manifest, remove_legacy_malvin_checks_file,
+    resolve_malvin_checks_path, workspace_logs_hash, write_work_dir_manifest, MALVIN_ADVICE_REL,
+    MALVIN_CHECKS_REL, MALVIN_CONFIG_REL, MALVIN_DIR, MALVIN_HOME_CONFIG_FILE, MALVIN_LOGS_REL,
+    MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION, MALVIN_USER_HOME_DIR, WORK_DIR_MANIFEST,
 };
 mod terminal_palette;
 mod run_id;
@@ -111,7 +118,6 @@ pub use ansi_strip::strip_ansi_escapes;
 pub use artifacts::startup_request_tag_label;
 pub use artifacts::{
     MalvinChecksBackup, RunArtifacts, SessionDotfileBackups,
-    backup_workspace_kissconfig_if_present, backup_workspace_kissignore_if_present,
     backup_workspace_malvin_checks_if_present, backup_workspace_malvin_config_if_present,
     create_run_artifacts_from_text, restore_workspace_session_dotfiles,
 };
@@ -131,8 +137,6 @@ pub use run_timing::{
     RunTiming, TimingPhase, finalize_and_emit_run_timing, finalize_run_timing_json_only,
     print_summary_from_run_dir,
 };
-pub use session_dotfile_backup::KissConfigBackup;
-
 pub mod artifacts;
 mod child_health;
 mod test_poll;
@@ -140,6 +144,8 @@ pub use test_poll::{
     test_post_teardown_poll_interval, test_post_teardown_wait_budget, test_wait_until_async,
 };
 pub mod config;
+pub mod local_llm;
+pub mod model_id;
 mod kpop_test_stubs;
 mod kpop_turn_prompts;
 pub use kpop_test_stubs::{
@@ -155,14 +161,28 @@ pub use multiturn_prompt::MultiturnPrompt;
 pub mod support_paths;
 pub use support_paths::{
     agent_or_cursor_agent_bin, command_line, format_logs_dir, init_from_env, lookup_bin_on_path,
-    require_kiss_for_malvin,
 };
 pub mod workflow_context;
 pub mod orchestrator;
 pub use orchestrator::{
     Orchestrator, WorkflowConfig, WorkflowError, check_abort, fail_on_abort_for_artifacts,
 };
-pub use workflow_context::{format_prompt_path, workflow_context, workflow_context_paths_only};
+pub use workflow_context::{
+    format_malvin_command, format_prompt_path, workflow_context_paths_only, PromptModelOpts,
+};
+#[cfg(test)]
+pub use workflow_context::workflow_context;
+pub mod observability;
+pub mod kpop_log_protocol;
+pub mod kpop_program;
+pub mod kpop_soft_constraints;
+pub mod acp_trace_impersonation;
+pub mod coder_prompt_phase;
+pub mod fork_state;
+pub mod nested_budget_scopes;
+pub mod prompt_stratification;
+pub mod reliability_tier;
+pub mod session_sandbox_policy;
 pub mod output;
 pub mod prompts;
 pub mod repo_gates;
@@ -184,8 +204,6 @@ pub mod source_detect;
 #[path = "cli/source_detect_kiss_cov_tests.rs"]
 mod source_detect_kiss_cov_tests;
 
-#[path = "cli/init_cmd.rs"]
-pub mod init_cmd;
 
 #[path = "cli/do_flow.rs"]
 pub mod do_flow;
@@ -193,11 +211,10 @@ pub mod do_flow;
 #[path = "cli/inspire_flow.rs"]
 pub mod inspire_flow;
 
-#[path = "cli/plan_flow.rs"]
-pub mod plan_flow;
+#[path = "cli/router_flow.rs"]
+pub mod router_flow;
 
-#[path = "cli/gate_kpop_workflow.rs"]
-pub mod gate_kpop_workflow;
+pub mod kpop_engine;
 
 #[path = "cli/mod.rs"]
 pub mod cli;
@@ -227,4 +244,5 @@ pub(crate) mod acp_session_unit_tests;
 #[cfg(test)] mod malvin_test_seed;
 #[cfg(test)] pub use malvin_test_seed::{seed_malvin_checks, seed_malvin_config};
 #[cfg(test)] pub mod test_utils;
+#[cfg(test)] pub mod flow_prompt_join_test_helpers;
 #[cfg(test)] pub mod test_agent_client;

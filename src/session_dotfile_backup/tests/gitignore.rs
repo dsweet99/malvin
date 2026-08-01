@@ -3,7 +3,6 @@ use crate::artifacts::{
     backup_workspace_gitignore_if_present_with_id, restore_workspace_gitignore_backup,
     SessionDotfileBackups,
 };
-use crate::session_dotfile_backup::DotfileBackupState;
 use crate::test_utils::with_isolated_home;
 use crate::workspace_paths::snapshot_category_dir;
 
@@ -73,27 +72,27 @@ fn gitignore_backup_retries_on_existing_collision() {
     });
 }
 
-/// Post-agent snapshot must capture agent-created dotfiles before intra-session restore wipes them.
+/// Post-agent snapshot must capture agent-created gitignore before intra-session restore wipes them.
 #[test]
-fn post_agent_snapshot_preserves_agent_created_kissignore_for_gate_restore() {
+fn post_agent_snapshot_preserves_agent_created_gitignore_for_gate_restore() {
     with_isolated_home(|work| {
         std::fs::create_dir_all(work.join(".malvin")).unwrap();
-        std::fs::write(work.join(".malvin/checks"), "kiss check .\n").unwrap();
+        std::fs::write(work.join(".malvin/checks"), "make lint\n").unwrap();
         let iteration_start =
             SessionDotfileBackups::snapshot_after_ensuring_home_config(work).unwrap();
-        assert!(matches!(iteration_start.kissignore, DotfileBackupState::Missing));
-        std::fs::write(work.join(".kissignore"), "target/\nops/\n").unwrap();
+        assert!(matches!(iteration_start.gitignore, GitignoreBackup::Missing));
+        std::fs::write(work.join(".gitignore"), "target/\nops/\n").unwrap();
         let post_agent =
             SessionDotfileBackups::snapshot_after_ensuring_home_config(work).unwrap();
         iteration_start
             .restore_excluding_malvin_checks(work)
             .unwrap();
-        assert!(!work.join(".kissignore").exists(), "intra-session restore wipes agent repair");
+        assert!(!work.join(".gitignore").exists(), "intra-session restore wipes agent repair");
         post_agent
             .restore_excluding_malvin_checks(work)
             .unwrap();
         assert_eq!(
-            std::fs::read_to_string(work.join(".kissignore")).unwrap(),
+            std::fs::read_to_string(work.join(".gitignore")).unwrap(),
             "target/\nops/\n"
         );
     });

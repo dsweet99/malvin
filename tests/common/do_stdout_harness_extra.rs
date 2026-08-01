@@ -6,7 +6,7 @@ use std::process::Command;
 #[cfg(unix)]
 use super::{
     MALVIN_TEST_CMD_TIMEOUT, acp_mock_do_streaming_update_js, command_output_with_timeout,
-    test_home_workspace, write_mock_executable,
+    test_home_workspace, cached_mock_executable,
 };
 
 #[cfg(unix)]
@@ -29,7 +29,7 @@ pub fn chmod755(path: &Path) {
 }
 
 #[cfg(unix)]
-pub fn write_fake_kiss_clamp_installs_kissconfig(kiss: &Path, kissconfig: &Path, marker: &Path) {
+pub fn write_fake_clamp_installs_kissconfig(kiss: &Path, kissconfig: &Path, marker: &Path) {
     std::fs::write(
         kiss,
         format!(
@@ -69,8 +69,7 @@ pub fn prepare_do_bin_streaming_mock(mock_js: &str) -> DoBinCtx {
     let (root, home, workspace) = test_home_workspace();
     let bin_dir = root.path().join("bin");
     std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
-    let mock = root.path().join("mock-agent-acp-do");
-    write_mock_executable(&mock, mock_js);
+    let mock = cached_mock_executable( mock_js);
     DoBinCtx {
         root,
         home,
@@ -91,7 +90,7 @@ pub fn run_do_say_hi_path_prefixed_mid(ctx: &DoBinCtx, mid: &[&str]) -> std::pro
         ctx.bin_dir.display(),
         std::env::var("PATH").unwrap_or_default()
     );
-    let mut args: Vec<&str> = vec!["do"];
+    let mut args: Vec<&str> = vec!["--do"];
     args.extend_from_slice(super::INTEGRATION_TEST_MALVIN_ARGS);
     args.extend_from_slice(mid);
     args.push("say hi");
@@ -116,10 +115,10 @@ pub fn prepare_do_auto_clamp_case(
     std::fs::create_dir_all(ctx.workspace.join("src")).expect("mkdir src");
     std::fs::write(ctx.workspace.join("src/main.rs"), "fn main() {}").expect("write source");
     let _ = std::fs::remove_file(ctx.workspace.join(".kissconfig"));
-    let marker = ctx.workspace.join("kiss_clamp_called.txt");
+    let marker = ctx.workspace.join("clamp_called.txt");
     let kissconfig = ctx.workspace.join(".kissconfig");
     let kiss = ctx.bin_dir.join("kiss");
-    write_fake_kiss_clamp_installs_kissconfig(&kiss, &kissconfig, &marker);
+    write_fake_clamp_installs_kissconfig(&kiss, &kissconfig, &marker);
     (ctx, marker, kissconfig)
 }
 
@@ -132,7 +131,7 @@ pub fn prepare_do_skip_clamp_case(
     std::fs::create_dir_all(ctx.workspace.join("src")).expect("mkdir src");
     std::fs::write(ctx.workspace.join("src/main.rs"), "fn main() {}").expect("write source");
     std::fs::write(ctx.workspace.join(".kissconfig"), existing_kiss).expect("write kissconfig");
-    let marker = ctx.workspace.join("kiss_clamp_called.txt");
+    let marker = ctx.workspace.join("clamp_called.txt");
     let kiss = ctx.bin_dir.join("kiss");
     write_fake_kiss_marker_fail(&kiss, &marker);
     (ctx, marker)
@@ -151,7 +150,7 @@ pub fn run_malvin_do_home_workspace(
             .env("CURSOR_AGENT_API_KEY", "test-key")
             .env("MALVIN_AGENT_ACP_BIN", mock)
             .args(super::INTEGRATION_TEST_MALVIN_ARGS)
-            .args(["do", "say hi"]),
+            .args(["--do", "say hi"]),
         MALVIN_TEST_CMD_TIMEOUT,
     )
     .expect("spawn malvin do")

@@ -1,21 +1,21 @@
 # malvin delight
 
-Author a **user-delighting feature plan** via the KPop gate loop scoped by `delight_constraints.md`. The agent writes a new markdown plan to a workspace path you choose.
+Author a **user-delighting feature pitch** by composing a request and running the **default router** workflow (same path as bare `malvin REQUEST`). The composed request embeds any user guidance and the output path.
 
 ## Summary
 
 | | |
 |---|---|
 | Input | Optional guidance text or `.md` path |
-| Output | Workspace file at `--out-path` (default: `plan.md`) |
-| Loop | Full gate-kpop loop (`GateLoopBehavior::DELIGHT`) |
-| Fast path | **None** — always runs the agent (like `code`, unlike `tidy`) |
-| Exit policy | Two consecutive `## KPOP_SOLVED` markers in per-iteration exp logs; workspace gates need not pass |
-| Requires | `kiss` on PATH (same preflight as `code` / `tidy`) |
+| Output | Workspace file at `--out-path` (default: `pitch.md`); path is named in the composed router request |
+| Loop | Default router: requirements JSON → multi-group KPop → optional work; outer `--max-loops` sessions |
+| Fast path | **None** — always runs the router |
+| Exit policy | Router success (agent fulfills the composed pitch request) |
+| Requires | No `.malvin/checks` preflight at CLI entry (document workflow, like `explain`) |
 
 ## Intention
 
-Generate a fresh, repo-grounded plan for a feature or improvement that would delight the user — without overwriting an existing plan file. On success, malvin automatically runs `malvin plan` on the same `--out-path`. Typical pipeline: `malvin delight` → `malvin code <out-path>`.
+Generate a fresh, repo-grounded pitch for a feature or improvement that would delight the user — without overwriting an existing pitch file. Typical pipeline: `malvin delight` → bare `malvin REQUEST` with the pitch path.
 
 ## Usage
 
@@ -25,13 +25,13 @@ malvin delight [GUIDANCE] [OPTIONS]
 
 ### `[GUIDANCE]` (optional)
 
-Literal text or path to an existing `.md` file. When provided, malvin injects the resolved text into `delight_constraints.md` so the agent steers the plan toward your guidance. Omitted guidance preserves the current behavior.
+Literal text or path to an existing `.md` file. When provided, malvin resolves the text and embeds it in the composed router request under user guidance. Omitted guidance leaves the delight intent without that block.
 
 ## Options
 
-### `--out-path <PATH>` (default: `plan.md`)
+### `--out-path <PATH>` (default: `pitch.md`)
 
-Workspace path for the generated plan. With the default `plan.md`, if that file already exists, malvin allocates the first free sibling (`plan_1.md`, `plan_2.md`, …) before the agent runs. For any other `--out-path`, if the path already exists (regular file, empty file, directory, or symlink to an existing target), the command exits immediately with:
+Workspace path for the generated pitch. With the default `pitch.md`, if that file already exists, malvin allocates the first free sibling (`pitch_1.md`, `pitch_2.md`, …) before composing the router request. For any other `--out-path`, if the path already exists (regular file, empty file, directory, or symlink to an existing target), the command exits immediately with:
 
 ```text
 malvin delight: `<path>` already exists; refusing to overwrite
@@ -41,11 +41,7 @@ No run artifacts or agent work starts when a non-default path pre-exists.
 
 ### `--max-loops <N>` (default: 3)
 
-Outer gate-loop budget (`max(N, 1) + 1` iterations). `0` is treated as `1`.
-
-### `--max-hypotheses <N>` (default: 5)
-
-Hypothesis budget per KPop session inside the gate loop.
+Outer router session budget (`effective_max_loops`). `0` is treated as `1`.
 
 ### `--tenacious` (default: on)
 
@@ -57,28 +53,23 @@ Restore normal loop/retry budgets (global flag; see `malvin --doc`).
 
 ## Global options
 
-See `malvin --doc`.
+See `malvin --doc`. `--quiet` / `-q` applies because delight invokes the default router (DM-body-only stdout; not the same as `-b`).
 
 ## Success criteria
 
 All of the following must hold:
 
-1. Preflight passed (default `plan.md` may have been auto-allocated to a sibling; non-default paths must not have pre-existed).
-2. Two consecutive outer gate-loop iterations each declared `## KPOP_SOLVED` in their own exp log.
-3. After the session, `--out-path` is a regular file with size &gt; 0.
-4. The decoupled `malvin plan` workflow runs automatically on the same `--out-path` (overwrites it with the revised implementation plan from Prompt 3).
+1. Preflight passed (default `pitch.md` may have been auto-allocated to a sibling; non-default paths must not have pre-existed).
+2. The default router completed within the `--max-loops` budget.
 
-The output file does **not** need plan-pipeline section headings when the delight session finishes; the chained `malvin plan` step produces the final normative spec (no user prefix, no `BEGIN_MALVIN` block).
-
-On success, malvin prints `DONE` to stdout.
+On success, malvin follows the default router exit reporting.
 
 ## Related commands
 
 | Command | When |
 |---------|------|
-| `malvin inspire` | One-shot MBC2 ideation; no plan file |
-| `malvin plan` | Four-prompt refinement on an existing plan (runs automatically after `delight`; also available standalone) |
-| `malvin code` | Implement a plan via the gate loop |
+| `malvin inspire` | One-shot MBC2 ideation; no pitch file |
+| bare `malvin REQUEST` | Same router engine; delight is a thin request wrapper |
 
 ## Examples
 
@@ -87,5 +78,5 @@ malvin delight
 malvin delight "Improve error messages for gate failures"
 malvin delight guidance.md
 malvin delight --out-path plans/feature.md
-malvin code plans/feature.md
+malvin "Implement the plan in plans/feature.md"
 ```

@@ -41,6 +41,18 @@ pub(crate) fn agent_string_is_cannot_use_model(msg: &str) -> bool {
     msg.to_ascii_lowercase().contains("cannot use this model")
 }
 
+pub(crate) fn agent_string_is_openrouter_billing_failure(msg: &str) -> bool {
+    let text = msg.to_ascii_lowercase();
+    text.contains("openrouter billing/credit failure")
+        // Pre-classifier / ProviderError phrasing observed under empty balance.
+        || text.contains("insufficient credits")
+}
+
+pub(crate) fn agent_string_is_openrouter_missing_content(msg: &str) -> bool {
+    msg.to_ascii_lowercase()
+        .contains("openrouter response missing assistant content")
+}
+
 /// Max spawn attempts for `session/new` JSON-RPC Internal (`code=-32603`).
 /// Decoupled from tenacious [`crate::cli::loop_opts::TENACIOUS_MAX_ACP_RETRIES`].
 pub(crate) const SESSION_NEW_INTERNAL_MAX_SPAWN_ATTEMPTS: u32 = 5;
@@ -55,16 +67,55 @@ pub(crate) fn agent_string_is_session_new_internal_error(msg: &str) -> bool {
     text.contains("internal") || text.contains("code=-32603")
 }
 
+/// Cursor `agent` HTTP/2/Connect transport failures streamed as assistant text with `end_turn`.
+///
+/// Observed forms:
+/// - `Error: RetriableError: [unavailable] PING timed out`
+/// - `Error: RetriableError: [canceled] http/2 stream closed with error code CANCEL (0x8)`
+#[must_use]
+pub(crate) fn agent_string_is_cursor_http2_transport_error(msg: &str) -> bool {
+    let text = msg.to_ascii_lowercase();
+    text.contains("ping timed out")
+        || (text.contains("http/2 stream closed")
+            && (text.contains("cancel") || text.contains("0x8")))
+}
+
+/// Stable error string for prompt failure / retry when Cursor streams an HTTP/2 transport `RetriableError`.
+#[must_use]
+pub(crate) fn cursor_http2_transport_error_message(msg: &str) -> Option<&'static str> {
+    let text = msg.to_ascii_lowercase();
+    if text.contains("ping timed out") {
+        Some("RetriableError: [unavailable] PING timed out")
+    } else if text.contains("http/2 stream closed")
+        && (text.contains("cancel") || text.contains("0x8"))
+    {
+        Some("RetriableError: [canceled] http/2 stream closed with error code CANCEL (0x8)")
+    } else {
+        None
+    }
+}
+
 /// Child-health / transport failures where the open coder session must be torn down before retry.
 #[must_use]
 pub(crate) fn agent_error_requires_coder_session_teardown(msg: &str) -> bool {
     let text = msg.to_ascii_lowercase();
-    text.contains("acp child process appears hung")
+    let child_dead = text.contains("acp child process appears hung")
         || text.contains("acp child process is not running")
         || text.contains("acp child process is zombie")
         || text.contains("acp stdout closed")
         || text.contains("iterable is closed")
-        || text.contains("connection stalled")
+        || text.contains("connection stalled");
+    if child_dead {
+        return true;
+    }
+    if !agent_string_is_cursor_http2_transport_error(msg) {
+        return false;
+    }
+    // Mock ACP agents stream PING/CANCEL as text but stay healthy; keep the session for retry.
+    if crate::acp::test_no_real_agent_enabled() {
+        return false;
+    }
+    true
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -137,7 +188,11 @@ pub(crate) fn plan_agent_retry(
     attempt: u32,
     max_attempts: u32,
 ) -> Result<AgentRetryOutcome, AgentError> {
-    if agent_string_is_upgrade_plan(last_error) || agent_string_is_cannot_use_model(last_error) {
+    if agent_string_is_upgrade_plan(last_error)
+        || agent_string_is_cannot_use_model(last_error)
+        || agent_string_is_openrouter_billing_failure(last_error)
+        || agent_string_is_openrouter_missing_content(last_error)
+    {
         return Err(AgentError(last_error.to_string()));
     }
     if agent_retry_should_stop(last_error) {

@@ -1,4 +1,4 @@
-//! Commands-only help for bare `malvin` (no subcommand, no REQUEST).
+//! Commands-only help for bare `malvin` (no subcommand).
 
 use std::io::{self, Write};
 
@@ -39,13 +39,12 @@ fn commands_only_help_lines(cmd: &Command) -> Vec<String> {
         lines.push(about.to_string());
         lines.push(String::new());
     }
-    lines.push("Usage: malvin [COMMAND|REQUEST]...".to_string());
+    lines.push("Usage: malvin [OPTIONS] [REQUEST]".to_string());
+    lines.push("        malvin [OPTIONS] <COMMAND>".to_string());
     lines.push(String::new());
     lines.push("Commands:".to_string());
     lines.extend(format_command_lines(&visible_subcommands(cmd)));
     lines.extend([
-        String::new(),
-        "Pass one or more REQUESTs with no subcommand to run KPop on each in sequence.".to_string(),
         String::new(),
         "Use `malvin --help` to see options.".to_string(),
     ]);
@@ -72,28 +71,42 @@ pub fn print_commands_only_help() -> io::Result<()> {
 mod tests {
     use super::*;
 
+    fn help_lists_subcommand(cmd: &Command, name: &str) -> bool {
+        format_command_lines(&visible_subcommands(cmd))
+            .iter()
+            .any(|line| line.starts_with(&format!("  {name}")))
+    }
+
     #[test]
-    fn commands_only_help_lines_includes_request_usage_and_epilog() {
+    fn commands_only_help_lists_init() {
+        let cmd = Cli::command();
+        assert!(help_lists_subcommand(&cmd, "init"));
+    }
+
+    #[test]
+    fn commands_only_help_lines_includes_command_usage_and_epilog() {
         let cmd = Cli::command();
         let lines = commands_only_help_lines(&cmd);
         let text = lines.join("\n");
-        assert!(text.contains("Usage: malvin [COMMAND|REQUEST]..."));
-        assert!(text.contains("one or more REQUESTs"));
+        assert!(text.contains("Usage: malvin [OPTIONS] [REQUEST]"));
+        assert!(text.contains("malvin [OPTIONS] <COMMAND>"));
         assert!(text.contains("Commands:"));
-        assert!(!text.contains("kpop"));
+        assert!(text.contains("tidy"));
     }
 
     #[test]
     fn render_commands_only_help_lists_subcommands_not_options() {
         let help = render_commands_only_help();
+        let cmd = Cli::command();
         assert!(help.contains("Commands:"));
-        assert!(help.contains("init"));
-        assert!(help.contains("Usage: malvin [COMMAND|REQUEST]..."));
-        assert!(help.contains("one or more REQUESTs"));
+        assert!(!help_lists_subcommand(&cmd, "code"));
+        assert!(!help_lists_subcommand(&cmd, "kpop"));
+        assert!(help_lists_subcommand(&cmd, "tidy"));
+        assert!(help.contains("Usage: malvin [OPTIONS] [REQUEST]"));
+        assert!(help.contains("malvin [OPTIONS] <COMMAND>"));
         assert!(help.contains("malvin --help"));
         assert!(!help.contains("Options:"));
         assert!(!help.contains("--no-color"));
-        assert!(!help.contains("kpop"), "hidden kpop subcommand must not appear");
     }
 
     #[test]
@@ -111,21 +124,27 @@ mod tests {
     }
 
     #[test]
-    fn visible_subcommands_omits_hidden_kpop() {
+    fn visible_subcommands_omits_kpop() {
         let cmd = Cli::command();
         let names: Vec<_> = visible_subcommands(&cmd)
             .into_iter()
             .map(|sub| sub.get_name().to_string())
             .collect();
-        assert!(names.contains(&"code".to_string()));
-        assert!(!names.iter().any(|name| name == "kpop"));
+        assert!(!names.iter().any(|n| n == "code"));
+        assert!(!names.iter().any(|n| n == "kpop"));
+        assert!(!names.iter().any(|n| n == "delight"));
+        assert_eq!(
+            names,
+            vec!["init", "tidy", "explain", "inspire", "models"]
+        );
     }
 
     #[test]
     fn format_command_lines_aligns_names() {
         let cmd = Cli::command();
         let lines = format_command_lines(&visible_subcommands(&cmd));
-        assert!(lines.iter().any(|line| line.starts_with("  init")));
+        assert!(lines.iter().any(|line| line.starts_with("  tidy")));
+        assert!(!lines.iter().any(|line| line.starts_with("  kpop")));
     }
 
     #[test]

@@ -2,7 +2,8 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use crate::artifacts::RunArtifacts;
-
+use crate::prompt_stratification::WorkflowRenderContext;
+#[cfg(test)]
 use crate::prompts::{PromptError, PromptStore};
 
 pub(crate) fn insert_formatted(ctx: &mut HashMap<String, String>, key: &str, path: &Path, base: &Path) {
@@ -19,15 +20,11 @@ fn insert_quality_gates_log_paths(
     context.insert("quality_gates_path".to_string(), path);
 }
 
-fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunArtifacts) {
-    let base = &artifacts.work_dir;
-    insert_formatted(context, "plan_path", &artifacts.plan_path, base);
-    let kpop_dir = artifacts
-        .run_dir
-        .join("_kpop")
-        .canonicalize()
-        .unwrap_or_else(|_| artifacts.run_dir.join("_kpop"));
-    insert_formatted(context, "kpop_log_dir", &kpop_dir, base);
+fn insert_review_artifact_paths(
+    context: &mut HashMap<String, String>,
+    artifacts: &RunArtifacts,
+    base: &Path,
+) {
     insert_formatted(
         context,
         "review_path",
@@ -46,6 +43,25 @@ fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunA
         &artifacts.artifact_result_md(),
         base,
     );
+    insert_formatted(
+        context,
+        "review_requirements_path",
+        &crate::artifacts::review_requirements_json(artifacts),
+        base,
+    );
+}
+
+fn insert_kpop_and_workspace_paths(
+    context: &mut HashMap<String, String>,
+    artifacts: &RunArtifacts,
+    base: &Path,
+) {
+    let kpop_dir = artifacts
+        .run_dir
+        .join("_kpop")
+        .canonicalize()
+        .unwrap_or_else(|_| artifacts.run_dir.join("_kpop"));
+    insert_formatted(context, "kpop_log_dir", &kpop_dir, base);
     insert_formatted(context, "exp_log", &artifacts.exp_log_path(), base);
     insert_formatted(
         context,
@@ -54,12 +70,21 @@ fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunA
         base,
     );
     insert_formatted(context, "malvin_output_path", &artifacts.run_dir, base);
+    insert_formatted(context, "workspace_dir", &artifacts.run_dir, base);
     insert_formatted(
         context,
         "logs_dir",
         &crate::malvin_logs_root(base),
         base,
     );
+}
+
+fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunArtifacts) {
+    let base = &artifacts.work_dir;
+    insert_formatted(context, "plan_path", &artifacts.plan_path, base);
+    insert_formatted(context, "user_request_path", &artifacts.plan_path, base);
+    insert_kpop_and_workspace_paths(context, artifacts, base);
+    insert_review_artifact_paths(context, artifacts, base);
     insert_quality_gates_log_paths(context, artifacts, base);
 }
 
@@ -74,16 +99,51 @@ fn insert_current_state(
     );
 }
 
+/// CLI prefix for prompt templates (`{{ malvin_command }} inspire`, etc.).
+#[must_use]
+pub fn format_malvin_command(model: &str) -> String {
+    format!("malvin --model={model}")
+}
+
+/// Value for `{{ git_extra }}` when `--git` is enabled.
+pub const GIT_EXTRA_ENABLED: &str = "You may run 'git commit'.";
+
+/// Model id and `--git` template options for prompt rendering.
+#[derive(Clone, Copy, Debug)]
+pub struct PromptModelOpts<'a> {
+    pub model: &'a str,
+    pub git: bool,
+}
+
+impl<'a> PromptModelOpts<'a> {
+    #[must_use]
+    pub const fn new(model: &'a str, git: bool) -> Self {
+        Self { model, git }
+    }
+}
+
+/// Template text for `{{ git_extra }}` from the `--git` flag.
+#[must_use]
+pub const fn format_git_extra(git: bool) -> &'static str {
+    if git {
+        GIT_EXTRA_ENABLED
+    } else {
+        ""
+    }
+}
+
 #[must_use]
 pub fn workflow_context_paths_only(
     artifacts: &RunArtifacts,
-    malvin_command: &str,
-) -> HashMap<String, String> {
+    model: &str,
+    git: bool,
+) -> WorkflowRenderContext {
     let mut context = HashMap::new();
     insert_artifact_paths(&mut context, artifacts);
     insert_current_state(&mut context, artifacts, &artifacts.work_dir);
-    context.insert("malvin_command".to_string(), malvin_command.to_string());
-    context
+    context.insert("malvin_command".to_string(), format_malvin_command(model));
+    context.insert("git_extra".to_string(), format_git_extra(git).to_string());
+    WorkflowRenderContext::new(context)
 }
 
 /// Builds the full workflow render context (paths, quality gates, `kpop` slot).
@@ -91,18 +151,23 @@ pub fn workflow_context_paths_only(
 /// # Errors
 ///
 /// Returns [`PromptError`] when quality gate markdown or `kpop_common.md` rendering fails.
+#[cfg(test)]
 pub fn workflow_context(
     artifacts: &RunArtifacts,
     prompts: &PromptStore,
-    malvin_command: &str,
-) -> Result<HashMap<String, String>, PromptError> {
-    let mut context = workflow_context_paths_only(artifacts, malvin_command);
+    model: &str,
+) -> Result<WorkflowRenderContext, PromptError> {
+    let mut context = workflow_context_paths_only(artifacts, model, false);
     context.insert(
         "quality_gates".to_string(),
         crate::repo_gates::prompt_quality_gates_markdown_ephemeral(&artifacts.work_dir)
             .map_err(PromptError)?,
     );
-    let kpop_content = prompts.render_prompt_only("kpop_common.md", &context)?;
+    context.insert(
+        "max_hypotheses".to_string(),
+        crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES.to_string(),
+    );
+    let kpop_content = prompts.render_prompt_only("kpop_common.md", context.as_map())?;
     context.insert("kpop".to_string(), kpop_content);
     Ok(context)
 }
@@ -127,6 +192,34 @@ fn resolve_nonexistent_path(abs: &Path) -> PathBuf {
             })
         })
         .unwrap_or_else(|| abs.to_path_buf())
+}
+
+#[cfg(test)]
+pub(crate) fn resolve_prompt_context_path(
+    context: &WorkflowRenderContext,
+    key: &str,
+    base: &Path,
+    fallback: &Path,
+) -> PathBuf {
+    context.get(key).map_or_else(
+        || fallback.to_path_buf(),
+        |s| resolve_path_against_base(Path::new(s), base),
+    )
+}
+
+/// On-disk user brief path (may differ from [`RunArtifacts::plan_path`]).
+#[cfg(test)]
+#[must_use]
+pub(crate) fn resolve_user_brief_path(
+    artifacts: &RunArtifacts,
+    context: &WorkflowRenderContext,
+) -> PathBuf {
+    resolve_prompt_context_path(
+        context,
+        "user_request_path",
+        artifacts.work_dir.as_path(),
+        &artifacts.plan_path,
+    )
 }
 
 #[must_use]

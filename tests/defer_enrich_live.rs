@@ -65,7 +65,7 @@ fn spawn_malvin_do_read_probe(workspace: &Path) -> std::process::Output {
             .env_remove("MALVIN_AGENT_ACP_BIN")
             .env("MALVIN_FORCE_STDOUT_TEE", "1")
             .env("MALVIN_DEFER_LOG_MAX_AGE_MS", "1500")
-            .args(["do", &prompt]),
+            .args(["--do", &prompt]),
     )
     .unwrap_or_else(|e| panic!("malvin do timed out after {LIVE_AGENT_CMD_TIMEOUT:?}: {e}"))
 }

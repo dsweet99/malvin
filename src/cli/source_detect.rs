@@ -1,5 +1,4 @@
 //! Heuristic detection for whether a workspace tree looks like it contains project source.
-//! Used by [`crate::repo_checks::gate_run`] when deciding whether `kiss clamp` may be needed.
 
 use std::path::{Path, PathBuf};
 

@@ -12,23 +12,6 @@ fn abort_result_path(dir: &tempfile::TempDir) -> PathBuf {
 }
 
 #[test]
-fn emit_run_timing_json_only_after_acp_writes_json() {
-    use std::sync::{Arc, Mutex};
-
-    use crate::acp_post_run::emit_run_timing_json_only_after_acp;
-    use crate::run_timing::RUN_TIMING_JSON_FILE;
-
-    let mut client = crate::test_agent_client::smoke_agent_client();
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let run_dir = tmp.path().join("run");
-    std::fs::create_dir_all(&run_dir).expect("mkdir");
-    let timing = Arc::new(Mutex::new(crate::run_timing::RunTiming::default()));
-    emit_run_timing_json_only_after_acp(&mut client, &run_dir, &timing, Ok(()))
-        .expect("emit timing");
-    assert!(run_dir.join(RUN_TIMING_JSON_FILE).is_file());
-}
-
-#[test]
 fn emit_run_timing_after_acp_writes_json() {
     use std::sync::{Arc, Mutex};
     use std::time::Instant;
@@ -186,18 +169,6 @@ fn work_dir_with_checks(content: &str) -> (tempfile::TempDir, crate::artifacts::
     crate::seed_malvin_checks(work.path(), content);
     let backups = crate::test_utils::empty_session_dotfile_backups(work.path());
     (work, backups)
-}
-
-#[test]
-fn merge_restore_check_abort_then_print_timing_noops_without_json() {
-    use crate::acp_post_run::merge_acp_restore_check_abort_then_print_timing;
-
-    let work = tempfile::tempdir().unwrap();
-    let empty = crate::test_utils::empty_session_dotfile_backups(work.path());
-    let artifacts =
-        crate::artifacts::create_kpop_run_artifacts("init", Some(work.path())).expect("artifacts");
-    merge_acp_restore_check_abort_then_print_timing(Ok(()), &artifacts, &empty)
-    .expect("merge");
 }
 
 #[test]

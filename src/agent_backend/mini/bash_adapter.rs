@@ -8,7 +8,7 @@ use crate::malvin_sandbox::malvin_std_command;
 pub fn ensure_bash_on_path() -> Result<(), String> {
     let path = which_bash()?;
     if !path.is_file() {
-        return Err("bash is not available on PATH (required for --mini)".to_string());
+        return Err("bash is not available on PATH (required for openrouter:/local: models)".to_string());
     }
     Ok(())
 }
@@ -19,11 +19,11 @@ fn which_bash() -> Result<std::path::PathBuf, String> {
         .output()
         .map_err(|e| format!("failed to probe bash on PATH: {e}"))?;
     if !output.status.success() {
-        return Err("bash is not available on PATH (required for --mini)".to_string());
+        return Err("bash is not available on PATH (required for openrouter:/local: models)".to_string());
     }
     let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
     if path.is_empty() {
-        return Err("bash is not available on PATH (required for --mini)".to_string());
+        return Err("bash is not available on PATH (required for openrouter:/local: models)".to_string());
     }
     Ok(std::path::PathBuf::from(path))
 }
@@ -39,11 +39,19 @@ pub struct BashExecResult {
 /// # Errors
 ///
 /// Returns an error when spawn or wait fails.
-pub fn run_bash_command(cwd: &Path, command: &str) -> Result<BashExecResult, String> {
-    let output = malvin_std_command("bash")
-        .arg("-c")
+pub fn run_bash_command(
+    cwd: &Path,
+    command: &str,
+    llm_model_slug: &str,
+) -> Result<BashExecResult, String> {
+    let mut cmd = malvin_std_command("bash");
+    cmd.arg("-c")
         .arg(command)
-        .current_dir(cwd)
+        .current_dir(cwd);
+    if !llm_model_slug.is_empty() {
+        cmd.env("MALVIN_LLM", llm_model_slug);
+    }
+    let output = cmd
         .output()
         .map_err(|e| format!("bash exec failed: {e}"))?;
     let exit_code = output.status.code().unwrap_or(-1);
@@ -90,7 +98,7 @@ mod tests {
             return;
         }
         let tmp = tempfile::tempdir().expect("tempdir");
-        let result = run_bash_command(tmp.path(), "echo hi").expect("bash");
+        let result = run_bash_command(tmp.path(), "echo hi", "test-model").expect("bash");
         assert_eq!(result.exit_code, 0);
         assert!(result.stdout.contains("hi"));
         let obs = format_observation(&[result]);

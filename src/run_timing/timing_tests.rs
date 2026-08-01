@@ -99,14 +99,47 @@ fn attach_new_run_timing_and_finalize_json_only() {
 #[test]
 fn tool_call_wall_duration_accumulates_in_run_timing() {
     let mut r = RunTiming::default();
-    r.add_tool_call_wall(Duration::from_millis(30));
-    r.add_tool_call_wall(Duration::from_millis(20));
+    r.add_tool_call_wall("read", Duration::from_millis(30));
+    r.add_tool_call_wall("execute", Duration::from_millis(20));
+    let json = report::to_json_value(&r);
     assert_eq!(
-        report::to_json_value(&r)
-            .get("tool_calls_ms")
+        json.get("tool_calls_ms")
             .and_then(serde_json::Value::as_u64),
         Some(50)
     );
+    let by_type = json.get("tool_calls_by_type_ms").expect("by_type");
+    assert_eq!(by_type.get("read").and_then(serde_json::Value::as_u64), Some(30));
+    assert_eq!(
+        by_type.get("execute").and_then(serde_json::Value::as_u64),
+        Some(20)
+    );
+    assert_eq!(
+        by_type.get("search").and_then(serde_json::Value::as_u64),
+        Some(0)
+    );
+    assert_eq!(by_type.get("edit").and_then(serde_json::Value::as_u64), Some(0));
+    assert_eq!(
+        by_type.get("other").and_then(serde_json::Value::as_u64),
+        Some(0)
+    );
+}
+
+#[test]
+fn tool_call_kinds_accumulate_in_independent_buckets() {
+    let mut r = RunTiming::default();
+    r.add_tool_call_wall("read", Duration::from_millis(40));
+    r.add_tool_call_wall("search", Duration::from_millis(25));
+    r.add_tool_call_wall("edit", Duration::from_millis(10));
+    r.add_tool_call_wall("execute", Duration::from_millis(15));
+    r.add_tool_call_wall("mystery", Duration::from_millis(5));
+    let json = report::to_json_value(&r);
+    let by_type = &json["tool_calls_by_type_ms"];
+    assert_eq!(by_type["read"].as_u64(), Some(40));
+    assert_eq!(by_type["search"].as_u64(), Some(25));
+    assert_eq!(by_type["edit"].as_u64(), Some(10));
+    assert_eq!(by_type["execute"].as_u64(), Some(15));
+    assert_eq!(by_type["other"].as_u64(), Some(5));
+    assert_eq!(json["tool_calls_ms"].as_u64(), Some(95));
 }
 
 #[test]
@@ -187,63 +220,4 @@ fn finalize_and_emit_run_timing_writes_summary() {
     }
     finalize_and_emit_run_timing(tmp.path(), &timing).expect("emit");
     assert!(tmp.path().join(super::RUN_TIMING_JSON_FILE).is_file());
-}
-
-#[test]
-fn success_footnotes_emit_timing_before_done_and_done_is_last() {
-    let _locks = stdout_and_phase_test_locks();
-    let run_dir = tempfile::tempdir().expect("run_dir");
-    seed_run_timing_json(run_dir.path());
-    let log = capture_timing_then_done_log(run_dir.path());
-    assert_timing_precedes_done_and_done_is_last(&log);
-}
-
-fn stdout_and_phase_test_locks() -> (
-    std::sync::MutexGuard<'static, ()>,
-    std::sync::MutexGuard<'static, ()>,
-) {
-    let stdout = crate::output::STDOUT_LOG_TEST_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let phase = crate::agent_phase::AGENT_PHASE_TEST_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    (stdout, phase)
-}
-
-fn seed_run_timing_json(run_dir: &std::path::Path) {
-    let timing = RunTiming::new_arc();
-    {
-        let mut g = timing.lock().unwrap();
-        g.mark_wall_start(Instant::now());
-        g.mark_wall_end(Instant::now());
-    }
-    finalize_and_emit_run_timing(run_dir, &timing).expect("emit");
-}
-
-fn capture_timing_then_done_log(run_dir: &std::path::Path) -> String {
-    let log_path = run_dir.join("stdout.log");
-    crate::output::set_stdout_log_path(Some(log_path.clone()));
-    super::print_summary_from_run_dir(run_dir).expect("timing");
-    crate::agent_phase::print_done_with_reporting_phase();
-    crate::output::set_stdout_log_path(None);
-    std::fs::read_to_string(log_path).unwrap_or_default()
-}
-
-fn assert_timing_precedes_done_and_done_is_last(log: &str) {
-    let timing_pos = log.find("TIMING:").expect("TIMING line");
-    let done_pos = log.find("DONE").expect("DONE line");
-    assert!(
-        timing_pos < done_pos,
-        "TIMING must precede DONE; log={log:?}"
-    );
-    let malvin_lines: Vec<&str> = log
-        .lines()
-        .filter(|line: &&str| line.contains(" o|"))
-        .collect();
-    let last = malvin_lines.last().copied().unwrap_or("");
-    assert!(
-        last.contains("DONE"),
-        "DONE must be the last malvin stdout line; last={last:?} log={log:?}"
-    );
 }

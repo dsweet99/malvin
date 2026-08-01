@@ -1,5 +1,3 @@
-use crate::acp::SessionUpdateChunkKind;
-
 use super::{EnrichKey, ToolDrainMeta};
 
 #[derive(Clone, Debug)]
@@ -30,7 +28,5 @@ pub struct DeferredEntry {
     pub who: String,
     pub ts: String,
     pub emit_stdout_markdown: bool,
-    #[allow(dead_code)]
-    pub kind: Option<SessionUpdateChunkKind>,
     pub payload: DeferredPayload,
 }

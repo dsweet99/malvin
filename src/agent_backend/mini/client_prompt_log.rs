@@ -29,10 +29,12 @@ pub fn write_prompt_log(ctx: PromptLogWrite<'_>) -> Result<(), AgentError> {
 }
 
 fn emit_stdout_line(client: &MiniAgentClient, label: &str, prompt: &str, who: &str) {
+    if client.trace.plain_lines || client.io.raw_output {
+        return;
+    }
+    crate::output::print_outgoing_prompt_log(who, label);
     if client.io.log_full_outgoing_prompts {
-        crate::output::print_stdout_line(label, prompt);
-    } else {
-        crate::output::print_stdout_line(label, &format!("[{who}]"));
+        crate::output::append_outgoing_prompt_log_lines(prompt);
     }
 }
 
@@ -83,17 +85,14 @@ fn mirror_prompt_log_to_run_dir(client: &MiniAgentClient, line: &str) {
 mod tests {
     use super::*;
     use crate::acp::CoderPromptOptions;
-    use crate::agent_backend::mini::{LlmBackend, MiniAgentClient, MiniLoopConfig, MockScript, MockStep};
+    use crate::agent_backend::test_support::mini_loop_config;
+    use crate::agent_backend::mini::{LlmBackend, MiniAgentClient, MockScript, MockStep};
     use crate::malvin_mini::CompletionResponse;
     use std::sync::Mutex;
 
     fn test_client(verbose: bool) -> MiniAgentClient {
         MiniAgentClient::new_mock(
-            MiniLoopConfig {
-                model: "m".into(),
-                max_bash_turns: 4,
-                max_http_retries: 1,
-            },
+            mini_loop_config(4, 1),
             crate::acp::AgentIoOptions {
                 force: false,
                 no_tee: true,
@@ -106,11 +105,101 @@ mod tests {
                 responses: vec![MockStep::Ok(CompletionResponse {
                     content: "ok".into(),
                     usage: None,
+                    reasoning: None,
                 })],
                 call_count: 0,
                 on_response: None,
             })),
         )
+    }
+
+    #[tokio::test]
+    async fn mini_prompt_log_bracket_goes_to_stdout_log_not_live_terminal() {
+        let _guard = crate::output::STDOUT_LOG_TEST_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let mut client = test_client(false);
+        client.io.raw_output = false;
+        let log = tmp.path().join("router_work.log");
+        let log_path = log.clone();
+        crate::output::set_stdout_log_path(Some(tmp.path().join("stdout.log")));
+        crate::output::enable_stdout_capture();
+        write_prompt_log(PromptLogWrite {
+            client: &client,
+            prompt: "body",
+            log_path: &log_path,
+            who: "router_work",
+            opts: &CoderPromptOptions {
+                stdout_bracket_label: Some("router_work.md"),
+                ..Default::default()
+            },
+        })
+        .expect("write");
+        let live = crate::output::take_captured_stdout();
+        let stdout = std::fs::read_to_string(tmp.path().join("stdout.log")).unwrap_or_default();
+        let delim = crate::output::format_who_tag_delim(crate::output::WHO_U);
+        assert!(
+            stdout.contains(&format!("{delim}[router_work.md...]")),
+            "bracket summary must land in stdout.log like ACP: {stdout:?}"
+        );
+        assert!(
+            live.is_empty(),
+            "outgoing prompt bracket must not hit live terminal; got {live:?}"
+        );
+        assert!(
+            !live.contains("[router_work") && !stdout.contains(&format!("{}|[router_work]", "r")),
+            "legacy r|[router_work] live form must stay gone"
+        );
+        crate::output::set_stdout_log_path(None);
+    }
+
+    #[tokio::test]
+    async fn mini_do_prompt_log_skips_live_stdout_bracket() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let mut client = test_client(false);
+        client.trace.plain_lines = true;
+        let log = tmp.path().join("do.log");
+        let log_path = log.clone();
+        crate::output::set_stdout_log_path(Some(tmp.path().join("stdout.log")));
+        write_prompt_log(PromptLogWrite {
+            client: &client,
+            prompt: "body",
+            log_path: &log_path,
+            who: "do",
+            opts: &CoderPromptOptions {
+                do_trace_split: Some(("header", "user")),
+                ..Default::default()
+            },
+        })
+        .expect("write");
+        let stdout = std::fs::read_to_string(tmp.path().join("stdout.log")).unwrap_or_default();
+        assert!(
+            stdout.is_empty(),
+            "plain do must not emit d|[do] bracket on stdout; got {stdout:?}"
+        );
+        crate::output::set_stdout_log_path(None);
+    }
+
+    #[tokio::test]
+    async fn mini_write_prompt_log_includes_effective_constraints() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let mut client = test_client(true);
+        client.prompts_log_run_dir = Some(tmp.path().to_path_buf());
+        let log = tmp.path().join("kpop.log");
+        write_prompt_log(PromptLogWrite {
+            client: &client,
+            prompt: "constraints block\n\nbody text",
+            log_path: &log,
+            who: "kpop",
+            opts: &CoderPromptOptions::default(),
+        })
+        .expect("write");
+        let text = std::fs::read_to_string(&log).expect("read");
+        assert!(text.contains("constraints block"));
+        assert!(text.contains("body text"));
+        let run_prompts = std::fs::read_to_string(tmp.path().join("prompts.log")).expect("mirror");
+        assert!(run_prompts.contains("constraints block"));
     }
 
     #[tokio::test]

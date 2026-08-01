@@ -3,7 +3,6 @@
 ## Installation
 
 ```bash
-cargo install kiss-ai
 cargo install malvin
 ```
 
@@ -27,7 +26,7 @@ Install once:
 - macOS: `brew install sccache`
 - Linux / other: `./admin/sccache_install.sh` (or `cargo install sccache --locked`)
 
-This repo enables sccache via `.cargo/config.toml` (`rustc-wrapper = "sccache"`). Any `cargo build`, `cargo clippy`, or `cargo nextest` in this tree uses it automatically.
+This repo enables sccache via `.cargo/config.toml` (`rustc-wrapper = "sccache"`). Any `cargo build`, Rust linter, or `cargo nextest` in this tree uses it automatically.
 
 Verify: `./admin/verify_sccache.sh`
 
@@ -54,4 +53,8 @@ After code changes, rerun only dirty tests and refresh indexes:
 
 Malvin gate runs use `./admin/malvin_rust_test_gate.sh` (listed in `.malvin/checks`): selective difftests when indexes are warm, full partitioned nextest otherwise. Override with `MALVIN_FORCE_FULL_RUST_TESTS=1` to always run the full suite.
 
-Indexes live in `difftests-index-root/`; work artifacts under `target/tmp/difftests/`. Both are gitignored. Normal `cargo build`, `cargo clippy`, and `cargo nextest` stay uninstrumented; only the difftests scripts use `cargo +nightly difftests`.
+Indexes live in `difftests-index-root/`; work artifacts under `target/tmp/difftests/`. Both are gitignored. Normal `cargo build`, Rust linter, and `cargo nextest` stay uninstrumented; only the difftests scripts use `cargo +nightly difftests`.
+
+## Test isolation
+
+Unit and integration tests must not create, overwrite, or delete the real `~/.malvin_home/config.toml` on the developer machine. Wrap in-process tests with `with_isolated_home` (see `src/test_utils.rs`) or integration harness helpers (`tests/common/workspace.rs`: `with_isolated_home`, `activate_test_home`). Those helpers redirect `$HOME` to a temp directory and set `MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION=1`, which production code checks in test builds before any home-config disk mutation.

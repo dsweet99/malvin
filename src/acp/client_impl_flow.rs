@@ -1,5 +1,5 @@
 use crate::acp::{
-    backoff_after_agent_failure, AgentClient, AgentError, AgentKpopMultiturnCtl, AcpSession,
+    backoff_after_agent_failure, AgentClient, AgentError, AgentKpopMultiturnCtl,
     KpopFlowOnceArgs, retries_noun, run_kpop_flow_once,
     run_kpop_multiturn_once,
 };
@@ -100,13 +100,6 @@ impl AgentClient {
     }
 }
 
-#[doc(hidden)]
-impl AgentClient {
-    pub fn replace_coder_session_slot_for_tests(&mut self, session: AcpSession) {
-        self.coder_session = Some(session);
-    }
-}
-
 #[cfg(test)]
 mod begin_coder_session_guard_tests {
     use crate::acp::AgentIoOptions;
@@ -152,11 +145,10 @@ mod begin_coder_session_guard_tests {
         };
         let backups = crate::artifacts::SessionDotfileBackups::from_parts(
             crate::artifacts::SessionDotfileParts {
-                kissconfig: crate::session_dotfile_backup::DotfileBackupState::Missing,
                 malvin_checks: crate::session_dotfile_backup::DotfileBackupState::Missing,
-                kissignore: crate::session_dotfile_backup::DotfileBackupState::Missing,
                 malvin_config: crate::session_dotfile_backup::DotfileBackupState::Missing,
                 gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
+                vision: crate::session_dotfile_backup::VisionBackup::Missing,
                 malvin_config_workspace: crate::session_dotfile_backup::DotfileBackupState::Missing,
             },
         );

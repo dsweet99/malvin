@@ -29,8 +29,21 @@ pub(super) fn install_trace_echo_bins(
     }
 }
 
+pub(super) fn git_init_work(work: &Path) {
+    assert!(
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(work)
+            .status()
+            .expect("git init status")
+            .success(),
+        "git init failed in {}",
+        work.display()
+    );
+}
+
 pub(super) fn workspace_git_minimal_cargo_rs_py_tests(work: &Path) {
-    fs::create_dir(work.join(".git")).expect(".git");
+    git_init_work(work);
     fs::write(
         work.join("Cargo.toml"),
         "[package]\nname = 'm'\nversion = '0.1.0'\n",
@@ -42,7 +55,7 @@ pub(super) fn workspace_git_minimal_cargo_rs_py_tests(work: &Path) {
 }
 
 pub(super) fn workspace_git_cargo_main_only(work: &Path) {
-    fs::create_dir(work.join(".git")).expect(".git");
+    git_init_work(work);
     fs::write(
         work.join("Cargo.toml"),
         "[package]\nname = 'm'\nversion = '0.1.0'\n",
@@ -61,14 +74,20 @@ pub(super) fn workspace_git_kissconfig_90_cargo_rs_py(work: &Path) {
 }
 
 pub(super) fn workspace_git_malvin_checks_line(work: &Path, line: &str) {
-    fs::create_dir(work.join(".git")).expect(".git");
-    fs::create_dir_all(work.join(".malvin")).expect(".malvin");
-    fs::write(work.join(".malvin/checks"), line).expect(".malvin/checks");
+    git_init_work(work);
+    let path = crate::malvin_checks_path(work);
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).expect("checks parent");
+    }
+    fs::write(path, line).expect("checks");
 }
 
 pub(super) fn workspace_git_precommit_malvin_checks_cargo_main(work: &Path) {
     workspace_git_cargo_main_only(work);
     fs::write(work.join(".pre-commit-config.yaml"), "repos:\n").expect("pre-commit");
-    fs::create_dir_all(work.join(".malvin")).expect(".malvin");
-    fs::write(work.join(".malvin/checks"), "custom --only\n").expect(".malvin/checks");
+    let path = crate::malvin_checks_path(work);
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).expect("checks parent");
+    }
+    fs::write(path, "custom --only\n").expect("checks");
 }

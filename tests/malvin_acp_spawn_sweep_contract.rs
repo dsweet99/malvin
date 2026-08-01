@@ -3,7 +3,7 @@
 mod common;
 
 #[cfg(unix)]
-use common::{fresh_workdir, sleep_child, write_peer_acp_lock};
+use common::{fresh_workdir, prepend_fake_agent_models_to_path, sleep_child, write_peer_acp_lock};
 #[cfg(unix)]
 use malvin::malvin_sandbox::clear_active_sandbox_session;
 #[cfg(unix)]
@@ -30,6 +30,16 @@ fn sweep_stale_acp_spawn_locks_contract() {
     let _ = child.wait();
 }
 
+#[cfg(unix)]
+fn run_malvin_home(home: &std::path::Path, work: &std::path::Path, args: &[&str]) -> std::process::Output {
+    Command::new(env!("CARGO_BIN_EXE_malvin"))
+        .env("HOME", home)
+        .current_dir(work)
+        .args(args)
+        .output()
+        .unwrap_or_else(|e| panic!("malvin {args:?}: {e}"))
+}
+
 /// `--doc` exits before entrypoint sweep; `models` runs the sweep (plan Phase 3).
 #[cfg(unix)]
 #[test]
@@ -39,19 +49,14 @@ fn malvin_doc_does_not_sweep_but_models_does() {
     std::fs::create_dir_all(&chamber).expect("mkdir chamber");
     let stale = chamber.join("dead.lock");
     std::fs::write(&stale, "424242").expect("stale lock");
-    let bin = env!("CARGO_BIN_EXE_malvin");
-    let doc = Command::new(bin)
-        .current_dir(&work)
-        .args(["--doc"])
-        .output()
-        .expect("malvin --doc");
+    let (_fake_dir, _path_guard) = prepend_fake_agent_models_to_path(
+        "#!/bin/sh\nif [ \"$1\" = models ]; then printf 'composer-2 — Fast\\n'; exit 0; fi\nexit 1\n",
+    );
+    let home = tempfile::tempdir().expect("home");
+    let doc = run_malvin_home(home.path(), &work, &["--doc"]);
     assert!(doc.status.success(), "stderr={}", String::from_utf8_lossy(&doc.stderr));
     assert!(stale.is_file(), "--doc must not sweep stale locks");
-    let models = Command::new(bin)
-        .current_dir(&work)
-        .arg("models")
-        .output()
-        .expect("malvin models");
+    let models = run_malvin_home(home.path(), &work, &["models"]);
     assert!(
         models.status.success(),
         "stderr={}",

@@ -1,0 +1,226 @@
+use crate::kpop_turn_prompts::KpopTurnPrompts;
+
+use crate::agent_backend::agent_backend_timing;
+
+use crate::acp::{
+    backoff_after_agent_failure, kpop_fail_after_prompt, restore_session_dotfiles, AgentError,
+    CoderPromptOptions, KpopFailAfterPrompt,
+};
+use crate::nested_budget_scopes::BudgetScopeLayer;
+use crate::cli::workflow_kpop_shared::{gate_iteration_context, post_kpop_session_gates};
+use crate::run_timing::TimingPhase;
+
+use super::kpop_session_finish::finish_kpop_engine_session_success;
+use super::params::KPopEngineIterationParams;
+use super::prepared::KPopEnginePrepared;
+
+pub(crate) struct KPopEngineMultiturnCtx<'a> {
+    pub iteration: &'a mut KPopEngineIterationParams<'a>,
+}
+
+impl<'a> KPopEngineMultiturnCtx<'a> {
+    #[cfg(test)]
+    pub(crate) const fn iteration_number(&self) -> usize {
+        self.iteration.iteration
+    }
+}
+
+pub(crate) fn run_kpop_hard_constraints_after_session(
+    command: &str,
+    prepared: &KPopEnginePrepared,
+    session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
+    behavior: super::behavior::KPopHardConstraints,
+) -> Result<(), String> {
+    if behavior.skip_workspace_quality_gates {
+        return Ok(());
+    }
+    post_kpop_session_gates(
+        command,
+        prepared.artifacts(),
+        session_dotfile_backups,
+        behavior.restore_malvin_checks_after_session(),
+    )
+}
+
+pub(crate) fn print_kpop_engine_log_line(prepared: &KPopEnginePrepared, exp_log_path: &std::path::Path) {
+    crate::cli::workflow_kpop_shared::print_kpop_session_log_line(
+        prepared.artifacts(),
+        exp_log_path,
+    );
+}
+
+fn iter_context(ctx: &KPopEngineMultiturnCtx<'_>) -> crate::prompt_stratification::WorkflowRenderContext {
+    let prepared = ctx.iteration.loop_params.prepared;
+    gate_iteration_context(
+        prepared.context(),
+        prepared.artifacts(),
+        &ctx.iteration.exp_log_path,
+        ctx.iteration.iteration,
+    )
+}
+
+fn build_kpop_engine_prompt(ctx: &KPopEngineMultiturnCtx<'_>) -> Result<String, String> {
+    let params = ctx.iteration.loop_params;
+    let prepared = params.prepared;
+    let iter_ctx = iter_context(ctx);
+    KpopTurnPrompts {
+        store: prepared.store(),
+        base: &iter_ctx,
+        request_text: &prepared.request_text,
+        prepend_rules_once: false,
+    }
+    .kpop_engine_single_turn_prompt(params.max_hypotheses)
+}
+
+pub(super) fn restore_kpop_engine_session_dotfiles(ctx: &KPopEngineMultiturnCtx<'_>) -> Result<(), String> {
+    let prepared = ctx.iteration.loop_params.prepared;
+    let work_dir = prepared.artifacts().work_dir.as_path();
+    let backups = ctx.iteration.session_dotfile_backups;
+    if ctx
+        .iteration
+        .loop_params
+        .behavior
+        .restore_malvin_checks_after_session()
+    {
+        restore_session_dotfiles(work_dir, backups).map_err(|e| e.to_string())
+    } else {
+        backups.restore_excluding_malvin_checks(work_dir)
+    }
+}
+
+pub(super) async fn finalize_kpop_engine_turn(
+    ctx: &mut KPopEngineMultiturnCtx<'_>,
+    work_dir: &std::path::Path,
+    prompt_result: Result<(), AgentError>,
+) -> Result<(), String> {
+    if let Err(restore_err) = restore_kpop_engine_session_dotfiles(ctx) {
+        ctx.iteration.client.end_coder_session().await.ok();
+        return kpop_fail_after_prompt(KpopFailAfterPrompt {
+            cwd: work_dir,
+            session_dotfile_backups: ctx.iteration.session_dotfile_backups,
+            err: AgentError(restore_err),
+            phase: "restore",
+        })
+        .await
+        .map_err(|e| e.0);
+    }
+    ctx.iteration
+        .client
+        .end_coder_session()
+        .await
+        .map_err(|e| e.to_string())?;
+    prompt_result.map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub(super) async fn run_kpop_engine_coder_turn(
+    ctx: &mut KPopEngineMultiturnCtx<'_>,
+    prompt: &str,
+    work_dir: &std::path::Path,
+    log_path: &std::path::Path,
+) -> Result<(), AgentError> {
+    let params = ctx.iteration.loop_params;
+    let prepared = params.prepared;
+    if !ctx.iteration.client.has_open_coder_session() {
+        ctx.iteration
+            .client
+            .begin_coder_session(work_dir)
+            .await?;
+    }
+    let mut prompt_result = ctx
+        .iteration
+        .client
+        .run_coder_prompt(
+            prompt,
+            log_path,
+            "kpop",
+            CoderPromptOptions {
+                llm_phase: Some(TimingPhase::Implement),
+                single_attempt: true,
+                ..Default::default()
+            },
+        )
+        .await;
+    if prompt_result.is_ok() {
+        prompt_result = crate::cli::kpop_summarize::maybe_run_gate_inline_summarize(
+            crate::cli::kpop_summarize::GateInlineSummarizeCtx {
+                client: ctx.iteration.client,
+                store: prepared.store(),
+                artifacts: prepared.artifacts(),
+                model: &params.shared.model,
+                git: params.shared.git,
+                iteration: ctx.iteration.iteration,
+                total_iterations: ctx.iteration.total_iterations,
+            },
+        )
+        .await
+        .map_err(AgentError);
+    }
+    prompt_result
+}
+
+async fn run_kpop_engine_single_turn(
+    ctx: &mut KPopEngineMultiturnCtx<'_>,
+) -> Result<Option<crate::artifacts::SessionDotfileBackups>, String> {
+    let prepared = ctx.iteration.loop_params.prepared;
+    let work_dir = prepared.artifacts().work_dir.as_path();
+    let log_path = prepared.artifacts().log_path("kpop");
+
+    let prompt = build_kpop_engine_prompt(ctx)?;
+    let prompt_result =
+        run_kpop_engine_coder_turn(ctx, &prompt, work_dir, log_path.as_path()).await;
+    let post_agent_backups = if prompt_result.is_ok() {
+        Some(
+            crate::artifacts::SessionDotfileBackups::snapshot_after_ensuring_home_config(
+                work_dir,
+            )?,
+        )
+    } else {
+        None
+    };
+    finalize_kpop_engine_turn(ctx, work_dir, prompt_result).await?;
+    Ok(post_agent_backups)
+}
+
+pub(crate) async fn run_kpop_engine_session(
+    ctx: &mut KPopEngineMultiturnCtx<'_>,
+) -> Result<crate::artifacts::SessionDotfileBackups, String> {
+    let iteration_start = ctx.iteration.session_dotfile_backups.clone();
+    let max_attempts = BudgetScopeLayer::AcpSpawnRetry
+        .effective_max_attempts(ctx.iteration.client.max_acp_retries(), false);
+    let mut last_error = String::new();
+    let mut attempts_used = 0_u32;
+    for attempt in 1..=max_attempts {
+        attempts_used = attempt;
+        match run_kpop_engine_single_turn(ctx).await {
+            Ok(post_agent_backups) => {
+                return finish_kpop_engine_session_success(
+                    ctx,
+                    &iteration_start,
+                    post_agent_backups,
+                )
+                .await;
+            }
+            Err(e) => {
+                last_error = e;
+                let timing = agent_backend_timing(ctx.iteration.client);
+                match backoff_after_agent_failure(timing, &last_error, attempt, max_attempts)
+                    .await
+                {
+                    Err(err) => return Err(err.0),
+                    Ok(true) => break,
+                    Ok(false) => {}
+                }
+            }
+        }
+    }
+    let retries = attempts_used.saturating_sub(1);
+    let noun = crate::acp::retries_noun(retries);
+    Err(format!(
+        "agent (gate kpop) failed after {retries} {noun}. Last error:\n{last_error}"
+    ))
+}
+
+#[cfg(test)]
+#[path = "kpop_session_kiss_cov_tests.rs"]
+mod kpop_session_kiss_cov_tests;

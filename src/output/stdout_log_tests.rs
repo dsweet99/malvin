@@ -4,7 +4,7 @@ use crate::output::acp_tee::{
 };
 use crate::output::terminal_wrap::{line_wrap_for_prefix_len, wrap_words_bounded};
 use crate::output::{
-    STDOUT_LOG_TEST_LOCK, init_stdout_style, is_log_timestamp_token, print_stdout_line,
+    STDOUT_LOG_TEST_LOCK, init_stdout_style_for_test, is_log_timestamp_token, print_stdout_line,
     print_stdout_raw_line, print_stdout_raw_line_with_ts, set_stdout_log_path,
 };
 
@@ -115,7 +115,7 @@ fn wrapped_tagged_stdout_log_shares_one_timestamp_per_logical_line() {
     }
     let text = {
         let cap = StdoutLogCapture::open();
-        init_stdout_style(false);
+        init_stdout_style_for_test(true);
         print_stdout_line("wrap", "segment ".repeat(20).trim());
         cap.finish()
     };
@@ -140,7 +140,7 @@ fn acp_tee_live_display_and_stdout_log_split_timestamp_prefix() {
     };
     let log_line = {
         let cap = StdoutLogCapture::open();
-        init_stdout_style(false);
+        init_stdout_style_for_test(true);
         print_stdout_acp_tee_line_with_timestamp(&AcpTeeStdoutEvent {
             direction: ctx.direction,
             who: ctx.who,
@@ -174,7 +174,7 @@ fn acp_tee_markdown_prefix_rendered_line_splits_display_and_log_timestamps() {
         line: "",
         dim_payload: false,
     };
-    init_stdout_style(true);
+    init_stdout_style_for_test(false);
     let (display, log) =
         crate::output::stdout_log_pair::stdout_acp_prefix_rendered_line(&ctx, "**bold**");
     assert!(log.starts_with(ts));

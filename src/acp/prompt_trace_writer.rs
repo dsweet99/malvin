@@ -58,7 +58,6 @@ impl PromptTraceWriter {
             upgrade_plan_warned: false,
             work_dir: args.work_dir,
             run_timing: args.run_timing,
-            session_id: args.session_id,
             deferred_sink,
         }
     }

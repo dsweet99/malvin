@@ -1,38 +1,21 @@
-#[cfg(target_os = "macos")]
-use super::macos::macos_process_group_rss_bytes;
-use super::process_group_rss_bytes;
-
 #[cfg(target_os = "linux")]
 use super::linux::{
-    linux_pids_sandbox_bytes, linux_pids_uss_bytes, linux_process_group_rss_bytes,
-    parse_proc_kib_field, parse_proc_pid_dir_name, parse_smaps_rollup_pss_bytes,
-    parse_smaps_rollup_uss_bytes, parse_stat_pgrp, parse_status_vm_rss_bytes,
+    linux_pids_sandbox_bytes, linux_pids_uss_bytes, parse_proc_kib_field,
+    parse_smaps_rollup_pss_bytes, parse_smaps_rollup_uss_bytes, parse_status_vm_rss_bytes,
 };
 
 #[test]
-fn kiss_cov_linux_process_group_rss_symbol_names() {
-}
-
-#[test]
-fn pids_rss_bytes_includes_current_process() {
+fn pids_sandbox_bytes_includes_current_process() {
     let mut pids = std::collections::HashSet::new();
     pids.insert(std::process::id());
-    let rss = super::pids_rss_bytes(&pids).expect("pids rss");
-    assert!(rss > 0);
+    let bytes = super::pids_sandbox_bytes(&pids).expect("sandbox bytes");
+    assert!(bytes > 0);
 }
 
 #[test]
-fn process_group_rss_bytes_includes_current_group() {
-    let pgid = super::current_process_group_id().expect("pgid");
-    let rss = process_group_rss_bytes(pgid).expect("rss");
-    assert!(rss > 0);
-}
-
-#[cfg(target_os = "linux")]
-#[test]
-fn parse_stat_pgrp_reads_process_group_field() {
-    let line = "42 (sleep) S 1 99 99 0 -1 4194304 0 0 0 0 0 0 0 0 0 0 0";
-    assert_eq!(parse_stat_pgrp(line), Some(99));
+fn pids_sandbox_bytes_empty_is_zero() {
+    let pids = std::collections::HashSet::new();
+    assert_eq!(super::pids_sandbox_bytes(&pids), Some(0));
 }
 
 #[cfg(target_os = "linux")]
@@ -84,45 +67,4 @@ fn linux_pids_sandbox_bytes_uses_self_uss_or_rss() {
             "sandbox={sandbox} uss={uss}"
         );
     }
-}
-
-#[cfg(target_os = "linux")]
-#[test]
-fn parse_proc_pid_dir_name_accepts_digits() {
-    assert_eq!(parse_proc_pid_dir_name("42"), Some(42));
-    assert!(parse_proc_pid_dir_name("notpid").is_none());
-}
-
-#[cfg(target_os = "linux")]
-#[test]
-fn linux_process_group_rss_bytes_includes_self() {
-    let pgid = super::current_process_group_id().expect("pgid");
-    let rss = linux_process_group_rss_bytes(pgid).expect("linux rss");
-    assert!(rss > 0);
-}
-
-#[cfg(target_os = "macos")]
-#[test]
-fn macos_process_group_rss_bytes_includes_self() {
-    let pgid = super::current_process_group_id().expect("pgid");
-    let rss = macos_process_group_rss_bytes(pgid).expect("macos rss");
-    assert!(rss > 0);
-}
-
-#[cfg(unix)]
-#[test]
-fn child_in_same_process_group_contributes_to_rss() {
-    use std::os::unix::process::CommandExt;
-    use std::process::Command;
-
-    let mut cmd = Command::new("sleep");
-    cmd.arg("30");
-    cmd.process_group(0);
-    let mut child = cmd.spawn().expect("spawn sleep");
-    let pgid = child.id();
-    std::thread::sleep(std::time::Duration::from_millis(100));
-    let rss = process_group_rss_bytes(pgid).expect("rss");
-    let _ = child.kill();
-    let _ = child.wait();
-    assert!(rss > 0);
 }

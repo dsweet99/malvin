@@ -1,21 +1,16 @@
-use std::collections::HashMap;
 use std::path::Path;
 
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::cli::format_workspace_gate_failure;
+use crate::nested_budget_scopes::BudgetScopeLayer;
 use crate::output::{MALVIN_WHO, print_stdout_line};
+use crate::prompt_stratification::WorkflowRenderContext;
 
-#[path = "workflow_kpop_render.rs"]
-mod workflow_kpop_render;
-
-pub(crate) use workflow_kpop_render::{
-    render_kpop_program_request, render_kpop_program_request_creative,
-};
 use crate::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
 
 #[must_use]
 pub(crate) fn effective_max_loops(max_loops: usize) -> usize {
-    max_loops.max(1)
+    BudgetScopeLayer::effective_outer_loop_iterations(max_loops)
 }
 
 /// Prefer a gate-loop (or discovery) outcome over a summarize-session error.
@@ -30,57 +25,20 @@ pub(crate) fn prefer_gate_outcome_over_summarize<T>(
 }
 
 #[must_use]
-pub(crate) fn gate_kpop_loop_iterations(max_loops: usize) -> usize {
+pub(crate) fn kpop_engine_loop_iterations(max_loops: usize) -> usize {
     let base = effective_max_loops(max_loops);
     if crate::acp::test_no_real_agent_enabled() {
         return base;
     }
     base.saturating_add(1)
 }
-
-pub(crate) fn kpop_program_context(
-    work_dir: &Path,
-    scope_constraints: &str,
-    artifacts: &RunArtifacts,
-) -> Result<HashMap<String, String>, String> {
-    let quality_gates =
-        crate::repo_gates::prompt_quality_gates_markdown_ephemeral(work_dir)?;
-    let mut context = HashMap::new();
-    context.insert(
-        "scope_constraints".to_string(),
-        scope_constraints.trim().to_string(),
-    );
-    context.insert("quality_gates".to_string(), quality_gates);
-    context.insert(
-        "quality_gates_path".to_string(),
-        crate::format_prompt_path(
-            &artifacts.quality_gates_log_path(),
-            &artifacts.work_dir,
-        ),
-    );
-    Ok(context)
-}
-
-pub(crate) fn kpop_workflow_context(
-    artifacts: &RunArtifacts,
-    workflow: &str,
-) -> Result<HashMap<String, String>, String> {
-    kpop_workflow_context_with_gates(artifacts, workflow, true)
-}
-
-pub(crate) fn kpop_workflow_context_without_gates(
-    artifacts: &RunArtifacts,
-    workflow: &str,
-) -> Result<HashMap<String, String>, String> {
-    kpop_workflow_context_with_gates(artifacts, workflow, false)
-}
-
 fn kpop_workflow_context_with_gates(
     artifacts: &RunArtifacts,
-    workflow: &str,
+    opts: crate::workflow_context::PromptModelOpts<'_>,
     include_quality_gates: bool,
-) -> Result<HashMap<String, String>, String> {
-    let mut context = crate::orchestrator::workflow_context_paths_only(artifacts, workflow);
+) -> Result<WorkflowRenderContext, String> {
+    let mut context =
+        crate::orchestrator::workflow_context_paths_only(artifacts, opts.model, opts.git);
     if include_quality_gates {
         context.insert(
             "quality_gates".to_string(),
@@ -88,6 +46,31 @@ fn kpop_workflow_context_with_gates(
         );
     }
     Ok(context)
+}
+
+#[cfg(test)]
+pub(crate) fn kpop_workflow_context(
+    artifacts: &RunArtifacts,
+    model: &str,
+    git: bool,
+) -> Result<WorkflowRenderContext, String> {
+    kpop_workflow_context_with_gates(
+        artifacts,
+        crate::workflow_context::PromptModelOpts::new(model, git),
+        true,
+    )
+}
+
+pub(crate) fn kpop_workflow_context_without_gates(
+    artifacts: &RunArtifacts,
+    model: &str,
+    git: bool,
+) -> Result<WorkflowRenderContext, String> {
+    kpop_workflow_context_with_gates(
+        artifacts,
+        crate::workflow_context::PromptModelOpts::new(model, git),
+        false,
+    )
 }
 
 pub fn write_checks_do_not_pass_to_review_path(review_path: &Path) -> Result<(), String> {
@@ -116,11 +99,11 @@ pub(crate) fn clear_quality_gates_log_for_next_agent(artifacts: &RunArtifacts) -
 }
 
 pub(crate) fn gate_iteration_context(
-    base: &HashMap<String, String>,
+    base: &WorkflowRenderContext,
     artifacts: &RunArtifacts,
     exp_log_path: &Path,
     iteration: usize,
-) -> HashMap<String, String> {
+) -> WorkflowRenderContext {
     let mut ctx = base.clone();
     let exp_log = crate::format_prompt_path(exp_log_path, &artifacts.work_dir);
     ctx.insert("exp_log".to_string(), exp_log);
@@ -155,16 +138,16 @@ pub(crate) fn run_kpop_workspace_gates(
 ) -> Result<(), String> {
     let work_dir = artifacts.work_dir.as_path();
     restore_session_dotfiles_for_gates(work_dir, session_dotfile_backups, restore_malvin_checks)?;
-    // Carry-forward backups may still hold kiss-clamp damage; repair on disk before executing gates.
-    crate::session_dotfile_backup::repair_clamp_damaged_dotfiles_on_disk(work_dir)?;
+    // Carry-forward backups may still hold invalid home-config bytes; repair on disk before gates.
+    crate::session_dotfile_backup::repair_invalid_malvin_home_config_on_disk(work_dir)?;
     clear_quality_gates_log_for_next_agent(artifacts)?;
     let gate_result = run_repo_workspace_gates(
         work_dir,
         RepoGateOutput::Tagged,
         Some(artifacts.run_dir.as_path()),
     );
-    // Gate prep (e.g. `kiss clamp`) may mutate dotfiles during the run; rewind disk so
-    // outer retries and the next iteration snapshot cannot anchor off re-damaged files.
+    // Gate runs may mutate dotfiles on disk; restore rewinds so outer retries and the next
+    // iteration snapshot cannot anchor off post-gate workspace state.
     let restore_result =
         restore_session_dotfiles_for_gates(work_dir, session_dotfile_backups, restore_malvin_checks);
     prefer_gate_outcome_over_post_gate_cleanup(gate_result, restore_result)

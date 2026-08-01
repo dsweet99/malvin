@@ -1,17 +1,16 @@
 # malvin explain
 
-Produce a short, reader-friendly **LaTeX explanation** via the KPop gate loop scoped by `explain_constraints.md`. The agent writes `explain.tex` and compiles `explain.pdf` in the request work directory. On success, malvin automatically runs `malvin revise` on the same `--out-path` `.tex` file.
+Produce a short, reader-friendly **LaTeX explanation** by composing a request and running the **default router** workflow (same path as bare `malvin REQUEST`). The composed request is rendered from `explain_wrapper.md` and embeds the user request and the `.tex` / `.pdf` output paths.
 
 ## Summary
 
 | | |
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
-| Output | `explain.tex` and `explain.pdf` in the request work directory (override with `--out-path`) |
-| Loop | Full gate-kpop loop (`GateLoopBehavior::EXPLAIN`) |
-| Fast path | **None** — always runs the agent (like `code` / `delight`, unlike `tidy`) |
-| Exit policy | Two consecutive `## KPOP_SOLVED` markers in per-iteration exp logs; workspace gates need not pass |
-| Requires | No `kiss` or `.malvin/checks` preflight (document workflow, like `delight` / `revise`) |
+| Output | `explain.tex` and `explain.pdf` (or `--out-path`); paths are named in the composed router request |
+| Loop | Default router: requirements JSON → multi-group KPop → optional work; outer `--max-loops` sessions |
+| Exit policy | Router success (agent fulfills the composed explain request) |
+| Requires | No `.malvin/checks` preflight (document workflow) |
 
 ## Intention
 
@@ -27,7 +26,7 @@ malvin explain [OPTIONS] <REQUEST>
 
 ### `<REQUEST>` (required)
 
-Exactly **one shell argument**. Quote for internal spaces. Topic as literal text, or an existing `.md` file path (same rules as `inspire` / `code`).
+Exactly **one shell argument**. Quote for internal spaces. Topic as literal text, or an existing `.md` file path (same rules as `inspire`).
 
 When `REQUEST` names an existing `.md` file, the work directory is that file's parent; otherwise the work directory is `.` (cwd). With the default `--out-path`, outputs land in that work directory. A custom `--out-path` resolves against the current working directory instead.
 
@@ -35,17 +34,11 @@ When `REQUEST` names an existing `.md` file, the work directory is that file's p
 
 ### `--out-path <PATH>` (default: `explain.tex`)
 
-LaTeX output path. malvin derives the PDF path by replacing the `.tex` extension with `.pdf`. With the default `explain.tex`, if either default output already exists in the request work directory, malvin allocates the first free sibling pair (`explain_1.tex` / `explain_1.pdf`, …). For any other `--out-path`, preflight refuses to run when either resolved path already exists.
-
-With the default basename `explain.tex`, outputs stay in the request work directory (for example `notes/explain.tex` when `REQUEST` is `notes/topic.md`). Any other value resolves against the process cwd, like `malvin delight --out-path`.
+LaTeX output path. malvin derives the PDF path by replacing the `.tex` extension with `.pdf`. With the default `explain.tex`, if either default output already exists in the request work directory, malvin allocates the first free sibling pair (`explain_1.tex` / `explain_1.pdf`, …) before composing the router request. For any other `--out-path`, preflight refuses to run when either resolved path already exists.
 
 ### `--max-loops <N>` (default: 3)
 
-Outer gate-loop budget (`max(N, 1) + 1` iterations). `0` is treated as `1`.
-
-### `--max-hypotheses <N>` (default: 5)
-
-Hypothesis budget per KPop session inside the gate loop.
+Outer router session budget (`effective_max_loops`). `0` is treated as `1`.
 
 ### `--tenacious` (default: on)
 
@@ -57,32 +50,28 @@ Restore normal loop/retry budgets (global flag; see `malvin --doc`).
 
 ## Global options
 
-See `malvin --doc`.
+See `malvin --doc`. `--quiet` / `-q` applies because explain invokes the default router (DM-body-only stdout; not the same as `-b`).
 
 ## Success criteria
 
 All of the following must hold:
 
-1. Two consecutive outer gate-loop iterations each declared `## KPOP_SOLVED` in their own exp log.
-2. After the session, the resolved `--out-path` and its derived `.pdf` exist and each has size &gt; 0.
-3. The decoupled `malvin revise` workflow runs automatically on the same `--out-path` `.tex` file (prose clarity pass via `revise_constraints.md`).
+1. Preflight passed (default outputs may have been auto-allocated; non-default paths must not have pre-existed).
+2. The default router completed within the `--max-loops` budget.
 
-On success, malvin prints `DONE` to stdout.
+On success, malvin follows the default router exit reporting.
 
 ## Related commands
 
 | Command | When |
 |---------|------|
 | `malvin inspire` | One-shot MBC2 ideation |
-| `malvin delight` | Author a feature plan |
-| `malvin revise` | Prose clarity pass on an existing document (runs automatically after `explain`; also available standalone) |
-| `malvin plan` | Refine an existing plan |
-| `malvin code` | Implement a plan via the gate loop |
+| bare `malvin REQUEST` | Same router engine; explain is a thin request wrapper |
 
 ## Examples
 
 ```text
-malvin explain "How does malvin tidy exit the gate loop?"
+malvin explain "How does malvin tidy force --gates on the default router?"
 malvin explain docs/notes.md
 malvin explain "topic" --out-path docs/paper.tex
 ```

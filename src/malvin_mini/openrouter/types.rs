@@ -8,7 +8,7 @@ pub enum ChatRole {
     Assistant,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ChatMessage {
     pub role: ChatRole,
     pub content: String,
@@ -26,4 +26,5 @@ pub struct ResponseUsage {
 pub struct CompletionResponse {
     pub content: String,
     pub usage: Option<ResponseUsage>,
+    pub reasoning: Option<String>,
 }

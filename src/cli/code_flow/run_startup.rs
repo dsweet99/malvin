@@ -2,31 +2,41 @@ use crate::artifacts::{
     backup_workspace_malvin_checks_if_present, create_run_artifacts_from_text,
     resolve_user_md_request,
 };
-use crate::gate_kpop_workflow::GateKpopPrepared;
+use crate::kpop_engine::KPopEnginePrepared;
 
 use super::prep::{code_kpop_request, prepare_code_kpop_prompt_store};
 
-pub(crate) type CodeKpopPrepared = GateKpopPrepared;
+pub(crate) type CodeKpopPrepared = KPopEnginePrepared;
 
 fn code_kpop_workflow_context(
     artifacts: &crate::artifacts::RunArtifacts,
-) -> Result<std::collections::HashMap<String, String>, String> {
-    crate::cli::workflow_kpop_shared::kpop_workflow_context(artifacts, "code")
+    model: &str,
+    git: bool,
+) -> Result<crate::prompt_stratification::WorkflowRenderContext, String> {
+    crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(artifacts, model, git)
 }
 
 pub(crate) fn prepare_code_kpop_run(
     workflow: crate::cli::WorkflowCliOptions,
     cli_request: &str,
+    model: &str,
+    git: bool,
 ) -> Result<CodeKpopPrepared, String> {
     let store = prepare_code_kpop_prompt_store(workflow)?;
     let (plan_text, work_dir) = resolve_user_md_request(cli_request)?;
     let artifacts =
         create_run_artifacts_from_text(&plan_text, Some(work_dir.as_path())).map_err(|e| e.to_string())?;
-    let request_text = code_kpop_request(&store, &artifacts)?;
+    let request_text = code_kpop_request(&store, &artifacts, model, git)?;
+    let user_request_disk = crate::artifacts::user_request_path(&artifacts);
+    std::fs::write(&user_request_disk, &request_text).map_err(|e| e.to_string())?;
     let malvin_checks_backup =
         backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
-    let context = code_kpop_workflow_context(&artifacts)?;
-    Ok(GateKpopPrepared {
+    let mut context = code_kpop_workflow_context(&artifacts, model, git)?;
+    context.insert(
+        "user_request_path".to_string(),
+        crate::workflow_context::format_prompt_path(&user_request_disk, &artifacts.work_dir),
+    );
+    Ok(KPopEnginePrepared {
         artifacts,
         context,
         request_text,
@@ -47,8 +57,17 @@ mod tests {
     #[test]
     fn prepare_code_kpop_run_resolves_plan() {
         let tmp = tempfile::tempdir().expect("tempdir");
+        assert!(
+            std::process::Command::new("git")
+                .args(["init"])
+                .current_dir(tmp.path())
+                .status()
+                .expect("git init")
+                .success()
+        );
         let plan = tmp.path().join("plan.md");
         std::fs::write(&plan, "build feature\n").expect("write plan");
+        crate::seed_malvin_checks(tmp.path(), "true\n");
         let old = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(tmp.path()).expect("chdir");
         let prepared = prepare_code_kpop_run(
@@ -57,11 +76,40 @@ mod tests {
                 
             },
             "plan.md",
-        )
+            crate::config::DEFAULT_CLI_MODEL,
+            false)
         .expect("prepared");
         std::env::set_current_dir(old).expect("restore cwd");
-        assert!(prepared.request_text.contains("plan.md"));
+        let plan_name = prepared
+            .artifacts
+            .plan_path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .expect("plan filename");
+        assert!(prepared.request_text.contains(plan_name));
         assert_eq!(prepared.startup_emit_request, "plan.md");
+        let user_request_disk = crate::artifacts::user_request_path(&prepared.artifacts);
+        assert!(
+            user_request_disk.exists(),
+            "code flow must write user_request.md before KPop turns"
+        );
+        let plan_fmt = crate::workflow_context::format_prompt_path(
+            &prepared.artifacts.plan_path,
+            &prepared.artifacts.work_dir,
+        );
+        let user_req_fmt = prepared
+            .context
+            .as_map()
+            .get("user_request_path")
+            .expect("user_request_path in context");
+        assert_ne!(
+            user_req_fmt, &plan_fmt,
+            "user_request_path must differ from plan_path for code flow"
+        );
+        assert!(
+            user_req_fmt.contains("user_request.md"),
+            "user_request_path should point at user_request.md: {user_req_fmt:?}"
+        );
     }
 }
 

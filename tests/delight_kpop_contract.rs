@@ -1,25 +1,21 @@
-//! `malvin delight` runs the kpop gate-loop workflow with composed `delight_constraints.md`.
+//! `malvin delight` is a router-backed request wrapper.
 
 #[cfg(unix)]
 mod common;
 
 #[cfg(unix)]
 use common::{
-    DelightSpawn, acp_mock_delight_kpop_empty_output_js, acp_mock_delight_kpop_solved_without_output_js,
-    acp_mock_delight_kpop_steps_js, bin_path_with_fake_kiss, combined_cli_output,
-    seed_git_kiss_cargo_gate_workspace, spawn_delight, test_home_workspace, workspace_kiss_check_only,
-    write_mock_executable,
+    DelightSpawn, acp_mock_router_no_work_js, bin_path_with_fake_kiss, combined_cli_output,
+    seed_malvin_checks, spawn_delight, fast_test_home_workspace, cached_mock_executable,
 };
 
 #[cfg(unix)]
 #[test]
-fn delight_runs_kpop_when_gates_already_pass() {
-    let (root, home, workspace) = test_home_workspace();
-    seed_git_kiss_cargo_gate_workspace(&workspace);
-    workspace_kiss_check_only(&workspace);
+fn delight_router_succeeds_with_mock() {
+    let (root, home, workspace) = fast_test_home_workspace();
+    seed_malvin_checks(&workspace, "true\n");
     let path = bin_path_with_fake_kiss(&root);
-    let mock = root.path().join("mock-delight-kpop");
-    write_mock_executable(&mock, &acp_mock_delight_kpop_steps_js());
+    let mock = cached_mock_executable(&acp_mock_router_no_work_js());
     let out = spawn_delight(&DelightSpawn {
         workspace: &workspace,
         home: &home,
@@ -27,24 +23,46 @@ fn delight_runs_kpop_when_gates_already_pass() {
         path_var: &path,
         extra_args: &["--max-loops", "1"],
     });
-    let combined = combined_cli_output(&out);
     assert!(
-        combined.contains("KPOP_LOG:"),
-        "delight must run kpop even when gates pass before agent: status={:?} combined={combined:?}",
-        out.status,
+        out.status.success(),
+        "delight must succeed via router: {:?}",
+        combined_cli_output(&out)
+    );
+    let pitch = std::fs::read_to_string(workspace.join("pitch.md")).expect("read pitch");
+    assert!(!pitch.is_empty(), "composed delight request should yield a pitch");
+}
+
+#[cfg(unix)]
+#[test]
+fn delight_embeds_guidance_in_router_request() {
+    let (root, home, workspace) = fast_test_home_workspace();
+    seed_malvin_checks(&workspace, "true\n");
+    let path = bin_path_with_fake_kiss(&root);
+    let mock = cached_mock_executable(&acp_mock_router_no_work_js());
+    let out = spawn_delight(&DelightSpawn {
+        workspace: &workspace,
+        home: &home,
+        mock: &mock,
+        path_var: &path,
+        extra_args: &["--max-loops", "1", "focus on latency UX"],
+    });
+    let combined = combined_cli_output(&out);
+    assert!(out.status.success(), "delight with guidance must succeed: {combined:?}");
+    // Startup emits the composed request; guidance must be visible in CLI output/logs.
+    assert!(
+        combined.contains("focus on latency UX") || combined.contains("User guidance"),
+        "composed request must embed user guidance: {combined:?}"
     );
 }
 
 #[cfg(unix)]
 #[test]
-fn delight_allocates_sibling_when_default_plan_preexists() {
-    let (root, home, workspace) = test_home_workspace();
-    seed_git_kiss_cargo_gate_workspace(&workspace);
-    workspace_kiss_check_only(&workspace);
-    std::fs::write(workspace.join("plan.md"), "existing\n").expect("seed plan");
+fn delight_allocates_sibling_when_default_pitch_preexists() {
+    let (root, home, workspace) = fast_test_home_workspace();
+    seed_malvin_checks(&workspace, "true\n");
+    std::fs::write(workspace.join("pitch.md"), "existing\n").expect("seed pitch");
     let path = bin_path_with_fake_kiss(&root);
-    let mock = root.path().join("mock-delight-sibling");
-    write_mock_executable(&mock, &acp_mock_delight_kpop_steps_js());
+    let mock = cached_mock_executable(&acp_mock_router_no_work_js());
     let out = spawn_delight(&DelightSpawn {
         workspace: &workspace,
         home: &home,
@@ -52,31 +70,24 @@ fn delight_allocates_sibling_when_default_plan_preexists() {
         path_var: &path,
         extra_args: &["--max-loops", "1"],
     });
-    let combined = combined_cli_output(&out);
+    assert!(out.status.success(), "sibling alloc must allow router run: {:?}", combined_cli_output(&out));
+    let stale = std::fs::read_to_string(workspace.join("pitch.md")).expect("read stale pitch");
+    assert_eq!(stale, "existing\n", "original pitch.md must be untouched");
     assert!(
-        combined.contains("KPOP_LOG:"),
-        "delight must run kpop after sibling allocation: status={:?} combined={combined:?}",
-        out.status,
-    );
-    let stale = std::fs::read_to_string(workspace.join("plan.md")).expect("read stale plan");
-    assert_eq!(stale, "existing\n", "original plan.md must be untouched");
-    assert!(
-        workspace.join("plan_1.md").exists(),
-        "preflight must allocate plan_1.md before kpop starts"
+        workspace.join("pitch_1.md").exists(),
+        "preflight must allocate pitch_1.md"
     );
 }
 
 #[cfg(unix)]
 #[test]
 fn delight_fails_when_custom_out_path_preexists() {
-    let (root, home, workspace) = test_home_workspace();
-    seed_git_kiss_cargo_gate_workspace(&workspace);
-    workspace_kiss_check_only(&workspace);
+    let (root, home, workspace) = fast_test_home_workspace();
+    seed_malvin_checks(&workspace, "true\n");
     std::fs::create_dir_all(workspace.join("plans")).expect("mkdir");
     std::fs::write(workspace.join("plans/existing.md"), "existing\n").expect("seed plan");
     let path = bin_path_with_fake_kiss(&root);
-    let mock = root.path().join("mock-delight-custom-exists");
-    write_mock_executable(&mock, &acp_mock_delight_kpop_steps_js());
+    let mock = cached_mock_executable(&acp_mock_router_no_work_js());
     let out = spawn_delight(&DelightSpawn {
         workspace: &workspace,
         home: &home,
@@ -90,74 +101,4 @@ fn delight_fails_when_custom_out_path_preexists() {
         combined.contains("refusing to overwrite"),
         "expected overwrite refusal: {combined:?}"
     );
-    assert!(
-        !combined.contains("KPOP_LOG:"),
-        "agent must not run when preflight fails: {combined:?}"
-    );
-}
-
-#[cfg(unix)]
-#[test]
-fn delight_fails_when_agent_solves_but_output_missing() {
-    let (root, home, workspace) = test_home_workspace();
-    seed_git_kiss_cargo_gate_workspace(&workspace);
-    workspace_kiss_check_only(&workspace);
-    let path = bin_path_with_fake_kiss(&root);
-    let mock = root.path().join("mock-delight-no-output");
-    write_mock_executable(&mock, &acp_mock_delight_kpop_solved_without_output_js());
-    let out = spawn_delight(&DelightSpawn {
-        workspace: &workspace,
-        home: &home,
-        mock: &mock,
-        path_var: &path,
-        extra_args: &["--max-loops", "1"],
-    });
-    assert!(!out.status.success(), "expected failure when output missing: {out:?}");
-}
-
-#[cfg(unix)]
-#[test]
-fn delight_writes_custom_out_path() {
-    let (root, home, workspace) = test_home_workspace();
-    seed_git_kiss_cargo_gate_workspace(&workspace);
-    workspace_kiss_check_only(&workspace);
-    let path = bin_path_with_fake_kiss(&root);
-    let mock = root.path().join("mock-delight-custom-path");
-    write_mock_executable(&mock, &acp_mock_delight_kpop_steps_js());
-    let out = spawn_delight(&DelightSpawn {
-        workspace: &workspace,
-        home: &home,
-        mock: &mock,
-        path_var: &path,
-        extra_args: &["--max-loops", "1", "--out-path", "plans/new.md"],
-    });
-    let combined = combined_cli_output(&out);
-    assert!(
-        combined.contains("KPOP_LOG:"),
-        "delight with custom out-path must enter kpop gate loop: status={:?} combined={combined:?}",
-        out.status,
-    );
-    assert!(
-        !workspace.join("plan.md").exists(),
-        "default plan.md must not be created when out-path is custom"
-    );
-}
-
-#[cfg(unix)]
-#[test]
-fn delight_kpop_fails_when_post_session_output_empty() {
-    let (root, home, workspace) = test_home_workspace();
-    seed_git_kiss_cargo_gate_workspace(&workspace);
-    workspace_kiss_check_only(&workspace);
-    let path = bin_path_with_fake_kiss(&root);
-    let mock = root.path().join("mock-delight-empty-output");
-    write_mock_executable(&mock, &acp_mock_delight_kpop_empty_output_js());
-    let out = spawn_delight(&DelightSpawn {
-        workspace: &workspace,
-        home: &home,
-        mock: &mock,
-        path_var: &path,
-        extra_args: &["--max-loops", "1"],
-    });
-    assert!(!out.status.success(), "expected failure for empty output: {out:?}");
 }

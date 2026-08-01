@@ -14,8 +14,7 @@ pub(crate) fn kpop_coalesce_trace_writer(file: tokio::fs::File) -> PromptTraceWr
         upgrade_plan_warned: false,
         work_dir: std::path::PathBuf::new(),
             run_timing: None,
-            session_id: String::new(),
-            deferred_sink: None,
+                deferred_sink: None,
     }
 }
 
@@ -97,7 +96,7 @@ pub(crate) async fn run_tool_call_lifecycle_tee_fixture() -> (String, String) {
     let stdout_path = tmp.path().join("stdout.log");
     let trace_path = tmp.path().join("tool-trace.log");
     crate::output::set_stdout_log_path(Some(stdout_path.clone()));
-    crate::output::init_stdout_style(true);
+    crate::output::init_stdout_style_for_test(false);
 
     let (mut writer, mut coalesce) = open_coalesce_trace_at(&trace_path).await;
     deliver_tool_call_session_updates(&mut writer, &mut coalesce).await;
@@ -157,8 +156,7 @@ pub(crate) async fn write_trace_line_coalesced_does_not_tee_parsed_non_chunk_lin
         upgrade_plan_warned: false,
         work_dir: std::path::PathBuf::new(),
             run_timing: None,
-            session_id: String::new(),
-            deferred_sink: None,
+                deferred_sink: None,
     };
     let mut coalesce = TraceChunkCoalescer::default();
     let parsed = serde_json::json!({"jsonrpc":"2.0","id":1,"result":{"ok":true}});

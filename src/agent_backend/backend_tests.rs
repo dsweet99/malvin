@@ -2,24 +2,21 @@
 
 use super::backend::AgentBackend;
 use super::factory::build_agent_backend;
-use super::mini::{LlmBackend, MiniAgentClient, MiniLoopConfig, MockScript, MockStep};
-use super::test_support::{install_openrouter_test_key, shared_opts, test_io};
+use super::mini::{LlmBackend, MiniAgentClient, MockScript, MockStep};
+use super::test_support::{install_openrouter_test_key, mini_loop_config, openrouter_shared_opts, shared_opts, test_io};
 use crate::cli::WorkflowCliOptions;
 use crate::malvin_mini::CompletionResponse;
 
 #[must_use]
 fn mock_mini_client() -> MiniAgentClient {
     MiniAgentClient::new_mock(
-        MiniLoopConfig {
-            model: "anthropic/claude-sonnet-4".into(),
-            max_bash_turns: 4,
-            max_http_retries: 1,
-        },
+        mini_loop_config(4, 1),
         test_io(),
         LlmBackend::Mock(std::sync::Mutex::new(MockScript {
             responses: vec![MockStep::Ok(CompletionResponse {
                 content: "MINI_DONE".into(),
                 usage: None,
+                    reasoning: None,
             })],
             call_count: 0,
             on_response: None,
@@ -46,16 +43,22 @@ fn kiss_cov_backend_tests_helpers() {
 }
 
 #[test]
-fn build_agent_backend_selects_mini_when_mini_true() {
+fn build_agent_backend_selects_mini_for_openrouter_model() {
     install_openrouter_test_key();
     let backend = build_agent_backend(
-        &shared_opts(true),
+        &openrouter_shared_opts(),
         WorkflowCliOptions { force: false },
         false,
         "code",
     )
     .expect("mini backend");
     assert!(matches!(backend, AgentBackend::Mini(_)));
+}
+
+#[test]
+fn uses_mini_backend_for_local_prefix() {
+    assert!(crate::model_id::uses_mini_backend("local:qwen35_9b_q4"));
+    assert!(crate::model_id::uses_local_backend("local:nemotron3_nano_4b"));
 }
 
 #[test]

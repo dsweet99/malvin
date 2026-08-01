@@ -1,9 +1,14 @@
 use super::{
-    command_accepts_session_name, dispatch_command, finish_entrypoint, prepare_cli_output,
-    print_command_error, require_kiss_for_cli_command, unsupported_name_error, Commands, Exit,
+    command_accepts_session_name, dispatch_command, dispatch_default_route, dispatch_do_workflow,
+    finish_entrypoint, prepare_cli_output, print_command_error, unsupported_name_error, Commands,
+    Exit,
 };
 use crate::cli::args::Cli;
-use crate::cli::entrypoint_checks::ensure_malvin_checks_for_command;
+use crate::cli::entrypoint_checks::{
+    ensure_malvin_checks_for_command, ensure_malvin_checks_for_default_route,
+    ensure_malvin_checks_for_do_workflow,
+};
+use crate::do_flow::DoArgs;
 
 fn parse_cli_args_or_exit(
     args: impl IntoIterator<Item = impl Into<std::ffi::OsString> + Clone>,
@@ -34,11 +39,33 @@ fn entrypoint_short_help_when_request_missing(
     Some(Exit::Success)
 }
 
+fn entrypoint_do_short_help() -> Exit {
+    let text = "\
+Respond simply
+
+Usage: malvin --do [OPTIONS] [REQUEST]
+
+Arguments:
+  [REQUEST]  Existing `.md` path or literal text
+
+Use `malvin --help` to see options.
+";
+    let _ = std::io::Write::write_all(&mut std::io::stdout().lock(), text.as_bytes());
+    Exit::Success
+}
+
 fn entrypoint_request_missing_short_help(cli: &Cli) -> Option<Exit> {
+    if cli.do_workflow {
+        if cli.shared.doc || cli.request.is_some() {
+            return None;
+        }
+        return Some(entrypoint_do_short_help());
+    }
     let command = cli.command.as_ref()?;
     let (request, subcommand) = match command {
-        Commands::Code(code) => (code.requests.first(), "code"),
-        Commands::Inspire(inspire) => (inspire.request.as_ref(), "inspire"),
+        Commands::Inspire(inspire) | Commands::Adaptix(inspire) => {
+            (inspire.request.as_ref(), "inspire")
+        }
         Commands::Explain(explain) => (explain.request.as_ref(), "explain"),
         _ => return None,
     };
@@ -46,7 +73,7 @@ fn entrypoint_request_missing_short_help(cli: &Cli) -> Option<Exit> {
 }
 
 fn entrypoint_doc_exit(cli: &Cli) -> Exit {
-    match crate::cli::command_docs::print_doc(cli.command.as_ref()) {
+    match crate::cli::command_docs::print_doc_for_cli(cli) {
         Ok(()) => Exit::Success,
         Err(e) => {
             print_command_error(&e);
@@ -56,7 +83,11 @@ fn entrypoint_doc_exit(cli: &Cli) -> Exit {
 }
 
 fn entrypoint_before_dispatch(cli: &Cli) -> Option<Exit> {
-    if cli.command.is_none() && cli.bare_args.is_empty() && !cli.shared.doc {
+    if cli.do_workflow && cli.command.is_some() {
+        print_command_error("`--do` cannot be combined with a subcommand");
+        return Some(Exit::Failure);
+    }
+    if cli.command.is_none() && cli.request.is_none() && !cli.shared.doc && !cli.do_workflow {
         let _ = crate::cli::commands_help::print_commands_only_help();
         return Some(Exit::Success);
     }
@@ -69,14 +100,26 @@ fn entrypoint_before_dispatch(cli: &Cli) -> Option<Exit> {
     None
 }
 
-fn entrypoint_preflight(command: &Commands) -> Option<Exit> {
-    require_kiss_for_cli_command(command)
-        .err()
-        .or_else(|| ensure_malvin_checks_for_command(command).err())
-        .map(|e| {
+fn entrypoint_preflight(cli: &Cli) -> Option<Exit> {
+    if cli.do_workflow {
+        return ensure_malvin_checks_for_do_workflow().err().map(|e| {
             print_command_error(&e);
             Exit::Failure
-        })
+        });
+    }
+    if let Some(command) = cli.command.as_ref() {
+        return ensure_malvin_checks_for_command(command).err().map(|e| {
+            print_command_error(&e);
+            Exit::Failure
+        });
+    }
+    if cli.request.is_some() {
+        return ensure_malvin_checks_for_default_route().err().map(|e| {
+            print_command_error(&e);
+            Exit::Failure
+        });
+    }
+    None
 }
 
 fn entrypoint_acquire_session(opt_name: Option<&str>) -> Result<(String, crate::SessionNameGuard), Exit> {
@@ -86,32 +129,27 @@ fn entrypoint_acquire_session(opt_name: Option<&str>) -> Result<(String, crate::
     })
 }
 
-fn entrypoint_sequential_bare_kpop(cli: &Cli, matches: &clap::ArgMatches) -> Option<Exit> {
-    if cli.command.is_none() && cli.bare_args.len() > 1 {
-        Some(finish_entrypoint(
-            crate::cli::entrypoint_commands::run_bare_sequential_kpop(&cli, matches, &cli.shared),
-        ))
-    } else {
-        None
-    }
-}
-
-fn entrypoint_validate_name(cli: &Cli, command: &Commands, bare_invoke: bool) -> Option<Exit> {
+fn entrypoint_validate_name(cli: &Cli) -> Option<Exit> {
     cli.shared.name.as_ref()?;
-    unsupported_name_error(command, bare_invoke).map(|message| {
+    if cli.do_workflow || default_route_accepts_session_name(cli) {
+        return None;
+    }
+    let command = cli.command.as_ref().expect("command or default route request");
+    unsupported_name_error(command).map(|message| {
         print_command_error(message);
         Exit::Failure
     })
+}
+
+const fn default_route_accepts_session_name(cli: &Cli) -> bool {
+    cli.command.is_none() && cli.request.is_some() && !cli.do_workflow
 }
 
 fn entrypoint_sweep_stale_acp_spawn_locks() {
     let Ok(cwd) = std::env::current_dir() else {
         return;
     };
-    if !crate::is_malvin_workspace(&cwd) {
-        return;
-    }
-    let chamber = cwd.join(".malvin").join("acp_spawn");
+    let chamber = crate::malvin_acp_spawn_chamber_dir(&cwd);
     if !chamber.is_dir() {
         return;
     }
@@ -130,18 +168,19 @@ fn run_entrypoint(cli: Cli, matches: clap::ArgMatches) -> Exit {
         return exit;
     }
     entrypoint_sweep_stale_acp_spawn_locks();
-    if let Some(exit) = entrypoint_sequential_bare_kpop(&cli, &matches) {
+    if let Some(exit) = entrypoint_validate_name(&cli) {
         return exit;
     }
-    let bare_invoke = cli.bare_args.len() == 1;
-    let command_ref = cli.command.as_ref().expect("subcommand when not --doc-only");
-    if let Some(exit) = entrypoint_validate_name(&cli, command_ref, bare_invoke) {
+    if let Some(exit) = entrypoint_preflight(&cli) {
         return exit;
     }
-    if let Some(exit) = entrypoint_preflight(command_ref) {
-        return exit;
-    }
-    if command_accepts_session_name(command_ref, bare_invoke) {
+    let accepts_name = cli.do_workflow
+        || cli
+            .command
+            .as_ref()
+            .is_some_and(command_accepts_session_name)
+        || default_route_accepts_session_name(&cli);
+    if accepts_name {
         let _session_name_guard = match entrypoint_acquire_session(cli.shared.name.as_deref()) {
             Ok((session_name, guard)) => {
                 crate::set_active_acp_lock_slot(session_name);
@@ -149,15 +188,43 @@ fn run_entrypoint(cli: Cli, matches: clap::ArgMatches) -> Exit {
             }
             Err(exit) => return exit,
         };
+        return dispatch_after_session(cli, matches);
     }
-    let command = cli.command.expect("subcommand when not --doc-only");
-    finish_entrypoint(dispatch_command(command, &cli.shared, &matches))
+    dispatch_after_session(cli, matches)
+}
+
+fn dispatch_after_session(cli: Cli, matches: clap::ArgMatches) -> Exit {
+    if cli.do_workflow {
+        return finish_entrypoint(dispatch_do_workflow(
+            DoArgs {
+                request: cli.request,
+            },
+            &cli.shared,
+        ));
+    }
+    if let Some(command) = cli.command {
+        finish_entrypoint(dispatch_command(command, &cli.shared, &matches))
+    } else if let Some(request) = cli.request {
+        let mut shared = cli.shared;
+        finish_entrypoint(dispatch_default_route(
+            request,
+            cli.max_loops,
+            &mut shared,
+            &matches,
+        ))
+    } else {
+        Exit::Success
+    }
 }
 
 pub fn entrypoint_from(
     args: impl IntoIterator<Item = impl Into<std::ffi::OsString> + Clone>,
 ) -> Exit {
     crate::init_from_env();
+    let args: Vec<std::ffi::OsString> = args.into_iter().map(Into::into).collect();
+    if let Some(exit) = crate::cli::deprecated_code::exit_if_code_subcommand(&args) {
+        return exit;
+    }
     match parse_cli_args_or_exit(args) {
         Ok((cli, matches)) => run_entrypoint(cli, matches),
         Err(exit) => exit,

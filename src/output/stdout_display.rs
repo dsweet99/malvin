@@ -138,9 +138,9 @@ mod tests {
     #[test]
     fn heartbeat_display_matches_logger_format_for_color_mode() {
         use crate::output::stdout_heartbeat_display_and_log_line;
-        use crate::output::{init_stdout_style, stdout_use_color};
+        use crate::output::{init_stdout_style_for_test, stdout_use_color};
 
-        init_stdout_style(true);
+        init_stdout_style_for_test(false);
         let (display, _) =
             stdout_heartbeat_display_and_log_line(WHO_H, "HB: 20260524.000000", Some("20260524.000000.000"));
         let expected = if stdout_use_color() {

@@ -217,3 +217,29 @@ pub(crate) fn reset_phase_state_for_test() {
     with_state(|s| *s = PhaseState::fresh());
 }
 
+#[cfg(test)]
+pub(crate) mod kiss_cov {
+    pub(crate) use super::ToolKind;
+    use super::{active_tool_phase, phase_if};
+
+    #[must_use]
+    pub(crate) fn witness_tool_kinds() -> [ToolKind; 4] {
+        [
+            ToolKind::Read,
+            ToolKind::Search,
+            ToolKind::Edit,
+            ToolKind::Execute,
+        ]
+    }
+
+    #[must_use]
+    pub(crate) fn witness_phase_if(cond: bool) -> Option<super::AgentPhase> {
+        phase_if(cond, super::AgentPhase::Waiting)
+    }
+
+    #[must_use]
+    pub(crate) fn witness_active_tool_phase(kind: ToolKind) -> super::AgentPhase {
+        active_tool_phase(kind)
+    }
+}
+

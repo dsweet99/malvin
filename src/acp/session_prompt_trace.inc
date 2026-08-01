@@ -11,7 +11,14 @@ pub(crate) async fn uniform_outgoing_trace_preamble<'a>(
     text: &'a str,
     u: &'a UniformOutgoingTrace<'a>,
 ) -> Result<PromptTraceDispatchMeta<'a>, String> {
-    trace_write_invocation_header(file).await?;
+    if u.append_trace {
+        use tokio::io::AsyncWriteExt;
+        file.write_all(b"\n")
+            .await
+            .map_err(|e| format!("trace turn separator write: {e}"))?;
+    } else {
+        trace_write_invocation_header(file).await?;
+    }
     trace_write_outgoing_prompt(file, u.trace_who, text).await?;
     if !session.0.raw_output {
         let bracket_label = u.stdout_bracket_label.unwrap_or(u.trace_who);
@@ -59,7 +66,8 @@ pub(crate) async fn do_split_outgoing_trace_preamble<'a>(
         incoming_tag: crate::output::WHO_M.to_string(),
         stdout_replacement_who: "do",
         trace_raw_output: session.0.raw_output,
-        plain_lines: true,
+        // Untagged narrative only for raw `--do` tee; verbose/default-workflow keeps who-tags.
+        plain_lines: session.0.raw_output,
     })
 }
 
@@ -70,7 +78,15 @@ pub(crate) async fn open_live_prompt_trace_writer(
     trace: OutgoingPromptTrace<'_>,
 ) -> Result<PromptTraceWriter, String> {
     trace_prepare_file(trace_path).await?;
-    let mut file = trace_open_truncated(trace_path).await?;
+    let append_trace = matches!(
+        &trace,
+        OutgoingPromptTrace::Uniform(u) if u.append_trace
+    );
+    let mut file = if append_trace {
+        trace_open_append(trace_path).await?
+    } else {
+        trace_open_truncated(trace_path).await?
+    };
     let meta = match &trace {
         OutgoingPromptTrace::Uniform(u) => {
             uniform_outgoing_trace_preamble(session, &mut file, text, u).await?

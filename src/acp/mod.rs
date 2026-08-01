@@ -69,9 +69,14 @@ pub(crate) use coalesce::*;
 mod coalesce_trace;
 pub(crate) use coalesce_trace::*;
 
+#[path = "contract_fixture.rs"] mod contract_fixture;
+#[doc(hidden)] pub use contract_fixture::contract_acp_tee_tool_fixture;
+#[cfg(test)]
+pub(crate) use contract_fixture::{open_contract_trace_writer, tee_coalesced_tool_execute};
 #[path = "trace_line_write_tee.rs"]
 mod trace_line_write_tee;
 mod trace_plain_tee;
+pub(crate) use trace_plain_tee::print_plain_tee_wrapped_line;
 #[cfg(test)]
 pub(crate) use trace_line_write_tee::format_styled_tool_summary_tee_line;
 #[path = "trace_line_write_tool_summary.rs"]
@@ -176,7 +181,7 @@ pub(crate) use wrap_session_prompt::*;
 mod wrap_session_post;
 pub(crate) use wrap_session_post::acp_session_set_run_timing;
 mod session_drop_teardown;
-
+pub(crate) mod shutdown_cancel_reject;
 #[cfg(unix)]
 #[path = "hostile_orphan_test_util.rs"]
 pub mod hostile_orphan_test_util;
@@ -208,7 +213,7 @@ pub(crate) use ops_body_kpop::*;
 
 #[path = "prompt_round_health.rs"]
 mod prompt_round_health;
-pub(crate) use prompt_round_health::PromptRoundHealth;
+pub(crate) use prompt_round_health::{prompt_round_post_ok_error, PromptRoundHealth};
 
 #[path = "ops_body_kpop_mt.rs"]
 mod ops_body_kpop_mt;

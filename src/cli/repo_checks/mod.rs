@@ -1,7 +1,6 @@
 mod command_support;
 mod gate_log;
 mod gate_run;
-pub mod kissconfig_warn;
 mod types;
 
 #[cfg(test)]
@@ -20,7 +19,7 @@ pub use command_support::{
 };
 
 pub use gate_run::{
-    run_repo_workspace_gates, run_repo_workspace_gates_no_kiss_clamp,
+    run_repo_workspace_gates,
     run_repo_workspace_gates_with_details,
 };
 #[cfg(test)]

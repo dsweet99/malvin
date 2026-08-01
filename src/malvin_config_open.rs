@@ -3,8 +3,8 @@
 use std::path::Path;
 
 use super::{
-    ensure_config_parent_dir, merge_missing_keys, parse_malvin_config, parse_template_value,
-    write_config_value, MalvinConfig,
+    ensure_config_parent_dir, merge_missing_keys, parse_agent_config, parse_malvin_config,
+    parse_template_value, write_config_value, AgentConfig, MalvinConfig,
 };
 use crate::workspace_paths::malvin_config_path;
 
@@ -33,4 +33,53 @@ pub fn ensure_malvin_config_file_if_missing(work_dir: &Path) -> Result<(), Strin
     let template = parse_template_value()?;
     let _ = create_malvin_config_from_template(&path, &template)?;
     Ok(())
+}
+
+/// Load `[agent]` with prefix enforcement. Missing file → defaults. Bare `model` → error.
+pub fn load_agent_config_strict(work_dir: &Path) -> Result<AgentConfig, String> {
+    let path = malvin_config_path(work_dir);
+    let Ok(text) = std::fs::read_to_string(&path) else {
+        return Ok(AgentConfig::default());
+    };
+    let Ok(template) = parse_template_value() else {
+        return parse_agent_config(&text);
+    };
+    let Ok(mut on_disk) = text.parse::<toml::Value>() else {
+        return Err(format!("invalid TOML in {}", path.display()));
+    };
+    let _ = merge_missing_keys(&mut on_disk, &template);
+    let merged = toml::to_string(&on_disk).map_err(|e| e.to_string())?;
+    parse_agent_config(&merged)
+}
+
+/// Like [`load_agent_config_strict`], but a bare on-disk `model` is replaced with the default.
+///
+/// Used when CLI `--model` already supplies a prefixed id, so legacy bare config must not block
+/// reading other `[agent]` knobs (`max_loops`, retries, …).
+#[must_use]
+pub fn load_agent_config_lenient(work_dir: &Path) -> AgentConfig {
+    if let Ok(agent) = load_agent_config_strict(work_dir) {
+        return agent;
+    }
+    let path = malvin_config_path(work_dir);
+    let Ok(text) = std::fs::read_to_string(&path) else {
+        return AgentConfig::default();
+    };
+    let Ok(template) = parse_template_value() else {
+        return AgentConfig::default();
+    };
+    let Ok(mut on_disk) = text.parse::<toml::Value>() else {
+        return AgentConfig::default();
+    };
+    let _ = merge_missing_keys(&mut on_disk, &template);
+    if let Some(table) = on_disk.get_mut("agent").and_then(toml::Value::as_table_mut) {
+        table.insert(
+            "model".into(),
+            toml::Value::String(AgentConfig::default().model),
+        );
+    }
+    let Ok(merged) = toml::to_string(&on_disk) else {
+        return AgentConfig::default();
+    };
+    parse_agent_config(&merged).unwrap_or_default()
 }

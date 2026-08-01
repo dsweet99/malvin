@@ -19,7 +19,7 @@ use crate::run_timing::TimingPhase;
 /// Arguments for [`run_inspire`].
 #[derive(Args, Debug)]
 pub struct InspireArgs {
-    /// Existing `.md` path or literal text → `.malvin/logs/.../plan.md`.
+    /// Existing `.md` path or literal text → `~/.malvin_home/logs/.../plan_<random>.md`.
     pub request: Option<String>,
 }
 
@@ -71,10 +71,7 @@ fn inspire_emit_startup(
     let request = require_cli_request(inspire.request.as_ref(), "inspire")?;
     crate::cli::run_emit::emit_run_startup_sequence(
         artifacts,
-        crate::cli::run_emit::RunStartupEmitOpts {
-            tee_stdout: shared.tee_startup_stdout(),
-            host_resources: true,
-        },
+        crate::cli::run_emit::RunStartupEmitOpts::from_shared(shared, true),
         &request,
     )
 }
@@ -93,7 +90,8 @@ async fn prepare_inspire_run(
     crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let prompt = render_inspire_prompt(&text)?;
-    let session_dotfile_backups = SessionDotfileBackups::snapshot(&artifacts.work_dir)?;
+    let session_dotfile_backups =
+        SessionDotfileBackups::snapshot_after_ensuring_home_config(&artifacts.work_dir)?;
     Ok(InspireRunPrep {
         client,
         artifacts,
@@ -108,9 +106,14 @@ pub async fn run_inspire(
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
     let mut prep = prepare_inspire_run(&inspire, shared, workflow).await?;
-    inspire_emit_startup(&inspire, shared, &prep.artifacts)?;
     prep.client
         .set_prompts_log_run_dir(Some(prep.artifacts.run_dir.clone()));
+    // Complete spawn/handshake before the first `Logs:` line (same idea as default router).
+    prep.client
+        .begin_coder_session(&prep.artifacts.work_dir)
+        .await
+        .map_err(|e| e.to_string())?;
+    inspire_emit_startup(&inspire, shared, &prep.artifacts)?;
     let acp_res = run_inspire_acp(&mut prep.client, &prep.artifacts, &prep.prompt).await;
     let r = crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
         acp_res,
@@ -152,9 +155,11 @@ async fn run_inspire_acp(
     prompt: &str,
 ) -> Result<(), String> {
     let timing = agent_backend_attach_run_timing_for_session(client);
-    if let Err(e) = client.begin_coder_session(&artifacts.work_dir).await {
-        agent_backend_set_run_timing(client, None);
-        return Err(e.to_string());
+    if !client.has_open_coder_session() {
+        if let Err(e) = client.begin_coder_session(&artifacts.work_dir).await {
+            agent_backend_set_run_timing(client, None);
+            return Err(e.to_string());
+        }
     }
     agent_backend_set_implement_display_name(client, "inspire");
     let run_res = run_inspire_coder_prompt(client, artifacts, prompt).await;
@@ -167,6 +172,26 @@ async fn run_inspire_acp(
         &timing,
         merged,
     )
+}
+
+#[cfg(test)]
+mod inspire_snapshot_tests {
+    use super::SessionDotfileBackups;
+    use crate::malvin_config_path;
+    use crate::test_utils::with_isolated_home;
+
+    #[test]
+    fn inspire_prepare_snapshot_ensures_home_config_exists() {
+        with_isolated_home(|work| {
+            let cfg = malvin_config_path(work);
+            assert!(!cfg.exists());
+            SessionDotfileBackups::snapshot_after_ensuring_home_config(work).expect("snapshot");
+            assert!(
+                cfg.is_file(),
+                "inspire session snapshot must ensure ~/.malvin_home/config.toml exists"
+            );
+        });
+    }
 }
 
 #[cfg(test)]

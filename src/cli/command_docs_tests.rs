@@ -1,11 +1,10 @@
 use super::{
-    command_doc_markdown, print_doc_to_writer, MALVIN_OVERVIEW_DOC,
+    command_doc_markdown, print_doc_to_writer, MALVIN_OVERVIEW_DOC, ROUTER_DOC,
 };
 use crate::cli::Cli;
-use crate::cli::args::{Commands, InspireArgs, KpopArgs, PlanArgs};
+use crate::cli::{Commands, InspireArgs};
 use crate::cli::delight_flow::DelightArgs;
 use crate::cli::explain_flow::ExplainArgs;
-use crate::cli::revise_flow::ReviseArgs;
 use crate::cli::models_cmd::ModelsArgs;
 use clap::Parser;
 
@@ -17,36 +16,38 @@ fn capture_doc(command: Option<&Commands>) -> Result<Vec<u8>, String> {
 
 #[test]
 fn subcommand_doc_embeds_have_malvin_heading() {
-    let md = command_doc_markdown(&Commands::Models(ModelsArgs {}));
-    assert!(md.starts_with("# malvin "));
-    let md = command_doc_markdown(&Commands::Kpop(KpopArgs {
-        max_loops: 1,
-        max_hypotheses: 1,
-        tenacious: false,
-        request: None,
-    }));
+    let md = command_doc_markdown(&Commands::Models(ModelsArgs::default()));
     assert!(md.starts_with("# malvin "));
     let md = command_doc_markdown(&Commands::Inspire(InspireArgs { request: None }));
     assert!(md.starts_with("# malvin inspire"));
+    assert!(ROUTER_DOC.starts_with("# malvin"));
 }
 
 #[test]
-fn print_doc_none_writes_full_malvin_md() {
+fn print_doc_none_writes_overview_then_router() {
     let out = capture_doc(None).expect("capture");
-    assert_eq!(out.as_slice(), MALVIN_OVERVIEW_DOC.as_bytes());
+    let expected = format!("{MALVIN_OVERVIEW_DOC}\n---\n\n{ROUTER_DOC}");
+    assert_eq!(out.as_slice(), expected.as_bytes());
+    let text = String::from_utf8(out).expect("utf8");
+    assert!(text.starts_with(MALVIN_OVERVIEW_DOC));
+    assert!(text.contains(ROUTER_DOC));
+    assert!(text.contains("# malvin (default route)"));
 }
 
 #[test]
-fn print_doc_some_writes_subcommand_md() {
-    let cmd = Commands::Kpop(KpopArgs {
-        max_loops: 1,
-        max_hypotheses: 1,
-        tenacious: false,
-        request: None,
-    });
+fn print_doc_init_writes_subcommand_md() {
+    use crate::cli::init_flow::InitArgs;
+    let cmd = Commands::Init(InitArgs {});
+    let out = capture_doc(Some(&cmd)).expect("capture");
+    assert!(out.starts_with(b"# malvin init"));
+}
+
+#[test]
+fn print_doc_inspire_writes_subcommand_md() {
+    let cmd = Commands::Inspire(InspireArgs { request: None });
     let out = capture_doc(Some(&cmd)).expect("capture");
     assert_eq!(out.as_slice(), command_doc_markdown(&cmd).as_bytes());
-    assert!(out.starts_with(b"# malvin kpop"));
+    assert!(out.starts_with(b"# malvin inspire"));
 }
 
 #[test]
@@ -57,43 +58,24 @@ fn top_level_doc_parses_without_subcommand() {
 }
 
 #[test]
-fn kpop_doc_parses_without_request_when_doc_flag_set() {
-    let cli = Cli::try_parse_from(["malvin", "kpop", "--doc"]).expect("parse");
+fn do_doc_parses_with_do_flag() {
+    let cli = Cli::try_parse_from(["malvin", "--do", "--doc"]).expect("parse");
     assert!(cli.shared.doc);
-    match cli.command.as_ref() {
-        Some(Commands::Kpop(k)) => assert!(k.request.is_none()),
-        _ => panic!("expected Kpop"),
-    }
+    assert!(cli.do_workflow);
+    assert!(cli.command.is_none());
+    let mut buf = Vec::new();
+    super::print_doc_for_cli_to_writer(&cli, &mut buf).expect("write");
+    assert!(buf.starts_with(b"# malvin --do"));
 }
 
 #[test]
-fn init_doc_parses_without_languages_when_doc_flag_set() {
-    let cli = Cli::try_parse_from(["malvin", "init", "--doc"]).expect("parse");
+fn inspire_doc_parses_without_request_when_doc_flag_set() {
+    let cli = Cli::try_parse_from(["malvin", "inspire", "--doc"]).expect("parse");
     assert!(cli.shared.doc);
     match cli.command.as_ref() {
-        Some(Commands::Init(i)) => assert!(i.languages.is_empty()),
-        _ => panic!("expected Init"),
+        Some(Commands::Inspire(i)) => assert!(i.request.is_none()),
+        _ => panic!("expected Inspire"),
     }
-}
-
-#[test]
-fn plan_doc_parses_with_plan_path_when_doc_flag_set() {
-    let cli = Cli::try_parse_from(["malvin", "plan", "plan.md", "--doc"]).expect("parse");
-    assert!(cli.shared.doc);
-    match cli.command.as_ref() {
-        Some(Commands::Plan(p)) => assert_eq!(p.plan_path, "plan.md"),
-        _ => panic!("expected Plan"),
-    }
-}
-
-#[test]
-fn print_doc_plan_writes_subcommand_md() {
-    let cmd = Commands::Plan(PlanArgs {
-        plan_path: "plan.md".to_string(),
-        out_path: "plan.md".to_string(),
-    });
-    let out = capture_doc(Some(&cmd)).expect("capture");
-    assert!(out.starts_with(b"# malvin plan"));
 }
 
 #[test]
@@ -101,7 +83,7 @@ fn delight_doc_parses_without_out_path() {
     let cli = Cli::try_parse_from(["malvin", "delight", "--doc"]).expect("parse");
     assert!(cli.shared.doc);
     match cli.command.as_ref() {
-        Some(Commands::Delight(d)) => assert_eq!(d.out_path, "plan.md"),
+        Some(Commands::Delight(d)) => assert_eq!(d.out_path, "pitch.md"),
         _ => panic!("expected Delight"),
     }
 }
@@ -137,35 +119,13 @@ fn print_doc_explain_writes_subcommand_md() {
 fn print_doc_delight_writes_subcommand_md() {
     let cmd = Commands::Delight(DelightArgs {
         guidance: None,
-        out_path: "plan.md".to_string(),
+        out_path: "pitch.md".to_string(),
         max_loops: 3,
         max_hypotheses: 5,
         tenacious: true,
     });
     let out = capture_doc(Some(&cmd)).expect("capture");
     assert!(out.starts_with(b"# malvin delight"));
-}
-
-#[test]
-fn revise_doc_parses_with_doc_path_when_doc_flag_set() {
-    let cli = Cli::try_parse_from(["malvin", "revise", "doc.md", "--doc"]).expect("parse");
-    assert!(cli.shared.doc);
-    match cli.command.as_ref() {
-        Some(Commands::Revise(r)) => assert_eq!(r.doc_path, "doc.md"),
-        _ => panic!("expected Revise"),
-    }
-}
-
-#[test]
-fn print_doc_revise_writes_subcommand_md() {
-    let cmd = Commands::Revise(ReviseArgs {
-        doc_path: "doc.md".to_string(),
-        max_loops: 3,
-        max_hypotheses: 5,
-        tenacious: true,
-    });
-    let out = capture_doc(Some(&cmd)).expect("capture");
-    assert!(out.starts_with(b"# malvin revise"));
 }
 
 #[test]
@@ -179,34 +139,17 @@ fn malvin_doc_embeds_name_section() {
     );
 }
 
-#[test]
-fn init_doc_substitutes_advice_path() {
-    use crate::cli::args::{Commands, InitArgs};
-    let cmd = Commands::Init(InitArgs {
-        force: false,
-        languages: vec![],
-        path: None,
-    });
-    let out = capture_doc(Some(&cmd)).expect("capture");
-    let text = String::from_utf8(out).expect("utf8");
-    assert!(
-        text.contains(".malvin/advice.md"),
-        "init doc must show advice path"
-    );
-    assert!(
-        !text.contains("{{ advice_path }}"),
-        "init doc must not leave unresolved advice_path placeholder"
-    );
-}
 
 #[cfg(test)]
 #[allow(unused_imports)]
 mod kiss_cov_gate_refs {
-    use super::super::{doc_text, print_doc, print_doc_to_writer};
+    use super::super::{doc_text, print_doc_to_writer};
 
     #[test]
     fn kiss_cov_unit_names() {
-        let _ = doc_text;
-        let _ = print_doc;
+        let _ = doc_text(None);
+        let mut buf = Vec::new();
+        print_doc_to_writer(None, &mut buf).expect("write");
+        assert!(!buf.is_empty());
     }
 }

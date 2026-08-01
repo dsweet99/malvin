@@ -140,7 +140,7 @@ pub(crate) fn h7_live_stdout_log_both_tool_summary_and_thought_tee_timestamped()
     let tmp = tempfile::tempdir().unwrap();
     let path = tmp.path().join("stdout.log");
     set_stdout_log_path(Some(path.clone()));
-    crate::output::init_stdout_style(false);
+    crate::output::init_stdout_style_for_test(true);
 
     print_stdout_acp_tool_summary_tee(
         &AcpTeeStdoutEvent {

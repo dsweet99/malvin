@@ -87,6 +87,23 @@ fn tool_time_segments_use_dim_grey() {
 }
 
 #[test]
+fn tool_second_duration_segments_use_dim_grey() {
+    let styled = apply_tool_summary_ansi("Run sleep 2 · 2.0s · ✓");
+    let dim = format!("{ANSI_DIM}2.0s{ANSI_RESET}");
+    assert!(styled.contains(&dim), "got {styled:?}");
+}
+
+#[test]
+fn comment_segment_with_s_uses_teal_not_dim() {
+    let plain = "Run ls -ltr logs · List recent session logs befor · 8ms · ✓";
+    let styled = apply_tool_summary_ansi(plain);
+    let teal = format!("{}List recent session logs befor{ANSI_RESET}", ansi_tool_teal());
+    assert!(styled.contains(&teal), "comment must be teal; got {styled:?}");
+    let dim = format!("{ANSI_DIM}List recent session logs befor{ANSI_RESET}");
+    assert!(!styled.contains(&dim), "comment must not be dim; got {styled:?}");
+}
+
+#[test]
 fn tool_path_args_use_teal() {
     let styled = apply_tool_summary_ansi("Read ./src/foo.rs · 1ms");
     let teal = format!("{}./src/foo.rs{ANSI_RESET}", ansi_tool_teal());

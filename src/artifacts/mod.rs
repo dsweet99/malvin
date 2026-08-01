@@ -1,7 +1,6 @@
 //! Run directories and log paths.
 
 mod md_request;
-mod plan_splice;
 mod startup_tag;
 mod create;
 
@@ -13,32 +12,20 @@ pub use create::{
 };
 pub(crate) use create::{ensure_gate_exp_log_file, ensure_quality_gates_log_file};
 
-pub use plan_splice::{
-    BEGIN_MALVIN_MARKER, PlanFileError, PlanRunMetadata, detect_rerun_user_span_end,
-    extract_decisions_section, extract_fenced_markdown_block, find_machine_block_start,
-    is_interrupted_machine_plan, prepare_plan_file_for_prompt_1a, prepare_plan_file_for_run,
-    read_plan_file, read_plan_metadata, overwrite_plan_file, plan_user_sidecar_path,
-    remove_plan_user_sidecar, restore_interrupted_plan, snapshot_plan_artifact, validate_post_1a,
-    validate_post_1b, validate_post_2, write_plan_file_atomic, write_plan_metadata,
-};
-
 pub use crate::session_dotfile_backup::{
-    GitignoreBackup, KissConfigBackup, KissignoreBackup, MalvinChecksBackup, MalvinConfigBackup,
-    MalvinConfigWorkspaceBackup,
-    SessionDotfileBackups, SessionDotfileParts, backup_workspace_gitignore_if_present,
-    backup_workspace_gitignore_if_present_with_id, backup_workspace_kissconfig_if_present,
-    backup_workspace_kissconfig_if_present_with_id, backup_workspace_kissignore_if_present,
-    backup_workspace_kissignore_if_present_with_id, backup_workspace_malvin_checks_if_present,
-    backup_workspace_malvin_checks_if_present_with_id,
+    GitignoreBackup, MalvinChecksBackup, MalvinConfigBackup, MalvinConfigWorkspaceBackup,
+    VisionBackup, SessionDotfileBackups, SessionDotfileParts,
+    backup_workspace_gitignore_if_present, backup_workspace_gitignore_if_present_with_id,
+    backup_workspace_malvin_checks_if_present, backup_workspace_malvin_checks_if_present_with_id,
     backup_workspace_malvin_config_if_present, backup_workspace_malvin_config_if_present_with_id,
     backup_workspace_malvin_config_workspace_if_present,
     backup_workspace_malvin_config_workspace_if_present_with_id,
-    restore_workspace_gitignore_backup, restore_workspace_kissconfig_backup,
-    restore_workspace_kissignore_backup, restore_workspace_malvin_checks_backup,
+    restore_workspace_gitignore_backup, restore_workspace_malvin_checks_backup,
     restore_workspace_malvin_config_backup, restore_workspace_malvin_config_workspace_backup,
-    restore_workspace_session_dotfiles, merge_and_sanitize_for_gate_restore,
-    merge_for_gate_restore, repair_clamp_damaged_dotfiles_on_disk,
-    sanitize_clamp_damaged_dotfiles_in_bundle,
+    restore_workspace_vision_backup, backup_workspace_vision_if_present,
+    backup_workspace_vision_if_present_with_id, restore_workspace_session_dotfiles,
+    merge_and_sanitize_for_gate_restore, merge_for_gate_restore,
+    repair_invalid_malvin_home_config_on_disk, sanitize_invalid_malvin_home_config_in_bundle,
 };
 
 pub use md_request::{
@@ -48,7 +35,7 @@ pub use startup_tag::startup_request_tag_label;
 
 pub use crate::malvin_constants::{QUALITY_GATES_LOG, SANDBOX_OOM_JSON, STDOUT_LOG, TRACE_JSONL};
 
-/// One workflow run: isolated `.malvin/logs/<stamp>_<token>/` with copied plan.
+/// One workflow run: isolated `.malvin/logs/<stamp>_<token>/` with copied user request.
 #[derive(Debug, Clone)]
 pub struct RunArtifacts {
     pub run_dir: PathBuf,
@@ -112,14 +99,21 @@ impl RunArtifacts {
     }
 
     #[must_use]
-    pub fn trace_jsonl_path(&self) -> PathBuf {
-        self.run_dir.join(TRACE_JSONL)
-    }
-
-    #[must_use]
     pub fn sandbox_oom_json_path(&self) -> PathBuf {
         self.run_dir.join(SANDBOX_OOM_JSON)
     }
+}
+
+/// On-disk `KPop` user brief for flows where it differs from [`RunArtifacts::plan_path`] (e.g. `code`).
+#[must_use]
+pub fn user_request_path(artifacts: &RunArtifacts) -> PathBuf {
+    artifacts.run_dir.join("user_request.md")
+}
+
+/// Agent-written grouped review requirements JSON for the default route.
+#[must_use]
+pub fn review_requirements_json(artifacts: &RunArtifacts) -> PathBuf {
+    artifacts.run_dir.join("review_requirements.json")
 }
 
 pub(crate) fn work_dir_for_path(path: &Path) -> PathBuf {

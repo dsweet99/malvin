@@ -1,4 +1,4 @@
-"""Pytest entrypoints for ops/modal_diag_selftest (keeps heavy tests under ops/.kissconfig)."""
+"""Pytest entrypoints for src/python/modal_diag_selftest (kiss via ops/.kissconfig)."""
 
 from __future__ import annotations
 

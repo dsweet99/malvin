@@ -1,0 +1,30 @@
+mem_limit_gb = 4
+# Local llama.cpp context window (n_ctx / n_ctx_seq). Larger values need more mem_limit_gb.
+context_size = 8192
+# Terminal color palette: "dark" (default) or "light" (for pale backgrounds).
+theme = "dark"
+
+[agent]
+model = "cursor:auto"
+max_loops = 1
+max_hypotheses = 5
+max_loops_code = 3
+max_acp_retries = 3
+# Retries per OpenRouter HTTP completion for all non-billing failures (429, 5xx, 4xx, transport, JSON decode, provider capacity).
+max_mini_transport_retries = 3
+
+[review]
+# Hypothesis budget for `malvin explain` Review and Plan KPop sessions (not agent.max_hypotheses).
+max_hypotheses = 10
+
+[default_workflow]
+# Hypothesis budget for bare `malvin REQUEST` multi-group KPop (not agent.max_hypotheses).
+max_hypotheses = 5
+
+[logs]
+# Max run directories per workspace bucket; 0 = unlimited.
+max_count = 1000
+# Delete runs older than this many days (dirname timestamp, else mtime).
+max_age_days = 90
+# Cap total size of ~/.malvin_home/logs/<hash>/ (B, KiB, MiB, GiB, TiB). Empty = disabled.
+max_bytes = "2GiB"

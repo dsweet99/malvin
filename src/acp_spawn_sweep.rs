@@ -2,11 +2,10 @@
 
 use std::path::{Path, PathBuf};
 
-const ACP_SPAWN_LOCK_DIR: &str = "acp_spawn";
 pub(crate) const ACP_SPAWN_CHAMBER_GITIGNORE: &str = "*\n";
 
 pub(super) fn acp_spawn_chamber_dir(work_dir: &Path) -> PathBuf {
-    work_dir.join(".malvin").join(ACP_SPAWN_LOCK_DIR)
+    crate::workspace_paths::malvin_acp_spawn_chamber_dir(work_dir)
 }
 
 pub(super) fn ensure_acp_spawn_chamber_gitignore(chamber: &Path) -> Result<(), String> {
@@ -83,44 +82,43 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn sweep_stale_acp_spawn_locks_removes_dead_and_invalid() {
-        let work = std::env::temp_dir().join("malvin_acp_spawn_sweep");
-        let _ = std::fs::remove_dir_all(&work);
-        let chamber = work.join(".malvin/acp_spawn");
-        std::fs::create_dir_all(&chamber).expect("mkdir chamber");
-        write_lock(&chamber, "dead.lock", "424242");
-        write_lock(&chamber, "invalid.lock", "not-a-pid");
-        write_lock(&chamber, "live.lock", &std::process::id().to_string());
-        let removed = sweep_stale_acp_spawn_locks(&work).expect("sweep");
-        assert_eq!(removed, 2, "dead and invalid locks removed");
-        assert!(!chamber.join("dead.lock").exists());
-        assert!(!chamber.join("invalid.lock").exists());
-        assert!(chamber.join("live.lock").exists(), "live lock kept");
-        let _ = std::fs::remove_file(chamber.join("live.lock"));
+        crate::test_utils::with_isolated_home(|work| {
+            let chamber = acp_spawn_chamber_dir(work);
+            std::fs::create_dir_all(&chamber).expect("mkdir chamber");
+            write_lock(&chamber, "dead.lock", "424242");
+            write_lock(&chamber, "invalid.lock", "not-a-pid");
+            write_lock(&chamber, "live.lock", &std::process::id().to_string());
+            let removed = sweep_stale_acp_spawn_locks(work).expect("sweep");
+            assert_eq!(removed, 2, "dead and invalid locks removed");
+            assert!(!chamber.join("dead.lock").exists());
+            assert!(!chamber.join("invalid.lock").exists());
+            assert!(chamber.join("live.lock").exists(), "live lock kept");
+            let _ = std::fs::remove_file(chamber.join("live.lock"));
+        });
     }
 
     #[test]
     fn sweep_stale_acp_spawn_locks_noop_on_missing_dir() {
-        let work = std::env::temp_dir().join("malvin_acp_spawn_sweep_missing");
-        let _ = std::fs::remove_dir_all(&work);
-        std::fs::create_dir_all(&work).expect("mkdir work");
-        assert_eq!(sweep_stale_acp_spawn_locks(&work).expect("sweep"), 0);
+        crate::test_utils::with_isolated_home(|work| {
+            assert_eq!(sweep_stale_acp_spawn_locks(work).expect("sweep"), 0);
+        });
     }
 
     #[cfg(unix)]
     #[test]
     fn sweep_stale_acp_spawn_locks_keeps_concurrent_live_slots() {
-        let work = std::env::temp_dir().join("malvin_acp_spawn_sweep_concurrent");
-        let _ = std::fs::remove_dir_all(&work);
-        let chamber = work.join(".malvin/acp_spawn");
-        std::fs::create_dir_all(&chamber).expect("mkdir chamber");
-        acquire_acp_spawn_lock_for_slot(&work, "alpha").expect("alpha");
-        acquire_acp_spawn_lock_for_slot(&work, "beta").expect("beta");
-        write_lock(&chamber, "stale.lock", "424242");
-        let removed = sweep_stale_acp_spawn_locks(&work).expect("sweep");
-        assert_eq!(removed, 1);
-        assert!(chamber.join("alpha.lock").exists());
-        assert!(chamber.join("beta.lock").exists());
-        release_acp_spawn_lock(&work, "alpha");
-        release_acp_spawn_lock(&work, "beta");
+        crate::test_utils::with_isolated_home(|work| {
+            let chamber = acp_spawn_chamber_dir(work);
+            std::fs::create_dir_all(&chamber).expect("mkdir chamber");
+            acquire_acp_spawn_lock_for_slot(work, "alpha").expect("alpha");
+            acquire_acp_spawn_lock_for_slot(work, "beta").expect("beta");
+            write_lock(&chamber, "stale.lock", "424242");
+            let removed = sweep_stale_acp_spawn_locks(work).expect("sweep");
+            assert_eq!(removed, 1);
+            assert!(chamber.join("alpha.lock").exists());
+            assert!(chamber.join("beta.lock").exists());
+            release_acp_spawn_lock(work, "alpha");
+            release_acp_spawn_lock(work, "beta");
+        });
     }
 }

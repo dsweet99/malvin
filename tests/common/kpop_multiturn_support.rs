@@ -1,11 +1,34 @@
 pub use malvin::MtStubPrompts;
 
+use malvin::kpop_multiturn_prompts::KpopMultiturnPrompts;
+use malvin::kpop_progression::{KpopMultiturnParams, KpopMultiturnState};
+use std::path::PathBuf;
+
+pub struct MultiturnTestHarness<'a> {
+    pub state: KpopMultiturnState<'a>,
+    pub exp_path: PathBuf,
+    pub _tmp: tempfile::TempDir,
+}
+
+pub fn setup_multiturn_stub_mt() -> MultiturnTestHarness<'static> {
+    let tmp = tempfile::tempdir().unwrap();
+    let exp_path = tmp.path().join("exp.md");
+    std::fs::write(&exp_path, "").unwrap();
+    let state = KpopMultiturnState::from_params(KpopMultiturnParams {
+        builder: KpopMultiturnPrompts::StubMt(MtStubPrompts),
+        exp_log_path: exp_path.clone(),
+        max_hypotheses: 50,
+    })
+    .unwrap();
+    MultiturnTestHarness { state, exp_path, _tmp: tmp }
+}
+
 pub const MBC2_SEEK_MAX_STEPS: usize = 10_000;
 
 pub fn parse_kpop_want(prompt: &str) -> Option<usize> {
     prompt
         .trim()
-        .strip_prefix("stub kpop want=")
+        .strip_prefix("stub kpop max_hypotheses=")
         .and_then(|s| s.parse().ok())
 }
 

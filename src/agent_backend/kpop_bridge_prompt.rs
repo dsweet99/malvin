@@ -1,16 +1,9 @@
-//! Prompt execution and hypothesis-budget checks for [`super::kpop_bridge`].
+//! Prompt execution for [`super::kpop_bridge`].
 
-use crate::acp::{AgentError, AgentKpopMultiturnCtl, CoderPromptOptions};
+use crate::acp::{AgentError, CoderPromptOptions};
 use crate::artifacts::SessionDotfileBackups;
 
 use crate::agent_backend::mini::MiniAgentClient;
-
-pub(super) fn kpop_coder_opts() -> CoderPromptOptions<'static> {
-    CoderPromptOptions {
-        llm_phase: Some(crate::run_timing::TimingPhase::Implement),
-        ..Default::default()
-    }
-}
 
 pub(super) async fn run_kpop_prompt(
     client: &mut MiniAgentClient,
@@ -18,25 +11,16 @@ pub(super) async fn run_kpop_prompt(
     log_path: &std::path::Path,
 ) -> Result<(), AgentError> {
     client
-        .run_coder_prompt(prompt, log_path, "kpop", kpop_coder_opts())
+        .run_coder_prompt(
+            prompt,
+            log_path,
+            "kpop",
+            CoderPromptOptions {
+                llm_phase: Some(crate::run_timing::TimingPhase::Implement),
+                ..Default::default()
+            },
+        )
         .await
-}
-
-pub(super) async fn check_hypothesis_budget(
-    client: &mut MiniAgentClient,
-    ctl: &AgentKpopMultiturnCtl<'_, '_>,
-) -> Result<(), AgentError> {
-    let exp_text = crate::kpop_progression::read_exp_log_text(ctl.state.exp_log_path())
-        .map_err(AgentError)?;
-    let hypotheses_after = crate::kpop_progression::hypotheses_emitted(&exp_text);
-    if hypotheses_after > ctl.state.max_hypotheses {
-        client.end_coder_session().await.ok();
-        return Err(AgentError(format!(
-            "experiment log counts {hypotheses_after} hypothesis steps, exceeding --max-hypotheses ({})",
-            ctl.state.max_hypotheses
-        )));
-    }
-    Ok(())
 }
 
 pub(super) async fn restore_dotfiles_or_close(

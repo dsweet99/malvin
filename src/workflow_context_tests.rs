@@ -2,9 +2,11 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use super::{
-    format_prompt_path, insert_artifact_paths, insert_current_state, insert_formatted,
-    resolve_nonexistent_path, resolve_path_against_base, workflow_context_paths_only,
+    format_git_extra, format_prompt_path, insert_artifact_paths, insert_current_state,
+    insert_formatted, resolve_nonexistent_path, resolve_path_against_base, resolve_user_brief_path,
+    workflow_context_paths_only, GIT_EXTRA_ENABLED,
 };
+use crate::prompt_stratification::WorkflowRenderContext;
 
 #[test]
 fn resolve_path_against_base_resolves_relative_plan_path() {
@@ -111,6 +113,16 @@ fn insert_artifact_paths_populates_expected_keys() {
     assert!(ctx.contains_key("review_prep_path"));
     assert!(ctx.contains_key("advice_path"));
     assert!(ctx.contains_key("logs_dir"));
+    assert!(ctx.contains_key("workspace_dir"));
+    assert!(ctx.contains_key("user_request_path"));
+    assert_eq!(
+        ctx.get("user_request_path").map(String::as_str),
+        ctx.get("plan_path").map(String::as_str),
+    );
+    assert_eq!(
+        ctx.get("workspace_dir").map(String::as_str),
+        ctx.get("malvin_output_path").map(String::as_str),
+    );
 }
 
 #[test]
@@ -119,9 +131,26 @@ fn workflow_context_paths_only_includes_current_state() {
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "p").expect("write");
     let artifacts = crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
-    let ctx = workflow_context_paths_only(&artifacts, "code");
+    let ctx = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, false);
     assert!(ctx.contains_key("current_state"));
     assert!(ctx.get("current_state").expect("state").contains("User:"));
+}
+
+#[test]
+fn workflow_context_paths_only_sets_git_extra_from_flag() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let plan = tmp.path().join("plan.md");
+    std::fs::write(&plan, "p").expect("write");
+    let artifacts = crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
+    let off = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, false);
+    assert_eq!(off.get("git_extra").map(String::as_str), Some(""));
+    let on = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, true);
+    assert_eq!(
+        on.get("git_extra").map(String::as_str),
+        Some(GIT_EXTRA_ENABLED)
+    );
+    assert_eq!(format_git_extra(false), "");
+    assert_eq!(format_git_extra(true), GIT_EXTRA_ENABLED);
 }
 
 #[test]
@@ -146,4 +175,54 @@ fn insert_formatted_stores_workflow_relative_path() {
     let mut ctx = HashMap::new();
     insert_formatted(&mut ctx, "plan_path", &plan, tmp.path());
     assert_eq!(ctx.get("plan_path").map(String::as_str), Some("./plan.md"));
+}
+
+#[test]
+fn resolve_user_brief_path_uses_context_override() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let plan = tmp.path().join("plan.md");
+    std::fs::write(&plan, "p").expect("write");
+    let artifacts = crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
+    let override_path = tmp.path().join("user_request.md");
+    std::fs::write(&override_path, "u").expect("write");
+    let mut ctx = HashMap::new();
+    insert_formatted(
+        &mut ctx,
+        "user_request_path",
+        &override_path,
+        tmp.path(),
+    );
+    let resolved = resolve_user_brief_path(&artifacts, &WorkflowRenderContext::from(ctx));
+    assert_eq!(resolved, override_path.canonicalize().expect("canonicalize"));
+}
+
+#[test]
+fn resolve_user_brief_path_falls_back_to_plan_path() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let plan = tmp.path().join("plan.md");
+    std::fs::write(&plan, "p").expect("write");
+    let artifacts = crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
+    let resolved = resolve_user_brief_path(&artifacts, &WorkflowRenderContext::default());
+    assert_eq!(
+        resolved,
+        artifacts
+            .plan_path
+            .canonicalize()
+            .unwrap_or_else(|_| artifacts.plan_path.clone())
+    );
+}
+
+#[test]
+fn workflow_context_returns_plan_path_and_quality_gates() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let plan_path = tmp.path().join("plan.md");
+    std::fs::write(&plan_path, "plan\n").expect("write plan");
+    crate::seed_malvin_checks(tmp.path(), "true\n");
+    let artifacts =
+        crate::artifacts::create_run_artifacts(&plan_path, Some(tmp.path())).expect("artifacts");
+    let store = crate::prompts::PromptStore::default_store();
+    store.ensure_defaults().expect("defaults");
+    let ctx = super::workflow_context(&artifacts, &store, crate::config::DEFAULT_CLI_MODEL).expect("context");
+    assert!(ctx.contains_key("plan_path"));
+    assert!(ctx.contains_key("quality_gates"));
 }

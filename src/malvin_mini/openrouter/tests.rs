@@ -9,7 +9,7 @@ use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 #[tokio::test]
-pub(super) async fn openrouter_serializes_model_messages_and_headers() {
+pub(crate) async fn openrouter_serializes_model_messages_and_headers() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .and(path("/chat/completions"))
@@ -26,62 +26,63 @@ pub(super) async fn openrouter_serializes_model_messages_and_headers() {
         role: ChatRole::User,
         content: "hi".into(),
     }];
-    let resp = client.complete(&messages).await.expect("complete");
+    let resp = client.complete(&messages).await.result.expect("complete");
     assert_eq!(resp.content, "ok");
 }
 
 #[tokio::test]
-pub(super) async fn openrouter_error_maps_401_unauthorized() {
+pub(crate) async fn openrouter_error_maps_401_unauthorized() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .respond_with(ResponseTemplate::new(401).set_body_string("bad key"))
         .mount(&server)
         .await;
     let client = OpenRouterClient::new(test_config(&server.uri())).expect("client");
-    let err = client.complete(&[]).await.expect_err("401");
+    let err = client.complete(&[]).await.result.expect_err("401");
     assert!(matches!(err, OpenRouterError::Unauthorized { .. }));
 }
 
 #[tokio::test]
-pub(super) async fn openrouter_error_maps_429_rate_limit() {
+pub(crate) async fn openrouter_error_maps_429_rate_limit() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .respond_with(ResponseTemplate::new(429).set_body_string("slow down"))
         .mount(&server)
         .await;
     let client = OpenRouterClient::new(test_config(&server.uri())).expect("client");
-    let err = client.complete(&[]).await.expect_err("429");
+    let err = client.complete(&[]).await.result.expect_err("429");
     assert!(matches!(err, OpenRouterError::RateLimited { .. }));
-    assert!(err.is_retryable());
+    assert!(err.is_transport_retryable());
 }
 
 #[tokio::test]
-pub(super) async fn openrouter_error_maps_500_server_error() {
+pub(crate) async fn openrouter_error_maps_500_server_error() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .respond_with(ResponseTemplate::new(500).set_body_string("boom"))
         .mount(&server)
         .await;
     let client = OpenRouterClient::new(test_config(&server.uri())).expect("client");
-    let err = client.complete(&[]).await.expect_err("500");
+    let err = client.complete(&[]).await.result.expect_err("500");
     assert!(matches!(err, OpenRouterError::ServerError { .. }));
-    assert!(err.is_retryable());
+    assert!(err.is_transport_retryable());
 }
 
 #[tokio::test]
-pub(super) async fn openrouter_error_maps_billing_failure() {
+pub(crate) async fn openrouter_error_maps_billing_failure() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .respond_with(ResponseTemplate::new(402).set_body_string("no credits"))
         .mount(&server)
         .await;
     let client = OpenRouterClient::new(test_config(&server.uri())).expect("client");
-    let err = client.complete(&[]).await.expect_err("402");
+    let err = client.complete(&[]).await.result.expect_err("402");
     assert!(matches!(err, OpenRouterError::BillingFailure { .. }));
 }
 
+
 #[tokio::test]
-pub(super) async fn openrouter_mock_http_complete_returns_usage() {
+pub(crate) async fn openrouter_mock_http_complete_returns_usage() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
@@ -91,13 +92,13 @@ pub(super) async fn openrouter_mock_http_complete_returns_usage() {
         .mount(&server)
         .await;
     let client = OpenRouterClient::new(test_config(&server.uri())).expect("client");
-    let resp = client.complete(&[]).await.expect("ok");
+    let resp = client.complete(&[]).await.result.expect("ok");
     let usage = resp.usage.expect("usage");
     assert_eq!(usage.total_tokens, Some(15));
 }
 
 #[tokio::test]
-pub(super) async fn openrouter_mock_http_complete_returns_usage_cost() {
+pub(crate) async fn openrouter_mock_http_complete_returns_usage_cost() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
@@ -107,7 +108,7 @@ pub(super) async fn openrouter_mock_http_complete_returns_usage_cost() {
         .mount(&server)
         .await;
     let client = OpenRouterClient::new(test_config(&server.uri())).expect("client");
-    let resp = client.complete(&[]).await.expect("ok");
+    let resp = client.complete(&[]).await.result.expect("ok");
     let usage = resp.usage.expect("usage");
     assert!((usage.cost.unwrap_or(0.0) - 0.0042).abs() < f64::EPSILON);
 }
@@ -134,6 +135,8 @@ fn openrouter_private_response_types_round_trip_serialization() {
         choices: vec![ChatChoice {
             message: Some(ChatChoiceMessage {
                 content: Some("ok".into()),
+                reasoning: None,
+                reasoning_details: None,
             }),
         }],
         usage: Some(ResponseUsage {
@@ -164,9 +167,11 @@ fn kiss_cov_openrouter_private_serde_types() {
             role: ChatRole::User,
             content: "hi".into(),
         }],
+        max_tokens: Some(8192),
     };
     let req_json = serde_json::to_string(&req).expect("serialize request");
     assert!(req_json.contains("anthropic/claude-sonnet-4"));
+    assert!(req_json.contains("max_tokens"));
 
     let resp_json = r#"{"choices":[{"message":{"content":"ok"}}],"usage":{"total_tokens":1}}"#;
     let resp: ChatCompletionResponse = serde_json::from_str(resp_json).expect("deserialize");
@@ -176,19 +181,28 @@ fn kiss_cov_openrouter_private_serde_types() {
 }
 
 #[tokio::test]
-pub(super) async fn openrouter_error_on_non_200_request_failed() {
+pub(crate) async fn openrouter_complete_transport_error_on_unreachable_host() {
+    let client = OpenRouterClient::new(test_config("http://127.0.0.1:1")).expect("client");
+    let meta = client.complete(&[]).await;
+    let err = meta.result.expect_err("transport");
+    assert!(matches!(err, OpenRouterError::Transport(_)));
+    assert_eq!(meta.http.status, None);
+}
+
+#[tokio::test]
+pub(crate) async fn openrouter_error_on_non_200_request_failed() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .respond_with(ResponseTemplate::new(418).set_body_string("teapot"))
         .mount(&server)
         .await;
     let client = OpenRouterClient::new(test_config(&server.uri())).expect("client");
-    let err = client.complete(&[]).await.expect_err("418");
+    let err = client.complete(&[]).await.result.expect_err("418");
     assert!(matches!(err, OpenRouterError::RequestFailed { status: 418, .. }));
 }
 
 #[tokio::test]
-pub(super) async fn openrouter_error_on_missing_content() {
+pub(crate) async fn openrouter_error_on_missing_content() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
@@ -198,7 +212,7 @@ pub(super) async fn openrouter_error_on_missing_content() {
         .mount(&server)
         .await;
     let client = OpenRouterClient::new(test_config(&server.uri())).expect("client");
-    let err = client.complete(&[]).await.expect_err("missing content");
+    let err = client.complete(&[]).await.result.expect_err("missing content");
     assert!(matches!(err, OpenRouterError::MissingContent));
 }
 
@@ -222,6 +236,7 @@ mod kiss_cov_gate_refs {
             kiss_cov_openrouter_private_serde_types,
             openrouter_error_on_non_200_request_failed,
             openrouter_error_on_missing_content,
+            openrouter_complete_transport_error_on_unreachable_host,
         );
     }
 }

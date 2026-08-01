@@ -2,7 +2,6 @@ use std::path::Path;
 use std::process::Command;
 
 use super::{INTEGRATION_TEST_MALVIN_ARGS, MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout};
-use super::integration_cli_args::FAST_GATE_LOOP_TEST_ARGS;
 
 pub struct CodeSpawn<'a> {
     pub workspace: &'a Path,
@@ -11,6 +10,8 @@ pub struct CodeSpawn<'a> {
     pub path_var: &'a str,
     pub extra_args: &'a [&'a str],
     pub request: &'a str,
+    /// When set, gate subprocess stubs append invocations to this path via `MALVIN_TEST_GATE_TRACE`.
+    pub gate_trace: Option<&'a Path>,
 }
 
 pub fn spawn_code(c: &CodeSpawn<'_>) -> std::process::Output {
@@ -19,10 +20,12 @@ pub fn spawn_code(c: &CodeSpawn<'_>) -> std::process::Output {
         .env("HOME", c.home)
         .env("CURSOR_AGENT_API_KEY", "test-key")
         .env("MALVIN_AGENT_ACP_BIN", c.mock)
-        .env("PATH", c.path_var)
-        .args(["code"]);
+        .env("PATH", c.path_var);
+    if let Some(trace) = c.gate_trace {
+        cmd.env("MALVIN_TEST_GATE_TRACE", trace);
+    }
+    cmd.args(["code"]);
     cmd.args(INTEGRATION_TEST_MALVIN_ARGS);
-    cmd.args(FAST_GATE_LOOP_TEST_ARGS);
     cmd.args(c.extra_args);
     cmd.arg(c.request);
     command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin code")

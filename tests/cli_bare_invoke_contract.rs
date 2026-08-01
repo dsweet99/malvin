@@ -1,30 +1,44 @@
-//! Bare CLI invocation (`malvin REQUEST...` → kpop) contract tests.
+//! CLI subcommand contract tests.
+
+mod common;
 
 use malvin::cli::{parse_cli_with_config_defaults, Cli, Commands};
 use clap::CommandFactory;
+use common::with_isolated_home;
 
 fn parse(argv: &[&str]) -> Cli {
-    parse_cli_with_config_defaults(argv)
-        .expect("parse")
-        .0
+    let mut out = None;
+    with_isolated_home(|_work, _home| {
+        out = Some(
+            parse_cli_with_config_defaults(argv)
+                .expect("parse")
+                .0,
+        );
+    });
+    out.expect("parsed under isolated home")
+}
+
+fn help_lists_subcommand_line(help: &str, name: &str) -> bool {
+    help.lines()
+        .any(|line| line.starts_with(&format!("  {name} ")))
 }
 
 #[test]
-fn bare_request_parses_as_kpop() {
-    let cli = parse(&["malvin", "investigate"]);
-    match cli.command {
-        Some(Commands::Kpop(k)) => assert_eq!(k.request.as_deref(), Some("investigate")),
-        other => panic!("expected kpop, got {other:?}"),
-    }
+fn do_flag_parses() {
+    let cli = parse(&["malvin", "--do", "task"]);
+    assert!(cli.do_workflow);
+    assert_eq!(cli.request.as_deref(), Some("task"));
+    assert!(cli.command.is_none());
 }
 
 #[test]
-fn do_subcommand_parses() {
-    let cli = parse(&["malvin", "do", "task"]);
-    match cli.command {
-        Some(Commands::Do(d)) => assert_eq!(d.request.as_deref(), Some("task")),
-        other => panic!("expected do, got {other:?}"),
-    }
+fn do_subcommand_is_removed() {
+    let err = parse_cli_with_config_defaults(["malvin", "do", "task"]).unwrap_err();
+    let msg = err.to_string();
+    assert!(
+        msg.contains("unexpected") || msg.contains("unrecognized"),
+        "expected parse error for removed do subcommand, got: {msg}"
+    );
 }
 
 #[test]
@@ -43,25 +57,34 @@ fn tidy_subcommand_still_parses() {
 }
 
 #[test]
-fn legacy_kpop_subcommand_still_parses() {
-    let cli = parse(&["malvin", "kpop", "q"]);
-    assert!(matches!(cli.command, Some(Commands::Kpop(_))));
+fn kpop_subcommand_is_removed() {
+    let err = parse_cli_with_config_defaults(["malvin", "kpop", "investigate"]).unwrap_err();
+    let msg = err.to_string();
+    assert!(
+        msg.contains("unrecognized subcommand") || msg.contains("unexpected"),
+        "expected unknown-subcommand error, got: {msg}"
+    );
 }
 
 #[test]
-fn cli_help_lists_bare_invocation_hint() {
+fn bare_request_without_subcommand_parses_as_default_route() {
+    let cli = parse(&["malvin", "investigate"]);
+    assert!(cli.command.is_none());
+    assert!(!cli.do_workflow);
+    assert_eq!(cli.request.as_deref(), Some("investigate"));
+}
+
+#[test]
+fn cli_help_does_not_list_kpop_subcommand() {
     let mut cmd = Cli::command();
     let help = cmd.render_help().to_string();
-    assert!(help.contains("malvin REQUEST"));
-    assert!(help.contains("do"));
+    assert!(!help_lists_subcommand_line(&help, "code"));
+    assert!(!help_lists_subcommand_line(&help, "kpop"));
+    assert!(!help_lists_subcommand_line(&help, "do"));
+    assert!(!help_lists_subcommand_line(&help, "delight"));
+    assert!(help.contains("--do"));
+    assert!(!help.contains("router"));
     assert!(!help.contains("@code"));
-}
-
-#[test]
-fn multiple_bare_requests_do_not_join_into_single_kpop() {
-    let cli = parse(&["malvin", "req_a.md", "req_b.md"]);
-    assert!(cli.command.is_none());
-    assert_eq!(cli.bare_args, vec!["req_a.md", "req_b.md"]);
 }
 
 #[test]
@@ -73,10 +96,4 @@ fn code_subcommand_accepts_multiple_plans() {
         }
         other => panic!("expected code, got {other:?}"),
     }
-}
-
-#[test]
-fn kiss_cov_bare_resolve_helper_names() {
-    const NAMES: &[&str] = &["resolve_bare_kpop", "resolve_bare_command"];
-    assert_eq!(NAMES.len(), 2);
 }

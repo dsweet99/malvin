@@ -1,0 +1,53 @@
+[
+  {
+    "entries": [],
+    "packed_hex": "423200"
+  },
+  {
+    "entries": [
+      [
+        3,
+        true
+      ],
+      [
+        7,
+        true
+      ],
+      [
+        11,
+        true
+      ]
+    ],
+    "packed_hex": "423203030104010401"
+  },
+  {
+    "entries": [
+      [
+        5,
+        true
+      ],
+      [
+        5,
+        false
+      ],
+      [
+        2,
+        true
+      ]
+    ],
+    "packed_hex": "42320202010300"
+  },
+  {
+    "entries": [
+      [
+        128,
+        false
+      ],
+      [
+        0,
+        true
+      ]
+    ],
+    "packed_hex": "4232020001800100"
+  }
+]

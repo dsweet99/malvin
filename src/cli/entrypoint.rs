@@ -1,46 +1,24 @@
-use super::models_cmd;
 use super::{
-    Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_kpop, run_tidy,
+    Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_init, run_router, run_tidy,
 };
+use crate::do_flow::DoArgs;
 
 /// Commands that accept `--name` acquire a session name lock before substantive work.
-/// Only bare `malvin REQUEST` (resolved kpop), `do`, `code`, `tidy`, `plan`, and `delight` accept `--name`.
-pub(crate) const fn command_accepts_session_name(command: &Commands, bare_invoke: bool) -> bool {
-    match command {
-        Commands::Do(_)
-        | Commands::Code(_)
-        | Commands::Tidy(_)
-        | Commands::Plan(_)
-        | Commands::Delight(_) => true,
-        Commands::Kpop(_) => bare_invoke,
-        _ => false,
-    }
-}
-
-pub(crate) const fn unsupported_name_error(command: &Commands, bare_invoke: bool) -> Option<&'static str> {
-    if command_accepts_session_name(command, bare_invoke) {
-        return None;
-    }
-    Some(
-        "`--name` is only supported for bare `malvin REQUEST`, `do`, `code`, `tidy`, `plan`, and `delight`",
+/// Bare `malvin REQUEST`, `--do`, `tidy`, and `delight` accept `--name`.
+pub(crate) const fn command_accepts_session_name(command: &Commands) -> bool {
+    matches!(
+        command,
+        Commands::Code(_) | Commands::Tidy(_) | Commands::Delight(_)
     )
 }
 
-pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
-    use crate::require_kiss_for_malvin;
-    match cmd {
-        Commands::Code(_) => require_kiss_for_malvin("code"),
-        Commands::Tidy(_) => require_kiss_for_malvin("tidy"),
-        Commands::Do(_)
-        | Commands::Init(_)
-        | Commands::Kpop(_)
-        | Commands::Inspire(_)
-        | Commands::Models(_)
-        | Commands::Plan(_)
-        | Commands::Delight(_)
-        | Commands::Explain(_)
-        | Commands::Revise(_) => Ok(()),
+pub(crate) const fn unsupported_name_error(command: &Commands) -> Option<&'static str> {
+    if command_accepts_session_name(command) {
+        return None;
     }
+    Some(
+        "`--name` is only supported for bare `malvin REQUEST`, `--do`, `tidy`, and `delight`",
+    )
 }
 
 #[path = "entrypoint_from.rs"]
@@ -60,6 +38,10 @@ pub fn print_command_error(message: &str) {
         print_stderr_line(MALVIN_WHO, &display);
         return;
     }
+    if super::error_run_log::command_error_already_emitted(message) {
+        return;
+    }
+    super::error_run_log::note_command_error_emitted(message);
     super::error_run_log::append_command_error_to_run_log(message);
     print_log_error(message);
 }
@@ -104,7 +86,7 @@ pub(crate) fn prepare_cli_output(global: &crate::cli::args::GlobalOpts) {
         .map(|cwd| crate::malvin_config_file::load_malvin_config(&cwd).theme)
         .unwrap_or_default();
     crate::terminal_palette::init_terminal_theme(theme);
-    crate::output::init_stdout_style(global.no_color);
+    crate::output::init_stdout_style();
     crate::output::set_stdout_suppressed(global.background);
 }
 
@@ -126,25 +108,7 @@ pub(crate) fn dispatch_command(
             });
             super::entrypoint_commands::run_code_command(code, &shared)
         }
-        Commands::Kpop(mut kpop) => {
-            super::loop_opts::apply_gate_loop_tenacious(super::loop_opts::GateLoopTenaciousApply {
-                subcommand: "kpop",
-                max_loops: &mut kpop.max_loops,
-                tenacious: kpop.tenacious,
-                no_tenacious: shared.no_tenacious,
-                max_acp_retries: &mut shared.max_acp_retries,
-                matches,
-            });
-            run_async_cli(|| {
-                run_kpop(
-                    kpop,
-                    &shared,
-                    WorkflowCliOptions {
-                        force: !shared.no_force,
-                    },
-                )
-            })
-        }
+        Commands::Init(init) => run_async_cli(|| run_init(init, &shared)),
         Commands::Tidy(mut tidy) => {
             super::loop_opts::apply_gate_loop_tenacious(super::loop_opts::GateLoopTenaciousApply {
                 subcommand: "tidy",
@@ -164,38 +128,63 @@ pub(crate) fn dispatch_command(
                 )
             })
         }
-        cmd @ (Commands::Delight(_) | Commands::Explain(_) | Commands::Revise(_)) => {
+        cmd @ (Commands::Delight(_) | Commands::Explain(_)) => {
             super::entrypoint_commands::dispatch_plan_authoring_gate(cmd, &mut shared, matches)
         }
-        Commands::Do(do_cmd) => run_async_cli(|| {
-            run_do(
-                do_cmd,
-                &shared,
-                WorkflowCliOptions {
-                    force: !shared.no_force,
-                },
-            )
-        }),
-        Commands::Inspire(inspire) => super::entrypoint_commands::run_inspire_command(inspire, &shared),
-        Commands::Plan(plan) => super::entrypoint_commands::run_plan_command(plan, &shared),
-        Commands::Init(init) => {
-            let shared = shared.clone();
-            let tee = shared.tee_startup_stdout();
-            run_async_cli(|| async move {
-                crate::init_cmd::run_init(crate::init_cmd::RunInitRequest {
-                    path: init.path,
-                    languages: &init.languages,
-                    shared: &shared,
-                    opts: crate::init_cmd::RunInitOptions {
-                        overwrite_templates: init.force,
-                        tee_startup_stdout: tee,
-                    },
-                })
-                .await
-            })
+        Commands::Inspire(inspire) | Commands::Adaptix(inspire) => {
+            super::entrypoint_commands::run_inspire_command(inspire, &shared)
         }
-        Commands::Models(_) => models_cmd::run_models(),
+        Commands::Models(models) => dispatch_models(models, &shared),
     }
+}
+
+pub fn dispatch_do_workflow(
+    do_args: DoArgs,
+    shared: &SharedOpts,
+) -> Result<(), String> {
+    run_async_cli(|| {
+        run_do(
+            do_args,
+            shared,
+            WorkflowCliOptions {
+                force: !shared.no_force,
+            },
+        )
+    })
+}
+
+pub fn dispatch_default_route(
+    request: String,
+    mut max_loops: usize,
+    shared: &mut SharedOpts,
+    matches: &clap::ArgMatches,
+) -> Result<(), String> {
+    use crate::router_flow::RouterArgs;
+    super::loop_opts::apply_default_route_tenacious(
+        &mut max_loops,
+        &mut shared.max_acp_retries,
+        shared.no_tenacious,
+        matches,
+    );
+    run_async_cli(|| {
+        run_router(
+            RouterArgs {
+                request: Some(request),
+                max_loops,
+            },
+            shared,
+            WorkflowCliOptions {
+                force: !shared.no_force,
+            },
+        )
+    })
+}
+
+fn dispatch_models(
+    models: super::models_cmd::ModelsArgs,
+    shared: &super::SharedOpts,
+) -> Result<(), String> {
+    super::models_cmd::run_models(models, &shared.model)
 }
 
 #[cfg(test)]

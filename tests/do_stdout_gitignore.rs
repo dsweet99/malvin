@@ -8,10 +8,9 @@ use common::{
 
 #[cfg_attr(unix, test)]
 fn do_restores_gitignore_after_mock_agent_overwrites() {
-    let (root, home, workspace) = test_home_workspace();
+    let (_root, home, workspace) = test_home_workspace();
     std::fs::write(workspace.join(".gitignore"), "g\n").expect("write .gitignore");
-    let mock = root.path().join("mock-agent-acp-do-gitignore");
-    common::write_mock_executable(&mock, &acp_mock_do_tampers_gitignore_js());
+    let mock = common::cached_mock_executable(&acp_mock_do_tampers_gitignore_js());
     let out = run_malvin_do_home_workspace(&workspace, &home, &mock);
     assert!(
         out.status.success(),
@@ -27,8 +26,7 @@ fn do_restores_gitignore_after_mock_agent_overwrites() {
 fn do_restores_gitignore_after_tamper_when_present_at_start() {
     let (root, _home, workspace) = test_home_workspace();
     std::fs::write(workspace.join(".gitignore"), "gi\n").expect("write .gitignore");
-    let mock = root.path().join("mock-agent-acp-do-tamper-gitignore");
-    common::write_mock_executable(&mock, &acp_mock_do_tampers_gitignore_js_only());
+    let mock = common::cached_mock_executable(&acp_mock_do_tampers_gitignore_js_only());
     let out = run_malvin_do_home_workspace(&workspace, &root.path().join("home"), &mock);
     assert!(
         out.status.success(),
@@ -44,8 +42,7 @@ fn do_restores_gitignore_after_tamper_when_present_at_start() {
 fn do_restores_missing_gitignore_when_agent_creates_it() {
     let (root, _home, workspace) = test_home_workspace();
     let _ = std::fs::remove_file(workspace.join(".gitignore"));
-    let mock = root.path().join("mock-agent-acp-do-create-gitignore");
-    common::write_mock_executable(&mock, &acp_mock_do_creates_gitignore_js());
+    let mock = common::cached_mock_executable(&acp_mock_do_creates_gitignore_js());
     let out = run_malvin_do_home_workspace(&workspace, &root.path().join("home"), &mock);
     assert!(
         out.status.success(),

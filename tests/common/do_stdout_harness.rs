@@ -6,7 +6,7 @@ use std::process::Command;
 #[cfg(unix)]
 use super::{
     INTEGRATION_TEST_MALVIN_ARGS, MALVIN_TEST_CMD_TIMEOUT, acp_mock_do_streaming_update_js,
-    command_output_with_timeout, test_home_workspace, write_mock_executable,
+    command_output_with_timeout, test_home_workspace, cached_mock_executable,
 };
 
 #[cfg(unix)]
@@ -17,15 +17,14 @@ pub const DO_WRAP_COLUMNS: &str = "32";
 
 #[cfg(unix)]
 pub fn run_do_with_named_mock_bin(
-    mock_bin_name: &str,
+    _mock_bin_name: &str,
     mock_js: &str,
     extra_args: &[&str],
     columns: Option<&str>,
 ) -> (std::process::Output, tempfile::TempDir, std::path::PathBuf) {
     let (root, home, workspace) = test_home_workspace();
-    let mock = root.path().join(mock_bin_name);
-    write_mock_executable(&mock, mock_js);
-    let mut args = vec!["do"];
+    let mock = cached_mock_executable( mock_js);
+    let mut args = vec!["--do"];
     args.extend_from_slice(INTEGRATION_TEST_MALVIN_ARGS);
     args.extend_from_slice(extra_args);
     args.push("say hi");
@@ -63,9 +62,8 @@ pub fn run_do_with_mock(extra_args: &[&str]) -> std::process::Output {
 #[cfg(unix)]
 pub fn run_do_with_mock_force_tee(extra_args: &[&str]) -> std::process::Output {
     let (root, home, workspace) = test_home_workspace();
-    let mock = root.path().join("mock-agent-acp-do-force-tee");
-    write_mock_executable(&mock, &acp_mock_do_streaming_update_js());
-    let mut args = vec!["do"];
+    let mock = cached_mock_executable( &acp_mock_do_streaming_update_js());
+    let mut args = vec!["--do"];
     args.extend_from_slice(INTEGRATION_TEST_MALVIN_ARGS);
     args.extend_from_slice(extra_args);
     args.push("say hi");
@@ -101,7 +99,7 @@ pub fn run_do_wordy_long_mock(extra_args: &[&str]) -> std::process::Output {
 
 #[cfg(unix)]
 pub fn run_do_with_mock_and_argv(extra_args: &[&str]) -> (std::process::Output, Vec<String>) {
-    let mut args: Vec<&str> = vec!["do"];
+    let mut args: Vec<&str> = vec!["--do"];
     args.extend_from_slice(extra_args);
     args.push("say hi");
     run_malvin_with_captured_argv(&args)
@@ -133,8 +131,7 @@ impl MalvinCapturePaths<'_> {
 pub fn run_malvin_with_captured_argv(malvin_args: &[&str]) -> (std::process::Output, Vec<String>) {
     let (root, home, workspace) = test_home_workspace();
     let capture = root.path().join("captured-argv.txt");
-    let mock = root.path().join("mock-agent-acp-do");
-    write_mock_executable(&mock, &acp_mock_do_streaming_update_js());
+    let mock = cached_mock_executable( &acp_mock_do_streaming_update_js());
     let cap = MalvinCapturePaths {
         workspace: &workspace,
         home: &home,
@@ -183,7 +180,7 @@ pub fn assert_stdout_has_no_chrome(lines: &[String]) {
     assert!(
         lines
             .iter()
-            .all(|l| !l.contains("Command: ") && !l.contains("Logs: ") && !l.contains("TIMING: ")),
+            .all(|l| !l.contains("Command: ") && !l.contains("Logs: ") && !l.contains("TIMING: ") && !l.contains("COST: ")),
         "expected do stdout without startup/timing chrome, got {lines:?}"
     );
     assert!(

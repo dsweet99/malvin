@@ -2,6 +2,8 @@
 
 use clap::ArgMatches;
 
+use crate::reliability_tier::{ReliabilityTier, ReliabilityTierFlags};
+
 use super::config_defaults::global_flag_from_command_line;
 use super::config_loop::subcommand_flag_from_command_line;
 
@@ -34,12 +36,38 @@ pub struct GateLoopTenaciousApply<'a> {
 }
 
 pub fn apply_gate_loop_tenacious(input: GateLoopTenaciousApply<'_>) {
+    let tier = ReliabilityTier::resolve(ReliabilityTierFlags {
+        tenacious: input.tenacious,
+        no_tenacious: input.no_tenacious,
+    });
     apply_tenacious(
         input.max_loops,
         input.max_acp_retries,
-        input.tenacious && !input.no_tenacious,
+        tier,
         tenacious_budget_guard(input.matches, input.subcommand),
     );
+}
+
+/// Expand bare-route ACP retry and outer `--max-loops` budgets when tenacious mode is active
+/// (default on), unless the matching flag was set explicitly on the command line.
+pub fn apply_default_route_tenacious(
+    max_loops: &mut usize,
+    max_acp_retries: &mut u32,
+    no_tenacious: bool,
+    matches: &ArgMatches,
+) {
+    let tier = ReliabilityTier::resolve(ReliabilityTierFlags {
+        tenacious: true,
+        no_tenacious,
+    });
+    if tier == ReliabilityTier::Tenacious {
+        if !global_flag_from_command_line(matches, "max_loops") {
+            *max_loops = TENACIOUS_MAX_LOOPS;
+        }
+        if !global_flag_from_command_line(matches, "max_acp_retries") {
+            *max_acp_retries = TENACIOUS_MAX_ACP_RETRIES;
+        }
+    }
 }
 
 /// When set, expand to very large `--max-loops` and `--max-acp-retries` budgets unless guarded.
@@ -47,26 +75,16 @@ pub fn apply_gate_loop_tenacious(input: GateLoopTenaciousApply<'_>) {
 pub fn apply_tenacious(
     max_loops: &mut usize,
     max_acp_retries: &mut u32,
-    tenacious: bool,
+    tier: ReliabilityTier,
     guard: TenaciousBudgetGuard,
 ) {
-    if tenacious {
+    if tier == ReliabilityTier::Tenacious {
         if !guard.max_loops_explicit {
             *max_loops = TENACIOUS_MAX_LOOPS;
         }
         if !guard.max_acp_retries_explicit {
             *max_acp_retries = TENACIOUS_MAX_ACP_RETRIES;
         }
-    }
-}
-
-/// Experiment-log iteration index for the `agent_loop`th outer kpop agent (1-based).
-#[must_use]
-pub const fn kpop_agent_loop_exp_iteration(agent_loop: usize, max_loops: usize) -> usize {
-    if max_loops <= 1 {
-        0
-    } else {
-        agent_loop
     }
 }
 
@@ -81,7 +99,7 @@ mod tests {
         apply_tenacious(
             &mut loops,
             &mut retries,
-            true,
+            ReliabilityTier::Tenacious,
             TenaciousBudgetGuard {
                 max_loops_explicit: false,
                 max_acp_retries_explicit: false,
@@ -98,7 +116,7 @@ mod tests {
         apply_tenacious(
             &mut loops,
             &mut retries,
-            true,
+            ReliabilityTier::Tenacious,
             TenaciousBudgetGuard {
                 max_loops_explicit: true,
                 max_acp_retries_explicit: false,
@@ -112,11 +130,11 @@ mod tests {
     fn apply_gate_loop_tenacious_expands_unless_opted_out() {
         use clap::CommandFactory;
         use crate::cli::Cli;
-        let matches = Cli::command().get_matches_from(["malvin", "kpop", "hello"]);
+        let matches = Cli::command().get_matches_from(["malvin", "tidy"]);
         let mut loops = 1usize;
         let mut retries = 3u32;
         apply_gate_loop_tenacious(GateLoopTenaciousApply {
-            subcommand: "kpop",
+            subcommand: "tidy",
             max_loops: &mut loops,
             tenacious: true,
             no_tenacious: false,
@@ -128,9 +146,19 @@ mod tests {
     }
 
     #[test]
-    fn kpop_agent_loop_exp_iteration_uses_legacy_path_for_single_run() {
-        assert_eq!(kpop_agent_loop_exp_iteration(1, 1), 0);
-        assert_eq!(kpop_agent_loop_exp_iteration(1, 3), 1);
-        assert_eq!(kpop_agent_loop_exp_iteration(2, 3), 2);
+    fn apply_tenacious_conservative_leaves_budgets() {
+        let mut loops = 3usize;
+        let mut retries = 5u32;
+        apply_tenacious(
+            &mut loops,
+            &mut retries,
+            ReliabilityTier::Conservative,
+            TenaciousBudgetGuard {
+                max_loops_explicit: false,
+                max_acp_retries_explicit: false,
+            },
+        );
+        assert_eq!(loops, 3);
+        assert_eq!(retries, 5);
     }
 }

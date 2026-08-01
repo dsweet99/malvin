@@ -30,11 +30,21 @@ pub fn echo_primary_to_stdout(plan_path: &Path, echo_plain: bool) -> Result<(), 
 
 pub fn emit_host_resources_line(run_dir: &Path, echo_stdout: bool) -> Result<(), String> {
     let line = format_host_resources_line();
+    append_command_log_line(run_dir, echo_stdout, &line)
+}
+
+/// Format the startup model prelude line (`Model: …`).
+#[must_use]
+pub fn format_model_mini_line(model: &str) -> String {
+    format!("Model: {model}")
+}
+
+fn append_command_log_line(run_dir: &Path, echo_stdout: bool, line: &str) -> Result<(), String> {
     if echo_stdout {
-        print_stdout_line(WHO_U, &line);
+        print_stdout_line(WHO_U, line);
     }
     let log_path = run_dir.join("command.log");
-    let formatted = format!("{}\n", format_line(WHO_U, &line));
+    let formatted = format!("{}\n", format_line(WHO_U, line));
     let mut file = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
@@ -48,6 +58,18 @@ pub fn emit_host_resources_line(run_dir: &Path, echo_stdout: bool) -> Result<(),
 pub struct RunStartupEmitOpts {
     pub tee_stdout: bool,
     pub host_resources: bool,
+    pub model: String,
+}
+
+impl RunStartupEmitOpts {
+    #[must_use]
+    pub fn from_shared(shared: &super::SharedOpts, host_resources: bool) -> Self {
+        Self {
+            tee_stdout: shared.tee_startup_stdout(),
+            host_resources,
+            model: shared.model.clone(),
+        }
+    }
 }
 
 pub fn emit_run_startup_sequence(
@@ -61,6 +83,11 @@ pub fn emit_run_startup_sequence(
     if opts.host_resources && !crate::acp::test_no_real_agent_enabled() {
         emit_host_resources_line(&artifacts.run_dir, opts.tee_stdout)?;
     }
+    append_command_log_line(
+        &artifacts.run_dir,
+        opts.tee_stdout,
+        &format_model_mini_line(&opts.model),
+    )?;
     echo_primary_to_stdout(&artifacts.plan_path, opts.tee_stdout)?;
     print_stdout_line(
         MALVIN_WHO,
@@ -71,7 +98,10 @@ pub fn emit_run_startup_sequence(
 
 #[cfg(test)]
 mod tests {
-    use super::{emit_host_resources_line, emit_run_startup_sequence, RunStartupEmitOpts};
+    use super::{
+        append_command_log_line, emit_host_resources_line, emit_run_startup_sequence,
+        format_model_mini_line, RunStartupEmitOpts,
+    };
     use crate::output::{format_who_tag_delim, WHO_U};
 
     #[test]
@@ -102,6 +132,32 @@ mod tests {
     }
 
     #[test]
+    fn format_model_mini_line_shows_prefixed_model() {
+        assert_eq!(
+            format_model_mini_line("cursor:composer-2"),
+            "Model: cursor:composer-2"
+        );
+        assert_eq!(
+            format_model_mini_line("openrouter:openai/gpt-4o"),
+            "Model: openrouter:openai/gpt-4o"
+        );
+    }
+
+    #[test]
+    fn append_model_mini_line_uses_user_who_tag() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let run_dir = tmp.path().join("run");
+        std::fs::create_dir_all(&run_dir).expect("mkdir");
+        std::fs::write(run_dir.join("command.log"), "existing\n").expect("seed");
+        let line = format_model_mini_line("openrouter:auto");
+        append_command_log_line(&run_dir, false, &line).expect("emit");
+        let text = std::fs::read_to_string(run_dir.join("command.log")).expect("read");
+        let delim = format_who_tag_delim(WHO_U);
+        assert!(text.contains("existing"));
+        assert!(text.contains(&format!(" {delim}Model: openrouter:auto")));
+    }
+
+    #[test]
     fn emit_run_startup_sequence_includes_host_resources_when_requested() {
         crate::test_utils::clear_test_no_real_agent_env();
         let tmp = tempfile::tempdir().expect("tempdir");
@@ -112,6 +168,7 @@ mod tests {
             RunStartupEmitOpts {
                 tee_stdout: false,
                 host_resources: true,
+                model: "cursor:composer-2".into(),
             },
             "hi",
         )
@@ -120,24 +177,33 @@ mod tests {
         assert!(log.contains("Command:"));
         assert!(log.contains("Memory:"));
         assert!(log.contains("CPUs:"));
+        assert!(log.contains("Model: cursor:composer-2"));
+        let memory_pos = log.find("Memory:").expect("memory");
+        let model_pos = log.find("Model:").expect("model");
+        assert!(
+            model_pos > memory_pos,
+            "Model line must follow Memory; got {log:?}"
+        );
     }
 
     #[test]
     fn emit_run_startup_sequence_omits_host_resources_when_disabled() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let artifacts =
-            crate::artifacts::create_run_artifacts_from_text("init", Some(tmp.path())).expect("art");
+            crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path())).expect("art");
         emit_run_startup_sequence(
             &artifacts,
             RunStartupEmitOpts {
                 tee_stdout: false,
                 host_resources: false,
+                model: "openrouter:auto".into(),
             },
-            "init",
+            "code",
         )
         .expect("startup");
         let log = std::fs::read_to_string(artifacts.run_dir.join("command.log")).expect("log");
         assert!(log.contains("Command:"));
         assert!(!log.contains("Memory:"));
+        assert!(log.contains("Model: openrouter:auto"));
     }
 }

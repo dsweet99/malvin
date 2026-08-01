@@ -1,57 +1,34 @@
-use std::collections::HashMap;
+//! Per-turn prompt assembly for `KPop` investigation and gate-engine sessions.
 
+use crate::prompt_stratification::{join_labeled_strata, PromptStratum, WorkflowRenderContext};
 use crate::prompts::{PromptError, PromptStore, render_header};
 
 #[derive(Debug)]
 pub struct KpopTurnPrompts<'a> {
     pub store: &'a PromptStore,
-    pub base: &'a HashMap<String, String>,
+    pub base: &'a WorkflowRenderContext,
     pub request_text: &'a str,
     pub prepend_rules_once: bool,
 }
 
 impl KpopTurnPrompts<'_> {
-    fn render_turn_with_body(
-        &self,
-        body_file: &str,
-        ctx: &HashMap<String, String>,
-        with_rules: bool,
-    ) -> Result<String, String> {
-        let common = self
-            .store
-            .render_prompt_only("kpop_common.md", ctx)
-            .map_err(|e: PromptError| e.0)?;
-        let body = self
-            .store
-            .render_prompt_only(body_file, ctx)
-            .map_err(|e: PromptError| e.0)?;
-        let rules = if with_rules {
-            Some(render_header(self.store, ctx).map_err(|e: PromptError| e.0)?)
-        } else {
-            None
-        };
-        rules.map_or_else(
-            || Ok(format!("{}\n\n{}", common.trim_end(), body.trim_end())),
-            |rules| {
-                Ok(format!(
-                    "{}\n\n{}\n\n{}",
-                    rules.trim_end(),
-                    common.trim_end(),
-                    body.trim_end()
-                ))
-            },
-        )
+    /// Gate workflow: `header.md` + `kpop_common.md` + `kpop_block.md` in one prompt.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` when a prompt template cannot be rendered.
+    pub fn kpop_engine_single_turn_prompt(&self, max_hypotheses: usize) -> Result<String, String> {
+        self.gate_kpop_single_turn_prompt(max_hypotheses)
     }
 
-    /// Gate workflow: `header.md` + `kpop_common.md` + `kpop_block.md` in one prompt (`want` = budget).
+    /// Gate workflow: `header.md` + `kpop_common.md` + `kpop_block.md` in one prompt.
     ///
     /// # Errors
     ///
     /// Returns `Err` when a prompt template cannot be rendered.
     pub fn gate_kpop_single_turn_prompt(&self, max_hypotheses: usize) -> Result<String, String> {
-        let mut ctx = self.base.clone();
-        ctx.insert("want".to_string(), max_hypotheses.to_string());
-        ctx.insert("remaining_hypotheses".to_string(), "0".to_string());
+        let mut ctx = self.base.as_map().clone();
+        ctx.insert("max_hypotheses".to_string(), max_hypotheses.to_string());
         ctx.insert("user_request".to_string(), self.request_text.to_string());
         let header = self
             .store
@@ -65,66 +42,49 @@ impl KpopTurnPrompts<'_> {
             .store
             .render_prompt_only("kpop_block.md", &ctx)
             .map_err(|e: PromptError| e.0)?;
-        Ok(format!(
-            "{}\n\n{}\n\n{}",
-            header.trim_end(),
-            common.trim_end(),
-            body.trim_end()
-        ))
+        Ok(join_labeled_strata([
+            (PromptStratum::WorkflowHeader, header),
+            (PromptStratum::EmbeddedTemplate, common),
+            (PromptStratum::GateLoopBlock, body),
+        ]))
     }
 
+    /// Investigation turn: optional `header.md` (once) + `kpop_common.md` + `kpop_block.md`.
+    ///
     /// # Errors
     ///
     /// Returns `Err` when a prompt template cannot be rendered.
-    pub fn kpop_block(
-        &mut self,
-        want: usize,
-        remaining_after_this_turn: usize,
-    ) -> Result<String, String> {
-        let mut ctx = self.base.clone();
-        ctx.insert("want".to_string(), want.to_string());
-        ctx.insert(
-            "remaining_hypotheses".to_string(),
-            remaining_after_this_turn.to_string(),
-        );
+    pub fn kpop_block(&mut self, max_hypotheses: usize) -> Result<String, String> {
+        let mut ctx = self.base.as_map().clone();
+        ctx.insert("max_hypotheses".to_string(), max_hypotheses.to_string());
         ctx.insert("user_request".to_string(), self.request_text.to_string());
         let with_rules = self.prepend_rules_once;
-        let prompt = self.render_turn_with_body("kpop_block.md", &ctx, with_rules)?;
+        let common = self
+            .store
+            .render_prompt_only("kpop_common.md", &ctx)
+            .map_err(|e: PromptError| e.0)?;
+        let body = self
+            .store
+            .render_prompt_only("kpop_block.md", &ctx)
+            .map_err(|e: PromptError| e.0)?;
+        let rules = if with_rules {
+            Some(render_header(self.store, &ctx).map_err(|e: PromptError| e.0)?)
+        } else {
+            None
+        };
+        let prompt = rules.map_or_else(
+            || format!("{}\n\n{}", common.trim_end(), body.trim_end()),
+            |rules| {
+                format!(
+                    "{}\n\n{}\n\n{}",
+                    rules.trim_end(),
+                    common.trim_end(),
+                    body.trim_end()
+                )
+            },
+        );
         self.prepend_rules_once = false;
         Ok(prompt)
-    }
-}
-
-#[cfg(test)]
-mod inline_render_turn_with_body {
-    use super::*;
-    use std::collections::HashMap;
-
-    #[test]
-    fn render_turn_with_body_renders_common_and_block() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let root = tmp.path().join("prompts");
-        std::fs::create_dir_all(&root).expect("mkdir");
-        std::fs::write(root.join("kpop_common.md"), "common {{ want }}\n").expect("write");
-        std::fs::write(root.join("kpop_block.md"), "block {{ user_request }}\n").expect("write");
-        let store = crate::prompts::PromptStore::with_root(root);
-        store.ensure_defaults().expect("defaults");
-        let base = HashMap::from([("plan_path".to_string(), "p".to_string())]);
-        let ctx = HashMap::from([
-            ("want".to_string(), "1".to_string()),
-            ("remaining_hypotheses".to_string(), "0".to_string()),
-            ("user_request".to_string(), "inline".to_string()),
-        ]);
-        let prompts = KpopTurnPrompts {
-            store: &store,
-            base: &base,
-            request_text: "inline",
-            prepend_rules_once: false,
-        };
-        let out = prompts
-            .render_turn_with_body("kpop_block.md", &ctx, false)
-            .expect("render");
-        assert!(out.contains("inline"));
     }
 }
 

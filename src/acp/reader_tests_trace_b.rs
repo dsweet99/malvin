@@ -29,7 +29,6 @@ pub(crate) async fn open_trace_b_writer(path: &std::path::Path, opts: TraceBWrit
         upgrade_plan_warned: false,
         work_dir: std::path::PathBuf::new(),
         run_timing: None,
-        session_id: String::new(),
         deferred_sink: None,
     }
 }

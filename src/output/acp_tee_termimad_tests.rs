@@ -160,7 +160,7 @@ fn acp_tee_markdown_tee_path_omits_wall_clock_prefix_on_live_display() {
     let tmp = tempfile::tempdir().unwrap();
     let path = tmp.path().join("stdout.log");
     super::set_stdout_log_path(Some(path.clone()));
-    super::init_stdout_style(false);
+    super::init_stdout_style_for_test(true);
     let ts = "20260413.121314.015";
     let line = "# Title";
     let expected_pairs = markdown_rendered_tee_pairs(ts, "<md", line);
@@ -201,7 +201,7 @@ fn acp_tee_markdown_tee_path_writes_timestamped_stdout_log_lines() {
     let tmp = tempfile::tempdir().unwrap();
     let path = tmp.path().join("stdout.log");
     super::set_stdout_log_path(Some(path.clone()));
-    super::init_stdout_style(true);
+    super::init_stdout_style_for_test(false);
     print_stdout_acp_tee_line_with_timestamp(&AcpTeeStdoutEvent {
         direction: AcpTeeDirection::FromAgent,
         who: "<md",

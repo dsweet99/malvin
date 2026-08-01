@@ -1,8 +1,10 @@
 #[cfg(unix)]
 use std::collections::HashSet;
 
+#[cfg(all(unix, test))]
+use super::unix_process_group_ps::{signal_pid, signal_process_group};
 #[cfg(unix)]
-use super::unix_process_group_ps::{signal_pid, signal_process_group, snapshot_pids};
+use super::unix_process_group_ps::snapshot_pids;
 
 #[cfg(unix)]
 pub(crate) use super::unix_process_group_kill_targets::baseline_amnestied_agent_orphans;
@@ -13,8 +15,7 @@ pub(crate) use super::unix_process_group_kill_targets::{
     descendant_pids, malvin_session_spawn_pids,
 };
 
-#[cfg(unix)]
-#[allow(dead_code)] // used by unit tests; teardown poll uses per-pid escalation instead
+#[cfg(all(unix, test))]
 pub(crate) async fn signal_targets(targets: &HashSet<u32>, process_group_id: Option<u32>, signal: i32) {
     for pid in targets {
         signal_pid(*pid, signal);

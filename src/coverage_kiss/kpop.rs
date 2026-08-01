@@ -4,11 +4,11 @@ use crate::multiturn_prompt::MultiturnPrompt;
 
 #[test]
 fn smoke_kpop_progression_and_multiturn() {
-    let text = "## Step 1 — KPop a\n";
-    assert_eq!(crate::kpop_progression::count_kpop_entries(text), 1);
-    assert_eq!(crate::kpop_progression::count_mbc2_entries(text), 0);
-    assert_eq!(crate::kpop_progression::hypotheses_emitted(text), 1);
-    assert!(!crate::kpop_progression::agent_declared_success(text));
+    assert!(!crate::kpop_progression::agent_declared_success(""));
+    assert!(crate::kpop_progression::agent_declared_success("## KPOP_SOLVED\n"));
+    assert!(!crate::kpop_progression::agent_declared_success(
+        "## Step 1 — KPop a\n"
+    ));
 
     let tmp = tempfile::tempdir().expect("tempdir");
     let exp = tmp.path().join("exp.md");

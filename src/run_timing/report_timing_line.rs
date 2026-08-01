@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use crate::run_timing::RUN_TIMING_SUMMARY_PREFIX;
+use crate::run_timing::{RUN_TIMING_SUMMARY_PREFIX, TOOL_CALL_TYPE_MS_KEYS};
 
 const PHASE_MS_KEYS_JSON_ORDER: [&str; 1] = ["implement"];
 
@@ -28,6 +28,19 @@ fn phase_display_name<'a>(v: &'a Value, key: &'a str) -> &'a str {
         .unwrap_or(key)
 }
 
+fn timing_stdout_append_tool_calls_by_type(s: &mut String, first: &mut bool, v: &Value) {
+    let by_type = v.get("tool_calls_by_type_ms").and_then(Value::as_object);
+    for key in TOOL_CALL_TYPE_MS_KEYS {
+        let ms = by_type
+            .and_then(|o| o.get(key))
+            .and_then(Value::as_u64)
+            .unwrap_or(0);
+        if ms > 0 {
+            timing_line_append_part(s, first, key, &format_ms_one_decimal_s(ms));
+        }
+    }
+}
+
 fn timing_stdout_append_fixed_ms_fields(s: &mut String, first: &mut bool, v: &Value) {
     match v.get("wall_clock_ms").and_then(Value::as_u64) {
         Some(ms) => timing_line_append_part(s, first, "wall", &format_ms_one_decimal_s(ms)),
@@ -38,8 +51,8 @@ fn timing_stdout_append_fixed_ms_fields(s: &mut String, first: &mut bool, v: &Va
     if let Some(ms) = v.get("tool_calls_ms").and_then(Value::as_u64) {
         timing_line_append_part(s, first, "tool_calls", &format_ms_one_decimal_s(ms));
     }
+    timing_stdout_append_tool_calls_by_type(s, first, v);
 }
-
 fn timing_stdout_append_phase_fields(s: &mut String, first: &mut bool, v: &Value) {
     let phases = v.get("phases_ms").and_then(Value::as_object);
     for key in PHASE_MS_KEYS_JSON_ORDER {
@@ -68,6 +81,24 @@ pub(super) fn format_timing_stdout_line_from_json(v: &Value) -> String {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn timing_line_omits_cost_fields_when_present_in_json() {
+        let json = json!({
+            "wall_clock_ms": 1000,
+            "llm_wait_ms": 100,
+            "phases_ms": { "implement": 100 },
+            "cost": {
+                "total_cost": 0.0842,
+                "mean_cost_per_tx": 0.0042,
+                "median_cost_per_tx": 0.0031,
+                "max_cost_per_tx": 0.0190
+            }
+        });
+        let line = format_timing_stdout_line_from_json(&json);
+        assert!(!line.contains("total_cost"));
+        assert!(!line.contains("mean_cost_per_tx"));
+    }
 
     #[test]
     fn format_ms_one_decimal_s_rounds_to_tenths() {
@@ -137,6 +168,35 @@ mod tests {
         assert!(!line.contains("agent_retry_backoff = "));
         assert!(!line.contains("summary = "));
         assert!(!line.contains("concerns = "));
+    }
+
+    #[test]
+    fn timing_line_includes_nonzero_tool_calls_by_type_after_aggregate() {
+        let json = json!({
+            "wall_clock_ms": 1000,
+            "llm_wait_ms": 100,
+            "tool_calls_ms": 350,
+            "tool_calls_by_type_ms": {
+                "read": 100,
+                "search": 0,
+                "edit": 50,
+                "execute": 200,
+                "other": 0
+            },
+            "phases_ms": { "implement": 100 }
+        });
+        let line = format_timing_stdout_line_from_json(&json);
+        assert!(line.contains("tool_calls = 0.4s"));
+        let tool_pos = line.find("tool_calls = ").expect("aggregate");
+        let read_pos = line.find("read = ").expect("read");
+        let edit_pos = line.find("edit = ").expect("edit");
+        let execute_pos = line.find("execute = ").expect("execute");
+        assert!(tool_pos < read_pos && read_pos < edit_pos && edit_pos < execute_pos);
+        assert!(!line.contains("search = "));
+        assert!(!line.contains("other = "));
+        assert!(line.contains("read = 0.1s"));
+        assert!(line.contains("edit = 0.1s"));
+        assert!(line.contains("execute = 0.2s"));
     }
 
     #[test]

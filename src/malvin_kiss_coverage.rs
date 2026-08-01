@@ -145,7 +145,7 @@ fn smoke_test_stderr_capture() {
 fn smoke_kpop_multiturn_builder_type() {
     use crate::kpop_multiturn_prompts::{KpopMultiturnPrompts, SmokeKpopBuilder};
     let mut smoke = KpopMultiturnPrompts::Smoke(SmokeKpopBuilder);
-    assert_eq!(smoke.kpop_block(1, 0).expect("kpop"), "k");
+    assert_eq!(smoke.kpop_block(1).expect("kpop"), "k");
 }
 
 #[test]
@@ -157,11 +157,10 @@ fn smoke_child_health_sample() {
 fn smoke_mem_limit_and_process_group_rss() {
     let gb = crate::mem_limit_config::default_mem_limit_gb();
     assert!(gb >= 1);
-    let rss = crate::process_group_rss::process_group_rss_bytes(
-        crate::process_group_rss::current_process_group_id().expect("pgid"),
-    )
-    .expect("rss");
-    assert!(rss > 0);
+    let mut pids = std::collections::HashSet::new();
+    pids.insert(std::process::id());
+    let bytes = crate::process_group_rss::pids_sandbox_bytes(&pids).expect("sandbox bytes");
+    assert!(bytes > 0);
 }
 
 #[test]
@@ -209,15 +208,17 @@ fn kiss_cov_acp_session_unit_tests() {
     let _ = stringify!(AffiliationCtx);
     let _ = stringify!(TeeStdoutEmit);
     let _ = stringify!(shutdown_cancel_timeout);
+    let _ = stringify!(shutdown_child_wait_timeout);
+    let _ = stringify!(cancel_rejected_as_unsupported);
+    let _ = stringify!(best_effort_session_cancel);
+    let _ = stringify!(wait_killed_child);
     let _ = stringify!(run_coder_prompt_with_retries);
     let _ = stringify!(run_one_coder_prompt_attempt);
 }
 
 #[test]
 fn kiss_cov_cli_helper_symbols() {
-    let _: Option<crate::cli::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsParams<'_>> = None;
-    let _: Option<crate::cli::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsOutcome> = None;
-    let _: Option<crate::cli::kpop_flow::kpop_flow_run_loop::KpopLoopSnapshot> = None;
+    let _: Option<crate::kpop_engine::KPopEngineParams> = None;
     let _ = stringify!(RunKpopAgentLoopsParams);
     let _ = stringify!(kpop);
     let _ = stringify!(prepared);
@@ -227,11 +228,9 @@ fn kiss_cov_cli_helper_symbols() {
     let _ = stringify!(LoopDefaultMut);
     let _ = stringify!(CodeWorkflowLoopMut);
     let _ = stringify!(ExplainResolvedOutputs);
-    let _ = stringify!(ExplainKpopRequestInput);
-    let _ = stringify!(GateKpopPrepared);
+    let _ = stringify!(RouterArgs);
+    let _ = stringify!(KPopEnginePrepared);
     let _ = stringify!(InspireRunPrep);
-    let _ = stringify!(OuterLoopSummarizeParams);
-    let _ = stringify!(CodeOuterLoopSummarizeInputs);
     let _ = stringify!(KpopOuterLoopSummarizeInputs);
     let _ = stringify!(RunStartupEmitOpts);
 }

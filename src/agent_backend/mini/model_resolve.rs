@@ -1,14 +1,15 @@
-//! Model slug resolution for `--mini`.
+//! Model slug resolution for the malvin-mini HTTP backend (`openrouter:` / `local:`).
 
-pub const MINI_DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
+pub use crate::support_paths::MINI_DEFAULT_MODEL;
 
-/// Resolve `--model auto` to the v1 hardcoded default; pass through other slugs.
+/// Resolve a mini model id to the provider / local slug.
 #[must_use]
 pub fn resolve_mini_model(model: &str) -> String {
-    if model == "auto" {
+    let slug = crate::model_id::provider_slug(model);
+    if slug.is_empty() {
         MINI_DEFAULT_MODEL.to_string()
     } else {
-        model.to_string()
+        slug
     }
 }
 
@@ -17,12 +18,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn resolve_mini_model_auto_returns_claude_sonnet_4() {
-        assert_eq!(resolve_mini_model("auto"), MINI_DEFAULT_MODEL);
+    fn resolve_mini_model_auto_returns_default_slug() {
+        assert_eq!(resolve_mini_model("openrouter:auto"), MINI_DEFAULT_MODEL);
+        assert_eq!(resolve_mini_model("auto"), "auto");
     }
 
     #[test]
     fn resolve_mini_model_passthrough() {
+        assert_eq!(
+            resolve_mini_model("openrouter:openai/gpt-4o"),
+            "openai/gpt-4o"
+        );
         assert_eq!(resolve_mini_model("openai/gpt-4o"), "openai/gpt-4o");
+        assert_eq!(resolve_mini_model("local:qwen35_9b_q4"), "qwen35_9b_q4");
     }
 }

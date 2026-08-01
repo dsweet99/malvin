@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use super::counters::{agent_declared_success, hypotheses_emitted, read_exp_log_text};
+use super::counters::{agent_declared_success, read_exp_log_text};
 use crate::kpop_multiturn_prompts::KpopMultiturnPrompts;
 use crate::multiturn_prompt::MultiturnPrompt;
 
@@ -52,7 +52,7 @@ impl<'a> KpopMultiturnState<'a> {
         })
     }
 
-    /// Returns the next prompt to send, or `None` when the multiturn session should stop.
+    /// Returns the next prompt to send, or `None` when the session should stop.
     ///
     /// # Errors
     ///
@@ -66,20 +66,13 @@ impl<'a> KpopMultiturnState<'a> {
             self.done = true;
             return Ok(None);
         }
-        if hypotheses_emitted(&text) >= self.max_hypotheses {
-            self.done = true;
-            return Ok(None);
-        }
         if self.prompt_sent {
             self.done = true;
             return Ok(None);
         }
         self.prompt_sent = true;
-        let remaining_after = self
-            .max_hypotheses
-            .saturating_sub(hypotheses_emitted(&text));
         self.builder
-            .kpop_block(self.max_hypotheses, remaining_after)
+            .kpop_block(self.max_hypotheses)
             .map(|s| Some(MultiturnPrompt::KpopBlock(s)))
     }
 
@@ -87,15 +80,14 @@ impl<'a> KpopMultiturnState<'a> {
         // Single-prompt sessions: no catch-up rounds.
     }
 
-    /// Clears the in-flight prompt latch after a failed ACP transport attempt so the outer
-    /// retry loop can call [`Self::next_prompt`] again.
+    /// Resets so the outer retry loop can call [`Self::next_prompt`] again.
     pub(crate) fn reset_for_transport_retry(&mut self) {
         self.prompt_sent = false;
         let Ok(text) = read_exp_log_text(&self.exp_log_path) else {
             self.done = false;
             return;
         };
-        if !agent_declared_success(&text) && hypotheses_emitted(&text) < self.max_hypotheses {
+        if !agent_declared_success(&text) {
             self.done = false;
         }
     }

@@ -1,6 +1,10 @@
+[workspace]
+members = [".", "malvin-llama"]
+resolver = "2"
+
 [package]
 name = "malvin"
-version = "0.1.9"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.87"
 description = "Non-interactive CLI agent, via Cursor ACP"
@@ -19,6 +23,7 @@ lto = false
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 clap = { version = "4", features = ["derive"] }
+malvin-llama = { path = "malvin-llama" }
 rand = "0.8"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1", features = ["derive"] }
@@ -44,6 +49,7 @@ unicode-width = "0.2"
 rusqlite = { version = "0.32", features = ["bundled"] }
 
 [dev-dependencies]
+portable-pty = "0.8"
 wiremock = "0.6"
 
 [lib]

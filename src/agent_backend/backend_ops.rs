@@ -87,7 +87,7 @@ async fn run_kpop_flow_mini(
     flow: &KpopFlowOnceArgs<'_>,
     session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
 ) -> Result<(), AgentError> {
-    use crate::acp::{backoff_after_agent_failure, retries_noun};
+    use crate::acp::{backoff_after_mini_gate_failure, retries_noun};
 
     crate::agent_phase::enter_kpop();
     let mut last_error = String::new();
@@ -103,7 +103,7 @@ async fn run_kpop_flow_mini(
             }
             Err(e) => {
                 last_error = e.0;
-                if backoff_after_agent_failure(
+                if backoff_after_mini_gate_failure(
                     client.timing.as_ref(),
                     &last_error,
                     attempt,
@@ -128,7 +128,7 @@ async fn run_kpop_multiturn_mini(
     client: &mut MiniAgentClient,
     mut ctl: AgentKpopMultiturnCtl<'_, '_>,
 ) -> Result<(), AgentError> {
-    use crate::acp::{backoff_after_agent_failure, retries_noun};
+    use crate::acp::{backoff_after_mini_gate_failure, retries_noun};
 
     crate::agent_phase::enter_kpop();
     let mut last_error = String::new();
@@ -144,7 +144,7 @@ async fn run_kpop_multiturn_mini(
             Err(e) => {
                 ctl.state.reset_for_transport_retry();
                 last_error = e.0;
-                if backoff_after_agent_failure(
+                if backoff_after_mini_gate_failure(
                     client.timing.as_ref(),
                     &last_error,
                     attempt,

@@ -24,7 +24,6 @@ pub(crate) async fn open_trace_writer(
         upgrade_plan_warned: false,
         work_dir: std::path::PathBuf::new(),
         run_timing: None,
-        session_id: String::new(),
         deferred_sink: None,
     };
     (writer, TraceChunkCoalescer::default())
@@ -47,7 +46,6 @@ pub(crate) fn styled_markdown_trace_writer(
         upgrade_plan_warned: false,
         work_dir,
         run_timing: None,
-        session_id: String::new(),
         deferred_sink: None,
     }
 }
@@ -69,7 +67,7 @@ pub(crate) fn begin_stdout_log_fixture() -> StdoutLogFixture {
     let stdout_path = tmp.path().join("stdout.log");
     let trace_path = tmp.path().join("trace.log");
     crate::output::set_stdout_log_path(Some(stdout_path.clone()));
-    crate::output::init_stdout_style(false);
+    crate::output::init_stdout_style_for_test(true);
     StdoutLogFixture {
         tmp,
         stdout_path,
@@ -149,7 +147,7 @@ pub(crate) async fn production_execute_done_stdout() -> String {
     let stdout_path = tmp.path().join("stdout.log");
     let trace_path = tmp.path().join("trace.log");
     crate::output::set_stdout_log_path(Some(stdout_path.clone()));
-    crate::output::init_stdout_style(false);
+    crate::output::init_stdout_style_for_test(true);
     let (mut writer, mut coalesce) = open_trace_writer(&trace_path).await;
     let execute_start = serde_json::json!({
         "method": "session/update",
@@ -184,7 +182,7 @@ pub(crate) async fn production_execute_done_trace_and_stdout() -> (String, Strin
     let stdout_path = tmp.path().join("stdout.log");
     let trace_path = tmp.path().join("trace.log");
     crate::output::set_stdout_log_path(Some(stdout_path.clone()));
-    crate::output::init_stdout_style(false);
+    crate::output::init_stdout_style_for_test(true);
     let (mut writer, mut coalesce) = open_trace_writer(&trace_path).await;
     let execute_done = serde_json::json!({
         "method": "session/update",

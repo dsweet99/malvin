@@ -12,7 +12,9 @@ use unix_process_group_teardown_timing::{
     test_fast_acp_teardown_enabled,
 };
 
-pub(crate) use unix_process_group_teardown_timing::shutdown_cancel_timeout;
+pub(crate) use unix_process_group_teardown_timing::{
+    shutdown_cancel_timeout, shutdown_child_wait_timeout,
+};
 
 #[derive(Default)]
 struct TeardownPollState {
@@ -64,6 +66,14 @@ fn teardown_agent_sandbox_fast_tick(
     process_group_id: Option<u32>,
     baseline_opt: Option<&HashSet<u32>>,
 ) {
+    // Mock-agent path uses an empty spawn baseline: kill the process group only
+    // (skip full `ps` kill-target scans).
+    if baseline_opt.is_none() {
+        if let Some(pgid) = process_group_id {
+            signal_process_group(pgid, 9);
+        }
+        return;
+    }
     let mut state = TeardownPollState::default();
     teardown_poll_tick(process_group_id, baseline_opt, &mut state, true);
 }

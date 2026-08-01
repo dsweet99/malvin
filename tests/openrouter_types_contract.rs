@@ -28,8 +28,14 @@ fn openrouter_types_roundtrip() {
     let resp = CompletionResponse {
         content: "done".into(),
         usage: Some(usage),
+        reasoning: None,
     };
-    let CompletionResponse { content, usage } = resp;
+    let CompletionResponse {
+        content,
+        usage,
+        reasoning,
+    } = resp;
     assert_eq!(content, "done");
     assert!(usage.is_some());
+    assert!(reasoning.is_none());
 }

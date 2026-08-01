@@ -6,9 +6,8 @@ use super::{
 };
 use serde_json::Value;
 use std::sync::Arc;
-use tokio::io::AsyncWriteExt;
 use tokio::sync::Mutex;
-use tracing::{info, warn};
+use tracing::info;
 
 /// Flags for [`reader_loop_verbose_and_trace_line`] (avoids multiple `bool` parameters per `kiss`).
 #[derive(Clone, Copy)]
@@ -91,6 +90,7 @@ pub(crate) struct TraceTeeStdoutCtx<'a> {
     pub(crate) ts: &'a str,
 }
 
+use crate::acp::trace_line_write_tee::write_audit_trace_line;
 use crate::acp::trace_line_write_tee::{format_trace_display_line, trace_stdout_tee_payload, trace_tee_stdout_line};
 use crate::acp::trace_line_write_tool_summary::write_tool_summary_trace_line;
 
@@ -114,12 +114,7 @@ pub async fn trace_file_write_line(
     };
     let mut record = formatted.into_bytes();
     record.push(b'\n');
-    if let Err(e) = writer.file.write_all(&record).await {
-        warn!(error = %e, "trace write failed");
-        return;
-    }
-    if let Err(e) = writer.file.sync_all().await {
-        warn!(error = %e, "trace fsync failed");
+    if !write_audit_trace_line(writer, &record).await {
         return;
     }
     if raw_output_suppress_thought_stdout(kind, writer) {

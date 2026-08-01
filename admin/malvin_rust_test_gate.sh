@@ -14,8 +14,10 @@ elif command -v cargo-difftests >/dev/null && [[ -d "$INDEX_ROOT" ]]; then
 fi
 
 if command -v cargo-nextest >/dev/null || cargo nextest --version >/dev/null 2>&1; then
-  cargo nextest run --partition hash:1/2 "$@"
-  exec cargo nextest run --partition hash:2/2 "$@"
+  # --workspace is required: bare `cargo nextest run` omits non-default members
+  # such as malvin-llama (and would green-wash a broken local: engine).
+  cargo nextest run --workspace --partition hash:1/2 "$@"
+  exec cargo nextest run --workspace --partition hash:2/2 "$@"
 fi
 
-exec cargo test "$@"
+exec cargo test --workspace "$@"

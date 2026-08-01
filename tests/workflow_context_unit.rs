@@ -1,9 +1,13 @@
+mod common;
+
 use std::path::Path;
 
 use malvin::artifacts::create_run_artifacts;
-use malvin::prompts::PromptStore;
+use common::with_isolated_home;
+use malvin::config::DEFAULT_CLI_MODEL;
+use malvin::format_malvin_command;
 use malvin::workflow_context::{
-    format_prompt_path, workflow_context, workflow_context_paths_only,
+    format_prompt_path, workflow_context_paths_only,
 };
 
 #[test]
@@ -12,7 +16,7 @@ fn workflow_context_paths_include_plan() {
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "p").expect("write");
     let artifacts = create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
-    let ctx = workflow_context_paths_only(&artifacts, "code");
+    let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL, false);
     assert!(ctx.contains_key("plan_path"));
 }
 
@@ -31,7 +35,7 @@ fn workflow_context_paths_include_review_and_gates_log() {
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "p").expect("write");
     let artifacts = create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
-    let ctx = workflow_context_paths_only(&artifacts, "tidy");
+    let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL, false);
     assert!(ctx.contains_key("review_path"));
     assert!(ctx.contains_key("quality_gates_log"));
     assert_eq!(
@@ -47,7 +51,7 @@ fn workflow_context_paths_use_relative_prompt_paths() {
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "p").expect("write");
     let artifacts = create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
-    let ctx = workflow_context_paths_only(&artifacts, "tidy");
+    let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL, false);
     let advice = ctx.get("advice_path").expect("advice_path");
     assert!(
         advice.starts_with("./"),
@@ -63,6 +67,7 @@ fn workflow_context_paths_use_relative_prompt_paths() {
         "review_prep_path",
         "result_path",
         "malvin_output_path",
+        "workspace_dir",
         "quality_gates_log",
         "kpop_log_dir",
         "exp_log",
@@ -78,20 +83,25 @@ fn workflow_context_paths_use_relative_prompt_paths() {
             "{key} should reference malvin paths, got {path:?}"
         );
     }
-    assert_eq!(ctx.get("malvin_command").map(String::as_str), Some("tidy"));
+    assert_eq!(
+        ctx.get("malvin_command").map(String::as_str),
+        Some(format_malvin_command(DEFAULT_CLI_MODEL).as_str()),
+    );
 }
 
 #[test]
-fn workflow_context_render_includes_kpop_and_quality_gates() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let plan = tmp.path().join("plan.md");
-    std::fs::write(&plan, "p").expect("write");
-    let artifacts = create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
-    let store = PromptStore::default_store();
-    store.ensure_defaults().expect("defaults");
-    let ctx = workflow_context(&artifacts, &store, "tidy").expect("context");
-    assert!(ctx.contains_key("kpop"));
-    assert!(ctx.contains_key("quality_gates"));
+fn workflow_context_paths_include_quality_gates_log_alias() {
+    with_isolated_home(|work, _home| {
+        let plan = work.join("plan.md");
+        std::fs::write(&plan, "p").expect("write");
+        let artifacts = create_run_artifacts(&plan, Some(work)).expect("artifacts");
+        let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL, false);
+        assert!(ctx.contains_key("quality_gates_log"));
+        assert_eq!(
+            ctx.get("quality_gates_path").map(String::as_str),
+            ctx.get("quality_gates_log").map(String::as_str),
+        );
+    });
 }
 
 #[test]

@@ -1,6 +1,6 @@
 use super::{
-    format_current_state, format_local_datetime, format_retry_line, format_sandbox_memory_line,
-    format_user_identity,
+    assemble_user_identity, format_current_state, format_local_datetime, format_retry_line,
+    format_sandbox_memory_line, format_user_identity,
 };
 
 #[test]
@@ -11,6 +11,50 @@ fn format_user_identity_includes_name() {
     {
         assert!(id.contains("uid "));
         assert!(super::effective_user_id().is_some());
+    }
+}
+
+#[test]
+fn assemble_user_identity_with_full_name() {
+    assert_eq!(
+        assemble_user_identity("dsweet", Some(1000), Some("David Sweet")),
+        "dsweet (uid 1000, David Sweet)"
+    );
+}
+
+#[test]
+fn assemble_user_identity_omits_redundant_full_name() {
+    assert_eq!(
+        assemble_user_identity("dsweet", Some(1000), Some("dsweet")),
+        "dsweet (uid 1000)"
+    );
+}
+
+#[test]
+fn assemble_user_identity_omits_empty_full_name() {
+    assert_eq!(
+        assemble_user_identity("dsweet", Some(1000), Some("")),
+        "dsweet (uid 1000)"
+    );
+}
+
+#[test]
+fn assemble_user_identity_without_uid() {
+    assert_eq!(assemble_user_identity("unknown", None, Some("Bob")), "unknown");
+}
+
+#[cfg(unix)]
+#[test]
+fn format_user_identity_includes_gecos_full_name_when_distinct() {
+    let id = format_user_identity();
+    let uid = super::effective_user_id().expect("uid");
+    if let Some(full_name) = super::passwd_gecos_full_name(uid) {
+        if full_name != std::env::var("USER").unwrap_or_default() {
+            assert!(
+                id.contains(&full_name),
+                "expected full name {full_name:?} in {id:?}"
+            );
+        }
     }
 }
 
@@ -75,14 +119,14 @@ fn format_retry_line_first_gate_iteration_is_not_retry() {
 }
 
 #[test]
-fn format_retry_line_second_iteration_is_retry_without_solved() {
+fn format_retry_line_second_iteration_is_retry_without_done() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
     crate::artifacts::ensure_gate_exp_log_file(&artifacts, 1).expect("exp log");
     let line = format_retry_line(Some(2), Some(&artifacts));
     assert!(line.contains("retry #1"));
-    assert!(line.contains("KPOP_SOLVED"));
+    assert!(line.contains("quality gates"));
 }
 
 #[test]
@@ -108,13 +152,13 @@ fn format_retry_line_detects_oom_from_sandbox_marker() {
 }
 
 #[test]
-fn format_retry_line_gates_failure_after_solved() {
+fn format_retry_line_gates_failure_after_done() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
     let prev = artifacts.gate_exp_log_path(1);
     std::fs::create_dir_all(prev.parent().expect("parent")).expect("mkdir");
-    std::fs::write(&prev, "## KPOP_SOLVED\n").expect("write");
+    std::fs::write(&prev, "## Step 1 — KPOP mock\n").expect("write");
     let line = format_retry_line(Some(2), Some(&artifacts));
     assert!(line.contains("quality gates"));
 }
@@ -130,11 +174,15 @@ fn format_current_state_joins_all_sections() {
 }
 
 #[test]
-fn read_prev_exp_solved_missing_file_returns_none() {
+fn kiss_cov_current_state_non_unix_branch() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts =
+    let _artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
-    assert!(super::read_prev_exp_solved(&artifacts, 99).is_none());
+    let _ = super::current_sandbox_rss_bytes;
+    let _ = super::effective_user_id;
+    let _ = super::append_unsolved_reason;
+    let _ = super::append_oom_reason;
+    let _ = super::append_gates_reason;
 }
 
 #[test]
@@ -174,24 +222,14 @@ fn append_oom_reason_records_memory_kill() {
 }
 
 #[test]
-fn append_gates_reason_after_solved_session() {
+fn append_gates_reason_after_done_session() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
     let prev = artifacts.gate_exp_log_path(1);
     std::fs::create_dir_all(prev.parent().expect("parent")).expect("mkdir");
-    std::fs::write(&prev, "## KPOP_SOLVED\n").expect("write");
+    std::fs::write(&prev, "## Step 1 — KPOP mock\n").expect("write");
     let mut reasons = Vec::new();
-    super::append_gates_reason(&mut reasons, &artifacts, 1);
+    super::append_unsolved_reason(&mut reasons, &artifacts, 1);
     assert!(reasons.iter().any(|r| r.contains("quality gates")));
-}
-
-#[test]
-fn kiss_cov_current_state_non_unix_branch() {
-    let _ = super::current_sandbox_rss_bytes;
-    let _ = super::effective_user_id;
-    let _ = super::append_unsolved_reason;
-    let _ = super::append_oom_reason;
-    let _ = super::append_gates_reason;
-    let _ = super::read_prev_exp_solved;
 }

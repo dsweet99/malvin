@@ -2,6 +2,12 @@ use std::collections::HashMap;
 
 use crate::prompts::*;
 
+fn write_kpop_prompt_fixtures(root: &std::path::Path) {
+    for (name, body) in [("header.md", ""), ("kpop_common.md", "kc")] {
+        std::fs::write(root.join(name), body).unwrap();
+    }
+}
+
 #[test]
 fn substitute_replaces_dollar_keys() {
     let mut m = HashMap::new();
@@ -16,9 +22,7 @@ fn substitute_replaces_dollar_keys() {
 fn validate_kpop_prompts_ok_with_only_kpop_while_full_set_would_fail() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
-    std::fs::write(root.join("header.md"), "").unwrap();
-    std::fs::write(root.join("kpop_common.md"), "kc").unwrap();
-    std::fs::write(root.join("kpop_block.md"), "kb").unwrap();
+    write_kpop_prompt_fixtures(root);
     let store = PromptStore::with_root(root.to_path_buf());
     store
         .validate_kpop_prompts(crate::prompts::KpopPromptValidation {
@@ -35,9 +39,7 @@ fn validate_kpop_prompts_ok_with_only_kpop_while_full_set_would_fail() {
 fn validate_kpop_prompts_does_not_require_mbc2_when_not_requested() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
-    std::fs::write(root.join("header.md"), "").unwrap();
-    std::fs::write(root.join("kpop_common.md"), "kc").unwrap();
-    std::fs::write(root.join("kpop_block.md"), "kb").unwrap();
+    write_kpop_prompt_fixtures(root);
     let store = PromptStore::with_root(root.to_path_buf());
     store
         .validate_kpop_prompts(crate::prompts::KpopPromptValidation {
@@ -50,9 +52,7 @@ fn validate_kpop_prompts_does_not_require_mbc2_when_not_requested() {
 fn validate_kpop_prompts_requires_mbc2_when_requested() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
-    std::fs::write(root.join("header.md"), "").unwrap();
-    std::fs::write(root.join("kpop_common.md"), "kc").unwrap();
-    std::fs::write(root.join("kpop_block.md"), "kb").unwrap();
+    write_kpop_prompt_fixtures(root);
     let store = PromptStore::with_root(root.to_path_buf());
     let err = store
         .validate_kpop_prompts(crate::prompts::KpopPromptValidation {
@@ -71,9 +71,9 @@ fn render_expands_coding_rules_placeholder_to_empty() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
     std::fs::write(root.join("header.md"), "H").unwrap();
-    std::fs::write(root.join("kpop_block.md"), "{{ coding_rules }}").unwrap();
+    std::fs::write(root.join("kpop_common.md"), "{{ coding_rules }}").unwrap();
     let store = PromptStore::with_root(root.to_path_buf());
-    let out = store.render("kpop_block.md", &HashMap::new()).unwrap();
+    let out = store.render("kpop_common.md", &HashMap::new()).unwrap();
     assert_eq!(out, "");
 }
 
@@ -116,6 +116,18 @@ fn validate_required_fails_when_kpop_program_missing() {
         "custom prompt roots must fail fast when kpop_program.md is absent: {}",
         err.0
     );
+}
+
+#[test]
+fn default_kpop_program_avoids_mandated_tool_names() {
+    let body = crate::prompts::default_file("kpop_program.md").expect("kpop_program.md");
+    let banned = ["kiss", "pytest", "cargo clippy", "kiss-ai"];
+    for needle in banned {
+        assert!(
+            !body.contains(needle),
+            "kpop_program.md must not name mandated tools; found {needle:?} in template"
+        );
+    }
 }
 
 #[test]

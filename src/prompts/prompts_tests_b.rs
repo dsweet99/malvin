@@ -47,6 +47,44 @@ fn enforce_no_unresolved_braces_ok_when_clean() {
 }
 
 #[test]
+fn enforce_no_unresolved_braces_allows_user_content_with_non_placeholder_braces() {
+    assert!(crate::prompts::enforce_no_unresolved_braces(
+        "docs mention unresolved `{{…}}` or literal `{{ before ACP`"
+    )
+    .is_ok());
+}
+
+#[test]
+fn render_prompt_only_allows_user_request_values_with_double_braces() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    std::fs::write(
+        root.join("kpop_block.md"),
+        "User request:\n\n{{ user_request }}",
+    )
+    .unwrap();
+    let store = PromptStore::with_root(root.to_path_buf());
+    let mut ctx = HashMap::new();
+    ctx.insert(
+        "user_request".to_string(),
+        "Expand {{ code_extra }} in router_b_*".to_string(),
+    );
+    let out = store.render_prompt_only("kpop_block.md", &ctx).unwrap();
+    assert!(out.contains("Expand {{ code_extra }}"));
+}
+
+#[test]
+fn enforce_template_placeholders_resolved_rejects_missing_keys_in_template() {
+    let err = crate::prompts::enforce_template_placeholders_resolved_in(
+        "x {{ not_in_context }} y",
+        &HashMap::new(),
+        Some("bug_fix.md"),
+    )
+    .expect_err("missing template key");
+    assert!(err.0.contains("bug_fix.md"));
+}
+
+#[test]
 fn render_header_expands_header_placeholders() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();

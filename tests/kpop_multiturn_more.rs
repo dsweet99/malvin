@@ -1,39 +1,42 @@
 mod common;
 
-use common::{MtStubPrompts, parse_kpop_want};
+use malvin::MtStubPrompts;
 use malvin::MultiturnPrompt;
 use malvin::kpop_multiturn_prompts::KpopMultiturnPrompts;
 use malvin::kpop_progression::{KpopMultiturnParams, KpopMultiturnState};
 
+const TEST_MAX_HYPOTHESES: usize = 50;
+
 #[test]
-fn kpop_solved_stops_without_second_prompt() {
+fn single_prompt_then_stop() {
     let tmp = tempfile::tempdir().unwrap();
     let path = tmp.path().join("exp.md");
-    std::fs::write(&path, "## Step 1 — KPOP test\n## KPOP_SOLVED\ndone\n").unwrap();
+    std::fs::write(&path, "## Step 1 — KPOP test\n").unwrap();
     let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
         builder: KpopMultiturnPrompts::StubMt(MtStubPrompts),
         exp_log_path: path,
-        max_hypotheses: 50,
+        max_hypotheses: TEST_MAX_HYPOTHESES,
     })
     .unwrap();
-    assert!(state.next_prompt().expect("after solved").is_none());
+    let first = state.next_prompt().expect("kpop prompt");
+    let Some(MultiturnPrompt::KpopBlock(s)) = first else {
+        panic!("expected kpop block prompt");
+    };
+    assert!(s.contains("stub kpop max_hypotheses="));
+    assert!(state.next_prompt().expect("after prompt").is_none());
 }
 
 #[test]
-fn single_kpop_block_uses_max_hypotheses_as_want() {
+fn empty_exp_log_still_offers_single_prompt() {
     let tmp = tempfile::tempdir().unwrap();
     let path = tmp.path().join("exp.md");
     std::fs::write(&path, "").unwrap();
     let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
         builder: KpopMultiturnPrompts::StubMt(MtStubPrompts),
         exp_log_path: path,
-        max_hypotheses: 10,
+        max_hypotheses: TEST_MAX_HYPOTHESES,
     })
     .unwrap();
-    let first = state.next_prompt().expect("first");
-    let Some(MultiturnPrompt::KpopBlock(s)) = first else {
-        panic!("expected kpop block");
-    };
-    assert_eq!(parse_kpop_want(&s).expect("want"), 10);
-    assert!(state.next_prompt().expect("second").is_none());
+    assert!(state.next_prompt().expect("kpop prompt").is_some());
+    assert!(state.next_prompt().expect("after prompt").is_none());
 }

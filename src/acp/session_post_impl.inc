@@ -96,6 +96,7 @@ impl AcpSession {
             OutgoingPromptTrace::Uniform(UniformOutgoingTrace {
                 trace_who: who,
                 stdout_bracket_label,
+                append_trace: false,
             }),
         )
         .await
@@ -125,7 +126,7 @@ impl AcpSession {
             .await
     }
 
-    async fn prompt_impl(
+    pub(crate) async fn prompt_impl(
         &self,
         text: &str,
         trace_path: &Path,
@@ -149,15 +150,17 @@ impl AcpSession {
 
         match res {
             Ok(()) => {
-                let upgrade = self
-                    .0
-                    .prompt_round_health
-                    .lock()
-                    .unwrap_or_else(std::sync::PoisonError::into_inner)
-                    .upgrade_plan_seen();
-                if upgrade {
+                let err = {
+                    let health = self
+                        .0
+                        .prompt_round_health
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner);
+                    crate::acp::prompt_round_post_ok_error(&health)
+                };
+                if let Some(err) = err {
                     self.reset_prompt_inflight().await;
-                    return Err(crate::acp::UPGRADE_PLAN_STOP_MESSAGE.to_string());
+                    return Err(err);
                 }
                 Ok(())
             }
@@ -190,11 +193,11 @@ impl AcpSession {
             self.0.process_group_id,
         );
         let cancel_timeout = crate::acp::unix_process_group_teardown_poll::shutdown_cancel_timeout();
-        if cancel_timeout.is_zero() {
-            let _ = self.cancel().await;
-        } else {
-            let _ = tokio::time::timeout(cancel_timeout, self.cancel()).await;
-        }
+        crate::acp::shutdown_cancel_reject::best_effort_session_cancel(
+            self.cancel(),
+            cancel_timeout,
+        )
+        .await;
         crate::acp::unix_process_group_teardown::terminate_agent_process_group(
             self.0.process_group_id,
             &self.0.spawn_pid_baseline,
@@ -207,9 +210,9 @@ impl AcpSession {
                 return Ok(());
             };
             let _ = ch.kill().await;
-            ch.wait()
-                .await
-                .map_err(|e| format!("acp wait: {e}"))?;
+            let wait_budget =
+                crate::acp::unix_process_group_teardown_poll::shutdown_child_wait_timeout();
+            crate::acp::shutdown_cancel_reject::wait_killed_child(&mut ch, wait_budget).await?;
             drop(slot);
         }
         crate::malvin_sandbox::clear_active_sandbox_session();

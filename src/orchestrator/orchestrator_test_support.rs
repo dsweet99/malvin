@@ -1,13 +1,14 @@
-//! Shared fixtures for orchestrator unit tests (keeps per-test duplication low for `kiss check`).
+//! Shared fixtures for orchestrator unit tests.
 
 use std::collections::HashMap;
 
 use crate::acp::{AgentClient, AgentIoOptions};
 use crate::artifacts::{
-    KissConfigBackup, KissignoreBackup, MalvinChecksBackup, MalvinConfigBackup, RunArtifacts,
-    SessionDotfileBackups, create_run_artifacts_from_text,
+    MalvinChecksBackup, MalvinConfigBackup, RunArtifacts, SessionDotfileBackups,
+    create_run_artifacts_from_text,
 };
-use crate::orchestrator::workflow_context;
+use crate::orchestrator::workflow_context_paths_only;
+use crate::prompt_stratification::WorkflowRenderContext;
 use crate::prompts::PromptStore;
 
 #[must_use]
@@ -30,11 +31,10 @@ pub fn no_session_client() -> AgentClient {
 #[must_use]
 pub fn empty_dotfile_backups() -> SessionDotfileBackups {
     SessionDotfileBackups::from_parts(crate::session_dotfile_backup::SessionDotfileParts {
-        kissconfig: KissConfigBackup::Missing,
         malvin_checks: MalvinChecksBackup::Missing,
-        kissignore: KissignoreBackup::Missing,
         malvin_config: MalvinConfigBackup::Missing,
         gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
+        vision: crate::session_dotfile_backup::VisionBackup::Missing,
         malvin_config_workspace: crate::session_dotfile_backup::MalvinConfigWorkspaceBackup::Missing,
     })
 }
@@ -43,11 +43,19 @@ pub fn empty_dotfile_backups() -> SessionDotfileBackups {
 pub fn workflow_ctx_for_smoke(
     tmp: &tempfile::TempDir,
     run_artifact_body: &str,
-) -> (RunArtifacts, PromptStore, HashMap<String, String>) {
+) -> (RunArtifacts, PromptStore, WorkflowRenderContext) {
+    if crate::git_worktree_toplevel(tmp.path()).is_none() {
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(tmp.path())
+            .status()
+            .expect("git init");
+    }
+    crate::seed_malvin_checks(tmp.path(), "true\n");
     let artifacts =
         create_run_artifacts_from_text(run_artifact_body, Some(tmp.path())).expect("art");
     let store = PromptStore::default_store();
-    let ctx = workflow_context(&artifacts, &store, "code").expect("ctx");
+    let ctx = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, false);
     (artifacts, store, ctx)
 }
 
@@ -67,8 +75,8 @@ mod tests {
         let _ = no_session_client();
         let backups = empty_dotfile_backups();
         assert!(matches!(
-            backups.kissconfig,
-            crate::artifacts::KissConfigBackup::Missing
+            backups.malvin_checks,
+            crate::artifacts::MalvinChecksBackup::Missing
         ));
     }
 

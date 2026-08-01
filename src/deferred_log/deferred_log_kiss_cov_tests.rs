@@ -39,7 +39,6 @@ fn kiss_witness_deferred_log_types() {
         who: "kiss".into(),
         ts: "ts".into(),
         emit_stdout_markdown: false,
-        kind: None,
         payload: super::types::payload::DeferredPayload::RawLine {
             line: "line".into(),
         },
@@ -50,7 +49,6 @@ fn kiss_witness_deferred_log_types() {
         emit_stdout_markdown,
         payload: _,
         enqueued_at: _,
-        kind: _,
     } = std::hint::black_box(entry);
     assert_eq!(who, "kiss");
     assert_eq!(ts, "ts");

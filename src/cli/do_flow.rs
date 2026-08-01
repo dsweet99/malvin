@@ -1,33 +1,26 @@
-//! `do` subcommand: one coder ACP prompt with dual headers (`header_do.md` + `do_header.md`) and user request.
+//! `--do` workflow: one coder ACP prompt with dual headers (`header.md` + `do_header.md`) and user request.
 
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups, resolve_user_md_request};
 use crate::cli::cli_request::require_cli_request;
-use crate::agent_backend::{
-    agent_backend_attach_run_timing_for_session, agent_backend_set_implement_display_name,
-    agent_backend_set_run_timing, build_agent_backend_with_tee, AgentBackend,
-};
+use crate::agent_backend::{build_agent_backend, build_agent_backend_with_tee, AgentBackend};
+use crate::cli::run_emit::{emit_command_line, emit_run_startup_sequence, RunStartupEmitOpts};
 use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions};
 use crate::output::agent_stdout_tee_enabled;
-use crate::repo_checks;
-use crate::run_timing::TimingPhase;
-use clap::Args;
 
 pub(crate) mod do_flow_prompt;
+#[path = "do_flow_acp.rs"]
+mod do_flow_acp;
 
 pub use do_flow_prompt::{
     combine_do_acp_prompt_header_and_user, combine_do_prompt_file_and_user,
     combine_do_raw_header_and_user, prepare_do_prompt_store,
 };
+use do_flow_acp::run_do_acp;
 
 /// Arguments for [`run_do`].
-#[derive(Args, Debug)]
+#[derive(Debug)]
 pub struct DoArgs {
-    /// Run repository quality gates before the prompt (coding-style runs).
-    #[arg(long, default_value_t = false)]
-    pub repo_gates: bool,
-    #[arg(long, default_value_t = false)]
-    pub thoughts: bool,
-    /// Existing `.md` path or literal text → `.malvin/logs/.../plan.md`.
+    /// Existing `.md` path or literal text
     pub request: Option<String>,
 }
 
@@ -36,70 +29,69 @@ struct DoRunPrep {
     artifacts: RunArtifacts,
     coder: do_flow_prompt::DoCoderRun,
     session_dotfile_backups: SessionDotfileBackups,
+    request_text: String,
 }
 
 fn new_do_client(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
-    thoughts: bool,
 ) -> Result<AgentBackend, String> {
+    if shared.verbose {
+        // Same backend + tee construction as the default workflow (`build_agent_backend`).
+        return build_agent_backend(
+            shared,
+            workflow,
+            shared.acp_stdout_markdown_enabled(),
+            "do",
+        );
+    }
     let interactive = agent_stdout_tee_enabled();
     let emit_markdown = interactive && shared.acp_stdout_markdown_enabled();
     let tee = if interactive {
         AgentStdoutTeeFlags {
             emit_stdout_markdown: emit_markdown,
             raw_output: false,
-            show_thoughts_on_stdout: thoughts,
+            show_thoughts_on_stdout: false,
         }
     } else {
         AgentStdoutTeeFlags {
             emit_stdout_markdown: false,
             raw_output: true,
-            show_thoughts_on_stdout: thoughts,
+            show_thoughts_on_stdout: false,
         }
     };
     build_agent_backend_with_tee(shared, workflow, tee)
 }
-
-fn run_do_repo_gates_if_requested(
-    do_args: &DoArgs,
-    artifacts: &RunArtifacts,
-) -> Result<(), String> {
-    if do_args.repo_gates {
-        repo_checks::run_repo_workspace_gates_no_kiss_clamp(
-            &artifacts.work_dir,
-            repo_checks::RepoGateOutput::Stderr,
-            Some(&artifacts.run_dir),
-        )?;
-    }
-    Ok(())
-}
-
 
 async fn prepare_do_run(
     do_args: &DoArgs,
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<DoRunPrep, String> {
-    let client = new_do_client(shared, workflow, do_args.thoughts)?;
-    let request = require_cli_request(do_args.request.as_ref(), "do")?;
+    let client = new_do_client(shared, workflow)?;
+    let request = require_cli_request(do_args.request.as_ref(), "--do")?;
     let (text, work_dir) = resolve_user_md_request(&request)?;
     let artifacts = crate::artifacts::create_run_artifacts_from_text_opts(
         &text,
         Some(work_dir.as_path()),
-        crate::run_id::RunDirOptions::without_gc(),
+        crate::run_id::RunDirOptions::default(),
     )
     .map_err(|e| e.to_string())?;
     crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
-    run_do_repo_gates_if_requested(do_args, &artifacts)?;
     client.ensure_authenticated().map_err(|e| e.to_string())?;
-    let coder = do_flow_prompt::build_do_coder_run(&artifacts, &text)?;
-    let session_dotfile_backups = SessionDotfileBackups::snapshot(&artifacts.work_dir)?;
+    let coder = do_flow_prompt::build_do_coder_run(
+        &artifacts,
+        &text,
+        crate::workflow_context::PromptModelOpts::new(&shared.model, shared.git),
+    )?;
+    let session_dotfile_backups =
+        SessionDotfileBackups::snapshot_after_ensuring_home_config(&artifacts.work_dir)?;
     Ok(DoRunPrep {
         client,
         artifacts,
         coder,
         session_dotfile_backups,
+        request_text: text,
     })
 }
 
@@ -108,10 +100,43 @@ pub async fn run_do(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
+    let interactive = agent_stdout_tee_enabled();
+    let emit_markdown = interactive && shared.acp_stdout_markdown_enabled();
+    let dm_only = !shared.verbose;
+    crate::output::set_do_dm_stdout_opts(crate::output::DoDmStdoutOpts {
+        enabled: dm_only,
+        emit_markdown: dm_only && emit_markdown,
+    });
+    crate::output::set_heartbeat_stdout_suppressed(dm_only);
+    let result = run_do_body(do_args, shared, workflow).await;
+    crate::output::set_do_dm_stdout_opts(crate::output::DoDmStdoutOpts::default());
+    crate::output::set_heartbeat_stdout_suppressed(false);
+    result
+}
+
+async fn run_do_body(
+    do_args: DoArgs,
+    shared: &SharedOpts,
+    workflow: WorkflowCliOptions,
+) -> Result<(), String> {
     let mut prep = prepare_do_run(&do_args, shared, workflow).await?;
-    crate::cli::run_emit::emit_command_line(&prep.artifacts.run_dir, false)?;
     prep.client
         .set_prompts_log_run_dir(Some(prep.artifacts.run_dir.clone()));
+    // Complete spawn/handshake before startup `Logs:` (verbose) so post-log silence shrinks.
+    prep.client
+        .begin_coder_session(&prep.artifacts.work_dir)
+        .await
+        .map_err(|e| e.to_string())?;
+    if shared.verbose {
+        // Same startup logger as the default workflow (`emit_run_startup_sequence`).
+        emit_run_startup_sequence(
+            &prep.artifacts,
+            RunStartupEmitOpts::from_shared(shared, true),
+            &prep.request_text,
+        )?;
+    } else {
+        emit_command_line(&prep.artifacts.run_dir, false)?;
+    }
     let acp_res = run_do_acp(&mut prep.client, &prep.artifacts, prep.coder).await;
     let r = crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
         acp_res,
@@ -126,65 +151,36 @@ pub async fn run_do(
     Ok(())
 }
 
-async fn run_do_coder_prompt(
-    client: &mut AgentBackend,
-    artifacts: &RunArtifacts,
-    coder: &do_flow_prompt::DoCoderRun,
-) -> Result<(), String> {
-    let (ref header, ref user) = coder.header_user_for_trace;
-    client
-        .run_coder_prompt(
-            &coder.combined,
-            &artifacts.log_path("do"),
-            "do",
-            crate::acp::CoderPromptOptions {
-                llm_phase: Some(TimingPhase::Implement),
-                do_trace_split: Some((header.as_str(), user.as_str())),
-                stdout_bracket_label: None,
-                ..Default::default()
-            },
-        )
-        .await
-        .map_err(|e| e.to_string())
-}
-
-async fn run_do_acp(
-    client: &mut AgentBackend,
-    artifacts: &RunArtifacts,
-    coder: do_flow_prompt::DoCoderRun,
-) -> Result<(), String> {
-    let timing = agent_backend_attach_run_timing_for_session(client);
-    if let Err(e) = client.begin_coder_session(&artifacts.work_dir).await {
-        agent_backend_set_run_timing(client, None);
-        return Err(e.to_string());
-    }
-    agent_backend_set_implement_display_name(client, "do");
-    let run_res = run_do_coder_prompt(client, artifacts, &coder).await;
-    let end_res = client.end_coder_session().await.map_err(|e| e.to_string());
-    let merged =
-        crate::acp_post_run::prefer_primary_over_secondary(run_res, end_res, "end coder session");
-    crate::acp_post_run::emit_run_timing_json_only_after_backend(
-        client,
-        &artifacts.run_dir,
-        &timing,
-        merged,
-    )
-}
-
 #[cfg(test)]
 mod do_snapshot_tests {
     use super::SessionDotfileBackups;
+    use crate::malvin_config_path;
+    use crate::test_utils::with_isolated_home;
 
     #[test]
     fn snapshot_do_session_dotfiles_on_empty_workdir() {
         let tmp = tempfile::tempdir().expect("tempdir");
         SessionDotfileBackups::snapshot(tmp.path()).expect("snapshot");
     }
+
+    #[test]
+    fn do_prepare_snapshot_ensures_home_config_exists() {
+        with_isolated_home(|work| {
+            let cfg = malvin_config_path(work);
+            assert!(!cfg.exists());
+            SessionDotfileBackups::snapshot_after_ensuring_home_config(work).expect("snapshot");
+            assert!(
+                cfg.is_file(),
+                "do session snapshot must ensure ~/.malvin_home/config.toml exists"
+            );
+        });
+    }
 }
 
 #[cfg(test)]
 mod kiss_static_fn_item_refs {
-    use super::{run_do, run_do_acp, run_do_coder_prompt};
+    use super::{run_do, run_do_acp};
+    use super::do_flow_acp::run_do_coder_prompt;
 
     #[test]
     fn kiss_static_fn_item_refs() {
@@ -203,7 +199,6 @@ mod kiss_cov_gate_refs{
         let _: Option<DoRunPrep> = None;
         let _ = new_do_client;
         let _ = prepare_do_run;
-        let _ = run_do_repo_gates_if_requested;
     }
 }
 

@@ -86,9 +86,12 @@ pub(crate) fn format_styled_tool_summary_tee_line(
     })
 }
 
+#[path = "observability_emit.rs"]
+mod observability_emit;
 #[path = "trace_line_write_tee_emit.rs"]
 mod trace_line_write_tee_emit;
-pub(crate) use trace_line_write_tee_emit::trace_tee_stdout_line;
+pub(crate) use observability_emit::write_audit_trace_line;
+pub(crate) use observability_emit::tee_narrative_line as trace_tee_stdout_line;
 
 #[cfg(test)]
 pub(crate) use trace_line_write_tee_emit::{

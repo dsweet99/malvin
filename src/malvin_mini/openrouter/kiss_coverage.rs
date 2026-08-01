@@ -1,27 +1,50 @@
 //! External kiss witnesses for `malvin_mini` openrouter modules.
 
 use super::client::OpenRouterClient;
+use crate::malvin_mini::openrouter_tests;
+use crate::malvin_mini::prompt_too_long_retry_tests;
 
 #[test]
 fn kiss_witness_openrouter_test_fns() {
     let _ = OpenRouterClient::complete;
-    let _ = super::openrouter_tests::openrouter_serializes_model_messages_and_headers;
-    let _ = super::openrouter_tests::openrouter_error_maps_401_unauthorized;
-    let _ = super::openrouter_tests::openrouter_error_maps_429_rate_limit;
-    let _ = super::openrouter_tests::openrouter_error_maps_500_server_error;
-    let _ = super::openrouter_tests::openrouter_error_maps_billing_failure;
-    let _ = super::openrouter_tests::openrouter_mock_http_complete_returns_usage;
-    let _ = super::openrouter_tests::openrouter_mock_http_complete_returns_usage_cost;
-    let _ = super::openrouter_tests::openrouter_error_on_non_200_request_failed;
-    let _ = super::openrouter_tests::openrouter_error_on_missing_content;
-    let _ = super::prompt_too_long_retry_tests::twelve_word_prompt;
-    let _ = super::prompt_too_long_retry_tests::openrouter_complete_surfaces_invalid_referer_header_errors;
-    let _ = super::prompt_too_long_retry_tests::openrouter_prompt_too_long_stops_when_shrink_makes_no_change;
-    let _ = super::prompt_too_long_retry_tests::openrouter_retries_after_prompt_too_long_by_shrinking_middle_odd_words;
+    let _ = OpenRouterClient::list_models;
+    let _ = (
+        openrouter_tests::openrouter_serializes_model_messages_and_headers,
+        openrouter_tests::openrouter_error_maps_401_unauthorized,
+        openrouter_tests::openrouter_error_maps_429_rate_limit,
+        openrouter_tests::openrouter_error_maps_500_server_error,
+        openrouter_tests::openrouter_error_maps_billing_failure,
+        super::fetch_completion_tests::openrouter_retries_with_affordable_max_tokens,
+        openrouter_tests::openrouter_mock_http_complete_returns_usage,
+        openrouter_tests::openrouter_mock_http_complete_returns_usage_cost,
+        openrouter_tests::openrouter_error_on_non_200_request_failed,
+        openrouter_tests::openrouter_error_on_missing_content,
+        openrouter_tests::openrouter_complete_transport_error_on_unreachable_host,
+        super::fetch_completion_tests::fetch_completion_body_maps_http_200_non_retryable_provider_error,
+        super::fetch_completion_tests::fetch_completion_body_maps_http_200_nvidia_resource_exhausted,
+        super::fetch_completion_tests::fetch_completion_body_surfaces_transport_errors,
+        super::fetch_completion_tests::fetch_completion_body_surfaces_header_validation_errors,
+        super::fetch_completion_tests::fetch_completion_body_reads_success_body,
+        super::list_models_tests::list_models_parses_success_response,
+        super::list_models_tests::list_models_maps_401_to_unauthorized,
+        super::list_models_tests::list_models_maps_500_to_server_error,
+        super::list_models_tests::list_models_works_without_api_key,
+        prompt_too_long_retry_tests::twelve_word_prompt,
+        prompt_too_long_retry_tests::openrouter_complete_surfaces_invalid_referer_header_errors,
+        prompt_too_long_retry_tests::openrouter_prompt_too_long_maps_to_context_overflow,
+        prompt_too_long_retry_tests::openrouter_prompt_token_limit_maps_to_context_overflow,
+        prompt_too_long_retry_tests::openrouter_prompt_too_long_shrink_retries_to_success,
+    );
 }
 
 #[test]
 fn kiss_witness_openrouter_serde_types() {
+    kiss_witness_openrouter_request_response_types();
+    kiss_witness_openrouter_http_exchange_types();
+}
+
+fn kiss_witness_openrouter_request_response_types() {
+    use super::list_models::ModelListing;
     use super::serde_types::{
         ChatChoice, ChatChoiceMessage, ChatCompletionRequest, ChatCompletionResponse,
     };
@@ -34,10 +57,16 @@ fn kiss_witness_openrouter_serde_types() {
     let req = ChatCompletionRequest {
         model: "m",
         messages: &msgs,
+        max_tokens: Some(8192),
     };
-    let ChatCompletionRequest { model, messages } = req;
+    let ChatCompletionRequest {
+        model,
+        messages,
+        max_tokens,
+    } = req;
     assert_eq!(model, "m");
     assert_eq!(messages.len(), 1);
+    assert_eq!(max_tokens, Some(8192));
 
     let resp = ChatCompletionResponse {
         choices: vec![],
@@ -51,11 +80,9 @@ fn kiss_witness_openrouter_serde_types() {
     let ChatChoice { message } = choice;
     assert!(message.is_none());
 
-    let msg = ChatChoiceMessage {
-        content: Some("c".into()),
-    };
-    let ChatChoiceMessage { content } = msg;
-    assert_eq!(content.as_deref(), Some("c"));
+    let msg: ChatChoiceMessage =
+        serde_json::from_str(r#"{"content":"c","reasoning":null}"#).expect("msg");
+    assert_eq!(msg.text_content().as_deref(), Some("c"));
 
     let usage = ResponseUsage {
         prompt_tokens: None,
@@ -65,4 +92,69 @@ fn kiss_witness_openrouter_serde_types() {
     };
     let ResponseUsage { total_tokens, .. } = usage;
     assert_eq!(total_tokens, Some(1));
+
+    let _ = stringify!(deserialize_message_content);
+    let _ = stringify!(deserialize_message_content_accepts_text_and_parts);
+
+    let listing = ModelListing {
+        id: "id".into(),
+        name: "name".into(),
+    };
+    assert_eq!(listing.id, "id");
+}
+
+fn kiss_witness_openrouter_http_exchange_types() {
+    use crate::malvin_mini::error::OpenRouterError;
+
+    let http = super::http_exchange::HttpExchangeMeta {
+        status: Some(200),
+        body: Some("body".into()),
+    };
+    let super::http_exchange::HttpExchangeMeta { status, body } = http;
+    assert_eq!(status, Some(200));
+    assert_eq!(body.as_deref(), Some("body"));
+
+    let with_meta = super::http_exchange::CompletionWithMeta {
+        result: Ok(super::types::CompletionResponse {
+            content: "ok".into(),
+            usage: None,
+            reasoning: None,
+        }),
+        http: super::http_exchange::HttpExchangeMeta {
+            status: Some(200),
+            body: None,
+        },
+    };
+    let super::http_exchange::CompletionWithMeta { result, http } = with_meta;
+    assert_eq!(result.as_ref().expect("ok").content, "ok");
+    assert_eq!(http.status, Some(200));
+    let err_meta = super::http_exchange::CompletionWithMeta {
+        result: Err(OpenRouterError::MissingContent),
+        http: super::http_exchange::HttpExchangeMeta {
+            status: Some(500),
+            body: Some("err".into()),
+        },
+    };
+    assert!(err_meta.result.is_err());
+    assert_eq!(err_meta.http.body.as_deref(), Some("err"));
+    let _ = stringify!(completion_with_meta_exposes_result_and_http);
+    let _ = super::complete::completion_with_meta;
+    let _ = super::complete::transport_meta;
+    let _ = super::complete::transport_failure_meta;
+    let _ = super::complete::finalize_complete_outcome;
+    let _ = stringify!(outcome_from_http_body);
+    let _ = stringify!(provider_fatal_from_body);
+    let _ = super::provider_error::provider_fatal_from_body;
+    let _ = stringify!(provider_transport_from_body);
+    let _ = super::provider_error::provider_transport_from_body;
+    let _ = stringify!(ModelListing);
+    let _ = stringify!(list_models_url);
+    let _ = stringify!(completion_with_meta_and_transport_meta_helpers);
+    let _ = stringify!(kiss_witness_completion_post_url);
+    let _ = stringify!(kiss_witness_transport_failure_meta);
+    let _ = stringify!(complete_with_max_tokens);
+    let _ = stringify!(finalize_complete_outcome);
+    let _ = stringify!(post_chat_completion);
+    let _ = stringify!(body_has_reasoning);
+    let _ = stringify!(for_complete);
 }

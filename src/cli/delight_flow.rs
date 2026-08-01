@@ -1,13 +1,11 @@
 use clap::Args;
 
 #[path = "delight_flow/prep.rs"]
-mod prep;
-#[path = "delight_flow/run_startup.rs"]
-mod run_startup;
-#[path = "delight_flow/run_loop.rs"]
-mod run_loop;
+pub(crate) mod prep;
+#[path = "delight_flow/run.rs"]
+mod run;
 
-pub use run_loop::run_delight;
+pub use run::run_delight;
 
 #[must_use]
 pub(crate) fn effective_delight_max_loops(max_loops: usize) -> usize {
@@ -16,16 +14,16 @@ pub(crate) fn effective_delight_max_loops(max_loops: usize) -> usize {
 
 #[derive(Args, Debug, Clone)]
 pub struct DelightArgs {
-    /// Optional guidance text or `.md` path to steer the delight plan.
+    /// Optional guidance text or `.md` path to steer the delight pitch.
     pub guidance: Option<String>,
-    /// Workspace path for the generated plan (default `plan.md` auto-allocates siblings when occupied).
-    #[arg(long, default_value = "plan.md")]
+    /// Workspace path for the generated pitch (default `pitch.md` auto-allocates siblings when occupied).
+    #[arg(long, default_value = "pitch.md")]
     pub out_path: String,
-    /// Maximum gate-loop iterations before stopping.
+    /// Outer router session budget (`effective_max_loops`).
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE)]
     pub max_loops: usize,
-    /// Number of hypotheses per `KPop` round.
-    #[arg(long, default_value_t = 5)]
+    /// Retained for CLI compatibility; unused by the router wrapper.
+    #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES)]
     pub max_hypotheses: usize,
     /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
     #[arg(long, default_value_t = crate::cli::loop_opts::DEFAULT_TENACIOUS)]
@@ -39,10 +37,10 @@ mod tests {
     use clap::{CommandFactory, FromArgMatches, Parser};
 
     #[test]
-    fn delight_args_default_out_path_is_plan_md() {
+    fn delight_args_default_out_path_is_pitch_md() {
         let cli = Cli::try_parse_from(["malvin", "delight"]).expect("parse");
         match cli.command {
-            Some(Commands::Delight(d)) => assert_eq!(d.out_path, "plan.md"),
+            Some(Commands::Delight(d)) => assert_eq!(d.out_path, "pitch.md"),
             other => panic!("expected Delight, got {other:?}"),
         }
     }
@@ -89,16 +87,14 @@ mod tests {
     }
 
     #[test]
-    fn kiss_cov_delight_gate_helpers() {
-        let _ = super::run_loop::validate_delight_output;
-        let _ = super::run_startup::prepare_delight_kpop_run;
-        let _: Option<super::run_startup::DelightKpopPrepared> = None;
-    }
-
-    #[test]
-    fn help_lists_delight_subcommand() {
+    fn help_hides_delight_but_subcommand_still_parses() {
         let help = Cli::command().render_help().to_string();
-        assert!(help.contains("delight"));
+        assert!(
+            !help.contains("delight"),
+            "delight must be hidden from top-level help"
+        );
+        let cli = Cli::try_parse_from(["malvin", "delight"]).expect("parse");
+        assert!(matches!(cli.command, Some(Commands::Delight(_))));
     }
 
     #[test]

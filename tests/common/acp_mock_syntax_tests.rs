@@ -1,8 +1,8 @@
 use super::acp_code_fanout_mocks::acp_mock_code_review_write_succeeds_on_second_review_attempt_js;
 use super::acp_tidy_kpop::acp_mock_tidy_kpop_steps_js;
 use super::acp_do::{
-    acp_mock_tidy_abort_after_first_coder_turn_js, acp_mock_tidy_fanout_lgtm_js,
-    acp_mock_tidy_fanout_non_lgtm_js, acp_mock_tidy_fanout_non_lgtm_then_lgtm_js,
+    acp_mock_tidy_abort_after_first_coder_turn_js, acp_mock_tidy_fanout_problems_js,
+    acp_mock_tidy_fanout_problems_then_reviewed_js, acp_mock_tidy_fanout_reviewed_js,
     acp_mock_tidy_review_write_succeeds_on_second_attempt_js,
 };
 use std::process::Command;
@@ -29,18 +29,18 @@ fn acp_mock_tidy_kpop_steps_js_passes_node_syntax_check() {
 }
 
 #[test]
-fn acp_mock_tidy_fanout_lgtm_js_passes_node_syntax_check() {
-    assert_mock_js_syntax_valid(&acp_mock_tidy_fanout_lgtm_js());
+fn acp_mock_tidy_fanout_reviewed_js_passes_node_syntax_check() {
+    assert_mock_js_syntax_valid(&acp_mock_tidy_fanout_reviewed_js());
 }
 
 #[test]
-fn acp_mock_tidy_fanout_non_lgtm_js_passes_node_syntax_check() {
-    assert_mock_js_syntax_valid(&acp_mock_tidy_fanout_non_lgtm_js());
+fn acp_mock_tidy_fanout_problems_js_passes_node_syntax_check() {
+    assert_mock_js_syntax_valid(&acp_mock_tidy_fanout_problems_js());
 }
 
 #[test]
-fn acp_mock_tidy_fanout_non_lgtm_then_lgtm_js_passes_node_syntax_check() {
-    assert_mock_js_syntax_valid(&acp_mock_tidy_fanout_non_lgtm_then_lgtm_js());
+fn acp_mock_tidy_fanout_problems_then_reviewed_js_passes_node_syntax_check() {
+    assert_mock_js_syntax_valid(&acp_mock_tidy_fanout_problems_then_reviewed_js());
 }
 
 #[test]

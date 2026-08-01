@@ -1,20 +1,27 @@
-//! `malvin models` — list models via the Cursor agent CLI.
+//! `malvin models` — list Cursor, `OpenRouter`, and `local:` models with prefixes.
 
 use std::path::PathBuf;
 
 use crate::agent_or_cursor_agent_bin;
 use crate::ansi_strip::strip_ansi_escapes;
-use crate::output::{MALVIN_WHO, print_stdout_line, print_stdout_text};
+use crate::local_llm::{download_local_model, local_model_listings};
+use crate::model_id::{CURSOR_PREFIX, LOCAL_PREFIX, OPENROUTER_PREFIX};
+use crate::output::{MALVIN_WHO, print_stdout_line};
 use clap::Args;
 
-use crate::config::DEFAULT_CLI_MODEL;
+#[path = "models_cmd_parse.rs"]
+mod models_cmd_parse;
+use models_cmd_parse::{print_parsed_or_fallback_prefixed, trim_trailing_tip_lines};
 
-#[derive(Args, Debug, Clone, Copy)]
-pub struct ModelsArgs {}
+#[derive(Args, Debug, Clone, Default)]
+pub struct ModelsArgs {
+    /// Optional words: `download local:<id>` fetches a model into `~/.malvin_home/model_cache`.
+    #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+    pub words: Vec<String>,
+}
 
 #[cfg(test)]
-pub(crate) const fn models_args_marker(args: ModelsArgs) -> &'static str {
-    let ModelsArgs {} = std::hint::black_box(args);
+pub(crate) const fn models_args_marker(_args: &ModelsArgs) -> &'static str {
     "models"
 }
 
@@ -25,8 +32,77 @@ fn resolve_models_cli() -> Result<PathBuf, String> {
     })
 }
 
-/// Print models from `cursor-agent models` / `agent models` with a short footer.
-pub fn run_models() -> Result<(), String> {
+fn print_current_footer(current_model: &str) {
+    print_stdout_line(MALVIN_WHO, "");
+    print_stdout_line(MALVIN_WHO, &format!("Current: {current_model}"));
+}
+
+/// Print Cursor, `OpenRouter`, and `local:` models with prefixes and a `Current:` footer.
+///
+/// When `words` is `download <local:id>`, downloads that model into the cache instead.
+pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
+    if !args.words.is_empty() {
+        return run_models_action(&args.words);
+    }
+    print_cursor_models()?;
+    // OpenRouter listing is best-effort when the API key / network is unavailable.
+    match list_openrouter_models_sync() {
+        Ok(models) => print_openrouter_models(&models),
+        Err(e) => {
+            print_stdout_line(MALVIN_WHO, &format!("(openrouter models unavailable: {e})"));
+        }
+    }
+    print_local_models();
+    print_current_footer(current_model);
+    Ok(())
+}
+
+fn run_models_action(words: &[String]) -> Result<(), String> {
+    match words {
+        [action, model] if action == "download" => {
+            let path = download_local_model(model)?;
+            print_stdout_line(
+                MALVIN_WHO,
+                &format!("downloaded {model} -> {}", path.display()),
+            );
+            Ok(())
+        }
+        [action] if action == "download" => Err(
+            "usage: malvin models download local:<id> (e.g. local:qwen35_9b_q4)".into(),
+        ),
+        _ => Err(format!(
+            "unknown models action {words:?}; try `malvin models` or `malvin models download local:<id>`"
+        )),
+    }
+}
+
+fn list_openrouter_models_sync() -> Result<Vec<crate::malvin_mini::ModelListing>, String> {
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .map_err(|e| format!("failed to create Tokio runtime: {e}"))?;
+    rt.block_on(async {
+        use crate::malvin_mini::{OpenRouterClient, OpenRouterConfig};
+        let config = OpenRouterConfig::from_env_for_listing()?;
+        let client = OpenRouterClient::new(config).map_err(|e| e.to_string())?;
+        client.list_models().await.map_err(|e| e.to_string())
+    })
+}
+
+/// Fetch `OpenRouter` models (async helper for tests).
+#[cfg(any(test, doctest))]
+pub async fn run_mini_models() -> Result<(), String> {
+    use crate::malvin_mini::{OpenRouterClient, OpenRouterConfig};
+
+    let config = OpenRouterConfig::from_env_for_listing()?;
+    let client = OpenRouterClient::new(config).map_err(|e| e.to_string())?;
+    let models = client.list_models().await.map_err(|e| e.to_string())?;
+    print_openrouter_models(&models);
+    print_current_footer(crate::config::DEFAULT_CLI_MODEL);
+    Ok(())
+}
+
+fn print_cursor_models() -> Result<(), String> {
     let bin = resolve_models_cli()?;
     let output = crate::malvin_sandbox::malvin_std_command(&bin)
         .arg("models")
@@ -47,118 +123,112 @@ pub fn run_models() -> Result<(), String> {
     let raw = String::from_utf8_lossy(&output.stdout);
     let text = strip_ansi_escapes(raw.as_ref());
     let cleaned = trim_trailing_tip_lines(&text);
-    print_parsed_or_fallback(&cleaned);
-    print_stdout_line(MALVIN_WHO, "");
-    print_stdout_line(
-        MALVIN_WHO,
-        &format!("Default model: {DEFAULT_CLI_MODEL}"),
-    );
+    print_parsed_or_fallback_prefixed(&cleaned, CURSOR_PREFIX);
     Ok(())
 }
 
-fn trim_trailing_tip_lines(text: &str) -> String {
-    let lines: Vec<&str> = text.lines().collect();
-    let mut end = lines.len();
-    while end > 0 {
-        let low = lines[end - 1].trim().to_ascii_lowercase();
-        if low.is_empty() || looks_like_tip_banner_line(&low) {
-            end -= 1;
-        } else {
-            break;
-        }
-    }
-    lines[..end].join("\n")
-}
-
-/// Trailing banners from `cursor-agent models` look like `Tip: …` or `tip …` (space form), not
-/// arbitrary prose that mentions `tip:` mid-sentence.
-fn looks_like_tip_banner_line(lowercase_trimmed: &str) -> bool {
-    if lowercase_trimmed.starts_with("tip:") {
-        return true;
-    }
-    if let Some(after_tip_space) = lowercase_trimmed.strip_prefix("tip ") {
-        // "Tip of the iceberg — …" is description text, not a `Tip` banner line.
-        return !after_tip_space.starts_with("of ");
-    }
-    false
-}
-
-fn models_display_lines(text: &str) -> Option<Vec<String>> {
-    let mut out = Vec::new();
-    for line in text.lines() {
-        let t = line.trim();
-        if t.is_empty() {
-            continue;
-        }
-        if let Some((name, rest)) = parse_model_line(t) {
-            out.push(format!("{name}\t{rest}"));
-        } else {
-            out.push(t.to_string());
-        }
-    }
-    if out.is_empty() { None } else { Some(out) }
-}
-
-fn print_parsed_or_fallback(text: &str) {
-    match models_display_lines(text) {
-        Some(lines) => {
-            for line in lines {
-                print_stdout_line(MALVIN_WHO, &line);
-            }
-        }
-        None => print_stdout_text(MALVIN_WHO, text),
+fn print_openrouter_models(models: &[crate::malvin_mini::ModelListing]) {
+    for model in models {
+        print_stdout_line(
+            MALVIN_WHO,
+            &format!("{OPENROUTER_PREFIX}{}\t{}", model.id, model.name),
+        );
     }
 }
 
-/// Best-effort parse: `name — description`, `name - description`, or two-column spacing.
-fn parse_model_line(line: &str) -> Option<(&str, String)> {
-    if let Some((a, b)) = line.split_once(" — ") {
-        return Some((a.trim(), b.trim().to_string()));
+fn print_local_models() {
+    for model in local_model_listings() {
+        print_stdout_line(
+            MALVIN_WHO,
+            &format!("{LOCAL_PREFIX}{}\t{}", model.id, model.name),
+        );
     }
-    if let Some((a, b)) = line.split_once(" - ") {
-        let a = a.trim();
-        let b = b.trim();
-        if !a.is_empty() && !b.is_empty() {
-            return Some((a, b.to_string()));
-        }
-    }
-    let parts: Vec<&str> = line.split_whitespace().collect();
-    if parts.len() >= 2 {
-        let name = parts[0];
-        let rest = parts[1..].join(" ");
-        return Some((name, rest));
-    }
-    None
 }
 
 #[cfg(test)]
 pub(crate) mod test_hooks {
+    use super::models_cmd_parse;
+
+    pub struct EnvGuard {
+        key: &'static str,
+        prior: Option<String>,
+    }
+
+    impl EnvGuard {
+        #[allow(unsafe_code)]
+        pub fn set(key: &'static str, value: Option<&str>) -> Self {
+            let prior = std::env::var(key).ok();
+            unsafe {
+                match value {
+                    Some(v) => std::env::set_var(key, v),
+                    None => std::env::remove_var(key),
+                }
+            }
+            Self { key, prior }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        #[allow(unsafe_code)]
+        fn drop(&mut self) {
+            unsafe {
+                match &self.prior {
+                    Some(v) => std::env::set_var(self.key, v),
+                    None => std::env::remove_var(self.key),
+                }
+            }
+        }
+    }
 
     pub fn trim_trailing_tip_lines(text: &str) -> String {
-        super::trim_trailing_tip_lines(text)
+        models_cmd_parse::trim_trailing_tip_lines(text)
     }
 
     pub fn looks_like_tip_banner_line(lowercase_trimmed: &str) -> bool {
-        super::looks_like_tip_banner_line(lowercase_trimmed)
+        models_cmd_parse::looks_like_tip_banner_line(lowercase_trimmed)
+    }
+
+    pub fn is_models_section_header(line: &str) -> bool {
+        models_cmd_parse::is_non_model_banner_line(line)
     }
 
     pub fn models_display_lines(text: &str) -> Option<Vec<String>> {
-        super::models_display_lines(text)
+        models_cmd_parse::models_display_lines(text, "")
     }
 
     pub fn print_parsed_or_fallback(text: &str) {
-        super::print_parsed_or_fallback(text);
+        models_cmd_parse::print_parsed_or_fallback_prefixed(text, "");
     }
 
     pub fn parse_model_line(line: &str) -> Option<(&str, String)> {
-        super::parse_model_line(line)
+        models_cmd_parse::parse_model_line(line)
     }
 
     pub fn resolve_models_cli() -> Result<std::path::PathBuf, String> {
         super::resolve_models_cli()
+    }
+
+    pub fn print_mini_models(models: &[crate::malvin_mini::ModelListing]) {
+        super::print_openrouter_models(models);
+    }
+
+    pub fn print_local_models_for_test() {
+        super::print_local_models();
+    }
+
+    pub fn current_model_label() -> String {
+        crate::config::DEFAULT_CLI_MODEL.to_string()
+    }
+
+    pub fn print_current_footer() {
+        super::print_current_footer(crate::config::DEFAULT_CLI_MODEL);
     }
 }
 
 #[cfg(test)]
 #[path = "models_cmd_kiss_cov_tests.rs"]
 mod models_cmd_kiss_cov_tests;
+
+#[cfg(test)]
+#[path = "models_cmd_local_tests.rs"]
+mod models_cmd_local_tests;

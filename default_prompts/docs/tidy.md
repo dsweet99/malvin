@@ -1,19 +1,20 @@
 # malvin tidy
 
-Bring the workspace back to a **gate-clean** state using the KPop gate loop scoped by `tidy_constraints.md`.
+Bring the workspace back to a **gate-clean** state by composing a fixed request and running the **default router** workflow (same path as bare `malvin REQUEST`) with **`--gates` forced on**.
 
 ## Summary
 
 | | |
 |---|---|
-| Input | None (implicit goal: pass `.malvin/checks`) |
-| Fast path | If gates pass on first check, **no agent** — prints `DONE` |
-| Loop | Outer gate iterations when gates fail |
-| Requires | `kiss` on PATH; Cursor agent CLI only when gates fail |
+| Input | None (fixed request: `Get the gates to pass.`) |
+| Loop | Default router: requirements JSON → multi-group KPop → optional work; outer `--max-loops` sessions |
+| Gates | Always on — workspace `.malvin/checks` are harness loop/exit criteria |
+| Fast path | **None** — always runs the router |
+| Requires | Cursor agent CLI; `.malvin/checks` needed for gate pass/fail (use `malvin init` to discover) |
 
 ## Intention
 
-Recover after failed `code` pre-checks, CI drift, or local gate failures—without a feature plan.
+Recover after CI drift or local gate failures—without a feature plan. Tidy is a thin wrapper around the default router with a fixed prompt and gates enabled.
 
 ## Usage
 
@@ -27,11 +28,7 @@ No positional arguments. Work directory is always `.` (cwd).
 
 ### `--max-loops <N>` (default: 3)
 
-Outer gate-loop budget (`max(N, 1) + 1` iterations). `0` is treated as `1`.
-
-### `--max-hypotheses <N>` (default: 10)
-
-Hypothesis budget per KPop session inside the gate loop.
+Outer router session budget (`effective_max_loops`). `0` is treated as `1`.
 
 ### `--tenacious` (default: on)
 
@@ -43,41 +40,28 @@ Restore normal loop/retry budgets (global flag; see `malvin --doc`).
 
 ## Global options
 
-See `malvin --doc`.
+See `malvin --doc`. Tidy always enables harness `--gates`, whether or not you pass `--gates` on the CLI. `--quiet` / `-q` applies because tidy invokes the default router (DM-body-only stdout; not the same as `-b`).
 
 ## Workflow
 
-| Phase | Behavior |
-|-------|----------|
-| First gate check | Run all commands in `.malvin/checks`; append output to `quality_gates.log` |
-| Gates pass | Emit startup summary, print `DONE`, exit (no ACP session) |
-| Gates fail | Print failure details to stderr; enter gate loop (`GateLoopBehavior::TIDY`) |
-
-**Gate loop (when agent runs):**
-
-1. Each outer iteration runs one KPop session with `tidy_constraints.md` + `kpop_program.md`.
-2. Agent logs to `_kpop/exp_log_<iteration>.md`.
-3. Early exit on two consecutive `## KPOP_SOLVED` with passing gates.
-4. Unlike `code`, tidy does **not** recheck gates after a fully exhausted loop (`recheck_gates_after_exhausted: false`).
-
-## Comparison to `code`
-
-| | `tidy` | `code` |
-|---|--------|--------|
-| User plan | None | `plan.md` from request |
-| Skip agent if gates pass | Yes | No |
-| Constraints file | `tidy_constraints.md` | `code_constraints.md` |
-| Recheck gates after exhaustion | No | Yes |
+1. Compose the fixed request text `Get the gates to pass.`
+2. Force `--gates` on and invoke the default router (same engine as bare `malvin REQUEST`).
+3. After each outer session, run workspace `.malvin/checks`: pass stops success; fail continues until the outer budget is exhausted (then fail).
 
 ## Artifacts
 
-- `./.malvin/logs/<run>/plan.md` — rendered tidy KPop request (not a user-authored plan)
-- `quality_gates.log`, `_kpop/exp_log_*.md`, `kpop.log`, `stdout.log` (when agent runs)
+Same as the default router under `~/.malvin_home/logs/<hash>/<run>/` (for example `plan_*.md`, `review_requirements.json`, `quality_gates.log`, `_kpop/`, `stdout.log`).
+
+## Related commands
+
+| Command | When |
+|---------|------|
+| `malvin init` | Discover and write `.malvin/checks` without running tidy |
+| bare `malvin REQUEST --gates` | Same router engine; tidy is a thin fixed-request wrapper |
 
 ## Examples
 
 ```text
 malvin tidy
-malvin tidy --max-loops 5 --max-hypotheses 20
-malvin tidy && malvin code plan.md
+malvin tidy --max-loops 5
 ```

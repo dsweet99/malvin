@@ -20,7 +20,6 @@ pub(crate) struct KpopPromptRound<'a> {
 }
 
 pub(crate) async fn kpop_round(round: KpopPromptRound<'_>) -> Result<(), AgentError> {
-    crate::prompts::enforce_no_unresolved_braces(round.text).map_err(|e| AgentError(e.0))?;
     let t0 = Instant::now();
     match round.session.prompt(round.text, round.log, round.who, None).await {
         Ok(()) => {

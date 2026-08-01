@@ -1,11 +1,11 @@
 use super::acp_core::{
     CONCERNS_PROMPT_MATCH_JS, REVIEW_WRITE_PROMPT_MATCH_JS, acp_mock_code_with_run_dir_js,
-    chunk_line, write_artifact_lgtm, write_artifact_non_lgtm, write_review_prep_output,
-    write_workspace_lgtm,
+    chunk_line, write_artifact_problems, write_artifact_review, write_review_prep_output,
+    write_workspace_review,
 };
 
 fn acp_mock_code_fanout_workspace_pollution_js(review_write_snippet: &str) -> String {
-    let prep = format!("{}\n{}", write_review_prep_output(), write_workspace_lgtm());
+    let prep = format!("{}\n{}", write_review_prep_output(), write_workspace_review());
     let review_tail = format!(
         r"    else if (promptText.includes('KPop: Review in-scope code for these problems')) {{
 {prep}
@@ -27,10 +27,10 @@ fn acp_mock_code_fanout_workspace_pollution_js(review_write_snippet: &str) -> St
     acp_mock_code_with_run_dir_js(&body)
 }
 
-pub fn acp_mock_code_review_write_workspace_only_lgtm_js() -> String {
+pub fn acp_mock_code_review_write_workspace_only_js() -> String {
     let review_tail = super::acp_core::code_review_fanout_branches(
         &chunk_line("reviewed"),
-        &write_workspace_lgtm(),
+        &write_workspace_review(),
     );
     let body = format!(
         r"    if (promptText.includes('Implement the plan in')) {{
@@ -44,16 +44,16 @@ pub fn acp_mock_code_review_write_workspace_only_lgtm_js() -> String {
 
 pub fn review_write_try_counter_body(
     workspace_only: &str,
-    artifact_lgtm: &str,
+    artifact_review: &str,
     reviewed: &str,
 ) -> String {
-    review_write_succeeds_on_nth_try_body(2, workspace_only, artifact_lgtm, reviewed)
+    review_write_succeeds_on_nth_try_body(2, workspace_only, artifact_review, reviewed)
 }
 
 pub fn review_write_succeeds_on_nth_try_body(
     succeed_on_try: usize,
     workspace_only: &str,
-    artifact_lgtm: &str,
+    artifact_review: &str,
     reviewed: &str,
 ) -> String {
     format!(
@@ -67,7 +67,7 @@ pub fn review_write_succeeds_on_nth_try_body(
       if (n < {succeed_on_try}) {{
 {workspace_only}
       }} else {{
-{artifact_lgtm}
+{artifact_review}
       }}
 {reviewed}"
     )
@@ -80,8 +80,8 @@ pub fn acp_mock_tidy_review_write_succeeds_on_third_inner_try_js() -> String {
     let prep = format!("{reset}\n{}", write_review_prep_output());
     let review_tail = review_write_succeeds_on_nth_try_body(
         3,
-        &write_workspace_lgtm(),
-        &write_artifact_lgtm(),
+        &write_workspace_review(),
+        &write_artifact_review(),
         &chunk_line("review"),
     );
     let body = format!(
@@ -100,8 +100,8 @@ pub fn acp_mock_tidy_review_write_succeeds_on_third_inner_try_js() -> String {
 pub fn acp_mock_code_review_write_succeeds_on_second_review_attempt_js() -> String {
     let prep = write_review_prep_output();
     let try_counter = review_write_try_counter_body(
-        &write_workspace_lgtm(),
-        &write_artifact_lgtm(),
+        &write_workspace_review(),
+        &write_artifact_review(),
         &chunk_line("reviewed"),
     );
     let body = format!(
@@ -120,15 +120,15 @@ pub fn acp_mock_code_review_write_succeeds_on_second_review_attempt_js() -> Stri
 }
 
 pub fn acp_mock_code_review_write_never_writes_artifact_js() -> String {
-    acp_mock_code_fanout_workspace_pollution_js(&write_workspace_lgtm())
+    acp_mock_code_fanout_workspace_pollution_js(&write_workspace_review())
 }
 
 pub fn acp_mock_code_fanout_reviewer_pollutes_workspace_js() -> String {
-    acp_mock_code_fanout_workspace_pollution_js(&write_artifact_non_lgtm())
+    acp_mock_code_fanout_workspace_pollution_js(&write_artifact_problems())
 }
 
-pub fn acp_mock_code_fanout_workspace_only_lgtm_js() -> String {
-    acp_mock_code_fanout_workspace_pollution_js(&write_workspace_lgtm())
+pub fn acp_mock_code_fanout_workspace_only_js() -> String {
+    acp_mock_code_fanout_workspace_pollution_js(&write_workspace_review())
 }
 
 pub fn acp_mock_code_missing_artifact_recovers_on_outer_review_attempt_js() -> String {
@@ -144,11 +144,11 @@ pub fn acp_mock_code_missing_artifact_recovers_on_outer_review_attempt_js() -> S
       if (n === 1) {{
 {workspace_only}
       }} else {{
-{artifact_lgtm}
+{artifact_review}
       }}
 {reviewed}",
-        workspace_only = write_workspace_lgtm(),
-        artifact_lgtm = write_artifact_lgtm(),
+        workspace_only = write_workspace_review(),
+        artifact_review = write_artifact_review(),
         reviewed = chunk_line("reviewed"),
     );
     let body = format!(

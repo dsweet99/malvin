@@ -34,26 +34,33 @@ fn default_store_with_unset_home() -> String {
 }
 
 fn default_embedded_placeholder_context() -> HashMap<String, String> {
-    HashMap::from([
+    let mut ctx = HashMap::from([
         ("plan_path".to_string(), "/p".to_string()),
         ("result_path".to_string(), "/r".to_string()),
         ("malvin_output_path".to_string(), "/logs/run".to_string()),
-        ("malvin_command".to_string(), "code".to_string()),
+        ("workspace_dir".to_string(), "/logs/run".to_string()),
+        ("malvin_command".to_string(), "malvin --model=cursor:auto".to_string()),
         ("quality_gates".to_string(), String::new()),
-        (
-            "quality_gates_log".to_string(),
-            "/q/quality_gates.log".to_string(),
-        ),
         ("advice_path".to_string(), "./.malvin/advice.md".to_string()),
-        (
-            "logs_dir".to_string(),
-            "/home/.malvin_home/logs/abc123".to_string(),
-        ),
-        (
-            "current_state".to_string(),
-            "User: test\nDate/time: now\nSandbox memory: limit 4 GiB\nRetry: not a retry".to_string(),
-        ),
-    ])
+        ("git_extra".to_string(), String::new()),
+    ]);
+    insert_header_runtime_placeholders(&mut ctx);
+    ctx
+}
+
+fn insert_header_runtime_placeholders(ctx: &mut HashMap<String, String>) {
+    ctx.insert(
+        "quality_gates_log".to_string(),
+        "/q/quality_gates.log".to_string(),
+    );
+    ctx.insert(
+        "logs_dir".to_string(),
+        "/home/.malvin_home/logs/abc123".to_string(),
+    );
+    ctx.insert(
+        "current_state".to_string(),
+        "User: test\nDate/time: now\nSandbox memory: limit 4 GiB\nRetry: not a retry".to_string(),
+    );
 }
 
 fn default_prompt_store_with_unset_home() -> (super::PromptStore, HashMap<String, String>) {
@@ -87,6 +94,21 @@ fn render_default_header(
     context: &HashMap<String, String>,
 ) -> String {
     store.render("header.md", context).expect("render")
+}
+
+#[test]
+fn embedded_do_header_is_a_single_text_block_with_closing_newline() {
+    let s = super::default_file(super::DO_HEADER_MD).expect("do header must be embedded");
+    let lower = s.to_ascii_lowercase();
+    assert!(s.ends_with('\n'));
+    assert!(lower.contains("no stream of consciousness"));
+    assert!(lower.contains("do not restate"));
+    assert!(lower.contains("required output format"));
+    assert!(lower.contains("failed response"));
+    assert!(s.contains("MALVIN_DM_START"));
+    assert!(s.contains("MALVIN_DM_END"));
+    assert!(!lower.contains("user request is:"));
+    assert!(!s.contains("You'll\n find"));
 }
 
 #[test]

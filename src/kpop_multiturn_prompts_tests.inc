@@ -1,15 +1,27 @@
 use crate::kpop_multiturn_prompts::{KpopMultiturnPrompts, SmokeKpopBuilder};
 use crate::kpop_test_stubs::{CaptureWants, EchoPrompts, MtStubPrompts};
 
+fn assert_kpop_block(p: &mut KpopMultiturnPrompts<'_>) {
+    let _ = p.kpop_block(1).unwrap();
+}
+
 #[test]
-fn kpop_multiturn_prompts_variants() {
-    let mut turn = KpopMultiturnPrompts::StubMt(MtStubPrompts);
-    let _ = turn.kpop_block(1, 0).unwrap();
-    let mut echo = KpopMultiturnPrompts::StubEcho(EchoPrompts);
-    let _ = echo.kpop_block(1, 0).unwrap();
+fn kpop_multiturn_stub_mt_phases() {
+    assert_kpop_block(&mut KpopMultiturnPrompts::StubMt(MtStubPrompts));
+}
+
+#[test]
+fn kpop_multiturn_stub_echo_phases() {
+    assert_kpop_block(&mut KpopMultiturnPrompts::StubEcho(EchoPrompts));
+}
+
+#[test]
+fn kpop_multiturn_stub_capture_phases() {
     let wants = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
-    let mut cap = KpopMultiturnPrompts::StubCapture(CaptureWants::new(wants));
-    let _ = cap.kpop_block(2, 0).unwrap();
-    let mut smoke = KpopMultiturnPrompts::Smoke(SmokeKpopBuilder);
-    let _ = smoke.kpop_block(1, 0).unwrap();
+    assert_kpop_block(&mut KpopMultiturnPrompts::StubCapture(CaptureWants::new(wants)));
+}
+
+#[test]
+fn kpop_multiturn_smoke_phases() {
+    assert_kpop_block(&mut KpopMultiturnPrompts::Smoke(SmokeKpopBuilder));
 }

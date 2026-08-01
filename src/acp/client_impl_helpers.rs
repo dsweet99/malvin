@@ -18,12 +18,55 @@ pub(crate) async fn backoff_after_agent_failure(
     attempt: u32,
     max_attempts: u32,
 ) -> Result<bool, AgentError> {
+    backoff_after_labeled_agent_failure(LabeledBackoff {
+        timing,
+        last_error,
+        attempt,
+        max_attempts,
+        label: "agent acp",
+    })
+    .await
+}
+
+pub(crate) async fn backoff_after_mini_gate_failure(
+    timing: Option<&std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
+    last_error: &str,
+    attempt: u32,
+    max_attempts: u32,
+) -> Result<bool, AgentError> {
+    backoff_after_labeled_agent_failure(LabeledBackoff {
+        timing,
+        last_error,
+        attempt,
+        max_attempts,
+        label: "mini gate",
+    }).await
+}
+
+struct LabeledBackoff<'a> {
+    timing: Option<&'a std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
+    last_error: &'a str,
+    attempt: u32,
+    max_attempts: u32,
+    label: &'a str,
+}
+
+async fn backoff_after_labeled_agent_failure(
+    req: LabeledBackoff<'_>,
+) -> Result<bool, AgentError> {
+    let LabeledBackoff {
+        timing,
+        last_error,
+        attempt,
+        max_attempts,
+        label,
+    } = req;
     match plan_agent_retry(last_error, attempt, max_attempts) {
         Err(e) => Err(e),
         Ok(AgentRetryOutcome::StopRetrying) => Ok(true),
         Ok(AgentRetryOutcome::Sleep(d)) => {
             crate::output::print_log_error(&format!(
-                "agent acp attempt {attempt} failed: {last_error}"
+                "{label} attempt {attempt} failed: {last_error}"
             ));
             crate::run_timing::record_backoff(timing, d);
             agent_backoff_sleep(d).await;
@@ -84,5 +127,22 @@ mod kiss_cov_gate_refs{
     #[test]
     fn kiss_cov_unit_names() {
         let _ = backoff_after_agent_failure;
+        let _ = backoff_after_mini_gate_failure;
+        let req = LabeledBackoff {
+            timing: None,
+            last_error: "e",
+            attempt: 1,
+            max_attempts: 2,
+            label: "mini gate",
+        };
+        let LabeledBackoff {
+            attempt,
+            max_attempts,
+            label,
+            ..
+        } = req;
+        assert_eq!(attempt, 1);
+        assert_eq!(max_attempts, 2);
+        assert_eq!(label, "mini gate");
     }
 }

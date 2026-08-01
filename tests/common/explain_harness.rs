@@ -4,7 +4,6 @@ use std::process::Command;
 use super::{
     INTEGRATION_TEST_MALVIN_ARGS, MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout,
 };
-use super::integration_cli_args::FAST_GATE_LOOP_TEST_ARGS;
 
 pub struct ExplainSpawn<'a> {
     pub workspace: &'a Path,
@@ -25,12 +24,20 @@ pub fn assert_default_explain_sibling_outputs(workspace: &Path) {
     assert_eq!(stale, "STALE\n", "original explain.tex must be untouched");
     let tex = std::fs::read_to_string(workspace.join("explain_1.tex")).expect("read allocated tex");
     assert!(
-        tex.contains("Revised"),
-        "explain must chain malvin revise on allocated path: {tex:?}"
+        tex.contains("Explain") || tex.contains("document"),
+        "allocated explain.tex must contain explanation body: {tex:?}"
     );
 }
 
 pub fn spawn_explain(t: &ExplainSpawn<'_>) -> std::process::Output {
+    spawn_explain_with_timeout(t, MALVIN_TEST_CMD_TIMEOUT)
+}
+
+/// Empty-PDF / multi-loop review paths need headroom beyond the default 12s kill.
+pub fn spawn_explain_with_timeout(
+    t: &ExplainSpawn<'_>,
+    timeout: std::time::Duration,
+) -> std::process::Output {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
     cmd.current_dir(t.workspace)
         .env("HOME", t.home)
@@ -39,8 +46,7 @@ pub fn spawn_explain(t: &ExplainSpawn<'_>) -> std::process::Output {
         .env("PATH", t.path_var);
     let mut args: Vec<&str> = vec!["explain", t.request];
     args.extend_from_slice(INTEGRATION_TEST_MALVIN_ARGS);
-    args.extend_from_slice(FAST_GATE_LOOP_TEST_ARGS);
     args.extend_from_slice(t.extra_args);
     cmd.args(args);
-    command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin")
+    command_output_with_timeout(&mut cmd, timeout).expect("spawn malvin")
 }

@@ -1,0 +1,2 @@
+[gate]
+test_coverage_threshold = 90

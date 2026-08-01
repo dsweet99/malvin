@@ -50,7 +50,7 @@ pub struct TidyTestSession {
     pub client: crate::acp::AgentClient,
     pub artifacts: crate::artifacts::RunArtifacts,
     pub store: crate::prompts::PromptStore,
-    pub context: std::collections::HashMap<String, String>,
+    pub context: crate::prompt_stratification::WorkflowRenderContext,
     pub backups: crate::artifacts::SessionDotfileBackups,
 }
 
@@ -65,8 +65,8 @@ pub fn tidy_test_session(label: &str) -> TidyTestSession {
         force: false,
         
     };
-    let store = crate::cli::tidy_flow::prepare_tidy_kpop_prompt_store(workflow).expect("store");
-    let mut context = crate::workflow_context::workflow_context_paths_only(&artifacts, "tidy");
+    let store = crate::cli::prepare_kpop_prompt_store(workflow, true).expect("store");
+    let mut context = crate::workflow_context::workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, false);
     context.insert(
         "quality_gates".to_string(),
         crate::repo_gates::prompt_quality_gates_markdown_ephemeral(tmp.path())
@@ -89,9 +89,17 @@ pub fn write_fake_gate(
     gate_name: &str,
     exit_code: i32,
 ) -> (tempfile::TempDir, crate::repo_checks::FakeCommandDirGuard) {
-    std::fs::create_dir_all(work_dir.join(crate::MALVIN_DIR)).expect("mkdir .malvin");
-    std::fs::write(crate::malvin_checks_path(work_dir), format!("{gate_name}\n"))
-        .expect("checks");
+    if crate::git_worktree_toplevel(work_dir).is_none() {
+        let _ = std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(work_dir)
+            .status();
+    }
+    let checks = crate::malvin_checks_path(work_dir);
+    if let Some(parent) = checks.parent() {
+        std::fs::create_dir_all(parent).expect("mkdir checks parent");
+    }
+    std::fs::write(checks, format!("{gate_name}\n")).expect("checks");
     let bin_dir = tempfile::tempdir().expect("bindir");
     install_exit_gate_bin(bin_dir.path(), gate_name, exit_code);
     let guard = crate::repo_checks::set_fake_command_dir(bin_dir.path());
@@ -108,6 +116,6 @@ mod write_fake_gate_tests {
         let work = tmp.path().join("fresh");
         std::fs::create_dir_all(&work).expect("mkdir work");
         let (_bin, _guard) = write_fake_gate(&work, "kiss", 0);
-        assert!(work.join(".malvin/checks").is_file());
+        assert!(crate::malvin_checks_path(&work).is_file());
     }
 }

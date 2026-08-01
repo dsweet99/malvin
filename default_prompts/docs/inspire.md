@@ -8,11 +8,11 @@ One **single-turn** MBC2 (boundary exploration) session: structurally distant id
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
 | Prompt | `default_prompts/mbc2.md` with `user_prompt` |
-| Log | `inspire.log` |
+| Log | `inspire.log` under `~/.malvin_home/logs/<hash>/<run>/` |
 
 ## Intention
 
-Batch creative exploration separate from the `kpop` hypothesis loop. Use before committing to `code` or a long investigation.
+Batch creative exploration separate from default-route multi-group KPop. Use before committing to a long investigation or implementation run.
 
 ## Usage
 
@@ -24,11 +24,11 @@ malvin inspire [OPTIONS] <REQUEST>
 
 ### `<REQUEST>` (required)
 
-Exactly **one shell argument**. Quote for internal spaces. Topic as literal text, or an existing `.md` file path (same rules as `do` / `kpop`).
+Exactly **one shell argument**. Quote for internal spaces. Topic as literal text, or an existing `.md` file path (same rules as `--do`).
 
 ## Global options
 
-See `malvin --doc`. `--no-markdown` styles agent stdout when enabled.
+See `malvin --doc`. Agent stdout uses styled markdown on a TTY.
 
 ## Prompt workflow
 
@@ -36,15 +36,15 @@ Exactly **one** coder prompt: rendered `mbc2.md` only (no coding header or repo 
 
 ## Session behavior
 
-- Backs up `.kissconfig`, `.kissignore`, `.gitignore`, `.malvin/checks`, `.malvin/config.toml`; restores after the session.
+- Ensures `~/.malvin_home/config.toml` exists with defaults (same as `--do` and `tidy`).
+- Backs up `.gitignore`, `.malvin/checks`, `.malvin/config.toml`, and `~/.malvin_home/config.toml`; restores after the session.
 - Checks `result.md` for `ABORT:` after the session.
 
 ## Related commands
 
 | Command | When |
 |---------|------|
-| `malvin kpop` | Test hypotheses and record `## Step` lines |
-| `malvin do` | General single-turn coding task with full header |
+| `malvin --do` | General single-turn coding task with full header |
 
 ## Examples
 

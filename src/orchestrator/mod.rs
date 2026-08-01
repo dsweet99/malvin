@@ -11,8 +11,10 @@ mod helpers;
 
 pub use helpers::{
     check_abort, clear_review_file, fail_on_abort_for_artifacts, format_exp_log_relative,
-    format_prompt_path, workflow_context, workflow_context_paths_only,
+    format_prompt_path, workflow_context_paths_only,
 };
+#[cfg(test)]
+pub use helpers::workflow_context;
 pub(crate) use helpers::{insert_formatted, prompt_md_stem};
 
 #[cfg(test)]
@@ -32,6 +34,7 @@ mod orchestrator_kiss_coverage;
 #[error("{0}")]
 pub struct WorkflowError(pub String);
 
+#[cfg(test)]
 pub(crate) fn prefer_primary_errors_over_timing(
     workflow_result: Result<(), WorkflowError>,
     end_result: Result<(), WorkflowError>,

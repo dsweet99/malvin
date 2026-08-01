@@ -1,8 +1,6 @@
 //! External kiss witnesses for [`super::slots`] (must be `*_tests.rs` for kiss).
 
-use super::slots_kiss_cov_shared::{
-    dotfile_spec_row_field_count, KISSCONFIG_FILE, MALVIN_CONFIG_SLOT,
-};
+use super::slots_kiss_cov_shared::{dotfile_spec_row_field_count, MALVIN_CONFIG_SLOT};
 use super::slots::{
     backup_slot, dotfile_source_path, labels_for_test, restore_malvin_config_missing_for_test,
     restore_slot, DotfileSpecRow, DOTFILE_ROWS,
@@ -44,7 +42,10 @@ fn slots_branchy_witness_covers_dotfile_rows() {
         if slot == MALVIN_CONFIG_SLOT {
             assert!(path.to_string_lossy().contains("malvin"));
         } else if slot == 0 {
-            assert_eq!(path, Path::new("/tmp/w").join(KISSCONFIG_FILE));
+            assert_eq!(
+                path,
+                crate::resolve_malvin_checks_path(Path::new("/tmp/w"))
+            );
         } else if lbl.mkdir == row_ref.mkdir_lbl {
             assert_eq!(lbl.restore, row_ref.restore_lbl);
         } else {
@@ -52,7 +53,8 @@ fn slots_branchy_witness_covers_dotfile_rows() {
         }
     }
     crate::test_utils::with_isolated_home(|work| {
-        std::fs::write(work.join(KISSCONFIG_FILE), "[gate]\n").expect("kissconfig");
+        std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
+        std::fs::write(work.join(".malvin/checks"), "make lint\n").expect("checks");
         let mut id = |n: usize| format!("slots-branchy-{n}");
         let backup = backup_slot(0, work, &mut id).expect("backup");
         if matches!(backup, DotfileBackupState::Present(_)) {
@@ -70,13 +72,13 @@ fn kiss_cov_slots_static_unit_refs() {
     let _ = DotfileSpecRow::rel_path;
     let _ = labels_for_test;
     let _ = restore_malvin_config_missing_for_test;
-    let _: [DotfileSpecRow; 6] = DOTFILE_ROWS;
+    let _: [DotfileSpecRow; 4] = DOTFILE_ROWS;
 }
 
 #[test]
 fn kiss_static_type_refs() {
     let row = &DOTFILE_ROWS[0];
-    assert_eq!(row.rel, KISSCONFIG_FILE);
+    assert_eq!(row.rel, crate::MALVIN_CHECKS_REL);
     assert!(!row.home_subdir.is_empty());
     let _ = dotfile_source_path(0, Path::new("/tmp"));
 }
@@ -101,8 +103,8 @@ fn kiss_cov_slots_malvin_config_slot_roundtrip() {
 fn kiss_cov_slots_backup_restore_roundtrip() {
     crate::test_utils::with_isolated_home(|work| {
         std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
-        std::fs::write(work.join(".malvin/checks"), "kiss check\n").expect("checks");
-        std::fs::write(work.join(KISSCONFIG_FILE), "[gate]\n").expect("kissconfig");
+        std::fs::write(work.join(".malvin/checks"), "make lint\n").expect("checks");
+        std::fs::write(work.join(".gitignore"), "target/\n").expect("gitignore");
         let mut generate_id = |n: usize| format!("kiss-slot-{n}");
         for slot in 0..DOTFILE_ROWS.len() {
             if slot == MALVIN_CONFIG_SLOT {
@@ -113,9 +115,6 @@ fn kiss_cov_slots_backup_restore_roundtrip() {
                 DotfileBackupState::Present(_) => {
                     restore_slot(work, &backup, slot).expect("restore");
                 }
-                DotfileBackupState::Missing if slot == 0 => {
-                    panic!("kissconfig slot should be present");
-                }
                 DotfileBackupState::Missing => {}
             }
         }
@@ -124,15 +123,7 @@ fn kiss_cov_slots_backup_restore_roundtrip() {
 
 #[test]
 fn kiss_cov_dotfile_spec_row_construct_destructure_by_value() {
-    let row = DotfileSpecRow {
-        rel: KISSCONFIG_FILE,
-        home_subdir: "kissconfig",
-        mkdir_lbl: "kissconfig backup mkdir",
-        collision_lbl: "kissconfig backup mkdir",
-        restore_lbl: "kissconfig restore",
-        copy_err: ".kissconfig backup copy",
-        restore_copy_err: "kissconfig restore",
-    };
+    let row = DOTFILE_ROWS[0];
     let touched = std::hint::black_box(row);
     let DotfileSpecRow {
         rel,
@@ -143,8 +134,8 @@ fn kiss_cov_dotfile_spec_row_construct_destructure_by_value() {
         copy_err,
         restore_copy_err,
     } = touched;
-    assert_eq!(rel, KISSCONFIG_FILE);
-    assert_eq!(home_subdir, "kissconfig");
+    assert_eq!(rel, crate::MALVIN_CHECKS_REL);
+    assert!(!home_subdir.is_empty());
     assert_eq!(mkdir_lbl, collision_lbl);
     assert!(!restore_lbl.is_empty());
     assert!(!copy_err.is_empty());

@@ -1,3 +1,7 @@
+//! Deferred and immediate narrative tee emission for ACP trace lines.
+//!
+//! Audit records stay on the wire/`trace.jsonl` path; this module tees to the narrative channel.
+//! See [`crate::observability`] for trust rules.
 use super::{from_agent_who, trace_tee_stdout_event, trace_tee_tool_summary_stdout_event, TeeStdoutEmit};
 use crate::acp::trace_line_write::TraceTeeStdoutCtx;
 use crate::acp::trace_plain_tee::print_plain_tee_wrapped_line;
@@ -63,7 +67,6 @@ pub(crate) fn trace_tee_deferred_line(
                 &mut guard,
                 build_acp_tee_entry(AcpTeeBuild {
                     tee,
-                    kind: ctx.kind,
                     line: rep.to_string(),
                     display: None,
                     dim_payload: false,
@@ -91,7 +94,6 @@ pub(crate) fn trace_tee_deferred_line(
         &mut guard,
         build_acp_tee_entry(AcpTeeBuild {
             tee,
-            kind: ctx.kind,
             line: line.to_string(),
             display: None,
             dim_payload: dim,
@@ -141,7 +143,7 @@ pub(crate) fn trace_tee_immediate_line(
     ));
 }
 
-pub(crate) fn trace_tee_stdout_line(
+pub(crate) fn tee_narrative_line_impl(
     writer: &mut PromptTraceWriter,
     line: &str,
     display_line: Option<&str>,
@@ -150,6 +152,7 @@ pub(crate) fn trace_tee_stdout_line(
     if !ctx.tee_stdout {
         return;
     }
+    feed_do_dm_from_tee(line, display_line, ctx.kind);
     if writer.plain_lines || writer.raw_output {
         let styled_plain = writer.plain_lines && writer.emit_stdout_markdown && !writer.raw_output;
         if writer.deferred_sink.is_some() && !styled_plain {
@@ -163,4 +166,26 @@ pub(crate) fn trace_tee_stdout_line(
         return;
     }
     trace_tee_immediate_line(writer, line, display_line, ctx);
+}
+
+fn feed_do_dm_from_tee(
+    line: &str,
+    display_line: Option<&str>,
+    kind: Option<SessionUpdateChunkKind>,
+) {
+    if !crate::output::do_dm_stdout_mode() {
+        return;
+    }
+    if display_line.is_some() {
+        return;
+    }
+    if matches!(kind, Some(SessionUpdateChunkKind::Thought)) {
+        return;
+    }
+    // logical_lines strips terminators; restore them so DM fences can be
+    // recognized as whole lines (marker alone on the line).
+    let mut terminated = String::with_capacity(line.len() + 1);
+    terminated.push_str(line);
+    terminated.push('\n');
+    crate::output::feed_do_dm_stdout_text(&terminated);
 }

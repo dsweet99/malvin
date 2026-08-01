@@ -3,7 +3,7 @@ use super::{
     LOG_TAG_INNER_WIDTH, MALVIN_WHO, WHO_M, WHO_O, WHO_T, WHO_U,
     format_acp_directional_tag_prefix,
     format_line, format_line_with_timestamp, format_line_with_timestamp_ansi, format_log_tag_inner,
-    format_who_tag_delim, format_who_tag_prefix, init_stdout_style, is_command_prelude_line,
+    format_who_tag_delim, format_who_tag_prefix, init_stdout_style_for_test, is_command_prelude_line,
     print_outgoing_prompt_log, print_stderr_line, print_stdout_line, print_stdout_raw_line,
     print_stdout_text, set_stdout_log_path,
 };
@@ -154,7 +154,7 @@ fn smoke_print_and_format_paths_cover_helpers() {
     let wrapped = super::terminal_wrap::wrap_words_bounded(max_payload, "hello world");
     assert!(!wrapped.is_empty());
     let _ = format_line("who", "body");
-    init_stdout_style(true);
+    init_stdout_style_for_test(false);
     print_stdout_line(WHO_U, "one");
     print_stdout_acp_tee_line(AcpTeeDirection::FromAgent, WHO_M, "two");
     print_stderr_line("e", "err");

@@ -51,7 +51,7 @@ fn load_malvin_config_does_not_create_missing_file() {
         assert!(!path.exists());
         let cfg = load_malvin_config(work);
         assert!(!path.exists());
-        assert_eq!(cfg.agent.max_hypotheses, super::DEFAULT_MAX_HYPOTHESES);
+        assert_eq!(cfg.agent.model, crate::support_paths::DEFAULT_CLI_MODEL);
     });
 }
 

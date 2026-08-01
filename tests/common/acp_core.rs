@@ -24,7 +24,15 @@ pub fn acp_mock_code_with_run_dir_js(body: &str) -> String {
     let prompt = format!(
         r"    const fs = require('fs');
     const path = require('path');
-    const promptText = (((msg.params || {{}}).prompt || [])[0] || {{}}).text || '';
+    let promptText = (((msg.params || {{}}).prompt || [])[0] || {{}}).text || '';
+    const userReqMatch = promptText.match(/User request \(read this file\):\s*\n\n`([^`]+)`/);
+    if (userReqMatch) {{
+      let reqRel = userReqMatch[1].replace(/^\.\//, '');
+      const reqAbs = path.isAbsolute(reqRel) ? reqRel : path.join(process.cwd(), reqRel);
+      try {{
+        promptText += '\n' + fs.readFileSync(reqAbs, 'utf8');
+      }} catch {{}}
+    }}
     const os = require('os');
     const runRoot = path.join(os.homedir(), '.malvin_home', 'logs');
     let runDir = null;
@@ -48,11 +56,11 @@ pub fn chunk_line(text: &str) -> String {
     )
 }
 
-pub fn write_artifact_lgtm() -> String {
-    "      fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\\n', 'utf8');".to_string()
+pub fn write_artifact_review() -> String {
+    "      fs.writeFileSync(path.join(runDir, 'review.md'), 'reviewed\\n', 'utf8');".to_string()
 }
 
-pub fn write_artifact_non_lgtm() -> String {
+pub fn write_artifact_problems() -> String {
     "      fs.writeFileSync(path.join(runDir, 'review.md'), 'problems\\n', 'utf8');".to_string()
 }
 
@@ -69,12 +77,12 @@ pub fn review_write_regression_test_body() -> String {
     .to_string()
 }
 
-pub fn code_review_fanout_writes_regression_test_and_non_lgtm() -> String {
+pub fn code_review_fanout_writes_regression_test_and_problems() -> String {
     let prep = write_review_prep_output();
     let write_tail = format!(
         "{}\n      {}\n{}",
         review_write_regression_test_body(),
-        write_artifact_non_lgtm(),
+        write_artifact_problems(),
         chunk_line("reviewed")
     );
     format!(
@@ -92,8 +100,9 @@ pub fn code_review_fanout_writes_regression_test_and_non_lgtm() -> String {
     )
 }
 
-pub fn write_workspace_lgtm() -> String {
-    "      fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\\n', 'utf8');".to_string()
+pub fn write_workspace_review() -> String {
+    "      fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'reviewed\\n', 'utf8');"
+        .to_string()
 }
 
 pub fn write_review_prep_output() -> String {
@@ -112,13 +121,13 @@ pub fn acp_mock_code_fanout_skips_reviewer_outputs_js() -> String {
     }} else if (promptText.includes('KPop: Review in-scope code for these problems')) {{
 {reviewer_skip}
     }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
-{write_lgtm}
+{write_review}
     }} else {{
       // learn, summary
     }}",
         implement = chunk_line("implemented"),
         reviewer_skip = chunk_line("skipped"),
-        write_lgtm = write_artifact_lgtm(),
+        write_review = write_artifact_review(),
     );
     acp_mock_code_with_run_dir_js(&body)
 }
@@ -138,48 +147,20 @@ pub fn code_review_fanout_branches(reviewed_chunk: &str, review_write_body: &str
     )
 }
 
-pub fn acp_mock_bug_kpop_solved_js() -> String {
-    let body = r"    const fs = require('fs');
-    const path = require('path');
-    const os = require('os');
-    const root = path.join(os.homedir(), '.malvin_home', 'logs');
-    if (fs.existsSync(root)) {
-      outer: for (const hash of fs.readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory())) {
-        const bucket = path.join(root, hash.name);
-        const runs = fs.readdirSync(bucket, { withFileTypes: true })
-          .filter((e) => e.isDirectory())
-          .map((e) => e.name)
-          .sort()
-          .reverse();
-        for (const run of runs) {
-        const kpopDir = path.join(bucket, run, '_kpop');
-        if (!fs.existsSync(kpopDir)) continue;
-        for (const name of fs.readdirSync(kpopDir)) {
-          if (name.startsWith('exp_log_') && name.endsWith('.md')) {
-            fs.appendFileSync(path.join(kpopDir, name), '\n## KPOP_SOLVED\n');
-            break outer;
-          }
-        }
-        }
-      }
-    }";
-    let done = session_update_chunk_line("agent_message_chunk", r"'kpop solved\n'");
-    acp_mock_js("", &format!("{body}\n{done}"))
-}
-
 #[cfg(all(unix, target_os = "linux"))]
 pub fn acp_mock_kpop_tamper_then_restore_js() -> String {
     let body = r"    const fs = require('fs');
     const path = require('path');
     const kpopAttempts = (typeof this.kpopAttempts === 'undefined') ? 0 : this.kpopAttempts;
     this.kpopAttempts = kpopAttempts + 1;
-    const kiss = (() => { try { return fs.readFileSync(path.join(process.cwd(), '.kissconfig'), 'utf8'); } catch { return ''; } })();
+    const checks = (() => { try { return fs.readFileSync(path.join(process.cwd(), '.malvin/checks'), 'utf8'); } catch { return ''; } })();
     const gitignore = (() => { try { return fs.readFileSync(path.join(process.cwd(), '.gitignore'), 'utf8'); } catch { return ''; } })();
     if (kpopAttempts === 0) {
-      fs.writeFileSync(path.join(process.cwd(), '.kissconfig'), 'TAMPERED', 'utf8');
+      fs.mkdirSync(path.join(process.cwd(), '.malvin'), { recursive: true });
+      fs.writeFileSync(path.join(process.cwd(), '.malvin/checks'), 'TAMPERED', 'utf8');
       fs.writeFileSync(path.join(process.cwd(), '.gitignore'), 'TAMPERED', 'utf8');
     } else {
-      if (kiss !== 'k = 1\n') {
+      if (checks !== 'c = 1\n') {
         fs.writeFileSync(path.join(process.cwd(), 'result.md'), 'ABORT: kpop tamper restored incorrectly\n', 'utf8');
       }
       if (gitignore !== 'g = 1\n') {

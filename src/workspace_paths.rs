@@ -2,6 +2,14 @@
 
 use std::path::{Path, PathBuf};
 
+#[path = "workspace_paths_data_root.rs"]
+pub(crate) mod workspace_paths_data_root;
+
+pub use workspace_paths_data_root::{
+    git_worktree_toplevel, legacy_malvin_checks_path, malvin_acp_spawn_chamber_dir,
+    malvin_checks_path, malvin_data_root, resolve_malvin_checks_path,
+};
+
 pub const MALVIN_DIR: &str = ".malvin";
 
 pub const MALVIN_CHECKS_REL: &str = ".malvin/checks";
@@ -20,6 +28,35 @@ pub const MALVIN_USER_HOME_DIR: &str = ".malvin_home";
 /// Global user config filename under [`malvin_user_home_root`].
 pub const MALVIN_HOME_CONFIG_FILE: &str = "config.toml";
 
+/// When set to `1` during `cargo test`, code may create/write/delete `~/.malvin_home/config.toml`.
+pub const MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION: &str = "MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION";
+
+/// Whether home-config disk mutation may run (always true outside test builds).
+pub(crate) fn home_malvin_config_disk_io_allowed() -> bool {
+    if cfg!(test) {
+        std::env::var(MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION).as_deref() == Ok("1")
+    } else {
+        true
+    }
+}
+
+/// Refuse home-config disk mutation in test builds when isolation consent is absent.
+pub(crate) fn assert_home_malvin_config_disk_io_allowed(op: &str) -> Result<(), String> {
+    if home_malvin_config_disk_io_allowed() {
+        Ok(())
+    } else {
+        Err(format!(
+            "refusing {op} on ~/.malvin_home/config.toml without test isolation; \
+             use with_isolated_home or activate_test_home (see plan.md)"
+        ))
+    }
+}
+
+/// Whether home-config delete/recreate paths may run (always true outside test builds).
+pub(crate) fn home_malvin_config_delete_allowed() -> bool {
+    home_malvin_config_disk_io_allowed()
+}
+
 /// Run-directory file recording the canonical workspace cwd for this run.
 pub const WORK_DIR_MANIFEST: &str = "work_dir";
 
@@ -27,11 +64,6 @@ const LEGACY_MALVIN_CHECKS_FILE: &str = ".malvin_checks";
 
 const FNV1A_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 const FNV1A_PRIME: u64 = 0x0000_0100_0000_01B3;
-
-#[must_use]
-pub fn malvin_checks_path(work_dir: &Path) -> PathBuf {
-    work_dir.join(MALVIN_CHECKS_REL)
-}
 
 #[must_use]
 pub fn malvin_advice_path(work_dir: &Path) -> PathBuf {
@@ -55,7 +87,7 @@ pub fn malvin_home_logs_root() -> PathBuf {
     malvin_user_home_root().join("logs")
 }
 
-/// `~/.malvin/snapshots/` — session dotfile backups (kissconfig, gitignore tree, etc.).
+/// `~/.malvin/snapshots/` — session dotfile backups (checks, home config, gitignore tree, etc.).
 pub const MALVIN_SNAPSHOTS_DIR: &str = "snapshots";
 
 #[must_use]

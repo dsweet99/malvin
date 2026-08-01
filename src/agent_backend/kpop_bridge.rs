@@ -10,7 +10,7 @@ use crate::acp::{
 
 use super::mini::MiniAgentClient;
 
-use kpop_bridge_prompt::{check_hypothesis_budget, restore_dotfiles_or_close, run_kpop_prompt};
+use kpop_bridge_prompt::{restore_dotfiles_or_close, run_kpop_prompt};
 
 pub(crate) async fn run_kpop_flow_once_mini(
     client: &mut MiniAgentClient,
@@ -49,7 +49,13 @@ pub(crate) async fn run_kpop_multiturn_once_mini(
                 return Err(AgentError(e));
             }
         };
-        if let Err(e) = run_kpop_prompt(client, prompt.as_str(), ctl.kpop_log.as_path()).await {
+        if let Err(e) = run_kpop_prompt(
+            client,
+            prompt.as_str(),
+            ctl.kpop_log.as_path(),
+        )
+        .await
+        {
             client.end_coder_session().await.ok();
             return kpop_fail_after_prompt(KpopFailAfterPrompt {
                 cwd: ctl.cwd,
@@ -60,7 +66,6 @@ pub(crate) async fn run_kpop_multiturn_once_mini(
             .await;
         }
         restore_dotfiles_or_close(client, ctl.cwd, ctl.session_dotfile_backups).await?;
-        check_hypothesis_budget(client, ctl).await?;
         ctl.state.record_kpop_block_prompt_completed();
     }
 
@@ -73,18 +78,12 @@ mod tests {
 
     use super::{run_kpop_flow_once_mini, run_kpop_multiturn_once_mini};
     use crate::acp::{AgentKpopMultiturnCtl, KpopFlowOnceArgs};
-    use crate::agent_backend::mini::{LlmBackend, MiniAgentClient, MiniLoopConfig, MockScript, MockStep};
-    use crate::agent_backend::test_support::{mini_done_response, test_io};
-    use crate::kpop_multiturn_prompts::{KpopMultiturnPrompts, SmokeKpopBuilder};
-    use crate::kpop_progression::KpopMultiturnState;
+    use crate::agent_backend::mini::{LlmBackend, MiniAgentClient, MockScript, MockStep};
+    use crate::agent_backend::test_support::{mini_done_response, mini_loop_config, test_io};
 
     fn mock_client(responses: Vec<MockStep>) -> MiniAgentClient {
         MiniAgentClient::new_mock(
-            MiniLoopConfig {
-                model: "anthropic/claude-sonnet-4".into(),
-                max_bash_turns: 4,
-                max_http_retries: 1,
-            },
+            mini_loop_config(4, 1),
             test_io(),
             LlmBackend::Mock(Mutex::new(MockScript {
                 responses,
@@ -133,71 +132,27 @@ mod tests {
         assert!(!client.has_open_coder_session());
     }
 
-    #[tokio::test]
-    async fn run_kpop_multiturn_once_mini_fails_when_hypothesis_budget_exceeded() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let exp_log = tmp.path().join("exp.md");
-        std::fs::write(&exp_log, "# exp\n").expect("exp log");
-        let exp_log_for_hook = exp_log.clone();
-        let mut client = MiniAgentClient::new_mock(
-            MiniLoopConfig {
-                model: "anthropic/claude-sonnet-4".into(),
-                max_bash_turns: 4,
-                max_http_retries: 1,
-            },
-            test_io(),
-            LlmBackend::Mock(Mutex::new(MockScript {
-                responses: vec![MockStep::Ok(mini_done_response())],
-                call_count: 0,
-                on_response: Some(Box::new(move |_, _| {
-                    std::fs::write(
-                        &exp_log_for_hook,
-                        "# exp\n## Step 1 — KPOP\n## Step 2 — KPOP\n## Step 3 — KPOP\n",
-                    )
-                    .expect("write exp");
-                })),
-            })),
-        );
-        let builder = KpopMultiturnPrompts::Smoke(SmokeKpopBuilder);
-        let mut state = KpopMultiturnState::new(builder, exp_log, 2).expect("state");
-        let mut ctl = AgentKpopMultiturnCtl {
-            cwd: tmp.path(),
-            kpop_log: tmp.path().join("kpop.log"),
-            state: &mut state,
-            session_dotfile_backups: &empty_backups(),
-        };
-        let err = run_kpop_multiturn_once_mini(&mut client, &mut ctl)
-            .await
-            .expect_err("hypothesis budget");
-        assert!(err.0.contains("hypothesis steps"));
-    }
-
-    fn kissconfig_dir_blocks_restore(work: &std::path::Path) {
-        let kiss = work.join(".kissconfig");
-        let _ = std::fs::remove_file(&kiss);
-        std::fs::create_dir(&kiss).expect("kissconfig dir");
+    fn malvin_checks_dir_blocks_restore(work: &std::path::Path) {
+        let checks = work.join(".malvin").join("checks");
+        let _ = std::fs::remove_file(&checks);
+        std::fs::create_dir(&checks).expect("malvin checks dir");
     }
 
     #[tokio::test]
     async fn run_kpop_flow_once_mini_closes_session_when_restore_fails() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
-        std::fs::write(tmp.path().join(".kissconfig"), b"k\n").expect("kissconfig");
+        crate::seed_malvin_checks(tmp.path(), "true\n");
         let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path())
             .expect("snapshot");
         let work = tmp.path().to_path_buf();
         let mut client = MiniAgentClient::new_mock(
-            MiniLoopConfig {
-                model: "m".into(),
-                max_bash_turns: 4,
-                max_http_retries: 1,
-            },
+            mini_loop_config(4, 1),
             test_io(),
             LlmBackend::Mock(Mutex::new(MockScript {
                 responses: vec![MockStep::Ok(mini_done_response())],
                 call_count: 0,
                 on_response: Some(Box::new(move |_, _| {
-                    kissconfig_dir_blocks_restore(&work);
+                    malvin_checks_dir_blocks_restore(&work);
                 })),
             })),
         );
@@ -227,9 +182,16 @@ mod tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         let exp_log = tmp.path().join("exp.md");
         std::fs::write(&exp_log, "# exp\n").expect("exp log");
-        let mut client = mock_client(vec![MockStep::Ok(mini_done_response())]);
-        let builder = KpopMultiturnPrompts::Smoke(SmokeKpopBuilder);
-        let mut state = KpopMultiturnState::new(builder, exp_log, 2).expect("state");
+        let mut client = mock_client(vec![
+            MockStep::Ok(mini_done_response()),
+            MockStep::Ok(mini_done_response()),
+            MockStep::Ok(mini_done_response()),
+            MockStep::Ok(mini_done_response()),
+        ]);
+        let mut state = crate::agent_backend::backend_kpop_test_helpers::smoke_multiturn_state(
+            tmp.path(),
+            exp_log,
+        );
         let mut ctl = AgentKpopMultiturnCtl {
             cwd: tmp.path(),
             kpop_log: tmp.path().join("kpop.log"),

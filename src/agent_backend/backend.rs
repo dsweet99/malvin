@@ -6,6 +6,7 @@ use crate::acp::{AgentClient, AgentError, AuthError, CoderPromptOptions};
 
 use super::mini::MiniAgentClient;
 
+#[allow(clippy::large_enum_variant)]
 pub enum AgentBackend {
     Acp(AgentClient),
     Mini(MiniAgentClient),

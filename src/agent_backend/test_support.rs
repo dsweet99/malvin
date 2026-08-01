@@ -1,24 +1,46 @@
 //! Shared helpers for `agent_backend` unit tests.
 
-use crate::acp::AgentIoOptions;
+use std::path::PathBuf;
+
+use crate::agent_backend::mini::{
+    LlmBackend, LoopDriverConfig, LoopDriverSession, MiniLoopConfig, MiniRetryStrategy,
+    MiniTraceSink, MockScript, MockStep,
+};
 use crate::cli::SharedOpts;
-use crate::agent_backend::mini::{LlmBackend, MiniTraceSink, MockScript, MockStep};
 use crate::malvin_mini::CompletionResponse;
 
 #[must_use]
 pub fn mini_done_response() -> CompletionResponse {
     CompletionResponse {
-        content: "MINI_DONE".into(),
+        content: crate::malvin_mini::format_wire_turn("- done", "MINI_DONE"),
         usage: None,
+        reasoning: None,
+    }
+}
+
+#[must_use]
+pub fn completion(content: impl Into<String>) -> CompletionResponse {
+    let body = content.into();
+    CompletionResponse {
+        content: crate::malvin_mini::format_wire_turn("- progress", &body),
+        usage: None,
+        reasoning: None,
+    }
+}
+
+/// Wire a RESPONSE body into the required `NEW_HISTORY` / `RESPONSE` sections.
+#[must_use]
+pub fn wire_response(response: &str) -> CompletionResponse {
+    CompletionResponse {
+        content: crate::malvin_mini::format_wire_turn("- progress", response),
+        usage: None,
+        reasoning: None,
     }
 }
 
 #[must_use]
 pub fn mini_test_trace() -> MiniTraceSink {
-    MiniTraceSink {
-        run_dir: None,
-        io: test_io(),
-    }
+    MiniTraceSink::new(None, test_io())
 }
 
 #[must_use]
@@ -31,8 +53,8 @@ pub fn mock_llm(responses: Vec<MockStep>) -> LlmBackend {
 }
 
 #[must_use]
-pub fn test_io() -> AgentIoOptions {
-    AgentIoOptions {
+pub fn test_io() -> crate::acp::AgentIoOptions {
+    crate::acp::AgentIoOptions {
         force: false,
         no_tee: true,
         raw_output: true,
@@ -43,20 +65,81 @@ pub fn test_io() -> AgentIoOptions {
 }
 
 #[must_use]
+pub fn loop_driver_config(max_http_turns: u32, max_http_retries: u32) -> LoopDriverConfig {
+    LoopDriverConfig {
+        max_http_turns,
+        max_bash_execs: 128,
+        max_http_retries,
+        max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
+        max_shrink_passes: 0,
+        mini_constraints: "constraints",
+        expects_investigation: false,
+    }
+}
+
+#[must_use]
+pub fn loop_session(cwd: PathBuf) -> LoopDriverSession {
+    LoopDriverSession {
+        history: String::new(),
+        previous_response: String::new(),
+        pending_new_request: None,
+        cwd,
+        bash_commands_this_prompt: vec![],
+        prompt_index: 0,
+        llm_model_slug: String::new(),
+        section_shape_nudged: false,
+    }
+}
+
+#[must_use]
+pub fn mini_loop_config(max_http_turns: u32, max_http_retries: u32) -> MiniLoopConfig {
+    MiniLoopConfig {
+        model: "anthropic/claude-sonnet-4".into(),
+        max_http_turns,
+        max_bash_execs: 128,
+        max_http_retries,
+        max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
+        max_gate_retries: max_http_retries,
+        max_shrink_passes: 0,
+        retry_strategy: MiniRetryStrategy::CumulativeTranscript,
+        expects_investigation: false,
+        allow_download: true,
+    }
+}
+
+#[must_use]
 pub fn shared_opts(mini: bool) -> SharedOpts {
+    let model = if mini {
+        "openrouter:auto".into()
+    } else {
+        "cursor:auto".into()
+    };
     SharedOpts {
-        model: "auto".into(),
+        model,
         no_force: false,
         no_tenacious: false,
-        no_tee: true,
-        no_markdown: true,
+        gates: false,
+
+        quiet: false,
         verbose: false,
         max_acp_retries: 3,
         doc: false,
         name: None,
-        mini,
         mini_max_bash_turns: 32,
+        mini_max_http_turns: 32,
+        mini_max_bash_execs: 128,
+        mini_max_http_retries: 0,
+        mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
+        mini_max_gate_retries: 0,
+        mini_max_shrink_passes: 0,
+        no_download: false,
+        git: false,
     }
+}
+
+#[must_use]
+pub fn openrouter_shared_opts() -> SharedOpts {
+    shared_opts(true)
 }
 
 #[allow(unsafe_code)]

@@ -89,7 +89,6 @@ unsafe fn regression_restore_env(key: &str, value: Option<std::ffi::OsString>) {
 
 fn defer_trace_writer(trace_file: tokio::fs::File, work_dir: PathBuf) -> PromptTraceWriter {
     let mut writer = styled_markdown_trace_writer(trace_file, work_dir.clone());
-    writer.session_id = SESSION_ID.to_string();
     if let Some(sink) = DeferredLogSink::for_prompt(SESSION_ID.to_string(), work_dir) {
         let shared = Arc::new(std::sync::Mutex::new(sink));
         register_active_sink(Arc::clone(&shared));

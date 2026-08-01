@@ -7,10 +7,10 @@ use common::{MtStubPrompts, append_kpop_line, parse_kpop_want};
 use malvin::KpopEchoPrompts;
 use malvin::MultiturnPrompt;
 use malvin::kpop_multiturn_prompts::KpopMultiturnPrompts;
-use malvin::kpop_progression::{KpopMultiturnParams, KpopMultiturnState, hypotheses_emitted};
+use malvin::kpop_progression::{KpopMultiturnParams, KpopMultiturnState};
 
 #[test]
-fn multiturn_stops_immediately_when_exp_log_already_at_max_hypotheses() {
+fn multiturn_still_offers_prompt_when_exp_log_has_many_steps() {
     let tmp = tempfile::tempdir().unwrap();
     let path = tmp.path().join("exp.md");
     std::fs::write(
@@ -24,6 +24,7 @@ fn multiturn_stops_immediately_when_exp_log_already_at_max_hypotheses() {
         max_hypotheses: 3,
     })
     .unwrap();
+    assert!(state.next_prompt().unwrap().is_some());
     assert!(state.next_prompt().unwrap().is_none());
 }
 
@@ -59,22 +60,17 @@ fn kpop_want_equals_max_hypotheses_in_single_prompt() {
 
 #[test]
 fn kpop_single_prompt_then_stop_even_after_agent_writes_steps() {
-    let tmp = tempfile::tempdir().unwrap();
-    let path = tmp.path().join("exp.md");
-    std::fs::write(&path, "").unwrap();
-    let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
-        builder: KpopMultiturnPrompts::StubMt(MtStubPrompts),
-        exp_log_path: path.clone(),
-        max_hypotheses: 50,
-    })
-    .unwrap();
-    let first = state.next_prompt().expect("prompt");
-    let MultiturnPrompt::KpopBlock(s) = first.expect("first");
+    let common::MultiturnTestHarness {
+        mut state,
+        exp_path,
+        _tmp,
+    } = common::setup_multiturn_stub_mt();
+    let first = state.next_prompt().expect("kpop prompt");
+    let MultiturnPrompt::KpopBlock(s) = first.expect("kpop prompt some");
     let want = parse_kpop_want(&s).expect("want in stub");
     for step in 1..=want {
-        append_kpop_line(&path, step);
+        append_kpop_line(&exp_path, step);
     }
-    let p2 = state.next_prompt().expect("second");
-    assert!(p2.is_none());
-    assert!(hypotheses_emitted(&std::fs::read_to_string(&path).unwrap()) >= want);
+    let p2 = state.next_prompt().expect("after prompt");
+    assert!(p2.is_none(), "no second prompt after the single kpop turn");
 }

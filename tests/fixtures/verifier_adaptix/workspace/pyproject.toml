@@ -1,0 +1,6 @@
+[project]
+name = "adaptix-fixture"
+version = "0.0.0"
+dependencies = [
+  "typing-extensions==4.12.2",
+]

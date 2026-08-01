@@ -42,6 +42,7 @@ fn run_coder_prompt_with_retries_succeeds_on_first_attempt() {
             who: "test",
             do_trace_split: None,
             stdout_bracket_label: None,
+            append_trace: false,
         };
         run_coder_prompt_with_retries(&mut client, dispatch, None, true)
             .await
@@ -73,6 +74,7 @@ fn run_coder_prompt_with_retries_errors_without_open_session() {
             who: "test",
             do_trace_split: None,
             stdout_bracket_label: None,
+            append_trace: false,
         };
         let err = run_coder_prompt_with_retries(&mut client, dispatch, None, true)
             .await
@@ -109,6 +111,7 @@ fn run_coder_prompt_with_retries_retries_on_test_injected_failure() {
             who: "test",
             do_trace_split: None,
             stdout_bracket_label: None,
+            append_trace: false,
         };
         let err = run_coder_prompt_with_retries(&mut client, dispatch, None, false)
             .await
@@ -145,6 +148,7 @@ fn run_coder_prompt_with_retries_returns_exhausted_error_on_prompt_failure() {
             who: "test",
             do_trace_split: None,
             stdout_bracket_label: None,
+            append_trace: false,
         };
         let err = run_coder_prompt_with_retries(&mut client, dispatch, None, true)
             .await
@@ -181,6 +185,7 @@ fn run_one_coder_prompt_attempt_invokes_prompt_on_open_session() {
             who: "test",
             do_trace_split: None,
             stdout_bracket_label: None,
+            append_trace: false,
         };
         let err = run_one_coder_prompt_attempt(&mut client, cwd, &dispatch, None)
             .await

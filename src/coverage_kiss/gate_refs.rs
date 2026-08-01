@@ -23,6 +23,16 @@ fn kiss_cov_prompt_round_health_private_helpers() {
     });
     health.record_session_update(&serde_json::json!({ "params": { "update": update } }));
     assert!(!health.agent_response_text().is_empty());
+    assert!(crate::acp::prompt_round_post_ok_error(&health).is_none());
+    let mut ping = crate::acp::PromptRoundHealth::default();
+    ping.record_session_update(&serde_json::json!({
+        "params": { "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": { "text": "Error: RetriableError: [unavailable] PING timed out", "type": "text" }
+        }}
+    }));
+    assert!(crate::acp::prompt_round_post_ok_error(&ping)
+        .is_some_and(|e| e.contains("PING timed out")));
 }
 
 #[test]
@@ -52,12 +62,15 @@ fn smoke_reader_tests_helpers_cat_session_roundtrip() {
 }
 
 #[test]
-fn kiss_cov_fake_command_dir_guard_type() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let guard: crate::repo_checks::FakeCommandDirGuard =
-        crate::repo_checks::set_fake_command_dir(tmp.path());
-    assert_eq!(guard.thread_id, std::thread::current().id());
-    drop(guard);
+fn kiss_cov_router_acp_support_module_import() {
+    use crate::router_flow::router_flow_acp::router_flow_acp_support::{
+        empty_iteration_backups, router_iteration_log_path, run_router_turns,
+        snapshot_iteration_backups,
+    };
+    let _ = router_iteration_log_path;
+    let _ = empty_iteration_backups;
+    let _ = snapshot_iteration_backups;
+    let _ = run_router_turns;
 }
 
 #[test]
@@ -70,30 +83,42 @@ fn agent_bundle_agent_error_auth_error_fmt() {
 }
 
 #[test]
-fn kiss_cov_kpop_turn_render_turn_with_body() {
+fn kiss_cov_kpop_turn_kpop_block() {
     use crate::kpop_turn_prompts::KpopTurnPrompts;
+    use crate::prompt_stratification::WorkflowRenderContext;
     use crate::prompts::PromptStore;
     use std::collections::HashMap;
 
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let root = tmp.path().join("prompts");
-    std::fs::create_dir_all(&root).expect("mkdir");
-    for (name, body) in [
-        ("header.md", "hdr\n"),
-        ("kpop_common.md", "common {{ want }}\n"),
-        ("kpop_block.md", "block {{ user_request }}\n"),
-    ] {
-        std::fs::write(root.join(name), body).expect("write");
-    }
-    let store = PromptStore::with_root(root);
+    let store = PromptStore::default_store();
     store.ensure_defaults().expect("defaults");
-    let base = HashMap::from([("plan_path".to_string(), "p".to_string())]);
+    let base = WorkflowRenderContext::from(HashMap::from([
+        ("plan_path".to_string(), "p".to_string()),
+        ("exp_log".to_string(), "./_kpop/exp.md".to_string()),
+        (
+            "user_request_path".to_string(),
+            "./.malvin/logs/run/user_request.md".to_string(),
+        ),
+    ]));
     let mut prompts = KpopTurnPrompts {
         store: &store,
         base: &base,
-        request_text: "req",
+        request_text: "brief",
         prepend_rules_once: false,
     };
-    let out = prompts.kpop_block(1, 0).expect("kpop block");
-    assert!(out.contains("req"));
+    let out = prompts.kpop_block(2).expect("kpop prompt");
+    assert!(out.contains("brief"));
+    assert!(out.contains("max_hypotheses = `2`"));
+}
+
+#[test]
+fn kiss_cov_acp_observability_contract_fixture() {
+    crate::acp_tests::reader_tests_helpers::block_on_test(async {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let trace_path = tmp.path().join("trace.jsonl");
+        let stdout_path = tmp.path().join("stdout.log");
+        let (trace, stdout) =
+            crate::acp::contract_acp_tee_tool_fixture(&trace_path, &stdout_path).await;
+        assert!(trace.contains("echo contract"), "trace={trace:?}");
+        assert!(stdout.contains("Run "), "stdout={stdout:?}");
+    });
 }

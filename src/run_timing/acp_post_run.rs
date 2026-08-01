@@ -85,11 +85,10 @@ pub fn merge_acp_with_workspace_session_restore_and_check_abort(
 
 pub(crate) fn merge_error_mentions_restore(merge_error: &str) -> bool {
     merge_error.contains("workspace session restore failed:")
-        || merge_error.contains("kissconfig restore:")
         || merge_error.contains("malvin_checks restore:")
-        || merge_error.contains("kissignore restore:")
         || merge_error.contains("malvin_config restore:")
         || merge_error.contains("gitignore restore:")
+        || merge_error.contains("vision restore:")
         || merge_error.contains("malvin_config_workspace restore:")
 }
 
@@ -122,21 +121,6 @@ pub fn emit_run_timing_after_acp(req: RunTimingAfterAcp<'_>) -> Result<(), Strin
         req.client.set_run_timing(None);
     }
     merge_acp_and_timing_results(req.acp_result, timing_result)
-}
-
-pub fn emit_run_timing_json_only_after_acp(
-    client: &mut crate::acp::AgentClient,
-    run_dir: &Path,
-    timing: &Arc<Mutex<RunTiming>>,
-    acp_result: Result<(), String>,
-) -> Result<(), String> {
-    emit_run_timing_after_acp(RunTimingAfterAcp {
-        client,
-        run_dir,
-        timing,
-        acp_result,
-        session_end: RunTimingSessionEnd::Finalize,
-    })
 }
 
 pub struct RunTimingAfterBackend<'a> {

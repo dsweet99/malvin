@@ -3,76 +3,18 @@
 #[path = "kpop_summarize_inline.rs"]
 mod kpop_summarize_inline;
 pub(crate) use kpop_summarize_inline::{
-    maybe_run_gate_inline_summarize, maybe_run_inline_summarize_on_kpop_loop,
-    GateInlineSummarizeCtx, InlineSummarizeOnKpopLoopCtx,
+    maybe_run_gate_inline_summarize, GateInlineSummarizeCtx,
 };
 
-use std::collections::HashMap;
+use crate::prompt_stratification::{join_labeled_strata, PromptStratum, WorkflowRenderContext};
 use std::path::{Path, PathBuf};
 
 use crate::artifacts::RunArtifacts;
 use crate::agent_backend::{agent_backend_set_implement_display_name, AgentBackend};
-use crate::cli::{SharedOpts, WorkflowCliOptions};
-use crate::cli::workflow_kpop_shared::kpop_workflow_context;
 use crate::prompts::{render_header, PromptError, PromptStore};
 use crate::run_timing::TimingPhase;
 
 const SUMMARIZE_PROMPT: &str = "kpop_summarize.md";
-
-/// Inputs for [`run_outer_loop_summarize_if_warranted`].
-#[allow(dead_code)] // legacy hook callers still construct params; fields read in unit tests
-pub(crate) struct OuterLoopSummarizeParams<'a> {
-    pub agent_ran: bool,
-    pub shared: &'a SharedOpts,
-    pub workflow: WorkflowCliOptions,
-    pub store: &'a PromptStore,
-    pub artifacts: &'a RunArtifacts,
-    pub malvin_command: &'a str,
-}
-
-/// Inputs for [`code_outer_loop_summarize_params`].
-pub(crate) struct CodeOuterLoopSummarizeInputs<'a> {
-    pub agent_ran: bool,
-    pub shared: &'a SharedOpts,
-    pub workflow: WorkflowCliOptions,
-}
-
-#[must_use]
-pub(crate) const fn code_outer_loop_summarize_params<'a>(
-    inputs: CodeOuterLoopSummarizeInputs<'a>,
-    prepared: &'a crate::cli::code_flow::CodeKpopPrepared,
-) -> OuterLoopSummarizeParams<'a> {
-    OuterLoopSummarizeParams {
-        agent_ran: inputs.agent_ran,
-        shared: inputs.shared,
-        workflow: inputs.workflow,
-        store: prepared.store(),
-        artifacts: prepared.artifacts(),
-        malvin_command: "malvin code",
-    }
-}
-
-/// Inputs for [`kpop_outer_loop_summarize_params`].
-pub(crate) struct KpopOuterLoopSummarizeInputs<'a> {
-    pub agent_ran: bool,
-    pub shared: &'a SharedOpts,
-}
-
-#[must_use]
-pub(crate) const fn kpop_outer_loop_summarize_params<'a>(
-    inputs: KpopOuterLoopSummarizeInputs<'a>,
-    store: &'a PromptStore,
-    artifacts: &'a RunArtifacts,
-) -> OuterLoopSummarizeParams<'a> {
-    OuterLoopSummarizeParams {
-        agent_ran: inputs.agent_ran,
-        shared: inputs.shared,
-        workflow: WorkflowCliOptions { force: false },
-        store,
-        artifacts,
-        malvin_command: "malvin kpop",
-    }
-}
 
 /// True when an exp log file exists and has content from an outer-loop agent session.
 pub(crate) fn exp_log_has_flow_content(path: &Path) -> bool {
@@ -89,7 +31,7 @@ pub(crate) fn kpop_flows_ran(artifacts: &RunArtifacts) -> usize {
 
 /// Whether outer-loop summarize should run once multiple `KPop` flows completed.
 #[must_use]
-#[allow(dead_code)] // unit tests and kiss coverage references
+#[cfg(test)]
 pub(crate) const fn outer_loop_summarize_warranted(kpop_flows_ran: usize) -> bool {
     kpop_flows_ran > 1
 }
@@ -99,28 +41,11 @@ pub(crate) const fn outer_loop_summarize_warranted(kpop_flows_ran: usize) -> boo
 pub(crate) const fn should_inline_outer_loop_summarize_on_gate_iteration(
     iteration: usize,
     total_iterations: usize,
-    consecutive_solved_entering: usize,
-    behavior: crate::gate_kpop_workflow::GateLoopBehavior,
 ) -> bool {
     if iteration < 2 {
         return false;
     }
-    let solved_threshold_met = consecutive_solved_entering.saturating_add(1)
-        >= behavior.consecutive_kpop_solved_to_exit();
-    iteration == total_iterations || solved_threshold_met
-}
-
-/// Whether the current `malvin kpop` loop is the last active agent that should inline summarize.
-#[must_use]
-pub(crate) const fn should_inline_outer_loop_summarize_on_kpop_loop(
-    agent_loop: usize,
-    max_loops: usize,
-    will_exit_after_this_loop: bool,
-) -> bool {
-    if agent_loop < 2 {
-        return false;
-    }
-    agent_loop == max_loops || will_exit_after_this_loop
+    iteration == total_iterations
 }
 
 pub(crate) fn is_written_exp_log_path(path: &Path) -> bool {
@@ -162,7 +87,7 @@ pub(crate) fn exp_log_paths_markdown(artifacts: &RunArtifacts) -> String {
 }
 
 pub(crate) fn insert_summarize_log_context(
-    ctx: &mut HashMap<String, String>,
+    ctx: &mut WorkflowRenderContext,
     artifacts: &RunArtifacts,
     kpop_flows_ran: usize,
 ) {
@@ -188,15 +113,20 @@ pub(crate) fn insert_summarize_log_context(
 pub(crate) fn render_kpop_summarize_prompt(
     store: &PromptStore,
     artifacts: &RunArtifacts,
-    malvin_command: &str,
+    model: &str,
+    git: bool,
 ) -> Result<String, String> {
-    let mut ctx = kpop_workflow_context(artifacts, malvin_command)?;
+    let mut ctx =
+        crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(artifacts, model, git)?;
     insert_summarize_log_context(&mut ctx, artifacts, kpop_flows_ran(artifacts));
-    let header = render_header(store, &ctx).map_err(|e: PromptError| e.0)?;
+    let header = render_header(store, ctx.as_map()).map_err(|e: PromptError| e.0)?;
     let body = store
-        .render_prompt_only(SUMMARIZE_PROMPT, &ctx)
+        .render_prompt_only(SUMMARIZE_PROMPT, ctx.as_map())
         .map_err(|e: PromptError| e.0)?;
-    Ok(format!("{}\n\n{}", header.trim_end(), body.trim_end()))
+    Ok(join_labeled_strata([
+        (PromptStratum::WorkflowHeader, header),
+        (PromptStratum::GateLoopBlock, body),
+    ]))
 }
 
 pub(crate) async fn run_summarize_coder_prompt(
@@ -225,16 +155,10 @@ pub(crate) async fn run_inline_summarize_coder_prompt(
     client: &mut AgentBackend,
     store: &PromptStore,
     artifacts: &RunArtifacts,
-    malvin_command: &str,
+    opts: crate::workflow_context::PromptModelOpts<'_>,
 ) -> Result<(), String> {
     agent_backend_set_implement_display_name(client, "summary");
-    let prompt = render_kpop_summarize_prompt(store, artifacts, malvin_command)?;
+    let prompt = render_kpop_summarize_prompt(store, artifacts, opts.model, opts.git)?;
     run_summarize_coder_prompt(client, artifacts, &prompt).await
 }
 
-/// Legacy post-loop hook; summarize now runs inline on the last active agent.
-pub(crate) async fn run_outer_loop_summarize_if_warranted(
-    _params: &OuterLoopSummarizeParams<'_>,
-) -> Result<(), String> {
-    Ok(())
-}

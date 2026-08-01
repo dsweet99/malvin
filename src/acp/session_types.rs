@@ -1,4 +1,7 @@
 //! Core session state types for `agent acp`.
+//!
+//! [`PromptTraceWriter`] tees narrative stdout and writes audit `trace.jsonl`; see
+//! [`crate::observability`] for channel trust rules.
 use super::jsonl_trace::AcpJsonlTrace;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
@@ -24,7 +27,7 @@ pub struct PromptTraceWriter {
     pub raw_output: bool,
     /// When true, raw/plain stdout includes thought chunks.
     pub show_thoughts_on_stdout: bool,
-    /// When true, render agent message payloads as markdown on stdout (`malvin code` / `malvin kpop`).
+    /// When true, render agent message payloads as markdown on stdout (markdown-enabled workflows).
     pub emit_stdout_markdown: bool,
     /// Suppress duplicate operational warnings for iterable-closed within one trace writer.
     pub iterable_closed_warned: bool,
@@ -33,9 +36,6 @@ pub struct PromptTraceWriter {
     /// Session workspace root for relativizing tool-summary paths on stdout.
     pub work_dir: PathBuf,
     pub run_timing: Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
-    /// ACP session id for Cursor `store.db` enrichment (mirrors the sink session).
-    #[allow(dead_code)]
-    pub session_id: String,
     /// Deferred stdout sink; `None` when disabled or in tests that emit immediately.
     pub deferred_sink: Option<crate::deferred_log::SharedDeferSink>,
 }
@@ -65,7 +65,7 @@ pub struct AcpSessionInner {
     pub raw_output: bool,
     /// When true, raw/plain stdout includes thought chunks.
     pub show_thoughts_on_stdout: bool,
-    /// When true, allow styled markdown on stdout for tagged trace lines (`malvin code` / `malvin kpop`).
+    /// When true, allow styled markdown on stdout for tagged trace lines (markdown-enabled workflows).
     pub emit_stdout_markdown: bool,
     /// When set, each outgoing prompt appends timestamped lines to `prompts.log` under this directory.
     pub prompts_log_run_dir: Option<PathBuf>,
@@ -99,11 +99,11 @@ pub struct AcpSpawnArgs<'a> {
     pub force: bool,
     /// When true, print each trace line to stdout as it is written (live tee). Set from CLI tee mode.
     pub tee_trace_stdout: bool,
-    /// When true, print raw output without timestamps/prefixes (for raw `malvin do`).
+    /// When true, print raw output without timestamps/prefixes (for raw `malvin --do`).
     pub raw_output: bool,
     /// When true, raw/plain stdout includes thought chunks.
     pub show_thoughts_on_stdout: bool,
-    /// When true, allow styled markdown on stdout for tagged trace lines (`malvin code` / `malvin kpop`).
+    /// When true, allow styled markdown on stdout for tagged trace lines (markdown-enabled workflows).
     pub emit_stdout_markdown: bool,
     /// When set, each outgoing prompt appends timestamped lines to `prompts.log` under this directory.
     pub prompts_log_run_dir: Option<&'a Path>,

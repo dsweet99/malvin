@@ -58,3 +58,49 @@ fn detects_upgrade_plan_across_split_agent_chunks() {
     h.record_session_update(&second);
     assert!(h.upgrade_plan_seen());
 }
+
+#[test]
+fn detects_ping_timed_out_across_split_agent_chunks() {
+    let first = json!({
+        "method": "session/update",
+        "params": {"update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"text": "Error: RetriableError: [unavailable] PING timed ", "type": "text"}
+        }}
+    });
+    let second = json!({
+        "method": "session/update",
+        "params": {"update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"text": "out", "type": "text"}
+        }}
+    });
+    let mut h = PromptRoundHealth::default();
+    h.record_session_update(&first);
+    assert!(h.cursor_http2_transport_error().is_none());
+    h.record_session_update(&second);
+    assert_eq!(
+        h.cursor_http2_transport_error(),
+        Some("RetriableError: [unavailable] PING timed out")
+    );
+}
+
+#[test]
+fn detects_http2_cancel_retriable_error_in_agent_chunk() {
+    let msg = json!({
+        "method": "session/update",
+        "params": {"update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {
+                "text": "\n\nError: RetriableError: [canceled] http/2 stream closed with error code CANCEL (0x8)",
+                "type": "text"
+            }
+        }}
+    });
+    let mut h = PromptRoundHealth::default();
+    h.record_session_update(&msg);
+    assert_eq!(
+        h.cursor_http2_transport_error(),
+        Some("RetriableError: [canceled] http/2 stream closed with error code CANCEL (0x8)")
+    );
+}

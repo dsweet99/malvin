@@ -9,5 +9,4 @@ fn kiss_witness_do_run_prep() {
     let _ = stringify!(session_dotfile_backups);
     let _ = super::new_do_client;
     let _ = super::prepare_do_run;
-    let _ = super::run_do_repo_gates_if_requested;
 }
