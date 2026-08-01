@@ -2,7 +2,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use malvin_mini::OpenRouterError;
+use crate::malvin_mini::OpenRouterError;
 
 use crate::agent_backend::mini::trace::MiniTraceSink;
 
@@ -22,7 +22,7 @@ impl std::fmt::Debug for HttpCompletionError {
 
 pub struct HttpRetryRequest<'a> {
     pub llm: &'a super::loop_mock::LlmBackend,
-    pub messages: &'a [malvin_mini::ChatMessage],
+    pub messages: &'a [crate::malvin_mini::ChatMessage],
     pub max_transport_retries: u32,
     pub single_attempt: bool,
     pub timing: Option<&'a Arc<Mutex<crate::run_timing::RunTiming>>>,

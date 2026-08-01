@@ -2,7 +2,7 @@
 
 use std::time::Instant;
 
-use malvin_mini::{parse_history_response, SectionParseError, SECTION_SHAPE_NUDGE};
+use crate::malvin_mini::{parse_history_response, SectionParseError, SECTION_SHAPE_NUDGE};
 
 use crate::agent_backend::mini::context_recovery::shrink_session_memory;
 use crate::agent_backend::mini::memory_assemble::{

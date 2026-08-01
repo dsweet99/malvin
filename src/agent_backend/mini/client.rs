@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use malvin_mini::OpenRouterClient;
+use crate::malvin_mini::OpenRouterClient;
 
 use super::bash_adapter::ensure_bash_on_path;
 use super::client_gate_retry::run_coder_prompt_with_gate_retries;
@@ -51,7 +51,7 @@ impl MiniAgentClient {
             LlmBackend::Local(engine)
         } else {
             let openrouter_config =
-                malvin_mini::OpenRouterConfig::from_env(resolve_mini_model(&config.model))?;
+                crate::malvin_mini::OpenRouterConfig::from_env(resolve_mini_model(&config.model))?;
             let client = OpenRouterClient::new(openrouter_config)
                 .map_err(|e| format!("OpenRouter client init failed: {e}"))?;
             LlmBackend::Http(client)

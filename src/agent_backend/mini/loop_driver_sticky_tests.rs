@@ -3,16 +3,16 @@ use crate::agent_backend::mini::{
     run_inner_loop, LlmBackend, LoopDriverConfig, LoopDriverRun, MockScript, MockStep,
 };
 use crate::agent_backend::test_support::{loop_driver_config, loop_session, mini_test_trace};
-use malvin_mini::{ChatRole, CompletionResponse, ResponseUsage};
+use crate::malvin_mini::{ChatRole, CompletionResponse, ResponseUsage};
 use std::sync::{Arc, Mutex};
 
 #[tokio::test]
 async fn loop_driver_sticky_header_includes_constraints() {
-    let seen: Arc<Mutex<Vec<Vec<malvin_mini::ChatMessage>>>> = Arc::new(Mutex::new(vec![]));
+    let seen: Arc<Mutex<Vec<Vec<crate::malvin_mini::ChatMessage>>>> = Arc::new(Mutex::new(vec![]));
     let seen_hook = Arc::clone(&seen);
     let llm = LlmBackend::Mock(Mutex::new(MockScript {
         responses: vec![MockStep::Ok(CompletionResponse {
-            content: malvin_mini::format_wire_turn("- progress", "MINI_DONE"),
+            content: crate::malvin_mini::format_wire_turn("- progress", "MINI_DONE"),
             usage: None,
             reasoning: None,
         })],
@@ -47,7 +47,7 @@ async fn loop_driver_mock_http_retry_on_429() {
         responses: vec![
             MockStep::RateLimited,
             MockStep::Ok(CompletionResponse {
-                content: malvin_mini::format_wire_turn("- progress", "MINI_DONE\nok"),
+                content: crate::malvin_mini::format_wire_turn("- progress", "MINI_DONE\nok"),
                 usage: Some(ResponseUsage {
                     prompt_tokens: None,
                     completion_tokens: None,

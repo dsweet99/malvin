@@ -1,7 +1,6 @@
 [workspace]
-members = [".", "malvin-mini", "malvin-llama"]
+members = [".", "malvin-llama"]
 resolver = "2"
-
 
 [package]
 name = "malvin"
@@ -24,9 +23,10 @@ lto = false
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 clap = { version = "4", features = ["derive"] }
-malvin-mini = { path = "malvin-mini" }
 malvin-llama = { path = "malvin-llama" }
 rand = "0.8"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tempfile = "3"
 terminal_size = "0.4"
@@ -74,4 +74,3 @@ libc = "0.2"
 errno = "0.3"
 libc = "0.2"
 libproc = "0.14"
-

@@ -7,12 +7,12 @@ use crate::agent_backend::mini::{
     MiniTraceSink, MockScript, MockStep,
 };
 use crate::cli::SharedOpts;
-use malvin_mini::CompletionResponse;
+use crate::malvin_mini::CompletionResponse;
 
 #[must_use]
 pub fn mini_done_response() -> CompletionResponse {
     CompletionResponse {
-        content: malvin_mini::format_wire_turn("- done", "MINI_DONE"),
+        content: crate::malvin_mini::format_wire_turn("- done", "MINI_DONE"),
         usage: None,
         reasoning: None,
     }
@@ -22,7 +22,7 @@ pub fn mini_done_response() -> CompletionResponse {
 pub fn completion(content: impl Into<String>) -> CompletionResponse {
     let body = content.into();
     CompletionResponse {
-        content: malvin_mini::format_wire_turn("- progress", &body),
+        content: crate::malvin_mini::format_wire_turn("- progress", &body),
         usage: None,
         reasoning: None,
     }
@@ -32,7 +32,7 @@ pub fn completion(content: impl Into<String>) -> CompletionResponse {
 #[must_use]
 pub fn wire_response(response: &str) -> CompletionResponse {
     CompletionResponse {
-        content: malvin_mini::format_wire_turn("- progress", response),
+        content: crate::malvin_mini::format_wire_turn("- progress", response),
         usage: None,
         reasoning: None,
     }

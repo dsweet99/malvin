@@ -15,7 +15,7 @@ use malvin::agent_backend::mini::{
     record_http_exchange, run_inner_loop, LoopDriverConfig, LoopDriverRun,     MiniHttpExchangeRecord, MiniTerminalReason, MiniTraceSink, MockStep,
 };
 use malvin::observability::audit_only_session_update_fields;
-use malvin_mini::CompletionResponse;
+use malvin::malvin_mini::CompletionResponse;
 
 #[test]
 fn contract_plain_lines_bash_fence_audit_only_on_stdout() {
@@ -63,7 +63,7 @@ async fn contract_mini_terminal_in_trace_not_stdout() {
     let mut session = parity_session(tmp.path());
     let out = run_inner_loop(LoopDriverRun {
         llm: &mock_llm(vec![MockStep::Ok(CompletionResponse {
-            content: malvin_mini::format_wire_turn("- progress", "done without fence"),
+            content: malvin::malvin_mini::format_wire_turn("- progress", "done without fence"),
             usage: None,
             reasoning: None,
         })]),

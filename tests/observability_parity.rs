@@ -13,7 +13,7 @@ use common::observability_parity::{
 use malvin::agent_backend::mini::{
     run_inner_loop, LoopDriverRun, MiniRetryStrategy, MockStep,
 };
-use malvin_mini::CompletionResponse;
+use malvin::malvin_mini::CompletionResponse;
 
 #[tokio::test]
 async fn observability_parity_tool_log_includes_fence_comment() {
@@ -39,7 +39,7 @@ async fn observability_parity_trace_acp_schema_after_mock_run() {
     let config = parity_loop_config("MINI_CONSTRAINTS_MARKER");
     let out = run_inner_loop(LoopDriverRun {
         llm: &mock_llm(vec![MockStep::Ok(CompletionResponse {
-            content: malvin_mini::format_wire_turn("- progress", "MINI_DONE\n"),
+            content: malvin::malvin_mini::format_wire_turn("- progress", "MINI_DONE\n"),
             usage: None,
             reasoning: None,
         })]),
@@ -71,7 +71,7 @@ async fn observability_parity_fenceless_completes_in_one_turn() {
     let config = parity_loop_config("MINI_CONSTRAINTS_MARKER");
     let out = run_inner_loop(LoopDriverRun {
         llm: &mock_llm(vec![MockStep::Ok(CompletionResponse {
-            content: malvin_mini::format_wire_turn("- progress", "informational answer"),
+            content: malvin::malvin_mini::format_wire_turn("- progress", "informational answer"),
             usage: None,
             reasoning: None,
         })]),

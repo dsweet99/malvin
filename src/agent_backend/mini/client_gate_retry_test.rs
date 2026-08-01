@@ -76,7 +76,7 @@ async fn gate_retry_billing_failure_fails_fast_without_gate_attempt_message() {
     use crate::agent_backend::mini::{LlmBackend, MiniAgentClient, MockScript, MockStep};
     use crate::agent_backend::test_support::{mini_loop_config, test_io};
     use crate::output::STDOUT_LOG_TEST_LOCK;
-    use malvin_mini::OpenRouterError;
+    use crate::malvin_mini::OpenRouterError;
 
     let billing_msg = OpenRouterError::BillingFailure {
         status: 402,

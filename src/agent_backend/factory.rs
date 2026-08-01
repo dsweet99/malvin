@@ -101,3 +101,51 @@ fn new_mini_client(
         io,
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::agent_backend::test_support::{install_openrouter_test_key, shared_opts};
+    use crate::cli::WorkflowCliOptions;
+
+    #[test]
+    fn build_agent_backend_selects_acp_when_mini_false() {
+        let backend = build_agent_backend(
+            &shared_opts(false),
+            WorkflowCliOptions { force: false },
+            false,
+            "code",
+        )
+        .expect("acp");
+        assert!(matches!(backend, AgentBackend::Acp(_)));
+    }
+
+    #[test]
+    fn build_agent_backend_with_tee_selects_mini_when_flag_set() {
+        install_openrouter_test_key();
+        let backend = build_agent_backend_with_tee(
+            &shared_opts(true),
+            WorkflowCliOptions { force: false },
+            AgentStdoutTeeFlags {
+                emit_stdout_markdown: false,
+                raw_output: true,
+                show_thoughts_on_stdout: false,
+            },
+        )
+        .expect("mini");
+        assert!(matches!(backend, AgentBackend::Mini(_)));
+    }
+
+    #[test]
+    fn malvin_crate_embeds_malvin_mini_module_not_path_dep() {
+        let text = std::fs::read_to_string("Cargo.toml").expect("Cargo.toml");
+        assert!(
+            !text.contains("malvin-mini ="),
+            "malvin must not path-depend on a separate malvin-mini crate"
+        );
+        assert!(
+            std::path::Path::new("src/malvin_mini/mod.rs").is_file(),
+            "malvin-mini sources must live under src/malvin_mini"
+        );
+    }
+}

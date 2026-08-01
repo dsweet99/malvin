@@ -9,7 +9,7 @@ use common::observability_parity::{
 use malvin::agent_backend::mini::{
     run_inner_loop, LoopDriverConfig, LoopDriverRun, MiniPhase, MiniTerminalReason, MockStep,
 };
-use malvin_mini::CompletionResponse;
+use malvin::malvin_mini::CompletionResponse;
 
 #[tokio::test]
 async fn mini_audit_fenceless_complete_emits_mini_terminal() {
@@ -18,7 +18,7 @@ async fn mini_audit_fenceless_complete_emits_mini_terminal() {
     let mut session = parity_session(tmp.path());
     let out = run_inner_loop(LoopDriverRun {
         llm: &mock_llm(vec![MockStep::Ok(CompletionResponse {
-            content: malvin_mini::format_wire_turn("- progress", "done without fence"),
+            content: malvin::malvin_mini::format_wire_turn("- progress", "done without fence"),
             usage: None,
             reasoning: None,
         })]),
@@ -60,7 +60,7 @@ async fn mini_audit_mini_done_emits_mini_terminal() {
     let mut session = parity_session(tmp.path());
     run_inner_loop(LoopDriverRun {
         llm: &mock_llm(vec![MockStep::Ok(CompletionResponse {
-            content: malvin_mini::format_wire_turn("- progress", "MINI_DONE\n"),
+            content: malvin::malvin_mini::format_wire_turn("- progress", "MINI_DONE\n"),
             usage: None,
             reasoning: None,
         })]),
@@ -131,12 +131,12 @@ async fn mini_audit_wind_down_after_bash_on_last_http_turn() {
     let out = run_inner_loop(LoopDriverRun {
         llm: &mock_llm(vec![
             MockStep::Ok(CompletionResponse {
-                content: malvin_mini::format_wire_turn("- progress", "```bash\necho wind > wind.txt\n```"),
+                content: malvin::malvin_mini::format_wire_turn("- progress", "```bash\necho wind > wind.txt\n```"),
                 usage: None,
                 reasoning: None,
             }),
             MockStep::Ok(CompletionResponse {
-                content: malvin_mini::format_wire_turn("- progress", "wind down summary"),
+                content: malvin::malvin_mini::format_wire_turn("- progress", "wind down summary"),
                 usage: None,
                 reasoning: None,
             }),
@@ -177,7 +177,7 @@ async fn mini_audit_no_tee_stdout_empty_trace_populated() {
     let mut session = parity_session(tmp.path());
     run_inner_loop(LoopDriverRun {
         llm: &mock_llm(vec![MockStep::Ok(CompletionResponse {
-            content: malvin_mini::format_wire_turn("- progress", "MINI_DONE"),
+            content: malvin::malvin_mini::format_wire_turn("- progress", "MINI_DONE"),
             usage: None,
             reasoning: None,
         })]),

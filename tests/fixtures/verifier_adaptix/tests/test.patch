@@ -1,0 +1,24 @@
+diff --git a/test.sh b/test.sh
+--- /dev/null
++++ b/test.sh
+@@ -0,0 +1,8 @@
++#!/bin/bash
++set -euo pipefail
++cd /app
++if [ "${1:-}" = "base" ]; then
++  python -m pytest tests/test_aliases.py -q
++elif [ "${1:-}" = "new" ]; then
++  python -m pytest tests/test_aliases.py -q
++fi
+diff --git a/tests/test_aliases.py b/tests/test_aliases.py
+--- /dev/null
++++ b/tests/test_aliases.py
+@@ -0,0 +1,8 @@
++import os
++import pytest
++from typing_extensions import NoExtraItems
++import typeguard
++
++def test_smoke():
++    assert NoExtraItems is not None or typeguard is not None
++    assert pytest is not None

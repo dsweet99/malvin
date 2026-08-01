@@ -4,7 +4,7 @@ use crate::agent_backend::mini::{
     MockStep,
 };
 use crate::agent_backend::test_support::mini_test_trace;
-use malvin_mini::CompletionResponse;
+use crate::malvin_mini::CompletionResponse;
 use std::sync::Mutex;
 
 fn test_config() -> LoopDriverConfig {
@@ -25,7 +25,7 @@ async fn loop_driver_single_fence_runs_bash_and_appends_observation() {
     let llm = LlmBackend::Mock(Mutex::new(MockScript {
         responses: vec![
             MockStep::Ok(CompletionResponse {
-                content: malvin_mini::format_wire_turn(
+                content: crate::malvin_mini::format_wire_turn(
                     "- progress",
                     "```bash\necho hi > out.txt\n```",
                 ),
@@ -33,7 +33,7 @@ async fn loop_driver_single_fence_runs_bash_and_appends_observation() {
                 reasoning: None,
             }),
             MockStep::Ok(CompletionResponse {
-                content: malvin_mini::format_wire_turn("- progress", "summary"),
+                content: crate::malvin_mini::format_wire_turn("- progress", "summary"),
                 usage: None,
                 reasoning: None,
             }),
@@ -76,7 +76,7 @@ async fn loop_driver_single_fence_runs_bash_and_appends_observation() {
 async fn loop_driver_mini_done_line_terminates() {
     let llm = LlmBackend::Mock(Mutex::new(MockScript {
         responses: vec![MockStep::Ok(CompletionResponse {
-            content: malvin_mini::format_wire_turn("- progress", "MINI_DONE\n"),
+            content: crate::malvin_mini::format_wire_turn("- progress", "MINI_DONE\n"),
             usage: None,
             reasoning: None,
         })],
@@ -116,7 +116,7 @@ async fn loop_driver_mini_done_inside_fence_still_runs_bash() {
     let llm = LlmBackend::Mock(Mutex::new(MockScript {
         responses: vec![
             MockStep::Ok(CompletionResponse {
-                content: malvin_mini::format_wire_turn(
+                content: crate::malvin_mini::format_wire_turn(
                     "- progress",
                     "```bash\nMINI_DONE\necho fenced > fenced_out.txt\n```",
                 ),
@@ -124,7 +124,7 @@ async fn loop_driver_mini_done_inside_fence_still_runs_bash() {
                 reasoning: None,
             }),
             MockStep::Ok(CompletionResponse {
-                content: malvin_mini::format_wire_turn("- progress", "done after bash"),
+                content: crate::malvin_mini::format_wire_turn("- progress", "done after bash"),
                 usage: None,
                 reasoning: None,
             }),
@@ -173,7 +173,7 @@ async fn loop_driver_new_history_uses_fact_kinds_after_bash_observation() {
     let llm = LlmBackend::Mock(Mutex::new(MockScript {
         responses: vec![
             MockStep::Ok(CompletionResponse {
-                content: malvin_mini::format_wire_turn(
+                content: crate::malvin_mini::format_wire_turn(
                     "- objective: write out.txt (user-provided)\n- proposal: run echo",
                     "```bash\necho hi > out.txt\n```",
                 ),
@@ -181,7 +181,7 @@ async fn loop_driver_new_history_uses_fact_kinds_after_bash_observation() {
                 reasoning: None,
             }),
             MockStep::Ok(CompletionResponse {
-                content: malvin_mini::format_wire_turn(fact_history, "summary after observe"),
+                content: crate::malvin_mini::format_wire_turn(fact_history, "summary after observe"),
                 usage: None,
                 reasoning: None,
             }),

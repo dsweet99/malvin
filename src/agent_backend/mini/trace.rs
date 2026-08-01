@@ -5,7 +5,7 @@
 
 use std::time::Duration;
 
-use malvin_mini::ResponseUsage;
+use crate::malvin_mini::ResponseUsage;
 
 use super::acp_trace_shim::{
     append_out_raw, emit_agent_message_chunk, emit_agent_thought_chunk, emit_bash_tool_call,

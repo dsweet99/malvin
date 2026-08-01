@@ -1,4 +1,4 @@
-use malvin_mini::{ChatMessage, ChatRole, CompletionResponse};
+use crate::malvin_mini::{ChatMessage, ChatRole, CompletionResponse};
 
 use super::loop_driver::{
     complete_with_http_retries, HttpCompletionError, HttpRetryCounters, HttpRetryLimits,

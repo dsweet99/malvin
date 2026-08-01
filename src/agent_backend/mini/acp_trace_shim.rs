@@ -2,7 +2,7 @@
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use malvin_mini::ResponseUsage;
+use crate::malvin_mini::ResponseUsage;
 use serde_json::{json, Value};
 
 use crate::acp::AcpJsonlTrace;

@@ -1,6 +1,6 @@
 //! Static catalog of supported `local:` GGUF model ids.
 
-use malvin_mini::ModelListing;
+use crate::malvin_mini::ModelListing;
 
 use crate::model_id::LOCAL_PREFIX;
 

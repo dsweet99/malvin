@@ -63,7 +63,7 @@ fn mini_new_mock_skips_openrouter_init() {
             log_full_outgoing_prompts: false,
         },
         LlmBackend::Mock(std::sync::Mutex::new(MockScript {
-            responses: vec![MockStep::Ok(malvin_mini::CompletionResponse {
+            responses: vec![MockStep::Ok(crate::malvin_mini::CompletionResponse {
                 content: "ok".into(),
                 usage: None,
                 reasoning: None,

@@ -42,6 +42,8 @@ pub use workflow_name_aliases::{
     canonical_workflow_name, resolve_session_log_path, resolve_workspace_malvin_config_path,
     WORKSPACE_CONFIG_PATHS,
 };
+/// OpenRouter HTTP transport formerly published as the `malvin-mini` crate.
+pub mod malvin_mini;
 mod gate_loop_session;
 mod sequential_requests;
 mod sandbox_oom;

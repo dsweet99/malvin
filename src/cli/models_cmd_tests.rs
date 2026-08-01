@@ -172,7 +172,7 @@ pub(crate) async fn run_mini_models_surfaces_http_errors() {
 
 #[test]
 pub(crate) fn print_mini_models_formats_tab_separated_rows() {
-    use malvin_mini::ModelListing;
+    use crate::malvin_mini::ModelListing;
 
     use crate::output::{enable_stdout_capture, take_captured_stdout};
 

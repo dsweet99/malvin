@@ -76,13 +76,13 @@ fn run_models_action(words: &[String]) -> Result<(), String> {
     }
 }
 
-fn list_openrouter_models_sync() -> Result<Vec<malvin_mini::ModelListing>, String> {
+fn list_openrouter_models_sync() -> Result<Vec<crate::malvin_mini::ModelListing>, String> {
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .map_err(|e| format!("failed to create Tokio runtime: {e}"))?;
     rt.block_on(async {
-        use malvin_mini::{OpenRouterClient, OpenRouterConfig};
+        use crate::malvin_mini::{OpenRouterClient, OpenRouterConfig};
         let config = OpenRouterConfig::from_env_for_listing()?;
         let client = OpenRouterClient::new(config).map_err(|e| e.to_string())?;
         client.list_models().await.map_err(|e| e.to_string())
@@ -92,7 +92,7 @@ fn list_openrouter_models_sync() -> Result<Vec<malvin_mini::ModelListing>, Strin
 /// Fetch `OpenRouter` models (async helper for tests).
 #[cfg(any(test, doctest))]
 pub async fn run_mini_models() -> Result<(), String> {
-    use malvin_mini::{OpenRouterClient, OpenRouterConfig};
+    use crate::malvin_mini::{OpenRouterClient, OpenRouterConfig};
 
     let config = OpenRouterConfig::from_env_for_listing()?;
     let client = OpenRouterClient::new(config).map_err(|e| e.to_string())?;
@@ -127,7 +127,7 @@ fn print_cursor_models() -> Result<(), String> {
     Ok(())
 }
 
-fn print_openrouter_models(models: &[malvin_mini::ModelListing]) {
+fn print_openrouter_models(models: &[crate::malvin_mini::ModelListing]) {
     for model in models {
         print_stdout_line(
             MALVIN_WHO,
@@ -208,7 +208,7 @@ pub(crate) mod test_hooks {
         super::resolve_models_cli()
     }
 
-    pub fn print_mini_models(models: &[malvin_mini::ModelListing]) {
+    pub fn print_mini_models(models: &[crate::malvin_mini::ModelListing]) {
         super::print_openrouter_models(models);
     }
 

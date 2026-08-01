@@ -70,8 +70,8 @@ pub async fn run_parity_bash_loop(
     let mut session = parity_session(tmp.path());
     let config = parity_loop_config("c");
     let llm = mock_llm(vec![
-        malvin::agent_backend::mini::MockStep::Ok(malvin_mini::CompletionResponse {
-            content: malvin_mini::format_wire_turn(
+        malvin::agent_backend::mini::MockStep::Ok(malvin::malvin_mini::CompletionResponse {
+            content: malvin::malvin_mini::format_wire_turn(
                 "- progress",
                 &format!(
                     "{fence_comment}\n```bash\ncat {}\n```",
@@ -81,8 +81,8 @@ pub async fn run_parity_bash_loop(
             usage: None,
             reasoning: None,
         }),
-        malvin::agent_backend::mini::MockStep::Ok(malvin_mini::CompletionResponse {
-            content: malvin_mini::format_wire_turn("- progress", "done"),
+        malvin::agent_backend::mini::MockStep::Ok(malvin::malvin_mini::CompletionResponse {
+            content: malvin::malvin_mini::format_wire_turn("- progress", "done"),
             usage: None,
             reasoning: None,
         }),

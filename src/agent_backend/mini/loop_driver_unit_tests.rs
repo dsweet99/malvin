@@ -5,7 +5,7 @@ use super::{
 use crate::agent_backend::mini::memory_assemble::build_sticky_header;
 use crate::agent_backend::mini::terminal::MiniTerminalReason;
 use crate::agent_backend::test_support::loop_driver_config;
-use malvin_mini::ChatRole;
+use crate::malvin_mini::ChatRole;
 
 #[test]
 fn classify_turn_detects_mini_done_and_fenceless_completion() {

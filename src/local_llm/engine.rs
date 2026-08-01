@@ -6,7 +6,7 @@ use malvin_llama::{
     complete as llama_complete, load_engine_with_context_size, ChatTurn, CompleteRequest,
     LocalEngine,
 };
-use malvin_mini::{
+use crate::malvin_mini::{
     ChatMessage, ChatRole, CompletionResponse, HttpExchangeMeta, OpenRouterError,
 };
 

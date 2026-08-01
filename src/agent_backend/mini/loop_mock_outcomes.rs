@@ -1,4 +1,4 @@
-use malvin_mini::{CompletionResponse, HttpExchangeMeta, OpenRouterError};
+use crate::malvin_mini::{CompletionResponse, HttpExchangeMeta, OpenRouterError};
 
 pub(super) fn mock_json_error() -> OpenRouterError {
     OpenRouterError::Json(

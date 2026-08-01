@@ -87,7 +87,7 @@ mod tests {
     use crate::acp::CoderPromptOptions;
     use crate::agent_backend::test_support::mini_loop_config;
     use crate::agent_backend::mini::{LlmBackend, MiniAgentClient, MockScript, MockStep};
-    use malvin_mini::CompletionResponse;
+    use crate::malvin_mini::CompletionResponse;
     use std::sync::Mutex;
 
     fn test_client(verbose: bool) -> MiniAgentClient {

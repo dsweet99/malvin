@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use malvin_mini::{ChatMessage, ChatRole, CompletionResponse};
+use crate::malvin_mini::{ChatMessage, ChatRole, CompletionResponse};
 
 use super::{LlmBackend, MiniAgentClient, MockScript, MockStep};
 use crate::acp::CoderPromptOptions;
@@ -59,7 +59,7 @@ fn retry_pollution_mock_client(observation: Arc<Mutex<RetryPollutionObservation>
         LlmBackend::Mock(Mutex::new(MockScript {
             responses: vec![
                 MockStep::Ok(CompletionResponse {
-                    content: malvin_mini::format_wire_turn(
+                    content: crate::malvin_mini::format_wire_turn(
                         "- progress",
                         &format!("```bash\necho {POLLUTION_MARKER}\n```"),
                     ),
@@ -78,7 +78,7 @@ fn retry_pollution_mock_client(observation: Arc<Mutex<RetryPollutionObservation>
                     reasoning: None,
                 }),
                 MockStep::Ok(CompletionResponse {
-                    content: malvin_mini::format_wire_turn("- progress", "MINI_DONE"),
+                    content: crate::malvin_mini::format_wire_turn("- progress", "MINI_DONE"),
                     usage: None,
                     reasoning: None,
                 }),
@@ -146,7 +146,7 @@ async fn mini_coder_prompt_retry_does_not_pollute_session_history() {
 
 #[cfg(test)]
 mod gate_retry_role_tests {
-    use malvin_mini::CompletionResponse;
+    use crate::malvin_mini::CompletionResponse;
 
     use super::*;
     use crate::agent_backend::mini::retry_fork::build_divergence_observation;
@@ -158,7 +158,7 @@ mod gate_retry_role_tests {
     #[tokio::test]
     async fn cumulative_gate_retry_uses_divergence_as_new_request() {
         let llm = mock_llm(vec![MockStep::Ok(CompletionResponse {
-            content: malvin_mini::format_wire_turn(
+            content: crate::malvin_mini::format_wire_turn(
                 "- noted divergence",
                 "I am the configured mini model.",
             ),

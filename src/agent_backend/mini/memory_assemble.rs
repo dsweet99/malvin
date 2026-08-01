@@ -1,6 +1,6 @@
 //! Sticky Header text and soft-cap helpers for mini chat-state memory.
 
-use malvin_mini::{
+use crate::malvin_mini::{
     assemble_completion_messages, AssembleInput, SECTION_SHAPE_NUDGE,
 };
 
@@ -82,7 +82,7 @@ pub struct SessionAssemble<'a> {
 
 /// Assemble ephemeral completion messages for one consolidate call.
 #[must_use]
-pub fn assemble_session_messages(input: SessionAssemble<'_>) -> Vec<malvin_mini::ChatMessage> {
+pub fn assemble_session_messages(input: SessionAssemble<'_>) -> Vec<crate::malvin_mini::ChatMessage> {
     let hist = soft_cap_history(input.history);
     let prev = soft_cap_previous(input.previous_response);
     let header_owned = if input.section_nudge {
@@ -102,7 +102,7 @@ pub fn assemble_session_messages(input: SessionAssemble<'_>) -> Vec<malvin_mini:
 #[cfg(test)]
 mod tests {
     use super::*;
-    use malvin_mini::ChatRole;
+    use crate::malvin_mini::ChatRole;
 
     #[test]
     fn soft_cap_history_inserts_compress_marker() {

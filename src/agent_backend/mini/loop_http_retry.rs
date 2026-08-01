@@ -1,6 +1,6 @@
 //! Retry loop implementation for `OpenRouter` HTTP completions.
 
-use malvin_mini::{CompletionResponse, OpenRouterError};
+use crate::malvin_mini::{CompletionResponse, OpenRouterError};
 
 use super::loop_http::{
     backoff_before_http_retry, exhaustion_message, HttpCompletionError, HttpRetryRequest,

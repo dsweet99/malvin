@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use malvin_mini::ResponseUsage;
+use crate::malvin_mini::ResponseUsage;
 
 use crate::tool_summary::{
     classify_bash_command, format_classified_tool_line, ClassifiedToolLineInput,
