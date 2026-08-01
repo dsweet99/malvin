@@ -21,6 +21,10 @@ mod backend_kpop_tests;
 mod backend_kpop_error_tests;
 
 #[cfg(test)]
+#[path = "backend_contract_tests.rs"]
+mod backend_contract_tests;
+
+#[cfg(test)]
 #[path = "agent_backend_kiss_cov.rs"]
 mod agent_backend_kiss_cov;
 

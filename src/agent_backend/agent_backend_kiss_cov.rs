@@ -29,3 +29,14 @@ fn kiss_witness_backend_kpop_tests() {
     let _ = stringify!(agent_backend_run_kpop_flow_mini_stops_on_non_retryable_error);
     let _ = stringify!(agent_backend_run_kpop_multiturn_mini_stops_on_non_retryable_error);
 }
+
+#[test]
+fn kiss_witness_backend_contract_tests() {
+    let _ = (
+        super::backend_contract_tests::openrouter_transport_backend,
+        super::backend_contract_tests::agent_backend_auth_shapes_mini_mock_http_and_acp,
+        super::backend_contract_tests::agent_backend_mini_mock_lifecycle_and_prompt_without_begin,
+        super::backend_contract_tests::agent_backend_log_dir_accessors_round_trip_both_variants,
+        super::backend_contract_tests::kiss_cov_agent_backend_contract_symbols,
+    );
+}

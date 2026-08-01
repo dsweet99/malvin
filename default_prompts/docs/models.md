@@ -41,6 +41,26 @@ Context window defaults to `context_size = 8192` in `~/.malvin_home/config.toml`
 
 Local llama.cpp integration lives in `src/malvin_llama/` (ignored by root `kiss check`; see `.kissignore`). Qwen end-to-end smoke is optional (same engine path as Nano).
 
+## Live transport and agent-backend tests
+
+Default `cargo nextest run` skips network and GPU paths. Opt-in live suites:
+
+| Env | What it enables |
+|---|---|
+| `MALVIN_LIVE_TRANSPORT=1` + `OPENROUTER_API_KEY` | `LlmTransport::OpenRouter` live `ensure_ready` + short `complete` (`tests/transport_live.rs`) |
+| `MALVIN_LIVE_LOCAL=1` | Real local/GPU `LlmTransport::Local` and Mini+`local:` via `AgentBackend` (`tests/transport_live.rs`, `tests/agent_backend_live.rs`). **Metal / Apple Silicon only**; leave unset on hosts without a GPU. |
+| `MALVIN_LIVE_MINI=1` + `OPENROUTER_API_KEY` | Mini+OpenRouter via `AgentBackend` API (`tests/agent_backend_live.rs`) and existing CLI live suite (`tests/mini_live.rs`) |
+
+ACP live agent-backend cases reuse the existing live-agent prereqs in `tests/common/live_agent.rs` (no new `MALVIN_LIVE_AGENT`).
+
+```text
+MALVIN_LIVE_TRANSPORT=1 OPENROUTER_API_KEY=... cargo nextest run -E 'test(transport_live)' -- --ignored
+MALVIN_LIVE_LOCAL=1 cargo nextest run -E 'test(transport_live)' -- --ignored
+MALVIN_LIVE_MINI=1 OPENROUTER_API_KEY=... cargo nextest run -E 'test(agent_backend_live)' -- --ignored
+MALVIN_LIVE_LOCAL=1 cargo nextest run -E 'test(agent_backend_live)' -- --ignored
+MALVIN_LIVE_MINI=1 cargo nextest run mini_live -- --ignored
+```
+
 ## Examples
 
 ```text

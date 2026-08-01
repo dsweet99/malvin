@@ -22,3 +22,7 @@ pub use crate::openrouter_transport::HttpExchangeMeta;
 #[path = "kiss_coverage.rs"]
 mod kiss_coverage;
 
+#[cfg(test)]
+#[path = "contract_tests.rs"]
+mod contract_tests;
+

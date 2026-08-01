@@ -75,8 +75,9 @@ impl MiniAgentClient {
     /// Returns [`AuthError`] when `OPENROUTER_API_KEY` is missing for `openrouter:` models.
     pub fn ensure_authenticated(&self) -> Result<(), AuthError> {
         match &self.llm {
-            LlmBackend::Local(_) | LlmBackend::Mock(_) => Ok(()),
-            LlmBackend::Http(_) => {
+            LlmBackend::Transport(crate::llm_transport::LlmTransport::Local(_))
+            | LlmBackend::Mock(_) => Ok(()),
+            LlmBackend::Transport(crate::llm_transport::LlmTransport::OpenRouter(_)) => {
                 if std::env::var("OPENROUTER_API_KEY").is_ok() {
                     Ok(())
                 } else {
@@ -95,7 +96,10 @@ impl MiniAgentClient {
 
     #[must_use]
     pub const fn has_local_engine(&self) -> bool {
-        matches!(self.llm, LlmBackend::Local(_))
+        matches!(
+            self.llm,
+            LlmBackend::Transport(crate::llm_transport::LlmTransport::Local(_))
+        )
     }
 
     #[must_use]

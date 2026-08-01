@@ -1,8 +1,7 @@
 //! Mock LLM backend for mini bash-loop tests.
 
-use crate::openrouter_transport::{
-    ChatMessage, CompletionResponse, HttpExchangeMeta, TransportError,
-};
+use crate::llm_transport::{ChatMessage, CompletionOk, LlmTransport, TransportError};
+use crate::openrouter_transport::{CompletionResponse, CompletionWithMeta, HttpExchangeMeta};
 
 use super::loop_mock_outcomes::{
     mock_billing_failure_pair, mock_context_overflow_pair, mock_json_transport_pair, mock_ok_pair,
@@ -38,8 +37,8 @@ pub struct LlmCompletionOutcome {
 }
 
 pub enum LlmBackend {
-    Http(crate::openrouter_transport::OpenRouterClient),
-    Local(crate::local_llm::LocalCompletionEngine),
+    /// Production `OpenRouter` / Local path — completions go through [`LlmTransport`].
+    Transport(LlmTransport),
     Mock(std::sync::Mutex<MockScript>),
 }
 
@@ -57,26 +56,37 @@ fn mock_step_outcome(step: &MockStep, messages: &[ChatMessage]) -> LlmCompletion
     LlmCompletionOutcome { result, http }
 }
 
-
-async fn complete_http_with_protocol(
-    client: &crate::openrouter_transport::OpenRouterClient,
-    messages: &[ChatMessage],
-) -> crate::openrouter_transport::CompletionWithMeta {
-    crate::mini_agent::protocol::complete_with_protocol_shape(messages, |msgs| {
-        async move { client.complete_http(&msgs).await }
-    })
-    .await
+fn completion_with_meta_from_transport(
+    result: Result<CompletionOk, TransportError>,
+) -> CompletionWithMeta {
+    match result {
+        Ok(ok) => CompletionWithMeta {
+            result: Ok(CompletionResponse {
+                content: ok.content,
+                usage: ok.meta.usage,
+                reasoning: ok.meta.reasoning,
+            }),
+            http: HttpExchangeMeta {
+                status: ok.meta.status,
+                body: ok.meta.body,
+            },
+        },
+        Err(e) => CompletionWithMeta {
+            result: Err(e),
+            http: HttpExchangeMeta {
+                status: None,
+                body: None,
+            },
+        },
+    }
 }
 
-async fn complete_local_with_protocol(
-    engine: &crate::local_llm::LocalCompletionEngine,
+async fn complete_transport_with_protocol(
+    transport: &LlmTransport,
     messages: &[ChatMessage],
-) -> crate::openrouter_transport::CompletionWithMeta {
-    crate::mini_agent::protocol::complete_with_protocol_shape(messages, |msgs| {
-        async move {
-            let (result, http) = engine.complete(&msgs).await;
-            crate::openrouter_transport::CompletionWithMeta { result, http }
-        }
+) -> CompletionWithMeta {
+    crate::mini_agent::protocol::complete_with_protocol_shape(messages, |msgs| async move {
+        completion_with_meta_from_transport(transport.complete(&msgs).await)
     })
     .await
 }
@@ -84,15 +94,8 @@ async fn complete_local_with_protocol(
 impl LlmBackend {
     pub async fn complete(&self, messages: &[ChatMessage]) -> LlmCompletionOutcome {
         match self {
-            Self::Http(client) => {
-                let meta = complete_http_with_protocol(client, messages).await;
-                LlmCompletionOutcome {
-                    result: meta.result,
-                    http: meta.http,
-                }
-            }
-            Self::Local(engine) => {
-                let meta = complete_local_with_protocol(engine, messages).await;
+            Self::Transport(transport) => {
+                let meta = complete_transport_with_protocol(transport, messages).await;
                 LlmCompletionOutcome {
                     result: meta.result,
                     http: meta.http,
@@ -157,10 +160,10 @@ mod tests {
             stringify!(MockStep),
             stringify!(MockScript),
             stringify!(LlmCompletionOutcome),
-            stringify!(complete_http_with_protocol),
-            stringify!(complete_local_with_protocol),
-            super::complete_http_with_protocol,
-            super::complete_local_with_protocol,
+            stringify!(complete_transport_with_protocol),
+            stringify!(completion_with_meta_from_transport),
+            super::complete_transport_with_protocol,
+            super::completion_with_meta_from_transport,
             super::mock_step_outcome,
             stringify!(on_response),
         );

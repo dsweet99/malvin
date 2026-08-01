@@ -12,8 +12,8 @@ fn kiss_cov_llm_completion_outcome_unit() {
         stringify!(MockStep),
         stringify!(MockScript),
         stringify!(mock_step_outcome),
-        stringify!(complete_http_with_protocol),
-        stringify!(complete_local_with_protocol),
+        stringify!(complete_transport_with_protocol),
+        stringify!(completion_with_meta_from_transport),
         stringify!(LlmBackend),
         stringify!(on_response),
     );

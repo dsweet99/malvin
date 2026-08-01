@@ -84,3 +84,18 @@ fn kiss_cov_local_transport_module_import() {
         stringify!(into_engine),
     );
 }
+
+#[test]
+fn kiss_cov_contract_tests_symbols() {
+    let _ = (
+        super::contract_tests::user_msg,
+        super::contract_tests::openrouter_transport,
+        super::contract_tests::scripted_local_ok,
+        super::contract_tests::scripted_local_err,
+        super::contract_tests::llm_transport_openrouter_ensure_ready_key_present_and_absent,
+        super::contract_tests::llm_transport_openrouter_complete_ok_and_err,
+        super::contract_tests::llm_transport_local_scripted_ensure_ready_ok_and_complete,
+        super::contract_tests::llm_transport_parity_openrouter_mock_and_scripted_local,
+        super::contract_tests::kiss_cov_llm_transport_contract_symbols,
+    );
+}

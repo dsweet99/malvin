@@ -109,6 +109,7 @@ fn new_mini_client(
 }
 
 fn build_mini_llm_backend(model: &str, allow_download: bool) -> Result<crate::mini_agent::LlmBackend, String> {
+    use crate::llm_transport::{LocalLlmTransport, LlmTransport, OpenRouterTransport};
     use crate::mini_agent::LlmBackend;
     if crate::model_id::uses_local_backend(model) {
         let policy = if allow_download {
@@ -117,14 +118,16 @@ fn build_mini_llm_backend(model: &str, allow_download: bool) -> Result<crate::mi
             crate::local_llm::DownloadPolicy::Deny
         };
         let engine = crate::local_llm::ensure_local_engine(model, policy)?;
-        Ok(LlmBackend::Local(engine))
+        Ok(LlmBackend::Transport(LlmTransport::Local(LocalLlmTransport::new(
+            engine,
+        ))))
     } else {
         let openrouter_config = crate::openrouter_transport::OpenRouterConfig::from_env(
             crate::mini_agent::resolve_mini_model(model),
         )?;
-        let client = crate::openrouter_transport::OpenRouterClient::new(openrouter_config)
+        let transport = OpenRouterTransport::new(openrouter_config)
             .map_err(|e| format!("OpenRouter client init failed: {e}"))?;
-        Ok(LlmBackend::Http(client))
+        Ok(LlmBackend::Transport(LlmTransport::OpenRouter(transport)))
     }
 }
 

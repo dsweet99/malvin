@@ -65,7 +65,7 @@ mod openrouter_tests;
 mod types;
 
 #[cfg(test)]
-mod test_support;
+pub(crate) mod test_support;
 
 mod transport_retries;
 #[cfg(test)]
