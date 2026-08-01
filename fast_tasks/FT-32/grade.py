@@ -123,7 +123,10 @@ def _workload_script() -> str:
 
         wall = time.perf_counter() - t0
         rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        if rss > 512 * 1024 * 1024:
+        # Linux reports KiB; macOS/BSD report bytes.
+        if sys.platform != "linux":
+            rss //= 1024
+        elif rss > 512 * 1024 * 1024:
             rss //= 1024
         print(json.dumps({"ok": True, "wall": wall, "rss_kb": int(rss)}))
         """

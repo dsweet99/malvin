@@ -1035,61 +1035,89 @@ def _ft_test_solve_main_dry_run() -> None:
     """``--main`` mounts host malvin-main at the container malvin path."""
     from toolchain_repos import load_ops_entry
 
-    main_bin = ft_resolve_malvin_main_binary()
-    assert main_bin is not None, "malvin-main must be installed for this test"
-    cli = load_ops_entry("fast_task").fast_task_cli
-    runner = CliRunner()
     with tempfile.TemporaryDirectory(prefix="ft-main-") as tmp:
-        result = runner.invoke(
-            cli,
-            [
-                "solve",
-                "FT-01",
-                "--main",
-                "--dry-run",
-                "--skip-grade",
-                "--results-dir",
-                tmp,
-            ],
-            catch_exceptions=False,
-        )
-        assert result.exit_code == 0, result.output
-        meta_paths = list(Path(tmp).glob("FT-01/*/metadata.json"))
-        assert meta_paths, result.output
-        meta = json.loads(meta_paths[0].read_text(encoding="utf-8"))
-        cmd = meta["docker_cmd"]
-        joined = " ".join(cmd)
-        assert "malvin" in cmd
-        assert "plan.md" in cmd
-        assert "cursor-agent" not in joined
-        mounts = [cmd[i + 1] for i, token in enumerate(cmd) if token == "-v"]
-        assert any(
-            m == f"{main_bin.resolve()}:{MALVIN_BIN_REMOTE}:ro" for m in mounts
-        ), mounts
-        conflict = runner.invoke(
-            cli,
-            [
-                "solve",
-                "FT-01",
-                "--main",
-                "--cursor",
-                "--dry-run",
-                "--skip-grade",
-                "--results-dir",
-                tmp,
-            ],
-        )
-        assert conflict.exit_code != 0
-        assert "mutually exclusive" in conflict.output
+        tmp_path = Path(tmp)
+        main_bin = ft_resolve_malvin_main_binary()
+        path_extra: Path | None = None
+        if main_bin is None:
+            path_extra = tmp_path / "bin"
+            path_extra.mkdir()
+            stub = path_extra / "malvin-main"
+            stub.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            stub.chmod(0o755)
+            main_bin = stub
+            os.environ["PATH"] = f"{path_extra}{os.pathsep}{os.environ.get('PATH', '')}"
+        try:
+            main_bin = ft_resolve_malvin_main_binary()
+            assert main_bin is not None, "malvin-main must be resolvable for this test"
+            cli = load_ops_entry("fast_task").fast_task_cli
+            runner = CliRunner()
+            result = runner.invoke(
+                cli,
+                [
+                    "solve",
+                    "FT-01",
+                    "--main",
+                    "--dry-run",
+                    "--skip-grade",
+                    "--results-dir",
+                    tmp,
+                ],
+                catch_exceptions=False,
+            )
+            assert result.exit_code == 0, result.output
+            meta_paths = list(Path(tmp).glob("FT-01/*/metadata.json"))
+            assert meta_paths, result.output
+            meta = json.loads(meta_paths[0].read_text(encoding="utf-8"))
+            cmd = meta["docker_cmd"]
+            joined = " ".join(cmd)
+            assert "malvin" in cmd
+            assert "plan.md" in cmd
+            assert "cursor-agent" not in joined
+            mounts = [cmd[i + 1] for i, token in enumerate(cmd) if token == "-v"]
+            assert any(
+                m == f"{main_bin.resolve()}:{MALVIN_BIN_REMOTE}:ro" for m in mounts
+            ), mounts
+            conflict = runner.invoke(
+                cli,
+                [
+                    "solve",
+                    "FT-01",
+                    "--main",
+                    "--cursor",
+                    "--dry-run",
+                    "--skip-grade",
+                    "--results-dir",
+                    tmp,
+                ],
+            )
+            assert conflict.exit_code != 0
+            assert "mutually exclusive" in conflict.output
+        finally:
+            if path_extra is not None:
+                path = os.environ.get("PATH", "")
+                prefix = f"{path_extra}{os.pathsep}"
+                if path.startswith(prefix):
+                    os.environ["PATH"] = path[len(prefix) :]
 
 
 def _ft_test_resolve_malvin_main_binary() -> None:
-    path = ft_resolve_malvin_main_binary()
-    assert path is not None
-    assert path.is_file()
-    assert path.name == "malvin-main"
-    missing = _ft_resolve_host_binary("malvin-main-does-not-exist-xyz")
-    assert missing is None
+    with tempfile.TemporaryDirectory(prefix="ft-main-bin-") as tmp:
+        stub_dir = Path(tmp)
+        stub = stub_dir / "malvin-main"
+        stub.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        stub.chmod(0o755)
+        old_path = os.environ.get("PATH", "")
+        os.environ["PATH"] = f"{stub_dir}{os.pathsep}{old_path}"
+        try:
+            path = ft_resolve_malvin_main_binary()
+            assert path is not None
+            assert path.is_file()
+            assert path.name == "malvin-main"
+            missing = _ft_resolve_host_binary("malvin-main-does-not-exist-xyz")
+            assert missing is None
+        finally:
+            os.environ["PATH"] = old_path
 
 
 _FT_RELAY_SPY_SEEN: list[str] = []

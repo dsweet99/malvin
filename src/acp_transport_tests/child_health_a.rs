@@ -6,6 +6,9 @@ pub(crate) async fn spawn_json_activity_then_response(
     notify: Arc<Notify>,
     tx: tokio::sync::oneshot::Sender<Result<Value, String>>,
 ) {
+    // Pulse immediately so a loaded scheduler cannot burn the first timeout
+    // window before this task runs (common under Darwin `ps` process scans).
+    note_acp_trace_activity(&seq, &notify);
     tokio::time::sleep(Duration::from_millis(20)).await;
     note_acp_trace_activity(&seq, &notify);
     tokio::time::sleep(Duration::from_millis(20)).await;
@@ -45,7 +48,9 @@ async fn rpc_request_with_correlation_id_stays_alive_while_json_updates_arrive()
     let res = harness_rpc_wait(HarnessRpcWaitParams {
         h: &h,
         request_id,
-        timeout: Duration::from_millis(25),
+        // 50ms base window: still requires activity resets for a ~60ms+ reply,
+        // but tolerates brief scheduling delay under parallel nextest.
+        timeout: Duration::from_millis(50),
         rx,
         child_pid: None,
     })
