@@ -21,10 +21,6 @@ Earlier in this same session you wrote residual plans into the chat for each req
 - Do not invent or replace source materials that are already present in the workspace; check the working directory for existing files before assuming they are missing.
 - Do not declare the request satisfied until every required output file exists on disk with the required contents; describing a write in prose does not count.
 
-## Tools
-
-- Run `{{ malvin_command }} inspire --help` to learn the idea generator.
-
 {{ code_extra }}
 
 ## Goal: epistemic decoupling

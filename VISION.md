@@ -18,3 +18,6 @@ Malvin is a non-interactive research and coding agent.
   - Falsification: Using the KPop sub-workflow to get evidence-based answers.
   - Regularization: Resolving uncertainty or ambiguity using good priors, such as domain knowledge,
     available knowledge relevant to the request, or "best practices" / common practices.
+
+
+# malvin-mini
