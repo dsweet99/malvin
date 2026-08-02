@@ -14,6 +14,14 @@ use super::child_wait::{spawn_piped_process_group, wait_child_with_timeout};
 #[cfg(unix)]
 pub const LIVE_AGENT_CMD_TIMEOUT: Duration = Duration::from_secs(180);
 
+/// Fail-closed when a live gate is set but `OPENROUTER_API_KEY` is missing/empty.
+pub fn require_openrouter_key_when_gate_set(gate_name: &str) {
+    assert!(
+        std::env::var_os("OPENROUTER_API_KEY").is_some_and(|v| !v.is_empty()),
+        "{gate_name}=1 requires OPENROUTER_API_KEY (fail-closed; not a soft skip)"
+    );
+}
+
 #[cfg(unix)]
 pub fn live_agent_prereqs_met() -> bool {
     malvin::agent_or_cursor_agent_bin().is_some() && live_agent_auth_available()

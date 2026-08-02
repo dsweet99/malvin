@@ -28,6 +28,8 @@ mod enn_hybrid_fixture;
 mod kpop_multiturn_support;
 #[cfg(unix)]
 mod live_agent;
+#[cfg(unix)]
+pub mod agent_backend_helpers;
 mod process;
 #[cfg(unix)]
 mod code_harness;
@@ -73,7 +75,7 @@ pub use kpop_multiturn_support::*;
 #[cfg(unix)]
 pub use live_agent::{
     command_output_live_agent, command_output_mini_live, live_agent_prereqs_met,
-    LIVE_AGENT_CMD_TIMEOUT,
+    require_openrouter_key_when_gate_set, LIVE_AGENT_CMD_TIMEOUT,
 };
 pub use process::{MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout};
 pub use assert_code_deprecated::assert_code_deprecated;

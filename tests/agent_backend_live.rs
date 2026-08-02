@@ -12,18 +12,40 @@
 
 mod common;
 
-use common::{live_agent_prereqs_met, LIVE_AGENT_CMD_TIMEOUT};
+use common::{
+    live_agent_prereqs_met, require_openrouter_key_when_gate_set, LIVE_AGENT_CMD_TIMEOUT,
+};
 use malvin::acp::{AgentClient, AgentIoOptions, CoderPromptOptions};
 use malvin::agent_backend::{build_agent_backend, AgentBackend};
 use malvin::cli::{SharedOpts, WorkflowCliOptions};
 
-fn live_mini_prereqs_met() -> bool {
+fn live_mini_gate_set() -> bool {
     std::env::var_os("MALVIN_LIVE_MINI").is_some_and(|v| v == "1")
-        && std::env::var_os("OPENROUTER_API_KEY").is_some_and(|v| !v.is_empty())
 }
 
-fn live_local_prereqs_met() -> bool {
+fn live_local_gate_set() -> bool {
     std::env::var_os("MALVIN_LIVE_LOCAL").is_some_and(|v| v == "1")
+}
+
+async fn live_single_attempt_prompt(backend: &mut AgentBackend, cwd: &std::path::Path, log_name: &str) {
+    backend.begin_coder_session(cwd).await.expect("begin");
+    let log = cwd.join(log_name);
+    backend
+        .run_coder_prompt(
+            "Reply with exactly: pong. Do not use bash.",
+            &log,
+            "coder",
+            CoderPromptOptions {
+                single_attempt: true,
+                ..CoderPromptOptions::default()
+            },
+        )
+        .await
+        .expect("prompt");
+    assert!(backend
+        .last_coder_prompt_agent_response()
+        .is_some_and(|s| !s.trim().is_empty()));
+    backend.end_coder_session().await.expect("end");
 }
 
 fn openrouter_shared_opts() -> SharedOpts {
@@ -57,17 +79,21 @@ fn local_shared_opts() -> SharedOpts {
 
 #[test]
 fn agent_backend_live_tests_compile_and_skip_without_env() {
-    assert!(!live_mini_prereqs_met() || std::env::var_os("OPENROUTER_API_KEY").is_some());
-    let _ = (live_local_prereqs_met(), live_agent_prereqs_met(), LIVE_AGENT_CMD_TIMEOUT);
+    let _ = (
+        live_mini_gate_set(),
+        live_local_gate_set(),
+        live_agent_prereqs_met(),
+        LIVE_AGENT_CMD_TIMEOUT,
+    );
 }
 
 #[tokio::test]
 #[ignore = "live Mini+OpenRouter via AgentBackend; MALVIN_LIVE_MINI=1 OPENROUTER_API_KEY=... cargo nextest run -E 'test(agent_backend_live)' -- --ignored"]
 async fn agent_backend_live_mini_openrouter() {
-    if !live_mini_prereqs_met() {
-        eprintln!("skip: set MALVIN_LIVE_MINI=1 and OPENROUTER_API_KEY to run");
+    if !live_mini_gate_set() {
         return;
     }
+    require_openrouter_key_when_gate_set("MALVIN_LIVE_MINI");
     let tmp = tempfile::tempdir().expect("tempdir");
     let mut backend = build_agent_backend(
         &openrouter_shared_opts(),
@@ -78,28 +104,7 @@ async fn agent_backend_live_mini_openrouter() {
     .expect("mini backend");
     assert!(matches!(backend, AgentBackend::Mini(_)));
     backend.ensure_authenticated().expect("auth");
-    backend
-        .begin_coder_session(tmp.path())
-        .await
-        .expect("begin");
-    let log = tmp.path().join("live.log");
-    backend
-        .run_coder_prompt(
-            "Reply with exactly: pong. Do not use bash.",
-            &log,
-            "coder",
-            CoderPromptOptions {
-                single_attempt: true,
-                ..CoderPromptOptions::default()
-            },
-        )
-        .await
-        .expect("prompt");
-    let last = backend
-        .last_coder_prompt_agent_response()
-        .expect("last");
-    assert!(!last.trim().is_empty());
-    backend.end_coder_session().await.expect("end");
+    live_single_attempt_prompt(&mut backend, tmp.path(), "live.log").await;
 }
 
 #[tokio::test]
@@ -154,8 +159,7 @@ async fn agent_backend_live_acp() {
 #[tokio::test]
 #[ignore = "live Mini+local via AgentBackend (Metal); MALVIN_LIVE_LOCAL=1 cargo nextest run -E 'test(agent_backend_live)' -- --ignored"]
 async fn agent_backend_live_mini_local() {
-    if !live_local_prereqs_met() {
-        eprintln!("skip: set MALVIN_LIVE_LOCAL=1 to run Mini+local: agent tests");
+    if !live_local_gate_set() {
         return;
     }
     let tmp = tempfile::tempdir().expect("tempdir");
@@ -167,25 +171,5 @@ async fn agent_backend_live_mini_local() {
     )
     .expect("local mini backend");
     assert!(matches!(backend, AgentBackend::Mini(_)));
-    backend
-        .begin_coder_session(tmp.path())
-        .await
-        .expect("begin");
-    let log = tmp.path().join("live_local.log");
-    backend
-        .run_coder_prompt(
-            "Reply with exactly: pong. Do not use bash.",
-            &log,
-            "coder",
-            CoderPromptOptions {
-                single_attempt: true,
-                ..CoderPromptOptions::default()
-            },
-        )
-        .await
-        .expect("prompt");
-    assert!(backend
-        .last_coder_prompt_agent_response()
-        .is_some_and(|s| !s.trim().is_empty()));
-    backend.end_coder_session().await.expect("end");
+    live_single_attempt_prompt(&mut backend, tmp.path(), "live_local.log").await;
 }

@@ -18,7 +18,7 @@ const DEFAULT_MAX_TOKENS: i32 = 2048;
 
 enum LocalEngineInner {
     Real(Arc<LocalEngine>),
-    #[cfg(test)]
+    /// Deterministic test seam for integration and unit tests (no GPU).
     Scripted(Result<String, String>),
 }
 
@@ -29,7 +29,7 @@ pub struct LocalCompletionEngine {
 }
 
 impl LocalCompletionEngine {
-    #[cfg(test)]
+    /// Scripted success completion for tests (no GPU / network).
     #[must_use]
     pub fn scripted_ok(model_slug: impl Into<String>, content: impl Into<String>) -> Self {
         Self {
@@ -38,7 +38,7 @@ impl LocalCompletionEngine {
         }
     }
 
-    #[cfg(test)]
+    /// Scripted engine error for tests (no GPU / network).
     #[must_use]
     pub fn scripted_err(model_slug: impl Into<String>, detail: impl Into<String>) -> Self {
         Self {
@@ -75,7 +75,6 @@ impl LocalCompletionEngine {
                 .unwrap_or_else(|e| Err(format!("local llama join: {e}")));
                 map_complete_result(result)
             }
-            #[cfg(test)]
             LocalEngineInner::Scripted(scripted) => {
                 let _ = messages;
                 map_complete_result(scripted.clone())

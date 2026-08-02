@@ -43,7 +43,7 @@ Local llama.cpp integration lives in `src/malvin_llama/` (ignored by root `kiss 
 
 ## Live transport and agent-backend tests
 
-Default `cargo nextest run` skips network and GPU paths. Opt-in live suites:
+Default `cargo nextest run` skips network and GPU paths. Opt-in live suites use `#[ignore]` plus env gates. When a live gate is **set**, missing prereqs fail the test (assert / fail-closed), not a soft skip. When a gate is **unset**, ignored bodies may return early without running live work.
 
 | Env | What it enables |
 |---|---|

@@ -17,15 +17,24 @@ use std::process::Command;
 use common::{command_output_mini_live, only_run_dir, test_home_workspace, MALVIN_TEST_CMD_TIMEOUT};
 
 #[cfg(unix)]
-fn mini_live_prereqs_met() -> bool {
+fn mini_live_gate_set() -> bool {
     std::env::var_os("MALVIN_LIVE_MINI").is_some_and(|v| v == "1")
-        && std::env::var_os("OPENROUTER_API_KEY").is_some_and(|v| !v.is_empty())
-        && Command::new("bash")
+}
+
+fn require_mini_live_prereqs_when_gate_set() {
+    assert!(
+        std::env::var_os("OPENROUTER_API_KEY").is_some_and(|v| !v.is_empty()),
+        "MALVIN_LIVE_MINI=1 requires OPENROUTER_API_KEY (fail-closed; not a soft skip)"
+    );
+    assert!(
+        Command::new("bash")
             .arg("--version")
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
             .status()
-            .is_ok_and(|s| s.success())
+            .is_ok_and(|s| s.success()),
+        "MALVIN_LIVE_MINI=1 requires bash on PATH"
+    );
 }
 
 #[cfg(unix)]
@@ -61,10 +70,10 @@ fn run_mini_live_in_workspace(args: &[&str]) -> (tempfile::TempDir, std::process
 #[test]
 #[ignore = "live OpenRouter e2e; MALVIN_LIVE_MINI=1 cargo nextest run mini_live -- --ignored"]
 fn mini_live_do_echo() {
-    if !mini_live_prereqs_met() {
-        eprintln!("skip: set MALVIN_LIVE_MINI=1 and OPENROUTER_API_KEY to run");
+    if !mini_live_gate_set() {
         return;
     }
+    require_mini_live_prereqs_when_gate_set();
     let (root, output) = run_mini_live_in_workspace(&[
         "--do",
         "--model",
@@ -88,10 +97,10 @@ fn mini_live_do_echo() {
 #[test]
 #[ignore = "live OpenRouter e2e; MALVIN_LIVE_MINI=1 cargo nextest run mini_live -- --ignored"]
 fn mini_live_inspire_run() {
-    if !mini_live_prereqs_met() {
-        eprintln!("skip: set MALVIN_LIVE_MINI=1 and OPENROUTER_API_KEY to run");
+    if !mini_live_gate_set() {
         return;
     }
+    require_mini_live_prereqs_when_gate_set();
     let (root, output) = run_mini_live_in_workspace(&[
         "inspire",
         "--model",
@@ -115,10 +124,10 @@ fn mini_live_inspire_run() {
 #[test]
 #[ignore = "live OpenRouter models listing; MALVIN_LIVE_MINI=1 cargo nextest run mini_live -- --ignored"]
 fn mini_live_models_listing() {
-    if !mini_live_prereqs_met() {
-        eprintln!("skip: set MALVIN_LIVE_MINI=1 and OPENROUTER_API_KEY to run");
+    if !mini_live_gate_set() {
         return;
     }
+    require_mini_live_prereqs_when_gate_set();
     let (_root, output) = run_mini_live_in_workspace(&["models"]);
     assert!(
         output.status.success(),
@@ -133,6 +142,5 @@ fn mini_live_models_listing() {
 #[cfg(unix)]
 #[test]
 fn mini_live_tests_compile_and_skip_without_env() {
-    assert!(!mini_live_prereqs_met() || std::env::var_os("OPENROUTER_API_KEY").is_some());
-    let _ = MALVIN_TEST_CMD_TIMEOUT;
+    let _ = (mini_live_gate_set(), MALVIN_TEST_CMD_TIMEOUT);
 }

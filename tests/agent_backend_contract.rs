@@ -6,25 +6,20 @@
 
 mod common;
 
+use common::agent_backend_helpers::{
+    finish_lifecycle, mini_backend_with_llm, mini_done_wire, restore_acp_env, run_lifecycle,
+    test_io, NO_REAL_AGENT,
+};
 use common::{acp_mock_js, cached_mock_executable, chunk_line};
-use malvin::acp::{AgentClient, AgentIoOptions, CoderPromptOptions, KpopFlowOnceArgs};
+use malvin::acp::{AgentClient, CoderPromptOptions, KpopFlowOnceArgs};
 use malvin::agent_backend::{agent_backend_run_kpop_flow, AgentBackend};
 use malvin::artifacts::{
     GitignoreBackup, MalvinChecksBackup, MalvinConfigBackup, MalvinConfigWorkspaceBackup,
     SessionDotfileBackups, SessionDotfileParts, VisionBackup,
 };
-use malvin::mini_agent::{LlmBackend, MiniAgentClient, MockScript, MockStep};
-use malvin::openrouter_transport::CompletionResponse;
-
-const NO_REAL_AGENT: &str = "MALVIN_TEST_NO_REAL_AGENT";
-
-fn mini_done_wire() -> CompletionResponse {
-    CompletionResponse {
-        content: malvin::mini_agent::protocol::format_wire_turn("- done", "MINI_DONE"),
-        usage: None,
-        reasoning: None,
-    }
-}
+use malvin::llm_transport::{LocalLlmTransport, LlmTransport};
+use malvin::local_llm::LocalCompletionEngine;
+use malvin::mini_agent::{LlmBackend, MockScript, MockStep};
 
 fn empty_backups() -> SessionDotfileBackups {
     SessionDotfileBackups::from_parts(SessionDotfileParts {
@@ -36,40 +31,13 @@ fn empty_backups() -> SessionDotfileBackups {
     })
 }
 
-const fn test_io() -> AgentIoOptions {
-    AgentIoOptions {
-        force: false,
-        no_tee: true,
-        raw_output: true,
-        show_thoughts_on_stdout: false,
-        emit_stdout_markdown: false,
-        log_full_outgoing_prompts: false,
-    }
-}
-
 fn mini_mock_backend() -> AgentBackend {
-    AgentBackend::Mini(
-        MiniAgentClient::new(
-            malvin::mini_agent::MiniLoopConfig {
-                model: "anthropic/claude-sonnet-4".into(),
-                max_http_turns: 4,
-                max_bash_execs: 128,
-                max_http_retries: 1,
-                max_transport_retries: 1,
-                max_gate_retries: 1,
-                max_shrink_passes: 0,
-                retry_strategy: malvin::mini_agent::MiniRetryStrategy::CumulativeTranscript,
-                expects_investigation: false,
-                allow_download: true,
-                mini_constraints: "constraints".into(),
-            },
-            test_io(),
-            LlmBackend::Mock(std::sync::Mutex::new(MockScript {
-                responses: vec![MockStep::Ok(mini_done_wire())],
-                call_count: 0,
-            })),
-        )
-        .expect("mini client"),
+    mini_backend_with_llm(
+        LlmBackend::Mock(std::sync::Mutex::new(MockScript {
+            responses: vec![MockStep::Ok(mini_done_wire())],
+            call_count: 0,
+        })),
+        test_io(),
     )
 }
 
@@ -86,20 +54,6 @@ fn acp_mock_backend(mock_bin: &std::path::Path) -> AgentBackend {
     ))
 }
 
-fn restore_acp_env(old_bin: Option<std::ffi::OsString>, old_no_real: Option<std::ffi::OsString>) {
-    #[allow(unsafe_code)]
-    unsafe {
-        match old_bin {
-            Some(v) => std::env::set_var("MALVIN_AGENT_ACP_BIN", v),
-            None => std::env::remove_var("MALVIN_AGENT_ACP_BIN"),
-        }
-        match old_no_real {
-            Some(v) => std::env::set_var(NO_REAL_AGENT, v),
-            None => std::env::remove_var(NO_REAL_AGENT),
-        }
-    }
-}
-
 async fn assert_prompt_requires_begin(backend: &mut AgentBackend, log: &std::path::Path, label: &str) {
     assert!(!backend.has_open_coder_session(), "{label}: closed before begin");
     let err = backend
@@ -107,24 +61,6 @@ async fn assert_prompt_requires_begin(backend: &mut AgentBackend, log: &std::pat
         .await
         .expect_err("prompt without begin");
     assert!(err.0.contains("begin_coder_session"), "{label}: {err:?}");
-}
-
-async fn run_lifecycle(backend: &mut AgentBackend, cwd: &std::path::Path, log: &std::path::Path) {
-    backend.begin_coder_session(cwd).await.expect("begin");
-    assert!(backend.has_open_coder_session());
-    backend
-        .run_coder_prompt("hello", log, "coder", CoderPromptOptions::default())
-        .await
-        .expect("prompt");
-}
-
-async fn finish_lifecycle(backend: &mut AgentBackend, expect_marker: &str) {
-    let last = backend
-        .last_coder_prompt_agent_response()
-        .expect("last");
-    assert!(last.contains(expect_marker), "last={last}");
-    backend.end_coder_session().await.expect("end");
-    assert!(!backend.has_open_coder_session());
 }
 
 #[tokio::test]
@@ -135,7 +71,6 @@ async fn agent_backend_acp_mock_lifecycle_and_parity_with_mini() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let log = tmp.path().join("prompt.log");
 
-    // Mini parity for prompt-without-begin / session flags (no ACP spawn).
     let mut mini = mini_mock_backend();
     assert_prompt_requires_begin(&mut mini, &log, "mini").await;
     run_lifecycle(&mut mini, tmp.path(), &log).await;
@@ -146,6 +81,20 @@ async fn agent_backend_acp_mock_lifecycle_and_parity_with_mini() {
     run_lifecycle(&mut acp, tmp.path(), &log).await;
     finish_lifecycle(&mut acp, "ACP_DONE").await;
     restore_acp_env(old_bin, old_no_real);
+}
+
+#[tokio::test]
+async fn agent_backend_mini_local_transport_lifecycle() {
+    let engine = LocalCompletionEngine::scripted_ok("scripted", mini_done_wire().content);
+    let mut backend = mini_backend_with_llm(
+        LlmBackend::Transport(LlmTransport::Local(LocalLlmTransport::new(engine))),
+        test_io(),
+    );
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let log = tmp.path().join("prompt.log");
+    backend.ensure_authenticated().expect("local auth");
+    run_lifecycle(&mut backend, tmp.path(), &log).await;
+    finish_lifecycle(&mut backend, "MINI_DONE").await;
 }
 
 #[tokio::test]

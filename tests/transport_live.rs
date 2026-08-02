@@ -7,31 +7,32 @@
 //!
 //! Local/GPU cases are Metal-only and stay disabled by default.
 
-fn live_transport_prereqs_met() -> bool {
+#![cfg(unix)]
+
+mod common;
+
+use common::require_openrouter_key_when_gate_set;
+
+fn live_transport_gate_set() -> bool {
     std::env::var_os("MALVIN_LIVE_TRANSPORT").is_some_and(|v| v == "1")
-        && std::env::var_os("OPENROUTER_API_KEY").is_some_and(|v| !v.is_empty())
 }
 
-fn live_local_prereqs_met() -> bool {
+fn live_local_gate_set() -> bool {
     std::env::var_os("MALVIN_LIVE_LOCAL").is_some_and(|v| v == "1")
 }
 
 #[test]
 fn transport_live_tests_compile_and_skip_without_env() {
-    assert!(
-        !live_transport_prereqs_met()
-            || std::env::var_os("OPENROUTER_API_KEY").is_some_and(|v| !v.is_empty())
-    );
-    let _ = live_local_prereqs_met();
+    let _ = (live_transport_gate_set(), live_local_gate_set());
 }
 
 #[tokio::test]
 #[ignore = "live OpenRouter LlmTransport; MALVIN_LIVE_TRANSPORT=1 OPENROUTER_API_KEY=... cargo nextest run -E 'test(transport_live)' -- --ignored"]
 async fn transport_live_openrouter_ensure_ready_and_complete() {
-    if !live_transport_prereqs_met() {
-        eprintln!("skip: set MALVIN_LIVE_TRANSPORT=1 and OPENROUTER_API_KEY to run");
+    if !live_transport_gate_set() {
         return;
     }
+    require_openrouter_key_when_gate_set("MALVIN_LIVE_TRANSPORT");
     let cfg = malvin::openrouter_transport::OpenRouterConfig::from_env(
         malvin::mini_agent::resolve_mini_model("openrouter:auto"),
     )
@@ -50,8 +51,7 @@ async fn transport_live_openrouter_ensure_ready_and_complete() {
 #[tokio::test]
 #[ignore = "live Local LlmTransport (Metal); MALVIN_LIVE_LOCAL=1 cargo nextest run -E 'test(transport_live)' -- --ignored"]
 async fn transport_live_local_ensure_ready_and_complete() {
-    if !live_local_prereqs_met() {
-        eprintln!("skip: set MALVIN_LIVE_LOCAL=1 to run real local/GPU transport");
+    if !live_local_gate_set() {
         return;
     }
     let engine = malvin::local_llm::ensure_local_engine(
