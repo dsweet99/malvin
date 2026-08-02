@@ -11,3 +11,5 @@ results/
 *.lock
 *.profraw
 .malvin/acp_spawn/
+_logs*
+**/.pytest_cache/
