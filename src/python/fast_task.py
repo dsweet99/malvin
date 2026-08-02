@@ -555,7 +555,7 @@ def ft_print_evaluation_summary(
     agent_result: dict[str, Any] | None,
     run_root: Path,
 ) -> None:
-    """Print DeepSWE-style evaluation block including ``reward:``."""
+    """Print Harbor-style evaluation block including ``reward:``."""
     click.echo("\n=== Evaluation ===")
     click.echo(f"reward: {grade_result.get('reward')}")
     click.echo(f"pass: {grade_result.get('pass')}")

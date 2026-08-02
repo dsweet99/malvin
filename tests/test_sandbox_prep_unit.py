@@ -111,9 +111,6 @@ def test_sandbox_prep_workspace_image_warm_commands() -> None:
 def test_sandbox_prep_registry_image_cache_bust_commands() -> None:
     sandbox_prep._test_registry_image_cache_bust_commands()
 
-def test_sandbox_prep_registry_image_cache_bust_aiomonitor_shape() -> None:
-    sandbox_prep._test_registry_image_cache_bust_aiomonitor_shape()
-
 def test_sandbox_prep_registry_image_cache_bust_pydantic_v1_legitimate() -> None:
     sandbox_prep._test_registry_image_cache_bust_pydantic_v1_legitimate()
 

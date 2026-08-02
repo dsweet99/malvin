@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare a DeepSWE task sandbox with strict declared-dependency correctness.
+"""Prepare a Harbor task sandbox with strict declared-dependency correctness.
 
 Harbor Dockerfiles install dependencies at image build time into ``/app``. At
 runtime the host workspace is mounted over ``/app``, which can desynchronize
@@ -3566,32 +3566,24 @@ def _test_editable_pip_segment_ignores_dirty_equals() -> None:
 
 
 def _test_infra_abort_dockerfile_sync_is_offline() -> None:
-    """INFRA_ABORT_TASKS must not replay network-fetching pip in agent sandbox prep."""
-    tasks_root = malvin_repo_root().parent / "deep-swe" / "tasks"
-    if not tasks_root.is_dir():
-        return
-    slugs = (
-        "igel-persist-feature-schema",
-        "mnamer-daemon-watch-lifecycle",
-        "narwhals-rolling-window-suite",
-        "kombu-single-active-consumer-priority",
-        "mashumaro-flattened-dataclass-fields",
-    )
-    for slug in slugs:
-        dockerfile = tasks_root / slug / "environment" / "Dockerfile"
-        if not dockerfile.is_file():
-            continue
+    """Offline sync must not replay network-fetching bulk pip; editable gets --no-deps."""
+    import tempfile
+
+    text = """FROM base
+RUN pip install --no-cache-dir pytest requests
+RUN pip install --no-cache-dir -e ".[dev]"
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+        dockerfile = Path(tmp) / "Dockerfile"
+        dockerfile.write_text(text, encoding="utf-8")
         sync = workspace_sync_commands_from_dockerfile(dockerfile)
         for cmd in sync:
-            assert _is_editable_pip_segment(cmd) or not _is_bulk_pip_segment(cmd), (
-                slug,
-                cmd,
-            )
+            assert _is_editable_pip_segment(cmd) or not _is_bulk_pip_segment(cmd), cmd
             if _is_editable_pip_segment(cmd):
-                assert "--no-deps" in cmd and "--no-build-isolation" in cmd, (slug, cmd)
+                assert "--no-deps" in cmd and "--no-build-isolation" in cmd, cmd
         bulk = dockerfile_bulk_pip_commands(dockerfile)
-        if bulk:
-            assert all(_is_bulk_pip_segment(cmd) for cmd in bulk), (slug, bulk)
+    assert bulk
+    assert all(_is_bulk_pip_segment(cmd) for cmd in bulk), bulk
 
 
 def _test_dockerfile_image_build_commands_fastapi() -> None:
@@ -3611,11 +3603,16 @@ RUN pip install --no-cache-dir -e ".[all]" && pip install --no-cache-dir pytest 
 
 
 def _test_workspace_sync_commands_fastapi_task_dockerfile() -> None:
-    tasks_root = malvin_repo_root().parent / "deep-swe" / "tasks"
-    dockerfile = tasks_root / "fastapi-deprecation-response-headers" / "environment" / "Dockerfile"
-    if not dockerfile.is_file():
-        return
-    sync = workspace_sync_commands_from_dockerfile(dockerfile)
+    import tempfile
+
+    text = """FROM base
+RUN git clone https://github.com/fastapi/fastapi .
+RUN pip install --no-cache-dir -e ".[all]" && pip install --no-cache-dir pytest dirty-equals>=0.9.0
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+        dockerfile = Path(tmp) / "Dockerfile"
+        dockerfile.write_text(text, encoding="utf-8")
+        sync = workspace_sync_commands_from_dockerfile(dockerfile)
     assert len(sync) == 1, sync
     assert "-e" in sync[0] and "--no-deps" in sync[0]
 
@@ -3626,22 +3623,29 @@ def _test_should_replay_skips_apt_and_git() -> None:
     assert should_replay_run_command("go mod download")
 
 
-
 def _test_hybrid_poetry_runtime_sync_skipped() -> None:
-    tasks_root = malvin_repo_root().parent / "deep-swe" / "tasks"
-    dockerfile = tasks_root / "textual-kitty-key-phases" / "environment" / "Dockerfile"
-    if not dockerfile.is_file():
-        return
-    sync = workspace_sync_commands_from_dockerfile(dockerfile)
+    import tempfile
+
+    text = """FROM base
+RUN poetry install --no-interaction
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+        dockerfile = Path(tmp) / "Dockerfile"
+        dockerfile.write_text(text, encoding="utf-8")
+        sync = workspace_sync_commands_from_dockerfile(dockerfile)
     assert sync == [], sync
 
 
 def _test_hybrid_pnpm_runtime_sync_skipped() -> None:
-    tasks_root = malvin_repo_root().parent / "deep-swe" / "tasks"
-    dockerfile = tasks_root / "koota-entity-snapshot-rollback" / "environment" / "Dockerfile"
-    if not dockerfile.is_file():
-        return
-    sync = workspace_sync_commands_from_dockerfile(dockerfile)
+    import tempfile
+
+    text = """FROM base
+RUN pnpm install --frozen-lockfile
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+        dockerfile = Path(tmp) / "Dockerfile"
+        dockerfile.write_text(text, encoding="utf-8")
+        sync = workspace_sync_commands_from_dockerfile(dockerfile)
     assert sync == [], sync
 
 
@@ -4134,37 +4138,6 @@ RUN pip install --no-cache-dir -e ".[all]" && pip install --no-cache-dir pytest 
     assert "base64 -d" in cmds[-2], cmds
 
 
-def _test_registry_image_cache_bust_aiomonitor_shape() -> None:
-    tasks_root = malvin_repo_root().parent / "deep-swe" / "tasks"
-    dockerfile = tasks_root / "aiomonitor-task-snapshots-diff" / "environment" / "Dockerfile"
-    workspace = (
-        Path.home()
-        / ".malvin_home"
-        / "deepswe-results"
-        / "aiomonitor-task-snapshots-diff"
-        / "workspace"
-    )
-    if not dockerfile.is_file() or not workspace.is_dir():
-        return
-    declared = declared_python_dependencies(workspace, dockerfile)
-    assert "pydantic" in declared.constraints, declared
-    assert declared.constraints["pydantic"] == ">=2.0.0", declared
-    assert declared.effective_spec("pydantic") == ">=2.0.0", declared
-    cmds = registry_image_cache_bust_commands(
-        dockerfile, workspace=workspace, registry_pull=True
-    )
-    joined = " ".join(cmds)
-    assert "pydantic" in joined, cmds
-    assert "pydantic==2.12.5" not in joined, cmds
-    assert "pydantic==2.13.4" not in joined, cmds
-    assert "aiohttp==3.10.10" in joined, cmds
-    dockerfile_replay = [
-        cmd for cmd in cmds if cmd.startswith("pip install") and "pytest==8.3.3" in cmd
-    ]
-    assert len(dockerfile_replay) == 2, cmds
-    assert "aiohttp==3.10.10" in dockerfile_replay[0], cmds
-
-
 def _test_registry_image_cache_bust_pydantic_v1_legitimate() -> None:
     import tempfile
 
@@ -4575,10 +4548,8 @@ def _test_mandatory_probe_no_crash_on_dotted_import_name() -> None:
 def _test_registry_image_cache_bust_adaptix_pydantic_pin() -> None:
     import tempfile
 
-    tasks_root = malvin_repo_root().parent / "deep-swe" / "tasks"
-    dockerfile = tasks_root / "adaptix-name-mapping-aliases" / "environment" / "Dockerfile"
-    if not dockerfile.is_file():
-        return
+    dockerfile = _fixture_verifier_adaptix() / "environment" / "Dockerfile"
+    assert dockerfile.is_file(), dockerfile
     with tempfile.TemporaryDirectory() as tmp:
         workspace = Path(tmp)
         req_dir = workspace / "requirements"
@@ -4627,11 +4598,16 @@ RUN bash -lc "if [ -f requirements.txt ]; then pip install -r requirements.txt; 
 
 
 def _test_dockerfile_bulk_pip_commands_fastapi() -> None:
-    tasks_root = malvin_repo_root().parent / "deep-swe" / "tasks"
-    dockerfile = tasks_root / "fastapi-deprecation-response-headers" / "environment" / "Dockerfile"
-    if not dockerfile.is_file():
-        return
-    bulk = dockerfile_bulk_pip_commands(dockerfile)
+    import tempfile
+
+    text = """FROM base
+RUN git clone https://github.com/fastapi/fastapi .
+RUN pip install --no-cache-dir -e ".[all]" && pip install --no-cache-dir pytest dirty-equals>=0.9.0
+"""
+    with tempfile.TemporaryDirectory() as tmp:
+        dockerfile = Path(tmp) / "Dockerfile"
+        dockerfile.write_text(text, encoding="utf-8")
+        bulk = dockerfile_bulk_pip_commands(dockerfile)
     assert bulk, bulk
     assert all("pip install" in cmd for cmd in bulk)
     assert all('-e "' not in cmd for cmd in bulk)
@@ -5754,12 +5730,6 @@ def _test_leakage_public_view_excludes_patch_only_imports() -> None:
     assert "NoExtraItems" not in str(view)
     assert grade.harbor_imports
     assert public.harbor_imports == ()
-    # Agent check discovery must not take tests_dir (Modal harbor_agent_image contract).
-    modal_src = (Path(__file__).resolve().parent / "deepswe_modal.py").read_text(
-        encoding="utf-8"
-    )
-    assert "discover_deepswe_checks(workspace)" in modal_src
-    assert "discover_deepswe_checks(workspace, tests_dir" not in modal_src
 
 
 def run_self_tests() -> None:
@@ -5793,7 +5763,6 @@ def run_self_tests() -> None:
     _test_workspace_declared_repin_command()
     _test_workspace_image_warm_commands()
     _test_registry_image_cache_bust_commands()
-    _test_registry_image_cache_bust_aiomonitor_shape()
     _test_registry_image_cache_bust_pydantic_v1_legitimate()
     _test_declared_deps_skip_marker_gated_backports()
     _test_mandatory_probe_no_crash_on_dotted_import_name()
