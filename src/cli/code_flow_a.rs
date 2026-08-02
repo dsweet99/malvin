@@ -3,6 +3,18 @@ use super::SharedOpts;
 #[derive(Debug, Clone, Copy)]
 pub struct WorkflowCliOptions {
     pub force: bool,
+    pub no_kpop: bool,
+}
+
+impl WorkflowCliOptions {
+    /// Build workflow options from shared CLI flags.
+    #[must_use]
+    pub const fn from_shared(shared: &SharedOpts) -> Self {
+        Self {
+            force: !shared.no_force,
+            no_kpop: shared.no_kpop,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -23,21 +35,21 @@ pub const fn default_workflow_stdout_tee_flags(emit_stdout_markdown: bool) -> Ag
 }
 
 pub fn prepare_prompt_store(
-    _workflow: WorkflowCliOptions,
+    workflow: WorkflowCliOptions,
 ) -> Result<crate::prompts::PromptStore, String> {
     use crate::prompts::{PromptError, PromptStore};
-    let store = PromptStore::default_store();
+    let store = PromptStore::default_store().with_no_kpop(workflow.no_kpop);
     store.ensure_defaults().map_err(|e: PromptError| e.0)?;
     store.validate_required().map_err(|e: PromptError| e.0)?;
     Ok(store)
 }
 
 pub fn prepare_kpop_prompt_store(
-    _workflow: WorkflowCliOptions,
+    workflow: WorkflowCliOptions,
     require_mbc2: bool,
 ) -> Result<crate::prompts::PromptStore, String> {
     use crate::prompts::{PromptError, PromptStore};
-    let store = PromptStore::default_store();
+    let store = PromptStore::default_store().with_no_kpop(workflow.no_kpop);
     store.ensure_defaults().map_err(|e: PromptError| e.0)?;
     store
         .validate_kpop_prompts(crate::prompts::KpopPromptValidation { require_mbc2 })

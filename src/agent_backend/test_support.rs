@@ -134,6 +134,7 @@ pub fn shared_opts(mini: bool) -> SharedOpts {
         mini_max_shrink_passes: 0,
         no_download: false,
         git: false,
+        no_kpop: false,
     }
 }
 

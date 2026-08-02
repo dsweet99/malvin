@@ -47,7 +47,7 @@ fn build_agent_backend_selects_mini_for_openrouter_model() {
     install_openrouter_test_key();
     let backend = build_agent_backend(
         &openrouter_shared_opts(),
-        WorkflowCliOptions { force: false },
+        WorkflowCliOptions { force: false, no_kpop: false },
         false,
         "code",
     )

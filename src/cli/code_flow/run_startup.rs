@@ -71,10 +71,7 @@ mod tests {
         let old = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(tmp.path()).expect("chdir");
         let prepared = prepare_code_kpop_run(
-            crate::cli::WorkflowCliOptions {
-                force: false,
-                
-            },
+            crate::cli::WorkflowCliOptions { force: false, no_kpop: false },
             "plan.md",
             crate::config::DEFAULT_CLI_MODEL,
             false)

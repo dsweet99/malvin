@@ -18,6 +18,7 @@ pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD, "kpop_program.md"];
 
 pub const DEFAULT_PROMPTS: &[&str] = &[
     "kpop_common.md",
+    "no_kpop_common.md",
     "kpop_block.md",
     "mbc2.md",
     "kpop_program.md",
@@ -175,7 +176,7 @@ mod router_header_embed_tests {
         )
         .expect("run");
         assert!(!run.combined.contains("{{"));
-        let store = prepare_router_prompt_store().expect("store");
+        let store = prepare_router_prompt_store(false).expect("store");
         let group = build_router_kpop_group_prompt(RouterKpopGroupPromptInput {
             store: &store,
             artifacts: &artifacts,

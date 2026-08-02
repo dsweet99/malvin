@@ -22,6 +22,7 @@ fn default_mbc2_prompt(name: &str) -> Option<&'static str> {
 fn default_kpop_prompt(name: &str) -> Option<&'static str> {
     default_mbc2_prompt(name).or_else(|| match name {
         "kpop.md" | "kpop_common.md" => Some(include_str!("../../default_prompts/kpop_common.md")),
+        "no_kpop_common.md" => Some(include_str!("../../default_prompts/no_kpop_common.md")),
         "kpop_program.md" => Some(include_str!("../../default_prompts/kpop_program.md")),
         "kpop_summarize.md" => Some(include_str!("../../default_prompts/kpop_summarize.md")),
         "kpop_block.md" => Some(include_str!("../../default_prompts/kpop_block.md")),
@@ -75,5 +76,11 @@ mod tests {
         assert!(default_kpop_prompt("mbc2.md").is_some());
         assert!(default_kpop_prompt("missing.md").is_none());
         assert!(default_file("code_constraints.md").is_some());
+        assert!(default_file("no_kpop_common.md").is_some());
+        assert!(
+            default_file("no_kpop_common.md")
+                .unwrap()
+                .contains("deliberately unusual keyword")
+        );
     }
 }

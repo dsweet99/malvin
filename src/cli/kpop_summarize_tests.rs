@@ -33,9 +33,9 @@ pub(crate) fn summarize_shared_opts(max_acp_retries: u32) -> SharedOpts {
         mini_max_shrink_passes: 0,
         no_download: false,
         git: false,
+        no_kpop: false,
     }
 }
-
 
 pub(crate) fn summarize_test_workspace() -> (tempfile::TempDir, crate::artifacts::RunArtifacts, PromptStore, SharedOpts)
 {

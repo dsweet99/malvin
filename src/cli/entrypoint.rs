@@ -122,9 +122,7 @@ pub(crate) fn dispatch_command(
                 run_tidy(
                     tidy,
                     &shared,
-                    WorkflowCliOptions {
-                        force: !shared.no_force,
-                    },
+                    WorkflowCliOptions::from_shared(&shared),
                 )
             })
         }
@@ -146,9 +144,7 @@ pub fn dispatch_do_workflow(
         run_do(
             do_args,
             shared,
-            WorkflowCliOptions {
-                force: !shared.no_force,
-            },
+            WorkflowCliOptions::from_shared(shared),
         )
     })
 }
@@ -173,9 +169,7 @@ pub fn dispatch_default_route(
                 max_loops,
             },
             shared,
-            WorkflowCliOptions {
-                force: !shared.no_force,
-            },
+            WorkflowCliOptions::from_shared(shared),
         )
     })
 }

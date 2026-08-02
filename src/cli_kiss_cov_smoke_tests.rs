@@ -62,7 +62,8 @@ fn smoke_cov_cli_cli_units_1b() {
         mini_max_shrink_passes: 0,
         no_download: false,
         git: false,
-    };
+            no_kpop: false,
+        };
     let _ = shared.model;
 }
 

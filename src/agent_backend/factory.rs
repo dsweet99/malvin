@@ -112,7 +112,7 @@ mod tests {
     fn build_agent_backend_selects_acp_when_mini_false() {
         let backend = build_agent_backend(
             &shared_opts(false),
-            WorkflowCliOptions { force: false },
+            WorkflowCliOptions { force: false, no_kpop: false },
             false,
             "code",
         )
@@ -125,7 +125,7 @@ mod tests {
         install_openrouter_test_key();
         let backend = build_agent_backend_with_tee(
             &shared_opts(true),
-            WorkflowCliOptions { force: false },
+            WorkflowCliOptions { force: false, no_kpop: false },
             AgentStdoutTeeFlags {
                 emit_stdout_markdown: false,
                 raw_output: true,

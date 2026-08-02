@@ -61,10 +61,7 @@ pub fn tidy_test_session(label: &str) -> TidyTestSession {
     std::fs::write(&plan, label).expect("write plan");
     let artifacts =
         crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
-    let workflow = crate::cli::WorkflowCliOptions {
-        force: false,
-        
-    };
+    let workflow = crate::cli::WorkflowCliOptions { force: false, no_kpop: false };
     let store = crate::cli::prepare_kpop_prompt_store(workflow, true).expect("store");
     let mut context = crate::workflow_context::workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, false);
     context.insert(
