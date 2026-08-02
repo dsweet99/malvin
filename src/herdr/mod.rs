@@ -7,7 +7,7 @@ mod lifecycle;
 mod request;
 mod send;
 
-pub use lifecycle::{notify_run_end, notify_run_start, notify_working};
+pub use lifecycle::{notify_reclaim, notify_run_end, notify_run_start, notify_working};
 
 #[cfg(test)]
 pub(crate) use lifecycle::{reset_session_for_test, session_active_for_test};
@@ -21,6 +21,7 @@ mod kiss_cov {
     #[test]
     fn kiss_cov_public_entrypoints() {
         let _ = super::notify_run_start;
+        let _ = super::notify_reclaim;
         let _ = super::notify_working;
         let _ = super::notify_run_end;
         let _ = crate::herdr::env::HerdrEnv::from_os_env;
@@ -30,6 +31,7 @@ mod kiss_cov {
         let _ = crate::herdr::request::report_agent_session;
         let _ = crate::herdr::request::report_agent;
         let _ = crate::herdr::request::release_agent;
+        let _ = crate::herdr::request::clear_agent_authority;
         let _ = crate::herdr::request::report_metadata_sparse;
         let _ = crate::herdr::send::send_request;
         let _ = crate::herdr::send::SOCKET_TIMEOUT;

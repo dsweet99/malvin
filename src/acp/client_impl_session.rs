@@ -110,6 +110,8 @@ impl AgentClient {
                     crate::acp::acp_session_set_run_timing(&mut s, self.timing.clone());
                     self.coder_session_cwd = Some(crate::acp::resolve_acp_session_cwd(cwd)?);
                     self.coder_session = Some(s);
+                    // Cursor's herdr hook may claim the pane on sessionStart; reclaim as malvin.
+                    crate::herdr::notify_reclaim();
                     return Ok(());
                 }
                 Err(e) => {

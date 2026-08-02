@@ -5,7 +5,8 @@ use std::sync::{Mutex, OnceLock};
 
 use super::env::HerdrEnv;
 use super::request::{
-    next_seq, release_agent, report_agent, report_agent_session, report_metadata_sparse,
+    clear_agent_authority, next_seq, release_agent, report_agent, report_agent_session,
+    report_metadata_sparse,
 };
 use super::send::send_request;
 
@@ -40,6 +41,11 @@ pub fn notify_run_start(run_dir: &Path) {
     let _ = std::panic::catch_unwind(|| notify_run_start_inner(run_dir));
 }
 
+/// Re-bind after an ACP/coder session starts (cursor hook may have stolen authority).
+pub fn notify_reclaim() {
+    let _ = std::panic::catch_unwind(notify_reclaim_inner);
+}
+
 fn notify_run_start_inner(run_dir: &Path) {
     if !live_io_allowed() {
         return;
@@ -49,16 +55,32 @@ fn notify_run_start_inner(run_dir: &Path) {
     };
     let session_id = run_dir_session_id(run_dir);
     activate(&env, session_id.as_deref());
-    emit_start_reports(&env, session_id.as_deref());
+    emit_bind_reports(&env, session_id.as_deref());
+}
+
+fn notify_reclaim_inner() {
+    if !live_io_allowed() {
+        return;
+    }
+    let Some(snapshot) = active_snapshot() else {
+        return;
+    };
+    let env = HerdrEnv {
+        socket_path: snapshot.0,
+        pane_id: snapshot.1,
+    };
+    emit_bind_reports(&env, snapshot.2.as_deref());
 }
 
 fn run_dir_session_id(run_dir: &Path) -> Option<String> {
     run_dir.file_name().and_then(|s| s.to_str()).map(str::to_string)
 }
 
-fn emit_start_reports(env: &HerdrEnv, session_id: Option<&str>) {
+fn emit_bind_reports(env: &HerdrEnv, session_id: Option<&str>) {
     let pane = env.pane_id.as_str();
     let sock = env.socket_path.as_path();
+    // Cursor ACP sessionStart hooks install full-lifecycle authority; clear first so malvin can bind.
+    send_request(sock, &clear_agent_authority(pane, next_seq()));
     send_request(sock, &report_agent_session(pane, session_id, next_seq()));
     send_request(sock, &report_agent(pane, "working", session_id, next_seq()));
     send_request(sock, &report_metadata_sparse(pane, session_id, next_seq()));
@@ -86,10 +108,12 @@ fn notify_working_inner() {
     let Some(snapshot) = active_snapshot() else {
         return;
     };
-    send_request(
-        &snapshot.0,
-        &report_agent(&snapshot.1, "working", snapshot.2.as_deref(), next_seq()),
-    );
+    let env = HerdrEnv {
+        socket_path: snapshot.0,
+        pane_id: snapshot.1,
+    };
+    // Re-assert bind (including clear) so cursor hooks cannot keep the pane indefinitely.
+    emit_bind_reports(&env, snapshot.2.as_deref());
 }
 
 /// Report `idle` then `pane.release_agent`. Idempotent.
@@ -166,8 +190,8 @@ pub(crate) fn session_active_for_test() -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        activate, clear_session, live_io_allowed, notify_run_end, notify_run_start, notify_working,
-        reset_session_for_test, session_active_for_test,
+        activate, clear_session, live_io_allowed, notify_reclaim, notify_run_end, notify_run_start,
+        notify_working, reset_session_for_test, session_active_for_test,
     };
     use crate::herdr::env::HerdrEnv;
     use std::path::PathBuf;
@@ -179,6 +203,7 @@ mod tests {
         assert!(!session_active_for_test());
         let _ = live_io_allowed();
         let _ = notify_working;
+        let _ = notify_reclaim;
         let _ = notify_run_end;
     }
 

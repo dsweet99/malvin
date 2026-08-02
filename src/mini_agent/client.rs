@@ -125,6 +125,7 @@ impl MiniAgentClient {
             section_shape_nudged: false,
         });
         self.prompt_counter = 0;
+        crate::herdr::notify_reclaim();
         Ok(())
     }
 

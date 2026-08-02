@@ -2,7 +2,7 @@
 
 #![allow(unsafe_code)]
 
-use crate::herdr::{notify_run_end, notify_run_start, notify_working};
+use crate::herdr::{notify_reclaim, notify_run_end, notify_run_start, notify_working};
 use crate::herdr::{reset_session_for_test, session_active_for_test};
 use serde_json::Value;
 use std::io::{BufRead, BufReader, Write};
@@ -36,11 +36,12 @@ fn install_test_herdr_env(sock: &Path) -> [Option<std::ffi::OsString>; 4] {
         std::env::var_os("HERDR_PANE_ID"),
     ];
     // SAFETY: exclusive under `herdr_test_env_lock`.
+    // Set socket/pane/env before enabling live I/O so parallel tests cannot race to the real herdr socket.
     unsafe {
-        std::env::set_var("MALVIN_TEST_HERDR_IO", "1");
-        std::env::set_var("HERDR_ENV", "1");
         std::env::set_var("HERDR_SOCKET_PATH", sock);
         std::env::set_var("HERDR_PANE_ID", "test-pane");
+        std::env::set_var("HERDR_ENV", "1");
+        std::env::set_var("MALVIN_TEST_HERDR_IO", "1");
     }
     old
 }
@@ -55,7 +56,7 @@ fn restore_test_herdr_env(old: [Option<std::ffi::OsString>; 4]) {
 fn spawn_method_collector(listener: UnixListener) -> Receiver<String> {
     let (tx, rx) = mpsc::channel::<String>();
     thread::spawn(move || {
-        for _ in 0..8 {
+        for _ in 0..16 {
             let Ok((mut conn, _)) = listener.accept() else {
                 break;
             };
@@ -96,6 +97,7 @@ fn collect_until_release(rx: &Receiver<String>) -> Vec<String> {
 
 fn assert_lifecycle_methods(methods: &[String]) {
     for required in [
+        "pane.clear_agent_authority",
         "pane.report_agent_session",
         "pane.report_agent",
         "pane.release_agent",
@@ -106,11 +108,24 @@ fn assert_lifecycle_methods(methods: &[String]) {
             "missing {required}: {methods:?}"
         );
     }
+    let clear_at = methods
+        .iter()
+        .position(|m| m == "pane.clear_agent_authority")
+        .expect("clear");
+    let session_at = methods
+        .iter()
+        .position(|m| m == "pane.report_agent_session")
+        .expect("session");
+    assert!(
+        clear_at < session_at,
+        "clear_agent_authority must precede report_agent_session: {methods:?}"
+    );
 }
 
 fn run_lifecycle_against_socket(run_dir: &Path) -> Vec<String> {
     notify_run_start(run_dir);
     assert!(session_active_for_test());
+    notify_reclaim();
     notify_working();
     notify_run_end();
     assert!(!session_active_for_test());

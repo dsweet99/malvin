@@ -66,6 +66,19 @@ pub fn release_agent(pane_id: &str, seq: u64) -> Value {
     )
 }
 
+/// Drop foreign/hook agent authority on the pane before malvin rebinds.
+#[must_use]
+pub fn clear_agent_authority(pane_id: &str, seq: u64) -> Value {
+    envelope(
+        "pane.clear_agent_authority",
+        json!({
+            "pane_id": pane_id,
+            "source": SOURCE,
+            "seq": seq,
+        }),
+    )
+}
+
 #[must_use]
 pub fn report_metadata_sparse(pane_id: &str, title: Option<&str>, seq: u64) -> Value {
     let mut params = json!({
@@ -91,7 +104,8 @@ fn envelope(method: &str, params: Value) -> Value {
 #[cfg(test)]
 mod tests {
     use super::{
-        release_agent, report_agent, report_agent_session, report_metadata_sparse, AGENT, SOURCE,
+        release_agent, report_agent, report_agent_session, report_metadata_sparse,
+        clear_agent_authority, AGENT, SOURCE,
     };
 
     #[test]
@@ -109,6 +123,11 @@ mod tests {
 
         let release = release_agent("p1", 9);
         assert_eq!(release["method"], "pane.release_agent");
+
+        let clear = clear_agent_authority("p1", 11);
+        assert_eq!(clear["method"], "pane.clear_agent_authority");
+        assert_eq!(clear["params"]["source"], SOURCE);
+        assert_eq!(clear["params"]["pane_id"], "p1");
 
         let meta = report_metadata_sparse("p1", Some("title"), 10);
         assert_eq!(meta["method"], "pane.report_metadata");
