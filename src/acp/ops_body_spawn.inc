@@ -58,6 +58,12 @@ pub(crate) fn resolve_acp_session_cwd(cwd: &Path) -> Result<PathBuf, AgentError>
     Ok(base.canonicalize().unwrap_or(base))
 }
 
+/// Cursor `agent --model` wants a provider slug (`auto`), not `cursor:auto`.
+pub(crate) fn acp_agent_cli_model(model: &str) -> Option<String> {
+    let slug = crate::model_id::provider_slug(model.trim());
+    (!slug.is_empty()).then_some(slug)
+}
+
 pub(crate) async fn spawn_agent_acp_session(client: &AgentClient, cwd: &Path) -> Result<AcpSession, AgentError> {
     let bin = resolve_agent_bin();
     if bin.is_none() && test_no_real_agent_enabled() {
@@ -68,8 +74,7 @@ pub(crate) async fn spawn_agent_acp_session(client: &AgentClient, cwd: &Path) ->
     }
     let cwd = resolve_acp_session_cwd(cwd)?;
     let rpc_secs = crate::support_paths::acp_rpc_timeout_secs_from_env();
-    let model = client.model.trim();
-    let model_opt = (!model.is_empty()).then_some(model);
+    let model = acp_agent_cli_model(&client.model);
     let mut session = AcpSession::spawn(AcpSpawnArgs {
         cwd: &cwd,
         bin_override: bin.as_deref(),
@@ -79,7 +84,7 @@ pub(crate) async fn spawn_agent_acp_session(client: &AgentClient, cwd: &Path) ->
         acp_verbose: false,
         george_acp_lane: None,
         ui_idle_notify: None,
-        model: model_opt,
+        model: model.as_deref(),
         force: client.io.force,
         tee_trace_stdout: !client.io.no_tee,
         raw_output: client.io.raw_output,
@@ -105,6 +110,11 @@ mod ops_body_spawn_kiss {
         let _ = has_api_key();
         let _ = auth_probe(&["/bin/true"]);
         let _ = cursor_cli_auth_established();
+        let _ = spawn_agent_acp_session;
+        let _ = acp_agent_cli_model;
+        assert_eq!(acp_agent_cli_model("cursor:auto").as_deref(), Some("auto"));
+        assert_eq!(acp_agent_cli_model("auto").as_deref(), Some("auto"));
+        assert_eq!(acp_agent_cli_model("").as_deref(), None);
     }
 
     #[test]

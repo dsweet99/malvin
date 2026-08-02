@@ -1,7 +1,10 @@
 use std::time::Duration;
 
 const DEFAULT_BASE_URL: &str = "https://openrouter.ai/api/v1";
-const DEFAULT_REQUEST_TIMEOUT_SECS: u64 = 45;
+/// Default HTTP timeout for OpenRouter chat completions.
+/// Free-tier / long-reasoning models often need well over a minute for a single inspire-style reply;
+/// a short timeout aborts mid-body (`error decoding response body`) and burns live budgets on retries.
+const DEFAULT_REQUEST_TIMEOUT_SECS: u64 = 240;
 /// Default completion cap. Uncapped provider defaults (often 65536) can fail when
 /// account credit cannot reserve that many tokens.
 const DEFAULT_MAX_TOKENS: u32 = 4096;

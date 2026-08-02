@@ -121,5 +121,8 @@ fn kiss_cov_unix_process_group_teardown_fns() {
 fn kiss_cov_ops_body_spawn_remaining() {
     let _ = super::cursor_cli_auth_established();
     let _ = super::resolve_agent_bin();
+    let _ = super::spawn_agent_acp_session;
+    let _ = super::acp_agent_cli_model;
+    assert_eq!(super::acp_agent_cli_model("cursor:auto").as_deref(), Some("auto"));
 }
 
