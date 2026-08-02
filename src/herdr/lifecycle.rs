@@ -5,10 +5,10 @@ use std::sync::{Mutex, OnceLock};
 
 use super::env::HerdrEnv;
 use super::request::{
-    clear_agent_authority, next_seq, release_agent, report_agent, report_agent_session,
+    clear_agent_authority, clear_metadata_teardown, next_seq, report_agent, report_agent_session,
     report_metadata_sparse,
 };
-use super::send::send_request;
+use super::send::{send_request, send_request_retry};
 
 #[derive(Debug, Default)]
 struct Session {
@@ -108,15 +108,18 @@ fn notify_working_inner() {
     let Some(snapshot) = active_snapshot() else {
         return;
     };
-    let env = HerdrEnv {
-        socket_path: snapshot.0,
-        pane_id: snapshot.1,
-    };
-    // Re-assert bind (including clear) so cursor hooks cannot keep the pane indefinitely.
-    emit_bind_reports(&env, snapshot.2.as_deref());
+    // Pulse only: start/reclaim own full bind; avoid re-clearing authority on every tool pulse.
+    send_request(
+        &snapshot.0,
+        &report_agent(&snapshot.1, "working", snapshot.2.as_deref(), next_seq()),
+    );
 }
 
-/// Report `idle` then `pane.release_agent`. Idempotent.
+/// Report `idle` then clear display metadata. Idempotent; retries if a prior end failed to clear.
+///
+/// Deliberately does **not** call `pane.release_agent`: release leaves `agent_status=unknown`,
+/// which keeps the activity presentation sticky. Staying bound as `idle` matches the required
+/// post-run state; the next start still `clear_agent_authority` before rebinding.
 pub fn notify_run_end() {
     let _ = std::panic::catch_unwind(notify_run_end_inner);
 }
@@ -126,14 +129,17 @@ fn notify_run_end_inner() {
         clear_session();
         return;
     }
-    let Some(snapshot) = take_active_snapshot() else {
+    let Some(snapshot) = take_teardown_snapshot() else {
         return;
     };
-    send_request(
-        &snapshot.0,
-        &report_agent(&snapshot.1, "idle", snapshot.2.as_deref(), next_seq()),
-    );
-    send_request(&snapshot.0, &release_agent(&snapshot.1, next_seq()));
+    let idle = report_agent(&snapshot.1, "idle", snapshot.2.as_deref(), next_seq());
+    let clear_meta = clear_metadata_teardown(&snapshot.1, next_seq());
+    let idle_ok = send_request_retry(&snapshot.0, &idle);
+    let clear_ok = send_request_retry(&snapshot.0, &clear_meta);
+    if idle_ok && clear_ok {
+        clear_session();
+    }
+    // If either send failed, keep pane credentials so a later `notify_run_end` can retry.
 }
 
 type Snapshot = (PathBuf, String, Option<String>);
@@ -152,11 +158,12 @@ fn active_snapshot() -> Option<Snapshot> {
     ))
 }
 
-fn take_active_snapshot() -> Option<Snapshot> {
+/// Snapshot for teardown: active bind, or retained credentials after a failed prior end.
+fn take_teardown_snapshot() -> Option<Snapshot> {
     let mut guard = session_mutex()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    if !guard.active {
+    if guard.pane_id.is_empty() || guard.socket_path.as_os_str().is_empty() {
         return None;
     }
     guard.active = false;
@@ -185,6 +192,14 @@ pub(crate) fn session_active_for_test() -> bool {
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .active
+}
+
+#[cfg(test)]
+pub(crate) fn session_has_binding_for_test() -> bool {
+    let guard = session_mutex()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    !guard.pane_id.is_empty() && !guard.socket_path.as_os_str().is_empty()
 }
 
 #[cfg(test)]

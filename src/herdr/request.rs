@@ -53,19 +53,6 @@ pub fn report_agent(pane_id: &str, state: &str, agent_session_id: Option<&str>, 
     envelope("pane.report_agent", params)
 }
 
-#[must_use]
-pub fn release_agent(pane_id: &str, seq: u64) -> Value {
-    envelope(
-        "pane.release_agent",
-        json!({
-            "pane_id": pane_id,
-            "source": SOURCE,
-            "agent": AGENT,
-            "seq": seq,
-        }),
-    )
-}
-
 /// Drop foreign/hook agent authority on the pane before malvin rebinds.
 #[must_use]
 pub fn clear_agent_authority(pane_id: &str, seq: u64) -> Value {
@@ -93,6 +80,21 @@ pub fn report_metadata_sparse(pane_id: &str, title: Option<&str>, seq: u64) -> V
     envelope("pane.report_metadata", params)
 }
 
+/// Clear display-only metadata so a finished run does not leave a stale agent presentation.
+#[must_use]
+pub fn clear_metadata_teardown(pane_id: &str, seq: u64) -> Value {
+    envelope(
+        "pane.report_metadata",
+        json!({
+            "pane_id": pane_id,
+            "source": SOURCE,
+            "seq": seq,
+            "clear_display_agent": true,
+            "clear_title": true,
+        }),
+    )
+}
+
 fn envelope(method: &str, params: Value) -> Value {
     json!({
         "id": next_request_id(),
@@ -104,8 +106,8 @@ fn envelope(method: &str, params: Value) -> Value {
 #[cfg(test)]
 mod tests {
     use super::{
-        release_agent, report_agent, report_agent_session, report_metadata_sparse,
-        clear_agent_authority, AGENT, SOURCE,
+        clear_agent_authority, clear_metadata_teardown, report_agent, report_agent_session,
+        report_metadata_sparse, AGENT, SOURCE,
     };
 
     #[test]
@@ -121,9 +123,6 @@ mod tests {
         assert_eq!(working["method"], "pane.report_agent");
         assert_eq!(working["params"]["state"], "working");
 
-        let release = release_agent("p1", 9);
-        assert_eq!(release["method"], "pane.release_agent");
-
         let clear = clear_agent_authority("p1", 11);
         assert_eq!(clear["method"], "pane.clear_agent_authority");
         assert_eq!(clear["params"]["source"], SOURCE);
@@ -133,5 +132,10 @@ mod tests {
         assert_eq!(meta["method"], "pane.report_metadata");
         assert_eq!(meta["params"]["display_agent"], AGENT);
         assert_eq!(meta["params"]["title"], "title");
+
+        let clear_meta = clear_metadata_teardown("p1", 12);
+        assert_eq!(clear_meta["method"], "pane.report_metadata");
+        assert_eq!(clear_meta["params"]["clear_display_agent"], true);
+        assert_eq!(clear_meta["params"]["clear_title"], true);
     }
 }

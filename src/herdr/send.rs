@@ -15,7 +15,13 @@ pub fn send_request(socket_path: &Path, request: &Value) {
     let _ = send_request_result(socket_path, request);
 }
 
-fn send_request_result(socket_path: &Path, request: &Value) -> Result<(), ()> {
+/// Best-effort send with one immediate retry on failure (teardown needs this).
+pub(crate) fn send_request_retry(socket_path: &Path, request: &Value) -> bool {
+    send_request_result(socket_path, request).is_ok()
+        || send_request_result(socket_path, request).is_ok()
+}
+
+pub(crate) fn send_request_result(socket_path: &Path, request: &Value) -> Result<(), ()> {
     let mut line = serde_json::to_string(request).map_err(|_| ())?;
     line.push('\n');
     let mut stream = UnixStream::connect(socket_path).map_err(|_| ())?;
@@ -29,7 +35,7 @@ fn send_request_result(socket_path: &Path, request: &Value) -> Result<(), ()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{send_request, send_request_result, SOCKET_TIMEOUT};
+    use super::{send_request, send_request_result, send_request_retry, SOCKET_TIMEOUT};
     use serde_json::json;
     use std::io::{Read, Write};
     use std::os::unix::net::UnixListener;
@@ -58,10 +64,15 @@ mod tests {
         assert!(text.contains("\"method\":\"ping\""));
         let _ = SOCKET_TIMEOUT;
         let _ = send_request_result;
+        let _ = send_request_retry;
     }
 
     #[test]
     fn send_request_swallows_missing_socket() {
         send_request(std::path::Path::new("/no/such/herdr.sock"), &json!({}));
+        assert!(!send_request_retry(
+            std::path::Path::new("/no/such/herdr.sock"),
+            &json!({})
+        ));
     }
 }
