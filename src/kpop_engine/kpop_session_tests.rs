@@ -71,7 +71,7 @@ pub(crate) fn prepared_fixture(
 pub(crate) fn shared_workflow() -> (SharedOpts, WorkflowCliOptions) {
     (
         crate::cli::kpop_summarize_tests::summarize_shared_opts(DEFAULT_MAX_ACP_RETRIES),
-        WorkflowCliOptions { force: false },
+        WorkflowCliOptions { force: false, no_kpop: false },
     )
 }
 
@@ -84,7 +84,7 @@ pub(crate) fn loop_params<'a>(
     KPopEngineParams {
         command,
         shared,
-        workflow: WorkflowCliOptions { force: false },
+        workflow: WorkflowCliOptions { force: false, no_kpop: false },
         prepared,
         max_loops: 1,
         max_hypotheses: 5,
@@ -95,7 +95,7 @@ pub(crate) fn loop_params<'a>(
 pub(crate) fn agent_backend(shared: &SharedOpts, command: &str) -> AgentBackend {
     crate::agent_backend::build_agent_backend(
         shared,
-        WorkflowCliOptions { force: false },
+        WorkflowCliOptions { force: false, no_kpop: false },
         false,
         command,
     )

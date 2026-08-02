@@ -84,10 +84,11 @@ mod inspire_tests {
         mini_max_shrink_passes: 0,
         no_download: false,
             git: false,
+            no_kpop: false,
         };
         let client = crate::cli::build_agent(
             &shared,
-            WorkflowCliOptions { force: false },
+            WorkflowCliOptions { force: false, no_kpop: false },
             shared.acp_stdout_markdown_enabled(),
         );
         assert!(
@@ -125,6 +126,7 @@ mod inspire_tests {
         mini_max_shrink_passes: 0,
         no_download: false,
             git: false,
+            no_kpop: false,
         };
         crate::cli::run_emit::emit_run_startup_sequence(
             &artifacts,

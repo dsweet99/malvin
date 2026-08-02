@@ -40,7 +40,7 @@ fn build_router_work_prompt_expands_malvin_command_with_active_model() {
 fn build_router_work_prompt_renders_without_unresolved_braces() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
-    let store = prepare_router_prompt_store().expect("store");
+    let store = prepare_router_prompt_store(false).expect("store");
     let body = build_router_work_prompt(RouterWorkPromptInput {
         store: &store,
         artifacts: &artifacts,
@@ -63,7 +63,7 @@ fn build_router_work_prompt_includes_code_checks_when_gates_enabled() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
     crate::seed_malvin_checks(tmp.path(), "echo ROUTER_CHECK_LINE\n");
-    let store = prepare_router_prompt_store().expect("store");
+    let store = prepare_router_prompt_store(false).expect("store");
     let body = build_router_work_prompt(RouterWorkPromptInput {
         store: &store,
         artifacts: &artifacts,
@@ -81,7 +81,7 @@ fn build_router_work_prompt_omits_code_checks_when_gates_disabled() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
     crate::seed_malvin_checks(tmp.path(), "echo ROUTER_CHECK_LINE\n");
-    let store = prepare_router_prompt_store().expect("store");
+    let store = prepare_router_prompt_store(false).expect("store");
     let body = build_router_work_prompt(RouterWorkPromptInput {
         store: &store,
         artifacts: &artifacts,
@@ -98,7 +98,7 @@ fn build_router_work_prompt_omits_code_checks_when_gates_disabled() {
 fn build_router_kpop_group_prompt_expands_review_keys_without_unresolved_braces() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
-    let store = prepare_router_prompt_store().expect("store");
+    let store = prepare_router_prompt_store(false).expect("store");
     let exp = artifacts.gate_exp_log_path(1);
     let body = build_router_kpop_group_prompt(RouterKpopGroupPromptInput {
         store: &store,
@@ -127,7 +127,7 @@ fn build_router_kpop_group_prompt_expands_review_keys_without_unresolved_braces(
 fn build_router_summarize_prompt_renders_dm_body_without_unresolved_braces() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
-    let store = prepare_router_prompt_store().expect("store");
+    let store = prepare_router_prompt_store(false).expect("store");
     let body = build_router_summarize_prompt(RouterSummarizePromptInput {
         store: &store,
         artifacts: &artifacts,

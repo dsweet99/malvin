@@ -61,7 +61,7 @@ async fn run_gate_inline_summarize_first_iteration(
     let shared = super::kpop_summarize_tests::summarize_shared_opts(DEFAULT_MAX_ACP_RETRIES);
     let mut client = crate::agent_backend::build_agent_backend(
         &shared,
-        WorkflowCliOptions { force: false },
+        WorkflowCliOptions { force: false, no_kpop: false },
         false,
         "kpop",
     )

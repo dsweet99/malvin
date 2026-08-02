@@ -15,9 +15,7 @@ pub(crate) fn run_inspire_command(
         run_inspire(
             inspire,
             shared,
-            WorkflowCliOptions {
-                force: !shared.no_force,
-            },
+            WorkflowCliOptions::from_shared(shared),
         )
     })
 }
@@ -28,9 +26,7 @@ pub(crate) fn run_code_command(mut code: CodeArgs, shared: &SharedOpts) -> Resul
         code.trust_the_plan = true;
     }
     let requests = std::mem::take(&mut code.requests);
-    let workflow = WorkflowCliOptions {
-        force: !shared.no_force,
-    };
+    let workflow = WorkflowCliOptions::from_shared(shared);
     crate::sequential_requests::run_sequential("code", &requests, |request| {
         let code = code.clone();
         let shared = shared.clone();
@@ -55,9 +51,7 @@ pub(crate) fn run_delight_command(
         run_delight(
             &mut delight,
             shared,
-            WorkflowCliOptions {
-                force: !shared.no_force,
-            },
+            WorkflowCliOptions::from_shared(shared),
         )
     })
 }
@@ -93,9 +87,7 @@ pub(crate) fn run_explain_command(
         run_explain(
             &mut explain,
             shared,
-            WorkflowCliOptions {
-                force: !shared.no_force,
-            },
+            WorkflowCliOptions::from_shared(shared),
         )
     })
 }

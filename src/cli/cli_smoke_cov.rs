@@ -89,10 +89,11 @@ fn smoke_agent_io_options_maps_flags() {
         mini_max_shrink_passes: 0,
         no_download: false,
         git: false,
-    };
+            no_kpop: false,
+        };
     let io = agent_io_options(
         &shared,
-        WorkflowCliOptions { force: true },
+        WorkflowCliOptions { force: true, no_kpop: false },
         AgentStdoutTeeFlags {
             emit_stdout_markdown: true,
             raw_output: true,
@@ -130,12 +131,13 @@ fn smoke_new_agent_client_maps_max_acp_retries() {
         mini_max_shrink_passes: 0,
         no_download: false,
         git: false,
-    };
+            no_kpop: false,
+        };
     let client = new_agent_client(
         &shared,
         agent_io_options(
             &shared,
-            WorkflowCliOptions { force: false },
+            WorkflowCliOptions { force: false, no_kpop: false },
             AgentStdoutTeeFlags {
                 emit_stdout_markdown: false,
                 raw_output: true,
@@ -220,6 +222,6 @@ fn smoke_prepare_do_prompt_store_loads_defaults() {
 
 #[test]
 fn smoke_prepare_router_prompt_store_loads_defaults() {
-    assert!(crate::router_flow::prepare_router_prompt_store().is_ok());
+    assert!(crate::router_flow::prepare_router_prompt_store(false).is_ok());
 }
 

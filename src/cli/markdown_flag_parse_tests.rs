@@ -43,3 +43,16 @@ fn removed_inverse_flags_are_rejected() {
         );
     }
 }
+
+#[test]
+fn no_kpop_parses_globally_and_is_hidden_from_help() {
+    use clap::CommandFactory;
+    let cli = Cli::try_parse_from(["malvin", "--no-kpop", "hello"]).expect("parse");
+    assert!(cli.shared.no_kpop);
+    assert_eq!(cli.request.as_deref(), Some("hello"));
+    let help = Cli::command().render_long_help().to_string();
+    assert!(
+        !help.contains("--no-kpop"),
+        "hidden flag must not appear in help:\n{help}"
+    );
+}

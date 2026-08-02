@@ -22,7 +22,8 @@ fn kiss_cov_kpop_summarize_privates() {
         mini_max_shrink_passes: 0,
         no_download: false,
         git: false,
-    };
+            no_kpop: false,
+        };
     let _ = &shared;
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts =

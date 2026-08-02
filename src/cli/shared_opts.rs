@@ -77,6 +77,9 @@ pub struct SharedOpts {
     /// Allow the agent to run `git commit` (sets `{{ git_extra }}` in prompt templates).
     #[arg(long, global = true, default_value_t = false)]
     pub git: bool,
+    /// Replace `kpop_common.md` with `no_kpop_common.md` (hidden).
+    #[arg(long = "no-kpop", global = true, default_value_t = false, hide = true)]
+    pub no_kpop: bool,
 }
 
 impl SharedOpts {
@@ -115,6 +118,7 @@ impl SharedOpts {
             mini_max_shrink_passes: 0,
             no_download: false,
             git: false,
+            no_kpop: false,
         }
     }
 }

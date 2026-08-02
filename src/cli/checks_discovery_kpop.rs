@@ -49,9 +49,7 @@ pub(super) async fn run_checks_discovery_kpop(
     artifacts: &RunArtifacts,
     kpop_command: &str,
 ) -> Result<(), String> {
-    let workflow = WorkflowCliOptions {
-        force: !shared.no_force,
-    };
+    let workflow = WorkflowCliOptions::from_shared(shared);
     let store = prepare_checks_discovery_prompt_store(workflow)?;
     let request_text = checks_discovery_kpop_request(&store, artifacts)?;
     std::fs::write(&artifacts.plan_path, &request_text).map_err(|e| e.to_string())?;

@@ -45,10 +45,11 @@ fn router_client_uses_kpop_style_agent_io_not_do_style() {
         mini_max_shrink_passes: 0,
         no_download: false,
         git: false,
-    };
+            no_kpop: false,
+        };
     let backend = build_agent_backend(
         &shared,
-        WorkflowCliOptions { force: false },
+        WorkflowCliOptions { force: false, no_kpop: false },
         shared.acp_stdout_markdown_enabled(),
         "router",
     )
@@ -94,10 +95,11 @@ fn openrouter_router_client_is_mini_with_styled_not_raw_output() {
                 mini_max_shrink_passes: 0,
                 no_download: false,
                 git: false,
-            };
+            no_kpop: false,
+        };
             let backend = build_agent_backend(
                 &shared,
-                WorkflowCliOptions { force: false },
+                WorkflowCliOptions { force: false, no_kpop: false },
                 shared.acp_stdout_markdown_enabled(),
                 "router",
             )

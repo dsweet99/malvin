@@ -48,7 +48,7 @@ fn combine_router_prompt_file_and_user_joins_rendered_template_and_request() {
 
 #[test]
 fn prepare_router_prompt_store_loads_default_templates() {
-    let store = prepare_router_prompt_store().expect("store");
+    let store = prepare_router_prompt_store(false).expect("store");
     assert!(store.validate_exists(HEADER_MD).is_ok());
     assert!(store.validate_exists(ROUTER_REQUIREMENTS_MD).is_ok());
     assert!(store.validate_exists(crate::prompts::ROUTER_KPOP_GROUP_MD).is_ok());

@@ -28,8 +28,9 @@ pub(crate) fn test_router_shared() -> (SharedOpts, WorkflowCliOptions) {
         mini_max_shrink_passes: 0,
         no_download: false,
         git: false,
-    };
-    let workflow = WorkflowCliOptions { force: false };
+            no_kpop: false,
+        };
+    let workflow = WorkflowCliOptions { force: false, no_kpop: false };
     (shared, workflow)
 }
 
@@ -59,7 +60,7 @@ pub(crate) fn router_boot_client_artifacts(
         crate::run_id::RunDirOptions::default(),
     )
     .map_err(|e| e.to_string())?;
-    let prompt_store = prepare_router_prompt_store()?;
+    let prompt_store = prepare_router_prompt_store(false)?;
     let coder = build_router_coder_run(
         &artifacts,
         "investigate task",

@@ -89,8 +89,9 @@ fn kiss_cov_kpop_engine_loop_params_types() {
         mini_max_shrink_passes: 0,
         no_download: false,
         git: false,
-    };
-    let workflow = WorkflowCliOptions { force: false };
+            no_kpop: false,
+        };
+    let workflow = WorkflowCliOptions { force: false, no_kpop: false };
     let loop_params = KPopEngineParams {
         command: "code",
         shared: &shared,

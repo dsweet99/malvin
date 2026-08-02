@@ -62,7 +62,7 @@ async fn prepare_router_run(
     .map_err(|e| e.to_string())?;
     crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
     client.ensure_authenticated().map_err(|e| e.to_string())?;
-    let prompt_store = prepare_router_prompt_store()?;
+    let prompt_store = prepare_router_prompt_store(shared.no_kpop)?;
     let coder = router_flow_prompt::build_router_coder_run_with_store(
         &prompt_store,
         &artifacts,

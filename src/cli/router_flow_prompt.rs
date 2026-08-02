@@ -25,8 +25,8 @@ pub(crate) struct RouterCoderRun {
     pub header_user_for_trace: (String, String),
 }
 
-pub fn prepare_router_prompt_store() -> Result<PromptStore, String> {
-    let store = PromptStore::default_store();
+pub fn prepare_router_prompt_store(no_kpop: bool) -> Result<PromptStore, String> {
+    let store = PromptStore::default_store().with_no_kpop(no_kpop);
     store.ensure_defaults().map_err(|e: PromptError| e.0)?;
     store
         .validate_exists(HEADER_MD)
@@ -113,7 +113,7 @@ pub(crate) fn build_router_coder_run(
     text: &str,
     opts: PromptModelOpts<'_>,
 ) -> Result<RouterCoderRun, String> {
-    let store = prepare_router_prompt_store()?;
+    let store = prepare_router_prompt_store(false)?;
     build_router_coder_run_with_store(&store, artifacts, text, opts)
 }
 

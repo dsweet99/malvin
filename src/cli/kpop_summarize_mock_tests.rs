@@ -60,7 +60,7 @@ async fn run_inline_summarize_on_open_mock_session(
 ) -> Result<(), String> {
     let mut client = crate::agent_backend::build_agent_backend(
         shared,
-        crate::cli::WorkflowCliOptions { force: false },
+        crate::cli::WorkflowCliOptions { force: false, no_kpop: false },
         false,
         "kpop",
     )
