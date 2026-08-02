@@ -40,6 +40,7 @@ fn observe_execute(state: &mut PhaseState, parsed: &ParsedToolUpdate, tracker: &
         TOOL_PHASE_START => {
             state.running_shells = state.running_shells.saturating_add(1);
             state.active_tool = Some((ToolKind::Execute, parsed.phase));
+            crate::herdr::notify_working();
         }
         TOOL_PHASE_RUNNING => state.active_tool = Some((ToolKind::Execute, parsed.phase)),
         TOOL_PHASE_DONE => {

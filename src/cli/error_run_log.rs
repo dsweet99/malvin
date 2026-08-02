@@ -15,7 +15,10 @@ static LAST_EMITTED_COMMAND_ERROR: Mutex<Option<String>> = Mutex::new(None);
 pub fn set_command_error_run_dir(path: Option<PathBuf>) {
     *COMMAND_ERROR_RUN_DIR
         .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner) = path;
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = path.clone();
+    if let Some(run_dir) = path.as_ref() {
+        crate::herdr::notify_run_start(run_dir);
+    }
 }
 
 /// Returns the directory currently bound for [`append_command_error_to_run_log`].
@@ -29,6 +32,7 @@ pub fn command_error_run_dir() -> Option<PathBuf> {
 
 /// Clears the directory installed by [`set_command_error_run_dir`].
 pub fn clear_command_error_run_dir() {
+    crate::herdr::notify_run_end();
     set_command_error_run_dir(None);
     *LAST_EMITTED_COMMAND_ERROR
         .lock()

@@ -103,6 +103,7 @@ mod tracing_init;
 mod user_home;
 pub(crate) mod time_format;
 pub mod agent_phase;
+pub mod herdr;
 mod active_agent_heartbeat;
 pub use active_agent_heartbeat::active_agent_heartbeat_stats;
 pub use user_home::user_home_dir;

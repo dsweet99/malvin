@@ -182,6 +182,7 @@ pub fn note_mini_bash_exec() {
         s.reasoning = false;
         s.active_tool = Some((ToolKind::Execute, TOOL_PHASE_RUNNING));
     });
+    crate::herdr::notify_working();
 }
 
 /// Mini bash fence finished; mirrors execute tool-call completion signals.

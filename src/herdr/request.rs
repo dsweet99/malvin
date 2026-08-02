@@ -1,0 +1,118 @@
+//! NDJSON request bodies for herdr pane agent reports.
+
+use rand::Rng;
+use serde_json::{json, Value};
+
+pub const SOURCE: &str = "herdr:malvin";
+pub const AGENT: &str = "malvin";
+
+#[must_use]
+pub fn next_seq() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| u64::try_from(d.as_nanos()).unwrap_or(u64::MAX))
+        .unwrap_or(0)
+}
+
+#[must_use]
+pub fn next_request_id() -> String {
+    let millis = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+    let suffix: u32 = rand::thread_rng().gen_range(0..1_000_000);
+    format!("{SOURCE}:{millis}:{suffix:06}")
+}
+
+#[must_use]
+pub fn report_agent_session(pane_id: &str, agent_session_id: Option<&str>, seq: u64) -> Value {
+    let mut params = json!({
+        "pane_id": pane_id,
+        "source": SOURCE,
+        "agent": AGENT,
+        "seq": seq,
+    });
+    if let Some(id) = agent_session_id {
+        params["agent_session_id"] = json!(id);
+    }
+    envelope("pane.report_agent_session", params)
+}
+
+#[must_use]
+pub fn report_agent(pane_id: &str, state: &str, agent_session_id: Option<&str>, seq: u64) -> Value {
+    let mut params = json!({
+        "pane_id": pane_id,
+        "source": SOURCE,
+        "agent": AGENT,
+        "state": state,
+        "seq": seq,
+    });
+    if let Some(id) = agent_session_id {
+        params["agent_session_id"] = json!(id);
+    }
+    envelope("pane.report_agent", params)
+}
+
+#[must_use]
+pub fn release_agent(pane_id: &str, seq: u64) -> Value {
+    envelope(
+        "pane.release_agent",
+        json!({
+            "pane_id": pane_id,
+            "source": SOURCE,
+            "agent": AGENT,
+            "seq": seq,
+        }),
+    )
+}
+
+#[must_use]
+pub fn report_metadata_sparse(pane_id: &str, title: Option<&str>, seq: u64) -> Value {
+    let mut params = json!({
+        "pane_id": pane_id,
+        "source": SOURCE,
+        "display_agent": AGENT,
+        "seq": seq,
+    });
+    if let Some(t) = title {
+        params["title"] = json!(t);
+    }
+    envelope("pane.report_metadata", params)
+}
+
+fn envelope(method: &str, params: Value) -> Value {
+    json!({
+        "id": next_request_id(),
+        "method": method,
+        "params": params,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        release_agent, report_agent, report_agent_session, report_metadata_sparse, AGENT, SOURCE,
+    };
+
+    #[test]
+    fn request_shapes_use_malvin_identity_and_methods() {
+        let session = report_agent_session("p1", Some("run-id"), 7);
+        assert_eq!(session["method"], "pane.report_agent_session");
+        assert_eq!(session["params"]["source"], SOURCE);
+        assert_eq!(session["params"]["agent"], AGENT);
+        assert_eq!(session["params"]["agent_session_id"], "run-id");
+        assert_eq!(session["params"]["seq"], 7);
+
+        let working = report_agent("p1", "working", Some("run-id"), 8);
+        assert_eq!(working["method"], "pane.report_agent");
+        assert_eq!(working["params"]["state"], "working");
+
+        let release = release_agent("p1", 9);
+        assert_eq!(release["method"], "pane.release_agent");
+
+        let meta = report_metadata_sparse("p1", Some("title"), 10);
+        assert_eq!(meta["method"], "pane.report_metadata");
+        assert_eq!(meta["params"]["display_agent"], AGENT);
+        assert_eq!(meta["params"]["title"], "title");
+    }
+}
