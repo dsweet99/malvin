@@ -19,7 +19,7 @@ fn begin_coder_session_if_needed_reuses_preopened_session() {
             write_mock_router_agent(&mock);
             let _env = install_mock_router_agent_env(workspace, &mock);
             let (shared, workflow) = test_router_shared();
-            let (mut client, artifacts, coder, prompt_store) =
+            let (mut client, artifacts, prompt_store) =
                 router_boot_client_artifacts(workspace, &shared, workflow).expect("boot");
             begin_coder_session_if_needed(&mut client, workspace)
                 .await
@@ -32,7 +32,6 @@ fn begin_coder_session_if_needed_reuses_preopened_session() {
             } = run_router_acp_open_iteration(RouterAcpIterationInput {
                 client: &mut client,
                 artifacts: &artifacts,
-                coder: &coder,
                 prompt_store: &prompt_store,
                 shared: &shared,
                 agent_loop: 1,

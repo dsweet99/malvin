@@ -9,7 +9,7 @@ mod unix_gates {
     };
 
     #[test]
-    fn run_router_agent_loops_gates_fail_restarts_even_on_all_no_work() {
+    fn run_router_agent_loops_gates_fail_restarts_even_on_done() {
         crate::test_utils::enable_test_fast_teardown();
         crate::test_utils::with_isolated_home(|workspace| {
             crate::test_utils::block_on_test_async(async {
@@ -21,12 +21,11 @@ mod unix_gates {
                 let _env = install_mock_router_agent_env_with_script(workspace, &mock);
                 let (mut shared, workflow) = test_router_shared();
                 shared.gates = true;
-                let (mut client, artifacts, coder, prompt_store) =
+                let (mut client, artifacts, prompt_store) =
                     router_boot_client_artifacts(workspace, &shared, workflow).expect("boot");
                 let Err(err) = run_router_agent_loops(RouterAgentLoopInput {
                     client: &mut client,
                     artifacts: &artifacts,
-                    coder: &coder,
                     prompt_store: &prompt_store,
                     shared: &shared,
                     max_loops: 2,
@@ -49,7 +48,8 @@ mod unix_gates {
                 )
                 .expect("parse");
                 assert_eq!(counts["begins"], 2);
-                assert_eq!(counts["prompts"], 5);
+                // S1: header+kpop+a=3; S2: header+kpop+a+summarize=4 → 7
+                assert_eq!(counts["prompts"], 7);
                 assert_eq!(
                     std::fs::read_to_string(workspace.join(".malvin_router_mock_summarize_count"))
                         .unwrap_or_else(|_| "0".into())
@@ -73,13 +73,12 @@ mod unix_gates {
                 let _env = install_mock_router_agent_env_with_script(workspace, &mock);
                 let (mut shared, workflow) = test_router_shared();
                 shared.gates = true;
-                let (mut client, artifacts, coder, prompt_store) =
+                let (mut client, artifacts, prompt_store) =
                     router_boot_client_artifacts(workspace, &shared, workflow).expect("boot");
                 let RouterAgentLoopOutcome { last_acp, .. } = run_router_agent_loops(
                     RouterAgentLoopInput {
                         client: &mut client,
                         artifacts: &artifacts,
-                        coder: &coder,
                         prompt_store: &prompt_store,
                         shared: &shared,
                         max_loops: 2,

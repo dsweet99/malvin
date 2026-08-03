@@ -35,7 +35,7 @@ fn tidy_router_succeeds_when_gates_pass() {
         "startup must emit the fixed tidy request: {combined:?}"
     );
     assert!(
-        combined.contains("router_requirements") || combined.contains("NO_WORK_REMAINING"),
+        combined.contains("router_a") || combined.contains("__MALVIN_DONE__") || combined.contains("router_header"),
         "tidy must run the default router workflow: {combined:?}"
     );
 }

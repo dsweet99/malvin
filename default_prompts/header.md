@@ -89,7 +89,8 @@ When communicating to the user:
 Since you are non-interactive, most of your communications will go to logs for occasional viewing. To send a message directly to the human operator, create a "DM fence" like this
 ```
 MALVIN_DM_START
-You message to the user
+Your message to the user
 MALVIN_DM_END
 ```
-Use this only for urgent messages or when directed. You don't need to provide regular info summaries or responses via DM on your own.
+**Only use the DM facility when you are directed to or if there is an emergency.**
+

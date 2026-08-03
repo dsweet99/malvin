@@ -15,7 +15,7 @@ malvin [OPTIONS] [REQUEST]
 malvin [OPTIONS] <COMMAND>
 ```
 
-Bare `malvin REQUEST` runs autonomous routing (requirements, multi-group KPop, optional work). Use `--do` for a one-shot turn, or subcommands for named workflows.
+Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`, stop on `__MALVIN_DONE__`). Use `--do` for a one-shot turn, or subcommands for named workflows.
 
 Use `--do` for a one-shot turn. Use subcommands: `init`, `tidy`, `explain`, `inspire`, `models`.
 
@@ -23,7 +23,7 @@ Use `--do` for a one-shot turn. Use subcommands: `init`, `tidy`, `explain`, `ins
 
 | Command | Purpose |
 |---------|---------|
-| *(default)* | Bare `malvin REQUEST` — requirements JSON → one multi-group KPop → optional work; outer `--max-loops` sessions |
+| *(default)* | Bare `malvin REQUEST` — `header` → `kpop_common` → `router_a` → optional `router_b`; outer `--max-loops` sessions |
 | `--do` | One-shot agent turn (non-looping) |
 | `init` | Discover quality gates and write `.malvin/checks` |
 | `tidy` | Fix quality gates via the default router with fixed request `Get the gates to pass.` and `--gates` forced on |
@@ -156,7 +156,7 @@ During live ACP sessions, malvin may defer agent stdout lines briefly before wri
 
 ## Home config (`~/.malvin_home/config.toml`)
 
-Top-level keys include `mem_limit_gb`, `context_size` (local llama.cpp `n_ctx`, default 8192), and `theme`. Sections include `[agent]`, `[review]` (legacy explain hypothesis budget; unused by the router wrapper), `[default_workflow]` (`max_hypotheses` for bare `malvin REQUEST` multi-group KPop, default 5), and `[logs]`.
+Top-level keys include `mem_limit_gb`, `context_size` (local llama.cpp `n_ctx`, default 8192), and `theme`. Sections include `[agent]`, `[review]` (legacy explain hypothesis budget; unused by the router wrapper), `[default_workflow]` (`max_hypotheses` for bare `malvin REQUEST` `kpop_common.md`, default 5), and `[logs]`.
 
 ## Log retention
 

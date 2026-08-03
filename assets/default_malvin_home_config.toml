@@ -18,7 +18,7 @@ max_mini_transport_retries = 3
 max_hypotheses = 10
 
 [default_workflow]
-# Hypothesis budget for bare `malvin REQUEST` multi-group KPop (not agent.max_hypotheses).
+# Hypothesis budget for bare `malvin REQUEST` `kpop_common.md` (not agent.max_hypotheses).
 max_hypotheses = 5
 
 [logs]

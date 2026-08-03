@@ -17,7 +17,6 @@ fn kiss_cov_router_flow_acp_privates() {
     let _ = RouterExitSummarize::Skip;
     let _ = stringify!(client);
     let _ = stringify!(artifacts);
-    let _ = stringify!(coder);
     let _ = stringify!(prompt_store);
     let _ = stringify!(shared);
     let _ = stringify!(agent_loop);
@@ -26,7 +25,7 @@ fn kiss_cov_router_flow_acp_privates() {
     let _ = stringify!(iteration_backups);
     let _ = stringify!(session_alive);
     let _ = stringify!(timing);
-    let _ = stringify!(all_no_work);
+    let _ = stringify!(done);
     let _ = stringify!(abort_router_acp_session);
     let _ = stringify!(emit_router_acp_timing);
     let _ = stringify!(end_router_acp_session);
@@ -41,19 +40,19 @@ fn kiss_cov_router_flow_acp_outcome_destructure() {
         acp_result: Ok(()),
         iteration_backups: SessionDotfileBackups::snapshot(std::path::Path::new("/tmp"))
             .expect("snapshot"),
-        all_no_work: false,
+        done: false,
         session_alive: false,
         timing: None,
     };
     let RouterAcpIterationOutcome {
         acp_result,
         iteration_backups: _,
-        all_no_work,
+        done,
         session_alive,
         timing,
     } = outcome;
     assert!(acp_result.is_ok());
-    assert!(!all_no_work);
+    assert!(!done);
     assert!(!session_alive);
     assert!(timing.is_none());
 }
@@ -69,7 +68,7 @@ fn kiss_cov_router_flow_acp_live_outcome_fields() {
                 workspace, &mock,
             );
             let (shared, workflow) = super::router_flow_acp_tests::test_router_shared();
-            let (mut client, artifacts, coder, prompt_store) =
+            let (mut client, artifacts, prompt_store) =
                 super::router_flow_acp_tests::router_boot_client_artifacts(
                     workspace, &shared, workflow,
                 )
@@ -77,7 +76,6 @@ fn kiss_cov_router_flow_acp_live_outcome_fields() {
             let open = run_router_acp_open_iteration(RouterAcpIterationInput {
                 client: &mut client,
                 artifacts: &artifacts,
-                coder: &coder,
                 prompt_store: &prompt_store,
                 shared: &shared,
                 agent_loop: 1,
@@ -90,7 +88,6 @@ fn kiss_cov_router_flow_acp_live_outcome_fields() {
                 &mut RouterAcpIterationInput {
                     client: &mut client,
                     artifacts: &artifacts,
-                    coder: &coder,
                     prompt_store: &prompt_store,
                     shared: &shared,
                     agent_loop: 1,
@@ -113,11 +110,9 @@ fn kiss_cov_router_flow_acp_test_helpers() {
     let _ = super::router_flow_acp_mock_tests::install_mock_router_agent_env;
     let _ = super::router_flow_acp_mock_tests::write_mock_router_agent;
     let _ = super::router_flow_acp_mock_tests::write_mock_router_agent_session_fail;
-    let _ = super::router_flow_acp_mock_tests::write_mock_router_agent_missing_requirements;
     let _ = super::router_flow_acp_ping_mock_tests::write_mock_router_agent_requirements_ping_timeout;
     let _ = super::router_flow_acp_ping_mock_tests::write_mock_router_agent_requirements_ping_then_ok;
     let _ = stringify!(run_router_acp_iteration_executes_mock_agent_full_sequence);
-    let _ = stringify!(run_router_acp_iteration_aborts_when_requirements_json_missing);
     let _ = stringify!(run_router_acp_iteration_reports_ping_timeout_not_missing_requirements);
     let _ = stringify!(run_router_acp_iteration_retries_requirements_after_ping_timeout);
     let _ = stringify!(run_router_acp_iteration_propagates_begin_session_failure);

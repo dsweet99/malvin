@@ -46,6 +46,21 @@ pub(crate) fn forward_parent_env(cmd: &mut Command) {
     }
 }
 
+/// Prevent cursor-herdr hooks from claiming the pane when ACP runs under malvin.
+///
+/// `Command` inherits the parent environment by default. Herdr injects `HERDR_*` into
+/// malvin's process; the installed cursor `sessionStart` hook gates on `HERDR_ENV=1` and
+/// would otherwise `pane.report_agent_session` as `herdr:cursor`, racing malvin's reporter.
+pub(crate) fn strip_herdr_env_from_child(cmd: &mut Command) {
+    for (key, _) in std::env::vars_os() {
+        if key.to_string_lossy().starts_with("HERDR_") {
+            cmd.env_remove(key);
+        }
+    }
+    // Always clear the gate even if it is absent from this process snapshot.
+    cmd.env_remove("HERDR_ENV");
+}
+
 pub(crate) fn apply_api_and_auth(cmd: &mut Command, api_key: Option<&str>, auth_token: Option<&str>) {
     if let Some(k) = api_key {
         cmd.arg("--api-key").arg(k);
@@ -91,6 +106,7 @@ pub(crate) fn agent_program(bin_override: Option<&Path>) -> String {
 pub(crate) fn build_agent_acp_command(args: &BuildAgentAcpCommandArgs<'_>) -> Command {
     let mut cmd = crate::malvin_sandbox::malvin_tokio_command(agent_program(args.bin_override));
     forward_parent_env(&mut cmd);
+    strip_herdr_env_from_child(&mut cmd);
     let api_key = effective_cursor_api_key(args.api_key);
     let auth_token = effective_cursor_auth_token(args.auth_token);
     apply_api_and_auth(&mut cmd, api_key.as_deref(), auth_token.as_deref());
@@ -161,6 +177,48 @@ pub(crate) fn with_env(key: &str, value: Option<&str>, f: impl FnOnce()) {
             Some(v) => std::env::set_var(key, v),
             None => std::env::remove_var(key),
         }
+    }
+}
+
+#[cfg(test)]
+mod herdr_env_tests {
+    use super::{
+        build_agent_acp_command, strip_herdr_env_from_child, with_env, BuildAgentAcpCommandArgs,
+    };
+    use std::path::Path;
+    use tokio::process::Command;
+
+    fn env_cleared(cmd: &Command, key: &str) -> bool {
+        cmd.as_std().get_envs().any(|(k, v)| k == key && v.is_none())
+    }
+
+    #[test]
+    fn strip_herdr_env_clears_injected_keys() {
+        with_env("HERDR_ENV", Some("1"), || {
+            with_env("HERDR_PANE_ID", Some("pane"), || {
+                let mut cmd = Command::new("true");
+                strip_herdr_env_from_child(&mut cmd);
+                assert!(env_cleared(&cmd, "HERDR_ENV"));
+                assert!(env_cleared(&cmd, "HERDR_PANE_ID"));
+            });
+        });
+    }
+
+    #[test]
+    fn build_agent_acp_command_strips_herdr_env() {
+        with_env("HERDR_ENV", Some("1"), || {
+            let tmp = tempfile::tempdir().expect("tempdir");
+            let cmd = build_agent_acp_command(&BuildAgentAcpCommandArgs {
+                cwd: tmp.path(),
+                bin_override: Some(Path::new("/bin/true")),
+                api_key: None,
+                auth_token: None,
+                george_acp_lane: None,
+                model: None,
+                force: false,
+            });
+            assert!(env_cleared(&cmd, "HERDR_ENV"));
+        });
     }
 }
 

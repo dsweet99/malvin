@@ -68,8 +68,9 @@ mod unix_tests {
         );
         assert!(
             combined.contains("Get the gates to pass.")
-                || combined.contains("router_requirements")
-                || combined.contains("NO_WORK_REMAINING"),
+                || combined.contains("router_a")
+                || combined.contains("__MALVIN_DONE__")
+                || combined.contains("router_header"),
             "tidy should run the default router when gates fail: {combined:?}"
         );
     }

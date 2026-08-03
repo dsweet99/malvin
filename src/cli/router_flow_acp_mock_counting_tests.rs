@@ -1,13 +1,13 @@
-//! Mock ACP agent that always emits `NO_WORK_REMAINING` and accumulates session counts.
+//! Mock ACP agent that always emits `__MALVIN_DONE__` and accumulates session counts.
 
 use super::router_flow_acp_mock_tests::ROUTER_MOCK_SESSION_COUNTS_FILE;
 
-/// Always all-no-work; used with failing `--gates` to force outer restarts.
+/// Always done; used with failing `--gates` to force outer restarts.
 #[cfg(unix)]
 pub(crate) fn write_mock_router_agent_all_no_work_counting(path: &std::path::Path) {
     use std::os::unix::fs::PermissionsExt;
     let script = format!(
-        r#"#!/usr/bin/env node
+        r"#!/usr/bin/env node
 const fs = require('fs');
 const path = require('path');
 const countsPath = path.resolve(process.cwd(), '{ROUTER_MOCK_SESSION_COUNTS_FILE}');
@@ -44,23 +44,10 @@ rl.on('line', (line) => {{
           ? msg.params.prompt.map(p => (p && p.text) || '').join('\n')
           : String(msg.params.prompt))
       : '';
-    if (global.pc === 1) {{
-      let outPath = null;
-      const abs = promptText.match(/(\/[^\s`"']+review_requirements\.json)/);
-      const rel = promptText.match(/(\.\/[^\s`"']+review_requirements\.json)/);
-      if (abs) outPath = abs[1];
-      else if (rel) outPath = rel[1];
-      if (outPath) {{
-        const resolved = path.isAbsolute(outPath) ? outPath : path.resolve(process.cwd(), outPath);
-        fs.mkdirSync(path.dirname(resolved), {{ recursive: true }});
-        fs.writeFileSync(resolved, JSON.stringify({{
-          groups: [{{ title: 'G1', requirements: ['done'] }}]
-        }}));
-      }}
-    }}
     const responses = [
-      'router_requirements phase\n',
-      '## NO_WORK_REMAINING 1\n',
+      'router_header phase\n',
+      'router_kpop_common phase\n',
+      'router_a phase\n__MALVIN_DONE__\n',
       'router_summarize done\n'
     ];
     if (promptText.includes('Write a summary of this entire session')) {{
@@ -82,7 +69,7 @@ rl.on('line', (line) => {{
     console.log(JSON.stringify({{ jsonrpc: '2.0', id: rid, result: {{}} }}));
   }}
 }});
-"#
+"
     );
     std::fs::write(path, script.as_bytes()).expect("write mock");
     let mut perms = std::fs::metadata(path).expect("meta").permissions();
@@ -98,5 +85,5 @@ fn write_mock_counting_helper_persists_counts_path() {
     write_mock_router_agent_all_no_work_counting(&mock);
     let body = std::fs::read_to_string(&mock).expect("read");
     assert!(body.contains(ROUTER_MOCK_SESSION_COUNTS_FILE));
-    assert!(body.contains("NO_WORK_REMAINING"));
+    assert!(body.contains("__MALVIN_DONE__"));
 }

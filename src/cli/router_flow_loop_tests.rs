@@ -1,4 +1,4 @@
-//! Tests for [`super`] agent loop driver (happy path / no-work skip).
+//! Tests for [`super`] agent loop driver (happy path / done skip).
 
 #[cfg(unix)]
 mod unix_cov {
@@ -11,7 +11,7 @@ mod unix_cov {
     };
 
     #[test]
-    fn run_router_agent_loops_single_session_requirements_to_work() {
+    fn run_router_agent_loops_single_session_a_to_b() {
         crate::test_utils::enable_test_fast_teardown();
         crate::test_utils::with_isolated_home(|workspace| {
             crate::test_utils::block_on_test_async(async {
@@ -19,13 +19,12 @@ mod unix_cov {
                 let mock = workspace.join("mock-router-agent");
                 let _env = install_mock_router_agent_env(workspace, &mock);
                 let (shared, workflow) = test_router_shared();
-                let (mut client, artifacts, coder, prompt_store) =
+                let (mut client, artifacts, prompt_store) =
                     router_boot_client_artifacts(workspace, &shared, workflow).expect("boot");
                 let RouterAgentLoopOutcome { last_acp, .. } = run_router_agent_loops(
                     RouterAgentLoopInput {
                         client: &mut client,
                         artifacts: &artifacts,
-                        coder: &coder,
                         prompt_store: &prompt_store,
                         shared: &shared,
                         max_loops: 1,
@@ -46,12 +45,12 @@ mod unix_cov {
                 assert_eq!(
                     counts.get("begins").and_then(serde_json::Value::as_u64),
                     Some(1),
-                    "single begin around requirements → kpop → work → summarize: {counts_raw}"
+                    "single begin around header → kpop → a → b → summarize: {counts_raw}"
                 );
                 assert_eq!(
                     counts.get("prompts").and_then(serde_json::Value::as_u64),
-                    Some(4),
-                    "one session serves four prompts: {counts_raw}"
+                    Some(5),
+                    "one session serves five prompts: {counts_raw}"
                 );
                 assert!(
                     workspace.join(".malvin_router_mock_saw_summarize").is_file(),
@@ -62,7 +61,7 @@ mod unix_cov {
     }
 
     #[test]
-    fn run_router_agent_loops_skips_work_when_all_no_work() {
+    fn run_router_agent_loops_skips_b_when_done() {
         crate::test_utils::enable_test_fast_teardown();
         crate::test_utils::with_isolated_home(|workspace| {
             crate::test_utils::block_on_test_async(async {
@@ -73,13 +72,12 @@ mod unix_cov {
                 );
                 let _env = install_mock_router_agent_env_with_script(workspace, &mock);
                 let (shared, workflow) = test_router_shared();
-                let (mut client, artifacts, coder, prompt_store) =
+                let (mut client, artifacts, prompt_store) =
                     router_boot_client_artifacts(workspace, &shared, workflow).expect("boot");
                 let RouterAgentLoopOutcome { last_acp, .. } = run_router_agent_loops(
                     RouterAgentLoopInput {
                         client: &mut client,
                         artifacts: &artifacts,
-                        coder: &coder,
                         prompt_store: &prompt_store,
                         shared: &shared,
                         max_loops: 1,
@@ -102,15 +100,15 @@ mod unix_cov {
                 );
                 assert_eq!(
                     counts.get("prompts").and_then(serde_json::Value::as_u64),
-                    Some(3),
-                    "requirements + one KPop + summarize, no work: {counts_raw}"
+                    Some(4),
+                    "header + kpop_common + router_a + summarize, no b: {counts_raw}"
                 );
             });
         });
     }
 
     #[test]
-    fn run_router_agent_loops_second_begin_after_work_then_no_work() {
+    fn run_router_agent_loops_second_begin_after_work_then_done() {
         crate::test_utils::enable_test_fast_teardown();
         crate::test_utils::with_isolated_home(|workspace| {
             crate::test_utils::block_on_test_async(async {
@@ -121,12 +119,11 @@ mod unix_cov {
                 );
                 let _env = install_mock_router_agent_env_with_script(workspace, &mock);
                 let (shared, workflow) = test_router_shared();
-                let (mut client, artifacts, coder, prompt_store) =
+                let (mut client, artifacts, prompt_store) =
                     router_boot_client_artifacts(workspace, &shared, workflow).expect("boot");
                 run_router_agent_loops(RouterAgentLoopInput {
                     client: &mut client,
                     artifacts: &artifacts,
-                    coder: &coder,
                     prompt_store: &prompt_store,
                     shared: &shared,
                     max_loops: 2,
@@ -144,7 +141,8 @@ mod unix_cov {
                 )
                 .expect("parse");
                 assert_eq!(counts["begins"], 2);
-                assert_eq!(counts["prompts"], 6);
+                // S1: header+kpop+a+b=4; S2: header+kpop+a+summarize=4 → 8
+                assert_eq!(counts["prompts"], 8);
                 assert_eq!(
                     std::fs::read_to_string(workspace.join(".malvin_router_mock_summarize_count"))
                         .unwrap_or_else(|_| "0".into())

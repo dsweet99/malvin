@@ -1,14 +1,14 @@
 use crate::artifacts::RunArtifacts;
 use crate::cli::flow_prompt_combine::{
-    build_dual_header_coder_run_with_store, combine_acp_prompt_header_and_user,
-    combine_mode_header_and_user, combine_prompt_file_and_user, DualHeaderPromptInput,
+    combine_acp_prompt_header_and_user, combine_mode_header_and_user, combine_prompt_file_and_user,
+    DualHeaderPromptInput,
 };
 use crate::orchestrator::workflow_context_paths_only;
 use crate::workflow_context::{format_prompt_path, PromptModelOpts};
-use crate::prompt_stratification::{join_labeled_strata, PromptStratum, WorkflowRenderContext};
+use crate::prompt_stratification::WorkflowRenderContext;
 use crate::prompts::{
-    PromptError, PromptStore, HEADER_MD, ROUTER_CODE_EXTRA_MD, ROUTER_KPOP_GROUP_MD,
-    ROUTER_REQUIREMENTS_MD, ROUTER_SUMMARIZE_MD, ROUTER_WORK_MD,
+    PromptError, PromptStore, HEADER_MD, ROUTER_A_MD, ROUTER_B_MD, ROUTER_CODE_EXTRA_MD,
+    ROUTER_SUMMARIZE_MD,
 };
 use std::path::Path;
 
@@ -18,12 +18,13 @@ pub(crate) use router_flow_prompt_summarize::{
     build_router_summarize_prompt, RouterSummarizePromptInput,
 };
 
-pub(crate) struct RouterCoderRun {
-    pub combined: String,
-    /// Dual-header parts from prompt assembly; retained for tests (stdout uses uniform trace like kpop).
-    #[cfg(test)]
-    pub header_user_for_trace: (String, String),
-}
+#[path = "router_flow_prompt_turns.rs"]
+mod router_flow_prompt_turns;
+pub(crate) use router_flow_prompt_turns::{
+    build_router_a_prompt, build_router_b_prompt, build_router_header_prompt,
+    build_router_kpop_common_prompt, RouterAPromptInput, RouterBPromptInput,
+    RouterHeaderPromptInput, RouterKpopCommonPromptInput,
+};
 
 pub fn prepare_router_prompt_store() -> Result<PromptStore, String> {
     let store = PromptStore::default_store();
@@ -32,13 +33,10 @@ pub fn prepare_router_prompt_store() -> Result<PromptStore, String> {
         .validate_exists(HEADER_MD)
         .map_err(|e: PromptError| e.0)?;
     store
-        .validate_exists(ROUTER_REQUIREMENTS_MD)
+        .validate_exists(ROUTER_A_MD)
         .map_err(|e: PromptError| e.0)?;
     store
-        .validate_exists(ROUTER_KPOP_GROUP_MD)
-        .map_err(|e: PromptError| e.0)?;
-    store
-        .validate_exists(ROUTER_WORK_MD)
+        .validate_exists(ROUTER_B_MD)
         .map_err(|e: PromptError| e.0)?;
     store
         .validate_exists(ROUTER_CODE_EXTRA_MD)
@@ -82,55 +80,24 @@ pub fn combine_router_raw_header_and_user(
         text,
         model: opts.model,
         git: opts.git,
-        mode_template: ROUTER_REQUIREMENTS_MD,
+        mode_template: ROUTER_A_MD,
     })
 }
 
-pub(crate) fn build_router_coder_run_with_store(
-    store: &PromptStore,
-    artifacts: &RunArtifacts,
-    text: &str,
-    opts: PromptModelOpts<'_>,
-) -> Result<RouterCoderRun, String> {
-    let run = build_dual_header_coder_run_with_store(DualHeaderPromptInput {
-        store,
-        artifacts,
-        text,
-        model: opts.model,
-        git: opts.git,
-        mode_template: ROUTER_REQUIREMENTS_MD,
-    })?;
-    Ok(RouterCoderRun {
-        combined: run.combined,
-        #[cfg(test)]
-        header_user_for_trace: run.header_user_for_trace,
-    })
-}
-
-#[cfg(test)]
-pub(crate) fn build_router_coder_run(
-    artifacts: &RunArtifacts,
-    text: &str,
-    opts: PromptModelOpts<'_>,
-) -> Result<RouterCoderRun, String> {
-    let store = prepare_router_prompt_store()?;
-    build_router_coder_run_with_store(&store, artifacts, text, opts)
-}
-
-fn router_code_checks_text(work_dir: &Path) -> Result<String, String> {
+pub(crate) fn router_code_checks_text(work_dir: &Path) -> Result<String, String> {
     let commands = crate::repo_gates::gate_command_lines(work_dir)?;
     Ok(commands.join("\n"))
 }
 
-struct RouterCodeExtraInput<'a> {
-    store: &'a PromptStore,
-    artifacts: &'a RunArtifacts,
-    model: &'a str,
-    git: bool,
-    gates: bool,
+pub(crate) struct RouterCodeExtraInput<'a> {
+    pub store: &'a PromptStore,
+    pub artifacts: &'a RunArtifacts,
+    pub model: &'a str,
+    pub git: bool,
+    pub gates: bool,
 }
 
-fn render_router_code_extra(input: RouterCodeExtraInput<'_>) -> Result<String, String> {
+pub(crate) fn render_router_code_extra(input: RouterCodeExtraInput<'_>) -> Result<String, String> {
     let RouterCodeExtraInput {
         store,
         artifacts,
@@ -151,77 +118,8 @@ fn render_router_code_extra(input: RouterCodeExtraInput<'_>) -> Result<String, S
     Ok(body.trim().to_string())
 }
 
-pub(crate) struct RouterKpopGroupPromptInput<'a> {
-    pub store: &'a PromptStore,
-    pub artifacts: &'a RunArtifacts,
-    pub model: &'a str,
-    pub git: bool,
-    pub groups_block: &'a str,
-    pub max_hypotheses: usize,
-    pub exp_log: &'a Path,
-}
-
-fn insert_router_kpop_group_fields(
-    ctx: &mut WorkflowRenderContext,
-    input: &RouterKpopGroupPromptInput<'_>,
-) {
-    let base = input.artifacts.work_dir.as_path();
-    ctx.insert("exp_log".to_string(), format_prompt_path(input.exp_log, base));
-    ctx.insert(
-        "max_hypotheses".to_string(),
-        input.max_hypotheses.to_string(),
-    );
-    ctx.insert("groups_block".to_string(), input.groups_block.to_string());
-}
-
-pub(crate) fn build_router_kpop_group_prompt(
-    input: RouterKpopGroupPromptInput<'_>,
-) -> Result<String, String> {
-    let mut ctx = workflow_context_paths_only(input.artifacts, input.model, input.git);
-    insert_router_kpop_group_fields(&mut ctx, &input);
-    let common = input
-        .store
-        .render_prompt_only("kpop_common.md", ctx.as_map())
-        .map_err(|e: PromptError| e.0)?;
-    let body = input
-        .store
-        .render_prompt_only(ROUTER_KPOP_GROUP_MD, ctx.as_map())
-        .map_err(|e: PromptError| e.0)?;
-    Ok(join_labeled_strata([
-        (PromptStratum::EmbeddedTemplate, common),
-        (PromptStratum::GateLoopBlock, body.trim().to_string()),
-    ]))
-}
-
-pub(crate) struct RouterWorkPromptInput<'a> {
-    pub store: &'a PromptStore,
-    pub artifacts: &'a RunArtifacts,
-    pub model: &'a str,
-    pub git: bool,
-    pub gates: bool,
-}
-
-pub(crate) fn build_router_work_prompt(input: RouterWorkPromptInput<'_>) -> Result<String, String> {
-    let RouterWorkPromptInput {
-        store,
-        artifacts,
-        model,
-        git,
-        gates,
-    } = input;
-    let mut ctx = workflow_context_paths_only(artifacts, model, git);
-    let code_extra = render_router_code_extra(RouterCodeExtraInput {
-        store,
-        artifacts,
-        model,
-        git,
-        gates,
-    })?;
-    ctx.insert("code_extra".to_string(), code_extra);
-    let body = store
-        .render_prompt_only(ROUTER_WORK_MD, ctx.as_map())
-        .map_err(|e: PromptError| e.0)?;
-    Ok(body.trim().to_string())
+pub(crate) fn format_exp_log_for_prompt(exp_log: &Path, work_dir: &Path) -> String {
+    format_prompt_path(exp_log, work_dir)
 }
 
 #[cfg(test)]
@@ -230,16 +128,11 @@ mod kiss_cov_gate_refs {
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {
-        let run = RouterCoderRun {
-            combined: String::new(),
-            #[cfg(test)]
-            header_user_for_trace: (String::new(), String::new()),
-        };
-        assert!(run.combined.is_empty());
-        let _: Option<RouterCoderRun> = None;
-        let _ = insert_router_kpop_group_fields;
-        let _ = build_router_kpop_group_prompt;
-        let _ = build_router_work_prompt;
+        let _ = build_router_header_prompt;
+        let _ = build_router_kpop_common_prompt;
+        let _ = build_router_a_prompt;
+        let _ = build_router_b_prompt;
         let _ = build_router_summarize_prompt;
+        let _ = render_router_code_extra;
     }
 }

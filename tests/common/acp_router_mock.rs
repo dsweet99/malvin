@@ -1,8 +1,8 @@
-//! ACP mock that completes the default router workflow (requirements → `KPop` → done).
+//! ACP mock that completes the default router workflow (`header.md` → `kpop_common.md` → done).
 
 use super::acp_core::acp_mock_js;
 
-/// Minimal router mock: writes `review_requirements.json`, emits `## NO_WORK_REMAINING` for each group.
+/// Minimal router mock: emits `__MALVIN_DONE__` on `router_a`.
 /// Also fulfills delight/explain output paths when those strings appear in the prompt.
 pub fn acp_mock_router_no_work_js() -> String {
     let handler = r#"
@@ -15,21 +15,19 @@ pub fn acp_mock_router_no_work_js() -> String {
           ? msg.params.prompt.map(p => (p && p.text) || '').join('\n')
           : String(msg.params.prompt))
       : '';
-    if (global.pc === 1) {
-      let outPath = null;
-      const abs = promptText.match(/(\/[^\s`"']+review_requirements\.json)/);
-      const rel = promptText.match(/(\.\/[^\s`"']+review_requirements\.json)/);
-      if (abs) outPath = abs[1];
-      else if (rel) outPath = rel[1];
-      if (outPath) {
-        const resolved = path.isAbsolute(outPath) ? outPath : path.resolve(process.cwd(), outPath);
-        fs.mkdirSync(path.dirname(resolved), { recursive: true });
-        fs.writeFileSync(resolved, JSON.stringify({
-          groups: [{ title: 'G1', requirements: ['already done'] }]
-        }));
-      }
+    // router_a references the request on disk (`See user requirements at \`…\``); older
+    // turns inlined the body. Scan prompt text plus any referenced request file.
+    let scanText = promptText;
+    const reqPathMatch = promptText.match(/See user requirements at `([^`]+)`/);
+    if (reqPathMatch) {
+      try {
+        const reqAbs = path.isAbsolute(reqPathMatch[1])
+          ? reqPathMatch[1]
+          : path.join(process.cwd(), reqPathMatch[1]);
+        scanText += '\n' + fs.readFileSync(reqAbs, 'utf8');
+      } catch (_) {}
     }
-    const pitchMatch = promptText.match(/Write the pitch to `([^`]+)`/);
+    const pitchMatch = scanText.match(/Write the pitch to `([^`]+)`/);
     if (pitchMatch) {
       let outRel = pitchMatch[1].replace(/^\.\//, '');
       const outAbs = path.isAbsolute(outRel) ? outRel : path.join(process.cwd(), outRel);
@@ -38,7 +36,7 @@ pub fn acp_mock_router_no_work_js() -> String {
     }
     // Match current explain_wrapper.md ("Put the LaTeX source in `…`") and the older
     // "Write LaTeX source to `…`" phrasing so mocks stay compatible across wording tweaks.
-    const texMatch = promptText.match(/(?:Put the LaTeX source in|Write LaTeX source to) `([^`]+)`/);
+    const texMatch = scanText.match(/(?:Put the LaTeX source in|Write LaTeX source to) `([^`]+)`/);
     if (texMatch) {
       let texRel = texMatch[1].replace(/^\.\//, '');
       const texAbs = path.isAbsolute(texRel) ? texRel : path.join(process.cwd(), texRel);
@@ -51,9 +49,11 @@ pub fn acp_mock_router_no_work_js() -> String {
     if (promptText.includes('Write a summary of this entire session')) {
       text = 'router_summarize done\n';
     } else if (global.pc === 1) {
-      text = 'router_requirements phase\nwrote review_requirements.json\n';
+      text = 'router_header phase\n';
+    } else if (global.pc === 2) {
+      text = 'router_kpop_common phase\n';
     } else {
-      text = 'router_kpop phase\n## NO_WORK_REMAINING 1\n';
+      text = 'router_a phase\n__MALVIN_DONE__\n';
     }
     console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text } } } }));
 "#;

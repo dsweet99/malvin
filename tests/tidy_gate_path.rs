@@ -66,7 +66,7 @@ fn malvin_tidy_runs_router_when_gates_already_pass() {
         "expected fixed tidy request in output; {combined:?}"
     );
     assert!(
-        combined.contains("router_requirements") || combined.contains("NO_WORK_REMAINING"),
+        combined.contains("router_a") || combined.contains("__MALVIN_DONE__") || combined.contains("router_header"),
         "agent must run via default router even when gates already pass; {combined:?}"
     );
 }

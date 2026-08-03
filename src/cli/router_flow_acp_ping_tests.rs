@@ -24,13 +24,12 @@ mod unix_cov {
                 write_mock_router_agent_requirements_ping_timeout(&mock);
                 let _env = install_mock_router_agent_env_with_script(workspace, &mock);
                 let (shared, workflow) = test_router_shared();
-                let (mut client, artifacts, coder, prompt_store) =
+                let (mut client, artifacts, prompt_store) =
                     router_boot_client_artifacts(workspace, &shared, workflow).expect("boot");
                 let RouterAcpIterationOutcome { acp_result, .. } =
                     run_router_acp_open_iteration(RouterAcpIterationInput {
                         client: &mut client,
                         artifacts: &artifacts,
-                        coder: &coder,
                         prompt_store: &prompt_store,
                         shared: &shared,
                         agent_loop: 1,
@@ -42,11 +41,6 @@ mod unix_cov {
                     err.contains("PING timed out"),
                     "primary error must be PING transport, got: {err}"
                 );
-                assert!(
-                    !err.contains("missing or unreadable"),
-                    "must not surface missing-file secondary, got: {err}"
-                );
-                assert!(!crate::artifacts::review_requirements_json(&artifacts).is_file());
             });
         });
     }
@@ -62,12 +56,11 @@ mod unix_cov {
                 let _env = install_mock_router_agent_env_with_script(workspace, &mock);
                 let (mut shared, workflow) = test_router_shared();
                 shared.max_acp_retries = 2;
-                let (mut client, artifacts, coder, prompt_store) =
+                let (mut client, artifacts, prompt_store) =
                     router_boot_client_artifacts(workspace, &shared, workflow).expect("boot");
                 let outcome = run_router_agent_loops(RouterAgentLoopInput {
                     client: &mut client,
                     artifacts: &artifacts,
-                    coder: &coder,
                     prompt_store: &prompt_store,
                     shared: &shared,
                     max_loops: 1,
@@ -76,8 +69,7 @@ mod unix_cov {
                 .expect("loops");
                 outcome
                     .last_acp
-                    .expect("requirements should succeed after PING retry");
-                assert!(crate::artifacts::review_requirements_json(&artifacts).is_file());
+                    .expect("router should succeed after PING retry");
             });
         });
     }

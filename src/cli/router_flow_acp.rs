@@ -26,7 +26,7 @@ use router_flow_coder_prompts::run_router_summarize_coder_prompt;
 pub(crate) struct RouterAcpIterationOutcome {
     pub acp_result: Result<(), String>,
     pub iteration_backups: SessionDotfileBackups,
-    pub all_no_work: bool,
+    pub done: bool,
     pub session_alive: bool,
     pub timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
 }
@@ -34,7 +34,6 @@ pub(crate) struct RouterAcpIterationOutcome {
 pub(crate) struct RouterAcpIterationInput<'a> {
     pub client: &'a mut AgentBackend,
     pub artifacts: &'a RunArtifacts,
-    pub coder: &'a router_flow_prompt::RouterCoderRun,
     pub prompt_store: &'a PromptStore,
     pub shared: &'a SharedOpts,
     pub agent_loop: usize,
@@ -62,7 +61,7 @@ pub(crate) async fn begin_coder_session_if_needed(
         .map_err(|e| e.to_string())
 }
 
-/// Begin session and run requirements → `KPop` → optional work; leave session open on success.
+/// Begin session and run `header.md` → `kpop_common.md` → `router_a.md` → optional `router_b.md`; leave session open on success.
 pub(crate) async fn run_router_acp_open_iteration(
     mut input: RouterAcpIterationInput<'_>,
 ) -> RouterAcpIterationOutcome {
@@ -74,7 +73,7 @@ pub(crate) async fn run_router_acp_open_iteration(
         return RouterAcpIterationOutcome {
             acp_result: Err(e),
             iteration_backups: snapshot_iteration_backups(work_dir),
-            all_no_work: false,
+            done: false,
             session_alive: false,
             timing: None,
         };
@@ -86,7 +85,7 @@ pub(crate) async fn run_router_acp_open_iteration(
         Ok(turns) => RouterAcpIterationOutcome {
             acp_result: Ok(()),
             iteration_backups: turns.iteration_backups,
-            all_no_work: turns.all_no_work,
+            done: turns.done,
             session_alive: true,
             timing: Some(timing),
         },
@@ -95,7 +94,7 @@ pub(crate) async fn run_router_acp_open_iteration(
             RouterAcpIterationOutcome {
                 acp_result: abort_router_acp_session(parts, e).await,
                 iteration_backups: snapshot_iteration_backups(work_dir),
-                all_no_work: false,
+                done: false,
                 session_alive: false,
                 timing: None,
             }

@@ -8,7 +8,7 @@ Author a **user-delighting feature pitch** by composing a request and running th
 |---|---|
 | Input | Optional guidance text or `.md` path |
 | Output | Workspace file at `--out-path` (default: `pitch.md`); path is named in the composed router request |
-| Loop | Default router: requirements JSON → multi-group KPop → optional work; outer `--max-loops` sessions |
+| Loop | Default router: `header` → `kpop_common` → `router_a` → optional `router_b`; outer `--max-loops` sessions |
 | Fast path | **None** — always runs the router |
 | Exit policy | Router success (agent fulfills the composed pitch request) |
 | Requires | No `.malvin/checks` preflight at CLI entry (document workflow, like `explain`) |

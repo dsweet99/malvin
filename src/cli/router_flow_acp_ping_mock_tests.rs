@@ -1,6 +1,6 @@
-//! ACP mocks that stream Cursor HTTP/2 PING `RetriableError`s during requirements.
+//! ACP mocks that stream Cursor HTTP/2 PING `RetriableError`s during the first router turn.
 
-/// Requirements turn that streams a Cursor PING `RetriableError` then `end_turn` (no JSON write).
+/// First turn streams a Cursor PING `RetriableError` then `end_turn`.
 #[cfg(unix)]
 pub(crate) fn write_mock_router_agent_requirements_ping_timeout(path: &std::path::Path) {
     use std::os::unix::fs::PermissionsExt;
@@ -17,12 +17,12 @@ pub(crate) fn write_mock_router_agent_requirements_ping_timeout(path: &std::path
     std::fs::set_permissions(path, perms).expect("chmod");
 }
 
-/// First requirements attempt streams PING (no write); after respawn, writes JSON and finishes the router.
+/// First attempt streams PING; after respawn, completes header → kpop → done → summarize.
 #[cfg(unix)]
 pub(crate) fn write_mock_router_agent_requirements_ping_then_ok(path: &std::path::Path) {
     use std::os::unix::fs::PermissionsExt;
 
-    let script = r#"#!/usr/bin/env node
+    let script = r"#!/usr/bin/env node
 const fs = require('fs');
 const path = require('path');
 const statePath = path.resolve(process.cwd(), '.malvin_router_ping_retry_state.json');
@@ -62,21 +62,6 @@ rl.on('line', (line) => {
     }
     state.phase += 1;
     saveState(state);
-    if (state.phase === 1) {
-      let outPath = null;
-      const abs = promptText.match(/(\/[^\s`"']+review_requirements\.json)/);
-      const rel = promptText.match(/(\.\/[^\s`"']+review_requirements\.json)/);
-      if (abs) outPath = abs[1];
-      else if (rel) outPath = rel[1];
-      if (outPath) {
-        const resolved = path.isAbsolute(outPath) ? outPath : path.resolve(process.cwd(), outPath);
-        fs.mkdirSync(path.dirname(resolved), { recursive: true });
-        fs.writeFileSync(resolved, JSON.stringify({
-          groups: [{ title: 'G1', requirements: ['ping retry mock'] }]
-        }));
-      }
-    }
-    // One group + NO_WORK_REMAINING skips work (keeps retry coverage under the 1.5s budget).
     if (promptText.includes('Write a summary of this entire session')) {
       const text = 'router_summarize done\n';
       console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text } } } }));
@@ -84,8 +69,9 @@ rl.on('line', (line) => {
       return;
     }
     const responses = [
-      'router_requirements phase\nwrote review_requirements.json\n',
-      '## NO_WORK_REMAINING 1\n',
+      'router_header phase\n',
+      'router_kpop_common phase\n',
+      'router_a phase\n__MALVIN_DONE__\n',
       'router_summarize done\n'
     ];
     const text = responses[Math.min(state.phase - 1, responses.length - 1)];
@@ -95,7 +81,7 @@ rl.on('line', (line) => {
     console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
   }
 });
-"#;
+";
     std::fs::write(path, script.as_bytes()).expect("write mock");
     let mut perms = std::fs::metadata(path).expect("meta").permissions();
     perms.set_mode(0o755);

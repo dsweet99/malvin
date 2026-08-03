@@ -74,14 +74,17 @@ rl.on('line', (line) => {
 #[cfg(unix)]
 pub(crate) const ROUTER_MOCK_SESSION_COUNTS_FILE: &str = ".malvin_router_mock_session_counts.json";
 
-/// Writes one group JSON on the requirements turn, then answers group `KPop` + work turns.
-/// Counts `session/new` and `session/prompt` into [`ROUTER_MOCK_SESSION_COUNTS_FILE`] under cwd.
+/// Shared counting ACP mock: prompt responses are a JS array literal string.
 #[cfg(unix)]
-pub(crate) fn write_mock_router_agent(path: &std::path::Path) {
+pub(crate) fn write_mock_router_agent_with_responses(
+    path: &std::path::Path,
+    responses_js: &str,
+    saw_summarize_js: &str,
+) {
     use std::os::unix::fs::PermissionsExt;
 
     let script = format!(
-        r#"#!/usr/bin/env node
+        r"#!/usr/bin/env node
 const fs = require('fs');
 const path = require('path');
 const countsPath = path.resolve(process.cwd(), '{ROUTER_MOCK_SESSION_COUNTS_FILE}');
@@ -117,33 +120,14 @@ rl.on('line', (line) => {{
           ? msg.params.prompt.map(p => (p && p.text) || '').join('\n')
           : String(msg.params.prompt))
       : '';
-    if (global.pc === 1) {{
-      let outPath = null;
-      const abs = promptText.match(/(\/[^\s`"']+review_requirements\.json)/);
-      const rel = promptText.match(/(\.\/[^\s`"']+review_requirements\.json)/);
-      if (abs) outPath = abs[1];
-      else if (rel) outPath = rel[1];
-      if (outPath) {{
-        const resolved = path.isAbsolute(outPath) ? outPath : path.resolve(process.cwd(), outPath);
-        fs.mkdirSync(path.dirname(resolved), {{ recursive: true }});
-        fs.writeFileSync(resolved, JSON.stringify({{
-          groups: [{{ title: 'G1', requirements: ['satisfy mock requirement'] }}]
-        }}));
-      }}
-    }}
-    let responses = [
-      'router_requirements phase\nwrote review_requirements.json\n',
-      'router_kpop phase\n## Group Work 1\nresidual plan: do the mock work\n',
-      'router_work done\n',
-      'router_summarize done\n'
-    ];
+    let responses = {responses_js};
     if (promptText.includes('Write a summary of this entire session')) {{
       try {{
         const p = path.resolve(process.cwd(), '.malvin_router_mock_summarize_count');
         let n = 0;
         try {{ n = parseInt(fs.readFileSync(p, 'utf8'), 10) || 0; }} catch (e) {{}}
         fs.writeFileSync(p, String(n + 1));
-        fs.writeFileSync(path.resolve(process.cwd(), '.malvin_router_mock_saw_summarize'), '1');
+        {saw_summarize_js}
       }} catch (e) {{}}
       const text = 'router_summarize done\n';
       console.log(JSON.stringify({{ jsonrpc: '2.0', method: 'session/update', params: {{ update: {{ sessionUpdate: 'agent_message_chunk', content: {{ type: 'text', text }} }} }} }}));
@@ -157,7 +141,7 @@ rl.on('line', (line) => {{
     console.log(JSON.stringify({{ jsonrpc: '2.0', id: rid, result: {{}} }}));
   }}
 }});
-"#
+"
     );
     std::fs::write(path, script.as_bytes()).expect("write mock");
     let mut perms = std::fs::metadata(path).expect("meta").permissions();
@@ -165,27 +149,20 @@ rl.on('line', (line) => {{
     std::fs::set_permissions(path, perms).expect("chmod");
 }
 
-/// Requirements turn that does not write JSON (parse should fail).
+/// `header.md` → `kpop_common.md` → `router_a.md` (not done) → `router_b.md` → summarize.
 #[cfg(unix)]
-pub(crate) fn write_mock_router_agent_missing_requirements(path: &std::path::Path) {
-    use std::os::unix::fs::PermissionsExt;
-
-    let handler = r"    if (!global.pc) global.pc = 0;
-    global.pc++;
-    const responses = [
-      'router_requirements phase\nforgot to write json\n',
-      'must not reach\n'
-    ];
-    const text = responses[(global.pc - 1) % responses.length];
-    console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text } } } }));";
-    let script = format!(
-        "#!/usr/bin/env node\n{}\n",
-        crate::acp_mock_js("", handler)
+pub(crate) fn write_mock_router_agent(path: &std::path::Path) {
+    write_mock_router_agent_with_responses(
+        path,
+        r"[
+      'router_header phase\n',
+      'router_kpop_common phase\n',
+      'router_a phase\nnot done yet\n',
+      'router_b done\n',
+      'router_summarize done\n'
+    ]",
+        "fs.writeFileSync(path.resolve(process.cwd(), '.malvin_router_mock_saw_summarize'), '1');",
     );
-    std::fs::write(path, script.as_bytes()).expect("write mock");
-    let mut perms = std::fs::metadata(path).expect("meta").permissions();
-    perms.set_mode(0o755);
-    std::fs::set_permissions(path, perms).expect("chmod");
 }
 
 #[cfg(unix)]
@@ -196,13 +173,10 @@ fn write_mock_router_agent_helpers_produce_executable_scripts() {
     write_mock_router_agent(&mock);
     assert!(mock.is_file());
     let body = std::fs::read_to_string(&mock).expect("read");
-    assert!(body.contains("Group Work 1"));
+    assert!(body.contains("router_a phase"));
     let fail = tmp.path().join("mock-fail");
     write_mock_router_agent_session_fail(&fail);
     assert!(fail.is_file());
     let fail_body = std::fs::read_to_string(&fail).expect("read fail");
     assert!(fail_body.contains("session fail"));
-    let bad = tmp.path().join("mock-bad");
-    write_mock_router_agent_missing_requirements(&bad);
-    assert!(bad.is_file());
 }
