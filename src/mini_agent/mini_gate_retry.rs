@@ -1,13 +1,12 @@
-//! Gate-iteration retry loop for Mini (owned by malvin orchestration).
+//! Gate-iteration retry loop for Mini (owned by Mini; ACP keeps prompt retries in `acp/`).
 
-use crate::mini_agent::MiniAgentClient;
-use crate::mini_agent::{LoopDriverConfig, MiniPhase, MiniTerminalReason, MiniTerminalRecord};
-use crate::mini_agent::trace_audit::{emit_retry_fork, emit_terminal};
 use super::mini_gate_retry_attempt::run_one_gate_attempt;
+use super::trace_audit::{emit_retry_fork, emit_terminal};
+use super::{LoopDriverConfig, MiniAgentClient, MiniPhase, MiniTerminalReason, MiniTerminalRecord};
+use super::fork_state::ForkState;
 use crate::acp::{
     backoff_after_mini_gate_failure, retries_noun, AgentError, CoderPromptOptions,
 };
-use crate::fork_state::ForkState;
 use crate::nested_budget_scopes::BudgetScopeLayer;
 
 pub(crate) struct ForkLedgerBuild {
@@ -15,14 +14,14 @@ pub(crate) struct ForkLedgerBuild {
     pub(crate) attempt: u32,
     pub(crate) checkpoint: ForkState,
     pub(crate) bash_commands: Vec<String>,
-    pub(crate) outcome: crate::mini_agent::retry_fork::ForkOutcome,
-    pub(crate) strategy: crate::mini_agent::retry_fork::MiniRetryStrategy,
+    pub(crate) outcome: super::retry_fork::ForkOutcome,
+    pub(crate) strategy: super::retry_fork::MiniRetryStrategy,
 }
 
 pub(crate) struct GateAttemptOutcome {
     pub(crate) success_text: Option<String>,
     pub(crate) failure_reason: String,
-    pub(crate) ledger: crate::mini_agent::retry_fork::RetryForkLedger,
+    pub(crate) ledger: super::retry_fork::RetryForkLedger,
 }
 
 pub(crate) struct GateAttemptRun<'a> {

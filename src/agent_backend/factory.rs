@@ -85,10 +85,7 @@ fn new_mini_client(
     } else {
         shared.mini_max_shrink_passes
     };
-    let llm = build_mini_llm_backend(&shared.model, !shared.no_download)?;
-    let mini_constraints = crate::prompts::default_file("mini_constraints.md")
-        .unwrap_or("")
-        .to_string();
+    let llm = crate::mini_agent::build_llm_backend(&shared.model, !shared.no_download)?;
     MiniAgentClient::new(
         MiniLoopConfig {
             model: shared.model.clone(),
@@ -101,34 +98,11 @@ fn new_mini_client(
             retry_strategy: MiniRetryStrategy::CumulativeTranscript,
             expects_investigation: false,
             allow_download: !shared.no_download,
-            mini_constraints,
+            mini_constraints: String::new(),
         },
         io,
         llm,
     )
-}
-
-fn build_mini_llm_backend(model: &str, allow_download: bool) -> Result<crate::mini_agent::LlmBackend, String> {
-    use crate::llm_transport::{LocalLlmTransport, LlmTransport, OpenRouterTransport};
-    use crate::mini_agent::LlmBackend;
-    if crate::model_id::uses_local_backend(model) {
-        let policy = if allow_download {
-            crate::local_llm::DownloadPolicy::Allow
-        } else {
-            crate::local_llm::DownloadPolicy::Deny
-        };
-        let engine = crate::local_llm::ensure_local_engine(model, policy)?;
-        Ok(LlmBackend::Transport(LlmTransport::Local(LocalLlmTransport::new(
-            engine,
-        ))))
-    } else {
-        let openrouter_config = crate::openrouter_transport::OpenRouterConfig::from_env(
-            crate::mini_agent::resolve_mini_model(model),
-        )?;
-        let transport = OpenRouterTransport::new(openrouter_config)
-            .map_err(|e| format!("OpenRouter client init failed: {e}"))?;
-        Ok(LlmBackend::Transport(LlmTransport::OpenRouter(transport)))
-    }
 }
 
 #[cfg(test)]

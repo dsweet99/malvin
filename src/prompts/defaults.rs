@@ -24,7 +24,6 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "kpop_summarize.md",
     "code_constraints.md",
     "init_constraints.md",
-    "mini_constraints.md",
     HEADER_MD,
     DO_HEADER_MD,
     ROUTER_REQUIREMENTS_MD,

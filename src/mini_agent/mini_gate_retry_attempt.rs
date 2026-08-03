@@ -1,15 +1,12 @@
 //! Single gate-attempt execution for Mini gate retries.
 
-use crate::mini_agent::MiniAgentClient;
-use super::mini_gate_retry::{
-    ForkLedgerBuild, GateAttemptOutcome, GateAttemptRun,
-};
-use crate::mini_agent::{run_inner_loop, LoopDriverRun, LoopDriverSession};
-use crate::mini_agent::retry_fork::{
+use super::fork_state::ForkState;
+use super::mini_gate_retry::{ForkLedgerBuild, GateAttemptOutcome, GateAttemptRun};
+use super::retry_fork::{
     build_divergence_observation, ForkOutcome, MiniRetryStrategy, RetryForkLedger,
 };
+use super::{run_inner_loop, LoopDriverRun, LoopDriverSession, MiniAgentClient};
 use crate::acp::AgentError;
-use crate::fork_state::ForkState;
 
 pub(crate) async fn run_one_gate_attempt(
     client: &mut MiniAgentClient,

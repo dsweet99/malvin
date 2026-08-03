@@ -4,9 +4,10 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use super::bash_adapter::ensure_bash_on_path;
-use crate::agent_backend::mini_gate_retry::run_coder_prompt_with_gate_retries;
 use super::client_prompt_log::{write_prompt_log, PromptLogWrite};
+use super::default_constraints::default_mini_constraints;
 use super::loop_driver::{LoopDriverConfig, LoopDriverSession, LlmBackend};
+use super::mini_gate_retry::run_coder_prompt_with_gate_retries;
 use super::model_resolve::resolve_mini_model;
 use super::retry_fork::MiniRetryStrategy;
 use super::trace::MiniTraceSink;
@@ -23,7 +24,7 @@ pub struct MiniLoopConfig {
     pub retry_strategy: MiniRetryStrategy,
     pub expects_investigation: bool,
     pub allow_download: bool,
-    /// Sticky constraint text supplied by malvin (not loaded by Mini by filename).
+    /// Sticky constraint text; empty at construction is filled from [`default_mini_constraints`].
     pub mini_constraints: String,
 }
 
@@ -42,6 +43,10 @@ pub struct MiniAgentClient {
 impl MiniAgentClient {
     pub fn new(config: MiniLoopConfig, io: AgentIoOptions, llm: LlmBackend) -> Result<Self, String> {
         ensure_bash_on_path()?;
+        let mut config = config;
+        if config.mini_constraints.is_empty() {
+            config.mini_constraints = default_mini_constraints().to_string();
+        }
         Ok(Self {
             config,
             io,

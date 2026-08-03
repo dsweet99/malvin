@@ -186,7 +186,6 @@ pub mod kpop_program;
 pub mod kpop_soft_constraints;
 pub mod acp_trace_impersonation;
 pub mod coder_prompt_phase;
-pub mod fork_state;
 pub mod nested_budget_scopes;
 pub mod prompt_stratification;
 pub mod reliability_tier;

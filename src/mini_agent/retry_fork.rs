@@ -1,9 +1,9 @@
 //! Gate-iteration retry fork ledger (`miniRetryFork` trace events).
 
-use crate::fork_state::ForkState;
+use super::fork_state::ForkState;
 
 #[allow(unused_imports)]
-pub use crate::fork_state::workspace_manifest_hash;
+pub use super::fork_state::workspace_manifest_hash;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MiniRetryStrategy {

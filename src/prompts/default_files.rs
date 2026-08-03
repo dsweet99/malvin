@@ -7,7 +7,6 @@ fn default_constraints_prompt(name: &str) -> Option<&'static str> {
     match name {
         "code_constraints.md" => Some(include_str!("../../default_prompts/code_constraints.md")),
         "init_constraints.md" => Some(include_str!("../../default_prompts/init_constraints.md")),
-        "mini_constraints.md" => Some(include_str!("../../default_prompts/mini_constraints.md")),
         _ => None,
     }
 }
@@ -61,16 +60,10 @@ mod tests {
     use super::{default_constraints_prompt, default_file, default_kpop_prompt};
 
     #[test]
-    fn default_file_mini_constraints_embedded() {
-        let text = default_file("mini_constraints.md").expect("mini_constraints");
-        assert!(text.contains("```bash"));
-        assert!(text.contains("openrouter:"));
-    }
-
-    #[test]
     fn default_constraints_prompt_embeds_code_and_init() {
         assert!(default_constraints_prompt("code_constraints.md").is_some());
         assert!(default_constraints_prompt("init_constraints.md").is_some());
+        assert!(default_constraints_prompt("mini_constraints.md").is_none());
         assert!(default_constraints_prompt("missing.md").is_none());
         assert!(default_kpop_prompt("mbc2.md").is_some());
         assert!(default_kpop_prompt("missing.md").is_none());

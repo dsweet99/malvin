@@ -74,8 +74,8 @@ fn kiss_invalid_struct_value_refs_4() {
     let _ = crate::mini_agent::loop_driver::loop_http::HttpRetryRequest;
     let _ = crate::mini_agent::loop_driver::loop_inner_types::CompleteTurnRequest;
     let _ = crate::mini_agent::loop_driver::loop_inner_types::LoopPhase::Investigate;
-    let _ = crate::agent_backend::mini_gate_retry::ForkLedgerBuild;
-    let _ = crate::agent_backend::mini_gate_retry::GateAttemptOutcome;
+    let _ = crate::mini_agent::mini_gate_retry::ForkLedgerBuild;
+    let _ = crate::mini_agent::mini_gate_retry::GateAttemptOutcome;
     let _ = crate::mini_agent::loop_driver::loop_inner_phases::BashTurnInput;
     let _ = crate::mini_agent::loop_driver::loop_inner_bash::BashObservationInput;
     let _ = crate::mini_agent::loop_driver::loop_inner_finish::TerminalEmitCtx;

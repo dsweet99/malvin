@@ -2,8 +2,6 @@ mod backend;
 mod backend_ops;
 mod backend_kpop_ops;
 mod factory;
-pub(crate) mod mini_gate_retry;
-pub(crate) mod mini_gate_retry_attempt;
 #[cfg(test)]
 pub(crate) mod test_support;
 

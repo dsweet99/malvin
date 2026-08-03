@@ -179,8 +179,8 @@ fn kiss_witness_loop_driver_and_client_helpers() {
     let _ = stringify!(loop_driver_fenceless_completes_in_one_turn);
     let _ = stringify!(loop_driver_fenceless_no_nudge_in_prompts_log);
     let _ = stringify!(count_user_messages_with_marker);
-    let _ = crate::agent_backend::mini_gate_retry::run_coder_prompt_with_gate_retries;
-    let _ = crate::agent_backend::mini_gate_retry_attempt::run_one_gate_attempt;
+    let _ = crate::mini_agent::mini_gate_retry::run_coder_prompt_with_gate_retries;
+    let _ = crate::mini_agent::mini_gate_retry_attempt::run_one_gate_attempt;
     let _ = stringify!(ForkLedgerBuild);
     let _ = stringify!(GateAttemptOutcome);
     let _ = stringify!(GateAttemptRun);
@@ -205,7 +205,7 @@ fn kiss_witness_loop_driver_and_client_helpers() {
     let _ = stringify!(kiss_witness_http_retry_counter_next_paths);
     let _ = stringify!(mock_step_outcome);
     let _ = crate::openrouter_transport::complete_transport_with_retries;
-    let _ = std::mem::size_of::<crate::fork_state::ForkState>();
+    let _ = std::mem::size_of::<crate::mini_agent::fork_state::ForkState>();
 }
 
 #[test]
