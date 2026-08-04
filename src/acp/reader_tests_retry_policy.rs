@@ -20,14 +20,14 @@ fn openrouter_billing_failure_substring_is_detected_case_insensitively() {
 
 #[test]
 fn openrouter_billing_errors_do_not_retry_even_with_high_max() {
-    let msg = "mini OpenRouter HTTP failed after 1 transport attempts (limit 3): OpenRouter billing/credit failure (402): no credits";
+    let msg = "mini HTTP failed after 1 transport attempts (limit 3): OpenRouter billing/credit failure (402): no credits";
     let err = plan_agent_retry(msg, 1, 9999).expect_err("billing must fail fast");
     assert_eq!(err.0, msg);
 }
 
 #[test]
 fn insufficient_credits_provider_phrasing_fails_fast() {
-    let msg = "mini OpenRouter HTTP failed after 1 transport attempts (limit 3): Provider: Insufficient credits. Add more using https://openrouter.ai/settings/credits";
+    let msg = "mini HTTP failed after 1 transport attempts (limit 3): Provider: Insufficient credits. Add more using https://openrouter.ai/settings/credits";
     assert!(agent_string_is_openrouter_billing_failure(msg));
     let err = plan_agent_retry(msg, 1, 9999).expect_err("insufficient credits must fail fast");
     assert_eq!(err.0, msg);

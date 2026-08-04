@@ -161,6 +161,7 @@ fn kiss_witness_trace_audit_emitters() {
             history: String::new(),
             previous_response: String::new(),
             workspace_manifest_hash: "h".into(),
+            workspace_files: std::collections::BTreeMap::new(),
             bash_commands: vec![],
             outcome: super::retry_fork::ForkOutcome::Succeeded,
             strategy: super::retry_fork::MiniRetryStrategy::CumulativeTranscript,

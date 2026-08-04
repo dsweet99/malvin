@@ -21,7 +21,7 @@ pub fn build_sticky_header(mini_constraints: &str, llm_model_slug: &str) -> Stri
     parts.push(MEMORY_SCHEMA.to_string());
     if !llm_model_slug.is_empty() {
         parts.push(format!(
-            "Your OpenRouter model slug is `{llm_model_slug}`. When asked which LLM you are, name this slug."
+            "Your model slug is `{llm_model_slug}`. When asked which LLM you are, name this slug."
         ));
     }
     parts.join("\n\n")
@@ -68,7 +68,37 @@ fn mid_truncate(text: &str, cap: usize, marker: &str) -> String {
     let budget = cap.saturating_sub(marker.len());
     let head = budget / 2;
     let tail = budget.saturating_sub(head);
-    format!("{}{}{}", &text[..head], marker, &text[text.len() - tail..])
+    let head_end = floor_char_boundary(text, head.min(text.len()));
+    let tail_start = ceil_char_boundary(text, text.len().saturating_sub(tail));
+    if head_end >= tail_start {
+        let end = floor_char_boundary(text, budget.min(text.len()));
+        return format!("{}{}", &text[..end], marker);
+    }
+    format!("{}{}{}", &text[..head_end], marker, &text[tail_start..])
+}
+
+/// Largest char boundary index `<= i` (or `text.len()` when `i` is past the end).
+#[must_use]
+pub(crate) const fn floor_char_boundary(text: &str, mut i: usize) -> usize {
+    if i >= text.len() {
+        return text.len();
+    }
+    while i > 0 && !text.is_char_boundary(i) {
+        i -= 1;
+    }
+    i
+}
+
+/// Smallest char boundary index `>= i` (or `text.len()` when `i` is past the end).
+#[must_use]
+pub(crate) const fn ceil_char_boundary(text: &str, mut i: usize) -> usize {
+    if i >= text.len() {
+        return text.len();
+    }
+    while i < text.len() && !text.is_char_boundary(i) {
+        i += 1;
+    }
+    i
 }
 
 pub struct SessionAssemble<'a> {
@@ -110,6 +140,41 @@ mod tests {
         let out = soft_cap_history(&big);
         assert!(out.contains("compress further"));
         assert!(out.len() < big.len());
+    }
+
+    #[test]
+    fn mid_truncate_respects_utf8_char_boundaries() {
+        // Each emoji is 4 bytes; an odd byte cut would panic without boundary flooring.
+        let text = "😀".repeat(40);
+        let out = mid_truncate(&text, 50, "…");
+        assert!(out.contains('…'));
+        assert!(std::str::from_utf8(out.as_bytes()).is_ok());
+    }
+
+    #[test]
+    fn mid_truncate_fallback_when_head_meets_tail() {
+        let text = "😀😀😀";
+        let out = mid_truncate(text, 3, "…MARK…");
+        assert!(out.contains("MARK"));
+        assert!(std::str::from_utf8(out.as_bytes()).is_ok());
+    }
+
+    #[test]
+    fn char_boundary_helpers_cover_mid_codepoint_and_past_end() {
+        let s = "😀a";
+        assert_eq!(floor_char_boundary(s, 0), 0);
+        assert_eq!(floor_char_boundary(s, 1), 0);
+        assert_eq!(floor_char_boundary(s, 2), 0);
+        assert_eq!(floor_char_boundary(s, 3), 0);
+        assert_eq!(floor_char_boundary(s, 4), 4);
+        assert_eq!(floor_char_boundary(s, 5), 5);
+        assert_eq!(floor_char_boundary(s, 100), s.len());
+        assert_eq!(ceil_char_boundary(s, 0), 0);
+        assert_eq!(ceil_char_boundary(s, 1), 4);
+        assert_eq!(ceil_char_boundary(s, 2), 4);
+        assert_eq!(ceil_char_boundary(s, 4), 4);
+        assert_eq!(ceil_char_boundary(s, 5), 5);
+        assert_eq!(ceil_char_boundary(s, 100), s.len());
     }
 
     #[test]

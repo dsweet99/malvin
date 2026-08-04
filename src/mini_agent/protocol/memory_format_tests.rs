@@ -79,3 +79,11 @@ fn format_wire_turn_round_trips() {
     assert_eq!(parsed.new_history, "hist");
     assert_eq!(parsed.response, "resp");
 }
+
+#[test]
+fn parse_ignores_response_substring_inside_history_line() {
+    let wire = "## NEW_HISTORY\nNote the wire marker ## RESPONSE in prose.\n\n## RESPONSE\nreal answer\n";
+    let parsed = parse_history_response(wire).unwrap();
+    assert!(parsed.new_history.contains("## RESPONSE"));
+    assert_eq!(parsed.response, "real answer");
+}

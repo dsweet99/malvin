@@ -46,18 +46,27 @@ impl SectionParseError {
 }
 
 /// Parse assistant wire text: `## NEW_HISTORY` then `## RESPONSE` (fixed order).
+///
+/// Headings must appear at line starts so a History body that mentions the
+/// substring `## RESPONSE` mid-line does not steal the section boundary.
 pub fn parse_history_response(content: &str) -> Result<ParsedTurn, SectionParseError> {
-    let hist_pos = content.find(NEW_HISTORY_HEADING);
-    let resp_pos = content.find(RESPONSE_HEADING);
-    let (Some(h), Some(r)) = (hist_pos, resp_pos) else {
+    let hist_pos = find_line_heading(content, NEW_HISTORY_HEADING);
+    let resp_anywhere = find_line_heading(content, RESPONSE_HEADING);
+    let (Some(h), Some(r_any)) = (hist_pos, resp_anywhere) else {
         if hist_pos.is_none() {
             return Err(SectionParseError::MissingNewHistory);
         }
         return Err(SectionParseError::MissingResponse);
     };
-    if h > r {
+    if r_any < h {
         return Err(SectionParseError::WrongOrder);
     }
+    let search_from = h + NEW_HISTORY_HEADING.len();
+    let Some(r) = find_line_heading(&content[search_from..], RESPONSE_HEADING)
+        .map(|rel| search_from + rel)
+    else {
+        return Err(SectionParseError::MissingResponse);
+    };
     let after_hist = h + NEW_HISTORY_HEADING.len();
     let history_body = content[after_hist..r].trim();
     let after_resp = r + RESPONSE_HEADING.len();
@@ -66,6 +75,34 @@ pub fn parse_history_response(content: &str) -> Result<ParsedTurn, SectionParseE
         new_history: history_body.to_string(),
         response: response_body.to_string(),
     })
+}
+
+fn find_line_heading(content: &str, heading: &str) -> Option<usize> {
+    if content.starts_with(heading) && heading_ends_cleanly(&content[heading.len()..]) {
+        return Some(0);
+    }
+    let mut search_from = 0;
+    while let Some(rel) = content[search_from..].find('\n') {
+        let line_start = search_from + rel + 1;
+        if content[line_start..].starts_with(heading)
+            && heading_ends_cleanly(&content[line_start + heading.len()..])
+        {
+            return Some(line_start);
+        }
+        search_from = line_start;
+        if search_from >= content.len() {
+            break;
+        }
+    }
+    None
+}
+
+fn heading_ends_cleanly(after: &str) -> bool {
+    after.is_empty()
+        || after.starts_with('\n')
+        || after.starts_with("\r\n")
+        || after.starts_with(' ')
+        || after.starts_with('\t')
 }
 
 /// Build a wire turn for tests / mocks.

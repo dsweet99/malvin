@@ -97,7 +97,7 @@ async fn run_investigate_phase(
     transcript: &mut String,
 ) -> Result<InvestigatePhaseResult, AgentError> {
     use crate::mini_agent::terminal::{MiniPhase, MiniTerminalReason};
-    use super::loop_inner_finish::{finish_exhausted, TerminalEmitCtx};
+    use super::loop_inner_finish::{finish_exhausted, ExhaustedLimits, TerminalEmitCtx};
 
     let config = turn_req.config;
     let trace = turn_req.trace;
@@ -109,7 +109,10 @@ async fn run_investigate_phase(
         if !counters.had_bash_this_prompt {
             return Ok(InvestigatePhaseResult::Failed(finish_exhausted(
                 trace,
-                config.max_http_turns,
+                ExhaustedLimits {
+                    max_http_turns: config.max_http_turns,
+                    max_bash_execs: config.max_bash_execs,
+                },
                 transcript,
                 TerminalEmitCtx {
                     reason: MiniTerminalReason::BudgetExhaustedBeforeClassification,

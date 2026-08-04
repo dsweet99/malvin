@@ -14,6 +14,11 @@ pub(crate) struct TerminalEmitCtx {
     pub phase_at_exit: MiniPhase,
 }
 
+pub(crate) struct ExhaustedLimits {
+    pub max_http_turns: u32,
+    pub max_bash_execs: u32,
+}
+
 pub(crate) fn persist_turn_memory(
     session: &mut LoopDriverSession,
     transcript: &mut String,
@@ -50,7 +55,7 @@ pub(crate) fn finish_done_turn(
 
 pub(crate) fn finish_exhausted(
     trace: &crate::mini_agent::trace::MiniTraceSink,
-    max_http_turns: u32,
+    limits: ExhaustedLimits,
     transcript: &str,
     ctx: TerminalEmitCtx,
 ) -> AgentError {
@@ -61,11 +66,25 @@ pub(crate) fn finish_exhausted(
         ctx.phase_at_exit,
     );
     emit_terminal(trace, &record);
-    exhausted_error(max_http_turns, transcript)
+    exhausted_error(
+        ctx.reason,
+        limits.max_http_turns,
+        limits.max_bash_execs,
+        transcript,
+    )
 }
 
-pub(crate) fn exhausted_error(max_http_turns: u32, transcript: &str) -> AgentError {
+pub(crate) fn exhausted_error(
+    reason: MiniTerminalReason,
+    max_http_turns: u32,
+    max_bash_execs: u32,
+    transcript: &str,
+) -> AgentError {
+    let (flag, limit) = match reason {
+        MiniTerminalReason::BudgetExhaustedBashExecs => ("--mini-max-bash-execs", max_bash_execs),
+        _ => ("--mini-max-http-turns", max_http_turns),
+    };
     AgentError(format!(
-        "bash_loop: exhausted --mini-max-http-turns ({max_http_turns}) with partial transcript:\n{transcript}"
+        "bash_loop: exhausted {flag} ({limit}) with partial transcript:\n{transcript}"
     ))
 }

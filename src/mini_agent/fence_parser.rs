@@ -84,10 +84,11 @@ pub(crate) fn is_bash_fence_open(trimmed: &str) -> bool {
     tag.eq_ignore_ascii_case("bash") || tag.eq_ignore_ascii_case("sh")
 }
 
-/// True when a trimmed line equal to `MINI_DONE` appears outside bash/sh fence blocks.
+/// True when a trimmed line equal to `MINI_DONE` appears outside any fenced block.
 #[must_use]
 pub fn has_mini_done_outside_bash_fences(text: &str) -> bool {
     let mut inside_bash_fence = false;
+    let mut inside_unknown_fence = false;
     for line in text.lines() {
         let trimmed = line.trim();
         if inside_bash_fence {
@@ -96,8 +97,18 @@ pub fn has_mini_done_outside_bash_fences(text: &str) -> bool {
             }
             continue;
         }
+        if inside_unknown_fence {
+            if trimmed == "```" {
+                inside_unknown_fence = false;
+            }
+            continue;
+        }
         if is_bash_fence_open(trimmed) {
             inside_bash_fence = true;
+            continue;
+        }
+        if trimmed.starts_with("```") && trimmed != "```" {
+            inside_unknown_fence = true;
             continue;
         }
         if trimmed == "MINI_DONE" {
@@ -196,5 +207,22 @@ mod tests {
     fn mini_done_in_prose_is_outside() {
         let text = "summary\nMINI_DONE\n";
         assert!(has_mini_done_outside_bash_fences(text));
+    }
+
+    #[test]
+    fn parse_bash_fences_ignores_bash_open_nested_inside_non_bash_fence() {
+        // CommonMark: ```bash inside an open python fence is content / a new open,
+        // not a closer (closers cannot carry an info string). Must not execute.
+        let text = "```python\nprint(1)\n```bash\necho pwned\n```\n";
+        assert!(
+            parse_bash_fences(text).is_empty(),
+            "nested ```bash inside ```python must not yield an executable fence"
+        );
+    }
+
+    #[test]
+    fn mini_done_inside_non_bash_fence_is_not_outside() {
+        let text = "```python\nMINI_DONE\nprint(1)\n```\n```bash\necho hi\n```";
+        assert!(!has_mini_done_outside_bash_fences(text));
     }
 }

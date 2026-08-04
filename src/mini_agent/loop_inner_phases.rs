@@ -4,7 +4,7 @@ use crate::mini_agent::terminal::{MiniPhase, MiniTerminalReason};
 use super::loop_inner_bash::{append_bash_observation, BashObservationInput};
 use super::loop_inner_classify::classify_turn;
 use super::loop_inner_finish::{
-    finish_done_turn, finish_exhausted, persist_turn_memory, TerminalEmitCtx,
+    finish_done_turn, finish_exhausted, persist_turn_memory, ExhaustedLimits, TerminalEmitCtx,
 };
 use super::loop_inner_http::complete_turn_with_recovery;
 use super::loop_inner_types::{CompleteTurnRequest, LoopCounters, TurnAction};
@@ -97,7 +97,10 @@ fn investigate_bash_turn(
     {
         let err = finish_exhausted(
             req.trace,
-            req.config.max_http_turns,
+            ExhaustedLimits {
+                max_http_turns: req.config.max_http_turns,
+                max_bash_execs: req.config.max_bash_execs,
+            },
             transcript,
             TerminalEmitCtx {
                 reason: MiniTerminalReason::BudgetExhaustedBashExecs,
@@ -108,12 +111,16 @@ fn investigate_bash_turn(
         );
         return Ok(InvestigateStep::Failed(err));
     }
+    if !input.stream_warnings {
+        if req.trace.plain_lines {
+            req.trace.record_assistant_audit(input.assistant_text);
+        } else {
+            req.trace.stream_assistant_chunks(input.assistant_text);
+        }
+    }
     if req.trace.plain_lines {
-        req.trace.record_assistant_audit(input.assistant_text);
         // Keep bash chatter off the plain tee / stdout.log, but still extract DM bodies.
         req.trace.feed_do_dm_assistant_text(input.assistant_text);
-    } else {
-        req.trace.stream_assistant_chunks(input.assistant_text);
     }
     if let Some(r) = input.reasoning {
         req.trace.mini_thought(r);
@@ -186,7 +193,10 @@ pub(crate) async fn run_wind_down_turn(
         TurnAction::RunBash(_) => {
             let err = finish_exhausted(
                 req.trace,
-                req.config.max_http_turns,
+                ExhaustedLimits {
+                    max_http_turns: req.config.max_http_turns,
+                    max_bash_execs: req.config.max_bash_execs,
+                },
                 transcript,
                 TerminalEmitCtx {
                     reason: MiniTerminalReason::BudgetExhaustedAfterBashOnLastHttpTurn,

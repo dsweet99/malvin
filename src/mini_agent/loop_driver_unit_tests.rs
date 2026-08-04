@@ -75,7 +75,25 @@ fn stage_user_prompt_sets_pending_new_request() {
 
 #[test]
 fn exhausted_error_includes_transcript() {
-    let err = exhausted_error(2, "partial");
+    let err = exhausted_error(
+        crate::mini_agent::terminal::MiniTerminalReason::BudgetExhaustedBeforeClassification,
+        2,
+        128,
+        "partial",
+    );
     assert!(err.0.contains("exhausted"));
     assert!(err.0.contains("partial"));
+    assert!(err.0.contains("--mini-max-http-turns"));
+}
+
+#[test]
+fn exhausted_error_bash_execs_blames_bash_flag() {
+    let err = exhausted_error(
+        crate::mini_agent::terminal::MiniTerminalReason::BudgetExhaustedBashExecs,
+        2,
+        7,
+        "partial",
+    );
+    assert!(err.0.contains("--mini-max-bash-execs (7)"));
+    assert!(!err.0.contains("--mini-max-http-turns"));
 }

@@ -35,7 +35,7 @@ pub(crate) async fn backoff_before_http_retry(
     err: &TransportError,
 ) {
     crate::output::print_log_error(&format!(
-        "mini OpenRouter HTTP attempt {failures} failed (transport): {err}"
+        "mini HTTP attempt {failures} failed (transport): {err}"
     ));
     let sleep = if failures == 1 {
         std::time::Duration::from_secs(1)
@@ -48,7 +48,7 @@ pub(crate) async fn backoff_before_http_retry(
 
 pub(crate) fn exhaustion_message(failures: u32, limit: u32, detail: &str) -> String {
     format!(
-        "mini OpenRouter HTTP failed after {failures} transport attempts (limit {limit}): {detail}"
+        "mini HTTP failed after {failures} transport attempts (limit {limit}): {detail}"
     )
 }
 

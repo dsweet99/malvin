@@ -1,4 +1,5 @@
 use crate::mini_agent::protocol::memory_format::RESPONSE_HEADING;
+use crate::mini_agent::fence_parser::is_bash_fence_open;
 use crate::llm_transport::{ChatMessage, ChatRole};
 
 pub(crate) use super::complete_act_inputs::{
@@ -16,7 +17,7 @@ pub(crate) fn response_section_or_raw(content: &str) -> &str {
 
 pub(crate) fn response_has_act_fence(content: &str) -> bool {
     let body = response_section_or_raw(content);
-    body.contains("```bash") || body.contains("``` bash")
+    body.lines().any(|line| is_bash_fence_open(line.trim()))
 }
 
 pub(crate) fn bash_fence_bodies<'a>(
@@ -40,10 +41,7 @@ fn push_bash_bodies<'a>(content: &'a str, out: &mut Vec<&'a str>) {
     while let Some(start) = rest.find("```") {
         let after_ticks = &rest[start + 3..];
         let after_lang = after_ticks.trim_start();
-        let is_bash = after_lang.starts_with("bash")
-            || after_lang.starts_with("sh")
-            || after_lang.starts_with('\n');
-        if !is_bash {
+        if !fence_lang_is_bash(after_lang) {
             rest = &rest[start + 3..];
             continue;
         }
@@ -59,6 +57,17 @@ fn push_bash_bodies<'a>(content: &'a str, out: &mut Vec<&'a str>) {
             rest = &rest[3..];
         }
     }
+}
+
+fn fence_lang_is_bash(after_lang: &str) -> bool {
+    if after_lang.is_empty() || after_lang.starts_with('\n') {
+        return true;
+    }
+    let tag_end = after_lang
+        .find(|c: char| c.is_whitespace())
+        .unwrap_or(after_lang.len());
+    let tag = &after_lang[..tag_end];
+    tag.eq_ignore_ascii_case("bash") || tag.eq_ignore_ascii_case("sh")
 }
 
 fn body_looks_exterior(body: &str) -> bool {

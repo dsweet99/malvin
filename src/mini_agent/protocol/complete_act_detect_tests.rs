@@ -18,6 +18,22 @@ fn response_has_act_fence_sees_response_fences() {
 }
 
 #[test]
+fn response_has_act_fence_sees_sh_tag() {
+    let wire = "## NEW_HISTORY\n- note\n\n## RESPONSE\n```sh\necho hi\n```\n";
+    assert!(response_has_act_fence(wire));
+}
+
+#[test]
+fn push_bash_bodies_does_not_treat_shell_as_bash() {
+    use super::complete_act_detect::history_has_any_artifact_act;
+    let msgs = vec![ChatMessage {
+        role: ChatRole::Assistant,
+        content: "## RESPONSE\n```shell\nsed -i 's/a/b/' f\n```\n".into(),
+    }];
+    assert!(!history_has_any_artifact_act(&msgs));
+}
+
+#[test]
 fn response_has_act_fence_legacy_raw_when_no_sections() {
     assert!(response_has_act_fence("```bash\necho x\n```"));
     assert!(!response_has_act_fence("prose only"));

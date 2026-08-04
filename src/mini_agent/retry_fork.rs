@@ -44,6 +44,7 @@ pub struct RetryForkLedger {
     pub history: String,
     pub previous_response: String,
     pub workspace_manifest_hash: String,
+    pub workspace_files: std::collections::BTreeMap<String, Vec<u8>>,
     pub bash_commands: Vec<String>,
     pub outcome: ForkOutcome,
     pub strategy: MiniRetryStrategy,
@@ -56,6 +57,7 @@ impl RetryForkLedger {
             history: self.history.clone(),
             previous_response: self.previous_response.clone(),
             workspace_manifest_hash: self.workspace_manifest_hash.clone(),
+            workspace_files: self.workspace_files.clone(),
         }
     }
 }
@@ -95,6 +97,7 @@ mod tests {
             history: "h".into(),
             previous_response: "p".into(),
             workspace_manifest_hash: "git:x".into(),
+            workspace_files: std::collections::BTreeMap::new(),
             bash_commands: vec![],
             outcome: ForkOutcome::Failed,
             strategy: MiniRetryStrategy::WorkspaceSnapshot,
@@ -105,6 +108,7 @@ mod tests {
                 history: "h".into(),
                 previous_response: "p".into(),
                 workspace_manifest_hash: "git:x".into(),
+                workspace_files: std::collections::BTreeMap::new(),
             }
         );
     }

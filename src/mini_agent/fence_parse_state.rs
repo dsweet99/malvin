@@ -6,6 +6,7 @@ pub(crate) struct FenceParseState {
     pub out: Vec<BashFence>,
     pending_comment: Vec<String>,
     inside_fence: bool,
+    inside_unknown_fence: bool,
     cmd: String,
     fence_comment: Option<String>,
 }
@@ -16,6 +17,7 @@ impl FenceParseState {
             out: Vec::new(),
             pending_comment: Vec::new(),
             inside_fence: false,
+            inside_unknown_fence: false,
             cmd: String::new(),
             fence_comment: None,
         }
@@ -27,8 +29,20 @@ impl FenceParseState {
             self.handle_inside(line, trimmed);
             return;
         }
+        if self.inside_unknown_fence {
+            if trimmed == "```" {
+                self.inside_unknown_fence = false;
+            }
+            return;
+        }
         if is_bash_fence_open(trimmed) {
             self.open_fence();
+            return;
+        }
+        if trimmed.starts_with("```") && trimmed != "```" {
+            // Non-bash tagged fence: ignore body until a bare closer.
+            self.pending_comment.clear();
+            self.inside_unknown_fence = true;
             return;
         }
         if trimmed == "```" {

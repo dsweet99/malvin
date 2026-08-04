@@ -1,8 +1,9 @@
 //! Loop-owned context recovery: soft-cap History first, then Previous.
 
 use crate::mini_agent::loop_driver::LoopDriverSession;
-use crate::mini_agent::memory_assemble::{
-    soft_cap_history, soft_cap_previous, HISTORY_SOFT_CAP, PREVIOUS_TRUNCATED_MARKER,
+use super::memory_assemble::{
+    soft_cap_history, soft_cap_previous, floor_char_boundary, ceil_char_boundary, HISTORY_SOFT_CAP,
+    PREVIOUS_TRUNCATED_MARKER,
 };
 
 pub const DROP_STRATEGY_HISTORY_FIRST: &str = "history_first_soft_cap";
@@ -60,7 +61,14 @@ fn force_shrink(session: &mut LoopDriverSession, attempt: u32, before: usize) ->
 fn halve(text: &str, marker: &str) -> String {
     let keep = (text.len() / 2).max(32);
     let head = keep / 2;
-    format!("{}{}{}", &text[..head], marker, &text[text.len() - (keep - head)..])
+    let head_end = floor_char_boundary(text, head.min(text.len()));
+    let tail_keep = keep.saturating_sub(head);
+    let tail_start = ceil_char_boundary(text, text.len().saturating_sub(tail_keep));
+    if head_end >= tail_start {
+        let end = floor_char_boundary(text, keep.min(text.len()));
+        return format!("{}{}", &text[..end], marker);
+    }
+    format!("{}{}{}", &text[..head_end], marker, &text[tail_start..])
 }
 
 #[cfg(test)]
@@ -99,5 +107,16 @@ mod tests {
         let event = shrink_session_memory(&mut session, 1).expect("shrink");
         assert!(event.bytes_removed > 0);
         assert!(session.previous_response.contains("previous response truncated"));
+    }
+
+    #[test]
+    fn force_halve_respects_utf8_char_boundaries() {
+        let mut session = empty_session();
+        session.history = "😀".repeat(80);
+        session.previous_response = "ok".into();
+        // Soft-cap first; then force_shrink halves further if still large.
+        let _ = shrink_session_memory(&mut session, 1);
+        let _ = shrink_session_memory(&mut session, 2);
+        assert!(std::str::from_utf8(session.history.as_bytes()).is_ok());
     }
 }

@@ -83,6 +83,7 @@ pub(super) fn build_fork_ledger(input: ForkLedgerBuild) -> RetryForkLedger {
         history: input.checkpoint.history.clone(),
         previous_response: input.checkpoint.previous_response.clone(),
         workspace_manifest_hash: input.checkpoint.workspace_manifest_hash.clone(),
+        workspace_files: input.checkpoint.workspace_files.clone(),
         bash_commands: input.bash_commands,
         outcome: input.outcome,
         strategy: input.strategy,
@@ -107,6 +108,11 @@ fn apply_retry_strategy(
             session.section_shape_nudged = false;
         }
         MiniRetryStrategy::WorkspaceSnapshot => {
+            if let Err(err) = checkpoint.restore_workspace(&session.cwd) {
+                crate::output::print_log_error(&format!(
+                    "mini WorkspaceSnapshot restore failed: {err}"
+                ));
+            }
             session.history = checkpoint.history;
             session.previous_response = checkpoint.previous_response;
             session.pending_new_request = None;
