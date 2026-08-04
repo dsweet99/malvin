@@ -25,7 +25,12 @@ pub fn next_request_id() -> String {
 }
 
 #[must_use]
-pub fn report_agent_session(pane_id: &str, agent_session_id: Option<&str>, seq: u64) -> Value {
+pub fn report_agent_session(
+    pane_id: &str,
+    agent_session_id: Option<&str>,
+    agent_session_path: Option<&str>,
+    seq: u64,
+) -> Value {
     let mut params = json!({
         "pane_id": pane_id,
         "source": SOURCE,
@@ -35,7 +40,22 @@ pub fn report_agent_session(pane_id: &str, agent_session_id: Option<&str>, seq: 
     if let Some(id) = agent_session_id {
         params["agent_session_id"] = json!(id);
     }
+    if let Some(path) = agent_session_path {
+        params["agent_session_path"] = json!(path);
+    }
     envelope("pane.report_agent_session", params)
+}
+
+/// Assign a unique Herdr live `name` (distinct from report `agent: "malvin"`).
+#[must_use]
+pub fn rename_agent(target: &str, name: &str) -> Value {
+    envelope(
+        "agent.rename",
+        json!({
+            "target": target,
+            "name": name,
+        }),
+    )
 }
 
 #[must_use]
@@ -106,17 +126,18 @@ fn envelope(method: &str, params: Value) -> Value {
 #[cfg(test)]
 mod tests {
     use super::{
-        clear_agent_authority, clear_metadata_teardown, report_agent, report_agent_session,
-        report_metadata_sparse, AGENT, SOURCE,
+        clear_agent_authority, clear_metadata_teardown, rename_agent, report_agent,
+        report_agent_session, report_metadata_sparse, AGENT, SOURCE,
     };
 
     #[test]
     fn request_shapes_use_malvin_identity_and_methods() {
-        let session = report_agent_session("p1", Some("run-id"), 7);
+        let session = report_agent_session("p1", Some("run-id"), Some("/tmp/run"), 7);
         assert_eq!(session["method"], "pane.report_agent_session");
         assert_eq!(session["params"]["source"], SOURCE);
         assert_eq!(session["params"]["agent"], AGENT);
         assert_eq!(session["params"]["agent_session_id"], "run-id");
+        assert_eq!(session["params"]["agent_session_path"], "/tmp/run");
         assert_eq!(session["params"]["seq"], 7);
 
         let working = report_agent("p1", "working", Some("run-id"), 8);
@@ -137,5 +158,10 @@ mod tests {
         assert_eq!(clear_meta["method"], "pane.report_metadata");
         assert_eq!(clear_meta["params"]["clear_display_agent"], true);
         assert_eq!(clear_meta["params"]["clear_title"], true);
+
+        let rename = rename_agent("p1", "m4gk60f1m");
+        assert_eq!(rename["method"], "agent.rename");
+        assert_eq!(rename["params"]["target"], "p1");
+        assert_eq!(rename["params"]["name"], "m4gk60f1m");
     }
 }

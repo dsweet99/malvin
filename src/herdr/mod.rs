@@ -1,11 +1,22 @@
 //! Opportunistic herdr client: report malvin agent state when pane env is injected.
 //!
 //! No CLI flags or config keys. Absent `HERDR_ENV` / socket / pane → silent no-op.
+//!
+//! # Coexistence and product role
+//!
+//! Malvin is a **state reporter**, not a Herdr controller or built-in kind/integration.
+//! ACP child processes are stripped of `HERDR_*` / `HERDR_ENV` so installed cursor hooks
+//! do not race the parent reporter; `notify_reclaim` remains defense in depth.
+//! Prefer pane-id targeting; after bind, `agent.rename` assigns a unique live `name`
+//! (distinct from report/`display_agent: "malvin"`).
 
+mod bind;
 mod env;
+mod identity;
 mod lifecycle;
 mod request;
 mod send;
+mod trace;
 
 pub use lifecycle::{notify_reclaim, notify_run_end, notify_run_start, notify_working};
 
@@ -35,8 +46,13 @@ mod kiss_cov {
         let _ = crate::herdr::request::clear_agent_authority;
         let _ = crate::herdr::request::report_metadata_sparse;
         let _ = crate::herdr::request::clear_metadata_teardown;
+        let _ = crate::herdr::request::rename_agent;
         let _ = crate::herdr::send::send_request;
-        let _ = crate::herdr::send::send_request_retry;
+        let _ = crate::herdr::send::send_request_checked;
         let _ = crate::herdr::send::SOCKET_TIMEOUT;
+        let _ = crate::herdr::identity::herdr_live_name;
+        let _ = crate::herdr::identity::display_title;
+        let _ = crate::herdr::trace::log_herdr_failure;
+        let _ = crate::herdr::bind::emit_bind_reports;
     }
 }
