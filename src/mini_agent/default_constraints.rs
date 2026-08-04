@@ -1,9 +1,9 @@
-//! Default sticky Mini constraints (`default_prompts/mini_constraints.md`).
+//! Default sticky Mini system prompt (`default_prompts/mini_system_prompt.md`).
 
-/// Compile-time embed of Mini sticky constraints (file stays on disk for humans).
+/// Compile-time embed of Mini sticky system prompt (file stays on disk for humans).
 #[must_use]
 pub const fn default_mini_constraints() -> &'static str {
-    include_str!("../../default_prompts/mini_constraints.md")
+    include_str!("../../default_prompts/mini_system_prompt.md")
 }
 
 #[cfg(test)]
@@ -16,6 +16,6 @@ mod tests {
         assert!(text.contains("```bash"));
         assert!(text.contains("## NEW_HISTORY"));
         assert!(text.contains("## RESPONSE"));
-        assert!(text.contains("openrouter:"));
+        assert!(text.contains("## Assembly (each completion)"));
     }
 }

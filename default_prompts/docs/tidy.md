@@ -7,10 +7,10 @@ Bring the workspace back to a **gate-clean** state by composing a fixed request 
 | | |
 |---|---|
 | Input | None (fixed request: `Get the gates to pass.`) |
-| Loop | Default router: `header` → `kpop_common` → `router_a` → optional `router_b`; outer `--max-loops` sessions |
+| Loop | Default router: `header` → `kpop_common` → `router_a` → optional `router_b`; exit `router_summarize`; outer `--max-loops` sessions |
 | Gates | Always on — workspace `.malvin/checks` are harness loop/exit criteria |
 | Fast path | **None** — always runs the router |
-| Requires | Cursor agent CLI; `.malvin/checks` needed for gate pass/fail (use `malvin init` to discover) |
+| Requires | Agent backend for chosen `--model`; `.malvin/checks` needed for gate pass/fail (use `malvin init` to discover) |
 
 ## Intention
 

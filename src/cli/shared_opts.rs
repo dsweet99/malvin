@@ -17,7 +17,7 @@ pub struct GlobalOpts {
 #[derive(Args, Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct SharedOpts {
-    /// Model id.
+    /// Model id (`cursor:`, `openrouter:`, or `local:`).
     #[arg(long, global = true, default_value = DEFAULT_CLI_MODEL)]
     pub model: String,
     /// Don't `--force` cursor-agent.

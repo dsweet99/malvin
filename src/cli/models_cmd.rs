@@ -27,7 +27,7 @@ pub(crate) const fn models_args_marker(_args: &ModelsArgs) -> &'static str {
 
 fn resolve_models_cli() -> Result<PathBuf, String> {
     agent_or_cursor_agent_bin().ok_or_else(|| {
-        "Neither `agent` nor `cursor-agent` was found on PATH. Install the Cursor CLI agent to use `malvin models`."
+        "Neither `agent` nor `cursor-agent` was found on PATH. Install the Cursor CLI agent to list models (`malvin models`)."
             .to_string()
     })
 }

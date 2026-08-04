@@ -17,7 +17,7 @@ pub use super::shared_opts::GlobalOpts;
 #[command(
     name = "malvin",
     version,
-    about = "Non-interactive CLI agent, via Cursor ACP",
+    about = "Non-interactive research and coding agent",
     disable_help_subcommand = true,
     after_help = "Bare `malvin REQUEST` runs autonomous routing. Use `--do` for a one-shot turn, or subcommands for named workflows."
 )]

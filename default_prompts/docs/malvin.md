@@ -1,6 +1,6 @@
 # malvin (top-level CLI)
 
-malvin is a non-interactive CLI agent that drives the Cursor ACP (`cursor-agent` or `agent`) against a workspace. Each agent-backed invocation creates an isolated run directory under `~/.malvin_home/logs/<hash>/` and records prompts, stdout, and artifacts there.
+malvin is a non-interactive research and coding agent. It runs agent sessions against a workspace through either Cursor ACP (`cursor:` models via `cursor-agent` / `agent`) or malvin-mini (`openrouter:` / `local:` models). Each agent-backed invocation creates an isolated run directory under `~/.malvin_home/logs/<hash>/` and records prompts, stdout, and artifacts there.
 
 ## How to read this documentation
 
@@ -15,7 +15,7 @@ malvin [OPTIONS] [REQUEST]
 malvin [OPTIONS] <COMMAND>
 ```
 
-Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`, stop on `__MALVIN_DONE__`). Use `--do` for a one-shot turn, or subcommands for named workflows.
+Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`, stop on `__MALVIN_DONE__`, exit `router_summarize`). Use `--do` for a one-shot turn, or subcommands for named workflows.
 
 Use `--do` for a one-shot turn. Use subcommands: `init`, `tidy`, `explain`, `inspire`, `models`.
 
@@ -23,13 +23,13 @@ Use `--do` for a one-shot turn. Use subcommands: `init`, `tidy`, `explain`, `ins
 
 | Command | Purpose |
 |---------|---------|
-| *(default)* | Bare `malvin REQUEST` — `header` → `kpop_common` → `router_a` → optional `router_b`; outer `--max-loops` sessions |
+| *(default)* | Bare `malvin REQUEST` — `header` → `kpop_common` → `router_a` → optional `router_b`; exit `router_summarize`; outer `--max-loops` sessions |
 | `--do` | One-shot agent turn (non-looping) |
 | `init` | Discover quality gates and write `.malvin/checks` |
 | `tidy` | Fix quality gates via the default router with fixed request `Get the gates to pass.` and `--gates` forced on |
 | `explain` | Explain code or concepts as a LaTeX PDF via a composed default-router request |
 | `inspire` | One-shot MBC2 boundary exploration (batch ideation) |
-| `models` | List models via the Cursor agent CLI |
+| `models` | List `cursor:`, `openrouter:`, and `local:` model ids |
 
 Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prompts/docs/<command>.md`); for the one-shot workflow use `malvin --do --doc`. The default-route contract (`router.md`) is printed after this overview when you run `malvin --doc`.
 
@@ -50,7 +50,7 @@ This is **not** the same as `-b` / `--background` (which suppresses all stdout, 
 
 ### `--model <MODEL>`
 
-Model id passed to the Cursor agent for subcommands that spawn a session. Default: `cursor:auto` (see `malvin models`).
+Model id for agent-backed commands. Default: `cursor:auto`. Use `cursor:` for Cursor ACP, `openrouter:` for malvin-mini via OpenRouter, or `local:` for in-process llama.cpp (see `malvin models`).
 
 ### `--max-loops <N>` (default: 1)
 
@@ -164,7 +164,9 @@ Before most agent-backed commands create a new run directory, malvin may prune o
 
 ## External dependencies
 
-- **Cursor agent CLI**: `agent` or `cursor-agent` on `PATH` (required for `malvin models` and agent subcommands).
+- **Cursor agent CLI**: `agent` or `cursor-agent` on `PATH` (required for `cursor:` models; also required for bare `malvin models` listing — missing CLI aborts before OpenRouter/`local:` sections. Not required for `malvin models download local:<id>`).
+- **OpenRouter**: `OPENROUTER_API_KEY` for `openrouter:` (malvin-mini) models.
+- **Local models**: Apple Silicon / Metal build for `local:` GGUF models; raise `mem_limit_gb` in `~/.malvin_home/config.toml` before first load (see `malvin models --doc`).
 - **pre-commit**: optional; malvin does not install hooks automatically.
 
 ## Request syntax

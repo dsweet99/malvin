@@ -10,7 +10,7 @@ Discover how the workspace runs quality gates today and write `.malvin/checks` (
 | Prompt | `init_constraints.md` |
 | Agent | KPop checks-discovery session when `.malvin/checks` is missing |
 | Fast path | If `.malvin/checks` already exists (including empty or comment-only), **no agent** |
-| Requires | Cursor agent CLI only when discovery runs |
+| Requires | Agent backend for chosen `--model` only when discovery runs |
 
 ## Intention
 

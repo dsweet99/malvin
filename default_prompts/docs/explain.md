@@ -8,7 +8,7 @@ Produce a short, reader-friendly **LaTeX explanation** by composing a request an
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
 | Output | `explain.tex` and `explain.pdf` (or `--out-path`); paths are named in the composed router request |
-| Loop | Default router: `header` → `kpop_common` → `router_a` → optional `router_b`; outer `--max-loops` sessions |
+| Loop | Default router: `header` → `kpop_common` → `router_a` → optional `router_b`; exit `router_summarize`; outer `--max-loops` sessions |
 | Exit policy | Router success (agent fulfills the composed explain request) |
 | Requires | No `.malvin/checks` preflight (document workflow) |
 

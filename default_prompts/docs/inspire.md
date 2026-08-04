@@ -44,7 +44,7 @@ Exactly **one** coder prompt: rendered `mbc2.md` only (no coding header or repo 
 
 | Command | When |
 |---------|------|
-| `malvin --do` | General single-turn coding task with full header |
+| `malvin --do` | One-shot agent turn with full header |
 
 ## Examples
 
