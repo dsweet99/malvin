@@ -3,10 +3,10 @@
 use super::{classify_reply, send_request, send_request_checked, SOCKET_TIMEOUT};
 use serde_json::json;
 use std::io::{Read, Write};
-use std::os::unix::net::UnixListener;
+use std::os::unix::net::{UnixListener, UnixStream};
 use std::sync::mpsc;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 #[test]
 fn send_request_writes_ndjson_line_to_unix_socket() {
@@ -46,4 +46,76 @@ fn classify_reply_detects_herdr_error_json() {
     assert!(classify_reply(br#"{"id":"1","error":{"code":"x","message":"no"}}"#).is_err());
     assert!(classify_reply(br#"{"result":{"type":"ok"}}"#).is_ok());
     assert!(classify_reply(b"").is_ok());
+}
+
+/// A full accept queue makes `UnixStream::connect` block with no timeout.
+/// Herdr send must return within ~`SOCKET_TIMEOUT` instead of hanging the CLI.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[test]
+fn send_request_returns_when_accept_queue_is_wedged() {
+    let wedge = WedgedUnixSocket::new();
+    let req = json!({"id": "t", "method": "ping", "params": {}});
+    assert_connect_times_out(|| send_request_checked(&wedge.path, &req));
+    assert_returns_within_budget(|| send_request(&wedge.path, &req));
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+struct WedgedUnixSocket {
+    path: std::path::PathBuf,
+    _dir: tempfile::TempDir,
+    _listener: UnixListener,
+    _holders: [UnixStream; 2],
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+impl WedgedUnixSocket {
+    fn new() -> Self {
+        #![allow(unsafe_code)]
+        use std::os::fd::AsRawFd;
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("wedge.sock");
+        let listener = UnixListener::bind(&path).expect("bind");
+        // SAFETY: listen only on this test's listener fd. On Linux, listen(1) still queues two
+        // pending AF_UNIX connects; fill both so the next connect blocks.
+        assert_eq!(unsafe { libc::listen(listener.as_raw_fd(), 1) }, 0);
+        let holders = [
+            UnixStream::connect(&path).expect("holder a"),
+            UnixStream::connect(&path).expect("holder b"),
+        ];
+        Self {
+            path,
+            _dir: dir,
+            _listener: listener,
+            _holders: holders,
+        }
+    }
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn connect_budget() -> Duration {
+    SOCKET_TIMEOUT + Duration::from_millis(750)
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn assert_connect_times_out(send: impl FnOnce() -> Result<(), String>) {
+    let start = Instant::now();
+    let err = send().expect_err("wedged accept must not succeed");
+    assert!(
+        start.elapsed() <= connect_budget(),
+        "expected return near {:?}, got {:?}; err={err}",
+        SOCKET_TIMEOUT,
+        start.elapsed()
+    );
+    assert!(err.contains("timed out"), "expected connect timeout, got: {err}");
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn assert_returns_within_budget(send: impl FnOnce()) {
+    let start = Instant::now();
+    send();
+    assert!(
+        start.elapsed() <= connect_budget(),
+        "send_request must also bound connect"
+    );
 }

@@ -2,12 +2,14 @@
 
 use std::io::{Read, Write};
 use std::os::unix::net::UnixStream;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::mpsc;
+use std::thread;
 use std::time::Duration;
 
 use serde_json::Value;
 
-/// Connect/read budget matching the cursor herdr hook (~0.5s).
+/// Connect/read/write budget matching the cursor herdr hook (~0.5s).
 pub const SOCKET_TIMEOUT: Duration = Duration::from_millis(500);
 
 /// Best-effort send; never propagates I/O errors to the caller.
@@ -29,7 +31,7 @@ pub(crate) fn send_request_checked(socket_path: &Path, request: &Value) -> Resul
 }
 
 fn open_timed_stream(socket_path: &Path) -> Result<UnixStream, String> {
-    let stream = UnixStream::connect(socket_path).map_err(|e| e.to_string())?;
+    let stream = connect_with_timeout(socket_path, SOCKET_TIMEOUT)?;
     stream
         .set_read_timeout(Some(SOCKET_TIMEOUT))
         .map_err(|e| e.to_string())?;
@@ -37,6 +39,25 @@ fn open_timed_stream(socket_path: &Path) -> Result<UnixStream, String> {
         .set_write_timeout(Some(SOCKET_TIMEOUT))
         .map_err(|e| e.to_string())?;
     Ok(stream)
+}
+
+/// `UnixStream::connect` has no timeout; a wedged accept queue can block forever.
+/// Bound connect on a worker thread so bind/notify cannot stall the CLI.
+fn connect_with_timeout(socket_path: &Path, timeout: Duration) -> Result<UnixStream, String> {
+    let path = PathBuf::from(socket_path);
+    let (tx, rx) = mpsc::channel();
+    thread::Builder::new()
+        .name("herdr-connect".into())
+        .spawn(move || {
+            let _ = tx.send(UnixStream::connect(path));
+        })
+        .map_err(|e| e.to_string())?;
+    match rx.recv_timeout(timeout) {
+        Ok(Ok(stream)) => Ok(stream),
+        Ok(Err(e)) => Err(e.to_string()),
+        Err(mpsc::RecvTimeoutError::Timeout) => Err("herdr connect timed out".into()),
+        Err(mpsc::RecvTimeoutError::Disconnected) => Err("herdr connect worker died".into()),
+    }
 }
 
 fn classify_reply(bytes: &[u8]) -> Result<(), String> {
