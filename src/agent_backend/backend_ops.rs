@@ -10,6 +10,7 @@ pub fn agent_backend_set_run_timing(
 ) {
     match backend {
         AgentBackend::Acp(c) => c.set_run_timing(timing),
+        AgentBackend::CursorSdk(c) => c.set_run_timing(timing),
         AgentBackend::Mini(c) => c.timing = timing,
     }
 }
@@ -20,6 +21,7 @@ pub fn agent_backend_attach_run_timing_for_session(
 ) -> Arc<Mutex<crate::run_timing::RunTiming>> {
     match backend {
         AgentBackend::Acp(c) => c.attach_run_timing_for_session(),
+        AgentBackend::CursorSdk(c) => c.attach_run_timing_for_session(),
         AgentBackend::Mini(c) => crate::run_timing::attach_new_run_timing(&mut c.timing),
     }
 }
@@ -52,6 +54,7 @@ pub fn agent_backend_timing(
 ) -> Option<&Arc<Mutex<crate::run_timing::RunTiming>>> {
     match backend {
         AgentBackend::Acp(c) => c.timing.as_ref(),
+        AgentBackend::CursorSdk(c) => c.timing.as_ref(),
         AgentBackend::Mini(c) => c.timing.as_ref(),
     }
 }

@@ -55,6 +55,7 @@ fn router_client_uses_kpop_style_agent_io_not_do_style() {
     .expect("backend");
     let io = match backend {
         crate::agent_backend::AgentBackend::Acp(c) => c.io,
+        crate::agent_backend::AgentBackend::CursorSdk(c) => c.io,
         crate::agent_backend::AgentBackend::Mini(c) => c.io,
     };
     assert!(
@@ -111,7 +112,8 @@ fn openrouter_router_client_is_mini_with_styled_not_raw_output() {
                     assert!(c.io.show_thoughts_on_stdout);
                     assert!(c.io.emit_stdout_markdown);
                 }
-                crate::agent_backend::AgentBackend::Acp(_) => {
+                crate::agent_backend::AgentBackend::Acp(_)
+                | crate::agent_backend::AgentBackend::CursorSdk(_) => {
                     panic!("openrouter: model must select Mini backend");
                 }
             }

@@ -36,12 +36,33 @@ pub fn build_agent_backend_with_tee(
 ) -> Result<AgentBackend, String> {
     if crate::model_id::uses_mini_backend(&shared.model) {
         Ok(AgentBackend::Mini(new_mini_client(shared, workflow, tee)?))
-    } else {
+    } else if cursor_acp_test_mock_override() {
+        // Integration tests still install ACP JSON-RPC mocks via MALVIN_AGENT_ACP_BIN.
         Ok(AgentBackend::Acp(new_agent_client(
             shared,
             agent_io_options(shared, workflow, tee),
         )))
+    } else {
+        Ok(AgentBackend::CursorSdk(new_cursor_sdk_client(
+            shared,
+            agent_io_options(shared, workflow, tee),
+        )))
     }
+}
+
+fn cursor_acp_test_mock_override() -> bool {
+    std::env::var_os("MALVIN_AGENT_ACP_BIN").is_some_and(|v| !v.is_empty())
+}
+
+fn new_cursor_sdk_client(
+    shared: &SharedOpts,
+    io: crate::acp::AgentIoOptions,
+) -> crate::cursor_sdk::CursorSdkClient {
+    crate::cursor_sdk::CursorSdkClient::with_max_retries(
+        crate::model_id::provider_slug(&shared.model),
+        io,
+        shared.max_acp_retries,
+    )
 }
 
 #[allow(clippy::missing_const_for_fn)]
@@ -112,15 +133,15 @@ mod tests {
     use crate::cli::WorkflowCliOptions;
 
     #[test]
-    fn build_agent_backend_selects_acp_when_mini_false() {
+    fn build_agent_backend_selects_cursor_sdk_when_mini_false() {
         let backend = build_agent_backend(
             &shared_opts(false),
             WorkflowCliOptions { force: false },
             false,
             "code",
         )
-        .expect("acp");
-        assert!(matches!(backend, AgentBackend::Acp(_)));
+        .expect("cursor sdk");
+        assert!(matches!(backend, AgentBackend::CursorSdk(_)));
     }
 
     #[test]

@@ -1,17 +1,15 @@
 //! `malvin models` — list Cursor, `OpenRouter`, and `local:` models with prefixes.
 
-use std::path::PathBuf;
-
-use crate::agent_or_cursor_agent_bin;
-use crate::ansi_strip::strip_ansi_escapes;
 use crate::local_llm::{download_local_model, local_model_listings};
-use crate::model_id::{CURSOR_PREFIX, LOCAL_PREFIX, OPENROUTER_PREFIX};
+use crate::model_id::{LOCAL_PREFIX, OPENROUTER_PREFIX};
 use crate::output::{MALVIN_WHO, print_stdout_line};
 use clap::Args;
 
 #[path = "models_cmd_parse.rs"]
 mod models_cmd_parse;
-use models_cmd_parse::{print_parsed_or_fallback_prefixed, trim_trailing_tip_lines};
+#[path = "models_cmd_cursor.rs"]
+mod models_cmd_cursor;
+use models_cmd_cursor::print_cursor_models;
 
 #[derive(Args, Debug, Clone, Default)]
 pub struct ModelsArgs {
@@ -25,12 +23,6 @@ pub(crate) const fn models_args_marker(_args: &ModelsArgs) -> &'static str {
     "models"
 }
 
-fn resolve_models_cli() -> Result<PathBuf, String> {
-    agent_or_cursor_agent_bin().ok_or_else(|| {
-        "Neither `agent` nor `cursor-agent` was found on PATH. Install the Cursor CLI agent to list models (`malvin models`)."
-            .to_string()
-    })
-}
 
 fn print_current_footer(current_model: &str) {
     print_stdout_line(MALVIN_WHO, "");
@@ -99,31 +91,6 @@ pub async fn run_mini_models() -> Result<(), String> {
     let models = client.list_models().await.map_err(|e| e.to_string())?;
     print_openrouter_models(&models);
     print_current_footer(crate::config::DEFAULT_CLI_MODEL);
-    Ok(())
-}
-
-fn print_cursor_models() -> Result<(), String> {
-    let bin = resolve_models_cli()?;
-    let output = crate::malvin_sandbox::malvin_std_command(&bin)
-        .arg("models")
-        .output()
-        .map_err(|e| format!("failed to execute {} models: {e}", bin.display()))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let msg = stderr.trim();
-        let detail = if msg.is_empty() {
-            format!("`{} models` exited with {}", bin.display(), output.status)
-        } else {
-            format!("`{} models` failed: {msg}", bin.display())
-        };
-        return Err(detail);
-    }
-
-    let raw = String::from_utf8_lossy(&output.stdout);
-    let text = strip_ansi_escapes(raw.as_ref());
-    let cleaned = trim_trailing_tip_lines(&text);
-    print_parsed_or_fallback_prefixed(&cleaned, CURSOR_PREFIX);
     Ok(())
 }
 
@@ -205,7 +172,7 @@ pub(crate) mod test_hooks {
     }
 
     pub fn resolve_models_cli() -> Result<std::path::PathBuf, String> {
-        super::resolve_models_cli()
+        super::models_cmd_cursor::resolve_models_cli()
     }
 
     pub fn print_mini_models(models: &[crate::openrouter_transport::ModelListing]) {

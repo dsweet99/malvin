@@ -1,4 +1,4 @@
-//! Prefixed model ids: `cursor:…` (ACP), `openrouter:…` / `local:…` (malvin-mini).
+//! Prefixed model ids: `cursor:…` (Cursor SDK), `openrouter:…` / `local:…` (malvin-mini).
 
 use crate::support_paths::MINI_DEFAULT_MODEL;
 

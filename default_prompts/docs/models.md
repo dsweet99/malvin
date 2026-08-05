@@ -12,7 +12,7 @@ List model ids for malvin runs. No malvin prompts and no run directory under `~/
 
 ## Intention
 
-Discover valid `--model` values for other malvin commands. Cursor ACP models use the `cursor:` prefix; OpenRouter (malvin-mini) models use the `openrouter:` prefix; local GGUF models (in-process llama.cpp / Metal) use the `local:` prefix.
+Discover valid `--model` values for other malvin commands. Cursor SDK models use the `cursor:` prefix; OpenRouter (malvin-mini) models use the `openrouter:` prefix; local GGUF models (in-process llama.cpp / Metal) use the `local:` prefix.
 
 ## Usage
 
@@ -29,8 +29,8 @@ See `malvin --doc`. Global `--model` is parsed but **not used** by this subcomma
 
 Listing (`malvin models` with no action words):
 
-1. Resolve `agent` or `cursor-agent` on `PATH`. If neither is found, the command **fails immediately** with a Cursor CLI install error — OpenRouter and `local:` sections are not printed.
-2. Run `<binary> models` and print each id with a `cursor:` prefix.
+1. List Cursor models via the Cursor SDK bridge (`Cursor.models.list`) when Node ≥ 22.13 and `cursor-sdk-bridge` are available. If that path fails, fall back to `agent` / `cursor-agent models` on `PATH`. If both fail, the Cursor section errors (OpenRouter / `local:` may still print depending on caller flow).
+2. Print each Cursor id with a `cursor:` prefix.
 3. Fetch OpenRouter models (best-effort when the API key / network is available) and print each id with an `openrouter:` prefix; on failure print `(openrouter models unavailable: …)` and continue.
 4. Print built-in `local:` models (no cache-status suffix) only when this build supports Apple Silicon Metal (the only local GPU backend). Otherwise omit the `local:` section entirely.
 5. Print blank line and: `Current: <model>` (from `~/.malvin_home/config.toml`, else `cursor:auto`).
@@ -53,7 +53,7 @@ Default `cargo nextest run` skips network and GPU paths. Opt-in live suites use 
 | `MALVIN_LIVE_LOCAL=1` | Real local/GPU `LlmTransport::Local` and Mini+`local:` via `AgentBackend` (`tests/transport_live.rs`, `tests/agent_backend_live.rs`). **Metal / Apple Silicon only**; leave unset on hosts without a GPU. |
 | `MALVIN_LIVE_MINI=1` + `OPENROUTER_API_KEY` | Mini+OpenRouter via `AgentBackend` API (`tests/agent_backend_live.rs`) and existing CLI live suite (`tests/mini_live.rs`) |
 
-ACP live agent-backend cases reuse the existing live-agent prereqs in `tests/common/live_agent.rs` (no new `MALVIN_LIVE_AGENT`).
+Live Cursor agent-backend cases reuse the existing live-agent prereqs in `tests/common/live_agent.rs` (no new `MALVIN_LIVE_AGENT`).
 
 ```text
 MALVIN_LIVE_TRANSPORT=1 OPENROUTER_API_KEY=... cargo nextest run -E 'test(transport_live)' -- --ignored

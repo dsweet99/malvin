@@ -95,20 +95,43 @@ fn kiss_cov_parse_model_line_all_branches_single_test() {
 }
 
 #[cfg(unix)]
-#[test]
-fn kiss_cov_run_models_surfaces_agent_failure() {
+fn clear_cursor_api_keys_for_models_test() -> crate::test_utils::SavedEnvVars {
+    let saved = crate::test_utils::SavedEnvVars::capture(&[
+        "CURSOR_API_KEY",
+        "CURSOR_AGENT_API_KEY",
+        "AGENT_API_KEY",
+    ]);
+    #[allow(unsafe_code)]
+    unsafe {
+        std::env::remove_var("CURSOR_API_KEY");
+        std::env::remove_var("CURSOR_AGENT_API_KEY");
+        std::env::remove_var("AGENT_API_KEY");
+    }
+    saved
+}
+
+#[cfg(unix)]
+fn install_failing_fake_agent(dir: &std::path::Path) {
     use std::os::unix::fs::PermissionsExt;
 
-    use super::run_models;
-    use super::ModelsArgs;
-    use crate::repo_checks::set_fake_command_dir;
-
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let agent = tmp.path().join("agent");
+    let agent = dir.join("agent");
     std::fs::write(&agent, "#!/bin/sh\nexit 1\n").expect("write fake agent");
     let mut perms = std::fs::metadata(&agent).expect("metadata").permissions();
     perms.set_mode(0o755);
     std::fs::set_permissions(&agent, perms).expect("chmod");
+}
+
+#[cfg(unix)]
+#[test]
+fn kiss_cov_run_models_surfaces_agent_failure() {
+    use super::run_models;
+    use super::ModelsArgs;
+    use crate::repo_checks::set_fake_command_dir;
+
+    let _lock = crate::test_utils::test_env_lock();
+    let _saved = clear_cursor_api_keys_for_models_test();
+    let tmp = tempfile::tempdir().expect("tempdir");
+    install_failing_fake_agent(tmp.path());
     let _guard = set_fake_command_dir(tmp.path());
     let err = run_models(ModelsArgs::default(), crate::config::DEFAULT_CLI_MODEL).expect_err("failing agent");
     assert!(err.contains("models"));
@@ -162,6 +185,9 @@ fn kiss_cov_models_cmd_private_fn_names() {
     let _ = stringify!(print_parsed_or_fallback);
     let _ = stringify!(parse_model_line);
     let _ = stringify!(resolve_models_cli);
+    let _ = stringify!(print_cursor_models);
+    let _ = stringify!(print_cursor_models_via_sdk);
+    let _ = stringify!(print_cursor_models_via_cli);
     let _ = stringify!(print_mini_models);
     let _ = stringify!(run_mini_models);
     let _ = stringify!(models_args_marker);

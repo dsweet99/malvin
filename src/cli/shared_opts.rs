@@ -20,7 +20,7 @@ pub struct SharedOpts {
     /// Model id (`cursor:`, `openrouter:`, or `local:`).
     #[arg(long, global = true, default_value = DEFAULT_CLI_MODEL)]
     pub model: String,
-    /// Don't `--force` cursor-agent.
+    /// Don't force Cursor SDK tool auto-run (fails fast on `cursor:`; SDK has no interactive approval).
     #[arg(long, global = true, default_value_t = false)]
     pub no_force: bool,
     /// Don't expand gate-loop budgets to tenacious limits [default: tenacious on].
