@@ -53,22 +53,102 @@ fn assert_usage(timing: &std::sync::Arc<std::sync::Mutex<crate::run_timing::RunT
     assert_eq!(tokens_out, Some(7));
 }
 
+fn assert_session_timing_synced(client: &CursorSdkClient) {
+    assert!(client
+        .session
+        .as_ref()
+        .and_then(|s| s.timing.as_ref())
+        .is_some());
+}
+
+fn mock_bridge_path() -> std::path::PathBuf {
+    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/cursor_sdk/mock_bridge.js")
+}
+
+async fn run_prompt_and_assert_usage(
+    client: &mut CursorSdkClient,
+    tmp: &tempfile::TempDir,
+    timing: &std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>,
+) {
+    prompt_once(client, &tmp.path().join("prompts.log")).await;
+    assert_usage(timing);
+}
+
 #[tokio::test]
 async fn cursor_sdk_client_mock_bridge_prompt_records_usage() {
     let _guard = crate::test_utils::test_env_lock();
-    let mock = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("src/cursor_sdk/mock_bridge.js");
-    install_mock_bridge_env(&mock);
+    install_mock_bridge_env(&mock_bridge_path());
     let tmp = tempfile::tempdir().expect("tmp");
     let mut client = mock_client(tmp.path());
     let timing = client.attach_run_timing_for_session();
     client.begin_coder_session(tmp.path()).await.expect("begin");
-    prompt_once(&mut client, &tmp.path().join("prompts.log")).await;
+    run_prompt_and_assert_usage(&mut client, &tmp, &timing).await;
     assert_eq!(
         client.last_coder_prompt_agent_response().as_deref(),
         Some("mock reply")
     );
-    assert_usage(&timing);
+    client.end_coder_session().await.expect("end");
+    unsafe {
+        std::env::remove_var("MALVIN_CURSOR_SDK_BRIDGE");
+    }
+}
+
+#[tokio::test]
+async fn cursor_sdk_warm_start_attach_after_begin_records_usage() {
+    let _guard = crate::test_utils::test_env_lock();
+    install_mock_bridge_env(&mock_bridge_path());
+    let tmp = tempfile::tempdir().expect("tmp");
+    let mut client = mock_client(tmp.path());
+    // Mirrors router/`--do` Idea 3: spawn before attach_run_timing_for_session.
+    client.begin_coder_session(tmp.path()).await.expect("begin");
+    let timing = client.attach_run_timing_for_session();
+    run_prompt_and_assert_usage(&mut client, &tmp, &timing).await;
+    client.set_run_timing(Some(std::sync::Arc::clone(&timing)));
+    assert_session_timing_synced(&client);
+    client.end_coder_session().await.expect("end");
+    unsafe {
+        std::env::remove_var("MALVIN_CURSOR_SDK_BRIDGE");
+    }
+}
+
+async fn prompt_need_dm_with_capture(client: &mut CursorSdkClient, log: &std::path::Path) -> String {
+    crate::output::set_do_dm_stdout_mode(true);
+    crate::output::enable_stdout_capture();
+    client
+        .run_coder_prompt(
+            "NEED_DM please",
+            log,
+            "coder",
+            CoderPromptOptions {
+                llm_phase: Some(crate::run_timing::TimingPhase::Implement),
+                ..CoderPromptOptions::default()
+            },
+        )
+        .await
+        .expect("prompt");
+    let out = crate::output::take_captured_stdout();
+    crate::output::set_do_dm_stdout_mode(false);
+    out
+}
+
+fn assert_dm_hello(out: &str, client: &CursorSdkClient) {
+    assert_eq!(out, "Hello.");
+    assert_eq!(
+        client.last_coder_prompt_agent_response().as_deref(),
+        Some("MALVIN_DM_START\nHello.\nMALVIN_DM_END")
+    );
+}
+
+#[tokio::test]
+async fn cursor_sdk_run_done_result_feeds_do_dm_stdout() {
+    let _guard = crate::test_utils::test_env_lock();
+    install_mock_bridge_env(&mock_bridge_path());
+    let tmp = tempfile::tempdir().expect("tmp");
+    let mut client = mock_client(tmp.path());
+    let _ = client.attach_run_timing_for_session();
+    client.begin_coder_session(tmp.path()).await.expect("begin");
+    let out = prompt_need_dm_with_capture(&mut client, &tmp.path().join("prompts.log")).await;
+    assert_dm_hello(&out, &client);
     client.end_coder_session().await.expect("end");
     unsafe {
         std::env::remove_var("MALVIN_CURSOR_SDK_BRIDGE");

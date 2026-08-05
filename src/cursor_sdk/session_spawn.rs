@@ -78,6 +78,8 @@ fn assemble_session(
         last_response: Arc::new(Mutex::new(String::new())),
         timing: args.timing,
         run_dir: args.run_dir,
+        stdout_coalesce: Mutex::new(crate::acp::TraceChunkCoalescer::default()),
+        tool_starts: Mutex::new(std::collections::HashMap::new()),
     }
 }
 

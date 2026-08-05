@@ -99,6 +99,8 @@ fn finish_run_done(session: &BridgeSession, ev: &BridgeEvent) -> Result<(), Agen
             .last_response
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner) = text.clone();
+        // Authoritative final text: SDK often places DM fences only here.
+        super::log_adapter::feed_do_dm_run_result(text);
     }
     super::log_adapter::handle_stream_event(session, ev);
     if status == "error" {

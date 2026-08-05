@@ -39,3 +39,36 @@ fn decode_run_done_and_fatal() {
         other => panic!("unexpected {other:?}"),
     }
 }
+
+#[test]
+fn decode_tool_call_with_enriched_summary() {
+    let start = decode_event(
+        r#"{"event":"tool_call","phase":"start","name":"shell","summary":"Run ls -ltr","toolCallId":"t1"}"#,
+    )
+    .expect("decode start");
+    match start {
+        BridgeEvent::ToolCall {
+            phase,
+            name,
+            summary,
+            tool_call_id,
+        } => {
+            assert_eq!(phase, "start");
+            assert_eq!(name.as_deref(), Some("shell"));
+            assert_eq!(summary.as_deref(), Some("Run ls -ltr"));
+            assert_eq!(tool_call_id.as_deref(), Some("t1"));
+        }
+        other => panic!("unexpected {other:?}"),
+    }
+    let err = decode_event(
+        r#"{"event":"tool_call","phase":"error","name":"shell","summary":"Run false · exit 1","toolCallId":"t2"}"#,
+    )
+    .expect("decode error");
+    match err {
+        BridgeEvent::ToolCall { phase, summary, .. } => {
+            assert_eq!(phase, "error");
+            assert_eq!(summary.as_deref(), Some("Run false · exit 1"));
+        }
+        other => panic!("unexpected {other:?}"),
+    }
+}

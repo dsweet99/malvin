@@ -23,6 +23,7 @@ fn kiss_cov_cursor_sdk_client_api() {
     let _ = stringify!(CursorSdkClient);
     let _ = stringify!(set_run_timing);
     let _ = stringify!(attach_run_timing_for_session);
+    let _ = stringify!(sync_timing_to_open_session);
     let _ = stringify!(has_open_coder_session);
     let _ = stringify!(last_coder_prompt_agent_response);
     let _ = stringify!(ensure_authenticated);
@@ -71,6 +72,14 @@ fn kiss_cov_cursor_sdk_session_core() {
     let _ = stringify!(ChildStdio);
     let _ = stringify!(mock_client);
     let _ = stringify!(prompt_once);
+    let _ = stringify!(assert_usage);
+    let _ = stringify!(assert_session_timing_synced);
+    let _ = stringify!(mock_bridge_path);
+    let _ = stringify!(run_prompt_and_assert_usage);
+    let _ = stringify!(cursor_sdk_warm_start_attach_after_begin_records_usage);
+    let _ = stringify!(cursor_sdk_run_done_result_feeds_do_dm_stdout);
+    let _ = stringify!(prompt_need_dm_with_capture);
+    let _ = stringify!(assert_dm_hello);
     let _ = stringify!(open_bridge_session);
     let _ = stringify!(resolve_node_and_bridge);
     let _ = stringify!(build_bridge_command);
@@ -85,14 +94,28 @@ fn kiss_cov_cursor_sdk_session_core() {
 
 #[test]
 fn kiss_cov_cursor_sdk_log_and_timing() {
+    let _ = stringify!(feed_do_dm_run_result);
     let _ = stringify!(handle_stream_event);
     let _ = stringify!(emit_assistant);
     let _ = stringify!(emit_thinking);
     let _ = stringify!(emit_tool);
+    let _ = stringify!(ToolCallFields);
+    let _ = stringify!(tee_coalesced);
+    let _ = stringify!(flush_stdout_coalesce);
+    let _ = stringify!(print_coalesced_line);
+    let _ = stringify!(compose_tool_done_line);
+    let _ = stringify!(clear_tool_starts);
+    let _ = stringify!(tool_starts);
+    let _ = stringify!(ToolCallStart);
     let _ = stringify!(append_trace_value);
     let _ = stringify!(append_trace_raw);
     let _ = stringify!(append_trace_line);
-    let _ = stringify!(non_empty_lines);
+    let _ = stringify!(stdout_coalesce);
+    let _ = stringify!(word_sized_assistant_chunks_coalesce_before_flush);
+    let _ = stringify!(newline_in_assistant_chunk_flushes_line);
+    let _ = stringify!(thought_then_message_flushes_thought_on_kind_switch);
+    let _ = stringify!(coalesced_assistant_line_prints_once_under_m_tag);
+    let _ = stringify!(compose_tool_done_line_run_success);
     let _ = stringify!(install_mock_bridge_env);
     let _ = stringify!(mock_io);
     let _ = stringify!(spawn_mock);

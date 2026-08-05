@@ -46,14 +46,24 @@ impl CursorSdkClient {
         &mut self,
         timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
     ) {
-        self.timing = timing;
+        self.timing = timing.clone();
+        self.sync_timing_to_open_session();
     }
 
     #[must_use]
     pub fn attach_run_timing_for_session(
         &mut self,
     ) -> Arc<Mutex<crate::run_timing::RunTiming>> {
-        crate::run_timing::attach_new_run_timing(&mut self.timing)
+        let timing = crate::run_timing::attach_new_run_timing(&mut self.timing);
+        self.sync_timing_to_open_session();
+        timing
+    }
+
+    /// Router/`--do` warm-start may `begin_coder_session` before attach; keep session timing in sync.
+    fn sync_timing_to_open_session(&mut self) {
+        if let Some(session) = self.session.as_mut() {
+            session.timing = self.timing.clone();
+        }
     }
 
     #[must_use]

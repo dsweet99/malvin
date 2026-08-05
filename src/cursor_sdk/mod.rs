@@ -7,6 +7,7 @@ mod client;
 pub(super) mod client_prompt;
 mod client_session;
 mod log_adapter;
+mod log_adapter_tool;
 pub(crate) mod node_resolve;
 mod protocol;
 mod session;

@@ -1,9 +1,10 @@
 //! Spawn and talk to the Node bridge process.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 use tokio::io::BufReader;
 use tokio::process::{Child, ChildStdin, ChildStdout};
@@ -14,6 +15,13 @@ use crate::acp::{AgentError, AgentIoOptions};
 use super::protocol::BridgeRequest;
 use super::session_io::{drain_until_run_done, write_request};
 use super::session_spawn::spawn_bridge;
+
+/// Cached tool-call start for ACP-parity done-line timing.
+#[derive(Debug, Clone)]
+pub struct ToolCallStart {
+    pub started: Instant,
+    pub summary: String,
+}
 
 pub struct BridgeSession {
     pub child: AsyncMutex<Option<Child>>,
@@ -27,6 +35,10 @@ pub struct BridgeSession {
     pub last_response: Arc<Mutex<String>>,
     pub timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
     pub run_dir: Option<PathBuf>,
+    /// ACP-parity stdout coalescer for streamed assistant/thinking chunks.
+    pub stdout_coalesce: Mutex<crate::acp::TraceChunkCoalescer>,
+    /// toolCallId → start instant + summary (for done-line duration).
+    pub tool_starts: Mutex<HashMap<String, ToolCallStart>>,
 }
 
 pub struct BridgeSpawnArgs<'a> {
