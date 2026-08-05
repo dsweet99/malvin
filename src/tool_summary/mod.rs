@@ -52,7 +52,12 @@ pub fn tool_summary_lines(
     detail: ToolSummaryDetail,
 ) -> Option<ToolSummaryLines> {
     let parsed = parse_tool_update(v)?;
+    let is_new_start =
+        parsed.phase == TOOL_PHASE_START && !tracker.calls.contains_key(&parsed.id);
     tracker.apply(&parsed);
+    if is_new_start {
+        tracker.note_tool_call_start_for_steps();
+    }
     crate::agent_phase::observe_tool_update(&parsed, tracker);
     let log = format_tool_line(&parsed, tracker, ToolSummaryDetail::Log);
     let mut stdout_deferred = None;

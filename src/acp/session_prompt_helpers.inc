@@ -19,7 +19,7 @@ pub(crate) async fn rpc_session_prompt_text(
         .await
         .as_ref()
         .and_then(tokio::process::Child::id);
-    rpc_request_with_correlation_id(RpcOutgoing {
+    let result = rpc_request_with_correlation_id(RpcOutgoing {
         io: &io,
         id,
         method: "session/prompt",
@@ -27,8 +27,16 @@ pub(crate) async fn rpc_session_prompt_text(
         rpc_timeout: session.0.rpc_timeout,
         child_pid,
     })
-    .await
-    .map(|_| ())
+    .await?;
+    if let Some(usage) = result.get("usage") {
+        if let Some(timing) = session.0.run_timing.as_ref() {
+            timing
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .record_acp_usage_if_present(usage);
+        }
+    }
+    Ok(())
 }
 
 pub(crate) async fn do_split_trace_preamble(

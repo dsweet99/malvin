@@ -120,7 +120,7 @@ async fn run_router_body(
     })
     .await?;
 
-    // Mirror kpop: restore/check-abort, then print TIMING/COST from run_timing.json.
+    // Mirror kpop: restore/check-abort, then print TIMING/TOKENS/COST from run_timing.json.
     let r = crate::acp_post_run::merge_acp_restore_check_abort_then_print_timing(
         loop_outcome.last_acp,
         &prep.artifacts,

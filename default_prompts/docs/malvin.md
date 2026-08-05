@@ -44,7 +44,7 @@ Suppress all stdout from malvin and the agent. Run logs under `~/.malvin_home/lo
 
 ### `-q` / `--quiet`
 
-On the **default router** (bare `malvin REQUEST`, and wrappers that call it: `tidy`, `explain`), print only the text between `MALVIN_DM_START` and `MALVIN_DM_END` fences to process stdout. Startup chrome, ACP stream, heartbeats, prompt-name lines, fence markers, and TIMING/COST lines are omitted from stdout. Run-dir logs and stderr are unchanged.
+On the **default router** (bare `malvin REQUEST`, and wrappers that call it: `tidy`, `explain`), print only the text between `MALVIN_DM_START` and `MALVIN_DM_END` fences to process stdout. Startup chrome, ACP stream, heartbeats, prompt-name lines, fence markers, and TIMING/TOKENS/COST lines are omitted from stdout. Run-dir logs and stderr are unchanged.
 
 This is **not** the same as `-b` / `--background` (which suppresses all stdout, including DM bodies). It is also **not** required for plain `malvin --do`: without `--verbose`, `--do` is already DM-body-only on stdout. With `--verbose`, `--do` tees the same live agent log classes as the default workflow (see `-v` / `--verbose` below).
 
@@ -138,8 +138,22 @@ Every agent-backed command creates `~/.malvin_home/logs/<hash>/<timestamp>_<toke
 | `trace.jsonl` | ACP-shaped audit record — **authoritative** for semantics (tool results, shrink/fork, LLM usage) |
 | `prompts.log` | Outgoing prompts (names only, or full bodies with `--verbose`) |
 | `quality_gates.log` | Workspace gate commands and output when gates run |
+| `run_timing.json` | Wall/LLM timing, token/step aggregates, and optional cost |
 | `_kpop/exp_log_*.md` | KPop experiment logs (gate-loop and related workflows) |
 | `result.md` | `ABORT:` prefix stops workflows that check it |
+
+### Session footnotes (`TIMING` / `TOKENS` / `COST`)
+
+At the end of a timed run (before `DONE`), malvin writes footnote lines to `stdout.log` (and to process stdout unless `-q` / `-b`):
+
+```text
+TIMING: wall = … llm_wait = … …
+TOKENS: steps = N tokens_in = X tokens_out = Y
+COST: total_cost = … …          # only when cost data exists
+```
+
+- **`steps`:** Mini / OpenRouter / Local count one step per successful LLM completion. Cursor ACP uses a concurrent tool-call **batch** proxy (one step per set of `tool_call` starts observed before the first completion in that set), plus one step for a trailing assistant-only segment after the last batch when message/thought activity follows. Raw tool-call counts are not printed as `steps`.
+- **`tokens_in` / `tokens_out`:** Numeric when the backend reports usage (Mini/OpenRouter/Local today). For default Cursor ACP sessions, usage is usually absent on the wire, so these fields are `n/a`. Input includes cache tokens when a cache breakdown exists.
 
 ### Narrative vs audit (trust rule)
 

@@ -180,7 +180,13 @@ pub fn assert_stdout_has_no_chrome(lines: &[String]) {
     assert!(
         lines
             .iter()
-            .all(|l| !l.contains("Command: ") && !l.contains("Logs: ") && !l.contains("TIMING: ") && !l.contains("COST: ")),
+            .all(|l| {
+                !l.contains("Command: ")
+                    && !l.contains("Logs: ")
+                    && !l.contains("TIMING: ")
+                    && !l.contains("TOKENS: ")
+                    && !l.contains("COST: ")
+            }),
         "expected do stdout without startup/timing chrome, got {lines:?}"
     );
     assert!(

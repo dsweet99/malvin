@@ -34,8 +34,19 @@ fn assert_timing_and_cost_in_log(log: &str) {
         "router/kpop finish path must print TIMING; log={log:?}"
     );
     assert!(
+        log.contains("TOKENS:"),
+        "router/kpop finish path must print TOKENS; log={log:?}"
+    );
+    assert!(
         log.contains("COST:"),
         "router/kpop finish path must print COST when cost data exists; log={log:?}"
+    );
+    let timing_pos = log.find("TIMING:").expect("TIMING");
+    let tokens_pos = log.find("TOKENS:").expect("TOKENS");
+    let cost_pos = log.find("COST:").expect("COST");
+    assert!(
+        timing_pos < tokens_pos && tokens_pos < cost_pos,
+        "footnote order TIMING < TOKENS < COST; log={log:?}"
     );
 }
 

@@ -97,3 +97,34 @@ fn kpop_engine_accumulate_run_timing_sums_llm_wait_across_iterations() {
     assert_eq!(json["llm_wait_ms"].as_u64(), Some(902_000));
     assert!(client.timing.is_some());
 }
+
+fn record_step(
+    timing: &Arc<Mutex<RunTiming>>,
+    prompt: u64,
+    completion: u64,
+) {
+    use crate::openrouter_transport::ResponseUsage;
+    timing.lock().unwrap().record_mini_http_step(Some(&ResponseUsage {
+        prompt_tokens: Some(prompt),
+        completion_tokens: Some(completion),
+        total_tokens: Some(prompt + completion),
+        cost: None,
+    }));
+}
+
+#[test]
+fn kpop_engine_accumulate_run_timing_sums_token_steps_across_iterations() {
+    let mut client = crate::test_agent_client::smoke_agent_client();
+    let (_tmp, run_dir, _) = kpop_engine_loop_fixture();
+    let timing = client.ensure_run_timing_for_session();
+    record_step(&timing, 100, 10);
+    simulate_kpop_engine_accumulate_iteration(&mut client, &run_dir, &timing, 100)
+        .expect("first");
+    record_step(&timing, 50, 5);
+    simulate_kpop_engine_accumulate_iteration(&mut client, &run_dir, &timing, 50).expect("second");
+    finalize_and_emit_run_timing(&run_dir, &timing).expect("finalize");
+    let json = read_run_timing_json(&run_dir);
+    assert_eq!(json["tokens"]["steps"], 2);
+    assert_eq!(json["tokens"]["tokens_in"], 150);
+    assert_eq!(json["tokens"]["tokens_out"], 15);
+}

@@ -155,6 +155,7 @@ pub async fn write_trace_line_coalesced(
     opts: WriteTraceLineCoalescedOpts<'_>,
 ) {
     if let Some((kind, text)) = opts.parsed.and_then(session_update_chunk_parts) {
+        crate::run_timing::note_acp_assistant_activity(trace_file.run_timing.as_ref());
         for (kind, tl, stream, upgrade_plan) in coalesce.feed(kind, text) {
             trace_file_write_line(
                 trace_file,

@@ -117,12 +117,24 @@ async fn complete_and_parse_turn(
         new_request: &new_request,
         section_nudge: req.session.section_shape_nudged,
     });
+    let response = complete_turn_http(req, &messages).await?;
+    let parsed = parse_history_response(&response.content).map_err(TurnFail::SectionParse)?;
+    Ok(ConsolidatedTurn {
+        new_history: parsed.new_history,
+        response: parsed.response,
+        reasoning: response.reasoning,
+    })
+}
 
+async fn complete_turn_http(
+    req: &CompleteTurnRequest<'_>,
+    messages: &[crate::openrouter_transport::ChatMessage],
+) -> Result<crate::openrouter_transport::CompletionResponse, TurnFail> {
     crate::agent_phase::note_mini_llm_request();
     let t0 = Instant::now();
     let response = match complete_transport_with_retries(HttpRetryRequest {
         llm: req.llm,
-        messages: &messages,
+        messages,
         max_transport_retries: req.config.max_transport_retries,
         single_attempt: req.single_attempt,
         timing: req.timing,
@@ -139,15 +151,17 @@ async fn complete_and_parse_turn(
         req.llm_phase.unwrap_or(TimingPhase::Implement),
         t0.elapsed(),
     );
-    if let Some(ref usage) = response.usage {
-        crate::run_timing::record_mini_http_cost(req.timing, usage);
-    }
+    record_mini_usage_after_completion(req.timing, response.usage.as_ref());
     req.trace.mini_llm_request(response.usage.as_ref());
+    Ok(response)
+}
 
-    let parsed = parse_history_response(&response.content).map_err(TurnFail::SectionParse)?;
-    Ok(ConsolidatedTurn {
-        new_history: parsed.new_history,
-        response: parsed.response,
-        reasoning: response.reasoning,
-    })
+fn record_mini_usage_after_completion(
+    timing: Option<&std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
+    usage: Option<&crate::openrouter_transport::ResponseUsage>,
+) {
+    crate::run_timing::record_mini_http_step(timing, usage);
+    if let Some(u) = usage {
+        crate::run_timing::record_mini_http_cost(timing, u);
+    }
 }
