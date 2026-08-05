@@ -60,16 +60,6 @@ impl AgentClient {
         self.attach_run_timing_for_session()
     }
 
-    pub(crate) fn set_timing_implement_display_name(&self, label: &'static str) {
-        let Some(timing) = self.timing.as_ref() else {
-            return;
-        };
-        timing
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .set_implement_display_name(label);
-    }
-
     /// Verify API key env or `agent` / `cursor-agent` auth probes.
     ///
     /// # Errors

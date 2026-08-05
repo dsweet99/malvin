@@ -22,7 +22,6 @@ mod do_stdout_harness_extra;
 mod integration_cli_args;
 #[cfg(unix)]
 mod enn_hybrid_fixture;
-mod kpop_multiturn_support;
 #[cfg(unix)]
 mod live_agent;
 #[cfg(unix)]
@@ -62,7 +61,6 @@ pub use acp_tidy_kpop::*;
 pub use acp_router_mock::*;
 #[cfg(unix)]
 pub use explain_harness::*;
-pub use kpop_multiturn_support::*;
 #[cfg(unix)]
 pub use live_agent::{
     command_output_live_agent, command_output_mini_live, live_agent_prereqs_met,

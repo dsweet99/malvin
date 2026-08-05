@@ -1,7 +1,7 @@
 //! Agent ACP behavioral smokes for `kiss check` coverage (split from `coverage_kiss` for file size limits).
 
 use crate::acp::{
-    AgentClient, AgentError, AgentIoOptions, AuthError, KpopFlowOnceArgs, has_api_key,
+    AgentClient, AgentError, AgentIoOptions, AuthError, has_api_key,
     test_captive_session::captive_cat_acp_session_for_tests,
 };
 use std::fmt::Write as _;
@@ -35,19 +35,6 @@ fn coder_session_slot_assignment_opens_session() {
         client.coder_session = Some(captive_cat_acp_session_for_tests(tmp.path()));
         assert!(client.has_open_coder_session());
     });
-}
-
-#[test]
-fn kpop_flow_once_args_and_run_kpop_flow_symbols() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let log = tmp.path().join("kpop.log");
-    let prompts = ["probe"];
-    let args = KpopFlowOnceArgs {
-        cwd: tmp.path(),
-        kpop_prompts: &prompts,
-        kpop_log: &log,
-    };
-    assert_eq!(args.kpop_prompts, &["probe"]);
 }
 
 #[test]

@@ -69,7 +69,7 @@ fn kiss_cov_acp_reader_test_prompt_round_health() {
 
 #[test]
 fn kiss_cov_ops_body_kpop_types() {
-    let _: Option<super::KpopFlowOnceArgs<'_>> = None;
+    let _: Option<super::KpopFailAfterPrompt<'_>> = None;
 }
 
 #[test]

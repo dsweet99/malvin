@@ -9,12 +9,6 @@ fn kiss_cov_kpop_progression_counter_wrappers() {
 }
 
 #[test]
-fn kiss_cov_agent_backend_kpop_ops() {
-    let _ = crate::agent_backend::agent_backend_run_kpop_flow;
-    let _ = crate::agent_backend::agent_backend_run_kpop_multiturn;
-}
-
-#[test]
 fn kiss_cov_malvin_test_seed_helpers() {
     let _ = crate::malvin_test_seed::seed_malvin_checks;
     let _ = stringify!(ensure_git_repo_for_checks_seed);

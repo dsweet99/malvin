@@ -207,17 +207,12 @@ mod wrap_ops_spawn;
 pub(crate) use wrap_ops_spawn::*;
 
 #[path = "ops_body_kpop.rs"]
-mod ops_body_kpop;
-pub use ops_body_kpop::{AgentKpopMultiturnCtl, KpopFlowOnceArgs};
+pub(crate) mod ops_body_kpop;
 pub(crate) use ops_body_kpop::*;
 
 #[path = "prompt_round_health.rs"]
 mod prompt_round_health;
 pub(crate) use prompt_round_health::{prompt_round_post_ok_error, PromptRoundHealth};
-
-#[path = "ops_body_kpop_mt.rs"]
-mod ops_body_kpop_mt;
-pub(crate) use ops_body_kpop_mt::*;
 
 #[path = "client_impl_helpers.rs"]
 mod client_impl_helpers;

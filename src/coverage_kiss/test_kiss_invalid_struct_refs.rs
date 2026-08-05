@@ -8,10 +8,7 @@ fn kiss_invalid_struct_value_refs_0() {
     let _ = crate::acp::client_impl_prompt_retry::run_one_coder_prompt_attempt;
     let _ = crate::acp::AcpHandshakeIo;
     let _ = crate::acp::AcpChildStdout;
-    let _ = crate::acp::ops_body_kpop::KpopPromptRound;
-    let _ = crate::acp::ops_body_kpop::AgentKpopMultiturnCtl;
     let _ = crate::acp::ops_body_kpop::KpopFailAfterPrompt;
-    let _ = crate::acp::ops_body_kpop_mt::MultiturnRoundAfter;
     let _ = crate::acp::prompt_trace_writer::LivePromptTraceArgs;
     let _ = crate::acp::prompt_trace_writer::register_deferred_sink;
 }
@@ -98,9 +95,6 @@ fn kiss_invalid_struct_value_refs_5() {
     let _ = crate::router_flow::router_flow_loop::RouterAgentLoopInput;
     let _ = crate::router_flow::router_flow_loop::RouterAgentLoopOutcome;
     let _ = crate::cli::kpop_summarize::kpop_summarize_inline::GateInlineSummarizeCtx;
-    let _ = crate::kpop_multiturn_prompts::SmokeKpopBuilder;
-    let _ = crate::kpop_test_stubs::EchoPrompts;
-    let _ = crate::kpop_test_stubs::kpop_prompt;
 }
 
 #[test]

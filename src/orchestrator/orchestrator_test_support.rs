@@ -1,7 +1,5 @@
 //! Shared fixtures for orchestrator unit tests.
 
-use std::collections::HashMap;
-
 use crate::acp::{AgentClient, AgentIoOptions};
 use crate::artifacts::{
     MalvinChecksBackup, MalvinConfigBackup, RunArtifacts, SessionDotfileBackups,

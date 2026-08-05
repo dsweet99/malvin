@@ -2,8 +2,8 @@
 
 #[test]
 fn kiss_witness_client_impl_flow() {
-    let _ = super::AgentClient::run_kpop_flow;
     let _ = stringify!(begin_coder_session);
+    let _ = stringify!(has_open_coder_session);
 }
 
 #[test]
@@ -60,15 +60,9 @@ fn kiss_witness_hostile_orphan() {
 
 #[test]
 fn kiss_witness_ops_body_kpop() {
-    let _: Option<super::KpopPromptRound> = None;
-    let _: Option<super::AgentKpopMultiturnCtl> = None;
     let _: Option<super::KpopFailAfterPrompt> = None;
-    let _ = super::run_kpop_flow_once;
-}
-
-#[test]
-fn kiss_witness_ops_body_kpop_mt() {
-    let _ = stringify!(MultiturnRoundAfter);
+    let _ = super::kpop_fail_after_prompt;
+    let _ = super::restore_session_dotfiles;
 }
 
 #[test]

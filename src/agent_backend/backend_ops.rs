@@ -2,8 +2,6 @@
 
 use std::sync::{Arc, Mutex};
 
-use crate::acp::{AgentError, AgentKpopMultiturnCtl, KpopFlowOnceArgs};
-
 use super::backend::AgentBackend;
 
 pub fn agent_backend_set_run_timing(
@@ -57,37 +55,3 @@ pub fn agent_backend_timing(
         AgentBackend::Mini(c) => c.timing.as_ref(),
     }
 }
-
-pub(crate) const fn agent_max_retries(backend: &AgentBackend) -> u32 {
-    backend.max_acp_retries()
-}
-
-pub(crate) fn agent_timing_opt(
-    backend: &AgentBackend,
-) -> Option<&Arc<Mutex<crate::run_timing::RunTiming>>> {
-    agent_backend_timing(backend)
-}
-
-/// Generic K-Pop flow over the shared [`AgentBackend`] surface (no Mini-only branches).
-pub async fn agent_backend_run_kpop_flow(
-    client: &mut AgentBackend,
-    flow: &KpopFlowOnceArgs<'_>,
-    session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
-) -> Result<(), AgentError> {
-    // ACP retains its specialized spawn-per-attempt path for cursor-agent parity.
-    if let AgentBackend::Acp(c) = client {
-        return crate::acp::AgentClient::run_kpop_flow(c, flow, session_dotfile_backups).await;
-    }
-    super::backend_kpop_ops::run_kpop_flow_via_agent(client, flow, session_dotfile_backups).await
-}
-
-pub async fn agent_backend_run_kpop_multiturn(
-    client: &mut AgentBackend,
-    ctl: AgentKpopMultiturnCtl<'_, '_>,
-) -> Result<(), AgentError> {
-    if let AgentBackend::Acp(c) = client {
-        return c.run_kpop_multiturn(ctl).await;
-    }
-    super::backend_kpop_ops::run_kpop_multiturn_via_agent(client, ctl).await
-}
-

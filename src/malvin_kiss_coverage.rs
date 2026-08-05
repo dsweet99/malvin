@@ -142,13 +142,6 @@ fn smoke_test_stderr_capture() {
 }
 
 #[test]
-fn smoke_kpop_multiturn_builder_type() {
-    use crate::kpop_multiturn_prompts::{KpopMultiturnPrompts, SmokeKpopBuilder};
-    let mut smoke = KpopMultiturnPrompts::Smoke(SmokeKpopBuilder);
-    assert_eq!(smoke.kpop_block(1).expect("kpop"), "k");
-}
-
-#[test]
 fn smoke_child_health_sample() {
     let _health = crate::child_health::sample_child_health(std::process::id());
 }

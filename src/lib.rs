@@ -116,8 +116,8 @@ pub mod agent_backend;
 pub mod acp;
 pub mod ansi_strip;
 pub use acp::{
-    AcpSession, AcpSpawnArgs, AgentClient, AgentError, AgentIoOptions, AgentKpopMultiturnCtl,
-    AuthError, CoderPromptOptions, KpopFlowOnceArgs,
+    AcpSession, AcpSpawnArgs, AgentClient, AgentError, AgentIoOptions, AuthError,
+    CoderPromptOptions,
 };
 #[cfg(unix)]
 pub use acp::{snapshot_pids, terminate_agent_process_group};
@@ -153,27 +153,16 @@ pub use test_poll::{
 pub mod config;
 pub mod local_llm;
 pub mod model_id;
-mod kpop_test_stubs;
 mod kpop_turn_prompts;
-pub use kpop_test_stubs::{
-    CaptureWants as KpopCaptureWants, EchoPrompts as KpopEchoPrompts, MtStubPrompts,
-};
 pub use kpop_turn_prompts::KpopTurnPrompts;
-pub mod kpop_multiturn_prompts;
-pub use kpop_multiturn_prompts::KpopMultiturnPrompts;
 pub mod kpop_progression;
-mod multiturn_prompt;
-pub use kpop_progression::{KpopMultiturnParams, KpopMultiturnState};
-pub use multiturn_prompt::MultiturnPrompt;
 pub mod support_paths;
 pub use support_paths::{
     agent_or_cursor_agent_bin, command_line, format_logs_dir, init_from_env, lookup_bin_on_path,
 };
 pub mod workflow_context;
 pub mod orchestrator;
-pub use orchestrator::{
-    Orchestrator, WorkflowConfig, WorkflowError, check_abort, fail_on_abort_for_artifacts,
-};
+pub use orchestrator::check_abort;
 pub use workflow_context::{
     format_malvin_command, format_prompt_path, workflow_context_paths_only, PromptModelOpts,
 };
@@ -190,7 +179,6 @@ pub mod session_sandbox_policy;
 pub mod output;
 pub mod prompts;
 pub mod repo_gates;
-pub mod review_sync;
 pub mod run_timing;
 pub mod stdout_log_path;
 pub mod acp_post_run {
@@ -225,7 +213,6 @@ pub(crate) mod acp_session_unit_tests;
 #[cfg(test)] #[path = "acp_transport_tests/mod.rs"] mod acp_transport_tests;
 #[cfg(test)] mod coverage_kiss;
 #[cfg(test)] mod coverage_kiss_agent;
-#[cfg(test)] mod orchestrator_tests;
 #[cfg(test)] mod malvin_kiss_coverage;
 #[cfg(test)] #[path = "acp/transport/rpc_part1_kiss_test.rs"] mod acp_rpc_part1_kiss_test;
 #[cfg(test)] mod agent_phase_kiss_cov;

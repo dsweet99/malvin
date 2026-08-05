@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::path::Path;
 
 pub use crate::workflow_context::{
@@ -7,19 +6,6 @@ pub use crate::workflow_context::{
 #[cfg(test)]
 pub use crate::workflow_context::workflow_context;
 pub(crate) use crate::workflow_context::insert_formatted;
-
-/// Removes a review file when it exists; succeeds when `p` is absent.
-///
-/// # Errors
-///
-/// Returns [`std::io::Error`] when removal fails for reasons other than [`NotFound`](std::io::ErrorKind::NotFound).
-pub fn clear_review_file(p: &Path) -> std::io::Result<()> {
-    match std::fs::remove_file(p) {
-        Ok(()) => Ok(()),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        Err(e) => Err(e),
-    }
-}
 
 /// Reads `result_path` for an `ABORT:` line.
 ///
@@ -46,26 +32,6 @@ pub fn check_abort(result_path: &Path) -> Result<Option<String>, std::io::Error>
     Ok(None)
 }
 
-/// # Errors
-///
-/// Returns [`WorkflowError`] when `result.md` contains an `ABORT:` line.
-pub fn fail_on_abort_for_artifacts(artifacts: &crate::artifacts::RunArtifacts) -> Result<(), super::WorkflowError> {
-    match check_abort(&artifacts.artifact_result_md()) {
-        Ok(Some(abort_msg)) => Err(super::WorkflowError(format!("ABORT: {abort_msg}"))),
-        Ok(None) => Ok(()),
-        Err(e) => Err(super::WorkflowError(format!(
-            "cannot read result file for ABORT check: {e}"
-        ))),
-    }
-}
-
-/// Stem used in log name segments for coder prompts (`bug_fix.md`, …).
-/// Strips a trailing `.md` when present (case-sensitive); otherwise returns `filename` unchanged. Avoids panics on short names.
-#[must_use]
-pub(crate) fn prompt_md_stem(filename: &str) -> &str {
-    filename.strip_suffix(".md").unwrap_or(filename)
-}
-
 #[must_use]
 pub fn format_exp_log_relative(
     artifacts: &crate::artifacts::RunArtifacts,
@@ -77,7 +43,6 @@ pub fn format_exp_log_relative(
 #[cfg(test)]
 mod helpers_kiss_inline {
     use super::*;
-    use std::collections::HashMap;
 
     #[test]
     fn format_exp_log_relative_under_work_dir() {
@@ -107,9 +72,12 @@ mod helpers_kiss_inline {
             plan_path: plan_path.clone(),
             work_dir: tmp.path().to_path_buf(),
         };
-        let ctx = crate::workflow_context::workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, false);
+        let ctx = crate::workflow_context::workflow_context_paths_only(
+            &artifacts,
+            crate::config::DEFAULT_CLI_MODEL,
+            false,
+        );
         assert!(ctx.contains_key("quality_gates_log"));
         let _ = format_prompt_path(&plan_path, &artifacts.work_dir);
     }
 }
-

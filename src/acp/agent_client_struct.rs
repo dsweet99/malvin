@@ -3,7 +3,7 @@ use super::{AgentIoOptions, AcpSession};
 /// ACP-backed agent with session-scoped coder lifetimes.
 ///
 /// Bug remediation and summary phases run coder prompts on one long-lived session.
-/// `KPop` is driven by `run_kpop_flow` / `run_kpop_multiturn` / `run_kpop_flow_once`.
+/// Gate `KPop` is driven by [`crate::kpop_engine::run_kpop_engine`] via coder prompts.
 pub struct AgentClient {
     pub model: String,
     pub io: AgentIoOptions,
