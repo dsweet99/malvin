@@ -80,9 +80,7 @@ fn fail_gate_prepared_fixture(
         artifacts,
         context: crate::prompt_stratification::WorkflowRenderContext::default(),
         request_text: "req".into(),
-        startup_emit_request: "req".into(),
         store,
-        malvin_checks_backup: crate::artifacts::MalvinChecksBackup::Missing,
     };
     (backups, prepared)
 }

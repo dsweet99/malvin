@@ -6,7 +6,7 @@ use clap::{CommandFactory, FromArgMatches};
 #[test]
 fn mini_flag_is_unknown_argument() {
     let err = Cli::command()
-        .try_get_matches_from(["malvin", "--mini", "code", "hello"])
+        .try_get_matches_from(["malvin", "--mini", "hello"])
         .expect_err("removed --mini");
     let msg = err.to_string();
     assert!(
@@ -22,7 +22,6 @@ fn openrouter_model_selects_without_mini_flag() {
             "malvin",
             "--model",
             "openrouter:openai/gpt-4o",
-            "code",
             "hello",
         ]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
@@ -35,7 +34,7 @@ fn openrouter_model_selects_without_mini_flag() {
 fn bare_cli_model_is_rejected() {
     with_seeded_agent_config(|| {
         let matches =
-            Cli::command().get_matches_from(["malvin", "--model", "auto", "code", "hello"]);
+            Cli::command().get_matches_from(["malvin", "--model", "auto", "hello"]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         let err = apply_workspace_config_defaults(&matches, &mut cli).expect_err("bare");
         assert!(err.contains("cursor:") || err.contains("openrouter:"), "{err}");

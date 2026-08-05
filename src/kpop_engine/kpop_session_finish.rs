@@ -1,7 +1,4 @@
-use crate::cli::SharedOpts;
-
-use super::kpop_session::{run_kpop_hard_constraints_after_session, KPopEngineMultiturnCtx};
-use super::prepared::KPopEnginePrepared;
+use super::kpop_session::KPopEngineMultiturnCtx;
 
 use crate::cli::workflow_kpop_shared::finish_kpop_acp_session;
 
@@ -34,9 +31,10 @@ pub(crate) async fn finish_kpop_engine_session_success(
     ))
 }
 
+#[cfg(test)]
 pub(crate) fn finish_kpop_engine_after_pass(
-    _shared: &SharedOpts,
-    prepared: &KPopEnginePrepared,
+    _shared: &crate::cli::SharedOpts,
+    prepared: &super::prepared::KPopEnginePrepared,
     _agent_ran: bool,
     run_timing: Option<&std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
 ) -> Result<(), String> {
@@ -51,14 +49,14 @@ pub(crate) fn finish_kpop_engine_after_pass(
     Ok(())
 }
 
+#[cfg(test)]
 pub(crate) fn fail_kpop_engine_after_exhausted(
     command: &str,
-    prepared: &KPopEnginePrepared,
+    prepared: &super::prepared::KPopEnginePrepared,
     session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
     behavior: super::behavior::KPopHardConstraints,
 ) -> Result<(), String> {
-    // Code/tidy exhaustion already ran gates in `run_kpop_engine`. Rewind disk so gate-prep
-    // side effects cannot poison the next outer retry; do not run gates a second time.
+    // Historical code/tidy exhaustion path (code workflow removed).
     if behavior.recheck_gates_after_exhausted && !behavior.skip_workspace_quality_gates {
         let work_dir = prepared.artifacts().work_dir.as_path();
         if behavior.restore_malvin_checks_after_session() {
@@ -74,7 +72,12 @@ pub(crate) fn fail_kpop_engine_after_exhausted(
             "workspace quality gates did not pass after the kpop session",
         ));
     }
-    run_kpop_hard_constraints_after_session(command, prepared, session_dotfile_backups, behavior)
+    super::kpop_session::run_kpop_hard_constraints_after_session(
+        command,
+        prepared,
+        session_dotfile_backups,
+        behavior,
+    )
 }
 
 #[cfg(test)]

@@ -22,16 +22,6 @@ pub const fn default_workflow_stdout_tee_flags(emit_stdout_markdown: bool) -> Ag
     }
 }
 
-pub fn prepare_prompt_store(
-    _workflow: WorkflowCliOptions,
-) -> Result<crate::prompts::PromptStore, String> {
-    use crate::prompts::{PromptError, PromptStore};
-    let store = PromptStore::default_store();
-    store.ensure_defaults().map_err(|e: PromptError| e.0)?;
-    store.validate_required().map_err(|e: PromptError| e.0)?;
-    Ok(store)
-}
-
 pub fn prepare_kpop_prompt_store(
     _workflow: WorkflowCliOptions,
     require_mbc2: bool,
@@ -60,38 +50,13 @@ pub fn agent_io_options(
     }
 }
 
-pub fn format_pre_check_gate_failure(command: &str, detail: &str) -> String {
-    format!(
-        "ERR: Pre-checks failed; implementation did not start.\n\
-{}\n\
-\n\
-{detail}",
-        gate_failure_recovery_hint(command)
-    )
-}
-
 pub fn format_workspace_gate_failure(command: &str, detail: &str) -> String {
     format!(
         "ERR: Workspace checks did not pass; the next step did not run.\n\
-{}\n\
+Run `malvin tidy`, then retry `{command}`.\n\
 \n\
-{detail}",
-        gate_failure_recovery_hint(command)
+{detail}"
     )
-}
-
-fn gate_failure_recovery_hint(command: &str) -> String {
-    if command == "malvin code" {
-        format!(
-            "Run `malvin tidy`, then retry `{command}`, or use `--skip-pre-checks` on `{command}`."
-        )
-    } else {
-        format!("Run `malvin tidy`, then retry `{command}`.")
-    }
-}
-
-pub fn format_code_pre_check_failure(detail: &str) -> String {
-    format_pre_check_gate_failure("malvin code", detail)
 }
 
 pub fn new_agent_client(

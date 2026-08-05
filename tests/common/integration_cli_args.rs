@@ -1,7 +1,2 @@
-//! Shared CLI flags for integration tests that spawn `malvin` subprocesses.
-
-/// Keeps gate-loop integration tests fast: no tenacious budget expansion, single ACP retry.
+/// Shared argv prefixes for integration subprocesses (keep budgets tight).
 pub const INTEGRATION_TEST_MALVIN_ARGS: &[&str] = &["--no-tenacious", "--max-acp-retries", "1"];
-
-/// Frozen fast bundle for ABORT-path `malvin code` subprocess contract tests.
-pub const ABORT_CODE_TEST_ARGS: &[&str] = &["--trust-the-plan", "--max-loops", "0"];

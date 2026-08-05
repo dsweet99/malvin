@@ -52,7 +52,6 @@ pub mod agent;
 /// In-process llama.cpp backend formerly the `malvin-llama` workspace crate.
 pub mod malvin_llama;
 mod gate_loop_session;
-mod sequential_requests;
 mod sandbox_oom;
 mod current_state;
 pub mod mem_limit_config;
@@ -182,8 +181,6 @@ pub use workflow_context::{
 pub use workflow_context::workflow_context;
 pub mod observability;
 pub mod kpop_log_protocol;
-pub mod kpop_program;
-pub mod kpop_soft_constraints;
 pub mod acp_trace_impersonation;
 pub mod coder_prompt_phase;
 pub mod nested_budget_scopes;

@@ -61,9 +61,7 @@ pub(crate) fn prepared_fixture(
         artifacts,
         context,
         request_text: "req".into(),
-        startup_emit_request: "req".into(),
         store,
-        malvin_checks_backup: crate::artifacts::MalvinChecksBackup::Missing,
     };
     (prepared, backups)
 }

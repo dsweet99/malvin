@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
+#[cfg(test)]
 use crate::cli::format_workspace_gate_failure;
 use crate::nested_budget_scopes::BudgetScopeLayer;
 use crate::output::{MALVIN_WHO, print_stdout_line};
@@ -14,6 +15,7 @@ pub(crate) fn effective_max_loops(max_loops: usize) -> usize {
 }
 
 /// Prefer a gate-loop (or discovery) outcome over a summarize-session error.
+#[cfg(test)]
 pub(crate) fn prefer_gate_outcome_over_summarize<T>(
     gate: Result<T, String>,
     summarize: Result<(), String>,
@@ -73,6 +75,7 @@ pub(crate) fn kpop_workflow_context_without_gates(
     )
 }
 
+#[cfg(test)]
 pub fn write_checks_do_not_pass_to_review_path(review_path: &Path) -> Result<(), String> {
     if let Some(parent) = review_path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| {
@@ -90,6 +93,7 @@ pub fn write_checks_do_not_pass_to_review_path(review_path: &Path) -> Result<(),
     })
 }
 
+#[cfg(test)]
 pub fn write_checks_do_not_pass_for_artifacts(artifacts: &RunArtifacts) -> Result<(), String> {
     write_checks_do_not_pass_to_review_path(&artifacts.artifact_review_md())
 }
@@ -161,6 +165,7 @@ pub(crate) fn prefer_gate_outcome_over_post_gate_cleanup(
     restore_result
 }
 
+#[cfg(test)]
 pub(crate) fn post_kpop_session_gates(
     command: &str,
     artifacts: &RunArtifacts,

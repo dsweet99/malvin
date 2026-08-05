@@ -51,7 +51,7 @@ pub struct AgentConfig {
     pub max_hypotheses: usize,
     /// Gate-loop budget for kpop.
     pub max_loops: usize,
-    /// Gate-loop budget for code and tidy.
+    /// Gate-loop budget for tidy and explain (`max_loops_code` config key).
     pub max_loops_code: usize,
     pub max_acp_retries: u32,
     pub max_mini_transport_retries: u32,

@@ -1,6 +1,7 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum KPopHardConstraintsExit {
-    /// `CodeTidy` = passing gates; restore checks each turn.
+    /// Historical gate-exit profile (passing gates; restore checks each turn). Kept for tests.
+    #[cfg_attr(not(test), allow(dead_code))]
     CodeTidy,
     /// `ChecksDiscovery` = valid checks file on disk; do not restore `.malvin/checks` between turns.
     ChecksDiscovery,
@@ -16,6 +17,8 @@ pub(crate) struct KPopHardConstraints {
 }
 
 impl KPopHardConstraints {
+    /// Historical CODE gate-engine profile (code workflow removed).
+    #[cfg(test)]
     pub const CODE: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: true,
@@ -36,14 +39,6 @@ impl KPopHardConstraints {
         skip_workspace_quality_gates: false,
         exit: KPopHardConstraintsExit::ChecksDiscovery,
     };
-    /// Historical DELIGHT gate-engine profile (delight now uses the default router).
-    #[cfg(test)]
-    pub const DELIGHT: Self = Self {
-        skip_kpop_on_initial_pass: false,
-        recheck_gates_after_exhausted: false,
-        skip_workspace_quality_gates: true,
-        exit: KPopHardConstraintsExit::CodeTidy,
-    };
     /// Historical EXPLAIN gate-engine profile (explain now uses the default router).
     #[cfg(test)]
     pub const EXPLAIN: Self = Self {
@@ -53,6 +48,7 @@ impl KPopHardConstraints {
         exit: KPopHardConstraintsExit::CodeTidy,
     };
 
+    #[cfg(test)]
     #[must_use]
     pub const fn with_workspace_quality_gates(mut self, gates: bool) -> Self {
         if !gates {
@@ -128,7 +124,7 @@ mod tests {
                 .skip_workspace_quality_gates
         );
         assert!(
-            KPopHardConstraints::DELIGHT
+            KPopHardConstraints::EXPLAIN
                 .with_workspace_quality_gates(true)
                 .skip_workspace_quality_gates
         );
@@ -140,24 +136,17 @@ mod tests {
     }
 
     #[test]
-    fn explain_behavior_matches_delight_exit_policy() {
+    fn explain_behavior_skips_workspace_gates() {
         assert_eq!(KPopHardConstraints::EXPLAIN.exit, KPopHardConstraintsExit::CodeTidy);
         assert!(KPopHardConstraints::EXPLAIN.require_passing_gates_for_exit());
         const { assert!(KPopHardConstraints::EXPLAIN.skip_workspace_quality_gates); }
-        const { assert!(KPopHardConstraints::DELIGHT.skip_workspace_quality_gates); }
-    }
-
-    #[test]
-    fn delight_behavior_always_runs_kpop() {
         assert_eq!(
-            KPopHardConstraints::DELIGHT.skip_kpop_on_initial_pass,
+            KPopHardConstraints::EXPLAIN.skip_kpop_on_initial_pass,
             KPopHardConstraints::CODE.skip_kpop_on_initial_pass,
         );
         assert_ne!(
-            KPopHardConstraints::DELIGHT.skip_kpop_on_initial_pass,
+            KPopHardConstraints::EXPLAIN.skip_kpop_on_initial_pass,
             KPopHardConstraints::TIDY.skip_kpop_on_initial_pass,
         );
-        assert_eq!(KPopHardConstraints::DELIGHT.exit, KPopHardConstraintsExit::CodeTidy);
-        assert!(KPopHardConstraints::DELIGHT.require_passing_gates_for_exit());
     }
 }

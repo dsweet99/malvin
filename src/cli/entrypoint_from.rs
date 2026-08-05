@@ -222,9 +222,6 @@ pub fn entrypoint_from(
 ) -> Exit {
     crate::init_from_env();
     let args: Vec<std::ffi::OsString> = args.into_iter().map(Into::into).collect();
-    if let Some(exit) = crate::cli::deprecated_code::exit_if_code_subcommand(&args) {
-        return exit;
-    }
     match parse_cli_args_or_exit(args) {
         Ok((cli, matches)) => run_entrypoint(cli, matches),
         Err(exit) => exit,

@@ -6,9 +6,8 @@ mod kpop_session_finish;
 mod run_loop_exit;
 mod run_loop;
 
-pub(crate) use kpop_session_finish::{
-    fail_kpop_engine_after_exhausted, finish_kpop_engine_after_pass,
-};
+#[cfg(test)]
+pub(crate) use kpop_session_finish::fail_kpop_engine_after_exhausted;
 pub(crate) use prepared::KPopEnginePrepared;
 pub(crate) use behavior::KPopHardConstraints;
 pub(crate) use params::KPopEngineParams;

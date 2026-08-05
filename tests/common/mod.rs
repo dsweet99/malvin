@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
-mod assert_code_deprecated;
 mod git_test_helpers;
 mod acp_code_fanout_mocks;
 mod acp_code_run;
@@ -20,8 +19,6 @@ mod do_stdout_harness;
 #[cfg(unix)]
 mod do_stdout_harness_extra;
 #[cfg(unix)]
-mod checks_discovery_harness;
-#[cfg(unix)]
 mod integration_cli_args;
 #[cfg(unix)]
 mod enn_hybrid_fixture;
@@ -32,13 +29,9 @@ mod live_agent;
 pub mod agent_backend_helpers;
 mod process;
 #[cfg(unix)]
-mod code_harness;
-#[cfg(unix)]
 mod tidy_harness;
 #[cfg(unix)]
 mod acp_router_mock;
-#[cfg(unix)]
-mod delight_harness;
 #[cfg(unix)]
 mod explain_harness;
 mod contract;
@@ -68,8 +61,6 @@ pub use acp_tidy_kpop::*;
 #[cfg(unix)]
 pub use acp_router_mock::*;
 #[cfg(unix)]
-pub use delight_harness::*;
-#[cfg(unix)]
 pub use explain_harness::*;
 pub use kpop_multiturn_support::*;
 #[cfg(unix)]
@@ -78,9 +69,6 @@ pub use live_agent::{
     require_openrouter_key_when_gate_set, LIVE_AGENT_CMD_TIMEOUT,
 };
 pub use process::{MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout};
-pub use assert_code_deprecated::assert_code_deprecated;
-#[cfg(unix)]
-pub use code_harness::{spawn_code, CodeSpawn};
 #[cfg(unix)]
 pub use tidy_harness::{
     TidySpawn, bin_path_with_failing_gates, bin_path_with_fake_kiss,
@@ -103,12 +91,7 @@ pub use do_stdout_harness::*;
 #[cfg(unix)]
 pub use do_stdout_harness_extra::*;
 #[cfg(unix)]
-pub use checks_discovery_harness::{
-    acp_mock_checks_discovery_and_code_js, acp_mock_checks_discovery_no_write_js,
-    count_malvin_run_dirs, spawn_malvin_code_discovery, CodeDiscoverySpawn,
-};
-#[cfg(unix)]
-pub use integration_cli_args::{ABORT_CODE_TEST_ARGS, INTEGRATION_TEST_MALVIN_ARGS};
+pub use integration_cli_args::INTEGRATION_TEST_MALVIN_ARGS;
 #[cfg(unix)]
 pub use enn_hybrid_fixture::*;
 

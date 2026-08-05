@@ -7,7 +7,7 @@ use crate::acp::{
     CoderPromptOptions, KpopFailAfterPrompt,
 };
 use crate::nested_budget_scopes::BudgetScopeLayer;
-use crate::cli::workflow_kpop_shared::{gate_iteration_context, post_kpop_session_gates};
+use crate::cli::workflow_kpop_shared::gate_iteration_context;
 use crate::run_timing::TimingPhase;
 
 use super::kpop_session_finish::finish_kpop_engine_session_success;
@@ -25,6 +25,7 @@ impl<'a> KPopEngineMultiturnCtx<'a> {
     }
 }
 
+#[cfg(test)]
 pub(crate) fn run_kpop_hard_constraints_after_session(
     command: &str,
     prepared: &KPopEnginePrepared,
@@ -34,7 +35,7 @@ pub(crate) fn run_kpop_hard_constraints_after_session(
     if behavior.skip_workspace_quality_gates {
         return Ok(());
     }
-    post_kpop_session_gates(
+    crate::cli::workflow_kpop_shared::post_kpop_session_gates(
         command,
         prepared.artifacts(),
         session_dotfile_backups,

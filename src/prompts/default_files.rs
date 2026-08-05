@@ -5,7 +5,6 @@ use super::{
 
 fn default_constraints_prompt(name: &str) -> Option<&'static str> {
     match name {
-        "code_constraints.md" => Some(include_str!("../../default_prompts/code_constraints.md")),
         "init_constraints.md" => Some(include_str!("../../default_prompts/init_constraints.md")),
         _ => None,
     }
@@ -21,7 +20,6 @@ fn default_mbc2_prompt(name: &str) -> Option<&'static str> {
 fn default_kpop_prompt(name: &str) -> Option<&'static str> {
     default_mbc2_prompt(name).or_else(|| match name {
         "kpop.md" | "kpop_common.md" => Some(include_str!("../../default_prompts/kpop_common.md")),
-        "kpop_program.md" => Some(include_str!("../../default_prompts/kpop_program.md")),
         "kpop_summarize.md" => Some(include_str!("../../default_prompts/kpop_summarize.md")),
         "kpop_block.md" => Some(include_str!("../../default_prompts/kpop_block.md")),
         _ => None,
@@ -61,7 +59,7 @@ mod tests {
         assert!(default_file("router_a.md").is_some());
         assert!(default_file("router_b.md").is_some());
         assert!(default_file("router_summarize.md").is_some());
-        assert!(default_constraints_prompt("code_constraints.md").is_some());
+        assert!(default_constraints_prompt("init_constraints.md").is_some());
         assert!(default_kpop_prompt("kpop_common.md").is_some());
     }
 }

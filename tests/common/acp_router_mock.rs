@@ -3,7 +3,7 @@
 use super::acp_core::acp_mock_js;
 
 /// Minimal router mock: emits `__MALVIN_DONE__` on `router_a`.
-/// Also fulfills delight/explain output paths when those strings appear in the prompt.
+/// Also fulfills explain output paths when those strings appear in the prompt.
 pub fn acp_mock_router_no_work_js() -> String {
     let handler = r#"
     if (!global.pc) global.pc = 0;
@@ -26,13 +26,6 @@ pub fn acp_mock_router_no_work_js() -> String {
           : path.join(process.cwd(), reqPathMatch[1]);
         scanText += '\n' + fs.readFileSync(reqAbs, 'utf8');
       } catch (_) {}
-    }
-    const pitchMatch = scanText.match(/Write the pitch to `([^`]+)`/);
-    if (pitchMatch) {
-      let outRel = pitchMatch[1].replace(/^\.\//, '');
-      const outAbs = path.isAbsolute(outRel) ? outRel : path.join(process.cwd(), outRel);
-      fs.mkdirSync(path.dirname(outAbs), { recursive: true });
-      fs.writeFileSync(outAbs, '# Delight pitch\n\nA delightful improvement.\n', 'utf8');
     }
     // Match current explain_wrapper.md ("Put the LaTeX source in `…`") and the older
     // "Write LaTeX source to `…`" phrasing so mocks stay compatible across wording tweaks.

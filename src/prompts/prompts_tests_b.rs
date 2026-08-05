@@ -36,9 +36,9 @@ fn render_fails_when_double_brace_remains() {
 
 #[test]
 fn enforce_no_unresolved_braces_in_reports_prompt_file() {
-    let err = crate::prompts::enforce_no_unresolved_braces_in("x {{ y }} z", Some("kpop_program.md"))
+    let err = crate::prompts::enforce_no_unresolved_braces_in("x {{ y }} z", Some("header.md"))
         .expect_err("braces");
-    assert!(err.0.contains("kpop_program.md"));
+    assert!(err.0.contains("header.md"));
 }
 
 #[test]

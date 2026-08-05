@@ -13,6 +13,6 @@ pub struct AgentClient {
     pub(crate) coder_session_cwd: Option<std::path::PathBuf>,
     /// Bounded attempts per ACP spawn or `session/prompt` (from `--max-acp-retries`).
     pub(crate) max_acp_retries: u32,
-    /// When set (e.g. `malvin code` orchestrator), LLM waits and retry backoff are recorded.
+    /// When set (e.g. router orchestrator), LLM waits and retry backoff are recorded.
     pub(crate) timing: Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
 }

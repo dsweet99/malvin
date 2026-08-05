@@ -1,4 +1,4 @@
-use crate::artifacts::{MalvinChecksBackup, RunArtifacts};
+use crate::artifacts::RunArtifacts;
 use crate::prompt_stratification::WorkflowRenderContext;
 use crate::prompts::PromptStore;
 
@@ -8,9 +8,7 @@ pub(crate) struct KPopEnginePrepared {
     /// Retained for tests and introspection; turn prompts read `user_request_path` on disk.
     #[allow(dead_code)]
     pub request_text: String,
-    pub startup_emit_request: String,
     pub store: PromptStore,
-    pub malvin_checks_backup: MalvinChecksBackup,
 }
 
 impl KPopEnginePrepared {
@@ -42,11 +40,8 @@ mod tests {
             artifacts,
             context: WorkflowRenderContext::default(),
             request_text: "req".into(),
-            startup_emit_request: "startup".into(),
             store,
-            malvin_checks_backup: crate::artifacts::MalvinChecksBackup::Missing,
         };
         assert_eq!(prepared.request_text, "req");
-        assert_eq!(prepared.startup_emit_request, "startup");
     }
 }

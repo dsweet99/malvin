@@ -4,21 +4,16 @@ use super::{
 use crate::do_flow::DoArgs;
 
 /// Commands that accept `--name` acquire a session name lock before substantive work.
-/// Bare `malvin REQUEST`, `--do`, `tidy`, and `delight` accept `--name`.
+/// Bare `malvin REQUEST`, `--do`, and `tidy` accept `--name`.
 pub(crate) const fn command_accepts_session_name(command: &Commands) -> bool {
-    matches!(
-        command,
-        Commands::Code(_) | Commands::Tidy(_) | Commands::Delight(_)
-    )
+    matches!(command, Commands::Tidy(_))
 }
 
 pub(crate) const fn unsupported_name_error(command: &Commands) -> Option<&'static str> {
     if command_accepts_session_name(command) {
         return None;
     }
-    Some(
-        "`--name` is only supported for bare `malvin REQUEST`, `--do`, `tidy`, and `delight`",
-    )
+    Some("`--name` is only supported for bare `malvin REQUEST`, `--do`, and `tidy`")
 }
 
 #[path = "entrypoint_from.rs"]
@@ -97,17 +92,6 @@ pub(crate) fn dispatch_command(
 ) -> Result<(), String> {
     let mut shared = shared.clone();
     match command {
-        Commands::Code(mut code) => {
-            super::loop_opts::apply_gate_loop_tenacious(super::loop_opts::GateLoopTenaciousApply {
-                subcommand: "code",
-                max_loops: &mut code.max_loops,
-                tenacious: code.tenacious,
-                no_tenacious: shared.no_tenacious,
-                max_acp_retries: &mut shared.max_acp_retries,
-                matches,
-            });
-            super::entrypoint_commands::run_code_command(code, &shared)
-        }
         Commands::Init(init) => run_async_cli(|| run_init(init, &shared)),
         Commands::Tidy(mut tidy) => {
             super::loop_opts::apply_gate_loop_tenacious(super::loop_opts::GateLoopTenaciousApply {
@@ -128,7 +112,7 @@ pub(crate) fn dispatch_command(
                 )
             })
         }
-        cmd @ (Commands::Delight(_) | Commands::Explain(_)) => {
+        cmd @ Commands::Explain(_) => {
             super::entrypoint_commands::dispatch_plan_authoring_gate(cmd, &mut shared, matches)
         }
         Commands::Inspire(inspire) | Commands::Adaptix(inspire) => {

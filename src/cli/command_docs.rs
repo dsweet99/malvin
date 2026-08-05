@@ -14,7 +14,6 @@ pub(crate) const DO_DOC: &str = include_str!("../../default_prompts/docs/do.md")
 const fn gate_loop_command_doc(cmd: &Commands) -> Option<&'static str> {
     match cmd {
         Commands::Tidy(_) => Some(include_str!("../../default_prompts/docs/tidy.md")),
-        Commands::Delight(_) => Some(include_str!("../../default_prompts/docs/delight.md")),
         Commands::Explain(_) => Some(include_str!("../../default_prompts/docs/explain.md")),
         _ => None,
     }

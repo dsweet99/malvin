@@ -96,17 +96,14 @@ fn models_command_rejects_session_name() {
 }
 
 #[test]
-fn delight_command_accepts_session_name() {
-    use crate::cli::delight_flow::DelightArgs;
-    assert!(command_accepts_session_name(
-        &Commands::Delight(DelightArgs {
-            guidance: None,
-            out_path: "pitch.md".to_string(),
-            max_loops: 1,
-            max_hypotheses: 5,
-            tenacious: false,
-        }),
-    ));
+fn tidy_command_accepts_session_name() {
+    use crate::cli::tidy_flow::TidyArgs;
+    assert!(command_accepts_session_name(&Commands::Tidy(TidyArgs {
+        max_loops: 1,
+        max_hypotheses: 5,
+        tenacious: false,
+        quick: false,
+    })));
 }
 
 #[test]

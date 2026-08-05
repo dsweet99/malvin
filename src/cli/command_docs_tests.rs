@@ -3,7 +3,6 @@ use super::{
 };
 use crate::cli::Cli;
 use crate::cli::{Commands, InspireArgs};
-use crate::cli::delight_flow::DelightArgs;
 use crate::cli::explain_flow::ExplainArgs;
 use crate::cli::models_cmd::ModelsArgs;
 use clap::Parser;
@@ -79,16 +78,6 @@ fn inspire_doc_parses_without_request_when_doc_flag_set() {
 }
 
 #[test]
-fn delight_doc_parses_without_out_path() {
-    let cli = Cli::try_parse_from(["malvin", "delight", "--doc"]).expect("parse");
-    assert!(cli.shared.doc);
-    match cli.command.as_ref() {
-        Some(Commands::Delight(d)) => assert_eq!(d.out_path, "pitch.md"),
-        _ => panic!("expected Delight"),
-    }
-}
-
-#[test]
 fn explain_doc_parses_with_request_when_doc_flag_set() {
     let cli = Cli::try_parse_from(["malvin", "explain", "topic.md", "--doc"]).expect("parse");
     assert!(cli.shared.doc);
@@ -113,19 +102,6 @@ fn print_doc_explain_writes_subcommand_md() {
     });
     let out = capture_doc(Some(&cmd)).expect("capture");
     assert!(out.starts_with(b"# malvin explain"));
-}
-
-#[test]
-fn print_doc_delight_writes_subcommand_md() {
-    let cmd = Commands::Delight(DelightArgs {
-        guidance: None,
-        out_path: "pitch.md".to_string(),
-        max_loops: 3,
-        max_hypotheses: 5,
-        tenacious: true,
-    });
-    let out = capture_doc(Some(&cmd)).expect("capture");
-    assert!(out.starts_with(b"# malvin delight"));
 }
 
 #[test]

@@ -36,31 +36,20 @@ fn malvin_doc_prints_overview_then_router() {
 }
 
 #[test]
-fn malvin_code_is_deprecated() {
+fn malvin_code_is_not_a_documented_subcommand() {
     let tmp = isolated_home();
-    let bin_home = tmp.path();
-    for args in [
-        &["code"][..],
-        &["code", "plan.md"][..],
-        &["code", "--help"][..],
-        &["code", "--doc"][..],
-    ] {
-        let out = malvin_cmd(bin_home)
-            .args(args)
-            .output()
-            .unwrap_or_else(|e| panic!("spawn malvin {args:?}: {e}"));
-        assert_eq!(
-            out.status.code(),
-            Some(1),
-            "malvin {args:?} must exit 1; stderr={}",
-            String::from_utf8_lossy(&out.stderr)
-        );
-        let stderr = String::from_utf8_lossy(&out.stderr);
-        assert!(
-            stderr.contains("deprecated"),
-            "malvin {args:?} stderr must mention deprecation: {stderr}"
-        );
-    }
+    let out = malvin_cmd(tmp.path())
+        .args(["code", "--doc"])
+        .output()
+        .expect("spawn malvin code --doc");
+    // Without a `code` subcommand, `code` is a bare request and `--doc` prints the overview.
+    assert!(out.status.success(), "stderr={}", String::from_utf8_lossy(&out.stderr));
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        !stdout.contains("# malvin code"),
+        "removed code workflow must not have --doc content: {stdout}"
+    );
+    assert!(stdout.contains("# malvin (top-level CLI)"));
 }
 
 #[test]

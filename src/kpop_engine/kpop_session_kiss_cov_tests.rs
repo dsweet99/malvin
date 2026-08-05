@@ -20,7 +20,7 @@ fn kiss_cov_run_kpop_hard_constraints_after_session_skip_branch_executable() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let (prepared, backups) =
         prepared_fixture("code", tmp.path(), false, PreparedContextMode::Empty);
-    let skip = KPopHardConstraints::DELIGHT;
+    let skip = KPopHardConstraints::EXPLAIN;
     let run = KPopHardConstraints::CODE;
     if run_kpop_hard_constraints_after_session("code", &prepared, &backups, skip).is_ok() {
         assert!(skip.skip_workspace_quality_gates);
@@ -37,13 +37,13 @@ fn kiss_cov_run_kpop_hard_constraints_after_session_skip_branch_executable() {
 }
 
 #[test]
-fn kiss_cov_restore_kpop_engine_session_dotfiles_delight_branch() {
+fn kiss_cov_restore_kpop_engine_session_dotfiles_explain_branch() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let work = tmp.path();
     let (prepared, backups) =
         prepared_fixture("code", work, true, PreparedContextMode::Empty);
     let (shared, _) = shared_workflow();
-    let loop_params = loop_params("code", &shared, &prepared, KPopHardConstraints::DELIGHT);
+    let loop_params = loop_params("code", &shared, &prepared, KPopHardConstraints::EXPLAIN);
     let mut client = agent_backend(&shared, "code");
     let exp_log_path = prepared.artifacts().gate_exp_log_path(1);
     let mut iteration_params = build_iteration_params(IterationFixture {
@@ -60,7 +60,7 @@ fn kiss_cov_restore_kpop_engine_session_dotfiles_delight_branch() {
     if restore_kpop_engine_session_dotfiles(&ctx).is_ok() {
         assert!(loop_params.behavior.restore_malvin_checks_after_session());
     } else {
-        panic!("delight restore should succeed");
+        panic!("explain-profile restore should succeed");
     }
 }
 #[cfg(unix)]
@@ -95,7 +95,7 @@ fn kiss_cov_build_kpop_engine_prompt_executable() {
     print_kpop_engine_log_line(&prepared, &exp_log_for_print);
     assert_eq!(ctx.iteration.iteration, 1);
     let exp_log_path_2 = prepared.artifacts().gate_exp_log_path(2);
-    let mut iteration_params_delight = build_iteration_params(IterationFixture {
+    let mut iteration_params_2 = build_iteration_params(IterationFixture {
         loop_params: &loop_params,
         backups: &backups,
         client: &mut client,
@@ -103,10 +103,10 @@ fn kiss_cov_build_kpop_engine_prompt_executable() {
         total_iterations: 2,
         exp_log_path: exp_log_path_2,
     });
-    let ctx_delight = KPopEngineMultiturnCtx {
-        iteration: &mut iteration_params_delight,
+    let ctx_2 = KPopEngineMultiturnCtx {
+        iteration: &mut iteration_params_2,
     };
-    assert!(restore_kpop_engine_session_dotfiles(&ctx_delight).is_ok());
+    assert!(restore_kpop_engine_session_dotfiles(&ctx_2).is_ok());
 }
 
 #[cfg(unix)]

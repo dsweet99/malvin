@@ -66,22 +66,6 @@ pub fn run_malvin_under_openpty(malvin_args_line: &str) -> std::process::Output 
 }
 
 #[cfg(all(unix, target_os = "linux"))]
-pub fn run_code_max_loops_zero_under_openpty(extra_args: &[&str]) -> std::process::Output {
-    use super::acp_mock_code_streaming_bold_markdown_kpop_steps_js;
-    let mut args_line = String::from("code --trust-the-plan --max-loops 0 ship");
-    for a in extra_args {
-        args_line.push(' ');
-        args_line.push_str(a);
-    }
-    run_malvin_under_openpty_with_mock(
-        &acp_mock_code_streaming_bold_markdown_kpop_steps_js(),
-        &args_line,
-        None,
-    )
-    .output
-}
-
-#[cfg(all(unix, target_os = "linux"))]
 pub fn run_inspire_bold_markdown_under_openpty(extra_args: &[&str]) -> std::process::Output {
     let mut args_line = String::from("inspire investigate");
     for a in extra_args {

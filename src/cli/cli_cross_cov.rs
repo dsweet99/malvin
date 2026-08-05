@@ -4,12 +4,9 @@
 
 #[test]
 fn smoke_format_gate_failures_non_empty() {
-    let pre = super::format_pre_check_gate_failure("malvin code", "kiss failed");
-    assert!(pre.contains("kiss failed"));
     let ws = super::format_workspace_gate_failure("malvin tidy", "gate failed");
     assert!(ws.contains("gate failed"));
-    let code = super::format_code_pre_check_failure("detail");
-    assert!(code.contains("detail"));
+    assert!(ws.contains("malvin tidy"));
 }
 
 #[cfg(unix)]

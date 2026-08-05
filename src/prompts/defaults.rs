@@ -13,15 +13,13 @@ pub const ROUTER_CODE_EXTRA_MD: &str = "router_code_extra.md";
 pub const ROUTER_SUMMARIZE_MD: &str = "router_summarize.md";
 pub const EXPLAIN_WRAPPER_MD: &str = "explain_wrapper.md";
 
-pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD, "kpop_program.md"];
+pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD];
 
 pub const DEFAULT_PROMPTS: &[&str] = &[
     "kpop_common.md",
     "kpop_block.md",
     "mbc2.md",
-    "kpop_program.md",
     "kpop_summarize.md",
-    "code_constraints.md",
     "init_constraints.md",
     HEADER_MD,
     DO_HEADER_MD,

@@ -3,7 +3,6 @@
 use clap::{Parser, Subcommand};
 
 use super::shared_opts::SharedOpts;
-use super::delight_flow::DelightArgs;
 use super::explain_flow::ExplainArgs;
 use super::init_flow::InitArgs;
 use super::tidy_flow::TidyArgs;
@@ -52,12 +51,6 @@ pub enum Commands {
     /// Be creative (legacy name)
     #[command(name = "adaptix", hide = true)]
     Adaptix(InspireArgs),
-    /// Write code (deprecated; hidden from help)
-    #[command(hide = true)]
-    Code(crate::cli::code_flow::CodeArgs),
-    /// Author a user-delighting feature pitch
-    #[command(hide = true)]
-    Delight(DelightArgs),
     /// List available models
     Models(ModelsArgs),
 }

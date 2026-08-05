@@ -80,30 +80,12 @@ fn apply_gate_loop_command_defaults(
     review: &crate::malvin_config_file::ReviewConfig,
 ) {
     match command {
-        Commands::Code(code) => apply_code_workflow_loop_defaults(
-            matches,
-            CodeWorkflowLoopMut {
-                subcommand: "code",
-                max_loops: &mut code.max_loops,
-                max_hypotheses: &mut code.max_hypotheses,
-                agent,
-            },
-        ),
         Commands::Tidy(tidy) => apply_code_workflow_loop_defaults(
             matches,
             CodeWorkflowLoopMut {
                 subcommand: "tidy",
                 max_loops: &mut tidy.max_loops,
                 max_hypotheses: &mut tidy.max_hypotheses,
-                agent,
-            },
-        ),
-        Commands::Delight(delight) => apply_code_workflow_loop_defaults(
-            matches,
-            CodeWorkflowLoopMut {
-                subcommand: "delight",
-                max_loops: &mut delight.max_loops,
-                max_hypotheses: &mut delight.max_hypotheses,
                 agent,
             },
         ),

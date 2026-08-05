@@ -81,7 +81,6 @@ fn kiss_invalid_struct_value_refs_4() {
     let _ = crate::mini_agent::loop_driver::loop_inner_finish::TerminalEmitCtx;
     let _ = crate::mini_agent::loop_driver::loop_types::LoopDriverRun;
     let _ = crate::child_health::evaluate_after_acp_silence;
-    let _ = crate::cli::code_flow::run_loop::CodeGateFinish;
     let _ = crate::cli::do_flow::DoRunPrep;
     let _ = crate::router_flow::RouterRunPrep;
     let _ = crate::cli::config_defaults::LoopDefaultMut;
@@ -99,7 +98,6 @@ fn kiss_invalid_struct_value_refs_5() {
     let _ = crate::router_flow::router_flow_loop::RouterAgentLoopInput;
     let _ = crate::router_flow::router_flow_loop::RouterAgentLoopOutcome;
     let _ = crate::cli::kpop_summarize::kpop_summarize_inline::GateInlineSummarizeCtx;
-    let _ = crate::kpop_program::RenderRepoProgram;
     let _ = crate::kpop_multiturn_prompts::SmokeKpopBuilder;
     let _ = crate::kpop_test_stubs::EchoPrompts;
     let _ = crate::kpop_test_stubs::kpop_prompt;

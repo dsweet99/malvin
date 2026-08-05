@@ -17,9 +17,7 @@ fn post_gate_fixture() -> (KPopEnginePrepared, SessionDotfileBackups) {
         artifacts,
         context: crate::prompt_stratification::WorkflowRenderContext::default(),
         request_text: "req".into(),
-        startup_emit_request: "req".into(),
         store,
-        malvin_checks_backup: crate::artifacts::MalvinChecksBackup::Missing,
     };
     (prepared, backups)
 }
@@ -33,7 +31,7 @@ fn kiss_cov_kpop_engine_multiturn_ctx_type_witness() {
 #[test]
 fn kiss_cov_run_kpop_hard_constraints_after_session_branchy_executable_witness() {
     let (prepared, backups) = post_gate_fixture();
-    let skip = KPopHardConstraints::DELIGHT;
+    let skip = KPopHardConstraints::EXPLAIN;
     let run = KPopHardConstraints::CODE;
     if run_kpop_hard_constraints_after_session("code", &prepared, &backups, skip).is_ok() {
         assert!(skip.skip_workspace_quality_gates);
@@ -65,9 +63,7 @@ fn kiss_cov_kpop_engine_loop_params_types() {
         artifacts,
         context: crate::prompt_stratification::WorkflowRenderContext::default(),
         request_text: "req".into(),
-        startup_emit_request: "req".into(),
         store,
-        malvin_checks_backup: crate::artifacts::MalvinChecksBackup::Missing,
     };
     let shared = crate::cli::SharedOpts {
         model: crate::config::DEFAULT_CLI_MODEL.into(),

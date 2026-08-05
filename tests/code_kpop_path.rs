@@ -6,7 +6,7 @@ mod common;
 use std::process::Command;
 
 #[cfg(unix)]
-use common::{assert_code_deprecated, MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout};
+use common::{MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout};
 
 #[cfg(unix)]
 fn clear_agent_api_env(cmd: &mut Command) {
@@ -85,50 +85,11 @@ fn assert_malvin_subcommand_not_kiss_gated_without_auth(
     assert_auth_failure_not_kiss_precheck(&out);
 }
 
-#[cfg(unix)]
-fn spawn_code_without_kiss_or_auth(work_dir: &std::path::Path) -> std::process::Output {
-    let path_root = tempfile::tempdir().expect("tempdir");
-    let isolated_bin = path_root.path().join("bin");
-    std::fs::create_dir_all(&isolated_bin).expect("mkdir bin");
-    let isolated_home = path_root.path().join("home");
-    std::fs::create_dir_all(&isolated_home).expect("mkdir home");
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
-    cmd.env("PATH", &isolated_bin)
-        .env("HOME", &isolated_home)
-        .current_dir(work_dir)
-        .args(["code", "plan.md"]);
-    clear_agent_api_env(&mut cmd);
-    command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin")
-}
-
-#[test]
-fn malvin_code_is_deprecated_when_kiss_missing_from_path() {
-    let work = tempfile::tempdir().unwrap();
-    std::fs::create_dir_all(work.path().join(".git")).unwrap();
-    std::fs::write(work.path().join("plan.md"), "plan\n").unwrap();
-    #[cfg(unix)]
-    let out = spawn_code_without_kiss_or_auth(work.path());
-    #[cfg(not(unix))]
-    let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
-        .current_dir(work.path())
-        .args(["code", "plan.md"])
-        .output()
-        .expect("spawn malvin");
-    assert_code_deprecated(&out);
-}
-
 #[test]
 fn malvin_tidy_is_not_kiss_gated_when_kiss_missing_from_path() {
     let work = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(work.path().join(".git")).unwrap();
     assert_malvin_subcommand_not_kiss_gated_without_auth(&["tidy"], Some(work.path()));
-}
-
-#[test]
-fn delight_skips_external_linter_preflight() {
-    let work = tempfile::tempdir().unwrap();
-    std::fs::create_dir_all(work.path().join(".git")).unwrap();
-    assert_malvin_subcommand_not_kiss_gated_without_auth(&["delight"], Some(work.path()));
 }
 
 #[test]
@@ -142,4 +103,3 @@ fn explain_skips_external_linter_preflight() {
 fn malvin_do_is_not_kiss_gated_when_kiss_missing_from_path() {
     assert_malvin_subcommand_not_kiss_gated_without_auth(&["--do", "hello"], None);
 }
-
