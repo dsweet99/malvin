@@ -31,6 +31,14 @@ impl AgentBackend {
         }
     }
 
+    /// Cursor SDK Node bridge: keep one process across Continues / gate turns,
+    /// refreshing it when [`super::agent_backend_ensure_coder_session`] sees it is stale.
+    /// ACP/Mini still end between outer Continues / gate turns (fresh agent + memory headroom).
+    #[must_use]
+    pub const fn keeps_coder_session_for_process_life(&self) -> bool {
+        matches!(self, Self::CursorSdk(_))
+    }
+
     pub async fn begin_coder_session(&mut self, cwd: &Path) -> Result<(), AgentError> {
         match self {
             Self::Acp(c) => c.begin_coder_session(cwd).await,

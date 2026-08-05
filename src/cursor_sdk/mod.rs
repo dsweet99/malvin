@@ -35,6 +35,8 @@ mod session_mock_tests;
 #[cfg(test)]
 mod client_mock_tests;
 #[cfg(test)]
+mod client_ensure_tests;
+#[cfg(test)]
 mod sdk_bug_helpers;
 #[cfg(test)]
 mod sdk_bug_regression_tests;

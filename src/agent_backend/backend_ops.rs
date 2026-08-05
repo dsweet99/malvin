@@ -1,8 +1,38 @@
 //! Free functions for [`super::backend::AgentBackend`] operations kept out of the enum impl for kiss limits.
 
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 
+use crate::acp::AgentError;
+
 use super::backend::AgentBackend;
+
+/// Ensure a coder session is open for the next agent turn.
+///
+/// Cursor SDK: restart the Node bridge if it has been alive at least 10 minutes.
+/// ACP/Mini: begin only when no session is open.
+pub async fn agent_backend_ensure_coder_session(
+    backend: &mut AgentBackend,
+    cwd: &Path,
+) -> Result<(), AgentError> {
+    match backend {
+        AgentBackend::CursorSdk(c) => c.ensure_coder_session(cwd).await,
+        AgentBackend::Acp(c) => {
+            if c.has_open_coder_session() {
+                Ok(())
+            } else {
+                c.begin_coder_session(cwd).await
+            }
+        }
+        AgentBackend::Mini(c) => {
+            if c.has_open_coder_session() {
+                Ok(())
+            } else {
+                c.begin_coder_session(cwd).await
+            }
+        }
+    }
+}
 
 pub fn agent_backend_set_run_timing(
     backend: &mut AgentBackend,

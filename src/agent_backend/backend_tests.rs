@@ -36,10 +36,28 @@ fn test_io_returns_agent_io_options_with_expected_flags() {
 }
 
 #[test]
+fn cursor_sdk_keeps_coder_session_for_process_life() {
+    let mini = AgentBackend::Mini(mock_mini_client());
+    assert!(!mini.keeps_coder_session_for_process_life());
+    let acp = AgentBackend::Acp(crate::acp::AgentClient::new(
+        "auto".into(),
+        test_io(),
+    ));
+    assert!(!acp.keeps_coder_session_for_process_life());
+    let sdk = AgentBackend::CursorSdk(crate::cursor_sdk::CursorSdkClient::new(
+        "cursor:auto".into(),
+        test_io(),
+    ));
+    assert!(sdk.keeps_coder_session_for_process_life());
+}
+
+#[test]
 fn kiss_cov_backend_tests_helpers() {
     let _ = mock_mini_client;
     let _ = shared_opts;
     let _ = install_openrouter_test_key;
+    let _ = stringify!(keeps_coder_session_for_process_life);
+    let _ = stringify!(agent_backend_ensure_coder_session);
 }
 
 #[test]

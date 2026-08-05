@@ -1,8 +1,8 @@
 //! ACP session helpers for `--do`.
 
 use crate::agent_backend::{
-    agent_backend_attach_run_timing_for_session, agent_backend_set_implement_display_name,
-    agent_backend_set_run_timing, AgentBackend,
+    agent_backend_attach_run_timing_for_session, agent_backend_ensure_coder_session,
+    agent_backend_set_implement_display_name, agent_backend_set_run_timing, AgentBackend,
 };
 use crate::artifacts::RunArtifacts;
 use crate::run_timing::TimingPhase;
@@ -37,11 +37,9 @@ pub(super) async fn run_do_acp(
     coder: do_flow_prompt::DoCoderRun,
 ) -> Result<(), String> {
     let timing = agent_backend_attach_run_timing_for_session(client);
-    if !client.has_open_coder_session() {
-        if let Err(e) = client.begin_coder_session(&artifacts.work_dir).await {
-            agent_backend_set_run_timing(client, None);
-            return Err(e.to_string());
-        }
+    if let Err(e) = agent_backend_ensure_coder_session(client, &artifacts.work_dir).await {
+        agent_backend_set_run_timing(client, None);
+        return Err(e.to_string());
     }
     agent_backend_set_implement_display_name(client, "do");
     let run_res = run_do_coder_prompt(client, artifacts, &coder).await;

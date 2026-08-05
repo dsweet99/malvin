@@ -41,8 +41,12 @@ struct RouterLoopStepResult {
     decision: Option<RouterLoopDecision>,
 }
 
-/// Outer agent lifetimes: `header.md` → `kpop_common.md` → `router_a.md` → optional `router_b.md`, then at most one
+/// Outer agent turns: `header.md` → `kpop_common.md` → `router_a.md` → optional `router_b.md`, then at most one
 /// `router_summarize.md` when exiting the outer loop (on the final open session before teardown).
+///
+/// With the Cursor SDK backend, the Node bridge stays open across Continue iterations, and is
+/// restarted when starting an agent if it is at least 10 minutes old. ACP/Mini still end the
+/// coder session between Continues.
 pub(crate) async fn run_router_agent_loops(
     mut input: RouterAgentLoopInput<'_>,
 ) -> Result<RouterAgentLoopOutcome, String> {

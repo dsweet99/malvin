@@ -140,6 +140,7 @@ mod unix_cov {
                     .expect("counts"),
                 )
                 .expect("parse");
+                // ACP still begins per Continue; Cursor SDK keeps one Node process for process life.
                 assert_eq!(counts["begins"], 2);
                 // S1: header+kpop+a+b=4; S2: header+kpop+a+summarize=4 → 8
                 assert_eq!(counts["prompts"], 8);

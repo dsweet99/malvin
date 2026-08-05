@@ -6,7 +6,7 @@ use crate::acp::{backoff_after_agent_failure, retries_noun, AgentError, AuthErro
 
 use super::auth::ensure_sdk_authenticated;
 use super::client::CursorSdkClient;
-use super::session::BridgeSession;
+use super::session::{BridgeSession, SDK_BRIDGE_MAX_AGE};
 
 impl CursorSdkClient {
     /// # Errors
@@ -14,6 +14,30 @@ impl CursorSdkClient {
     /// Returns [`AuthError`] when no Cursor API key is configured.
     pub fn ensure_authenticated(&self) -> Result<(), AuthError> {
         ensure_sdk_authenticated()
+    }
+
+    /// Open a coder session if needed. Restarts the Node bridge when it is at
+    /// least [`SDK_BRIDGE_MAX_AGE`] old so Cursor-side idle timeouts do not break
+    /// later agent turns.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AgentError`] when spawn or shutdown fails after retries.
+    pub async fn ensure_coder_session(&mut self, cwd: &Path) -> Result<(), AgentError> {
+        if self.sdk_bridge_needs_restart() {
+            self.end_coder_session().await?;
+        }
+        if self.session.is_some() {
+            return Ok(());
+        }
+        self.begin_coder_session(cwd).await
+    }
+
+    #[must_use]
+    pub(crate) fn sdk_bridge_needs_restart(&self) -> bool {
+        self.session
+            .as_ref()
+            .is_some_and(|s| s.started_at.elapsed() >= SDK_BRIDGE_MAX_AGE)
     }
 
     /// # Errors

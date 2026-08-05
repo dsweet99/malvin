@@ -34,8 +34,16 @@ fn kiss_cov_cursor_sdk_client_api() {
     let _ = stringify!(has_open_coder_session);
     let _ = stringify!(last_coder_prompt_agent_response);
     let _ = stringify!(ensure_authenticated);
+    let _ = stringify!(ensure_coder_session);
+    let _ = stringify!(sdk_bridge_needs_restart);
     let _ = stringify!(begin_coder_session);
     let _ = stringify!(end_coder_session);
+    let _ = stringify!(SDK_BRIDGE_MAX_AGE);
+    let _ = stringify!(client_ensure_tests);
+    let _ = stringify!(cursor_sdk_ensure_reuses_fresh_bridge);
+    let _ = stringify!(cursor_sdk_ensure_restarts_stale_bridge);
+    let _ = stringify!(bridge_started_at);
+    let _ = stringify!(backdate_bridge);
     let _ = stringify!(run_coder_prompt);
     let _ = stringify!(run_one);
     let _ = stringify!(emit_prompt_stdout);
@@ -69,6 +77,7 @@ fn kiss_cov_cursor_sdk_protocol() {
 fn kiss_cov_cursor_sdk_session_core() {
     let _ = stringify!(BridgeSession);
     let _ = stringify!(BridgeSpawnArgs);
+    let _ = stringify!(started_at);
     let _ = stringify!(spawn);
     let _ = stringify!(send_prompt);
     let _ = stringify!(shutdown);

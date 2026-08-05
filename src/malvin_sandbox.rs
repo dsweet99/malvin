@@ -162,8 +162,10 @@ pub fn clear_active_sandbox_session() {
     crate::acp::clear_session_spawn_affiliation();
 }
 
-/// CTRL-C / interrupt: tear down the live agent process group without dumping
-/// Node stacks on the console, then release the sandbox lock.
+/// CTRL-C path: SIGKILL the agent process group without waiting.
+///
+/// Skips cooperative TERM→poll so the shell returns promptly, and avoids
+/// dumping Node stacks on the console. Then releases the sandbox lock.
 pub fn teardown_active_sandbox_for_interrupt() {
     let session = ACTIVE_SANDBOX_SESSION
         .lock()
@@ -175,7 +177,7 @@ pub fn teardown_active_sandbox_for_interrupt() {
     #[cfg(unix)]
     {
         crate::active_agent_heartbeat::unregister_active_agent_process_group(session.pgid);
-        crate::acp::terminate_agent_process_group_blocking(session.pgid, &session.baseline);
+        crate::acp::terminate_agent_process_group_for_interrupt(session.pgid, &session.baseline);
         crate::acp::clear_session_spawn_affiliation();
     }
     release_acp_spawn_lock(&session.work_dir, &session.acp_lock_slot);

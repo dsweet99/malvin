@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use tokio::io::BufReader;
 use tokio::process::{Child, ChildStdin, ChildStdout};
@@ -15,6 +15,10 @@ use crate::acp::{AgentError, AgentIoOptions};
 use super::protocol::BridgeRequest;
 use super::session_io::{drain_until_run_done, write_request};
 use super::session_spawn::spawn_bridge;
+
+/// Cursor-side long-lived SDK connections time out (~1.5h). When starting an
+/// agent, restart the Node bridge if it has been alive at least this long.
+pub(crate) const SDK_BRIDGE_MAX_AGE: Duration = Duration::from_secs(10 * 60);
 
 /// Cached tool-call start for ACP-parity done-line timing.
 #[derive(Debug, Clone)]
@@ -35,6 +39,8 @@ pub struct BridgeSession {
     pub last_response: Arc<Mutex<String>>,
     pub timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
     pub run_dir: Option<PathBuf>,
+    /// When this bridge process was spawned (`Instant::now` at assemble).
+    pub started_at: Instant,
     /// ACP-parity stdout coalescer for streamed assistant/thinking chunks.
     pub stdout_coalesce: Mutex<crate::acp::TraceChunkCoalescer>,
     /// toolCallId → start instant + summary (for done-line duration).

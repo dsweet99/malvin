@@ -105,11 +105,20 @@ pub(super) async fn finalize_kpop_engine_turn(
         .await
         .map_err(|e| e.0);
     }
-    ctx.iteration
+    // Idea 3 (Cursor SDK): leave the Node bridge open for later gate turns / iterations
+    // (refreshed on the next agent start if older than 10 minutes).
+    // ACP/Mini still end so the next begin gets a fresh agent (and frees memory before gates).
+    if !ctx
+        .iteration
         .client
-        .end_coder_session()
-        .await
-        .map_err(|e| e.to_string())?;
+        .keeps_coder_session_for_process_life()
+    {
+        ctx.iteration
+            .client
+            .end_coder_session()
+            .await
+            .map_err(|e| e.to_string())?;
+    }
     prompt_result.map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -122,12 +131,8 @@ pub(super) async fn run_kpop_engine_coder_turn(
 ) -> Result<(), AgentError> {
     let params = ctx.iteration.loop_params;
     let prepared = params.prepared;
-    if !ctx.iteration.client.has_open_coder_session() {
-        ctx.iteration
-            .client
-            .begin_coder_session(work_dir)
-            .await?;
-    }
+    crate::agent_backend::agent_backend_ensure_coder_session(ctx.iteration.client, work_dir)
+        .await?;
     let mut prompt_result = ctx
         .iteration
         .client

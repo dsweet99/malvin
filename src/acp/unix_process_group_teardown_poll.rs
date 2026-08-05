@@ -116,6 +116,29 @@ pub(crate) fn teardown_agent_sandbox_blocking(
     teardown_agent_sandbox_slow_blocking(process_group_id, baseline_opt, spawn_baseline);
 }
 
+/// CTRL-C path: SIGKILL immediately and do not wait for liveness.
+///
+/// Cooperative TERM→poll→KILL can take up to [`teardown_total_cap`] (1.5s in
+/// release), which feels like a stuck shell. Interrupt prefers a snappy return;
+/// the next spawn still reaps stragglers.
+pub(crate) fn teardown_agent_sandbox_for_interrupt(
+    process_group_id: Option<u32>,
+    spawn_baseline: &HashSet<u32>,
+) {
+    let orphan_scan = !spawn_baseline.is_empty();
+    if process_group_id.is_none() && !orphan_scan {
+        return;
+    }
+    let baseline_opt = orphan_scan.then_some(spawn_baseline);
+    let targets = kill_targets_for_teardown(process_group_id, baseline_opt);
+    for pid in targets {
+        signal_pid(pid, 9);
+    }
+    if let Some(pgid) = process_group_id {
+        signal_process_group(pgid, 9);
+    }
+}
+
 async fn teardown_agent_sandbox_slow_async(
     process_group_id: Option<u32>,
     baseline_opt: Option<&HashSet<u32>>,
@@ -183,6 +206,10 @@ mod kiss_cov_auto {
     #[test]
     fn kiss_cov_teardown_agent_sandbox_blocking() {
         let _ = teardown_agent_sandbox_blocking;
+    }
+    #[test]
+    fn kiss_cov_teardown_agent_sandbox_for_interrupt() {
+        let _ = teardown_agent_sandbox_for_interrupt;
     }
     #[test]
     fn kiss_cov_teardown_agent_sandbox_async() {

@@ -182,7 +182,9 @@ mod wrap_session_post;
 pub(crate) use wrap_session_post::acp_session_set_run_timing;
 mod session_drop_teardown;
 #[cfg(unix)]
-pub(crate) use session_drop_teardown::terminate_agent_process_group_blocking;
+pub(crate) use session_drop_teardown::{
+    terminate_agent_process_group_blocking, terminate_agent_process_group_for_interrupt,
+};
 pub(crate) mod shutdown_cancel_reject;
 #[cfg(unix)]
 #[path = "hostile_orphan_test_util.rs"]

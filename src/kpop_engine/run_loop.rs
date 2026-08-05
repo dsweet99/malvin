@@ -109,6 +109,16 @@ struct KpopEngineIterationInput<'a> {
     iteration: usize,
     run_timing: &'a Arc<Mutex<crate::run_timing::RunTiming>>,
     consecutive_solved: usize,
+    client: &'a mut crate::agent_backend::AgentBackend,
+}
+
+async fn end_coder_session_if_open(
+    client: &mut crate::agent_backend::AgentBackend,
+) -> Result<(), String> {
+    if client.has_open_coder_session() {
+        client.end_coder_session().await.map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 async fn run_kpop_engine_iteration(
@@ -119,23 +129,84 @@ async fn run_kpop_engine_iteration(
         iteration,
         run_timing,
         consecutive_solved,
+        client,
     } = input;
-    let mut client =
-        run_loop_iteration::build_authenticated_kpop_engine_client(params, run_timing)?;
     let (streak, backups, early) = kpop_engine_loop_one_iteration(
         KpopEngineLoopIterationCtx {
             params,
             iteration,
             run_timing,
-            client: &mut client,
+            client,
         },
         consecutive_solved,
     )
     .await?;
-    if client.has_open_coder_session() {
-        client.end_coder_session().await.map_err(|e| e.to_string())?;
+    // Non-SDK backends end after each iteration; Cursor SDK keeps the bridge until loop exit
+    // (or until ensure_coder_session refreshes a bridge older than 10 minutes).
+    if !client.keeps_coder_session_for_process_life() {
+        end_coder_session_if_open(client).await?;
     }
     Ok((streak, backups, early))
+}
+
+fn maybe_skip_kpop_on_initial_gate_pass(
+    params: &super::params::KPopEngineParams<'_>,
+    last_backups: &SessionDotfileBackups,
+) -> Option<KPopEngineLoopOutcome> {
+    if params.behavior.skip_kpop_on_initial_pass
+        && !params.behavior.skip_workspace_quality_gates
+        && run_kpop_workspace_gates(
+            params.prepared.artifacts(),
+            last_backups,
+            params.behavior.restore_malvin_checks_after_session(),
+        )
+        .is_ok()
+    {
+        Some((true, false, None, last_backups.clone()))
+    } else {
+        None
+    }
+}
+
+struct KpopEngineGateIterations<'a> {
+    params: &'a super::params::KPopEngineParams<'a>,
+    work_dir: &'a Path,
+    last_backups: &'a mut SessionDotfileBackups,
+    run_timing: &'a Arc<Mutex<crate::run_timing::RunTiming>>,
+    client: &'a mut crate::agent_backend::AgentBackend,
+}
+
+async fn run_kpop_engine_gate_iterations(
+    input: KpopEngineGateIterations<'_>,
+) -> Result<Option<KPopEngineLoopOutcome>, String> {
+    let KpopEngineGateIterations {
+        params,
+        work_dir,
+        last_backups,
+        run_timing,
+        client,
+    } = input;
+    let iterations = kpop_engine_loop_iterations(params.max_loops);
+    let mut consecutive_solved = 0usize;
+    for iteration in 1..=iterations {
+        if iteration > 1 {
+            restore_carry_forward_before_iteration_snapshot(work_dir, Some(last_backups))?;
+        }
+        let (streak, backups, early) = run_kpop_engine_iteration(KpopEngineIterationInput {
+            params,
+            iteration,
+            run_timing,
+            consecutive_solved,
+            client,
+        })
+        .await?;
+        consecutive_solved = streak;
+        *last_backups = backups;
+        if early.is_some() {
+            return Ok(early);
+        }
+    }
+    Ok(None)
 }
 
 pub(crate) async fn run_kpop_engine(
@@ -143,38 +214,25 @@ pub(crate) async fn run_kpop_engine(
 ) -> Result<KPopEngineLoopOutcome, String> {
     let work_dir = params.prepared.artifacts().work_dir.as_path();
     let mut last_backups = prepare_kpop_engine_loop(work_dir)?;
-    if params.behavior.skip_kpop_on_initial_pass
-        && !params.behavior.skip_workspace_quality_gates
-        && run_kpop_workspace_gates(
-            params.prepared.artifacts(),
-            &last_backups,
-            params.behavior.restore_malvin_checks_after_session(),
-        )
-        .is_ok()
-    {
-        return Ok((true, false, None, last_backups));
+    if let Some(outcome) = maybe_skip_kpop_on_initial_gate_pass(&params, &last_backups) {
+        return Ok(outcome);
     }
-
-    let iterations = kpop_engine_loop_iterations(params.max_loops);
     let run_timing =
         crate::run_timing::attach_kpop_engine_loop_run_timing_for_model(&params.shared.model);
-    let mut consecutive_solved = 0usize;
-    for iteration in 1..=iterations {
-        if iteration > 1 {
-            restore_carry_forward_before_iteration_snapshot(work_dir, Some(&last_backups))?;
-        }
-        let (streak, backups, early) = run_kpop_engine_iteration(KpopEngineIterationInput {
-            params: &params,
-            iteration,
-            run_timing: &run_timing,
-            consecutive_solved,
-        })
-        .await?;
-        consecutive_solved = streak;
-        last_backups = backups;
-        if let Some(outcome) = early {
-            return Ok(outcome);
-        }
+    // Idea 3: one Cursor SDK client for the whole gate-engine lifetime.
+    let mut client =
+        run_loop_iteration::build_authenticated_kpop_engine_client(&params, &run_timing)?;
+    let early = run_kpop_engine_gate_iterations(KpopEngineGateIterations {
+        params: &params,
+        work_dir,
+        last_backups: &mut last_backups,
+        run_timing: &run_timing,
+        client: &mut client,
+    })
+    .await?;
+    end_coder_session_if_open(&mut client).await?;
+    if let Some(outcome) = early {
+        return Ok(outcome);
     }
     Ok((exhausted_loop_gate_ok(&params, &last_backups), true, Some(run_timing), last_backups))
 }

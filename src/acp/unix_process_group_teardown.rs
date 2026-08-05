@@ -26,7 +26,9 @@ pub(crate) async fn signal_targets(targets: &HashSet<u32>, process_group_id: Opt
 }
 
 #[cfg(unix)]
-pub(crate) use super::unix_process_group_teardown_poll::teardown_agent_sandbox_blocking;
+pub(crate) use super::unix_process_group_teardown_poll::{
+    teardown_agent_sandbox_blocking, teardown_agent_sandbox_for_interrupt,
+};
 
 #[cfg(unix)]
 pub async fn terminate_agent_process_group(
@@ -98,6 +100,7 @@ mod kiss_cov_auto {
     #[test]
     fn kiss_cov_teardown_poll_module() {
         let _ = teardown_agent_sandbox_blocking;
+        let _ = teardown_agent_sandbox_for_interrupt;
         let _ = crate::acp::unix_process_group_teardown_poll::teardown_agent_sandbox_async;
     }
 }

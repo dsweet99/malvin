@@ -60,8 +60,9 @@ where
     })
 }
 
-/// On CTRL-C, kill the agent process group with SIGTERM/SIGKILL (not a raw
-/// SIGINT to Node) so the console stays free of Node stack traces.
+/// On CTRL-C, SIGKILL the agent process group immediately (not a raw SIGINT to
+/// Node, and not a cooperative TERM wait) so the shell returns promptly and the
+/// console stays free of Node stack traces.
 fn spawn_ctrl_c_teardown() {
     tokio::spawn(async {
         if tokio::signal::ctrl_c().await.is_err() {

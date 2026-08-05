@@ -19,6 +19,18 @@ pub(crate) fn terminate_agent_process_group_blocking(
     );
 }
 
+/// CTRL-C: SIGKILL without waiting (see [`super::unix_process_group_teardown::teardown_agent_sandbox_for_interrupt`]).
+#[cfg(unix)]
+pub(crate) fn terminate_agent_process_group_for_interrupt(
+    process_group_id: Option<u32>,
+    spawn_baseline: &HashSet<u32>,
+) {
+    super::unix_process_group_teardown::teardown_agent_sandbox_for_interrupt(
+        process_group_id,
+        spawn_baseline,
+    );
+}
+
 #[cfg(unix)]
 fn take_child_without_tokio_drop(inner: &AcpSessionInner) {
     if tokio::runtime::Handle::try_current().is_ok() {
@@ -115,23 +127,50 @@ mod unix_regression {
         );
     }
 
-    #[test]
-    fn terminate_agent_process_group_blocking_kills_sleep_child() {
-        use std::os::unix::process::CommandExt;
-        use std::process::Command;
-        use std::time::Duration;
+#[test]
+fn terminate_agent_process_group_blocking_kills_sleep_child() {
+    use std::os::unix::process::CommandExt;
+    use std::process::Command;
+    use std::time::Duration;
 
-        let baseline = super::super::unix_process_group_ps::snapshot_pids();
-        let mut cmd = Command::new("sleep");
-        cmd.arg("120");
-        cmd.process_group(0);
-        let mut child = cmd.spawn().expect("spawn sleep");
-        let pgid = child.id();
-        std::thread::sleep(Duration::from_millis(50));
-        super::terminate_agent_process_group_blocking(Some(pgid), &baseline);
-        let status = child.wait().expect("wait");
-        assert!(!status.success() || status.code() == Some(9));
-    }
+    let baseline = super::super::unix_process_group_ps::snapshot_pids();
+    let mut cmd = Command::new("sleep");
+    cmd.arg("120");
+    cmd.process_group(0);
+    let mut child = cmd.spawn().expect("spawn sleep");
+    let pgid = child.id();
+    std::thread::sleep(Duration::from_millis(50));
+    super::terminate_agent_process_group_blocking(Some(pgid), &baseline);
+    let status = child.wait().expect("wait");
+    assert!(!status.success() || status.code() == Some(9));
+}
+
+#[test]
+fn interrupt_teardown_is_fast_when_child_ignores_sigterm() {
+    use std::os::unix::process::CommandExt;
+    use std::process::Command;
+    use std::time::{Duration, Instant};
+
+    let baseline = super::super::unix_process_group_ps::snapshot_pids();
+    let mut cmd = Command::new("sh");
+    cmd.args(["-c", "trap '' TERM; sleep 120"]);
+    cmd.process_group(0);
+    let mut child = cmd.spawn().expect("spawn sh");
+    let pgid = child.id();
+    std::thread::sleep(Duration::from_millis(50));
+    let started = Instant::now();
+    super::terminate_agent_process_group_for_interrupt(Some(pgid), &baseline);
+    let elapsed = started.elapsed();
+    let status = child.wait().expect("wait");
+    assert!(
+        elapsed < Duration::from_millis(200),
+        "interrupt teardown must not wait for cooperative TERM (took {elapsed:?})"
+    );
+    assert!(
+        !status.success(),
+        "interrupt path must SIGKILL a TERM-ignoring child"
+    );
+}
 
     #[test]
     fn take_child_without_runtime_empties_child_slot() {
@@ -177,5 +216,9 @@ mod kiss_cov_gate_refs{
         let _ = acp_session_drop_if_last;
         let _ = acp_session_drop_teardown;
         let _ = take_child_without_tokio_drop;
+        #[cfg(unix)]
+        {
+            let _ = terminate_agent_process_group_for_interrupt;
+        }
     }
 }

@@ -1,6 +1,6 @@
 use crate::agent_backend::{
-    agent_backend_attach_run_timing_for_session, agent_backend_set_implement_display_name,
-    agent_backend_set_run_timing, AgentBackend,
+    agent_backend_attach_run_timing_for_session, agent_backend_ensure_coder_session,
+    agent_backend_set_implement_display_name, agent_backend_set_run_timing, AgentBackend,
 };
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::cli::SharedOpts;
@@ -47,16 +47,14 @@ pub(crate) type SessionEndParts<'a> = (
     RunTimingSessionEnd,
 );
 
-/// Open a coder session only when one is not already live (e.g. pre-`Logs:` warm start).
+/// Open a coder session when needed (e.g. pre-`Logs:` warm start).
+///
+/// Cursor SDK also restarts a bridge that is at least 10 minutes old.
 pub(crate) async fn begin_coder_session_if_needed(
     client: &mut AgentBackend,
     work_dir: &Path,
 ) -> Result<(), String> {
-    if client.has_open_coder_session() {
-        return Ok(());
-    }
-    client
-        .begin_coder_session(work_dir)
+    agent_backend_ensure_coder_session(client, work_dir)
         .await
         .map_err(|e| e.to_string())
 }
@@ -119,6 +117,7 @@ pub(crate) async fn finalize_router_acp_iteration(
         )?;
         run_router_summarize_coder_prompt(input.client, &body, log_path.as_path()).await?;
     }
+    let keep_session = input.client.keeps_coder_session_for_process_life();
     let run_dir = input.artifacts.run_dir.clone();
     let parts: SessionEndParts<'_> = (
         input.client,
@@ -126,7 +125,15 @@ pub(crate) async fn finalize_router_acp_iteration(
         &timing,
         input.session_end,
     );
-    end_router_acp_session(parts, Ok(())).await
+    // Idea 3 (Cursor SDK): keep the Node bridge alive across outer-loop Continues
+    // (refreshed on the next agent start if older than 10 minutes).
+    // ACP/Mini still tear down so the next Continue gets a fresh agent process.
+    match (exit_summarize, keep_session) {
+        (RouterExitSummarize::Run, _) | (RouterExitSummarize::Skip, false) => {
+            end_router_acp_session(parts, Ok(())).await
+        }
+        (RouterExitSummarize::Skip, true) => emit_router_acp_timing(parts, Ok(())),
+    }
 }
 
 pub(crate) fn emit_router_acp_timing(

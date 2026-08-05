@@ -3,7 +3,7 @@
 use crate::acp::{AgentIoOptions, CoderPromptOptions};
 use crate::cursor_sdk::CursorSdkClient;
 
-fn mock_io() -> AgentIoOptions {
+pub(super) fn mock_io() -> AgentIoOptions {
     AgentIoOptions {
         force: true,
         no_tee: true,
@@ -14,7 +14,7 @@ fn mock_io() -> AgentIoOptions {
     }
 }
 
-fn install_mock_bridge_env(mock: &std::path::Path) {
+pub(super) fn install_mock_bridge_env(mock: &std::path::Path) {
     unsafe {
         std::env::set_var("MALVIN_CURSOR_SDK_BRIDGE", mock);
         std::env::set_var("CURSOR_API_KEY", "test-key");
@@ -22,19 +22,19 @@ fn install_mock_bridge_env(mock: &std::path::Path) {
     }
 }
 
-fn clear_mock_bridge_env() {
+pub(super) fn clear_mock_bridge_env() {
     unsafe {
         std::env::remove_var("MALVIN_CURSOR_SDK_BRIDGE");
     }
 }
 
-fn mock_client(run_dir: &std::path::Path) -> CursorSdkClient {
+pub(super) fn mock_client(run_dir: &std::path::Path) -> CursorSdkClient {
     let mut client = CursorSdkClient::with_max_retries("auto".into(), mock_io(), 1);
     client.prompts_log_run_dir = Some(run_dir.to_path_buf());
     client
 }
 
-async fn prompt_once(client: &mut CursorSdkClient, log: &std::path::Path) {
+pub(super) async fn prompt_once(client: &mut CursorSdkClient, log: &std::path::Path) {
     client
         .run_coder_prompt(
             "hi",
@@ -69,7 +69,7 @@ fn assert_session_timing_synced(client: &CursorSdkClient) {
         .is_some());
 }
 
-fn mock_bridge_path() -> std::path::PathBuf {
+pub(super) fn mock_bridge_path() -> std::path::PathBuf {
     std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/cursor_sdk/mock_bridge.js")
 }
 
@@ -96,6 +96,31 @@ async fn cursor_sdk_client_mock_bridge_prompt_records_usage() {
         Some("mock reply")
     );
     client.end_coder_session().await.expect("end");
+    clear_mock_bridge_env();
+}
+
+#[tokio::test]
+async fn cursor_sdk_client_mock_bridge_reuses_one_process_for_many_prompts() {
+    let _guard = crate::test_utils::test_env_lock();
+    install_mock_bridge_env(&mock_bridge_path());
+    let tmp = tempfile::tempdir().expect("tmp");
+    let mut client = mock_client(tmp.path());
+    let timing = client.attach_run_timing_for_session();
+    client.begin_coder_session(tmp.path()).await.expect("begin");
+    let log = tmp.path().join("prompts.log");
+    prompt_once(&mut client, &log).await;
+    assert!(client.has_open_coder_session());
+    prompt_once(&mut client, &log).await;
+    assert!(client.has_open_coder_session());
+    let (steps, tokens_in, tokens_out) = {
+        let g = timing.lock().unwrap();
+        (g.steps, g.tokens_in, g.tokens_out)
+    };
+    assert!(steps >= 2);
+    assert_eq!(tokens_in, Some(22));
+    assert_eq!(tokens_out, Some(14));
+    client.end_coder_session().await.expect("end");
+    assert!(!client.has_open_coder_session());
     clear_mock_bridge_env();
 }
 
@@ -156,3 +181,4 @@ async fn cursor_sdk_run_done_result_feeds_do_dm_stdout() {
     client.end_coder_session().await.expect("end");
     clear_mock_bridge_env();
 }
+
