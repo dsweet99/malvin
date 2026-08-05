@@ -79,3 +79,50 @@ impl BridgeSession {
         Ok(())
     }
 }
+
+impl Drop for BridgeSession {
+    fn drop(&mut self) {
+        bridge_session_drop_teardown(self);
+    }
+}
+
+fn bridge_session_drop_teardown(session: &BridgeSession) {
+    session.reader_dead.store(true, Ordering::SeqCst);
+    let child_gone = session
+        .child
+        .try_lock()
+        .map(|slot| slot.is_none())
+        .unwrap_or(false);
+    if child_gone {
+        crate::malvin_sandbox::clear_active_sandbox_session();
+        return;
+    }
+    #[cfg(unix)]
+    {
+        crate::acp::terminate_agent_process_group_blocking(
+            session.process_group_id,
+            &session.spawn_pid_baseline,
+        );
+        take_bridge_child_without_tokio_drop(session);
+    }
+    #[cfg(not(unix))]
+    {
+        if let Ok(mut slot) = session.child.try_lock() {
+            if let Some(mut child) = slot.take() {
+                let _ = child.start_kill();
+            }
+        }
+    }
+    crate::malvin_sandbox::clear_active_sandbox_session();
+}
+
+#[cfg(unix)]
+fn take_bridge_child_without_tokio_drop(session: &BridgeSession) {
+    if tokio::runtime::Handle::try_current().is_ok() {
+        return;
+    }
+    let mut slot = session.child.blocking_lock();
+    if let Some(ch) = slot.take() {
+        std::mem::forget(ch);
+    }
+}

@@ -74,10 +74,30 @@ pub(super) async fn drain_until_run_done(session: &BridgeSession) -> Result<(), 
         match &ev {
             BridgeEvent::Step { .. } => note_sdk_step(session.timing.as_ref()),
             BridgeEvent::RunDone { .. } => return finish_run_done(session, &ev),
-            BridgeEvent::Fatal { message, .. } => return Err(AgentError(message.clone())),
+            BridgeEvent::Fatal { message, .. } => {
+                discard_optional_trailing_run_done(session).await;
+                return Err(AgentError(message.clone()));
+            }
             _ => handle_stream_event(session, &ev),
         }
     }
+}
+
+/// Legacy bridges sometimes emitted `fatal` then `run_done`. Consume a trailing
+/// `run_done` if it is already buffered so the next prompt does not see it.
+async fn discard_optional_trailing_run_done(session: &BridgeSession) {
+    let read = read_event(session);
+    let timed = tokio::time::timeout(std::time::Duration::from_millis(50), read).await;
+    match timed {
+        Ok(Ok(BridgeEvent::RunDone { .. })) => {}
+        _ => {}
+    }
+}
+
+/// `RunResultStatus` values that must not be treated as a successful turn.
+#[must_use]
+pub(super) fn run_done_status_is_failure(status: &str) -> bool {
+    status == "error" || status == "cancelled"
 }
 
 fn finish_run_done(session: &BridgeSession, ev: &BridgeEvent) -> Result<(), AgentError> {
@@ -103,10 +123,14 @@ fn finish_run_done(session: &BridgeSession, ev: &BridgeEvent) -> Result<(), Agen
         super::log_adapter::feed_do_dm_run_result(text);
     }
     super::log_adapter::handle_stream_event(session, ev);
-    if status == "error" {
-        return Err(AgentError(
-            error.clone().unwrap_or_else(|| "run error".into()),
-        ));
+    if run_done_status_is_failure(status) {
+        return Err(AgentError(error.clone().unwrap_or_else(|| {
+            if status == "cancelled" {
+                "run cancelled".into()
+            } else {
+                "run error".into()
+            }
+        })));
     }
     Ok(())
 }
@@ -134,5 +158,17 @@ pub(super) fn start_mem_watch(session: &BridgeSession) {
     #[cfg(not(unix))]
     {
         let _ = session;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::run_done_status_is_failure;
+
+    #[test]
+    fn cancelled_and_error_are_failures() {
+        assert!(run_done_status_is_failure("error"));
+        assert!(run_done_status_is_failure("cancelled"));
+        assert!(!run_done_status_is_failure("finished"));
     }
 }

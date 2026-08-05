@@ -13,6 +13,8 @@ pub struct CursorSdkClient {
     pub prompts_log_run_dir: Option<PathBuf>,
     pub max_acp_retries: u32,
     pub(crate) session: Option<BridgeSession>,
+    /// Resolved cwd from the last successful `begin_coder_session` (kept after teardown for retry).
+    pub(crate) session_cwd: Option<PathBuf>,
     pub(crate) timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
 }
 
@@ -38,6 +40,7 @@ impl CursorSdkClient {
                 max_acp_retries
             },
             session: None,
+            session_cwd: None,
             timing: None,
         }
     }

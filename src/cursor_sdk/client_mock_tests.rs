@@ -22,6 +22,12 @@ fn install_mock_bridge_env(mock: &std::path::Path) {
     }
 }
 
+fn clear_mock_bridge_env() {
+    unsafe {
+        std::env::remove_var("MALVIN_CURSOR_SDK_BRIDGE");
+    }
+}
+
 fn mock_client(run_dir: &std::path::Path) -> CursorSdkClient {
     let mut client = CursorSdkClient::with_max_retries("auto".into(), mock_io(), 1);
     client.prompts_log_run_dir = Some(run_dir.to_path_buf());
@@ -90,9 +96,7 @@ async fn cursor_sdk_client_mock_bridge_prompt_records_usage() {
         Some("mock reply")
     );
     client.end_coder_session().await.expect("end");
-    unsafe {
-        std::env::remove_var("MALVIN_CURSOR_SDK_BRIDGE");
-    }
+    clear_mock_bridge_env();
 }
 
 #[tokio::test]
@@ -108,9 +112,7 @@ async fn cursor_sdk_warm_start_attach_after_begin_records_usage() {
     client.set_run_timing(Some(std::sync::Arc::clone(&timing)));
     assert_session_timing_synced(&client);
     client.end_coder_session().await.expect("end");
-    unsafe {
-        std::env::remove_var("MALVIN_CURSOR_SDK_BRIDGE");
-    }
+    clear_mock_bridge_env();
 }
 
 async fn prompt_need_dm_with_capture(client: &mut CursorSdkClient, log: &std::path::Path) -> String {
@@ -152,7 +154,5 @@ async fn cursor_sdk_run_done_result_feeds_do_dm_stdout() {
     let out = prompt_need_dm_with_capture(&mut client, &tmp.path().join("prompts.log")).await;
     assert_dm_hello(&out, &client);
     client.end_coder_session().await.expect("end");
-    unsafe {
-        std::env::remove_var("MALVIN_CURSOR_SDK_BRIDGE");
-    }
+    clear_mock_bridge_env();
 }

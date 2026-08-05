@@ -41,6 +41,7 @@ impl CursorSdkClient {
             {
                 Ok(s) => {
                     self.session = Some(s);
+                    self.session_cwd = Some(cwd);
                     crate::herdr::notify_reclaim();
                     return Ok(());
                 }

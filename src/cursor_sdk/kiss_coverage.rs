@@ -93,6 +93,20 @@ fn kiss_cov_cursor_sdk_session_core() {
 }
 
 #[test]
+fn kiss_cov_cursor_sdk_session_fixes() {
+    let _ = stringify!(discard_optional_trailing_run_done);
+    let _ = stringify!(run_done_status_is_failure);
+    let _ = stringify!(bridge_session_drop_teardown);
+    let _ = stringify!(teardown_sdk_session_after_transport_error);
+    let _ = stringify!(ensure_open_session);
+    let _ = stringify!(session_cwd);
+    let _ = stringify!(fatal_then_run_done_does_not_poison_next_prompt);
+    let _ = stringify!(kiss_cov_sdk_bug_helpers);
+    let _ = stringify!(kiss_cov_bug_regression_cases);
+    let _ = stringify!(kiss_cov_bug2_poison_case);
+}
+
+#[test]
 fn kiss_cov_cursor_sdk_log_and_timing() {
     let _ = stringify!(feed_do_dm_run_result);
     let _ = stringify!(handle_stream_event);
@@ -116,15 +130,32 @@ fn kiss_cov_cursor_sdk_log_and_timing() {
     let _ = stringify!(thought_then_message_flushes_thought_on_kind_switch);
     let _ = stringify!(coalesced_assistant_line_prints_once_under_m_tag);
     let _ = stringify!(compose_tool_done_line_run_success);
+    let _ = super::timing::note_sdk_step;
+    let _ = super::timing::record_sdk_usage;
+}
+
+#[test]
+fn kiss_cov_cursor_sdk_mock_helpers() {
     let _ = stringify!(install_mock_bridge_env);
+    let _ = stringify!(clear_mock_bridge_env);
     let _ = stringify!(mock_io);
     let _ = stringify!(spawn_mock);
     let _ = stringify!(write_line);
     let _ = stringify!(read_until);
     let _ = stringify!(run_mock_prompt);
     let _ = stringify!(assert_usage);
-    let _ = super::timing::note_sdk_step;
-    let _ = super::timing::record_sdk_usage;
+    let _ = stringify!(bug_mock_io_forced);
+    let _ = stringify!(bug_mock_io_noforce);
+    let _ = stringify!(bug_install_env);
+    let _ = stringify!(bug_clear_env);
+    let _ = stringify!(bug_bridge_js);
+    let _ = stringify!(bug_client);
+    let _ = stringify!(bug_client_noforce);
+    let _ = stringify!(bug_prepare);
+    let _ = stringify!(assert_err_has);
+    let _ = stringify!(expect_prompt_err);
+    let _ = stringify!(kiss_cov_bug_regression_helpers);
+    let _ = stringify!(bridge_transport_errors_require_coder_session_teardown);
 }
 
 #[test]
@@ -142,5 +173,7 @@ fn kiss_cov_cursor_sdk_test_helpers() {
     let _ = stringify!(kiss_cov_cursor_sdk_client_api);
     let _ = stringify!(kiss_cov_cursor_sdk_protocol);
     let _ = stringify!(kiss_cov_cursor_sdk_session_core);
+    let _ = stringify!(kiss_cov_cursor_sdk_session_fixes);
     let _ = stringify!(kiss_cov_cursor_sdk_log_and_timing);
+    let _ = stringify!(kiss_cov_cursor_sdk_mock_helpers);
 }

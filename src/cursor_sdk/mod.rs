@@ -18,6 +18,13 @@ mod timing;
 pub use client::CursorSdkClient;
 
 #[cfg(test)]
+pub(crate) async fn session_io_write_cancel_for_test(
+    session: &session::BridgeSession,
+) -> Result<(), crate::acp::AgentError> {
+    session_io::write_request(session, &protocol::BridgeRequest::Cancel {}).await
+}
+
+#[cfg(test)]
 mod kiss_coverage;
 #[cfg(test)]
 mod bridge_path_tests;
@@ -27,3 +34,9 @@ mod protocol_tests;
 mod session_mock_tests;
 #[cfg(test)]
 mod client_mock_tests;
+#[cfg(test)]
+mod sdk_bug_helpers;
+#[cfg(test)]
+mod sdk_bug_regression_tests;
+#[cfg(test)]
+mod sdk_bug2_poison_tests;
