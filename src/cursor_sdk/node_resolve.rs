@@ -2,6 +2,7 @@
 
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::OnceLock;
 
 /// Prefer `MALVIN_NODE`, then PATH/`node` candidates with major version ≥ 22.
 ///
@@ -9,6 +10,12 @@ use std::process::Command;
 ///
 /// Returns an error when no suitable Node is found.
 pub fn resolve_node_bin() -> Result<PathBuf, String> {
+    static CACHED: OnceLock<Result<PathBuf, String>> = OnceLock::new();
+    // Cache per process (ideas.md #5). MALVIN_NODE changes mid-process are ignored.
+    CACHED.get_or_init(resolve_node_bin_uncached).clone()
+}
+
+fn resolve_node_bin_uncached() -> Result<PathBuf, String> {
     if let Some(p) = std::env::var_os("MALVIN_NODE").filter(|v| !v.is_empty()) {
         let path = PathBuf::from(p);
         if path.is_file() {
@@ -19,10 +26,14 @@ pub fn resolve_node_bin() -> Result<PathBuf, String> {
             path.display()
         ));
     }
+    if let Some(path) = read_sticky_node_bin() {
+        return Ok(path);
+    }
     let mut tried = Vec::new();
     for candidate in node_candidates() {
         tried.push(candidate.display().to_string());
         if node_major_version(&candidate).is_some_and(|m| m >= 22) {
+            write_sticky_node_bin(&candidate);
             return Ok(candidate);
         }
     }
@@ -30,6 +41,30 @@ pub fn resolve_node_bin() -> Result<PathBuf, String> {
         "Node >= 22.13 required for cursor-sdk-bridge; tried: {}",
         tried.join(", ")
     ))
+}
+
+fn sticky_node_bin_path() -> PathBuf {
+    crate::user_home::user_home_dir()
+        .join(".malvin_home")
+        .join("node_bin")
+}
+
+fn read_sticky_node_bin() -> Option<PathBuf> {
+    let path = std::fs::read_to_string(sticky_node_bin_path()).ok()?;
+    let path = PathBuf::from(path.trim());
+    if path.is_file() && node_major_version(&path).is_some_and(|m| m >= 22) {
+        Some(path)
+    } else {
+        None
+    }
+}
+
+fn write_sticky_node_bin(path: &std::path::Path) {
+    let sticky = sticky_node_bin_path();
+    if let Some(parent) = sticky.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let _ = std::fs::write(&sticky, path.to_string_lossy().as_bytes());
 }
 
 fn node_candidates() -> Vec<PathBuf> {

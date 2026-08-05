@@ -65,9 +65,11 @@ impl BridgeSession {
     }
 
     pub async fn shutdown(self) -> Result<(), AgentError> {
+        self.reader_dead.store(true, Ordering::SeqCst);
+        // Best-effort cancel/close (bridge close skips asyncDispose). Then SIGKILL the
+        // child — avoid full ACP-style TERM→poll→KILL which can add up to ~1.5s.
         let _ = write_request(&self, &BridgeRequest::Cancel {}).await;
         let _ = write_request(&self, &BridgeRequest::Close {}).await;
-        self.reader_dead.store(true, Ordering::SeqCst);
         {
             let mut child_slot = self.child.lock().await;
             if let Some(mut child) = child_slot.take() {

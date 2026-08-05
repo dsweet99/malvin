@@ -7,6 +7,10 @@ fn kiss_cov_cursor_sdk_auth_and_bridge_path() {
     let _ = super::bridge_path::resolve_bridge_js;
     let _ = super::bridge_path::resolve_models_js;
     let _ = stringify!(resolve_node_bin);
+    let _ = stringify!(resolve_node_bin_uncached);
+    let _ = stringify!(sticky_node_bin_path);
+    let _ = stringify!(read_sticky_node_bin);
+    let _ = stringify!(write_sticky_node_bin);
     let _ = stringify!(node_candidates);
     let _ = stringify!(apply_quiet_node_cli);
     let _ = stringify!(apply_quiet_node_cli_std);
@@ -16,6 +20,7 @@ fn kiss_cov_cursor_sdk_auth_and_bridge_path() {
     let _ = stringify!(cursor_acp_test_mock_override);
     let _ = stringify!(candidate_roots);
     let _ = stringify!(ENV_BRIDGE);
+    let _ = stringify!(NODE_COMPILE_CACHE);
 }
 
 #[test]

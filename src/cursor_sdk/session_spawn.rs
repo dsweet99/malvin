@@ -107,5 +107,13 @@ fn build_bridge_command(
     if let Some(k) = effective_sdk_api_key() {
         cmd.env("CURSOR_API_KEY", k);
     }
+    // ~100–140 ms off repeated @cursor/sdk imports after the cache fills (ideas.md #6).
+    if std::env::var_os("NODE_COMPILE_CACHE").is_none() {
+        let cache_dir = crate::user_home::user_home_dir()
+            .join(".malvin_home")
+            .join("node_compile_cache");
+        let _ = std::fs::create_dir_all(&cache_dir);
+        cmd.env("NODE_COMPILE_CACHE", cache_dir);
+    }
     cmd
 }

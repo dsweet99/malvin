@@ -68,24 +68,17 @@ async fn prepare_do_run(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<DoRunPrep, String> {
-    let client = new_do_client(shared, workflow)?;
+    let mut client = new_do_client(shared, workflow)?;
     let request = require_cli_request(do_args.request.as_ref(), "--do")?;
     let (text, work_dir) = resolve_user_md_request(&request)?;
-    let artifacts = crate::artifacts::create_run_artifacts_from_text_opts(
-        &text,
-        Some(work_dir.as_path()),
-        crate::run_id::RunDirOptions::default(),
-    )
-    .map_err(|e| e.to_string())?;
-    crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
+    let artifacts = create_do_artifacts(&text, &work_dir)?;
     client.ensure_authenticated().map_err(|e| e.to_string())?;
-    let coder = do_flow_prompt::build_do_coder_run(
-        &artifacts,
-        &text,
-        crate::workflow_context::PromptModelOpts::new(&shared.model, shared.git),
-    )?;
-    let session_dotfile_backups =
-        SessionDotfileBackups::snapshot_after_ensuring_home_config(&artifacts.work_dir)?;
+    // run_dir must be set before begin so the bridge session records trace.jsonl.
+    client.set_prompts_log_run_dir(Some(artifacts.run_dir.clone()));
+
+    let (coder, session_dotfile_backups) =
+        begin_do_session_overlapping_prompt_prep(&mut client, &artifacts, &text, shared).await?;
+
     Ok(DoRunPrep {
         client,
         artifacts,
@@ -93,6 +86,42 @@ async fn prepare_do_run(
         session_dotfile_backups,
         request_text: text,
     })
+}
+
+fn create_do_artifacts(text: &str, work_dir: &std::path::Path) -> Result<RunArtifacts, String> {
+    let artifacts = crate::artifacts::create_run_artifacts_from_text_opts(
+        text,
+        Some(work_dir),
+        crate::run_id::RunDirOptions::default(),
+    )
+    .map_err(|e| e.to_string())?;
+    crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
+    Ok(artifacts)
+}
+
+/// Spawn/create the coder session while rendering the `--do` prompt and snapshotting dotfiles.
+async fn begin_do_session_overlapping_prompt_prep(
+    client: &mut AgentBackend,
+    artifacts: &RunArtifacts,
+    text: &str,
+    shared: &SharedOpts,
+) -> Result<(do_flow_prompt::DoCoderRun, SessionDotfileBackups), String> {
+    let begin = client.begin_coder_session(&artifacts.work_dir);
+    let model = shared.model.clone();
+    let git = shared.git;
+    let coder_backup = async {
+        let coder = do_flow_prompt::build_do_coder_run(
+            artifacts,
+            text,
+            crate::workflow_context::PromptModelOpts::new(&model, git),
+        )?;
+        let session_dotfile_backups =
+            SessionDotfileBackups::snapshot_after_ensuring_home_config(&artifacts.work_dir)?;
+        Ok::<_, String>((coder, session_dotfile_backups))
+    };
+    let (begin_res, coder_backup_res) = tokio::join!(begin, coder_backup);
+    begin_res.map_err(|e| e.to_string())?;
+    coder_backup_res
 }
 
 pub async fn run_do(
@@ -120,13 +149,7 @@ async fn run_do_body(
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
     let mut prep = prepare_do_run(&do_args, shared, workflow).await?;
-    prep.client
-        .set_prompts_log_run_dir(Some(prep.artifacts.run_dir.clone()));
-    // Complete spawn/handshake before startup `Logs:` (verbose) so post-log silence shrinks.
-    prep.client
-        .begin_coder_session(&prep.artifacts.work_dir)
-        .await
-        .map_err(|e| e.to_string())?;
+    // Session begin already completed inside prepare_do_run (overlapped with prompt prep).
     if shared.verbose {
         // Same startup logger as the default workflow (`emit_run_startup_sequence`).
         emit_run_startup_sequence(
@@ -199,6 +222,8 @@ mod kiss_cov_gate_refs{
         let _: Option<DoRunPrep> = None;
         let _ = new_do_client;
         let _ = prepare_do_run;
+        let _ = create_do_artifacts;
+        let _ = begin_do_session_overlapping_prompt_prep;
     }
 }
 
