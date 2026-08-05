@@ -8,6 +8,8 @@ fn kiss_cov_cursor_sdk_auth_and_bridge_path() {
     let _ = super::bridge_path::resolve_models_js;
     let _ = stringify!(resolve_node_bin);
     let _ = stringify!(node_candidates);
+    let _ = stringify!(apply_quiet_node_cli);
+    let _ = stringify!(apply_quiet_node_cli_std);
     let _ = stringify!(push_unique);
     let _ = stringify!(cursor_agent_version_nodes);
     let _ = stringify!(node_major_version);

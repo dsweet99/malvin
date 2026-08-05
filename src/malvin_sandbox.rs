@@ -162,6 +162,25 @@ pub fn clear_active_sandbox_session() {
     crate::acp::clear_session_spawn_affiliation();
 }
 
+/// CTRL-C / interrupt: tear down the live agent process group without dumping
+/// Node stacks on the console, then release the sandbox lock.
+pub fn teardown_active_sandbox_for_interrupt() {
+    let session = ACTIVE_SANDBOX_SESSION
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .take();
+    let Some(session) = session else {
+        return;
+    };
+    #[cfg(unix)]
+    {
+        crate::active_agent_heartbeat::unregister_active_agent_process_group(session.pgid);
+        crate::acp::terminate_agent_process_group_blocking(session.pgid, &session.baseline);
+        crate::acp::clear_session_spawn_affiliation();
+    }
+    release_acp_spawn_lock(&session.work_dir, &session.acp_lock_slot);
+}
+
 #[cfg(test)]
 pub(crate) fn clear_active_sandbox_session_for_test() {
     clear_active_sandbox_session();
@@ -204,6 +223,7 @@ mod tests {
     fn kiss_cov_malvin_sandbox_symbols() {
         let _ = crate::acp::reap_baseline_amnestied_agent_orphans_blocking;
         let _ = super::clear_active_sandbox_session_for_test;
+        let _ = super::teardown_active_sandbox_for_interrupt;
         let _ = super::init_malvin_spawn_baseline;
         let _ = super::malvin_spawn_baseline;
         let _ = super::isolate_child_process_group;

@@ -97,6 +97,7 @@ fn build_bridge_command(
     use std::process::Stdio;
     use super::auth::effective_sdk_api_key;
     let mut cmd = crate::malvin_sandbox::malvin_tokio_command(node);
+    super::node_resolve::apply_quiet_node_cli(&mut cmd);
     cmd.arg(bridge)
         .current_dir(cwd)
         .stdin(Stdio::piped())

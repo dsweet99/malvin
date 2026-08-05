@@ -19,7 +19,9 @@ pub(super) fn print_cursor_models() -> Result<(), String> {
 fn print_cursor_models_via_sdk() -> Result<(), String> {
     let models_js = crate::cursor_sdk::bridge_path::resolve_models_js()?;
     let node = crate::cursor_sdk::node_resolve::resolve_node_bin()?;
-    let output = crate::malvin_sandbox::malvin_std_command(&node)
+    let mut cmd = crate::malvin_sandbox::malvin_std_command(&node);
+    crate::cursor_sdk::node_resolve::apply_quiet_node_cli_std(&mut cmd);
+    let output = cmd
         .arg(&models_js)
         .output()
         .map_err(|e| format!("failed to execute cursor SDK models: {e}"))?;

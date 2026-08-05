@@ -54,7 +54,23 @@ where
     Fut: std::future::Future<Output = Result<(), String>> + Send,
 {
     let rt = try_tokio_runtime()?;
-    rt.block_on(f())
+    rt.block_on(async {
+        spawn_ctrl_c_teardown();
+        f().await
+    })
+}
+
+/// On CTRL-C, kill the agent process group with SIGTERM/SIGKILL (not a raw
+/// SIGINT to Node) so the console stays free of Node stack traces.
+fn spawn_ctrl_c_teardown() {
+    tokio::spawn(async {
+        if tokio::signal::ctrl_c().await.is_err() {
+            return;
+        }
+        crate::malvin_sandbox::teardown_active_sandbox_for_interrupt();
+        // 128 + SIGINT
+        std::process::exit(130);
+    });
 }
 
 pub fn entrypoint() -> Exit {

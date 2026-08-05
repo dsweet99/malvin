@@ -86,6 +86,18 @@ fn node_major_version(bin: &std::path::Path) -> Option<u32> {
     major.parse().ok()
 }
 
+/// Suppress Node process warnings (e.g. `SQLite` `ExperimentalWarning`) on stderr.
+pub(crate) fn apply_quiet_node_cli(cmd: &mut tokio::process::Command) {
+    cmd.arg("--no-warnings");
+    cmd.env("NODE_NO_WARNINGS", "1");
+}
+
+/// Same quieting for [`std::process::Command`] (e.g. `malvin models`).
+pub(crate) fn apply_quiet_node_cli_std(cmd: &mut std::process::Command) {
+    cmd.arg("--no-warnings");
+    cmd.env("NODE_NO_WARNINGS", "1");
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -105,5 +117,41 @@ mod tests {
             assert!(p.is_file(), "{}", p.display());
             assert_eq!(p.file_name().and_then(|s| s.to_str()), Some("node"));
         }
+    }
+
+    #[test]
+    fn quiet_node_cli_suppresses_sqlite_experimental_warning() {
+        let node = resolve_node_bin().expect("modern node");
+        let bridge_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("cursor-sdk-bridge");
+        let mut cmd = std::process::Command::new(&node);
+        apply_quiet_node_cli_std(&mut cmd);
+        let output = cmd
+            .args([
+                "-e",
+                r#"
+import { Agent } from "@cursor/sdk";
+try {
+  await Agent.create({
+    apiKey: "sk-test-invalid",
+    model: { id: "composer-2" },
+    local: { cwd: "/tmp", settingSources: ["project"] },
+  });
+} catch {
+  // expected
+}
+"#,
+            ])
+            .current_dir(&bridge_dir)
+            .output()
+            .expect("spawn node");
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            !stderr.contains("ExperimentalWarning"),
+            "stderr should not contain ExperimentalWarning, got: {stderr}"
+        );
+        assert!(
+            !stderr.contains("SQLite is an experimental"),
+            "stderr should not mention SQLite warning, got: {stderr}"
+        );
     }
 }
