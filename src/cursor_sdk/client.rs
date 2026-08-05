@@ -54,7 +54,7 @@ impl CursorSdkClient {
     pub fn attach_run_timing_for_session(
         &mut self,
     ) -> Arc<Mutex<crate::run_timing::RunTiming>> {
-        let timing = crate::run_timing::attach_new_run_timing(&mut self.timing);
+        let timing = crate::run_timing::attach_new_run_timing(&mut self.timing, &self.model);
         self.sync_timing_to_open_session();
         timing
     }

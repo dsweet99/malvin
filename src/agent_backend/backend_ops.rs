@@ -22,7 +22,14 @@ pub fn agent_backend_attach_run_timing_for_session(
     match backend {
         AgentBackend::Acp(c) => c.attach_run_timing_for_session(),
         AgentBackend::CursorSdk(c) => c.attach_run_timing_for_session(),
-        AgentBackend::Mini(c) => crate::run_timing::attach_new_run_timing(&mut c.timing),
+        AgentBackend::Mini(c) => {
+            let policy = crate::run_timing::cost_policy_for_model(&c.config.model);
+            crate::run_timing::attach_new_run_timing_with_cost_policy(
+                &mut c.timing,
+                policy,
+                &c.config.model,
+            )
+        }
     }
 }
 

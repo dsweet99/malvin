@@ -156,7 +156,8 @@ pub(crate) async fn run_kpop_engine(
     }
 
     let iterations = kpop_engine_loop_iterations(params.max_loops);
-    let run_timing = crate::run_timing::attach_kpop_engine_loop_run_timing();
+    let run_timing =
+        crate::run_timing::attach_kpop_engine_loop_run_timing_for_model(&params.shared.model);
     let mut consecutive_solved = 0usize;
     for iteration in 1..=iterations {
         if iteration > 1 {

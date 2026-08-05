@@ -52,18 +52,16 @@ fn capture_timing_then_done_log(run_dir: &std::path::Path) -> String {
 
 fn assert_timing_precedes_done_and_done_is_last(log: &str) {
     let timing_pos = log.find("TIMING:").expect("TIMING line");
-    let tokens_pos = log.find("TOKENS:").expect("TOKENS line");
+    let cost_pos = log.find("COST:").expect("COST line");
     let done_pos = log.find("DONE").expect("DONE line");
     assert!(
-        timing_pos < tokens_pos && tokens_pos < done_pos,
-        "TIMING must precede TOKENS and TOKENS must precede DONE; log={log:?}"
+        timing_pos < cost_pos && cost_pos < done_pos,
+        "TIMING must precede COST and COST must precede DONE; log={log:?}"
     );
-    if let Some(cost_pos) = log.find("COST:") {
-        assert!(
-            tokens_pos < cost_pos && cost_pos < done_pos,
-            "COST must follow TOKENS and precede DONE; log={log:?}"
-        );
-    }
+    assert!(
+        !log.contains("TOKENS:"),
+        "TOKENS footnote must not appear; log={log:?}"
+    );
     let malvin_lines: Vec<&str> = log
         .lines()
         .filter(|line: &&str| line.contains(" o|"))

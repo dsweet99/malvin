@@ -44,13 +44,15 @@ async fn prompt_once(client: &mut CursorSdkClient, log: &std::path::Path) {
 }
 
 fn assert_usage(timing: &std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>) {
-    let (steps, tokens_in, tokens_out) = {
+    let (steps, tokens_in, tokens_out, cache_read, cache_write) = {
         let g = timing.lock().unwrap();
-        (g.steps, g.tokens_in, g.tokens_out)
+        (g.steps, g.tokens_in, g.tokens_out, g.cache_read, g.cache_write)
     };
     assert!(steps >= 1);
     assert_eq!(tokens_in, Some(11));
     assert_eq!(tokens_out, Some(7));
+    assert_eq!(cache_read, Some(0));
+    assert_eq!(cache_write, Some(0));
 }
 
 fn assert_session_timing_synced(client: &CursorSdkClient) {

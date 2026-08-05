@@ -23,6 +23,10 @@ impl RunTiming {
                 self.unknown_usage_tx_count = self.unknown_usage_tx_count.saturating_add(1);
             }
         }
+        // `local:` has no bill; force a zero cost row per completion for now.
+        if matches!(self.cost_policy, super::CostPolicy::Zero) {
+            self.tx_costs.push(0.0);
+        }
     }
 
     pub(crate) fn record_token_fields(&mut self, usage: &ResponseUsage) {
@@ -86,15 +90,34 @@ impl RunTiming {
         cache_write: Option<u64>,
     ) {
         self.usage_tx_count = self.usage_tx_count.saturating_add(1);
-        let tokens_in = input.unwrap_or(0) + cache_read.unwrap_or(0) + cache_write.unwrap_or(0);
+        let input_n = input.unwrap_or(0);
+        let output_n = output.unwrap_or(0);
+        let cache_read_n = cache_read.unwrap_or(0);
+        let cache_write_n = cache_write.unwrap_or(0);
+        let tokens_in = input_n + cache_read_n + cache_write_n;
         if input.is_some() || cache_read.is_some() || cache_write.is_some() {
             add_optional_sum(&mut self.tokens_in, tokens_in);
         }
         if let Some(n) = cache_read {
             add_optional_sum(&mut self.cache_read, n);
         }
+        if let Some(n) = cache_write {
+            add_optional_sum(&mut self.cache_write, n);
+        }
         if let Some(n) = output {
             add_optional_sum(&mut self.tokens_out, n);
+        }
+        // Cursor backends rarely report a bill; estimate usd_per_microtoken_* × counts / 1e6 (0 when rates are 0).
+        if matches!(self.cost_policy, super::CostPolicy::EstimateFromRates) {
+            let estimated = self.token_cost_rates.estimate_usd(
+                input_n,
+                output_n,
+                cache_read_n,
+                cache_write_n,
+            );
+            self.tx_costs.push(estimated);
+        } else if matches!(self.cost_policy, super::CostPolicy::Zero) {
+            self.tx_costs.push(0.0);
         }
     }
 }
@@ -111,6 +134,9 @@ pub fn tokens_stats(r: &RunTiming) -> serde_json::Value {
     obj.insert("tokens_out".into(), optional_u64_json(r.tokens_out));
     if let Some(n) = r.cache_read {
         obj.insert("cache_read".into(), serde_json::json!(n));
+    }
+    if let Some(n) = r.cache_write {
+        obj.insert("cache_write".into(), serde_json::json!(n));
     }
     obj.insert("usage_tx_count".into(), serde_json::json!(r.usage_tx_count));
     obj.insert(

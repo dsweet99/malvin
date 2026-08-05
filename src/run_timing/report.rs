@@ -13,14 +13,10 @@ use crate::output::{MALVIN_WHO, print_stdout_line};
 mod report_timing_line;
 use report_timing_line::format_timing_stdout_line_from_json;
 use super::report_cost_line::format_cost_stdout_line_from_json;
-use super::report_tokens_line::format_tokens_stdout_line_from_json;
 
 fn print_timing_and_cost_summary(json: &Value) {
     print_stdout_line(MALVIN_WHO, &format_timing_stdout_line_from_json(json));
-    print_stdout_line(MALVIN_WHO, &format_tokens_stdout_line_from_json(json));
-    if let Some(cost_line) = format_cost_stdout_line_from_json(json) {
-        print_stdout_line(MALVIN_WHO, &cost_line);
-    }
+    print_stdout_line(MALVIN_WHO, &format_cost_stdout_line_from_json(json));
 }
 
 pub(super) fn duration_ms_u64(d: Duration) -> u64 {
@@ -55,7 +51,7 @@ pub(super) fn to_json_value(r: &RunTiming) -> Value {
         "phases_ms": { "implement": ms(r.implement) },
         "tokens": tokens_stats(r),
     });
-    if let Some(cost) = cost_stats(&r.tx_costs, r.unknown_tx_count) {
+    if let Some(cost) = cost_stats(r) {
         if let Some(map) = obj.as_object_mut() {
             map.insert("cost".into(), cost);
         }

@@ -2,18 +2,38 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use super::{report, RunTiming, TimingPhase};
+use super::{report, CostPolicy, RunTiming, TimingPhase};
+
+fn token_cost_rates_from_home_config(model: &str) -> crate::malvin_config_file::TokenCostRates {
+    crate::malvin_config_file::load_malvin_config(std::path::Path::new("."))
+        .token_cost_rates_for(model)
+}
 
 #[must_use]
 pub fn attach_new_run_timing(
     timing_slot: &mut Option<Arc<Mutex<RunTiming>>>,
+    model: &str,
+) -> Arc<Mutex<RunTiming>> {
+    attach_new_run_timing_with_cost_policy(timing_slot, super::cost_policy_for_model(model), model)
+}
+
+/// Like [`attach_new_run_timing`], but sets how `COST` USD fields are filled for this backend.
+#[must_use]
+pub fn attach_new_run_timing_with_cost_policy(
+    timing_slot: &mut Option<Arc<Mutex<RunTiming>>>,
+    cost_policy: CostPolicy,
+    model: &str,
 ) -> Arc<Mutex<RunTiming>> {
     let timing = RunTiming::new_arc();
     *timing_slot = Some(Arc::clone(&timing));
-    timing
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .mark_wall_start(Instant::now());
+    {
+        let mut g = timing
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        g.mark_wall_start(Instant::now());
+        g.token_cost_rates = token_cost_rates_from_home_config(model);
+        g.cost_policy = cost_policy;
+    }
     timing
 }
 
@@ -21,7 +41,14 @@ pub fn attach_new_run_timing(
 #[must_use]
 pub fn attach_kpop_engine_loop_run_timing() -> Arc<Mutex<RunTiming>> {
     let mut slot = None;
-    attach_new_run_timing(&mut slot)
+    attach_new_run_timing(&mut slot, crate::support_paths::DEFAULT_CLI_MODEL)
+}
+
+/// Like [`attach_kpop_engine_loop_run_timing`], but sets COST policy from the run model id.
+#[must_use]
+pub fn attach_kpop_engine_loop_run_timing_for_model(model: &str) -> Arc<Mutex<RunTiming>> {
+    let mut slot = None;
+    attach_new_run_timing_with_cost_policy(&mut slot, super::cost_policy_for_model(model), model)
 }
 
 pub fn record_llm(timing: Option<&Arc<Mutex<RunTiming>>>, phase: TimingPhase, elapsed: Duration) {

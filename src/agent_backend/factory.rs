@@ -58,8 +58,10 @@ fn new_cursor_sdk_client(
     shared: &SharedOpts,
     io: crate::acp::AgentIoOptions,
 ) -> crate::cursor_sdk::CursorSdkClient {
+    // Keep the prefixed model id (`cursor:auto`) so COST rate lookup matches
+    // `[agent.cursor.auto]` keys. Bridge spawn applies `provider_slug` separately.
     crate::cursor_sdk::CursorSdkClient::with_max_retries(
-        crate::model_id::provider_slug(&shared.model),
+        shared.model.clone(),
         io,
         shared.max_acp_retries,
     )
@@ -134,14 +136,39 @@ mod tests {
 
     #[test]
     fn build_agent_backend_selects_cursor_sdk_when_mini_false() {
+        let shared = shared_opts(false);
         let backend = build_agent_backend(
-            &shared_opts(false),
+            &shared,
             WorkflowCliOptions { force: false },
             false,
             "code",
         )
         .expect("cursor sdk");
-        assert!(matches!(backend, AgentBackend::CursorSdk(_)));
+        match backend {
+            AgentBackend::CursorSdk(mut c) => {
+                assert_eq!(
+                    c.model, shared.model,
+                    "CursorSdkClient must keep prefixed model id for COST rate lookup"
+                );
+                assert!(
+                    c.model.contains(':'),
+                    "expected prefixed model id, got {}",
+                    c.model
+                );
+                // Attaching with the client model must resolve `[agent.cursor.auto]` rates.
+                let timing = c.attach_run_timing_for_session();
+                let rates = timing
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner)
+                    .token_cost_rates;
+                let expected = crate::malvin_config_file::load_malvin_config(std::path::Path::new("."))
+                    .token_cost_rates_for("cursor:auto");
+                assert_eq!(rates, expected);
+            }
+            AgentBackend::Acp(_) | AgentBackend::Mini(_) => {
+                panic!("expected CursorSdk backend")
+            }
+        }
     }
 
     #[test]

@@ -90,7 +90,7 @@ fn implement_phase_accumulates_timing() {
 fn attach_new_run_timing_and_finalize_json_only() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let mut slot: Option<Arc<Mutex<RunTiming>>> = None;
-    let timing = attach_new_run_timing(&mut slot);
+    let timing = attach_new_run_timing(&mut slot, "cursor:auto");
     assert!(slot.is_some());
     finalize_run_timing_json_only(tmp.path(), &timing).expect("json only");
     assert!(tmp.path().join(super::RUN_TIMING_JSON_FILE).is_file());
@@ -156,7 +156,7 @@ fn wall_clock_ms_for_json_uses_elapsed_when_wall_end_open() {
 fn persist_open_run_timing_json_keeps_wall_end_unset() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let mut slot: Option<Arc<Mutex<RunTiming>>> = None;
-    let timing = attach_new_run_timing(&mut slot);
+    let timing = attach_new_run_timing(&mut slot, "cursor:auto");
     record_llm(
         Some(&timing),
         TimingPhase::Implement,
@@ -173,7 +173,7 @@ fn persist_open_run_timing_json_keeps_wall_end_unset() {
 fn accumulate_run_timing_across_two_sessions() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let mut slot: Option<Arc<Mutex<RunTiming>>> = None;
-    let timing = attach_new_run_timing(&mut slot);
+    let timing = attach_new_run_timing(&mut slot, "cursor:auto");
     record_llm(Some(&timing), TimingPhase::Implement, Duration::from_millis(1_000));
     super::persist_open_run_timing_json(tmp.path(), &timing).expect("first persist");
     record_llm(Some(&timing), TimingPhase::Implement, Duration::from_millis(500));
@@ -195,7 +195,7 @@ fn run_timing_without_wall_start_yields_null_wall_ms() {
 fn attach_new_run_timing_enables_wall_ms_after_finalize() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let mut slot: Option<Arc<Mutex<RunTiming>>> = None;
-    let timing = attach_new_run_timing(&mut slot);
+    let timing = attach_new_run_timing(&mut slot, "cursor:auto");
     record_llm(
         Some(&timing),
         TimingPhase::Implement,

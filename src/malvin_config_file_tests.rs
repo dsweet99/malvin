@@ -36,6 +36,7 @@ fn open_malvin_config_creates_file_with_all_sections() {
         let text = std::fs::read_to_string(&path).expect("read");
         assert!(text.contains("[logs]"));
         assert!(text.contains("[agent]"));
+        assert!(text.contains("[agent.cursor.auto]"));
         assert!(!text.contains("mpc"));
         assert_eq!(cfg.agent.model, DEFAULT_CLI_MODEL);
         assert_eq!(cfg.agent.max_loops, DEFAULT_MAX_LOOPS);

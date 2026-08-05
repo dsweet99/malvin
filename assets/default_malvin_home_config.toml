@@ -13,6 +13,15 @@ max_acp_retries = 3
 # Retries per OpenRouter HTTP completion for all non-billing failures (429, 5xx, 4xx, transport, JSON decode, provider capacity).
 max_mini_transport_retries = 3
 
+# Cursor-mode USD cost rates ($ per million tokens) for model `cursor:auto`.
+# COST uses usd_per_microtoken_* × counts / 1e6 (0.0000 when all are 0).
+# Add `[agent.cursor.<name>]` (or `[agent.openrouter."<org/model>"]`) for other models.
+[agent.cursor.auto]
+usd_per_microtoken_in = 0
+usd_per_microtoken_out = 0
+usd_per_microtoken_cache_read = 0
+usd_per_microtoken_cache_write = 0
+
 [review]
 # Hypothesis budget for `malvin explain` Review and Plan KPop sessions (not agent.max_hypotheses).
 max_hypotheses = 10

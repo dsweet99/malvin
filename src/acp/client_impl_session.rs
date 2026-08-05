@@ -46,7 +46,7 @@ impl AgentClient {
     pub fn attach_run_timing_for_session(
         &mut self,
     ) -> std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>> {
-        crate::run_timing::attach_new_run_timing(&mut self.timing)
+        crate::run_timing::attach_new_run_timing(&mut self.timing, &self.model)
     }
 
     /// Returns existing run timing or installs a new wall clock when none is active.

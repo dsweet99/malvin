@@ -1,15 +1,13 @@
 //! Wall-clock and phase-bucketed LLM wait timing for agent runs.
 //!
 //! JSON is always written to [`RUN_TIMING_JSON_FILE`]; `code`/`kpop`/`router` also print
-//! [`RUN_TIMING_SUMMARY_PREFIX`], a `TOKENS:` line, and when cost data exists a separate `COST:` line.
+//! [`RUN_TIMING_SUMMARY_PREFIX`] and a combined `COST:` footnote (tokens + cost fields).
 
 mod cost;
 mod lifecycle;
 mod report;
 #[path = "report_cost_line.rs"]
 mod report_cost_line;
-#[path = "report_tokens_line.rs"]
-mod report_tokens_line;
 mod tokens;
 
 use std::path::Path;
@@ -20,7 +18,7 @@ pub const RUN_TIMING_JSON_FILE: &str = "run_timing.json";
 
 pub const RUN_TIMING_SUMMARY_PREFIX: &str = "TIMING: ";
 
-pub use report_tokens_line::RUN_TOKENS_SUMMARY_PREFIX;
+pub use report_cost_line::RUN_COST_SUMMARY_PREFIX;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TimingPhase {
@@ -30,13 +28,37 @@ pub enum TimingPhase {
 /// Wire keys for per-type tool-call wall durations (ACP kinds + `other`).
 pub const TOOL_CALL_TYPE_MS_KEYS: [&str; 5] = ["read", "search", "edit", "execute", "other"];
 
-/// ACP concurrent-batch step proxy state (see `TOKENS:` / pier agent steps).
+/// ACP concurrent-batch step proxy state (see `COST:` / pier agent steps).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) enum AcpStepProxy {
     #[default]
     Idle,
     OpenBatch,
     TrailingAssistant,
+}
+
+/// How `COST` footnote USD fields are produced for this run.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum CostPolicy {
+    /// `cursor:`: estimate from per-model `usd_per_microtoken_*` × token counts / 1e6 (0 when rates are unset).
+    #[default]
+    EstimateFromRates,
+    /// `openrouter:`: still record returned `usage.cost` in JSON `tx_count`; footnote uses rates × tokens.
+    UseReported,
+    /// `local:`: treat every completion as cost `0` for now.
+    Zero,
+}
+
+/// Choose [`CostPolicy`] from a prefixed model id (`cursor:` / `openrouter:` / `local:`).
+#[must_use]
+pub fn cost_policy_for_model(model: &str) -> CostPolicy {
+    if crate::model_id::uses_local_backend(model) {
+        CostPolicy::Zero
+    } else if crate::model_id::uses_openrouter_backend(model) {
+        CostPolicy::UseReported
+    } else {
+        CostPolicy::EstimateFromRates
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -55,12 +77,17 @@ pub struct RunTiming {
     tool_calls_other: Duration,
     pub(crate) tx_costs: Vec<f64>,
     pub(crate) unknown_tx_count: u32,
+    /// Cursor-mode rates for estimating USD cost from token usage.
+    pub(crate) token_cost_rates: crate::malvin_config_file::TokenCostRates,
+    /// Backend-specific cost filling policy (`cursor:` / `openrouter:` / `local:`).
+    pub(crate) cost_policy: CostPolicy,
     pub(crate) steps: u64,
     /// `None` until at least one input token count is observed.
     pub(crate) tokens_in: Option<u64>,
     /// `None` until at least one output token count is observed.
     pub(crate) tokens_out: Option<u64>,
     pub(crate) cache_read: Option<u64>,
+    pub(crate) cache_write: Option<u64>,
     pub(crate) tool_call_starts: u64,
     pub(crate) usage_tx_count: u32,
     pub(crate) unknown_usage_tx_count: u32,
@@ -84,10 +111,13 @@ impl Default for RunTiming {
             tool_calls_other: Duration::ZERO,
             tx_costs: Vec::new(),
             unknown_tx_count: 0,
+            token_cost_rates: crate::malvin_config_file::TokenCostRates::default(),
+            cost_policy: CostPolicy::EstimateFromRates,
             steps: 0,
             tokens_in: None,
             tokens_out: None,
             cache_read: None,
+            cache_write: None,
             tool_call_starts: 0,
             usage_tx_count: 0,
             unknown_usage_tx_count: 0,
@@ -175,7 +205,8 @@ impl RunTiming {
 
 pub use cost::record_mini_http_cost;
 pub use lifecycle::{
-    attach_kpop_engine_loop_run_timing, attach_new_run_timing, finalize_and_emit_run_timing,
+    attach_kpop_engine_loop_run_timing, attach_kpop_engine_loop_run_timing_for_model,
+    attach_new_run_timing, attach_new_run_timing_with_cost_policy, finalize_and_emit_run_timing,
     finalize_run_timing_json_only, persist_open_run_timing_json, record_backoff, record_llm,
 };
 pub use report::print_summary_from_run_dir;

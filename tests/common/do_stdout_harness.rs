@@ -184,7 +184,6 @@ pub fn assert_stdout_has_no_chrome(lines: &[String]) {
                 !l.contains("Command: ")
                     && !l.contains("Logs: ")
                     && !l.contains("TIMING: ")
-                    && !l.contains("TOKENS: ")
                     && !l.contains("COST: ")
             }),
         "expected do stdout without startup/timing chrome, got {lines:?}"

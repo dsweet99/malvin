@@ -1,5 +1,6 @@
 //! Unified `~/.malvin_home/config.toml` schema, default merge-on-open, and typed accessors.
 
+use std::collections::BTreeMap;
 use std::path::Path;
 
 use crate::log_gc_config::LogsGcConfig;
@@ -27,10 +28,12 @@ use malvin_config_open::create_malvin_config_from_template;
 pub(crate) use malvin_config_agent::parse_agent_config;
 pub(crate) use malvin_config_review::parse_review_config;
 pub(crate) use malvin_config_default_workflow::parse_default_workflow_config;
-pub(crate) use malvin_config_top::{parse_context_size, parse_theme};
-pub use malvin_config_top::DEFAULT_CONTEXT_SIZE;
+pub(crate) use malvin_config_top::{
+    parse_context_size, parse_model_token_cost_rates, parse_theme,
+};
+pub use malvin_config_top::{TokenCostRates, DEFAULT_CONTEXT_SIZE};
 pub(crate) use malvin_config_parse::{
-    parse_malvin_config, read_string, read_u32, read_u64, read_usize,
+    parse_malvin_config, read_f64, read_string, read_u32, read_u64, read_usize,
 };
 
 pub const DEFAULT_MAX_HYPOTHESES: usize = 5;
@@ -91,16 +94,29 @@ impl DefaultWorkflowConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MalvinConfig {
     pub mem_limit_gb: u64,
     /// Local llama.cpp context window (`n_ctx` / `n_ctx_seq`).
     pub context_size: u32,
     pub theme: TerminalTheme,
+    /// Per-model Cursor-mode USD rates (`[agent.<provider>.<name>]`), keyed by model id.
+    pub token_cost_rates: BTreeMap<String, TokenCostRates>,
     pub logs: LogsGcConfig,
     pub agent: AgentConfig,
     pub review: ReviewConfig,
     pub default_workflow: DefaultWorkflowConfig,
+}
+
+impl MalvinConfig {
+    /// Rates for `model` (`cursor:auto`, …); missing tables yield zeros.
+    #[must_use]
+    pub fn token_cost_rates_for(&self, model: &str) -> TokenCostRates {
+        self.token_cost_rates
+            .get(model)
+            .copied()
+            .unwrap_or_default()
+    }
 }
 
 /// Ensure `~/.malvin_home/config.toml` exists and contains every known key (writes missing defaults).

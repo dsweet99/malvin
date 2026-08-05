@@ -63,8 +63,10 @@ pub fn new_agent_client(
     shared: &SharedOpts,
     io: crate::acp::AgentIoOptions,
 ) -> crate::acp::AgentClient {
+    // Keep the prefixed model id (`cursor:auto`) so COST rate lookup matches
+    // `[agent.cursor.auto]` keys. ACP spawn applies `acp_agent_cli_model` for `--model`.
     crate::acp::AgentClient::with_max_acp_retries(
-        crate::model_id::provider_slug(&shared.model),
+        shared.model.clone(),
         io,
         shared.max_acp_retries,
     )

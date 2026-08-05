@@ -131,17 +131,16 @@ fn run_timing_json_includes_cost_block_under_mini() {
 }
 
 #[test]
-fn no_cost_line_when_no_cost_data() {
-    use super::super::report_cost_line::format_cost_stdout_line_from_json;
+fn no_cost_block_when_no_cost_data() {
     use crate::run_timing::RunTiming;
 
     let r = RunTiming::default();
     let json = to_json_value(&r);
-    assert!(format_cost_stdout_line_from_json(&json).is_none());
+    assert!(json.get("cost").is_none());
 }
 
 #[test]
-fn cost_fields_on_separate_stdout_line_not_timing_line() {
+fn cost_fields_on_combined_stdout_line_not_timing_line() {
     use super::super::report_cost_line::format_cost_stdout_line_from_json;
     use crate::run_timing::RunTiming;
     use crate::openrouter_transport::ResponseUsage;
@@ -155,9 +154,10 @@ fn cost_fields_on_separate_stdout_line_not_timing_line() {
     });
     let json = to_json_value(&r);
     let timing_line = format_timing_stdout_line_from_json(&json);
-    assert!(!timing_line.contains("total_cost"));
-    let cost_line = format_cost_stdout_line_from_json(&json).expect("cost line");
+    assert!(!timing_line.contains("cost_tot"));
+    let cost_line = format_cost_stdout_line_from_json(&json);
     assert!(cost_line.starts_with("COST:"));
-    assert!(cost_line.contains("total_cost = 0.0842"));
+    assert!(cost_line.contains("cost_tot = 0.0000"));
+    assert!(cost_line.contains("steps ="));
 }
 

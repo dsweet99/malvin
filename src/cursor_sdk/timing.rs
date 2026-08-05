@@ -43,11 +43,13 @@ mod tests {
             "cacheWriteTokens": 1
         });
         record_sdk_usage(Some(&t), &usage);
-        let (tokens_in, tokens_out) = {
+        let (tokens_in, tokens_out, cache_read, cache_write) = {
             let g = t.lock().unwrap();
-            (g.tokens_in, g.tokens_out)
+            (g.tokens_in, g.tokens_out, g.cache_read, g.cache_write)
         };
         assert_eq!(tokens_in, Some(13));
         assert_eq!(tokens_out, Some(3));
+        assert_eq!(cache_read, Some(2));
+        assert_eq!(cache_write, Some(1));
     }
 }

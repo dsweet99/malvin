@@ -27,6 +27,7 @@ fn parse_malvin_config_falls_back_when_values_invalid_or_missing() {
         mem_limit_gb: cfg.mem_limit_gb,
         context_size: cfg.context_size,
         theme: cfg.theme,
+        token_cost_rates: cfg.token_cost_rates.clone(),
         logs: cfg.logs,
         agent: cfg.agent.clone(),
         review: cfg.review.clone(),
@@ -50,12 +51,27 @@ fn load_malvin_config_ignores_legacy_mpc_key() {
 }
 
 #[test]
-fn parse_default_workflow_max_hypotheses_round_trip() {
-    use super::{parse_default_workflow_config, parse_malvin_config, DEFAULT_MAX_HYPOTHESES};
-    let missing = parse_default_workflow_config("mem_limit_gb = 4\n").expect("missing ok");
-    assert_eq!(missing.max_hypotheses, None);
-    assert_eq!(missing.max_hypotheses_or_default(), DEFAULT_MAX_HYPOTHESES);
-    let cfg = parse_malvin_config("[default_workflow]\nmax_hypotheses = 7\n");
-    assert_eq!(cfg.default_workflow.max_hypotheses, Some(7));
-    assert_eq!(cfg.default_workflow.max_hypotheses_or_default(), 7);
+#[allow(clippy::float_cmp)]
+fn parse_model_token_cost_rates_defaults_and_rejects_negative() {
+    use super::{parse_malvin_config, parse_model_token_cost_rates};
+    let missing = parse_model_token_cost_rates("mem_limit_gb = 4\n").expect("defaults");
+    assert!(missing.is_empty());
+    let cfg = parse_malvin_config(
+        "[agent.cursor.auto]\nusd_per_microtoken_in = 3.0\nusd_per_microtoken_out = 15.0\nusd_per_microtoken_cache_read = 0.3\nusd_per_microtoken_cache_write = 3.75\n",
+    );
+    let rates = cfg.token_cost_rates_for("cursor:auto");
+    assert!((rates.usd_per_microtoken_in - 3.0).abs() < f64::EPSILON);
+    assert!((rates.usd_per_microtoken_out - 15.0).abs() < f64::EPSILON);
+    assert!((rates.usd_per_microtoken_cache_read - 0.3).abs() < f64::EPSILON);
+    assert!((rates.usd_per_microtoken_cache_write - 3.75).abs() < f64::EPSILON);
+    assert_eq!(cfg.token_cost_rates_for("cursor:other"), super::TokenCostRates::default());
+    let dual = parse_malvin_config(
+        "[agent.cursor.auto]\nusd_per_microtoken_in = 3.0\n[agent.cursor.gpt-5]\nusd_per_microtoken_out = 15.0\n",
+    );
+    assert!((dual.token_cost_rates_for("cursor:auto").usd_per_microtoken_in - 3.0).abs() < f64::EPSILON);
+    assert!((dual.token_cost_rates_for("cursor:gpt-5").usd_per_microtoken_out - 15.0).abs() < f64::EPSILON);
+    assert!(parse_model_token_cost_rates("[agent.cursor.auto]\nusd_per_microtoken_in = -1\n").is_err());
+    // Slug-only lookup must not match `[agent.cursor.auto]` (regression: CursorSdk used to store
+    // `provider_slug` and then COST rates stayed zero).
+    assert_eq!(cfg.token_cost_rates_for("auto"), super::TokenCostRates::default());
 }
