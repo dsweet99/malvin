@@ -29,14 +29,14 @@ See `malvin --doc`. Global `--model` is parsed but **not used** by this subcomma
 
 Listing:
 
-1. List Cursor models via the Cursor SDK bridge (`Cursor.models.list`) when Node ≥ 22.13 and `cursor-sdk-bridge` are available. If that path fails, fall back to `agent` / `cursor-agent models` on `PATH`. If both fail, the Cursor section errors (Prime / Mini sections may still print depending on caller flow). When a prefix filter cannot match any `cursor:` id, this section is skipped.
+1. List Cursor models via the Cursor SDK bridge (`Cursor.models.list`) when Node ≥ 22.13 and `cursor-sdk-bridge` are available. If that path fails, fall back to `agent` / `cursor-agent models` on `PATH`. If both fail, print `(cursor models unavailable: …)` and continue with other sections. When a prefix filter cannot match any `cursor:` id, this section is skipped. If the SDK catalog omits `auto` (it may list `default` instead), malvin still prints `cursor:auto` so the documented CLI default remains discoverable.
 2. Print each Cursor id with a `cursor:` prefix.
 3. List Prime models via the Prime SDK bridge (`models.js`) when available; otherwise fall back to `prime-agent model list` on `PATH`. Print each id with a `prime:` prefix (full catalog; no truncation hint). On failure print `(prime models unavailable: …)` and continue. Skip when the prefix cannot match `prime:`.
 4. Fetch OpenRouter models (best-effort when the API key / network is available) and print each id with a `mini:openrouter/` prefix; on failure print `(mini:openrouter models unavailable: …)` and continue. Skip when the prefix cannot match that head.
 5. Print built-in `mini:local/…` models (no cache-status suffix) only when this build supports Apple Silicon Metal. Otherwise omit the local section entirely.
 6. Print blank line and: `Current: <model>` (from `~/.malvin_home/config.toml`, else `cursor:auto`).
 
-Optional trailing words form a **prefix filter** on printed model ids. Words are concatenated with no separator (so `malvin models prime: open` is the same as `malvin models prime:open`). Examples: `malvin models prime:` lists only Prime models; `malvin models prime:open` lists Prime ids whose full id starts with `prime:open` (e.g. `prime:openai/…` and `prime:openrouter/…`). Catalog sections that cannot match the prefix are not queried.
+Optional trailing words form a **prefix filter** on printed model ids. Words are joined with `/` inserted between path segments when needed (so `malvin models prime: open` → `prime:open`, and `malvin models mini:openrouter openai` → `mini:openrouter/openai`). Examples: `malvin models prime:` lists only Prime models; `malvin models prime:open` lists Prime ids whose full id starts with `prime:open` (e.g. `prime:openai/…` and `prime:openrouter/…`). Catalog sections that cannot match the prefix are not queried.
 
 There is **no** `malvin models download` action. `mini:local/…` GGUF files are fetched automatically into `~/.malvin_home/model_cache/` on first use unless `--no-download` is set. Known v1 ids: `mini:local/qwen35_9b_q4`, `mini:local/nemotron3_nano_4b`. On hosts without Metal, those ids are not shown by `malvin models`.
 
@@ -72,6 +72,7 @@ MALVIN_LIVE_MINI=1 cargo nextest run mini_live -- --ignored
 malvin models
 malvin models prime:
 malvin models prime:open
+malvin models mini:openrouter openai
 malvin models mini:local/
 malvin --model mini:local/qwen35_9b_q4 do "say hi"
 malvin --model cursor:sonnet-4 inspire plan.md    # --model applies to agent subcommands, not models

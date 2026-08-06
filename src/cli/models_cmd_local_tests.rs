@@ -23,6 +23,29 @@ fn models_list_prefix_concatenates_words() {
             .as_deref(),
         Some("prime:open")
     );
+    // Path catalogs need `/` between segments; bare concat used to yield mini:openrouteropenai.
+    assert_eq!(
+        models_list_prefix(&["mini:openrouter".into(), "openai".into()])
+            .expect("mini join")
+            .as_deref(),
+        Some("mini:openrouter/openai")
+    );
+    assert_eq!(
+        models_list_prefix(&["mini:openrouter/".into(), "openai".into()])
+            .expect("slash kept")
+            .as_deref(),
+        Some("mini:openrouter/openai")
+    );
+    assert_eq!(
+        models_list_prefix(&["prime:openai".into(), "gpt".into()])
+            .expect("prime path")
+            .as_deref(),
+        Some("prime:openai/gpt")
+    );
+    assert_eq!(
+        super::models_cmd_filter::join_models_prefix_words(&["cursor:".into(), "auto".into()]),
+        "cursor:auto"
+    );
 }
 
 #[test]
@@ -47,6 +70,39 @@ fn line_matches_prefix_uses_id_before_tab() {
 fn models_args_default_has_empty_words() {
     let args = ModelsArgs::default();
     assert!(args.words.is_empty());
+}
+
+#[test]
+fn sdk_model_rows_from_stdout_skips_noise_and_injects_auto() {
+    use super::test_hooks::sdk_model_rows_from_stdout;
+
+    let rows = sdk_model_rows_from_stdout(
+        "\n{\"ok\":true}\n\ncursor:composer-2\tFast\ncursor:default\tDefault\n",
+    );
+    assert_eq!(rows[0], "cursor:auto");
+    assert!(rows.iter().any(|r| r.starts_with("cursor:composer-2")));
+    assert!(!rows.iter().any(|r| r.starts_with('{')));
+    assert!(!rows.iter().any(String::is_empty));
+
+    let with_auto = sdk_model_rows_from_stdout("cursor:auto\tAuto\ncursor:composer-2\tFast\n");
+    assert_eq!(
+        with_auto.iter().filter(|r| r.starts_with("cursor:auto")).count(),
+        1,
+        "must not duplicate cursor:auto when catalog already has it"
+    );
+}
+
+#[test]
+fn models_display_lines_filtered_applies_id_prefix() {
+    use super::test_hooks::models_display_lines_filtered;
+
+    let text = "auto - Auto\ncomposer-2 — Fast\n";
+    let all = models_display_lines_filtered(text, "cursor:", None).expect("rows");
+    assert_eq!(all.len(), 2);
+    let filtered =
+        models_display_lines_filtered(text, "cursor:", Some("cursor:comp")).expect("filter");
+    assert_eq!(filtered, vec!["cursor:composer-2\tFast".to_string()]);
+    assert!(models_display_lines_filtered(text, "cursor:", Some("prime:")).is_none());
 }
 
 #[test]

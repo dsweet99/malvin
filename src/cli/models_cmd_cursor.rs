@@ -1,6 +1,7 @@
 //! Cursor model listing for `malvin models`.
 
 use std::path::PathBuf;
+use std::process::Output;
 
 use crate::agent_or_cursor_agent_bin;
 use crate::ansi_strip::strip_ansi_escapes;
@@ -18,6 +19,13 @@ pub(super) fn print_cursor_models(filter: Option<&str>) -> Result<(), String> {
 }
 
 fn print_cursor_models_via_sdk(filter: Option<&str>) -> Result<(), String> {
+    let output = run_cursor_sdk_models_js()?;
+    let rows = sdk_model_rows_from_stdout(&String::from_utf8_lossy(&output.stdout));
+    print_filtered_model_rows(&rows, filter);
+    Ok(())
+}
+
+fn run_cursor_sdk_models_js() -> Result<Output, String> {
     let models_js = crate::cursor_sdk::bridge_path::resolve_models_js()?;
     let node = crate::cursor_sdk::node_resolve::resolve_node_bin()?;
     let mut cmd = crate::malvin_sandbox::malvin_std_command(&node);
@@ -30,17 +38,38 @@ fn print_cursor_models_via_sdk(filter: Option<&str>) -> Result<(), String> {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(format!("cursor SDK models failed: {}", stderr.trim()));
     }
-    let raw = String::from_utf8_lossy(&output.stdout);
+    Ok(output)
+}
+
+/// Parse SDK stdout rows and ensure `cursor:auto` is present when the catalog omits it.
+pub(super) fn sdk_model_rows_from_stdout(raw: &str) -> Vec<String> {
+    let mut rows = Vec::new();
+    let mut saw_auto = false;
     for line in raw.lines() {
         let t = line.trim();
         if t.is_empty() || t.starts_with('{') {
             continue;
         }
-        if line_matches_prefix(t, filter) {
-            print_stdout_line(MALVIN_WHO, t);
+        let id = t.split('\t').next().unwrap_or(t).trim();
+        if id == "cursor:auto" {
+            saw_auto = true;
+        }
+        rows.push(t.to_string());
+    }
+    // Cursor SDK catalogs may expose `default` while malvin's CLI default remains `cursor:auto`
+    // (and `cursor-agent models` still lists `auto`). Ensure the documented default is visible.
+    if !saw_auto {
+        rows.insert(0, format!("{CURSOR_PREFIX}auto"));
+    }
+    rows
+}
+
+fn print_filtered_model_rows(rows: &[String], filter: Option<&str>) {
+    for row in rows {
+        if line_matches_prefix(row, filter) {
+            print_stdout_line(MALVIN_WHO, row);
         }
     }
-    Ok(())
 }
 
 pub(super) fn resolve_models_cli() -> Result<PathBuf, String> {

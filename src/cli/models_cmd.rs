@@ -9,14 +9,19 @@ use clap::Args;
 mod models_cmd_parse;
 #[path = "models_cmd_cursor.rs"]
 mod models_cmd_cursor;
+#[path = "models_cmd_filter.rs"]
+mod models_cmd_filter;
 use models_cmd_cursor::print_cursor_models;
+pub(crate) use models_cmd_filter::{
+    line_matches_prefix, models_list_prefix, section_may_match,
+};
 
 const MINI_OPENROUTER_HEAD: &str = "mini:openrouter/";
 const MINI_LOCAL_HEAD: &str = "mini:local/";
 
 #[derive(Args, Debug, Clone, Default)]
 pub struct ModelsArgs {
-    /// Optional prefix filter (e.g. `prime:`, `prime:open`, `mini:local/`). Words are concatenated.
+    /// Optional prefix filter (e.g. `prime:`, `prime:open`, `mini:local/`). See `models_list_prefix`.
     #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
     pub words: Vec<String>,
 }
@@ -33,13 +38,15 @@ fn print_current_footer(current_model: &str) {
 
 /// Print Cursor, Prime, Mini `OpenRouter`, and Mini local models with prefixes and a `Current:` footer.
 ///
-/// Optional `words` form a prefix filter on printed model ids (concatenated, no separators).
+/// Optional `words` form a prefix filter on printed model ids (see [`models_list_prefix`]).
 pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
     let filter = models_list_prefix(&args.words)?;
     let filter_ref = filter.as_deref();
 
     if section_may_match(filter_ref, CURSOR_PREFIX) {
-        print_cursor_models(filter_ref)?;
+        if let Err(e) = print_cursor_models(filter_ref) {
+            print_stdout_line(MALVIN_WHO, &format!("(cursor models unavailable: {e})"));
+        }
     }
     if section_may_match(filter_ref, PRIME_PREFIX) {
         match crate::prime_sdk::list_prime_models_sync() {
@@ -67,45 +74,9 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Resolve optional listing prefix from trailing words.
-///
-/// Rejects legacy `download …` action words. Multiple words are concatenated with no separator
-/// so `malvin models prime: open` matches the same as `malvin models prime:open`.
-pub(crate) fn models_list_prefix(words: &[String]) -> Result<Option<String>, String> {
-    if words.is_empty() {
-        return Ok(None);
-    }
-    if words[0].eq_ignore_ascii_case("download") {
-        return Err(format!(
-            "`malvin models` no longer downloads; `{MINI_PREFIX}local/…` models fetch automatically on first use (omit `--no-download`)"
-        ));
-    }
-    Ok(Some(words.join("")))
-}
-
-/// Whether a catalog section whose ids start with `section_head` can produce rows for `filter`.
-pub(crate) fn section_may_match(filter: Option<&str>, section_head: &str) -> bool {
-    match filter {
-        None => true,
-        Some("") => true,
-        Some(f) => f.starts_with(section_head) || section_head.starts_with(f),
-    }
-}
-
-/// Whether a printed model row matches an optional id prefix filter.
-pub(crate) fn line_matches_prefix(line: &str, filter: Option<&str>) -> bool {
-    let Some(f) = filter else {
-        return true;
-    };
-    if f.is_empty() {
-        return true;
-    }
-    let id = line.split('\t').next().unwrap_or(line).trim();
-    id.starts_with(f)
-}
-
 fn list_openrouter_models_sync() -> Result<Vec<crate::openrouter_transport::ModelListing>, String> {
-    let rt = tokio::runtime::Builder::new_multi_thread()
+    // One HTTP GET: a current-thread runtime is enough (avoid a multi-thread pool for listing).
+    let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .map_err(|e| format!("failed to create Tokio runtime: {e}"))?;
@@ -221,6 +192,18 @@ pub(crate) mod test_hooks {
 
     pub fn resolve_models_cli() -> Result<std::path::PathBuf, String> {
         super::models_cmd_cursor::resolve_models_cli()
+    }
+
+    pub fn sdk_model_rows_from_stdout(raw: &str) -> Vec<String> {
+        super::models_cmd_cursor::sdk_model_rows_from_stdout(raw)
+    }
+
+    pub fn models_display_lines_filtered(
+        text: &str,
+        prefix: &str,
+        filter: Option<&str>,
+    ) -> Option<Vec<String>> {
+        models_cmd_parse::models_display_lines_filtered(text, prefix, filter)
     }
 
     pub fn print_mini_models(models: &[crate::openrouter_transport::ModelListing]) {
