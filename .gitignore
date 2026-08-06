@@ -19,3 +19,7 @@ node_modules/
 .ruff_cache/
 _logs/
 _logs-prime/
+.cursor
+.cursorrules
+.kpop
+.vscode
