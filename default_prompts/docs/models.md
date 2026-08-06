@@ -31,9 +31,10 @@ Listing (`malvin models` with no action words):
 
 1. List Cursor models via the Cursor SDK bridge (`Cursor.models.list`) when Node ≥ 22.13 and `cursor-sdk-bridge` are available. If that path fails, fall back to `agent` / `cursor-agent models` on `PATH`. If both fail, the Cursor section errors (Prime / Mini sections may still print depending on caller flow).
 2. Print each Cursor id with a `cursor:` prefix.
-3. Fetch OpenRouter models (best-effort when the API key / network is available) and print each id with a `mini:openrouter/` prefix; on failure print `(mini:openrouter models unavailable: …)` and continue.
-4. Print built-in `mini:local/…` models (no cache-status suffix) only when this build supports Apple Silicon Metal. Otherwise omit the local section entirely.
-5. Print blank line and: `Current: <model>` (from `~/.malvin_home/config.toml`, else `cursor:auto`).
+3. List Prime models via the Prime SDK bridge (`models.js`) when available; otherwise fall back to `prime-agent model list` on `PATH`. Print each id with a `prime:` prefix (full catalog; no truncation hint). On failure print `(prime models unavailable: …)` and continue.
+4. Fetch OpenRouter models (best-effort when the API key / network is available) and print each id with a `mini:openrouter/` prefix; on failure print `(mini:openrouter models unavailable: …)` and continue.
+5. Print built-in `mini:local/…` models (no cache-status suffix) only when this build supports Apple Silicon Metal. Otherwise omit the local section entirely.
+6. Print blank line and: `Current: <model>` (from `~/.malvin_home/config.toml`, else `cursor:auto`).
 
 `malvin models download mini:local/<id>` does **not** require the Cursor CLI; it fetches a GGUF into `~/.malvin_home/model_cache/` (Apple Silicon / Metal). Known v1 ids: `mini:local/qwen35_9b_q4`, `mini:local/nemotron3_nano_4b`. On hosts without Metal, those ids are not shown by `malvin models` even though download may still be requested explicitly.
 

@@ -1,4 +1,4 @@
-//! Bounded Prime model listing for `malvin models`.
+//! Prime model listing for `malvin models`.
 
 use std::process::Command;
 
@@ -8,10 +8,7 @@ pub struct PrimeModelListing {
     pub name: String,
 }
 
-const MAX_OPENROUTER_SAMPLE: usize = 8;
-const MAX_PER_PROVIDER: usize = 12;
-
-/// Best-effort list of `prime:<provider>/<model>` rows (bounded; not the full catalog).
+/// Best-effort list of `prime:<provider>/<model>` rows (full catalog from bridge or CLI).
 ///
 /// # Errors
 ///
@@ -19,10 +16,10 @@ const MAX_PER_PROVIDER: usize = 12;
 pub fn list_prime_models_sync() -> Result<Vec<PrimeModelListing>, String> {
     if let Ok(from_bridge) = list_via_models_js() {
         if !from_bridge.is_empty() {
-            return Ok(bound_listings(from_bridge));
+            return Ok(from_bridge);
         }
     }
-    list_via_prime_agent_cli().map(bound_listings)
+    list_via_prime_agent_cli()
 }
 
 fn list_via_models_js() -> Result<Vec<PrimeModelListing>, String> {
@@ -107,62 +104,22 @@ fn parse_prime_agent_table(text: &str) -> Vec<PrimeModelListing> {
     out
 }
 
-fn bound_listings(rows: Vec<PrimeModelListing>) -> Vec<PrimeModelListing> {
-    let mut openai = Vec::new();
-    let mut openrouter = Vec::new();
-    let mut other = Vec::new();
-    for row in rows {
-        if row.id.starts_with("openai/") {
-            if openai.len() < MAX_PER_PROVIDER {
-                openai.push(row);
-            }
-        } else if row.id.starts_with("openrouter/") {
-            if openrouter.len() < MAX_OPENROUTER_SAMPLE {
-                openrouter.push(row);
-            }
-        } else if other.len() < MAX_PER_PROVIDER {
-            other.push(row);
-        }
-    }
-    let mut out = openai;
-    out.extend(other);
-    out.extend(openrouter);
-    if !out.is_empty() {
-        // Hint row for the full catalog (not a real model id).
-        out.push(PrimeModelListing {
-            id: "…".into(),
-            name: "more via `prime-agent model list`".into(),
-        });
-    }
-    out
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn parse_and_bound_groups_providers() {
-        let mut rows = Vec::new();
+    fn parse_prime_model_lines_keeps_full_catalog() {
+        use std::fmt::Write;
+        let mut text = String::new();
         for i in 0..20 {
-            rows.push(PrimeModelListing {
-                id: format!("openai/m{i}"),
-                name: format!("m{i}"),
-            });
-            rows.push(PrimeModelListing {
-                id: format!("openrouter/org/m{i}"),
-                name: format!("or{i}"),
-            });
+            let _ = writeln!(text, "prime:openai/m{i}");
+            let _ = writeln!(text, "prime:openrouter/org/m{i}");
         }
-        let bounded = bound_listings(rows);
-        let openai_n = bounded.iter().filter(|r| r.id.starts_with("openai/")).count();
-        let or_n = bounded
-            .iter()
-            .filter(|r| r.id.starts_with("openrouter/"))
-            .count();
-        assert_eq!(openai_n, MAX_PER_PROVIDER);
-        assert_eq!(or_n, MAX_OPENROUTER_SAMPLE);
-        assert!(bounded.iter().any(|r| r.id == "…"));
+        let rows = parse_prime_model_lines(&text);
+        assert_eq!(rows.len(), 40);
+        assert!(rows.iter().all(|r| r.id != "…"));
+        assert!(!rows.iter().any(|r| r.name.contains("more via")));
     }
 
     #[test]

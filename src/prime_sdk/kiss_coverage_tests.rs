@@ -133,7 +133,6 @@ fn kiss_cov_prime_sdk_models_and_mock() {
     let _ = stringify!(list_via_prime_agent_cli);
     let _ = stringify!(parse_prime_model_lines);
     let _ = stringify!(parse_prime_agent_table);
-    let _ = stringify!(bound_listings);
     let _ = stringify!(prime_mock_bridge_path);
     let _ = stringify!(prime_install_mock_bridge_env);
     let _ = stringify!(prime_clear_mock_bridge_env);
