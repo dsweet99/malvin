@@ -1,0 +1,31 @@
+# Fast-task kiss thresholds (stable defaults)
+
+[gate]
+test_coverage_threshold = 90
+min_similarity = 0.9
+duplication_enabled = true
+orphan_module_enabled = true
+
+[python]
+statements_per_function = 35
+positional_args = 3
+keyword_only_args = 3
+max_indentation = 4
+nested_function_depth = 2
+returns_per_function = 5
+return_values_per_function = 3
+branches_per_function = 9
+local_variables = 15
+statements_per_try_block = 3
+boolean_parameters = 1
+decorators_per_function = 5
+calls_per_function = 20
+statements_per_file = 200
+lines_per_file = 300
+functions_per_file = 10
+interface_types_per_file = 1
+concrete_types_per_file = 1
+imported_names_per_file = 30
+cycle_size = 0
+indirect_dependencies = 10
+dependency_depth = 3
