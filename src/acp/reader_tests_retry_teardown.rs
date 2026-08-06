@@ -1,6 +1,7 @@
 use crate::acp::{
-    agent_error_requires_coder_session_teardown, agent_string_is_cursor_http2_transport_error,
-    agent_string_is_stale_cursor_sdk_auth, cursor_http2_transport_error_message,
+    agent_error_requires_coder_session_teardown, agent_string_is_cursor_agent_busy,
+    agent_string_is_cursor_http2_transport_error, agent_string_is_stale_cursor_sdk_auth,
+    cursor_http2_transport_error_message,
 };
 
 #[test]
@@ -18,6 +19,7 @@ fn child_health_transport_errors_require_coder_session_teardown() {
         "AuthenticationError: If you are logged in, try logging out and back in.",
         "ERROR_NOT_LOGGED_IN",
         "[unauthenticated] Error",
+        "Agent agent-7b61bfe2-fa7a-47bd-8f5b-96c158067bc8 already has active run",
     ] {
         assert!(
             agent_error_requires_coder_session_teardown(msg),
@@ -25,6 +27,15 @@ fn child_health_transport_errors_require_coder_session_teardown() {
         );
     }
     assert!(!agent_error_requires_coder_session_teardown("request timed out"));
+}
+
+#[test]
+fn cursor_agent_busy_strings_are_detected() {
+    assert!(agent_string_is_cursor_agent_busy(
+        "Agent agent-7b61bfe2-fa7a-47bd-8f5b-96c158067bc8 already has active run"
+    ));
+    assert!(agent_string_is_cursor_agent_busy("ALREADY HAS ACTIVE RUN"));
+    assert!(!agent_string_is_cursor_agent_busy("bridge stdout closed"));
 }
 
 #[test]

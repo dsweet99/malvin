@@ -70,6 +70,8 @@ fn kiss_cov_cursor_sdk_protocol() {
     let _ = stringify!(last_agent_id);
     let _ = stringify!(stale_authentication_teardown_resume_retries);
     let _ = stringify!(agent_string_is_stale_cursor_sdk_auth);
+    let _ = stringify!(agent_string_is_cursor_agent_busy);
+    let _ = stringify!(agent_busy_after_resume_forgets_id_and_creates_fresh);
     let _ = stringify!(Cancel);
     let _ = stringify!(Close);
     let _ = stringify!(Ok);

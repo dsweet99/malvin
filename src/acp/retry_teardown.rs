@@ -20,6 +20,15 @@ pub(crate) fn agent_string_is_stale_cursor_sdk_auth(msg: &str) -> bool {
     text.contains("logged in") && text.contains("logging out")
 }
 
+/// Cursor SDK `AgentBusyError` (409): agent still has an active run (often after hard-kill).
+///
+/// Resume+send on that agent id fails; the open session must be torn down and the id forgotten
+/// so the next attempt uses `Agent.create` instead of resume.
+#[must_use]
+pub(crate) fn agent_string_is_cursor_agent_busy(msg: &str) -> bool {
+    msg.to_ascii_lowercase().contains("already has active run")
+}
+
 /// Child-health / transport failures where the open coder session must be torn down before retry.
 #[must_use]
 pub(crate) fn agent_error_requires_coder_session_teardown(msg: &str) -> bool {
@@ -35,6 +44,9 @@ pub(crate) fn agent_error_requires_coder_session_teardown(msg: &str) -> bool {
         || text.contains("iterable is closed")
         || text.contains("connection stalled");
     if child_dead {
+        return true;
+    }
+    if agent_string_is_cursor_agent_busy(msg) {
         return true;
     }
     if agent_string_is_stale_cursor_sdk_auth(msg) {

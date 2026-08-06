@@ -29,6 +29,40 @@ async fn failed_create_drop_clears_sandbox_for_next_spawn() {
     bug_clear_env();
 }
 
+/// Bug (err.md): after bridge death, resume hits `AgentBusy`; must forget id and create fresh.
+#[tokio::test]
+async fn agent_busy_after_resume_forgets_id_and_creates_fresh() {
+    let _guard = crate::test_utils::test_env_lock();
+    let tmp = bug_prepare();
+    let mut client = bug_client(tmp.path(), 3);
+    client.begin_coder_session(tmp.path()).await.expect("begin");
+    assert_eq!(client.last_agent_id.as_deref(), Some("mock-agent"));
+    let log = tmp.path().join("prompts.log");
+    let err = expect_prompt_err(&mut client, "CLOSE_STDOUT", &log).await;
+    assert_err_has(&err, &["bridge stdout closed", "stdout"]);
+    assert!(!client.has_open_coder_session());
+    assert_eq!(client.last_agent_id.as_deref(), Some("mock-agent"));
+    client
+        .run_coder_prompt(
+            "AGENT_BUSY_ON_RESUME please",
+            &log,
+            "coder",
+            CoderPromptOptions {
+                llm_phase: Some(crate::run_timing::TimingPhase::Implement),
+                ..CoderPromptOptions::default()
+            },
+        )
+        .await
+        .expect("retry after AgentBusy must create fresh agent");
+    assert_eq!(
+        client.last_coder_prompt_agent_response().as_deref(),
+        Some("mock reply")
+    );
+    assert!(client.has_open_coder_session());
+    client.end_coder_session().await.expect("end");
+    bug_clear_env();
+}
+
 /// Idle Authentication (stale SDK token) tears down; retry resumes and succeeds.
 #[tokio::test]
 async fn stale_authentication_teardown_resume_retries() {
@@ -141,6 +175,7 @@ async fn cancel_during_slow_send_is_honored() {
 #[test]
 fn kiss_cov_bug_regression_cases() {
     let _ = stringify!(failed_create_drop_clears_sandbox_for_next_spawn);
+    let _ = stringify!(agent_busy_after_resume_forgets_id_and_creates_fresh);
     let _ = stringify!(bridge_stdout_closed_single_attempt_tears_down_session);
     let _ = stringify!(cancelled_run_done_is_error);
     let _ = stringify!(stream_fatal_only_fails_prompt);
@@ -155,6 +190,7 @@ fn bridge_transport_errors_require_coder_session_teardown() {
         "bridge write: broken pipe",
         "bridge flush: broken pipe",
         "bridge read: connection reset",
+        "Agent agent-7b61bfe2-fa7a-47bd-8f5b-96c158067bc8 already has active run",
     ] {
         assert!(agent_error_requires_coder_session_teardown(msg), "{msg}");
     }

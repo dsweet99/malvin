@@ -3,8 +3,8 @@
 use std::path::Path;
 
 use crate::acp::{
-    agent_error_requires_coder_session_teardown, backoff_after_agent_failure, retries_noun,
-    AgentError, CoderPromptOptions,
+    agent_error_requires_coder_session_teardown, agent_string_is_cursor_agent_busy,
+    backoff_after_agent_failure, retries_noun, AgentError, CoderPromptOptions,
 };
 
 use super::client::CursorSdkClient;
@@ -61,7 +61,13 @@ impl CursorSdkClient {
 
 async fn teardown_sdk_session_after_transport_error(client: &mut CursorSdkClient, err: &str) {
     if agent_error_requires_coder_session_teardown(err) {
+        // AgentBusy means the resumed Cursor agent still has an orphaned active run.
+        // `end_coder_session` would otherwise remember that id and resume it again.
+        let forget_agent = agent_string_is_cursor_agent_busy(err);
         let _ = client.end_coder_session().await;
+        if forget_agent {
+            client.last_agent_id = None;
+        }
     }
 }
 
