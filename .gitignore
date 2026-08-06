@@ -9,5 +9,13 @@ target/
 results/
 *~
 *.lock
+!Cargo.lock
+!**/package-lock.json
 *.profraw
 .malvin/acp_spawn/
+node_modules/
+**/node_modules/
+.pytest_cache/
+.ruff_cache/
+_logs/
+_logs-prime/
