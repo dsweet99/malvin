@@ -191,6 +191,9 @@ fn kiss_cov_models_cmd_private_fn_names() {
     let _ = stringify!(print_mini_models);
     let _ = stringify!(run_mini_models);
     let _ = stringify!(models_args_marker);
+    let _ = stringify!(models_list_prefix);
+    let _ = stringify!(section_may_match);
+    let _ = stringify!(line_matches_prefix);
     let _ = EnvGuard::set("MALVIN_KISS_COV_ENV", Some("1"));
 }
 

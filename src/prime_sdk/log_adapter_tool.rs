@@ -34,6 +34,8 @@ pub(super) fn prime_emit_tool(session: &PrimeBridgeSession, fields: PrimeToolCal
         return;
     }
     let subject = summary.or(name).unwrap_or("tool");
+    // "end" is a legacy bridge alias for complete (pre-VISION-parity prime bridge).
+    let phase = if phase == "end" { "complete" } else { phase };
     match phase {
         "start" => prime_note_tool_start(session, tool_call_id, subject),
         "complete" | "error" => {

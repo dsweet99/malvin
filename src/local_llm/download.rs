@@ -97,10 +97,9 @@ pub fn ensure_model_cached(
     }
     if policy == DownloadPolicy::Deny {
         return Err(format!(
-            "local model `{MINI_PREFIX}local/{}` is not cached at {} (pass without --no-download, or run `malvin models download {MINI_PREFIX}local/{}`)",
+            "local model `{MINI_PREFIX}local/{}` is not cached at {} (omit `--no-download` to fetch automatically on first use)",
             spec.slug,
             model_cache_path(spec).display(),
-            spec.slug
         ));
     }
     download_local_model(&format!("{MINI_PREFIX}local/{}", spec.slug))

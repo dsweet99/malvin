@@ -46,12 +46,12 @@ async function handleSend(req) {
     event: "tool_call",
     phase: "start",
     name: "ipython",
-    summary: "ipython",
+    summary: "Run ls",
     toolCallId: "t1",
   });
   emit({
     event: "tool_call",
-    phase: "end",
+    phase: "complete",
     name: "ipython",
     summary: "ipython",
     toolCallId: "t1",

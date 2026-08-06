@@ -80,7 +80,7 @@ Maximum bounded attempts per Cursor SDK bridge spawn or `send`/`wait`, with 1s /
 
 ### `--no-download`
 
-Do not auto-download `mini:local/…` models on first use. If the GGUF is missing from `~/.malvin_home/model_cache/`, the run fails instead of fetching it. Use `malvin models download mini:local/<id>` to fetch explicitly.
+Do not auto-download `mini:local/…` models on first use. If the GGUF is missing from `~/.malvin_home/model_cache/`, the run fails instead of fetching it. Omit `--no-download` (the default) to fetch automatically on first use.
 
 ### `--git`
 
@@ -185,7 +185,7 @@ Before most agent-backed commands create a new run directory, malvin may prune o
 
 ## External dependencies
 
-- **Cursor SDK**: Node ≥ 22.13, built `cursor-sdk-bridge/` (`npm ci && npm run build`), and a Cursor API key (`CURSOR_API_KEY`, or `CURSOR_AGENT_API_KEY` / `AGENT_API_KEY`) for `cursor:` models. `malvin models` lists Cursor models via the bridge when possible; falls back to `agent` / `cursor-agent` on `PATH` if the SDK path fails. Not required for `malvin models download mini:local/<id>`.
+- **Cursor SDK**: Node ≥ 22.13, built `cursor-sdk-bridge/` (`npm ci && npm run build`), and a Cursor API key (`CURSOR_API_KEY`, or `CURSOR_AGENT_API_KEY` / `AGENT_API_KEY`) for `cursor:` models. `malvin models` lists Cursor models via the bridge when possible; falls back to `agent` / `cursor-agent` on `PATH` if the SDK path fails.
 - **OpenRouter**: `OPENROUTER_API_KEY` for `mini:openrouter/…` (malvin-mini) models.
 - **Prime SDK**: Node ≥ 22.8, built `prime-sdk-bridge/`, and a provider API key for `prime:` models.
 - **Local models**: Apple Silicon / Metal build for `mini:local/…` GGUF models; raise `mem_limit_gb` in `~/.malvin_home/config.toml` before first load (see `malvin models --doc`).

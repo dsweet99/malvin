@@ -7,16 +7,17 @@ use crate::ansi_strip::strip_ansi_escapes;
 use crate::model_id::CURSOR_PREFIX;
 use crate::output::{MALVIN_WHO, print_stdout_line};
 
+use super::line_matches_prefix;
 use super::models_cmd_parse::{print_parsed_or_fallback_prefixed, trim_trailing_tip_lines};
 
-pub(super) fn print_cursor_models() -> Result<(), String> {
-    if print_cursor_models_via_sdk().is_ok() {
+pub(super) fn print_cursor_models(filter: Option<&str>) -> Result<(), String> {
+    if print_cursor_models_via_sdk(filter).is_ok() {
         return Ok(());
     }
-    print_cursor_models_via_cli()
+    print_cursor_models_via_cli(filter)
 }
 
-fn print_cursor_models_via_sdk() -> Result<(), String> {
+fn print_cursor_models_via_sdk(filter: Option<&str>) -> Result<(), String> {
     let models_js = crate::cursor_sdk::bridge_path::resolve_models_js()?;
     let node = crate::cursor_sdk::node_resolve::resolve_node_bin()?;
     let mut cmd = crate::malvin_sandbox::malvin_std_command(&node);
@@ -35,7 +36,9 @@ fn print_cursor_models_via_sdk() -> Result<(), String> {
         if t.is_empty() || t.starts_with('{') {
             continue;
         }
-        print_stdout_line(MALVIN_WHO, t);
+        if line_matches_prefix(t, filter) {
+            print_stdout_line(MALVIN_WHO, t);
+        }
     }
     Ok(())
 }
@@ -47,7 +50,7 @@ pub(super) fn resolve_models_cli() -> Result<PathBuf, String> {
     })
 }
 
-fn print_cursor_models_via_cli() -> Result<(), String> {
+fn print_cursor_models_via_cli(filter: Option<&str>) -> Result<(), String> {
     let bin = resolve_models_cli()?;
     let output = crate::malvin_sandbox::malvin_std_command(&bin)
         .arg("models")
@@ -68,6 +71,6 @@ fn print_cursor_models_via_cli() -> Result<(), String> {
     let raw = String::from_utf8_lossy(&output.stdout);
     let text = strip_ansi_escapes(raw.as_ref());
     let cleaned = trim_trailing_tip_lines(&text);
-    print_parsed_or_fallback_prefixed(&cleaned, CURSOR_PREFIX);
+    print_parsed_or_fallback_prefixed(&cleaned, CURSOR_PREFIX, filter);
     Ok(())
 }
