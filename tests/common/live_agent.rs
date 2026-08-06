@@ -13,7 +13,7 @@ use super::child_wait::{spawn_piped_process_group, wait_child_with_timeout};
 
 #[cfg(unix)]
 /// Wall clock for opt-in live agent/OpenRouter subprocesses.
-/// Must exceed a single slow `openrouter:auto` inspire completion (often ~3 minutes on free-tier).
+/// Must exceed a single slow `mini:openrouter/auto` inspire completion (often ~3 minutes on free-tier).
 pub const LIVE_AGENT_CMD_TIMEOUT: Duration = Duration::from_secs(300);
 
 /// Fail-closed when a live gate is set but `OPENROUTER_API_KEY` is missing/empty.

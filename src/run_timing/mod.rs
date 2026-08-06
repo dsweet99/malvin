@@ -43,13 +43,13 @@ pub enum CostPolicy {
     /// `cursor:`: estimate from per-model `usd_per_microtoken_*` × token counts / 1e6 (0 when rates are unset).
     #[default]
     EstimateFromRates,
-    /// `openrouter:`: still record returned `usage.cost` in JSON `tx_count`; footnote uses rates × tokens.
+    /// `mini:openrouter/…`: still record returned `usage.cost` in JSON `tx_count`; footnote uses rates × tokens.
     UseReported,
-    /// `local:`: treat every completion as cost `0` for now.
+    /// `mini:local/…`: treat every completion as cost `0` for now.
     Zero,
 }
 
-/// Choose [`CostPolicy`] from a prefixed model id (`cursor:` / `openrouter:` / `local:`).
+/// Choose [`CostPolicy`] from a prefixed model id (`cursor:` / `prime:` / `mini:`).
 #[must_use]
 pub fn cost_policy_for_model(model: &str) -> CostPolicy {
     if crate::model_id::uses_local_backend(model) {
@@ -57,6 +57,7 @@ pub fn cost_policy_for_model(model: &str) -> CostPolicy {
     } else if crate::model_id::uses_openrouter_backend(model) {
         CostPolicy::UseReported
     } else {
+        // `cursor:` and `prime:` (including `prime:openrouter/…`) estimate from rates.
         CostPolicy::EstimateFromRates
     }
 }
@@ -79,7 +80,7 @@ pub struct RunTiming {
     pub(crate) unknown_tx_count: u32,
     /// Cursor-mode rates for estimating USD cost from token usage.
     pub(crate) token_cost_rates: crate::malvin_config_file::TokenCostRates,
-    /// Backend-specific cost filling policy (`cursor:` / `openrouter:` / `local:`).
+    /// Backend-specific cost filling policy (`cursor:` / `prime:` / `mini:`).
     pub(crate) cost_policy: CostPolicy,
     pub(crate) steps: u64,
     /// `None` until at least one input token count is observed.

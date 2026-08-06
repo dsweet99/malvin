@@ -8,15 +8,15 @@ use crate::local_llm::registry::require_known_local_slug;
 #[test]
 fn local_slug_requires_local_prefix() {
     assert_eq!(
-        local_slug("local:qwen35_9b_q4").expect("ok"),
+        local_slug("mini:local/qwen35_9b_q4").expect("ok"),
         "qwen35_9b_q4"
     );
-    assert!(local_slug("openrouter:x").is_err());
+    assert!(local_slug("mini:openrouter/x").is_err());
 }
 
 #[test]
 fn ensure_local_engine_rejects_non_local_ids() {
-    assert!(ensure_local_engine("openrouter:x", DownloadPolicy::Deny).is_err());
+    assert!(ensure_local_engine("mini:openrouter/x", DownloadPolicy::Deny).is_err());
 }
 
 #[test]

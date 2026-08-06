@@ -42,7 +42,7 @@ pub fn command_line() -> Option<&'static str> {
 
 pub const DEFAULT_CLI_MODEL: &str = "cursor:auto";
 
-/// Default `OpenRouter` provider slug when the model is `openrouter:auto`.
+/// Default `OpenRouter` provider slug when the model is `mini:openrouter/auto`.
 pub const MINI_DEFAULT_MODEL: &str = "nvidia/nemotron-3-ultra-550b-a55b:free";
 
 /// Default bounded attempts per ACP spawn or `session/prompt` (1s / 3s backoff between tries).

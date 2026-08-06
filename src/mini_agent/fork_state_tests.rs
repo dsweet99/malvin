@@ -51,3 +51,19 @@ fn workspace_snapshot_restore_rewinds_dirty_tree() {
     assert_eq!(read_bytes(root, "sub/nested.txt"), b"nested");
     assert!(!root.join("new.txt").exists());
 }
+
+#[test]
+fn capture_skips_node_modules_and_target_trees() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let root = tmp.path();
+    write_bytes(root, "src/main.rs", b"fn main() {}");
+    write_bytes(root, "node_modules/pkg/index.js", b"huge vendored junk");
+    write_bytes(root, "target/debug/malvin", b"binary blob");
+    write_bytes(root, "_logs/noise.txt", b"log noise");
+    let checkpoint = ForkState::capture(root, "h", "p");
+    assert!(checkpoint.workspace_files.contains_key("src/main.rs"));
+    assert!(!checkpoint
+        .workspace_files
+        .keys()
+        .any(|k| k.starts_with("node_modules/") || k.starts_with("target/") || k.starts_with("_logs/")));
+}

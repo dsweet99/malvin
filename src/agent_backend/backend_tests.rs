@@ -49,6 +49,11 @@ fn cursor_sdk_keeps_coder_session_for_process_life() {
         test_io(),
     ));
     assert!(sdk.keeps_coder_session_for_process_life());
+    let prime = AgentBackend::PrimeSdk(crate::prime_sdk::PrimeSdkClient::new(
+        "prime:openai/gpt-4o".into(),
+        test_io(),
+    ));
+    assert!(prime.keeps_coder_session_for_process_life());
 }
 
 #[test]
@@ -75,8 +80,8 @@ fn build_agent_backend_selects_mini_for_openrouter_model() {
 
 #[test]
 fn uses_mini_backend_for_local_prefix() {
-    assert!(crate::model_id::uses_mini_backend("local:qwen35_9b_q4"));
-    assert!(crate::model_id::uses_local_backend("local:nemotron3_nano_4b"));
+    assert!(crate::model_id::uses_mini_backend("mini:local/qwen35_9b_q4"));
+    assert!(crate::model_id::uses_local_backend("mini:local/nemotron3_nano_4b"));
 }
 
 #[test]

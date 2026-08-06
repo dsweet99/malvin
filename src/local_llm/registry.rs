@@ -1,12 +1,12 @@
-//! Static catalog of supported `local:` GGUF model ids.
+//! Static catalog of supported `mini:local/…` GGUF model ids.
 
 use crate::openrouter_transport::ModelListing;
 
-use crate::model_id::LOCAL_PREFIX;
+use crate::model_id::MINI_PREFIX;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LocalModelSpec {
-    /// Slug after `local:` (e.g. `qwen35_9b_q4`).
+    /// Slug after `mini:local/` (e.g. `qwen35_9b_q4`).
     pub slug: &'static str,
     /// Human-readable name for `malvin models`.
     pub display_name: &'static str,
@@ -58,14 +58,14 @@ pub fn require_known_local_slug(slug: &str) -> Result<&'static LocalModelSpec, S
     lookup_local_model(slug).ok_or_else(|| {
         let known = LOCAL_MODELS
             .iter()
-            .map(|m| format!("{LOCAL_PREFIX}{}", m.slug))
+            .map(|m| format!("{MINI_PREFIX}local/{}", m.slug))
             .collect::<Vec<_>>()
             .join(", ");
-        format!("unknown local model `{LOCAL_PREFIX}{slug}`; known: {known}")
+        format!("unknown local model `{MINI_PREFIX}local/{slug}`; known: {known}")
     })
 }
 
-/// True when `local:` models can run (Apple Silicon Metal). Used to omit them from listings.
+/// True when `mini:local/…` models can run (Apple Silicon Metal). Used to omit them from listings.
 #[must_use]
 pub const fn local_backend_supported() -> bool {
     crate::malvin_llama::metal_backend_supported()
@@ -119,7 +119,7 @@ mod tests {
         } else {
             assert!(
                 rows.is_empty(),
-                "non-Metal hosts must omit local: listings"
+                "non-Metal hosts must omit mini:local listings"
             );
         }
     }

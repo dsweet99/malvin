@@ -10,7 +10,7 @@ pub struct InnerEngine;
 impl InnerEngine {
     pub fn load(_gguf_path: &Path, _n_ctx: u32) -> Result<Self, String> {
         Err(
-            "local: models require Apple Silicon macOS with Metal (llama.cpp) in this malvin version"
+            "mini:local/ models require Apple Silicon macOS with Metal (llama.cpp) in this malvin version"
                 .into(),
         )
     }
@@ -18,7 +18,7 @@ impl InnerEngine {
     // Method form matches Metal `InnerEngine::complete`; stub has no instance state.
     #[allow(clippy::unused_self)]
     pub fn complete(&self, _request: &CompleteRequest<'_>) -> Result<String, String> {
-        Err("local: models require Apple Silicon macOS with Metal".into())
+        Err("mini:local/ models require Apple Silicon macOS with Metal".into())
     }
 }
 

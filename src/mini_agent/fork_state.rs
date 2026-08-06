@@ -63,8 +63,29 @@ pub fn workspace_manifest_hash(cwd: &Path) -> String {
     format!("dir:{:x}", hasher.finish())
 }
 
+/// Directories excluded from workspace fork snapshots.
+///
+/// Gate retries only need a rewind of agent-edited source. Walking dependency /
+/// build trees (especially `node_modules` / `target`) can hang Mini before the
+/// first HTTP turn and blow memory in repos that vendor JS bridges.
 fn skip_dir_name(name: &str) -> bool {
-    name == ".git"
+    matches!(
+        name,
+        ".git"
+            | "node_modules"
+            | "target"
+            | "dist"
+            | "build"
+            | "__pycache__"
+            | ".pytest_cache"
+            | ".ruff_cache"
+            | ".mypy_cache"
+            | ".tox"
+            | ".venv"
+            | "venv"
+            | "_logs"
+            | "_logs-prime"
+    )
 }
 
 fn capture_workspace_files(cwd: &Path) -> BTreeMap<String, Vec<u8>> {

@@ -81,7 +81,7 @@ fn mini_new_mock_skips_openrouter_init() {
 fn ensure_authenticated_skips_api_key_for_local_models() {
     let client = MiniAgentClient::new_mock(
         MiniLoopConfig {
-            model: "local:qwen35_9b_q4".into(),
+            model: "mini:local/qwen35_9b_q4".into(),
             max_http_turns: 4,
             max_bash_execs: 128,
             max_http_retries: 1,

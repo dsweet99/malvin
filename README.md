@@ -54,5 +54,6 @@ Maybe `overnight_logs_alerter.md` tells malvin to scan your prod logs and report
 
 # EXPERIMENTAL - USE AT YOUR OWN RISK
 
-- openrouter: models
-- local: models
+- prime: models
+- mini:openrouter/… models
+- mini:local/… models

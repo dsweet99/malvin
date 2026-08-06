@@ -1,4 +1,4 @@
-//! Free functions for [`super::backend::AgentBackend`] operations kept out of the enum impl for kiss limits.
+//! Free functions for [`super::backend::AgentBackend`] operations.
 
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -7,16 +7,13 @@ use crate::acp::AgentError;
 
 use super::backend::AgentBackend;
 
-/// Ensure a coder session is open for the next agent turn.
-///
-/// Cursor SDK: restart the Node bridge if it has been alive at least 10 minutes.
-/// ACP/Mini: begin only when no session is open.
 pub async fn agent_backend_ensure_coder_session(
     backend: &mut AgentBackend,
     cwd: &Path,
 ) -> Result<(), AgentError> {
     match backend {
         AgentBackend::CursorSdk(c) => c.ensure_coder_session(cwd).await,
+        AgentBackend::PrimeSdk(c) => c.ensure_coder_session(cwd).await,
         AgentBackend::Acp(c) => {
             if c.has_open_coder_session() {
                 Ok(())
@@ -41,6 +38,7 @@ pub fn agent_backend_set_run_timing(
     match backend {
         AgentBackend::Acp(c) => c.set_run_timing(timing),
         AgentBackend::CursorSdk(c) => c.set_run_timing(timing),
+        AgentBackend::PrimeSdk(c) => c.set_run_timing(timing),
         AgentBackend::Mini(c) => c.timing = timing,
     }
 }
@@ -52,6 +50,7 @@ pub fn agent_backend_attach_run_timing_for_session(
     match backend {
         AgentBackend::Acp(c) => c.attach_run_timing_for_session(),
         AgentBackend::CursorSdk(c) => c.attach_run_timing_for_session(),
+        AgentBackend::PrimeSdk(c) => c.attach_run_timing_for_session(),
         AgentBackend::Mini(c) => {
             let policy = crate::run_timing::cost_policy_for_model(&c.config.model);
             crate::run_timing::attach_new_run_timing_with_cost_policy(
@@ -63,7 +62,6 @@ pub fn agent_backend_attach_run_timing_for_session(
     }
 }
 
-/// Returns existing run timing or installs a new wall clock when none is active.
 #[must_use]
 pub fn agent_backend_ensure_run_timing_for_session(
     backend: &mut AgentBackend,
@@ -92,6 +90,7 @@ pub fn agent_backend_timing(
     match backend {
         AgentBackend::Acp(c) => c.timing.as_ref(),
         AgentBackend::CursorSdk(c) => c.timing.as_ref(),
+        AgentBackend::PrimeSdk(c) => c.timing.as_ref(),
         AgentBackend::Mini(c) => c.timing.as_ref(),
     }
 }

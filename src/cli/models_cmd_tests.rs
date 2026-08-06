@@ -107,7 +107,7 @@ pub(crate) async fn run_mini_models_prints_openrouter_rows_and_footer() {
     run_mini_models().await.expect("mini models");
     let out = take_captured_stdout();
     drop(guards);
-    assert!(out.contains("openrouter:anthropic/claude-sonnet-4\tClaude Sonnet 4"));
+    assert!(out.contains("mini:openrouter/anthropic/claude-sonnet-4\tClaude Sonnet 4"));
     assert!(out.contains("Current:"));
 }
 
@@ -188,8 +188,8 @@ pub(crate) fn print_mini_models_formats_tab_separated_rows() {
         },
     ]);
     let out = take_captured_stdout();
-    assert!(out.contains("openrouter:a/b\tAB"));
-    assert!(out.contains("openrouter:c/d\tCD"));
+    assert!(out.contains("mini:openrouter/a/b\tAB"));
+    assert!(out.contains("mini:openrouter/c/d\tCD"));
 }
 
 #[test]

@@ -77,7 +77,7 @@ fn mini_live_do_echo() {
     let (root, output) = run_mini_live_in_workspace(&[
         "--do",
         "--model",
-        "openrouter:auto",
+        "mini:openrouter/auto",
         "--max-acp-retries",
         "1",
         "run echo hello in bash",
@@ -104,7 +104,7 @@ fn mini_live_inspire_run() {
     let (root, output) = run_mini_live_in_workspace(&[
         "inspire",
         "--model",
-        "openrouter:auto",
+        "mini:openrouter/auto",
         "--max-acp-retries",
         "1",
         "why is the sky blue?",
@@ -135,7 +135,7 @@ fn mini_live_models_listing() {
         String::from_utf8_lossy(&output.stderr)
     );
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("openrouter:anthropic/") || stdout.contains("openrouter:"));
+    assert!(stdout.contains("mini:openrouter/anthropic/") || stdout.contains("mini:openrouter/"));
     assert!(stdout.contains("Current:"));
 }
 

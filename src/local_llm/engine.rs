@@ -12,7 +12,7 @@ use crate::llm_transport::{
 
 use super::download::{ensure_model_cached, DownloadPolicy};
 use super::registry::{require_known_local_slug, LocalModelSpec};
-use crate::model_id::{parse_model_id, LOCAL_PREFIX, ModelBackend};
+use crate::model_id::{parse_model_id, MiniTransport, ModelBackend, MINI_PREFIX};
 
 const DEFAULT_MAX_TOKENS: i32 = 2048;
 
@@ -166,15 +166,15 @@ fn require_mem_limit_for_local(spec: &LocalModelSpec) -> Result<(), String> {
         return Ok(());
     }
     Err(format!(
-        "local model `{LOCAL_PREFIX}{}` needs mem_limit_gb >= {} (currently {configured}); set mem_limit_gb in ~/.malvin_home/config.toml",
+        "local model `{MINI_PREFIX}local/{}` needs mem_limit_gb >= {} (currently {configured}); set mem_limit_gb in ~/.malvin_home/config.toml",
         spec.slug, spec.min_mem_limit_gb
     ))
 }
 
 fn local_slug(model_id: &str) -> Result<String, String> {
     match parse_model_id(model_id) {
-        Ok(parsed) if parsed.backend == ModelBackend::Local => Ok(parsed.slug),
-        Ok(_) => Err(format!("expected `{LOCAL_PREFIX}<id>`, got `{model_id}`")),
+        Ok(parsed) if parsed.backend == ModelBackend::Mini(MiniTransport::Local) => Ok(parsed.slug),
+        Ok(_) => Err(format!("expected `{MINI_PREFIX}local/<id>`, got `{model_id}`")),
         Err(e) => Err(e),
     }
 }

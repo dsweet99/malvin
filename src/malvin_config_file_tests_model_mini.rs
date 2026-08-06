@@ -24,7 +24,7 @@ model = "gpt-5"
 "#;
     let err = parse_agent_config(text).expect_err("bare");
     assert!(
-        err.contains("cursor:") || err.contains("openrouter:") || err == UNPREFIXED_MODEL_MESSAGE,
+        err.contains("cursor:") || err.contains("mini:") || err == UNPREFIXED_MODEL_MESSAGE,
         "{err}"
     );
 }

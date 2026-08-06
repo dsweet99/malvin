@@ -114,6 +114,7 @@ mod acp_test_mock_js;
 pub use acp_test_mock_js::acp_mock_js;
 pub mod agent_backend;
 pub mod cursor_sdk;
+pub mod prime_sdk;
 pub mod acp;
 pub mod ansi_strip;
 pub use acp::{

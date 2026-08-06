@@ -111,7 +111,7 @@ pub fn mini_loop_config(max_http_turns: u32, max_http_retries: u32) -> MiniLoopC
 #[must_use]
 pub fn shared_opts(mini: bool) -> SharedOpts {
     let model = if mini {
-        "openrouter:auto".into()
+        "mini:openrouter/auto".into()
     } else {
         "cursor:auto".into()
     };

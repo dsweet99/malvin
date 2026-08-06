@@ -56,6 +56,7 @@ fn router_client_uses_kpop_style_agent_io_not_do_style() {
     let io = match backend {
         crate::agent_backend::AgentBackend::Acp(c) => c.io,
         crate::agent_backend::AgentBackend::CursorSdk(c) => c.io,
+        crate::agent_backend::AgentBackend::PrimeSdk(c) => c.io,
         crate::agent_backend::AgentBackend::Mini(c) => c.io,
     };
     assert!(
@@ -76,7 +77,7 @@ fn openrouter_router_client_is_mini_with_styled_not_raw_output() {
         Some("sk-test-openrouter-router-io"),
         || {
             let shared = SharedOpts {
-                model: "openrouter:org/model".into(),
+                model: "mini:openrouter/org/model".into(),
                 no_force: true,
                 no_tenacious: false,
                 gates: false,
@@ -113,8 +114,9 @@ fn openrouter_router_client_is_mini_with_styled_not_raw_output() {
                     assert!(c.io.emit_stdout_markdown);
                 }
                 crate::agent_backend::AgentBackend::Acp(_)
-                | crate::agent_backend::AgentBackend::CursorSdk(_) => {
-                    panic!("openrouter: model must select Mini backend");
+                | crate::agent_backend::AgentBackend::CursorSdk(_)
+                | crate::agent_backend::AgentBackend::PrimeSdk(_) => {
+                    panic!("mini:openrouter model must select Mini backend");
                 }
             }
         },

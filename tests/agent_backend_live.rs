@@ -50,7 +50,7 @@ async fn live_single_attempt_prompt(backend: &mut AgentBackend, cwd: &std::path:
 
 fn openrouter_shared_opts() -> SharedOpts {
     SharedOpts {
-        model: "openrouter:auto".into(),
+        model: "mini:openrouter/auto".into(),
         no_force: false,
         no_tenacious: true,
         gates: false,
@@ -73,7 +73,7 @@ fn openrouter_shared_opts() -> SharedOpts {
 
 fn local_shared_opts() -> SharedOpts {
     let mut o = openrouter_shared_opts();
-    o.model = "local:nemotron3_nano_4b".into();
+    o.model = "mini:local/nemotron3_nano_4b".into();
     o
 }
 

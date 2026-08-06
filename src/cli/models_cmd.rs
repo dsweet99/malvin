@@ -1,7 +1,7 @@
-//! `malvin models` — list Cursor, `OpenRouter`, and `local:` models with prefixes.
+//! `malvin models` — list Cursor, Prime, Mini `OpenRouter`, and Mini local models with prefixes.
 
 use crate::local_llm::{download_local_model, local_model_listings};
-use crate::model_id::{LOCAL_PREFIX, OPENROUTER_PREFIX};
+use crate::model_id::MINI_PREFIX;
 use crate::output::{MALVIN_WHO, print_stdout_line};
 use clap::Args;
 
@@ -13,7 +13,7 @@ use models_cmd_cursor::print_cursor_models;
 
 #[derive(Args, Debug, Clone, Default)]
 pub struct ModelsArgs {
-    /// Optional words: `download local:<id>` fetches a model into `~/.malvin_home/model_cache`.
+    /// Optional words: `download mini:local/<id>` fetches a model into `~/.malvin_home/model_cache`.
     #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
     pub words: Vec<String>,
 }
@@ -29,19 +29,27 @@ fn print_current_footer(current_model: &str) {
     print_stdout_line(MALVIN_WHO, &format!("Current: {current_model}"));
 }
 
-/// Print Cursor, `OpenRouter`, and `local:` models with prefixes and a `Current:` footer.
+/// Print Cursor, Prime, Mini `OpenRouter`, and Mini local models with prefixes and a `Current:` footer.
 ///
-/// When `words` is `download <local:id>`, downloads that model into the cache instead.
+/// When `words` is `download mini:local/<id>`, downloads that model into the cache instead.
 pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
     if !args.words.is_empty() {
         return run_models_action(&args.words);
     }
     print_cursor_models()?;
-    // OpenRouter listing is best-effort when the API key / network is unavailable.
+    match crate::prime_sdk::list_prime_models_sync() {
+        Ok(models) => print_prime_models(&models),
+        Err(e) => {
+            print_stdout_line(MALVIN_WHO, &format!("(prime models unavailable: {e})"));
+        }
+    }
     match list_openrouter_models_sync() {
         Ok(models) => print_openrouter_models(&models),
         Err(e) => {
-            print_stdout_line(MALVIN_WHO, &format!("(openrouter models unavailable: {e})"));
+            print_stdout_line(
+                MALVIN_WHO,
+                &format!("(mini:openrouter models unavailable: {e})"),
+            );
         }
     }
     print_local_models();
@@ -60,10 +68,10 @@ fn run_models_action(words: &[String]) -> Result<(), String> {
             Ok(())
         }
         [action] if action == "download" => Err(
-            "usage: malvin models download local:<id> (e.g. local:qwen35_9b_q4)".into(),
+            format!("usage: malvin models download {MINI_PREFIX}local/<id> (e.g. {MINI_PREFIX}local/qwen35_9b_q4)"),
         ),
         _ => Err(format!(
-            "unknown models action {words:?}; try `malvin models` or `malvin models download local:<id>`"
+            "unknown models action {words:?}; try `malvin models` or `malvin models download {MINI_PREFIX}local/<id>`"
         )),
     }
 }
@@ -94,11 +102,20 @@ pub async fn run_mini_models() -> Result<(), String> {
     Ok(())
 }
 
+fn print_prime_models(models: &[crate::prime_sdk::PrimeModelListing]) {
+    for model in models {
+        print_stdout_line(
+            MALVIN_WHO,
+            &format!("prime:{}\t{}", model.id, model.name),
+        );
+    }
+}
+
 fn print_openrouter_models(models: &[crate::openrouter_transport::ModelListing]) {
     for model in models {
         print_stdout_line(
             MALVIN_WHO,
-            &format!("{OPENROUTER_PREFIX}{}\t{}", model.id, model.name),
+            &format!("{MINI_PREFIX}openrouter/{}\t{}", model.id, model.name),
         );
     }
 }
@@ -107,7 +124,7 @@ fn print_local_models() {
     for model in local_model_listings() {
         print_stdout_line(
             MALVIN_WHO,
-            &format!("{LOCAL_PREFIX}{}\t{}", model.id, model.name),
+            &format!("{MINI_PREFIX}local/{}\t{}", model.id, model.name),
         );
     }
 }

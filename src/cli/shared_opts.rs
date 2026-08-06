@@ -17,7 +17,7 @@ pub struct GlobalOpts {
 #[derive(Args, Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct SharedOpts {
-    /// Model id (`cursor:`, `openrouter:`, or `local:`).
+    /// Model id (`cursor:`, `prime:`, or `mini:`).
     #[arg(long, global = true, default_value = DEFAULT_CLI_MODEL)]
     pub model: String,
     /// Don't force Cursor SDK tool auto-run (fails fast on `cursor:`; SDK has no interactive approval).
@@ -47,25 +47,25 @@ pub struct SharedOpts {
     /// Deprecated alias for `--mini-max-http-turns`.
     #[arg(long = "mini-max-bash-turns", global = true, default_value_t = 32, hide = true)]
     pub mini_max_bash_turns: u32,
-    /// Max Investigate-phase HTTP turns per `run_coder_prompt` for `openrouter:` / `local:` models [default: 32].
+    /// Max Investigate-phase HTTP turns per `run_coder_prompt` for `mini:` models [default: 32].
     #[arg(long = "mini-max-http-turns", global = true, default_value_t = 32, hide = true)]
     pub mini_max_http_turns: u32,
-    /// Max bash subprocess executions per `run_coder_prompt` for `openrouter:` / `local:` models [default: 128].
+    /// Max bash subprocess executions per `run_coder_prompt` for `mini:` models [default: 128].
     #[arg(long = "mini-max-bash-execs", global = true, default_value_t = 128, hide = true)]
     pub mini_max_bash_execs: u32,
-    /// Max transient HTTP retries per completion for `openrouter:` / `local:` models [default: 0].
+    /// Max transient HTTP retries per completion for `mini:` models [default: 0].
     #[arg(long = "mini-max-http-retries", global = true, default_value_t = 0, hide = true)]
     pub mini_max_http_retries: u32,
-    /// Max transport-layer retries per HTTP completion for `openrouter:` / `local:` models (from config when unset).
+    /// Max transport-layer retries per HTTP completion for `mini:` models (from config when unset).
     #[arg(skip)]
     pub mini_max_transport_retries: u32,
-    /// Max whole-loop gate retries after failure for `openrouter:` / `local:` models [default: 0].
+    /// Max whole-loop gate retries after failure for `mini:` models [default: 0].
     #[arg(long = "mini-max-gate-retries", global = true, default_value_t = 0, hide = true)]
     pub mini_max_gate_retries: u32,
-    /// Max context-recovery shrink passes per overflow for `openrouter:` / `local:` models [default: 0].
+    /// Max context-recovery shrink passes per overflow for `mini:` models [default: 0].
     #[arg(long = "mini-max-shrink-passes", global = true, default_value_t = 0, hide = true)]
     pub mini_max_shrink_passes: u32,
-    /// Do not auto-download `local:` models on first use (fail if missing from cache).
+    /// Do not auto-download `mini:local/…` models on first use (fail if missing from cache).
     #[arg(long = "no-download", global = true, default_value_t = false)]
     pub no_download: bool,
     /// Print built-in documentation (`malvin --doc` or `malvin <COMMAND> --doc`) and exit.

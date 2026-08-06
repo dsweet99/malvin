@@ -1,4 +1,4 @@
-//! In-process llama.cpp completions for malvin `local:` models (Metal on Apple Silicon).
+//! In-process llama.cpp completions for malvin `mini:local/…` models (Metal on Apple Silicon).
 #![allow(clippy::multiple_crate_versions)]
 
 mod chat;
@@ -18,7 +18,7 @@ pub use engine::{
     DEFAULT_CONTEXT_SIZE,
 };
 
-/// True when this build can run `local:` models via Apple Silicon Metal llama.cpp.
+/// True when this build can run `mini:local/…` models via Apple Silicon Metal llama.cpp.
 ///
 /// Matches the compile gate used to select the Metal engine versus the stub: Metal is
 /// the only supported local GPU backend in this malvin version.

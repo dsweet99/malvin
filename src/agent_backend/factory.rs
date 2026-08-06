@@ -36,8 +36,14 @@ pub fn build_agent_backend_with_tee(
 ) -> Result<AgentBackend, String> {
     if crate::model_id::uses_mini_backend(&shared.model) {
         Ok(AgentBackend::Mini(new_mini_client(shared, workflow, tee)?))
+    } else if crate::model_id::uses_prime_backend(&shared.model) {
+        Ok(AgentBackend::PrimeSdk(new_prime_sdk_client(
+            shared,
+            agent_io_options(shared, workflow, tee),
+        )))
     } else if cursor_acp_test_mock_override() {
         // Integration tests still install ACP JSON-RPC mocks via MALVIN_AGENT_ACP_BIN.
+        // ACP override must not steal `prime:` (handled above).
         Ok(AgentBackend::Acp(new_agent_client(
             shared,
             agent_io_options(shared, workflow, tee),
@@ -58,9 +64,18 @@ fn new_cursor_sdk_client(
     shared: &SharedOpts,
     io: crate::acp::AgentIoOptions,
 ) -> crate::cursor_sdk::CursorSdkClient {
-    // Keep the prefixed model id (`cursor:auto`) so COST rate lookup matches
-    // `[agent.cursor.auto]` keys. Bridge spawn applies `provider_slug` separately.
     crate::cursor_sdk::CursorSdkClient::with_max_retries(
+        shared.model.clone(),
+        io,
+        shared.max_acp_retries,
+    )
+}
+
+fn new_prime_sdk_client(
+    shared: &SharedOpts,
+    io: crate::acp::AgentIoOptions,
+) -> crate::prime_sdk::PrimeSdkClient {
+    crate::prime_sdk::PrimeSdkClient::with_max_retries(
         shared.model.clone(),
         io,
         shared.max_acp_retries,
@@ -129,6 +144,10 @@ fn new_mini_client(
 }
 
 #[cfg(test)]
+#[path = "factory_prime_tests.rs"]
+mod factory_prime_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::agent_backend::test_support::{install_openrouter_test_key, shared_opts};
@@ -165,11 +184,12 @@ mod tests {
                     .token_cost_rates_for("cursor:auto");
                 assert_eq!(rates, expected);
             }
-            AgentBackend::Acp(_) | AgentBackend::Mini(_) => {
+            AgentBackend::Acp(_) | AgentBackend::Mini(_) | AgentBackend::PrimeSdk(_) => {
                 panic!("expected CursorSdk backend")
             }
         }
     }
+
 
     #[test]
     fn build_agent_backend_with_tee_selects_mini_when_flag_set() {

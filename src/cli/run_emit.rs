@@ -138,8 +138,8 @@ mod tests {
             "Model: cursor:composer-2"
         );
         assert_eq!(
-            format_model_mini_line("openrouter:openai/gpt-4o"),
-            "Model: openrouter:openai/gpt-4o"
+            format_model_mini_line("mini:openrouter/openai/gpt-4o"),
+            "Model: mini:openrouter/openai/gpt-4o"
         );
     }
 
@@ -149,12 +149,12 @@ mod tests {
         let run_dir = tmp.path().join("run");
         std::fs::create_dir_all(&run_dir).expect("mkdir");
         std::fs::write(run_dir.join("command.log"), "existing\n").expect("seed");
-        let line = format_model_mini_line("openrouter:auto");
+        let line = format_model_mini_line("mini:openrouter/auto");
         append_command_log_line(&run_dir, false, &line).expect("emit");
         let text = std::fs::read_to_string(run_dir.join("command.log")).expect("read");
         let delim = format_who_tag_delim(WHO_U);
         assert!(text.contains("existing"));
-        assert!(text.contains(&format!(" {delim}Model: openrouter:auto")));
+        assert!(text.contains(&format!(" {delim}Model: mini:openrouter/auto")));
     }
 
     #[test]
@@ -196,7 +196,7 @@ mod tests {
             RunStartupEmitOpts {
                 tee_stdout: false,
                 host_resources: false,
-                model: "openrouter:auto".into(),
+                model: "mini:openrouter/auto".into(),
             },
             "code",
         )
@@ -204,6 +204,6 @@ mod tests {
         let log = std::fs::read_to_string(artifacts.run_dir.join("command.log")).expect("log");
         assert!(log.contains("Command:"));
         assert!(!log.contains("Memory:"));
-        assert!(log.contains("Model: openrouter:auto"));
+        assert!(log.contains("Model: mini:openrouter/auto"));
     }
 }

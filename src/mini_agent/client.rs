@@ -1,4 +1,4 @@
-//! Malvin-side mini agent client (`OpenRouter` / `local:` + bash loop).
+//! Malvin-side mini agent client (`mini:openrouter/…` / `mini:local/…` + bash loop).
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -77,7 +77,7 @@ impl MiniAgentClient {
 
     /// # Errors
     ///
-    /// Returns [`AuthError`] when `OPENROUTER_API_KEY` is missing for `openrouter:` models.
+    /// Returns [`AuthError`] when `OPENROUTER_API_KEY` is missing for `mini:openrouter/…` models.
     pub fn ensure_authenticated(&self) -> Result<(), AuthError> {
         match &self.llm {
             LlmBackend::Transport(crate::llm_transport::LlmTransport::Local(_))
@@ -87,7 +87,7 @@ impl MiniAgentClient {
                     Ok(())
                 } else {
                     Err(AuthError(
-                        "OPENROUTER_API_KEY is not set (required for openrouter: models)".into(),
+                        "OPENROUTER_API_KEY is not set (required for mini:openrouter/ models)".into(),
                     ))
                 }
             }

@@ -22,13 +22,13 @@ fn local_listings_omitted_without_metal() {
     if crate::local_llm::local_backend_supported() {
         assert!(
             !rows.is_empty(),
-            "Metal builds should list local: catalog entries"
+            "Metal builds should list mini:local catalog entries"
         );
         assert!(rows.iter().all(|m| !m.id.is_empty()));
     } else {
         assert!(
             rows.is_empty(),
-            "non-Metal builds must omit local: from models listing"
+            "non-Metal builds must omit mini:local from models listing"
         );
     }
 }

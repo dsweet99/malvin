@@ -34,7 +34,7 @@ async fn transport_live_openrouter_ensure_ready_and_complete() {
     }
     require_openrouter_key_when_gate_set("MALVIN_LIVE_TRANSPORT");
     let cfg = malvin::openrouter_transport::OpenRouterConfig::from_env(
-        malvin::mini_agent::resolve_mini_model("openrouter:auto"),
+        malvin::mini_agent::resolve_mini_model("mini:openrouter/auto"),
     )
     .expect("openrouter config");
     let transport = malvin::llm_transport::OpenRouterTransport::new(cfg).expect("transport");
@@ -55,7 +55,7 @@ async fn transport_live_local_ensure_ready_and_complete() {
         return;
     }
     let engine = malvin::local_llm::ensure_local_engine(
-        "local:nemotron3_nano_4b",
+        "mini:local/nemotron3_nano_4b",
         malvin::local_llm::DownloadPolicy::Allow,
     )
     .expect("ensure_local_engine");
