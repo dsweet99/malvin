@@ -8,9 +8,14 @@ use super::session::{BridgeSession, BridgeSpawnArgs};
 pub(super) async fn spawn_bridge(args: BridgeSpawnArgs<'_>) -> Result<BridgeSession, AgentError> {
     crate::malvin_sandbox::assert_dead_before_next_spawn().map_err(AgentError)?;
     let model = args.model.to_string();
+    let resume_id = args.resume_agent_id.clone();
     let session = open_bridge_session(args)?;
     super::session_io::start_mem_watch(&session);
-    super::session_io::send_create(&session, &session.work_dir, &model).await?;
+    if let Some(agent_id) = resume_id {
+        super::session_io::send_resume(&session, &agent_id, &session.work_dir, &model).await?;
+    } else {
+        super::session_io::send_create(&session, &session.work_dir, &model).await?;
+    }
     Ok(session)
 }
 
@@ -79,6 +84,7 @@ fn assemble_session(
         timing: args.timing,
         run_dir: args.run_dir,
         started_at: std::time::Instant::now(),
+        agent_id: Mutex::new(None),
         stdout_coalesce: Mutex::new(crate::acp::TraceChunkCoalescer::default()),
         tool_starts: Mutex::new(std::collections::HashMap::new()),
     }

@@ -23,7 +23,8 @@ pub(crate) async fn backoff_after_agent_failure(
         last_error,
         attempt,
         max_attempts,
-        label: "agent acp",
+        // Shared by Cursor SDK and ACP backends; do not say "agent acp".
+        label: "agent",
     })
     .await
 }

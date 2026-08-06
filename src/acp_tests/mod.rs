@@ -18,6 +18,8 @@ pub(crate) mod reader_tests_reader_loop;
 pub(crate) mod reader_tests_prompt_round_health;
 #[path = "../acp/reader_tests_retry_policy.rs"]
 pub(crate) mod reader_tests_retry_policy;
+#[path = "../acp/reader_tests_retry_teardown.rs"]
+pub(crate) mod reader_tests_retry_teardown;
 #[path = "../acp/reader_tests_retry_policy_iterable.rs"]
 pub(crate) mod reader_tests_retry_policy_iterable;
 #[path = "../acp/reader_tests_retry_policy_missing_content.rs"]

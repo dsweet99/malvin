@@ -14,6 +14,16 @@ pub enum BridgeRequest {
         #[serde(rename = "noForcePolicy", skip_serializing_if = "Option::is_none")]
         no_force_policy: Option<&'static str>,
     },
+    Resume {
+        #[serde(rename = "agentId")]
+        agent_id: String,
+        cwd: String,
+        model: String,
+        #[serde(rename = "apiKey", skip_serializing_if = "Option::is_none")]
+        api_key: Option<String>,
+        #[serde(rename = "noForcePolicy", skip_serializing_if = "Option::is_none")]
+        no_force_policy: Option<&'static str>,
+    },
     Send {
         prompt: String,
         #[serde(rename = "forceStuck", skip_serializing_if = "Option::is_none")]

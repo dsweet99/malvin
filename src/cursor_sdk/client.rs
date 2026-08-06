@@ -15,6 +15,8 @@ pub struct CursorSdkClient {
     pub(crate) session: Option<BridgeSession>,
     /// Resolved cwd from the last successful `begin_coder_session` (kept after teardown for retry).
     pub(crate) session_cwd: Option<PathBuf>,
+    /// Last Cursor SDK agent id (kept across bridge restarts for `Agent.resume`).
+    pub(crate) last_agent_id: Option<String>,
     pub(crate) timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
 }
 
@@ -41,6 +43,7 @@ impl CursorSdkClient {
             },
             session: None,
             session_cwd: None,
+            last_agent_id: None,
             timing: None,
         }
     }

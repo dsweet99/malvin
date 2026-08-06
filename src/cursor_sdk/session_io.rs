@@ -24,6 +24,24 @@ pub(super) async fn send_create(
     wait_for_ok(session).await
 }
 
+pub(super) async fn send_resume(
+    session: &BridgeSession,
+    agent_id: &str,
+    cwd: &std::path::Path,
+    model: &str,
+) -> Result<(), AgentError> {
+    let no_force = (!session.io.force).then_some("fail_fast");
+    let req = BridgeRequest::Resume {
+        agent_id: agent_id.to_string(),
+        cwd: cwd.display().to_string(),
+        model: model.to_string(),
+        api_key: effective_sdk_api_key(),
+        no_force_policy: no_force,
+    };
+    write_request(session, &req).await?;
+    wait_for_ok(session).await
+}
+
 pub(super) async fn write_request(
     session: &BridgeSession,
     req: &BridgeRequest,
@@ -60,7 +78,15 @@ pub(super) async fn read_event(session: &BridgeSession) -> Result<BridgeEvent, A
 pub(super) async fn wait_for_ok(session: &BridgeSession) -> Result<(), AgentError> {
     loop {
         match read_event(session).await? {
-            BridgeEvent::Ok { .. } => return Ok(()),
+            BridgeEvent::Ok { agent_id } => {
+                if let Some(id) = agent_id {
+                    *session
+                        .agent_id
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(id);
+                }
+                return Ok(());
+            }
             BridgeEvent::Fatal { message, .. } => return Err(AgentError(message)),
             _ => {}
         }

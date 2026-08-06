@@ -1,12 +1,12 @@
 //! Session begin / end for [`super::CursorSdkClient`].
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::acp::{backoff_after_agent_failure, retries_noun, AgentError, AuthError};
 
 use super::auth::ensure_sdk_authenticated;
 use super::client::CursorSdkClient;
-use super::session::{BridgeSession, SDK_BRIDGE_MAX_AGE};
+use super::session::{BridgeSession, BridgeSpawnArgs, SDK_BRIDGE_MAX_AGE};
 
 impl CursorSdkClient {
     /// # Errors
@@ -54,23 +54,13 @@ impl CursorSdkClient {
         let mut attempts_used = 0_u32;
         for attempt in 1..=max_attempts {
             attempts_used = attempt;
-            match BridgeSession::spawn(super::session::BridgeSpawnArgs {
-                cwd: &cwd,
-                model: &model,
-                io: self.io,
-                run_dir: self.prompts_log_run_dir.clone(),
-                timing: self.timing.clone(),
-            })
-            .await
-            {
+            match BridgeSession::spawn(self.bridge_spawn_args(&cwd, &model)).await {
                 Ok(s) => {
-                    self.session = Some(s);
-                    self.session_cwd = Some(cwd);
-                    crate::herdr::notify_reclaim();
+                    self.adopt_spawned_session(s, cwd);
                     return Ok(());
                 }
                 Err(e) => {
-                    last_error = e.0;
+                    last_error = self.note_spawn_failure(e);
                     if backoff_after_agent_failure(
                         self.timing.as_ref(),
                         &last_error,
@@ -91,11 +81,50 @@ impl CursorSdkClient {
         )))
     }
 
+    fn bridge_spawn_args<'a>(&'a self, cwd: &'a Path, model: &'a str) -> BridgeSpawnArgs<'a> {
+        BridgeSpawnArgs {
+            cwd,
+            model,
+            io: self.io,
+            run_dir: self.prompts_log_run_dir.clone(),
+            timing: self.timing.clone(),
+            resume_agent_id: self.last_agent_id.clone(),
+        }
+    }
+
+    fn adopt_spawned_session(&mut self, s: BridgeSession, cwd: PathBuf) {
+        self.remember_agent_id_from(&s);
+        self.session = Some(s);
+        self.session_cwd = Some(cwd);
+        crate::herdr::notify_reclaim();
+    }
+
+    fn note_spawn_failure(&mut self, err: AgentError) -> String {
+        let mut last_error = err.0;
+        // Resume can fail after long gaps; fall back to create on next try.
+        if self.last_agent_id.take().is_some() {
+            last_error = format!("{last_error} (resume failed; will create)");
+        }
+        last_error
+    }
+
+    fn remember_agent_id_from(&mut self, session: &BridgeSession) {
+        let id = session
+            .agent_id
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone();
+        if let Some(id) = id {
+            self.last_agent_id = Some(id);
+        }
+    }
+
     /// # Errors
     ///
     /// Returns [`AgentError`] when shutdown fails.
     pub async fn end_coder_session(&mut self) -> Result<(), AgentError> {
         if let Some(s) = self.session.take() {
+            self.remember_agent_id_from(&s);
             s.shutdown().await?;
         }
         Ok(())

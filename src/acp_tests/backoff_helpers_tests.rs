@@ -14,7 +14,7 @@ fn backoff_does_not_log_when_retry_policy_stops_immediately() {
         assert!(stop);
     });
     assert!(
-        !stderr.contains("agent acp attempt"),
+        !stderr.contains("agent attempt"),
         "exhausted retries must not log at backoff; stderr={stderr:?}"
     );
 }
@@ -57,7 +57,7 @@ fn backoff_logs_before_sleep_when_retry_will_occur() {
         assert!(!stop);
     });
     assert!(
-        stderr.contains("agent acp attempt 1 failed"),
+        stderr.contains("agent attempt 1 failed"),
         "retriable failure should log once before sleep; stderr={stderr:?}"
     );
 }

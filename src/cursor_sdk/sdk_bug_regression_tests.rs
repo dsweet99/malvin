@@ -29,6 +29,36 @@ async fn failed_create_drop_clears_sandbox_for_next_spawn() {
     bug_clear_env();
 }
 
+/// Idle Authentication (stale SDK token) tears down; retry resumes and succeeds.
+#[tokio::test]
+async fn stale_authentication_teardown_resume_retries() {
+    let _guard = crate::test_utils::test_env_lock();
+    let tmp = bug_prepare();
+    let mut client = bug_client(tmp.path(), 3);
+    client.begin_coder_session(tmp.path()).await.expect("begin");
+    assert_eq!(client.last_agent_id.as_deref(), Some("mock-agent"));
+    let log = tmp.path().join("prompts.log");
+    client
+        .run_coder_prompt(
+            "AUTH_ONCE please",
+            &log,
+            "coder",
+            CoderPromptOptions {
+                llm_phase: Some(crate::run_timing::TimingPhase::Implement),
+                ..CoderPromptOptions::default()
+            },
+        )
+        .await
+        .expect("retry after stale auth resume");
+    assert_eq!(
+        client.last_coder_prompt_agent_response().as_deref(),
+        Some("mock reply")
+    );
+    assert!(client.has_open_coder_session());
+    client.end_coder_session().await.expect("end");
+    bug_clear_env();
+}
+
 /// Bug 3: stdout-closed failure tears down; retry can respawn.
 #[tokio::test]
 async fn bridge_stdout_closed_single_attempt_tears_down_session() {

@@ -15,6 +15,20 @@ fn encode_create_uses_camel_case_api_key() {
 }
 
 #[test]
+fn encode_resume_uses_agent_id() {
+    let line = encode_request(&BridgeRequest::Resume {
+        agent_id: "bc-123".into(),
+        cwd: "/tmp".into(),
+        model: "auto".into(),
+        api_key: Some("k".into()),
+        no_force_policy: None,
+    })
+    .expect("encode");
+    assert!(line.contains("\"op\":\"resume\""));
+    assert!(line.contains("\"agentId\":\"bc-123\""));
+}
+
+#[test]
 fn decode_run_done_and_fatal() {
     let done = decode_event(
         r#"{"event":"run_done","status":"finished","result":"hi","usage":{"inputTokens":1,"outputTokens":2}}"#,

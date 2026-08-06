@@ -38,6 +38,10 @@ fn kiss_cov_cursor_sdk_client_api() {
     let _ = stringify!(sdk_bridge_needs_restart);
     let _ = stringify!(begin_coder_session);
     let _ = stringify!(end_coder_session);
+    let _ = stringify!(bridge_spawn_args);
+    let _ = stringify!(adopt_spawned_session);
+    let _ = stringify!(note_spawn_failure);
+    let _ = stringify!(remember_agent_id_from);
     let _ = stringify!(SDK_BRIDGE_MAX_AGE);
     let _ = stringify!(client_ensure_tests);
     let _ = stringify!(cursor_sdk_ensure_reuses_fresh_bridge);
@@ -59,7 +63,13 @@ fn kiss_cov_cursor_sdk_protocol() {
     let _ = stringify!(BridgeRequest);
     let _ = stringify!(BridgeEvent);
     let _ = stringify!(Create);
+    let _ = stringify!(Resume);
     let _ = stringify!(Send);
+    let _ = stringify!(send_resume);
+    let _ = stringify!(resume_agent_id);
+    let _ = stringify!(last_agent_id);
+    let _ = stringify!(stale_authentication_teardown_resume_retries);
+    let _ = stringify!(agent_string_is_stale_cursor_sdk_auth);
     let _ = stringify!(Cancel);
     let _ = stringify!(Close);
     let _ = stringify!(Ok);

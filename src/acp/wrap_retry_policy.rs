@@ -5,4 +5,8 @@ mod inline {
     include!("retry_policy.rs");
 }
 
+#[path = "retry_teardown.rs"]
+mod retry_teardown;
+
 pub(crate) use inline::*;
+pub(crate) use retry_teardown::*;

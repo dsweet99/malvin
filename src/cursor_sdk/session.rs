@@ -41,6 +41,8 @@ pub struct BridgeSession {
     pub run_dir: Option<PathBuf>,
     /// When this bridge process was spawned (`Instant::now` at assemble).
     pub started_at: Instant,
+    /// Cursor SDK agent id from create/resume `ok` (for stale-auth resume).
+    pub agent_id: Mutex<Option<String>>,
     /// ACP-parity stdout coalescer for streamed assistant/thinking chunks.
     pub stdout_coalesce: Mutex<crate::acp::TraceChunkCoalescer>,
     /// toolCallId → start instant + summary (for done-line duration).
@@ -53,6 +55,8 @@ pub struct BridgeSpawnArgs<'a> {
     pub io: AgentIoOptions,
     pub run_dir: Option<PathBuf>,
     pub timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
+    /// When set, bridge uses `Agent.resume` instead of `Agent.create`.
+    pub resume_agent_id: Option<String>,
 }
 
 impl BridgeSession {
