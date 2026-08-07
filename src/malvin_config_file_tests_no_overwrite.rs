@@ -81,3 +81,32 @@ fn ensure_malvin_config_file_if_missing_is_noop_when_present() {
         assert_eq!(before, std::fs::read_to_string(&path).expect("read again"));
     });
 }
+
+#[test]
+fn ensure_malvin_config_file_if_missing_heals_empty_file() {
+    use super::ensure_malvin_config_file_if_missing;
+
+    with_isolated_home(|work| {
+        let path = malvin_config_path(work);
+        std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+        std::fs::write(&path, b"").expect("empty");
+        ensure_malvin_config_file_if_missing(work).expect("heal");
+        let text = std::fs::read_to_string(&path).expect("read");
+        assert!(!text.is_empty());
+        assert!(text.contains("mem_limit_gb"));
+    });
+}
+
+#[test]
+fn open_malvin_config_heals_empty_file() {
+    with_isolated_home(|work| {
+        let path = malvin_config_path(work);
+        std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+        std::fs::write(&path, b"").expect("empty");
+        let cfg = open_malvin_config(work).expect("open");
+        assert!(cfg.mem_limit_gb > 0);
+        let text = std::fs::read_to_string(&path).expect("read");
+        assert!(!text.is_empty());
+        assert!(text.contains("mem_limit_gb"));
+    });
+}

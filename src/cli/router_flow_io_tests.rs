@@ -21,6 +21,14 @@ fn cli_accepts_global_gates_option() {
 }
 
 #[test]
+fn cli_accepts_short_gates_option() {
+    use crate::cli::Cli;
+
+    let cli = Cli::try_parse_from(["malvin", "-g", "route this task"]).expect("parse");
+    assert!(cli.shared.gates);
+}
+
+#[test]
 fn router_client_uses_kpop_style_agent_io_not_do_style() {
     use crate::agent_backend::build_agent_backend;
     use crate::cli::{SharedOpts, WorkflowCliOptions};
@@ -121,4 +129,17 @@ fn openrouter_router_client_is_mini_with_styled_not_raw_output() {
             }
         },
     );
+}
+
+#[test]
+fn cli_accepts_clustered_short_gates_and_quiet() {
+    use crate::cli::Cli;
+
+    let cli = Cli::try_parse_from(["malvin", "-gq", "route this task"]).expect("parse -gq");
+    assert!(cli.shared.gates, "expected -g in -gq cluster");
+    assert!(cli.shared.quiet, "expected -q in -gq cluster");
+
+    let cli = Cli::try_parse_from(["malvin", "-qg", "route this task"]).expect("parse -qg");
+    assert!(cli.shared.gates);
+    assert!(cli.shared.quiet);
 }

@@ -94,6 +94,9 @@ impl SessionDotfileBackups {
     /// snapshot records `Missing` again, so every later restore keeps removing it.
     #[allow(clippy::missing_errors_doc)]
     pub fn snapshot_after_ensuring_home_config(work_dir: &Path) -> Result<Self, String> {
+        // Heal sticky empty/invalid home config before capture so Present(empty) cannot
+        // round-trip through restore on non-gate paths (`--do`, inspire, …).
+        repair_invalid_malvin_home_config_on_disk(work_dir)?;
         crate::malvin_config_file::ensure_malvin_config_file_if_missing(work_dir)?;
         Self::snapshot(work_dir)
     }

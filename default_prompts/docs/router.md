@@ -41,7 +41,7 @@ See `malvin --doc`. Notable for the default route:
 | Flag | Effect |
 |------|--------|
 | `--max-loops` | Outer agent-session budget (`effective_max_loops`; default 1). Tenacious expands to 9999 unless this flag is set on the command line. |
-| `--gates` | When `router_a` emits `__MALVIN_DONE__`, run workspace `.malvin/checks`. Pass stops success; fail continues (new outer session). Exhausted budget with failing gates fails the run after exit summarize. Also injects check text into `router_a.md` via `{{ code_extra }}`. |
+| `-g` / `--gates` | When `router_a` emits `__MALVIN_DONE__`, run workspace `.malvin/checks`. Pass stops success; fail continues (new outer session). Exhausted budget with failing gates fails the run after exit summarize. Also injects check text into `router_a.md` via `{{ code_extra }}`. |
 | `--no-tenacious` | Keep normal `--max-loops` / `--max-acp-retries` (default tenacious expands both) |
 | `--quiet` / `-q` | Stdout shows only `MALVIN_DM_*` bodies (not `-b`). Plain `--do` is already DM-body-only without `--verbose` |
 | `--verbose` | Full prompt bodies in `prompts.log`; with `--do`, also same live agent stdout log classes as the default workflow |
@@ -100,5 +100,6 @@ Missing section falls back to 5. This path does **not** use `[agent].max_hypothe
 malvin "add a CLI flag for dry-run"
 malvin --max-loops 3 notes/task.md
 malvin --gates --max-loops 5 notes/task.md
+malvin -g --max-loops 5 notes/task.md
 malvin --no-tenacious --max-loops 1 "small fix"
 ```

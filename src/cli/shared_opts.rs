@@ -1,4 +1,4 @@
-//! Shared CLI flags (`SharedOpts`) are parsed globally for every subcommand. `model`, `no_force`, `no_tenacious`, and `max_acp_retries` affect `malvin inspire` and `malvin --do`. `--gates` enables harness-run quality gates for the default route; `malvin tidy` always forces them on. `--verbose` logs full outgoing agent prompts to stdout and `prompts.log` (default is prompt name only). For `malvin --do`, `--verbose` also unlocks the same live agent log classes as the default workflow (thought tokens and narrative tee); without `--verbose`, `--do` stays DM-body-only. `--quiet` / `-q` restricts default-router stdout (bare `malvin REQUEST`, `tidy`, `explain`) to `MALVIN_DM_*` bodies only. `--git` sets `{{ git_extra }}` so prompt templates may permit `git commit` (default off).
+//! Shared CLI flags (`SharedOpts`) are parsed globally for every subcommand. `model`, `no_force`, `no_tenacious`, and `max_acp_retries` affect `malvin inspire` and `malvin --do`. `--gates` / `-g` enables harness-run quality gates for the default route; `malvin tidy` always forces them on. `--verbose` logs full outgoing agent prompts to stdout and `prompts.log` (default is prompt name only). For `malvin --do`, `--verbose` also unlocks the same live agent log classes as the default workflow (thought tokens and narrative tee); without `--verbose`, `--do` stays DM-body-only. `--quiet` / `-q` restricts default-router stdout (bare `malvin REQUEST`, `tidy`, `explain`) to `MALVIN_DM_*` bodies only. `--git` sets `{{ git_extra }}` so prompt templates may permit `git commit` (default off).
 
 pub use crate::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use clap::Args;
@@ -27,7 +27,7 @@ pub struct SharedOpts {
     #[arg(long = "no-tenacious", global = true, default_value_t = false)]
     pub no_tenacious: bool,
     /// Run workspace quality gates in the harness and treat failures as loop/exit criteria.
-    #[arg(long, global = true, default_value_t = false)]
+    #[arg(short = 'g', long, global = true, default_value_t = false)]
     pub gates: bool,
     /// Restrict process stdout to `MALVIN_DM_START`/`MALVIN_DM_END` bodies on the default router.
     #[arg(

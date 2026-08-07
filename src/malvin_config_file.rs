@@ -143,11 +143,20 @@ pub fn load_malvin_config(work_dir: &Path) -> MalvinConfig {
     parse_malvin_config(&merged)
 }
 
-/// Open workspace config: create if missing (with template defaults), never rewrite an existing file.
+/// Open workspace config: create if missing or empty (with template defaults); never rewrite a
+/// nonempty existing file.
 pub fn open_malvin_config(work_dir: &Path) -> Result<MalvinConfig, String> {
     let path = malvin_config_path(work_dir);
     ensure_config_parent_dir(&path)?;
     let template = parse_template_value()?;
+    if path.is_file() {
+        let meta = std::fs::metadata(&path)
+            .map_err(|e| format!("stat {}: {e}", path.display()))?;
+        if meta.len() == 0 {
+            std::fs::remove_file(&path)
+                .map_err(|e| format!("remove empty {}: {e}", path.display()))?;
+        }
+    }
     if !path.is_file() {
         return create_malvin_config_from_template(&path, &template);
     }

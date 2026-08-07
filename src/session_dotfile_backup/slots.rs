@@ -168,7 +168,12 @@ pub(super) fn restore_slot(work_dir: &Path, backup: &DotfileBackupState, slot: u
                 std::fs::create_dir_all(parent)
                     .map_err(|e| format!("{}: {e}", spec.restore_lbl))?;
             }
-            std::fs::write(&dst, &payload.bytes)
+            let bytes = if slot == MALVIN_CONFIG_SLOT {
+                super::gate_restore_repair::bytes_for_malvin_home_config_restore(&payload.bytes)?
+            } else {
+                payload.bytes.clone()
+            };
+            std::fs::write(&dst, &bytes)
                 .map_err(|e| format!("{}: {e}", spec.restore_copy_err))
         }
     }

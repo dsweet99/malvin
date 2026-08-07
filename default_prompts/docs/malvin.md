@@ -64,9 +64,9 @@ By default agent backends run tools headlessly (auto-approved). `--no-force` is 
 
 By default gate-loop commands (`tidy`, `explain`) expand to `--max-loops=9999` and `--max-acp-retries=9999`. The bare default route expands both `--max-loops=9999` and `--max-acp-retries=9999` unless the matching flag was set explicitly on the command line. `--no-tenacious` restores normal budgets.
 
-### `--gates`
+### `-g` / `--gates`
 
-Inject workspace check command text into agent prompts and, for workflows that use harness gates as loop criteria, treat failures as loop or exit criteria. Off by default. On bare `malvin REQUEST`, `--gates` also runs workspace `.malvin/checks` after each outer agent session: pass stops success; fail continues the outer loop (even when KPop chat said no work remaining); exhausted budget with failing gates fails the run. When work runs, check text is still injected into the work prompt. `malvin tidy` always forces `--gates` on (same harness criteria as bare `malvin REQUEST --gates`). Agent prompts may still include available `.malvin/checks` guidance when this option is off.
+Inject workspace check command text into agent prompts and, for workflows that use harness gates as loop criteria, treat failures as loop or exit criteria. Off by default. On bare `malvin REQUEST`, `-g` / `--gates` also runs workspace `.malvin/checks` after each outer agent session: pass stops success; fail continues the outer loop (even when KPop chat said no work remaining); exhausted budget with failing gates fails the run. When work runs, check text is still injected into the work prompt. `malvin tidy` always forces `--gates` on (same harness criteria as bare `malvin REQUEST --gates`). Agent prompts may still include available `.malvin/checks` guidance when this option is off.
 
 
 
