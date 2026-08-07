@@ -73,10 +73,18 @@ impl PrimeBridgeSession {
 
     pub async fn shutdown(self) -> Result<(), AgentError> {
         self.reader_dead.store(true, Ordering::SeqCst);
-        // Best-effort cancel/close (bridge close skips asyncDispose). Then SIGKILL the
-        // child — avoid full ACP-style TERM→poll→KILL which can add up to ~1.5s.
+        // Best-effort cancel/close, then full sandbox PG teardown (parity with Cursor SDK /
+        // ACP). PID-only kill left tool children alive and caused Drop to skip PG teardown.
         let _ = prime_write_request(&self, &PrimeBridgeRequest::Cancel {}).await;
         let _ = prime_write_request(&self, &PrimeBridgeRequest::Close {}).await;
+        #[cfg(unix)]
+        {
+            crate::acp::terminate_agent_process_group(
+                self.process_group_id,
+                &self.spawn_pid_baseline,
+            )
+            .await;
+        }
         {
             let mut child_slot = self.child.lock().await;
             if let Some(mut child) = child_slot.take() {

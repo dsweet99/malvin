@@ -34,8 +34,9 @@ pub(crate) async fn backoff_before_http_retry(
     failures: u32,
     err: &TransportError,
 ) {
+    // Match cursor:/prime: mid-retry shape (`agent attempt N failed: …`).
     crate::output::print_log_error(&format!(
-        "mini HTTP attempt {failures} failed (transport): {err}"
+        "agent attempt {failures} failed: {err}"
     ));
     let sleep = if failures == 1 {
         std::time::Duration::from_secs(1)
@@ -53,3 +54,30 @@ pub(crate) fn exhaustion_message(failures: u32, limit: u32, detail: &str) -> Str
 }
 
 pub use crate::openrouter_transport::complete_transport_with_retries;
+
+#[cfg(test)]
+mod tests {
+    use super::backoff_before_http_retry;
+    use crate::llm_transport::TransportError;
+    use crate::test_stderr_capture::capture_stderr_output;
+
+    #[test]
+    fn http_retry_backoff_uses_agent_attempt_label() {
+        let err = TransportError::MissingContent;
+        let stderr = capture_stderr_output(|| {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime");
+            rt.block_on(backoff_before_http_retry(None, 1, &err));
+        });
+        assert!(
+            stderr.contains("agent attempt 1 failed:"),
+            "mini HTTP retries must match cursor:/prime: agent label; stderr={stderr:?}"
+        );
+        assert!(
+            !stderr.contains("mini HTTP attempt"),
+            "legacy mini HTTP attempt label must stay gone; stderr={stderr:?}"
+        );
+    }
+}

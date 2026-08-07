@@ -67,7 +67,15 @@ async fn prime_sdk_client_mock_bridge_prompt_records_usage() {
         .last_coder_prompt_agent_response()
         .unwrap()
         .contains("echo:hello"));
-    assert_eq!(timing.lock().unwrap().tokens_in, Some(3));
+    let (tokens_in, steps) = {
+        let g = timing.lock().unwrap();
+        (g.tokens_in, g.steps)
+    };
+    assert_eq!(tokens_in, Some(3));
+    assert!(
+        steps >= 1,
+        "prime bridge must emit step events for COST parity with cursor:; steps={steps}"
+    );
     client.end_coder_session().await.expect("end");
     prime_clear_mock_bridge_env();
 }

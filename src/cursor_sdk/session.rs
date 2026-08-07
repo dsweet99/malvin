@@ -76,10 +76,20 @@ impl BridgeSession {
 
     pub async fn shutdown(self) -> Result<(), AgentError> {
         self.reader_dead.store(true, Ordering::SeqCst);
-        // Best-effort cancel/close (bridge close skips asyncDispose). Then SIGKILL the
-        // child — avoid full ACP-style TERM→poll→KILL which can add up to ~1.5s.
+        // Best-effort cancel/close (bridge close skips asyncDispose), then tear down the
+        // whole sandbox process group (tool children / orphans) before clearing the
+        // active session — matching ACP. PID-only kill left descendants alive and made
+        // Drop skip PG teardown once the child slot was empty.
         let _ = write_request(&self, &BridgeRequest::Cancel {}).await;
         let _ = write_request(&self, &BridgeRequest::Close {}).await;
+        #[cfg(unix)]
+        {
+            crate::acp::terminate_agent_process_group(
+                self.process_group_id,
+                &self.spawn_pid_baseline,
+            )
+            .await;
+        }
         {
             let mut child_slot = self.child.lock().await;
             if let Some(mut child) = child_slot.take() {

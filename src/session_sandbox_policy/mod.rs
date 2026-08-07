@@ -11,6 +11,8 @@ pub enum SandboxSpawnPolicyAspect {
     ProcessGroupIsolation,
     /// `MALLOC_ARENA_MAX=2` on sandbox child commands.
     MallocArenaCap,
+    /// Linux: child gets `PR_SET_PDEATHSIG` so it dies if malvin is SIGKILL'd.
+    ParentDeathSignal,
     /// `assert_dead_before_next_spawn` blocks a new session while prior PIDs live.
     DeadBeforeNextSpawn,
     /// `malvin_session_rss_bytes` monitors descendant USS against the workspace limit.
@@ -26,6 +28,7 @@ impl SandboxSpawnPolicyAspect {
         &[
             Self::ProcessGroupIsolation,
             Self::MallocArenaCap,
+            Self::ParentDeathSignal,
             Self::DeadBeforeNextSpawn,
             Self::SessionRssMonitor,
             Self::AcpSpawnLock,

@@ -61,7 +61,10 @@ fn stdout_execute_failure_shows_exit_and_error() {
     let mut tracker = ToolSummaryTracker::default();
     let lines = tool_summary_lines(&v, &mut tracker, ToolSummaryDetail::Stdout).unwrap();
     let stdout = lines.stdout.as_deref().unwrap_or("");
-    assert!(stdout.contains("✗ exit 101"));
+    assert!(
+        stdout.contains("exit 101") && stdout.contains('✗'),
+        "cursor-parity fail line; got {stdout:?}"
+    );
     assert!(stdout.contains("build failed"));
 }
 

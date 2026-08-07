@@ -51,7 +51,7 @@ fn format_bash_tool_line_run_fallback_matches_acp_execute_done_shape() {
     let line = format_bash_tool_line("echo hi", 0, Duration::from_millis(12), None);
     assert_eq!(line, "Run echo hi · 12ms · ✓");
     let fail = format_bash_tool_line("false", 1, Duration::from_millis(5), None);
-    assert_eq!(fail, "Run false · 5ms · ✗ exit 1");
+    assert_eq!(fail, "Run false · exit 1 · 5ms · ✗");
 }
 
 #[test]

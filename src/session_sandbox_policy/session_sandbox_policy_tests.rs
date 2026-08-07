@@ -1,14 +1,15 @@
 use super::SandboxSpawnPolicyAspect;
 
 #[test]
-fn sandbox_spawn_policy_aspect_all_has_five_variants() {
-    assert_eq!(SandboxSpawnPolicyAspect::all().len(), 5);
+fn sandbox_spawn_policy_aspect_all_has_six_variants() {
+    assert_eq!(SandboxSpawnPolicyAspect::all().len(), 6);
 }
 
 #[test]
 fn all_aspects_have_runtime_references() {
     let sources = [
         include_str!("../malvin_sandbox.rs"),
+        include_str!("../parent_death_signal.rs"),
         include_str!("../acp_spawn_lock.rs"),
         include_str!("../process_group_rss/mod.rs"),
     ];

@@ -116,6 +116,13 @@ impl MiniAgentClient {
         if self.session.is_some() {
             return Err(AgentError("mini coder session is already open".into()));
         }
+        // Match cursor:/prime: `--no-force` fail-fast (no interactive tool approval).
+        if !self.io.force {
+            return Err(AgentError(
+                "--no-force is not supported with the mini: backend (no interactive tool approval). Omit --no-force."
+                    .into(),
+            ));
+        }
         ensure_bash_on_path().map_err(AgentError)?;
         crate::malvin_sandbox::note_active_mini_session(cwd).map_err(AgentError)?;
         self.trace.run_dir = self.trace_run_dir.clone();

@@ -58,7 +58,7 @@ Outer agent-session budget for bare `malvin REQUEST` (`effective_max_loops`). `0
 
 ### `--no-force`
 
-By default the Cursor SDK backend runs tools headlessly (auto-approved). `--no-force` is not supported on that path (no interactive approval prompt); malvin fails fast with a clear error. Use `mini:` models if you need a different tool policy.
+By default agent backends run tools headlessly (auto-approved). `--no-force` is not supported on `cursor:`, `prime:`, or `mini:` (no interactive approval prompt); malvin fails fast with a clear error.
 
 ### `--no-tenacious`
 

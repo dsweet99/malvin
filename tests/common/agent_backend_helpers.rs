@@ -17,7 +17,7 @@ pub fn mini_done_wire() -> CompletionResponse {
 
 pub const fn test_io() -> AgentIoOptions {
     AgentIoOptions {
-        force: false,
+        force: true,
         no_tee: true,
         raw_output: true,
         show_thoughts_on_stdout: false,
@@ -28,7 +28,7 @@ pub const fn test_io() -> AgentIoOptions {
 
 pub const fn tee_io() -> AgentIoOptions {
     AgentIoOptions {
-        force: false,
+        force: true,
         no_tee: false,
         raw_output: false,
         show_thoughts_on_stdout: false,

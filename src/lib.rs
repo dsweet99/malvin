@@ -74,6 +74,7 @@ pub use acp_spawn_lock::{
 };
 pub use acp_spawn_sweep::sweep_stale_acp_spawn_locks;
 pub mod malvin_sandbox;
+mod parent_death_signal;
 #[cfg(test)]
 #[path = "malvin_sandbox_tests.rs"]
 mod malvin_sandbox_tests;

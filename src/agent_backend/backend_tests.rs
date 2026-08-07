@@ -27,7 +27,7 @@ fn mock_mini_client() -> MiniAgentClient {
 #[test]
 fn test_io_returns_agent_io_options_with_expected_flags() {
     let io = test_io();
-    assert!(!io.force);
+    assert!(io.force);
     assert!(io.no_tee);
     assert!(io.raw_output);
     assert!(!io.show_thoughts_on_stdout);

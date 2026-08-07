@@ -20,7 +20,7 @@ fn backoff_does_not_log_when_retry_policy_stops_immediately() {
 }
 
 #[test]
-fn backoff_logs_mini_gate_label_when_retry_will_occur() {
+fn backoff_logs_agent_label_for_mini_gate_retry() {
     let stderr = capture_stderr_output(|| {
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
@@ -37,8 +37,8 @@ fn backoff_logs_mini_gate_label_when_retry_will_occur() {
         assert!(!stop);
     });
     assert!(
-        stderr.contains("mini gate attempt 1 failed"),
-        "mini gate retries should use mini label; stderr={stderr:?}"
+        stderr.contains("agent attempt 1 failed"),
+        "mini gate retries must match cursor:/prime: agent label; stderr={stderr:?}"
     );
     let _ = stringify!(LabeledBackoff);
     let _ = backoff_after_mini_gate_failure;

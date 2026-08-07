@@ -55,7 +55,8 @@ pub fn mock_llm(responses: Vec<MockStep>) -> LlmBackend {
 #[must_use]
 pub fn test_io() -> crate::acp::AgentIoOptions {
     crate::acp::AgentIoOptions {
-        force: false,
+        // Match cursor/prime mock clients: sessions require tool auto-run (`--force` default).
+        force: true,
         no_tee: true,
         raw_output: true,
         show_thoughts_on_stdout: false,

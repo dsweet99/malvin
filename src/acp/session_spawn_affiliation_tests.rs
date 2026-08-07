@@ -4,7 +4,7 @@ use super::session_spawn_affiliation::{
     AffiliationCtx, clear_session_spawn_affiliation_for_test, is_session_affiliated_pid,
     note_session_affiliated_pid, pid_is_session_affiliated,
 };
-use super::{malvin_session_spawn_pids, reparented_init_orphans};
+use super::{affiliated_session_pids, malvin_session_spawn_pids, reparented_init_orphans};
 use crate::acp::unix_process_group_ps::ProcRow;
 
 fn affiliate_proven_fixture_pid(pid: u32, start_ppid: u32, ctx: &AffiliationCtx<'_>) {
@@ -212,4 +212,5 @@ fn kiss_cov_affiliation_unit_names() {
     let _ = reparented_init_orphans_skips_unaffiliated_user_daemon;
     let _ = reparented_init_orphans_includes_proven_affiliated_setsid_and_double_fork;
     let _ = malvin_session_spawn_pids_includes_proven_same_pg_descendant;
+    let _ = affiliated_session_pids;
 }

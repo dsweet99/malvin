@@ -97,7 +97,7 @@ async fn agent_backend_live_mini_openrouter() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let mut backend = build_agent_backend(
         &openrouter_shared_opts(),
-        WorkflowCliOptions { force: false },
+        WorkflowCliOptions { force: true },
         false,
         "do",
     )

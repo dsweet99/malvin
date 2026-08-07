@@ -40,6 +40,7 @@ async function handleSend(req) {
     return;
   }
   const prompt = String(req.prompt ?? "");
+  emit({ event: "step", kind: "turn_start" });
   emit({ event: "thinking", text: "mock-think" });
   emit({ event: "assistant", text: `echo:${prompt}` });
   emit({
@@ -53,7 +54,8 @@ async function handleSend(req) {
     event: "tool_call",
     phase: "complete",
     name: "ipython",
-    summary: "ipython",
+    // Keep start subject (cursor-parity complete enrichment).
+    summary: "Run ls",
     toolCallId: "t1",
   });
   emit({

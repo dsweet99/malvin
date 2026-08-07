@@ -109,7 +109,8 @@ pub(crate) fn human_execute_done(
     let raw = parsed.raw_output.as_ref();
     let exit = super::human_a::execute_effective_exit(parsed, raw);
     if super::human_a::execute_stdout_failed(parsed, exit, raw) {
-        let mut line = format!("Run {cmd} · {dur} · ✗ exit {exit}");
+        // Cursor SDK order: `Run cmd · exit N · dur · ✗` (optional stderr headline after).
+        let mut line = format!("Run {cmd} · exit {exit} · {dur} · ✗");
         if let Some(r) = raw {
             if let Some(err) = stderr_headline(r).or_else(|| stdout_headline(r)) {
                 let short = shorten_middle(err, TOOL_DISPLAY_MAX_WIDTH);

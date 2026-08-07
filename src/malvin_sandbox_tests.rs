@@ -5,6 +5,8 @@ fn kiss_cov_malvin_sandbox_symbols() {
     let _ = stringify!(crate::malvin_sandbox::init_malvin_spawn_baseline);
     let _ = crate::acp::reap_baseline_amnestied_agent_orphans_blocking;
     let _ = stringify!(crate::malvin_sandbox::malvin_std_command);
+    let _ = stringify!(crate::malvin_sandbox::install_parent_death_signal);
+    let _ = stringify!(crate::malvin_sandbox::install_tokio_parent_death_signal);
     let _ = stringify!(crate::malvin_sandbox::note_active_mini_session);
 }
 

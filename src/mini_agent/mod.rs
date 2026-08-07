@@ -3,6 +3,8 @@ mod bash_adapter;
 mod client;
 pub mod protocol;
 mod client_prompt_log;
+#[cfg(test)]
+mod client_prompt_log_tests;
 mod context_recovery;
 mod default_constraints;
 mod fence_parser;

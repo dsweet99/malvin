@@ -35,13 +35,8 @@ pub(crate) async fn backoff_after_mini_gate_failure(
     attempt: u32,
     max_attempts: u32,
 ) -> Result<bool, AgentError> {
-    backoff_after_labeled_agent_failure(LabeledBackoff {
-        timing,
-        last_error,
-        attempt,
-        max_attempts,
-        label: "mini gate",
-    }).await
+    // Same user-visible label as cursor:/prime: (`agent attempt N failed`).
+    backoff_after_agent_failure(timing, last_error, attempt, max_attempts).await
 }
 
 struct LabeledBackoff<'a> {
@@ -134,7 +129,7 @@ mod kiss_cov_gate_refs{
             last_error: "e",
             attempt: 1,
             max_attempts: 2,
-            label: "mini gate",
+            label: "agent",
         };
         let LabeledBackoff {
             attempt,
@@ -144,6 +139,6 @@ mod kiss_cov_gate_refs{
         } = req;
         assert_eq!(attempt, 1);
         assert_eq!(max_attempts, 2);
-        assert_eq!(label, "mini gate");
+        assert_eq!(label, "agent");
     }
 }

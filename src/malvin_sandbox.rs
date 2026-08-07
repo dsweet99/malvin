@@ -14,6 +14,8 @@ use crate::acp::sandbox_monitor_pids;
 #[cfg(unix)]
 use crate::process_group_rss::pids_sandbox_bytes;
 
+pub use crate::parent_death_signal::{install_parent_death_signal, install_tokio_parent_death_signal};
+
 static MALVIN_SPAWN_BASELINE: OnceLock<HashSet<u32>> = OnceLock::new();
 
 struct ActiveSandboxSession {
@@ -28,6 +30,7 @@ static ACTIVE_SANDBOX_SESSION: Mutex<Option<ActiveSandboxSession>> = Mutex::new(
 const MALVIN_STD_COMMAND_ASPECTS: &[SandboxSpawnPolicyAspect] = &[
     SandboxSpawnPolicyAspect::ProcessGroupIsolation,
     SandboxSpawnPolicyAspect::MallocArenaCap,
+    SandboxSpawnPolicyAspect::ParentDeathSignal,
 ];
 
 pub fn init_malvin_spawn_baseline() {
@@ -85,6 +88,7 @@ pub fn malvin_std_command(program: impl AsRef<OsStr>) -> std::process::Command {
     let _ = MALVIN_STD_COMMAND_ASPECTS;
     let mut cmd = std::process::Command::new(program);
     isolate_child_process_group(&mut cmd);
+    install_parent_death_signal(&mut cmd);
     apply_sandbox_resource_limits(&mut cmd);
     cmd
 }
@@ -95,6 +99,7 @@ pub fn malvin_tokio_command(program: impl AsRef<OsStr>) -> tokio::process::Comma
     let _ = MALVIN_STD_COMMAND_ASPECTS;
     let mut cmd = tokio::process::Command::new(program);
     isolate_tokio_child_process_group(&mut cmd);
+    install_tokio_parent_death_signal(&mut cmd);
     apply_sandbox_resource_limits_tokio(&mut cmd);
     cmd
 }
@@ -230,6 +235,10 @@ mod tests {
         let _ = super::malvin_spawn_baseline;
         let _ = super::isolate_child_process_group;
         let _ = super::isolate_tokio_child_process_group;
+        let _ = super::install_parent_death_signal;
+        let _ = super::install_tokio_parent_death_signal;
         let _ = super::sandbox_still_alive;
+        let _ = super::malvin_std_command("true");
+        let _ = super::malvin_tokio_command("true");
     }
 }
