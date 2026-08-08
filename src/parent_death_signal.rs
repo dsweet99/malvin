@@ -29,7 +29,7 @@ pub fn install_parent_death_signal(cmd: &mut std::process::Command) {
 }
 
 #[cfg(not(target_os = "linux"))]
-pub fn install_parent_death_signal(_: &mut std::process::Command) {
+pub const fn install_parent_death_signal(_: &mut std::process::Command) {
     let _aspect = SandboxSpawnPolicyAspect::ParentDeathSignal;
 }
 
@@ -39,7 +39,7 @@ pub fn install_tokio_parent_death_signal(cmd: &mut tokio::process::Command) {
 }
 
 #[cfg(not(target_os = "linux"))]
-pub fn install_tokio_parent_death_signal(_: &mut tokio::process::Command) {
+pub const fn install_tokio_parent_death_signal(_: &mut tokio::process::Command) {
     let _aspect = SandboxSpawnPolicyAspect::ParentDeathSignal;
 }
 

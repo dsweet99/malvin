@@ -3,10 +3,14 @@
 use super::{classify_reply, send_request, send_request_checked, SOCKET_TIMEOUT};
 use serde_json::json;
 use std::io::{Read, Write};
-use std::os::unix::net::{UnixListener, UnixStream};
+use std::os::unix::net::UnixListener;
+#[cfg(target_os = "linux")]
+use std::os::unix::net::UnixStream;
 use std::sync::mpsc;
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+#[cfg(target_os = "linux")]
+use std::time::Instant;
 
 #[test]
 fn send_request_writes_ndjson_line_to_unix_socket() {
@@ -48,9 +52,12 @@ fn classify_reply_detects_herdr_error_json() {
     assert!(classify_reply(b"").is_ok());
 }
 
-/// A full accept queue makes `UnixStream::connect` block with no timeout.
+/// A full accept queue makes `UnixStream::connect` block with no timeout on Linux.
 /// Herdr send must return within ~`SOCKET_TIMEOUT` instead of hanging the CLI.
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+///
+/// macOS AF_UNIX returns `ECONNREFUSED` once the backlog is full (never blocks), so this
+/// wedge cannot be formed there; see `send_request_swallows_missing_socket` for refused paths.
+#[cfg(target_os = "linux")]
 #[test]
 fn send_request_returns_when_accept_queue_is_wedged() {
     let wedge = WedgedUnixSocket::new();
@@ -59,7 +66,7 @@ fn send_request_returns_when_accept_queue_is_wedged() {
     assert_returns_within_budget(|| send_request(&wedge.path, &req));
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(target_os = "linux")]
 struct WedgedUnixSocket {
     path: std::path::PathBuf,
     _dir: tempfile::TempDir,
@@ -67,7 +74,7 @@ struct WedgedUnixSocket {
     _holders: [UnixStream; 2],
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(target_os = "linux")]
 impl WedgedUnixSocket {
     fn new() -> Self {
         #![allow(unsafe_code)]
@@ -92,12 +99,12 @@ impl WedgedUnixSocket {
     }
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(target_os = "linux")]
 fn connect_budget() -> Duration {
     SOCKET_TIMEOUT + Duration::from_millis(750)
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(target_os = "linux")]
 fn assert_connect_times_out(send: impl FnOnce() -> Result<(), String>) {
     let start = Instant::now();
     let err = send().expect_err("wedged accept must not succeed");
@@ -110,7 +117,7 @@ fn assert_connect_times_out(send: impl FnOnce() -> Result<(), String>) {
     assert!(err.contains("timed out"), "expected connect timeout, got: {err}");
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(target_os = "linux")]
 fn assert_returns_within_budget(send: impl FnOnce()) {
     let start = Instant::now();
     send();

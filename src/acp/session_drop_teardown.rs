@@ -147,11 +147,14 @@ fn terminate_agent_process_group_blocking_kills_sleep_child() {
 
 #[test]
 fn interrupt_teardown_is_fast_when_child_ignores_sigterm() {
+    use std::collections::HashSet;
     use std::os::unix::process::CommandExt;
     use std::process::Command;
     use std::time::{Duration, Instant};
 
-    let baseline = super::super::unix_process_group_ps::snapshot_pids();
+    // Empty baseline: exercise process-group SIGKILL without a full-machine orphan
+    // scan (snapshot_pids baseline is multi-hundred-ms under nextest load).
+    let baseline = HashSet::new();
     let mut cmd = Command::new("sh");
     cmd.args(["-c", "trap '' TERM; sleep 120"]);
     cmd.process_group(0);
