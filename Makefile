@@ -37,7 +37,7 @@ all: bridges
 	cargo build --release
 
 install: bridges
-	cargo install --path . --force
+	cargo install --path . --force --locked
 
 test: bridges
 	pytest tests && cargo nextest run
