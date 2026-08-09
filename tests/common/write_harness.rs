@@ -5,7 +5,7 @@ use super::{
     INTEGRATION_TEST_MALVIN_ARGS, MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout,
 };
 
-pub struct ExplainSpawn<'a> {
+pub struct WriteSpawn<'a> {
     pub workspace: &'a Path,
     pub home: &'a Path,
     pub mock: &'a Path,
@@ -14,28 +14,28 @@ pub struct ExplainSpawn<'a> {
     pub extra_args: &'a [&'a str],
 }
 
-pub fn seed_stale_default_explain_outputs(workspace: &Path) {
-    std::fs::write(workspace.join("explain.tex"), "STALE\n").expect("write stale tex");
-    std::fs::write(workspace.join("explain.pdf"), b"%PDF-1.4 stale").expect("write stale pdf");
+pub fn seed_stale_default_write_outputs(workspace: &Path) {
+    std::fs::write(workspace.join("write.tex"), "STALE\n").expect("write stale tex");
+    std::fs::write(workspace.join("write.pdf"), b"%PDF-1.4 stale").expect("write stale pdf");
 }
 
-pub fn assert_default_explain_sibling_outputs(workspace: &Path) {
-    let stale = std::fs::read_to_string(workspace.join("explain.tex")).expect("read stale tex");
-    assert_eq!(stale, "STALE\n", "original explain.tex must be untouched");
-    let tex = std::fs::read_to_string(workspace.join("explain_1.tex")).expect("read allocated tex");
+pub fn assert_default_write_sibling_outputs(workspace: &Path) {
+    let stale = std::fs::read_to_string(workspace.join("write.tex")).expect("read stale tex");
+    assert_eq!(stale, "STALE\n", "original write.tex must be untouched");
+    let tex = std::fs::read_to_string(workspace.join("write_1.tex")).expect("read allocated tex");
     assert!(
         tex.contains("Explain") || tex.contains("document"),
-        "allocated explain.tex must contain explanation body: {tex:?}"
+        "allocated write.tex must contain explanation body: {tex:?}"
     );
 }
 
-pub fn spawn_explain(t: &ExplainSpawn<'_>) -> std::process::Output {
-    spawn_explain_with_timeout(t, MALVIN_TEST_CMD_TIMEOUT)
+pub fn spawn_write(t: &WriteSpawn<'_>) -> std::process::Output {
+    spawn_write_with_timeout(t, MALVIN_TEST_CMD_TIMEOUT)
 }
 
 /// Empty-PDF / multi-loop review paths need headroom beyond the default 12s kill.
-pub fn spawn_explain_with_timeout(
-    t: &ExplainSpawn<'_>,
+pub fn spawn_write_with_timeout(
+    t: &WriteSpawn<'_>,
     timeout: std::time::Duration,
 ) -> std::process::Output {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
@@ -44,7 +44,7 @@ pub fn spawn_explain_with_timeout(
         .env("CURSOR_AGENT_API_KEY", "test-key")
         .env("MALVIN_AGENT_ACP_BIN", t.mock)
         .env("PATH", t.path_var);
-    let mut args: Vec<&str> = vec!["explain", t.request];
+    let mut args: Vec<&str> = vec!["write", t.request];
     args.extend_from_slice(INTEGRATION_TEST_MALVIN_ARGS);
     args.extend_from_slice(t.extra_args);
     cmd.args(args);

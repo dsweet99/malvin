@@ -135,7 +135,7 @@ mod tests {
         assert!(!names.iter().any(|n| n == "delight"));
         assert_eq!(
             names,
-            vec!["init", "tidy", "explain", "inspire", "models"]
+            vec!["init", "tidy", "write", "inspire", "models"]
         );
     }
 

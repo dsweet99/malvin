@@ -220,7 +220,7 @@ fn kiss_cov_cli_helper_symbols() {
     let _ = stringify!(BugIdResolved);
     let _ = stringify!(LoopDefaultMut);
     let _ = stringify!(CodeWorkflowLoopMut);
-    let _ = stringify!(ExplainResolvedOutputs);
+    let _ = stringify!(WriteResolvedOutputs);
     let _ = stringify!(RouterArgs);
     let _ = stringify!(KPopEnginePrepared);
     let _ = stringify!(InspireRunPrep);

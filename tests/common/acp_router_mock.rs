@@ -3,7 +3,7 @@
 use super::acp_core::acp_mock_js;
 
 /// Minimal router mock: emits `__MALVIN_DONE__` on `router_a`.
-/// Also fulfills explain output paths when those strings appear in the prompt.
+/// Also fulfills write output paths when those strings appear in the prompt.
 pub fn acp_mock_router_no_work_js() -> String {
     let handler = r#"
     if (!global.pc) global.pc = 0;
@@ -27,7 +27,7 @@ pub fn acp_mock_router_no_work_js() -> String {
         scanText += '\n' + fs.readFileSync(reqAbs, 'utf8');
       } catch (_) {}
     }
-    // Match current explain_wrapper.md ("Put the LaTeX source in `…`") and the older
+    // Match current write_wrapper.md ("Put the LaTeX source in `…`") and the older
     // "Write LaTeX source to `…`" phrasing so mocks stay compatible across wording tweaks.
     const texMatch = scanText.match(/(?:Put the LaTeX source in|Write LaTeX source to) `([^`]+)`/);
     if (texMatch) {

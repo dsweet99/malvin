@@ -19,7 +19,7 @@ fn write_review_max_hypotheses(work: &std::path::Path, value: i64) {
     std::fs::write(&path, toml::to_string_pretty(&parsed).expect("ser")).expect("write");
 }
 
-fn assert_explain_max_hypotheses(cli_args: &[&str], expected: usize) {
+fn assert_write_max_hypotheses(cli_args: &[&str], expected: usize) {
     crate::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(work).expect("chdir");
@@ -30,38 +30,38 @@ fn assert_explain_max_hypotheses(cli_args: &[&str], expected: usize) {
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
         match cli.command.expect("command") {
-            Commands::Explain(a) => assert_eq!(a.max_hypotheses, expected),
-            other => panic!("expected explain, got {other:?}"),
+            Commands::Write(a) => assert_eq!(a.max_hypotheses, expected),
+            other => panic!("expected write, got {other:?}"),
         }
         std::env::set_current_dir(cwd).expect("restore");
     });
 }
 
 #[test]
-fn explain_max_hypotheses_defaults_to_ten_not_agent() {
+fn write_max_hypotheses_defaults_to_ten_not_agent() {
     super::config_defaults_tests::with_seeded_agent_config(|| {
-        let matches = Cli::command().get_matches_from(["malvin", "explain", "topic"]);
+        let matches = Cli::command().get_matches_from(["malvin", "write", "topic"]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
         match cli.command.expect("command") {
-            Commands::Explain(a) => {
+            Commands::Write(a) => {
                 assert_eq!(a.max_hypotheses, 10);
                 assert_eq!(a.max_loops, 7);
             }
-            other => panic!("expected explain, got {other:?}"),
+            other => panic!("expected write, got {other:?}"),
         }
     });
 }
 
 #[test]
-fn explain_max_hypotheses_uses_review_config() {
-    assert_explain_max_hypotheses(&["malvin", "explain", "topic"], 14);
+fn write_max_hypotheses_uses_review_config() {
+    assert_write_max_hypotheses(&["malvin", "write", "topic"], 14);
 }
 
 #[test]
-fn explain_max_hypotheses_cli_wins_over_review_config() {
-    assert_explain_max_hypotheses(
-        &["malvin", "explain", "topic", "--max-hypotheses", "3"],
+fn write_max_hypotheses_cli_wins_over_review_config() {
+    assert_write_max_hypotheses(
+        &["malvin", "write", "topic", "--max-hypotheses", "3"],
         3,
     );
 }

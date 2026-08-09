@@ -85,5 +85,5 @@ fn kiss_cov_entrypoint_dispatch_and_commands() {
     let _ = (dispatch_command, finish_entrypoint);
 
     let _ = crate::cli::entrypoint_commands::run_inspire_command;
-    let _ = crate::cli::entrypoint_commands::run_explain_command;
+    let _ = crate::cli::entrypoint_commands::run_write_command;
 }

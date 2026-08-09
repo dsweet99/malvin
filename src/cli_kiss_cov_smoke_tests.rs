@@ -90,14 +90,14 @@ fn smoke_cov_cli_cli_tidy_flow_units() {
 }
 
 #[test]
-fn smoke_cov_cli_cli_explain_flow_units() {
-    let _: Option<crate::cli::explain_flow::ExplainArgs> = None;
-    let _ = crate::cli::explain_flow::run_explain;
-    let _ = crate::cli::explain_flow::effective_explain_max_loops;
-    let _ = crate::kpop_engine::KPopHardConstraints::EXPLAIN;
-    let _ = crate::cli::entrypoint_commands::run_explain_command;
-    let _ = crate::cli::explain_flow::prep::compose_explain_router_request;
-    let _ = crate::cli::explain_flow::prep::explain_preflight;
+fn smoke_cov_cli_cli_write_flow_units() {
+    let _: Option<crate::cli::write_flow::WriteArgs> = None;
+    let _ = crate::cli::write_flow::run_write;
+    let _ = crate::cli::write_flow::effective_write_max_loops;
+    let _ = crate::kpop_engine::KPopHardConstraints::WRITE;
+    let _ = crate::cli::entrypoint_commands::run_write_command;
+    let _ = crate::cli::write_flow::prep::compose_write_router_request;
+    let _ = crate::cli::write_flow::prep::write_preflight;
 }
 
 #[test]

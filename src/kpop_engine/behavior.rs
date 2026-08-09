@@ -39,9 +39,9 @@ impl KPopHardConstraints {
         skip_workspace_quality_gates: false,
         exit: KPopHardConstraintsExit::ChecksDiscovery,
     };
-    /// Historical EXPLAIN gate-engine profile (explain now uses the default router).
+    /// Historical WRITE gate-engine profile (write now uses the default router; formerly explain).
     #[cfg(test)]
-    pub const EXPLAIN: Self = Self {
+    pub const WRITE: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: false,
         skip_workspace_quality_gates: true,
@@ -124,7 +124,7 @@ mod tests {
                 .skip_workspace_quality_gates
         );
         assert!(
-            KPopHardConstraints::EXPLAIN
+            KPopHardConstraints::WRITE
                 .with_workspace_quality_gates(true)
                 .skip_workspace_quality_gates
         );
@@ -136,16 +136,16 @@ mod tests {
     }
 
     #[test]
-    fn explain_behavior_skips_workspace_gates() {
-        assert_eq!(KPopHardConstraints::EXPLAIN.exit, KPopHardConstraintsExit::CodeTidy);
-        assert!(KPopHardConstraints::EXPLAIN.require_passing_gates_for_exit());
-        const { assert!(KPopHardConstraints::EXPLAIN.skip_workspace_quality_gates); }
+    fn write_behavior_skips_workspace_gates() {
+        assert_eq!(KPopHardConstraints::WRITE.exit, KPopHardConstraintsExit::CodeTidy);
+        assert!(KPopHardConstraints::WRITE.require_passing_gates_for_exit());
+        const { assert!(KPopHardConstraints::WRITE.skip_workspace_quality_gates); }
         assert_eq!(
-            KPopHardConstraints::EXPLAIN.skip_kpop_on_initial_pass,
+            KPopHardConstraints::WRITE.skip_kpop_on_initial_pass,
             KPopHardConstraints::CODE.skip_kpop_on_initial_pass,
         );
         assert_ne!(
-            KPopHardConstraints::EXPLAIN.skip_kpop_on_initial_pass,
+            KPopHardConstraints::WRITE.skip_kpop_on_initial_pass,
             KPopHardConstraints::TIDY.skip_kpop_on_initial_pass,
         );
     }

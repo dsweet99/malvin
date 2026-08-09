@@ -16,7 +16,7 @@ pub(crate) mod run_emit;
 pub(crate) mod shared_opts;
 pub(crate) mod init_flow;
 pub(crate) mod tidy_flow;
-pub(crate) mod explain_flow;
+pub(crate) mod write_flow;
 
 mod code_flow_a;
 pub(crate) mod flow_prompt_combine;
@@ -83,6 +83,6 @@ pub use exit::Exit;
 pub use run_emit::emit_run_startup_sequence;
 pub use shared_opts::SharedOpts;
 pub use loop_opts::{TENACIOUS_MAX_ACP_RETRIES, TENACIOUS_MAX_LOOPS};
-pub use explain_flow::run_explain;
+pub use write_flow::run_write;
 pub use init_flow::run_init;
 pub use tidy_flow::run_tidy;

@@ -2,16 +2,16 @@ use super::*;
 
 #[test]
 fn kiss_cov_entrypoint_command_wrappers() {
-    let _ = run_explain_command;
+    let _ = run_write_command;
     let _ = run_inspire_command;
 }
 
 #[test]
-fn kiss_cov_explain_entrypoint_branch() {
+fn kiss_cov_write_entrypoint_branch() {
     use crate::cli::args::Commands;
-    let cmd = Commands::Explain(crate::cli::explain_flow::ExplainArgs {
+    let cmd = Commands::Write(crate::cli::write_flow::WriteArgs {
         request: Some("topic".to_string()),
-        out_path: "explain.tex".to_string(),
+        out_path: "write.tex".to_string(),
         max_loops: 1,
         max_hypotheses: 10,
         tenacious: true,

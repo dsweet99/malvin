@@ -31,7 +31,7 @@ fn kiss_cov_kpop_engine_multiturn_ctx_type_witness() {
 #[test]
 fn kiss_cov_run_kpop_hard_constraints_after_session_branchy_executable_witness() {
     let (prepared, backups) = post_gate_fixture();
-    let skip = KPopHardConstraints::EXPLAIN;
+    let skip = KPopHardConstraints::WRITE;
     let run = KPopHardConstraints::CODE;
     if run_kpop_hard_constraints_after_session("code", &prepared, &backups, skip).is_ok() {
         assert!(skip.skip_workspace_quality_gates);

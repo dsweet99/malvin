@@ -1,24 +1,24 @@
-//! `malvin explain` is a router-backed request wrapper.
+//! `malvin write` is a router-backed request wrapper.
 
 #[cfg(unix)]
 mod common;
 
 #[cfg(unix)]
 use common::{
-    ExplainSpawn, acp_mock_router_no_work_js, bin_path_with_fake_kiss, combined_cli_output,
-    seed_git_kiss_cargo_gate_workspace, spawn_explain, test_home_workspace,
+    WriteSpawn, acp_mock_router_no_work_js, bin_path_with_fake_kiss, combined_cli_output,
+    seed_git_kiss_cargo_gate_workspace, spawn_write, test_home_workspace,
     workspace_kiss_check_only, cached_mock_executable,
 };
 
 #[cfg(unix)]
 #[test]
-fn explain_router_succeeds_with_mock() {
+fn write_router_succeeds_with_mock() {
     let (root, home, workspace) = test_home_workspace();
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
     let path = bin_path_with_fake_kiss(&root);
     let mock = cached_mock_executable(&acp_mock_router_no_work_js());
-    let out = spawn_explain(&ExplainSpawn {
+    let out = spawn_write(&WriteSpawn {
         workspace: &workspace,
         home: &home,
         mock: &mock,
@@ -28,41 +28,41 @@ fn explain_router_succeeds_with_mock() {
     });
     assert!(
         out.status.success(),
-        "explain must succeed via router: {:?}",
+        "write must succeed via router: {:?}",
         combined_cli_output(&out)
     );
-    let tex = std::fs::metadata(workspace.join("explain.tex")).expect("tex exists");
-    let pdf = std::fs::metadata(workspace.join("explain.pdf")).expect("pdf exists");
-    assert!(tex.len() > 0 && pdf.len() > 0, "composed explain request should yield tex/pdf");
+    let tex = std::fs::metadata(workspace.join("write.tex")).expect("tex exists");
+    let pdf = std::fs::metadata(workspace.join("write.pdf")).expect("pdf exists");
+    assert!(tex.len() > 0 && pdf.len() > 0, "composed write request should yield tex/pdf");
 }
 
 #[cfg(unix)]
 #[test]
-fn explain_embeds_user_request_in_router_request() {
+fn write_embeds_user_request_in_router_request() {
     let (root, home, workspace) = test_home_workspace();
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
     let path = bin_path_with_fake_kiss(&root);
     let mock = cached_mock_executable(&acp_mock_router_no_work_js());
-    let out = spawn_explain(&ExplainSpawn {
+    let out = spawn_write(&WriteSpawn {
         workspace: &workspace,
         home: &home,
         mock: &mock,
         path_var: &path,
-        request: "unique-explain-topic-xyz",
+        request: "unique-write-topic-xyz",
         extra_args: &["--max-loops", "1"],
     });
     let combined = combined_cli_output(&out);
-    assert!(out.status.success(), "explain must succeed: {combined:?}");
+    assert!(out.status.success(), "write must succeed: {combined:?}");
     assert!(
-        combined.contains("unique-explain-topic-xyz") || combined.contains("User request:"),
+        combined.contains("unique-write-topic-xyz") || combined.contains("User request:"),
         "composed request must embed user request: {combined:?}"
     );
 }
 
 #[cfg(unix)]
 #[test]
-fn explain_fails_when_request_missing() {
+fn write_fails_when_request_missing() {
     let (root, home, workspace) = test_home_workspace();
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
@@ -74,13 +74,13 @@ fn explain_fails_when_request_missing() {
         .env("CURSOR_AGENT_API_KEY", "test-key")
         .env("MALVIN_AGENT_ACP_BIN", &mock)
         .env("PATH", &path)
-        .args(["explain", "--max-loops", "1"]);
+        .args(["write", "--max-loops", "1"]);
     let out = common::command_output_with_timeout(&mut cmd, common::MALVIN_TEST_CMD_TIMEOUT)
         .expect("spawn");
     let combined = combined_cli_output(&out);
     assert!(
         out.status.success() || combined.contains("REQUEST") || combined.contains("Usage"),
-        "bare explain should help or error without router: {combined:?}"
+        "bare write should help or error without router: {combined:?}"
     );
     assert!(
         !combined.contains("router_requirements"),
@@ -90,7 +90,7 @@ fn explain_fails_when_request_missing() {
 
 #[cfg(unix)]
 #[test]
-fn explain_fails_when_custom_out_path_preexists() {
+fn write_fails_when_custom_out_path_preexists() {
     let (root, home, workspace) = test_home_workspace();
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
@@ -98,7 +98,7 @@ fn explain_fails_when_custom_out_path_preexists() {
     std::fs::write(workspace.join("docs/paper.tex"), "stale\n").expect("seed");
     let path = bin_path_with_fake_kiss(&root);
     let mock = cached_mock_executable(&acp_mock_router_no_work_js());
-    let out = spawn_explain(&ExplainSpawn {
+    let out = spawn_write(&WriteSpawn {
         workspace: &workspace,
         home: &home,
         mock: &mock,

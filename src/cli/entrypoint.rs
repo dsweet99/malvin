@@ -129,7 +129,7 @@ pub(crate) fn dispatch_command(
                 )
             })
         }
-        cmd @ Commands::Explain(_) => {
+        cmd @ Commands::Write(_) => {
             super::entrypoint_commands::dispatch_plan_authoring_gate(cmd, &mut shared, matches)
         }
         Commands::Inspire(inspire) | Commands::Adaptix(inspire) => {

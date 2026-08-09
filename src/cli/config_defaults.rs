@@ -57,19 +57,19 @@ fn apply_code_workflow_loop_defaults(
     );
 }
 
-fn apply_explain_loop_defaults(
+fn apply_write_loop_defaults(
     matches: &ArgMatches,
-    explain: &mut crate::cli::explain_flow::ExplainArgs,
+    write_args: &mut crate::cli::write_flow::WriteArgs,
     agent: &AgentConfig,
     review: &crate::malvin_config_file::ReviewConfig,
 ) {
-    if !subcommand_flag_from_command_line(matches, "explain", "max_loops") {
-        explain.max_loops = agent.max_loops_code;
+    if !subcommand_flag_from_command_line(matches, "write", "max_loops") {
+        write_args.max_loops = agent.max_loops_code;
     }
-    if !subcommand_flag_from_command_line(matches, "explain", "max_hypotheses") {
-        explain.max_hypotheses = review
+    if !subcommand_flag_from_command_line(matches, "write", "max_hypotheses") {
+        write_args.max_hypotheses = review
             .max_hypotheses
-            .unwrap_or(crate::malvin_config_file::DEFAULT_EXPLAIN_MAX_HYPOTHESES);
+            .unwrap_or(crate::malvin_config_file::DEFAULT_WRITE_MAX_HYPOTHESES);
     }
 }
 
@@ -89,7 +89,7 @@ fn apply_gate_loop_command_defaults(
                 agent,
             },
         ),
-        Commands::Explain(explain) => apply_explain_loop_defaults(matches, explain, agent, review),
+        Commands::Write(write_args) => apply_write_loop_defaults(matches, write_args, agent, review),
         Commands::Inspire(_)
         | Commands::Adaptix(_)
         | Commands::Models(_)
@@ -183,8 +183,8 @@ pub fn parse_cli_with_config_defaults(
 mod config_defaults_tests;
 
 #[cfg(test)]
-#[path = "config_defaults_tests_explain.rs"]
-mod config_defaults_tests_explain;
+#[path = "config_defaults_tests_write.rs"]
+mod config_defaults_tests_write;
 
 #[cfg(test)]
 #[path = "config_defaults_tests_mini.rs"]

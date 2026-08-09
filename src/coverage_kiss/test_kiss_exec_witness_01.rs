@@ -214,8 +214,8 @@ fn kiss_exec_witness_01_13() {
     DoRunPrep();
     DoCoderRun();
     Exit();
-    ExplainArgs();
-    ExplainResolvedOutputs();
+    WriteArgs();
+    WriteResolvedOutputs();
     DualHeaderPromptInput();
     DualHeaderCoderRun();
     InspireArgs();

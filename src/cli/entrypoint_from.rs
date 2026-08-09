@@ -66,7 +66,7 @@ fn entrypoint_request_missing_short_help(cli: &Cli) -> Option<Exit> {
         Commands::Inspire(inspire) | Commands::Adaptix(inspire) => {
             (inspire.request.as_ref(), "inspire")
         }
-        Commands::Explain(explain) => (explain.request.as_ref(), "explain"),
+        Commands::Write(write_args) => (write_args.request.as_ref(), "write"),
         _ => return None,
     };
     entrypoint_short_help_when_request_missing(cli.shared.doc, request, subcommand)

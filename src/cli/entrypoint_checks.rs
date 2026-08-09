@@ -5,7 +5,7 @@ pub fn ensure_malvin_checks_for_command(cmd: &Commands) -> Result<(), String> {
         Commands::Models(_)
         | Commands::Inspire(_)
         | Commands::Adaptix(_)
-        | Commands::Explain(_) => Ok(()),
+        | Commands::Write(_) => Ok(()),
         Commands::Init(_) | Commands::Tidy(_) => {
             let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
             crate::repo_gates::ensure_default_malvin_config_file(&cwd)

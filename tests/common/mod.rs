@@ -32,7 +32,7 @@ mod tidy_harness;
 #[cfg(unix)]
 mod acp_router_mock;
 #[cfg(unix)]
-mod explain_harness;
+mod write_harness;
 mod contract;
 pub mod mini_test_helpers;
 pub mod observability_parity;
@@ -60,7 +60,7 @@ pub use acp_tidy_kpop::*;
 #[cfg(unix)]
 pub use acp_router_mock::*;
 #[cfg(unix)]
-pub use explain_harness::*;
+pub use write_harness::*;
 #[cfg(unix)]
 pub use live_agent::{
     command_output_live_agent, command_output_mini_live, live_agent_prereqs_met,

@@ -36,7 +36,7 @@ pub(crate) fn allocate_default_tex_pdf_pair(
         }
     }
     Err(format!(
-        "malvin: failed to allocate a free explain output pair for `{}` after {DEFAULT_SIBLING_MAX} attempts",
+        "malvin: failed to allocate a free write output pair for `{}` after {DEFAULT_SIBLING_MAX} attempts",
         tex_default.display()
     ))
 }
@@ -48,13 +48,13 @@ mod tests {
     #[test]
     fn allocate_tex_pdf_pair_invents_siblings_when_default_exists() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let tex = tmp.path().join("explain.tex");
-        let pdf = tmp.path().join("explain.pdf");
+        let tex = tmp.path().join("write.tex");
+        let pdf = tmp.path().join("write.pdf");
         std::fs::write(&tex, "x\n").expect("write");
         std::fs::write(&pdf, b"%PDF").expect("write");
         let (got_tex, got_pdf) =
-            allocate_default_tex_pdf_pair(&tex, &pdf, "explain").expect("alloc");
-        assert_eq!(got_tex, tmp.path().join("explain_1.tex"));
-        assert_eq!(got_pdf, tmp.path().join("explain_1.pdf"));
+            allocate_default_tex_pdf_pair(&tex, &pdf, "write").expect("alloc");
+        assert_eq!(got_tex, tmp.path().join("write_1.tex"));
+        assert_eq!(got_pdf, tmp.path().join("write_1.pdf"));
     }
 }

@@ -3,7 +3,7 @@
 use clap::{Parser, Subcommand};
 
 use super::shared_opts::SharedOpts;
-use super::explain_flow::ExplainArgs;
+use super::write_flow::WriteArgs;
 use super::init_flow::InitArgs;
 use super::tidy_flow::TidyArgs;
 
@@ -43,8 +43,8 @@ pub enum Commands {
     Init(InitArgs),
     /// Ensure all checks pass
     Tidy(TidyArgs),
-    /// Explain code or concepts via LaTeX PDF
-    Explain(ExplainArgs),
+    /// Write a LaTeX PDF on code or concepts
+    Write(WriteArgs),
     /// Be creative
     #[command(name = "inspire")]
     Inspire(InspireArgs),

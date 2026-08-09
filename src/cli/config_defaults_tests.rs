@@ -170,7 +170,7 @@ fn assert_workflow_defaults(argv: &[&str]) {
     apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
     match cli.command.expect("command") {
         Commands::Tidy(a) => assert_eq!(a.max_loops, 7),
-        Commands::Explain(a) => assert_eq!(a.max_loops, 7),
+        Commands::Write(a) => assert_eq!(a.max_loops, 7),
         other => panic!("unexpected command {other:?}"),
     }
 }
@@ -179,7 +179,7 @@ fn assert_workflow_defaults(argv: &[&str]) {
 fn apply_workspace_config_defaults_for_workflow_commands() {
     with_seeded_agent_config(|| {
         assert_workflow_defaults(&["malvin", "tidy"]);
-        assert_workflow_defaults(&["malvin", "explain", "topic"]);
+        assert_workflow_defaults(&["malvin", "write", "topic"]);
     });
 }
 

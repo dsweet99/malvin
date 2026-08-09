@@ -157,7 +157,7 @@ fn bare_malvin_shows_commands_only_and_exits_zero() {
         .collect();
     assert_eq!(
         command_names,
-        ["init", "tidy", "explain", "inspire", "models"],
+        ["init", "tidy", "write", "inspire", "models"],
         "bare stdout command order: {bare_s}"
     );
     assert!(

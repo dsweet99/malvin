@@ -20,7 +20,7 @@ fn kiss_cov_run_kpop_hard_constraints_after_session_skip_branch_executable() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let (prepared, backups) =
         prepared_fixture("code", tmp.path(), false, PreparedContextMode::Empty);
-    let skip = KPopHardConstraints::EXPLAIN;
+    let skip = KPopHardConstraints::WRITE;
     let run = KPopHardConstraints::CODE;
     if run_kpop_hard_constraints_after_session("code", &prepared, &backups, skip).is_ok() {
         assert!(skip.skip_workspace_quality_gates);
@@ -37,13 +37,13 @@ fn kiss_cov_run_kpop_hard_constraints_after_session_skip_branch_executable() {
 }
 
 #[test]
-fn kiss_cov_restore_kpop_engine_session_dotfiles_explain_branch() {
+fn kiss_cov_restore_kpop_engine_session_dotfiles_write_branch() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let work = tmp.path();
     let (prepared, backups) =
         prepared_fixture("code", work, true, PreparedContextMode::Empty);
     let (shared, _) = shared_workflow();
-    let loop_params = loop_params("code", &shared, &prepared, KPopHardConstraints::EXPLAIN);
+    let loop_params = loop_params("code", &shared, &prepared, KPopHardConstraints::WRITE);
     let mut client = agent_backend(&shared, "code");
     let exp_log_path = prepared.artifacts().gate_exp_log_path(1);
     let mut iteration_params = build_iteration_params(IterationFixture {
@@ -60,7 +60,7 @@ fn kiss_cov_restore_kpop_engine_session_dotfiles_explain_branch() {
     if restore_kpop_engine_session_dotfiles(&ctx).is_ok() {
         assert!(loop_params.behavior.restore_malvin_checks_after_session());
     } else {
-        panic!("explain-profile restore should succeed");
+        panic!("write-profile restore should succeed");
     }
 }
 #[cfg(unix)]

@@ -39,8 +39,8 @@ pub(crate) use malvin_config_parse::{
 pub const DEFAULT_MAX_HYPOTHESES: usize = 5;
 pub const DEFAULT_MAX_LOOPS: usize = 1;
 pub const DEFAULT_MAX_LOOPS_CODE: usize = 3;
-/// Built-in default for explain Review/Plan `KPop` sessions when CLI and `[review]` are unset.
-pub const DEFAULT_EXPLAIN_MAX_HYPOTHESES: usize = 10;
+/// Built-in default for write Review/Plan `KPop` sessions when CLI and `[review]` are unset.
+pub const DEFAULT_WRITE_MAX_HYPOTHESES: usize = 10;
 
 const DEFAULT_MALVIN_CONFIG_TEMPLATE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -54,7 +54,7 @@ pub struct AgentConfig {
     pub max_hypotheses: usize,
     /// Gate-loop budget for kpop.
     pub max_loops: usize,
-    /// Gate-loop budget for tidy and explain (`max_loops_code` config key).
+    /// Gate-loop budget for tidy and write (`max_loops_code` config key).
     pub max_loops_code: usize,
     pub max_acp_retries: u32,
     pub max_mini_transport_retries: u32,
@@ -75,8 +75,8 @@ impl Default for AgentConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ReviewConfig {
-    /// Hypothesis budget for explain Review and Plan `KPop` sessions.
-    /// `None` means use [`DEFAULT_EXPLAIN_MAX_HYPOTHESES`].
+    /// Hypothesis budget for write Review and Plan `KPop` sessions.
+    /// `None` means use [`DEFAULT_WRITE_MAX_HYPOTHESES`].
     pub max_hypotheses: Option<usize>,
 }
 

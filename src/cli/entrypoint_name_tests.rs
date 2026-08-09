@@ -107,12 +107,12 @@ fn tidy_command_accepts_session_name() {
 }
 
 #[test]
-fn explain_command_rejects_session_name() {
-    use crate::cli::explain_flow::ExplainArgs;
+fn write_command_rejects_session_name() {
+    use crate::cli::write_flow::WriteArgs;
     assert!(!command_accepts_session_name(
-        &Commands::Explain(ExplainArgs {
+        &Commands::Write(WriteArgs {
             request: Some("topic".to_string()),
-            out_path: "explain.tex".to_string(),
+            out_path: "write.tex".to_string(),
             max_loops: 1,
             max_hypotheses: 5,
             tenacious: false,
@@ -177,7 +177,7 @@ fn inspire_rejects_name_flag() {
 }
 
 #[test]
-fn explain_rejects_name_before_preflight() {
+fn write_rejects_name_before_preflight() {
     use crate::test_stderr_capture::capture_stderr_output;
 
     crate::test_utils::with_isolated_home(|work| {
@@ -185,17 +185,17 @@ fn explain_rejects_name_before_preflight() {
         let checks = work.join(".malvin/checks");
         let stderr = capture_stderr_output(|| {
             assert_eq!(
-                entrypoint_from(["malvin", "--name", "probe", "explain", "topic"]),
+                entrypoint_from(["malvin", "--name", "probe", "write", "topic"]),
                 Exit::Failure
             );
         });
         assert!(
             stderr.contains("only supported for"),
-            "stderr must reject --name on explain; got: {stderr:?}"
+            "stderr must reject --name on write; got: {stderr:?}"
         );
         assert!(
             !checks.exists(),
-            "explain --name must reject before writing .malvin/checks"
+            "write --name must reject before writing .malvin/checks"
         );
     });
 }
