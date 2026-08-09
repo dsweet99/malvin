@@ -94,6 +94,7 @@ fn kiss_cov_prime_sdk_session_core() {
     let _ = stringify!(prime_read_event);
     let _ = stringify!(prime_wait_for_ok);
     let _ = stringify!(prime_drain_until_run_done);
+    let _ = stringify!(prime_read_event_with_drain_idle_timeout);
     let _ = stringify!(prime_discard_optional_trailing_run_done);
     let _ = stringify!(prime_run_done_status_is_failure);
     let _ = stringify!(prime_finish_run_done);

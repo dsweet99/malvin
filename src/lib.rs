@@ -163,6 +163,7 @@ pub mod support_paths;
 pub use support_paths::{
     agent_or_cursor_agent_bin, command_line, format_logs_dir, init_from_env, lookup_bin_on_path,
 };
+pub mod sdk_drain_timeout;
 pub mod workflow_context;
 pub mod orchestrator;
 pub use orchestrator::check_abort;

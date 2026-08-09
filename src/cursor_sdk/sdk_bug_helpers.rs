@@ -36,6 +36,13 @@ pub(super) fn bug_install_env(mock: &std::path::Path) {
 pub(super) fn bug_clear_env() {
     unsafe {
         std::env::remove_var("MALVIN_CURSOR_SDK_BRIDGE");
+        std::env::remove_var("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS");
+    }
+}
+
+pub(super) fn bug_set_drain_idle_timeout_ms(ms: u64) {
+    unsafe {
+        std::env::set_var("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS", ms.to_string());
     }
 }
 
@@ -99,6 +106,7 @@ fn kiss_cov_sdk_bug_helpers() {
     let _ = bug_mock_io_noforce;
     let _ = bug_install_env;
     let _ = bug_clear_env;
+    let _ = bug_set_drain_idle_timeout_ms;
     let _ = bug_bridge_js;
     let _ = bug_client;
     let _ = bug_client_noforce;

@@ -41,6 +41,7 @@ pub(crate) fn agent_error_requires_coder_session_teardown(msg: &str) -> bool {
         || text.contains("bridge write:")
         || text.contains("bridge flush:")
         || text.contains("bridge read:")
+        || text.contains("bridge drain timed out")
         || text.contains("iterable is closed")
         || text.contains("connection stalled");
     if child_dead {

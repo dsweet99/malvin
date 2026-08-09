@@ -55,7 +55,7 @@ fn classify_reply_detects_herdr_error_json() {
 /// A full accept queue makes `UnixStream::connect` block with no timeout on Linux.
 /// Herdr send must return within ~`SOCKET_TIMEOUT` instead of hanging the CLI.
 ///
-/// macOS AF_UNIX returns `ECONNREFUSED` once the backlog is full (never blocks), so this
+/// macOS `AF_UNIX` returns `ECONNREFUSED` once the backlog is full (never blocks), so this
 /// wedge cannot be formed there; see `send_request_swallows_missing_socket` for refused paths.
 #[cfg(target_os = "linux")]
 #[test]

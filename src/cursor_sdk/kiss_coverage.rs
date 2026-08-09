@@ -116,6 +116,7 @@ fn kiss_cov_cursor_sdk_session_core() {
     let _ = stringify!(read_event);
     let _ = stringify!(wait_for_ok);
     let _ = stringify!(drain_until_run_done);
+    let _ = stringify!(read_event_with_drain_idle_timeout);
     let _ = stringify!(start_mem_watch);
     let _ = stringify!(finish_run_done);
 }
@@ -131,6 +132,10 @@ fn kiss_cov_cursor_sdk_session_fixes() {
     let _ = stringify!(fatal_then_run_done_does_not_poison_next_prompt);
     let _ = stringify!(kiss_cov_sdk_bug_helpers);
     let _ = stringify!(kiss_cov_bug_regression_cases);
+    let _ = stringify!(kiss_cov_sdk_drain_idle_cases);
+    let _ = stringify!(never_run_done_idle_timeout_tears_down_and_retries);
+    let _ = stringify!(long_idle_never_run_done_still_blocked_at_800ms);
+    let _ = stringify!(keep_alive_events_do_not_trip_idle_drain_timeout);
     let _ = stringify!(kiss_cov_bug2_poison_case);
 }
 

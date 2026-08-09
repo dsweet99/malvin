@@ -162,6 +162,34 @@ async function handleSend(req) {
     }
   }
 
+  // Hang after a stream event: never emit run_done/fatal (drain idle-timeout coverage).
+  if (prompt.includes("NEVER_RUN_DONE")) {
+    emit({ event: "assistant", text: "partial before hang" });
+    await sleep(60_000);
+    return;
+  }
+
+  // Keep emitting events with short gaps, then run_done (idle-vs-absolute timeout).
+  if (prompt.includes("KEEP_ALIVE_THEN_DONE")) {
+    for (let i = 0; i < 6; i++) {
+      emit({ event: "assistant", text: `tick-${i}` });
+      await sleep(80);
+    }
+    emit({
+      event: "run_done",
+      status: "finished",
+      result: "kept-alive",
+      usage: {
+        inputTokens: 1,
+        outputTokens: 1,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+      },
+      durationMs: 500,
+    });
+    return;
+  }
+
   const fenced = prompt.includes("NEED_DM");
   const result = fenced
     ? "MALVIN_DM_START\nHello.\nMALVIN_DM_END"

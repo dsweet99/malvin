@@ -11,6 +11,7 @@ fn cancelled_and_error_are_failures() {
     let _ = stringify!(prime_read_event);
     let _ = stringify!(prime_wait_for_ok);
     let _ = stringify!(prime_drain_until_run_done);
+    let _ = stringify!(prime_read_event_with_drain_idle_timeout);
     let _ = stringify!(prime_discard_optional_trailing_run_done);
     let _ = stringify!(prime_finish_run_done);
     let _ = stringify!(prime_start_mem_watch);

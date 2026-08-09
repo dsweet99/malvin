@@ -9,7 +9,7 @@
 // Arm parent-death watch before heavy imports (see parent_death.ts).
 import "./parent_death.js";
 import * as readline from "node:readline";
-import { Agent, Cursor, CursorAgentError } from "@cursor/sdk";
+import { Agent, Cursor, CursorAgentError, configureCursorSdk } from "@cursor/sdk";
 import type { AgentOptions, Run, SDKAgent } from "@cursor/sdk";
 import {
   emit,
@@ -94,6 +94,25 @@ function emitFatal(err: unknown): void {
 
 type AgentBootOp = CreateOp | ResumeOp;
 
+function preferHttp1ForAgent(): boolean {
+  // HTTP/2 agent streams often fail through authenticated CONNECT proxies
+  // (pier egress): SDK retries end as "Connection failed repeatedly", while
+  // cursor-agent CLI and HTTP/1 succeed on the same network.
+  const flag = (process.env.MALVIN_CURSOR_USE_HTTP1 || "").trim().toLowerCase();
+  if (flag === "1" || flag === "true" || flag === "yes") return true;
+  if (flag === "0" || flag === "false" || flag === "no") return false;
+  return Boolean(
+    (process.env.HTTPS_PROXY || "").trim() ||
+      (process.env.HTTP_PROXY || "").trim(),
+  );
+}
+
+/** Apply once per bridge process before Agent.create/resume. */
+function ensureHttp1AgentTransport(): void {
+  if (!preferHttp1ForAgent()) return;
+  configureCursorSdk({ local: { useHttp1ForAgent: true } });
+}
+
 function agentOptionsFromBoot(req: AgentBootOp, apiKey: string): AgentOptions {
   const local: NonNullable<AgentOptions["local"]> = {
     cwd: req.cwd,
@@ -144,6 +163,7 @@ async function handleCreate(req: CreateOp): Promise<void> {
   const apiKey = requireApiKey(req);
   if (!apiKey) return;
   try {
+    ensureHttp1AgentTransport();
     const opts = agentOptionsFromBoot(req, apiKey);
     agent = await Agent.create(opts);
     agentOptions = opts;
@@ -171,6 +191,7 @@ async function handleResume(req: ResumeOp): Promise<void> {
     return;
   }
   try {
+    ensureHttp1AgentTransport();
     const opts = agentOptionsFromBoot(req, apiKey);
     agent = await Agent.resume(req.agentId, opts);
     agentOptions = opts;

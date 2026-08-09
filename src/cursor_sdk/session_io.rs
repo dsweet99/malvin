@@ -96,7 +96,7 @@ pub(super) async fn wait_for_ok(session: &BridgeSession) -> Result<(), AgentErro
 pub(super) async fn drain_until_run_done(session: &BridgeSession) -> Result<(), AgentError> {
     use super::log_adapter::handle_stream_event;
     loop {
-        let ev = read_event(session).await?;
+        let ev = read_event_with_drain_idle_timeout(session).await?;
         match &ev {
             BridgeEvent::Step { .. } => note_sdk_step(session.timing.as_ref()),
             BridgeEvent::RunDone { .. } => return finish_run_done(session, &ev),
@@ -107,6 +107,20 @@ pub(super) async fn drain_until_run_done(session: &BridgeSession) -> Result<(), 
             _ => handle_stream_event(session, &ev),
         }
     }
+}
+
+/// Fail the turn if the bridge stays silent too long (never emits `run_done` / `fatal`).
+async fn read_event_with_drain_idle_timeout(
+    session: &BridgeSession,
+) -> Result<BridgeEvent, AgentError> {
+    let idle = crate::sdk_drain_timeout::sdk_drain_idle_timeout_from_env();
+    tokio::time::timeout(idle, read_event(session))
+        .await
+        .unwrap_or_else(|_| {
+            Err(AgentError(format!(
+                "bridge drain timed out waiting for run_done after {idle:?} of silence"
+            )))
+        })
 }
 
 /// Legacy bridges sometimes emitted `fatal` then `run_done`. Consume a trailing

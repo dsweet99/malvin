@@ -12,6 +12,7 @@ fn child_health_transport_errors_require_coder_session_teardown() {
         "acp child process is zombie",
         "acp stdout closed",
         "acp: WritableIterable is closed",
+        "bridge drain timed out waiting for run_done after 1s of silence",
         "Error: T: Connection stalled",
         "Error: RetriableError: [unavailable] PING timed out",
         "Error: RetriableError: [canceled] http/2 stream closed with error code CANCEL (0x8)",

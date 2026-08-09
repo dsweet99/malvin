@@ -78,7 +78,7 @@ pub(super) async fn prime_wait_for_ok(session: &PrimeBridgeSession) -> Result<()
 pub(super) async fn prime_drain_until_run_done(session: &PrimeBridgeSession) -> Result<(), AgentError> {
     use super::log_adapter::prime_handle_stream_event;
     loop {
-        let ev = prime_read_event(session).await?;
+        let ev = prime_read_event_with_drain_idle_timeout(session).await?;
         match &ev {
             PrimeBridgeEvent::Step { .. } => prime_note_sdk_step(session.timing.as_ref()),
             PrimeBridgeEvent::RunDone { .. } => return prime_finish_run_done(session, &ev),
@@ -89,6 +89,19 @@ pub(super) async fn prime_drain_until_run_done(session: &PrimeBridgeSession) -> 
             _ => prime_handle_stream_event(session, &ev),
         }
     }
+}
+
+async fn prime_read_event_with_drain_idle_timeout(
+    session: &PrimeBridgeSession,
+) -> Result<PrimeBridgeEvent, AgentError> {
+    let idle = crate::sdk_drain_timeout::sdk_drain_idle_timeout_from_env();
+    tokio::time::timeout(idle, prime_read_event(session))
+        .await
+        .unwrap_or_else(|_| {
+            Err(AgentError(format!(
+                "bridge drain timed out waiting for run_done after {idle:?} of silence"
+            )))
+        })
 }
 
 async fn prime_discard_optional_trailing_run_done(session: &PrimeBridgeSession) {

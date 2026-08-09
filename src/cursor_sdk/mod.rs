@@ -41,4 +41,6 @@ mod sdk_bug_helpers;
 #[cfg(test)]
 mod sdk_bug_regression_tests;
 #[cfg(test)]
+mod sdk_drain_idle_tests;
+#[cfg(test)]
 mod sdk_bug2_poison_tests;
