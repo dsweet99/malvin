@@ -21,13 +21,6 @@ pub async fn agent_backend_ensure_coder_session(
                 c.begin_coder_session(cwd).await
             }
         }
-        AgentBackend::Mini(c) => {
-            if c.has_open_coder_session() {
-                Ok(())
-            } else {
-                c.begin_coder_session(cwd).await
-            }
-        }
     }
 }
 
@@ -39,7 +32,6 @@ pub fn agent_backend_set_run_timing(
         AgentBackend::Acp(c) => c.set_run_timing(timing),
         AgentBackend::CursorSdk(c) => c.set_run_timing(timing),
         AgentBackend::PrimeSdk(c) => c.set_run_timing(timing),
-        AgentBackend::Mini(c) => c.timing = timing,
     }
 }
 
@@ -51,14 +43,6 @@ pub fn agent_backend_attach_run_timing_for_session(
         AgentBackend::Acp(c) => c.attach_run_timing_for_session(),
         AgentBackend::CursorSdk(c) => c.attach_run_timing_for_session(),
         AgentBackend::PrimeSdk(c) => c.attach_run_timing_for_session(),
-        AgentBackend::Mini(c) => {
-            let policy = crate::run_timing::cost_policy_for_model(&c.config.model);
-            crate::run_timing::attach_new_run_timing_with_cost_policy(
-                &mut c.timing,
-                policy,
-                &c.config.model,
-            )
-        }
     }
 }
 
@@ -91,6 +75,5 @@ pub fn agent_backend_timing(
         AgentBackend::Acp(c) => c.timing.as_ref(),
         AgentBackend::CursorSdk(c) => c.timing.as_ref(),
         AgentBackend::PrimeSdk(c) => c.timing.as_ref(),
-        AgentBackend::Mini(c) => c.timing.as_ref(),
     }
 }

@@ -89,7 +89,7 @@ pub(crate) fn parse_context_size(text: &str) -> Result<u32, String> {
 
 /// Parse `[agent.<provider>.<name>]` tables that define `usd_per_microtoken_*` rates.
 ///
-/// Keys in the map are full model ids (`cursor:auto`, `mini:openrouter/org/model`, `prime:openai/gpt-5.5`, …).
+/// Keys in the map are full model ids (`cursor:auto`, `prime:openai/gpt-5.5`, `prime:local/qwen35_9b_q4`, …).
 pub(crate) fn parse_model_token_cost_rates(
     text: &str,
 ) -> Result<BTreeMap<String, TokenCostRates>, String> {

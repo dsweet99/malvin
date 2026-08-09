@@ -16,7 +16,7 @@ pub struct PrimeLocalSidecar {
 }
 
 impl PrimeLocalSidecar {
-    /// Load catalog GGUF, serve it, and write Prime `models.json` for `local/local/<slug>`.
+    /// Load catalog GGUF, serve it, and write Prime `models.json` for `local/<slug>`.
     ///
     /// # Errors
     ///
@@ -33,12 +33,11 @@ impl PrimeLocalSidecar {
         let server = LocalOpenAiServer::start(engine)?;
         let dir = TempDir::new().map_err(|e| format!("prime local tempdir: {e}"))?;
         let models_json_path = dir.path().join("models.json");
-        let model_api_id = format!("local/{slug}");
         let display = crate::local_llm::require_known_local_slug(&slug)?.display_name;
         write_prime_local_models_json(
             &models_json_path,
             &server.base_url,
-            &model_api_id,
+            &slug,
             display,
         )?;
         Ok(Self {
@@ -60,7 +59,7 @@ mod tests {
 
     #[test]
     fn start_fails_fast_on_unknown_slug() {
-        let err = PrimeLocalSidecar::start("prime:local/local/not_a_model", false)
+        let err = PrimeLocalSidecar::start("prime:local/not_a_model", false)
             .err()
             .expect("err");
         assert!(err.contains("unknown local model"), "{err}");

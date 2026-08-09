@@ -29,16 +29,6 @@ pub(crate) async fn backoff_after_agent_failure(
     .await
 }
 
-pub(crate) async fn backoff_after_mini_gate_failure(
-    timing: Option<&std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
-    last_error: &str,
-    attempt: u32,
-    max_attempts: u32,
-) -> Result<bool, AgentError> {
-    // Same user-visible label as cursor:/prime: (`agent attempt N failed`).
-    backoff_after_agent_failure(timing, last_error, attempt, max_attempts).await
-}
-
 struct LabeledBackoff<'a> {
     timing: Option<&'a std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
     last_error: &'a str,
@@ -123,7 +113,6 @@ mod kiss_cov_gate_refs{
     #[test]
     fn kiss_cov_unit_names() {
         let _ = backoff_after_agent_failure;
-        let _ = backoff_after_mini_gate_failure;
         let req = LabeledBackoff {
             timing: None,
             last_error: "e",

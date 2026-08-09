@@ -5,7 +5,6 @@
 fn kiss_exec_witness_00_00() {
     AgentIoOptions();
     teardown_coder_session_after_transport_error();
-    backoff_after_mini_gate_failure();
     LabeledBackoff();
     CoderSessionPromptDispatch();
     dispatch_coder_session_prompt();

@@ -16,7 +16,7 @@ fn mini_flag_is_unknown_argument() {
 }
 
 #[test]
-fn openrouter_model_selects_without_mini_flag() {
+fn mini_model_is_rejected() {
     with_seeded_agent_config(|| {
         let matches = Cli::command().get_matches_from([
             "malvin",
@@ -25,8 +25,8 @@ fn openrouter_model_selects_without_mini_flag() {
             "hello",
         ]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
-        apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
-        assert_eq!(cli.shared.model, "mini:openrouter/openai/gpt-4o");
+        let err = apply_workspace_config_defaults(&matches, &mut cli).expect_err("legacy mini");
+        assert!(err.contains("mini:") || err.contains("prime:"), "{err}");
     });
 }
 
@@ -37,7 +37,7 @@ fn bare_cli_model_is_rejected() {
             Cli::command().get_matches_from(["malvin", "--model", "auto", "hello"]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         let err = apply_workspace_config_defaults(&matches, &mut cli).expect_err("bare");
-        assert!(err.contains("cursor:") || err.contains("mini:"), "{err}");
+        assert!(err.contains("cursor:") || err.contains("prime:"), "{err}");
     });
 }
 
@@ -60,7 +60,7 @@ model = "auto"
         let matches = Cli::command().get_matches_from(["malvin", "--do", "hello"]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         let err = apply_workspace_config_defaults(&matches, &mut cli).expect_err("bare config");
-        assert!(err.contains("cursor:") || err.contains("mini:"), "{err}");
+        assert!(err.contains("cursor:") || err.contains("prime:"), "{err}");
         let after = std::fs::read_to_string(&path).expect("read");
         assert!(after.contains("model = \"auto\""), "must not rewrite config");
     });

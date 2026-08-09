@@ -57,7 +57,6 @@ pub struct AgentConfig {
     /// Gate-loop budget for tidy and write (`max_loops_code` config key).
     pub max_loops_code: usize,
     pub max_acp_retries: u32,
-    pub max_mini_transport_retries: u32,
 }
 
 impl Default for AgentConfig {
@@ -68,7 +67,6 @@ impl Default for AgentConfig {
             max_loops: DEFAULT_MAX_LOOPS,
             max_loops_code: DEFAULT_MAX_LOOPS_CODE,
             max_acp_retries: DEFAULT_MAX_ACP_RETRIES,
-            max_mini_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
         }
     }
 }
@@ -232,8 +230,8 @@ pub(crate) fn merge_missing_keys(into: &mut toml::Value, template: &toml::Value)
 }
 
 #[cfg(test)]
-#[path = "malvin_config_file_tests_model_mini.rs"]
-mod malvin_config_file_tests_model_mini;
+#[path = "malvin_config_file_tests_model_prefix.rs"]
+mod malvin_config_file_tests_model_prefix;
 
 #[cfg(test)]
 #[path = "malvin_config_file_tests.rs"]

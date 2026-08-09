@@ -23,7 +23,7 @@ pub fn effective_prime_api_key() -> Option<String> {
 
 /// Soft check: at least one provider key is present. The bridge uses Prime `AuthStorage`.
 ///
-/// `prime:local/local/…` uses a malvin GGUF sidecar and does not need cloud keys.
+/// `prime:local/…` uses a malvin GGUF sidecar and does not need cloud keys.
 ///
 /// # Errors
 ///
@@ -59,7 +59,7 @@ mod tests {
                 crate::acp::with_env("OPENROUTER_API_KEY", None, || {
                     crate::acp::with_env("PRIME_API_KEY", None, || {
                         assert!(ensure_prime_authenticated(
-                            "prime:local/local/qwen35_9b_q4"
+                            "prime:local/qwen35_9b_q4"
                         )
                         .is_ok());
                     });

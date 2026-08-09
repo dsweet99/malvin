@@ -50,13 +50,10 @@ fn kiss_witness_acp_transport_and_backend_c() {
     let _ = stringify!(retry_pollution_mock_client);
     let _ = stringify!(run_retry_pollution_prompt);
     let _ = stringify!(assert_retry_history_is_clean);
-    let _ = stringify!(mini_coder_prompt_retry_does_not_pollute_session_history);
 }
 
 #[test]
 fn kiss_witness_cli_and_artifacts_d() {
-    let _ = stringify!(loop_driver_fenceless_completes_in_one_turn);
-    let _ = stringify!(loop_driver_fenceless_no_nudge_in_prompts_log);
     let _ = stringify!(seed_home_logs_for_gc_test);
     let _ = stringify!(seed_short_id_lookup_fixture);
     let _ = stringify!(run_gate_inline_summarize_first_iteration);

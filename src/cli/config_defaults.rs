@@ -160,7 +160,6 @@ pub(crate) fn apply_shared_config_defaults(
     if !global_flag_from_command_line(matches, "max_acp_retries") {
         shared.max_acp_retries = agent.max_acp_retries;
     }
-    shared.mini_max_transport_retries = agent.max_mini_transport_retries;
 }
 
 pub fn parse_cli_with_config_defaults(
@@ -187,8 +186,8 @@ mod config_defaults_tests;
 mod config_defaults_tests_write;
 
 #[cfg(test)]
-#[path = "config_defaults_tests_mini.rs"]
-mod config_defaults_tests_mini;
+#[path = "config_defaults_tests_legacy_model.rs"]
+mod config_defaults_tests_legacy_model;
 
 #[cfg(test)]
 #[path = "config_defaults_tests_router.rs"]

@@ -1,4 +1,4 @@
-//! Malvin: implementation and review workflow driven by the Cursor SDK (`cursor:`) or malvin-mini.
+//! Malvin: implementation and review workflow driven by the Cursor SDK (`cursor:`) or Prime SDK (`prime:`).
 #![cfg_attr(
     test,
     allow(
@@ -41,13 +41,9 @@ pub use workflow_name_aliases::{
     canonical_workflow_name, resolve_session_log_path, resolve_workspace_malvin_config_path,
     WORKSPACE_CONFIG_PATHS,
 };
-/// OpenRouter HTTP transport (revamp-2 component).
-pub mod openrouter_transport;
-/// Shared LLM transport interface and neutral completion types.
+/// Shared LLM completion types used by the local engine / Prime sidecar.
 pub mod llm_transport;
-/// In-process malvin-mini agent (revamp-2 component).
-pub mod mini_agent;
-/// Agent interface (malvin → Mini or cursor-agent).
+/// Agent interface (malvin → cursor-agent / Prime).
 pub mod agent;
 /// In-process llama.cpp backend formerly the `malvin-llama` workspace crate.
 pub mod malvin_llama;

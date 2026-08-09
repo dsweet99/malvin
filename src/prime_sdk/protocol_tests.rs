@@ -14,7 +14,7 @@ fn encode_create_send_cancel_close() {
     assert!(!line.contains("resume"));
     let local = prime_encode_request(&PrimeBridgeRequest::Create {
         cwd: "/tmp".into(),
-        model: "local/local/qwen35_9b_q4".into(),
+        model: "local/qwen35_9b_q4".into(),
         api_key: None,
         no_force_policy: None,
         models_json_path: Some("/tmp/models.json".into()),

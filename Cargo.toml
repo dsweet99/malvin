@@ -50,7 +50,6 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 
 [dev-dependencies]
 portable-pty = "0.8"
-wiremock = "0.6"
 
 [lib]
 name = "malvin"

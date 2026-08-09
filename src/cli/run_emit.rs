@@ -35,7 +35,7 @@ pub fn emit_host_resources_line(run_dir: &Path, echo_stdout: bool) -> Result<(),
 
 /// Format the startup model prelude line (`Model: …`).
 #[must_use]
-pub fn format_model_mini_line(model: &str) -> String {
+pub fn format_model_line(model: &str) -> String {
     format!("Model: {model}")
 }
 
@@ -86,7 +86,7 @@ pub fn emit_run_startup_sequence(
     append_command_log_line(
         &artifacts.run_dir,
         opts.tee_stdout,
-        &format_model_mini_line(&opts.model),
+        &format_model_line(&opts.model),
     )?;
     echo_primary_to_stdout(&artifacts.plan_path, opts.tee_stdout)?;
     print_stdout_line(
@@ -100,7 +100,7 @@ pub fn emit_run_startup_sequence(
 mod tests {
     use super::{
         append_command_log_line, emit_host_resources_line, emit_run_startup_sequence,
-        format_model_mini_line, RunStartupEmitOpts,
+        format_model_line, RunStartupEmitOpts,
     };
     use crate::output::{format_who_tag_delim, WHO_U};
 
@@ -132,29 +132,29 @@ mod tests {
     }
 
     #[test]
-    fn format_model_mini_line_shows_prefixed_model() {
+    fn format_model_line_shows_prefixed_model() {
         assert_eq!(
-            format_model_mini_line("cursor:composer-2"),
+            format_model_line("cursor:composer-2"),
             "Model: cursor:composer-2"
         );
         assert_eq!(
-            format_model_mini_line("mini:openrouter/openai/gpt-4o"),
-            "Model: mini:openrouter/openai/gpt-4o"
+            format_model_line("prime:openai/gpt-4o"),
+            "Model: prime:openai/gpt-4o"
         );
     }
 
     #[test]
-    fn append_model_mini_line_uses_user_who_tag() {
+    fn append_model_line_uses_user_who_tag() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let run_dir = tmp.path().join("run");
         std::fs::create_dir_all(&run_dir).expect("mkdir");
         std::fs::write(run_dir.join("command.log"), "existing\n").expect("seed");
-        let line = format_model_mini_line("mini:openrouter/auto");
+        let line = format_model_line("prime:openai/gpt-4o");
         append_command_log_line(&run_dir, false, &line).expect("emit");
         let text = std::fs::read_to_string(run_dir.join("command.log")).expect("read");
         let delim = format_who_tag_delim(WHO_U);
         assert!(text.contains("existing"));
-        assert!(text.contains(&format!(" {delim}Model: mini:openrouter/auto")));
+        assert!(text.contains(&format!(" {delim}Model: prime:openai/gpt-4o")));
     }
 
     #[test]
@@ -196,7 +196,7 @@ mod tests {
             RunStartupEmitOpts {
                 tee_stdout: false,
                 host_resources: false,
-                model: "mini:openrouter/auto".into(),
+                model: "prime:openai/gpt-4o".into(),
             },
             "code",
         )
@@ -204,6 +204,6 @@ mod tests {
         let log = std::fs::read_to_string(artifacts.run_dir.join("command.log")).expect("log");
         assert!(log.contains("Command:"));
         assert!(!log.contains("Memory:"));
-        assert!(log.contains("Model: mini:openrouter/auto"));
+        assert!(log.contains("Model: prime:openai/gpt-4o"));
     }
 }

@@ -38,7 +38,7 @@ fn kiss_cov_models_args_clap_parse_and_destructure() {
 #[test]
 fn kiss_cov_models_cmd_run_helpers() {
     use super::test_hooks::*;
-    use super::{run_mini_models, ModelsArgs};
+    use super::ModelsArgs;
 
     let args = ModelsArgs::default();
     assert!(format!("{args:?}").starts_with("ModelsArgs"));
@@ -50,14 +50,6 @@ fn kiss_cov_models_cmd_run_helpers() {
     let lines = models_display_lines("only-one\n").expect("lines");
     assert_eq!(lines, vec!["only-one".to_string()]);
     print_parsed_or_fallback("fallback\n");
-    // Cross-file kiss witnesses: async mini helpers live in models_cmd_tests.rs.
-    let _ = run_mini_models;
-    let _ = (
-        crate::cli::models_cmd_tests::run_mini_models_prints_openrouter_rows_and_footer,
-        crate::cli::models_cmd_tests::run_mini_models_surfaces_http_errors,
-        crate::cli::models_cmd_tests::print_mini_models_formats_tab_separated_rows,
-        crate::cli::models_cmd_tests::kiss_cov_mini_models_test_helpers,
-    );
 }
 
 #[test]

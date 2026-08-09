@@ -1,4 +1,4 @@
-//! Temporary `models.json` so Prime can resolve `local/local/<slug>` to a sidecar.
+//! Temporary `models.json` so Prime can resolve `local/<slug>` to a sidecar.
 
 use std::path::Path;
 
@@ -50,13 +50,13 @@ mod tests {
         write_prime_local_models_json(
             &path,
             "http://127.0.0.1:9/v1",
-            "local/qwen35_9b_q4",
+            "qwen35_9b_q4",
             "Qwen",
         )
         .expect("write");
         let text = std::fs::read_to_string(&path).expect("read");
         assert!(text.contains("\"local\""));
-        assert!(text.contains("local/qwen35_9b_q4"));
+        assert!(text.contains("qwen35_9b_q4"));
         assert!(text.contains("http://127.0.0.1:9/v1"));
     }
 }

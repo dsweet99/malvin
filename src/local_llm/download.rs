@@ -5,7 +5,7 @@ use std::process::Command;
 
 use super::cache::{is_model_cached, model_cache_dir, model_cache_path, model_cache_root};
 use super::registry::{require_known_local_slug, LocalModelSpec};
-use crate::model_id::{parse_model_id, MiniTransport, ModelBackend, MINI_PREFIX};
+use crate::model_id::{parse_model_id, PRIME_PREFIX};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DownloadPolicy {
@@ -16,16 +16,13 @@ pub enum DownloadPolicy {
 pub fn resolve_download_target(raw: &str) -> Result<&'static LocalModelSpec, String> {
     let raw = raw.trim();
     let slug = match parse_model_id(raw) {
-        Ok(parsed) if parsed.backend == ModelBackend::Mini(MiniTransport::Local) => parsed.slug,
-        Ok(_) => {
-            return Err(format!(
-                "download only supports `{MINI_PREFIX}local/<id>` models (got `{raw}`)"
-            ));
-        }
+        Ok(parsed) => parsed.local_catalog_slug().map(str::to_string).ok_or_else(|| {
+            format!("download only supports `{PRIME_PREFIX}local/<id>` models (got `{raw}`)")
+        })?,
         Err(e) => {
             if !raw.contains(':') {
                 return Err(format!(
-                    "download only supports `{MINI_PREFIX}local/<id>` (got bare `{raw}`); try `{MINI_PREFIX}local/{raw}`"
+                    "download only supports `{PRIME_PREFIX}local/<id>` (got bare `{raw}`); try `{PRIME_PREFIX}local/{raw}`"
                 ));
             }
             return Err(e);
@@ -97,12 +94,12 @@ pub fn ensure_model_cached(
     }
     if policy == DownloadPolicy::Deny {
         return Err(format!(
-            "local model `{MINI_PREFIX}local/{}` is not cached at {} (omit `--no-download` to fetch automatically on first use)",
+            "local model `{PRIME_PREFIX}local/{}` is not cached at {} (omit `--no-download` to fetch automatically on first use)",
             spec.slug,
             model_cache_path(spec).display(),
         ));
     }
-    download_local_model(&format!("{MINI_PREFIX}local/{}", spec.slug))
+    download_local_model(&format!("{PRIME_PREFIX}local/{}", spec.slug))
 }
 
 #[cfg(test)]
@@ -110,17 +107,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn resolve_download_target_accepts_mini_local_only() {
+    fn resolve_download_target_accepts_prime_local_only() {
         assert_eq!(
-            resolve_download_target("mini:local/qwen35_9b_q4")
+            resolve_download_target("prime:local/qwen35_9b_q4")
                 .expect("ok")
                 .slug,
             "qwen35_9b_q4"
         );
         assert!(resolve_download_target("nemotron3_nano_4b")
             .expect_err("bare")
-            .contains("mini:local/"));
+            .contains("prime:local/"));
         assert!(resolve_download_target("local:qwen35_9b_q4").is_err());
-        assert!(resolve_download_target("mini:openrouter/x").is_err());
+        assert!(resolve_download_target("mini:local/qwen35_9b_q4").is_err());
     }
 }

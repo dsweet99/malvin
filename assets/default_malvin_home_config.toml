@@ -10,12 +10,10 @@ max_loops = 1
 max_hypotheses = 5
 max_loops_code = 3
 max_acp_retries = 3
-# Retries per OpenRouter HTTP completion for all non-billing failures (429, 5xx, 4xx, transport, JSON decode, provider capacity).
-max_mini_transport_retries = 3
 
 # Cursor-mode USD cost rates ($ per million tokens) for model `cursor:auto`.
 # COST uses usd_per_microtoken_* × counts / 1e6 (0.0000 when all are 0).
-# Add `[agent.cursor.<name>]`, `[agent.mini."openrouter/<org/model>"]`, `[agent.mini."local/<id>"]`, or `[agent.prime."<provider/model>"]` for other models.
+# Add `[agent.cursor.<name>]` or `[agent.prime."<provider/model>"]` for other models.
 [agent.cursor.auto]
 usd_per_microtoken_in = 0
 usd_per_microtoken_out = 0

@@ -1,10 +1,10 @@
-use crate::openrouter_transport::ResponseUsage;
+use crate::llm_transport::ResponseUsage;
 
 use super::RunTiming;
 
 impl RunTiming {
-    pub fn record_mini_http_cost(&mut self, usage: &ResponseUsage) {
-        // `local:` zeroes costs in `record_mini_http_step`; do not invent unknowns here.
+    pub fn record_completion_cost(&mut self, usage: &ResponseUsage) {
+        // `prime:local/…` zeroes costs in `record_completion_step`; do not invent unknowns here.
         if matches!(self.cost_policy, super::CostPolicy::Zero) {
             return;
         }
@@ -60,7 +60,7 @@ pub fn cost_stats(r: &RunTiming) -> Option<serde_json::Value> {
     }))
 }
 
-pub fn record_mini_http_cost(
+pub fn record_completion_cost(
     timing: Option<&std::sync::Arc<std::sync::Mutex<RunTiming>>>,
     usage: &ResponseUsage,
 ) {
@@ -68,7 +68,7 @@ pub fn record_mini_http_cost(
         return;
     };
     let mut g = t.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    g.record_mini_http_cost(usage);
+    g.record_completion_cost(usage);
 }
 
 #[cfg(test)]
@@ -79,13 +79,13 @@ mod tests {
     #[test]
     fn cost_stats_include_unknown_tx_metadata() {
         let mut r = RunTiming::default();
-        r.record_mini_http_cost(&ResponseUsage {
+        r.record_completion_cost(&ResponseUsage {
             prompt_tokens: Some(1),
             completion_tokens: None,
             total_tokens: Some(1),
             cost: None,
         });
-        r.record_mini_http_cost(&ResponseUsage {
+        r.record_completion_cost(&ResponseUsage {
             prompt_tokens: None,
             completion_tokens: None,
             total_tokens: None,

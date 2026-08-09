@@ -12,7 +12,7 @@ use crate::llm_transport::{
 
 use super::download::{ensure_model_cached, DownloadPolicy};
 use super::registry::{require_known_local_slug, LocalModelSpec};
-use crate::model_id::{parse_model_id, MINI_PREFIX};
+use crate::model_id::{parse_model_id, PRIME_PREFIX};
 
 const DEFAULT_MAX_TOKENS: i32 = 2048;
 
@@ -22,7 +22,7 @@ enum LocalEngineInner {
     Scripted(Result<String, String>),
 }
 
-/// In-process local completion backend for the mini loop.
+/// In-process local completion backend for the Prime local sidecar.
 pub struct LocalCompletionEngine {
     inner: LocalEngineInner,
     pub model_slug: String,
@@ -166,17 +166,15 @@ fn require_mem_limit_for_local(spec: &LocalModelSpec) -> Result<(), String> {
         return Ok(());
     }
     Err(format!(
-        "local model `{MINI_PREFIX}local/{}` (or `prime:local/local/{}`) needs mem_limit_gb >= {} (currently {configured}); set mem_limit_gb in ~/.malvin_home/config.toml",
-        spec.slug, spec.slug, spec.min_mem_limit_gb
+        "local model `{PRIME_PREFIX}local/{}` needs mem_limit_gb >= {} (currently {configured}); set mem_limit_gb in ~/.malvin_home/config.toml",
+        spec.slug, spec.min_mem_limit_gb
     ))
 }
 
 fn local_slug(model_id: &str) -> Result<String, String> {
     match parse_model_id(model_id) {
         Ok(parsed) => parsed.local_catalog_slug().map(str::to_string).ok_or_else(|| {
-            format!(
-                "expected `{MINI_PREFIX}local/<id>` or `prime:local/local/<id>`, got `{model_id}`"
-            )
+            format!("expected `{PRIME_PREFIX}local/<id>`, got `{model_id}`")
         }),
         Err(e) => Err(e),
     }

@@ -12,7 +12,7 @@ impl PrimeSdkClient {
     /// # Errors
     ///
     /// Returns [`AuthError`] when no provider API key is configured (skipped for
-    /// `prime:local/local/…`).
+    /// `prime:local/…`).
     pub fn ensure_authenticated(&self) -> Result<(), AuthError> {
         ensure_prime_authenticated(&self.model)
     }

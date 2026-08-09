@@ -181,8 +181,6 @@ fn kiss_exec_witness_01_10() {
 fn kiss_exec_witness_01_11() {
     ActiveAgentStatsSource();
     assert_prompt_without_begin_errors();
-    run_mini_lifecycle();
-    agent_backend_mini_mock_lifecycle_and_prompt_without_begin();
     mock_backend_bash_turn_exhaustion();
     empty_backups();
     AgentPhase();
@@ -230,11 +228,6 @@ fn kiss_exec_witness_01_14() {
     run_inline_summarize_on_open_mock_session();
     TenaciousBudgetGuard();
     GateLoopTenaciousApply();
-    run_mini_models();
-    run_mini_models_prints_openrouter_rows_and_footer();
-    mount_mini_models_mock();
-    MiniModelsEnvGuards();
-    run_mini_models_surfaces_http_errors();
     test_scan_for_extension_handles_symlink_cycles();
     RepoGateCommandFailure();
     gate_failure_summary();

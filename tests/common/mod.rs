@@ -24,8 +24,6 @@ mod integration_cli_args;
 mod enn_hybrid_fixture;
 #[cfg(unix)]
 mod live_agent;
-#[cfg(unix)]
-pub mod agent_backend_helpers;
 mod process;
 #[cfg(unix)]
 mod tidy_harness;
@@ -34,7 +32,6 @@ mod acp_router_mock;
 #[cfg(unix)]
 mod write_harness;
 mod contract;
-pub mod mini_test_helpers;
 pub mod observability_parity;
 mod sandbox_test_helpers;
 mod workspace;
@@ -63,7 +60,7 @@ pub use acp_router_mock::*;
 pub use write_harness::*;
 #[cfg(unix)]
 pub use live_agent::{
-    command_output_live_agent, command_output_mini_live, live_agent_prereqs_met,
+    command_output_live_agent, live_agent_prereqs_met,
     require_openrouter_key_when_gate_set, LIVE_AGENT_CMD_TIMEOUT,
 };
 pub use process::{MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout};

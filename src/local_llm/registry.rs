@@ -1,12 +1,16 @@
-//! Static catalog of supported `mini:local/…` GGUF model ids.
+//! Static catalog of supported `prime:local/…` GGUF model ids.
 
-use crate::openrouter_transport::ModelListing;
+use crate::model_id::PRIME_PREFIX;
 
-use crate::model_id::MINI_PREFIX;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LocalModelListing {
+    pub id: String,
+    pub name: String,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LocalModelSpec {
-    /// Slug after `mini:local/` (e.g. `qwen35_9b_q4`).
+    /// Slug after `prime:local/` (e.g. `qwen35_9b_q4`).
     pub slug: &'static str,
     /// Human-readable name for `malvin models`.
     pub display_name: &'static str,
@@ -58,14 +62,14 @@ pub fn require_known_local_slug(slug: &str) -> Result<&'static LocalModelSpec, S
     lookup_local_model(slug).ok_or_else(|| {
         let known = LOCAL_MODELS
             .iter()
-            .map(|m| format!("{MINI_PREFIX}local/{}", m.slug))
+            .map(|m| format!("{PRIME_PREFIX}local/{}", m.slug))
             .collect::<Vec<_>>()
             .join(", ");
-        format!("unknown local model `{MINI_PREFIX}local/{slug}`; known: {known}")
+        format!("unknown local model `{PRIME_PREFIX}local/{slug}`; known: {known}")
     })
 }
 
-/// True when `mini:local/…` models can run (Apple Silicon Metal). Used to omit them from listings.
+/// True when `prime:local/…` models can run (Apple Silicon Metal). Used to omit them from listings.
 #[must_use]
 pub const fn local_backend_supported() -> bool {
     crate::malvin_llama::metal_backend_supported()
@@ -73,13 +77,13 @@ pub const fn local_backend_supported() -> bool {
 
 /// Listings for `malvin models`. Empty when Metal is unavailable (no runnable local backend).
 #[must_use]
-pub fn local_model_listings() -> Vec<ModelListing> {
+pub fn local_model_listings() -> Vec<LocalModelListing> {
     if !local_backend_supported() {
         return Vec::new();
     }
     LOCAL_MODELS
         .iter()
-        .map(|spec| ModelListing {
+        .map(|spec| LocalModelListing {
             id: spec.slug.to_string(),
             name: spec.display_name.to_string(),
         })
@@ -119,7 +123,7 @@ mod tests {
         } else {
             assert!(
                 rows.is_empty(),
-                "non-Metal hosts must omit mini:local listings"
+                "non-Metal hosts must omit prime:local listings"
             );
         }
     }

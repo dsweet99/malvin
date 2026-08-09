@@ -7,16 +7,6 @@
 /// One independent retry/turn budget layer in concept order (documentation / typing aid; not enforced at runtime).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BudgetScopeLayer {
-    /// `OpenRouter` HTTP transport retries per completion (`[agent].max_mini_transport_retries`).
-    MiniTransportRetry,
-    /// Investigate/WindDown HTTP turns per coder prompt (`--mini-max-http-turns`).
-    MiniHttpTurn,
-    /// Bash subprocess executions per prompt (`--mini-max-bash-execs`).
-    MiniBashExec,
-    /// Whole-loop gate retries after failure (`--mini-max-gate-retries`).
-    MiniGateIteration,
-    /// Context-recovery shrink passes on overflow (`--mini-max-shrink-passes`).
-    MiniShrinkPass,
     /// Outer `KPopEngine` / gate-loop iterations (`--max-loops`).
     OuterKPopEngineLoop,
     /// ACP spawn / coder-prompt retries (`--max-acp-retries`).
@@ -27,24 +17,13 @@ impl BudgetScopeLayer {
     /// All layers in stable concept order.
     #[must_use]
     pub const fn all() -> &'static [Self] {
-        &[
-            Self::MiniTransportRetry,
-            Self::MiniHttpTurn,
-            Self::MiniBashExec,
-            Self::MiniGateIteration,
-            Self::MiniShrinkPass,
-            Self::OuterKPopEngineLoop,
-            Self::AcpSpawnRetry,
-        ]
+        &[Self::OuterKPopEngineLoop, Self::AcpSpawnRetry]
     }
 
     /// Whether `single_attempt: true` forces one try at this layer.
     #[must_use]
     pub const fn respects_single_attempt(self) -> bool {
-        matches!(
-            self,
-            Self::MiniTransportRetry | Self::MiniGateIteration | Self::AcpSpawnRetry
-        )
+        matches!(self, Self::AcpSpawnRetry)
     }
 
     /// Effective attempt budget for this layer given CLI/config limit and `single_attempt`.
@@ -54,13 +33,8 @@ impl BudgetScopeLayer {
             1
         } else {
             match self {
-                Self::MiniTransportRetry | Self::MiniGateIteration | Self::AcpSpawnRetry => {
-                    limit.max(1)
-                }
-                Self::MiniHttpTurn
-                | Self::MiniBashExec
-                | Self::MiniShrinkPass
-                | Self::OuterKPopEngineLoop => limit,
+                Self::AcpSpawnRetry => limit.max(1),
+                Self::OuterKPopEngineLoop => limit,
             }
         }
     }

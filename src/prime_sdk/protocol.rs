@@ -13,7 +13,7 @@ pub enum PrimeBridgeRequest {
         api_key: Option<String>,
         #[serde(rename = "noForcePolicy", skip_serializing_if = "Option::is_none")]
         no_force_policy: Option<&'static str>,
-        /// Temp Prime `models.json` for `prime:local/local/…` sidecar.
+        /// Temp Prime `models.json` for `prime:local/…` sidecar.
         #[serde(rename = "modelsJsonPath", skip_serializing_if = "Option::is_none")]
         models_json_path: Option<String>,
     },

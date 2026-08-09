@@ -1,29 +1,27 @@
 //! Prefix-filter helpers for `malvin models`.
 
-use crate::model_id::{MINI_PREFIX, PRIME_PREFIX};
-
-use super::MINI_LOCAL_HEAD;
-use super::MINI_OPENROUTER_HEAD;
+use crate::model_id::PRIME_PREFIX;
 
 /// Resolve optional listing prefix from trailing words.
 ///
 /// Rejects legacy `download …` action words. Words are joined so path-shaped catalogs keep `/`
 /// boundaries: `malvin models prime: open` → `prime:open`, and
-/// `malvin models mini:openrouter openai` → `mini:openrouter/openai`.
+/// `malvin models prime:local qwen` → `prime:local/qwen`.
 pub(crate) fn models_list_prefix(words: &[String]) -> Result<Option<String>, String> {
     if words.is_empty() {
         return Ok(None);
     }
     if words[0].eq_ignore_ascii_case("download") {
-        return Err(format!(
-            "`malvin models` no longer downloads; `{MINI_PREFIX}local/…` models fetch automatically on first use (omit `--no-download`)"
-        ));
+        return Err(
+            "`malvin models` no longer downloads; `prime:local/…` models fetch automatically on first use (omit `--no-download`)"
+                .into(),
+        );
     }
     Ok(Some(join_models_prefix_words(words)))
 }
 
-/// Join filter words, inserting `/` between path segments for `prime:` / `mini:openrouter` /
-/// `mini:local` ids when the left side does not already end with `:` or `/`.
+/// Join filter words, inserting `/` between path segments for `prime:` ids when the left side
+/// does not already end with `:` or `/`.
 pub(crate) fn join_models_prefix_words(words: &[String]) -> String {
     let mut out = String::new();
     for word in words {
@@ -44,8 +42,6 @@ fn needs_models_filter_slash(prefix: &str) -> bool {
         return false;
     }
     prefix.starts_with(PRIME_PREFIX)
-        || prefix.starts_with(MINI_OPENROUTER_HEAD.trim_end_matches('/'))
-        || prefix.starts_with(MINI_LOCAL_HEAD.trim_end_matches('/'))
 }
 
 /// Whether a catalog section whose ids start with `section_head` can produce rows for `filter`.

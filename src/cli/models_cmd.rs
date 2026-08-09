@@ -1,7 +1,7 @@
-//! `malvin models` — list Cursor, Prime, Mini `OpenRouter`, and Mini local models with prefixes.
+//! `malvin models` — list Cursor and Prime models with prefixes.
 
 use crate::local_llm::local_model_listings;
-use crate::model_id::{CURSOR_PREFIX, MINI_PREFIX, PRIME_PREFIX};
+use crate::model_id::{CURSOR_PREFIX, PRIME_PREFIX};
 use crate::output::{MALVIN_WHO, print_stdout_line};
 use clap::Args;
 
@@ -16,12 +16,9 @@ pub(crate) use models_cmd_filter::{
     line_matches_prefix, models_list_prefix, section_may_match,
 };
 
-const MINI_OPENROUTER_HEAD: &str = "mini:openrouter/";
-const MINI_LOCAL_HEAD: &str = "mini:local/";
-
 #[derive(Args, Debug, Clone, Default)]
 pub struct ModelsArgs {
-    /// Optional prefix filter (e.g. `prime:`, `prime:open`, `mini:local/`). See `models_list_prefix`.
+    /// Optional prefix filter (e.g. `prime:`, `prime:open`, `prime:local/`). See `models_list_prefix`.
     #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
     pub words: Vec<String>,
 }
@@ -36,7 +33,7 @@ fn print_current_footer(current_model: &str) {
     print_stdout_line(MALVIN_WHO, &format!("Current: {current_model}"));
 }
 
-/// Print Cursor, Prime, Mini `OpenRouter`, and Mini local models with prefixes and a `Current:` footer.
+/// Print Cursor and Prime models with prefixes and a `Current:` footer.
 ///
 /// Optional `words` form a prefix filter on printed model ids (see [`models_list_prefix`]).
 pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
@@ -57,48 +54,7 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
         }
         print_prime_local_models(filter_ref);
     }
-    if section_may_match(filter_ref, MINI_OPENROUTER_HEAD) {
-        match list_openrouter_models_sync() {
-            Ok(models) => print_openrouter_models(&models, filter_ref),
-            Err(e) => {
-                print_stdout_line(
-                    MALVIN_WHO,
-                    &format!("(mini:openrouter models unavailable: {e})"),
-                );
-            }
-        }
-    }
-    if section_may_match(filter_ref, MINI_LOCAL_HEAD) {
-        print_local_models(filter_ref);
-    }
     print_current_footer(current_model);
-    Ok(())
-}
-
-fn list_openrouter_models_sync() -> Result<Vec<crate::openrouter_transport::ModelListing>, String> {
-    // One HTTP GET: a current-thread runtime is enough (avoid a multi-thread pool for listing).
-    let rt = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .map_err(|e| format!("failed to create Tokio runtime: {e}"))?;
-    rt.block_on(async {
-        use crate::openrouter_transport::{OpenRouterClient, OpenRouterConfig};
-        let config = OpenRouterConfig::from_env_for_listing()?;
-        let client = OpenRouterClient::new(config).map_err(|e| e.to_string())?;
-        client.list_models().await.map_err(|e| e.to_string())
-    })
-}
-
-/// Fetch `OpenRouter` models (async helper for tests).
-#[cfg(any(test, doctest))]
-pub async fn run_mini_models() -> Result<(), String> {
-    use crate::openrouter_transport::{OpenRouterClient, OpenRouterConfig};
-
-    let config = OpenRouterConfig::from_env_for_listing()?;
-    let client = OpenRouterClient::new(config).map_err(|e| e.to_string())?;
-    let models = client.list_models().await.map_err(|e| e.to_string())?;
-    print_openrouter_models(&models, None);
-    print_current_footer(crate::config::DEFAULT_CLI_MODEL);
     Ok(())
 }
 
@@ -111,28 +67,7 @@ fn print_prime_models(models: &[crate::prime_sdk::PrimeModelListing], filter: Op
     }
 }
 
-fn print_openrouter_models(
-    models: &[crate::openrouter_transport::ModelListing],
-    filter: Option<&str>,
-) {
-    for model in models {
-        let line = format!("{MINI_PREFIX}openrouter/{}\t{}", model.id, model.name);
-        if line_matches_prefix(&line, filter) {
-            print_stdout_line(MALVIN_WHO, &line);
-        }
-    }
-}
-
-fn print_local_models(filter: Option<&str>) {
-    for model in local_model_listings() {
-        let line = format!("{MINI_PREFIX}local/{}\t{}", model.id, model.name);
-        if line_matches_prefix(&line, filter) {
-            print_stdout_line(MALVIN_WHO, &line);
-        }
-    }
-}
-
-const PRIME_LOCAL_HEAD: &str = "prime:local/local/";
+const PRIME_LOCAL_HEAD: &str = "prime:local/";
 
 fn print_prime_local_models(filter: Option<&str>) {
     for model in local_model_listings() {
@@ -218,12 +153,8 @@ pub(crate) mod test_hooks {
         models_cmd_parse::models_display_lines_filtered(text, prefix, filter)
     }
 
-    pub fn print_mini_models(models: &[crate::openrouter_transport::ModelListing]) {
-        super::print_openrouter_models(models, None);
-    }
-
     pub fn print_local_models_for_test() {
-        super::print_local_models(None);
+        super::print_prime_local_models(None);
     }
 
     pub fn current_model_label() -> String {

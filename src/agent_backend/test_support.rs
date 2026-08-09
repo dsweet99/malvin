@@ -1,56 +1,6 @@
 //! Shared helpers for `agent_backend` unit tests.
 
-use std::path::PathBuf;
-
-use crate::mini_agent::{
-    LlmBackend, LoopDriverConfig, LoopDriverSession, MiniLoopConfig, MiniRetryStrategy,
-    MiniTraceSink, MockScript, MockStep,
-};
 use crate::cli::SharedOpts;
-use crate::openrouter_transport::CompletionResponse;
-
-#[must_use]
-pub fn mini_done_response() -> CompletionResponse {
-    CompletionResponse {
-        content: crate::mini_agent::protocol::format_wire_turn("- done", "MINI_DONE"),
-        usage: None,
-        reasoning: None,
-    }
-}
-
-#[must_use]
-pub fn completion(content: impl Into<String>) -> CompletionResponse {
-    let body = content.into();
-    CompletionResponse {
-        content: crate::mini_agent::protocol::format_wire_turn("- progress", &body),
-        usage: None,
-        reasoning: None,
-    }
-}
-
-/// Wire a RESPONSE body into the required `NEW_HISTORY` / `RESPONSE` sections.
-#[must_use]
-pub fn wire_response(response: &str) -> CompletionResponse {
-    CompletionResponse {
-        content: crate::mini_agent::protocol::format_wire_turn("- progress", response),
-        usage: None,
-        reasoning: None,
-    }
-}
-
-#[must_use]
-pub fn mini_test_trace() -> MiniTraceSink {
-    MiniTraceSink::new(None, test_io())
-}
-
-#[must_use]
-pub fn mock_llm(responses: Vec<MockStep>) -> LlmBackend {
-    LlmBackend::Mock(std::sync::Mutex::new(MockScript {
-        responses,
-        call_count: 0,
-        on_response: None,
-    }))
-}
 
 #[must_use]
 pub fn test_io() -> crate::acp::AgentIoOptions {
@@ -66,87 +16,18 @@ pub fn test_io() -> crate::acp::AgentIoOptions {
 }
 
 #[must_use]
-pub fn loop_driver_config(max_http_turns: u32, max_http_retries: u32) -> LoopDriverConfig {
-    LoopDriverConfig {
-        max_http_turns,
-        max_bash_execs: 128,
-        max_http_retries,
-        max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
-        max_shrink_passes: 0,
-        mini_constraints: "constraints".into(),
-        expects_investigation: false,
-    }
-}
-
-#[must_use]
-pub fn loop_session(cwd: PathBuf) -> LoopDriverSession {
-    LoopDriverSession {
-        history: String::new(),
-        previous_response: String::new(),
-        pending_new_request: None,
-        cwd,
-        bash_commands_this_prompt: vec![],
-        prompt_index: 0,
-        llm_model_slug: String::new(),
-        section_shape_nudged: false,
-    }
-}
-
-#[must_use]
-pub fn mini_loop_config(max_http_turns: u32, max_http_retries: u32) -> MiniLoopConfig {
-    MiniLoopConfig {
-        model: "anthropic/claude-sonnet-4".into(),
-        max_http_turns,
-        max_bash_execs: 128,
-        max_http_retries,
-        max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
-        max_gate_retries: max_http_retries,
-        max_shrink_passes: 0,
-        retry_strategy: MiniRetryStrategy::CumulativeTranscript,
-        expects_investigation: false,
-        allow_download: true,
-        mini_constraints: "constraints".into(),
-    }
-}
-
-#[must_use]
-pub fn shared_opts(mini: bool) -> SharedOpts {
-    let model = if mini {
-        "mini:openrouter/auto".into()
-    } else {
-        "cursor:auto".into()
-    };
+pub fn shared_opts(_unused: bool) -> SharedOpts {
     SharedOpts {
-        model,
+        model: "cursor:auto".into(),
         no_force: false,
         no_tenacious: false,
         gates: false,
-
         quiet: false,
         verbose: false,
         max_acp_retries: 3,
         doc: false,
         name: None,
-        mini_max_bash_turns: 32,
-        mini_max_http_turns: 32,
-        mini_max_bash_execs: 128,
-        mini_max_http_retries: 0,
-        mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
-        mini_max_gate_retries: 0,
-        mini_max_shrink_passes: 0,
         no_download: false,
         git: false,
-    }
-}
-
-#[must_use]
-pub fn openrouter_shared_opts() -> SharedOpts {
-    shared_opts(true)
-}
-
-#[allow(unsafe_code)]
-pub fn install_openrouter_test_key() {
-    unsafe {
-        std::env::set_var("OPENROUTER_API_KEY", "sk-test");
     }
 }

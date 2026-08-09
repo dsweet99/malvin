@@ -7,13 +7,6 @@ pub(crate) mod test_support;
 #[cfg(test)]
 #[path = "backend_tests.rs"]
 mod backend_tests;
-#[cfg(test)]
-#[path = "backend_kpop_test_helpers.rs"]
-mod backend_kpop_test_helpers;
-
-#[cfg(test)]
-#[path = "backend_contract_tests.rs"]
-mod backend_contract_tests;
 
 #[cfg(test)]
 #[path = "agent_backend_kiss_cov.rs"]

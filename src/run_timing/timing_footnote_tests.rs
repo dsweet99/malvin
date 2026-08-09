@@ -24,14 +24,14 @@ fn stdout_and_phase_test_locks() -> (
 }
 
 fn seed_run_timing_json(run_dir: &std::path::Path) {
-    use crate::openrouter_transport::ResponseUsage;
+    use crate::llm_transport::ResponseUsage;
 
     let timing = RunTiming::new_arc();
     {
         let mut g = timing.lock().unwrap();
         g.mark_wall_start(Instant::now());
         g.mark_wall_end(Instant::now());
-        g.record_mini_http_cost(&ResponseUsage {
+        g.record_completion_cost(&ResponseUsage {
             prompt_tokens: None,
             completion_tokens: None,
             total_tokens: Some(1),

@@ -103,8 +103,8 @@ fn record_step(
     prompt: u64,
     completion: u64,
 ) {
-    use crate::openrouter_transport::ResponseUsage;
-    timing.lock().unwrap().record_mini_http_step(Some(&ResponseUsage {
+    use crate::llm_transport::ResponseUsage;
+    timing.lock().unwrap().record_completion_step(Some(&ResponseUsage {
         prompt_tokens: Some(prompt),
         completion_tokens: Some(completion),
         total_tokens: Some(prompt + completion),

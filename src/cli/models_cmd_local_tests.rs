@@ -6,7 +6,7 @@ use super::*;
 fn models_list_prefix_rejects_download_action() {
     let err = models_list_prefix(&["download".into()]).expect_err("download");
     assert!(err.contains("no longer downloads"), "{err}");
-    let err = models_list_prefix(&["download".into(), "mini:local/x".into()]).expect_err("dl");
+    let err = models_list_prefix(&["download".into(), "prime:local/x".into()]).expect_err("dl");
     assert!(err.contains("no longer downloads"), "{err}");
 }
 
@@ -23,18 +23,17 @@ fn models_list_prefix_concatenates_words() {
             .as_deref(),
         Some("prime:open")
     );
-    // Path catalogs need `/` between segments; bare concat used to yield mini:openrouteropenai.
     assert_eq!(
-        models_list_prefix(&["mini:openrouter".into(), "openai".into()])
-            .expect("mini join")
+        models_list_prefix(&["prime:local".into(), "qwen".into()])
+            .expect("prime local join")
             .as_deref(),
-        Some("mini:openrouter/openai")
+        Some("prime:local/qwen")
     );
     assert_eq!(
-        models_list_prefix(&["mini:openrouter/".into(), "openai".into()])
+        models_list_prefix(&["prime:local/".into(), "qwen".into()])
             .expect("slash kept")
             .as_deref(),
-        Some("mini:openrouter/openai")
+        Some("prime:local/qwen")
     );
     assert_eq!(
         models_list_prefix(&["prime:openai".into(), "gpt".into()])
@@ -52,10 +51,8 @@ fn models_list_prefix_concatenates_words() {
 fn section_may_match_prime_open_skips_cursor() {
     assert!(section_may_match(Some("prime:open"), PRIME_PREFIX));
     assert!(!section_may_match(Some("prime:open"), CURSOR_PREFIX));
-    assert!(!section_may_match(Some("prime:open"), MINI_OPENROUTER_HEAD));
     assert!(section_may_match(Some("pr"), PRIME_PREFIX));
-    assert!(section_may_match(Some("mini:local"), MINI_LOCAL_HEAD));
-    assert!(!section_may_match(Some("mini:local"), MINI_OPENROUTER_HEAD));
+    assert!(section_may_match(Some("prime:local"), "prime:local/"));
     assert!(section_may_match(None, CURSOR_PREFIX));
 }
 
@@ -111,13 +108,13 @@ fn local_listings_omitted_without_metal() {
     if crate::local_llm::local_backend_supported() {
         assert!(
             !rows.is_empty(),
-            "Metal builds should list mini:local catalog entries"
+            "Metal builds should list prime:local catalog entries"
         );
         assert!(rows.iter().all(|m| !m.id.is_empty()));
     } else {
         assert!(
             rows.is_empty(),
-            "non-Metal builds must omit mini:local from models listing"
+            "non-Metal builds must omit prime:local from models listing"
         );
     }
 }

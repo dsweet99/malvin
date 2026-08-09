@@ -2,13 +2,13 @@ use super::report_timing_line::format_timing_stdout_line_from_json;
 use super::to_json_value;
 use super::super::report_cost_line::format_cost_stdout_line_from_json;
 use crate::malvin_config_file::TokenCostRates;
-use crate::openrouter_transport::ResponseUsage;
+use crate::llm_transport::ResponseUsage;
 use crate::run_timing::RunTiming;
 
 #[test]
 fn run_timing_json_includes_tokens_block() {
     let mut r = RunTiming::default();
-    r.record_mini_http_step(Some(&ResponseUsage {
+    r.record_completion_step(Some(&ResponseUsage {
         prompt_tokens: Some(100),
         completion_tokens: Some(20),
         total_tokens: Some(120),
@@ -23,13 +23,13 @@ fn run_timing_json_includes_tokens_block() {
 #[test]
 fn tokens_and_cost_fields_on_combined_cost_line_not_timing_line() {
     let mut r = RunTiming::default();
-    r.record_mini_http_step(Some(&ResponseUsage {
+    r.record_completion_step(Some(&ResponseUsage {
         prompt_tokens: Some(50),
         completion_tokens: Some(10),
         total_tokens: Some(60),
         cost: None,
     }));
-    r.record_mini_http_cost(&ResponseUsage {
+    r.record_completion_cost(&ResponseUsage {
         prompt_tokens: None,
         completion_tokens: None,
         total_tokens: Some(60),

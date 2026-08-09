@@ -1,5 +1,4 @@
-//! Local GGUF model registry, cache, download, and llama.cpp engine for
-//! `mini:local/…` and `prime:local/local/…`.
+//! Local GGUF model registry, cache, download, engine, and Prime sidecar for `prime:local/…`.
 
 mod cache;
 mod download;

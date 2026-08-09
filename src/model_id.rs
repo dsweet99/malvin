@@ -1,32 +1,27 @@
-//! Prefixed model ids: `cursor:…`, `prime:…`, `mini:openrouter/…`, `mini:local/…`.
-use crate::support_paths::MINI_DEFAULT_MODEL;
-
+//! Prefixed model ids: `cursor:…`, `prime:…`.
 pub const CURSOR_PREFIX: &str = "cursor:";
 pub const PRIME_PREFIX: &str = "prime:";
-pub const MINI_PREFIX: &str = "mini:";
 
 /// Legacy prefixes — rejected with a rename hint.
+pub const MINI_PREFIX: &str = "mini:";
 pub const OPENROUTER_PREFIX: &str = "openrouter:";
 pub const LOCAL_PREFIX: &str = "local:";
 
 pub const UNPREFIXED_MODEL_MESSAGE: &str =
-    "model id must use a `cursor:`, `prime:`, or `mini:` prefix (for example `cursor:auto`, `prime:openai/gpt-5.5`, `mini:openrouter/anthropic/claude-3-haiku`, or `mini:local/qwen35_9b_q4`)";
+    "model id must use a `cursor:` or `prime:` prefix (for example `cursor:auto`, `prime:openai/gpt-5.5`, or `prime:local/qwen35_9b_q4`)";
 
+const LEGACY_MINI_HINT: &str =
+    "legacy `mini:` prefix removed; use `prime:` (for example `prime:openrouter/<slug>` or `prime:local/<slug>`)";
 const LEGACY_OPENROUTER_HINT: &str =
-    "legacy `openrouter:` prefix removed; use `mini:openrouter/<slug>` (for example `mini:openrouter/anthropic/claude-3-haiku`)";
+    "legacy `openrouter:` prefix removed; use `prime:openrouter/<slug>` (for example `prime:openrouter/anthropic/claude-3-haiku`)";
 const LEGACY_LOCAL_HINT: &str =
-    "legacy `local:` prefix removed; use `mini:local/<slug>` (for example `mini:local/qwen35_9b_q4`)";
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MiniTransport {
-    OpenRouter,
-    Local,
-}
+    "legacy `local:` prefix removed; use `prime:local/<slug>` (for example `prime:local/qwen35_9b_q4`)";
+const LEGACY_PRIME_LOCAL_HINT: &str =
+    "use `prime:local/<slug>` instead of `prime:local/local/<slug>` (for example `prime:local/qwen35_9b_q4`)";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModelBackend {
     Cursor,
-    Mini(MiniTransport),
     Prime,
 }
 
@@ -43,31 +38,15 @@ impl ParsedModel {
         match self.backend {
             ModelBackend::Cursor => format!("{CURSOR_PREFIX}{}", self.slug),
             ModelBackend::Prime => format!("{PRIME_PREFIX}{}", self.slug),
-            ModelBackend::Mini(MiniTransport::OpenRouter) => {
-                format!("{MINI_PREFIX}openrouter/{}", self.slug)
-            }
-            ModelBackend::Mini(MiniTransport::Local) => {
-                format!("{MINI_PREFIX}local/{}", self.slug)
-            }
         }
     }
 
-    #[must_use]
-    pub const fn is_openrouter(&self) -> bool {
-        matches!(self.backend, ModelBackend::Mini(MiniTransport::OpenRouter))
-    }
-
-    #[must_use]
-    pub const fn is_local(&self) -> bool {
-        matches!(self.backend, ModelBackend::Mini(MiniTransport::Local))
-    }
-
-    /// `prime:local/local/<slug>` (malvin GGUF via Prime sidecar).
+    /// `prime:local/<slug>` (malvin GGUF via Prime sidecar).
     #[must_use]
     pub fn is_prime_local(&self) -> bool {
         matches!(self.backend, ModelBackend::Prime)
-            && self.slug.starts_with("local/local/")
-            && self.slug.len() > "local/local/".len()
+            && self.slug.starts_with("local/")
+            && self.slug.len() > "local/".len()
     }
 
     #[must_use]
@@ -75,18 +54,11 @@ impl ParsedModel {
         matches!(self.backend, ModelBackend::Prime)
     }
 
-    #[must_use]
-    pub const fn uses_mini_http(&self) -> bool {
-        matches!(self.backend, ModelBackend::Mini(_))
-    }
-
-    /// Catalog slug for mini/prime local GGUF ids.
+    /// Catalog slug for `prime:local/<slug>` GGUF ids.
     #[must_use]
     pub fn local_catalog_slug(&self) -> Option<&str> {
-        if self.is_local() {
-            Some(self.slug.as_str())
-        } else if self.is_prime_local() {
-            self.slug.strip_prefix("local/local/")
+        if self.is_prime_local() {
+            self.slug.strip_prefix("local/")
         } else {
             None
         }
@@ -105,14 +77,13 @@ pub fn parse_model_id(raw: &str) -> Result<ParsedModel, String> {
     if let Some(rest) = raw.strip_prefix(PRIME_PREFIX) {
         return parse_prime(rest);
     }
-    if let Some(rest) = raw.strip_prefix(MINI_PREFIX) {
-        return parse_mini(rest);
-    }
     Err(legacy_or_unprefixed_error(raw))
 }
 
 fn legacy_or_unprefixed_error(raw: &str) -> String {
-    if raw.starts_with(OPENROUTER_PREFIX) {
+    if raw.starts_with(MINI_PREFIX) {
+        LEGACY_MINI_HINT.to_string()
+    } else if raw.starts_with(OPENROUTER_PREFIX) {
         LEGACY_OPENROUTER_HINT.to_string()
     } else if raw.starts_with(LOCAL_PREFIX) {
         LEGACY_LOCAL_HINT.to_string()
@@ -126,46 +97,19 @@ fn parse_prime(rest: &str) -> Result<ParsedModel, String> {
     if rest.is_empty() {
         return Err(UNPREFIXED_MODEL_MESSAGE.to_string());
     }
+    if rest.starts_with("local/local/") {
+        return Err(LEGACY_PRIME_LOCAL_HINT.to_string());
+    }
+    let err = || format!("prime model id must be `prime:<provider>/<model>` (got `prime:{rest}`)");
     let Some((provider, model)) = split_first_slash(rest) else {
-        return Err(format!(
-            "prime model id must be `prime:<provider>/<model>` (got `prime:{rest}`)"
-        ));
+        return Err(err());
     };
     if provider.is_empty() || model.is_empty() {
-        return Err(format!(
-            "prime model id must be `prime:<provider>/<model>` (got `prime:{rest}`)"
-        ));
+        return Err(err());
     }
     Ok(ParsedModel {
         backend: ModelBackend::Prime,
         slug: rest.to_string(),
-    })
-}
-
-fn parse_mini(rest: &str) -> Result<ParsedModel, String> {
-    let rest = rest.trim();
-    let Some((transport, slug)) = split_first_slash(rest) else {
-        return Err(format!(
-            "mini model id must be `mini:openrouter/<slug>` or `mini:local/<slug>` (got `mini:{rest}`)"
-        ));
-    };
-    if transport.is_empty() || slug.is_empty() {
-        return Err(format!(
-            "mini model id must be `mini:openrouter/<slug>` or `mini:local/<slug>` (got `mini:{rest}`)"
-        ));
-    }
-    let backend = match transport {
-        "openrouter" => ModelBackend::Mini(MiniTransport::OpenRouter),
-        "local" => ModelBackend::Mini(MiniTransport::Local),
-        other => {
-            return Err(format!(
-                "unknown mini transport `{other}`; use `openrouter` or `local` (for example `mini:openrouter/…` or `mini:local/…`)"
-            ));
-        }
-    };
-    Ok(ParsedModel {
-        backend,
-        slug: slug.to_string(),
     })
 }
 
@@ -195,46 +139,21 @@ pub fn require_config_model(raw: &str) -> Result<String, String> {
 #[must_use]
 pub fn provider_slug(raw: &str) -> String {
     match parse_model_id(raw) {
-        Ok(parsed) if parsed.is_openrouter() => resolve_openrouter_slug(&parsed.slug),
         Ok(parsed) => parsed.slug,
         Err(_) => raw.to_string(),
     }
 }
 
 #[must_use]
-pub fn resolve_openrouter_slug(slug: &str) -> String {
-    if slug == "auto" {
-        MINI_DEFAULT_MODEL.to_string()
-    } else {
-        slug.to_string()
-    }
-}
-
-#[must_use]
-pub fn uses_openrouter_backend(raw: &str) -> bool {
-    parse_model_id(raw)
-        .map(|p| p.is_openrouter())
-        .unwrap_or(false)
-}
-
-#[must_use]
 pub fn uses_local_backend(raw: &str) -> bool {
     parse_model_id(raw)
-        .map(|p| p.is_local() || p.is_prime_local())
+        .map(|p| p.is_prime_local())
         .unwrap_or(false)
 }
 
-/// True for `prime:local/local/<slug>`.
 #[must_use]
 pub fn uses_prime_local_backend(raw: &str) -> bool {
     parse_model_id(raw).map(|p| p.is_prime_local()).unwrap_or(false)
-}
-
-#[must_use]
-pub fn uses_mini_backend(raw: &str) -> bool {
-    parse_model_id(raw)
-        .map(|p| p.uses_mini_http())
-        .unwrap_or(false)
 }
 
 #[must_use]

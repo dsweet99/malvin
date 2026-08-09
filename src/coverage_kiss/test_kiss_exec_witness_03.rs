@@ -13,19 +13,12 @@ fn kiss_exec_witness_03_00() {
     scripted_local_err();
     mount_json_ok();
     mount_status();
-    llm_transport_openrouter_ensure_ready_key_present_and_absent();
-    llm_transport_openrouter_complete_ok_and_err();
 }
 
 #[test]
 fn kiss_exec_witness_03_01() {
-    llm_transport_local_scripted_ensure_ready_ok_and_complete();
-    llm_transport_parity_openrouter_mock_and_scripted_local();
     engine();
     into_engine();
-    llm_transport::local::complete();
-    llm_transport::openrouter::complete();
-    llm_transport::transport::complete();
     ChatRole();
     ChatMessage();
     ResponseUsage();
@@ -40,8 +33,6 @@ fn kiss_exec_witness_03_02() {
     LocalModelSpec();
     PruneResult();
     seed_malvin_config();
-    MiniPromptShrinkTrace();
-    MiniHttpExchangeRecord();
     BashExecResult();
     PromptLogWrite();
     write_prompt_log();
@@ -56,11 +47,6 @@ fn kiss_exec_witness_03_03() {
     test_client();
     write_router_work_bracket();
     assert_bracket_in_stdout_log_only();
-    mini_prompt_log_bracket_goes_to_stdout_log_not_live_terminal();
-    mini_prompt_log_skips_stdout_log_bracket_when_no_tee();
-    mini_do_prompt_log_skips_live_stdout_bracket();
-    mini_write_prompt_log_includes_effective_constraints();
-    mini_write_prompt_log_appends_log_file();
     RetryPollutionObservation();
     count_user_messages_with_marker();
 }
@@ -71,7 +57,6 @@ fn kiss_exec_witness_03_04() {
     retry_pollution_mock_client();
     run_retry_pollution_prompt();
     assert_retry_history_reflects_memory_model();
-    mini_coder_prompt_retry_does_not_pollute_session_history();
     begin_coder_session_fails_fast_when_no_force();
     ShrinkEvent();
     BashFence();
@@ -86,8 +71,6 @@ fn kiss_exec_witness_03_05() {
     loop_driver_mock_http_retry_on_429();
     test_config();
     loop_driver_single_fence_runs_bash_and_appends_observation();
-    loop_driver_mini_done_line_terminates();
-    loop_driver_mini_done_inside_fence_still_runs_bash();
     loop_driver_new_history_uses_fact_kinds_after_bash_observation();
     fmt();
     HttpRetryRequest();
@@ -119,7 +102,6 @@ fn kiss_exec_witness_03_07() {
     TurnFail();
     complete_and_parse_turn();
     complete_turn_http();
-    record_mini_usage_after_completion();
     InvestigateStep();
     WindDownStep();
     run_investigate_turn();
@@ -138,7 +120,6 @@ fn kiss_exec_witness_03_08() {
     mock_step_outcome();
     completion_with_meta_from_transport();
     complete_transport_with_protocol();
-    mini_agent::loop_mock::complete();
     mock_json_error();
     mock_http_meta();
     mock_ok_pair();
@@ -180,14 +161,9 @@ fn kiss_exec_witness_03_10() {
 #[test]
 fn kiss_exec_witness_03_11() {
     complete_with_protocol_shape();
-    MiniRetryStrategy();
-    mini_agent::retry_fork::as_str();
     ForkOutcome();
     RetryForkLedger();
-    MiniTerminalReason();
-    mini_agent::terminal::as_str();
     feed_do_dm_assistant_text();
-    mini_assistant_with_reasoning();
     stdout_log_tool_t_lines();
     ObservabilityChannel();
     NarrativeWhoTag();
@@ -214,7 +190,6 @@ fn kiss_exec_witness_03_13() {
     openrouter_retries_with_affordable_max_tokens();
     HttpExchangeMeta();
     CompletionWithMeta();
-    ModelListing();
     list_models_parses_success_response();
     list_models_maps_401_to_unauthorized();
     list_models_maps_500_to_server_error();
@@ -230,7 +205,6 @@ fn kiss_exec_witness_03_14() {
     openrouter_prompt_too_long_maps_to_context_overflow();
     openrouter_prompt_token_limit_maps_to_context_overflow();
     openrouter_prompt_too_long_surfaces_overflow_without_transport_shrink();
-    mini_protocol_shrink_retries_prompt_too_long_to_success();
     ChatCompletionRequest();
     ChatCompletionResponse();
     ChatChoice();

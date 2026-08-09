@@ -24,13 +24,6 @@ pub(crate) fn summarize_shared_opts(max_acp_retries: u32) -> SharedOpts {
         max_acp_retries,
         doc: false,
         name: None,
-        mini_max_bash_turns: 32,
-        mini_max_http_turns: 32,
-        mini_max_bash_execs: 128,
-        mini_max_http_retries: 0,
-        mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
-        mini_max_gate_retries: 0,
-        mini_max_shrink_passes: 0,
         no_download: false,
         git: false,
     }

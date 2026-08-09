@@ -1,4 +1,4 @@
-//! Neutral chat/completion types shared by transports and the mini agent.
+//! Neutral chat/completion types shared by the local LLM engine.
 
 use serde::{Deserialize, Serialize};
 
@@ -24,7 +24,6 @@ pub struct ResponseUsage {
     pub cost: Option<f64>,
 }
 
-/// Completion body used inside Mini/OpenRouter call sites.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CompletionResponse {
     pub content: String,

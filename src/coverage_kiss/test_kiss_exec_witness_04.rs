@@ -12,7 +12,6 @@ fn kiss_exec_witness_04_00() {
     HttpRetryLimits();
     HttpRetryCounters();
     record_outcome();
-    complete_transport_with_retries();
     hi_messages();
     run_http_retries();
 }
@@ -20,13 +19,6 @@ fn kiss_exec_witness_04_00() {
 #[test]
 fn kiss_exec_witness_04_01() {
     assert_transport_exhausted();
-    complete_transport_with_retries_non_billing_errors_exhaust_transport_budget();
-    complete_transport_with_retries_succeeds_on_second_mock_attempt();
-    complete_transport_with_retries_maps_context_overflow();
-    complete_transport_with_retries_retries_nvidia_resource_exhausted();
-    complete_transport_with_retries_stops_on_provider_fatal_error();
-    complete_transport_with_retries_billing_failure_fails_on_first_attempt();
-    complete_transport_with_retries_emits_mini_http_exchange_to_trace();
     AcpTeeDirection();
     AcpTeeLineFmt();
     TaggedDisplayStyle();

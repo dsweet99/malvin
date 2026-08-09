@@ -1,11 +1,11 @@
 use super::*;
-use crate::openrouter_transport::ResponseUsage;
+use crate::llm_transport::ResponseUsage;
 use crate::run_timing::{CostPolicy, RunTiming};
 
 #[test]
 fn mini_step_increments_even_without_usage() {
     let mut r = RunTiming::default();
-    r.record_mini_http_step(None);
+    r.record_completion_step(None);
     assert_eq!(r.steps, 1);
     assert_eq!(r.unknown_usage_tx_count, 1);
     assert!(r.tokens_in.is_none());
@@ -15,13 +15,13 @@ fn mini_step_increments_even_without_usage() {
 #[test]
 fn mini_usage_sums_partial_fields_without_inventing_zeros() {
     let mut r = RunTiming::default();
-    r.record_mini_http_step(Some(&ResponseUsage {
+    r.record_completion_step(Some(&ResponseUsage {
         prompt_tokens: Some(10),
         completion_tokens: None,
         total_tokens: Some(10),
         cost: None,
     }));
-    r.record_mini_http_step(Some(&ResponseUsage {
+    r.record_completion_step(Some(&ResponseUsage {
         prompt_tokens: None,
         completion_tokens: Some(5),
         total_tokens: None,
@@ -125,9 +125,9 @@ fn cursor_estimate_policy_records_zero_cost_when_rates_unset() {
 
 #[test]
 #[allow(clippy::float_cmp)]
-fn use_reported_policy_does_not_estimate_from_acp_usage() {
+fn zero_policy_records_zero_cost_from_acp_usage() {
     let mut r = RunTiming {
-        cost_policy: CostPolicy::UseReported,
+        cost_policy: CostPolicy::Zero,
         ..Default::default()
     };
     r.record_acp_usage_if_present(&serde_json::json!({
@@ -136,22 +136,14 @@ fn use_reported_policy_does_not_estimate_from_acp_usage() {
         "cacheReadTokens": 0,
         "cacheWriteTokens": 0
     }));
-    assert!(r.tx_costs.is_empty());
+    assert_eq!(r.tx_costs, vec![0.0]);
 }
 
 #[test]
 fn cost_policy_for_model_maps_prefixes() {
     assert_eq!(
-        crate::run_timing::cost_policy_for_model("mini:local/qwen35_9b_q4"),
+        crate::run_timing::cost_policy_for_model("prime:local/qwen35_9b_q4"),
         CostPolicy::Zero
-    );
-    assert_eq!(
-        crate::run_timing::cost_policy_for_model("prime:local/local/qwen35_9b_q4"),
-        CostPolicy::Zero
-    );
-    assert_eq!(
-        crate::run_timing::cost_policy_for_model("mini:openrouter/org/model"),
-        CostPolicy::UseReported
     );
     assert_eq!(
         crate::run_timing::cost_policy_for_model("cursor:auto"),
@@ -183,15 +175,15 @@ fn local_cost_policy_forces_zero_per_step() {
         cost_policy: CostPolicy::Zero,
         ..Default::default()
     };
-    r.record_mini_http_step(None);
-    r.record_mini_http_step(Some(&ResponseUsage {
+    r.record_completion_step(None);
+    r.record_completion_step(Some(&ResponseUsage {
         prompt_tokens: Some(3),
         completion_tokens: Some(1),
         total_tokens: Some(4),
         cost: None,
     }));
     // Even if a caller also invokes cost recording, Zero policy ignores returned/missing cost.
-    r.record_mini_http_cost(&ResponseUsage {
+    r.record_completion_cost(&ResponseUsage {
         prompt_tokens: Some(3),
         completion_tokens: Some(1),
         total_tokens: Some(4),
@@ -205,16 +197,16 @@ fn local_cost_policy_forces_zero_per_step() {
 #[allow(clippy::float_cmp)]
 fn openrouter_cost_policy_uses_reported_cost_only() {
     let mut r = RunTiming {
-        cost_policy: CostPolicy::UseReported,
+        cost_policy: CostPolicy::EstimateFromRates,
         ..Default::default()
     };
-    r.record_mini_http_step(Some(&ResponseUsage {
+    r.record_completion_step(Some(&ResponseUsage {
         prompt_tokens: Some(10),
         completion_tokens: Some(2),
         total_tokens: Some(12),
         cost: Some(0.0042),
     }));
-    r.record_mini_http_cost(&ResponseUsage {
+    r.record_completion_cost(&ResponseUsage {
         prompt_tokens: Some(10),
         completion_tokens: Some(2),
         total_tokens: Some(12),

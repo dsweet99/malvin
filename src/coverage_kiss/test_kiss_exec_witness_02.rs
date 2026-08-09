@@ -35,7 +35,6 @@ fn kiss_exec_witness_02_01() {
 
 #[test]
 fn kiss_exec_witness_02_02() {
-    MiniPhase();
     coder_prompt_phase::as_str();
     sync_timing_to_open_session();
     EnsureFixture();

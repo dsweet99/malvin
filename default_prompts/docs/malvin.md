@@ -1,6 +1,6 @@
 # malvin (top-level CLI)
 
-malvin is a non-interactive research and coding agent. It runs agent sessions against a workspace through the Cursor SDK (`cursor:` models via a Node bridge to `@cursor/sdk`), the Prime SDK (`prime:` models via a Node bridge to `prime-agent`, including `prime:local/local/…` GGUF via a localhost sidecar), or malvin-mini (`mini:openrouter/…` / `mini:local/…` models). Each agent-backed invocation creates an isolated run directory under `~/.malvin_home/logs/<hash>/` and records prompts, stdout, and artifacts there.
+malvin is a non-interactive research and coding agent. It runs agent sessions against a workspace through the Cursor SDK (`cursor:` models via a Node bridge to `@cursor/sdk`) or the Prime SDK (`prime:` models via a Node bridge to `prime-agent`, including `prime:local/…` GGUF via a localhost sidecar). Each agent-backed invocation creates an isolated run directory under `~/.malvin_home/logs/<hash>/` and records prompts, stdout, and artifacts there.
 
 ## How to read this documentation
 
@@ -29,7 +29,7 @@ Use `--do` for a one-shot turn. Use subcommands: `init`, `tidy`, `write`, `inspi
 | `tidy` | Fix quality gates via the default router with fixed request `Get the gates to pass.` and `--gates` forced on |
 | `write` | Write a LaTeX PDF on code or concepts via a composed default-router request |
 | `inspire` | One-shot MBC2 boundary exploration (batch ideation) |
-| `models` | List `cursor:`, `prime:` (including `prime:local/local/…`), `mini:openrouter/…`, and `mini:local/…` model ids |
+| `models` | List `cursor:` and `prime:` (including `prime:local/…`) model ids |
 
 Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prompts/docs/<command>.md`); for the one-shot workflow use `malvin --do --doc`. The default-route contract (`router.md`) is printed after this overview when you run `malvin --doc`.
 
@@ -50,7 +50,7 @@ This is **not** the same as `-b` / `--background` (which suppresses all stdout, 
 
 ### `--model <MODEL>`
 
-Model id for agent-backed commands. Default: `cursor:auto`. Use `cursor:` for the Cursor SDK backend, `prime:` for the Prime SDK backend (including `prime:local/local/…` for the same GGUF catalog as mini, served to prime-agent over a localhost OpenAI-compatible sidecar), `mini:openrouter/…` for malvin-mini via OpenRouter, or `mini:local/…` for in-process llama.cpp (see `malvin models`).
+Model id for agent-backed commands. Default: `cursor:auto`. Use `cursor:` for the Cursor SDK backend, or `prime:` for the Prime SDK backend (including `prime:local/…` GGUF served to prime-agent over a localhost OpenAI-compatible sidecar; see `malvin models`).
 
 ### `--max-loops <N>` (default: 1)
 
@@ -58,7 +58,7 @@ Outer agent-session budget for bare `malvin REQUEST` (`effective_max_loops`). `0
 
 ### `--no-force`
 
-By default agent backends run tools headlessly (auto-approved). `--no-force` is not supported on `cursor:`, `prime:`, or `mini:` (no interactive approval prompt); malvin fails fast with a clear error.
+By default agent backends run tools headlessly (auto-approved). `--no-force` is not supported on `cursor:` or `prime:` (no interactive approval prompt); malvin fails fast with a clear error.
 
 ### `--no-tenacious`
 
@@ -80,7 +80,7 @@ Maximum bounded attempts per Cursor SDK bridge spawn or `send`/`wait`, with 1s /
 
 ### `--no-download`
 
-Do not auto-download `mini:local/…` models on first use. If the GGUF is missing from `~/.malvin_home/model_cache/`, the run fails instead of fetching it. Omit `--no-download` (the default) to fetch automatically on first use.
+Do not auto-download `prime:local/…` models on first use. If the GGUF is missing from `~/.malvin_home/model_cache/`, the run fails instead of fetching it. Omit `--no-download` (the default) to fetch automatically on first use.
 
 ### `--git`
 
@@ -160,7 +160,7 @@ COST: steps = N tokens_in = X tokens_out = Y cache_read = A cache_write = B cost
   - `cost_read = usd_per_microtoken_cache_read × cache_read / 1_000_000`
   - `cost_write = usd_per_microtoken_cache_write × cache_write / 1_000_000`
   - `cost_tot` = sum of the four components
-  All rates default to `0`, so with unset rates the estimate is `0` (shown as `0.0000`), not `n/a`. Set rates for a non-zero estimate. **`mini:local/…`** forces zero cost rows. When usage was never observed, cost fields stay `n/a`.
+  All rates default to `0`, so with unset rates the estimate is `0` (shown as `0.0000`), not `n/a`. Set rates for a non-zero estimate. **`prime:local/…`** forces zero cost rows. When usage was never observed, cost fields stay `n/a`.
 
 ### Narrative vs audit (trust rule)
 
@@ -186,9 +186,9 @@ Before most agent-backed commands create a new run directory, malvin may prune o
 ## External dependencies
 
 - **Cursor SDK**: Node ≥ 22.13, built `cursor-sdk-bridge/` (`npm ci && npm run build`), and a Cursor API key (`CURSOR_API_KEY`, or `CURSOR_AGENT_API_KEY` / `AGENT_API_KEY`) for `cursor:` models. `malvin models` lists Cursor models via the bridge when possible; falls back to `agent` / `cursor-agent` on `PATH` if the SDK path fails.
-- **OpenRouter**: `OPENROUTER_API_KEY` for `mini:openrouter/…` (malvin-mini) models.
+- **OpenRouter**: `OPENROUTER_API_KEY` when using `prime:openrouter/…` models via Prime.
 - **Prime SDK**: Node ≥ 22.8, built `prime-sdk-bridge/`, and a provider API key for `prime:` models.
-- **Local models**: Apple Silicon / Metal build for `mini:local/…` GGUF models; raise `mem_limit_gb` in `~/.malvin_home/config.toml` before first load (see `malvin models --doc`).
+- **Local models**: Apple Silicon / Metal build for `prime:local/…` GGUF models; raise `mem_limit_gb` in `~/.malvin_home/config.toml` before first load (see `malvin models --doc`).
 - **pre-commit**: optional; malvin does not install hooks automatically.
 
 ## Request syntax

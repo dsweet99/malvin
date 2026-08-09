@@ -6,7 +6,7 @@ use crate::test_utils::with_isolated_home;
 use crate::workspace_paths::malvin_config_path;
 
 #[test]
-fn parse_agent_config_ignores_legacy_model_mini() {
+fn parse_agent_config_ignores_legacy_model_key() {
     let text = r#"
 [agent]
 model = "cursor:gpt-5"
@@ -86,7 +86,6 @@ max_acp_retries = 5
             max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
             max_loops_code: DEFAULT_MAX_LOOPS_CODE,
             max_acp_retries: 5,
-            max_mini_transport_retries: 3,
         }
     );
     let _ = DEFAULT_CLI_MODEL;

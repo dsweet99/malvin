@@ -40,22 +40,18 @@ pub(crate) enum AcpStepProxy {
 /// How `COST` footnote USD fields are produced for this run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CostPolicy {
-    /// `cursor:`: estimate from per-model `usd_per_microtoken_*` × token counts / 1e6 (0 when rates are unset).
+    /// `cursor:` / `prime:`: estimate from per-model `usd_per_microtoken_*` × token counts / 1e6 (0 when rates are unset).
     #[default]
     EstimateFromRates,
-    /// `mini:openrouter/…`: still record returned `usage.cost` in JSON `tx_count`; footnote uses rates × tokens.
-    UseReported,
-    /// `mini:local/…`: treat every completion as cost `0` for now.
+    /// `prime:local/…`: treat every completion as cost `0` for now.
     Zero,
 }
 
-/// Choose [`CostPolicy`] from a prefixed model id (`cursor:` / `prime:` / `mini:`).
+/// Choose [`CostPolicy`] from a prefixed model id (`cursor:` / `prime:`).
 #[must_use]
 pub fn cost_policy_for_model(model: &str) -> CostPolicy {
     if crate::model_id::uses_local_backend(model) {
         CostPolicy::Zero
-    } else if crate::model_id::uses_openrouter_backend(model) {
-        CostPolicy::UseReported
     } else {
         // `cursor:` and `prime:` (including `prime:openrouter/…`) estimate from rates.
         CostPolicy::EstimateFromRates
@@ -80,7 +76,7 @@ pub struct RunTiming {
     pub(crate) unknown_tx_count: u32,
     /// Cursor-mode rates for estimating USD cost from token usage.
     pub(crate) token_cost_rates: crate::malvin_config_file::TokenCostRates,
-    /// Backend-specific cost filling policy (`cursor:` / `prime:` / `mini:`).
+    /// Backend-specific cost filling policy (`cursor:` / `prime:`).
     pub(crate) cost_policy: CostPolicy,
     pub(crate) steps: u64,
     /// `None` until at least one input token count is observed.
@@ -204,7 +200,7 @@ impl RunTiming {
     }
 }
 
-pub use cost::record_mini_http_cost;
+pub use cost::record_completion_cost;
 pub use lifecycle::{
     attach_kpop_engine_loop_run_timing, attach_kpop_engine_loop_run_timing_for_model,
     attach_new_run_timing, attach_new_run_timing_with_cost_policy, finalize_and_emit_run_timing,
@@ -213,7 +209,7 @@ pub use lifecycle::{
 pub use report::print_summary_from_run_dir;
 pub use tokens::{
     note_acp_assistant_activity, note_acp_tool_call_completion, note_acp_tool_call_start,
-    record_mini_http_step,
+    record_completion_step,
 };
 
 #[cfg(test)]

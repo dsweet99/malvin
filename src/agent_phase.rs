@@ -7,7 +7,7 @@ mod agent_phase_signal;
 
 use std::sync::Mutex;
 
-use crate::tool_summary::{ParsedToolUpdate, ToolSummaryTracker, TOOL_PHASE_RUNNING};
+use crate::tool_summary::{ParsedToolUpdate, ToolSummaryTracker};
 
 /// Agent phase label shown in stdout heartbeats.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -167,35 +167,6 @@ pub fn note_thought_activity() {
     with_state(|s| {
         s.reasoning = true;
         s.orienting = false;
-    });
-}
-
-/// Mini HTTP completion is in-flight (`OpenRouter` await).
-pub fn note_mini_llm_request() {
-    note_thought_activity();
-}
-
-/// Mini bash fence is executing synchronously.
-pub fn note_mini_bash_exec() {
-    with_state(|s| {
-        s.orienting = false;
-        s.reasoning = false;
-        s.active_tool = Some((ToolKind::Execute, TOOL_PHASE_RUNNING));
-    });
-    crate::herdr::notify_working();
-}
-
-/// Mini bash fence finished; mirrors execute tool-call completion signals.
-pub fn note_mini_bash_exec_done(exit_code: i32, command: &str) {
-    with_state(|s| {
-        if exit_code != 0
-            && std::env::current_dir().is_ok_and(|wd| {
-                crate::repo_gates::command_matches_malvin_checks_gate(command, &wd)
-            })
-        {
-            s.debugging = true;
-        }
-        s.active_tool = None;
     });
 }
 

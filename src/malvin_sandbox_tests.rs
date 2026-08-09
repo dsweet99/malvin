@@ -7,7 +7,7 @@ fn kiss_cov_malvin_sandbox_symbols() {
     let _ = stringify!(crate::malvin_sandbox::malvin_std_command);
     let _ = stringify!(crate::malvin_sandbox::install_parent_death_signal);
     let _ = stringify!(crate::malvin_sandbox::install_tokio_parent_death_signal);
-    let _ = stringify!(crate::malvin_sandbox::note_active_mini_session);
+    let _ = stringify!(crate::malvin_sandbox::note_active_sandbox_session);
 }
 
 #[allow(unsafe_code)]
@@ -70,11 +70,15 @@ fn sandbox_commands_force_malloc_arena_max_to_two() {
 }
 
 #[test]
-fn note_active_mini_session_cleared_after_end() {
+fn note_active_sandbox_session_cleared_after_end() {
     let tmp = tempfile::tempdir().expect("tempdir");
     crate::malvin_sandbox::clear_active_sandbox_session_for_test();
-    crate::malvin_sandbox::note_active_mini_session(tmp.path())
-        .expect("note");
-    crate::malvin_sandbox::clear_active_mini_session();
+    crate::malvin_sandbox::note_active_sandbox_session(
+        None,
+        crate::malvin_sandbox::malvin_spawn_baseline(),
+        tmp.path(),
+    )
+    .expect("note");
+    crate::malvin_sandbox::clear_active_sandbox_session();
     crate::malvin_sandbox::clear_active_sandbox_session_for_test();
 }

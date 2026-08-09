@@ -1,4 +1,4 @@
-    use crate::acp::{backoff_after_agent_failure, backoff_after_mini_gate_failure};
+    use crate::acp::{backoff_after_agent_failure};
 use crate::test_stderr_capture::capture_stderr_output;
 
 #[test]
@@ -19,30 +19,6 @@ fn backoff_does_not_log_when_retry_policy_stops_immediately() {
     );
 }
 
-#[test]
-fn backoff_logs_agent_label_for_mini_gate_retry() {
-    let stderr = capture_stderr_output(|| {
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect("runtime");
-        let stop = rt
-            .block_on(backoff_after_mini_gate_failure(
-                None,
-                "request timed out",
-                1,
-                3,
-            ))
-            .expect("backoff");
-        assert!(!stop);
-    });
-    assert!(
-        stderr.contains("agent attempt 1 failed"),
-        "mini gate retries must match cursor:/prime: agent label; stderr={stderr:?}"
-    );
-    let _ = stringify!(LabeledBackoff);
-    let _ = backoff_after_mini_gate_failure;
-}
 
 #[test]
 fn backoff_logs_before_sleep_when_retry_will_occur() {

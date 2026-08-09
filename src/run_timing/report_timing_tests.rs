@@ -114,12 +114,12 @@ fn write_json_and_print_summary_creates_file() {
 }
 
 #[test]
-fn run_timing_json_includes_cost_block_under_mini() {
+fn run_timing_json_includes_cost_block_with_reported_usage() {
     use crate::run_timing::{RunTiming, TimingPhase};
-    use crate::openrouter_transport::ResponseUsage;
+    use crate::llm_transport::ResponseUsage;
 
     let mut r = RunTiming::default();
-    r.record_mini_http_cost(&ResponseUsage {
+    r.record_completion_cost(&ResponseUsage {
         prompt_tokens: None,
         completion_tokens: None,
         total_tokens: Some(1),
@@ -143,10 +143,10 @@ fn no_cost_block_when_no_cost_data() {
 fn cost_fields_on_combined_stdout_line_not_timing_line() {
     use super::super::report_cost_line::format_cost_stdout_line_from_json;
     use crate::run_timing::RunTiming;
-    use crate::openrouter_transport::ResponseUsage;
+    use crate::llm_transport::ResponseUsage;
 
     let mut r = RunTiming::default();
-    r.record_mini_http_cost(&ResponseUsage {
+    r.record_completion_cost(&ResponseUsage {
         prompt_tokens: None,
         completion_tokens: None,
         total_tokens: Some(1),

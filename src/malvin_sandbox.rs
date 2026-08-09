@@ -144,16 +144,6 @@ pub fn note_active_sandbox_session(
     Ok(())
 }
 
-/// Records an active mini (`--mini`) session for dead-before-next enforcement.
-pub fn note_active_mini_session(work_dir: &Path) -> Result<(), String> {
-    note_active_sandbox_session(None, malvin_spawn_baseline(), work_dir)
-}
-
-/// Clears the recorded mini session after teardown completes.
-pub fn clear_active_mini_session() {
-    clear_active_sandbox_session();
-}
-
 /// Clears the recorded sandbox session after teardown completes.
 pub fn clear_active_sandbox_session() {
     let session = ACTIVE_SANDBOX_SESSION

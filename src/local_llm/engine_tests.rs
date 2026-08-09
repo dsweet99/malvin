@@ -6,22 +6,20 @@ use crate::local_llm::DownloadPolicy;
 use crate::local_llm::registry::require_known_local_slug;
 
 #[test]
-fn local_slug_requires_local_prefix() {
+fn local_slug_requires_prime_local_prefix() {
     assert_eq!(
-        local_slug("mini:local/qwen35_9b_q4").expect("ok"),
+        local_slug("prime:local/qwen35_9b_q4").expect("prime local"),
         "qwen35_9b_q4"
     );
-    assert_eq!(
-        local_slug("prime:local/local/qwen35_9b_q4").expect("prime local"),
-        "qwen35_9b_q4"
-    );
-    assert!(local_slug("mini:openrouter/x").is_err());
-    assert!(local_slug("prime:local/qwen35_9b_q4").is_err());
+    assert!(local_slug("mini:local/qwen35_9b_q4").is_err());
+    assert!(local_slug("prime:openai/gpt-5.5").is_err());
+    assert!(local_slug("prime:local/local/qwen35_9b_q4").is_err());
 }
 
 #[test]
 fn ensure_local_engine_rejects_non_local_ids() {
-    assert!(ensure_local_engine("mini:openrouter/x", DownloadPolicy::Deny).is_err());
+    assert!(ensure_local_engine("prime:openai/gpt-5.5", DownloadPolicy::Deny).is_err());
+    assert!(ensure_local_engine("mini:local/qwen35_9b_q4", DownloadPolicy::Deny).is_err());
 }
 
 #[test]

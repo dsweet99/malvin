@@ -1,4 +1,4 @@
-use crate::openrouter_transport::ResponseUsage;
+use crate::llm_transport::ResponseUsage;
 
 use super::{AcpStepProxy, RunTiming};
 
@@ -12,7 +12,7 @@ fn add_optional_sum(slot: &mut Option<u64>, n: u64) {
 
 impl RunTiming {
     /// One Mini/OpenRouter/Local LLM completion turn (independent of usage presence).
-    pub fn record_mini_http_step(&mut self, usage: Option<&ResponseUsage>) {
+    pub fn record_completion_step(&mut self, usage: Option<&ResponseUsage>) {
         self.steps = self.steps.saturating_add(1);
         match usage {
             Some(u) => {
@@ -152,7 +152,7 @@ pub fn tokens_stats(r: &RunTiming) -> serde_json::Value {
     serde_json::Value::Object(obj)
 }
 
-pub fn record_mini_http_step(
+pub fn record_completion_step(
     timing: Option<&std::sync::Arc<std::sync::Mutex<RunTiming>>>,
     usage: Option<&ResponseUsage>,
 ) {
@@ -160,7 +160,7 @@ pub fn record_mini_http_step(
         return;
     };
     let mut g = t.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    g.record_mini_http_step(usage);
+    g.record_completion_step(usage);
 }
 
 pub fn note_acp_tool_call_start(timing: Option<&std::sync::Arc<std::sync::Mutex<RunTiming>>>) {

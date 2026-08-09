@@ -431,8 +431,8 @@ def ft_docker_agent_cmd(
     agent_name = ft_normalize_agent(agent)
     ws = workspace.resolve()
     host_logs = ft_run_malvin_logs_dir(ws)
-    # Persist container ``/root/.malvin_home/logs`` on the host so mini ACP
-    # traces (e.g. miniPromptShrink) survive ``docker run --rm``.
+    # Persist container ``/root/.malvin_home/logs`` on the host so ACP
+    # traces survive ``docker run --rm``.
     volume_mounts: list[str] = [
         "-v",
         f"{ws}:/app",
