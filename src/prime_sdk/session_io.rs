@@ -11,6 +11,7 @@ pub(super) async fn prime_send_create(
     session: &PrimeBridgeSession,
     cwd: &std::path::Path,
     model: &str,
+    models_json_path: Option<&str>,
 ) -> Result<(), AgentError> {
     let no_force = (!session.io.force).then_some("fail_fast");
     let req = PrimeBridgeRequest::Create {
@@ -19,6 +20,7 @@ pub(super) async fn prime_send_create(
         // Never forward Cursor credentials; bridge uses Prime AuthStorage + provider env.
         api_key: None,
         no_force_policy: no_force,
+        models_json_path: models_json_path.map(str::to_string),
     };
     prime_write_request(session, &req).await?;
     prime_wait_for_ok(session).await

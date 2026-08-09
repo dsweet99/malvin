@@ -36,7 +36,7 @@ fn kiss_exec_witness_04_01() {
 #[test]
 fn kiss_exec_witness_04_02() {
     effective_prime_api_key();
-    ensure_prime_authenticated();
+    ensure_prime_authenticated("prime:openai/gpt-4o");
     prime_sync_session_timing();
     prime_mock_io();
     prime_install_mock_bridge_env();

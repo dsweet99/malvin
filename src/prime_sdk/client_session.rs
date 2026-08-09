@@ -11,9 +11,10 @@ use super::session::{PrimeBridgeSession, PrimeBridgeSpawnArgs, SDK_BRIDGE_MAX_AG
 impl PrimeSdkClient {
     /// # Errors
     ///
-    /// Returns [`AuthError`] when no provider API key is configured.
+    /// Returns [`AuthError`] when no provider API key is configured (skipped for
+    /// `prime:local/local/…`).
     pub fn ensure_authenticated(&self) -> Result<(), AuthError> {
-        ensure_prime_authenticated()
+        ensure_prime_authenticated(&self.model)
     }
 
     /// Open a coder session if needed. Restarts the Node bridge when aged out.
@@ -86,6 +87,8 @@ impl PrimeSdkClient {
             io: self.io,
             run_dir: self.prompts_log_run_dir.clone(),
             timing: self.timing.clone(),
+            allow_download: self.allow_download,
+            prime_local: crate::model_id::uses_prime_local_backend(&self.model),
         }
     }
 

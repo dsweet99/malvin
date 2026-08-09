@@ -8,9 +8,25 @@ use super::session::{PrimeBridgeSession, PrimeBridgeSpawnArgs};
 pub(super) async fn prime_spawn_bridge(args: PrimeBridgeSpawnArgs<'_>) -> Result<PrimeBridgeSession, AgentError> {
     crate::malvin_sandbox::assert_dead_before_next_spawn().map_err(AgentError)?;
     let model = args.model.to_string();
-    let session = prime_open_bridge_session(args)?;
+    let local_sidecar = if args.prime_local {
+        Some(
+            crate::local_llm::PrimeLocalSidecar::start(
+                &format!("prime:{model}"),
+                args.allow_download,
+            )
+            .map_err(AgentError)?,
+        )
+    } else {
+        None
+    };
+    let models_json = local_sidecar
+        .as_ref()
+        .map(|s| s.models_json().display().to_string());
+    let mut session = prime_open_bridge_session(args)?;
+    session.local_sidecar = local_sidecar;
     super::session_io::prime_start_mem_watch(&session);
-    super::session_io::prime_send_create(&session, &session.work_dir, &model).await?;
+    super::session_io::prime_send_create(&session, &session.work_dir, &model, models_json.as_deref())
+        .await?;
     Ok(session)
 }
 
@@ -82,6 +98,7 @@ fn prime_assemble_session(
         agent_id: Mutex::new(None),
         stdout_coalesce: Mutex::new(crate::acp::TraceChunkCoalescer::default()),
         tool_starts: Mutex::new(std::collections::HashMap::new()),
+        local_sidecar: None,
     }
 }
 

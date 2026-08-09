@@ -1,7 +1,15 @@
 /** Shared emit / parse for the Prime JSONL bridge. */
 
 export type BridgeRequest =
-  | { op: "create"; cwd: string; model: string; apiKey?: string; noForcePolicy?: string }
+  | {
+      op: "create";
+      cwd: string;
+      model: string;
+      apiKey?: string;
+      noForcePolicy?: string;
+      /** Optional models.json path (malvin Prime local GGUF sidecar). */
+      modelsJsonPath?: string;
+    }
   | { op: "send"; prompt: string }
   | { op: "cancel" }
   | { op: "close" };

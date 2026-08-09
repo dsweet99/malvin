@@ -47,6 +47,8 @@ pub struct PrimeBridgeSession {
     pub stdout_coalesce: Mutex<crate::acp::TraceChunkCoalescer>,
     /// toolCallId → start instant + summary (for done-line duration).
     pub tool_starts: Mutex<HashMap<String, PrimeToolCallStart>>,
+    /// Keeps the GGUF OpenAI-compatible sidecar + temp `models.json` alive for the session.
+    pub local_sidecar: Option<crate::local_llm::PrimeLocalSidecar>,
 }
 
 pub struct PrimeBridgeSpawnArgs<'a> {
@@ -55,6 +57,9 @@ pub struct PrimeBridgeSpawnArgs<'a> {
     pub io: AgentIoOptions,
     pub run_dir: Option<PathBuf>,
     pub timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
+    /// When set, start malvin local GGUF sidecar before `create`.
+    pub allow_download: bool,
+    pub prime_local: bool,
 }
 
 impl PrimeBridgeSession {

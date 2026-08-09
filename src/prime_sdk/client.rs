@@ -12,6 +12,8 @@ pub struct PrimeSdkClient {
     pub io: AgentIoOptions,
     pub prompts_log_run_dir: Option<PathBuf>,
     pub max_acp_retries: u32,
+    /// Auto-download GGUF for `prime:local/local/…` (honors `--no-download` when false).
+    pub allow_download: bool,
     pub(crate) session: Option<PrimeBridgeSession>,
     /// Resolved cwd from the last successful `begin_coder_session` (kept after teardown for retry).
     pub(crate) session_cwd: Option<PathBuf>,
@@ -39,6 +41,7 @@ impl PrimeSdkClient {
             } else {
                 max_acp_retries
             },
+            allow_download: true,
             session: None,
             session_cwd: None,
             timing: None,

@@ -146,6 +146,10 @@ fn cost_policy_for_model_maps_prefixes() {
         CostPolicy::Zero
     );
     assert_eq!(
+        crate::run_timing::cost_policy_for_model("prime:local/local/qwen35_9b_q4"),
+        CostPolicy::Zero
+    );
+    assert_eq!(
         crate::run_timing::cost_policy_for_model("mini:openrouter/org/model"),
         CostPolicy::UseReported
     );

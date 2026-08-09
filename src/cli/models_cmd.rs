@@ -55,6 +55,7 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
                 print_stdout_line(MALVIN_WHO, &format!("(prime models unavailable: {e})"));
             }
         }
+        print_prime_local_models(filter_ref);
     }
     if section_may_match(filter_ref, MINI_OPENROUTER_HEAD) {
         match list_openrouter_models_sync() {
@@ -125,6 +126,17 @@ fn print_openrouter_models(
 fn print_local_models(filter: Option<&str>) {
     for model in local_model_listings() {
         let line = format!("{MINI_PREFIX}local/{}\t{}", model.id, model.name);
+        if line_matches_prefix(&line, filter) {
+            print_stdout_line(MALVIN_WHO, &line);
+        }
+    }
+}
+
+const PRIME_LOCAL_HEAD: &str = "prime:local/local/";
+
+fn print_prime_local_models(filter: Option<&str>) {
+    for model in local_model_listings() {
+        let line = format!("{PRIME_LOCAL_HEAD}{}\t{}", model.id, model.name);
         if line_matches_prefix(&line, filter) {
             print_stdout_line(MALVIN_WHO, &line);
         }

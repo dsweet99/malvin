@@ -13,6 +13,17 @@ fn parse_cursor_mini_and_prime() {
     let prime = parse_model_id("prime:openai/gpt-5.5").expect("prime");
     assert!(prime.is_prime());
     assert!(!parse_model_id("prime:openrouter/x/y").expect("p").is_openrouter());
+    let prime_local = parse_model_id("prime:local/local/qwen35_9b_q4").expect("pl");
+    assert!(prime_local.is_prime());
+    assert!(prime_local.is_prime_local());
+    assert!(!prime_local.is_local());
+    assert_eq!(
+        prime_local.local_catalog_slug(),
+        Some("qwen35_9b_q4")
+    );
+    assert!(!parse_model_id("prime:local/qwen35_9b_q4")
+        .expect("not nested")
+        .is_prime_local());
 }
 
 #[test]
@@ -37,4 +48,8 @@ fn require_config_and_helpers() {
     assert!(uses_prime_backend("prime:openai/gpt-5.5"));
     assert!(!uses_openrouter_backend("prime:openrouter/x"));
     assert!(uses_local_backend("mini:local/x"));
+    assert!(uses_local_backend("prime:local/local/qwen35_9b_q4"));
+    assert!(uses_prime_local_backend("prime:local/local/qwen35_9b_q4"));
+    assert!(!uses_prime_local_backend("mini:local/qwen35_9b_q4"));
+    assert!(!uses_prime_local_backend("prime:openai/gpt-5.5"));
 }

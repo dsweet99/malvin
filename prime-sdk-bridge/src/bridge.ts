@@ -167,7 +167,9 @@ async function handleCreate(req: Extract<BridgeRequest, { op: "create" }>): Prom
     return;
   }
   const authStorage = AuthStorage.create();
-  const modelRegistry = ModelRegistry.create(authStorage);
+  const modelRegistry = req.modelsJsonPath
+    ? ModelRegistry.create(authStorage, req.modelsJsonPath)
+    : ModelRegistry.create(authStorage);
   const model = resolveModel(req.model || "openai/gpt-4o", modelRegistry);
   const cwd = req.cwd || process.cwd();
   const created = await createAgentSession({

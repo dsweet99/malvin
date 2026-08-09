@@ -1,5 +1,4 @@
 //! Prefixed model ids: `cursor:…`, `prime:…`, `mini:openrouter/…`, `mini:local/…`.
-
 use crate::support_paths::MINI_DEFAULT_MODEL;
 
 pub const CURSOR_PREFIX: &str = "cursor:";
@@ -63,6 +62,14 @@ impl ParsedModel {
         matches!(self.backend, ModelBackend::Mini(MiniTransport::Local))
     }
 
+    /// `prime:local/local/<slug>` (malvin GGUF via Prime sidecar).
+    #[must_use]
+    pub fn is_prime_local(&self) -> bool {
+        matches!(self.backend, ModelBackend::Prime)
+            && self.slug.starts_with("local/local/")
+            && self.slug.len() > "local/local/".len()
+    }
+
     #[must_use]
     pub const fn is_prime(&self) -> bool {
         matches!(self.backend, ModelBackend::Prime)
@@ -71,6 +78,18 @@ impl ParsedModel {
     #[must_use]
     pub const fn uses_mini_http(&self) -> bool {
         matches!(self.backend, ModelBackend::Mini(_))
+    }
+
+    /// Catalog slug for mini/prime local GGUF ids.
+    #[must_use]
+    pub fn local_catalog_slug(&self) -> Option<&str> {
+        if self.is_local() {
+            Some(self.slug.as_str())
+        } else if self.is_prime_local() {
+            self.slug.strip_prefix("local/local/")
+        } else {
+            None
+        }
     }
 }
 
@@ -200,7 +219,15 @@ pub fn uses_openrouter_backend(raw: &str) -> bool {
 
 #[must_use]
 pub fn uses_local_backend(raw: &str) -> bool {
-    parse_model_id(raw).map(|p| p.is_local()).unwrap_or(false)
+    parse_model_id(raw)
+        .map(|p| p.is_local() || p.is_prime_local())
+        .unwrap_or(false)
+}
+
+/// True for `prime:local/local/<slug>`.
+#[must_use]
+pub fn uses_prime_local_backend(raw: &str) -> bool {
+    parse_model_id(raw).map(|p| p.is_prime_local()).unwrap_or(false)
 }
 
 #[must_use]

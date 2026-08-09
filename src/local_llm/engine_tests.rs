@@ -11,7 +11,12 @@ fn local_slug_requires_local_prefix() {
         local_slug("mini:local/qwen35_9b_q4").expect("ok"),
         "qwen35_9b_q4"
     );
+    assert_eq!(
+        local_slug("prime:local/local/qwen35_9b_q4").expect("prime local"),
+        "qwen35_9b_q4"
+    );
     assert!(local_slug("mini:openrouter/x").is_err());
+    assert!(local_slug("prime:local/qwen35_9b_q4").is_err());
 }
 
 #[test]

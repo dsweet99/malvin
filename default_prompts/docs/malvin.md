@@ -1,6 +1,6 @@
 # malvin (top-level CLI)
 
-malvin is a non-interactive research and coding agent. It runs agent sessions against a workspace through the Cursor SDK (`cursor:` models via a Node bridge to `@cursor/sdk`), the Prime SDK (`prime:` models via a Node bridge to `prime-agent`), or malvin-mini (`mini:openrouter/…` / `mini:local/…` models). Each agent-backed invocation creates an isolated run directory under `~/.malvin_home/logs/<hash>/` and records prompts, stdout, and artifacts there.
+malvin is a non-interactive research and coding agent. It runs agent sessions against a workspace through the Cursor SDK (`cursor:` models via a Node bridge to `@cursor/sdk`), the Prime SDK (`prime:` models via a Node bridge to `prime-agent`, including `prime:local/local/…` GGUF via a localhost sidecar), or malvin-mini (`mini:openrouter/…` / `mini:local/…` models). Each agent-backed invocation creates an isolated run directory under `~/.malvin_home/logs/<hash>/` and records prompts, stdout, and artifacts there.
 
 ## How to read this documentation
 
@@ -29,7 +29,7 @@ Use `--do` for a one-shot turn. Use subcommands: `init`, `tidy`, `write`, `inspi
 | `tidy` | Fix quality gates via the default router with fixed request `Get the gates to pass.` and `--gates` forced on |
 | `write` | Write a LaTeX PDF on code or concepts via a composed default-router request |
 | `inspire` | One-shot MBC2 boundary exploration (batch ideation) |
-| `models` | List `cursor:`, `prime:`, `mini:openrouter/…`, and `mini:local/…` model ids |
+| `models` | List `cursor:`, `prime:` (including `prime:local/local/…`), `mini:openrouter/…`, and `mini:local/…` model ids |
 
 Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prompts/docs/<command>.md`); for the one-shot workflow use `malvin --do --doc`. The default-route contract (`router.md`) is printed after this overview when you run `malvin --doc`.
 
@@ -50,7 +50,7 @@ This is **not** the same as `-b` / `--background` (which suppresses all stdout, 
 
 ### `--model <MODEL>`
 
-Model id for agent-backed commands. Default: `cursor:auto`. Use `cursor:` for the Cursor SDK backend, `prime:` for the Prime SDK backend, `mini:openrouter/…` for malvin-mini via OpenRouter, or `mini:local/…` for in-process llama.cpp (see `malvin models`).
+Model id for agent-backed commands. Default: `cursor:auto`. Use `cursor:` for the Cursor SDK backend, `prime:` for the Prime SDK backend (including `prime:local/local/…` for the same GGUF catalog as mini, served to prime-agent over a localhost OpenAI-compatible sidecar), `mini:openrouter/…` for malvin-mini via OpenRouter, or `mini:local/…` for in-process llama.cpp (see `malvin models`).
 
 ### `--max-loops <N>` (default: 1)
 

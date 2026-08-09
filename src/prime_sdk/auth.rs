@@ -23,10 +23,15 @@ pub fn effective_prime_api_key() -> Option<String> {
 
 /// Soft check: at least one provider key is present. The bridge uses Prime `AuthStorage`.
 ///
+/// `prime:local/local/…` uses a malvin GGUF sidecar and does not need cloud keys.
+///
 /// # Errors
 ///
-/// Returns [`AuthError`] when no known provider API key is set.
-pub fn ensure_prime_authenticated() -> Result<(), AuthError> {
+/// Returns [`AuthError`] when no known provider API key is set (and the model is not local).
+pub fn ensure_prime_authenticated(model: &str) -> Result<(), AuthError> {
+    if crate::model_id::uses_prime_local_backend(model) {
+        return Ok(());
+    }
     if effective_prime_api_key().is_some() {
         return Ok(());
     }
@@ -43,7 +48,23 @@ mod tests {
     #[test]
     fn ensure_prime_authenticated_ok_with_key() {
         crate::acp::with_env("OPENAI_API_KEY", Some("test-key"), || {
-            assert!(ensure_prime_authenticated().is_ok());
+            assert!(ensure_prime_authenticated("prime:openai/gpt-4o").is_ok());
+        });
+    }
+
+    #[test]
+    fn prime_local_skips_cloud_api_key() {
+        crate::acp::with_env("OPENAI_API_KEY", None, || {
+            crate::acp::with_env("ANTHROPIC_API_KEY", None, || {
+                crate::acp::with_env("OPENROUTER_API_KEY", None, || {
+                    crate::acp::with_env("PRIME_API_KEY", None, || {
+                        assert!(ensure_prime_authenticated(
+                            "prime:local/local/qwen35_9b_q4"
+                        )
+                        .is_ok());
+                    });
+                });
+            });
         });
     }
 
@@ -54,7 +75,7 @@ mod tests {
                 crate::acp::with_env("OPENROUTER_API_KEY", None, || {
                     crate::acp::with_env("PRIME_API_KEY", None, || {
                         crate::acp::with_env("CURSOR_API_KEY", Some("cursor-only"), || {
-                            assert!(ensure_prime_authenticated().is_err());
+                            assert!(ensure_prime_authenticated("prime:openai/gpt-4o").is_err());
                         });
                     });
                 });

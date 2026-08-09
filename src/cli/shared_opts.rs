@@ -65,7 +65,7 @@ pub struct SharedOpts {
     /// Max context-recovery shrink passes per overflow for `mini:` models [default: 0].
     #[arg(long = "mini-max-shrink-passes", global = true, default_value_t = 0, hide = true)]
     pub mini_max_shrink_passes: u32,
-    /// Do not auto-download `mini:local/…` models on first use (fail if missing from cache).
+    /// Do not auto-download `mini:local/…` / `prime:local/local/…` models on first use (fail if missing from cache).
     #[arg(long = "no-download", global = true, default_value_t = false)]
     pub no_download: bool,
     /// Print built-in documentation (`malvin --doc` or `malvin <COMMAND> --doc`) and exit.

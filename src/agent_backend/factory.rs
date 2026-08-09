@@ -75,11 +75,13 @@ fn new_prime_sdk_client(
     shared: &SharedOpts,
     io: crate::acp::AgentIoOptions,
 ) -> crate::prime_sdk::PrimeSdkClient {
-    crate::prime_sdk::PrimeSdkClient::with_max_retries(
+    let mut client = crate::prime_sdk::PrimeSdkClient::with_max_retries(
         shared.model.clone(),
         io,
         shared.max_acp_retries,
-    )
+    );
+    client.allow_download = !shared.no_download;
+    client
 }
 
 #[allow(clippy::missing_const_for_fn)]
