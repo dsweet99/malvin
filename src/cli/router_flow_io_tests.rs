@@ -34,7 +34,7 @@ fn router_client_uses_kpop_style_agent_io_not_do_style() {
     use crate::cli::{SharedOpts, WorkflowCliOptions};
 
     let shared = SharedOpts {
-        model: crate::config::DEFAULT_CLI_MODEL.into(),
+        model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("model"),
         no_force: true,
         no_tenacious: false,
         gates: false,
@@ -54,11 +54,7 @@ fn router_client_uses_kpop_style_agent_io_not_do_style() {
         "router",
     )
     .expect("backend");
-    let io = match backend {
-        crate::agent_backend::AgentBackend::Acp(c) => c.io,
-        crate::agent_backend::AgentBackend::CursorSdk(c) => c.io,
-        crate::agent_backend::AgentBackend::PrimeSdk(c) => c.io,
-    };
+    let io = backend.io;
     assert!(
         !io.raw_output,
         "bare route must use styled logging, not do-style raw_output"

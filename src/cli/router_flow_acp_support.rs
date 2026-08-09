@@ -50,17 +50,41 @@ pub(crate) async fn run_router_turns(
 ) -> Result<RouterTurnsOutcome, String> {
     let work_dir = input.artifacts.work_dir.as_path();
     let iteration_backups = SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)?;
+    let model = input.shared.model.canonical();
+    run_router_header_and_kpop(input, log_path, &model).await?;
+    run_router_a_coder_prompt(
+        input.client,
+        &router_flow_prompt::build_router_a_prompt(router_flow_prompt::RouterAPromptInput {
+            store: input.prompt_store,
+            artifacts: input.artifacts,
+            model: &model,
+            git: input.shared.git,
+            gates: input.shared.gates,
+        })?,
+        log_path,
+    )
+    .await?;
+    let done = finish_router_a_maybe_b(input, log_path, &model).await?;
+    Ok(RouterTurnsOutcome {
+        iteration_backups,
+        done,
+    })
+}
 
+async fn run_router_header_and_kpop(
+    input: &mut RouterAcpIterationInput<'_>,
+    log_path: &Path,
+    model: &str,
+) -> Result<(), String> {
     let header = router_flow_prompt::build_router_header_prompt(
         router_flow_prompt::RouterHeaderPromptInput {
             store: input.prompt_store,
             artifacts: input.artifacts,
-            model: &input.shared.model,
+            model,
             git: input.shared.git,
         },
     )?;
     run_router_header_coder_prompt(input.client, &header, log_path).await?;
-
     let exp_log = ensure_gate_exp_log_file(input.artifacts, 1).map_err(|e| e.to_string())?;
     let max_hypotheses = load_malvin_config(input.artifacts.work_dir.as_path())
         .default_workflow
@@ -74,23 +98,20 @@ pub(crate) async fn run_router_turns(
         router_flow_prompt::RouterKpopCommonPromptInput {
             store: input.prompt_store,
             artifacts: input.artifacts,
-            model: &input.shared.model,
+            model,
             git: input.shared.git,
             max_hypotheses,
             exp_log: &exp_log,
         },
     )?;
-    run_router_kpop_common_coder_prompt(input.client, &kpop_common, log_path).await?;
+    run_router_kpop_common_coder_prompt(input.client, &kpop_common, log_path).await
+}
 
-    let router_a = router_flow_prompt::build_router_a_prompt(router_flow_prompt::RouterAPromptInput {
-        store: input.prompt_store,
-        artifacts: input.artifacts,
-        model: &input.shared.model,
-        git: input.shared.git,
-        gates: input.shared.gates,
-    })?;
-    run_router_a_coder_prompt(input.client, &router_a, log_path).await?;
-
+async fn finish_router_a_maybe_b(
+    input: &mut RouterAcpIterationInput<'_>,
+    log_path: &Path,
+    model: &str,
+) -> Result<bool, String> {
     let chat = input
         .client
         .last_coder_prompt_agent_response()
@@ -100,15 +121,12 @@ pub(crate) async fn run_router_turns(
         let router_b = router_flow_prompt::build_router_b_prompt(router_flow_prompt::RouterBPromptInput {
             store: input.prompt_store,
             artifacts: input.artifacts,
-            model: &input.shared.model,
+            model,
             git: input.shared.git,
         })?;
         run_router_b_coder_prompt(input.client, &router_b, log_path).await?;
     }
-    Ok(RouterTurnsOutcome {
-        iteration_backups,
-        done,
-    })
+    Ok(done)
 }
 
 #[cfg(test)]

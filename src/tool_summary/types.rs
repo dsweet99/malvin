@@ -38,6 +38,7 @@ impl ToolSummaryTracker {
         self.path_base.as_deref()
     }
 
+    #[allow(dead_code)]
     pub(crate) fn set_run_timing(
         &mut self,
         timing: Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,

@@ -148,12 +148,13 @@ pub(super) async fn run_kpop_engine_coder_turn(
         )
         .await;
     if prompt_result.is_ok() {
+        let model = params.shared.model.canonical();
         prompt_result = crate::cli::kpop_summarize::maybe_run_gate_inline_summarize(
             crate::cli::kpop_summarize::GateInlineSummarizeCtx {
                 client: ctx.iteration.client,
                 store: prepared.store(),
                 artifacts: prepared.artifacts(),
-                model: &params.shared.model,
+                model: &model,
                 git: params.shared.git,
                 iteration: ctx.iteration.iteration,
                 total_iterations: ctx.iteration.total_iterations,
@@ -193,7 +194,7 @@ pub(crate) async fn run_kpop_engine_session(
 ) -> Result<crate::artifacts::SessionDotfileBackups, String> {
     let iteration_start = ctx.iteration.session_dotfile_backups.clone();
     let max_attempts = BudgetScopeLayer::AcpSpawnRetry
-        .effective_max_attempts(ctx.iteration.client.max_acp_retries(), false);
+        .effective_max_attempts(ctx.iteration.client.max_acp_retries, false);
     let mut last_error = String::new();
     let mut attempts_used = 0_u32;
     for attempt in 1..=max_attempts {

@@ -73,6 +73,7 @@ pub fn print_stdout_raw_line_with_ts(line: &str, ts: Option<&str>) {
     print_stdout_rendered_line(&display, &log);
 }
 
+#[allow(dead_code)]
 pub(crate) fn flush_stdout_raw_line_with_ts(line: &str, ts: Option<&str>) {
     let (display, log) = super::stdout_log_pair::stdout_raw_display_and_log_line(line, ts);
     flush_stdout_rendered_line(&display, &log);

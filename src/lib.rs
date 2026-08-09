@@ -107,17 +107,14 @@ pub mod tool_summary;
 mod deferred_log;
 mod cursor_store;
 pub use cursor_store::store_db_contains_substring;
-mod acp_test_mock_js;
-pub use acp_test_mock_js::acp_mock_js;
 pub mod agent_backend;
+pub mod bridge_protocol;
+pub mod bridge_sdk;
 pub mod cursor_sdk;
 pub mod prime_sdk;
 pub mod acp;
 pub mod ansi_strip;
-pub use acp::{
-    AcpSession, AcpSpawnArgs, AgentClient, AgentError, AgentIoOptions, AuthError,
-    CoderPromptOptions,
-};
+pub use acp::{AgentError, AgentIoOptions, AuthError, CoderPromptOptions};
 #[cfg(unix)]
 pub use acp::{snapshot_pids, terminate_agent_process_group};
 pub use ansi_strip::strip_ansi_escapes;
@@ -203,18 +200,10 @@ pub mod cli;
 #[cfg(test)]
 #[path = "lib_test_modules.rs"]
 mod lib_test_modules;
-#[cfg(test)]
-#[path = "acp/test_unix_bin.rs"]
-pub mod acp_test_unix_bin;
-#[cfg(test)]
-#[path = "acp_session_tests/mod.rs"]
-pub(crate) mod acp_session_unit_tests;
 #[cfg(test)] mod acp_tests;
-#[cfg(test)] #[path = "acp_transport_tests/mod.rs"] mod acp_transport_tests;
 #[cfg(test)] mod coverage_kiss;
-#[cfg(test)] mod coverage_kiss_agent;
 #[cfg(test)] mod malvin_kiss_coverage;
-#[cfg(test)] #[path = "acp/transport/rpc_part1_kiss_test.rs"] mod acp_rpc_part1_kiss_test;
+#[cfg(test)] #[path = "malvin_kiss_coverage_b.rs"] mod malvin_kiss_coverage_b;
 #[cfg(test)] mod agent_phase_kiss_cov;
 #[cfg(test)] #[path = "workspace_paths_tests.rs"] mod workspace_paths_tests;
 #[cfg(all(test, unix))] mod test_stderr_capture;

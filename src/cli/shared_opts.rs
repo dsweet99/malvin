@@ -3,6 +3,8 @@
 pub use crate::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use clap::Args;
 
+use crate::model_id::{parse_model_id, ParsedModel};
+
 const QUIET_HELPTEXT: &str =
     "Stdout: only MALVIN_DM_START/END bodies (default workflow; not -b)";
 
@@ -18,8 +20,13 @@ pub struct GlobalOpts {
 #[allow(clippy::struct_excessive_bools)]
 pub struct SharedOpts {
     /// Model id (`cursor:` or `prime:`).
-    #[arg(long, global = true, default_value = DEFAULT_CLI_MODEL)]
-    pub model: String,
+    #[arg(
+        long,
+        global = true,
+        default_value = DEFAULT_CLI_MODEL,
+        value_parser = parse_model_id
+    )]
+    pub model: ParsedModel,
     /// Don't force tool auto-run (fails fast on `cursor:` / `prime:`; no interactive approval).
     #[arg(long, global = true, default_value_t = false)]
     pub no_force: bool,
@@ -76,7 +83,7 @@ impl SharedOpts {
     #[must_use]
     pub(crate) fn test_defaults() -> Self {
         Self {
-            model: crate::config::DEFAULT_CLI_MODEL.into(),
+            model: parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("default model"),
             no_force: true,
             no_tenacious: false,
             gates: false,

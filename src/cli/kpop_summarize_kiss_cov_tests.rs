@@ -3,7 +3,7 @@
 #[test]
 fn kiss_cov_kpop_summarize_privates() {
     let shared = crate::cli::SharedOpts {
-        model: crate::config::DEFAULT_CLI_MODEL.into(),
+        model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("model"),
         no_force: true,
         no_tenacious: false,
         gates: false,

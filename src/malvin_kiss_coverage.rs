@@ -172,8 +172,7 @@ fn kiss_cov_cross_file_symbols_a() {
     let _: Option<crate::terminal_palette::TerminalTheme> = None;
     let _: Option<crate::terminal_palette::Palette> = None;
     let _: Option<crate::run_timing::acp_post_run::RunTimingSessionEnd> = None;
-    let _: Option<crate::run_timing::acp_post_run::RunTimingAfterAcp> = None;
-    let _: Option<crate::run_timing::acp_post_run::RunTimingAfterBackend> = None;
+        let _: Option<crate::run_timing::acp_post_run::RunTimingAfterBackend> = None;
     let _: Option<crate::session_dotfile_backup::DotfileBackupPayload> = None;
     let _: Option<crate::session_dotfile_backup::SessionDotfileParts> = None;
     let _ = stringify!(ActiveAgentSandbox);
@@ -237,5 +236,5 @@ fn kiss_cov_coverage_kiss_gate_refs() {
 #[test]
 fn kiss_cov_ops_spawn() {
     let _ = crate::acp::test_no_real_agent_enabled();
-    let _ = crate::acp::resolve_agent_bin();
+    let _ = crate::acp::test_no_real_agent_enabled();
 }

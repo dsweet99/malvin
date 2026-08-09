@@ -45,6 +45,19 @@ fn require_config_and_helpers() {
     assert_eq!(provider_slug("prime:openai/gpt-5.5"), "openai/gpt-5.5");
     assert!(uses_prime_backend("prime:openai/gpt-5.5"));
     assert!(uses_local_backend("prime:local/qwen35_9b_q4"));
-    assert!(uses_prime_local_backend("prime:local/qwen35_9b_q4"));
-    assert!(!uses_prime_local_backend("prime:openai/gpt-5.5"));
+    assert!(!uses_local_backend("prime:openai/gpt-5.5"));
+}
+
+#[test]
+fn model_backend_and_parsed_model_debug() {
+    let backend = ModelBackend::Cursor;
+    let _ = format!("{backend:?}");
+    assert_eq!(backend, ModelBackend::Cursor);
+    let parsed = ParsedModel {
+        backend: ModelBackend::Prime,
+        slug: "openai/gpt-5.5".into(),
+    };
+    let clone = parsed.clone();
+    assert_eq!(clone, parsed);
+    let _ = format!("{parsed:?}");
 }

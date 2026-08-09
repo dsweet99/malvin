@@ -1,10 +1,8 @@
-//! ACP session helpers for `--do`.
+//! Session helpers for `--do`.
 
-use crate::agent_backend::{
-    agent_backend_attach_run_timing_for_session, agent_backend_ensure_coder_session,
-    agent_backend_set_implement_display_name, agent_backend_set_run_timing, AgentBackend,
-};
+use crate::agent_backend::AgentBackend;
 use crate::artifacts::RunArtifacts;
+use crate::cli::one_shot_session::OneShotCoderGuard;
 use crate::run_timing::TimingPhase;
 
 use super::do_flow_prompt;
@@ -36,20 +34,7 @@ pub(super) async fn run_do_acp(
     artifacts: &RunArtifacts,
     coder: do_flow_prompt::DoCoderRun,
 ) -> Result<(), String> {
-    let timing = agent_backend_attach_run_timing_for_session(client);
-    if let Err(e) = agent_backend_ensure_coder_session(client, &artifacts.work_dir).await {
-        agent_backend_set_run_timing(client, None);
-        return Err(e.to_string());
-    }
-    agent_backend_set_implement_display_name(client, "do");
+    let guard = OneShotCoderGuard::begin(client, artifacts, "do").await?;
     let run_res = run_do_coder_prompt(client, artifacts, &coder).await;
-    let end_res = client.end_coder_session().await.map_err(|e| e.to_string());
-    let merged =
-        crate::acp_post_run::prefer_primary_over_secondary(run_res, end_res, "end coder session");
-    crate::acp_post_run::emit_run_timing_json_only_after_backend(
-        client,
-        &artifacts.run_dir,
-        &timing,
-        merged,
-    )
+    guard.finish(client, run_res).await
 }

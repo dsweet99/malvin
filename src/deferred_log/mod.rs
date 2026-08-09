@@ -1,3 +1,7 @@
+//! Deferred stdout enrichment (historically driven by the ACP reader path).
+//! Retained for unit/integration coverage; SDK backends tee directly today.
+#![allow(dead_code, unused_imports)]
+
 mod active;
 mod config;
 mod emit;

@@ -218,7 +218,4 @@ mod timing_tests;
 #[cfg(test)]
 mod timing_footnote_tests;
 
-#[cfg(test)]
-mod kpop_engine_timing_regressions;
-
 pub mod acp_post_run;

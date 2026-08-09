@@ -55,7 +55,7 @@ pub(super) async fn run_checks_discovery_kpop(
     let store = prepare_checks_discovery_prompt_store(workflow)?;
     let request_text = checks_discovery_kpop_request(&store, artifacts)?;
     std::fs::write(&artifacts.plan_path, &request_text).map_err(|e| e.to_string())?;
-    let context = kpop_workflow_context_without_gates(artifacts, &shared.model, shared.git)?;
+    let context = kpop_workflow_context_without_gates(artifacts, &shared.model.canonical(), shared.git)?;
     let prepared = KPopEnginePrepared {
         artifacts: artifacts.clone(),
         context,

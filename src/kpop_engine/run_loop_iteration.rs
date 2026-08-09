@@ -39,7 +39,7 @@ pub(crate) fn wire_kpop_engine_client(
     run_timing: &Arc<Mutex<crate::run_timing::RunTiming>>,
 ) {
     agent_backend_set_run_timing(client, Some(Arc::clone(run_timing)));
-    client.set_prompts_log_run_dir(Some(params.prepared.artifacts().run_dir.clone()));
+    client.prompts_log_run_dir = Some(params.prepared.artifacts().run_dir.clone());
 }
 
 fn prepare_gate_iteration_artifacts(

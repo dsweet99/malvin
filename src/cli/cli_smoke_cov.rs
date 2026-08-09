@@ -70,7 +70,7 @@ fn smoke_merge_acp_with_workspace_session_restore_and_check_abort_no_result_file
 fn smoke_agent_io_options_maps_flags() {
     use super::{AgentStdoutTeeFlags, WorkflowCliOptions, agent_io_options};
     let shared = super::SharedOpts {
-        model: "m".into(),
+        model: crate::model_id::parse_model_id("cursor:m").expect("model"),
         no_force: false,
         no_tenacious: false,
         gates: false,
@@ -100,38 +100,6 @@ fn smoke_agent_io_options_maps_flags() {
     assert!(!io.log_full_outgoing_prompts);
 }
 
-#[test]
-fn smoke_new_agent_client_maps_max_acp_retries() {
-    use super::{AgentStdoutTeeFlags, WorkflowCliOptions, agent_io_options, new_agent_client};
-    let shared = super::SharedOpts {
-        model: "m".into(),
-        no_force: false,
-        no_tenacious: false,
-        gates: false,
-
-        quiet: false,
-        verbose: false,
-        max_acp_retries: 7,
-        doc: false,
-        name: None,
-        no_download: false,
-        git: false,
-    };
-    let client = new_agent_client(
-        &shared,
-        agent_io_options(
-            &shared,
-            WorkflowCliOptions { force: false },
-            AgentStdoutTeeFlags {
-                emit_stdout_markdown: false,
-                raw_output: true,
-                show_thoughts_on_stdout: false,
-            },
-        ),
-    );
-    assert_eq!(client.model, "m");
-    assert_eq!(client.max_acp_retries, 7);
-}
 
 #[test]
 fn smoke_cli_parse_init_subcommand() {

@@ -59,30 +59,3 @@ Run `malvin tidy`, then retry `{command}`.\n\
     )
 }
 
-pub fn new_agent_client(
-    shared: &SharedOpts,
-    io: crate::acp::AgentIoOptions,
-) -> crate::acp::AgentClient {
-    // Keep the prefixed model id (`cursor:auto`) so COST rate lookup matches
-    // `[agent.cursor.auto]` keys. ACP spawn applies `acp_agent_cli_model` for `--model`.
-    crate::acp::AgentClient::with_max_acp_retries(
-        shared.model.clone(),
-        io,
-        shared.max_acp_retries,
-    )
-}
-
-pub fn build_agent(
-    shared: &SharedOpts,
-    workflow: WorkflowCliOptions,
-    emit_stdout_markdown: bool,
-) -> crate::acp::AgentClient {
-    new_agent_client(
-        shared,
-        agent_io_options(
-            shared,
-            workflow,
-            default_workflow_stdout_tee_flags(emit_stdout_markdown),
-        ),
-    )
-}

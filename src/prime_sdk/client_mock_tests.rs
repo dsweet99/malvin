@@ -34,7 +34,7 @@ fn prime_mock_bridge_path() -> std::path::PathBuf {
 
 fn prime_mock_client(run_dir: &std::path::Path) -> PrimeSdkClient {
     let mut client =
-        PrimeSdkClient::with_max_retries("prime:openai/gpt-4o".into(), prime_mock_io(), 1);
+        crate::prime_sdk::prime_sdk_client_from_raw("prime:openai/gpt-4o", prime_mock_io(), 1);
     client.prompts_log_run_dir = Some(run_dir.to_path_buf());
     client
 }

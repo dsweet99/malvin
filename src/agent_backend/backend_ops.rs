@@ -11,39 +11,21 @@ pub async fn agent_backend_ensure_coder_session(
     backend: &mut AgentBackend,
     cwd: &Path,
 ) -> Result<(), AgentError> {
-    match backend {
-        AgentBackend::CursorSdk(c) => c.ensure_coder_session(cwd).await,
-        AgentBackend::PrimeSdk(c) => c.ensure_coder_session(cwd).await,
-        AgentBackend::Acp(c) => {
-            if c.has_open_coder_session() {
-                Ok(())
-            } else {
-                c.begin_coder_session(cwd).await
-            }
-        }
-    }
+    backend.ensure_coder_session(cwd).await
 }
 
 pub fn agent_backend_set_run_timing(
     backend: &mut AgentBackend,
     timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
 ) {
-    match backend {
-        AgentBackend::Acp(c) => c.set_run_timing(timing),
-        AgentBackend::CursorSdk(c) => c.set_run_timing(timing),
-        AgentBackend::PrimeSdk(c) => c.set_run_timing(timing),
-    }
+    backend.set_run_timing(timing);
 }
 
 #[must_use]
 pub fn agent_backend_attach_run_timing_for_session(
     backend: &mut AgentBackend,
 ) -> Arc<Mutex<crate::run_timing::RunTiming>> {
-    match backend {
-        AgentBackend::Acp(c) => c.attach_run_timing_for_session(),
-        AgentBackend::CursorSdk(c) => c.attach_run_timing_for_session(),
-        AgentBackend::PrimeSdk(c) => c.attach_run_timing_for_session(),
-    }
+    backend.attach_run_timing_for_session()
 }
 
 #[must_use]
@@ -71,9 +53,5 @@ pub fn agent_backend_set_implement_display_name(backend: &AgentBackend, label: &
 pub fn agent_backend_timing(
     backend: &AgentBackend,
 ) -> Option<&Arc<Mutex<crate::run_timing::RunTiming>>> {
-    match backend {
-        AgentBackend::Acp(c) => c.timing.as_ref(),
-        AgentBackend::CursorSdk(c) => c.timing.as_ref(),
-        AgentBackend::PrimeSdk(c) => c.timing.as_ref(),
-    }
+    backend.timing.as_ref()
 }

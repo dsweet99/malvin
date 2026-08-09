@@ -1,10 +1,11 @@
 //! Shared fixtures for orchestrator unit tests.
 
-use crate::acp::{AgentClient, AgentIoOptions};
+use crate::acp::AgentIoOptions;
 use crate::artifacts::{
     MalvinChecksBackup, MalvinConfigBackup, RunArtifacts, SessionDotfileBackups,
     create_run_artifacts_from_text,
 };
+use crate::cursor_sdk::CursorSdkClient;
 use crate::orchestrator::workflow_context_paths_only;
 use crate::prompt_stratification::WorkflowRenderContext;
 use crate::prompts::PromptStore;
@@ -22,8 +23,8 @@ pub fn io_opts() -> AgentIoOptions {
 }
 
 #[must_use]
-pub fn no_session_client() -> AgentClient {
-    AgentClient::new("m".into(), io_opts())
+pub fn no_session_client() -> CursorSdkClient {
+    crate::cursor_sdk::cursor_sdk_client_from_raw("cursor:auto", io_opts(), 1)
 }
 
 #[must_use]

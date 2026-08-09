@@ -7,6 +7,7 @@ use super::{
 };
 use crate::time_format::heartbeat_payload_now;
 
+#[allow(dead_code)]
 pub(crate) fn is_heartbeat_log_line(log: &str) -> bool {
     if log.contains("| HB:") || log.contains("|HB:") {
         return true;
@@ -17,10 +18,12 @@ pub(crate) fn is_heartbeat_log_line(log: &str) -> bool {
         .is_some_and(crate::time_format::heartbeat_payload_has_wall_clock_prefix)
 }
 
+#[allow(dead_code)]
 pub(crate) fn log_contains_heartbeat(text: &str) -> bool {
     heartbeat_log_offset(text).is_some()
 }
 
+#[allow(dead_code)]
 pub(crate) fn heartbeat_log_offset(text: &str) -> Option<usize> {
     let mut offset = 0usize;
     for line in text.lines() {

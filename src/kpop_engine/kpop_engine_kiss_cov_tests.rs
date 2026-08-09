@@ -66,7 +66,7 @@ fn kiss_cov_kpop_engine_loop_params_types() {
         store,
     };
     let shared = crate::cli::SharedOpts {
-        model: crate::config::DEFAULT_CLI_MODEL.into(),
+        model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("model"),
         no_force: false,
         no_tenacious: false,
         gates: false,
@@ -108,18 +108,17 @@ fn kiss_cov_kpop_engine_loop_params_types() {
         vision: crate::session_dotfile_backup::VisionBackup::Missing,
         malvin_config_workspace: crate::session_dotfile_backup::DotfileBackupState::Missing,
     });
-    let mut client = crate::agent_backend::AgentBackend::Acp(crate::acp::AgentClient::with_max_acp_retries(
-        "m".into(),
-        crate::acp::AgentIoOptions {
-            force: false,
-            no_tee: true,
-            raw_output: true,
-            show_thoughts_on_stdout: false,
-            emit_stdout_markdown: false,
-            log_full_outgoing_prompts: false,
-        },
-        1,
-    ));
+    let mut client = crate::agent_backend::agent_backend_from_client(
+        crate::cursor_sdk::cursor_sdk_client_from_raw("cursor:auto", crate::acp::AgentIoOptions {
+                force: false, no_tee: true,
+                raw_output: true,
+                show_thoughts_on_stdout: false,
+                emit_stdout_markdown: false,
+                log_full_outgoing_prompts: false,
+            },
+            1,
+        ),
+    );
     let iteration = KPopEngineIterationParams {
         loop_params: &loop_params,
         session_dotfile_backups: &backups,

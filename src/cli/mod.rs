@@ -25,11 +25,12 @@ pub(crate) mod loop_opts;
 pub(crate) mod default_output_path;
 pub(crate) mod workflow_kpop_shared;
 pub(crate) mod kpop_summarize;
+pub(crate) mod one_shot_session;
 
 pub use crate::agent_backend::{build_agent_backend, build_agent_backend_with_tee};
 pub use code_flow_a::{
-    agent_io_options, build_agent, default_workflow_stdout_tee_flags, format_workspace_gate_failure,
-    new_agent_client, prepare_kpop_prompt_store, AgentStdoutTeeFlags, WorkflowCliOptions,
+    agent_io_options, default_workflow_stdout_tee_flags, format_workspace_gate_failure,
+    prepare_kpop_prompt_store, AgentStdoutTeeFlags, WorkflowCliOptions,
 };
 
 #[cfg(test)]
@@ -52,12 +53,6 @@ mod workflow_kpop_shared_tests;
 #[cfg(test)]
 #[path = "kpop_summarize_tests.rs"]
 pub(crate) mod kpop_summarize_tests;
-#[cfg(test)]
-#[path = "kpop_summarize_inline_tests.rs"]
-mod kpop_summarize_inline_tests;
-#[cfg(test)]
-#[path = "kpop_summarize_mock_tests.rs"]
-mod kpop_summarize_mock_tests;
 #[cfg(test)]
 #[path = "kpop_summarize_kiss_cov_tests.rs"]
 mod kpop_summarize_kiss_cov_tests;

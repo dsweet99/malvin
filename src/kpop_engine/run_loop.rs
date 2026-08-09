@@ -218,7 +218,7 @@ pub(crate) async fn run_kpop_engine(
         return Ok(outcome);
     }
     let run_timing =
-        crate::run_timing::attach_kpop_engine_loop_run_timing_for_model(&params.shared.model);
+        crate::run_timing::attach_kpop_engine_loop_run_timing_for_model(&params.shared.model.canonical());
     // Idea 3: one Cursor SDK client for the whole gate-engine lifetime.
     let mut client =
         run_loop_iteration::build_authenticated_kpop_engine_client(&params, &run_timing)?;

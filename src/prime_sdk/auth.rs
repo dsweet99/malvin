@@ -29,7 +29,7 @@ pub fn effective_prime_api_key() -> Option<String> {
 ///
 /// Returns [`AuthError`] when no known provider API key is set (and the model is not local).
 pub fn ensure_prime_authenticated(model: &str) -> Result<(), AuthError> {
-    if crate::model_id::uses_prime_local_backend(model) {
+    if crate::model_id::uses_local_backend(model) {
         return Ok(());
     }
     if effective_prime_api_key().is_some() {

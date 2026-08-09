@@ -107,11 +107,12 @@ pub(crate) async fn finalize_router_acp_iteration(
 ) -> Result<(), String> {
     let log_path = router_iteration_log_path(input.artifacts, input.agent_loop);
     if matches!(exit_summarize, RouterExitSummarize::Run) {
+        let model = input.shared.model.canonical();
         let body = router_flow_prompt::build_router_summarize_prompt(
             router_flow_prompt::RouterSummarizePromptInput {
                 store: input.prompt_store,
                 artifacts: input.artifacts,
-                model: &input.shared.model,
+                model: &model,
                 git: input.shared.git,
             },
         )?;
@@ -171,34 +172,3 @@ pub(crate) async fn abort_router_acp_session(
     end_router_acp_session(parts, Err(err)).await
 }
 
-#[cfg(test)]
-#[path = "router_flow_acp_kiss_cov_tests.rs"]
-mod router_flow_acp_kiss_cov_tests;
-
-#[cfg(test)]
-#[path = "router_flow_acp_mock_tests.rs"]
-pub(crate) mod router_flow_acp_mock_tests;
-
-#[cfg(test)]
-#[path = "router_flow_acp_mock_no_work_tests.rs"]
-pub(crate) mod router_flow_acp_mock_no_work_tests;
-
-#[cfg(test)]
-#[path = "router_flow_acp_mock_counting_tests.rs"]
-pub(crate) mod router_flow_acp_mock_counting_tests;
-
-#[cfg(test)]
-#[path = "router_flow_acp_ping_mock_tests.rs"]
-pub(crate) mod router_flow_acp_ping_mock_tests;
-
-#[cfg(test)]
-#[path = "router_flow_acp_tests.rs"]
-pub(crate) mod router_flow_acp_tests;
-
-#[cfg(test)]
-#[path = "router_flow_acp_preopen_tests.rs"]
-mod router_flow_acp_preopen_tests;
-
-#[cfg(test)]
-#[path = "router_flow_acp_ping_tests.rs"]
-mod router_flow_acp_ping_tests;

@@ -17,11 +17,6 @@ pub(crate) use router_flow_loop_decide::{
     decide_router_loop_exit, router_exit_summarize_for, RouterLoopDecision, RouterLoopExitInput,
 };
 
-#[cfg(test)]
-pub(crate) use router_flow_loop_decide::{
-    decide_router_gates_exit, decide_router_loop_exit_not_done,
-};
-
 pub(crate) struct RouterAgentLoopInput<'a> {
     pub client: &'a mut AgentBackend,
     pub artifacts: &'a RunArtifacts,
@@ -143,14 +138,3 @@ async fn finish_router_loop_step(
     })
 }
 
-#[cfg(test)]
-#[path = "router_flow_loop_kiss_cov_tests.rs"]
-mod router_flow_loop_kiss_cov_tests;
-
-#[cfg(test)]
-#[path = "router_flow_loop_tests.rs"]
-pub(crate) mod router_flow_loop_tests;
-
-#[cfg(test)]
-#[path = "router_flow_loop_gates_tests.rs"]
-mod router_flow_loop_gates_tests;

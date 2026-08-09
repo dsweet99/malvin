@@ -15,53 +15,6 @@ fn kiss_cov_coalesce_trace_flush_helpers() {
 }
 
 #[test]
-fn kiss_cov_prompt_round_health_private_helpers() {
-    let mut health = crate::acp::PromptRoundHealth::default();
-    let update = serde_json::json!({
-        "sessionUpdate": "agent_message_chunk",
-        "content": { "text": "upgrade plan probe" }
-    });
-    health.record_session_update(&serde_json::json!({ "params": { "update": update } }));
-    assert!(!health.agent_response_text().is_empty());
-    assert!(crate::acp::prompt_round_post_ok_error(&health).is_none());
-    let mut ping = crate::acp::PromptRoundHealth::default();
-    ping.record_session_update(&serde_json::json!({
-        "params": { "update": {
-            "sessionUpdate": "agent_message_chunk",
-            "content": { "text": "Error: RetriableError: [unavailable] PING timed out", "type": "text" }
-        }}
-    }));
-    assert!(crate::acp::prompt_round_post_ok_error(&ping)
-        .is_some_and(|e| e.contains("PING timed out")));
-}
-
-#[test]
-fn kiss_cov_reader_tests_helpers_symbols() {
-    let (seq, _notify) = crate::acp_tests::reader_tests_helpers::acp_activity_state();
-    assert_eq!(seq.load(std::sync::atomic::Ordering::Relaxed), 0);
-}
-
-#[cfg(unix)]
-#[test]
-fn smoke_reader_tests_helpers_cat_session_roundtrip() {
-    crate::acp_tests::reader_tests_helpers::block_on_test(async {
-        let session = crate::acp_tests::reader_tests_helpers::CatSession::new().await;
-        session
-            .dispatch_parts()
-            .dispatch_lines(&[
-                r#"{"jsonrpc":"2.0","method":"session/request_permission","params":{"id":1}}"#,
-            ])
-            .await;
-        let out = session.finish_stdout().await;
-        assert!(
-            out.contains("allow-always")
-                && (out.contains(r#""id":1"#) || out.contains(r#""id": 1"#)),
-            "expected allow-always reply echoing id 1; got {out:?}"
-        );
-    });
-}
-
-#[test]
 fn kiss_cov_router_acp_support_module_import() {
     use crate::router_flow::router_flow_acp::router_flow_acp_support::{
         empty_iteration_backups, router_iteration_log_path, run_router_turns,
@@ -110,15 +63,3 @@ fn kiss_cov_kpop_turn_kpop_block() {
     assert!(out.contains("max_hypotheses = `2`"));
 }
 
-#[test]
-fn kiss_cov_acp_observability_contract_fixture() {
-    crate::acp_tests::reader_tests_helpers::block_on_test(async {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let trace_path = tmp.path().join("trace.jsonl");
-        let stdout_path = tmp.path().join("stdout.log");
-        let (trace, stdout) =
-            crate::acp::contract_acp_tee_tool_fixture(&trace_path, &stdout_path).await;
-        assert!(trace.contains("echo contract"), "trace={trace:?}");
-        assert!(stdout.contains("Run "), "stdout={stdout:?}");
-    });
-}

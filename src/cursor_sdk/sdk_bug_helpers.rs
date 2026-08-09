@@ -52,14 +52,14 @@ pub(super) fn bug_bridge_js() -> std::path::PathBuf {
 
 pub(super) fn bug_client(run_dir: &std::path::Path, retries: u32) -> CursorSdkClient {
     let mut client =
-        CursorSdkClient::with_max_retries("auto".into(), bug_mock_io_forced(), retries);
+        crate::cursor_sdk::cursor_sdk_client_from_raw("cursor:auto", bug_mock_io_forced(), retries);
     client.prompts_log_run_dir = Some(run_dir.to_path_buf());
     client
 }
 
 pub(super) fn bug_client_noforce(run_dir: &std::path::Path) -> CursorSdkClient {
     let mut client =
-        CursorSdkClient::with_max_retries("auto".into(), bug_mock_io_noforce(), 1);
+        crate::cursor_sdk::cursor_sdk_client_from_raw("cursor:auto", bug_mock_io_noforce(), 1);
     client.prompts_log_run_dir = Some(run_dir.to_path_buf());
     client
 }

@@ -91,7 +91,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
     };
     let config_max_loops = agent.max_loops;
     let mut shared = SharedOpts {
-        model: "old".into(),
+        model: crate::model_id::parse_model_id("cursor:old").expect("model"),
         no_force: false,
         no_tenacious: false,
         gates: false,
@@ -105,7 +105,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
         git: false,
     };
     apply_shared_config_defaults(&matches, &mut shared, &agent);
-    assert_eq!(shared.model, "cursor:cfg");
+    assert_eq!(shared.model.canonical(), "cursor:cfg");
     assert_eq!(shared.max_acp_retries, 6);
 
     let mut max_loops = 1_usize;
@@ -129,7 +129,7 @@ fn apply_workspace_config_defaults_overrides_unset_flags() {
         let matches = Cli::command().get_matches_from(["malvin", "tidy"]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
-        assert_eq!(cli.shared.model, "cursor:cfg-model");
+        assert_eq!(cli.shared.model.canonical(), "cursor:cfg-model");
         assert_eq!(cli.shared.max_acp_retries, 8);
         match cli.command.expect("command") {
             Commands::Tidy(tidy) => assert_eq!(tidy.max_loops, 7),
@@ -147,7 +147,7 @@ fn apply_workspace_config_defaults_respects_explicit_cli_flags() {
         ]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
-        assert_eq!(cli.shared.model, "cursor:cli-model");
+        assert_eq!(cli.shared.model.canonical(), "cursor:cli-model");
         assert_eq!(cli.shared.max_acp_retries, 2);
         match cli.command.expect("command") {
             Commands::Tidy(tidy) => assert_eq!(tidy.max_loops, 3),
@@ -196,7 +196,7 @@ fn apply_workspace_config_defaults_for_inspire() {
         let inspire = Cli::command().get_matches_from(["malvin", "inspire", "ideas"]);
         let mut inspire_cli = Cli::from_arg_matches(&inspire).expect("cli");
         apply_workspace_config_defaults(&inspire, &mut inspire_cli).expect("apply");
-        assert_eq!(inspire_cli.shared.model, "cursor:cfg-model");
+        assert_eq!(inspire_cli.shared.model.canonical(), "cursor:cfg-model");
     });
 }
 

@@ -1,8 +1,10 @@
 //! `--do` workflow: one coder ACP prompt with dual headers (`header.md` + `do_header.md`) and user request.
 
-use crate::artifacts::{RunArtifacts, SessionDotfileBackups, resolve_user_md_request};
-use crate::cli::cli_request::require_cli_request;
+use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::agent_backend::{build_agent_backend, build_agent_backend_with_tee, AgentBackend};
+use crate::cli::one_shot_session::{
+    finish_one_shot_after_prompt, resolve_one_shot_request_artifacts,
+};
 use crate::cli::run_emit::{emit_command_line, emit_run_startup_sequence, RunStartupEmitOpts};
 use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions};
 use crate::output::agent_stdout_tee_enabled;
@@ -69,12 +71,14 @@ async fn prepare_do_run(
     workflow: WorkflowCliOptions,
 ) -> Result<DoRunPrep, String> {
     let mut client = new_do_client(shared, workflow)?;
-    let request = require_cli_request(do_args.request.as_ref(), "--do")?;
-    let (text, work_dir) = resolve_user_md_request(&request)?;
-    let artifacts = create_do_artifacts(&text, &work_dir)?;
+    let (text, artifacts) = resolve_one_shot_request_artifacts(
+        do_args.request.as_ref(),
+        "--do",
+        Some(crate::run_id::RunDirOptions::default()),
+    )?;
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     // run_dir must be set before begin so the bridge session records trace.jsonl.
-    client.set_prompts_log_run_dir(Some(artifacts.run_dir.clone()));
+    client.prompts_log_run_dir = Some(artifacts.run_dir.clone());
 
     let (coder, session_dotfile_backups) =
         begin_do_session_overlapping_prompt_prep(&mut client, &artifacts, &text, shared).await?;
@@ -88,17 +92,6 @@ async fn prepare_do_run(
     })
 }
 
-fn create_do_artifacts(text: &str, work_dir: &std::path::Path) -> Result<RunArtifacts, String> {
-    let artifacts = crate::artifacts::create_run_artifacts_from_text_opts(
-        text,
-        Some(work_dir),
-        crate::run_id::RunDirOptions::default(),
-    )
-    .map_err(|e| e.to_string())?;
-    crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
-    Ok(artifacts)
-}
-
 /// Spawn/create the coder session while rendering the `--do` prompt and snapshotting dotfiles.
 async fn begin_do_session_overlapping_prompt_prep(
     client: &mut AgentBackend,
@@ -107,7 +100,7 @@ async fn begin_do_session_overlapping_prompt_prep(
     shared: &SharedOpts,
 ) -> Result<(do_flow_prompt::DoCoderRun, SessionDotfileBackups), String> {
     let begin = client.begin_coder_session(&artifacts.work_dir);
-    let model = shared.model.clone();
+    let model = shared.model.canonical();
     let git = shared.git;
     let coder_backup = async {
         let coder = do_flow_prompt::build_do_coder_run(
@@ -161,16 +154,12 @@ async fn run_do_body(
         emit_command_line(&prep.artifacts.run_dir, false)?;
     }
     let acp_res = run_do_acp(&mut prep.client, &prep.artifacts, prep.coder).await;
-    let r = crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
+    finish_one_shot_after_prompt(
         acp_res,
         &prep.artifacts.work_dir,
         &prep.session_dotfile_backups,
         &prep.artifacts.artifact_result_md(),
-    );
-    if r.is_ok() {
-        crate::cli::error_run_log::clear_command_error_run_dir();
-    }
-    r?;
+    )?;
     Ok(())
 }
 
@@ -222,7 +211,6 @@ mod kiss_cov_gate_refs{
         let _: Option<DoRunPrep> = None;
         let _ = new_do_client;
         let _ = prepare_do_run;
-        let _ = create_do_artifacts;
         let _ = begin_do_session_overlapping_prompt_prep;
     }
 }

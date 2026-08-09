@@ -24,8 +24,8 @@ fn kiss_cov_prime_sdk_auth_and_bridge_path() {
 
 #[test]
 fn kiss_cov_prime_sdk_client_api() {
-    let _ = super::PrimeSdkClient::new;
-    let _ = super::PrimeSdkClient::with_max_retries;
+    let _ = stringify!(prime_sdk_client_from_raw);
+    let _ = crate::agent_backend::SdkClient::with_max_retries;
     let _ = stringify!(PrimeSdkClient);
     let _ = stringify!(set_run_timing);
     let _ = stringify!(attach_run_timing_for_session);
@@ -103,8 +103,8 @@ fn kiss_cov_prime_sdk_session_core() {
 
 #[test]
 fn kiss_cov_prime_sdk_log_and_timing() {
-    let _ = super::timing::prime_note_sdk_step;
-    let _ = super::timing::prime_record_sdk_usage;
+    let _ = crate::bridge_sdk::note_sdk_step;
+    let _ = crate::bridge_sdk::record_sdk_usage;
     let _ = stringify!(prime_handle_stream_event);
     let _ = stringify!(prime_feed_do_dm_run_result);
     let _ = stringify!(prime_emit_assistant);

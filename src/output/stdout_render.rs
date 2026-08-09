@@ -1,4 +1,5 @@
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[allow(dead_code)]
 pub(crate) enum StdoutRenderPrelude {
     TaggedWithHeartbeat,
     HeartbeatOnly,
@@ -13,6 +14,7 @@ pub(crate) fn emit_stdout_rendered_immediate(display: &str, log: &str) {
 }
 
 /// Heartbeat display on the live terminal while defer keeps log lines in FIFO order.
+#[allow(dead_code)]
 pub(crate) fn publish_heartbeat_live_terminal(display: &str) {
     super::print_stdout_display_line(display);
     super::stdout_heartbeat::mark_heartbeat_emitted(std::time::Instant::now());
@@ -44,6 +46,7 @@ pub(crate) fn write_heartbeat_log_line(display: &str, log: &str) {
     route_stdout_rendered_line(display, log, StdoutRenderPrelude::HeartbeatOnly);
 }
 
+#[allow(dead_code)]
 pub(crate) fn flush_stdout_rendered_line(display: &str, log: &str) {
     route_stdout_rendered_line(display, log, StdoutRenderPrelude::FlushOnly);
 }

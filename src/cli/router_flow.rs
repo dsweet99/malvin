@@ -97,8 +97,7 @@ async fn run_router_body(
     request: &str,
 ) -> Result<(), String> {
     let mut prep = prepare_router_run(&router_args, shared, workflow).await?;
-    prep.client
-        .set_prompts_log_run_dir(Some(prep.artifacts.run_dir.clone()));
+    prep.client.prompts_log_run_dir = Some(prep.artifacts.run_dir.clone());
     // Idea 3: complete spawn/handshake before the first `Logs:` line so post-Logs silence is not
     // dominated by ACP initialize + session/new (or Mini session bookkeeping).
     prep.client

@@ -25,8 +25,8 @@ fn kiss_cov_cursor_sdk_auth_and_bridge_path() {
 
 #[test]
 fn kiss_cov_cursor_sdk_client_api() {
-    let _ = super::CursorSdkClient::new;
-    let _ = super::CursorSdkClient::with_max_retries;
+    let _ = stringify!(cursor_sdk_client_from_raw);
+    let _ = crate::agent_backend::SdkClient::with_max_retries;
     let _ = stringify!(CursorSdkClient);
     let _ = stringify!(set_run_timing);
     let _ = stringify!(attach_run_timing_for_session);
@@ -163,8 +163,8 @@ fn kiss_cov_cursor_sdk_log_and_timing() {
     let _ = stringify!(thought_then_message_flushes_thought_on_kind_switch);
     let _ = stringify!(coalesced_assistant_line_prints_once_under_m_tag);
     let _ = stringify!(compose_tool_done_line_run_success);
-    let _ = super::timing::note_sdk_step;
-    let _ = super::timing::record_sdk_usage;
+    let _ = crate::bridge_sdk::note_sdk_step;
+    let _ = crate::bridge_sdk::record_sdk_usage;
 }
 
 #[test]

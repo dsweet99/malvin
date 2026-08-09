@@ -2,7 +2,7 @@
 
 #[test]
 fn smoke_cov_cli_cli_units_0() {
-    let _ = crate::cli::build_agent;
+    let _ = crate::cli::build_agent_backend;
     let _ = crate::cli::prepare_kpop_prompt_store;
     let _ = crate::do_flow::do_flow_prompt::combine_do_prompt_file_and_user;
     let _ = stringify!(crate::cli::entrypoint::dispatch_command);
@@ -40,7 +40,7 @@ fn smoke_cov_cli_cli_units_1b() {
     let _ = crate::do_flow::do_flow_prompt::build_do_coder_run_with_store;
     let _ = crate::do_flow::do_flow_prompt::build_do_coder_run;
     let shared = crate::cli::SharedOpts {
-        model: crate::config::DEFAULT_CLI_MODEL.into(),
+        model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("model"),
         no_force: false,
         no_tenacious: false,
         gates: false,

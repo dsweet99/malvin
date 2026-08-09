@@ -4,13 +4,6 @@
 #[test]
 fn kiss_exec_witness_00_00() {
     AgentIoOptions();
-    teardown_coder_session_after_transport_error();
-    LabeledBackoff();
-    CoderSessionPromptDispatch();
-    dispatch_coder_session_prompt();
-    record_coder_prompt_llm_timing();
-    run_coder_prompt_with_retries();
-    run_one_coder_prompt_attempt();
     SessionUpdateChunkKind();
     feed_buf();
     flush_if_nonempty();
@@ -22,23 +15,10 @@ fn kiss_exec_witness_00_01() {
     flush_stream();
     FlushStreamCtx();
     VerboseTraceCoalesceState();
-    open_contract_trace_writer();
-    tee_coalesced_tool_execute();
-    contract_acp_tee_tool_fixture();
-    read_start_empty_raw_input();
-    read_done_empty_raw_input();
-    EnvRestore();
-    acp::deferred_log_plan_regression::drop();
-    regression_restore_env();
 }
 
 #[test]
 fn kiss_exec_witness_00_02() {
-    defer_trace_writer();
-    tee_read_lifecycle_stdout();
-    read_done_tee_shows_store_db_path_when_wire_raw_input_empty();
-    AcpHandshakeIo();
-    AcpHandshakeSessionOpts();
     AcpChildStdout();
     AcpHandshakeContinuation();
     note_fixture_orphan_affiliation();
@@ -99,11 +79,7 @@ fn kiss_exec_witness_00_05() {
 #[test]
 fn kiss_exec_witness_00_06() {
     KpopFailAfterPrompt();
-    spawn_agent_acp_session();
-    UniformOutgoingTrace();
-    DoPromptTraceSplit();
     MemWatchHandles();
-    spawn_process_group_memory_watcher();
     watch_process_group_memory();
     watch_process_group_memory_with_rss_sampler();
     watch_process_group_memory_fail_closed_when_rss_unavailable();

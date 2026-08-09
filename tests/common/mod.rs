@@ -2,22 +2,8 @@
 #![allow(unused_imports)]
 
 mod git_test_helpers;
-mod acp_code_fanout_mocks;
-mod acp_code_run;
-mod acp_core;
-mod acp_do;
-mod acp_do_dotfiles;
-mod acp_tidy_kpop;
 mod child_wait;
 mod cli_parity_harness_run;
-#[cfg(all(unix, target_os = "linux"))]
-#[cfg(all(unix, target_os = "linux"))]
-mod cli_parity_tty_openpty;
-mod cli_parity_tty;
-#[cfg(unix)]
-mod do_stdout_harness;
-#[cfg(unix)]
-mod do_stdout_harness_extra;
 #[cfg(unix)]
 mod integration_cli_args;
 #[cfg(unix)]
@@ -25,12 +11,6 @@ mod enn_hybrid_fixture;
 #[cfg(unix)]
 mod live_agent;
 mod process;
-#[cfg(unix)]
-mod tidy_harness;
-#[cfg(unix)]
-mod acp_router_mock;
-#[cfg(unix)]
-mod write_harness;
 mod contract;
 pub mod observability_parity;
 mod sandbox_test_helpers;
@@ -41,36 +21,17 @@ mod gate_bin_cache;
 pub use cli_parity_harness_run::*;
 #[cfg(unix)]
 pub use contract::{fresh_workdir, prepend_fake_agent_models_to_path, sleep_child, write_peer_acp_lock};
-#[cfg(all(unix, target_os = "linux"))]
-pub use cli_parity_tty::*;
 
 pub use git_test_helpers::{git_commit_all, git_init};
 pub use sandbox_test_helpers::{
     enable_test_fast_teardown, test_wait_until_async,
 };
-pub use acp_code_fanout_mocks::*;
-pub use acp_code_run::*;
-pub use acp_core::{acp_mock_js, chunk_line, *};
-pub use acp_do::*;
-pub use acp_do_dotfiles::*;
-pub use acp_tidy_kpop::*;
-#[cfg(unix)]
-pub use acp_router_mock::*;
-#[cfg(unix)]
-pub use write_harness::*;
 #[cfg(unix)]
 pub use live_agent::{
     command_output_live_agent, live_agent_prereqs_met,
     require_openrouter_key_when_gate_set, LIVE_AGENT_CMD_TIMEOUT,
 };
 pub use process::{MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout};
-#[cfg(unix)]
-pub use tidy_harness::{
-    TidySpawn, bin_path_with_failing_gates, bin_path_with_fake_kiss,
-    bin_path_with_kiss_fail_until_n_passes, bin_path_with_lint_fail_until_n_passes,
-    spawn_tidy, spawn_tidy_with_timeout,
-    workspace_kiss_check_only,
-};
 pub use gate_bin_cache::{static_fake_kiss_path_var, static_failing_gates_path_var, write_failing_gate_tools};
 pub use workspace::{
     malvin_run_logs_bucket, only_run_dir, seed_fast_integration_malvin_config,
@@ -82,13 +43,6 @@ pub use workspace::{
 };
 
 #[cfg(unix)]
-pub use do_stdout_harness::*;
-#[cfg(unix)]
-pub use do_stdout_harness_extra::*;
-#[cfg(unix)]
 pub use integration_cli_args::INTEGRATION_TEST_MALVIN_ARGS;
 #[cfg(unix)]
 pub use enn_hybrid_fixture::*;
-
-#[cfg(test)]
-mod acp_mock_syntax_tests;

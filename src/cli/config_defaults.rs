@@ -99,8 +99,8 @@ fn apply_gate_loop_command_defaults(
 
 fn finalize_shared_model(matches: &ArgMatches, shared: &mut SharedOpts) -> Result<(), String> {
     let _ = matches;
-    // CLI `--model` and config-sourced values both require a prefix (Q1=a, Q5=c).
-    shared.model = require_prefixed_model(&shared.model)?;
+    // Clap/`ParsedModel` already enforce a prefix; re-canonicalize for stability.
+    let _ = require_prefixed_model(&shared.model.canonical())?;
     Ok(())
 }
 
@@ -155,7 +155,10 @@ pub(crate) fn apply_shared_config_defaults(
     agent: &AgentConfig,
 ) {
     if !global_flag_from_command_line(matches, "model") {
-        shared.model = agent.model.clone();
+        // Config may still carry a legacy bare id until finalize rejects it.
+        if let Ok(parsed) = crate::model_id::parse_model_id(&agent.model) {
+            shared.model = parsed;
+        }
     }
     if !global_flag_from_command_line(matches, "max_acp_retries") {
         shared.max_acp_retries = agent.max_acp_retries;

@@ -23,6 +23,7 @@ fn encode_create_send_cancel_close() {
     assert!(local.contains("modelsJsonPath"));
     let send = prime_encode_request(&PrimeBridgeRequest::Send {
         prompt: "hi".into(),
+        force_stuck: None,
     })
     .expect("send");
     assert!(send.contains("\"op\":\"send\""));

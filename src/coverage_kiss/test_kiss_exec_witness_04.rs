@@ -140,7 +140,6 @@ fn kiss_exec_witness_04_08() {
 #[test]
 fn kiss_exec_witness_04_09() {
     RunTimingSessionEnd();
-    RunTimingAfterAcp();
     RunTimingAfterBackend();
     TimingPhase();
     AcpStepProxy();

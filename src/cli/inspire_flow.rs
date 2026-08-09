@@ -4,14 +4,12 @@ use std::collections::HashMap;
 
 use clap::Args;
 
-use crate::artifacts::{
-    RunArtifacts, SessionDotfileBackups, create_run_artifacts_from_text, resolve_user_md_request,
-};
+use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
+use crate::agent_backend::{build_agent_backend, AgentBackend};
 use crate::cli::cli_request::require_cli_request;
-use crate::agent_backend::{
-    agent_backend_attach_run_timing_for_session, agent_backend_ensure_coder_session,
-    agent_backend_set_implement_display_name, agent_backend_set_run_timing, build_agent_backend,
-    AgentBackend,
+use crate::cli::one_shot_session::{
+    finish_one_shot_after_prompt, finish_one_shot_auth_and_backups, resolve_one_shot_request_artifacts,
+    OneShotCoderGuard,
 };
 use crate::cli::{SharedOpts, WorkflowCliOptions};
 use crate::prompts::{PromptError, PromptStore, render_mbc2_for_scheduled_kpop_block};
@@ -77,22 +75,16 @@ fn inspire_emit_startup(
     )
 }
 
-
 async fn prepare_inspire_run(
     inspire: &InspireArgs,
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<InspireRunPrep, String> {
-    let client = new_inspire_client(shared, workflow)?;
-    let request = require_cli_request(inspire.request.as_ref(), "inspire")?;
-    let (text, work_dir) = resolve_user_md_request(&request)?;
-    let artifacts = create_run_artifacts_from_text(&text, Some(work_dir.as_path()))
-        .map_err(|e| e.to_string())?;
-    crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
-    client.ensure_authenticated().map_err(|e| e.to_string())?;
+    let mut client = new_inspire_client(shared, workflow)?;
+    let (text, artifacts) =
+        resolve_one_shot_request_artifacts(inspire.request.as_ref(), "inspire", None)?;
+    let session_dotfile_backups = finish_one_shot_auth_and_backups(&mut client, &artifacts)?;
     let prompt = render_inspire_prompt(&text)?;
-    let session_dotfile_backups =
-        SessionDotfileBackups::snapshot_after_ensuring_home_config(&artifacts.work_dir)?;
     Ok(InspireRunPrep {
         client,
         artifacts,
@@ -107,25 +99,19 @@ pub async fn run_inspire(
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
     let mut prep = prepare_inspire_run(&inspire, shared, workflow).await?;
-    prep.client
-        .set_prompts_log_run_dir(Some(prep.artifacts.run_dir.clone()));
     // Complete spawn/handshake before the first `Logs:` line (same idea as default router).
     prep.client
         .begin_coder_session(&prep.artifacts.work_dir)
         .await
         .map_err(|e| e.to_string())?;
     inspire_emit_startup(&inspire, shared, &prep.artifacts)?;
-    let acp_res = run_inspire_acp(&mut prep.client, &prep.artifacts, &prep.prompt).await;
-    let r = crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
+    let acp_res = run_inspire_coder_session(&mut prep.client, &prep.artifacts, &prep.prompt).await;
+    finish_one_shot_after_prompt(
         acp_res,
         &prep.artifacts.work_dir,
         &prep.session_dotfile_backups,
         &prep.artifacts.artifact_result_md(),
-    );
-    if r.is_ok() {
-        crate::cli::error_run_log::clear_command_error_run_dir();
-    }
-    r?;
+    )?;
     Ok(())
 }
 
@@ -150,27 +136,14 @@ async fn run_inspire_coder_prompt(
         .map_err(|e| e.to_string())
 }
 
-async fn run_inspire_acp(
+async fn run_inspire_coder_session(
     client: &mut AgentBackend,
     artifacts: &RunArtifacts,
     prompt: &str,
 ) -> Result<(), String> {
-    let timing = agent_backend_attach_run_timing_for_session(client);
-    if let Err(e) = agent_backend_ensure_coder_session(client, &artifacts.work_dir).await {
-        agent_backend_set_run_timing(client, None);
-        return Err(e.to_string());
-    }
-    agent_backend_set_implement_display_name(client, "inspire");
+    let guard = OneShotCoderGuard::begin(client, artifacts, "inspire").await?;
     let run_res = run_inspire_coder_prompt(client, artifacts, prompt).await;
-    let end_res = client.end_coder_session().await.map_err(|e| e.to_string());
-    let merged =
-        crate::acp_post_run::prefer_primary_over_secondary(run_res, end_res, "end coder session");
-    crate::acp_post_run::emit_run_timing_json_only_after_backend(
-        client,
-        &artifacts.run_dir,
-        &timing,
-        merged,
-    )
+    guard.finish(client, run_res).await
 }
 
 #[cfg(test)]
@@ -209,7 +182,7 @@ mod kiss_cov_gate_refs{
         let _ = prepare_inspire_prompt_store;
         let _ = prepare_inspire_run;
         let _ = run_inspire;
-        let _ = run_inspire_acp;
+        let _ = run_inspire_coder_session;
         let _ = run_inspire_coder_prompt;
     }
 }

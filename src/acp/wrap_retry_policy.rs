@@ -10,3 +10,7 @@ mod retry_teardown;
 
 pub(crate) use inline::*;
 pub(crate) use retry_teardown::*;
+
+#[cfg(test)]
+#[path = "retry_policy_test_mods.rs"]
+mod retry_policy_test_mods;

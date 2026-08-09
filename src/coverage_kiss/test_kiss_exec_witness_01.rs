@@ -25,7 +25,6 @@ fn kiss_exec_witness_01_01() {
     acp_session_from_sleep_child();
     session_with_sleep_child_for_mem_watch();
     watch_process_group_memory_kills_over_limit_child();
-    spawn_process_group_memory_watcher_starts_for_session();
     watch_process_group_memory_kills_orphan_after_agent_pg_exits();
     watch_process_group_memory_kills_setsid_orphan_on_oom();
     trace_prepare_file();
@@ -42,10 +41,8 @@ fn kiss_exec_witness_01_02() {
     DoOutgoingTraceParts();
     compose_do_split_prompt_text();
     trace_write_invocation_and_do_split_prompt();
-    trace_write_outgoing_prompt_do();
     trace_write_outgoing_prompt();
     trace_write_tagged_body_writes_prefixed_lines();
-    trace_write_outgoing_prompt_do_writes_plain_lines_without_tags();
     append_prompts_log_uniform_appends_tagged_timestamped_lines();
 }
 
@@ -53,14 +50,6 @@ fn kiss_exec_witness_01_02() {
 fn kiss_exec_witness_01_03() {
     append_prompts_log_do_plain_uses_do_stem_like_stdout();
     append_prompts_log_uniform_name_only_writes_one_summary_line();
-    append_prompts_log_do_plain_name_only_writes_do_summary();
-    trace_write_outgoing_prompt_do_preserves_header_user_separator();
-    PromptTraceWriter();
-    AcpSessionInner();
-    AcpSession();
-    AcpSpawnArgs();
-    response_tx_oneshot_channel_constructible();
-    best_effort_session_cancel();
     wait_killed_child();
     ReaderTraceLineOpts();
 }
@@ -74,7 +63,6 @@ fn kiss_exec_witness_01_04() {
     rendered_tool_summary_tee_display();
     TeeToolSummaryPlainCtx();
     BuildAgentAcpCommandArgs();
-    spawn_agent_acp_child();
     write_executable_agent_script();
     HandshakeParams();
     handshake_inner();
@@ -90,7 +78,6 @@ fn kiss_exec_witness_01_05() {
     RpcLineWriteOpts();
     RpcOutgoing();
     RpcRequestNext();
-    rpc_request_with_correlation_id();
     rpc_wait_with_timeout();
     rpc_request();
     rpc_wait_response();
@@ -121,22 +108,11 @@ fn kiss_exec_witness_01_07() {
     busy_session_with_dead_transport();
     acp_session_cancel_clears_busy_state_after_rpc_error();
     dead_transport_child_stdio();
-    dead_transport_sync_channels();
-    dead_transport_session_inner();
     wait_for_pid_file();
-    write_descendant_spawning_acp_mock();
-    spawn_descendant_mock_session();
-    assert_descendant_killed_after_shutdown();
 }
 
 #[test]
 fn kiss_exec_witness_01_08() {
-    shutdown_sends_cancel_before_teardown();
-    shutdown_kills_agent_spawned_descendants();
-    acp_mock_js();
-    spawn_json_activity_then_response();
-    spawn_activity_then_kill_child();
-    rpc_request_with_correlation_id_stays_alive_while_json_updates_arrive();
     rpc_wait_response_reports_dead_child_after_silence();
     rpc_response_arriving_during_child_health_grace_is_delivered();
     command_env_value();
@@ -149,8 +125,6 @@ fn kiss_exec_witness_01_08() {
 fn kiss_exec_witness_01_09() {
     test_rpc_cancel_when_pending_sender_dropped();
     test_rpc_request_does_not_leak_pending_after_write_failure();
-    rpc_request_with_correlation_id_times_out_when_stdout_silent();
-    rpc_request_with_correlation_id_errors_when_reader_dead();
     test_write_rpc_line_fails_after_child_stdin_closed();
     TestReaderLoopSpawn();
     handshake_stdio_pipes();

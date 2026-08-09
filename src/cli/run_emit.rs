@@ -67,7 +67,7 @@ impl RunStartupEmitOpts {
         Self {
             tee_stdout: shared.tee_startup_stdout(),
             host_resources,
-            model: shared.model.clone(),
+            model: shared.model.canonical(),
         }
     }
 }

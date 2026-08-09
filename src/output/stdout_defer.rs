@@ -6,6 +6,7 @@ type DeferHeartbeatFn = fn(&str, &str) -> bool;
 static DEFER_TAGGED_STDOUT: OnceLock<DeferTaggedStdoutFn> = OnceLock::new();
 static DEFER_HEARTBEAT: OnceLock<DeferHeartbeatFn> = OnceLock::new();
 
+#[allow(dead_code)]
 pub(crate) fn register_defer_stdout_hooks(tagged: DeferTaggedStdoutFn, heartbeat: DeferHeartbeatFn) {
     let _ = DEFER_TAGGED_STDOUT.set(tagged);
     let _ = DEFER_HEARTBEAT.set(heartbeat);

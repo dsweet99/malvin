@@ -1,8 +1,7 @@
-use crate::acp::import_prelude::*;
 use crate::support_paths::DEFAULT_MAX_ACP_RETRIES;
 // Bounded retries for transient ACP JSON-RPC failures (default [`DEFAULT_MAX_ACP_RETRIES`] attempts, 1s / 3s backoff).
 // Covers `session/prompt` and spawn/handshake (`initialize` / `authenticate` / `session/new`) via
-// [`AgentClient::begin_coder_session`], which retries the full `agent acp` session setup.
+// Shared retry planning for Cursor/Prime SDK session setup and prompt attempts.
 
 /// English noun for `n` retry attempts after the first try (`n` is `attempts_used - 1` in callers).
 #[must_use]
@@ -10,6 +9,7 @@ pub(crate) const fn retries_noun(n: u32) -> &'static str {
     if n == 1 { "retry" } else { "retries" }
 }
 
+#[allow(dead_code)]
 pub(crate) const UPGRADE_PLAN_STOP_MESSAGE: &str = "Upgrade your plan to continue";
 
 pub(crate) fn agent_string_is_upgrade_plan(msg: &str) -> bool {
@@ -19,6 +19,7 @@ pub(crate) fn agent_string_is_upgrade_plan(msg: &str) -> bool {
 
 /// Operational stderr when billing blocks the agent stream (not session `who` tee).
 #[must_use]
+#[allow(dead_code)]
 pub(crate) fn operational_upgrade_plan_for_emit(line: &str, stream_upgrade_plan: bool) -> bool {
     agent_string_is_upgrade_plan(line) || stream_upgrade_plan
 }
@@ -28,6 +29,7 @@ pub(crate) fn upgrade_plan_stream_from_buffer(buf: &str) -> bool {
     agent_string_is_upgrade_plan(buf)
 }
 
+#[allow(dead_code)]
 pub(crate) fn emit_operational_upgrade_plan_stop(warned: &mut bool) {
     if *warned {
         return;
@@ -82,6 +84,7 @@ pub(crate) fn agent_string_is_cursor_http2_transport_error(msg: &str) -> bool {
 
 /// Stable error string for prompt failure / retry when Cursor streams an HTTP/2 transport `RetriableError`.
 #[must_use]
+#[allow(dead_code)]
 pub(crate) fn cursor_http2_transport_error_message(msg: &str) -> Option<&'static str> {
     let text = msg.to_ascii_lowercase();
     if text.contains("ping timed out") {
@@ -114,6 +117,7 @@ pub(crate) fn iterable_closed_stream_from_buffer(buf: &str) -> Option<IterableCl
     }
 }
 
+#[allow(dead_code)]
 const fn iterable_closed_stream_message(kind: IterableClosedStream) -> &'static str {
     match kind {
         IterableClosedStream::Writable => "acp: WritableIterable is closed",
@@ -123,6 +127,7 @@ const fn iterable_closed_stream_message(kind: IterableClosedStream) -> &'static 
 
 /// Operational stderr line for [`crate::output::print_log_warning`] (not session `who` tee).
 #[must_use]
+#[allow(dead_code)]
 pub(crate) fn operational_iterable_closed_log_line(msg: &str) -> Option<&'static str> {
     let text = msg.to_ascii_lowercase();
     if text.contains("writableiterable is closed") {
@@ -136,6 +141,7 @@ pub(crate) fn operational_iterable_closed_log_line(msg: &str) -> Option<&'static
 
 /// Line or parent coalesced stream carries iterable-closed (split emissions included).
 #[must_use]
+#[allow(dead_code)]
 pub(crate) fn operational_iterable_closed_for_emit(
     line: &str,
     stream_iterable_closed: Option<IterableClosedStream>,

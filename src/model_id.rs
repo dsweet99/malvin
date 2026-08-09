@@ -32,6 +32,12 @@ pub struct ParsedModel {
     pub slug: String,
 }
 
+impl std::fmt::Display for ParsedModel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.canonical())
+    }
+}
+
 impl ParsedModel {
     #[must_use]
     pub fn canonical(&self) -> String {
@@ -149,11 +155,6 @@ pub fn uses_local_backend(raw: &str) -> bool {
     parse_model_id(raw)
         .map(|p| p.is_prime_local())
         .unwrap_or(false)
-}
-
-#[must_use]
-pub fn uses_prime_local_backend(raw: &str) -> bool {
-    parse_model_id(raw).map(|p| p.is_prime_local()).unwrap_or(false)
 }
 
 #[must_use]

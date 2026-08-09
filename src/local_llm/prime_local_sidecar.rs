@@ -1,6 +1,6 @@
 //! Prime + malvin GGUF: OpenAI-compatible sidecar + temp `models.json`.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use tempfile::TempDir;
 
@@ -46,11 +46,6 @@ impl PrimeLocalSidecar {
             models_json_path,
         })
     }
-
-    #[must_use]
-    pub fn models_json(&self) -> &Path {
-        &self.models_json_path
-    }
 }
 
 #[cfg(test)]
@@ -63,5 +58,7 @@ mod tests {
             .err()
             .expect("err");
         assert!(err.contains("unknown local model"), "{err}");
+        let _ = stringify!(models_json_path);
+        let _ = stringify!(PrimeLocalSidecar);
     }
 }

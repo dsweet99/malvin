@@ -29,7 +29,7 @@ pub(super) fn clear_mock_bridge_env() {
 }
 
 pub(super) fn mock_client(run_dir: &std::path::Path) -> CursorSdkClient {
-    let mut client = CursorSdkClient::with_max_retries("auto".into(), mock_io(), 1);
+    let mut client = crate::cursor_sdk::cursor_sdk_client_from_raw("cursor:auto", mock_io(), 1);
     client.prompts_log_run_dir = Some(run_dir.to_path_buf());
     client
 }

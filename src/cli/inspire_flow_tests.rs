@@ -65,7 +65,7 @@ mod inspire_tests {
     fn inspire_client_uses_styled_agent_io_not_raw_do_style() {
         use crate::cli::{SharedOpts, WorkflowCliOptions};
         let shared = SharedOpts {
-            model: crate::config::DEFAULT_CLI_MODEL.into(),
+            model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("model"),
             no_force: true,
             no_tenacious: false,
             gates: false,
@@ -78,17 +78,20 @@ mod inspire_tests {
         no_download: false,
             git: false,
         };
-        let client = crate::cli::build_agent(
+        let backend = crate::cli::build_agent_backend(
             &shared,
             WorkflowCliOptions { force: false },
             shared.acp_stdout_markdown_enabled(),
-        );
+            "inspire",
+        )
+        .expect("backend");
+        let io = backend.io;
         assert!(
-            !client.io.raw_output,
+            !io.raw_output,
             "inspire must use styled logging, not do-style raw_output"
         );
-        assert!(client.io.show_thoughts_on_stdout);
-        assert!(client.io.emit_stdout_markdown);
+        assert!(io.show_thoughts_on_stdout);
+        assert!(io.emit_stdout_markdown);
     }
 
     #[test]
@@ -99,7 +102,7 @@ mod inspire_tests {
             crate::artifacts::create_run_artifacts_from_text("topic", Some(tmp.path()))
                 .expect("art");
         let shared = SharedOpts {
-            model: crate::config::DEFAULT_CLI_MODEL.into(),
+            model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("model"),
             no_force: true,
             no_tenacious: false,
             gates: false,

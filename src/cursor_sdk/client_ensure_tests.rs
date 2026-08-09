@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 use super::client_mock_tests::{
     clear_mock_bridge_env, install_mock_bridge_env, mock_bridge_path, mock_client, prompt_once,
 };
-use super::session::SDK_BRIDGE_MAX_AGE;
+use crate::bridge_sdk::SDK_BRIDGE_MAX_AGE;
 use super::CursorSdkClient;
 
 struct EnsureFixture {

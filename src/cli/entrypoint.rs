@@ -185,7 +185,8 @@ fn dispatch_models(
     models: super::models_cmd::ModelsArgs,
     shared: &super::SharedOpts,
 ) -> Result<(), String> {
-    super::models_cmd::run_models(models, &shared.model)
+    let model = shared.model.canonical();
+    super::models_cmd::run_models(models, &model)
 }
 
 #[cfg(test)]

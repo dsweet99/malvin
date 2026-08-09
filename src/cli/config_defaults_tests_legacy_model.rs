@@ -1,6 +1,4 @@
-use super::{
-    apply_workspace_config_defaults, config_defaults_tests::with_seeded_agent_config, Cli,
-};
+use super::{apply_workspace_config_defaults, Cli};
 use clap::{CommandFactory, FromArgMatches};
 
 #[test]
@@ -17,28 +15,25 @@ fn mini_flag_is_unknown_argument() {
 
 #[test]
 fn mini_model_is_rejected() {
-    with_seeded_agent_config(|| {
-        let matches = Cli::command().get_matches_from([
+    let err = Cli::command()
+        .try_get_matches_from([
             "malvin",
             "--model",
             "mini:openrouter/openai/gpt-4o",
             "hello",
-        ]);
-        let mut cli = Cli::from_arg_matches(&matches).expect("cli");
-        let err = apply_workspace_config_defaults(&matches, &mut cli).expect_err("legacy mini");
-        assert!(err.contains("mini:") || err.contains("prime:"), "{err}");
-    });
+        ])
+        .expect_err("legacy mini");
+    let msg = err.to_string();
+    assert!(msg.contains("mini:") || msg.contains("prime:"), "{msg}");
 }
 
 #[test]
 fn bare_cli_model_is_rejected() {
-    with_seeded_agent_config(|| {
-        let matches =
-            Cli::command().get_matches_from(["malvin", "--model", "auto", "hello"]);
-        let mut cli = Cli::from_arg_matches(&matches).expect("cli");
-        let err = apply_workspace_config_defaults(&matches, &mut cli).expect_err("bare");
-        assert!(err.contains("cursor:") || err.contains("prime:"), "{err}");
-    });
+    let err = Cli::command()
+        .try_get_matches_from(["malvin", "--model", "auto", "hello"])
+        .expect_err("bare");
+    let msg = err.to_string();
+    assert!(msg.contains("cursor:") || msg.contains("prime:"), "{msg}");
 }
 
 #[test]
@@ -91,7 +86,7 @@ max_loops = 9
         ]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         apply_workspace_config_defaults(&matches, &mut cli).expect("cli model wins");
-        assert_eq!(cli.shared.model, "cursor:composer-2");
+        assert_eq!(cli.shared.model.canonical(), "cursor:composer-2");
         let after = std::fs::read_to_string(&path).expect("read");
         assert!(after.contains("model = \"auto\""), "must not rewrite config");
     });

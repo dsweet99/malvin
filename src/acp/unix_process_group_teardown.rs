@@ -11,9 +11,7 @@ pub(crate) use super::unix_process_group_kill_targets::baseline_amnestied_agent_
 #[cfg(all(unix, test))]
 pub(crate) use super::unix_process_group_kill_targets::kill_targets_for_teardown;
 #[cfg(all(unix, test))]
-pub(crate) use super::unix_process_group_kill_targets::{
-    descendant_pids, malvin_session_spawn_pids,
-};
+pub(crate) use super::unix_process_group_kill_targets::descendant_pids;
 
 #[cfg(all(unix, test))]
 pub(crate) async fn signal_targets(targets: &HashSet<u32>, process_group_id: Option<u32>, signal: i32) {

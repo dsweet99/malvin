@@ -183,3 +183,16 @@ pub(crate) fn assert_acp_tool_summary_dim_preserves_bracket(line: &str) {
         "who prefix must not be dimmed; got {line:?}"
     );
 }
+
+#[test]
+fn kiss_cov_assert_tool_payload_helpers() {
+    use crate::terminal_palette::{ansi_tool_dark, ANSI_BOLD, ANSI_DIM, ANSI_RESET};
+    use crate::output::who_tag_ansi;
+    let who = who_tag_ansi(WHO_T);
+    let dark = ansi_tool_dark();
+    let line = format!(
+        "{who}|{ANSI_RESET}{ANSI_DIM}{ANSI_BOLD}{dark}Run{ANSI_RESET}{ANSI_DIM} something"
+    );
+    assert_tool_payload_uses_verb_styling(&line);
+    assert_acp_tool_summary_dim_preserves_bracket(&line);
+}
