@@ -121,10 +121,11 @@ fn print_coalesced_line(session: &BridgeSession, kind: SessionUpdateChunkKind, l
         SessionUpdateChunkKind::Message => WHO_M,
         SessionUpdateChunkKind::Thought => WHO_B,
     };
+    let markdown = session.io.emit_stdout_markdown;
     if session.io.raw_output && kind == SessionUpdateChunkKind::Message {
-        crate::output::print_stdout_text(who, line);
+        crate::output::print_stdout_text_with_markdown(who, line, markdown);
     } else {
-        crate::output::print_stdout_line(who, line);
+        crate::output::print_stdout_line_with_markdown(who, line, markdown);
     }
 }
 
