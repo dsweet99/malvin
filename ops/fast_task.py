@@ -52,9 +52,15 @@ def fast_tasks_list_cmd() -> None:
 @click.option("--dry-run", is_flag=True, help="Stage + print cmds; skip docker run")
 @click.option("--skip-grade", is_flag=True, help="Skip host grading after the agent")
 @click.option(
-    "--cursor",
-    is_flag=True,
-    help="Skip malvin; run cursor-agent --force -p < plan.md in the container",
+    "--agent",
+    type=click.Choice(list(_lib.AGENT_CHOICES), case_sensitive=False),
+    default=_lib.AGENT_MALVIN,
+    show_default=True,
+    help=(
+        "Agent to run in the container: malvin (default), cursor "
+        "(cursor-agent --force -p < plan.md), or prime "
+        "(prime-agent --no-session -p < plan.md)"
+    ),
 )
 @click.option(
     "--main",
@@ -62,13 +68,13 @@ def fast_tasks_list_cmd() -> None:
     is_flag=True,
     help=(
         "Mount host malvin-main as the container malvin binary "
-        "(do not rebuild or modify the local binary)"
+        "(do not rebuild or modify the local binary; only with --agent=malvin)"
     ),
 )
 @click.option(
     "--model",
     default=None,
-    help="Model id passed through to malvin (ignored with --cursor)",
+    help="Model id passed through to malvin (ignored unless --agent=malvin)",
 )
 @click.pass_context
 def fast_task_solve(
@@ -79,7 +85,7 @@ def fast_task_solve(
     base_image: str,
     dry_run: bool,
     skip_grade: bool,
-    cursor: bool,
+    agent: str,
     use_main: bool,
     model: str | None,
 ) -> None:
@@ -94,7 +100,7 @@ def fast_task_solve(
         base_image=base_image,
         dry_run=dry_run,
         skip_grade=skip_grade,
-        use_cursor=cursor,
+        agent=agent,
         use_main=use_main,
         malvin_args=malvin_args,
         timeout_sec=None,

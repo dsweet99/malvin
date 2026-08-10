@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Shared Harbor ``tests/test.patch`` / ``test.sh`` parsers for DeepSWE ops.
+"""Shared Harbor ``tests/test.patch`` / ``test.sh`` parsers for ops tooling.
 
 Contract (verifier dependency discovery):
 - **Inputs:** task workspace, optional ``tests/`` dir, Dockerfile path.

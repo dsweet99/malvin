@@ -7,7 +7,7 @@ use crate::acp::{
     CoderPromptOptions, KpopFailAfterPrompt,
 };
 use crate::nested_budget_scopes::BudgetScopeLayer;
-use crate::cli::workflow_kpop_shared::{gate_iteration_context, post_kpop_session_gates};
+use crate::cli::workflow_kpop_shared::gate_iteration_context;
 use crate::run_timing::TimingPhase;
 
 use super::kpop_session_finish::finish_kpop_engine_session_success;
@@ -25,6 +25,7 @@ impl<'a> KPopEngineMultiturnCtx<'a> {
     }
 }
 
+#[cfg(test)]
 pub(crate) fn run_kpop_hard_constraints_after_session(
     command: &str,
     prepared: &KPopEnginePrepared,
@@ -34,7 +35,7 @@ pub(crate) fn run_kpop_hard_constraints_after_session(
     if behavior.skip_workspace_quality_gates {
         return Ok(());
     }
-    post_kpop_session_gates(
+    crate::cli::workflow_kpop_shared::post_kpop_session_gates(
         command,
         prepared.artifacts(),
         session_dotfile_backups,
@@ -104,11 +105,20 @@ pub(super) async fn finalize_kpop_engine_turn(
         .await
         .map_err(|e| e.0);
     }
-    ctx.iteration
+    // Idea 3 (Cursor SDK): leave the Node bridge open for later gate turns / iterations
+    // (refreshed on the next agent start if older than 10 minutes).
+    // ACP/Mini still end so the next begin gets a fresh agent (and frees memory before gates).
+    if !ctx
+        .iteration
         .client
-        .end_coder_session()
-        .await
-        .map_err(|e| e.to_string())?;
+        .keeps_coder_session_for_process_life()
+    {
+        ctx.iteration
+            .client
+            .end_coder_session()
+            .await
+            .map_err(|e| e.to_string())?;
+    }
     prompt_result.map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -121,12 +131,8 @@ pub(super) async fn run_kpop_engine_coder_turn(
 ) -> Result<(), AgentError> {
     let params = ctx.iteration.loop_params;
     let prepared = params.prepared;
-    if !ctx.iteration.client.has_open_coder_session() {
-        ctx.iteration
-            .client
-            .begin_coder_session(work_dir)
-            .await?;
-    }
+    crate::agent_backend::agent_backend_ensure_coder_session(ctx.iteration.client, work_dir)
+        .await?;
     let mut prompt_result = ctx
         .iteration
         .client
@@ -142,12 +148,13 @@ pub(super) async fn run_kpop_engine_coder_turn(
         )
         .await;
     if prompt_result.is_ok() {
+        let model = params.shared.model.canonical();
         prompt_result = crate::cli::kpop_summarize::maybe_run_gate_inline_summarize(
             crate::cli::kpop_summarize::GateInlineSummarizeCtx {
                 client: ctx.iteration.client,
                 store: prepared.store(),
                 artifacts: prepared.artifacts(),
-                model: &params.shared.model,
+                model: &model,
                 git: params.shared.git,
                 iteration: ctx.iteration.iteration,
                 total_iterations: ctx.iteration.total_iterations,
@@ -187,7 +194,7 @@ pub(crate) async fn run_kpop_engine_session(
 ) -> Result<crate::artifacts::SessionDotfileBackups, String> {
     let iteration_start = ctx.iteration.session_dotfile_backups.clone();
     let max_attempts = BudgetScopeLayer::AcpSpawnRetry
-        .effective_max_attempts(ctx.iteration.client.max_acp_retries(), false);
+        .effective_max_attempts(ctx.iteration.client.max_acp_retries, false);
     let mut last_error = String::new();
     let mut attempts_used = 0_u32;
     for attempt in 1..=max_attempts {

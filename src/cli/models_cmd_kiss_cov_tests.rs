@@ -95,23 +95,58 @@ fn kiss_cov_parse_model_line_all_branches_single_test() {
 }
 
 #[cfg(unix)]
-#[test]
-fn kiss_cov_run_models_surfaces_agent_failure() {
+fn clear_cursor_api_keys_for_models_test() -> crate::test_utils::SavedEnvVars {
+    let saved = crate::test_utils::SavedEnvVars::capture(&[
+        "CURSOR_API_KEY",
+        "CURSOR_AGENT_API_KEY",
+        "AGENT_API_KEY",
+    ]);
+    #[allow(unsafe_code)]
+    unsafe {
+        std::env::remove_var("CURSOR_API_KEY");
+        std::env::remove_var("CURSOR_AGENT_API_KEY");
+        std::env::remove_var("AGENT_API_KEY");
+    }
+    saved
+}
+
+#[cfg(unix)]
+fn install_failing_fake_agent(dir: &std::path::Path) {
     use std::os::unix::fs::PermissionsExt;
 
-    use super::run_models;
-    use super::ModelsArgs;
-    use crate::repo_checks::set_fake_command_dir;
-
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let agent = tmp.path().join("agent");
+    let agent = dir.join("agent");
     std::fs::write(&agent, "#!/bin/sh\nexit 1\n").expect("write fake agent");
     let mut perms = std::fs::metadata(&agent).expect("metadata").permissions();
     perms.set_mode(0o755);
     std::fs::set_permissions(&agent, perms).expect("chmod");
+}
+
+#[cfg(unix)]
+#[test]
+fn kiss_cov_run_models_soft_fails_cursor_and_continues() {
+    use super::run_models;
+    use super::ModelsArgs;
+    use crate::output::{enable_stdout_capture, take_captured_stdout};
+    use crate::repo_checks::set_fake_command_dir;
+
+    let _lock = crate::test_utils::test_env_lock();
+    let _saved = clear_cursor_api_keys_for_models_test();
+    let tmp = tempfile::tempdir().expect("tempdir");
+    install_failing_fake_agent(tmp.path());
     let _guard = set_fake_command_dir(tmp.path());
-    let err = run_models(ModelsArgs::default(), crate::config::DEFAULT_CLI_MODEL).expect_err("failing agent");
-    assert!(err.contains("models"));
+    enable_stdout_capture();
+    // Cursor auth/agent failure must not abort Prime / Mini sections.
+    run_models(ModelsArgs::default(), crate::config::DEFAULT_CLI_MODEL)
+        .expect("cursor failure is soft");
+    let out = take_captured_stdout();
+    assert!(
+        out.contains("cursor models unavailable"),
+        "expected soft-fail notice, got: {out}"
+    );
+    assert!(
+        out.contains("Current:"),
+        "footer must still print after cursor soft-fail: {out}"
+    );
 }
 
 #[cfg(unix)]
@@ -142,40 +177,3 @@ fn kiss_cov_run_models_fake_agent_branchy_executable() {
     }
 }
 
-#[test]
-fn kiss_cov_models_mini_integration_tests() {
-    let _ = (
-        crate::cli::models_cmd_tests::run_mini_models_prints_openrouter_rows_and_footer,
-        crate::cli::models_cmd_tests::run_mini_models_surfaces_http_errors,
-        crate::cli::models_cmd_tests::print_mini_models_formats_tab_separated_rows,
-        crate::cli::models_cmd_tests::kiss_cov_mini_models_test_helpers,
-    );
-}
-
-#[test]
-fn kiss_cov_models_cmd_private_fn_names() {
-    use super::test_hooks::EnvGuard;
-
-    let _ = stringify!(trim_trailing_tip_lines);
-    let _ = stringify!(looks_like_tip_banner_line);
-    let _ = stringify!(models_display_lines);
-    let _ = stringify!(print_parsed_or_fallback);
-    let _ = stringify!(parse_model_line);
-    let _ = stringify!(resolve_models_cli);
-    let _ = stringify!(print_mini_models);
-    let _ = stringify!(run_mini_models);
-    let _ = stringify!(models_args_marker);
-    let _ = EnvGuard::set("MALVIN_KISS_COV_ENV", Some("1"));
-}
-
-#[test]
-fn kiss_cov_models_mini_branch_witness() {
-    use super::test_hooks::EnvGuard;
-    use super::{run_mini_models, ModelsArgs};
-
-    let args = ModelsArgs::default();
-    let _ = args;
-    let _guard = EnvGuard::set("MALVIN_KISS_COV_MINI", None);
-    let _ = run_mini_models;
-    let _ = stringify!(EnvGuard);
-}

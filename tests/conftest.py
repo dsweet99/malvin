@@ -48,17 +48,17 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
 def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
         "markers",
-        "docker: requires Docker daemon (skipped when unavailable or DEEPSWE_SKIP_DOCKER_SELFTESTS=1)",
+        "docker: requires Docker daemon (skipped when unavailable or MALVIN_SKIP_DOCKER_SELFTESTS=1)",
     )
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
-    skip_docker = os.environ.get("DEEPSWE_SKIP_DOCKER_SELFTESTS", "") == "1"
+    skip_docker = os.environ.get("MALVIN_SKIP_DOCKER_SELFTESTS", "") == "1"
     docker_marker = pytest.mark.docker
     for item in items:
-        if "docker" in item.nodeid or item.name.startswith("test_deepswe_docker_"):
+        if "docker" in item.nodeid:
             item.add_marker(docker_marker)
             if skip_docker:
                 item.add_marker(
-                    pytest.mark.skip(reason="DEEPSWE_SKIP_DOCKER_SELFTESTS=1")
+                    pytest.mark.skip(reason="MALVIN_SKIP_DOCKER_SELFTESTS=1")
                 )

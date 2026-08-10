@@ -37,6 +37,7 @@ pub(crate) fn teardown_total_cap() -> std::time::Duration {
 }
 
 #[must_use]
+#[allow(dead_code)]
 pub(crate) fn shutdown_cancel_timeout() -> std::time::Duration {
     if test_fast_acp_teardown_enabled() {
         return std::time::Duration::ZERO;
@@ -67,8 +68,9 @@ pub(crate) fn teardown_kill_after_polls() -> u32 {
     }
 }
 
-/// Cap for `Child::wait` after SIGKILL during [`AcpSession::shutdown`].
+/// Cap for `Child::wait` after SIGKILL during agent process-group teardown.
 #[must_use]
+#[allow(dead_code)]
 pub(crate) fn shutdown_child_wait_timeout() -> std::time::Duration {
     if test_fast_acp_teardown_enabled() {
         return std::time::Duration::from_millis(50);

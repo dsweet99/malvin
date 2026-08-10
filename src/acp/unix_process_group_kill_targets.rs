@@ -47,6 +47,20 @@ pub(crate) fn reparented_init_orphans(baseline: &HashSet<u32>, rows: &[ProcRow])
         .collect()
 }
 
+/// Session-affiliated PIDs still alive (any parent), e.g. tool children that left the
+/// agent process group but have not yet been reparented to init.
+pub(crate) fn affiliated_session_pids(baseline: &HashSet<u32>, rows: &[ProcRow]) -> HashSet<u32> {
+    let protected = host_protected_pids(rows);
+    rows.iter()
+        .filter(|row| {
+            !baseline.contains(&row.pid)
+                && is_safe_kill_target(row.pid, &protected)
+                && is_session_affiliated_pid(row.pid)
+        })
+        .map(|row| row.pid)
+        .collect()
+}
+
 /// Init-reparented Cursor `agent acp` orphans that baseline amnesty would otherwise skip.
 pub(crate) fn baseline_amnestied_agent_orphans(
     baseline: &HashSet<u32>,
@@ -104,6 +118,7 @@ pub(crate) fn kill_targets_for_teardown(
     }
     if let Some(baseline) = spawn_baseline.filter(|b| !b.is_empty()) {
         targets.extend(reparented_init_orphans(baseline, &rows));
+        targets.extend(affiliated_session_pids(baseline, &rows));
         targets.extend(baseline_amnestied_agent_orphans(baseline, &rows));
         targets.extend(malvin_session_spawn_pids(baseline, &rows));
     }

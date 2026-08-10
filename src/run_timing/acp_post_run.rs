@@ -100,29 +100,6 @@ pub(crate) fn duplicate_safe_restore_error(merge_error: &str) -> String {
     }
 }
 
-pub struct RunTimingAfterAcp<'a> {
-    pub client: &'a mut crate::acp::AgentClient,
-    pub run_dir: &'a Path,
-    pub timing: &'a Arc<Mutex<RunTiming>>,
-    pub acp_result: Result<(), String>,
-    pub session_end: RunTimingSessionEnd,
-}
-
-pub fn emit_run_timing_after_acp(req: RunTimingAfterAcp<'_>) -> Result<(), String> {
-    let timing_result = match req.session_end {
-        RunTimingSessionEnd::Finalize => {
-            crate::run_timing::finalize_run_timing_json_only(req.run_dir, req.timing)
-        }
-        RunTimingSessionEnd::AccumulateRun => {
-            crate::run_timing::persist_open_run_timing_json(req.run_dir, req.timing)
-        }
-    };
-    if matches!(req.session_end, RunTimingSessionEnd::Finalize) {
-        req.client.set_run_timing(None);
-    }
-    merge_acp_and_timing_results(req.acp_result, timing_result)
-}
-
 pub struct RunTimingAfterBackend<'a> {
     pub backend: &'a mut crate::agent_backend::AgentBackend,
     pub run_dir: &'a Path,

@@ -24,14 +24,14 @@ fn stdout_and_phase_test_locks() -> (
 }
 
 fn seed_run_timing_json(run_dir: &std::path::Path) {
-    use crate::malvin_mini::ResponseUsage;
+    use crate::llm_transport::ResponseUsage;
 
     let timing = RunTiming::new_arc();
     {
         let mut g = timing.lock().unwrap();
         g.mark_wall_start(Instant::now());
         g.mark_wall_end(Instant::now());
-        g.record_mini_http_cost(&ResponseUsage {
+        g.record_completion_cost(&ResponseUsage {
             prompt_tokens: None,
             completion_tokens: None,
             total_tokens: Some(1),
@@ -52,17 +52,16 @@ fn capture_timing_then_done_log(run_dir: &std::path::Path) -> String {
 
 fn assert_timing_precedes_done_and_done_is_last(log: &str) {
     let timing_pos = log.find("TIMING:").expect("TIMING line");
+    let cost_pos = log.find("COST:").expect("COST line");
     let done_pos = log.find("DONE").expect("DONE line");
     assert!(
-        timing_pos < done_pos,
-        "TIMING must precede DONE; log={log:?}"
+        timing_pos < cost_pos && cost_pos < done_pos,
+        "TIMING must precede COST and COST must precede DONE; log={log:?}"
     );
-    if let Some(cost_pos) = log.find("COST:") {
-        assert!(
-            timing_pos < cost_pos && cost_pos < done_pos,
-            "COST must follow TIMING and precede DONE; log={log:?}"
-        );
-    }
+    assert!(
+        !log.contains("TOKENS:"),
+        "TOKENS footnote must not appear; log={log:?}"
+    );
     let malvin_lines: Vec<&str> = log
         .lines()
         .filter(|line: &&str| line.contains(" o|"))

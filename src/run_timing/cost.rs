@@ -1,9 +1,13 @@
-use crate::malvin_mini::ResponseUsage;
+use crate::llm_transport::ResponseUsage;
 
 use super::RunTiming;
 
 impl RunTiming {
-    pub fn record_mini_http_cost(&mut self, usage: &ResponseUsage) {
+    pub fn record_completion_cost(&mut self, usage: &ResponseUsage) {
+        // `prime:local/…` zeroes costs in `record_completion_step`; do not invent unknowns here.
+        if matches!(self.cost_policy, super::CostPolicy::Zero) {
+            return;
+        }
         match usage.cost {
             Some(c) => self.tx_costs.push(c),
             None if usage.total_tokens.is_some() || usage.prompt_tokens.is_some() => {
@@ -14,39 +18,49 @@ impl RunTiming {
     }
 }
 
-fn median_of_sorted(sorted: &[f64]) -> f64 {
-    if sorted.is_empty() {
-        0.0
-    } else {
-        sorted[sorted.len() / 2]
-    }
+/// Non-cache input tokens for `cost_in` (ACP folds cache into stored `tokens_in`).
+fn input_tokens_for_cost(r: &RunTiming) -> u64 {
+    let tokens_in = r.tokens_in.unwrap_or(0);
+    let cache_read = r.cache_read.unwrap_or(0);
+    let cache_write = r.cache_write.unwrap_or(0);
+    tokens_in.saturating_sub(cache_read).saturating_sub(cache_write)
 }
 
+const fn has_cost_observation(r: &RunTiming) -> bool {
+    r.tokens_in.is_some()
+        || r.tokens_out.is_some()
+        || r.cache_read.is_some()
+        || r.cache_write.is_some()
+        || !r.tx_costs.is_empty()
+        || r.unknown_tx_count > 0
+}
+
+/// Rate × token component costs for the `COST:` footnote / `run_timing.json` `cost` block.
 #[must_use]
-pub fn cost_stats(tx_costs: &[f64], unknown_tx_count: u32) -> Option<serde_json::Value> {
-    if tx_costs.is_empty() && unknown_tx_count == 0 {
+pub fn cost_stats(r: &RunTiming) -> Option<serde_json::Value> {
+    if !has_cost_observation(r) {
         return None;
     }
-    let tx_count = u64::try_from(tx_costs.len()).unwrap_or(u64::MAX);
-    let total_cost: f64 = tx_costs.iter().sum();
-    let mean_cost_per_tx = if tx_costs.is_empty() {
-        0.0
-    } else {
-        total_cost / f64::from(u32::try_from(tx_costs.len()).unwrap_or(u32::MAX))
-    };
-    let mut sorted = tx_costs.to_vec();
-    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let (cost_in, cost_out, cost_read, cost_write) = r.token_cost_rates.estimate_components(
+        input_tokens_for_cost(r),
+        r.tokens_out.unwrap_or(0),
+        r.cache_read.unwrap_or(0),
+        r.cache_write.unwrap_or(0),
+    );
+    let cost_tot = cost_in + cost_out + cost_read + cost_write;
+    let tx_count = u64::try_from(r.tx_costs.len()).unwrap_or(u64::MAX);
     Some(serde_json::json!({
+        "cost_in": cost_in,
+        "cost_out": cost_out,
+        "cost_read": cost_read,
+        "cost_write": cost_write,
+        "cost_tot": cost_tot,
         "tx_count": tx_count,
-        "total_cost": total_cost,
-        "mean_cost_per_tx": mean_cost_per_tx,
-        "median_cost_per_tx": median_of_sorted(&sorted),
-        "max_cost_per_tx": sorted.last().copied().unwrap_or(0.0),
-        "unknown_tx_count": unknown_tx_count,
+        "unknown_tx_count": r.unknown_tx_count,
     }))
 }
 
-pub fn record_mini_http_cost(
+pub fn record_completion_cost(
     timing: Option<&std::sync::Arc<std::sync::Mutex<RunTiming>>>,
     usage: &ResponseUsage,
 ) {
@@ -54,41 +68,62 @@ pub fn record_mini_http_cost(
         return;
     };
     let mut g = t.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    g.record_mini_http_cost(usage);
+    g.record_completion_cost(usage);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::malvin_config_file::TokenCostRates;
 
     #[test]
-    fn cost_stats_exclude_unknown_tx_from_mean_median_max() {
+    fn cost_stats_include_unknown_tx_metadata() {
         let mut r = RunTiming::default();
-        r.record_mini_http_cost(&ResponseUsage {
+        r.record_completion_cost(&ResponseUsage {
             prompt_tokens: Some(1),
             completion_tokens: None,
             total_tokens: Some(1),
             cost: None,
         });
-        r.record_mini_http_cost(&ResponseUsage {
+        r.record_completion_cost(&ResponseUsage {
             prompt_tokens: None,
             completion_tokens: None,
             total_tokens: None,
             cost: Some(0.01),
         });
-        let stats = cost_stats(&r.tx_costs, r.unknown_tx_count).expect("stats");
+        let stats = cost_stats(&r).expect("stats");
         assert_eq!(stats["tx_count"], 1);
         assert_eq!(stats["unknown_tx_count"], 1);
+        assert_eq!(stats["cost_tot"], 0.0);
     }
 
     #[test]
     #[allow(clippy::float_cmp)]
-    fn median_of_sorted_handles_empty_and_odd_lengths() {
-        assert_eq!(median_of_sorted(&[]), 0.0);
-        assert_eq!(median_of_sorted(&[3.0]), 3.0);
-        assert_eq!(median_of_sorted(&[1.0, 3.0, 5.0]), 3.0);
-        let stats = cost_stats(&[0.01, 0.02, 0.03], 0).expect("stats");
-        assert_eq!(stats["tx_count"], 3);
-        assert_eq!(stats["median_cost_per_tx"], 0.02);
+    fn cost_stats_rate_times_tokens_components() {
+        let mut r = RunTiming {
+            token_cost_rates: TokenCostRates {
+                // $1000 / $2000 / $100 / $500 per million tokens → same USD as old per-token fixtures.
+                usd_per_microtoken_in: 1000.0,
+                usd_per_microtoken_out: 2000.0,
+                usd_per_microtoken_cache_read: 100.0,
+                usd_per_microtoken_cache_write: 500.0,
+            },
+            ..Default::default()
+        };
+        r.tokens_in = Some(13); // 10 input + 2 cache_read + 1 cache_write
+        r.tokens_out = Some(3);
+        r.cache_read = Some(2);
+        r.cache_write = Some(1);
+        let stats = cost_stats(&r).expect("stats");
+        assert!((stats["cost_in"].as_f64().unwrap() - 0.01).abs() < 1e-12);
+        assert!((stats["cost_out"].as_f64().unwrap() - 0.006).abs() < 1e-12);
+        assert!((stats["cost_read"].as_f64().unwrap() - 0.0002).abs() < 1e-12);
+        assert!((stats["cost_write"].as_f64().unwrap() - 0.0005).abs() < 1e-12);
+        assert!((stats["cost_tot"].as_f64().unwrap() - 0.0167).abs() < 1e-12);
+    }
+
+    #[test]
+    fn cost_stats_none_when_never_observed() {
+        assert!(cost_stats(&RunTiming::default()).is_none());
     }
 }

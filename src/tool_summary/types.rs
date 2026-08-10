@@ -38,6 +38,7 @@ impl ToolSummaryTracker {
         self.path_base.as_deref()
     }
 
+    #[allow(dead_code)]
     pub(crate) fn set_run_timing(
         &mut self,
         timing: Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
@@ -54,10 +55,21 @@ impl ToolSummaryTracker {
         let Some(timing) = self.run_timing.as_ref() else {
             return;
         };
+        let mut g = timing
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        g.add_tool_call_wall(kind, elapsed);
+        g.note_acp_tool_call_completion();
+    }
+
+    pub(crate) fn note_tool_call_start_for_steps(&self) {
+        let Some(timing) = self.run_timing.as_ref() else {
+            return;
+        };
         timing
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .add_tool_call_wall(kind, elapsed);
+            .note_acp_tool_call_start();
     }
 }
 

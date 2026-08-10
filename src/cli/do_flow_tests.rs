@@ -148,13 +148,13 @@ fn cli_accepts_all_shared_flags_before_subcommand() {
     let cli = Cli::try_parse_from([
         "malvin",
         "--model",
-        "composer-2",
+        "cursor:composer-2",
         "--no-force",
         "--do",
         "z",
     ])
     .expect("parse");
-    assert_eq!(cli.shared.model, "composer-2");
+    assert_eq!(cli.shared.model.canonical(), "cursor:composer-2");
     assert!(cli.shared.no_force);
     assert!(cli.do_workflow);
     assert_eq!(cli.request.as_deref(), Some("z"));

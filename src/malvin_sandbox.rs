@@ -14,6 +14,8 @@ use crate::acp::sandbox_monitor_pids;
 #[cfg(unix)]
 use crate::process_group_rss::pids_sandbox_bytes;
 
+pub use crate::parent_death_signal::{install_parent_death_signal, install_tokio_parent_death_signal};
+
 static MALVIN_SPAWN_BASELINE: OnceLock<HashSet<u32>> = OnceLock::new();
 
 struct ActiveSandboxSession {
@@ -28,6 +30,7 @@ static ACTIVE_SANDBOX_SESSION: Mutex<Option<ActiveSandboxSession>> = Mutex::new(
 const MALVIN_STD_COMMAND_ASPECTS: &[SandboxSpawnPolicyAspect] = &[
     SandboxSpawnPolicyAspect::ProcessGroupIsolation,
     SandboxSpawnPolicyAspect::MallocArenaCap,
+    SandboxSpawnPolicyAspect::ParentDeathSignal,
 ];
 
 pub fn init_malvin_spawn_baseline() {
@@ -85,6 +88,7 @@ pub fn malvin_std_command(program: impl AsRef<OsStr>) -> std::process::Command {
     let _ = MALVIN_STD_COMMAND_ASPECTS;
     let mut cmd = std::process::Command::new(program);
     isolate_child_process_group(&mut cmd);
+    install_parent_death_signal(&mut cmd);
     apply_sandbox_resource_limits(&mut cmd);
     cmd
 }
@@ -95,6 +99,7 @@ pub fn malvin_tokio_command(program: impl AsRef<OsStr>) -> tokio::process::Comma
     let _ = MALVIN_STD_COMMAND_ASPECTS;
     let mut cmd = tokio::process::Command::new(program);
     isolate_tokio_child_process_group(&mut cmd);
+    install_tokio_parent_death_signal(&mut cmd);
     apply_sandbox_resource_limits_tokio(&mut cmd);
     cmd
 }
@@ -139,16 +144,6 @@ pub fn note_active_sandbox_session(
     Ok(())
 }
 
-/// Records an active mini (`--mini`) session for dead-before-next enforcement.
-pub fn note_active_mini_session(work_dir: &Path) -> Result<(), String> {
-    note_active_sandbox_session(None, malvin_spawn_baseline(), work_dir)
-}
-
-/// Clears the recorded mini session after teardown completes.
-pub fn clear_active_mini_session() {
-    clear_active_sandbox_session();
-}
-
 /// Clears the recorded sandbox session after teardown completes.
 pub fn clear_active_sandbox_session() {
     let session = ACTIVE_SANDBOX_SESSION
@@ -160,6 +155,27 @@ pub fn clear_active_sandbox_session() {
     }
     #[cfg(unix)]
     crate::acp::clear_session_spawn_affiliation();
+}
+
+/// CTRL-C path: SIGKILL the agent process group without waiting.
+///
+/// Skips cooperative TERM→poll so the shell returns promptly, and avoids
+/// dumping Node stacks on the console. Then releases the sandbox lock.
+pub fn teardown_active_sandbox_for_interrupt() {
+    let session = ACTIVE_SANDBOX_SESSION
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .take();
+    let Some(session) = session else {
+        return;
+    };
+    #[cfg(unix)]
+    {
+        crate::active_agent_heartbeat::unregister_active_agent_process_group(session.pgid);
+        crate::acp::terminate_agent_process_group_for_interrupt(session.pgid, &session.baseline);
+        crate::acp::clear_session_spawn_affiliation();
+    }
+    release_acp_spawn_lock(&session.work_dir, &session.acp_lock_slot);
 }
 
 #[cfg(test)]
@@ -204,10 +220,15 @@ mod tests {
     fn kiss_cov_malvin_sandbox_symbols() {
         let _ = crate::acp::reap_baseline_amnestied_agent_orphans_blocking;
         let _ = super::clear_active_sandbox_session_for_test;
+        let _ = super::teardown_active_sandbox_for_interrupt;
         let _ = super::init_malvin_spawn_baseline;
         let _ = super::malvin_spawn_baseline;
         let _ = super::isolate_child_process_group;
         let _ = super::isolate_tokio_child_process_group;
+        let _ = super::install_parent_death_signal;
+        let _ = super::install_tokio_parent_death_signal;
         let _ = super::sandbox_still_alive;
+        let _ = super::malvin_std_command("true");
+        let _ = super::malvin_tokio_command("true");
     }
 }

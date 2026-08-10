@@ -3,7 +3,7 @@ name = "malvin"
 version = "0.2.1"
 edition = "2024"
 rust-version = "1.87"
-description = "Non-interactive CLI agent, via Cursor ACP"
+description = "Non-interactive research and coding agent"
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/dsweet99/malvin"
@@ -38,6 +38,7 @@ tokio = { version = "1", features = [
     "macros",
     "process",
     "rt-multi-thread",
+    "signal",
     "sync",
     "time",
 ] }
@@ -49,7 +50,6 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 
 [dev-dependencies]
 portable-pty = "0.8"
-wiremock = "0.6"
 
 [lib]
 name = "malvin"

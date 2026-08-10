@@ -12,6 +12,7 @@ pub(crate) struct TraceChunkCoalescer {
     thought_iterable_closed: Option<crate::acp::IterableClosedStream>,
     message_upgrade_plan: bool,
     thought_upgrade_plan: bool,
+    #[allow(dead_code)]
     pub tool_tracker: crate::tool_summary::ToolSummaryTracker,
 }
 
@@ -121,6 +122,7 @@ struct FlushStreamCtx<'a> {
     upgrade_plan: &'a mut bool,
 }
 
+#[allow(dead_code)]
 pub(crate) struct VerboseTraceCoalesceState<'a> {
     pub verbose: &'a mut VerboseIoCoalescer,
     pub trace: &'a mut TraceChunkCoalescer,

@@ -1,11 +1,14 @@
 //! Wall-clock and phase-bucketed LLM wait timing for agent runs.
 //!
-//! JSON is always written to [`RUN_TIMING_JSON_FILE`]; `code`/`kpop`/`router` also print [`RUN_TIMING_SUMMARY_PREFIX`] and, when cost data exists, a separate `COST:` line.
+//! JSON is always written to [`RUN_TIMING_JSON_FILE`]; `code`/`kpop`/`router` also print
+//! [`RUN_TIMING_SUMMARY_PREFIX`] and a combined `COST:` footnote (tokens + cost fields).
 
 mod cost;
+mod lifecycle;
 mod report;
 #[path = "report_cost_line.rs"]
 mod report_cost_line;
+mod tokens;
 
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -15,6 +18,8 @@ pub const RUN_TIMING_JSON_FILE: &str = "run_timing.json";
 
 pub const RUN_TIMING_SUMMARY_PREFIX: &str = "TIMING: ";
 
+pub use report_cost_line::RUN_COST_SUMMARY_PREFIX;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TimingPhase {
     Implement,
@@ -22,6 +27,36 @@ pub enum TimingPhase {
 
 /// Wire keys for per-type tool-call wall durations (ACP kinds + `other`).
 pub const TOOL_CALL_TYPE_MS_KEYS: [&str; 5] = ["read", "search", "edit", "execute", "other"];
+
+/// ACP concurrent-batch step proxy state (see `COST:` / pier agent steps).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) enum AcpStepProxy {
+    #[default]
+    Idle,
+    OpenBatch,
+    TrailingAssistant,
+}
+
+/// How `COST` footnote USD fields are produced for this run.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum CostPolicy {
+    /// `cursor:` / `prime:`: estimate from per-model `usd_per_microtoken_*` × token counts / 1e6 (0 when rates are unset).
+    #[default]
+    EstimateFromRates,
+    /// `prime:local/…`: treat every completion as cost `0` for now.
+    Zero,
+}
+
+/// Choose [`CostPolicy`] from a prefixed model id (`cursor:` / `prime:`).
+#[must_use]
+pub fn cost_policy_for_model(model: &str) -> CostPolicy {
+    if crate::model_id::uses_local_backend(model) {
+        CostPolicy::Zero
+    } else {
+        // `cursor:` and `prime:` (including `prime:openrouter/…`) estimate from rates.
+        CostPolicy::EstimateFromRates
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct RunTiming {
@@ -39,6 +74,21 @@ pub struct RunTiming {
     tool_calls_other: Duration,
     pub(crate) tx_costs: Vec<f64>,
     pub(crate) unknown_tx_count: u32,
+    /// Cursor-mode rates for estimating USD cost from token usage.
+    pub(crate) token_cost_rates: crate::malvin_config_file::TokenCostRates,
+    /// Backend-specific cost filling policy (`cursor:` / `prime:`).
+    pub(crate) cost_policy: CostPolicy,
+    pub(crate) steps: u64,
+    /// `None` until at least one input token count is observed.
+    pub(crate) tokens_in: Option<u64>,
+    /// `None` until at least one output token count is observed.
+    pub(crate) tokens_out: Option<u64>,
+    pub(crate) cache_read: Option<u64>,
+    pub(crate) cache_write: Option<u64>,
+    pub(crate) tool_call_starts: u64,
+    pub(crate) usage_tx_count: u32,
+    pub(crate) unknown_usage_tx_count: u32,
+    pub(crate) acp_step_proxy: AcpStepProxy,
 }
 
 impl Default for RunTiming {
@@ -58,6 +108,17 @@ impl Default for RunTiming {
             tool_calls_other: Duration::ZERO,
             tx_costs: Vec::new(),
             unknown_tx_count: 0,
+            token_cost_rates: crate::malvin_config_file::TokenCostRates::default(),
+            cost_policy: CostPolicy::EstimateFromRates,
+            steps: 0,
+            tokens_in: None,
+            tokens_out: None,
+            cache_read: None,
+            cache_write: None,
+            tool_call_starts: 0,
+            usage_tx_count: 0,
+            unknown_usage_tx_count: 0,
+            acp_step_proxy: AcpStepProxy::Idle,
         }
     }
 }
@@ -139,101 +200,22 @@ impl RunTiming {
     }
 }
 
-#[must_use]
-pub fn attach_new_run_timing(
-    timing_slot: &mut Option<Arc<Mutex<RunTiming>>>,
-) -> Arc<Mutex<RunTiming>> {
-    let timing = RunTiming::new_arc();
-    *timing_slot = Some(Arc::clone(&timing));
-    timing
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .mark_wall_start(Instant::now());
-    timing
-}
-
-/// Anchors one wall-clock interval for a gate-kpop `code` loop (shared across iterations).
-#[must_use]
-pub fn attach_kpop_engine_loop_run_timing() -> Arc<Mutex<RunTiming>> {
-    let mut slot = None;
-    attach_new_run_timing(&mut slot)
-}
-
-pub fn record_llm(timing: Option<&Arc<Mutex<RunTiming>>>, phase: TimingPhase, elapsed: Duration) {
-    let Some(t) = timing else {
-        return;
-    };
-    let mut g = t.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    g.add_llm_phase(phase, elapsed);
-}
-
-pub fn record_backoff(timing: Option<&Arc<Mutex<RunTiming>>>, d: Duration) {
-    let Some(t) = timing else {
-        return;
-    };
-    let mut g = t.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    g.add_agent_retry_backoff(d);
-}
-
-fn finalize_snapshot(timing: &Arc<Mutex<RunTiming>>) -> RunTiming {
-    let mut g = timing
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    if g.wall_end.is_none() {
-        g.mark_wall_end(Instant::now());
-    }
-    g.clone()
-}
-
-/// Finalizes wall clock end time and writes JSON plus the printed summary.
-///
-/// # Errors
-///
-/// Returns [`std::io::Error`] when writing under `run_dir` fails.
-pub fn finalize_and_emit_run_timing(
-    run_dir: &Path,
-    timing: &Arc<Mutex<RunTiming>>,
-) -> std::io::Result<()> {
-    finalize_snapshot(timing).write_json_and_print_summary(run_dir)
-}
-
-/// Finalizes wall clock end time and writes JSON only.
-///
-/// # Errors
-///
-/// Returns [`std::io::Error`] when writing under `run_dir` fails.
-pub fn finalize_run_timing_json_only(
-    run_dir: &Path,
-    timing: &Arc<Mutex<RunTiming>>,
-) -> std::io::Result<()> {
-    finalize_snapshot(timing).write_json_only(run_dir)
-}
-
-/// Persists in-progress timing without closing the run wall clock.
-///
-/// # Errors
-///
-/// Returns [`std::io::Error`] when writing under `run_dir` fails.
-pub fn persist_open_run_timing_json(
-    run_dir: &Path,
-    timing: &Arc<Mutex<RunTiming>>,
-) -> std::io::Result<()> {
-    let g = timing
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    report::write_json_only(&g, run_dir)
-}
-
-pub use cost::record_mini_http_cost;
+pub use cost::record_completion_cost;
+pub use lifecycle::{
+    attach_kpop_engine_loop_run_timing, attach_kpop_engine_loop_run_timing_for_model,
+    attach_new_run_timing, attach_new_run_timing_with_cost_policy, finalize_and_emit_run_timing,
+    finalize_run_timing_json_only, persist_open_run_timing_json, record_backoff, record_llm,
+};
 pub use report::print_summary_from_run_dir;
+pub use tokens::{
+    note_acp_assistant_activity, note_acp_tool_call_completion, note_acp_tool_call_start,
+    record_completion_step,
+};
 
 #[cfg(test)]
 mod timing_tests;
 
 #[cfg(test)]
 mod timing_footnote_tests;
-
-#[cfg(test)]
-mod kpop_engine_timing_regressions;
 
 pub mod acp_post_run;

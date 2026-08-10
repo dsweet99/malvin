@@ -42,12 +42,10 @@ fn do_subcommand_is_removed() {
 }
 
 #[test]
-fn code_subcommand_still_parses() {
-    let cli = parse(&["malvin", "code", "plan.md"]);
-    match cli.command {
-        Some(Commands::Code(c)) => assert_eq!(c.requests.as_slice(), &["plan.md"]),
-        other => panic!("expected code, got {other:?}"),
-    }
+fn code_is_not_a_subcommand_and_parses_as_bare_request() {
+    let cli = parse(&["malvin", "code"]);
+    assert!(cli.command.is_none());
+    assert_eq!(cli.request.as_deref(), Some("code"));
 }
 
 #[test]
@@ -83,17 +81,16 @@ fn cli_help_does_not_list_kpop_subcommand() {
     assert!(!help_lists_subcommand_line(&help, "do"));
     assert!(!help_lists_subcommand_line(&help, "delight"));
     assert!(help.contains("--do"));
-    assert!(!help.contains("router"));
+    assert!(!help_lists_subcommand_line(&help, "router"));
     assert!(!help.contains("@code"));
 }
 
 #[test]
-fn code_subcommand_accepts_multiple_plans() {
-    let cli = parse(&["malvin", "code", "plan_1.md", "plan_2.md"]);
-    match cli.command {
-        Some(Commands::Code(c)) => {
-            assert_eq!(c.requests.as_slice(), &["plan_1.md", "plan_2.md"]);
-        }
-        other => panic!("expected code, got {other:?}"),
-    }
+fn multiple_bare_request_args_are_rejected() {
+    let err = parse_cli_with_config_defaults(["malvin", "plan_1.md", "plan_2.md"]).unwrap_err();
+    let msg = err.to_string();
+    assert!(
+        msg.contains("unexpected") || msg.contains("too many"),
+        "expected parse error for multiple bare requests, got: {msg}"
+    );
 }

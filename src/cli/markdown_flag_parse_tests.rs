@@ -14,8 +14,7 @@ fn global_quiet_long_and_short_parse() {
 fn quiet_parses_on_router_wrappers() {
     for argv in [
         ["malvin", "-q", "tidy"].as_slice(),
-        ["malvin", "--quiet", "delight"].as_slice(),
-        ["malvin", "-q", "explain", "topic"].as_slice(),
+        ["malvin", "-q", "write", "topic"].as_slice(),
     ] {
         let cli = Cli::try_parse_from(argv).expect("parse");
         assert!(cli.shared.quiet, "argv={argv:?}");
@@ -42,17 +41,4 @@ fn removed_inverse_flags_are_rejected() {
             "flag={flag} msg={msg}"
         );
     }
-}
-
-#[test]
-fn no_kpop_parses_globally_and_is_hidden_from_help() {
-    use clap::CommandFactory;
-    let cli = Cli::try_parse_from(["malvin", "--no-kpop", "hello"]).expect("parse");
-    assert!(cli.shared.no_kpop);
-    assert_eq!(cli.request.as_deref(), Some("hello"));
-    let help = Cli::command().render_long_help().to_string();
-    assert!(
-        !help.contains("--no-kpop"),
-        "hidden flag must not appear in help:\n{help}"
-    );
 }

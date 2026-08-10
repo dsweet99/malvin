@@ -1,4 +1,3 @@
-use crate::acp::import_prelude::*;
 
 /// Backoff sleep between agent retry attempts. Skipped in unit tests and when
 /// `MALVIN_TEST_NO_REAL_AGENT=1` so integration subprocess tests stay under the 1s budget.

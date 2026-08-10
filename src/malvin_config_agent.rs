@@ -14,18 +14,13 @@ pub(crate) fn parse_agent_config(text: &str) -> Result<AgentConfig, String> {
 
 pub(crate) fn agent_config_from_table(agent: &toml::Value) -> Result<AgentConfig, String> {
     let defaults = AgentConfig::default();
-    let base = agent_config_base(agent, &defaults)?;
-    Ok(AgentConfig {
-        max_mini_transport_retries: super::read_u32(agent.get("max_mini_transport_retries"))
-            .unwrap_or(defaults.max_mini_transport_retries),
-        ..base
-    })
+    agent_config_base(agent, &defaults)
 }
 
 fn agent_config_base(agent: &toml::Value, defaults: &AgentConfig) -> Result<AgentConfig, String> {
     let raw_model =
         super::read_string(agent.get("model")).unwrap_or_else(|| defaults.model.clone());
-    // Require `cursor:` / `openrouter:` / `local:` prefixes. Ignore legacy `model-mini` if present.
+    // Require `cursor:` / `prime:` prefixes. Ignore legacy `model-mini` if present.
     let model = crate::model_id::require_config_model(&raw_model)?;
     Ok(AgentConfig {
         model,
@@ -36,6 +31,5 @@ fn agent_config_base(agent: &toml::Value, defaults: &AgentConfig) -> Result<Agen
             .unwrap_or(defaults.max_loops_code),
         max_acp_retries: super::read_u32(agent.get("max_acp_retries"))
             .unwrap_or(defaults.max_acp_retries),
-        max_mini_transport_retries: defaults.max_mini_transport_retries,
     })
 }

@@ -109,9 +109,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn render_subcommand_short_help_code_still_builds_when_hidden() {
-        let help = render_subcommand_short_help("code").expect("code subcommand");
-        assert!(help.contains("Usage: malvin code"));
+    fn render_subcommand_short_help_unknown_returns_none() {
+        assert!(render_subcommand_short_help("code").is_none());
+        assert!(render_subcommand_short_help("delight").is_none());
     }
 
     #[test]
@@ -127,7 +127,7 @@ mod tests {
 
     #[test]
     fn print_subcommand_short_help_invokes_stdout_path() {
-        print_subcommand_short_help("code").expect("stdout");
+        print_subcommand_short_help("inspire").expect("stdout");
     }
 
     #[test]

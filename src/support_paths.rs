@@ -42,12 +42,8 @@ pub fn command_line() -> Option<&'static str> {
 
 pub const DEFAULT_CLI_MODEL: &str = "cursor:auto";
 
-/// Default `OpenRouter` provider slug when the model is `openrouter:auto`.
-pub const MINI_DEFAULT_MODEL: &str = "nvidia/nemotron-3-ultra-550b-a55b:free";
-
 /// Default bounded attempts per ACP spawn or `session/prompt` (1s / 3s backoff between tries).
 pub const DEFAULT_MAX_ACP_RETRIES: u32 = 3;
-pub const DEFAULT_MAX_MINI_TRANSPORT_RETRIES: u32 = 3;
 
 pub const DEFAULT_ACP_RPC_TIMEOUT_SECS: u64 = 600;
 
@@ -138,6 +134,44 @@ mod invocation_tests {
     fn agent_bin_and_rpc_timeout_from_env() {
         let _ = agent_or_cursor_agent_bin();
         assert!(acp_rpc_timeout_secs_from_env() >= 1);
+    }
+
+    #[test]
+    fn acp_rpc_timeout_secs_from_env_rejects_zero_and_garbage() {
+        use crate::test_utils::test_env_lock;
+
+        let _lock = test_env_lock();
+        let prior = std::env::var_os("MALVIN_ACP_RPC_TIMEOUT_SECS");
+        #[allow(unsafe_code)]
+        unsafe {
+            std::env::set_var("MALVIN_ACP_RPC_TIMEOUT_SECS", "0");
+        }
+        assert_eq!(
+            acp_rpc_timeout_secs_from_env(),
+            1,
+            "zero must clamp to at least 1"
+        );
+        #[allow(unsafe_code)]
+        unsafe {
+            std::env::set_var("MALVIN_ACP_RPC_TIMEOUT_SECS", "not-a-number");
+        }
+        assert_eq!(
+            acp_rpc_timeout_secs_from_env(),
+            DEFAULT_ACP_RPC_TIMEOUT_SECS,
+            "garbage must fall back to default"
+        );
+        #[allow(unsafe_code)]
+        unsafe {
+            std::env::set_var("MALVIN_ACP_RPC_TIMEOUT_SECS", "42");
+        }
+        assert_eq!(acp_rpc_timeout_secs_from_env(), 42);
+        #[allow(unsafe_code)]
+        unsafe {
+            match prior {
+                Some(v) => std::env::set_var("MALVIN_ACP_RPC_TIMEOUT_SECS", v),
+                None => std::env::remove_var("MALVIN_ACP_RPC_TIMEOUT_SECS"),
+            }
+        }
     }
 }
 

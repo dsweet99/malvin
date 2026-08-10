@@ -61,9 +61,7 @@ pub(crate) fn prepared_fixture(
         artifacts,
         context,
         request_text: "req".into(),
-        startup_emit_request: "req".into(),
         store,
-        malvin_checks_backup: crate::artifacts::MalvinChecksBackup::Missing,
     };
     (prepared, backups)
 }
@@ -71,7 +69,7 @@ pub(crate) fn prepared_fixture(
 pub(crate) fn shared_workflow() -> (SharedOpts, WorkflowCliOptions) {
     (
         crate::cli::kpop_summarize_tests::summarize_shared_opts(DEFAULT_MAX_ACP_RETRIES),
-        WorkflowCliOptions { force: false, no_kpop: false },
+        WorkflowCliOptions { force: false },
     )
 }
 
@@ -84,7 +82,7 @@ pub(crate) fn loop_params<'a>(
     KPopEngineParams {
         command,
         shared,
-        workflow: WorkflowCliOptions { force: false, no_kpop: false },
+        workflow: WorkflowCliOptions { force: false },
         prepared,
         max_loops: 1,
         max_hypotheses: 5,
@@ -95,7 +93,7 @@ pub(crate) fn loop_params<'a>(
 pub(crate) fn agent_backend(shared: &SharedOpts, command: &str) -> AgentBackend {
     crate::agent_backend::build_agent_backend(
         shared,
-        WorkflowCliOptions { force: false, no_kpop: false },
+        WorkflowCliOptions { force: false },
         false,
         command,
     )

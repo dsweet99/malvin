@@ -3,18 +3,6 @@ use super::SharedOpts;
 #[derive(Debug, Clone, Copy)]
 pub struct WorkflowCliOptions {
     pub force: bool,
-    pub no_kpop: bool,
-}
-
-impl WorkflowCliOptions {
-    /// Build workflow options from shared CLI flags.
-    #[must_use]
-    pub const fn from_shared(shared: &SharedOpts) -> Self {
-        Self {
-            force: !shared.no_force,
-            no_kpop: shared.no_kpop,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -34,22 +22,12 @@ pub const fn default_workflow_stdout_tee_flags(emit_stdout_markdown: bool) -> Ag
     }
 }
 
-pub fn prepare_prompt_store(
-    workflow: WorkflowCliOptions,
-) -> Result<crate::prompts::PromptStore, String> {
-    use crate::prompts::{PromptError, PromptStore};
-    let store = PromptStore::default_store().with_no_kpop(workflow.no_kpop);
-    store.ensure_defaults().map_err(|e: PromptError| e.0)?;
-    store.validate_required().map_err(|e: PromptError| e.0)?;
-    Ok(store)
-}
-
 pub fn prepare_kpop_prompt_store(
-    workflow: WorkflowCliOptions,
+    _workflow: WorkflowCliOptions,
     require_mbc2: bool,
 ) -> Result<crate::prompts::PromptStore, String> {
     use crate::prompts::{PromptError, PromptStore};
-    let store = PromptStore::default_store().with_no_kpop(workflow.no_kpop);
+    let store = PromptStore::default_store();
     store.ensure_defaults().map_err(|e: PromptError| e.0)?;
     store
         .validate_kpop_prompts(crate::prompts::KpopPromptValidation { require_mbc2 })
@@ -72,62 +50,12 @@ pub fn agent_io_options(
     }
 }
 
-pub fn format_pre_check_gate_failure(command: &str, detail: &str) -> String {
-    format!(
-        "ERR: Pre-checks failed; implementation did not start.\n\
-{}\n\
-\n\
-{detail}",
-        gate_failure_recovery_hint(command)
-    )
-}
-
 pub fn format_workspace_gate_failure(command: &str, detail: &str) -> String {
     format!(
         "ERR: Workspace checks did not pass; the next step did not run.\n\
-{}\n\
+Run `malvin tidy`, then retry `{command}`.\n\
 \n\
-{detail}",
-        gate_failure_recovery_hint(command)
+{detail}"
     )
 }
 
-fn gate_failure_recovery_hint(command: &str) -> String {
-    if command == "malvin code" {
-        format!(
-            "Run `malvin tidy`, then retry `{command}`, or use `--skip-pre-checks` on `{command}`."
-        )
-    } else {
-        format!("Run `malvin tidy`, then retry `{command}`.")
-    }
-}
-
-pub fn format_code_pre_check_failure(detail: &str) -> String {
-    format_pre_check_gate_failure("malvin code", detail)
-}
-
-pub fn new_agent_client(
-    shared: &SharedOpts,
-    io: crate::acp::AgentIoOptions,
-) -> crate::acp::AgentClient {
-    crate::acp::AgentClient::with_max_acp_retries(
-        crate::model_id::provider_slug(&shared.model),
-        io,
-        shared.max_acp_retries,
-    )
-}
-
-pub fn build_agent(
-    shared: &SharedOpts,
-    workflow: WorkflowCliOptions,
-    emit_stdout_markdown: bool,
-) -> crate::acp::AgentClient {
-    new_agent_client(
-        shared,
-        agent_io_options(
-            shared,
-            workflow,
-            default_workflow_stdout_tee_flags(emit_stdout_markdown),
-        ),
-    )
-}

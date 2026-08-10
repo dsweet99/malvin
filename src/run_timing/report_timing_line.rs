@@ -89,15 +89,16 @@ mod tests {
             "llm_wait_ms": 100,
             "phases_ms": { "implement": 100 },
             "cost": {
-                "total_cost": 0.0842,
-                "mean_cost_per_tx": 0.0042,
-                "median_cost_per_tx": 0.0031,
-                "max_cost_per_tx": 0.0190
+                "cost_in": 0.05,
+                "cost_out": 0.03,
+                "cost_read": 0.002,
+                "cost_write": 0.0022,
+                "cost_tot": 0.0842
             }
         });
         let line = format_timing_stdout_line_from_json(&json);
-        assert!(!line.contains("total_cost"));
-        assert!(!line.contains("mean_cost_per_tx"));
+        assert!(!line.contains("cost_tot"));
+        assert!(!line.contains("cost_in"));
     }
 
     #[test]

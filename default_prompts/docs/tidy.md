@@ -7,10 +7,10 @@ Bring the workspace back to a **gate-clean** state by composing a fixed request 
 | | |
 |---|---|
 | Input | None (fixed request: `Get the gates to pass.`) |
-| Loop | Default router: requirements JSON → multi-group KPop → optional work; outer `--max-loops` sessions |
+| Loop | Default router: `header` → `kpop_common` → `router_a` → optional `router_b`; exit `router_summarize`; outer `--max-loops` sessions |
 | Gates | Always on — workspace `.malvin/checks` are harness loop/exit criteria |
 | Fast path | **None** — always runs the router |
-| Requires | Cursor agent CLI; `.malvin/checks` needed for gate pass/fail (use `malvin init` to discover) |
+| Requires | Agent backend for chosen `--model`; `.malvin/checks` needed for gate pass/fail (use `malvin init` to discover) |
 
 ## Intention
 
@@ -50,7 +50,7 @@ See `malvin --doc`. Tidy always enables harness `--gates`, whether or not you pa
 
 ## Artifacts
 
-Same as the default router under `~/.malvin_home/logs/<hash>/<run>/` (for example `plan_*.md`, `review_requirements.json`, `quality_gates.log`, `_kpop/`, `stdout.log`).
+Same as the default router under `~/.malvin_home/logs/<hash>/<run>/` (for example `plan_*.md`, `quality_gates.log`, `_kpop/`, `stdout.log`).
 
 ## Related commands
 

@@ -20,19 +20,28 @@ pub(super) fn create_malvin_config_from_template(
     ))
 }
 
-/// Create workspace config only when the file is absent; never read or rewrite an existing file.
+/// Create home config when absent or empty (0 bytes); never rewrite a nonempty existing file.
 ///
-/// Used when snapshotting dotfiles after an agent session so tampered invalid TOML can still be
-/// backed up and restored without failing the gate loop.
+/// Empty files are treated as absent so a sticky 0-byte `config.toml` cannot block defaults.
+/// Nonempty invalid TOML is left alone so gate-loop snapshots can still capture it.
 pub fn ensure_malvin_config_file_if_missing(work_dir: &Path) -> Result<(), String> {
     let path = malvin_config_path(work_dir);
     ensure_config_parent_dir(&path)?;
-    if path.is_file() {
+    if path.is_file() && !file_is_empty(&path)? {
         return Ok(());
+    }
+    if path.is_file() {
+        std::fs::remove_file(&path)
+            .map_err(|e| format!("remove empty {}: {e}", path.display()))?;
     }
     let template = parse_template_value()?;
     let _ = create_malvin_config_from_template(&path, &template)?;
     Ok(())
+}
+
+fn file_is_empty(path: &Path) -> Result<bool, String> {
+    let meta = std::fs::metadata(path).map_err(|e| format!("stat {}: {e}", path.display()))?;
+    Ok(meta.len() == 0)
 }
 
 /// Load `[agent]` with prefix enforcement. Missing file → defaults. Bare `model` → error.

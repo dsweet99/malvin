@@ -50,7 +50,7 @@ impl RunArtifacts {
         self.run_dir.join(format!("{safe}.log"))
     }
 
-    /// Run-directory copy of `review.md` (artifact for [`crate::review_sync`]).
+    /// Run-directory copy of `review.md`.
     #[must_use]
     pub fn artifact_review_md(&self) -> PathBuf {
         self.run_dir.join("review.md")

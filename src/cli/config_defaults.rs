@@ -57,19 +57,19 @@ fn apply_code_workflow_loop_defaults(
     );
 }
 
-fn apply_explain_loop_defaults(
+fn apply_write_loop_defaults(
     matches: &ArgMatches,
-    explain: &mut crate::cli::explain_flow::ExplainArgs,
+    write_args: &mut crate::cli::write_flow::WriteArgs,
     agent: &AgentConfig,
     review: &crate::malvin_config_file::ReviewConfig,
 ) {
-    if !subcommand_flag_from_command_line(matches, "explain", "max_loops") {
-        explain.max_loops = agent.max_loops_code;
+    if !subcommand_flag_from_command_line(matches, "write", "max_loops") {
+        write_args.max_loops = agent.max_loops_code;
     }
-    if !subcommand_flag_from_command_line(matches, "explain", "max_hypotheses") {
-        explain.max_hypotheses = review
+    if !subcommand_flag_from_command_line(matches, "write", "max_hypotheses") {
+        write_args.max_hypotheses = review
             .max_hypotheses
-            .unwrap_or(crate::malvin_config_file::DEFAULT_EXPLAIN_MAX_HYPOTHESES);
+            .unwrap_or(crate::malvin_config_file::DEFAULT_WRITE_MAX_HYPOTHESES);
     }
 }
 
@@ -80,15 +80,6 @@ fn apply_gate_loop_command_defaults(
     review: &crate::malvin_config_file::ReviewConfig,
 ) {
     match command {
-        Commands::Code(code) => apply_code_workflow_loop_defaults(
-            matches,
-            CodeWorkflowLoopMut {
-                subcommand: "code",
-                max_loops: &mut code.max_loops,
-                max_hypotheses: &mut code.max_hypotheses,
-                agent,
-            },
-        ),
         Commands::Tidy(tidy) => apply_code_workflow_loop_defaults(
             matches,
             CodeWorkflowLoopMut {
@@ -98,16 +89,7 @@ fn apply_gate_loop_command_defaults(
                 agent,
             },
         ),
-        Commands::Delight(delight) => apply_code_workflow_loop_defaults(
-            matches,
-            CodeWorkflowLoopMut {
-                subcommand: "delight",
-                max_loops: &mut delight.max_loops,
-                max_hypotheses: &mut delight.max_hypotheses,
-                agent,
-            },
-        ),
-        Commands::Explain(explain) => apply_explain_loop_defaults(matches, explain, agent, review),
+        Commands::Write(write_args) => apply_write_loop_defaults(matches, write_args, agent, review),
         Commands::Inspire(_)
         | Commands::Adaptix(_)
         | Commands::Models(_)
@@ -117,8 +99,8 @@ fn apply_gate_loop_command_defaults(
 
 fn finalize_shared_model(matches: &ArgMatches, shared: &mut SharedOpts) -> Result<(), String> {
     let _ = matches;
-    // CLI `--model` and config-sourced values both require a prefix (Q1=a, Q5=c).
-    shared.model = require_prefixed_model(&shared.model)?;
+    // Clap/`ParsedModel` already enforce a prefix; re-canonicalize for stability.
+    let _ = require_prefixed_model(&shared.model.canonical())?;
     Ok(())
 }
 
@@ -173,12 +155,14 @@ pub(crate) fn apply_shared_config_defaults(
     agent: &AgentConfig,
 ) {
     if !global_flag_from_command_line(matches, "model") {
-        shared.model = agent.model.clone();
+        // Config may still carry a legacy bare id until finalize rejects it.
+        if let Ok(parsed) = crate::model_id::parse_model_id(&agent.model) {
+            shared.model = parsed;
+        }
     }
     if !global_flag_from_command_line(matches, "max_acp_retries") {
         shared.max_acp_retries = agent.max_acp_retries;
     }
-    shared.mini_max_transport_retries = agent.max_mini_transport_retries;
 }
 
 pub fn parse_cli_with_config_defaults(
@@ -201,12 +185,12 @@ pub fn parse_cli_with_config_defaults(
 mod config_defaults_tests;
 
 #[cfg(test)]
-#[path = "config_defaults_tests_explain.rs"]
-mod config_defaults_tests_explain;
+#[path = "config_defaults_tests_write.rs"]
+mod config_defaults_tests_write;
 
 #[cfg(test)]
-#[path = "config_defaults_tests_mini.rs"]
-mod config_defaults_tests_mini;
+#[path = "config_defaults_tests_legacy_model.rs"]
+mod config_defaults_tests_legacy_model;
 
 #[cfg(test)]
 #[path = "config_defaults_tests_router.rs"]

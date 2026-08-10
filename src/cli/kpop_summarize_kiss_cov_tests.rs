@@ -3,7 +3,7 @@
 #[test]
 fn kiss_cov_kpop_summarize_privates() {
     let shared = crate::cli::SharedOpts {
-        model: crate::config::DEFAULT_CLI_MODEL.into(),
+        model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("model"),
         no_force: true,
         no_tenacious: false,
         gates: false,
@@ -13,17 +13,9 @@ fn kiss_cov_kpop_summarize_privates() {
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
         name: None,
-        mini_max_bash_turns: 32,
-        mini_max_http_turns: 32,
-        mini_max_bash_execs: 128,
-        mini_max_http_retries: 0,
-        mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
-        mini_max_gate_retries: 0,
-        mini_max_shrink_passes: 0,
         no_download: false,
         git: false,
-            no_kpop: false,
-        };
+    };
     let _ = &shared;
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts =

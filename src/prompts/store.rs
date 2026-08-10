@@ -14,20 +14,10 @@ pub struct KpopPromptValidation {
 #[derive(Debug, Clone)]
 pub struct PromptStore {
     root: Option<PathBuf>,
-    no_kpop: bool,
 }
 
 impl PromptStore {
-    pub(crate) fn resolve_prompt_name<'a>(&self, filename: &'a str) -> &'a str {
-        if self.no_kpop && matches!(filename, "kpop_common.md" | "kpop.md") {
-            "no_kpop_common.md"
-        } else {
-            filename
-        }
-    }
-
     pub(crate) fn prompt_text(&self, filename: &str) -> Result<String, PromptError> {
-        let filename = self.resolve_prompt_name(filename);
         self.root.as_ref().map_or_else(
             || {
                 default_file(filename)
@@ -59,25 +49,12 @@ impl PromptStore {
 impl PromptStore {
     #[must_use]
     pub const fn default_store() -> Self {
-        Self {
-            root: None,
-            no_kpop: false,
-        }
+        Self { root: None }
     }
 
     #[must_use]
     pub const fn with_root(root: PathBuf) -> Self {
-        Self {
-            root: Some(root),
-            no_kpop: false,
-        }
-    }
-
-    /// When set, loads of `kpop_common.md` / `kpop.md` use `no_kpop_common.md` instead.
-    #[must_use]
-    pub const fn with_no_kpop(mut self, no_kpop: bool) -> Self {
-        self.no_kpop = no_kpop;
-        self
+        Self { root: Some(root) }
     }
 
     /// # Errors

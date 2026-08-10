@@ -1,4 +1,4 @@
-//! Default-route flow: requirements JSON, one multi-group `KPop`, optional work, outer `--max-loops`.
+//! Default-route flow: `header.md` → `kpop_common.md` → `router_a.md` → optional `router_b.md`, outer `--max-loops`.
 
 use crate::artifacts::{RunArtifacts, resolve_user_md_request};
 use crate::cli::cli_request::require_cli_request;
@@ -7,8 +7,6 @@ use crate::cli::run_emit::{emit_run_startup_sequence, RunStartupEmitOpts};
 use crate::cli::{SharedOpts, WorkflowCliOptions};
 use crate::prompts::PromptStore;
 pub(crate) mod router_flow_prompt;
-#[path = "router_flow_parse.rs"]
-pub(crate) mod router_flow_parse;
 #[path = "router_flow_no_work.rs"]
 pub(crate) mod router_flow_no_work;
 #[path = "router_flow_acp.rs"]
@@ -33,7 +31,6 @@ pub struct RouterArgs {
 struct RouterRunPrep {
     client: AgentBackend,
     artifacts: RunArtifacts,
-    coder: router_flow_prompt::RouterCoderRun,
     prompt_store: PromptStore,
 }
 
@@ -62,17 +59,10 @@ async fn prepare_router_run(
     .map_err(|e| e.to_string())?;
     crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
     client.ensure_authenticated().map_err(|e| e.to_string())?;
-    let prompt_store = prepare_router_prompt_store(shared.no_kpop)?;
-    let coder = router_flow_prompt::build_router_coder_run_with_store(
-        &prompt_store,
-        &artifacts,
-        &text,
-        crate::workflow_context::PromptModelOpts::new(&shared.model, shared.git),
-    )?;
+    let prompt_store = prepare_router_prompt_store()?;
     Ok(RouterRunPrep {
         client,
         artifacts,
-        coder,
         prompt_store,
     })
 }
@@ -107,8 +97,7 @@ async fn run_router_body(
     request: &str,
 ) -> Result<(), String> {
     let mut prep = prepare_router_run(&router_args, shared, workflow).await?;
-    prep.client
-        .set_prompts_log_run_dir(Some(prep.artifacts.run_dir.clone()));
+    prep.client.prompts_log_run_dir = Some(prep.artifacts.run_dir.clone());
     // Idea 3: complete spawn/handshake before the first `Logs:` line so post-Logs silence is not
     // dominated by ACP initialize + session/new (or Mini session bookkeeping).
     prep.client
@@ -124,7 +113,6 @@ async fn run_router_body(
     let loop_outcome = router_flow_loop::run_router_agent_loops(router_flow_loop::RouterAgentLoopInput {
         client: &mut prep.client,
         artifacts: &prep.artifacts,
-        coder: &prep.coder,
         prompt_store: &prep.prompt_store,
         shared,
         max_loops: router_args.max_loops,
@@ -163,8 +151,7 @@ mod kiss_cov_gate_refs {
         let _: Option<RouterRunPrep> = None;
         let _ = new_router_client;
         let _ = prepare_router_run;
-        let _ = router_flow_parse::load_review_requirements;
-        let _ = router_flow_parse::parse_review_requirements_json;
+        let _ = router_flow_no_work::chat_has_malvin_done;
     }
 }
 

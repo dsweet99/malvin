@@ -3,22 +3,19 @@ use crate::artifacts::{
     MalvinConfigWorkspaceBackup, RunArtifacts, SessionDotfileBackups, VisionBackup,
 };
 use crate::malvin_config_file::{load_malvin_config, DEFAULT_MAX_HYPOTHESES};
-use crate::router_flow::router_flow_no_work::all_groups_no_work_remaining;
-use crate::router_flow::router_flow_parse::{
-    clear_review_requirements_json, load_review_requirements, ReviewRequirements,
-};
+use crate::router_flow::router_flow_no_work::chat_has_malvin_done;
 use crate::router_flow::router_flow_prompt;
 use std::path::Path;
 
 use super::router_flow_coder_prompts::{
-    run_router_kpop_group_coder_prompt, run_router_requirements_coder_prompt,
-    run_router_work_coder_prompt,
+    run_router_a_coder_prompt, run_router_b_coder_prompt, run_router_header_coder_prompt,
+    run_router_kpop_common_coder_prompt,
 };
 use super::RouterAcpIterationInput;
 
 pub(crate) struct RouterTurnsOutcome {
     pub iteration_backups: SessionDotfileBackups,
-    pub all_no_work: bool,
+    pub done: bool,
 }
 
 /// Whether the outer router loop should send `router_summarize.md` before teardown.
@@ -53,38 +50,41 @@ pub(crate) async fn run_router_turns(
 ) -> Result<RouterTurnsOutcome, String> {
     let work_dir = input.artifacts.work_dir.as_path();
     let iteration_backups = SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)?;
-    let requirements_path = crate::artifacts::review_requirements_json(input.artifacts);
-    clear_review_requirements_json(&requirements_path);
-    run_router_requirements_coder_prompt(input.client, input.coder, log_path).await?;
-    let requirements = load_review_requirements(&requirements_path)?;
-    run_multi_group_kpop(input, log_path, &requirements).await?;
-    let chat = input
-        .client
-        .last_coder_prompt_agent_response()
-        .unwrap_or_default();
-    let all_no_work = all_groups_no_work_remaining(&chat, requirements.groups.len());
-    if !all_no_work {
-        let work_body =
-            router_flow_prompt::build_router_work_prompt(router_flow_prompt::RouterWorkPromptInput {
-                store: input.prompt_store,
-                artifacts: input.artifacts,
-                model: &input.shared.model,
-                git: input.shared.git,
-                gates: input.shared.gates,
-            })?;
-        run_router_work_coder_prompt(input.client, &work_body, log_path).await?;
-    }
+    let model = input.shared.model.canonical();
+    run_router_header_and_kpop(input, log_path, &model).await?;
+    run_router_a_coder_prompt(
+        input.client,
+        &router_flow_prompt::build_router_a_prompt(router_flow_prompt::RouterAPromptInput {
+            store: input.prompt_store,
+            artifacts: input.artifacts,
+            model: &model,
+            git: input.shared.git,
+            gates: input.shared.gates,
+        })?,
+        log_path,
+    )
+    .await?;
+    let done = finish_router_a_maybe_b(input, log_path, &model).await?;
     Ok(RouterTurnsOutcome {
         iteration_backups,
-        all_no_work,
+        done,
     })
 }
 
-pub(crate) async fn run_multi_group_kpop(
+async fn run_router_header_and_kpop(
     input: &mut RouterAcpIterationInput<'_>,
     log_path: &Path,
-    requirements: &ReviewRequirements,
+    model: &str,
 ) -> Result<(), String> {
+    let header = router_flow_prompt::build_router_header_prompt(
+        router_flow_prompt::RouterHeaderPromptInput {
+            store: input.prompt_store,
+            artifacts: input.artifacts,
+            model,
+            git: input.shared.git,
+        },
+    )?;
+    run_router_header_coder_prompt(input.client, &header, log_path).await?;
     let exp_log = ensure_gate_exp_log_file(input.artifacts, 1).map_err(|e| e.to_string())?;
     let max_hypotheses = load_malvin_config(input.artifacts.work_dir.as_path())
         .default_workflow
@@ -94,19 +94,39 @@ pub(crate) async fn run_multi_group_kpop(
     } else {
         max_hypotheses
     };
-    let groups_block = requirements.groups_block();
-    let prompt = router_flow_prompt::build_router_kpop_group_prompt(
-        router_flow_prompt::RouterKpopGroupPromptInput {
+    let kpop_common = router_flow_prompt::build_router_kpop_common_prompt(
+        router_flow_prompt::RouterKpopCommonPromptInput {
             store: input.prompt_store,
             artifacts: input.artifacts,
-            model: &input.shared.model,
+            model,
             git: input.shared.git,
-            groups_block: &groups_block,
             max_hypotheses,
             exp_log: &exp_log,
         },
     )?;
-    run_router_kpop_group_coder_prompt(input.client, &prompt, log_path).await
+    run_router_kpop_common_coder_prompt(input.client, &kpop_common, log_path).await
+}
+
+async fn finish_router_a_maybe_b(
+    input: &mut RouterAcpIterationInput<'_>,
+    log_path: &Path,
+    model: &str,
+) -> Result<bool, String> {
+    let chat = input
+        .client
+        .last_coder_prompt_agent_response()
+        .unwrap_or_default();
+    let done = chat_has_malvin_done(&chat);
+    if !done {
+        let router_b = router_flow_prompt::build_router_b_prompt(router_flow_prompt::RouterBPromptInput {
+            store: input.prompt_store,
+            artifacts: input.artifacts,
+            model,
+            git: input.shared.git,
+        })?;
+        run_router_b_coder_prompt(input.client, &router_b, log_path).await?;
+    }
+    Ok(done)
 }
 
 #[cfg(test)]

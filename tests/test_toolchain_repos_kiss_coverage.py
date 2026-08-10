@@ -12,8 +12,10 @@ def test_toolchain_repos_kiss_coverage_witnesses() -> None:
         _mod.resolve_malvin_cmd,
         _mod.validate_toolchain_repos,
         _mod.load_ops_entry,
+        _mod.cursor_sdk_shutdown_qa,
+        "cursor_sdk_shutdown_qa",
     )
-    assert True
+    assert _mod.cursor_sdk_shutdown_qa() is not None
 
 
 def test_load_ops_entry_does_not_write_ops_pycache(tmp_path: Path) -> None:

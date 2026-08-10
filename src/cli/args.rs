@@ -3,8 +3,7 @@
 use clap::{Parser, Subcommand};
 
 use super::shared_opts::SharedOpts;
-use super::delight_flow::DelightArgs;
-use super::explain_flow::ExplainArgs;
+use super::write_flow::WriteArgs;
 use super::init_flow::InitArgs;
 use super::tidy_flow::TidyArgs;
 
@@ -17,7 +16,7 @@ pub use super::shared_opts::GlobalOpts;
 #[command(
     name = "malvin",
     version,
-    about = "Non-interactive CLI agent, via Cursor ACP",
+    about = "Non-interactive research and coding agent",
     disable_help_subcommand = true,
     after_help = "Bare `malvin REQUEST` runs autonomous routing. Use `--do` for a one-shot turn, or subcommands for named workflows."
 )]
@@ -44,20 +43,14 @@ pub enum Commands {
     Init(InitArgs),
     /// Ensure all checks pass
     Tidy(TidyArgs),
-    /// Explain code or concepts via LaTeX PDF
-    Explain(ExplainArgs),
+    /// Write a LaTeX PDF on code or concepts
+    Write(WriteArgs),
     /// Be creative
     #[command(name = "inspire")]
     Inspire(InspireArgs),
     /// Be creative (legacy name)
     #[command(name = "adaptix", hide = true)]
     Adaptix(InspireArgs),
-    /// Write code (deprecated; hidden from help)
-    #[command(hide = true)]
-    Code(crate::cli::code_flow::CodeArgs),
-    /// Author a user-delighting feature pitch
-    #[command(hide = true)]
-    Delight(DelightArgs),
     /// List available models
     Models(ModelsArgs),
 }

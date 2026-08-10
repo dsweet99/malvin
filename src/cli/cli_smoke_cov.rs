@@ -70,7 +70,7 @@ fn smoke_merge_acp_with_workspace_session_restore_and_check_abort_no_result_file
 fn smoke_agent_io_options_maps_flags() {
     use super::{AgentStdoutTeeFlags, WorkflowCliOptions, agent_io_options};
     let shared = super::SharedOpts {
-        model: "m".into(),
+        model: crate::model_id::parse_model_id("cursor:m").expect("model"),
         no_force: false,
         no_tenacious: false,
         gates: false,
@@ -80,20 +80,12 @@ fn smoke_agent_io_options_maps_flags() {
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
         name: None,
-        mini_max_bash_turns: 32,
-        mini_max_http_turns: 32,
-        mini_max_bash_execs: 128,
-        mini_max_http_retries: 0,
-        mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
-        mini_max_gate_retries: 0,
-        mini_max_shrink_passes: 0,
         no_download: false,
         git: false,
-            no_kpop: false,
-        };
+    };
     let io = agent_io_options(
         &shared,
-        WorkflowCliOptions { force: true, no_kpop: false },
+        WorkflowCliOptions { force: true },
         AgentStdoutTeeFlags {
             emit_stdout_markdown: true,
             raw_output: true,
@@ -108,46 +100,6 @@ fn smoke_agent_io_options_maps_flags() {
     assert!(!io.log_full_outgoing_prompts);
 }
 
-#[test]
-fn smoke_new_agent_client_maps_max_acp_retries() {
-    use super::{AgentStdoutTeeFlags, WorkflowCliOptions, agent_io_options, new_agent_client};
-    let shared = super::SharedOpts {
-        model: "m".into(),
-        no_force: false,
-        no_tenacious: false,
-        gates: false,
-
-        quiet: false,
-        verbose: false,
-        max_acp_retries: 7,
-        doc: false,
-        name: None,
-        mini_max_bash_turns: 32,
-        mini_max_http_turns: 32,
-        mini_max_bash_execs: 128,
-        mini_max_http_retries: 0,
-        mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
-        mini_max_gate_retries: 0,
-        mini_max_shrink_passes: 0,
-        no_download: false,
-        git: false,
-            no_kpop: false,
-        };
-    let client = new_agent_client(
-        &shared,
-        agent_io_options(
-            &shared,
-            WorkflowCliOptions { force: false, no_kpop: false },
-            AgentStdoutTeeFlags {
-                emit_stdout_markdown: false,
-                raw_output: true,
-                show_thoughts_on_stdout: false,
-            },
-        ),
-    );
-    assert_eq!(client.model, "m");
-    assert_eq!(client.max_acp_retries, 7);
-}
 
 #[test]
 fn smoke_cli_parse_init_subcommand() {
@@ -222,6 +174,6 @@ fn smoke_prepare_do_prompt_store_loads_defaults() {
 
 #[test]
 fn smoke_prepare_router_prompt_store_loads_defaults() {
-    assert!(crate::router_flow::prepare_router_prompt_store(false).is_ok());
+    assert!(crate::router_flow::prepare_router_prompt_store().is_ok());
 }
 

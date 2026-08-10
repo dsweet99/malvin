@@ -3,7 +3,6 @@ pub(crate) mod bug_id_lookup_kpop;
 pub(crate) mod cli_request;
 pub(crate) mod command_docs;
 mod commands_help;
-mod deprecated_code;
 mod commands_help_subcommand;
 mod config_defaults;
 mod config_loop;
@@ -17,10 +16,8 @@ pub(crate) mod run_emit;
 pub(crate) mod shared_opts;
 pub(crate) mod init_flow;
 pub(crate) mod tidy_flow;
-pub(crate) mod delight_flow;
-pub(crate) mod explain_flow;
+pub(crate) mod write_flow;
 
-pub(crate) mod code_flow;
 mod code_flow_a;
 pub(crate) mod flow_prompt_combine;
 pub(crate) mod checks_discovery_flow;
@@ -28,14 +25,13 @@ pub(crate) mod loop_opts;
 pub(crate) mod default_output_path;
 pub(crate) mod workflow_kpop_shared;
 pub(crate) mod kpop_summarize;
+pub(crate) mod one_shot_session;
 
 pub use crate::agent_backend::{build_agent_backend, build_agent_backend_with_tee};
 pub use code_flow_a::{
-    agent_io_options, build_agent, default_workflow_stdout_tee_flags, format_code_pre_check_failure,
-    format_pre_check_gate_failure, format_workspace_gate_failure, new_agent_client,
-    prepare_kpop_prompt_store, prepare_prompt_store, AgentStdoutTeeFlags, WorkflowCliOptions,
+    agent_io_options, default_workflow_stdout_tee_flags, format_workspace_gate_failure,
+    prepare_kpop_prompt_store, AgentStdoutTeeFlags, WorkflowCliOptions,
 };
-pub(crate) use code_flow::{run_code, CodeArgs};
 
 #[cfg(test)]
 mod cli_cross_cov;
@@ -57,12 +53,6 @@ mod workflow_kpop_shared_tests;
 #[cfg(test)]
 #[path = "kpop_summarize_tests.rs"]
 pub(crate) mod kpop_summarize_tests;
-#[cfg(test)]
-#[path = "kpop_summarize_inline_tests.rs"]
-mod kpop_summarize_inline_tests;
-#[cfg(test)]
-#[path = "kpop_summarize_mock_tests.rs"]
-mod kpop_summarize_mock_tests;
 #[cfg(test)]
 #[path = "kpop_summarize_kiss_cov_tests.rs"]
 mod kpop_summarize_kiss_cov_tests;
@@ -88,7 +78,6 @@ pub use exit::Exit;
 pub use run_emit::emit_run_startup_sequence;
 pub use shared_opts::SharedOpts;
 pub use loop_opts::{TENACIOUS_MAX_ACP_RETRIES, TENACIOUS_MAX_LOOPS};
-pub use delight_flow::run_delight;
-pub use explain_flow::run_explain;
+pub use write_flow::run_write;
 pub use init_flow::run_init;
 pub use tidy_flow::run_tidy;

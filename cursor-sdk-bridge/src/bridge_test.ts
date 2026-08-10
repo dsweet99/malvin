@@ -1,0 +1,61 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import {
+  eventsAfterStreamFailure,
+  exitCodeForSignal,
+  isInterruptOp,
+  isStaleAuthText,
+} from "./bridge_policy.js";
+
+describe("stale auth misclassification", () => {
+  it("detects forum Authentication / idle-token forms", () => {
+    assert.equal(isStaleAuthText("AuthenticationError", "x"), true);
+    assert.equal(isStaleAuthText("", "Authentication"), true);
+    assert.equal(isStaleAuthText("", "ERROR_NOT_LOGGED_IN"), true);
+    assert.equal(isStaleAuthText("", "[unauthenticated] Error"), true);
+    assert.equal(
+      isStaleAuthText(
+        "",
+        "If you are logged in, try logging out and back in.",
+      ),
+      true,
+    );
+    assert.equal(isStaleAuthText("", "request timed out"), false);
+  });
+});
+
+describe("bridge stream failure protocol", () => {
+  it("emits fatal only — never a trailing run_done", () => {
+    const events = eventsAfterStreamFailure(new Error("boom"));
+    assert.equal(events.length, 1);
+    assert.equal(events[0]?.event, "fatal");
+    assert.match(events[0]?.message ?? "", /^stream error: boom$/);
+    assert.equal(
+      events.some((e) => (e as { event?: string }).event === "run_done"),
+      false,
+    );
+  });
+});
+
+describe("bridge interrupt ops", () => {
+  it("treats cancel and close as interrupts", () => {
+    assert.equal(isInterruptOp("cancel"), true);
+    assert.equal(isInterruptOp("close"), true);
+    assert.equal(isInterruptOp("send"), false);
+    assert.equal(isInterruptOp("create"), false);
+    assert.equal(isInterruptOp("resume"), false);
+  });
+});
+
+describe("parent death watch", () => {
+  it("exports installParentDeathWatch and arms a timer", async () => {
+    const { installParentDeathWatch } = await import("./parent_death.js");
+    let exited: number | null = null;
+    const timer = installParentDeathWatch((code) => {
+      exited = code;
+    }, 10_000);
+    assert.equal(typeof timer.refresh, "function");
+    clearInterval(timer);
+    assert.equal(exited, null);
+  });
+});

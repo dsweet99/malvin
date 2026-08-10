@@ -1,5 +1,4 @@
 use crate::cli::workflow_kpop_shared::*;
-use crate::kpop_program::render_repo_program;
 
 fn kpop_render_fixture(
     workflow: &str,
@@ -204,14 +203,6 @@ fn restore_failure_prevents_gate_run() {
     assert!(err.contains("gitignore restore"));
 }
 
-#[test]
-fn render_repo_program_includes_scope() {
-    let (_tmp, store, artifacts) = kpop_render_fixture("code");
-    let mut ctx = std::collections::HashMap::new();
-    ctx.insert("plan_path".to_string(), "./plan.md".into());
-    let text = render_repo_program(&store, "code_constraints.md", &ctx, &artifacts).expect("render");
-    assert!(text.contains("quality_gates"));
-}
 
 #[test]
 fn prefer_gate_outcome_keeps_gate_error_when_restore_also_fails() {

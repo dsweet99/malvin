@@ -118,3 +118,28 @@ fn completed_tool_call_without_run_timing_does_not_accumulate() {
     tool_summary_lines(&done, &mut tracker_no_timing, ToolSummaryDetail::Log).unwrap();
     assert_eq!(tool_calls_ms_from_timing(&timing), 0);
 }
+
+#[test]
+fn parallel_tool_call_starts_count_as_one_agent_step() {
+    let (mut tracker, timing) = tracker_with_timing();
+    for id in ["a", "b", "c"] {
+        let start = tool_call_json(id, "tool_call", "pending", "read");
+        tool_summary_lines(&start, &mut tracker, ToolSummaryDetail::Log).unwrap();
+    }
+    for id in ["a", "b", "c"] {
+        let done = tool_call_json(id, "tool_call_update", "completed", "read");
+        tool_summary_lines(&done, &mut tracker, ToolSummaryDetail::Log).unwrap();
+    }
+    let v = timing_json_from(&timing);
+    assert_eq!(v["tokens"]["steps"], 1);
+    assert_eq!(v["tokens"]["tool_call_starts"], 3);
+}
+
+#[test]
+fn sequential_tool_batches_count_separate_agent_steps() {
+    let (mut tracker, timing) = tracker_with_timing();
+    complete_timed_tool(&mut tracker, "t1", "read", 0);
+    complete_timed_tool(&mut tracker, "t2", "execute", 0);
+    let v = timing_json_from(&timing);
+    assert_eq!(v["tokens"]["steps"], 2);
+}

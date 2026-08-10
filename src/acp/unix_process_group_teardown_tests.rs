@@ -11,7 +11,7 @@ use super::super::hostile_orphan_test_util::{
 use super::super::hostile_orphan_test_util::{
     process_alive, read_orphan_pid, spawn_hostile_agent_acp_orphan, wait_for_init_reparent,
 };
-use super::super::session_drop_teardown::terminate_agent_process_group_blocking;
+use super::super::process_group_terminate::terminate_agent_process_group_blocking;
 use super::super::unix_process_group_ps::ProcRow;
 use super::{
     descendant_pids, kill_targets_for_teardown, terminate_agent_process_group,

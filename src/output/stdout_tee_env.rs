@@ -22,19 +22,36 @@ pub fn agent_stdout_tee_enabled() -> bool {
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn kiss_cov_stdout_tee_env() {
-    }
-}
+    use super::{agent_stdout_tee_enabled, force_stdout_tee_from_env, stdout_is_interactive};
+    use crate::test_utils::test_env_lock;
 
-#[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
-    use super::*;
     #[test]
-    fn kiss_cov_unit_names() {
-        let _ = agent_stdout_tee_enabled;
-        let _ = force_stdout_tee_from_env;
-        let _ = stdout_is_interactive;
+    fn force_stdout_tee_from_env_requires_exact_one() {
+        let _lock = test_env_lock();
+        let prior = std::env::var_os("MALVIN_FORCE_STDOUT_TEE");
+        #[allow(unsafe_code)]
+        unsafe {
+            std::env::remove_var("MALVIN_FORCE_STDOUT_TEE");
+        }
+        assert!(!force_stdout_tee_from_env());
+        #[allow(unsafe_code)]
+        unsafe {
+            std::env::set_var("MALVIN_FORCE_STDOUT_TEE", "0");
+        }
+        assert!(!force_stdout_tee_from_env());
+        #[allow(unsafe_code)]
+        unsafe {
+            std::env::set_var("MALVIN_FORCE_STDOUT_TEE", "1");
+        }
+        assert!(force_stdout_tee_from_env());
+        assert!(agent_stdout_tee_enabled());
+        let _ = stdout_is_interactive();
+        #[allow(unsafe_code)]
+        unsafe {
+            match prior {
+                Some(v) => std::env::set_var("MALVIN_FORCE_STDOUT_TEE", v),
+                None => std::env::remove_var("MALVIN_FORCE_STDOUT_TEE"),
+            }
+        }
     }
 }

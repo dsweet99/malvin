@@ -1,4 +1,4 @@
-//! Malvin: implementation and review workflow driven by Cursor **`agent acp`** (ACP).
+//! Malvin: implementation and review workflow driven by the Cursor SDK (`cursor:`) or Prime SDK (`prime:`).
 #![cfg_attr(
     test,
     allow(
@@ -33,7 +33,6 @@
     clippy::single_match,
     clippy::needless_pass_by_ref_mut
 )]
-
 mod log_gc;
 mod log_gc_config;
 mod malvin_config_file;
@@ -42,12 +41,13 @@ pub use workflow_name_aliases::{
     canonical_workflow_name, resolve_session_log_path, resolve_workspace_malvin_config_path,
     WORKSPACE_CONFIG_PATHS,
 };
-/// OpenRouter HTTP transport formerly published as the `malvin-mini` crate.
-pub mod malvin_mini;
+/// Shared LLM completion types used by the local engine / Prime sidecar.
+pub mod llm_transport;
+/// Agent interface (malvin → cursor-agent / Prime).
+pub mod agent;
 /// In-process llama.cpp backend formerly the `malvin-llama` workspace crate.
 pub mod malvin_llama;
 mod gate_loop_session;
-mod sequential_requests;
 mod sandbox_oom;
 mod current_state;
 pub mod mem_limit_config;
@@ -70,6 +70,7 @@ pub use acp_spawn_lock::{
 };
 pub use acp_spawn_sweep::sweep_stale_acp_spawn_locks;
 pub mod malvin_sandbox;
+mod parent_death_signal;
 #[cfg(test)]
 #[path = "malvin_sandbox_tests.rs"]
 mod malvin_sandbox_tests;
@@ -98,6 +99,7 @@ mod tracing_init;
 mod user_home;
 pub(crate) mod time_format;
 pub mod agent_phase;
+pub mod herdr;
 mod active_agent_heartbeat;
 pub use active_agent_heartbeat::active_agent_heartbeat_stats;
 pub use user_home::user_home_dir;
@@ -105,15 +107,14 @@ pub mod tool_summary;
 mod deferred_log;
 mod cursor_store;
 pub use cursor_store::store_db_contains_substring;
-mod acp_test_mock_js;
-pub use acp_test_mock_js::acp_mock_js;
 pub mod agent_backend;
+pub mod bridge_protocol;
+pub mod bridge_sdk;
+pub mod cursor_sdk;
+pub mod prime_sdk;
 pub mod acp;
 pub mod ansi_strip;
-pub use acp::{
-    AcpSession, AcpSpawnArgs, AgentClient, AgentError, AgentIoOptions, AgentKpopMultiturnCtl,
-    AuthError, CoderPromptOptions, KpopFlowOnceArgs,
-};
+pub use acp::{AgentError, AgentIoOptions, AuthError, CoderPromptOptions};
 #[cfg(unix)]
 pub use acp::{snapshot_pids, terminate_agent_process_group};
 pub use ansi_strip::strip_ansi_escapes;
@@ -148,27 +149,17 @@ pub use test_poll::{
 pub mod config;
 pub mod local_llm;
 pub mod model_id;
-mod kpop_test_stubs;
 mod kpop_turn_prompts;
-pub use kpop_test_stubs::{
-    CaptureWants as KpopCaptureWants, EchoPrompts as KpopEchoPrompts, MtStubPrompts,
-};
 pub use kpop_turn_prompts::KpopTurnPrompts;
-pub mod kpop_multiturn_prompts;
-pub use kpop_multiturn_prompts::KpopMultiturnPrompts;
 pub mod kpop_progression;
-mod multiturn_prompt;
-pub use kpop_progression::{KpopMultiturnParams, KpopMultiturnState};
-pub use multiturn_prompt::MultiturnPrompt;
 pub mod support_paths;
 pub use support_paths::{
     agent_or_cursor_agent_bin, command_line, format_logs_dir, init_from_env, lookup_bin_on_path,
 };
+pub mod sdk_drain_timeout;
 pub mod workflow_context;
 pub mod orchestrator;
-pub use orchestrator::{
-    Orchestrator, WorkflowConfig, WorkflowError, check_abort, fail_on_abort_for_artifacts,
-};
+pub use orchestrator::check_abort;
 pub use workflow_context::{
     format_malvin_command, format_prompt_path, workflow_context_paths_only, PromptModelOpts,
 };
@@ -176,11 +167,8 @@ pub use workflow_context::{
 pub use workflow_context::workflow_context;
 pub mod observability;
 pub mod kpop_log_protocol;
-pub mod kpop_program;
-pub mod kpop_soft_constraints;
 pub mod acp_trace_impersonation;
 pub mod coder_prompt_phase;
-pub mod fork_state;
 pub mod nested_budget_scopes;
 pub mod prompt_stratification;
 pub mod reliability_tier;
@@ -188,58 +176,34 @@ pub mod session_sandbox_policy;
 pub mod output;
 pub mod prompts;
 pub mod repo_gates;
-pub mod review_sync;
 pub mod run_timing;
 pub mod stdout_log_path;
-
 pub mod acp_post_run {
     pub use crate::run_timing::acp_post_run::*;
 }
-
 #[path = "cli/repo_checks/mod.rs"]
 pub mod repo_checks;
-
 #[path = "cli/source_detect.rs"]
 pub mod source_detect;
-
 #[cfg(test)]
 #[path = "cli/source_detect_kiss_cov_tests.rs"]
 mod source_detect_kiss_cov_tests;
-
-
 #[path = "cli/do_flow.rs"]
 pub mod do_flow;
-
 #[path = "cli/inspire_flow.rs"]
 pub mod inspire_flow;
-
 #[path = "cli/router_flow.rs"]
 pub mod router_flow;
-
 pub mod kpop_engine;
-
 #[path = "cli/mod.rs"]
 pub mod cli;
-
 #[cfg(test)]
 #[path = "lib_test_modules.rs"]
 mod lib_test_modules;
-
-#[cfg(test)]
-#[path = "acp/test_unix_bin.rs"]
-pub mod acp_test_unix_bin;
-
-#[cfg(test)]
-#[path = "acp_session_tests/mod.rs"]
-pub(crate) mod acp_session_unit_tests;
-
 #[cfg(test)] mod acp_tests;
-#[cfg(test)] #[path = "acp_transport_tests/mod.rs"] mod acp_transport_tests;
 #[cfg(test)] mod coverage_kiss;
-#[cfg(test)] mod coverage_kiss_agent;
-#[cfg(test)] mod orchestrator_tests;
 #[cfg(test)] mod malvin_kiss_coverage;
-#[cfg(test)] #[path = "acp/transport/rpc_part1_kiss_test.rs"] mod acp_rpc_part1_kiss_test;
+#[cfg(test)] #[path = "malvin_kiss_coverage_b.rs"] mod malvin_kiss_coverage_b;
 #[cfg(test)] mod agent_phase_kiss_cov;
 #[cfg(test)] #[path = "workspace_paths_tests.rs"] mod workspace_paths_tests;
 #[cfg(all(test, unix))] mod test_stderr_capture;

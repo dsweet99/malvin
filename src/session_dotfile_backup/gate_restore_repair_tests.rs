@@ -102,3 +102,15 @@ fn sanitize_bundle_replaces_empty_home_malvin_config_with_template() {
     assert!(text.contains("mem_limit_gb"));
     assert!(text.contains("[agent]"));
 }
+
+#[test]
+fn bytes_for_restore_replaces_empty_with_template() {
+    use super::bytes_for_malvin_home_config_restore;
+
+    let fixed = bytes_for_malvin_home_config_restore(b"").expect("template");
+    assert!(!fixed.is_empty());
+    let text = String::from_utf8_lossy(&fixed);
+    assert!(text.contains("mem_limit_gb"));
+    let kept = bytes_for_malvin_home_config_restore(b"mem_limit_gb = 3\n").expect("keep");
+    assert_eq!(kept, b"mem_limit_gb = 3\n");
+}

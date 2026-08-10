@@ -2,7 +2,7 @@ use crate::acp_post_run::merge_acp_restore_check_abort_then_print_timing;
 use crate::artifacts::RunArtifacts;
 use crate::output::{STDOUT_LOG_TEST_LOCK, set_stdout_log_path};
 use crate::run_timing::RunTiming;
-use crate::malvin_mini::ResponseUsage;
+use crate::llm_transport::ResponseUsage;
 use std::time::Instant;
 
 fn empty_artifacts(work: &tempfile::TempDir) -> (crate::artifacts::SessionDotfileBackups, RunArtifacts) {
@@ -18,7 +18,7 @@ fn seed_timing_json_with_cost(run_dir: &std::path::Path) {
         let mut g = timing.lock().unwrap();
         g.mark_wall_start(Instant::now());
         g.mark_wall_end(Instant::now());
-        g.record_mini_http_cost(&ResponseUsage {
+        g.record_completion_cost(&ResponseUsage {
             prompt_tokens: None,
             completion_tokens: None,
             total_tokens: Some(1),
@@ -35,7 +35,21 @@ fn assert_timing_and_cost_in_log(log: &str) {
     );
     assert!(
         log.contains("COST:"),
-        "router/kpop finish path must print COST when cost data exists; log={log:?}"
+        "router/kpop finish path must print COST; log={log:?}"
+    );
+    assert!(
+        !log.contains("TOKENS:"),
+        "TOKENS footnote must not appear; log={log:?}"
+    );
+    let timing_pos = log.find("TIMING:").expect("TIMING");
+    let cost_pos = log.find("COST:").expect("COST");
+    assert!(
+        timing_pos < cost_pos,
+        "footnote order TIMING < COST; log={log:?}"
+    );
+    assert!(
+        log.contains("steps ="),
+        "combined COST line must include token fields; log={log:?}"
     );
 }
 

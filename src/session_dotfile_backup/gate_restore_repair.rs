@@ -4,7 +4,7 @@ use std::path::Path;
 
 use super::{DotfileBackupState, SessionDotfileBackups};
 
-fn default_malvin_home_config_bytes() -> Result<Vec<u8>, String> {
+pub(crate) fn default_malvin_home_config_bytes() -> Result<Vec<u8>, String> {
     let template = crate::malvin_config_file::parse_template_value()?;
     let mut value = toml::Value::Table(toml::map::Map::new());
     crate::malvin_config_file::merge_missing_keys(&mut value, &template);
@@ -14,6 +14,15 @@ fn default_malvin_home_config_bytes() -> Result<Vec<u8>, String> {
         text.push('\n');
     }
     Ok(text.into_bytes())
+}
+
+/// Session restore must not re-materialize a 0-byte home config (sticky empty file).
+pub(crate) fn bytes_for_malvin_home_config_restore(bytes: &[u8]) -> Result<Vec<u8>, String> {
+    if bytes.is_empty() {
+        default_malvin_home_config_bytes()
+    } else {
+        Ok(bytes.to_vec())
+    }
 }
 
 fn malvin_home_config_bytes_need_repair(bytes: &[u8]) -> bool {

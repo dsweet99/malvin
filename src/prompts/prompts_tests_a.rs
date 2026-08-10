@@ -19,7 +19,7 @@ fn substitute_replaces_dollar_keys() {
 }
 
 #[test]
-fn validate_kpop_prompts_ok_with_only_kpop_while_full_set_would_fail() {
+fn validate_kpop_prompts_ok_with_only_kpop() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
     write_kpop_prompt_fixtures(root);
@@ -29,10 +29,7 @@ fn validate_kpop_prompts_ok_with_only_kpop_while_full_set_would_fail() {
             require_mbc2: false,
         })
         .expect("kpop-only ok");
-    assert!(
-        store.validate_required().is_err(),
-        "full workflow should still require kpop_program when only header is present"
-    );
+    store.validate_required().expect("header is present");
 }
 
 #[test]
@@ -89,7 +86,6 @@ fn load_header_swallows_missing_prompt_file() {
 fn validate_required_fails_when_header_missing() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
-    std::fs::write(root.join("kpop_program.md"), "x").unwrap();
     let store = PromptStore::with_root(root.to_path_buf());
     let err = store.validate_required().unwrap_err();
     assert!(
@@ -97,37 +93,6 @@ fn validate_required_fails_when_header_missing() {
         "expected missing header in error: {}",
         err.0
     );
-}
-
-#[test]
-fn validate_required_fails_when_kpop_program_missing() {
-    let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path();
-    for &name in crate::prompts::REQUIRED_PROMPTS {
-        if name == "kpop_program.md" {
-            continue;
-        }
-        std::fs::write(root.join(name), "x").unwrap();
-    }
-    let store = PromptStore::with_root(root.to_path_buf());
-    let err = store.validate_required().unwrap_err();
-    assert!(
-        err.0.contains("kpop_program.md"),
-        "custom prompt roots must fail fast when kpop_program.md is absent: {}",
-        err.0
-    );
-}
-
-#[test]
-fn default_kpop_program_avoids_mandated_tool_names() {
-    let body = crate::prompts::default_file("kpop_program.md").expect("kpop_program.md");
-    let banned = ["kiss", "pytest", "cargo clippy", "kiss-ai"];
-    for needle in banned {
-        assert!(
-            !body.contains(needle),
-            "kpop_program.md must not name mandated tools; found {needle:?} in template"
-        );
-    }
 }
 
 #[test]

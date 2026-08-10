@@ -10,6 +10,7 @@ pub(crate) struct ActiveAgentSandbox {
 
 static ACTIVE_AGENT_SANDBOX: Mutex<Vec<ActiveAgentSandbox>> = Mutex::new(Vec::new());
 
+#[allow(dead_code)]
 pub(crate) fn register_active_agent_process_group(
     pgid: Option<u32>,
     spawn_baseline: HashSet<u32>,

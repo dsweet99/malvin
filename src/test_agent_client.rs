@@ -1,25 +1,4 @@
-//! Shared test doubles for ACP client construction and fake gate binaries.
-
-#[cfg(test)]
-pub fn smoke_agent_client() -> crate::acp::AgentClient {
-    use crate::acp::{AgentClient, AgentIoOptions};
-    AgentClient::new(
-        "m".into(),
-        AgentIoOptions {
-            force: false,
-            no_tee: true,
-            raw_output: true,
-            show_thoughts_on_stdout: false,
-            emit_stdout_markdown: false,
-            log_full_outgoing_prompts: false,
-        },
-    )
-}
-
-#[cfg(test)]
-pub fn acp_mock_js_for_test(preamble: &str, prompt_handler: &str) -> String {
-    crate::acp_mock_js(preamble, prompt_handler)
-}
+//! Shared test helpers for fake gate binaries.
 
 #[cfg(test)]
 pub fn install_exit_gate_bin(bin_dir: &std::path::Path, name: &str, code: i32) {
@@ -41,42 +20,6 @@ pub fn install_exit_gate_bin(bin_dir: &std::path::Path, name: &str, code: i32) {
     {
         let path = bin_dir.join(name);
         std::fs::write(&path, format!("#!/bin/sh\nexit {code}\n")).expect("write fake bin");
-    }
-}
-
-#[cfg(test)]
-pub struct TidyTestSession {
-    pub tmp_dir: tempfile::TempDir,
-    pub client: crate::acp::AgentClient,
-    pub artifacts: crate::artifacts::RunArtifacts,
-    pub store: crate::prompts::PromptStore,
-    pub context: crate::prompt_stratification::WorkflowRenderContext,
-    pub backups: crate::artifacts::SessionDotfileBackups,
-}
-
-#[cfg(test)]
-pub fn tidy_test_session(label: &str) -> TidyTestSession {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let plan = tmp.path().join("plan.md");
-    std::fs::write(&plan, label).expect("write plan");
-    let artifacts =
-        crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
-    let workflow = crate::cli::WorkflowCliOptions { force: false, no_kpop: false };
-    let store = crate::cli::prepare_kpop_prompt_store(workflow, true).expect("store");
-    let mut context = crate::workflow_context::workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, false);
-    context.insert(
-        "quality_gates".to_string(),
-        crate::repo_gates::prompt_quality_gates_markdown_ephemeral(tmp.path())
-            .expect("gates"),
-    );
-    let backups = crate::test_utils::empty_session_dotfile_backups(&artifacts.work_dir);
-    TidyTestSession {
-        tmp_dir: tmp,
-        client: smoke_agent_client(),
-        artifacts,
-        store,
-        context,
-        backups,
     }
 }
 

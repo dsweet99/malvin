@@ -2,15 +2,12 @@
 
 #[test]
 fn smoke_cov_cli_cli_units_0() {
-    let _: Option<crate::cli::CodeArgs> = None;
-    let _ = crate::cli::build_agent;
+    let _ = crate::cli::build_agent_backend;
     let _ = crate::cli::prepare_kpop_prompt_store;
-    let _ = crate::cli::prepare_prompt_store;
     let _ = crate::do_flow::do_flow_prompt::combine_do_prompt_file_and_user;
     let _ = stringify!(crate::cli::entrypoint::dispatch_command);
     let _ = crate::cli::entrypoint::print_command_error;
     let _ = crate::cli::entrypoint::print_command_error;
-    let _ = crate::cli::entrypoint_commands::run_code_command;
     let _ = crate::cli::entrypoint_commands::run_inspire_command;
     let _: Option<crate::cli::exit::Exit> = None;
     let _ = crate::cli::checks_discovery_flow::ensure_malvin_checks_discovered;
@@ -43,7 +40,7 @@ fn smoke_cov_cli_cli_units_1b() {
     let _ = crate::do_flow::do_flow_prompt::build_do_coder_run_with_store;
     let _ = crate::do_flow::do_flow_prompt::build_do_coder_run;
     let shared = crate::cli::SharedOpts {
-        model: crate::config::DEFAULT_CLI_MODEL.into(),
+        model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("model"),
         no_force: false,
         no_tenacious: false,
         gates: false,
@@ -53,29 +50,14 @@ fn smoke_cov_cli_cli_units_1b() {
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
         name: None,
-        mini_max_bash_turns: 32,
-        mini_max_http_turns: 32,
-        mini_max_bash_execs: 128,
-        mini_max_http_retries: 0,
-        mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
-        mini_max_gate_retries: 0,
-        mini_max_shrink_passes: 0,
         no_download: false,
         git: false,
-            no_kpop: false,
-        };
+    };
     let _ = shared.model;
 }
 
 #[test]
-fn smoke_cov_cli_cli_code_flow_units() {
-    let _: Option<crate::cli::CodeArgs> = None;
-    let _: Option<crate::cli::code_flow::CodeKpopPrepared> = None;
-    let _ = crate::cli::code_flow::prepare_code_kpop_prompt_store;
-    let _ = crate::cli::code_flow::code_kpop_request;
-    let _ = crate::cli::code_flow::prepare_code_kpop_run;
-    let _ = crate::cli::code_flow::run_code;
-    let _ = crate::cli::code_flow::effective_code_max_loops;
+fn smoke_cov_cli_cli_workflow_kpop_shared_units() {
     let _ = crate::cli::workflow_kpop_shared::effective_max_loops;
     let _ = crate::cli::workflow_kpop_shared::kpop_workflow_context;
     let _ = crate::cli::workflow_kpop_shared::post_kpop_session_gates;
@@ -85,7 +67,6 @@ fn smoke_cov_cli_cli_code_flow_units() {
     let _ = stringify!(gate_loop_early_exit);
     let _ = stringify!(crate::kpop_engine::run_kpop_engine);
     let _ = stringify!(crate::kpop_engine::run_kpop_hard_constraints_after_session);
-    let _ = stringify!(crate::kpop_engine::finish_kpop_engine_after_pass);
     let _ = stringify!(crate::kpop_engine::fail_kpop_engine_after_exhausted);
     let _: Option<crate::kpop_engine::KPopEngineParams> = None;
     let _ = stringify!(gate_early_exit_fixture);
@@ -102,23 +83,14 @@ fn smoke_cov_cli_cli_tidy_flow_units() {
 }
 
 #[test]
-fn smoke_cov_cli_cli_delight_flow_units() {
-    let _: Option<crate::cli::delight_flow::DelightArgs> = None;
-    let _ = crate::cli::delight_flow::run_delight;
-    let _ = crate::cli::delight_flow::effective_delight_max_loops;
-    let _ = crate::cli::delight_flow::prep::compose_delight_router_request;
-    let _ = crate::kpop_engine::KPopHardConstraints::DELIGHT;
-}
-
-#[test]
-fn smoke_cov_cli_cli_explain_flow_units() {
-    let _: Option<crate::cli::explain_flow::ExplainArgs> = None;
-    let _ = crate::cli::explain_flow::run_explain;
-    let _ = crate::cli::explain_flow::effective_explain_max_loops;
-    let _ = crate::kpop_engine::KPopHardConstraints::EXPLAIN;
-    let _ = crate::cli::entrypoint_commands::run_explain_command;
-    let _ = crate::cli::explain_flow::prep::compose_explain_router_request;
-    let _ = crate::cli::explain_flow::prep::explain_preflight;
+fn smoke_cov_cli_cli_write_flow_units() {
+    let _: Option<crate::cli::write_flow::WriteArgs> = None;
+    let _ = crate::cli::write_flow::run_write;
+    let _ = crate::cli::write_flow::effective_write_max_loops;
+    let _ = crate::kpop_engine::KPopHardConstraints::WRITE;
+    let _ = crate::cli::entrypoint_commands::run_write_command;
+    let _ = crate::cli::write_flow::prep::compose_write_router_request;
+    let _ = crate::cli::write_flow::prep::write_preflight;
 }
 
 #[test]
@@ -140,7 +112,6 @@ fn smoke_cov_cli_cli_symbols_a() {
     assert!(request.is_none());
     let _ = stringify!(DoRunPrep);
     let _ = stringify!(new_do_client);
-    let _ = stringify!(RenderRepoProgram);
     let _: Option<crate::inspire_flow::InspireArgs> = None;
     let _ = stringify!(InspireRunPrep);
     let _ = crate::inspire_flow::render_inspire_prompt;

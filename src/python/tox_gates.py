@@ -1,4 +1,4 @@
-"""Tox gate discovery, warm commands, and offline flag rewriting for DeepSWE."""
+"""Tox gate discovery, warm commands, and offline flag rewriting for sandbox prep."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import re
 import shlex
 from pathlib import Path
 
-# Intentional omission: mypy/typecheck. DeepSWE pristine snapshots often fail
+# Intentional omission: mypy/typecheck. Pristine task snapshots often fail
 # upstream type gates (stub skew); solve --test smoke must not require them.
 # Lint/pep8/format/ruff remain preferred offline agent checks.
 _TOX_GATE_ENV_RE = re.compile(
@@ -318,7 +318,7 @@ def _test_tox_gate_precommit_warm_command() -> None:
 
 
 def _test_tox_gate_env_names_omit_mypy_typecheck() -> None:
-    """mypy/typecheck are not agent tox-gate envs (pristine DeepSWE often fails them)."""
+    """mypy/typecheck are not agent tox-gate envs (pristine snapshots often fail them)."""
     import tempfile
 
     with tempfile.TemporaryDirectory() as tmp:

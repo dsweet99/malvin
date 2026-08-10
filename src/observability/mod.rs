@@ -8,21 +8,22 @@
 //! | **Audit** | `trace.jsonl` | Machine-authoritative ACP-shaped JSONL |
 //!
 //! **Trust rule:** Consumers must know which channel to trust for which question.
-//! - Tool exit codes, LLM usage, shrink/fork events → **audit** (`trace.jsonl`)
+//! - Tool exit codes, LLM usage → **audit** (`trace.jsonl`)
 //! - Human skimming, vocabulary/ordering parity → **narrative** (`stdout.log`)
 //! - Prompt bodies (full text) → audit `out` lines and/or `prompts.log`, not narrative by default
 //!
 //! Adjacent artifact: `prompts.log` holds outgoing prompt bodies; it is not part of the
 //! two-channel model above.
 //!
-//! **Where:** narrative emission lives in [`crate::output`]; mini audit emission in
-//! [`crate::agent_backend::mini::trace`] and [`crate::agent_backend::mini::acp_trace_shim`].
+//! **Where:** narrative emission lives in [`crate::output`]; audit kinds are named in
+//! [`crate::acp_trace_impersonation`].
 
 use crate::malvin_constants::{STDOUT_LOG, TRACE_JSONL};
 pub use crate::output::{WHO_B, WHO_H, WHO_M, WHO_O, WHO_T, WHO_U};
 
 pub(crate) mod emit;
-pub(crate) use emit::{narrative_suppressed, AUDIT_CHANNEL, NARRATIVE_CHANNEL};
+#[allow(unused_imports)]
+pub(crate) use emit::{AUDIT_CHANNEL, NARRATIVE_CHANNEL};
 
 /// Run-directory log filenames for the two observability channels.
 pub const RUN_NARRATIVE_LOG: &str = STDOUT_LOG;
@@ -37,7 +38,7 @@ pub enum ObservabilityChannel {
     Audit,
 }
 
-/// Known audit record kinds (ACP session updates and mini-only extensions).
+/// Known audit record kinds (ACP session updates).
 pub use crate::acp_trace_impersonation::SyntheticAcpSessionUpdate as AuditEventKind;
 
 /// Who-tag on narrative lines (`m|`, `t|`, …). See [`crate::output`] for formatting.
@@ -71,28 +72,6 @@ impl NarrativeWhoTag {
     }
 }
 
-/// JSON field names on mini audit `session/update` records that must never appear in `stdout.log`.
-const AUDIT_ONLY_SESSION_UPDATE_FIELDS: &[&str] = &[
-    "miniTerminal",
-    "miniHttpExchange",
-    "miniPromptShrink",
-    "miniPromptShrinkStalled",
-    "miniRetryFork",
-    "miniUsage",
-];
-
-/// Returns true when `field` is a mini audit-only extension key on `agent_message_chunk` records.
-#[must_use]
-pub fn is_audit_only_session_update(field: &str) -> bool {
-    AUDIT_ONLY_SESSION_UPDATE_FIELDS.contains(&field)
-}
-
-/// All audit-only mini extension field names (for contract tests and future lint).
-#[must_use]
-pub const fn audit_only_session_update_fields() -> &'static [&'static str] {
-    AUDIT_ONLY_SESSION_UPDATE_FIELDS
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -106,14 +85,6 @@ mod tests {
     fn run_log_aliases_match_malvin_constants() {
         assert_eq!(RUN_NARRATIVE_LOG, "stdout.log");
         assert_eq!(RUN_AUDIT_LOG, "trace.jsonl");
-    }
-
-    #[test]
-    fn is_audit_only_session_update_classifies_mini_extensions() {
-        assert!(is_audit_only_session_update("miniTerminal"));
-        assert!(is_audit_only_session_update("miniHttpExchange"));
-        assert!(!is_audit_only_session_update("sessionUpdate"));
-        assert!(!is_audit_only_session_update("content"));
     }
 
     #[test]
@@ -149,24 +120,12 @@ mod tests {
             AuditEventKind::ToolCall,
             AuditEventKind::ToolCallUpdate,
             AuditEventKind::OutRaw,
-            AuditEventKind::LlmUsage,
-            AuditEventKind::MiniTerminal,
-            AuditEventKind::MiniHttpExchange,
-            AuditEventKind::MiniPromptShrink,
-            AuditEventKind::MiniPromptShrinkStalled,
-            AuditEventKind::MiniRetryFork,
         ];
         let set: HashSet<_> = kinds.into_iter().collect();
         assert_eq!(set.len(), kinds.len());
         for kind in kinds {
             assert!(!format!("{kind:?}").is_empty());
         }
-    }
-
-    #[test]
-    fn audit_only_fields_list_is_complete() {
-        assert!(audit_only_session_update_fields().contains(&"miniTerminal"));
-        assert_eq!(audit_only_session_update_fields().len(), 6);
     }
 
     #[test]

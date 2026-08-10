@@ -1,0 +1,27 @@
+{
+  "name": "cursor-sdk-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Malvin JSONL bridge to @cursor/sdk for cursor: models",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "bin": {
+    "malvin-cursor-sdk-bridge": "./dist/bridge.js",
+    "malvin-cursor-sdk-models": "./dist/models.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/bridge.js",
+    "models": "node dist/models.js",
+    "test": "node --test dist/*_test.js"
+  },
+  "dependencies": {
+    "@cursor/sdk": "1.0.26"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "typescript": "^5.8.0"
+  }
+}

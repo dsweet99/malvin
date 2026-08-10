@@ -4,7 +4,7 @@ use std::os::unix::process::CommandExt;
 use std::process::Command;
 use std::time::Duration;
 
-use super::super::session_drop_teardown::terminate_agent_process_group_blocking;
+use super::super::process_group_terminate::terminate_agent_process_group_blocking;
 use super::terminate_agent_process_group;
 use super::terminate_process_group;
 

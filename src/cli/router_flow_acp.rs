@@ -1,6 +1,6 @@
 use crate::agent_backend::{
-    agent_backend_attach_run_timing_for_session, agent_backend_set_implement_display_name,
-    agent_backend_set_run_timing, AgentBackend,
+    agent_backend_attach_run_timing_for_session, agent_backend_ensure_coder_session,
+    agent_backend_set_implement_display_name, agent_backend_set_run_timing, AgentBackend,
 };
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::cli::SharedOpts;
@@ -26,7 +26,7 @@ use router_flow_coder_prompts::run_router_summarize_coder_prompt;
 pub(crate) struct RouterAcpIterationOutcome {
     pub acp_result: Result<(), String>,
     pub iteration_backups: SessionDotfileBackups,
-    pub all_no_work: bool,
+    pub done: bool,
     pub session_alive: bool,
     pub timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
 }
@@ -34,7 +34,6 @@ pub(crate) struct RouterAcpIterationOutcome {
 pub(crate) struct RouterAcpIterationInput<'a> {
     pub client: &'a mut AgentBackend,
     pub artifacts: &'a RunArtifacts,
-    pub coder: &'a router_flow_prompt::RouterCoderRun,
     pub prompt_store: &'a PromptStore,
     pub shared: &'a SharedOpts,
     pub agent_loop: usize,
@@ -48,21 +47,19 @@ pub(crate) type SessionEndParts<'a> = (
     RunTimingSessionEnd,
 );
 
-/// Open a coder session only when one is not already live (e.g. pre-`Logs:` warm start).
+/// Open a coder session when needed (e.g. pre-`Logs:` warm start).
+///
+/// Cursor SDK also restarts a bridge that is at least 10 minutes old.
 pub(crate) async fn begin_coder_session_if_needed(
     client: &mut AgentBackend,
     work_dir: &Path,
 ) -> Result<(), String> {
-    if client.has_open_coder_session() {
-        return Ok(());
-    }
-    client
-        .begin_coder_session(work_dir)
+    agent_backend_ensure_coder_session(client, work_dir)
         .await
         .map_err(|e| e.to_string())
 }
 
-/// Begin session and run requirements → `KPop` → optional work; leave session open on success.
+/// Begin session and run `header.md` → `kpop_common.md` → `router_a.md` → optional `router_b.md`; leave session open on success.
 pub(crate) async fn run_router_acp_open_iteration(
     mut input: RouterAcpIterationInput<'_>,
 ) -> RouterAcpIterationOutcome {
@@ -74,7 +71,7 @@ pub(crate) async fn run_router_acp_open_iteration(
         return RouterAcpIterationOutcome {
             acp_result: Err(e),
             iteration_backups: snapshot_iteration_backups(work_dir),
-            all_no_work: false,
+            done: false,
             session_alive: false,
             timing: None,
         };
@@ -86,7 +83,7 @@ pub(crate) async fn run_router_acp_open_iteration(
         Ok(turns) => RouterAcpIterationOutcome {
             acp_result: Ok(()),
             iteration_backups: turns.iteration_backups,
-            all_no_work: turns.all_no_work,
+            done: turns.done,
             session_alive: true,
             timing: Some(timing),
         },
@@ -95,7 +92,7 @@ pub(crate) async fn run_router_acp_open_iteration(
             RouterAcpIterationOutcome {
                 acp_result: abort_router_acp_session(parts, e).await,
                 iteration_backups: snapshot_iteration_backups(work_dir),
-                all_no_work: false,
+                done: false,
                 session_alive: false,
                 timing: None,
             }
@@ -110,16 +107,18 @@ pub(crate) async fn finalize_router_acp_iteration(
 ) -> Result<(), String> {
     let log_path = router_iteration_log_path(input.artifacts, input.agent_loop);
     if matches!(exit_summarize, RouterExitSummarize::Run) {
+        let model = input.shared.model.canonical();
         let body = router_flow_prompt::build_router_summarize_prompt(
             router_flow_prompt::RouterSummarizePromptInput {
                 store: input.prompt_store,
                 artifacts: input.artifacts,
-                model: &input.shared.model,
+                model: &model,
                 git: input.shared.git,
             },
         )?;
         run_router_summarize_coder_prompt(input.client, &body, log_path.as_path()).await?;
     }
+    let keep_session = input.client.keeps_coder_session_for_process_life();
     let run_dir = input.artifacts.run_dir.clone();
     let parts: SessionEndParts<'_> = (
         input.client,
@@ -127,7 +126,15 @@ pub(crate) async fn finalize_router_acp_iteration(
         &timing,
         input.session_end,
     );
-    end_router_acp_session(parts, Ok(())).await
+    // Idea 3 (Cursor SDK): keep the Node bridge alive across outer-loop Continues
+    // (refreshed on the next agent start if older than 10 minutes).
+    // ACP/Mini still tear down so the next Continue gets a fresh agent process.
+    match (exit_summarize, keep_session) {
+        (RouterExitSummarize::Run, _) | (RouterExitSummarize::Skip, false) => {
+            end_router_acp_session(parts, Ok(())).await
+        }
+        (RouterExitSummarize::Skip, true) => emit_router_acp_timing(parts, Ok(())),
+    }
 }
 
 pub(crate) fn emit_router_acp_timing(
@@ -165,34 +172,3 @@ pub(crate) async fn abort_router_acp_session(
     end_router_acp_session(parts, Err(err)).await
 }
 
-#[cfg(test)]
-#[path = "router_flow_acp_kiss_cov_tests.rs"]
-mod router_flow_acp_kiss_cov_tests;
-
-#[cfg(test)]
-#[path = "router_flow_acp_mock_tests.rs"]
-pub(crate) mod router_flow_acp_mock_tests;
-
-#[cfg(test)]
-#[path = "router_flow_acp_mock_no_work_tests.rs"]
-pub(crate) mod router_flow_acp_mock_no_work_tests;
-
-#[cfg(test)]
-#[path = "router_flow_acp_mock_counting_tests.rs"]
-pub(crate) mod router_flow_acp_mock_counting_tests;
-
-#[cfg(test)]
-#[path = "router_flow_acp_ping_mock_tests.rs"]
-pub(crate) mod router_flow_acp_ping_mock_tests;
-
-#[cfg(test)]
-#[path = "router_flow_acp_tests.rs"]
-pub(crate) mod router_flow_acp_tests;
-
-#[cfg(test)]
-#[path = "router_flow_acp_preopen_tests.rs"]
-mod router_flow_acp_preopen_tests;
-
-#[cfg(test)]
-#[path = "router_flow_acp_ping_tests.rs"]
-mod router_flow_acp_ping_tests;

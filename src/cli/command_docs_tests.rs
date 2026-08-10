@@ -3,8 +3,7 @@ use super::{
 };
 use crate::cli::Cli;
 use crate::cli::{Commands, InspireArgs};
-use crate::cli::delight_flow::DelightArgs;
-use crate::cli::explain_flow::ExplainArgs;
+use crate::cli::write_flow::WriteArgs;
 use crate::cli::models_cmd::ModelsArgs;
 use clap::Parser;
 
@@ -79,53 +78,30 @@ fn inspire_doc_parses_without_request_when_doc_flag_set() {
 }
 
 #[test]
-fn delight_doc_parses_without_out_path() {
-    let cli = Cli::try_parse_from(["malvin", "delight", "--doc"]).expect("parse");
+fn write_doc_parses_with_request_when_doc_flag_set() {
+    let cli = Cli::try_parse_from(["malvin", "write", "topic.md", "--doc"]).expect("parse");
     assert!(cli.shared.doc);
     match cli.command.as_ref() {
-        Some(Commands::Delight(d)) => assert_eq!(d.out_path, "pitch.md"),
-        _ => panic!("expected Delight"),
-    }
-}
-
-#[test]
-fn explain_doc_parses_with_request_when_doc_flag_set() {
-    let cli = Cli::try_parse_from(["malvin", "explain", "topic.md", "--doc"]).expect("parse");
-    assert!(cli.shared.doc);
-    match cli.command.as_ref() {
-        Some(Commands::Explain(e)) => {
+        Some(Commands::Write(e)) => {
             assert_eq!(e.request.as_deref(), Some("topic.md"));
-            assert_eq!(e.out_path, "explain.tex");
+            assert_eq!(e.out_path, "write.tex");
         }
-        _ => panic!("expected Explain"),
+        _ => panic!("expected Write"),
     }
 }
 
 #[test]
-fn print_doc_explain_writes_subcommand_md() {
-    let cmd = Commands::Explain(ExplainArgs {
+fn print_doc_write_writes_subcommand_md() {
+    let cmd = Commands::Write(WriteArgs {
         request: Some("topic".to_string()),
-        out_path: "explain.tex".to_string(),
+        out_path: "write.tex".to_string(),
         max_loops: 3,
         max_hypotheses: 5,
         tenacious: true,
         out_path_explicit: false,
     });
     let out = capture_doc(Some(&cmd)).expect("capture");
-    assert!(out.starts_with(b"# malvin explain"));
-}
-
-#[test]
-fn print_doc_delight_writes_subcommand_md() {
-    let cmd = Commands::Delight(DelightArgs {
-        guidance: None,
-        out_path: "pitch.md".to_string(),
-        max_loops: 3,
-        max_hypotheses: 5,
-        tenacious: true,
-    });
-    let out = capture_doc(Some(&cmd)).expect("capture");
-    assert!(out.starts_with(b"# malvin delight"));
+    assert!(out.starts_with(b"# malvin write"));
 }
 
 #[test]

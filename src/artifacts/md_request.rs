@@ -66,43 +66,38 @@ pub fn resolve_user_md_request(arg: &str) -> Result<(String, PathBuf), String> {
 }
 
 #[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_auto{
-    use super::*;
+mod tests {
+    use super::{
+        looks_like_md_file_path_arg, md_path_has_invalid_characters, md_path_has_invalid_components,
+        resolve_user_md_request,
+    };
+    use std::path::Path;
 
     #[test]
-    fn kiss_cov_md_path_has_invalid_characters() {
-        let _ = super::md_path_has_invalid_characters;
+    fn looks_like_md_file_path_arg_rejects_null_dot_parent_and_space() {
+        assert!(looks_like_md_file_path_arg("plan.md"));
+        assert!(looks_like_md_file_path_arg("  nested/plan.md  "));
+        assert!(!looks_like_md_file_path_arg(""));
+        assert!(!looks_like_md_file_path_arg("plan.mdx"));
+        assert!(!looks_like_md_file_path_arg("my plan.md"));
+        assert!(
+            !looks_like_md_file_path_arg("bad\0.md"),
+            "NUL must not be treated as a path"
+        );
+        assert!(!looks_like_md_file_path_arg("../escape.md"));
+        assert!(!looks_like_md_file_path_arg("./local.md"));
+        assert!(md_path_has_invalid_characters("x\0y"));
+        assert!(!md_path_has_invalid_characters("ok.md"));
+        assert!(md_path_has_invalid_components(Path::new("../x.md")));
+        assert!(md_path_has_invalid_components(Path::new("./x.md")));
+        assert!(!md_path_has_invalid_components(Path::new("dir/x.md")));
     }
 
     #[test]
-    fn kiss_cov_md_path_has_invalid_components() {
-        let _ = super::md_path_has_invalid_components;
-    }
-
-    #[test]
-    fn kiss_cov_is_existing_md_file_path() {
-        let _ = super::is_existing_md_file_path;
-    }
-
-    #[test]
-    fn kiss_cov_looks_like_md_file_path_arg() {
-        let _ = super::looks_like_md_file_path_arg;
-    }
-
-    #[test]
-    fn kiss_cov_resolve_user_md_request() {
-        let _ = super::resolve_user_md_request;
-    }
-}
-
-#[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
-    use super::*;
-    #[test]
-    fn kiss_cov_unit_names() {
-        let _ = md_path_has_invalid_characters;
-        let _ = md_path_has_invalid_components;
+    fn resolve_user_md_request_treats_nul_path_as_literal_text() {
+        let raw = "bad\0.md";
+        let (text, wd) = resolve_user_md_request(raw).expect("literal");
+        assert_eq!(text, raw);
+        assert_eq!(wd, std::path::PathBuf::from("."));
     }
 }

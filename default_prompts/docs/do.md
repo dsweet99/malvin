@@ -64,7 +64,7 @@ No implement, review, concerns, learn, or summary phases.
 
 | Command | When |
 |---------|------|
-| `malvin --do Hello` | One-turn Cursor ACP connectivity smoke check |
+| `malvin --do Hello` | One-turn agent connectivity smoke check |
 
 ## Examples
 

@@ -142,13 +142,6 @@ fn smoke_test_stderr_capture() {
 }
 
 #[test]
-fn smoke_kpop_multiturn_builder_type() {
-    use crate::kpop_multiturn_prompts::{KpopMultiturnPrompts, SmokeKpopBuilder};
-    let mut smoke = KpopMultiturnPrompts::Smoke(SmokeKpopBuilder);
-    assert_eq!(smoke.kpop_block(1).expect("kpop"), "k");
-}
-
-#[test]
 fn smoke_child_health_sample() {
     let _health = crate::child_health::sample_child_health(std::process::id());
 }
@@ -179,8 +172,7 @@ fn kiss_cov_cross_file_symbols_a() {
     let _: Option<crate::terminal_palette::TerminalTheme> = None;
     let _: Option<crate::terminal_palette::Palette> = None;
     let _: Option<crate::run_timing::acp_post_run::RunTimingSessionEnd> = None;
-    let _: Option<crate::run_timing::acp_post_run::RunTimingAfterAcp> = None;
-    let _: Option<crate::run_timing::acp_post_run::RunTimingAfterBackend> = None;
+        let _: Option<crate::run_timing::acp_post_run::RunTimingAfterBackend> = None;
     let _: Option<crate::session_dotfile_backup::DotfileBackupPayload> = None;
     let _: Option<crate::session_dotfile_backup::SessionDotfileParts> = None;
     let _ = stringify!(ActiveAgentSandbox);
@@ -227,7 +219,7 @@ fn kiss_cov_cli_helper_symbols() {
     let _ = stringify!(BugIdResolved);
     let _ = stringify!(LoopDefaultMut);
     let _ = stringify!(CodeWorkflowLoopMut);
-    let _ = stringify!(ExplainResolvedOutputs);
+    let _ = stringify!(WriteResolvedOutputs);
     let _ = stringify!(RouterArgs);
     let _ = stringify!(KPopEnginePrepared);
     let _ = stringify!(InspireRunPrep);
@@ -244,5 +236,5 @@ fn kiss_cov_coverage_kiss_gate_refs() {
 #[test]
 fn kiss_cov_ops_spawn() {
     let _ = crate::acp::test_no_real_agent_enabled();
-    let _ = crate::acp::resolve_agent_bin();
+    let _ = crate::acp::test_no_real_agent_enabled();
 }

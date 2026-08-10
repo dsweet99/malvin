@@ -17,9 +17,7 @@ fn post_gate_fixture() -> (KPopEnginePrepared, SessionDotfileBackups) {
         artifacts,
         context: crate::prompt_stratification::WorkflowRenderContext::default(),
         request_text: "req".into(),
-        startup_emit_request: "req".into(),
         store,
-        malvin_checks_backup: crate::artifacts::MalvinChecksBackup::Missing,
     };
     (prepared, backups)
 }
@@ -33,7 +31,7 @@ fn kiss_cov_kpop_engine_multiturn_ctx_type_witness() {
 #[test]
 fn kiss_cov_run_kpop_hard_constraints_after_session_branchy_executable_witness() {
     let (prepared, backups) = post_gate_fixture();
-    let skip = KPopHardConstraints::DELIGHT;
+    let skip = KPopHardConstraints::WRITE;
     let run = KPopHardConstraints::CODE;
     if run_kpop_hard_constraints_after_session("code", &prepared, &backups, skip).is_ok() {
         assert!(skip.skip_workspace_quality_gates);
@@ -65,12 +63,10 @@ fn kiss_cov_kpop_engine_loop_params_types() {
         artifacts,
         context: crate::prompt_stratification::WorkflowRenderContext::default(),
         request_text: "req".into(),
-        startup_emit_request: "req".into(),
         store,
-        malvin_checks_backup: crate::artifacts::MalvinChecksBackup::Missing,
     };
     let shared = crate::cli::SharedOpts {
-        model: crate::config::DEFAULT_CLI_MODEL.into(),
+        model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("model"),
         no_force: false,
         no_tenacious: false,
         gates: false,
@@ -80,18 +76,10 @@ fn kiss_cov_kpop_engine_loop_params_types() {
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
         name: None,
-        mini_max_bash_turns: 32,
-        mini_max_http_turns: 32,
-        mini_max_bash_execs: 128,
-        mini_max_http_retries: 0,
-        mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
-        mini_max_gate_retries: 0,
-        mini_max_shrink_passes: 0,
         no_download: false,
         git: false,
-            no_kpop: false,
-        };
-    let workflow = WorkflowCliOptions { force: false, no_kpop: false };
+    };
+    let workflow = WorkflowCliOptions { force: false };
     let loop_params = KPopEngineParams {
         command: "code",
         shared: &shared,
@@ -120,18 +108,17 @@ fn kiss_cov_kpop_engine_loop_params_types() {
         vision: crate::session_dotfile_backup::VisionBackup::Missing,
         malvin_config_workspace: crate::session_dotfile_backup::DotfileBackupState::Missing,
     });
-    let mut client = crate::agent_backend::AgentBackend::Acp(crate::acp::AgentClient::with_max_acp_retries(
-        "m".into(),
-        crate::acp::AgentIoOptions {
-            force: false,
-            no_tee: true,
-            raw_output: true,
-            show_thoughts_on_stdout: false,
-            emit_stdout_markdown: false,
-            log_full_outgoing_prompts: false,
-        },
-        1,
-    ));
+    let mut client = crate::agent_backend::agent_backend_from_client(
+        crate::cursor_sdk::cursor_sdk_client_from_raw("cursor:auto", crate::acp::AgentIoOptions {
+                force: false, no_tee: true,
+                raw_output: true,
+                show_thoughts_on_stdout: false,
+                emit_stdout_markdown: false,
+                log_full_outgoing_prompts: false,
+            },
+            1,
+        ),
+    );
     let iteration = KPopEngineIterationParams {
         loop_params: &loop_params,
         session_dotfile_backups: &backups,

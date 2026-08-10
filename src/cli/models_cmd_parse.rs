@@ -28,17 +28,29 @@ pub(super) fn looks_like_tip_banner_line(lowercase_trimmed: &str) -> bool {
     false
 }
 
+#[cfg(test)]
 pub(super) fn models_display_lines(text: &str, prefix: &str) -> Option<Vec<String>> {
+    models_display_lines_filtered(text, prefix, None)
+}
+
+pub(super) fn models_display_lines_filtered(
+    text: &str,
+    prefix: &str,
+    filter: Option<&str>,
+) -> Option<Vec<String>> {
     let mut out = Vec::new();
     for line in text.lines() {
         let t = line.trim();
         if t.is_empty() || is_non_model_banner_line(t) {
             continue;
         }
-        if let Some((name, rest)) = parse_model_line(t) {
-            out.push(format!("{prefix}{name}\t{rest}"));
+        let row = if let Some((name, rest)) = parse_model_line(t) {
+            format!("{prefix}{name}\t{rest}")
         } else {
-            out.push(format!("{prefix}{t}"));
+            format!("{prefix}{t}")
+        };
+        if super::line_matches_prefix(&row, filter) {
+            out.push(row);
         }
     }
     if out.is_empty() { None } else { Some(out) }
@@ -52,14 +64,22 @@ pub(super) fn is_non_model_banner_line(line: &str) -> bool {
     low == "available models" || low.starts_with("no models")
 }
 
-pub(super) fn print_parsed_or_fallback_prefixed(text: &str, prefix: &str) {
-    match models_display_lines(text, prefix) {
+pub(super) fn print_parsed_or_fallback_prefixed(
+    text: &str,
+    prefix: &str,
+    filter: Option<&str>,
+) {
+    match models_display_lines_filtered(text, prefix, filter) {
         Some(lines) => {
             for line in lines {
                 print_stdout_line(MALVIN_WHO, &line);
             }
         }
-        None => print_stdout_text(MALVIN_WHO, text),
+        None => {
+            if filter.is_none() {
+                print_stdout_text(MALVIN_WHO, text);
+            }
+        }
     }
 }
 

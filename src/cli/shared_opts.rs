@@ -1,7 +1,9 @@
-//! Shared CLI flags (`SharedOpts`) are parsed globally for every subcommand. `model`, `no_force`, `no_tenacious`, and `max_acp_retries` affect `malvin code`, `malvin inspire`, and `malvin --do`. `--gates` enables harness-run quality gates for the default route; `malvin tidy` always forces them on. `--verbose` logs full outgoing agent prompts to stdout and `prompts.log` (default is prompt name only). For `malvin --do`, `--verbose` also unlocks the same live agent log classes as the default workflow (thought tokens and narrative tee); without `--verbose`, `--do` stays DM-body-only. `--quiet` / `-q` restricts default-router stdout (bare `malvin REQUEST`, `tidy`, `delight`, `explain`) to `MALVIN_DM_*` bodies only. `--git` sets `{{ git_extra }}` so prompt templates may permit `git commit` (default off).
+//! Shared CLI flags (`SharedOpts`) are parsed globally for every subcommand. `model`, `no_force`, `no_tenacious`, and `max_acp_retries` affect `malvin inspire` and `malvin --do`. `--gates` / `-g` enables harness-run quality gates for the default route; `malvin tidy` always forces them on. `--verbose` logs full outgoing agent prompts to stdout and `prompts.log` (default is prompt name only). For `malvin --do`, `--verbose` also unlocks the same live agent log classes as the default workflow (thought tokens and narrative tee); without `--verbose`, `--do` stays DM-body-only. `--quiet` / `-q` restricts default-router stdout (bare `malvin REQUEST`, `tidy`, `write`) to `MALVIN_DM_*` bodies only. `--git` sets `{{ git_extra }}` so prompt templates may permit `git commit` (default off).
 
 pub use crate::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use clap::Args;
+
+use crate::model_id::{parse_model_id, ParsedModel};
 
 const QUIET_HELPTEXT: &str =
     "Stdout: only MALVIN_DM_START/END bodies (default workflow; not -b)";
@@ -17,17 +19,22 @@ pub struct GlobalOpts {
 #[derive(Args, Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct SharedOpts {
-    /// Model id.
-    #[arg(long, global = true, default_value = DEFAULT_CLI_MODEL)]
-    pub model: String,
-    /// Don't `--force` cursor-agent.
+    /// Model id (`cursor:` or `prime:`).
+    #[arg(
+        long,
+        global = true,
+        default_value = DEFAULT_CLI_MODEL,
+        value_parser = parse_model_id
+    )]
+    pub model: ParsedModel,
+    /// Don't force tool auto-run (fails fast on `cursor:` / `prime:`; no interactive approval).
     #[arg(long, global = true, default_value_t = false)]
     pub no_force: bool,
     /// Don't expand gate-loop budgets to tenacious limits [default: tenacious on].
     #[arg(long = "no-tenacious", global = true, default_value_t = false)]
     pub no_tenacious: bool,
     /// Run workspace quality gates in the harness and treat failures as loop/exit criteria.
-    #[arg(long, global = true, default_value_t = false)]
+    #[arg(short = 'g', long, global = true, default_value_t = false)]
     pub gates: bool,
     /// Restrict process stdout to `MALVIN_DM_START`/`MALVIN_DM_END` bodies on the default router.
     #[arg(
@@ -41,31 +48,10 @@ pub struct SharedOpts {
     /// Log full outgoing agent prompt bodies to stdout and `prompts.log` (default: prompt name only).
     #[arg(short, long, global = true, default_value_t = false)]
     pub verbose: bool,
-    /// Max agent retries per spawn, HTTP completion, or gate iteration (1s / 3s backoff between tries).
+    /// Max agent retries per spawn or gate iteration (1s / 3s backoff between tries).
     #[arg(long = "max-acp-retries", global = true, default_value_t = DEFAULT_MAX_ACP_RETRIES)]
     pub max_acp_retries: u32,
-    /// Deprecated alias for `--mini-max-http-turns`.
-    #[arg(long = "mini-max-bash-turns", global = true, default_value_t = 32, hide = true)]
-    pub mini_max_bash_turns: u32,
-    /// Max Investigate-phase HTTP turns per `run_coder_prompt` for `openrouter:` / `local:` models [default: 32].
-    #[arg(long = "mini-max-http-turns", global = true, default_value_t = 32, hide = true)]
-    pub mini_max_http_turns: u32,
-    /// Max bash subprocess executions per `run_coder_prompt` for `openrouter:` / `local:` models [default: 128].
-    #[arg(long = "mini-max-bash-execs", global = true, default_value_t = 128, hide = true)]
-    pub mini_max_bash_execs: u32,
-    /// Max transient HTTP retries per completion for `openrouter:` / `local:` models [default: 0].
-    #[arg(long = "mini-max-http-retries", global = true, default_value_t = 0, hide = true)]
-    pub mini_max_http_retries: u32,
-    /// Max transport-layer retries per HTTP completion for `openrouter:` / `local:` models (from config when unset).
-    #[arg(skip)]
-    pub mini_max_transport_retries: u32,
-    /// Max whole-loop gate retries after failure for `openrouter:` / `local:` models [default: 0].
-    #[arg(long = "mini-max-gate-retries", global = true, default_value_t = 0, hide = true)]
-    pub mini_max_gate_retries: u32,
-    /// Max context-recovery shrink passes per overflow for `openrouter:` / `local:` models [default: 0].
-    #[arg(long = "mini-max-shrink-passes", global = true, default_value_t = 0, hide = true)]
-    pub mini_max_shrink_passes: u32,
-    /// Do not auto-download `local:` models on first use (fail if missing from cache).
+    /// Do not auto-download `prime:local/…` models on first use (fail if missing from cache).
     #[arg(long = "no-download", global = true, default_value_t = false)]
     pub no_download: bool,
     /// Print built-in documentation (`malvin --doc` or `malvin <COMMAND> --doc`) and exit.
@@ -77,9 +63,6 @@ pub struct SharedOpts {
     /// Allow the agent to run `git commit` (sets `{{ git_extra }}` in prompt templates).
     #[arg(long, global = true, default_value_t = false)]
     pub git: bool,
-    /// Replace `kpop_common.md` with `no_kpop_common.md` (hidden).
-    #[arg(long = "no-kpop", global = true, default_value_t = false, hide = true)]
-    pub no_kpop: bool,
 }
 
 impl SharedOpts {
@@ -100,7 +83,7 @@ impl SharedOpts {
     #[must_use]
     pub(crate) fn test_defaults() -> Self {
         Self {
-            model: crate::config::DEFAULT_CLI_MODEL.into(),
+            model: parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("default model"),
             no_force: true,
             no_tenacious: false,
             gates: false,
@@ -109,16 +92,8 @@ impl SharedOpts {
             max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
             name: None,
-            mini_max_bash_turns: 32,
-            mini_max_http_turns: 32,
-            mini_max_bash_execs: 128,
-            mini_max_http_retries: 0,
-            mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
-            mini_max_gate_retries: 0,
-            mini_max_shrink_passes: 0,
             no_download: false,
             git: false,
-            no_kpop: false,
         }
     }
 }

@@ -1,4 +1,4 @@
-- Make sure the code checks all pass:
+Additional requirements:
 ```
 {{ code_checks }}
 ```

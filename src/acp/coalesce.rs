@@ -93,6 +93,7 @@ pub(crate) fn coalesce_flush_nonempty(buf: &mut String, buf_chars: &mut usize, e
 }
 
 #[derive(Default)]
+#[allow(dead_code)]
 pub(crate) struct VerboseIoCoalescer {
     pub message: String,
     pub thought: String,
@@ -100,6 +101,7 @@ pub(crate) struct VerboseIoCoalescer {
     thought_chars: usize,
 }
 
+#[allow(dead_code)]
 impl VerboseIoCoalescer {
     pub fn feed(&mut self, kind: SessionUpdateChunkKind, chunk: &str) {
         match kind {
@@ -137,6 +139,7 @@ impl VerboseIoCoalescer {
 }
 
 /// `session/update` streaming chunks (`agent_message_chunk`, `agent_thought_chunk`).
+#[allow(dead_code)]
 pub(crate) fn session_update_chunk_parts(
     v: &Value,
 ) -> Option<(SessionUpdateChunkKind, &str)> {

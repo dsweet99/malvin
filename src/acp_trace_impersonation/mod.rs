@@ -1,10 +1,9 @@
-//! ACP trace impersonation (see `concepts.md` §3).
+//! ACP trace update kinds (see `concepts.md` §3).
 //!
-//! Under `--mini`, the in-process bash loop writes synthetic ACP-shaped JSON-RPC
-//! `session/update` lines into `trace.jsonl`. This module names each emitted update kind
-//! for documentation and typing; emission stays in `acp_trace_shim`.
+//! Names each ACP-shaped `session/update` kind used in `trace.jsonl` for documentation
+//! and typing. Cursor/Prime backends emit standard ACP kinds.
 
-/// One synthetic trace update kind emitted by the mini ACP trace shim.
+/// One ACP-shaped trace update kind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SyntheticAcpSessionUpdate {
     /// Standard ACP `agent_message_chunk` envelope.
@@ -17,18 +16,6 @@ pub enum SyntheticAcpSessionUpdate {
     ToolCallUpdate,
     /// Non-JSON-RPC `out` trace line (stdout mirror), not a `session/update`.
     OutRaw,
-    /// Mini `miniUsage` extension on an `agent_message_chunk` envelope.
-    LlmUsage,
-    /// Mini `miniTerminal` extension on an `agent_message_chunk` envelope.
-    MiniTerminal,
-    /// Mini `miniHttpExchange` extension on an `agent_message_chunk` envelope.
-    MiniHttpExchange,
-    /// Mini `miniPromptShrink` extension on an `agent_message_chunk` envelope.
-    MiniPromptShrink,
-    /// Mini `miniPromptShrinkStalled` extension on an `agent_message_chunk` envelope.
-    MiniPromptShrinkStalled,
-    /// Mini `miniRetryFork` extension on an `agent_message_chunk` envelope.
-    MiniRetryFork,
 }
 
 impl SyntheticAcpSessionUpdate {
@@ -41,12 +28,6 @@ impl SyntheticAcpSessionUpdate {
             Self::ToolCall,
             Self::ToolCallUpdate,
             Self::OutRaw,
-            Self::LlmUsage,
-            Self::MiniTerminal,
-            Self::MiniHttpExchange,
-            Self::MiniPromptShrink,
-            Self::MiniPromptShrinkStalled,
-            Self::MiniRetryFork,
         ]
     }
 }

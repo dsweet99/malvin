@@ -4,21 +4,16 @@ use super::{
 use crate::do_flow::DoArgs;
 
 /// Commands that accept `--name` acquire a session name lock before substantive work.
-/// Bare `malvin REQUEST`, `--do`, `tidy`, and `delight` accept `--name`.
+/// Bare `malvin REQUEST`, `--do`, and `tidy` accept `--name`.
 pub(crate) const fn command_accepts_session_name(command: &Commands) -> bool {
-    matches!(
-        command,
-        Commands::Code(_) | Commands::Tidy(_) | Commands::Delight(_)
-    )
+    matches!(command, Commands::Tidy(_))
 }
 
 pub(crate) const fn unsupported_name_error(command: &Commands) -> Option<&'static str> {
     if command_accepts_session_name(command) {
         return None;
     }
-    Some(
-        "`--name` is only supported for bare `malvin REQUEST`, `--do`, `tidy`, and `delight`",
-    )
+    Some("`--name` is only supported for bare `malvin REQUEST`, `--do`, and `tidy`")
 }
 
 #[path = "entrypoint_from.rs"]
@@ -59,7 +54,24 @@ where
     Fut: std::future::Future<Output = Result<(), String>> + Send,
 {
     let rt = try_tokio_runtime()?;
-    rt.block_on(f())
+    rt.block_on(async {
+        spawn_ctrl_c_teardown();
+        f().await
+    })
+}
+
+/// On CTRL-C, SIGKILL the agent process group immediately (not a raw SIGINT to
+/// Node, and not a cooperative TERM wait) so the shell returns promptly and the
+/// console stays free of Node stack traces.
+fn spawn_ctrl_c_teardown() {
+    tokio::spawn(async {
+        if tokio::signal::ctrl_c().await.is_err() {
+            return;
+        }
+        crate::malvin_sandbox::teardown_active_sandbox_for_interrupt();
+        // 128 + SIGINT
+        std::process::exit(130);
+    });
 }
 
 pub fn entrypoint() -> Exit {
@@ -97,17 +109,6 @@ pub(crate) fn dispatch_command(
 ) -> Result<(), String> {
     let mut shared = shared.clone();
     match command {
-        Commands::Code(mut code) => {
-            super::loop_opts::apply_gate_loop_tenacious(super::loop_opts::GateLoopTenaciousApply {
-                subcommand: "code",
-                max_loops: &mut code.max_loops,
-                tenacious: code.tenacious,
-                no_tenacious: shared.no_tenacious,
-                max_acp_retries: &mut shared.max_acp_retries,
-                matches,
-            });
-            super::entrypoint_commands::run_code_command(code, &shared)
-        }
         Commands::Init(init) => run_async_cli(|| run_init(init, &shared)),
         Commands::Tidy(mut tidy) => {
             super::loop_opts::apply_gate_loop_tenacious(super::loop_opts::GateLoopTenaciousApply {
@@ -122,11 +123,13 @@ pub(crate) fn dispatch_command(
                 run_tidy(
                     tidy,
                     &shared,
-                    WorkflowCliOptions::from_shared(&shared),
+                    WorkflowCliOptions {
+                        force: !shared.no_force,
+                    },
                 )
             })
         }
-        cmd @ (Commands::Delight(_) | Commands::Explain(_)) => {
+        cmd @ Commands::Write(_) => {
             super::entrypoint_commands::dispatch_plan_authoring_gate(cmd, &mut shared, matches)
         }
         Commands::Inspire(inspire) | Commands::Adaptix(inspire) => {
@@ -144,7 +147,9 @@ pub fn dispatch_do_workflow(
         run_do(
             do_args,
             shared,
-            WorkflowCliOptions::from_shared(shared),
+            WorkflowCliOptions {
+                force: !shared.no_force,
+            },
         )
     })
 }
@@ -169,7 +174,9 @@ pub fn dispatch_default_route(
                 max_loops,
             },
             shared,
-            WorkflowCliOptions::from_shared(shared),
+            WorkflowCliOptions {
+                force: !shared.no_force,
+            },
         )
     })
 }
@@ -178,7 +185,8 @@ fn dispatch_models(
     models: super::models_cmd::ModelsArgs,
     shared: &super::SharedOpts,
 ) -> Result<(), String> {
-    super::models_cmd::run_models(models, &shared.model)
+    let model = shared.model.canonical();
+    super::models_cmd::run_models(models, &model)
 }
 
 #[cfg(test)]

@@ -19,14 +19,17 @@ pub(crate) mod stdout_log_pair;
 pub(crate) mod stdout_tee_env;
 pub(crate) mod terminal_wrap;
 
+#[allow(dead_code)]
 pub(crate) use stdout_defer::register_defer_stdout_hooks;
 #[allow(unused_imports)]
 pub(crate) use stdout_defer::{try_defer_heartbeat, try_defer_tagged_stdout};
+#[allow(dead_code)]
 pub(crate) use stdout_render::{
     flush_stdout_rendered_line, publish_heartbeat_live_terminal, write_heartbeat_log_line,
 };
 #[cfg(test)]
 pub(crate) use stdout_render::emit_stdout_rendered_immediate;
+#[allow(dead_code)]
 pub(crate) use stdout_heartbeat::{
     heartbeat_rendered_if_due, log_contains_heartbeat,
 };
@@ -51,9 +54,11 @@ pub use do_dm_mode::{
 };
 pub use do_dm_filter::{feed_do_dm_stdout_text, DM_END, DM_START};
 
+#[allow(dead_code)]
 pub(crate) use acp_tee::{
     flush_stdout_acp_tee_line_with_timestamp, flush_stdout_acp_tool_summary_tee,
 };
+#[allow(dead_code)]
 pub(crate) use stdout_display::flush_stdout_raw_line_with_ts;
 pub use acp_tee::{
     AcpTeeDirection, AcpTeeLineFmt, AcpTeeStdoutEvent, TermimadStdoutGate, acp_tee_display_line,
@@ -199,6 +204,7 @@ fn apply_stdout_style(use_color: bool) {
 }
 
 /// Test/helper: set color preference without requiring `NO_COLOR` env mutation.
+#[cfg(test)]
 pub(crate) fn init_stdout_style_for_test(use_color: bool) {
     apply_stdout_style(use_color);
 }
@@ -239,7 +245,3 @@ pub(crate) fn append_stdout_log_line(line: &str) {
 
 pub use stderr_log::{print_log_error, print_log_warning, print_stderr_line};
 
-#[cfg(test)]
-pub(crate) use test_modules::{
-    assert_acp_tool_summary_dim_preserves_bracket, assert_tool_payload_uses_verb_styling,
-};

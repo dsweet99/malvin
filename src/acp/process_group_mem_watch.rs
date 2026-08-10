@@ -5,8 +5,6 @@ use std::time::Duration;
 
 use tracing::warn;
 
-use super::session_types::AcpSession;
-
 const POLL_INTERVAL: Duration = if cfg!(test) {
     Duration::from_millis(10)
 } else {
@@ -21,32 +19,6 @@ pub struct MemWatchHandles {
     pub limit_bytes: u64,
     pub spawn_pid_baseline: HashSet<u32>,
     pub run_dir: Option<std::path::PathBuf>,
-}
-
-pub(crate) fn spawn_process_group_memory_watcher(session: &AcpSession, work_dir: &Path) {
-    #[cfg(unix)]
-    {
-        if crate::acp::test_no_real_agent_enabled() {
-            return;
-        }
-        let limit_bytes = crate::mem_limit_config::load_mem_limit_bytes(work_dir);
-        let Some(pgid) = session.0.process_group_id else {
-            return;
-        };
-        let handles = MemWatchHandles {
-            reader_dead: Arc::clone(&session.0.reader_dead),
-            pgid,
-            limit_bytes,
-            spawn_pid_baseline: session.0.spawn_pid_baseline.clone(),
-            run_dir: session.0.prompts_log_run_dir.clone(),
-        };
-        tokio::spawn(async move {
-            watch_process_group_memory(handles).await;
-        });
-    }
-    #[cfg(not(unix))]
-    {
-    }
 }
 
 #[cfg(unix)]
@@ -241,4 +213,11 @@ mod policy_tests {
 }
 
 
-#[cfg(test)] mod kiss_cov_auto { use super::*; #[test] fn kiss_cov_spawn_process_group_memory_watcher() { let _ = spawn_process_group_memory_watcher; } #[test] fn kiss_cov_watch_sampler() { let _ = (watch_process_group_memory, watch_process_group_memory_with_rss_sampler); } }
+#[cfg(test)]
+mod kiss_cov_auto {
+    use super::*;
+    #[test]
+    fn kiss_cov_watch_sampler() {
+        let _ = (watch_process_group_memory, watch_process_group_memory_with_rss_sampler);
+    }
+}

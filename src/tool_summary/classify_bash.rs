@@ -126,8 +126,9 @@ fn classified_tool_status_line(
     match (exit_code == 0, comment_seg.as_deref()) {
         (true, Some(c)) => format!("{head} · {c} · {dur} · ✓"),
         (true, None) => format!("{head} · {dur} · ✓"),
-        (false, Some(c)) => format!("{head} · {c} · {dur} · ✗ exit {exit_code}"),
-        (false, None) => format!("{head} · {dur} · ✗ exit {exit_code}"),
+        // Cursor SDK order: `Run cmd · exit N · dur · ✗`
+        (false, Some(c)) => format!("{head} · {c} · exit {exit_code} · {dur} · ✗"),
+        (false, None) => format!("{head} · exit {exit_code} · {dur} · ✗"),
     }
 }
 

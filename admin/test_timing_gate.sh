@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Fail when any Rust or Python unit test exceeds the per-test duration budget.
 # When invoked from `.malvin/checks`, docker must be available; the checks line sets
-# DEEPSWE_SKIP_DOCKER_SELFTESTS=0 so docker-marked pytest tests run under budget.
+# MALVIN_SKIP_DOCKER_SELFTESTS=0 so docker-marked pytest tests run under budget.
 set -euo pipefail
 
 THRESHOLD="${MALVIN_TEST_MAX_SECS:-1.500}"
@@ -9,7 +9,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 export NEXTEST_EXPERIMENTAL_LIBTEST_JSON=1
-export DEEPSWE_SKIP_DOCKER_SELFTESTS="${DEEPSWE_SKIP_DOCKER_SELFTESTS:-1}"
+export MALVIN_SKIP_DOCKER_SELFTESTS="${MALVIN_SKIP_DOCKER_SELFTESTS:-1}"
 
 fail=0
 

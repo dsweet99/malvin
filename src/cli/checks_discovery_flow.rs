@@ -127,7 +127,7 @@ mod tests {
 
     #[test]
     fn prepare_checks_discovery_prompt_store_loads_constraints() {
-        let workflow = WorkflowCliOptions { force: false, no_kpop: false };
+        let workflow = WorkflowCliOptions { force: false };
         let store = prepare_checks_discovery_prompt_store(workflow).expect("store");
         assert!(store.validate_exists("init_constraints.md").is_ok());
     }

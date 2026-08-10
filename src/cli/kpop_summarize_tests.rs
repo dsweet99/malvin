@@ -14,7 +14,7 @@ use crate::prompts::PromptStore;
 
 pub(crate) fn summarize_shared_opts(max_acp_retries: u32) -> SharedOpts {
     SharedOpts {
-        model: DEFAULT_CLI_MODEL.into(),
+        model: crate::model_id::parse_model_id(DEFAULT_CLI_MODEL).expect("model"),
         no_force: true,
         no_tenacious: false,
         gates: false,
@@ -24,18 +24,11 @@ pub(crate) fn summarize_shared_opts(max_acp_retries: u32) -> SharedOpts {
         max_acp_retries,
         doc: false,
         name: None,
-        mini_max_bash_turns: 32,
-        mini_max_http_turns: 32,
-        mini_max_bash_execs: 128,
-        mini_max_http_retries: 0,
-        mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
-        mini_max_gate_retries: 0,
-        mini_max_shrink_passes: 0,
         no_download: false,
         git: false,
-        no_kpop: false,
     }
 }
+
 
 pub(crate) fn summarize_test_workspace() -> (tempfile::TempDir, crate::artifacts::RunArtifacts, PromptStore, SharedOpts)
 {
@@ -113,12 +106,9 @@ fn run_summarize_coder_prompt_errors_without_open_session() {
     let artifacts = create_kpop_run_artifacts("kpop", Some(tmp.path())).expect("artifacts");
     let rt = tokio::runtime::Runtime::new().expect("runtime");
     rt.block_on(async {
-        let mut client = crate::agent_backend::AgentBackend::Acp(
-            crate::acp::AgentClient::with_max_acp_retries(
-                "m".into(),
-                crate::acp::AgentIoOptions {
-                    force: false,
-                    no_tee: true,
+        let mut client = crate::agent_backend::agent_backend_from_client(
+            crate::cursor_sdk::cursor_sdk_client_from_raw("cursor:auto", crate::acp::AgentIoOptions {
+                    force: false, no_tee: true,
                     raw_output: true,
                     show_thoughts_on_stdout: false,
                     emit_stdout_markdown: false,
@@ -140,3 +130,12 @@ fn is_written_exp_log_path_filters_non_matching_names() {
     assert!(!is_written_exp_log_path(Path::new("exp_log_run_g1.txt")));
 }
 
+
+#[test]
+fn write_exp_logs_creates_expected_files() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = create_kpop_run_artifacts("kpop", Some(tmp.path())).expect("artifacts");
+    write_exp_logs(&artifacts, 2);
+    assert!(artifacts.run_dir.join("_kpop/exp_log_test_g1.md").is_file());
+    assert!(artifacts.run_dir.join("_kpop/exp_log_test_g2.md").is_file());
+}

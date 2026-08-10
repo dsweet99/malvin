@@ -30,4 +30,12 @@ fn kiss_cov_local_model_spec_type() {
     let _ = stringify!(LocalModelSpec);
     let _ = stringify!(local_backend_supported);
     let _ = super::local_backend_supported();
+    let listing = super::registry::LocalModelListing {
+        id: "kiss".into(),
+        name: "Kiss".into(),
+    };
+    assert_eq!(listing.id, "kiss");
+    assert_eq!(listing.name, "Kiss");
+    let _ = super::local_model_listings();
+    let _ = stringify!(LocalModelListing);
 }

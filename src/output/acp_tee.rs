@@ -67,6 +67,7 @@ pub fn print_stdout_acp_tool_summary_tee(ev: &AcpTeeStdoutEvent<'_>, display_pay
     route_acp_rendered(&display, &log, StdoutRenderPrelude::TaggedWithHeartbeat);
 }
 
+#[allow(dead_code)]
 pub(crate) fn flush_stdout_acp_tool_summary_tee(ev: &AcpTeeStdoutEvent<'_>, display_payload: &str) {
     let (display, log) = tool_summary_tee_display_and_log(ev, display_payload);
     route_acp_rendered(&display, &log, StdoutRenderPrelude::FlushOnly);
@@ -87,6 +88,7 @@ pub fn print_stdout_acp_tee_line_with_timestamp(ev: &AcpTeeStdoutEvent<'_>) {
     );
 }
 
+#[allow(dead_code)]
 pub(crate) fn flush_stdout_acp_tee_line_with_timestamp(ev: &AcpTeeStdoutEvent<'_>) {
     let ctx = AcpTeeLineFmt {
         ts: ev.ts,

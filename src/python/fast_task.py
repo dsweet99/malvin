@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 """Run malvin on a ``fast_tasks/<ID>`` workspace in local Docker; grade on the host.
 
-The agent container mounts only a staged copy of ``workspace/`` at ``/app``.
-``grade.py``, ``goldens/``, and other grader material stay on the host and are
-never bind-mounted or baked into the agent image.
+The agent container mounts a staged copy of ``workspace/`` at ``/app``, plus
+(when ``--agent=malvin``) the host ``malvin`` binary and read-only
+``cursor-sdk-bridge`` (for ``cursor:`` models). ``--agent=cursor`` and
+``--agent=prime`` skip malvin and run those CLIs instead. ``grade.py``,
+``goldens/``, and other grader material stay on the host and are never
+bind-mounted or baked into the agent image.
 
 Usage::
 
     python ops/fast_task.py solve FT-01
     python ops/fast_task.py solve FT-01 --dry-run
-    python ops/fast_task.py solve FT-01 --cursor
+    python ops/fast_task.py solve FT-01 --agent=cursor
+    python ops/fast_task.py solve FT-01 --agent=prime
     python ops/fast_task.py solve FT-01 --main
     python ops/fast_task.py solve FT-01 --model cursor:auto
     python ops/fast_task.py tasks
@@ -50,17 +54,106 @@ _POLL_INTERVAL_SEC = 0.1
 # Optional override for agent wall-clock (seconds), e.g. longer FT-03 streak runs.
 AGENT_TIMEOUT_ENV = "MALVIN_FT_AGENT_TIMEOUT_SEC"
 MALVIN_BIN_REMOTE = "/root/.cargo/bin/malvin"
+# Host cursor-sdk-bridge is bind-mounted here so in-container malvin can spawn
+# the Node bridge (image has cursor-agent's Node ≥22, but not the bridge tree).
+CURSOR_SDK_BRIDGE_REMOTE = "/opt/malvin/cursor-sdk-bridge"
+CURSOR_SDK_BRIDGE_JS_REMOTE = f"{CURSOR_SDK_BRIDGE_REMOTE}/dist/bridge.js"
+# Host prime-agent Node prefix + kernel venv (``--agent=prime``).
+PRIME_AGENT_PREFIX_REMOTE = "/opt/malvin/prime-agent"
+PRIME_KERNEL_REMOTE = "/opt/malvin/prime-kernel"
+PRIME_KERNEL_PYTHON_REMOTE = f"{PRIME_KERNEL_REMOTE}/bin/python"
 TOOLCHAIN_PATH = (
     "/root/.cargo/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin"
     ":/usr/sbin:/usr/bin:/sbin:/bin"
 )
+AGENT_MALVIN = "malvin"
+AGENT_CURSOR = "cursor"
+AGENT_PRIME = "prime"
+AGENT_CHOICES = (AGENT_MALVIN, AGENT_CURSOR, AGENT_PRIME)
+EXTERNAL_AGENTS = frozenset({AGENT_CURSOR, AGENT_PRIME})
 CURSOR_ENV_KEYS = ("CURSOR_AGENT_API_KEY", "CURSOR_API_KEY", "AGENT_API_KEY")
 OPENROUTER_ENV_KEYS = ("OPENROUTER_API_KEY", "OPENROUTER_MAX_TOKENS")
+PRIME_ENV_KEYS = ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "PRIME_API_KEY")
 # Host secrets forwarded into the agent container (and redacted in logs).
-DOCKER_SECRET_ENV_KEYS = CURSOR_ENV_KEYS + OPENROUTER_ENV_KEYS
+DOCKER_SECRET_ENV_KEYS = CURSOR_ENV_KEYS + OPENROUTER_ENV_KEYS + PRIME_ENV_KEYS
 LEAK_NAME_MARKERS = ("grade.py", "goldens", "golden", "solution")
 # Shell form required so stdin redirect works under `docker run … -w /app`.
 CURSOR_AGENT_SHELL = "cursor-agent --force -p < plan.md"
+PRIME_AGENT_SHELL = "prime-agent --no-session -p < plan.md"
+
+
+def ft_resolve_cursor_sdk_bridge_dir() -> Path | None:
+    """Host ``cursor-sdk-bridge`` dir with built ``dist/bridge.js``, or None."""
+    bridge = (REPO_ROOT / "cursor-sdk-bridge").resolve()
+    if (bridge / "dist" / "bridge.js").is_file():
+        return bridge
+    return None
+
+
+def ft_resolve_prime_agent_prefix() -> Path | None:
+    """Host prime-agent install root (``bin/prime-agent`` + ``bin/node``), or None."""
+    which = shutil.which("prime-agent")
+    if not which:
+        return None
+    path = Path(which)
+    if path.parent.name != "bin":
+        return None
+    prefix = path.parent.parent
+    if not (prefix / "bin" / "prime-agent").exists():
+        return None
+    return prefix.resolve()
+
+
+def ft_resolve_prime_kernel_venv() -> Path | None:
+    """Host Prime Agent kernel venv (``bin/python``), or None."""
+    override = os.environ.get("PRIME_AGENT_KERNEL_PYTHON")
+    if override:
+        py = Path(override).expanduser()
+        if py.is_file() and py.parent.name == "bin":
+            return py.parent.parent.resolve()
+    home_venv = Path.home() / ".prime" / "agent" / "kernel-venv"
+    if (home_venv / "bin" / "python").is_file():
+        return home_venv.resolve()
+    return None
+
+
+def ft_resolve_prime_kernel_interpreter_root(kernel_venv: Path) -> Path | None:
+    """Host directory that must be bind-mounted so ``kernel_venv/bin/python`` resolves.
+
+    uv-managed venvs often symlink ``bin/python`` to an absolute path under
+    ``~/.local/share/uv/python/...``. Mounting only the venv leaves that
+    target missing inside Docker.
+    """
+    py = kernel_venv / "bin" / "python"
+    if not py.exists():
+        return None
+    # Prefer the symlink text (may differ from resolve()'d path).
+    try:
+        target = Path(os.readlink(py))
+    except OSError:
+        target = py.resolve()
+    if not target.is_absolute():
+        target = (py.parent / target).resolve()
+    else:
+        # Absolute symlink text may still need resolve for existence checks.
+        if not target.exists():
+            target = py.resolve()
+    if target.parent.name != "bin":
+        return None
+    root = target.parent.parent
+    if not (root / "bin").is_dir():
+        return None
+    return root
+
+
+def ft_normalize_agent(agent: str) -> str:
+    """Return a canonical agent id or raise ``click.ClickException``."""
+    name = (agent or AGENT_MALVIN).strip().lower()
+    if name not in AGENT_CHOICES:
+        raise click.ClickException(
+            f"Unknown --agent={agent!r}; expected one of {', '.join(AGENT_CHOICES)}"
+        )
+    return name
 
 
 def ft_default_results_dir() -> Path:
@@ -332,23 +425,62 @@ def ft_docker_agent_cmd(
     workspace: Path,
     malvin_binary: Path | None = None,
     malvin_args: tuple[str, ...] = (),
-    use_cursor: bool = False,
+    agent: str = AGENT_MALVIN,
 ) -> list[str]:
     """Agent-phase ``docker run`` argv: workspace + per-run logs mounts."""
+    agent_name = ft_normalize_agent(agent)
     ws = workspace.resolve()
     host_logs = ft_run_malvin_logs_dir(ws)
-    # Persist container ``/root/.malvin_home/logs`` on the host so mini ACP
-    # traces (e.g. miniPromptShrink) survive ``docker run --rm``.
+    # Persist container ``/root/.malvin_home/logs`` on the host so ACP
+    # traces survive ``docker run --rm``.
     volume_mounts: list[str] = [
         "-v",
         f"{ws}:/app",
         "-v",
         f"{host_logs}:/root/.malvin_home/logs",
     ]
-    if not use_cursor:
+    bridge_env: list[str] = []
+    path_value = TOOLCHAIN_PATH
+    extra_env: list[str] = []
+    if agent_name == AGENT_PRIME:
+        host_prime = ft_resolve_prime_agent_prefix()
+        if host_prime is None:
+            raise click.ClickException(
+                "prime-agent not found on PATH; install it on the host "
+                "(https://app.primeintellect.ai/prime-agent/install.sh)"
+            )
+        host_kernel = ft_resolve_prime_kernel_venv()
+        if host_kernel is None:
+            raise click.ClickException(
+                "Prime Agent kernel venv not found "
+                "(~/.prime/agent/kernel-venv or PRIME_AGENT_KERNEL_PYTHON)"
+            )
+        volume_mounts = [
+            "-v",
+            f"{host_prime}:{PRIME_AGENT_PREFIX_REMOTE}:ro",
+            "-v",
+            f"{host_kernel}:{PRIME_KERNEL_REMOTE}:ro",
+            *volume_mounts,
+        ]
+        # uv venvs symlink bin/python outside the venv; mount that root too.
+        interp_root = ft_resolve_prime_kernel_interpreter_root(host_kernel)
+        if interp_root is not None and interp_root.resolve() != host_kernel.resolve():
+            volume_mounts = [
+                "-v",
+                f"{interp_root}:{interp_root}:ro",
+                *volume_mounts,
+            ]
+        path_value = f"{PRIME_AGENT_PREFIX_REMOTE}/bin:{TOOLCHAIN_PATH}"
+        extra_env = [
+            "-e",
+            f"PRIME_AGENT_KERNEL_PYTHON={PRIME_KERNEL_PYTHON_REMOTE}",
+            "-e",
+            "PI_SKIP_VERSION_CHECK=1",
+        ]
+    elif agent_name == AGENT_MALVIN:
         if malvin_binary is None:
             raise click.ClickException(
-                "malvin_binary is required when not using --cursor"
+                "malvin_binary is required when --agent=malvin"
             )
         host_malvin = malvin_binary.resolve()
         if not host_malvin.is_file():
@@ -358,14 +490,32 @@ def ft_docker_agent_cmd(
             f"{host_malvin}:{MALVIN_BIN_REMOTE}:ro",
             *volume_mounts,
         ]
+        host_bridge = ft_resolve_cursor_sdk_bridge_dir()
+        if host_bridge is None:
+            raise click.ClickException(
+                "cursor-sdk-bridge/dist/bridge.js not found under the repo; "
+                "run `npm ci && npm run build` in cursor-sdk-bridge/ "
+                "(required for cursor: models inside the agent container)"
+            )
+        volume_mounts = [
+            "-v",
+            f"{host_bridge}:{CURSOR_SDK_BRIDGE_REMOTE}:ro",
+            *volume_mounts,
+        ]
+        bridge_env = [
+            "-e",
+            f"MALVIN_CURSOR_SDK_BRIDGE={CURSOR_SDK_BRIDGE_JS_REMOTE}",
+        ]
     cmd = [
         "docker",
         "run",
         "--rm",
         *ft_cursor_env_args(),
         *volume_mounts,
+        *bridge_env,
+        *extra_env,
         "-e",
-        f"PATH={TOOLCHAIN_PATH}",
+        f"PATH={path_value}",
         "-e",
         "MALVIN_FORCE_STDOUT_TEE=1",
         # Host-owned bind mount often looks "dubious" to container git-as-root.
@@ -379,9 +529,11 @@ def ft_docker_agent_cmd(
         "/app",
         image,
     ]
-    if use_cursor:
+    if agent_name == AGENT_CURSOR:
         # Skip malvin (and thus router init): shell stdin from plan.md.
         cmd.extend(["sh", "-c", CURSOR_AGENT_SHELL])
+    elif agent_name == AGENT_PRIME:
+        cmd.extend(["sh", "-c", PRIME_AGENT_SHELL])
     else:
         cmd.extend(["malvin", *malvin_args, "plan.md"])
     ft_assert_agent_cmd_nonleak(cmd, task_parent=ws.parent)
@@ -555,7 +707,7 @@ def ft_print_evaluation_summary(
     agent_result: dict[str, Any] | None,
     run_root: Path,
 ) -> None:
-    """Print DeepSWE-style evaluation block including ``reward:``."""
+    """Print Harbor-style evaluation block including ``reward:``."""
     click.echo("\n=== Evaluation ===")
     click.echo(f"reward: {grade_result.get('reward')}")
     click.echo(f"pass: {grade_result.get('pass')}")
@@ -595,13 +747,16 @@ def ft_run_solve(
     malvin_args: tuple[str, ...] = (),
     dry_run: bool = False,
     skip_grade: bool = False,
-    use_cursor: bool = False,
+    agent: str = AGENT_MALVIN,
     use_main: bool = False,
     timeout_sec: float = DEFAULT_AGENT_TIMEOUT_SEC,
 ) -> dict[str, Any]:
     """Stage workspace, run agent in Docker, grade on host; return result dict."""
-    if use_cursor and use_main:
-        raise click.ClickException("--cursor and --main are mutually exclusive")
+    agent_name = ft_normalize_agent(agent)
+    if agent_name in EXTERNAL_AGENTS and use_main:
+        raise click.ClickException(
+            f"--agent={agent_name} and --main are mutually exclusive"
+        )
     if timeout_sec <= 0:
         raise click.ClickException("timeout_sec must be positive")
     task_dir = ft_resolve_task_dir(task_id)
@@ -615,7 +770,7 @@ def ft_run_solve(
         dry_run=dry_run,
     )
     host_malvin: Path | None = None
-    if not use_cursor:
+    if agent_name == AGENT_MALVIN:
         if use_main:
             host_malvin = ft_resolve_malvin_main_binary()
             if host_malvin is None:
@@ -628,14 +783,14 @@ def ft_run_solve(
             if host_malvin is None:
                 raise click.ClickException(
                     "No host malvin binary found (PATH or ~/.cargo/bin/malvin); "
-                    "build malvin on the host or use --cursor / --main"
+                    "build malvin on the host or use --agent=cursor / --main"
                 )
     cmd = ft_docker_agent_cmd(
         image=image,
         workspace=workspace,
         malvin_binary=host_malvin,
         malvin_args=malvin_args,
-        use_cursor=use_cursor,
+        agent=agent_name,
     )
     click.echo(f"Staged workspace: {workspace}")
     click.echo(f"Agent command: {ft_redact_cmd_for_display(cmd)}")
@@ -656,8 +811,10 @@ def ft_run_solve(
         if not ft_docker_available():
             raise click.ClickException("Docker daemon is not available")
         ft_preflight_workspace_mount(image=image, workspace=workspace)
-        if use_cursor:
+        if agent_name == AGENT_CURSOR:
             agent_label = "cursor-agent"
+        elif agent_name == AGENT_PRIME:
+            agent_label = "prime-agent"
         elif use_main:
             agent_label = "malvin-main"
         else:
@@ -691,6 +848,7 @@ def ft_run_solve(
         "workspace": str(workspace),
         "image": image,
         "agent": agent_result,
+        "agent_name": agent_name,
         "grade": grade_result,
         "docker_cmd": ft_redact_cmd_tokens(cmd),
     }
@@ -720,7 +878,7 @@ def ft_cli_solve(
     dry_run: bool,
     skip_grade: bool,
     malvin_args: tuple[str, ...],
-    use_cursor: bool = False,
+    agent: str = AGENT_MALVIN,
     use_main: bool = False,
     timeout_sec: float | None = None,
 ) -> None:
@@ -733,7 +891,7 @@ def ft_cli_solve(
         malvin_args=malvin_args,
         dry_run=dry_run,
         skip_grade=skip_grade,
-        use_cursor=use_cursor,
+        agent=agent,
         use_main=use_main,
         timeout_sec=ft_agent_timeout_sec(timeout_sec),
     )
@@ -754,11 +912,13 @@ def run_fast_task_self_tests() -> None:
     _ft_test_dockerfile_nonleak()
     _ft_test_docker_agent_cmd_nonleak()
     _ft_test_docker_agent_cmd_cursor()
+    _ft_test_docker_agent_cmd_prime()
     _ft_test_assert_agent_cmd_rejects_task_root()
     _ft_test_grade_on_host_starter_reward_zero()
     _ft_test_solve_help_and_dry_run()
     _ft_test_solve_main_dry_run()
     _ft_test_resolve_malvin_main_binary()
+    _ft_test_resolve_agent_helpers()
     _ft_test_relay_streams_before_wait()
     _ft_test_relay_timeout_kills_slow_command()
     _ft_test_print_evaluation_includes_reward()
@@ -824,11 +984,17 @@ def _ft_test_docker_agent_cmd_nonleak() -> None:
         assert "malvin" in cmd
         assert "cursor-agent" not in " ".join(cmd)
         mounts = [cmd[i + 1] for i, token in enumerate(cmd) if token == "-v"]
-        assert len(mounts) == 3
+        assert len(mounts) == 4
         assert any(m.endswith(":/app") and str(ws.resolve()) in m for m in mounts)
         assert any(
             m == f"{host_malvin.resolve()}:{MALVIN_BIN_REMOTE}:ro" for m in mounts
         )
+        host_bridge = ft_resolve_cursor_sdk_bridge_dir()
+        assert host_bridge is not None
+        assert any(
+            m == f"{host_bridge}:{CURSOR_SDK_BRIDGE_REMOTE}:ro" for m in mounts
+        )
+        assert f"MALVIN_CURSOR_SDK_BRIDGE={CURSOR_SDK_BRIDGE_JS_REMOTE}" in cmd
         host_logs = ft_run_malvin_logs_dir(ws)
         assert any(m == f"{host_logs}:/root/.malvin_home/logs" for m in mounts)
         assert host_logs == (ws.resolve().parent / "malvin_logs")
@@ -849,7 +1015,10 @@ def _ft_test_docker_agent_cmd_cursor() -> None:
         ws.mkdir()
         (ws / "plan.md").write_text("x\n", encoding="utf-8")
         cmd = ft_docker_agent_cmd(
-            image=DEFAULT_IMAGE, workspace=ws, use_cursor=True, malvin_args=("--verbose",)
+            image=DEFAULT_IMAGE,
+            workspace=ws,
+            agent=AGENT_CURSOR,
+            malvin_args=("--verbose",),
         )
         joined = " ".join(cmd)
         assert "sh" in cmd
@@ -858,6 +1027,82 @@ def _ft_test_docker_agent_cmd_cursor() -> None:
         assert "cursor-agent --force -p < plan.md" in joined
         assert "malvin" not in cmd
         assert "--verbose" not in cmd
+
+
+def _ft_test_docker_agent_cmd_prime() -> None:
+    host_prime = ft_resolve_prime_agent_prefix()
+    host_kernel = ft_resolve_prime_kernel_venv()
+    if host_prime is not None and host_kernel is not None:
+        with tempfile.TemporaryDirectory(prefix="ft-prime-") as tmp:
+            ws = Path(tmp) / "workspace"
+            ws.mkdir()
+            (ws / "plan.md").write_text("x\n", encoding="utf-8")
+            cmd = ft_docker_agent_cmd(
+                image=DEFAULT_IMAGE,
+                workspace=ws,
+                agent=AGENT_PRIME,
+            )
+            joined = " ".join(cmd)
+            assert PRIME_AGENT_SHELL in cmd
+            assert "prime-agent --no-session -p < plan.md" in joined
+            assert "malvin" not in cmd
+            mounts = [cmd[i + 1] for i, token in enumerate(cmd) if token == "-v"]
+            assert any(
+                m == f"{host_prime}:{PRIME_AGENT_PREFIX_REMOTE}:ro" for m in mounts
+            ), mounts
+            assert any(
+                m == f"{host_kernel}:{PRIME_KERNEL_REMOTE}:ro" for m in mounts
+            ), mounts
+            assert f"PRIME_AGENT_KERNEL_PYTHON={PRIME_KERNEL_PYTHON_REMOTE}" in cmd
+            assert f"PATH={PRIME_AGENT_PREFIX_REMOTE}/bin:{TOOLCHAIN_PATH}" in cmd
+            assert "PI_SKIP_VERSION_CHECK=1" in cmd
+            interp_root = ft_resolve_prime_kernel_interpreter_root(host_kernel)
+            if interp_root is not None and interp_root.resolve() != host_kernel.resolve():
+                assert any(
+                    m == f"{interp_root}:{interp_root}:ro" for m in mounts
+                ), mounts
+    else:
+        assert ft_normalize_agent("prime") == AGENT_PRIME
+
+    _ft_mod = sys.modules[__name__]
+
+    old_resolve = _ft_mod.ft_resolve_prime_agent_prefix
+    try:
+        _ft_mod.ft_resolve_prime_agent_prefix = lambda: None  # type: ignore[assignment]
+        with tempfile.TemporaryDirectory(prefix="ft-prime-err-") as tmp:
+            ws = Path(tmp) / "workspace"
+            ws.mkdir()
+            (ws / "plan.md").write_text("x\n", encoding="utf-8")
+            try:
+                ft_docker_agent_cmd(
+                    image=DEFAULT_IMAGE, workspace=ws, agent=AGENT_PRIME
+                )
+                raise AssertionError("expected missing prime-agent rejection")
+            except click.ClickException as exc:
+                assert "prime-agent not found" in str(exc)
+        old_kernel = _ft_mod.ft_resolve_prime_kernel_venv
+        _ft_mod.ft_resolve_prime_agent_prefix = (  # type: ignore[assignment]
+            lambda: Path("/tmp")
+        )
+        _ft_mod.ft_resolve_prime_kernel_venv = lambda: None  # type: ignore[assignment]
+        try:
+            with tempfile.TemporaryDirectory(prefix="ft-kernel-err-") as tmp:
+                ws = Path(tmp) / "workspace"
+                ws.mkdir()
+                (ws / "plan.md").write_text("x\n", encoding="utf-8")
+                try:
+                    ft_docker_agent_cmd(
+                        image=DEFAULT_IMAGE, workspace=ws, agent=AGENT_PRIME
+                    )
+                    raise AssertionError("expected missing kernel rejection")
+                except click.ClickException as exc:
+                    assert "kernel venv not found" in str(exc)
+        finally:
+            _ft_mod.ft_resolve_prime_kernel_venv = old_kernel  # type: ignore[assignment]
+    finally:
+        _ft_mod.ft_resolve_prime_agent_prefix = old_resolve  # type: ignore[assignment]
+
+
 def _ft_test_assert_agent_cmd_rejects_task_root() -> None:
     task_dir = ft_resolve_task_dir("FT-01")
     bad = [
@@ -913,7 +1158,10 @@ def _ft_test_solve_help_and_dry_run() -> None:
     help_result = runner.invoke(cli, ["solve", "--help"])
     assert help_result.exit_code == 0, help_result.output
     assert "TASK_ID" in help_result.output
-    assert "--cursor" in help_result.output
+    assert "--agent" in help_result.output
+    assert "cursor" in help_result.output
+    assert "prime" in help_result.output
+    assert "--cursor" not in help_result.output
     assert "--main" in help_result.output
     assert "--model" in help_result.output
     assert DEFAULT_AGENT_TIMEOUT_SEC == 600
@@ -1011,7 +1259,7 @@ def _ft_test_solve_help_and_dry_run() -> None:
             [
                 "solve",
                 "FT-01",
-                "--cursor",
+                "--agent=cursor",
                 "--dry-run",
                 "--skip-grade",
                 "--results-dir",
@@ -1029,6 +1277,32 @@ def _ft_test_solve_help_and_dry_run() -> None:
         assert "malvin" not in cursor_cmd
         assert "grade.py" not in cursor_joined
         assert "goldens" not in cursor_joined
+        assert cursor_meta.get("agent_name") == AGENT_CURSOR
+
+        if ft_resolve_prime_agent_prefix() and ft_resolve_prime_kernel_venv():
+            prime_tmp = Path(tmp) / "prime"
+            prime_tmp.mkdir()
+            prime_result = runner.invoke(
+                cli,
+                [
+                    "solve",
+                    "FT-01",
+                    "--agent=prime",
+                    "--dry-run",
+                    "--skip-grade",
+                    "--results-dir",
+                    str(prime_tmp),
+                ],
+                catch_exceptions=False,
+            )
+            assert prime_result.exit_code == 0, prime_result.output
+            prime_meta_paths = list(prime_tmp.glob("FT-01/*/metadata.json"))
+            assert prime_meta_paths, prime_result.output
+            prime_meta = json.loads(prime_meta_paths[0].read_text(encoding="utf-8"))
+            prime_joined = " ".join(prime_meta["docker_cmd"])
+            assert "prime-agent --no-session -p < plan.md" in prime_joined
+            assert "malvin" not in prime_meta["docker_cmd"]
+            assert prime_meta.get("agent_name") == AGENT_PRIME
 
 
 def _ft_test_solve_main_dry_run() -> None:
@@ -1084,7 +1358,7 @@ def _ft_test_solve_main_dry_run() -> None:
                     "solve",
                     "FT-01",
                     "--main",
-                    "--cursor",
+                    "--agent=cursor",
                     "--dry-run",
                     "--skip-grade",
                     "--results-dir",
@@ -1093,6 +1367,21 @@ def _ft_test_solve_main_dry_run() -> None:
             )
             assert conflict.exit_code != 0
             assert "mutually exclusive" in conflict.output
+            conflict_prime = runner.invoke(
+                cli,
+                [
+                    "solve",
+                    "FT-01",
+                    "--main",
+                    "--agent=prime",
+                    "--dry-run",
+                    "--skip-grade",
+                    "--results-dir",
+                    tmp,
+                ],
+            )
+            assert conflict_prime.exit_code != 0
+            assert "mutually exclusive" in conflict_prime.output
         finally:
             if path_extra is not None:
                 path = os.environ.get("PATH", "")
@@ -1118,6 +1407,86 @@ def _ft_test_resolve_malvin_main_binary() -> None:
             assert missing is None
         finally:
             os.environ["PATH"] = old_path
+
+
+def _ft_test_resolve_agent_helpers() -> None:
+    """Cover agent-id normalize + prime/cursor host-resolve edge branches."""
+    assert ft_normalize_agent("CURSOR") == AGENT_CURSOR
+    assert ft_normalize_agent("") == AGENT_MALVIN
+    try:
+        ft_normalize_agent("nope")
+        raise AssertionError("expected unknown agent rejection")
+    except click.ClickException as exc:
+        assert "Unknown --agent" in str(exc)
+
+    with tempfile.TemporaryDirectory(prefix="ft-bridge-miss-") as tmp:
+        fake_root = Path(tmp)
+        (fake_root / "cursor-sdk-bridge").mkdir()
+        original_root = globals()["REPO_ROOT"]
+        globals()["REPO_ROOT"] = fake_root
+        try:
+            assert ft_resolve_cursor_sdk_bridge_dir() is None
+        finally:
+            globals()["REPO_ROOT"] = original_root
+
+    old_which = shutil.which
+    try:
+        shutil.which = lambda _name: None  # type: ignore[assignment]
+        assert ft_resolve_prime_agent_prefix() is None
+        shutil.which = lambda _name: "/usr/bin/prime-agent"  # type: ignore[assignment]
+        assert ft_resolve_prime_agent_prefix() is None
+        with tempfile.TemporaryDirectory(prefix="ft-prime-miss-") as tmp:
+            bin_dir = Path(tmp) / "bin"
+            bin_dir.mkdir()
+            stub = bin_dir / "prime-agent"
+            stub.write_text("#!/bin/sh\n", encoding="utf-8")
+            stub.chmod(0o755)
+            # Parent lacks bin/prime-agent after we point which at a non-bin path copy.
+            shutil.which = lambda _name: str(Path(tmp) / "not-bin" / "prime-agent")  # type: ignore[assignment]
+            assert ft_resolve_prime_agent_prefix() is None
+            empty_prefix = Path(tmp) / "empty"
+            empty_bin = empty_prefix / "bin"
+            empty_bin.mkdir(parents=True)
+            # which points at empty_bin/prime-agent which does not exist as a file
+            # under prefix/bin after we only created the directory.
+            shutil.which = lambda _name: str(empty_bin / "prime-agent")  # type: ignore[assignment]
+            assert ft_resolve_prime_agent_prefix() is None
+    finally:
+        shutil.which = old_which  # type: ignore[assignment]
+
+    with tempfile.TemporaryDirectory(prefix="ft-kernel-") as tmp:
+        venv_bin = Path(tmp) / "venv" / "bin"
+        venv_bin.mkdir(parents=True)
+        py = venv_bin / "python"
+        py.write_text("#!/bin/sh\n", encoding="utf-8")
+        py.chmod(0o755)
+        old = os.environ.get("PRIME_AGENT_KERNEL_PYTHON")
+        os.environ["PRIME_AGENT_KERNEL_PYTHON"] = str(py)
+        try:
+            assert ft_resolve_prime_kernel_venv() == (Path(tmp) / "venv").resolve()
+            os.environ["PRIME_AGENT_KERNEL_PYTHON"] = str(Path(tmp) / "missing")
+            # Falls through to home venv if present, else None — either is fine;
+            # force the override miss path by using a non-bin file.
+            odd = Path(tmp) / "python"
+            odd.write_text("x", encoding="utf-8")
+            os.environ["PRIME_AGENT_KERNEL_PYTHON"] = str(odd)
+            # home venv may exist on this host; just ensure the call returns a Path or None
+            _ = ft_resolve_prime_kernel_venv()
+        finally:
+            if old is None:
+                os.environ.pop("PRIME_AGENT_KERNEL_PYTHON", None)
+            else:
+                os.environ["PRIME_AGENT_KERNEL_PYTHON"] = old
+
+    host_kernel = ft_resolve_prime_kernel_venv()
+    if host_kernel is not None:
+        interp = ft_resolve_prime_kernel_interpreter_root(host_kernel)
+        # Either a uv/external interpreter root, or None if python is self-contained.
+        assert interp is None or (interp / "bin").is_dir()
+    with tempfile.TemporaryDirectory(prefix="ft-interp-miss-") as tmp:
+        empty = Path(tmp) / "venv"
+        (empty / "bin").mkdir(parents=True)
+        assert ft_resolve_prime_kernel_interpreter_root(empty) is None
 
 
 _FT_RELAY_SPY_SEEN: list[str] = []

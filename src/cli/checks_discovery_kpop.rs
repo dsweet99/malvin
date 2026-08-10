@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use crate::artifacts::{backup_workspace_malvin_checks_if_present, RunArtifacts};
+use crate::artifacts::RunArtifacts;
 use crate::kpop_engine::{
     run_kpop_engine, KPopEngineParams, KPopEnginePrepared, KPopHardConstraints,
 };
@@ -49,19 +49,18 @@ pub(super) async fn run_checks_discovery_kpop(
     artifacts: &RunArtifacts,
     kpop_command: &str,
 ) -> Result<(), String> {
-    let workflow = WorkflowCliOptions::from_shared(shared);
+    let workflow = WorkflowCliOptions {
+        force: !shared.no_force,
+    };
     let store = prepare_checks_discovery_prompt_store(workflow)?;
     let request_text = checks_discovery_kpop_request(&store, artifacts)?;
     std::fs::write(&artifacts.plan_path, &request_text).map_err(|e| e.to_string())?;
-    let malvin_checks_backup = backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
-    let context = kpop_workflow_context_without_gates(artifacts, &shared.model, shared.git)?;
+    let context = kpop_workflow_context_without_gates(artifacts, &shared.model.canonical(), shared.git)?;
     let prepared = KPopEnginePrepared {
         artifacts: artifacts.clone(),
         context,
-        request_text: request_text.clone(),
-        startup_emit_request: request_text,
+        request_text,
         store,
-        malvin_checks_backup,
     };
     let agent_cfg = load_discovery_agent_config(&artifacts.work_dir);
     let max_loops = if crate::acp::test_no_real_agent_enabled() {

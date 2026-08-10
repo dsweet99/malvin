@@ -5,13 +5,8 @@ pub fn ensure_malvin_checks_for_command(cmd: &Commands) -> Result<(), String> {
         Commands::Models(_)
         | Commands::Inspire(_)
         | Commands::Adaptix(_)
-        | Commands::Explain(_)
-        | Commands::Delight(_) => Ok(()),
-        Commands::Init(_) => {
-            let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-            crate::repo_gates::ensure_default_malvin_config_file(&cwd)
-        }
-        _ => {
+        | Commands::Write(_) => Ok(()),
+        Commands::Init(_) | Commands::Tidy(_) => {
             let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
             crate::repo_gates::ensure_default_malvin_config_file(&cwd)
         }
@@ -32,7 +27,7 @@ pub fn ensure_malvin_checks_for_default_route() -> Result<(), String> {
 mod tests {
     use super::{ensure_malvin_checks_for_command, ensure_malvin_checks_for_do_workflow};
     use crate::cli::args::ModelsArgs;
-    use crate::cli::{CodeArgs, Commands};
+    use crate::cli::Commands;
 
     #[test]
     fn ensure_malvin_checks_for_command_writes_config_not_checks() {
@@ -52,17 +47,13 @@ mod tests {
             assert!(!checks.exists());
             assert!(!config.exists());
 
-            ensure_malvin_checks_for_command(&Commands::Code(CodeArgs {
+            ensure_malvin_checks_for_command(&Commands::Tidy(crate::cli::tidy_flow::TidyArgs {
                 max_loops: 1,
                 max_hypotheses: 5,
                 tenacious: false,
-                trust_the_plan: false,
-                dry_run: false,
-                skip_pre_checks: false,
-                fast: false,
-                requests: vec![],
+                quick: false,
             }))
-            .expect("code should materialize config only");
+            .expect("tidy should materialize config only");
             assert!(!checks.is_file());
             assert!(config.is_file());
             assert!(

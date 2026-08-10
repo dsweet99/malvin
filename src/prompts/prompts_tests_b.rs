@@ -36,9 +36,9 @@ fn render_fails_when_double_brace_remains() {
 
 #[test]
 fn enforce_no_unresolved_braces_in_reports_prompt_file() {
-    let err = crate::prompts::enforce_no_unresolved_braces_in("x {{ y }} z", Some("kpop_program.md"))
+    let err = crate::prompts::enforce_no_unresolved_braces_in("x {{ y }} z", Some("header.md"))
         .expect_err("braces");
-    assert!(err.0.contains("kpop_program.md"));
+    assert!(err.0.contains("header.md"));
 }
 
 #[test]
@@ -97,38 +97,4 @@ fn render_header_expands_header_placeholders() {
         out.contains("/P") && !out.contains("{{ plan_path }}"),
         "expected plan_path in header; got:\n{out}"
     );
-}
-
-#[test]
-fn no_kpop_store_loads_no_kpop_common_for_kpop_common_name() {
-    let store = PromptStore::default_store().with_no_kpop(true);
-    let body = store.prompt_text("kpop_common.md").expect("no_kpop_common");
-    assert!(
-        body.contains("deliberately unusual keyword"),
-        "expected no_kpop_common body, got:\n{body}"
-    );
-    assert!(!body.contains("Karl Popper"));
-}
-
-#[test]
-fn default_store_keeps_kpop_common_without_no_kpop() {
-    let store = PromptStore::default_store();
-    let body = store.prompt_text("kpop_common.md").expect("kpop_common");
-    assert!(
-        body.contains("Karl Popper"),
-        "expected kpop_common body, got:\n{body}"
-    );
-}
-
-#[test]
-fn no_kpop_on_disk_store_reads_no_kpop_common_file() {
-    let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path();
-    std::fs::write(root.join("kpop_common.md"), "FULL_KPOP").unwrap();
-    std::fs::write(root.join("no_kpop_common.md"), "NO_KPOP_BODY").unwrap();
-    let store = PromptStore::with_root(root.to_path_buf()).with_no_kpop(true);
-    let body = store.prompt_text("kpop_common.md").expect("remap");
-    assert_eq!(body, "NO_KPOP_BODY");
-    let plain = PromptStore::with_root(root.to_path_buf());
-    assert_eq!(plain.prompt_text("kpop_common.md").unwrap(), "FULL_KPOP");
 }

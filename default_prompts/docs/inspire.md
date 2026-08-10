@@ -12,7 +12,7 @@ One **single-turn** MBC2 (boundary exploration) session: structurally distant id
 
 ## Intention
 
-Batch creative exploration separate from default-route multi-group KPop. Use before committing to a long investigation or implementation run.
+Batch creative exploration separate from the default `router_a` / `router_b` route. Use before committing to a long investigation or implementation run.
 
 ## Usage
 
@@ -44,7 +44,7 @@ Exactly **one** coder prompt: rendered `mbc2.md` only (no coding header or repo 
 
 | Command | When |
 |---------|------|
-| `malvin --do` | General single-turn coding task with full header |
+| `malvin --do` | One-shot agent turn with full header |
 
 ## Examples
 

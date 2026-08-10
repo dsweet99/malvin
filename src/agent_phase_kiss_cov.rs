@@ -1,25 +1,4 @@
 #[test]
-fn mini_phase_hooks_drive_heartbeat() {
-    let _guard = crate::agent_phase::AGENT_PHASE_TEST_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    crate::agent_phase::reset_phase_state_for_test();
-    assert_eq!(crate::agent_phase::heartbeat_label(), "Orienting");
-    crate::agent_phase::clear_orienting();
-    crate::agent_phase::note_mini_llm_request();
-    assert_eq!(crate::agent_phase::heartbeat_label(), "Reasoning");
-    crate::agent_phase::note_mini_bash_exec();
-    assert_eq!(crate::agent_phase::heartbeat_label(), "Executing");
-    crate::agent_phase::note_mini_bash_exec_done(0, "echo hi");
-    assert_eq!(crate::agent_phase::heartbeat_label(), "Reasoning");
-    crate::agent_phase::note_mini_bash_exec_done(1, "kiss check");
-    assert_eq!(
-        crate::agent_phase::current_phase_for_test(),
-        crate::agent_phase::AgentPhase::Debugging
-    );
-}
-
-#[test]
 fn heartbeat_phases_follow_runtime_signals() {
     use crate::tool_summary::ToolSummaryDetail;
     use serde_json::json;
