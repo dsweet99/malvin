@@ -12,6 +12,11 @@ categories = ["development-tools"]
 # Broken local symlinks under .cursor/ break `cargo package` when present as
 # untracked files; keep them out of the published crate.
 exclude = [".cursor/", ".cursorrules"]
+# Agent backends need Node bridges under cursor-sdk-bridge/ and prime-sdk-bridge/.
+# build.rs installs @cursor/sdk and prime-agent into ~/.malvin_home/sdk-bridges/
+# during cargo build / cargo install when in-tree bridges are not already built
+# (requires Node ≥ 22.13).
+build = "build.rs"
 
 [profile.dev]
 incremental = true

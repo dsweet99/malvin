@@ -3,9 +3,17 @@
 
 ## Installation
 
+Requires [Node.js](https://nodejs.org/) ≥ 22.13 (with `npm` on `PATH`). During
+`cargo install` / `cargo build`, malvin's build script installs the Cursor SDK
+(`@cursor/sdk`) and Prime SDK (`prime-agent`) under `~/.malvin_home/sdk-bridges/`
+(skipped when the repo already has built in-tree bridges).
+
 ```bash
 cargo install malvin
 ```
+
+Without Node/npm the Rust build fails unless you set `MALVIN_SKIP_SDK_BRIDGES=1`
+(agent backends will not work).
 
 ## Usage
 

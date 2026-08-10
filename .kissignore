@@ -1,3 +1,4 @@
 target/
 fast_tasks/
 src/malvin_llama/
+build.rs

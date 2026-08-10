@@ -2,7 +2,11 @@
 
 JSONL bridge from malvin (`prime:` models) to [`prime-agent`](https://github.com/PrimeIntellect-ai/prime-agent) via `createAgentSession`.
 
-## Build
+## Install
+
+`cargo build` / `cargo install malvin` run the crate `build.rs`, which installs
+`prime-agent` under `~/.malvin_home/sdk-bridges/prime-sdk-bridge/` when this
+tree has no `node_modules` yet. For a manual in-tree rebuild:
 
 ```bash
 npm ci && npm run build

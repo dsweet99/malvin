@@ -185,9 +185,10 @@ Before most agent-backed commands create a new run directory, malvin may prune o
 
 ## External dependencies
 
-- **Cursor SDK**: Node ≥ 22.13, built `cursor-sdk-bridge/` (`npm ci && npm run build`), and a Cursor API key (`CURSOR_API_KEY`, or `CURSOR_AGENT_API_KEY` / `AGENT_API_KEY`) for `cursor:` models. `malvin models` lists Cursor models via the bridge when possible; falls back to `agent` / `cursor-agent` on `PATH` if the SDK path fails.
+- **Node.js**: ≥ 22.13 with `npm` on `PATH`. `cargo install malvin` / `cargo build` run `build.rs`, which installs the Cursor and Prime SDK bridges under `~/.malvin_home/sdk-bridges/` when in-tree bridges are not already built (required for agent backends). Set `MALVIN_SKIP_SDK_BRIDGES=1` only to compile the binary without those SDKs.
+- **Cursor SDK**: `@cursor/sdk` via `cursor-sdk-bridge/` (installed at build time), and a Cursor API key (`CURSOR_API_KEY`, or `CURSOR_AGENT_API_KEY` / `AGENT_API_KEY`) for `cursor:` models. `malvin models` lists Cursor models via the bridge when possible; falls back to `agent` / `cursor-agent` on `PATH` if the SDK path fails.
 - **OpenRouter**: `OPENROUTER_API_KEY` when using `prime:openrouter/…` models via Prime.
-- **Prime SDK**: Node ≥ 22.8, built `prime-sdk-bridge/`, and a provider API key for `prime:` models.
+- **Prime SDK**: `prime-agent` via `prime-sdk-bridge/` (installed at build time; Node ≥ 22.8 floor for that bridge), and a provider API key for `prime:` models.
 - **Local models**: Apple Silicon / Metal build for `prime:local/…` GGUF models; raise `mem_limit_gb` in `~/.malvin_home/config.toml` before first load (see `malvin models --doc`).
 - **pre-commit**: optional; malvin does not install hooks automatically.
 

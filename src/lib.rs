@@ -112,6 +112,8 @@ pub mod bridge_protocol;
 pub mod bridge_sdk;
 pub mod cursor_sdk;
 pub mod prime_sdk;
+#[cfg(test)]
+pub(crate) mod sdk_bridge_build;
 pub mod acp;
 pub mod ansi_strip;
 pub use acp::{AgentError, AgentIoOptions, AuthError, CoderPromptOptions};

@@ -21,7 +21,9 @@ PRIME_BRIDGE_JS := prime-sdk-bridge/dist/bridge.js
 
 deps:
 	@echo "Build deps (Ubuntu): sudo apt-get install gcc-10 g++-10 libcap-ng-dev"
-	@echo "SDK bridges also need Node >= 22.13 (cursor) / >= 22.8 (prime): npm ci && npm run build in each *-sdk-bridge/"
+	@echo "SDK bridges need Node >= 22.13 (cursor) / >= 22.8 (prime)."
+	@echo "cargo build / cargo install run build.rs (npm ci into ~/.malvin_home/sdk-bridges/ when needed)."
+	@echo "Manual: npm ci && npm run build in each *-sdk-bridge/"
 
 bridges: $(CURSOR_BRIDGE_JS) $(PRIME_BRIDGE_JS)
 

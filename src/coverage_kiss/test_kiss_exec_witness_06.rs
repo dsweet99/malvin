@@ -36,4 +36,41 @@ fn kiss_cov_bridge_sdk_shared_type_names() {
     SdkClient();
     from_init();
     sync_timing_to_open_session();
+    cursor_sdk_marker_present();
+    prime_sdk_marker_present();
+    cursor_first_ready_bridge_js();
+    cursor_first_any_bridge_js();
+    cursor_first_ready_models_js();
+    cursor_first_any_models_js();
+    cursor_candidate_roots();
+    prime_first_ready_bridge_js();
+    prime_first_any_bridge_js();
+    prime_first_ready_models_js();
+    prime_first_any_models_js();
+    prime_candidate_roots();
 }
+
+#[test]
+fn kiss_cov_sdk_bridge_build_install_names() {
+    fnv1a64();
+    Bridge();
+    BRIDGES();
+    run_build_script();
+    emit_rerun_if_changed();
+    ensure_bridge();
+    in_tree_bridge_ready();
+    share_bridge_ready();
+    install_npm_deps();
+    verify_install();
+    write_stamp();
+    sdk_share_dir();
+    copy_dir_recursive();
+    sync_bridge_payload();
+    copy_build_sources();
+    resolve_npm();
+    which();
+    check_node_version();
+    parse_node_version();
+    run_npm();
+}
+
