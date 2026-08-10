@@ -103,7 +103,6 @@ fn kiss_cov_kpop_engine_loop_params_types() {
     
     let backups = SessionDotfileBackups::from_parts(crate::artifacts::SessionDotfileParts {
         malvin_checks: crate::session_dotfile_backup::DotfileBackupState::Missing,
-        malvin_config: crate::session_dotfile_backup::DotfileBackupState::Missing,
         gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
         vision: crate::session_dotfile_backup::VisionBackup::Missing,
         malvin_config_workspace: crate::session_dotfile_backup::DotfileBackupState::Missing,

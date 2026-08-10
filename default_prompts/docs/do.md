@@ -59,7 +59,7 @@ No implement, review, concerns, learn, or summary phases.
 ## Session behavior
 
 - Ensures `~/.malvin_home/config.toml` exists with defaults (same as `tidy`).
-- Backs up `.gitignore`, `.malvin/checks`, `.malvin/config.toml`, and `~/.malvin_home/config.toml`; restores after the session.
+- Backs up `.gitignore`, `.malvin/checks`, and `.malvin/config.toml`; restores after the session.
 - Checks `result.md` for `ABORT:` after the session.
 
 ## Related commands

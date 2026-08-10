@@ -1,10 +1,10 @@
 use std::path::{Path, PathBuf};
 
 use crate::artifacts::{
-    MalvinChecksBackup, MalvinConfigBackup, MalvinConfigWorkspaceBackup, SessionDotfileBackups,
+    MalvinChecksBackup, MalvinConfigWorkspaceBackup, SessionDotfileBackups,
 };
 use crate::repo_gates::MALVIN_CHECKS_FILE;
-use crate::{seed_malvin_config};
+use crate::seed_malvin_config;
 use crate::test_utils::with_isolated_home;
 
 fn workspace_paths(work: &Path) -> (PathBuf, PathBuf, PathBuf) {
@@ -27,14 +27,14 @@ fn seed_workspace(work: &Path) {
 fn assert_workspace_restored(work: &Path) {
     let (m, cfg, gi) = workspace_paths(work);
     assert_eq!(std::fs::read_to_string(&m).unwrap(), "m\n");
-    assert_eq!(std::fs::read_to_string(&cfg).unwrap(), "c\n");
+    // Home config is not session-restored; mid-session edits stick.
+    assert_eq!(std::fs::read_to_string(&cfg).unwrap(), "c2\n");
     assert_eq!(std::fs::read_to_string(&gi).unwrap(), "g\n");
 }
 
 fn empty_parts() -> crate::session_dotfile_backup::SessionDotfileParts {
     crate::session_dotfile_backup::SessionDotfileParts {
         malvin_checks: MalvinChecksBackup::Missing,
-        malvin_config: MalvinConfigBackup::Missing,
         gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
         vision: crate::session_dotfile_backup::VisionBackup::Missing,
         malvin_config_workspace: MalvinConfigWorkspaceBackup::Missing,
@@ -67,7 +67,7 @@ fn restore_excluding_malvin_checks_leaves_checks_unchanged() {
         bundle.restore_excluding_malvin_checks(work).unwrap();
         assert_eq!(std::fs::read_to_string(&m).unwrap(), "agent-edited\n");
         assert_eq!(std::fs::read_to_string(&gi).unwrap(), "g\n");
-        assert_eq!(std::fs::read_to_string(&c).unwrap(), "c\n");
+        assert_eq!(std::fs::read_to_string(&c).unwrap(), "c-agent\n");
         crate::session_dotfile_backup::restore_workspace_session_dotfiles_excluding_malvin_checks(
             work, &bundle,
         )
@@ -160,6 +160,20 @@ fn checks_discovery_restore_excludes_malvin_checks() {
         bundle.restore_excluding_malvin_checks(work).unwrap();
         assert_eq!(std::fs::read_to_string(&m).unwrap(), "agent-checks\n");
         assert_eq!(std::fs::read_to_string(&gi).unwrap(), "g\n");
-        assert_eq!(std::fs::read_to_string(&c).unwrap(), "c\n");
+        assert_eq!(std::fs::read_to_string(&c).unwrap(), "c-agent\n");
+    });
+}
+
+#[test]
+fn home_config_survives_session_restore() {
+    with_isolated_home(|work| {
+        seed_workspace(work);
+        let bundle = SessionDotfileBackups::snapshot(work).unwrap();
+        seed_malvin_config(work, "user-edited\n");
+        bundle.restore(work).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(crate::malvin_config_path(work)).unwrap(),
+            "user-edited\n"
+        );
     });
 }

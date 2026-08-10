@@ -1,13 +1,10 @@
 //! More kiss witnesses for [`super::slots`] (split for file-size limits).
 
 use super::slots_kiss_cov_shared::{
-    dotfile_spec_row_field_count, write_merged_default_malvin_config, MALVIN_CONFIG_SLOT,
-    ROW_WITNESS_0, ROW_WITNESS_1, ROW_WITNESS_2, ROW_WITNESS_3,
+    dotfile_spec_row_field_count, write_merged_default_malvin_config, MALVIN_CONFIG_WORKSPACE_SLOT,
+    ROW_WITNESS_0, ROW_WITNESS_1, ROW_WITNESS_2,
 };
-use super::slots::{
-    dotfile_source_path, labels_for_test, restore_malvin_config_missing_for_test, DotfileSpecRow,
-    DOTFILE_ROWS,
-};
+use super::slots::{dotfile_source_path, labels_for_test, DotfileSpecRow, DOTFILE_ROWS};
 use std::path::Path;
 
 #[test]
@@ -46,7 +43,7 @@ fn kiss_cov_dotfile_spec_row_copy_clone_traits() {
 
 #[test]
 fn kiss_cov_dotfile_spec_row_const_eval_witnesses() {
-    let witnesses = [&ROW_WITNESS_0, &ROW_WITNESS_1, &ROW_WITNESS_2, &ROW_WITNESS_3];
+    let witnesses = [&ROW_WITNESS_0, &ROW_WITNESS_1, &ROW_WITNESS_2];
     for row in witnesses {
         let &DotfileSpecRow {
             rel,
@@ -93,12 +90,10 @@ fn kiss_cov_dotfile_rows_destructure_by_value() {
             panic!("label mkdir mismatch");
         }
         let path = dotfile_source_path(slot, Path::new("/tmp/work"));
-        if slot == MALVIN_CONFIG_SLOT {
-            assert!(path.to_string_lossy().contains("malvin"));
-        } else if slot == 0 {
-            assert_eq!(
-                path,
-                crate::resolve_malvin_checks_path(Path::new("/tmp/work"))
+        if slot == 0 {
+            assert!(
+                path.to_string_lossy().contains("checks"),
+                "checks slot path should mention checks: {path:?}"
             );
         } else {
             assert!(path.starts_with("/tmp/work"));
@@ -120,7 +115,7 @@ fn kiss_cov_dotfile_spec_row_all_literal_forms() {
         };
         assert_eq!(built.rel, expected.rel);
         assert_eq!(built.mkdir_lbl, expected.mkdir_lbl);
-        if slot == MALVIN_CONFIG_SLOT {
+        if slot == MALVIN_CONFIG_WORKSPACE_SLOT {
             assert!(built.copy_err.contains("malvin"));
         }
     }
@@ -128,7 +123,7 @@ fn kiss_cov_dotfile_spec_row_all_literal_forms() {
 
 #[test]
 fn kiss_cov_dotfile_spec_row_same_file_value_witness() {
-    let row = DOTFILE_ROWS[3];
+    let row = DOTFILE_ROWS[MALVIN_CONFIG_WORKSPACE_SLOT];
     let DotfileSpecRow {
         rel,
         home_subdir,
@@ -149,19 +144,13 @@ fn kiss_cov_dotfile_spec_row_same_file_value_witness() {
 }
 
 #[test]
-fn kiss_cov_restore_malvin_config_missing_branches() {
+fn kiss_cov_write_merged_default_malvin_config_helper() {
     crate::test_utils::with_isolated_home(|work| {
-        let spec = &DOTFILE_ROWS[MALVIN_CONFIG_SLOT];
-        let lbls = labels_for_test(spec);
-        assert!(restore_malvin_config_missing_for_test(&work.join("missing"), &lbls).is_ok());
         let cfg_path = crate::malvin_config_path(work);
         if let Some(parent) = cfg_path.parent() {
             std::fs::create_dir_all(parent).expect("mkdir home config parent");
         }
-        std::fs::write(&cfg_path, "not valid toml [[[\n").expect("write bad config");
-        assert!(restore_malvin_config_missing_for_test(&cfg_path, &lbls).is_ok());
         write_merged_default_malvin_config(&cfg_path);
-        assert!(restore_malvin_config_missing_for_test(&cfg_path, &lbls).is_ok());
-        assert!(!cfg_path.exists());
+        assert!(cfg_path.is_file());
     });
 }

@@ -1,4 +1,3 @@
-use crate::workspace_paths::snapshot_category_dir;
 use super::{
     restore_workspace_session_dotfiles, DotfileBackupState, SessionDotfileBackups,
 };
@@ -9,7 +8,6 @@ use super::slots::{
 fn empty_parts() -> crate::session_dotfile_backup::SessionDotfileParts {
     crate::session_dotfile_backup::SessionDotfileParts {
         malvin_checks: DotfileBackupState::Missing,
-        malvin_config: DotfileBackupState::Missing,
         gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
         vision: crate::session_dotfile_backup::VisionBackup::Missing,
         malvin_config_workspace: DotfileBackupState::Missing,
@@ -53,12 +51,10 @@ fn kiss_cov_dotfile_spec_row_by_value_all_slots() {
         assert!(!copy_err.is_empty());
         assert!(!restore_copy_err.is_empty());
         let path = dotfile_source_path(slot, std::path::Path::new("/tmp/work"));
-        if slot == 1 {
-            assert!(path.to_string_lossy().contains("malvin"));
-        } else if slot == 0 {
-            assert_eq!(
-                path,
-                crate::resolve_malvin_checks_path(std::path::Path::new("/tmp/work"))
+        if slot == 0 {
+            assert!(
+                path.to_string_lossy().contains("checks"),
+                "checks slot path should mention checks: {path:?}"
             );
         } else {
             assert!(path.starts_with("/tmp/work"));
@@ -79,23 +75,22 @@ fn dotfile_slot_helpers_and_session_restore_noop() {
     let tmp = tempfile::tempdir().unwrap();
     let mut id = |n: usize| format!("slot{n}");
     let _ = backup_slot(0, tmp.path(), &mut id);
-    let _ = restore_slot(tmp.path(), &DotfileBackupState::Missing, 1);
+    let _ = restore_slot(tmp.path(), &DotfileBackupState::Missing, 0);
     let bundle = SessionDotfileBackups::from_parts(empty_parts());
     restore_workspace_session_dotfiles(tmp.path(), &bundle).unwrap();
 }
 
 #[test]
-fn dotfile_source_path_home_config_slot_uses_malvin_config_path() {
+fn dotfile_source_path_checks_slot_uses_resolved_checks_path() {
     crate::test_utils::with_isolated_home(|work| {
-        crate::seed_malvin_config(work, "home-config\n");
+        std::fs::create_dir_all(work.join(".malvin")).unwrap();
+        std::fs::write(work.join(crate::MALVIN_CHECKS_REL), "c\n").unwrap();
         let mut id = |n: usize| format!("cfg{n}");
-        let backup = backup_slot(1, work, &mut id).unwrap();
+        let backup = backup_slot(0, work, &mut id).unwrap();
         let DotfileBackupState::Present(payload) = backup else {
-            panic!("expected home config backup");
+            panic!("expected checks backup");
         };
-        assert_eq!(String::from_utf8(payload.bytes).unwrap(), "home-config\n");
-        assert!(payload.backup_path.starts_with(snapshot_category_dir("malvin_config")));
-        assert_eq!(dotfile_source_path(1, work), crate::malvin_config_path(work));
+        assert_eq!(String::from_utf8(payload.bytes).unwrap(), "c\n");
         assert_eq!(
             dotfile_source_path(0, work),
             crate::resolve_malvin_checks_path(work)

@@ -1,6 +1,6 @@
 use crate::artifacts::{
-    ensure_gate_exp_log_file, GitignoreBackup, MalvinChecksBackup, MalvinConfigBackup,
-    MalvinConfigWorkspaceBackup, RunArtifacts, SessionDotfileBackups, VisionBackup,
+    ensure_gate_exp_log_file, GitignoreBackup, MalvinChecksBackup, MalvinConfigWorkspaceBackup,
+    RunArtifacts, SessionDotfileBackups, VisionBackup,
 };
 use crate::malvin_config_file::{load_malvin_config, DEFAULT_MAX_HYPOTHESES};
 use crate::router_flow::router_flow_no_work::chat_has_malvin_done;
@@ -32,7 +32,6 @@ pub(crate) fn router_iteration_log_path(artifacts: &RunArtifacts, agent_loop: us
 pub(crate) fn empty_iteration_backups() -> SessionDotfileBackups {
     SessionDotfileBackups::from_parts(crate::session_dotfile_backup::SessionDotfileParts {
         malvin_checks: MalvinChecksBackup::Missing,
-        malvin_config: MalvinConfigBackup::Missing,
         gitignore: GitignoreBackup::Missing,
         vision: VisionBackup::Missing,
         malvin_config_workspace: MalvinConfigWorkspaceBackup::Missing,

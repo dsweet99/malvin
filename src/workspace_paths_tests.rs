@@ -152,22 +152,15 @@ fn remove_legacy_malvin_checks_file_deletes_legacy_not_layout_checks() {
 }
 
 #[test]
-fn home_malvin_config_delete_blocked_without_test_mutation_flag() {
-    use crate::artifacts::SessionDotfileBackups;
+fn home_malvin_config_write_blocked_without_test_mutation_flag() {
     use crate::malvin_config_file::{open_malvin_config, write_config_value};
 
     crate::test_utils::with_isolated_home(|work| {
         let cfg = malvin_config_path(work);
         assert!(!cfg.exists());
-        let backup = SessionDotfileBackups::snapshot(work).expect("snapshot");
         open_malvin_config(work).expect("ensure default");
         assert!(cfg.is_file());
         crate::test_utils::revoke_home_malvin_config_mutation_for_test();
-        backup.restore_excluding_malvin_checks(work).expect("restore");
-        assert!(
-            cfg.is_file(),
-            "without mutation flag, Missing restore must not delete home config"
-        );
         let value: toml::Value = toml::from_str("mem_limit_gb = 99").expect("toml");
         assert!(
             write_config_value(&cfg, &value).is_err(),

@@ -86,7 +86,6 @@ pub fn merge_acp_with_workspace_session_restore_and_check_abort(
 pub(crate) fn merge_error_mentions_restore(merge_error: &str) -> bool {
     merge_error.contains("workspace session restore failed:")
         || merge_error.contains("malvin_checks restore:")
-        || merge_error.contains("malvin_config restore:")
         || merge_error.contains("gitignore restore:")
         || merge_error.contains("vision restore:")
         || merge_error.contains("malvin_config_workspace restore:")

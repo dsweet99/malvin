@@ -74,12 +74,7 @@ pub(crate) fn restore_carry_forward_before_iteration_snapshot(
     carry_forward: Option<&SessionDotfileBackups>,
 ) -> Result<(), String> {
     if let Some(prior) = carry_forward {
-        let mut sanitized = prior.clone();
-        crate::session_dotfile_backup::sanitize_invalid_malvin_home_config_in_bundle(
-            &mut sanitized,
-            work_dir,
-        );
-        sanitized.restore(work_dir)?;
+        prior.restore(work_dir)?;
     }
     Ok(())
 }

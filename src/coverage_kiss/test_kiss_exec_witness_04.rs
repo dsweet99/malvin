@@ -163,7 +163,7 @@ fn kiss_exec_witness_04_10() {
     DotfileBackupPayload();
     SessionDotfileParts();
     DotfileSpecRow();
-    restore_malvin_config_missing_for_test();
+    labels_for_test();
     dotfile_spec_row_field_count();
     write_merged_default_malvin_config();
 }

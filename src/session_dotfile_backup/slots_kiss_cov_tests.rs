@@ -1,9 +1,8 @@
 //! External kiss witnesses for [`super::slots`] (must be `*_tests.rs` for kiss).
 
-use super::slots_kiss_cov_shared::{dotfile_spec_row_field_count, MALVIN_CONFIG_SLOT};
+use super::slots_kiss_cov_shared::{dotfile_spec_row_field_count, MALVIN_CONFIG_WORKSPACE_SLOT};
 use super::slots::{
-    backup_slot, dotfile_source_path, labels_for_test, restore_malvin_config_missing_for_test,
-    restore_slot, DotfileSpecRow, DOTFILE_ROWS,
+    backup_slot, dotfile_source_path, labels_for_test, restore_slot, DotfileSpecRow, DOTFILE_ROWS,
 };
 use super::DotfileBackupState;
 use std::path::Path;
@@ -39,12 +38,10 @@ fn slots_branchy_witness_covers_dotfile_rows() {
         let lbl = labels_for_test(row_ref);
         let path = dotfile_source_path(slot, Path::new("/tmp/w"));
         assert_eq!(dotfile_spec_row_field_count(row_ref), 7);
-        if slot == MALVIN_CONFIG_SLOT {
-            assert!(path.to_string_lossy().contains("malvin"));
-        } else if slot == 0 {
-            assert_eq!(
-                path,
-                crate::resolve_malvin_checks_path(Path::new("/tmp/w"))
+        if slot == 0 {
+            assert!(
+                path.to_string_lossy().contains("checks"),
+                "checks slot path should mention checks: {path:?}"
             );
         } else if lbl.mkdir == row_ref.mkdir_lbl {
             assert_eq!(lbl.restore, row_ref.restore_lbl);
@@ -71,8 +68,7 @@ fn slots_branchy_witness_covers_dotfile_rows() {
 fn kiss_cov_slots_static_unit_refs() {
     let _ = DotfileSpecRow::rel_path;
     let _ = labels_for_test;
-    let _ = restore_malvin_config_missing_for_test;
-    let _: [DotfileSpecRow; 4] = DOTFILE_ROWS;
+    let _: [DotfileSpecRow; 3] = DOTFILE_ROWS;
 }
 
 #[test]
@@ -85,16 +81,18 @@ fn kiss_static_type_refs() {
 
 #[cfg(unix)]
 #[test]
-fn kiss_cov_slots_malvin_config_slot_roundtrip() {
+fn kiss_cov_slots_workspace_config_slot_roundtrip() {
     crate::test_utils::with_isolated_home(|work| {
-        crate::seed_malvin_config(work, "home-config\n");
+        std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
+        std::fs::write(work.join(crate::MALVIN_CONFIG_REL), "workspace-config\n").expect("write");
         let mut generate_id = |n: usize| format!("kiss-cfg-{n}");
-        let backup = backup_slot(MALVIN_CONFIG_SLOT, work, &mut generate_id).expect("backup");
+        let backup =
+            backup_slot(MALVIN_CONFIG_WORKSPACE_SLOT, work, &mut generate_id).expect("backup");
         match backup {
             DotfileBackupState::Present(_) => {
-                restore_slot(work, &backup, MALVIN_CONFIG_SLOT).expect("restore");
+                restore_slot(work, &backup, MALVIN_CONFIG_WORKSPACE_SLOT).expect("restore");
             }
-            DotfileBackupState::Missing => panic!("home config slot should backup"),
+            DotfileBackupState::Missing => panic!("workspace config slot should backup"),
         }
     });
 }
@@ -107,9 +105,6 @@ fn kiss_cov_slots_backup_restore_roundtrip() {
         std::fs::write(work.join(".gitignore"), "target/\n").expect("gitignore");
         let mut generate_id = |n: usize| format!("kiss-slot-{n}");
         for slot in 0..DOTFILE_ROWS.len() {
-            if slot == MALVIN_CONFIG_SLOT {
-                continue;
-            }
             let backup = backup_slot(slot, work, &mut generate_id).expect("backup");
             match backup {
                 DotfileBackupState::Present(_) => {

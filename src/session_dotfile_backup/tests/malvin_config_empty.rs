@@ -1,11 +1,8 @@
-//! Empty / invalid home-config heal paths (split from `malvin_config.rs` for kiss line limits).
+//! Empty / invalid home-config heal paths (not session restore).
 
-use crate::artifacts::{
-    MalvinConfigBackup, restore_workspace_malvin_config_backup, SessionDotfileBackups,
-};
-use crate::session_dotfile_backup::repair_invalid_malvin_home_config_on_disk;
+use crate::artifacts::SessionDotfileBackups;
 use crate::test_utils::with_isolated_home;
-use crate::{malvin_config_path, MALVIN_HOME_CONFIG_FILE, seed_malvin_config};
+use crate::{malvin_config_path, seed_malvin_config};
 
 #[test]
 fn repair_breaks_empty_home_config_on_disk_before_next_snapshot() {
@@ -13,7 +10,8 @@ fn repair_breaks_empty_home_config_on_disk_before_next_snapshot() {
         seed_malvin_config(work, "mem_limit_gb = 7\n");
         let cfg = malvin_config_path(work);
         std::fs::write(&cfg, b"").expect("agent truncates home config");
-        repair_invalid_malvin_home_config_on_disk(work).expect("repair");
+        crate::session_dotfile_backup::repair_invalid_malvin_home_config_on_disk(work)
+            .expect("repair");
         let restored = std::fs::read_to_string(&cfg).expect("read home config");
         assert!(
             restored.contains("mem_limit_gb"),
@@ -24,65 +22,37 @@ fn repair_breaks_empty_home_config_on_disk_before_next_snapshot() {
 }
 
 #[test]
-fn restore_present_empty_home_config_writes_template_not_zero_bytes() {
-    with_isolated_home(|work| {
-        let cfg = malvin_config_path(work);
-        if let Some(parent) = cfg.parent() {
-            std::fs::create_dir_all(parent).expect("mkdir");
-        }
-        std::fs::write(&cfg, b"keep-me\n").expect("seed");
-        let empty = MalvinConfigBackup::Present(crate::session_dotfile_backup::DotfileBackupPayload {
-            backup_path: work.join("empty-slot").join(MALVIN_HOME_CONFIG_FILE),
-            bytes: Vec::new(),
-        });
-        restore_workspace_malvin_config_backup(work, &empty).expect("restore");
-        let text = std::fs::read_to_string(&cfg).expect("read");
-        assert!(
-            !text.is_empty(),
-            "Present(empty) must not leave a 0-byte home config"
-        );
-        assert!(text.contains("mem_limit_gb"), "got: {text:?}");
-        assert!(!text.contains("keep-me"));
-    });
-}
-
-#[test]
 fn snapshot_after_ensuring_heals_empty_home_config_before_capture() {
     with_isolated_home(|work| {
         let cfg = malvin_config_path(work);
         if let Some(parent) = cfg.parent() {
-            std::fs::create_dir_all(parent).expect("mkdir");
+            std::fs::create_dir_all(parent).unwrap();
         }
-        std::fs::write(&cfg, b"").expect("empty");
-        let bundle = SessionDotfileBackups::snapshot_after_ensuring_home_config(work).unwrap();
-        let MalvinConfigBackup::Present(payload) = &bundle.malvin_config else {
-            panic!("expected Present after heal");
-        };
+        std::fs::write(&cfg, b"").unwrap();
+        let _bundle = SessionDotfileBackups::snapshot_after_ensuring_home_config(work).unwrap();
+        let text = std::fs::read_to_string(&cfg).expect("read after ensure");
         assert!(
-            !payload.bytes.is_empty(),
-            "snapshot must not capture Present(empty)"
+            text.contains("mem_limit_gb"),
+            "ensure path must not leave Present(empty) on disk"
         );
-        let on_disk = std::fs::read_to_string(&cfg).expect("read");
-        assert!(on_disk.contains("mem_limit_gb"));
     });
 }
 
 #[test]
-fn empty_snapshot_restore_cycle_does_not_leave_zero_byte_home_config() {
+fn empty_home_config_heal_then_user_edit_survives_restore() {
     with_isolated_home(|work| {
         let cfg = malvin_config_path(work);
         if let Some(parent) = cfg.parent() {
-            std::fs::create_dir_all(parent).expect("mkdir");
+            std::fs::create_dir_all(parent).unwrap();
         }
-        std::fs::write(&cfg, b"").expect("pre-session empty");
+        std::fs::write(&cfg, b"").unwrap();
         let bundle = SessionDotfileBackups::snapshot_after_ensuring_home_config(work).unwrap();
-        std::fs::write(&cfg, b"").expect("mid-session truncate");
+        seed_malvin_config(work, "user-mid-session\n");
         bundle.restore_excluding_malvin_checks(work).unwrap();
         let text = std::fs::read_to_string(&cfg).expect("read after restore");
-        assert!(
-            !text.is_empty(),
-            "full empty→snapshot→truncate→restore cycle must not leave 0 bytes"
+        assert_eq!(
+            text, "user-mid-session\n",
+            "session restore must not overwrite home config"
         );
-        assert!(text.contains("mem_limit_gb"), "got: {text:?}");
     });
 }

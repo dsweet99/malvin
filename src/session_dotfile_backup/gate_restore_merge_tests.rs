@@ -24,7 +24,6 @@ fn gitignore_present(bytes: &[u8]) -> GitignoreBackup {
 fn bundle_with(gitignore: GitignoreBackup, checks: DotfileBackupState) -> SessionDotfileBackups {
     SessionDotfileBackups {
         malvin_checks: checks,
-        malvin_config: DotfileBackupState::Missing,
         gitignore,
         vision: crate::session_dotfile_backup::VisionBackup::Missing,
         malvin_config_workspace: DotfileBackupState::Missing,
@@ -58,29 +57,6 @@ fn merge_rejects_deleted_gitignore() {
     let merged = merge_for_gate_restore(&anchor, &progress);
     assert!(matches!(merged.gitignore, GitignoreBackup::Present { .. }));
     assert!(matches!(merged.malvin_checks, DotfileBackupState::Present(_)));
-}
-
-#[test]
-fn merge_rejects_home_config_tamper() {
-    let anchor = SessionDotfileBackups {
-        malvin_checks: present(b"make lint\n"),
-        malvin_config: present(b"mem_limit_gb = 7\n"),
-        gitignore: GitignoreBackup::Missing,
-        vision: crate::session_dotfile_backup::VisionBackup::Missing,
-        malvin_config_workspace: DotfileBackupState::Missing,
-    };
-    let progress = SessionDotfileBackups {
-        malvin_checks: present(b"make lint\n"),
-        malvin_config: present(b"TAMPERED\n"),
-        gitignore: GitignoreBackup::Missing,
-        vision: crate::session_dotfile_backup::VisionBackup::Missing,
-        malvin_config_workspace: DotfileBackupState::Missing,
-    };
-    let merged = merge_for_gate_restore(&anchor, &progress);
-    let DotfileBackupState::Present(ref cfg) = merged.malvin_config else {
-        panic!("expected malvin_config");
-    };
-    assert_eq!(cfg.bytes, b"mem_limit_gb = 7\n");
 }
 
 #[test]

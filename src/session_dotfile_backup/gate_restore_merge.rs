@@ -2,8 +2,7 @@
 
 use std::path::Path;
 
-use super::gate_restore_checks::{substantive_check_lines};
-use super::gate_restore_repair::sanitize_invalid_malvin_home_config_in_bundle;
+use super::gate_restore_checks::substantive_check_lines;
 use super::{DotfileBackupState, GitignoreBackup, SessionDotfileBackups, VisionBackup};
 
 pub(crate) const fn slot_deleted(anchor: &DotfileBackupState, progress: &DotfileBackupState) -> bool {
@@ -132,12 +131,6 @@ pub fn merge_for_gate_restore(
             malvin_checks_regressed,
             |_, _| false,
         ),
-        malvin_config: pick_slot(
-            &anchor.malvin_config,
-            &progress.malvin_config,
-            slot_regressed,
-            |_, _| false,
-        ),
         gitignore: pick_gitignore(&anchor.gitignore, &progress.gitignore),
         vision: pick_vision(&anchor.vision, &progress.vision),
         malvin_config_workspace: pick_slot(
@@ -149,16 +142,15 @@ pub fn merge_for_gate_restore(
     }
 }
 
-/// Merge anchor/progress snapshots and sanitize any remaining invalid dotfile bytes in the bundle.
+/// Merge anchor/progress snapshots for gate restore.
 #[must_use]
 pub fn merge_and_sanitize_for_gate_restore(
     anchor: &SessionDotfileBackups,
     progress: &SessionDotfileBackups,
     work_dir: &Path,
 ) -> SessionDotfileBackups {
-    let mut merged = merge_for_gate_restore(anchor, progress);
-    sanitize_invalid_malvin_home_config_in_bundle(&mut merged, work_dir);
-    merged
+    let _ = work_dir;
+    merge_for_gate_restore(anchor, progress)
 }
 
 #[cfg(test)]

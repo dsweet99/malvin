@@ -13,19 +13,17 @@ pub use create::{
 pub(crate) use create::{ensure_gate_exp_log_file, ensure_quality_gates_log_file};
 
 pub use crate::session_dotfile_backup::{
-    GitignoreBackup, MalvinChecksBackup, MalvinConfigBackup, MalvinConfigWorkspaceBackup,
-    VisionBackup, SessionDotfileBackups, SessionDotfileParts,
-    backup_workspace_gitignore_if_present, backup_workspace_gitignore_if_present_with_id,
-    backup_workspace_malvin_checks_if_present, backup_workspace_malvin_checks_if_present_with_id,
-    backup_workspace_malvin_config_if_present, backup_workspace_malvin_config_if_present_with_id,
+    GitignoreBackup, MalvinChecksBackup, MalvinConfigWorkspaceBackup, VisionBackup,
+    SessionDotfileBackups, SessionDotfileParts, backup_workspace_gitignore_if_present,
+    backup_workspace_gitignore_if_present_with_id, backup_workspace_malvin_checks_if_present,
+    backup_workspace_malvin_checks_if_present_with_id,
     backup_workspace_malvin_config_workspace_if_present,
     backup_workspace_malvin_config_workspace_if_present_with_id,
     restore_workspace_gitignore_backup, restore_workspace_malvin_checks_backup,
-    restore_workspace_malvin_config_backup, restore_workspace_malvin_config_workspace_backup,
-    restore_workspace_vision_backup, backup_workspace_vision_if_present,
-    backup_workspace_vision_if_present_with_id, restore_workspace_session_dotfiles,
-    merge_and_sanitize_for_gate_restore, merge_for_gate_restore,
-    repair_invalid_malvin_home_config_on_disk, sanitize_invalid_malvin_home_config_in_bundle,
+    restore_workspace_malvin_config_workspace_backup, restore_workspace_vision_backup,
+    backup_workspace_vision_if_present, backup_workspace_vision_if_present_with_id,
+    restore_workspace_session_dotfiles, merge_and_sanitize_for_gate_restore, merge_for_gate_restore,
+    repair_invalid_malvin_home_config_on_disk,
 };
 
 pub use md_request::{

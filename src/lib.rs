@@ -123,8 +123,8 @@ pub use ansi_strip::strip_ansi_escapes;
 pub use artifacts::startup_request_tag_label;
 pub use artifacts::{
     MalvinChecksBackup, RunArtifacts, SessionDotfileBackups,
-    backup_workspace_malvin_checks_if_present, backup_workspace_malvin_config_if_present,
-    create_run_artifacts_from_text, restore_workspace_session_dotfiles,
+    backup_workspace_malvin_checks_if_present, create_run_artifacts_from_text,
+    restore_workspace_session_dotfiles,
 };
 pub use artifacts::{create_kpop_run_artifacts, create_run_artifacts, resolve_user_md_request};
 pub use config::DEFAULT_CLI_MODEL;

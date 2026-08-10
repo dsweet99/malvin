@@ -1,29 +1,6 @@
-//! On-disk and in-memory repair for invalid session dotfiles before gate-loop snapshots.
+//! On-disk repair for invalid home config before sessions (not session snapshot/restore).
 
 use std::path::Path;
-
-use super::{DotfileBackupState, SessionDotfileBackups};
-
-pub(crate) fn default_malvin_home_config_bytes() -> Result<Vec<u8>, String> {
-    let template = crate::malvin_config_file::parse_template_value()?;
-    let mut value = toml::Value::Table(toml::map::Map::new());
-    crate::malvin_config_file::merge_missing_keys(&mut value, &template);
-    let mut text = toml::to_string_pretty(&value)
-        .map_err(|e| format!("serialize default home config: {e}"))?;
-    if !text.ends_with('\n') {
-        text.push('\n');
-    }
-    Ok(text.into_bytes())
-}
-
-/// Session restore must not re-materialize a 0-byte home config (sticky empty file).
-pub(crate) fn bytes_for_malvin_home_config_restore(bytes: &[u8]) -> Result<Vec<u8>, String> {
-    if bytes.is_empty() {
-        default_malvin_home_config_bytes()
-    } else {
-        Ok(bytes.to_vec())
-    }
-}
 
 fn malvin_home_config_bytes_need_repair(bytes: &[u8]) -> bool {
     if bytes.is_empty() {
@@ -52,28 +29,7 @@ fn repair_malvin_home_config_on_disk_impl(work_dir: &Path) -> Result<(), String>
     crate::malvin_config_file::ensure_malvin_config_file_if_missing(work_dir)
 }
 
-fn sanitize_malvin_config_slot(slot: &mut DotfileBackupState) {
-    let DotfileBackupState::Present(payload) = slot else {
-        return;
-    };
-    if !malvin_home_config_bytes_need_repair(&payload.bytes) {
-        return;
-    }
-    if let Ok(fixed) = default_malvin_home_config_bytes() {
-        payload.bytes = fixed;
-    }
-}
-
-/// Sanitize invalid home config bytes inside a carry-forward backup bundle.
-pub fn sanitize_invalid_malvin_home_config_in_bundle(
-    bundle: &mut SessionDotfileBackups,
-    work_dir: &Path,
-) {
-    let _ = work_dir;
-    sanitize_malvin_config_slot(&mut bundle.malvin_config);
-}
-
-/// Repair invalid `~/.malvin_home/config.toml` on disk before gate-loop snapshots.
+/// Repair invalid `~/.malvin_home/config.toml` on disk before sessions.
 pub fn repair_invalid_malvin_home_config_on_disk(work_dir: &Path) -> Result<(), String> {
     repair_malvin_home_config_on_disk_impl(work_dir)
 }
