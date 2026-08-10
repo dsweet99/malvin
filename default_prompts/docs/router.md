@@ -18,16 +18,16 @@ Read the user request (on disk as `plan_*.md` / `{{ user_request_path }}`), ask 
 ## Usage
 
 ```text
-malvin [OPTIONS] <REQUEST>
+malvin [OPTIONS] [REQUEST]
 ```
 
-There is no `router` subcommand. Bare `malvin REQUEST` is the default autonomous routing workflow.
+There is no `router` subcommand. Bare `malvin REQUEST` is the default autonomous routing workflow. If `REQUEST` is omitted (and no subcommand is given), malvin prints the command catalog on stdout and exits 0.
 
 ## Arguments
 
-### `<REQUEST>` (required)
+### `[REQUEST]`
 
-Exactly **one shell argument**. Quote for internal spaces. Literal text, or an existing `.md` file path (same rules as `--do`).
+Required to run the default route. Exactly **one shell argument**. Quote for internal spaces. Literal text, or an existing `.md` file path (same rules as `--do`).
 
 | Form | Work directory | Stored as |
 |------|----------------|-----------|

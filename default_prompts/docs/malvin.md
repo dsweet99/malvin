@@ -15,9 +15,9 @@ malvin [OPTIONS] [REQUEST]
 malvin [OPTIONS] <COMMAND>
 ```
 
-Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`, stop on `__MALVIN_DONE__`, exit `router_summarize`). Use `--do` for a one-shot turn, or subcommands for named workflows.
+These forms are mutually exclusive: pass a request **or** a subcommand, not both on one synopsis line. `malvin --help` uses the same two-line usage.
 
-Use `--do` for a one-shot turn. Use subcommands: `init`, `tidy`, `write`, `inspire`, `models`.
+Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`, stop on `__MALVIN_DONE__`, exit `router_summarize`). With no request and no subcommand, malvin prints a short command catalog and exits 0. Use `--do` for a one-shot turn, or subcommands `init`, `tidy`, `write`, `inspire`, `models`. Omitting `REQUEST` for `--do`, `write`, or `inspire` likewise prints short usage and exits 0.
 
 ## Commands
 
