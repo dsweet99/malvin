@@ -1,7 +1,4 @@
-use super::stdout_line_wrap_meta;
-use super::{
-    ANSI_RESET, ERROR_WHO, WARNING_WHO, WHO_B, format_who_tag_prefix, wrap_words_bounded,
-};
+use super::{ANSI_RESET, ERROR_WHO, WARNING_WHO, WHO_B, format_who_tag_prefix};
 use crate::terminal_palette::{ansi_tool_amber, ansi_tool_coral, ansi_tool_navy};
 
 pub(crate) use super::who_tag_ansi;
@@ -42,20 +39,7 @@ pub fn format_heartbeat_stdout_ansi(who: &str, line: &str) -> String {
 }
 
 pub fn print_stdout_line(who: &str, line: &str) {
-    for para in line.split('\n') {
-        let ts = super::timestamp_now_string();
-        let ts = ts.as_str();
-        let (max_payload, wrap) = stdout_line_wrap_meta(who, para);
-        if !wrap {
-            let (display, log) = super::stdout_tagged_display_and_log_line(who, para, Some(ts));
-            print_stdout_rendered_line(&display, &log);
-            continue;
-        }
-        for seg in wrap_words_bounded(max_payload, para) {
-            let (display, log) = super::stdout_tagged_display_and_log_line(who, &seg, Some(ts));
-            print_stdout_rendered_line(&display, &log);
-        }
-    }
+    super::stdout_display_md::print_stdout_line_with_markdown(who, line, false);
 }
 
 pub fn print_stdout_text(who: &str, text: &str) {

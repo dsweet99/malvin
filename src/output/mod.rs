@@ -10,6 +10,7 @@ mod do_dm_filter;
 mod do_dm_mode;
 mod stdout_defer;
 mod stdout_display;
+mod stdout_display_md;
 mod stdout_heartbeat;
 mod stdout_render;
 mod stdout_terminal;
@@ -47,6 +48,7 @@ pub(crate) use stdout_heartbeat::{
 pub use stdout_display::{
     print_stdout_line, print_stdout_raw_line, print_stdout_raw_line_with_ts, print_stdout_text,
 };
+pub use stdout_display_md::{print_stdout_line_with_markdown, print_stdout_text_with_markdown};
 pub use stdout_terminal::{set_stdout_suppressed, stdout_suppressed};
 pub use stdout_heartbeat::{set_heartbeat_stdout_suppressed, heartbeat_stdout_suppressed};
 pub use do_dm_mode::{
