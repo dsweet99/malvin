@@ -75,7 +75,10 @@ fn malvin_inspire_without_request_shows_short_usage_and_exits_zero() {
         bare.stdout, help.stdout,
         "malvin inspire must not duplicate full --help"
     );
-    assert!(bare_s.contains("Be creative"), "inspire stdout: {bare_s}");
+    assert!(
+        bare_s.contains("Explore creative boundaries"),
+        "inspire stdout: {bare_s}"
+    );
     assert!(
         bare_s.contains("Usage: malvin inspire [REQUEST]"),
         "inspire stdout must show REQUEST usage: {bare_s}"
@@ -187,5 +190,32 @@ fn bare_malvin_shows_commands_only_and_exits_zero() {
     assert!(
         !help_s.contains("--no-markdown"),
         "full help must not list removed --no-markdown: {help_s}"
+    );
+}
+
+#[test]
+fn malvin_help_usage_matches_mutually_exclusive_forms() {
+    let tmp = isolated_home();
+    let help = malvin_cmd(tmp.path())
+        .arg("--help")
+        .output()
+        .expect("spawn malvin --help");
+    assert!(help.status.success());
+    let help_s = String::from_utf8_lossy(&help.stdout);
+    assert!(
+        help_s.contains("Usage: malvin [OPTIONS] [REQUEST]"),
+        "full help must show request usage form: {help_s}"
+    );
+    assert!(
+        help_s.contains("malvin [OPTIONS] <COMMAND>"),
+        "full help must show command usage form: {help_s}"
+    );
+    assert!(
+        !help_s.contains("[REQUEST] [COMMAND]"),
+        "full help must not conflate request and command on one usage line: {help_s}"
+    );
+    assert!(
+        help_s.contains("bare `malvin REQUEST`, `--do`, and `tidy`"),
+        "full help --name must state supported invocations: {help_s}"
     );
 }

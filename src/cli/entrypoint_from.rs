@@ -41,7 +41,7 @@ fn entrypoint_short_help_when_request_missing(
 
 fn entrypoint_do_short_help() -> Exit {
     let text = "\
-Respond simply
+One-shot agent turn (non-looping)
 
 Usage: malvin --do [OPTIONS] [REQUEST]
 

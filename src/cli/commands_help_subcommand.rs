@@ -117,7 +117,7 @@ mod tests {
     #[test]
     fn render_subcommand_short_help_inspire_omits_options() {
         let help = render_subcommand_short_help("inspire").expect("inspire subcommand");
-        assert!(help.contains("Be creative"));
+        assert!(help.contains("Explore creative boundaries"));
         assert!(help.contains("Usage: malvin inspire [REQUEST]"));
         assert!(help.contains("Arguments:"));
         assert!(help.contains("malvin inspire --help"));

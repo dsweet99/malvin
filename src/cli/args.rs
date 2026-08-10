@@ -18,6 +18,7 @@ pub use super::shared_opts::GlobalOpts;
     version,
     about = "Non-interactive research and coding agent",
     disable_help_subcommand = true,
+    override_usage = "malvin [OPTIONS] [REQUEST]\n        malvin [OPTIONS] <COMMAND>",
     after_help = "Bare `malvin REQUEST` runs autonomous routing. Use `--do` for a one-shot turn, or subcommands for named workflows."
 )]
 pub struct Cli {
@@ -25,7 +26,7 @@ pub struct Cli {
     pub global: GlobalOpts,
     #[command(flatten)]
     pub shared: SharedOpts,
-    /// Respond simply (one-shot agent turn).
+    /// One-shot agent turn (non-looping).
     #[arg(long = "do", default_value_t = false)]
     pub do_workflow: bool,
     #[command(subcommand)]
@@ -45,10 +46,10 @@ pub enum Commands {
     Tidy(TidyArgs),
     /// Write a LaTeX PDF on code or concepts
     Write(WriteArgs),
-    /// Be creative
+    /// Explore creative boundaries (MBC2)
     #[command(name = "inspire")]
     Inspire(InspireArgs),
-    /// Be creative (legacy name)
+    /// Explore creative boundaries (legacy name)
     #[command(name = "adaptix", hide = true)]
     Adaptix(InspireArgs),
     /// List available models

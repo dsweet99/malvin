@@ -9,34 +9,41 @@ cargo install malvin
 
 ## Usage
 
-Most of the time, just ask for what you want like this:
+```text
+malvin [OPTIONS] [REQUEST]
+malvin [OPTIONS] <COMMAND>
+```
+
+Most of the time, just ask for what you want:
 ```bash
 malvin "What time is it?"
 ```
 
-malvin will show lots of logs by default. If you just want to see malvin's answer at the end use
+By default malvin prints a full agent stream. For the final answer only:
 ```bash
 malvin -q "Where (geographically) am I?"
 ```
 
-Be default, malvin does an "investigation". The larger or more complex the task is, the more helpful this approach is. It permits you to ask difficult questions or ask for complex changes somewhat tersely:
+By default, malvin runs an investigation. The larger or more complex the task, the more helpful this is. You can ask difficult questions or request complex changes somewhat tersely:
 ```bash
 malvin "Speed up my_function.py by at least 3x."
 ```
-and expect good results. However, if you want to do something very simple and want a quick response, use
+and expect good results. For a simple one-shot turn:
 ```bash
 malvin --do "Hello"
 ```
 
-You can also provide malvin with a request file instead of a string:
+You can also pass a request file instead of a string:
 ```bash
 malvin code_review.md
 ```
-This can be great for use in CI or cron. In fact, if you want malvin to work totally in the background -- with no stdout -- you can use `-b`:
+That works well in CI or cron. For no stdout at all, use `-b`:
 ```bash
 malvin -b overnight_logs_alerter.md
 ```
-Maybe `overnight_logs_alerter.md` tells malvin to scan your prod logs and report weirdness to you via Slack. Note that malvin *always* logs to `~/.malvin_home/logs`. Those logs can be used by you for process improvement. They are always used by malvin as context.
+For example, `overnight_logs_alerter.md` might tell malvin to scan prod logs and report oddities via Slack. Malvin *always* writes run logs under `~/.malvin_home/logs` (useful for process improvement and as later context).
+
+Flag reference: `malvin --help`. Behavioral contracts: `malvin --doc` and `malvin <COMMAND> --doc`.
 
 ## Notes
 

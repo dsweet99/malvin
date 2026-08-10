@@ -17,14 +17,16 @@ Batch creative exploration separate from the default `router_a` / `router_b` rou
 ## Usage
 
 ```text
-malvin inspire [OPTIONS] <REQUEST>
+malvin inspire [OPTIONS] [REQUEST]
 ```
+
+If `REQUEST` is omitted (and `--doc` is not set), malvin prints short usage on stdout and exits 0.
 
 ## Arguments
 
-### `<REQUEST>` (required)
+### `[REQUEST]`
 
-Exactly **one shell argument**. Quote for internal spaces. Topic as literal text, or an existing `.md` file path (same rules as `--do`).
+Required to run. Exactly **one shell argument**. Quote for internal spaces. Topic as literal text, or an existing `.md` file path (same rules as `--do`).
 
 ## Global options
 
