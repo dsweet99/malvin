@@ -54,7 +54,7 @@ impl SdkClient {
         let retries = max_attempts.saturating_sub(1);
         let label = match self.kind {
             BridgeKind::Cursor => "cursor",
-            BridgeKind::Prime => "prime",
+            BridgeKind::Pi => "pi",
         };
         Err(AgentError(format!(
             "{label} SDK prompt failed after {retries} {}. Last error:\n{last_error}",

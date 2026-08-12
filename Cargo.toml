@@ -12,8 +12,8 @@ categories = ["development-tools"]
 # Broken local symlinks under .cursor/ break `cargo package` when present as
 # untracked files; keep them out of the published crate.
 exclude = [".cursor/", ".cursorrules"]
-# Agent backends need Node bridges under cursor-sdk-bridge/ and prime-sdk-bridge/.
-# build.rs installs @cursor/sdk and prime-agent into ~/.malvin_home/sdk-bridges/
+# Agent backends need the Node bridge under cursor-sdk-bridge/.
+# build.rs installs @cursor/sdk into ~/.malvin_home/sdk-bridges/
 # during cargo build / cargo install when in-tree bridges are not already built
 # (requires Node ≥ 22.13).
 build = "build.rs"
@@ -78,6 +78,3 @@ libc = "0.2"
 errno = "0.3"
 libc = "0.2"
 libproc = "0.14"
-
-[target.'cfg(all(target_os = "macos", target_arch = "aarch64"))'.dependencies]
-llama-cpp-2 = { version = "=0.1.151", default-features = false, features = ["metal", "common"] }

@@ -70,7 +70,7 @@ pub(crate) fn dir_size_inner(path: &Path) -> std::io::Result<u64> {
     Ok(total)
 }
 
-fn prune_logs(work_dir: &Path) -> PruneResult {
+fn prune_logs(work_dir: &Path, protect_run: Option<&Path>) -> PruneResult {
     let config = load_logs_gc_config(work_dir);
     let home_logs = malvin_home_logs_root();
     if !home_logs.is_dir() {
@@ -83,14 +83,13 @@ fn prune_logs(work_dir: &Path) -> PruneResult {
     let (removed, freed) = log_gc_buckets::prune_all_log_buckets(
         &home_logs,
         &config,
-        None,
+        protect_run,
         Some(keep_bucket.as_path()),
     );
     PruneResult { removed, freed }
 }
 
-pub fn prune_logs_before_run(work_dir: &Path) {
-    let result = prune_logs(work_dir);
+fn emit_prune_result(result: PruneResult) {
     if result.removed > 0 {
         print_stdout_line(
             MALVIN_WHO,
@@ -101,6 +100,11 @@ pub fn prune_logs_before_run(work_dir: &Path) {
             ),
         );
     }
+}
+
+/// Retention prune after the new run directory exists; never deletes `protect_run`.
+pub fn prune_logs_after_run_created(work_dir: &Path, protect_run: &Path) {
+    emit_prune_result(prune_logs(work_dir, Some(protect_run)));
 }
 
 pub(crate) fn list_run_dirs(logs_root: &Path) -> Vec<PathBuf> {

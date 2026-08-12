@@ -20,7 +20,7 @@ fn smoke_cov_cli_cross_file_symbols_b() {
     let _ = stringify!(InspireRunPrep);
     let _ = stringify!(prepare_inspire_prompt_store);
     let _ = stringify!(new_inspire_client);
-    let _ = stringify!(inspire_emit_startup);
+    let _ = stringify!(inspire_emit_startup_banner);
     let _ = stringify!(prepare_inspire_run);
     let _ = stringify!(run_inspire_coder_prompt);
     let _ = stringify!(run_inspire_coder_session);

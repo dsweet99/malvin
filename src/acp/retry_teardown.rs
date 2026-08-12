@@ -29,22 +29,35 @@ pub(crate) fn agent_string_is_cursor_agent_busy(msg: &str) -> bool {
     msg.to_ascii_lowercase().contains("already has active run")
 }
 
+const CHILD_OR_BRIDGE_DEAD_NEEDLES: &[&str] = &[
+    "acp child process appears hung",
+    "acp child process is not running",
+    "acp child process is zombie",
+    "acp stdout closed",
+    "bridge stdout closed",
+    "bridge write:",
+    "bridge flush:",
+    "bridge read:",
+    "bridge drain timed out",
+    "pi rpc drain timed out",
+    "pi rpc stdout closed",
+    "pi rpc write:",
+    "pi rpc flush:",
+    "pi rpc read:",
+    "currently streaming",
+    "iterable is closed",
+    "connection stalled",
+];
+
+fn text_has_any(text: &str, needles: &[&str]) -> bool {
+    needles.iter().any(|n| text.contains(n))
+}
+
 /// Child-health / transport failures where the open coder session must be torn down before retry.
 #[must_use]
 pub(crate) fn agent_error_requires_coder_session_teardown(msg: &str) -> bool {
     let text = msg.to_ascii_lowercase();
-    let child_dead = text.contains("acp child process appears hung")
-        || text.contains("acp child process is not running")
-        || text.contains("acp child process is zombie")
-        || text.contains("acp stdout closed")
-        || text.contains("bridge stdout closed")
-        || text.contains("bridge write:")
-        || text.contains("bridge flush:")
-        || text.contains("bridge read:")
-        || text.contains("bridge drain timed out")
-        || text.contains("iterable is closed")
-        || text.contains("connection stalled");
-    if child_dead {
+    if text_has_any(&text, CHILD_OR_BRIDGE_DEAD_NEEDLES) {
         return true;
     }
     if agent_string_is_cursor_agent_busy(msg) {

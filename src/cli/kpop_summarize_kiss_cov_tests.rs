@@ -13,7 +13,6 @@ fn kiss_cov_kpop_summarize_privates() {
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
         name: None,
-        no_download: false,
         git: false,
     };
     let _ = &shared;

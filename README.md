@@ -5,8 +5,8 @@
 
 Requires [Node.js](https://nodejs.org/) ≥ 22.13 (with `npm` on `PATH`). During
 `cargo install` / `cargo build`, malvin's build script installs the Cursor SDK
-(`@cursor/sdk`) and Prime SDK (`prime-agent`) under `~/.malvin_home/sdk-bridges/`
-(skipped when the repo already has built in-tree bridges).
+(`@cursor/sdk`) under `~/.malvin_home/sdk-bridges/`
+(skipped when the repo already has a built in-tree bridge).
 
 ```bash
 cargo install malvin
@@ -69,4 +69,4 @@ Flag reference: `malvin --help`. Behavioral contracts: `malvin --doc` and `malvi
 
 # EXPERIMENTAL - USE AT YOUR OWN RISK
 
-- prime: models
+- pi: models (requires an externally installed `pi` binary; see `design.md`)

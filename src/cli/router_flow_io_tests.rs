@@ -44,7 +44,6 @@ fn router_client_uses_kpop_style_agent_io_not_do_style() {
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
         name: None,
-        no_download: false,
         git: false,
     };
     let backend = build_agent_backend(

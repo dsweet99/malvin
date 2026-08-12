@@ -1,7 +1,7 @@
 use crate::support_paths::DEFAULT_MAX_ACP_RETRIES;
 // Bounded retries for transient ACP JSON-RPC failures (default [`DEFAULT_MAX_ACP_RETRIES`] attempts, 1s / 3s backoff).
 // Covers `session/prompt` and spawn/handshake (`initialize` / `authenticate` / `session/new`) via
-// Shared retry planning for Cursor/Prime SDK session setup and prompt attempts.
+// Shared retry planning for Cursor/Pi session setup and prompt attempts.
 
 /// English noun for `n` retry attempts after the first try (`n` is `attempts_used - 1` in callers).
 #[must_use]

@@ -107,8 +107,8 @@ fn cursor_assemble_session(
         agent_id: Mutex::new(None),
         stdout_coalesce: Mutex::new(crate::acp::TraceChunkCoalescer::default()),
         tool_starts: Mutex::new(std::collections::HashMap::new()),
-        local_sidecar: None,
         normalize_prime_usage: false,
+        wire: crate::bridge_sdk::BridgeWire::NodeBridge,
     }
 }
 

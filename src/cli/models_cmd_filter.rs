@@ -1,26 +1,26 @@
 //! Prefix-filter helpers for `malvin models`.
 
-use crate::model_id::PRIME_PREFIX;
+use crate::model_id::PI_PREFIX;
 
 /// Resolve optional listing prefix from trailing words.
 ///
 /// Rejects legacy `download …` action words. Words are joined so path-shaped catalogs keep `/`
-/// boundaries: `malvin models prime: open` → `prime:open`, and
-/// `malvin models prime:local qwen` → `prime:local/qwen`.
+/// boundaries: `malvin models pi: open` → `pi:open`, and
+/// `malvin models pi:openrouter anthropic` → `pi:openrouter/anthropic`.
 pub(crate) fn models_list_prefix(words: &[String]) -> Result<Option<String>, String> {
     if words.is_empty() {
         return Ok(None);
     }
     if words[0].eq_ignore_ascii_case("download") {
         return Err(
-            "`malvin models` no longer downloads; `prime:local/…` models fetch automatically on first use (omit `--no-download`)"
+            "`malvin models` no longer downloads; local GGUF models are no longer supported"
                 .into(),
         );
     }
     Ok(Some(join_models_prefix_words(words)))
 }
 
-/// Join filter words, inserting `/` between path segments for `prime:` ids when the left side
+/// Join filter words, inserting `/` between path segments for `pi:` ids when the left side
 /// does not already end with `:` or `/`.
 pub(crate) fn join_models_prefix_words(words: &[String]) -> String {
     let mut out = String::new();
@@ -41,7 +41,7 @@ fn needs_models_filter_slash(prefix: &str) -> bool {
     if prefix.ends_with(':') || prefix.ends_with('/') {
         return false;
     }
-    prefix.starts_with(PRIME_PREFIX)
+    prefix.starts_with(PI_PREFIX)
 }
 
 /// Whether a catalog section whose ids start with `section_head` can produce rows for `filter`.

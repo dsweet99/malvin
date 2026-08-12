@@ -1,4 +1,4 @@
-//! Install Cursor / Prime SDK npm bridges for `cargo build` / `cargo install`.
+//! Install Cursor SDK npm bridge for `cargo build` / `cargo install`.
 //!
 //! Shared by `build.rs` (via `#[path]`) and the library so install helpers are testable.
 
@@ -32,19 +32,13 @@ pub struct Bridge {
     pub min_node: (u32, u32),
 }
 
-/// Cursor and Prime bridges required for agent backends.
+/// Cursor SDK bridge required for the agent backend.
 pub const BRIDGES: &[Bridge] = &[
     Bridge {
         dir_name: "cursor-sdk-bridge",
         package_marker: "@cursor/sdk/package.json",
         label: "Cursor SDK (@cursor/sdk)",
         min_node: (22, 13),
-    },
-    Bridge {
-        dir_name: "prime-sdk-bridge",
-        package_marker: "prime-agent/package.json",
-        label: "Prime SDK (prime-agent)",
-        min_node: (22, 8),
     },
 ];
 
@@ -62,7 +56,7 @@ pub fn run_build_script() {
     }
     if env::var_os("MALVIN_SKIP_SDK_BRIDGES").is_some() {
         println!(
-            "cargo:warning=MALVIN_SKIP_SDK_BRIDGES is set; Cursor/Prime SDK bridges were not installed"
+            "cargo:warning=MALVIN_SKIP_SDK_BRIDGES is set; Cursor SDK bridge was not installed"
         );
         return;
     }
@@ -185,7 +179,7 @@ fn write_stamp(dest: &Path) {
 pub fn sdk_share_dir() -> PathBuf {
     let home = env::var_os("HOME").filter(|v| !v.is_empty()).unwrap_or_else(|| {
         panic!(
-            "malvin requires $HOME to install Cursor/Prime SDK bridges under ~/.malvin_home/sdk-bridges/"
+            "malvin requires $HOME to install Cursor/Pi bridges under ~/.malvin_home/sdk-bridges/"
         )
     });
     PathBuf::from(home).join(".malvin_home").join("sdk-bridges")

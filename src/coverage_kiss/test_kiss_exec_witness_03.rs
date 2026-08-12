@@ -23,14 +23,10 @@ fn kiss_exec_witness_03_01() {
     ChatMessage();
     ResponseUsage();
     CompletionResponse();
-    DownloadPolicy();
 }
 
 #[test]
 fn kiss_exec_witness_03_02() {
-    local_llm::engine::complete();
-    local_max_tokens_from_env();
-    LocalModelSpec();
     PruneResult();
     seed_malvin_config();
     BashExecResult();

@@ -76,7 +76,6 @@ fn kiss_cov_kpop_engine_loop_params_types() {
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
         name: None,
-        no_download: false,
         git: false,
     };
     let workflow = WorkflowCliOptions { force: false };

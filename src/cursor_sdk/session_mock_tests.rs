@@ -24,7 +24,7 @@ async fn spawn_mock() -> (Child, tokio::process::ChildStdin, BufReader<tokio::pr
     (child, stdin, stdout)
 }
 
-async fn write_line(stdin: &mut tokio::process::ChildStdin, line: &str) {
+async fn cursor_mock_write_line(stdin: &mut tokio::process::ChildStdin, line: &str) {
     stdin.write_all(line.as_bytes()).await.unwrap();
     stdin.flush().await.unwrap();
 }
@@ -45,16 +45,16 @@ async fn read_until(reader: &mut BufReader<tokio::process::ChildStdout>, needle:
 async fn mock_bridge_create_send_close() {
     assert!(mock_bridge_js().is_file(), "mock_bridge.js missing");
     let (mut child, mut stdin, mut reader) = spawn_mock().await;
-    write_line(
+    cursor_mock_write_line(
         &mut stdin,
         "{\"op\":\"create\",\"cwd\":\"/tmp\",\"model\":\"auto\",\"apiKey\":\"k\"}\n",
     )
     .await;
     let ok = read_until(&mut reader, "\"ok\"").await;
     assert!(ok.contains("\"event\":\"ok\""), "{ok}");
-    write_line(&mut stdin, "{\"op\":\"send\",\"prompt\":\"hello\"}\n").await;
+    cursor_mock_write_line(&mut stdin, "{\"op\":\"send\",\"prompt\":\"hello\"}\n").await;
     let done = read_until(&mut reader, "run_done").await;
     assert!(done.contains("inputTokens"), "{done}");
-    write_line(&mut stdin, "{\"op\":\"close\"}\n").await;
+    cursor_mock_write_line(&mut stdin, "{\"op\":\"close\"}\n").await;
     let _ = child.wait().await;
 }

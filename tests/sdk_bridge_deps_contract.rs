@@ -1,4 +1,4 @@
-//! Contract: Cursor / Prime SDK npm packages are declared bridge dependencies.
+//! Contract: Cursor SDK npm package is a declared bridge dependency.
 
 use serde_json::Value;
 use std::fs;
@@ -27,18 +27,6 @@ fn cursor_bridge_depends_on_cursor_sdk() {
 }
 
 #[test]
-fn prime_bridge_depends_on_prime_agent() {
-    let pkg = package_json("prime-sdk-bridge");
-    let deps = pkg["dependencies"]
-        .as_object()
-        .expect("dependencies object");
-    assert!(
-        deps.contains_key("prime-agent"),
-        "prime-sdk-bridge must depend on prime-agent: {deps:?}"
-    );
-}
-
-#[test]
 fn build_rs_requires_sdk_bridge_install() {
     let path = manifest_dir().join("build.rs");
     let text = fs::read_to_string(&path).expect("build.rs");
@@ -49,10 +37,8 @@ fn build_rs_requires_sdk_bridge_install() {
     let logic = fs::read_to_string(manifest_dir().join("src/sdk_bridge_build/mod.rs"))
         .expect("sdk_bridge_build");
     assert!(
-        logic.contains("@cursor/sdk")
-            && logic.contains("prime-agent")
-            && logic.contains("sdk-bridges"),
-        "sdk_bridge_build must install Cursor and Prime SDK npm deps under sdk-bridges"
+        logic.contains("@cursor/sdk") && logic.contains("sdk-bridges"),
+        "sdk_bridge_build must install Cursor SDK npm deps under sdk-bridges"
     );
     assert!(
         logic.contains("MALVIN_SKIP_SDK_BRIDGES"),

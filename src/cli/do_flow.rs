@@ -5,7 +5,9 @@ use crate::agent_backend::{build_agent_backend, build_agent_backend_with_tee, Ag
 use crate::cli::one_shot_session::{
     finish_one_shot_after_prompt, resolve_one_shot_request_artifacts,
 };
-use crate::cli::run_emit::{emit_command_line, emit_run_startup_sequence, RunStartupEmitOpts};
+use crate::cli::run_emit::{
+    emit_command_line, emit_run_logs_line, emit_run_startup_banner, RunStartupEmitOpts,
+};
 use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions};
 use crate::output::agent_stdout_tee_enabled;
 
@@ -31,7 +33,6 @@ struct DoRunPrep {
     artifacts: RunArtifacts,
     coder: do_flow_prompt::DoCoderRun,
     session_dotfile_backups: SessionDotfileBackups,
-    request_text: String,
 }
 
 fn new_do_client(
@@ -71,11 +72,23 @@ async fn prepare_do_run(
     workflow: WorkflowCliOptions,
 ) -> Result<DoRunPrep, String> {
     let mut client = new_do_client(shared, workflow)?;
+    // Create without GC so Command: can land before retention prune.
     let (text, artifacts) = resolve_one_shot_request_artifacts(
         do_args.request.as_ref(),
         "--do",
-        Some(crate::run_id::RunDirOptions::default()),
+        Some(crate::run_id::RunDirOptions { gc: false }),
     )?;
+    // Near-instant feedback: Command: before prune/auth/spawn (verbose tee); else command.log only.
+    if shared.verbose {
+        emit_run_startup_banner(
+            &artifacts,
+            RunStartupEmitOpts::from_shared(shared, true),
+            &text,
+        )?;
+    } else {
+        emit_command_line(&artifacts.run_dir, false)?;
+    }
+    crate::run_id::maybe_gc_after_run_created(&artifacts.work_dir, &artifacts.run_dir);
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     // run_dir must be set before begin so the bridge session records trace.jsonl.
     client.prompts_log_run_dir = Some(artifacts.run_dir.clone());
@@ -88,7 +101,6 @@ async fn prepare_do_run(
         artifacts,
         coder,
         session_dotfile_backups,
-        request_text: text,
     })
 }
 
@@ -143,15 +155,9 @@ async fn run_do_body(
 ) -> Result<(), String> {
     let mut prep = prepare_do_run(&do_args, shared, workflow).await?;
     // Session begin already completed inside prepare_do_run (overlapped with prompt prep).
+    // Banner / command.log already emitted in prepare_do_run (before spawn).
     if shared.verbose {
-        // Same startup logger as the default workflow (`emit_run_startup_sequence`).
-        emit_run_startup_sequence(
-            &prep.artifacts,
-            RunStartupEmitOpts::from_shared(shared, true),
-            &prep.request_text,
-        )?;
-    } else {
-        emit_command_line(&prep.artifacts.run_dir, false)?;
+        emit_run_logs_line(&prep.artifacts)?;
     }
     let acp_res = run_do_acp(&mut prep.client, &prep.artifacts, prep.coder).await;
     finish_one_shot_after_prompt(

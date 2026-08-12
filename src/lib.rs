@@ -1,4 +1,4 @@
-//! Malvin: implementation and review workflow driven by the Cursor SDK (`cursor:`) or Prime SDK (`prime:`).
+//! Malvin: implementation and review workflow driven by the Cursor SDK (`cursor:`) or Pi (`pi:`).
 #![cfg_attr(
     test,
     allow(
@@ -41,12 +41,10 @@ pub use workflow_name_aliases::{
     canonical_workflow_name, resolve_session_log_path, resolve_workspace_malvin_config_path,
     WORKSPACE_CONFIG_PATHS,
 };
-/// Shared LLM completion types used by the local engine / Prime sidecar.
+/// Shared LLM completion types used by run timing / usage recording.
 pub mod llm_transport;
-/// Agent interface (malvin → cursor-agent / Prime).
+/// Agent interface (malvin → cursor-agent / pi).
 pub mod agent;
-/// In-process llama.cpp backend formerly the `malvin-llama` workspace crate.
-pub mod malvin_llama;
 mod gate_loop_session;
 mod sandbox_oom;
 mod current_state;
@@ -111,7 +109,7 @@ pub mod agent_backend;
 pub mod bridge_protocol;
 pub mod bridge_sdk;
 pub mod cursor_sdk;
-pub mod prime_sdk;
+pub mod pi_sdk;
 #[cfg(test)]
 pub(crate) mod sdk_bridge_build;
 pub mod acp;
@@ -127,8 +125,7 @@ pub use artifacts::{
     restore_workspace_session_dotfiles,
 };
 pub use artifacts::{create_kpop_run_artifacts, create_run_artifacts, resolve_user_md_request};
-pub use config::DEFAULT_CLI_MODEL;
-pub use kpop_progression::agent_declared_success;
+pub use config::DEFAULT_CLI_MODEL;pub use kpop_progression::agent_declared_success;
 pub use output::{
     ERROR_WHO, MALVIN_WHO, WARNING_WHO, format_line, format_log_tag_inner, format_who_tag_prefix,
     init_stdout_style,
@@ -149,7 +146,6 @@ pub use test_poll::{
     test_post_teardown_poll_interval, test_post_teardown_wait_budget, test_wait_until_async,
 };
 pub mod config;
-pub mod local_llm;
 pub mod model_id;
 mod kpop_turn_prompts;
 pub use kpop_turn_prompts::KpopTurnPrompts;

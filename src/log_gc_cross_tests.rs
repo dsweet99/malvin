@@ -11,7 +11,7 @@ const ORPHAN_HASH: &str = "aaaaaaaaaaaaaaaa";
 const AGE_ONLY_TOML: &str = "[logs]\nmax_count = 0\nmax_age_days = 30\nmax_bytes = \"\"\n";
 
 #[test]
-fn prune_logs_before_run_applies_retention_across_hash_buckets() {
+fn prune_logs_after_run_created_applies_retention_across_hash_buckets() {
     crate::test_utils::with_isolated_home(|work| {
         let config_path = crate::malvin_config_path(work);
         if let Some(parent) = config_path.parent() {
@@ -25,7 +25,8 @@ fn prune_logs_before_run_applies_retention_across_hash_buckets() {
         // Existing workspace path so this is not treated as an ephemeral orphan.
         write_work_dir_manifest(&old, work).expect("manifest");
 
-        prune_logs_before_run(work);
+        let protect = work.join("__no_active_run__");
+        prune_logs_after_run_created(work, &protect);
 
         assert!(!old.exists(), "aged run in foreign hash must be pruned");
         assert!(
@@ -36,7 +37,7 @@ fn prune_logs_before_run_applies_retention_across_hash_buckets() {
 }
 
 #[test]
-fn prune_logs_before_run_removes_empty_orphan_hash_buckets() {
+fn prune_logs_after_run_created_removes_empty_orphan_hash_buckets() {
     crate::test_utils::with_isolated_home(|work| {
         let home_logs = malvin_home_logs_root();
         let orphan = home_logs.join(ORPHAN_HASH);
@@ -44,7 +45,8 @@ fn prune_logs_before_run_removes_empty_orphan_hash_buckets() {
         let current = malvin_logs_root(work);
         std::fs::create_dir_all(&current).expect("current bucket");
 
-        prune_logs_before_run(work);
+        let protect = work.join("__no_active_run__");
+        prune_logs_after_run_created(work, &protect);
 
         assert!(!orphan.exists(), "empty orphan hash must be collected");
         assert!(
@@ -55,7 +57,7 @@ fn prune_logs_before_run_removes_empty_orphan_hash_buckets() {
 }
 
 #[test]
-fn prune_logs_before_run_removes_ephemeral_workspace_hash_buckets() {
+fn prune_logs_after_run_created_removes_ephemeral_workspace_hash_buckets() {
     crate::test_utils::with_isolated_home(|work| {
         let other = malvin_home_logs_root().join(OTHER_HASH);
         let run = other.join(RUN_NEWEST);
@@ -64,7 +66,8 @@ fn prune_logs_before_run_removes_ephemeral_workspace_hash_buckets() {
         let _ = std::fs::remove_dir_all(&gone);
         write_work_dir_manifest(&run, &gone).expect("manifest to missing path");
 
-        prune_logs_before_run(work);
+        let protect = work.join("__no_active_run__");
+        prune_logs_after_run_created(work, &protect);
 
         assert!(
             !other.exists(),
@@ -110,7 +113,8 @@ fn prune_leaves_nonempty_foreign_bucket_with_non_run_content() {
         write_work_dir_manifest(&old, work).expect("manifest");
         std::fs::create_dir_all(other.join("hand_notes")).expect("notes");
 
-        prune_logs_before_run(work);
+        let protect = work.join("__no_active_run__");
+        prune_logs_after_run_created(work, &protect);
 
         assert!(!old.exists());
         assert!(

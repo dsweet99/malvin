@@ -1,7 +1,6 @@
-//! `malvin models` — list Cursor and Prime models with prefixes.
+//! `malvin models` — list Cursor and Pi models with prefixes.
 
-use crate::local_llm::local_model_listings;
-use crate::model_id::{CURSOR_PREFIX, PRIME_PREFIX};
+use crate::model_id::{CURSOR_PREFIX, PI_PREFIX};
 use crate::output::{MALVIN_WHO, print_stdout_line};
 use clap::Args;
 
@@ -18,7 +17,7 @@ pub(crate) use models_cmd_filter::{
 
 #[derive(Args, Debug, Clone, Default)]
 pub struct ModelsArgs {
-    /// Optional prefix filter (e.g. `prime:`, `prime:open`, `prime:local/`). See `models_list_prefix`.
+    /// Optional prefix filter (e.g. `cursor:`, `pi:`, `pi:open`). See `models_list_prefix`.
     #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
     pub words: Vec<String>,
 }
@@ -33,7 +32,7 @@ fn print_current_footer(current_model: &str) {
     print_stdout_line(MALVIN_WHO, &format!("Current: {current_model}"));
 }
 
-/// Print Cursor and Prime models with prefixes and a `Current:` footer.
+/// Print Cursor and Pi models with prefixes and a `Current:` footer.
 ///
 /// Optional `words` form a prefix filter on printed model ids (see [`models_list_prefix`]).
 pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
@@ -45,33 +44,21 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
             print_stdout_line(MALVIN_WHO, &format!("(cursor models unavailable: {e})"));
         }
     }
-    if section_may_match(filter_ref, PRIME_PREFIX) {
-        match crate::prime_sdk::list_prime_models_sync() {
-            Ok(models) => print_prime_models(&models, filter_ref),
+    if section_may_match(filter_ref, PI_PREFIX) {
+        match crate::pi_sdk::list_pi_models_sync() {
+            Ok(models) => print_pi_models(&models, filter_ref),
             Err(e) => {
-                print_stdout_line(MALVIN_WHO, &format!("(prime models unavailable: {e})"));
+                print_stdout_line(MALVIN_WHO, &format!("(pi models unavailable: {e})"));
             }
         }
-        print_prime_local_models(filter_ref);
     }
     print_current_footer(current_model);
     Ok(())
 }
 
-fn print_prime_models(models: &[crate::prime_sdk::PrimeModelListing], filter: Option<&str>) {
+fn print_pi_models(models: &[crate::pi_sdk::PiModelListing], filter: Option<&str>) {
     for model in models {
-        let line = format!("prime:{}\t{}", model.id, model.name);
-        if line_matches_prefix(&line, filter) {
-            print_stdout_line(MALVIN_WHO, &line);
-        }
-    }
-}
-
-const PRIME_LOCAL_HEAD: &str = "prime:local/";
-
-fn print_prime_local_models(filter: Option<&str>) {
-    for model in local_model_listings() {
-        let line = format!("{PRIME_LOCAL_HEAD}{}\t{}", model.id, model.name);
+        let line = format!("pi:{}\t{}", model.id, model.name);
         if line_matches_prefix(&line, filter) {
             print_stdout_line(MALVIN_WHO, &line);
         }
@@ -153,10 +140,6 @@ pub(crate) mod test_hooks {
         models_cmd_parse::models_display_lines_filtered(text, prefix, filter)
     }
 
-    pub fn print_local_models_for_test() {
-        super::print_prime_local_models(None);
-    }
-
     pub fn current_model_label() -> String {
         crate::config::DEFAULT_CLI_MODEL.to_string()
     }
@@ -169,7 +152,3 @@ pub(crate) mod test_hooks {
 #[cfg(test)]
 #[path = "models_cmd_kiss_cov_tests.rs"]
 mod models_cmd_kiss_cov_tests;
-
-#[cfg(test)]
-#[path = "models_cmd_local_tests.rs"]
-mod models_cmd_local_tests;

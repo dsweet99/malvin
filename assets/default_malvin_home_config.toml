@@ -1,5 +1,5 @@
 mem_limit_gb = 4
-# Local llama.cpp context window (n_ctx / n_ctx_seq). Larger values need more mem_limit_gb.
+# Reserved context window size (legacy local-engine key; still parsed).
 context_size = 8192
 # Terminal color palette: "dark" (default) or "light" (for pale backgrounds).
 theme = "dark"
@@ -13,7 +13,7 @@ max_acp_retries = 3
 
 # Cursor-mode USD cost rates ($ per million tokens) for model `cursor:auto`.
 # COST uses usd_per_microtoken_* × counts / 1e6 (0.0000 when all are 0).
-# Add `[agent.cursor.<name>]` or `[agent.prime."<provider/model>"]` for other models.
+# Add `[agent.cursor.<name>]` or `[agent.pi."<provider/model>"]` for other models.
 [agent.cursor.auto]
 usd_per_microtoken_in = 0
 usd_per_microtoken_out = 0

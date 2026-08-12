@@ -11,18 +11,6 @@ fn kiss_cov_bridge_sdk_spawn_names_cursor() {
     cursor_assemble_session();
     cursor_resolve_node_and_bridge();
     cursor_build_bridge_command();
-}
-
-#[test]
-fn kiss_cov_bridge_sdk_spawn_names_prime() {
-    prime_spawn_bridge();
-    prime_open_bridge_session();
-    PrimeChildStdio();
-    prime_take_stdio();
-    prime_note_sandbox();
-    prime_assemble_session();
-    prime_resolve_node_and_bridge();
-    prime_build_bridge_command();
     scrub_cursor_keys();
     apply_node_compile_cache();
 }
@@ -30,6 +18,9 @@ fn kiss_cov_bridge_sdk_spawn_names_prime() {
 #[test]
 fn kiss_cov_bridge_sdk_shared_type_names() {
     BridgeKind();
+    BridgeWire();
+    NodeBridge();
+    PiRpc();
     SdkClientInit();
     CreateArgs();
     ResumeArgs();
@@ -37,17 +28,19 @@ fn kiss_cov_bridge_sdk_shared_type_names() {
     from_init();
     sync_timing_to_open_session();
     cursor_sdk_marker_present();
-    prime_sdk_marker_present();
+    encode_request();
+    drain_until_run_done();
+    finish_run_done();
+    cursor_mock_write_line();
+    kiss_cov_bridge_path_name_batch();
+}
+
+fn kiss_cov_bridge_path_name_batch() {
     cursor_first_ready_bridge_js();
     cursor_first_any_bridge_js();
     cursor_first_ready_models_js();
     cursor_first_any_models_js();
     cursor_candidate_roots();
-    prime_first_ready_bridge_js();
-    prime_first_any_bridge_js();
-    prime_first_ready_models_js();
-    prime_first_any_models_js();
-    prime_candidate_roots();
 }
 
 #[test]
@@ -73,4 +66,3 @@ fn kiss_cov_sdk_bridge_build_install_names() {
     parse_node_version();
     run_npm();
 }
-

@@ -4,7 +4,7 @@ use super::RunTiming;
 
 impl RunTiming {
     pub fn record_completion_cost(&mut self, usage: &ResponseUsage) {
-        // `prime:local/…` zeroes costs in `record_completion_step`; do not invent unknowns here.
+        // Zero cost policy branch (unused after local-backend removal).
         if matches!(self.cost_policy, super::CostPolicy::Zero) {
             return;
         }

@@ -10,7 +10,7 @@ pub(super) fn resolve_npm() -> PathBuf {
     }
     which("npm").unwrap_or_else(|| {
         panic!(
-            "malvin requires Node.js/npm to install the Cursor SDK and Prime SDK bridges.\n\
+            "malvin requires Node.js/npm to install the Cursor SDK and Cursor SDK bridges.\n\
              Install Node >= 22.13 (includes npm), ensure `npm` is on PATH, then re-run \
              `cargo install malvin` (or `cargo build`).\n\
              To compile the Rust binary without SDK bridges (agent backends will not work), \

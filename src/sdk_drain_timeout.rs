@@ -9,7 +9,7 @@ use std::time::Duration;
 /// inside `drain_until_run_done`, and client retries never run.
 pub const DEFAULT_SDK_DRAIN_IDLE_TIMEOUT_MS: u64 = 600_000;
 
-/// Idle timeout for Cursor/Prime SDK `drain_until_run_done` (silence between events).
+/// Idle timeout for Cursor/Pi `drain_until_run_done` (silence between events).
 #[must_use]
 pub fn sdk_drain_idle_timeout_from_env() -> Duration {
     Duration::from_millis(

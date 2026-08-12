@@ -22,12 +22,10 @@ fn cursor_ready_tree(root: &Path) -> PathBuf {
 }
 
 #[test]
-fn bridges_declare_cursor_and_prime_markers() {
-    assert_eq!(BRIDGES.len(), 2);
+fn bridges_declare_cursor_marker() {
+    assert_eq!(BRIDGES.len(), 1);
     assert_eq!(BRIDGES[0].package_marker, "@cursor/sdk/package.json");
-    assert_eq!(BRIDGES[1].package_marker, "prime-agent/package.json");
     assert!(BRIDGES[0].min_node >= (22, 13));
-    assert!(BRIDGES[1].min_node >= (22, 8));
 }
 
 #[test]
@@ -123,12 +121,12 @@ fn in_tree_ready_requires_marker_and_dist() {
     assert!(in_tree_bridge_ready(&src, bridge));
 }
 
-fn prime_share_fixture(tmp: &TempDir) -> (PathBuf, PathBuf, &'static [u8]) {
+fn share_fixture(tmp: &TempDir) -> (PathBuf, PathBuf, &'static [u8]) {
     let src = tmp.path().join("src");
     let dest = tmp.path().join("dest");
     let lock = b"{\"lock\":1}";
     write_file(&src.join("package-lock.json"), lock);
-    let bridge = &BRIDGES[1];
+    let bridge = &BRIDGES[0];
     write_file(&dest.join("node_modules").join(bridge.package_marker), b"{}");
     write_file(&dest.join("dist").join("bridge.js"), b"1");
     (src, dest, lock)
@@ -137,8 +135,8 @@ fn prime_share_fixture(tmp: &TempDir) -> (PathBuf, PathBuf, &'static [u8]) {
 #[test]
 fn share_bridge_ready_checks_stamp() {
     let tmp = tempdir().unwrap();
-    let (src, dest, lock) = prime_share_fixture(&tmp);
-    let bridge = &BRIDGES[1];
+    let (src, dest, lock) = share_fixture(&tmp);
+    let bridge = &BRIDGES[0];
     assert!(!share_bridge_ready(&src, &dest, bridge));
     let stamp = format!("{:x}", fnv1a64(lock));
     write_file(&dest.join(".malvin-npm-stamp"), format!("{stamp}\n").as_bytes());
@@ -203,5 +201,5 @@ fn check_node_version_accepts_current_node() {
     if npm::which("node").is_none() {
         return;
     }
-    check_node_version(&BRIDGES[1]);
+    check_node_version(&BRIDGES[0]);
 }

@@ -80,7 +80,6 @@ fn smoke_agent_io_options_maps_flags() {
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
         name: None,
-        no_download: false,
         git: false,
     };
     let io = agent_io_options(

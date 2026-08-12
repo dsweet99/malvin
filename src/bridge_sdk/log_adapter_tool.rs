@@ -34,8 +34,12 @@ pub(crate) fn emit_tool(session: &BridgeSession, fields: ToolCallFields<'_>) {
         return;
     }
     let subject = summary.or(name).unwrap_or("tool");
-    // "end" is a legacy Prime bridge alias for complete.
-    let phase = if phase == "end" { "complete" } else { phase };
+    // "end" is a legacy Prime bridge alias; "done" is ACP / early Pi adapter wording.
+    // Stdout tee only fires on complete|error (Cursor VISION `t|` parity).
+    let phase = match phase {
+        "end" | "done" => "complete",
+        other => other,
+    };
     match phase {
         "start" => note_tool_start(session, tool_call_id, subject),
         "complete" | "error" => {

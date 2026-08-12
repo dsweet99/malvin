@@ -74,7 +74,10 @@ def fast_tasks_list_cmd() -> None:
 @click.option(
     "--model",
     default=None,
-    help="Model id passed through to malvin (ignored unless --agent=malvin)",
+    help=(
+        "Model id passed through to malvin (ignored unless --agent=malvin); "
+        "pi: models bind-mount the host pi binary via MALVIN_PI"
+    ),
 )
 @click.pass_context
 def fast_task_solve(

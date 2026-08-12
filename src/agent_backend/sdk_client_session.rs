@@ -14,9 +14,7 @@ impl SdkClient {
     pub fn ensure_authenticated(&self) -> Result<(), AuthError> {
         match self.kind {
             BridgeKind::Cursor => crate::cursor_sdk::ensure_sdk_authenticated(),
-            BridgeKind::Prime => {
-                crate::prime_sdk::ensure_prime_authenticated(&self.model.canonical())
-            }
+            BridgeKind::Pi => crate::pi_sdk::ensure_pi_authenticated(&self.model.canonical()),
         }
     }
 
@@ -104,7 +102,7 @@ impl SdkClient {
 const fn kind_label(kind: BridgeKind) -> &'static str {
     match kind {
         BridgeKind::Cursor => "cursor",
-        BridgeKind::Prime => "prime",
+        BridgeKind::Pi => "pi",
     }
 }
 
@@ -117,11 +115,9 @@ fn bridge_spawn_args<'a>(client: &'a SdkClient, cwd: &'a Path, model: &'a str) -
         timing: client.timing.clone(),
         resume_agent_id: match client.kind {
             BridgeKind::Cursor => client.last_agent_id.clone(),
-            BridgeKind::Prime => None,
+            BridgeKind::Pi => None,
         },
-        allow_download: client.allow_download,
-        prime_local: matches!(client.kind, BridgeKind::Prime) && client.model.is_prime_local(),
-        normalize_prime_usage: matches!(client.kind, BridgeKind::Prime),
+        normalize_prime_usage: matches!(client.kind, BridgeKind::Pi),
     }
 }
 
@@ -131,7 +127,7 @@ async fn spawn_for_kind(
 ) -> Result<crate::bridge_sdk::BridgeSession, AgentError> {
     match kind {
         BridgeKind::Cursor => crate::cursor_sdk::spawn_bridge(args).await,
-        BridgeKind::Prime => crate::prime_sdk::spawn_bridge(args).await,
+        BridgeKind::Pi => crate::pi_sdk::spawn_bridge(args).await,
     }
 }
 
