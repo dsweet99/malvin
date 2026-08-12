@@ -11,7 +11,9 @@ fn kiss_cov_pi_sdk_discover_auth_models() {
     let _ = super::ensure_pi_authenticated;
     let _ = super::auth::provider_auth_env_keys;
     let _ = super::list_pi_models_sync;
+    let _ = super::pi_list_models_timeout;
     let _ = stringify!(PiModelListing);
+    let _ = stringify!(DEFAULT_PI_LIST_MODELS_TIMEOUT_MS);
     let _ = stringify!(parse_list_models_table);
     let _ = stringify!(is_separator_line);
     let _ = stringify!(is_provider_id);

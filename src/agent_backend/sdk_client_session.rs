@@ -117,7 +117,7 @@ fn bridge_spawn_args<'a>(client: &'a SdkClient, cwd: &'a Path, model: &'a str) -
             BridgeKind::Cursor => client.last_agent_id.clone(),
             BridgeKind::Pi => None,
         },
-        normalize_prime_usage: matches!(client.kind, BridgeKind::Pi),
+        normalize_pi_usage: matches!(client.kind, BridgeKind::Pi),
     }
 }
 

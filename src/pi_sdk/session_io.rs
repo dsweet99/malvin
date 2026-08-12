@@ -42,20 +42,28 @@ pub(crate) async fn pi_send_new_session(session: &BridgeSession) -> Result<(), A
     let id = pi_next_req_id();
     let req = new_session_request(&id);
     pi_write_line(session, &pi_encode_request(&req)).await?;
-    pi_wait_for_response(session, &id).await
+    let _already_done = pi_wait_for_response(session, &id).await?;
+    Ok(())
 }
 
 pub(crate) async fn pi_send_prompt(session: &BridgeSession, prompt: &str) -> Result<(), AgentError> {
     let id = pi_next_req_id();
     let req = prompt_request(&id, prompt);
     pi_write_line(session, &pi_encode_request(&req)).await?;
-    pi_wait_for_response(session, &id).await?;
-    pi_drain_until_run_done(session).await
+    let already_done = pi_wait_for_response(session, &id).await?;
+    if already_done {
+        Ok(())
+    } else {
+        pi_drain_until_run_done(session).await
+    }
 }
 
-async fn pi_wait_for_response(session: &BridgeSession, id: &str) -> Result<(), AgentError> {
+/// Wait for the matching RPC response. Returns `true` if `agent_end`/`RunDone` was
+/// already handled (so the caller must not drain again).
+async fn pi_wait_for_response(session: &BridgeSession, id: &str) -> Result<bool, AgentError> {
+    let mut saw_run_done = false;
     loop {
-        match pi_read_line(session).await? {
+        match pi_read_line_with_idle_timeout(session, "response ACK").await? {
             PiLine::Response {
                 id: rid,
                 success,
@@ -63,7 +71,7 @@ async fn pi_wait_for_response(session: &BridgeSession, id: &str) -> Result<(), A
                 ..
             } if rid == id => {
                 if success {
-                    return Ok(());
+                    return Ok(saw_run_done);
                 }
                 return Err(AgentError(
                     error.unwrap_or_else(|| "pi rpc command failed".into()),
@@ -72,8 +80,16 @@ async fn pi_wait_for_response(session: &BridgeSession, id: &str) -> Result<(), A
             PiLine::Response { .. } => {}
             PiLine::Event { type_name, raw } => {
                 for ev in map_pi_event(&type_name, &raw) {
-                    if let BridgeEvent::Fatal { message, .. } = ev {
-                        return Err(AgentError(message));
+                    match &ev {
+                        BridgeEvent::Fatal { message, .. } => {
+                            return Err(AgentError(message.clone()));
+                        }
+                        BridgeEvent::Step { .. } => note_sdk_step(session.timing.as_ref()),
+                        BridgeEvent::RunDone { .. } => {
+                            pi_finish_run_done(session, &ev)?;
+                            saw_run_done = true;
+                        }
+                        _ => crate::bridge_sdk::handle_stream_event(session, &ev),
                     }
                 }
             }
@@ -98,7 +114,7 @@ async fn pi_read_line(session: &BridgeSession) -> Result<PiLine, AgentError> {
 
 async fn pi_drain_until_run_done(session: &BridgeSession) -> Result<(), AgentError> {
     loop {
-        let line = pi_read_line_with_idle_timeout(session).await?;
+        let line = pi_read_line_with_idle_timeout(session, "agent_end").await?;
         match line {
             PiLine::Response { success, error, .. } => {
                 if !success {
@@ -123,13 +139,16 @@ async fn pi_drain_until_run_done(session: &BridgeSession) -> Result<(), AgentErr
     }
 }
 
-async fn pi_read_line_with_idle_timeout(session: &BridgeSession) -> Result<PiLine, AgentError> {
+async fn pi_read_line_with_idle_timeout(
+    session: &BridgeSession,
+    waiting_for: &str,
+) -> Result<PiLine, AgentError> {
     let idle = crate::sdk_drain_timeout::sdk_drain_idle_timeout_from_env();
     tokio::time::timeout(idle, pi_read_line(session))
         .await
         .unwrap_or_else(|_| {
             Err(AgentError(format!(
-                "pi rpc drain timed out waiting for agent_end after {idle:?} of silence"
+                "pi rpc timed out waiting for {waiting_for} after {idle:?} of silence"
             )))
         })
 }
@@ -146,13 +165,16 @@ fn pi_finish_run_done(session: &BridgeSession, ev: &BridgeEvent) -> Result<(), A
         return Ok(());
     };
     if let Some(u) = usage {
-        record_sdk_usage(session.timing.as_ref(), u, session.normalize_prime_usage);
+        record_sdk_usage(session.timing.as_ref(), u, session.normalize_pi_usage);
     }
+    // Always replace: a missing result must not leave a prior turn's text for
+    // router __MALVIN_DONE__ detection via last_coder_prompt_agent_response().
+    *session
+        .last_response
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) =
+        result.clone().unwrap_or_default();
     if let Some(text) = result {
-        *session
-            .last_response
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) = text.clone();
         crate::bridge_sdk::feed_do_dm_run_result(text);
     }
     crate::bridge_sdk::handle_stream_event(session, ev);

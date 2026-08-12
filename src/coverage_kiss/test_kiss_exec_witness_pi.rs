@@ -15,10 +15,20 @@ fn kiss_cov_pi_sdk_discover_auth_models() {
     provider_auth_env_keys_primary();
     provider_auth_env_keys_secondary();
     list_pi_models_sync();
+    pi_list_models_timeout();
     PiModelListing();
-    parse_list_models_table();
+    DEFAULT_PI_LIST_MODELS_TIMEOUT_MS();
     PI_MISSING_HINT();
     pi_sdk_client_from_raw();
+}
+
+#[test]
+fn kiss_cov_pi_sdk_models_list_helpers() {
+    parse_list_models_table();
+    is_separator_line();
+    is_provider_id();
+    is_noise_line();
+    listing_from_row();
 }
 
 #[test]
@@ -104,6 +114,9 @@ fn kiss_cov_pi_sdk_client_mock_helpers() {
     pi_mock_client();
     pi_sdk_client_mock_rpc_prompt_records_usage();
     pi_sdk_noforce_fails_fast();
+    pi_sdk_agent_end_before_ack_completes();
+    pi_sdk_empty_assistant_result_clears_prior_response();
+    pi_sdk_new_session_ack_idle_timeout();
     run_hello_prompt();
     write_exec_script();
 }

@@ -108,13 +108,15 @@ fn kiss_exec_witness_04_07() {
     cursor_read_event();
     cursor_wait_for_ok();
     cursor_drain_until_run_done();
-    cursor_read_event_with_drain_idle_timeout();
+    cursor_read_event_with_idle_timeout();
     cursor_discard_optional_trailing_run_done();
     cursor_finish_run_done();
     cursor_start_mem_watch();
     cursor_spawn_bridge();
     cursor_open_bridge_session();
     CursorChildStdio();
+    create_ack_idle_timeout_fails_begin();
+    empty_result_run_done_clears_prior_last_response();
 }
 
 #[test]

@@ -167,7 +167,7 @@ fn kiss_exec_witness_02_10() {
     read_event();
     wait_for_ok();
     drain_until_run_done();
-    read_event_with_drain_idle_timeout();
+    read_event_with_idle_timeout();
     discard_optional_trailing_run_done();
     finish_run_done();
     start_mem_watch();

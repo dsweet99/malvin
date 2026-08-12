@@ -132,6 +132,14 @@ pub(crate) mod test_hooks {
         super::models_cmd_cursor::sdk_model_rows_from_stdout(raw)
     }
 
+    pub fn sdk_catalog_has_model_rows(raw: &str) -> bool {
+        super::models_cmd_cursor::sdk_catalog_has_model_rows(raw)
+    }
+
+    pub fn cursor_list_models_timeout() -> std::time::Duration {
+        super::models_cmd_cursor::cursor_list_models_timeout()
+    }
+
     pub fn models_display_lines_filtered(
         text: &str,
         prefix: &str,

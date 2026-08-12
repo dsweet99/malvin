@@ -37,6 +37,7 @@ pub(super) fn bug_clear_env() {
     unsafe {
         std::env::remove_var("MALVIN_CURSOR_SDK_BRIDGE");
         std::env::remove_var("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS");
+        std::env::remove_var("MOCK_BRIDGE_HANG_CREATE");
     }
 }
 

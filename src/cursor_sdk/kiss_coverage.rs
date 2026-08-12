@@ -116,7 +116,7 @@ fn kiss_cov_cursor_sdk_session_core() {
     let _ = stringify!(read_event);
     let _ = stringify!(wait_for_ok);
     let _ = stringify!(drain_until_run_done);
-    let _ = stringify!(read_event_with_drain_idle_timeout);
+    let _ = stringify!(read_event_with_idle_timeout);
     let _ = stringify!(start_mem_watch);
     let _ = stringify!(finish_run_done);
 }

@@ -17,13 +17,13 @@ pub fn note_sdk_step(timing: Option<&Arc<Mutex<RunTiming>>>) {
 pub fn record_sdk_usage(
     timing: Option<&Arc<Mutex<RunTiming>>>,
     usage: &Value,
-    normalize_prime: bool,
+    normalize_pi: bool,
 ) {
     let Some(t) = timing else {
         return;
     };
-    let normalized = if normalize_prime {
-        normalize_prime_usage_to_acp(usage)
+    let normalized = if normalize_pi {
+        normalize_pi_usage_to_acp(usage)
     } else {
         usage.clone()
     };
@@ -31,8 +31,8 @@ pub fn record_sdk_usage(
     g.record_acp_usage_if_present(&normalized);
 }
 
-/// Map Prime / pi-ai usage field names onto ACP-style keys expected by [`RunTiming`].
-fn normalize_prime_usage_to_acp(usage: &Value) -> Value {
+/// Map Pi / pi-ai usage field names onto ACP-style keys expected by [`RunTiming`].
+fn normalize_pi_usage_to_acp(usage: &Value) -> Value {
     let Some(obj) = usage.as_object() else {
         return usage.clone();
     };
@@ -95,7 +95,7 @@ mod tests {
     }
 
     #[test]
-    fn record_prime_usage_aliases() {
+    fn record_pi_usage_aliases() {
         let t = Arc::new(Mutex::new(RunTiming::default()));
         let usage = serde_json::json!({
             "input": 10,

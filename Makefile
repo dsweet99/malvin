@@ -17,23 +17,18 @@ endif
 .PHONY: all install test deps bridges clean
 
 CURSOR_BRIDGE_JS := cursor-sdk-bridge/dist/bridge.js
-PRIME_BRIDGE_JS := prime-sdk-bridge/dist/bridge.js
 
 deps:
 	@echo "Build deps (Ubuntu): sudo apt-get install gcc-10 g++-10 libcap-ng-dev"
-	@echo "SDK bridges need Node >= 22.13 (cursor) / >= 22.8 (prime)."
+	@echo "SDK bridges need Node >= 22.13 (cursor)."
 	@echo "cargo build / cargo install run build.rs (npm ci into ~/.malvin_home/sdk-bridges/ when needed)."
-	@echo "Manual: npm ci && npm run build in each *-sdk-bridge/"
+	@echo "Manual: npm ci && npm run build in cursor-sdk-bridge/"
 
-bridges: $(CURSOR_BRIDGE_JS) $(PRIME_BRIDGE_JS)
+bridges: $(CURSOR_BRIDGE_JS)
 
 $(CURSOR_BRIDGE_JS): cursor-sdk-bridge/package.json cursor-sdk-bridge/package-lock.json \
 		cursor-sdk-bridge/tsconfig.json $(wildcard cursor-sdk-bridge/src/*.ts)
 	cd cursor-sdk-bridge && npm ci && npm run build
-
-$(PRIME_BRIDGE_JS): prime-sdk-bridge/package.json prime-sdk-bridge/package-lock.json \
-		prime-sdk-bridge/tsconfig.json $(wildcard prime-sdk-bridge/src/*.ts)
-	cd prime-sdk-bridge && npm ci && npm run build
 
 all: bridges
 	cargo build --release
@@ -46,5 +41,4 @@ test: bridges
 
 clean:
 	cargo clean
-	rm -rf cursor-sdk-bridge/dist cursor-sdk-bridge/node_modules \
-		prime-sdk-bridge/dist prime-sdk-bridge/node_modules
+	rm -rf cursor-sdk-bridge/dist cursor-sdk-bridge/node_modules

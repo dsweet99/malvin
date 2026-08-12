@@ -33,6 +33,10 @@ async function handleCreate(req) {
     });
     return;
   }
+  if (process.env.MOCK_BRIDGE_HANG_CREATE === "1") {
+    await sleep(60_000);
+    return;
+  }
   if (req.noForcePolicy === "fail_fast") {
     emit({
       event: "fatal",
@@ -166,6 +170,17 @@ async function handleSend(req) {
   if (prompt.includes("NEVER_RUN_DONE")) {
     emit({ event: "assistant", text: "partial before hang" });
     await sleep(60_000);
+    return;
+  }
+
+  // Finished turn with no result text (must clear prior last_response).
+  if (prompt.includes("EMPTY_RESULT_RUN_DONE")) {
+    emit({ event: "assistant", text: "" });
+    emit({
+      event: "run_done",
+      status: "finished",
+      durationMs: 1,
+    });
     return;
   }
 

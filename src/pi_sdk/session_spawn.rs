@@ -109,7 +109,7 @@ fn pi_assemble_session(
         agent_id: Mutex::new(None),
         stdout_coalesce: Mutex::new(crate::acp::TraceChunkCoalescer::default()),
         tool_starts: Mutex::new(std::collections::HashMap::new()),
-        normalize_prime_usage: true,
+        normalize_pi_usage: true,
         wire: BridgeWire::PiRpc,
     }
 }

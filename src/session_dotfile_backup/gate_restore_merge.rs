@@ -66,7 +66,7 @@ fn pick_slot(
     progress.clone()
 }
 
-fn gitignore_root_bytes(backup: &GitignoreBackup) -> Option<&[u8]> {
+pub(crate) fn gitignore_root_bytes(backup: &GitignoreBackup) -> Option<&[u8]> {
     match backup {
         GitignoreBackup::Missing => None,
         GitignoreBackup::Present { files, .. } => files
@@ -77,11 +77,11 @@ fn gitignore_root_bytes(backup: &GitignoreBackup) -> Option<&[u8]> {
 }
 
 fn gitignore_regressed(anchor: &GitignoreBackup, progress: &GitignoreBackup) -> bool {
-    match (gitignore_root_bytes(anchor), gitignore_root_bytes(progress)) {
-        (Some(_anchor_bytes), None) => true,
-        (Some(anchor_bytes), Some(progress_bytes)) => anchor_bytes != progress_bytes,
-        _ => false,
-    }
+    // Deletion is a regression; intentional content edits are kept (like checks supersets).
+    matches!(
+        (gitignore_root_bytes(anchor), gitignore_root_bytes(progress)),
+        (Some(_), None)
+    )
 }
 
 fn pick_gitignore(anchor: &GitignoreBackup, progress: &GitignoreBackup) -> GitignoreBackup {
@@ -92,7 +92,7 @@ fn pick_gitignore(anchor: &GitignoreBackup, progress: &GitignoreBackup) -> Gitig
     }
 }
 
-fn vision_root_bytes(backup: &VisionBackup) -> Option<&[u8]> {
+pub(crate) fn vision_root_bytes(backup: &VisionBackup) -> Option<&[u8]> {
     match backup {
         VisionBackup::Missing => None,
         VisionBackup::Present { files, .. } => files
@@ -103,11 +103,11 @@ fn vision_root_bytes(backup: &VisionBackup) -> Option<&[u8]> {
 }
 
 fn vision_regressed(anchor: &VisionBackup, progress: &VisionBackup) -> bool {
-    match (vision_root_bytes(anchor), vision_root_bytes(progress)) {
-        (Some(_anchor_bytes), None) => true,
-        (Some(anchor_bytes), Some(progress_bytes)) => anchor_bytes != progress_bytes,
-        _ => false,
-    }
+    // Deletion is a regression; intentional content edits are kept (like checks supersets).
+    matches!(
+        (vision_root_bytes(anchor), vision_root_bytes(progress)),
+        (Some(_), None)
+    )
 }
 
 fn pick_vision(anchor: &VisionBackup, progress: &VisionBackup) -> VisionBackup {
