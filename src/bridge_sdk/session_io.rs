@@ -88,7 +88,7 @@ pub(crate) async fn read_event(session: &BridgeSession) -> Result<BridgeEvent, A
 
 async fn wait_for_ok(session: &BridgeSession) -> Result<(), AgentError> {
     loop {
-        match read_event(session).await? {
+        match read_event_with_idle_timeout(session, "ok").await? {
             BridgeEvent::Ok { agent_id } => {
                 if let Some(id) = agent_id {
                     *session
@@ -107,7 +107,7 @@ async fn wait_for_ok(session: &BridgeSession) -> Result<(), AgentError> {
 pub(crate) async fn drain_until_run_done(session: &BridgeSession) -> Result<(), AgentError> {
     use super::log_adapter::handle_stream_event;
     loop {
-        let ev = read_event_with_drain_idle_timeout(session).await?;
+        let ev = read_event_with_idle_timeout(session, "run_done").await?;
         match &ev {
             BridgeEvent::Step { .. } => note_sdk_step(session.timing.as_ref()),
             BridgeEvent::RunDone { .. } => return finish_run_done(session, &ev),
@@ -120,16 +120,17 @@ pub(crate) async fn drain_until_run_done(session: &BridgeSession) -> Result<(), 
     }
 }
 
-/// Fail the turn if the bridge stays silent too long (never emits `run_done` / `fatal`).
-async fn read_event_with_drain_idle_timeout(
+/// Fail if the bridge stays silent too long (create/resume ACK or prompt drain).
+async fn read_event_with_idle_timeout(
     session: &BridgeSession,
+    waiting_for: &str,
 ) -> Result<BridgeEvent, AgentError> {
     let idle = crate::sdk_drain_timeout::sdk_drain_idle_timeout_from_env();
     tokio::time::timeout(idle, read_event(session))
         .await
         .unwrap_or_else(|_| {
             Err(AgentError(format!(
-                "bridge drain timed out waiting for run_done after {idle:?} of silence"
+                "bridge timed out waiting for {waiting_for} after {idle:?} of silence"
             )))
         })
 }
@@ -163,13 +164,16 @@ fn finish_run_done(session: &BridgeSession, ev: &BridgeEvent) -> Result<(), Agen
         return Ok(());
     };
     if let Some(u) = usage {
-        record_sdk_usage(session.timing.as_ref(), u, session.normalize_prime_usage);
+        record_sdk_usage(session.timing.as_ref(), u, session.normalize_pi_usage);
     }
+    // Always replace: a missing result must not leave a prior turn's text for
+    // router __MALVIN_DONE__ detection via last_coder_prompt_agent_response().
+    *session
+        .last_response
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) =
+        result.clone().unwrap_or_default();
     if let Some(text) = result {
-        *session
-            .last_response
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) = text.clone();
         // Authoritative final text: SDK often places DM fences only here.
         super::log_adapter::feed_do_dm_run_result(text);
     }

@@ -1,7 +1,7 @@
 use super::{
     command_accepts_session_name, dispatch_command, dispatch_default_route, dispatch_do_workflow,
     finish_entrypoint, prepare_cli_output, print_command_error, unsupported_name_error, Commands,
-    Exit,
+    DefaultRouteDispatch, Exit,
 };
 use crate::cli::args::Cli;
 use crate::cli::entrypoint_checks::{
@@ -206,12 +206,13 @@ fn dispatch_after_session(cli: Cli, matches: clap::ArgMatches) -> Exit {
         finish_entrypoint(dispatch_command(command, &cli.shared, &matches))
     } else if let Some(request) = cli.request {
         let mut shared = cli.shared;
-        finish_entrypoint(dispatch_default_route(
+        finish_entrypoint(dispatch_default_route(DefaultRouteDispatch {
             request,
-            cli.max_loops,
-            &mut shared,
-            &matches,
-        ))
+            max_loops: cli.max_loops,
+            max_hypotheses: cli.max_hypotheses,
+            shared: &mut shared,
+            matches: &matches,
+        }))
     } else {
         Exit::Success
     }

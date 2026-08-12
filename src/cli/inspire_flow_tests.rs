@@ -75,7 +75,6 @@ mod inspire_tests {
             max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
             name: None,
-        no_download: false,
             git: false,
         };
         let backend = crate::cli::build_agent_backend(
@@ -112,7 +111,6 @@ mod inspire_tests {
             max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
             name: None,
-        no_download: false,
             git: false,
         };
         crate::cli::run_emit::emit_run_startup_sequence(

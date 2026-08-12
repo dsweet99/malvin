@@ -1,6 +1,6 @@
 # malvin (top-level CLI)
 
-malvin is a non-interactive research and coding agent. It runs agent sessions against a workspace through the Cursor SDK (`cursor:` models via a Node bridge to `@cursor/sdk`) or the Prime SDK (`prime:` models via a Node bridge to `prime-agent`, including `prime:local/…` GGUF via a localhost sidecar). Each agent-backed invocation creates an isolated run directory under `~/.malvin_home/logs/<hash>/` and records prompts, stdout, and artifacts there.
+malvin is a non-interactive research and coding agent. It runs agent sessions against a workspace through the Cursor SDK (`cursor:` models via a Node bridge to `@cursor/sdk`) or an externally installed Pi CLI (`pi:` models via `pi --rpc`; malvin does not bundle Pi). Each agent-backed invocation creates an isolated run directory under `~/.malvin_home/logs/<hash>/` and records prompts, stdout, and artifacts there.
 
 ## How to read this documentation
 
@@ -29,7 +29,7 @@ Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`,
 | `tidy` | Fix quality gates via the default router with fixed request `Get the gates to pass.` and `--gates` forced on |
 | `write` | Write a LaTeX PDF on code or concepts via a composed default-router request |
 | `inspire` | One-shot MBC2 boundary exploration (batch ideation) |
-| `models` | List `cursor:` and `prime:` (including `prime:local/…`) model ids |
+| `models` | List `cursor:` and `pi:` model ids |
 
 Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prompts/docs/<command>.md`); for the one-shot workflow use `malvin --do --doc`. The default-route contract (`router.md`) is printed after this overview when you run `malvin --doc`.
 
@@ -50,15 +50,19 @@ This is **not** the same as `-b` / `--background` (which suppresses all stdout, 
 
 ### `--model <MODEL>`
 
-Model id for agent-backed commands. Default: `cursor:auto`. Use `cursor:` for the Cursor SDK backend, or `prime:` for the Prime SDK backend (including `prime:local/…` GGUF served to prime-agent over a localhost OpenAI-compatible sidecar; see `malvin models`).
+Model id for agent-backed commands. Default: `cursor:auto`. Use `cursor:` for the Cursor SDK backend, or `pi:<provider>/<model>` for an externally installed [pi_agent_rust](https://github.com/Dicklesworthstone/pi_agent_rust) `pi` binary (`PATH` or `MALVIN_PI`). Legacy `prime:` ids are rejected.
 
 ### `--max-loops <N>` (default: 1)
 
 Outer agent-session budget for bare `malvin REQUEST` (`effective_max_loops`). `0` is treated as `1`. Gate-loop wrappers (`tidy`, `write`) expose their own `--max-loops` with a default of `3`.
 
+### `--max-hypotheses <N>` (default: 5)
+
+Hypothesis budget for bare `malvin REQUEST` `kpop_common.md` (`{{ max_hypotheses }}`). When the flag is omitted, `[default_workflow].max_hypotheses` from `~/.malvin_home/config.toml` is used (fallback 5). Explicit CLI wins over config. `0` is treated as `5`. Gate-loop wrappers (`tidy`, `write`) expose their own `--max-hypotheses`.
+
 ### `--no-force`
 
-By default agent backends run tools headlessly (auto-approved). `--no-force` is not supported on `cursor:` or `prime:` (no interactive approval prompt); malvin fails fast with a clear error.
+By default agent backends run tools headlessly (auto-approved). `--no-force` is not supported on `cursor:` or `pi:` (no interactive approval prompt); malvin fails fast with a clear error.
 
 ### `--no-tenacious`
 
@@ -77,10 +81,6 @@ Log **full** outgoing prompt bodies to stdout and `prompts.log`. Default: only t
 ### `--max-acp-retries <N>` (default: 3)
 
 Maximum bounded attempts per Cursor SDK bridge spawn or `send`/`wait`, with 1s / 3s backoff between tries. `--tenacious` on gate-loop commands sets this to 9999.
-
-### `--no-download`
-
-Do not auto-download `prime:local/…` models on first use. If the GGUF is missing from `~/.malvin_home/model_cache/`, the run fails instead of fetching it. Omit `--no-download` (the default) to fetch automatically on first use.
 
 ### `--git`
 
@@ -160,7 +160,7 @@ COST: steps = N tokens_in = X tokens_out = Y cache_read = A cache_write = B cost
   - `cost_read = usd_per_microtoken_cache_read × cache_read / 1_000_000`
   - `cost_write = usd_per_microtoken_cache_write × cache_write / 1_000_000`
   - `cost_tot` = sum of the four components
-  All rates default to `0`, so with unset rates the estimate is `0` (shown as `0.0000`), not `n/a`. Set rates for a non-zero estimate. **`prime:local/…`** forces zero cost rows. When usage was never observed, cost fields stay `n/a`.
+  All rates default to `0`, so with unset rates the estimate is `0` (shown as `0.0000`), not `n/a`. Set rates for a non-zero estimate. When usage was never observed, cost fields stay `n/a`.
 
 ### Narrative vs audit (trust rule)
 
@@ -177,18 +177,18 @@ Malvin may defer agent stdout lines briefly before writing them to the terminal 
 
 ## Home config (`~/.malvin_home/config.toml`)
 
-Top-level keys include `mem_limit_gb`, `context_size` (local llama.cpp `n_ctx`, default 8192), and `theme`. Cursor cost rates `usd_per_microtoken_in`, `usd_per_microtoken_out`, `usd_per_microtoken_cache_read`, and `usd_per_microtoken_cache_write` (dollars per million tokens; all default `0`) live under per-model tables such as `[agent.cursor.auto]` (model id `cursor:auto`). Sections include `[agent]`, `[review]` (legacy write hypothesis budget; unused by the router wrapper), `[default_workflow]` (`max_hypotheses` for bare `malvin REQUEST` `kpop_common.md`, default 5), and `[logs]`.
+Top-level keys include `mem_limit_gb` and `theme`. Cursor cost rates `usd_per_microtoken_in`, `usd_per_microtoken_out`, `usd_per_microtoken_cache_read`, and `usd_per_microtoken_cache_write` (dollars per million tokens; all default `0`) live under per-model tables such as `[agent.cursor.auto]` (model id `cursor:auto`). Sections include `[agent]`, `[review]` (`max_hypotheses` for `malvin write` when `--max-hypotheses` is omitted), `[default_workflow]` (`max_hypotheses` for bare `malvin REQUEST` when `--max-hypotheses` is omitted, default 5), and `[logs]`.
 
 ## Log retention
 
-Before most agent-backed commands create a new run directory, malvin may prune older directories under `~/.malvin_home/logs/<hash>/` according to `~/.malvin_home/config.toml` `[logs]` settings (`max_count`, `max_age_days`, `max_bytes`). Set `max_count = 0` for unlimited run count (byte and age caps still apply). Agent-backed commands (including `malvin --do` and `tidy`) ensure the home config file exists with defaults. After upgrading to a build with default `max_count = 1000`, the next GC-enabled command may delete excess oldest runs once.
+After most agent-backed commands create a new run directory and emit the startup `Command:` line, malvin may prune older directories under `~/.malvin_home/logs/<hash>/` according to `~/.malvin_home/config.toml` `[logs]` settings (`max_count`, `max_age_days`, `max_bytes`). The active run is protected during prune. Set `max_count = 0` for unlimited run count (byte and age caps still apply). Agent-backed commands (including `malvin --do` and `tidy`) ensure the home config file exists with defaults. After upgrading to a build with default `max_count = 1000`, the next GC-enabled command may delete excess oldest runs once.
 
 ## External dependencies
 
-- **Cursor SDK**: Node ≥ 22.13, built `cursor-sdk-bridge/` (`npm ci && npm run build`), and a Cursor API key (`CURSOR_API_KEY`, or `CURSOR_AGENT_API_KEY` / `AGENT_API_KEY`) for `cursor:` models. `malvin models` lists Cursor models via the bridge when possible; falls back to `agent` / `cursor-agent` on `PATH` if the SDK path fails.
-- **OpenRouter**: `OPENROUTER_API_KEY` when using `prime:openrouter/…` models via Prime.
-- **Prime SDK**: Node ≥ 22.8, built `prime-sdk-bridge/`, and a provider API key for `prime:` models.
-- **Local models**: Apple Silicon / Metal build for `prime:local/…` GGUF models; raise `mem_limit_gb` in `~/.malvin_home/config.toml` before first load (see `malvin models --doc`).
+- **Node.js**: ≥ 22.13 with `npm` on `PATH`. `cargo install malvin` / `cargo build` run `build.rs`, which installs the Cursor SDK bridge under `~/.malvin_home/sdk-bridges/` when the in-tree bridge is not already built (required for `cursor:` agent backends). Set `MALVIN_SKIP_SDK_BRIDGES=1` only to compile the binary without that SDK.
+- **Cursor SDK**: `@cursor/sdk` via `cursor-sdk-bridge/` (installed at build time), and a Cursor API key (`CURSOR_API_KEY`, or `CURSOR_AGENT_API_KEY` / `AGENT_API_KEY`) for `cursor:` models. `malvin models` lists Cursor models via the bridge when possible; falls back to `agent` / `cursor-agent` on `PATH` if the SDK path fails.
+- **OpenRouter**: `OPENROUTER_API_KEY` when using `pi:openrouter/…` models.
+- **Pi CLI**: install `pi` from pi_agent_rust separately (`PATH` or `MALVIN_PI`). Provider keys follow Pi’s own env vars (`pi --list-providers`). malvin does not bundle or cargo-install Pi.
 - **pre-commit**: optional; malvin does not install hooks automatically.
 
 ## Request syntax

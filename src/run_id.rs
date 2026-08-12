@@ -33,6 +33,10 @@ fn default_gc_enabled() -> bool {
 
 /// Creates `~/.malvin_home/logs/<hash>/<timestamp>_<id>/` for `base_dir` (or the current directory).
 ///
+/// When [`RunDirOptions::gc`] is true, retention prune runs **after** the new run directory exists
+/// (the new run is protected). Prefer deferring GC until after `Command:` logging on agent flows
+/// via [`maybe_gc_after_run_created`].
+///
 /// # Errors
 ///
 /// Returns [`std::io::Error`] if directory creation fails or unique id allocation exhausts retries.
@@ -40,13 +44,28 @@ pub fn create_run_dir(base_dir: Option<&Path>, opts: RunDirOptions) -> std::io::
     let parent = base_dir.unwrap_or_else(|| Path::new("."));
     let run_root = crate::malvin_logs_root(parent);
     std::fs::create_dir_all(&run_root)?;
+    let run_dir = create_run_dir_with_id(&run_root, |_| build_identifier())?;
     if opts.gc {
-        crate::log_gc::prune_logs_before_run(parent);
-        if crate::malvin_acp_spawn_chamber_dir(parent).is_dir() {
-            let _ = crate::acp_spawn_sweep::sweep_stale_acp_spawn_locks(parent);
-        }
+        gc_after_run_created(parent, &run_dir);
     }
-    create_run_dir_with_id(&run_root, |_| build_identifier())
+    Ok(run_dir)
+}
+
+fn gc_after_run_created(base_dir: &Path, run_dir: &Path) {
+    crate::log_gc::prune_logs_after_run_created(base_dir, run_dir);
+    if crate::malvin_acp_spawn_chamber_dir(base_dir).is_dir() {
+        let _ = crate::acp_spawn_sweep::sweep_stale_acp_spawn_locks(base_dir);
+    }
+}
+
+/// Run log retention (+ ACP spawn sweep) for an already-created run directory.
+///
+/// No-op when default GC is disabled (unit/integration test binaries under `deps/`).
+pub fn maybe_gc_after_run_created(base_dir: &Path, run_dir: &Path) {
+    if !default_gc_enabled() {
+        return;
+    }
+    gc_after_run_created(base_dir, run_dir);
 }
 
 #[must_use]

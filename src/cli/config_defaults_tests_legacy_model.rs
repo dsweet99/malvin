@@ -24,7 +24,7 @@ fn mini_model_is_rejected() {
         ])
         .expect_err("legacy mini");
     let msg = err.to_string();
-    assert!(msg.contains("mini:") || msg.contains("prime:"), "{msg}");
+    assert!(msg.contains("mini:"), "{msg}");
 }
 
 #[test]
@@ -33,7 +33,7 @@ fn bare_cli_model_is_rejected() {
         .try_get_matches_from(["malvin", "--model", "auto", "hello"])
         .expect_err("bare");
     let msg = err.to_string();
-    assert!(msg.contains("cursor:") || msg.contains("prime:"), "{msg}");
+    assert!(msg.contains("cursor:") || msg.contains("pi:"), "{msg}");
 }
 
 #[test]
@@ -55,7 +55,7 @@ model = "auto"
         let matches = Cli::command().get_matches_from(["malvin", "--do", "hello"]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         let err = apply_workspace_config_defaults(&matches, &mut cli).expect_err("bare config");
-        assert!(err.contains("cursor:") || err.contains("prime:"), "{err}");
+        assert!(err.contains("cursor:") || err.contains("pi:"), "{err}");
         let after = std::fs::read_to_string(&path).expect("read");
         assert!(after.contains("model = \"auto\""), "must not rewrite config");
     });

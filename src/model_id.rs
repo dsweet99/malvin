@@ -1,28 +1,28 @@
-//! Prefixed model ids: `cursor:…`, `prime:…`.
+//! Prefixed model ids: `cursor:…`, `pi:…`.
 pub const CURSOR_PREFIX: &str = "cursor:";
-pub const PRIME_PREFIX: &str = "prime:";
+pub const PI_PREFIX: &str = "pi:";
 
 /// Legacy prefixes — rejected with a rename hint.
 pub const MINI_PREFIX: &str = "mini:";
 pub const OPENROUTER_PREFIX: &str = "openrouter:";
 pub const LOCAL_PREFIX: &str = "local:";
+pub const PRIME_PREFIX: &str = "prime:";
 
 pub const UNPREFIXED_MODEL_MESSAGE: &str =
-    "model id must use a `cursor:` or `prime:` prefix (for example `cursor:auto`, `prime:openai/gpt-5.5`, or `prime:local/qwen35_9b_q4`)";
+    "model id must use a `cursor:` or `pi:` prefix (for example `cursor:auto` or `pi:openai/gpt-4o`)";
 
 const LEGACY_MINI_HINT: &str =
-    "legacy `mini:` prefix removed; use `prime:` (for example `prime:openrouter/<slug>` or `prime:local/<slug>`)";
+    "legacy `mini:` prefix removed; use `pi:` (for example `pi:openrouter/<slug>`)";
 const LEGACY_OPENROUTER_HINT: &str =
-    "legacy `openrouter:` prefix removed; use `prime:openrouter/<slug>` (for example `prime:openrouter/anthropic/claude-3-haiku`)";
-const LEGACY_LOCAL_HINT: &str =
-    "legacy `local:` prefix removed; use `prime:local/<slug>` (for example `prime:local/qwen35_9b_q4`)";
-const LEGACY_PRIME_LOCAL_HINT: &str =
-    "use `prime:local/<slug>` instead of `prime:local/local/<slug>` (for example `prime:local/qwen35_9b_q4`)";
+    "legacy `openrouter:` prefix removed; use `pi:openrouter/<slug>` (for example `pi:openrouter/anthropic/claude-3-haiku`)";
+const LEGACY_LOCAL_HINT: &str = "legacy `local:` prefix removed; local GGUF models are no longer supported";
+const LEGACY_PRIME_HINT: &str =
+    "legacy `prime:` prefix removed; use `cursor:` or `pi:` (for example `cursor:auto` or `pi:openai/gpt-4o`)";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModelBackend {
     Cursor,
-    Prime,
+    Pi,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -43,31 +43,24 @@ impl ParsedModel {
     pub fn canonical(&self) -> String {
         match self.backend {
             ModelBackend::Cursor => format!("{CURSOR_PREFIX}{}", self.slug),
-            ModelBackend::Prime => format!("{PRIME_PREFIX}{}", self.slug),
+            ModelBackend::Pi => format!("{PI_PREFIX}{}", self.slug),
         }
     }
 
-    /// `prime:local/<slug>` (malvin GGUF via Prime sidecar).
     #[must_use]
-    pub fn is_prime_local(&self) -> bool {
-        matches!(self.backend, ModelBackend::Prime)
-            && self.slug.starts_with("local/")
-            && self.slug.len() > "local/".len()
+    pub const fn is_pi(&self) -> bool {
+        matches!(self.backend, ModelBackend::Pi)
     }
 
+    /// Split `pi:<provider>/<model>` on the first `/` after the prefix.
+    ///
+    /// Model ids may themselves contain `/` (for example `openrouter/anthropic/claude-3-haiku`).
     #[must_use]
-    pub const fn is_prime(&self) -> bool {
-        matches!(self.backend, ModelBackend::Prime)
-    }
-
-    /// Catalog slug for `prime:local/<slug>` GGUF ids.
-    #[must_use]
-    pub fn local_catalog_slug(&self) -> Option<&str> {
-        if self.is_prime_local() {
-            self.slug.strip_prefix("local/")
-        } else {
-            None
+    pub fn pi_provider_and_model(&self) -> Option<(&str, &str)> {
+        if !self.is_pi() {
+            return None;
         }
+        split_first_slash(&self.slug).filter(|(p, m)| !p.is_empty() && !m.is_empty())
     }
 }
 
@@ -80,14 +73,16 @@ pub fn parse_model_id(raw: &str) -> Result<ParsedModel, String> {
     if let Some(rest) = raw.strip_prefix(CURSOR_PREFIX) {
         return parsed(ModelBackend::Cursor, rest);
     }
-    if let Some(rest) = raw.strip_prefix(PRIME_PREFIX) {
-        return parse_prime(rest);
+    if let Some(rest) = raw.strip_prefix(PI_PREFIX) {
+        return parse_pi(rest);
     }
     Err(legacy_or_unprefixed_error(raw))
 }
 
 fn legacy_or_unprefixed_error(raw: &str) -> String {
-    if raw.starts_with(MINI_PREFIX) {
+    if raw.starts_with(PRIME_PREFIX) {
+        LEGACY_PRIME_HINT.to_string()
+    } else if raw.starts_with(MINI_PREFIX) {
         LEGACY_MINI_HINT.to_string()
     } else if raw.starts_with(OPENROUTER_PREFIX) {
         LEGACY_OPENROUTER_HINT.to_string()
@@ -98,15 +93,12 @@ fn legacy_or_unprefixed_error(raw: &str) -> String {
     }
 }
 
-fn parse_prime(rest: &str) -> Result<ParsedModel, String> {
+fn parse_pi(rest: &str) -> Result<ParsedModel, String> {
     let rest = rest.trim();
     if rest.is_empty() {
         return Err(UNPREFIXED_MODEL_MESSAGE.to_string());
     }
-    if rest.starts_with("local/local/") {
-        return Err(LEGACY_PRIME_LOCAL_HINT.to_string());
-    }
-    let err = || format!("prime model id must be `prime:<provider>/<model>` (got `prime:{rest}`)");
+    let err = || format!("pi model id must be `pi:<provider>/<model>` (got `pi:{rest}`)");
     let Some((provider, model)) = split_first_slash(rest) else {
         return Err(err());
     };
@@ -114,7 +106,7 @@ fn parse_prime(rest: &str) -> Result<ParsedModel, String> {
         return Err(err());
     }
     Ok(ParsedModel {
-        backend: ModelBackend::Prime,
+        backend: ModelBackend::Pi,
         slug: rest.to_string(),
     })
 }
@@ -151,15 +143,8 @@ pub fn provider_slug(raw: &str) -> String {
 }
 
 #[must_use]
-pub fn uses_local_backend(raw: &str) -> bool {
-    parse_model_id(raw)
-        .map(|p| p.is_prime_local())
-        .unwrap_or(false)
-}
-
-#[must_use]
-pub fn uses_prime_backend(raw: &str) -> bool {
-    parse_model_id(raw).map(|p| p.is_prime()).unwrap_or(false)
+pub fn uses_pi_backend(raw: &str) -> bool {
+    parse_model_id(raw).map(|p| p.is_pi()).unwrap_or(false)
 }
 
 pub fn require_prefixed_model(raw: &str) -> Result<String, String> {

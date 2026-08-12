@@ -40,22 +40,17 @@ pub(crate) enum AcpStepProxy {
 /// How `COST` footnote USD fields are produced for this run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CostPolicy {
-    /// `cursor:` / `prime:`: estimate from per-model `usd_per_microtoken_*` × token counts / 1e6 (0 when rates are unset).
+    /// `cursor:` / `pi:`: estimate from per-model `usd_per_microtoken_*` × token counts / 1e6 (0 when rates are unset).
     #[default]
     EstimateFromRates,
-    /// `prime:local/…`: treat every completion as cost `0` for now.
+    /// Treat every completion as cost `0` (reserved; unused after local-backend removal).
     Zero,
 }
 
-/// Choose [`CostPolicy`] from a prefixed model id (`cursor:` / `prime:`).
+/// Choose [`CostPolicy`] from a prefixed model id (`cursor:` / `pi:`).
 #[must_use]
-pub fn cost_policy_for_model(model: &str) -> CostPolicy {
-    if crate::model_id::uses_local_backend(model) {
-        CostPolicy::Zero
-    } else {
-        // `cursor:` and `prime:` (including `prime:openrouter/…`) estimate from rates.
-        CostPolicy::EstimateFromRates
-    }
+pub const fn cost_policy_for_model(_model: &str) -> CostPolicy {
+    CostPolicy::EstimateFromRates
 }
 
 #[derive(Debug, Clone)]
@@ -76,7 +71,7 @@ pub struct RunTiming {
     pub(crate) unknown_tx_count: u32,
     /// Cursor-mode rates for estimating USD cost from token usage.
     pub(crate) token_cost_rates: crate::malvin_config_file::TokenCostRates,
-    /// Backend-specific cost filling policy (`cursor:` / `prime:`).
+    /// Backend-specific cost filling policy (`cursor:` / `pi:`).
     pub(crate) cost_policy: CostPolicy,
     pub(crate) steps: u64,
     /// `None` until at least one input token count is observed.

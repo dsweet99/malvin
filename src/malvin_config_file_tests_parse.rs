@@ -74,4 +74,17 @@ fn parse_model_token_cost_rates_defaults_and_rejects_negative() {
     // Slug-only lookup must not match `[agent.cursor.auto]` (regression: CursorSdk used to store
     // `provider_slug` and then COST rates stayed zero).
     assert_eq!(cfg.token_cost_rates_for("auto"), super::TokenCostRates::default());
+    // `pi:` model ids keep a slash in the model segment; quoted TOML key is required.
+    let pi = parse_malvin_config(
+        "[agent.pi.\"openai/gpt-4o-mini\"]\nusd_per_microtoken_in = 1.5\nusd_per_microtoken_out = 2.5\n",
+    );
+    assert!((pi.token_cost_rates_for("pi:openai/gpt-4o-mini").usd_per_microtoken_in - 1.5).abs() < f64::EPSILON);
+    assert!((pi.token_cost_rates_for("pi:openai/gpt-4o-mini").usd_per_microtoken_out - 2.5).abs() < f64::EPSILON);
+    // Three-level shape from an early design draft must not silently bind rates.
+    let nested = parse_model_token_cost_rates(
+        "[agent.pi.openai.gpt-4o-mini]\nusd_per_microtoken_in = 9.0\n",
+    )
+    .expect("parse");
+    assert!(!nested.contains_key("pi:openai/gpt-4o-mini"));
 }
+

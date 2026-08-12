@@ -50,6 +50,13 @@ fn kiss_cov_models_cmd_run_helpers() {
     let lines = models_display_lines("only-one\n").expect("lines");
     assert_eq!(lines, vec!["only-one".to_string()]);
     print_parsed_or_fallback("fallback\n");
+    let _ = cursor_list_models_timeout();
+    let _ = stringify!(DEFAULT_CURSOR_LIST_MODELS_TIMEOUT_MS);
+    let _ = stringify!(print_cursor_models);
+    let _ = stringify!(print_cursor_models_via_sdk);
+    let _ = stringify!(print_cursor_models_via_cli);
+    let _ = stringify!(run_cursor_sdk_models_js);
+    let _ = stringify!(print_filtered_model_rows);
 }
 
 #[test]

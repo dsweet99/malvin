@@ -93,7 +93,8 @@ fn log_gc_helpers_cover_policy_edges() {
     );
     assert!(split_byte_size("1GiB").is_some());
     crate::test_utils::with_isolated_home(|work| {
-        prune_logs_before_run(work);
+        let protect = work.join("__no_active_run__");
+        prune_logs_after_run_created(work, &protect);
     });
 }
 

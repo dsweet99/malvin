@@ -50,7 +50,6 @@ fn smoke_cov_cli_cli_units_1b() {
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
         name: None,
-        no_download: false,
         git: false,
     };
     let _ = shared.model;
@@ -125,13 +124,19 @@ fn smoke_cov_cli_cli_symbols_a() {
     let router_args = crate::router_flow::RouterArgs {
         request: None,
         max_loops: 1,
+        max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
     };
     let crate::router_flow::RouterArgs {
         request: router_request,
         max_loops: router_max_loops,
+        max_hypotheses: router_max_hypotheses,
     } = router_args;
     assert!(router_request.is_none());
     assert_eq!(router_max_loops, 1);
+    assert_eq!(
+        router_max_hypotheses,
+        crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES
+    );
     let _ = stringify!(RouterRunPrep);
     let _ = crate::router_flow::run_router;
     let _: Option<crate::router_flow::router_flow_acp::RouterAcpIterationInput<'_>> = None;

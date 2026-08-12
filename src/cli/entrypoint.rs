@@ -154,13 +154,23 @@ pub fn dispatch_do_workflow(
     })
 }
 
-pub fn dispatch_default_route(
-    request: String,
-    mut max_loops: usize,
-    shared: &mut SharedOpts,
-    matches: &clap::ArgMatches,
-) -> Result<(), String> {
+pub struct DefaultRouteDispatch<'a> {
+    pub request: String,
+    pub max_loops: usize,
+    pub max_hypotheses: usize,
+    pub shared: &'a mut SharedOpts,
+    pub matches: &'a clap::ArgMatches,
+}
+
+pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), String> {
     use crate::router_flow::RouterArgs;
+    let DefaultRouteDispatch {
+        request,
+        mut max_loops,
+        max_hypotheses,
+        shared,
+        matches,
+    } = input;
     super::loop_opts::apply_default_route_tenacious(
         &mut max_loops,
         &mut shared.max_acp_retries,
@@ -172,6 +182,7 @@ pub fn dispatch_default_route(
             RouterArgs {
                 request: Some(request),
                 max_loops,
+                max_hypotheses,
             },
             shared,
             WorkflowCliOptions {

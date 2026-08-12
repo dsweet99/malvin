@@ -36,11 +36,11 @@ pub async fn watch_process_group_memory_with_rss_sampler(
     sample_rss: fn(Option<u32>, &HashSet<u32>) -> Option<u64>,
 ) {
     let MemWatchHandles {
+        reader_dead,
         pgid,
         limit_bytes,
         spawn_pid_baseline,
         run_dir,
-        ..
     } = handles;
     let mut consecutive_rss_failures = 0u32;
     loop {
@@ -48,7 +48,16 @@ pub async fn watch_process_group_memory_with_rss_sampler(
             return;
         }
         let rss = sample_rss(Some(pgid), &spawn_pid_baseline);
-        if memory_watch_should_terminate(rss, limit_bytes, &mut consecutive_rss_failures) {
+        // After stdout closes (`reader_dead`), keep enforcing hard over-limit kills
+        // (orphans may still be alive) but do not fail-closed on measurement gaps —
+        // teardown often makes USS briefly unreadable and must not look like an OOM.
+        let allow_fail_closed = !reader_dead.load(std::sync::atomic::Ordering::SeqCst);
+        if memory_watch_should_terminate(
+            rss,
+            limit_bytes,
+            &mut consecutive_rss_failures,
+            allow_fail_closed,
+        ) {
             let (reason, rss_bytes) = rss.map_or_else(
                 || {
                     warn!(
@@ -97,9 +106,9 @@ fn record_sandbox_oom_marker(run_dir: Option<&Path>, facts: crate::sandbox_oom::
     let Some(run_dir) = run_dir else {
         return;
     };
-    let Some(gate_iteration) = crate::gate_loop_session::active_gate_iteration() else {
-        return;
-    };
+    // Gate loops set an iteration; ordinary malvin/--do/inspire runs use 0 so the
+    // marker still distinguishes sandbox OOM from a generic bridge failure.
+    let gate_iteration = crate::gate_loop_session::active_gate_iteration().unwrap_or(0);
     let record = crate::sandbox_oom::SandboxOomKillRecord::from_facts(gate_iteration, facts);
     if let Err(e) = crate::sandbox_oom::record_sandbox_oom_kill(run_dir, record) {
         warn!(error = %e, "failed to write sandbox OOM marker");
@@ -112,13 +121,17 @@ fn memory_watch_should_terminate(
     rss: Option<u64>,
     limit_bytes: u64,
     consecutive_failures: &mut u32,
+    allow_fail_closed: bool,
 ) -> bool {
     if let Some(bytes) = rss {
         *consecutive_failures = 0;
         bytes > limit_bytes
-    } else {
+    } else if allow_fail_closed {
         *consecutive_failures = consecutive_failures.saturating_add(1);
         *consecutive_failures >= MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES
+    } else {
+        *consecutive_failures = 0;
+        false
     }
 }
 
@@ -128,23 +141,19 @@ mod process_group_mem_watch_tests;
 
 #[cfg(all(test, unix))]
 mod policy_tests {
-    use super::{memory_watch_should_terminate, record_sandbox_oom_marker, MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES};
-    use crate::sandbox_oom::{
-        gate_iteration_oom_killed, SandboxOomKillFacts,
-        OOM_REASON_MEASUREMENT_FAIL_CLOSED,
-    };
+    use super::{memory_watch_should_terminate, MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES};
 
     #[test]
     fn memory_watch_should_terminate_on_over_limit() {
         let mut failures = 0;
-        assert!(memory_watch_should_terminate(Some(100), 50, &mut failures));
+        assert!(memory_watch_should_terminate(Some(100), 50, &mut failures, true));
         assert_eq!(failures, 0);
     }
 
     #[test]
     fn memory_watch_should_not_terminate_when_under_limit() {
         let mut failures = 0;
-        assert!(!memory_watch_should_terminate(Some(10), 50, &mut failures));
+        assert!(!memory_watch_should_terminate(Some(10), 50, &mut failures, true));
         assert_eq!(failures, 0);
     }
 
@@ -152,66 +161,30 @@ mod policy_tests {
     fn memory_watch_fail_closed_after_consecutive_none_samples() {
         let mut failures = 0;
         for _ in 0..MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES - 1 {
-            assert!(!memory_watch_should_terminate(None, u64::MAX, &mut failures));
+            assert!(!memory_watch_should_terminate(None, u64::MAX, &mut failures, true));
         }
-        assert!(memory_watch_should_terminate(None, u64::MAX, &mut failures));
+        assert!(memory_watch_should_terminate(None, u64::MAX, &mut failures, true));
+    }
+
+    #[test]
+    fn memory_watch_no_fail_closed_when_disallowed() {
+        let mut failures = 0;
+        for _ in 0..MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES + 2 {
+            assert!(!memory_watch_should_terminate(None, u64::MAX, &mut failures, false));
+        }
+        assert_eq!(failures, 0);
+        assert!(memory_watch_should_terminate(Some(100), 50, &mut failures, false));
     }
 
     #[test]
     fn memory_watch_resets_failure_counter_after_successful_sample() {
         let mut failures = 2;
-        assert!(!memory_watch_should_terminate(Some(1), u64::MAX, &mut failures));
+        assert!(!memory_watch_should_terminate(Some(1), u64::MAX, &mut failures, true));
         assert_eq!(failures, 0);
-        assert!(!memory_watch_should_terminate(None, u64::MAX, &mut failures));
+        assert!(!memory_watch_should_terminate(None, u64::MAX, &mut failures, true));
         assert_eq!(failures, 1);
     }
-
-    #[test]
-    fn record_sandbox_oom_marker_noops_without_run_dir_or_gate_iteration() {
-        record_sandbox_oom_marker(
-            None,
-            SandboxOomKillFacts {
-                reason: OOM_REASON_MEASUREMENT_FAIL_CLOSED,
-                rss_bytes: None,
-                limit_bytes: 1,
-                pgid: 1,
-            },
-        );
-        let tmp = tempfile::tempdir().expect("tempdir");
-        crate::gate_loop_session::set_active_gate_iteration(None);
-        record_sandbox_oom_marker(
-            Some(tmp.path()),
-            SandboxOomKillFacts {
-                reason: OOM_REASON_MEASUREMENT_FAIL_CLOSED,
-                rss_bytes: None,
-                limit_bytes: 1,
-                pgid: 1,
-            },
-        );
-    }
-
-    #[test]
-    fn record_sandbox_oom_marker_writes_fail_closed_reason() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let artifacts =
-            crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
-        crate::gate_loop_session::set_active_gate_iteration(Some(1));
-        record_sandbox_oom_marker(
-            Some(&artifacts.run_dir),
-            SandboxOomKillFacts {
-                reason: OOM_REASON_MEASUREMENT_FAIL_CLOSED,
-                rss_bytes: None,
-                limit_bytes: 512,
-                pgid: 7,
-            },
-        );
-        crate::gate_loop_session::set_active_gate_iteration(None);
-        assert!(gate_iteration_oom_killed(&artifacts, 1));
-        let text = std::fs::read_to_string(artifacts.sandbox_oom_json_path()).expect("read");
-        assert!(text.contains(OOM_REASON_MEASUREMENT_FAIL_CLOSED));
-    }
 }
-
 
 #[cfg(test)]
 mod kiss_cov_auto {

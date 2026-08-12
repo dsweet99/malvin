@@ -142,19 +142,11 @@ fn zero_policy_records_zero_cost_from_acp_usage() {
 #[test]
 fn cost_policy_for_model_maps_prefixes() {
     assert_eq!(
-        crate::run_timing::cost_policy_for_model("prime:local/qwen35_9b_q4"),
-        CostPolicy::Zero
-    );
-    assert_eq!(
         crate::run_timing::cost_policy_for_model("cursor:auto"),
         CostPolicy::EstimateFromRates
     );
     assert_eq!(
-        crate::run_timing::cost_policy_for_model("prime:openrouter/org/model"),
-        CostPolicy::EstimateFromRates
-    );
-    assert_eq!(
-        crate::run_timing::cost_policy_for_model("prime:openai/gpt-5.5"),
+        crate::run_timing::cost_policy_for_model("pi:openai/gpt-4o"),
         CostPolicy::EstimateFromRates
     );
 }

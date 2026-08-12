@@ -123,6 +123,26 @@ fn apply_shared_and_finalize(
     finalize_shared_model(matches, shared)
 }
 
+fn apply_default_route_max_hypotheses(matches: &ArgMatches, cli: &mut Cli) -> Result<(), String> {
+    if global_flag_from_command_line(matches, "max_hypotheses") {
+        return Ok(());
+    }
+    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
+    let configured = crate::malvin_config_file::load_malvin_config(&cwd)
+        .default_workflow
+        .max_hypotheses_or_default();
+    cli.max_hypotheses = if configured == 0 {
+        crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES
+    } else {
+        configured
+    };
+    Ok(())
+}
+
+const fn is_bare_default_route(cli: &Cli) -> bool {
+    !cli.do_workflow && cli.command.is_none() && cli.request.is_some()
+}
+
 const fn uses_lightweight_config_path(cli: &Cli) -> bool {
     cli.do_workflow
         || matches!(cli.command, Some(Commands::Models(_)))
@@ -135,7 +155,11 @@ pub fn apply_workspace_config_defaults(
 ) -> Result<(), String> {
     if uses_lightweight_config_path(cli) {
         let agent = load_agent_config(matches)?;
-        return apply_shared_and_finalize(matches, &mut cli.shared, &agent);
+        apply_shared_and_finalize(matches, &mut cli.shared, &agent)?;
+        if is_bare_default_route(cli) {
+            apply_default_route_max_hypotheses(matches, cli)?;
+        }
+        return Ok(());
     }
     let Some(command) = cli.command.as_mut() else {
         // Bare `malvin` / help-style paths: validate clap default `--model` only.

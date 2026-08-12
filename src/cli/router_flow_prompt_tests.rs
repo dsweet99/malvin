@@ -90,6 +90,28 @@ fn build_router_a_prompt_omits_code_checks_when_gates_disabled() {
 }
 
 #[test]
+fn build_router_kpop_common_prompt_substitutes_nondefault_max_hypotheses() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = flow_test_artifacts(&tmp);
+    let store = prepare_router_prompt_store().expect("store");
+    let exp = artifacts.gate_exp_log_path(1);
+    let body = build_router_kpop_common_prompt(RouterKpopCommonPromptInput {
+        store: &store,
+        artifacts: &artifacts,
+        model: DEFAULT_CLI_MODEL,
+        git: false,
+        max_hypotheses: 7,
+        exp_log: &exp,
+    })
+    .expect("kpop common");
+    assert!(
+        body.contains("max_hypotheses = `7`"),
+        "expected substituted budget 7, got: {body}"
+    );
+    assert!(!body.contains("max_hypotheses = `5`"));
+}
+
+#[test]
 fn build_router_kpop_common_prompt_expands_keys_without_unresolved_braces() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);

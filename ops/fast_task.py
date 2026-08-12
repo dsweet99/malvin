@@ -57,9 +57,8 @@ def fast_tasks_list_cmd() -> None:
     default=_lib.AGENT_MALVIN,
     show_default=True,
     help=(
-        "Agent to run in the container: malvin (default), cursor "
-        "(cursor-agent --force -p < plan.md), or prime "
-        "(prime-agent --no-session -p < plan.md)"
+        "Agent to run in the container: malvin (default), or cursor "
+        "(cursor-agent --force -p < plan.md)"
     ),
 )
 @click.option(
@@ -74,7 +73,10 @@ def fast_tasks_list_cmd() -> None:
 @click.option(
     "--model",
     default=None,
-    help="Model id passed through to malvin (ignored unless --agent=malvin)",
+    help=(
+        "Model id passed through to malvin (ignored unless --agent=malvin); "
+        "pi: models bind-mount the host pi binary via MALVIN_PI"
+    ),
 )
 @click.pass_context
 def fast_task_solve(

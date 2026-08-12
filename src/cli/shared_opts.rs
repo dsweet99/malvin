@@ -19,7 +19,7 @@ pub struct GlobalOpts {
 #[derive(Args, Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct SharedOpts {
-    /// Model id (`cursor:` or `prime:`).
+    /// Model id (`cursor:` or `pi:`).
     #[arg(
         long,
         global = true,
@@ -27,7 +27,7 @@ pub struct SharedOpts {
         value_parser = parse_model_id
     )]
     pub model: ParsedModel,
-    /// Don't force tool auto-run (fails fast on `cursor:` / `prime:`; no interactive approval).
+    /// Don't force tool auto-run (fails fast on `cursor:` / `pi:`; no interactive approval).
     #[arg(long, global = true, default_value_t = false)]
     pub no_force: bool,
     /// Don't expand gate-loop budgets to tenacious limits [default: tenacious on].
@@ -51,9 +51,6 @@ pub struct SharedOpts {
     /// Max agent retries per spawn or gate iteration (1s / 3s backoff between tries).
     #[arg(long = "max-acp-retries", global = true, default_value_t = DEFAULT_MAX_ACP_RETRIES)]
     pub max_acp_retries: u32,
-    /// Do not auto-download `prime:local/…` models on first use (fail if missing from cache).
-    #[arg(long = "no-download", global = true, default_value_t = false)]
-    pub no_download: bool,
     /// Print built-in documentation (`malvin --doc` or `malvin <COMMAND> --doc`) and exit.
     #[arg(long, global = true, default_value_t = false)]
     pub doc: bool,
@@ -92,7 +89,6 @@ impl SharedOpts {
             max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
             name: None,
-            no_download: false,
             git: false,
         }
     }

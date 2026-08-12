@@ -24,7 +24,6 @@ pub(crate) fn summarize_shared_opts(max_acp_retries: u32) -> SharedOpts {
         max_acp_retries,
         doc: false,
         name: None,
-        no_download: false,
         git: false,
     }
 }

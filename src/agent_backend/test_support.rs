@@ -27,7 +27,6 @@ pub fn shared_opts(_unused: bool) -> SharedOpts {
         max_acp_retries: 3,
         doc: false,
         name: None,
-        no_download: false,
         git: false,
     }
 }

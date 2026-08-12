@@ -21,7 +21,6 @@ fn kiss_cov_session_dotfile_parts_construct_destructure() {
     let missing = DotfileBackupState::Missing;
     let parts = SessionDotfileParts {
         malvin_checks: missing.clone(),
-        malvin_config: missing.clone(),
         gitignore: super::GitignoreBackup::Missing,
         vision: super::VisionBackup::Missing,
         malvin_config_workspace: missing,
@@ -29,13 +28,11 @@ fn kiss_cov_session_dotfile_parts_construct_destructure() {
     let touched = std::hint::black_box(parts);
     let SessionDotfileParts {
         malvin_checks,
-        malvin_config,
         gitignore,
         vision,
         malvin_config_workspace,
     } = touched;
     assert!(matches!(malvin_checks, DotfileBackupState::Missing));
-    assert!(matches!(malvin_config, DotfileBackupState::Missing));
     assert!(matches!(gitignore, super::GitignoreBackup::Missing));
     assert!(matches!(vision, super::VisionBackup::Missing));
     assert!(matches!(
@@ -44,7 +41,6 @@ fn kiss_cov_session_dotfile_parts_construct_destructure() {
     ));
     let backups = SessionDotfileBackups::from_parts(SessionDotfileParts {
         malvin_checks: DotfileBackupState::Missing,
-        malvin_config: DotfileBackupState::Missing,
         gitignore: super::GitignoreBackup::Missing,
         vision: super::VisionBackup::Missing,
         malvin_config_workspace: DotfileBackupState::Missing,

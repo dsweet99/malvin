@@ -62,13 +62,13 @@ fn new_inspire_client(
     )
 }
 
-fn inspire_emit_startup(
+fn inspire_emit_startup_banner(
     inspire: &InspireArgs,
     shared: &SharedOpts,
     artifacts: &RunArtifacts,
 ) -> Result<(), String> {
     let request = require_cli_request(inspire.request.as_ref(), "inspire")?;
-    crate::cli::run_emit::emit_run_startup_sequence(
+    crate::cli::run_emit::emit_run_startup_banner(
         artifacts,
         crate::cli::run_emit::RunStartupEmitOpts::from_shared(shared, true),
         &request,
@@ -81,8 +81,15 @@ async fn prepare_inspire_run(
     workflow: WorkflowCliOptions,
 ) -> Result<InspireRunPrep, String> {
     let mut client = new_inspire_client(shared, workflow)?;
-    let (text, artifacts) =
-        resolve_one_shot_request_artifacts(inspire.request.as_ref(), "inspire", None)?;
+    // Create without GC so Command: can land before retention prune.
+    let (text, artifacts) = resolve_one_shot_request_artifacts(
+        inspire.request.as_ref(),
+        "inspire",
+        Some(crate::run_id::RunDirOptions { gc: false }),
+    )?;
+    // Near-instant feedback: Command: before prune, auth/backups, and agent spawn.
+    inspire_emit_startup_banner(inspire, shared, &artifacts)?;
+    crate::run_id::maybe_gc_after_run_created(&artifacts.work_dir, &artifacts.run_dir);
     let session_dotfile_backups = finish_one_shot_auth_and_backups(&mut client, &artifacts)?;
     let prompt = render_inspire_prompt(&text)?;
     Ok(InspireRunPrep {
@@ -104,7 +111,7 @@ pub async fn run_inspire(
         .begin_coder_session(&prep.artifacts.work_dir)
         .await
         .map_err(|e| e.to_string())?;
-    inspire_emit_startup(&inspire, shared, &prep.artifacts)?;
+    crate::cli::run_emit::emit_run_logs_line(&prep.artifacts)?;
     let acp_res = run_inspire_coder_session(&mut prep.client, &prep.artifacts, &prep.prompt).await;
     finish_one_shot_after_prompt(
         acp_res,
@@ -178,7 +185,7 @@ mod kiss_cov_gate_refs{
     fn kiss_cov_unit_names() {
         let _: Option<InspireRunPrep> = None;
         let _ = new_inspire_client;
-        let _ = inspire_emit_startup;
+        let _ = inspire_emit_startup_banner;
         let _ = prepare_inspire_prompt_store;
         let _ = prepare_inspire_run;
         let _ = run_inspire;

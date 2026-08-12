@@ -2,8 +2,7 @@
 
 use std::path::Path;
 
-use super::gate_restore_checks::{substantive_check_lines};
-use super::gate_restore_repair::sanitize_invalid_malvin_home_config_in_bundle;
+use super::gate_restore_checks::substantive_check_lines;
 use super::{DotfileBackupState, GitignoreBackup, SessionDotfileBackups, VisionBackup};
 
 pub(crate) const fn slot_deleted(anchor: &DotfileBackupState, progress: &DotfileBackupState) -> bool {
@@ -67,7 +66,7 @@ fn pick_slot(
     progress.clone()
 }
 
-fn gitignore_root_bytes(backup: &GitignoreBackup) -> Option<&[u8]> {
+pub(crate) fn gitignore_root_bytes(backup: &GitignoreBackup) -> Option<&[u8]> {
     match backup {
         GitignoreBackup::Missing => None,
         GitignoreBackup::Present { files, .. } => files
@@ -78,11 +77,11 @@ fn gitignore_root_bytes(backup: &GitignoreBackup) -> Option<&[u8]> {
 }
 
 fn gitignore_regressed(anchor: &GitignoreBackup, progress: &GitignoreBackup) -> bool {
-    match (gitignore_root_bytes(anchor), gitignore_root_bytes(progress)) {
-        (Some(_anchor_bytes), None) => true,
-        (Some(anchor_bytes), Some(progress_bytes)) => anchor_bytes != progress_bytes,
-        _ => false,
-    }
+    // Deletion is a regression; intentional content edits are kept (like checks supersets).
+    matches!(
+        (gitignore_root_bytes(anchor), gitignore_root_bytes(progress)),
+        (Some(_), None)
+    )
 }
 
 fn pick_gitignore(anchor: &GitignoreBackup, progress: &GitignoreBackup) -> GitignoreBackup {
@@ -93,7 +92,7 @@ fn pick_gitignore(anchor: &GitignoreBackup, progress: &GitignoreBackup) -> Gitig
     }
 }
 
-fn vision_root_bytes(backup: &VisionBackup) -> Option<&[u8]> {
+pub(crate) fn vision_root_bytes(backup: &VisionBackup) -> Option<&[u8]> {
     match backup {
         VisionBackup::Missing => None,
         VisionBackup::Present { files, .. } => files
@@ -104,11 +103,11 @@ fn vision_root_bytes(backup: &VisionBackup) -> Option<&[u8]> {
 }
 
 fn vision_regressed(anchor: &VisionBackup, progress: &VisionBackup) -> bool {
-    match (vision_root_bytes(anchor), vision_root_bytes(progress)) {
-        (Some(_anchor_bytes), None) => true,
-        (Some(anchor_bytes), Some(progress_bytes)) => anchor_bytes != progress_bytes,
-        _ => false,
-    }
+    // Deletion is a regression; intentional content edits are kept (like checks supersets).
+    matches!(
+        (vision_root_bytes(anchor), vision_root_bytes(progress)),
+        (Some(_), None)
+    )
 }
 
 fn pick_vision(anchor: &VisionBackup, progress: &VisionBackup) -> VisionBackup {
@@ -132,12 +131,6 @@ pub fn merge_for_gate_restore(
             malvin_checks_regressed,
             |_, _| false,
         ),
-        malvin_config: pick_slot(
-            &anchor.malvin_config,
-            &progress.malvin_config,
-            slot_regressed,
-            |_, _| false,
-        ),
         gitignore: pick_gitignore(&anchor.gitignore, &progress.gitignore),
         vision: pick_vision(&anchor.vision, &progress.vision),
         malvin_config_workspace: pick_slot(
@@ -149,16 +142,15 @@ pub fn merge_for_gate_restore(
     }
 }
 
-/// Merge anchor/progress snapshots and sanitize any remaining invalid dotfile bytes in the bundle.
+/// Merge anchor/progress snapshots for gate restore.
 #[must_use]
 pub fn merge_and_sanitize_for_gate_restore(
     anchor: &SessionDotfileBackups,
     progress: &SessionDotfileBackups,
     work_dir: &Path,
 ) -> SessionDotfileBackups {
-    let mut merged = merge_for_gate_restore(anchor, progress);
-    sanitize_invalid_malvin_home_config_in_bundle(&mut merged, work_dir);
-    merged
+    let _ = work_dir;
+    merge_for_gate_restore(anchor, progress)
 }
 
 #[cfg(test)]

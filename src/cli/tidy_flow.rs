@@ -18,7 +18,7 @@ pub struct TidyArgs {
     /// Outer router session budget (`effective_max_loops`).
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE)]
     pub max_loops: usize,
-    /// Retained for CLI compatibility; unused by the router wrapper.
+    /// Hypothesis budget for `kpop_common.md` (`{{ max_hypotheses }}`).
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES)]
     pub max_hypotheses: usize,
     /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.

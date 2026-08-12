@@ -111,3 +111,38 @@ fn current_model_label_reads_config_or_default() {
         std::env::set_current_dir(cwd).expect("restore");
     });
 }
+
+#[test]
+fn cursor_list_models_timeout_honors_env() {
+    use super::models_cmd::test_hooks::cursor_list_models_timeout;
+    use crate::test_utils::test_env_lock;
+
+    let _lock = test_env_lock();
+    let prior = std::env::var_os("MALVIN_CURSOR_LIST_MODELS_TIMEOUT_MS");
+    #[allow(unsafe_code)]
+    unsafe {
+        std::env::set_var("MALVIN_CURSOR_LIST_MODELS_TIMEOUT_MS", "123");
+    }
+    assert_eq!(
+        cursor_list_models_timeout(),
+        std::time::Duration::from_millis(123)
+    );
+    #[allow(unsafe_code)]
+    unsafe {
+        match prior {
+            Some(v) => std::env::set_var("MALVIN_CURSOR_LIST_MODELS_TIMEOUT_MS", v),
+            None => std::env::remove_var("MALVIN_CURSOR_LIST_MODELS_TIMEOUT_MS"),
+        }
+    }
+}
+
+#[test]
+fn sdk_catalog_empty_is_detected_even_when_auto_would_be_injected() {
+    assert!(!sdk_catalog_has_model_rows(""));
+    assert!(!sdk_catalog_has_model_rows("\n\n"));
+    assert!(sdk_catalog_has_model_rows("cursor:composer-2\tFast\n"));
+    let injected = sdk_model_rows_from_stdout("");
+    assert_eq!(injected, vec!["cursor:auto".to_string()]);
+}
+
+

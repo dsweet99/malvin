@@ -2,8 +2,7 @@
 
 use crate::acp::AgentIoOptions;
 use crate::artifacts::{
-    MalvinChecksBackup, MalvinConfigBackup, RunArtifacts, SessionDotfileBackups,
-    create_run_artifacts_from_text,
+    MalvinChecksBackup, RunArtifacts, SessionDotfileBackups, create_run_artifacts_from_text,
 };
 use crate::cursor_sdk::CursorSdkClient;
 use crate::orchestrator::workflow_context_paths_only;
@@ -31,7 +30,6 @@ pub fn no_session_client() -> CursorSdkClient {
 pub fn empty_dotfile_backups() -> SessionDotfileBackups {
     SessionDotfileBackups::from_parts(crate::session_dotfile_backup::SessionDotfileParts {
         malvin_checks: MalvinChecksBackup::Missing,
-        malvin_config: MalvinConfigBackup::Missing,
         gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
         vision: crate::session_dotfile_backup::VisionBackup::Missing,
         malvin_config_workspace: crate::session_dotfile_backup::MalvinConfigWorkspaceBackup::Missing,

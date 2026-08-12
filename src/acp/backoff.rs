@@ -1,4 +1,4 @@
-//! Shared retry backoff used by Cursor/Prime SDK prompt loops.
+//! Shared retry backoff used by Cursor/Pi prompt loops.
 
 use crate::acp::{agent_backoff_sleep, AgentError, AgentRetryOutcome, plan_agent_retry};
 

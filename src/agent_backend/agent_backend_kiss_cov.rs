@@ -35,9 +35,9 @@ fn kiss_witness_unified_sdk_client_and_backend() {
     assert_eq!(cursor.model.canonical(), "cursor:auto");
     assert!(matches!(cursor.kind, BridgeKind::Cursor));
 
-    let prime_model = parse_model_id("prime:openai/gpt-4o").expect("prime");
-    let prime = SdkClient::new_prime(prime_model, test_io());
-    assert!(matches!(prime.kind, BridgeKind::Prime));
+    let pi_model = parse_model_id("pi:openai/gpt-4o").expect("pi");
+    let pi = SdkClient::new_pi(pi_model, test_io());
+    assert!(matches!(pi.kind, BridgeKind::Pi));
 
     let mut backend = crate::agent_backend::agent_backend_from_client(cursor);
     assert!(backend.prompts_log_run_dir.is_none());
@@ -48,6 +48,6 @@ fn kiss_witness_unified_sdk_client_and_backend() {
     assert!(backend.keeps_coder_session_for_process_life());
     let _ = stringify!(BridgeKind);
     let _ = stringify!(new_cursor);
-    let _ = stringify!(new_prime);
+    let _ = stringify!(new_pi);
     let _ = stringify!(prompts_log_run_dir);
 }

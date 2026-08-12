@@ -84,6 +84,10 @@ fn kiss_exec_witness_00_06() {
     watch_process_group_memory_with_rss_sampler();
     watch_process_group_memory_fail_closed_when_rss_unavailable();
     watch_process_group_memory_writes_sandbox_oom_marker();
+    watch_process_group_memory_no_fail_closed_when_reader_dead();
+    watch_process_group_memory_still_kills_over_limit_when_reader_dead();
+    watch_process_group_memory_writes_marker_without_gate_iteration();
+    record_sandbox_oom_marker_writes_when_gate_iteration_unset();
     reset();
     LivePromptTraceArgs();
 }

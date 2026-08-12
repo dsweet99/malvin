@@ -24,6 +24,7 @@ pub async fn run_write(
         RouterArgs {
             request: Some(request),
             max_loops: super::effective_write_max_loops(write_args.max_loops),
+            max_hypotheses: write_args.max_hypotheses,
         },
         shared,
         workflow,

@@ -73,44 +73,16 @@ fn repair_recreates_empty_home_malvin_config_from_template() {
 }
 
 #[test]
-fn sanitize_bundle_replaces_empty_home_malvin_config_with_template() {
-    use crate::session_dotfile_backup::sanitize_invalid_malvin_home_config_in_bundle;
-    use crate::session_dotfile_backup::{
-        DotfileBackupPayload, DotfileBackupState, GitignoreBackup, SessionDotfileBackups,
-    };
-
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let work = tmp.path();
-    let poisoned = |bytes: &[u8]| {
-        DotfileBackupState::Present(DotfileBackupPayload {
-            backup_path: work.join("slot"),
-            bytes: bytes.to_vec(),
-        })
-    };
-    let mut bundle = SessionDotfileBackups {
-        malvin_checks: DotfileBackupState::Missing,
-        malvin_config: poisoned(b""),
-        gitignore: GitignoreBackup::Missing,
-        vision: crate::session_dotfile_backup::VisionBackup::Missing,
-        malvin_config_workspace: DotfileBackupState::Missing,
-    };
-    sanitize_invalid_malvin_home_config_in_bundle(&mut bundle, work);
-    let DotfileBackupState::Present(ref cfg) = bundle.malvin_config else {
-        panic!("expected home config present");
-    };
-    let text = String::from_utf8_lossy(&cfg.bytes);
-    assert!(text.contains("mem_limit_gb"));
-    assert!(text.contains("[agent]"));
-}
-
-#[test]
-fn bytes_for_restore_replaces_empty_with_template() {
-    use super::bytes_for_malvin_home_config_restore;
-
-    let fixed = bytes_for_malvin_home_config_restore(b"").expect("template");
-    assert!(!fixed.is_empty());
-    let text = String::from_utf8_lossy(&fixed);
-    assert!(text.contains("mem_limit_gb"));
-    let kept = bytes_for_malvin_home_config_restore(b"mem_limit_gb = 3\n").expect("keep");
-    assert_eq!(kept, b"mem_limit_gb = 3\n");
+fn ensure_heals_empty_home_config_to_template_keys() {
+    crate::test_utils::with_isolated_home(|work| {
+        let cfg = crate::malvin_config_path(work);
+        if let Some(parent) = cfg.parent() {
+            std::fs::create_dir_all(parent).expect("mkdir");
+        }
+        std::fs::write(&cfg, b"").expect("empty");
+        repair_invalid_malvin_home_config_on_disk(work).expect("repair");
+        let text = std::fs::read_to_string(&cfg).expect("read");
+        assert!(text.contains("mem_limit_gb"));
+        assert!(text.contains("[agent]"));
+    });
 }

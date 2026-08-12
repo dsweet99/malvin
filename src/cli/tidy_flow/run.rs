@@ -25,6 +25,7 @@ pub async fn run_tidy(
         RouterArgs {
             request: Some(TIDY_ROUTER_REQUEST.to_string()),
             max_loops: effective_tidy_max_loops(tidy.max_loops),
+            max_hypotheses: tidy.max_hypotheses,
         },
         &shared,
         workflow,

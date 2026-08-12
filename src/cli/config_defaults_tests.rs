@@ -101,7 +101,6 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
         max_acp_retries: 1,
         doc: false,
         name: None,
-        no_download: false,
         git: false,
     };
     apply_shared_config_defaults(&matches, &mut shared, &agent);

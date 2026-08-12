@@ -10,9 +10,7 @@ mod slots;
 mod wrappers;
 
 pub use gate_restore_merge::{merge_and_sanitize_for_gate_restore, merge_for_gate_restore};
-pub use gate_restore_repair::{
-    repair_invalid_malvin_home_config_on_disk, sanitize_invalid_malvin_home_config_in_bundle,
-};
+pub use gate_restore_repair::repair_invalid_malvin_home_config_on_disk;
 
 use std::path::Path;
 
@@ -26,11 +24,9 @@ pub use vision_tree::{
 };
 pub use wrappers::{
     backup_workspace_malvin_checks_if_present, backup_workspace_malvin_checks_if_present_with_id,
-    backup_workspace_malvin_config_if_present, backup_workspace_malvin_config_if_present_with_id,
     backup_workspace_malvin_config_workspace_if_present,
     backup_workspace_malvin_config_workspace_if_present_with_id,
-    restore_workspace_malvin_checks_backup, restore_workspace_malvin_config_backup,
-    restore_workspace_malvin_config_workspace_backup,
+    restore_workspace_malvin_checks_backup, restore_workspace_malvin_config_workspace_backup,
 };
 
 use slots::{backup_slot, restore_slot};
@@ -49,13 +45,11 @@ pub enum DotfileBackupState {
 }
 
 pub type MalvinChecksBackup = DotfileBackupState;
-pub type MalvinConfigBackup = DotfileBackupState;
 pub type MalvinConfigWorkspaceBackup = DotfileBackupState;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionDotfileParts {
     pub malvin_checks: MalvinChecksBackup,
-    pub malvin_config: MalvinConfigBackup,
     pub gitignore: GitignoreBackup,
     pub vision: VisionBackup,
     pub malvin_config_workspace: MalvinConfigWorkspaceBackup,
@@ -64,7 +58,6 @@ pub struct SessionDotfileParts {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionDotfileBackups {
     pub malvin_checks: MalvinChecksBackup,
-    pub malvin_config: MalvinConfigBackup,
     pub gitignore: GitignoreBackup,
     pub vision: VisionBackup,
     pub malvin_config_workspace: MalvinConfigWorkspaceBackup,
@@ -75,7 +68,6 @@ impl SessionDotfileBackups {
     pub fn from_parts(parts: SessionDotfileParts) -> Self {
         Self {
             malvin_checks: parts.malvin_checks,
-            malvin_config: parts.malvin_config,
             gitignore: parts.gitignore,
             vision: parts.vision,
             malvin_config_workspace: parts.malvin_config_workspace,
@@ -89,13 +81,10 @@ impl SessionDotfileBackups {
 
     /// Like [`snapshot`], but ensures `~/.malvin_home/config.toml` exists first.
     ///
-    /// Gate workflows (`code`, `tidy`, …) materialize home config at CLI entry; without this,
-    /// a prior restore with [`DotfileBackupState::Missing`] can delete the file and the next
-    /// snapshot records `Missing` again, so every later restore keeps removing it.
+    /// Gate workflows (`code`, `tidy`, …) materialize home config at CLI entry. Home config is
+    /// not part of the session snapshot/restore bundle.
     #[allow(clippy::missing_errors_doc)]
     pub fn snapshot_after_ensuring_home_config(work_dir: &Path) -> Result<Self, String> {
-        // Heal sticky empty/invalid home config before capture so Present(empty) cannot
-        // round-trip through restore on non-gate paths (`--do`, inspire, …).
         repair_invalid_malvin_home_config_on_disk(work_dir)?;
         crate::malvin_config_file::ensure_malvin_config_file_if_missing(work_dir)?;
         Self::snapshot(work_dir)
@@ -108,10 +97,13 @@ impl SessionDotfileBackups {
     ) -> Result<Self, String> {
         Ok(Self {
             malvin_checks: backup_slot(0, work_dir, &mut generate_id)?,
-            malvin_config: backup_slot(1, work_dir, &mut generate_id)?,
             gitignore: gitignore_tree::backup_gitignore_tree(work_dir, &mut generate_id)?,
             vision: vision_tree::backup_vision_tree(work_dir, &mut generate_id)?,
-            malvin_config_workspace: backup_slot(3, work_dir, &mut generate_id)?,
+            malvin_config_workspace: backup_slot(
+                slots::MALVIN_CONFIG_WORKSPACE_SLOT,
+                work_dir,
+                &mut generate_id,
+            )?,
         })
     }
 
@@ -120,7 +112,7 @@ impl SessionDotfileBackups {
         restore_workspace_session_dotfiles(work_dir, self)
     }
 
-    /// Restore malvin config dotfiles only; leave `.malvin/checks` unchanged.
+    /// Restore session dotfiles except `.malvin/checks`.
     #[allow(clippy::missing_errors_doc)]
     pub fn restore_excluding_malvin_checks(&self, work_dir: &Path) -> Result<(), String> {
         restore_workspace_session_dotfiles_excluding_malvin_checks(work_dir, self)
@@ -142,10 +134,13 @@ pub fn restore_workspace_session_dotfiles_excluding_malvin_checks(
     work_dir: &Path,
     bundle: &SessionDotfileBackups,
 ) -> Result<(), String> {
-    restore_slot(work_dir, &bundle.malvin_config, 1)?;
     gitignore_tree::restore_workspace_gitignore_backup(work_dir, &bundle.gitignore)?;
     vision_tree::restore_workspace_vision_backup(work_dir, &bundle.vision)?;
-    restore_slot(work_dir, &bundle.malvin_config_workspace, 3)
+    restore_slot(
+        work_dir,
+        &bundle.malvin_config_workspace,
+        slots::MALVIN_CONFIG_WORKSPACE_SLOT,
+    )
 }
 
 #[cfg(test)]

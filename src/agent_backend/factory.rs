@@ -39,18 +39,11 @@ pub fn build_agent_backend_with_tee(
     let io = agent_io_options(shared, workflow, tee);
     let kind = match model.backend {
         ModelBackend::Cursor => BridgeKind::Cursor,
-        ModelBackend::Prime => BridgeKind::Prime,
+        ModelBackend::Pi => BridgeKind::Pi,
     };
-    let mut client = SdkClient::with_max_retries(model, kind, io, shared.max_acp_retries);
-    if matches!(kind, BridgeKind::Prime) {
-        client.allow_download = !shared.no_download;
-    }
+    let client = SdkClient::with_max_retries(model, kind, io, shared.max_acp_retries);
     Ok(crate::agent_backend::agent_backend_from_client(client))
 }
-
-#[cfg(test)]
-#[path = "factory_prime_tests.rs"]
-mod factory_prime_tests;
 
 #[cfg(test)]
 mod tests {
@@ -91,16 +84,17 @@ mod tests {
     }
 
     #[test]
-    fn build_agent_backend_selects_prime_when_prefixed() {
+    fn build_agent_backend_selects_pi_when_prefixed() {
         let mut shared = shared_opts(false);
-        shared.model = crate::model_id::parse_model_id("prime:openai/gpt-4o").expect("model");
+        shared.model = crate::model_id::parse_model_id("pi:openai/gpt-4o").expect("model");
         let backend = build_agent_backend(
             &shared,
             WorkflowCliOptions { force: false },
             false,
             "code",
         )
-        .expect("prime sdk");
-        assert!(matches!(backend.kind, BridgeKind::Prime));
+        .expect("pi sdk");
+        assert!(matches!(backend.kind, BridgeKind::Pi));
+        assert_eq!(backend.model.canonical(), "pi:openai/gpt-4o");
     }
 }

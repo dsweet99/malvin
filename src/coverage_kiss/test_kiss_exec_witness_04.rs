@@ -27,107 +27,105 @@ fn kiss_exec_witness_04_01() {
 
 #[test]
 fn kiss_exec_witness_04_02() {
-    effective_prime_api_key();
-    ensure_prime_authenticated("prime:openai/gpt-4o");
-    prime_sync_session_timing();
-    prime_mock_io();
-    prime_install_mock_bridge_env();
-    prime_clear_mock_bridge_env();
-    prime_mock_bridge_path();
-    prime_mock_client();
-    prime_prompt_once();
-    prime_sdk_client_mock_bridge_prompt_records_usage();
-    prime_teardown_sdk_session_after_transport_error();
-    prime_run_one();
+    cursor_sync_session_timing();
+    cursor_mock_io();
+    cursor_install_mock_bridge_env();
+    cursor_clear_mock_bridge_env();
+    cursor_mock_bridge_path();
+    cursor_mock_client();
+    cursor_prompt_once();
+    cursor_teardown_sdk_session_after_transport_error();
+    cursor_run_one();
 }
 
 #[test]
 fn kiss_exec_witness_04_03() {
-    prime_ensure_open_session();
-    prime_emit_prompt_stdout();
-    prime_append_prompt_files();
-    prime_append_prompt_log_bytes();
-    prime_format_prompt_line();
-    prime_sdk_bridge_needs_restart();
-    prime_sdk::client_session::bridge_spawn_args();
-    prime_sdk::client_session::adopt_spawned_session();
-    prime_handle_stream_event();
-    prime_feed_do_dm_run_result();
-    prime_emit_assistant();
-    prime_emit_thinking();
+    cursor_ensure_open_session();
+    cursor_emit_prompt_stdout();
+    cursor_append_prompt_files();
+    cursor_append_prompt_log_bytes();
+    cursor_format_prompt_line();
+    cursor_sdk_bridge_needs_restart();
+    cursor_sdk::client_session::bridge_spawn_args();
+    cursor_sdk::client_session::adopt_spawned_session();
+    cursor_handle_stream_event();
+    cursor_feed_do_dm_run_result();
+    cursor_emit_assistant();
+    cursor_emit_thinking();
 }
 
 #[test]
 fn kiss_exec_witness_04_04() {
-    prime_tee_coalesced();
-    prime_flush_stdout_coalesce();
-    prime_print_coalesced_line();
-    prime_append_trace_value();
-    prime_append_trace_raw();
-    prime_append_trace_line();
-    PrimeToolCallFields();
-    prime_emit_tool();
-    prime_clear_tool_starts();
-    prime_note_tool_start();
-    prime_take_tool_start();
-    PrimeDoneLineInput();
+    cursor_tee_coalesced();
+    cursor_flush_stdout_coalesce();
+    cursor_print_coalesced_line();
+    cursor_append_trace_value();
+    cursor_append_trace_raw();
+    cursor_append_trace_line();
+    ToolCallFields();
+    cursor_emit_tool();
+    cursor_clear_tool_starts();
+    cursor_note_tool_start();
+    cursor_take_tool_start();
+    DoneLineInput();
 }
 
 #[test]
 fn kiss_exec_witness_04_05() {
-    prime_format_tool_done_line();
-    prime_tee_tool_line();
-    PrimeModelListing();
-    prime_resolve_node_bin_uncached();
-    prime_sticky_node_bin_path();
-    prime_read_sticky_node_bin();
-    prime_write_sticky_node_bin();
-    prime_node_candidates();
-    prime_push_unique();
-    prime_agent_nodes();
-    prime_node_meets_floor();
-    prime_node_major_minor();
+    cursor_format_tool_done_line();
+    cursor_tee_tool_line();
+    cursor_resolve_node_bin_uncached();
+    cursor_sticky_node_bin_path();
+    cursor_read_sticky_node_bin();
+    cursor_write_sticky_node_bin();
+    cursor_node_candidates();
+    cursor_push_unique();
+    cursor_agent_nodes();
+    cursor_node_meets_floor();
+    cursor_node_major_minor();
 }
 
 #[test]
 fn kiss_exec_witness_04_06() {
-    prime_apply_quiet_node_cli();
-    PrimeBridgeRequest();
-    PrimeBridgeEvent();
-    PrimeToolCallStart();
-    PrimeBridgeSession();
-    PrimeBridgeSpawnArgs();
-    prime_sdk::session::spawn();
-    prime_sdk::session::send_prompt();
-    prime_sdk::session::shutdown();
-    prime_sdk::session::drop();
-    prime_bridge_session_drop_teardown();
-    prime_take_bridge_child_without_tokio_drop();
+    cursor_apply_quiet_node_cli();
+    BridgeRequest();
+    BridgeEvent();
+    ToolCallStart();
+    BridgeSession();
+    BridgeSpawnArgs();
+    cursor_sdk::session::spawn();
+    cursor_sdk::session::send_prompt();
+    cursor_sdk::session::shutdown();
+    cursor_sdk::session::drop();
+    bridge_session_drop_teardown();
+    take_bridge_child_without_tokio_drop();
 }
 
 #[test]
 fn kiss_exec_witness_04_07() {
-    prime_send_create();
-    prime_write_request();
-    prime_read_event();
-    prime_wait_for_ok();
-    prime_drain_until_run_done();
-    prime_read_event_with_drain_idle_timeout();
-    prime_discard_optional_trailing_run_done();
-    prime_finish_run_done();
-    prime_start_mem_watch();
-    prime_spawn_bridge();
-    prime_open_bridge_session();
-    PrimeChildStdio();
+    cursor_send_create();
+    cursor_write_request();
+    cursor_read_event();
+    cursor_wait_for_ok();
+    cursor_drain_until_run_done();
+    cursor_read_event_with_idle_timeout();
+    cursor_discard_optional_trailing_run_done();
+    cursor_finish_run_done();
+    cursor_start_mem_watch();
+    cursor_spawn_bridge();
+    cursor_open_bridge_session();
+    CursorChildStdio();
+    create_ack_idle_timeout_fails_begin();
+    empty_result_run_done_clears_prior_last_response();
 }
 
 #[test]
 fn kiss_exec_witness_04_08() {
-    prime_take_stdio();
-    prime_note_sandbox();
-    prime_assemble_session();
-    prime_resolve_node_and_bridge();
-    prime_build_bridge_command();
+    cursor_take_stdio();
+    cursor_note_sandbox();
+    cursor_assemble_session();
+    cursor_resolve_node_and_bridge();
+    cursor_build_bridge_command();
     scrub_cursor_keys();
     apply_node_compile_cache();
     EnvHomeGuard();
@@ -163,7 +161,7 @@ fn kiss_exec_witness_04_10() {
     DotfileBackupPayload();
     SessionDotfileParts();
     DotfileSpecRow();
-    restore_malvin_config_missing_for_test();
+    labels_for_test();
     dotfile_spec_row_field_count();
     write_merged_default_malvin_config();
 }

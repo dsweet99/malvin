@@ -1,8 +1,8 @@
 use crate::artifacts::{
-    ensure_gate_exp_log_file, GitignoreBackup, MalvinChecksBackup, MalvinConfigBackup,
-    MalvinConfigWorkspaceBackup, RunArtifacts, SessionDotfileBackups, VisionBackup,
+    ensure_gate_exp_log_file, GitignoreBackup, MalvinChecksBackup, MalvinConfigWorkspaceBackup,
+    RunArtifacts, SessionDotfileBackups, VisionBackup,
 };
-use crate::malvin_config_file::{load_malvin_config, DEFAULT_MAX_HYPOTHESES};
+use crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES;
 use crate::router_flow::router_flow_no_work::chat_has_malvin_done;
 use crate::router_flow::router_flow_prompt;
 use std::path::Path;
@@ -32,7 +32,6 @@ pub(crate) fn router_iteration_log_path(artifacts: &RunArtifacts, agent_loop: us
 pub(crate) fn empty_iteration_backups() -> SessionDotfileBackups {
     SessionDotfileBackups::from_parts(crate::session_dotfile_backup::SessionDotfileParts {
         malvin_checks: MalvinChecksBackup::Missing,
-        malvin_config: MalvinConfigBackup::Missing,
         gitignore: GitignoreBackup::Missing,
         vision: VisionBackup::Missing,
         malvin_config_workspace: MalvinConfigWorkspaceBackup::Missing,
@@ -86,13 +85,10 @@ async fn run_router_header_and_kpop(
     )?;
     run_router_header_coder_prompt(input.client, &header, log_path).await?;
     let exp_log = ensure_gate_exp_log_file(input.artifacts, 1).map_err(|e| e.to_string())?;
-    let max_hypotheses = load_malvin_config(input.artifacts.work_dir.as_path())
-        .default_workflow
-        .max_hypotheses_or_default();
-    let max_hypotheses = if max_hypotheses == 0 {
+    let max_hypotheses = if input.max_hypotheses == 0 {
         DEFAULT_MAX_HYPOTHESES
     } else {
-        max_hypotheses
+        input.max_hypotheses
     };
     let kpop_common = router_flow_prompt::build_router_kpop_common_prompt(
         router_flow_prompt::RouterKpopCommonPromptInput {

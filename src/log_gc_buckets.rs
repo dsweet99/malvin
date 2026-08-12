@@ -58,8 +58,9 @@ pub(crate) fn bucket_is_ephemeral_orphan(runs: &[PathBuf]) -> bool {
 
 fn remove_orphan_bucket(bucket: &Path, runs: &[PathBuf]) -> (usize, u64) {
     let count = runs.len();
+    let freed = crate::log_gc::dir_size(bucket);
     match std::fs::remove_dir_all(bucket) {
-        Ok(()) => (count, 0),
+        Ok(()) => (count, freed),
         Err(e) => {
             print_log_warning(&format!(
                 "could not remove orphan log bucket {}: {e}",

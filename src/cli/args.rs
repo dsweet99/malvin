@@ -36,6 +36,9 @@ pub struct Cli {
     /// Outer agent-session budget for bare `malvin REQUEST` (`effective_max_loops`).
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS)]
     pub max_loops: usize,
+    /// Hypothesis budget for bare `malvin REQUEST` `kpop_common.md` (`{{ max_hypotheses }}`).
+    #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES)]
+    pub max_hypotheses: usize,
 }
 
 #[derive(Subcommand, Debug)]

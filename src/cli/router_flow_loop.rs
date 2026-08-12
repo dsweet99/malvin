@@ -1,10 +1,13 @@
 use crate::agent_backend::AgentBackend;
-use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
+use crate::artifacts::{
+    merge_and_sanitize_for_gate_restore, RunArtifacts, SessionDotfileBackups,
+};
 use crate::cli::format_workspace_gate_failure;
 use crate::cli::workflow_kpop_shared::effective_max_loops;
 use crate::cli::SharedOpts;
 use crate::prompts::PromptStore;
 use crate::run_timing::acp_post_run::RunTimingSessionEnd;
+use std::path::Path;
 use super::router_flow_acp::{
     finalize_router_acp_iteration, run_router_acp_open_iteration, RouterAcpIterationInput,
     RouterAcpIterationOutcome,
@@ -23,6 +26,7 @@ pub(crate) struct RouterAgentLoopInput<'a> {
     pub prompt_store: &'a PromptStore,
     pub shared: &'a SharedOpts,
     pub max_loops: usize,
+    pub max_hypotheses: usize,
 }
 
 pub(crate) struct RouterAgentLoopOutcome {
@@ -34,6 +38,21 @@ struct RouterLoopStepResult {
     last_acp: Result<(), String>,
     last_backups: SessionDotfileBackups,
     decision: Option<RouterLoopDecision>,
+}
+
+/// Merge pre-agent anchor with post-agent workspace, then restore.
+///
+/// Keeps intentional VISION.md / `.gitignore` content edits (same policy as gate-kpop
+/// [`merge_and_sanitize_for_gate_restore`]) instead of blindly replaying the anchor.
+pub(crate) fn restore_router_iteration_dotfiles(
+    work_dir: &Path,
+    iteration_anchor: &SessionDotfileBackups,
+) -> Result<SessionDotfileBackups, String> {
+    let progress = SessionDotfileBackups::snapshot(work_dir)
+        .unwrap_or_else(|_| iteration_anchor.clone());
+    let merged = merge_and_sanitize_for_gate_restore(iteration_anchor, &progress, work_dir);
+    merged.restore(work_dir)?;
+    Ok(merged)
 }
 
 /// Outer agent turns: `header.md` → `kpop_common.md` → `router_a.md` → optional `router_b.md`, then at most one
@@ -86,6 +105,7 @@ async fn run_one_router_loop_step(
         shared: input.shared,
         agent_loop,
         session_end,
+        max_hypotheses: input.max_hypotheses,
     })
     .await;
     finish_router_loop_step(input, (agent_loop, max_loops, session_end), open).await
@@ -98,10 +118,7 @@ async fn finish_router_loop_step(
 ) -> Result<RouterLoopStepResult, String> {
     let (agent_loop, max_loops, session_end) = ids;
     let work_dir = input.artifacts.work_dir.as_path();
-    open.iteration_backups
-        .restore(work_dir)
-        .map_err(|e| e.to_string())?;
-    let last_backups = open.iteration_backups;
+    let last_backups = restore_router_iteration_dotfiles(work_dir, &open.iteration_backups)?;
     if !open.session_alive {
         return Ok(RouterLoopStepResult {
             last_acp: open.acp_result,
@@ -126,6 +143,7 @@ async fn finish_router_loop_step(
             shared: input.shared,
             agent_loop,
             session_end,
+            max_hypotheses: input.max_hypotheses,
         },
         timing,
         router_exit_summarize_for(&decision),
@@ -138,3 +156,6 @@ async fn finish_router_loop_step(
     })
 }
 
+#[cfg(test)]
+#[path = "router_flow_loop_tests.rs"]
+mod router_flow_loop_tests;

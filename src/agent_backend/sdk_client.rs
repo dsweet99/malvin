@@ -1,4 +1,4 @@
-//! Unified Cursor/Prime bridge SDK client (`SdkClient`).
+//! Unified Cursor/Pi bridge SDK client (`SdkClient`).
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -7,11 +7,11 @@ use crate::acp::AgentIoOptions;
 use crate::bridge_sdk::BridgeSession;
 use crate::model_id::{ModelBackend, ParsedModel};
 
-/// Which Node bridge / auth path this client uses.
+/// Which agent bridge / auth path this client uses.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BridgeKind {
     Cursor,
-    Prime,
+    Pi,
 }
 
 pub struct SdkClient {
@@ -21,8 +21,6 @@ pub struct SdkClient {
     pub prompts_log_run_dir: Option<PathBuf>,
     /// Max spawn/prompt retries (legacy CLI flag name: `--max-acp-retries`).
     pub max_acp_retries: u32,
-    /// Auto-download GGUF for `prime:local/…` (honors `--no-download` when false).
-    pub allow_download: bool,
     pub(crate) session: Option<BridgeSession>,
     /// Resolved cwd from the last successful `begin_coder_session` (kept after teardown for retry).
     pub(crate) session_cwd: Option<PathBuf>,
@@ -36,7 +34,6 @@ struct SdkClientInit {
     kind: BridgeKind,
     io: AgentIoOptions,
     max_acp_retries: u32,
-    allow_download: bool,
 }
 
 impl SdkClient {
@@ -47,18 +44,16 @@ impl SdkClient {
             kind: BridgeKind::Cursor,
             io,
             max_acp_retries: crate::support_paths::DEFAULT_MAX_ACP_RETRIES,
-            allow_download: true,
         })
     }
 
     #[must_use]
-    pub fn new_prime(model: ParsedModel, io: AgentIoOptions) -> Self {
+    pub fn new_pi(model: ParsedModel, io: AgentIoOptions) -> Self {
         Self::from_init(SdkClientInit {
             model,
-            kind: BridgeKind::Prime,
+            kind: BridgeKind::Pi,
             io,
             max_acp_retries: crate::support_paths::DEFAULT_MAX_ACP_RETRIES,
-            allow_download: true,
         })
     }
 
@@ -74,15 +69,13 @@ impl SdkClient {
             kind,
             io,
             max_acp_retries,
-            allow_download: true,
         })
     }
 
     #[must_use]
     fn from_init(init: SdkClientInit) -> Self {
-        debug_assert_eq!(
-            matches!(init.model.backend, ModelBackend::Cursor),
-            matches!(init.kind, BridgeKind::Cursor),
+        debug_assert!(
+            bridge_kind_matches_backend(init.kind, init.model.backend),
             "BridgeKind must match ParsedModel backend"
         );
         Self {
@@ -95,7 +88,6 @@ impl SdkClient {
             } else {
                 init.max_acp_retries
             },
-            allow_download: init.allow_download,
             session: None,
             session_cwd: None,
             last_agent_id: None,
@@ -126,7 +118,7 @@ impl SdkClient {
         self.session.is_some()
     }
 
-    /// Cursor/Prime keep the bridge for process life (unlike one-shot ACP historically).
+    /// Cursor/Pi keep the bridge for process life (unlike one-shot ACP historically).
     #[must_use]
     pub const fn keeps_coder_session_for_process_life(&self) -> bool {
         true
@@ -153,4 +145,11 @@ fn sync_timing_to_open_session(client: &mut SdkClient) {
     if let Some(session) = client.session.as_mut() {
         session.timing = client.timing.clone();
     }
+}
+
+const fn bridge_kind_matches_backend(kind: BridgeKind, backend: ModelBackend) -> bool {
+    matches!(
+        (kind, backend),
+        (BridgeKind::Cursor, ModelBackend::Cursor) | (BridgeKind::Pi, ModelBackend::Pi)
+    )
 }
