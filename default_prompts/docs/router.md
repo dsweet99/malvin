@@ -41,6 +41,7 @@ See `malvin --doc`. Notable for the default route:
 | Flag | Effect |
 |------|--------|
 | `--max-loops` | Outer agent-session budget (`effective_max_loops`; default 1). Tenacious expands to 9999 unless this flag is set on the command line. |
+| `--max-hypotheses` | Hypothesis budget for `kpop_common.md` (`{{ max_hypotheses }}`; default 5). When omitted, `[default_workflow].max_hypotheses` is used. Explicit CLI wins over config. |
 | `-g` / `--gates` | When `router_a` emits `__MALVIN_DONE__`, run workspace `.malvin/checks`. Pass stops success; fail continues (new outer session). Exhausted budget with failing gates fails the run after exit summarize. Also injects check text into `router_a.md` via `{{ code_extra }}`. |
 | `--no-tenacious` | Keep normal `--max-loops` / `--max-acp-retries` (default tenacious expands both) |
 | `--quiet` / `-q` | Stdout shows only `MALVIN_DM_*` bodies (not `-b`). Plain `--do` is already DM-body-only without `--verbose` |
@@ -53,7 +54,7 @@ Each outer session opens one coder session and sends:
 | Turn | Piece | Role |
 |------|-------|------|
 | 1 | `header.md` | Standard Malvin context |
-| 2 | `kpop_common.md` | KPop method definition (`max_hypotheses` from `[default_workflow].max_hypotheses`, default 5; exp log under `_kpop`) |
+| 2 | `kpop_common.md` | KPop method definition (`max_hypotheses` from `--max-hypotheses` or `[default_workflow].max_hypotheses`, default 5; exp log under `_kpop`) |
 | 3 | `router_a.md` | Ask whether requirements are unsatisfied; optional `{{ code_extra }}` when `--gates` |
 | 4 (optional) | `router_b.md` | Run only when `router_a` did **not** emit `__MALVIN_DONE__` alone on a line |
 | Exit only | `router_summarize.md` | **Once per run**, when exiting the outer loop: pass to the same already-open final coder session before teardown |
@@ -78,7 +79,7 @@ Gates run **only** when `__MALVIN_DONE__` was seen:
 | Key | Required by | Value source |
 |-----|-------------|--------------|
 | `user_request_path` | `router_a.md` | run artifacts |
-| `max_hypotheses` / `exp_log` | `kpop_common.md` | config + gate exp log |
+| `max_hypotheses` / `exp_log` | `kpop_common.md` | `--max-hypotheses` / `[default_workflow]` + gate exp log |
 | `code_extra` | `router_a.md` | `router_code_extra.md` when `--gates` |
 
 When the outer loop decides to exit, malvin sends `router_summarize.md` on the same final coder session, then ends the session. Intermediate sessions that continue do not receive summarize.
@@ -92,13 +93,14 @@ When the outer loop decides to exit, malvin sends `router_summarize.md` on the s
 max_hypotheses = 5
 ```
 
-Missing section falls back to 5. This path does **not** use `[agent].max_hypotheses`.
+Missing section falls back to 5. Explicit `--max-hypotheses` wins over this section. This path does **not** use `[agent].max_hypotheses`.
 
 ## Examples
 
 ```text
 malvin "add a CLI flag for dry-run"
 malvin --max-loops 3 notes/task.md
+malvin --max-hypotheses 8 notes/task.md
 malvin --gates --max-loops 5 notes/task.md
 malvin -g --max-loops 5 notes/task.md
 malvin --no-tenacious --max-loops 1 "small fix"

@@ -28,6 +28,8 @@ pub struct RouterArgs {
     pub request: Option<String>,
     /// Outer agent-session budget (`effective_max_loops`).
     pub max_loops: usize,
+    /// Hypothesis budget for `kpop_common.md` (`{{ max_hypotheses }}`).
+    pub max_hypotheses: usize,
 }
 
 struct RouterRunPrep {
@@ -123,6 +125,7 @@ async fn run_router_body(
         prompt_store: &prep.prompt_store,
         shared,
         max_loops: router_args.max_loops,
+        max_hypotheses: router_args.max_hypotheses,
     })
     .await?;
 
