@@ -1,4 +1,4 @@
-//! Shared CLI flags (`SharedOpts`) are parsed globally for every subcommand. `model`, `no_force`, `no_tenacious`, and `max_acp_retries` affect `malvin inspire` and `malvin --do`. `--gates` / `-g` enables harness-run quality gates for the default route; `malvin tidy` always forces them on. `--verbose` logs full outgoing agent prompts to stdout and `prompts.log` (default is prompt name only). For `malvin --do`, `--verbose` also unlocks the same live agent log classes as the default workflow (thought tokens and narrative tee); without `--verbose`, `--do` stays DM-body-only. `--quiet` / `-q` restricts default-router stdout (bare `malvin REQUEST`, `tidy`, `write`) to `MALVIN_DM_*` bodies only. `--git` sets `{{ git_extra }}` so prompt templates may permit `git commit` (default off).
+//! Shared CLI flags (`SharedOpts`) are parsed globally for every subcommand. `model`, `no_force`, `no_tenacious`, and `max_acp_retries` affect `malvin inspire` and `malvin --do`. `--gates` / `-g` enables harness-run quality gates for the default route; `malvin tidy` always forces them on. `--verbose` logs full outgoing agent prompts to stdout and `prompts.log` (default is prompt name only). For `malvin --do`, `--verbose` also unlocks the same live agent log classes as the default workflow (thought tokens and narrative tee); without `--verbose`, `--do` stays DM-body-only. `--quiet` / `-q` restricts default-router stdout (bare `malvin REQUEST`, `tidy`, `write`) to `MALVIN_DM_*` bodies only. `--git` sets `{{ git_extra }}` so prompt templates may permit `git commit` (default off). `--creative` selects `router_b_creative.md` instead of `router_b.md` on the default router.
 
 pub use crate::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use clap::Args;
@@ -60,6 +60,9 @@ pub struct SharedOpts {
     /// Allow the agent to run `git commit` (sets `{{ git_extra }}` in prompt templates).
     #[arg(long, global = true, default_value_t = false)]
     pub git: bool,
+    /// Use `router_b_creative.md` instead of `router_b.md` on the default router.
+    #[arg(long, global = true, default_value_t = false)]
+    pub creative: bool,
 }
 
 impl SharedOpts {
@@ -90,6 +93,7 @@ impl SharedOpts {
             doc: false,
             name: None,
             git: false,
+            creative: false,
         }
     }
 }

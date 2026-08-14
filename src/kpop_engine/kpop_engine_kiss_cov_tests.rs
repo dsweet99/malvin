@@ -77,6 +77,7 @@ fn kiss_cov_kpop_engine_loop_params_types() {
         doc: false,
         name: None,
         git: false,
+        creative: false,
     };
     let workflow = WorkflowCliOptions { force: false };
     let loop_params = KPopEngineParams {

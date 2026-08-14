@@ -15,6 +15,7 @@ fn write_router_mock_prompt_files(prompt_root: &std::path::Path) {
     write_prompt(prompt_root, HEADER_MD, "CODING_HDR\n");
     write_prompt(prompt_root, ROUTER_A_MD, "ROUTER_A\n{{ code_extra }}\nSee {{ user_request_path }}.\n");
     write_prompt(prompt_root, "router_b.md", "ROUTER_B\n");
+    write_prompt(prompt_root, "router_b_creative.md", "ROUTER_B_CREATIVE\n");
     write_prompt(prompt_root, "router_code_extra.md", "");
     write_prompt(prompt_root, "router_summarize.md", "SUM\n");
     write_prompt(prompt_root, "kpop_common.md", "KPOP {{ max_hypotheses }} {{ exp_log }}\n");
@@ -54,6 +55,7 @@ fn prepare_router_prompt_store_loads_default_templates() {
     assert!(store.validate_exists(HEADER_MD).is_ok());
     assert!(store.validate_exists(ROUTER_A_MD).is_ok());
     assert!(store.validate_exists(crate::prompts::ROUTER_B_MD).is_ok());
+    assert!(store.validate_exists(crate::prompts::ROUTER_B_CREATIVE_MD).is_ok());
     assert!(store.validate_exists("kpop_common.md").is_ok());
 }
 

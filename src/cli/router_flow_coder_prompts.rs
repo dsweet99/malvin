@@ -69,6 +69,7 @@ pub(crate) async fn run_router_b_coder_prompt(
     client: &mut AgentBackend,
     prompt: &str,
     log_path: &std::path::Path,
+    stdout_bracket_label: &str,
 ) -> Result<(), String> {
     client
         .run_coder_prompt(
@@ -78,7 +79,7 @@ pub(crate) async fn run_router_b_coder_prompt(
             crate::acp::CoderPromptOptions {
                 llm_phase: Some(crate::run_timing::TimingPhase::Implement),
                 do_trace_split: None,
-                stdout_bracket_label: Some("router_b.md"),
+                stdout_bracket_label: Some(stdout_bracket_label),
                 append_trace: true,
                 ..Default::default()
             },

@@ -114,13 +114,21 @@ async fn finish_router_a_maybe_b(
         .unwrap_or_default();
     let done = chat_has_malvin_done(&chat);
     if !done {
+        let creative = input.shared.creative;
         let router_b = router_flow_prompt::build_router_b_prompt(router_flow_prompt::RouterBPromptInput {
             store: input.prompt_store,
             artifacts: input.artifacts,
             model,
             git: input.shared.git,
+            creative,
         })?;
-        run_router_b_coder_prompt(input.client, &router_b, log_path).await?;
+        run_router_b_coder_prompt(
+            input.client,
+            &router_b,
+            log_path,
+            router_flow_prompt::router_b_prompt_label(creative),
+        )
+        .await?;
     }
     Ok(done)
 }

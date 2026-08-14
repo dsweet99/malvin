@@ -9,6 +9,7 @@ pub const HEADER_MD: &str = "header.md";
 pub const DO_HEADER_MD: &str = "do_header.md";
 pub const ROUTER_A_MD: &str = "router_a.md";
 pub const ROUTER_B_MD: &str = "router_b.md";
+pub const ROUTER_B_CREATIVE_MD: &str = "router_b_creative.md";
 pub const ROUTER_CODE_EXTRA_MD: &str = "router_code_extra.md";
 pub const ROUTER_SUMMARIZE_MD: &str = "router_summarize.md";
 pub const WRITE_WRAPPER_MD: &str = "write_wrapper.md";
@@ -25,6 +26,7 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     DO_HEADER_MD,
     ROUTER_A_MD,
     ROUTER_B_MD,
+    ROUTER_B_CREATIVE_MD,
     ROUTER_CODE_EXTRA_MD,
     ROUTER_SUMMARIZE_MD,
     WRITE_WRAPPER_MD,
@@ -119,7 +121,8 @@ mod router_header_embed_tests {
     use std::path::Path;
 
     use super::{
-        default_file, DO_HEADER_MD, HEADER_MD, ROUTER_A_MD, ROUTER_B_MD, ROUTER_SUMMARIZE_MD,
+        default_file, DO_HEADER_MD, HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD,
+        ROUTER_SUMMARIZE_MD,
     };
     use crate::config::DEFAULT_CLI_MODEL;
     use crate::artifacts::create_run_artifacts;
@@ -192,9 +195,27 @@ mod router_header_embed_tests {
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
             git: false,
+            creative: false,
         })
         .expect("router_b");
         assert!(!b.contains("{{"));
+        let b_creative = build_router_b_prompt(RouterBPromptInput {
+            store: &store,
+            artifacts: &artifacts,
+            model: DEFAULT_CLI_MODEL,
+            git: false,
+            creative: true,
+        })
+        .expect("router_b_creative");
+        assert!(!b_creative.contains("{{"));
+        assert!(
+            b_creative.contains("malvin inspire"),
+            "creative router_b must mention inspire: {b_creative}"
+        );
+        assert!(
+            !b.contains("malvin inspire"),
+            "default router_b must not mention inspire: {b}"
+        );
         let summarize = build_router_summarize_prompt(RouterSummarizePromptInput {
             store: &store,
             artifacts: &artifacts,
@@ -209,6 +230,7 @@ mod router_header_embed_tests {
         );
         assert!(default_file(ROUTER_A_MD).is_some());
         assert!(default_file(ROUTER_B_MD).is_some());
+        assert!(default_file(ROUTER_B_CREATIVE_MD).is_some());
         assert!(default_file(ROUTER_SUMMARIZE_MD).is_some());
         assert!(default_file(DO_HEADER_MD).is_some());
         assert!(default_file(HEADER_MD).is_some());

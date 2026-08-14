@@ -7,8 +7,8 @@ use crate::orchestrator::workflow_context_paths_only;
 use crate::workflow_context::{format_prompt_path, PromptModelOpts};
 use crate::prompt_stratification::WorkflowRenderContext;
 use crate::prompts::{
-    PromptError, PromptStore, HEADER_MD, ROUTER_A_MD, ROUTER_B_MD, ROUTER_CODE_EXTRA_MD,
-    ROUTER_SUMMARIZE_MD,
+    PromptError, PromptStore, HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD,
+    ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD,
 };
 use std::path::Path;
 
@@ -22,7 +22,7 @@ pub(crate) use router_flow_prompt_summarize::{
 mod router_flow_prompt_turns;
 pub(crate) use router_flow_prompt_turns::{
     build_router_a_prompt, build_router_b_prompt, build_router_header_prompt,
-    build_router_kpop_common_prompt, RouterAPromptInput, RouterBPromptInput,
+    build_router_kpop_common_prompt, router_b_prompt_label, RouterAPromptInput, RouterBPromptInput,
     RouterHeaderPromptInput, RouterKpopCommonPromptInput,
 };
 
@@ -37,6 +37,9 @@ pub fn prepare_router_prompt_store() -> Result<PromptStore, String> {
         .map_err(|e: PromptError| e.0)?;
     store
         .validate_exists(ROUTER_B_MD)
+        .map_err(|e: PromptError| e.0)?;
+    store
+        .validate_exists(ROUTER_B_CREATIVE_MD)
         .map_err(|e: PromptError| e.0)?;
     store
         .validate_exists(ROUTER_CODE_EXTRA_MD)
@@ -132,6 +135,7 @@ mod kiss_cov_gate_refs {
         let _ = build_router_kpop_common_prompt;
         let _ = build_router_a_prompt;
         let _ = build_router_b_prompt;
+        let _ = router_b_prompt_label;
         let _ = build_router_summarize_prompt;
         let _ = render_router_code_extra;
     }

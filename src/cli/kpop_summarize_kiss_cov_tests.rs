@@ -14,6 +14,7 @@ fn kiss_cov_kpop_summarize_privates() {
         doc: false,
         name: None,
         git: false,
+        creative: false,
     };
     let _ = &shared;
     let tmp = tempfile::tempdir().expect("tempdir");

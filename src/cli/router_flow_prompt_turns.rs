@@ -1,7 +1,7 @@
 use crate::artifacts::RunArtifacts;
 use crate::cli::flow_prompt_combine::combine_acp_prompt_header_and_user;
 use crate::orchestrator::workflow_context_paths_only;
-use crate::prompts::{PromptError, PromptStore, ROUTER_A_MD, ROUTER_B_MD};
+use crate::prompts::{PromptError, PromptStore, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD};
 use crate::workflow_context::PromptModelOpts;
 use std::path::Path;
 
@@ -92,13 +92,29 @@ pub(crate) struct RouterBPromptInput<'a> {
     pub artifacts: &'a RunArtifacts,
     pub model: &'a str,
     pub git: bool,
+    pub creative: bool,
 }
 
 pub(crate) fn build_router_b_prompt(input: RouterBPromptInput<'_>) -> Result<String, String> {
+    let template = if input.creative {
+        ROUTER_B_CREATIVE_MD
+    } else {
+        ROUTER_B_MD
+    };
     let ctx = workflow_context_paths_only(input.artifacts, input.model, input.git);
     let body = input
         .store
-        .render_prompt_only(ROUTER_B_MD, ctx.as_map())
+        .render_prompt_only(template, ctx.as_map())
         .map_err(|e: PromptError| e.0)?;
     Ok(body.trim().to_string())
+}
+
+/// Prompt filename shown in stdout brackets and used when selecting `router_b` vs creative.
+#[must_use]
+pub(crate) const fn router_b_prompt_label(creative: bool) -> &'static str {
+    if creative {
+        ROUTER_B_CREATIVE_MD
+    } else {
+        ROUTER_B_MD
+    }
 }

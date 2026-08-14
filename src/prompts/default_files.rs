@@ -1,6 +1,6 @@
 use super::{
-    DO_HEADER_MD, WRITE_WRAPPER_MD, HEADER_MD, ROUTER_A_MD, ROUTER_B_MD, ROUTER_CODE_EXTRA_MD,
-    ROUTER_SUMMARIZE_MD,
+    DO_HEADER_MD, WRITE_WRAPPER_MD, HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD,
+    ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD,
 };
 
 fn default_constraints_prompt(name: &str) -> Option<&'static str> {
@@ -30,6 +30,7 @@ fn default_router_prompt(name: &str) -> Option<&'static str> {
     match name {
         ROUTER_A_MD => Some(include_str!("../../default_prompts/router_a.md")),
         ROUTER_B_MD => Some(include_str!("../../default_prompts/router_b.md")),
+        ROUTER_B_CREATIVE_MD => Some(include_str!("../../default_prompts/router_b_creative.md")),
         ROUTER_CODE_EXTRA_MD => {
             Some(include_str!("../../default_prompts/router_code_extra.md"))
         }
@@ -58,6 +59,7 @@ mod tests {
     fn default_file_covers_router_a_and_b() {
         assert!(default_file("router_a.md").is_some());
         assert!(default_file("router_b.md").is_some());
+        assert!(default_file("router_b_creative.md").is_some());
         assert!(default_file("router_summarize.md").is_some());
         assert!(default_constraints_prompt("init_constraints.md").is_some());
         assert!(default_kpop_prompt("kpop_common.md").is_some());

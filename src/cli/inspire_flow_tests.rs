@@ -76,6 +76,7 @@ mod inspire_tests {
             doc: false,
             name: None,
             git: false,
+            creative: false,
         };
         let backend = crate::cli::build_agent_backend(
             &shared,
@@ -112,6 +113,7 @@ mod inspire_tests {
             doc: false,
             name: None,
             git: false,
+            creative: false,
         };
         crate::cli::run_emit::emit_run_startup_sequence(
             &artifacts,

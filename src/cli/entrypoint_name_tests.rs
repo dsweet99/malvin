@@ -25,6 +25,31 @@ fn help_lists_git_flag() {
 }
 
 #[test]
+fn shared_opts_parses_creative_flag_default_off() {
+    use clap::Parser;
+    let cli = crate::cli::Cli::try_parse_from(["malvin", "--doc"]).expect("parse");
+    assert!(!cli.shared.creative);
+}
+
+#[test]
+fn shared_opts_parses_creative_flag_on() {
+    use clap::Parser;
+    let cli = crate::cli::Cli::try_parse_from(["malvin", "--creative", "--doc"]).expect("parse");
+    assert!(cli.shared.creative);
+}
+
+#[test]
+fn help_lists_creative_flag() {
+    use clap::CommandFactory;
+    let help = crate::cli::Cli::command().render_help().to_string();
+    assert!(help.contains("--creative"), "help={help}");
+    assert!(
+        help.contains("router_b_creative.md"),
+        "help should mention creative prompt: {help}"
+    );
+}
+
+#[test]
 fn shared_opts_parses_name_equals_form() {
     use clap::Parser;
     let cli = crate::cli::Cli::try_parse_from(["malvin", "--name=foo", "--doc"]).expect("parse");

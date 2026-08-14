@@ -86,6 +86,10 @@ Maximum bounded attempts per Cursor SDK bridge spawn or `send`/`wait`, with 1s /
 
 Allow the agent to run `git commit` by setting `{{ git_extra }}` in prompt templates. Off by default (agents are otherwise steered away from committing).
 
+### `--creative`
+
+On the default router (bare `malvin REQUEST`, and wrappers that call it: `tidy`, `write`), send `router_b_creative.md` instead of `router_b.md` when the optional `router_b` turn runs. Off by default.
+
 ### `--name <NAME>`
 
 Optional session name for bare `malvin REQUEST`, `--do`, and `tidy`. When omitted on those invocations, malvin assigns a unique five-character id (`[a-z0-9]`). Every command that accepts `--name` acquires a session name lock before substantive work.

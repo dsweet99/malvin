@@ -28,5 +28,6 @@ pub fn shared_opts(_unused: bool) -> SharedOpts {
         doc: false,
         name: None,
         git: false,
+        creative: false,
     }
 }

@@ -1,8 +1,9 @@
 use crate::config::DEFAULT_CLI_MODEL;
 use crate::flow_prompt_join_test_helpers::flow_test_artifacts;
 use crate::router_flow::router_flow_prompt::{
-    build_router_a_prompt, build_router_kpop_common_prompt, build_router_summarize_prompt,
-    prepare_router_prompt_store, RouterAPromptInput, RouterKpopCommonPromptInput,
+    build_router_a_prompt, build_router_b_prompt, build_router_kpop_common_prompt,
+    build_router_summarize_prompt, prepare_router_prompt_store, router_b_prompt_label,
+    RouterAPromptInput, RouterBPromptInput, RouterKpopCommonPromptInput,
     RouterSummarizePromptInput,
 };
 use crate::prompts::PromptStore;
@@ -147,4 +148,32 @@ fn build_router_summarize_prompt_renders_dm_body_without_unresolved_braces() {
         body.contains("Write a summary of this entire session"),
         "must render router_summarize.md: {body}"
     );
+}
+
+#[test]
+fn build_router_b_prompt_selects_creative_template_when_flag_set() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = flow_test_artifacts(&tmp);
+    let store = prepare_router_prompt_store().expect("store");
+    let plain = build_router_b_prompt(RouterBPromptInput {
+        store: &store,
+        artifacts: &artifacts,
+        model: DEFAULT_CLI_MODEL,
+        git: false,
+        creative: false,
+    })
+    .expect("router_b");
+    let creative = build_router_b_prompt(RouterBPromptInput {
+        store: &store,
+        artifacts: &artifacts,
+        model: DEFAULT_CLI_MODEL,
+        git: false,
+        creative: true,
+    })
+    .expect("router_b_creative");
+    assert_eq!(plain.trim(), "KPop: Satisfy the requirements.");
+    assert!(creative.contains("malvin inspire"));
+    assert!(creative.contains("KPop: Satisfy the requirements."));
+    assert_eq!(router_b_prompt_label(false), "router_b.md");
+    assert_eq!(router_b_prompt_label(true), "router_b_creative.md");
 }

@@ -81,6 +81,7 @@ fn smoke_agent_io_options_maps_flags() {
         doc: false,
         name: None,
         git: false,
+        creative: false,
     };
     let io = agent_io_options(
         &shared,
