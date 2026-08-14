@@ -13,6 +13,8 @@ pub const DEFAULT_PI_LIST_MODELS_TIMEOUT_MS: u64 = 30_000;
 pub struct PiModelListing {
     pub id: String,
     pub name: String,
+    /// From the `thinking` column when present (`yes` / `no`).
+    pub thinking: Option<bool>,
 }
 
 /// Resolve the `pi --list-models` wall-clock timeout.
@@ -73,36 +75,69 @@ fn is_noise_line(line: &str, lower: &str) -> bool {
         || lower.starts_with("run `")
 }
 
-/// `(provider_start, model_start, context_start)` from a `pi --list-models` header.
-fn header_column_starts(header: &str) -> Option<(usize, usize, usize)> {
+/// Column starts from a `pi --list-models` header.
+#[derive(Debug, Clone, Copy)]
+struct HeaderColumns {
+    model_start: usize,
+    context_start: usize,
+    thinking_start: Option<usize>,
+    thinking_end: Option<usize>,
+}
+
+fn header_columns(header: &str) -> Option<HeaderColumns> {
     let lower = header.to_ascii_lowercase();
     let provider = lower.find("provider")?;
     let model = lower.find("model")?;
     let context = lower.find("context")?;
-    if provider < model && model < context {
-        Some((provider, model, context))
-    } else {
-        None
-    }
-}
-
-fn listing_from_fixed_columns(
-    line: &str,
-    model_start: usize,
-    context_start: usize,
-) -> Option<PiModelListing> {
-    if line.len() < context_start || model_start >= context_start {
+    if !(provider < model && model < context) {
         return None;
     }
-    let provider = line.get(..model_start)?.trim();
-    let model = line.get(model_start..context_start)?.trim();
+    let thinking_start = lower.find("thinking");
+    let thinking_end = thinking_start.and_then(|start| {
+        // Next column after thinking (usually `images`), else end of line.
+        let after = &lower[start + "thinking".len()..];
+        let rel = after.find(|c: char| c.is_ascii_alphabetic())?;
+        Some(start + "thinking".len() + rel)
+    });
+    Some(HeaderColumns {
+        model_start: model,
+        context_start: context,
+        thinking_start,
+        thinking_end,
+    })
+}
+
+fn listing_from_fixed_columns(line: &str, cols: HeaderColumns) -> Option<PiModelListing> {
+    if line.len() < cols.context_start || cols.model_start >= cols.context_start {
+        return None;
+    }
+    let provider = line.get(..cols.model_start)?.trim();
+    let model = line.get(cols.model_start..cols.context_start)?.trim();
     if model.is_empty() || !is_provider_id(provider) {
         return None;
     }
     Some(PiModelListing {
         name: model.to_string(),
         id: format!("{provider}/{model}"),
+        thinking: thinking_from_fixed_columns(line, cols),
     })
+}
+
+fn thinking_from_fixed_columns(line: &str, cols: HeaderColumns) -> Option<bool> {
+    let start = cols.thinking_start?;
+    let end = cols.thinking_end.unwrap_or(line.len()).min(line.len());
+    if start >= end || start >= line.len() {
+        return None;
+    }
+    parse_thinking_cell(line.get(start..end)?.trim())
+}
+
+fn parse_thinking_cell(cell: &str) -> Option<bool> {
+    match cell.to_ascii_lowercase().as_str() {
+        "yes" | "y" | "true" => Some(true),
+        "no" | "n" | "false" => Some(false),
+        _ => None,
+    }
 }
 
 fn listing_from_whitespace_row(line: &str) -> Option<PiModelListing> {
@@ -115,16 +150,19 @@ fn listing_from_whitespace_row(line: &str) -> Option<PiModelListing> {
     if model.is_empty() || !is_provider_id(provider) {
         return None;
     }
+    // Live tables: provider model context max-out thinking images
+    let thinking = cols.iter().find_map(|c| parse_thinking_cell(c));
     Some(PiModelListing {
         name: model.to_string(),
         id: format!("{provider}/{model}"),
+        thinking,
     })
 }
 
 #[must_use]
 pub(crate) fn parse_list_models_table(text: &str) -> Vec<PiModelListing> {
     let mut out = Vec::new();
-    let mut columns: Option<(usize, usize)> = None;
+    let mut columns: Option<HeaderColumns> = None;
     for line in text.lines() {
         let line = line.trim_end();
         if line.is_empty() {
@@ -133,19 +171,16 @@ pub(crate) fn parse_list_models_table(text: &str) -> Vec<PiModelListing> {
         let lower = line.to_ascii_lowercase();
         if is_noise_line(line, &lower) {
             if columns.is_none() {
-                if let Some((_p, model_start, context_start)) = header_column_starts(line) {
-                    columns = Some((model_start, context_start));
-                }
+                columns = header_columns(line);
             }
             continue;
         }
-        let row = match columns {
-            Some((model_start, context_start)) => {
-                listing_from_fixed_columns(line, model_start, context_start)
-                    .or_else(|| listing_from_whitespace_row(line))
-            }
-            None => listing_from_whitespace_row(line),
-        };
+        let row = columns.map_or_else(
+            || listing_from_whitespace_row(line),
+            |cols| {
+                listing_from_fixed_columns(line, cols).or_else(|| listing_from_whitespace_row(line))
+            },
+        );
         if let Some(row) = row {
             out.push(row);
         }

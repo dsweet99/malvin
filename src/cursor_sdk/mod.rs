@@ -22,6 +22,7 @@ pub fn cursor_sdk_client_from_raw(
         crate::model_id::ParsedModel {
             backend: crate::model_id::ModelBackend::Cursor,
             slug: "auto".into(),
+            params: Vec::new(),
         }
     });
     CursorSdkClient::with_max_retries(

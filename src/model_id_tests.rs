@@ -5,6 +5,7 @@ fn parse_cursor_and_pi() {
     let c = parse_model_id("cursor:auto").expect("cursor");
     assert_eq!(c.backend, ModelBackend::Cursor);
     assert_eq!(c.canonical(), "cursor:auto");
+    assert!(c.params.is_empty());
     let pi = parse_model_id("pi:openai/gpt-4o").expect("pi");
     assert!(pi.is_pi());
     assert_eq!(pi.canonical(), "pi:openai/gpt-4o");
@@ -14,6 +15,74 @@ fn parse_cursor_and_pi() {
         pi_nested.pi_provider_and_model(),
         Some(("openrouter", "anthropic/claude-3-haiku"))
     );
+}
+
+#[test]
+fn parse_bracket_overrides() {
+    let c = parse_model_id("cursor:claude-opus-5[effort=high,fast=true]").expect("cursor params");
+    assert_eq!(c.slug, "claude-opus-5");
+    assert_eq!(
+        c.params,
+        vec![
+            ModelParam {
+                id: "effort".into(),
+                value: "high".into(),
+            },
+            ModelParam {
+                id: "fast".into(),
+                value: "true".into(),
+            },
+        ]
+    );
+    assert_eq!(
+        c.canonical(),
+        "cursor:claude-opus-5[effort=high,fast=true]"
+    );
+    assert_eq!(
+        c.cursor_bridge_model(),
+        "claude-opus-5[effort=high,fast=true]"
+    );
+    let pi = parse_model_id("pi:openai/gpt-4o[thinking=high]").expect("pi thinking");
+    assert_eq!(pi.slug, "openai/gpt-4o");
+    assert_eq!(pi.thinking_param(), Some("high"));
+    assert_eq!(pi.canonical(), "pi:openai/gpt-4o[thinking=high]");
+    assert!(parse_model_id("cursor:opus[")
+        .expect_err("unbalanced")
+        .contains(']'));
+    assert!(parse_model_id("pi:openai/gpt-4o[fast=true]")
+        .expect_err("pi only thinking")
+        .contains("thinking"));
+    assert!(parse_model_id("pi:openai/gpt-4o[thinking=ultra]")
+        .expect_err("bad level")
+        .contains("thinking"));
+}
+
+#[test]
+fn format_and_split_bracket_params_helpers() {
+    assert_eq!(format_bracket_params(&[]), "");
+    let params = vec![
+        ModelParam {
+            id: "effort".into(),
+            value: "high".into(),
+        },
+        ModelParam {
+            id: "fast".into(),
+            value: "true".into(),
+        },
+    ];
+    assert_eq!(format_bracket_params(&params), "[effort=high,fast=true]");
+    let (base, parsed) = split_bracket_params("claude-opus-5[effort=high,fast=true]").expect("ok");
+    assert_eq!(base, "claude-opus-5");
+    assert_eq!(parsed, params);
+    assert_eq!(split_bracket_params("bare").expect("bare").0, "bare");
+    assert!(split_bracket_params("x[a=1,b]").is_err());
+    assert!(split_bracket_params("x[=1]").is_err());
+    assert!(split_bracket_params("x[a=]").is_err());
+    assert!(split_bracket_params("x[a=1,]").is_err());
+    assert!(split_bracket_params("[a=1]").is_err());
+    let empty_brackets = split_bracket_params("model[]").expect("empty");
+    assert_eq!(empty_brackets.0, "model");
+    assert!(empty_brackets.1.is_empty());
 }
 
 #[test]
@@ -55,6 +124,7 @@ fn model_backend_and_parsed_model_debug() {
     let parsed = ParsedModel {
         backend: ModelBackend::Pi,
         slug: "openai/gpt-4o".into(),
+        params: Vec::new(),
     };
     let clone = parsed.clone();
     assert_eq!(clone, parsed);

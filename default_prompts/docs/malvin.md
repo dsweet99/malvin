@@ -50,7 +50,7 @@ This is **not** the same as `-b` / `--background` (which suppresses all stdout, 
 
 ### `--model <MODEL>`
 
-Model id for agent-backed commands. Default: `cursor:auto`. Use `cursor:` for the Cursor SDK backend, or `pi:<provider>/<model>` for an externally installed [pi_agent_rust](https://github.com/Dicklesworthstone/pi_agent_rust) `pi` binary (`PATH` or `MALVIN_PI`). Legacy `prime:` ids are rejected.
+Model id for agent-backed commands. Default: `cursor:auto`. Use `cursor:` for the Cursor SDK backend, or `pi:<provider>/<model>` for an externally installed [pi_agent_rust](https://github.com/Dicklesworthstone/pi_agent_rust) `pi` binary (`PATH` or `MALVIN_PI`). Optional bracket overrides select thinking / speed where the backend supports them, for example `cursor:claude-opus-5[effort=high,fast=true]` or `pi:openai/gpt-5[thinking=high]` (see `malvin models --doc`). Legacy `prime:` ids are rejected.
 
 ### `--max-loops <N>` (default: 1)
 

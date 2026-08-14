@@ -9,6 +9,7 @@
 import "./parent_death.js";
 import * as readline from "node:readline";
 import { Agent, Cursor, CursorAgentError, configureCursorSdk } from "@cursor/sdk";
+import { modelSelectionFromRaw } from "./model_selection.js";
 import { emit, parseRequest, } from "./protocol.js";
 import { eventsAfterStreamFailure, exitCodeForSignal, isInterruptOp, isStaleAuthMisclassification, isStaleAuthText, } from "./bridge_policy.js";
 import { forwardSdkMessage, usageRecord } from "./sdk_map.js";
@@ -96,7 +97,7 @@ function agentOptionsFromBoot(req, apiKey) {
     }
     return {
         apiKey,
-        model: { id: req.model || "auto" },
+        model: modelSelectionFromRaw(req.model || "auto"),
         local,
     };
 }
@@ -297,6 +298,10 @@ async function handleListModels(apiKey) {
             models: models.map((m) => ({
                 id: m.id,
                 displayName: m.displayName,
+                parameters: m.parameters?.map((p) => ({
+                    id: p.id,
+                    values: p.values.map((v) => v.value),
+                })),
             })),
         });
     }

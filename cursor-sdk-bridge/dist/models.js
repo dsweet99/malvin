@@ -9,6 +9,22 @@ function installQuietSignalHandlers() {
         });
     }
 }
+/** Compact `id=v1|v2` summaries for catalog params (thinking / effort / fast / …). */
+export function formatModelParams(parameters) {
+    if (!parameters || parameters.length === 0) {
+        return "";
+    }
+    return parameters
+        .map((p) => {
+        const values = p.values.map((v) => v.value).join("|");
+        return `${p.id}=${values}`;
+    })
+        .join(" ");
+}
+export function formatModelListLine(m) {
+    const params = formatModelParams(m.parameters);
+    return params ? `cursor:${m.id}\t${params}` : `cursor:${m.id}`;
+}
 async function main() {
     installQuietSignalHandlers();
     const apiKey = (process.env.CURSOR_API_KEY ??
@@ -26,7 +42,7 @@ async function main() {
     try {
         const models = await Cursor.models.list({ apiKey });
         for (const m of models) {
-            process.stdout.write(`cursor:${m.id}\n`);
+            process.stdout.write(`${formatModelListLine(m)}\n`);
         }
     }
     catch (err) {
@@ -36,4 +52,10 @@ async function main() {
         process.exit(1);
     }
 }
-main();
+const isMain = typeof process.argv[1] === "string" &&
+    (process.argv[1].endsWith("/models.js") ||
+        process.argv[1].endsWith("/models.ts") ||
+        process.argv[1].endsWith("models.js"));
+if (isMain) {
+    void main();
+}

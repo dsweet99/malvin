@@ -1,4 +1,13 @@
 //! Prefixed model ids: `cursor:…`, `pi:…`.
+//!
+//! Optional bracket overrides match the Cursor agent CLI shape:
+//! `cursor:claude-opus-5[effort=high,fast=true]` and
+//! `pi:openai/gpt-4o[thinking=high]`.
+
+#[path = "model_id_params.rs"]
+mod model_id_params;
+pub use model_id_params::{format_bracket_params, split_bracket_params};
+
 pub const CURSOR_PREFIX: &str = "cursor:";
 pub const PI_PREFIX: &str = "pi:";
 
@@ -15,9 +24,17 @@ const LEGACY_MINI_HINT: &str =
     "legacy `mini:` prefix removed; use `pi:` (for example `pi:openrouter/<slug>`)";
 const LEGACY_OPENROUTER_HINT: &str =
     "legacy `openrouter:` prefix removed; use `pi:openrouter/<slug>` (for example `pi:openrouter/anthropic/claude-3-haiku`)";
-const LEGACY_LOCAL_HINT: &str = "legacy `local:` prefix removed; local GGUF models are no longer supported";
+const LEGACY_LOCAL_HINT: &str =
+    "legacy `local:` prefix removed; local GGUF models are no longer supported";
 const LEGACY_PRIME_HINT: &str =
     "legacy `prime:` prefix removed; use `cursor:` or `pi:` (for example `cursor:auto` or `pi:openai/gpt-4o`)";
+
+/// One `key=value` override from a trailing `[k=v,…]` model suffix.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ModelParam {
+    pub id: String,
+    pub value: String,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModelBackend {
@@ -28,8 +45,10 @@ pub enum ModelBackend {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParsedModel {
     pub backend: ModelBackend,
-    /// Provider / transport slug without the malvin prefix.
+    /// Provider / transport slug without the malvin prefix (and without bracket params).
     pub slug: String,
+    /// Bracket overrides (`effort`, `fast`, `thinking`, …).
+    pub params: Vec<ModelParam>,
 }
 
 impl std::fmt::Display for ParsedModel {
@@ -41,9 +60,14 @@ impl std::fmt::Display for ParsedModel {
 impl ParsedModel {
     #[must_use]
     pub fn canonical(&self) -> String {
-        match self.backend {
+        let base = match self.backend {
             ModelBackend::Cursor => format!("{CURSOR_PREFIX}{}", self.slug),
             ModelBackend::Pi => format!("{PI_PREFIX}{}", self.slug),
+        };
+        if self.params.is_empty() {
+            base
+        } else {
+            format!("{base}{}", format_bracket_params(&self.params))
         }
     }
 
@@ -61,6 +85,25 @@ impl ParsedModel {
             return None;
         }
         split_first_slash(&self.slug).filter(|(p, m)| !p.is_empty() && !m.is_empty())
+    }
+
+    /// Wire form passed to the Cursor SDK bridge (`slug` plus optional brackets).
+    #[must_use]
+    pub fn cursor_bridge_model(&self) -> String {
+        if self.params.is_empty() {
+            self.slug.clone()
+        } else {
+            format!("{}{}", self.slug, format_bracket_params(&self.params))
+        }
+    }
+
+    /// Value of the first `thinking` bracket param, if present.
+    #[must_use]
+    pub fn thinking_param(&self) -> Option<&str> {
+        self.params
+            .iter()
+            .find(|p| p.id == "thinking")
+            .map(|p| p.value.as_str())
     }
 }
 
@@ -98,16 +141,19 @@ fn parse_pi(rest: &str) -> Result<ParsedModel, String> {
     if rest.is_empty() {
         return Err(UNPREFIXED_MODEL_MESSAGE.to_string());
     }
+    let (slug, params) = split_bracket_params(rest)?;
     let err = || format!("pi model id must be `pi:<provider>/<model>` (got `pi:{rest}`)");
-    let Some((provider, model)) = split_first_slash(rest) else {
+    let Some((provider, model)) = split_first_slash(&slug) else {
         return Err(err());
     };
     if provider.is_empty() || model.is_empty() {
         return Err(err());
     }
+    model_id_params::validate_pi_thinking_params(&params)?;
     Ok(ParsedModel {
         backend: ModelBackend::Pi,
-        slug: rest.to_string(),
+        slug,
+        params,
     })
 }
 
@@ -116,13 +162,14 @@ fn split_first_slash(s: &str) -> Option<(&str, &str)> {
 }
 
 fn parsed(backend: ModelBackend, slug: &str) -> Result<ParsedModel, String> {
-    let slug = slug.trim();
+    let (slug, params) = split_bracket_params(slug)?;
     if slug.is_empty() {
         return Err(UNPREFIXED_MODEL_MESSAGE.to_string());
     }
     Ok(ParsedModel {
         backend,
-        slug: slug.to_string(),
+        slug,
+        params,
     })
 }
 
@@ -150,6 +197,7 @@ pub fn uses_pi_backend(raw: &str) -> bool {
 pub fn require_prefixed_model(raw: &str) -> Result<String, String> {
     Ok(parse_model_id(raw)?.canonical())
 }
+
 #[cfg(test)]
 #[path = "model_id_tests.rs"]
 mod model_id_tests;

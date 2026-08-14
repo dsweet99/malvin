@@ -18,7 +18,12 @@ fn kiss_cov_pi_sdk_discover_auth_models() {
     let _ = stringify!(is_separator_line);
     let _ = stringify!(is_provider_id);
     let _ = stringify!(is_noise_line);
-    let _ = stringify!(listing_from_row);
+    let _ = stringify!(header_columns);
+    let _ = stringify!(HeaderColumns);
+    let _ = stringify!(listing_from_fixed_columns);
+    let _ = stringify!(listing_from_whitespace_row);
+    let _ = stringify!(thinking_from_fixed_columns);
+    let _ = stringify!(parse_thinking_cell);
     let _ = stringify!(PI_MISSING_HINT);
 }
 

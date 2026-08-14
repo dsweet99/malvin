@@ -28,7 +28,12 @@ fn kiss_cov_pi_sdk_models_list_helpers() {
     is_separator_line();
     is_provider_id();
     is_noise_line();
-    listing_from_row();
+    header_columns();
+    HeaderColumns();
+    listing_from_fixed_columns();
+    listing_from_whitespace_row();
+    thinking_from_fixed_columns();
+    parse_thinking_cell();
 }
 
 #[test]

@@ -68,7 +68,11 @@ export type BridgeEvent =
     }
   | {
       event: "models";
-      models: Array<{ id: string; displayName?: string }>;
+      models: Array<{
+        id: string;
+        displayName?: string;
+        parameters?: Array<{ id: string; values: string[] }>;
+      }>;
     }
   | { event: "fatal"; message: string; retryable?: boolean };
 

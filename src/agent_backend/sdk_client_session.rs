@@ -51,13 +51,19 @@ impl SdkClient {
             )));
         }
         let cwd = crate::acp::resolve_acp_session_cwd(cwd)?;
-        let model = self.model.slug.clone();
+        let model = spawn_model_wire(self);
+        let thinking = spawn_thinking_wire(self);
         let mut last_error = String::new();
         let max_attempts = self.max_acp_retries;
         let mut attempts_used = 0_u32;
         for attempt in 1..=max_attempts {
             attempts_used = attempt;
-            match spawn_for_kind(self.kind, bridge_spawn_args(self, &cwd, &model)).await {
+            match spawn_for_kind(
+                self.kind,
+                bridge_spawn_args(self, &cwd, &model, thinking.as_deref()),
+            )
+            .await
+            {
                 Ok(s) => {
                     adopt_spawned_session(self, s, cwd);
                     return Ok(());
@@ -106,10 +112,31 @@ const fn kind_label(kind: BridgeKind) -> &'static str {
     }
 }
 
-fn bridge_spawn_args<'a>(client: &'a SdkClient, cwd: &'a Path, model: &'a str) -> BridgeSpawnArgs<'a> {
+fn spawn_model_wire(client: &SdkClient) -> String {
+    match client.kind {
+        BridgeKind::Cursor => client.model.cursor_bridge_model(),
+        BridgeKind::Pi => client.model.slug.clone(),
+    }
+}
+
+fn spawn_thinking_wire(client: &SdkClient) -> Option<String> {
+    client
+        .model
+        .thinking_param()
+        .filter(|_| matches!(client.kind, BridgeKind::Pi))
+        .map(str::to_string)
+}
+
+fn bridge_spawn_args<'a>(
+    client: &'a SdkClient,
+    cwd: &'a Path,
+    model: &'a str,
+    thinking: Option<&'a str>,
+) -> BridgeSpawnArgs<'a> {
     BridgeSpawnArgs {
         cwd,
         model,
+        thinking,
         io: client.io,
         run_dir: client.prompts_log_run_dir.clone(),
         timing: client.timing.clone(),

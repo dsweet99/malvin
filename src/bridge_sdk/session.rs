@@ -64,6 +64,8 @@ pub struct BridgeSession {
 pub struct BridgeSpawnArgs<'a> {
     pub cwd: &'a Path,
     pub model: &'a str,
+    /// Pi `--thinking` level from `pi:…[thinking=…]` (ignored by Cursor).
+    pub thinking: Option<&'a str>,
     pub io: AgentIoOptions,
     pub run_dir: Option<PathBuf>,
     pub timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,

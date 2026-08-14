@@ -58,7 +58,15 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
 
 fn print_pi_models(models: &[crate::pi_sdk::PiModelListing], filter: Option<&str>) {
     for model in models {
-        let line = format!("pi:{}\t{}", model.id, model.name);
+        let mut line = format!("pi:{}\t{}", model.id, model.name);
+        if let Some(thinking) = model.thinking {
+            line.push('\t');
+            line.push_str(if thinking {
+                "thinking=yes"
+            } else {
+                "thinking=no"
+            });
+        }
         if line_matches_prefix(&line, filter) {
             print_stdout_line(MALVIN_WHO, &line);
         }

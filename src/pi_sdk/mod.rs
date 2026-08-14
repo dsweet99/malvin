@@ -30,6 +30,7 @@ pub fn pi_sdk_client_from_raw(
         crate::model_id::ParsedModel {
             backend: crate::model_id::ModelBackend::Pi,
             slug: "openai/gpt-4o".into(),
+            params: Vec::new(),
         }
     });
     crate::agent_backend::SdkClient::with_max_retries(

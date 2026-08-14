@@ -61,6 +61,7 @@ Showing 2 of 95 providers. Run `pi --list-providers` to see all.
     assert_eq!(rows.len(), 2);
     assert_eq!(rows[0].id, "openai/gpt-4o");
     assert_eq!(rows[1].id, "openrouter/anthropic/claude-3-haiku");
+    assert!(rows.iter().all(|r| r.thinking.is_none()));
     assert!(rows.iter().all(|r| !r.id.to_ascii_lowercase().contains("showing")));
 }
 
@@ -75,6 +76,20 @@ openai          my spaced model id                                        128K  
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].id, "openai/my spaced model id");
     assert_eq!(rows[0].name, "my spaced model id");
+    assert!(rows[0].thinking.is_none());
+}
+
+#[test]
+fn parse_list_models_reads_thinking_column() {
+    let text = "\
+provider        model                                                     context  max-out  thinking  images
+openai          gpt-4o                                                    128K     16.4K    no        yes
+openrouter      qwen/qwen3-thinking                                       128K     16.4K    yes       no
+";
+    let rows = parse_list_models_table(text);
+    assert_eq!(rows.len(), 2);
+    assert_eq!(rows[0].thinking, Some(false));
+    assert_eq!(rows[1].thinking, Some(true));
 }
 
 

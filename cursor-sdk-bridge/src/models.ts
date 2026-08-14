@@ -1,6 +1,7 @@
 /** One-shot Cursor model listing for `malvin models`. */
 
 import { Cursor, CursorAgentError } from "@cursor/sdk";
+import type { ModelListItem, ModelParameterDefinition } from "@cursor/sdk";
 import { emit } from "./protocol.js";
 import { exitCodeForSignal } from "./bridge_policy.js";
 
@@ -10,6 +11,24 @@ function installQuietSignalHandlers(): void {
       process.exit(exitCodeForSignal(signal));
     });
   }
+}
+
+/** Compact `id=v1|v2` summaries for catalog params (thinking / effort / fast / …). */
+export function formatModelParams(parameters?: ModelParameterDefinition[]): string {
+  if (!parameters || parameters.length === 0) {
+    return "";
+  }
+  return parameters
+    .map((p) => {
+      const values = p.values.map((v) => v.value).join("|");
+      return `${p.id}=${values}`;
+    })
+    .join(" ");
+}
+
+export function formatModelListLine(m: ModelListItem): string {
+  const params = formatModelParams(m.parameters);
+  return params ? `cursor:${m.id}\t${params}` : `cursor:${m.id}`;
 }
 
 async function main(): Promise<void> {
@@ -31,7 +50,7 @@ async function main(): Promise<void> {
   try {
     const models = await Cursor.models.list({ apiKey });
     for (const m of models) {
-      process.stdout.write(`cursor:${m.id}\n`);
+      process.stdout.write(`${formatModelListLine(m)}\n`);
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -42,4 +61,12 @@ async function main(): Promise<void> {
   }
 }
 
-main();
+const isMain =
+  typeof process.argv[1] === "string" &&
+  (process.argv[1].endsWith("/models.js") ||
+    process.argv[1].endsWith("/models.ts") ||
+    process.argv[1].endsWith("models.js"));
+
+if (isMain) {
+  void main();
+}

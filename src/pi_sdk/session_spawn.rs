@@ -43,7 +43,7 @@ fn pi_open_bridge_session(
     provider: &str,
     model: &str,
 ) -> Result<BridgeSession, AgentError> {
-    let mut child = pi_build_command(bin, args.cwd, provider, model)
+    let mut child = pi_build_command(bin, &args, provider, model)
         .spawn()
         .map_err(|e| AgentError(format!("spawn pi: {e}")))?;
     let handles = pi_take_stdio(&mut child)?;
@@ -116,7 +116,7 @@ fn pi_assemble_session(
 
 fn pi_build_command(
     bin: &std::path::Path,
-    cwd: &std::path::Path,
+    args: &BridgeSpawnArgs<'_>,
     provider: &str,
     model: &str,
 ) -> tokio::process::Command {
@@ -126,13 +126,61 @@ fn pi_build_command(
         .arg("--provider")
         .arg(provider)
         .arg("--model")
-        .arg(model)
-        .arg("--no-session")
+        .arg(model);
+    if let Some(level) = args.thinking {
+        cmd.arg("--thinking").arg(level);
+    }
+    cmd.arg("--no-session")
         .arg("--no-extensions")
-        .current_dir(cwd)
+        .current_dir(args.cwd)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit())
         .env("MALLOC_ARENA_MAX", "2");
     cmd
+}
+
+#[cfg(test)]
+mod thinking_arg_tests {
+    use super::*;
+
+    #[test]
+    fn pi_command_forwards_thinking_separately_from_model() {
+        let cwd = tempfile::tempdir().expect("tempdir");
+        let args = BridgeSpawnArgs {
+            cwd: cwd.path(),
+            model: "openai/gpt-5",
+            thinking: Some("high"),
+            io: crate::agent_backend::test_support::test_io(),
+            run_dir: None,
+            timing: None,
+            resume_agent_id: None,
+            normalize_pi_usage: true,
+        };
+        let command = pi_build_command(
+            std::path::Path::new("/usr/bin/pi"),
+            &args,
+            "openai",
+            "gpt-5",
+        );
+        let child_args = command
+            .as_std()
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            child_args,
+            [
+                "--rpc",
+                "--provider",
+                "openai",
+                "--model",
+                "gpt-5",
+                "--thinking",
+                "high",
+                "--no-session",
+                "--no-extensions",
+            ]
+        );
+    }
 }
