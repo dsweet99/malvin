@@ -1,4 +1,3 @@
-//! CLI entry does not require `kiss` on `PATH` for agent-backed subcommands.
 
 #[cfg(unix)]
 mod common;

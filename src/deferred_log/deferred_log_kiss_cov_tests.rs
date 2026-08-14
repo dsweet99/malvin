@@ -1,4 +1,3 @@
-//! External kiss witnesses for [`super`] deferred log types and helpers.
 
 use super::types::{build::ToolSummaryBuild, enrich::EnrichKey, payload::DeferredEntry};
 

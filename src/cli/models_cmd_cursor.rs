@@ -1,4 +1,3 @@
-//! Cursor model listing for `malvin models`.
 
 use std::path::PathBuf;
 use std::process::Output;
@@ -13,11 +12,8 @@ use crate::output::{MALVIN_WHO, print_stdout_line};
 use super::line_matches_prefix;
 use super::models_cmd_parse::{print_parsed_or_fallback_prefixed, trim_trailing_tip_lines};
 
-/// Default wall-clock budget for Cursor SDK / CLI model listing (override with
-/// `MALVIN_CURSOR_LIST_MODELS_TIMEOUT_MS`).
 pub const DEFAULT_CURSOR_LIST_MODELS_TIMEOUT_MS: u64 = 30_000;
 
-/// Resolve the Cursor model-list wall-clock timeout.
 #[must_use]
 pub fn cursor_list_models_timeout() -> Duration {
     timeout_ms_from_env(
@@ -44,7 +40,6 @@ fn print_cursor_models_via_sdk(filter: Option<&str>) -> Result<(), String> {
     Ok(())
 }
 
-/// True when SDK stdout contains at least one non-empty, non-JSON catalog line.
 pub(super) fn sdk_catalog_has_model_rows(raw: &str) -> bool {
     raw.lines().any(|line| {
         let t = line.trim();
@@ -67,7 +62,6 @@ fn run_cursor_sdk_models_js() -> Result<Output, String> {
     Ok(output)
 }
 
-/// Parse SDK stdout rows and ensure `cursor:auto` is present when the catalog omits it.
 pub(super) fn sdk_model_rows_from_stdout(raw: &str) -> Vec<String> {
     let mut rows = Vec::new();
     let mut saw_auto = false;
@@ -82,8 +76,6 @@ pub(super) fn sdk_model_rows_from_stdout(raw: &str) -> Vec<String> {
         }
         rows.push(t.to_string());
     }
-    // Cursor SDK catalogs may expose `default` while malvin's CLI default remains `cursor:auto`
-    // (and `cursor-agent models` still lists `auto`). Ensure the documented default is visible.
     if !saw_auto {
         rows.insert(0, format!("{CURSOR_PREFIX}auto"));
     }

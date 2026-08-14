@@ -1,15 +1,9 @@
-//! Global stdout tee log path holder (crate-root leaf: no malvin internals).
-//!
-//! Keeps dependency depth shallow for callers like `artifacts` that only need run-dir log wiring.
 
 use std::path::PathBuf;
 use std::sync::{Mutex, PoisonError};
 
 static STDOUT_LOG_PATH: Mutex<Option<PathBuf>> = Mutex::new(None);
 
-/// # Panics
-///
-/// Panics if the stdout log path mutex is poisoned.
 pub fn set_stdout_log_path(path: Option<PathBuf>) {
     *STDOUT_LOG_PATH
         .lock()
@@ -17,9 +11,6 @@ pub fn set_stdout_log_path(path: Option<PathBuf>) {
 }
 
 #[must_use]
-/// # Panics
-///
-/// Panics if the stdout log path mutex is poisoned.
 pub fn clone_stdout_log_path() -> Option<PathBuf> {
     STDOUT_LOG_PATH
         .lock()

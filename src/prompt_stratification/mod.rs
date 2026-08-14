@@ -1,12 +1,6 @@
-//! Prompt stratification (see `concepts.md` §4).
-//!
-//! Agent prompts are assembled as ordered string layers joined with blank lines.
-//! Each workflow keeps layer order explicit at its recipe site via [`PromptStratum`] labels;
-//! there is no prompt AST.
 
 use std::collections::HashMap;
 
-/// Named prompt layer in concept order (documentation / typing aid; not enforced at runtime).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PromptStratum {
     EmbeddedTemplate,
@@ -17,7 +11,6 @@ pub enum PromptStratum {
     MiniConstraints,
 }
 
-/// Join non-empty prompt layers with `\n\n`, trimming trailing whitespace on each part.
 #[must_use]
 pub fn join_strata<I, S>(parts: I) -> String
 where
@@ -32,7 +25,6 @@ where
     trimmed.join("\n\n")
 }
 
-/// Like [`join_strata`], but each part carries a [`PromptStratum`] label for typing.
 #[must_use]
 pub fn join_labeled_strata<I, S>(parts: I) -> String
 where
@@ -42,7 +34,6 @@ where
     join_strata(parts.into_iter().map(|(_, s)| s))
 }
 
-/// Typed placeholder context for workflow prompt rendering.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct WorkflowRenderContext(pub HashMap<String, String>);
 

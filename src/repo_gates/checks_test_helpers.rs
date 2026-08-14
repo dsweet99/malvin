@@ -1,4 +1,3 @@
-//! Shared git/checks helpers for integration tests (unique module path for kiss disambiguation).
 
 #[cfg(test)]
 use std::path::Path;

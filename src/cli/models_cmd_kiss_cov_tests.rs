@@ -1,4 +1,3 @@
-//! External kiss witnesses for [`super`] (must be `*_tests.rs` for kiss).
 
 fn kiss_witness_clone<T: Clone>(value: &T) -> T {
     value.clone()
@@ -142,7 +141,6 @@ fn kiss_cov_run_models_soft_fails_cursor_and_continues() {
     install_failing_fake_agent(tmp.path());
     let _guard = set_fake_command_dir(tmp.path());
     enable_stdout_capture();
-    // Cursor auth/agent failure must not abort Prime / Mini sections.
     run_models(ModelsArgs::default(), crate::config::DEFAULT_CLI_MODEL)
         .expect("cursor failure is soft");
     let out = take_captured_stdout();

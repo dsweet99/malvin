@@ -67,7 +67,6 @@ Showing 2 of 95 providers. Run `pi --list-providers` to see all.
 
 #[test]
 fn parse_list_models_fixed_width_keeps_spaces_in_model() {
-    // Column starts match live `pi --list-models` header layout (model @ 16, context @ 74).
     let text = "\
 provider        model                                                     context  max-out
 openai          my spaced model id                                        128K     4.1K

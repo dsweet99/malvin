@@ -1,19 +1,12 @@
-//! OS-level child process health samples to complement ACP JSON silence timeouts.
-//!
-//! Policy ([`evaluate_after_acp_silence`]) is platform-agnostic; [`sample_child_health`] is
-//! OS-specific.
 #![allow(dead_code)]
 
 use std::time::{Duration, Instant};
 
-/// Normalized snapshot from the OS for one child PID.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChildHealth {
     pub exists: bool,
     pub zombie: bool,
     pub state_hint: Option<char>,
-    /// When `false`, CPU/context/thread fields are placeholders (I/O or parse failure); they must not
-    /// be compared to a prior sample as if they were real OS counters.
     pub counters_trusted: bool,
     pub cpu_time_total: u64,
     pub thread_count: Option<u32>,
@@ -21,7 +14,6 @@ pub struct ChildHealth {
     pub sample_time: Instant,
 }
 
-/// Outcome after the silence window fired once and we took one or two OS health samples.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SilenceHealthOutcome {
     ChildNotRunning,
@@ -63,15 +55,12 @@ pub fn silence_grace_for_rpc_timeout(rpc_timeout: Duration) -> Duration {
     }
 }
 
-/// True when two samples suggest the process is still doing work without ACP JSON traffic.
 #[must_use]
 pub const fn health_indicates_progress(before: &ChildHealth, after: &ChildHealth) -> bool {
     if !after.counters_trusted {
         return false;
     }
     if !before.counters_trusted {
-        // Without trusted baseline counters, any trusted second snapshot (often non-zero on Linux)
-        // would spuriously extend waits for a hung child after a transient first-read failure.
         return false;
     }
     if before.cpu_time_total != after.cpu_time_total {
@@ -138,7 +127,6 @@ pub(crate) mod other;
 mod child_health_unit_tests;
 
 impl ChildHealth {
-    /// `/proc` (or equivalent) has no row for this PID — the child is definitely gone.
     pub(super) fn process_absent() -> Self {
         Self {
             exists: false,
@@ -152,10 +140,6 @@ impl ChildHealth {
         }
     }
 
-    /// Sampling failed (I/O or parse) or PID is unset — treat as "maybe still running" with no counters.
-    ///
-    /// Must **not** set [`Self::exists`] to `false`, or [`evaluate_after_acp_silence`] would mis-report
-    /// "not running" when we simply could not read OS state.
     pub(super) fn cannot_sample() -> Self {
         Self {
             exists: true,

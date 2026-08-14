@@ -22,7 +22,6 @@ fn md_path_has_invalid_components(path: &Path) -> bool {
     })
 }
 
-/// True when `arg` syntactically names a `.md` path (case-sensitive suffix, no whitespace).
 #[must_use]
 #[allow(clippy::case_sensitive_file_extension_comparisons)]
 pub fn looks_like_md_file_path_arg(arg: &str) -> bool {
@@ -34,7 +33,6 @@ pub fn looks_like_md_file_path_arg(arg: &str) -> bool {
         && !md_path_has_invalid_components(Path::new(trimmed))
 }
 
-/// True when `arg` names an existing `.md` file (case-sensitive suffix, no whitespace).
 #[must_use]
 #[allow(clippy::case_sensitive_file_extension_comparisons)]
 pub fn is_existing_md_file_path(arg: &str) -> Option<PathBuf> {
@@ -52,11 +50,6 @@ pub fn is_existing_md_file_path(arg: &str) -> Option<PathBuf> {
     resolved.is_file().then_some(resolved)
 }
 
-/// Resolve CLI request for `code` / `plan`: existing `.md` path reads file; else literal text.
-///
-/// # Errors
-///
-/// Returns a message when a matched `.md` file cannot be read.
 pub fn resolve_user_md_request(arg: &str) -> Result<(String, PathBuf), String> {
     if let Some(path) = is_existing_md_file_path(arg) {
         let text = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;

@@ -1,4 +1,3 @@
-//! Gate-loop exit predicates.
 
 use std::path::Path;
 

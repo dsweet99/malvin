@@ -1,4 +1,3 @@
-//! On-disk repair for invalid home config before sessions (not session snapshot/restore).
 
 use std::path::Path;
 
@@ -29,7 +28,6 @@ fn repair_malvin_home_config_on_disk_impl(work_dir: &Path) -> Result<(), String>
     crate::malvin_config_file::ensure_malvin_config_file_if_missing(work_dir)
 }
 
-/// Repair invalid `~/.malvin_home/config.toml` on disk before sessions.
 pub fn repair_invalid_malvin_home_config_on_disk(work_dir: &Path) -> Result<(), String> {
     repair_malvin_home_config_on_disk_impl(work_dir)
 }

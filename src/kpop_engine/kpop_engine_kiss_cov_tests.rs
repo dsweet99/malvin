@@ -1,4 +1,3 @@
-//! External kiss witnesses for `kpop_engine/` (must be `*_tests.rs` for kiss).
 
 use crate::artifacts::SessionDotfileBackups;
 use crate::kpop_engine::{run_kpop_hard_constraints_after_session, KPopEngineMultiturnCtx, KPopEnginePrepared, KPopHardConstraints};

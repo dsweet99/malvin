@@ -1,4 +1,3 @@
-//! Shared short ids: `M` + five lowercase alphanumeric characters.
 
 use crate::alnum_id::random_alnum;
 

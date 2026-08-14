@@ -1,8 +1,3 @@
-//! Best-effort herdr session lifecycle (start / working / end).
-//!
-//! Coexistence: ACP children are stripped of `HERDR_*` (`strip_herdr_env_from_child`)
-//! so cursor hooks do not race malvin's parent reporter; `notify_reclaim` is backup.
-//! Product path: reporter-only (not a Herdr kind / integration).
 
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
@@ -28,8 +23,7 @@ fn session_mutex() -> &'static Mutex<Session> {
     SESSION.get_or_init(|| Mutex::new(Session::default()))
 }
 
-/// Skip live I/O inside unit tests unless explicitly enabled (avoids herdr pane spam).
-#[allow(clippy::missing_const_for_fn)] // non-test body is `true`; test body reads env.
+#[allow(clippy::missing_const_for_fn)]
 fn live_io_allowed() -> bool {
     #[cfg(test)]
     {
@@ -41,12 +35,10 @@ fn live_io_allowed() -> bool {
     }
 }
 
-/// Bind pane to this malvin run and report `working`.
 pub fn notify_run_start(run_dir: &Path) {
     let _ = std::panic::catch_unwind(|| notify_run_start_inner(run_dir));
 }
 
-/// Re-bind after an ACP/coder session starts (cursor hook may have stolen authority).
 pub fn notify_reclaim() {
     let _ = std::panic::catch_unwind(notify_reclaim_inner);
 }
@@ -92,7 +84,6 @@ fn activate(env: &HerdrEnv, agent_session_id: Option<&str>, run_dir: Option<&Pat
     guard.run_dir = run_dir.map(Path::to_path_buf);
 }
 
-/// Re-assert `working` (e.g. while `AgentPhase::Waiting` on shells/tools).
 pub fn notify_working() {
     let _ = std::panic::catch_unwind(notify_working_inner);
 }
@@ -104,7 +95,6 @@ fn notify_working_inner() {
     let Some(snap) = active_snapshot() else {
         return;
     };
-    // Pulse only: start/reclaim own full bind; avoid re-clearing authority on every tool pulse.
     send_request(
         &snap.socket_path,
         &report_agent(
@@ -116,11 +106,6 @@ fn notify_working_inner() {
     );
 }
 
-/// Report `idle` then clear display metadata. Idempotent; retries if a prior end failed to clear.
-///
-/// Deliberately does **not** call `pane.release_agent`: release leaves `agent_status=unknown`,
-/// which keeps the activity presentation sticky. Staying bound as `idle` matches the required
-/// post-run state; the next start still `clear_agent_authority` before rebinding.
 pub fn notify_run_end() {
     let _ = std::panic::catch_unwind(notify_run_end_inner);
 }
@@ -148,7 +133,6 @@ fn notify_run_end_inner() {
     }
 }
 
-/// Best-effort teardown send with one retry; log the last error into the run dir.
 fn send_end_retry(sock: &Path, run_dir: Option<&Path>, phase: &str, request: &Value) -> bool {
     if send_request_checked(sock, request).is_ok() {
         return true;
@@ -184,7 +168,6 @@ fn active_snapshot() -> Option<Snapshot> {
     })
 }
 
-/// Snapshot for teardown: active bind, or retained credentials after a failed prior end.
 fn take_teardown_snapshot() -> Option<Snapshot> {
     let mut guard = session_mutex()
         .lock()

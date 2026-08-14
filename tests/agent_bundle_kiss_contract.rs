@@ -1,4 +1,3 @@
-//! Behavioral coverage for `acp::agent_bundle` display errors (kiss per-file credit).
 
 #[test]
 fn agent_error_fmt_display_roundtrip() {

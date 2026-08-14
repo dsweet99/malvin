@@ -1,4 +1,3 @@
-//! Isolated HOME + workspace cwd for unit tests (avoids parent-session ACP spawn locks).
 
 use std::path::{Path, PathBuf};
 

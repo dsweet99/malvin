@@ -1,4 +1,3 @@
-//! External kiss witnesses for [`super`] session name privates.
 
 use super::{NameFileState, SessionNameGuard};
 

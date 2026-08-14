@@ -23,7 +23,6 @@ pub fn snapshot_pids() -> HashSet<u32> {
         if let Some(pids) = unix_process_group_ps_proc::snapshot_pids_from_proc() {
             return pids;
         }
-        // Darwin and other hosts without /proc: fall back to ps.
     }
     list_pids_from_ps().unwrap_or_default()
 }
@@ -44,7 +43,6 @@ pub(crate) fn list_proc_rows() -> Option<Vec<ProcRow>> {
         if let Some(rows) = unix_process_group_ps_proc::list_proc_rows_from_proc() {
             return Some(rows);
         }
-        // Darwin and other hosts without /proc: fall back to ps.
     }
     let out = std::process::Command::new("ps")
         .args(["-ax", "-o", "pid=", "-o", "pgid=", "-o", "ppid="])
@@ -123,7 +121,6 @@ pub(crate) fn read_proc_environ(pid: u32) -> Option<Vec<u8>> {
     std::fs::read(format!("/proc/{pid}/environ")).ok()
 }
 
-/// True when argv ends with `acp` and names the Cursor `agent` binary (malvin's ACP child pattern).
 #[cfg(unix)]
 pub(crate) fn looks_like_agent_acp_cmdline(cmdline: &[u8]) -> bool {
     let args: Vec<&[u8]> = cmdline

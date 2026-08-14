@@ -1,11 +1,5 @@
 #!/usr/bin/env node
-/**
- * Offline mock for cursor-sdk-bridge protocol (unit tests).
- * Speaks the same JSONL ops/events as the real bridge.
- *
- * Concurrent cancel: stdin lines are queued so `cancel`/`close` can run while
- * a slow `send` is in flight (mirrors production bridge main loop).
- */
+
 import * as readline from "node:readline";
 
 let created = false;
@@ -21,7 +15,7 @@ function sleep(ms) {
 }
 
 let agentId = "mock-agent";
-/** "create" | "resume" — AUTH_ONCE fails only on create-booted agents. */
+
 let bootKind = null;
 
 async function handleCreate(req) {
@@ -87,7 +81,7 @@ async function handleSend(req) {
 
   if (prompt.includes("CLOSE_STDOUT")) {
     emit({ event: "assistant", text: "closing" });
-    // Exit so the pipe delivers EOF to Rust (`bridge stdout closed`).
+    
     process.exit(0);
   }
 
@@ -100,7 +94,7 @@ async function handleSend(req) {
     return;
   }
 
-  // Idle-auth misclassification: fails on create-booted agents; resume succeeds.
+  
   if (prompt.includes("AUTH_ONCE") && bootKind === "create") {
     emit({
       event: "fatal",
@@ -110,8 +104,8 @@ async function handleSend(req) {
     return;
   }
 
-  // Orphaned Cursor run after hard-kill/resume: AgentBusy on resume-booted agents only.
-  // Create-booted sends must succeed so retry-after-forget can recover.
+  
+  
   if (prompt.includes("AGENT_BUSY_ON_RESUME") && bootKind === "resume") {
     emit({
       event: "fatal",
@@ -166,14 +160,14 @@ async function handleSend(req) {
     }
   }
 
-  // Hang after a stream event: never emit run_done/fatal (drain idle-timeout coverage).
+  
   if (prompt.includes("NEVER_RUN_DONE")) {
     emit({ event: "assistant", text: "partial before hang" });
     await sleep(60_000);
     return;
   }
 
-  // Finished turn with no result text (must clear prior last_response).
+  
   if (prompt.includes("EMPTY_RESULT_RUN_DONE")) {
     emit({ event: "assistant", text: "" });
     emit({
@@ -184,7 +178,7 @@ async function handleSend(req) {
     return;
   }
 
-  // Keep emitting events with short gaps, then run_done (idle-vs-absolute timeout).
+  
   if (prompt.includes("KEEP_ALIVE_THEN_DONE")) {
     for (let i = 0; i < 6; i++) {
       emit({ event: "assistant", text: `tick-${i}` });
@@ -235,7 +229,7 @@ async function handleClose() {
     try {
       await sendInFlight;
     } catch {
-      // best-effort
+      
     }
   }
   process.exit(0);
@@ -309,7 +303,7 @@ async function main() {
       continue;
     }
 
-    // Cancel/close must not wait for an in-flight send.
+    
     if (req.op === "cancel" || req.op === "close") {
       try {
         await dispatch(req);
@@ -331,7 +325,7 @@ async function main() {
         retryable: false,
       });
     });
-    // Do not await `busy` here: that would block reading cancel lines.
+    
   }
 
   await busy;

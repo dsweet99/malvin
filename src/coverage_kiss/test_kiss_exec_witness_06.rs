@@ -1,5 +1,3 @@
-//! Generated executable-call witnesses for kiss static coverage (bridge_sdk merge).
-//! Orphan test file (not in the crate module tree); kiss-analyzed only.
 
 #[test]
 fn kiss_cov_bridge_sdk_spawn_names_cursor() {

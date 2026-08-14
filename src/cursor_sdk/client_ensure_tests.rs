@@ -1,4 +1,3 @@
-//! `ensure_coder_session` age-refresh tests against `mock_bridge.js`.
 
 use std::time::{Duration, Instant};
 

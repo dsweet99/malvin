@@ -1,4 +1,3 @@
-//! Orphan kiss static-coverage witnesses for `pi:` backend (not in the crate module tree).
 
 #[test]
 fn kiss_cov_pi_sdk_discover_auth_models() {

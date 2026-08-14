@@ -102,7 +102,6 @@ fn emit_prune_result(result: PruneResult) {
     }
 }
 
-/// Retention prune after the new run directory exists; never deletes `protect_run`.
 pub fn prune_logs_after_run_created(work_dir: &Path, protect_run: &Path) {
     emit_prune_result(prune_logs(work_dir, Some(protect_run)));
 }

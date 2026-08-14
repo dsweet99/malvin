@@ -1,4 +1,3 @@
-//! Integration kiss witnesses for ACP `.inc` fragment symbols (external to `src/acp/`).
 
 #[test]
 fn kiss_witness_reader_stdout_body_a_inc() {

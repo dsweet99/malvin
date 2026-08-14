@@ -1,4 +1,3 @@
-//! Shared fixtures for orchestrator unit tests.
 
 use crate::acp::AgentIoOptions;
 use crate::artifacts::{
@@ -36,7 +35,6 @@ pub fn empty_dotfile_backups() -> SessionDotfileBackups {
     })
 }
 
-/// Fresh run artifacts, default prompt store, and a `workflow_context` map under `tmp`.
 pub fn workflow_ctx_for_smoke(
     tmp: &tempfile::TempDir,
     run_artifact_body: &str,

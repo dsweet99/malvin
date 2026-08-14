@@ -1,4 +1,3 @@
-//! Tests for [`super::kpop_session`].
 
 use super::params::KPopEngineIterationParams;
 use super::prepared::KPopEnginePrepared;
@@ -12,7 +11,6 @@ use std::path::Path;
 
 pub(crate) enum PreparedContextMode {
     Empty,
-    /// Path keys only — skips ephemeral quality-gates markdown expansion (faster for session smoke tests).
     PathsOnly,
     Workflow,
 }

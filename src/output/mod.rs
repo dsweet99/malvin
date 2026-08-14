@@ -1,6 +1,3 @@
-//! Shared line-oriented formatting for stdout, stderr, and run logs.
-//!
-//! Narrative channel for dual-contract observability — see [`crate::observability`].
 
 pub(crate) mod acp_tee;
 mod acp_tee_markdown;
@@ -124,7 +121,6 @@ pub fn clear_captured_stderr_lines() {
     CAPTURED_STDERR_LINES.with(|lines| lines.borrow_mut().clear());
 }
 
-/// Record one outgoing prompt summary in stdout.log only (not on the live terminal).
 pub fn print_outgoing_prompt_log(_trace_who: &str, bracket_label: &str) {
     let bracket_payload = format!("[{bracket_label}...]");
     let ts = timestamp_now_string();
@@ -187,15 +183,11 @@ pub(crate) fn who_tag_ansi(who: &str) -> &'static str {
     }
 }
 
-/// ANSI-colored prefix for terminal output. Log files and trace files must use
-/// [`format_line`] / [`format_line_with_timestamp`] instead.
 #[must_use]
 pub fn format_line_with_timestamp_ansi(ts: &str, who: &str, line: &str) -> String {
     stdout_log_pair::tagged_display_line_with_timestamp_ansi(ts, who, line)
 }
 
-/// Call once from the binary entrypoint after parsing CLI. Disables color when `NO_COLOR` is set.
-/// Each stream applies color only when that stream is a terminal.
 pub fn init_stdout_style() {
     apply_stdout_style(std::env::var_os("NO_COLOR").is_none());
 }
@@ -205,7 +197,6 @@ fn apply_stdout_style(use_color: bool) {
     crate::output::stdout_heartbeat::spawn_wall_clock_poller_if_needed();
 }
 
-/// Test/helper: set color preference without requiring `NO_COLOR` env mutation.
 #[cfg(test)]
 pub(crate) fn init_stdout_style_for_test(use_color: bool) {
     apply_stdout_style(use_color);

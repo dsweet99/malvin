@@ -1,5 +1,3 @@
-// macOS: `proc_pidinfo` with `libproc::task_info::TaskAllInfo` (BSD `pbi_status` + `proc_taskinfo`
-// CPU totals and thread count).
 
 use super::ChildHealth;
 use errno::errno;
@@ -8,7 +6,6 @@ use libproc::proc_pid::pidinfo;
 use libproc::task_info::TaskAllInfo;
 use std::time::Instant;
 
-/// `SZOMB` — `bsd/sys/proc.h` `pbi_status` when the process is a zombie.
 const P_STATUS_ZOMB: u32 = 5;
 
 #[must_use]
@@ -25,8 +22,6 @@ pub(super) fn sample_child_health_macos(pid: u32) -> ChildHealth {
     ChildHealth::cannot_sample()
 }
 
-/// Fields copied from [`TaskAllInfo`] for mapping into [`ChildHealth`] (keeps arity small for
-/// helpers and tests).
 #[derive(Clone, Copy)]
 struct SampledTaskPidInfo {
     pbi_status: u32,
@@ -36,7 +31,6 @@ struct SampledTaskPidInfo {
     pti_csw: i32,
 }
 
-/// Maps fields from a successful `pidinfo::<TaskAllInfo>` sample into [`ChildHealth`].
 #[must_use]
 fn child_health_from_sampled_task(info: &TaskAllInfo) -> ChildHealth {
     child_health_from_pid_info_parts(&SampledTaskPidInfo {
@@ -76,9 +70,9 @@ fn child_health_from_pid_info_parts(fields: &SampledTaskPidInfo) -> ChildHealth 
 #[must_use]
 const fn status_char_hint(status: u32) -> Option<char> {
     match status {
-        2 => Some('R'), // `SRUN`
-        3 => Some('S'), // `SSLEEP`
-        4 => Some('T'), // `SSTOP`
+        2 => Some('R'),
+        3 => Some('S'),
+        4 => Some('T'),
         _ => None,
     }
 }
@@ -177,7 +171,6 @@ mod tests {
 
     #[test]
     fn unlikely_pid_sample_has_absent_cannot_sample_or_live_shape() {
-        // Very unlikely to exist; kernel should return `ESRCH` → `process_absent`, not panic.
         let h = sample_child_health_macos(2_147_483_646);
         assert_ne!(
             (h.exists, h.counters_trusted),

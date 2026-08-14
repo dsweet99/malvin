@@ -1,22 +1,3 @@
-//! Dual-contract observability for malvin runs.
-//!
-//! Malvin maintains two parallel output channels with different contracts:
-//!
-//! | Channel | Artifact | Contract |
-//! |---|---|---|
-//! | **Narrative** | live stdout + `stdout.log` | Lossy, human-oriented stream with who-tags |
-//! | **Audit** | `trace.jsonl` | Machine-authoritative ACP-shaped JSONL |
-//!
-//! **Trust rule:** Consumers must know which channel to trust for which question.
-//! - Tool exit codes, LLM usage → **audit** (`trace.jsonl`)
-//! - Human skimming, vocabulary/ordering parity → **narrative** (`stdout.log`)
-//! - Prompt bodies (full text) → audit `out` lines and/or `prompts.log`, not narrative by default
-//!
-//! Adjacent artifact: `prompts.log` holds outgoing prompt bodies; it is not part of the
-//! two-channel model above.
-//!
-//! **Where:** narrative emission lives in [`crate::output`]; audit kinds are named in
-//! [`crate::acp_trace_impersonation`].
 
 use crate::malvin_constants::{STDOUT_LOG, TRACE_JSONL};
 pub use crate::output::{WHO_B, WHO_H, WHO_M, WHO_O, WHO_T, WHO_U};
@@ -25,36 +6,24 @@ pub(crate) mod emit;
 #[allow(unused_imports)]
 pub(crate) use emit::{AUDIT_CHANNEL, NARRATIVE_CHANNEL};
 
-/// Run-directory log filenames for the two observability channels.
 pub const RUN_NARRATIVE_LOG: &str = STDOUT_LOG;
 pub const RUN_AUDIT_LOG: &str = TRACE_JSONL;
 
-/// Which output channel an emission targets.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ObservabilityChannel {
-    /// Lossy human-oriented stream (`stdout` / `stdout.log`).
     Narrative,
-    /// Machine-authoritative semantic record (`trace.jsonl`).
     Audit,
 }
 
-/// Known audit record kinds (ACP session updates).
 pub use crate::acp_trace_impersonation::SyntheticAcpSessionUpdate as AuditEventKind;
 
-/// Who-tag on narrative lines (`m|`, `t|`, …). See [`crate::output`] for formatting.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NarrativeWhoTag {
-    /// Normal agent output (`m|`).
     Agent,
-    /// Tool call summaries (`t|`).
     Tool,
-    /// User input / outgoing prompt bracket (`u|`).
     User,
-    /// Thinking / thought chunks (`b|`).
     Thought,
-    /// Heartbeats (`h|`).
     Heartbeat,
-    /// General operational info (`o|`).
     Ops,
 }
 

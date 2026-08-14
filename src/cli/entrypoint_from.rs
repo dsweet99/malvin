@@ -43,12 +43,12 @@ fn entrypoint_do_short_help() -> Exit {
     let text = "\
 One-shot agent turn (non-looping)
 
-Usage: malvin --do [OPTIONS] [REQUEST]
+Usage: malvin --do [OPTION]... [REQUEST]
 
 Arguments:
   [REQUEST]  Existing `.md` path or literal text
 
-Use `malvin --help` to see options.
+Use malvin --help to see options.
 ";
     let _ = std::io::Write::write_all(&mut std::io::stdout().lock(), text.as_bytes());
     Exit::Success

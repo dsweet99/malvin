@@ -1,5 +1,3 @@
-//! Cursor store `SQLite` helpers (tool-call enrichment).
-//! Primarily exercised via deferred-log tests; SDK backends tee without this path today.
 #![allow(dead_code)]
 
 mod cache;

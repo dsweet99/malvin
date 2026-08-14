@@ -1,4 +1,3 @@
-//! `pi:` backend via an externally installed `pi` binary (JSONL RPC). No vendored Pi crates.
 
 #![cfg_attr(test, allow(unsafe_code))]
 
@@ -19,7 +18,6 @@ pub use models_list::{
 pub(crate) use session_io::{pi_send_prompt as send_prompt, pi_write_abort as write_abort};
 pub(crate) use session_spawn::pi_spawn_bridge as spawn_bridge;
 
-/// Convenience constructor used by tests (string model id).
 #[must_use]
 pub fn pi_sdk_client_from_raw(
     model: &str,

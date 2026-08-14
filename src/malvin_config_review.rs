@@ -1,4 +1,3 @@
-//! `[review]` section parsing for `config.toml`.
 
 use super::ReviewConfig;
 

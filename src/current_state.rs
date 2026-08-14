@@ -1,4 +1,3 @@
-//! Renders the `{{ current_state }}` prompt placeholder for agent context.
 
 use std::path::Path;
 
@@ -8,7 +7,6 @@ use crate::mem_limit_config::{
     format_memory_gib, load_mem_limit_bytes, system_total_memory_bytes,
 };
 
-/// Builds the multi-line `current_state` body for prompt templates.
 #[must_use]
 pub fn format_current_state(
     work_dir: &Path,
@@ -54,7 +52,6 @@ mod passwd_gecos {
 
     #[must_use]
     pub fn full_name(uid: u32) -> Option<String> {
-        // SAFETY: getpwuid is POSIX; we only read pw_gecos and do not retain the pointer.
         let pw = unsafe { libc::getpwuid(uid) };
         if pw.is_null() {
             return None;

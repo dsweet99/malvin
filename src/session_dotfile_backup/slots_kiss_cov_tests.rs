@@ -1,4 +1,3 @@
-//! External kiss witnesses for [`super::slots`] (must be `*_tests.rs` for kiss).
 
 use super::slots_kiss_cov_shared::{dotfile_spec_row_field_count, MALVIN_CONFIG_WORKSPACE_SLOT};
 use super::slots::{

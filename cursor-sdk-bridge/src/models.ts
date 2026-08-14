@@ -1,4 +1,4 @@
-/** One-shot Cursor model listing for `malvin models`. */
+
 
 import { Cursor, CursorAgentError } from "@cursor/sdk";
 import type { ModelListItem, ModelParameterDefinition } from "@cursor/sdk";
@@ -13,7 +13,6 @@ function installQuietSignalHandlers(): void {
   }
 }
 
-/** Compact `id=v1|v2` summaries for catalog params (thinking / effort / fast / …). */
 export function formatModelParams(parameters?: ModelParameterDefinition[]): string {
   if (!parameters || parameters.length === 0) {
     return "";

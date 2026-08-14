@@ -1,4 +1,3 @@
-//! External kiss witnesses for `do_flow` private symbols.
 
 #[test]
 fn kiss_witness_do_run_prep() {

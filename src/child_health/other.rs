@@ -1,4 +1,3 @@
-// Non-Linux / non-macOS: no OS backend; delegates to `ChildHealth::cannot_sample`.
 
 use super::ChildHealth;
 

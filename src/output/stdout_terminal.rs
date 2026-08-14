@@ -3,7 +3,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 static STDOUT_SUPPRESSED: AtomicBool = AtomicBool::new(false);
 
-/// When true, [`print_stdout_display_line`] is a no-op (stderr and log files unchanged).
 pub fn set_stdout_suppressed(suppress: bool) {
     STDOUT_SUPPRESSED.store(suppress, Ordering::Relaxed);
 }
@@ -40,7 +39,6 @@ pub(crate) fn print_stdout_display_line(display: &str) {
     emit_stdout_display_line_raw(display);
 }
 
-/// Process-stdout write used for `--do` DM bodies (bypasses DM display suppression).
 pub(crate) fn emit_do_dm_body_line(line: &str) {
     if stdout_suppressed() {
         return;

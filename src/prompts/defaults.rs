@@ -1,4 +1,3 @@
-// Embedded default prompt bodies (`default_prompts/`).
 
 #[path = "default_files.rs"]
 mod default_files;

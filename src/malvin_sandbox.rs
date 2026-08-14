@@ -1,4 +1,3 @@
-//! Host sandbox: process-group isolation and USS for all malvin-started processes.
 
 use std::collections::HashSet;
 use std::ffi::OsStr;
@@ -71,18 +70,15 @@ pub fn isolate_tokio_child_process_group(cmd: &mut tokio::process::Command) {
 #[cfg(not(unix))]
 pub fn isolate_tokio_child_process_group(_: &mut tokio::process::Command) {}
 
-/// Cap glibc arena count for sandbox children.
 fn apply_sandbox_resource_limits(cmd: &mut std::process::Command) {
     let _aspect = SandboxSpawnPolicyAspect::MallocArenaCap;
     cmd.env("MALLOC_ARENA_MAX", "2");
 }
 
-/// Cap glibc arena count for sandbox children.
 fn apply_sandbox_resource_limits_tokio(cmd: &mut tokio::process::Command) {
     cmd.env("MALLOC_ARENA_MAX", "2");
 }
 
-/// Build a std [`std::process::Command`] with sandbox process-group isolation applied.
 #[must_use]
 pub fn malvin_std_command(program: impl AsRef<OsStr>) -> std::process::Command {
     let _ = MALVIN_STD_COMMAND_ASPECTS;
@@ -93,7 +89,6 @@ pub fn malvin_std_command(program: impl AsRef<OsStr>) -> std::process::Command {
     cmd
 }
 
-/// Build a tokio [`tokio::process::Command`] with sandbox process-group isolation applied.
 #[must_use]
 pub fn malvin_tokio_command(program: impl AsRef<OsStr>) -> tokio::process::Command {
     let _ = MALVIN_STD_COMMAND_ASPECTS;
@@ -104,7 +99,6 @@ pub fn malvin_tokio_command(program: impl AsRef<OsStr>) -> tokio::process::Comma
     cmd
 }
 
-/// Returns an error when a prior malvin sandbox session still has live processes.
 pub fn assert_dead_before_next_spawn() -> Result<(), String> {
     let _aspect = SandboxSpawnPolicyAspect::DeadBeforeNextSpawn;
     let still_alive = {
@@ -124,7 +118,6 @@ pub fn assert_dead_before_next_spawn() -> Result<(), String> {
     Ok(())
 }
 
-/// Records the active malvin sandbox session for dead-before-next enforcement.
 pub fn note_active_sandbox_session(
     pgid: Option<u32>,
     baseline: HashSet<u32>,
@@ -144,7 +137,6 @@ pub fn note_active_sandbox_session(
     Ok(())
 }
 
-/// Clears the recorded sandbox session after teardown completes.
 pub fn clear_active_sandbox_session() {
     let session = ACTIVE_SANDBOX_SESSION
         .lock()
@@ -157,10 +149,6 @@ pub fn clear_active_sandbox_session() {
     crate::acp::clear_session_spawn_affiliation();
 }
 
-/// CTRL-C path: SIGKILL the agent process group without waiting.
-///
-/// Skips cooperative TERM→poll so the shell returns promptly, and avoids
-/// dumping Node stacks on the console. Then releases the sandbox lock.
 pub fn teardown_active_sandbox_for_interrupt() {
     let session = ACTIVE_SANDBOX_SESSION
         .lock()
@@ -183,7 +171,6 @@ pub(crate) fn clear_active_sandbox_session_for_test() {
     clear_active_sandbox_session();
 }
 
-/// USS for malvin descendants, the agent process group, and reparented session orphans.
 #[cfg(unix)]
 #[must_use]
 pub fn malvin_session_rss_bytes(

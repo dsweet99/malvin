@@ -1,4 +1,3 @@
-//! Shared test helpers (env isolation, cwd, session fixtures).
 #![allow(clippy::pedantic)]
 #![allow(clippy::nursery)]
 
@@ -14,7 +13,6 @@ pub use env::{
     test_wait_until_async, SavedEnvVars,
 };
 
-/// Process environment is global; hold this lock around any `set_var` / `remove_var` in tests.
 pub static MALVIN_TEST_ENV_MUTEX: Mutex<()> = Mutex::new(());
 
 pub fn test_env_lock() -> std::sync::MutexGuard<'static, ()> {

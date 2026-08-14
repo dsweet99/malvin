@@ -1,9 +1,7 @@
-//! Best-effort herdr failure lines in the active run directory.
 
 use std::io::Write;
 use std::path::Path;
 
-/// Append one failure line to `herdr.log` under `run_dir` (create if needed).
 pub fn log_herdr_failure(run_dir: Option<&Path>, phase: &str, detail: &str) {
     let Some(dir) = run_dir else {
         return;

@@ -1,4 +1,3 @@
-//! More kiss witnesses for [`super::slots`] (split for file-size limits).
 
 use super::slots_kiss_cov_shared::{
     dotfile_spec_row_field_count, write_merged_default_malvin_config, MALVIN_CONFIG_WORKSPACE_SLOT,

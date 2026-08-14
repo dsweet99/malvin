@@ -1,7 +1,3 @@
-//! Optional `.malvin/logs/.../malvin_error.log` mirror for fatal CLI errors (see [`append_command_error_to_run_log`]).
-//!
-//! The active run directory is set by each subcommand once [`RunArtifacts`] exists so
-//! [`super::entrypoint::print_command_error`] can append even when the message only went to stderr before.
 
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -11,7 +7,6 @@ use crate::output::{ERROR_WHO, format_line};
 static COMMAND_ERROR_RUN_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
 static LAST_EMITTED_COMMAND_ERROR: Mutex<Option<String>> = Mutex::new(None);
 
-/// Remember `.malvin/logs/<stamp>/` for [`append_command_error_to_run_log`].
 pub fn set_command_error_run_dir(path: Option<PathBuf>) {
     *COMMAND_ERROR_RUN_DIR
         .lock()
@@ -21,7 +16,6 @@ pub fn set_command_error_run_dir(path: Option<PathBuf>) {
     }
 }
 
-/// Returns the directory currently bound for [`append_command_error_to_run_log`].
 #[cfg(test)]
 pub fn command_error_run_dir() -> Option<PathBuf> {
     COMMAND_ERROR_RUN_DIR
@@ -30,7 +24,6 @@ pub fn command_error_run_dir() -> Option<PathBuf> {
         .clone()
 }
 
-/// Clears the directory installed by [`set_command_error_run_dir`].
 pub fn clear_command_error_run_dir() {
     crate::herdr::notify_run_end();
     set_command_error_run_dir(None);
@@ -39,7 +32,6 @@ pub fn clear_command_error_run_dir() {
         .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
 }
 
-/// True when [`note_command_error_emitted`] already recorded this exact message.
 #[must_use]
 pub fn command_error_already_emitted(message: &str) -> bool {
     LAST_EMITTED_COMMAND_ERROR
@@ -49,14 +41,12 @@ pub fn command_error_already_emitted(message: &str) -> bool {
         == Some(message)
 }
 
-/// Record that a fatal command error was already shown (stderr + optional run log).
 pub fn note_command_error_emitted(message: &str) {
     *LAST_EMITTED_COMMAND_ERROR
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(message.to_string());
 }
 
-/// Appends one timestamped malvin line to `malvin_error.log` under the bound run directory, when set.
 pub fn append_command_error_to_run_log(message: &str) {
     if crate::repo_checks::is_gate_failure_error(message) {
         return;

@@ -22,7 +22,6 @@ fn prune_logs_after_run_created_applies_retention_across_hash_buckets() {
         let old = other.join(RUN_OLD_AGE);
         std::fs::create_dir_all(&old).expect("seed other hash run");
         std::fs::write(old.join("marker"), "x").expect("marker");
-        // Existing workspace path so this is not treated as an ephemeral orphan.
         write_work_dir_manifest(&old, work).expect("manifest");
 
         let protect = work.join("__no_active_run__");

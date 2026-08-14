@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Analyze indexes and rerun tests whose executed code changed since last collection.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

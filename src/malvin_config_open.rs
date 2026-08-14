@@ -1,4 +1,3 @@
-//! Helpers for [`super::open_malvin_config`] (keeps `malvin_config_file.rs` under kiss line limits).
 
 use std::path::Path;
 
@@ -20,10 +19,6 @@ pub(super) fn create_malvin_config_from_template(
     ))
 }
 
-/// Create home config when absent or empty (0 bytes); never rewrite a nonempty existing file.
-///
-/// Empty files are treated as absent so a sticky 0-byte `config.toml` cannot block defaults.
-/// Nonempty invalid TOML is left alone so gate-loop snapshots can still capture it.
 pub fn ensure_malvin_config_file_if_missing(work_dir: &Path) -> Result<(), String> {
     let path = malvin_config_path(work_dir);
     ensure_config_parent_dir(&path)?;
@@ -44,7 +39,6 @@ fn file_is_empty(path: &Path) -> Result<bool, String> {
     Ok(meta.len() == 0)
 }
 
-/// Load `[agent]` with prefix enforcement. Missing file → defaults. Bare `model` → error.
 pub fn load_agent_config_strict(work_dir: &Path) -> Result<AgentConfig, String> {
     let path = malvin_config_path(work_dir);
     let Ok(text) = std::fs::read_to_string(&path) else {
@@ -61,10 +55,6 @@ pub fn load_agent_config_strict(work_dir: &Path) -> Result<AgentConfig, String> 
     parse_agent_config(&merged)
 }
 
-/// Like [`load_agent_config_strict`], but a bare on-disk `model` is replaced with the default.
-///
-/// Used when CLI `--model` already supplies a prefixed id, so legacy bare config must not block
-/// reading other `[agent]` knobs (`max_loops`, retries, …).
 #[must_use]
 pub fn load_agent_config_lenient(work_dir: &Path) -> AgentConfig {
     if let Ok(agent) = load_agent_config_strict(work_dir) {

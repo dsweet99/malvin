@@ -1,4 +1,3 @@
-//! PATH lookup, argv capture for traces, and run-dir display paths.
 
 use std::path::{Path, PathBuf};
 
@@ -42,7 +41,6 @@ pub fn command_line() -> Option<&'static str> {
 
 pub const DEFAULT_CLI_MODEL: &str = "cursor:auto";
 
-/// Default bounded attempts per ACP spawn or `session/prompt` (1s / 3s backoff between tries).
 pub const DEFAULT_MAX_ACP_RETRIES: u32 = 3;
 
 pub const DEFAULT_ACP_RPC_TIMEOUT_SECS: u64 = 600;

@@ -1,4 +1,3 @@
-//! Kiss identifier refs for [`super::router_flow_acp_support`].
 
 use crate::artifacts::SessionDotfileBackups;
 

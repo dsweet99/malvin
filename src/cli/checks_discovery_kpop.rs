@@ -1,4 +1,3 @@
-//! `KPop` session runner for checks discovery.
 
 use std::collections::HashMap;
 use std::path::Path;

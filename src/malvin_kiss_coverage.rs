@@ -1,4 +1,3 @@
-//! Behavioral smoke tests for crate-root modules (kiss per-file coverage).
 
 #[test]
 fn smoke_active_agent_heartbeat_stats() {

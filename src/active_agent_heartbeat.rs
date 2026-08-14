@@ -1,4 +1,3 @@
-//! Tracks the live `agent acp` process group for stdout heartbeat stats.
 
 use std::collections::HashSet;
 use std::sync::Mutex;
@@ -63,7 +62,6 @@ pub(crate) struct ActiveAgentStatsSource {
     pub spawn_baseline: HashSet<u32>,
 }
 
-/// Live agent PG and spawn baseline for sandbox USS queries (e.g. `current_state`).
 #[must_use]
 pub fn active_agent_process_group_for_stats() -> Option<ActiveAgentStatsSource> {
     current_active_agent_sandbox().map(|entry| ActiveAgentStatsSource {
@@ -72,7 +70,6 @@ pub fn active_agent_process_group_for_stats() -> Option<ActiveAgentStatsSource> 
     })
 }
 
-/// USS and process-count suffix for heartbeat payloads, when an agent session is live.
 #[must_use]
 pub fn active_agent_heartbeat_stats() -> Option<String> {
     let entry = current_active_agent_sandbox()?;

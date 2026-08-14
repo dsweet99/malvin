@@ -16,7 +16,6 @@ from _ops_bootstrap import load_library  # noqa: E402
 _lib = load_library("malvin_modal")
 app = _lib.app
 
-
 @click.command(
     context_settings={
         "help_option_names": ["-h", "--help"],
@@ -34,9 +33,7 @@ def malvin_modal_cli(ctx: click.Context, self_test: bool) -> None:
     """Run malvin on Modal, forwarding arguments to the remote process."""
     _lib.dispatch_cli(ctx, self_test)
 
-
 cli = malvin_modal_cli
-
 
 @app.local_entrypoint(name="main")
 def malvin_modal_entrypoint(*arglist: str) -> None:
@@ -46,7 +43,6 @@ def malvin_modal_entrypoint(*arglist: str) -> None:
         prog_name="modal run ops/malvin_modal.py",
         standalone_mode=True,
     )
-
 
 main = malvin_modal_entrypoint
 run_unit_tests = _lib.run_unit_tests

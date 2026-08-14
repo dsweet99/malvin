@@ -1,4 +1,3 @@
-//! External kiss witnesses for [`crate::sandbox_oom`].
 
 #[test]
 fn kiss_witness_sandbox_oom_types() {

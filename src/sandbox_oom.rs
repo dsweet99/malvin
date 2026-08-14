@@ -1,4 +1,3 @@
-//! Malvin-owned sandbox OOM kill marker (`sandbox_oom.json` in the run directory).
 
 use std::path::Path;
 
@@ -38,11 +37,6 @@ impl<'a> SandboxOomKillRecord<'a> {
     }
 }
 
-/// Writes or overwrites the run-directory OOM marker for the active gate iteration.
-///
-/// # Errors
-///
-/// Returns [`std::io::Error`] when the run directory or marker file cannot be written.
 pub fn record_sandbox_oom_kill(
     run_dir: &Path,
     record: SandboxOomKillRecord<'_>,

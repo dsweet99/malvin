@@ -1,4 +1,3 @@
-//! External kiss witnesses for `agent_backend` modules.
 
 use super::sdk_client::{BridgeKind, SdkClient};
 use super::test_support::test_io;

@@ -1,4 +1,3 @@
-//! Contract: Cursor SDK npm package is a declared bridge dependency.
 
 use serde_json::Value;
 use std::fs;

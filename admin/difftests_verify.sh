@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Quick smoke check that cargo-difftests prerequisites are installed.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

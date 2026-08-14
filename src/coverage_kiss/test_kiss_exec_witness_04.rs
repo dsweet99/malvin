@@ -1,5 +1,3 @@
-//! Generated executable-call witnesses for kiss 0.4.9 static coverage.
-//! Orphan test file (not in the crate module tree); kiss-analyzed only.
 
 #[test]
 fn kiss_exec_witness_04_00() {

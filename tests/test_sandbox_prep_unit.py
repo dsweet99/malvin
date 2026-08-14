@@ -6,7 +6,6 @@ from pathlib import Path
 
 import sandbox_prep
 
-# Warm process-cached venvs during collection so call-phase durations stay under 1.5s.
 _WARM = Path(tempfile.mkdtemp(prefix="malvin-venv-warm-"))
 sandbox_prep._clone_cached_venv(_WARM / "empty")
 sandbox_prep._clone_cached_venv(_WARM / "pytest80", ("pytest==8.0.0",))

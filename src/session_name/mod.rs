@@ -1,4 +1,3 @@
-//! Per-user session name registry: one live malvin process per `--name`.
 
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -114,7 +113,6 @@ fn reconcile_foreign_holder(_name: &str, _holder_pid: u32, path: &Path) -> Resul
     Ok(())
 }
 
-/// Clear stale or abandoned name files; return `Err` when a live foreign holder remains.
 pub fn clear_stale_name_file(name: &str) -> Result<(), String> {
     let path = name_path(name);
     match inspect_name_file(&path) {
@@ -222,7 +220,6 @@ pub fn release_name(name: &str) {
     }
 }
 
-/// Cross-process guard: one live malvin process per session name.
 pub fn assert_no_peer_name_lock(name: &str) -> Result<(), String> {
     clear_stale_name_file(name)
 }

@@ -57,9 +57,6 @@ impl PromptStore {
         Self { root: Some(root) }
     }
 
-    /// # Errors
-    ///
-    /// Returns [`PromptError`] when the prompt root cannot be created or defaults cannot be written.
     pub fn ensure_defaults(&self) -> Result<(), PromptError> {
         let Some(root) = &self.root else {
             return Ok(());
@@ -88,9 +85,6 @@ impl PromptStore {
         Ok(())
     }
 
-    /// # Errors
-    ///
-    /// Returns [`PromptError`] when any required prompt file is absent.
     pub fn validate_required(&self) -> Result<(), PromptError> {
         let has_file = |name: &str| -> bool {
             self.root.as_ref().map_or_else(
@@ -113,9 +107,6 @@ impl PromptStore {
         )))
     }
 
-    /// # Errors
-    ///
-    /// Returns [`PromptError`] when `KPop`-required prompts are missing for `validation`.
     pub fn validate_kpop_prompts(
         &self,
         validation: KpopPromptValidation,
@@ -140,9 +131,6 @@ impl PromptStore {
         )))
     }
 
-    /// # Errors
-    ///
-    /// Returns [`PromptError`] when `filename` is not readable from this store.
     pub fn validate_exists(&self, filename: &str) -> Result<(), PromptError> {
         if self.prompt_text(filename).is_ok() {
             return Ok(());
@@ -153,9 +141,6 @@ impl PromptStore {
         )))
     }
 
-    /// # Errors
-    ///
-    /// Returns [`PromptError`] when the prompt is missing, merge fails, or braces stay unresolved.
     pub fn render(
         &self,
         filename: &str,
@@ -168,9 +153,6 @@ impl PromptStore {
         Ok(render_template(&prompt_text, &render_context))
     }
 
-    /// # Errors
-    ///
-    /// Returns [`PromptError`] when the prompt is missing or braces stay unresolved after render.
     pub fn render_prompt_only(
         &self,
         filename: &str,
@@ -190,9 +172,6 @@ impl PromptStore {
     }
 }
 
-/// # Errors
-///
-/// Returns [`PromptError`] when `header.md` cannot be loaded, rendered, or validated.
 pub fn render_header(
     store: &PromptStore,
     context: &std::collections::HashMap<String, String>,
@@ -202,9 +181,6 @@ pub fn render_header(
     Ok(render_template(&header_raw, context))
 }
 
-/// # Errors
-///
-/// Returns [`PromptError`] when `mbc2.md` cannot be loaded or rendered.
 pub fn render_mbc2_for_scheduled_kpop_block(
     store: &PromptStore,
     context: &std::collections::HashMap<String, String>,

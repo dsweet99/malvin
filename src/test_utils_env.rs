@@ -1,4 +1,3 @@
-//! Process environment and cwd helpers for unit tests.
 
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -13,7 +12,6 @@ fn stable_test_cwd() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
 }
 
-/// Save cwd for restore; falls back to the crate root when the process cwd was deleted.
 #[must_use]
 pub fn save_cwd() -> PathBuf {
     std::env::current_dir().unwrap_or_else(|_| {
@@ -29,7 +27,6 @@ pub fn restore_cwd(path: &Path) {
     }
 }
 
-/// Run an async test body on a lightweight current-thread Tokio runtime.
 pub fn block_on_test_async<F, T>(future: F) -> T
 where
     F: std::future::Future<Output = T>,
@@ -41,7 +38,6 @@ where
         .block_on(future)
 }
 
-/// Enable fast ACP teardown for tests that spawn sandbox children but do not exercise SIGTERM escalation.
 pub fn enable_test_fast_teardown() {
     #[allow(unsafe_code)]
     unsafe {
@@ -49,7 +45,6 @@ pub fn enable_test_fast_teardown() {
     }
 }
 
-/// Clears mock-agent env left behind by integration tests that skip restore.
 pub fn clear_test_no_real_agent_env() {
     #[allow(unsafe_code)]
     unsafe {
@@ -57,7 +52,6 @@ pub fn clear_test_no_real_agent_env() {
     }
 }
 
-/// Permit session restore/repair to delete or recreate `~/.malvin_home/config.toml` (test builds only).
 pub fn allow_home_malvin_config_mutation_for_test() {
     #[allow(unsafe_code)]
     unsafe {
@@ -65,7 +59,6 @@ pub fn allow_home_malvin_config_mutation_for_test() {
     }
 }
 
-/// Revoke home-config mutation permission after an isolated-home test finishes.
 pub fn revoke_home_malvin_config_mutation_for_test() {
     #[allow(unsafe_code)]
     unsafe {
@@ -73,7 +66,6 @@ pub fn revoke_home_malvin_config_mutation_for_test() {
     }
 }
 
-/// Point `$HOME` at a temp directory and allow home-config restore/repair to mutate it.
 pub fn set_test_home_env(home: &Path) {
     #[allow(unsafe_code)]
     unsafe {
@@ -82,7 +74,6 @@ pub fn set_test_home_env(home: &Path) {
     }
 }
 
-/// Restores env vars saved at construction time.
 pub struct SavedEnvVars {
     entries: Vec<(String, Option<OsString>)>,
 }

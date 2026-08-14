@@ -1,4 +1,3 @@
-//! Map Pi RPC events onto [`crate::bridge_protocol::BridgeEvent`] for VISION log parity.
 
 use serde_json::{json, Value};
 
@@ -6,7 +5,6 @@ use crate::bridge_protocol::BridgeEvent;
 
 use super::map_event_summary::tool_summary_from_pi;
 
-/// Translate one Pi stdout event into zero or more bridge events.
 #[must_use]
 pub(crate) fn map_pi_event(type_name: &str, raw: &Value) -> Vec<BridgeEvent> {
     match type_name {
@@ -34,7 +32,6 @@ fn tool_end_phase(raw: &Value) -> &'static str {
     {
         "error"
     } else {
-        // Cursor/Prime tee stdout on "complete"; "done" is ACP-only and was dropped by emit_tool.
         "complete"
     }
 }
@@ -69,8 +66,6 @@ fn map_message_update(raw: &Value) -> Vec<BridgeEvent> {
                 vec![BridgeEvent::Thinking { text }]
             }
         }
-        // Ignore assistantMessageEvent toolcall_*; tool_execution_* is the
-        // authoritative lifecycle (avoids duplicate BridgeEvent::ToolCall lines).
         "toolcall_start" | "toolcall_end" | "toolcall_delta" => Vec::new(),
         _ => Vec::new(),
     }

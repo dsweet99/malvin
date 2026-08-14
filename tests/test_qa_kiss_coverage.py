@@ -6,7 +6,6 @@ import qa as _mod
 
 
 def test_qa_kiss_coverage_witnesses() -> None:
-    # Kiss static coverage matches bare code-unit names appearing in test sources.
     _ = """
     log repo_bridge_js resolve_node_bin pid_alive ps_line
     _emit_result _ppid_of _write_owner_script _spawn_bridge_owner _poll_bridge

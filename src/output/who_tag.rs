@@ -1,19 +1,11 @@
-//! Fixed-width who-tag formatting and log-line payload parsing.
 
-/// Fixed width (Unicode scalars) for the who label in log lines (`…|payload`; display may use `…| ` for `b`/`t`).
 pub const LOG_TAG_INNER_WIDTH: usize = 1;
 
-/// General operational info (e.g. "Running kiss check").
 pub const WHO_O: &str = "o";
-/// Heartbeats.
 pub const WHO_H: &str = "h";
-/// Normal agent output.
 pub const WHO_M: &str = "m";
-/// Thinking / thought chunks.
 pub const WHO_B: &str = "b";
-/// Tool calls.
 pub const WHO_T: &str = "t";
-/// User input (prompt, command line).
 pub const WHO_U: &str = "u";
 
 #[must_use]
@@ -21,7 +13,6 @@ pub fn format_log_tag_inner(label: &str) -> String {
     label.chars().take(LOG_TAG_INNER_WIDTH).collect()
 }
 
-/// Fixed-width who label with trailing pipe delimiter (no space), e.g. `m|`.
 #[must_use]
 pub fn format_who_tag_delim(label: &str) -> String {
     format!("{}|", format_log_tag_inner(label))
@@ -32,7 +23,6 @@ pub(crate) fn who_tag_display_space_after_pipe(label: &str) -> bool {
     matches!(format_log_tag_inner(label).as_str(), WHO_B | WHO_T)
 }
 
-/// Who-tag prefix before payload on display: `{delim}` or `{delim} ` for thought/tool tags.
 #[must_use]
 pub fn format_who_tag_prefix(label: &str) -> String {
     let delim = format_who_tag_delim(label);
@@ -43,7 +33,6 @@ pub fn format_who_tag_prefix(label: &str) -> String {
     }
 }
 
-/// Map legacy outbound/inbound direction to the single-char who tag (no `>`/`<` stem).
 #[must_use]
 pub fn format_acp_directional_tag_prefix(direction: char, _stem: &str) -> String {
     match direction {

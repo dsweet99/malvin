@@ -1,4 +1,3 @@
-//! External kiss witnesses for vision tree test helpers (credit `vision_tree_tests.rs`).
 
 #[test]
 fn kiss_witness_vision_tree_test_helper_symbols() {

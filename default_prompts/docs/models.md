@@ -17,8 +17,7 @@ Discover valid `--model` values for other malvin commands. Cursor SDK models use
 ## Usage
 
 ```text
-malvin models [OPTIONS]
-malvin models [PREFIX]...
+malvin models [OPTION]... [PREFIX]...
 ```
 
 ## Global options

@@ -18,7 +18,6 @@ fn spawn_sleep_child_in_new_process_group() -> (tokio::process::Child, u32, Hash
     let mut cmd = tokio::process::Command::new("sleep");
     unsafe {
         cmd.arg("30").pre_exec(|| {
-            // Put the child in its own process group (pgid == pid).
             if libc::setpgid(0, 0) != 0 {
                 return Err(std::io::Error::last_os_error());
             }
@@ -30,7 +29,6 @@ fn spawn_sleep_child_in_new_process_group() -> (tokio::process::Child, u32, Hash
     (child, pgid, baseline)
 }
 
-/// Fail-closed when USS samples are `None`.
 #[cfg(unix)]
 #[tokio::test]
 async fn watch_process_group_memory_fail_closed_when_rss_unavailable() {
@@ -54,7 +52,6 @@ async fn watch_process_group_memory_fail_closed_when_rss_unavailable() {
     );
 }
 
-/// `reader_dead`: no fail-closed on `None` USS samples.
 #[cfg(unix)]
 #[tokio::test]
 async fn watch_process_group_memory_no_fail_closed_when_reader_dead() {
@@ -83,7 +80,6 @@ async fn watch_process_group_memory_no_fail_closed_when_reader_dead() {
     let _ = child.wait().await;
 }
 
-/// `reader_dead`: still kill on hard over-limit.
 #[cfg(unix)]
 #[tokio::test]
 async fn watch_process_group_memory_still_kills_over_limit_when_reader_dead() {
@@ -107,7 +103,6 @@ async fn watch_process_group_memory_still_kills_over_limit_when_reader_dead() {
     );
 }
 
-/// Persist OOM marker for gate retry attribution.
 #[cfg(unix)]
 #[tokio::test]
 async fn watch_process_group_memory_writes_sandbox_oom_marker() {
@@ -133,7 +128,6 @@ async fn watch_process_group_memory_writes_sandbox_oom_marker() {
     assert!(text.contains(OOM_REASON_MEMORY_LIMIT));
 }
 
-/// Non-kpop runs still write `sandbox_oom.json` (`gate_iteration` 0).
 #[cfg(unix)]
 #[tokio::test]
 async fn watch_process_group_memory_writes_marker_without_gate_iteration() {

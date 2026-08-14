@@ -1,4 +1,3 @@
-//! Shared result merge for ACP runs that emit [`crate::run_timing`] artifacts.
 
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -6,12 +5,9 @@ use std::sync::{Arc, Mutex};
 use crate::artifacts::{SessionDotfileBackups, restore_workspace_session_dotfiles};
 use crate::run_timing::RunTiming;
 
-/// Whether an ACP session end should finalize run timing or keep accumulating for a longer workflow.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RunTimingSessionEnd {
-    /// Standalone command (`kpop`, `do`, …): write final JSON and clear the client timing slot.
     Finalize,
-    /// Gate-kpop loop iteration: persist progress JSON; keep wall clock and buckets on the client.
     AccumulateRun,
 }
 

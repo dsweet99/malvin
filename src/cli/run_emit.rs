@@ -34,7 +34,6 @@ pub fn emit_host_resources_line(run_dir: &Path, echo_stdout: bool) -> Result<(),
     append_command_log_line(run_dir, echo_stdout, &line)
 }
 
-/// Format the startup model prelude line (`Model: …`).
 #[must_use]
 pub fn format_model_line(model: &str) -> String {
     format!("Model: {model}")
@@ -73,8 +72,6 @@ impl RunStartupEmitOpts {
     }
 }
 
-/// Emit `Command:` / `Memory:` / `Model:` / plan as soon as `run_dir` exists
-/// (before log GC prune, auth, and agent spawn on deferred-GC flows).
 pub fn emit_run_startup_banner(
     artifacts: &RunArtifacts,
     opts: RunStartupEmitOpts,
@@ -95,7 +92,6 @@ pub fn emit_run_startup_banner(
     Ok(())
 }
 
-/// Emit `Logs:` after `begin_coder_session` (Idea 3: avoid post-Logs spawn silence).
 pub fn emit_run_logs_line(artifacts: &RunArtifacts) -> Result<(), String> {
     print_stdout_line(
         MALVIN_WHO,

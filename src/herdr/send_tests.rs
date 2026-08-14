@@ -1,4 +1,3 @@
-//! Unit tests for herdr socket send helpers.
 
 use super::{classify_reply, send_request, send_request_checked, SOCKET_TIMEOUT};
 use serde_json::json;
@@ -52,11 +51,6 @@ fn classify_reply_detects_herdr_error_json() {
     assert!(classify_reply(b"").is_ok());
 }
 
-/// A full accept queue makes `UnixStream::connect` block with no timeout on Linux.
-/// Herdr send must return within ~`SOCKET_TIMEOUT` instead of hanging the CLI.
-///
-/// macOS `AF_UNIX` returns `ECONNREFUSED` once the backlog is full (never blocks), so this
-/// wedge cannot be formed there; see `send_request_swallows_missing_socket` for refused paths.
 #[cfg(target_os = "linux")]
 #[test]
 fn send_request_returns_when_accept_queue_is_wedged() {
@@ -83,8 +77,6 @@ impl WedgedUnixSocket {
         let dir = tempfile::tempdir().expect("tempdir");
         let path = dir.path().join("wedge.sock");
         let listener = UnixListener::bind(&path).expect("bind");
-        // SAFETY: listen only on this test's listener fd. On Linux, listen(1) still queues two
-        // pending AF_UNIX connects; fill both so the next connect blocks.
         assert_eq!(unsafe { libc::listen(listener.as_raw_fd(), 1) }, 0);
         let holders = [
             UnixStream::connect(&path).expect("holder a"),

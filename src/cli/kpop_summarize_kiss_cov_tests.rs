@@ -1,4 +1,3 @@
-//! Kiss coverage references for [`crate::cli::kpop_summarize`] privates.
 
 #[test]
 fn kiss_cov_kpop_summarize_privates() {

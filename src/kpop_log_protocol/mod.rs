@@ -1,34 +1,22 @@
-//! **`KPopLogProtocol`** — parsed step headings in `exp_log_*.md` (see `src/kpop_engine/`).
-//!
-//! Agents write `exp_log_*.md` under `_kpop/` with markdown section markers malvin
-//! interprets for observability (step counts). Prompt source: `default_prompts/kpop_common.md`.
 
-/// Parsed marker kind on a `## Step K — …` heading line.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum StepHeadingKind {
     KPop,
     Mbc2,
 }
 
-/// A parsed step heading (index and kind only; hypothesis blocks are not structured).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StepHeading {
     pub index: usize,
     pub kind: StepHeadingKind,
 }
 
-/// Parsed experiment log text with query helpers.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ExperimentLog {
     text: String,
 }
 
 impl ExperimentLog {
-    /// Read and parse an experiment log file.
-    ///
-    /// # Errors
-    ///
-    /// Returns `Err` when the file cannot be read.
     pub fn read(path: &std::path::Path) -> Result<Self, String> {
         let text = std::fs::read_to_string(path)
             .map_err(|e| format!("failed to read exp log {}: {e}", path.display()))?;

@@ -1,4 +1,3 @@
-//! Default-route flow: `header.md` → `kpop_common.md` → `router_a.md` → optional `router_b.md`, outer `--max-loops`.
 
 use crate::artifacts::{RunArtifacts, resolve_user_md_request};
 use crate::cli::cli_request::require_cli_request;
@@ -21,14 +20,10 @@ pub use router_flow_prompt::{
     combine_router_raw_header_and_user, prepare_router_prompt_store,
 };
 
-/// Arguments for [`run_router`].
 #[derive(Debug)]
 pub struct RouterArgs {
-    /// Existing `.md` path or literal text
     pub request: Option<String>,
-    /// Outer agent-session budget (`effective_max_loops`).
     pub max_loops: usize,
-    /// Hypothesis budget for `kpop_common.md` (`{{ max_hypotheses }}`).
     pub max_hypotheses: usize,
 }
 
@@ -55,7 +50,6 @@ async fn prepare_router_run(
     let client = new_router_client(shared, workflow)?;
     let request = require_cli_request(router_args.request.as_ref(), "")?;
     let (text, work_dir) = resolve_user_md_request(&request)?;
-    // Create without GC so Command: can land before retention prune (home logs walks can be slow).
     let artifacts = crate::artifacts::create_run_artifacts_from_text_opts(
         &text,
         Some(work_dir.as_path()),
@@ -63,7 +57,6 @@ async fn prepare_router_run(
     )
     .map_err(|e| e.to_string())?;
     crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
-    // Near-instant feedback: Command: (and Memory:/Model:) before prune, auth, and agent spawn.
     emit_run_startup_banner(
         &artifacts,
         RunStartupEmitOpts::from_shared(shared, true),
@@ -110,9 +103,6 @@ async fn run_router_body(
 ) -> Result<(), String> {
     let mut prep = prepare_router_run(&router_args, shared, workflow).await?;
     prep.client.prompts_log_run_dir = Some(prep.artifacts.run_dir.clone());
-    // Idea 3: complete spawn/handshake before the first `Logs:` line so post-Logs silence is not
-    // dominated by ACP initialize + session/new (or Mini session bookkeeping).
-    // Command:/Memory:/Model: already emitted in prepare_router_run (before auth/spawn).
     prep.client
         .begin_coder_session(&prep.artifacts.work_dir)
         .await
@@ -129,7 +119,6 @@ async fn run_router_body(
     })
     .await?;
 
-    // Mirror kpop: restore/check-abort, then print TIMING/COST from run_timing.json.
     let r = crate::acp_post_run::merge_acp_restore_check_abort_then_print_timing(
         loop_outcome.last_acp,
         &prep.artifacts,

@@ -1,4 +1,4 @@
-/** Pure helpers for bridge send/cancel policy (unit-tested). */
+
 import { AuthenticationError, CursorAgentError } from "@cursor/sdk";
 function errorMessage(err) {
     if (err instanceof Error)
@@ -8,19 +8,14 @@ function errorMessage(err) {
 function isRetryable(err) {
     return err instanceof CursorAgentError ? Boolean(err.isRetryable) : false;
 }
-/**
- * Idle local SDK connections can surface as AuthenticationError /
- * ERROR_NOT_LOGGED_IN even when the API key is still valid (stale gRPC /
- * short-lived access token). Consumers should evict the agent handle,
- * Agent.resume(agentId), and retry send — see Cursor forum / err.md.
- */
+
 export function isStaleAuthMisclassification(err) {
     if (err instanceof AuthenticationError)
         return true;
     const name = err instanceof Error ? err.name : "";
     return isStaleAuthText(name, errorMessage(err));
 }
-/** String-level detector for fatal/run_done payloads (no Error instance). */
+
 export function isStaleAuthText(name, message) {
     const n = name.toLowerCase();
     const m = message.toLowerCase();
@@ -39,11 +34,7 @@ export function isStaleAuthText(name, message) {
         return true;
     return false;
 }
-/**
- * After a stream failure, emit `fatal` only — never a trailing `run_done`.
- * Rust `drain_until_run_done` returns on `fatal`; a leftover `run_done` would
- * be consumed by the next prompt as a stale success.
- */
+
 export function eventsAfterStreamFailure(streamErr) {
     return [
         {
@@ -53,11 +44,11 @@ export function eventsAfterStreamFailure(streamErr) {
         },
     ];
 }
-/** True when this op must interrupt an in-flight send without waiting for it. */
+
 export function isInterruptOp(op) {
     return op === "cancel" || op === "close";
 }
-/** Exit status for a quiet process signal (no Node stack dump). */
+
 export function exitCodeForSignal(signal) {
     if (signal === "SIGINT")
         return 130;

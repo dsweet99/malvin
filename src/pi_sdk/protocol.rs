@@ -1,4 +1,3 @@
-//! Pi JSONL RPC request/response helpers (not [`crate::bridge_protocol::BridgeRequest`]).
 
 use serde_json::{json, Value};
 
@@ -49,17 +48,14 @@ pub(crate) fn abort_request(id: impl Into<String>) -> PiRequest {
     }
 }
 
-/// Classify a stdout JSON line from `pi --rpc`.
 #[derive(Debug, Clone)]
 pub(crate) enum PiLine {
     Response {
         id: String,
         success: bool,
         error: Option<String>,
-        /// Present on successful/failed command replies; kept for diagnostics/tests.
         #[allow(dead_code)]
         command: Option<String>,
-        /// Optional payload from Pi; unused by the v1 adapter path.
         #[allow(dead_code)]
         data: Value,
     },

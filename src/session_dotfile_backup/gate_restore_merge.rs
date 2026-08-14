@@ -1,4 +1,3 @@
-//! Merge pre-agent anchor with post-agent progress for gate restore.
 
 use std::path::Path;
 
@@ -77,7 +76,6 @@ pub(crate) fn gitignore_root_bytes(backup: &GitignoreBackup) -> Option<&[u8]> {
 }
 
 fn gitignore_regressed(anchor: &GitignoreBackup, progress: &GitignoreBackup) -> bool {
-    // Deletion is a regression; intentional content edits are kept (like checks supersets).
     matches!(
         (gitignore_root_bytes(anchor), gitignore_root_bytes(progress)),
         (Some(_), None)
@@ -103,7 +101,6 @@ pub(crate) fn vision_root_bytes(backup: &VisionBackup) -> Option<&[u8]> {
 }
 
 fn vision_regressed(anchor: &VisionBackup, progress: &VisionBackup) -> bool {
-    // Deletion is a regression; intentional content edits are kept (like checks supersets).
     matches!(
         (vision_root_bytes(anchor), vision_root_bytes(progress)),
         (Some(_), None)
@@ -118,7 +115,6 @@ fn pick_vision(anchor: &VisionBackup, progress: &VisionBackup) -> VisionBackup {
     }
 }
 
-/// Merge anchor (iteration start) with progress (post-agent, pre-restore) for gate restore.
 #[must_use]
 pub fn merge_for_gate_restore(
     anchor: &SessionDotfileBackups,
@@ -142,7 +138,6 @@ pub fn merge_for_gate_restore(
     }
 }
 
-/// Merge anchor/progress snapshots for gate restore.
 #[must_use]
 pub fn merge_and_sanitize_for_gate_restore(
     anchor: &SessionDotfileBackups,

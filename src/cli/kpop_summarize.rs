@@ -1,4 +1,3 @@
-//! Inline outer-loop summarize on the last active agent when more than one `KPop` flow ran.
 
 #[path = "kpop_summarize_inline.rs"]
 mod kpop_summarize_inline;
@@ -16,27 +15,23 @@ use crate::run_timing::TimingPhase;
 
 const SUMMARIZE_PROMPT: &str = "kpop_summarize.md";
 
-/// True when an exp log file exists and has content from an outer-loop agent session.
 pub(crate) fn exp_log_has_flow_content(path: &Path) -> bool {
     std::fs::read(path)
         .ok()
         .is_some_and(|bytes| !bytes.is_empty())
 }
 
-/// Count `KPop` flows that ran in this session (one non-empty exp log per outer-loop iteration).
 #[must_use]
 pub(crate) fn kpop_flows_ran(artifacts: &RunArtifacts) -> usize {
     list_written_exp_logs(&artifacts.run_dir).len()
 }
 
-/// Whether outer-loop summarize should run once multiple `KPop` flows completed.
 #[must_use]
 #[cfg(test)]
 pub(crate) const fn outer_loop_summarize_warranted(kpop_flows_ran: usize) -> bool {
     kpop_flows_ran > 1
 }
 
-/// Whether the current gate-kpop iteration is the last active agent that should inline summarize.
 #[must_use]
 pub(crate) const fn should_inline_outer_loop_summarize_on_gate_iteration(
     iteration: usize,
@@ -150,7 +145,6 @@ pub(crate) async fn run_summarize_coder_prompt(
         .map_err(|e| e.to_string())
 }
 
-/// Runs the summarize prompt on an already-open coder session (same agent backend).
 pub(crate) async fn run_inline_summarize_coder_prompt(
     client: &mut AgentBackend,
     store: &PromptStore,

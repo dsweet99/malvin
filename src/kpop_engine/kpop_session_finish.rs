@@ -56,7 +56,6 @@ pub(crate) fn fail_kpop_engine_after_exhausted(
     session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
     behavior: super::behavior::KPopHardConstraints,
 ) -> Result<(), String> {
-    // Historical code/tidy exhaustion path (code workflow removed).
     if behavior.recheck_gates_after_exhausted && !behavior.skip_workspace_quality_gates {
         let work_dir = prepared.artifacts().work_dir.as_path();
         if behavior.restore_malvin_checks_after_session() {

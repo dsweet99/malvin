@@ -1,4 +1,3 @@
-//! Build [`super::backend::AgentBackend`] from CLI options.
 
 use crate::cli::{
     agent_io_options, default_workflow_stdout_tee_flags, AgentStdoutTeeFlags, SharedOpts,
@@ -9,9 +8,6 @@ use crate::model_id::ModelBackend;
 use super::backend::AgentBackend;
 use super::sdk_client::{BridgeKind, SdkClient};
 
-/// # Errors
-///
-/// Returns an error when backend construction fails.
 pub fn build_agent_backend(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
@@ -25,11 +21,6 @@ pub fn build_agent_backend(
     )
 }
 
-/// Like [`build_agent_backend`] but accepts explicit stdout tee flags (for example `do` raw mode).
-///
-/// # Errors
-///
-/// Returns an error when backend construction fails.
 pub fn build_agent_backend_with_tee(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,

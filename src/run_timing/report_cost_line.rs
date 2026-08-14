@@ -47,7 +47,6 @@ fn cost_fields_fragment(json: &Value) -> String {
     )
 }
 
-/// Formats the human-readable `COST:` footnote (token counts + cost stats) from `run_timing.json`.
 #[must_use]
 pub fn format_cost_stdout_line_from_json(json: &Value) -> String {
     format!(

@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# Fail when any Rust or Python unit test exceeds the per-test duration budget.
-# When invoked from `.malvin/checks`, docker must be available; the checks line sets
-# MALVIN_SKIP_DOCKER_SELFTESTS=0 so docker-marked pytest tests run under budget.
 set -euo pipefail
 
 THRESHOLD="${MALVIN_TEST_MAX_SECS:-1.500}"

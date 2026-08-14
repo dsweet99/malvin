@@ -1,4 +1,3 @@
-//! Liveness-driven sandbox teardown: poll, re-snapshot kill targets, TERM→KILL escalation.
 
 use std::collections::HashSet;
 
@@ -67,8 +66,6 @@ fn teardown_agent_sandbox_fast_tick(
     process_group_id: Option<u32>,
     baseline_opt: Option<&HashSet<u32>>,
 ) {
-    // Mock-agent path uses an empty spawn baseline: kill the process group only
-    // (skip full `ps` kill-target scans).
     if baseline_opt.is_none() {
         if let Some(pgid) = process_group_id {
             signal_process_group(pgid, 9);
@@ -117,11 +114,6 @@ pub(crate) fn teardown_agent_sandbox_blocking(
     teardown_agent_sandbox_slow_blocking(process_group_id, baseline_opt, spawn_baseline);
 }
 
-/// CTRL-C path: SIGKILL immediately and do not wait for liveness.
-///
-/// Cooperative TERM→poll→KILL can take up to [`teardown_total_cap`] (1.5s in
-/// release), which feels like a stuck shell. Interrupt prefers a snappy return;
-/// the next spawn still reaps stragglers.
 pub(crate) fn teardown_agent_sandbox_for_interrupt(
     process_group_id: Option<u32>,
     spawn_baseline: &HashSet<u32>,
@@ -130,9 +122,6 @@ pub(crate) fn teardown_agent_sandbox_for_interrupt(
     if process_group_id.is_none() && !orphan_scan {
         return;
     }
-    // With a spawn baseline, discover affiliated/orphan PIDs via a proc scan, then SIGKILL.
-    // Without one, skip the scan: group SIGKILL is enough for snappy CTRL-C teardown and
-    // avoids multi-hundred-ms `list_proc_rows` cost under nextest load.
     if orphan_scan {
         let targets = kill_targets_for_teardown(process_group_id, Some(spawn_baseline));
         for pid in targets {

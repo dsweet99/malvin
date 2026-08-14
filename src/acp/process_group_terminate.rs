@@ -1,4 +1,3 @@
-//! Process-group teardown helpers used by SDK sessions and sandbox interrupt.
 
 use std::collections::HashSet;
 
@@ -13,7 +12,6 @@ pub(crate) fn terminate_agent_process_group_blocking(
     );
 }
 
-/// CTRL-C: SIGKILL without waiting.
 #[cfg(unix)]
 pub(crate) fn terminate_agent_process_group_for_interrupt(
     process_group_id: Option<u32>,

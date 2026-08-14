@@ -1,14 +1,8 @@
-//! Auth checks for the `pi:` backend (provider env keys; no malvin key store).
 
 use crate::acp::AuthError;
 
 use super::discover::resolve_pi_bin;
 
-/// Soft check: `pi` is present, and a known primary auth env for the provider is set when mapped.
-///
-/// # Errors
-///
-/// Returns [`AuthError`] when the binary is missing or a mapped provider key is absent.
 pub fn ensure_pi_authenticated(model: &str) -> Result<(), AuthError> {
     resolve_pi_bin().map_err(AuthError)?;
     let parsed = crate::model_id::parse_model_id(model).map_err(AuthError)?;
@@ -68,7 +62,6 @@ mod tests {
     fn mapped_provider_requires_key() {
         crate::acp::with_env("OPENAI_API_KEY", None, || {
             crate::acp::with_env("MALVIN_PI", None, || {
-                // Binary may or may not be on PATH in CI; only assert key branch when resolve works.
                 if resolve_pi_bin().is_ok() {
                     assert!(ensure_pi_authenticated("pi:openai/gpt-4o").is_err());
                 }

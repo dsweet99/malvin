@@ -11,8 +11,8 @@ malvin is a non-interactive research and coding agent. It runs agent sessions ag
 ## Usage
 
 ```text
-malvin [OPTIONS] [REQUEST]
-malvin [OPTIONS] <COMMAND>
+malvin [OPTION]... [REQUEST]
+   or: malvin [OPTION]... <COMMAND>
 ```
 
 These forms are mutually exclusive: pass a request **or** a subcommand, not both on one synopsis line. `malvin --help` uses the same two-line usage.
@@ -54,11 +54,11 @@ Model id for agent-backed commands. Default: `cursor:auto`. Use `cursor:` for th
 
 ### `--max-loops <N>` (default: 1)
 
-Outer agent-session budget for bare `malvin REQUEST` (`effective_max_loops`). `0` is treated as `1`. Gate-loop wrappers (`tidy`, `write`) expose their own `--max-loops` with a default of `3`.
+Outer agent-session budget for bare `malvin REQUEST`. `0` is treated as `1`. Gate-loop wrappers (`tidy`, `write`) expose their own `--max-loops` with a default of `3`.
 
 ### `--max-hypotheses <N>` (default: 5)
 
-Hypothesis budget for bare `malvin REQUEST` `kpop_common.md` (`{{ max_hypotheses }}`). When the flag is omitted, `[default_workflow].max_hypotheses` from `~/.malvin_home/config.toml` is used (fallback 5). Explicit CLI wins over config. `0` is treated as `5`. Gate-loop wrappers (`tidy`, `write`) expose their own `--max-hypotheses`.
+Hypothesis budget for bare `malvin REQUEST`. When the flag is omitted, `[default_workflow].max_hypotheses` from `~/.malvin_home/config.toml` is used (fallback 5). Explicit CLI wins over config. `0` is treated as `5`. Gate-loop wrappers (`tidy`, `write`) expose their own `--max-hypotheses`.
 
 ### `--no-force`
 
@@ -84,11 +84,11 @@ Maximum bounded attempts per Cursor SDK bridge spawn or `send`/`wait`, with 1s /
 
 ### `--git`
 
-Allow the agent to run `git commit` by setting `{{ git_extra }}` in prompt templates. Off by default (agents are otherwise steered away from committing).
+Allow the agent to run `git commit`. Off by default (agents are otherwise steered away from committing).
 
 ### `--creative`
 
-On the default router (bare `malvin REQUEST`, and wrappers that call it: `tidy`, `write`), send `router_b_creative.md` instead of `router_b.md` when the optional `router_b` turn runs. Off by default.
+On the default router (bare `malvin REQUEST`, and wrappers that call it: `tidy`, `write`), send the creative router_b prompt when the optional router_b turn runs. Off by default.
 
 ### `--name <NAME>`
 

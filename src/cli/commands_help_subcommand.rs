@@ -1,4 +1,3 @@
-//! Short usage for a single subcommand (about, usage, positionals; no options).
 
 use std::io::{self, Write};
 
@@ -43,10 +42,10 @@ fn push_about_block(lines: &mut Vec<String>, sub: &Command) {
 fn subcommand_usage_line(sub: &Command) -> String {
     let usage_args = format_positional_usage_tokens(sub);
     if usage_args.is_empty() {
-        format!("Usage: malvin {}", sub.get_name())
+        format!("Usage: malvin {} [OPTION]...", sub.get_name())
     } else {
         format!(
-            "Usage: malvin {} {}",
+            "Usage: malvin {} [OPTION]... {}",
             sub.get_name(),
             usage_args.join(" ")
         )
@@ -79,7 +78,7 @@ fn append_arguments_block(lines: &mut Vec<String>, sub: &Command) {
 
 fn append_short_help_epilog(lines: &mut Vec<String>, name: &str) {
     lines.push(String::new());
-    lines.push(format!("Use `malvin {name} --help` to see options."));
+    lines.push(format!("Use malvin {name} --help to see options."));
 }
 
 fn subcommand_short_help_lines(root: &Command, name: &str) -> Option<Vec<String>> {
@@ -92,13 +91,11 @@ fn subcommand_short_help_lines(root: &Command, name: &str) -> Option<Vec<String>
     Some(lines)
 }
 
-/// Build short usage for a subcommand (about, usage, positionals; no options).
 pub fn render_subcommand_short_help(name: &str) -> Option<String> {
     let root = Cli::command();
     subcommand_short_help_lines(&root, name).map(|lines| format!("{}\n", lines.join("\n")))
 }
 
-/// Print short usage for a subcommand; full flags live under `malvin <COMMAND> --help`.
 pub fn print_subcommand_short_help(name: &str) -> io::Result<()> {
     let text = render_subcommand_short_help(name).unwrap_or_default();
     io::stdout().lock().write_all(text.as_bytes())
@@ -118,7 +115,7 @@ mod tests {
     fn render_subcommand_short_help_inspire_omits_options() {
         let help = render_subcommand_short_help("inspire").expect("inspire subcommand");
         assert!(help.contains("Explore creative boundaries"));
-        assert!(help.contains("Usage: malvin inspire [REQUEST]"));
+        assert!(help.contains("Usage: malvin inspire [OPTION]... [REQUEST]"));
         assert!(help.contains("Arguments:"));
         assert!(help.contains("malvin inspire --help"));
         assert!(!help.contains("Options:"));

@@ -1,4 +1,3 @@
-//! Shared parsers for mini vs ACP observability parity tests.
 
 use std::path::Path;
 

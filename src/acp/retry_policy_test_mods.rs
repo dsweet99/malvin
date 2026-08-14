@@ -1,4 +1,3 @@
-//! Test module wiring for shared retry-policy helpers.
 
 #[path = "reader_tests_retry_policy.rs"]
 mod reader_tests_retry_policy;

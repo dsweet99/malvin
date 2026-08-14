@@ -1,4 +1,3 @@
-//! Shared helpers for Cursor SDK bug regression tests.
 
 use crate::acp::{AgentIoOptions, CoderPromptOptions};
 use crate::cursor_sdk::CursorSdkClient;

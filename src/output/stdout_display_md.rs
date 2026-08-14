@@ -1,4 +1,3 @@
-//! Markdown-aware tagged stdout printing (`stdout.log` + live terminal).
 
 use super::stdout_display::print_stdout_rendered_line;
 use super::stdout_line_wrap_meta;
@@ -7,8 +6,6 @@ use super::{
     wrap_words_bounded, TermimadStdoutGate, WHO_B,
 };
 
-/// Like [`super::print_stdout_line`], but when `emit_stdout_markdown` is set, rich-format
-/// Markdown in the payload (termimad) for both the live terminal and `stdout.log`.
 pub fn print_stdout_line_with_markdown(who: &str, line: &str, emit_stdout_markdown: bool) {
     for para in line.split('\n') {
         let ts = super::timestamp_now_string();

@@ -4,7 +4,6 @@ use super::RunTiming;
 
 impl RunTiming {
     pub fn record_completion_cost(&mut self, usage: &ResponseUsage) {
-        // Zero cost policy branch (unused after local-backend removal).
         if matches!(self.cost_policy, super::CostPolicy::Zero) {
             return;
         }
@@ -18,7 +17,6 @@ impl RunTiming {
     }
 }
 
-/// Non-cache input tokens for `cost_in` (ACP folds cache into stored `tokens_in`).
 fn input_tokens_for_cost(r: &RunTiming) -> u64 {
     let tokens_in = r.tokens_in.unwrap_or(0);
     let cache_read = r.cache_read.unwrap_or(0);
@@ -35,7 +33,6 @@ const fn has_cost_observation(r: &RunTiming) -> bool {
         || r.unknown_tx_count > 0
 }
 
-/// Rate × token component costs for the `COST:` footnote / `run_timing.json` `cost` block.
 #[must_use]
 pub fn cost_stats(r: &RunTiming) -> Option<serde_json::Value> {
     if !has_cost_observation(r) {
@@ -102,7 +99,6 @@ mod tests {
     fn cost_stats_rate_times_tokens_components() {
         let mut r = RunTiming {
             token_cost_rates: TokenCostRates {
-                // $1000 / $2000 / $100 / $500 per million tokens → same USD as old per-token fixtures.
                 usd_per_microtoken_in: 1000.0,
                 usd_per_microtoken_out: 2000.0,
                 usd_per_microtoken_cache_read: 100.0,
@@ -110,7 +106,7 @@ mod tests {
             },
             ..Default::default()
         };
-        r.tokens_in = Some(13); // 10 input + 2 cache_read + 1 cache_write
+        r.tokens_in = Some(13);
         r.tokens_out = Some(3);
         r.cache_read = Some(2);
         r.cache_write = Some(1);

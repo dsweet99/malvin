@@ -1,15 +1,9 @@
-//! Idle timeout while SDK bridges drain for `run_done`.
 #![cfg_attr(test, allow(unsafe_code))]
 
 use std::time::Duration;
 
-/// Max silence between bridge events while draining a prompt for `run_done`.
-///
-/// Without this, a live bridge that never emits `run_done` / `fatal` hangs forever
-/// inside `drain_until_run_done`, and client retries never run.
 pub const DEFAULT_SDK_DRAIN_IDLE_TIMEOUT_MS: u64 = 600_000;
 
-/// Idle timeout for Cursor/Pi `drain_until_run_done` (silence between events).
 #[must_use]
 pub fn sdk_drain_idle_timeout_from_env() -> Duration {
     Duration::from_millis(

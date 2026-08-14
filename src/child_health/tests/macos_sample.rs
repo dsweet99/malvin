@@ -66,7 +66,6 @@ fn sample_after_child_exit_is_absent_or_safe_non_running() {
     assert!(status.success());
     let h = sample_child_health(pid);
     if h.exists {
-        // The PID slot may already name another live process; we only require no panic here.
     } else {
         assert!(
             h.counters_trusted,

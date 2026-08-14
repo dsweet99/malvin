@@ -1,4 +1,3 @@
-//! Shared helpers for interpreting `.malvin/checks` bytes during gate restore.
 
 pub(super) fn substantive_check_lines(bytes: &[u8]) -> Vec<String> {
     let Ok(text) = std::str::from_utf8(bytes) else {

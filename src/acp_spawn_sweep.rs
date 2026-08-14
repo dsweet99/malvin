@@ -1,4 +1,3 @@
-//! Directory-wide stale lock garbage collection for `.malvin/acp_spawn/`.
 
 use std::path::{Path, PathBuf};
 
@@ -46,9 +45,6 @@ fn remove_if_stale_acp_lock(path: &Path) -> Result<bool, String> {
     Ok(true)
 }
 
-/// Remove stale lock files under `.malvin/acp_spawn/` (invalid PID or dead holder).
-///
-/// Live holder PIDs are kept. Returns the number of files removed.
 pub fn sweep_stale_acp_spawn_locks(work_dir: &Path) -> Result<usize, String> {
     let chamber = acp_spawn_chamber_dir(work_dir);
     let Ok(entries) = std::fs::read_dir(&chamber) else {

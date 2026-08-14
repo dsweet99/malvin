@@ -1,4 +1,3 @@
-//! Pi RPC stdin/stdout against a shared [`BridgeSession`].
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -58,8 +57,6 @@ pub(crate) async fn pi_send_prompt(session: &BridgeSession, prompt: &str) -> Res
     }
 }
 
-/// Wait for the matching RPC response. Returns `true` if `agent_end`/`RunDone` was
-/// already handled (so the caller must not drain again).
 async fn pi_wait_for_response(session: &BridgeSession, id: &str) -> Result<bool, AgentError> {
     let mut saw_run_done = false;
     loop {
@@ -167,8 +164,6 @@ fn pi_finish_run_done(session: &BridgeSession, ev: &BridgeEvent) -> Result<(), A
     if let Some(u) = usage {
         record_sdk_usage(session.timing.as_ref(), u, session.normalize_pi_usage);
     }
-    // Always replace: a missing result must not leave a prior turn's text for
-    // router __MALVIN_DONE__ detection via last_coder_prompt_agent_response().
     *session
         .last_response
         .lock()

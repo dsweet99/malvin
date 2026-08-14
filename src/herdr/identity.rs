@@ -1,9 +1,4 @@
-//! Herdr live `name` vs report `agent` label, and display title selection.
 
-/// Build a unique Herdr live agent name from a run-dir session id.
-///
-/// Herdr names must match `[a-z][a-z0-9_-]{0,31}`. Report/`display_agent` stay
-/// `"malvin"`; this value is only for `agent.rename` / name targeting.
 #[must_use]
 pub fn herdr_live_name(session_id: &str) -> String {
     let short = session_id.rsplit('_').next().unwrap_or(session_id);
@@ -23,9 +18,6 @@ pub fn herdr_live_name(session_id: &str) -> String {
     name
 }
 
-/// Prefer malvin session `--name` / auto slot for `title`; never the run-dir basename.
-///
-/// Returns `None` when the process only has the pid fallback slot (no session name).
 #[must_use]
 pub fn display_title() -> Option<String> {
     let slot = crate::acp_spawn_lock::active_acp_lock_slot();

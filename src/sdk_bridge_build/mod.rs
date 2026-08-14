@@ -1,6 +1,3 @@
-//! Install Cursor SDK npm bridge for `cargo build` / `cargo install`.
-//!
-//! Shared by `build.rs` (via `#[path]`) and the library so install helpers are testable.
 
 mod copy;
 mod npm;
@@ -24,7 +21,6 @@ fn fnv1a64(data: &[u8]) -> u64 {
     hash
 }
 
-/// One npm-backed SDK bridge shipped with the crate.
 pub struct Bridge {
     pub dir_name: &'static str,
     pub package_marker: &'static str,
@@ -32,7 +28,6 @@ pub struct Bridge {
     pub min_node: (u32, u32),
 }
 
-/// Cursor SDK bridge required for the agent backend.
 pub const BRIDGES: &[Bridge] = &[
     Bridge {
         dir_name: "cursor-sdk-bridge",
@@ -42,7 +37,6 @@ pub const BRIDGES: &[Bridge] = &[
     },
 ];
 
-/// Entry point for `build.rs`.
 pub fn run_build_script() {
     println!("cargo:rerun-if-env-changed=MALVIN_SKIP_SDK_BRIDGES");
     println!("cargo:rerun-if-env-changed=DOCS_RS");
@@ -86,7 +80,6 @@ fn emit_rerun_if_changed(manifest_dir: &Path) {
     }
 }
 
-/// Install one bridge into `~/.malvin_home/sdk-bridges/` when the in-tree copy is incomplete.
 pub fn ensure_bridge(manifest_dir: &Path, bridge: &Bridge) {
     let src = manifest_dir.join(bridge.dir_name);
     assert!(
@@ -175,7 +168,6 @@ fn write_stamp(dest: &Path) {
     });
 }
 
-/// `~/.malvin_home/sdk-bridges` (cargo-install target for npm SDK deps).
 pub fn sdk_share_dir() -> PathBuf {
     let home = env::var_os("HOME").filter(|v| !v.is_empty()).unwrap_or_else(|| {
         panic!(

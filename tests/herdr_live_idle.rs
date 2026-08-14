@@ -1,8 +1,3 @@
-//! Live herdr teardown check (opt-in via `MALVIN_LIVE_HERDR=1`).
-//!
-//! Verifies the stuck-animation fix by querying herdr (`herdr pane get`) for
-//! `result.pane.agent_status` after a completed start/end cycle — including when
-//! the pane was already stuck in `working` or sticky `unknown` beforehand.
 
 #![cfg(unix)]
 
@@ -72,7 +67,6 @@ fn send_raw(sock: &PathBuf, method: &str, mut params: Value) {
     let _ = stream.read(&mut buf);
 }
 
-/// Leave the pane in sticky `unknown` the way old `release_agent` teardown did.
 fn force_sticky_unknown(pane: &str, sock: &PathBuf) {
     send_raw(
         sock,
@@ -121,10 +115,8 @@ fn live_stuck_unknown_then_do_cycle_leaves_idle() {
     }
     let (pane, sock) = require_herdr_env();
 
-    // Prior sticky animation state (old release_agent teardown).
     force_sticky_unknown(&pane, &sock);
 
-    // New `--do`-style cycle: bind working, then end → idle + clear display.
     let run_dir = std::env::temp_dir().join("malvin_live_herdr_stuck_then_do");
     std::fs::create_dir_all(&run_dir).expect("mkdir");
     malvin::herdr::notify_run_start(&run_dir);
@@ -152,8 +144,6 @@ fn live_stuck_working_then_end_leaves_idle() {
     malvin::herdr::notify_run_start(&stuck_dir);
     let stuck = pane_get(&pane);
     assert_eq!(agent_status(&stuck), Some("working"), "stuck setup: {stuck}");
-    // Abandon without end in this process's session tracking by starting a new cycle
-    // (notify_run_start replaces the bind). Then end must still leave idle.
     let run_dir = std::env::temp_dir().join("malvin_live_herdr_stuck_working_do");
     std::fs::create_dir_all(&run_dir).expect("mkdir");
     malvin::herdr::notify_run_start(&run_dir);

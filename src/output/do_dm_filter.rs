@@ -1,8 +1,3 @@
-//! Streaming extractor for `MALVIN_DM_START` / `MALVIN_DM_END` bodies.
-//!
-//! Markers count only when alone on their own line (line text equals the marker;
-//! the terminating newline ends the line). START and END must therefore be on
-//! different lines; same-line or inline forms are ignored.
 
 use std::sync::Mutex;
 
@@ -27,7 +22,6 @@ pub(crate) fn reset_do_dm_filter() {
     *guard = DmFilter::default();
 }
 
-/// Feed agent message text into the DM extractor; prints extracted bodies to process stdout.
 pub fn feed_do_dm_stdout_text(text: &str) {
     if !super::do_dm_mode::do_dm_stdout_mode() || text.is_empty() {
         return;
@@ -212,7 +206,6 @@ mod tests {
             feed_do_dm_stdout_text(&format!("x{DM_START}\nnope\n{DM_END}\n"));
             feed_do_dm_stdout_text(&format!("{DM_START}x\nnope\n{DM_END}\n"));
             feed_do_dm_stdout_text(&format!(" {DM_START}\nnope\n{DM_END}\n"));
-            // Inline END is body text; a later alone END closes.
             feed_do_dm_stdout_text(&format!("{DM_START}\nsee {DM_END}\n{DM_END}\n"));
             feed_do_dm_stdout_text(&format!("{DM_START}\nalone\n{DM_END}\n"));
         });

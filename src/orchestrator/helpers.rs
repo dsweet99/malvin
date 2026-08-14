@@ -7,16 +7,6 @@ pub use crate::workflow_context::{
 pub use crate::workflow_context::workflow_context;
 pub(crate) use crate::workflow_context::insert_formatted;
 
-/// Reads `result_path` for an `ABORT:` line.
-///
-/// Returns `Ok(None)` when the file is missing or has no abort line.
-/// Returns `Ok(Some(msg))` when an `ABORT:` line is present.
-/// Returns `Err` when the file exists but cannot be read (fail-closed).
-///
-/// # Errors
-///
-/// Returns [`std::io::Error`] when `result_path` cannot be read for reasons other than
-/// [`NotFound`](std::io::ErrorKind::NotFound).
 pub fn check_abort(result_path: &Path) -> Result<Option<String>, std::io::Error> {
     let content = match std::fs::read_to_string(result_path) {
         Ok(c) => c,

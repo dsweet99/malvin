@@ -1,4 +1,3 @@
-//! Resolve the Node bridge entry script.
 
 use std::path::{Path, PathBuf};
 
@@ -7,14 +6,6 @@ const BRIDGE_JS: &str = "cursor-sdk-bridge/dist/bridge.js";
 const MODELS_JS: &str = "cursor-sdk-bridge/dist/models.js";
 const SDK_MARKER: &str = "cursor-sdk-bridge/node_modules/@cursor/sdk/package.json";
 
-/// Path to `cursor-sdk-bridge/dist/bridge.js` (or env override).
-///
-/// Prefers roots that also have `@cursor/sdk` installed (so a packaged `dist/`
-/// without `node_modules` does not shadow `~/.malvin_home/sdk-bridges/`).
-///
-/// # Errors
-///
-/// Returns an error when no bridge entry can be found.
 pub fn resolve_bridge_js() -> Result<PathBuf, String> {
     if let Some(p) = std::env::var_os(ENV_BRIDGE).filter(|v| !v.is_empty()) {
         let path = PathBuf::from(p);
@@ -41,11 +32,6 @@ pub fn resolve_bridge_js() -> Result<PathBuf, String> {
     )
 }
 
-/// One-shot models listing script.
-///
-/// # Errors
-///
-/// Returns an error when the models entry is missing.
 pub fn resolve_models_js() -> Result<PathBuf, String> {
     if let Ok(bridge) = resolve_bridge_js() {
         let models = bridge.with_file_name("models.js");
@@ -108,7 +94,6 @@ fn cursor_first_any_models_js() -> Option<PathBuf> {
     None
 }
 
-/// True when `root` has a usable `@cursor/sdk` install beside the bridge.
 pub(crate) fn cursor_sdk_marker_present(root: &Path) -> bool {
     root.join(SDK_MARKER).is_file()
 }

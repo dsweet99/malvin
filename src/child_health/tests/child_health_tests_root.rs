@@ -56,8 +56,6 @@ fn evaluate_maps_cannot_sample_pair_to_hung_not_not_running() {
     );
 }
 
-/// First read failed (`cannot_sample`): a later trusted snapshot cannot be compared for movement, so
-/// we do not extend (avoids treating typical `/proc` fields as "progress" when the child may be hung).
 #[test]
 fn first_untrusted_second_trusted_does_not_infer_progress() {
     let t0 = Instant::now();
@@ -91,8 +89,6 @@ fn first_untrusted_second_trusted_zero_counters_still_no_progress() {
     );
 }
 
-/// `ChildHealth::cannot_sample()` uses zero counters; comparing to a prior good sample must not
-/// look like "progress" (CPU time went from N to 0), or we extend the RPC wait on I/O failure.
 #[test]
 fn silence_second_sample_io_failure_must_not_masquerade_as_progress() {
     let t0 = Instant::now();
@@ -125,8 +121,6 @@ mod linux_parse {
         assert_eq!(parse_status_voluntary_ctxt(s), Some(4242));
     }
 
-    /// Value must tolerate a trailing `\r` on the line (e.g. odd line endings) so we do not drop
-    /// the counter and under-count OS "progress" during silence grace.
     #[test]
     fn voluntary_ctxt_parses_when_value_has_trailing_cr() {
         let s = "voluntary_ctxt_switches:\t4242\r";

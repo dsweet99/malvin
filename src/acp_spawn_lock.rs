@@ -1,4 +1,3 @@
-//! Cross-process ACP spawn lock: one live agent session per workspace lock slot.
 
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -7,7 +6,6 @@ use crate::acp_spawn_sweep::{acp_spawn_chamber_dir, ensure_acp_spawn_chamber_git
 
 static ACTIVE_ACP_LOCK_SLOT: Mutex<Option<String>> = Mutex::new(None);
 
-/// Records the session-name lock slot for this process (set at entrypoint when `--name` is used).
 pub fn set_active_acp_lock_slot(slot: String) {
     if let Ok(mut guard) = ACTIVE_ACP_LOCK_SLOT.lock() {
         *guard = Some(slot);
@@ -28,11 +26,6 @@ pub(crate) fn acp_spawn_lock_path(work_dir: &Path, slot: &str) -> PathBuf {
     acp_spawn_chamber_dir(work_dir).join(format!("{slot}.lock"))
 }
 
-/// Cross-process guard: one live agent session per workspace lock slot.
-///
-/// Blocks unrelated peer processes on the same slot while allowing nested `malvin inspire`
-/// from descendant processes of the lock holder, and allowing unrelated slots (different
-/// session names) to run concurrently in the same workspace.
 pub fn assert_no_peer_acp_spawn_lock(work_dir: &Path) -> Result<(), String> {
     assert_no_peer_acp_spawn_lock_for_slot(work_dir, &active_acp_lock_slot())
 }
@@ -159,7 +152,6 @@ mod tests {
         });
     }
 
-    /// Child probe: `MALVIN_ACP_LOCK_DESCENDANT_PROBE=<workdir>` must pass assert.
     #[cfg(unix)]
     #[test]
     fn acp_spawn_lock_descendant_probe_from_env() {

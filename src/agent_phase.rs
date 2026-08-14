@@ -1,6 +1,3 @@
-//! Infers agent phase labels for stdout heartbeats from malvin runtime signals.
-//!
-//! Phase labels for stdout heartbeats (Orienting, Researching, …).
 
 #[path = "agent_phase_signal.rs"]
 mod agent_phase_signal;
@@ -9,7 +6,6 @@ use std::sync::Mutex;
 
 use crate::tool_summary::{ParsedToolUpdate, ToolSummaryTracker};
 
-/// Agent phase label shown in stdout heartbeats.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum AgentPhase {
@@ -155,7 +151,6 @@ pub fn set_reporting(active: bool) {
     with_state(|s| s.reporting = active);
 }
 
-/// Emits `DONE` on stdout while heartbeat labels use the Reporting phase.
 pub fn print_done_with_reporting_phase() {
     use crate::output::{MALVIN_WHO, print_stdout_line};
     set_reporting(true);

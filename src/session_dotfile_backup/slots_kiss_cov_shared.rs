@@ -1,4 +1,3 @@
-//! Shared helpers for slots kiss-cov witness tests.
 
 use crate::session_dotfile_backup::slots::{DotfileSpecRow, DOTFILE_ROWS};
 use std::path::Path;

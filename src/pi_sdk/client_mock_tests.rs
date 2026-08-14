@@ -1,4 +1,3 @@
-//! Full client lifecycle against `mock_pi.sh`.
 
 use crate::acp::{AgentIoOptions, CoderPromptOptions};
 
@@ -91,7 +90,6 @@ async fn pi_sdk_noforce_fails_fast() {
     pi_clear_mock_env();
 }
 
-/// `agent_end` before prompt ACK must complete the turn (not hang in drain).
 #[tokio::test]
 async fn pi_sdk_agent_end_before_ack_completes() {
     let _guard = crate::test_utils::test_env_lock();
@@ -119,7 +117,6 @@ async fn pi_sdk_agent_end_before_ack_completes() {
     pi_clear_mock_env();
 }
 
-/// Missing assistant text on `agent_end` must clear prior `last_response`.
 #[tokio::test]
 async fn pi_sdk_empty_assistant_result_clears_prior_response() {
     let _guard = crate::test_utils::test_env_lock();
@@ -153,7 +150,6 @@ async fn pi_sdk_empty_assistant_result_clears_prior_response() {
     pi_clear_mock_env();
 }
 
-/// `new_session` ACK silence must fail via idle timeout (not hang forever).
 #[tokio::test]
 async fn pi_sdk_new_session_ack_idle_timeout() {
     let _guard = crate::test_utils::test_env_lock();

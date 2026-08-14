@@ -1,4 +1,3 @@
-//! NDJSON request bodies for herdr pane agent reports.
 
 use rand::Rng;
 use serde_json::{json, Value};
@@ -46,7 +45,6 @@ pub fn report_agent_session(
     envelope("pane.report_agent_session", params)
 }
 
-/// Assign a unique Herdr live `name` (distinct from report `agent: "malvin"`).
 #[must_use]
 pub fn rename_agent(target: &str, name: &str) -> Value {
     envelope(
@@ -73,7 +71,6 @@ pub fn report_agent(pane_id: &str, state: &str, agent_session_id: Option<&str>, 
     envelope("pane.report_agent", params)
 }
 
-/// Drop foreign/hook agent authority on the pane before malvin rebinds.
 #[must_use]
 pub fn clear_agent_authority(pane_id: &str, seq: u64) -> Value {
     envelope(
@@ -100,7 +97,6 @@ pub fn report_metadata_sparse(pane_id: &str, title: Option<&str>, seq: u64) -> V
     envelope("pane.report_metadata", params)
 }
 
-/// Clear display-only metadata so a finished run does not leave a stale agent presentation.
 #[must_use]
 pub fn clear_metadata_teardown(pane_id: &str, seq: u64) -> Value {
     envelope(

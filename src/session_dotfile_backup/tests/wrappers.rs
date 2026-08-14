@@ -1,4 +1,3 @@
-//! Behavioral coverage for thin wrapper entrypoints in [`super::super::wrappers`].
 
 use crate::artifacts::{
     backup_workspace_malvin_config_workspace_if_present,

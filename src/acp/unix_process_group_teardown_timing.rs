@@ -1,4 +1,3 @@
-//! Teardown timing tuned for production vs integration-test fast path.
 
 #[must_use]
 pub(crate) fn test_fast_acp_teardown_enabled() -> bool {
@@ -16,7 +15,6 @@ pub(crate) fn teardown_poll_interval() -> std::time::Duration {
     }
     #[cfg(not(debug_assertions))]
     {
-        // Keep TERM→KILL escalation snappy so post-prompt CLI exit is not multi-second.
         std::time::Duration::from_millis(100)
     }
 }
@@ -48,7 +46,6 @@ pub(crate) fn shutdown_cancel_timeout() -> std::time::Duration {
     }
     #[cfg(not(debug_assertions))]
     {
-        // Enough for a fast Method-not-found reject; do not block exit for seconds.
         std::time::Duration::from_millis(250)
     }
 }
@@ -68,7 +65,6 @@ pub(crate) fn teardown_kill_after_polls() -> u32 {
     }
 }
 
-/// Cap for `Child::wait` after SIGKILL during agent process-group teardown.
 #[must_use]
 #[allow(dead_code)]
 pub(crate) fn shutdown_child_wait_timeout() -> std::time::Duration {

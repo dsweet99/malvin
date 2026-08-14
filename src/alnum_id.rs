@@ -1,4 +1,3 @@
-//! Short random alphanumeric ids (leaf; no malvin internals).
 
 use rand::Rng;
 

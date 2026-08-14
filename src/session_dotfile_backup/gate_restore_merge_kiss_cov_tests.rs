@@ -1,4 +1,3 @@
-//! External kiss witnesses for [`super::gate_restore_merge`] privates.
 
 use super::{DotfileBackupState, GitignoreBackup, gate_restore_merge};
 

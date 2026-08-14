@@ -1,4 +1,3 @@
-//! Smoke: `malvin --doc` prints embedded top-level documentation.
 
 const MALVIN_MD: &str = include_str!("../default_prompts/docs/malvin.md");
 const ROUTER_MD: &str = include_str!("../default_prompts/docs/router.md");
@@ -42,7 +41,6 @@ fn malvin_code_is_not_a_documented_subcommand() {
         .args(["code", "--doc"])
         .output()
         .expect("spawn malvin code --doc");
-    // Without a `code` subcommand, `code` is a bare request and `--doc` prints the overview.
     assert!(out.status.success(), "stderr={}", String::from_utf8_lossy(&out.stderr));
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
@@ -80,7 +78,7 @@ fn malvin_inspire_without_request_shows_short_usage_and_exits_zero() {
         "inspire stdout: {bare_s}"
     );
     assert!(
-        bare_s.contains("Usage: malvin inspire [REQUEST]"),
+        bare_s.contains("Usage: malvin inspire [OPTION]... [REQUEST]"),
         "inspire stdout must show REQUEST usage: {bare_s}"
     );
     assert!(
@@ -203,11 +201,11 @@ fn malvin_help_usage_matches_mutually_exclusive_forms() {
     assert!(help.status.success());
     let help_s = String::from_utf8_lossy(&help.stdout);
     assert!(
-        help_s.contains("Usage: malvin [OPTIONS] [REQUEST]"),
+        help_s.contains("Usage: malvin [OPTION]... [REQUEST]"),
         "full help must show request usage form: {help_s}"
     );
     assert!(
-        help_s.contains("malvin [OPTIONS] <COMMAND>"),
+        help_s.contains("malvin [OPTION]... <COMMAND>"),
         "full help must show command usage form: {help_s}"
     );
     assert!(
@@ -215,7 +213,7 @@ fn malvin_help_usage_matches_mutually_exclusive_forms() {
         "full help must not conflate request and command on one usage line: {help_s}"
     );
     assert!(
-        help_s.contains("bare `malvin REQUEST`, `--do`, and `tidy`"),
+        help_s.contains("bare malvin REQUEST") && help_s.contains("--do") && help_s.contains("tidy"),
         "full help --name must state supported invocations: {help_s}"
     );
 }

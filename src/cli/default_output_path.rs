@@ -2,7 +2,6 @@ use std::path::{Path, PathBuf};
 
 const DEFAULT_SIBLING_MAX: usize = 9999;
 
-/// Relative path string for `path` when it lies under the process cwd.
 pub(crate) fn path_relative_to_cwd(path: &Path) -> Result<String, String> {
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
     if let Ok(rel) = path.strip_prefix(&cwd) {
@@ -15,7 +14,6 @@ pub(crate) fn path_relative_to_cwd(path: &Path) -> Result<String, String> {
     Ok(path.to_string_lossy().into_owned())
 }
 
-/// When the default tex/pdf pair is occupied, allocate matching `{stem}_{n}.tex` / `.pdf` siblings.
 pub(crate) fn allocate_default_tex_pdf_pair(
     tex_default: &Path,
     pdf_default: &Path,

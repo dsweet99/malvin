@@ -1,4 +1,3 @@
-//! Spawn external `pi --rpc` into a [`BridgeSession`].
 
 use crate::acp::AgentError;
 use crate::bridge_sdk::{start_mem_watch, BridgeSession, BridgeSpawnArgs, BridgeWire};

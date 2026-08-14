@@ -1,4 +1,3 @@
-//! Lazy `.malvin/checks` discovery via `KPop` (`init_constraints.md`).
 
 use std::path::Path;
 
@@ -20,7 +19,6 @@ pub(crate) struct ChecksDiscoveryOpts {
 }
 
 impl ChecksDiscoveryOpts {
-    /// Historical lazy-discovery profile for tidy (tidy no longer runs discovery; use `init`).
     #[cfg(test)]
     pub const TIDY_LAZY: Self = Self {
         artifact_request: "checks discovery",
@@ -37,7 +35,6 @@ fn checks_file_present(work_dir: &Path) -> Result<(), String> {
     if !path.is_file() {
         return Err("checks discovery: .malvin/checks still missing".to_string());
     }
-    // Present empty / comment-only checks are accepted (zero runnable commands OK).
     load_malvin_checks(&path)?;
     Ok(())
 }
@@ -55,7 +52,6 @@ fn finish_checks_discovery(work_dir: &Path) -> Result<(), String> {
     checks_file_present(work_dir)
 }
 
-/// Run checks discovery `KPop` when `.malvin/checks` is missing.
 pub(crate) async fn ensure_malvin_checks_discovered(
     work_dir: &Path,
     shared: &SharedOpts,
@@ -76,7 +72,6 @@ pub(crate) async fn ensure_malvin_checks_discovered(
     finish_result
 }
 
-/// Gate-loop prelude: discover `.malvin/checks` when missing (uses process cwd).
 pub(crate) async fn ensure_malvin_checks_discovered_for_cwd(
     shared: &SharedOpts,
     opts: ChecksDiscoveryOpts,

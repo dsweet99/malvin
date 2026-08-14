@@ -1,4 +1,3 @@
-//! Heuristic detection for whether a workspace tree looks like it contains project source.
 
 use std::path::{Path, PathBuf};
 

@@ -1,12 +1,6 @@
-//! Prefix-filter helpers for `malvin models`.
 
 use crate::model_id::PI_PREFIX;
 
-/// Resolve optional listing prefix from trailing words.
-///
-/// Rejects legacy `download …` action words. Words are joined so path-shaped catalogs keep `/`
-/// boundaries: `malvin models pi: open` → `pi:open`, and
-/// `malvin models pi:openrouter anthropic` → `pi:openrouter/anthropic`.
 pub(crate) fn models_list_prefix(words: &[String]) -> Result<Option<String>, String> {
     if words.is_empty() {
         return Ok(None);
@@ -20,8 +14,6 @@ pub(crate) fn models_list_prefix(words: &[String]) -> Result<Option<String>, Str
     Ok(Some(join_models_prefix_words(words)))
 }
 
-/// Join filter words, inserting `/` between path segments for `pi:` ids when the left side
-/// does not already end with `:` or `/`.
 pub(crate) fn join_models_prefix_words(words: &[String]) -> String {
     let mut out = String::new();
     for word in words {
@@ -44,7 +36,6 @@ fn needs_models_filter_slash(prefix: &str) -> bool {
     prefix.starts_with(PI_PREFIX)
 }
 
-/// Whether a catalog section whose ids start with `section_head` can produce rows for `filter`.
 pub(crate) fn section_may_match(filter: Option<&str>, section_head: &str) -> bool {
     match filter {
         None => true,
@@ -53,7 +44,6 @@ pub(crate) fn section_may_match(filter: Option<&str>, section_head: &str) -> boo
     }
 }
 
-/// Whether a printed model row matches an optional id prefix filter.
 pub(crate) fn line_matches_prefix(line: &str, filter: Option<&str>) -> bool {
     let Some(f) = filter else {
         return true;

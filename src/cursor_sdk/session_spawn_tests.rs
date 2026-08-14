@@ -1,4 +1,3 @@
-//! Name witnesses for Cursor session spawn helpers (kiss `test_coverage`).
 
 #[test]
 fn kiss_cov_cursor_session_spawn_names() {

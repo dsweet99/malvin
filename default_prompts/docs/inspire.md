@@ -17,7 +17,7 @@ Batch creative exploration separate from the default `router_a` / `router_b` rou
 ## Usage
 
 ```text
-malvin inspire [OPTIONS] [REQUEST]
+malvin inspire [OPTION]... [REQUEST]
 ```
 
 If `REQUEST` is omitted (and `--doc` is not set), malvin prints short usage on stdout and exits 0.

@@ -1,4 +1,3 @@
-//! Kiss coverage witnesses for `llm_transport`.
 
 #[test]
 fn kiss_cov_llm_transport_types_and_errors() {

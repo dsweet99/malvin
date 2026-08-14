@@ -1,4 +1,3 @@
-//! Stdout / trace adapter for bridge events (VISION log classes).
 
 use crate::acp::SessionUpdateChunkKind;
 use crate::acp::AcpJsonlTrace;
@@ -43,11 +42,6 @@ pub fn handle_stream_event(session: &BridgeSession, ev: &BridgeEvent) {
     }
 }
 
-/// Feed `run_done.result` into the `--do` / `--quiet` DM extractor.
-///
-/// The Cursor SDK often puts `MALVIN_DM_*` fences only on the final result string while
-/// streamed `assistant` events omit them. ACP tees message chunks into the same filter;
-/// without this, DM-only stdout stays empty even when the agent answered correctly.
 pub(crate) fn feed_do_dm_run_result(text: &str) {
     if !crate::output::do_dm_stdout_mode() || text.is_empty() {
         return;
@@ -174,7 +168,6 @@ mod tests {
         assert!(take_captured_stdout().is_empty());
     }
 
-    /// Word-sized SDK deltas must coalesce before stdout (`ACP_VERBOSE_COALESCE_MAX` / newline).
     #[test]
     fn word_sized_assistant_chunks_coalesce_before_flush() {
         let mut coalesce = TraceChunkCoalescer::default();

@@ -1,4 +1,3 @@
-//! Neutral chat/completion types shared by the local LLM engine.
 
 use serde::{Deserialize, Serialize};
 

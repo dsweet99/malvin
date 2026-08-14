@@ -27,7 +27,6 @@ fn seed_workspace(work: &Path) {
 fn assert_workspace_restored(work: &Path) {
     let (m, cfg, gi) = workspace_paths(work);
     assert_eq!(std::fs::read_to_string(&m).unwrap(), "m\n");
-    // Home config is not session-restored; mid-session edits stick.
     assert_eq!(std::fs::read_to_string(&cfg).unwrap(), "c2\n");
     assert_eq!(std::fs::read_to_string(&gi).unwrap(), "g\n");
 }

@@ -1,4 +1,3 @@
-//! Parse typed `MalvinConfig` from TOML text and shared value readers.
 
 use crate::log_gc_config::{parse_logs_gc_config, LogsGcConfig};
 use crate::mem_limit_config::{default_mem_limit_gb, parse_mem_limit_gb};

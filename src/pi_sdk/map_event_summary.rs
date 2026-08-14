@@ -1,10 +1,8 @@
-//! Cursor/Prime-style tool subject lines for Pi `tool_execution_*` events.
 
 use serde_json::Value;
 
 use crate::tool_summary::{shorten_middle, TOOL_DISPLAY_MAX_WIDTH};
 
-/// Cursor/Prime-style subject for VISION `t|` lines (e.g. `Run ls -la`).
 pub(super) fn tool_summary_from_pi(name: Option<&str>, args: Option<&Value>) -> Option<String> {
     let label = name.unwrap_or("tool").trim();
     if label.is_empty() {

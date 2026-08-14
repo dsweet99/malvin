@@ -1,4 +1,3 @@
-//! `--do` workflow: one coder ACP prompt with dual headers (`header.md` + `do_header.md`) and user request.
 
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::agent_backend::{build_agent_backend, build_agent_backend_with_tee, AgentBackend};
@@ -21,10 +20,8 @@ pub use do_flow_prompt::{
 };
 use do_flow_acp::run_do_acp;
 
-/// Arguments for [`run_do`].
 #[derive(Debug)]
 pub struct DoArgs {
-    /// Existing `.md` path or literal text
     pub request: Option<String>,
 }
 
@@ -40,7 +37,6 @@ fn new_do_client(
     workflow: WorkflowCliOptions,
 ) -> Result<AgentBackend, String> {
     if shared.verbose {
-        // Same backend + tee construction as the default workflow (`build_agent_backend`).
         return build_agent_backend(
             shared,
             workflow,
@@ -72,13 +68,11 @@ async fn prepare_do_run(
     workflow: WorkflowCliOptions,
 ) -> Result<DoRunPrep, String> {
     let mut client = new_do_client(shared, workflow)?;
-    // Create without GC so Command: can land before retention prune.
     let (text, artifacts) = resolve_one_shot_request_artifacts(
         do_args.request.as_ref(),
         "--do",
         Some(crate::run_id::RunDirOptions { gc: false }),
     )?;
-    // Near-instant feedback: Command: before prune/auth/spawn (verbose tee); else command.log only.
     if shared.verbose {
         emit_run_startup_banner(
             &artifacts,
@@ -90,7 +84,6 @@ async fn prepare_do_run(
     }
     crate::run_id::maybe_gc_after_run_created(&artifacts.work_dir, &artifacts.run_dir);
     client.ensure_authenticated().map_err(|e| e.to_string())?;
-    // run_dir must be set before begin so the bridge session records trace.jsonl.
     client.prompts_log_run_dir = Some(artifacts.run_dir.clone());
 
     let (coder, session_dotfile_backups) =
@@ -104,7 +97,6 @@ async fn prepare_do_run(
     })
 }
 
-/// Spawn/create the coder session while rendering the `--do` prompt and snapshotting dotfiles.
 async fn begin_do_session_overlapping_prompt_prep(
     client: &mut AgentBackend,
     artifacts: &RunArtifacts,
@@ -154,8 +146,6 @@ async fn run_do_body(
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
     let mut prep = prepare_do_run(&do_args, shared, workflow).await?;
-    // Session begin already completed inside prepare_do_run (overlapped with prompt prep).
-    // Banner / command.log already emitted in prepare_do_run (before spawn).
     if shared.verbose {
         emit_run_logs_line(&prep.artifacts)?;
     }

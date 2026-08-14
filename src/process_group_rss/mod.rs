@@ -1,4 +1,3 @@
-//! Sum resident set size / USS for sandbox-tracked process sets.
 
 use std::collections::HashSet;
 
@@ -7,7 +6,6 @@ mod linux;
 #[cfg(target_os = "macos")]
 mod macos;
 
-/// Sandbox memory for `pids`: USS on Linux when available, else summed RSS.
 #[must_use]
 pub fn pids_sandbox_bytes(pids: &HashSet<u32>) -> Option<u64> {
     if pids.is_empty() {

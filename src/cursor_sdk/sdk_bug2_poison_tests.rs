@@ -1,4 +1,3 @@
-//! Bug 2 residual: paired `fatal`+`run_done` must not poison the next prompt.
 
 use crate::acp::CoderPromptOptions;
 

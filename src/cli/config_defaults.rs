@@ -1,4 +1,3 @@
-//! Apply `~/.malvin_home/config.toml` defaults to parsed CLI values when flags were not set.
 
 use clap::parser::ValueSource;
 use clap::{ArgMatches, CommandFactory, FromArgMatches};
@@ -99,15 +98,12 @@ fn apply_gate_loop_command_defaults(
 
 fn finalize_shared_model(matches: &ArgMatches, shared: &mut SharedOpts) -> Result<(), String> {
     let _ = matches;
-    // Clap/`ParsedModel` already enforce a prefix; re-canonicalize for stability.
     let _ = require_prefixed_model(&shared.model.canonical())?;
     Ok(())
 }
 
 fn load_agent_config(matches: &ArgMatches) -> Result<AgentConfig, String> {
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    // Bare on-disk `model` only fails when that value would be used (Q5=c).
-    // An explicit CLI `--model` may still override a legacy bare config.
     if global_flag_from_command_line(matches, "model") {
         return Ok(crate::malvin_config_file::load_agent_config_lenient(&cwd));
     }
@@ -162,7 +158,6 @@ pub fn apply_workspace_config_defaults(
         return Ok(());
     }
     let Some(command) = cli.command.as_mut() else {
-        // Bare `malvin` / help-style paths: validate clap default `--model` only.
         return finalize_shared_model(matches, &mut cli.shared);
     };
     let agent = load_agent_config(matches)?;
@@ -179,7 +174,6 @@ pub(crate) fn apply_shared_config_defaults(
     agent: &AgentConfig,
 ) {
     if !global_flag_from_command_line(matches, "model") {
-        // Config may still carry a legacy bare id until finalize rejects it.
         if let Ok(parsed) = crate::model_id::parse_model_id(&agent.model) {
             shared.model = parsed;
         }

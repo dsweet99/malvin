@@ -19,7 +19,7 @@ Recover after CI drift or local gate failures—without a feature plan. Tidy is 
 ## Usage
 
 ```text
-malvin tidy [OPTIONS]
+malvin tidy [OPTION]...
 ```
 
 No positional arguments. Work directory is always `.` (cwd).
@@ -28,7 +28,7 @@ No positional arguments. Work directory is always `.` (cwd).
 
 ### `--max-loops <N>` (default: 3)
 
-Outer router session budget (`effective_max_loops`). `0` is treated as `1`.
+Outer router session budget. `0` is treated as `1`.
 
 ### `--tenacious` (default: on)
 

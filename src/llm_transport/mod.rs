@@ -1,4 +1,3 @@
-//! Neutral completion types used by the local LLM engine and Prime sidecar.
 
 mod types;
 mod http_exchange;

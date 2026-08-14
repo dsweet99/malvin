@@ -28,7 +28,6 @@ pub fn format_line_stdout_ansi(who: &str, line: &str) -> String {
     }
 }
 
-/// Heartbeat TTY lines keep the who-tag color through the payload (no reset after `|`).
 #[must_use]
 pub fn format_heartbeat_stdout_ansi(who: &str, line: &str) -> String {
     format!(

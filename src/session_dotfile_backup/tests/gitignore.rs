@@ -72,7 +72,6 @@ fn gitignore_backup_retries_on_existing_collision() {
     });
 }
 
-/// Post-agent snapshot must capture agent-created gitignore before intra-session restore wipes them.
 #[test]
 fn post_agent_snapshot_preserves_agent_created_gitignore_for_gate_restore() {
     with_isolated_home(|work| {
@@ -98,7 +97,6 @@ fn post_agent_snapshot_preserves_agent_created_gitignore_for_gate_restore() {
     });
 }
 
-/// `KPop` outer loops snapshot dotfiles at each iteration start; restore must undo tamper before the next snapshot.
 #[test]
 fn outer_loop_resnapshot_restores_gitignore_between_iterations() {
     const BASELINE: &str = "baseline\n";

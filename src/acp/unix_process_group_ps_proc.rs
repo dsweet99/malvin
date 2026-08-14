@@ -1,4 +1,3 @@
-//! `/proc`-based process snapshots for mock-agent / test-fast teardown paths.
 
 use std::collections::HashSet;
 

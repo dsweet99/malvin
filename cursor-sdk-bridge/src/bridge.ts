@@ -1,12 +1,5 @@
-/**
- * Long-lived malvin ↔ @cursor/sdk JSONL bridge.
- * One Agent.create per process; many agent.send calls.
- *
- * Cancel/close are handled concurrently with an in-flight send: stdin is read
- * into a queue so cancel is not blocked behind `await handleSend`.
- */
 
-// Arm parent-death watch before heavy imports (see parent_death.ts).
+
 import "./parent_death.js";
 import * as readline from "node:readline";
 import { Agent, Cursor, CursorAgentError, configureCursorSdk } from "@cursor/sdk";
@@ -39,16 +32,16 @@ export {
 export { installParentDeathWatch } from "./parent_death.js";
 
 let agent: SDKAgent | null = null;
-/** Last successful create/resume agent id (for stale-auth resume). */
+
 let agentId: string | null = null;
-/** Options used for the live agent (needed by Agent.resume). */
+
 let agentOptions: AgentOptions | null = null;
 let currentRun: Run | null = null;
 let closing = false;
 
 function quietExit(code: number): void {
   closing = true;
-  // Avoid waiting on dispose/cancel — those can dump stacks while dying.
+  
   process.exit(code);
 }
 
@@ -66,8 +59,8 @@ function installQuietSignalHandlers(): void {
   process.on("unhandledRejection", (reason) => {
     if (closing) return;
     emitFatal(reason);
-    // Do not process.exit here during normal ops — emit fatal and let Rust decide.
-    // During signal shutdown, `closing` suppresses dumps.
+    
+    
   });
 }
 
@@ -96,9 +89,9 @@ function emitFatal(err: unknown): void {
 type AgentBootOp = CreateOp | ResumeOp;
 
 function preferHttp1ForAgent(): boolean {
-  // HTTP/2 agent streams often fail through authenticated CONNECT proxies
-  // (pier egress): SDK retries end as "Connection failed repeatedly", while
-  // cursor-agent CLI and HTTP/1 succeed on the same network.
+  
+  
+  
   const flag = (process.env.MALVIN_CURSOR_USE_HTTP1 || "").trim().toLowerCase();
   if (flag === "1" || flag === "true" || flag === "yes") return true;
   if (flag === "0" || flag === "false" || flag === "no") return false;
@@ -108,7 +101,6 @@ function preferHttp1ForAgent(): boolean {
   );
 }
 
-/** Apply once per bridge process before Agent.create/resume. */
 function ensureHttp1AgentTransport(): void {
   if (!preferHttp1ForAgent()) return;
   configureCursorSdk({ local: { useHttp1ForAgent: true } });
@@ -203,7 +195,6 @@ async function handleResume(req: ResumeOp): Promise<void> {
   }
 }
 
-/** Evict cached handle and Agent.resume — forum workaround for idle auth. */
 async function recoverStaleAuth(): Promise<boolean> {
   if (!agentId || !agentOptions) return false;
   const id = agentId;
@@ -251,7 +242,7 @@ async function handleSend(req: SendOp, alreadyRecovered = false): Promise<void> 
       try {
         await currentRun.wait();
       } catch {
-        // best-effort drain of the failed run
+        
       }
       currentRun = null;
       return;
@@ -298,7 +289,7 @@ async function handleCancel(): Promise<void> {
       await run.cancel();
     }
   } catch {
-    // best-effort
+    
   }
 }
 
@@ -308,8 +299,8 @@ async function handleClose(): Promise<void> {
   agent = null;
   agentId = null;
   agentOptions = null;
-  // Skip asyncDispose: malvin tears down the process group immediately after
-  // close; dispose can add hundreds of ms (ideas.md #10–11).
+  
+  
   quietExit(0);
 }
 
@@ -385,8 +376,8 @@ async function main(): Promise<void> {
     wake?.();
   });
   rl.on("close", () => {
-    // Parent (malvin) died or closed the pipe — exit quietly; do not leave
-    // in-flight SDK work free to dump unhandledRejection stacks on stderr.
+    
+    
     stdinClosed = true;
     wake?.();
     if (!closing) {
@@ -444,7 +435,7 @@ async function main(): Promise<void> {
       continue;
     }
 
-    // Serialize create/send/list_models, but do not await here so cancel can interleave.
+    
     serial = serial
       .then(() => dispatch(req))
       .catch((err: unknown) => {

@@ -1,4 +1,3 @@
-//! Shared fixtures for herdr lifecycle socket I/O tests.
 
 #![allow(unsafe_code)]
 
@@ -17,7 +16,6 @@ pub fn herdr_test_env_lock() -> &'static Mutex<()> {
 }
 
 fn restore_env(key: &str, old: Option<std::ffi::OsString>) {
-    // SAFETY: exclusive under `herdr_test_env_lock`.
     unsafe {
         match old {
             Some(v) => std::env::set_var(key, v),
@@ -33,7 +31,6 @@ pub fn install_test_herdr_env(sock: &Path) -> [Option<std::ffi::OsString>; 4] {
         std::env::var_os("HERDR_SOCKET_PATH"),
         std::env::var_os("HERDR_PANE_ID"),
     ];
-    // SAFETY: exclusive under `herdr_test_env_lock`.
     unsafe {
         std::env::set_var("HERDR_SOCKET_PATH", sock);
         std::env::set_var("HERDR_PANE_ID", "test-pane");

@@ -8,7 +8,6 @@ pub fn timestamp_now_string() -> String {
     )
 }
 
-/// Wall-clock payload for stdout heartbeats (`YYYYMMDD.HHMMSS {status}`).
 #[must_use]
 pub fn heartbeat_payload_now() -> String {
     let now = chrono::Local::now();

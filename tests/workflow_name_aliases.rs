@@ -1,4 +1,3 @@
-//! Unit tests for legacy workflow/config name aliases.
 
 use malvin::{canonical_workflow_name, resolve_session_log_path, resolve_workspace_malvin_config_path, RunArtifacts};
 

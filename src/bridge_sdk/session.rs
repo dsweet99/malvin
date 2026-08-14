@@ -1,4 +1,3 @@
-//! Spawn and talk to the Node bridge process.
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -15,19 +14,14 @@ use crate::bridge_protocol::BridgeRequest;
 
 use super::session_io::{drain_until_run_done, write_request};
 
-/// Long-lived SDK connections time out (~10 minutes). Restart the Node bridge when aged out.
 pub const SDK_BRIDGE_MAX_AGE: Duration = Duration::from_secs(10 * 60);
 
-/// Wire protocol spoken on the bridge child stdin/stdout.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BridgeWire {
-    /// Cursor Node JSONL (`BridgeRequest` / `BridgeEvent`).
     NodeBridge,
-    /// External `pi --rpc` JSONL (mapped into [`crate::bridge_protocol::BridgeEvent`]).
     PiRpc,
 }
 
-/// Cached tool-call start for ACP-parity done-line timing.
 #[derive(Debug, Clone)]
 pub struct ToolCallStart {
     pub started: Instant,
@@ -46,30 +40,21 @@ pub struct BridgeSession {
     pub last_response: Arc<Mutex<String>>,
     pub timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
     pub run_dir: Option<PathBuf>,
-    /// When this bridge process was spawned (`Instant::now` at assemble).
     pub started_at: Instant,
-    /// Agent id from create/resume `ok` (Cursor resume).
     pub agent_id: Mutex<Option<String>>,
-    /// ACP-parity stdout coalescer for streamed assistant/thinking chunks.
     pub(crate) stdout_coalesce: Mutex<crate::acp::TraceChunkCoalescer>,
-    /// toolCallId → start instant + summary (for done-line duration).
     pub tool_starts: Mutex<HashMap<String, ToolCallStart>>,
-    /// Map pi-ai usage field names onto ACP-style keys before recording.
     pub normalize_pi_usage: bool,
-    /// Child protocol (Node bridge vs Pi RPC).
     pub wire: BridgeWire,
 }
 
-/// Common fields filled before provider-specific spawn.
 pub struct BridgeSpawnArgs<'a> {
     pub cwd: &'a Path,
     pub model: &'a str,
-    /// Pi `--thinking` level from `pi:…[thinking=…]` (ignored by Cursor).
     pub thinking: Option<&'a str>,
     pub io: AgentIoOptions,
     pub run_dir: Option<PathBuf>,
     pub timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
-    /// Cursor: resume via `Agent.resume` when set.
     pub resume_agent_id: Option<String>,
     pub normalize_pi_usage: bool,
 }

@@ -1,4 +1,3 @@
-//! Session begin / end for [`super::sdk_client::SdkClient`].
 
 use std::path::{Path, PathBuf};
 
@@ -8,9 +7,6 @@ use crate::bridge_sdk::{BridgeSpawnArgs, SDK_BRIDGE_MAX_AGE};
 use super::sdk_client::{BridgeKind, SdkClient};
 
 impl SdkClient {
-    /// # Errors
-    ///
-    /// Returns [`AuthError`] when the provider is not authenticated.
     pub fn ensure_authenticated(&self) -> Result<(), AuthError> {
         match self.kind {
             BridgeKind::Cursor => crate::cursor_sdk::ensure_sdk_authenticated(),
@@ -18,11 +14,6 @@ impl SdkClient {
         }
     }
 
-    /// Open a coder session if needed. Restarts the Node bridge when aged out.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`AgentError`] when spawn or shutdown fails after retries.
     pub async fn ensure_coder_session(&mut self, cwd: &Path) -> Result<(), AgentError> {
         if self.sdk_bridge_needs_restart() {
             self.end_coder_session().await?;
@@ -40,9 +31,6 @@ impl SdkClient {
             .is_some_and(|s| s.started_at.elapsed() >= SDK_BRIDGE_MAX_AGE)
     }
 
-    /// # Errors
-    ///
-    /// Returns [`AgentError`] when spawn fails after retries.
     pub async fn begin_coder_session(&mut self, cwd: &Path) -> Result<(), AgentError> {
         if self.session.is_some() {
             return Err(AgentError(format!(
@@ -91,9 +79,6 @@ impl SdkClient {
         )))
     }
 
-    /// # Errors
-    ///
-    /// Returns [`AgentError`] when shutdown fails.
     pub async fn end_coder_session(&mut self) -> Result<(), AgentError> {
         if let Some(s) = self.session.take() {
             if matches!(self.kind, BridgeKind::Cursor) {

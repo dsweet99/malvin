@@ -1,17 +1,10 @@
-//! Resolve a Node.js binary suitable for `@cursor/sdk` (Node ≥ 22.13).
 
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::OnceLock;
 
-/// Prefer `MALVIN_NODE`, then PATH/`node` candidates with major version ≥ 22.
-///
-/// # Errors
-///
-/// Returns an error when no suitable Node is found.
 pub fn resolve_node_bin() -> Result<PathBuf, String> {
     static CACHED: OnceLock<Result<PathBuf, String>> = OnceLock::new();
-    // Cache per process (ideas.md #5). MALVIN_NODE changes mid-process are ignored.
     CACHED.get_or_init(resolve_node_bin_uncached).clone()
 }
 
@@ -70,13 +63,11 @@ fn write_sticky_node_bin(path: &std::path::Path) {
 fn node_candidates() -> Vec<PathBuf> {
     let mut out = Vec::new();
     push_unique(&mut out, crate::support_paths::lookup_bin_on_path("node"));
-    // Cursor agent ships a modern Node next to its CLI (when the CLI is on PATH).
     if let Some(agent) = crate::support_paths::agent_or_cursor_agent_bin() {
         if let Some(dir) = agent.parent() {
             push_unique(&mut out, Some(dir.join("node")));
         }
     }
-    // Sandboxed quality gates often strip cursor-agent from PATH; still find bundled Node.
     for bundled in cursor_agent_version_nodes() {
         push_unique(&mut out, Some(bundled));
     }
@@ -92,7 +83,6 @@ fn push_unique(out: &mut Vec<PathBuf>, candidate: Option<PathBuf>) {
     }
 }
 
-/// Newest-first Node binaries under `~/.local/share/cursor-agent/versions/*/node`.
 fn cursor_agent_version_nodes() -> Vec<PathBuf> {
     let versions = crate::user_home::user_home_dir().join(".local/share/cursor-agent/versions");
     let Ok(entries) = std::fs::read_dir(&versions) else {
@@ -103,7 +93,7 @@ fn cursor_agent_version_nodes() -> Vec<PathBuf> {
         .map(|e| e.path())
         .filter(|p| p.is_dir())
         .collect();
-    dirs.sort_by(|a, b| b.cmp(a)); // version dir names sort newest-first for current scheme
+    dirs.sort_by(|a, b| b.cmp(a));
     dirs.into_iter()
         .map(|d| d.join("node"))
         .filter(|p| p.is_file())
@@ -121,13 +111,11 @@ fn node_major_version(bin: &std::path::Path) -> Option<u32> {
     major.parse().ok()
 }
 
-/// Suppress Node process warnings (e.g. `SQLite` `ExperimentalWarning`) on stderr.
 pub(crate) fn apply_quiet_node_cli(cmd: &mut tokio::process::Command) {
     cmd.arg("--no-warnings");
     cmd.env("NODE_NO_WARNINGS", "1");
 }
 
-/// Same quieting for [`std::process::Command`] (e.g. `malvin models`).
 pub(crate) fn apply_quiet_node_cli_std(cmd: &mut std::process::Command) {
     cmd.arg("--no-warnings");
     cmd.env("NODE_NO_WARNINGS", "1");
@@ -147,7 +135,6 @@ mod tests {
     #[test]
     fn cursor_agent_version_nodes_lists_files_when_present() {
         let found = cursor_agent_version_nodes();
-        // Host may lack cursor-agent installs; only assert shape when nonempty.
         for p in &found {
             assert!(p.is_file(), "{}", p.display());
             assert_eq!(p.file_name().and_then(|s| s.to_str()), Some("node"));
@@ -172,7 +159,6 @@ try {
     local: { cwd: "/tmp", settingSources: ["project"] },
   });
 } catch {
-  // expected
 }
 "#,
             ])

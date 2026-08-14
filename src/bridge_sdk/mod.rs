@@ -1,4 +1,3 @@
-//! Shared Cursor/Prime/Pi JSONL bridge core (session, IO, log adapters, timing).
 
 mod log_adapter;
 mod log_adapter_tool;

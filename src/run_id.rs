@@ -2,7 +2,6 @@ use chrono::Utc;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
-/// Options for [`create_run_dir`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RunDirOptions {
     pub gc: bool,
@@ -10,10 +9,6 @@ pub struct RunDirOptions {
 
 impl Default for RunDirOptions {
     fn default() -> Self {
-        // Cross-workspace GC walks every hash under `~/.malvin_home/logs`. Unit tests
-        // (`cfg!(test)`) and integration/nextest binaries (`target/*/deps/…`) often use
-        // the real home without isolation; that walk can exceed the 1.5s per-test budget.
-        // Production `malvin` binaries are not under `deps/`, so they keep GC on.
         Self {
             gc: default_gc_enabled(),
         }
@@ -31,15 +26,6 @@ fn default_gc_enabled() -> bool {
     !(path.contains("/deps/") || path.contains("\\deps\\"))
 }
 
-/// Creates `~/.malvin_home/logs/<hash>/<timestamp>_<id>/` for `base_dir` (or the current directory).
-///
-/// When [`RunDirOptions::gc`] is true, retention prune runs **after** the new run directory exists
-/// (the new run is protected). Prefer deferring GC until after `Command:` logging on agent flows
-/// via [`maybe_gc_after_run_created`].
-///
-/// # Errors
-///
-/// Returns [`std::io::Error`] if directory creation fails or unique id allocation exhausts retries.
 pub fn create_run_dir(base_dir: Option<&Path>, opts: RunDirOptions) -> std::io::Result<PathBuf> {
     let parent = base_dir.unwrap_or_else(|| Path::new("."));
     let run_root = crate::malvin_logs_root(parent);
@@ -58,9 +44,6 @@ fn gc_after_run_created(base_dir: &Path, run_dir: &Path) {
     }
 }
 
-/// Run log retention (+ ACP spawn sweep) for an already-created run directory.
-///
-/// No-op when default GC is disabled (unit/integration test binaries under `deps/`).
 pub fn maybe_gc_after_run_created(base_dir: &Path, run_dir: &Path) {
     if !default_gc_enabled() {
         return;

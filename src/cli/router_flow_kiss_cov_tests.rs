@@ -1,4 +1,3 @@
-//! External kiss witnesses for `router_flow` private symbols.
 
 #[test]
 fn kiss_witness_router_run_prep() {

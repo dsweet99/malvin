@@ -1,4 +1,3 @@
-//! Empty / invalid home-config heal paths (not session restore).
 
 use crate::artifacts::SessionDotfileBackups;
 use crate::test_utils::with_isolated_home;

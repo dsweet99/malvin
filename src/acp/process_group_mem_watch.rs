@@ -10,7 +10,6 @@ const POLL_INTERVAL: Duration = if cfg!(test) {
 } else {
     Duration::from_millis(500)
 };
-/// Consecutive `None` USS samples before fail-closed teardown (~1.5s at 500ms poll in production).
 const MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES: u32 = 3;
 
 pub struct MemWatchHandles {
@@ -29,7 +28,6 @@ pub async fn watch_process_group_memory(handles: MemWatchHandles) {
     .await;
 }
 
-/// Poll sandbox USS and terminate on over-limit or sustained measurement failure.
 #[cfg(unix)]
 pub async fn watch_process_group_memory_with_rss_sampler(
     handles: MemWatchHandles,
@@ -48,9 +46,6 @@ pub async fn watch_process_group_memory_with_rss_sampler(
             return;
         }
         let rss = sample_rss(Some(pgid), &spawn_pid_baseline);
-        // After stdout closes (`reader_dead`), keep enforcing hard over-limit kills
-        // (orphans may still be alive) but do not fail-closed on measurement gaps —
-        // teardown often makes USS briefly unreadable and must not look like an OOM.
         let allow_fail_closed = !reader_dead.load(std::sync::atomic::Ordering::SeqCst);
         if memory_watch_should_terminate(
             rss,
@@ -106,8 +101,6 @@ fn record_sandbox_oom_marker(run_dir: Option<&Path>, facts: crate::sandbox_oom::
     let Some(run_dir) = run_dir else {
         return;
     };
-    // Gate loops set an iteration; ordinary malvin/--do/inspire runs use 0 so the
-    // marker still distinguishes sandbox OOM from a generic bridge failure.
     let gate_iteration = crate::gate_loop_session::active_gate_iteration().unwrap_or(0);
     let record = crate::sandbox_oom::SandboxOomKillRecord::from_facts(gate_iteration, facts);
     if let Err(e) = crate::sandbox_oom::record_sandbox_oom_kill(run_dir, record) {

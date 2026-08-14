@@ -1,7 +1,3 @@
-//! Wall-clock and phase-bucketed LLM wait timing for agent runs.
-//!
-//! JSON is always written to [`RUN_TIMING_JSON_FILE`]; `code`/`kpop`/`router` also print
-//! [`RUN_TIMING_SUMMARY_PREFIX`] and a combined `COST:` footnote (tokens + cost fields).
 
 mod cost;
 mod lifecycle;
@@ -25,10 +21,8 @@ pub enum TimingPhase {
     Implement,
 }
 
-/// Wire keys for per-type tool-call wall durations (ACP kinds + `other`).
 pub const TOOL_CALL_TYPE_MS_KEYS: [&str; 5] = ["read", "search", "edit", "execute", "other"];
 
-/// ACP concurrent-batch step proxy state (see `COST:` / pier agent steps).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) enum AcpStepProxy {
     #[default]
@@ -37,17 +31,13 @@ pub(crate) enum AcpStepProxy {
     TrailingAssistant,
 }
 
-/// How `COST` footnote USD fields are produced for this run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CostPolicy {
-    /// `cursor:` / `pi:`: estimate from per-model `usd_per_microtoken_*` × token counts / 1e6 (0 when rates are unset).
     #[default]
     EstimateFromRates,
-    /// Treat every completion as cost `0` (reserved; unused after local-backend removal).
     Zero,
 }
 
-/// Choose [`CostPolicy`] from a prefixed model id (`cursor:` / `pi:`).
 #[must_use]
 pub const fn cost_policy_for_model(_model: &str) -> CostPolicy {
     CostPolicy::EstimateFromRates
@@ -69,14 +59,10 @@ pub struct RunTiming {
     tool_calls_other: Duration,
     pub(crate) tx_costs: Vec<f64>,
     pub(crate) unknown_tx_count: u32,
-    /// Cursor-mode rates for estimating USD cost from token usage.
     pub(crate) token_cost_rates: crate::malvin_config_file::TokenCostRates,
-    /// Backend-specific cost filling policy (`cursor:` / `pi:`).
     pub(crate) cost_policy: CostPolicy,
     pub(crate) steps: u64,
-    /// `None` until at least one input token count is observed.
     pub(crate) tokens_in: Option<u64>,
-    /// `None` until at least one output token count is observed.
     pub(crate) tokens_out: Option<u64>,
     pub(crate) cache_read: Option<u64>,
     pub(crate) cache_write: Option<u64>,
@@ -119,8 +105,6 @@ impl Default for RunTiming {
 }
 
 impl RunTiming {
-    /// Adds wall time for one completed tool call, attributed by ACP wire `kind`.
-    /// Unknown kinds accumulate under `other`. Aggregate `tool_calls` is always updated.
     pub fn add_tool_call_wall(&mut self, kind: &str, d: Duration) {
         self.tool_calls = self.tool_calls.saturating_add(d);
         let bucket = match kind {
@@ -176,20 +160,10 @@ impl RunTiming {
         })
     }
 
-    /// Writes timing JSON and prints the human-readable summary line.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`std::io::Error`] when writing under `run_dir` fails.
     pub fn write_json_and_print_summary(&self, run_dir: &Path) -> std::io::Result<()> {
         report::write_json_and_print_summary(self, run_dir)
     }
 
-    /// Writes timing JSON without printing a summary line.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`std::io::Error`] when writing under `run_dir` fails.
     pub fn write_json_only(&self, run_dir: &Path) -> std::io::Result<()> {
         report::write_json_only(self, run_dir)
     }

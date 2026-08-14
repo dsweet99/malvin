@@ -1,4 +1,3 @@
-//! Built-in per-command documentation (`default_prompts/docs/*.md`), embedded at compile time.
 
 use std::io::{self, Write};
 
@@ -33,7 +32,6 @@ pub(crate) const fn command_doc_markdown(cmd: &Commands) -> &'static str {
     }
 }
 
-/// Embedded markdown for `--doc` (overview + default-route contract when `command` is `None`).
 #[must_use]
 pub(crate) fn doc_text(command: Option<&Commands>) -> String {
     command.map_or_else(

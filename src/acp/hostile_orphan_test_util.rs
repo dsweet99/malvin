@@ -1,4 +1,3 @@
-//! Shared hostile-agent fixtures for sandbox regression tests.
 
 use std::path::Path;
 use std::process::Stdio;
@@ -39,8 +38,6 @@ fn hostile_test_wait_budget() -> Duration {
     }
 }
 
-/// Spawns an agent whose orphan uses the classic double-fork daemon pattern: `setsid`, inner
-/// `fork`, middle exits, grandchild reparented to init with `ppid == 1` and `pgid != pid`.
 pub fn spawn_hostile_double_fork_daemon(cwd: &Path, orphan_pid_file: &Path) -> (std::process::Child, u32) {
     use std::os::unix::process::CommandExt;
     let script = format!(
@@ -72,8 +69,6 @@ exec sleep 60
     (child, pgid)
 }
 
-/// Like [`spawn_hostile_agent`], but the session leader exits right after forking the orphan
-/// (no `sleep` parent), so the agent process group is empty while the `setsid` orphan keeps running.
 pub fn spawn_hostile_agent_exits_after_orphan_fork(
     cwd: &Path,
     orphan_pid_file: &Path,
@@ -163,7 +158,6 @@ pub async fn wait_for_init_reparent(pid: u32) {
     panic!("orphan never reparented to init (pid={pid})");
 }
 
-/// Spawns an agent whose orphan reparents to init with `MALVIN_WORKSPACE` set (malvin ACP pattern).
 pub fn spawn_hostile_agent_acp_orphan(
     cwd: &Path,
     orphan_pid_file: &Path,
@@ -194,7 +188,6 @@ else:
     (child, pgid)
 }
 
-/// Spawns an isolated-PG agent sleep child plus a malvin-PG sibling (no `process_group(0)`).
 pub fn spawn_agent_pg_and_malvin_sibling(
 ) -> (u32, u32, std::process::Child, std::process::Child) {
     use std::os::unix::process::CommandExt;

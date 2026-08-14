@@ -174,7 +174,6 @@ fn local_cost_policy_forces_zero_per_step() {
         total_tokens: Some(4),
         cost: None,
     }));
-    // Even if a caller also invokes cost recording, Zero policy ignores returned/missing cost.
     r.record_completion_cost(&ResponseUsage {
         prompt_tokens: Some(3),
         completion_tokens: Some(1),

@@ -48,7 +48,6 @@ max_loops = 5
         let cfg = open_malvin_config(work).expect("open must not hard-fail on bare model");
         let after = std::fs::read_to_string(&path).expect("read after");
         assert_eq!(before, after, "existing config.toml must never be rewritten");
-        // Soft parse falls back to defaults for invalid agent.model; disk stays bare.
         assert_eq!(cfg.agent.model, DEFAULT_CLI_MODEL);
         assert!(after.contains("model = \"auto\""));
     });

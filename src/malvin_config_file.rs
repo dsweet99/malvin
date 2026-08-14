@@ -1,4 +1,3 @@
-//! Unified `~/.malvin_home/config.toml` schema, default merge-on-open, and typed accessors.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -39,7 +38,6 @@ pub(crate) use malvin_config_parse::{
 pub const DEFAULT_MAX_HYPOTHESES: usize = 5;
 pub const DEFAULT_MAX_LOOPS: usize = 1;
 pub const DEFAULT_MAX_LOOPS_CODE: usize = 3;
-/// Built-in default for write Review/Plan `KPop` sessions when CLI and `[review]` are unset.
 pub const DEFAULT_WRITE_MAX_HYPOTHESES: usize = 10;
 
 const DEFAULT_MALVIN_CONFIG_TEMPLATE: &str = include_str!(concat!(
@@ -50,11 +48,8 @@ const DEFAULT_MALVIN_CONFIG_TEMPLATE: &str = include_str!(concat!(
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AgentConfig {
     pub model: String,
-    /// Hypothesis steps per `KPop` agent session.
     pub max_hypotheses: usize,
-    /// Gate-loop budget for kpop.
     pub max_loops: usize,
-    /// Gate-loop budget for tidy and write (`max_loops_code` config key).
     pub max_loops_code: usize,
     pub max_acp_retries: u32,
 }
@@ -73,15 +68,11 @@ impl Default for AgentConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ReviewConfig {
-    /// Hypothesis budget for write Review and Plan `KPop` sessions.
-    /// `None` means use [`DEFAULT_WRITE_MAX_HYPOTHESES`].
     pub max_hypotheses: Option<usize>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct DefaultWorkflowConfig {
-    /// Hypothesis budget for bare `malvin REQUEST` multi-group `KPop`.
-    /// `None` means use [`DEFAULT_MAX_HYPOTHESES`].
     pub max_hypotheses: Option<usize>,
 }
 
@@ -95,10 +86,8 @@ impl DefaultWorkflowConfig {
 #[derive(Debug, Clone, PartialEq)]
 pub struct MalvinConfig {
     pub mem_limit_gb: u64,
-    /// Local llama.cpp context window (`n_ctx` / `n_ctx_seq`).
     pub context_size: u32,
     pub theme: TerminalTheme,
-    /// Per-model Cursor-mode USD rates (`[agent.<provider>.<name>]`), keyed by model id.
     pub token_cost_rates: BTreeMap<String, TokenCostRates>,
     pub logs: LogsGcConfig,
     pub agent: AgentConfig,
@@ -107,7 +96,6 @@ pub struct MalvinConfig {
 }
 
 impl MalvinConfig {
-    /// Rates for `model` (`cursor:auto`, …); missing tables yield zeros.
     #[must_use]
     pub fn token_cost_rates_for(&self, model: &str) -> TokenCostRates {
         self.token_cost_rates
@@ -117,13 +105,11 @@ impl MalvinConfig {
     }
 }
 
-/// Ensure `~/.malvin_home/config.toml` exists and contains every known key (writes missing defaults).
 pub fn ensure_malvin_config_file(work_dir: &Path) -> Result<(), String> {
     let _ = open_malvin_config(work_dir)?;
     Ok(())
 }
 
-/// Read workspace config without creating or updating the on-disk file.
 pub fn load_malvin_config(work_dir: &Path) -> MalvinConfig {
     let path = malvin_config_path(work_dir);
     let Ok(text) = std::fs::read_to_string(&path) else {
@@ -141,8 +127,6 @@ pub fn load_malvin_config(work_dir: &Path) -> MalvinConfig {
     parse_malvin_config(&merged)
 }
 
-/// Open workspace config: create if missing or empty (with template defaults); never rewrite a
-/// nonempty existing file.
 pub fn open_malvin_config(work_dir: &Path) -> Result<MalvinConfig, String> {
     let path = malvin_config_path(work_dir);
     ensure_config_parent_dir(&path)?;
@@ -160,8 +144,6 @@ pub fn open_malvin_config(work_dir: &Path) -> Result<MalvinConfig, String> {
     }
     let mut on_disk = read_on_disk_config_value(&path)?;
     merge_missing_keys(&mut on_disk, &template);
-    // Soft parse: bare `model` does not block open/ensure. Command paths that *use* config
-    // `model` enforce prefixes via [`load_agent_config_strict`] (Q5=c).
     Ok(parse_malvin_config(
         &toml::to_string(&on_disk).map_err(|e| e.to_string())?,
     ))

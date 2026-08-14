@@ -14,18 +14,17 @@ pub(crate) fn effective_tidy_max_loops(max_loops: usize) -> usize {
 }
 
 #[derive(Args, Debug, Clone)]
+#[command(override_usage = "malvin tidy [OPTION]...")]
 pub struct TidyArgs {
-    /// Outer router session budget (`effective_max_loops`).
+    /// Outer router session budget
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE)]
     pub max_loops: usize,
-    /// Hypothesis budget for `kpop_common.md` (`{{ max_hypotheses }}`).
+    /// Hypothesis budget
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES)]
     pub max_hypotheses: usize,
-    /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
+    /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`
     #[arg(long, default_value_t = crate::cli::loop_opts::DEFAULT_TENACIOUS)]
     pub tenacious: bool,
-    /// Deprecated: review fan-out removed; tidy now uses the default router.
-    /// (`-q` is reserved for global `--quiet`.)
     #[arg(long, default_value_t = false, hide = true)]
     pub quick: bool,
 }
@@ -114,7 +113,6 @@ mod tests {
             "--no-tenacious",
         ])
         .expect("parse");
-        // --no-tenacious is global; tidy flag tenacious still defaults true until apply.
         match cli.command {
             Some(Commands::Tidy(t)) => {
                 assert_eq!(t.max_loops, 7);

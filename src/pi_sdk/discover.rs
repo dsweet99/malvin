@@ -1,11 +1,9 @@
-//! Locate the external `pi` binary (`MALVIN_PI` or `PATH`).
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 pub const PI_MISSING_HINT: &str = "pi backend requires the pi binary on PATH (or MALVIN_PI). Install pi_agent_rust’s pi CLI; malvin does not bundle it.";
 
-/// Minimum supported `pi --version` (major, minor, patch), pinned to the RPC shape we map.
 pub const PI_MIN_VERSION: (u32, u32, u32) = (0, 1, 23);
 
 #[must_use]
@@ -13,11 +11,6 @@ pub fn pi_missing_binary_message() -> String {
     PI_MISSING_HINT.to_string()
 }
 
-/// Resolve the `pi` executable.
-///
-/// # Errors
-///
-/// Returns an actionable install hint when neither `MALVIN_PI` nor `PATH` yields a usable file.
 pub fn resolve_pi_bin() -> Result<PathBuf, String> {
     if let Some(path) = std::env::var_os("MALVIN_PI") {
         let path = PathBuf::from(path);
@@ -53,11 +46,6 @@ fn path_is_executable(path: &Path) -> bool {
     }
 }
 
-/// Version + executability probe used at first spawn.
-///
-/// # Errors
-///
-/// Returns an error when `--version` fails, cannot be parsed, or is below [`PI_MIN_VERSION`].
 pub fn pi_version_ok(bin: &Path) -> Result<(), String> {
     let output = Command::new(bin)
         .arg("--version")
@@ -97,7 +85,6 @@ pub fn pi_version_ok(bin: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Parse `pi X.Y.Z …` from `--version` stdout.
 #[must_use]
 pub(crate) fn parse_pi_version(text: &str) -> Option<(u32, u32, u32)> {
     let rest = text.lines().next()?.trim().strip_prefix("pi ")?;

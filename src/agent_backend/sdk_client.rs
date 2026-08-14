@@ -1,4 +1,3 @@
-//! Unified Cursor/Pi bridge SDK client (`SdkClient`).
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -7,7 +6,6 @@ use crate::acp::AgentIoOptions;
 use crate::bridge_sdk::BridgeSession;
 use crate::model_id::{ModelBackend, ParsedModel};
 
-/// Which agent bridge / auth path this client uses.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BridgeKind {
     Cursor,
@@ -19,12 +17,9 @@ pub struct SdkClient {
     pub kind: BridgeKind,
     pub io: AgentIoOptions,
     pub prompts_log_run_dir: Option<PathBuf>,
-    /// Max spawn/prompt retries (legacy CLI flag name: `--max-acp-retries`).
     pub max_acp_retries: u32,
     pub(crate) session: Option<BridgeSession>,
-    /// Resolved cwd from the last successful `begin_coder_session` (kept after teardown for retry).
     pub(crate) session_cwd: Option<PathBuf>,
-    /// Last Cursor SDK agent id (kept across bridge restarts for `Agent.resume`).
     pub(crate) last_agent_id: Option<String>,
     pub(crate) timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
 }
@@ -118,7 +113,6 @@ impl SdkClient {
         self.session.is_some()
     }
 
-    /// Cursor/Pi keep the bridge for process life (unlike one-shot ACP historically).
     #[must_use]
     pub const fn keeps_coder_session_for_process_life(&self) -> bool {
         true

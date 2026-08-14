@@ -1,4 +1,3 @@
-//! External kiss witnesses for [`super::wrappers`] and [`super::alloc`].
 
 #[test]
 fn kiss_witness_session_dotfile_wrappers_and_alloc() {

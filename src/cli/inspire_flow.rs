@@ -1,4 +1,3 @@
-//! `inspire` subcommand: one-shot MBC2 boundary-exploration prompt from `mbc2.md`.
 
 use std::collections::HashMap;
 
@@ -15,10 +14,10 @@ use crate::cli::{SharedOpts, WorkflowCliOptions};
 use crate::prompts::{PromptError, PromptStore, render_mbc2_for_scheduled_kpop_block};
 use crate::run_timing::TimingPhase;
 
-/// Arguments for [`run_inspire`].
 #[derive(Args, Debug)]
+#[command(override_usage = "malvin inspire [OPTION]... [REQUEST]")]
 pub struct InspireArgs {
-    /// Existing `.md` path or literal text → `~/.malvin_home/logs/.../plan_<random>.md`.
+    /// Existing `.md` path or literal text
     pub request: Option<String>,
 }
 
@@ -41,9 +40,6 @@ pub fn build_inspire_render_context(user_prompt: &str) -> HashMap<String, String
     HashMap::from([("user_prompt".into(), user_prompt.to_string())])
 }
 
-/// # Errors
-///
-/// Returns a message when `mbc2.md` cannot be loaded or rendered.
 pub fn render_inspire_prompt(user_prompt: &str) -> Result<String, String> {
     let store = prepare_inspire_prompt_store()?;
     let ctx = build_inspire_render_context(user_prompt);
@@ -81,13 +77,11 @@ async fn prepare_inspire_run(
     workflow: WorkflowCliOptions,
 ) -> Result<InspireRunPrep, String> {
     let mut client = new_inspire_client(shared, workflow)?;
-    // Create without GC so Command: can land before retention prune.
     let (text, artifacts) = resolve_one_shot_request_artifacts(
         inspire.request.as_ref(),
         "inspire",
         Some(crate::run_id::RunDirOptions { gc: false }),
     )?;
-    // Near-instant feedback: Command: before prune, auth/backups, and agent spawn.
     inspire_emit_startup_banner(inspire, shared, &artifacts)?;
     crate::run_id::maybe_gc_after_run_created(&artifacts.work_dir, &artifacts.run_dir);
     let session_dotfile_backups = finish_one_shot_auth_and_backups(&mut client, &artifacts)?;
@@ -106,7 +100,6 @@ pub async fn run_inspire(
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
     let mut prep = prepare_inspire_run(&inspire, shared, workflow).await?;
-    // Complete spawn/handshake before the first `Logs:` line (same idea as default router).
     prep.client
         .begin_coder_session(&prep.artifacts.work_dir)
         .await

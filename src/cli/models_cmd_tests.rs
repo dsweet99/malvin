@@ -1,4 +1,3 @@
-//! Unit tests for [`super::models_cmd`].
 
 use super::models_cmd::test_hooks::*;
 use super::models_cmd::{run_models, ModelsArgs};

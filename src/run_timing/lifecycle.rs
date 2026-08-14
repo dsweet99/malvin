@@ -17,7 +17,6 @@ pub fn attach_new_run_timing(
     attach_new_run_timing_with_cost_policy(timing_slot, super::cost_policy_for_model(model), model)
 }
 
-/// Like [`attach_new_run_timing`], but sets how `COST` USD fields are filled for this backend.
 #[must_use]
 pub fn attach_new_run_timing_with_cost_policy(
     timing_slot: &mut Option<Arc<Mutex<RunTiming>>>,
@@ -37,14 +36,12 @@ pub fn attach_new_run_timing_with_cost_policy(
     timing
 }
 
-/// Anchors one wall-clock interval for a gate-kpop `code` loop (shared across iterations).
 #[must_use]
 pub fn attach_kpop_engine_loop_run_timing() -> Arc<Mutex<RunTiming>> {
     let mut slot = None;
     attach_new_run_timing(&mut slot, crate::support_paths::DEFAULT_CLI_MODEL)
 }
 
-/// Like [`attach_kpop_engine_loop_run_timing`], but sets COST policy from the run model id.
 #[must_use]
 pub fn attach_kpop_engine_loop_run_timing_for_model(model: &str) -> Arc<Mutex<RunTiming>> {
     let mut slot = None;
@@ -78,11 +75,6 @@ fn finalize_snapshot(timing: &Arc<Mutex<RunTiming>>) -> RunTiming {
     g.clone()
 }
 
-/// Finalizes wall clock end time and writes JSON plus the printed summary.
-///
-/// # Errors
-///
-/// Returns [`std::io::Error`] when writing under `run_dir` fails.
 pub fn finalize_and_emit_run_timing(
     run_dir: &Path,
     timing: &Arc<Mutex<RunTiming>>,
@@ -90,11 +82,6 @@ pub fn finalize_and_emit_run_timing(
     finalize_snapshot(timing).write_json_and_print_summary(run_dir)
 }
 
-/// Finalizes wall clock end time and writes JSON only.
-///
-/// # Errors
-///
-/// Returns [`std::io::Error`] when writing under `run_dir` fails.
 pub fn finalize_run_timing_json_only(
     run_dir: &Path,
     timing: &Arc<Mutex<RunTiming>>,
@@ -102,11 +89,6 @@ pub fn finalize_run_timing_json_only(
     finalize_snapshot(timing).write_json_only(run_dir)
 }
 
-/// Persists in-progress timing without closing the run wall clock.
-///
-/// # Errors
-///
-/// Returns [`std::io::Error`] when writing under `run_dir` fails.
 pub fn persist_open_run_timing_json(
     run_dir: &Path,
     timing: &Arc<Mutex<RunTiming>>,

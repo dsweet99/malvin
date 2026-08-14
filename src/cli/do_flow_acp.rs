@@ -1,4 +1,3 @@
-//! Session helpers for `--do`.
 
 use crate::agent_backend::AgentBackend;
 use crate::artifacts::RunArtifacts;

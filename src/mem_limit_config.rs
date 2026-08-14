@@ -1,4 +1,3 @@
-//! Agent process-group memory cap from `~/.malvin_home/config.toml`.
 
 use std::path::Path;
 
@@ -7,7 +6,6 @@ use crate::malvin_config_file::read_u64;
 const GIB: u64 = 1024 * 1024 * 1024;
 const DEFAULT_CAP_GB: u64 = 4;
 
-/// USS cap for an agent process group, in bytes.
 #[must_use]
 pub fn load_mem_limit_bytes(work_dir: &Path) -> u64 {
     let gb = load_mem_limit_gb(work_dir);

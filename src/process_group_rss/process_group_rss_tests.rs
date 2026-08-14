@@ -59,7 +59,6 @@ fn linux_pids_sandbox_bytes_uses_self_uss_or_rss() {
     pids.insert(std::process::id());
     let sandbox = linux_pids_sandbox_bytes(&pids).expect("sandbox bytes");
     assert!(sandbox > 0);
-    // USS/RSS can shift between back-to-back /proc reads; sandbox must prefer USS when present.
     if let Some(uss) = linux_pids_uss_bytes(&pids) {
         let slack = 4 * 1024 * 1024;
         assert!(

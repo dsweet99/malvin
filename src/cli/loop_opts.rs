@@ -1,4 +1,3 @@
-//! Shared outer-loop CLI helpers (`--tenacious`, effective iteration counts).
 
 use clap::ArgMatches;
 
@@ -11,7 +10,6 @@ pub const DEFAULT_TENACIOUS: bool = true;
 pub const TENACIOUS_MAX_LOOPS: usize = 9999;
 pub const TENACIOUS_MAX_ACP_RETRIES: u32 = 9999;
 
-/// Which loop/retry budgets were set explicitly on the command line (skip tenacious expansion).
 pub struct TenaciousBudgetGuard {
     pub max_loops_explicit: bool,
     pub max_acp_retries_explicit: bool,
@@ -25,7 +23,6 @@ pub fn tenacious_budget_guard(matches: &ArgMatches, subcommand: &str) -> Tenacio
     }
 }
 
-/// Inputs for expanding gate-loop budgets when tenacious mode is active.
 pub struct GateLoopTenaciousApply<'a> {
     pub subcommand: &'a str,
     pub max_loops: &'a mut usize,
@@ -48,8 +45,6 @@ pub fn apply_gate_loop_tenacious(input: GateLoopTenaciousApply<'_>) {
     );
 }
 
-/// Expand bare-route ACP retry and outer `--max-loops` budgets when tenacious mode is active
-/// (default on), unless the matching flag was set explicitly on the command line.
 pub fn apply_default_route_tenacious(
     max_loops: &mut usize,
     max_acp_retries: &mut u32,
@@ -70,7 +65,6 @@ pub fn apply_default_route_tenacious(
     }
 }
 
-/// When set, expand to very large `--max-loops` and `--max-acp-retries` budgets unless guarded.
 #[allow(clippy::missing_const_for_fn)]
 pub fn apply_tenacious(
     max_loops: &mut usize,

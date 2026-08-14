@@ -1,4 +1,3 @@
-//! Home directory resolution (crate-root leaf; no malvin internals).
 
 use std::path::PathBuf;
 

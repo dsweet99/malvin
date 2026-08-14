@@ -3,8 +3,6 @@ use super::{
 };
 use crate::do_flow::DoArgs;
 
-/// Commands that accept `--name` acquire a session name lock before substantive work.
-/// Bare `malvin REQUEST`, `--do`, and `tidy` accept `--name`.
 pub(crate) const fn command_accepts_session_name(command: &Commands) -> bool {
     matches!(command, Commands::Tidy(_))
 }
@@ -60,16 +58,12 @@ where
     })
 }
 
-/// On CTRL-C, SIGKILL the agent process group immediately (not a raw SIGINT to
-/// Node, and not a cooperative TERM wait) so the shell returns promptly and the
-/// console stays free of Node stack traces.
 fn spawn_ctrl_c_teardown() {
     tokio::spawn(async {
         if tokio::signal::ctrl_c().await.is_err() {
             return;
         }
         crate::malvin_sandbox::teardown_active_sandbox_for_interrupt();
-        // 128 + SIGINT
         std::process::exit(130);
     });
 }

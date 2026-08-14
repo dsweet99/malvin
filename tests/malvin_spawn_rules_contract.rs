@@ -1,4 +1,3 @@
-//! Contract: dead-before-next and sandbox-isolated malvin spawns.
 
 mod common;
 
@@ -24,7 +23,6 @@ fn process_group_id(pid: u32) -> u32 {
     text.trim().parse().expect("pgid parse")
 }
 
-/// Prior sandbox PIDs must be gone before the next malvin session spawn is allowed.
 #[cfg(unix)]
 #[test]
 fn dead_before_next_rejects_live_prior_sandbox() {
@@ -44,7 +42,6 @@ fn dead_before_next_rejects_live_prior_sandbox() {
     clear_active_sandbox_session();
 }
 
-/// After teardown, dead-before-next must allow the next spawn.
 #[cfg(unix)]
 #[test]
 fn dead_before_next_allows_after_prior_sandbox_cleared() {
@@ -61,7 +58,6 @@ fn dead_before_next_allows_after_prior_sandbox_cleared() {
     assert_dead_before_next_spawn().expect("prior sandbox ended");
 }
 
-/// A live peer lock on the same slot blocks another malvin ACP spawn.
 #[cfg(unix)]
 #[test]
 fn concurrent_sessions_allowed_with_live_peer_in_workspace() {
@@ -86,7 +82,6 @@ fn concurrent_sessions_allowed_with_live_peer_in_workspace() {
     assert!(!lock.exists(), "stale lock file removed");
 }
 
-/// Session lifecycle must acquire and release the workspace ACP spawn lock slot.
 #[cfg(unix)]
 #[test]
 fn acp_spawn_lock_acquired_and_released_by_session_lifecycle() {
@@ -108,7 +103,6 @@ fn acp_spawn_lock_acquired_and_released_by_session_lifecycle() {
     assert!(!lock.exists(), "lock file should be removed after clear");
 }
 
-/// A lock held by this process must not block re-entry on the same slot.
 #[cfg(unix)]
 #[test]
 fn peer_acp_spawn_lock_allows_same_process_holder() {
@@ -122,7 +116,6 @@ fn peer_acp_spawn_lock_allows_same_process_holder() {
     assert!(lock.exists(), "self-held lock must remain");
 }
 
-/// `note_active_sandbox_session` must fail when a live peer holds the same ACP lock slot.
 #[cfg(unix)]
 #[test]
 fn note_active_sandbox_session_rejects_live_peer_lock() {
@@ -138,7 +131,6 @@ fn note_active_sandbox_session_rejects_live_peer_lock() {
     let _ = child.wait();
 }
 
-/// `clear_active_sandbox_session` must not delete a lock owned by another process on the same slot.
 #[cfg(unix)]
 #[test]
 fn session_lifecycle_does_not_touch_acp_spawn_lock() {
@@ -157,7 +149,6 @@ fn session_lifecycle_does_not_touch_acp_spawn_lock() {
     let _ = std::fs::remove_file(&lock);
 }
 
-/// Invalid lock contents are cleared without blocking the caller.
 #[cfg(unix)]
 #[test]
 fn peer_acp_spawn_lock_clears_invalid_lock_file() {
@@ -174,7 +165,6 @@ fn peer_acp_spawn_lock_clears_invalid_lock_file() {
     assert!(!lock.exists(), "invalid lock file removed");
 }
 
-/// Tokio malvin spawns must also create an isolated process group.
 #[cfg(unix)]
 #[test]
 fn malvin_tokio_command_spawns_in_isolated_process_group() {
@@ -193,7 +183,6 @@ fn malvin_tokio_command_spawns_in_isolated_process_group() {
     });
 }
 
-/// Malvin workload spawns must create a new process group (sandbox isolation).
 #[cfg(unix)]
 #[test]
 fn malvin_std_command_spawns_in_isolated_process_group() {

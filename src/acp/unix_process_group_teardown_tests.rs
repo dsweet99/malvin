@@ -88,7 +88,6 @@ async fn terminate_agent_process_group_kills_sleep_child() {
     assert_ne!(child.try_wait().expect("wait"), None);
 }
 
-/// Regression: init-reparented `agent acp` orphans in baseline must still be kill targets.
 #[cfg(target_os = "linux")]
 #[tokio::test]
 async fn baseline_amnestied_agent_acp_orphan_killed_on_teardown() {
@@ -109,7 +108,6 @@ async fn baseline_amnestied_agent_acp_orphan_killed_on_teardown() {
     );
 }
 
-/// Regression: malvin-spawned siblings outside the agent PG must die on session teardown.
 #[tokio::test]
 async fn malvin_sibling_outside_agent_pg_killed_on_teardown() {
     use crate::malvin_sandbox::{assert_dead_before_next_spawn, clear_active_sandbox_session};

@@ -1,4 +1,4 @@
-/** One-shot Cursor model listing for `malvin models`. */
+
 import { Cursor, CursorAgentError } from "@cursor/sdk";
 import { emit } from "./protocol.js";
 import { exitCodeForSignal } from "./bridge_policy.js";
@@ -9,7 +9,7 @@ function installQuietSignalHandlers() {
         });
     }
 }
-/** Compact `id=v1|v2` summaries for catalog params (thinking / effort / fast / …). */
+
 export function formatModelParams(parameters) {
     if (!parameters || parameters.length === 0) {
         return "";

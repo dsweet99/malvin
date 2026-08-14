@@ -49,7 +49,7 @@ _CURSOR_CREDENTIALS_ERROR = (
     "in the shell that launches this command. "
     "Interactive `agent login` is not available inside Modal sandboxes."
 )
-# Modal Sandbox.create defaults (0.125 CPU, 128 MiB) are too small for malvin + cursor-agent.
+
 SANDBOX_CPU = 2.0
 SANDBOX_MEMORY_MIB = 4096
 
@@ -79,7 +79,6 @@ _BASE_IMAGE = (
     .env({"PATH": _PATH})
 )
 
-
 def build_ignore_patterns() -> list[str]:
     """Patterns for ``add_local_dir`` upload excludes."""
     return [
@@ -91,20 +90,17 @@ def build_ignore_patterns() -> list[str]:
         "__pycache__/",
     ]
 
-
 def parse_malvin_argv(argv: list[str]) -> list[str]:
     """Return malvin args; text after the first ``--`` when present."""
     if "--" in argv:
         return list(argv[argv.index("--") + 1 :])
     return list(argv)
 
-
 def relay_stream(reader: Any, sink: TextIO) -> None:
     """Copy text chunks from *reader* to *sink* in order."""
     for chunk in reader:
         sink.write(chunk)
         sink.flush()
-
 
 def workspace_image() -> modal.Image:
     """Image with the caller cwd mounted at ``/workspace``."""
@@ -114,11 +110,9 @@ def workspace_image() -> modal.Image:
         ignore=build_ignore_patterns(),
     )
 
-
 def present_cursor_keys() -> list[str]:
     """Return Cursor env var names that are set locally."""
     return [key for key in CURSOR_ENV_KEYS if os.environ.get(key)]
-
 
 def cursor_credentials_available() -> bool:
     """Return True when local env keys or a named Modal secret can supply credentials."""
@@ -126,12 +120,10 @@ def cursor_credentials_available() -> bool:
         return True
     return bool(os.environ.get(MODAL_CURSOR_SECRET_NAME_ENV))
 
-
 def require_cursor_credentials_for_agent() -> None:
     """Fail fast on the host when Modal agent runs lack Cursor credentials."""
     if not cursor_credentials_available():
         raise click.ClickException(_CURSOR_CREDENTIALS_ERROR)
-
 
 def cursor_secrets() -> list[modal.Secret]:
     """Inject Cursor API keys present in the local environment."""
@@ -143,12 +135,10 @@ def cursor_secrets() -> list[modal.Secret]:
         return [modal.Secret.from_name(secret_name)]
     return []
 
-
 def finish_process(proc: Any) -> int:
     """Wait for *proc* and return its exit code."""
     proc.wait()
     return int(proc.returncode or 0)
-
 
 def stream_process_output(proc: Any, out: TextIO, err: TextIO) -> None:
     """Relay sandbox stdout/stderr to local streams concurrently."""
@@ -160,7 +150,6 @@ def stream_process_output(proc: Any, out: TextIO, err: TextIO) -> None:
         thread.start()
     for thread in threads:
         thread.join()
-
 
 def run_local_malvin_usage() -> str:
     """Return bare ``malvin`` usage text from a local subprocess when available."""
@@ -182,24 +171,20 @@ def run_local_malvin_usage() -> str:
         return result.stderr
     return "malvin produced no usage output.\n"
 
-
 def render_empty_argv_help(ctx: click.Context) -> str:
     """Compose malvin usage followed by wrapper usage for empty forwarded argv."""
     malvin_text = run_local_malvin_usage().rstrip()
     wrapper_text = ctx.get_help().rstrip()
     return f"{malvin_text}\n\n{wrapper_text}\n"
 
-
 def print_empty_argv_help(ctx: click.Context) -> None:
     """Print composite help for empty forwarded argv."""
     sys.stdout.write(render_empty_argv_help(ctx))
     sys.stdout.flush()
 
-
 def sandbox_app() -> modal.App:
     """Return an initialized Modal app for sandbox creation."""
     return lookup_sandbox_app(app, APP_NAME)
-
 
 def run_malvin_remote(malvin_argv: list[str]) -> int:
     """Create sandbox, exec malvin, stream I/O, terminate sandbox."""
@@ -231,7 +216,6 @@ def run_malvin_remote(malvin_argv: list[str]) -> int:
     finally:
         release_modal_sandbox(sandbox)
 
-
 def dispatch_cli(ctx: click.Context, self_test: bool) -> None:
     """Click command body for the Modal malvin wrapper."""
     if self_test:
@@ -242,7 +226,6 @@ def dispatch_cli(ctx: click.Context, self_test: bool) -> None:
         raise SystemExit(0)
     code = run_malvin_remote(list(ctx.args))
     raise SystemExit(code)
-
 
 def _test_static_helpers() -> None:
     assert parse_malvin_argv(["--", "--version"]) == ["--version"]
@@ -255,7 +238,6 @@ def _test_static_helpers() -> None:
     assert sink.getvalue() == "alphabeta"
     stub = SimpleNamespace(returncode=42, wait=lambda: None)
     assert finish_process(stub) == 42
-
 
 def _test_cursor_and_stream() -> None:
     saved = {key: os.environ.pop(key, None) for key in CURSOR_ENV_KEYS}
@@ -288,7 +270,6 @@ def _test_cursor_and_stream() -> None:
     assert out.getvalue() == "out"
     assert err.getvalue() == "err"
 
-
 def _test_modal_remote() -> None:
     fake_proc = SimpleNamespace(
         stdout=iter(["remote-out"]),
@@ -314,7 +295,6 @@ def _test_modal_remote() -> None:
         else:
             os.environ[MODAL_CURSOR_SECRET_NAME_ENV] = saved_secret
 
-
 def _test_modal_remote_missing_credentials() -> None:
     saved = {key: os.environ.pop(key, None) for key in CURSOR_ENV_KEYS}
     saved_secret = os.environ.pop(MODAL_CURSOR_SECRET_NAME_ENV, None)
@@ -333,7 +313,6 @@ def _test_modal_remote_missing_credentials() -> None:
         else:
             os.environ[MODAL_CURSOR_SECRET_NAME_ENV] = saved_secret
 
-
 def run_unit_tests() -> None:
     """UT-ARGV, UT-IGNORE, UT-RELAY, UT-EXIT, UT-MODAL, UT-CLICK — no Modal network."""
     _test_static_helpers()
@@ -345,11 +324,8 @@ def run_unit_tests() -> None:
     _test_empty_argv_help()
     _test_click_cli()
 
-
-
 def _test_sandbox_app() -> None:
     test_sandbox_app_lookup(__name__, app, APP_NAME, sandbox_app)
-
 
 def _test_render_empty_argv_help() -> None:
     fake_malvin = "Usage: malvin [COMMAND|REQUEST]...\n"
@@ -362,7 +338,6 @@ def _test_render_empty_argv_help() -> None:
     assert malvin_block == fake_malvin.rstrip()
     assert wrapper_block == f"{fake_wrapper.rstrip()}\n"
     ctx.get_help.assert_called_once()
-
 
 def _test_empty_argv_help() -> None:
     from toolchain_repos import load_ops_entry
@@ -382,7 +357,6 @@ def _test_empty_argv_help() -> None:
     assert malvin_block == fake_malvin.rstrip()
     assert wrapper_block.startswith("Usage: python ops/malvin_modal.py")
     mock_remote.assert_not_called()
-
 
 def _test_click_cli() -> None:
     from toolchain_repos import load_ops_entry

@@ -5,7 +5,6 @@ use crate::router_flow::{run_router, RouterArgs};
 use super::prep::{compose_write_router_request, write_preflight};
 use super::WriteArgs;
 
-/// Run `malvin write` as a composed request into the default router workflow.
 pub async fn run_write(
     write_args: &mut WriteArgs,
     shared: &SharedOpts,

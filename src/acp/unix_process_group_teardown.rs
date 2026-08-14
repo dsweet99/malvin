@@ -45,7 +45,6 @@ pub async fn terminate_process_group(process_group_id: Option<u32>) {
     super::unix_process_group_teardown_poll::teardown_agent_sandbox_async(process_group_id, None).await;
 }
 
-/// Reap init-reparented Cursor `agent acp` orphans from prior sessions before snapshotting baseline.
 #[cfg(unix)]
 pub fn reap_baseline_amnestied_agent_orphans_blocking() {
     let baseline = snapshot_pids();

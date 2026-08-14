@@ -18,7 +18,7 @@ Answer a question, perform a one-off task, or continue informal work without a g
 ## Usage
 
 ```text
-malvin --do [OPTIONS] [REQUEST]
+malvin --do [OPTION]... [REQUEST]
 ```
 
 If `REQUEST` is omitted (and `--doc` is not set), malvin prints short usage on stdout and exits 0.

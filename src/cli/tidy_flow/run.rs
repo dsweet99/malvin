@@ -3,10 +3,8 @@ use crate::router_flow::{run_router, RouterArgs};
 
 use super::{effective_tidy_max_loops, TidyArgs};
 
-/// Fixed default-router request for `malvin tidy`.
 pub(crate) const TIDY_ROUTER_REQUEST: &str = "Get the gates to pass.";
 
-/// Force harness `--gates` on for tidy regardless of the CLI flag.
 #[must_use]
 pub(crate) fn tidy_shared_with_gates_forced(shared: &SharedOpts) -> SharedOpts {
     let mut forced = shared.clone();
@@ -14,7 +12,6 @@ pub(crate) fn tidy_shared_with_gates_forced(shared: &SharedOpts) -> SharedOpts {
     forced
 }
 
-/// Run `malvin tidy` as a fixed request into the default router workflow with gates on.
 pub async fn run_tidy(
     tidy: TidyArgs,
     shared: &SharedOpts,

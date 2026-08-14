@@ -1,4 +1,3 @@
-//! Integration-style herdr lifecycle tests against a local Unix socket.
 
 #[path = "lifecycle_io_support.rs"]
 mod lifecycle_io_support;

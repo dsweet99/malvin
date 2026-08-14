@@ -24,14 +24,11 @@ pub fn terminal_columns() -> usize {
     columns_from_env().or_else(columns_from_tty).unwrap_or(80)
 }
 
-/// True when stdout is a TTY, or `COLUMNS` parses to a column count in `20..=500`, so long log
-/// lines may be word-wrapped to the available width.
 #[must_use]
 pub fn stdout_allows_log_word_wrap() -> bool {
     stdout().is_terminal() || columns_from_env().is_some()
 }
 
-/// True when stderr is a TTY, or `COLUMNS` is valid the same way as for [`stdout_allows_log_word_wrap`].
 #[must_use]
 pub fn stderr_allows_log_word_wrap() -> bool {
     stderr().is_terminal() || columns_from_env().is_some()

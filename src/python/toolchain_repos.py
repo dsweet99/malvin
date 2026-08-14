@@ -11,7 +11,6 @@ from types import ModuleType
 
 import click
 
-
 def malvin_repo_root() -> Path:
     """Return the malvin repository root (directory with ``Cargo.toml`` + ``ops/``).
 
@@ -27,7 +26,6 @@ def malvin_repo_root() -> Path:
             return parent
     raise RuntimeError(f"malvin repo root not found from {here}")
 
-
 def load_ops_entry(modname: str) -> ModuleType:
     """Load ``ops/<modname>.py`` under a unique name (CLI surface for CliRunner).
 
@@ -41,8 +39,8 @@ def load_ops_entry(modname: str) -> ModuleType:
     if not entry_path.is_file():
         raise ImportError(f"ops entry missing: {entry_path}")
 
-    # When ``python ops/<mod>.py`` is already running, reuse ``__main__`` so we
-    # do not re-register Modal local_entrypoint handlers on the shared App.
+    
+    
     main_mod = sys.modules.get("__main__")
     if main_mod is not None:
         main_file = getattr(main_mod, "__file__", None)
@@ -67,7 +65,7 @@ def load_ops_entry(modname: str) -> ModuleType:
         raise ImportError(f"cannot load ops entry: {entry_path}")
     mod = importlib.util.module_from_spec(spec)
     sys.modules[unique] = mod
-    # Keep ops/ free of regenerable bytecode; ops holds CLI scripts only.
+    
     prev_dwb = sys.dont_write_bytecode
     sys.dont_write_bytecode = True
     try:
@@ -75,7 +73,6 @@ def load_ops_entry(modname: str) -> ModuleType:
     finally:
         sys.dont_write_bytecode = prev_dwb
     return mod
-
 
 def resolve_malvin_cmd() -> str:
     """Return malvin executable: ``MALVIN`` env, repo target build, then PATH."""
@@ -90,14 +87,12 @@ def resolve_malvin_cmd() -> str:
     on_path = shutil.which("malvin")
     return on_path if on_path else "malvin"
 
-
 def validate_toolchain_repos() -> Path:
     """Ensure the local malvin tree exists before building agent images."""
     malvin_repo = malvin_repo_root()
     if not (malvin_repo / "Cargo.toml").is_file():
         raise click.ClickException(f"malvin repo not found: {malvin_repo}")
     return malvin_repo
-
 
 def cursor_sdk_shutdown_qa():
     """Return the Cursor SDK shutdown QA library (anchors ``qa`` in the import graph)."""

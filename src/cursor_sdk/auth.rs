@@ -1,8 +1,6 @@
-//! Auth for the Cursor SDK backend (API-key oriented).
 
 use crate::acp::{AuthError, has_api_key};
 
-/// Prefer `CURSOR_API_KEY`, then `CURSOR_AGENT_API_KEY`, then `AGENT_API_KEY`.
 #[must_use]
 pub fn effective_sdk_api_key() -> Option<String> {
     for key in ["CURSOR_API_KEY", "CURSOR_AGENT_API_KEY", "AGENT_API_KEY"] {
@@ -16,9 +14,6 @@ pub fn effective_sdk_api_key() -> Option<String> {
     None
 }
 
-/// # Errors
-///
-/// Returns [`AuthError`] when no Cursor API key is set.
 pub fn ensure_sdk_authenticated() -> Result<(), AuthError> {
     if has_api_key() || effective_sdk_api_key().is_some() {
         return Ok(());

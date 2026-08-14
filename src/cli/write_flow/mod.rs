@@ -11,22 +11,22 @@ pub(crate) fn effective_write_max_loops(max_loops: usize) -> usize {
 }
 
 #[derive(Args, Debug, Clone)]
+#[command(override_usage = "malvin write [OPTION]... [REQUEST]")]
 pub struct WriteArgs {
-    /// Existing `.md` path or literal text describing what to write about.
+    /// Existing `.md` path or literal text describing what to write about
     pub request: Option<String>,
-    /// Workspace path for the LaTeX output (PDF is the same path with `.pdf`; default basename stays in the request work directory).
+    /// Workspace path for the LaTeX output (PDF uses the same stem with `.pdf`)
     #[arg(long, default_value = "write.tex")]
     pub out_path: String,
-    /// Outer router session budget (`effective_max_loops`).
+    /// Outer router session budget
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE)]
     pub max_loops: usize,
-    /// Hypothesis budget for `kpop_common.md` (`{{ max_hypotheses }}`).
+    /// Hypothesis budget
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_WRITE_MAX_HYPOTHESES)]
     pub max_hypotheses: usize,
-    /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
+    /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`
     #[arg(long, default_value_t = crate::cli::loop_opts::DEFAULT_TENACIOUS)]
     pub tenacious: bool,
-    /// Set when the user passes `--out-path` on the command line (not a clap flag).
     #[arg(skip)]
     pub out_path_explicit: bool,
 }

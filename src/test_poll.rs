@@ -1,4 +1,3 @@
-//! Fast polling helpers for unit and integration tests.
 
 #[must_use]
 pub fn test_post_teardown_poll_interval() -> std::time::Duration {

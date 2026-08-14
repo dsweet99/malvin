@@ -8,13 +8,11 @@ from unittest.mock import patch
 
 import modal
 
-
 def lookup_sandbox_app(module_app: modal.App, app_name: str) -> modal.App:
     """Return an initialized Modal app for sandbox creation."""
     if module_app.app_id is not None:
         return module_app
     return modal.App.lookup(app_name, create_if_missing=True)
-
 
 def test_sandbox_app_lookup(
     module_name: str,

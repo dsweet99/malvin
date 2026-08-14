@@ -1,8 +1,6 @@
-//! Env-triad detection for opportunistic herdr integration.
 
 use std::path::PathBuf;
 
-/// Herdr pane injection signals required before any socket I/O.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HerdrEnv {
     pub socket_path: PathBuf,
@@ -10,7 +8,6 @@ pub struct HerdrEnv {
 }
 
 impl HerdrEnv {
-    /// Present only when `HERDR_ENV` is exactly `1` and socket/pane ids are non-empty.
     #[must_use]
     pub fn from_os_env() -> Option<Self> {
         from_values(

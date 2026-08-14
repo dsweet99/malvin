@@ -1,4 +1,3 @@
-//! Kiss coverage for `agent` module.
 
 #[test]
 fn kiss_cov_prompt_options() {

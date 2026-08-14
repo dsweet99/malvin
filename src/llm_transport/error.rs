@@ -1,4 +1,3 @@
-//! Transport-layer errors (not OpenRouter-prefixed).
 
 use thiserror::Error;
 
@@ -62,7 +61,6 @@ impl TransportError {
     }
 }
 
-/// True when a provider/HTTP body indicates the *input prompt* exceeded context budget.
 #[must_use]
 pub fn body_indicates_prompt_too_long(body: &str) -> bool {
     let lower = body.to_ascii_lowercase();

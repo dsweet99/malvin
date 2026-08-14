@@ -1,6 +1,3 @@
-//! Integration kiss witnesses for `src/**` test-helper modules (bucket D).
-//! Kiss credits per-file coverage only from external test files; `tests/` contracts
-//! reach into `src` test helpers that `coverage_kiss/gate_refs.rs` cannot name.
 
 #[test]
 fn kiss_witness_acp_test_helpers_a() {

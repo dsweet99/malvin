@@ -1,4 +1,3 @@
-//! Heuristic bash command classifier for mini tool summaries.
 
 use std::time::Duration;
 
@@ -126,7 +125,6 @@ fn classified_tool_status_line(
     match (exit_code == 0, comment_seg.as_deref()) {
         (true, Some(c)) => format!("{head} · {c} · {dur} · ✓"),
         (true, None) => format!("{head} · {dur} · ✓"),
-        // Cursor SDK order: `Run cmd · exit N · dur · ✗`
         (false, Some(c)) => format!("{head} · {c} · exit {exit_code} · {dur} · ✗"),
         (false, None) => format!("{head} · exit {exit_code} · {dur} · ✗"),
     }

@@ -1,4 +1,3 @@
-//! External kiss witnesses for [`super`] session dotfile types.
 
 use super::{
     DotfileBackupPayload, DotfileBackupState, SessionDotfileParts, SessionDotfileBackups,

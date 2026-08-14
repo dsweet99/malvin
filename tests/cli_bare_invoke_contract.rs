@@ -1,4 +1,3 @@
-//! CLI subcommand contract tests.
 
 mod common;
 

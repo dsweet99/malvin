@@ -105,9 +105,6 @@ pub(super) async fn finalize_kpop_engine_turn(
         .await
         .map_err(|e| e.0);
     }
-    // Idea 3 (Cursor SDK): leave the Node bridge open for later gate turns / iterations
-    // (refreshed on the next agent start if older than 10 minutes).
-    // ACP/Mini still end so the next begin gets a fresh agent (and frees memory before gates).
     if !ctx
         .iteration
         .client

@@ -1,4 +1,3 @@
-//! Cursor bridge process spawn helpers.
 
 use crate::acp::AgentError;
 use crate::bridge_sdk::{send_create, send_resume, start_mem_watch, BridgeSession, BridgeSpawnArgs};

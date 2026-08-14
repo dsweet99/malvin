@@ -1,4 +1,3 @@
-//! `malvin models` — list Cursor and Pi models with prefixes.
 
 use crate::model_id::{CURSOR_PREFIX, PI_PREFIX};
 use crate::output::{MALVIN_WHO, print_stdout_line};
@@ -16,9 +15,14 @@ pub(crate) use models_cmd_filter::{
 };
 
 #[derive(Args, Debug, Clone, Default)]
+#[command(override_usage = "malvin models [OPTION]... [PREFIX]...")]
 pub struct ModelsArgs {
-    /// Optional prefix filter (e.g. `cursor:`, `pi:`, `pi:open`). See `models_list_prefix`.
-    #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+    /// Optional prefix filter (for example `cursor:` or `pi:`)
+    #[arg(
+        value_name = "PREFIX",
+        trailing_var_arg = true,
+        allow_hyphen_values = true
+    )]
     pub words: Vec<String>,
 }
 
@@ -32,9 +36,6 @@ fn print_current_footer(current_model: &str) {
     print_stdout_line(MALVIN_WHO, &format!("Current: {current_model}"));
 }
 
-/// Print Cursor and Pi models with prefixes and a `Current:` footer.
-///
-/// Optional `words` form a prefix filter on printed model ids (see [`models_list_prefix`]).
 pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
     let filter = models_list_prefix(&args.words)?;
     let filter_ref = filter.as_deref();

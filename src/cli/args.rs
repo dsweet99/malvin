@@ -1,4 +1,3 @@
-//! CLI argument structs for the `malvin` binary.
 
 use clap::{Parser, Subcommand};
 
@@ -18,25 +17,25 @@ pub use super::shared_opts::GlobalOpts;
     version,
     about = "Non-interactive research and coding agent",
     disable_help_subcommand = true,
-    override_usage = "malvin [OPTIONS] [REQUEST]\n        malvin [OPTIONS] <COMMAND>",
-    after_help = "Bare `malvin REQUEST` runs autonomous routing. Use `--do` for a one-shot turn, or subcommands for named workflows."
+    override_usage = "malvin [OPTION]... [REQUEST]\n   or: malvin [OPTION]... <COMMAND>",
+    after_help = "Bare malvin REQUEST runs autonomous routing. Use `--do` for a one-shot turn, or subcommands for named workflows."
 )]
 pub struct Cli {
     #[command(flatten)]
     pub global: GlobalOpts,
     #[command(flatten)]
     pub shared: SharedOpts,
-    /// One-shot agent turn (non-looping).
+    /// One-shot agent turn (non-looping)
     #[arg(long = "do", default_value_t = false)]
     pub do_workflow: bool,
     #[command(subcommand)]
     pub command: Option<Commands>,
-    /// Existing `.md` path or literal text (bare `malvin REQUEST`, or request for `--do`).
+    /// Existing `.md` path or literal text (bare malvin REQUEST, or request for `--do`)
     pub request: Option<String>,
-    /// Outer agent-session budget for bare `malvin REQUEST` (`effective_max_loops`).
+    /// Outer agent-session budget for bare malvin REQUEST
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS)]
     pub max_loops: usize,
-    /// Hypothesis budget for bare `malvin REQUEST` `kpop_common.md` (`{{ max_hypotheses }}`).
+    /// Hypothesis budget for bare malvin REQUEST
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES)]
     pub max_hypotheses: usize,
 }

@@ -14,7 +14,6 @@ pub(crate) fn effective_max_loops(max_loops: usize) -> usize {
     BudgetScopeLayer::effective_outer_loop_iterations(max_loops)
 }
 
-/// Prefer a gate-loop (or discovery) outcome over a summarize-session error.
 #[cfg(test)]
 pub(crate) fn prefer_gate_outcome_over_summarize<T>(
     gate: Result<T, String>,
@@ -122,7 +121,7 @@ pub(crate) fn gate_iteration_context(
     ctx
 }
 
-#[allow(dead_code)] // unit tests and kiss coverage stringify references
+#[allow(dead_code)]
 fn restore_session_dotfiles_for_gates(
     work_dir: &Path,
     session_dotfile_backups: &SessionDotfileBackups,
@@ -142,7 +141,6 @@ pub(crate) fn run_kpop_workspace_gates(
 ) -> Result<(), String> {
     let work_dir = artifacts.work_dir.as_path();
     restore_session_dotfiles_for_gates(work_dir, session_dotfile_backups, restore_malvin_checks)?;
-    // Carry-forward backups may still hold invalid home-config bytes; repair on disk before gates.
     crate::session_dotfile_backup::repair_invalid_malvin_home_config_on_disk(work_dir)?;
     clear_quality_gates_log_for_next_agent(artifacts)?;
     let gate_result = run_repo_workspace_gates(
@@ -150,8 +148,6 @@ pub(crate) fn run_kpop_workspace_gates(
         RepoGateOutput::Tagged,
         Some(artifacts.run_dir.as_path()),
     );
-    // Gate runs may mutate dotfiles on disk; restore rewinds so outer retries and the next
-    // iteration snapshot cannot anchor off post-gate workspace state.
     let restore_result =
         restore_session_dotfiles_for_gates(work_dir, session_dotfile_backups, restore_malvin_checks);
     prefer_gate_outcome_over_post_gate_cleanup(gate_result, restore_result)

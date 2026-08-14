@@ -1,4 +1,3 @@
-//! Shared agent helpers used by SDK backends (not ACP JSON-RPC).
 
 use std::path::{Path, PathBuf};
 
@@ -20,7 +19,6 @@ pub(crate) fn has_api_key() -> bool {
     false
 }
 
-/// Resolve the working directory for an agent session spawn.
 pub(crate) fn resolve_acp_session_cwd(cwd: &Path) -> Result<PathBuf, AgentError> {
     let base = if cwd.as_os_str().is_empty() || cwd == Path::new(".") {
         std::env::current_dir().map_err(|e| AgentError(e.to_string()))?

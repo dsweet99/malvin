@@ -1,4 +1,3 @@
-//! Prompt templates sourced from embedded defaults, with optional custom root.
 
 mod defaults;
 mod store;
@@ -17,16 +16,10 @@ pub(crate) use defaults::{DEFAULT_PROMPTS, REQUIRED_PROMPTS, default_file};
 const UNRESOLVED_BRACES_MSG: &str =
     "prompt still contains \"{{\" before ACP; resolve every {{ key }} placeholder";
 
-/// # Errors
-///
-/// Returns [`PromptError`] when `text` still contains `{{`.
 pub fn enforce_no_unresolved_braces(text: &str) -> Result<(), PromptError> {
     enforce_no_unresolved_braces_in(text, None)
 }
 
-/// # Errors
-///
-/// Returns [`PromptError`] when `text` still contains `{{`.
 pub fn enforce_no_unresolved_braces_in(
     text: &str,
     prompt_file: Option<&str>,
@@ -38,10 +31,6 @@ pub fn enforce_no_unresolved_braces_in(
     }
 }
 
-/// # Errors
-///
-/// Returns [`PromptError`] when `template` contains `{{ key }}` placeholders whose keys are
-/// missing from `context`.
 pub fn enforce_template_placeholders_resolved_in(
     template: &str,
     context: &std::collections::HashMap<String, String>,

@@ -1,4 +1,3 @@
-//! Bind / reclaim report sequence for the opportunistic herdr reporter.
 
 use std::path::Path;
 
@@ -13,10 +12,6 @@ use super::request::{
 use super::send::send_request_checked;
 use super::trace::log_herdr_failure;
 
-/// clear → session → working → metadata → rename (name targeting).
-///
-/// Malvin stays reporter-only: no `herdr agent start` / kind integration. Pane-id
-/// targeting remains the reliable default; `agent.rename` enables name get after bind.
 pub fn emit_bind_reports(env: &HerdrEnv, session_id: Option<&str>, run_dir: Option<&Path>) {
     let sock = env.socket_path.as_path();
     for (phase, req) in bind_requests(env.pane_id.as_str(), session_id, run_dir) {

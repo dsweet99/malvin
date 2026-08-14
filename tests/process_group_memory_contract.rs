@@ -1,4 +1,3 @@
-//! Process-group RSS cap and config loading (sandbox plan).
 
 mod common;
 

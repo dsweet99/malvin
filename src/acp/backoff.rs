@@ -1,9 +1,6 @@
-//! Shared retry backoff used by Cursor/Pi prompt loops.
 
 use crate::acp::{agent_backoff_sleep, AgentError, AgentRetryOutcome, plan_agent_retry};
 
-/// Apply bounded-retry backoff after a failed attempt, or stop the retry loop.
-/// Returns `Ok(true)` when the caller should `break` the attempt loop; `Err` on upgrade-plan short-circuit.
 pub(crate) async fn backoff_after_agent_failure(
     timing: Option<&std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
     last_error: &str,

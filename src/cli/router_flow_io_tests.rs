@@ -1,4 +1,3 @@
-//! Agent-IO style checks for router backends.
 
 use clap::Parser;
 

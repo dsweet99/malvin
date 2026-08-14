@@ -1,6 +1,6 @@
 # malvin (default route)
 
-Outer agent sessions (`effective_max_loops(--max-loops)`): each session sends `header.md`, then `kpop_common.md`, then `router_a.md`. A lone-line `__MALVIN_DONE__` in the `router_a` reply can stop the loop (optionally after `--gates` checks). Otherwise the same session receives `router_b.md` (or `router_b_creative.md` with `--creative`), and another outer session may start when budget remains. When exiting, `router_summarize.md` runs once on the final open session.
+Outer agent sessions (`--max-loops`): each session sends `header.md`, then `kpop_common.md`, then `router_a.md`. A lone-line `__MALVIN_DONE__` in the `router_a` reply can stop the loop (optionally after `--gates` checks). Otherwise the same session receives `router_b.md` (or `router_b_creative.md` with `--creative`), and another outer session may start when budget remains. When exiting, `router_summarize.md` runs once on the final open session.
 
 ## Summary
 
@@ -18,7 +18,7 @@ Read the user request (on disk as `plan_*.md` / `{{ user_request_path }}`), ask 
 ## Usage
 
 ```text
-malvin [OPTIONS] [REQUEST]
+malvin [OPTION]... [REQUEST]
 ```
 
 There is no `router` subcommand. Bare `malvin REQUEST` is the default autonomous routing workflow. If `REQUEST` is omitted (and no subcommand is given), malvin prints the command catalog on stdout and exits 0.
@@ -40,10 +40,10 @@ See `malvin --doc`. Notable for the default route:
 
 | Flag | Effect |
 |------|--------|
-| `--max-loops` | Outer agent-session budget (`effective_max_loops`; default 1). Tenacious expands to 9999 unless this flag is set on the command line. |
-| `--max-hypotheses` | Hypothesis budget for `kpop_common.md` (`{{ max_hypotheses }}`; default 5). When omitted, `[default_workflow].max_hypotheses` is used. Explicit CLI wins over config. |
+| `--max-loops` | Outer agent-session budget (default 1). Tenacious expands to 9999 unless this flag is set on the command line. |
+| `--max-hypotheses` | Hypothesis budget (default 5). When omitted, `[default_workflow].max_hypotheses` is used. Explicit CLI wins over config. |
 | `-g` / `--gates` | When `router_a` emits `__MALVIN_DONE__`, run workspace `.malvin/checks`. Pass stops success; fail continues (new outer session). Exhausted budget with failing gates fails the run after exit summarize. Also injects check text into `router_a.md` via `{{ code_extra }}`. |
-| `--creative` | Use `router_b_creative.md` instead of `router_b.md` for the optional work turn |
+| `--creative` | Use the creative router_b prompt for the optional work turn |
 | `--no-tenacious` | Keep normal `--max-loops` / `--max-acp-retries` (default tenacious expands both) |
 | `--quiet` / `-q` | Stdout shows only `MALVIN_DM_*` bodies (not `-b`). Plain `--do` is already DM-body-only without `--verbose` |
 | `--verbose` | Full prompt bodies in `prompts.log`; with `--do`, also same live agent stdout log classes as the default workflow |

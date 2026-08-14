@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 def release_modal_sandbox(sandbox: Any) -> None:
     """Terminate a Modal sandbox and release client gRPC connections.
 
@@ -27,7 +26,6 @@ def release_modal_sandbox(sandbox: Any) -> None:
         if close is not None:
             close()
 
-
 def _test_release_modal_sandbox() -> None:
     from unittest.mock import MagicMock
 
@@ -48,5 +46,4 @@ def _test_release_modal_sandbox() -> None:
     router.close.assert_called_once()
 
     release_modal_sandbox(None)
-
 

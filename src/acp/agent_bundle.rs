@@ -1,6 +1,4 @@
 
-/// Backoff sleep between agent retry attempts. Skipped in unit tests and when
-/// `MALVIN_TEST_NO_REAL_AGENT=1` so integration subprocess tests stay under the 1s budget.
 pub(crate) async fn agent_backoff_sleep(d: std::time::Duration) {
     if cfg!(test) || crate::acp::test_no_real_agent_enabled() {
         return;
@@ -24,7 +22,6 @@ pub struct AgentIoOptions {
     pub raw_output: bool,
     pub show_thoughts_on_stdout: bool,
     pub emit_stdout_markdown: bool,
-    /// When true, echo each outgoing prompt body on stdout and in `prompts.log`; when false, only the `[name...]` line is logged there.
     pub log_full_outgoing_prompts: bool,
 }
 

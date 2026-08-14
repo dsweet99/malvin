@@ -1,4 +1,3 @@
-//! Contract: descendant processes may borrow an ancestor's ACP spawn lock (nested `malvin inspire`).
 
 mod common;
 
@@ -30,7 +29,6 @@ fn run_descendant_acp_lock_probe(work: &std::path::Path, parent_slot: &str) -> s
         .expect("spawn descendant probe")
 }
 
-/// A descendant process may borrow the ancestor's ACP lock (nested `malvin inspire`).
 #[cfg(unix)]
 #[test]
 fn peer_acp_spawn_lock_allows_descendant_process() {

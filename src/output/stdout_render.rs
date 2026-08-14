@@ -13,7 +13,6 @@ pub(crate) fn emit_stdout_rendered_immediate(display: &str, log: &str) {
     super::append_stdout_log_line(log);
 }
 
-/// Heartbeat display on the live terminal while defer keeps log lines in FIFO order.
 #[allow(dead_code)]
 pub(crate) fn publish_heartbeat_live_terminal(display: &str) {
     super::print_stdout_display_line(display);

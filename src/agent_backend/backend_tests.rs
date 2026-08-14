@@ -1,4 +1,3 @@
-//! Behavioral and kiss coverage tests for [`super::backend::AgentBackend`].
 
 use super::factory::build_agent_backend;
 use super::sdk_client::BridgeKind;

@@ -1,4 +1,3 @@
-//! Contract tests for host-side sandbox gaps (process-group containment).
 
 mod common;
 
@@ -18,8 +17,6 @@ use malvin::acp::hostile_orphan_test_util::{
     spawn_hostile_agent_acp_orphan, wait_for_init_reparent,
 };
 
-/// After the same teardown `AcpSession::shutdown` uses, a hostile session-leader orphan must not
-/// keep running on the host.
 #[cfg(unix)]
 #[tokio::test]
 async fn hostile_agent_detached_orphan_dies_on_process_group_teardown() {
@@ -41,8 +38,6 @@ async fn hostile_agent_detached_orphan_dies_on_process_group_teardown() {
     );
 }
 
-/// Double-fork daemons reparent to init with `pgid != pid`, so they are not session leaders and
-/// are outside the agent PG; teardown must scan all reparented-to-init orphans, not only session leaders.
 #[cfg(unix)]
 #[tokio::test]
 async fn hostile_agent_double_fork_daemon_dies_on_process_group_teardown() {
@@ -64,10 +59,6 @@ async fn hostile_agent_double_fork_daemon_dies_on_process_group_teardown() {
     );
 }
 
-/// Baseline amnesty must not protect init-reparented `agent acp` orphans from teardown.
-///
-/// Linux-only: `looks_like_malvin_agent_acp` reads `/proc/{pid}/environ` (see
-/// `malvin_sandbox_contract::baseline_amnestied_agent_acp_orphan_killed_on_teardown`).
 #[cfg(target_os = "linux")]
 #[tokio::test]
 async fn baseline_amnestied_agent_acp_orphan_dies_on_process_group_teardown() {

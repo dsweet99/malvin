@@ -1,18 +1,12 @@
-//! Top-level `config.toml` keys outside `[agent]` and `[logs]`.
 
 use std::collections::BTreeMap;
 
 use crate::terminal_palette::TerminalTheme;
 
-/// Default local llama.cpp context window (`n_ctx` / `n_ctx_seq`).
 pub const DEFAULT_CONTEXT_SIZE: u32 = 8192;
 
-/// Tokens per microtoken (USD rates are dollars per million tokens).
 pub const TOKENS_PER_MICROTOKEN: f64 = 1_000_000.0;
 
-/// Per-microtoken USD rates for estimating Cursor-mode run cost.
-/// Field names match `~/.malvin_home/config.toml` keys under `[agent.<provider>.<name>]`.
-/// One microtoken = one million tokens (industry dollars-per-MTok units).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 #[allow(clippy::struct_field_names)]
 pub struct TokenCostRates {
@@ -23,10 +17,6 @@ pub struct TokenCostRates {
 }
 
 impl TokenCostRates {
-    /// USD components: `(cost_in, cost_out, cost_read, cost_write)`.
-    ///
-    /// `input_tokens` is non-cache prompt/input only (cache billed via read/write rates).
-    /// Each component is `usd_per_microtoken_* × tokens / 1_000_000`.
     #[must_use]
     #[allow(clippy::cast_precision_loss)]
     pub fn estimate_components(
@@ -87,9 +77,6 @@ pub(crate) fn parse_context_size(text: &str) -> Result<u32, String> {
     }
 }
 
-/// Parse `[agent.<provider>.<name>]` tables that define `usd_per_microtoken_*` rates.
-///
-/// Keys in the map are full model ids (`cursor:auto`, `pi:openai/gpt-4o`, …).
 pub(crate) fn parse_model_token_cost_rates(
     text: &str,
 ) -> Result<BTreeMap<String, TokenCostRates>, String> {

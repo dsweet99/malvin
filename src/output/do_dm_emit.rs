@@ -1,4 +1,3 @@
-//! Emit extracted `--do` DM bodies to process stdout.
 
 pub(crate) fn emit_do_dm_body(body: &str) {
     if body.is_empty() {

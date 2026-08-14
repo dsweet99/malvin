@@ -1,4 +1,3 @@
-//! Short-timeout Unix-socket NDJSON transport for herdr.
 
 use std::io::{Read, Write};
 use std::os::unix::net::UnixStream;
@@ -9,15 +8,12 @@ use std::time::Duration;
 
 use serde_json::Value;
 
-/// Connect/read/write budget matching the cursor herdr hook (~0.5s).
 pub const SOCKET_TIMEOUT: Duration = Duration::from_millis(500);
 
-/// Best-effort send; never propagates I/O errors to the caller.
 pub fn send_request(socket_path: &Path, request: &Value) {
     let _ = send_request_checked(socket_path, request);
 }
 
-/// Send and classify the reply when one arrives (ok / herdr error / I/O error).
 pub(crate) fn send_request_checked(socket_path: &Path, request: &Value) -> Result<(), String> {
     let mut line = serde_json::to_string(request).map_err(|e| e.to_string())?;
     line.push('\n');
@@ -41,8 +37,6 @@ fn open_timed_stream(socket_path: &Path) -> Result<UnixStream, String> {
     Ok(stream)
 }
 
-/// `UnixStream::connect` has no timeout; a wedged accept queue can block forever.
-/// Bound connect on a worker thread so bind/notify cannot stall the CLI.
 fn connect_with_timeout(socket_path: &Path, timeout: Duration) -> Result<UnixStream, String> {
     let path = PathBuf::from(socket_path);
     let (tx, rx) = mpsc::channel();

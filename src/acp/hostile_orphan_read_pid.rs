@@ -1,4 +1,3 @@
-//! Orphan PID file polling for hostile sandbox regression fixtures.
 
 use std::path::Path;
 use std::time::Duration;
@@ -12,8 +11,6 @@ fn note_fixture_orphan_affiliation(pid: u32, agent_pgid: Option<u32>) {
     if agent_pgid.is_some()
         && !crate::acp::unix_process_group_kill_targets::is_session_affiliated_pid(pid)
     {
-        // setsid/reparent can outrun a single /proc snapshot; persist affiliation for
-        // orphans read while the fixture still names this agent PG.
         crate::acp::unix_process_group_kill_targets::note_session_affiliated_pid(pid);
     }
 }

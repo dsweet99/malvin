@@ -1,4 +1,3 @@
-//! External kiss symbol refs for gate-loop coverage gaps (must live outside covered source files).
 
 #[test]
 fn kiss_cov_coalesce_private_helpers() {

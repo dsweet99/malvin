@@ -1,4 +1,3 @@
-//! User-shell cooperator fixtures for coincidental-daemon regression tests.
 
 use std::io::Write;
 use std::path::Path;
@@ -7,8 +6,6 @@ use super::process_alive;
 use super::read_orphan_pid;
 use super::wait_for_init_reparent;
 
-/// Spawns a long-lived cooperator process (simulating the user's shell) that forks
-/// double-fork daemons on stdin command `DAEMON <pidfile>`.
 pub fn spawn_user_shell_cooperator() -> (Child, ChildStdin) {
     let child_delay = super::hostile_script_delay_ms(200);
     let script = format!(
@@ -24,7 +21,6 @@ pub fn spawn_user_shell_cooperator() -> (Child, ChildStdin) {
     (child, stdin)
 }
 
-/// Double-fork daemon spawned from a baseline user-shell cooperator (not malvin/agent).
 pub fn spawn_user_coincidental_daemon(user_shell_stdin: &mut ChildStdin, orphan_pid_file: &Path) {
     writeln!(
         user_shell_stdin,
@@ -35,7 +31,6 @@ pub fn spawn_user_coincidental_daemon(user_shell_stdin: &mut ChildStdin, orphan_
     user_shell_stdin.flush().expect("flush");
 }
 
-/// Spawns an isolated-PG agent sleep child for sandbox teardown contract tests.
 pub fn spawn_isolated_agent_sleep() -> (Child, u32) {
     use std::os::unix::process::CommandExt;
     let mut agent = Command::new("sleep");
@@ -45,7 +40,6 @@ pub fn spawn_isolated_agent_sleep() -> (Child, u32) {
     (child, pgid)
 }
 
-/// Spawns a user coincidental daemon and waits until it reparents to init.
 pub async fn setup_user_init_reparented_daemon(
     user_shell_stdin: &mut ChildStdin,
     orphan_pid_file: &Path,
@@ -60,7 +54,6 @@ pub async fn setup_user_init_reparented_daemon(
     pid
 }
 
-/// Cleans up processes spawned by [`user_coincidental_init_orphan_survives_agent_teardown`].
 pub fn cleanup_user_coincidental_test(user_daemon_pid: u32, mut user_shell: Child, mut agent_child: Child) {
     let _ = Command::new("kill")
         .args(["-9", &user_daemon_pid.to_string()])

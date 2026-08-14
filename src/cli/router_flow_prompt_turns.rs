@@ -109,7 +109,6 @@ pub(crate) fn build_router_b_prompt(input: RouterBPromptInput<'_>) -> Result<Str
     Ok(body.trim().to_string())
 }
 
-/// Prompt filename shown in stdout brackets and used when selecting `router_b` vs creative.
 #[must_use]
 pub(crate) const fn router_b_prompt_label(creative: bool) -> &'static str {
     if creative {

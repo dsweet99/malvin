@@ -99,16 +99,13 @@ fn insert_current_state(
     );
 }
 
-/// CLI prefix for prompt templates (`{{ malvin_command }} inspire`, etc.).
 #[must_use]
 pub fn format_malvin_command(model: &str) -> String {
     format!("malvin --model={model}")
 }
 
-/// Value for `{{ git_extra }}` when `--git` is enabled.
 pub const GIT_EXTRA_ENABLED: &str = "You may run 'git commit'.";
 
-/// Model id and `--git` template options for prompt rendering.
 #[derive(Clone, Copy, Debug)]
 pub struct PromptModelOpts<'a> {
     pub model: &'a str,
@@ -122,7 +119,6 @@ impl<'a> PromptModelOpts<'a> {
     }
 }
 
-/// Template text for `{{ git_extra }}` from the `--git` flag.
 #[must_use]
 pub const fn format_git_extra(git: bool) -> &'static str {
     if git {
@@ -146,11 +142,6 @@ pub fn workflow_context_paths_only(
     WorkflowRenderContext::new(context)
 }
 
-/// Builds the full workflow render context (paths, quality gates, `kpop` slot).
-///
-/// # Errors
-///
-/// Returns [`PromptError`] when quality gate markdown or `kpop_common.md` rendering fails.
 #[cfg(test)]
 pub fn workflow_context(
     artifacts: &RunArtifacts,
@@ -207,7 +198,6 @@ pub(crate) fn resolve_prompt_context_path(
     )
 }
 
-/// On-disk user brief path (may differ from [`RunArtifacts::plan_path`]).
 #[cfg(test)]
 #[must_use]
 pub(crate) fn resolve_user_brief_path(

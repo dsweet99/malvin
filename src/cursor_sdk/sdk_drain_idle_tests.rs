@@ -1,4 +1,3 @@
-//! Idle drain-timeout regressions for Cursor SDK `drain_until_run_done`.
 
 use crate::acp::CoderPromptOptions;
 
@@ -7,7 +6,6 @@ use super::sdk_bug_helpers::{
     expect_prompt_err,
 };
 
-/// Missing `run_done`: idle drain timeout must fail the turn and tear down for retry.
 #[tokio::test]
 async fn never_run_done_idle_timeout_tears_down_and_retries() {
     let _guard = crate::test_utils::test_env_lock();
@@ -39,7 +37,6 @@ async fn never_run_done_idle_timeout_tears_down_and_retries() {
     bug_clear_env();
 }
 
-/// With a long idle budget, missing `run_done` still blocks past a short outer deadline.
 #[tokio::test]
 async fn long_idle_never_run_done_still_blocked_at_800ms() {
     let _guard = crate::test_utils::test_env_lock();
@@ -61,7 +58,6 @@ async fn long_idle_never_run_done_still_blocked_at_800ms() {
     bug_clear_env();
 }
 
-/// Idle timeout is between events: keep-alive ticks longer than idle still complete.
 #[tokio::test]
 async fn keep_alive_events_do_not_trip_idle_drain_timeout() {
     let _guard = crate::test_utils::test_env_lock();
@@ -99,7 +95,6 @@ fn kiss_cov_sdk_drain_idle_cases() {
     let _ = stringify!(empty_result_run_done_clears_prior_last_response);
 }
 
-/// Create/resume ACK waits must use the same idle timeout as drain (no infinite hang).
 #[tokio::test]
 async fn create_ack_idle_timeout_fails_begin() {
     let _guard = crate::test_utils::test_env_lock();
@@ -120,7 +115,6 @@ async fn create_ack_idle_timeout_fails_begin() {
     bug_clear_env();
 }
 
-/// `RunDone` with no result must clear a prior turn's `last_response` (router `__MALVIN_DONE__`).
 #[tokio::test]
 async fn empty_result_run_done_clears_prior_last_response() {
     let _guard = crate::test_utils::test_env_lock();

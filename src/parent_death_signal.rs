@@ -1,25 +1,15 @@
-//! Linux parent-death signal for malvin-spawned children.
 
 use crate::session_sandbox_policy::SandboxSpawnPolicyAspect;
 
-/// Ask the kernel to SIGKILL this child when its parent (malvin) dies.
-///
-/// Closes the held-stdin abandonment hole: SIGKILL of malvin cannot run Drop
-/// teardown, and a duplicated stdin write-end can keep bridge EOF from arriving.
-///
-/// Linux only (`PR_SET_PDEATHSIG`). On other platforms this is a no-op; bridges
-/// still poll `ppid` as a fallback.
 #[cfg(target_os = "linux")]
 #[allow(unsafe_code)]
 pub fn install_parent_death_signal(cmd: &mut std::process::Command) {
     use std::os::unix::process::CommandExt;
     let _aspect = SandboxSpawnPolicyAspect::ParentDeathSignal;
     let parent_pid = std::process::id();
-    // SAFETY: runs once in the forked child before exec; only touches this process.
     unsafe {
         cmd.pre_exec(move || {
             let _ = libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGKILL as libc::c_ulong);
-            // Race: parent may have died between fork and prctl.
             if libc::getppid().cast_unsigned() != parent_pid {
                 let _ = libc::raise(libc::SIGKILL);
             }

@@ -1,4 +1,3 @@
-//! Workspace layout paths (`.malvin/` tree) and home-directory run logs.
 
 use std::path::{Path, PathBuf};
 
@@ -16,22 +15,16 @@ pub const MALVIN_CHECKS_REL: &str = ".malvin/checks";
 
 pub const MALVIN_ADVICE_REL: &str = ".malvin/advice.md";
 
-/// Legacy repo-relative logs path (pre-relocation); retained for docs and migration tests.
 pub const MALVIN_LOGS_REL: &str = ".malvin/logs";
 
-/// Workspace-local config (distinct from [`malvin_home_config_path`]).
 pub const MALVIN_CONFIG_REL: &str = ".malvin/config.toml";
 
-/// Per-user malvin data root under `$HOME` (logs, config, names, dotfile snapshots).
 pub const MALVIN_USER_HOME_DIR: &str = ".malvin_home";
 
-/// Global user config filename under [`malvin_user_home_root`].
 pub const MALVIN_HOME_CONFIG_FILE: &str = "config.toml";
 
-/// When set to `1` during `cargo test`, code may create/write/delete `~/.malvin_home/config.toml`.
 pub const MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION: &str = "MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION";
 
-/// Whether home-config disk mutation may run (always true outside test builds).
 pub(crate) fn home_malvin_config_disk_io_allowed() -> bool {
     if cfg!(test) {
         std::env::var(MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION).as_deref() == Ok("1")
@@ -40,7 +33,6 @@ pub(crate) fn home_malvin_config_disk_io_allowed() -> bool {
     }
 }
 
-/// Refuse home-config disk mutation in test builds when isolation consent is absent.
 pub(crate) fn assert_home_malvin_config_disk_io_allowed(op: &str) -> Result<(), String> {
     if home_malvin_config_disk_io_allowed() {
         Ok(())
@@ -52,12 +44,10 @@ pub(crate) fn assert_home_malvin_config_disk_io_allowed(op: &str) -> Result<(), 
     }
 }
 
-/// Whether home-config delete/recreate paths may run (always true outside test builds).
 pub(crate) fn home_malvin_config_delete_allowed() -> bool {
     home_malvin_config_disk_io_allowed()
 }
 
-/// Run-directory file recording the canonical workspace cwd for this run.
 pub const WORK_DIR_MANIFEST: &str = "work_dir";
 
 const LEGACY_MALVIN_CHECKS_FILE: &str = ".malvin_checks";
@@ -70,13 +60,11 @@ pub fn malvin_advice_path(work_dir: &Path) -> PathBuf {
     work_dir.join(MALVIN_ADVICE_REL)
 }
 
-/// `~/.malvin_home/logs/<hash>/` for the canonical absolute path of `work_dir`.
 #[must_use]
 pub fn malvin_logs_root(work_dir: &Path) -> PathBuf {
     malvin_home_logs_root().join(workspace_logs_hash(work_dir))
 }
 
-/// `~/.malvin_home/`.
 #[must_use]
 pub fn malvin_user_home_root() -> PathBuf {
     crate::user_home_dir().join(MALVIN_USER_HOME_DIR)
@@ -87,7 +75,6 @@ pub fn malvin_home_logs_root() -> PathBuf {
     malvin_user_home_root().join("logs")
 }
 
-/// `~/.malvin/snapshots/` — session dotfile backups (checks, gitignore tree, workspace config, etc.).
 pub const MALVIN_SNAPSHOTS_DIR: &str = "snapshots";
 
 #[must_use]
@@ -102,7 +89,6 @@ pub fn snapshot_category_dir(category: &str) -> PathBuf {
     malvin_home_snapshots_root().join(category)
 }
 
-/// `~/.malvin_home/config.toml` (global user config; `work_dir` is ignored).
 #[must_use]
 pub fn malvin_config_path(_work_dir: &Path) -> PathBuf {
     malvin_home_config_path()
@@ -113,7 +99,6 @@ pub fn malvin_home_config_path() -> PathBuf {
     malvin_user_home_root().join(MALVIN_HOME_CONFIG_FILE)
 }
 
-/// Alphanumeric (hex) digest of the canonical absolute path of `work_dir`.
 #[must_use]
 pub fn workspace_logs_hash(work_dir: &Path) -> String {
     let abs = canonical_work_dir_for_logs(work_dir);
@@ -142,7 +127,6 @@ fn fnv1a64(bytes: &[u8]) -> u64 {
     hash
 }
 
-/// Returns the home logs bucket for `start` when it already exists.
 #[must_use]
 pub fn find_malvin_logs_root(start: &Path) -> Option<PathBuf> {
     let candidate = malvin_logs_root(start);
@@ -158,17 +142,11 @@ pub fn is_malvin_workspace(work_dir: &Path) -> bool {
     work_dir.join(MALVIN_DIR).is_dir()
 }
 
-/// Writes the canonical workspace path into a run directory manifest.
-///
-/// # Errors
-///
-/// Returns [`std::io::Error`] when the manifest cannot be written.
 pub fn write_work_dir_manifest(run_dir: &Path, work_dir: &Path) -> std::io::Result<()> {
     let abs = canonical_work_dir_for_logs(work_dir);
     std::fs::write(run_dir.join(WORK_DIR_MANIFEST), format!("{}\n", abs.display()))
 }
 
-/// Reads the workspace cwd recorded for a run, if present.
 #[must_use]
 pub fn read_work_dir_manifest(run_dir: &Path) -> Option<PathBuf> {
     let path = run_dir.join(WORK_DIR_MANIFEST);
@@ -180,7 +158,6 @@ pub fn read_work_dir_manifest(run_dir: &Path) -> Option<PathBuf> {
     Some(PathBuf::from(trimmed))
 }
 
-/// Removes pre-migration root `.malvin_checks` if present (no legacy fallback reads).
 pub fn remove_legacy_malvin_checks_file(work_dir: &Path) {
     let legacy = work_dir.join(LEGACY_MALVIN_CHECKS_FILE);
     if legacy.is_file() {

@@ -1,4 +1,3 @@
-//! Malvin: implementation and review workflow driven by the Cursor SDK (`cursor:`) or Pi (`pi:`).
 #![cfg_attr(
     test,
     allow(
@@ -41,9 +40,7 @@ pub use workflow_name_aliases::{
     canonical_workflow_name, resolve_session_log_path, resolve_workspace_malvin_config_path,
     WORKSPACE_CONFIG_PATHS,
 };
-/// Shared LLM completion types used by run timing / usage recording.
 pub mod llm_transport;
-/// Agent interface (malvin → cursor-agent / pi).
 pub mod agent;
 mod gate_loop_session;
 mod sandbox_oom;

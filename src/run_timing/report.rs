@@ -67,7 +67,6 @@ pub(super) fn write_json_only(r: &RunTiming, run_dir: &Path) -> io::Result<()> {
     Ok(())
 }
 
-/// Writes `run_timing.json` and prints tagged stdout summary line(s).
 pub(super) fn write_json_and_print_summary(r: &RunTiming, run_dir: &Path) -> io::Result<()> {
     let path = run_dir.join(RUN_TIMING_JSON_FILE);
     let file = std::fs::File::create(&path)?;
@@ -78,11 +77,6 @@ pub(super) fn write_json_and_print_summary(r: &RunTiming, run_dir: &Path) -> io:
     Ok(())
 }
 
-/// Prints the tagged stdout summary from an existing `run_timing.json`, if present.
-///
-/// # Errors
-///
-/// Returns [`std::io::Error`] when reading under `run_dir` fails.
 pub fn print_summary_from_run_dir(run_dir: &Path) -> io::Result<()> {
     let path = run_dir.join(RUN_TIMING_JSON_FILE);
     if !path.is_file() {

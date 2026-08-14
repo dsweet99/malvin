@@ -1,23 +1,18 @@
-//! `malvin models` listing via `pi --list-models`.
 
 use std::time::Duration;
 
 use super::discover::resolve_pi_bin;
 use crate::command_output_timeout::{command_output_with_timeout, timeout_ms_from_env};
 
-/// Default wall-clock budget for `pi --list-models` (override with
-/// `MALVIN_PI_LIST_MODELS_TIMEOUT_MS`).
 pub const DEFAULT_PI_LIST_MODELS_TIMEOUT_MS: u64 = 30_000;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PiModelListing {
     pub id: String,
     pub name: String,
-    /// From the `thinking` column when present (`yes` / `no`).
     pub thinking: Option<bool>,
 }
 
-/// Resolve the `pi --list-models` wall-clock timeout.
 #[must_use]
 pub fn pi_list_models_timeout() -> Duration {
     timeout_ms_from_env(
@@ -26,12 +21,6 @@ pub fn pi_list_models_timeout() -> Duration {
     )
 }
 
-/// List models from the external `pi` CLI.
-///
-/// # Errors
-///
-/// Returns an error when `pi` is missing, `--list-models` fails, the listing
-/// exceeds [`pi_list_models_timeout`], or exit 0 stdout yields no parseable rows.
 pub fn list_pi_models_sync() -> Result<Vec<PiModelListing>, String> {
     let bin = resolve_pi_bin()?;
     let mut cmd = crate::malvin_sandbox::malvin_std_command(&bin);
@@ -75,7 +64,6 @@ fn is_noise_line(line: &str, lower: &str) -> bool {
         || lower.starts_with("run `")
 }
 
-/// Column starts from a `pi --list-models` header.
 #[derive(Debug, Clone, Copy)]
 struct HeaderColumns {
     model_start: usize,
@@ -94,7 +82,6 @@ fn header_columns(header: &str) -> Option<HeaderColumns> {
     }
     let thinking_start = lower.find("thinking");
     let thinking_end = thinking_start.and_then(|start| {
-        // Next column after thinking (usually `images`), else end of line.
         let after = &lower[start + "thinking".len()..];
         let rel = after.find(|c: char| c.is_ascii_alphabetic())?;
         Some(start + "thinking".len() + rel)
@@ -150,7 +137,6 @@ fn listing_from_whitespace_row(line: &str) -> Option<PiModelListing> {
     if model.is_empty() || !is_provider_id(provider) {
         return None;
     }
-    // Live tables: provider model context max-out thinking images
     let thinking = cols.iter().find_map(|c| parse_thinking_cell(c));
     Some(PiModelListing {
         name: model.to_string(),

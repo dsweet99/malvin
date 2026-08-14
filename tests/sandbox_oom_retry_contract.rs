@@ -1,4 +1,3 @@
-//! Adversarial tests: OOM retry detection must not grep agent transcripts.
 
 use malvin::{
     create_kpop_run_artifacts, format_current_state, gate_iteration_oom_killed,

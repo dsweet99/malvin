@@ -34,7 +34,6 @@ use std::sync::Arc;
 #[cfg(unix)]
 use std::sync::atomic::AtomicBool;
 
-/// Regression: watcher must keep enforcing after ACP stdout closes (`reader_dead`).
 #[cfg(unix)]
 #[tokio::test]
 async fn watch_process_group_memory_enforces_after_reader_dead() {
@@ -61,7 +60,6 @@ async fn watch_process_group_memory_enforces_after_reader_dead() {
     );
 }
 
-/// OOM watcher with `limit_bytes = 1` must tear down a live agent sleep child.
 #[cfg(unix)]
 #[tokio::test]
 async fn malvin_oom_watcher_kills_agent_sleep_at_low_limit() {
@@ -85,7 +83,6 @@ async fn malvin_oom_watcher_kills_agent_sleep_at_low_limit() {
     assert_ne!(agent_child.try_wait().expect("wait"), None);
 }
 
-/// Process-group teardown must kill a sleep child in the agent's isolated PG.
 #[cfg(unix)]
 #[tokio::test]
 async fn malvin_process_group_teardown_kills_agent_sleep() {
@@ -98,7 +95,6 @@ async fn malvin_process_group_teardown_kills_agent_sleep() {
     assert_ne!(child.try_wait().expect("wait"), None);
 }
 
-/// Sandbox monitor must include malvin descendants that are not in the agent PG.
 #[cfg(unix)]
 #[test]
 fn malvin_sandbox_monitor_includes_malvin_spawned_sibling() {
@@ -121,10 +117,6 @@ fn malvin_sandbox_monitor_includes_malvin_spawned_sibling() {
     let _ = sibling_child.wait();
 }
 
-/// Regression: baseline-amnestied init-reparented `agent acp` orphans must die on teardown.
-///
-/// Linux-only: `looks_like_malvin_agent_acp` reads `/proc/{pid}/environ`; init-reparent timing
-/// is asserted via `wait_for_init_reparent` (see `unix_process_group_teardown_tests.rs`).
 #[cfg(target_os = "linux")]
 #[tokio::test]
 async fn baseline_amnestied_agent_acp_orphan_killed_on_teardown() {
@@ -147,7 +139,6 @@ async fn baseline_amnestied_agent_acp_orphan_killed_on_teardown() {
     let _ = agent.wait();
 }
 
-/// Regression: init-reparented user daemons started mid-session must survive agent teardown.
 #[cfg(unix)]
 #[tokio::test]
 async fn user_coincidental_init_orphan_survives_agent_teardown() {
@@ -169,7 +160,6 @@ async fn user_coincidental_init_orphan_survives_agent_teardown() {
     cleanup_user_coincidental_test(user_daemon_pid, user_shell, agent_child);
 }
 
-/// Regression: malvin-spawned siblings outside the agent PG must die on session teardown.
 #[cfg(unix)]
 #[tokio::test]
 async fn malvin_sibling_outside_agent_pg_killed_on_teardown() {

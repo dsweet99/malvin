@@ -1,8 +1,4 @@
 #![cfg_attr(test, allow(unsafe_code))]
-//! Shared agent runtime helpers used by Cursor/Pi backends.
-//!
-//! Historical name: this module once hosted the Agent Client Protocol JSON-RPC client.
-//! That protocol path has been removed; SDK bridges own the wire protocol now.
 
 mod import_prelude;
 mod jsonl_trace;

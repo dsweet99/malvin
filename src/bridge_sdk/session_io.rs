@@ -1,4 +1,3 @@
-//! Bridge stdin/stdout protocol helpers.
 
 use crate::acp::AgentError;
 
@@ -120,7 +119,6 @@ pub(crate) async fn drain_until_run_done(session: &BridgeSession) -> Result<(), 
     }
 }
 
-/// Fail if the bridge stays silent too long (create/resume ACK or prompt drain).
 async fn read_event_with_idle_timeout(
     session: &BridgeSession,
     waiting_for: &str,
@@ -135,8 +133,6 @@ async fn read_event_with_idle_timeout(
         })
 }
 
-/// Legacy bridges sometimes emitted `fatal` then `run_done`. Consume a trailing
-/// `run_done` if it is already buffered so the next prompt does not see it.
 async fn discard_optional_trailing_run_done(session: &BridgeSession) {
     let read = read_event(session);
     let timed = tokio::time::timeout(std::time::Duration::from_millis(50), read).await;
@@ -146,7 +142,6 @@ async fn discard_optional_trailing_run_done(session: &BridgeSession) {
     }
 }
 
-/// `RunResultStatus` values that must not be treated as a successful turn.
 #[must_use]
 pub(crate) fn run_done_status_is_failure(status: &str) -> bool {
     status == "error" || status == "cancelled"
@@ -166,15 +161,12 @@ fn finish_run_done(session: &BridgeSession, ev: &BridgeEvent) -> Result<(), Agen
     if let Some(u) = usage {
         record_sdk_usage(session.timing.as_ref(), u, session.normalize_pi_usage);
     }
-    // Always replace: a missing result must not leave a prior turn's text for
-    // router __MALVIN_DONE__ detection via last_coder_prompt_agent_response().
     *session
         .last_response
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) =
         result.clone().unwrap_or_default();
     if let Some(text) = result {
-        // Authoritative final text: SDK often places DM fences only here.
         super::log_adapter::feed_do_dm_run_result(text);
     }
     super::log_adapter::handle_stream_event(session, ev);

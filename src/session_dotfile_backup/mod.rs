@@ -31,7 +31,6 @@ pub use wrappers::{
 
 use slots::{backup_slot, restore_slot};
 
-/// Captured dotfile bytes at snapshot time plus the historical disk location under `~/.malvin_home`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DotfileBackupPayload {
     pub backup_path: std::path::PathBuf,
@@ -79,10 +78,6 @@ impl SessionDotfileBackups {
         Self::snapshot_with_id(work_dir, alloc::random_backup_id)
     }
 
-    /// Like [`snapshot`], but ensures `~/.malvin_home/config.toml` exists first.
-    ///
-    /// Gate workflows (`code`, `tidy`, …) materialize home config at CLI entry. Home config is
-    /// not part of the session snapshot/restore bundle.
     #[allow(clippy::missing_errors_doc)]
     pub fn snapshot_after_ensuring_home_config(work_dir: &Path) -> Result<Self, String> {
         repair_invalid_malvin_home_config_on_disk(work_dir)?;
@@ -112,7 +107,6 @@ impl SessionDotfileBackups {
         restore_workspace_session_dotfiles(work_dir, self)
     }
 
-    /// Restore session dotfiles except `.malvin/checks`.
     #[allow(clippy::missing_errors_doc)]
     pub fn restore_excluding_malvin_checks(&self, work_dir: &Path) -> Result<(), String> {
         restore_workspace_session_dotfiles_excluding_malvin_checks(work_dir, self)

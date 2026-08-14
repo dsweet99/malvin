@@ -1,4 +1,3 @@
-//! JSONL bridge protocol types (shared with Prime).
 
 #[allow(unused_imports)]
 pub use crate::bridge_protocol::{

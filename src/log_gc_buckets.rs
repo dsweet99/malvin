@@ -46,7 +46,6 @@ pub(crate) fn remove_bucket_if_empty(bucket: &Path, keep: Option<&Path>) {
     }
 }
 
-/// True when every run records a workspace path that no longer exists (ephemeral /tmp orphans).
 pub(crate) fn bucket_is_ephemeral_orphan(runs: &[PathBuf]) -> bool {
     if runs.is_empty() {
         return false;

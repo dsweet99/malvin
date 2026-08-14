@@ -1,4 +1,3 @@
-//! Timed `Command` capture for short-lived helper binaries (e.g. `malvin models`).
 
 use std::io::Read;
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
@@ -7,8 +6,6 @@ use std::time::{Duration, Instant};
 
 type PipeReader = thread::JoinHandle<std::io::Result<Vec<u8>>>;
 
-/// Parse a positive millisecond timeout from `env_key`, clamping zero to 1 and
-/// falling back to `default_ms` on missing/garbage values.
 #[must_use]
 pub fn timeout_ms_from_env(env_key: &str, default_ms: u64) -> Duration {
     Duration::from_millis(
@@ -31,14 +28,6 @@ pub fn timeout_ms_from_env(env_key: &str, default_ms: u64) -> Duration {
     )
 }
 
-/// Spawn `cmd` with piped stdout/stderr, wait up to `timeout`, return captured output.
-///
-/// On timeout, signals the child's process group (for `malvin_std_command` isolation)
-/// then kills the child. Errors include `label` for actionable messages.
-///
-/// # Errors
-///
-/// Returns when spawn, wait, pipe read, or timeout fails.
 pub fn command_output_with_timeout(
     mut cmd: Command,
     timeout: Duration,

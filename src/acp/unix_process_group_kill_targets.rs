@@ -1,4 +1,3 @@
-//! Process-tree helpers for sandbox teardown kill-target discovery.
 
 use std::collections::{HashMap, HashSet};
 
@@ -47,8 +46,6 @@ pub(crate) fn reparented_init_orphans(baseline: &HashSet<u32>, rows: &[ProcRow])
         .collect()
 }
 
-/// Session-affiliated PIDs still alive (any parent), e.g. tool children that left the
-/// agent process group but have not yet been reparented to init.
 pub(crate) fn affiliated_session_pids(baseline: &HashSet<u32>, rows: &[ProcRow]) -> HashSet<u32> {
     let protected = host_protected_pids(rows);
     rows.iter()
@@ -61,7 +58,6 @@ pub(crate) fn affiliated_session_pids(baseline: &HashSet<u32>, rows: &[ProcRow])
         .collect()
 }
 
-/// Init-reparented Cursor `agent acp` orphans that baseline amnesty would otherwise skip.
 pub(crate) fn baseline_amnestied_agent_orphans(
     baseline: &HashSet<u32>,
     rows: &[ProcRow],
@@ -78,7 +74,6 @@ pub(crate) fn baseline_amnestied_agent_orphans(
         .collect()
 }
 
-/// Malvin descendants in malvin's process group spawned after `baseline` (same-PG siblings).
 pub(crate) fn malvin_session_spawn_pids(
     baseline: &HashSet<u32>,
     rows: &[ProcRow],

@@ -11,15 +11,12 @@ pub fn chmod755(path: &Path) {
 }
 
 pub fn seed_malvin_checks(workspace: &Path, content: &str) {
-    if std::process::Command::new("git")
+    let _ = std::process::Command::new("git")
         .args(["init"])
         .current_dir(workspace)
         .status()
         .is_ok_and(|s| s.success())
-        || workspace.join(".git").exists()
-    {
-        // git-root layout
-    }
+        || workspace.join(".git").exists();
     let checks_path = malvin::malvin_checks_path(workspace);
     if let Some(parent) = checks_path.parent() {
         std::fs::create_dir_all(parent).expect("mkdir checks parent");
@@ -27,7 +24,6 @@ pub fn seed_malvin_checks(workspace: &Path, content: &str) {
     std::fs::write(checks_path, content).expect("write checks");
 }
 
-/// Seed workspace `.malvin/checks` without `git init` (ABORT-path tests that never restore checks).
 pub fn seed_malvin_checks_legacy_fast(workspace: &Path, content: &str) {
     let checks_path = workspace.join(".malvin").join("checks");
     if let Some(parent) = checks_path.parent() {
@@ -36,7 +32,6 @@ pub fn seed_malvin_checks_legacy_fast(workspace: &Path, content: &str) {
     std::fs::write(checks_path, content).expect("write checks");
 }
 
-/// Requires isolated `HOME`; see plan.md.
 pub fn seed_malvin_config(workspace: &Path, content: &str) {
     assert!(
         std::env::var(malvin::MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION).as_deref() == Ok("1"),
@@ -49,7 +44,6 @@ pub fn seed_malvin_config(workspace: &Path, content: &str) {
     std::fs::write(path, content).expect("write ~/.malvin_home/config.toml");
 }
 
-/// Run `f` with `HOME` pointed at a fresh temp directory and restore afterward.
 pub fn with_isolated_home<F>(f: F)
 where
     F: FnOnce(&Path, &Path),
@@ -72,7 +66,6 @@ where
     restore_env_var(malvin::MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION, old_home_config_mutation);
 }
 
-/// Point `$HOME` at an isolated temp home and allow home-config restore/repair to mutate it.
 pub fn activate_test_home(home: &Path) {
     #[allow(unsafe_code)]
     unsafe {
@@ -82,7 +75,6 @@ pub fn activate_test_home(home: &Path) {
     seed_fast_integration_malvin_config(home);
 }
 
-/// Isolated `$HOME` config for integration subprocess tests.
 pub fn seed_fast_integration_malvin_config(home: &Path) {
     seed_malvin_config(home, "mem_limit_gb = 4\n");
 }
@@ -104,7 +96,6 @@ pub fn test_home_workspace() -> (tempfile::TempDir, std::path::PathBuf, std::pat
     (root, home, workspace)
 }
 
-/// Like [`test_home_workspace`] but without a workspace `.kissconfig` (faster gate-loop subprocess tests).
 pub fn fast_test_home_workspace() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
     let root = tempfile::tempdir().expect("tempdir");
     let home = root.path().join("home");
@@ -205,7 +196,6 @@ pub fn cached_mock_executable(js: &str) -> std::path::PathBuf {
     path
 }
 
-/// Home-directory run logs bucket for `workspace` when `HOME` is set to `home`.
 #[must_use]
 pub fn malvin_run_logs_bucket(workspace: &Path, home: &Path) -> PathBuf {
     home.join(malvin::MALVIN_USER_HOME_DIR)

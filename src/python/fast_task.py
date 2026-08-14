@@ -52,14 +52,13 @@ DEFAULT_AGENT_TIMEOUT_SEC = 10 * 60
 TIMEOUT_EXIT_CODE = 124
 _KILL_GRACE_SEC = 2.0
 _POLL_INTERVAL_SEC = 0.1
-# Optional override for agent wall-clock (seconds), e.g. longer FT-03 streak runs.
+
 AGENT_TIMEOUT_ENV = "MALVIN_FT_AGENT_TIMEOUT_SEC"
 MALVIN_BIN_REMOTE = "/root/.cargo/bin/malvin"
-# Host cursor-sdk-bridge is bind-mounted here so in-container malvin can spawn
-# the Node bridge (image has cursor-agent's Node ≥22, but not the bridge tree).
+
 CURSOR_SDK_BRIDGE_REMOTE = "/opt/malvin/cursor-sdk-bridge"
 CURSOR_SDK_BRIDGE_JS_REMOTE = f"{CURSOR_SDK_BRIDGE_REMOTE}/dist/bridge.js"
-# Host ``pi`` binary for ``pi:`` models (``--agent=malvin --model pi:…``).
+
 PI_BIN_REMOTE = "/opt/malvin/pi"
 TOOLCHAIN_PATH = (
     "/root/.cargo/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin"
@@ -71,14 +70,13 @@ AGENT_CHOICES = (AGENT_MALVIN, AGENT_CURSOR)
 EXTERNAL_AGENTS = frozenset({AGENT_CURSOR})
 CURSOR_ENV_KEYS = ("CURSOR_AGENT_API_KEY", "CURSOR_API_KEY", "AGENT_API_KEY")
 OPENROUTER_ENV_KEYS = ("OPENROUTER_API_KEY", "OPENROUTER_MAX_TOKENS")
-# Provider keys for ``pi:`` / OpenAI-compatible models inside the container.
+
 PROVIDER_ENV_KEYS = ("OPENAI_API_KEY", "ANTHROPIC_API_KEY")
-# Host secrets forwarded into the agent container (and redacted in logs).
+
 DOCKER_SECRET_ENV_KEYS = CURSOR_ENV_KEYS + OPENROUTER_ENV_KEYS + PROVIDER_ENV_KEYS
 LEAK_NAME_MARKERS = ("grade.py", "goldens", "golden", "solution")
-# Shell form required so stdin redirect works under `docker run … -w /app`.
-CURSOR_AGENT_SHELL = "cursor-agent --force -p < plan.md"
 
+CURSOR_AGENT_SHELL = "cursor-agent --force -p < plan.md"
 
 def ft_resolve_cursor_sdk_bridge_dir() -> Path | None:
     """Host ``cursor-sdk-bridge`` dir with built ``dist/bridge.js``, or None."""
@@ -86,7 +84,6 @@ def ft_resolve_cursor_sdk_bridge_dir() -> Path | None:
     if (bridge / "dist" / "bridge.js").is_file():
         return bridge
     return None
-
 
 def ft_resolve_pi_bin() -> Path | None:
     """Host ``pi`` binary (``MALVIN_PI`` or ``PATH``), or None."""
@@ -104,7 +101,6 @@ def ft_resolve_pi_bin() -> Path | None:
         return path.resolve()
     return None
 
-
 def ft_malvin_args_request_pi(malvin_args: tuple[str, ...]) -> bool:
     """True when ``malvin_args`` select a ``pi:`` ``--model``."""
     for i, arg in enumerate(malvin_args):
@@ -117,7 +113,6 @@ def ft_malvin_args_request_pi(malvin_args: tuple[str, ...]) -> bool:
                 return True
     return False
 
-
 def ft_normalize_agent(agent: str) -> str:
     """Return a canonical agent id or raise ``click.ClickException``."""
     name = (agent or AGENT_MALVIN).strip().lower()
@@ -127,14 +122,12 @@ def ft_normalize_agent(agent: str) -> str:
         )
     return name
 
-
 def ft_default_results_dir() -> Path:
     """Return ``~/.malvin_home/fast_task_results`` (override with ``FAST_TASK_RESULTS``)."""
     override = os.environ.get("FAST_TASK_RESULTS")
     if override:
         return Path(override).expanduser().resolve()
     return (Path.home() / ".malvin_home" / "fast_task_results").resolve()
-
 
 def ft_agent_timeout_sec(explicit: float | None = None) -> float:
     """Resolve agent timeout: explicit arg, else ``MALVIN_FT_AGENT_TIMEOUT_SEC``, else default."""
@@ -157,11 +150,9 @@ def ft_agent_timeout_sec(explicit: float | None = None) -> float:
         return value
     return float(DEFAULT_AGENT_TIMEOUT_SEC)
 
-
 def ft_timestamp_dir() -> str:
     """UTC timestamp directory segment, e.g. ``20260715T141523Z``."""
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-
 
 def ft_list_task_ids() -> list[str]:
     """Sorted task ids under ``fast_tasks/`` (directories named ``FT-*``)."""
@@ -170,7 +161,6 @@ def ft_list_task_ids() -> list[str]:
     return sorted(
         p.name for p in FAST_TASKS_ROOT.iterdir() if p.is_dir() and p.name.startswith("FT-")
     )
-
 
 def ft_resolve_task_dir(task_id: str) -> Path:
     """Resolve ``fast_tasks/<task_id>`` or raise ``click.ClickException``."""
@@ -189,10 +179,8 @@ def ft_resolve_task_dir(task_id: str) -> Path:
         raise click.ClickException(f"Missing grade.py: {grade}")
     return task_dir
 
-
 def _ft_copy_ignore(_directory: str, names: list[str]) -> set[str]:
     return {n for n in names if n in {"__pycache__", ".pytest_cache", ".git"}}
-
 
 def ft_stage_workspace(task_dir: Path, run_root: Path) -> Path:
     """Copy ``task_dir/workspace`` into ``run_root/workspace`` (workspace-only)."""
@@ -204,7 +192,6 @@ def ft_stage_workspace(task_dir: Path, run_root: Path) -> Path:
     ft_ensure_staged_git(dst)
     ft_assert_stage_isolated(dst)
     return dst.resolve()
-
 
 def ft_ensure_staged_git(workspace: Path) -> None:
     """``git init`` staged workspace so malvin uses ``/app/.malvin/checks`` (git layout).
@@ -230,7 +217,6 @@ def ft_ensure_staged_git(workspace: Path) -> None:
             f"git init failed for staged workspace {ws}: {detail}"
         )
 
-
 def ft_assert_stage_isolated(staged: Path) -> None:
     """Fail if staged tree contains grader / golden / solution leak markers."""
     staged = staged.resolve()
@@ -244,16 +230,13 @@ def ft_assert_stage_isolated(staged: Path) -> None:
         if path.is_file() and path.name == "grade.py":
             raise click.ClickException(f"Staged workspace must not contain grade.py: {path}")
 
-
 def ft_resolve_malvin_binary() -> Path | None:
     """Best-effort host ``malvin`` binary path for run-time bind mount."""
     return _ft_resolve_host_binary("malvin")
 
-
 def ft_resolve_malvin_main_binary() -> Path | None:
     """Best-effort host ``malvin-main`` binary path for ``--main`` bind mount."""
     return _ft_resolve_host_binary("malvin-main")
-
 
 def _ft_resolve_host_binary(name: str) -> Path | None:
     """Resolve ``name`` from PATH or ``~/.cargo/bin/<name>``."""
@@ -266,7 +249,6 @@ def _ft_resolve_host_binary(name: str) -> Path | None:
     if cargo.is_file():
         return cargo.resolve()
     return None
-
 
 def ft_dockerfile_for_agent(base_image: str = DEFAULT_BASE_IMAGE) -> str:
     """Dockerfile text for the reusable fast-task agent image (no grade material).
@@ -286,7 +268,6 @@ ENV PATH="{TOOLCHAIN_PATH}"
 WORKDIR /app
 """
 
-
 def ft_assert_dockerfile_nonleak(text: str) -> None:
     """Fail if Dockerfile would copy grader / golden / solution material."""
     lower = text.lower()
@@ -295,7 +276,6 @@ def ft_assert_dockerfile_nonleak(text: str) -> None:
             raise click.ClickException(
                 f"Agent Dockerfile must not reference {marker!r}"
             )
-
 
 def ft_docker_available() -> bool:
     """True when local Docker accepts ``docker info``."""
@@ -310,7 +290,6 @@ def ft_docker_available() -> bool:
     except (OSError, subprocess.TimeoutExpired):
         return False
     return proc.returncode == 0
-
 
 def ft_ensure_agent_image(
     *,
@@ -349,7 +328,6 @@ def ft_ensure_agent_image(
             raise click.ClickException(f"docker build failed for {image}")
     return image
 
-
 def ft_cursor_env_args() -> list[str]:
     """``docker run -e`` args for Cursor/OpenRouter secrets present on the host."""
     args: list[str] = []
@@ -358,7 +336,6 @@ def ft_cursor_env_args() -> list[str]:
         if value:
             args.extend(["-e", f"{key}={value}"])
     return args
-
 
 def ft_redact_cmd_tokens(cmd: list[str]) -> list[str]:
     """Return *cmd* with Docker secret env values replaced by ``***``."""
@@ -373,11 +350,9 @@ def ft_redact_cmd_tokens(cmd: list[str]) -> list[str]:
         out.append(redacted)
     return out
 
-
 def ft_redact_cmd_for_display(cmd: list[str]) -> str:
     """Join *cmd* for logs, redacting Docker secret env values."""
     return " ".join(ft_redact_cmd_tokens(cmd))
-
 
 def ft_run_malvin_logs_dir(workspace: Path) -> Path:
     """Per-run host dir bind-mounted to container ``/root/.malvin_home/logs``.
@@ -389,7 +364,6 @@ def ft_run_malvin_logs_dir(workspace: Path) -> Path:
     logs = workspace.resolve().parent / "malvin_logs"
     logs.mkdir(parents=True, exist_ok=True)
     return logs
-
 
 def ft_docker_agent_cmd(
     *,
@@ -403,8 +377,8 @@ def ft_docker_agent_cmd(
     agent_name = ft_normalize_agent(agent)
     ws = workspace.resolve()
     host_logs = ft_run_malvin_logs_dir(ws)
-    # Persist container ``/root/.malvin_home/logs`` on the host so ACP
-    # traces survive ``docker run --rm``.
+    
+    
     volume_mounts: list[str] = [
         "-v",
         f"{ws}:/app",
@@ -470,7 +444,7 @@ def ft_docker_agent_cmd(
         f"PATH={TOOLCHAIN_PATH}",
         "-e",
         "MALVIN_FORCE_STDOUT_TEE=1",
-        # Host-owned bind mount often looks "dubious" to container git-as-root.
+        
         "-e",
         "GIT_CONFIG_COUNT=1",
         "-e",
@@ -482,13 +456,12 @@ def ft_docker_agent_cmd(
         image,
     ]
     if agent_name == AGENT_CURSOR:
-        # Skip malvin (and thus router init): shell stdin from plan.md.
+        
         cmd.extend(["sh", "-c", CURSOR_AGENT_SHELL])
     else:
         cmd.extend(["malvin", *malvin_args, "plan.md"])
     ft_assert_agent_cmd_nonleak(cmd, task_parent=ws.parent)
     return cmd
-
 
 def ft_assert_agent_cmd_nonleak(
     cmd: list[str],
@@ -520,7 +493,6 @@ def ft_assert_agent_cmd_nonleak(
                 f"Agent must not mount task root containing grade.py: {host_path}"
             )
 
-
 def _ft_kill_process_group(proc: subprocess.Popen[Any]) -> None:
     """SIGTERM then SIGKILL the process group started for *proc*."""
     try:
@@ -535,7 +507,6 @@ def _ft_kill_process_group(proc: subprocess.Popen[Any]) -> None:
             os.killpg(proc.pid, signal.SIGKILL)
         except ProcessLookupError:
             pass
-
 
 def ft_relay_subprocess_stdout(
     cmd: list[str],
@@ -586,7 +557,6 @@ def ft_relay_subprocess_stdout(
         return TIMEOUT_EXIT_CODE, "".join(chunks), True
     return int(proc.returncode or 0), "".join(chunks), False
 
-
 def ft_preflight_workspace_mount(*, image: str, workspace: Path) -> None:
     """Fail fast if Docker cannot see ``plan.md`` at ``/app`` (e.g. Snap + ``/tmp``)."""
     ws = workspace.resolve()
@@ -614,7 +584,6 @@ def ft_preflight_workspace_mount(*, image: str, workspace: Path) -> None:
             f"use a path under $HOME (e.g. {ft_default_results_dir()}). "
             f"host_workspace={ws}"
         )
-
 
 def ft_grade_on_host(
     task_dir: Path,
@@ -651,7 +620,6 @@ def ft_grade_on_host(
         "grader_exit_code": proc.returncode,
     }
 
-
 def ft_print_evaluation_summary(
     grade_result: dict[str, Any],
     agent_result: dict[str, Any] | None,
@@ -670,7 +638,6 @@ def ft_print_evaluation_summary(
             click.echo(f"agent_seconds: {seconds:.1f}")
     click.echo(f"artifacts: {run_root}")
 
-
 def ft_exit_from_evaluation(
     grade_result: dict[str, Any],
     agent_result: dict[str, Any] | None,
@@ -681,12 +648,11 @@ def ft_exit_from_evaluation(
     harness exit code: a completed grade with ``reward: 0`` is still success
     for ``solve`` as a runner.
     """
-    _ = grade_result  # reward/pass are observational; not harness failure
+    _ = grade_result  
     if agent_result and not agent_result.get("timed_out"):
         code = agent_result.get("exit_code")
         if code not in (0, None):
             raise SystemExit(int(code))
-
 
 def ft_run_solve(
     task_id: str,
@@ -807,7 +773,6 @@ def ft_run_solve(
     ft_print_evaluation_summary(grade_result, agent_result, run_root)
     return {"agent": agent_result, "grade": grade_result, "run_root": run_root}
 
-
 def ft_cli_list_tasks() -> None:
     """List available fast task ids (Click ``tasks`` command body)."""
     ids = ft_list_task_ids()
@@ -815,7 +780,6 @@ def ft_cli_list_tasks() -> None:
         raise click.ClickException(f"No fast tasks found under {FAST_TASKS_ROOT}")
     for task_id in ids:
         click.echo(task_id)
-
 
 def ft_cli_solve(
     task_id: str,
@@ -846,12 +810,10 @@ def ft_cli_solve(
     if not skip_grade and not dry_run:
         ft_exit_from_evaluation(result["grade"], result["agent"])
 
-
 def ft_cli_self_test() -> None:
     """Run fast unit self-tests (no live agent)."""
     run_fast_task_self_tests()
     click.echo("ALL fast_task self-tests OK")
-
 
 def run_fast_task_self_tests() -> None:
     """Deterministic checks for CLI, staging isolation, docker argv, Dockerfile."""
@@ -877,7 +839,6 @@ def run_fast_task_self_tests() -> None:
     _ft_test_redact_cmd_for_display()
     _ft_test_preflight_requires_host_plan()
 
-
 def _ft_test_list_and_resolve_tasks() -> None:
     ids = ft_list_task_ids()
     assert ids, "expected FT-* task ids"
@@ -885,7 +846,6 @@ def _ft_test_list_and_resolve_tasks() -> None:
     task_dir = ft_resolve_task_dir("FT-01")
     assert (task_dir / "workspace" / "plan.md").is_file()
     assert (task_dir / "grade.py").is_file()
-
 
 def _ft_test_stage_workspace_isolated() -> None:
     task_dir = ft_resolve_task_dir("FT-01")
@@ -901,7 +861,6 @@ def _ft_test_stage_workspace_isolated() -> None:
         assert "grade.py" not in parent_listing
         assert "goldens" not in parent_listing
 
-
 def _ft_test_dockerfile_nonleak() -> None:
     text = ft_dockerfile_for_agent()
     assert "pytest" in text
@@ -913,7 +872,6 @@ def _ft_test_dockerfile_nonleak() -> None:
         raise AssertionError("expected leak detection")
     except click.ClickException:
         pass
-
 
 def _ft_test_docker_agent_cmd_nonleak() -> None:
     with tempfile.TemporaryDirectory(prefix="ft-ws-") as tmp:
@@ -956,7 +914,6 @@ def _ft_test_docker_agent_cmd_nonleak() -> None:
         assert "GIT_CONFIG_KEY_0=safe.directory" in cmd
         assert "GIT_CONFIG_VALUE_0=/app" in cmd
 
-
 def _ft_test_docker_agent_cmd_cursor() -> None:
     with tempfile.TemporaryDirectory(prefix="ft-cursor-") as tmp:
         ws = Path(tmp) / "workspace"
@@ -975,7 +932,6 @@ def _ft_test_docker_agent_cmd_cursor() -> None:
         assert "cursor-agent --force -p < plan.md" in joined
         assert "malvin" not in cmd
         assert "--verbose" not in cmd
-
 
 def _ft_test_docker_agent_cmd_pi() -> None:
     """``pi:`` models bind-mount host pi and set ``MALVIN_PI``."""
@@ -1006,7 +962,7 @@ def _ft_test_docker_agent_cmd_pi() -> None:
             assert f"MALVIN_PI={PI_BIN_REMOTE}" in cmd
             assert "--model" in cmd
             assert "pi:openai/gpt-4o" in cmd
-            # Default (non-pi) malvin path must not mount pi.
+            
             base = ft_docker_agent_cmd(
                 image=DEFAULT_IMAGE,
                 workspace=ws,
@@ -1033,7 +989,6 @@ def _ft_test_docker_agent_cmd_pi() -> None:
         finally:
             _ft_mod.ft_resolve_pi_bin = old_resolve  # type: ignore[assignment]
 
-
 def _ft_test_assert_agent_cmd_rejects_task_root() -> None:
     task_dir = ft_resolve_task_dir("FT-01")
     bad = [
@@ -1051,7 +1006,6 @@ def _ft_test_assert_agent_cmd_rejects_task_root() -> None:
         raise AssertionError("expected task-root mount rejection")
     except click.ClickException:
         pass
-
 
 def _ft_test_grade_on_host_starter_reward_zero() -> None:
     """Host grade path with a tiny stub grader (keeps unit tests under 1.5s)."""
@@ -1079,7 +1033,6 @@ def _ft_test_grade_on_host_starter_reward_zero() -> None:
         assert result["reward"] == 0
         assert result["pass"] is False
         assert reward_out.read_text(encoding="utf-8").strip() == "0"
-
 
 def _ft_test_solve_help_and_dry_run() -> None:
     from toolchain_repos import load_ops_entry
@@ -1156,7 +1109,6 @@ def _ft_test_solve_help_and_dry_run() -> None:
         assert "grade.py" not in joined_cmd
         assert "goldens" not in joined_cmd
         _ft_assert_solve_model_and_agent_dry_runs(cli, runner, Path(tmp))
-
 
 def _ft_assert_solve_model_and_agent_dry_runs(cli, runner, tmp: Path) -> None:
     """Model / agent dry-run argv checks (split out for kiss local-variable limits)."""
@@ -1257,7 +1209,6 @@ def _ft_assert_solve_model_and_agent_dry_runs(cli, runner, tmp: Path) -> None:
     assert rejected.exit_code != 0
     assert "prime" in rejected.output.lower() or "Invalid" in rejected.output
 
-
 def _ft_test_solve_main_dry_run() -> None:
     """``--main`` mounts host malvin-main at the container malvin path."""
     from toolchain_repos import load_ops_entry
@@ -1327,7 +1278,6 @@ def _ft_test_solve_main_dry_run() -> None:
                 if path.startswith(prefix):
                     os.environ["PATH"] = path[len(prefix) :]
 
-
 def _ft_test_resolve_malvin_main_binary() -> None:
     with tempfile.TemporaryDirectory(prefix="ft-main-bin-") as tmp:
         stub_dir = Path(tmp)
@@ -1345,7 +1295,6 @@ def _ft_test_resolve_malvin_main_binary() -> None:
             assert missing is None
         finally:
             os.environ["PATH"] = old_path
-
 
 def _ft_test_resolve_agent_helpers() -> None:
     """Cover agent-id normalize + cursor/pi host-resolve edge branches."""
@@ -1396,7 +1345,7 @@ def _ft_test_resolve_agent_helpers() -> None:
     old_which = shutil.which
     try:
         shutil.which = lambda _name: None  # type: ignore[assignment]
-        # With MALVIN_PI unset and which empty, resolve falls through to None.
+        
         old_pi = os.environ.pop("MALVIN_PI", None)
         try:
             assert ft_resolve_pi_bin() is None
@@ -1406,20 +1355,16 @@ def _ft_test_resolve_agent_helpers() -> None:
     finally:
         shutil.which = old_which  # type: ignore[assignment]
 
-
 _FT_RELAY_SPY_SEEN: list[str] = []
 _FT_RELAY_SPY_ORIG = sys.stdout.write
 _FT_ECHO_CAPTURE: list[str] = []
-
 
 def _ft_relay_stdout_spy(text: str) -> int:
     _FT_RELAY_SPY_SEEN.append(text)
     return _FT_RELAY_SPY_ORIG(text)
 
-
 def _ft_echo_capture(msg: str) -> None:
     _FT_ECHO_CAPTURE.append(str(msg))
-
 
 def _ft_test_relay_streams_before_wait() -> None:
     """Claim: relay writes lines before process exit (live tee, not dump-after)."""
@@ -1437,7 +1382,6 @@ def _ft_test_relay_streams_before_wait() -> None:
     assert "stream-line-1" in captured
     assert any("stream-line-1" in chunk for chunk in _FT_RELAY_SPY_SEEN)
 
-
 def _ft_test_relay_timeout_kills_slow_command() -> None:
     """Claim: relay kills a slow child and reports timed_out with exit 124."""
     cmd = [sys.executable, "-c", "import time; time.sleep(30)"]
@@ -1453,7 +1397,6 @@ def _ft_test_relay_timeout_kills_slow_command() -> None:
     assert zero_to is True
     assert zero_code == TIMEOUT_EXIT_CODE
     assert zero_out == ""
-
 
 def _ft_test_print_evaluation_includes_reward() -> None:
     _FT_ECHO_CAPTURE.clear()
@@ -1471,7 +1414,6 @@ def _ft_test_print_evaluation_includes_reward() -> None:
     assert "=== Evaluation ===" in text
     assert "reward: 0" in text
     assert "pass: False" in text
-
 
 def _ft_test_helpers_and_cli_surface() -> None:
     from toolchain_repos import load_ops_entry
@@ -1494,9 +1436,8 @@ def _ft_test_helpers_and_cli_surface() -> None:
     assert callable(ops.fast_task_cli)
     assert callable(ft_preflight_workspace_mount)
 
-
 def _ft_test_exit_from_evaluation() -> None:
-    # Reward 0 must not fail the harness (user: don't require reward value).
+    
     ft_exit_from_evaluation({"pass": False, "reward": 0}, {"exit_code": 0})
     try:
         ft_exit_from_evaluation(
@@ -1512,7 +1453,6 @@ def _ft_test_exit_from_evaluation() -> None:
         {"exit_code": 2, "timed_out": True},
     )
 
-
 def _ft_test_ensure_agent_image_dry_run() -> None:
     tag = ft_ensure_agent_image(
         image="malvin-fast-task:test-dry",
@@ -1520,7 +1460,6 @@ def _ft_test_ensure_agent_image_dry_run() -> None:
         dry_run=True,
     )
     assert tag == "malvin-fast-task:test-dry"
-
 
 def _ft_test_default_results_dir() -> None:
     path = ft_default_results_dir()
@@ -1535,7 +1474,6 @@ def _ft_test_default_results_dir() -> None:
         else:
             os.environ["FAST_TASK_RESULTS"] = prev
     assert overridden == Path("/tmp/ft-results-override").resolve()
-
 
 def _ft_test_redact_cmd_for_display() -> None:
     cmd = [
@@ -1558,7 +1496,6 @@ def _ft_test_redact_cmd_for_display() -> None:
     assert "OPENROUTER_API_KEY=***" in shown
     assert "OPENROUTER_MAX_TOKENS=***" in shown
     assert "PATH=/bin" in shown
-
 
 def _ft_test_preflight_requires_host_plan() -> None:
     with tempfile.TemporaryDirectory(prefix="ft-preflight-") as tmp:

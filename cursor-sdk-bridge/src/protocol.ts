@@ -1,4 +1,4 @@
-/** Malvin-owned JSONL bridge protocol (Rust ↔ Node). */
+
 
 export type NoForcePolicy = "sandbox" | "fail_fast" | "auto_review";
 
@@ -13,7 +13,6 @@ export type CreateOp = {
   noForcePolicy?: NoForcePolicy;
 };
 
-/** Re-open a prior agent id after evicting a stale handle (idle auth bug). */
 export type ResumeOp = {
   op: "resume";
   agentId: string;

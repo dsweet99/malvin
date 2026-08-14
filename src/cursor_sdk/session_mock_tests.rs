@@ -1,4 +1,3 @@
-//! Mock Node bridge for offline session tests.
 
 use std::path::PathBuf;
 use std::process::Stdio;

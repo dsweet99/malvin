@@ -1,15 +1,13 @@
-//! `malvin init` — discover workspace quality gates and write `.malvin/checks`.
 
 use clap::Args;
 
 use crate::cli::checks_discovery_flow::{ensure_malvin_checks_discovered_for_cwd, ChecksDiscoveryOpts};
 use crate::cli::SharedOpts;
 
-/// Arguments for [`run_init`].
 #[derive(Args, Debug, Clone, Copy, Default)]
+#[command(override_usage = "malvin init [OPTION]...")]
 pub struct InitArgs {}
 
-/// Run the init workflow from `init_constraints.md` (checks-discovery `KPop`).
 pub async fn run_init(_init: InitArgs, shared: &SharedOpts) -> Result<(), String> {
     ensure_malvin_checks_discovered_for_cwd(shared, ChecksDiscoveryOpts::INIT).await
 }

@@ -1,4 +1,3 @@
-//! Per-turn prompt assembly for `KPop` investigation and gate-engine sessions.
 
 use crate::prompt_stratification::{join_labeled_strata, PromptStratum, WorkflowRenderContext};
 use crate::prompts::{PromptError, PromptStore, render_header};
@@ -12,20 +11,10 @@ pub struct KpopTurnPrompts<'a> {
 }
 
 impl KpopTurnPrompts<'_> {
-    /// Gate workflow: `header.md` + `kpop_common.md` + `kpop_block.md` in one prompt.
-    ///
-    /// # Errors
-    ///
-    /// Returns `Err` when a prompt template cannot be rendered.
     pub fn kpop_engine_single_turn_prompt(&self, max_hypotheses: usize) -> Result<String, String> {
         self.gate_kpop_single_turn_prompt(max_hypotheses)
     }
 
-    /// Gate workflow: `header.md` + `kpop_common.md` + `kpop_block.md` in one prompt.
-    ///
-    /// # Errors
-    ///
-    /// Returns `Err` when a prompt template cannot be rendered.
     pub fn gate_kpop_single_turn_prompt(&self, max_hypotheses: usize) -> Result<String, String> {
         let mut ctx = self.base.as_map().clone();
         ctx.insert("max_hypotheses".to_string(), max_hypotheses.to_string());
@@ -49,11 +38,6 @@ impl KpopTurnPrompts<'_> {
         ]))
     }
 
-    /// Investigation turn: optional `header.md` (once) + `kpop_common.md` + `kpop_block.md`.
-    ///
-    /// # Errors
-    ///
-    /// Returns `Err` when a prompt template cannot be rendered.
     pub fn kpop_block(&mut self, max_hypotheses: usize) -> Result<String, String> {
         let mut ctx = self.base.as_map().clone();
         ctx.insert("max_hypotheses".to_string(), max_hypotheses.to_string());

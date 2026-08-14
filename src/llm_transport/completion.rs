@@ -1,4 +1,3 @@
-//! `CompletionOk` / `CompletionMeta`.
 
 use super::types::{CompletionResponse, ResponseUsage};
 

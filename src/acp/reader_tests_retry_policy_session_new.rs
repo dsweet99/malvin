@@ -5,7 +5,6 @@ use crate::acp::{
 use crate::support_paths::DEFAULT_MAX_ACP_RETRIES;
 use std::time::Duration;
 
-/// Tenacious ACP budget (`cli::loop_opts::TENACIOUS_MAX_ACP_RETRIES`).
 const TENACIOUS_TEST_MAX_ATTEMPTS: u32 = 9999;
 
 const SESSION_NEW_INTERNAL_MSG: &str =

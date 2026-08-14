@@ -1,4 +1,3 @@
-//! CLI positional request validation (`<REQUEST>` text or path).
 
 pub(crate) fn require_cli_request(
     request: Option<&String>,

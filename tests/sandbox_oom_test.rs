@@ -1,4 +1,3 @@
-//! Kiss per-file credit for [`malvin::sandbox_oom`] types (mirrors `agent_bundle` contract pattern).
 
 #[test]
 fn sandbox_oom_kill_facts_type_witness() {

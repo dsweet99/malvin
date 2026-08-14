@@ -1,8 +1,6 @@
-//! Bracket `[k=v,…]` overrides on model ids.
 
 use super::ModelParam;
 
-/// Format params as `[k=v,k=v]` (empty string when none).
 #[must_use]
 pub fn format_bracket_params(params: &[ModelParam]) -> String {
     if params.is_empty() {
@@ -16,11 +14,6 @@ pub fn format_bracket_params(params: &[ModelParam]) -> String {
     format!("[{body}]")
 }
 
-/// Split `base[k=v,…]` into base slug and params. Bare `base` yields empty params.
-///
-/// # Errors
-///
-/// Returns an error when brackets are unbalanced or a pair is not `key=value`.
 pub fn split_bracket_params(raw: &str) -> Result<(String, Vec<ModelParam>), String> {
     let raw = raw.trim();
     let Some(open) = raw.find('[') else {

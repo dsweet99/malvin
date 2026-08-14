@@ -1,4 +1,3 @@
-// Verbose/trace coalescing for `session/update` chunks.
 use crate::acp::import_prelude::*;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum SessionUpdateChunkKind {
@@ -6,8 +5,6 @@ pub(crate) enum SessionUpdateChunkKind {
     Thought,
 }
 
-/// Chunk text coalescing for **verbose** logs and **JSONL traces**: append until this many Unicode scalars,
-/// a newline run, or a non-chunk line (JSON-RPC response, `tool_call`, etc.) triggers a flush.
 pub(crate) const ACP_VERBOSE_COALESCE_MAX: usize = 125;
 
 pub(crate) fn coalesce_append_chunk(
@@ -138,7 +135,6 @@ impl VerboseIoCoalescer {
     }
 }
 
-/// `session/update` streaming chunks (`agent_message_chunk`, `agent_thought_chunk`).
 #[allow(dead_code)]
 pub(crate) fn session_update_chunk_parts(
     v: &Value,

@@ -1,4 +1,3 @@
-//! Shared bootstrap for one-shot coder flows (`--do`, `inspire`).
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -13,7 +12,6 @@ use crate::artifacts::{
 use crate::cli::cli_request::require_cli_request;
 use crate::run_id::RunDirOptions;
 
-/// Resolve request text/workdir and create run artifacts (optionally with custom run-dir opts).
 pub fn resolve_one_shot_request_artifacts(
     request: Option<&String>,
     command: &str,
@@ -35,7 +33,6 @@ pub fn resolve_one_shot_request_artifacts(
     Ok((text, artifacts))
 }
 
-/// Authenticate, attach prompts log dir, and snapshot session dotfiles.
 pub fn finish_one_shot_auth_and_backups(
     client: &mut AgentBackend,
     artifacts: &RunArtifacts,
@@ -45,14 +42,12 @@ pub fn finish_one_shot_auth_and_backups(
     SessionDotfileBackups::snapshot_after_ensuring_home_config(&artifacts.work_dir)
 }
 
-/// Timing + ensure-session guard for a one-shot coder prompt.
 pub struct OneShotCoderGuard {
     timing: Arc<Mutex<crate::run_timing::RunTiming>>,
     run_dir: PathBuf,
 }
 
 impl OneShotCoderGuard {
-    /// Attach timing, ensure coder session, set implement display name.
     pub async fn begin(
         client: &mut AgentBackend,
         artifacts: &RunArtifacts,
@@ -70,7 +65,6 @@ impl OneShotCoderGuard {
         })
     }
 
-    /// End coder session and emit run timing JSON.
     pub async fn finish(
         self,
         client: &mut AgentBackend,
@@ -91,7 +85,6 @@ impl OneShotCoderGuard {
     }
 }
 
-/// Restore workspace session dotfiles and clear the command error run dir on success.
 pub fn finish_one_shot_after_prompt(
     acp_res: Result<(), String>,
     work_dir: &Path,

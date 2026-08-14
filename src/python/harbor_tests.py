@@ -30,7 +30,6 @@ _PYTEST_INVOCATION_RE = re.compile(
     re.I,
 )
 
-
 def embedded_file_body_from_patch(patch_path: Path, relative_path: str) -> str | None:
     """Return added body for ``relative_path`` from a unified diff patch, if present."""
     if not patch_path.is_file():
@@ -61,16 +60,13 @@ def embedded_file_body_from_patch(patch_path: Path, relative_path: str) -> str |
         return None
     return "\n".join(added)
 
-
 def embedded_test_sh_from_patch(patch_path: Path) -> str | None:
     """Return added ``test.sh`` body from a Harbor ``test.patch``, if present."""
     return embedded_file_body_from_patch(patch_path, "test.sh")
 
-
 def embedded_test_py_from_patch(patch_path: Path) -> str | None:
     """Return added ``test.py`` body from a Harbor ``test.patch``, if present."""
     return embedded_file_body_from_patch(patch_path, "test.py")
-
 
 def added_python_sources_from_patch(patch_path: Path) -> dict[str, str]:
     """Map relative paths → reconstructed NEW-side bodies for ``.py`` hunks.
@@ -114,14 +110,13 @@ def added_python_sources_from_patch(patch_path: Path) -> dict[str, str]:
             new_lines.append(line[1:])
         elif line.startswith("-") and not line.startswith("---"):
             continue
-        elif line.startswith("\\"):  # "\ No newline at end of file"
+        elif line.startswith("\\"):  
             continue
         elif line.startswith(" "):
-            # Context line: present on the NEW side of a modified hunk.
+            
             new_lines.append(line[1:])
     _flush()
     return sources
-
 
 def resolve_harbor_test_sh_body(tests_dir: Path | None) -> str | None:
     """Return Harbor ``test.sh`` body from ``tests/test.sh`` or embedded patch content."""
@@ -132,14 +127,13 @@ def resolve_harbor_test_sh_body(tests_dir: Path | None) -> str | None:
         return direct.read_text(encoding="utf-8")
     return embedded_test_sh_from_patch(tests_dir / "test.patch")
 
-
 def is_stdlib_module(name: str) -> bool:
     """Return True when *name* is a top-level stdlib (or built-in) module."""
     root = name.split(".", 1)[0]
     stdlib = getattr(sys, "stdlib_module_names", None)
     if stdlib is not None:
         return root in stdlib
-    # Fallback for older interpreters: treat common stdlib roots as excluded.
+    
     return root in {
         "abc",
         "ast",
@@ -170,8 +164,6 @@ def is_stdlib_module(name: str) -> bool:
         "warnings",
     }
 
-
-# Import-root → distribution name when they differ (extend as tasks require).
 _IMPORT_TO_DISTRIBUTION: dict[str, str] = {
     "attr": "attrs",
     "bs4": "beautifulsoup4",
@@ -184,14 +176,12 @@ _IMPORT_TO_DISTRIBUTION: dict[str, str] = {
     "sklearn": "scikit-learn",
 }
 
-
 def distribution_name_for_import(import_name: str) -> str:
     """Map a top-level import name to a likely PyPI / DeclaredDeps key."""
     root = import_name.split(".", 1)[0]
     if root in _IMPORT_TO_DISTRIBUTION:
         return _IMPORT_TO_DISTRIBUTION[root]
     return root.replace("_", "-").lower()
-
 
 def top_level_imports_from_source(source: str) -> set[str]:
     """Return top-level imported module roots from Python *source* via AST."""
@@ -216,9 +206,6 @@ def top_level_imports_from_source(source: str) -> set[str]:
                 names.add(root)
     return names
 
-
-# Path segments whose Python sources are analysis samples / fixtures, not test code
-# that the verifier imports at collection time (e.g. bandit challenge fixtures).
 _ANALYSIS_SAMPLE_SEGMENTS = frozenset(
     {
         "fixtures",
@@ -233,15 +220,12 @@ _ANALYSIS_SAMPLE_SEGMENTS = frozenset(
     }
 )
 
-# Import roots that are almost always local packages, never Harbor third-party deps.
 _LOCAL_IMPORT_ROOTS = frozenset({"tests", "test", "conftest", "challenge"})
-
 
 def is_analysis_sample_path(path: str | Path) -> bool:
     """True when *path* looks like fixture/sample code rather than a test module."""
     parts = Path(str(path)).parts
     return any(part.lower() in _ANALYSIS_SAMPLE_SEGMENTS for part in parts)
-
 
 def harbor_imports_from_tests_dir(tests_dir: Path | None) -> tuple[str, ...]:
     """Third-party top-level imports discovered from Harbor patch / test sources.
@@ -278,7 +262,6 @@ def harbor_imports_from_tests_dir(tests_dir: Path | None) -> tuple[str, ...]:
     )
     return tuple(third_party)
 
-
 def pytest_args_from_test_sh(script: str | None) -> tuple[str, ...]:
     """Extract pytest argument tokens from the first pytest invocation in *script*."""
     if not script:
@@ -299,7 +282,6 @@ def pytest_args_from_test_sh(script: str | None) -> tuple[str, ...]:
         return tuple(tokens)
     return ()
 
-
 def test_sh_invokes_pytest(script: str | None) -> bool:
     """True when Harbor ``test.sh`` directly invokes pytest (not stestr/custom runners)."""
     if not script:
@@ -311,7 +293,6 @@ def test_sh_invokes_pytest(script: str | None) -> bool:
         if _PYTEST_INVOCATION_RE.search(line):
             return True
     return False
-
 
 def collect_only_pytest_command(
     python_bin: str,
@@ -327,12 +308,10 @@ def collect_only_pytest_command(
     quoted = " ".join(_shell_quote(tok) for tok in args)
     return f"{python_bin} -m pytest {quoted}".rstrip()
 
-
 def _shell_quote(token: str) -> str:
     if re.fullmatch(r"[-A-Za-z0-9_./=,:]+", token):
         return token
     return "'" + token.replace("'", "'\"'\"'") + "'"
-
 
 def run_self_tests() -> None:
     import tempfile
@@ -381,7 +360,7 @@ def run_self_tests() -> None:
         assert "--collect-only" in cmd
         assert cmd.startswith("/opt/malvin-verifier/bin/python -m pytest")
 
-        # Modified hunk: context-line imports must appear in reconstructed NEW body.
+        
         mod_patch = root / "modified.patch"
         mod_patch.write_text(
             "diff --git a/tests/test_mod.py b/tests/test_mod.py\n"
@@ -406,7 +385,7 @@ def run_self_tests() -> None:
         mod_harbor = harbor_imports_from_tests_dir(root)
         assert "only_in_context_pkg" in mod_harbor
 
-        # Analysis fixture paths must not contribute third-party Harbor imports.
+        
         fixture_patch = root / "fixture.patch"
         fixture_patch.write_text(
             "diff --git a/challenge/fixtures/sample.py b/challenge/fixtures/sample.py\n"
@@ -435,7 +414,6 @@ def run_self_tests() -> None:
         assert is_analysis_sample_path("challenge/fixtures/x.py")
         assert distribution_name_for_import("graphql") == "graphql-core"
     print("harbor_tests self-tests passed")
-
 
 if __name__ == "__main__":
     run_self_tests()

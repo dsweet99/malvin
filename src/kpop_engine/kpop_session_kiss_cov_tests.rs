@@ -1,4 +1,3 @@
-//! External kiss witnesses for [`super`] gate-kpop session privates.
 
 use super::super::kpop_session_tests::{
     agent_backend, build_iteration_params, loop_params, prepared_fixture, shared_workflow,

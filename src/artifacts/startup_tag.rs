@@ -1,8 +1,6 @@
-// Startup log tag derived from the CLI `request` string.
 
 use super::is_existing_md_file_path;
 
-/// Label for the startup request log tag: `plan.md` → `plan`, `a/plan_1.md` → `plan_1`, else `prompt`.
 #[must_use]
 pub fn startup_request_tag_label(cli_request: &str) -> String {
     if let Some(path) = is_existing_md_file_path(cli_request) {

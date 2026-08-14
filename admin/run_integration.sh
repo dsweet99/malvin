@@ -1,16 +1,4 @@
 #!/usr/bin/env bash
-# Run malvin integration tests (fast contract + opt-in live suites).
-#
-# Does not set API keys. Export OPENROUTER_API_KEY (and cursor-agent auth)
-# in your environment before running live OpenRouter / ACP cases.
-#
-# Usage:
-#   ./admin/run_integration.sh           # fast contract + network live gates
-#   ./admin/run_integration.sh --local   # also set MALVIN_LIVE_LOCAL=1 (Metal/GPU)
-#
-# Live suites use cargo-nextest --ignored. This script exports live gates; when a
-# gate is set, missing keys/prereqs fail the test (fail-closed). Unset gates may
-# still early-return inside ignored bodies.
 
 set -euo pipefail
 
@@ -40,7 +28,6 @@ fi
 echo "=== fast: agent_backend_contract ==="
 cargo nextest run -E 'binary(agent_backend_contract)'
 
-# Live gates only — never assign OPENROUTER_API_KEY / cursor keys here.
 export MALVIN_LIVE_TRANSPORT=1
 export MALVIN_LIVE_MINI=1
 export MALVIN_LIVE_DEFER_ENRICH=1

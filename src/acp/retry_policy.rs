@@ -1,9 +1,5 @@
 use crate::support_paths::DEFAULT_MAX_ACP_RETRIES;
-// Bounded retries for transient ACP JSON-RPC failures (default [`DEFAULT_MAX_ACP_RETRIES`] attempts, 1s / 3s backoff).
-// Covers `session/prompt` and spawn/handshake (`initialize` / `authenticate` / `session/new`) via
-// Shared retry planning for Cursor/Pi session setup and prompt attempts.
 
-/// English noun for `n` retry attempts after the first try (`n` is `attempts_used - 1` in callers).
 #[must_use]
 pub(crate) const fn retries_noun(n: u32) -> &'static str {
     if n == 1 { "retry" } else { "retries" }
@@ -17,7 +13,6 @@ pub(crate) fn agent_string_is_upgrade_plan(msg: &str) -> bool {
         .contains("upgrade your plan to continue")
 }
 
-/// Operational stderr when billing blocks the agent stream (not session `who` tee).
 #[must_use]
 #[allow(dead_code)]
 pub(crate) fn operational_upgrade_plan_for_emit(line: &str, stream_upgrade_plan: bool) -> bool {
@@ -46,7 +41,6 @@ pub(crate) fn agent_string_is_cannot_use_model(msg: &str) -> bool {
 pub(crate) fn agent_string_is_openrouter_billing_failure(msg: &str) -> bool {
     let text = msg.to_ascii_lowercase();
     text.contains("openrouter billing/credit failure")
-        // Pre-classifier / ProviderError phrasing observed under empty balance.
         || text.contains("insufficient credits")
 }
 
@@ -55,11 +49,8 @@ pub(crate) fn agent_string_is_openrouter_missing_content(msg: &str) -> bool {
         .contains("openrouter response missing assistant content")
 }
 
-/// Max spawn attempts for `session/new` JSON-RPC Internal (`code=-32603`).
-/// Decoupled from tenacious [`crate::cli::loop_opts::TENACIOUS_MAX_ACP_RETRIES`].
 pub(crate) const SESSION_NEW_INTERNAL_MAX_SPAWN_ATTEMPTS: u32 = 5;
 
-/// JSON-RPC Internal (`code=-32603`) on spawn handshake `session/new`.
 #[must_use]
 pub(crate) fn agent_string_is_session_new_internal_error(msg: &str) -> bool {
     let text = msg.to_ascii_lowercase();
@@ -69,11 +60,6 @@ pub(crate) fn agent_string_is_session_new_internal_error(msg: &str) -> bool {
     text.contains("internal") || text.contains("code=-32603")
 }
 
-/// Cursor `agent` HTTP/2/Connect transport failures streamed as assistant text with `end_turn`.
-///
-/// Observed forms:
-/// - `Error: RetriableError: [unavailable] PING timed out`
-/// - `Error: RetriableError: [canceled] http/2 stream closed with error code CANCEL (0x8)`
 #[must_use]
 pub(crate) fn agent_string_is_cursor_http2_transport_error(msg: &str) -> bool {
     let text = msg.to_ascii_lowercase();
@@ -82,7 +68,6 @@ pub(crate) fn agent_string_is_cursor_http2_transport_error(msg: &str) -> bool {
             && (text.contains("cancel") || text.contains("0x8")))
 }
 
-/// Stable error string for prompt failure / retry when Cursor streams an HTTP/2 transport `RetriableError`.
 #[must_use]
 #[allow(dead_code)]
 pub(crate) fn cursor_http2_transport_error_message(msg: &str) -> Option<&'static str> {
@@ -104,7 +89,6 @@ pub(crate) enum IterableClosedStream {
     Readable,
 }
 
-/// Which iterable-closed error the coalesced buffer carries, if any.
 #[must_use]
 pub(crate) fn iterable_closed_stream_from_buffer(buf: &str) -> Option<IterableClosedStream> {
     let text = buf.to_ascii_lowercase();
@@ -125,7 +109,6 @@ const fn iterable_closed_stream_message(kind: IterableClosedStream) -> &'static 
     }
 }
 
-/// Operational stderr line for [`crate::output::print_log_warning`] (not session `who` tee).
 #[must_use]
 #[allow(dead_code)]
 pub(crate) fn operational_iterable_closed_log_line(msg: &str) -> Option<&'static str> {
@@ -139,7 +122,6 @@ pub(crate) fn operational_iterable_closed_log_line(msg: &str) -> Option<&'static
     }
 }
 
-/// Line or parent coalesced stream carries iterable-closed (split emissions included).
 #[must_use]
 #[allow(dead_code)]
 pub(crate) fn operational_iterable_closed_for_emit(
@@ -163,9 +145,6 @@ fn agent_retry_should_stop(last_error: &str) -> bool {
         || crate::run_timing::acp_post_run::merge_error_mentions_restore(last_error)
 }
 
-/// Blacklist-default retry policy for bounded ACP attempts: upgrade-plan and cannot-use-model
-/// errors fail fast with [`Err`]; all other errors retry with 1s then 3s sleeps until
-/// `max_attempts`. Unknown permanent failures may spend ~4s extra before stopping.
 pub(crate) fn plan_agent_retry(
     last_error: &str,
     attempt: u32,

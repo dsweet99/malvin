@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Initial (or full refresh) profiling-data collection for cargo-difftests.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

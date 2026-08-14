@@ -19,7 +19,7 @@ Write about code or concepts for a reader who will not read the source. Typical 
 ## Usage
 
 ```text
-malvin write [OPTIONS] [REQUEST]
+malvin write [OPTION]... [REQUEST]
 ```
 
 If `REQUEST` is omitted (and `--doc` is not set), malvin prints short usage on stdout and exits 0.
@@ -40,7 +40,7 @@ LaTeX output path. malvin derives the PDF path by replacing the `.tex` extension
 
 ### `--max-loops <N>` (default: 3)
 
-Outer router session budget (`effective_max_loops`). `0` is treated as `1`.
+Outer router session budget. `0` is treated as `1`.
 
 ### `--tenacious` (default: on)
 

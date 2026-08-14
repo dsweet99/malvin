@@ -1,4 +1,3 @@
-//! Tool-call stdout / timing for the Cursor SDK log adapter (VISION `t|` lines).
 
 use std::time::{Duration, Instant};
 
@@ -34,8 +33,6 @@ pub(crate) fn emit_tool(session: &BridgeSession, fields: ToolCallFields<'_>) {
         return;
     }
     let subject = summary.or(name).unwrap_or("tool");
-    // "end" is a legacy Prime bridge alias; "done" is ACP / early Pi adapter wording.
-    // Stdout tee only fires on complete|error (Cursor VISION `t|` parity).
     let phase = match phase {
         "end" | "done" => "complete",
         other => other,
@@ -96,11 +93,9 @@ struct DoneLineInput<'a> {
     phase: &'a str,
 }
 
-/// ACP-parity done line: `Run cmd · 12ms · ✓`, `Read path · 183 B · 200ms`, …
 fn format_tool_done_line(session: &BridgeSession, input: &DoneLineInput<'_>) -> String {
     let start = take_tool_start(session, input.tool_call_id);
     let from_start = start.as_ref().map_or("", |s| s.summary.as_str());
-    // Prefer the longer/more specific of start vs complete summary.
     let base = if input.subject.len() >= from_start.len() {
         input.subject
     } else if !from_start.is_empty() {

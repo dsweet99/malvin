@@ -12,7 +12,6 @@ pub struct AgentStdoutTeeFlags {
     pub show_thoughts_on_stdout: bool,
 }
 
-/// Tee flags for the default workflow and for `malvin --verbose --do` (must stay identical).
 #[must_use]
 pub const fn default_workflow_stdout_tee_flags(emit_stdout_markdown: bool) -> AgentStdoutTeeFlags {
     AgentStdoutTeeFlags {

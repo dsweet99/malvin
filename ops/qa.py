@@ -15,23 +15,19 @@ from _ops_bootstrap import load_library  # noqa: E402
 
 _lib = load_library("qa")
 
-
 @click.group()
 def qa_cli() -> None:
     """Regression checks for Cursor SDK process-management fixes."""
-
 
 @qa_cli.command("list")
 def qa_list_cmd() -> None:
     """List available shutdown QA scenarios."""
     _lib.list_scenarios()
 
-
 @qa_cli.command("sigkill-stdin-hold-abandons-bridge")
 def qa_sigkill_stdin_hold_abandons_bridge() -> None:
     """Local: stdin-hold + SIGKILL parent abandons cursor-sdk-bridge."""
     raise SystemExit(_lib.run_scenario("sigkill-stdin-hold-abandons-bridge"))
-
 
 @qa_cli.command("all")
 @click.option(
@@ -43,12 +39,10 @@ def qa_all_cmd(code_only: bool) -> None:
     """Run every scenario (exit 0 only if each reports FIXED)."""
     raise SystemExit(_lib.run_all(include_live=not code_only))
 
-
 @qa_cli.command("self-test")
 def qa_selftest_cmd() -> None:
     """Fast offline self-tests (no Cursor API)."""
     _lib.qa_cli_self_test()
-
 
 __all__ = [
     "qa_cli",

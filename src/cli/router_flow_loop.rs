@@ -40,10 +40,6 @@ struct RouterLoopStepResult {
     decision: Option<RouterLoopDecision>,
 }
 
-/// Merge pre-agent anchor with post-agent workspace, then restore.
-///
-/// Keeps intentional VISION.md / `.gitignore` content edits (same policy as gate-kpop
-/// [`merge_and_sanitize_for_gate_restore`]) instead of blindly replaying the anchor.
 pub(crate) fn restore_router_iteration_dotfiles(
     work_dir: &Path,
     iteration_anchor: &SessionDotfileBackups,
@@ -55,12 +51,6 @@ pub(crate) fn restore_router_iteration_dotfiles(
     Ok(merged)
 }
 
-/// Outer agent turns: `header.md` → `kpop_common.md` → `router_a.md` → optional `router_b.md`, then at most one
-/// `router_summarize.md` when exiting the outer loop (on the final open session before teardown).
-///
-/// With the Cursor SDK backend, the Node bridge stays open across Continue iterations, and is
-/// restarted when starting an agent if it is at least 10 minutes old. ACP/Mini still end the
-/// coder session between Continues.
 pub(crate) async fn run_router_agent_loops(
     mut input: RouterAgentLoopInput<'_>,
 ) -> Result<RouterAgentLoopOutcome, String> {

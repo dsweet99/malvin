@@ -1,4 +1,3 @@
-//! Commands-only help for bare `malvin` (no subcommand).
 
 use std::io::{self, Write};
 
@@ -39,30 +38,27 @@ fn commands_only_help_lines(cmd: &Command) -> Vec<String> {
         lines.push(about.to_string());
         lines.push(String::new());
     }
-    lines.push("Usage: malvin [OPTIONS] [REQUEST]".to_string());
-    lines.push("        malvin [OPTIONS] <COMMAND>".to_string());
+    lines.push("Usage: malvin [OPTION]... [REQUEST]".to_string());
+    lines.push("   or: malvin [OPTION]... <COMMAND>".to_string());
     lines.push(String::new());
     lines.push("Commands:".to_string());
     lines.extend(format_command_lines(&visible_subcommands(cmd)));
     lines.extend([
         String::new(),
-        "Use `malvin --help` to see options.".to_string(),
+        "Use malvin --help to see options.".to_string(),
     ]);
     lines
 }
 
-/// Build subcommand catalog text for bare `malvin`.
 pub fn render_commands_only_help() -> String {
     let cmd = Cli::command();
     format!("{}\n", commands_only_help_lines(&cmd).join("\n"))
 }
 
-/// Write subcommand catalog for bare `malvin`; full flags live under `malvin --help`.
 pub fn write_commands_only_help(mut writer: impl Write) -> io::Result<()> {
     writer.write_all(render_commands_only_help().as_bytes())
 }
 
-/// Print subcommand catalog for bare `malvin`; full flags live under `malvin --help`.
 pub fn print_commands_only_help() -> io::Result<()> {
     write_commands_only_help(io::stdout().lock())
 }
@@ -88,8 +84,8 @@ mod tests {
         let cmd = Cli::command();
         let lines = commands_only_help_lines(&cmd);
         let text = lines.join("\n");
-        assert!(text.contains("Usage: malvin [OPTIONS] [REQUEST]"));
-        assert!(text.contains("malvin [OPTIONS] <COMMAND>"));
+        assert!(text.contains("Usage: malvin [OPTION]... [REQUEST]"));
+        assert!(text.contains("malvin [OPTION]... <COMMAND>"));
         assert!(text.contains("Commands:"));
         assert!(text.contains("tidy"));
     }
@@ -102,8 +98,8 @@ mod tests {
         assert!(!help_lists_subcommand(&cmd, "code"));
         assert!(!help_lists_subcommand(&cmd, "kpop"));
         assert!(help_lists_subcommand(&cmd, "tidy"));
-        assert!(help.contains("Usage: malvin [OPTIONS] [REQUEST]"));
-        assert!(help.contains("malvin [OPTIONS] <COMMAND>"));
+        assert!(help.contains("Usage: malvin [OPTION]... [REQUEST]"));
+        assert!(help.contains("malvin [OPTION]... <COMMAND>"));
         assert!(help.contains("malvin --help"));
         assert!(!help.contains("Options:"));
         assert!(!help.contains("--no-color"));

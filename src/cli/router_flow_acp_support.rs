@@ -18,7 +18,6 @@ pub(crate) struct RouterTurnsOutcome {
     pub done: bool,
 }
 
-/// Whether the outer router loop should send `router_summarize.md` before teardown.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum RouterExitSummarize {
     Run,

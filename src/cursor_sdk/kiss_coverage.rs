@@ -1,4 +1,3 @@
-//! Kiss coverage witnesses for `cursor_sdk` (static name appearance in a test file).
 
 #[test]
 fn kiss_cov_cursor_sdk_auth_and_bridge_path() {

@@ -1,4 +1,3 @@
-//! Full client lifecycle against `mock_bridge.js`.
 
 use crate::acp::{AgentIoOptions, CoderPromptOptions};
 use crate::cursor_sdk::CursorSdkClient;
@@ -130,7 +129,6 @@ async fn cursor_sdk_warm_start_attach_after_begin_records_usage() {
     install_mock_bridge_env(&mock_bridge_path());
     let tmp = tempfile::tempdir().expect("tmp");
     let mut client = mock_client(tmp.path());
-    // Mirrors router/`--do` Idea 3: spawn before attach_run_timing_for_session.
     client.begin_coder_session(tmp.path()).await.expect("begin");
     let timing = client.attach_run_timing_for_session();
     run_prompt_and_assert_usage(&mut client, &tmp, &timing).await;

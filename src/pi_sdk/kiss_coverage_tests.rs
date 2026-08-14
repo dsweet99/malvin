@@ -1,4 +1,3 @@
-//! Kiss coverage witnesses for `pi_sdk` (static name appearance in a test file).
 
 #[test]
 fn kiss_cov_pi_sdk_discover_auth_models() {

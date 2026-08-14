@@ -1,4 +1,3 @@
-//! Tool-call signal hooks for [`crate::agent_phase`] heartbeat labels.
 
 use crate::agent_phase::{PhaseState, ToolKind};
 use crate::tool_summary::{

@@ -1,14 +1,3 @@
-//! Opportunistic herdr client: report malvin agent state when pane env is injected.
-//!
-//! No CLI flags or config keys. Absent `HERDR_ENV` / socket / pane → silent no-op.
-//!
-//! # Coexistence and product role
-//!
-//! Malvin is a **state reporter**, not a Herdr controller or built-in kind/integration.
-//! ACP child processes are stripped of `HERDR_*` / `HERDR_ENV` so installed cursor hooks
-//! do not race the parent reporter; `notify_reclaim` remains defense in depth.
-//! Prefer pane-id targeting; after bind, `agent.rename` assigns a unique live `name`
-//! (distinct from report/`display_agent: "malvin"`).
 
 mod bind;
 mod env;

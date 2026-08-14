@@ -1,6 +1,3 @@
-//! Tracks PIDs first observed during an agent sandbox session whose parent chain
-//! ties them to malvin or the agent process group, so teardown does not kill unrelated
-//! user processes that happen to reparent to init mid-session.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::{LazyLock, Mutex};
@@ -16,7 +13,6 @@ fn lock_or_recover<T>(mutex: &LazyLock<Mutex<T>>) -> std::sync::MutexGuard<'_, T
     mutex.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
-/// Clears affiliation state when a sandbox session ends.
 pub(crate) fn clear_session_spawn_affiliation() {
     lock_or_recover(&FIRST_SEEN_PPID).clear();
     lock_or_recover(&AFFILIATED_PIDS).clear();
@@ -27,7 +23,6 @@ pub(crate) fn clear_session_spawn_affiliation_for_test() {
     clear_session_spawn_affiliation();
 }
 
-/// Records first-seen parent links and marks session-affiliated PIDs.
 pub(crate) fn refresh_session_spawn_affiliation(
     agent_pgid: Option<u32>,
     baseline: &HashSet<u32>,

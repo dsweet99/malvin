@@ -1,4 +1,3 @@
-// `{{ key }}` / `$key` expansion for prompt files.
 
 use std::collections::HashMap;
 
@@ -25,7 +24,6 @@ pub(crate) fn is_spaced_brace_placeholder_inner(raw: &str) -> bool {
             .all(|c| c.is_ascii_alphanumeric() || c == '_')
 }
 
-/// Returns each `{{ key }}` placeholder in `template` whose key is absent from `context`.
 #[must_use]
 pub fn unresolved_template_placeholders(
     template: &str,
@@ -43,7 +41,6 @@ pub fn unresolved_template_placeholders(
         .collect()
 }
 
-/// Returns each remaining `{{ key }}` placeholder in `text` (spaces required around `key`).
 #[must_use]
 pub fn unresolved_spaced_brace_placeholders(text: &str) -> Vec<String> {
     let mut unresolved = Vec::new();
@@ -64,7 +61,6 @@ pub fn unresolved_spaced_brace_placeholders(text: &str) -> Vec<String> {
     unresolved
 }
 
-/// Returns each `{{…}}` token in `text` that is not exactly `{{ key }}` (spaces required).
 #[must_use]
 pub fn malformed_brace_placeholders(text: &str) -> Vec<String> {
     let mut bad = Vec::new();
@@ -86,7 +82,6 @@ pub fn malformed_brace_placeholders(text: &str) -> Vec<String> {
     bad
 }
 
-/// `$identifier` replacement similar to `string.Template.safe_substitute` (no `${}` brace forms).
 #[must_use]
 pub fn substitute_template(template: &str, context: &HashMap<String, String>) -> String {
     let mut out = String::with_capacity(template.len());

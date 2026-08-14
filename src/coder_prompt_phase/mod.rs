@@ -1,10 +1,4 @@
-//! Coder-prompt phase machine (see `concepts.md` §6).
-//!
-//! Inside each `run_coder_prompt`, the mini loop moves through `Investigate`, `WindDown`, and
-//! `Terminal` phases. This module names the phase enum for documentation and typing; transition
-//! logic stays in `loop_inner_phases` and related mini modules.
 
-/// Phase of the mini inner loop for one coder prompt.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MiniPhase {
     Investigate,

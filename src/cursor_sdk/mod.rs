@@ -1,4 +1,3 @@
-//! Cursor TypeScript SDK backend (`cursor:` models via Node JSONL bridge).
 #![cfg_attr(test, allow(unsafe_code))]
 
 mod auth;
@@ -11,7 +10,6 @@ pub use crate::agent_backend::SdkClient as CursorSdkClient;
 pub use auth::{effective_sdk_api_key, ensure_sdk_authenticated};
 pub(crate) use session_spawn::cursor_spawn_bridge as spawn_bridge;
 
-/// Convenience constructor used by older tests (string model id).
 #[must_use]
 pub fn cursor_sdk_client_from_raw(
     model: &str,

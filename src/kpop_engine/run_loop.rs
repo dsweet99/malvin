@@ -65,10 +65,6 @@ pub(crate) fn kpop_engine_gate_loop_early_exit(
     }
 }
 
-/// Restore loop-carried dotfile backups before anchoring the next iteration.
-///
-/// Without this, a fail path that leaves disk regressed poisons the next iteration's
-/// pre-agent snapshot even when the in-memory merged bundle is still sane.
 pub(crate) fn restore_carry_forward_before_iteration_snapshot(
     work_dir: &Path,
     carry_forward: Option<&SessionDotfileBackups>,
@@ -136,8 +132,6 @@ async fn run_kpop_engine_iteration(
         consecutive_solved,
     )
     .await?;
-    // Non-SDK backends end after each iteration; Cursor SDK keeps the bridge until loop exit
-    // (or until ensure_coder_session refreshes a bridge older than 10 minutes).
     if !client.keeps_coder_session_for_process_life() {
         end_coder_session_if_open(client).await?;
     }
@@ -214,7 +208,6 @@ pub(crate) async fn run_kpop_engine(
     }
     let run_timing =
         crate::run_timing::attach_kpop_engine_loop_run_timing_for_model(&params.shared.model.canonical());
-    // Idea 3: one Cursor SDK client for the whole gate-engine lifetime.
     let mut client =
         run_loop_iteration::build_authenticated_kpop_engine_client(&params, &run_timing)?;
     let early = run_kpop_engine_gate_iterations(KpopEngineGateIterations {

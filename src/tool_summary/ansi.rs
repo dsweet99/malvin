@@ -141,7 +141,6 @@ fn is_tool_metadata_segment(seg: &str) -> bool {
     if t.ends_with("ms") {
         return true;
     }
-    // Second durations from humanize_duration, e.g. "1.2s" — not prose comments.
     t.ends_with('s') && t.as_bytes().first().is_some_and(u8::is_ascii_digit)
 }
 

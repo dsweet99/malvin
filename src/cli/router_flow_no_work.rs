@@ -1,6 +1,4 @@
-//! Detect `__MALVIN_DONE__` as a whole-line done signal in `router_a` chat.
 
-/// True when any line of `chat`, after trim, is exactly `__MALVIN_DONE__`.
 pub(crate) fn chat_has_malvin_done(chat: &str) -> bool {
     chat.lines().any(|line| line.trim() == "__MALVIN_DONE__")
 }

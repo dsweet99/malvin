@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Install sccache for rustc compilation caching.
 set -euo pipefail
 
 if command -v sccache >/dev/null; then

@@ -48,9 +48,6 @@ pub(crate) type SessionEndParts<'a> = (
     RunTimingSessionEnd,
 );
 
-/// Open a coder session when needed (e.g. pre-`Logs:` warm start).
-///
-/// Cursor SDK also restarts a bridge that is at least 10 minutes old.
 pub(crate) async fn begin_coder_session_if_needed(
     client: &mut AgentBackend,
     work_dir: &Path,
@@ -60,7 +57,6 @@ pub(crate) async fn begin_coder_session_if_needed(
         .map_err(|e| e.to_string())
 }
 
-/// Begin session and run `header.md` → `kpop_common.md` → `router_a.md` → optional `router_b.md`; leave session open on success.
 pub(crate) async fn run_router_acp_open_iteration(
     mut input: RouterAcpIterationInput<'_>,
 ) -> RouterAcpIterationOutcome {
@@ -127,9 +123,6 @@ pub(crate) async fn finalize_router_acp_iteration(
         &timing,
         input.session_end,
     );
-    // Idea 3 (Cursor SDK): keep the Node bridge alive across outer-loop Continues
-    // (refreshed on the next agent start if older than 10 minutes).
-    // ACP/Mini still tear down so the next Continue gets a fresh agent process.
     match (exit_summarize, keep_session) {
         (RouterExitSummarize::Run, _) | (RouterExitSummarize::Skip, false) => {
             end_router_acp_session(parts, Ok(())).await

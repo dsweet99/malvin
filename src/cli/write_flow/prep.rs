@@ -57,7 +57,6 @@ pub(crate) fn write_resolved_output_paths(
     })
 }
 
-/// Compose the router REQUEST for `malvin write` (embeds the user request).
 pub(crate) fn compose_write_router_request(
     request_text: &str,
     tex_display: &str,

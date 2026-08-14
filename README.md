@@ -18,8 +18,8 @@ Without Node/npm the Rust build fails unless you set `MALVIN_SKIP_SDK_BRIDGES=1`
 ## Usage
 
 ```text
-malvin [OPTIONS] [REQUEST]
-malvin [OPTIONS] <COMMAND>
+malvin [OPTION]... [REQUEST]
+   or: malvin [OPTION]... <COMMAND>
 ```
 
 Most of the time, just ask for what you want:

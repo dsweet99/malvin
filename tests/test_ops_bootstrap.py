@@ -39,7 +39,6 @@ def test_load_library_returns_src_python_module() -> None:
     mod = boot.load_library("toolchain_repos")
     assert "src/python" in Path(mod.__file__).as_posix()
     assert (mod.malvin_repo_root() / "Cargo.toml").is_file()
-    # Second call hits the already-loaded library branch.
     again = boot.load_library("toolchain_repos")
     assert again is mod
 

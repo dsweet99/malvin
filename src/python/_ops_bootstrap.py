@@ -24,7 +24,6 @@ from types import ModuleType
 _SRC_PYTHON = Path(__file__).resolve().parent
 _OPS_DIR = _SRC_PYTHON.parent.parent / "ops"
 
-
 def ensure_src_python_path() -> Path:
     """Prefer ``src/python`` over ``ops/`` for flat library imports."""
     ops_resolved = _OPS_DIR.resolve()
@@ -34,7 +33,6 @@ def ensure_src_python_path() -> Path:
         sys.path.remove(root)
     sys.path.insert(0, root)
     return _SRC_PYTHON
-
 
 def load_library(modname: str) -> ModuleType:
     """Load ``src/python/<modname>.py``, replacing any ops shim in ``sys.modules``."""
@@ -51,5 +49,5 @@ def load_library(modname: str) -> ModuleType:
         elif existing_file and Path(existing_file).resolve() == lib_path.resolve():
             return existing
 
-    # Import under the canonical flat name from src/python (now first on path).
+    
     return importlib.import_module(modname)

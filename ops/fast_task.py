@@ -15,17 +15,14 @@ from _ops_bootstrap import load_library  # noqa: E402
 
 _lib = load_library("fast_task")
 
-
 @click.group()
 def fast_task_cli() -> None:
     """Run malvin on a fast task in local Docker; grade on the host."""
-
 
 @fast_task_cli.command("tasks")
 def fast_tasks_list_cmd() -> None:
     """List available fast task ids."""
     _lib.ft_cli_list_tasks()
-
 
 @fast_task_cli.command(
     "solve",
@@ -108,12 +105,10 @@ def fast_task_solve(
         timeout_sec=None,
     )
 
-
 @fast_task_cli.command("self-test")
 def fast_task_selftest_cmd() -> None:
     """Run fast unit self-tests (no live agent)."""
     _lib.ft_cli_self_test()
-
 
 __all__ = [
     "fast_task_cli",

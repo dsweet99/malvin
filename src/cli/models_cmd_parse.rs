@@ -1,4 +1,3 @@
-//! Parse and display helpers for `malvin models`.
 
 use crate::output::{MALVIN_WHO, print_stdout_line, print_stdout_text};
 
@@ -16,13 +15,11 @@ pub(super) fn trim_trailing_tip_lines(text: &str) -> String {
     lines[..end].join("\n")
 }
 
-/// Trailing banners from `cursor-agent models` look like `Tip: …` or `tip …` (space form).
 pub(super) fn looks_like_tip_banner_line(lowercase_trimmed: &str) -> bool {
     if lowercase_trimmed.starts_with("tip:") {
         return true;
     }
     if let Some(after_tip_space) = lowercase_trimmed.strip_prefix("tip ") {
-        // "Tip of the iceberg — …" is description text, not a `Tip` banner line.
         return !after_tip_space.starts_with("of ");
     }
     false
@@ -56,9 +53,6 @@ pub(super) fn models_display_lines_filtered(
     if out.is_empty() { None } else { Some(out) }
 }
 
-/// Banners / status lines from `cursor-agent models` are not model rows.
-///
-/// Examples: `Available models`, `No models available for this account.`
 pub(super) fn is_non_model_banner_line(line: &str) -> bool {
     let low = line.trim().to_ascii_lowercase();
     low == "available models" || low.starts_with("no models")
@@ -83,7 +77,6 @@ pub(super) fn print_parsed_or_fallback_prefixed(
     }
 }
 
-/// Best-effort parse: `name — description`, `name - description`, or two-column spacing.
 pub(super) fn parse_model_line(line: &str) -> Option<(&str, String)> {
     if let Some((a, b)) = line.split_once(" — ") {
         return Some((a.trim(), b.trim().to_string()));
@@ -110,8 +103,6 @@ mod banner_tests {
 
     #[test]
     fn models_display_lines_skips_available_models_header() {
-        // Live `cursor-agent models` starts with this banner; whitespace fallback used to
-        // emit `cursor:Available\tmodels`, which is not a model id.
         let text = "Available models\n\nauto - Auto (current, default)\n";
         let lines = models_display_lines(text, "").expect("non-empty");
         assert_eq!(
@@ -128,8 +119,6 @@ mod banner_tests {
 
     #[test]
     fn models_display_lines_skips_no_models_available_status() {
-        // Clean-HOME `cursor-agent models` can print this status; whitespace parse used to
-        // emit a fake `No` model id (shown as `cursor:No` with the cursor prefix).
         let text = "No models available for this account.\n";
         assert!(
             models_display_lines(text, "cursor:").is_none(),

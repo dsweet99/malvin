@@ -19,7 +19,7 @@ Bootstrap a repo for gated workflows (`malvin tidy`, bare `malvin REQUEST --gate
 ## Usage
 
 ```text
-malvin init [OPTIONS]
+malvin init [OPTION]...
 ```
 
 No positional arguments. Work directory is always `.` (cwd).

@@ -1,8 +1,3 @@
-//! Prefixed model ids: `cursor:…`, `pi:…`.
-//!
-//! Optional bracket overrides match the Cursor agent CLI shape:
-//! `cursor:claude-opus-5[effort=high,fast=true]` and
-//! `pi:openai/gpt-4o[thinking=high]`.
 
 #[path = "model_id_params.rs"]
 mod model_id_params;
@@ -11,7 +6,6 @@ pub use model_id_params::{format_bracket_params, split_bracket_params};
 pub const CURSOR_PREFIX: &str = "cursor:";
 pub const PI_PREFIX: &str = "pi:";
 
-/// Legacy prefixes — rejected with a rename hint.
 pub const MINI_PREFIX: &str = "mini:";
 pub const OPENROUTER_PREFIX: &str = "openrouter:";
 pub const LOCAL_PREFIX: &str = "local:";
@@ -29,7 +23,6 @@ const LEGACY_LOCAL_HINT: &str =
 const LEGACY_PRIME_HINT: &str =
     "legacy `prime:` prefix removed; use `cursor:` or `pi:` (for example `cursor:auto` or `pi:openai/gpt-4o`)";
 
-/// One `key=value` override from a trailing `[k=v,…]` model suffix.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModelParam {
     pub id: String,
@@ -45,9 +38,7 @@ pub enum ModelBackend {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParsedModel {
     pub backend: ModelBackend,
-    /// Provider / transport slug without the malvin prefix (and without bracket params).
     pub slug: String,
-    /// Bracket overrides (`effort`, `fast`, `thinking`, …).
     pub params: Vec<ModelParam>,
 }
 
@@ -76,9 +67,6 @@ impl ParsedModel {
         matches!(self.backend, ModelBackend::Pi)
     }
 
-    /// Split `pi:<provider>/<model>` on the first `/` after the prefix.
-    ///
-    /// Model ids may themselves contain `/` (for example `openrouter/anthropic/claude-3-haiku`).
     #[must_use]
     pub fn pi_provider_and_model(&self) -> Option<(&str, &str)> {
         if !self.is_pi() {
@@ -87,7 +75,6 @@ impl ParsedModel {
         split_first_slash(&self.slug).filter(|(p, m)| !p.is_empty() && !m.is_empty())
     }
 
-    /// Wire form passed to the Cursor SDK bridge (`slug` plus optional brackets).
     #[must_use]
     pub fn cursor_bridge_model(&self) -> String {
         if self.params.is_empty() {
@@ -97,7 +84,6 @@ impl ParsedModel {
         }
     }
 
-    /// Value of the first `thinking` bracket param, if present.
     #[must_use]
     pub fn thinking_param(&self) -> Option<&str> {
         self.params
@@ -107,7 +93,6 @@ impl ParsedModel {
     }
 }
 
-/// Parse a canonical or raw model id. Bare (unprefixed) ids are rejected.
 pub fn parse_model_id(raw: &str) -> Result<ParsedModel, String> {
     let raw = raw.trim();
     if raw.is_empty() {

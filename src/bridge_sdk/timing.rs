@@ -1,4 +1,3 @@
-//! `RunTiming` hooks for SDK bridge events.
 
 use std::sync::{Arc, Mutex};
 
@@ -31,7 +30,6 @@ pub fn record_sdk_usage(
     g.record_acp_usage_if_present(&normalized);
 }
 
-/// Map Pi / pi-ai usage field names onto ACP-style keys expected by [`RunTiming`].
 fn normalize_pi_usage_to_acp(usage: &Value) -> Value {
     let Some(obj) = usage.as_object() else {
         return usage.clone();

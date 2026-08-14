@@ -1,4 +1,3 @@
-//! Kiss per-file CLI symbol witnesses (declared from lib.rs, not cli mod).
 
 #[test]
 fn smoke_cov_cli_cli_units_0() {

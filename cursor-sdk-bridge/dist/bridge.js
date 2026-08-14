@@ -1,11 +1,5 @@
-/**
- * Long-lived malvin ↔ @cursor/sdk JSONL bridge.
- * One Agent.create per process; many agent.send calls.
- *
- * Cancel/close are handled concurrently with an in-flight send: stdin is read
- * into a queue so cancel is not blocked behind `await handleSend`.
- */
-// Arm parent-death watch before heavy imports (see parent_death.ts).
+
+
 import "./parent_death.js";
 import * as readline from "node:readline";
 import { Agent, Cursor, CursorAgentError, configureCursorSdk } from "@cursor/sdk";
@@ -16,15 +10,15 @@ import { forwardSdkMessage, usageRecord } from "./sdk_map.js";
 export { eventsAfterStreamFailure, exitCodeForSignal, isInterruptOp, isStaleAuthMisclassification, isStaleAuthText, } from "./bridge_policy.js";
 export { installParentDeathWatch } from "./parent_death.js";
 let agent = null;
-/** Last successful create/resume agent id (for stale-auth resume). */
+
 let agentId = null;
-/** Options used for the live agent (needed by Agent.resume). */
+
 let agentOptions = null;
 let currentRun = null;
 let closing = false;
 function quietExit(code) {
     closing = true;
-    // Avoid waiting on dispose/cancel — those can dump stacks while dying.
+    
     process.exit(code);
 }
 function installQuietSignalHandlers() {
@@ -43,8 +37,8 @@ function installQuietSignalHandlers() {
         if (closing)
             return;
         emitFatal(reason);
-        // Do not process.exit here during normal ops — emit fatal and let Rust decide.
-        // During signal shutdown, `closing` suppresses dumps.
+        
+        
     });
 }
 function apiKeyFrom(req) {
@@ -67,9 +61,9 @@ function emitFatal(err) {
     });
 }
 function preferHttp1ForAgent() {
-    // HTTP/2 agent streams often fail through authenticated CONNECT proxies
-    // (pier egress): SDK retries end as "Connection failed repeatedly", while
-    // cursor-agent CLI and HTTP/1 succeed on the same network.
+    
+    
+    
     const flag = (process.env.MALVIN_CURSOR_USE_HTTP1 || "").trim().toLowerCase();
     if (flag === "1" || flag === "true" || flag === "yes")
         return true;
@@ -78,7 +72,7 @@ function preferHttp1ForAgent() {
     return Boolean((process.env.HTTPS_PROXY || "").trim() ||
         (process.env.HTTP_PROXY || "").trim());
 }
-/** Apply once per bridge process before Agent.create/resume. */
+
 function ensureHttp1AgentTransport() {
     if (!preferHttp1ForAgent())
         return;
@@ -174,7 +168,7 @@ async function handleResume(req) {
         emitFatal(err);
     }
 }
-/** Evict cached handle and Agent.resume — forum workaround for idle auth. */
+
 async function recoverStaleAuth() {
     if (!agentId || !agentOptions)
         return false;
@@ -223,7 +217,7 @@ async function handleSend(req, alreadyRecovered = false) {
                 await currentRun.wait();
             }
             catch {
-                // best-effort drain of the failed run
+                
             }
             currentRun = null;
             return;
@@ -268,7 +262,7 @@ async function handleCancel() {
         }
     }
     catch {
-        // best-effort
+        
     }
 }
 async function handleClose() {
@@ -277,8 +271,8 @@ async function handleClose() {
     agent = null;
     agentId = null;
     agentOptions = null;
-    // Skip asyncDispose: malvin tears down the process group immediately after
-    // close; dispose can add hundreds of ms (ideas.md #10–11).
+    
+    
     quietExit(0);
 }
 async function handleListModels(apiKey) {
@@ -351,8 +345,8 @@ async function main() {
         wake?.();
     });
     rl.on("close", () => {
-        // Parent (malvin) died or closed the pipe — exit quietly; do not leave
-        // in-flight SDK work free to dump unhandledRejection stacks on stderr.
+        
+        
         stdinClosed = true;
         wake?.();
         if (!closing) {
@@ -411,7 +405,7 @@ async function main() {
                 break;
             continue;
         }
-        // Serialize create/send/list_models, but do not await here so cancel can interleave.
+        
         serial = serial
             .then(() => dispatch(req))
             .catch((err) => {

@@ -1,4 +1,3 @@
-//! Test helpers for `.malvin/checks` (keeps `test_utils` under kiss line limits).
 
 #[cfg(test)]
 use std::path::Path;
@@ -23,7 +22,6 @@ fn ensure_git_repo_for_checks_seed(work: &Path) {
     }
 }
 
-/// Requires isolated `HOME`; see plan.md.
 #[cfg(test)]
 pub fn seed_malvin_config(work: &Path, content: &str) {
     assert!(

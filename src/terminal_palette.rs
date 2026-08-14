@@ -1,4 +1,3 @@
-//! Shared RGB terminal palette for malvin stdout styling (who-tags, tool summaries, ACP brackets).
 
 use std::sync::atomic::{AtomicU8, Ordering};
 
@@ -19,9 +18,7 @@ pub(crate) struct Palette {
     amber: &'static str,
     navy: &'static str,
     teal: &'static str,
-    /// Sand/cream brackets and verb names (dark theme) or very dark gray (light theme).
     dark: &'static str,
-    /// Agent payload text (dark theme) or almost-black (light theme).
     white: &'static str,
 }
 

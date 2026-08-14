@@ -1,4 +1,3 @@
-//! Run directories and log paths.
 
 mod md_request;
 mod startup_tag;
@@ -33,7 +32,6 @@ pub use startup_tag::startup_request_tag_label;
 
 pub use crate::malvin_constants::{QUALITY_GATES_LOG, SANDBOX_OOM_JSON, STDOUT_LOG, TRACE_JSONL};
 
-/// One workflow run: isolated `.malvin/logs/<stamp>_<token>/` with copied user request.
 #[derive(Debug, Clone)]
 pub struct RunArtifacts {
     pub run_dir: PathBuf,
@@ -48,7 +46,6 @@ impl RunArtifacts {
         self.run_dir.join(format!("{safe}.log"))
     }
 
-    /// Run-directory copy of `review.md`.
     #[must_use]
     pub fn artifact_review_md(&self) -> PathBuf {
         self.run_dir.join("review.md")
@@ -59,7 +56,6 @@ impl RunArtifacts {
         self.run_dir.join("review_prep.md")
     }
 
-    /// Run-directory `result.md` for concerns ABORT signaling.
     #[must_use]
     pub fn artifact_result_md(&self) -> PathBuf {
         self.run_dir.join("result.md")
@@ -70,7 +66,6 @@ impl RunArtifacts {
         self.gate_exp_log_path(0)
     }
 
-    /// Gate-loop experiment log; `iteration` 0 is the legacy `exp_log_{slug}.md` scaffold.
     #[must_use]
     pub fn gate_exp_log_path(&self, iteration: usize) -> PathBuf {
         let slug = self
@@ -102,13 +97,11 @@ impl RunArtifacts {
     }
 }
 
-/// On-disk `KPop` user brief for flows where it differs from [`RunArtifacts::plan_path`] (e.g. `code`).
 #[must_use]
 pub fn user_request_path(artifacts: &RunArtifacts) -> PathBuf {
     artifacts.run_dir.join("user_request.md")
 }
 
-/// Agent-written grouped review requirements JSON for the default route.
 #[must_use]
 pub fn review_requirements_json(artifacts: &RunArtifacts) -> PathBuf {
     artifacts.run_dir.join("review_requirements.json")

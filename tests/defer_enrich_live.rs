@@ -1,13 +1,3 @@
-//! Live end-to-end test: real `malvin` + real cursor-agent + real `store.db`.
-//!
-//! Run manually:
-//! ```text
-//! MALVIN_LIVE_DEFER_ENRICH=1 cargo nextest run defer_enrich_live -- --ignored
-//! ```
-//!
-//! Requires: `agent` or `cursor-agent` on PATH, API key or logged-in CLI auth,
-//! and network access. Uses the real `~/.cursor` session store (does not override
-//! `HOME`).
 
 #[cfg(unix)]
 mod common;

@@ -1,4 +1,3 @@
-//! ACP trace tee: distinct ANSI colors for outbound (`>`) vs inbound (`<`) lines on stdout.
 
 pub use super::acp_tee_markdown::{
     TermimadStdoutGate, termimad_inline_payload_for_stdout, termimad_text_lines_for_stdout,
@@ -37,7 +36,6 @@ fn route_acp_rendered(display: &str, log: &str, prelude: StdoutRenderPrelude) {
     route_stdout_rendered_line(display, log, prelude);
 }
 
-/// Parameters for [`print_stdout_acp_tee_line_with_timestamp`].
 pub struct AcpTeeStdoutEvent<'a> {
     pub direction: AcpTeeDirection,
     pub who: &'a str,
@@ -47,8 +45,6 @@ pub struct AcpTeeStdoutEvent<'a> {
     pub dim_payload: bool,
 }
 
-/// Stdout tee for ACP trace lines: when color is enabled, outbound (`>`) vs inbound (`<`) use
-/// different ANSI colors for the `[who]` prefix; the payload is plain, dim, or `termimad` per mode.
 pub fn print_stdout_acp_tee_line(direction: AcpTeeDirection, who: &str, line: &str) {
     let ts = timestamp_now_string();
     print_stdout_acp_tee_line_with_timestamp(&AcpTeeStdoutEvent {
@@ -61,7 +57,6 @@ pub fn print_stdout_acp_tee_line(direction: AcpTeeDirection, who: &str, line: &s
     });
 }
 
-/// Same as [`print_stdout_acp_tee_line`], but uses `ts` for the line prefix (shared with disk trace).
 pub fn print_stdout_acp_tool_summary_tee(ev: &AcpTeeStdoutEvent<'_>, display_payload: &str) {
     let (display, log) = tool_summary_tee_display_and_log(ev, display_payload);
     route_acp_rendered(&display, &log, StdoutRenderPrelude::TaggedWithHeartbeat);
@@ -104,7 +99,6 @@ pub(crate) fn flush_stdout_acp_tee_line_with_timestamp(ev: &AcpTeeStdoutEvent<'_
     );
 }
 
-/// Same as [`print_stdout_acp_tee_line_with_timestamp`], but dims the payload and keeps stdout markdown off.
 pub fn print_stdout_acp_tee_line_with_timestamp_dim_plain(
     direction: AcpTeeDirection,
     who: &str,

@@ -1,4 +1,3 @@
-//! Prompt turns for [`super::sdk_client::SdkClient`].
 
 use std::path::Path;
 
@@ -10,9 +9,6 @@ use crate::acp::{
 use super::sdk_client::{BridgeKind, SdkClient};
 
 impl SdkClient {
-    /// # Errors
-    ///
-    /// Returns [`AgentError`] when there is no session or the prompt fails.
     pub async fn run_coder_prompt(
         &mut self,
         prompt: &str,

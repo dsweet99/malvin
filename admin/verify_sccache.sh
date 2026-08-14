@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Quick smoke check that sccache is installed and wired into .cargo/config.toml.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -26,7 +25,6 @@ if [[ "$fail" -ne 0 ]]; then
   exit 1
 fi
 
-# Start the sccache server if needed; confirm it responds.
 sccache --start-server >/dev/null 2>&1 || true
 check sccache --show-stats
 

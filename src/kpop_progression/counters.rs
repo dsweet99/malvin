@@ -2,11 +2,6 @@ use std::path::Path;
 
 use crate::kpop_log_protocol::ExperimentLog;
 
-/// Reads the experiment log at `path` into a string.
-///
-/// # Errors
-///
-/// Returns `Err` when the file cannot be read.
 pub fn read_exp_log_text(path: &Path) -> Result<String, String> {
     ExperimentLog::read(path).map(|log| log.as_str().to_string())
 }

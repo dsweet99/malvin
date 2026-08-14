@@ -4,11 +4,6 @@ use super::command_support::{apply_fake_path_if_present, run_command_failure};
 use super::gate_log::{emit_repo_gate_line, try_append_command_output};
 use super::types::{RepoGateFailure, RepoGateOutput, repo_gate_failure_to_string};
 
-/// Workspace quality gates for CLI workflows (`code`, `kpop`, `bug`, `tidy`, …).
-///
-/// When `.malvin/checks` is absent, returns an error (no silent seeding).
-/// Runs each non-empty line from `.malvin/checks` in order. Does not run `pre-commit`.
-/// With `run_log_dir: Some(path)`, gate output is also appended to `path/quality_gates.log`.
 pub fn run_repo_workspace_gates(
     work_dir: &Path,
     output: RepoGateOutput,

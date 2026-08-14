@@ -1,4 +1,3 @@
-//! External kiss symbol refs for git-root `.malvin/` and concepts §5/§9 modules.
 
 #[test]
 fn kiss_cov_kpop_progression_counter_wrappers() {

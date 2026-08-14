@@ -1,4 +1,4 @@
-/** Map @cursor/sdk stream messages to malvin bridge events. */
+
 
 import { emit, type BridgeEvent } from "./protocol.js";
 
@@ -31,7 +31,6 @@ function flatten(s: string): string {
   return s.replace(/\s+/g, " ").trim();
 }
 
-/** Middle-ellipsis shorten — mirrors Rust `tool_summary::shorten_middle`. */
 export function shortenMiddle(s: string, max = SUMMARY_MAX): string {
   if (s.length <= max) return s;
   const keep = max - 3;
@@ -97,7 +96,6 @@ function editCounts(result: unknown): string {
   return "";
 }
 
-/** ACP-parity subject line from tool name + args (no duration). */
 export function toolSummaryFromArgs(name: string | undefined, args: unknown): string {
   const label = (name ?? "tool").trim() || "tool";
   const a = asRecord(args) ?? {};

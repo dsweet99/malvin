@@ -20,7 +20,6 @@ pub(crate) fn malvin_log_accepts_tracing_level(level: tracing::Level) -> bool {
     level <= tracing::Level::INFO
 }
 
-/// llama.cpp / ggml INFO dumps are extremely verbose; keep WARN+ on the malvin logger.
 #[must_use]
 pub(crate) fn malvin_log_accepts_tracing_metadata(metadata: &tracing::Metadata<'_>) -> bool {
     let level = *metadata.level();
@@ -31,8 +30,6 @@ pub(crate) fn malvin_log_accepts_tracing_metadata(metadata: &tracing::Metadata<'
 }
 
 fn is_llama_cpp_crate_target(target: &str) -> bool {
-    // llama-cpp-2 routes ggml/llama callbacks through Metadata target "llama-cpp-2"
-    // (module detail is a field, not the tracing target).
     target == "llama-cpp-2" || target.starts_with("llama-cpp-2::")
 }
 

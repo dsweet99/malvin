@@ -1,4 +1,3 @@
-//! Tests for [`super::command_support`] fake PATH helpers.
 
 #[cfg(test)]
 mod command_support_unit_tests {

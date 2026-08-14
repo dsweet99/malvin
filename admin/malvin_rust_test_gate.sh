@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Rust test gate for malvin: selective difftests when indexes are warm, else full nextest/cargo test.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

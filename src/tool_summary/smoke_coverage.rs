@@ -1,4 +1,3 @@
-//! Behavioral and kiss per-file coverage for `tool_summary`.
 
 use super::{
     ToolSummaryDetail, ToolSummaryTracker, shorten_middle, tool_summary_lines,

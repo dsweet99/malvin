@@ -1,10 +1,8 @@
-//! Inline summarize hooks for gate-kpop outer loops.
 
 use crate::agent_backend::AgentBackend;
 use crate::artifacts::RunArtifacts;
 use crate::prompts::PromptStore;
 
-/// Context for inline summarize chained after a gate-kpop turn in the same coder session.
 pub(crate) struct GateInlineSummarizeCtx<'a> {
     pub client: &'a mut AgentBackend,
     pub store: &'a PromptStore,
@@ -15,7 +13,6 @@ pub(crate) struct GateInlineSummarizeCtx<'a> {
     pub total_iterations: usize,
 }
 
-/// Runs inline summarize inside an open gate-kpop coder session when warranted.
 pub(crate) async fn maybe_run_gate_inline_summarize(
     ctx: GateInlineSummarizeCtx<'_>,
 ) -> Result<(), String> {

@@ -1,4 +1,3 @@
-//! Behavioral smoke tests for CLI helpers.
 
 use super::entrypoint::try_tokio_runtime;
 use super::{Cli, Commands};

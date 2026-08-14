@@ -1,4 +1,3 @@
-//! HTTP exchange metadata for local completion mapping.
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HttpExchangeMeta {

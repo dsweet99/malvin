@@ -1,4 +1,3 @@
-//! Regression tests for bugs documented in `bugs.md` (Cursor SDK backend).
 
 use crate::acp::CoderPromptOptions;
 
@@ -6,7 +5,6 @@ use super::sdk_bug_helpers::{
     assert_err_has, bug_clear_env, bug_client, bug_client_noforce, bug_prepare, expect_prompt_err,
 };
 
-/// Bug 1: failed create after sandbox note must Drop-teardown so the next spawn can proceed.
 #[tokio::test]
 async fn failed_create_drop_clears_sandbox_for_next_spawn() {
     let _guard = crate::test_utils::test_env_lock();
@@ -29,7 +27,6 @@ async fn failed_create_drop_clears_sandbox_for_next_spawn() {
     bug_clear_env();
 }
 
-/// Bug (err.md): after bridge death, resume hits `AgentBusy`; must forget id and create fresh.
 #[tokio::test]
 async fn agent_busy_after_resume_forgets_id_and_creates_fresh() {
     let _guard = crate::test_utils::test_env_lock();
@@ -63,7 +60,6 @@ async fn agent_busy_after_resume_forgets_id_and_creates_fresh() {
     bug_clear_env();
 }
 
-/// Idle Authentication (stale SDK token) tears down; retry resumes and succeeds.
 #[tokio::test]
 async fn stale_authentication_teardown_resume_retries() {
     let _guard = crate::test_utils::test_env_lock();
@@ -93,7 +89,6 @@ async fn stale_authentication_teardown_resume_retries() {
     bug_clear_env();
 }
 
-/// Bug 3: stdout-closed failure tears down; retry can respawn.
 #[tokio::test]
 async fn bridge_stdout_closed_single_attempt_tears_down_session() {
     let _guard = crate::test_utils::test_env_lock();
@@ -125,7 +120,6 @@ async fn bridge_stdout_closed_single_attempt_tears_down_session() {
     bug_clear_env();
 }
 
-/// Bug 4: cancelled runs must not look like success.
 #[tokio::test]
 async fn cancelled_run_done_is_error() {
     let _guard = crate::test_utils::test_env_lock();
@@ -139,7 +133,6 @@ async fn cancelled_run_done_is_error() {
     bug_clear_env();
 }
 
-/// Bug 2: stream fatal alone ends the turn (no hang waiting for `run_done`).
 #[tokio::test]
 async fn stream_fatal_only_fails_prompt() {
     let _guard = crate::test_utils::test_env_lock();
@@ -153,7 +146,6 @@ async fn stream_fatal_only_fails_prompt() {
     bug_clear_env();
 }
 
-/// Bug 5: cancel during `SLOW_SEND` must be observed (cooperative cancel via mock).
 #[tokio::test]
 async fn cancel_during_slow_send_is_honored() {
     let _guard = crate::test_utils::test_env_lock();

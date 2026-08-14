@@ -1,4 +1,3 @@
-// Linux: `/proc/<pid>/stat` and optional `/proc/<pid>/status`.
 
 use super::ChildHealth;
 use std::fs;
@@ -22,7 +21,6 @@ pub(super) fn parse_proc_stat_line(line: &str) -> Option<ParsedProcStat> {
     }
     let utime: u64 = it.next()?.parse().ok()?;
     let stime: u64 = it.next()?.parse().ok()?;
-    // Fields 16–19: `cutime`, `cstime`, `priority`, `nice`; field 20 is `num_threads`.
     for _ in 0..4 {
         it.next()?;
     }

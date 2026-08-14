@@ -1,4 +1,3 @@
-//! Home config is ensured before sessions but is not session-snapshotted or restored.
 
 use crate::artifacts::SessionDotfileBackups;
 use crate::malvin_config_file::open_malvin_config;

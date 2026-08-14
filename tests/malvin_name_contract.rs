@@ -1,4 +1,3 @@
-//! Contract: per-user session name registry (`--name`).
 
 mod common;
 
@@ -35,7 +34,6 @@ where
     }
 }
 
-/// A live peer name file blocks another malvin process from taking the same name.
 #[cfg(unix)]
 #[test]
 fn peer_name_lock_rejects_while_holder_alive() {
@@ -60,7 +58,6 @@ fn peer_name_lock_rejects_while_holder_alive() {
     });
 }
 
-/// Dropping the guard releases the name file.
 #[cfg(unix)]
 #[test]
 fn name_lock_released_after_process_exit() {
@@ -72,7 +69,6 @@ fn name_lock_released_after_process_exit() {
     });
 }
 
-/// After a holder exits, the same name can be acquired again.
 #[cfg(unix)]
 #[test]
 fn dead_holder_name_can_be_reused() {
@@ -87,7 +83,6 @@ fn dead_holder_name_can_be_reused() {
     });
 }
 
-/// Abandoned name files with dead PIDs are reclaimed without manual cleanup.
 #[cfg(unix)]
 #[test]
 fn abandoned_name_file_reclaimed_without_manual_cleanup() {
@@ -105,7 +100,6 @@ fn abandoned_name_file_reclaimed_without_manual_cleanup() {
     });
 }
 
-/// Two distinct session names may register concurrently.
 #[cfg(unix)]
 #[test]
 fn different_names_same_workspace_both_register() {
@@ -119,7 +113,6 @@ fn different_names_same_workspace_both_register() {
     });
 }
 
-/// Different session-name lock slots in the same workspace may both acquire ACP locks.
 #[cfg(unix)]
 #[test]
 fn different_acp_lock_slots_same_workspace_both_acquire() {
@@ -141,7 +134,6 @@ fn different_acp_lock_slots_same_workspace_both_acquire() {
     malvin::malvin_sandbox::clear_active_sandbox_session();
 }
 
-/// Entrypoint duplicate-name failure via the malvin binary.
 #[cfg(unix)]
 #[test]
 fn entrypoint_duplicate_name_via_binary() {

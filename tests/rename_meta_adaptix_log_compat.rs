@@ -1,6 +1,3 @@
-//! Regression tests for legacy meta/adaptix names in `~/.malvin_home/logs/`.
-//!
-//! See `PLAN-rename-meta-etc.md` at the repo root for the compatibility contract.
 
 mod common;
 

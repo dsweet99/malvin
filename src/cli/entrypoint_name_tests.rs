@@ -44,8 +44,8 @@ fn help_lists_creative_flag() {
     let help = crate::cli::Cli::command().render_help().to_string();
     assert!(help.contains("--creative"), "help={help}");
     assert!(
-        help.contains("router_b_creative.md"),
-        "help should mention creative prompt: {help}"
+        help.contains("creative") && help.contains("router_b"),
+        "help should mention creative router_b prompt: {help}"
     );
 }
 

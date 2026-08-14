@@ -18,14 +18,11 @@ from typing import Any, Callable
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-
 def log(msg: str) -> None:
     print(msg, flush=True)
 
-
 def repo_bridge_js() -> Path:
     return (REPO_ROOT / "cursor-sdk-bridge" / "dist" / "bridge.js").resolve()
-
 
 def resolve_node_bin() -> Path:
     env = os.environ.get("MALVIN_NODE", "").strip()
@@ -55,7 +52,6 @@ def resolve_node_bin() -> Path:
         return Path(which.stdout.strip())
     raise FileNotFoundError("Node >= 22 required for cursor-sdk-bridge")
 
-
 def pid_alive(pid: int) -> bool:
     try:
         os.kill(pid, 0)
@@ -64,7 +60,6 @@ def pid_alive(pid: int) -> bool:
         return False
     except PermissionError:
         return True
-
 
 def ps_line(pid: int) -> str | None:
     try:
@@ -75,7 +70,6 @@ def ps_line(pid: int) -> str | None:
     except subprocess.CalledProcessError:
         return None
 
-
 def _emit_result(name: str, fixed: bool, detail: dict[str, Any]) -> int:
     status = "FIXED" if fixed else "STILL_BROKEN"
     payload = {"scenario": name, "status": status, **detail}
@@ -83,13 +77,11 @@ def _emit_result(name: str, fixed: bool, detail: dict[str, Any]) -> int:
     log(f"RESULT {status}: {name}")
     return 0 if fixed else 1
 
-
 def _ppid_of(pid: int) -> int | None:
     try:
         return int(Path(f"/proc/{pid}/stat").read_text(encoding="utf-8").split()[3])
     except (FileNotFoundError, IndexError, ValueError, PermissionError):
         return None
-
 
 def _write_owner_script(path: Path) -> None:
     """Nested owner that holds bridge stdin open until SIGKILL (malvin stand-in)."""
@@ -137,7 +129,6 @@ while True:
         encoding="utf-8",
     )
 
-
 def _spawn_bridge_owner(work: Path) -> tuple[subprocess.Popen[bytes], dict[str, Any]]:
     """Start owner+bridge; return owner Popen and status dict."""
     node = resolve_node_bin()
@@ -169,7 +160,6 @@ def _spawn_bridge_owner(work: Path) -> tuple[subprocess.Popen[bytes], dict[str, 
         raise RuntimeError(status["error"])
     return owner, status
 
-
 def _poll_bridge(bridge_pid: int, checkpoints: list[float]) -> list[dict[str, Any]]:
     """Poll bridge liveness/PPID at absolute times from now (seconds)."""
     t0 = time.time()
@@ -187,7 +177,6 @@ def _poll_bridge(bridge_pid: int, checkpoints: list[float]) -> list[dict[str, An
             }
         )
     return samples
-
 
 def repro_sigkill_stdin_hold_abandons_bridge() -> int:
     """SIGKILL parent while stdin write-end is held must not abandon bridge.
@@ -211,7 +200,7 @@ def repro_sigkill_stdin_hold_abandons_bridge() -> int:
     keeper_fd: int | None = None
     bridge_pid: int | None = None
     try:
-        # Control: no stdin hold → bridge must die quickly (EOF path).
+        
         ctrl_owner, ctrl = _spawn_bridge_owner(control_dir)
         ctrl_bridge = int(ctrl["bridge_pid"])
         os.kill(int(ctrl["owner_pid"]), signal.SIGKILL)
@@ -223,7 +212,7 @@ def repro_sigkill_stdin_hold_abandons_bridge() -> int:
         ctrl_dead = not any(s["alive"] for s in ctrl_samples)
         log(f"control_no_hold samples={ctrl_samples} dead={ctrl_dead}")
 
-        # Repro: hold stdin write-end, SIGKILL owner → bridge under PPID=1.
+        
         owner, st = _spawn_bridge_owner(hold_dir)
         bridge_pid = int(st["bridge_pid"])
         owner_pid = int(st["owner_pid"])
@@ -260,7 +249,7 @@ def repro_sigkill_stdin_hold_abandons_bridge() -> int:
             "owner_pgid": st.get("owner_pgid"),
             "same_pg_as_owner": st.get("bridge_pgid") == st.get("owner_pgid"),
         }
-        # FIXED only when the hold-path no longer abandons; control must still EOF-die.
+        
         fixed = (not abandoned) and ctrl_dead
         return _emit_result(name, fixed=fixed, detail=detail)
     except Exception as exc:  # noqa: BLE001
@@ -287,20 +276,17 @@ def repro_sigkill_stdin_hold_abandons_bridge() -> int:
             except subprocess.TimeoutExpired:
                 pass
 
-
 SCENARIOS: dict[str, Callable[[], int]] = {
     "sigkill-stdin-hold-abandons-bridge": repro_sigkill_stdin_hold_abandons_bridge,
 }
 
 LIVE_SCENARIOS: frozenset[str] = frozenset()
 
-# Local OS repros: need node + bridge.js, but no Cursor API.
 LOCAL_SCENARIOS = frozenset(
     {
         "sigkill-stdin-hold-abandons-bridge",
     }
 )
-
 
 def list_scenarios() -> None:
     for i, name in enumerate(SCENARIOS, start=1):
@@ -312,7 +298,6 @@ def list_scenarios() -> None:
             kind = "code"
         log(f"{i}. {name}  ({kind})")
 
-
 def run_scenario(name: str) -> int:
     fn = SCENARIOS.get(name)
     if fn is None:
@@ -322,7 +307,6 @@ def run_scenario(name: str) -> int:
     log(f"=== QA regression: {name} ===")
     return fn()
 
-
 def run_all(include_live: bool = True) -> int:
     codes: list[int] = []
     for name, fn in SCENARIOS.items():
@@ -331,9 +315,8 @@ def run_all(include_live: bool = True) -> int:
             continue
         log(f"=== QA regression: {name} ===")
         codes.append(fn())
-    # 0 only if every run reports FIXED.
+    
     return 0 if codes and all(c == 0 for c in codes) else 1
-
 
 def run_self_tests() -> None:
     """Fast, offline checks (no Cursor API; no multi-second bridge spawn)."""
@@ -350,10 +333,8 @@ def run_self_tests() -> None:
         assert "stdin_write_fd" in text
     log("ALL qa self-tests OK")
 
-
 def qa_cli_self_test() -> None:
     run_self_tests()
-
 
 __all__ = [
     "LIVE_SCENARIOS",

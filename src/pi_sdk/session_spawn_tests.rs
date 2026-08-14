@@ -1,4 +1,3 @@
-//! Name witnesses and pure unit checks for Pi session spawn helpers.
 
 #[test]
 fn kiss_cov_session_and_spawn_names() {

@@ -37,7 +37,6 @@ pub(crate) fn heartbeat_log_offset(text: &str) -> Option<usize> {
 
 static HEARTBEAT_STDOUT_SUPPRESSED: AtomicBool = AtomicBool::new(false);
 
-/// When true, wall-clock heartbeats are not written to stdout or `stdout.log` (e.g. `malvin --do`).
 pub fn set_heartbeat_stdout_suppressed(suppress: bool) {
     HEARTBEAT_STDOUT_SUPPRESSED.store(suppress, Ordering::Relaxed);
 }

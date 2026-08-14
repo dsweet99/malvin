@@ -79,7 +79,6 @@ fn cost_line_shows_cache_fields_and_estimated_cost_after_sdk_shaped_usage() {
     let json = to_json_value(&r);
     assert_eq!(json["tokens"]["cache_read"], 2);
     assert_eq!(json["tokens"]["cache_write"], 1);
-    // 10*1000/1e6 + 3*2000/1e6 + 2*100/1e6 + 1*500/1e6 = 0.0167
     assert!((json["cost"]["cost_tot"].as_f64().unwrap() - 0.0167).abs() < 1e-9);
     assert!((json["cost"]["cost_in"].as_f64().unwrap() - 0.01).abs() < 1e-9);
     assert!((json["cost"]["cost_out"].as_f64().unwrap() - 0.006).abs() < 1e-9);

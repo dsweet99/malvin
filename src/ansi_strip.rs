@@ -1,4 +1,3 @@
-//! Strip ANSI SGR and related sequences for plain-text comparisons.
 
 fn consume_csi_sequence(chars: &mut std::iter::Peekable<std::str::Chars>) {
     for ch in chars.by_ref() {

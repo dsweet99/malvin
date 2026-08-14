@@ -1,11 +1,9 @@
-//! Shared helpers for `agent_backend` unit tests.
 
 use crate::cli::SharedOpts;
 
 #[must_use]
 pub fn test_io() -> crate::acp::AgentIoOptions {
     crate::acp::AgentIoOptions {
-        // Match cursor/prime mock clients: sessions require tool auto-run (`--force` default).
         force: true,
         no_tee: true,
         raw_output: true,

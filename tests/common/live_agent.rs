@@ -1,7 +1,3 @@
-//! Spawn helpers for opt-in live cursor-agent integration tests.
-//!
-//! Unlike [`super::command_output_with_timeout`], these do **not** set
-//! `MALVIN_TEST_NO_REAL_AGENT=1` (which disables deferred-log enrichment).
 
 #[cfg(unix)]
 use std::process::Command;
@@ -12,10 +8,8 @@ use std::time::{Duration, Instant};
 use super::child_wait::{spawn_piped_process_group, wait_child_with_timeout};
 
 #[cfg(unix)]
-/// Wall clock for opt-in live agent subprocesses.
 pub const LIVE_AGENT_CMD_TIMEOUT: Duration = Duration::from_secs(300);
 
-/// Fail-closed when a live gate is set but `OPENROUTER_API_KEY` is missing/empty.
 pub fn require_openrouter_key_when_gate_set(gate_name: &str) {
     assert!(
         std::env::var_os("OPENROUTER_API_KEY").is_some_and(|v| !v.is_empty()),
@@ -45,7 +39,6 @@ fn live_agent_auth_available() -> bool {
     })
 }
 
-/// Run malvin against the real cursor-agent (no mock, no test-agent env).
 #[cfg(unix)]
 pub fn command_output_live_agent(cmd: &mut Command) -> std::io::Result<std::process::Output> {
     cmd.env_remove("MALVIN_TEST_NO_REAL_AGENT");

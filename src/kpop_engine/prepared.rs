@@ -5,7 +5,6 @@ use crate::prompts::PromptStore;
 pub(crate) struct KPopEnginePrepared {
     pub artifacts: RunArtifacts,
     pub context: WorkflowRenderContext,
-    /// Retained for tests and introspection; turn prompts read `user_request_path` on disk.
     #[allow(dead_code)]
     pub request_text: String,
     pub store: PromptStore,

@@ -1,4 +1,3 @@
-//! Tests for [`super::router_flow_acp_support`].
 
 use super::{
     empty_iteration_backups, router_iteration_log_path, run_router_turns, snapshot_iteration_backups,

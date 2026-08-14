@@ -1,4 +1,3 @@
-//! Contract: directory-wide stale ACP spawn lock garbage collection.
 
 mod common;
 
@@ -9,7 +8,6 @@ use malvin::malvin_sandbox::clear_active_sandbox_session;
 #[cfg(unix)]
 use std::process::Command;
 
-/// Directory sweep removes dead-PID and invalid-content locks; keeps live-PID lock.
 #[cfg(unix)]
 #[test]
 fn sweep_stale_acp_spawn_locks_contract() {
@@ -40,7 +38,6 @@ fn run_malvin_home(home: &std::path::Path, work: &std::path::Path, args: &[&str]
         .unwrap_or_else(|e| panic!("malvin {args:?}: {e}"))
 }
 
-/// `--doc` exits before entrypoint sweep; `models` runs the sweep (plan Phase 3).
 #[cfg(unix)]
 #[test]
 fn malvin_doc_does_not_sweep_but_models_does() {

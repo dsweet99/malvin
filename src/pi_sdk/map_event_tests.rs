@@ -16,7 +16,6 @@ fn maps_text_delta_and_ignores_message_toolcall() {
         [BridgeEvent::Assistant { text }] if text == "hi"
     ));
 
-    // toolcall_* on message_update must not emit ToolCall (tool_execution_* owns that).
     let tool = map_pi_event(
         "message_update",
         &json!({
@@ -158,7 +157,6 @@ fn maps_agent_end_error_and_plain_content() {
 
 #[test]
 fn covers_tool_end_phase_with_non_bool_is_error() {
-    // isError non-bool is treated as false → "complete" (covers the isError unwrap_or branch).
     let ev = map_pi_event(
         "tool_execution_end",
         &json!({ "toolCallId": "t3", "toolName": "bash", "isError": "nope" }),
@@ -173,7 +171,6 @@ fn covers_tool_end_phase_with_non_bool_is_error() {
 
 #[test]
 fn covers_flatten_ws_via_bash_and_read_summaries() {
-    // Exercises flatten_ws (whitespace collapsing) via tool_summary_from_pi.
     let start = map_pi_event(
         "tool_execution_start",
         &json!({

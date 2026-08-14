@@ -1,9 +1,7 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum KPopHardConstraintsExit {
-    /// Historical gate-exit profile (passing gates; restore checks each turn). Kept for tests.
     #[cfg_attr(not(test), allow(dead_code))]
     CodeTidy,
-    /// `ChecksDiscovery` = valid checks file on disk; do not restore `.malvin/checks` between turns.
     ChecksDiscovery,
 }
 
@@ -17,7 +15,6 @@ pub(crate) struct KPopHardConstraints {
 }
 
 impl KPopHardConstraints {
-    /// Historical CODE gate-engine profile (code workflow removed).
     #[cfg(test)]
     pub const CODE: Self = Self {
         skip_kpop_on_initial_pass: false,
@@ -25,7 +22,6 @@ impl KPopHardConstraints {
         skip_workspace_quality_gates: false,
         exit: KPopHardConstraintsExit::CodeTidy,
     };
-    /// Historical TIDY gate-engine profile (tidy now uses the default router with `--gates`).
     #[cfg(test)]
     pub const TIDY: Self = Self {
         skip_kpop_on_initial_pass: true,
@@ -39,7 +35,6 @@ impl KPopHardConstraints {
         skip_workspace_quality_gates: false,
         exit: KPopHardConstraintsExit::ChecksDiscovery,
     };
-    /// Historical WRITE gate-engine profile (write now uses the default router; formerly explain).
     #[cfg(test)]
     pub const WRITE: Self = Self {
         skip_kpop_on_initial_pass: false,

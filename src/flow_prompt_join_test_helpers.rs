@@ -1,4 +1,3 @@
-//! Shared join-layout assertions and fixtures for `do` and `router` prompt tests.
 
 use crate::artifacts::RunArtifacts;
 

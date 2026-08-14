@@ -11,7 +11,6 @@ fn add_optional_sum(slot: &mut Option<u64>, n: u64) {
 }
 
 impl RunTiming {
-    /// One Mini/OpenRouter/Local LLM completion turn (independent of usage presence).
     pub fn record_completion_step(&mut self, usage: Option<&ResponseUsage>) {
         self.steps = self.steps.saturating_add(1);
         match usage {
@@ -23,7 +22,6 @@ impl RunTiming {
                 self.unknown_usage_tx_count = self.unknown_usage_tx_count.saturating_add(1);
             }
         }
-        // `local:` has no bill; force a zero cost row per completion for now.
         if matches!(self.cost_policy, super::CostPolicy::Zero) {
             self.tx_costs.push(0.0);
         }
@@ -38,13 +36,11 @@ impl RunTiming {
         }
     }
 
-    /// ACP: observe a `tool_call` start for the concurrent-batch step proxy.
     pub const fn note_acp_tool_call_start(&mut self) {
         self.tool_call_starts = self.tool_call_starts.saturating_add(1);
         self.acp_step_proxy = AcpStepProxy::OpenBatch;
     }
 
-    /// ACP: observe a tool completion; the first completion in an open batch counts one step.
     pub const fn note_acp_tool_call_completion(&mut self) {
         if matches!(self.acp_step_proxy, AcpStepProxy::OpenBatch) {
             self.steps = self.steps.saturating_add(1);
@@ -52,14 +48,12 @@ impl RunTiming {
         }
     }
 
-    /// ACP: message/thought activity outside an open tool batch (trailing assistant-only turn).
     pub const fn note_acp_assistant_activity(&mut self) {
         if !matches!(self.acp_step_proxy, AcpStepProxy::OpenBatch) {
             self.acp_step_proxy = AcpStepProxy::TrailingAssistant;
         }
     }
 
-    /// Flush a trailing assistant-only segment after the last tool batch (if any).
     pub const fn finalize_acp_trailing_assistant_step(&mut self) {
         if matches!(self.acp_step_proxy, AcpStepProxy::TrailingAssistant) {
             self.steps = self.steps.saturating_add(1);
@@ -67,7 +61,6 @@ impl RunTiming {
         }
     }
 
-    /// Bounded ACP usage parse: pier-shaped fields when present on a result object.
     pub fn record_acp_usage_if_present(&mut self, usage: &serde_json::Value) {
         let Some(obj) = usage.as_object() else {
             return;
@@ -107,7 +100,6 @@ impl RunTiming {
         if let Some(n) = output {
             add_optional_sum(&mut self.tokens_out, n);
         }
-        // Cursor backends rarely report a bill; estimate usd_per_microtoken_* × counts / 1e6 (0 when rates are 0).
         if matches!(self.cost_policy, super::CostPolicy::EstimateFromRates) {
             let estimated = self.token_cost_rates.estimate_usd(
                 input_n,

@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Install prerequisites for cargo-difftests (nightly + llvm-tools + cargo-difftests from git).
 set -euo pipefail
 
 if ! command -v rustup >/dev/null; then

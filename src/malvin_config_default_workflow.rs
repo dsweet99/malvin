@@ -1,4 +1,3 @@
-//! `[default_workflow]` section parsing for `config.toml`.
 
 use super::DefaultWorkflowConfig;
 

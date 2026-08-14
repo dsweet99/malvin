@@ -1,4 +1,3 @@
-//! Extra kiss CLI smoke witnesses (split for lines-per-file gate).
 
 #[test]
 fn smoke_cov_cli_cross_file_symbols_b() {
