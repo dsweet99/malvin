@@ -19,12 +19,19 @@ pub(crate) struct ProcRow {
 
 #[cfg(unix)]
 pub fn snapshot_pids() -> HashSet<u32> {
-    if crate::acp::test_no_real_agent_enabled() {
-        if let Some(pids) = unix_process_group_ps_proc::snapshot_pids_from_proc() {
-            return pids;
-        }
+    // Prefer /proc on Linux (and any Unix where it exists): avoids forking `ps`
+    // every mem-watch poll, which is both slower and fragile under sandbox memory pressure.
+    if let Some(pids) = unix_process_group_ps_proc::snapshot_pids_from_proc()
+        && proc_pid_snapshot_is_usable(&pids)
+    {
+        return pids;
     }
     list_pids_from_ps().unwrap_or_default()
+}
+
+#[cfg(unix)]
+fn proc_pid_snapshot_is_usable(pids: &HashSet<u32>) -> bool {
+    pids.contains(&std::process::id())
 }
 
 #[cfg(unix)]
@@ -39,10 +46,10 @@ pub(crate) fn list_pids_from_ps() -> Option<HashSet<u32>> {
 
 #[cfg(unix)]
 pub(crate) fn list_proc_rows() -> Option<Vec<ProcRow>> {
-    if crate::acp::test_no_real_agent_enabled() {
-        if let Some(rows) = unix_process_group_ps_proc::list_proc_rows_from_proc() {
-            return Some(rows);
-        }
+    if let Some(rows) = unix_process_group_ps_proc::list_proc_rows_from_proc()
+        && proc_row_snapshot_is_usable(&rows)
+    {
+        return Some(rows);
     }
     let out = std::process::Command::new("ps")
         .args(["-ax", "-o", "pid=", "-o", "pgid=", "-o", "ppid="])
@@ -50,6 +57,11 @@ pub(crate) fn list_proc_rows() -> Option<Vec<ProcRow>> {
         .output()
         .ok()?;
     Some(parse_proc_rows(&out.stdout))
+}
+
+#[cfg(unix)]
+fn proc_row_snapshot_is_usable(rows: &[ProcRow]) -> bool {
+    rows.iter().any(|row| row.pid == std::process::id())
 }
 
 #[cfg(unix)]
@@ -133,7 +145,8 @@ pub(crate) fn looks_like_agent_acp_cmdline(cmdline: &[u8]) -> bool {
     if *last != b"acp" {
         return false;
     }
-    args.iter().any(|arg| *arg == b"agent" || arg.ends_with(b"/agent"))
+    args.iter()
+        .any(|arg| *arg == b"agent" || arg.ends_with(b"/agent"))
 }
 
 #[cfg(unix)]

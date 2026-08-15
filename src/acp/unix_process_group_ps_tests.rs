@@ -13,6 +13,65 @@ fn list_proc_rows_includes_current_process() {
 }
 
 #[test]
+fn proc_snapshots_without_self_are_rejected() {
+    assert!(!super::proc_pid_snapshot_is_usable(
+        &std::collections::HashSet::new()
+    ));
+    assert!(!super::proc_row_snapshot_is_usable(&[]));
+}
+
+#[test]
+fn proc_snapshots_with_self_are_accepted() {
+    let me = std::process::id();
+    assert!(super::proc_pid_snapshot_is_usable(
+        &std::iter::once(me).collect()
+    ));
+    assert!(super::proc_row_snapshot_is_usable(&[super::ProcRow {
+        pid: me,
+        pgid: me,
+        ppid: 1,
+    }]));
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn list_proc_rows_matches_ps_for_self_via_proc_path() {
+    let me = std::process::id();
+    let via_public = super::list_proc_rows().expect("list_proc_rows");
+    let public_row = via_public
+        .iter()
+        .find(|row| row.pid == me)
+        .expect("current pid via list_proc_rows");
+
+    let out = std::process::Command::new("ps")
+        .args([
+            "-p",
+            &me.to_string(),
+            "-o",
+            "pid=",
+            "-o",
+            "pgid=",
+            "-o",
+            "ppid=",
+        ])
+        .stderr(std::process::Stdio::null())
+        .output()
+        .expect("ps");
+    let from_ps = super::parse_proc_rows(&out.stdout);
+    let ps_row = from_ps
+        .iter()
+        .find(|row| row.pid == me)
+        .expect("current pid in ps");
+
+    assert_eq!(public_row.pgid, ps_row.pgid);
+    assert_eq!(public_row.ppid, ps_row.ppid);
+    assert!(
+        std::path::Path::new("/proc").is_dir(),
+        "Linux production path should prefer /proc when present"
+    );
+}
+
+#[test]
 fn parse_pid_list_reads_ps_output() {
     let pids = super::parse_pid_list(b"  42\n19531\n");
     assert_eq!(pids.len(), 2);
@@ -83,9 +142,7 @@ fn spawned_pids_since_baseline_excludes_baseline_members() {
 #[test]
 fn read_proc_cmdline_and_environ_reads_current_process() {
     let me = std::process::id();
-    assert!(
-        super::read_proc_cmdline(me).is_some_and(|cmdline| !cmdline.is_empty())
-    );
+    assert!(super::read_proc_cmdline(me).is_some_and(|cmdline| !cmdline.is_empty()));
     assert!(super::read_proc_environ(me).is_some());
 }
 
@@ -93,7 +150,9 @@ fn read_proc_cmdline_and_environ_reads_current_process() {
 #[test]
 fn looks_like_malvin_agent_acp_ignores_inherited_malvin_workspace_on_sleep() {
     let mut child = std::process::Command::new("sh");
-    child.arg("-c").arg("MALVIN_WORKSPACE=/tmp/cov-test exec sleep 30");
+    child
+        .arg("-c")
+        .arg("MALVIN_WORKSPACE=/tmp/cov-test exec sleep 30");
     let mut child = child.spawn().expect("spawn");
     let pid = child.id();
     std::thread::sleep(std::time::Duration::from_millis(100));
