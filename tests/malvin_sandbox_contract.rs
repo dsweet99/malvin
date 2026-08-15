@@ -53,9 +53,8 @@ async fn watch_process_group_memory_enforces_after_reader_dead() {
         run_dir: None,
     })
     .await;
-    assert_ne!(
-        agent_child.try_wait().expect("wait"),
-        None,
+    assert!(
+        test_wait_until_async(|| agent_child.try_wait().expect("wait").is_some()).await,
         "watcher must kill sandbox child after reader_dead, not exit early"
     );
 }
@@ -80,7 +79,10 @@ async fn malvin_oom_watcher_kills_agent_sleep_at_low_limit() {
         run_dir: None,
     })
     .await;
-    assert_ne!(agent_child.try_wait().expect("wait"), None);
+    assert!(
+        test_wait_until_async(|| agent_child.try_wait().expect("wait").is_some()).await,
+        "watcher must kill sandbox child after exceeding the memory limit"
+    );
 }
 
 #[cfg(unix)]
@@ -92,7 +94,10 @@ async fn malvin_process_group_teardown_kills_agent_sleep() {
     let mut child = agent.spawn().expect("spawn");
     let agent_pgid = child.id();
     terminate_agent_process_group(Some(agent_pgid), &baseline).await;
-    assert_ne!(child.try_wait().expect("wait"), None);
+    assert!(
+        test_wait_until_async(|| child.try_wait().expect("wait").is_some()).await,
+        "teardown must kill the agent process-group child"
+    );
 }
 
 #[cfg(unix)]

@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use super::command_support::{apply_fake_path_if_present, run_command_failure};
 use super::gate_log::{emit_repo_gate_line, try_append_command_output};
@@ -89,6 +89,17 @@ const fn shell_binary() -> (&'static str, &'static str) {
     }
 }
 
+/// Run `.malvin/checks` lines at the git worktree toplevel when present.
+///
+/// Checks are resolved from the repo root (see `malvin_checks_path`), and the
+/// documented contract is that gate commands also execute there. Using the
+/// possibly nested agent `work_dir` as cwd breaks relative commands such as
+/// `pytest tests` when the session workspace is a subdirectory.
+#[must_use]
+pub(crate) fn gate_command_cwd(work_dir: &Path) -> PathBuf {
+    crate::git_worktree_toplevel(work_dir).unwrap_or_else(|| work_dir.to_path_buf())
+}
+
 fn run_shell_command_line_with_details(
     work_dir: &Path,
     output: RepoGateOutput,
@@ -102,7 +113,10 @@ fn run_shell_command_line_with_details(
     emit_repo_gate_line(output, &format!("Running `{command_line}`"), run_log_dir);
     let (shell, arg) = shell_binary();
     let mut command = crate::malvin_sandbox::malvin_std_command(shell);
-    command.arg(arg).arg(command_line).current_dir(work_dir);
+    command
+        .arg(arg)
+        .arg(command_line)
+        .current_dir(gate_command_cwd(work_dir));
     apply_fake_path_if_present(&mut command);
     let output = command
         .output()

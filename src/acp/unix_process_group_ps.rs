@@ -164,46 +164,45 @@ pub fn spawned_pids_since_baseline(baseline: &HashSet<u32>) -> HashSet<u32> {
         .collect()
 }
 
+/// Liveness via `kill(2)` with signal 0 — no subprocess fork.
+///
+/// Forking `kill -0` under sandbox memory pressure can fail with `ENOMEM`/`EAGAIN`.
+/// The previous `Command` path mapped that I/O error to "dead", so
+/// `sandbox_still_alive` went false and the memory watchdog exited exactly when
+/// the limit was about to be breached. Direct `kill(2)` cannot fail that way.
+///
+/// Semantics: success or `EPERM` ⇒ alive; `ESRCH` ⇒ dead; other errno ⇒ treat as
+/// alive (fail closed for the watchdog: keep watching rather than abandon).
 #[cfg(unix)]
+#[allow(unsafe_code)]
 pub(crate) fn pid_alive(pid: u32) -> bool {
     let Ok(pid_i) = i32::try_from(pid) else {
         return false;
     };
-    std::process::Command::new("kill")
-        .args(["-0", &pid_i.to_string()])
-        .stderr(Stdio::null())
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
+    let rc = unsafe { libc::kill(pid_i, 0) };
+    if rc == 0 {
+        return true;
+    }
+    std::io::Error::last_os_error().raw_os_error() != Some(libc::ESRCH)
 }
 
 #[cfg(unix)]
+#[allow(unsafe_code)]
 pub(crate) fn signal_pid(pid: u32, signal: i32) {
     let Ok(pid_i) = i32::try_from(pid) else {
         return;
     };
-    let signal = format!("-{signal}");
-    let _ = std::process::Command::new("kill")
-        .arg(signal)
-        .arg("--")
-        .arg(pid_i.to_string())
-        .stderr(Stdio::null())
-        .status();
+    let _ = unsafe { libc::kill(pid_i, signal) };
 }
 
+/// Signal a process group via `kill(2)` with a negative pid (same as `kill -SIGNAL -- -PGID`).
 #[cfg(unix)]
+#[allow(unsafe_code)]
 pub fn signal_process_group(process_group_id: u32, signal: i32) {
     let Ok(pgid) = i32::try_from(process_group_id) else {
         return;
     };
-    let target = format!("-{pgid}");
-    let signal = format!("-{signal}");
-    let _ = std::process::Command::new("kill")
-        .arg(signal)
-        .arg("--")
-        .arg(target)
-        .stderr(Stdio::null())
-        .status();
+    let _ = unsafe { libc::kill(-pgid, signal) };
 }
 
 #[cfg(unix)]

@@ -168,3 +168,40 @@ fn looks_like_malvin_agent_acp_ignores_inherited_malvin_workspace_on_sleep() {
 fn signal_pid_is_noop_for_invalid_pid() {
     super::signal_pid(999_999_999, 15);
 }
+
+#[test]
+fn pid_alive_reports_self_alive_and_reaped_child_dead() {
+    assert!(
+        super::pid_alive(std::process::id()),
+        "current process must be alive via kill(2) signal 0"
+    );
+
+    let mut child = std::process::Command::new("true")
+        .spawn()
+        .expect("spawn short-lived child");
+    let child_pid = child.id();
+    let status = child.wait().expect("wait child");
+    assert!(status.success(), "child `true` must exit 0");
+    assert!(
+        !super::pid_alive(child_pid),
+        "reaped child pid must be dead; kill(2) must not depend on a `kill` binary on PATH"
+    );
+}
+
+#[test]
+fn signal_pid_kill_round_trip_without_kill_binary() {
+    // Direct libc::kill must stop a child; the old path forked `/bin/kill` for this.
+    let mut child = std::process::Command::new("sleep")
+        .arg("30")
+        .spawn()
+        .expect("spawn sleep");
+    let child_pid = child.id();
+    assert!(super::pid_alive(child_pid), "sleep child must start alive");
+    super::signal_pid(child_pid, 9); // SIGKILL
+    let status = child.wait().expect("wait signaled child");
+    assert!(!status.success(), "SIGKILL must yield non-success wait status");
+    assert!(
+        !super::pid_alive(child_pid),
+        "after SIGKILL + wait, pid must be dead via kill(2)"
+    );
+}

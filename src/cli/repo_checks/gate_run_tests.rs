@@ -21,6 +21,45 @@ fn shell_binary_returns_nonempty_names() {
 }
 
 #[test]
+fn gate_command_cwd_uses_work_dir_outside_git() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let work = tmp.path();
+    assert_eq!(gate_command_cwd(work), work);
+}
+
+#[cfg(unix)]
+#[test]
+fn gate_commands_run_at_git_toplevel_from_nested_work_dir() {
+    use std::fs;
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let root = tmp.path();
+    assert!(
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(root)
+            .status()
+            .expect("git init")
+            .success()
+    );
+    let nested = root.join("nested");
+    fs::create_dir_all(&nested).expect("mkdir nested");
+    fs::write(root.join("ROOT_ONLY"), "x\n").expect("root marker");
+    let checks = crate::malvin_checks_path(root);
+    fs::create_dir_all(checks.parent().expect("checks parent")).expect("mkdir .malvin");
+    // Relative path must resolve only when cwd is the git toplevel.
+    fs::write(&checks, "test -f ROOT_ONLY\n").expect("write checks");
+
+    run_repo_workspace_gates(&nested, RepoGateOutput::Tagged, None)
+        .expect("gates from nested work_dir must run at git root");
+    assert_eq!(
+        gate_command_cwd(&nested)
+            .canonicalize()
+            .expect("canon nested cwd"),
+        root.canonicalize().expect("canon root")
+    );
+}
+
+#[test]
 fn source_like_files_absent_in_empty_dir() {
     let tmp = tempfile::tempdir().expect("tempdir");
     assert!(!crate::source_detect::has_source_files(tmp.path()));
