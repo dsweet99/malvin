@@ -19,6 +19,15 @@ If an idea could be reached by a small parameter tweak, discard it and go furthe
 
 Do not evaluate or prune yet. Your goal is boundary exploration, not refinement.
 
+Helpful expressive techniques that may engage portions of your network that you otherwise would not:
+- Create a TikZ diagram, then view it as .png.
+- Draw an ASCII diagram.
+- Use notation from a relevant (or distant!) field of mathematics in .tex. Maybe read that as a .png, too.
+- Write in rhymes and/or a consistent meter.
+- Draw a cartoon in .svg.
+You don't need to use them all, but you might want to choose randomly from them at times or invent other techinques.
+
+
 ---
 
 Communication: Write complete sentences or explicit bulleted lists. Don't write terse fragments. Write clearly.
