@@ -2,18 +2,6 @@ use std::path::{Path, PathBuf};
 
 const DEFAULT_SIBLING_MAX: usize = 9999;
 
-pub(crate) fn path_relative_to_cwd(path: &Path) -> Result<String, String> {
-    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    if let Ok(rel) = path.strip_prefix(&cwd) {
-        let s = rel.to_string_lossy();
-        if s.is_empty() {
-            return Err("malvin: empty output path relative to cwd".into());
-        }
-        return Ok(s.into_owned());
-    }
-    Ok(path.to_string_lossy().into_owned())
-}
-
 pub(crate) fn allocate_default_tex_pdf_pair(
     tex_default: &Path,
     pdf_default: &Path,

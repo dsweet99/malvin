@@ -162,6 +162,8 @@ mod tests {
         assert!(body.contains("`write.pdf`"));
         assert!(body.contains("notes.tex"));
         assert!(body.contains("./.malvin_home/logs/run"));
+        assert!(body.contains("Use exactly the output paths"));
+        assert!(!body.contains("Name output files with a lowercase snakecase stem"));
     }
 
     #[test]

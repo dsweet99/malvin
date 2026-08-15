@@ -1,6 +1,5 @@
 use crate::agent_backend::{build_agent_backend, AgentBackend};
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
-use crate::cli::default_output_path::path_relative_to_cwd;
 use crate::cli::one_shot_session::{
     finish_one_shot_after_prompt, finish_one_shot_auth_and_backups, OneShotCoderGuard,
 };
@@ -73,12 +72,11 @@ async fn prepare_write_run(
         &write_args.out_path,
         write_args.out_path_explicit,
     )?;
-    let tex_display = path_relative_to_cwd(&outputs.tex_path)?;
-    let pdf_display = path_relative_to_cwd(&outputs.pdf_path)?;
-    write_args.out_path = tex_display.clone();
-
     let mut client = new_write_client(shared, workflow)?;
     let artifacts = create_write_artifacts(&request_text, &request_work_dir)?;
+    let tex_display = format_prompt_path(&outputs.tex_path, &artifacts.work_dir);
+    let pdf_display = format_prompt_path(&outputs.pdf_path, &artifacts.work_dir);
+    write_args.out_path = tex_display.clone();
     let banner_request = write_args
         .request
         .clone()
@@ -172,37 +170,32 @@ mod tests {
     #[test]
     fn kiss_cov_run_write_symbol() {
         let _: Option<WriteRunPrep> = None;
-        let _ = run_write;
-        let _ = prepare_write_prompts;
-        let _ = write_workspace_dir_display;
-        let _ = new_write_client;
-        let _ = create_write_artifacts;
-        let _ = run_write_coder_prompt;
-        let _ = run_write_coder_session;
-        let _ = prepare_write_run;
+        let _ = (
+            run_write,
+            prepare_write_prompts,
+            write_workspace_dir_display,
+            new_write_client,
+            create_write_artifacts,
+            run_write_coder_prompt,
+            run_write_coder_session,
+            prepare_write_run,
+        );
     }
 
     #[test]
-    fn prepare_write_prompts_renders_a_then_b() {
+    fn prepare_write_prompts_and_paths_for_subdir_work_dir() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let artifacts =
-            crate::artifacts::create_run_artifacts_from_text("topic", Some(tmp.path()))
-                .expect("art");
+        let work = tmp.path().join("docs");
+        std::fs::create_dir(&work).expect("mkdir");
+        let artifacts = create_write_artifacts("topic", &work).expect("art");
         assert!(!write_workspace_dir_display(&artifacts).is_empty());
-        let (a, b) =
-            prepare_write_prompts("how gates exit", ("write.tex", "write.pdf"), &artifacts)
-                .expect("prompts");
-        assert!(a.contains("how gates exit") && a.contains("notes.tex"));
-        assert!(b.contains("`write.tex`") && b.contains("`write.pdf`"));
-        assert!(!a.contains("{{") && !b.contains("{{"));
-    }
-
-    #[test]
-    fn create_write_artifacts_sets_work_dir() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let artifacts = create_write_artifacts("write topic", tmp.path()).expect("art");
-        assert!(artifacts.run_dir.is_dir());
-        assert_eq!(artifacts.work_dir, tmp.path());
+        let tex = format_prompt_path(&work.join("write.tex"), &work);
+        let pdf = format_prompt_path(&work.join("write.pdf"), &work);
+        assert_eq!((tex.as_str(), pdf.as_str()), ("./write.tex", "./write.pdf"));
+        let (a, b) = prepare_write_prompts("how gates exit", (&tex, &pdf), &artifacts).expect("p");
+        assert!(a.contains("how gates exit") && a.contains("notes.tex") && !a.contains("{{"));
+        assert!(b.contains("`./write.tex`") && b.contains("`./write.pdf`"));
+        assert!(!b.contains("`docs/write.tex`") && !b.contains("{{"));
     }
 
     #[test]
@@ -223,7 +216,6 @@ mod tests {
         let io = new_write_client(&shared, WorkflowCliOptions { force: false })
             .expect("backend")
             .io;
-        assert!(!io.raw_output);
-        assert!(io.show_thoughts_on_stdout && io.emit_stdout_markdown);
+        assert!(!io.raw_output && io.show_thoughts_on_stdout && io.emit_stdout_markdown);
     }
 }
