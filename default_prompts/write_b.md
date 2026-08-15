@@ -11,7 +11,7 @@ Write in complete sentences throughout—including the abstract, section opening
 
 If the writing is related to coding, assume the reader will not read the underlying source code. Explain the algorithms, mathematics, or design ideas in plain English. Introduce field terms at first use. Use vocabulary natural to the topic’s field. Avoid process jargon, checklist words, and review slang. Consider using algpseudocode for minimal pseudocode.
 
-Use exactly the output paths given above. Do not rename or move the `.tex` or `.pdf` files.
+Write to the output paths given above while you work. At the end, rename both the `.tex` and `.pdf` so their shared stem is derived from the paper title: all lowercase, snake_case (for example, *Attention Is All You Need* → `attention_is_all_you_need.tex` and `attention_is_all_you_need.pdf`). Keep the same directory. Do not leave the temporary paths above as the final deliverable.
 
 
 # How good papers sound
