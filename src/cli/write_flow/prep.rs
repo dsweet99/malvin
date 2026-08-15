@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use crate::artifacts::resolve_user_md_request;
 use crate::cli::cli_request::require_cli_request;
 use crate::cli::default_output_path::allocate_default_tex_pdf_pair;
-use crate::prompts::{WRITE_WRAPPER_MD, PromptError, PromptStore};
+use crate::prompts::{PromptError, PromptStore, WRITE_A_MD, WRITE_B_MD};
 
 pub(crate) const WRITE_TEX_BASENAME: &str = "write.tex";
 pub(crate) const WRITE_PDF_BASENAME: &str = "write.pdf";
@@ -57,18 +57,31 @@ pub(crate) fn write_resolved_output_paths(
     })
 }
 
-pub(crate) fn compose_write_router_request(
+pub(crate) fn compose_write_a_prompt(
     request_text: &str,
+    workspace_dir: &str,
+) -> Result<String, String> {
+    let ctx = HashMap::from([
+        ("workspace_dir".to_string(), workspace_dir.to_string()),
+        ("request_text".to_string(), request_text.to_string()),
+    ]);
+    PromptStore::default_store()
+        .render_prompt_only(WRITE_A_MD, &ctx)
+        .map_err(|e: PromptError| e.0)
+}
+
+pub(crate) fn compose_write_b_prompt(
     tex_display: &str,
     pdf_display: &str,
+    workspace_dir: &str,
 ) -> Result<String, String> {
     let ctx = HashMap::from([
         ("tex_display".to_string(), tex_display.to_string()),
         ("pdf_display".to_string(), pdf_display.to_string()),
-        ("request_text".to_string(), request_text.to_string()),
+        ("workspace_dir".to_string(), workspace_dir.to_string()),
     ]);
     PromptStore::default_store()
-        .render_prompt_only(WRITE_WRAPPER_MD, &ctx)
+        .render_prompt_only(WRITE_B_MD, &ctx)
         .map_err(|e: PromptError| e.0)
 }
 
@@ -76,7 +89,7 @@ pub(crate) fn write_preflight(
     request: Option<&String>,
     out_path: &str,
     out_path_explicit: bool,
-) -> Result<(String, WriteResolvedOutputs), String> {
+) -> Result<(String, PathBuf, WriteResolvedOutputs), String> {
     let raw = require_cli_request(request, "write")?;
     let (text, request_work_dir) = resolve_user_md_request(&raw)?;
     let mut outputs = write_resolved_output_paths(&request_work_dir, out_path)?;
@@ -102,7 +115,7 @@ pub(crate) fn write_preflight(
             }
         }
     }
-    Ok((text, outputs))
+    Ok((text, request_work_dir, outputs))
 }
 
 #[cfg(test)]
@@ -110,22 +123,45 @@ mod tests {
     use super::*;
 
     #[test]
-    fn compose_embeds_user_request_and_out_paths() {
-        let body = compose_write_router_request("how gates exit", "write.tex", "write.pdf")
-            .expect("compose write request");
+    fn compose_write_a_embeds_request_and_workspace() {
+        let body = compose_write_a_prompt("how gates exit", "./.malvin_home/logs/run")
+            .expect("compose write_a");
         let expected = crate::prompts::render_template(
-            include_str!("../../../default_prompts/write_wrapper.md"),
+            include_str!("../../../default_prompts/write_a.md"),
             &HashMap::from([
-                ("tex_display".to_string(), "write.tex".to_string()),
-                ("pdf_display".to_string(), "write.pdf".to_string()),
+                (
+                    "workspace_dir".to_string(),
+                    "./.malvin_home/logs/run".to_string(),
+                ),
                 ("request_text".to_string(), "how gates exit".to_string()),
             ]),
         );
         assert_eq!(body, expected);
-        assert!(body.contains("User request:"));
         assert!(body.contains("how gates exit"));
+        assert!(body.contains("notes.tex"));
+        assert!(body.contains("./.malvin_home/logs/run"));
+    }
+
+    #[test]
+    fn compose_write_b_embeds_out_paths_and_workspace() {
+        let body = compose_write_b_prompt("write.tex", "write.pdf", "./.malvin_home/logs/run")
+            .expect("compose write_b");
+        let expected = crate::prompts::render_template(
+            include_str!("../../../default_prompts/write_b.md"),
+            &HashMap::from([
+                ("tex_display".to_string(), "write.tex".to_string()),
+                ("pdf_display".to_string(), "write.pdf".to_string()),
+                (
+                    "workspace_dir".to_string(),
+                    "./.malvin_home/logs/run".to_string(),
+                ),
+            ]),
+        );
+        assert_eq!(body, expected);
         assert!(body.contains("`write.tex`"));
         assert!(body.contains("`write.pdf`"));
+        assert!(body.contains("notes.tex"));
+        assert!(body.contains("./.malvin_home/logs/run"));
     }
 
     #[test]

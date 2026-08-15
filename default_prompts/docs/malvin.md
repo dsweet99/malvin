@@ -44,7 +44,7 @@ Suppress all stdout from malvin and the agent. Run logs under `~/.malvin_home/lo
 
 ### `-q` / `--quiet`
 
-On the **default router** (bare `malvin REQUEST`, and wrappers that call it: `tidy`, `write`), print only the text between `MALVIN_DM_START` and `MALVIN_DM_END` fences to process stdout. Startup chrome, agent stream, heartbeats, prompt-name lines, fence markers, and TIMING/COST lines are omitted from stdout. Run-dir logs and stderr are unchanged.
+On the **default router** (bare `malvin REQUEST`, and wrappers that call it: `tidy`) and on one-shot agent commands that tee styled agent stdout (`write`, `inspire`), print only the text between `MALVIN_DM_START` and `MALVIN_DM_END` fences to process stdout. Startup chrome, agent stream, heartbeats, prompt-name lines, fence markers, and TIMING/COST lines are omitted from stdout. Run-dir logs and stderr are unchanged.
 
 This is **not** the same as `-b` / `--background` (which suppresses all stdout, including DM bodies). It is also **not** required for plain `malvin --do`: without `--verbose`, `--do` is already DM-body-only on stdout. With `--verbose`, `--do` tees the same live agent log classes as the default workflow (see `-v` / `--verbose` below).
 
@@ -88,7 +88,7 @@ Allow the agent to run `git commit`. Off by default (agents are otherwise steere
 
 ### `--creative`
 
-On the default router (bare `malvin REQUEST`, and wrappers that call it: `tidy`, `write`), send the creative router_b prompt when the optional router_b turn runs. Off by default.
+On the default router (bare `malvin REQUEST`, and wrappers that call it: `tidy`), send the creative router_b prompt when the optional router_b turn runs. Off by default.
 
 ### `--name <NAME>`
 
@@ -210,7 +210,11 @@ malvin --do "fix the typo"
 malvin inspire "explore API boundaries"
 ```
 
-## Gate-loop and router-backed commands
+## Gate-loop and document commands
 
-`malvin tidy` and `malvin write` are thin wrappers: each composes a request and invokes the **default router** (same engine as bare `malvin REQUEST`). Tidy uses the fixed request `Get the gates to pass.` and forces `--gates` on. See `malvin tidy --doc`, `malvin write --doc`, and the default-route section of `malvin --doc`.
+`malvin tidy` is a thin wrapper: it composes a fixed request (`Get the gates to pass.`) and invokes the **default router** with `--gates` forced on.
+
+`malvin write` starts one agent session and sends two prompts in order (`write_a.md`, then `write_b.md`). It does not use the default router.
+
+See `malvin tidy --doc`, `malvin write --doc`, and the default-route section of `malvin --doc`.
 

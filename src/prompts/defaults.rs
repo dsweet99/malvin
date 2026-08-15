@@ -11,7 +11,8 @@ pub const ROUTER_B_MD: &str = "router_b.md";
 pub const ROUTER_B_CREATIVE_MD: &str = "router_b_creative.md";
 pub const ROUTER_CODE_EXTRA_MD: &str = "router_code_extra.md";
 pub const ROUTER_SUMMARIZE_MD: &str = "router_summarize.md";
-pub const WRITE_WRAPPER_MD: &str = "write_wrapper.md";
+pub const WRITE_A_MD: &str = "write_a.md";
+pub const WRITE_B_MD: &str = "write_b.md";
 
 pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD];
 
@@ -28,7 +29,8 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     ROUTER_B_CREATIVE_MD,
     ROUTER_CODE_EXTRA_MD,
     ROUTER_SUMMARIZE_MD,
-    WRITE_WRAPPER_MD,
+    WRITE_A_MD,
+    WRITE_B_MD,
 ];
 
 #[cfg(test)]

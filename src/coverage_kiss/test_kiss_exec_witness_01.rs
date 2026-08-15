@@ -186,6 +186,7 @@ fn kiss_exec_witness_01_13() {
     Exit();
     WriteArgs();
     WriteResolvedOutputs();
+    WriteRunPrep();
     DualHeaderPromptInput();
     DualHeaderCoderRun();
     InspireArgs();
@@ -193,6 +194,13 @@ fn kiss_exec_witness_01_13() {
     GateInlineSummarizeCtx();
     run_gate_inline_summarize_first_iteration();
     write_summarize_fixture_exp_logs();
+    prepare_write_run();
+    prepare_write_prompts();
+    write_workspace_dir_display();
+    new_write_client();
+    create_write_artifacts();
+    run_write_coder_prompt();
+    run_write_coder_session();
 }
 
 #[test]

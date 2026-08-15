@@ -5,11 +5,6 @@ mod run;
 
 pub use run::run_write;
 
-#[must_use]
-pub(crate) fn effective_write_max_loops(max_loops: usize) -> usize {
-    crate::cli::workflow_kpop_shared::effective_max_loops(max_loops)
-}
-
 #[derive(Args, Debug, Clone)]
 #[command(override_usage = "malvin write [OPTION]... [REQUEST]")]
 pub struct WriteArgs {
@@ -18,7 +13,7 @@ pub struct WriteArgs {
     /// Workspace path for the LaTeX output (PDF uses the same stem with `.pdf`)
     #[arg(long, default_value = "write.tex")]
     pub out_path: String,
-    /// Outer router session budget
+    /// Outer loop budget (CLI compatibility; write uses a fixed two-prompt session)
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE)]
     pub max_loops: usize,
     /// Hypothesis budget
@@ -33,7 +28,6 @@ pub struct WriteArgs {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::cli::args::{Cli, Commands};
     use clap::{CommandFactory, FromArgMatches, Parser};
 
@@ -76,11 +70,6 @@ mod tests {
     #[test]
     fn write_rejects_extra_positional() {
         assert!(Cli::try_parse_from(["malvin", "write", "a", "b"]).is_err());
-    }
-
-    #[test]
-    fn write_effective_max_loops_is_at_least_one() {
-        assert_eq!(effective_write_max_loops(0), 1);
     }
 
     #[test]

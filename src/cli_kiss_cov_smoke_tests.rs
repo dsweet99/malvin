@@ -85,11 +85,19 @@ fn smoke_cov_cli_cli_tidy_flow_units() {
 fn smoke_cov_cli_cli_write_flow_units() {
     let _: Option<crate::cli::write_flow::WriteArgs> = None;
     let _ = crate::cli::write_flow::run_write;
-    let _ = crate::cli::write_flow::effective_write_max_loops;
     let _ = crate::kpop_engine::KPopHardConstraints::WRITE;
     let _ = crate::cli::entrypoint_commands::run_write_command;
-    let _ = crate::cli::write_flow::prep::compose_write_router_request;
+    let _ = crate::cli::write_flow::prep::compose_write_a_prompt;
+    let _ = crate::cli::write_flow::prep::compose_write_b_prompt;
     let _ = crate::cli::write_flow::prep::write_preflight;
+    let _ = stringify!(WriteRunPrep);
+    let _ = stringify!(prepare_write_run);
+    let _ = stringify!(prepare_write_prompts);
+    let _ = stringify!(write_workspace_dir_display);
+    let _ = stringify!(new_write_client);
+    let _ = stringify!(create_write_artifacts);
+    let _ = stringify!(run_write_coder_prompt);
+    let _ = stringify!(run_write_coder_session);
 }
 
 #[test]

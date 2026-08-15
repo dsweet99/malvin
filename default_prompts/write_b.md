@@ -1,15 +1,17 @@
-[NB: The user request may override any of the direction given between here and the user request, below.]
+[NB: The user request may override any direction below, but these are the defaults.]
 
-Write a short technical LaTeX paper for an intelligent nonspecialist on the topic below. Imagine you are teaching a college sophomore.
+Write a short technical LaTeX paper for an intelligent nonspecialist on the topic below. Teach as you would a college freshman.
 
 Put the LaTeX source in `{{ tex_display }}` and a compiled PDF in `{{ pdf_display }}`. Both files must be non-empty.
 Do not overwrite unrelated workspace files.
 
-Write in complete sentences throughout the paper, including the abstract, section openings, and captions. Do not pack several ideas into one colon-led comma chain when separate sentences or a short list would be clearer.
+Draw from `notes.tex` in `{{ workspace_dir }}`. Do not add information. Your job now is to transform the notes into good writing, not to do further research or to generate new ideas.
 
-If the writing is related to coding, assume that the reader will not read the underlying source code. Explain the algorithms, mathematics, or design ideas in plain English. Introduce field terms at first use. Use vocabulary natural to the topic’s field. Do not use process jargon, checklist words, or review slang. Consider using algpseudocode for (minimal) pseudocode.
+Write in complete sentences throughout—including the abstract, section openings, and captions. Prefer separate sentences or a short list over a colon-led comma chain that packs several ideas into one line.
 
-When you write the files, use a lowecase, snakecase filename derived from your paper's title. Keep the snakecase title five words or fewer, but shorter is generally better.
+If the writing is related to coding, assume the reader will not read the underlying source code. Explain the algorithms, mathematics, or design ideas in plain English. Introduce field terms at first use. Use vocabulary natural to the topic’s field. Avoid process jargon, checklist words, and review slang. Consider using algpseudocode for minimal pseudocode.
+
+Name output files with a lowercase snakecase stem derived from the paper’s title. Keep that stem to five words or fewer; shorter is usually better.
 
 
 # How good papers sound
@@ -42,7 +44,7 @@ Vaswani et al. (*Attention Is All You Need*) state the proposal and put the meas
 
 2. **Make vague words operational.** When a natural question is fuzzy, rewrite it into a form the rest of the paper can test. Turing replaces “Can machines think?” with the imitation game. Shannon sets “meaning” aside for the engineering problem. Define each important term by what a reader could check.
 
-3. **Give a minimal picture before the machinery.** Before equations or implementation detail, give the reader one simple picture that can carry the argument. Shannon’s diagram of source, channel, and destination is one such picture. PageRank’s random surfer is another. Formalism should elaborate that picture. It should not replace it.
+3. **Give a minimal picture before the machinery.** Before equations or implementation detail, give the reader one simple picture that can carry the argument. Shannon’s diagram of source, channel, and destination is one such picture. PageRank’s random surfer is another. Formalism should elaborate that picture; it should not replace it.
 
 4. **Contrast prior art with short, numbered failings—then give yours.** Say what earlier approaches get wrong in short, checkable points. Watson and Crick do this with Pauling’s model. Then introduce your alternative as the fix those failings imply. Prefer numbered or bulleted points written as complete sentences over a single run-on sentence.
 
@@ -50,16 +52,10 @@ Vaswani et al. (*Attention Is All You Need*) state the proposal and put the meas
 
 # Clarity faults to avoid
 
-Do not use two names for the same thing without need. Do not place a definition far from the noun it defines. Do not write “this,” “that,” “these,” or “those” when the referent is unclear; name the referent. Do not cheerlead with “X matters because…” when you could state the problem or claim directly. Do not hint at more with phrases such as “and related settings” unless the text supports them. Do not use vague or hedgy wording unless you label it as a hypothesis. Do not leave a major claim without evidence or citation beside it. Label hypotheses, and try to falsify each. Don't label claims.
+Do not use two names for the same thing without need. Do not place a definition far from the noun it defines. Do not write “this,” “that,” “these,” or “those” when the referent is unclear; name the referent. Do not cheerlead with “X matters because…” when you could state the problem or claim directly. Do not hint at more with phrases such as “and related settings” unless the text supports them. Do not use vague or hedgy wording unless you label it as a hypothesis. Do not leave a major claim without evidence or citation beside it. Label hypotheses, and try to falsify each. Do not label claims.
 
 # Page and figure craft
 
-Keep the page quiet and readable. Use a clear hierarchy, alignment, and whitespace. Use at most two or three typefaces. Keep a dominant and accent color split near 70/30. Keep content inside the margins. Beware of big blank areas. There's no need for them, but TeX files (especially with figures) might results in them.
+Keep the page quiet and readable. Use a clear hierarchy, alignment, and whitespace. Use at most two or three typefaces. Keep a dominant and accent color split near 70/30. Keep content inside the margins. Beware of large blank regions; they are unnecessary, though TeX files (especially with figures) can produce them.
 
 Prefer TikZ or other vector figures. If you need a `.png` draft to inspect layout, still ship vector (`.pdf` or `.eps`) in the document when you can. Avoid overlapping text, clipped arrows, wasted empty regions, and labels too small to read in the PDF. Wrap long labels inside fixed-width nodes. Route arrows around the main content.
-
----
-
-User request:
-
-{{ request_text }}

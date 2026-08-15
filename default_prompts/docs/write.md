@@ -1,15 +1,15 @@
 # malvin write
 
-Produce a short, reader-friendly **LaTeX explanation** by composing a request and running the **default router** workflow (same path as bare `malvin REQUEST`). The composed request is rendered from `write_wrapper.md` and embeds the user request and the `.tex` / `.pdf` output paths.
+Produce a short, reader-friendly **LaTeX explanation** by starting one agent session and sending two prompts in order: research notes from `write_a.md`, then the paper from `write_b.md`.
 
 ## Summary
 
 | | |
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
-| Output | `write.tex` and `write.pdf` (or `--out-path`); paths are named in the composed router request |
-| Loop | Default router: `header` → `kpop_common` → `router_a` → optional `router_b`; exit `router_summarize`; outer `--max-loops` sessions |
-| Exit policy | Router success (agent fulfills the composed write request) |
+| Output | `write.tex` and `write.pdf` (or `--out-path`); paths are named in the `write_b` prompt |
+| Session | One agent: `write_a` (research → `notes.tex` in the run log dir) → wait → `write_b` (LaTeX + PDF from those notes) |
+| Exit policy | Both prompts complete successfully |
 | Requires | No `.malvin/checks` preflight (document workflow) |
 
 ## Intention
@@ -36,39 +36,37 @@ When `REQUEST` names an existing `.md` file, the work directory is that file's p
 
 ### `--out-path <PATH>` (default: `write.tex`)
 
-LaTeX output path. malvin derives the PDF path by replacing the `.tex` extension with `.pdf`. With the default `write.tex`, if either default output already exists in the request work directory, malvin allocates the first free sibling pair (`write_1.tex` / `write_1.pdf`, …) before composing the router request. For any other `--out-path`, preflight refuses to run when either resolved path already exists.
+LaTeX output path. malvin derives the PDF path by replacing the `.tex` extension with `.pdf`. With the default `write.tex`, if either default output already exists in the request work directory, malvin allocates the first free sibling pair (`write_1.tex` / `write_1.pdf`, …) before composing the prompts. For any other `--out-path`, preflight refuses to run when either resolved path already exists.
 
 ### `--max-loops <N>` (default: 3)
 
-Outer router session budget. `0` is treated as `1`.
+Kept for CLI compatibility with other gate-loop wrappers. The write session is a fixed two-prompt sequence and does not use this budget.
 
 ### `--tenacious` (default: on)
 
-Sets `--max-acp-retries=9999` and `--max-loops=9999`.
+Sets `--max-acp-retries=9999` (and expands `--max-loops` for compatibility).
 
 ### `--no-tenacious`
 
-Restore normal loop/retry budgets (global flag; see `malvin --doc`).
+Restore normal retry budgets (global flag; see `malvin --doc`).
 
 ## Global options
 
-See `malvin --doc`. `--quiet` / `-q` applies because write invokes the default router (DM-body-only stdout; not the same as `-b`).
+See `malvin --doc`. `--quiet` / `-q` prints only `MALVIN_DM_START`/`END` bodies on stdout (not the same as `-b`).
 
 ## Success criteria
 
 All of the following must hold:
 
 1. Preflight passed (default outputs may have been auto-allocated; non-default paths must not have pre-existed).
-2. The default router completed within the `--max-loops` budget.
-
-On success, malvin follows the default router exit reporting.
+2. The agent finished `write_a` and then `write_b` without error.
 
 ## Related commands
 
 | Command | When |
 |---------|------|
 | `malvin inspire` | One-shot MBC2 ideation |
-| bare `malvin REQUEST` | Same router engine; write is a thin request wrapper |
+| bare `malvin REQUEST` | Default router (multi-turn problem-solving) |
 
 ## Examples
 
