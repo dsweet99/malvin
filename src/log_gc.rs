@@ -94,7 +94,7 @@ fn emit_prune_result(result: PruneResult) {
         print_stdout_line(
             MALVIN_WHO,
             &format!(
-                "pruned {} run log(s) (~{} freed)",
+                "Pruned {} run log(s) (~{} freed)",
                 result.removed,
                 format_freed(result.freed)
             ),

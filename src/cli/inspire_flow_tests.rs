@@ -3,7 +3,9 @@ mod inspire_tests {
     use clap::Parser;
 
     use crate::cli::{Cli, Commands};
-    use crate::inspire_flow::{build_inspire_render_context, render_inspire_prompt};
+    use crate::inspire_flow::{
+        build_inspire_render_context, render_inspire_prompt, render_inspire_summarize_prompt,
+    };
     use crate::prompts::{
         PromptStore, malformed_brace_placeholders, render_mbc2_for_scheduled_kpop_block,
     };
@@ -15,6 +17,33 @@ mod inspire_tests {
         assert!(!out.contains("{{"));
         assert!(malformed_brace_placeholders(&out).is_empty());
         assert!(out.contains("generate 3"));
+    }
+
+    #[test]
+    fn render_inspire_summarize_prompt_is_static_body() {
+        let out = render_inspire_summarize_prompt().expect("render");
+        assert!(!out.contains("{{"));
+        assert!(malformed_brace_placeholders(&out).is_empty());
+        assert!(
+            out.contains("Write a summary of your generated ideas"),
+            "inspire_summarize.md body must be rendered: {out}"
+        );
+        assert!(
+            out.to_lowercase().contains("as a dm"),
+            "inspire_summarize.md body must ask for a DM: {out}"
+        );
+        assert!(
+            out.contains("MALVIN_DM_START"),
+            "inspire_summarize.md must define the DM start marker: {out}"
+        );
+        assert!(
+            out.contains("MALVIN_DM_END"),
+            "inspire_summarize.md must define the DM end marker: {out}"
+        );
+        assert!(
+            !out.contains("spoken echo"),
+            "inspire_summarize.md must contain coherent instructions: {out}"
+        );
     }
 
     #[test]

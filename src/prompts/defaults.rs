@@ -13,6 +13,7 @@ pub const ROUTER_CODE_EXTRA_MD: &str = "router_code_extra.md";
 pub const ROUTER_SUMMARIZE_MD: &str = "router_summarize.md";
 pub const WRITE_A_MD: &str = "write_a.md";
 pub const WRITE_B_MD: &str = "write_b.md";
+pub const INSPIRE_SUMMARIZE_MD: &str = "inspire_summarize.md";
 
 pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD];
 
@@ -21,6 +22,7 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "kpop_block.md",
     "mbc2.md",
     "kpop_summarize.md",
+    INSPIRE_SUMMARIZE_MD,
     "init_constraints.md",
     HEADER_MD,
     DO_HEADER_MD,

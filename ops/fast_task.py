@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Any
 
 import click
 
@@ -75,34 +76,32 @@ def fast_tasks_list_cmd() -> None:
         "pi: models bind-mount the host pi binary via MALVIN_PI"
     ),
 )
-@click.pass_context
+@click.option(
+    "--creative",
+    is_flag=True,
+    help=(
+        "Pass --creative through to malvin (creative router_b); "
+        "incompatible with --cursor and --agent=cursor"
+    ),
+)
 def fast_task_solve(
-    ctx: click.Context,
     task_id: str,
-    results_dir: Path | None,
-    docker_image: str | None,
-    base_image: str,
-    dry_run: bool,
-    skip_grade: bool,
-    agent: str,
-    use_main: bool,
-    model: str | None,
+    creative: bool,
+    **options: Any,
 ) -> None:
     """Run malvin on TASK_ID in Docker; report host-graded reward."""
+    ctx = click.get_current_context()
     malvin_args = tuple(ctx.args)
+    model = options.pop("model")
     if model is not None:
         malvin_args = ("--model", model, *malvin_args)
+    if creative:
+        malvin_args = ("--creative", *malvin_args)
     _lib.ft_cli_solve(
         task_id,
-        results_dir=results_dir,
-        docker_image=docker_image,
-        base_image=base_image,
-        dry_run=dry_run,
-        skip_grade=skip_grade,
-        agent=agent,
-        use_main=use_main,
         malvin_args=malvin_args,
         timeout_sec=None,
+        **options,
     )
 
 @fast_task_cli.command("self-test")

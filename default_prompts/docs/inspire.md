@@ -1,14 +1,14 @@
 # malvin inspire
 
-One **single-turn** MBC2 (boundary exploration) session: structurally distant ideas from your prompt, without evaluation or pruning.
+One MBC2 (boundary exploration) session: structurally distant ideas from your prompt, without evaluation or pruning, then a summarize turn on the same agent.
 
 ## Summary
 
 | | |
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
-| Prompt | `default_prompts/mbc2.md` with `user_prompt` |
-| Log | `inspire.log` under `~/.malvin_home/logs/<hash>/<run>/` |
+| Prompts | `default_prompts/mbc2.md` with `user_prompt`, then `default_prompts/inspire_summarize.md` |
+| Log | `inspire.log` / `inspire_summarize.log` under `~/.malvin_home/logs/<hash>/<run>/` |
 
 ## Intention
 
@@ -34,7 +34,10 @@ See `malvin --doc`. Agent stdout uses styled markdown on a TTY.
 
 ## Prompt workflow
 
-Exactly **one** coder prompt: rendered `mbc2.md` only (no coding header or repo rules merge). The prompt instructs the model to generate 3 ideas when no count is specified.
+Two coder prompts on one agent session (no coding header or repo rules merge):
+
+1. Rendered `mbc2.md` — generate ideas (3 when no count is specified).
+2. Rendered `inspire_summarize.md` — DM a first-person summary of those ideas to the operator.
 
 ## Session behavior
 

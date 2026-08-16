@@ -122,6 +122,7 @@ fn smoke_cov_cli_cli_symbols_a() {
     let _: Option<crate::inspire_flow::InspireArgs> = None;
     let _ = stringify!(InspireRunPrep);
     let _ = crate::inspire_flow::render_inspire_prompt;
+    let _ = crate::inspire_flow::render_inspire_summarize_prompt;
     let _ = crate::inspire_flow::build_inspire_render_context;
     let _ = crate::inspire_flow::run_inspire;
     let _: Option<crate::cli::models_cmd::ModelsArgs> = None;

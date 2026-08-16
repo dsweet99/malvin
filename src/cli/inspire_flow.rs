@@ -1,4 +1,3 @@
-
 use std::collections::HashMap;
 
 use clap::Args;
@@ -11,7 +10,9 @@ use crate::cli::one_shot_session::{
     OneShotCoderGuard,
 };
 use crate::cli::{SharedOpts, WorkflowCliOptions};
-use crate::prompts::{PromptError, PromptStore, render_mbc2_for_scheduled_kpop_block};
+use crate::prompts::{
+    PromptError, PromptStore, INSPIRE_SUMMARIZE_MD, render_mbc2_for_scheduled_kpop_block,
+};
 use crate::run_timing::TimingPhase;
 
 #[derive(Args, Debug)]
@@ -25,6 +26,7 @@ struct InspireRunPrep {
     client: AgentBackend,
     artifacts: RunArtifacts,
     prompt: String,
+    summarize_prompt: String,
     session_dotfile_backups: SessionDotfileBackups,
 }
 
@@ -32,6 +34,9 @@ fn prepare_inspire_prompt_store() -> Result<PromptStore, String> {
     let store = PromptStore::default_store();
     store
         .validate_exists("mbc2.md")
+        .map_err(|e: PromptError| e.0)?;
+    store
+        .validate_exists(INSPIRE_SUMMARIZE_MD)
         .map_err(|e: PromptError| e.0)?;
     Ok(store)
 }
@@ -44,6 +49,14 @@ pub fn render_inspire_prompt(user_prompt: &str) -> Result<String, String> {
     let store = prepare_inspire_prompt_store()?;
     let ctx = build_inspire_render_context(user_prompt);
     render_mbc2_for_scheduled_kpop_block(&store, &ctx).map_err(|e| e.0)
+}
+
+pub fn render_inspire_summarize_prompt() -> Result<String, String> {
+    let store = prepare_inspire_prompt_store()?;
+    store
+        .render_prompt_only(INSPIRE_SUMMARIZE_MD, &HashMap::new())
+        .map(|s| s.trim().to_string())
+        .map_err(|e: PromptError| e.0)
 }
 
 fn new_inspire_client(
@@ -86,10 +99,12 @@ async fn prepare_inspire_run(
     crate::run_id::maybe_gc_after_run_created(&artifacts.work_dir, &artifacts.run_dir);
     let session_dotfile_backups = finish_one_shot_auth_and_backups(&mut client, &artifacts)?;
     let prompt = render_inspire_prompt(&text)?;
+    let summarize_prompt = render_inspire_summarize_prompt()?;
     Ok(InspireRunPrep {
         client,
         artifacts,
         prompt,
+        summarize_prompt,
         session_dotfile_backups,
     })
 }
@@ -105,7 +120,13 @@ pub async fn run_inspire(
         .await
         .map_err(|e| e.to_string())?;
     crate::cli::run_emit::emit_run_logs_line(&prep.artifacts)?;
-    let acp_res = run_inspire_coder_session(&mut prep.client, &prep.artifacts, &prep.prompt).await;
+    let acp_res = run_inspire_coder_session(
+        &mut prep.client,
+        &prep.artifacts,
+        &prep.prompt,
+        &prep.summarize_prompt,
+    )
+    .await;
     finish_one_shot_after_prompt(
         acp_res,
         &prep.artifacts.work_dir,
@@ -115,20 +136,26 @@ pub async fn run_inspire(
     Ok(())
 }
 
+struct InspireCoderPrompt<'a> {
+    prompt: &'a str,
+    who: &'a str,
+    stdout_bracket_label: &'a str,
+}
+
 async fn run_inspire_coder_prompt(
     client: &mut AgentBackend,
     artifacts: &RunArtifacts,
-    prompt: &str,
+    spec: &InspireCoderPrompt<'_>,
 ) -> Result<(), String> {
     client
         .run_coder_prompt(
-            prompt,
-            &artifacts.log_path("inspire"),
-            "inspire",
+            spec.prompt,
+            &artifacts.log_path(spec.who),
+            spec.who,
             crate::acp::CoderPromptOptions {
                 llm_phase: Some(TimingPhase::Implement),
                 do_trace_split: None,
-                stdout_bracket_label: None,
+                stdout_bracket_label: Some(spec.stdout_bracket_label),
                 ..Default::default()
             },
         )
@@ -140,9 +167,32 @@ async fn run_inspire_coder_session(
     client: &mut AgentBackend,
     artifacts: &RunArtifacts,
     prompt: &str,
+    summarize_prompt: &str,
 ) -> Result<(), String> {
     let guard = OneShotCoderGuard::begin(client, artifacts, "inspire").await?;
-    let run_res = run_inspire_coder_prompt(client, artifacts, prompt).await;
+    let run_res = async {
+        run_inspire_coder_prompt(
+            client,
+            artifacts,
+            &InspireCoderPrompt {
+                prompt,
+                who: "inspire",
+                stdout_bracket_label: "mbc2.md",
+            },
+        )
+        .await?;
+        run_inspire_coder_prompt(
+            client,
+            artifacts,
+            &InspireCoderPrompt {
+                prompt: summarize_prompt,
+                who: "inspire_summarize",
+                stdout_bracket_label: INSPIRE_SUMMARIZE_MD,
+            },
+        )
+        .await
+    }
+    .await;
     guard.finish(client, run_res).await
 }
 
@@ -184,5 +234,7 @@ mod kiss_cov_gate_refs{
         let _ = run_inspire;
         let _ = run_inspire_coder_session;
         let _ = run_inspire_coder_prompt;
+        let _ = render_inspire_summarize_prompt;
+        let _: Option<InspireCoderPrompt<'_>> = None;
     }
 }

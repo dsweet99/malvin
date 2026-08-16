@@ -28,7 +28,7 @@ Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`,
 | `init` | Discover quality gates and write `.malvin/checks` |
 | `tidy` | Fix quality gates via the default router with fixed request `Get the gates to pass.` and `--gates` forced on |
 | `write` | Write a LaTeX PDF on code or concepts via a composed default-router request |
-| `inspire` | One-shot MBC2 boundary exploration (batch ideation) |
+| `inspire` | MBC2 boundary exploration then `inspire_summarize` on the same agent |
 | `models` | List `cursor:` and `pi:` model ids |
 
 Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prompts/docs/<command>.md`); for the one-shot workflow use `malvin --do --doc`. The default-route contract (`router.md`) is printed after this overview when you run `malvin --doc`.
