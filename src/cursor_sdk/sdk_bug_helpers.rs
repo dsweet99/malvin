@@ -1,4 +1,3 @@
-
 use crate::acp::{AgentIoOptions, CoderPromptOptions};
 use crate::cursor_sdk::CursorSdkClient;
 
@@ -32,12 +31,27 @@ pub(super) fn bug_install_env(mock: &std::path::Path) {
     }
 }
 
+pub(super) fn bug_set_progress_env(period_ms: u64, count: u64) {
+    unsafe {
+        std::env::set_var("MOCK_BRIDGE_PROGRESS_MS", period_ms.to_string());
+        std::env::set_var("MOCK_BRIDGE_PROGRESS_COUNT", count.to_string());
+    }
+}
+
+pub(super) fn bug_clear_progress_env() {
+    unsafe {
+        std::env::remove_var("MOCK_BRIDGE_PROGRESS_MS");
+        std::env::remove_var("MOCK_BRIDGE_PROGRESS_COUNT");
+    }
+}
+
 pub(super) fn bug_clear_env() {
     unsafe {
         std::env::remove_var("MALVIN_CURSOR_SDK_BRIDGE");
         std::env::remove_var("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS");
         std::env::remove_var("MOCK_BRIDGE_HANG_CREATE");
     }
+    bug_clear_progress_env();
 }
 
 pub(super) fn bug_set_drain_idle_timeout_ms(ms: u64) {
@@ -107,6 +121,8 @@ fn kiss_cov_sdk_bug_helpers() {
     let _ = bug_install_env;
     let _ = bug_clear_env;
     let _ = bug_set_drain_idle_timeout_ms;
+    let _ = bug_set_progress_env;
+    let _ = bug_clear_progress_env;
     let _ = bug_bridge_js;
     let _ = bug_client;
     let _ = bug_client_noforce;

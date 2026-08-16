@@ -1,15 +1,14 @@
-
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
 
 use crate::acp::AgentError;
 use crate::bridge_protocol::BridgeEvent;
-use crate::bridge_sdk::{note_sdk_step, record_sdk_usage, BridgeSession};
+use crate::bridge_sdk::{BridgeSession, note_sdk_step, record_sdk_usage};
 
 use super::map_event::map_pi_event;
 use super::protocol::{
-    abort_request, pi_decode_line, pi_encode_request, new_session_request, prompt_request, PiLine,
+    PiLine, abort_request, new_session_request, pi_decode_line, pi_encode_request, prompt_request,
 };
 
 static PI_REQ_SEQ: AtomicU64 = AtomicU64::new(1);
@@ -45,7 +44,10 @@ pub(crate) async fn pi_send_new_session(session: &BridgeSession) -> Result<(), A
     Ok(())
 }
 
-pub(crate) async fn pi_send_prompt(session: &BridgeSession, prompt: &str) -> Result<(), AgentError> {
+pub(crate) async fn pi_send_prompt(
+    session: &BridgeSession,
+    prompt: &str,
+) -> Result<(), AgentError> {
     let id = pi_next_req_id();
     let req = prompt_request(&id, prompt);
     pi_write_line(session, &pi_encode_request(&req)).await?;
@@ -140,14 +142,15 @@ async fn pi_read_line_with_idle_timeout(
     session: &BridgeSession,
     waiting_for: &str,
 ) -> Result<PiLine, AgentError> {
-    let idle = crate::sdk_drain_timeout::sdk_drain_idle_timeout_from_env();
-    tokio::time::timeout(idle, pi_read_line(session))
-        .await
-        .unwrap_or_else(|_| {
-            Err(AgentError(format!(
-                "pi rpc timed out waiting for {waiting_for} after {idle:?} of silence"
-            )))
-        })
+    let labels = crate::bridge_sdk::DrainIdleLabels {
+        prefix: "pi rpc timed out",
+        waiting_for,
+    };
+    let health = Some(crate::bridge_sdk::DrainIdleHealthCtx {
+        process_group_id: session.process_group_id,
+        spawn_pid_baseline: &session.spawn_pid_baseline,
+    });
+    crate::bridge_sdk::await_next_with_idle(labels, health, pi_read_line(session)).await
 }
 
 fn pi_finish_run_done(session: &BridgeSession, ev: &BridgeEvent) -> Result<(), AgentError> {
@@ -167,8 +170,7 @@ fn pi_finish_run_done(session: &BridgeSession, ev: &BridgeEvent) -> Result<(), A
     *session
         .last_response
         .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner) =
-        result.clone().unwrap_or_default();
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = result.clone().unwrap_or_default();
     if let Some(text) = result {
         crate::bridge_sdk::feed_do_dm_run_result(text);
     }

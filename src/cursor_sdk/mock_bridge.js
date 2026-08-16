@@ -199,6 +199,34 @@ async function handleSend(req) {
     return;
   }
 
+  if (prompt.includes("PROGRESS_THEN_DONE")) {
+    const periodMs = Math.max(
+      1,
+      Number.parseInt(process.env.MOCK_BRIDGE_PROGRESS_MS || "40", 10) || 40,
+    );
+    const pulses = Math.max(
+      1,
+      Number.parseInt(process.env.MOCK_BRIDGE_PROGRESS_COUNT || "6", 10) || 6,
+    );
+    for (let i = 0; i < pulses; i++) {
+      emit({ event: "progress", kind: "heartbeat", detail: `pulse-${i}` });
+      await sleep(periodMs);
+    }
+    emit({
+      event: "run_done",
+      status: "finished",
+      result: "progressed",
+      usage: {
+        inputTokens: 1,
+        outputTokens: 1,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+      },
+      durationMs: periodMs * pulses,
+    });
+    return;
+  }
+
   const fenced = prompt.includes("NEED_DM");
   const result = fenced
     ? "MALVIN_DM_START\nHello.\nMALVIN_DM_END"

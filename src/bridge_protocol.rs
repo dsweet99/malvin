@@ -1,4 +1,3 @@
-
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -43,8 +42,12 @@ pub enum BridgeEvent {
         #[serde(rename = "agentId")]
         agent_id: Option<String>,
     },
-    Assistant { text: String },
-    Thinking { text: String },
+    Assistant {
+        text: String,
+    },
+    Thinking {
+        text: String,
+    },
     ToolCall {
         phase: String,
         name: Option<String>,
@@ -52,8 +55,12 @@ pub enum BridgeEvent {
         #[serde(rename = "toolCallId")]
         tool_call_id: Option<String>,
     },
-    Step { kind: Option<String> },
-    Usage { usage: Value },
+    Step {
+        kind: Option<String>,
+    },
+    Usage {
+        usage: Value,
+    },
     RunDone {
         status: String,
         result: Option<String>,
@@ -65,6 +72,10 @@ pub enum BridgeEvent {
     Fatal {
         message: String,
         retryable: Option<bool>,
+    },
+    Progress {
+        kind: Option<String>,
+        detail: Option<String>,
     },
     #[serde(other)]
     Unknown,
@@ -140,16 +151,14 @@ mod bridge_protocol_tests {
         )
         .expect("decode");
         match done {
-            BridgeEvent::RunDone {
-                status, result, ..
-            } => {
+            BridgeEvent::RunDone { status, result, .. } => {
                 assert_eq!(status, "finished");
                 assert_eq!(result.as_deref(), Some("hi"));
             }
             other => panic!("unexpected {other:?}"),
         }
-        let fatal = decode_event(r#"{"event":"fatal","message":"boom","retryable":true}"#)
-            .expect("fatal");
+        let fatal =
+            decode_event(r#"{"event":"fatal","message":"boom","retryable":true}"#).expect("fatal");
         match fatal {
             BridgeEvent::Fatal { message, retryable } => {
                 assert_eq!(message, "boom");
@@ -157,5 +166,25 @@ mod bridge_protocol_tests {
             }
             other => panic!("unexpected {other:?}"),
         }
+    }
+
+    #[test]
+    fn decode_progress_heartbeat() {
+        let ev = decode_event(r#"{"event":"progress","kind":"heartbeat"}"#).expect("decode");
+        match ev {
+            BridgeEvent::Progress { kind, detail } => {
+                assert_eq!(kind.as_deref(), Some("heartbeat"));
+                assert!(detail.is_none());
+            }
+            other => panic!("unexpected {other:?}"),
+        }
+        let minimal = decode_event(r#"{"event":"progress"}"#).expect("minimal");
+        assert!(matches!(
+            minimal,
+            BridgeEvent::Progress {
+                kind: None,
+                detail: None
+            }
+        ));
     }
 }

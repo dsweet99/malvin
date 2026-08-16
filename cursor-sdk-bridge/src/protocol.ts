@@ -73,6 +73,7 @@ export type BridgeEvent =
         parameters?: Array<{ id: string; values: string[] }>;
       }>;
     }
+  | { event: "progress"; kind?: string; detail?: string }
   | { event: "fatal"; message: string; retryable?: boolean };
 
 export function emit(ev: BridgeEvent): void {

@@ -1,4 +1,3 @@
-
 import { emit } from "./protocol.js";
 const SUMMARY_MAX = 60;
 function textFromBlocks(msg) {
@@ -13,7 +12,6 @@ function textFromBlocks(msg) {
 function flatten(s) {
     return s.replace(/\s+/g, " ").trim();
 }
-
 export function shortenMiddle(s, max = SUMMARY_MAX) {
     if (s.length <= max)
         return s;
@@ -83,7 +81,6 @@ function editCounts(result) {
         return `−${removed}`;
     return "";
 }
-
 export function toolSummaryFromArgs(name, args) {
     const label = (name ?? "tool").trim() || "tool";
     const a = asRecord(args) ?? {};
@@ -200,8 +197,10 @@ export function bridgeEventFromSdk(msg) {
 }
 export function forwardSdkMessage(msg) {
     const ev = bridgeEventFromSdk(msg);
-    if (ev)
-        emit(ev);
+    if (!ev)
+        return false;
+    emit(ev);
+    return true;
 }
 export function usageRecord(usage) {
     return usage;

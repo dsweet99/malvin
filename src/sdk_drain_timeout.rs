@@ -4,6 +4,9 @@ use std::time::Duration;
 
 pub const DEFAULT_SDK_DRAIN_IDLE_TIMEOUT_MS: u64 = 600_000;
 
+/// Max time to block on one bridge/pi read before a child-health sample (slice).
+pub const SDK_DRAIN_IDLE_SLICE_MAX_MS: u64 = 60_000;
+
 #[must_use]
 pub fn sdk_drain_idle_timeout_from_env() -> Duration {
     Duration::from_millis(
@@ -23,6 +26,37 @@ pub fn sdk_drain_idle_timeout_from_env() -> Duration {
                 )
             }),
     )
+}
+
+/// How long to wait on `read_event` before sampling child health.
+///
+/// Always `min(60s, idle_remaining)` so short idle budgets (tests) slice tightly.
+#[must_use]
+pub fn sdk_drain_idle_slice(idle_remaining: Duration) -> Duration {
+    idle_remaining.min(Duration::from_millis(SDK_DRAIN_IDLE_SLICE_MAX_MS))
+}
+
+/// Wall-clock cap for one next-event wait: at most one full extra idle window from health.
+#[must_use]
+pub const fn sdk_drain_idle_max_wait(idle: Duration) -> Duration {
+    idle.saturating_mul(2)
+}
+
+#[cfg(test)]
+pub(crate) fn tests_set_idle_ms_for_test(ms: u64) {
+    unsafe {
+        std::env::set_var("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS", ms.to_string());
+    }
+}
+
+#[cfg(test)]
+pub(crate) fn tests_restore_idle_ms_for_test(prior: Option<std::ffi::OsString>) {
+    unsafe {
+        match prior {
+            Some(v) => std::env::set_var("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS", v),
+            None => std::env::remove_var("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS"),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -66,9 +100,29 @@ mod tests {
     }
 
     #[test]
+    fn sdk_drain_idle_slice_and_max_wait() {
+        assert_eq!(
+            sdk_drain_idle_slice(Duration::from_millis(5_000)),
+            Duration::from_millis(5_000)
+        );
+        assert_eq!(
+            sdk_drain_idle_slice(Duration::from_millis(120_000)),
+            Duration::from_millis(SDK_DRAIN_IDLE_SLICE_MAX_MS)
+        );
+        assert_eq!(
+            sdk_drain_idle_max_wait(Duration::from_millis(600_000)),
+            Duration::from_millis(1_200_000)
+        );
+    }
+
+    #[test]
     fn kiss_cov_sdk_drain_timeout() {
         let _ = stringify!(DEFAULT_SDK_DRAIN_IDLE_TIMEOUT_MS);
+        let _ = stringify!(SDK_DRAIN_IDLE_SLICE_MAX_MS);
         let _ = stringify!(sdk_drain_idle_timeout_from_env);
+        let _ = stringify!(sdk_drain_idle_slice);
+        let _ = stringify!(sdk_drain_idle_max_wait);
         let _ = stringify!(sdk_drain_idle_timeout_from_env_rejects_zero_and_garbage);
+        let _ = stringify!(sdk_drain_idle_slice_and_max_wait);
     }
 }

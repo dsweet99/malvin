@@ -5,6 +5,7 @@ import {
   exitCodeForSignal,
   isInterruptOp,
   isStaleAuthText,
+  progressHeartbeatDue,
 } from "./bridge_policy.js";
 
 describe("stale auth misclassification", () => {
@@ -44,6 +45,15 @@ describe("bridge interrupt ops", () => {
     assert.equal(isInterruptOp("send"), false);
     assert.equal(isInterruptOp("create"), false);
     assert.equal(isInterruptOp("resume"), false);
+  });
+});
+
+describe("progress heartbeat policy", () => {
+  it("fires at 15s only while a run is open", () => {
+    assert.equal(progressHeartbeatDue(true, false, 1000, 15_999), false);
+    assert.equal(progressHeartbeatDue(true, false, 1000, 16_000), true);
+    assert.equal(progressHeartbeatDue(false, false, 1000, 20_000), false);
+    assert.equal(progressHeartbeatDue(true, true, 1000, 20_000), false);
   });
 });
 

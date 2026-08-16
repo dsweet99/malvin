@@ -1,4 +1,3 @@
-
 import { Cursor, CursorAgentError } from "@cursor/sdk";
 import { emit } from "./protocol.js";
 import { exitCodeForSignal } from "./bridge_policy.js";
@@ -9,7 +8,6 @@ function installQuietSignalHandlers() {
         });
     }
 }
-
 export function formatModelParams(parameters) {
     if (!parameters || parameters.length === 0) {
         return "";

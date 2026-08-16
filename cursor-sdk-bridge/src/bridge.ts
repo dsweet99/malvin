@@ -17,6 +17,7 @@ import {
   eventsAfterStreamFailure,
   exitCodeForSignal,
   isInterruptOp,
+  progressHeartbeatDue,
   isStaleAuthMisclassification,
   isStaleAuthText,
 } from "./bridge_policy.js";
@@ -216,16 +217,26 @@ async function handleSend(req: SendOp, alreadyRecovered = false): Promise<void> 
     return;
   }
   const started = Date.now();
+  let lastForwardedAt = Date.now();
+  const noteForwarded = (): void => {
+    lastForwardedAt = Date.now();
+  };
+  const progressTimer = setInterval(() => {
+    if (!progressHeartbeatDue(Boolean(currentRun), closing, lastForwardedAt, Date.now())) return;
+    emit({ event: "progress", kind: "heartbeat" });
+    lastForwardedAt = Date.now();
+  }, 1000);
   try {
     currentRun = await agent.send(req.prompt, {
       onStep: () => {
+        noteForwarded();
         emit({ event: "step", kind: "onStep" });
       },
       local: req.forceStuck ? { force: true } : undefined,
     });
     try {
       for await (const msg of currentRun.stream()) {
-        forwardSdkMessage(msg);
+        if (forwardSdkMessage(msg)) noteForwarded();
       }
     } catch (streamErr) {
       if (
@@ -278,6 +289,8 @@ async function handleSend(req: SendOp, alreadyRecovered = false): Promise<void> 
       return handleSend(req, true);
     }
     emitFatal(err);
+  } finally {
+    clearInterval(progressTimer);
   }
 }
 

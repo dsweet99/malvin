@@ -1,9 +1,8 @@
-
 use crate::acp::AgentError;
 
-use crate::bridge_protocol::{decode_event, encode_request, BridgeEvent, BridgeRequest};
 use super::session::BridgeSession;
 use super::timing::{note_sdk_step, record_sdk_usage};
+use crate::bridge_protocol::{BridgeEvent, BridgeRequest, decode_event, encode_request};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
 
 pub(crate) struct CreateArgs<'a> {
@@ -52,10 +51,7 @@ pub(crate) async fn send_resume(
     wait_for_ok(session).await
 }
 
-pub async fn write_request(
-    session: &BridgeSession,
-    req: &BridgeRequest,
-) -> Result<(), AgentError> {
+pub async fn write_request(session: &BridgeSession, req: &BridgeRequest) -> Result<(), AgentError> {
     let line = encode_request(req).map_err(AgentError)?;
     let mut stdin = session.stdin.lock().await;
     stdin
@@ -123,14 +119,15 @@ async fn read_event_with_idle_timeout(
     session: &BridgeSession,
     waiting_for: &str,
 ) -> Result<BridgeEvent, AgentError> {
-    let idle = crate::sdk_drain_timeout::sdk_drain_idle_timeout_from_env();
-    tokio::time::timeout(idle, read_event(session))
-        .await
-        .unwrap_or_else(|_| {
-            Err(AgentError(format!(
-                "bridge timed out waiting for {waiting_for} after {idle:?} of silence"
-            )))
-        })
+    let labels = super::DrainIdleLabels {
+        prefix: "bridge timed out",
+        waiting_for,
+    };
+    let health = Some(super::DrainIdleHealthCtx {
+        process_group_id: session.process_group_id,
+        spawn_pid_baseline: &session.spawn_pid_baseline,
+    });
+    super::await_next_with_idle(labels, health, read_event(session)).await
 }
 
 async fn discard_optional_trailing_run_done(session: &BridgeSession) {
@@ -164,8 +161,7 @@ fn finish_run_done(session: &BridgeSession, ev: &BridgeEvent) -> Result<(), Agen
     *session
         .last_response
         .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner) =
-        result.clone().unwrap_or_default();
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = result.clone().unwrap_or_default();
     if let Some(text) = result {
         super::log_adapter::feed_do_dm_run_result(text);
     }

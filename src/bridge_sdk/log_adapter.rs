@@ -1,11 +1,10 @@
-
-use crate::acp::SessionUpdateChunkKind;
 use crate::acp::AcpJsonlTrace;
+use crate::acp::SessionUpdateChunkKind;
 use crate::output::{WHO_B, WHO_M};
 
 use crate::bridge_protocol::BridgeEvent;
 
-use super::log_adapter_tool::{clear_tool_starts, emit_tool, ToolCallFields};
+use super::log_adapter_tool::{ToolCallFields, clear_tool_starts, emit_tool};
 use super::session::BridgeSession;
 
 pub fn handle_stream_event(session: &BridgeSession, ev: &BridgeEvent) {
@@ -35,6 +34,7 @@ pub fn handle_stream_event(session: &BridgeSession, ev: &BridgeEvent) {
             clear_tool_starts(session);
             append_trace_value(session, ev);
         }
+        BridgeEvent::Progress { .. } => append_trace_value(session, ev),
         _ => {
             flush_stdout_coalesce(session);
             append_trace_value(session, ev);
@@ -147,7 +147,7 @@ mod tests {
     use super::feed_do_dm_run_result;
     use crate::acp::{SessionUpdateChunkKind, TraceChunkCoalescer};
     use crate::output::{
-        enable_stdout_capture, set_do_dm_stdout_mode, take_captured_stdout, DM_END, DM_START, WHO_M,
+        DM_END, DM_START, WHO_M, enable_stdout_capture, set_do_dm_stdout_mode, take_captured_stdout,
     };
 
     #[test]
@@ -171,7 +171,9 @@ mod tests {
     #[test]
     fn word_sized_assistant_chunks_coalesce_before_flush() {
         let mut coalesce = TraceChunkCoalescer::default();
-        for piece in ["I'll", " check", " recent", " logs", " and", " the", " run", "."] {
+        for piece in [
+            "I'll", " check", " recent", " logs", " and", " the", " run", ".",
+        ] {
             let mid = coalesce.feed(SessionUpdateChunkKind::Message, piece);
             assert!(
                 mid.is_empty(),

@@ -1,17 +1,27 @@
-
+mod drain_idle;
 mod log_adapter;
 mod log_adapter_tool;
 mod session;
 mod session_io;
 mod timing;
 
-pub use session::{
-    BridgeSession, BridgeSpawnArgs, BridgeWire, ToolCallStart, SDK_BRIDGE_MAX_AGE,
-};
-pub use session_io::write_request;
+#[cfg(test)]
+#[path = "drain_idle_tests.rs"]
+mod drain_idle_tests;
+
+#[cfg(test)]
+#[path = "drain_idle_policy_tests.rs"]
+mod drain_idle_policy_tests;
+
+#[cfg(test)]
+pub(crate) use drain_idle::{DrainHealthVerdict, await_next_with_idle_using};
+pub(crate) use drain_idle::{DrainIdleHealthCtx, DrainIdleLabels, await_next_with_idle};
+
 pub(crate) use log_adapter::{feed_do_dm_run_result, handle_stream_event};
+pub use session::{BridgeSession, BridgeSpawnArgs, BridgeWire, SDK_BRIDGE_MAX_AGE, ToolCallStart};
+pub use session_io::write_request;
 pub(crate) use session_io::{
-    run_done_status_is_failure, send_create, send_resume, start_mem_watch, CreateArgs, ResumeArgs,
+    CreateArgs, ResumeArgs, run_done_status_is_failure, send_create, send_resume, start_mem_watch,
 };
 pub use timing::{note_sdk_step, record_sdk_usage};
 

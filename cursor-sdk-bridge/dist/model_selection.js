@@ -1,5 +1,3 @@
-
-
 export function modelSelectionFromRaw(raw) {
     const trimmed = raw.trim();
     const open = trimmed.indexOf("[");

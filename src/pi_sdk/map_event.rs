@@ -1,5 +1,4 @@
-
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::bridge_protocol::BridgeEvent;
 
@@ -12,11 +11,7 @@ pub(crate) fn map_pi_event(type_name: &str, raw: &Value) -> Vec<BridgeEvent> {
         "tool_execution_start" => vec![tool_call_from_execution(raw, "start")],
         "tool_execution_end" => vec![tool_call_from_execution(raw, tool_end_phase(raw))],
         "tool_execution_update" => vec![tool_call_from_execution(raw, "update")],
-        "extension_ui_request" => vec![BridgeEvent::Fatal {
-            message: "pi extension_ui_request is unsupported in malvin non-interactive mode"
-                .into(),
-            retryable: Some(false),
-        }],
+        "extension_ui_request" | "progress" => map_control_event(type_name, raw),
         "agent_end" => vec![map_agent_end(raw)],
         "text_delta" => text_delta_top_level(raw),
         "thinking_delta" => thinking_delta_top_level(raw),
@@ -24,12 +19,24 @@ pub(crate) fn map_pi_event(type_name: &str, raw: &Value) -> Vec<BridgeEvent> {
     }
 }
 
+fn map_control_event(type_name: &str, raw: &Value) -> Vec<BridgeEvent> {
+    if type_name == "progress" {
+        return vec![BridgeEvent::Progress {
+            kind: raw.get("kind").and_then(Value::as_str).map(str::to_string),
+            detail: raw
+                .get("detail")
+                .and_then(Value::as_str)
+                .map(str::to_string),
+        }];
+    }
+    vec![BridgeEvent::Fatal {
+        message: "pi extension_ui_request is unsupported in malvin non-interactive mode".into(),
+        retryable: Some(false),
+    }]
+}
+
 fn tool_end_phase(raw: &Value) -> &'static str {
-    if raw
-        .get("isError")
-        .and_then(Value::as_bool)
-        .unwrap_or(false)
-    {
+    if raw.get("isError").and_then(Value::as_bool).unwrap_or(false) {
         "error"
     } else {
         "complete"

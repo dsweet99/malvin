@@ -1,4 +1,3 @@
-
 export function emit(ev) {
     process.stdout.write(`${JSON.stringify(ev)}\n`);
 }

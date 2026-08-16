@@ -171,9 +171,25 @@ COST: steps = N tokens_in = X tokens_out = Y cache_read = A cache_write = B cost
 Each run writes two parallel channels with different contracts:
 
 - **`stdout.log` (narrative):** lossy, human-oriented lines with who-tags (`m|`, `t|`, `u|`, `b|`, …). Use for skimming a run and vocabulary/ordering checks.
-- **`trace.jsonl` (audit):** machine-authoritative JSONL (Cursor SDK events such as `assistant` / `thinking` / `tool_call` / `run_done`; Mini retains its own audit shapes). Use for tool results, shrink/fork events, and gate-loop audit tooling.
+- **`trace.jsonl` (audit):** machine-authoritative JSONL (Cursor SDK events such as `assistant` / `thinking` / `tool_call` / `progress` / `run_done`; Mini retains its own audit shapes). Use for tool results, shrink/fork events, and gate-loop audit tooling.
 
 Consumers must know which file to trust for which question. Named types live in `src/observability/` (`ObservabilityChannel`, `AuditEventKind`).
+
+## SDK drain idle (bridge / Pi)
+
+While waiting for the next Cursor SDK bridge or Pi RPC line, malvin applies a **per-event** idle budget (not a total-prompt wall clock):
+
+| Clock | Meaning | Default |
+|-------|---------|---------|
+| Idle budget | Max silence since the last successful bridge/Pi event (or since the wait started) | `MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS` (600000 ms) |
+| Slice | How long to block on one read before sampling sandbox child health | `min(60000 ms, idle remaining)` |
+| Health extend | If sandbox PIDs show CPU / ctxt / thread progress (`StillBusy`), refresh the idle budget once more, capped at `max_wait = 2 × idle` for that next-event wait | — |
+
+Missing a line for the full (possibly health-extended) idle window fails with `bridge timed out` / `pi rpc timed out` and tears down the coder session for retry. Local stdout heartbeats (`Orienting`, …) do **not** reset drain idle.
+
+The Cursor SDK bridge also emits automatic `{ "event": "progress", "kind": "heartbeat" }` lines when a run is in flight and no SDK message/step has been forwarded for 15s. Those `progress` events reset the per-event idle budget like any other bridge line (they are recorded in `trace.jsonl`, not teed to narrative stdout).
+
+**Limitation:** work backgrounded outside the bridge sandbox process group (for example a nested Docker `malvin` after the outer shell tool call has already completed) is not visible to child-health sampling. That case relies on the outer SDK run staying open so automatic `progress` heartbeats (or other bridge events) keep arriving inside the idle budget. Once `run_done` fires, progress stops; further silence still hits idle.
 
 ## Deferred stdout logging
 

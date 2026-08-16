@@ -1,5 +1,8 @@
-
 import { AuthenticationError, CursorAgentError } from "@cursor/sdk";
+export const PROGRESS_HEARTBEAT_MS = 15_000;
+export function progressHeartbeatDue(runOpen, closing, lastForwardedAt, now) {
+    return runOpen && !closing && now - lastForwardedAt >= PROGRESS_HEARTBEAT_MS;
+}
 function errorMessage(err) {
     if (err instanceof Error)
         return err.message;
@@ -8,14 +11,12 @@ function errorMessage(err) {
 function isRetryable(err) {
     return err instanceof CursorAgentError ? Boolean(err.isRetryable) : false;
 }
-
 export function isStaleAuthMisclassification(err) {
     if (err instanceof AuthenticationError)
         return true;
     const name = err instanceof Error ? err.name : "";
     return isStaleAuthText(name, errorMessage(err));
 }
-
 export function isStaleAuthText(name, message) {
     const n = name.toLowerCase();
     const m = message.toLowerCase();
@@ -34,7 +35,6 @@ export function isStaleAuthText(name, message) {
         return true;
     return false;
 }
-
 export function eventsAfterStreamFailure(streamErr) {
     return [
         {
@@ -44,11 +44,9 @@ export function eventsAfterStreamFailure(streamErr) {
         },
     ];
 }
-
 export function isInterruptOp(op) {
     return op === "cancel" || op === "close";
 }
-
 export function exitCodeForSignal(signal) {
     if (signal === "SIGINT")
         return 130;

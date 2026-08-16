@@ -1,5 +1,6 @@
-
 use crate::acp::CoderPromptOptions;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use super::sdk_bug_helpers::{
     assert_err_has, bug_clear_env, bug_client, bug_prepare, bug_set_drain_idle_timeout_ms,
@@ -86,13 +87,44 @@ async fn keep_alive_events_do_not_trip_idle_drain_timeout() {
     bug_clear_env();
 }
 
+#[tokio::test]
+async fn injected_busy_health_extends_then_delivers_event() {
+    let _guard = crate::test_utils::test_env_lock();
+    bug_set_drain_idle_timeout_ms(200);
+    let samples = Arc::new(AtomicUsize::new(0));
+    let samples_for_health = Arc::clone(&samples);
+    let labels = crate::bridge_sdk::DrainIdleLabels {
+        prefix: "bridge timed out",
+        waiting_for: "run_done",
+    };
+    let started = std::time::Instant::now();
+    let read = async {
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+        Ok::<_, crate::acp::AgentError>(42)
+    };
+    let got = crate::bridge_sdk::await_next_with_idle_using(labels, read, move |_| {
+        samples_for_health.fetch_add(1, Ordering::SeqCst);
+        std::future::ready(crate::bridge_sdk::DrainHealthVerdict::StillBusy)
+    })
+    .await
+    .expect("busy health must extend until the event arrives");
+    let elapsed = started.elapsed();
+    assert_eq!(got, 42);
+    assert_eq!(samples.load(Ordering::SeqCst), 1);
+    assert!(elapsed >= std::time::Duration::from_millis(200));
+    assert!(elapsed < std::time::Duration::from_millis(400));
+    bug_clear_env();
+}
+
 #[test]
 fn kiss_cov_sdk_drain_idle_cases() {
     let _ = stringify!(never_run_done_idle_timeout_tears_down_and_retries);
     let _ = stringify!(long_idle_never_run_done_still_blocked_at_800ms);
     let _ = stringify!(keep_alive_events_do_not_trip_idle_drain_timeout);
+    let _ = stringify!(injected_busy_health_extends_then_delivers_event);
     let _ = stringify!(create_ack_idle_timeout_fails_begin);
     let _ = stringify!(empty_result_run_done_clears_prior_last_response);
+    let _ = stringify!(kiss_cov_sdk_drain_idle_cases);
 }
 
 #[tokio::test]

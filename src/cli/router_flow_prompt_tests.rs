@@ -1,12 +1,12 @@
 use crate::config::DEFAULT_CLI_MODEL;
 use crate::flow_prompt_join_test_helpers::flow_test_artifacts;
-use crate::router_flow::router_flow_prompt::{
-    build_router_a_prompt, build_router_b_prompt, build_router_kpop_common_prompt,
-    build_router_summarize_prompt, prepare_router_prompt_store, router_b_prompt_label,
-    RouterAPromptInput, RouterBPromptInput, RouterKpopCommonPromptInput,
-    RouterSummarizePromptInput,
-};
 use crate::prompts::PromptStore;
+use crate::router_flow::router_flow_prompt::{
+    RouterAPromptInput, RouterBPromptInput, RouterKpopCommonPromptInput,
+    RouterSummarizePromptInput, build_router_a_prompt, build_router_b_prompt,
+    build_router_kpop_common_prompt, build_router_summarize_prompt, prepare_router_prompt_store,
+    router_b_prompt_label,
+};
 
 #[test]
 fn build_router_a_prompt_expands_malvin_command_with_active_model() {
@@ -128,7 +128,10 @@ fn build_router_kpop_common_prompt_expands_keys_without_unresolved_braces() {
     })
     .expect("kpop common");
     assert!(!body.contains("{{"));
-    assert!(body.contains(&format!("{}", crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES)));
+    assert!(body.contains(&format!(
+        "{}",
+        crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES
+    )));
 }
 
 #[test]
@@ -171,9 +174,77 @@ fn build_router_b_prompt_selects_creative_template_when_flag_set() {
         creative: true,
     })
     .expect("router_b_creative");
-    assert_eq!(plain.trim(), "KPop: Satisfy the requirements.");
+    assert!(
+        plain.contains("KPop: Satisfy the requirements."),
+        "default router_b must retain KPop satisfy line: {plain}"
+    );
+    assert!(
+        plain.contains("Peak problem-solving"),
+        "default router_b must keep peak-performance framing: {plain}"
+    );
+    assert!(
+        !plain.contains("malvin inspire"),
+        "default router_b must not mention inspire: {plain}"
+    );
     assert!(creative.contains("malvin inspire"));
     assert!(creative.contains("KPop: Satisfy the requirements."));
+    assert!(
+        creative.contains("Peak problem-solving"),
+        "creative router_b must keep peak-performance framing: {creative}"
+    );
     assert_eq!(router_b_prompt_label(false), "router_b.md");
     assert_eq!(router_b_prompt_label(true), "router_b_creative.md");
+}
+
+#[test]
+fn default_router_prompts_follow_vision_problem_solving_language() {
+    // explicitly mention coding or evaluation tasks.
+    let forbidden = [
+        "coding",
+        "evaluation task",
+        "evaluation tasks",
+        "fast task",
+        "fast_tasks",
+    ];
+    for name in [
+        "header.md",
+        "router_a.md",
+        "router_b.md",
+        "router_b_creative.md",
+        "kpop_common.md",
+        "router_summarize.md",
+    ] {
+        let body = crate::prompts::default_file(name)
+            .unwrap_or_else(|| panic!("missing default prompt {name}"))
+            .to_ascii_lowercase();
+        for needle in forbidden {
+            assert!(
+                !body.contains(needle),
+                "{name} must not contain {needle:?} (VISION.md)"
+            );
+        }
+    }
+    let router_a = crate::prompts::default_file("router_a.md").expect("router_a");
+    assert!(
+        router_a.contains("Regularization")
+            && router_a.contains("falsif")
+            && router_a.contains("independent axes"),
+        "router_a should keep regularization, falsification, and matrix inference"
+    );
+    for name in ["router_a.md", "router_b.md", "router_b_creative.md"] {
+        let prompt = crate::prompts::default_file(name).unwrap_or_else(|| panic!("missing {name}"));
+        let body = prompt.to_ascii_lowercase();
+        assert!(
+            body.contains("older analogue for the same abstract role")
+                && body.contains("prefer the redefined policy")
+                && body.contains("classify the ambiguity"),
+            "{name} must preserve measured regularization rules"
+        );
+        for implementation_specific in ["import", "module", "backend", "grader", "pytest"] {
+            assert!(
+                !body.contains(implementation_specific),
+                "{name} must express the method generally, not with {implementation_specific:?}"
+            );
+        }
+    }
 }

@@ -1,24 +1,19 @@
-
-
 import "./parent_death.js";
 import * as readline from "node:readline";
 import { Agent, Cursor, CursorAgentError, configureCursorSdk } from "@cursor/sdk";
 import { modelSelectionFromRaw } from "./model_selection.js";
 import { emit, parseRequest, } from "./protocol.js";
-import { eventsAfterStreamFailure, exitCodeForSignal, isInterruptOp, isStaleAuthMisclassification, isStaleAuthText, } from "./bridge_policy.js";
+import { eventsAfterStreamFailure, exitCodeForSignal, isInterruptOp, progressHeartbeatDue, isStaleAuthMisclassification, isStaleAuthText, } from "./bridge_policy.js";
 import { forwardSdkMessage, usageRecord } from "./sdk_map.js";
 export { eventsAfterStreamFailure, exitCodeForSignal, isInterruptOp, isStaleAuthMisclassification, isStaleAuthText, } from "./bridge_policy.js";
 export { installParentDeathWatch } from "./parent_death.js";
 let agent = null;
-
 let agentId = null;
-
 let agentOptions = null;
 let currentRun = null;
 let closing = false;
 function quietExit(code) {
     closing = true;
-    
     process.exit(code);
 }
 function installQuietSignalHandlers() {
@@ -37,8 +32,6 @@ function installQuietSignalHandlers() {
         if (closing)
             return;
         emitFatal(reason);
-        
-        
     });
 }
 function apiKeyFrom(req) {
@@ -61,9 +54,6 @@ function emitFatal(err) {
     });
 }
 function preferHttp1ForAgent() {
-    
-    
-    
     const flag = (process.env.MALVIN_CURSOR_USE_HTTP1 || "").trim().toLowerCase();
     if (flag === "1" || flag === "true" || flag === "yes")
         return true;
@@ -72,7 +62,6 @@ function preferHttp1ForAgent() {
     return Boolean((process.env.HTTPS_PROXY || "").trim() ||
         (process.env.HTTP_PROXY || "").trim());
 }
-
 function ensureHttp1AgentTransport() {
     if (!preferHttp1ForAgent())
         return;
@@ -168,7 +157,6 @@ async function handleResume(req) {
         emitFatal(err);
     }
 }
-
 async function recoverStaleAuth() {
     if (!agentId || !agentOptions)
         return false;
@@ -191,16 +179,28 @@ async function handleSend(req, alreadyRecovered = false) {
         return;
     }
     const started = Date.now();
+    let lastForwardedAt = Date.now();
+    const noteForwarded = () => {
+        lastForwardedAt = Date.now();
+    };
+    const progressTimer = setInterval(() => {
+        if (!progressHeartbeatDue(Boolean(currentRun), closing, lastForwardedAt, Date.now()))
+            return;
+        emit({ event: "progress", kind: "heartbeat" });
+        lastForwardedAt = Date.now();
+    }, 1000);
     try {
         currentRun = await agent.send(req.prompt, {
             onStep: () => {
+                noteForwarded();
                 emit({ event: "step", kind: "onStep" });
             },
             local: req.forceStuck ? { force: true } : undefined,
         });
         try {
             for await (const msg of currentRun.stream()) {
-                forwardSdkMessage(msg);
+                if (forwardSdkMessage(msg))
+                    noteForwarded();
             }
         }
         catch (streamErr) {
@@ -217,7 +217,6 @@ async function handleSend(req, alreadyRecovered = false) {
                 await currentRun.wait();
             }
             catch {
-                
             }
             currentRun = null;
             return;
@@ -251,6 +250,9 @@ async function handleSend(req, alreadyRecovered = false) {
         }
         emitFatal(err);
     }
+    finally {
+        clearInterval(progressTimer);
+    }
 }
 async function handleCancel() {
     const run = currentRun;
@@ -262,7 +264,6 @@ async function handleCancel() {
         }
     }
     catch {
-        
     }
 }
 async function handleClose() {
@@ -271,8 +272,6 @@ async function handleClose() {
     agent = null;
     agentId = null;
     agentOptions = null;
-    
-    
     quietExit(0);
 }
 async function handleListModels(apiKey) {
@@ -345,8 +344,6 @@ async function main() {
         wake?.();
     });
     rl.on("close", () => {
-        
-        
         stdinClosed = true;
         wake?.();
         if (!closing) {
@@ -405,7 +402,6 @@ async function main() {
                 break;
             continue;
         }
-        
         serial = serial
             .then(() => dispatch(req))
             .catch((err) => {

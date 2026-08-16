@@ -2,6 +2,17 @@
 
 import { AuthenticationError, CursorAgentError } from "@cursor/sdk";
 
+export const PROGRESS_HEARTBEAT_MS = 15_000;
+
+export function progressHeartbeatDue(
+  runOpen: boolean,
+  closing: boolean,
+  lastForwardedAt: number,
+  now: number,
+): boolean {
+  return runOpen && !closing && now - lastForwardedAt >= PROGRESS_HEARTBEAT_MS;
+}
+
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   return String(err);

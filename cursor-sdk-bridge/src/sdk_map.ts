@@ -227,9 +227,11 @@ export function bridgeEventFromSdk(msg: SdkMessage): BridgeEvent | null {
   return null;
 }
 
-export function forwardSdkMessage(msg: unknown): void {
+export function forwardSdkMessage(msg: unknown): boolean {
   const ev = bridgeEventFromSdk(msg as SdkMessage);
-  if (ev) emit(ev);
+  if (!ev) return false;
+  emit(ev);
+  return true;
 }
 
 export function usageRecord(

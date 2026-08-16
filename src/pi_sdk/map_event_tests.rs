@@ -47,13 +47,15 @@ fn maps_agent_end_to_run_done_with_usage() {
         }),
     );
     match evs.as_slice() {
-        [BridgeEvent::RunDone {
-            status,
-            result,
-            usage,
-            error,
-            ..
-        }] => {
+        [
+            BridgeEvent::RunDone {
+                status,
+                result,
+                usage,
+                error,
+                ..
+            },
+        ] => {
             assert_eq!(status, "finished");
             assert_eq!(result.as_deref(), Some("yo"));
             assert!(error.is_none());
@@ -74,7 +76,24 @@ fn extension_ui_request_is_fatal() {
     let evs = map_pi_event("extension_ui_request", &json!({}));
     assert!(matches!(
         evs.as_slice(),
-        [BridgeEvent::Fatal { retryable: Some(false), .. }]
+        [BridgeEvent::Fatal {
+            retryable: Some(false),
+            ..
+        }]
+    ));
+}
+
+#[test]
+fn maps_progress_for_protocol_compatibility() {
+    let events = map_pi_event(
+        "progress",
+        &json!({ "kind": "heartbeat", "detail": "waiting" }),
+    );
+    assert!(matches!(
+        events.as_slice(),
+        [BridgeEvent::Progress { kind, detail }]
+            if kind.as_deref() == Some("heartbeat")
+                && detail.as_deref() == Some("waiting")
     ));
 }
 
@@ -141,12 +160,14 @@ fn maps_agent_end_error_and_plain_content() {
         }),
     );
     match evs.as_slice() {
-        [BridgeEvent::RunDone {
-            status,
-            result,
-            error,
-            ..
-        }] => {
+        [
+            BridgeEvent::RunDone {
+                status,
+                result,
+                error,
+                ..
+            },
+        ] => {
             assert_eq!(status, "error");
             assert_eq!(result.as_deref(), Some("plain"));
             assert_eq!(error.as_deref(), Some("boom"));
@@ -166,7 +187,9 @@ fn covers_tool_end_phase_with_non_bool_is_error() {
         "tool_execution_end",
         &json!({ "toolCallId": "t4", "toolName": "bash" }),
     );
-    assert!(matches!(missing.as_slice(), [BridgeEvent::ToolCall { phase, .. }] if phase == "complete"));
+    assert!(
+        matches!(missing.as_slice(), [BridgeEvent::ToolCall { phase, .. }] if phase == "complete")
+    );
 }
 
 #[test]
