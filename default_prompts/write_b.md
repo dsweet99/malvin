@@ -13,7 +13,7 @@ If the writing is related to coding, assume the reader will not read the underly
 
 Write to the output paths given above while you work. At the end, rename both the `.tex` and `.pdf` so their shared stem is derived from the paper title: all lowercase, snake_case (for example, *Attention Is All You Need* → `attention_is_all_you_need.tex` and `attention_is_all_you_need.pdf`). Keep the same directory. Do not leave the temporary paths above as the final deliverable.
 
-Include today's date and name yourself as the author.
+Include today's date and name yourself (malvin) as the author.
 
 # How good papers sound
 

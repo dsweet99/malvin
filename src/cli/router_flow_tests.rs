@@ -134,5 +134,9 @@ fn combine_router_raw_header_and_user_joins_rendered_router_a_and_request() {
 #[path = "router_flow_prompt_tests.rs"]
 mod router_flow_prompt_tests;
 
+#[cfg(test)]
+#[path = "router_flow_vision_prompt_tests.rs"]
+mod router_flow_vision_prompt_tests;
+
 #[path = "router_flow_io_tests.rs"]
 mod router_flow_io_tests;
