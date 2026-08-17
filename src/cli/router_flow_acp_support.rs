@@ -97,6 +97,7 @@ async fn run_router_header_and_kpop(
             git: input.shared.git,
             max_hypotheses,
             exp_log: &exp_log,
+            no_kpop: input.shared.no_kpop,
         },
     )?;
     run_router_kpop_common_coder_prompt(input.client, &kpop_common, log_path).await

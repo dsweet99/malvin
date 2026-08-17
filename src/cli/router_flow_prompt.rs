@@ -8,7 +8,7 @@ use crate::workflow_context::{format_prompt_path, PromptModelOpts};
 use crate::prompt_stratification::WorkflowRenderContext;
 use crate::prompts::{
     PromptError, PromptStore, HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD,
-    ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD,
+    ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD, kpop_common_prompt_file,
 };
 use std::path::Path;
 
@@ -26,7 +26,7 @@ pub(crate) use router_flow_prompt_turns::{
     RouterHeaderPromptInput, RouterKpopCommonPromptInput,
 };
 
-pub fn prepare_router_prompt_store() -> Result<PromptStore, String> {
+pub fn prepare_router_prompt_store(no_kpop: bool) -> Result<PromptStore, String> {
     let store = PromptStore::default_store();
     store.ensure_defaults().map_err(|e: PromptError| e.0)?;
     store
@@ -48,7 +48,7 @@ pub fn prepare_router_prompt_store() -> Result<PromptStore, String> {
         .validate_exists(ROUTER_SUMMARIZE_MD)
         .map_err(|e: PromptError| e.0)?;
     store
-        .validate_exists("kpop_common.md")
+        .validate_exists(kpop_common_prompt_file(no_kpop))
         .map_err(|e: PromptError| e.0)?;
     Ok(store)
 }

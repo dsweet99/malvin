@@ -1,7 +1,7 @@
 use crate::artifacts::RunArtifacts;
 use crate::cli::flow_prompt_combine::combine_acp_prompt_header_and_user;
 use crate::orchestrator::workflow_context_paths_only;
-use crate::prompts::{PromptError, PromptStore, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD};
+use crate::prompts::{PromptError, PromptStore, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD, kpop_common_prompt_file};
 use crate::workflow_context::PromptModelOpts;
 use std::path::Path;
 
@@ -35,6 +35,7 @@ pub(crate) struct RouterKpopCommonPromptInput<'a> {
     pub git: bool,
     pub max_hypotheses: usize,
     pub exp_log: &'a Path,
+    pub no_kpop: bool,
 }
 
 pub(crate) fn build_router_kpop_common_prompt(
@@ -52,7 +53,7 @@ pub(crate) fn build_router_kpop_common_prompt(
     );
     input
         .store
-        .render_prompt_only("kpop_common.md", ctx.as_map())
+        .render_prompt_only(kpop_common_prompt_file(input.no_kpop), ctx.as_map())
         .map_err(|e: PromptError| e.0)
 }
 

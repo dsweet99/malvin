@@ -2,7 +2,7 @@
 #[path = "default_files.rs"]
 mod default_files;
 
-pub use default_files::default_file;
+pub use default_files::{default_file, kpop_common_prompt_file, KPOP_COMMON_FAKE_MD, KPOP_COMMON_MD};
 
 pub const HEADER_MD: &str = "header.md";
 pub const DO_HEADER_MD: &str = "do_header.md";
@@ -18,7 +18,8 @@ pub const INSPIRE_SUMMARIZE_MD: &str = "inspire_summarize.md";
 pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD];
 
 pub const DEFAULT_PROMPTS: &[&str] = &[
-    "kpop_common.md",
+    KPOP_COMMON_MD,
+    KPOP_COMMON_FAKE_MD,
     "mbc2.md",
     INSPIRE_SUMMARIZE_MD,
     "init_constraints.md",
@@ -154,7 +155,7 @@ mod router_header_embed_tests {
         let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL, false);
         let header = render_header(&store, ctx.as_map()).expect("header");
         assert!(!header.contains("{{"), "header must expand all placeholders");
-        let store = prepare_router_prompt_store().expect("store");
+        let store = prepare_router_prompt_store(false).expect("store");
         let header_turn = build_router_header_prompt(RouterHeaderPromptInput {
             store: &store,
             artifacts: &artifacts,
@@ -170,6 +171,7 @@ mod router_header_embed_tests {
             git: false,
             max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
             exp_log: &artifacts.gate_exp_log_path(1),
+            no_kpop: false,
         })
         .expect("kpop common");
         assert!(!kpop.contains("{{"));

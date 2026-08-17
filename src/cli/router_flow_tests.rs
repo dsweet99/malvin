@@ -51,7 +51,7 @@ fn combine_router_prompt_file_and_user_joins_rendered_template_and_request() {
 
 #[test]
 fn prepare_router_prompt_store_loads_default_templates() {
-    let store = prepare_router_prompt_store().expect("store");
+    let store = prepare_router_prompt_store(false).expect("store");
     assert!(store.validate_exists(HEADER_MD).is_ok());
     assert!(store.validate_exists(ROUTER_A_MD).is_ok());
     assert!(store.validate_exists(crate::prompts::ROUTER_B_MD).is_ok());
@@ -63,7 +63,7 @@ fn prepare_router_prompt_store_loads_default_templates() {
 fn build_router_header_prompt_renders_without_unresolved_braces() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
-    let store = prepare_router_prompt_store().expect("store");
+    let store = prepare_router_prompt_store(false).expect("store");
     let body = build_router_header_prompt(RouterHeaderPromptInput {
         store: &store,
         artifacts: &artifacts,
@@ -79,7 +79,7 @@ fn build_router_header_prompt_renders_without_unresolved_braces() {
 fn build_router_a_prompt_includes_user_request_path() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
-    let store = prepare_router_prompt_store().expect("store");
+    let store = prepare_router_prompt_store(false).expect("store");
     let body = build_router_a_prompt(RouterAPromptInput {
         store: &store,
         artifacts: &artifacts,

@@ -27,5 +27,6 @@ pub fn shared_opts(_unused: bool) -> SharedOpts {
         name: None,
         git: false,
         creative: false,
+        no_kpop: false,
     }
 }

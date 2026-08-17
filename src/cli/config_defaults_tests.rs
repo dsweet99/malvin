@@ -103,6 +103,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
         name: None,
         git: false,
         creative: false,
+        no_kpop: false,
     };
     apply_shared_config_defaults(&matches, &mut shared, &agent);
     assert_eq!(shared.model.canonical(), "cursor:cfg");

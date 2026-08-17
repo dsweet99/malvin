@@ -60,6 +60,9 @@ pub struct SharedOpts {
     /// Use the creative `router_b` prompt on the default router
     #[arg(long, global = true, default_value_t = false)]
     pub creative: bool,
+    /// Use the abbreviated `KPop` prompt instead of `kpop_common.md`
+    #[arg(long = "no-kpop", global = true, default_value_t = false, hide = true)]
+    pub no_kpop: bool,
 }
 
 impl SharedOpts {
@@ -90,6 +93,27 @@ impl SharedOpts {
             name: None,
             git: false,
             creative: false,
+            no_kpop: false,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SharedOpts;
+    use clap::{CommandFactory, Parser};
+
+    #[test]
+    fn shared_opts_test_defaults_no_kpop_false() {
+        let shared = SharedOpts::test_defaults();
+        assert!(!shared.no_kpop);
+    }
+
+    #[test]
+    fn no_kpop_flag_parses_but_is_hidden_from_help() {
+        let cli = crate::cli::args::Cli::try_parse_from(["malvin", "--no-kpop", "probe"]).expect("parse");
+        assert!(cli.shared.no_kpop);
+        let help = crate::cli::args::Cli::command().render_help().to_string();
+        assert!(!help.contains("no-kpop"));
     }
 }

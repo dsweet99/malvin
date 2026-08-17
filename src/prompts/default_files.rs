@@ -3,6 +3,18 @@ use super::{
     ROUTER_B_CREATIVE_MD, ROUTER_B_MD, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD,
 };
 
+pub const KPOP_COMMON_MD: &str = "kpop_common.md";
+pub const KPOP_COMMON_FAKE_MD: &str = "kpop_common_fake.md";
+
+#[must_use]
+pub const fn kpop_common_prompt_file(no_kpop: bool) -> &'static str {
+    if no_kpop {
+        KPOP_COMMON_FAKE_MD
+    } else {
+        KPOP_COMMON_MD
+    }
+}
+
 fn default_constraints_prompt(name: &str) -> Option<&'static str> {
     match name {
         "init_constraints.md" => Some(include_str!("../../default_prompts/init_constraints.md")),
@@ -22,7 +34,8 @@ fn default_mbc2_prompt(name: &str) -> Option<&'static str> {
 
 fn default_kpop_prompt(name: &str) -> Option<&'static str> {
     default_mbc2_prompt(name).or_else(|| match name {
-        "kpop.md" | "kpop_common.md" => Some(include_str!("../../default_prompts/kpop_common.md")),
+        "kpop.md" | KPOP_COMMON_MD => Some(include_str!("../../default_prompts/kpop_common.md")),
+        KPOP_COMMON_FAKE_MD => Some(include_str!("../../default_prompts/kpop_common_fake.md")),
         _ => None,
     })
 }

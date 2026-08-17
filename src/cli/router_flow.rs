@@ -64,7 +64,7 @@ async fn prepare_router_run(
     )?;
     crate::run_id::maybe_gc_after_run_created(&artifacts.work_dir, &artifacts.run_dir);
     client.ensure_authenticated().map_err(|e| e.to_string())?;
-    let prompt_store = prepare_router_prompt_store()?;
+    let prompt_store = prepare_router_prompt_store(shared.no_kpop)?;
     Ok(RouterRunPrep {
         client,
         artifacts,
