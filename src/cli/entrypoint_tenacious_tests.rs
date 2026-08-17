@@ -3,6 +3,7 @@ use crate::cli::loop_opts::{
     apply_tenacious, tenacious_budget_guard, TenaciousBudgetGuard, TENACIOUS_MAX_ACP_RETRIES,
     TENACIOUS_MAX_LOOPS,
 };
+use crate::cli::init_flow::InitArgs;
 use crate::cli::tidy_flow::TidyArgs;
 use crate::reliability_tier::{ReliabilityTier, ReliabilityTierFlags};
 use clap::{CommandFactory, FromArgMatches};
@@ -18,6 +19,23 @@ fn apply_tidy_tenacious(
     });
     apply_tenacious(
         &mut tidy.max_loops,
+        &mut shared.max_acp_retries,
+        tier,
+        guard,
+    );
+}
+
+fn apply_init_tenacious(
+    init: &mut InitArgs,
+    shared: &mut crate::cli::SharedOpts,
+    guard: TenaciousBudgetGuard,
+) {
+    let tier = ReliabilityTier::resolve(ReliabilityTierFlags {
+        tenacious: init.tenacious,
+        no_tenacious: shared.no_tenacious,
+    });
+    apply_tenacious(
+        &mut init.max_loops,
         &mut shared.max_acp_retries,
         tier,
         guard,
@@ -159,4 +177,41 @@ fn default_route_explicit_max_loops_is_not_expanded_by_tenacious_default() {
     );
     assert_eq!(max_loops, 2);
     assert_eq!(shared.max_acp_retries, TENACIOUS_MAX_ACP_RETRIES);
+}
+
+#[test]
+fn init_defaults_to_tenacious_without_explicit_flag() {
+    let matches = Cli::command().get_matches_from(["malvin", "init"]);
+    let cli = Cli::from_arg_matches(&matches).expect("parse");
+    let Some(Commands::Init(mut init)) = cli.command else {
+        panic!("expected init subcommand");
+    };
+    assert!(init.tenacious);
+    let mut shared = cli.shared;
+    apply_init_tenacious(
+        &mut init,
+        &mut shared,
+        tenacious_budget_guard(&matches, "init"),
+    );
+    assert_eq!(init.max_loops, TENACIOUS_MAX_LOOPS);
+    assert_eq!(shared.max_acp_retries, TENACIOUS_MAX_ACP_RETRIES);
+}
+
+#[test]
+fn init_no_tenacious_keeps_normal_budgets() {
+    let matches = Cli::command().get_matches_from(["malvin", "init", "--no-tenacious"]);
+    let cli = Cli::from_arg_matches(&matches).expect("parse");
+    let Some(Commands::Init(mut init)) = cli.command else {
+        panic!("expected init subcommand");
+    };
+    assert!(init.tenacious);
+    assert!(cli.shared.no_tenacious);
+    let mut shared = cli.shared;
+    apply_init_tenacious(
+        &mut init,
+        &mut shared,
+        tenacious_budget_guard(&matches, "init"),
+    );
+    assert_eq!(init.max_loops, crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE);
+    assert_eq!(shared.max_acp_retries, crate::config::DEFAULT_MAX_ACP_RETRIES);
 }

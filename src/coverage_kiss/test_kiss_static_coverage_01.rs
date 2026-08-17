@@ -1,3 +1,5 @@
+//! Kiss static coverage contract (call-shaped tokens; not compiled).
+
 
 #[test]
 fn kiss_exec_witness_01_00() {
@@ -213,3 +215,5 @@ fn kiss_exec_witness_01_14() {
     gate_failure_summary();
     RepoGateOutput();
 }
+
+

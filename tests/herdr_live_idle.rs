@@ -42,8 +42,7 @@ fn display_agent(v: &Value) -> Option<&str> {
 fn next_seq() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|d| u64::try_from(d.as_nanos()).unwrap_or(u64::MAX))
-        .unwrap_or(0)
+        .map_or(0, |d| u64::try_from(d.as_nanos()).unwrap_or(u64::MAX))
 }
 
 fn send_raw(sock: &PathBuf, method: &str, mut params: Value) {

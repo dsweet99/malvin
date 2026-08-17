@@ -1,14 +1,14 @@
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BudgetScopeLayer {
-    OuterKPopEngineLoop,
+    OuterRouterLoop,
     AcpSpawnRetry,
 }
 
 impl BudgetScopeLayer {
     #[must_use]
     pub const fn all() -> &'static [Self] {
-        &[Self::OuterKPopEngineLoop, Self::AcpSpawnRetry]
+        &[Self::OuterRouterLoop, Self::AcpSpawnRetry]
     }
 
     #[must_use]
@@ -23,7 +23,7 @@ impl BudgetScopeLayer {
         } else {
             match self {
                 Self::AcpSpawnRetry => limit.max(1),
-                Self::OuterKPopEngineLoop => limit,
+                Self::OuterRouterLoop => limit,
             }
         }
     }

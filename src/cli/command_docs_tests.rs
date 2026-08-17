@@ -36,9 +36,22 @@ fn print_doc_none_writes_overview_then_router() {
 #[test]
 fn print_doc_init_writes_subcommand_md() {
     use crate::cli::init_flow::InitArgs;
-    let cmd = Commands::Init(InitArgs {});
+    let cmd = Commands::Init(InitArgs {
+        max_loops: 1,
+        max_hypotheses: 5,
+        tenacious: false,
+    });
     let out = capture_doc(Some(&cmd)).expect("capture");
     assert!(out.starts_with(b"# malvin init"));
+    let text = String::from_utf8(out).expect("utf8");
+    assert!(
+        text.contains("default router"),
+        "init doc must describe router wrapper: {text}"
+    );
+    assert!(
+        !text.contains("KPop"),
+        "init doc must not reference KPop session: {text}"
+    );
 }
 
 #[test]

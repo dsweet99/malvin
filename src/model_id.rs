@@ -176,7 +176,7 @@ pub fn provider_slug(raw: &str) -> String {
 
 #[must_use]
 pub fn uses_pi_backend(raw: &str) -> bool {
-    parse_model_id(raw).map(|p| p.is_pi()).unwrap_or(false)
+    parse_model_id(raw).is_ok_and(|p| p.is_pi())
 }
 
 pub fn require_prefixed_model(raw: &str) -> Result<String, String> {

@@ -74,10 +74,6 @@ pub(crate) use agent_helpers::*;
 mod backoff;
 pub(crate) use backoff::backoff_after_agent_failure;
 
-#[path = "ops_body_kpop.rs"]
-pub(crate) mod ops_body_kpop;
-pub(crate) use ops_body_kpop::*;
-
 #[cfg(unix)]
 #[path = "hostile_orphan_test_util.rs"]
 pub mod hostile_orphan_test_util;

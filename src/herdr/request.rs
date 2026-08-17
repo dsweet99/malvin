@@ -9,16 +9,14 @@ pub const AGENT: &str = "malvin";
 pub fn next_seq() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| u64::try_from(d.as_nanos()).unwrap_or(u64::MAX))
-        .unwrap_or(0)
+        .map_or(0, |d| u64::try_from(d.as_nanos()).unwrap_or(u64::MAX))
 }
 
 #[must_use]
 pub fn next_request_id() -> String {
     let millis = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_millis())
-        .unwrap_or(0);
+        .map_or(0, |d| d.as_millis());
     let suffix: u32 = rand::thread_rng().gen_range(0..1_000_000);
     format!("{SOURCE}:{millis}:{suffix:06}")
 }

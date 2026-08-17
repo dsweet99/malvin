@@ -73,7 +73,11 @@ mod tests {
             );
 
             std::fs::remove_file(&config).expect("remove config");
-            ensure_malvin_checks_for_command(&Commands::Init(crate::cli::init_flow::InitArgs {}))
+            ensure_malvin_checks_for_command(&Commands::Init(crate::cli::init_flow::InitArgs {
+                max_loops: 1,
+                max_hypotheses: 5,
+                tenacious: false,
+            }))
                 .expect("init must materialize home config");
             assert!(!checks.exists());
             assert!(config.is_file());

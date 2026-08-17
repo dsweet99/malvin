@@ -162,6 +162,7 @@ fn assert_workflow_defaults(argv: &[&str]) {
     apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
     match cli.command.expect("command") {
         Commands::Tidy(a) => assert_eq!(a.max_loops, 7),
+        Commands::Init(a) => assert_eq!(a.max_loops, 7),
         Commands::Write(a) => assert_eq!(a.max_loops, 7),
         other => panic!("unexpected command {other:?}"),
     }
@@ -171,6 +172,7 @@ fn assert_workflow_defaults(argv: &[&str]) {
 fn apply_workspace_config_defaults_for_workflow_commands() {
     with_seeded_agent_config(|| {
         assert_workflow_defaults(&["malvin", "tidy"]);
+        assert_workflow_defaults(&["malvin", "init"]);
         assert_workflow_defaults(&["malvin", "write", "topic"]);
     });
 }
@@ -213,5 +215,15 @@ fn parse_cli_with_config_defaults_tidy() {
             other => panic!("expected tidy, got {other:?}"),
         }
         std::env::set_current_dir(cwd).expect("restore cwd");
+    });
+}
+
+#[test]
+fn parse_cli_with_config_defaults_init_with_name_probe() {
+    crate::test_utils::with_isolated_home(|_| {
+        let (cli, _) = parse_cli_with_config_defaults(["malvin", "--name", "probe", "init"])
+            .expect("parse init with name");
+        assert_eq!(cli.shared.name.as_deref(), Some("probe"));
+        assert!(matches!(cli.command, Some(Commands::Init(_))));
     });
 }

@@ -174,7 +174,7 @@ fn accumulate_run_timing_across_two_sessions() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let mut slot: Option<Arc<Mutex<RunTiming>>> = None;
     let timing = attach_new_run_timing(&mut slot, "cursor:auto");
-    record_llm(Some(&timing), TimingPhase::Implement, Duration::from_millis(1_000));
+    record_llm(Some(&timing), TimingPhase::Implement, Duration::from_secs(1));
     super::persist_open_run_timing_json(tmp.path(), &timing).expect("first persist");
     record_llm(Some(&timing), TimingPhase::Implement, Duration::from_millis(500));
     finalize_and_emit_run_timing(tmp.path(), &timing).expect("finalize");

@@ -19,3 +19,6 @@ Malvin is a non-interactive research and coding agent.
 
 # References
 
+- Popper, Karl. *The Logic of Scientific Discovery*. London: Hutchinson, 1959. Originally published as *Logik der Forschung* (Vienna: Julius Springer, 1934). For KPop.
+- Boden, Margaret A. *The Creative Mind: Myths and Mechanisms*. London: Weidenfeld and Nicolson, 1990. For MBC2.
+

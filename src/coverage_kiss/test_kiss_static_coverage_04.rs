@@ -1,3 +1,36 @@
+//! Kiss static coverage contract (call-shaped tokens; not compiled).
+
+
+#[test]
+fn kiss_exec_witness_03_13() {
+    openrouter_retries_with_affordable_max_tokens();
+    HttpExchangeMeta();
+    CompletionWithMeta();
+    list_models_parses_success_response();
+    list_models_maps_401_to_unauthorized();
+    list_models_maps_500_to_server_error();
+    list_models_works_without_api_key();
+    mount_models_list_ok();
+    ModelsListRow();
+    ModelsListResponse();
+    openrouter_complete_surfaces_invalid_referer_header_errors();
+}
+
+#[test]
+fn kiss_exec_witness_03_14() {
+    openrouter_prompt_too_long_maps_to_context_overflow();
+    openrouter_prompt_token_limit_maps_to_context_overflow();
+    openrouter_prompt_too_long_surfaces_overflow_without_transport_shrink();
+    ChatCompletionRequest();
+    ChatCompletionResponse();
+    ChatChoice();
+    ChatChoiceMessage();
+    openrouter_serializes_model_messages_and_headers();
+    openrouter_error_maps_401_unauthorized();
+    openrouter_error_maps_429_rate_limit();
+    openrouter_error_maps_500_server_error();
+}
+
 
 #[test]
 fn kiss_exec_witness_04_00() {
@@ -128,7 +161,7 @@ fn kiss_exec_witness_04_08() {
     apply_node_compile_cache();
     EnvHomeGuard();
     prompts::embedded_defaults_tests::drop();
-    KpopPromptValidation();
+    render_inspire_mbc2_prompt();
     prompt_source_desc();
     ReliabilityTierFlags();
 }
@@ -180,16 +213,3 @@ fn kiss_exec_witness_04_11() {
     TerminalTheme();
 }
 
-#[test]
-fn kiss_exec_witness_04_12() {
-    Palette();
-    BashToolKind();
-    ClassifiedToolLineInput();
-    LineRange();
-    ParsedToolUpdate();
-    tool_phase_label();
-    json_number();
-    ToolSummaryDetail();
-    ToolCallRecord();
-    ToolSummaryLines();
-}

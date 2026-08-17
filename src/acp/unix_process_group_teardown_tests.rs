@@ -69,6 +69,7 @@ async fn signal_targets_noop_for_empty_set() {
 
 #[tokio::test]
 async fn terminate_process_group_kills_sleep_child() {
+    crate::test_utils::clear_test_no_real_agent_env();
     let mut cmd = Command::new("sleep");
     cmd.arg("120").process_group(0);
     let mut child = cmd.spawn().expect("spawn sleep");
@@ -79,6 +80,7 @@ async fn terminate_process_group_kills_sleep_child() {
 
 #[tokio::test]
 async fn terminate_agent_process_group_kills_sleep_child() {
+    crate::test_utils::clear_test_no_real_agent_env();
     let baseline = super::super::unix_process_group_ps::snapshot_pids();
     let mut cmd = Command::new("sleep");
     cmd.arg("120").process_group(0);

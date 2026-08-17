@@ -1,5 +1,4 @@
 pub(crate) mod args;
-pub(crate) mod bug_id_lookup_kpop;
 pub(crate) mod cli_request;
 pub(crate) mod command_docs;
 mod commands_help;
@@ -20,17 +19,15 @@ pub(crate) mod write_flow;
 
 mod code_flow_a;
 pub(crate) mod flow_prompt_combine;
-pub(crate) mod checks_discovery_flow;
 pub(crate) mod loop_opts;
 pub(crate) mod default_output_path;
 pub(crate) mod workflow_kpop_shared;
-pub(crate) mod kpop_summarize;
 pub(crate) mod one_shot_session;
 
 pub use crate::agent_backend::{build_agent_backend, build_agent_backend_with_tee};
 pub use code_flow_a::{
     agent_io_options, default_workflow_stdout_tee_flags, format_workspace_gate_failure,
-    prepare_kpop_prompt_store, AgentStdoutTeeFlags, WorkflowCliOptions,
+    AgentStdoutTeeFlags, WorkflowCliOptions,
 };
 
 #[cfg(test)]
@@ -50,12 +47,6 @@ mod acp_post_run_timing_print_tests;
 #[cfg(test)]
 #[path = "workflow_kpop_shared_tests.rs"]
 mod workflow_kpop_shared_tests;
-#[cfg(test)]
-#[path = "kpop_summarize_tests.rs"]
-pub(crate) mod kpop_summarize_tests;
-#[cfg(test)]
-#[path = "kpop_summarize_kiss_cov_tests.rs"]
-mod kpop_summarize_kiss_cov_tests;
 #[cfg(test)]
 #[path = "models_cmd_tests.rs"]
 mod models_cmd_tests;

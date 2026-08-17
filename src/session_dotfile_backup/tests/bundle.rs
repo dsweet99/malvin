@@ -148,7 +148,7 @@ fn workspace_malvin_config_missing_at_snapshot_removes_agent_created_file() {
 }
 
 #[test]
-fn checks_discovery_restore_excludes_malvin_checks() {
+fn gate_restore_restore_excludes_malvin_checks() {
     with_isolated_home(|work| {
         seed_workspace(work);
         let bundle = SessionDotfileBackups::snapshot(work).unwrap();

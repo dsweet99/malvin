@@ -132,6 +132,16 @@ fn tidy_command_accepts_session_name() {
 }
 
 #[test]
+fn init_command_accepts_session_name() {
+    use crate::cli::init_flow::InitArgs;
+    assert!(command_accepts_session_name(&Commands::Init(InitArgs {
+        max_loops: 1,
+        max_hypotheses: 5,
+        tenacious: false,
+    })));
+}
+
+#[test]
 fn write_command_rejects_session_name() {
     use crate::cli::write_flow::WriteArgs;
     assert!(!command_accepts_session_name(
@@ -170,6 +180,7 @@ fn models_rejects_name_flag() {
     use crate::test_stderr_capture::capture_stderr_output;
 
     crate::test_utils::with_isolated_home(|_| {
+        crate::cli::error_run_log::clear_command_error_run_dir();
         let stderr = capture_stderr_output(|| {
             assert_eq!(
                 entrypoint_from(["malvin", "--name", "probe", "models"]),
@@ -188,6 +199,7 @@ fn inspire_rejects_name_flag() {
     use crate::test_stderr_capture::capture_stderr_output;
 
     crate::test_utils::with_isolated_home(|_| {
+        crate::cli::error_run_log::clear_command_error_run_dir();
         let stderr = capture_stderr_output(|| {
             assert_eq!(
                 entrypoint_from(["malvin", "--name", "probe", "inspire", "topic"]),
@@ -206,6 +218,7 @@ fn write_rejects_name_before_preflight() {
     use crate::test_stderr_capture::capture_stderr_output;
 
     crate::test_utils::with_isolated_home(|work| {
+        crate::cli::error_run_log::clear_command_error_run_dir();
         std::env::set_current_dir(work).expect("chdir");
         let checks = work.join(".malvin/checks");
         let stderr = capture_stderr_output(|| {

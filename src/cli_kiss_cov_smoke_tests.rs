@@ -2,14 +2,17 @@
 #[test]
 fn smoke_cov_cli_cli_units_0() {
     let _ = crate::cli::build_agent_backend;
-    let _ = crate::cli::prepare_kpop_prompt_store;
     let _ = crate::do_flow::do_flow_prompt::combine_do_prompt_file_and_user;
     let _ = stringify!(crate::cli::entrypoint::dispatch_command);
     let _ = crate::cli::entrypoint::print_command_error;
     let _ = crate::cli::entrypoint::print_command_error;
     let _ = crate::cli::entrypoint_commands::run_inspire_command;
     let _: Option<crate::cli::exit::Exit> = None;
-    let _ = crate::cli::checks_discovery_flow::ensure_malvin_checks_discovered;
+    let _ = crate::cli::init_flow::run_init;
+    let _ = crate::cli::init_flow::render_init_router_request;
+    let _ = stringify!(crate::cli::init_flow::InitArgs);
+    let _: Option<crate::cli::init_flow::InitArgs> = None;
+    let _ = crate::cli::init_flow::effective_init_max_loops;
 }
 
 #[test]
@@ -61,15 +64,10 @@ fn smoke_cov_cli_cli_workflow_kpop_shared_units() {
     let _ = crate::cli::workflow_kpop_shared::kpop_workflow_context;
     let _ = crate::cli::workflow_kpop_shared::post_kpop_session_gates;
     let _ = crate::cli::workflow_kpop_shared::run_kpop_workspace_gates;
-    let _ = crate::cli::workflow_kpop_shared::print_kpop_session_log_line;
-    let _ = crate::cli::workflow_kpop_shared::finish_kpop_acp_session;
+    let _ = crate::cli::workflow_kpop_shared::prefer_gate_outcome_over_post_gate_cleanup;
+    let _ = crate::cli::workflow_kpop_shared::clear_quality_gates_log_for_next_agent;
     let _ = stringify!(gate_loop_early_exit);
-    let _ = stringify!(crate::kpop_engine::run_kpop_engine);
-    let _ = stringify!(crate::kpop_engine::run_kpop_hard_constraints_after_session);
-    let _ = stringify!(crate::kpop_engine::fail_kpop_engine_after_exhausted);
-    let _: Option<crate::kpop_engine::KPopEngineParams> = None;
     let _ = stringify!(gate_early_exit_fixture);
-    let _: Option<crate::kpop_engine::KPopEngineMultiturnCtx<'_>> = None;
 }
 
 #[test]
@@ -85,7 +83,6 @@ fn smoke_cov_cli_cli_tidy_flow_units() {
 fn smoke_cov_cli_cli_write_flow_units() {
     let _: Option<crate::cli::write_flow::WriteArgs> = None;
     let _ = crate::cli::write_flow::run_write;
-    let _ = crate::kpop_engine::KPopHardConstraints::WRITE;
     let _ = crate::cli::entrypoint_commands::run_write_command;
     let _ = crate::cli::write_flow::prep::compose_write_a_prompt;
     let _ = crate::cli::write_flow::prep::compose_write_b_prompt;
@@ -98,13 +95,6 @@ fn smoke_cov_cli_cli_write_flow_units() {
     let _ = stringify!(create_write_artifacts);
     let _ = stringify!(run_write_coder_prompt);
     let _ = stringify!(run_write_coder_session);
-}
-
-#[test]
-fn smoke_cov_cli_kpop_engine_session_types() {
-    let _: Option<crate::kpop_engine::KPopEngineParams> = None;
-    let _: Option<crate::kpop_engine::KPopEngineMultiturnCtx<'_>> = None;
-    let _ = stringify!(run_kpop_engine_session);
 }
 
 #[test]

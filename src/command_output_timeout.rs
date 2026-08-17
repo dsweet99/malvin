@@ -130,7 +130,7 @@ mod tests {
         }
         assert_eq!(
             timeout_ms_from_env(key, 30_000),
-            Duration::from_millis(30_000)
+            Duration::from_secs(30)
         );
         #[allow(unsafe_code)]
         unsafe {

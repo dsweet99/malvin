@@ -88,11 +88,17 @@ fn apply_gate_loop_command_defaults(
                 agent,
             },
         ),
+        Commands::Init(init) => apply_code_workflow_loop_defaults(
+            matches,
+            CodeWorkflowLoopMut {
+                subcommand: "init",
+                max_loops: &mut init.max_loops,
+                max_hypotheses: &mut init.max_hypotheses,
+                agent,
+            },
+        ),
         Commands::Write(write_args) => apply_write_loop_defaults(matches, write_args, agent, review),
-        Commands::Inspire(_)
-        | Commands::Adaptix(_)
-        | Commands::Models(_)
-        | Commands::Init(_) => {}
+        Commands::Inspire(_) | Commands::Adaptix(_) | Commands::Models(_) => {}
     }
 }
 

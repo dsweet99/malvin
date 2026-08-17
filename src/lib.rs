@@ -122,7 +122,7 @@ pub use artifacts::{
     restore_workspace_session_dotfiles,
 };
 pub use artifacts::{create_kpop_run_artifacts, create_run_artifacts, resolve_user_md_request};
-pub use config::DEFAULT_CLI_MODEL;pub use kpop_progression::agent_declared_success;
+pub use config::DEFAULT_CLI_MODEL;
 pub use output::{
     ERROR_WHO, MALVIN_WHO, WARNING_WHO, format_line, format_log_tag_inner, format_who_tag_prefix,
     init_stdout_style,
@@ -144,9 +144,6 @@ pub use test_poll::{
 };
 pub mod config;
 pub mod model_id;
-mod kpop_turn_prompts;
-pub use kpop_turn_prompts::KpopTurnPrompts;
-pub mod kpop_progression;
 pub mod support_paths;
 pub use support_paths::{
     agent_or_cursor_agent_bin, command_line, format_logs_dir, init_from_env, lookup_bin_on_path,
@@ -162,7 +159,6 @@ pub use workflow_context::{
 #[cfg(test)]
 pub use workflow_context::workflow_context;
 pub mod observability;
-pub mod kpop_log_protocol;
 pub mod acp_trace_impersonation;
 pub mod coder_prompt_phase;
 pub mod nested_budget_scopes;
@@ -190,7 +186,6 @@ pub mod do_flow;
 pub mod inspire_flow;
 #[path = "cli/router_flow.rs"]
 pub mod router_flow;
-pub mod kpop_engine;
 #[path = "cli/mod.rs"]
 pub mod cli;
 #[cfg(test)]

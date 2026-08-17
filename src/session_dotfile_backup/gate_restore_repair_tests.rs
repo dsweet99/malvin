@@ -73,6 +73,21 @@ fn repair_recreates_empty_home_malvin_config_from_template() {
 }
 
 #[test]
+fn repair_recreates_invalid_home_malvin_config_from_template() {
+    crate::test_utils::with_isolated_home(|work| {
+        let cfg = crate::malvin_config_path(work);
+        if let Some(parent) = cfg.parent() {
+            std::fs::create_dir_all(parent).expect("mkdir");
+        }
+        std::fs::write(&cfg, b"not valid {{{ toml").expect("invalid home config");
+        repair_invalid_malvin_home_config_on_disk(work).expect("repair");
+        let text = std::fs::read_to_string(&cfg).expect("read home config");
+        assert!(text.contains("mem_limit_gb"));
+        assert!(!text.contains("not valid"));
+    });
+}
+
+#[test]
 fn ensure_heals_empty_home_config_to_template_keys() {
     crate::test_utils::with_isolated_home(|work| {
         let cfg = crate::malvin_config_path(work);

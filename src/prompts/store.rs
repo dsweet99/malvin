@@ -6,11 +6,6 @@ use super::defaults::{DEFAULT_PROMPTS, HEADER_MD, REQUIRED_PROMPTS, default_file
 use super::enforce_template_placeholders_resolved_in;
 use super::render_template;
 
-#[derive(Debug, Clone, Copy)]
-pub struct KpopPromptValidation {
-    pub require_mbc2: bool,
-}
-
 #[derive(Debug, Clone)]
 pub struct PromptStore {
     root: Option<PathBuf>,
@@ -107,30 +102,6 @@ impl PromptStore {
         )))
     }
 
-    pub fn validate_kpop_prompts(
-        &self,
-        validation: KpopPromptValidation,
-    ) -> Result<(), PromptError> {
-        let mut missing: Vec<&str> = Vec::new();
-        if self.prompt_text(HEADER_MD).is_err() {
-            missing.push(HEADER_MD);
-        }
-        if self.prompt_text("kpop_common.md").is_err() {
-            missing.push("kpop_common.md");
-        }
-        if validation.require_mbc2 && self.prompt_text("mbc2.md").is_err() {
-            missing.push("mbc2.md");
-        }
-        if missing.is_empty() {
-            return Ok(());
-        }
-        Err(PromptError(format!(
-            "Missing required prompt files in {}: {}. Reinstall malvin or copy the missing files there.",
-            self.prompt_source_desc(),
-            missing.join(", ")
-        )))
-    }
-
     pub fn validate_exists(&self, filename: &str) -> Result<(), PromptError> {
         if self.prompt_text(filename).is_ok() {
             return Ok(());
@@ -181,7 +152,7 @@ pub fn render_header(
     Ok(render_template(&header_raw, context))
 }
 
-pub fn render_mbc2_for_scheduled_kpop_block(
+pub fn render_inspire_mbc2_prompt(
     store: &PromptStore,
     context: &std::collections::HashMap<String, String>,
 ) -> Result<String, PromptError> {

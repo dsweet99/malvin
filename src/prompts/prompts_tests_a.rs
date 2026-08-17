@@ -2,12 +2,6 @@ use std::collections::HashMap;
 
 use crate::prompts::*;
 
-fn write_kpop_prompt_fixtures(root: &std::path::Path) {
-    for (name, body) in [("header.md", ""), ("kpop_common.md", "kc")] {
-        std::fs::write(root.join(name), body).unwrap();
-    }
-}
-
 #[test]
 fn substitute_replaces_dollar_keys() {
     let mut m = HashMap::new();
@@ -19,48 +13,12 @@ fn substitute_replaces_dollar_keys() {
 }
 
 #[test]
-fn validate_kpop_prompts_ok_with_only_kpop() {
+fn validate_required_ok_when_header_present() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
-    write_kpop_prompt_fixtures(root);
+    std::fs::write(root.join("header.md"), "").unwrap();
     let store = PromptStore::with_root(root.to_path_buf());
-    store
-        .validate_kpop_prompts(crate::prompts::KpopPromptValidation {
-            require_mbc2: false,
-        })
-        .expect("kpop-only ok");
     store.validate_required().expect("header is present");
-}
-
-#[test]
-fn validate_kpop_prompts_does_not_require_mbc2_when_not_requested() {
-    let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path();
-    write_kpop_prompt_fixtures(root);
-    let store = PromptStore::with_root(root.to_path_buf());
-    store
-        .validate_kpop_prompts(crate::prompts::KpopPromptValidation {
-            require_mbc2: false,
-        })
-        .expect("schedule without MBC2 should not require mbc2.md");
-}
-
-#[test]
-fn validate_kpop_prompts_requires_mbc2_when_requested() {
-    let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path();
-    write_kpop_prompt_fixtures(root);
-    let store = PromptStore::with_root(root.to_path_buf());
-    let err = store
-        .validate_kpop_prompts(crate::prompts::KpopPromptValidation {
-            require_mbc2: true,
-        })
-        .unwrap_err();
-    assert!(
-        err.0.contains("mbc2.md"),
-        "expected mbc2 missing error, got {:?}",
-        err.0
-    );
 }
 
 #[test]

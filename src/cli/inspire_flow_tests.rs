@@ -7,7 +7,7 @@ mod inspire_tests {
         build_inspire_render_context, render_inspire_prompt, render_inspire_summarize_prompt,
     };
     use crate::prompts::{
-        PromptStore, malformed_brace_placeholders, render_mbc2_for_scheduled_kpop_block,
+        PromptStore, malformed_brace_placeholders, render_inspire_mbc2_prompt,
     };
 
     #[test]
@@ -47,10 +47,10 @@ mod inspire_tests {
     }
 
     #[test]
-    fn render_mbc2_for_scheduled_kpop_block_matches_render_inspire_prompt() {
+    fn render_inspire_mbc2_prompt_matches_render_inspire_prompt() {
         let store = PromptStore::default_store();
         let ctx = build_inspire_render_context("BETA");
-        let a = render_mbc2_for_scheduled_kpop_block(&store, &ctx).expect("block");
+        let a = render_inspire_mbc2_prompt(&store, &ctx).expect("block");
         let b = render_inspire_prompt("BETA").expect("prompt");
         assert_eq!(a, b);
     }

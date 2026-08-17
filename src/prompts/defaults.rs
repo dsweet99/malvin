@@ -19,9 +19,7 @@ pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD];
 
 pub const DEFAULT_PROMPTS: &[&str] = &[
     "kpop_common.md",
-    "kpop_block.md",
     "mbc2.md",
-    "kpop_summarize.md",
     INSPIRE_SUMMARIZE_MD,
     "init_constraints.md",
     HEADER_MD,

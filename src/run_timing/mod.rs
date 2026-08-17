@@ -171,7 +171,6 @@ impl RunTiming {
 
 pub use cost::record_completion_cost;
 pub use lifecycle::{
-    attach_kpop_engine_loop_run_timing, attach_kpop_engine_loop_run_timing_for_model,
     attach_new_run_timing, attach_new_run_timing_with_cost_policy, finalize_and_emit_run_timing,
     finalize_run_timing_json_only, persist_open_run_timing_json, record_backoff, record_llm,
 };

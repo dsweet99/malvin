@@ -180,7 +180,6 @@ fn kiss_cov_cross_file_symbols_a() {
     let _ = stringify!(AcpTeeLineFmt);
     let _ = stringify!(TaggedDisplayStyle);
     let _ = stringify!(StdoutRenderPrelude);
-    let _ = stringify!(KpopPromptValidation);
     let _ = stringify!(prompt_source_desc);
 }
 
@@ -209,20 +208,11 @@ fn kiss_cov_acp_session_unit_tests() {
 
 #[test]
 fn kiss_cov_cli_helper_symbols() {
-    let _: Option<crate::kpop_engine::KPopEngineParams> = None;
-    let _ = stringify!(RunKpopAgentLoopsParams);
-    let _ = stringify!(kpop);
-    let _ = stringify!(prepared);
-    let _ = stringify!(BareLoopOpts);
-    let _ = stringify!(BugLogMatch);
-    let _ = stringify!(BugIdResolved);
     let _ = stringify!(LoopDefaultMut);
     let _ = stringify!(CodeWorkflowLoopMut);
     let _ = stringify!(WriteResolvedOutputs);
     let _ = stringify!(RouterArgs);
-    let _ = stringify!(KPopEnginePrepared);
     let _ = stringify!(InspireRunPrep);
-    let _ = stringify!(KpopOuterLoopSummarizeInputs);
     let _ = stringify!(RunStartupEmitOpts);
 }
 

@@ -36,18 +36,6 @@ pub fn attach_new_run_timing_with_cost_policy(
     timing
 }
 
-#[must_use]
-pub fn attach_kpop_engine_loop_run_timing() -> Arc<Mutex<RunTiming>> {
-    let mut slot = None;
-    attach_new_run_timing(&mut slot, crate::support_paths::DEFAULT_CLI_MODEL)
-}
-
-#[must_use]
-pub fn attach_kpop_engine_loop_run_timing_for_model(model: &str) -> Arc<Mutex<RunTiming>> {
-    let mut slot = None;
-    attach_new_run_timing_with_cost_policy(&mut slot, super::cost_policy_for_model(model), model)
-}
-
 pub fn record_llm(timing: Option<&Arc<Mutex<RunTiming>>>, phase: TimingPhase, elapsed: Duration) {
     let Some(t) = timing else {
         return;

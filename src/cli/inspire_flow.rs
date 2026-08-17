@@ -11,7 +11,7 @@ use crate::cli::one_shot_session::{
 };
 use crate::cli::{SharedOpts, WorkflowCliOptions};
 use crate::prompts::{
-    PromptError, PromptStore, INSPIRE_SUMMARIZE_MD, render_mbc2_for_scheduled_kpop_block,
+    PromptError, PromptStore, INSPIRE_SUMMARIZE_MD, render_inspire_mbc2_prompt,
 };
 use crate::run_timing::TimingPhase;
 
@@ -48,7 +48,7 @@ pub fn build_inspire_render_context(user_prompt: &str) -> HashMap<String, String
 pub fn render_inspire_prompt(user_prompt: &str) -> Result<String, String> {
     let store = prepare_inspire_prompt_store()?;
     let ctx = build_inspire_render_context(user_prompt);
-    render_mbc2_for_scheduled_kpop_block(&store, &ctx).map_err(|e| e.0)
+    render_inspire_mbc2_prompt(&store, &ctx).map_err(|e| e.0)
 }
 
 pub fn render_inspire_summarize_prompt() -> Result<String, String> {

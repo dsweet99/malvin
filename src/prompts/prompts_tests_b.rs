@@ -59,7 +59,7 @@ fn render_prompt_only_allows_user_request_values_with_double_braces() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
     std::fs::write(
-        root.join("kpop_block.md"),
+        root.join("user_request.md"),
         "User request:\n\n{{ user_request }}",
     )
     .unwrap();
@@ -69,7 +69,7 @@ fn render_prompt_only_allows_user_request_values_with_double_braces() {
         "user_request".to_string(),
         "Expand {{ code_extra }} in router_b_*".to_string(),
     );
-    let out = store.render_prompt_only("kpop_block.md", &ctx).unwrap();
+    let out = store.render_prompt_only("user_request.md", &ctx).unwrap();
     assert!(out.contains("Expand {{ code_extra }}"));
 }
 

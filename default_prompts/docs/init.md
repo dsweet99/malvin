@@ -6,11 +6,11 @@ Discover how the workspace runs quality gates today and write `.malvin/checks` (
 
 | | |
 |---|---|
-| Input | None |
-| Prompt | `init_constraints.md` |
-| Agent | KPop checks-discovery session when `.malvin/checks` is missing |
-| Fast path | If `.malvin/checks` already exists (including empty or comment-only), **no agent** |
-| Requires | Agent backend for chosen `--model` only when discovery runs |
+| Input | None (fixed request from `init_constraints.md`) |
+| Loop | Default router: `header` → `kpop_common` → `router_a` → optional `router_b`; exit `router_summarize`; outer `--max-loops` sessions |
+| Gates | Off by default — init asks the agent to create `.malvin/checks`; harness gates are not forced |
+| Fast path | **None** — always runs the router |
+| Requires | Agent backend for chosen `--model` |
 
 ## Intention
 
@@ -26,15 +26,33 @@ No positional arguments. Work directory is always `.` (cwd).
 
 ## Behavior
 
-1. If `.malvin/checks` is missing, malvin runs a KPop session scoped by `init_constraints.md`. The agent inspects existing repo tooling (for example `.pre-commit-config.yaml`, `Makefile`, CI workflows) and writes `.malvin/checks` at the repo git root.
-2. If `.malvin/checks` is present after discovery — including an empty or comment-only file with zero runnable commands — malvin exits successfully. A missing file still fails.
-3. If `.malvin/checks` already exists, malvin exits successfully without spawning an agent.
+1. Render `init_constraints.md` with the absolute cwd as `repo_root_path`.
+2. Invoke the default router with that request (same engine as bare `malvin REQUEST`).
+3. Normal router success/stop behavior applies; malvin does not skip when `.malvin/checks` already exists and does not post-check for the file.
 
-Delete `.malvin/checks` to trigger discovery again.
+Delete `.malvin/checks` and run `malvin init` again if you want the agent to rediscover gates.
 
 ## Options
 
-Inherits global malvin options (`--model`, `--no-force`, `--verbose`, etc.). No init-specific flags.
+### `--max-loops <N>` (default: 3)
+
+Outer router session budget. `0` is treated as `1`.
+
+### `--max-hypotheses <N>` (default: 5)
+
+Hypothesis budget for the router session.
+
+### `--tenacious` (default: on)
+
+Sets `--max-acp-retries=9999` and `--max-loops=9999`.
+
+### `--no-tenacious`
+
+Restore normal loop/retry budgets (global flag; see `malvin --doc`).
+
+## Global options
+
+See `malvin --doc`. Init does **not** force `--gates`. `--quiet` / `-q` applies because init invokes the default router (DM-body-only stdout; not the same as `-b`).
 
 ## Notes
 

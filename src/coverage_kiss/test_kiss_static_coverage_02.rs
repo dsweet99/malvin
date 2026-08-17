@@ -1,3 +1,5 @@
+//! Kiss static coverage contract (call-shaped tokens; not compiled).
+
 
 #[test]
 fn kiss_exec_witness_02_00() {
@@ -204,37 +206,5 @@ fn kiss_exec_witness_02_12() {
     DeferredPayload();
     DeferredEntry();
     notify_reclaim();
-}
-
-#[test]
-fn kiss_exec_witness_02_13() {
-    notify_reclaim_inner();
-    notify_working_inner();
-    notify_run_end_inner();
-    send_end_retry();
-    Snapshot();
-    active_snapshot();
-    take_teardown_snapshot();
-    session_has_binding_for_test();
-    assert_bind_shape();
-    assert_title_not_run_basename();
-    next_seq();
-    next_request_id();
-}
-
-#[test]
-fn kiss_exec_witness_02_14() {
-    connect_budget();
-    KPopHardConstraintsExit();
-    KPopHardConstraints();
-    finish_kpop_engine_after_pass();
-    PreparedContextMode();
-    IterationFixture();
-    KPopEngineParams();
-    KPopEngineIterationParams();
-    KPopEnginePrepared();
-    KPopEngineEarlyExitCtx();
-    KpopEngineIterationInput();
-    KpopEngineGateIterations();
 }
 

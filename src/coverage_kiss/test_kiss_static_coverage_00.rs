@@ -1,3 +1,5 @@
+//! Kiss static coverage contract (call-shaped tokens; not compiled).
+
 
 #[test]
 fn kiss_exec_witness_00_00() {
@@ -76,7 +78,6 @@ fn kiss_exec_witness_00_05() {
 
 #[test]
 fn kiss_exec_witness_00_06() {
-    KpopFailAfterPrompt();
     MemWatchHandles();
     watch_process_group_memory();
     watch_process_group_memory_with_rss_sampler();
@@ -158,9 +159,6 @@ fn kiss_exec_witness_00_10() {
 fn kiss_exec_witness_00_11() {
     readable_iterable_closed_split_coalesce_emits_readable_operational_warning();
     iterable_closed_split_across_coalesce_emissions_suppresses_kpop_tee();
-    kpop_trace_writer();
-    open_kpop_trace_writer();
-    KpopStdoutTraceFixture();
     flush_coalesce_lines();
     assert_upgrade_plan_operational_stderr();
     feed_upgrade_plan_split();
@@ -217,3 +215,5 @@ fn kiss_exec_witness_00_14() {
     open_live_prompt_trace_writer();
     open_prompts_log_append();
 }
+
+

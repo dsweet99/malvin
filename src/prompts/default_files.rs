@@ -23,8 +23,6 @@ fn default_mbc2_prompt(name: &str) -> Option<&'static str> {
 fn default_kpop_prompt(name: &str) -> Option<&'static str> {
     default_mbc2_prompt(name).or_else(|| match name {
         "kpop.md" | "kpop_common.md" => Some(include_str!("../../default_prompts/kpop_common.md")),
-        "kpop_summarize.md" => Some(include_str!("../../default_prompts/kpop_summarize.md")),
-        "kpop_block.md" => Some(include_str!("../../default_prompts/kpop_block.md")),
         _ => None,
     })
 }

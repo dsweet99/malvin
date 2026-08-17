@@ -23,17 +23,33 @@ fn effective_max_loops_is_at_least_one() {
 }
 
 #[test]
-fn kpop_engine_loop_iterations_is_one_plus_max_loops() {
-    crate::test_utils::clear_test_no_real_agent_env();
-    assert_eq!(kpop_engine_loop_iterations(0), 2);
-    assert_eq!(kpop_engine_loop_iterations(5), 6);
-}
-
-#[test]
 fn kpop_workflow_context_includes_quality_gates() {
     let (_tmp, _store, artifacts) = kpop_render_fixture("code");
     let ctx = kpop_workflow_context(&artifacts, crate::config::DEFAULT_CLI_MODEL, false).expect("context");
     assert!(ctx.contains_key("quality_gates"));
+}
+
+#[test]
+fn kpop_workflow_context_without_gates_omits_quality_gates() {
+    let (_tmp, _store, artifacts) = kpop_render_fixture("code");
+    let ctx =
+        kpop_workflow_context_without_gates(&artifacts, crate::config::DEFAULT_CLI_MODEL, false)
+            .expect("context");
+    assert!(!ctx.contains_key("quality_gates"));
+}
+
+#[test]
+fn prefer_gate_outcome_over_summarize_keeps_gate_error() {
+    let err = prefer_gate_outcome_over_summarize::<()>(Err("gate boom".into()), Ok(())).unwrap_err();
+    assert!(err.contains("gate boom"));
+}
+
+#[test]
+fn prefer_gate_outcome_over_summarize_surfaces_summarize_when_gate_ok() {
+    let err = prefer_gate_outcome_over_summarize(Ok("ok"), Err("summarize boom".into())).unwrap_err();
+    assert!(err.contains("summarize boom"));
+    let ok = prefer_gate_outcome_over_summarize(Ok(7), Ok(())).expect("ok");
+    assert_eq!(ok, 7);
 }
 
 #[test]

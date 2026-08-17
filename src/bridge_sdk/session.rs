@@ -116,8 +116,7 @@ fn bridge_session_drop_teardown(session: &BridgeSession) {
     let child_gone = session
         .child
         .try_lock()
-        .map(|slot| slot.is_none())
-        .unwrap_or(false);
+        .is_ok_and(|slot| slot.is_none());
     if child_gone {
         crate::malvin_sandbox::clear_active_sandbox_session();
         return;

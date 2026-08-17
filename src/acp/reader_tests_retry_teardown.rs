@@ -6,6 +6,7 @@ use crate::acp::{
 
 #[test]
 fn child_health_transport_errors_require_coder_session_teardown() {
+    crate::test_utils::clear_test_no_real_agent_env();
     for msg in [
         "acp child process appears hung",
         "acp child process is not running",

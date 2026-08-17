@@ -25,7 +25,7 @@ Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`,
 |---------|---------|
 | *(default)* | Bare `malvin REQUEST` — `header` → `kpop_common` → `router_a` → optional `router_b`; exit `router_summarize`; outer `--max-loops` sessions |
 | `--do` | One-shot agent turn (non-looping) |
-| `init` | Discover quality gates and write `.malvin/checks` |
+| `init` | Discover quality gates and write `.malvin/checks` via the default router and `init_constraints.md` |
 | `tidy` | Fix quality gates via the default router with fixed request `Get the gates to pass.` and `--gates` forced on |
 | `write` | Write a LaTeX PDF on code or concepts via a composed default-router request |
 | `inspire` | MBC2 boundary exploration then `inspire_summarize` on the same agent |
@@ -44,7 +44,7 @@ Suppress all stdout from malvin and the agent. Run logs under `~/.malvin_home/lo
 
 ### `-q` / `--quiet`
 
-On the **default router** (bare `malvin REQUEST`, and wrappers that call it: `tidy`) and on one-shot agent commands that tee styled agent stdout (`write`, `inspire`), print only the text between `MALVIN_DM_START` and `MALVIN_DM_END` fences to process stdout. Startup chrome, agent stream, heartbeats, prompt-name lines, fence markers, and TIMING/COST lines are omitted from stdout. Run-dir logs and stderr are unchanged.
+On the **default router** (bare `malvin REQUEST`, and wrappers that call it: `init`, `tidy`) and on one-shot agent commands that tee styled agent stdout (`write`, `inspire`), print only the text between `MALVIN_DM_START` and `MALVIN_DM_END` fences to process stdout. Startup chrome, agent stream, heartbeats, prompt-name lines, fence markers, and TIMING/COST lines are omitted from stdout. Run-dir logs and stderr are unchanged.
 
 This is **not** the same as `-b` / `--background` (which suppresses all stdout, including DM bodies). It is also **not** required for plain `malvin --do`: without `--verbose`, `--do` is already DM-body-only on stdout. With `--verbose`, `--do` tees the same live agent log classes as the default workflow (see `-v` / `--verbose` below).
 
@@ -54,11 +54,11 @@ Model id for agent-backed commands. Default: `cursor:auto`. Use `cursor:` for th
 
 ### `--max-loops <N>` (default: 1)
 
-Outer agent-session budget for bare `malvin REQUEST`. `0` is treated as `1`. Gate-loop wrappers (`tidy`, `write`) expose their own `--max-loops` with a default of `3`.
+Outer agent-session budget for bare `malvin REQUEST`. `0` is treated as `1`. Gate-loop wrappers (`init`, `tidy`, `write`) expose their own `--max-loops` with a default of `3`.
 
 ### `--max-hypotheses <N>` (default: 5)
 
-Hypothesis budget for bare `malvin REQUEST`. When the flag is omitted, `[default_workflow].max_hypotheses` from `~/.malvin_home/config.toml` is used (fallback 5). Explicit CLI wins over config. `0` is treated as `5`. Gate-loop wrappers (`tidy`, `write`) expose their own `--max-hypotheses`.
+Hypothesis budget for bare `malvin REQUEST`. When the flag is omitted, `[default_workflow].max_hypotheses` from `~/.malvin_home/config.toml` is used (fallback 5). Explicit CLI wins over config. `0` is treated as `5`. Gate-loop wrappers (`init`, `tidy`, `write`) expose their own `--max-hypotheses`.
 
 ### `--no-force`
 
@@ -66,7 +66,7 @@ By default agent backends run tools headlessly (auto-approved). `--no-force` is 
 
 ### `--no-tenacious`
 
-By default gate-loop commands (`tidy`, `write`) expand to `--max-loops=9999` and `--max-acp-retries=9999`. The bare default route expands both `--max-loops=9999` and `--max-acp-retries=9999` unless the matching flag was set explicitly on the command line. `--no-tenacious` restores normal budgets.
+By default gate-loop commands (`init`, `tidy`, `write`) expand to `--max-loops=9999` and `--max-acp-retries=9999`. The bare default route expands both `--max-loops=9999` and `--max-acp-retries=9999` unless the matching flag was set explicitly on the command line. `--no-tenacious` restores normal budgets.
 
 ### `-g` / `--gates`
 
@@ -88,11 +88,11 @@ Allow the agent to run `git commit`. Off by default (agents are otherwise steere
 
 ### `--creative`
 
-On the default router (bare `malvin REQUEST`, and wrappers that call it: `tidy`), send the creative router_b prompt when the optional router_b turn runs. Off by default.
+On the default router (bare `malvin REQUEST`, and wrappers that call it: `init`, `tidy`), send the creative router_b prompt when the optional router_b turn runs. Off by default.
 
 ### `--name <NAME>`
 
-Optional session name for bare `malvin REQUEST`, `--do`, and `tidy`. When omitted on those invocations, malvin assigns a unique five-character id (`[a-z0-9]`). Every command that accepts `--name` acquires a session name lock before substantive work.
+Optional session name for bare `malvin REQUEST`, `--do`, `init`, and `tidy`. When omitted on those invocations, malvin assigns a unique five-character id (`[a-z0-9]`). Every command that accepts `--name` acquires a session name lock before substantive work.
 
 Malvin registers the top-level process under this name in a per-user registry at `~/.malvin_home/names/<NAME>` (one line: holder PID). If another live malvin process already holds the same name, the new invocation exits immediately with status 1. Stale or abandoned name files left by crashes, `SIGKILL`, or partial writes are reclaimed automatically on the next acquire — no manual cleanup under `~/.malvin_home/names/`.
 
@@ -116,7 +116,7 @@ Other subcommand arguments (for example `<REQUEST>`) are not required when `--do
 
 ## Quality gates (`.malvin/checks`)
 
-Use **`malvin init`** to discover and write `.malvin/checks` explicitly (KPop session from `init_constraints.md`). Delete `.malvin/checks` to trigger discovery again on the next `init` run.
+Use **`malvin init`** to discover and write `.malvin/checks` explicitly (default router with request from `init_constraints.md`).
 
 With `--gates` (and always for `malvin tidy`), malvin runs workspace quality gates from `.malvin/checks` at the repo git root (one shell command per non-empty, non-comment line). Full-line comments starting with `#` are ignored.
 
@@ -228,9 +228,11 @@ malvin inspire "explore API boundaries"
 
 ## Gate-loop and document commands
 
+`malvin init` is a thin wrapper: it renders `init_constraints.md` (cwd as `repo_root_path`) and invokes the **default router** with gates off by default.
+
 `malvin tidy` is a thin wrapper: it composes a fixed request (`Get the gates to pass.`) and invokes the **default router** with `--gates` forced on.
 
 `malvin write` starts one agent session and sends two prompts in order (`write_a.md`, then `write_b.md`). It does not use the default router.
 
-See `malvin tidy --doc`, `malvin write --doc`, and the default-route section of `malvin --doc`.
+See `malvin init --doc`, `malvin tidy --doc`, `malvin write --doc`, and the default-route section of `malvin --doc`.
 

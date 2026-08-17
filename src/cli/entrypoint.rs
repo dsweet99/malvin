@@ -4,14 +4,14 @@ use super::{
 use crate::do_flow::DoArgs;
 
 pub(crate) const fn command_accepts_session_name(command: &Commands) -> bool {
-    matches!(command, Commands::Tidy(_))
+    matches!(command, Commands::Tidy(_) | Commands::Init(_))
 }
 
 pub(crate) const fn unsupported_name_error(command: &Commands) -> Option<&'static str> {
     if command_accepts_session_name(command) {
         return None;
     }
-    Some("`--name` is only supported for bare `malvin REQUEST`, `--do`, and `tidy`")
+    Some("`--name` is only supported for bare `malvin REQUEST`, `--do`, `tidy`, and `init`")
 }
 
 #[path = "entrypoint_from.rs"]
@@ -103,7 +103,25 @@ pub(crate) fn dispatch_command(
 ) -> Result<(), String> {
     let mut shared = shared.clone();
     match command {
-        Commands::Init(init) => run_async_cli(|| run_init(init, &shared)),
+        Commands::Init(mut init) => {
+            super::loop_opts::apply_gate_loop_tenacious(super::loop_opts::GateLoopTenaciousApply {
+                subcommand: "init",
+                max_loops: &mut init.max_loops,
+                tenacious: init.tenacious,
+                no_tenacious: shared.no_tenacious,
+                max_acp_retries: &mut shared.max_acp_retries,
+                matches,
+            });
+            run_async_cli(|| {
+                run_init(
+                    init,
+                    &shared,
+                    WorkflowCliOptions {
+                        force: !shared.no_force,
+                    },
+                )
+            })
+        }
         Commands::Tidy(mut tidy) => {
             super::loop_opts::apply_gate_loop_tenacious(super::loop_opts::GateLoopTenaciousApply {
                 subcommand: "tidy",

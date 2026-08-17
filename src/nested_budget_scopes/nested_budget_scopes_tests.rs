@@ -7,14 +7,14 @@ fn budget_scope_layer_all_has_two_variants() {
 
 #[test]
 fn budget_scope_layer_single_attempt_contracts() {
-    assert!(!BudgetScopeLayer::OuterKPopEngineLoop.respects_single_attempt());
+    assert!(!BudgetScopeLayer::OuterRouterLoop.respects_single_attempt());
     assert!(BudgetScopeLayer::AcpSpawnRetry.respects_single_attempt());
 }
 
 #[test]
 fn budget_scope_layer_variants_exist() {
     let _ = (
-        BudgetScopeLayer::OuterKPopEngineLoop,
+        BudgetScopeLayer::OuterRouterLoop,
         BudgetScopeLayer::AcpSpawnRetry,
     );
 }
@@ -30,7 +30,7 @@ fn effective_max_attempts_single_attempt_forces_one_at_acp_layer() {
         5
     );
     assert_eq!(
-        BudgetScopeLayer::OuterKPopEngineLoop.effective_max_attempts(32, true),
+        BudgetScopeLayer::OuterRouterLoop.effective_max_attempts(32, true),
         32
     );
 }
@@ -49,7 +49,7 @@ fn budget_scope_layer_single_attempt_flags() {
             BudgetScopeLayer::AcpSpawnRetry => {
                 assert!(single);
             }
-            BudgetScopeLayer::OuterKPopEngineLoop => {
+            BudgetScopeLayer::OuterRouterLoop => {
                 assert!(!single);
             }
         }

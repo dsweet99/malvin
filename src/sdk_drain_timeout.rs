@@ -102,16 +102,16 @@ mod tests {
     #[test]
     fn sdk_drain_idle_slice_and_max_wait() {
         assert_eq!(
-            sdk_drain_idle_slice(Duration::from_millis(5_000)),
-            Duration::from_millis(5_000)
+            sdk_drain_idle_slice(Duration::from_secs(5)),
+            Duration::from_secs(5)
         );
         assert_eq!(
-            sdk_drain_idle_slice(Duration::from_millis(120_000)),
+            sdk_drain_idle_slice(Duration::from_secs(120)),
             Duration::from_millis(SDK_DRAIN_IDLE_SLICE_MAX_MS)
         );
         assert_eq!(
-            sdk_drain_idle_max_wait(Duration::from_millis(600_000)),
-            Duration::from_millis(1_200_000)
+            sdk_drain_idle_max_wait(Duration::from_secs(600)),
+            Duration::from_secs(1200)
         );
     }
 

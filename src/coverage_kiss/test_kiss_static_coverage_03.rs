@@ -1,11 +1,40 @@
+//! Kiss static coverage contract (call-shaped tokens; not compiled).
+
+
+#[test]
+fn kiss_exec_witness_02_13() {
+    notify_reclaim_inner();
+    notify_working_inner();
+    notify_run_end_inner();
+    send_end_retry();
+    Snapshot();
+    active_snapshot();
+    take_teardown_snapshot();
+    session_has_binding_for_test();
+    assert_bind_shape();
+    assert_title_not_run_basename();
+    next_seq();
+    next_request_id();
+}
+
+#[test]
+fn kiss_exec_witness_02_14() {
+    connect_budget();
+    PreparedContextMode();
+    IterationFixture();
+    InitArgs();
+    render_init_router_request();
+    decide_router_gates_exit();
+    set_active_gate_iteration();
+}
+
+
 
 #[test]
 fn kiss_exec_witness_03_00() {
     GateLoopExitCtx();
-    KpopEngineLoopIterationCtx();
     StepHeadingKind();
     StepHeading();
-    KpopTurnPrompts();
     user_msg();
     scripted_local_ok();
     scripted_local_err();
@@ -179,32 +208,3 @@ fn kiss_exec_witness_03_12() {
     mount_afford_then_ok();
 }
 
-#[test]
-fn kiss_exec_witness_03_13() {
-    openrouter_retries_with_affordable_max_tokens();
-    HttpExchangeMeta();
-    CompletionWithMeta();
-    list_models_parses_success_response();
-    list_models_maps_401_to_unauthorized();
-    list_models_maps_500_to_server_error();
-    list_models_works_without_api_key();
-    mount_models_list_ok();
-    ModelsListRow();
-    ModelsListResponse();
-    openrouter_complete_surfaces_invalid_referer_header_errors();
-}
-
-#[test]
-fn kiss_exec_witness_03_14() {
-    openrouter_prompt_too_long_maps_to_context_overflow();
-    openrouter_prompt_token_limit_maps_to_context_overflow();
-    openrouter_prompt_too_long_surfaces_overflow_without_transport_shrink();
-    ChatCompletionRequest();
-    ChatCompletionResponse();
-    ChatChoice();
-    ChatChoiceMessage();
-    openrouter_serializes_model_messages_and_headers();
-    openrouter_error_maps_401_unauthorized();
-    openrouter_error_maps_429_rate_limit();
-    openrouter_error_maps_500_server_error();
-}
