@@ -212,7 +212,6 @@ mod tests {
             name: None,
             git: false,
             creative: false,
-            no_kpop: false,
         };
         let io = new_write_client(&shared, WorkflowCliOptions { force: false })
             .expect("backend")

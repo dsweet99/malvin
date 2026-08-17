@@ -54,7 +54,6 @@ fn router_client_uses_kpop_style_agent_io_not_do_style() {
         name: None,
         git: false,
         creative: false,
-        no_kpop: false,
     };
     let backend = build_agent_backend(
         &shared,

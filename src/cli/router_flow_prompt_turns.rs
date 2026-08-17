@@ -1,8 +1,9 @@
 use crate::artifacts::RunArtifacts;
-use crate::cli::flow_prompt_combine::combine_acp_prompt_header_and_user;
 use crate::orchestrator::workflow_context_paths_only;
-use crate::prompts::{PromptError, PromptStore, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD, kpop_common_prompt_file};
-use crate::workflow_context::PromptModelOpts;
+use crate::prompts::{
+    PromptError, PromptStore, header_prompt_file, kpop_common_prompt_file, router_a_prompt_file,
+    router_b_prompt_file,
+};
 use std::path::Path;
 
 use super::{
@@ -19,13 +20,12 @@ pub(crate) struct RouterHeaderPromptInput<'a> {
 pub(crate) fn build_router_header_prompt(
     input: RouterHeaderPromptInput<'_>,
 ) -> Result<String, String> {
-    let (_, header, _) = combine_acp_prompt_header_and_user(
-        input.store,
-        input.artifacts,
-        "",
-        PromptModelOpts::new(input.model, input.git),
-    )?;
-    Ok(header)
+    let ctx = workflow_context_paths_only(input.artifacts, input.model, input.git);
+    let body = input
+        .store
+        .render_prompt_only(header_prompt_file(), ctx.as_map())
+        .map_err(|e: PromptError| e.0)?;
+    Ok(body.trim().to_string())
 }
 
 pub(crate) struct RouterKpopCommonPromptInput<'a> {
@@ -35,7 +35,6 @@ pub(crate) struct RouterKpopCommonPromptInput<'a> {
     pub git: bool,
     pub max_hypotheses: usize,
     pub exp_log: &'a Path,
-    pub no_kpop: bool,
 }
 
 pub(crate) fn build_router_kpop_common_prompt(
@@ -53,7 +52,7 @@ pub(crate) fn build_router_kpop_common_prompt(
     );
     input
         .store
-        .render_prompt_only(kpop_common_prompt_file(input.no_kpop), ctx.as_map())
+        .render_prompt_only(kpop_common_prompt_file(), ctx.as_map())
         .map_err(|e: PromptError| e.0)
 }
 
@@ -83,7 +82,7 @@ pub(crate) fn build_router_a_prompt(input: RouterAPromptInput<'_>) -> Result<Str
     })?;
     ctx.insert("code_extra".to_string(), code_extra);
     let body = store
-        .render_prompt_only(ROUTER_A_MD, ctx.as_map())
+        .render_prompt_only(router_a_prompt_file(), ctx.as_map())
         .map_err(|e: PromptError| e.0)?;
     Ok(body.trim().to_string())
 }
@@ -97,11 +96,7 @@ pub(crate) struct RouterBPromptInput<'a> {
 }
 
 pub(crate) fn build_router_b_prompt(input: RouterBPromptInput<'_>) -> Result<String, String> {
-    let template = if input.creative {
-        ROUTER_B_CREATIVE_MD
-    } else {
-        ROUTER_B_MD
-    };
+    let template = router_b_prompt_file(input.creative);
     let ctx = workflow_context_paths_only(input.artifacts, input.model, input.git);
     let body = input
         .store
@@ -112,9 +107,5 @@ pub(crate) fn build_router_b_prompt(input: RouterBPromptInput<'_>) -> Result<Str
 
 #[must_use]
 pub(crate) const fn router_b_prompt_label(creative: bool) -> &'static str {
-    if creative {
-        ROUTER_B_CREATIVE_MD
-    } else {
-        ROUTER_B_MD
-    }
+    router_b_prompt_file(creative)
 }

@@ -24,9 +24,13 @@ fn default_router_prompts_follow_vision_problem_solving_language() {
     ];
     for name in [
         "header.md",
+        "header_nokpop.md",
         "router_a.md",
+        "router_a_nokpop.md",
         "router_b.md",
+        "router_b_nokpop.md",
         "router_b_creative.md",
+        "router_b_creative_nokpop.md",
         "kpop_common.md",
         "router_summarize.md",
     ] {
@@ -44,7 +48,22 @@ fn default_router_prompts_follow_vision_problem_solving_language() {
             && router_a.contains("independent axes"),
         "router_a should keep regularization, falsification, and matrix inference"
     );
-    for name in ["router_a.md", "router_b.md", "router_b_creative.md"] {
+    let router_a_nokpop = crate::prompts::default_file("router_a_nokpop.md").expect("router_a_nokpop");
+    assert!(
+        router_a_nokpop.contains("Regularization")
+            && !router_a_nokpop.to_ascii_lowercase().contains("falsif")
+            && !router_a_nokpop.contains("KPop:")
+            && router_a_nokpop.contains("independent axes"),
+        "router_a_nokpop should keep regularization without falsification/KPop"
+    );
+    for name in [
+        "router_a.md",
+        "router_a_nokpop.md",
+        "router_b.md",
+        "router_b_nokpop.md",
+        "router_b_creative.md",
+        "router_b_creative_nokpop.md",
+    ] {
         let body = crate::prompts::default_file(name)
             .unwrap_or_else(|| panic!("missing {name}"))
             .to_ascii_lowercase();

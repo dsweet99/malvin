@@ -18,7 +18,9 @@ node_modules/
 .pytest_cache/
 .ruff_cache/
 _logs/
+_logs-*/
 _logs-prime/
+fast_tasks/FT-36/
 .cursor
 .cursorrules
 .kpop

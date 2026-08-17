@@ -9,7 +9,10 @@ use crate::router_flow::router_flow_prompt::{
     combine_router_prompt_file_and_user, combine_router_raw_header_and_user,
     prepare_router_prompt_store, RouterAPromptInput, RouterHeaderPromptInput,
 };
-use crate::prompts::{HEADER_MD, PromptStore, ROUTER_A_MD};
+use crate::prompts::{
+    HEADER_MD, HEADER_NOKPOP_MD, KPOP_COMMON_FAKE_MD, PromptStore, ROUTER_A_MD, ROUTER_A_NOKPOP_MD,
+    ROUTER_B_CREATIVE_NOKPOP_MD, ROUTER_B_NOKPOP_MD,
+};
 
 fn write_router_mock_prompt_files(prompt_root: &std::path::Path) {
     write_prompt(prompt_root, HEADER_MD, "CODING_HDR\n");
@@ -51,19 +54,19 @@ fn combine_router_prompt_file_and_user_joins_rendered_template_and_request() {
 
 #[test]
 fn prepare_router_prompt_store_loads_default_templates() {
-    let store = prepare_router_prompt_store(false).expect("store");
-    assert!(store.validate_exists(HEADER_MD).is_ok());
-    assert!(store.validate_exists(ROUTER_A_MD).is_ok());
-    assert!(store.validate_exists(crate::prompts::ROUTER_B_MD).is_ok());
-    assert!(store.validate_exists(crate::prompts::ROUTER_B_CREATIVE_MD).is_ok());
-    assert!(store.validate_exists("kpop_common.md").is_ok());
+    let store = prepare_router_prompt_store().expect("store");
+    assert!(store.validate_exists(HEADER_NOKPOP_MD).is_ok());
+    assert!(store.validate_exists(ROUTER_A_NOKPOP_MD).is_ok());
+    assert!(store.validate_exists(ROUTER_B_NOKPOP_MD).is_ok());
+    assert!(store.validate_exists(ROUTER_B_CREATIVE_NOKPOP_MD).is_ok());
+    assert!(store.validate_exists(KPOP_COMMON_FAKE_MD).is_ok());
 }
 
 #[test]
 fn build_router_header_prompt_renders_without_unresolved_braces() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
-    let store = prepare_router_prompt_store(false).expect("store");
+    let store = prepare_router_prompt_store().expect("store");
     let body = build_router_header_prompt(RouterHeaderPromptInput {
         store: &store,
         artifacts: &artifacts,
@@ -79,7 +82,7 @@ fn build_router_header_prompt_renders_without_unresolved_braces() {
 fn build_router_a_prompt_includes_user_request_path() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
-    let store = prepare_router_prompt_store(false).expect("store");
+    let store = prepare_router_prompt_store().expect("store");
     let body = build_router_a_prompt(RouterAPromptInput {
         store: &store,
         artifacts: &artifacts,
@@ -114,8 +117,8 @@ fn combine_router_raw_header_and_user_joins_rendered_router_a_and_request() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let prompt_root = tmp.path().join("prompts");
     std::fs::create_dir_all(&prompt_root).expect("mkdir");
-    std::fs::write(prompt_root.join(ROUTER_A_MD), "ROUTER_A_TOKEN\n")
-        .expect("router_a");
+    std::fs::write(prompt_root.join(ROUTER_A_NOKPOP_MD), "ROUTER_A_TOKEN\n")
+        .expect("router_a_nokpop");
     let artifacts = flow_test_artifacts(&tmp);
     let store = PromptStore::with_root(prompt_root);
     let (combined, header, user) = combine_router_raw_header_and_user(

@@ -23,7 +23,7 @@ Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`,
 
 | Command | Purpose |
 |---------|---------|
-| *(default)* | Bare `malvin REQUEST` — `header` → `kpop_common` → `router_a` → optional `router_b`; exit `router_summarize`; outer `--max-loops` sessions |
+| *(default)* | Bare `malvin REQUEST` — `header_nokpop` → `kpop_common_fake` → `router_a_nokpop` → optional `router_b_nokpop`; exit `router_summarize`; outer `--max-loops` sessions |
 | `--do` | One-shot agent turn (non-looping) |
 | `init` | Discover quality gates and write `.malvin/checks` via the default router and `init_constraints.md` |
 | `tidy` | Fix quality gates via the default router with fixed request `Get the gates to pass.` and `--gates` forced on |
@@ -120,7 +120,7 @@ Use **`malvin init`** to discover and write `.malvin/checks` explicitly (default
 
 With `--gates` (and always for `malvin tidy`), malvin runs workspace quality gates from `.malvin/checks` at the repo git root (one shell command per non-empty, non-comment line). Full-line comments starting with `#` are ignored.
 
-Other invocations (`--do`, bare `malvin REQUEST`, `inspire`, `write`) do not require `.malvin/checks` at startup and may run outside a git repo. With `--gates`, bare `malvin REQUEST` and `malvin tidy` run workspace gates after each outer session and continue that outer loop when they fail (see the default-route section of `malvin --doc`). Without `--gates` (the default for non-tidy commands), malvin does not run those checks directly on the default route. `header.md` notes about checks lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
+Other invocations (`--do`, bare `malvin REQUEST`, `inspire`, `write`) do not require `.malvin/checks` at startup and may run outside a git repo. With `--gates`, bare `malvin REQUEST` and `malvin tidy` run workspace gates after each outer session and continue that outer loop when they fail (see the default-route section of `malvin --doc`). Without `--gates` (the default for non-tidy commands), malvin does not run those checks directly on the default route. `header_nokpop.md` notes about checks lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
 
 ### `-h` / `--help`
 

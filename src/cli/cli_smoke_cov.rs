@@ -81,7 +81,6 @@ fn smoke_agent_io_options_maps_flags() {
         name: None,
         git: false,
         creative: false,
-        no_kpop: false,
     };
     let io = agent_io_options(
         &shared,
@@ -174,6 +173,6 @@ fn smoke_prepare_do_prompt_store_loads_defaults() {
 
 #[test]
 fn smoke_prepare_router_prompt_store_loads_defaults() {
-    assert!(crate::router_flow::prepare_router_prompt_store(false).is_ok());
+    assert!(crate::router_flow::prepare_router_prompt_store().is_ok());
 }
 

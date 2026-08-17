@@ -7,8 +7,8 @@ use crate::orchestrator::workflow_context_paths_only;
 use crate::workflow_context::{format_prompt_path, PromptModelOpts};
 use crate::prompt_stratification::WorkflowRenderContext;
 use crate::prompts::{
-    PromptError, PromptStore, HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD,
-    ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD, kpop_common_prompt_file,
+    PromptError, PromptStore, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD, header_prompt_file,
+    kpop_common_prompt_file, router_a_prompt_file, router_b_prompt_file,
 };
 use std::path::Path;
 
@@ -26,31 +26,27 @@ pub(crate) use router_flow_prompt_turns::{
     RouterHeaderPromptInput, RouterKpopCommonPromptInput,
 };
 
-pub fn prepare_router_prompt_store(no_kpop: bool) -> Result<PromptStore, String> {
+pub fn prepare_router_prompt_store() -> Result<PromptStore, String> {
     let store = PromptStore::default_store();
     store.ensure_defaults().map_err(|e: PromptError| e.0)?;
-    store
-        .validate_exists(HEADER_MD)
-        .map_err(|e: PromptError| e.0)?;
-    store
-        .validate_exists(ROUTER_A_MD)
-        .map_err(|e: PromptError| e.0)?;
-    store
-        .validate_exists(ROUTER_B_MD)
-        .map_err(|e: PromptError| e.0)?;
-    store
-        .validate_exists(ROUTER_B_CREATIVE_MD)
-        .map_err(|e: PromptError| e.0)?;
-    store
-        .validate_exists(ROUTER_CODE_EXTRA_MD)
-        .map_err(|e: PromptError| e.0)?;
-    store
-        .validate_exists(ROUTER_SUMMARIZE_MD)
-        .map_err(|e: PromptError| e.0)?;
-    store
-        .validate_exists(kpop_common_prompt_file(no_kpop))
-        .map_err(|e: PromptError| e.0)?;
+    validate_router_required_prompts(&store)?;
     Ok(store)
+}
+
+fn validate_router_required_prompts(store: &PromptStore) -> Result<(), String> {
+    let required = [
+        header_prompt_file(),
+        router_a_prompt_file(),
+        router_b_prompt_file(false),
+        router_b_prompt_file(true),
+        ROUTER_CODE_EXTRA_MD,
+        ROUTER_SUMMARIZE_MD,
+        kpop_common_prompt_file(),
+    ];
+    for name in required {
+        store.validate_exists(name).map_err(|e: PromptError| e.0)?;
+    }
+    Ok(())
 }
 
 pub fn combine_router_prompt_file_and_user(
@@ -83,7 +79,7 @@ pub fn combine_router_raw_header_and_user(
         text,
         model: opts.model,
         git: opts.git,
-        mode_template: ROUTER_A_MD,
+        mode_template: router_a_prompt_file(),
     })
 }
 
