@@ -10,18 +10,23 @@ use crate::router_flow::router_flow_prompt::{
     prepare_router_prompt_store, RouterAPromptInput, RouterHeaderPromptInput,
 };
 use crate::prompts::{
-    HEADER_MD, HEADER_NOKPOP_MD, KPOP_COMMON_FAKE_MD, PromptStore, ROUTER_A_MD, ROUTER_A_NOKPOP_MD,
+    HEADER_MD, HEADER_NOKPOP_MD, KPOP_COMMON_FAKE_MD, PromptStore, ROUTER_A_NOKPOP_MD,
     ROUTER_B_CREATIVE_NOKPOP_MD, ROUTER_B_NOKPOP_MD,
 };
 
 fn write_router_mock_prompt_files(prompt_root: &std::path::Path) {
     write_prompt(prompt_root, HEADER_MD, "CODING_HDR\n");
-    write_prompt(prompt_root, ROUTER_A_MD, "ROUTER_A\n{{ code_extra }}\nSee {{ user_request_path }}.\n");
-    write_prompt(prompt_root, "router_b.md", "ROUTER_B\n");
-    write_prompt(prompt_root, "router_b_creative.md", "ROUTER_B_CREATIVE\n");
+    write_prompt(prompt_root, HEADER_NOKPOP_MD, "HDR_NOKPOP\n");
+    write_prompt(
+        prompt_root,
+        ROUTER_A_NOKPOP_MD,
+        "ROUTER_A\n{{ code_extra }}\nSee {{ user_request_path }}.\n",
+    );
+    write_prompt(prompt_root, ROUTER_B_NOKPOP_MD, "ROUTER_B\n");
+    write_prompt(prompt_root, ROUTER_B_CREATIVE_NOKPOP_MD, "ROUTER_B_CREATIVE\n");
     write_prompt(prompt_root, "router_code_extra.md", "");
     write_prompt(prompt_root, "router_summarize.md", "SUM\n");
-    write_prompt(prompt_root, "kpop_common.md", "KPOP {{ max_hypotheses }} {{ exp_log }}\n");
+    write_prompt(prompt_root, KPOP_COMMON_FAKE_MD, "KPOP_FAKE\n");
 }
 
 fn write_prompt(prompt_root: &std::path::Path, name: &str, body: &str) {

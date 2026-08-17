@@ -5,7 +5,7 @@ use std::sync::Arc;
 use super::{
     record_sandbox_oom_marker, watch_process_group_memory_with_rss_sampler, MemWatchHandles,
 };
-use crate::artifacts::create_kpop_run_artifacts;
+use crate::artifacts::create_run_artifacts_from_text;
 use crate::sandbox_oom::{
     gate_iteration_oom_killed, SandboxOomKillFacts, OOM_REASON_MEASUREMENT_FAIL_CLOSED,
     OOM_REASON_MEMORY_LIMIT,
@@ -108,7 +108,7 @@ async fn watch_process_group_memory_still_kills_over_limit_when_reader_dead() {
 async fn watch_process_group_memory_writes_sandbox_oom_marker() {
     let _guard = crate::test_utils::test_env_lock();
     let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts = create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
+    let artifacts = create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
     let (_child, pgid, baseline) = spawn_sleep_child_in_new_process_group();
     crate::gate_loop_session::set_active_gate_iteration(Some(2));
     watch_process_group_memory_with_rss_sampler(
@@ -133,7 +133,7 @@ async fn watch_process_group_memory_writes_sandbox_oom_marker() {
 async fn watch_process_group_memory_writes_marker_without_gate_iteration() {
     let _guard = crate::test_utils::test_env_lock();
     let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts = create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
+    let artifacts = create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
     let (_child, pgid, baseline) = spawn_sleep_child_in_new_process_group();
     crate::gate_loop_session::set_active_gate_iteration(None);
     watch_process_group_memory_with_rss_sampler(
@@ -171,7 +171,7 @@ fn record_sandbox_oom_marker_noops_without_run_dir() {
 fn record_sandbox_oom_marker_writes_when_gate_iteration_unset() {
     let _lock = crate::test_utils::test_env_lock();
     let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts = create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
+    let artifacts = create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
     crate::gate_loop_session::set_active_gate_iteration(None);
     record_sandbox_oom_marker(
         Some(&artifacts.run_dir),
@@ -192,7 +192,7 @@ fn record_sandbox_oom_marker_writes_when_gate_iteration_unset() {
 fn record_sandbox_oom_marker_writes_fail_closed_reason() {
     let _lock = crate::test_utils::test_env_lock();
     let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts = create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
+    let artifacts = create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
     crate::gate_loop_session::set_active_gate_iteration(Some(1));
     record_sandbox_oom_marker(
         Some(&artifacts.run_dir),

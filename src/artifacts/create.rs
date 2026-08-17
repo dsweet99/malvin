@@ -101,39 +101,6 @@ pub fn create_run_artifacts_from_text_opts(
     Ok(artifacts)
 }
 
-pub fn create_kpop_run_artifacts(
-    request_text: &str,
-    base_dir: Option<&Path>,
-) -> std::io::Result<RunArtifacts> {
-    create_kpop_run_artifacts_opts(
-        request_text,
-        base_dir,
-        crate::run_id::RunDirOptions::default(),
-    )
-}
-
-pub fn create_kpop_run_artifacts_opts(
-    request_text: &str,
-    base_dir: Option<&Path>,
-    opts: crate::run_id::RunDirOptions,
-) -> std::io::Result<RunArtifacts> {
-    let work_dir = base_dir.unwrap_or_else(|| Path::new(".")).to_path_buf();
-    let run_dir = crate::run_id::create_run_dir(base_dir, opts)?;
-    let request_target = run_dir.join("request.md");
-    std::fs::write(&request_target, request_text)?;
-    let artifacts = RunArtifacts {
-        run_dir,
-        plan_path: request_target,
-        work_dir,
-    };
-    ensure_kpop_exp_log_file(&artifacts)?;
-    ensure_quality_gates_log_file(&artifacts)?;
-    crate::write_work_dir_manifest(&artifacts.run_dir, &artifacts.work_dir)?;
-    #[cfg(not(test))]
-    crate::stdout_log_path::set_stdout_log_path(Some(artifacts.stdout_log_path()));
-    Ok(artifacts)
-}
-
 #[cfg(test)]
 #[allow(unused_imports)]
 mod kiss_cov_gate_refs{

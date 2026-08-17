@@ -4,15 +4,12 @@ mod default_files;
 
 pub use default_files::{
     default_file, header_prompt_file, kpop_common_prompt_file, router_a_prompt_file,
-    router_b_prompt_file, HEADER_NOKPOP_MD, KPOP_COMMON_FAKE_MD, KPOP_COMMON_MD,
-    ROUTER_A_NOKPOP_MD, ROUTER_B_CREATIVE_NOKPOP_MD, ROUTER_B_NOKPOP_MD,
+    router_b_prompt_file, HEADER_NOKPOP_MD, KPOP_COMMON_FAKE_MD, ROUTER_A_NOKPOP_MD,
+    ROUTER_B_CREATIVE_NOKPOP_MD, ROUTER_B_NOKPOP_MD,
 };
 
 pub const HEADER_MD: &str = "header.md";
 pub const DO_HEADER_MD: &str = "do_header.md";
-pub const ROUTER_A_MD: &str = "router_a.md";
-pub const ROUTER_B_MD: &str = "router_b.md";
-pub const ROUTER_B_CREATIVE_MD: &str = "router_b_creative.md";
 pub const ROUTER_CODE_EXTRA_MD: &str = "router_code_extra.md";
 pub const ROUTER_SUMMARIZE_MD: &str = "router_summarize.md";
 pub const WRITE_A_MD: &str = "write_a.md";
@@ -22,7 +19,6 @@ pub const INSPIRE_SUMMARIZE_MD: &str = "inspire_summarize.md";
 pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD];
 
 pub const DEFAULT_PROMPTS: &[&str] = &[
-    KPOP_COMMON_MD,
     KPOP_COMMON_FAKE_MD,
     "mbc2.md",
     INSPIRE_SUMMARIZE_MD,
@@ -30,11 +26,8 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     HEADER_MD,
     HEADER_NOKPOP_MD,
     DO_HEADER_MD,
-    ROUTER_A_MD,
     ROUTER_A_NOKPOP_MD,
-    ROUTER_B_MD,
     ROUTER_B_NOKPOP_MD,
-    ROUTER_B_CREATIVE_MD,
     ROUTER_B_CREATIVE_NOKPOP_MD,
     ROUTER_CODE_EXTRA_MD,
     ROUTER_SUMMARIZE_MD,
@@ -131,8 +124,8 @@ mod router_header_embed_tests {
     use std::path::Path;
 
     use super::{
-        default_file, DO_HEADER_MD, HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD,
-        ROUTER_SUMMARIZE_MD,
+        default_file, DO_HEADER_MD, HEADER_MD, ROUTER_A_NOKPOP_MD, ROUTER_B_CREATIVE_NOKPOP_MD,
+        ROUTER_B_NOKPOP_MD, ROUTER_SUMMARIZE_MD,
     };
     use crate::config::DEFAULT_CLI_MODEL;
     use crate::artifacts::create_run_artifacts;
@@ -238,9 +231,9 @@ mod router_header_embed_tests {
             summarize.contains("Write a summary of this entire session"),
             "router_summarize.md body must be rendered: {summarize}"
         );
-        assert!(default_file(ROUTER_A_MD).is_some());
-        assert!(default_file(ROUTER_B_MD).is_some());
-        assert!(default_file(ROUTER_B_CREATIVE_MD).is_some());
+        assert!(default_file(ROUTER_A_NOKPOP_MD).is_some());
+        assert!(default_file(ROUTER_B_NOKPOP_MD).is_some());
+        assert!(default_file(ROUTER_B_CREATIVE_NOKPOP_MD).is_some());
         assert!(default_file(ROUTER_SUMMARIZE_MD).is_some());
         assert!(default_file(DO_HEADER_MD).is_some());
         assert!(default_file(HEADER_MD).is_some());

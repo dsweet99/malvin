@@ -25,7 +25,7 @@ usd_per_microtoken_cache_write = 0
 max_hypotheses = 10
 
 [default_workflow]
-# Hypothesis budget for bare `malvin REQUEST` `kpop_common.md` (not agent.max_hypotheses).
+# Hypothesis budget retained for workflow context / exp-log slots (not agent.max_hypotheses).
 max_hypotheses = 5
 
 [logs]

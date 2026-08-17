@@ -1,4 +1,3 @@
-
 Malvin is a non-interactive research and coding agent.
 
 
@@ -12,13 +11,10 @@ Malvin is a non-interactive research and coding agent.
 - `header.md` and default-workflow (router) prompts should *not* explicitly mention
  - coding
  - an evaluation tasks
- Instead, they should discuss problem-solving in general. The two main design points are
-  - Falsification: Using the KPop sub-workflow to get evidence-based answers.
+ Instead, they should discuss problem-solving in general. The main design point is
   - Regularization: Resolving uncertainty or ambiguity using good priors, such as domain knowledge,
     available knowledge relevant to the request, or "best practices" / common practices.
 
 # References
 
-- Popper, Karl. *The Logic of Scientific Discovery*. London: Hutchinson, 1959. Originally published as *Logik der Forschung* (Vienna: Julius Springer, 1934). For KPop.
 - Boden, Margaret A. *The Creative Mind: Myths and Mechanisms*. London: Weidenfeld and Nicolson, 1990. For MBC2.
-

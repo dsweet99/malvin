@@ -12,14 +12,17 @@ fn smoke_active_agent_heartbeat_stats() {
 }
 
 #[test]
-fn smoke_agent_phase_kpop_and_reporting() {
+fn smoke_agent_phase_verifying_and_reporting() {
     let _guard = crate::agent_phase::AGENT_PHASE_TEST_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     crate::agent_phase::reset_phase_state_for_test();
-    crate::agent_phase::enter_kpop();
-    assert_eq!(crate::agent_phase::heartbeat_label(), "KPop cycling");
-    crate::agent_phase::leave_kpop();
+    crate::agent_phase::enter_verifying();
+    assert_eq!(crate::agent_phase::heartbeat_label(), "Verifying");
+    crate::agent_phase::leave_verifying();
+    crate::agent_phase::set_reporting(true);
+    assert_eq!(crate::agent_phase::heartbeat_label(), "Reporting");
+    crate::agent_phase::set_reporting(false);
 }
 
 #[test]
@@ -91,9 +94,6 @@ fn smoke_artifacts_create() {
         crate::artifacts::create_run_artifacts_from_text("x", Some(tmp.path())).expect("from_text");
     assert!(from_text.plan_path.is_file());
     assert!(from_text.quality_gates_log_path().is_file());
-    let kpop = crate::artifacts::create_kpop_run_artifacts("req", Some(tmp.path())).expect("kpop");
-    assert!(kpop.run_dir.join("request.md").is_file());
-    assert!(kpop.quality_gates_log_path().is_file());
     assert_eq!(
         crate::artifacts::work_dir_for_path(&plan),
         tmp.path().canonicalize().unwrap_or_else(|_| tmp.path().to_path_buf()),

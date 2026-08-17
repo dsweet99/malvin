@@ -62,7 +62,7 @@ fn create_run_artifacts_from_plan_copy_scaffolds_kpop_exp_log() {
 #[test]
 fn kpop_workflow_context_exp_log_is_under_home_malvin_logs() {
     let tmp = tempfile::tempdir().unwrap();
-    let art = create_kpop_run_artifacts("kpop body", Some(tmp.path())).unwrap();
+    let art = create_run_artifacts_from_text("kpop body", Some(tmp.path())).unwrap();
     let exp_path = art.exp_log_path();
     assert!(exp_path.is_file());
     let ctx = crate::workflow_context::workflow_context_paths_only(&art, crate::config::DEFAULT_CLI_MODEL, false);
@@ -91,7 +91,7 @@ fn kpop_workflow_context_exp_log_is_under_home_malvin_logs() {
 
 #[test]
 fn kpop_exp_log_path_from_repo_root_work_dir() {
-    let art = create_kpop_run_artifacts_opts(
+    let art = create_run_artifacts_from_text_opts(
         "probe",
         Some(std::path::Path::new(".")),
         crate::run_id::RunDirOptions { gc: false },

@@ -26,9 +26,9 @@ fn render_expands_coding_rules_placeholder_to_empty() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
     std::fs::write(root.join("header.md"), "H").unwrap();
-    std::fs::write(root.join("kpop_common.md"), "{{ coding_rules }}").unwrap();
+    std::fs::write(root.join("probe.md"), "{{ coding_rules }}").unwrap();
     let store = PromptStore::with_root(root.to_path_buf());
-    let out = store.render("kpop_common.md", &HashMap::new()).unwrap();
+    let out = store.render("probe.md", &HashMap::new()).unwrap();
     assert_eq!(out, "");
 }
 

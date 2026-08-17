@@ -8,7 +8,7 @@ use std::time::Instant;
 fn empty_artifacts(work: &tempfile::TempDir) -> (crate::artifacts::SessionDotfileBackups, RunArtifacts) {
     let empty = crate::test_utils::empty_session_dotfile_backups(work.path());
     let artifacts =
-        crate::artifacts::create_kpop_run_artifacts("code", Some(work.path())).expect("artifacts");
+        crate::artifacts::create_run_artifacts_from_text("code", Some(work.path())).expect("artifacts");
     (empty, artifacts)
 }
 

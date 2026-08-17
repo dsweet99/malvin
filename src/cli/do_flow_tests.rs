@@ -18,7 +18,6 @@ fn mock_do_prompt_store(tmp: &tempfile::TempDir) -> PromptStore {
     std::fs::create_dir_all(&prompt_root).expect("mkdir");
     std::fs::write(prompt_root.join(HEADER_MD), "CODING_HDR\n").expect("header");
     std::fs::write(prompt_root.join(DO_HEADER_MD), "DO_HDR\n").expect("do_header");
-    std::fs::write(prompt_root.join("kpop_common.md"), "").expect("kpop_common");
     PromptStore::with_root(prompt_root)
 }
 

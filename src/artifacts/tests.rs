@@ -93,26 +93,18 @@ fn create_run_artifacts_from_text_opts_without_gc() {
 }
 
 #[test]
-fn create_kpop_run_artifacts_opts_without_gc() {
+fn create_run_artifacts_from_text_writes_plan_and_exp_log() {
     let tmp = tempfile::tempdir().unwrap();
-    let art = create_kpop_run_artifacts_opts(
-        "kpop body",
-        Some(tmp.path()),
-        crate::run_id::RunDirOptions { gc: false },
-    )
-    .unwrap();
-    assert!(art.plan_path.ends_with("request.md"));
-}
-
-#[test]
-fn create_kpop_run_artifacts_writes_request_md() {
-    let tmp = tempfile::tempdir().unwrap();
-    let art = create_kpop_run_artifacts("kpop body", Some(tmp.path())).unwrap();
-    assert!(art.plan_path.ends_with("request.md"));
+    let art = create_run_artifacts_from_text("plan body", Some(tmp.path())).unwrap();
+    assert!(art.plan_path.is_file());
+    assert!(art.plan_path.file_name().is_some_and(|n| {
+        let s = n.to_string_lossy();
+        s.starts_with("plan_") && s.ends_with(".md")
+    }));
     assert!(art.exp_log_path().is_file());
     assert_eq!(
         std::fs::read_to_string(&art.plan_path).unwrap(),
-        "kpop body"
+        "plan body"
     );
 }
 

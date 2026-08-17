@@ -16,12 +16,11 @@ pub enum AgentPhase {
     Executing,
     Verifying,
     Debugging,
-    KPopCycling,
     Waiting,
     Reporting,
 }
 
-const PHASE_LABELS: [&str; 10] = [
+const PHASE_LABELS: [&str; 9] = [
     "Orienting",
     "Researching",
     "Reasoning",
@@ -29,7 +28,6 @@ const PHASE_LABELS: [&str; 10] = [
     "Executing",
     "Verifying",
     "Debugging",
-    "KPop cycling",
     "Waiting",
     "Reporting",
 ];
@@ -52,7 +50,6 @@ pub(super) enum ToolKind {
 #[allow(clippy::struct_excessive_bools)]
 pub(super) struct PhaseState {
     pub(super) verifying_depth: u32,
-    pub(super) kpop_depth: u32,
     pub(super) reporting: bool,
     pub(super) orienting: bool,
     pub(super) debugging: bool,
@@ -65,7 +62,6 @@ impl PhaseState {
     const fn fresh() -> Self {
         Self {
             verifying_depth: 0,
-            kpop_depth: 0,
             reporting: false,
             orienting: true,
             debugging: false,
@@ -78,7 +74,6 @@ impl PhaseState {
     fn resolve(&self) -> AgentPhase {
         phase_if(self.reporting, AgentPhase::Reporting)
             .or_else(|| phase_if(self.verifying_depth > 0, AgentPhase::Verifying))
-            .or_else(|| phase_if(self.kpop_depth > 0, AgentPhase::KPopCycling))
             .or_else(|| phase_if(self.running_shells > 0, AgentPhase::Waiting))
             .or_else(|| phase_if(self.debugging, AgentPhase::Debugging))
             .or_else(|| self.active_tool.map(|(k, _)| active_tool_phase(k)))
@@ -123,17 +118,6 @@ pub fn note_orienting() {
 
 pub fn clear_orienting() {
     with_state(|s| s.orienting = false);
-}
-
-pub fn enter_kpop() {
-    with_state(|s| {
-        s.kpop_depth = s.kpop_depth.saturating_add(1);
-        s.orienting = false;
-    });
-}
-
-pub fn leave_kpop() {
-    with_state(|s| s.kpop_depth = s.kpop_depth.saturating_sub(1));
 }
 
 pub fn enter_verifying() {
@@ -209,4 +193,3 @@ pub(crate) mod kiss_cov {
         active_tool_phase(kind)
     }
 }
-

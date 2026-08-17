@@ -7,10 +7,9 @@ pub use template::*;
 
 pub use defaults::{
     DO_HEADER_MD, INSPIRE_SUMMARIZE_MD, WRITE_A_MD, WRITE_B_MD, HEADER_MD, HEADER_NOKPOP_MD,
-    KPOP_COMMON_FAKE_MD, KPOP_COMMON_MD, ROUTER_A_MD, ROUTER_A_NOKPOP_MD, ROUTER_B_CREATIVE_MD,
-    ROUTER_B_CREATIVE_NOKPOP_MD, ROUTER_B_MD, ROUTER_B_NOKPOP_MD, ROUTER_CODE_EXTRA_MD,
-    ROUTER_SUMMARIZE_MD, header_prompt_file, kpop_common_prompt_file, router_a_prompt_file,
-    router_b_prompt_file,
+    KPOP_COMMON_FAKE_MD, ROUTER_A_NOKPOP_MD, ROUTER_B_CREATIVE_NOKPOP_MD, ROUTER_B_NOKPOP_MD,
+    ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD, header_prompt_file, kpop_common_prompt_file,
+    router_a_prompt_file, router_b_prompt_file,
 };
 
 #[allow(unused_imports)]

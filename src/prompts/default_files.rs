@@ -1,9 +1,8 @@
 use super::{
-    DO_HEADER_MD, INSPIRE_SUMMARIZE_MD, WRITE_A_MD, WRITE_B_MD, HEADER_MD, ROUTER_A_MD,
-    ROUTER_B_CREATIVE_MD, ROUTER_B_MD, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD,
+    DO_HEADER_MD, INSPIRE_SUMMARIZE_MD, WRITE_A_MD, WRITE_B_MD, HEADER_MD, ROUTER_CODE_EXTRA_MD,
+    ROUTER_SUMMARIZE_MD,
 };
 
-pub const KPOP_COMMON_MD: &str = "kpop_common.md";
 pub const KPOP_COMMON_FAKE_MD: &str = "kpop_common_fake.md";
 pub const HEADER_NOKPOP_MD: &str = "header_nokpop.md";
 pub const ROUTER_A_NOKPOP_MD: &str = "router_a_nokpop.md";
@@ -57,7 +56,6 @@ fn default_mbc2_prompt(name: &str) -> Option<&'static str> {
 
 fn default_kpop_prompt(name: &str) -> Option<&'static str> {
     default_mbc2_prompt(name).or_else(|| match name {
-        "kpop.md" | KPOP_COMMON_MD => Some(include_str!("../../default_prompts/kpop_common.md")),
         KPOP_COMMON_FAKE_MD => Some(include_str!("../../default_prompts/kpop_common_fake.md")),
         _ => None,
     })
@@ -65,11 +63,8 @@ fn default_kpop_prompt(name: &str) -> Option<&'static str> {
 
 fn default_router_prompt(name: &str) -> Option<&'static str> {
     match name {
-        ROUTER_A_MD => Some(include_str!("../../default_prompts/router_a.md")),
         ROUTER_A_NOKPOP_MD => Some(include_str!("../../default_prompts/router_a_nokpop.md")),
-        ROUTER_B_MD => Some(include_str!("../../default_prompts/router_b.md")),
         ROUTER_B_NOKPOP_MD => Some(include_str!("../../default_prompts/router_b_nokpop.md")),
-        ROUTER_B_CREATIVE_MD => Some(include_str!("../../default_prompts/router_b_creative.md")),
         ROUTER_B_CREATIVE_NOKPOP_MD => {
             Some(include_str!("../../default_prompts/router_b_creative_nokpop.md"))
         }
@@ -105,15 +100,17 @@ mod tests {
 
     #[test]
     fn default_file_covers_router_a_and_b() {
-        assert!(default_file("router_a.md").is_some());
-        assert!(default_file("router_b.md").is_some());
-        assert!(default_file("router_b_creative.md").is_some());
+        assert!(default_file("router_a_nokpop.md").is_some());
+        assert!(default_file("router_b_nokpop.md").is_some());
+        assert!(default_file("router_b_creative_nokpop.md").is_some());
         assert!(default_file("router_summarize.md").is_some());
         assert!(default_file("write_a.md").is_some());
         assert!(default_file("write_b.md").is_some());
         assert!(default_file("inspire_summarize.md").is_some());
         assert!(default_constraints_prompt("init_constraints.md").is_some());
-        assert!(default_kpop_prompt("kpop_common.md").is_some());
+        assert!(default_kpop_prompt("kpop_common_fake.md").is_some());
+        assert!(default_file("kpop_common.md").is_none());
+        assert!(default_file("router_a.md").is_none());
     }
 
     #[test]

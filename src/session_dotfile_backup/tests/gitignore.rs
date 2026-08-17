@@ -1,5 +1,5 @@
 use crate::artifacts::{
-    create_kpop_run_artifacts, GitignoreBackup, backup_workspace_gitignore_if_present,
+    create_run_artifacts_from_text, GitignoreBackup, backup_workspace_gitignore_if_present,
     backup_workspace_gitignore_if_present_with_id, restore_workspace_gitignore_backup,
     SessionDotfileBackups,
 };
@@ -103,7 +103,7 @@ fn outer_loop_resnapshot_restores_gitignore_between_iterations() {
     with_isolated_home(|work| {
         let gitignore = work.join(".gitignore");
         std::fs::write(&gitignore, BASELINE).unwrap();
-        let _artifacts = create_kpop_run_artifacts("kpop", Some(work)).expect("artifacts");
+        let _artifacts = create_run_artifacts_from_text("kpop", Some(work)).expect("artifacts");
         let loop1 = SessionDotfileBackups::snapshot_after_ensuring_home_config(work).unwrap();
         std::fs::write(&gitignore, "tampered\n").unwrap();
         loop1.restore_excluding_malvin_checks(work).unwrap();

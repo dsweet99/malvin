@@ -1,12 +1,12 @@
 
 use malvin::{
-    create_kpop_run_artifacts, format_current_state, gate_iteration_oom_killed,
+    create_run_artifacts_from_text, format_current_state, gate_iteration_oom_killed,
 };
 
 #[test]
 fn kpop_log_oom_prose_does_not_trigger_retry_reason() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts = create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
+    let artifacts = create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
     std::fs::write(
         artifacts.log_path("kpop"),
         "Our test output exceeded memory limit in the benchmark harness\n",
@@ -23,7 +23,7 @@ fn kpop_log_oom_prose_does_not_trigger_retry_reason() {
 #[test]
 fn sandbox_oom_marker_is_iteration_scoped() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts = create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
+    let artifacts = create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
     malvin::record_sandbox_oom_kill(
         &artifacts.run_dir,
         malvin::SandboxOomKillRecord::from_facts(

@@ -121,7 +121,7 @@ pub use artifacts::{
     backup_workspace_malvin_checks_if_present, create_run_artifacts_from_text,
     restore_workspace_session_dotfiles,
 };
-pub use artifacts::{create_kpop_run_artifacts, create_run_artifacts, resolve_user_md_request};
+pub use artifacts::{create_run_artifacts, resolve_user_md_request};
 pub use config::DEFAULT_CLI_MODEL;
 pub use output::{
     ERROR_WHO, MALVIN_WHO, WARNING_WHO, format_line, format_log_tag_inner, format_who_tag_prefix,

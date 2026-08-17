@@ -75,7 +75,7 @@ mod tests {
     #[test]
     fn record_and_detect_oom_for_gate_iteration() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let artifacts = crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path()))
+        let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
             .expect("artifacts");
         record_sandbox_oom_kill(
             &artifacts.run_dir,
@@ -97,7 +97,7 @@ mod tests {
     #[test]
     fn gate_iteration_oom_killed_false_when_marker_missing() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let artifacts = crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path()))
+        let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
             .expect("artifacts");
         assert!(!gate_iteration_oom_killed(&artifacts, 1));
     }

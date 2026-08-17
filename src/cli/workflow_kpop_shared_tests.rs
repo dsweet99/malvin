@@ -10,7 +10,7 @@ fn kpop_render_fixture(
     let tmp = tempfile::tempdir().expect("tempdir");
     crate::seed_malvin_checks(tmp.path(), "true\n");
     let artifacts =
-        crate::artifacts::create_kpop_run_artifacts(workflow, Some(tmp.path())).expect("artifacts");
+        crate::artifacts::create_run_artifacts_from_text(workflow, Some(tmp.path())).expect("artifacts");
     let store = crate::prompts::PromptStore::default_store();
     store.ensure_defaults().expect("defaults");
     (tmp, store, artifacts)
@@ -56,7 +56,7 @@ fn prefer_gate_outcome_over_summarize_surfaces_summarize_when_gate_ok() {
 fn write_checks_do_not_pass_for_artifacts_writes_markers() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts =
-        crate::artifacts::create_kpop_run_artifacts("tidy", Some(tmp.path())).expect("artifacts");
+        crate::artifacts::create_run_artifacts_from_text("tidy", Some(tmp.path())).expect("artifacts");
     let workspace_review = tmp.path().join("review.md");
     write_checks_do_not_pass_for_artifacts(&artifacts).expect("write");
     assert!(artifacts.artifact_review_md().exists());
@@ -70,7 +70,7 @@ fn write_checks_do_not_pass_for_artifacts_writes_markers() {
 fn clear_quality_gates_log_for_next_agent_empties_file() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts =
-        crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
+        crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
     let qlog = artifacts.quality_gates_log_path();
     std::fs::write(&qlog, "stale output").expect("write");
     clear_quality_gates_log_for_next_agent(&artifacts).expect("clear");
@@ -90,7 +90,7 @@ fn gate_failure_fixture(
     let (bin, guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "false", exit_code);
     std::fs::write(crate::malvin_checks_path(tmp.path()), "false\n").expect("checks");
     let artifacts =
-        crate::artifacts::create_kpop_run_artifacts("tidy", Some(tmp.path())).expect("artifacts");
+        crate::artifacts::create_run_artifacts_from_text("tidy", Some(tmp.path())).expect("artifacts");
     let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snapshot");
     (tmp, bin, guard, artifacts, backups)
 }
@@ -124,7 +124,7 @@ fn gate_iteration_context_overrides_exp_log() {
         .expect("git init");
     crate::seed_malvin_checks(tmp.path(), "true\n");
     let artifacts =
-        crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
+        crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
     let base = kpop_workflow_context(&artifacts, crate::config::DEFAULT_CLI_MODEL, false).expect("ctx");
     let iter_log = artifacts.gate_exp_log_path(2);
     let ctx = gate_iteration_context(&base, &artifacts, &iter_log, 2);
@@ -150,7 +150,7 @@ fn missing_checks_fixture(
         std::fs::remove_file(&checks_path).expect("remove checks");
     }
     let artifacts =
-        crate::artifacts::create_kpop_run_artifacts("code", Some(work)).expect("artifacts");
+        crate::artifacts::create_run_artifacts_from_text("code", Some(work)).expect("artifacts");
     let backups = crate::artifacts::SessionDotfileBackups::snapshot(work).expect("snapshot");
     (artifacts, backups)
 }
@@ -192,7 +192,7 @@ fn kpop_gates_restore_fixture(
     std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
     std::fs::write(work.join(".malvin/checks"), "true\n").expect("checks");
     let artifacts =
-        crate::artifacts::create_kpop_run_artifacts("code", Some(work)).expect("artifacts");
+        crate::artifacts::create_run_artifacts_from_text("code", Some(work)).expect("artifacts");
     let backups = crate::artifacts::SessionDotfileBackups::snapshot(work).expect("snapshot");
     (artifacts, backups)
 }
@@ -203,7 +203,7 @@ fn gitignore_restore_failure_fixture(
     std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
     std::fs::write(work.join(".malvin/checks"), "true\n").expect("checks");
     let artifacts =
-        crate::artifacts::create_kpop_run_artifacts("code", Some(work)).expect("artifacts");
+        crate::artifacts::create_run_artifacts_from_text("code", Some(work)).expect("artifacts");
     std::fs::write(work.join(".gitignore"), "orig\n").expect("gitignore");
     let backups = crate::artifacts::SessionDotfileBackups::snapshot(work).expect("snapshot");
     std::fs::remove_file(work.join(".gitignore")).expect("remove gitignore");
