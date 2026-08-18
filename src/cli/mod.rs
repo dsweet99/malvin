@@ -51,6 +51,9 @@ mod workflow_router_shared_tests;
 #[path = "models_cmd_tests.rs"]
 mod models_cmd_tests;
 #[cfg(test)]
+#[path = "models_cmd_auth_filter_tests.rs"]
+mod models_cmd_auth_filter_tests;
+#[cfg(test)]
 mod cli_smoke_cov;
 #[cfg(test)]
 mod gate_error_regression;

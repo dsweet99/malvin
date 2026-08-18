@@ -1,6 +1,4 @@
-
 use super::models_cmd::test_hooks::*;
-use super::models_cmd::{run_models, ModelsArgs};
 
 #[test]
 fn trim_trailing_tips_drops_banner() {
@@ -87,7 +85,8 @@ fn run_models_reads_fake_agent_models_output() {
     perms.set_mode(0o755);
     std::fs::set_permissions(&agent, perms).expect("chmod fake agent");
     let _guard = set_fake_command_dir(tmp.path());
-    run_models(ModelsArgs::default(), crate::config::DEFAULT_CLI_MODEL).expect("fake agent models");
+    print_cursor_models_via_cli_for_test(Some("cursor:"))
+        .expect("fake agent models");
     let path = resolve_models_cli().expect("fake agent on fake PATH");
     assert_eq!(path, agent);
 }

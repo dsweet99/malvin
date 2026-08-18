@@ -27,6 +27,21 @@ fn kiss_cov_pi_sdk_discover_auth_models() {
 }
 
 #[test]
+fn kiss_cov_pi_sdk_live_provider_auth() {
+    let _ = super::auth::env_nonempty;
+    let _ = super::list_pi_provider_auth_sync;
+    let _ = super::provider_authenticated_from_map;
+    let _ = stringify!(parse_list_providers_table);
+    let _ = stringify!(is_dash_row);
+    let _ = stringify!(providers_header_columns);
+    let _ = stringify!(ProviderColumns);
+    let _ = stringify!(record_provider_row);
+    let _ = stringify!(auth_env_keys_from_cell);
+    let _ = stringify!(is_auth_env_key);
+    let _ = stringify!(is_providers_noise_line);
+}
+
+#[test]
 fn kiss_cov_pi_sdk_protocol_and_map() {
     let _ = super::protocol::pi_encode_request;
     let _ = super::protocol::pi_decode_line;

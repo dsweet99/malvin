@@ -7,6 +7,7 @@ mod map_event;
 mod map_event_summary;
 mod models_list;
 mod protocol;
+mod providers_list;
 mod session_io;
 mod session_spawn;
 
@@ -14,6 +15,9 @@ pub use auth::{ensure_pi_authenticated, is_provider_authenticated};
 pub use discover::{pi_missing_binary_message, resolve_pi_bin};
 pub use models_list::{
     list_pi_models_sync, pi_list_models_timeout, PiModelListing, DEFAULT_PI_LIST_MODELS_TIMEOUT_MS,
+};
+pub use providers_list::{
+    list_pi_provider_auth_sync, provider_authenticated_from_map,
 };
 pub(crate) use session_io::{pi_send_prompt as send_prompt, pi_write_abort as write_abort};
 pub(crate) use session_spawn::pi_spawn_bridge as spawn_bridge;

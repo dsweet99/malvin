@@ -97,7 +97,7 @@ pub(super) fn resolve_models_cli() -> Result<PathBuf, String> {
     })
 }
 
-fn print_cursor_models_via_cli(filter: Option<&str>) -> Result<(), String> {
+pub(super) fn print_cursor_models_via_cli(filter: Option<&str>) -> Result<(), String> {
     let bin = resolve_models_cli()?;
     let mut cmd = crate::malvin_sandbox::malvin_std_command(&bin);
     cmd.arg("models");

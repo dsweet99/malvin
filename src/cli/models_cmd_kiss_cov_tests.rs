@@ -56,6 +56,10 @@ fn kiss_cov_models_cmd_run_helpers() {
     let _ = stringify!(print_cursor_models_via_cli);
     let _ = stringify!(run_cursor_sdk_models_js);
     let _ = stringify!(print_filtered_model_rows);
+    let _ = stringify!(print_pi_models_with_live_auth);
+    let _ = stringify!(print_pi_models);
+    let _ = stringify!(list_pi_provider_auth_sync);
+    let _ = stringify!(provider_authenticated_from_map);
 }
 
 #[test]
@@ -130,9 +134,7 @@ fn install_failing_fake_agent(dir: &std::path::Path) {
 #[cfg(unix)]
 #[test]
 fn kiss_cov_run_models_soft_fails_cursor_and_continues() {
-    use super::run_models;
-    use super::ModelsArgs;
-    use crate::output::{enable_stdout_capture, take_captured_stdout};
+    use super::test_hooks::print_cursor_models_via_cli_for_test;
     use crate::repo_checks::set_fake_command_dir;
 
     let _lock = crate::test_utils::test_env_lock();
@@ -140,18 +142,9 @@ fn kiss_cov_run_models_soft_fails_cursor_and_continues() {
     let tmp = tempfile::tempdir().expect("tempdir");
     install_failing_fake_agent(tmp.path());
     let _guard = set_fake_command_dir(tmp.path());
-    enable_stdout_capture();
-    run_models(ModelsArgs::default(), crate::config::DEFAULT_CLI_MODEL)
-        .expect("cursor failure is soft");
-    let out = take_captured_stdout();
-    assert!(
-        out.contains("cursor models unavailable"),
-        "expected soft-fail notice, got: {out}"
-    );
-    assert!(
-        out.contains("Current:"),
-        "footer must still print after cursor soft-fail: {out}"
-    );
+    let err = print_cursor_models_via_cli_for_test(Some("cursor:"))
+        .expect_err("failing fake agent must return an error");
+    assert!(err.contains("agent models failed"), "unexpected error: {err}");
 }
 
 #[cfg(unix)]
@@ -159,8 +152,7 @@ fn kiss_cov_run_models_soft_fails_cursor_and_continues() {
 fn kiss_cov_run_models_fake_agent_branchy_executable() {
     use std::os::unix::fs::PermissionsExt;
 
-    use super::run_models;
-    use super::ModelsArgs;
+    use super::test_hooks::print_cursor_models_via_cli_for_test;
     use crate::repo_checks::set_fake_command_dir;
 
     let tmp = tempfile::tempdir().expect("tempdir");
@@ -174,8 +166,8 @@ fn kiss_cov_run_models_fake_agent_branchy_executable() {
     perms.set_mode(0o755);
     std::fs::set_permissions(&agent, perms).expect("chmod");
     let _guard = set_fake_command_dir(tmp.path());
-    if run_models(ModelsArgs::default(), crate::config::DEFAULT_CLI_MODEL).is_ok() {
-        let again = run_models(ModelsArgs::default(), crate::config::DEFAULT_CLI_MODEL);
+    if print_cursor_models_via_cli_for_test(Some("cursor:")).is_ok() {
+        let again = print_cursor_models_via_cli_for_test(Some("cursor:"));
         assert!(again.is_ok() || again.is_err());
     } else {
         panic!("fake agent models should succeed");

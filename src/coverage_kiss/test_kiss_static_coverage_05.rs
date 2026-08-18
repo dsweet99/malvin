@@ -128,6 +128,21 @@ fn kiss_cov_pi_sdk_discover_auth_models() {
 }
 
 #[test]
+fn kiss_cov_pi_sdk_live_provider_auth() {
+    list_pi_provider_auth_sync();
+    provider_authenticated_from_map();
+    parse_list_providers_table();
+    is_dash_row();
+    providers_header_columns();
+    ProviderColumns();
+    record_provider_row();
+    auth_env_keys_from_cell();
+    is_auth_env_key();
+    env_nonempty();
+    print_pi_models_with_live_auth();
+}
+
+#[test]
 fn kiss_cov_pi_sdk_models_list_helpers() {
     parse_list_models_table();
     is_separator_line();

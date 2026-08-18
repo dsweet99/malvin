@@ -54,7 +54,7 @@ fn provider_auth_env_keys_secondary(provider: &str) -> Option<&'static [&'static
     }
 }
 
-fn env_nonempty(key: &str) -> bool {
+pub(crate) fn env_nonempty(key: &str) -> bool {
     std::env::var(key)
         .ok()
         .is_some_and(|v| !v.trim().trim_start_matches('\u{feff}').is_empty())

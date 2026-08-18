@@ -47,7 +47,7 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
     }
     if section_may_match(filter_ref, PI_PREFIX) {
         match crate::pi_sdk::list_pi_models_sync() {
-            Ok(models) => print_pi_models(&models, filter_ref),
+            Ok(models) => print_pi_models_with_live_auth(&models, filter_ref),
             Err(e) => {
                 print_stdout_line(MALVIN_WHO, &format!("(pi models unavailable: {e})"));
             }
@@ -57,11 +57,31 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn print_pi_models(models: &[crate::pi_sdk::PiModelListing], filter: Option<&str>) {
+fn print_pi_models_with_live_auth(
+    models: &[crate::pi_sdk::PiModelListing],
+    filter: Option<&str>,
+) {
+    match crate::pi_sdk::list_pi_provider_auth_sync() {
+        Ok(map) => print_pi_models(models, filter, &map),
+        Err(e) => {
+            print_stdout_line(
+                MALVIN_WHO,
+                &format!("(pi provider auth map unavailable: {e})"),
+            );
+            print_pi_models(models, filter, &std::collections::HashMap::new());
+        }
+    }
+}
+
+fn print_pi_models(
+    models: &[crate::pi_sdk::PiModelListing],
+    filter: Option<&str>,
+    auth_map: &std::collections::HashMap<String, Vec<String>>,
+) {
     let mut printed = false;
     for model in models {
         let provider = model.id.split('/').next().unwrap_or("");
-        if !crate::pi_sdk::is_provider_authenticated(provider) {
+        if !crate::pi_sdk::provider_authenticated_from_map(provider, auth_map) {
             continue;
         }
         let mut line = format!("pi:{}\t{}", model.id, model.name);
@@ -143,6 +163,10 @@ pub(crate) mod test_hooks {
 
     pub fn parse_model_line(line: &str) -> Option<(&str, String)> {
         models_cmd_parse::parse_model_line(line)
+    }
+
+    pub fn print_cursor_models_via_cli_for_test(filter: Option<&str>) -> Result<(), String> {
+        super::models_cmd_cursor::print_cursor_models_via_cli(filter)
     }
 
     pub fn resolve_models_cli() -> Result<std::path::PathBuf, String> {
