@@ -58,7 +58,12 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
 }
 
 fn print_pi_models(models: &[crate::pi_sdk::PiModelListing], filter: Option<&str>) {
+    let mut printed = false;
     for model in models {
+        let provider = model.id.split('/').next().unwrap_or("");
+        if !crate::pi_sdk::is_provider_authenticated(provider) {
+            continue;
+        }
         let mut line = format!("pi:{}\t{}", model.id, model.name);
         if let Some(thinking) = model.thinking {
             line.push('\t');
@@ -70,7 +75,14 @@ fn print_pi_models(models: &[crate::pi_sdk::PiModelListing], filter: Option<&str
         }
         if line_matches_prefix(&line, filter) {
             print_stdout_line(MALVIN_WHO, &line);
+            printed = true;
         }
+    }
+    if printed {
+        print_stdout_line(
+            MALVIN_WHO,
+            "Note: pi model list is cached; see `pi --help` to update it.",
+        );
     }
 }
 

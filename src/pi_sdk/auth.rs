@@ -22,6 +22,12 @@ pub fn ensure_pi_authenticated(model: &str) -> Result<(), AuthError> {
     Ok(())
 }
 
+pub fn is_provider_authenticated(provider: &str) -> bool {
+    provider_auth_env_keys(provider).is_none_or(|keys| {
+        keys.iter().any(|k| env_nonempty(k))
+    })
+}
+
 #[must_use]
 pub(crate) fn provider_auth_env_keys(provider: &str) -> Option<&'static [&'static str]> {
     provider_auth_env_keys_primary(provider).or_else(|| provider_auth_env_keys_secondary(provider))
@@ -70,9 +76,28 @@ mod tests {
     }
 
     #[test]
-    fn unknown_provider_skips_env_gate_when_binary_present() {
-        if resolve_pi_bin().is_ok() {
-            assert!(ensure_pi_authenticated("pi:some-unknown-provider/model-x").is_ok());
-        }
+    fn is_provider_authenticated_checks_known_and_unknown_providers() {
+        // Known provider without key → false
+        crate::acp::with_env("OPENAI_API_KEY", None, || {
+            assert!(!is_provider_authenticated("openai"));
+        });
+        // Known provider with key → true
+        crate::acp::with_env("OPENAI_API_KEY", Some("test-key"), || {
+            assert!(is_provider_authenticated("openai"));
+        });
+        // Unknown provider → true (permissive, no keys to check)
+        assert!(is_provider_authenticated("some-unknown"));
+    }
+
+    #[test]
+    fn is_provider_authenticated_checks_primary_and_secondary() {
+        crate::acp::with_env("DEEPSEEK_API_KEY", Some("test-key"), || {
+            assert!(is_provider_authenticated("deepseek"));
+            assert!(is_provider_authenticated("deep-seek"));
+        });
+        crate::acp::with_env("DEEPSEEK_API_KEY", None, || {
+            assert!(!is_provider_authenticated("deepseek"));
+        });
     }
 }
+

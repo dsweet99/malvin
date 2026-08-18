@@ -10,7 +10,7 @@ mod protocol;
 mod session_io;
 mod session_spawn;
 
-pub use auth::ensure_pi_authenticated;
+pub use auth::{ensure_pi_authenticated, is_provider_authenticated};
 pub use discover::{pi_missing_binary_message, resolve_pi_bin};
 pub use models_list::{
     list_pi_models_sync, pi_list_models_timeout, PiModelListing, DEFAULT_PI_LIST_MODELS_TIMEOUT_MS,

@@ -1,8 +1,9 @@
 use crate::acp::{
     AgentRetryOutcome, agent_string_is_cannot_use_model,
     agent_string_is_openrouter_billing_failure, agent_string_is_upgrade_plan,
-    emit_operational_upgrade_plan_stop, operational_upgrade_plan_for_emit, plan_agent_retry,
-    retries_noun, upgrade_plan_stream_from_buffer,
+    agent_string_is_usage_limit, emit_operational_upgrade_plan_stop,
+    operational_upgrade_plan_for_emit, plan_agent_retry, retries_noun,
+    upgrade_plan_stream_from_buffer,
 };
 use crate::support_paths::DEFAULT_MAX_ACP_RETRIES;
 use std::time::Duration;
@@ -68,6 +69,23 @@ fn cannot_use_model_errors_do_not_retry() {
     let msg = "Error: Cannot use this model with that provider";
     assert!(agent_string_is_cannot_use_model(msg));
     let err = plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS).expect_err("invalid model must fail fast");
+    assert_eq!(err.0, msg);
+}
+
+#[test]
+fn usage_limit_substring_is_detected_case_insensitively() {
+    assert!(agent_string_is_usage_limit("You've hit your usage limit"));
+    assert!(agent_string_is_usage_limit(
+        "Error: YOU'VE HIT YOUR USAGE LIMIT\nSwitch to a different model"
+    ));
+    assert!(!agent_string_is_usage_limit("timed out"));
+    assert!(!agent_string_is_usage_limit("usage is fine"));
+}
+
+#[test]
+fn usage_limit_errors_do_not_retry_even_with_high_max() {
+    let msg = "You've hit your usage limit\nYou've saved $2502 on API model usage this month with Ultra.";
+    let err = plan_agent_retry(msg, 1, 9999).expect_err("usage limit must fail fast");
     assert_eq!(err.0, msg);
 }
 
