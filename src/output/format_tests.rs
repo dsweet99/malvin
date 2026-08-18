@@ -127,8 +127,8 @@ fn exported_constants_match_public_contract() {
     assert_eq!(MALVIN_WHO, WHO_O);
     assert_eq!(super::WARNING_WHO, "w");
     assert_eq!(super::ERROR_WHO, "e");
-    assert_eq!(format_acp_directional_tag_prefix('>', "kpop"), WHO_U);
-    assert_eq!(format_acp_directional_tag_prefix('<', "kpop"), WHO_M);
+    assert_eq!(format_acp_directional_tag_prefix('>', "router"), WHO_U);
+    assert_eq!(format_acp_directional_tag_prefix('<', "router"), WHO_M);
 }
 
 #[test]

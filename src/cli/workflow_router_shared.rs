@@ -26,7 +26,7 @@ pub(crate) fn prefer_gate_outcome_over_summarize<T>(
 }
 
 #[cfg(test)]
-fn kpop_workflow_context_with_gates(
+fn router_workflow_context_with_gates(
     artifacts: &RunArtifacts,
     opts: crate::workflow_context::PromptModelOpts<'_>,
     include_quality_gates: bool,
@@ -43,12 +43,12 @@ fn kpop_workflow_context_with_gates(
 }
 
 #[cfg(test)]
-pub(crate) fn kpop_workflow_context(
+pub(crate) fn router_workflow_context(
     artifacts: &RunArtifacts,
     model: &str,
     git: bool,
 ) -> Result<WorkflowRenderContext, String> {
-    kpop_workflow_context_with_gates(
+    router_workflow_context_with_gates(
         artifacts,
         crate::workflow_context::PromptModelOpts::new(model, git),
         true,
@@ -56,12 +56,12 @@ pub(crate) fn kpop_workflow_context(
 }
 
 #[cfg(test)]
-pub(crate) fn kpop_workflow_context_without_gates(
+pub(crate) fn router_workflow_context_without_gates(
     artifacts: &RunArtifacts,
     model: &str,
     git: bool,
 ) -> Result<WorkflowRenderContext, String> {
-    kpop_workflow_context_with_gates(
+    router_workflow_context_with_gates(
         artifacts,
         crate::workflow_context::PromptModelOpts::new(model, git),
         false,
@@ -128,7 +128,7 @@ fn restore_session_dotfiles_for_gates(
     }
 }
 
-pub(crate) fn run_kpop_workspace_gates(
+pub(crate) fn run_router_workspace_gates(
     artifacts: &RunArtifacts,
     session_dotfile_backups: &SessionDotfileBackups,
     restore_malvin_checks: bool,
@@ -156,19 +156,19 @@ pub(crate) fn prefer_gate_outcome_over_post_gate_cleanup(
 }
 
 #[cfg(test)]
-pub(crate) fn post_kpop_session_gates(
+pub(crate) fn post_router_session_gates(
     command: &str,
     artifacts: &RunArtifacts,
     session_dotfile_backups: &SessionDotfileBackups,
     restore_malvin_checks: bool,
 ) -> Result<(), String> {
-    if run_kpop_workspace_gates(artifacts, session_dotfile_backups, restore_malvin_checks).is_ok() {
+    if run_router_workspace_gates(artifacts, session_dotfile_backups, restore_malvin_checks).is_ok() {
         return Ok(());
     }
     write_checks_do_not_pass_for_artifacts(artifacts)?;
     Err(format_workspace_gate_failure(
         command,
-        "workspace quality gates did not pass after the kpop session",
+        "workspace quality gates did not pass after the router session",
     ))
 }
 
@@ -179,14 +179,14 @@ mod kiss_cov_gate_refs {
 
     #[test]
     fn kiss_cov_unit_names() {
-        let _ = stringify!(kpop_workflow_context_with_gates);
-        let _ = stringify!(kpop_workflow_context);
-        let _ = stringify!(kpop_workflow_context_without_gates);
+        let _ = stringify!(router_workflow_context_with_gates);
+        let _ = stringify!(router_workflow_context);
+        let _ = stringify!(router_workflow_context_without_gates);
         let _ = stringify!(write_checks_do_not_pass_to_review_path);
         let _ = stringify!(write_checks_do_not_pass_for_artifacts);
         let _ = stringify!(gate_iteration_context);
-        let _ = stringify!(post_kpop_session_gates);
-        let _ = stringify!(run_kpop_workspace_gates);
+        let _ = stringify!(post_router_session_gates);
+        let _ = stringify!(run_router_workspace_gates);
         let _ = stringify!(prefer_gate_outcome_over_post_gate_cleanup);
         let _ = stringify!(effective_max_loops);
         let _ = stringify!(clear_quality_gates_log_for_next_agent);

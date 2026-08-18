@@ -24,13 +24,12 @@ fn kiss_exec_witness_02_01() {
     RouterCodeExtraInput();
     RouterSummarizePromptInput();
     RouterHeaderPromptInput();
-    RouterKpopCommonPromptInput();
     RouterAPromptInput();
     RouterBPromptInput();
     GlobalOpts();
     TidyArgs();
     write_checks_do_not_pass_to_review_path();
-    post_kpop_session_gates();
+    post_router_session_gates();
 }
 
 #[test]

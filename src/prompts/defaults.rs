@@ -3,9 +3,8 @@
 mod default_files;
 
 pub use default_files::{
-    default_file, header_prompt_file, kpop_common_prompt_file, router_a_prompt_file,
-    router_b_prompt_file, HEADER_NOKPOP_MD, KPOP_COMMON_FAKE_MD, ROUTER_A_NOKPOP_MD,
-    ROUTER_B_CREATIVE_NOKPOP_MD, ROUTER_B_NOKPOP_MD,
+    default_file, header_prompt_file, router_a_prompt_file, router_b_prompt_file, ROUTER_A_MD,
+    ROUTER_B_CREATIVE_MD, ROUTER_B_MD,
 };
 
 pub const HEADER_MD: &str = "header.md";
@@ -19,16 +18,14 @@ pub const INSPIRE_SUMMARIZE_MD: &str = "inspire_summarize.md";
 pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD];
 
 pub const DEFAULT_PROMPTS: &[&str] = &[
-    KPOP_COMMON_FAKE_MD,
     "mbc2.md",
     INSPIRE_SUMMARIZE_MD,
     "init_constraints.md",
     HEADER_MD,
-    HEADER_NOKPOP_MD,
     DO_HEADER_MD,
-    ROUTER_A_NOKPOP_MD,
-    ROUTER_B_NOKPOP_MD,
-    ROUTER_B_CREATIVE_NOKPOP_MD,
+    ROUTER_A_MD,
+    ROUTER_B_MD,
+    ROUTER_B_CREATIVE_MD,
     ROUTER_CODE_EXTRA_MD,
     ROUTER_SUMMARIZE_MD,
     WRITE_A_MD,
@@ -124,8 +121,8 @@ mod router_header_embed_tests {
     use std::path::Path;
 
     use super::{
-        default_file, DO_HEADER_MD, HEADER_MD, ROUTER_A_NOKPOP_MD, ROUTER_B_CREATIVE_NOKPOP_MD,
-        ROUTER_B_NOKPOP_MD, ROUTER_SUMMARIZE_MD,
+        default_file, DO_HEADER_MD, HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD,
+        ROUTER_SUMMARIZE_MD,
     };
     use crate::config::DEFAULT_CLI_MODEL;
     use crate::artifacts::create_run_artifacts;
@@ -133,9 +130,8 @@ mod router_header_embed_tests {
     use crate::prompts::{PromptStore, render_header};
     use crate::router_flow::router_flow_prompt::{
         build_router_a_prompt, build_router_b_prompt, build_router_header_prompt,
-        build_router_kpop_common_prompt, build_router_summarize_prompt, prepare_router_prompt_store,
-        RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput,
-        RouterKpopCommonPromptInput, RouterSummarizePromptInput,
+        build_router_summarize_prompt, prepare_router_prompt_store, RouterAPromptInput,
+        RouterBPromptInput, RouterHeaderPromptInput, RouterSummarizePromptInput,
     };
 
     #[test]
@@ -165,16 +161,6 @@ mod router_header_embed_tests {
         })
         .expect("header turn");
         assert!(!header_turn.contains("{{"));
-        let kpop = build_router_kpop_common_prompt(RouterKpopCommonPromptInput {
-            store: &store,
-            artifacts: &artifacts,
-            model: DEFAULT_CLI_MODEL,
-            git: false,
-            max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
-            exp_log: &artifacts.gate_exp_log_path(1),
-        })
-        .expect("kpop common");
-        assert!(!kpop.contains("{{"));
         let a = build_router_a_prompt(RouterAPromptInput {
             store: &store,
             artifacts: &artifacts,
@@ -231,9 +217,9 @@ mod router_header_embed_tests {
             summarize.contains("Write a summary of this entire session"),
             "router_summarize.md body must be rendered: {summarize}"
         );
-        assert!(default_file(ROUTER_A_NOKPOP_MD).is_some());
-        assert!(default_file(ROUTER_B_NOKPOP_MD).is_some());
-        assert!(default_file(ROUTER_B_CREATIVE_NOKPOP_MD).is_some());
+        assert!(default_file(ROUTER_A_MD).is_some());
+        assert!(default_file(ROUTER_B_MD).is_some());
+        assert!(default_file(ROUTER_B_CREATIVE_MD).is_some());
         assert!(default_file(ROUTER_SUMMARIZE_MD).is_some());
         assert!(default_file(DO_HEADER_MD).is_some());
         assert!(default_file(HEADER_MD).is_some());

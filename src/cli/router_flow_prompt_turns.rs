@@ -1,13 +1,11 @@
 use crate::artifacts::RunArtifacts;
 use crate::orchestrator::workflow_context_paths_only;
 use crate::prompts::{
-    PromptError, PromptStore, header_prompt_file, kpop_common_prompt_file, router_a_prompt_file,
-    router_b_prompt_file,
+    PromptError, PromptStore, header_prompt_file, router_a_prompt_file, router_b_prompt_file,
 };
-use std::path::Path;
 
 use super::{
-    format_exp_log_for_prompt, render_router_code_extra, RouterCodeExtraInput,
+    render_router_code_extra, RouterCodeExtraInput,
 };
 
 pub(crate) struct RouterHeaderPromptInput<'a> {
@@ -26,34 +24,6 @@ pub(crate) fn build_router_header_prompt(
         .render_prompt_only(header_prompt_file(), ctx.as_map())
         .map_err(|e: PromptError| e.0)?;
     Ok(body.trim().to_string())
-}
-
-pub(crate) struct RouterKpopCommonPromptInput<'a> {
-    pub store: &'a PromptStore,
-    pub artifacts: &'a RunArtifacts,
-    pub model: &'a str,
-    pub git: bool,
-    pub max_hypotheses: usize,
-    pub exp_log: &'a Path,
-}
-
-pub(crate) fn build_router_kpop_common_prompt(
-    input: RouterKpopCommonPromptInput<'_>,
-) -> Result<String, String> {
-    let mut ctx = workflow_context_paths_only(input.artifacts, input.model, input.git);
-    let base = input.artifacts.work_dir.as_path();
-    ctx.insert(
-        "exp_log".to_string(),
-        format_exp_log_for_prompt(input.exp_log, base),
-    );
-    ctx.insert(
-        "max_hypotheses".to_string(),
-        input.max_hypotheses.to_string(),
-    );
-    input
-        .store
-        .render_prompt_only(kpop_common_prompt_file(), ctx.as_map())
-        .map_err(|e: PromptError| e.0)
 }
 
 pub(crate) struct RouterAPromptInput<'a> {

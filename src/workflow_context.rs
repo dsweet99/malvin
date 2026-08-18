@@ -51,17 +51,17 @@ fn insert_review_artifact_paths(
     );
 }
 
-fn insert_kpop_and_workspace_paths(
+fn insert_run_meta_and_workspace_paths(
     context: &mut HashMap<String, String>,
     artifacts: &RunArtifacts,
     base: &Path,
 ) {
-    let kpop_dir = artifacts
+    let run_meta_dir = artifacts
         .run_dir
-        .join("_kpop")
+        .join("_run")
         .canonicalize()
-        .unwrap_or_else(|_| artifacts.run_dir.join("_kpop"));
-    insert_formatted(context, "kpop_log_dir", &kpop_dir, base);
+        .unwrap_or_else(|_| artifacts.run_dir.join("_run"));
+    insert_formatted(context, "run_meta_dir", &run_meta_dir, base);
     insert_formatted(context, "exp_log", &artifacts.exp_log_path(), base);
     insert_formatted(
         context,
@@ -83,7 +83,7 @@ fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunA
     let base = &artifacts.work_dir;
     insert_formatted(context, "plan_path", &artifacts.plan_path, base);
     insert_formatted(context, "user_request_path", &artifacts.plan_path, base);
-    insert_kpop_and_workspace_paths(context, artifacts, base);
+    insert_run_meta_and_workspace_paths(context, artifacts, base);
     insert_review_artifact_paths(context, artifacts, base);
     insert_quality_gates_log_paths(context, artifacts, base);
 }
@@ -158,11 +158,7 @@ pub fn workflow_context(
         "max_hypotheses".to_string(),
         crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES.to_string(),
     );
-    let kpop_content = prompts.render_prompt_only(
-        crate::prompts::kpop_common_prompt_file(),
-        context.as_map(),
-    )?;
-    context.insert("kpop".to_string(), kpop_content);
+    let _ = prompts;
     Ok(context)
 }
 

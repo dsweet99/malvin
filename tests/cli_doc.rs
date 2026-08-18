@@ -135,10 +135,6 @@ fn bare_malvin_shows_commands_only_and_exits_zero() {
         "bare stdout must list tidy subcommand: {bare_s}"
     );
     assert!(
-        !bare_s.lines().any(|line| line.starts_with("  kpop ")),
-        "bare stdout must omit removed kpop subcommand: {bare_s}"
-    );
-    assert!(
         !bare_s.lines().any(|line| line.starts_with("  code ")),
         "bare stdout must omit deprecated code subcommand: {bare_s}"
     );

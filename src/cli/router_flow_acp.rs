@@ -38,7 +38,6 @@ pub(crate) struct RouterAcpIterationInput<'a> {
     pub shared: &'a SharedOpts,
     pub agent_loop: usize,
     pub session_end: RunTimingSessionEnd,
-    pub max_hypotheses: usize,
 }
 
 pub(crate) type SessionEndParts<'a> = (

@@ -4,11 +4,11 @@ use malvin::{
 };
 
 #[test]
-fn kpop_log_oom_prose_does_not_trigger_retry_reason() {
+fn session_log_oom_prose_does_not_trigger_retry_reason() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
     std::fs::write(
-        artifacts.log_path("kpop"),
+        artifacts.log_path("router"),
         "Our test output exceeded memory limit in the benchmark harness\n",
     )
     .expect("write");

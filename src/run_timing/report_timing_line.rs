@@ -223,6 +223,6 @@ mod tests {
             "phase_display_names": { "implement": "raw" }
         });
         assert_eq!(phase_display_name(&json, "implement"), "raw");
-        assert_eq!(phase_display_name(&json, "kpop"), "kpop");
+        assert_eq!(phase_display_name(&json, "router"), "router");
     }
 }

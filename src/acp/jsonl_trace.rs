@@ -74,7 +74,7 @@ mod tests {
     fn trace_jsonl_append_records_raw_line_before_human_summary() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let path = tmp.path().join("trace.jsonl");
-        let trace = AcpJsonlTrace::new(path.clone(), "kpop".to_string());
+        let trace = AcpJsonlTrace::new(path.clone(), "router".to_string());
         let raw = r#"{"jsonrpc":"2.0","method":"session/update","params":{"update":{"sessionUpdate":"tool_call","toolCallId":"tool_x","kind":"read","status":"pending","title":"Read"}}}"#;
         trace.append_line("in", raw);
         let text = std::fs::read_to_string(path).expect("read");

@@ -7,7 +7,7 @@ Discover how the workspace runs quality gates today and write `.malvin/checks` (
 | | |
 |---|---|
 | Input | None (fixed request from `init_constraints.md`) |
-| Loop | Default router: `header_nokpop` → `kpop_common_fake` → `router_a_nokpop` → optional `router_b_nokpop`; exit `router_summarize`; outer `--max-loops` sessions |
+| Loop | Default router: `header` → `router_a` → optional `router_b`; exit `router_summarize`; outer `--max-loops` sessions |
 | Gates | Off by default — init asks the agent to create `.malvin/checks`; harness gates are not forced |
 | Fast path | **None** — always runs the router |
 | Requires | Agent backend for chosen `--model` |

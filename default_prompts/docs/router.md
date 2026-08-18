@@ -1,6 +1,6 @@
 # malvin (default route)
 
-Outer agent sessions (`--max-loops`): each session sends `header_nokpop.md`, then `kpop_common_fake.md`, then `router_a_nokpop.md`. A lone-line `__MALVIN_DONE__` in the `router_a` reply can stop the loop (optionally after `--gates` checks). Otherwise the same session receives `router_b_nokpop.md` (or `router_b_creative_nokpop.md` with `--creative`), and another outer session may start when budget remains. When exiting, `router_summarize.md` runs once on the final open session.
+Outer agent sessions (`--max-loops`): each session sends `header.md`, then `router_a.md`. A lone-line `__MALVIN_DONE__` in the `router_a` reply can stop the loop (optionally after `--gates` checks). Otherwise the same session receives `router_b.md` (or `router_b_creative.md` with `--creative`), and another outer session may start when budget remains. When exiting, `router_summarize.md` runs once on the final open session.
 
 ## Summary
 
@@ -13,7 +13,7 @@ Outer agent sessions (`--max-loops`): each session sends `header_nokpop.md`, the
 
 ## Intention
 
-Read the user request (on disk as `plan_*.md` / `{{ user_request_path }}`), ask whether requirements are still unsatisfied (`router_a_nokpop.md`), and either stop on `__MALVIN_DONE__` or continue with `router_b_nokpop.md` (or `router_b_creative_nokpop.md` with `--creative`) to satisfy them. When the outer loop decides to exit, send `router_summarize.md` once on that final already-open coder session before teardown. Repeat for another outer agent lifetime when `--max-loops` allows and stop conditions are not met.
+Read the user request (on disk as `plan_*.md` / `{{ user_request_path }}`), ask whether requirements are still unsatisfied (`router_a.md`), and either stop on `__MALVIN_DONE__` or continue with `router_b.md` (or `router_b_creative.md` with `--creative`) to satisfy them. When the outer loop decides to exit, send `router_summarize.md` once on that final already-open coder session before teardown. Repeat for another outer agent lifetime when `--max-loops` allows and stop conditions are not met.
 
 ## Usage
 
@@ -42,7 +42,7 @@ See `malvin --doc`. Notable for the default route:
 |------|--------|
 | `--max-loops` | Outer agent-session budget (default 1). Tenacious expands to 9999 unless this flag is set on the command line. |
 | `--max-hypotheses` | Hypothesis budget (default 5). When omitted, `[default_workflow].max_hypotheses` is used. Explicit CLI wins over config. |
-| `-g` / `--gates` | When `router_a` emits `__MALVIN_DONE__`, run workspace `.malvin/checks`. Pass stops success; fail continues (new outer session). Exhausted budget with failing gates fails the run after exit summarize. Also injects check text into `router_a_nokpop.md` via `{{ code_extra }}`. |
+| `-g` / `--gates` | When `router_a` emits `__MALVIN_DONE__`, run workspace `.malvin/checks`. Pass stops success; fail continues (new outer session). Exhausted budget with failing gates fails the run after exit summarize. Also injects check text into `router_a.md` via `{{ code_extra }}`. |
 | `--creative` | Use the creative router_b prompt for the optional work turn |
 | `--no-tenacious` | Keep normal `--max-loops` / `--max-acp-retries` (default tenacious expands both) |
 | `--quiet` / `-q` | Stdout shows only `MALVIN_DM_*` bodies (not `-b`). Plain `--do` is already DM-body-only without `--verbose` |
@@ -54,10 +54,9 @@ Each outer session opens one coder session and sends:
 
 | Turn | Piece | Role |
 |------|-------|------|
-| 1 | `header_nokpop.md` | Standard Malvin context |
-| 2 | `kpop_common_fake.md` | Abbreviated KPop macro stub (full Popper loop is not selectable) |
-| 3 | `router_a_nokpop.md` | Ask whether requirements are unsatisfied; optional `{{ code_extra }}` when `--gates` |
-| 4 (optional) | `router_b_nokpop.md` or `router_b_creative_nokpop.md` | Run only when `router_a` did **not** emit `__MALVIN_DONE__` alone on a line; `--creative` selects `router_b_creative_nokpop.md` |
+| 1 | `header.md` | Standard Malvin context |
+| 2 | `router_a.md` | Ask whether requirements are unsatisfied; optional `{{ code_extra }}` when `--gates` |
+| 3 (optional) | `router_b.md` or `router_b_creative.md` | Run only when `router_a` did **not** emit `__MALVIN_DONE__` alone on a line; `--creative` selects `router_b_creative.md` |
 | Exit only | `router_summarize.md` | **Once per run**, when exiting the outer loop: pass to the same already-open final coder session before teardown |
 
 ### Stop / continue (without `--gates`)
@@ -79,9 +78,8 @@ Gates run **only** when `__MALVIN_DONE__` was seen:
 
 | Key | Required by | Value source |
 |-----|-------------|--------------|
-| `user_request_path` | `router_a_nokpop.md` | run artifacts |
-| `max_hypotheses` / `exp_log` | still injected for the kpop slot; unused by `kpop_common_fake.md` | `--max-hypotheses` / `[default_workflow]` + gate exp log |
-| `code_extra` | `router_a_nokpop.md` | `router_code_extra.md` when `--gates` |
+| `user_request_path` | `router_a.md` | run artifacts |
+| `code_extra` | `router_a.md` | `router_code_extra.md` when `--gates` |
 
 When the outer loop decides to exit, malvin sends `router_summarize.md` on the same final coder session, then ends the session. Intermediate sessions that continue do not receive summarize.
 
@@ -99,11 +97,8 @@ Missing section falls back to 5. Explicit `--max-hypotheses` wins over this sect
 ## Examples
 
 ```text
-malvin "add a CLI flag for dry-run"
-malvin --creative "explore product ideas then implement"
-malvin --max-loops 3 notes/task.md
-malvin --max-hypotheses 8 notes/task.md
-malvin --gates --max-loops 5 notes/task.md
-malvin -g --max-loops 5 notes/task.md
-malvin --no-tenacious --max-loops 1 "small fix"
+malvin "Investigate flaky tests"
+malvin plan.md
+malvin --gates "Get the gates to pass"
+malvin --creative --max-loops 3 notes/idea.md
 ```

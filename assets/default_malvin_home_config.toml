@@ -21,7 +21,7 @@ usd_per_microtoken_cache_read = 0
 usd_per_microtoken_cache_write = 0
 
 [review]
-# Hypothesis budget for `malvin write` Review and Plan KPop sessions (not agent.max_hypotheses).
+# Hypothesis budget for `malvin write` Review and Plan sessions (not agent.max_hypotheses).
 max_hypotheses = 10
 
 [default_workflow]

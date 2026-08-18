@@ -5,7 +5,7 @@ use malvin::{canonical_workflow_name, resolve_session_log_path, resolve_workspac
 fn canonical_workflow_name_maps_adaptix_to_inspire() {
     assert_eq!(canonical_workflow_name("adaptix"), "inspire");
     assert_eq!(canonical_workflow_name("inspire"), "inspire");
-    assert_eq!(canonical_workflow_name("kpop"), "kpop");
+    assert_eq!(canonical_workflow_name("tidy"), "tidy");
 }
 
 #[test]
@@ -34,7 +34,7 @@ fn resolve_session_log_path_returns_canonical_when_missing() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let run = tmp.path().join("run");
     std::fs::create_dir_all(&run).expect("mkdir");
-    assert_eq!(resolve_session_log_path(&run, "kpop"), run.join("kpop.log"));
+    assert_eq!(resolve_session_log_path(&run, "tidy"), run.join("tidy.log"));
 }
 
 #[test]
@@ -42,9 +42,9 @@ fn resolve_session_log_path_resolves_non_inspire_workflow() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let run = tmp.path().join("run");
     std::fs::create_dir_all(&run).expect("mkdir");
-    let kpop = run.join("kpop.log");
-    std::fs::write(&kpop, "kpop transcript\n").expect("write");
-    assert_eq!(resolve_session_log_path(&run, "kpop"), kpop);
+    let tidy = run.join("tidy.log");
+    std::fs::write(&tidy, "tidy transcript\n").expect("write");
+    assert_eq!(resolve_session_log_path(&run, "tidy"), tidy);
 }
 
 #[test]

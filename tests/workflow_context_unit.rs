@@ -42,7 +42,7 @@ fn workflow_context_paths_include_review_and_gates_log() {
         ctx.get("quality_gates_path").map(String::as_str),
         ctx.get("quality_gates_log").map(String::as_str),
     );
-    assert!(ctx.contains_key("kpop_log_dir"));
+    assert!(ctx.contains_key("run_meta_dir"));
 }
 
 #[test]
@@ -69,7 +69,7 @@ fn workflow_context_paths_use_relative_prompt_paths() {
         "malvin_output_path",
         "workspace_dir",
         "quality_gates_log",
-        "kpop_log_dir",
+        "run_meta_dir",
         "exp_log",
         "logs_dir",
     ] {

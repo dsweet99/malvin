@@ -10,7 +10,7 @@ pub(crate) use run::{TIDY_ROUTER_REQUEST, tidy_shared_with_gates_forced};
 
 #[must_use]
 pub(crate) fn effective_tidy_max_loops(max_loops: usize) -> usize {
-    crate::cli::workflow_kpop_shared::effective_max_loops(max_loops)
+    crate::cli::workflow_router_shared::effective_max_loops(max_loops)
 }
 
 #[derive(Args, Debug, Clone)]

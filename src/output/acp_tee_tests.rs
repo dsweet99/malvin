@@ -7,7 +7,7 @@ use crate::output::stdout_log_pair::acp_tee_log_prefix;
 use crate::terminal_palette::ansi_tool_white;
 
 #[test]
-fn kpop_h1_and_h5_timestamp_present_on_acp_tee_helpers() {
+fn timestamp_present_on_acp_tee_helpers() {
     let ts = "20260413.121314.015";
     let ctx = AcpTeeLineFmt {
         ts,
@@ -29,7 +29,7 @@ fn kpop_h1_and_h5_timestamp_present_on_acp_tee_helpers() {
     let prefix = acp_tee_log_prefix(&AcpTeeLineFmt {
         ts,
         direction: AcpTeeDirection::FromAgent,
-        who: "<kpop",
+        who: "<router",
         line: "",
         dim_payload: false,
     });

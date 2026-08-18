@@ -21,7 +21,7 @@ mod code_flow_a;
 pub(crate) mod flow_prompt_combine;
 pub(crate) mod loop_opts;
 pub(crate) mod default_output_path;
-pub(crate) mod workflow_kpop_shared;
+pub(crate) mod workflow_router_shared;
 pub(crate) mod one_shot_session;
 
 pub use crate::agent_backend::{build_agent_backend, build_agent_backend_with_tee};
@@ -45,8 +45,8 @@ mod acp_post_run_tests;
 #[path = "acp_post_run_timing_print_tests.rs"]
 mod acp_post_run_timing_print_tests;
 #[cfg(test)]
-#[path = "workflow_kpop_shared_tests.rs"]
-mod workflow_kpop_shared_tests;
+#[path = "workflow_router_shared_tests.rs"]
+mod workflow_router_shared_tests;
 #[cfg(test)]
 #[path = "models_cmd_tests.rs"]
 mod models_cmd_tests;

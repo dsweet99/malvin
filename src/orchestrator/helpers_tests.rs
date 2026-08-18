@@ -115,7 +115,7 @@ fn insert_artifact_paths_populates_context() {
     };
     let ctx = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, false);
     assert!(ctx.contains_key("plan_path"));
-    assert!(ctx.contains_key("kpop_log_dir"));
+    assert!(ctx.contains_key("run_meta_dir"));
     assert!(ctx.contains_key("review_path"));
     assert!(ctx.contains_key("result_path"));
     assert!(ctx.contains_key("quality_gates_log"));

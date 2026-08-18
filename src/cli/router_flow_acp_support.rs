@@ -2,14 +2,12 @@ use crate::artifacts::{
     ensure_gate_exp_log_file, GitignoreBackup, MalvinChecksBackup, MalvinConfigWorkspaceBackup,
     RunArtifacts, SessionDotfileBackups, VisionBackup,
 };
-use crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES;
 use crate::router_flow::router_flow_no_work::chat_has_malvin_done;
 use crate::router_flow::router_flow_prompt;
 use std::path::Path;
 
 use super::router_flow_coder_prompts::{
     run_router_a_coder_prompt, run_router_b_coder_prompt, run_router_header_coder_prompt,
-    run_router_kpop_common_coder_prompt,
 };
 use super::RouterAcpIterationInput;
 
@@ -49,7 +47,7 @@ pub(crate) async fn run_router_turns(
     let work_dir = input.artifacts.work_dir.as_path();
     let iteration_backups = SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)?;
     let model = input.shared.model.canonical();
-    run_router_header_and_kpop(input, log_path, &model).await?;
+    run_router_header(input, log_path, &model).await?;
     run_router_a_coder_prompt(
         input.client,
         &router_flow_prompt::build_router_a_prompt(router_flow_prompt::RouterAPromptInput {
@@ -69,7 +67,7 @@ pub(crate) async fn run_router_turns(
     })
 }
 
-async fn run_router_header_and_kpop(
+async fn run_router_header(
     input: &mut RouterAcpIterationInput<'_>,
     log_path: &Path,
     model: &str,
@@ -83,23 +81,8 @@ async fn run_router_header_and_kpop(
         },
     )?;
     run_router_header_coder_prompt(input.client, &header, log_path).await?;
-    let exp_log = ensure_gate_exp_log_file(input.artifacts, 1).map_err(|e| e.to_string())?;
-    let max_hypotheses = if input.max_hypotheses == 0 {
-        DEFAULT_MAX_HYPOTHESES
-    } else {
-        input.max_hypotheses
-    };
-    let kpop_common = router_flow_prompt::build_router_kpop_common_prompt(
-        router_flow_prompt::RouterKpopCommonPromptInput {
-            store: input.prompt_store,
-            artifacts: input.artifacts,
-            model,
-            git: input.shared.git,
-            max_hypotheses,
-            exp_log: &exp_log,
-        },
-    )?;
-    run_router_kpop_common_coder_prompt(input.client, &kpop_common, log_path).await
+    let _exp_log = ensure_gate_exp_log_file(input.artifacts, 1).map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 async fn finish_router_a_maybe_b(

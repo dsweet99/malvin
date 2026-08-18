@@ -115,9 +115,9 @@ async fn run_router_body(
         prompt_store: &prep.prompt_store,
         shared,
         max_loops: router_args.max_loops,
-        max_hypotheses: router_args.max_hypotheses,
     })
     .await?;
+    let _ = router_args.max_hypotheses;
 
     let r = crate::acp_post_run::merge_acp_restore_check_abort_then_print_timing(
         loop_outcome.last_acp,

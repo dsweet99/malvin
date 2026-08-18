@@ -23,7 +23,7 @@ Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`,
 
 | Command | Purpose |
 |---------|---------|
-| *(default)* | Bare `malvin REQUEST` — `header_nokpop` → `kpop_common_fake` → `router_a_nokpop` → optional `router_b_nokpop`; exit `router_summarize`; outer `--max-loops` sessions |
+| *(default)* | Bare `malvin REQUEST` — `header` → `router_a` → optional `router_b`; exit `router_summarize`; outer `--max-loops` sessions |
 | `--do` | One-shot agent turn (non-looping) |
 | `init` | Discover quality gates and write `.malvin/checks` via the default router and `init_constraints.md` |
 | `tidy` | Fix quality gates via the default router with fixed request `Get the gates to pass.` and `--gates` forced on |
@@ -70,7 +70,7 @@ By default gate-loop commands (`init`, `tidy`, `write`) expand to `--max-loops=9
 
 ### `-g` / `--gates`
 
-Inject workspace check command text into agent prompts and, for workflows that use harness gates as loop criteria, treat failures as loop or exit criteria. Off by default. On bare `malvin REQUEST`, `-g` / `--gates` also runs workspace `.malvin/checks` after each outer agent session: pass stops success; fail continues the outer loop (even when KPop chat said no work remaining); exhausted budget with failing gates fails the run. When work runs, check text is still injected into the work prompt. `malvin tidy` always forces `--gates` on (same harness criteria as bare `malvin REQUEST --gates`). Agent prompts may still include available `.malvin/checks` guidance when this option is off.
+Inject workspace check command text into agent prompts and, for workflows that use harness gates as loop criteria, treat failures as loop or exit criteria. Off by default. On bare `malvin REQUEST`, `-g` / `--gates` also runs workspace `.malvin/checks` after each outer agent session: pass stops success; fail continues the outer loop (even when the agent said no work remaining); exhausted budget with failing gates fails the run. When work runs, check text is still injected into the work prompt. `malvin tidy` always forces `--gates` on (same harness criteria as bare `malvin REQUEST --gates`). Agent prompts may still include available `.malvin/checks` guidance when this option is off.
 
 
 
@@ -120,7 +120,7 @@ Use **`malvin init`** to discover and write `.malvin/checks` explicitly (default
 
 With `--gates` (and always for `malvin tidy`), malvin runs workspace quality gates from `.malvin/checks` at the repo git root (one shell command per non-empty, non-comment line). Full-line comments starting with `#` are ignored.
 
-Other invocations (`--do`, bare `malvin REQUEST`, `inspire`, `write`) do not require `.malvin/checks` at startup and may run outside a git repo. With `--gates`, bare `malvin REQUEST` and `malvin tidy` run workspace gates after each outer session and continue that outer loop when they fail (see the default-route section of `malvin --doc`). Without `--gates` (the default for non-tidy commands), malvin does not run those checks directly on the default route. `header_nokpop.md` notes about checks lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
+Other invocations (`--do`, bare `malvin REQUEST`, `inspire`, `write`) do not require `.malvin/checks` at startup and may run outside a git repo. With `--gates`, bare `malvin REQUEST` and `malvin tidy` run workspace gates after each outer session and continue that outer loop when they fail (see the default-route section of `malvin --doc`). Without `--gates` (the default for non-tidy commands), malvin does not run those checks directly on the default route. `header.md` notes about checks lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
 
 ### `-h` / `--help`
 
@@ -137,13 +137,13 @@ Every agent-backed command creates `~/.malvin_home/logs/<hash>/<timestamp>_<toke
 | File | Role |
 |------|------|
 | `plan_<random>.md` or `request.md` | Copy of user input for this run |
-| `kpop.log`, `do.log`, `router_1.log`, `router_2.log`, `inspire.log`, … | Per-iteration or per-prompt transcripts |
+| `do.log`, `router_1.log`, `router_2.log`, `inspire.log`, … | Per-iteration or per-prompt transcripts |
 | `stdout.log` | Tee of agent stdout — **narrative** channel |
 | `trace.jsonl` | Audit record (sdk-shaped JSONL for Cursor SDK; Mini uses its own event shapes) — **authoritative** for semantics (tool results, shrink/fork, LLM usage) |
 | `prompts.log` | Outgoing prompts (names only, or full bodies with `--verbose`) |
 | `quality_gates.log` | Workspace gate commands and output when gates run |
 | `run_timing.json` | Wall/LLM timing, token/step aggregates, and optional cost |
-| `_kpop/exp_log_*.md` | KPop experiment logs (gate-loop and related workflows) |
+| `_run/exp_log_*.md` | Experiment / gate-loop logs |
 | `result.md` | `ABORT:` prefix stops workflows that check it |
 
 ### Session footnotes (`TIMING` / `COST`)

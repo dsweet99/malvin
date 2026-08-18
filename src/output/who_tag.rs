@@ -122,7 +122,7 @@ mod tests {
 
     #[test]
     fn directional_prefix_maps_to_single_char_tags() {
-        assert_eq!(format_acp_directional_tag_prefix('>', "kpop"), WHO_U);
-        assert_eq!(format_acp_directional_tag_prefix('<', "kpop"), WHO_M);
+        assert_eq!(format_acp_directional_tag_prefix('>', "router"), WHO_U);
+        assert_eq!(format_acp_directional_tag_prefix('<', "router"), WHO_M);
     }
 }

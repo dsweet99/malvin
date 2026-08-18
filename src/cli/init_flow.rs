@@ -9,7 +9,7 @@ use crate::router_flow::{run_router, RouterArgs};
 
 #[must_use]
 pub(crate) fn effective_init_max_loops(max_loops: usize) -> usize {
-    crate::cli::workflow_kpop_shared::effective_max_loops(max_loops)
+    crate::cli::workflow_router_shared::effective_max_loops(max_loops)
 }
 
 #[derive(Args, Debug, Clone)]

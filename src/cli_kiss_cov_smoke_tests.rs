@@ -59,13 +59,13 @@ fn smoke_cov_cli_cli_units_1b() {
 }
 
 #[test]
-fn smoke_cov_cli_cli_workflow_kpop_shared_units() {
-    let _ = crate::cli::workflow_kpop_shared::effective_max_loops;
-    let _ = crate::cli::workflow_kpop_shared::kpop_workflow_context;
-    let _ = crate::cli::workflow_kpop_shared::post_kpop_session_gates;
-    let _ = crate::cli::workflow_kpop_shared::run_kpop_workspace_gates;
-    let _ = crate::cli::workflow_kpop_shared::prefer_gate_outcome_over_post_gate_cleanup;
-    let _ = crate::cli::workflow_kpop_shared::clear_quality_gates_log_for_next_agent;
+fn smoke_cov_cli_cli_workflow_router_shared_units() {
+    let _ = crate::cli::workflow_router_shared::effective_max_loops;
+    let _ = crate::cli::workflow_router_shared::router_workflow_context;
+    let _ = crate::cli::workflow_router_shared::post_router_session_gates;
+    let _ = crate::cli::workflow_router_shared::run_router_workspace_gates;
+    let _ = crate::cli::workflow_router_shared::prefer_gate_outcome_over_post_gate_cleanup;
+    let _ = crate::cli::workflow_router_shared::clear_quality_gates_log_for_next_agent;
     let _ = stringify!(gate_loop_early_exit);
     let _ = stringify!(gate_early_exit_fixture);
 }

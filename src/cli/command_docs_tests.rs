@@ -48,10 +48,6 @@ fn print_doc_init_writes_subcommand_md() {
         text.contains("default router"),
         "init doc must describe router wrapper: {text}"
     );
-    assert!(
-        !text.contains("KPop"),
-        "init doc must not reference KPop session: {text}"
-    );
 }
 
 #[test]

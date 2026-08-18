@@ -94,20 +94,3 @@ impl SharedOpts {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use clap::{CommandFactory, Parser};
-
-    #[test]
-    fn no_kpop_flag_is_rejected() {
-        let err = crate::cli::args::Cli::try_parse_from(["malvin", "--no-kpop", "probe"])
-            .expect_err("--no-kpop must be inaccessible");
-        let msg = err.to_string();
-        assert!(
-            msg.contains("unexpected argument") || msg.contains("no-kpop"),
-            "expected unknown-arg error for --no-kpop, got: {msg}"
-        );
-        let help = crate::cli::args::Cli::command().render_help().to_string();
-        assert!(!help.contains("no-kpop"));
-    }
-}

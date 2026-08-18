@@ -158,7 +158,7 @@ fn format_retry_line_gates_failure_after_done() {
         crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
     let prev = artifacts.gate_exp_log_path(1);
     std::fs::create_dir_all(prev.parent().expect("parent")).expect("mkdir");
-    std::fs::write(&prev, "## Step 1 — KPOP mock\n").expect("write");
+    std::fs::write(&prev, "## Step 1 — router mock\n").expect("write");
     let line = format_retry_line(Some(2), Some(&artifacts));
     assert!(line.contains("quality gates"));
 }
@@ -228,7 +228,7 @@ fn append_gates_reason_after_done_session() {
         crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
     let prev = artifacts.gate_exp_log_path(1);
     std::fs::create_dir_all(prev.parent().expect("parent")).expect("mkdir");
-    std::fs::write(&prev, "## Step 1 — KPOP mock\n").expect("write");
+    std::fs::write(&prev, "## Step 1 — router mock\n").expect("write");
     let mut reasons = Vec::new();
     super::append_unsolved_reason(&mut reasons, &artifacts, 1);
     assert!(reasons.iter().any(|r| r.contains("quality gates")));

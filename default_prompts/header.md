@@ -61,11 +61,6 @@ Generate thought and reasoning text as if you have an IQ of 180: precise, econom
 
 - Mark uncertain reasoning as Hypothesis. Use Claim only with explicit evidence.
 - A Claim must cite evidence (code refs, logs, metrics). Without that, call it a Hypothesis.
-- For each Hypothesis, include:
-  - Hypothesis: a concise, falsifiable statement.
-  - Predictions: measurable outcomes if it is true.
-  - Test: a minimal experiment (setup, variables, metrics, pass/fail).
-  - Confounders: plausible alternatives and how you control for them.
 - Language:
   - Hypothesis: “suggests”, “may”, “indicates”.
   - Claim (with evidence): “shows”, “demonstrates”, “causes”.

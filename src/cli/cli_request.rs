@@ -24,15 +24,15 @@ mod tests {
 
     #[test]
     fn errors_when_missing() {
-        let err = require_cli_request(None, "kpop").unwrap_err();
-        assert!(err.contains("kpop") && err.contains("REQUEST"));
+        let err = require_cli_request(None, "tidy").unwrap_err();
+        assert!(err.contains("tidy") && err.contains("REQUEST"));
     }
 
     #[test]
     fn rejects_whitespace_only_request() {
         let whitespace = Some("   ".to_string());
-        let err = require_cli_request(whitespace.as_ref(), "kpop").unwrap_err();
-        assert!(err.contains("kpop") && err.contains("REQUEST"));
+        let err = require_cli_request(whitespace.as_ref(), "tidy").unwrap_err();
+        assert!(err.contains("tidy") && err.contains("REQUEST"));
     }
 
     #[test]

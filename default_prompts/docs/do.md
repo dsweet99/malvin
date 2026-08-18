@@ -1,6 +1,6 @@
 # malvin --do
 
-One **single-turn** agent session: no gate loop, no KPop experiment log, no review fan-out.
+One **single-turn** agent session: no gate loop, no experiment log, no review fan-out.
 
 ## Summary
 

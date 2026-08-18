@@ -31,11 +31,11 @@ fn seed_timing_json_with_cost(run_dir: &std::path::Path) {
 fn assert_timing_and_cost_in_log(log: &str) {
     assert!(
         log.contains("TIMING:"),
-        "router/kpop finish path must print TIMING; log={log:?}"
+        "router finish path must print TIMING; log={log:?}"
     );
     assert!(
         log.contains("COST:"),
-        "router/kpop finish path must print COST; log={log:?}"
+        "router finish path must print COST; log={log:?}"
     );
     assert!(
         !log.contains("TOKENS:"),

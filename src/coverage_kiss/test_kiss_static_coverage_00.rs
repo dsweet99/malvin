@@ -97,7 +97,7 @@ fn kiss_exec_witness_00_07() {
     register_deferred_sink();
     for_live_prompt();
     acp::prompt_trace_writer::drop();
-    open_kpop_timestamp_trace_writer();
+    open_timestamp_trace_writer();
     PromptRpcCleanup();
     clear_if_prompt_response_clears_busy();
     ReaderSpawnArgs();
@@ -133,7 +133,7 @@ fn kiss_exec_witness_00_09() {
     trace_file_write_line_plain_mode_omits_tag_prefix();
     trace_file_write_line_brackets_thought_chunks_in_trace_output();
     trace_file_write_line_stdout_markdown_flag_tees_without_panic();
-    kpop_coalesce_trace_writer();
+    coalesce_trace_writer();
     open_coalesce_trace_at();
     write_coalesced_line();
     deliver_tool_call_session_updates();
@@ -152,18 +152,18 @@ fn kiss_exec_witness_00_10() {
     deliver_coalesced_message_chunk();
     assert_split_iterable_closed_operational();
     run_split_iterable_closed_fixture();
-    trace_file_write_line_iterable_closed_warns_without_kpop_tee();
+    trace_file_write_line_iterable_closed_warns_without_tee();
 }
 
 #[test]
 fn kiss_exec_witness_00_11() {
     readable_iterable_closed_split_coalesce_emits_readable_operational_warning();
-    iterable_closed_split_across_coalesce_emissions_suppresses_kpop_tee();
+    iterable_closed_split_across_coalesce_emissions_suppresses_tee();
     flush_coalesce_lines();
     assert_upgrade_plan_operational_stderr();
     feed_upgrade_plan_split();
     run_upgrade_plan_split_coalesce_fixture();
-    upgrade_plan_split_coalesce_emits_operational_error_without_kpop_tee();
+    upgrade_plan_split_coalesce_emits_operational_error_without_tee();
     SessionReaderTelemetry();
     SessionChannelState();
 }

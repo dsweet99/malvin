@@ -78,7 +78,7 @@ impl RunArtifacts {
         } else {
             format!("exp_log_{slug}_g{iteration}.md")
         };
-        self.run_dir.join("_kpop").join(name)
+        self.run_dir.join("_run").join(name)
     }
 
     #[must_use]
@@ -124,5 +124,5 @@ mod tests;
 mod log_gc_hook_tests;
 
 #[cfg(test)]
-#[path = "kpop_path_tests.rs"]
-mod kpop_path_tests;
+#[path = "run_meta_path_tests.rs"]
+mod run_meta_path_tests;

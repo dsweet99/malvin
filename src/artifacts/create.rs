@@ -14,7 +14,7 @@ pub(crate) fn ensure_quality_gates_log_file(artifacts: &RunArtifacts) -> std::io
     std::fs::write(&path, "")
 }
 
-pub(crate) fn ensure_kpop_exp_log_file(artifacts: &RunArtifacts) -> std::io::Result<PathBuf> {
+pub(crate) fn ensure_exp_log_file(artifacts: &RunArtifacts) -> std::io::Result<PathBuf> {
     write_empty_exp_log(&artifacts.exp_log_path())
 }
 
@@ -29,7 +29,7 @@ fn write_empty_exp_log(exp_log_path: &Path) -> std::io::Result<PathBuf> {
     let exp_parent = exp_log_path.parent().ok_or_else(|| {
         Error::new(
             ErrorKind::InvalidInput,
-            "kpop exp log path has no parent directory",
+            "exp log path has no parent directory",
         )
     })?;
     std::fs::create_dir_all(exp_parent)?;
@@ -60,7 +60,7 @@ pub fn create_run_artifacts_opts(
             .filter(|p| !p.as_os_str().is_empty())
             .map_or_else(|| PathBuf::from("."), Path::to_path_buf),
     };
-    ensure_kpop_exp_log_file(&artifacts)?;
+    ensure_exp_log_file(&artifacts)?;
     ensure_quality_gates_log_file(&artifacts)?;
     crate::write_work_dir_manifest(&artifacts.run_dir, &artifacts.work_dir)?;
     #[cfg(not(test))]
@@ -93,7 +93,7 @@ pub fn create_run_artifacts_from_text_opts(
         plan_path: plan_target,
         work_dir,
     };
-    ensure_kpop_exp_log_file(&artifacts)?;
+    ensure_exp_log_file(&artifacts)?;
     ensure_quality_gates_log_file(&artifacts)?;
     crate::write_work_dir_manifest(&artifacts.run_dir, &artifacts.work_dir)?;
     #[cfg(not(test))]
@@ -107,7 +107,7 @@ mod kiss_cov_gate_refs{
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {
-        let _ = ensure_kpop_exp_log_file;
+        let _ = ensure_exp_log_file;
         let _ = write_empty_exp_log;
     }
 }

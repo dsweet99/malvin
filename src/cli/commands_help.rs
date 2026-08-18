@@ -96,7 +96,6 @@ mod tests {
         let cmd = Cli::command();
         assert!(help.contains("Commands:"));
         assert!(!help_lists_subcommand(&cmd, "code"));
-        assert!(!help_lists_subcommand(&cmd, "kpop"));
         assert!(help_lists_subcommand(&cmd, "tidy"));
         assert!(help.contains("Usage: malvin [OPTION]... [REQUEST]"));
         assert!(help.contains("malvin [OPTION]... <COMMAND>"));
@@ -120,14 +119,13 @@ mod tests {
     }
 
     #[test]
-    fn visible_subcommands_omits_kpop() {
+    fn visible_subcommands_match_public_catalog() {
         let cmd = Cli::command();
         let names: Vec<_> = visible_subcommands(&cmd)
             .into_iter()
             .map(|sub| sub.get_name().to_string())
             .collect();
         assert!(!names.iter().any(|n| n == "code"));
-        assert!(!names.iter().any(|n| n == "kpop"));
         assert!(!names.iter().any(|n| n == "delight"));
         assert_eq!(
             names,
@@ -140,7 +138,7 @@ mod tests {
         let cmd = Cli::command();
         let lines = format_command_lines(&visible_subcommands(&cmd));
         assert!(lines.iter().any(|line| line.starts_with("  tidy")));
-        assert!(!lines.iter().any(|line| line.starts_with("  kpop")));
+        assert!(!lines.iter().any(|line| line.starts_with("  code")));
     }
 
     #[test]

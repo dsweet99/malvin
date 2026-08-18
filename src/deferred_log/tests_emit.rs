@@ -99,7 +99,7 @@ pub(crate) fn push_acp_tee_marker(shared: &SharedDeferSink, i: usize, marker: &s
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .push_entry(build_acp_tee_entry(AcpTeeBuild {
             tee: TeeSinkMeta {
-                who: "kpop".to_string(),
+                who: "router".to_string(),
                 ts: format!("20260525.102620.{i:03}"),
                 emit_stdout_markdown: false,
             },
@@ -150,7 +150,7 @@ fn raw_line_emit_flushes_without_redefer() {
     let text = capture_stdout_log(|| {
         emit_deferred_entry(&build_raw_line_entry(
             "RAW_EMIT_PROBE".to_string(),
-            "kpop".to_string(),
+            "router".to_string(),
             "20260525.102620.100".to_string(),
         ));
     });

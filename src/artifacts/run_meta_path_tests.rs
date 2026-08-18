@@ -33,7 +33,7 @@ fn trace_jsonl_path_is_under_run_dir() {
 }
 
 #[test]
-fn create_run_artifacts_scaffolds_kpop_exp_log_under_run_dir() {
+fn create_run_artifacts_scaffolds_exp_log_under_run_dir() {
     let tmp = tempfile::tempdir().unwrap();
     let art = create_run_artifacts_from_text("plan", Some(tmp.path())).unwrap();
     let exp = art.exp_log_path();
@@ -44,14 +44,14 @@ fn create_run_artifacts_scaffolds_kpop_exp_log_under_run_dir() {
         exp.display()
     );
     assert!(
-        exp.to_string_lossy().contains("/_kpop/exp_log_"),
-        "exp log must use run-scoped _kpop path, got {}",
+        exp.to_string_lossy().contains("/_run/exp_log_"),
+        "exp log must use run-scoped _run path, got {}",
         exp.display()
     );
 }
 
 #[test]
-fn create_run_artifacts_from_plan_copy_scaffolds_kpop_exp_log() {
+fn create_run_artifacts_from_plan_copy_scaffolds_exp_log() {
     let tmp = tempfile::tempdir().unwrap();
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "p").unwrap();
@@ -60,14 +60,14 @@ fn create_run_artifacts_from_plan_copy_scaffolds_kpop_exp_log() {
 }
 
 #[test]
-fn kpop_workflow_context_exp_log_is_under_home_malvin_logs() {
+fn router_workflow_context_exp_log_is_under_home_malvin_logs() {
     let tmp = tempfile::tempdir().unwrap();
-    let art = create_run_artifacts_from_text("kpop body", Some(tmp.path())).unwrap();
+    let art = create_run_artifacts_from_text("plan body", Some(tmp.path())).unwrap();
     let exp_path = art.exp_log_path();
     assert!(exp_path.is_file());
     let ctx = crate::workflow_context::workflow_context_paths_only(&art, crate::config::DEFAULT_CLI_MODEL, false);
     let exp_log = ctx.get("exp_log").unwrap_or_else(|| panic!("missing exp_log: {ctx:?}"));
-    let kpop_log_dir = ctx.get("kpop_log_dir").unwrap();
+    let run_meta_dir = ctx.get("run_meta_dir").unwrap();
     let home_logs = crate::malvin_home_logs_root();
     assert!(
         exp_log.contains(&home_logs.display().to_string())
@@ -75,22 +75,22 @@ fn kpop_workflow_context_exp_log_is_under_home_malvin_logs() {
         "exp_log must reference home logs tree, got {exp_log:?}"
     );
     assert!(
-        kpop_log_dir.contains(&home_logs.display().to_string())
-            || kpop_log_dir.contains(".malvin_home/logs"),
-        "kpop_log_dir must reference home logs tree, got {kpop_log_dir:?}"
+        run_meta_dir.contains(&home_logs.display().to_string())
+            || run_meta_dir.contains(".malvin_home/logs"),
+        "run_meta_dir must reference home logs tree, got {run_meta_dir:?}"
     );
     assert!(
-        !exp_log.starts_with("./_kpop"),
-        "exp_log must not be repo-root ./_kpop, got {exp_log:?}"
+        !exp_log.starts_with("./_run"),
+        "exp_log must not be repo-root ./_run, got {exp_log:?}"
     );
     assert!(
-        !kpop_log_dir.starts_with("./_kpop"),
-        "kpop_log_dir must not be repo-root ./_kpop, got {kpop_log_dir:?}"
+        !run_meta_dir.starts_with("./_run"),
+        "run_meta_dir must not be repo-root ./_run, got {run_meta_dir:?}"
     );
 }
 
 #[test]
-fn kpop_exp_log_path_from_repo_root_work_dir() {
+fn exp_log_path_from_repo_root_work_dir() {
     let art = create_run_artifacts_from_text_opts(
         "probe",
         Some(std::path::Path::new(".")),
@@ -101,12 +101,12 @@ fn kpop_exp_log_path_from_repo_root_work_dir() {
     assert!(exp_path.is_file());
     let ctx = crate::workflow_context::workflow_context_paths_only(&art, crate::config::DEFAULT_CLI_MODEL, false);
     let exp_log = ctx.get("exp_log").cloned().unwrap_or_default();
-    let kpop_log_dir = ctx.get("kpop_log_dir").cloned().unwrap_or_default();
+    let run_meta_dir = ctx.get("run_meta_dir").cloned().unwrap_or_default();
     assert!(
         exp_log.contains(".malvin_home/logs") || exp_log.starts_with('/'),
         "exp_log must be absolute or under .malvin_home/logs, got {exp_log:?}"
     );
-    assert!(!exp_log.starts_with("./_kpop"));
-    assert!(!kpop_log_dir.starts_with("./_kpop"));
+    assert!(!exp_log.starts_with("./_run"));
+    assert!(!run_meta_dir.starts_with("./_run"));
     let _ = std::fs::remove_dir_all(&art.run_dir);
 }

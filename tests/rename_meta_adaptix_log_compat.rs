@@ -9,7 +9,7 @@ use malvin::output::{format_line, format_who_tag_prefix, MALVIN_WHO, WHO_U};
 use malvin::{workspace_logs_hash, MALVIN_USER_HOME_DIR};
 
 const LEGACY_RUN: &str = "20250101_120000_legacy01";
-const KPOP_ID: &str = "Mleg01";
+const LEGACY_ID: &str = "Mleg01";
 
 fn legacy_run_dir(work_dir: &Path, home: &Path) -> std::path::PathBuf {
     home.join(MALVIN_USER_HOME_DIR)
@@ -19,15 +19,15 @@ fn legacy_run_dir(work_dir: &Path, home: &Path) -> std::path::PathBuf {
 }
 
 fn write_legacy_run_transcripts(run_dir: &Path) {
-    let kpop_dir = run_dir.join("_kpop");
-    std::fs::create_dir_all(&kpop_dir).expect("mkdir kpop");
+    let run_meta_dir = run_dir.join("_run");
+    std::fs::create_dir_all(&run_meta_dir).expect("mkdir run meta");
     let exp_name = format!("exp_log_{LEGACY_RUN}.md");
-    std::fs::write(kpop_dir.join(&exp_name), "legacy kpop exp log\n").expect("write exp");
-    let exp_rel = format!("./{}/_kpop/{exp_name}", run_dir.display());
+    std::fs::write(run_meta_dir.join(&exp_name), "legacy exp log\n").expect("write exp");
+    let exp_rel = format!("./{}/_run/{exp_name}", run_dir.display());
     std::fs::write(
         run_dir.join("stdout.log"),
         format!(
-            "20250101.120000.000 {}KPOP_LOG: {KPOP_ID} {exp_rel}\n",
+            "20250101.120000.000 {}EXP_LOG: {LEGACY_ID} {exp_rel}\n",
             format_who_tag_prefix(MALVIN_WHO)
         ),
     )

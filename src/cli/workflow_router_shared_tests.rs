@@ -1,6 +1,6 @@
-use crate::cli::workflow_kpop_shared::*;
+use crate::cli::workflow_router_shared::*;
 
-fn kpop_render_fixture(
+fn router_render_fixture(
     workflow: &str,
 ) -> (
     tempfile::TempDir,
@@ -23,17 +23,17 @@ fn effective_max_loops_is_at_least_one() {
 }
 
 #[test]
-fn kpop_workflow_context_includes_quality_gates() {
-    let (_tmp, _store, artifacts) = kpop_render_fixture("code");
-    let ctx = kpop_workflow_context(&artifacts, crate::config::DEFAULT_CLI_MODEL, false).expect("context");
+fn router_workflow_context_includes_quality_gates() {
+    let (_tmp, _store, artifacts) = router_render_fixture("code");
+    let ctx = router_workflow_context(&artifacts, crate::config::DEFAULT_CLI_MODEL, false).expect("context");
     assert!(ctx.contains_key("quality_gates"));
 }
 
 #[test]
-fn kpop_workflow_context_without_gates_omits_quality_gates() {
-    let (_tmp, _store, artifacts) = kpop_render_fixture("code");
+fn router_workflow_context_without_gates_omits_quality_gates() {
+    let (_tmp, _store, artifacts) = router_render_fixture("code");
     let ctx =
-        kpop_workflow_context_without_gates(&artifacts, crate::config::DEFAULT_CLI_MODEL, false)
+        router_workflow_context_without_gates(&artifacts, crate::config::DEFAULT_CLI_MODEL, false)
             .expect("context");
     assert!(!ctx.contains_key("quality_gates"));
 }
@@ -96,10 +96,10 @@ fn gate_failure_fixture(
 }
 
 #[test]
-fn run_kpop_workspace_gates_refreshes_quality_gates_log() {
+fn run_router_workspace_gates_refreshes_quality_gates_log() {
     let (_tmp, _bin, _guard, artifacts, backups) = gate_failure_fixture(1);
     std::fs::write(artifacts.quality_gates_log_path(), "stale output").expect("write");
-    let err = run_kpop_workspace_gates(&artifacts, &backups, true).expect_err("gates fail");
+    let err = run_router_workspace_gates(&artifacts, &backups, true).expect_err("gates fail");
     assert!(
         crate::repo_checks::is_gate_failure_error(&err),
         "gate failure must survive post-gate restore: {err}"
@@ -125,7 +125,7 @@ fn gate_iteration_context_overrides_exp_log() {
     crate::seed_malvin_checks(tmp.path(), "true\n");
     let artifacts =
         crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
-    let base = kpop_workflow_context(&artifacts, crate::config::DEFAULT_CLI_MODEL, false).expect("ctx");
+    let base = router_workflow_context(&artifacts, crate::config::DEFAULT_CLI_MODEL, false).expect("ctx");
     let iter_log = artifacts.gate_exp_log_path(2);
     let ctx = gate_iteration_context(&base, &artifacts, &iter_log, 2);
     let exp = ctx.get("exp_log").expect("exp_log");
@@ -156,10 +156,10 @@ fn missing_checks_fixture(
 }
 
 #[test]
-fn run_kpop_workspace_gates_fails_when_checks_missing() {
+fn run_router_workspace_gates_fails_when_checks_missing() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let (artifacts, backups) = missing_checks_fixture(tmp.path());
-    let err = run_kpop_workspace_gates(&artifacts, &backups, true).expect_err("missing checks");
+    let err = run_router_workspace_gates(&artifacts, &backups, true).expect_err("missing checks");
     assert!(
         err.contains(".malvin/checks is missing"),
         "missing checks must fail clearly: {err}"
@@ -167,26 +167,26 @@ fn run_kpop_workspace_gates_fails_when_checks_missing() {
 }
 
 #[test]
-fn run_kpop_workspace_gates_restores_before_executing_checks() {
+fn run_router_workspace_gates_restores_before_executing_checks() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let (_bin, _guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "true", 0);
-    let (artifacts, backups) = kpop_gates_restore_fixture(tmp.path());
+    let (artifacts, backups) = router_gates_restore_fixture(tmp.path());
     std::fs::write(crate::malvin_checks_path(tmp.path()), "false\n").expect("tamper");
-    run_kpop_workspace_gates(&artifacts, &backups, true).expect("gates pass after restore");
+    run_router_workspace_gates(&artifacts, &backups, true).expect("gates pass after restore");
 }
 
 #[test]
-fn run_kpop_workspace_gates_leaves_session_gitignore_after_post_gate_restore() {
+fn run_router_workspace_gates_leaves_session_gitignore_after_post_gate_restore() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let (_bin, _guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "true", 0);
     std::fs::write(tmp.path().join(".gitignore"), "gi\n").expect("drifted gitignore");
-    let (artifacts, backups) = kpop_gates_restore_fixture(tmp.path());
-    run_kpop_workspace_gates(&artifacts, &backups, true).expect("gates pass");
+    let (artifacts, backups) = router_gates_restore_fixture(tmp.path());
+    run_router_workspace_gates(&artifacts, &backups, true).expect("gates pass");
     let gitignore = std::fs::read_to_string(tmp.path().join(".gitignore")).expect("read");
     assert_eq!(gitignore, "gi\n", "post-gate restore replays session snapshot without reconcile");
 }
 
-fn kpop_gates_restore_fixture(
+fn router_gates_restore_fixture(
     work: &std::path::Path,
 ) -> (crate::artifacts::RunArtifacts, crate::artifacts::SessionDotfileBackups) {
     std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
@@ -215,7 +215,7 @@ fn gitignore_restore_failure_fixture(
 fn restore_failure_prevents_gate_run() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let (artifacts, backups) = gitignore_restore_failure_fixture(tmp.path());
-    let err = run_kpop_workspace_gates(&artifacts, &backups, true).expect_err("restore fails");
+    let err = run_router_workspace_gates(&artifacts, &backups, true).expect_err("restore fails");
     assert!(err.contains("gitignore restore"));
 }
 

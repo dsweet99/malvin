@@ -4,11 +4,11 @@ use crate::cli::flow_prompt_combine::{
     DualHeaderPromptInput,
 };
 use crate::orchestrator::workflow_context_paths_only;
-use crate::workflow_context::{format_prompt_path, PromptModelOpts};
+use crate::workflow_context::PromptModelOpts;
 use crate::prompt_stratification::WorkflowRenderContext;
 use crate::prompts::{
     PromptError, PromptStore, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD, header_prompt_file,
-    kpop_common_prompt_file, router_a_prompt_file, router_b_prompt_file,
+    router_a_prompt_file, router_b_prompt_file,
 };
 use std::path::Path;
 
@@ -21,9 +21,8 @@ pub(crate) use router_flow_prompt_summarize::{
 #[path = "router_flow_prompt_turns.rs"]
 mod router_flow_prompt_turns;
 pub(crate) use router_flow_prompt_turns::{
-    build_router_a_prompt, build_router_b_prompt, build_router_header_prompt,
-    build_router_kpop_common_prompt, router_b_prompt_label, RouterAPromptInput, RouterBPromptInput,
-    RouterHeaderPromptInput, RouterKpopCommonPromptInput,
+    build_router_a_prompt, build_router_b_prompt, build_router_header_prompt, router_b_prompt_label,
+    RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput,
 };
 
 pub fn prepare_router_prompt_store() -> Result<PromptStore, String> {
@@ -41,7 +40,6 @@ fn validate_router_required_prompts(store: &PromptStore) -> Result<(), String> {
         router_b_prompt_file(true),
         ROUTER_CODE_EXTRA_MD,
         ROUTER_SUMMARIZE_MD,
-        kpop_common_prompt_file(),
     ];
     for name in required {
         store.validate_exists(name).map_err(|e: PromptError| e.0)?;
@@ -117,10 +115,6 @@ pub(crate) fn render_router_code_extra(input: RouterCodeExtraInput<'_>) -> Resul
     Ok(body.trim().to_string())
 }
 
-pub(crate) fn format_exp_log_for_prompt(exp_log: &Path, work_dir: &Path) -> String {
-    format_prompt_path(exp_log, work_dir)
-}
-
 #[cfg(test)]
 #[allow(unused_imports)]
 mod kiss_cov_gate_refs {
@@ -128,7 +122,6 @@ mod kiss_cov_gate_refs {
     #[test]
     fn kiss_cov_unit_names() {
         let _ = build_router_header_prompt;
-        let _ = build_router_kpop_common_prompt;
         let _ = build_router_a_prompt;
         let _ = build_router_b_prompt;
         let _ = router_b_prompt_label;

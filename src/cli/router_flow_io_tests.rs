@@ -37,7 +37,7 @@ fn cli_accepts_global_creative_option() {
 }
 
 #[test]
-fn router_client_uses_kpop_style_agent_io_not_do_style() {
+fn router_client_uses_router_style_agent_io_not_do_style() {
     use crate::agent_backend::build_agent_backend;
     use crate::cli::{SharedOpts, WorkflowCliOptions};
 

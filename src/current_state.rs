@@ -169,7 +169,7 @@ fn infer_gate_retry_reasons(artifacts: Option<&RunArtifacts>, iteration: usize) 
 fn append_unsolved_reason(reasons: &mut Vec<String>, artifacts: &RunArtifacts, prev: usize) {
     if prev_exp_log_ran(artifacts, prev) && reasons.is_empty() {
         reasons.push(
-            "quality gates did not pass after previous KPop session".to_string(),
+            "quality gates did not pass after previous router session".to_string(),
         );
     }
 }
