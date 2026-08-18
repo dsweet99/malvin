@@ -1283,32 +1283,33 @@ def _ft_assert_solve_creative_dry_runs(cli, runner, tmp: Path) -> None:
         assert conflict.exit_code != 0, (label, conflict.output)
         assert "mutually exclusive" in conflict.output, (label, conflict.output)
 
-    pi_creative_tmp = tmp / "creative-pi"
-    pi_creative_tmp.mkdir()
-    pi_creative = runner.invoke(
-        cli,
-        [
-            "solve",
-            "FT-01",
-            "--creative",
-            "--model",
-            "pi:openai/gpt-4o",
-            "--dry-run",
-            "--skip-grade",
-            "--results-dir",
-            str(pi_creative_tmp),
-        ],
-        catch_exceptions=False,
-    )
-    assert pi_creative.exit_code == 0, pi_creative.output
-    pi_metas = list(pi_creative_tmp.glob("FT-01/*/metadata.json"))
-    assert pi_metas, pi_creative.output
-    pi_cmd = json.loads(pi_metas[0].read_text(encoding="utf-8"))["docker_cmd"]
-    assert "malvin" in pi_cmd
-    pmi = pi_cmd.index("malvin")
-    assert "--creative" in pi_cmd[pmi:]
-    assert "--model" in pi_cmd[pmi:]
-    assert "pi:openai/gpt-4o" in pi_cmd[pmi:]
+    if ft_resolve_pi_bin() is not None:
+        pi_creative_tmp = tmp / "creative-pi"
+        pi_creative_tmp.mkdir()
+        pi_creative = runner.invoke(
+            cli,
+            [
+                "solve",
+                "FT-01",
+                "--creative",
+                "--model",
+                "pi:openai/gpt-4o",
+                "--dry-run",
+                "--skip-grade",
+                "--results-dir",
+                str(pi_creative_tmp),
+            ],
+            catch_exceptions=False,
+        )
+        assert pi_creative.exit_code == 0, pi_creative.output
+        pi_metas = list(pi_creative_tmp.glob("FT-01/*/metadata.json"))
+        assert pi_metas, pi_creative.output
+        pi_cmd = json.loads(pi_metas[0].read_text(encoding="utf-8"))["docker_cmd"]
+        assert "malvin" in pi_cmd
+        pmi = pi_cmd.index("malvin")
+        assert "--creative" in pi_cmd[pmi:]
+        assert "--model" in pi_cmd[pmi:]
+        assert "pi:openai/gpt-4o" in pi_cmd[pmi:]
 
     assert ft_malvin_args_request_creative(()) is False
     assert ft_malvin_args_request_creative(("--creative",)) is True
