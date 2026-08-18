@@ -54,11 +54,26 @@ fn default_router_prompts_follow_vision_problem_solving_language() {
         assert!(
             body.contains("older analogue for the same abstract role")
                 && body.contains("prefer the redefined policy")
-                && body.contains("classify the ambiguity"),
-            "{name} must preserve measured regularization rules"
+                && body.contains("classify the ambiguity")
+                && body.contains("optional extra exclusions")
+                && body.contains("weakest correct"),
+            "{name} must preserve measured regularization and remaining-freedom rules"
         );
         for needle in router_metaphors {
             assert!(!body.contains(needle), "{name} must not contain {needle:?}");
         }
+    }
+    for name in ["router_b.md", "router_b_creative.md"] {
+        let body = crate::prompts::default_file(name)
+            .unwrap_or_else(|| panic!("missing {name}"))
+            .to_ascii_lowercase();
+        assert!(
+            body.contains("near-best")
+                && body.contains("three complete candidate")
+                && body.contains("named done criterion")
+                && body.contains("never near-best")
+                && body.contains("outranks a contested reading"),
+            "{name} must keep remaining-freedom act selection"
+        );
     }
 }
