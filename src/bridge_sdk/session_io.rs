@@ -3,6 +3,7 @@ use crate::acp::AgentError;
 use super::session::BridgeSession;
 use super::timing::{note_sdk_step, record_sdk_usage};
 use crate::bridge_protocol::{BridgeEvent, BridgeRequest, decode_event, encode_request};
+use crate::sdk_drain_timeout::sdk_bridge_startup_timeout;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
 
 pub(crate) struct CreateArgs<'a> {
@@ -81,9 +82,21 @@ pub(crate) async fn read_event(session: &BridgeSession) -> Result<BridgeEvent, A
     decode_event(line.trim()).map_err(AgentError)
 }
 
+async fn read_event_with_timeout(
+    session: &BridgeSession,
+    waiting_for: &str,
+    timeout: std::time::Duration,
+) -> Result<BridgeEvent, AgentError> {
+    tokio::time::timeout(timeout, read_event(session)).await.unwrap_or_else(|_| {
+        Err(AgentError(format!(
+            "bridge timed out waiting for {waiting_for} after {timeout:?} of silence"
+        )))
+    })
+}
+
 async fn wait_for_ok(session: &BridgeSession) -> Result<(), AgentError> {
     loop {
-        match read_event_with_idle_timeout(session, "ok").await? {
+        match read_event_with_timeout(session, "ok", sdk_bridge_startup_timeout()).await? {
             BridgeEvent::Ok { agent_id } => {
                 if let Some(id) = agent_id {
                     *session

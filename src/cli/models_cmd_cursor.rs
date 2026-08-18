@@ -115,7 +115,7 @@ pub(super) fn print_cursor_models_via_cli(filter: Option<&str>) -> Result<(), St
         } else {
             format!("`{} models` failed: {msg}", bin.display())
         };
-        return Err(detail);
+        return Err(format!("agent models failed: {detail}"));
     }
 
     let raw = String::from_utf8_lossy(&output.stdout);

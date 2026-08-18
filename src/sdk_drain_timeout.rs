@@ -3,6 +3,8 @@
 use std::time::Duration;
 
 pub const DEFAULT_SDK_DRAIN_IDLE_TIMEOUT_MS: u64 = 600_000;
+/// Minimum time allowed for a newly spawned bridge to acknowledge create/resume.
+pub const SDK_BRIDGE_STARTUP_TIMEOUT_MIN_MS: u64 = 1_000;
 
 /// Max time to block on one bridge/pi read before a child-health sample (slice).
 pub const SDK_DRAIN_IDLE_SLICE_MAX_MS: u64 = 60_000;
@@ -26,6 +28,10 @@ pub fn sdk_drain_idle_timeout_from_env() -> Duration {
                 )
             }),
     )
+}
+
+pub fn sdk_bridge_startup_timeout() -> Duration {
+    sdk_drain_idle_timeout_from_env().max(Duration::from_millis(SDK_BRIDGE_STARTUP_TIMEOUT_MIN_MS))
 }
 
 /// How long to wait on `read_event` before sampling child health.
