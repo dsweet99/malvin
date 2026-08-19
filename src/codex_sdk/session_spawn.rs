@@ -12,6 +12,7 @@ pub(crate) async fn codex_spawn_bridge(
     }
     crate::malvin_sandbox::assert_dead_before_next_spawn().map_err(AgentError)?;
     let session = spawn_codex_session(&args)?;
+    start_mem_watch(&session);
     codex_initialize(&session).await?;
     codex_start_thread(&session, args.model, args.cwd).await?;
     Ok(session)
@@ -35,7 +36,7 @@ struct CodexProcess {
 
 fn build_codex_session(args: &BridgeSpawnArgs<'_>, process: CodexProcess) -> BridgeSession {
     let CodexProcess { child, stdin, stdout, pgid, baseline } = process;
-    let session = BridgeSession {
+    BridgeSession {
         child: tokio::sync::Mutex::new(Some(child)),
         stdin: std::sync::Arc::new(tokio::sync::Mutex::new(stdin)),
         stdout: std::sync::Arc::new(tokio::sync::Mutex::new(tokio::io::BufReader::new(stdout))),
@@ -50,20 +51,23 @@ fn build_codex_session(args: &BridgeSpawnArgs<'_>, process: CodexProcess) -> Bri
         started_at: std::time::Instant::now(),
         agent_id: std::sync::Mutex::new(None),
         stdout_coalesce: std::sync::Mutex::new(crate::acp::TraceChunkCoalescer::default()),
-        tool_starts: std::sync::Mutex::new(std::collections::HashMap::new()),
+        tool_starts: std::sync::Mutex::new(std::collections::HashMap::default()),
         normalize_pi_usage: false,
         wire: BridgeWire::CodexRpc,
-    };
-    start_mem_watch(&session);
-    session
+    }
+}
+
+fn configured_codex_command(bin: std::path::PathBuf, cwd: &std::path::Path) -> tokio::process::Command {
+    let mut cmd = crate::malvin_sandbox::malvin_tokio_command(bin);
+    cmd.arg("app-server").current_dir(cwd).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::inherit()).env("MALLOC_ARENA_MAX", "2");
+    cmd
 }
 
 fn spawn_codex_process(
     args: &BridgeSpawnArgs<'_>,
  ) -> Result<CodexProcess, AgentError> {
     let bin = crate::codex_sdk::resolve_codex_bin().map_err(AgentError)?;
-    let mut cmd = crate::malvin_sandbox::malvin_tokio_command(bin);
-    cmd.arg("app-server").current_dir(args.cwd).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::inherit()).env("MALLOC_ARENA_MAX", "2");
+    let mut cmd = configured_codex_command(bin, args.cwd);
     let mut child = cmd.spawn().map_err(|e| AgentError(format!("spawn codex app-server: {e}")))?;
     let stdin = child.stdin.take().ok_or_else(|| AgentError("codex stdin missing".into()))?;
     let stdout = child.stdout.take().ok_or_else(|| AgentError("codex stdout missing".into()))?;
