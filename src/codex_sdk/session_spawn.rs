@@ -36,16 +36,17 @@ struct CodexProcess {
 
 fn build_codex_session(args: &BridgeSpawnArgs<'_>, process: CodexProcess) -> BridgeSession {
     let CodexProcess { child, stdin, stdout, pgid, baseline } = process;
+    let io = build_codex_session_io(stdin, stdout);
     BridgeSession {
         child: tokio::sync::Mutex::new(Some(child)),
-        stdin: std::sync::Arc::new(tokio::sync::Mutex::new(stdin)),
-        stdout: std::sync::Arc::new(tokio::sync::Mutex::new(tokio::io::BufReader::new(stdout))),
+        stdin: io.stdin,
+        stdout: io.stdout,
         process_group_id: pgid,
         spawn_pid_baseline: baseline,
-        reader_dead: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        reader_dead: io.reader_dead,
         work_dir: args.cwd.to_path_buf(),
         io: args.io,
-        last_response: std::sync::Arc::new(std::sync::Mutex::new(String::new())),
+        last_response: io.last_response,
         timing: args.timing.clone(),
         run_dir: args.run_dir.clone(),
         started_at: std::time::Instant::now(),
@@ -57,9 +58,28 @@ fn build_codex_session(args: &BridgeSpawnArgs<'_>, process: CodexProcess) -> Bri
     }
 }
 
+struct CodexSessionIo {
+    stdin: std::sync::Arc<tokio::sync::Mutex<tokio::process::ChildStdin>>,
+    stdout: std::sync::Arc<tokio::sync::Mutex<tokio::io::BufReader<tokio::process::ChildStdout>>>,
+    reader_dead: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    last_response: std::sync::Arc<std::sync::Mutex<String>>,
+}
+
+fn build_codex_session_io(
+    stdin: tokio::process::ChildStdin,
+    stdout: tokio::process::ChildStdout,
+) -> CodexSessionIo {
+    CodexSessionIo {
+        stdin: std::sync::Arc::new(tokio::sync::Mutex::new(stdin)),
+        stdout: std::sync::Arc::new(tokio::sync::Mutex::new(tokio::io::BufReader::new(stdout))),
+        reader_dead: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        last_response: std::sync::Arc::new(std::sync::Mutex::new(String::new())),
+    }
+}
+
 fn configured_codex_command(bin: std::path::PathBuf, cwd: &std::path::Path) -> tokio::process::Command {
     let mut cmd = crate::malvin_sandbox::malvin_tokio_command(bin);
-    cmd.arg("app-server").current_dir(cwd).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::inherit()).env("MALLOC_ARENA_MAX", "2");
+    cmd.arg("app-server").arg("--stdio").current_dir(cwd).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::inherit()).env("MALLOC_ARENA_MAX", "2");
     cmd
 }
 

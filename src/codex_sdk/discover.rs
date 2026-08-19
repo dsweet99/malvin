@@ -55,6 +55,7 @@ fn spawn_codex_model_server() -> Result<std::process::Child, String> {
     let bin = resolve_codex_bin()?;
     std::process::Command::new(bin)
         .arg("app-server")
+        .arg("--stdio")
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()

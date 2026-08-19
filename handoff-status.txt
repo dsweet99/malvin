@@ -1,1 +1,1 @@
-Incomplete handoff: Codex discovery coverage is fixed and protocol helpers are partly extracted; final compilation, kiss structural cleanup, and all five required gates remain unverified.
+Codex support is partially fixed: live `malvin models codex:` discovery works and both app-server launches now select `--stdio`, but the exact `malvin --model=codex:gpt-5.6 --do Hello` still records `run_done status=failed` with no response; handoff-envelope.md documents evidence and next steps.
