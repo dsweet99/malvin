@@ -61,6 +61,8 @@ CURSOR_SDK_BRIDGE_REMOTE = "/opt/malvin/cursor-sdk-bridge"
 CURSOR_SDK_BRIDGE_JS_REMOTE = f"{CURSOR_SDK_BRIDGE_REMOTE}/dist/bridge.js"
 
 PI_BIN_REMOTE = "/opt/malvin/pi"
+CODEX_BIN_REMOTE = "/opt/malvin/codex"
+NODE_BIN_REMOTE = "/opt/malvin/node"
 TOOLCHAIN_PATH = (
     "/root/.cargo/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin"
     ":/usr/sbin:/usr/bin:/sbin:/bin"
@@ -102,6 +104,34 @@ def ft_resolve_pi_bin() -> Path | None:
         return path.resolve()
     return None
 
+def ft_resolve_node_bin() -> Path | None:
+    """Host Node.js binary needed by the JavaScript Codex CLI, or None."""
+    which = shutil.which("node")
+    if not which:
+        return None
+    path = Path(which)
+    if path.is_file() and os.access(path, os.X_OK):
+        return path.resolve()
+    return None
+
+
+def ft_resolve_codex_bin() -> Path | None:
+    """Host ``codex`` binary (``MALVIN_CODEX`` or ``PATH``), or None."""
+    override = os.environ.get("MALVIN_CODEX")
+    if override:
+        path = Path(override).expanduser()
+        if path.is_file() and os.access(path, os.X_OK):
+            return path.resolve()
+        return None
+    which = shutil.which("codex")
+    if not which:
+        return None
+    path = Path(which)
+    if path.is_file() and os.access(path, os.X_OK):
+        return path.resolve()
+    return None
+
+
 def ft_malvin_args_request_pi(malvin_args: tuple[str, ...]) -> bool:
     """True when ``malvin_args`` select a ``pi:`` ``--model``."""
     for i, arg in enumerate(malvin_args):
@@ -113,6 +143,19 @@ def ft_malvin_args_request_pi(malvin_args: tuple[str, ...]) -> bool:
             if value.startswith("pi:"):
                 return True
     return False
+
+def ft_malvin_args_request_codex(malvin_args: tuple[str, ...]) -> bool:
+    """True when ``malvin_args`` select a ``codex:`` ``--model``."""
+    for i, arg in enumerate(malvin_args):
+        if arg == "--model" and i + 1 < len(malvin_args):
+            if malvin_args[i + 1].startswith("codex:"):
+                return True
+        elif arg.startswith("--model="):
+            value = arg.split("=", 1)[1]
+            if value.startswith("codex:"):
+                return True
+    return False
+
 
 def ft_malvin_args_request_creative(malvin_args: tuple[str, ...]) -> bool:
     """True when ``malvin_args`` include ``--creative``."""
@@ -450,6 +493,29 @@ def ft_docker_agent_cmd(
                 *bridge_env,
                 "-e",
                 f"MALVIN_PI={PI_BIN_REMOTE}",
+            ]
+        if ft_malvin_args_request_codex(malvin_args):
+            host_codex = ft_resolve_codex_bin()
+            host_node = ft_resolve_node_bin()
+            if host_codex is None or host_node is None:
+                raise click.ClickException(
+                    "codex and node binaries not found on PATH (or MALVIN_CODEX); "
+                    "required for codex: models inside the agent container "
+                    "(malvin does not bundle codex)"
+                )
+            volume_mounts = [
+                "-v",
+                f"{host_codex}:{CODEX_BIN_REMOTE}:ro",
+                "-v",
+                f"{host_node}:{NODE_BIN_REMOTE}:ro",
+                *volume_mounts,
+            ]
+            bridge_env = [
+                *bridge_env,
+                "-e",
+                f"MALVIN_CODEX={CODEX_BIN_REMOTE}",
+                "-e",
+                f"PATH={NODE_BIN_REMOTE}:{TOOLCHAIN_PATH}",
             ]
     cmd = [
         "docker",
