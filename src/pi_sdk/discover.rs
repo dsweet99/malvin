@@ -20,7 +20,7 @@ pub fn resolve_pi_bin() -> Result<PathBuf, String> {
                 path.display()
             ));
         }
-        if !path_is_executable(&path) {
+        if !pi_path_is_executable(&path) {
             return Err(format!(
                 "MALVIN_PI is not executable ({}); {PI_MISSING_HINT}",
                 path.display()
@@ -32,7 +32,7 @@ pub fn resolve_pi_bin() -> Result<PathBuf, String> {
 }
 
 #[must_use]
-pub(crate) fn path_is_executable(path: &Path) -> bool {
+pub(crate) fn pi_path_is_executable(path: &Path) -> bool {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -108,11 +108,11 @@ fn leading_u32(s: &str) -> Option<u32> {
 
 #[cfg(test)]
 mod tests {
-    use super::path_is_executable;
+    use super::pi_path_is_executable;
 
     #[cfg(unix)]
     #[test]
-    fn path_is_executable_checks_file_mode() {
+    fn pi_path_is_executable_checks_file_mode() {
         use std::os::unix::fs::PermissionsExt;
         let d = tempfile::tempdir().unwrap();
         let p = d.path().join("pi");
@@ -120,10 +120,10 @@ mod tests {
         let mut permissions = std::fs::metadata(&p).unwrap().permissions();
         permissions.set_mode(0o755);
         std::fs::set_permissions(&p, permissions).unwrap();
-        assert!(path_is_executable(&p));
+        assert!(pi_path_is_executable(&p));
         let mut permissions = std::fs::metadata(&p).unwrap().permissions();
         permissions.set_mode(0o644);
         std::fs::set_permissions(&p, permissions).unwrap();
-        assert!(!path_is_executable(&p));
+        assert!(!pi_path_is_executable(&p));
     }
 }

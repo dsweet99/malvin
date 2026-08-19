@@ -5,8 +5,8 @@ fn kiss_cov_pi_sdk_discover_auth_models() {
     let _ = super::discover::pi_missing_binary_message;
     let _ = super::discover::pi_version_ok;
     let _ = super::discover::parse_pi_version;
-    let _ = super::discover::path_is_executable;
-    let _ = stringify!(path_is_executable);
+    let _ = super::discover::pi_path_is_executable;
+    let _ = stringify!(pi_path_is_executable);
     let _ = stringify!(PI_MIN_VERSION);
     let _ = super::ensure_pi_authenticated;
     let _ = super::auth::provider_auth_env_keys;

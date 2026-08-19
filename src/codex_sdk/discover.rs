@@ -17,7 +17,7 @@ pub fn resolve_codex_bin() -> Result<PathBuf, String> {
                 path.display()
             ));
         }
-        if !path_is_executable(&path) {
+        if !codex_path_is_executable(&path) {
             return Err(format!(
                 "MALVIN_CODEX is not executable ({}); {CODEX_MISSING_HINT}",
                 path.display()
@@ -29,7 +29,7 @@ pub fn resolve_codex_bin() -> Result<PathBuf, String> {
 }
 
 #[must_use]
-pub(crate) fn path_is_executable(path: &std::path::Path) -> bool {
+pub(crate) fn codex_path_is_executable(path: &std::path::Path) -> bool {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -135,28 +135,28 @@ mod tests {
         let mut permissions = std::fs::metadata(&p).unwrap().permissions();
         permissions.set_mode(0o755);
         std::fs::set_permissions(&p, permissions).unwrap();
-        assert!(path_is_executable(&p));
+        assert!(codex_path_is_executable(&p));
         let mut permissions = std::fs::metadata(&p).unwrap().permissions();
         permissions.set_mode(0o644);
         std::fs::set_permissions(&p, permissions).unwrap();
-        assert!(!path_is_executable(&p));
+        assert!(!codex_path_is_executable(&p));
     }
 
     #[cfg(unix)]
     #[test]
-    fn test_path_is_executable() {
-        let _ = path_is_executable;
+    fn test_codex_path_is_executable() {
+        let _ = codex_path_is_executable;
         let d = tempfile::tempdir().unwrap();
         let p = d.path().join("codex");
         std::fs::write(&p, "#!/bin/sh\n").unwrap();
         let mut m = std::fs::metadata(&p).unwrap().permissions();
         m.set_mode(0o755);
         std::fs::set_permissions(&p, m).unwrap();
-        assert!(path_is_executable(&p));
+        assert!(codex_path_is_executable(&p));
         let mut m = std::fs::metadata(&p).unwrap().permissions();
         m.set_mode(0o644);
         std::fs::set_permissions(&p, m).unwrap();
-        assert!(!path_is_executable(&p));
-        assert!(!path_is_executable(&d.path().join("missing")));
+        assert!(!codex_path_is_executable(&p));
+        assert!(!codex_path_is_executable(&d.path().join("missing")));
     }
 }

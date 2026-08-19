@@ -11,10 +11,10 @@ pub(crate) use session_spawn::codex_spawn_bridge as spawn_bridge;
 
 #[cfg(test)]
 mod discover_tests_inline {
-    use super::discover::path_is_executable;
+    use super::discover::codex_path_is_executable;
 
     #[test]
     fn codex_path_is_executable_witness() {
-        let _ = path_is_executable;
+        let _ = codex_path_is_executable;
     }
 }
