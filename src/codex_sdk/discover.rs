@@ -94,3 +94,49 @@ pub fn list_codex_models() -> Result<Vec<(String, String)>, String> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn test_list_codex_models() {
+        use std::os::unix::fs::PermissionsExt;
+        let d = tempfile::tempdir().unwrap();
+        let p = d.path().join("codex");
+        std::fs::write(
+            &p,
+            "#!/bin/sh\nprintf '%s\\n' '{\"id\":1,\"result\":{}}' '{\"id\":2,\"result\":{\"data\":[{\"id\":\"gpt-test\",\"displayName\":\"Test\"}]}}'\n",
+        )
+        .unwrap();
+        let mut m = std::fs::metadata(&p).unwrap().permissions();
+        m.set_mode(0o755);
+        std::fs::set_permissions(&p, m).unwrap();
+        crate::acp::with_env("MALVIN_CODEX", Some(p.to_str().unwrap()), || {
+            assert_eq!(list_codex_models().unwrap(), vec![("gpt-test".into(), "Test".into())]);
+        });
+    }
+
+    #[test]
+    fn test_codex_missing_binary_message() {
+        assert!(codex_missing_binary_message().contains("MALVIN_CODEX"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_path_is_executable() {
+        use std::os::unix::fs::PermissionsExt;
+        let d = tempfile::tempdir().unwrap();
+        let p = d.path().join("codex");
+        std::fs::write(&p, "#!/bin/sh\n").unwrap();
+        let mut m = std::fs::metadata(&p).unwrap().permissions();
+        m.set_mode(0o755);
+        std::fs::set_permissions(&p, m).unwrap();
+        assert!(path_is_executable(&p));
+        let mut m = std::fs::metadata(&p).unwrap().permissions();
+        m.set_mode(0o644);
+        std::fs::set_permissions(&p, m).unwrap();
+        assert!(!path_is_executable(&d.path().join("missing")));
+    }
+}

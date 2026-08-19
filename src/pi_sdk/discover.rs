@@ -101,8 +101,18 @@ fn parse_semver_triple(ver_token: &str) -> Option<(u32, u32, u32)> {
     };
     Some((major, minor, patch))
 }
-
 fn leading_u32(s: &str) -> Option<u32> {
     let digits: String = s.chars().take_while(char::is_ascii_digit).collect();
     digits.parse().ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::path_is_executable;
+
+    #[test]
+    fn missing_path_is_not_executable() {
+        let d = tempfile::tempdir().unwrap();
+        assert!(!path_is_executable(&d.path().join("missing")));
+    }
 }

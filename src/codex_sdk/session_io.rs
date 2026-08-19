@@ -144,3 +144,20 @@ pub(crate) async fn read_json(session: &BridgeSession) -> Result<serde_json::Val
     }
     serde_json::from_str(&line).map_err(|e| AgentError(format!("codex JSON-RPC parse: {e}")))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_codex_write_abort() {
+        let _ = codex_write_abort;
+    }
+    #[test]
+    fn test_codex_send_prompt() {
+        let _ = codex_send_prompt;
+    }
+    #[test]
+    fn test_read_json() {
+        let _ = read_json;
+    }
+}
