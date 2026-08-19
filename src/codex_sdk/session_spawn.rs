@@ -39,14 +39,14 @@ fn build_codex_session(args: &BridgeSpawnArgs<'_>, process: CodexProcess) -> Bri
     let io = build_codex_session_io(stdin, stdout);
     BridgeSession {
         child: tokio::sync::Mutex::new(Some(child)),
-        stdin: io.stdin,
-        stdout: io.stdout,
+        stdin: io.0,
+        stdout: io.1,
         process_group_id: pgid,
         spawn_pid_baseline: baseline,
-        reader_dead: io.reader_dead,
+        reader_dead: io.2,
         work_dir: args.cwd.to_path_buf(),
         io: args.io,
-        last_response: io.last_response,
+        last_response: io.3,
         timing: args.timing.clone(),
         run_dir: args.run_dir.clone(),
         started_at: std::time::Instant::now(),
@@ -58,23 +58,23 @@ fn build_codex_session(args: &BridgeSpawnArgs<'_>, process: CodexProcess) -> Bri
     }
 }
 
-struct CodexSessionIo {
-    stdin: std::sync::Arc<tokio::sync::Mutex<tokio::process::ChildStdin>>,
-    stdout: std::sync::Arc<tokio::sync::Mutex<tokio::io::BufReader<tokio::process::ChildStdout>>>,
-    reader_dead: std::sync::Arc<std::sync::atomic::AtomicBool>,
-    last_response: std::sync::Arc<std::sync::Mutex<String>>,
-}
+type CodexSessionIo = (
+    std::sync::Arc<tokio::sync::Mutex<tokio::process::ChildStdin>>,
+    std::sync::Arc<tokio::sync::Mutex<tokio::io::BufReader<tokio::process::ChildStdout>>>,
+    std::sync::Arc<std::sync::atomic::AtomicBool>,
+    std::sync::Arc<std::sync::Mutex<String>>,
+);
 
 fn build_codex_session_io(
     stdin: tokio::process::ChildStdin,
     stdout: tokio::process::ChildStdout,
 ) -> CodexSessionIo {
-    CodexSessionIo {
-        stdin: std::sync::Arc::new(tokio::sync::Mutex::new(stdin)),
-        stdout: std::sync::Arc::new(tokio::sync::Mutex::new(tokio::io::BufReader::new(stdout))),
-        reader_dead: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
-        last_response: std::sync::Arc::new(std::sync::Mutex::new(String::new())),
-    }
+    (
+        std::sync::Arc::new(tokio::sync::Mutex::new(stdin)),
+        std::sync::Arc::new(tokio::sync::Mutex::new(tokio::io::BufReader::new(stdout))),
+        std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        std::sync::Arc::new(std::sync::Mutex::new(String::new())),
+    )
 }
 
 fn configured_codex_command(bin: std::path::PathBuf, cwd: &std::path::Path) -> tokio::process::Command {
@@ -118,11 +118,25 @@ pub(crate) async fn codex_initialize(session: &BridgeSession) -> Result<(), Agen
     .await
 }
 
+fn resolve_codex_model(model: &str) -> String {
+    let Ok(models) = crate::codex_sdk::list_codex_models() else {
+        return model.to_owned();
+    };
+    if models.iter().any(|(id, _)| id == model) {
+        return model.to_owned();
+    }
+    models
+        .into_iter()
+        .find(|(id, _)| id.starts_with(&format!("{model}-")))
+        .map_or_else(|| model.to_owned(), |(id, _)| id)
+}
+
 pub(crate) async fn codex_start_thread(
     session: &BridgeSession,
     model: &str,
     cwd: &std::path::Path,
 ) -> Result<(), AgentError> {
+    let model = resolve_codex_model(model);
     let response = request(
         session,
         "thread/start",
