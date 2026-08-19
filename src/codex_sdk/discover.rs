@@ -100,9 +100,11 @@ mod tests {
     use super::*;
 
     #[cfg(unix)]
+    use std::os::unix::fs::PermissionsExt;
+
+    #[cfg(unix)]
     #[test]
     fn test_list_codex_models() {
-        use std::os::unix::fs::PermissionsExt;
         let d = tempfile::tempdir().unwrap();
         let p = d.path().join("codex");
         std::fs::write(
@@ -125,9 +127,25 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
+    fn codex_path_is_executable_checks_file_mode() {
+        use std::os::unix::fs::PermissionsExt;
+        let d = tempfile::tempdir().unwrap();
+        let p = d.path().join("codex");
+        std::fs::write(&p, "").unwrap();
+        let mut permissions = std::fs::metadata(&p).unwrap().permissions();
+        permissions.set_mode(0o755);
+        std::fs::set_permissions(&p, permissions).unwrap();
+        assert!(path_is_executable(&p));
+        let mut permissions = std::fs::metadata(&p).unwrap().permissions();
+        permissions.set_mode(0o644);
+        std::fs::set_permissions(&p, permissions).unwrap();
+        assert!(!path_is_executable(&p));
+    }
+
+    #[cfg(unix)]
+    #[test]
     fn test_path_is_executable() {
         let _ = path_is_executable;
-        use std::os::unix::fs::PermissionsExt;
         let d = tempfile::tempdir().unwrap();
         let p = d.path().join("codex");
         std::fs::write(&p, "#!/bin/sh\n").unwrap();
@@ -138,6 +156,7 @@ mod tests {
         let mut m = std::fs::metadata(&p).unwrap().permissions();
         m.set_mode(0o644);
         std::fs::set_permissions(&p, m).unwrap();
+        assert!(!path_is_executable(&p));
         assert!(!path_is_executable(&d.path().join("missing")));
     }
 }

@@ -1,1 +1,1 @@
-Status: Incomplete handoff committed. Codex behavioral coverage and Pi/Codex executable-path tests/references are present, but direct kiss check remains blocked at 75% Codex discover and 86% Pi discover; kiss matcher semantics require investigation before further edits.
+Incomplete handoff committed. Clippy, ruff, pytest, and the Rust test gate pass; kiss check remains blocked at 75% Codex discover and 86% Pi discover, requiring kiss matcher investigation.

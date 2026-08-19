@@ -110,10 +110,20 @@ fn leading_u32(s: &str) -> Option<u32> {
 mod tests {
     use super::path_is_executable;
 
+    #[cfg(unix)]
     #[test]
-    fn missing_path_is_not_executable() {
-        let _ = path_is_executable;
+    fn path_is_executable_checks_file_mode() {
+        use std::os::unix::fs::PermissionsExt;
         let d = tempfile::tempdir().unwrap();
-        assert!(!path_is_executable(&d.path().join("missing")));
+        let p = d.path().join("pi");
+        std::fs::write(&p, "").unwrap();
+        let mut permissions = std::fs::metadata(&p).unwrap().permissions();
+        permissions.set_mode(0o755);
+        std::fs::set_permissions(&p, permissions).unwrap();
+        assert!(path_is_executable(&p));
+        let mut permissions = std::fs::metadata(&p).unwrap().permissions();
+        permissions.set_mode(0o644);
+        std::fs::set_permissions(&p, permissions).unwrap();
+        assert!(!path_is_executable(&p));
     }
 }
