@@ -1,9 +1,8 @@
-
 use std::path::Path;
 
 use crate::acp::{
-    agent_error_requires_coder_session_teardown, agent_string_is_cursor_agent_busy,
-    backoff_after_agent_failure, retries_noun, AgentError, CoderPromptOptions,
+    AgentError, CoderPromptOptions, agent_error_requires_coder_session_teardown,
+    agent_string_is_cursor_agent_busy, backoff_after_agent_failure, retries_noun,
 };
 
 use super::sdk_client::{BridgeKind, SdkClient};
@@ -51,6 +50,7 @@ impl SdkClient {
         let label = match self.kind {
             BridgeKind::Cursor => "cursor",
             BridgeKind::Pi => "pi",
+            BridgeKind::Codex => "codex",
         };
         Err(AgentError(format!(
             "{label} SDK prompt failed after {retries} {}. Last error:\n{last_error}",
@@ -61,8 +61,8 @@ impl SdkClient {
 
 async fn teardown_sdk_session_after_transport_error(client: &mut SdkClient, err: &str) {
     if agent_error_requires_coder_session_teardown(err) {
-        let forget_agent = matches!(client.kind, BridgeKind::Cursor)
-            && agent_string_is_cursor_agent_busy(err);
+        let forget_agent =
+            matches!(client.kind, BridgeKind::Cursor) && agent_string_is_cursor_agent_busy(err);
         let _ = client.end_coder_session().await;
         if forget_agent {
             client.last_agent_id = None;
@@ -99,12 +99,7 @@ async fn ensure_open_session(client: &mut SdkClient) -> Result<(), AgentError> {
     client.begin_coder_session(&cwd).await
 }
 
-fn emit_prompt_stdout(
-    client: &SdkClient,
-    prompt: &str,
-    who: &str,
-    opts: &CoderPromptOptions<'_>,
-) {
+fn emit_prompt_stdout(client: &SdkClient, prompt: &str, who: &str, opts: &CoderPromptOptions<'_>) {
     if client.io.raw_output || client.io.no_tee {
         return;
     }

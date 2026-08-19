@@ -1,27 +1,24 @@
-
 #[path = "model_id_params.rs"]
 mod model_id_params;
 pub use model_id_params::{format_bracket_params, split_bracket_params};
 
 pub const CURSOR_PREFIX: &str = "cursor:";
 pub const PI_PREFIX: &str = "pi:";
+pub const CODEX_PREFIX: &str = "codex:";
 
 pub const MINI_PREFIX: &str = "mini:";
 pub const OPENROUTER_PREFIX: &str = "openrouter:";
 pub const LOCAL_PREFIX: &str = "local:";
 pub const PRIME_PREFIX: &str = "prime:";
 
-pub const UNPREFIXED_MODEL_MESSAGE: &str =
-    "model id must use a `cursor:` or `pi:` prefix (for example `cursor:auto` or `pi:openai/gpt-4o`)";
+pub const UNPREFIXED_MODEL_MESSAGE: &str = "model id must use a `cursor:`, `pi:`, or `codex:` prefix (for example `cursor:auto`, `pi:openai/gpt-4o`, or `codex:gpt-5.6`)";
 
 const LEGACY_MINI_HINT: &str =
     "legacy `mini:` prefix removed; use `pi:` (for example `pi:openrouter/<slug>`)";
-const LEGACY_OPENROUTER_HINT: &str =
-    "legacy `openrouter:` prefix removed; use `pi:openrouter/<slug>` (for example `pi:openrouter/anthropic/claude-3-haiku`)";
+const LEGACY_OPENROUTER_HINT: &str = "legacy `openrouter:` prefix removed; use `pi:openrouter/<slug>` (for example `pi:openrouter/anthropic/claude-3-haiku`)";
 const LEGACY_LOCAL_HINT: &str =
     "legacy `local:` prefix removed; local GGUF models are no longer supported";
-const LEGACY_PRIME_HINT: &str =
-    "legacy `prime:` prefix removed; use `cursor:` or `pi:` (for example `cursor:auto` or `pi:openai/gpt-4o`)";
+const LEGACY_PRIME_HINT: &str = "legacy `prime:` prefix removed; use `cursor:` or `pi:` (for example `cursor:auto` or `pi:openai/gpt-4o`)";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModelParam {
@@ -33,6 +30,7 @@ pub struct ModelParam {
 pub enum ModelBackend {
     Cursor,
     Pi,
+    Codex,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -54,6 +52,7 @@ impl ParsedModel {
         let base = match self.backend {
             ModelBackend::Cursor => format!("{CURSOR_PREFIX}{}", self.slug),
             ModelBackend::Pi => format!("{PI_PREFIX}{}", self.slug),
+            ModelBackend::Codex => format!("{CODEX_PREFIX}{}", self.slug),
         };
         if self.params.is_empty() {
             base
@@ -65,6 +64,11 @@ impl ParsedModel {
     #[must_use]
     pub const fn is_pi(&self) -> bool {
         matches!(self.backend, ModelBackend::Pi)
+    }
+
+    #[must_use]
+    pub const fn is_codex(&self) -> bool {
+        matches!(self.backend, ModelBackend::Codex)
     }
 
     #[must_use]
@@ -103,6 +107,9 @@ pub fn parse_model_id(raw: &str) -> Result<ParsedModel, String> {
     }
     if let Some(rest) = raw.strip_prefix(PI_PREFIX) {
         return parse_pi(rest);
+    }
+    if let Some(rest) = raw.strip_prefix(CODEX_PREFIX) {
+        return parsed(ModelBackend::Codex, rest);
     }
     Err(legacy_or_unprefixed_error(raw))
 }

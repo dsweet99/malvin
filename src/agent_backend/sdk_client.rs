@@ -1,4 +1,3 @@
-
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -10,6 +9,7 @@ use crate::model_id::{ModelBackend, ParsedModel};
 pub enum BridgeKind {
     Cursor,
     Pi,
+    Codex,
 }
 
 pub struct SdkClient {
@@ -90,18 +90,13 @@ impl SdkClient {
         }
     }
 
-    pub fn set_run_timing(
-        &mut self,
-        timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
-    ) {
+    pub fn set_run_timing(&mut self, timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>) {
         self.timing = timing.clone();
         sync_timing_to_open_session(self);
     }
 
     #[must_use]
-    pub fn attach_run_timing_for_session(
-        &mut self,
-    ) -> Arc<Mutex<crate::run_timing::RunTiming>> {
+    pub fn attach_run_timing_for_session(&mut self) -> Arc<Mutex<crate::run_timing::RunTiming>> {
         let model = self.model.canonical();
         let timing = crate::run_timing::attach_new_run_timing(&mut self.timing, &model);
         sync_timing_to_open_session(self);
@@ -132,7 +127,6 @@ impl SdkClient {
             Some(text)
         }
     }
-
 }
 
 fn sync_timing_to_open_session(client: &mut SdkClient) {
@@ -144,6 +138,8 @@ fn sync_timing_to_open_session(client: &mut SdkClient) {
 const fn bridge_kind_matches_backend(kind: BridgeKind, backend: ModelBackend) -> bool {
     matches!(
         (kind, backend),
-        (BridgeKind::Cursor, ModelBackend::Cursor) | (BridgeKind::Pi, ModelBackend::Pi)
+        (BridgeKind::Cursor, ModelBackend::Cursor)
+            | (BridgeKind::Pi, ModelBackend::Pi)
+            | (BridgeKind::Codex, ModelBackend::Codex)
     )
 }

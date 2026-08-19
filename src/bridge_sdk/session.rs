@@ -1,4 +1,3 @@
-
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -20,6 +19,7 @@ pub const SDK_BRIDGE_MAX_AGE: Duration = Duration::from_secs(10 * 60);
 pub enum BridgeWire {
     NodeBridge,
     PiRpc,
+    CodexRpc,
 }
 
 #[derive(Debug, Clone)]
@@ -71,6 +71,7 @@ impl BridgeSession {
                 drain_until_run_done(self).await
             }
             BridgeWire::PiRpc => crate::pi_sdk::send_prompt(self, prompt).await,
+            BridgeWire::CodexRpc => crate::codex_sdk::send_prompt(self, prompt).await,
         }
     }
 
@@ -83,6 +84,9 @@ impl BridgeSession {
             }
             BridgeWire::PiRpc => {
                 let _ = crate::pi_sdk::write_abort(&self).await;
+            }
+            BridgeWire::CodexRpc => {
+                let _ = crate::codex_sdk::write_abort(&self).await;
             }
         }
         #[cfg(unix)]
@@ -113,10 +117,7 @@ impl Drop for BridgeSession {
 
 fn bridge_session_drop_teardown(session: &BridgeSession) {
     session.reader_dead.store(true, Ordering::SeqCst);
-    let child_gone = session
-        .child
-        .try_lock()
-        .is_ok_and(|slot| slot.is_none());
+    let child_gone = session.child.try_lock().is_ok_and(|slot| slot.is_none());
     if child_gone {
         crate::malvin_sandbox::clear_active_sandbox_session();
         return;

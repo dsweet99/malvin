@@ -1,7 +1,6 @@
-
 use crate::cli::{
-    agent_io_options, default_workflow_stdout_tee_flags, AgentStdoutTeeFlags, SharedOpts,
-    WorkflowCliOptions,
+    AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions, agent_io_options,
+    default_workflow_stdout_tee_flags,
 };
 use crate::model_id::ModelBackend;
 
@@ -31,6 +30,7 @@ pub fn build_agent_backend_with_tee(
     let kind = match model.backend {
         ModelBackend::Cursor => BridgeKind::Cursor,
         ModelBackend::Pi => BridgeKind::Pi,
+        ModelBackend::Codex => BridgeKind::Codex,
     };
     let client = SdkClient::with_max_retries(model, kind, io, shared.max_acp_retries);
     Ok(crate::agent_backend::agent_backend_from_client(client))
@@ -45,13 +45,9 @@ mod tests {
     #[test]
     fn build_agent_backend_selects_cursor_sdk() {
         let shared = shared_opts(false);
-        let backend = build_agent_backend(
-            &shared,
-            WorkflowCliOptions { force: false },
-            false,
-            "code",
-        )
-        .expect("cursor sdk");
+        let backend =
+            build_agent_backend(&shared, WorkflowCliOptions { force: false }, false, "code")
+                .expect("cursor sdk");
         assert!(matches!(backend.kind, BridgeKind::Cursor));
         assert_eq!(
             backend.model.canonical(),
@@ -78,13 +74,9 @@ mod tests {
     fn build_agent_backend_selects_pi_when_prefixed() {
         let mut shared = shared_opts(false);
         shared.model = crate::model_id::parse_model_id("pi:openai/gpt-4o").expect("model");
-        let backend = build_agent_backend(
-            &shared,
-            WorkflowCliOptions { force: false },
-            false,
-            "code",
-        )
-        .expect("pi sdk");
+        let backend =
+            build_agent_backend(&shared, WorkflowCliOptions { force: false }, false, "code")
+                .expect("pi sdk");
         assert!(matches!(backend.kind, BridgeKind::Pi));
         assert_eq!(backend.model.canonical(), "pi:openai/gpt-4o");
     }

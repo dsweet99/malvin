@@ -1,1 +1,1 @@
-Status: Codex app-server backend work is partially implemented and committed below; integration wiring and final verification remain incomplete.
+Status: Codex backend wiring is staged for handoff; compile and full library tests pass, but runtime protocol coverage and quality-gate coverage remain incomplete.

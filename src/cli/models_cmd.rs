@@ -1,18 +1,15 @@
-
-use crate::model_id::{CURSOR_PREFIX, PI_PREFIX};
+use crate::model_id::{CODEX_PREFIX, CURSOR_PREFIX, PI_PREFIX};
 use crate::output::{MALVIN_WHO, print_stdout_line};
 use clap::Args;
 
-#[path = "models_cmd_parse.rs"]
-mod models_cmd_parse;
 #[path = "models_cmd_cursor.rs"]
 mod models_cmd_cursor;
 #[path = "models_cmd_filter.rs"]
 mod models_cmd_filter;
+#[path = "models_cmd_parse.rs"]
+mod models_cmd_parse;
 use models_cmd_cursor::print_cursor_models;
-pub(crate) use models_cmd_filter::{
-    line_matches_prefix, models_list_prefix, section_may_match,
-};
+pub(crate) use models_cmd_filter::{line_matches_prefix, models_list_prefix, section_may_match};
 
 #[derive(Args, Debug, Clone, Default)]
 #[command(override_usage = "malvin models [OPTION]... [PREFIX]...")]
@@ -29,6 +26,13 @@ pub struct ModelsArgs {
 #[cfg(test)]
 pub(crate) const fn models_args_marker(_args: &ModelsArgs) -> &'static str {
     "models"
+}
+
+fn print_codex_models(filter: Option<&str>) {
+    let line = "codex:gpt-5.6\tCodex (local app-server)";
+    if line_matches_prefix(line, filter) {
+        print_stdout_line(MALVIN_WHO, line);
+    }
 }
 
 fn print_current_footer(current_model: &str) {
@@ -53,14 +57,14 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
             }
         }
     }
+    if section_may_match(filter_ref, CODEX_PREFIX) {
+        print_codex_models(filter_ref);
+    }
     print_current_footer(current_model);
     Ok(())
 }
 
-fn print_pi_models_with_live_auth(
-    models: &[crate::pi_sdk::PiModelListing],
-    filter: Option<&str>,
-) {
+fn print_pi_models_with_live_auth(models: &[crate::pi_sdk::PiModelListing], filter: Option<&str>) {
     match crate::pi_sdk::list_pi_provider_auth_sync() {
         Ok(map) => print_pi_models(models, filter, &map),
         Err(e) => {

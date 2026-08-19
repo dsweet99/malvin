@@ -1,7 +1,6 @@
-
 use std::path::{Path, PathBuf};
 
-use crate::acp::{backoff_after_agent_failure, retries_noun, AgentError, AuthError};
+use crate::acp::{AgentError, AuthError, backoff_after_agent_failure, retries_noun};
 use crate::bridge_sdk::{BridgeSpawnArgs, SDK_BRIDGE_MAX_AGE};
 
 use super::sdk_client::{BridgeKind, SdkClient};
@@ -11,6 +10,7 @@ impl SdkClient {
         match self.kind {
             BridgeKind::Cursor => crate::cursor_sdk::ensure_sdk_authenticated(),
             BridgeKind::Pi => crate::pi_sdk::ensure_pi_authenticated(&self.model.canonical()),
+            BridgeKind::Codex => Ok(()),
         }
     }
 
@@ -94,6 +94,7 @@ const fn kind_label(kind: BridgeKind) -> &'static str {
     match kind {
         BridgeKind::Cursor => "cursor",
         BridgeKind::Pi => "pi",
+        BridgeKind::Codex => "codex",
     }
 }
 
@@ -101,6 +102,7 @@ fn spawn_model_wire(client: &SdkClient) -> String {
     match client.kind {
         BridgeKind::Cursor => client.model.cursor_bridge_model(),
         BridgeKind::Pi => client.model.slug.clone(),
+        BridgeKind::Codex => client.model.slug.clone(),
     }
 }
 
@@ -128,6 +130,7 @@ fn bridge_spawn_args<'a>(
         resume_agent_id: match client.kind {
             BridgeKind::Cursor => client.last_agent_id.clone(),
             BridgeKind::Pi => None,
+            BridgeKind::Codex => None,
         },
         normalize_pi_usage: matches!(client.kind, BridgeKind::Pi),
     }
@@ -140,6 +143,7 @@ async fn spawn_for_kind(
     match kind {
         BridgeKind::Cursor => crate::cursor_sdk::spawn_bridge(args).await,
         BridgeKind::Pi => crate::pi_sdk::spawn_bridge(args).await,
+        BridgeKind::Codex => crate::codex_sdk::spawn_bridge(args).await,
     }
 }
 
