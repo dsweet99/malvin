@@ -6,7 +6,8 @@ pub(crate) async fn codex_spawn_bridge(
     args: BridgeSpawnArgs<'_>,
 ) -> Result<BridgeSession, AgentError> {
     crate::malvin_sandbox::assert_dead_before_next_spawn().map_err(AgentError)?;
-    let mut cmd = crate::malvin_sandbox::malvin_tokio_command("codex");
+    let bin = crate::codex_sdk::resolve_codex_bin().map_err(AgentError)?;
+    let mut cmd = crate::malvin_sandbox::malvin_tokio_command(bin);
     cmd.arg("app-server")
         .current_dir(args.cwd)
         .stdin(Stdio::piped())
@@ -54,7 +55,18 @@ pub(crate) async fn codex_spawn_bridge(
 }
 
 async fn codex_initialize(session: &BridgeSession) -> Result<(), AgentError> {
-    let response = request(session, "initialize", serde_json::json!({})).await?;
+    let response = request(
+        session,
+        "initialize",
+        serde_json::json!({
+            "clientInfo": {
+                "name": "malvin",
+                "title": "Malvin",
+                "version": env!("CARGO_PKG_VERSION")
+            }
+        }),
+    )
+    .await?;
     if response.get("error").is_some() {
         return Err(response_error("codex initialize", &response));
     }
@@ -77,7 +89,7 @@ async fn codex_start_thread(
             "model": model,
             "cwd": cwd,
             "approvalPolicy": "never",
-            "sandbox": "workspaceWrite"
+            "sandbox": "workspace-write"
         }),
     )
     .await?;
@@ -108,7 +120,7 @@ pub(crate) async fn request(
     .await?;
     loop {
         let value = super::session_io::read_json(session).await?;
-        if value.get("id").and_then(|v| v.as_u64()) == Some(id) {
+        if value.get("id").and_then(serde_json::Value::as_u64) == Some(id) {
             return Ok(value);
         }
     }

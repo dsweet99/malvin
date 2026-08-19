@@ -1,4 +1,3 @@
-
 use crate::output::{MALVIN_WHO, print_stdout_line, print_stdout_text};
 
 pub(super) fn trim_trailing_tip_lines(text: &str) -> String {
@@ -58,11 +57,7 @@ pub(super) fn is_non_model_banner_line(line: &str) -> bool {
     low == "available models" || low.starts_with("no models")
 }
 
-pub(super) fn print_parsed_or_fallback_prefixed(
-    text: &str,
-    prefix: &str,
-    filter: Option<&str>,
-) {
+pub(super) fn print_parsed_or_fallback_prefixed(text: &str, prefix: &str, filter: Option<&str>) {
     match models_display_lines_filtered(text, prefix, filter) {
         Some(lines) => {
             for line in lines {
@@ -111,7 +106,9 @@ mod banner_tests {
             "header must not become a fake model row: {lines:?}"
         );
         assert!(
-            !lines.iter().any(|l| l.to_ascii_lowercase().contains("available")),
+            !lines
+                .iter()
+                .any(|l| l.to_ascii_lowercase().contains("available")),
             "must not keep Available header: {lines:?}"
         );
         assert!(is_non_model_banner_line("Available models"));

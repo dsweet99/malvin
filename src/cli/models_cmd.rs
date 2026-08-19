@@ -14,7 +14,7 @@ pub(crate) use models_cmd_filter::{line_matches_prefix, models_list_prefix, sect
 #[derive(Args, Debug, Clone, Default)]
 #[command(override_usage = "malvin models [OPTION]... [PREFIX]...")]
 pub struct ModelsArgs {
-    /// Optional prefix filter (for example `cursor:` or `pi:`)
+    /// Optional prefix filter (for example `cursor:`, `pi:`, or `codex:`)
     #[arg(
         value_name = "PREFIX",
         trailing_var_arg = true,
@@ -29,9 +29,16 @@ pub(crate) const fn models_args_marker(_args: &ModelsArgs) -> &'static str {
 }
 
 fn print_codex_models(filter: Option<&str>) {
-    let line = "codex:gpt-5.6\tCodex (local app-server)";
-    if line_matches_prefix(line, filter) {
-        print_stdout_line(MALVIN_WHO, line);
+    match crate::codex_sdk::list_codex_models() {
+        Ok(models) => {
+            for (id, name) in models {
+                let line = format!("codex:{id}\t{name}");
+                if line_matches_prefix(&line, filter) {
+                    print_stdout_line(MALVIN_WHO, &line);
+                }
+            }
+        }
+        Err(e) => print_stdout_line(MALVIN_WHO, &format!("(codex models unavailable: {e})")),
     }
 }
 

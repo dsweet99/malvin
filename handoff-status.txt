@@ -1,1 +1,1 @@
-Status: Codex backend wiring is staged for handoff; compile and full library tests pass, but runtime protocol coverage and quality-gate coverage remain incomplete.
+Status: Codex app-server backend and live `malvin models codex:` discovery work; clippy, pytest, and Rust test gate pass, but `kiss check` remains blocked by per-file coverage and protocol tests are the next step.

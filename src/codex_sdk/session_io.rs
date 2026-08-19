@@ -44,13 +44,27 @@ pub(crate) async fn codex_send_prompt(
     )
     .await?;
     let mut response_text = String::new();
+    let mut turn_id = None;
     loop {
         let value = read_json(session).await?;
         if value.get("error").is_some() {
             return Err(AgentError(format!("codex RPC error: {}", value["error"])));
         }
         let method = value.get("method").and_then(|v| v.as_str()).unwrap_or("");
+        if method == "turn/started" {
+            turn_id = value
+                .pointer("/params/turn/id")
+                .and_then(|v| v.as_str())
+                .map(str::to_owned);
+        }
         if method == "item/agentMessage/delta" {
+            let event_turn = value.pointer("/params/turnId").and_then(|v| v.as_str());
+            if turn_id
+                .as_deref()
+                .is_some_and(|id| event_turn.is_some_and(|event| event != id))
+            {
+                continue;
+            }
             if let Some(text) = value.pointer("/params/delta").and_then(|v| v.as_str()) {
                 response_text.push_str(text);
                 crate::bridge_sdk::handle_stream_event(
@@ -59,6 +73,13 @@ pub(crate) async fn codex_send_prompt(
                 );
             }
         } else if method == "turn/completed" {
+            let event_turn = value.pointer("/params/turn/id").and_then(|v| v.as_str());
+            if turn_id
+                .as_deref()
+                .is_some_and(|id| event_turn.is_some_and(|event| event != id))
+            {
+                continue;
+            }
             let status = value
                 .pointer("/params/turn/status")
                 .and_then(|v| v.as_str())
@@ -84,7 +105,11 @@ pub(crate) async fn codex_send_prompt(
             };
             crate::bridge_sdk::handle_stream_event(session, &ev);
             if crate::bridge_sdk::run_done_status_is_failure(status) {
-                return Err(AgentError(format!("codex turn {status}")));
+                let detail = value
+                    .pointer("/params/turn/error/message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(status);
+                return Err(AgentError(format!("codex turn {detail}")));
             }
             return Ok(());
         }
@@ -97,7 +122,7 @@ pub(crate) async fn write_json(
 ) -> Result<(), AgentError> {
     let mut stdin = session.stdin.lock().await;
     stdin
-        .write_all(format!("{}\n", value).as_bytes())
+        .write_all(format!("{value}\n").as_bytes())
         .await
         .map_err(|e| AgentError(format!("codex write: {e}")))?;
     stdin

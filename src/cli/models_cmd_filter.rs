@@ -1,4 +1,3 @@
-
 use crate::model_id::PI_PREFIX;
 
 pub(crate) fn models_list_prefix(words: &[String]) -> Result<Option<String>, String> {
@@ -7,8 +6,7 @@ pub(crate) fn models_list_prefix(words: &[String]) -> Result<Option<String>, Str
     }
     if words[0].eq_ignore_ascii_case("download") {
         return Err(
-            "`malvin models` no longer downloads; local GGUF models are no longer supported"
-                .into(),
+            "`malvin models` no longer downloads; local GGUF models are no longer supported".into(),
         );
     }
     Ok(Some(join_models_prefix_words(words)))

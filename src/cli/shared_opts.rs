@@ -16,7 +16,7 @@ pub struct GlobalOpts {
 #[derive(Args, Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct SharedOpts {
-    /// Model id (`cursor:` or `pi:`)
+    /// Model id (`cursor:`, `pi:`, or `codex:`)
     #[arg(
         long,
         global = true,
@@ -24,7 +24,7 @@ pub struct SharedOpts {
         value_parser = parse_model_id
     )]
     pub model: ParsedModel,
-    /// Do not auto-approve tool calls (unsupported on `cursor:` and `pi:`; fails fast)
+    /// Do not auto-approve tool calls (unsupported on `cursor:`, `pi:`, and `codex:`; fails fast)
     #[arg(long, global = true, default_value_t = false)]
     pub no_force: bool,
     /// Do not expand gate-loop budgets to tenacious limits (tenacious on by default)

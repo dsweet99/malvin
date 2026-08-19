@@ -1,4 +1,3 @@
-
 fn kiss_witness_clone<T: Clone>(value: &T) -> T {
     value.clone()
 }
@@ -7,7 +6,7 @@ fn kiss_witness_clone<T: Clone>(value: &T) -> T {
 fn kiss_cov_models_args_clap_parse_and_destructure() {
     use clap::{CommandFactory, FromArgMatches, Parser};
 
-    use super::{models_args_marker, ModelsArgs};
+    use super::{ModelsArgs, models_args_marker};
     use crate::cli::{Cli, Commands};
 
     let cli = Cli::try_parse_from(["malvin", "models"]).expect("parse models");
@@ -29,15 +28,17 @@ fn kiss_cov_models_args_clap_parse_and_destructure() {
     let cmd = Cli::command();
     assert!(cmd.find_subcommand("models").is_some());
     let matches = Cli::command().get_matches_from(["malvin", "models"]);
-    let sub = matches.subcommand_matches("models").expect("models matches");
+    let sub = matches
+        .subcommand_matches("models")
+        .expect("models matches");
     let _parsed = ModelsArgs::from_arg_matches(sub).expect("models from_arg_matches");
     let _cloned = kiss_witness_clone(&ModelsArgs::default());
 }
 
 #[test]
 fn kiss_cov_models_cmd_run_helpers() {
-    use super::test_hooks::*;
     use super::ModelsArgs;
+    use super::test_hooks::*;
 
     let args = ModelsArgs::default();
     assert!(format!("{args:?}").starts_with("ModelsArgs"));
@@ -98,8 +99,8 @@ fn kiss_cov_parse_model_line_all_branches_single_test() {
     assert_eq!(sp_name, "gpt-4");
     assert_eq!(sp_desc, "stable release");
     assert!(parse_model_line("onlytoken").is_none());
-    let lines = models_display_lines("composer-2 — Fast\nHEADERS\ngpt-4.1 — Stable\n")
-        .expect("display");
+    let lines =
+        models_display_lines("composer-2 — Fast\nHEADERS\ngpt-4.1 — Stable\n").expect("display");
     assert_eq!(lines.len(), 3);
     assert_eq!(lines[1], "HEADERS");
 }
@@ -144,7 +145,10 @@ fn kiss_cov_run_models_soft_fails_cursor_and_continues() {
     let _guard = set_fake_command_dir(tmp.path());
     let err = print_cursor_models_via_cli_for_test(Some("cursor:"))
         .expect_err("failing fake agent must return an error");
-    assert!(err.contains("agent models failed"), "unexpected error: {err}");
+    assert!(
+        err.contains("agent models failed"),
+        "unexpected error: {err}"
+    );
 }
 
 #[cfg(unix)]
@@ -173,4 +177,3 @@ fn kiss_cov_run_models_fake_agent_branchy_executable() {
         panic!("fake agent models should succeed");
     }
 }
-

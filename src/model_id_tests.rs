@@ -15,6 +15,9 @@ fn parse_cursor_and_pi() {
         pi_nested.pi_provider_and_model(),
         Some(("openrouter", "anthropic/claude-3-haiku"))
     );
+    let codex = parse_model_id("codex:gpt-5.6").expect("codex");
+    assert!(codex.is_codex());
+    assert_eq!(codex.canonical(), "codex:gpt-5.6");
 }
 
 #[test]
