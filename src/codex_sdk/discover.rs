@@ -60,6 +60,25 @@ pub fn list_codex_models() -> Result<Vec<(String, String)>, String> {
     Ok(result)
 }
 
+/// Resolve a Codex model slug against the live catalog.
+///
+/// Codex model IDs can include deployment variants (for example,
+/// `gpt-5.6-sol`), while users commonly select the family name. Prefer an
+/// exact catalog ID and otherwise use the first catalog ID with that family
+/// prefix. The catalog order is Codex's preference order.
+pub fn resolve_codex_model(slug: &str) -> Result<String, String> {
+    let models = list_codex_models()?;
+    if models.iter().any(|(id, _)| id == slug) {
+        return Ok(slug.to_owned());
+    }
+    let prefix = format!("{slug}-");
+    models
+        .into_iter()
+        .find(|(id, _)| id.starts_with(&prefix))
+        .map(|(id, _)| id)
+        .ok_or_else(|| format!("Codex model `{slug}` is not in the live model catalog"))
+}
+
 fn spawn_codex_model_server() -> Result<std::process::Child, String> {
     let bin = resolve_codex_bin()?;
     std::process::Command::new(bin)

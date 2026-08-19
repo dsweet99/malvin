@@ -21,8 +21,12 @@ pub(crate) async fn codex_spawn_bridge(
 fn spawn_codex_session(args: &BridgeSpawnArgs<'_>) -> Result<BridgeSession, AgentError> {
     let mut process = spawn_codex_process(args)?;
     process.baseline = crate::malvin_sandbox::malvin_spawn_baseline();
-    crate::malvin_sandbox::note_active_sandbox_session(process.pgid, process.baseline.clone(), args.cwd)
-        .map_err(AgentError)?;
+    crate::malvin_sandbox::note_active_sandbox_session(
+        process.pgid,
+        process.baseline.clone(),
+        args.cwd,
+    )
+    .map_err(AgentError)?;
     Ok(build_codex_session(args, process))
 }
 
@@ -35,7 +39,13 @@ struct CodexProcess {
 }
 
 fn build_codex_session(args: &BridgeSpawnArgs<'_>, process: CodexProcess) -> BridgeSession {
-    let CodexProcess { child, stdin, stdout, pgid, baseline } = process;
+    let CodexProcess {
+        child,
+        stdin,
+        stdout,
+        pgid,
+        baseline,
+    } = process;
     let io = build_codex_session_io(stdin, stdout);
     BridgeSession {
         child: tokio::sync::Mutex::new(Some(child)),
@@ -77,22 +87,43 @@ fn build_codex_session_io(
     )
 }
 
-fn configured_codex_command(bin: std::path::PathBuf, cwd: &std::path::Path) -> tokio::process::Command {
+fn configured_codex_command(
+    bin: std::path::PathBuf,
+    cwd: &std::path::Path,
+) -> tokio::process::Command {
     let mut cmd = crate::malvin_sandbox::malvin_tokio_command(bin);
-    cmd.arg("app-server").arg("--stdio").current_dir(cwd).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::inherit()).env("MALLOC_ARENA_MAX", "2");
+    cmd.arg("app-server")
+        .arg("--stdio")
+        .current_dir(cwd)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::inherit())
+        .env("MALLOC_ARENA_MAX", "2");
     cmd
 }
 
-fn spawn_codex_process(
-    args: &BridgeSpawnArgs<'_>,
- ) -> Result<CodexProcess, AgentError> {
+fn spawn_codex_process(args: &BridgeSpawnArgs<'_>) -> Result<CodexProcess, AgentError> {
     let bin = crate::codex_sdk::resolve_codex_bin().map_err(AgentError)?;
     let mut cmd = configured_codex_command(bin, args.cwd);
-    let mut child = cmd.spawn().map_err(|e| AgentError(format!("spawn codex app-server: {e}")))?;
-    let stdin = child.stdin.take().ok_or_else(|| AgentError("codex stdin missing".into()))?;
-    let stdout = child.stdout.take().ok_or_else(|| AgentError("codex stdout missing".into()))?;
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| AgentError(format!("spawn codex app-server: {e}")))?;
+    let stdin = child
+        .stdin
+        .take()
+        .ok_or_else(|| AgentError("codex stdin missing".into()))?;
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| AgentError("codex stdout missing".into()))?;
     let pgid = child.id();
-    Ok(CodexProcess { child, stdin, stdout, pgid, baseline: std::collections::HashSet::new() })
+    Ok(CodexProcess {
+        child,
+        stdin,
+        stdout,
+        pgid,
+        baseline: std::collections::HashSet::new(),
+    })
 }
 
 pub(crate) async fn codex_initialize(session: &BridgeSession) -> Result<(), AgentError> {
@@ -118,25 +149,12 @@ pub(crate) async fn codex_initialize(session: &BridgeSession) -> Result<(), Agen
     .await
 }
 
-fn resolve_codex_model(model: &str) -> String {
-    let Ok(models) = crate::codex_sdk::list_codex_models() else {
-        return model.to_owned();
-    };
-    if models.iter().any(|(id, _)| id == model) {
-        return model.to_owned();
-    }
-    models
-        .into_iter()
-        .find(|(id, _)| id.starts_with(&format!("{model}-")))
-        .map_or_else(|| model.to_owned(), |(id, _)| id)
-}
-
 pub(crate) async fn codex_start_thread(
     session: &BridgeSession,
     model: &str,
     cwd: &std::path::Path,
 ) -> Result<(), AgentError> {
-    let model = resolve_codex_model(model);
+    let model = crate::codex_sdk::resolve_codex_model(model).map_err(AgentError)?;
     let response = request(
         session,
         "thread/start",
@@ -207,20 +225,48 @@ mod tests {
         let _lock = crate::test_utils::test_env_lock();
         let tmp = tempfile::tempdir().unwrap();
         let bin = tmp.path().join("codex");
-        std::fs::write(&bin, "#!/bin/sh\nwhile IFS= read -r line; do case \"$line\" in *initialize*) printf '%s\\n' '{\"id\":1,\"result\":{}}';; *thread/start*) printf '%s\\n' '{\"id\":2,\"result\":{\"thread\":{\"id\":\"thread-test\"}}}';; *turn/start*) printf '%s\\n' '{\"id\":3,\"result\":{}}' '{\"method\":\"turn/started\",\"params\":{\"turn\":{\"id\":\"turn-test\"}}}' '{\"method\":\"item/agentMessage/delta\",\"params\":{\"turnId\":\"turn-test\",\"delta\":\"hello\"}}' '{\"method\":\"turn/completed\",\"params\":{\"turn\":{\"id\":\"turn-test\",\"status\":\"completed\",\"lastAgentMessage\":\"hello\"}}}';; *turn/interrupt*) printf '%s\\n' '{\"id\":4,\"result\":{}}';; esac; done\n").unwrap();
+        std::fs::write(&bin, "#!/bin/sh\nwhile IFS= read -r line; do case \"$line\" in *model/list*) printf '%s\\n' '{\"id\":2,\"result\":{\"data\":[{\"id\":\"gpt-test\"}]}}';; *initialize*) printf '%s\\n' '{\"id\":1,\"result\":{}}';; *thread/start*) case \"$line\" in *gpt-5.6*) printf '%s\\n' '{\"id\":2,\"result\":{\"thread\":{\"id\":\"thread-test\"}}}';; *) printf '%s\\n' '{\"id\":2,\"error\":{\"message\":\"wrong model\"}}';; esac;; *turn/start*) printf '%s\\n' '{\"id\":3,\"result\":{}}' '{\"method\":\"turn/started\",\"params\":{\"turn\":{\"id\":\"turn-test\"}}}' '{\"method\":\"item/agentMessage/delta\",\"params\":{\"turnId\":\"turn-test\",\"delta\":\"hello\"}}' '{\"method\":\"turn/completed\",\"params\":{\"turn\":{\"id\":\"turn-test\",\"status\":\"completed\",\"lastAgentMessage\":\"hello\"}}}';; *turn/interrupt*) printf '%s\\n' '{\"id\":4,\"result\":{}}';; esac; done\n").unwrap();
         let mut perms = std::fs::metadata(&bin).unwrap().permissions();
         perms.set_mode(0o755);
         std::fs::set_permissions(&bin, perms).unwrap();
         let prior = std::env::var_os("MALVIN_CODEX");
-        unsafe { std::env::set_var("MALVIN_CODEX", &bin); }
-        let model = crate::model_id::parse_model_id("codex:gpt-test").unwrap();
-        let io = crate::acp::AgentIoOptions { force: true, no_tee: true, raw_output: true, show_thoughts_on_stdout: false, emit_stdout_markdown: false, log_full_outgoing_prompts: false };
-        let mut client = crate::agent_backend::SdkClient::with_max_retries(model, crate::agent_backend::BridgeKind::Codex, io, 1);
+        unsafe {
+            std::env::set_var("MALVIN_CODEX", &bin);
+        }
+        let model = crate::model_id::parse_model_id("codex:gpt-5.6").unwrap();
+        let io = crate::acp::AgentIoOptions {
+            force: true,
+            no_tee: true,
+            raw_output: true,
+            show_thoughts_on_stdout: false,
+            emit_stdout_markdown: false,
+            log_full_outgoing_prompts: false,
+        };
+        let mut client = crate::agent_backend::SdkClient::with_max_retries(
+            model,
+            crate::agent_backend::BridgeKind::Codex,
+            io,
+            1,
+        );
         client.begin_coder_session(tmp.path()).await.unwrap();
-        client.session.as_ref().unwrap().send_prompt("test").await.unwrap();
-        assert_eq!(client.last_coder_prompt_agent_response().as_deref(), Some("hello"));
+        client
+            .session
+            .as_ref()
+            .unwrap()
+            .send_prompt("test")
+            .await
+            .unwrap();
+        assert_eq!(
+            client.last_coder_prompt_agent_response().as_deref(),
+            Some("hello")
+        );
         client.end_coder_session().await.unwrap();
-        unsafe { match prior { Some(v) => std::env::set_var("MALVIN_CODEX", v), None => std::env::remove_var("MALVIN_CODEX") } }
+        unsafe {
+            match prior {
+                Some(v) => std::env::set_var("MALVIN_CODEX", v),
+                None => std::env::remove_var("MALVIN_CODEX"),
+            }
+        }
     }
 
     #[test]
