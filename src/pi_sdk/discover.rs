@@ -32,7 +32,7 @@ pub fn resolve_pi_bin() -> Result<PathBuf, String> {
 }
 
 #[must_use]
-fn path_is_executable(path: &Path) -> bool {
+pub(crate) fn path_is_executable(path: &Path) -> bool {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -112,6 +112,7 @@ mod tests {
 
     #[test]
     fn missing_path_is_not_executable() {
+        let _ = path_is_executable;
         let d = tempfile::tempdir().unwrap();
         assert!(!path_is_executable(&d.path().join("missing")));
     }

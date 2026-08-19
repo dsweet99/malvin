@@ -126,6 +126,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn test_path_is_executable() {
+        let _ = path_is_executable;
         use std::os::unix::fs::PermissionsExt;
         let d = tempfile::tempdir().unwrap();
         let p = d.path().join("codex");

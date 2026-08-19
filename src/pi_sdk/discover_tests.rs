@@ -1,7 +1,8 @@
 use std::os::unix::fs::PermissionsExt;
 
 use super::discover::{
-    parse_pi_version, pi_missing_binary_message, pi_version_ok, resolve_pi_bin, PI_MIN_VERSION,
+    parse_pi_version, path_is_executable, pi_missing_binary_message, pi_version_ok, resolve_pi_bin,
+    PI_MIN_VERSION,
 };
 use super::models_list::{
     list_pi_models_sync, parse_list_models_table, pi_list_models_timeout,
@@ -10,6 +11,9 @@ use super::models_list::{
 
 #[test]
 fn resolve_pi_bin_honors_malvin_pi_override() {
+    let _ = path_is_executable;
+    let missing_dir = tempfile::tempdir().expect("tmpdir");
+    assert!(!path_is_executable(&missing_dir.path().join("missing")));
     let dir = tempfile::tempdir().expect("tmpdir");
     let fake = write_exec_script(dir.path(), "fake-pi", "#!/bin/sh\necho fake\n");
     crate::acp::with_env("MALVIN_PI", Some(fake.to_str().expect("utf8")), || {

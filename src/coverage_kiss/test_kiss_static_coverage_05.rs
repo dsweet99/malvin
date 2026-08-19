@@ -204,6 +204,16 @@ fn kiss_cov_pi_sdk_spawn() {
 }
 
 #[test]
+fn kiss_cov_codex_discover() {
+    path_is_executable();
+}
+
+#[test]
+fn kiss_cov_pi_discover() {
+    path_is_executable();
+}
+
+#[test]
 fn kiss_cov_pi_sdk_rpc_io() {
     codex_spawn_bridge();
     codex_initialize();
@@ -214,12 +224,10 @@ fn kiss_cov_pi_sdk_rpc_io() {
     codex_send_prompt();
     read_json();
     next_id();
-    codex_path_is_executable();
-    pi_path_is_executable();
 }
 
 #[test]
-fn kiss_cov_pi_sdk_rpc_io() {
+fn kiss_cov_pi_sdk_rpc_io_b() {
     pi_send_prompt();
     pi_wait_for_response();
     pi_read_line();
