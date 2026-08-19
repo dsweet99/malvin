@@ -1,6 +1,6 @@
-use super::{register, try_push, unregister, SharedDeferSink, try_log};
+use super::{SharedDeferSink, register, try_log, try_push, unregister};
 use crate::deferred_log::{
-    build_display_log_entry, test_fixtures::zero_age_defer_shared, DeferredLogSink,
+    DeferredLogSink, build_display_log_entry, test_fixtures::zero_age_defer_shared,
 };
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -12,7 +12,9 @@ fn defer_heartbeat_under_held_mutex(shared: &SharedDeferSink) {
         "HB: 20260524.000000",
         Some("20260524.000000.000"),
     );
-    let _acp_hold = shared.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _acp_hold = shared
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     assert!(crate::output::try_defer_heartbeat(&display, &log_line));
     assert!(!display.starts_with("20"));
 }
@@ -37,7 +39,9 @@ fn heartbeat_contention_pending_len() -> usize {
     let shared = zero_age_defer_shared("single_hb");
     register(Arc::clone(&shared));
     let pending = {
-        let _acp_hold = shared.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _acp_hold = shared
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         crate::output::test_set_last_heartbeat_elapsed(Duration::from_secs(61));
         let (display, log) = crate::output::stdout_heartbeat_display_and_log_line(
             crate::output::MALVIN_WHO,
@@ -67,7 +71,11 @@ fn try_push_heartbeat_while_mutex_held(shared: &SharedDeferSink) {
         try_push(hb),
         "wall-clock defer hook must not drop heartbeat when ACP path holds the sink mutex"
     );
-    assert_eq!(super::pending_len(), 1, "heartbeat must sit in pending until mutex released");
+    assert_eq!(
+        super::pending_len(),
+        1,
+        "heartbeat must sit in pending until mutex released"
+    );
 }
 
 #[test]
@@ -134,7 +142,10 @@ fn active_slot_register_unregister_roundtrip() {
     register(Arc::clone(&shared));
     assert!(super::is_registered());
     assert!(try_log(build_display_log_entry("d".into(), "l".into())));
-    assert!(try_log(build_display_log_entry("hb-d".into(), "hb-l".into())));
+    assert!(try_log(build_display_log_entry(
+        "hb-d".into(),
+        "hb-l".into()
+    )));
     unregister();
     assert!(!super::is_registered());
     assert!(!try_log(build_display_log_entry("d".into(), "l".into())));
@@ -207,38 +218,6 @@ fn try_log_under_mutex_queues_tagged_and_bundled_heartbeat() {
     assert_eq!(heartbeat_contention_pending_len(), 2);
 }
 
-#[test]
-fn contention_flush_emits_one_heartbeat_to_terminal_and_log() {
-    let _heartbeat_guard = crate::output::HEARTBEAT_TEST_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    crate::output::reset_stdout_heartbeat_for_test();
-    crate::deferred_log::install_stdout_hooks();
-    let (terminal, log) = crate::deferred_log::test_fixtures::capture_stdout_render(|| {
-        let shared = zero_age_defer_shared("contention_flush");
-        register(Arc::clone(&shared));
-        crate::output::test_set_last_heartbeat_elapsed(Duration::from_secs(61));
-        let (display, log_line) = crate::output::stdout_heartbeat_display_and_log_line(
-            crate::output::MALVIN_WHO,
-            "HB: 20260524.000000",
-            Some("20260524.000000.000"),
-        );
-        {
-            let _acp_hold = shared.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            crate::output::write_heartbeat_log_line(&display, &log_line);
-            assert!(try_log(build_display_log_entry(
-                "CONTENDED_TAG".into(),
-                "CONTENDED_TAG".into(),
-            )));
-        }
-        unregister();
-        shared
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .force_flush();
-    });
-    assert_eq!(terminal.lines().filter(|l| l.contains("HB:")).count(), 1);
-    assert_eq!(log.lines().filter(|l| l.contains("HB:")).count(), 1);
-    assert!(!terminal.starts_with("20"));
-    assert!(log.lines().next().unwrap_or("").starts_with("20260524"));
-}
+#[cfg(test)]
+#[path = "active_tests_tail.rs"]
+mod active_tests_tail;

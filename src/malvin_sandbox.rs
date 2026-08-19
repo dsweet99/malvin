@@ -1,11 +1,10 @@
-
 use std::collections::HashSet;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 
-use crate::acp_spawn_lock::{acquire_acp_spawn_lock, release_acp_spawn_lock};
 pub use crate::acp_spawn_lock::assert_no_peer_acp_spawn_lock;
+use crate::acp_spawn_lock::{acquire_acp_spawn_lock, release_acp_spawn_lock};
 use crate::session_sandbox_policy::SandboxSpawnPolicyAspect;
 
 #[cfg(unix)]
@@ -13,7 +12,9 @@ use crate::acp::sandbox_monitor_pids;
 #[cfg(unix)]
 use crate::process_group_rss::pids_sandbox_bytes;
 
-pub use crate::parent_death_signal::{install_parent_death_signal, install_tokio_parent_death_signal};
+pub use crate::parent_death_signal::{
+    install_parent_death_signal, install_tokio_parent_death_signal,
+};
 
 static MALVIN_SPAWN_BASELINE: OnceLock<HashSet<u32>> = OnceLock::new();
 
@@ -40,15 +41,12 @@ pub fn init_malvin_spawn_baseline() {
         }
     }
     #[cfg(not(unix))]
-    {
-    }
+    {}
 }
 
 #[must_use]
 pub fn malvin_spawn_baseline() -> HashSet<u32> {
-    MALVIN_SPAWN_BASELINE
-        .get_or_init(HashSet::new)
-        .clone()
+    MALVIN_SPAWN_BASELINE.get_or_init(HashSet::new).clone()
 }
 
 #[cfg(unix)]
@@ -189,7 +187,10 @@ pub fn malvin_session_rss_bytes(_: Option<u32>, _: &HashSet<u32>) -> Option<u64>
 }
 
 #[cfg(unix)]
-pub(crate) fn sandbox_still_alive(agent_pgid: Option<u32>, session_baseline: &HashSet<u32>) -> bool {
+pub(crate) fn sandbox_still_alive(
+    agent_pgid: Option<u32>,
+    session_baseline: &HashSet<u32>,
+) -> bool {
     crate::acp::refresh_session_spawn_affiliation(agent_pgid, session_baseline);
     sandbox_monitor_pids(agent_pgid, session_baseline)
         .into_iter()

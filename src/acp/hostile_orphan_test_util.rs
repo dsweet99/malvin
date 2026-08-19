@@ -1,4 +1,3 @@
-
 use std::path::Path;
 use std::process::Stdio;
 use std::time::Duration;
@@ -37,7 +36,10 @@ fn hostile_test_wait_budget() -> Duration {
     }
 }
 
-pub fn spawn_hostile_double_fork_daemon(cwd: &Path, orphan_pid_file: &Path) -> (std::process::Child, u32) {
+pub fn spawn_hostile_double_fork_daemon(
+    cwd: &Path,
+    orphan_pid_file: &Path,
+) -> (std::process::Child, u32) {
     use std::os::unix::process::CommandExt;
     let script = format!(
         r#"python3 -c 'import os,sys,time
@@ -135,9 +137,8 @@ pub use hostile_orphan_read_pid::read_orphan_pid;
 #[path = "hostile_orphan_user_shell.rs"]
 mod hostile_orphan_user_shell;
 pub use hostile_orphan_user_shell::{
-    cleanup_user_coincidental_test, setup_user_init_reparented_daemon,
-    spawn_isolated_agent_sleep, spawn_user_coincidental_daemon,
-    spawn_user_shell_cooperator,
+    cleanup_user_coincidental_test, setup_user_init_reparented_daemon, spawn_isolated_agent_sleep,
+    spawn_user_coincidental_daemon, spawn_user_shell_cooperator,
 };
 
 pub async fn wait_for_init_reparent(pid: u32) {
@@ -187,8 +188,7 @@ else:
     (child, pgid)
 }
 
-pub fn spawn_agent_pg_and_malvin_sibling(
-) -> (u32, u32, std::process::Child, std::process::Child) {
+pub fn spawn_agent_pg_and_malvin_sibling() -> (u32, u32, std::process::Child, std::process::Child) {
     use std::os::unix::process::CommandExt;
     let mut agent = std::process::Command::new("sleep");
     agent.arg("120").process_group(0);
@@ -198,7 +198,9 @@ pub fn spawn_agent_pg_and_malvin_sibling(
     sibling.arg("120");
     let sibling_child = sibling.spawn().expect("spawn sibling");
     let sibling_pid = sibling_child.id();
-    std::thread::sleep(std::time::Duration::from_millis(hostile_script_delay_ms(100)));
+    std::thread::sleep(std::time::Duration::from_millis(hostile_script_delay_ms(
+        100,
+    )));
     (agent_pgid, sibling_pid, agent_child, sibling_child)
 }
 
@@ -208,9 +210,7 @@ pub fn assert_sibling_monitored_and_blocks_spawn(
     baseline: &std::collections::HashSet<u32>,
 ) {
     use crate::acp::sandbox_monitor_pids;
-    use crate::malvin_sandbox::{
-        assert_dead_before_next_spawn, note_active_sandbox_session,
-    };
+    use crate::malvin_sandbox::{assert_dead_before_next_spawn, note_active_sandbox_session};
 
     let work = std::env::temp_dir().join(format!(
         "malvin_hostile_orphan_blocks_spawn_{}",
@@ -230,13 +230,16 @@ pub fn assert_sibling_monitored_and_blocks_spawn(
     );
 }
 
-
 #[cfg(test)]
-mod kiss_cov_auto{
+mod kiss_cov_auto {
     use super::*;
 
     #[test]
-    fn kiss_cov_spawn_hostile_agent_exits_after_orphan_fork() { let _ = spawn_hostile_agent_exits_after_orphan_fork; }
+    fn kiss_cov_spawn_hostile_agent_exits_after_orphan_fork() {
+        let _ = spawn_hostile_agent_exits_after_orphan_fork;
+    }
     #[test]
-    fn kiss_cov_wait_for_init_reparent() { let _ = wait_for_init_reparent; }
+    fn kiss_cov_wait_for_init_reparent() {
+        let _ = wait_for_init_reparent;
+    }
 }

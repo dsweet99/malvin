@@ -1,4 +1,3 @@
-
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 
@@ -66,11 +65,18 @@ fn notify_reclaim_inner() {
         socket_path: snap.socket_path,
         pane_id: snap.pane_id,
     };
-    emit_bind_reports(&env, snap.agent_session_id.as_deref(), snap.run_dir.as_deref());
+    emit_bind_reports(
+        &env,
+        snap.agent_session_id.as_deref(),
+        snap.run_dir.as_deref(),
+    );
 }
 
 fn run_dir_session_id(run_dir: &Path) -> Option<String> {
-    run_dir.file_name().and_then(|s| s.to_str()).map(str::to_string)
+    run_dir
+        .file_name()
+        .and_then(|s| s.to_str())
+        .map(str::to_string)
 }
 
 fn activate(env: &HerdrEnv, agent_session_id: Option<&str>, run_dir: Option<&Path>) {
@@ -125,9 +131,18 @@ fn notify_run_end_inner() {
         next_seq(),
     );
     let clear_meta = clear_metadata_teardown(&snap.pane_id, next_seq());
-    let idle_ok = send_end_retry(&snap.socket_path, snap.run_dir.as_deref(), "end-idle", &idle);
-    let clear_ok =
-        send_end_retry(&snap.socket_path, snap.run_dir.as_deref(), "end-clear", &clear_meta);
+    let idle_ok = send_end_retry(
+        &snap.socket_path,
+        snap.run_dir.as_deref(),
+        "end-idle",
+        &idle,
+    );
+    let clear_ok = send_end_retry(
+        &snap.socket_path,
+        snap.run_dir.as_deref(),
+        "end-clear",
+        &clear_meta,
+    );
     if idle_ok && clear_ok {
         clear_session();
     }

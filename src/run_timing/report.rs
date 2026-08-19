@@ -11,8 +11,8 @@ use crate::output::{MALVIN_WHO, print_stdout_line};
 
 #[path = "report_timing_line.rs"]
 mod report_timing_line;
-use report_timing_line::format_timing_stdout_line_from_json;
 use super::report_cost_line::format_cost_stdout_line_from_json;
+use report_timing_line::format_timing_stdout_line_from_json;
 
 fn print_timing_and_cost_summary(json: &Value) {
     print_stdout_line(MALVIN_WHO, &format_timing_stdout_line_from_json(json));
@@ -26,10 +26,7 @@ pub(super) fn duration_ms_u64(d: Duration) -> u64 {
 pub(super) fn wall_clock_ms_for_json(r: &RunTiming) -> Option<u64> {
     r.wall_duration()
         .map(duration_ms_u64)
-        .or_else(|| {
-            r.wall_start
-                .map(|_| duration_ms_u64(r.elapsed_so_far()))
-        })
+        .or_else(|| r.wall_start.map(|_| duration_ms_u64(r.elapsed_so_far())))
 }
 
 pub(super) fn to_json_value(r: &RunTiming) -> Value {
@@ -87,7 +84,6 @@ pub fn print_summary_from_run_dir(run_dir: &Path) -> io::Result<()> {
     print_timing_and_cost_summary(&json);
     Ok(())
 }
-
 
 #[cfg(test)]
 #[path = "report_timing_tests.rs"]

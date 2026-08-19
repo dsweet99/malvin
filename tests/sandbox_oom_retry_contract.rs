@@ -1,7 +1,4 @@
-
-use malvin::{
-    create_run_artifacts_from_text, format_current_state, gate_iteration_oom_killed,
-};
+use malvin::{create_run_artifacts_from_text, format_current_state, gate_iteration_oom_killed};
 
 #[test]
 fn session_log_oom_prose_does_not_trigger_retry_reason() {

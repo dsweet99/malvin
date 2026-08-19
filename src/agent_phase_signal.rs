@@ -1,8 +1,7 @@
-
 use crate::agent_phase::{PhaseState, ToolKind};
 use crate::tool_summary::{
-    execute_effective_exit, execute_stdout_failed, ParsedToolUpdate, ToolSummaryTracker,
-    TOOL_PHASE_DONE, TOOL_PHASE_RUNNING, TOOL_PHASE_START,
+    ParsedToolUpdate, TOOL_PHASE_DONE, TOOL_PHASE_RUNNING, TOOL_PHASE_START, ToolSummaryTracker,
+    execute_effective_exit, execute_stdout_failed,
 };
 
 pub(super) fn observe_tool_update_state(
@@ -34,7 +33,11 @@ fn tool_kind_for(parsed: &ParsedToolUpdate, tracker: &ToolSummaryTracker) -> Opt
     }
 }
 
-fn observe_execute(state: &mut PhaseState, parsed: &ParsedToolUpdate, tracker: &ToolSummaryTracker) {
+fn observe_execute(
+    state: &mut PhaseState,
+    parsed: &ParsedToolUpdate,
+    tracker: &ToolSummaryTracker,
+) {
     match parsed.phase {
         TOOL_PHASE_START => {
             state.running_shells = state.running_shells.saturating_add(1);
@@ -73,19 +76,27 @@ fn execute_looks_like_test(parsed: &ParsedToolUpdate, tracker: &ToolSummaryTrack
     let cmd = parsed
         .command
         .as_deref()
-        .or_else(|| tracker.record(&parsed.id).and_then(|r| r.command.as_deref()))
-        .or_else(|| parsed.title.strip_prefix('`').and_then(|t| t.strip_suffix('`')))
+        .or_else(|| {
+            tracker
+                .record(&parsed.id)
+                .and_then(|r| r.command.as_deref())
+        })
+        .or_else(|| {
+            parsed
+                .title
+                .strip_prefix('`')
+                .and_then(|t| t.strip_suffix('`'))
+        })
         .unwrap_or("");
-    std::env::current_dir().is_ok_and(|wd| {
-        crate::repo_gates::command_matches_malvin_checks_gate(cmd, &wd)
-    })
+    std::env::current_dir()
+        .is_ok_and(|wd| crate::repo_gates::command_matches_malvin_checks_gate(cmd, &wd))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::agent_phase::PhaseState;
-    use crate::tool_summary::{parse_tool_update, ToolSummaryTracker};
+    use crate::tool_summary::{ToolSummaryTracker, parse_tool_update};
     use serde_json::json;
 
     #[test]

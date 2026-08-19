@@ -12,10 +12,7 @@ pub(crate) fn list_log_buckets(home_logs: &Path) -> Vec<PathBuf> {
     let entries = match std::fs::read_dir(home_logs) {
         Ok(e) => e,
         Err(e) => {
-            print_log_warning(&format!(
-                "could not list {}: {e}",
-                home_logs.display()
-            ));
+            print_log_warning(&format!("could not list {}: {e}", home_logs.display()));
             return buckets;
         }
     };
@@ -50,9 +47,8 @@ pub(crate) fn bucket_is_ephemeral_orphan(runs: &[PathBuf]) -> bool {
     if runs.is_empty() {
         return false;
     }
-    runs.iter().all(|run| {
-        read_work_dir_manifest(run).is_some_and(|work| !work.exists())
-    })
+    runs.iter()
+        .all(|run| read_work_dir_manifest(run).is_some_and(|work| !work.exists()))
 }
 
 fn remove_orphan_bucket(bucket: &Path, runs: &[PathBuf]) -> (usize, u64) {

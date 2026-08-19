@@ -1,10 +1,8 @@
-
 #[test]
 fn kiss_cov_llm_transport_types_and_errors() {
     use crate::llm_transport::{
-        body_indicates_prompt_too_long, is_prompt_too_long_error, ChatMessage, ChatRole,
-        CompletionMeta, CompletionOk, CompletionResponse, HttpExchangeMeta, ResponseUsage,
-        TransportError,
+        ChatMessage, ChatRole, CompletionMeta, CompletionOk, CompletionResponse, HttpExchangeMeta,
+        ResponseUsage, TransportError, body_indicates_prompt_too_long, is_prompt_too_long_error,
     };
 
     let msg = ChatMessage {

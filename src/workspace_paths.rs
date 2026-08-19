@@ -1,4 +1,3 @@
-
 use std::path::{Path, PathBuf};
 
 #[path = "workspace_paths_data_root.rs"]
@@ -110,10 +109,7 @@ pub fn canonical_work_dir_for_logs(work_dir: &Path) -> PathBuf {
     let resolved = if work_dir.is_absolute() {
         work_dir.to_path_buf()
     } else {
-        std::env::current_dir().map_or_else(
-            |_| work_dir.to_path_buf(),
-            |cwd| cwd.join(work_dir),
-        )
+        std::env::current_dir().map_or_else(|_| work_dir.to_path_buf(), |cwd| cwd.join(work_dir))
     };
     resolved.canonicalize().unwrap_or(resolved)
 }
@@ -144,7 +140,10 @@ pub fn is_malvin_workspace(work_dir: &Path) -> bool {
 
 pub fn write_work_dir_manifest(run_dir: &Path, work_dir: &Path) -> std::io::Result<()> {
     let abs = canonical_work_dir_for_logs(work_dir);
-    std::fs::write(run_dir.join(WORK_DIR_MANIFEST), format!("{}\n", abs.display()))
+    std::fs::write(
+        run_dir.join(WORK_DIR_MANIFEST),
+        format!("{}\n", abs.display()),
+    )
 }
 
 #[must_use]
@@ -164,4 +163,3 @@ pub fn remove_legacy_malvin_checks_file(work_dir: &Path) {
         let _ = std::fs::remove_file(legacy);
     }
 }
-

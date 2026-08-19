@@ -1,14 +1,9 @@
-use crate::cursor_store::{
-    find_store_path, install_test_store, CursorStoreCache, TestStoreSpec,
-};
+use crate::cursor_store::{CursorStoreCache, TestStoreSpec, find_store_path, install_test_store};
 
 #[test]
 fn ingest_prepare_failure_disables_cache_and_stops_retry() {
     let tmp = tempfile::tempdir().unwrap();
-    let session_dir = tmp
-        .path()
-        .join("acp-sessions")
-        .join("schema-mismatch");
+    let session_dir = tmp.path().join("acp-sessions").join("schema-mismatch");
     std::fs::create_dir_all(&session_dir).unwrap();
     let db_path = session_dir.join("store.db");
     let conn = rusqlite::Connection::open(&db_path).expect("open store.db");
@@ -45,11 +40,17 @@ fn cursor_store_second_ingest_is_noop_without_new_rows() {
     let mut cache = CursorStoreCache::new("sess".to_string(), tmp.path().to_path_buf());
     cache.ensure_open();
     cache.ingest_new_blobs();
-    assert_eq!(cache.get("toolu_abc").expect("args").path.as_deref(), Some("/proj/a.rs"));
+    assert_eq!(
+        cache.get("toolu_abc").expect("args").path.as_deref(),
+        Some("/proj/a.rs")
+    );
     assert_eq!(cache.ingest_calls, 1);
     cache.ingest_new_blobs();
     assert_eq!(cache.ingest_calls, 2);
-    assert_eq!(cache.get("toolu_abc").expect("args").path.as_deref(), Some("/proj/a.rs"));
+    assert_eq!(
+        cache.get("toolu_abc").expect("args").path.as_deref(),
+        Some("/proj/a.rs")
+    );
 }
 
 #[test]

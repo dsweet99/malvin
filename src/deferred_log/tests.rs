@@ -1,15 +1,13 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
-use crate::cursor_store::{install_test_store, TestStoreSpec, ToolCallArgs};
 use super::config::DeferredLogConfig;
 use super::enrich::enriched_tool_plain;
 use super::test_fixtures::{enrich_read_entry, test_tool_entry};
 use super::tool_enrich::tool_drain_enrich_fields;
 use super::types::{DeferredPayload, ToolDrainMeta};
-use super::{
-    build_raw_line_entry, DeferredLogSink,
-};
+use super::{DeferredLogSink, build_raw_line_entry};
+use crate::cursor_store::{TestStoreSpec, ToolCallArgs, install_test_store};
 
 #[test]
 fn fifo_drain_respects_age_gate() {
@@ -95,8 +93,7 @@ fn enrich_read_line_from_store_args() {
         path: Some("/home/user/project/src/index.ts".to_string()),
         line_range: None,
     };
-    let (plain, _display) =
-        enriched_tool_plain(&meta, Some(&args), tmp.path(), true);
+    let (plain, _display) = enriched_tool_plain(&meta, Some(&args), tmp.path(), true);
     assert!(plain.contains("index.ts"));
 }
 
@@ -138,12 +135,12 @@ fn enrichable_tool_entry_omits_plain_at_enqueue() {
         panic!("expected tool summary payload");
     };
     assert!(plain.is_empty(), "Option A: plain built at drain, not tee");
-    assert!(display.is_empty(), "Option A: display built at drain, not tee");
-    assert!(enrich.is_some());
-    assert_eq!(
-        meta.expect("meta").fallback_plain,
-        "Read file · 1ms"
+    assert!(
+        display.is_empty(),
+        "Option A: display built at drain, not tee"
     );
+    assert!(enrich.is_some());
+    assert_eq!(meta.expect("meta").fallback_plain, "Read file · 1ms");
 }
 
 #[test]
@@ -182,9 +179,16 @@ fn enrich_fields_use_tracker_kind_when_done_update_omits_kind() {
         }}
     });
     let mut tracker = crate::tool_summary::ToolSummaryTracker::default();
-    let _ = crate::tool_summary::tool_summary_lines(&start, &mut tracker, crate::tool_summary::ToolSummaryDetail::Stdout);
+    let _ = crate::tool_summary::tool_summary_lines(
+        &start,
+        &mut tracker,
+        crate::tool_summary::ToolSummaryDetail::Stdout,
+    );
     let (enrich, meta) = tool_drain_enrich_fields(&done, &tracker, "Read file · 1ms");
-    assert!(enrich.is_some(), "done update without kind must still enrich read tools");
+    assert!(
+        enrich.is_some(),
+        "done update without kind must still enrich read tools"
+    );
     assert_eq!(enrich.expect("key").kind, "read");
     assert_eq!(meta.expect("meta").kind, "read");
 }

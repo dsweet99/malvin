@@ -1,4 +1,3 @@
-
 #[test]
 fn kiss_cov_prompt_options() {
     use crate::acp::CoderPromptOptions;

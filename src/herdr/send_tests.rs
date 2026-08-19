@@ -1,5 +1,4 @@
-
-use super::{classify_reply, send_request, send_request_checked, SOCKET_TIMEOUT};
+use super::{SOCKET_TIMEOUT, classify_reply, send_request, send_request_checked};
 use serde_json::json;
 use std::io::{Read, Write};
 use std::os::unix::net::UnixListener;
@@ -37,11 +36,7 @@ fn send_request_writes_ndjson_line_to_unix_socket() {
 #[test]
 fn send_request_swallows_missing_socket() {
     send_request(std::path::Path::new("/no/such/herdr.sock"), &json!({}));
-    assert!(send_request_checked(
-        std::path::Path::new("/no/such/herdr.sock"),
-        &json!({})
-    )
-    .is_err());
+    assert!(send_request_checked(std::path::Path::new("/no/such/herdr.sock"), &json!({})).is_err());
 }
 
 #[test]
@@ -106,7 +101,10 @@ fn assert_connect_times_out(send: impl FnOnce() -> Result<(), String>) {
         SOCKET_TIMEOUT,
         start.elapsed()
     );
-    assert!(err.contains("timed out"), "expected connect timeout, got: {err}");
+    assert!(
+        err.contains("timed out"),
+        "expected connect timeout, got: {err}"
+    );
 }
 
 #[cfg(target_os = "linux")]

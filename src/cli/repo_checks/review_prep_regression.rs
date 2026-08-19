@@ -2,7 +2,7 @@ use super::{
     RepoGateOutput,
     gate_log::{emit_repo_gate_line, emit_repo_gate_warning},
 };
-use crate::output::{format_who_tag_delim, MALVIN_WHO, WARNING_WHO};
+use crate::output::{MALVIN_WHO, WARNING_WHO, format_who_tag_delim};
 use crate::test_stderr_capture::capture_stderr_output;
 
 const GATE_WARN_MSG: &str = "quality gate warning for regression test";

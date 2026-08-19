@@ -1,6 +1,4 @@
-use crate::acp::coalesce::{
-    coalesce_append_chunk, SessionUpdateChunkKind, VerboseIoCoalescer,
-};
+use crate::acp::coalesce::{SessionUpdateChunkKind, VerboseIoCoalescer, coalesce_append_chunk};
 
 #[derive(Default)]
 pub(crate) struct TraceChunkCoalescer {
@@ -157,16 +155,15 @@ fn trace_chunk_coalescer_iterable_closed_flag_survives_split_feed() {
     let part_a = "Error: T: WritableIter";
     let part_b = "able is closed";
     let mid = coalescer.feed(SessionUpdateChunkKind::Message, part_a);
-    assert!(mid.iter().all(|(_, _, stream, upgrade_plan)| stream.is_none() && !*upgrade_plan));
+    assert!(
+        mid.iter()
+            .all(|(_, _, stream, upgrade_plan)| stream.is_none() && !*upgrade_plan)
+    );
     coalescer.feed(SessionUpdateChunkKind::Message, part_b);
     let flushed = coalescer.flush_all();
-    assert!(
-        flushed
-            .iter()
-            .any(|(_, _, stream, upgrade_plan)| {
-                *stream == Some(crate::acp::IterableClosedStream::Writable) && !*upgrade_plan
-            })
-    );
+    assert!(flushed.iter().any(|(_, _, stream, upgrade_plan)| {
+        *stream == Some(crate::acp::IterableClosedStream::Writable) && !*upgrade_plan
+    }));
 }
 
 #[test]

@@ -75,7 +75,9 @@ mod stderr_log_tests {
             !crate::output::is_log_timestamp_token(display.split_whitespace().next().unwrap_or("")),
             "live stderr display must omit wall-clock prefix; got {display:?}"
         );
-        assert!(display.contains(&crate::output::format_who_tag_delim(crate::output::MALVIN_WHO)));
+        assert!(display.contains(&crate::output::format_who_tag_delim(
+            crate::output::MALVIN_WHO
+        )));
         assert!(display.contains("VIOLATION:test_coverage:probe"));
 
         let log_text = std::fs::read_to_string(path).expect("read log");
@@ -122,7 +124,7 @@ mod stderr_log_tests {
 
 #[cfg(test)]
 #[allow(unused_imports)]
-mod kiss_cov_gate_refs{
+mod kiss_cov_gate_refs {
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {

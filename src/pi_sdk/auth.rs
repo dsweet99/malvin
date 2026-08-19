@@ -1,4 +1,3 @@
-
 use crate::acp::AuthError;
 
 use super::discover::resolve_pi_bin;
@@ -23,9 +22,7 @@ pub fn ensure_pi_authenticated(model: &str) -> Result<(), AuthError> {
 }
 
 pub fn is_provider_authenticated(provider: &str) -> bool {
-    provider_auth_env_keys(provider).is_none_or(|keys| {
-        keys.iter().any(|k| env_nonempty(k))
-    })
+    provider_auth_env_keys(provider).is_none_or(|keys| keys.iter().any(|k| env_nonempty(k)))
 }
 
 #[must_use]
@@ -100,4 +97,3 @@ mod tests {
         });
     }
 }
-

@@ -1,6 +1,6 @@
 use crate::acp::{
-    IterableClosedStream, iterable_closed_stream_from_buffer,
-    operational_iterable_closed_for_emit, operational_iterable_closed_log_line,
+    IterableClosedStream, iterable_closed_stream_from_buffer, operational_iterable_closed_for_emit,
+    operational_iterable_closed_log_line,
 };
 
 #[test]
@@ -40,10 +40,7 @@ fn operational_iterable_closed_log_line_detection() {
 #[test]
 fn operational_iterable_closed_for_emit_uses_stream_kind_message() {
     assert_eq!(
-        operational_iterable_closed_for_emit(
-            "partial",
-            Some(IterableClosedStream::Writable)
-        ),
+        operational_iterable_closed_for_emit("partial", Some(IterableClosedStream::Writable)),
         Some("acp: WritableIterable is closed")
     );
 }

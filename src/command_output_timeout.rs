@@ -1,4 +1,3 @@
-
 use std::io::Read;
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::thread;
@@ -8,24 +7,20 @@ type PipeReader = thread::JoinHandle<std::io::Result<Vec<u8>>>;
 
 #[must_use]
 pub fn timeout_ms_from_env(env_key: &str, default_ms: u64) -> Duration {
-    Duration::from_millis(
-        std::env::var(env_key)
-            .ok()
-            .map_or(default_ms, |s| {
-                s.parse::<u64>().map_or_else(
-                    |_| {
-                        tracing::warn!(
-                            target: "malvin::command_output_timeout",
-                            key = %env_key,
-                            value = %s,
-                            "not a positive integer; using default"
-                        );
-                        default_ms
-                    },
-                    |n| n.max(1),
-                )
-            }),
-    )
+    Duration::from_millis(std::env::var(env_key).ok().map_or(default_ms, |s| {
+        s.parse::<u64>().map_or_else(
+            |_| {
+                tracing::warn!(
+                    target: "malvin::command_output_timeout",
+                    key = %env_key,
+                    value = %s,
+                    "not a positive integer; using default"
+                );
+                default_ms
+            },
+            |n| n.max(1),
+        )
+    }))
 }
 
 pub fn command_output_with_timeout(
@@ -95,10 +90,7 @@ fn wait_child_with_timeout(
                     crate::acp::signal_process_group(child.id(), 9);
                     let _ = child.kill();
                     let _ = child.wait();
-                    return Err(format!(
-                        "{label} timed out after {}ms",
-                        timeout.as_millis()
-                    ));
+                    return Err(format!("{label} timed out after {}ms", timeout.as_millis()));
                 }
                 thread::sleep(Duration::from_millis(20));
             }
@@ -128,10 +120,7 @@ mod tests {
         unsafe {
             std::env::set_var(key, "nope");
         }
-        assert_eq!(
-            timeout_ms_from_env(key, 30_000),
-            Duration::from_secs(30)
-        );
+        assert_eq!(timeout_ms_from_env(key, 30_000), Duration::from_secs(30));
         #[allow(unsafe_code)]
         unsafe {
             std::env::set_var(key, "250");

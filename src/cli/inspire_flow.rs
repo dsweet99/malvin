@@ -2,17 +2,15 @@ use std::collections::HashMap;
 
 use clap::Args;
 
+use crate::agent_backend::{AgentBackend, build_agent_backend};
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
-use crate::agent_backend::{build_agent_backend, AgentBackend};
 use crate::cli::cli_request::require_cli_request;
 use crate::cli::one_shot_session::{
-    finish_one_shot_after_prompt, finish_one_shot_auth_and_backups, resolve_one_shot_request_artifacts,
-    OneShotCoderGuard,
+    OneShotCoderGuard, finish_one_shot_after_prompt, finish_one_shot_auth_and_backups,
+    resolve_one_shot_request_artifacts,
 };
 use crate::cli::{SharedOpts, WorkflowCliOptions};
-use crate::prompts::{
-    PromptError, PromptStore, INSPIRE_SUMMARIZE_MD, render_inspire_mbc2_prompt,
-};
+use crate::prompts::{INSPIRE_SUMMARIZE_MD, PromptError, PromptStore, render_inspire_mbc2_prompt};
 use crate::run_timing::TimingPhase;
 
 #[derive(Args, Debug)]
@@ -222,7 +220,7 @@ mod inspire_flow_tests;
 
 #[cfg(test)]
 #[allow(unused_imports)]
-mod kiss_cov_gate_refs{
+mod kiss_cov_gate_refs {
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {

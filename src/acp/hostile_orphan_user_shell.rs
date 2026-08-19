@@ -1,10 +1,9 @@
-
-use std::io::Write;
-use std::path::Path;
-use std::process::{Child, ChildStdin, Command, Stdio};
 use super::process_alive;
 use super::read_orphan_pid;
 use super::wait_for_init_reparent;
+use std::io::Write;
+use std::path::Path;
+use std::process::{Child, ChildStdin, Command, Stdio};
 
 pub fn spawn_user_shell_cooperator() -> (Child, ChildStdin) {
     let child_delay = super::hostile_script_delay_ms(200);
@@ -22,12 +21,8 @@ pub fn spawn_user_shell_cooperator() -> (Child, ChildStdin) {
 }
 
 pub fn spawn_user_coincidental_daemon(user_shell_stdin: &mut ChildStdin, orphan_pid_file: &Path) {
-    writeln!(
-        user_shell_stdin,
-        "DAEMON {}",
-        orphan_pid_file.display()
-    )
-    .expect("request user daemon spawn");
+    writeln!(user_shell_stdin, "DAEMON {}", orphan_pid_file.display())
+        .expect("request user daemon spawn");
     user_shell_stdin.flush().expect("flush");
 }
 
@@ -47,14 +42,15 @@ pub async fn setup_user_init_reparented_daemon(
     spawn_user_coincidental_daemon(user_shell_stdin, orphan_pid_file);
     let pid = read_orphan_pid(orphan_pid_file, None).await;
     wait_for_init_reparent(pid).await;
-    assert!(
-        process_alive(pid),
-        "setup: user daemon should be running"
-    );
+    assert!(process_alive(pid), "setup: user daemon should be running");
     pid
 }
 
-pub fn cleanup_user_coincidental_test(user_daemon_pid: u32, mut user_shell: Child, mut agent_child: Child) {
+pub fn cleanup_user_coincidental_test(
+    user_daemon_pid: u32,
+    mut user_shell: Child,
+    mut agent_child: Child,
+) {
     let _ = Command::new("kill")
         .args(["-9", &user_daemon_pid.to_string()])
         .status();

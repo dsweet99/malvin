@@ -1,6 +1,4 @@
-use super::{
-    apply_workspace_config_defaults, parse_cli_with_config_defaults, Cli,
-};
+use super::{Cli, apply_workspace_config_defaults, parse_cli_with_config_defaults};
 use clap::{CommandFactory, FromArgMatches};
 
 fn write_default_workflow_max_hypotheses(work: &std::path::Path, value: i64) {
@@ -66,22 +64,14 @@ fn default_route_max_hypotheses_uses_default_workflow_config() {
 
 #[test]
 fn default_route_max_hypotheses_cli_wins_over_config() {
-    assert_default_route_max_hypotheses(
-        &["malvin", "--max-hypotheses", "3", "hello"],
-        3,
-    );
+    assert_default_route_max_hypotheses(&["malvin", "--max-hypotheses", "3", "hello"], 3);
 }
 
 #[test]
 fn default_route_max_hypotheses_flag_after_request_parses() {
     crate::test_utils::with_isolated_home(|_| {
-        let (cli, _) = parse_cli_with_config_defaults([
-            "malvin",
-            "hello",
-            "--max-hypotheses",
-            "7",
-        ])
-        .expect("parse flag after request");
+        let (cli, _) = parse_cli_with_config_defaults(["malvin", "hello", "--max-hypotheses", "7"])
+            .expect("parse flag after request");
         assert_eq!(cli.max_hypotheses, 7);
         assert_eq!(cli.request.as_deref(), Some("hello"));
     });

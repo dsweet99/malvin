@@ -61,8 +61,8 @@ pub fn resolve_user_md_request(arg: &str) -> Result<(String, PathBuf), String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        looks_like_md_file_path_arg, md_path_has_invalid_characters, md_path_has_invalid_components,
-        resolve_user_md_request,
+        looks_like_md_file_path_arg, md_path_has_invalid_characters,
+        md_path_has_invalid_components, resolve_user_md_request,
     };
     use std::path::Path;
 

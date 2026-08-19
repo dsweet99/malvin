@@ -1,13 +1,12 @@
-
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use crate::agent_backend::{
-    agent_backend_attach_run_timing_for_session, agent_backend_ensure_coder_session,
-    agent_backend_set_implement_display_name, agent_backend_set_run_timing, AgentBackend,
+    AgentBackend, agent_backend_attach_run_timing_for_session, agent_backend_ensure_coder_session,
+    agent_backend_set_implement_display_name, agent_backend_set_run_timing,
 };
 use crate::artifacts::{
-    create_run_artifacts_from_text, resolve_user_md_request, RunArtifacts, SessionDotfileBackups,
+    RunArtifacts, SessionDotfileBackups, create_run_artifacts_from_text, resolve_user_md_request,
 };
 use crate::cli::cli_request::require_cli_request;
 use crate::run_id::RunDirOptions;
@@ -92,10 +91,7 @@ pub fn finish_one_shot_after_prompt(
     result_md: &PathBuf,
 ) -> Result<(), String> {
     let r = crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
-        acp_res,
-        work_dir,
-        backups,
-        result_md,
+        acp_res, work_dir, backups, result_md,
     );
     if r.is_ok() {
         crate::cli::error_run_log::clear_command_error_run_dir();

@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use super::{
-    format_git_extra, format_prompt_path, insert_artifact_paths, insert_current_state,
-    insert_formatted, resolve_nonexistent_path, resolve_path_against_base, resolve_user_brief_path,
-    workflow_context_paths_only, GIT_EXTRA_ENABLED,
+    GIT_EXTRA_ENABLED, format_git_extra, format_prompt_path, insert_artifact_paths,
+    insert_current_state, insert_formatted, resolve_nonexistent_path, resolve_path_against_base,
+    resolve_user_brief_path, workflow_context_paths_only,
 };
 use crate::prompt_stratification::WorkflowRenderContext;
 
@@ -71,17 +71,19 @@ fn insert_quality_gates_log_paths_sets_alias() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "p").expect("write");
-    let artifacts = crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
+    let artifacts =
+        crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
     let mut ctx = HashMap::new();
     super::insert_quality_gates_log_paths(&mut ctx, &artifacts, tmp.path());
     assert_eq!(
         ctx.get("quality_gates_path").map(String::as_str),
         ctx.get("quality_gates_log").map(String::as_str),
     );
-    assert!(ctx
-        .get("quality_gates_log")
-        .expect("log")
-        .ends_with("quality_gates.log"));
+    assert!(
+        ctx.get("quality_gates_log")
+            .expect("log")
+            .ends_with("quality_gates.log")
+    );
 }
 
 #[test]
@@ -89,7 +91,8 @@ fn insert_artifact_paths_sets_logs_dir_to_home_bucket() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "p").expect("write");
-    let artifacts = crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
+    let artifacts =
+        crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
     let mut ctx = HashMap::new();
     insert_artifact_paths(&mut ctx, &artifacts);
     let logs_dir = ctx.get("logs_dir").expect("logs_dir");
@@ -106,7 +109,8 @@ fn insert_artifact_paths_populates_expected_keys() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "p").expect("write");
-    let artifacts = crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
+    let artifacts =
+        crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
     let mut ctx = HashMap::new();
     insert_artifact_paths(&mut ctx, &artifacts);
     assert!(ctx.contains_key("result_path"));
@@ -130,7 +134,8 @@ fn workflow_context_paths_only_includes_current_state() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "p").expect("write");
-    let artifacts = crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
+    let artifacts =
+        crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
     let ctx = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, false);
     assert!(ctx.contains_key("current_state"));
     assert!(ctx.get("current_state").expect("state").contains("User:"));
@@ -141,7 +146,8 @@ fn workflow_context_paths_only_sets_git_extra_from_flag() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "p").expect("write");
-    let artifacts = crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
+    let artifacts =
+        crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
     let off = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, false);
     assert_eq!(off.get("git_extra").map(String::as_str), Some(""));
     let on = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, true);
@@ -158,13 +164,15 @@ fn insert_current_state_populates_key() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "p").expect("write");
-    let artifacts = crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
+    let artifacts =
+        crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
     let mut ctx = HashMap::new();
     insert_current_state(&mut ctx, &artifacts, tmp.path());
-    assert!(ctx
-        .get("current_state")
-        .expect("state")
-        .contains("Sandbox memory:"));
+    assert!(
+        ctx.get("current_state")
+            .expect("state")
+            .contains("Sandbox memory:")
+    );
 }
 
 #[test]
@@ -182,18 +190,17 @@ fn resolve_user_brief_path_uses_context_override() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "p").expect("write");
-    let artifacts = crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
+    let artifacts =
+        crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
     let override_path = tmp.path().join("user_request.md");
     std::fs::write(&override_path, "u").expect("write");
     let mut ctx = HashMap::new();
-    insert_formatted(
-        &mut ctx,
-        "user_request_path",
-        &override_path,
-        tmp.path(),
-    );
+    insert_formatted(&mut ctx, "user_request_path", &override_path, tmp.path());
     let resolved = resolve_user_brief_path(&artifacts, &WorkflowRenderContext::from(ctx));
-    assert_eq!(resolved, override_path.canonicalize().expect("canonicalize"));
+    assert_eq!(
+        resolved,
+        override_path.canonicalize().expect("canonicalize")
+    );
 }
 
 #[test]
@@ -201,7 +208,8 @@ fn resolve_user_brief_path_falls_back_to_plan_path() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "p").expect("write");
-    let artifacts = crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
+    let artifacts =
+        crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
     let resolved = resolve_user_brief_path(&artifacts, &WorkflowRenderContext::default());
     assert_eq!(
         resolved,
@@ -222,7 +230,8 @@ fn workflow_context_returns_plan_path_and_quality_gates() {
         crate::artifacts::create_run_artifacts(&plan_path, Some(tmp.path())).expect("artifacts");
     let store = crate::prompts::PromptStore::default_store();
     store.ensure_defaults().expect("defaults");
-    let ctx = super::workflow_context(&artifacts, &store, crate::config::DEFAULT_CLI_MODEL).expect("context");
+    let ctx = super::workflow_context(&artifacts, &store, crate::config::DEFAULT_CLI_MODEL)
+        .expect("context");
     assert!(ctx.contains_key("plan_path"));
     assert!(ctx.contains_key("quality_gates"));
 }

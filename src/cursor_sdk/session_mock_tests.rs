@@ -1,4 +1,3 @@
-
 use std::path::PathBuf;
 use std::process::Stdio;
 
@@ -9,7 +8,11 @@ fn mock_bridge_js() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/cursor_sdk/mock_bridge.js")
 }
 
-async fn spawn_mock() -> (Child, tokio::process::ChildStdin, BufReader<tokio::process::ChildStdout>) {
+async fn spawn_mock() -> (
+    Child,
+    tokio::process::ChildStdin,
+    BufReader<tokio::process::ChildStdout>,
+) {
     let node = super::node_resolve::resolve_node_bin().expect("modern node for mock bridge");
     let mut child = Command::new(node)
         .arg(mock_bridge_js())

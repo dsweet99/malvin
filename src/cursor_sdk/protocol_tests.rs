@@ -1,4 +1,4 @@
-use super::protocol::{decode_event, encode_request, BridgeEvent, BridgeRequest};
+use super::protocol::{BridgeEvent, BridgeRequest, decode_event, encode_request};
 
 #[test]
 fn encode_create_uses_camel_case_api_key() {

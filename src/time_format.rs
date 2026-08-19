@@ -28,9 +28,7 @@ pub fn heartbeat_payload_has_wall_clock_prefix(payload: &str) -> bool {
     if ts.len() != 15 || ts.as_bytes().get(8) != Some(&b'.') {
         return false;
     }
-    ts.chars()
-        .all(|c| c.is_ascii_digit() || c == '.')
-        && payload.get(15..16) == Some(" ")
+    ts.chars().all(|c| c.is_ascii_digit() || c == '.') && payload.get(15..16) == Some(" ")
 }
 
 #[cfg(test)]
@@ -79,5 +77,4 @@ mod tests {
         ));
         assert!(!super::heartbeat_payload_has_wall_clock_prefix("HB: old"));
     }
-
 }

@@ -1,4 +1,3 @@
-
 use std::collections::HashMap;
 
 use super::auth::env_nonempty;
@@ -10,8 +9,7 @@ pub fn list_pi_provider_auth_sync() -> Result<HashMap<String, Vec<String>>, Stri
     let bin = resolve_pi_bin()?;
     let mut cmd = crate::malvin_sandbox::malvin_std_command(&bin);
     cmd.arg("--list-providers");
-    let output =
-        command_output_with_timeout(cmd, pi_list_models_timeout(), "pi --list-providers")?;
+    let output = command_output_with_timeout(cmd, pi_list_models_timeout(), "pi --list-providers")?;
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(format!(
@@ -32,10 +30,7 @@ pub fn list_pi_provider_auth_sync() -> Result<HashMap<String, Vec<String>>, Stri
 }
 
 #[must_use]
-pub fn provider_authenticated_from_map(
-    provider: &str,
-    map: &HashMap<String, Vec<String>>,
-) -> bool {
+pub fn provider_authenticated_from_map(provider: &str, map: &HashMap<String, Vec<String>>) -> bool {
     match map.get(provider) {
         None => true,
         Some(keys) if keys.is_empty() => true,
@@ -124,7 +119,8 @@ fn record_provider_row(map: &mut HashMap<String, Vec<String>>, line: &str, cols:
 
 fn col(line: &str, start: usize, end: usize) -> &str {
     let n = line.len();
-    if start >= n || end > n || !line.is_char_boundary(start) || !line.is_char_boundary(end.min(n)) {
+    if start >= n || end > n || !line.is_char_boundary(start) || !line.is_char_boundary(end.min(n))
+    {
         return "";
     }
     line[start..end.min(n)].trim()

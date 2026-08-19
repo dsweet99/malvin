@@ -1,4 +1,3 @@
-
 use std::collections::HashMap;
 
 #[allow(clippy::implicit_hasher)]
@@ -19,9 +18,7 @@ pub(crate) fn is_spaced_brace_placeholder_inner(raw: &str) -> bool {
     raw.starts_with(' ')
         && raw.ends_with(' ')
         && !key.is_empty()
-        && key
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '_')
+        && key.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
 }
 
 #[must_use]

@@ -160,4 +160,3 @@ pub fn render_inspire_mbc2_prompt(
     ctx.insert("coding_rules".to_string(), String::new());
     store.render_prompt_only("mbc2.md", &ctx)
 }
-

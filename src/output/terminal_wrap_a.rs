@@ -78,11 +78,7 @@ pub(crate) fn line_wrap_meta_tagged_stderr(
     line_wrap_for_prefix_len(prefix_len, line, style.allow_word_wrap)
 }
 
-fn line_wrap_meta_tagged_stdout(
-    who: &str,
-    line: &str,
-    style: LineWrapStyle,
-) -> (usize, bool) {
+fn line_wrap_meta_tagged_stdout(who: &str, line: &str, style: LineWrapStyle) -> (usize, bool) {
     let prefix_len = malvin_tagged_stdout_prefix_len(who, style.use_color);
     line_wrap_for_prefix_len(prefix_len, line, style.allow_word_wrap)
 }
@@ -153,7 +149,12 @@ pub(crate) fn wrap_split_at_whitespace(chars: &[char], start: usize, end: usize)
         })
 }
 
-pub(crate) fn wrap_push_segment(lines: &mut Vec<String>, chars: &[char], start: usize, split: usize) {
+pub(crate) fn wrap_push_segment(
+    lines: &mut Vec<String>,
+    chars: &[char],
+    start: usize,
+    split: usize,
+) {
     lines.push(chars[start..split].iter().collect());
 }
 
@@ -210,38 +211,3 @@ pub fn wrap_words_bounded(max_payload_chars: usize, text: &str) -> Vec<String> {
 #[cfg(test)]
 #[path = "wrap_tests.rs"]
 mod wrap_tests;
-
-
-#[cfg(test)]
-mod kiss_cov_auto{
-    use super::*;
-
-    #[test]
-    fn kiss_cov_malvin_tagged_stdout_prefix_len() { let _ = malvin_tagged_stdout_prefix_len; }
-
-    #[test]
-    fn kiss_cov_malvin_tagged_stderr_prefix_len() { let _ = malvin_tagged_stderr_prefix_len; }
-
-    #[test]
-    fn kiss_cov_line_wrap_meta_tagged_stderr() { let _ = line_wrap_meta_tagged_stderr; }
-
-    #[test]
-    fn kiss_cov_display_width_prefix() { let _ = display_width_prefix; }
-
-    #[test]
-    fn kiss_cov_wrap_split_at_whitespace() { let _ = wrap_split_at_whitespace; }
-
-    #[test]
-    fn kiss_cov_wrap_push_segment() { let _ = wrap_push_segment; }
-
-    #[test]
-    fn kiss_cov_real_identifier_refs() {
-        use super::*;
-        let _ = display_width_prefix;
-        let _ = line_wrap_meta_tagged_stderr;
-        let _ = malvin_tagged_stderr_prefix_len;
-        let _ = malvin_tagged_stdout_prefix_len;
-        let _ = wrap_push_segment;
-        let _ = wrap_split_at_whitespace;
-    }
-}

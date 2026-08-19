@@ -1,4 +1,3 @@
-
 mod common;
 
 #[cfg(unix)]
@@ -167,6 +166,5 @@ fn kiss_cov_malvin_name_contract_symbols() {
     let _ = stringify!(different_acp_lock_slots_same_workspace_both_acquire);
     let _ = stringify!(entrypoint_duplicate_name_via_binary);
     #[cfg(unix)]
-    {
-    }
+    {}
 }

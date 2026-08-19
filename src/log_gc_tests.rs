@@ -1,10 +1,10 @@
-use super::*;
 use super::log_gc_prune::{
     mtime_as_utc, needs_prune, over_age_limit, over_byte_cap, prune_run_dirs,
 };
+use super::*;
 use crate::log_gc_config::{
-    load_logs_gc_config, parse_byte_size, parse_logs_gc_config, parse_max_bytes_value,
-    split_byte_size, LogsGcConfig,
+    LogsGcConfig, load_logs_gc_config, parse_byte_size, parse_logs_gc_config,
+    parse_max_bytes_value, split_byte_size,
 };
 
 const RUN_OLDEST: &str = "20260101_000000_aaaaaaa1";
@@ -59,10 +59,9 @@ fn load_logs_gc_config_uses_defaults_when_missing() {
 
 #[test]
 fn parse_logs_gc_config_reads_toml() {
-    let cfg = parse_logs_gc_config(
-        "[logs]\nmax_count = 500\nmax_age_days = 7\nmax_bytes = \"1MiB\"\n",
-    )
-    .expect("parse");
+    let cfg =
+        parse_logs_gc_config("[logs]\nmax_count = 500\nmax_age_days = 7\nmax_bytes = \"1MiB\"\n")
+            .expect("parse");
     assert_eq!(cfg.max_count, 500);
     assert_eq!(cfg.max_age_days, 7);
     assert_eq!(cfg.max_bytes, parse_byte_size("1MiB"));
@@ -85,7 +84,10 @@ fn log_gc_helpers_cover_policy_edges() {
     assert!(!over_byte_cap(total, None));
     assert!(over_age_limit(runs.last(), config.max_age_days));
     assert!(needs_prune(&runs, total, &config));
-    assert_eq!(dir_size(&old), dir_size_inner(&old).expect("dir_size_inner"));
+    assert_eq!(
+        dir_size(&old),
+        dir_size_inner(&old).expect("dir_size_inner")
+    );
     assert!(mtime_as_utc(&old).is_some());
     assert_eq!(
         parse_max_bytes_value(&toml::Value::String(String::new())).expect("empty"),

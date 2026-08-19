@@ -1,15 +1,21 @@
 use super::format_line_stdout_ansi;
-use super::{WHO_B, WHO_U, init_stdout_style_for_test, print_outgoing_prompt_log, set_stdout_log_path};
+use super::{
+    WHO_B, WHO_U, init_stdout_style_for_test, print_outgoing_prompt_log, set_stdout_log_path,
+};
 
 #[test]
 fn ansi_error_and_warning_color_entire_display_line() {
-    use crate::terminal_palette::{ansi_tool_amber, ansi_tool_coral, ANSI_RESET};
+    use crate::terminal_palette::{ANSI_RESET, ansi_tool_amber, ansi_tool_coral};
 
     let err = format_line_stdout_ansi(super::ERROR_WHO, "ACP failed");
     let coral_pos = err.find(ansi_tool_coral()).expect("coral");
     let reset_pos = err.rfind(ANSI_RESET).expect("reset");
     let payload_pos = err.find("ACP failed").expect("payload");
-    assert_eq!(err.matches(ANSI_RESET).count(), 1, "single trailing reset: {err:?}");
+    assert_eq!(
+        err.matches(ANSI_RESET).count(),
+        1,
+        "single trailing reset: {err:?}"
+    );
     assert!(
         coral_pos < payload_pos && payload_pos < reset_pos,
         "error tag and payload must stay inside coral span: {err:?}"
@@ -18,7 +24,11 @@ fn ansi_error_and_warning_color_entire_display_line() {
     let amber_pos = warn.find(ansi_tool_amber()).expect("amber");
     let reset_pos = warn.rfind(ANSI_RESET).expect("reset");
     let payload_pos = warn.find("disk low").expect("payload");
-    assert_eq!(warn.matches(ANSI_RESET).count(), 1, "single trailing reset: {warn:?}");
+    assert_eq!(
+        warn.matches(ANSI_RESET).count(),
+        1,
+        "single trailing reset: {warn:?}"
+    );
     assert!(
         amber_pos < payload_pos && payload_pos < reset_pos,
         "warning tag and payload must stay inside amber span: {warn:?}"
@@ -27,10 +37,13 @@ fn ansi_error_and_warning_color_entire_display_line() {
 
 #[test]
 fn ansi_thought_tag_uses_uniform_dim_grey() {
-    use crate::terminal_palette::{ansi_tool_dark, ansi_tool_navy, ANSI_DIM};
+    use crate::terminal_palette::{ANSI_DIM, ansi_tool_dark, ansi_tool_navy};
 
     let line = format_line_stdout_ansi(WHO_B, "fail with max_abs=1.0.");
-    assert!(line.contains("b| "), "thought display must space after pipe; got {line:?}");
+    assert!(
+        line.contains("b| "),
+        "thought display must space after pipe; got {line:?}"
+    );
     assert!(line.contains(ANSI_DIM));
     assert!(!line.contains(ansi_tool_navy()));
     assert!(!line.contains(ansi_tool_dark()));
@@ -82,8 +95,12 @@ fn defer_stdout_hooks_route_through_active_sink() {
     crate::deferred_log::register_active_sink(Arc::clone(&shared));
     crate::deferred_log::install_stdout_hooks();
     assert!(super::try_defer_tagged_stdout("d", "l"));
-    assert!(crate::output::stdout_defer::try_defer_heartbeat("hb-d", "hb-l"));
+    assert!(crate::output::stdout_defer::try_defer_heartbeat(
+        "hb-d", "hb-l"
+    ));
     crate::deferred_log::unregister_active_sink();
     assert!(!super::try_defer_tagged_stdout("d", "l"));
-    assert!(!crate::output::stdout_defer::try_defer_heartbeat("hb-d", "hb-l"));
+    assert!(!crate::output::stdout_defer::try_defer_heartbeat(
+        "hb-d", "hb-l"
+    ));
 }

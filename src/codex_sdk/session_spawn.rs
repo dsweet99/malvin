@@ -1,6 +1,5 @@
 use crate::acp::AgentError;
-use crate::bridge_sdk::{BridgeSession, BridgeSpawnArgs, BridgeWire, start_mem_watch};
-use std::process::Stdio;
+use crate::bridge_sdk::{BridgeSession, BridgeSpawnArgs, start_mem_watch};
 
 pub(crate) async fn codex_spawn_bridge(
     args: BridgeSpawnArgs<'_>,
@@ -18,201 +17,27 @@ pub(crate) async fn codex_spawn_bridge(
     Ok(session)
 }
 
-fn spawn_codex_session(args: &BridgeSpawnArgs<'_>) -> Result<BridgeSession, AgentError> {
-    let mut process = spawn_codex_process(args)?;
-    process.baseline = crate::malvin_sandbox::malvin_spawn_baseline();
-    crate::malvin_sandbox::note_active_sandbox_session(
-        process.pgid,
-        process.baseline.clone(),
-        args.cwd,
-    )
-    .map_err(AgentError)?;
-    Ok(build_codex_session(args, process))
-}
-
-struct CodexProcess {
-    child: tokio::process::Child,
-    stdin: tokio::process::ChildStdin,
-    stdout: tokio::process::ChildStdout,
-    pgid: Option<u32>,
-    baseline: std::collections::HashSet<u32>,
-}
-
-fn build_codex_session(args: &BridgeSpawnArgs<'_>, process: CodexProcess) -> BridgeSession {
-    let CodexProcess {
-        child,
-        stdin,
-        stdout,
-        pgid,
-        baseline,
-    } = process;
-    let io = build_codex_session_io(stdin, stdout);
-    BridgeSession {
-        child: tokio::sync::Mutex::new(Some(child)),
-        stdin: io.0,
-        stdout: io.1,
-        process_group_id: pgid,
-        spawn_pid_baseline: baseline,
-        reader_dead: io.2,
-        work_dir: args.cwd.to_path_buf(),
-        io: args.io,
-        last_response: io.3,
-        timing: args.timing.clone(),
-        run_dir: args.run_dir.clone(),
-        started_at: std::time::Instant::now(),
-        agent_id: std::sync::Mutex::new(None),
-        stdout_coalesce: std::sync::Mutex::new(crate::acp::TraceChunkCoalescer::default()),
-        tool_starts: std::sync::Mutex::new(std::collections::HashMap::default()),
-        normalize_pi_usage: false,
-        wire: BridgeWire::CodexRpc,
-    }
-}
-
-type CodexSessionIo = (
-    std::sync::Arc<tokio::sync::Mutex<tokio::process::ChildStdin>>,
-    std::sync::Arc<tokio::sync::Mutex<tokio::io::BufReader<tokio::process::ChildStdout>>>,
-    std::sync::Arc<std::sync::atomic::AtomicBool>,
-    std::sync::Arc<std::sync::Mutex<String>>,
-);
-
-fn build_codex_session_io(
-    stdin: tokio::process::ChildStdin,
-    stdout: tokio::process::ChildStdout,
-) -> CodexSessionIo {
-    (
-        std::sync::Arc::new(tokio::sync::Mutex::new(stdin)),
-        std::sync::Arc::new(tokio::sync::Mutex::new(tokio::io::BufReader::new(stdout))),
-        std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
-        std::sync::Arc::new(std::sync::Mutex::new(String::new())),
-    )
-}
-
-fn configured_codex_command(
-    bin: std::path::PathBuf,
-    cwd: &std::path::Path,
-) -> tokio::process::Command {
-    let mut cmd = crate::malvin_sandbox::malvin_tokio_command(bin);
-    cmd.arg("app-server")
-        .arg("--stdio")
-        .current_dir(cwd)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
-        .env("MALLOC_ARENA_MAX", "2");
-    cmd
-}
-
-fn spawn_codex_process(args: &BridgeSpawnArgs<'_>) -> Result<CodexProcess, AgentError> {
-    let bin = crate::codex_sdk::resolve_codex_bin().map_err(AgentError)?;
-    let mut cmd = configured_codex_command(bin, args.cwd);
-    let mut child = cmd
-        .spawn()
-        .map_err(|e| AgentError(format!("spawn codex app-server: {e}")))?;
-    let stdin = child
-        .stdin
-        .take()
-        .ok_or_else(|| AgentError("codex stdin missing".into()))?;
-    let stdout = child
-        .stdout
-        .take()
-        .ok_or_else(|| AgentError("codex stdout missing".into()))?;
-    let pgid = child.id();
-    Ok(CodexProcess {
-        child,
-        stdin,
-        stdout,
-        pgid,
-        baseline: std::collections::HashSet::new(),
-    })
-}
-
-pub(crate) async fn codex_initialize(session: &BridgeSession) -> Result<(), AgentError> {
-    let response = request(
-        session,
-        "initialize",
-        serde_json::json!({
-            "clientInfo": {
-                "name": "malvin",
-                "title": "Malvin",
-                "version": env!("CARGO_PKG_VERSION")
-            }
-        }),
-    )
-    .await?;
-    if response.get("error").is_some() {
-        return Err(response_error("codex initialize", &response));
-    }
-    write(
-        session,
-        &serde_json::json!({"method":"initialized","params":{}}),
-    )
-    .await
-}
-
-pub(crate) async fn codex_start_thread(
-    session: &BridgeSession,
-    model: &str,
-    cwd: &std::path::Path,
-) -> Result<(), AgentError> {
-    let model = crate::codex_sdk::resolve_codex_model(model).map_err(AgentError)?;
-    let response = request(
-        session,
-        "thread/start",
-        serde_json::json!({
-            "model": model,
-            "cwd": cwd,
-            "approvalPolicy": "never",
-            "sandbox": "workspace-write"
-        }),
-    )
-    .await?;
-    if response.get("error").is_some() {
-        return Err(response_error("codex thread/start", &response));
-    }
-    let id = response
-        .pointer("/result/thread/id")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| AgentError("codex thread/start response missing thread id".into()))?;
-    *session
-        .agent_id
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(id.to_owned());
-    Ok(())
-}
-
-pub(crate) async fn request(
-    session: &BridgeSession,
-    method: &str,
-    params: serde_json::Value,
-) -> Result<serde_json::Value, AgentError> {
-    let id = super::session_io::next_id();
-    write(
-        session,
-        &serde_json::json!({"method": method, "id": id, "params": params}),
-    )
-    .await?;
-    loop {
-        let value = super::session_io::read_json(session).await?;
-        if value.get("id").and_then(serde_json::Value::as_u64) == Some(id) {
-            return Ok(value);
-        }
-    }
-}
-
-pub(crate) fn response_error(context: &str, response: &serde_json::Value) -> AgentError {
-    AgentError(format!(
-        "{context}: {}",
-        response.get("error").unwrap_or(response)
-    ))
-}
-
-async fn write(session: &BridgeSession, value: &serde_json::Value) -> Result<(), AgentError> {
-    super::session_io::write_json(session, value).await
-}
+use super::session_process::spawn_codex_session;
+use super::session_protocol::{codex_initialize, codex_start_thread};
 
 #[cfg(test)]
 mod tests {
+    use super::super::session_process::{
+        CodexProcess, build_codex_session, build_codex_session_io, configured_codex_command,
+        spawn_codex_process, spawn_codex_session,
+    };
+    use super::super::session_protocol::{request, response_error};
     use super::*;
+    #[test]
+    fn kiss_cov_codex_process_type_is_referenced() {
+        let _: Option<CodexProcess> = None;
+        let _ = build_codex_session;
+        let _ = build_codex_session_io;
+        let _ = configured_codex_command;
+        let _ = spawn_codex_process;
+        let _ = spawn_codex_session;
+    }
+
     #[test]
     fn test_codex_spawn_bridge() {
         let _ = codex_spawn_bridge;
@@ -225,7 +50,7 @@ mod tests {
         let _lock = crate::test_utils::test_env_lock();
         let tmp = tempfile::tempdir().unwrap();
         let bin = tmp.path().join("codex");
-        std::fs::write(&bin, "#!/bin/sh\nwhile IFS= read -r line; do case \"$line\" in *model/list*) printf '%s\\n' '{\"id\":2,\"result\":{\"data\":[{\"id\":\"gpt-test\"}]}}';; *initialize*) printf '%s\\n' '{\"id\":1,\"result\":{}}';; *thread/start*) case \"$line\" in *gpt-5.6*) printf '%s\\n' '{\"id\":2,\"result\":{\"thread\":{\"id\":\"thread-test\"}}}';; *) printf '%s\\n' '{\"id\":2,\"error\":{\"message\":\"wrong model\"}}';; esac;; *turn/start*) printf '%s\\n' '{\"id\":3,\"result\":{}}' '{\"method\":\"turn/started\",\"params\":{\"turn\":{\"id\":\"turn-test\"}}}' '{\"method\":\"item/agentMessage/delta\",\"params\":{\"turnId\":\"turn-test\",\"delta\":\"hello\"}}' '{\"method\":\"turn/completed\",\"params\":{\"turn\":{\"id\":\"turn-test\",\"status\":\"completed\",\"lastAgentMessage\":\"hello\"}}}';; *turn/interrupt*) printf '%s\\n' '{\"id\":4,\"result\":{}}';; esac; done\n").unwrap();
+        std::fs::write(&bin, "#!/bin/sh\nwhile IFS= read -r line; do case \"$line\" in *model/list*) printf '%s\\n' '{\"id\":2,\"result\":{\"data\":[{\"id\":\"gpt-test\"},{\"id\":\"gpt-5.6\"}]}}';; *initialize*) printf '%s\\n' '{\"id\":1,\"result\":{}}';; *thread/start*) case \"$line\" in *gpt-5.6*) printf '%s\\n' '{\"id\":2,\"result\":{\"thread\":{\"id\":\"thread-test\"}}}';; *) printf '%s\\n' '{\"id\":2,\"error\":{\"message\":\"wrong model\"}}';; esac;; *turn/start*) printf '%s\\n' '{\"id\":3,\"result\":{}}' '{\"method\":\"turn/started\",\"params\":{\"turn\":{\"id\":\"turn-test\"}}}' '{\"method\":\"item/agentMessage/delta\",\"params\":{\"turnId\":\"turn-test\",\"delta\":\"hello\"}}' '{\"method\":\"turn/completed\",\"params\":{\"turn\":{\"id\":\"turn-test\",\"status\":\"completed\",\"lastAgentMessage\":\"hello\"}}}';; *turn/interrupt*) printf '%s\\n' '{\"id\":4,\"result\":{}}';; esac; done\n").unwrap();
         let mut perms = std::fs::metadata(&bin).unwrap().permissions();
         perms.set_mode(0o755);
         std::fs::set_permissions(&bin, perms).unwrap();

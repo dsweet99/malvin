@@ -1,4 +1,3 @@
-
 mod common;
 
 #[cfg(unix)]
@@ -29,7 +28,11 @@ fn sweep_stale_acp_spawn_locks_contract() {
 }
 
 #[cfg(unix)]
-fn run_malvin_home(home: &std::path::Path, work: &std::path::Path, args: &[&str]) -> std::process::Output {
+fn run_malvin_home(
+    home: &std::path::Path,
+    work: &std::path::Path,
+    args: &[&str],
+) -> std::process::Output {
     Command::new(env!("CARGO_BIN_EXE_malvin"))
         .env("HOME", home)
         .current_dir(work)
@@ -49,7 +52,11 @@ fn malvin_doc_does_not_sweep_stale_locks() {
     std::fs::write(&stale, "424242").expect("stale lock");
     let home = tempfile::tempdir().expect("home");
     let doc = run_malvin_home(home.path(), work, &["--doc"]);
-    assert!(doc.status.success(), "stderr={}", String::from_utf8_lossy(&doc.stderr));
+    assert!(
+        doc.status.success(),
+        "stderr={}",
+        String::from_utf8_lossy(&doc.stderr)
+    );
     assert!(stale.is_file(), "--doc must not sweep stale locks");
 }
 

@@ -1,4 +1,3 @@
-
 use crate::acp::AgentIoOptions;
 use crate::artifacts::{
     MalvinChecksBackup, RunArtifacts, SessionDotfileBackups, create_run_artifacts_from_text,
@@ -31,7 +30,8 @@ pub fn empty_dotfile_backups() -> SessionDotfileBackups {
         malvin_checks: MalvinChecksBackup::Missing,
         gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
         vision: crate::session_dotfile_backup::VisionBackup::Missing,
-        malvin_config_workspace: crate::session_dotfile_backup::MalvinConfigWorkspaceBackup::Missing,
+        malvin_config_workspace:
+            crate::session_dotfile_backup::MalvinConfigWorkspaceBackup::Missing,
     })
 }
 

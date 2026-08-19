@@ -1,4 +1,3 @@
-
 use crate::artifacts::SessionDotfileBackups;
 use crate::test_utils::with_isolated_home;
 use crate::{malvin_config_path, seed_malvin_config};
@@ -16,7 +15,10 @@ fn repair_breaks_empty_home_config_on_disk_before_next_snapshot() {
             restored.contains("mem_limit_gb"),
             "repair must recreate template defaults, got: {restored:?}"
         );
-        assert_ne!(restored, "mem_limit_gb = 7\n", "empty damage replaced with template");
+        assert_ne!(
+            restored, "mem_limit_gb = 7\n",
+            "empty damage replaced with template"
+        );
     });
 }
 

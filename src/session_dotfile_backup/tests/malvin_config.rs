@@ -1,4 +1,3 @@
-
 use crate::artifacts::SessionDotfileBackups;
 use crate::malvin_config_file::open_malvin_config;
 use crate::test_utils::with_isolated_home;

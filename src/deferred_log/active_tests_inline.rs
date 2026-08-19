@@ -25,9 +25,10 @@ fn pending_has_heartbeat_tracks_display_log_entries() {
         "20260524.000000.000 malvin.|HB: 20260524.000000".into(),
     ));
     assert!(pending_has_heartbeat());
-    assert!(entry_is_heartbeat(
-        &build_display_log_entry("x".into(), "20260524.000000.000 malvin.|HB: 20260524.000000".into())
-    ));
+    assert!(entry_is_heartbeat(&build_display_log_entry(
+        "x".into(),
+        "20260524.000000.000 malvin.|HB: 20260524.000000".into()
+    )));
     pending_entries().clear();
     assert!(!pending_has_heartbeat());
 }
@@ -36,7 +37,9 @@ fn pending_has_heartbeat_tracks_display_log_entries() {
 fn defer_already_has_heartbeat_sees_sink_queue() {
     let sink = crate::deferred_log::test_fixtures::aged_defer_shared("hb_seen");
     let empty = {
-        let guard = sink.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let guard = sink
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         defer_already_has_heartbeat(&guard)
     };
     assert!(!empty);
@@ -47,7 +50,9 @@ fn defer_already_has_heartbeat_sees_sink_queue() {
             "20260524.000000.000 malvin.|HB: 20260524.000000".into(),
         ));
     let has = {
-        let guard = sink.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let guard = sink
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         defer_already_has_heartbeat(&guard)
     };
     assert!(has);

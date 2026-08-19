@@ -1,4 +1,3 @@
-
 #[test]
 fn kiss_witness_sandbox_oom_types() {
     use crate::sandbox_oom::SandboxOomKillFacts;

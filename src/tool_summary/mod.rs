@@ -1,51 +1,51 @@
+mod ansi;
 mod classify_bash;
-mod types;
+mod format;
+mod human_a;
+mod human_a_done;
+mod human_b;
+#[cfg(test)]
+mod kiss_coverage;
 mod parse;
 mod parse_acp;
-mod format;
-mod human_b;
-mod ansi;
-mod human_a_done;
-mod human_a;
 #[cfg(test)]
 mod search_coverage;
 #[cfg(test)]
-mod kiss_coverage;
-#[cfg(test)]
 mod smoke_coverage;
+mod types;
 
-pub use classify_bash::{
-    bash_kind_wire_name, classify_bash_command, format_classified_tool_line,
-    tool_comment_log_prefix, BashToolKind, ClassifiedToolLineInput,
-    TOOL_COMMENT_LOG_PREFIX_CHARS,
-};
-#[allow(unused_imports)]
-pub use types::{
-    ToolSummaryDetail, ToolSummaryLines, ToolSummaryTracker, TOOL_DISPLAY_MAX_WIDTH,
-    shorten_middle,
-};
-#[allow(unused_imports)]
-pub(crate) use human_a::{execute_effective_exit, execute_stdout_failed};
-pub use ansi::tool_summary_stdout_display;
 #[cfg(test)]
 #[allow(unused_imports)]
 pub(crate) use ansi::apply_tool_summary_ansi;
+pub use ansi::tool_summary_stdout_display;
+pub use classify_bash::{
+    BashToolKind, ClassifiedToolLineInput, TOOL_COMMENT_LOG_PREFIX_CHARS, bash_kind_wire_name,
+    classify_bash_command, format_classified_tool_line, tool_comment_log_prefix,
+};
+#[allow(unused_imports)]
+pub(crate) use human_a::{execute_effective_exit, execute_stdout_failed};
+#[allow(unused_imports)]
+pub(crate) use human_a_done::{human_done_line, human_read_done};
+pub(crate) use human_b::escape_tool_subject_fragment;
+pub(crate) use human_b::humanize_duration;
 #[allow(unused_imports)]
 pub(crate) use human_b::relativize_tool_path;
-pub(crate) use human_b::humanize_duration;
-pub(crate) use human_b::escape_tool_subject_fragment;
 #[allow(unused_imports)]
-pub(crate) use parse::{json_number, parse_tool_update, tool_phase_label, LineRange, ParsedToolUpdate};
+pub(crate) use parse::{
+    LineRange, ParsedToolUpdate, json_number, parse_tool_update, tool_phase_label,
+};
 #[allow(unused_imports)]
 pub(crate) use parse_acp::acp_line_range_field;
 #[allow(unused_imports)]
-pub(crate) use human_a_done::{human_done_line, human_read_done};
+pub use types::{
+    TOOL_DISPLAY_MAX_WIDTH, ToolSummaryDetail, ToolSummaryLines, ToolSummaryTracker, shorten_middle,
+};
 #[allow(unused_imports)]
 pub(crate) use types::{TOOL_PHASE_DONE, TOOL_PHASE_RUNNING, TOOL_PHASE_START};
 
-use types::ToolCallRecord;
 use format::format_tool_line;
 use human_a::format_tool_stdout;
+use types::ToolCallRecord;
 
 pub fn tool_summary_lines(
     v: &serde_json::Value,
@@ -53,8 +53,7 @@ pub fn tool_summary_lines(
     detail: ToolSummaryDetail,
 ) -> Option<ToolSummaryLines> {
     let parsed = parse_tool_update(v)?;
-    let is_new_start =
-        parsed.phase == TOOL_PHASE_START && !tracker.calls.contains_key(&parsed.id);
+    let is_new_start = parsed.phase == TOOL_PHASE_START && !tracker.calls.contains_key(&parsed.id);
     tracker.apply(&parsed);
     if is_new_start {
         tracker.note_tool_call_start_for_steps();
@@ -217,4 +216,3 @@ mod tool_summary_regressions {
         assert_eq!(tracker.call_count(), 0);
     }
 }
-

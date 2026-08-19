@@ -1,4 +1,3 @@
-
 use std::sync::atomic::{AtomicU8, Ordering};
 
 pub(crate) const ANSI_BOLD: &str = "\x1b[1m";

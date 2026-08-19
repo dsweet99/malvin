@@ -9,8 +9,8 @@ fn router_render_fixture(
 ) {
     let tmp = tempfile::tempdir().expect("tempdir");
     crate::seed_malvin_checks(tmp.path(), "true\n");
-    let artifacts =
-        crate::artifacts::create_run_artifacts_from_text(workflow, Some(tmp.path())).expect("artifacts");
+    let artifacts = crate::artifacts::create_run_artifacts_from_text(workflow, Some(tmp.path()))
+        .expect("artifacts");
     let store = crate::prompts::PromptStore::default_store();
     store.ensure_defaults().expect("defaults");
     (tmp, store, artifacts)
@@ -25,7 +25,8 @@ fn effective_max_loops_is_at_least_one() {
 #[test]
 fn router_workflow_context_includes_quality_gates() {
     let (_tmp, _store, artifacts) = router_render_fixture("code");
-    let ctx = router_workflow_context(&artifacts, crate::config::DEFAULT_CLI_MODEL, false).expect("context");
+    let ctx = router_workflow_context(&artifacts, crate::config::DEFAULT_CLI_MODEL, false)
+        .expect("context");
     assert!(ctx.contains_key("quality_gates"));
 }
 
@@ -40,13 +41,15 @@ fn router_workflow_context_without_gates_omits_quality_gates() {
 
 #[test]
 fn prefer_gate_outcome_over_summarize_keeps_gate_error() {
-    let err = prefer_gate_outcome_over_summarize::<()>(Err("gate boom".into()), Ok(())).unwrap_err();
+    let err =
+        prefer_gate_outcome_over_summarize::<()>(Err("gate boom".into()), Ok(())).unwrap_err();
     assert!(err.contains("gate boom"));
 }
 
 #[test]
 fn prefer_gate_outcome_over_summarize_surfaces_summarize_when_gate_ok() {
-    let err = prefer_gate_outcome_over_summarize(Ok("ok"), Err("summarize boom".into())).unwrap_err();
+    let err =
+        prefer_gate_outcome_over_summarize(Ok("ok"), Err("summarize boom".into())).unwrap_err();
     assert!(err.contains("summarize boom"));
     let ok = prefer_gate_outcome_over_summarize(Ok(7), Ok(())).expect("ok");
     assert_eq!(ok, 7);
@@ -55,8 +58,8 @@ fn prefer_gate_outcome_over_summarize_surfaces_summarize_when_gate_ok() {
 #[test]
 fn write_checks_do_not_pass_for_artifacts_writes_markers() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts =
-        crate::artifacts::create_run_artifacts_from_text("tidy", Some(tmp.path())).expect("artifacts");
+    let artifacts = crate::artifacts::create_run_artifacts_from_text("tidy", Some(tmp.path()))
+        .expect("artifacts");
     let workspace_review = tmp.path().join("review.md");
     write_checks_do_not_pass_for_artifacts(&artifacts).expect("write");
     assert!(artifacts.artifact_review_md().exists());
@@ -69,8 +72,8 @@ fn write_checks_do_not_pass_for_artifacts_writes_markers() {
 #[test]
 fn clear_quality_gates_log_for_next_agent_empties_file() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts =
-        crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
+    let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
+        .expect("artifacts");
     let qlog = artifacts.quality_gates_log_path();
     std::fs::write(&qlog, "stale output").expect("write");
     clear_quality_gates_log_for_next_agent(&artifacts).expect("clear");
@@ -89,8 +92,8 @@ fn gate_failure_fixture(
     let tmp = tempfile::tempdir().expect("tempdir");
     let (bin, guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "false", exit_code);
     std::fs::write(crate::malvin_checks_path(tmp.path()), "false\n").expect("checks");
-    let artifacts =
-        crate::artifacts::create_run_artifacts_from_text("tidy", Some(tmp.path())).expect("artifacts");
+    let artifacts = crate::artifacts::create_run_artifacts_from_text("tidy", Some(tmp.path()))
+        .expect("artifacts");
     let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snapshot");
     (tmp, bin, guard, artifacts, backups)
 }
@@ -123,9 +126,10 @@ fn gate_iteration_context_overrides_exp_log() {
         .status()
         .expect("git init");
     crate::seed_malvin_checks(tmp.path(), "true\n");
-    let artifacts =
-        crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
-    let base = router_workflow_context(&artifacts, crate::config::DEFAULT_CLI_MODEL, false).expect("ctx");
+    let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
+        .expect("artifacts");
+    let base =
+        router_workflow_context(&artifacts, crate::config::DEFAULT_CLI_MODEL, false).expect("ctx");
     let iter_log = artifacts.gate_exp_log_path(2);
     let ctx = gate_iteration_context(&base, &artifacts, &iter_log, 2);
     let exp = ctx.get("exp_log").expect("exp_log");
@@ -183,12 +187,18 @@ fn run_router_workspace_gates_leaves_session_gitignore_after_post_gate_restore()
     let (artifacts, backups) = router_gates_restore_fixture(tmp.path());
     run_router_workspace_gates(&artifacts, &backups, true).expect("gates pass");
     let gitignore = std::fs::read_to_string(tmp.path().join(".gitignore")).expect("read");
-    assert_eq!(gitignore, "gi\n", "post-gate restore replays session snapshot without reconcile");
+    assert_eq!(
+        gitignore, "gi\n",
+        "post-gate restore replays session snapshot without reconcile"
+    );
 }
 
 fn router_gates_restore_fixture(
     work: &std::path::Path,
-) -> (crate::artifacts::RunArtifacts, crate::artifacts::SessionDotfileBackups) {
+) -> (
+    crate::artifacts::RunArtifacts,
+    crate::artifacts::SessionDotfileBackups,
+) {
     std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
     std::fs::write(work.join(".malvin/checks"), "true\n").expect("checks");
     let artifacts =
@@ -199,7 +209,10 @@ fn router_gates_restore_fixture(
 
 fn gitignore_restore_failure_fixture(
     work: &std::path::Path,
-) -> (crate::artifacts::RunArtifacts, crate::artifacts::SessionDotfileBackups) {
+) -> (
+    crate::artifacts::RunArtifacts,
+    crate::artifacts::SessionDotfileBackups,
+) {
     std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
     std::fs::write(work.join(".malvin/checks"), "true\n").expect("checks");
     let artifacts =
@@ -219,7 +232,6 @@ fn restore_failure_prevents_gate_run() {
     assert!(err.contains("gitignore restore"));
 }
 
-
 #[test]
 fn prefer_gate_outcome_keeps_gate_error_when_restore_also_fails() {
     let gate = Err("__MALVIN_GATE_FAILURE__:`false` failed (exit 1)".into());
@@ -229,12 +241,5 @@ fn prefer_gate_outcome_keeps_gate_error_when_restore_also_fails() {
     assert!(!err.contains("gitignore restore"));
 }
 
-#[test]
-fn prefer_gate_outcome_surfaces_restore_when_gate_passed() {
-    let err = prefer_gate_outcome_over_post_gate_cleanup(
-        Ok(()),
-        Err("malvin_checks restore: boom".into()),
-    )
-    .unwrap_err();
-    assert!(err.contains("malvin_checks restore"));
-}
+#[path = "workflow_router_shared_tests_tail.rs"]
+mod workflow_router_shared_tests_tail;

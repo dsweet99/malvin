@@ -1,14 +1,16 @@
 use crate::acp_post_run::merge_acp_restore_check_abort_then_print_timing;
 use crate::artifacts::RunArtifacts;
+use crate::llm_transport::ResponseUsage;
 use crate::output::{STDOUT_LOG_TEST_LOCK, set_stdout_log_path};
 use crate::run_timing::RunTiming;
-use crate::llm_transport::ResponseUsage;
 use std::time::Instant;
 
-fn empty_artifacts(work: &tempfile::TempDir) -> (crate::artifacts::SessionDotfileBackups, RunArtifacts) {
+fn empty_artifacts(
+    work: &tempfile::TempDir,
+) -> (crate::artifacts::SessionDotfileBackups, RunArtifacts) {
     let empty = crate::test_utils::empty_session_dotfile_backups(work.path());
-    let artifacts =
-        crate::artifacts::create_run_artifacts_from_text("code", Some(work.path())).expect("artifacts");
+    let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(work.path()))
+        .expect("artifacts");
     (empty, artifacts)
 }
 

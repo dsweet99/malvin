@@ -1,4 +1,3 @@
-
 #[test]
 fn smoke_active_agent_heartbeat_stats() {
     let _ = stringify!(ActiveAgentSandbox);
@@ -61,9 +60,7 @@ fn smoke_publish_heartbeat_live_terminal() {
     crate::output::set_stdout_log_path(None);
     assert_eq!(terminal.trim(), display);
     assert!(std::fs::read_to_string(path).unwrap_or_default().is_empty());
-    assert!(
-        crate::output::heartbeat_rendered_if_due(std::time::Instant::now(), false).is_none()
-    );
+    assert!(crate::output::heartbeat_rendered_if_due(std::time::Instant::now(), false).is_none());
 }
 
 #[test]
@@ -96,7 +93,9 @@ fn smoke_artifacts_create() {
     assert!(from_text.quality_gates_log_path().is_file());
     assert_eq!(
         crate::artifacts::work_dir_for_path(&plan),
-        tmp.path().canonicalize().unwrap_or_else(|_| tmp.path().to_path_buf()),
+        tmp.path()
+            .canonicalize()
+            .unwrap_or_else(|_| tmp.path().to_path_buf()),
     );
 }
 
@@ -171,7 +170,7 @@ fn kiss_cov_cross_file_symbols_a() {
     let _: Option<crate::terminal_palette::TerminalTheme> = None;
     let _: Option<crate::terminal_palette::Palette> = None;
     let _: Option<crate::run_timing::acp_post_run::RunTimingSessionEnd> = None;
-        let _: Option<crate::run_timing::acp_post_run::RunTimingAfterBackend> = None;
+    let _: Option<crate::run_timing::acp_post_run::RunTimingAfterBackend> = None;
     let _: Option<crate::session_dotfile_backup::DotfileBackupPayload> = None;
     let _: Option<crate::session_dotfile_backup::SessionDotfileParts> = None;
     let _ = stringify!(ActiveAgentSandbox);

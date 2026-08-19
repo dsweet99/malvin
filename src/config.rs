@@ -1,4 +1,3 @@
-
 pub use crate::sdk_drain_timeout::{
     DEFAULT_SDK_DRAIN_IDLE_TIMEOUT_MS, sdk_drain_idle_timeout_from_env,
 };

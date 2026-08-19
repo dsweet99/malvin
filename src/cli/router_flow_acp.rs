@@ -1,6 +1,6 @@
 use crate::agent_backend::{
-    agent_backend_attach_run_timing_for_session, agent_backend_ensure_coder_session,
-    agent_backend_set_implement_display_name, agent_backend_set_run_timing, AgentBackend,
+    AgentBackend, agent_backend_attach_run_timing_for_session, agent_backend_ensure_coder_session,
+    agent_backend_set_implement_display_name, agent_backend_set_run_timing,
 };
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::cli::SharedOpts;
@@ -116,12 +116,7 @@ pub(crate) async fn finalize_router_acp_iteration(
     }
     let keep_session = input.client.keeps_coder_session_for_process_life();
     let run_dir = input.artifacts.run_dir.clone();
-    let parts: SessionEndParts<'_> = (
-        input.client,
-        run_dir.as_path(),
-        &timing,
-        input.session_end,
-    );
+    let parts: SessionEndParts<'_> = (input.client, run_dir.as_path(), &timing, input.session_end);
     match (exit_summarize, keep_session) {
         (RouterExitSummarize::Run, _) | (RouterExitSummarize::Skip, false) => {
             end_router_acp_session(parts, Ok(())).await
@@ -164,4 +159,3 @@ pub(crate) async fn abort_router_acp_session(
     agent_backend_set_run_timing(parts.0, None);
     end_router_acp_session(parts, Err(err)).await
 }
-

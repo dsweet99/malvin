@@ -1,6 +1,6 @@
 use crate::artifacts::{
-    backup_workspace_malvin_checks_if_present, restore_workspace_malvin_checks_backup,
-    MalvinChecksBackup,
+    MalvinChecksBackup, backup_workspace_malvin_checks_if_present,
+    restore_workspace_malvin_checks_backup,
 };
 use crate::test_utils::with_isolated_home;
 

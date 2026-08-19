@@ -1,11 +1,10 @@
-
 use std::time::{Duration, Instant};
 
+use super::CursorSdkClient;
 use super::client_mock_tests::{
     clear_mock_bridge_env, install_mock_bridge_env, mock_bridge_path, mock_client, prompt_once,
 };
 use crate::bridge_sdk::SDK_BRIDGE_MAX_AGE;
-use super::CursorSdkClient;
 
 struct EnsureFixture {
     client: CursorSdkClient,
@@ -76,10 +75,6 @@ async fn cursor_sdk_ensure_restarts_stale_bridge() {
         .expect("ensure restart");
     assert!(bridge_started_at(&fixture.client) > fixture.started);
     assert!(!fixture.client.sdk_bridge_needs_restart());
-    prompt_once(
-        &mut fixture.client,
-        &fixture.tmp.path().join("prompts.log"),
-    )
-    .await;
+    prompt_once(&mut fixture.client, &fixture.tmp.path().join("prompts.log")).await;
     end_fixture(fixture).await;
 }

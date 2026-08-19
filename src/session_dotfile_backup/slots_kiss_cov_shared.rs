@@ -1,5 +1,4 @@
-
-use crate::session_dotfile_backup::slots::{DotfileSpecRow, DOTFILE_ROWS};
+use crate::session_dotfile_backup::slots::{DOTFILE_ROWS, DotfileSpecRow};
 use std::path::Path;
 
 pub(super) const MALVIN_CONFIG_WORKSPACE_SLOT: usize = 2;

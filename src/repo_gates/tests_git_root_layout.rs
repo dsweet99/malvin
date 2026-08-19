@@ -1,4 +1,6 @@
-use super::checks_test_helpers::{git_init, write_git_root_checks as write_checks, write_legacy_cwd_checks as write_legacy_checks};
+use super::checks_test_helpers::{
+    git_init, write_git_root_checks as write_checks, write_legacy_cwd_checks as write_legacy_checks,
+};
 use super::*;
 
 #[test]
@@ -12,7 +14,10 @@ fn should_run_workspace_gates_when_malvin_dir_present() {
 fn resolve_malvin_checks_reads_legacy_cwd_relative_file() {
     crate::test_utils::with_isolated_home(|w| {
         write_legacy_checks(w, "legacy-only\n");
-        assert_eq!(gate_command_lines(w).unwrap(), vec!["legacy-only".to_string()]);
+        assert_eq!(
+            gate_command_lines(w).unwrap(),
+            vec!["legacy-only".to_string()]
+        );
     });
 }
 

@@ -1,15 +1,15 @@
 use crate::artifacts::{
-    ensure_gate_exp_log_file, GitignoreBackup, MalvinChecksBackup, MalvinConfigWorkspaceBackup,
-    RunArtifacts, SessionDotfileBackups, VisionBackup,
+    GitignoreBackup, MalvinChecksBackup, MalvinConfigWorkspaceBackup, RunArtifacts,
+    SessionDotfileBackups, VisionBackup, ensure_gate_exp_log_file,
 };
 use crate::router_flow::router_flow_no_work::chat_has_malvin_done;
 use crate::router_flow::router_flow_prompt;
 use std::path::Path;
 
+use super::RouterAcpIterationInput;
 use super::router_flow_coder_prompts::{
     run_router_a_coder_prompt, run_router_b_coder_prompt, run_router_header_coder_prompt,
 };
-use super::RouterAcpIterationInput;
 
 pub(crate) struct RouterTurnsOutcome {
     pub iteration_backups: SessionDotfileBackups,
@@ -22,7 +22,10 @@ pub(crate) enum RouterExitSummarize {
     Skip,
 }
 
-pub(crate) fn router_iteration_log_path(artifacts: &RunArtifacts, agent_loop: usize) -> std::path::PathBuf {
+pub(crate) fn router_iteration_log_path(
+    artifacts: &RunArtifacts,
+    agent_loop: usize,
+) -> std::path::PathBuf {
     artifacts.log_path(&format!("router_{agent_loop}"))
 }
 
@@ -97,13 +100,14 @@ async fn finish_router_a_maybe_b(
     let done = chat_has_malvin_done(&chat);
     if !done {
         let creative = input.shared.creative;
-        let router_b = router_flow_prompt::build_router_b_prompt(router_flow_prompt::RouterBPromptInput {
-            store: input.prompt_store,
-            artifacts: input.artifacts,
-            model,
-            git: input.shared.git,
-            creative,
-        })?;
+        let router_b =
+            router_flow_prompt::build_router_b_prompt(router_flow_prompt::RouterBPromptInput {
+                store: input.prompt_store,
+                artifacts: input.artifacts,
+                model,
+                git: input.shared.git,
+                creative,
+            })?;
         run_router_b_coder_prompt(
             input.client,
             &router_b,

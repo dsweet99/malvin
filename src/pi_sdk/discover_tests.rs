@@ -1,9 +1,12 @@
 use std::os::unix::fs::PermissionsExt;
 
-use super::discover::{parse_pi_version, pi_path_is_executable, pi_missing_binary_message, pi_version_ok, resolve_pi_bin, PI_MIN_VERSION};
+use super::discover::{
+    PI_MIN_VERSION, parse_pi_version, pi_missing_binary_message, pi_path_is_executable,
+    pi_version_ok, resolve_pi_bin,
+};
 use super::models_list::{
-    list_pi_models_sync, parse_list_models_table, pi_list_models_timeout,
-    DEFAULT_PI_LIST_MODELS_TIMEOUT_MS,
+    DEFAULT_PI_LIST_MODELS_TIMEOUT_MS, list_pi_models_sync, parse_list_models_table,
+    pi_list_models_timeout,
 };
 
 #[test]
@@ -64,7 +67,10 @@ Showing 2 of 95 providers. Run `pi --list-providers` to see all.
     assert_eq!(rows[0].id, "openai/gpt-4o");
     assert_eq!(rows[1].id, "openrouter/anthropic/claude-3-haiku");
     assert!(rows.iter().all(|r| r.thinking.is_none()));
-    assert!(rows.iter().all(|r| !r.id.to_ascii_lowercase().contains("showing")));
+    assert!(
+        rows.iter()
+            .all(|r| !r.id.to_ascii_lowercase().contains("showing"))
+    );
 }
 
 #[test]
@@ -93,7 +99,6 @@ openrouter      qwen/qwen3-thinking                                       128K  
     assert_eq!(rows[1].thinking, Some(true));
 }
 
-
 #[test]
 fn pi_version_ok_and_missing_hint() {
     assert!(pi_missing_binary_message().contains("MALVIN_PI"));
@@ -106,7 +111,11 @@ fn pi_version_ok_and_missing_hint() {
     let ok_bin = write_exec_script(dir.path(), "pi-ok", "#!/bin/sh\necho 'pi 0.1.23'\n");
     assert!(pi_version_ok(&ok_bin).is_ok());
     let old_bin = write_exec_script(dir.path(), "pi-old", "#!/bin/sh\necho 'pi 0.1.22'\n");
-    assert!(pi_version_ok(&old_bin).expect_err("old").contains("too old"));
+    assert!(
+        pi_version_ok(&old_bin)
+            .expect_err("old")
+            .contains("too old")
+    );
     let bad_bin = write_exec_script(dir.path(), "pi-bad", "#!/bin/sh\nexit 1\n");
     assert!(pi_version_ok(&bad_bin).is_err());
 }

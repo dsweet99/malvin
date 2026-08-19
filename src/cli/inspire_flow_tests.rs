@@ -6,9 +6,7 @@ mod inspire_tests {
     use crate::inspire_flow::{
         build_inspire_render_context, render_inspire_prompt, render_inspire_summarize_prompt,
     };
-    use crate::prompts::{
-        PromptStore, malformed_brace_placeholders, render_inspire_mbc2_prompt,
-    };
+    use crate::prompts::{PromptStore, malformed_brace_placeholders, render_inspire_mbc2_prompt};
 
     #[test]
     fn render_inspire_prompt_substitutes_user_prompt() {
@@ -94,7 +92,8 @@ mod inspire_tests {
     fn inspire_client_uses_styled_agent_io_not_raw_do_style() {
         use crate::cli::{SharedOpts, WorkflowCliOptions};
         let shared = SharedOpts {
-            model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("model"),
+            model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL)
+                .expect("model"),
             no_force: true,
             no_tenacious: false,
             gates: false,
@@ -127,11 +126,11 @@ mod inspire_tests {
     fn inspire_emit_startup_logs_host_resources() {
         use crate::cli::SharedOpts;
         let tmp = tempfile::tempdir().expect("tempdir");
-        let artifacts =
-            crate::artifacts::create_run_artifacts_from_text("topic", Some(tmp.path()))
-                .expect("art");
+        let artifacts = crate::artifacts::create_run_artifacts_from_text("topic", Some(tmp.path()))
+            .expect("art");
         let shared = SharedOpts {
-            model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("model"),
+            model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL)
+                .expect("model"),
             no_force: true,
             no_tenacious: false,
             gates: false,

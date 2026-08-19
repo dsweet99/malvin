@@ -1,4 +1,3 @@
-
 use crate::cli::SharedOpts;
 
 #[must_use]

@@ -1,5 +1,5 @@
-use clap::parser::ValueSource;
 use clap::ArgMatches;
+use clap::parser::ValueSource;
 
 pub(crate) fn subcommand_flag_from_command_line(
     matches: &ArgMatches,
@@ -26,12 +26,22 @@ mod tests {
     #[test]
     fn subcommand_flag_from_command_line_detects_cli_overrides() {
         let matches = Cli::command().get_matches_from(["malvin", "tidy"]);
-        assert!(!subcommand_flag_from_command_line(&matches, "tidy", "max_loops"));
-        assert!(!subcommand_flag_from_command_line(&matches, "missing", "max_loops"));
+        assert!(!subcommand_flag_from_command_line(
+            &matches,
+            "tidy",
+            "max_loops"
+        ));
+        assert!(!subcommand_flag_from_command_line(
+            &matches,
+            "missing",
+            "max_loops"
+        ));
 
-        let explicit = Cli::command().get_matches_from([
-            "malvin", "tidy", "--max-loops", "2",
-        ]);
-        assert!(subcommand_flag_from_command_line(&explicit, "tidy", "max_loops"));
+        let explicit = Cli::command().get_matches_from(["malvin", "tidy", "--max-loops", "2"]);
+        assert!(subcommand_flag_from_command_line(
+            &explicit,
+            "tidy",
+            "max_loops"
+        ));
     }
 }

@@ -1,5 +1,4 @@
-
-use super::models_cmd::{run_models, ModelsArgs};
+use super::models_cmd::{ModelsArgs, run_models};
 
 #[cfg(unix)]
 fn write_exec(path: &std::path::Path, body: &str) {

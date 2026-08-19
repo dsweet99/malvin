@@ -17,7 +17,8 @@ fn parse_logs_gc_config_max_count_contract() {
 
 #[test]
 fn parse_logs_gc_config_reads_toml_section() {
-    let cfg = parse_logs_gc_config("[logs]\nmax_age_days = 7\nmax_bytes = \"1MiB\"\n").expect("parse");
+    let cfg =
+        parse_logs_gc_config("[logs]\nmax_age_days = 7\nmax_bytes = \"1MiB\"\n").expect("parse");
     assert_eq!(cfg.max_age_days, 7);
     assert_eq!(cfg.max_bytes, parse_byte_size("1MiB"));
     assert_eq!(cfg.max_count, LogsGcConfig::default().max_count);
@@ -50,5 +51,8 @@ fn parse_max_bytes_value_rejects_non_string() {
 
 #[test]
 fn parse_max_bytes_value_empty_string_means_unlimited() {
-    assert_eq!(parse_max_bytes_value(&toml::Value::String(String::new())).unwrap(), None);
+    assert_eq!(
+        parse_max_bytes_value(&toml::Value::String(String::new())).unwrap(),
+        None
+    );
 }

@@ -7,12 +7,12 @@ use crate::workspace_paths::{malvin_home_logs_root, malvin_logs_root};
 
 pub use crate::log_gc_config::load_logs_gc_config;
 
+#[path = "log_gc_buckets.rs"]
+mod log_gc_buckets;
 #[path = "log_gc_format.rs"]
 mod log_gc_format;
 #[path = "log_gc_prune.rs"]
 mod log_gc_prune;
-#[path = "log_gc_buckets.rs"]
-mod log_gc_buckets;
 
 pub(crate) use log_gc_format::format_freed;
 
@@ -111,10 +111,7 @@ pub(crate) fn list_run_dirs(logs_root: &Path) -> Vec<PathBuf> {
     let entries = match std::fs::read_dir(logs_root) {
         Ok(e) => e,
         Err(e) => {
-            print_log_warning(&format!(
-                "could not list {}: {e}",
-                logs_root.display()
-            ));
+            print_log_warning(&format!("could not list {}: {e}", logs_root.display()));
             return runs;
         }
     };

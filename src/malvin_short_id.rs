@@ -1,4 +1,3 @@
-
 use crate::alnum_id::random_alnum;
 
 pub const MALVIN_SHORT_ID_LEN: usize = 6;
@@ -30,7 +29,7 @@ pub fn is_valid_malvin_short_id(id: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        is_valid_malvin_short_id, malvin_short_id, validate_malvin_short_id, MALVIN_SHORT_ID_LEN,
+        MALVIN_SHORT_ID_LEN, is_valid_malvin_short_id, malvin_short_id, validate_malvin_short_id,
     };
 
     #[test]

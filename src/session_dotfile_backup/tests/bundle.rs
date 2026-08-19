@@ -1,8 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use crate::artifacts::{
-    MalvinChecksBackup, MalvinConfigWorkspaceBackup, SessionDotfileBackups,
-};
+use crate::artifacts::{MalvinChecksBackup, MalvinConfigWorkspaceBackup, SessionDotfileBackups};
 use crate::repo_gates::MALVIN_CHECKS_FILE;
 use crate::seed_malvin_config;
 use crate::test_utils::with_isolated_home;

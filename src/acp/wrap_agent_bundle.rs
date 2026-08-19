@@ -6,5 +6,5 @@ mod inline {
     include!("agent_bundle.rs");
 }
 
-pub use inline::{AgentError, AgentIoOptions, AuthError};
 pub(crate) use inline::*;
+pub use inline::{AgentError, AgentIoOptions, AuthError};

@@ -16,7 +16,7 @@ mod backend_tests;
 #[path = "agent_backend_kiss_cov.rs"]
 mod agent_backend_kiss_cov;
 
-pub use backend::{agent_backend_from_client, AgentBackend};
+pub use backend::{AgentBackend, agent_backend_from_client};
 pub use backend_ops::{
     agent_backend_attach_run_timing_for_session, agent_backend_ensure_coder_session,
     agent_backend_ensure_run_timing_for_session, agent_backend_set_implement_display_name,

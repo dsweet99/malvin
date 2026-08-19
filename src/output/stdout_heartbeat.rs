@@ -3,7 +3,7 @@ use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use super::{
-    stdout_heartbeat_display_and_log_line, timestamp_now_string, write_heartbeat_log_line, WHO_H,
+    WHO_H, stdout_heartbeat_display_and_log_line, timestamp_now_string, write_heartbeat_log_line,
 };
 use crate::time_format::heartbeat_payload_now;
 
@@ -65,7 +65,10 @@ pub(crate) fn mark_heartbeat_emitted(now: Instant) {
         .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(now);
 }
 
-pub(crate) fn heartbeat_rendered_if_due(now: Instant, arm_if_unarmed: bool) -> Option<(String, String)> {
+pub(crate) fn heartbeat_rendered_if_due(
+    now: Instant,
+    arm_if_unarmed: bool,
+) -> Option<(String, String)> {
     let mut guard = LAST_HEARTBEAT
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -156,10 +159,10 @@ pub(crate) fn test_set_last_heartbeat_elapsed(elapsed: Duration) {
 #[cfg(test)]
 mod inline_tests {
     use super::{
-        heartbeat_log_offset, heartbeat_rendered_if_due, is_heartbeat_log_line,
-        log_contains_heartbeat, mark_heartbeat_emitted, reset_stdout_heartbeat_for_test,
-        test_set_last_heartbeat_elapsed, wall_clock_poller_loop, WALL_CLOCK_POLLER_STOP,
-        HEARTBEAT_POLL_INTERVAL,
+        HEARTBEAT_POLL_INTERVAL, WALL_CLOCK_POLLER_STOP, heartbeat_log_offset,
+        heartbeat_rendered_if_due, is_heartbeat_log_line, log_contains_heartbeat,
+        mark_heartbeat_emitted, reset_stdout_heartbeat_for_test, test_set_last_heartbeat_elapsed,
+        wall_clock_poller_loop,
     };
     use std::sync::atomic::Ordering;
     use std::time::{Duration, Instant};
@@ -195,7 +198,9 @@ mod inline_tests {
         ));
         assert!(!log_contains_heartbeat("plain agent line"));
         assert_eq!(
-            heartbeat_log_offset("QUEUED\n20260524.000000.000 malvin.| 20260524.000000 Still alive."),
+            heartbeat_log_offset(
+                "QUEUED\n20260524.000000.000 malvin.| 20260524.000000 Still alive."
+            ),
             Some(7)
         );
     }

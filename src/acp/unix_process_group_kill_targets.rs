@@ -1,4 +1,3 @@
-
 use std::collections::{HashMap, HashSet};
 
 #[path = "session_spawn_affiliation.rs"]
@@ -6,13 +5,13 @@ mod session_spawn_affiliation;
 #[cfg(test)]
 #[path = "session_spawn_affiliation_tests.rs"]
 mod session_spawn_affiliation_tests;
-pub(crate) use session_spawn_affiliation::{
-    clear_session_spawn_affiliation, is_session_affiliated_pid, note_session_affiliated_pid,
-    refresh_session_spawn_affiliation, session_affiliated_or_agent_acp,
-};
 use super::unix_process_group_ps::{
     INIT_PID, ProcRow, host_protected_pids, is_safe_kill_target, list_proc_rows,
     process_group_member_pids,
+};
+pub(crate) use session_spawn_affiliation::{
+    clear_session_spawn_affiliation, is_session_affiliated_pid, note_session_affiliated_pid,
+    refresh_session_spawn_affiliation, session_affiliated_or_agent_acp,
 };
 
 pub(crate) fn descendant_pids(roots: &HashSet<u32>, rows: &[ProcRow]) -> HashSet<u32> {
@@ -74,10 +73,7 @@ pub(crate) fn baseline_amnestied_agent_orphans(
         .collect()
 }
 
-pub(crate) fn malvin_session_spawn_pids(
-    baseline: &HashSet<u32>,
-    rows: &[ProcRow],
-) -> HashSet<u32> {
+pub(crate) fn malvin_session_spawn_pids(baseline: &HashSet<u32>, rows: &[ProcRow]) -> HashSet<u32> {
     let malvin_pid = std::process::id();
     let my_pgid = rows
         .iter()

@@ -1,8 +1,7 @@
-
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use super::{MALVIN_DIR, MALVIN_CHECKS_REL};
+use super::{MALVIN_CHECKS_REL, MALVIN_DIR};
 
 #[must_use]
 pub fn malvin_data_root(work_dir: &Path) -> PathBuf {

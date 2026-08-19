@@ -1,12 +1,11 @@
-
 mod common;
 
 use std::path::Path;
 
 use clap::Parser;
 use malvin::cli::{Cli, Commands};
-use malvin::output::{format_line, format_who_tag_prefix, MALVIN_WHO, WHO_U};
-use malvin::{workspace_logs_hash, MALVIN_USER_HOME_DIR};
+use malvin::output::{MALVIN_WHO, WHO_U, format_line, format_who_tag_prefix};
+use malvin::{MALVIN_USER_HOME_DIR, workspace_logs_hash};
 
 const LEGACY_RUN: &str = "20250101_120000_legacy01";
 const LEGACY_ID: &str = "Mleg01";
@@ -40,7 +39,8 @@ fn write_legacy_run_transcripts(run_dir: &Path) {
         ),
     )
     .expect("command.log");
-    std::fs::write(run_dir.join("adaptix.log"), "legacy inspire transcript\n").expect("adaptix.log");
+    std::fs::write(run_dir.join("adaptix.log"), "legacy inspire transcript\n")
+        .expect("adaptix.log");
 }
 
 fn write_legacy_workspace_meta_toml(work_dir: &Path) {
@@ -57,7 +57,6 @@ fn seed_legacy_adaptix_run(work_dir: &Path, home: &Path) -> std::path::PathBuf {
     run_dir
 }
 
-
 #[test]
 fn adaptix_subcommand_parses_as_inspire_args() {
     let cli = Cli::try_parse_from(["malvin", "adaptix", "explore boundaries"]).expect("parse");
@@ -73,7 +72,11 @@ fn adaptix_subcommand_parses_as_inspire_args() {
 fn legacy_adaptix_run_dir_is_listed_in_home_bucket() {
     common::with_isolated_home(|work, home| {
         let run_dir = seed_legacy_adaptix_run(work, home);
-        assert!(run_dir.is_dir(), "legacy run dir must exist at {}", run_dir.display());
+        assert!(
+            run_dir.is_dir(),
+            "legacy run dir must exist at {}",
+            run_dir.display()
+        );
         let names: Vec<_> = std::fs::read_dir(run_dir.parent().unwrap())
             .expect("read bucket")
             .map(|e| e.expect("entry").file_name())

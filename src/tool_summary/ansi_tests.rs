@@ -3,7 +3,7 @@ use super::{
     is_byte_size_segment, split_outer_brackets, tool_line_colon_prefix,
 };
 use crate::terminal_palette::ANSI_DIM;
-use crate::tool_summary::types::{ansi_tool_dark, ansi_tool_teal, ANSI_BOLD, ANSI_RESET};
+use crate::tool_summary::types::{ANSI_BOLD, ANSI_RESET, ansi_tool_dark, ansi_tool_teal};
 
 #[test]
 fn covers_running_and_done_helpers() {
@@ -97,10 +97,19 @@ fn tool_second_duration_segments_use_dim_grey() {
 fn comment_segment_with_s_uses_teal_not_dim() {
     let plain = "Run ls -ltr logs · List recent session logs befor · 8ms · ✓";
     let styled = apply_tool_summary_ansi(plain);
-    let teal = format!("{}List recent session logs befor{ANSI_RESET}", ansi_tool_teal());
-    assert!(styled.contains(&teal), "comment must be teal; got {styled:?}");
+    let teal = format!(
+        "{}List recent session logs befor{ANSI_RESET}",
+        ansi_tool_teal()
+    );
+    assert!(
+        styled.contains(&teal),
+        "comment must be teal; got {styled:?}"
+    );
     let dim = format!("{ANSI_DIM}List recent session logs befor{ANSI_RESET}");
-    assert!(!styled.contains(&dim), "comment must not be dim; got {styled:?}");
+    assert!(
+        !styled.contains(&dim),
+        "comment must not be dim; got {styled:?}"
+    );
 }
 
 #[test]

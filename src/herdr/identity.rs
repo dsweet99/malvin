@@ -1,4 +1,3 @@
-
 #[must_use]
 pub fn herdr_live_name(session_id: &str) -> String {
     let short = session_id.rsplit('_').next().unwrap_or(session_id);
@@ -29,8 +28,7 @@ pub fn display_title() -> Option<String> {
 }
 
 fn is_pid_fallback_slot(slot: &str) -> bool {
-    slot
-        .strip_prefix("pid")
+    slot.strip_prefix("pid")
         .is_some_and(|rest| !rest.is_empty() && rest.chars().all(|c| c.is_ascii_digit()))
 }
 

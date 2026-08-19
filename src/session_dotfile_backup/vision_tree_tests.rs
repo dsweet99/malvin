@@ -1,8 +1,8 @@
-use crate::session_dotfile_backup::tree_test_support::init_git_repo;
 use super::{
-    backup_workspace_vision_if_present, collect_workspace_vision_relpaths,
-    restore_workspace_vision_backup, VisionBackup,
+    VisionBackup, backup_workspace_vision_if_present, collect_workspace_vision_relpaths,
+    restore_workspace_vision_backup,
 };
+use crate::session_dotfile_backup::tree_test_support::init_git_repo;
 use crate::test_utils::with_isolated_home;
 use std::path::{Path, PathBuf};
 
@@ -67,9 +67,7 @@ fn nested_vision_round_trip_restores_tree_and_removes_agent_created_files() {
         let VisionBackup::Present { backup_root, files } = &backup else {
             panic!("expected vision tree backup");
         };
-        assert!(backup_root.starts_with(
-            crate::workspace_paths::snapshot_category_dir("vision")
-        ));
+        assert!(backup_root.starts_with(crate::workspace_paths::snapshot_category_dir("vision")));
         assert_eq!(files.len(), 2);
 
         tamper_vision_tree(work);
@@ -81,10 +79,7 @@ fn nested_vision_round_trip_restores_tree_and_removes_agent_created_files() {
 }
 
 pub(crate) fn assert_vision_contents(work: &Path, rel: &str, expected: &str) {
-    assert_eq!(
-        std::fs::read_to_string(work.join(rel)).unwrap(),
-        expected
-    );
+    assert_eq!(std::fs::read_to_string(work.join(rel)).unwrap(), expected);
 }
 
 #[test]

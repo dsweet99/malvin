@@ -1,4 +1,3 @@
-
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
@@ -51,7 +50,8 @@ pub fn merge_acp_with_custom_restore_and_check_abort(
     restore_res: Result<(), String>,
     result_path: &Path,
 ) -> Result<(), String> {
-    let merge_result = prefer_primary_over_secondary(primary, restore_res, "workspace session restore failed");
+    let merge_result =
+        prefer_primary_over_secondary(primary, restore_res, "workspace session restore failed");
     match crate::orchestrator::check_abort(result_path) {
         Ok(Some(abort)) => match merge_result {
             Ok(()) => Err(format!("ABORT: {abort}")),

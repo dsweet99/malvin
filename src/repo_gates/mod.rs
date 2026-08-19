@@ -32,9 +32,7 @@ pub fn ensure_default_malvin_config_file(work_dir: &Path) -> Result<(), String> 
 
 mod prompt_markdown;
 
-pub use prompt_markdown::{
-    prompt_quality_gates_markdown, prompt_quality_gates_markdown_ephemeral,
-};
+pub use prompt_markdown::{prompt_quality_gates_markdown, prompt_quality_gates_markdown_ephemeral};
 pub fn format_quality_gates_markdown(commands: &[String]) -> String {
     if commands.is_empty() {
         return String::new();

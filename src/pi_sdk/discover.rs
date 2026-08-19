@@ -1,4 +1,3 @@
-
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -73,12 +72,7 @@ pub fn pi_version_ok(bin: &Path) -> Result<(), String> {
     if ver < PI_MIN_VERSION {
         return Err(format!(
             "pi {}.{}.{} is too old (need >= {}.{}.{}); {PI_MISSING_HINT}",
-            ver.0,
-            ver.1,
-            ver.2,
-            PI_MIN_VERSION.0,
-            PI_MIN_VERSION.1,
-            PI_MIN_VERSION.2
+            ver.0, ver.1, ver.2, PI_MIN_VERSION.0, PI_MIN_VERSION.1, PI_MIN_VERSION.2
         ));
     }
     Ok(())

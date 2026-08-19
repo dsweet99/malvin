@@ -56,7 +56,10 @@ pub(crate) fn process_malvin_tracing_event(event: &tracing::Event<'_>) {
 struct MalvinTracingSubscriber;
 
 impl tracing::Subscriber for MalvinTracingSubscriber {
-    fn register_callsite(&self, _metadata: &'static tracing::Metadata<'static>) -> tracing::subscriber::Interest {
+    fn register_callsite(
+        &self,
+        _metadata: &'static tracing::Metadata<'static>,
+    ) -> tracing::subscriber::Interest {
         tracing::subscriber::Interest::always()
     }
 

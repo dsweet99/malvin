@@ -1,5 +1,7 @@
-
-use malvin::{canonical_workflow_name, resolve_session_log_path, resolve_workspace_malvin_config_path, RunArtifacts};
+use malvin::{
+    RunArtifacts, canonical_workflow_name, resolve_session_log_path,
+    resolve_workspace_malvin_config_path,
+};
 
 #[test]
 fn canonical_workflow_name_maps_adaptix_to_inspire() {

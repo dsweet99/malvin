@@ -1,4 +1,4 @@
-use super::{register, try_log, try_push, unregister, SharedDeferSink};
+use super::{SharedDeferSink, register, try_log, try_push, unregister};
 use crate::deferred_log::{
     build_display_log_entry,
     test_fixtures::{aged_defer_shared, capture_stdout_render_unlocked, zero_age_defer_shared},
@@ -149,14 +149,8 @@ fn contended_unregister_stale_flag_bundles_duplicate_heartbeat() {
     unsafe {
         std::env::remove_var("MALVIN_DEFER_LOG_MAX_AGE_MS");
     }
-    assert_eq!(
-        terminal.lines().filter(|l| l.contains("HB:")).count(),
-        1
-    );
-    assert_eq!(
-        log.lines().filter(|l| l.contains("HB:")).count(),
-        1
-    );
+    assert_eq!(terminal.lines().filter(|l| l.contains("HB:")).count(), 1);
+    assert_eq!(log.lines().filter(|l| l.contains("HB:")).count(), 1);
 }
 
 #[test]

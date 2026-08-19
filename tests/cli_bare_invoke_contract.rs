@@ -1,18 +1,13 @@
-
 mod common;
 
-use malvin::cli::{parse_cli_with_config_defaults, Cli, Commands};
 use clap::CommandFactory;
 use common::with_isolated_home;
+use malvin::cli::{Cli, Commands, parse_cli_with_config_defaults};
 
 fn parse(argv: &[&str]) -> Cli {
     let mut out = None;
     with_isolated_home(|_work, _home| {
-        out = Some(
-            parse_cli_with_config_defaults(argv)
-                .expect("parse")
-                .0,
-        );
+        out = Some(parse_cli_with_config_defaults(argv).expect("parse").0);
     });
     out.expect("parsed under isolated home")
 }

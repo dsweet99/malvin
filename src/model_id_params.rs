@@ -1,4 +1,3 @@
-
 use super::ModelParam;
 
 #[must_use]

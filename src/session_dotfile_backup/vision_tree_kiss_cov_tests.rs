@@ -1,4 +1,3 @@
-
 #[test]
 fn kiss_witness_vision_tree_test_helper_symbols() {
     let _ = super::vision_tree::vision_tree_tests::seed_nested_vision_repo;

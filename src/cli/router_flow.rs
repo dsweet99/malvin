@@ -1,19 +1,16 @@
-
+use crate::agent_backend::{AgentBackend, build_agent_backend};
 use crate::artifacts::{RunArtifacts, resolve_user_md_request};
 use crate::cli::cli_request::require_cli_request;
-use crate::agent_backend::{build_agent_backend, AgentBackend};
-use crate::cli::run_emit::{
-    emit_run_logs_line, emit_run_startup_banner, RunStartupEmitOpts,
-};
+use crate::cli::run_emit::{RunStartupEmitOpts, emit_run_logs_line, emit_run_startup_banner};
 use crate::cli::{SharedOpts, WorkflowCliOptions};
 use crate::prompts::PromptStore;
-pub(crate) mod router_flow_prompt;
-#[path = "router_flow_no_work.rs"]
-pub(crate) mod router_flow_no_work;
 #[path = "router_flow_acp.rs"]
 pub(crate) mod router_flow_acp;
 #[path = "router_flow_loop.rs"]
 pub(crate) mod router_flow_loop;
+#[path = "router_flow_no_work.rs"]
+pub(crate) mod router_flow_no_work;
+pub(crate) mod router_flow_prompt;
 
 pub use router_flow_prompt::{
     combine_router_acp_prompt_header_and_user, combine_router_prompt_file_and_user,
@@ -33,7 +30,10 @@ struct RouterRunPrep {
     prompt_store: PromptStore,
 }
 
-fn new_router_client(shared: &SharedOpts, workflow: WorkflowCliOptions) -> Result<AgentBackend, String> {
+fn new_router_client(
+    shared: &SharedOpts,
+    workflow: WorkflowCliOptions,
+) -> Result<AgentBackend, String> {
     build_agent_backend(
         shared,
         workflow,
@@ -109,14 +109,15 @@ async fn run_router_body(
         .map_err(|e| e.to_string())?;
     emit_run_logs_line(&prep.artifacts)?;
 
-    let loop_outcome = router_flow_loop::run_router_agent_loops(router_flow_loop::RouterAgentLoopInput {
-        client: &mut prep.client,
-        artifacts: &prep.artifacts,
-        prompt_store: &prep.prompt_store,
-        shared,
-        max_loops: router_args.max_loops,
-    })
-    .await?;
+    let loop_outcome =
+        router_flow_loop::run_router_agent_loops(router_flow_loop::RouterAgentLoopInput {
+            client: &mut prep.client,
+            artifacts: &prep.artifacts,
+            prompt_store: &prep.prompt_store,
+            shared,
+            max_loops: router_args.max_loops,
+        })
+        .await?;
     let _ = router_args.max_hypotheses;
 
     let r = crate::acp_post_run::merge_acp_restore_check_abort_then_print_timing(

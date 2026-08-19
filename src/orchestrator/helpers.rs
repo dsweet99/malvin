@@ -1,11 +1,9 @@
 use std::path::Path;
 
-pub use crate::workflow_context::{
-    format_prompt_path, workflow_context_paths_only,
-};
+pub(crate) use crate::workflow_context::insert_formatted;
 #[cfg(test)]
 pub use crate::workflow_context::workflow_context;
-pub(crate) use crate::workflow_context::insert_formatted;
+pub use crate::workflow_context::{format_prompt_path, workflow_context_paths_only};
 
 pub fn check_abort(result_path: &Path) -> Result<Option<String>, std::io::Error> {
     let content = match std::fs::read_to_string(result_path) {

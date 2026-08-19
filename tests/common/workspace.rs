@@ -63,7 +63,10 @@ where
     seed_fast_integration_malvin_config(&home);
     f(&work, &home);
     restore_env_var("HOME", old_home);
-    restore_env_var(malvin::MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION, old_home_config_mutation);
+    restore_env_var(
+        malvin::MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION,
+        old_home_config_mutation,
+    );
 }
 
 pub fn activate_test_home(home: &Path) {

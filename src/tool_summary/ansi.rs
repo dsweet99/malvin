@@ -1,7 +1,7 @@
 use std::fmt::Write as _;
 
 use super::types::{
-    ansi_tool_coral, ansi_tool_dark, ansi_tool_teal, ANSI_BOLD, ANSI_DIM, ANSI_RESET,
+    ANSI_BOLD, ANSI_DIM, ANSI_RESET, ansi_tool_coral, ansi_tool_dark, ansi_tool_teal,
 };
 
 const DONE_VERB_PREFIXES: &[&str] = &["Read ", "Edit ", "Search ", "Run "];
@@ -77,7 +77,11 @@ pub(crate) fn ansi_style_running_verb(seg: &str) -> String {
     let (colon, body) = tool_line_colon_prefix(seg);
     let verb_end = body.find(' ').unwrap_or(body.len());
     let (verb, tail) = body.split_at(verb_end);
-    format!("{colon}{}{}", ansi_style_dark_verb(verb), ansi_style_path_tail(tail))
+    format!(
+        "{colon}{}{}",
+        ansi_style_dark_verb(verb),
+        ansi_style_path_tail(tail)
+    )
 }
 
 pub(crate) fn ansi_style_done_verb(seg: &str) -> String {
@@ -106,9 +110,8 @@ pub(crate) fn ansi_style_done_verb(seg: &str) -> String {
 }
 
 fn body_is_search_done_verb(body: &str) -> bool {
-    body.strip_prefix("Search").is_some_and(|rest| {
-        rest.is_empty() || rest.starts_with(' ') || rest.starts_with('·')
-    })
+    body.strip_prefix("Search")
+        .is_some_and(|rest| rest.is_empty() || rest.starts_with(' ') || rest.starts_with('·'))
 }
 
 pub(crate) fn ansi_style_tool_segment_running_or_path(seg: &str) -> String {
@@ -121,10 +124,7 @@ pub(crate) fn ansi_style_tool_segment_running_or_path(seg: &str) -> String {
     {
         return ansi_style_running_verb(seg);
     }
-    if body.starts_with("Read ")
-        || body.starts_with("Edit ")
-        || body_is_search_done_verb(body)
-    {
+    if body.starts_with("Read ") || body.starts_with("Edit ") || body_is_search_done_verb(body) {
         return ansi_style_done_verb(seg);
     }
     if is_tool_metadata_segment(seg) {

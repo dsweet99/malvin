@@ -1,10 +1,12 @@
-
 use std::path::Path;
 
 use super::gate_restore_checks::substantive_check_lines;
 use super::{DotfileBackupState, GitignoreBackup, SessionDotfileBackups, VisionBackup};
 
-pub(crate) const fn slot_deleted(anchor: &DotfileBackupState, progress: &DotfileBackupState) -> bool {
+pub(crate) const fn slot_deleted(
+    anchor: &DotfileBackupState,
+    progress: &DotfileBackupState,
+) -> bool {
     matches!(anchor, DotfileBackupState::Present(_))
         && matches!(progress, DotfileBackupState::Missing)
 }
@@ -16,7 +18,10 @@ pub(crate) const fn slot_bytes(value: &DotfileBackupState) -> Option<&[u8]> {
     }
 }
 
-pub(crate) fn slot_content_regressed(anchor: &DotfileBackupState, progress: &DotfileBackupState) -> bool {
+pub(crate) fn slot_content_regressed(
+    anchor: &DotfileBackupState,
+    progress: &DotfileBackupState,
+) -> bool {
     let (Some(anchor_bytes), Some(progress_bytes)) = (slot_bytes(anchor), slot_bytes(progress))
     else {
         return false;
@@ -36,7 +41,10 @@ pub(crate) fn checks_lines_are_superset(anchor_bytes: &[u8], progress_bytes: &[u
         .all(|line| progress_lines.iter().any(|p| p == line))
 }
 
-pub(crate) fn malvin_checks_regressed(anchor: &DotfileBackupState, progress: &DotfileBackupState) -> bool {
+pub(crate) fn malvin_checks_regressed(
+    anchor: &DotfileBackupState,
+    progress: &DotfileBackupState,
+) -> bool {
     if slot_deleted(anchor, progress) {
         return true;
     }

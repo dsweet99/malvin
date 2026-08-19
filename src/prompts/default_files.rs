@@ -1,6 +1,6 @@
 use super::{
-    DO_HEADER_MD, INSPIRE_SUMMARIZE_MD, WRITE_A_MD, WRITE_B_MD, HEADER_MD, ROUTER_CODE_EXTRA_MD,
-    ROUTER_SUMMARIZE_MD,
+    DO_HEADER_MD, HEADER_MD, INSPIRE_SUMMARIZE_MD, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD,
+    WRITE_A_MD, WRITE_B_MD,
 };
 
 pub const ROUTER_A_MD: &str = "router_a.md";
@@ -39,9 +39,7 @@ fn default_constraints_prompt(name: &str) -> Option<&'static str> {
 fn default_mbc2_prompt(name: &str) -> Option<&'static str> {
     match name {
         "mbc2.md" => Some(include_str!("../../default_prompts/mbc2.md")),
-        INSPIRE_SUMMARIZE_MD => {
-            Some(include_str!("../../default_prompts/inspire_summarize.md"))
-        }
+        INSPIRE_SUMMARIZE_MD => Some(include_str!("../../default_prompts/inspire_summarize.md")),
         _ => None,
     }
 }
@@ -50,12 +48,8 @@ fn default_router_prompt(name: &str) -> Option<&'static str> {
     match name {
         ROUTER_A_MD => Some(include_str!("../../default_prompts/router_a.md")),
         ROUTER_B_MD => Some(include_str!("../../default_prompts/router_b.md")),
-        ROUTER_B_CREATIVE_MD => {
-            Some(include_str!("../../default_prompts/router_b_creative.md"))
-        }
-        ROUTER_CODE_EXTRA_MD => {
-            Some(include_str!("../../default_prompts/router_code_extra.md"))
-        }
+        ROUTER_B_CREATIVE_MD => Some(include_str!("../../default_prompts/router_b_creative.md")),
+        ROUTER_CODE_EXTRA_MD => Some(include_str!("../../default_prompts/router_code_extra.md")),
         ROUTER_SUMMARIZE_MD => Some(include_str!("../../default_prompts/router_summarize.md")),
         _ => None,
     }
@@ -77,8 +71,8 @@ pub fn default_file(name: &str) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::{
-        default_constraints_prompt, default_file, header_prompt_file, router_a_prompt_file,
-        router_b_prompt_file, HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD,
+        HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD, default_constraints_prompt,
+        default_file, header_prompt_file, router_a_prompt_file, router_b_prompt_file,
     };
 
     #[test]

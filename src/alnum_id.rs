@@ -1,4 +1,3 @@
-
 use rand::Rng;
 
 #[must_use]

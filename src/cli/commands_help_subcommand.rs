@@ -1,4 +1,3 @@
-
 use std::io::{self, Write};
 
 use clap::CommandFactory;
@@ -128,6 +127,5 @@ mod tests {
     }
 
     #[test]
-    fn kiss_cov_commands_help_subcommand_symbols() {
-    }
+    fn kiss_cov_commands_help_subcommand_symbols() {}
 }

@@ -1,4 +1,3 @@
-
 #[cfg(unix)]
 mod common;
 
@@ -9,7 +8,7 @@ use std::process::Command;
 
 #[cfg(unix)]
 use common::{
-    command_output_live_agent, live_agent_prereqs_met, only_run_dir, LIVE_AGENT_CMD_TIMEOUT,
+    LIVE_AGENT_CMD_TIMEOUT, command_output_live_agent, live_agent_prereqs_met, only_run_dir,
 };
 
 #[cfg(unix)]
@@ -45,9 +44,8 @@ fn seed_probe_workspace(workspace: &Path) {
 
 #[cfg(unix)]
 fn spawn_malvin_do_read_probe(workspace: &Path) -> std::process::Output {
-    let prompt = format!(
-        "Use the Read tool to read {PROBE_FILE} exactly once, then reply with only: OK"
-    );
+    let prompt =
+        format!("Use the Read tool to read {PROBE_FILE} exactly once, then reply with only: OK");
     command_output_live_agent(
         Command::new(env!("CARGO_BIN_EXE_malvin"))
             .current_dir(workspace)
@@ -126,12 +124,8 @@ fn defer_enrich_live_read_shows_path_in_stdout_log() {
     let home = malvin::user_home_dir();
     let run_dir = only_run_dir(workspace.path(), &home);
     let stdout_log = run_dir.join("stdout.log");
-    let stdout = std::fs::read_to_string(&stdout_log).unwrap_or_else(|e| {
-        panic!(
-            "stdout.log missing at {}: {e}",
-            stdout_log.display()
-        )
-    });
+    let stdout = std::fs::read_to_string(&stdout_log)
+        .unwrap_or_else(|e| panic!("stdout.log missing at {}: {e}", stdout_log.display()));
 
     assert!(
         stdout.contains(PROBE_PATH_FRAGMENT),

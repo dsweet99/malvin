@@ -1,4 +1,3 @@
-
 use std::path::Path;
 
 fn malvin_home_config_bytes_need_repair(bytes: &[u8]) -> bool {

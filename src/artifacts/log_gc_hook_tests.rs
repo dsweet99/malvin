@@ -37,7 +37,10 @@ fn create_run_artifacts_from_text_prunes_old_runs_after_new_dir() {
         assert!(logs.join("20260102_000000_bbbbbbb2").exists());
         assert!(logs.join("20260103_000000_ccccccc3").exists());
         assert!(art.run_dir.starts_with(&logs));
-        assert!(art.run_dir.is_dir(), "active run must survive post-create prune");
+        assert!(
+            art.run_dir.is_dir(),
+            "active run must survive post-create prune"
+        );
     });
 }
 

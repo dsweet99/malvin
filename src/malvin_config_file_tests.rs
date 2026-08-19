@@ -1,8 +1,7 @@
 use super::{
-    DEFAULT_MAX_LOOPS, DEFAULT_MAX_LOOPS_CODE,
-    ensure_config_parent_dir,
-    load_malvin_config, merge_missing_keys, open_malvin_config,
-    parse_agent_config, parse_template_value, read_on_disk_config_value, write_config_value,
+    DEFAULT_MAX_LOOPS, DEFAULT_MAX_LOOPS_CODE, ensure_config_parent_dir, load_malvin_config,
+    merge_missing_keys, open_malvin_config, parse_agent_config, parse_template_value,
+    read_on_disk_config_value, write_config_value,
 };
 use crate::support_paths::DEFAULT_CLI_MODEL;
 use crate::test_utils::with_isolated_home;
@@ -14,7 +13,10 @@ fn merge_missing_keys_adds_top_level_and_nested_tables() {
     let mut partial: toml::Value = toml::from_str("mem_limit_gb = 6\n").expect("partial");
     assert!(merge_missing_keys(&mut partial, &template));
     let merged = partial.as_table().expect("table");
-    assert_eq!(merged.get("mem_limit_gb").and_then(toml::Value::as_integer), Some(6));
+    assert_eq!(
+        merged.get("mem_limit_gb").and_then(toml::Value::as_integer),
+        Some(6)
+    );
     assert!(merged.get("logs").is_some());
     assert!(merged.get("agent").is_some());
 }
@@ -43,7 +45,10 @@ fn open_malvin_config_creates_file_with_all_sections() {
         assert_eq!(cfg.agent.max_loops_code, DEFAULT_MAX_LOOPS_CODE);
         assert!(text.contains("theme"));
         assert!(text.contains("context_size"));
-        assert_eq!(cfg.context_size, crate::malvin_config_file::DEFAULT_CONTEXT_SIZE);
+        assert_eq!(
+            cfg.context_size,
+            crate::malvin_config_file::DEFAULT_CONTEXT_SIZE
+        );
         assert_eq!(cfg.theme, crate::terminal_palette::TerminalTheme::Dark);
     });
 }
@@ -61,9 +66,15 @@ fn open_malvin_config_merges_missing_agent_in_memory_only() {
         let before = std::fs::read_to_string(&path).expect("read before");
         let cfg = open_malvin_config(work).expect("open");
         let after = std::fs::read_to_string(&path).expect("read after");
-        assert_eq!(before, after, "existing config.toml must never be rewritten");
+        assert_eq!(
+            before, after,
+            "existing config.toml must never be rewritten"
+        );
         assert_eq!(cfg.mem_limit_gb, 6);
-        assert_eq!(cfg.context_size, crate::malvin_config_file::DEFAULT_CONTEXT_SIZE);
+        assert_eq!(
+            cfg.context_size,
+            crate::malvin_config_file::DEFAULT_CONTEXT_SIZE
+        );
         assert_eq!(cfg.agent.model, DEFAULT_CLI_MODEL);
     });
 }
@@ -100,15 +111,24 @@ fn parse_theme_accepts_dark_and_light() {
     use super::parse_theme;
     use crate::terminal_palette::TerminalTheme;
 
-    assert_eq!(parse_theme("theme = \"dark\"").expect("dark"), TerminalTheme::Dark);
-    assert_eq!(parse_theme("theme = \"light\"").expect("light"), TerminalTheme::Light);
-    assert_eq!(parse_theme("mem_limit_gb = 4").expect("missing"), TerminalTheme::Dark);
+    assert_eq!(
+        parse_theme("theme = \"dark\"").expect("dark"),
+        TerminalTheme::Dark
+    );
+    assert_eq!(
+        parse_theme("theme = \"light\"").expect("light"),
+        TerminalTheme::Light
+    );
+    assert_eq!(
+        parse_theme("mem_limit_gb = 4").expect("missing"),
+        TerminalTheme::Dark
+    );
     assert!(parse_theme("theme = \"neon\"").is_err());
 }
 
 #[test]
 fn parse_context_size_reads_top_level_key() {
-    use super::{parse_context_size, DEFAULT_CONTEXT_SIZE};
+    use super::{DEFAULT_CONTEXT_SIZE, parse_context_size};
     assert_eq!(
         parse_context_size("context_size = 16384\n").expect("parse"),
         16384
@@ -117,9 +137,11 @@ fn parse_context_size_reads_top_level_key() {
         parse_context_size("mem_limit_gb = 4\n").expect("default"),
         DEFAULT_CONTEXT_SIZE
     );
-    assert!(parse_context_size("context_size = 0\n")
-        .expect_err("zero")
-        .contains("positive"));
+    assert!(
+        parse_context_size("context_size = 0\n")
+            .expect_err("zero")
+            .contains("positive")
+    );
 }
 
 #[test]

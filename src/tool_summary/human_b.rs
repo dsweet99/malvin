@@ -4,9 +4,7 @@ use std::path::Path;
 
 use super::format::{edit_paths, start_label};
 use super::parse::{LineRange, ParsedToolUpdate};
-use super::types::{
-    shorten_middle, ToolCallRecord, ToolSummaryTracker, TOOL_DISPLAY_MAX_WIDTH,
-};
+use super::types::{TOOL_DISPLAY_MAX_WIDTH, ToolCallRecord, ToolSummaryTracker, shorten_middle};
 
 pub(crate) fn relativize_tool_path(path: &str, work_dir: Option<&Path>) -> String {
     let Some(base) = work_dir else {
@@ -55,10 +53,7 @@ pub(crate) fn read_output_path(raw: &Value) -> Option<&str> {
 }
 
 pub(crate) fn human_edit_subject_path(path: &str, tracker: &ToolSummaryTracker) -> String {
-    shorten_middle(
-        &display_tool_path(path, tracker),
-        TOOL_DISPLAY_MAX_WIDTH,
-    )
+    shorten_middle(&display_tool_path(path, tracker), TOOL_DISPLAY_MAX_WIDTH)
 }
 
 pub(crate) fn human_edit_subject(
@@ -89,7 +84,10 @@ pub(crate) fn human_edit_subject(
     allow_generic.then(|| "file".to_string())
 }
 
-pub(crate) fn human_execute_command(parsed: &ParsedToolUpdate, tracker: &ToolSummaryTracker) -> String {
+pub(crate) fn human_execute_command(
+    parsed: &ParsedToolUpdate,
+    tracker: &ToolSummaryTracker,
+) -> String {
     let rec = tracker.record(&parsed.id);
     let label = parsed
         .command
@@ -97,14 +95,19 @@ pub(crate) fn human_execute_command(parsed: &ParsedToolUpdate, tracker: &ToolSum
         .or_else(|| rec.and_then(|r| r.command.as_deref()))
         .unwrap_or_else(|| start_label(parsed, rec));
     let stripped = strip_execute_cd_prefix(label);
-    shorten_middle(&escape_tool_subject_fragment(stripped), TOOL_DISPLAY_MAX_WIDTH)
+    shorten_middle(
+        &escape_tool_subject_fragment(stripped),
+        TOOL_DISPLAY_MAX_WIDTH,
+    )
 }
 
 pub(crate) fn shorten_subject_path(path: &str, line_range: Option<LineRange>) -> String {
     let suffix = format_line_range_suffix(line_range);
     let suffix_chars = suffix.chars().count();
     let min_path = 8usize;
-    let path_width = TOOL_DISPLAY_MAX_WIDTH.saturating_sub(suffix_chars).max(min_path);
+    let path_width = TOOL_DISPLAY_MAX_WIDTH
+        .saturating_sub(suffix_chars)
+        .max(min_path);
     let short_path = shorten_middle(path, path_width);
     format!("{short_path}{suffix}")
 }

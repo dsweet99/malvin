@@ -1,5 +1,4 @@
-
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct PiRequest {
@@ -66,8 +65,7 @@ pub(crate) enum PiLine {
 }
 
 pub(crate) fn pi_decode_line(line: &str) -> Result<PiLine, String> {
-    let value: Value =
-        serde_json::from_str(line).map_err(|e| format!("pi rpc parse: {e}"))?;
+    let value: Value = serde_json::from_str(line).map_err(|e| format!("pi rpc parse: {e}"))?;
     let type_name = value
         .get("type")
         .and_then(Value::as_str)

@@ -6,7 +6,10 @@ use super::RunArtifacts;
 const RANDOM_PLAN_ID_LEN: usize = 5;
 
 fn random_plan_request_filename() -> String {
-    format!("plan_{}.md", crate::alnum_id::random_alnum(RANDOM_PLAN_ID_LEN))
+    format!(
+        "plan_{}.md",
+        crate::alnum_id::random_alnum(RANDOM_PLAN_ID_LEN)
+    )
 }
 
 pub(crate) fn ensure_quality_gates_log_file(artifacts: &RunArtifacts) -> std::io::Result<()> {
@@ -41,7 +44,11 @@ pub fn create_run_artifacts(
     plan_source: &Path,
     base_dir: Option<&Path>,
 ) -> std::io::Result<RunArtifacts> {
-    create_run_artifacts_opts(plan_source, base_dir, crate::run_id::RunDirOptions::default())
+    create_run_artifacts_opts(
+        plan_source,
+        base_dir,
+        crate::run_id::RunDirOptions::default(),
+    )
 }
 
 pub fn create_run_artifacts_opts(
@@ -103,7 +110,7 @@ pub fn create_run_artifacts_from_text_opts(
 
 #[cfg(test)]
 #[allow(unused_imports)]
-mod kiss_cov_gate_refs{
+mod kiss_cov_gate_refs {
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {

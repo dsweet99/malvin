@@ -1,4 +1,3 @@
-
 use super::is_existing_md_file_path;
 
 #[must_use]

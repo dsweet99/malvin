@@ -101,12 +101,9 @@ impl RunTiming {
             add_optional_sum(&mut self.tokens_out, n);
         }
         if matches!(self.cost_policy, super::CostPolicy::EstimateFromRates) {
-            let estimated = self.token_cost_rates.estimate_usd(
-                input_n,
-                output_n,
-                cache_read_n,
-                cache_write_n,
-            );
+            let estimated =
+                self.token_cost_rates
+                    .estimate_usd(input_n, output_n, cache_read_n, cache_write_n);
             self.tx_costs.push(estimated);
         } else if matches!(self.cost_policy, super::CostPolicy::Zero) {
             self.tx_costs.push(0.0);

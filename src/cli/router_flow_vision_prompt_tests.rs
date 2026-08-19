@@ -43,11 +43,7 @@ fn default_router_prompts_follow_vision_problem_solving_language() {
             && router_a.contains("independent axes"),
         "router_a should keep regularization without falsification language"
     );
-    for name in [
-        "router_a.md",
-        "router_b.md",
-        "router_b_creative.md",
-    ] {
+    for name in ["router_a.md", "router_b.md", "router_b_creative.md"] {
         let body = crate::prompts::default_file(name)
             .unwrap_or_else(|| panic!("missing {name}"))
             .to_ascii_lowercase();

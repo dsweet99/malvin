@@ -1,7 +1,7 @@
 use serde_json::Value;
 
 use crate::tool_summary::parse_tool_update;
-use crate::tool_summary::{ParsedToolUpdate, ToolSummaryTracker, TOOL_PHASE_DONE};
+use crate::tool_summary::{ParsedToolUpdate, TOOL_PHASE_DONE, ToolSummaryTracker};
 
 use super::types::{EnrichKey, ToolDrainMeta};
 
@@ -13,10 +13,7 @@ fn tool_fallback_plain(plain: &str) -> String {
         .to_string()
 }
 
-fn enrichable_tool_kind<'a>(
-    update_kind: &'a str,
-    rec_kind: Option<&'a str>,
-) -> Option<&'a str> {
+fn enrichable_tool_kind<'a>(update_kind: &'a str, rec_kind: Option<&'a str>) -> Option<&'a str> {
     let kind = if update_kind == "unknown" {
         rec_kind.unwrap_or("unknown")
     } else {
@@ -77,7 +74,7 @@ mod kiss_cov {
 
 #[cfg(test)]
 #[allow(unused_imports)]
-mod kiss_cov_gate_refs{
+mod kiss_cov_gate_refs {
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {

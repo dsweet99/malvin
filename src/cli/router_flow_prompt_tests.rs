@@ -151,12 +151,14 @@ fn build_router_prompts_use_canonical_templates() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
     let store = prepare_router_prompt_store().expect("store");
-    let header = build_router_header_prompt(crate::router_flow::router_flow_prompt::RouterHeaderPromptInput {
-        store: &store,
-        artifacts: &artifacts,
-        model: DEFAULT_CLI_MODEL,
-        git: false,
-    })
+    let header = build_router_header_prompt(
+        crate::router_flow::router_flow_prompt::RouterHeaderPromptInput {
+            store: &store,
+            artifacts: &artifacts,
+            model: DEFAULT_CLI_MODEL,
+            git: false,
+        },
+    )
     .expect("header");
     assert!(!header.to_ascii_lowercase().contains("falsifiable"));
     let a = build_router_a_prompt(RouterAPromptInput {

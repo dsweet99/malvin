@@ -1,4 +1,3 @@
-
 use crate::acp::CoderPromptOptions;
 
 #[derive(Debug, Clone, Copy, Default)]

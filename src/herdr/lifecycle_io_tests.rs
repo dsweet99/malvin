@@ -1,11 +1,8 @@
-
 #[path = "lifecycle_io_support.rs"]
 mod lifecycle_io_support;
 
 use crate::herdr::{notify_reclaim, notify_run_end, notify_run_start, notify_working};
-use crate::herdr::{
-    reset_session_for_test, session_active_for_test, session_has_binding_for_test,
-};
+use crate::herdr::{reset_session_for_test, session_active_for_test, session_has_binding_for_test};
 use lifecycle_io_support::{
     agent_state_of, assert_bind_shape, assert_idle_then_clear_metadata, collect_until_deadline,
     collect_until_teardown_clear, herdr_test_env_lock, install_test_herdr_env, method_of,
@@ -50,7 +47,11 @@ fn notify_working_pulses_working_without_clearing_authority() {
         assert!(pulsed.iter().any(|v| {
             method_of(v) == "pane.report_agent" && agent_state_of(v) == Some("working")
         }));
-        assert!(pulsed.iter().all(|v| method_of(v) != "pane.clear_agent_authority"));
+        assert!(
+            pulsed
+                .iter()
+                .all(|v| method_of(v) != "pane.clear_agent_authority")
+        );
         notify_run_end();
         let _ = collect_until_teardown_clear(rx);
     });

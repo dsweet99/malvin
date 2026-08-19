@@ -18,7 +18,10 @@ llamacpp                llama.cpp                  llama-cpp, llama.cpp, llama-s
 #[test]
 fn parse_list_providers_reads_keys_and_aliases() {
     let map = parse_list_providers_table(SAMPLE);
-    assert_eq!(map.get("openai").map(Vec::as_slice), Some(&["OPENAI_API_KEY".to_string()][..]));
+    assert_eq!(
+        map.get("openai").map(Vec::as_slice),
+        Some(&["OPENAI_API_KEY".to_string()][..])
+    );
     assert_eq!(
         map.get("302ai").map(Vec::as_slice),
         Some(&["302AI_API_KEY".to_string()][..])
@@ -90,11 +93,7 @@ fn list_pi_provider_auth_sync_parses_fake_pi() {
     let _lock = test_env_lock();
     let dir = tempfile::tempdir().expect("tmpdir");
     let path = dir.path().join("ok-pi");
-    std::fs::write(
-        &path,
-        format!("#!/bin/sh\ncat <<'EOF'\n{SAMPLE}EOF\n"),
-    )
-    .expect("write");
+    std::fs::write(&path, format!("#!/bin/sh\ncat <<'EOF'\n{SAMPLE}EOF\n")).expect("write");
     let mut perms = std::fs::metadata(&path).expect("meta").permissions();
     perms.set_mode(0o755);
     std::fs::set_permissions(&path, perms).expect("chmod");

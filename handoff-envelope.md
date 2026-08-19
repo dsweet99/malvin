@@ -1,25 +1,20 @@
 # Incomplete handoff envelope
 
 ## Done
-- Read `plan_lrn9b.md`; its stated goals concern router prompts and restrict edits to `router_a.md` and `router_b.md`.
-- Investigated the explicitly requested quality gates with KPop.
-- Fixed the current KISS violation caused by Codex model-list pagination code by splitting parsing into `src/codex_sdk/model_list.rs` and keeping the page type in `src/codex_sdk/discover.rs`.
-- Added coverage for pagination, missing result/data, malformed rows, missing display names, and model-list errors.
-- `ruff check` passed.
-- `kiss check` passed with `NO VIOLATIONS` after the final refactor.
-- `cargo clippy --jobs 3 --all-targets --all-features -- -D warnings -W clippy::cargo` passed after fixing `ok_or_else` and a missing test semicolon.
-- Targeted `RUSTC_WRAPPER= cargo test codex_sdk --lib` passed: 23 tests.
-- `pytest tests` passed: 156 tests.
+- Verified `malvin models codex:` discovers live Codex model variants.
+- Added exact-match-first and family-prefix fallback resolution for Codex model slugs.
+- Wired resolution into `codex thread/start`; the Codex mock exercises `codex:gpt-5.6`.
+- Committed the resolver as `09233449` (`resolve Codex family model aliases`).
+- Split protocol implementation into `src/codex_sdk/session_protocol.rs`; `session_spawn.rs` is now 215 lines and `session_protocol.rs` is 85 lines.
+- KPop log records two hypotheses and test outcomes at `/home/dsweet/.malvin_home/logs/eb7ef333a92a6d41/20260819_184414_mexp1qqm/_kpop/exp_log_20260819_184414_mexp1qqm_g1.md`.
 
 ## Remaining
-- `./admin/malvin_rust_test_gate.sh` was started as the final verification but was skipped by the harness because a queued user message arrived. It must be rerun.
-- The exact command `malvin --model=codex:gpt-5.6 --do Hello` should be rerun against the final build if required; earlier in this session it had succeeded before the pagination refactor.
-- The live `malvin models codex:` command should be rerun if final-state verification is required.
-- The working tree contains many pre-existing unrelated modifications and untracked operator artifacts. Do not include them in the commit.
+- KISS still fails: `src/codex_sdk/session_spawn.rs:33:CodexProcess` is 86% covered; required coverage is 90%.
+- Run `cargo fmt`, targeted Codex tests, and the repository quality gate after fixing coverage.
+- Rebuild and verify `malvin --model=codex:gpt-5.6 --do Hello` and `malvin models codex:`.
+- Do not include unrelated existing working-tree changes.
 
 ## Next-agent starting position
-1. Review the commit containing only `src/codex_sdk/discover.rs` and `src/codex_sdk/model_list.rs`.
-2. Run `./admin/malvin_rust_test_gate.sh` sequentially; do not run overlapping heavy checks.
-3. If it passes, optionally rebuild and verify the exact Codex command and `malvin models codex:`.
-4. Inspect `git status --short`; preserve unrelated existing changes.
-5. The current handoff is incomplete only because the Rust gate was skipped by the harness after the queued user message.
+- Inspect `src/codex_sdk/session_spawn.rs` and `src/codex_sdk/session_protocol.rs`.
+- Add focused tests for uncovered `CodexProcess`/spawn error branches or isolate the process implementation into a separately covered module.
+- Run `kiss check` and use its exact reported unit/line as the acceptance criterion.

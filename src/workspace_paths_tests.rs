@@ -1,11 +1,11 @@
 use crate::workspace_paths::{
-    canonical_work_dir_for_logs, find_malvin_logs_root, git_worktree_toplevel, is_malvin_workspace,
-    legacy_malvin_checks_path, malvin_acp_spawn_chamber_dir, malvin_advice_path, malvin_checks_path,
-    malvin_config_path, malvin_data_root, malvin_home_config_path, malvin_home_logs_root,
-    malvin_home_snapshots_root, malvin_logs_root, malvin_user_home_root, read_work_dir_manifest,
+    MALVIN_DIR, MALVIN_USER_HOME_DIR, canonical_work_dir_for_logs, find_malvin_logs_root,
+    git_worktree_toplevel, is_malvin_workspace, legacy_malvin_checks_path,
+    malvin_acp_spawn_chamber_dir, malvin_advice_path, malvin_checks_path, malvin_config_path,
+    malvin_data_root, malvin_home_config_path, malvin_home_logs_root, malvin_home_snapshots_root,
+    malvin_logs_root, malvin_user_home_root, read_work_dir_manifest,
     remove_legacy_malvin_checks_file, resolve_malvin_checks_path, snapshot_category_dir,
-    write_work_dir_manifest, workspace_logs_hash, MALVIN_DIR,
-    MALVIN_USER_HOME_DIR,
+    workspace_logs_hash, write_work_dir_manifest,
 };
 
 #[test]
@@ -29,22 +29,29 @@ fn malvin_data_root_uses_git_toplevel_when_inside_repo() {
     let tmp = tempfile::tempdir().unwrap();
     let repo = tmp.path().join("repo");
     std::fs::create_dir_all(repo.join("src")).unwrap();
-    assert!(std::process::Command::new("git")
-        .args(["init"])
-        .current_dir(&repo)
-        .status()
-        .unwrap()
-        .success());
+    assert!(
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(&repo)
+            .status()
+            .unwrap()
+            .success()
+    );
     let sub = repo.join("src");
     let repo = repo.canonicalize().expect("canonicalize");
     assert_eq!(malvin_data_root(&sub), repo);
-    assert_eq!(malvin_checks_path(&sub), repo.join(".malvin").join("checks"));
+    assert_eq!(
+        malvin_checks_path(&sub),
+        repo.join(".malvin").join("checks")
+    );
     assert_eq!(
         malvin_acp_spawn_chamber_dir(&sub),
         repo.join(".malvin").join("acp_spawn")
     );
     assert!(git_worktree_toplevel(&sub).is_some());
-    assert!(crate::workspace_paths::workspace_paths_data_root::git_worktree_toplevel(&sub).is_some());
+    assert!(
+        crate::workspace_paths::workspace_paths_data_root::git_worktree_toplevel(&sub).is_some()
+    );
 }
 
 #[test]

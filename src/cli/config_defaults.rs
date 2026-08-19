@@ -1,4 +1,3 @@
-
 use clap::parser::ValueSource;
 use clap::{ArgMatches, CommandFactory, FromArgMatches};
 
@@ -40,10 +39,7 @@ pub(crate) struct CodeWorkflowLoopMut<'a> {
     pub agent: &'a AgentConfig,
 }
 
-fn apply_code_workflow_loop_defaults(
-    matches: &ArgMatches,
-    loops: CodeWorkflowLoopMut<'_>,
-) {
+fn apply_code_workflow_loop_defaults(matches: &ArgMatches, loops: CodeWorkflowLoopMut<'_>) {
     apply_loop_defaults(
         matches,
         loops.subcommand,
@@ -97,7 +93,9 @@ fn apply_gate_loop_command_defaults(
                 agent,
             },
         ),
-        Commands::Write(write_args) => apply_write_loop_defaults(matches, write_args, agent, review),
+        Commands::Write(write_args) => {
+            apply_write_loop_defaults(matches, write_args, agent, review);
+        }
         Commands::Inspire(_) | Commands::Adaptix(_) | Commands::Models(_) => {}
     }
 }
@@ -151,10 +149,7 @@ const fn uses_lightweight_config_path(cli: &Cli) -> bool {
         || (cli.command.is_none() && cli.request.is_some())
 }
 
-pub fn apply_workspace_config_defaults(
-    matches: &ArgMatches,
-    cli: &mut Cli,
-) -> Result<(), String> {
+pub fn apply_workspace_config_defaults(matches: &ArgMatches, cli: &mut Cli) -> Result<(), String> {
     if uses_lightweight_config_path(cli) {
         let agent = load_agent_config(matches)?;
         apply_shared_and_finalize(matches, &mut cli.shared, &agent)?;
@@ -196,10 +191,7 @@ pub fn parse_cli_with_config_defaults(
     let matches = cmd.try_get_matches_from(args)?;
     let mut cli = Cli::from_arg_matches(&matches)?;
     if let Err(e) = apply_workspace_config_defaults(&matches, &mut cli) {
-        return Err(clap::Error::raw(
-            clap::error::ErrorKind::InvalidValue,
-            e,
-        ));
+        return Err(clap::Error::raw(clap::error::ErrorKind::InvalidValue, e));
     }
     Ok((cli, matches))
 }

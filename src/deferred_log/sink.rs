@@ -98,16 +98,18 @@ impl DeferredLogSink {
         }
         let now = Instant::now();
         let max_age = self.config.max_age;
-        let head_aged = self.queue.front().is_some_and(|e| {
-            now.duration_since(e.enqueued_at) >= max_age
-        });
+        let head_aged = self
+            .queue
+            .front()
+            .is_some_and(|e| now.duration_since(e.enqueued_at) >= max_age);
         if !head_aged {
             return;
         }
         let cap = self.config.max_drain_per_log;
-        let needs_enrich = self.queue.iter().take(cap).any(|e| {
-            now.duration_since(e.enqueued_at) >= max_age && queue_entry_needs_enrich(e)
-        });
+        let needs_enrich =
+            self.queue.iter().take(cap).any(|e| {
+                now.duration_since(e.enqueued_at) >= max_age && queue_entry_needs_enrich(e)
+            });
         if needs_enrich {
             prepare_enrich_if_needed(self);
         }
@@ -150,7 +152,12 @@ impl DeferredLogSink {
     }
 
     fn maybe_enrich(&self, mut entry: DeferredEntry) -> DeferredEntry {
-        let DeferredPayload::ToolSummary { plain, display, enrich, meta } = &mut entry.payload
+        let DeferredPayload::ToolSummary {
+            plain,
+            display,
+            enrich,
+            meta,
+        } = &mut entry.payload
         else {
             return entry;
         };

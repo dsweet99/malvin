@@ -1,5 +1,4 @@
-
-use crate::log_gc_config::{parse_logs_gc_config, LogsGcConfig};
+use crate::log_gc_config::{LogsGcConfig, parse_logs_gc_config};
 use crate::mem_limit_config::{default_mem_limit_gb, parse_mem_limit_gb};
 use crate::output::print_log_warning;
 use crate::terminal_palette::TerminalTheme;
@@ -7,9 +6,9 @@ use crate::terminal_palette::TerminalTheme;
 use std::collections::BTreeMap;
 
 use super::{
+    AgentConfig, DEFAULT_CONTEXT_SIZE, DefaultWorkflowConfig, MalvinConfig, ReviewConfig,
     parse_agent_config, parse_context_size, parse_default_workflow_config,
-    parse_model_token_cost_rates, parse_review_config, parse_theme, AgentConfig,
-    DefaultWorkflowConfig, MalvinConfig, ReviewConfig, DEFAULT_CONTEXT_SIZE,
+    parse_model_token_cost_rates, parse_review_config, parse_theme,
 };
 
 pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
@@ -34,8 +33,16 @@ pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
 
 fn parse_top_level_keys(text: &str) -> (u64, u32, TerminalTheme) {
     (
-        parse_or_warn(parse_mem_limit_gb(text), "mem_limit_gb", default_mem_limit_gb()),
-        parse_or_warn(parse_context_size(text), "context_size", DEFAULT_CONTEXT_SIZE),
+        parse_or_warn(
+            parse_mem_limit_gb(text),
+            "mem_limit_gb",
+            default_mem_limit_gb(),
+        ),
+        parse_or_warn(
+            parse_context_size(text),
+            "context_size",
+            DEFAULT_CONTEXT_SIZE,
+        ),
         parse_or_warn(parse_theme(text), "theme", TerminalTheme::Dark),
     )
 }
@@ -49,9 +56,17 @@ fn parse_config_sections(
     DefaultWorkflowConfig,
 ) {
     (
-        parse_or_warn(parse_logs_gc_config(text), "[logs]", LogsGcConfig::default()),
+        parse_or_warn(
+            parse_logs_gc_config(text),
+            "[logs]",
+            LogsGcConfig::default(),
+        ),
         parse_or_warn(parse_agent_config(text), "[agent]", AgentConfig::default()),
-        parse_or_warn(parse_review_config(text), "[review]", ReviewConfig::default()),
+        parse_or_warn(
+            parse_review_config(text),
+            "[review]",
+            ReviewConfig::default(),
+        ),
         parse_or_warn(
             parse_default_workflow_config(text),
             "[default_workflow]",

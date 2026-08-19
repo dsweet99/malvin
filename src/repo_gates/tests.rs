@@ -1,5 +1,5 @@
-use super::*;
 use super::checks_test_helpers::{git_init, write_git_root_checks as write_checks};
+use super::*;
 use std::fs;
 
 #[test]

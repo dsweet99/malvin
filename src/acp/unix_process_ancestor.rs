@@ -1,5 +1,5 @@
 #[cfg(unix)]
-use super::unix_process_group_ps::{list_proc_rows, ProcRow};
+use super::unix_process_group_ps::{ProcRow, list_proc_rows};
 
 #[cfg(unix)]
 pub(crate) fn is_ancestor_pid(ancestor: u32, pid: u32) -> bool {

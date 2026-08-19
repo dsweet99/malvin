@@ -126,7 +126,7 @@ mod gate_log_tests {
 
 #[cfg(test)]
 #[allow(unused_imports)]
-mod kiss_cov_gate_refs{
+mod kiss_cov_gate_refs {
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {

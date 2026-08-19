@@ -1,4 +1,3 @@
-
 use super::{DotfileBackupState, GitignoreBackup, gate_restore_merge};
 
 #[test]

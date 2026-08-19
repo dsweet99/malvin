@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use super::alloc::{allocate_backup_dir, remove_if_exists, DotfileBackupLabels};
+use super::alloc::{DotfileBackupLabels, allocate_backup_dir, remove_if_exists};
 
 const GITIGNORE_NAME: &str = ".gitignore";
 
@@ -132,8 +132,7 @@ pub fn restore_workspace_gitignore_backup(
                     std::fs::create_dir_all(parent)
                         .map_err(|e| format!("{}: {e}", LABELS.restore))?;
                 }
-                std::fs::write(&dst, &file.bytes)
-                    .map_err(|e| format!("gitignore restore: {e}"))?;
+                std::fs::write(&dst, &file.bytes).map_err(|e| format!("gitignore restore: {e}"))?;
             }
             for rel in collect_workspace_gitignore_relpaths(work_dir) {
                 if !snapshot_rels.contains(&rel) {

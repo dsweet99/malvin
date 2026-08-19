@@ -1,6 +1,7 @@
 use super::{
-    build_display_log_entry, defer_heartbeat_hook, defer_tagged_stdout_hook, install_stdout_hooks,
-    log_with_heartbeat, register_active_sink, unregister_active_sink, DeferredLogSink, SharedDeferSink,
+    DeferredLogSink, SharedDeferSink, build_display_log_entry, defer_heartbeat_hook,
+    defer_tagged_stdout_hook, install_stdout_hooks, log_with_heartbeat, register_active_sink,
+    unregister_active_sink,
 };
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -30,10 +31,7 @@ fn begin_defer_heartbeat_session(session: &str) -> SharedDeferSink {
     shared
 }
 
-fn flush_heartbeat_terminal_count(
-    shared: &SharedDeferSink,
-    before_flush: impl FnOnce(),
-) -> usize {
+fn flush_heartbeat_terminal_count(shared: &SharedDeferSink, before_flush: impl FnOnce()) -> usize {
     let (terminal, _log) = crate::deferred_log::test_fixtures::capture_stdout_render(|| {
         before_flush();
         shared
@@ -80,7 +78,9 @@ fn log_with_heartbeat_marks_clock_when_live_terminal_published() {
     register_active_sink(Arc::clone(&shared));
     arm_due_heartbeat();
     log_with_heartbeat(
-        &mut shared.lock().unwrap_or_else(std::sync::PoisonError::into_inner),
+        &mut shared
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner),
         build_display_log_entry("tag".into(), "tag".into()),
     );
     assert!(
@@ -97,12 +97,17 @@ fn write_heartbeat_then_log_with_heartbeat_enqueues_one_heartbeat() {
     let count = flush_heartbeat_terminal_count(&shared, || {
         crate::output::write_heartbeat_log_line(&display, &log_line);
         log_with_heartbeat(
-            &mut shared.lock().unwrap_or_else(std::sync::PoisonError::into_inner),
+            &mut shared
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner),
             build_display_log_entry("tag".into(), "tag".into()),
         );
     });
     unregister_active_sink();
-    assert_eq!(count, 1, "defer sink must not accumulate duplicate bundled heartbeats");
+    assert_eq!(
+        count, 1,
+        "defer sink must not accumulate duplicate bundled heartbeats"
+    );
 }
 
 #[test]
@@ -111,7 +116,9 @@ fn log_with_heartbeat_pushes_due_inline_heartbeat() {
     register_active_sink(Arc::clone(&shared));
     arm_due_heartbeat();
     log_with_heartbeat(
-        &mut shared.lock().unwrap_or_else(std::sync::PoisonError::into_inner),
+        &mut shared
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner),
         build_display_log_entry("tag".into(), "tag".into()),
     );
     assert_eq!(
@@ -128,11 +135,9 @@ fn log_with_heartbeat_pushes_due_inline_heartbeat() {
 #[test]
 fn double_try_emit_while_deferred_enqueues_one_heartbeat() {
     let shared = begin_defer_heartbeat_session("double_try_emit");
-    let (display, log_line) = crate::output::heartbeat_rendered_if_due(
-        std::time::Instant::now(),
-        false,
-    )
-    .expect("heartbeat due");
+    let (display, log_line) =
+        crate::output::heartbeat_rendered_if_due(std::time::Instant::now(), false)
+            .expect("heartbeat due");
     let count = flush_heartbeat_terminal_count(&shared, || {
         crate::output::write_heartbeat_log_line(&display, &log_line);
         assert_eq!(

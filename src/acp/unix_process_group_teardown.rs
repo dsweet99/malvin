@@ -1,20 +1,24 @@
 #[cfg(unix)]
 use std::collections::HashSet;
 
-#[cfg(all(unix, test))]
-use super::unix_process_group_ps::{signal_pid, signal_process_group};
 #[cfg(unix)]
 use super::unix_process_group_ps::snapshot_pids;
+#[cfg(all(unix, test))]
+use super::unix_process_group_ps::{signal_pid, signal_process_group};
 
 #[cfg(unix)]
 pub(crate) use super::unix_process_group_kill_targets::baseline_amnestied_agent_orphans;
 #[cfg(all(unix, test))]
-pub(crate) use super::unix_process_group_kill_targets::kill_targets_for_teardown;
-#[cfg(all(unix, test))]
 pub(crate) use super::unix_process_group_kill_targets::descendant_pids;
+#[cfg(all(unix, test))]
+pub(crate) use super::unix_process_group_kill_targets::kill_targets_for_teardown;
 
 #[cfg(all(unix, test))]
-pub(crate) async fn signal_targets(targets: &HashSet<u32>, process_group_id: Option<u32>, signal: i32) {
+pub(crate) async fn signal_targets(
+    targets: &HashSet<u32>,
+    process_group_id: Option<u32>,
+    signal: i32,
+) {
     for pid in targets {
         signal_pid(*pid, signal);
     }
@@ -42,7 +46,8 @@ pub async fn terminate_agent_process_group(
 
 #[cfg(unix)]
 pub async fn terminate_process_group(process_group_id: Option<u32>) {
-    super::unix_process_group_teardown_poll::teardown_agent_sandbox_async(process_group_id, None).await;
+    super::unix_process_group_teardown_poll::teardown_agent_sandbox_async(process_group_id, None)
+        .await;
 }
 
 #[cfg(unix)]
@@ -54,21 +59,17 @@ pub fn reap_baseline_amnestied_agent_orphans_blocking() {
 }
 
 #[cfg(not(unix))]
-pub async fn terminate_agent_process_group(
-    _: Option<u32>,
-    _: &std::collections::HashSet<u32>,
-) {
-}
+pub async fn terminate_agent_process_group(_: Option<u32>, _: &std::collections::HashSet<u32>) {}
 
 #[cfg(not(unix))]
 pub async fn terminate_process_group(_: Option<u32>) {}
 
 #[cfg(all(test, unix))]
-#[path = "unix_process_group_teardown_tests.rs"]
-pub(crate) mod unix_process_group_teardown_tests;
-#[cfg(all(test, unix))]
 #[path = "unix_process_group_teardown_escalation_tests.rs"]
 mod unix_process_group_teardown_escalation_tests;
+#[cfg(all(test, unix))]
+#[path = "unix_process_group_teardown_tests.rs"]
+pub(crate) mod unix_process_group_teardown_tests;
 
 #[cfg(test)]
 #[allow(unused_imports)]

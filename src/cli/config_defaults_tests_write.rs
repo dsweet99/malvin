@@ -1,4 +1,6 @@
-use super::{apply_workspace_config_defaults, config_defaults_tests::write_agent_config, Cli, Commands};
+use super::{
+    Cli, Commands, apply_workspace_config_defaults, config_defaults_tests::write_agent_config,
+};
 use clap::{CommandFactory, FromArgMatches};
 
 fn write_review_max_hypotheses(work: &std::path::Path, value: i64) {
@@ -60,8 +62,5 @@ fn write_max_hypotheses_uses_review_config() {
 
 #[test]
 fn write_max_hypotheses_cli_wins_over_review_config() {
-    assert_write_max_hypotheses(
-        &["malvin", "write", "topic", "--max-hypotheses", "3"],
-        3,
-    );
+    assert_write_max_hypotheses(&["malvin", "write", "topic", "--max-hypotheses", "3"], 3);
 }

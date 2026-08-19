@@ -47,7 +47,10 @@ max_loops = 5
         let before = std::fs::read_to_string(&path).expect("read before");
         let cfg = open_malvin_config(work).expect("open must not hard-fail on bare model");
         let after = std::fs::read_to_string(&path).expect("read after");
-        assert_eq!(before, after, "existing config.toml must never be rewritten");
+        assert_eq!(
+            before, after,
+            "existing config.toml must never be rewritten"
+        );
         assert_eq!(cfg.agent.model, DEFAULT_CLI_MODEL);
         assert!(after.contains("model = \"auto\""));
     });

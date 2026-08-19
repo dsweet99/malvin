@@ -1,7 +1,7 @@
 use crate::cli::{SharedOpts, WorkflowCliOptions};
-use crate::router_flow::{run_router, RouterArgs};
+use crate::router_flow::{RouterArgs, run_router};
 
-use super::{effective_tidy_max_loops, TidyArgs};
+use super::{TidyArgs, effective_tidy_max_loops};
 
 pub(crate) const TIDY_ROUTER_REQUEST: &str = "Get the gates to pass.";
 

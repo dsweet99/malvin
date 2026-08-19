@@ -88,7 +88,7 @@ pub(in crate::process_group_rss) fn parse_proc_kib_field(text: &str, prefix: &st
 
 #[cfg(test)]
 #[allow(unused_imports)]
-mod kiss_cov_gate_refs{
+mod kiss_cov_gate_refs {
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {

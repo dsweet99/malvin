@@ -1,4 +1,3 @@
-
 use std::path::Path;
 
 use crate::malvin_config_file::read_u64;
@@ -18,9 +17,7 @@ pub fn load_mem_limit_gb(work_dir: &Path) -> u64 {
 }
 
 pub(crate) fn parse_mem_limit_gb(text: &str) -> Result<u64, String> {
-    let value: toml::Value = text
-        .parse()
-        .map_err(|e| format!("invalid TOML: {e}"))?;
+    let value: toml::Value = text.parse().map_err(|e| format!("invalid TOML: {e}"))?;
     match read_u64(value.get("mem_limit_gb")) {
         None => Ok(default_mem_limit_gb()),
         Some(0) => Err("mem_limit_gb must be positive".to_string()),
@@ -43,10 +40,9 @@ pub fn system_cpu_count() -> Option<usize> {
 
 #[must_use]
 pub fn format_host_resources_line() -> String {
-    let memory = system_total_memory_bytes()
-        .map_or_else(|| "unknown".to_string(), format_memory_gib);
-    let cpus = system_cpu_count()
-        .map_or_else(|| "unknown".to_string(), |n| n.to_string());
+    let memory =
+        system_total_memory_bytes().map_or_else(|| "unknown".to_string(), format_memory_gib);
+    let cpus = system_cpu_count().map_or_else(|| "unknown".to_string(), |n| n.to_string());
     format!("Memory: {memory}, CPUs: {cpus}")
 }
 
@@ -100,11 +96,7 @@ pub(crate) fn macos_total_memory_bytes() -> Option<u64> {
     if !out.status.success() {
         return None;
     }
-    String::from_utf8(out.stdout)
-        .ok()?
-        .trim()
-        .parse()
-        .ok()
+    String::from_utf8(out.stdout).ok()?.trim().parse().ok()
 }
 
 #[cfg(test)]

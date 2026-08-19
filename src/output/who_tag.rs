@@ -1,4 +1,3 @@
-
 pub const LOG_TAG_INNER_WIDTH: usize = 1;
 
 pub const WHO_O: &str = "o";
@@ -85,13 +84,13 @@ pub fn is_command_prelude_line(line: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        format_acp_directional_tag_prefix, format_who_tag_prefix, payload_after_fixed_width_bracket_tag,
-        WHO_M, WHO_U,
+        WHO_M, WHO_U, format_acp_directional_tag_prefix, format_who_tag_prefix,
+        payload_after_fixed_width_bracket_tag,
     };
 
     #[test]
     fn who_tag_display_space_after_pipe_classifies_tags() {
-        use super::{who_tag_display_space_after_pipe, WHO_B, WHO_H, WHO_M, WHO_O, WHO_T, WHO_U};
+        use super::{WHO_B, WHO_H, WHO_M, WHO_O, WHO_T, WHO_U, who_tag_display_space_after_pipe};
 
         assert!(who_tag_display_space_after_pipe(WHO_B));
         assert!(who_tag_display_space_after_pipe(WHO_T));
@@ -103,7 +102,7 @@ mod tests {
 
     #[test]
     fn display_prefix_adds_space_after_pipe_for_thought_and_tool_only() {
-        use super::{format_who_tag_delim, WHO_B, WHO_M, WHO_O, WHO_T};
+        use super::{WHO_B, WHO_M, WHO_O, WHO_T, format_who_tag_delim};
 
         assert_eq!(format_who_tag_prefix(WHO_B), "b| ");
         assert_eq!(format_who_tag_prefix(WHO_T), "t| ");

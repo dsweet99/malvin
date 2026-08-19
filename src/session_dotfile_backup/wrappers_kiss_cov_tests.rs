@@ -1,4 +1,3 @@
-
 #[test]
 fn kiss_witness_session_dotfile_wrappers_and_alloc() {
     let _ = super::alloc::random_backup_id;
@@ -9,9 +8,10 @@ fn kiss_witness_session_dotfile_wrappers_and_alloc() {
         format!("mc{n}")
     });
     let _ = super::wrappers::backup_workspace_malvin_config_workspace_if_present(work);
-    let _ = super::wrappers::backup_workspace_malvin_config_workspace_if_present_with_id(work, |n| {
-        format!("mws{n}")
-    });
+    let _ =
+        super::wrappers::backup_workspace_malvin_config_workspace_if_present_with_id(work, |n| {
+            format!("mws{n}")
+        });
     std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
     std::fs::write(work.join(".malvin/config.toml"), "x\n").expect("write config");
     if let Ok(backup) = super::wrappers::backup_workspace_malvin_checks_if_present(work) {

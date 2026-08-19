@@ -1,4 +1,3 @@
-
 use super::types::{CompletionResponse, ResponseUsage};
 
 #[derive(Debug, Clone, PartialEq, Default)]

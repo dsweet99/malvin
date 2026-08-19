@@ -1,7 +1,7 @@
 use crate::artifacts::{
-    create_run_artifacts_from_text, GitignoreBackup, backup_workspace_gitignore_if_present,
-    backup_workspace_gitignore_if_present_with_id, restore_workspace_gitignore_backup,
-    SessionDotfileBackups,
+    GitignoreBackup, SessionDotfileBackups, backup_workspace_gitignore_if_present,
+    backup_workspace_gitignore_if_present_with_id, create_run_artifacts_from_text,
+    restore_workspace_gitignore_backup,
 };
 use crate::test_utils::with_isolated_home;
 use crate::workspace_paths::snapshot_category_dir;
@@ -79,17 +79,20 @@ fn post_agent_snapshot_preserves_agent_created_gitignore_for_gate_restore() {
         std::fs::write(work.join(".malvin/checks"), "make lint\n").unwrap();
         let iteration_start =
             SessionDotfileBackups::snapshot_after_ensuring_home_config(work).unwrap();
-        assert!(matches!(iteration_start.gitignore, GitignoreBackup::Missing));
+        assert!(matches!(
+            iteration_start.gitignore,
+            GitignoreBackup::Missing
+        ));
         std::fs::write(work.join(".gitignore"), "target/\nops/\n").unwrap();
-        let post_agent =
-            SessionDotfileBackups::snapshot_after_ensuring_home_config(work).unwrap();
+        let post_agent = SessionDotfileBackups::snapshot_after_ensuring_home_config(work).unwrap();
         iteration_start
             .restore_excluding_malvin_checks(work)
             .unwrap();
-        assert!(!work.join(".gitignore").exists(), "intra-session restore wipes agent repair");
-        post_agent
-            .restore_excluding_malvin_checks(work)
-            .unwrap();
+        assert!(
+            !work.join(".gitignore").exists(),
+            "intra-session restore wipes agent repair"
+        );
+        post_agent.restore_excluding_malvin_checks(work).unwrap();
         assert_eq!(
             std::fs::read_to_string(work.join(".gitignore")).unwrap(),
             "target/\nops/\n"

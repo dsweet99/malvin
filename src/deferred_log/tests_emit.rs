@@ -2,23 +2,23 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use crate::deferred_log::config::{
-    defer_log_cursor_dir_from_env, defer_log_enabled_from_env, defer_log_max_age_from_env,
-    defer_log_max_drain_from_env, env_is_zero, DeferredLogConfig,
+    DeferredLogConfig, defer_log_cursor_dir_from_env, defer_log_enabled_from_env,
+    defer_log_max_age_from_env, defer_log_max_drain_from_env, env_is_zero,
 };
 use crate::deferred_log::emit::emit_deferred_entry;
 use crate::deferred_log::enrich::{enriched_tool_plain, styled_tool_payload, synthetic_tool_done};
 use crate::deferred_log::sink_build::build_display_log_entry;
 use crate::deferred_log::test_fixtures::{
-    capture_stdout_log, capture_stdout_render, test_tool_entry, zero_age_defer_shared,
-    SharedDeferSink,
+    SharedDeferSink, capture_stdout_log, capture_stdout_render, test_tool_entry,
+    zero_age_defer_shared,
 };
 use crate::deferred_log::tool_enrich::tool_drain_enrich_fields;
+use crate::deferred_log::types::{DeferredPayload, ToolDrainMeta};
 use crate::deferred_log::{
-    build_acp_tee_entry, build_raw_line_entry, install_stdout_hooks, register_active_sink,
-    unregister_active_sink, AcpTeeBuild, TeeSinkMeta,
+    AcpTeeBuild, TeeSinkMeta, build_acp_tee_entry, build_raw_line_entry, install_stdout_hooks,
+    register_active_sink, unregister_active_sink,
 };
 use std::sync::Arc;
-use crate::deferred_log::types::{DeferredPayload, ToolDrainMeta};
 
 #[test]
 fn emit_display_log_entry_writes_timestamped_log_line() {
@@ -126,7 +126,10 @@ fn assert_monotonic_log_timestamps(text: &str, prefix: &str) {
         .filter(|t| t.starts_with(prefix))
         .collect();
     let inversions = stamps.windows(2).filter(|w| w[0] > w[1]).count();
-    assert_eq!(inversions, 0, "log timestamps must be monotonic; got {stamps:?}");
+    assert_eq!(
+        inversions, 0,
+        "log timestamps must be monotonic; got {stamps:?}"
+    );
 }
 
 #[test]

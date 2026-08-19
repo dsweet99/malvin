@@ -1,4 +1,3 @@
-
 #[test]
 fn kiss_witness_acp_test_helpers_a() {
     let _ = stringify!(watch_process_group_memory_fail_closed_when_rss_unavailable);

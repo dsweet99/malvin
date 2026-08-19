@@ -1,6 +1,4 @@
-use super::{
-    command_accepts_session_name, Commands, Exit, entrypoint_from,
-};
+use super::{Commands, Exit, command_accepts_session_name, entrypoint_from};
 use crate::cli::models_cmd::ModelsArgs;
 
 #[test]
@@ -101,14 +99,9 @@ fn do_workflow_accepts_session_name_via_entrypoint_rules() {
     use crate::cli::config_defaults::parse_cli_with_config_defaults;
 
     crate::test_utils::with_isolated_home(|_| {
-        let (cli, _) = parse_cli_with_config_defaults([
-            "malvin",
-            "--name",
-            "probe",
-            "--do",
-            "say hello",
-        ])
-        .expect("parse --do");
+        let (cli, _) =
+            parse_cli_with_config_defaults(["malvin", "--name", "probe", "--do", "say hello"])
+                .expect("parse --do");
         assert!(cli.do_workflow);
         assert_eq!(cli.shared.name.as_deref(), Some("probe"));
         assert_eq!(cli.request.as_deref(), Some("say hello"));
@@ -117,7 +110,9 @@ fn do_workflow_accepts_session_name_via_entrypoint_rules() {
 
 #[test]
 fn models_command_rejects_session_name() {
-    assert!(!command_accepts_session_name(&Commands::Models(ModelsArgs::default())));
+    assert!(!command_accepts_session_name(&Commands::Models(
+        ModelsArgs::default()
+    )));
 }
 
 #[test]
@@ -144,16 +139,14 @@ fn init_command_accepts_session_name() {
 #[test]
 fn write_command_rejects_session_name() {
     use crate::cli::write_flow::WriteArgs;
-    assert!(!command_accepts_session_name(
-        &Commands::Write(WriteArgs {
-            request: Some("topic".to_string()),
-            out_path: "write.tex".to_string(),
-            max_loops: 1,
-            max_hypotheses: 5,
-            tenacious: false,
-            out_path_explicit: false,
-        }),
-    ));
+    assert!(!command_accepts_session_name(&Commands::Write(WriteArgs {
+        request: Some("topic".to_string()),
+        out_path: "write.tex".to_string(),
+        max_loops: 1,
+        max_hypotheses: 5,
+        tenacious: false,
+        out_path_explicit: false,
+    }),));
 }
 
 #[test]
@@ -161,14 +154,9 @@ fn do_with_name_parses() {
     use crate::cli::config_defaults::parse_cli_with_config_defaults;
 
     crate::test_utils::with_isolated_home(|_| {
-        let (cli, _) = parse_cli_with_config_defaults([
-            "malvin",
-            "--name",
-            "probe",
-            "--do",
-            "say hello",
-        ])
-        .expect("parse --do");
+        let (cli, _) =
+            parse_cli_with_config_defaults(["malvin", "--name", "probe", "--do", "say hello"])
+                .expect("parse --do");
         assert!(cli.do_workflow);
         assert!(cli.command.is_none());
         assert_eq!(cli.request.as_deref(), Some("say hello"));

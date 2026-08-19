@@ -1,7 +1,7 @@
 use crate::deferred_log::types::{DeferredEntry, DeferredPayload};
 use crate::output::{
-    flush_stdout_acp_tee_line_with_timestamp, flush_stdout_acp_tool_summary_tee,
-    flush_stdout_raw_line_with_ts, flush_stdout_rendered_line, AcpTeeDirection, AcpTeeStdoutEvent,
+    AcpTeeDirection, AcpTeeStdoutEvent, flush_stdout_acp_tee_line_with_timestamp,
+    flush_stdout_acp_tool_summary_tee, flush_stdout_raw_line_with_ts, flush_stdout_rendered_line,
 };
 
 pub fn emit_deferred_entry(entry: &DeferredEntry) {

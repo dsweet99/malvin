@@ -1,4 +1,3 @@
-
 use std::time::{Duration, Instant};
 
 use crate::output::{AcpTeeDirection, AcpTeeStdoutEvent, WHO_T};
@@ -40,12 +39,15 @@ pub(crate) fn emit_tool(session: &BridgeSession, fields: ToolCallFields<'_>) {
     match phase {
         "start" => note_tool_start(session, tool_call_id, subject),
         "complete" | "error" => {
-            let plain = format_tool_done_line(session, &DoneLineInput {
-                tool_call_id,
-                subject,
-                name,
-                phase,
-            });
+            let plain = format_tool_done_line(
+                session,
+                &DoneLineInput {
+                    tool_call_id,
+                    subject,
+                    name,
+                    phase,
+                },
+            );
             tee_tool_line(session, &plain);
         }
         _ => {}

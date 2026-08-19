@@ -1,35 +1,32 @@
-
 pub(crate) mod acp_tee;
 mod acp_tee_markdown;
-pub(crate) mod stderr_log;
 mod do_dm_emit;
 mod do_dm_filter;
 mod do_dm_mode;
+pub(crate) mod stderr_log;
 mod stdout_defer;
 mod stdout_display;
 mod stdout_display_md;
 mod stdout_heartbeat;
+pub(crate) mod stdout_log_pair;
 mod stdout_render;
+pub(crate) mod stdout_tee_env;
 mod stdout_terminal;
+pub(crate) mod terminal_wrap;
 mod test_modules;
 mod who_tag;
-pub(crate) mod stdout_log_pair;
-pub(crate) mod stdout_tee_env;
-pub(crate) mod terminal_wrap;
 
 #[allow(dead_code)]
 pub(crate) use stdout_defer::register_defer_stdout_hooks;
 #[allow(unused_imports)]
 pub(crate) use stdout_defer::{try_defer_heartbeat, try_defer_tagged_stdout};
 #[allow(dead_code)]
-pub(crate) use stdout_render::{
-    flush_stdout_rendered_line, publish_heartbeat_live_terminal, write_heartbeat_log_line,
-};
+pub(crate) use stdout_heartbeat::{heartbeat_rendered_if_due, log_contains_heartbeat};
 #[cfg(test)]
 pub(crate) use stdout_render::emit_stdout_rendered_immediate;
 #[allow(dead_code)]
-pub(crate) use stdout_heartbeat::{
-    heartbeat_rendered_if_due, log_contains_heartbeat,
+pub(crate) use stdout_render::{
+    flush_stdout_rendered_line, publish_heartbeat_live_terminal, write_heartbeat_log_line,
 };
 
 pub(crate) use stdout_display::{
@@ -38,27 +35,21 @@ pub(crate) use stdout_display::{
 
 #[cfg(test)]
 pub(crate) use stdout_heartbeat::{
-    heartbeat_log_offset, poll_wall_clock_heartbeat_if_due, reset_stdout_heartbeat_for_test,
-    test_set_last_heartbeat_elapsed, HEARTBEAT_TEST_LOCK,
+    HEARTBEAT_TEST_LOCK, heartbeat_log_offset, poll_wall_clock_heartbeat_if_due,
+    reset_stdout_heartbeat_for_test, test_set_last_heartbeat_elapsed,
 };
 
+pub use do_dm_filter::{DM_END, DM_START, feed_do_dm_stdout_text};
+pub use do_dm_mode::{
+    DoDmStdoutOpts, do_dm_stdout_mode, set_do_dm_stdout_mode, set_do_dm_stdout_opts,
+};
 pub use stdout_display::{
     print_stdout_line, print_stdout_raw_line, print_stdout_raw_line_with_ts, print_stdout_text,
 };
 pub use stdout_display_md::{print_stdout_line_with_markdown, print_stdout_text_with_markdown};
+pub use stdout_heartbeat::{heartbeat_stdout_suppressed, set_heartbeat_stdout_suppressed};
 pub use stdout_terminal::{set_stdout_suppressed, stdout_suppressed};
-pub use stdout_heartbeat::{set_heartbeat_stdout_suppressed, heartbeat_stdout_suppressed};
-pub use do_dm_mode::{
-    do_dm_stdout_mode, set_do_dm_stdout_mode, set_do_dm_stdout_opts, DoDmStdoutOpts,
-};
-pub use do_dm_filter::{feed_do_dm_stdout_text, DM_END, DM_START};
 
-#[allow(dead_code)]
-pub(crate) use acp_tee::{
-    flush_stdout_acp_tee_line_with_timestamp, flush_stdout_acp_tool_summary_tee,
-};
-#[allow(dead_code)]
-pub(crate) use stdout_display::flush_stdout_raw_line_with_ts;
 pub use acp_tee::{
     AcpTeeDirection, AcpTeeLineFmt, AcpTeeStdoutEvent, TermimadStdoutGate, acp_tee_display_line,
     acp_tee_log_line, format_line_acp_ansi_payload, print_stdout_acp_tee_line,
@@ -66,6 +57,12 @@ pub use acp_tee::{
     print_stdout_acp_tool_summary_tee, termimad_inline_payload_for_stdout,
     termimad_text_lines_for_stdout,
 };
+#[allow(dead_code)]
+pub(crate) use acp_tee::{
+    flush_stdout_acp_tee_line_with_timestamp, flush_stdout_acp_tool_summary_tee,
+};
+#[allow(dead_code)]
+pub(crate) use stdout_display::flush_stdout_raw_line_with_ts;
 
 #[cfg(test)]
 mod acp_tee_termimad_tests;
@@ -77,10 +74,10 @@ mod format_tests;
 #[path = "format_tests_b.rs"]
 mod format_tests_b;
 #[cfg(test)]
-mod stdout_log_tests;
-#[cfg(test)]
 #[path = "output_kiss_cov_tests.rs"]
 mod output_kiss_cov_tests;
+#[cfg(test)]
+mod stdout_log_tests;
 
 #[cfg(test)]
 use std::cell::RefCell;
@@ -134,18 +131,14 @@ pub fn print_outgoing_prompt_log(_trace_who: &str, bracket_label: &str) {
 pub fn append_outgoing_prompt_log_lines(body: &str) {
     let ts = timestamp_now_string();
     for line in stdout_display::logical_lines(body) {
-        append_stdout_log_line(&stdout_log_pair::tagged_log_line(
-            &ts,
-            who_tag::WHO_U,
-            line,
-        ));
+        append_stdout_log_line(&stdout_log_pair::tagged_log_line(&ts, who_tag::WHO_U, line));
     }
 }
 
 pub use who_tag::{
+    LOG_TAG_INNER_WIDTH, WHO_B, WHO_H, WHO_M, WHO_O, WHO_T, WHO_U,
     format_acp_directional_tag_prefix, format_log_tag_inner, format_who_tag_delim,
-    format_who_tag_prefix, is_command_prelude_line, LOG_TAG_INNER_WIDTH, WHO_B, WHO_H, WHO_M,
-    WHO_O, WHO_T, WHO_U,
+    format_who_tag_prefix, is_command_prelude_line,
 };
 
 #[allow(unused_imports)]
@@ -159,7 +152,7 @@ static LOG_USE_COLOR: AtomicBool = AtomicBool::new(false);
 pub(crate) static STDOUT_LOG_TEST_LOCK: Mutex<()> = Mutex::new(());
 
 pub(crate) use crate::terminal_palette::{
-    ansi_tool_amber, ansi_tool_coral, ansi_tool_navy, ANSI_DIM, ANSI_RESET,
+    ANSI_DIM, ANSI_RESET, ansi_tool_amber, ansi_tool_coral, ansi_tool_navy,
 };
 
 #[must_use]
@@ -211,8 +204,7 @@ pub(crate) fn stdout_use_color() -> bool {
 }
 
 pub use stdout_tee_env::{
-    agent_stdout_tee_enabled, force_stdout_tee_from_env,
-    stdout_is_interactive,
+    agent_stdout_tee_enabled, force_stdout_tee_from_env, stdout_is_interactive,
 };
 
 pub(crate) fn stderr_use_color() -> bool {
@@ -237,4 +229,3 @@ pub(crate) fn append_stdout_log_line(line: &str) {
 }
 
 pub use stderr_log::{print_log_error, print_log_warning, print_stderr_line};
-

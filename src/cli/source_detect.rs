@@ -1,4 +1,3 @@
-
 use std::path::{Path, PathBuf};
 
 pub(crate) fn entry_name_has_extension(path: &Path, ext: &str) -> bool {
@@ -26,7 +25,10 @@ pub(crate) fn symlink_resolves_to_existing_file(link: &Path) -> bool {
     std::fs::metadata(link).is_ok_and(|m| m.is_file())
 }
 
-pub(crate) fn entry_or_symlink_file_target_matches(link: &Path, matches: impl Fn(&Path) -> bool) -> bool {
+pub(crate) fn entry_or_symlink_file_target_matches(
+    link: &Path,
+    matches: impl Fn(&Path) -> bool,
+) -> bool {
     if symlink_resolves_to_existing_file(link) && matches(link) {
         return true;
     }

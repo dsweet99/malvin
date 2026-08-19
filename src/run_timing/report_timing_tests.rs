@@ -3,9 +3,7 @@ use std::time::Duration;
 use serde_json::Value;
 
 use super::report_timing_line::format_timing_stdout_line_from_json;
-use super::{
-    duration_ms_u64, to_json_value, write_json_and_print_summary, write_json_only,
-};
+use super::{duration_ms_u64, to_json_value, write_json_and_print_summary, write_json_only};
 
 #[test]
 fn timing_line_implement_echoes_json_ms_via_same_formatter() {
@@ -115,8 +113,8 @@ fn write_json_and_print_summary_creates_file() {
 
 #[test]
 fn run_timing_json_includes_cost_block_with_reported_usage() {
-    use crate::run_timing::{RunTiming, TimingPhase};
     use crate::llm_transport::ResponseUsage;
+    use crate::run_timing::{RunTiming, TimingPhase};
 
     let mut r = RunTiming::default();
     r.record_completion_cost(&ResponseUsage {
@@ -142,8 +140,8 @@ fn no_cost_block_when_no_cost_data() {
 #[test]
 fn cost_fields_on_combined_stdout_line_not_timing_line() {
     use super::super::report_cost_line::format_cost_stdout_line_from_json;
-    use crate::run_timing::RunTiming;
     use crate::llm_transport::ResponseUsage;
+    use crate::run_timing::RunTiming;
 
     let mut r = RunTiming::default();
     r.record_completion_cost(&ResponseUsage {
@@ -160,4 +158,3 @@ fn cost_fields_on_combined_stdout_line_not_timing_line() {
     assert!(cost_line.contains("cost_tot = 0.0000"));
     assert!(cost_line.contains("steps ="));
 }
-

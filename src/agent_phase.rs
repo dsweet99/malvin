@@ -1,4 +1,3 @@
-
 #[path = "agent_phase_signal.rs"]
 mod agent_phase_signal;
 
@@ -101,7 +100,9 @@ static STATE: Mutex<PhaseState> = Mutex::new(PhaseState::fresh());
 pub(crate) static AGENT_PHASE_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 pub(crate) fn with_state<R>(f: impl FnOnce(&mut PhaseState) -> R) -> R {
-    let mut guard = STATE.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let mut guard = STATE
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     f(&mut guard)
 }
 

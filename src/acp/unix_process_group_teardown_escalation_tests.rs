@@ -38,7 +38,10 @@ fn teardown_ignoring_sigterm_eventually_killed() {
     std::thread::sleep(Duration::from_millis(50));
     terminate_agent_process_group_blocking(Some(pgid), &baseline);
     let status = child.wait().expect("wait");
-    assert!(!status.success(), "ignoring TERM must end in SIGKILL escalation");
+    assert!(
+        !status.success(),
+        "ignoring TERM must end in SIGKILL escalation"
+    );
 }
 
 #[tokio::test]

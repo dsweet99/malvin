@@ -1,4 +1,3 @@
-
 use crate::acp::CoderPromptOptions;
 
 use super::sdk_bug_helpers::{

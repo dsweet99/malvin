@@ -10,8 +10,8 @@ use crate::flow_prompt_join_test_helpers::{
     assert_dual_workflow_header_join, assert_header_user_join, flow_test_artifacts,
     flow_test_artifacts_no_checks,
 };
-use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptStore};
 use crate::prompt_stratification::WorkflowRenderContext;
+use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptStore};
 
 fn mock_do_prompt_store(tmp: &tempfile::TempDir) -> PromptStore {
     let prompt_root = tmp.path().join("prompts");
@@ -47,7 +47,12 @@ fn prepare_do_prompt_store_loads_default_templates() {
 fn build_do_coder_run_succeeds_without_checks_in_non_git_workspace() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts_no_checks(&tmp);
-    let run = build_do_coder_run(&artifacts, "USER_TOKEN", crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false)).expect("run");
+    let run = build_do_coder_run(
+        &artifacts,
+        "USER_TOKEN",
+        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false),
+    )
+    .expect("run");
     assert!(run.combined.contains("Know thyself"));
     assert!(run.combined.contains("malvin --do"));
     assert!(
@@ -66,7 +71,13 @@ fn build_do_coder_run_combines_both_headers_and_user() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
     let store = mock_do_prompt_store(&tmp);
-    let run = build_do_coder_run_with_store(&store, &artifacts, "USER_TOKEN\n\n", crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false)).expect("run");
+    let run = build_do_coder_run_with_store(
+        &store,
+        &artifacts,
+        "USER_TOKEN\n\n",
+        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false),
+    )
+    .expect("run");
     assert_dual_workflow_header_join(&run.combined, "CODING_HDR", "DO_HDR", "USER_TOKEN");
     let (trace_header, trace_user) = &run.header_user_for_trace;
     assert_header_user_join(trace_header, "CODING_HDR", "DO_HDR");
@@ -77,7 +88,12 @@ fn build_do_coder_run_combines_both_headers_and_user() {
 fn build_do_coder_run_default_store_produces_dual_headers() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
-    let run = build_do_coder_run(&artifacts, "USER_TOKEN", crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false)).expect("run");
+    let run = build_do_coder_run(
+        &artifacts,
+        "USER_TOKEN",
+        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false),
+    )
+    .expect("run");
     assert!(run.combined.contains("Know thyself"));
     assert!(run.combined.contains("malvin --do"));
     assert!(
@@ -96,8 +112,13 @@ fn combine_do_acp_prompt_joins_rendered_header_and_request() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let store = mock_do_prompt_store(&tmp);
     let artifacts = flow_test_artifacts(&tmp);
-    let (combined, header, user) =
-        combine_do_acp_prompt_header_and_user(&store, &artifacts, "USER_TOKEN", crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false)).expect("combine");
+    let (combined, header, user) = combine_do_acp_prompt_header_and_user(
+        &store,
+        &artifacts,
+        "USER_TOKEN",
+        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false),
+    )
+    .expect("combine");
     assert_eq!(header, "CODING_HDR");
     assert_eq!(user, "USER_TOKEN");
     assert_header_user_join(&combined, "CODING_HDR", "USER_TOKEN");
@@ -111,8 +132,13 @@ fn combine_do_raw_header_and_user_joins_rendered_do_header_and_request() {
     std::fs::write(prompt_root.join(DO_HEADER_MD), "DO_TOKEN\n").expect("do_header");
     let artifacts = flow_test_artifacts(&tmp);
     let store = PromptStore::with_root(prompt_root);
-    let (combined, header, user) =
-        combine_do_raw_header_and_user(&store, &artifacts, "USER_RAW_TOKEN\n\n", crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false)).expect("combine");
+    let (combined, header, user) = combine_do_raw_header_and_user(
+        &store,
+        &artifacts,
+        "USER_RAW_TOKEN\n\n",
+        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false),
+    )
+    .expect("combine");
     assert_eq!(header, "DO_TOKEN");
     assert_eq!(user, "USER_RAW_TOKEN");
     assert_header_user_join(&combined, "DO_TOKEN", "USER_RAW_TOKEN");
@@ -167,7 +193,8 @@ fn cli_accepts_max_acp_retries_global_flag() {
     let cli = Cli::try_parse_from(["malvin", "--do", "task"]).expect("parse");
     assert_eq!(cli.shared.max_acp_retries, DEFAULT_MAX_ACP_RETRIES);
 
-    let cli = Cli::try_parse_from(["malvin", "--max-acp-retries", "5", "--do", "task"]).expect("parse");
+    let cli =
+        Cli::try_parse_from(["malvin", "--max-acp-retries", "5", "--do", "task"]).expect("parse");
     assert_eq!(cli.shared.max_acp_retries, 5);
 }
 

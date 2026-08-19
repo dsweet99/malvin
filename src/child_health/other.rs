@@ -1,4 +1,3 @@
-
 use super::ChildHealth;
 
 #[must_use]

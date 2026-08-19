@@ -5,7 +5,7 @@ use clap::Args;
 
 use crate::cli::{SharedOpts, WorkflowCliOptions};
 use crate::prompts::{PromptError, PromptStore};
-use crate::router_flow::{run_router, RouterArgs};
+use crate::router_flow::{RouterArgs, run_router};
 
 #[must_use]
 pub(crate) fn effective_init_max_loops(max_loops: usize) -> usize {
@@ -154,8 +154,8 @@ mod tests {
     #[test]
     fn init_tenacious_expands_loops_and_retries() {
         use crate::cli::loop_opts::{
-            apply_gate_loop_tenacious, GateLoopTenaciousApply, TENACIOUS_MAX_ACP_RETRIES,
-            TENACIOUS_MAX_LOOPS,
+            GateLoopTenaciousApply, TENACIOUS_MAX_ACP_RETRIES, TENACIOUS_MAX_LOOPS,
+            apply_gate_loop_tenacious,
         };
         let matches = Cli::command().get_matches_from(["malvin", "init", "--tenacious"]);
         let cli = Cli::from_arg_matches(&matches).expect("parse");

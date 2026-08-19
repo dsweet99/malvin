@@ -1,4 +1,3 @@
-
 #[test]
 fn kiss_cov_coalesce_private_helpers() {
     let mut coalescer = crate::acp::VerboseIoCoalescer::default();

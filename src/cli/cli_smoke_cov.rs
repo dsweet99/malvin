@@ -1,4 +1,3 @@
-
 use super::entrypoint::try_tokio_runtime;
 use super::{Cli, Commands};
 
@@ -99,7 +98,6 @@ fn smoke_agent_io_options_maps_flags() {
     assert!(!io.log_full_outgoing_prompts);
 }
 
-
 #[test]
 fn smoke_cli_parse_init_subcommand() {
     use clap::Parser;
@@ -175,4 +173,3 @@ fn smoke_prepare_do_prompt_store_loads_defaults() {
 fn smoke_prepare_router_prompt_store_loads_defaults() {
     assert!(crate::router_flow::prepare_router_prompt_store().is_ok());
 }
-

@@ -1,4 +1,4 @@
-    use crate::acp::{backoff_after_agent_failure};
+use crate::acp::backoff_after_agent_failure;
 use crate::test_stderr_capture::capture_stderr_output;
 
 #[test]
@@ -18,7 +18,6 @@ fn backoff_does_not_log_when_retry_policy_stops_immediately() {
         "exhausted retries must not log at backoff; stderr={stderr:?}"
     );
 }
-
 
 #[test]
 fn backoff_logs_before_sleep_when_retry_will_occur() {

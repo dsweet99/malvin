@@ -5,9 +5,9 @@ use super::human_b::{
     human_edit_subject, human_execute_command, human_read_subject, humanize_bytes,
     humanize_duration, raw_byte_size,
 };
-use super::parse::json_number;
 use super::parse::ParsedToolUpdate;
-use super::types::{shorten_middle, ToolSummaryTracker, TOOL_DISPLAY_MAX_WIDTH};
+use super::parse::json_number;
+use super::types::{TOOL_DISPLAY_MAX_WIDTH, ToolSummaryTracker, shorten_middle};
 
 pub(crate) fn human_done_line(
     parsed: &ParsedToolUpdate,
@@ -45,7 +45,10 @@ pub(crate) fn human_read_done(
     )
 }
 
-pub(crate) fn human_search_start(parsed: &ParsedToolUpdate, tracker: &ToolSummaryTracker) -> String {
+pub(crate) fn human_search_start(
+    parsed: &ParsedToolUpdate,
+    tracker: &ToolSummaryTracker,
+) -> String {
     if let Some(q) = search_query_from(parsed, tracker) {
         return format!("Searching {}…", shorten_middle(q, TOOL_DISPLAY_MAX_WIDTH));
     }

@@ -1,4 +1,3 @@
-
 #[test]
 fn kiss_witness_do_run_prep() {
     let _: Option<super::DoRunPrep> = None;

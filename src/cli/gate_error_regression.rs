@@ -1,4 +1,4 @@
-use crate::output::{format_who_tag_delim, ERROR_WHO};
+use crate::output::{ERROR_WHO, format_who_tag_delim};
 use crate::repo_checks::{
     GATE_FAILURE_MARKER, RepoGateCommandFailure, RepoGateFailure, is_gate_failure_error,
     repo_gate_failure_to_string,

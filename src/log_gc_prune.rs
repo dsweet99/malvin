@@ -38,11 +38,7 @@ pub(crate) fn prune_run_dirs(
     (removed, freed)
 }
 
-pub(crate) fn needs_prune(
-    run_dirs: &[PathBuf],
-    total_bytes: u64,
-    config: &LogsGcConfig,
-) -> bool {
+pub(crate) fn needs_prune(run_dirs: &[PathBuf], total_bytes: u64, config: &LogsGcConfig) -> bool {
     if run_dirs.is_empty() {
         return false;
     }
@@ -107,10 +103,9 @@ fn remove_oldest_run(
                 *total_bytes = total_bytes.saturating_sub(size);
                 return Some(size);
             }
-            Err(e) => print_log_warning(&format!(
-                "could not prune log run {}: {e}",
-                path.display()
-            )),
+            Err(e) => {
+                print_log_warning(&format!("could not prune log run {}: {e}", path.display()));
+            }
         }
     }
     None

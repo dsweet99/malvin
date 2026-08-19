@@ -1,9 +1,7 @@
-use super::{
-    restore_workspace_session_dotfiles, DotfileBackupState, SessionDotfileBackups,
-};
 use super::slots::{
-    backup_slot, dotfile_source_path, labels_for_test, restore_slot, DotfileSpecRow, DOTFILE_ROWS,
+    DOTFILE_ROWS, DotfileSpecRow, backup_slot, dotfile_source_path, labels_for_test, restore_slot,
 };
+use super::{DotfileBackupState, SessionDotfileBackups, restore_workspace_session_dotfiles};
 
 fn empty_parts() -> crate::session_dotfile_backup::SessionDotfileParts {
     crate::session_dotfile_backup::SessionDotfileParts {

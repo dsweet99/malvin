@@ -44,27 +44,27 @@ fn merge_rejects_deleted_vision() {
     let mut progress = anchor.clone();
     progress.vision = crate::session_dotfile_backup::VisionBackup::Missing;
     let merged = merge_for_gate_restore(&anchor, &progress);
-    assert!(matches!(merged.vision, crate::session_dotfile_backup::VisionBackup::Present { .. }));
+    assert!(matches!(
+        merged.vision,
+        crate::session_dotfile_backup::VisionBackup::Present { .. }
+    ));
 }
 
 #[test]
 fn merge_rejects_deleted_gitignore() {
-    let anchor = bundle_with(
-        gitignore_present(b"baseline\n"),
-        present(b"make lint\n"),
-    );
+    let anchor = bundle_with(gitignore_present(b"baseline\n"), present(b"make lint\n"));
     let progress = bundle_with(GitignoreBackup::Missing, present(b"make lint\n"));
     let merged = merge_for_gate_restore(&anchor, &progress);
     assert!(matches!(merged.gitignore, GitignoreBackup::Present { .. }));
-    assert!(matches!(merged.malvin_checks, DotfileBackupState::Present(_)));
+    assert!(matches!(
+        merged.malvin_checks,
+        DotfileBackupState::Present(_)
+    ));
 }
 
 #[test]
 fn merge_rejects_tampered_malvin_checks() {
-    let anchor = bundle_with(
-        GitignoreBackup::Missing,
-        present(b"make lint\n"),
-    );
+    let anchor = bundle_with(GitignoreBackup::Missing, present(b"make lint\n"));
     let progress = bundle_with(GitignoreBackup::Missing, present(b"TAMPERED\n"));
     let merged = merge_for_gate_restore(&anchor, &progress);
     let DotfileBackupState::Present(ref payload) = merged.malvin_checks else {
@@ -95,10 +95,7 @@ fn merge_keeps_agent_edited_vision_content() {
 
 #[test]
 fn merge_keeps_agent_edited_gitignore_content() {
-    let anchor = bundle_with(
-        gitignore_present(b"baseline\n"),
-        present(b"make lint\n"),
-    );
+    let anchor = bundle_with(gitignore_present(b"baseline\n"), present(b"make lint\n"));
     let progress = bundle_with(
         gitignore_present(b"baseline\nextra/\n"),
         present(b"make lint\n"),
@@ -147,5 +144,3 @@ fn merge_keeps_progress_when_vision_present_without_root_file() {
     };
     assert_eq!(files[0].rel, std::path::PathBuf::from("pkg/VISION.md"));
 }
-
-

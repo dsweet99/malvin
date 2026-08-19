@@ -1,4 +1,3 @@
-
 use std::path::{Path, PathBuf};
 
 const ENV_BRIDGE: &str = "MALVIN_CURSOR_SDK_BRIDGE";

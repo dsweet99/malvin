@@ -1,9 +1,8 @@
-
+use super::slots::{DOTFILE_ROWS, DotfileSpecRow, dotfile_source_path, labels_for_test};
 use super::slots_kiss_cov_shared::{
-    dotfile_spec_row_field_count, write_merged_default_malvin_config, MALVIN_CONFIG_WORKSPACE_SLOT,
-    ROW_WITNESS_0, ROW_WITNESS_1, ROW_WITNESS_2,
+    MALVIN_CONFIG_WORKSPACE_SLOT, ROW_WITNESS_0, ROW_WITNESS_1, ROW_WITNESS_2,
+    dotfile_spec_row_field_count, write_merged_default_malvin_config,
 };
-use super::slots::{dotfile_source_path, labels_for_test, DotfileSpecRow, DOTFILE_ROWS};
 use std::path::Path;
 
 #[test]

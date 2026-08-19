@@ -1,8 +1,7 @@
-
 use crate::artifacts::{
-    backup_workspace_malvin_config_workspace_if_present,
+    MalvinConfigWorkspaceBackup, backup_workspace_malvin_config_workspace_if_present,
     backup_workspace_malvin_config_workspace_if_present_with_id,
-    restore_workspace_malvin_config_workspace_backup, MalvinConfigWorkspaceBackup,
+    restore_workspace_malvin_config_workspace_backup,
 };
 use crate::test_utils::with_isolated_home;
 

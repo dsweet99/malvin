@@ -118,7 +118,7 @@ fn ansi_acp_tee_directions_use_distinct_bracket_colors() {
 #[test]
 fn agent_message_prefix_rendered_payload_uses_white() {
     use super::acp_tee_markdown::agent_rendered_markup_payload;
-    use crate::output::stdout_log_pair::{format_line_acp_ansi_payload, AcpTeeLineFmt};
+    use crate::output::stdout_log_pair::{AcpTeeLineFmt, format_line_acp_ansi_payload};
 
     let ctx = AcpTeeLineFmt {
         ts: "20260413.121314.015",
@@ -132,10 +132,7 @@ fn agent_message_prefix_rendered_payload_uses_white() {
         white.contains(&format!("{}hello agent", ansi_tool_white())),
         "white wrapper should color agent payload; got {white:?}"
     );
-    let prefix = format_line_acp_ansi_payload(&AcpTeeLineFmt {
-        line: "",
-        ..ctx
-    });
+    let prefix = format_line_acp_ansi_payload(&AcpTeeLineFmt { line: "", ..ctx });
     let full = format!("{prefix}{white}");
     assert!(
         full.contains(&white),

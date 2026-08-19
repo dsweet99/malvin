@@ -1,4 +1,3 @@
-
 use std::sync::Mutex;
 
 pub const DM_START: &str = "MALVIN_DM_START";
@@ -116,7 +115,7 @@ fn emit_safe_inside_prefix(filter: &mut DmFilter) {
 
 #[cfg(test)]
 mod tests {
-    use super::{feed_do_dm_stdout_text, reset_do_dm_filter, DM_END, DM_START};
+    use super::{DM_END, DM_START, feed_do_dm_stdout_text, reset_do_dm_filter};
     use crate::output::{
         do_dm_stdout_mode, enable_stdout_capture, set_do_dm_stdout_mode, take_captured_stdout,
     };

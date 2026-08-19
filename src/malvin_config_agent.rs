@@ -1,10 +1,7 @@
-
 use super::AgentConfig;
 
 pub(crate) fn parse_agent_config(text: &str) -> Result<AgentConfig, String> {
-    let value: toml::Value = text
-        .parse()
-        .map_err(|e| format!("invalid TOML: {e}"))?;
+    let value: toml::Value = text.parse().map_err(|e| format!("invalid TOML: {e}"))?;
     let agent = value
         .get("agent")
         .ok_or_else(|| "missing [agent] section".to_string())?;

@@ -4,9 +4,7 @@ use crate::prompts::{
     PromptError, PromptStore, header_prompt_file, router_a_prompt_file, router_b_prompt_file,
 };
 
-use super::{
-    render_router_code_extra, RouterCodeExtraInput,
-};
+use super::{RouterCodeExtraInput, render_router_code_extra};
 
 pub(crate) struct RouterHeaderPromptInput<'a> {
     pub store: &'a PromptStore,

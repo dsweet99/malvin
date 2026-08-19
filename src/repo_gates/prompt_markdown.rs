@@ -1,4 +1,3 @@
-
 use std::path::Path;
 
 use super::{format_quality_gates_markdown, load_malvin_checks};

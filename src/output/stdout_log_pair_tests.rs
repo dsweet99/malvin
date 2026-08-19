@@ -1,11 +1,12 @@
 use crate::output::stdout_log_pair::{
-    acp_tee_payload_prefix, acp_tee_payload_prefix_width, format_line_acp_ansi_payload,
-    stderr_tagged_display_and_log_line, stdout_acp_display_and_log, tagged_display_and_log_line_for_color,
-    tagged_display_line_with_timestamp_ansi, tagged_log_line, AcpTeeDirection, AcpTeeLineFmt,
+    AcpTeeDirection, AcpTeeLineFmt, acp_tee_payload_prefix, acp_tee_payload_prefix_width,
+    format_line_acp_ansi_payload, stderr_tagged_display_and_log_line, stdout_acp_display_and_log,
+    tagged_display_and_log_line_for_color, tagged_display_line_with_timestamp_ansi,
+    tagged_log_line,
 };
 use crate::output::{
-    format_heartbeat_stdout_ansi, format_line_stdout, is_log_timestamp_token,
-    stdout_tagged_display_and_log_line, MALVIN_WHO, WHO_M, WHO_O, WHO_T,
+    MALVIN_WHO, WHO_M, WHO_O, WHO_T, format_heartbeat_stdout_ansi, format_line_stdout,
+    is_log_timestamp_token, stdout_tagged_display_and_log_line,
 };
 
 #[test]
@@ -20,7 +21,9 @@ fn heartbeat_stdout_ansi_keeps_who_color_through_payload() {
 fn tagged_log_line_includes_timestamp_and_payload() {
     let line = tagged_log_line("20260524.000000.000", MALVIN_WHO, "probe");
     assert!(line.contains("probe"));
-    assert!(is_log_timestamp_token(line.split_whitespace().next().unwrap()));
+    assert!(is_log_timestamp_token(
+        line.split_whitespace().next().unwrap()
+    ));
 }
 
 #[test]
@@ -34,7 +37,8 @@ fn tagged_display_and_log_line_splits_terminal_from_log() {
 
 #[test]
 fn stderr_tagged_pair_uses_stderr_format() {
-    let (display, log) = stderr_tagged_display_and_log_line(MALVIN_WHO, "err", Some("20260524.000000.000"));
+    let (display, log) =
+        stderr_tagged_display_and_log_line(MALVIN_WHO, "err", Some("20260524.000000.000"));
     assert!(display.contains("err"));
     assert!(log.contains("err"));
 }
@@ -70,8 +74,12 @@ fn tagged_display_line_with_timestamp_ansi_includes_payload() {
 
 #[test]
 fn tagged_display_and_log_line_color_branch() {
-    let (display, log) =
-        tagged_display_and_log_line_for_color(MALVIN_WHO, "color", Some("20260524.000000.000"), true);
+    let (display, log) = tagged_display_and_log_line_for_color(
+        MALVIN_WHO,
+        "color",
+        Some("20260524.000000.000"),
+        true,
+    );
     assert!(display.contains("color"));
     assert!(log.contains("color"));
 }
@@ -140,7 +148,7 @@ fn acp_bracket_payload_supports_dim_mode() {
 
 #[cfg(test)]
 pub(crate) fn assert_tool_payload_uses_verb_styling(line: &str) {
-    use crate::terminal_palette::{ansi_tool_dark, ANSI_BOLD, ANSI_DIM, ANSI_RESET};
+    use crate::terminal_palette::{ANSI_BOLD, ANSI_DIM, ANSI_RESET, ansi_tool_dark};
 
     let dim_sep = format!("{ANSI_RESET}{ANSI_DIM}");
     let dim_start = line
@@ -186,13 +194,12 @@ pub(crate) fn assert_acp_tool_summary_dim_preserves_bracket(line: &str) {
 
 #[test]
 fn kiss_cov_assert_tool_payload_helpers() {
-    use crate::terminal_palette::{ansi_tool_dark, ANSI_BOLD, ANSI_DIM, ANSI_RESET};
     use crate::output::who_tag_ansi;
+    use crate::terminal_palette::{ANSI_BOLD, ANSI_DIM, ANSI_RESET, ansi_tool_dark};
     let who = who_tag_ansi(WHO_T);
     let dark = ansi_tool_dark();
-    let line = format!(
-        "{who}|{ANSI_RESET}{ANSI_DIM}{ANSI_BOLD}{dark}Run{ANSI_RESET}{ANSI_DIM} something"
-    );
+    let line =
+        format!("{who}|{ANSI_RESET}{ANSI_DIM}{ANSI_BOLD}{dark}Run{ANSI_RESET}{ANSI_DIM} something");
     assert_tool_payload_uses_verb_styling(&line);
     assert_acp_tool_summary_dim_preserves_bracket(&line);
 }

@@ -1,8 +1,8 @@
 use super::{ANSI_RESET, ERROR_WHO, WARNING_WHO, WHO_B, format_who_tag_prefix};
 use crate::terminal_palette::{ansi_tool_amber, ansi_tool_coral, ansi_tool_navy};
 
-pub(crate) use super::who_tag_ansi;
 pub(crate) use super::stdout_render::{flush_stdout_rendered_line, print_stdout_rendered_line};
+pub(crate) use super::who_tag_ansi;
 
 pub(crate) fn logical_lines(text: &str) -> impl Iterator<Item = &str> {
     text.split_inclusive('\n')
@@ -65,7 +65,9 @@ pub(crate) fn flush_stdout_raw_line_with_ts(line: &str, ts: Option<&str>) {
 #[cfg(test)]
 mod tests {
     use super::{format_line_stdout, format_line_stdout_ansi};
-    use crate::output::{LOG_TAG_INNER_WIDTH, WHO_H, WHO_M, format_log_tag_inner, format_who_tag_prefix};
+    use crate::output::{
+        LOG_TAG_INNER_WIDTH, WHO_H, WHO_M, format_log_tag_inner, format_who_tag_prefix,
+    };
 
     #[test]
     fn stdout_line_omits_timestamp_prefix() {
@@ -103,14 +105,16 @@ mod tests {
     fn heartbeat_display_omits_timestamp_on_stdout() {
         use std::time::{Duration, Instant};
 
-        use crate::output::stdout_heartbeat::{
-            heartbeat_rendered_if_due, reset_stdout_heartbeat_for_test, test_set_last_heartbeat_elapsed,
-        };
         use crate::output::is_log_timestamp_token;
+        use crate::output::stdout_heartbeat::{
+            heartbeat_rendered_if_due, reset_stdout_heartbeat_for_test,
+            test_set_last_heartbeat_elapsed,
+        };
 
         reset_stdout_heartbeat_for_test();
         test_set_last_heartbeat_elapsed(Duration::from_secs(61));
-        let (display, log) = heartbeat_rendered_if_due(Instant::now(), false).expect("heartbeat due");
+        let (display, log) =
+            heartbeat_rendered_if_due(Instant::now(), false).expect("heartbeat due");
         assert!(
             !display.starts_with("20"),
             "stdout display must omit wall-clock prefix; got {display:?}"
@@ -125,8 +129,11 @@ mod tests {
         use crate::output::{init_stdout_style_for_test, stdout_use_color};
 
         init_stdout_style_for_test(false);
-        let (display, _) =
-            stdout_heartbeat_display_and_log_line(WHO_H, "HB: 20260524.000000", Some("20260524.000000.000"));
+        let (display, _) = stdout_heartbeat_display_and_log_line(
+            WHO_H,
+            "HB: 20260524.000000",
+            Some("20260524.000000.000"),
+        );
         let expected = if stdout_use_color() {
             super::format_heartbeat_stdout_ansi(WHO_H, "HB: 20260524.000000")
         } else {
@@ -143,12 +150,13 @@ mod tests {
         use crate::terminal_palette::ansi_tool_navy;
 
         let payload = "20260524.000000 Still alive.";
-        let (display, log) = crate::output::stdout_log_pair::heartbeat_display_and_log_line_for_color(
-            WHO_H,
-            payload,
-            Some("20260524.000000.000"),
-            true,
-        );
+        let (display, log) =
+            crate::output::stdout_log_pair::heartbeat_display_and_log_line_for_color(
+                WHO_H,
+                payload,
+                Some("20260524.000000.000"),
+                true,
+            );
         let expected = super::format_heartbeat_stdout_ansi(WHO_H, payload);
         assert_eq!(display, expected);
         assert!(display.contains('\x1b'));

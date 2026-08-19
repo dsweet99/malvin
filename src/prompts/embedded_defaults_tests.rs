@@ -39,7 +39,10 @@ fn default_embedded_placeholder_context() -> HashMap<String, String> {
         ("result_path".to_string(), "/r".to_string()),
         ("malvin_output_path".to_string(), "/logs/run".to_string()),
         ("workspace_dir".to_string(), "/logs/run".to_string()),
-        ("malvin_command".to_string(), "malvin --model=cursor:auto".to_string()),
+        (
+            "malvin_command".to_string(),
+            "malvin --model=cursor:auto".to_string(),
+        ),
         ("quality_gates".to_string(), String::new()),
         ("advice_path".to_string(), "./.malvin/advice.md".to_string()),
         ("git_extra".to_string(), String::new()),
@@ -89,10 +92,7 @@ fn with_unset_home_profile(profile: std::path::PathBuf) -> EnvHomeGuard {
     guard
 }
 
-fn render_default_header(
-    store: &super::PromptStore,
-    context: &HashMap<String, String>,
-) -> String {
+fn render_default_header(store: &super::PromptStore, context: &HashMap<String, String>) -> String {
     store.render("header.md", context).expect("render")
 }
 

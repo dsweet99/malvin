@@ -1,14 +1,14 @@
 use std::collections::HashSet;
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 use super::{
-    record_sandbox_oom_marker, watch_process_group_memory_with_rss_sampler, MemWatchHandles,
+    MemWatchHandles, record_sandbox_oom_marker, watch_process_group_memory_with_rss_sampler,
 };
 use crate::artifacts::create_run_artifacts_from_text;
 use crate::sandbox_oom::{
-    gate_iteration_oom_killed, SandboxOomKillFacts, OOM_REASON_MEASUREMENT_FAIL_CLOSED,
-    OOM_REASON_MEMORY_LIMIT,
+    OOM_REASON_MEASUREMENT_FAIL_CLOSED, OOM_REASON_MEMORY_LIMIT, SandboxOomKillFacts,
+    gate_iteration_oom_killed,
 };
 
 #[cfg(unix)]

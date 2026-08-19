@@ -1,4 +1,3 @@
-
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -142,13 +141,13 @@ fn try_acquire_name_lock(
     ensure_names_dir(&path)?;
     for _ in 0..ACQUIRE_MAX_ATTEMPTS {
         clear_stale_name_file(name)?;
-        match OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&path)
-        {
+        match OpenOptions::new().write(true).create_new(true).open(&path) {
             Ok(_) => match write_holder(&path) {
-                Ok(()) => return Ok(SessionNameGuard { name: name.to_string() }),
+                Ok(()) => {
+                    return Ok(SessionNameGuard {
+                        name: name.to_string(),
+                    });
+                }
                 Err(e) => {
                     let _ = std::fs::remove_file(&path);
                     return Err(e.to_string());

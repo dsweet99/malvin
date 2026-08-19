@@ -44,4 +44,3 @@ Run `malvin tidy`, then retry `{command}`.\n\
 {detail}"
     )
 }
-

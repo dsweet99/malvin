@@ -1,4 +1,3 @@
-
 use std::path::{Path, PathBuf};
 
 pub const WORKSPACE_CONFIG_PATHS: &[&str] = &[

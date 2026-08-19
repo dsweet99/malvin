@@ -177,4 +177,3 @@ fn parse_holder_pid_rejects_garbage() {
     assert_eq!(parse_holder_pid("abc"), None);
     assert_eq!(parse_holder_pid("12 34"), None);
 }
-

@@ -1,4 +1,3 @@
-
 use std::collections::HashSet;
 use std::sync::Mutex;
 
@@ -10,10 +9,7 @@ pub(crate) struct ActiveAgentSandbox {
 static ACTIVE_AGENT_SANDBOX: Mutex<Vec<ActiveAgentSandbox>> = Mutex::new(Vec::new());
 
 #[allow(dead_code)]
-pub(crate) fn register_active_agent_process_group(
-    pgid: Option<u32>,
-    spawn_baseline: HashSet<u32>,
-) {
+pub(crate) fn register_active_agent_process_group(pgid: Option<u32>, spawn_baseline: HashSet<u32>) {
     let Some(pgid) = pgid.filter(|&id| id != 0) else {
         return;
     };
@@ -91,7 +87,7 @@ fn format_agent_stats(_pgid: u32, _: &HashSet<u32>) -> Option<String> {
 
 #[cfg(test)]
 #[allow(unused_imports)]
-mod kiss_cov_auto{
+mod kiss_cov_auto {
     use super::*;
 
     #[test]
@@ -153,7 +149,7 @@ mod tests {
 
 #[cfg(test)]
 #[allow(unused_imports)]
-mod kiss_cov_gate_refs{
+mod kiss_cov_gate_refs {
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {

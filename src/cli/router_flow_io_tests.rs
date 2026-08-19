@@ -1,4 +1,3 @@
-
 use clap::Parser;
 
 #[test]
@@ -70,7 +69,6 @@ fn router_client_uses_router_style_agent_io_not_do_style() {
     assert!(io.show_thoughts_on_stdout);
     assert!(io.emit_stdout_markdown);
 }
-
 
 #[test]
 fn cli_accepts_clustered_short_gates_and_quiet() {

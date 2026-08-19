@@ -1,4 +1,3 @@
-
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -14,10 +13,7 @@ pub enum TransportError {
     #[error("LLM request failed ({status}): {body}")]
     RequestFailed { status: u16, body: String },
     #[error("LLM context overflow: {body}")]
-    ContextOverflow {
-        body: String,
-        message_count: usize,
-    },
+    ContextOverflow { body: String, message_count: usize },
     #[error("LLM response missing assistant content")]
     MissingContent,
     #[error("{provider}: {detail}")]
@@ -94,16 +90,20 @@ mod tests {
 
     #[test]
     fn transport_error_billing_failure_is_not_transport_retryable() {
-        assert!(TransportError::BillingFailure {
-            status: 402,
-            body: "no credits".into()
-        }
-        .is_billing_failure());
-        assert!(!TransportError::BillingFailure {
-            status: 403,
-            body: "forbidden".into()
-        }
-        .is_transport_retryable());
+        assert!(
+            TransportError::BillingFailure {
+                status: 402,
+                body: "no credits".into()
+            }
+            .is_billing_failure()
+        );
+        assert!(
+            !TransportError::BillingFailure {
+                status: 403,
+                body: "forbidden".into()
+            }
+            .is_transport_retryable()
+        );
     }
 
     #[test]
@@ -118,41 +118,48 @@ mod tests {
 
     #[test]
     fn transport_error_transport_retryable_for_non_billing_failures() {
-        assert!(TransportError::RateLimited {
-            body: "slow".into()
-        }
-        .is_transport_retryable());
-        assert!(TransportError::ServerError {
-            status: 503,
-            body: "down".into()
-        }
-        .is_transport_retryable());
-        assert!(TransportError::Unauthorized {
-            body: "bad".into()
-        }
-        .is_transport_retryable());
-        assert!(TransportError::RequestFailed {
-            status: 418,
-            body: "teapot".into()
-        }
-        .is_transport_retryable());
+        assert!(
+            TransportError::RateLimited {
+                body: "slow".into()
+            }
+            .is_transport_retryable()
+        );
+        assert!(
+            TransportError::ServerError {
+                status: 503,
+                body: "down".into()
+            }
+            .is_transport_retryable()
+        );
+        assert!(TransportError::Unauthorized { body: "bad".into() }.is_transport_retryable());
+        assert!(
+            TransportError::RequestFailed {
+                status: 418,
+                body: "teapot".into()
+            }
+            .is_transport_retryable()
+        );
         assert!(!TransportError::MissingContent.is_transport_retryable());
         let json = TransportError::Json("bad".into());
         assert!(json.is_transport_retryable());
-        assert!(TransportError::ProviderTransport {
-            provider: "Nvidia".into(),
-            detail: "ResourceExhausted".into(),
-        }
-        .is_transport_retryable());
+        assert!(
+            TransportError::ProviderTransport {
+                provider: "Nvidia".into(),
+                detail: "ResourceExhausted".into(),
+            }
+            .is_transport_retryable()
+        );
     }
 
     #[test]
     fn transport_error_context_overflow_is_not_transport_retryable() {
-        assert!(!TransportError::ContextOverflow {
-            body: "too long".into(),
-            message_count: 1,
-        }
-        .is_transport_retryable());
+        assert!(
+            !TransportError::ContextOverflow {
+                body: "too long".into(),
+                message_count: 1,
+            }
+            .is_transport_retryable()
+        );
     }
 
     #[test]
@@ -170,9 +177,11 @@ mod tests {
         assert!(super::body_indicates_prompt_too_long(
             "Prompt tokens limit exceeded: 21287 > 13840"
         ));
-        assert!(!super::is_prompt_too_long_error(&TransportError::RateLimited {
-            body: "slow".into()
-        }));
+        assert!(!super::is_prompt_too_long_error(
+            &TransportError::RateLimited {
+                body: "slow".into()
+            }
+        ));
     }
 
     #[test]

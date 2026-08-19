@@ -1,8 +1,7 @@
-
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-use super::workspace::{chmod755, mock_cache_root, write_fake_kiss, write_failing_command};
+use super::workspace::{chmod755, mock_cache_root, write_failing_command, write_fake_kiss};
 
 #[cfg(unix)]
 pub fn static_fake_kiss_path_var() -> String {

@@ -1,8 +1,7 @@
-
 use std::time::Duration;
 
 use super::{
-    escape_tool_subject_fragment, humanize_duration, shorten_middle, TOOL_DISPLAY_MAX_WIDTH,
+    TOOL_DISPLAY_MAX_WIDTH, escape_tool_subject_fragment, humanize_duration, shorten_middle,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -80,24 +79,15 @@ fn classified_tool_subject(kind: BashToolKind, command: &str) -> String {
     match kind {
         BashToolKind::Read => {
             let path = extract_read_subject(command);
-            shorten_middle(
-                &escape_tool_subject_fragment(&path),
-                TOOL_DISPLAY_MAX_WIDTH,
-            )
+            shorten_middle(&escape_tool_subject_fragment(&path), TOOL_DISPLAY_MAX_WIDTH)
         }
         BashToolKind::Search => {
             let q = extract_search_subject(command);
-            shorten_middle(
-                &escape_tool_subject_fragment(&q),
-                TOOL_DISPLAY_MAX_WIDTH,
-            )
+            shorten_middle(&escape_tool_subject_fragment(&q), TOOL_DISPLAY_MAX_WIDTH)
         }
         BashToolKind::Edit => {
             let path = extract_edit_subject(command);
-            shorten_middle(
-                &escape_tool_subject_fragment(&path),
-                TOOL_DISPLAY_MAX_WIDTH,
-            )
+            shorten_middle(&escape_tool_subject_fragment(&path), TOOL_DISPLAY_MAX_WIDTH)
         }
         BashToolKind::Run => {
             let flattened = escape_tool_subject_fragment(command.trim());
@@ -155,20 +145,32 @@ mod tests {
     fn classify_read_commands() {
         assert_eq!(classify_bash_command("cat file.txt"), BashToolKind::Read);
         assert_eq!(classify_bash_command("head -n 5 foo"), BashToolKind::Read);
-        assert_eq!(classify_bash_command("sed -n '1,5p' bar"), BashToolKind::Read);
+        assert_eq!(
+            classify_bash_command("sed -n '1,5p' bar"),
+            BashToolKind::Read
+        );
     }
 
     #[test]
     fn classify_search_commands() {
         assert_eq!(classify_bash_command("rg pattern"), BashToolKind::Search);
         assert_eq!(classify_bash_command("grep foo *.rs"), BashToolKind::Search);
-        assert_eq!(classify_bash_command("find . -name '*.rs'"), BashToolKind::Search);
+        assert_eq!(
+            classify_bash_command("find . -name '*.rs'"),
+            BashToolKind::Search
+        );
     }
 
     #[test]
     fn classify_edit_commands() {
-        assert_eq!(classify_bash_command("sed -i 's/a/b/' f"), BashToolKind::Edit);
-        assert_eq!(classify_bash_command("echo x >> out.txt"), BashToolKind::Edit);
+        assert_eq!(
+            classify_bash_command("sed -i 's/a/b/' f"),
+            BashToolKind::Edit
+        );
+        assert_eq!(
+            classify_bash_command("echo x >> out.txt"),
+            BashToolKind::Edit
+        );
     }
 
     #[test]
@@ -199,7 +201,10 @@ mod tests {
             tool_comment_log_prefix(long).as_deref(),
             Some("abcdefghijklmnopqrstuvwxyz0123")
         );
-        assert_eq!(tool_comment_log_prefix("  hi   there  ").as_deref(), Some("hi there"));
+        assert_eq!(
+            tool_comment_log_prefix("  hi   there  ").as_deref(),
+            Some("hi there")
+        );
         assert!(tool_comment_log_prefix("   ").is_none());
     }
 

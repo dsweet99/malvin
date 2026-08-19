@@ -1,4 +1,3 @@
-
 #[derive(Default)]
 pub struct CoderPromptOptions<'a> {
     pub llm_phase: Option<crate::run_timing::TimingPhase>,

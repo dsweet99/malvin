@@ -21,7 +21,9 @@ fn input_tokens_for_cost(r: &RunTiming) -> u64 {
     let tokens_in = r.tokens_in.unwrap_or(0);
     let cache_read = r.cache_read.unwrap_or(0);
     let cache_write = r.cache_write.unwrap_or(0);
-    tokens_in.saturating_sub(cache_read).saturating_sub(cache_write)
+    tokens_in
+        .saturating_sub(cache_read)
+        .saturating_sub(cache_write)
 }
 
 const fn has_cost_observation(r: &RunTiming) -> bool {

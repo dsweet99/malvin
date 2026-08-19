@@ -40,7 +40,10 @@ fn assemble_user_identity_omits_empty_full_name() {
 
 #[test]
 fn assemble_user_identity_without_uid() {
-    assert_eq!(assemble_user_identity("unknown", None, Some("Bob")), "unknown");
+    assert_eq!(
+        assemble_user_identity("unknown", None, Some("Bob")),
+        "unknown"
+    );
 }
 
 #[cfg(unix)]
@@ -79,17 +82,19 @@ fn infer_gate_retry_reasons_empty_without_artifacts() {
 #[test]
 fn infer_gate_retry_reasons_empty_for_first_iteration() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts =
-        crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
+    let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
+        .expect("artifacts");
     assert!(super::infer_gate_retry_reasons(Some(&artifacts), 1).is_empty());
 }
 
 #[test]
 fn gate_iteration_oom_killed_false_when_marker_missing() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts =
-        crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
-    assert!(!crate::sandbox_oom::gate_iteration_oom_killed(&artifacts, 1));
+    let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
+        .expect("artifacts");
+    assert!(!crate::sandbox_oom::gate_iteration_oom_killed(
+        &artifacts, 1
+    ));
 }
 
 #[test]
@@ -121,8 +126,8 @@ fn format_retry_line_first_gate_iteration_is_not_retry() {
 #[test]
 fn format_retry_line_second_iteration_is_retry_without_done() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts =
-        crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
+    let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
+        .expect("artifacts");
     crate::artifacts::ensure_gate_exp_log_file(&artifacts, 1).expect("exp log");
     let line = format_retry_line(Some(2), Some(&artifacts));
     assert!(line.contains("retry #1"));
@@ -132,8 +137,8 @@ fn format_retry_line_second_iteration_is_retry_without_done() {
 #[test]
 fn format_retry_line_detects_oom_from_sandbox_marker() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts =
-        crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
+    let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
+        .expect("artifacts");
     crate::sandbox_oom::record_sandbox_oom_kill(
         &artifacts.run_dir,
         crate::sandbox_oom::SandboxOomKillRecord::from_facts(
@@ -154,8 +159,8 @@ fn format_retry_line_detects_oom_from_sandbox_marker() {
 #[test]
 fn format_retry_line_gates_failure_after_done() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts =
-        crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
+    let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
+        .expect("artifacts");
     let prev = artifacts.gate_exp_log_path(1);
     std::fs::create_dir_all(prev.parent().expect("parent")).expect("mkdir");
     std::fs::write(&prev, "## Step 1 — router mock\n").expect("write");
@@ -176,8 +181,8 @@ fn format_current_state_joins_all_sections() {
 #[test]
 fn kiss_cov_current_state_non_unix_branch() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let _artifacts =
-        crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
+    let _artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
+        .expect("artifacts");
     let _ = super::current_sandbox_rss_bytes;
     let _ = super::effective_user_id;
     let _ = super::append_unsolved_reason;
@@ -188,8 +193,8 @@ fn kiss_cov_current_state_non_unix_branch() {
 #[test]
 fn append_unsolved_reason_records_missing_marker() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts =
-        crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
+    let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
+        .expect("artifacts");
     let prev = artifacts.gate_exp_log_path(1);
     std::fs::create_dir_all(prev.parent().expect("parent")).expect("mkdir");
     std::fs::write(&prev, "no marker\n").expect("write");
@@ -201,8 +206,8 @@ fn append_unsolved_reason_records_missing_marker() {
 #[test]
 fn append_oom_reason_records_memory_kill() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts =
-        crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
+    let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
+        .expect("artifacts");
     crate::sandbox_oom::record_sandbox_oom_kill(
         &artifacts.run_dir,
         crate::sandbox_oom::SandboxOomKillRecord::from_facts(
@@ -224,8 +229,8 @@ fn append_oom_reason_records_memory_kill() {
 #[test]
 fn append_gates_reason_after_done_session() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts =
-        crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
+    let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
+        .expect("artifacts");
     let prev = artifacts.gate_exp_log_path(1);
     std::fs::create_dir_all(prev.parent().expect("parent")).expect("mkdir");
     std::fs::write(&prev, "## Step 1 — router mock\n").expect("write");

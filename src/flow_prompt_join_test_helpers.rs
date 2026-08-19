@@ -1,4 +1,3 @@
-
 use crate::artifacts::RunArtifacts;
 
 pub fn flow_test_artifacts_no_checks(tmp: &tempfile::TempDir) -> RunArtifacts {

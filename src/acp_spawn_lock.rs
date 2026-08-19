@@ -1,4 +1,3 @@
-
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
@@ -159,9 +158,8 @@ mod tests {
             return;
         };
         let work = Path::new(&work);
-        let parent_slot = std::env::var("MALVIN_ACP_LOCK_PARENT_SLOT").unwrap_or_else(|_| {
-            format!("pid{}", std::process::id())
-        });
+        let parent_slot = std::env::var("MALVIN_ACP_LOCK_PARENT_SLOT")
+            .unwrap_or_else(|_| format!("pid{}", std::process::id()));
         assert_no_peer_acp_spawn_lock_for_slot(work, &parent_slot).expect("descendant must pass");
         acquire_acp_spawn_lock_for_slot(work, &parent_slot).expect("descendant acquire");
         release_acp_spawn_lock(work, &parent_slot);

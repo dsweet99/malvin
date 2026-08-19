@@ -1,4 +1,3 @@
-
 #[test]
 fn kiss_cov_pi_sdk_discover_auth_models() {
     let _ = super::discover::resolve_pi_bin;

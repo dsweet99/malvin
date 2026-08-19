@@ -156,9 +156,18 @@ fn reparented_init_orphans_includes_proven_affiliated_setsid_and_double_fork() {
     affiliate_proven_fixture_pid(99, agent_pgid, &ctx);
     affiliate_proven_fixture_pid(100, agent_pgid, &ctx);
     let orphans = reparented_init_orphans(&baseline, &rows);
-    assert!(orphans.contains(&99), "setsid orphan affiliated via agent PG");
-    assert!(orphans.contains(&100), "double-fork orphan affiliated via agent PG");
-    assert!(!orphans.contains(&10), "baseline pid must not be an orphan target");
+    assert!(
+        orphans.contains(&99),
+        "setsid orphan affiliated via agent PG"
+    );
+    assert!(
+        orphans.contains(&100),
+        "double-fork orphan affiliated via agent PG"
+    );
+    assert!(
+        !orphans.contains(&10),
+        "baseline pid must not be an orphan target"
+    );
     clear_session_spawn_affiliation_for_test();
 }
 

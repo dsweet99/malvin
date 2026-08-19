@@ -1,4 +1,3 @@
-
 use std::sync::atomic::{AtomicBool, Ordering};
 
 static DO_DM_STDOUT: AtomicBool = AtomicBool::new(false);

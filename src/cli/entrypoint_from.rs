@@ -1,7 +1,7 @@
 use super::{
-    command_accepts_session_name, dispatch_command, dispatch_default_route, dispatch_do_workflow,
-    finish_entrypoint, prepare_cli_output, print_command_error, unsupported_name_error, Commands,
-    DefaultRouteDispatch, Exit,
+    Commands, DefaultRouteDispatch, Exit, command_accepts_session_name, dispatch_command,
+    dispatch_default_route, dispatch_do_workflow, finish_entrypoint, prepare_cli_output,
+    print_command_error, unsupported_name_error,
 };
 use crate::cli::args::Cli;
 use crate::cli::entrypoint_checks::{
@@ -122,7 +122,9 @@ fn entrypoint_preflight(cli: &Cli) -> Option<Exit> {
     None
 }
 
-fn entrypoint_acquire_session(opt_name: Option<&str>) -> Result<(String, crate::SessionNameGuard), Exit> {
+fn entrypoint_acquire_session(
+    opt_name: Option<&str>,
+) -> Result<(String, crate::SessionNameGuard), Exit> {
     crate::acquire_session_name(opt_name).map_err(|e| {
         print_command_error(&e);
         Exit::Failure
@@ -134,7 +136,10 @@ fn entrypoint_validate_name(cli: &Cli) -> Option<Exit> {
     if cli.do_workflow || default_route_accepts_session_name(cli) {
         return None;
     }
-    let command = cli.command.as_ref().expect("command or default route request");
+    let command = cli
+        .command
+        .as_ref()
+        .expect("command or default route request");
     unsupported_name_error(command).map(|message| {
         print_command_error(message);
         Exit::Failure

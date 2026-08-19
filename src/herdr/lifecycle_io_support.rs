@@ -1,4 +1,3 @@
-
 #![allow(unsafe_code)]
 
 use serde_json::Value;
@@ -126,7 +125,10 @@ pub fn assert_idle_then_clear_metadata(requests: &[Value]) {
         .iter()
         .position(is_clear_metadata_teardown)
         .expect("clear metadata");
-    assert!(idle_at < clear_at, "idle before clear-metadata: {requests:?}");
+    assert!(
+        idle_at < clear_at,
+        "idle before clear-metadata: {requests:?}"
+    );
     assert!(
         requests[idle_at + 1..].iter().all(|v| {
             !(method_of(v) == "pane.report_agent" && agent_state_of(v) == Some("working"))
@@ -134,7 +136,9 @@ pub fn assert_idle_then_clear_metadata(requests: &[Value]) {
         "no working after idle: {requests:?}"
     );
     assert!(
-        requests.iter().all(|v| method_of(v) != "pane.release_agent"),
+        requests
+            .iter()
+            .all(|v| method_of(v) != "pane.release_agent"),
         "must not release_agent: {requests:?}"
     );
 }
@@ -158,7 +162,10 @@ pub fn assert_bind_shape(reqs: &[Value]) {
         "pane.report_metadata",
         "agent.rename",
     ] {
-        assert!(reqs.iter().any(|v| method_of(v) == m), "missing {m}: {reqs:?}");
+        assert!(
+            reqs.iter().any(|v| method_of(v) == m),
+            "missing {m}: {reqs:?}"
+        );
     }
     let rename = reqs
         .iter()
@@ -173,8 +180,15 @@ pub fn assert_title_not_run_basename(reqs: &[Value]) {
         if method_of(v) != "pane.report_metadata" || is_clear_metadata_teardown(v) {
             continue;
         }
-        if let Some(t) = v.get("params").and_then(|p| p.get("title")).and_then(Value::as_str) {
-            assert_ne!(t, "20260802_test_run", "title must not be run-dir basename: {v}");
+        if let Some(t) = v
+            .get("params")
+            .and_then(|p| p.get("title"))
+            .and_then(Value::as_str)
+        {
+            assert_ne!(
+                t, "20260802_test_run",
+                "title must not be run-dir basename: {v}"
+            );
         }
     }
 }

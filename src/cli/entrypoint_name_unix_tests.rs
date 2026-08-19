@@ -37,7 +37,14 @@ fn duplicate_name_error_on_stderr_with_background() {
         std::fs::write(crate::name_path("probe"), format!("{holder_pid}\n")).expect("peer lock");
         let stderr = capture_stderr_output(|| {
             assert_eq!(
-                entrypoint_from(["malvin", "--background", "--name", "probe", "--do", "plan.md"]),
+                entrypoint_from([
+                    "malvin",
+                    "--background",
+                    "--name",
+                    "probe",
+                    "--do",
+                    "plan.md"
+                ]),
                 Exit::Failure
             );
         });
@@ -57,6 +64,5 @@ fn duplicate_name_error_on_stderr_with_background() {
 #[test]
 fn kiss_cov_entrypoint_name_unix_symbols() {
     #[cfg(unix)]
-    {
-    }
+    {}
 }

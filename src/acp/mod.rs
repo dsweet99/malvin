@@ -7,14 +7,14 @@ pub use outgoing_prompt_trace::CoderPromptOptions;
 
 pub(crate) use jsonl_trace::AcpJsonlTrace;
 
-#[path = "unix_process_group_ps.rs"]
-mod unix_process_group_ps;
 #[cfg(unix)]
 #[path = "unix_process_ancestor.rs"]
 mod unix_process_ancestor;
 #[cfg(unix)]
 #[path = "unix_process_group_kill_targets.rs"]
 mod unix_process_group_kill_targets;
+#[path = "unix_process_group_ps.rs"]
+mod unix_process_group_ps;
 #[path = "unix_process_group_teardown.rs"]
 mod unix_process_group_teardown;
 #[cfg(unix)]
@@ -23,21 +23,21 @@ mod unix_process_group_teardown_poll;
 #[cfg(unix)]
 #[path = "unix_sandbox_monitor.rs"]
 mod unix_sandbox_monitor;
-pub use unix_process_group_ps::{snapshot_pids, spawned_pids_since_baseline, signal_process_group};
+#[cfg(unix)]
+pub(crate) use unix_process_ancestor::is_ancestor_pid;
+#[cfg(unix)]
+pub(crate) use unix_process_group_kill_targets::{
+    clear_session_spawn_affiliation, refresh_session_spawn_affiliation,
+};
+#[cfg(unix)]
+pub(crate) use unix_process_group_ps::pid_alive;
+pub use unix_process_group_ps::{signal_process_group, snapshot_pids, spawned_pids_since_baseline};
 pub use unix_process_group_teardown::{
     reap_baseline_amnestied_agent_orphans_blocking, terminate_agent_process_group,
     terminate_process_group,
 };
 #[cfg(unix)]
-pub(crate) use unix_process_ancestor::is_ancestor_pid;
-#[cfg(unix)]
-pub(crate) use unix_process_group_ps::pid_alive;
-#[cfg(unix)]
 pub use unix_sandbox_monitor::sandbox_monitor_pids;
-#[cfg(unix)]
-pub(crate) use unix_process_group_kill_targets::{
-    clear_session_spawn_affiliation, refresh_session_spawn_affiliation,
-};
 
 mod process_group_mem_watch;
 #[cfg(unix)]
@@ -62,8 +62,8 @@ pub(crate) use coalesce_trace::*;
 mod wrap_agent_bundle;
 #[path = "wrap_retry_policy.rs"]
 mod wrap_retry_policy;
-pub use wrap_agent_bundle::{AgentError, AgentIoOptions, AuthError};
 pub(crate) use wrap_agent_bundle::*;
+pub use wrap_agent_bundle::{AgentError, AgentIoOptions, AuthError};
 pub(crate) use wrap_retry_policy::*;
 
 #[path = "agent_helpers.rs"]

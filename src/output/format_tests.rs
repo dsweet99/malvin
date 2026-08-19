@@ -1,11 +1,10 @@
 use super::acp_tee::{AcpTeeDirection, print_stdout_acp_tee_line};
 use super::{
-    LOG_TAG_INNER_WIDTH, MALVIN_WHO, WHO_M, WHO_O, WHO_T, WHO_U,
-    format_acp_directional_tag_prefix,
+    LOG_TAG_INNER_WIDTH, MALVIN_WHO, WHO_M, WHO_O, WHO_T, WHO_U, format_acp_directional_tag_prefix,
     format_line, format_line_with_timestamp, format_line_with_timestamp_ansi, format_log_tag_inner,
-    format_who_tag_delim, format_who_tag_prefix, init_stdout_style_for_test, is_command_prelude_line,
-    print_outgoing_prompt_log, print_stderr_line, print_stdout_line, print_stdout_raw_line,
-    print_stdout_text, set_stdout_log_path,
+    format_who_tag_delim, format_who_tag_prefix, init_stdout_style_for_test,
+    is_command_prelude_line, print_outgoing_prompt_log, print_stderr_line, print_stdout_line,
+    print_stdout_raw_line, print_stdout_text, set_stdout_log_path,
 };
 
 #[test]
@@ -67,12 +66,8 @@ fn command_prelude_detection_ignores_unrelated_bracket_command_substrings() {
 #[test]
 fn command_prelude_rejects_short_who_tags_and_non_timestamp_prefixes() {
     assert!(!is_command_prelude_line("mm| Command: malvin code"));
-    assert!(!is_command_prelude_line(
-        "agent-ts o| Command: malvin code"
-    ));
-    assert!(!is_command_prelude_line(
-        "20260413 o| Command: malvin code"
-    ));
+    assert!(!is_command_prelude_line("agent-ts o| Command: malvin code"));
+    assert!(!is_command_prelude_line("20260413 o| Command: malvin code"));
     assert!(!is_command_prelude_line(""));
     assert!(!is_command_prelude_line("not a command"));
 }

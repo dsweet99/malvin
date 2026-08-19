@@ -1,10 +1,10 @@
 use std::sync::Mutex;
 
 use super::{
-    char_display_cell, columns_from_env, columns_from_tty, line_wrap_for_prefix_len,
+    LineWrapStyle, char_display_cell, columns_from_env, columns_from_tty, line_wrap_for_prefix_len,
     line_wrap_meta_tagged_plain, line_wrap_meta_tagged_stdout, stderr_allows_log_word_wrap,
     stderr_line_wrap_meta, stdout_allows_log_word_wrap, stdout_line_wrap_meta, terminal_columns,
-    wrap_words_bounded, wrap_words_single_line_no_newlines, LineWrapStyle,
+    wrap_words_bounded, wrap_words_single_line_no_newlines,
 };
 
 static COLUMNS_TEST_LOCK: Mutex<()> = Mutex::new(());

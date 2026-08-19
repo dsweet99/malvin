@@ -1,4 +1,3 @@
-
 #[test]
 fn agent_error_fmt_display_roundtrip() {
     use malvin::acp::AgentError;

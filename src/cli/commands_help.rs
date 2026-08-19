@@ -1,4 +1,3 @@
-
 use std::io::{self, Write};
 
 use clap::CommandFactory;
@@ -127,10 +126,7 @@ mod tests {
             .collect();
         assert!(!names.iter().any(|n| n == "code"));
         assert!(!names.iter().any(|n| n == "delight"));
-        assert_eq!(
-            names,
-            vec!["init", "tidy", "write", "inspire", "models"]
-        );
+        assert_eq!(names, vec!["init", "tidy", "write", "inspire", "models"]);
     }
 
     #[test]
@@ -142,6 +138,5 @@ mod tests {
     }
 
     #[test]
-    fn kiss_cov_commands_help_symbols() {
-    }
+    fn kiss_cov_commands_help_symbols() {}
 }

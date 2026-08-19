@@ -1,4 +1,3 @@
-
 mod common;
 
 #[cfg(unix)]
@@ -6,16 +5,17 @@ use common::fresh_workdir;
 #[cfg(unix)]
 use malvin::acp::snapshot_pids;
 #[cfg(unix)]
-use malvin::malvin_sandbox::{
-    clear_active_sandbox_session, note_active_sandbox_session,
-};
+use malvin::malvin_sandbox::{clear_active_sandbox_session, note_active_sandbox_session};
 #[cfg(unix)]
 use malvin::{active_acp_lock_slot, set_active_acp_lock_slot};
 #[cfg(unix)]
 use std::process::Command;
 
 #[cfg(unix)]
-fn run_descendant_acp_lock_probe(work: &std::path::Path, parent_slot: &str) -> std::process::ExitStatus {
+fn run_descendant_acp_lock_probe(
+    work: &std::path::Path,
+    parent_slot: &str,
+) -> std::process::ExitStatus {
     let exe = std::env::current_exe().expect("current test exe");
     Command::new(&exe)
         .env("MALVIN_ACP_LOCK_DESCENDANT_PROBE", work)

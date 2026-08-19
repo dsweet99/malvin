@@ -1,8 +1,8 @@
-use crate::session_dotfile_backup::tree_test_support::init_git_repo;
 use super::{
-    backup_workspace_gitignore_if_present, collect_workspace_gitignore_relpaths,
-    restore_workspace_gitignore_backup, GitignoreBackup,
+    GitignoreBackup, backup_workspace_gitignore_if_present, collect_workspace_gitignore_relpaths,
+    restore_workspace_gitignore_backup,
 };
+use crate::session_dotfile_backup::tree_test_support::init_git_repo;
 use crate::test_utils::with_isolated_home;
 use std::path::{Path, PathBuf};
 
@@ -67,9 +67,9 @@ fn nested_gitignore_round_trip_restores_tree_and_removes_agent_created_files() {
         let GitignoreBackup::Present { backup_root, files } = &backup else {
             panic!("expected gitignore tree backup");
         };
-        assert!(backup_root.starts_with(
-            crate::workspace_paths::snapshot_category_dir("gitignore")
-        ));
+        assert!(
+            backup_root.starts_with(crate::workspace_paths::snapshot_category_dir("gitignore"))
+        );
         assert_eq!(files.len(), 2);
 
         tamper_gitignore_tree(work);
@@ -81,19 +81,17 @@ fn nested_gitignore_round_trip_restores_tree_and_removes_agent_created_files() {
 }
 
 pub(crate) fn assert_gitignore_contents(work: &Path, rel: &str, expected: &str) {
-    assert_eq!(
-        std::fs::read_to_string(work.join(rel)).unwrap(),
-        expected
-    );
+    assert_eq!(std::fs::read_to_string(work.join(rel)).unwrap(), expected);
 }
 
 #[test]
 fn poisoned_disk_snapshot_does_not_change_restored_gitignore_content() {
     with_isolated_home(|work| {
         std::fs::write(work.join(".gitignore"), "ORIGINAL\n").unwrap();
-        let backup =
-            super::backup_workspace_gitignore_if_present_with_id(work, &mut |n| format!("poison{n}"))
-                .unwrap();
+        let backup = super::backup_workspace_gitignore_if_present_with_id(work, &mut |n| {
+            format!("poison{n}")
+        })
+        .unwrap();
         let GitignoreBackup::Present { backup_root, .. } = &backup else {
             panic!("expected backup");
         };

@@ -1,28 +1,28 @@
 use crate::artifacts::RunArtifacts;
 use crate::cli::flow_prompt_combine::{
-    combine_acp_prompt_header_and_user, combine_mode_header_and_user, combine_prompt_file_and_user,
-    DualHeaderPromptInput,
+    DualHeaderPromptInput, combine_acp_prompt_header_and_user, combine_mode_header_and_user,
+    combine_prompt_file_and_user,
 };
 use crate::orchestrator::workflow_context_paths_only;
-use crate::workflow_context::PromptModelOpts;
 use crate::prompt_stratification::WorkflowRenderContext;
 use crate::prompts::{
     PromptError, PromptStore, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD, header_prompt_file,
     router_a_prompt_file, router_b_prompt_file,
 };
+use crate::workflow_context::PromptModelOpts;
 use std::path::Path;
 
 #[path = "router_flow_prompt_summarize.rs"]
 mod router_flow_prompt_summarize;
 pub(crate) use router_flow_prompt_summarize::{
-    build_router_summarize_prompt, RouterSummarizePromptInput,
+    RouterSummarizePromptInput, build_router_summarize_prompt,
 };
 
 #[path = "router_flow_prompt_turns.rs"]
 mod router_flow_prompt_turns;
 pub(crate) use router_flow_prompt_turns::{
-    build_router_a_prompt, build_router_b_prompt, build_router_header_prompt, router_b_prompt_label,
-    RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput,
+    RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput, build_router_a_prompt,
+    build_router_b_prompt, build_router_header_prompt, router_b_prompt_label,
 };
 
 pub fn prepare_router_prompt_store() -> Result<PromptStore, String> {

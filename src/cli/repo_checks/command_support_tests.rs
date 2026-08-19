@@ -1,4 +1,3 @@
-
 #[cfg(test)]
 mod command_support_unit_tests {
     use super::super::{RepoGateCommandFailure, RepoGateFailure, run_command_failure};
@@ -32,8 +31,8 @@ mod stale_fake_command_path_tests {
     use std::process::Command;
 
     use super::super::{
-        fake_command_dir_for_path_env, restore_fake_command_dir_guard, run_command_for,
-        set_fake_command_dir, FakeCommandDirGuard, TEST_FAKE_COMMAND_DIR,
+        FakeCommandDirGuard, TEST_FAKE_COMMAND_DIR, fake_command_dir_for_path_env,
+        restore_fake_command_dir_guard, run_command_for, set_fake_command_dir,
     };
 
     #[test]

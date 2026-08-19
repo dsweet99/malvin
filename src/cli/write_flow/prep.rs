@@ -51,10 +51,7 @@ pub(crate) fn write_resolved_output_paths(
     } else {
         write_pdf_path_from_tex(&tex_path)
     };
-    Ok(WriteResolvedOutputs {
-        tex_path,
-        pdf_path,
-    })
+    Ok(WriteResolvedOutputs { tex_path, pdf_path })
 }
 
 pub(crate) fn compose_write_a_prompt(

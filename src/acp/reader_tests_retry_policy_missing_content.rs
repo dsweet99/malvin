@@ -1,6 +1,4 @@
-use crate::acp::{
-    AgentRetryOutcome, agent_string_is_openrouter_missing_content, plan_agent_retry,
-};
+use crate::acp::{AgentRetryOutcome, agent_string_is_openrouter_missing_content, plan_agent_retry};
 
 #[test]
 fn missing_content_is_detected_case_insensitively() {

@@ -1,4 +1,3 @@
-
 #![cfg(unix)]
 
 use serde_json::Value;
@@ -87,7 +86,11 @@ fn force_sticky_unknown(pane: &str, sock: &PathBuf) {
         }),
     );
     let v = pane_get(pane);
-    assert_eq!(agent_status(&v), Some("unknown"), "setup sticky unknown: {v}");
+    assert_eq!(
+        agent_status(&v),
+        Some("unknown"),
+        "setup sticky unknown: {v}"
+    );
 }
 
 #[test]
@@ -142,7 +145,11 @@ fn live_stuck_working_then_end_leaves_idle() {
     std::fs::create_dir_all(&stuck_dir).expect("mkdir");
     malvin::herdr::notify_run_start(&stuck_dir);
     let stuck = pane_get(&pane);
-    assert_eq!(agent_status(&stuck), Some("working"), "stuck setup: {stuck}");
+    assert_eq!(
+        agent_status(&stuck),
+        Some("working"),
+        "stuck setup: {stuck}"
+    );
     let run_dir = std::env::temp_dir().join("malvin_live_herdr_stuck_working_do");
     std::fs::create_dir_all(&run_dir).expect("mkdir");
     malvin::herdr::notify_run_start(&run_dir);

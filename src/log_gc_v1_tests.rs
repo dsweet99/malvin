@@ -1,5 +1,5 @@
-use super::*;
 use super::log_gc_prune::{over_count_cap, prune_run_dirs};
+use super::*;
 use crate::log_gc_config::LogsGcConfig;
 
 const RUN_OLDEST: &str = "20260101_000000_aaaaaaa1";

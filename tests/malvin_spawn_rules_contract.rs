@@ -1,4 +1,3 @@
-
 mod common;
 
 #[cfg(unix)]
@@ -67,7 +66,10 @@ fn concurrent_sessions_allowed_with_live_peer_in_workspace() {
     let mut child = sleep_child("120");
     let holder_pid = child.id();
     let slot = "sharedslot";
-    let lock = work.join(".malvin").join("acp_spawn").join(format!("{slot}.lock"));
+    let lock = work
+        .join(".malvin")
+        .join("acp_spawn")
+        .join(format!("{slot}.lock"));
     std::fs::write(&lock, holder_pid.to_string()).expect("write lock");
     let err = malvin::assert_no_peer_acp_spawn_lock_for_slot(&work, slot)
         .expect_err("peer lock must block");
@@ -126,7 +128,10 @@ fn note_active_sandbox_session_rejects_live_peer_lock() {
     write_peer_acp_lock(&work, "peerslot", child.id());
     let baseline = snapshot_pids();
     let err = note_active_sandbox_session(None, baseline, &work).expect_err("peer blocks note");
-    assert!(err.contains("ACP spawn lock held"), "expected peer lock error, got: {err}");
+    assert!(
+        err.contains("ACP spawn lock held"),
+        "expected peer lock error, got: {err}"
+    );
     let _ = child.kill();
     let _ = child.wait();
 }
@@ -145,7 +150,10 @@ fn session_lifecycle_does_not_touch_acp_spawn_lock() {
         .join("foreignslot.lock");
     std::fs::write(&lock, "424242").expect("overwrite with foreign pid");
     clear_active_sandbox_session();
-    assert!(lock.exists(), "foreign lock must survive clear_active_sandbox_session");
+    assert!(
+        lock.exists(),
+        "foreign lock must survive clear_active_sandbox_session"
+    );
     let _ = std::fs::remove_file(&lock);
 }
 
@@ -202,6 +210,5 @@ fn malvin_std_command_spawns_in_isolated_process_group() {
 #[test]
 fn kiss_cov_malvin_spawn_rules_contract_symbols() {
     #[cfg(unix)]
-    {
-    }
+    {}
 }

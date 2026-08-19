@@ -1,4 +1,3 @@
-
 use crate::acp::{AgentIoOptions, CoderPromptOptions};
 use crate::cursor_sdk::CursorSdkClient;
 
@@ -51,7 +50,13 @@ pub(super) async fn prompt_once(client: &mut CursorSdkClient, log: &std::path::P
 fn assert_usage(timing: &std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>) {
     let (steps, tokens_in, tokens_out, cache_read, cache_write) = {
         let g = timing.lock().unwrap();
-        (g.steps, g.tokens_in, g.tokens_out, g.cache_read, g.cache_write)
+        (
+            g.steps,
+            g.tokens_in,
+            g.tokens_out,
+            g.cache_read,
+            g.cache_write,
+        )
     };
     assert!(steps >= 1);
     assert_eq!(tokens_in, Some(11));
@@ -61,11 +66,13 @@ fn assert_usage(timing: &std::sync::Arc<std::sync::Mutex<crate::run_timing::RunT
 }
 
 fn assert_session_timing_synced(client: &CursorSdkClient) {
-    assert!(client
-        .session
-        .as_ref()
-        .and_then(|s| s.timing.as_ref())
-        .is_some());
+    assert!(
+        client
+            .session
+            .as_ref()
+            .and_then(|s| s.timing.as_ref())
+            .is_some()
+    );
 }
 
 pub(super) fn mock_bridge_path() -> std::path::PathBuf {
@@ -138,7 +145,10 @@ async fn cursor_sdk_warm_start_attach_after_begin_records_usage() {
     clear_mock_bridge_env();
 }
 
-async fn prompt_need_dm_with_capture(client: &mut CursorSdkClient, log: &std::path::Path) -> String {
+async fn prompt_need_dm_with_capture(
+    client: &mut CursorSdkClient,
+    log: &std::path::Path,
+) -> String {
     crate::output::set_do_dm_stdout_mode(true);
     crate::output::enable_stdout_capture();
     client
@@ -179,4 +189,3 @@ async fn cursor_sdk_run_done_result_feeds_do_dm_stdout() {
     client.end_coder_session().await.expect("end");
     clear_mock_bridge_env();
 }
-

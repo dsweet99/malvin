@@ -1,23 +1,21 @@
-use crate::agent_backend::AgentBackend;
-use crate::artifacts::{
-    merge_and_sanitize_for_gate_restore, RunArtifacts, SessionDotfileBackups,
+use super::router_flow_acp::router_flow_acp_support::empty_iteration_backups;
+use super::router_flow_acp::{
+    RouterAcpIterationInput, RouterAcpIterationOutcome, finalize_router_acp_iteration,
+    run_router_acp_open_iteration,
 };
+use crate::agent_backend::AgentBackend;
+use crate::artifacts::{RunArtifacts, SessionDotfileBackups, merge_and_sanitize_for_gate_restore};
+use crate::cli::SharedOpts;
 use crate::cli::format_workspace_gate_failure;
 use crate::cli::workflow_router_shared::effective_max_loops;
-use crate::cli::SharedOpts;
 use crate::prompts::PromptStore;
 use crate::run_timing::acp_post_run::RunTimingSessionEnd;
 use std::path::Path;
-use super::router_flow_acp::{
-    finalize_router_acp_iteration, run_router_acp_open_iteration, RouterAcpIterationInput,
-    RouterAcpIterationOutcome,
-};
-use super::router_flow_acp::router_flow_acp_support::empty_iteration_backups;
 
 #[path = "router_flow_loop_decide.rs"]
 mod router_flow_loop_decide;
 pub(crate) use router_flow_loop_decide::{
-    decide_router_loop_exit, router_exit_summarize_for, RouterLoopDecision, RouterLoopExitInput,
+    RouterLoopDecision, RouterLoopExitInput, decide_router_loop_exit, router_exit_summarize_for,
 };
 
 pub(crate) struct RouterAgentLoopInput<'a> {
@@ -43,8 +41,8 @@ pub(crate) fn restore_router_iteration_dotfiles(
     work_dir: &Path,
     iteration_anchor: &SessionDotfileBackups,
 ) -> Result<SessionDotfileBackups, String> {
-    let progress = SessionDotfileBackups::snapshot(work_dir)
-        .unwrap_or_else(|_| iteration_anchor.clone());
+    let progress =
+        SessionDotfileBackups::snapshot(work_dir).unwrap_or_else(|_| iteration_anchor.clone());
     let merged = merge_and_sanitize_for_gate_restore(iteration_anchor, &progress, work_dir);
     merged.restore(work_dir)?;
     Ok(merged)

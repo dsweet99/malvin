@@ -1,4 +1,3 @@
-
 mod common;
 
 #[cfg(unix)]
@@ -9,8 +8,8 @@ use malvin::acp::{snapshot_pids, terminate_agent_process_group};
 
 #[cfg(unix)]
 use malvin::acp::hostile_orphan_test_util::{
-    process_alive, read_orphan_pid, spawn_hostile_agent, spawn_hostile_agent_exits_after_orphan_fork,
-    spawn_hostile_double_fork_daemon,
+    process_alive, read_orphan_pid, spawn_hostile_agent,
+    spawn_hostile_agent_exits_after_orphan_fork, spawn_hostile_double_fork_daemon,
 };
 #[cfg(target_os = "linux")]
 use malvin::acp::hostile_orphan_test_util::{

@@ -1,4 +1,3 @@
-
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -8,32 +7,30 @@ use crate::support_paths::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use crate::terminal_palette::TerminalTheme;
 use crate::workspace_paths::malvin_config_path;
 
-#[path = "malvin_config_open.rs"]
-mod malvin_config_open;
 #[path = "malvin_config_agent.rs"]
 mod malvin_config_agent;
-#[path = "malvin_config_review.rs"]
-mod malvin_config_review;
 #[path = "malvin_config_default_workflow.rs"]
 mod malvin_config_default_workflow;
-#[path = "malvin_config_top.rs"]
-mod malvin_config_top;
+#[path = "malvin_config_open.rs"]
+mod malvin_config_open;
 #[path = "malvin_config_parse.rs"]
 mod malvin_config_parse;
+#[path = "malvin_config_review.rs"]
+mod malvin_config_review;
+#[path = "malvin_config_top.rs"]
+mod malvin_config_top;
+pub(crate) use malvin_config_agent::parse_agent_config;
+pub(crate) use malvin_config_default_workflow::parse_default_workflow_config;
+use malvin_config_open::create_malvin_config_from_template;
 pub use malvin_config_open::{
     ensure_malvin_config_file_if_missing, load_agent_config_lenient, load_agent_config_strict,
 };
-use malvin_config_open::create_malvin_config_from_template;
-pub(crate) use malvin_config_agent::parse_agent_config;
-pub(crate) use malvin_config_review::parse_review_config;
-pub(crate) use malvin_config_default_workflow::parse_default_workflow_config;
-pub(crate) use malvin_config_top::{
-    parse_context_size, parse_model_token_cost_rates, parse_theme,
-};
-pub use malvin_config_top::{TokenCostRates, DEFAULT_CONTEXT_SIZE};
 pub(crate) use malvin_config_parse::{
     parse_malvin_config, read_f64, read_string, read_u32, read_u64, read_usize,
 };
+pub(crate) use malvin_config_review::parse_review_config;
+pub use malvin_config_top::{DEFAULT_CONTEXT_SIZE, TokenCostRates};
+pub(crate) use malvin_config_top::{parse_context_size, parse_model_token_cost_rates, parse_theme};
 
 pub const DEFAULT_MAX_HYPOTHESES: usize = 5;
 pub const DEFAULT_MAX_LOOPS: usize = 1;
@@ -132,8 +129,7 @@ pub fn open_malvin_config(work_dir: &Path) -> Result<MalvinConfig, String> {
     ensure_config_parent_dir(&path)?;
     let template = parse_template_value()?;
     if path.is_file() {
-        let meta = std::fs::metadata(&path)
-            .map_err(|e| format!("stat {}: {e}", path.display()))?;
+        let meta = std::fs::metadata(&path).map_err(|e| format!("stat {}: {e}", path.display()))?;
         if meta.len() == 0 {
             std::fs::remove_file(&path)
                 .map_err(|e| format!("remove empty {}: {e}", path.display()))?;
@@ -154,8 +150,7 @@ pub(crate) fn ensure_config_parent_dir(path: &Path) -> Result<(), String> {
         crate::workspace_paths::assert_home_malvin_config_disk_io_allowed("create")?;
     }
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| format!("mkdir {}: {e}", parent.display()))?;
+        std::fs::create_dir_all(parent).map_err(|e| format!("mkdir {}: {e}", parent.display()))?;
     }
     Ok(())
 }
@@ -164,8 +159,8 @@ pub(crate) fn read_on_disk_config_value(path: &Path) -> Result<toml::Value, Stri
     if !path.is_file() {
         return Ok(toml::Value::Table(toml::map::Map::new()));
     }
-    let text = std::fs::read_to_string(path)
-        .map_err(|e| format!("read {}: {e}", path.display()))?;
+    let text =
+        std::fs::read_to_string(path).map_err(|e| format!("read {}: {e}", path.display()))?;
     text.parse::<toml::Value>()
         .map_err(|e| format!("invalid TOML in {}: {e}", path.display()))
 }

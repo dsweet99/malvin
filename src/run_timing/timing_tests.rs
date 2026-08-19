@@ -108,7 +108,10 @@ fn tool_call_wall_duration_accumulates_in_run_timing() {
         Some(50)
     );
     let by_type = json.get("tool_calls_by_type_ms").expect("by_type");
-    assert_eq!(by_type.get("read").and_then(serde_json::Value::as_u64), Some(30));
+    assert_eq!(
+        by_type.get("read").and_then(serde_json::Value::as_u64),
+        Some(30)
+    );
     assert_eq!(
         by_type.get("execute").and_then(serde_json::Value::as_u64),
         Some(20)
@@ -117,7 +120,10 @@ fn tool_call_wall_duration_accumulates_in_run_timing() {
         by_type.get("search").and_then(serde_json::Value::as_u64),
         Some(0)
     );
-    assert_eq!(by_type.get("edit").and_then(serde_json::Value::as_u64), Some(0));
+    assert_eq!(
+        by_type.get("edit").and_then(serde_json::Value::as_u64),
+        Some(0)
+    );
     assert_eq!(
         by_type.get("other").and_then(serde_json::Value::as_u64),
         Some(0)
@@ -174,9 +180,17 @@ fn accumulate_run_timing_across_two_sessions() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let mut slot: Option<Arc<Mutex<RunTiming>>> = None;
     let timing = attach_new_run_timing(&mut slot, "cursor:auto");
-    record_llm(Some(&timing), TimingPhase::Implement, Duration::from_secs(1));
+    record_llm(
+        Some(&timing),
+        TimingPhase::Implement,
+        Duration::from_secs(1),
+    );
     super::persist_open_run_timing_json(tmp.path(), &timing).expect("first persist");
-    record_llm(Some(&timing), TimingPhase::Implement, Duration::from_millis(500));
+    record_llm(
+        Some(&timing),
+        TimingPhase::Implement,
+        Duration::from_millis(500),
+    );
     finalize_and_emit_run_timing(tmp.path(), &timing).expect("finalize");
     let llm_ms = report::to_json_value(&timing.lock().unwrap())["llm_wait_ms"]
         .as_u64()
@@ -203,7 +217,8 @@ fn attach_new_run_timing_enables_wall_ms_after_finalize() {
     );
     finalize_and_emit_run_timing(tmp.path(), &timing).expect("finalize");
     let json: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string(tmp.path().join(super::RUN_TIMING_JSON_FILE)).expect("run_timing.json"),
+        &std::fs::read_to_string(tmp.path().join(super::RUN_TIMING_JSON_FILE))
+            .expect("run_timing.json"),
     )
     .expect("json");
     assert!(json["wall_clock_ms"].as_u64().is_some());

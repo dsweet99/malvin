@@ -1,4 +1,3 @@
-
 #[test]
 fn sandbox_oom_kill_facts_type_witness() {
     use malvin::SandboxOomKillFacts;

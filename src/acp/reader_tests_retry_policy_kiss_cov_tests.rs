@@ -1,5 +1,5 @@
 use crate::acp::{
-    emit_operational_upgrade_plan_stop, operational_iterable_closed_for_emit, IterableClosedStream,
+    IterableClosedStream, emit_operational_upgrade_plan_stop, operational_iterable_closed_for_emit,
 };
 
 #[test]

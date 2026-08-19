@@ -20,7 +20,7 @@ fn kiss_cov_output_units() {
 #[test]
 fn kiss_cov_acp_tee_stdout_event_destructure_and_dim_plain() {
     use crate::output::acp_tee::{
-        print_stdout_acp_tee_line_with_timestamp_dim_plain, AcpTeeStdoutEvent,
+        AcpTeeStdoutEvent, print_stdout_acp_tee_line_with_timestamp_dim_plain,
     };
     use crate::output::{AcpTeeDirection, AcpTeeLineFmt};
 
@@ -73,11 +73,14 @@ fn kiss_cov_acp_tee_stdout_event_destructure_and_dim_plain() {
 #[test]
 fn kiss_cov_stdout_log_pair_enums_and_tagged_display_all_styles() {
     use crate::output::stdout_log_pair::{
-        tagged_stdout_display, AcpTeeDirection, AcpTeeLineFmt, TaggedDisplayStyle,
+        AcpTeeDirection, AcpTeeLineFmt, TaggedDisplayStyle, tagged_stdout_display,
     };
 
     assert!(matches!(AcpTeeDirection::ToAgent, AcpTeeDirection::ToAgent));
-    assert!(matches!(AcpTeeDirection::FromAgent, AcpTeeDirection::FromAgent));
+    assert!(matches!(
+        AcpTeeDirection::FromAgent,
+        AcpTeeDirection::FromAgent
+    ));
 
     let fmt = AcpTeeLineFmt {
         ts: "20260616.000000.000",

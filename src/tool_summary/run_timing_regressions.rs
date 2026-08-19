@@ -18,11 +18,7 @@ fn timing_json_from(
     timing: &std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>,
 ) -> serde_json::Value {
     let tmp = tempfile::tempdir().unwrap();
-    timing
-        .lock()
-        .unwrap()
-        .write_json_only(tmp.path())
-        .unwrap();
+    timing.lock().unwrap().write_json_only(tmp.path()).unwrap();
     let path = tmp.path().join(crate::run_timing::RUN_TIMING_JSON_FILE);
     serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap()
 }

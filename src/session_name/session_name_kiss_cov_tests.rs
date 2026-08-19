@@ -1,4 +1,3 @@
-
 use super::{NameFileState, SessionNameGuard};
 
 #[test]

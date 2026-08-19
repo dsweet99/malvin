@@ -2,11 +2,13 @@ use serde_json::Value;
 
 use super::format::stderr_headline;
 use super::human_a_done::{human_done_line, search_query_from};
-use super::human_b::{human_edit_subject, human_execute_command, human_read_subject, humanize_duration};
+use super::human_b::{
+    human_edit_subject, human_execute_command, human_read_subject, humanize_duration,
+};
 use super::parse::ParsedToolUpdate;
 use super::types::{
-    shorten_middle, ToolSummaryTracker, TOOL_PHASE_DONE, TOOL_PHASE_NAMED_STATUS,
-    TOOL_PHASE_PENDING, TOOL_PHASE_RUNNING, TOOL_PHASE_START,
+    TOOL_PHASE_DONE, TOOL_PHASE_NAMED_STATUS, TOOL_PHASE_PENDING, TOOL_PHASE_RUNNING,
+    TOOL_PHASE_START, ToolSummaryTracker, shorten_middle,
 };
 
 const TOOL_STDOUT_FAST_COLLAPSE_MS: u128 = 300;
@@ -59,9 +61,7 @@ pub(crate) fn format_tool_line_human(
         .record(&parsed.id)
         .map_or(parsed.kind.as_str(), |r| r.kind.as_str());
     match parsed.phase {
-        TOOL_PHASE_DONE => {
-            human_done_line(parsed, tracker, kind, elapsed)
-        }
+        TOOL_PHASE_DONE => human_done_line(parsed, tracker, kind, elapsed),
         TOOL_PHASE_RUNNING => human_running_line(parsed, tracker, kind, elapsed),
         TOOL_PHASE_START | TOOL_PHASE_PENDING => human_start_line(parsed, tracker, kind),
         _ => None,
@@ -74,13 +74,17 @@ pub(crate) fn human_start_line(
     kind: &str,
 ) -> Option<String> {
     match kind {
-        "read" => human_read_subject(parsed, tracker, false).map(|subject| format!("Reading {subject}…")),
+        "read" => {
+            human_read_subject(parsed, tracker, false).map(|subject| format!("Reading {subject}…"))
+        }
         "search" => Some(super::human_a_done::human_search_start(parsed, tracker)),
         "execute" => {
             let cmd = human_execute_command(parsed, tracker);
             Some(format!("Run {cmd}…"))
         }
-        "edit" => human_edit_subject(parsed, tracker, false).map(|subject| format!("Editing {subject}…")),
+        "edit" => {
+            human_edit_subject(parsed, tracker, false).map(|subject| format!("Editing {subject}…"))
+        }
         _ => None,
     }
 }
@@ -101,10 +105,12 @@ pub(crate) fn human_running_line(
             .map(|subject| format!("Reading {subject} · {dur}")),
         "search" => search_query_from(parsed, tracker).map_or_else(
             || Some(format!("Searching · {dur}")),
-            |q| Some(format!(
-                "Searching {} · {dur}",
-                shorten_middle(q, super::types::TOOL_DISPLAY_MAX_WIDTH)
-            )),
+            |q| {
+                Some(format!(
+                    "Searching {} · {dur}",
+                    shorten_middle(q, super::types::TOOL_DISPLAY_MAX_WIDTH)
+                ))
+            },
         ),
         "execute" => Some(format!(
             "Run {} · {dur}",
@@ -126,7 +132,11 @@ pub(crate) fn execute_effective_exit(parsed: &ParsedToolUpdate, raw: Option<&Val
     }
 }
 
-pub(crate) fn execute_stdout_failed(parsed: &ParsedToolUpdate, exit: i64, raw: Option<&Value>) -> bool {
+pub(crate) fn execute_stdout_failed(
+    parsed: &ParsedToolUpdate,
+    exit: i64,
+    raw: Option<&Value>,
+) -> bool {
     exit != 0
         || matches!(parsed.status.as_deref(), Some("failed" | "cancelled"))
         || raw.and_then(stderr_headline).is_some()

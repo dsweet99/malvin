@@ -13,7 +13,13 @@ fn command_matches_malvin_checks_gate_uses_checks_file_not_hardcoded_needles() {
     crate::test_utils::with_isolated_home(|w| {
         std::fs::create_dir_all(w.join(".malvin")).unwrap();
         std::fs::write(w.join(".malvin/checks"), "custom-gate --flag\n").unwrap();
-        assert!(command_matches_malvin_checks_gate("sh -c custom-gate --flag", w));
-        assert!(!command_matches_malvin_checks_gate("long-running-cmd run", w));
+        assert!(command_matches_malvin_checks_gate(
+            "sh -c custom-gate --flag",
+            w
+        ));
+        assert!(!command_matches_malvin_checks_gate(
+            "long-running-cmd run",
+            w
+        ));
     });
 }

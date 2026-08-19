@@ -1,4 +1,3 @@
-
 use std::collections::BTreeMap;
 
 use crate::terminal_palette::TerminalTheme;
@@ -30,7 +29,8 @@ impl TokenCostRates {
             (input_tokens as f64) * self.usd_per_microtoken_in / TOKENS_PER_MICROTOKEN,
             (output_tokens as f64) * self.usd_per_microtoken_out / TOKENS_PER_MICROTOKEN,
             (cache_read_tokens as f64) * self.usd_per_microtoken_cache_read / TOKENS_PER_MICROTOKEN,
-            (cache_write_tokens as f64) * self.usd_per_microtoken_cache_write / TOKENS_PER_MICROTOKEN,
+            (cache_write_tokens as f64) * self.usd_per_microtoken_cache_write
+                / TOKENS_PER_MICROTOKEN,
         )
     }
 
@@ -53,23 +53,21 @@ impl TokenCostRates {
 }
 
 pub(crate) fn parse_theme(text: &str) -> Result<TerminalTheme, String> {
-    let value: toml::Value = text
-        .parse()
-        .map_err(|e| format!("invalid TOML: {e}"))?;
+    let value: toml::Value = text.parse().map_err(|e| format!("invalid TOML: {e}"))?;
     let Some(raw) = super::read_string(value.get("theme")) else {
         return Ok(TerminalTheme::Dark);
     };
     match raw.to_ascii_lowercase().as_str() {
         "dark" => Ok(TerminalTheme::Dark),
         "light" => Ok(TerminalTheme::Light),
-        other => Err(format!("unsupported theme {other:?}; use \"dark\" or \"light\"")),
+        other => Err(format!(
+            "unsupported theme {other:?}; use \"dark\" or \"light\""
+        )),
     }
 }
 
 pub(crate) fn parse_context_size(text: &str) -> Result<u32, String> {
-    let value: toml::Value = text
-        .parse()
-        .map_err(|e| format!("invalid TOML: {e}"))?;
+    let value: toml::Value = text.parse().map_err(|e| format!("invalid TOML: {e}"))?;
     match super::read_u32(value.get("context_size")) {
         None => Ok(DEFAULT_CONTEXT_SIZE),
         Some(0) => Err("context_size must be positive".to_string()),
@@ -80,9 +78,7 @@ pub(crate) fn parse_context_size(text: &str) -> Result<u32, String> {
 pub(crate) fn parse_model_token_cost_rates(
     text: &str,
 ) -> Result<BTreeMap<String, TokenCostRates>, String> {
-    let value: toml::Value = text
-        .parse()
-        .map_err(|e| format!("invalid TOML: {e}"))?;
+    let value: toml::Value = text.parse().map_err(|e| format!("invalid TOML: {e}"))?;
     let Some(agent) = value.get("agent").and_then(toml::Value::as_table) else {
         return Ok(BTreeMap::new());
     };

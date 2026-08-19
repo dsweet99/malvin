@@ -1,11 +1,8 @@
-
 use std::path::Path;
 
 use crate::artifacts::RunArtifacts;
+use crate::mem_limit_config::{format_memory_gib, load_mem_limit_bytes, system_total_memory_bytes};
 use crate::sandbox_oom::gate_iteration_oom_killed;
-use crate::mem_limit_config::{
-    format_memory_gib, load_mem_limit_bytes, system_total_memory_bytes,
-};
 
 #[must_use]
 pub fn format_current_state(
@@ -33,11 +30,7 @@ pub fn format_user_identity() -> String {
 }
 
 #[must_use]
-pub fn assemble_user_identity(
-    login: &str,
-    uid: Option<u32>,
-    full_name: Option<&str>,
-) -> String {
+pub fn assemble_user_identity(login: &str, uid: Option<u32>, full_name: Option<&str>) -> String {
     let include_full_name = full_name.filter(|name| !name.is_empty() && *name != login);
     match (uid, include_full_name) {
         (Some(uid), Some(name)) => format!("{login} (uid {uid}, {name})"),
@@ -130,7 +123,10 @@ fn current_sandbox_rss_bytes() -> Option<u64> {
 }
 
 #[must_use]
-pub fn format_retry_line(gate_iteration: Option<usize>, artifacts: Option<&RunArtifacts>) -> String {
+pub fn format_retry_line(
+    gate_iteration: Option<usize>,
+    artifacts: Option<&RunArtifacts>,
+) -> String {
     let Some(iter) = gate_iteration.filter(|&i| i > 0) else {
         return "Retry: not a retry (first session in this malvin run).".to_string();
     };
@@ -168,9 +164,7 @@ fn infer_gate_retry_reasons(artifacts: Option<&RunArtifacts>, iteration: usize) 
 
 fn append_unsolved_reason(reasons: &mut Vec<String>, artifacts: &RunArtifacts, prev: usize) {
     if prev_exp_log_ran(artifacts, prev) && reasons.is_empty() {
-        reasons.push(
-            "quality gates did not pass after previous router session".to_string(),
-        );
+        reasons.push("quality gates did not pass after previous router session".to_string());
     }
 }
 

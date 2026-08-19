@@ -22,8 +22,12 @@ pub(crate) fn publish_heartbeat_live_terminal(display: &str) {
 pub(crate) fn route_stdout_rendered_line(display: &str, log: &str, prelude: StdoutRenderPrelude) {
     let deferred = match prelude {
         StdoutRenderPrelude::FlushOnly => false,
-        StdoutRenderPrelude::TaggedWithHeartbeat => super::stdout_defer::try_defer_tagged_stdout(display, log),
-        StdoutRenderPrelude::HeartbeatOnly => super::stdout_defer::try_defer_heartbeat(display, log),
+        StdoutRenderPrelude::TaggedWithHeartbeat => {
+            super::stdout_defer::try_defer_tagged_stdout(display, log)
+        }
+        StdoutRenderPrelude::HeartbeatOnly => {
+            super::stdout_defer::try_defer_heartbeat(display, log)
+        }
     };
     if deferred {
         return;

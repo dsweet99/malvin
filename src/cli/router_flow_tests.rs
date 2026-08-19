@@ -1,16 +1,12 @@
 use std::collections::HashMap;
 
 use crate::config::DEFAULT_CLI_MODEL;
-use crate::flow_prompt_join_test_helpers::{
-    assert_header_user_join, flow_test_artifacts,
-};
+use crate::flow_prompt_join_test_helpers::{assert_header_user_join, flow_test_artifacts};
+use crate::prompts::{HEADER_MD, PromptStore, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD};
 use crate::router_flow::router_flow_prompt::{
-    build_router_a_prompt, build_router_header_prompt, combine_router_acp_prompt_header_and_user,
-    combine_router_prompt_file_and_user, combine_router_raw_header_and_user,
-    prepare_router_prompt_store, RouterAPromptInput, RouterHeaderPromptInput,
-};
-use crate::prompts::{
-    HEADER_MD, PromptStore, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD,
+    RouterAPromptInput, RouterHeaderPromptInput, build_router_a_prompt, build_router_header_prompt,
+    combine_router_acp_prompt_header_and_user, combine_router_prompt_file_and_user,
+    combine_router_raw_header_and_user, prepare_router_prompt_store,
 };
 
 fn write_router_mock_prompt_files(prompt_root: &std::path::Path) {
@@ -44,9 +40,10 @@ fn combine_router_prompt_file_and_user_joins_rendered_template_and_request() {
     std::fs::create_dir_all(&prompt_root).expect("mkdir");
     std::fs::write(prompt_root.join(HEADER_MD), "TMPL\n").expect("tmpl");
     let store = PromptStore::with_root(prompt_root);
-    let ctx = crate::prompt_stratification::WorkflowRenderContext::from(HashMap::from([
-        ("k".into(), "v".into()),
-    ]));
+    let ctx = crate::prompt_stratification::WorkflowRenderContext::from(HashMap::from([(
+        "k".into(),
+        "v".into(),
+    )]));
     let (combined, header, user) =
         combine_router_prompt_file_and_user(&store, "BODY\n", HEADER_MD, &ctx).expect("combine");
     assert_eq!(header, "TMPL");
@@ -118,8 +115,7 @@ fn combine_router_raw_header_and_user_joins_rendered_router_a_and_request() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let prompt_root = tmp.path().join("prompts");
     std::fs::create_dir_all(&prompt_root).expect("mkdir");
-    std::fs::write(prompt_root.join(ROUTER_A_MD), "ROUTER_A_TOKEN\n")
-        .expect("router_a");
+    std::fs::write(prompt_root.join(ROUTER_A_MD), "ROUTER_A_TOKEN\n").expect("router_a");
     let artifacts = flow_test_artifacts(&tmp);
     let store = PromptStore::with_root(prompt_root);
     let (combined, header, user) = combine_router_raw_header_and_user(

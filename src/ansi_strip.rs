@@ -1,4 +1,3 @@
-
 fn consume_csi_sequence(chars: &mut std::iter::Peekable<std::str::Chars>) {
     for ch in chars.by_ref() {
         if matches!(ch, '\x40'..='\x7e') {
@@ -81,7 +80,7 @@ mod tests {
 
 #[cfg(test)]
 #[allow(unused_imports)]
-mod kiss_cov_gate_refs{
+mod kiss_cov_gate_refs {
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {

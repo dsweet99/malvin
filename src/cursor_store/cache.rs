@@ -95,7 +95,9 @@ fn read_blob_column(row: &rusqlite::Row<'_>, idx: usize) -> rusqlite::Result<Vec
         rusqlite::types::ValueRef::Blob(data) => Ok(data.to_vec()),
         rusqlite::types::ValueRef::Text(data) => Ok(data.to_vec()),
         rusqlite::types::ValueRef::Null => Ok(Vec::new()),
-        rusqlite::types::ValueRef::Integer(_) | rusqlite::types::ValueRef::Real(_) => Ok(Vec::new()),
+        rusqlite::types::ValueRef::Integer(_) | rusqlite::types::ValueRef::Real(_) => {
+            Ok(Vec::new())
+        }
     }
 }
 
@@ -115,10 +117,7 @@ pub struct TestStoreSpec<'a> {
 
 #[cfg(test)]
 pub fn install_test_store(spec: &TestStoreSpec<'_>) -> PathBuf {
-    let session_dir = spec
-        .cursor_dir
-        .join("acp-sessions")
-        .join(spec.session_id);
+    let session_dir = spec.cursor_dir.join("acp-sessions").join(spec.session_id);
     std::fs::create_dir_all(&session_dir).expect("session dir");
     let db_path = session_dir.join("store.db");
     let conn = rusqlite::Connection::open(&db_path).expect("open store.db");

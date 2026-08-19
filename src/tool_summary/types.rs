@@ -5,7 +5,7 @@ pub const TOOL_DISPLAY_MAX_WIDTH: usize = 60;
 pub const TOOL_ELLIPSIS: &str = "...";
 
 pub(crate) use crate::terminal_palette::{
-    ansi_tool_coral, ansi_tool_dark, ansi_tool_teal, ANSI_BOLD, ANSI_DIM, ANSI_RESET,
+    ANSI_BOLD, ANSI_DIM, ANSI_RESET, ansi_tool_coral, ansi_tool_dark, ansi_tool_teal,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -113,7 +113,7 @@ pub fn shorten_middle(s: &str, max_width: usize) -> String {
 
 #[cfg(test)]
 #[allow(unused_imports)]
-mod kiss_cov_auto{
+mod kiss_cov_auto {
     use super::*;
 
     #[test]

@@ -17,7 +17,11 @@ fn install_malvin_tracing_warns_when_subscriber_already_set() {
     install_malvin_tracing();
     install_malvin_tracing();
     let lines = crate::output::take_captured_stderr_lines();
-    assert!(lines.iter().any(|l| l.contains("tracing subscriber already initialized")));
+    assert!(
+        lines
+            .iter()
+            .any(|l| l.contains("tracing subscriber already initialized"))
+    );
 }
 
 #[test]
@@ -206,16 +210,16 @@ fn span_lifecycle_does_not_change_event_stderr_output() {
         crate::output::take_captured_stderr_lines()
     }
 
-        #[allow(unused_variables)]
-        fn span_heavy_lines() -> Vec<String> {
-            crate::output::clear_captured_stderr_lines();
-            let dispatch = Dispatch::new(MalvinTracingSubscriber);
-            tracing::dispatcher::with_default(&dispatch, || {
-                let root = tracing::info_span!("malvin_invariance_root");
-                let mut current = root;
-                for i in 0..32 {
-                    current = tracing::info_span!(parent: &current, "malvin_invariance_depth_{i}");
-                }
+    #[allow(unused_variables)]
+    fn span_heavy_lines() -> Vec<String> {
+        crate::output::clear_captured_stderr_lines();
+        let dispatch = Dispatch::new(MalvinTracingSubscriber);
+        tracing::dispatcher::with_default(&dispatch, || {
+            let root = tracing::info_span!("malvin_invariance_root");
+            let mut current = root;
+            for i in 0..32 {
+                current = tracing::info_span!(parent: &current, "malvin_invariance_depth_{i}");
+            }
             current.follows_from(&tracing::info_span!("malvin_invariance_follows"));
             let _entered = current.enter();
             tracing::info!(target: "malvin::invariance_test", "{MSG}");

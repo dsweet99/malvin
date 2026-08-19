@@ -1,7 +1,4 @@
-
-use super::{
-    ToolSummaryDetail, ToolSummaryTracker, shorten_middle, tool_summary_lines,
-};
+use super::{ToolSummaryDetail, ToolSummaryTracker, shorten_middle, tool_summary_lines};
 use serde_json::json;
 
 #[test]
@@ -235,4 +232,3 @@ fn tool_call_update_pending_labeled_pending_not_start() {
         lines.log
     );
 }
-

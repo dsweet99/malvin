@@ -1,4 +1,3 @@
-
 #[cfg(test)]
 pub fn install_exit_gate_bin(bin_dir: &std::path::Path, name: &str, code: i32) {
     #[cfg(unix)]

@@ -1,4 +1,3 @@
-
 use std::path::PathBuf;
 
 #[must_use]

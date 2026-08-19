@@ -1,4 +1,3 @@
-
 use std::sync::{Arc, Mutex};
 
 use serde_json::Value;
@@ -13,11 +12,7 @@ pub fn note_sdk_step(timing: Option<&Arc<Mutex<RunTiming>>>) {
     g.steps = g.steps.saturating_add(1);
 }
 
-pub fn record_sdk_usage(
-    timing: Option<&Arc<Mutex<RunTiming>>>,
-    usage: &Value,
-    normalize_pi: bool,
-) {
+pub fn record_sdk_usage(timing: Option<&Arc<Mutex<RunTiming>>>, usage: &Value, normalize_pi: bool) {
     let Some(t) = timing else {
         return;
     };

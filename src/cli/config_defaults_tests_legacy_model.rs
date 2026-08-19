@@ -1,4 +1,4 @@
-use super::{apply_workspace_config_defaults, Cli};
+use super::{Cli, apply_workspace_config_defaults};
 use clap::{CommandFactory, FromArgMatches};
 
 #[test]
@@ -57,7 +57,10 @@ model = "auto"
         let err = apply_workspace_config_defaults(&matches, &mut cli).expect_err("bare config");
         assert!(err.contains("cursor:") || err.contains("pi:"), "{err}");
         let after = std::fs::read_to_string(&path).expect("read");
-        assert!(after.contains("model = \"auto\""), "must not rewrite config");
+        assert!(
+            after.contains("model = \"auto\""),
+            "must not rewrite config"
+        );
     });
 }
 
@@ -78,16 +81,15 @@ max_loops = 9
         )
         .expect("write");
         std::env::set_current_dir(work).expect("cd");
-        let matches = Cli::command().get_matches_from([
-            "malvin",
-            "--model",
-            "cursor:composer-2",
-            "tidy",
-        ]);
+        let matches =
+            Cli::command().get_matches_from(["malvin", "--model", "cursor:composer-2", "tidy"]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         apply_workspace_config_defaults(&matches, &mut cli).expect("cli model wins");
         assert_eq!(cli.shared.model.canonical(), "cursor:composer-2");
         let after = std::fs::read_to_string(&path).expect("read");
-        assert!(after.contains("model = \"auto\""), "must not rewrite config");
+        assert!(
+            after.contains("model = \"auto\""),
+            "must not rewrite config"
+        );
     });
 }

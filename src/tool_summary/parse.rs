@@ -65,7 +65,11 @@ pub(crate) fn parse_tool_update_fields(
     let content_diff_paths = acp_content_diff_paths(update);
     let input_path = acp_path_field(raw_input)
         .or_else(|| acp_path_field(raw_output))
-        .or_else(|| content_diff_paths.as_ref().and_then(|paths| paths.first().cloned()));
+        .or_else(|| {
+            content_diff_paths
+                .as_ref()
+                .and_then(|paths| paths.first().cloned())
+        });
     let input_line_range =
         acp_line_range_field(raw_input).or_else(|| acp_line_range_field(raw_output));
     let search_query =
@@ -76,8 +80,12 @@ pub(crate) fn parse_tool_update_fields(
 
 pub(crate) fn parse_tool_update_identity(update: &Value) -> Option<(u8, String)> {
     let session_update = update.get("sessionUpdate").and_then(Value::as_str)?;
-    let phase = phase_for_session_update(session_update, update.get("status").and_then(Value::as_str))?;
-    let id = update.get("toolCallId").and_then(Value::as_str)?.to_string();
+    let phase =
+        phase_for_session_update(session_update, update.get("status").and_then(Value::as_str))?;
+    let id = update
+        .get("toolCallId")
+        .and_then(Value::as_str)?
+        .to_string();
     Some((phase, id))
 }
 
@@ -95,7 +103,10 @@ pub(crate) fn parse_tool_update_metadata(
         .and_then(Value::as_str)
         .unwrap_or("")
         .to_string();
-    let status = update.get("status").and_then(Value::as_str).map(str::to_string);
+    let status = update
+        .get("status")
+        .and_then(Value::as_str)
+        .map(str::to_string);
     let command = raw_input
         .and_then(|v| v.get("command"))
         .and_then(Value::as_str)
@@ -143,7 +154,7 @@ pub(crate) fn json_number(v: &Value) -> Option<u64> {
 
 #[cfg(test)]
 #[allow(unused_imports)]
-mod kiss_cov_auto{
+mod kiss_cov_auto {
     use super::*;
 
     #[test]

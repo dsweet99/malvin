@@ -29,10 +29,10 @@ pub fn load_logs_gc_config(work_dir: &Path) -> LogsGcConfig {
 }
 
 pub(crate) fn parse_logs_gc_config(text: &str) -> Result<LogsGcConfig, String> {
-    let value: toml::Value = text
-        .parse()
-        .map_err(|e| format!("invalid TOML: {e}"))?;
-    let logs = value.get("logs").ok_or_else(|| "missing [logs] section".to_string())?;
+    let value: toml::Value = text.parse().map_err(|e| format!("invalid TOML: {e}"))?;
+    let logs = value
+        .get("logs")
+        .ok_or_else(|| "missing [logs] section".to_string())?;
     let max_count = read_u64(logs.get("max_count")).unwrap_or(DEFAULT_MAX_COUNT);
     let max_age_days = read_u64(logs.get("max_age_days")).unwrap_or(DEFAULT_MAX_AGE_DAYS);
     let max_bytes = match logs.get("max_bytes") {

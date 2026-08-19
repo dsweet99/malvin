@@ -61,17 +61,12 @@ pub async fn watch_process_group_memory_with_rss_sampler(
                         consecutive_failures = consecutive_rss_failures,
                         "malvin sandbox cannot measure memory; terminating (fail-closed)"
                     );
-                    (
-                        crate::sandbox_oom::OOM_REASON_MEASUREMENT_FAIL_CLOSED,
-                        None,
-                    )
+                    (crate::sandbox_oom::OOM_REASON_MEASUREMENT_FAIL_CLOSED, None)
                 },
                 |rss_bytes| {
                     warn!(
                         rss_bytes,
-                        limit_bytes,
-                        pgid,
-                        "malvin sandbox exceeded memory limit; terminating"
+                        limit_bytes, pgid, "malvin sandbox exceeded memory limit; terminating"
                     );
                     (crate::sandbox_oom::OOM_REASON_MEMORY_LIMIT, Some(rss_bytes))
                 },
@@ -97,7 +92,10 @@ pub async fn watch_process_group_memory_with_rss_sampler(
 }
 
 #[cfg(unix)]
-fn record_sandbox_oom_marker(run_dir: Option<&Path>, facts: crate::sandbox_oom::SandboxOomKillFacts<'_>) {
+fn record_sandbox_oom_marker(
+    run_dir: Option<&Path>,
+    facts: crate::sandbox_oom::SandboxOomKillFacts<'_>,
+) {
     let Some(run_dir) = run_dir else {
         return;
     };
@@ -134,19 +132,29 @@ mod process_group_mem_watch_tests;
 
 #[cfg(all(test, unix))]
 mod policy_tests {
-    use super::{memory_watch_should_terminate, MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES};
+    use super::{MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES, memory_watch_should_terminate};
 
     #[test]
     fn memory_watch_should_terminate_on_over_limit() {
         let mut failures = 0;
-        assert!(memory_watch_should_terminate(Some(100), 50, &mut failures, true));
+        assert!(memory_watch_should_terminate(
+            Some(100),
+            50,
+            &mut failures,
+            true
+        ));
         assert_eq!(failures, 0);
     }
 
     #[test]
     fn memory_watch_should_not_terminate_when_under_limit() {
         let mut failures = 0;
-        assert!(!memory_watch_should_terminate(Some(10), 50, &mut failures, true));
+        assert!(!memory_watch_should_terminate(
+            Some(10),
+            50,
+            &mut failures,
+            true
+        ));
         assert_eq!(failures, 0);
     }
 
@@ -154,27 +162,57 @@ mod policy_tests {
     fn memory_watch_fail_closed_after_consecutive_none_samples() {
         let mut failures = 0;
         for _ in 0..MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES - 1 {
-            assert!(!memory_watch_should_terminate(None, u64::MAX, &mut failures, true));
+            assert!(!memory_watch_should_terminate(
+                None,
+                u64::MAX,
+                &mut failures,
+                true
+            ));
         }
-        assert!(memory_watch_should_terminate(None, u64::MAX, &mut failures, true));
+        assert!(memory_watch_should_terminate(
+            None,
+            u64::MAX,
+            &mut failures,
+            true
+        ));
     }
 
     #[test]
     fn memory_watch_no_fail_closed_when_disallowed() {
         let mut failures = 0;
         for _ in 0..MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES + 2 {
-            assert!(!memory_watch_should_terminate(None, u64::MAX, &mut failures, false));
+            assert!(!memory_watch_should_terminate(
+                None,
+                u64::MAX,
+                &mut failures,
+                false
+            ));
         }
         assert_eq!(failures, 0);
-        assert!(memory_watch_should_terminate(Some(100), 50, &mut failures, false));
+        assert!(memory_watch_should_terminate(
+            Some(100),
+            50,
+            &mut failures,
+            false
+        ));
     }
 
     #[test]
     fn memory_watch_resets_failure_counter_after_successful_sample() {
         let mut failures = 2;
-        assert!(!memory_watch_should_terminate(Some(1), u64::MAX, &mut failures, true));
+        assert!(!memory_watch_should_terminate(
+            Some(1),
+            u64::MAX,
+            &mut failures,
+            true
+        ));
         assert_eq!(failures, 0);
-        assert!(!memory_watch_should_terminate(None, u64::MAX, &mut failures, true));
+        assert!(!memory_watch_should_terminate(
+            None,
+            u64::MAX,
+            &mut failures,
+            true
+        ));
         assert_eq!(failures, 1);
     }
 }
@@ -184,6 +222,9 @@ mod kiss_cov_auto {
     use super::*;
     #[test]
     fn kiss_cov_watch_sampler() {
-        let _ = (watch_process_group_memory, watch_process_group_memory_with_rss_sampler);
+        let _ = (
+            watch_process_group_memory,
+            watch_process_group_memory_with_rss_sampler,
+        );
     }
 }

@@ -1,4 +1,3 @@
-
 #[must_use]
 pub(crate) fn agent_string_is_stale_cursor_sdk_auth(msg: &str) -> bool {
     let text = msg.to_ascii_lowercase();

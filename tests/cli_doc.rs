@@ -1,4 +1,3 @@
-
 const MALVIN_MD: &str = include_str!("../default_prompts/docs/malvin.md");
 const ROUTER_MD: &str = include_str!("../default_prompts/docs/router.md");
 
@@ -41,7 +40,11 @@ fn malvin_code_is_not_a_documented_subcommand() {
         .args(["code", "--doc"])
         .output()
         .expect("spawn malvin code --doc");
-    assert!(out.status.success(), "stderr={}", String::from_utf8_lossy(&out.stderr));
+    assert!(
+        out.status.success(),
+        "stderr={}",
+        String::from_utf8_lossy(&out.stderr)
+    );
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
         !stdout.contains("# malvin code"),
@@ -102,9 +105,7 @@ fn malvin_inspire_without_request_shows_short_usage_and_exits_zero() {
 #[test]
 fn bare_malvin_shows_commands_only_and_exits_zero() {
     let tmp = isolated_home();
-    let bare = malvin_cmd(tmp.path())
-        .output()
-        .expect("spawn malvin");
+    let bare = malvin_cmd(tmp.path()).output().expect("spawn malvin");
     let help = malvin_cmd(tmp.path())
         .arg("--help")
         .output()
@@ -209,7 +210,9 @@ fn malvin_help_usage_matches_mutually_exclusive_forms() {
         "full help must not conflate request and command on one usage line: {help_s}"
     );
     assert!(
-        help_s.contains("bare malvin REQUEST") && help_s.contains("--do") && help_s.contains("tidy"),
+        help_s.contains("bare malvin REQUEST")
+            && help_s.contains("--do")
+            && help_s.contains("tidy"),
         "full help --name must state supported invocations: {help_s}"
     );
 }

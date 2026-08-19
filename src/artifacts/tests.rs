@@ -155,4 +155,3 @@ fn is_existing_md_file_path_rejects_invalid_and_directory() {
     assert!(is_existing_md_file_path("notes.md").is_none());
     std::env::set_current_dir(old_cwd).unwrap();
 }
-

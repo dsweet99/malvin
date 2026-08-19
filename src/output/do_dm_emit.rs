@@ -1,4 +1,3 @@
-
 pub(crate) fn emit_do_dm_body(body: &str) {
     if body.is_empty() {
         return;
@@ -33,8 +32,8 @@ fn emit_plain_wrapped_do_dm_line(line: &str) {
 
 fn emit_markdown_do_dm_line(line: &str) {
     use super::{
-        log_use_color, termimad_inline_payload_for_stdout, termimad_text_lines_for_stdout,
-        TermimadStdoutGate,
+        TermimadStdoutGate, log_use_color, termimad_inline_payload_for_stdout,
+        termimad_text_lines_for_stdout,
     };
     let gate = TermimadStdoutGate {
         emit_stdout_markdown: true,

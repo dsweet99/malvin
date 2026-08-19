@@ -1,4 +1,3 @@
-
 mod copy;
 mod npm;
 mod sync;
@@ -28,14 +27,12 @@ pub struct Bridge {
     pub min_node: (u32, u32),
 }
 
-pub const BRIDGES: &[Bridge] = &[
-    Bridge {
-        dir_name: "cursor-sdk-bridge",
-        package_marker: "@cursor/sdk/package.json",
-        label: "Cursor SDK (@cursor/sdk)",
-        min_node: (22, 13),
-    },
-];
+pub const BRIDGES: &[Bridge] = &[Bridge {
+    dir_name: "cursor-sdk-bridge",
+    package_marker: "@cursor/sdk/package.json",
+    label: "Cursor SDK (@cursor/sdk)",
+    min_node: (22, 13),
+}];
 
 pub fn run_build_script() {
     println!("cargo:rerun-if-env-changed=MALVIN_SKIP_SDK_BRIDGES");
@@ -71,7 +68,10 @@ fn emit_rerun_if_changed(manifest_dir: &Path) {
             "cargo:rerun-if-changed={}",
             dir.join("package-lock.json").display()
         );
-        println!("cargo:rerun-if-changed={}", dir.join("tsconfig.json").display());
+        println!(
+            "cargo:rerun-if-changed={}",
+            dir.join("tsconfig.json").display()
+        );
         if let Ok(entries) = fs::read_dir(dir.join("src")) {
             for entry in entries.flatten() {
                 println!("cargo:rerun-if-changed={}", entry.path().display());
@@ -133,7 +133,10 @@ fn install_npm_deps(dest: &Path, bridge: &Bridge) {
         run_npm(&npm, dest, &["ci", "--omit=dev"]);
     } else {
         run_npm(&npm, dest, &["ci"]);
-        eprintln!("malvin: building {} bridge (npm run build)…", bridge.dir_name);
+        eprintln!(
+            "malvin: building {} bridge (npm run build)…",
+            bridge.dir_name
+        );
         run_npm(&npm, dest, &["run", "build"]);
     }
     verify_install(dest, bridge);

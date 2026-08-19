@@ -51,7 +51,6 @@ pub(crate) fn random_backup_id(_try_index: usize) -> String {
         .collect()
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -79,29 +78,41 @@ mod kiss_cov_auto {
     use crate::user_home_dir;
 
     #[test]
-    fn kiss_cov_malvin_home_dir() { let _ = user_home_dir; }
+    fn kiss_cov_malvin_home_dir() {
+        let _ = user_home_dir;
+    }
 
     #[test]
-    fn kiss_cov_dotfile_backup_labels() { let _: Option<DotfileBackupLabels> = None; }
+    fn kiss_cov_dotfile_backup_labels() {
+        let _: Option<DotfileBackupLabels> = None;
+    }
 
     #[test]
     fn kiss_cov_allocate_backup_dir() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let labels = DotfileBackupLabels { mkdir: "m", collision: "c", restore: "r" };
+        let labels = DotfileBackupLabels {
+            mkdir: "m",
+            collision: "c",
+            restore: "r",
+        };
         let mut id = random_backup_id;
         let _ = allocate_backup_dir(tmp.path(), &mut id, &labels).expect("alloc");
     }
 
     #[test]
-    fn kiss_cov_remove_if_exists() { let _ = remove_if_exists; }
+    fn kiss_cov_remove_if_exists() {
+        let _ = remove_if_exists;
+    }
 
     #[test]
-    fn kiss_cov_random_backup_id() { let _ = random_backup_id; }
+    fn kiss_cov_random_backup_id() {
+        let _ = random_backup_id;
+    }
 }
 
 #[cfg(test)]
 #[allow(unused_imports)]
-mod kiss_cov_gate_refs{
+mod kiss_cov_gate_refs {
     use super::*;
     use crate::user_home_dir;
     #[test]

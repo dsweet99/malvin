@@ -1,4 +1,3 @@
-
 #[must_use]
 pub fn test_post_teardown_poll_interval() -> std::time::Duration {
     if crate::acp::test_no_real_agent_enabled() {

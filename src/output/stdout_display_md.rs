@@ -1,9 +1,8 @@
-
 use super::stdout_display::print_stdout_rendered_line;
 use super::stdout_line_wrap_meta;
 use super::{
-    log_use_color, termimad_inline_payload_for_stdout, termimad_text_lines_for_stdout,
-    wrap_words_bounded, TermimadStdoutGate, WHO_B,
+    TermimadStdoutGate, WHO_B, log_use_color, termimad_inline_payload_for_stdout,
+    termimad_text_lines_for_stdout, wrap_words_bounded,
 };
 
 pub fn print_stdout_line_with_markdown(who: &str, line: &str, emit_stdout_markdown: bool) {
@@ -70,8 +69,7 @@ fn print_stdout_para_markdown(who: &str, para: &str, ts: &str) -> bool {
 }
 
 fn emit_tagged_rendered(who: &str, rendered_payload: &str, ts: &str) {
-    let (display, log) =
-        super::stdout_tagged_display_and_log_line(who, rendered_payload, Some(ts));
+    let (display, log) = super::stdout_tagged_display_and_log_line(who, rendered_payload, Some(ts));
     print_stdout_rendered_line(&display, &log);
 }
 

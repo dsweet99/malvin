@@ -1,9 +1,8 @@
-
-use super::slots_kiss_cov_shared::{dotfile_spec_row_field_count, MALVIN_CONFIG_WORKSPACE_SLOT};
-use super::slots::{
-    backup_slot, dotfile_source_path, labels_for_test, restore_slot, DotfileSpecRow, DOTFILE_ROWS,
-};
 use super::DotfileBackupState;
+use super::slots::{
+    DOTFILE_ROWS, DotfileSpecRow, backup_slot, dotfile_source_path, labels_for_test, restore_slot,
+};
+use super::slots_kiss_cov_shared::{MALVIN_CONFIG_WORKSPACE_SLOT, dotfile_spec_row_field_count};
 use std::path::Path;
 
 #[test]

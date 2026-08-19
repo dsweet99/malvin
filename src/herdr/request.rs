@@ -1,6 +1,5 @@
-
 use rand::Rng;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 pub const SOURCE: &str = "herdr:malvin";
 pub const AGENT: &str = "malvin";
@@ -120,8 +119,8 @@ fn envelope(method: &str, params: Value) -> Value {
 #[cfg(test)]
 mod tests {
     use super::{
-        clear_agent_authority, clear_metadata_teardown, rename_agent, report_agent,
-        report_agent_session, report_metadata_sparse, AGENT, SOURCE,
+        AGENT, SOURCE, clear_agent_authority, clear_metadata_teardown, rename_agent, report_agent,
+        report_agent_session, report_metadata_sparse,
     };
 
     #[test]

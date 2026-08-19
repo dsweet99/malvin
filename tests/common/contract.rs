@@ -63,10 +63,7 @@ pub fn prepend_fake_agent_models_to_path(body: &str) -> (tempfile::TempDir, Fake
     unsafe {
         std::env::set_var("PATH", new_path);
     }
-    (
-        dir,
-        FakePathGuard { old_path },
-    )
+    (dir, FakePathGuard { old_path })
 }
 
 #[cfg(unix)]

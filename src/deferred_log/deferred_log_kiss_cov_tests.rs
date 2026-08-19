@@ -1,4 +1,3 @@
-
 use super::types::{build::ToolSummaryBuild, enrich::EnrichKey, payload::DeferredEntry};
 
 #[test]
@@ -7,10 +6,7 @@ fn kiss_witness_deferred_log_types() {
         tool_call_id: "1".into(),
         kind: "kiss".into(),
     };
-    let EnrichKey {
-        tool_call_id,
-        kind,
-    } = std::hint::black_box(key);
+    let EnrichKey { tool_call_id, kind } = std::hint::black_box(key);
     assert_eq!(tool_call_id, "1");
     assert_eq!(kind, "kiss");
     let build = ToolSummaryBuild {

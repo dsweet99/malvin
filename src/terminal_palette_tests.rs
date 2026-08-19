@@ -1,7 +1,7 @@
 use super::{
-    active_palette, ansi_tool_amber, ansi_tool_coral, ansi_tool_dark, ansi_tool_navy, ansi_tool_teal,
-    ansi_tool_white, init_terminal_theme, Palette, TerminalTheme, ACTIVE_THEME, DARK_PALETTE,
-    LIGHT_PALETTE, THEME_DARK,
+    ACTIVE_THEME, DARK_PALETTE, LIGHT_PALETTE, Palette, THEME_DARK, TerminalTheme, active_palette,
+    ansi_tool_amber, ansi_tool_coral, ansi_tool_dark, ansi_tool_navy, ansi_tool_teal,
+    ansi_tool_white, init_terminal_theme,
 };
 use std::sync::atomic::Ordering;
 

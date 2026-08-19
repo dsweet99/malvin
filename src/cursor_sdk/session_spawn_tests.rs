@@ -1,4 +1,3 @@
-
 #[test]
 fn kiss_cov_cursor_session_spawn_names() {
     let _ = super::spawn_bridge;

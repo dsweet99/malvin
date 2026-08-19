@@ -91,7 +91,9 @@ pub fn write_checks_do_not_pass_for_artifacts(artifacts: &RunArtifacts) -> Resul
     write_checks_do_not_pass_to_review_path(&artifacts.artifact_review_md())
 }
 
-pub(crate) fn clear_quality_gates_log_for_next_agent(artifacts: &RunArtifacts) -> Result<(), String> {
+pub(crate) fn clear_quality_gates_log_for_next_agent(
+    artifacts: &RunArtifacts,
+) -> Result<(), String> {
     crate::artifacts::ensure_quality_gates_log_file(artifacts).map_err(|e| e.to_string())
 }
 
@@ -142,8 +144,11 @@ pub(crate) fn run_router_workspace_gates(
         RepoGateOutput::Tagged,
         Some(artifacts.run_dir.as_path()),
     );
-    let restore_result =
-        restore_session_dotfiles_for_gates(work_dir, session_dotfile_backups, restore_malvin_checks);
+    let restore_result = restore_session_dotfiles_for_gates(
+        work_dir,
+        session_dotfile_backups,
+        restore_malvin_checks,
+    );
     prefer_gate_outcome_over_post_gate_cleanup(gate_result, restore_result)
 }
 
@@ -162,7 +167,8 @@ pub(crate) fn post_router_session_gates(
     session_dotfile_backups: &SessionDotfileBackups,
     restore_malvin_checks: bool,
 ) -> Result<(), String> {
-    if run_router_workspace_gates(artifacts, session_dotfile_backups, restore_malvin_checks).is_ok() {
+    if run_router_workspace_gates(artifacts, session_dotfile_backups, restore_malvin_checks).is_ok()
+    {
         return Ok(());
     }
     write_checks_do_not_pass_for_artifacts(artifacts)?;

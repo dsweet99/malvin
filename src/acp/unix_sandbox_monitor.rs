@@ -2,9 +2,9 @@
 use std::collections::HashSet;
 
 #[cfg(unix)]
-use super::unix_process_group_ps::list_proc_rows;
-#[cfg(unix)]
 use super::unix_process_group_kill_targets::{descendant_pids, kill_targets_for_teardown};
+#[cfg(unix)]
+use super::unix_process_group_ps::list_proc_rows;
 
 #[cfg(unix)]
 pub fn sandbox_monitor_pids(

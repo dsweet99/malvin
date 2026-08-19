@@ -1,5 +1,5 @@
 use super::{
-    dispatch_command, finish_entrypoint, prepare_cli_output, run_async_cli, Exit, entrypoint_from,
+    Exit, dispatch_command, entrypoint_from, finish_entrypoint, prepare_cli_output, run_async_cli,
 };
 use crate::cli::args::GlobalOpts;
 use crate::test_utils::with_isolated_home;
@@ -7,9 +7,7 @@ use crate::test_utils::with_isolated_home;
 #[test]
 fn prepare_cli_output_applies_background_flag() {
     crate::output::set_stdout_suppressed(false);
-    prepare_cli_output(&GlobalOpts {
-        background: true,
-    });
+    prepare_cli_output(&GlobalOpts { background: true });
     assert!(crate::output::stdout_suppressed());
     crate::output::set_stdout_suppressed(false);
 }

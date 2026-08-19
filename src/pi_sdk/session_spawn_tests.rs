@@ -1,4 +1,3 @@
-
 #[test]
 fn kiss_cov_session_and_spawn_names() {
     let _ = super::spawn_bridge;
@@ -23,8 +22,10 @@ fn split_provider_model_first_slash() {
             .expect("ok"),
         ("openrouter", "anthropic/claude-3-haiku")
     );
-    assert!(super::session_spawn::split_provider_model("noslash")
-        .expect_err("err")
-        .0
-        .contains("provider"));
+    assert!(
+        super::session_spawn::split_provider_model("noslash")
+            .expect_err("err")
+            .0
+            .contains("provider")
+    );
 }

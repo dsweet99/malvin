@@ -18,7 +18,9 @@ fn session_new_internal_error_is_detected() {
     assert!(agent_string_is_session_new_internal_error(
         "ACP session/new failed: Internal error"
     ));
-    assert!(!agent_string_is_session_new_internal_error("session/new failed"));
+    assert!(!agent_string_is_session_new_internal_error(
+        "session/new failed"
+    ));
     assert!(!agent_string_is_session_new_internal_error(
         "ACP `session/prompt` failed: code=-32603; message=\"Internal error\""
     ));

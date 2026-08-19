@@ -1,9 +1,9 @@
 use crate::cli::args::{Cli, Commands};
-use crate::cli::loop_opts::{
-    apply_tenacious, tenacious_budget_guard, TenaciousBudgetGuard, TENACIOUS_MAX_ACP_RETRIES,
-    TENACIOUS_MAX_LOOPS,
-};
 use crate::cli::init_flow::InitArgs;
+use crate::cli::loop_opts::{
+    TENACIOUS_MAX_ACP_RETRIES, TENACIOUS_MAX_LOOPS, TenaciousBudgetGuard, apply_tenacious,
+    tenacious_budget_guard,
+};
 use crate::cli::tidy_flow::TidyArgs;
 use crate::reliability_tier::{ReliabilityTier, ReliabilityTierFlags};
 use clap::{CommandFactory, FromArgMatches};
@@ -92,8 +92,14 @@ fn tidy_no_tenacious_keeps_normal_budgets() {
         &mut shared,
         tenacious_budget_guard(&matches, "tidy"),
     );
-    assert_eq!(tidy.max_loops, crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE);
-    assert_eq!(shared.max_acp_retries, crate::config::DEFAULT_MAX_ACP_RETRIES);
+    assert_eq!(
+        tidy.max_loops,
+        crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE
+    );
+    assert_eq!(
+        shared.max_acp_retries,
+        crate::config::DEFAULT_MAX_ACP_RETRIES
+    );
 }
 
 #[test]
@@ -142,7 +148,10 @@ fn default_route_no_tenacious_keeps_normal_budgets() {
         shared.no_tenacious,
         &matches,
     );
-    assert_eq!(shared.max_acp_retries, crate::config::DEFAULT_MAX_ACP_RETRIES);
+    assert_eq!(
+        shared.max_acp_retries,
+        crate::config::DEFAULT_MAX_ACP_RETRIES
+    );
     assert_eq!(max_loops, crate::malvin_config_file::DEFAULT_MAX_LOOPS);
 }
 
@@ -212,6 +221,12 @@ fn init_no_tenacious_keeps_normal_budgets() {
         &mut shared,
         tenacious_budget_guard(&matches, "init"),
     );
-    assert_eq!(init.max_loops, crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE);
-    assert_eq!(shared.max_acp_retries, crate::config::DEFAULT_MAX_ACP_RETRIES);
+    assert_eq!(
+        init.max_loops,
+        crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE
+    );
+    assert_eq!(
+        shared.max_acp_retries,
+        crate::config::DEFAULT_MAX_ACP_RETRIES
+    );
 }

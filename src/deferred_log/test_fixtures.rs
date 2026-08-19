@@ -3,8 +3,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use super::config::DeferredLogConfig;
-use super::sink_build::build_tool_entry;
 use super::sink::DeferredLogSink;
+use super::sink_build::build_tool_entry;
 use super::types::{DeferredEntry, EnrichKey, TeeSinkMeta, ToolDrainMeta, ToolSummaryBuild};
 
 pub type SharedDeferSink = Arc<std::sync::Mutex<DeferredLogSink>>;

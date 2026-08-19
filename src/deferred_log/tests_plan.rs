@@ -2,14 +2,14 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use crate::cursor_store::{
-    install_test_store, parse_tool_call_args_from_blob, TestStoreSpec, ToolCallArgs,
+    TestStoreSpec, ToolCallArgs, install_test_store, parse_tool_call_args_from_blob,
 };
 use crate::tool_summary::LineRange;
 
+use super::build_display_log_entry;
 use super::enrich::enriched_tool_plain;
 use super::sink::test_access;
 use super::test_fixtures::{enrich_read_entry, test_tool_entry, zero_age_sink};
-use super::build_display_log_entry;
 use super::types::ToolDrainMeta;
 
 #[test]
@@ -26,7 +26,10 @@ fn fifo_emit_order_abc() {
     let pos_a = text.find("LOG_MARKER_A").expect("marker A");
     let pos_b = text.find("LOG_MARKER_B").expect("marker B");
     let pos_c = text.find("LOG_MARKER_C").expect("marker C");
-    assert!(pos_a < pos_b && pos_b < pos_c, "FIFO emit order violated: {text:?}");
+    assert!(
+        pos_a < pos_b && pos_b < pos_c,
+        "FIFO emit order violated: {text:?}"
+    );
 }
 
 #[test]
@@ -176,7 +179,7 @@ fn deferred_sink_drain_shows_line_range_from_store_db() {
 
 #[cfg(test)]
 #[allow(unused_imports)]
-mod kiss_cov_auto{
+mod kiss_cov_auto {
     use super::*;
 
     #[test]

@@ -87,11 +87,13 @@ async fn read_event_with_timeout(
     waiting_for: &str,
     timeout: std::time::Duration,
 ) -> Result<BridgeEvent, AgentError> {
-    tokio::time::timeout(timeout, read_event(session)).await.unwrap_or_else(|_| {
-        Err(AgentError(format!(
-            "bridge timed out waiting for {waiting_for} after {timeout:?} of silence"
-        )))
-    })
+    tokio::time::timeout(timeout, read_event(session))
+        .await
+        .unwrap_or_else(|_| {
+            Err(AgentError(format!(
+                "bridge timed out waiting for {waiting_for} after {timeout:?} of silence"
+            )))
+        })
 }
 
 async fn wait_for_ok(session: &BridgeSession) -> Result<(), AgentError> {

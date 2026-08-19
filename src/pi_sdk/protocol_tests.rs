@@ -1,5 +1,5 @@
 use super::protocol::{
-    abort_request, new_session_request, pi_decode_line, pi_encode_request, prompt_request, PiLine,
+    PiLine, abort_request, new_session_request, pi_decode_line, pi_encode_request, prompt_request,
 };
 
 #[test]

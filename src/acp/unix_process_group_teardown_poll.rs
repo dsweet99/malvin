@@ -1,4 +1,3 @@
-
 use std::collections::HashSet;
 
 #[path = "unix_process_group_teardown_timing.rs"]

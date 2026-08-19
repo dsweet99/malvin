@@ -1,9 +1,8 @@
-
 use std::path::Path;
 
 use super::{
-    ensure_config_parent_dir, merge_missing_keys, parse_agent_config, parse_malvin_config,
-    parse_template_value, write_config_value, AgentConfig, MalvinConfig,
+    AgentConfig, MalvinConfig, ensure_config_parent_dir, merge_missing_keys, parse_agent_config,
+    parse_malvin_config, parse_template_value, write_config_value,
 };
 use crate::workspace_paths::malvin_config_path;
 
@@ -26,8 +25,7 @@ pub fn ensure_malvin_config_file_if_missing(work_dir: &Path) -> Result<(), Strin
         return Ok(());
     }
     if path.is_file() {
-        std::fs::remove_file(&path)
-            .map_err(|e| format!("remove empty {}: {e}", path.display()))?;
+        std::fs::remove_file(&path).map_err(|e| format!("remove empty {}: {e}", path.display()))?;
     }
     let template = parse_template_value()?;
     let _ = create_malvin_config_from_template(&path, &template)?;

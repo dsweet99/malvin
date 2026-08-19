@@ -1,5 +1,4 @@
-
-use crate::acp::{agent_backoff_sleep, AgentError, AgentRetryOutcome, plan_agent_retry};
+use crate::acp::{AgentError, AgentRetryOutcome, agent_backoff_sleep, plan_agent_retry};
 
 pub(crate) async fn backoff_after_agent_failure(
     timing: Option<&std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,

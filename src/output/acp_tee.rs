@@ -1,14 +1,13 @@
-
 pub use super::acp_tee_markdown::{
     TermimadStdoutGate, termimad_inline_payload_for_stdout, termimad_text_lines_for_stdout,
 };
 pub use super::stdout_log_pair::{
-    acp_tee_display_line, acp_tee_log_line, AcpTeeDirection, AcpTeeLineFmt,
+    AcpTeeDirection, AcpTeeLineFmt, acp_tee_display_line, acp_tee_log_line,
     format_line_acp_ansi_payload,
 };
 pub(crate) use super::stdout_log_pair::{acp_tee_payload_prefix, acp_tee_payload_prefix_width};
 
-use super::stdout_render::{route_stdout_rendered_line, StdoutRenderPrelude};
+use super::stdout_render::{StdoutRenderPrelude, route_stdout_rendered_line};
 use super::timestamp_now_string;
 
 fn tool_summary_tee_display_and_log<'a>(
@@ -182,19 +181,24 @@ fn print_stdout_acp_tee_line_with_timestamp_payload(
     }
 }
 
-
 #[cfg(test)]
-mod kiss_cov_auto{
+mod kiss_cov_auto {
     use super::*;
 
     #[test]
-    fn kiss_cov_print_acp_tee_stdout_markdown_line() { let _ = print_acp_tee_stdout_markdown_line; }
+    fn kiss_cov_print_acp_tee_stdout_markdown_line() {
+        let _ = print_acp_tee_stdout_markdown_line;
+    }
 
     #[test]
-    fn kiss_cov_print_acp_tee_stdout_markdown_lines() { let _ = print_acp_tee_stdout_markdown_lines; }
+    fn kiss_cov_print_acp_tee_stdout_markdown_lines() {
+        let _ = print_acp_tee_stdout_markdown_lines;
+    }
 
     #[test]
-    fn kiss_cov_print_stdout_acp_tee_line_with_timestamp_payload() { let _ = print_stdout_acp_tee_line_with_timestamp_payload; }
+    fn kiss_cov_print_stdout_acp_tee_line_with_timestamp_payload() {
+        let _ = print_stdout_acp_tee_line_with_timestamp_payload;
+    }
 
     #[test]
     fn kiss_cov_flush_stdout_acp_tool_summary_tee() {
@@ -205,12 +209,11 @@ mod kiss_cov_auto{
     fn kiss_cov_flush_stdout_acp_tee_line_with_timestamp() {
         let _ = super::flush_stdout_acp_tee_line_with_timestamp;
     }
-
 }
 
 #[cfg(test)]
 #[allow(unused_imports)]
-mod kiss_cov_gate_refs{
+mod kiss_cov_gate_refs {
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {

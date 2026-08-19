@@ -1,4 +1,3 @@
-
 use super::ObservabilityChannel;
 
 #[allow(dead_code)]

@@ -42,7 +42,8 @@ mod tests {
 
     #[test]
     fn write_out_path_flag_overrides_default() {
-        let cli = Cli::try_parse_from(["malvin", "write", "topic", "--out-path", "docs/paper.tex"]).expect("parse");
+        let cli = Cli::try_parse_from(["malvin", "write", "topic", "--out-path", "docs/paper.tex"])
+            .expect("parse");
         match cli.command {
             Some(Commands::Write(e)) => assert_eq!(e.out_path, "docs/paper.tex"),
             other => panic!("expected Write, got {other:?}"),
@@ -51,7 +52,8 @@ mod tests {
 
     #[test]
     fn write_out_path_accepts_equals_form() {
-        let cli = Cli::try_parse_from(["malvin", "write", "topic", "--out-path=docs/paper.tex"]).expect("parse");
+        let cli = Cli::try_parse_from(["malvin", "write", "topic", "--out-path=docs/paper.tex"])
+            .expect("parse");
         match cli.command {
             Some(Commands::Write(e)) => assert_eq!(e.out_path, "docs/paper.tex"),
             other => panic!("expected Write, got {other:?}"),
@@ -81,8 +83,8 @@ mod tests {
     #[test]
     fn write_tenacious_expands_loops_and_retries() {
         use crate::cli::loop_opts::{
-            apply_gate_loop_tenacious, GateLoopTenaciousApply, TENACIOUS_MAX_ACP_RETRIES,
-            TENACIOUS_MAX_LOOPS,
+            GateLoopTenaciousApply, TENACIOUS_MAX_ACP_RETRIES, TENACIOUS_MAX_LOOPS,
+            apply_gate_loop_tenacious,
         };
         let matches = Cli::command().get_matches_from(["malvin", "write", "topic", "--tenacious"]);
         let cli = Cli::from_arg_matches(&matches).expect("parse");

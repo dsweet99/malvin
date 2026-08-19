@@ -1,5 +1,5 @@
 use crate::artifacts::RunArtifacts;
-use crate::prompt_stratification::{join_labeled_strata, PromptStratum, WorkflowRenderContext};
+use crate::prompt_stratification::{PromptStratum, WorkflowRenderContext, join_labeled_strata};
 use crate::prompts::{PromptError, PromptStore, render_header};
 use crate::workflow_context::PromptModelOpts;
 
@@ -59,12 +59,7 @@ pub(crate) fn combine_mode_header_and_user(
 ) -> Result<(String, String, String), String> {
     use crate::orchestrator::workflow_context_paths_only;
     let context = workflow_context_paths_only(input.artifacts, input.model, input.git);
-    combine_prompt_file_and_user(
-        input.store,
-        input.text,
-        input.mode_template,
-        &context,
-    )
+    combine_prompt_file_and_user(input.store, input.text, input.mode_template, &context)
 }
 
 pub(crate) struct DualHeaderCoderRun {

@@ -15,8 +15,7 @@ pub fn run_repo_workspace_gates(
     let malvin_checks_backup = backup_workspace_malvin_checks_if_present(work_dir)?;
     let gate_result = run_repo_workspace_gates_with_details(work_dir, output, run_log_dir)
         .map_err(repo_gate_failure_to_string);
-    let restore_result =
-        restore_workspace_malvin_checks_backup(work_dir, &malvin_checks_backup);
+    let restore_result = restore_workspace_malvin_checks_backup(work_dir, &malvin_checks_backup);
     prefer_gate_outcome_over_checks_restore(gate_result, restore_result)
 }
 
@@ -59,8 +58,8 @@ fn run_quality_gates_with_details(
     output: RepoGateOutput,
     run_log_dir: Option<&Path>,
 ) -> Result<(), RepoGateFailure> {
-    let commands = crate::repo_gates::gate_command_lines(work_dir)
-        .map_err(RepoGateFailure::Message)?;
+    let commands =
+        crate::repo_gates::gate_command_lines(work_dir).map_err(RepoGateFailure::Message)?;
     run_malvin_checks_with_details(work_dir, output, run_log_dir, &commands)
 }
 

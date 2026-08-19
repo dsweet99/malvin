@@ -1,1 +1,1 @@
-Codex model-list pagination refactor now passes KISS, Clippy, targeted Codex tests, and pytest/ruff; final Rust gate and exact command verification remain.
+Codex resolver committed and file split; KISS still fails on CodexProcess coverage (86%).

@@ -1,4 +1,4 @@
-use super::{register, try_push, unregister, SharedDeferSink, try_log};
+use super::{SharedDeferSink, register, try_log, try_push, unregister};
 use crate::deferred_log::{
     build_display_log_entry,
     test_fixtures::{aged_defer_shared, zero_age_defer_shared},
@@ -61,7 +61,9 @@ fn pending_entries_emitted_on_unregister_then_force_flush() {
             format!("20260524.000000.000 malvin.|{marker}"),
         );
         {
-            let _acp_hold = shared.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+            let _acp_hold = shared
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             assert!(try_push(hb));
             assert_eq!(super::pending_len(), 1);
         }
@@ -81,8 +83,13 @@ fn unregister_without_flush_clears_global_pending() {
     let shared = zero_age_defer_shared("pending_stale");
     register(Arc::clone(&shared));
     {
-        let _acp_hold = shared.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        assert!(try_log(build_display_log_entry("STALE_TAG".into(), "STALE_TAG".into())));
+        let _acp_hold = shared
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        assert!(try_log(build_display_log_entry(
+            "STALE_TAG".into(),
+            "STALE_TAG".into()
+        )));
         assert_eq!(super::pending_len(), 2);
     }
     unregister();
@@ -115,7 +122,9 @@ fn fifo_spill_unregister_text() -> String {
             "QUEUED_FIRST".into(),
         ));
     {
-        let _acp_hold = shared.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _acp_hold = shared
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         assert!(try_log(build_display_log_entry(
             "PENDING_SECOND".into(),
             "PENDING_SECOND".into(),
@@ -146,8 +155,13 @@ fn unregister_while_sink_locked_emits_pending_not_drops() {
         register(Arc::clone(&shared));
         let marker = "DROPPED_ON_UNREGISTER_LOCK";
         {
-            let _acp_hold = shared.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-            assert!(try_log(build_display_log_entry(marker.into(), marker.into())));
+            let _acp_hold = shared
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            assert!(try_log(build_display_log_entry(
+                marker.into(),
+                marker.into()
+            )));
             unregister();
             assert_eq!(super::pending_len(), 0);
         }
@@ -169,8 +183,13 @@ fn try_log_pending_omits_heartbeat_when_not_due() {
     let shared = zero_age_defer_shared("no_hb");
     register(Arc::clone(&shared));
     {
-        let _acp_hold = shared.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        assert!(try_log(build_display_log_entry("TAG_ONLY".into(), "TAG_ONLY".into())));
+        let _acp_hold = shared
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        assert!(try_log(build_display_log_entry(
+            "TAG_ONLY".into(),
+            "TAG_ONLY".into()
+        )));
         assert_eq!(super::pending_len(), 1);
     }
     unregister();
@@ -187,7 +206,9 @@ fn try_log_pending_bundles_heartbeat_when_sink_mutex_held() {
     let shared = zero_age_defer_shared("try_log_hb");
     register(Arc::clone(&shared));
     {
-        let _acp_hold = shared.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _acp_hold = shared
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         assert!(try_log(build_display_log_entry(
             "CONTENDED_TAG".into(),
             "CONTENDED_TAG".into(),

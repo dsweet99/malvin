@@ -1,4 +1,3 @@
-
 #[test]
 fn kiss_witness_gitignore_tree_test_helper_symbols() {
     let _ = super::gitignore_tree::gitignore_tree_tests::seed_nested_gitignore_repo;

@@ -28,22 +28,21 @@ mod tests_plan;
 mod tests_cursor_store;
 
 pub(crate) use active::{
-    flush_pending_into as flush_pending_into_active_sink, register as register_active_sink,
-    unregister as unregister_active_sink, SharedDeferSink,
+    SharedDeferSink, flush_pending_into as flush_pending_into_active_sink,
+    register as register_active_sink, unregister as unregister_active_sink,
 };
+pub(crate) use sink::DeferredLogSink;
 pub(crate) use sink_build::{
     build_acp_tee_entry, build_display_log_entry, build_raw_line_entry, build_tool_entry,
 };
-pub(crate) use sink::DeferredLogSink;
 pub(crate) use tool_enrich::tool_drain_enrich_fields;
 pub(crate) use types::{AcpTeeBuild, DeferredEntry, TeeSinkMeta, ToolSummaryBuild};
 
 pub(crate) fn log_with_heartbeat(sink: &mut DeferredLogSink, entry: DeferredEntry) {
     if !active::defer_already_has_heartbeat(sink) {
-        if let Some((display, log)) = crate::output::heartbeat_rendered_if_due(
-            std::time::Instant::now(),
-            true,
-        ) {
+        if let Some((display, log)) =
+            crate::output::heartbeat_rendered_if_due(std::time::Instant::now(), true)
+        {
             crate::output::publish_heartbeat_live_terminal(&display);
             sink.push_entry(build_display_log_entry(display, log));
         }

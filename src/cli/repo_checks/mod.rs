@@ -14,14 +14,9 @@ mod tests_gates_unix;
 #[cfg(all(test, unix))]
 mod tests_gates_unix_extra;
 #[cfg(test)]
-pub use command_support::{
-    set_fake_command_dir, test_fake_command_path, FakeCommandDirGuard,
-};
+pub use command_support::{FakeCommandDirGuard, set_fake_command_dir, test_fake_command_path};
 
-pub use gate_run::{
-    run_repo_workspace_gates,
-    run_repo_workspace_gates_with_details,
-};
+pub use gate_run::{run_repo_workspace_gates, run_repo_workspace_gates_with_details};
 #[cfg(test)]
 pub(crate) use types::repo_gate_failure_to_string;
 pub use types::{

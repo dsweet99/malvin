@@ -2,7 +2,7 @@ use crate::cursor_store::ToolCallArgs;
 use crate::deferred_log::types::ToolDrainMeta;
 use crate::tool_summary::ToolSummaryTracker;
 use crate::tool_summary::human_done_line;
-use crate::tool_summary::{tool_summary_stdout_display, ParsedToolUpdate, TOOL_PHASE_DONE};
+use crate::tool_summary::{ParsedToolUpdate, TOOL_PHASE_DONE, tool_summary_stdout_display};
 
 pub fn enriched_tool_plain(
     meta: &ToolDrainMeta,

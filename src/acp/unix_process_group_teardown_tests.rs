@@ -54,7 +54,10 @@ fn terminate_agent_process_group_blocking_noop_without_targets() {
 fn kill_targets_empty_baseline_skips_orphan_scan() {
     let empty = HashSet::new();
     let targets = kill_targets_for_teardown(None, Some(&empty));
-    assert!(targets.is_empty(), "empty baseline must not scan host orphans");
+    assert!(
+        targets.is_empty(),
+        "empty baseline must not scan host orphans"
+    );
 }
 
 #[test]
@@ -136,7 +139,7 @@ async fn malvin_sibling_outside_agent_pg_killed_on_teardown() {
 
 #[cfg(test)]
 #[allow(unused_imports)]
-mod kiss_cov_gate_refs{
+mod kiss_cov_gate_refs {
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {
@@ -149,15 +152,20 @@ mod kiss_cov_gate_refs{
     }
 }
 
-
 #[cfg(test)]
-mod kiss_cov_auto{
+mod kiss_cov_auto {
     use super::*;
 
     #[test]
-    fn kiss_cov_signal_targets_noop_for_empty_set() { let _ = signal_targets_noop_for_empty_set; }
+    fn kiss_cov_signal_targets_noop_for_empty_set() {
+        let _ = signal_targets_noop_for_empty_set;
+    }
     #[test]
-    fn kiss_cov_terminate_process_group_kills_sleep_child() { let _ = terminate_process_group_kills_sleep_child; }
+    fn kiss_cov_terminate_process_group_kills_sleep_child() {
+        let _ = terminate_process_group_kills_sleep_child;
+    }
     #[test]
-    fn kiss_cov_terminate_agent_process_group_kills_sleep_child() { let _ = terminate_agent_process_group_kills_sleep_child; }
+    fn kiss_cov_terminate_agent_process_group_kills_sleep_child() {
+        let _ = terminate_agent_process_group_kills_sleep_child;
+    }
 }

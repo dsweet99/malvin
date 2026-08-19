@@ -1,10 +1,10 @@
 use crate::output::stdout_log_pair::{
-    acp_tee_log_line, tagged_display_and_log_line_for_color, tagged_log_line, AcpTeeDirection,
-    AcpTeeLineFmt,
+    AcpTeeDirection, AcpTeeLineFmt, acp_tee_log_line, tagged_display_and_log_line_for_color,
+    tagged_log_line,
 };
 use crate::output::{
-    format_who_tag_delim, format_who_tag_prefix, ERROR_WHO, WARNING_WHO, WHO_B, WHO_H, WHO_M, WHO_O,
-    WHO_T, WHO_U,
+    ERROR_WHO, WARNING_WHO, WHO_B, WHO_H, WHO_M, WHO_O, WHO_T, WHO_U, format_who_tag_delim,
+    format_who_tag_prefix,
 };
 
 fn log_line_uses_delim_without_trailing_space(log: &str, who: &str, payload: &str) -> bool {
@@ -16,7 +16,16 @@ const FUZZ_WHO_TAGS: &[&str] = &[WHO_O, WHO_M, WHO_B, WHO_T, WHO_U, WHO_H];
 
 #[test]
 fn tagged_log_line_omits_space_after_who_pipe_for_all_tags() {
-    const TAGS: &[&str] = &[WHO_O, WHO_M, WHO_B, WHO_T, WHO_U, WHO_H, ERROR_WHO, WARNING_WHO];
+    const TAGS: &[&str] = &[
+        WHO_O,
+        WHO_M,
+        WHO_B,
+        WHO_T,
+        WHO_U,
+        WHO_H,
+        ERROR_WHO,
+        WARNING_WHO,
+    ];
     let ts = "20260524.000000.000";
     for who in TAGS {
         let payload = "probe payload";
@@ -38,7 +47,9 @@ fn display_log_metamorphic_pipe_space_only_for_thought_and_tool() {
                 tagged_display_and_log_line_for_color(who, payload, Some(ts), false);
             assert_eq!(log, tagged_log_line(ts, who, payload));
             assert_eq!(display, format!("{}{payload}", format_who_tag_prefix(who)));
-            assert!(log_line_uses_delim_without_trailing_space(&log, who, payload));
+            assert!(log_line_uses_delim_without_trailing_space(
+                &log, who, payload
+            ));
         }
     }
 }
@@ -51,8 +62,13 @@ fn log_rejects_decorative_space_after_who_pipe() {
     let log = tagged_log_line(ts, who, payload);
     let delim = format_who_tag_delim(who);
     let bad = format!("{ts} {delim} {payload}");
-    assert_ne!(log, bad, "log must not insert decorative space after who pipe");
-    assert!(log_line_uses_delim_without_trailing_space(&log, who, payload));
+    assert_ne!(
+        log, bad,
+        "log must not insert decorative space after who pipe"
+    );
+    assert!(log_line_uses_delim_without_trailing_space(
+        &log, who, payload
+    ));
 }
 
 #[test]
@@ -66,7 +82,10 @@ fn acp_tee_log_line_omits_space_after_who_pipe() {
         dim_payload: true,
     };
     let log = acp_tee_log_line(&ctx);
-    assert!(log_line_uses_delim_without_trailing_space(&log, WHO_T, payload), "{log:?}");
+    assert!(
+        log_line_uses_delim_without_trailing_space(&log, WHO_T, payload),
+        "{log:?}"
+    );
 }
 
 #[test]

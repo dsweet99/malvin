@@ -1,5 +1,5 @@
-use super::*;
 use super::log_gc_prune::prune_run_dirs;
+use super::*;
 use crate::log_gc_config::LogsGcConfig;
 use crate::workspace_paths::{malvin_home_logs_root, malvin_logs_root, write_work_dir_manifest};
 

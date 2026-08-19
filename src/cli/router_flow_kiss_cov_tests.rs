@@ -1,4 +1,3 @@
-
 #[test]
 fn kiss_witness_router_run_prep() {
     let _: Option<super::RouterRunPrep> = None;

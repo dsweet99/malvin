@@ -1,4 +1,3 @@
-
 #[test]
 fn smoke_cov_cli_cli_units_0() {
     let _ = crate::cli::build_agent_backend;
@@ -102,9 +101,7 @@ fn smoke_cov_cli_cli_symbols_a() {
     let _: Option<crate::cli::SharedOpts> = None;
     let _: Option<crate::cli::Cli> = None;
     let _: Option<crate::cli::Commands> = None;
-    let do_args = crate::do_flow::DoArgs {
-        request: None,
-    };
+    let do_args = crate::do_flow::DoArgs { request: None };
     let crate::do_flow::DoArgs { request } = do_args;
     assert!(request.is_none());
     let _ = stringify!(DoRunPrep);

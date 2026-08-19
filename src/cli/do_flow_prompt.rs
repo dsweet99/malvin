@@ -1,7 +1,7 @@
 use crate::artifacts::RunArtifacts;
 use crate::cli::flow_prompt_combine::{
-    build_dual_header_coder_run_with_store, combine_acp_prompt_header_and_user,
-    combine_mode_header_and_user, combine_prompt_file_and_user, DualHeaderPromptInput,
+    DualHeaderPromptInput, build_dual_header_coder_run_with_store,
+    combine_acp_prompt_header_and_user, combine_mode_header_and_user, combine_prompt_file_and_user,
 };
 use crate::prompt_stratification::WorkflowRenderContext;
 use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptError, PromptStore};

@@ -61,14 +61,17 @@ fn operational_upgrade_plan_for_emit_detects_line_and_stream_flag() {
 #[test]
 fn upgrade_plan_stream_from_buffer_tracks_split_coalesce() {
     assert!(!upgrade_plan_stream_from_buffer("Upgrade your"));
-    assert!(upgrade_plan_stream_from_buffer("Upgrade your plan to continue"));
+    assert!(upgrade_plan_stream_from_buffer(
+        "Upgrade your plan to continue"
+    ));
 }
 
 #[test]
 fn cannot_use_model_errors_do_not_retry() {
     let msg = "Error: Cannot use this model with that provider";
     assert!(agent_string_is_cannot_use_model(msg));
-    let err = plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS).expect_err("invalid model must fail fast");
+    let err =
+        plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS).expect_err("invalid model must fail fast");
     assert_eq!(err.0, msg);
 }
 
@@ -84,7 +87,8 @@ fn usage_limit_substring_is_detected_case_insensitively() {
 
 #[test]
 fn usage_limit_errors_do_not_retry_even_with_high_max() {
-    let msg = "You've hit your usage limit\nYou've saved $2502 on API model usage this month with Ultra.";
+    let msg =
+        "You've hit your usage limit\nYou've saved $2502 on API model usage this month with Ultra.";
     let err = plan_agent_retry(msg, 1, 9999).expect_err("usage limit must fail fast");
     assert_eq!(err.0, msg);
 }
@@ -92,7 +96,8 @@ fn usage_limit_errors_do_not_retry_even_with_high_max() {
 #[test]
 fn cannot_use_model_fails_fast_even_when_error_also_looks_retriable() {
     let msg = "rpc [unavailable]: Cannot use this model";
-    let err = plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS).expect_err("model error must beat retriable match");
+    let err = plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS)
+        .expect_err("model error must beat retriable match");
     assert_eq!(err.0, msg);
 }
 
@@ -184,7 +189,6 @@ fn restore_failure_stops_retrying_without_sleep() {
     assert!(matches!(out, AgentRetryOutcome::StopRetrying), "{out:?}");
 }
 
-
 #[test]
 fn retries_noun_singular_and_plural() {
     assert_eq!(retries_noun(1), "retry");
@@ -205,5 +209,10 @@ fn emit_operational_upgrade_plan_stop_prints_once() {
         stderr.contains(crate::acp::UPGRADE_PLAN_STOP_MESSAGE) && stderr.contains("Stopping.."),
         "stderr: {stderr:?}"
     );
-    assert_eq!(stderr.matches(crate::acp::UPGRADE_PLAN_STOP_MESSAGE).count(), 1);
+    assert_eq!(
+        stderr
+            .matches(crate::acp::UPGRADE_PLAN_STOP_MESSAGE)
+            .count(),
+        1
+    );
 }

@@ -2,18 +2,21 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use super::test_fixtures::{
-    aged_defer_shared, defer_log_test_ctx, zero_age_defer_shared, DeferLogTestCtx,
+    DeferLogTestCtx, aged_defer_shared, defer_log_test_ctx, zero_age_defer_shared,
 };
 use super::{
-    build_display_log_entry, install_stdout_hooks,
-    log_with_heartbeat, register_active_sink, unregister_active_sink, DeferredLogSink,
+    DeferredLogSink, build_display_log_entry, install_stdout_hooks, log_with_heartbeat,
+    register_active_sink, unregister_active_sink,
 };
 
 fn push_tagged_entry(shared: &Arc<std::sync::Mutex<DeferredLogSink>>, display: &str, log: &str) {
     shared
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .push_entry(build_display_log_entry(display.to_string(), log.to_string()));
+        .push_entry(build_display_log_entry(
+            display.to_string(),
+            log.to_string(),
+        ));
 }
 
 fn finish_defer_log_test(ctx: DeferLogTestCtx) -> String {
@@ -41,11 +44,8 @@ fn exercise_active_defer_hooks(shared: &Arc<std::sync::Mutex<DeferredLogSink>>) 
         build_display_log_entry("d".to_string(), "l".to_string()),
     );
     crate::output::test_set_last_heartbeat_elapsed(Duration::from_secs(61));
-    let (display, log) = crate::output::heartbeat_rendered_if_due(
-        std::time::Instant::now(),
-        false,
-    )
-    .expect("heartbeat due");
+    let (display, log) = crate::output::heartbeat_rendered_if_due(std::time::Instant::now(), false)
+        .expect("heartbeat due");
     assert!(crate::output::try_defer_heartbeat(&display, &log));
 }
 
@@ -131,7 +131,9 @@ fn wall_clock_heartbeat_log_order_follows_defer_queue_fifo() {
         crate::output::poll_wall_clock_heartbeat_if_due();
         finish_defer_log_test(ctx)
     };
-    let queued = text.find("QUEUED_FIRST").expect("queued defer entry in stdout.log");
+    let queued = text
+        .find("QUEUED_FIRST")
+        .expect("queued defer entry in stdout.log");
     let heartbeat = crate::output::heartbeat_log_offset(&text).expect("heartbeat in stdout.log");
     assert!(
         queued < heartbeat,
@@ -155,8 +157,7 @@ fn active_defer_session_shows_heartbeat_on_live_terminal_before_log_flush() {
     crate::output::test_set_last_heartbeat_elapsed(Duration::from_secs(61));
     crate::output::poll_wall_clock_heartbeat_if_due();
     let terminal = crate::output::take_captured_stdout();
-    let log_before_flush =
-        std::fs::read_to_string(&ctx.log_path).unwrap_or_default();
+    let log_before_flush = std::fs::read_to_string(&ctx.log_path).unwrap_or_default();
     assert!(
         crate::output::log_contains_heartbeat(&terminal),
         "heartbeat must reach live terminal while defer session blocks log drain; terminal={terminal:?}"

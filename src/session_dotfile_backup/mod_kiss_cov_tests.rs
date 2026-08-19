@@ -1,7 +1,4 @@
-
-use super::{
-    DotfileBackupPayload, DotfileBackupState, SessionDotfileParts, SessionDotfileBackups,
-};
+use super::{DotfileBackupPayload, DotfileBackupState, SessionDotfileBackups, SessionDotfileParts};
 
 #[test]
 fn kiss_cov_dotfile_backup_payload_construct_destructure() {

@@ -63,8 +63,8 @@ mod tests {
     #[test]
     fn tidy_tenacious_expands_loops_and_retries() {
         use crate::cli::loop_opts::{
-            apply_gate_loop_tenacious, GateLoopTenaciousApply, TENACIOUS_MAX_ACP_RETRIES,
-            TENACIOUS_MAX_LOOPS,
+            GateLoopTenaciousApply, TENACIOUS_MAX_ACP_RETRIES, TENACIOUS_MAX_LOOPS,
+            apply_gate_loop_tenacious,
         };
         let matches = Cli::command().get_matches_from(["malvin", "tidy", "--tenacious"]);
         let cli = Cli::from_arg_matches(&matches).expect("parse");
@@ -89,7 +89,10 @@ mod tests {
         let cli = Cli::try_parse_from(["malvin", "tidy"]).expect("parse");
         match cli.command {
             Some(Commands::Tidy(t)) => {
-                assert_eq!(t.max_loops, crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE);
+                assert_eq!(
+                    t.max_loops,
+                    crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE
+                );
                 assert_eq!(
                     t.max_hypotheses,
                     crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES

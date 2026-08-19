@@ -151,10 +151,7 @@ pub(crate) fn dispatch_command(
     }
 }
 
-pub fn dispatch_do_workflow(
-    do_args: DoArgs,
-    shared: &SharedOpts,
-) -> Result<(), String> {
+pub fn dispatch_do_workflow(do_args: DoArgs, shared: &SharedOpts) -> Result<(), String> {
     run_async_cli(|| {
         run_do(
             do_args,

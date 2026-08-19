@@ -1,6 +1,4 @@
-use super::{
-    ensure_malvin_config_file, load_malvin_config, open_malvin_config,
-};
+use super::{ensure_malvin_config_file, load_malvin_config, open_malvin_config};
 use crate::terminal_palette::TerminalTheme;
 use crate::test_utils::with_isolated_home;
 use crate::workspace_paths::{malvin_config_path, malvin_home_config_path};
@@ -37,10 +35,7 @@ fn open_malvin_config_never_changes_existing_user_mem_limit_gb() {
             "user-edited config.toml must remain byte-identical"
         );
         let _ = open_malvin_config(work).expect("reopen");
-        assert_eq!(
-            std::fs::read_to_string(&path).expect("read"),
-            user_text
-        );
+        assert_eq!(std::fs::read_to_string(&path).expect("read"), user_text);
     });
 }
 

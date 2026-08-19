@@ -23,13 +23,20 @@ fn token_fields_fragment(json: &Value) -> String {
         .and_then(|t| t.get("steps"))
         .and_then(Value::as_u64)
         .unwrap_or(0);
-    let tokens_in = tokens.map_or_else(|| "n/a".to_string(), |t| format_token_field(t, "tokens_in"));
-    let tokens_out =
-        tokens.map_or_else(|| "n/a".to_string(), |t| format_token_field(t, "tokens_out"));
-    let cache_read =
-        tokens.map_or_else(|| "n/a".to_string(), |t| format_token_field(t, "cache_read"));
-    let cache_write =
-        tokens.map_or_else(|| "n/a".to_string(), |t| format_token_field(t, "cache_write"));
+    let tokens_in =
+        tokens.map_or_else(|| "n/a".to_string(), |t| format_token_field(t, "tokens_in"));
+    let tokens_out = tokens.map_or_else(
+        || "n/a".to_string(),
+        |t| format_token_field(t, "tokens_out"),
+    );
+    let cache_read = tokens.map_or_else(
+        || "n/a".to_string(),
+        |t| format_token_field(t, "cache_read"),
+    );
+    let cache_write = tokens.map_or_else(
+        || "n/a".to_string(),
+        |t| format_token_field(t, "cache_write"),
+    );
     format!(
         "steps = {steps} tokens_in = {tokens_in} tokens_out = {tokens_out} cache_read = {cache_read} cache_write = {cache_write}"
     )

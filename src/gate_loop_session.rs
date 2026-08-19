@@ -1,4 +1,3 @@
-
 use std::sync::{Mutex, PoisonError};
 
 static ACTIVE_GATE_ITERATION: Mutex<Option<usize>> = Mutex::new(None);

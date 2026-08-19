@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use super::parse::{json_number, LineRange};
+use super::parse::{LineRange, json_number};
 
 pub(crate) fn acp_content_diff_paths(update: &Value) -> Option<Vec<String>> {
     let arr = update.get("content")?.as_array()?;

@@ -29,12 +29,11 @@ fn child_health_transport_errors_require_coder_session_teardown() {
         "[unauthenticated] Error",
         "Agent agent-7b61bfe2-fa7a-47bd-8f5b-96c158067bc8 already has active run",
     ] {
-        assert!(
-            agent_error_requires_coder_session_teardown(msg),
-            "{msg}"
-        );
+        assert!(agent_error_requires_coder_session_teardown(msg), "{msg}");
     }
-    assert!(!agent_error_requires_coder_session_teardown("request timed out"));
+    assert!(!agent_error_requires_coder_session_teardown(
+        "request timed out"
+    ));
 }
 
 #[test]
@@ -63,9 +62,7 @@ fn cursor_http2_transport_errors_are_detected_and_normalized() {
         "Error: RetriableError: [unavailable] PING timed out"
     ));
     assert_eq!(
-        cursor_http2_transport_error_message(
-            "Error: RetriableError: [unavailable] PING timed out"
-        ),
+        cursor_http2_transport_error_message("Error: RetriableError: [unavailable] PING timed out"),
         Some("RetriableError: [unavailable] PING timed out")
     );
     assert!(agent_string_is_cursor_http2_transport_error(
@@ -77,7 +74,9 @@ fn cursor_http2_transport_errors_are_detected_and_normalized() {
         ),
         Some("RetriableError: [canceled] http/2 stream closed with error code CANCEL (0x8)")
     );
-    assert!(!agent_string_is_cursor_http2_transport_error("wrote review_requirements.json"));
+    assert!(!agent_string_is_cursor_http2_transport_error(
+        "wrote review_requirements.json"
+    ));
     assert!(cursor_http2_transport_error_message("ok").is_none());
 }
 

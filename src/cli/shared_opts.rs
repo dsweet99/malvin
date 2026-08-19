@@ -1,7 +1,7 @@
 pub use crate::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use clap::Args;
 
-use crate::model_id::{parse_model_id, ParsedModel};
+use crate::model_id::{ParsedModel, parse_model_id};
 
 const QUIET_HELPTEXT: &str =
     "Print only `MALVIN_DM_START`/`END` bodies on stdout (default router; not `-b`)";
@@ -93,4 +93,3 @@ impl SharedOpts {
         }
     }
 }
-

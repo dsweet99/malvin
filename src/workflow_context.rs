@@ -6,7 +6,12 @@ use crate::prompt_stratification::WorkflowRenderContext;
 #[cfg(test)]
 use crate::prompts::{PromptError, PromptStore};
 
-pub(crate) fn insert_formatted(ctx: &mut HashMap<String, String>, key: &str, path: &Path, base: &Path) {
+pub(crate) fn insert_formatted(
+    ctx: &mut HashMap<String, String>,
+    key: &str,
+    path: &Path,
+    base: &Path,
+) {
     ctx.insert(key.to_string(), format_prompt_path(path, base));
 }
 
@@ -71,12 +76,7 @@ fn insert_run_meta_and_workspace_paths(
     );
     insert_formatted(context, "malvin_output_path", &artifacts.run_dir, base);
     insert_formatted(context, "workspace_dir", &artifacts.run_dir, base);
-    insert_formatted(
-        context,
-        "logs_dir",
-        &crate::malvin_logs_root(base),
-        base,
-    );
+    insert_formatted(context, "logs_dir", &crate::malvin_logs_root(base), base);
 }
 
 fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunArtifacts) {
@@ -121,11 +121,7 @@ impl<'a> PromptModelOpts<'a> {
 
 #[must_use]
 pub const fn format_git_extra(git: bool) -> &'static str {
-    if git {
-        GIT_EXTRA_ENABLED
-    } else {
-        ""
-    }
+    if git { GIT_EXTRA_ENABLED } else { "" }
 }
 
 #[must_use]
@@ -168,18 +164,20 @@ fn resolve_path_against_base(path: &Path, base_r: &Path) -> PathBuf {
     } else {
         base_r.join(path)
     };
-    abs.canonicalize().unwrap_or_else(|_| resolve_nonexistent_path(&abs))
+    abs.canonicalize()
+        .unwrap_or_else(|_| resolve_nonexistent_path(&abs))
 }
 
 fn resolve_nonexistent_path(abs: &Path) -> PathBuf {
     abs.ancestors()
         .find_map(|ancestor| {
-            ancestor.canonicalize().ok().map(|canonical| {
-                match abs.strip_prefix(ancestor) {
+            ancestor
+                .canonicalize()
+                .ok()
+                .map(|canonical| match abs.strip_prefix(ancestor) {
                     Ok(tail) if !tail.as_os_str().is_empty() => canonical.join(tail),
                     _ => canonical,
-                }
-            })
+                })
         })
         .unwrap_or_else(|| abs.to_path_buf())
 }

@@ -199,7 +199,10 @@ fn signal_pid_kill_round_trip_without_kill_binary() {
     assert!(super::pid_alive(child_pid), "sleep child must start alive");
     super::signal_pid(child_pid, 9); // SIGKILL
     let status = child.wait().expect("wait signaled child");
-    assert!(!status.success(), "SIGKILL must yield non-success wait status");
+    assert!(
+        !status.success(),
+        "SIGKILL must yield non-success wait status"
+    );
     assert!(
         !super::pid_alive(child_pid),
         "after SIGKILL + wait, pid must be dead via kill(2)"

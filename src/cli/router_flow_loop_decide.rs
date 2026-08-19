@@ -2,7 +2,6 @@ use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::cli::workflow_router_shared::run_router_workspace_gates;
 use crate::router_flow::router_flow_acp::RouterExitSummarize;
 
-
 pub(crate) enum RouterLoopDecision {
     Continue,
     Exit,
@@ -60,9 +59,13 @@ pub(crate) const fn decide_router_loop_exit_not_done(
     }
 }
 
-pub(crate) const fn router_exit_summarize_for(decision: &RouterLoopDecision) -> RouterExitSummarize {
+pub(crate) const fn router_exit_summarize_for(
+    decision: &RouterLoopDecision,
+) -> RouterExitSummarize {
     match decision {
         RouterLoopDecision::Continue => RouterExitSummarize::Skip,
-        RouterLoopDecision::Exit | RouterLoopDecision::ExitGatesFailed(_) => RouterExitSummarize::Run,
+        RouterLoopDecision::Exit | RouterLoopDecision::ExitGatesFailed(_) => {
+            RouterExitSummarize::Run
+        }
     }
 }

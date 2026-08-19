@@ -1,6 +1,6 @@
 use super::{
-    apply_loop_defaults, apply_shared_config_defaults, apply_workspace_config_defaults,
-    global_flag_from_command_line, parse_cli_with_config_defaults, LoopDefaultMut,
+    LoopDefaultMut, apply_loop_defaults, apply_shared_config_defaults,
+    apply_workspace_config_defaults, global_flag_from_command_line, parse_cli_with_config_defaults,
 };
 use crate::cli::config_loop::subcommand_flag_from_command_line;
 use crate::cli::{Cli, Commands, SharedOpts};
@@ -56,9 +56,7 @@ fn write_agent_config_adds_agent_section_to_partial_file() {
 #[test]
 fn apply_loop_defaults_honors_partial_cli_overrides() {
     with_seeded_agent_config(|| {
-        let matches = Cli::command().get_matches_from([
-            "malvin", "tidy", "--max-loops", "3",
-        ]);
+        let matches = Cli::command().get_matches_from(["malvin", "tidy", "--max-loops", "3"]);
         let mut max_loops = 3_usize;
         let mut max_hypotheses = 5_usize;
         apply_loop_defaults(
@@ -79,8 +77,16 @@ fn apply_loop_defaults_honors_partial_cli_overrides() {
 fn flag_and_shared_helpers_detect_and_apply_defaults() {
     let matches = Cli::command().get_matches_from(["malvin", "tidy"]);
     assert!(!global_flag_from_command_line(&matches, "model"));
-    assert!(!subcommand_flag_from_command_line(&matches, "tidy", "max_loops"));
-    assert!(!subcommand_flag_from_command_line(&matches, "missing", "max_loops"));
+    assert!(!subcommand_flag_from_command_line(
+        &matches,
+        "tidy",
+        "max_loops"
+    ));
+    assert!(!subcommand_flag_from_command_line(
+        &matches,
+        "missing",
+        "max_loops"
+    ));
 
     let agent = AgentConfig {
         model: "cursor:cfg".into(),
@@ -142,8 +148,14 @@ fn apply_workspace_config_defaults_overrides_unset_flags() {
 fn apply_workspace_config_defaults_respects_explicit_cli_flags() {
     with_seeded_agent_config(|| {
         let matches = Cli::command().get_matches_from([
-            "malvin", "--model", "cursor:cli-model", "--max-acp-retries", "2", "tidy",
-            "--max-loops", "3",
+            "malvin",
+            "--model",
+            "cursor:cli-model",
+            "--max-acp-retries",
+            "2",
+            "tidy",
+            "--max-loops",
+            "3",
         ]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         apply_workspace_config_defaults(&matches, &mut cli).expect("apply");

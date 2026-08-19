@@ -1,10 +1,9 @@
+use super::parse::ParsedToolUpdate;
 use super::parse::{json_number, tool_phase_label};
 use super::parse_acp::{acp_normalize_path, acp_path_value};
-use super::parse::ParsedToolUpdate;
 use super::types::{
-    shorten_middle, ToolCallRecord, ToolSummaryDetail, ToolSummaryTracker,
     TOOL_DISPLAY_MAX_WIDTH, TOOL_PHASE_DONE, TOOL_PHASE_PENDING, TOOL_PHASE_RUNNING,
-    TOOL_PHASE_START,
+    TOOL_PHASE_START, ToolCallRecord, ToolSummaryDetail, ToolSummaryTracker, shorten_middle,
 };
 
 use serde_json::Value;
@@ -41,7 +40,10 @@ pub(crate) fn format_tool_line(
     parts.join(" ")
 }
 
-pub(crate) fn start_label<'a>(parsed: &'a ParsedToolUpdate, rec: Option<&'a ToolCallRecord>) -> &'a str {
+pub(crate) fn start_label<'a>(
+    parsed: &'a ParsedToolUpdate,
+    rec: Option<&'a ToolCallRecord>,
+) -> &'a str {
     if let Some(command) = parsed.command.as_deref() {
         return command;
     }
@@ -190,11 +192,7 @@ pub(crate) fn edit_paths(raw: &Value) -> Option<Vec<String>> {
             }
         }
     }
-    if paths.is_empty() {
-        None
-    } else {
-        Some(paths)
-    }
+    if paths.is_empty() { None } else { Some(paths) }
 }
 
 pub(crate) fn append_byte_fields(parts: &mut Vec<String>, raw: &Value) {

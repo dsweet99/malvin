@@ -1,10 +1,9 @@
-
 #[path = "default_files.rs"]
 mod default_files;
 
 pub use default_files::{
-    default_file, header_prompt_file, router_a_prompt_file, router_b_prompt_file, ROUTER_A_MD,
-    ROUTER_B_CREATIVE_MD, ROUTER_B_MD,
+    ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD, default_file, header_prompt_file,
+    router_a_prompt_file, router_b_prompt_file,
 };
 
 pub const HEADER_MD: &str = "header.md";
@@ -55,7 +54,10 @@ mod review_plan_embed_tests {
                     .is_some_and(|n| n.starts_with("mpc_block_"))
             })
             .count();
-        assert_eq!(count, 0, "default_prompts/ must contain no mpc_block_*.md files");
+        assert_eq!(
+            count, 0,
+            "default_prompts/ must contain no mpc_block_*.md files"
+        );
     }
 
     #[test]
@@ -72,8 +74,8 @@ mod review_plan_embed_tests {
 mod advice_path_embed_tests {
     use std::path::Path;
 
-    use crate::config::DEFAULT_CLI_MODEL;
     use crate::artifacts::create_run_artifacts;
+    use crate::config::DEFAULT_CLI_MODEL;
     use crate::orchestrator::workflow_context_paths_only;
     use crate::prompts::{PromptStore, render_header};
 
@@ -94,7 +96,10 @@ mod advice_path_embed_tests {
         store.ensure_defaults().expect("defaults");
         let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL, false);
         let header = render_header(&store, ctx.as_map()).expect("header");
-        assert!(!header.contains("{{"), "header must expand all placeholders");
+        assert!(
+            !header.contains("{{"),
+            "header must expand all placeholders"
+        );
         assert!(
             header.contains(".malvin_home/logs"),
             "header must render logs_dir to home logs bucket"
@@ -121,17 +126,17 @@ mod router_header_embed_tests {
     use std::path::Path;
 
     use super::{
-        default_file, DO_HEADER_MD, HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD,
-        ROUTER_SUMMARIZE_MD,
+        DO_HEADER_MD, HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD,
+        ROUTER_SUMMARIZE_MD, default_file,
     };
-    use crate::config::DEFAULT_CLI_MODEL;
     use crate::artifacts::create_run_artifacts;
+    use crate::config::DEFAULT_CLI_MODEL;
     use crate::orchestrator::workflow_context_paths_only;
     use crate::prompts::{PromptStore, render_header};
     use crate::router_flow::router_flow_prompt::{
-        build_router_a_prompt, build_router_b_prompt, build_router_header_prompt,
-        build_router_summarize_prompt, prepare_router_prompt_store, RouterAPromptInput,
-        RouterBPromptInput, RouterHeaderPromptInput, RouterSummarizePromptInput,
+        RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput,
+        RouterSummarizePromptInput, build_router_a_prompt, build_router_b_prompt,
+        build_router_header_prompt, build_router_summarize_prompt, prepare_router_prompt_store,
     };
 
     #[test]
@@ -151,7 +156,10 @@ mod router_header_embed_tests {
         store.ensure_defaults().expect("defaults");
         let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL, false);
         let header = render_header(&store, ctx.as_map()).expect("header");
-        assert!(!header.contains("{{"), "header must expand all placeholders");
+        assert!(
+            !header.contains("{{"),
+            "header must expand all placeholders"
+        );
         let store = prepare_router_prompt_store().expect("store");
         let header_turn = build_router_header_prompt(RouterHeaderPromptInput {
             store: &store,

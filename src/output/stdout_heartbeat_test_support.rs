@@ -1,10 +1,10 @@
 use std::time::Duration;
 
 use crate::output::stdout_heartbeat::{
-    reset_stdout_heartbeat_for_test, test_set_last_heartbeat_elapsed, HEARTBEAT_TEST_LOCK,
+    HEARTBEAT_TEST_LOCK, reset_stdout_heartbeat_for_test, test_set_last_heartbeat_elapsed,
 };
 use crate::output::{
-    enable_stdout_capture, take_captured_stdout, set_stdout_log_path, STDOUT_LOG_TEST_LOCK,
+    STDOUT_LOG_TEST_LOCK, enable_stdout_capture, set_stdout_log_path, take_captured_stdout,
 };
 
 pub(super) fn heartbeat_test_guards() -> (
@@ -12,8 +12,12 @@ pub(super) fn heartbeat_test_guards() -> (
     std::sync::MutexGuard<'static, ()>,
 ) {
     (
-        HEARTBEAT_TEST_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner),
-        STDOUT_LOG_TEST_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner),
+        HEARTBEAT_TEST_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner),
+        STDOUT_LOG_TEST_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner),
     )
 }
 

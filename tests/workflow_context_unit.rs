@@ -2,13 +2,11 @@ mod common;
 
 use std::path::Path;
 
-use malvin::artifacts::create_run_artifacts;
 use common::with_isolated_home;
+use malvin::artifacts::create_run_artifacts;
 use malvin::config::DEFAULT_CLI_MODEL;
 use malvin::format_malvin_command;
-use malvin::workflow_context::{
-    format_prompt_path, workflow_context_paths_only,
-};
+use malvin::workflow_context::{format_prompt_path, workflow_context_paths_only};
 
 #[test]
 fn workflow_context_paths_include_plan() {

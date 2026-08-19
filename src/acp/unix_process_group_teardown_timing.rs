@@ -1,4 +1,3 @@
-
 #[must_use]
 pub(crate) fn test_fast_acp_teardown_enabled() -> bool {
     crate::acp::test_no_real_agent_enabled()

@@ -1,4 +1,3 @@
-
 mod defaults;
 mod store;
 
@@ -6,9 +5,9 @@ mod template;
 pub use template::*;
 
 pub use defaults::{
-    DO_HEADER_MD, INSPIRE_SUMMARIZE_MD, WRITE_A_MD, WRITE_B_MD, HEADER_MD, ROUTER_A_MD,
-    ROUTER_B_CREATIVE_MD, ROUTER_B_MD, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD,
-    header_prompt_file, router_a_prompt_file, router_b_prompt_file,
+    DO_HEADER_MD, HEADER_MD, INSPIRE_SUMMARIZE_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD,
+    ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD, WRITE_A_MD, WRITE_B_MD, header_prompt_file,
+    router_a_prompt_file, router_b_prompt_file,
 };
 
 #[allow(unused_imports)]
@@ -57,9 +56,7 @@ fn unresolved_braces_error(prompt_file: Option<&str>) -> PromptError {
 pub struct PromptError(pub String);
 
 pub use crate::user_home::user_home_dir;
-pub use store::{
-    PromptStore, render_header, render_inspire_mbc2_prompt,
-};
+pub use store::{PromptStore, render_header, render_inspire_mbc2_prompt};
 
 #[cfg(test)]
 mod embedded_defaults_tests;
@@ -70,19 +67,19 @@ mod prompts_tests_a;
 #[path = "prompts_tests_b.rs"]
 mod prompts_tests_b;
 
-
 #[cfg(test)]
-mod kiss_cov_auto{
+mod kiss_cov_auto {
     use super::*;
 
     #[test]
-    fn kiss_cov_prompt_error() { let _: Option<PromptError> = None; }
-
+    fn kiss_cov_prompt_error() {
+        let _: Option<PromptError> = None;
+    }
 }
 
 #[cfg(test)]
 #[allow(unused_imports)]
-mod kiss_cov_gate_refs{
+mod kiss_cov_gate_refs {
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {

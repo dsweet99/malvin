@@ -1,4 +1,3 @@
-
 #[test]
 fn kiss_cov_cursor_sdk_auth_and_bridge_path() {
     let _ = super::auth::ensure_sdk_authenticated;

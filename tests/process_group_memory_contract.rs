@@ -1,4 +1,3 @@
-
 mod common;
 
 use std::collections::HashSet;
@@ -63,17 +62,13 @@ fn kiss_cov_process_group_stub_names_on_unix() {
 }
 
 #[test]
-fn kiss_cov_process_group_rss_platform_symbols() {
-}
+fn kiss_cov_process_group_rss_platform_symbols() {}
 
 #[test]
-fn kiss_cov_process_group_mem_watch_symbols() {
-}
+fn kiss_cov_process_group_mem_watch_symbols() {}
 
 #[test]
-fn kiss_cov_sandbox_contract_and_hostile_symbols() {
-}
+fn kiss_cov_sandbox_contract_and_hostile_symbols() {}
 
 #[test]
-fn kiss_cov_process_group_teardown_symbols() {
-}
+fn kiss_cov_process_group_teardown_symbols() {}

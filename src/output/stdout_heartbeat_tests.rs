@@ -5,8 +5,8 @@ use crate::output::stdout_heartbeat::{
     try_emit_heartbeat_if_due,
 };
 use crate::output::{
-    WHO_H, format_who_tag_delim, format_who_tag_prefix, init_stdout_style_for_test, is_log_timestamp_token,
-    print_stdout_line, set_stdout_log_path,
+    WHO_H, format_who_tag_delim, format_who_tag_prefix, init_stdout_style_for_test,
+    is_log_timestamp_token, print_stdout_line, set_stdout_log_path,
 };
 use crate::time_format::heartbeat_payload_has_wall_clock_prefix;
 
@@ -22,10 +22,10 @@ fn heartbeat_log_line_uses_logger_timestamp_only() {
     let log_delim = format_who_tag_delim(WHO_H);
     let display_prefix = format_who_tag_prefix(WHO_H);
     let line = text.lines().next().expect("heartbeat line");
-    assert!(is_log_timestamp_token(line.split_whitespace().next().unwrap_or("")));
-    let payload = line
-        .split_once(&log_delim)
-        .map_or("", |(_, rest)| rest);
+    assert!(is_log_timestamp_token(
+        line.split_whitespace().next().unwrap_or("")
+    ));
+    let payload = line.split_once(&log_delim).map_or("", |(_, rest)| rest);
     assert!(heartbeat_payload_has_wall_clock_prefix(payload));
     assert!(terminal.contains(&format!("{display_prefix}{payload}")));
     assert!(!terminal.trim().starts_with("20"));
@@ -129,6 +129,12 @@ fn heartbeat_suppressed_for_do_plain_stdout() {
         try_emit_heartbeat_if_due(Instant::now(), false);
         crate::output::set_heartbeat_stdout_suppressed(false);
     });
-    assert!(terminal.is_empty(), "do plain must not emit h| on terminal; got {terminal:?}");
-    assert!(text.is_empty(), "do plain must not emit h| to stdout.log; got {text:?}");
+    assert!(
+        terminal.is_empty(),
+        "do plain must not emit h| on terminal; got {terminal:?}"
+    );
+    assert!(
+        text.is_empty(),
+        "do plain must not emit h| to stdout.log; got {text:?}"
+    );
 }

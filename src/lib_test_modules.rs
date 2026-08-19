@@ -1,4 +1,3 @@
-
 #[path = "cli_kiss_cov_smoke_tests.rs"]
 pub mod cli_kiss_cov_smoke_tests;
 

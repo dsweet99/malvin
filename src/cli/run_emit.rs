@@ -112,10 +112,10 @@ pub fn emit_run_startup_sequence(
 #[cfg(test)]
 mod tests {
     use super::{
-        append_command_log_line, emit_host_resources_line, emit_run_logs_line,
-        emit_run_startup_banner, emit_run_startup_sequence, format_model_line, RunStartupEmitOpts,
+        RunStartupEmitOpts, append_command_log_line, emit_host_resources_line, emit_run_logs_line,
+        emit_run_startup_banner, emit_run_startup_sequence, format_model_line,
     };
-    use crate::output::{format_who_tag_delim, WHO_U};
+    use crate::output::{WHO_U, format_who_tag_delim};
 
     #[test]
     fn emit_command_line_uses_user_who_tag() {
@@ -144,8 +144,14 @@ mod tests {
 
     #[test]
     fn format_model_line_shows_prefixed_model() {
-        assert_eq!(format_model_line("cursor:composer-2"), "Model: cursor:composer-2");
-        assert_eq!(format_model_line("pi:openai/gpt-4o"), "Model: pi:openai/gpt-4o");
+        assert_eq!(
+            format_model_line("cursor:composer-2"),
+            "Model: cursor:composer-2"
+        );
+        assert_eq!(
+            format_model_line("pi:openai/gpt-4o"),
+            "Model: pi:openai/gpt-4o"
+        );
     }
 
     #[test]
@@ -154,10 +160,13 @@ mod tests {
         let run_dir = tmp.path().join("run");
         std::fs::create_dir_all(&run_dir).expect("mkdir");
         std::fs::write(run_dir.join("command.log"), "existing\n").expect("seed");
-        append_command_log_line(&run_dir, false, &format_model_line("pi:openai/gpt-4o")).expect("emit");
+        append_command_log_line(&run_dir, false, &format_model_line("pi:openai/gpt-4o"))
+            .expect("emit");
         let text = std::fs::read_to_string(run_dir.join("command.log")).expect("read");
         let delim = format_who_tag_delim(WHO_U);
-        assert!(text.contains("existing") && text.contains(&format!(" {delim}Model: pi:openai/gpt-4o")));
+        assert!(
+            text.contains("existing") && text.contains(&format!(" {delim}Model: pi:openai/gpt-4o"))
+        );
     }
 
     #[test]
@@ -206,8 +215,8 @@ mod tests {
     #[test]
     fn emit_run_startup_sequence_omits_host_resources_when_disabled() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let artifacts =
-            crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path())).expect("art");
+        let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
+            .expect("art");
         emit_run_startup_sequence(
             &artifacts,
             RunStartupEmitOpts {

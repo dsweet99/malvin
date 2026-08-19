@@ -1,13 +1,17 @@
-use super::{acquire_session_name, assert_no_peer_name_lock, generate_auto_name, generate_auto_name_with, name_path, names_registry_root, sleep_child, with_isolated_names};
+use super::{
+    acquire_session_name, assert_no_peer_name_lock, generate_auto_name, generate_auto_name_with,
+    name_path, names_registry_root, sleep_child, with_isolated_names,
+};
 
 #[test]
 fn auto_name_is_five_lowercase_alnum() {
     with_isolated_names(|_| {
         let names: Vec<String> = (0..8).map(|i| format!("a{i:04}")).collect();
         let (name, guard) = generate_auto_name_with(|i| names[i].clone()).expect("auto name");
-        assert!(name
-            .chars()
-            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()));
+        assert!(
+            name.chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+        );
         assert_eq!(name.len(), 5);
         drop(guard);
     });

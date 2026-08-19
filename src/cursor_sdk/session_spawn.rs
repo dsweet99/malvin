@@ -1,11 +1,14 @@
-
 use crate::acp::AgentError;
-use crate::bridge_sdk::{send_create, send_resume, start_mem_watch, BridgeSession, BridgeSpawnArgs};
+use crate::bridge_sdk::{
+    BridgeSession, BridgeSpawnArgs, send_create, send_resume, start_mem_watch,
+};
 
 use super::auth::effective_sdk_api_key;
 use super::bridge_path::resolve_bridge_js;
 
-pub(crate) async fn cursor_spawn_bridge(args: BridgeSpawnArgs<'_>) -> Result<BridgeSession, AgentError> {
+pub(crate) async fn cursor_spawn_bridge(
+    args: BridgeSpawnArgs<'_>,
+) -> Result<BridgeSession, AgentError> {
     crate::malvin_sandbox::assert_dead_before_next_spawn().map_err(AgentError)?;
     let model = args.model.to_string();
     let resume_id = args.resume_agent_id.clone();
@@ -111,7 +114,8 @@ fn cursor_assemble_session(
     }
 }
 
-fn cursor_resolve_node_and_bridge() -> Result<(std::path::PathBuf, std::path::PathBuf), AgentError> {
+fn cursor_resolve_node_and_bridge() -> Result<(std::path::PathBuf, std::path::PathBuf), AgentError>
+{
     let bridge = resolve_bridge_js().map_err(AgentError)?;
     let node = super::node_resolve::resolve_node_bin().map_err(AgentError)?;
     Ok((node, bridge))

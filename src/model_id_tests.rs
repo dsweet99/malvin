@@ -37,10 +37,7 @@ fn parse_bracket_overrides() {
             },
         ]
     );
-    assert_eq!(
-        c.canonical(),
-        "cursor:claude-opus-5[effort=high,fast=true]"
-    );
+    assert_eq!(c.canonical(), "cursor:claude-opus-5[effort=high,fast=true]");
     assert_eq!(
         c.cursor_bridge_model(),
         "claude-opus-5[effort=high,fast=true]"
@@ -49,15 +46,21 @@ fn parse_bracket_overrides() {
     assert_eq!(pi.slug, "openai/gpt-4o");
     assert_eq!(pi.thinking_param(), Some("high"));
     assert_eq!(pi.canonical(), "pi:openai/gpt-4o[thinking=high]");
-    assert!(parse_model_id("cursor:opus[")
-        .expect_err("unbalanced")
-        .contains(']'));
-    assert!(parse_model_id("pi:openai/gpt-4o[fast=true]")
-        .expect_err("pi only thinking")
-        .contains("thinking"));
-    assert!(parse_model_id("pi:openai/gpt-4o[thinking=ultra]")
-        .expect_err("bad level")
-        .contains("thinking"));
+    assert!(
+        parse_model_id("cursor:opus[")
+            .expect_err("unbalanced")
+            .contains(']')
+    );
+    assert!(
+        parse_model_id("pi:openai/gpt-4o[fast=true]")
+            .expect_err("pi only thinking")
+            .contains("thinking")
+    );
+    assert!(
+        parse_model_id("pi:openai/gpt-4o[thinking=ultra]")
+            .expect_err("bad level")
+            .contains("thinking")
+    );
 }
 
 #[test]
@@ -93,18 +96,26 @@ fn reject_bare_legacy_and_empty_slug() {
     assert!(parse_model_id("auto").is_err());
     assert!(parse_model_id("cursor:").is_err());
     assert!(parse_model_id("pi:openai").is_err());
-    assert!(parse_model_id("prime:openai/gpt-4o")
-        .expect_err("legacy prime")
-        .contains("prime:"));
-    assert!(parse_model_id("mini:openrouter/x")
-        .expect_err("legacy mini")
-        .contains("mini:"));
-    assert!(parse_model_id("openrouter:x")
-        .expect_err("legacy")
-        .contains("pi:openrouter/"));
-    assert!(parse_model_id("local:qwen35_9b_q4")
-        .expect_err("legacy")
-        .contains("local"));
+    assert!(
+        parse_model_id("prime:openai/gpt-4o")
+            .expect_err("legacy prime")
+            .contains("prime:")
+    );
+    assert!(
+        parse_model_id("mini:openrouter/x")
+            .expect_err("legacy mini")
+            .contains("mini:")
+    );
+    assert!(
+        parse_model_id("openrouter:x")
+            .expect_err("legacy")
+            .contains("pi:openrouter/")
+    );
+    assert!(
+        parse_model_id("local:qwen35_9b_q4")
+            .expect_err("legacy")
+            .contains("local")
+    );
 }
 
 #[test]

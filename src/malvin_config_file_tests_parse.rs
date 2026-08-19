@@ -1,6 +1,4 @@
-use super::{
-    ensure_config_parent_dir, load_malvin_config, read_on_disk_config_value,
-};
+use super::{ensure_config_parent_dir, load_malvin_config, read_on_disk_config_value};
 use crate::support_paths::DEFAULT_CLI_MODEL;
 use crate::test_utils::with_isolated_home;
 use crate::workspace_paths::malvin_config_path;
@@ -17,11 +15,14 @@ fn read_on_disk_config_value_rejects_invalid_toml() {
 
 #[test]
 fn parse_malvin_config_falls_back_when_values_invalid_or_missing() {
-    use super::{parse_malvin_config, read_string, read_u32, read_usize, MalvinConfig};
+    use super::{MalvinConfig, parse_malvin_config, read_string, read_u32, read_usize};
     let cfg = parse_malvin_config("mem_limit_gb = 0\n");
     assert!(cfg.mem_limit_gb >= 1);
     assert_eq!(cfg.context_size, super::DEFAULT_CONTEXT_SIZE);
-    assert_eq!(cfg.logs.max_age_days, crate::log_gc_config::LogsGcConfig::default().max_age_days);
+    assert_eq!(
+        cfg.logs.max_age_days,
+        crate::log_gc_config::LogsGcConfig::default().max_age_days
+    );
     assert_eq!(cfg.agent.model, DEFAULT_CLI_MODEL);
     let full = MalvinConfig {
         mem_limit_gb: cfg.mem_limit_gb,
@@ -64,23 +65,56 @@ fn parse_model_token_cost_rates_defaults_and_rejects_negative() {
     assert!((rates.usd_per_microtoken_out - 15.0).abs() < f64::EPSILON);
     assert!((rates.usd_per_microtoken_cache_read - 0.3).abs() < f64::EPSILON);
     assert!((rates.usd_per_microtoken_cache_write - 3.75).abs() < f64::EPSILON);
-    assert_eq!(cfg.token_cost_rates_for("cursor:other"), super::TokenCostRates::default());
+    assert_eq!(
+        cfg.token_cost_rates_for("cursor:other"),
+        super::TokenCostRates::default()
+    );
     let dual = parse_malvin_config(
         "[agent.cursor.auto]\nusd_per_microtoken_in = 3.0\n[agent.cursor.gpt-5]\nusd_per_microtoken_out = 15.0\n",
     );
-    assert!((dual.token_cost_rates_for("cursor:auto").usd_per_microtoken_in - 3.0).abs() < f64::EPSILON);
-    assert!((dual.token_cost_rates_for("cursor:gpt-5").usd_per_microtoken_out - 15.0).abs() < f64::EPSILON);
-    assert!(parse_model_token_cost_rates("[agent.cursor.auto]\nusd_per_microtoken_in = -1\n").is_err());
-    assert_eq!(cfg.token_cost_rates_for("auto"), super::TokenCostRates::default());
+    assert!(
+        (dual
+            .token_cost_rates_for("cursor:auto")
+            .usd_per_microtoken_in
+            - 3.0)
+            .abs()
+            < f64::EPSILON
+    );
+    assert!(
+        (dual
+            .token_cost_rates_for("cursor:gpt-5")
+            .usd_per_microtoken_out
+            - 15.0)
+            .abs()
+            < f64::EPSILON
+    );
+    assert!(
+        parse_model_token_cost_rates("[agent.cursor.auto]\nusd_per_microtoken_in = -1\n").is_err()
+    );
+    assert_eq!(
+        cfg.token_cost_rates_for("auto"),
+        super::TokenCostRates::default()
+    );
     let pi = parse_malvin_config(
         "[agent.pi.\"openai/gpt-4o-mini\"]\nusd_per_microtoken_in = 1.5\nusd_per_microtoken_out = 2.5\n",
     );
-    assert!((pi.token_cost_rates_for("pi:openai/gpt-4o-mini").usd_per_microtoken_in - 1.5).abs() < f64::EPSILON);
-    assert!((pi.token_cost_rates_for("pi:openai/gpt-4o-mini").usd_per_microtoken_out - 2.5).abs() < f64::EPSILON);
+    assert!(
+        (pi.token_cost_rates_for("pi:openai/gpt-4o-mini")
+            .usd_per_microtoken_in
+            - 1.5)
+            .abs()
+            < f64::EPSILON
+    );
+    assert!(
+        (pi.token_cost_rates_for("pi:openai/gpt-4o-mini")
+            .usd_per_microtoken_out
+            - 2.5)
+            .abs()
+            < f64::EPSILON
+    );
     let nested = parse_model_token_cost_rates(
         "[agent.pi.openai.gpt-4o-mini]\nusd_per_microtoken_in = 9.0\n",
     )
     .expect("parse");
     assert!(!nested.contains_key("pi:openai/gpt-4o-mini"));
 }
-

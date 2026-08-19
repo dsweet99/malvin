@@ -1,10 +1,8 @@
-use super::{
-    command_doc_markdown, print_doc_to_writer, MALVIN_OVERVIEW_DOC, ROUTER_DOC,
-};
+use super::{MALVIN_OVERVIEW_DOC, ROUTER_DOC, command_doc_markdown, print_doc_to_writer};
 use crate::cli::Cli;
-use crate::cli::{Commands, InspireArgs};
-use crate::cli::write_flow::WriteArgs;
 use crate::cli::models_cmd::ModelsArgs;
+use crate::cli::write_flow::WriteArgs;
+use crate::cli::{Commands, InspireArgs};
 use clap::Parser;
 
 fn capture_doc(command: Option<&Commands>) -> Result<Vec<u8>, String> {
@@ -123,7 +121,6 @@ fn malvin_doc_embeds_name_section() {
         "doc must describe registry or duplicate-name behavior"
     );
 }
-
 
 #[cfg(test)]
 #[allow(unused_imports)]

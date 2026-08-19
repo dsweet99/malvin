@@ -1,4 +1,3 @@
-
 use crate::acp::{AuthError, has_api_key};
 
 #[must_use]

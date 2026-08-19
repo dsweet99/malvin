@@ -1,8 +1,7 @@
-
 use std::collections::{HashMap, HashSet};
 use std::sync::{LazyLock, Mutex};
 
-use crate::acp::unix_process_group_ps::{ProcRow, INIT_PID, list_proc_rows};
+use crate::acp::unix_process_group_ps::{INIT_PID, ProcRow, list_proc_rows};
 
 static FIRST_SEEN_PPID: LazyLock<Mutex<HashMap<u32, u32>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
@@ -10,7 +9,9 @@ static AFFILIATED_PIDS: LazyLock<Mutex<HashSet<u32>>> =
     LazyLock::new(|| Mutex::new(HashSet::new()));
 
 fn lock_or_recover<T>(mutex: &LazyLock<Mutex<T>>) -> std::sync::MutexGuard<'_, T> {
-    mutex.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+    mutex
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 pub(crate) fn clear_session_spawn_affiliation() {
@@ -23,10 +24,7 @@ pub(crate) fn clear_session_spawn_affiliation_for_test() {
     clear_session_spawn_affiliation();
 }
 
-pub(crate) fn refresh_session_spawn_affiliation(
-    agent_pgid: Option<u32>,
-    baseline: &HashSet<u32>,
-) {
+pub(crate) fn refresh_session_spawn_affiliation(agent_pgid: Option<u32>, baseline: &HashSet<u32>) {
     let rows = list_proc_rows().unwrap_or_default();
     let mut first_seen = lock_or_recover(&FIRST_SEEN_PPID);
     for row in &rows {
@@ -89,11 +87,16 @@ pub(crate) fn is_session_affiliated_pid(pid: u32) -> bool {
 }
 
 pub(crate) fn session_affiliated_or_agent_acp(pid: u32) -> bool {
-    is_session_affiliated_pid(pid) || crate::acp::unix_process_group_ps::looks_like_malvin_agent_acp(pid)
+    is_session_affiliated_pid(pid)
+        || crate::acp::unix_process_group_ps::looks_like_malvin_agent_acp(pid)
 }
 
 #[cfg(test)]
-pub(crate) fn pid_is_session_affiliated(pid: u32, start_ppid: u32, ctx: &AffiliationCtx<'_>) -> bool {
+pub(crate) fn pid_is_session_affiliated(
+    pid: u32,
+    start_ppid: u32,
+    ctx: &AffiliationCtx<'_>,
+) -> bool {
     pid_is_session_affiliated_impl(pid, start_ppid, ctx)
 }
 
@@ -138,4 +141,3 @@ fn pid_is_session_affiliated_impl(pid: u32, start_ppid: u32, ctx: &AffiliationCt
     }
     false
 }
-

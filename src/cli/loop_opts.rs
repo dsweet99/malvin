@@ -1,4 +1,3 @@
-
 use clap::ArgMatches;
 
 use crate::reliability_tier::{ReliabilityTier, ReliabilityTierFlags};
@@ -122,8 +121,8 @@ mod tests {
 
     #[test]
     fn apply_gate_loop_tenacious_expands_unless_opted_out() {
-        use clap::CommandFactory;
         use crate::cli::Cli;
+        use clap::CommandFactory;
         let matches = Cli::command().get_matches_from(["malvin", "tidy"]);
         let mut loops = 1usize;
         let mut retries = 3u32;

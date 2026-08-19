@@ -1,7 +1,7 @@
 use super::*;
+use crate::output::{ERROR_WHO, MALVIN_WHO, WARNING_WHO, format_who_tag_delim};
 use crate::repo_checks::command_support::set_fake_command_dir;
 use crate::test_stderr_capture::capture_stderr_output;
-use crate::output::{format_who_tag_delim, ERROR_WHO, MALVIN_WHO, WARNING_WHO};
 
 #[cfg(unix)]
 fn install_zero_exit_gate_bins(bin_dir: &std::path::Path) {

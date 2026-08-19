@@ -1,4 +1,3 @@
-
 use std::io::{self, Write};
 
 use super::Commands;
@@ -40,7 +39,10 @@ pub(crate) fn doc_text(command: Option<&Commands>) -> String {
     )
 }
 
-pub(crate) fn print_doc_to_writer(command: Option<&Commands>, mut out: impl Write) -> Result<(), String> {
+pub(crate) fn print_doc_to_writer(
+    command: Option<&Commands>,
+    mut out: impl Write,
+) -> Result<(), String> {
     let text = doc_text(command).replace("{{ advice_path }}", crate::MALVIN_ADVICE_REL);
     out.write_all(text.as_bytes())
         .map_err(|e| format!("stdout: {e}"))?;

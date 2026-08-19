@@ -1,4 +1,3 @@
-
 use crate::acp::{AgentIoOptions, CoderPromptOptions};
 
 fn pi_mock_io() -> AgentIoOptions {

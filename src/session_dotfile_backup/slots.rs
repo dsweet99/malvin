@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
-use super::alloc::{allocate_backup_dir, remove_if_exists, DotfileBackupLabels};
 use super::DotfileBackupState;
+use super::alloc::{DotfileBackupLabels, allocate_backup_dir, remove_if_exists};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(super) struct DotfileSpecRow {
@@ -98,7 +98,11 @@ pub(super) fn backup_slot(
     }))
 }
 
-pub(super) fn restore_slot(work_dir: &Path, backup: &DotfileBackupState, slot: usize) -> Result<(), String> {
+pub(super) fn restore_slot(
+    work_dir: &Path,
+    backup: &DotfileBackupState,
+    slot: usize,
+) -> Result<(), String> {
     let spec = &DOTFILE_ROWS[slot];
     let _ = spec.rel_path();
     let dst = dotfile_source_path(slot, work_dir);

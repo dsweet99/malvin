@@ -35,7 +35,10 @@ fn parse_smaps_rollup_pss_bytes_converts_kib_to_bytes() {
 #[cfg(target_os = "linux")]
 #[test]
 fn parse_proc_kib_field_reads_prefixed_line() {
-    assert_eq!(parse_proc_kib_field("Pss:  512 kB\n", "Pss:"), Some(512 * 1024));
+    assert_eq!(
+        parse_proc_kib_field("Pss:  512 kB\n", "Pss:"),
+        Some(512 * 1024)
+    );
 }
 
 #[cfg(target_os = "linux")]
@@ -48,7 +51,8 @@ fn parse_smaps_rollup_uss_bytes_sums_private_pages() {
 #[cfg(target_os = "linux")]
 #[test]
 fn parse_smaps_rollup_uss_bytes_derives_from_shared_subtraction() {
-    let rollup = "Rss:                1796 kB\nShared_Clean:       1668 kB\nShared_Dirty:          0 kB\n";
+    let rollup =
+        "Rss:                1796 kB\nShared_Clean:       1668 kB\nShared_Dirty:          0 kB\n";
     assert_eq!(parse_smaps_rollup_uss_bytes(rollup), Some(128 * 1024));
 }
 

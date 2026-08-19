@@ -43,11 +43,7 @@ pub(super) fn check_node_version(bridge: &Bridge) {
         .arg("-v")
         .output()
         .unwrap_or_else(|e| panic!("failed to run `{} -v`: {e}", node.display()));
-    assert!(
-        output.status.success(),
-        "`{} -v` failed",
-        node.display()
-    );
+    assert!(output.status.success(), "`{} -v` failed", node.display());
     let text = String::from_utf8_lossy(&output.stdout);
     let (major, minor) = parse_node_version(text.trim()).unwrap_or_else(|| {
         panic!("could not parse Node version from {:?}", text.trim());

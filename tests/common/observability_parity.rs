@@ -1,4 +1,3 @@
-
 use std::path::Path;
 
 pub fn assert_acp_trace_schema(path: &Path) {
@@ -39,10 +38,7 @@ pub fn assert_prompts_contains(path: &Path, substring: &str) {
 
 pub fn trace_contains_substring(path: &Path, needle: &str) {
     let text = std::fs::read_to_string(path).expect("read trace");
-    assert!(
-        text.contains(needle),
-        "trace.jsonl must contain {needle:?}"
-    );
+    assert!(text.contains(needle), "trace.jsonl must contain {needle:?}");
 }
 
 pub fn assert_stdout_lacks_substring(path: &Path, needle: &str) {

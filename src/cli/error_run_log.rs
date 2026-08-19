@@ -1,4 +1,3 @@
-
 use std::path::PathBuf;
 use std::sync::Mutex;
 
@@ -70,7 +69,7 @@ pub fn append_command_error_to_run_log(message: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::output::{format_who_tag_delim, ERROR_WHO};
+    use crate::output::{ERROR_WHO, format_who_tag_delim};
     use tempfile::tempdir;
 
     #[test]

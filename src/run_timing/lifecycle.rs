@@ -2,7 +2,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use super::{report, CostPolicy, RunTiming, TimingPhase};
+use super::{CostPolicy, RunTiming, TimingPhase, report};
 
 fn token_cost_rates_from_home_config(model: &str) -> crate::malvin_config_file::TokenCostRates {
     crate::malvin_config_file::load_malvin_config(std::path::Path::new("."))

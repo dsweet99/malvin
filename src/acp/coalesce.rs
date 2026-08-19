@@ -38,16 +38,17 @@ pub(crate) fn coalesce_append_chunk(
 }
 
 pub(crate) fn coalesce_char_boundary_at(s: &str, n_chars: usize) -> usize {
-    s.char_indices()
-        .nth(n_chars)
-        .map_or(s.len(), |(i, _)| i)
+    s.char_indices().nth(n_chars).map_or(s.len(), |(i, _)| i)
 }
 
-pub(crate) fn coalesce_flush_cap(buf: &mut String, buf_chars: &mut usize, emissions: &mut Vec<String>) {
+pub(crate) fn coalesce_flush_cap(
+    buf: &mut String,
+    buf_chars: &mut usize,
+    emissions: &mut Vec<String>,
+) {
     while *buf_chars >= ACP_VERBOSE_COALESCE_MAX {
         let hard_end = coalesce_char_boundary_at(buf, ACP_VERBOSE_COALESCE_MAX);
-        let (emit_end, drain_end, drained_chars) =
-            coalesce_word_split_points(buf, hard_end);
+        let (emit_end, drain_end, drained_chars) = coalesce_word_split_points(buf, hard_end);
         let emitted = buf[..emit_end].to_string();
         buf.drain(..drain_end);
         *buf_chars -= drained_chars;
@@ -82,7 +83,11 @@ fn coalesce_word_split_points(buf: &str, hard_end: usize) -> (usize, usize, usiz
     (hard_end, hard_end, ACP_VERBOSE_COALESCE_MAX)
 }
 
-pub(crate) fn coalesce_flush_nonempty(buf: &mut String, buf_chars: &mut usize, emissions: &mut Vec<String>) {
+pub(crate) fn coalesce_flush_nonempty(
+    buf: &mut String,
+    buf_chars: &mut usize,
+    emissions: &mut Vec<String>,
+) {
     if !buf.is_empty() {
         emissions.push(std::mem::take(buf));
         *buf_chars = 0;
@@ -104,11 +109,21 @@ impl VerboseIoCoalescer {
         match kind {
             SessionUpdateChunkKind::Message => {
                 Self::flush_if_nonempty(&mut self.thought, &mut self.thought_chars, "acp thought");
-                Self::feed_buf(&mut self.message, &mut self.message_chars, chunk, "acp message");
+                Self::feed_buf(
+                    &mut self.message,
+                    &mut self.message_chars,
+                    chunk,
+                    "acp message",
+                );
             }
             SessionUpdateChunkKind::Thought => {
                 Self::flush_if_nonempty(&mut self.message, &mut self.message_chars, "acp message");
-                Self::feed_buf(&mut self.thought, &mut self.thought_chars, chunk, "acp thought");
+                Self::feed_buf(
+                    &mut self.thought,
+                    &mut self.thought_chars,
+                    chunk,
+                    "acp thought",
+                );
             }
         }
     }
@@ -136,9 +151,7 @@ impl VerboseIoCoalescer {
 }
 
 #[allow(dead_code)]
-pub(crate) fn session_update_chunk_parts(
-    v: &Value,
-) -> Option<(SessionUpdateChunkKind, &str)> {
+pub(crate) fn session_update_chunk_parts(v: &Value) -> Option<(SessionUpdateChunkKind, &str)> {
     if v.get("method").and_then(Value::as_str) != Some("session/update") {
         return None;
     }

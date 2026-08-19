@@ -1,4 +1,4 @@
-use super::{register, try_log, unregister, SharedDeferSink};
+use super::{SharedDeferSink, register, try_log, unregister};
 use crate::deferred_log::{
     build_display_log_entry,
     test_fixtures::{aged_defer_shared, capture_stdout_render_unlocked},
@@ -63,12 +63,6 @@ fn try_log_under_mutex_does_not_dup_heartbeat_in_sink_queue() {
     unsafe {
         std::env::remove_var("MALVIN_DEFER_LOG_MAX_AGE_MS");
     }
-    assert_eq!(
-        terminal.lines().filter(|l| l.contains("HB:")).count(),
-        1
-    );
-    assert_eq!(
-        log.lines().filter(|l| l.contains("HB:")).count(),
-        1
-    );
+    assert_eq!(terminal.lines().filter(|l| l.contains("HB:")).count(), 1);
+    assert_eq!(log.lines().filter(|l| l.contains("HB:")).count(), 1);
 }

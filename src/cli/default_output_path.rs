@@ -38,8 +38,7 @@ mod tests {
         let pdf = tmp.path().join("write.pdf");
         std::fs::write(&tex, "x\n").expect("write");
         std::fs::write(&pdf, b"%PDF").expect("write");
-        let (got_tex, got_pdf) =
-            allocate_default_tex_pdf_pair(&tex, &pdf, "write").expect("alloc");
+        let (got_tex, got_pdf) = allocate_default_tex_pdf_pair(&tex, &pdf, "write").expect("alloc");
         assert_eq!(got_tex, tmp.path().join("write_1.tex"));
         assert_eq!(got_pdf, tmp.path().join("write_1.pdf"));
     }

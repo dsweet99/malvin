@@ -1,4 +1,3 @@
-
 #[test]
 fn kiss_witness_reader_stdout_body_a_inc() {
     let _ = stringify!(ReaderSpawnArgs);

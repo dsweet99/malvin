@@ -1,14 +1,13 @@
-
 use clap::{Parser, Subcommand};
 
-use super::shared_opts::SharedOpts;
-use super::write_flow::WriteArgs;
 use super::init_flow::InitArgs;
+use super::shared_opts::SharedOpts;
 use super::tidy_flow::TidyArgs;
+use super::write_flow::WriteArgs;
 
 pub use super::models_cmd::ModelsArgs;
-pub use crate::inspire_flow::InspireArgs;
 pub use super::shared_opts::GlobalOpts;
+pub use crate::inspire_flow::InspireArgs;
 
 #[derive(Parser, Debug)]
 #[allow(clippy::struct_excessive_bools)]

@@ -1,4 +1,4 @@
-use std::io::{stdout, IsTerminal};
+use std::io::{IsTerminal, stdout};
 
 #[must_use]
 pub fn stdout_is_interactive() -> bool {

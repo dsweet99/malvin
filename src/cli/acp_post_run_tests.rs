@@ -135,7 +135,9 @@ fn duplicate_safe_restore_error_recognizes_slot_restore_prefix() {
     assert_eq!(duplicate_safe_restore_error(err), err);
 }
 
-fn work_dir_with_checks(content: &str) -> (tempfile::TempDir, crate::artifacts::SessionDotfileBackups) {
+fn work_dir_with_checks(
+    content: &str,
+) -> (tempfile::TempDir, crate::artifacts::SessionDotfileBackups) {
     let work = tempfile::tempdir().unwrap();
     crate::seed_malvin_checks(work.path(), content);
     let backups = crate::test_utils::empty_session_dotfile_backups(work.path());

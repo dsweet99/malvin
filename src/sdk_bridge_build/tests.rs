@@ -3,7 +3,7 @@
 use super::*;
 use std::fs;
 use std::path::{Path, PathBuf};
-use tempfile::{tempdir, TempDir};
+use tempfile::{TempDir, tempdir};
 
 fn write_file(path: &Path, bytes: &[u8]) {
     if let Some(parent) = path.parent() {
@@ -87,7 +87,10 @@ fn sync_bridge_payload_copies_dist_when_present() {
     let tmp = tempdir().unwrap();
     let (src, dest) = sync_fixture_with_dist(&tmp);
     sync::sync_bridge_payload(&src, &dest, "src_bridge");
-    assert_eq!(fs::read(dest.join("dist").join("bridge.js")).unwrap(), b"ok");
+    assert_eq!(
+        fs::read(dest.join("dist").join("bridge.js")).unwrap(),
+        b"ok"
+    );
 }
 
 fn sync_fixture_sources(tmp: &TempDir) -> (PathBuf, PathBuf) {
@@ -127,7 +130,10 @@ fn share_fixture(tmp: &TempDir) -> (PathBuf, PathBuf, &'static [u8]) {
     let lock = b"{\"lock\":1}";
     write_file(&src.join("package-lock.json"), lock);
     let bridge = &BRIDGES[0];
-    write_file(&dest.join("node_modules").join(bridge.package_marker), b"{}");
+    write_file(
+        &dest.join("node_modules").join(bridge.package_marker),
+        b"{}",
+    );
     write_file(&dest.join("dist").join("bridge.js"), b"1");
     (src, dest, lock)
 }
@@ -139,7 +145,10 @@ fn share_bridge_ready_checks_stamp() {
     let bridge = &BRIDGES[0];
     assert!(!share_bridge_ready(&src, &dest, bridge));
     let stamp = format!("{:x}", fnv1a64(lock));
-    write_file(&dest.join(".malvin-npm-stamp"), format!("{stamp}\n").as_bytes());
+    write_file(
+        &dest.join(".malvin-npm-stamp"),
+        format!("{stamp}\n").as_bytes(),
+    );
     assert!(share_bridge_ready(&src, &dest, bridge));
 }
 
@@ -170,7 +179,10 @@ fn write_stamp_and_verify_install_round_trip() {
     let dest = tmp.path().join("dest");
     let bridge = &BRIDGES[0];
     write_file(&dest.join("package-lock.json"), b"abc");
-    write_file(&dest.join("node_modules").join(bridge.package_marker), b"{}");
+    write_file(
+        &dest.join("node_modules").join(bridge.package_marker),
+        b"{}",
+    );
     write_file(&dest.join("dist").join("bridge.js"), b"1");
     verify_install(&dest, bridge);
     write_stamp(&dest);

@@ -6,8 +6,8 @@ use crate::output::stdout_heartbeat::{
     reset_stdout_heartbeat_for_test, test_set_last_heartbeat_elapsed, try_emit_heartbeat_if_due,
 };
 use crate::output::{
-    enable_stdout_capture, take_captured_stdout, write_heartbeat_log_line, MALVIN_WHO,
-    format_who_tag_prefix, is_log_timestamp_token, set_stdout_log_path,
+    MALVIN_WHO, enable_stdout_capture, format_who_tag_prefix, is_log_timestamp_token,
+    set_stdout_log_path, take_captured_stdout, write_heartbeat_log_line,
 };
 
 use crate::output::log_contains_heartbeat;
@@ -15,7 +15,11 @@ use crate::output::log_contains_heartbeat;
 use super::stdout_heartbeat_test_support::heartbeat_test_guards;
 
 fn heartbeat_lines_at(ts: &str) -> (String, String) {
-    crate::output::stdout_heartbeat_display_and_log_line(MALVIN_WHO, "HB: 20260524.000000", Some(ts))
+    crate::output::stdout_heartbeat_display_and_log_line(
+        MALVIN_WHO,
+        "HB: 20260524.000000",
+        Some(ts),
+    )
 }
 
 fn emit_heartbeat_at(ts: &str) {
@@ -137,7 +141,10 @@ fn write_heartbeat_log_line_covers_deferred_and_immediate() {
         .lines()
         .filter(|l| l.contains("HB:") || log_contains_heartbeat(&format!("{l}\n")))
         .collect();
-    assert!(!heartbeat_lines.is_empty(), "expected heartbeat log lines: {text:?}");
+    assert!(
+        !heartbeat_lines.is_empty(),
+        "expected heartbeat log lines: {text:?}"
+    );
     for line in heartbeat_lines {
         let ts = line.split_whitespace().next().expect("timestamp");
         assert!(is_log_timestamp_token(ts));

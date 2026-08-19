@@ -1,4 +1,3 @@
-
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -40,7 +39,7 @@ pub fn from_values(
 
 #[cfg(test)]
 mod tests {
-    use super::{from_values, HerdrEnv};
+    use super::{HerdrEnv, from_values};
     use std::ffi::OsString;
 
     #[test]
@@ -50,7 +49,11 @@ mod tests {
         assert!(from_values(Some("1".into()), Some("".into()), Some("p".into())).is_none());
         assert!(from_values(Some("1".into()), Some("s".into()), Some("".into())).is_none());
         assert_eq!(
-            from_values(Some("1".into()), Some("/tmp/h.sock".into()), Some("pane".into())),
+            from_values(
+                Some("1".into()),
+                Some("/tmp/h.sock".into()),
+                Some("pane".into())
+            ),
             Some(HerdrEnv {
                 socket_path: "/tmp/h.sock".into(),
                 pane_id: "pane".into(),
