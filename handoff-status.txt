@@ -1,1 +1,1 @@
-Codex’s generic `gpt-5.6` is rejected at turn execution; live `model/list` exposes suffixed IDs. Added dynamic fallback to a live `<requested>-...` model; cargo check passes, but final gates, regression tests, and exact-command success remain unverified. See handoff-envelope.md.
+Codex model-list pagination refactor now passes KISS, Clippy, targeted Codex tests, and pytest/ruff; final Rust gate and exact command verification remain.
