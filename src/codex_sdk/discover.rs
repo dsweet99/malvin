@@ -43,56 +43,60 @@ pub(crate) fn codex_path_is_executable(path: &std::path::Path) -> bool {
 }
 
 pub fn list_codex_models() -> Result<Vec<(String, String)>, String> {
+    let mut child = spawn_codex_model_server()?;
+    let (mut stdin, stdout) = take_model_server_pipes(&mut child)?;
+    send_model_list_requests(&mut stdin)?;
+    let result = read_model_list_response(stdout)?;
+    let _ = child.kill();
+    Ok(result)
+}
+
+fn spawn_codex_model_server() -> Result<std::process::Child, String> {
     let bin = resolve_codex_bin()?;
-    let mut child = std::process::Command::new(bin)
+    std::process::Command::new(bin)
         .arg("app-server")
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .spawn()
-        .map_err(|e| format!("spawn codex app-server: {e}"))?;
-    let mut stdin = child.stdin.take().ok_or("codex stdin missing")?;
+        .map_err(|e| format!("spawn codex app-server: {e}"))
+}
+
+fn take_model_server_pipes(
+    child: &mut std::process::Child,
+ ) -> Result<(std::process::ChildStdin, std::process::ChildStdout), String> {
+    let stdin = child.stdin.take().ok_or("codex stdin missing")?;
     let stdout = child.stdout.take().ok_or("codex stdout missing")?;
-    let mut stdout = std::io::BufReader::new(stdout);
+    Ok((stdin, stdout))
+}
+
+fn send_model_list_requests(stdin: &mut impl Write) -> Result<(), String> {
     writeln!(stdin, r#"{{"method":"initialize","id":1,"params":{{"clientInfo":{{"name":"malvin","title":"Malvin","version":"{}"}}}}}}"#, env!("CARGO_PKG_VERSION")).map_err(|e| e.to_string())?;
     writeln!(stdin, r#"{{"method":"initialized","params":{{}}}}"#).map_err(|e| e.to_string())?;
-    writeln!(
-        stdin,
-        r#"{{"method":"model/list","id":2,"params":{{"limit":100,"includeHidden":false}}}}"#
-    )
-    .map_err(|e| e.to_string())?;
-    stdin.flush().map_err(|e| e.to_string())?;
+    writeln!(stdin, r#"{{"method":"model/list","id":2,"params":{{"limit":100,"includeHidden":false}}}}"#).map_err(|e| e.to_string())?;
+    stdin.flush().map_err(|e| e.to_string())
+}
+
+fn read_model_list_response(stdout: impl std::io::Read) -> Result<Vec<(String, String)>, String> {
+    let mut stdout = std::io::BufReader::new(stdout);
     let mut line = String::new();
     loop {
         line.clear();
         if stdout.read_line(&mut line).map_err(|e| e.to_string())? == 0 {
             return Err("codex model/list closed stdout".into());
         }
-        let value: serde_json::Value =
-            serde_json::from_str(&line).map_err(|e| format!("codex model/list JSON: {e}"))?;
+        let value: serde_json::Value = serde_json::from_str(&line).map_err(|e| format!("codex model/list JSON: {e}"))?;
         if value.get("id").and_then(serde_json::Value::as_u64) == Some(2) {
-            if let Some(error) = value.get("error") {
-                return Err(format!("codex model/list: {error}"));
-            }
-            let rows = value
-                .pointer("/result/data")
-                .and_then(serde_json::Value::as_array)
-                .ok_or("codex model/list response missing data")?;
-            let result = rows
-                .iter()
-                .filter_map(|row| {
-                    Some((
-                        row.get("id")?.as_str()?.to_owned(),
-                        row.get("displayName")
-                            .and_then(serde_json::Value::as_str)
-                            .unwrap_or_default()
-                            .to_owned(),
-                    ))
-                })
-                .collect();
-            let _ = child.kill();
-            return Ok(result);
+            return parse_model_list_response(&value);
         }
     }
+}
+
+fn parse_model_list_response(value: &serde_json::Value) -> Result<Vec<(String, String)>, String> {
+    if let Some(error) = value.get("error") {
+        return Err(format!("codex model/list: {error}"));
+    }
+    let rows = value.pointer("/result/data").and_then(serde_json::Value::as_array).ok_or("codex model/list response missing data")?;
+    Ok(rows.iter().filter_map(|row| Some((row.get("id")?.as_str()?.to_owned(), row.get("displayName").and_then(serde_json::Value::as_str).unwrap_or_default().to_owned()))).collect())
 }
 
 #[cfg(test)]

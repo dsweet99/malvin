@@ -1,1 +1,1 @@
-Incomplete handoff committed. Kiss coverage is fixed by backend-specific helper names, but three calls-per-function violations remain and current compilation/full gates are unverified after the latest repair.
+Incomplete handoff: Codex discovery coverage is fixed and protocol helpers are partly extracted; final compilation, kiss structural cleanup, and all five required gates remain unverified.

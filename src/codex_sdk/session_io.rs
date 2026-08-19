@@ -29,7 +29,7 @@ pub(crate) async fn codex_write_abort(session: &BridgeSession) -> Result<(), Age
 pub(crate) async fn codex_send_prompt(
     session: &BridgeSession,
     prompt: &str,
-) -> Result<(), AgentError> {
+ ) -> Result<(), AgentError> {
     let thread_id = session
         .agent_id
         .lock()
@@ -43,6 +43,10 @@ pub(crate) async fn codex_send_prompt(
         }}),
     )
     .await?;
+    consume_codex_turn(session).await
+}
+
+async fn consume_codex_turn(session: &BridgeSession) -> Result<(), AgentError> {
     let mut response_text = String::new();
     let mut turn_id = None;
     loop {
@@ -52,68 +56,45 @@ pub(crate) async fn codex_send_prompt(
         }
         let method = value.get("method").and_then(|v| v.as_str()).unwrap_or("");
         if method == "turn/started" {
-            turn_id = value
-                .pointer("/params/turn/id")
-                .and_then(|v| v.as_str())
-                .map(str::to_owned);
+            turn_id = value.pointer("/params/turn/id").and_then(|v| v.as_str()).map(str::to_owned);
         }
         if method == "item/agentMessage/delta" {
-            let event_turn = value.pointer("/params/turnId").and_then(|v| v.as_str());
-            if turn_id
-                .as_deref()
-                .is_some_and(|id| event_turn.is_some_and(|event| event != id))
-            {
-                continue;
-            }
-            if let Some(text) = value.pointer("/params/delta").and_then(|v| v.as_str()) {
-                response_text.push_str(text);
-                crate::bridge_sdk::handle_stream_event(
-                    session,
-                    &BridgeEvent::Assistant { text: text.into() },
-                );
+            if turn_matches(&turn_id, value.pointer("/params/turnId").and_then(|v| v.as_str())) {
+                if let Some(text) = value.pointer("/params/delta").and_then(|v| v.as_str()) {
+                    response_text.push_str(text);
+                    crate::bridge_sdk::handle_stream_event(session, &BridgeEvent::Assistant { text: text.into() });
+                }
             }
         } else if method == "turn/completed" {
-            let event_turn = value.pointer("/params/turn/id").and_then(|v| v.as_str());
-            if turn_id
-                .as_deref()
-                .is_some_and(|id| event_turn.is_some_and(|event| event != id))
-            {
-                continue;
+            if turn_matches(&turn_id, value.pointer("/params/turn/id").and_then(|v| v.as_str())) {
+                return finish_codex_turn(session, &value, response_text);
             }
-            let status = value
-                .pointer("/params/turn/status")
-                .and_then(|v| v.as_str())
-                .unwrap_or("completed");
-            let result = value
-                .pointer("/params/turn/lastAgentMessage")
-                .and_then(|v| v.as_str())
-                .map(str::to_owned)
-                .or_else(|| (!response_text.is_empty()).then_some(response_text.clone()));
-            if let Some(text) = &result {
-                *session
-                    .last_response
-                    .lock()
-                    .unwrap_or_else(std::sync::PoisonError::into_inner) = text.clone();
-                crate::bridge_sdk::feed_do_dm_run_result(text);
-            }
-            let ev = BridgeEvent::RunDone {
-                status: status.into(),
-                result,
-                usage: None,
-                error: None,
-                duration_ms: None,
-            };
-            crate::bridge_sdk::handle_stream_event(session, &ev);
-            if crate::bridge_sdk::run_done_status_is_failure(status) {
-                let detail = value
-                    .pointer("/params/turn/error/message")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or(status);
-                return Err(AgentError(format!("codex turn {detail}")));
-            }
-            return Ok(());
         }
     }
+}
+
+fn turn_matches(turn_id: &Option<String>, event_turn: Option<&str>) -> bool {
+    turn_id.as_deref().is_none_or(|id| event_turn.is_none_or(|event| event == id))
+}
+
+fn finish_codex_turn(
+    session: &BridgeSession,
+    value: &serde_json::Value,
+    response_text: String,
+ ) -> Result<(), AgentError> {
+    let status = value.pointer("/params/turn/status").and_then(|v| v.as_str()).unwrap_or("completed");
+    let result = value.pointer("/params/turn/lastAgentMessage").and_then(|v| v.as_str()).map(str::to_owned).or_else(|| (!response_text.is_empty()).then_some(response_text));
+    if let Some(text) = &result {
+        *session.last_response.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = text.clone();
+        crate::bridge_sdk::feed_do_dm_run_result(text);
+    }
+    let ev = BridgeEvent::RunDone { status: status.into(), result, usage: None, error: None, duration_ms: None };
+    crate::bridge_sdk::handle_stream_event(session, &ev);
+    if crate::bridge_sdk::run_done_status_is_failure(status) {
+        let detail = value.pointer("/params/turn/error/message").and_then(|v| v.as_str()).unwrap_or(status);
+        return Err(AgentError(format!("codex turn {detail}")));
+    }
+    Ok(())
 }
 
 pub(crate) async fn write_json(

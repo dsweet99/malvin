@@ -1,24 +1,24 @@
 # Incomplete handoff envelope
 
 ## Done
-- Audited the failing named criterion directly with `kiss check`.
-- Inspected kiss-ai 0.4.9 source. Its coverage map matches referenced function names and disambiguates duplicate names using `name_files`; executable test calls are collected from reachable test expressions.
-- Tested three candidate acts with distinct axes:
-  - Act A: exact unaliased test references; discarded because kiss remained at 75%/86%.
-  - Act B: test placement/authority changes; discarded because kiss remained at 75%/86%.
-  - Act C: backend-specific helper names; selected because it removes the duplicate-name ambiguity without changing runtime policy or thresholds.
-- Applied Act C across Codex and Pi discovery callers and witnesses.
-- The first Act C `kiss check` removed the original coverage failures, exposing three structural `calls_per_function` violations in existing Codex functions.
+- Read the named user plan. It requires Codex model selection and `malvin models` discovery for `codex:`.
+- Preserved unrelated untracked operator artifacts.
+- Direct `kiss check` initially failed only on duplicate executable-helper coverage, then backend-specific names resolved that coverage failure.
+- `cargo check --all-targets --all-features` passed before the latest structural extraction sequence.
+- `cargo clippy --jobs 3 --all-targets --all-features -- -D warnings -W clippy::cargo` passed before the latest structural extraction sequence.
+- Extracted protocol phases from `list_codex_models`, `codex_spawn_bridge`, and `codex_send_prompt` to address kiss calls-per-function violations.
 
 ## Remaining
-- The current working tree was last mechanically repaired after an over-broad replacement created `codex_codex_path_is_executable` and `pi_pi_path_is_executable`; those doubled names have now been corrected, but compilation has not been rerun after correction.
-- Required checks are therefore unresolved for the current diff. In particular, run `cargo clippy --jobs 3 --all-targets --all-features -- -D warnings -W clippy::cargo` first, then `kiss check`.
-- `kiss check` currently has structural violations in `src/codex_sdk/session_spawn.rs:codex_spawn_bridge`, `src/codex_sdk/discover.rs:list_codex_models`, and `src/codex_sdk/session_io.rs:codex_send_prompt`, each exceeding the configured calls-per-function threshold. These were exposed only after the coverage issue was fixed.
-- Do not edit `.kissconfig` or include unrelated untracked operator artifacts.
+- Current `src/codex_sdk/session_spawn.rs` has just been repaired after a mechanical edit removed the `CodexProcess` destructuring line. Compilation has not been rerun after that repair.
+- `kiss check` was still failing before the repair with structural violations in `build_codex_session`, `spawn_codex_process`, `consume_codex_turn`, and `finish_codex_turn`; the latest grouping/extraction attempt was interrupted by the handoff request and must be validated.
+- Required checks for the final state remain unverified: `ruff check`, `kiss check`, Clippy after final edits, `pytest tests`, and `./admin/malvin_rust_test_gate.sh`.
+- Do not edit linter thresholds/configuration. Do not include untracked operator artifacts.
 
 ## Next-agent starting position
-1. Inspect `git diff --check` and `grep -RIn 'codex_path_is_executable\|pi_path_is_executable' src/codex_sdk src/pi_sdk`.
-2. Run Clippy to establish compile status.
-3. Run `kiss check`; extract helpers from the three named Codex functions, preserving protocol order and behavior.
-4. Rerun `kiss check`, then `ruff check`, `cargo clippy`, `pytest tests`, and `./admin/malvin_rust_test_gate.sh` sequentially.
-5. Commit only intended tracked changes. The named Done criterion remains unsatisfied until the direct kiss check passes.
+1. Run `cargo check --all-targets --all-features` immediately.
+2. Inspect `src/codex_sdk/session_spawn.rs` around `CodexProcess`, `build_codex_session`, and `spawn_codex_process`.
+3. Run `kiss check`; address only its reported structural violations using private helpers or small structs while preserving protocol order.
+4. Run all five named checks sequentially, with no overlapping heavy commands.
+5. Review `git diff --check`, status, and the final diff. Commit only intended tracked files.
+
+The named Done criterion is unsatisfied until direct `kiss check` passes and all required checks are rerun successfully.

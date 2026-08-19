@@ -7,34 +7,34 @@ pub(crate) async fn codex_spawn_bridge(
 ) -> Result<BridgeSession, AgentError> {
     if !args.io.force {
         return Err(AgentError(
-            "--no-force is not supported for codex: (malvin runs Codex tools headlessly; no interactive approval)"
-                .into(),
+            "--no-force is not supported for codex: (malvin runs Codex tools headlessly; no interactive approval)".into(),
         ));
     }
     crate::malvin_sandbox::assert_dead_before_next_spawn().map_err(AgentError)?;
-    let bin = crate::codex_sdk::resolve_codex_bin().map_err(AgentError)?;
-    let mut cmd = crate::malvin_sandbox::malvin_tokio_command(bin);
-    cmd.arg("app-server")
-        .current_dir(args.cwd)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
-        .env("MALLOC_ARENA_MAX", "2");
-    let mut child = cmd
-        .spawn()
-        .map_err(|e| AgentError(format!("spawn codex app-server: {e}")))?;
-    let stdin = child
-        .stdin
-        .take()
-        .ok_or_else(|| AgentError("codex stdin missing".into()))?;
-    let stdout = child
-        .stdout
-        .take()
-        .ok_or_else(|| AgentError("codex stdout missing".into()))?;
-    let baseline = crate::malvin_sandbox::malvin_spawn_baseline();
-    let pgid = child.id();
-    crate::malvin_sandbox::note_active_sandbox_session(pgid, baseline.clone(), args.cwd)
+    let session = spawn_codex_session(&args)?;
+    codex_initialize(&session).await?;
+    codex_start_thread(&session, args.model, args.cwd).await?;
+    Ok(session)
+}
+
+fn spawn_codex_session(args: &BridgeSpawnArgs<'_>) -> Result<BridgeSession, AgentError> {
+    let mut process = spawn_codex_process(args)?;
+    process.baseline = crate::malvin_sandbox::malvin_spawn_baseline();
+    crate::malvin_sandbox::note_active_sandbox_session(process.pgid, process.baseline.clone(), args.cwd)
         .map_err(AgentError)?;
+    Ok(build_codex_session(args, process))
+}
+
+struct CodexProcess {
+    child: tokio::process::Child,
+    stdin: tokio::process::ChildStdin,
+    stdout: tokio::process::ChildStdout,
+    pgid: Option<u32>,
+    baseline: std::collections::HashSet<u32>,
+}
+
+fn build_codex_session(args: &BridgeSpawnArgs<'_>, process: CodexProcess) -> BridgeSession {
+    let CodexProcess { child, stdin, stdout, pgid, baseline } = process;
     let session = BridgeSession {
         child: tokio::sync::Mutex::new(Some(child)),
         stdin: std::sync::Arc::new(tokio::sync::Mutex::new(stdin)),
@@ -45,8 +45,8 @@ pub(crate) async fn codex_spawn_bridge(
         work_dir: args.cwd.to_path_buf(),
         io: args.io,
         last_response: std::sync::Arc::new(std::sync::Mutex::new(String::new())),
-        timing: args.timing,
-        run_dir: args.run_dir,
+        timing: args.timing.clone(),
+        run_dir: args.run_dir.clone(),
         started_at: std::time::Instant::now(),
         agent_id: std::sync::Mutex::new(None),
         stdout_coalesce: std::sync::Mutex::new(crate::acp::TraceChunkCoalescer::default()),
@@ -55,9 +55,20 @@ pub(crate) async fn codex_spawn_bridge(
         wire: BridgeWire::CodexRpc,
     };
     start_mem_watch(&session);
-    codex_initialize(&session).await?;
-    codex_start_thread(&session, args.model, args.cwd).await?;
-    Ok(session)
+    session
+}
+
+fn spawn_codex_process(
+    args: &BridgeSpawnArgs<'_>,
+ ) -> Result<CodexProcess, AgentError> {
+    let bin = crate::codex_sdk::resolve_codex_bin().map_err(AgentError)?;
+    let mut cmd = crate::malvin_sandbox::malvin_tokio_command(bin);
+    cmd.arg("app-server").current_dir(args.cwd).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::inherit()).env("MALLOC_ARENA_MAX", "2");
+    let mut child = cmd.spawn().map_err(|e| AgentError(format!("spawn codex app-server: {e}")))?;
+    let stdin = child.stdin.take().ok_or_else(|| AgentError("codex stdin missing".into()))?;
+    let stdout = child.stdout.take().ok_or_else(|| AgentError("codex stdout missing".into()))?;
+    let pgid = child.id();
+    Ok(CodexProcess { child, stdin, stdout, pgid, baseline: std::collections::HashSet::new() })
 }
 
 pub(crate) async fn codex_initialize(session: &BridgeSession) -> Result<(), AgentError> {
