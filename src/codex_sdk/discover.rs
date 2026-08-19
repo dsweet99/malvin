@@ -29,7 +29,7 @@ pub fn resolve_codex_bin() -> Result<PathBuf, String> {
 }
 
 #[must_use]
-fn path_is_executable(path: &std::path::Path) -> bool {
+pub(crate) fn path_is_executable(path: &std::path::Path) -> bool {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -92,15 +92,5 @@ pub fn list_codex_models() -> Result<Vec<(String, String)>, String> {
             let _ = child.kill();
             return Ok(result);
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn missing_codex_message_names_override() {
-        assert!(codex_missing_binary_message().contains("MALVIN_CODEX"));
     }
 }

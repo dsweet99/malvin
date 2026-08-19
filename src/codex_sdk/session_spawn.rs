@@ -5,6 +5,12 @@ use std::process::Stdio;
 pub(crate) async fn codex_spawn_bridge(
     args: BridgeSpawnArgs<'_>,
 ) -> Result<BridgeSession, AgentError> {
+    if !args.io.force {
+        return Err(AgentError(
+            "--no-force is not supported for codex: (malvin runs Codex tools headlessly; no interactive approval)"
+                .into(),
+        ));
+    }
     crate::malvin_sandbox::assert_dead_before_next_spawn().map_err(AgentError)?;
     let bin = crate::codex_sdk::resolve_codex_bin().map_err(AgentError)?;
     let mut cmd = crate::malvin_sandbox::malvin_tokio_command(bin);
@@ -54,7 +60,7 @@ pub(crate) async fn codex_spawn_bridge(
     Ok(session)
 }
 
-async fn codex_initialize(session: &BridgeSession) -> Result<(), AgentError> {
+pub(crate) async fn codex_initialize(session: &BridgeSession) -> Result<(), AgentError> {
     let response = request(
         session,
         "initialize",
@@ -77,7 +83,7 @@ async fn codex_initialize(session: &BridgeSession) -> Result<(), AgentError> {
     .await
 }
 
-async fn codex_start_thread(
+pub(crate) async fn codex_start_thread(
     session: &BridgeSession,
     model: &str,
     cwd: &std::path::Path,
@@ -126,7 +132,7 @@ pub(crate) async fn request(
     }
 }
 
-fn response_error(context: &str, response: &serde_json::Value) -> AgentError {
+pub(crate) fn response_error(context: &str, response: &serde_json::Value) -> AgentError {
     AgentError(format!(
         "{context}: {}",
         response.get("error").unwrap_or(response)

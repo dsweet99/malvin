@@ -70,4 +70,4 @@ Flag reference: `malvin --help`. Behavioral contracts: `malvin --doc` and `malvi
 # EXPERIMENTAL - USE AT YOUR OWN RISK
 
 - pi: models (requires an externally installed `pi` binary; see `design.md`)
-- codex: models (requires an externally installed `codex` binary; local stdio app-server)
+- Codex: models (requires an externally installed `codex` binary; local stdio app-server)

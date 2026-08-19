@@ -1,1 +1,1 @@
-Status: Codex app-server backend and live `malvin models codex:` discovery work; clippy, pytest, and Rust test gate pass, but `kiss check` remains blocked by per-file coverage and protocol tests are the next step.
+Status: Handoff committed. Codex app-server execution and `malvin models codex:` discovery are implemented; clippy and Codex-focused tests pass, but direct `kiss check` still fails at 50%/40%/17% Codex coverage plus 86% Pi coverage. Restore behavioral protocol tests and rerun all named checks before completion.
