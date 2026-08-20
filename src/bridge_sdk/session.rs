@@ -42,6 +42,7 @@ pub struct BridgeSession {
     pub run_dir: Option<PathBuf>,
     pub started_at: Instant,
     pub agent_id: Mutex<Option<String>>,
+    pub turn_id: Mutex<Option<String>>,
     pub(crate) stdout_coalesce: Mutex<crate::acp::TraceChunkCoalescer>,
     pub tool_starts: Mutex<HashMap<String, ToolCallStart>>,
     pub normalize_pi_usage: bool,

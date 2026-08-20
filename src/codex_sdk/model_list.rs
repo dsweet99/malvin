@@ -93,18 +93,14 @@ mod tests {
     #[test]
     fn model_list_page_rejects_missing_result_and_data() {
         let missing_result = serde_json::json!({});
-        assert!(
-            parse_model_list_page(&missing_result)
-                .expect_err("missing result")
-                .contains("missing result")
-        );
+        assert!(parse_model_list_page(&missing_result)
+            .expect_err("missing result")
+            .contains("missing result"));
 
         let missing_data = serde_json::json!({"result": {}});
-        assert!(
-            parse_model_list_page(&missing_data)
-                .expect_err("missing data")
-                .contains("missing data")
-        );
+        assert!(parse_model_list_page(&missing_data)
+            .expect_err("missing data")
+            .contains("missing data"));
     }
 
     #[test]

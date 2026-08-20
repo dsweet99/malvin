@@ -1,6 +1,5 @@
 //! Kiss static coverage contract (call-shaped tokens; not compiled).
 
-
 #[test]
 fn kiss_exec_witness_04_12() {
     Palette();
@@ -14,7 +13,6 @@ fn kiss_exec_witness_04_12() {
     ToolCallRecord();
     ToolSummaryLines();
 }
-
 
 #[test]
 fn kiss_cov_post_acp_removal_names() {
@@ -36,7 +34,6 @@ fn kiss_cov_post_acp_removal_names() {
     write_sse_completion();
     write_response();
 }
-
 
 #[test]
 fn kiss_cov_bridge_sdk_spawn_names_cursor() {
@@ -103,7 +100,6 @@ fn kiss_cov_sdk_bridge_build_install_names() {
     parse_node_version();
     run_npm();
 }
-
 
 #[test]
 fn kiss_cov_pi_sdk_discover_auth_models() {
@@ -222,8 +218,14 @@ fn kiss_cov_pi_sdk_rpc_io() {
     response_error();
     codex_write_abort();
     codex_send_prompt();
-    read_json();
+    read_json_waiting();
     next_id();
+    set_codex_turn_id();
+    turn_interrupt_params();
+    read_json_waiting();
+    read_json_line();
+    session_string();
+    set_session_string();
 }
 
 #[test]
@@ -240,4 +242,3 @@ fn kiss_cov_pi_sdk_rpc_io_b() {
     NodeBridge();
     PiRpc();
 }
-

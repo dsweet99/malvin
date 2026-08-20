@@ -1,6 +1,6 @@
 use crate::acp::AgentError;
 use crate::bridge_sdk::{
-    BridgeSession, BridgeSpawnArgs, send_create, send_resume, start_mem_watch,
+    send_create, send_resume, start_mem_watch, BridgeSession, BridgeSpawnArgs,
 };
 
 use super::auth::effective_sdk_api_key;
@@ -107,6 +107,7 @@ fn cursor_assemble_session(
         run_dir: args.run_dir,
         started_at: std::time::Instant::now(),
         agent_id: Mutex::new(None),
+        turn_id: Mutex::new(None),
         stdout_coalesce: Mutex::new(crate::acp::TraceChunkCoalescer::default()),
         tool_starts: Mutex::new(std::collections::HashMap::new()),
         normalize_pi_usage: false,

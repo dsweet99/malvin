@@ -40,6 +40,7 @@ pub(super) fn build_codex_session(
         run_dir: args.run_dir.clone(),
         started_at: std::time::Instant::now(),
         agent_id: std::sync::Mutex::new(None),
+        turn_id: std::sync::Mutex::new(None),
         stdout_coalesce: std::sync::Mutex::new(crate::acp::TraceChunkCoalescer::default()),
         tool_starts: std::sync::Mutex::new(std::collections::HashMap::default()),
         normalize_pi_usage: false,

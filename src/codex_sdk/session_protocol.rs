@@ -10,6 +10,9 @@ pub(crate) async fn codex_initialize(session: &BridgeSession) -> Result<(), Agen
                 "name": "malvin",
                 "title": "Malvin",
                 "version": env!("CARGO_PKG_VERSION")
+            },
+            "capabilities": {
+                "experimentalApi": true
             }
         }),
     )
@@ -67,7 +70,7 @@ pub(crate) async fn request(
     )
     .await?;
     loop {
-        let value = super::session_io::read_json(session).await?;
+        let value = super::session_io::read_json_waiting(session, "rpc reply").await?;
         if value.get("id").and_then(serde_json::Value::as_u64) == Some(id) {
             return Ok(value);
         }

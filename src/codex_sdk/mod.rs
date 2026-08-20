@@ -7,6 +7,7 @@ mod session_process;
 #[path = "session_protocol.rs"]
 mod session_protocol;
 mod session_spawn;
+mod session_turn;
 
 #[cfg(test)]
 mod discover_tests;
@@ -14,6 +15,8 @@ mod discover_tests;
 mod map_event_more_tests;
 #[cfg(test)]
 mod map_event_tests;
+#[cfg(test)]
+mod session_turn_tests;
 
 pub(crate) use discover::{list_codex_models, resolve_codex_model};
 pub(crate) use session_io::{codex_send_prompt as send_prompt, codex_write_abort as write_abort};

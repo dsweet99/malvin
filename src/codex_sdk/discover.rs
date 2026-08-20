@@ -132,9 +132,11 @@ fn send_model_list_requests(stdin: &mut impl Write, cursor: Option<&str>) -> Res
     );
     let initialized = "{\"method\":\"initialized\",\"params\":{}}\n";
     let params = serde_json::json!({"limit": 100, "includeHidden": false, "cursor": cursor});
-    let model_list = format!("{}\n", serde_json::json!({"method":"model/list","id":2,"params":params}));
-    if let Err(error) = stdin
-        .write_all(format!("{initialize}{initialized}{model_list}").as_bytes())
+    let model_list = format!(
+        "{}\n",
+        serde_json::json!({"method":"model/list","id":2,"params":params})
+    );
+    if let Err(error) = stdin.write_all(format!("{initialize}{initialized}{model_list}").as_bytes())
     {
         if error.kind() != std::io::ErrorKind::BrokenPipe {
             return Err(error.to_string());

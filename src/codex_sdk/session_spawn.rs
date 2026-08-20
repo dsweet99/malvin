@@ -1,5 +1,5 @@
 use crate::acp::AgentError;
-use crate::bridge_sdk::{BridgeSession, BridgeSpawnArgs, start_mem_watch};
+use crate::bridge_sdk::{start_mem_watch, BridgeSession, BridgeSpawnArgs};
 
 pub(crate) async fn codex_spawn_bridge(
     args: BridgeSpawnArgs<'_>,
@@ -23,11 +23,12 @@ use super::session_protocol::{codex_initialize, codex_start_thread};
 #[cfg(test)]
 mod tests {
     use super::super::session_process::{
-        CodexProcess, build_codex_session, build_codex_session_io, configured_codex_command,
-        spawn_codex_process, spawn_codex_session,
+        build_codex_session, build_codex_session_io, configured_codex_command, spawn_codex_process,
+        spawn_codex_session, CodexProcess,
     };
     use super::super::session_protocol::{request, response_error};
     use super::*;
+
     #[test]
     fn kiss_cov_codex_process_type_is_referenced() {
         let _: Option<CodexProcess> = None;
@@ -36,43 +37,83 @@ mod tests {
         let _ = configured_codex_command;
         let _ = spawn_codex_process;
         let _ = spawn_codex_session;
+        let _ = codex_spawn_bridge;
+        let _ = request;
+        let _ = response_error;
+        let _ = codex_initialize;
+        let _ = codex_start_thread;
     }
 
     #[test]
-    fn test_codex_spawn_bridge() {
-        let _ = codex_spawn_bridge;
+    fn test_response_error_and_id() {
+        assert!(crate::codex_sdk::session_io::next_id() > 0);
+        let error = response_error("context", &serde_json::json!({"error":{"message":"bad"}}));
+        assert!(error.0.contains("context") && error.0.contains("bad"));
     }
-    #[cfg(unix)]
-    #[allow(unsafe_code)]
-    #[tokio::test]
-    async fn test_codex_mock_session_protocol() {
+}
+
+#[cfg(all(test, unix))]
+mod unix_tests {
+    #![allow(unsafe_code)]
+    use std::path::{Path, PathBuf};
+
+    const MOCK_SCRIPT: &str = include_str!("session_spawn_unix_mock.sh");
+
+    fn write_codex_mock_bin(dir: &Path) -> PathBuf {
         use std::os::unix::fs::PermissionsExt;
-        let _lock = crate::test_utils::test_env_lock();
-        let tmp = tempfile::tempdir().unwrap();
-        let bin = tmp.path().join("codex");
-        std::fs::write(&bin, "#!/bin/sh\nwhile IFS= read -r line; do case \"$line\" in *model/list*) printf '%s\\n' '{\"id\":2,\"result\":{\"data\":[{\"id\":\"gpt-test\"},{\"id\":\"gpt-5.6\"}]}}';; *initialize*) printf '%s\\n' '{\"id\":1,\"result\":{}}';; *thread/start*) case \"$line\" in *gpt-5.6*) printf '%s\\n' '{\"id\":2,\"result\":{\"thread\":{\"id\":\"thread-test\"}}}';; *) printf '%s\\n' '{\"id\":2,\"error\":{\"message\":\"wrong model\"}}';; esac;; *turn/start*) printf '%s\\n' '{\"id\":3,\"result\":{}}' '{\"method\":\"turn/started\",\"params\":{\"turn\":{\"id\":\"turn-test\"}}}' '{\"method\":\"item/reasoning/textDelta\",\"params\":{\"turnId\":\"turn-test\",\"delta\":\"think\"}}' '{\"method\":\"item/started\",\"params\":{\"turnId\":\"turn-test\",\"item\":{\"id\":\"c1\",\"type\":\"commandExecution\",\"command\":\"ls\",\"status\":\"inProgress\"}}}' '{\"method\":\"item/completed\",\"params\":{\"turnId\":\"turn-test\",\"item\":{\"id\":\"c1\",\"type\":\"commandExecution\",\"command\":\"ls\",\"status\":\"completed\"}}}' '{\"method\":\"item/agentMessage/delta\",\"params\":{\"turnId\":\"turn-test\",\"delta\":\"hello\"}}' '{\"method\":\"turn/completed\",\"params\":{\"turn\":{\"id\":\"turn-test\",\"status\":\"completed\",\"lastAgentMessage\":\"hello\"}}}';; *turn/interrupt*) printf '%s\\n' '{\"id\":4,\"result\":{}}';; esac; done\n").unwrap();
+        let bin = dir.join("codex");
+        std::fs::write(&bin, MOCK_SCRIPT).unwrap();
         let mut perms = std::fs::metadata(&bin).unwrap().permissions();
         perms.set_mode(0o755);
         std::fs::set_permissions(&bin, perms).unwrap();
-        let prior = std::env::var_os("MALVIN_CODEX");
-        unsafe {
-            std::env::set_var("MALVIN_CODEX", &bin);
-        }
-        let model = crate::model_id::parse_model_id("codex:gpt-5.6").unwrap();
-        let io = crate::acp::AgentIoOptions {
+        bin
+    }
+
+    const fn mock_io() -> crate::acp::AgentIoOptions {
+        crate::acp::AgentIoOptions {
             force: true,
             no_tee: true,
             raw_output: true,
             show_thoughts_on_stdout: false,
             emit_stdout_markdown: false,
             log_full_outgoing_prompts: false,
-        };
-        let mut client = crate::agent_backend::SdkClient::with_max_retries(
-            model,
+        }
+    }
+
+    fn mock_client() -> crate::agent_backend::SdkClient {
+        crate::agent_backend::SdkClient::with_max_retries(
+            crate::model_id::parse_model_id("codex:gpt-5.6").unwrap(),
             crate::agent_backend::BridgeKind::Codex,
-            io,
+            mock_io(),
             1,
-        );
+        )
+    }
+
+    fn restore_codex_env(prior: Option<std::ffi::OsString>) {
+        unsafe {
+            match prior {
+                Some(v) => std::env::set_var("MALVIN_CODEX", v),
+                None => std::env::remove_var("MALVIN_CODEX"),
+            }
+        }
+    }
+
+    #[test]
+    fn kiss_cov_codex_spawn_unix() {
+        let tmp = tempfile::tempdir().unwrap();
+        assert!(write_codex_mock_bin(tmp.path()).is_file());
+        restore_codex_env(None);
+    }
+
+    #[tokio::test]
+    async fn test_codex_mock_session_protocol() {
+        let _lock = crate::test_utils::test_env_lock();
+        let tmp = tempfile::tempdir().unwrap();
+        let prior = std::env::var_os("MALVIN_CODEX");
+        unsafe {
+            std::env::set_var("MALVIN_CODEX", write_codex_mock_bin(tmp.path()));
+        }
+        let mut client = mock_client();
         client.begin_coder_session(tmp.path()).await.unwrap();
         client
             .session
@@ -86,35 +127,68 @@ mod tests {
             Some("hello")
         );
         client.end_coder_session().await.unwrap();
+        restore_codex_env(prior);
+    }
+
+    #[tokio::test]
+    async fn hung_codex_turn_times_out() {
+        let _lock = crate::test_utils::test_env_lock();
+        let tmp = tempfile::tempdir().unwrap();
+        let prior = std::env::var_os("MALVIN_CODEX");
+        let prior_idle = std::env::var_os("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS");
         unsafe {
-            match prior {
-                Some(v) => std::env::set_var("MALVIN_CODEX", v),
-                None => std::env::remove_var("MALVIN_CODEX"),
+            std::env::set_var("MALVIN_CODEX", write_codex_mock_bin(tmp.path()));
+            std::env::set_var("MALVIN_CODEX_HANG", "1");
+            std::env::set_var("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS", "200");
+        }
+        let mut client = mock_client();
+        client.begin_coder_session(tmp.path()).await.unwrap();
+        let err = client
+            .session
+            .as_ref()
+            .unwrap()
+            .send_prompt("test")
+            .await
+            .expect_err("silent turn must time out");
+        assert!(
+            err.0.contains("codex timed out") && err.0.contains("turn event"),
+            "unexpected: {}",
+            err.0
+        );
+        let _ = client.end_coder_session().await;
+        unsafe {
+            std::env::remove_var("MALVIN_CODEX_HANG");
+            match prior_idle {
+                Some(v) => std::env::set_var("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS", v),
+                None => std::env::remove_var("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS"),
             }
         }
+        restore_codex_env(prior);
     }
 
-    #[test]
-    fn test_response_error_and_id() {
-        assert!(crate::codex_sdk::session_io::next_id() > 0);
-        let error = response_error("context", &serde_json::json!({"error":{"message":"bad"}}));
-        assert!(error.0.contains("context") && error.0.contains("bad"));
-    }
-
-    #[test]
-    fn test_codex_initialize() {
-        let _ = codex_initialize;
-    }
-    #[test]
-    fn test_codex_start_thread() {
-        let _ = codex_start_thread;
-    }
-    #[test]
-    fn test_request() {
-        let _ = request;
-    }
-    #[test]
-    fn test_response_error() {
-        let _ = response_error;
+    #[tokio::test]
+    async fn failed_codex_turn_is_an_error() {
+        let _lock = crate::test_utils::test_env_lock();
+        let tmp = tempfile::tempdir().unwrap();
+        let prior = std::env::var_os("MALVIN_CODEX");
+        unsafe {
+            std::env::set_var("MALVIN_CODEX", write_codex_mock_bin(tmp.path()));
+            std::env::set_var("MALVIN_CODEX_FAIL_TURN", "1");
+        }
+        let mut client = mock_client();
+        client.begin_coder_session(tmp.path()).await.unwrap();
+        let err = client
+            .session
+            .as_ref()
+            .unwrap()
+            .send_prompt("test")
+            .await
+            .expect_err("failed turn");
+        assert!(err.0.contains("auth"), "unexpected: {}", err.0);
+        let _ = client.end_coder_session().await;
+        unsafe {
+            std::env::remove_var("MALVIN_CODEX_FAIL_TURN");
+        }
+        restore_codex_env(prior);
     }
 }

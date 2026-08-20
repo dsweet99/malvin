@@ -1,5 +1,5 @@
 use crate::acp::AgentError;
-use crate::bridge_sdk::{BridgeSession, BridgeSpawnArgs, BridgeWire, start_mem_watch};
+use crate::bridge_sdk::{start_mem_watch, BridgeSession, BridgeSpawnArgs, BridgeWire};
 
 use super::discover::{pi_version_ok, resolve_pi_bin};
 use super::session_io::pi_send_new_session;
@@ -107,6 +107,7 @@ fn pi_assemble_session(
         run_dir: args.run_dir,
         started_at: std::time::Instant::now(),
         agent_id: Mutex::new(None),
+        turn_id: Mutex::new(None),
         stdout_coalesce: Mutex::new(crate::acp::TraceChunkCoalescer::default()),
         tool_starts: Mutex::new(std::collections::HashMap::new()),
         normalize_pi_usage: true,
