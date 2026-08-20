@@ -46,7 +46,7 @@ pub(super) const DOTFILE_ROWS: [DotfileSpecRow; 3] = [
         mkdir_lbl: "malvin_checks backup mkdir",
         collision_lbl: "malvin_checks backup mkdir",
         restore_lbl: "malvin_checks restore",
-        copy_err: ".malvin/checks backup copy",
+        copy_err: ".malvin/gates backup copy",
         restore_copy_err: "malvin_checks restore",
     },
     DotfileSpecRow {

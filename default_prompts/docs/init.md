@@ -1,6 +1,6 @@
 # malvin init
 
-Discover how the workspace runs quality gates today and write `.malvin/checks` (one shell command per non-empty line).
+Discover how the workspace runs quality gates today and write `.malvin/gates` (one shell command per non-empty line).
 
 ## Summary
 
@@ -8,13 +8,13 @@ Discover how the workspace runs quality gates today and write `.malvin/checks` (
 |---|---|
 | Input | None (fixed request from `init_constraints.md`) |
 | Loop | Default router: `header` → `router_a` → optional `router_b`; exit `router_summarize`; outer `--max-loops` sessions |
-| Gates | Off by default — init asks the agent to create `.malvin/checks`; harness gates are not forced |
+| Gates | Off by default — init asks the agent to create `.malvin/gates`; harness gates are not forced |
 | Fast path | **None** — always runs the router |
 | Requires | Agent backend for chosen `--model` |
 
 ## Intention
 
-Bootstrap a repo for gated workflows (`malvin tidy`, bare `malvin REQUEST --gates`) without running those workflows. Use this when you want `.malvin/checks` materialized explicitly.
+Bootstrap a repo for gated workflows (`malvin tidy`, bare `malvin REQUEST --gates`) without running those workflows. Use this when you want `.malvin/gates` materialized explicitly.
 
 ## Usage
 
@@ -28,9 +28,9 @@ No positional arguments. Work directory is always `.` (cwd).
 
 1. Render `init_constraints.md` with the absolute cwd as `repo_root_path`.
 2. Invoke the default router with that request (same engine as bare `malvin REQUEST`).
-3. Normal router success/stop behavior applies; malvin does not skip when `.malvin/checks` already exists and does not post-check for the file.
+3. Normal router success/stop behavior applies; malvin does not skip when `.malvin/gates` already exists and does not post-check for the file.
 
-Delete `.malvin/checks` and run `malvin init` again if you want the agent to rediscover gates.
+Delete `.malvin/gates` and run `malvin init` again if you want the agent to rediscover gates.
 
 ## Options
 
@@ -57,4 +57,4 @@ See `malvin --doc`. Init does **not** force `--gates`. `--quiet` / `-q` applies 
 ## Notes
 
 - Discovery uses repo signals only; malvin does not invent default linters or test runners when the repo provides no signal.
-- Comment lines in `.malvin/checks` start with `#` after trimming and are ignored when running gates.
+- Comment lines in `.malvin/gates` start with `#` after trimming and are ignored when running gates.

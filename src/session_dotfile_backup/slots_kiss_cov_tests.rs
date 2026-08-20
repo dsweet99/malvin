@@ -38,8 +38,8 @@ fn slots_branchy_witness_covers_dotfile_rows() {
         assert_eq!(dotfile_spec_row_field_count(row_ref), 7);
         if slot == 0 {
             assert!(
-                path.to_string_lossy().contains("checks"),
-                "checks slot path should mention checks: {path:?}"
+                path.to_string_lossy().contains("gates"),
+                "gates slot path should mention gates: {path:?}"
             );
         } else if lbl.mkdir == row_ref.mkdir_lbl {
             assert_eq!(lbl.restore, row_ref.restore_lbl);
@@ -49,7 +49,7 @@ fn slots_branchy_witness_covers_dotfile_rows() {
     }
     crate::test_utils::with_isolated_home(|work| {
         std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
-        std::fs::write(work.join(".malvin/checks"), "make lint\n").expect("checks");
+        std::fs::write(work.join(".malvin/gates"), "make lint\n").expect("gates");
         let mut id = |n: usize| format!("slots-branchy-{n}");
         let backup = backup_slot(0, work, &mut id).expect("backup");
         if matches!(backup, DotfileBackupState::Present(_)) {
@@ -99,7 +99,7 @@ fn kiss_cov_slots_workspace_config_slot_roundtrip() {
 fn kiss_cov_slots_backup_restore_roundtrip() {
     crate::test_utils::with_isolated_home(|work| {
         std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
-        std::fs::write(work.join(".malvin/checks"), "make lint\n").expect("checks");
+        std::fs::write(work.join(".malvin/gates"), "make lint\n").expect("gates");
         std::fs::write(work.join(".gitignore"), "target/\n").expect("gitignore");
         let mut generate_id = |n: usize| format!("kiss-slot-{n}");
         for slot in 0..DOTFILE_ROWS.len() {

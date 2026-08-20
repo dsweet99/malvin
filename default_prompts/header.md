@@ -42,11 +42,11 @@ Predicted running time: <prediction>
 
 Malvin caps sandbox memory (see `Sandbox memory:` under Current state). If USS exceeds the limit, malvin kills the agent process group and the session fails.
 
-- Do not run overlapping heavy commands from `.malvin/checks` in one shell line with `&&`, `;`, or `&`.
-- When running gates by hand, execute at most one `.malvin/checks` line at a time; wait for exit before starting the next.
+- Do not run overlapping heavy commands from `.malvin/gates` in one shell line with `&&`, `;`, or `&`.
+- When running gates by hand, execute at most one `.malvin/gates` line at a time; wait for exit before starting the next.
 - Child processes get a conservative glibc arena cap (`MALLOC_ARENA_MAX`); malvin does not overwrite job or thread env vars you set.
 - Prefer narrow checks while iterating; run the full gate set once, sequentially, at the end.
-- The built-in gate runner already runs `.malvin/checks` one line at a time. Do not also launch those same commands in parallel in the same turn.
+- The built-in gate runner already runs `.malvin/gates` one line at a time. Do not also launch those same commands in parallel in the same turn.
 
 {{ git_extra }}
 ---

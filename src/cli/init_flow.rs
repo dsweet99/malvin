@@ -90,8 +90,8 @@ mod tests {
             "expected cwd in rendered request: {text:?}"
         );
         assert!(
-            text.contains(".malvin/checks"),
-            "expected checks path constraint: {text:?}"
+            text.contains(".malvin/gates"),
+            "expected gates path constraint: {text:?}"
         );
     }
 
@@ -206,7 +206,7 @@ mod tests {
         let postcondition = ["finish_checks", "_discovery"].concat();
         assert!(
             !src.contains(&postcondition),
-            "run_init must not postcondition on .malvin/checks"
+            "run_init must not postcondition on .malvin/gates"
         );
     }
 }

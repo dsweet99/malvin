@@ -27,7 +27,7 @@ pub(crate) fn write_git_root_checks(work: &Path, content: impl AsRef<[u8]>) {
 
 #[cfg(test)]
 pub(crate) fn write_legacy_cwd_checks(work: &Path, content: impl AsRef<[u8]>) {
-    let path = work.join(crate::repo_gates::MALVIN_CHECKS_FILE);
+    let path = work.join(crate::workspace_paths::MALVIN_CHECKS_LEGACY_REL);
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).expect("mkdir legacy checks parent");
     }

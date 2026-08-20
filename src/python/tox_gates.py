@@ -160,7 +160,7 @@ def tox_gate_check_commands(workspace: Path) -> list[str]:
     """Return offline-safe ``tox run -e …`` lines for gate environments.
 
     Factor envs (``py310``, …) are wrapped in an in-container interpreter probe so
-    ``source .malvin/checks`` under ``set -e`` continues when Harbor lacks that
+    ``source .malvin/gates`` under ``set -e`` continues when Harbor lacks that
     Python. Tox's ``--skip-missing-interpreters`` alone still exits non-zero when
     the only selected env is skipped.
     """

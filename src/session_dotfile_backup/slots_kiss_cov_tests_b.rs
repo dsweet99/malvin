@@ -90,8 +90,8 @@ fn kiss_cov_dotfile_rows_destructure_by_value() {
         let path = dotfile_source_path(slot, Path::new("/tmp/work"));
         if slot == 0 {
             assert!(
-                path.to_string_lossy().contains("checks"),
-                "checks slot path should mention checks: {path:?}"
+                path.to_string_lossy().contains("gates"),
+                "gates slot path should mention gates: {path:?}"
             );
         } else {
             assert!(path.starts_with("/tmp/work"));

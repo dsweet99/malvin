@@ -41,7 +41,7 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// Discover quality gates and write `.malvin/checks`
+    /// Discover quality gates and write `.malvin/gates`
     Init(InitArgs),
     /// Ensure all checks pass
     Tidy(TidyArgs),

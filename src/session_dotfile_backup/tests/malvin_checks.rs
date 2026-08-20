@@ -88,9 +88,9 @@ fn malvin_checks_backup_retries_on_existing_collision() {
 
         assert_eq!(
             payload.backup_path.as_path(),
-            dir.join("bbbbb").join(".malvin/checks").as_path()
+            dir.join("bbbbb").join(".malvin/gates").as_path()
         );
         assert!(payload.backup_path.is_file());
-        assert!(!dir.join("aaaaa").join(".malvin/checks").exists());
+        assert!(!dir.join("aaaaa").join(".malvin/gates").exists());
     });
 }

@@ -130,8 +130,8 @@ fn build_router_b_prompt_selects_creative_template_when_flag_set() {
     })
     .expect("router_b_creative");
     assert!(
-        plain.contains("Peak problem-solving"),
-        "default router_b must keep peak-performance framing: {plain}"
+        plain.contains("KPop: Satisfy the requirements."),
+        "default router_b must keep KPop satisfy instruction: {plain}"
     );
     assert!(
         !plain.contains("malvin inspire"),
@@ -139,8 +139,8 @@ fn build_router_b_prompt_selects_creative_template_when_flag_set() {
     );
     assert!(creative.contains("malvin inspire"));
     assert!(
-        creative.contains("Peak problem-solving"),
-        "creative router_b must keep peak-performance framing: {creative}"
+        creative.contains("KPop: Satisfy the requirements."),
+        "creative router_b must keep KPop satisfy instruction: {creative}"
     );
     assert_eq!(router_b_prompt_label(false), "router_b.md");
     assert_eq!(router_b_prompt_label(true), "router_b_creative.md");

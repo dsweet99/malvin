@@ -3,12 +3,12 @@ use super::{DotfileBackupPayload, DotfileBackupState, SessionDotfileBackups, Ses
 #[test]
 fn kiss_cov_dotfile_backup_payload_construct_destructure() {
     let payload = DotfileBackupPayload {
-        backup_path: std::path::PathBuf::from("/tmp/backup/.malvin/checks"),
+        backup_path: std::path::PathBuf::from("/tmp/backup/.malvin/gates"),
         bytes: b"make lint\n".to_vec(),
     };
     let touched = std::hint::black_box(payload);
     let DotfileBackupPayload { backup_path, bytes } = touched;
-    assert!(backup_path.ends_with("checks"));
+    assert!(backup_path.ends_with("gates"));
     assert_eq!(bytes, b"make lint\n");
 }
 

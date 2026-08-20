@@ -10,7 +10,7 @@ Produce a short, reader-friendly **LaTeX explanation** by starting one agent ses
 | Output | `write.tex` and `write.pdf` (or `--out-path`); paths are named in the `write_b` prompt |
 | Session | One agent: `write_a` (research → `notes.tex` in the run log dir) → wait → `write_b` (LaTeX + PDF from those notes) |
 | Exit policy | Both prompts complete successfully |
-| Requires | No `.malvin/checks` preflight (document workflow) |
+| Requires | No `.malvin/gates` preflight (document workflow) |
 
 ## Intention
 

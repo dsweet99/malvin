@@ -42,6 +42,24 @@ fn new_router_client(
     )
 }
 
+fn finish_router_run_artifacts(
+    artifacts: &RunArtifacts,
+    shared: &SharedOpts,
+    request: &str,
+) -> Result<(), String> {
+    if shared.gates {
+        crate::artifacts::init_quality_gates_log_pending(artifacts).map_err(|e| e.to_string())?;
+    }
+    crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
+    emit_run_startup_banner(
+        artifacts,
+        RunStartupEmitOpts::from_shared(shared, true),
+        request,
+    )?;
+    crate::run_id::maybe_gc_after_run_created(&artifacts.work_dir, &artifacts.run_dir);
+    Ok(())
+}
+
 async fn prepare_router_run(
     router_args: &RouterArgs,
     shared: &SharedOpts,
@@ -56,13 +74,7 @@ async fn prepare_router_run(
         crate::run_id::RunDirOptions { gc: false },
     )
     .map_err(|e| e.to_string())?;
-    crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
-    emit_run_startup_banner(
-        &artifacts,
-        RunStartupEmitOpts::from_shared(shared, true),
-        &request,
-    )?;
-    crate::run_id::maybe_gc_after_run_created(&artifacts.work_dir, &artifacts.run_dir);
+    finish_router_run_artifacts(&artifacts, shared, &request)?;
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let prompt_store = prepare_router_prompt_store()?;
     Ok(RouterRunPrep {
@@ -150,6 +162,7 @@ mod kiss_cov_gate_refs {
     fn kiss_cov_unit_names() {
         let _: Option<RouterRunPrep> = None;
         let _ = new_router_client;
+        let _ = finish_router_run_artifacts;
         let _ = prepare_router_run;
         let _ = router_flow_no_work::chat_has_malvin_done;
     }

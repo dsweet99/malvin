@@ -15,6 +15,11 @@ fn create_run_artifacts_scaffolds_empty_quality_gates_log() {
         std::fs::write(&qlog, "stale").unwrap();
         super::create::ensure_quality_gates_log_file(&art).unwrap();
         assert_eq!(std::fs::read_to_string(&qlog).unwrap(), "");
+        super::create::init_quality_gates_log_pending(&art).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(&qlog).unwrap(),
+            crate::malvin_constants::QUALITY_GATES_LOG_PENDING
+        );
     });
 }
 

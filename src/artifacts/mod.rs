@@ -8,7 +8,9 @@ pub use create::{
     create_run_artifacts, create_run_artifacts_from_text, create_run_artifacts_from_text_opts,
     create_run_artifacts_opts,
 };
-pub(crate) use create::{ensure_gate_exp_log_file, ensure_quality_gates_log_file};
+pub(crate) use create::{
+    ensure_gate_exp_log_file, ensure_quality_gates_log_file, init_quality_gates_log_pending,
+};
 
 pub use crate::session_dotfile_backup::{
     GitignoreBackup, MalvinChecksBackup, MalvinConfigWorkspaceBackup, SessionDotfileBackups,

@@ -208,7 +208,7 @@ fn write_rejects_name_before_preflight() {
     crate::test_utils::with_isolated_home(|work| {
         crate::cli::error_run_log::clear_command_error_run_dir();
         std::env::set_current_dir(work).expect("chdir");
-        let checks = work.join(".malvin/checks");
+        let checks = work.join(".malvin/gates");
         let stderr = capture_stderr_output(|| {
             assert_eq!(
                 entrypoint_from(["malvin", "--name", "probe", "write", "topic"]),
@@ -221,7 +221,7 @@ fn write_rejects_name_before_preflight() {
         );
         assert!(
             !checks.exists(),
-            "write --name must reject before writing .malvin/checks"
+            "write --name must reject before writing .malvin/gates"
         );
     });
 }

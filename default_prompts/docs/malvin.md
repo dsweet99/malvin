@@ -25,7 +25,7 @@ Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`,
 |---------|---------|
 | *(default)* | Bare `malvin REQUEST` — `header` → `router_a` → optional `router_b`; exit `router_summarize`; outer `--max-loops` sessions |
 | `--do` | One-shot agent turn (non-looping) |
-| `init` | Discover quality gates and write `.malvin/checks` via the default router and `init_constraints.md` |
+| `init` | Discover quality gates and write `.malvin/gates` via the default router and `init_constraints.md` |
 | `tidy` | Fix quality gates via the default router with fixed request `Get the gates to pass.` and `--gates` forced on |
 | `write` | Write a LaTeX PDF on code or concepts via a composed default-router request |
 | `inspire` | MBC2 boundary exploration then `inspire_summarize` on the same agent |
@@ -70,7 +70,7 @@ By default gate-loop commands (`init`, `tidy`, `write`) expand to `--max-loops=9
 
 ### `-g` / `--gates`
 
-Inject workspace check command text into agent prompts and, for workflows that use harness gates as loop criteria, treat failures as loop or exit criteria. Off by default. On bare `malvin REQUEST`, `-g` / `--gates` also runs workspace `.malvin/checks` after each outer agent session: pass stops success; fail continues the outer loop (even when the agent said no work remaining); exhausted budget with failing gates fails the run. When work runs, check text is still injected into the work prompt. `malvin tidy` always forces `--gates` on (same harness criteria as bare `malvin REQUEST --gates`). Agent prompts may still include available `.malvin/checks` guidance when this option is off.
+Inject workspace check command text into agent prompts and, for workflows that use harness gates as loop criteria, treat failures as loop or exit criteria. Off by default. On bare `malvin REQUEST`, `-g` / `--gates` also runs workspace `.malvin/gates` after `router_a` emits `__MALVIN_DONE__`: pass stops success; fail continues the outer loop; exhausted budget with failing gates fails the run. When work runs, check text is still injected into the work prompt. `malvin tidy` always forces `--gates` on (same harness criteria as bare `malvin REQUEST --gates`). Agent prompts may still include available `.malvin/gates` guidance when this option is off.
 
 
 
@@ -98,7 +98,7 @@ Malvin registers the top-level process under this name in a per-user registry at
 
 Session names are independent of the workspace-scoped `.malvin/acp_spawn/<slot>.lock` files (one live agent/bridge session per lock slot in a workspace). Two malvin processes with different `--name` values may both register names and hold live sessions in the same workspace concurrently; only one process may hold each lock slot at a time.
 
-`.malvin/acp_spawn/` holds ephemeral PID lock files at the workspace **git root** when `cwd` is inside a git work tree; outside git, locks and quality-gate lists live under `~/.malvin/acp_spawn/` and `~/.malvin/checks/` (shared). Advice and workspace config copies remain `{cwd}/.malvin/advice.md` and `{cwd}/.malvin/config.toml`. Legacy `{cwd}/.malvin/checks` files are read as a fallback until migrated; new writes always target the resolved root.
+`.malvin/acp_spawn/` holds ephemeral PID lock files at the workspace **git root** when `cwd` is inside a git work tree; outside git, locks and quality-gate lists live under `~/.malvin/acp_spawn/` and `~/.malvin/gates/` (shared). Advice and workspace config copies remain `{cwd}/.malvin/advice.md` and `{cwd}/.malvin/config.toml`. Legacy `{cwd}/.malvin/checks` files are read as a fallback until migrated; new writes always target the resolved root.
 
 Any lock whose holder PID is dead (or whose contents are not a valid PID) is safe to delete manually. Lock files are not version-controlled; if they were accidentally committed, run `git rm -r --cached .malvin/acp_spawn/`. Malvin reclaims stale locks automatically on startup in a workspace (directory sweep after early-exit paths such as `--doc`, bare help, and missing-request short help) and when a slot is acquired; live sessions are never disturbed.
 
@@ -114,13 +114,13 @@ Print built-in documentation and exit. Does not spawn an agent or create a run d
 
 Other subcommand arguments (for example `<REQUEST>`) are not required when `--doc` is set.
 
-## Quality gates (`.malvin/checks`)
+## Quality gates (`.malvin/gates`)
 
-Use **`malvin init`** to discover and write `.malvin/checks` explicitly (default router with request from `init_constraints.md`).
+Use **`malvin init`** to discover and write `.malvin/gates` explicitly (default router with request from `init_constraints.md`).
 
-With `--gates` (and always for `malvin tidy`), malvin runs workspace quality gates from `.malvin/checks` at the repo git root (one shell command per non-empty, non-comment line). Full-line comments starting with `#` are ignored.
+With `--gates` (and always for `malvin tidy`), malvin runs workspace quality gates from `.malvin/gates` at the repo git root (one shell command per non-empty, non-comment line). Full-line comments starting with `#` are ignored.
 
-Other invocations (`--do`, bare `malvin REQUEST`, `inspire`, `write`) do not require `.malvin/checks` at startup and may run outside a git repo. With `--gates`, bare `malvin REQUEST` and `malvin tidy` run workspace gates after each outer session and continue that outer loop when they fail (see the default-route section of `malvin --doc`). Without `--gates` (the default for non-tidy commands), malvin does not run those checks directly on the default route. `header.md` notes about checks lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
+Other invocations (`--do`, bare `malvin REQUEST`, `inspire`, `write`) do not require `.malvin/gates` at startup and may run outside a git repo. With `--gates`, bare `malvin REQUEST` and `malvin tidy` run workspace gates when `router_a` emits `__MALVIN_DONE__` and continue that outer loop when they fail (see the default-route section of `malvin --doc`). Without `--gates` (the default for non-tidy commands), malvin does not run those checks directly on the default route. `header.md` notes about gates lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
 
 ### `-h` / `--help`
 

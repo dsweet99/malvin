@@ -5,7 +5,7 @@ use std::fs;
 #[test]
 fn load_malvin_checks_skips_comments_and_blank_lines() {
     let tmp = tempfile::tempdir().unwrap();
-    let checks_path = tmp.path().join(".malvin/checks");
+    let checks_path = tmp.path().join(".malvin/gates");
     std::fs::create_dir_all(checks_path.parent().unwrap()).unwrap();
     std::fs::write(&checks_path, "# header\n\ncustom-a\n# tail\n").unwrap();
     let lines = load_malvin_checks(&checks_path).unwrap();
@@ -17,7 +17,7 @@ fn prompt_quality_gates_markdown_matches_checks_file_verbatim() {
     crate::test_utils::with_isolated_home(|w| {
         std::fs::create_dir_all(w.join(".malvin")).unwrap();
         std::fs::write(
-            w.join(".malvin/checks"),
+            w.join(".malvin/gates"),
             "# lint gates\ncustom-a\ncargo nextest run\n",
         )
         .unwrap();

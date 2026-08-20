@@ -17,7 +17,7 @@ pub fn gate_command_lines(work_dir: &Path) -> Result<Vec<String>, String> {
     let checks_path = crate::resolve_malvin_checks_path(work_dir);
     if !checks_path.is_file() {
         return Err(format!(
-            "{} is missing (quality gates must be listed in .malvin/checks)",
+            "{} is missing (quality gates must be listed in .malvin/gates)",
             checks_path.display()
         ));
     }

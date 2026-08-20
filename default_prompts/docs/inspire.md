@@ -42,7 +42,7 @@ Two coder prompts on one agent session (no coding header or repo rules merge):
 ## Session behavior
 
 - Ensures `~/.malvin_home/config.toml` exists with defaults (same as `--do` and `tidy`).
-- Backs up `.gitignore`, `.malvin/checks`, and `.malvin/config.toml`; restores after the session.
+- Backs up `.gitignore`, `.malvin/gates`, and `.malvin/config.toml`; restores after the session.
 - Checks `result.md` for `ABORT:` after the session.
 
 ## Related commands

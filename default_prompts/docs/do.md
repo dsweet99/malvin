@@ -9,7 +9,7 @@ One **single-turn** agent session: no gate loop, no experiment log, no review fa
 | Input | `<REQUEST>` text or existing `.md` path |
 | Output | Default: plain stdout with only text between `MALVIN_DM_START` / `MALVIN_DM_END`. With `--verbose`: same agent log classes as the default workflow (thought tokens, narrative tee, full outgoing prompts). |
 | Log | `do.log` under `~/.malvin_home/logs/<hash>/<run>/` |
-| Requires | No `.malvin/checks` at startup |
+| Requires | No `.malvin/gates` at startup |
 
 ## Intention
 
@@ -59,7 +59,7 @@ No implement, review, concerns, learn, or summary phases.
 ## Session behavior
 
 - Ensures `~/.malvin_home/config.toml` exists with defaults (same as `tidy`).
-- Backs up `.gitignore`, `.malvin/checks`, and `.malvin/config.toml`; restores after the session.
+- Backs up `.gitignore`, `.malvin/gates`, and `.malvin/config.toml`; restores after the session.
 - Checks `result.md` for `ABORT:` after the session.
 
 ## Related commands

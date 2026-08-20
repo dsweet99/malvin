@@ -8,9 +8,9 @@ Bring the workspace back to a **gate-clean** state by composing a fixed request 
 |---|---|
 | Input | None (fixed request: `Get the gates to pass.`) |
 | Loop | Default router: `header` → `router_a` → optional `router_b`; exit `router_summarize`; outer `--max-loops` sessions |
-| Gates | Always on — workspace `.malvin/checks` are harness loop/exit criteria |
+| Gates | Always on — workspace `.malvin/gates` are harness loop/exit criteria |
 | Fast path | **None** — always runs the router |
-| Requires | Agent backend for chosen `--model`; `.malvin/checks` needed for gate pass/fail (use `malvin init` to discover) |
+| Requires | Agent backend for chosen `--model`; `.malvin/gates` needed for gate pass/fail (use `malvin init` to discover) |
 
 ## Intention
 
@@ -46,7 +46,7 @@ See `malvin --doc`. Tidy always enables harness `--gates`, whether or not you pa
 
 1. Compose the fixed request text `Get the gates to pass.`
 2. Force `--gates` on and invoke the default router (same engine as bare `malvin REQUEST`).
-3. After each outer session, run workspace `.malvin/checks`: pass stops success; fail continues until the outer budget is exhausted (then fail).
+3. When `router_a` emits `__MALVIN_DONE__`, run workspace `.malvin/gates`: pass stops success; fail continues until the outer budget is exhausted (then fail).
 
 ## Artifacts
 
@@ -56,7 +56,7 @@ Same as the default router under `~/.malvin_home/logs/<hash>/<run>/` (for exampl
 
 | Command | When |
 |---------|------|
-| `malvin init` | Discover and write `.malvin/checks` without running tidy |
+| `malvin init` | Discover and write `.malvin/gates` without running tidy |
 | bare `malvin REQUEST --gates` | Same router engine; tidy is a thin fixed-request wrapper |
 
 ## Examples

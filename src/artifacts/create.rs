@@ -17,6 +17,13 @@ pub(crate) fn ensure_quality_gates_log_file(artifacts: &RunArtifacts) -> std::io
     std::fs::write(&path, "")
 }
 
+pub(crate) fn init_quality_gates_log_pending(artifacts: &RunArtifacts) -> std::io::Result<()> {
+    std::fs::write(
+        artifacts.quality_gates_log_path(),
+        crate::malvin_constants::QUALITY_GATES_LOG_PENDING,
+    )
+}
+
 pub(crate) fn ensure_exp_log_file(artifacts: &RunArtifacts) -> std::io::Result<PathBuf> {
     write_empty_exp_log(&artifacts.exp_log_path())
 }
@@ -116,5 +123,6 @@ mod kiss_cov_gate_refs {
     fn kiss_cov_unit_names() {
         let _ = ensure_exp_log_file;
         let _ = write_empty_exp_log;
+        let _ = init_quality_gates_log_pending;
     }
 }

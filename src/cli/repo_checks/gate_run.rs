@@ -88,7 +88,7 @@ const fn shell_binary() -> (&'static str, &'static str) {
     }
 }
 
-/// Run `.malvin/checks` lines at the git worktree toplevel when present.
+/// Run `.malvin/gates` lines at the git worktree toplevel when present.
 ///
 /// Checks are resolved from the repo root (see `malvin_checks_path`), and the
 /// documented contract is that gate commands also execute there. Using the

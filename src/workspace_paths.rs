@@ -10,7 +10,9 @@ pub use workspace_paths_data_root::{
 
 pub const MALVIN_DIR: &str = ".malvin";
 
-pub const MALVIN_CHECKS_REL: &str = ".malvin/checks";
+pub const MALVIN_CHECKS_REL: &str = ".malvin/gates";
+
+pub const MALVIN_CHECKS_LEGACY_REL: &str = ".malvin/checks";
 
 pub const MALVIN_ADVICE_REL: &str = ".malvin/advice.md";
 

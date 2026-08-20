@@ -276,10 +276,10 @@ def ft_stage_workspace(task_dir: Path, run_root: Path) -> Path:
     return dst.resolve()
 
 def ft_ensure_staged_git(workspace: Path) -> None:
-    """``git init`` staged workspace so malvin uses ``/app/.malvin/checks`` (git layout).
+    """``git init`` staged workspace so malvin uses ``/app/.malvin/gates`` (git layout).
 
-    Non-git workspaces resolve primary checks to ``~/.malvin/checks``, while
-    discovery agents typically write the legacy path ``cwd/.malvin/checks``.
+    Non-git workspaces resolve primary gates to ``~/.malvin/gates``, while
+    discovery agents typically write the legacy path ``cwd/.malvin/gates``.
     Staging always strips ``.git`` via ``_ft_copy_ignore``, so init here.
     """
     ws = workspace.resolve()

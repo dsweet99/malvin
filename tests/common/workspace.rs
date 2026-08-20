@@ -25,7 +25,7 @@ pub fn seed_malvin_checks(workspace: &Path, content: &str) {
 }
 
 pub fn seed_malvin_checks_legacy_fast(workspace: &Path, content: &str) {
-    let checks_path = workspace.join(".malvin").join("checks");
+    let checks_path = workspace.join(".malvin").join("gates");
     if let Some(parent) = checks_path.parent() {
         std::fs::create_dir_all(parent).expect("mkdir checks parent");
     }

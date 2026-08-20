@@ -168,8 +168,8 @@ fn run_router_workspace_gates_fails_when_checks_missing() {
         let err = run_router_workspace_gates(&artifacts, &backups, true)
             .expect_err("missing checks");
         assert!(
-            err.contains(".malvin/checks is missing"),
-            "missing checks must fail clearly: {err}"
+            err.contains(".malvin/gates is missing"),
+            "missing gates must fail clearly: {err}"
         );
     });
 }
@@ -205,7 +205,7 @@ pub(crate) fn router_gates_restore_fixture(
     crate::artifacts::SessionDotfileBackups,
 ) {
     std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
-    std::fs::write(work.join(".malvin/checks"), "true\n").expect("checks");
+    std::fs::write(work.join(".malvin/gates"), "true\n").expect("gates");
     let artifacts =
         crate::artifacts::create_run_artifacts_from_text("code", Some(work)).expect("artifacts");
     let backups = crate::artifacts::SessionDotfileBackups::snapshot(work).expect("snapshot");
@@ -218,7 +218,7 @@ pub(crate) fn gitignore_restore_failure_fixture(
     crate::artifacts::SessionDotfileBackups,
 ) {
     std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
-    std::fs::write(work.join(".malvin/checks"), "true\n").expect("checks");
+    std::fs::write(work.join(".malvin/gates"), "true\n").expect("gates");
     let artifacts =
         crate::artifacts::create_run_artifacts_from_text("code", Some(work)).expect("artifacts");
     std::fs::write(work.join(".gitignore"), "orig\n").expect("gitignore");

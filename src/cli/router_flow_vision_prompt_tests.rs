@@ -38,38 +38,32 @@ fn default_router_prompts_follow_vision_problem_solving_language() {
     }
     let router_a = crate::prompts::default_file("router_a.md").expect("router_a");
     assert!(
-        router_a.contains("Regularization")
-            && !router_a.to_ascii_lowercase().contains("falsif")
-            && router_a.contains("independent axes"),
-        "router_a should keep regularization without falsification language"
+        router_a.contains("KPop: Find unsatisfied requirements")
+            && router_a.contains("__MALVIN_DONE__")
+            && !router_a.to_ascii_lowercase().contains("falsif"),
+        "router_a should ask for unsatisfied requirements without falsification language"
     );
     for name in ["router_a.md", "router_b.md", "router_b_creative.md"] {
         let body = crate::prompts::default_file(name)
             .unwrap_or_else(|| panic!("missing {name}"))
             .to_ascii_lowercase();
         assert!(
-            body.contains("older analogue for the same abstract role")
-                && body.contains("prefer the redefined policy")
-                && body.contains("classify the ambiguity")
-                && body.contains("optional extra exclusions")
-                && body.contains("weakest correct"),
-            "{name} must preserve measured regularization and remaining-freedom rules"
+            body.contains("kpop:"),
+            "{name} must keep KPop steering"
         );
         for needle in router_metaphors {
             assert!(!body.contains(needle), "{name} must not contain {needle:?}");
         }
     }
-    for name in ["router_b.md", "router_b_creative.md"] {
-        let body = crate::prompts::default_file(name)
-            .unwrap_or_else(|| panic!("missing {name}"))
-            .to_ascii_lowercase();
-        assert!(
-            body.contains("near-best")
-                && body.contains("three complete candidate")
-                && body.contains("named done criterion")
-                && body.contains("never near-best")
-                && body.contains("outranks a contested reading"),
-            "{name} must keep remaining-freedom act selection"
-        );
-    }
+    let router_b = crate::prompts::default_file("router_b.md").expect("router_b");
+    let creative = crate::prompts::default_file("router_b_creative.md").expect("router_b_creative");
+    assert!(
+        router_b.contains("KPop: Satisfy the requirements.")
+            && !router_b.contains("malvin inspire"),
+        "router_b must keep KPop satisfy instruction without inspire"
+    );
+    assert!(
+        creative.contains("KPop: Satisfy the requirements.") && creative.contains("malvin inspire"),
+        "router_b_creative must keep KPop satisfy instruction and inspire"
+    );
 }

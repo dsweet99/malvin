@@ -14,7 +14,7 @@ fn path_helpers_and_workspace_marker() {
     crate::test_utils::with_isolated_home(|work| {
         assert_eq!(
             malvin_checks_path(work),
-            crate::user_home_dir().join(".malvin").join("checks")
+            crate::user_home_dir().join(".malvin").join("gates")
         );
         assert_eq!(malvin_advice_path(work), work.join(".malvin/advice.md"));
         assert_eq!(malvin_config_path(work), malvin_home_config_path());
@@ -42,7 +42,7 @@ fn malvin_data_root_uses_git_toplevel_when_inside_repo() {
     assert_eq!(malvin_data_root(&sub), repo);
     assert_eq!(
         malvin_checks_path(&sub),
-        repo.join(".malvin").join("checks")
+        repo.join(".malvin").join("gates")
     );
     assert_eq!(
         malvin_acp_spawn_chamber_dir(&sub),

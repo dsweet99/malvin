@@ -76,7 +76,7 @@ fn gitignore_backup_retries_on_existing_collision() {
 fn post_agent_snapshot_preserves_agent_created_gitignore_for_gate_restore() {
     with_isolated_home(|work| {
         std::fs::create_dir_all(work.join(".malvin")).unwrap();
-        std::fs::write(work.join(".malvin/checks"), "make lint\n").unwrap();
+        std::fs::write(work.join(".malvin/gates"), "make lint\n").unwrap();
         let iteration_start =
             SessionDotfileBackups::snapshot_after_ensuring_home_config(work).unwrap();
         assert!(matches!(
