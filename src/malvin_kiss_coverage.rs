@@ -80,23 +80,25 @@ fn smoke_time_format_and_stdout_log_path() {
 
 #[test]
 fn smoke_artifacts_create() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let plan = tmp.path().join("plan.md");
-    std::fs::write(&plan, "plan").expect("write plan");
-    let artifacts =
-        crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
-    assert!(artifacts.plan_path.is_file());
-    assert!(artifacts.quality_gates_log_path().is_file());
-    let from_text =
-        crate::artifacts::create_run_artifacts_from_text("x", Some(tmp.path())).expect("from_text");
-    assert!(from_text.plan_path.is_file());
-    assert!(from_text.quality_gates_log_path().is_file());
-    assert_eq!(
-        crate::artifacts::work_dir_for_path(&plan),
-        tmp.path()
-            .canonicalize()
-            .unwrap_or_else(|_| tmp.path().to_path_buf()),
-    );
+    crate::test_utils::with_isolated_home(|_| {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let plan = tmp.path().join("plan.md");
+        std::fs::write(&plan, "plan").expect("write plan");
+        let artifacts =
+            crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
+        assert!(artifacts.plan_path.is_file());
+        assert!(artifacts.quality_gates_log_path().is_file());
+        let from_text = crate::artifacts::create_run_artifacts_from_text("x", Some(tmp.path()))
+            .expect("from_text");
+        assert!(from_text.plan_path.is_file());
+        assert!(from_text.quality_gates_log_path().is_file());
+        assert_eq!(
+            crate::artifacts::work_dir_for_path(&plan),
+            tmp.path()
+                .canonicalize()
+                .unwrap_or_else(|_| tmp.path().to_path_buf()),
+        );
+    });
 }
 
 #[test]

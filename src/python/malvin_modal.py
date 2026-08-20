@@ -283,8 +283,9 @@ def _test_modal_remote() -> None:
     saved_secret = os.environ.pop(MODAL_CURSOR_SECRET_NAME_ENV, None)
     try:
         os.environ["CURSOR_API_KEY"] = "test-key"
-        with patch.object(modal.Sandbox, "create", return_value=fake_sandbox):
-            code = run_malvin_remote(["--version"])
+        with patch.object(modal.App, "lookup", return_value=app):
+            with patch.object(modal.Sandbox, "create", return_value=fake_sandbox):
+                code = run_malvin_remote(["--version"])
         assert code == 7
         fake_sandbox.detach.assert_called_once()
     finally:
@@ -379,8 +380,9 @@ def _test_click_cli() -> None:
     saved_secret = os.environ.pop(MODAL_CURSOR_SECRET_NAME_ENV, None)
     try:
         os.environ["CURSOR_API_KEY"] = "test-key"
-        with patch.object(modal.Sandbox, "create", return_value=fake_sandbox):
-            result = runner.invoke(cli, ["--version"])
+        with patch.object(modal.App, "lookup", return_value=app):
+            with patch.object(modal.Sandbox, "create", return_value=fake_sandbox):
+                result = runner.invoke(cli, ["--version"])
         assert result.exit_code == 7
         fake_sandbox.detach.assert_called_once()
     finally:

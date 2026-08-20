@@ -24,6 +24,7 @@ pub(crate) struct RouterAgentLoopInput<'a> {
     pub prompt_store: &'a PromptStore,
     pub shared: &'a SharedOpts,
     pub max_loops: usize,
+    pub max_hypotheses: usize,
 }
 
 pub(crate) struct RouterAgentLoopOutcome {
@@ -92,6 +93,7 @@ async fn run_one_router_loop_step(
         shared: input.shared,
         agent_loop,
         session_end,
+        max_hypotheses: input.max_hypotheses,
     })
     .await;
     finish_router_loop_step(input, (agent_loop, max_loops, session_end), open).await
@@ -129,6 +131,7 @@ async fn finish_router_loop_step(
             shared: input.shared,
             agent_loop,
             session_end,
+            max_hypotheses: input.max_hypotheses,
         },
         timing,
         router_exit_summarize_for(&decision),

@@ -41,7 +41,22 @@ pub fn resolve_malvin_checks_path(work_dir: &Path) -> PathBuf {
 
 #[must_use]
 pub fn malvin_acp_spawn_chamber_dir(work_dir: &Path) -> PathBuf {
-    malvin_layout_dir(work_dir).join("acp_spawn")
+    let home_chamber = malvin_layout_dir(work_dir).join("acp_spawn");
+    if directory_is_writable(home_chamber.parent().unwrap_or(&home_chamber)) {
+        home_chamber
+    } else {
+        work_dir.join(MALVIN_DIR).join("acp_spawn")
+    }
+}
+
+fn directory_is_writable(dir: &Path) -> bool {
+    if std::fs::create_dir_all(dir).is_err() {
+        return false;
+    }
+    let probe = dir.join(format!(".write-probe-{}", std::process::id()));
+    let writable = std::fs::write(&probe, []).is_ok();
+    let _ = std::fs::remove_file(probe);
+    writable
 }
 
 #[must_use]

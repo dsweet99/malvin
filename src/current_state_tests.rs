@@ -180,27 +180,31 @@ fn format_current_state_joins_all_sections() {
 
 #[test]
 fn kiss_cov_current_state_non_unix_branch() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let _artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
-        .expect("artifacts");
-    let _ = super::current_sandbox_rss_bytes;
-    let _ = super::effective_user_id;
-    let _ = super::append_unsolved_reason;
-    let _ = super::append_oom_reason;
-    let _ = super::append_gates_reason;
+    crate::test_utils::with_isolated_home(|_| {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let _artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
+            .expect("artifacts");
+        let _ = super::current_sandbox_rss_bytes;
+        let _ = super::effective_user_id;
+        let _ = super::append_unsolved_reason;
+        let _ = super::append_oom_reason;
+        let _ = super::append_gates_reason;
+    });
 }
 
 #[test]
 fn append_unsolved_reason_records_missing_marker() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
-        .expect("artifacts");
-    let prev = artifacts.gate_exp_log_path(1);
-    std::fs::create_dir_all(prev.parent().expect("parent")).expect("mkdir");
-    std::fs::write(&prev, "no marker\n").expect("write");
-    let mut reasons = Vec::new();
-    super::append_unsolved_reason(&mut reasons, &artifacts, 1);
-    assert_eq!(reasons.len(), 1);
+    crate::test_utils::with_isolated_home(|_| {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
+            .expect("artifacts");
+        let prev = artifacts.gate_exp_log_path(1);
+        std::fs::create_dir_all(prev.parent().expect("parent")).expect("mkdir");
+        std::fs::write(&prev, "no marker\n").expect("write");
+        let mut reasons = Vec::new();
+        super::append_unsolved_reason(&mut reasons, &artifacts, 1);
+        assert_eq!(reasons.len(), 1);
+    });
 }
 
 #[test]
@@ -228,13 +232,15 @@ fn append_oom_reason_records_memory_kill() {
 
 #[test]
 fn append_gates_reason_after_done_session() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
-        .expect("artifacts");
-    let prev = artifacts.gate_exp_log_path(1);
-    std::fs::create_dir_all(prev.parent().expect("parent")).expect("mkdir");
-    std::fs::write(&prev, "## Step 1 — router mock\n").expect("write");
-    let mut reasons = Vec::new();
-    super::append_unsolved_reason(&mut reasons, &artifacts, 1);
-    assert!(reasons.iter().any(|r| r.contains("quality gates")));
+    crate::test_utils::with_isolated_home(|_| {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
+            .expect("artifacts");
+        let prev = artifacts.gate_exp_log_path(1);
+        std::fs::create_dir_all(prev.parent().expect("parent")).expect("mkdir");
+        std::fs::write(&prev, "## Step 1 — router mock\n").expect("write");
+        let mut reasons = Vec::new();
+        super::append_unsolved_reason(&mut reasons, &artifacts, 1);
+        assert!(reasons.iter().any(|r| r.contains("quality gates")));
+    });
 }

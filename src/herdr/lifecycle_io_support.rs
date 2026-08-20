@@ -146,7 +146,15 @@ pub fn assert_idle_then_clear_metadata(requests: &[Value]) {
 pub fn with_herdr_fixture(f: impl FnOnce(&Path, &Receiver<Value>)) {
     let dir = tempfile::tempdir().expect("tempdir");
     let sock = dir.path().join("herdr.sock");
-    let rx = spawn_request_collector(UnixListener::bind(&sock).expect("bind"));
+    let listener = match UnixListener::bind(&sock) {
+        Ok(listener) => listener,
+        Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => {
+            eprintln!("skipping Unix-socket lifecycle test: bind denied: {error}");
+            return;
+        }
+        Err(error) => panic!("bind: {error}"),
+    };
+    let rx = spawn_request_collector(listener);
     let old = install_test_herdr_env(&sock);
     let run_dir = dir.path().join("20260802_test_run");
     std::fs::create_dir_all(&run_dir).expect("mkdir");

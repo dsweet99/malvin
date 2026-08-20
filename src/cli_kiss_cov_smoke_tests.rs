@@ -60,13 +60,28 @@ fn smoke_cov_cli_cli_units_1b() {
 #[test]
 fn smoke_cov_cli_cli_workflow_router_shared_units() {
     let _ = crate::cli::workflow_router_shared::effective_max_loops;
-    let _ = crate::cli::workflow_router_shared::router_workflow_context;
-    let _ = crate::cli::workflow_router_shared::post_router_session_gates;
     let _ = crate::cli::workflow_router_shared::run_router_workspace_gates;
     let _ = crate::cli::workflow_router_shared::prefer_gate_outcome_over_post_gate_cleanup;
-    let _ = crate::cli::workflow_router_shared::clear_quality_gates_log_for_next_agent;
     let _ = stringify!(gate_loop_early_exit);
     let _ = stringify!(gate_early_exit_fixture);
+}
+
+#[test]
+fn smoke_cov_cli_router_test_units() {
+    if !crate::cli::workflow_router_shared_tests::artifact_storage_available() {
+        eprintln!("skipping router fixture smoke test: artifact root is not writable");
+        return;
+    }
+    let (_tmp, _store, _artifacts) =
+        crate::cli::workflow_router_shared_tests::router_render_fixture("code");
+    let (_tmp, _bin, _guard, _artifacts, _backups) =
+        crate::cli::workflow_router_shared_tests::gate_failure_fixture(1);
+    let tmp = tempfile::tempdir().expect("tmp");
+    let _ = crate::cli::workflow_router_shared_tests::missing_checks_fixture(tmp.path());
+    let tmp = tempfile::tempdir().expect("tmp");
+    let _ = crate::cli::workflow_router_shared_tests::router_gates_restore_fixture(tmp.path());
+    let tmp = tempfile::tempdir().expect("tmp");
+    let _ = crate::cli::workflow_router_shared_tests::gitignore_restore_failure_fixture(tmp.path());
 }
 
 #[test]

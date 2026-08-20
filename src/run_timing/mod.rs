@@ -183,6 +183,6 @@ pub use tokens::{
 mod timing_tests;
 
 #[cfg(test)]
-mod timing_footnote_tests;
+pub(crate) mod timing_footnote_tests;
 
 pub mod acp_post_run;

@@ -66,7 +66,29 @@ pub fn malvin_logs_root(work_dir: &Path) -> PathBuf {
 
 #[must_use]
 pub fn malvin_user_home_root() -> PathBuf {
-    crate::user_home_dir().join(MALVIN_USER_HOME_DIR)
+    let configured = test_storage_home_dir().join(MALVIN_USER_HOME_DIR);
+    #[cfg(test)]
+    {
+        if directory_is_writable_for_tests(&configured) {
+            return configured;
+        }
+        std::env::temp_dir()
+            .join(format!("malvin-test-home-{}", std::process::id()))
+            .join(MALVIN_USER_HOME_DIR)
+    }
+    #[cfg(not(test))]
+    configured
+}
+
+#[cfg(test)]
+fn directory_is_writable_for_tests(path: &Path) -> bool {
+    if std::fs::create_dir_all(path).is_err() {
+        return false;
+    }
+    let probe = path.join(format!(".write-probe-{}", std::process::id()));
+    let writable = std::fs::write(&probe, []).is_ok();
+    let _ = std::fs::remove_file(probe);
+    writable
 }
 
 #[must_use]
@@ -78,9 +100,24 @@ pub const MALVIN_SNAPSHOTS_DIR: &str = "snapshots";
 
 #[must_use]
 pub fn malvin_home_snapshots_root() -> PathBuf {
-    crate::user_home_dir()
+    test_storage_home_dir()
         .join(".malvin")
         .join(MALVIN_SNAPSHOTS_DIR)
+}
+
+fn test_storage_home_dir() -> PathBuf {
+    #[cfg(test)]
+    {
+        let configured = crate::user_home_dir();
+        let probe = configured.join(format!(".malvin-write-probe-{}", std::process::id()));
+        if std::fs::write(&probe, []).is_ok() {
+            let _ = std::fs::remove_file(probe);
+            return configured;
+        }
+        std::env::temp_dir().join(format!("malvin-test-home-{}", std::process::id()))
+    }
+    #[cfg(not(test))]
+    crate::user_home_dir()
 }
 
 #[must_use]

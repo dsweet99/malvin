@@ -28,6 +28,7 @@ Results default to ``~/.malvin_home/fast_task_results``. Prefer a path under
 from __future__ import annotations
 
 import json
+import errno
 import os
 import shutil
 import signal
@@ -190,6 +191,25 @@ def ft_default_results_dir() -> Path:
     if override:
         return Path(override).expanduser().resolve()
     return (Path.home() / ".malvin_home" / "fast_task_results").resolve()
+
+
+def ft_run_root(task_id: str, results_dir: Path | None) -> Path:
+    """Create and return a run directory, falling back if the default is read-only."""
+    root = (results_dir or ft_default_results_dir()).resolve()
+    run_root = root / task_id / ft_timestamp_dir()
+    try:
+        run_root.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        if exc.errno != errno.EROFS:
+            raise
+        fallback = (REPO_ROOT / ".malvin" / "fast_task_results").resolve()
+        run_root = fallback / task_id / ft_timestamp_dir()
+        run_root.mkdir(parents=True, exist_ok=True)
+        click.echo(
+            f"Default results directory is not writable; using fallback: {fallback}",
+            err=True,
+        )
+    return run_root
 
 def ft_agent_timeout_sec(explicit: float | None = None) -> float:
     """Resolve agent timeout: explicit arg, else ``MALVIN_FT_AGENT_TIMEOUT_SEC``, else default."""
@@ -766,9 +786,7 @@ def ft_run_solve(
     if timeout_sec <= 0:
         raise click.ClickException("timeout_sec must be positive")
     task_dir = ft_resolve_task_dir(task_id)
-    root = (results_dir or ft_default_results_dir()).resolve()
-    run_root = root / task_id / ft_timestamp_dir()
-    run_root.mkdir(parents=True, exist_ok=True)
+    run_root = ft_run_root(task_id, results_dir)
     workspace = ft_stage_workspace(task_dir, run_root)
     image = ft_ensure_agent_image(
         image=docker_image or DEFAULT_IMAGE,
@@ -1698,4 +1716,3 @@ def _ft_test_preflight_requires_host_plan() -> None:
             raise AssertionError("expected missing plan.md failure")
         except click.ClickException as exc:
             assert "plan.md" in str(exc)
-

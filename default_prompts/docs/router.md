@@ -55,8 +55,9 @@ Each outer session opens one coder session and sends:
 | Turn | Piece | Role |
 |------|-------|------|
 | 1 | `header.md` | Standard Malvin context |
-| 2 | `router_a.md` | Ask whether requirements are unsatisfied; optional `{{ code_extra }}` when `--gates` |
-| 3 (optional) | `router_b.md` or `router_b_creative.md` | Run only when `router_a` did **not** emit `__MALVIN_DONE__` alone on a line; `--creative` selects `router_b_creative.md` |
+| 2 | `kpop_common.md` | Karl Popper hypothesis-and-falsification method |
+| 3 | `router_a.md` | Ask whether requirements are unsatisfied; optional `{{ code_extra }}` when `--gates` |
+| 4 (optional) | `router_b.md` or `router_b_creative.md` | Run only when `router_a` did **not** emit `__MALVIN_DONE__` alone on a line; `--creative` selects `router_b_creative.md` |
 | Exit only | `router_summarize.md` | **Once per run**, when exiting the outer loop: pass to the same already-open final coder session before teardown |
 
 ### Stop / continue (without `--gates`)

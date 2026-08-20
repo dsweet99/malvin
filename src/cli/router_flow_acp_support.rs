@@ -9,6 +9,7 @@ use std::path::Path;
 use super::RouterAcpIterationInput;
 use super::router_flow_coder_prompts::{
     run_router_a_coder_prompt, run_router_b_coder_prompt, run_router_header_coder_prompt,
+    run_router_kpop_common_coder_prompt,
 };
 
 pub(crate) struct RouterTurnsOutcome {
@@ -51,6 +52,14 @@ pub(crate) async fn run_router_turns(
     let iteration_backups = SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)?;
     let model = input.shared.model.canonical();
     run_router_header(input, log_path, &model).await?;
+    let kpop = router_flow_prompt::build_router_kpop_common_prompt((
+        input.prompt_store,
+        input.artifacts,
+        &model,
+        input.shared.git,
+        input.max_hypotheses,
+    ))?;
+    run_router_kpop_common_coder_prompt(input.client, &kpop, log_path).await?;
     run_router_a_coder_prompt(
         input.client,
         &router_flow_prompt::build_router_a_prompt(router_flow_prompt::RouterAPromptInput {

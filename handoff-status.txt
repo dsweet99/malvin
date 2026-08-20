@@ -1,1 +1,0 @@
-Handoff: Prompt placeholder, Codex discovery pipe handling, and teardown synchronization fixes are implemented; targeted verification and final five sequential gates remain.

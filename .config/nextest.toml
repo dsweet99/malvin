@@ -3,7 +3,7 @@
 # ~1.05–1.20s; test-threads=2 adds ~0.4–0.6s contention spikes. Raising threads
 # reintroduces flaky timing-gate failures.
 [profile.default]
-test-threads = 16
+test-threads = 1
 
 # PTY tests spawn malvin subprocesses; serialize them so they do not contend
 # with the rest of the suite under the global thread cap.

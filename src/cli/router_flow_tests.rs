@@ -5,8 +5,9 @@ use crate::flow_prompt_join_test_helpers::{assert_header_user_join, flow_test_ar
 use crate::prompts::{HEADER_MD, PromptStore, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD};
 use crate::router_flow::router_flow_prompt::{
     RouterAPromptInput, RouterHeaderPromptInput, build_router_a_prompt, build_router_header_prompt,
-    combine_router_acp_prompt_header_and_user, combine_router_prompt_file_and_user,
-    combine_router_raw_header_and_user, prepare_router_prompt_store,
+    build_router_kpop_common_prompt, combine_router_acp_prompt_header_and_user,
+    combine_router_prompt_file_and_user, combine_router_raw_header_and_user,
+    prepare_router_prompt_store,
 };
 
 fn write_router_mock_prompt_files(prompt_root: &std::path::Path) {
@@ -73,6 +74,18 @@ fn build_router_header_prompt_renders_without_unresolved_braces() {
     })
     .expect("header");
     assert!(body.contains("Know thyself") || body.contains("Context Prep") || !body.is_empty());
+    assert!(!body.contains("{{"));
+}
+
+#[test]
+fn build_router_kpop_common_prompt_renders_budget_and_log() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = flow_test_artifacts(&tmp);
+    let store = prepare_router_prompt_store().expect("store");
+    let body = build_router_kpop_common_prompt((&store, &artifacts, DEFAULT_CLI_MODEL, false, 7))
+        .expect("kpop common");
+    assert!(body.contains("max_hypotheses = `7`"));
+    assert!(body.contains("exp_log_"));
     assert!(!body.contains("{{"));
 }
 

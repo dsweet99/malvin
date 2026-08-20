@@ -6,8 +6,8 @@ use crate::cli::flow_prompt_combine::{
 use crate::orchestrator::workflow_context_paths_only;
 use crate::prompt_stratification::WorkflowRenderContext;
 use crate::prompts::{
-    PromptError, PromptStore, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD, header_prompt_file,
-    router_a_prompt_file, router_b_prompt_file,
+    KPOP_COMMON_MD, PromptError, PromptStore, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD,
+    header_prompt_file, router_a_prompt_file, router_b_prompt_file,
 };
 use crate::workflow_context::PromptModelOpts;
 use std::path::Path;
@@ -18,11 +18,15 @@ pub(crate) use router_flow_prompt_summarize::{
     RouterSummarizePromptInput, build_router_summarize_prompt,
 };
 
+pub(crate) type RouterKpopCommonPromptInput<'a> =
+    (&'a PromptStore, &'a RunArtifacts, &'a str, bool, usize);
+
 #[path = "router_flow_prompt_turns.rs"]
 mod router_flow_prompt_turns;
 pub(crate) use router_flow_prompt_turns::{
     RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput, build_router_a_prompt,
-    build_router_b_prompt, build_router_header_prompt, router_b_prompt_label,
+    build_router_b_prompt, build_router_header_prompt, build_router_kpop_common_prompt,
+    router_b_prompt_label,
 };
 
 pub fn prepare_router_prompt_store() -> Result<PromptStore, String> {
@@ -35,6 +39,7 @@ pub fn prepare_router_prompt_store() -> Result<PromptStore, String> {
 fn validate_router_required_prompts(store: &PromptStore) -> Result<(), String> {
     let required = [
         header_prompt_file(),
+        KPOP_COMMON_MD,
         router_a_prompt_file(),
         router_b_prompt_file(false),
         router_b_prompt_file(true),

@@ -7,6 +7,7 @@ pub use default_files::{
 };
 
 pub const HEADER_MD: &str = "header.md";
+pub const KPOP_COMMON_MD: &str = "kpop_common.md";
 pub const DO_HEADER_MD: &str = "do_header.md";
 pub const ROUTER_CODE_EXTRA_MD: &str = "router_code_extra.md";
 pub const ROUTER_SUMMARIZE_MD: &str = "router_summarize.md";
@@ -21,6 +22,7 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     INSPIRE_SUMMARIZE_MD,
     "init_constraints.md",
     HEADER_MD,
+    KPOP_COMMON_MD,
     DO_HEADER_MD,
     ROUTER_A_MD,
     ROUTER_B_MD,
@@ -169,6 +171,15 @@ mod router_header_embed_tests {
         })
         .expect("header turn");
         assert!(!header_turn.contains("{{"));
+        let kpop_turn = crate::router_flow::router_flow_prompt::build_router_kpop_common_prompt((
+            &store,
+            &artifacts,
+            DEFAULT_CLI_MODEL,
+            false,
+            5,
+        ))
+        .expect("kpop common turn");
+        assert!(!kpop_turn.contains("{{"));
         let a = build_router_a_prompt(RouterAPromptInput {
             store: &store,
             artifacts: &artifacts,

@@ -1,6 +1,6 @@
 use super::{
-    DO_HEADER_MD, HEADER_MD, INSPIRE_SUMMARIZE_MD, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD,
-    WRITE_A_MD, WRITE_B_MD,
+    DO_HEADER_MD, HEADER_MD, INSPIRE_SUMMARIZE_MD, KPOP_COMMON_MD, ROUTER_CODE_EXTRA_MD,
+    ROUTER_SUMMARIZE_MD, WRITE_A_MD, WRITE_B_MD,
 };
 
 pub const ROUTER_A_MD: &str = "router_a.md";
@@ -61,6 +61,7 @@ pub fn default_file(name: &str) -> Option<&'static str> {
         .or_else(|| default_router_prompt(name))
         .or_else(|| match name {
             HEADER_MD => Some(include_str!("../../default_prompts/header.md")),
+            KPOP_COMMON_MD => Some(include_str!("../../default_prompts/kpop_common.md")),
             DO_HEADER_MD => Some(include_str!("../../default_prompts/do_header.md")),
             WRITE_A_MD => Some(include_str!("../../default_prompts/write_a.md")),
             WRITE_B_MD => Some(include_str!("../../default_prompts/write_b.md")),
@@ -71,8 +72,9 @@ pub fn default_file(name: &str) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::{
-        HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD, default_constraints_prompt,
-        default_file, header_prompt_file, router_a_prompt_file, router_b_prompt_file,
+        HEADER_MD, KPOP_COMMON_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD,
+        default_constraints_prompt, default_file, header_prompt_file, router_a_prompt_file,
+        router_b_prompt_file,
     };
 
     #[test]
@@ -84,6 +86,7 @@ mod tests {
         assert!(default_file("write_a.md").is_some());
         assert!(default_file("write_b.md").is_some());
         assert!(default_file("inspire_summarize.md").is_some());
+        assert!(default_file(KPOP_COMMON_MD).is_some());
         assert!(default_constraints_prompt("init_constraints.md").is_some());
         assert!(default_file("router_a.md").is_some());
     }

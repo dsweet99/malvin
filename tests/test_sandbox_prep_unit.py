@@ -5,6 +5,8 @@ import tempfile
 from pathlib import Path
 
 import sandbox_prep
+import pytest
+
 
 _WARM = Path(tempfile.mkdtemp(prefix="malvin-venv-warm-"))
 sandbox_prep._clone_cached_venv(_WARM / "empty")
@@ -18,6 +20,11 @@ sandbox_prep._clone_cached_venv(
         "pytest==8.3.4",
     ),
 )
+
+
+def _skip_if_offline() -> None:
+    if sandbox_prep.VENV_CACHE_OFFLINE:
+        pytest.skip("pinned verifier packages unavailable in offline environment")
 
 
 def test_sandbox_prep_parse_dockerfile_run_commands_multiline() -> None:
@@ -225,6 +232,7 @@ def test_sandbox_prep_modified_hunk_context_imports_in_verifier_spec() -> None:
     sandbox_prep._test_modified_hunk_context_imports_in_verifier_spec()
 
 def test_sandbox_prep_adaptix_prepatch_materialize_catches_importerror() -> None:
+    _skip_if_offline()
     sandbox_prep._test_adaptix_prepatch_materialize_catches_importerror()
 
 def test_sandbox_prep_verifier_pip_honors_spec_venv_path() -> None:
@@ -258,6 +266,7 @@ def test_sandbox_prep_bare_pyproject_deps_become_unpinned() -> None:
     sandbox_prep._test_bare_pyproject_deps_become_unpinned()
 
 def test_sandbox_prep_adaptix_conflict_fixture_yields_plugin_policy_or_verifier_prep() -> None:
+    _skip_if_offline()
     sandbox_prep._test_adaptix_conflict_fixture_yields_plugin_policy_or_verifier_prep()
 
 def test_sandbox_prep_adaptix_import_error_never_soft_succeeds_on_system_python() -> None:
@@ -267,6 +276,7 @@ def test_sandbox_prep_plugin_policy_as_env_allowlist_wiring() -> None:
     sandbox_prep._test_plugin_policy_as_env_allowlist_wiring()
 
 def test_sandbox_prep_plugin_disable_policy_lets_collect_boot() -> None:
+    _skip_if_offline()
     sandbox_prep._test_plugin_disable_policy_lets_collect_boot()
 
 def test_sandbox_prep_verifier_prep_result_as_dict_excludes_secrets() -> None:
@@ -274,4 +284,3 @@ def test_sandbox_prep_verifier_prep_result_as_dict_excludes_secrets() -> None:
 
 def test_sandbox_prep_leakage_public_view_excludes_patch_only_imports() -> None:
     sandbox_prep._test_leakage_public_view_excludes_patch_only_imports()
-

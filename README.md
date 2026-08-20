@@ -64,7 +64,6 @@ Flag reference: `malvin --help`. Behavioral contracts: `malvin --doc` and `malvi
 - [Python] [pytest-testmon](https://www.testmon.org) Runs only unit tests affected by code changes
 - [Rust] [cargo-nextest](https://nexte.st) Faster than `cargo test`
 - [Rust] [cargo-difftests](https://github.com/dnbln/cargo-difftests) Re-runs only tests whose executed code changed (LLVM coverage indexes)
-- [Rust] [sccache](https://github.com/mozilla/sccache) Speeds up builds by caching build artifacts
 
 
 # EXPERIMENTAL - USE AT YOUR OWN RISK

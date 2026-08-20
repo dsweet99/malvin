@@ -35,7 +35,7 @@ pub use code_flow_a::{
 mod acp_post_run_tests;
 #[cfg(test)]
 #[path = "acp_post_run_timing_print_tests.rs"]
-mod acp_post_run_timing_print_tests;
+pub(crate) mod acp_post_run_timing_print_tests;
 #[cfg(test)]
 mod cli_cross_cov;
 #[cfg(test)]
@@ -60,7 +60,7 @@ mod models_cmd_tests;
 mod router_flow_tests;
 #[cfg(test)]
 #[path = "workflow_router_shared_tests.rs"]
-mod workflow_router_shared_tests;
+pub(crate) mod workflow_router_shared_tests;
 
 pub use crate::do_flow::run_do;
 pub use crate::inspire_flow::run_inspire;

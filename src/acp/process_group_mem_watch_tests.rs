@@ -1,16 +1,19 @@
-use std::collections::HashSet;
-use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
-
 use super::{
     MemWatchHandles, record_sandbox_oom_marker, watch_process_group_memory_with_rss_sampler,
 };
-use crate::artifacts::create_run_artifacts_from_text;
+use crate::artifacts::{RunArtifacts, create_run_artifacts_from_text};
 use crate::sandbox_oom::{
     OOM_REASON_MEASUREMENT_FAIL_CLOSED, OOM_REASON_MEMORY_LIMIT, SandboxOomKillFacts,
     gate_iteration_oom_killed,
 };
-
+use std::collections::HashSet;
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
+#[cfg(unix)]
+#[path = "process_group_mem_watch_test_support.rs"]
+mod process_group_mem_watch_test_support;
+#[cfg(unix)]
+use process_group_mem_watch_test_support::spawn_std_sleep_child_in_new_process_group;
 #[cfg(unix)]
 fn spawn_sleep_child_in_new_process_group() -> (tokio::process::Child, u32, HashSet<u32>) {
     crate::test_utils::enable_test_fast_teardown();
@@ -28,7 +31,19 @@ fn spawn_sleep_child_in_new_process_group() -> (tokio::process::Child, u32, Hash
     let pgid = child.id().expect("pid");
     (child, pgid, baseline)
 }
-
+#[cfg(unix)]
+fn prepare_oom_marker_test() -> (
+    tempfile::TempDir,
+    RunArtifacts,
+    tokio::process::Child,
+    u32,
+    HashSet<u32>,
+) {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
+    let (child, pgid, baseline) = spawn_sleep_child_in_new_process_group();
+    (tmp, artifacts, child, pgid, baseline)
+}
 #[cfg(unix)]
 #[tokio::test]
 async fn watch_process_group_memory_fail_closed_when_rss_unavailable() {
@@ -51,11 +66,10 @@ async fn watch_process_group_memory_fail_closed_when_rss_unavailable() {
         "watcher must terminate sandbox when memory measurement is unavailable"
     );
 }
-
 #[cfg(unix)]
 #[tokio::test]
 async fn watch_process_group_memory_no_fail_closed_when_reader_dead() {
-    let (mut child, pgid, baseline) = spawn_sleep_child_in_new_process_group();
+    let (mut child, pgid, baseline) = spawn_std_sleep_child_in_new_process_group();
     let reader_dead = Arc::new(AtomicBool::new(true));
     let watch = watch_process_group_memory_with_rss_sampler(
         MemWatchHandles {
@@ -76,10 +90,9 @@ async fn watch_process_group_memory_no_fail_closed_when_reader_dead() {
         child.try_wait().expect("try_wait").is_none(),
         "reader_dead + None USS must not kill the sandbox"
     );
-    let _ = child.kill().await;
-    let _ = child.wait().await;
+    child.kill().expect("kill sleep");
+    let _ = child.wait().expect("reap sleep");
 }
-
 #[cfg(unix)]
 #[tokio::test]
 async fn watch_process_group_memory_still_kills_over_limit_when_reader_dead() {
@@ -102,14 +115,17 @@ async fn watch_process_group_memory_still_kills_over_limit_when_reader_dead() {
         "reader_dead must not disable hard over-limit enforcement"
     );
 }
-
 #[cfg(unix)]
 #[tokio::test]
 async fn watch_process_group_memory_writes_sandbox_oom_marker() {
     let _guard = crate::test_utils::test_env_lock();
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts = create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
-    let (_child, pgid, baseline) = spawn_sleep_child_in_new_process_group();
+    let _saved_env = crate::test_utils::SavedEnvVars::capture(&[
+        "HOME",
+        crate::MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION,
+    ]);
+    let home = tempfile::tempdir().expect("home");
+    crate::test_utils::set_test_home_env(home.path());
+    let (_tmp, artifacts, _child, pgid, baseline) = prepare_oom_marker_test();
     crate::gate_loop_session::set_active_gate_iteration(Some(2));
     watch_process_group_memory_with_rss_sampler(
         MemWatchHandles {
@@ -127,14 +143,17 @@ async fn watch_process_group_memory_writes_sandbox_oom_marker() {
     let text = std::fs::read_to_string(artifacts.sandbox_oom_json_path()).expect("read");
     assert!(text.contains(OOM_REASON_MEMORY_LIMIT));
 }
-
 #[cfg(unix)]
 #[tokio::test]
 async fn watch_process_group_memory_writes_marker_without_gate_iteration() {
     let _guard = crate::test_utils::test_env_lock();
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts = create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
-    let (_child, pgid, baseline) = spawn_sleep_child_in_new_process_group();
+    let _saved_env = crate::test_utils::SavedEnvVars::capture(&[
+        "HOME",
+        crate::MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION,
+    ]);
+    let home = tempfile::tempdir().expect("home");
+    crate::test_utils::set_test_home_env(home.path());
+    let (_tmp, artifacts, _child, pgid, baseline) = prepare_oom_marker_test();
     crate::gate_loop_session::set_active_gate_iteration(None);
     watch_process_group_memory_with_rss_sampler(
         MemWatchHandles {
@@ -151,7 +170,6 @@ async fn watch_process_group_memory_writes_marker_without_gate_iteration() {
     let text = std::fs::read_to_string(artifacts.sandbox_oom_json_path()).expect("read");
     assert!(text.contains(OOM_REASON_MEMORY_LIMIT));
 }
-
 #[cfg(unix)]
 #[test]
 fn record_sandbox_oom_marker_noops_without_run_dir() {
@@ -165,32 +183,37 @@ fn record_sandbox_oom_marker_noops_without_run_dir() {
         },
     );
 }
-
 #[cfg(unix)]
 #[test]
 fn record_sandbox_oom_marker_writes_when_gate_iteration_unset() {
-    let _lock = crate::test_utils::test_env_lock();
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts = create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
-    crate::gate_loop_session::set_active_gate_iteration(None);
-    record_sandbox_oom_marker(
-        Some(&artifacts.run_dir),
-        SandboxOomKillFacts {
-            reason: OOM_REASON_MEASUREMENT_FAIL_CLOSED,
-            rss_bytes: None,
-            limit_bytes: 1,
-            pgid: 1,
-        },
-    );
-    assert!(gate_iteration_oom_killed(&artifacts, 0));
-    let text = std::fs::read_to_string(artifacts.sandbox_oom_json_path()).expect("read");
-    assert!(text.contains(OOM_REASON_MEASUREMENT_FAIL_CLOSED));
+    crate::test_utils::with_isolated_home(|_| {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let artifacts = create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
+        crate::gate_loop_session::set_active_gate_iteration(None);
+        record_sandbox_oom_marker(
+            Some(&artifacts.run_dir),
+            SandboxOomKillFacts {
+                reason: OOM_REASON_MEASUREMENT_FAIL_CLOSED,
+                rss_bytes: None,
+                limit_bytes: 1,
+                pgid: 1,
+            },
+        );
+        assert!(gate_iteration_oom_killed(&artifacts, 0));
+        let text = std::fs::read_to_string(artifacts.sandbox_oom_json_path()).expect("read");
+        assert!(text.contains(OOM_REASON_MEASUREMENT_FAIL_CLOSED));
+    });
 }
-
 #[cfg(unix)]
 #[test]
 fn record_sandbox_oom_marker_writes_fail_closed_reason() {
     let _lock = crate::test_utils::test_env_lock();
+    let _saved_env = crate::test_utils::SavedEnvVars::capture(&[
+        "HOME",
+        crate::MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION,
+    ]);
+    let home = tempfile::tempdir().expect("home");
+    crate::test_utils::set_test_home_env(home.path());
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = create_run_artifacts_from_text("code", Some(tmp.path())).expect("artifacts");
     crate::gate_loop_session::set_active_gate_iteration(Some(1));
@@ -208,12 +231,10 @@ fn record_sandbox_oom_marker_writes_fail_closed_reason() {
     let text = std::fs::read_to_string(artifacts.sandbox_oom_json_path()).expect("read");
     assert!(text.contains(OOM_REASON_MEASUREMENT_FAIL_CLOSED));
 }
-
 #[cfg(test)]
 mod kiss_cov_auto {
     #[cfg(unix)]
     use super::*;
-
     #[cfg(unix)]
     #[test]
     fn kiss_cov_watch_process_group_memory_cases() {

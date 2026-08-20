@@ -60,4 +60,17 @@ fn kiss_witness_cli_and_artifacts_d() {
     let _ = stringify!(DualHeaderPromptInput);
     let _ = stringify!(build_dual_header_coder_run_with_store);
     let _ = stringify!(mock_router_prompt_store);
+    let _ = stringify!(router_workflow_context_with_gates);
+    let _ = stringify!(router_workflow_context);
+    let _ = stringify!(router_workflow_context_without_gates);
+    let _ = stringify!(write_checks_do_not_pass_for_artifacts);
+    let _ = stringify!(gate_iteration_context);
+    let _ = stringify!(router_render_fixture);
+    let _ = stringify!(gate_failure_fixture);
+    let _ = stringify!(missing_checks_fixture);
+    let _ = stringify!(router_gates_restore_fixture);
+    let _ = stringify!(gitignore_restore_failure_fixture);
+    let _ = stringify!(empty_artifacts);
+    let _ = stringify!(seed_timing_json_with_cost);
+    let _ = stringify!(assert_timing_and_cost_in_log);
 }

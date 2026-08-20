@@ -19,93 +19,104 @@ fn log_path_sanitizes_slashes_and_backslashes() {
 
 #[test]
 fn create_run_artifacts_relative_plan_uses_dot_work_dir() {
-    let _guard = crate::test_utils::test_env_lock();
-    let tmp = tempfile::tempdir().unwrap();
-    let old_cwd = std::env::current_dir().unwrap();
-    std::env::set_current_dir(tmp.path()).unwrap();
-    std::fs::write("plan.md", "restated request").unwrap();
+    crate::test_utils::with_isolated_home(|_| {
+        let tmp = tempfile::tempdir().unwrap();
+        let old_cwd = std::env::current_dir().unwrap();
+        std::env::set_current_dir(tmp.path()).unwrap();
+        std::fs::write("plan.md", "restated request").unwrap();
 
-    let art = create_run_artifacts(Path::new("plan.md"), None).unwrap();
-    std::env::set_current_dir(old_cwd).unwrap();
-    assert_eq!(art.work_dir, PathBuf::from("."));
+        let art = create_run_artifacts(Path::new("plan.md"), None).unwrap();
+        std::env::set_current_dir(old_cwd).unwrap();
+        assert_eq!(art.work_dir, PathBuf::from("."));
+    });
 }
 
 #[test]
 fn create_run_artifacts_from_text_uses_base_dir_as_work_dir() {
-    let tmp = tempfile::tempdir().unwrap();
-    let art = create_run_artifacts_from_text("prompt", Some(tmp.path())).unwrap();
-    assert_eq!(art.work_dir, tmp.path());
-    assert_eq!(std::fs::read_to_string(&art.plan_path).unwrap(), "prompt");
+    crate::test_utils::with_isolated_home(|_| {
+        let tmp = tempfile::tempdir().unwrap();
+        let art = create_run_artifacts_from_text("prompt", Some(tmp.path())).unwrap();
+        assert_eq!(art.work_dir, tmp.path());
+        assert_eq!(std::fs::read_to_string(&art.plan_path).unwrap(), "prompt");
+    });
 }
 
 #[test]
 fn create_run_artifacts_use_random_plan_request_filenames() {
-    let tmp = tempfile::tempdir().unwrap();
-    let source = tmp.path().join("plan.md");
-    std::fs::write(&source, "from file").unwrap();
-    let from_copy = create_run_artifacts(&source, Some(tmp.path())).unwrap();
-    let from_text = create_run_artifacts_from_text("from text", Some(tmp.path())).unwrap();
-    for art in [&from_copy, &from_text] {
-        let name = art
-            .plan_path
-            .file_name()
-            .and_then(|s| s.to_str())
-            .expect("plan filename");
-        assert!(
-            name.starts_with("plan_")
-                && std::path::Path::new(name)
-                    .extension()
-                    .is_some_and(|ext| ext.eq_ignore_ascii_case("md"))
-                && name.len() == "plan_XXXXX.md".len(),
-            "expected plan_<5 alnum>.md, got {name:?}"
-        );
-        assert_ne!(name, "plan.md");
-    }
+    crate::test_utils::with_isolated_home(|_| {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = tmp.path().join("plan.md");
+        std::fs::write(&source, "from file").unwrap();
+        let from_copy = create_run_artifacts(&source, Some(tmp.path())).unwrap();
+        let from_text = create_run_artifacts_from_text("from text", Some(tmp.path())).unwrap();
+        for art in [&from_copy, &from_text] {
+            let name = art
+                .plan_path
+                .file_name()
+                .and_then(|s| s.to_str())
+                .expect("plan filename");
+            assert!(
+                name.starts_with("plan_")
+                    && std::path::Path::new(name)
+                        .extension()
+                        .is_some_and(|ext| ext.eq_ignore_ascii_case("md"))
+                    && name.len() == "plan_XXXXX.md".len(),
+                "expected plan_<5 alnum>.md, got {name:?}"
+            );
+            assert_ne!(name, "plan.md");
+        }
+    });
 }
 
 #[test]
 fn create_run_artifacts_opts_without_gc_skips_prune() {
-    let tmp = tempfile::tempdir().unwrap();
-    let logs = crate::malvin_logs_root(tmp.path());
-    std::fs::create_dir_all(logs.join("20260101_000000_keepkeep")).unwrap();
-    let plan = tmp.path().join("plan.md");
-    std::fs::write(&plan, "p").unwrap();
-    let art = create_run_artifacts_opts(
-        &plan,
-        Some(tmp.path()),
-        crate::run_id::RunDirOptions { gc: false },
-    )
-    .unwrap();
-    assert!(logs.join("20260101_000000_keepkeep").exists());
-    assert!(art.run_dir.starts_with(&logs));
+    crate::test_utils::with_isolated_home(|_| {
+        let tmp = tempfile::tempdir().unwrap();
+        let logs = crate::malvin_logs_root(tmp.path());
+        std::fs::create_dir_all(logs.join("20260101_000000_keepkeep")).unwrap();
+        let plan = tmp.path().join("plan.md");
+        std::fs::write(&plan, "p").unwrap();
+        let art = create_run_artifacts_opts(
+            &plan,
+            Some(tmp.path()),
+            crate::run_id::RunDirOptions { gc: false },
+        )
+        .unwrap();
+        assert!(logs.join("20260101_000000_keepkeep").exists());
+        assert!(art.run_dir.starts_with(&logs));
+    });
 }
 
 #[test]
 fn create_run_artifacts_from_text_opts_without_gc() {
-    let tmp = tempfile::tempdir().unwrap();
-    let art = create_run_artifacts_from_text_opts(
-        "prompt",
-        Some(tmp.path()),
-        crate::run_id::RunDirOptions { gc: false },
-    )
-    .unwrap();
-    assert_eq!(art.work_dir, tmp.path());
+    crate::test_utils::with_isolated_home(|_| {
+        let tmp = tempfile::tempdir().unwrap();
+        let art = create_run_artifacts_from_text_opts(
+            "prompt",
+            Some(tmp.path()),
+            crate::run_id::RunDirOptions { gc: false },
+        )
+        .unwrap();
+        assert_eq!(art.work_dir, tmp.path());
+    });
 }
 
 #[test]
 fn create_run_artifacts_from_text_writes_plan_and_exp_log() {
-    let tmp = tempfile::tempdir().unwrap();
-    let art = create_run_artifacts_from_text("plan body", Some(tmp.path())).unwrap();
-    assert!(art.plan_path.is_file());
-    assert!(art.plan_path.file_name().is_some_and(|n| {
-        let s = n.to_string_lossy();
-        s.starts_with("plan_") && s.ends_with(".md")
-    }));
-    assert!(art.exp_log_path().is_file());
-    assert_eq!(
-        std::fs::read_to_string(&art.plan_path).unwrap(),
-        "plan body"
-    );
+    crate::test_utils::with_isolated_home(|_| {
+        let tmp = tempfile::tempdir().unwrap();
+        let art = create_run_artifacts_from_text("plan body", Some(tmp.path())).unwrap();
+        assert!(art.plan_path.is_file());
+        assert!(art.plan_path.file_name().is_some_and(|n| {
+            let s = n.to_string_lossy();
+            s.starts_with("plan_") && s.ends_with(".md")
+        }));
+        assert!(art.exp_log_path().is_file());
+        assert_eq!(
+            std::fs::read_to_string(&art.plan_path).unwrap(),
+            "plan body"
+        );
+    });
 }
 
 #[test]

@@ -171,64 +171,73 @@ mod tests {
 
     #[test]
     fn emit_run_startup_banner_writes_command_without_requiring_logs() {
-        crate::test_utils::clear_test_no_real_agent_env();
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let artifacts =
-            crate::artifacts::create_run_artifacts_from_text("hi", Some(tmp.path())).expect("art");
-        emit_run_startup_banner(
-            &artifacts,
-            RunStartupEmitOpts {
-                tee_stdout: false,
-                host_resources: true,
-                model: "cursor:composer-2".into(),
-            },
-            "hi",
-        )
-        .expect("banner");
-        let log = std::fs::read_to_string(artifacts.run_dir.join("command.log")).expect("log");
-        assert!(log.contains("Command:") && log.contains("Memory:") && log.contains("Model:"));
-        emit_run_logs_line(&artifacts).expect("logs");
+        crate::test_utils::with_isolated_home(|_| {
+            crate::test_utils::clear_test_no_real_agent_env();
+            let tmp = tempfile::tempdir().expect("tempdir");
+            let artifacts = crate::artifacts::create_run_artifacts_from_text("hi", Some(tmp.path()))
+                .expect("art");
+            emit_run_startup_banner(
+                &artifacts,
+                RunStartupEmitOpts {
+                    tee_stdout: false,
+                    host_resources: true,
+                    model: "cursor:composer-2".into(),
+                },
+                "hi",
+            )
+            .expect("banner");
+            let log = std::fs::read_to_string(artifacts.run_dir.join("command.log"))
+                .expect("log");
+            assert!(log.contains("Command:") && log.contains("Memory:") && log.contains("Model:"));
+            emit_run_logs_line(&artifacts).expect("logs");
+        });
     }
 
     #[test]
     fn emit_run_startup_sequence_includes_host_resources_when_requested() {
-        crate::test_utils::clear_test_no_real_agent_env();
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let artifacts =
-            crate::artifacts::create_run_artifacts_from_text("hi", Some(tmp.path())).expect("art");
-        emit_run_startup_sequence(
-            &artifacts,
-            RunStartupEmitOpts {
-                tee_stdout: false,
-                host_resources: true,
-                model: "cursor:composer-2".into(),
-            },
-            "hi",
-        )
-        .expect("startup");
-        let log = std::fs::read_to_string(artifacts.run_dir.join("command.log")).expect("log");
-        assert!(log.contains("Command:") && log.contains("Memory:") && log.contains("CPUs:"));
-        assert!(log.contains("Model: cursor:composer-2"));
-        assert!(log.find("Model:").expect("model") > log.find("Memory:").expect("memory"));
+        crate::test_utils::with_isolated_home(|_| {
+            crate::test_utils::clear_test_no_real_agent_env();
+            let tmp = tempfile::tempdir().expect("tempdir");
+            let artifacts = crate::artifacts::create_run_artifacts_from_text("hi", Some(tmp.path()))
+                .expect("art");
+            emit_run_startup_sequence(
+                &artifacts,
+                RunStartupEmitOpts {
+                    tee_stdout: false,
+                    host_resources: true,
+                    model: "cursor:composer-2".into(),
+                },
+                "hi",
+            )
+            .expect("startup");
+            let log = std::fs::read_to_string(artifacts.run_dir.join("command.log"))
+                .expect("log");
+            assert!(log.contains("Command:") && log.contains("Memory:") && log.contains("CPUs:"));
+            assert!(log.contains("Model: cursor:composer-2"));
+            assert!(log.find("Model:").expect("model") > log.find("Memory:").expect("memory"));
+        });
     }
 
     #[test]
     fn emit_run_startup_sequence_omits_host_resources_when_disabled() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
-            .expect("art");
-        emit_run_startup_sequence(
-            &artifacts,
-            RunStartupEmitOpts {
-                tee_stdout: false,
-                host_resources: false,
-                model: "pi:openai/gpt-4o".into(),
-            },
-            "code",
-        )
-        .expect("startup");
-        let log = std::fs::read_to_string(artifacts.run_dir.join("command.log")).expect("log");
-        assert!(log.contains("Command:") && !log.contains("Memory:"));
-        assert!(log.contains("Model: pi:openai/gpt-4o"));
+        crate::test_utils::with_isolated_home(|_| {
+            let tmp = tempfile::tempdir().expect("tempdir");
+            let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
+                .expect("art");
+            emit_run_startup_sequence(
+                &artifacts,
+                RunStartupEmitOpts {
+                    tee_stdout: false,
+                    host_resources: false,
+                    model: "pi:openai/gpt-4o".into(),
+                },
+                "code",
+            )
+            .expect("startup");
+            let log = std::fs::read_to_string(artifacts.run_dir.join("command.log"))
+                .expect("log");
+            assert!(log.contains("Command:") && !log.contains("Memory:"));
+            assert!(log.contains("Model: pi:openai/gpt-4o"));
+        });
     }
 }

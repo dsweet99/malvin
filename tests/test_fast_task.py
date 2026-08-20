@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import errno
+
 import fast_task
 from click.testing import CliRunner
 from toolchain_repos import load_ops_entry
@@ -21,6 +23,22 @@ def test_fast_task_cli_tasks() -> None:
     result = runner.invoke(cli, ["tasks"])
     assert result.exit_code == 0, result.output
     assert "FT-01" in result.output
+
+
+def test_fast_task_default_results_falls_back_when_read_only(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(fast_task, "ft_default_results_dir", lambda: tmp_path / "readonly")
+    monkeypatch.setattr(fast_task, "REPO_ROOT", tmp_path)
+    original_mkdir = fast_task.Path.mkdir
+
+    def deny_default(self, *args, **kwargs):
+        if self == (tmp_path / "readonly" / "FT-01"):
+            raise OSError(errno.EROFS, "read-only")
+        return original_mkdir(self, *args, **kwargs)
+
+    monkeypatch.setattr(fast_task.Path, "mkdir", deny_default)
+    run_root = fast_task.ft_run_root("FT-01", None)
+    assert run_root.is_dir()
+    assert run_root.is_relative_to(tmp_path / ".malvin" / "fast_task_results")
 
 
 def test_fast_task_kiss_coverage_witnesses() -> None:

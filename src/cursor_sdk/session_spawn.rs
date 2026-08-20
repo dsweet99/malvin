@@ -138,14 +138,29 @@ fn cursor_build_bridge_command(
     if let Some(k) = effective_sdk_api_key() {
         cmd.env("CURSOR_API_KEY", k);
     }
-    if std::env::var_os("NODE_COMPILE_CACHE").is_none() {
-        let cache_dir = crate::user_home::user_home_dir()
-            .join(".malvin_home")
-            .join("node_compile_cache");
-        let _ = std::fs::create_dir_all(&cache_dir);
-        cmd.env("NODE_COMPILE_CACHE", cache_dir);
-    }
+    configure_node_compile_cache(&mut cmd);
     cmd
+}
+
+fn configure_node_compile_cache(cmd: &mut tokio::process::Command) {
+    if std::env::var_os("NODE_COMPILE_CACHE").is_some() {
+        return;
+    }
+    let cache_dir = crate::user_home::user_home_dir()
+        .join(".malvin_home")
+        .join("node_compile_cache");
+    let cache_probe = cache_dir.join(format!(".write-probe-{}", std::process::id()));
+    let cache_is_writable =
+        std::fs::create_dir_all(&cache_dir).is_ok() && std::fs::write(&cache_probe, []).is_ok();
+    let _ = std::fs::remove_file(&cache_probe);
+    let cache_dir = if cache_is_writable {
+        cache_dir
+    } else {
+        let fallback = std::env::temp_dir().join("malvin-node-compile-cache");
+        let _ = std::fs::create_dir_all(&fallback);
+        fallback
+    };
+    cmd.env("NODE_COMPILE_CACHE", cache_dir);
 }
 
 #[cfg(test)]

@@ -1,7 +1,3 @@
-# sccache wraps rustc for faster rebuilds (see README.md).
-[build]
-rustc-wrapper = "sccache"
-
 # cargo-difftests instrumentation profile (used only by admin/difftests_*.sh).
 [profile.difftests]
 inherits = "dev"
