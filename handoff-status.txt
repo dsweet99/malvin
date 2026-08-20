@@ -1,1 +1,1 @@
-Codex resolver committed and file split; KISS still fails on CodexProcess coverage (86%).
+Handoff: Codex Docker integration fixed; Pi task and Ruff/KISS pass; Codex is blocked by API 401; remaining Rust/Python gates are unrun.
