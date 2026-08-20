@@ -1,20 +1,26 @@
-# Incomplete handoff envelope
+# Incomplete handoff
 
 ## Done
-- Verified `malvin models codex:` discovers live Codex model variants.
-- Added exact-match-first and family-prefix fallback resolution for Codex model slugs.
-- Wired resolution into `codex thread/start`; the Codex mock exercises `codex:gpt-5.6`.
-- Committed the resolver as `09233449` (`resolve Codex family model aliases`).
-- Split protocol implementation into `src/codex_sdk/session_protocol.rs`; `session_spawn.rs` is now 215 lines and `session_protocol.rs` is 85 lines.
-- KPop log records two hypotheses and test outcomes at `/home/dsweet/.malvin_home/logs/eb7ef333a92a6d41/20260819_184414_mexp1qqm/_kpop/exp_log_20260819_184414_mexp1qqm_g1.md`.
+- Read requirements from the referenced plan: only router prompts or Codex integration may change; fast-task language must not be added to router prompts.
+- Updated `src/python/fast_task.py` Codex Docker integration:
+  - Mount the complete host Codex package at `/opt/malvin/codex`, not only `bin/codex.js`, so its optional native package is available.
+  - Set `MALVIN_CODEX=/opt/malvin/codex/bin/codex.js`.
+  - Set Codex PATH to `/opt/malvin:<toolchain>`; the prior path incorrectly contained the executable `/opt/malvin/node` instead of its directory and was overridden by a later PATH assignment.
+- Decisive observations:
+  - Pi invocation passed FT-01 with reward 1.
+  - First Codex attempt failed because `node` was absent from effective PATH.
+  - A minimal Docker probe showed `/opt/malvin/node` executes and confirmed PATH must contain `/opt/malvin`.
+  - Next Codex attempt reached the launcher, which then reported the optional package missing; mounting the complete package resolved that startup error.
+  - Final Codex attempt reached Codex app-server and repeatedly received `401 Unauthorized` from `wss://api.openai.com/v1/responses`; it timed out without grading.
+- Quality gates run: `ruff check` passed; `kiss check` passed.
 
-## Remaining
-- KISS still fails: `src/codex_sdk/session_spawn.rs:33:CodexProcess` is 86% covered; required coverage is 90%.
-- Run `cargo fmt`, targeted Codex tests, and the repository quality gate after fixing coverage.
-- Rebuild and verify `malvin --model=codex:gpt-5.6 --do Hello` and `malvin models codex:`.
-- Do not include unrelated existing working-tree changes.
+## Remains
+- Commit the current `src/python/fast_task.py` change.
+- Run the remaining named checks sequentially: `cargo clippy --jobs 3 --all-targets --all-features -- -D warnings -W clippy::cargo`, `pytest tests`, and `./admin/malvin_rust_test_gate.sh`.
+- If credentials become valid, rerun `./ops/fast_task.py solve --model=codex:gpt-5.6-luna FT-01`; otherwise report the exact 401 blocker. Do not claim Codex fast-task success.
+- Inspect `git diff --check` and final status. Avoid committing unrelated pre-existing untracked files.
 
-## Next-agent starting position
-- Inspect `src/codex_sdk/session_spawn.rs` and `src/codex_sdk/session_protocol.rs`.
-- Add focused tests for uncovered `CodexProcess`/spawn error branches or isolate the process implementation into a separately covered module.
-- Run `kiss check` and use its exact reported unit/line as the acceptance criterion.
+## Starting position
+- Working tree has one intended tracked modification: `src/python/fast_task.py`.
+- No router prompt files were changed.
+- Commit only that tracked file, using a concise integration-fix message.

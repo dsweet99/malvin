@@ -61,7 +61,8 @@ CURSOR_SDK_BRIDGE_REMOTE = "/opt/malvin/cursor-sdk-bridge"
 CURSOR_SDK_BRIDGE_JS_REMOTE = f"{CURSOR_SDK_BRIDGE_REMOTE}/dist/bridge.js"
 
 PI_BIN_REMOTE = "/opt/malvin/pi"
-CODEX_BIN_REMOTE = "/opt/malvin/codex"
+CODEX_BIN_REMOTE = "/opt/malvin/codex/bin/codex.js"
+CODEX_PACKAGE_REMOTE = "/opt/malvin/codex"
 NODE_BIN_REMOTE = "/opt/malvin/node"
 TOOLCHAIN_PATH = (
     "/root/.cargo/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin"
@@ -503,9 +504,10 @@ def ft_docker_agent_cmd(
                     "required for codex: models inside the agent container "
                     "(malvin does not bundle codex)"
                 )
+            codex_package = host_codex.parent.parent
             volume_mounts = [
                 "-v",
-                f"{host_codex}:{CODEX_BIN_REMOTE}:ro",
+                f"{codex_package}:{CODEX_PACKAGE_REMOTE}:ro",
                 "-v",
                 f"{host_node}:{NODE_BIN_REMOTE}:ro",
                 *volume_mounts,
@@ -514,9 +516,12 @@ def ft_docker_agent_cmd(
                 *bridge_env,
                 "-e",
                 f"MALVIN_CODEX={CODEX_BIN_REMOTE}",
-                "-e",
-                f"PATH={NODE_BIN_REMOTE}:{TOOLCHAIN_PATH}",
             ]
+    container_path = (
+        f"{Path(NODE_BIN_REMOTE).parent}:{TOOLCHAIN_PATH}"
+        if ft_malvin_args_request_codex(malvin_args)
+        else TOOLCHAIN_PATH
+    )
     cmd = [
         "docker",
         "run",
@@ -525,7 +530,7 @@ def ft_docker_agent_cmd(
         *volume_mounts,
         *bridge_env,
         "-e",
-        f"PATH={TOOLCHAIN_PATH}",
+        f"PATH={container_path}",
         "-e",
         "MALVIN_FORCE_STDOUT_TEE=1",
         
