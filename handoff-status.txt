@@ -1,1 +1,1 @@
-Handoff: Codex Docker integration fixed; Pi task and Ruff/KISS pass; Codex is blocked by API 401; remaining Rust/Python gates are unrun.
+Handoff: Prompt placeholder, Codex discovery pipe handling, and teardown synchronization fixes are implemented; targeted verification and final five sequential gates remain.

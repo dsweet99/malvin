@@ -51,11 +51,13 @@ fn teardown_poll_tick(
         return;
     };
     if !state.pg_sigterm {
+        signal_pid(pgid, 15);
         signal_process_group(pgid, 15);
         state.pg_sigterm = true;
         return;
     }
     if (force_kill || state.polls >= teardown_kill_after_polls()) && !state.pg_sigkill {
+        signal_pid(pgid, 9);
         signal_process_group(pgid, 9);
         state.pg_sigkill = true;
     }
@@ -67,6 +69,7 @@ fn teardown_agent_sandbox_fast_tick(
 ) {
     if baseline_opt.is_none() {
         if let Some(pgid) = process_group_id {
+            signal_pid(pgid, 9);
             signal_process_group(pgid, 9);
         }
         return;
@@ -161,6 +164,7 @@ pub(crate) async fn teardown_agent_sandbox_async(
     let baseline_opt = spawn_baseline.filter(|b| !b.is_empty());
     if test_fast_acp_teardown_enabled() {
         teardown_agent_sandbox_fast_tick(process_group_id, baseline_opt);
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
         return;
     }
     let empty_baseline = HashSet::new();

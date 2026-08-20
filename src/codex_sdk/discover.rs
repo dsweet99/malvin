@@ -116,9 +116,35 @@ fn read_all_model_pages(
 }
 
 fn send_model_list_requests(stdin: &mut impl Write, cursor: Option<&str>) -> Result<(), String> {
-    writeln!(stdin, r#"{{"method":"initialize","id":1,"params":{{"clientInfo":{{"name":"malvin","title":"Malvin","version":"{}"}}}}}}"#, env!("CARGO_PKG_VERSION")).map_err(|e| e.to_string())?;
-    writeln!(stdin, r#"{{"method":"initialized","params":{{}}}}"#).map_err(|e| e.to_string())?;
-    send_model_list_request(stdin, cursor)
+    let initialize = format!(
+        "{}\n",
+        serde_json::json!({
+            "method": "initialize",
+            "id": 1,
+            "params": {
+                "clientInfo": {
+                    "name": "malvin",
+                    "title": "Malvin",
+                    "version": env!("CARGO_PKG_VERSION")
+                }
+            }
+        })
+    );
+    let initialized = "{\"method\":\"initialized\",\"params\":{}}\n";
+    let params = serde_json::json!({"limit": 100, "includeHidden": false, "cursor": cursor});
+    let model_list = format!("{}\n", serde_json::json!({"method":"model/list","id":2,"params":params}));
+    if let Err(error) = stdin
+        .write_all(format!("{initialize}{initialized}{model_list}").as_bytes())
+    {
+        if error.kind() != std::io::ErrorKind::BrokenPipe {
+            return Err(error.to_string());
+        }
+    }
+    match stdin.flush() {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::BrokenPipe => Ok(()),
+        Err(error) => Err(error.to_string()),
+    }
 }
 
 fn send_model_list_request(stdin: &mut impl Write, cursor: Option<&str>) -> Result<(), String> {

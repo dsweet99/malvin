@@ -37,6 +37,9 @@ pub async fn terminate_agent_process_group(
     process_group_id: Option<u32>,
     spawn_baseline: &HashSet<u32>,
 ) {
+    if let Some(pgid) = process_group_id {
+        super::unix_process_group_ps::signal_process_group(pgid, 15);
+    }
     super::unix_process_group_teardown_poll::teardown_agent_sandbox_async(
         process_group_id,
         Some(spawn_baseline),
@@ -46,6 +49,9 @@ pub async fn terminate_agent_process_group(
 
 #[cfg(unix)]
 pub async fn terminate_process_group(process_group_id: Option<u32>) {
+    if let Some(pgid) = process_group_id {
+        super::unix_process_group_ps::signal_process_group(pgid, 15);
+    }
     super::unix_process_group_teardown_poll::teardown_agent_sandbox_async(process_group_id, None)
         .await;
 }
