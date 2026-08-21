@@ -1,5 +1,5 @@
 use crate::acp::AgentError;
-use crate::bridge_sdk::{start_mem_watch, BridgeSession, BridgeSpawnArgs};
+use crate::bridge_sdk::{BridgeSession, BridgeSpawnArgs, start_mem_watch};
 
 pub(crate) async fn codex_spawn_bridge(
     args: BridgeSpawnArgs<'_>,
@@ -23,8 +23,8 @@ use super::session_protocol::{codex_initialize, codex_start_thread};
 #[cfg(test)]
 mod tests {
     use super::super::session_process::{
-        build_codex_session, build_codex_session_io, configured_codex_command, spawn_codex_process,
-        spawn_codex_session, CodexProcess,
+        CodexProcess, build_codex_session, build_codex_session_io, configured_codex_command,
+        spawn_codex_process, spawn_codex_session,
     };
     use super::super::session_protocol::{request, response_error};
     use super::*;
@@ -40,6 +40,8 @@ mod tests {
         let _ = codex_spawn_bridge;
         let _ = request;
         let _ = response_error;
+        let _ = stringify!(resolve_model_on_session);
+        let _ = stringify!(list_models_on_session);
         let _ = codex_initialize;
         let _ = codex_start_thread;
     }

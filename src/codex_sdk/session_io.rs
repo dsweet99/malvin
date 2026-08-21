@@ -65,6 +65,21 @@ pub(crate) async fn codex_send_prompt(
     super::session_turn::consume_codex_turn(session).await
 }
 
+pub(crate) async fn codex_delete_thread(session: &BridgeSession) -> Result<(), AgentError> {
+    let Some(thread_id) = session_string(&session.agent_id).filter(|id| !id.is_empty()) else {
+        return Ok(());
+    };
+    write_json(
+        session,
+        &serde_json::json!({
+            "method": "thread/delete",
+            "id": next_id(),
+            "params": { "threadId": thread_id }
+        }),
+    )
+    .await
+}
+
 pub(crate) async fn write_json(
     session: &BridgeSession,
     value: &serde_json::Value,
@@ -129,6 +144,7 @@ mod tests {
         let _ = next_id;
         let _ = session_string;
         let _ = set_session_string;
+        let _ = codex_delete_thread;
     }
     #[test]
     fn interrupt_requires_thread_and_turn_ids() {

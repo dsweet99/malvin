@@ -1,5 +1,6 @@
 use super::session_turn::{
-    agent_message_from_turn, finish_codex_status, rpc_error, thread_became_idle,
+    TurnState, agent_message_from_turn, finish_codex_status, rpc_error, thread_became_idle,
+    turn_is_complete,
 };
 use serde_json::json;
 
@@ -43,4 +44,16 @@ fn agent_text_comes_from_items_not_last_agent_message() {
         "thread/status/changed",
         &json!({"params":{"status":{"type":"active"}}})
     ));
+}
+
+#[test]
+fn idle_status_does_not_complete_a_turn() {
+    let state = TurnState {
+        turn_id: Some("turn-test".into()),
+        ..TurnState::default()
+    };
+    let idle = json!({"params":{"status":{"type":"idle"}}});
+    assert!(!turn_is_complete("thread/status/changed", &state, &idle));
+    let completed = json!({"params":{"turn":{"id":"turn-test","status":"failed"}}});
+    assert!(turn_is_complete("turn/completed", &state, &completed));
 }

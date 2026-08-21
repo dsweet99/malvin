@@ -1,7 +1,9 @@
 use super::*;
 pub(crate) fn artifact_storage_available() -> bool {
     let root = crate::malvin_home_logs_root();
-    if std::fs::create_dir_all(&root).is_err() { return false; }
+    if std::fs::create_dir_all(&root).is_err() {
+        return false;
+    }
     let probe = root.join(format!(".test-write-probe-{}", std::process::id()));
     let available = std::fs::write(&probe, []).is_ok();
     let _ = std::fs::remove_file(probe);
@@ -11,18 +13,13 @@ pub(crate) fn artifact_storage_available() -> bool {
 #[macro_export]
 macro_rules! router_workflow_context_with_gates {
     ($artifacts:expr, $opts:expr, $include:expr) => {{
-        let mut context = $crate::orchestrator::workflow_context_paths_only(
-            $artifacts,
-            $opts.model,
-            $opts.git,
-        );
+        let mut context =
+            $crate::orchestrator::workflow_context_paths_only($artifacts, $opts.model, $opts.git);
         if $include {
             context.insert(
                 "quality_gates".to_string(),
-                $crate::repo_gates::prompt_quality_gates_markdown_ephemeral(
-                    &$artifacts.work_dir,
-                )
-                .expect("quality gates"),
+                $crate::repo_gates::prompt_quality_gates_markdown_ephemeral(&$artifacts.work_dir)
+                    .expect("quality gates"),
             );
         }
         Ok::<_, String>(context)

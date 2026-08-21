@@ -40,10 +40,7 @@ fn malvin_data_root_uses_git_toplevel_when_inside_repo() {
     let sub = repo.join("src");
     let repo = repo.canonicalize().expect("canonicalize");
     assert_eq!(malvin_data_root(&sub), repo);
-    assert_eq!(
-        malvin_checks_path(&sub),
-        repo.join(".malvin").join("gates")
-    );
+    assert_eq!(malvin_checks_path(&sub), repo.join(".malvin").join("gates"));
     assert_eq!(
         malvin_acp_spawn_chamber_dir(&sub),
         repo.join(".malvin").join("acp_spawn")

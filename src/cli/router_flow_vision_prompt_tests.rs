@@ -47,10 +47,7 @@ fn default_router_prompts_follow_vision_problem_solving_language() {
         let body = crate::prompts::default_file(name)
             .unwrap_or_else(|| panic!("missing {name}"))
             .to_ascii_lowercase();
-        assert!(
-            body.contains("kpop:"),
-            "{name} must keep KPop steering"
-        );
+        assert!(body.contains("kpop:"), "{name} must keep KPop steering");
         for needle in router_metaphors {
             assert!(!body.contains(needle), "{name} must not contain {needle:?}");
         }

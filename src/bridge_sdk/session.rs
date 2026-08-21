@@ -88,6 +88,7 @@ impl BridgeSession {
             }
             BridgeWire::CodexRpc => {
                 let _ = crate::codex_sdk::write_abort(&self).await;
+                let _ = crate::codex_sdk::delete_thread(&self).await;
             }
         }
         #[cfg(unix)]

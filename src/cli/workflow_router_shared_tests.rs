@@ -165,8 +165,8 @@ fn run_router_workspace_gates_fails_when_checks_missing() {
     crate::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tempdir");
         let (artifacts, backups) = missing_checks_fixture(tmp.path());
-        let err = run_router_workspace_gates(&artifacts, &backups, true)
-            .expect_err("missing checks");
+        let err =
+            run_router_workspace_gates(&artifacts, &backups, true).expect_err("missing checks");
         assert!(
             err.contains(".malvin/gates is missing"),
             "missing gates must fail clearly: {err}"
@@ -232,8 +232,8 @@ fn restore_failure_prevents_gate_run() {
     crate::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tempdir");
         let (artifacts, backups) = gitignore_restore_failure_fixture(tmp.path());
-        let err = run_router_workspace_gates(&artifacts, &backups, true)
-            .expect_err("restore fails");
+        let err =
+            run_router_workspace_gates(&artifacts, &backups, true).expect_err("restore fails");
         assert!(err.contains("gitignore restore"));
     });
 }

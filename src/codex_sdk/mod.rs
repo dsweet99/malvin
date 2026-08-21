@@ -10,6 +10,8 @@ mod session_spawn;
 mod session_turn;
 
 #[cfg(test)]
+mod catalog_tests;
+#[cfg(test)]
 mod discover_tests;
 #[cfg(test)]
 mod map_event_more_tests;
@@ -18,8 +20,11 @@ mod map_event_tests;
 #[cfg(test)]
 mod session_turn_tests;
 
-pub(crate) use discover::{list_codex_models, resolve_codex_model};
-pub(crate) use session_io::{codex_send_prompt as send_prompt, codex_write_abort as write_abort};
+pub(crate) use discover::list_codex_models;
+pub(crate) use session_io::{
+    codex_delete_thread as delete_thread, codex_send_prompt as send_prompt,
+    codex_write_abort as write_abort,
+};
 pub(crate) use session_spawn::codex_spawn_bridge as spawn_bridge;
 
 #[cfg(test)]

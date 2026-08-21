@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use crate::tool_summary::{shorten_middle, TOOL_DISPLAY_MAX_WIDTH};
+use crate::tool_summary::{TOOL_DISPLAY_MAX_WIDTH, shorten_middle};
 
 pub(super) fn tool_name_summary(ty: &str, item: &Value) -> Option<(String, String)> {
     match ty {

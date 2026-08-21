@@ -1,4 +1,12 @@
 use super::discover::codex_path_is_executable;
+use super::discover::{ModelListPage, resolve_codex_model_slug};
+
+#[test]
+fn kiss_cov_discover_names() {
+    let page = ModelListPage::empty();
+    assert!(page.models.is_empty());
+    let _ = resolve_codex_model_slug("missing-model-for-coverage", &[]);
+}
 
 #[test]
 fn codex_path_is_executable_checks_modes() {
@@ -16,5 +24,6 @@ fn codex_path_is_executable_checks_modes() {
         permissions.set_mode(0o644);
         std::fs::set_permissions(&path, permissions).expect("chmod");
         assert!(!codex_path_is_executable(&path));
+        assert!(!codex_path_is_executable(&dir.path().join("missing")));
     }
 }

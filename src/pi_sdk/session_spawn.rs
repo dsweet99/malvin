@@ -1,5 +1,5 @@
 use crate::acp::AgentError;
-use crate::bridge_sdk::{start_mem_watch, BridgeSession, BridgeSpawnArgs, BridgeWire};
+use crate::bridge_sdk::{BridgeSession, BridgeSpawnArgs, BridgeWire, start_mem_watch};
 
 use super::discover::{pi_version_ok, resolve_pi_bin};
 use super::session_io::pi_send_new_session;

@@ -114,10 +114,11 @@ fn writable_logs_root_or_skip(tmp: &tempfile::TempDir) -> Option<PathBuf> {
             if matches!(
                 error.kind(),
                 std::io::ErrorKind::PermissionDenied | std::io::ErrorKind::ReadOnlyFilesystem
-            ) => {
-                eprintln!("skipping log-GC filesystem test: log root unavailable: {error}");
-                None
-            }
+            ) =>
+        {
+            eprintln!("skipping log-GC filesystem test: log root unavailable: {error}");
+            None
+        }
         Err(error) => panic!("mkdir: {error}"),
     }
 }

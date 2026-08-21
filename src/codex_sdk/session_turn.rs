@@ -3,9 +3,9 @@ use crate::bridge_protocol::BridgeEvent;
 use crate::bridge_sdk::BridgeSession;
 
 #[derive(Default)]
-struct TurnState {
-    response_text: String,
-    turn_id: Option<String>,
+pub(super) struct TurnState {
+    pub(super) response_text: String,
+    pub(super) turn_id: Option<String>,
 }
 
 pub(super) async fn consume_codex_turn(session: &BridgeSession) -> Result<(), AgentError> {
@@ -73,12 +73,11 @@ fn remember_turn_id(session: &BridgeSession, state: &mut TurnState, id: &str) {
     super::session_io::set_codex_turn_id(session, Some(id.to_owned()));
 }
 
-fn turn_is_complete(method: &str, state: &TurnState, value: &serde_json::Value) -> bool {
-    state.turn_id.is_some()
-        && event_turn_matches(state, value)
-        && (method == "turn/completed" || thread_became_idle(method, value))
+pub(super) fn turn_is_complete(method: &str, state: &TurnState, value: &serde_json::Value) -> bool {
+    method == "turn/completed" && state.turn_id.is_some() && event_turn_matches(state, value)
 }
 
+#[cfg(test)]
 pub(super) fn thread_became_idle(method: &str, value: &serde_json::Value) -> bool {
     method == "thread/status/changed"
         && value
@@ -159,7 +158,7 @@ fn finish_codex_turn(
     let status = value
         .pointer("/params/turn/status")
         .and_then(|v| v.as_str())
-        .unwrap_or("completed");
+        .ok_or_else(|| AgentError("codex turn completed without status".into()))?;
     let result = agent_message_from_turn(value, response_text);
     record_codex_result(session, result.as_ref());
     emit_codex_done(session, status, result);

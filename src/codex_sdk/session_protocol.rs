@@ -32,7 +32,7 @@ pub(crate) async fn codex_start_thread(
     model: &str,
     cwd: &std::path::Path,
 ) -> Result<(), AgentError> {
-    let model = crate::codex_sdk::resolve_codex_model(model).map_err(AgentError)?;
+    let model = resolve_model_on_session(session, model).await;
     let response = request(
         session,
         "thread/start",
@@ -40,7 +40,8 @@ pub(crate) async fn codex_start_thread(
             "model": model,
             "cwd": cwd,
             "approvalPolicy": "never",
-            "sandbox": "workspace-write"
+            "sandbox": "workspace-write",
+            "ephemeral": true
         }),
     )
     .await?;
@@ -82,6 +83,29 @@ pub(crate) fn response_error(context: &str, response: &serde_json::Value) -> Age
         "{context}: {}",
         response.get("error").unwrap_or(response)
     ))
+}
+
+async fn resolve_model_on_session(session: &BridgeSession, slug: &str) -> String {
+    list_models_on_session(session)
+        .await
+        .ok()
+        .and_then(|models| super::discover::resolve_codex_model_slug(slug, &models).ok())
+        .unwrap_or_else(|| slug.to_owned())
+}
+
+async fn list_models_on_session(
+    session: &BridgeSession,
+) -> Result<Vec<(String, String)>, AgentError> {
+    let response = request(
+        session,
+        "model/list",
+        super::discover::model_list_params(None),
+    )
+    .await?;
+    if response.get("error").is_some() {
+        return Err(response_error("codex model/list", &response));
+    }
+    super::discover::models_from_list_response(&response).map_err(AgentError)
 }
 
 async fn write(session: &BridgeSession, value: &serde_json::Value) -> Result<(), AgentError> {
