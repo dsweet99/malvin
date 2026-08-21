@@ -33,7 +33,7 @@ Listing:
 1. List Cursor models via the Cursor SDK bridge (`Cursor.models.list`) when Node ≥ 22.13 and `cursor-sdk-bridge` are available (spawned through malvin’s sandbox command builder). Wall-clock budget defaults to 30s (`MALVIN_CURSOR_LIST_MODELS_TIMEOUT_MS`) for both the SDK Node path and the `agent` / `cursor-agent models` fallback. If that path fails, times out, or returns an empty catalog, fall back to `agent` / `cursor-agent models` on `PATH`. If both fail, print `(cursor models unavailable: …)` and continue with other sections. When a prefix filter cannot match any `cursor:` id, this section is skipped. If the SDK catalog omits `auto` (it may list `default` instead), malvin still prints `cursor:auto` so the documented CLI default remains discoverable.
 2. Print each Cursor id with a `cursor:` prefix. When the SDK catalog includes parameter definitions, append a tab-separated summary such as `thinking=false|true effort=low|medium|high|xhigh|max fast=false|true` (parameter ids and allowed values vary by model; common ones are `thinking`, `effort` / `reasoning`, `fast`, and `context`).
 3. List Pi models via `pi --list-models` when `pi` is on `PATH` or `MALVIN_PI` is set (spawned through malvin’s sandbox command builder). At the same time, run `pi --list-providers` and keep only models whose provider (or alias) has at least one listed auth-env variable set in the process environment. Providers that list no auth-env keys (for example a local server) stay visible. Providers absent from the live table stay visible. Wall-clock budget defaults to 30s (`MALVIN_PI_LIST_MODELS_TIMEOUT_MS`) for each of those two `pi` invocations. Print each kept id with a `pi:` prefix (`pi:<provider>/<model>`), the model name, and `thinking=yes` or `thinking=no` when the Pi table includes a thinking capability column. On failure, timeout, or exit 0 with no parseable model rows, print `(pi models unavailable: …)` and continue. If the provider table cannot be fetched or parsed, print `(pi provider auth map unavailable: …)` and still print the `pi:` model rows unfiltered. Skip when the prefix cannot match `pi:`.
-4. List Codex models through the local stdio app-server (`codex app-server`, using `PATH` or `MALVIN_CODEX`) and print each with a `codex:` prefix. If Codex is unavailable or the response cannot be parsed, print `(codex models unavailable: …)` and continue. Skip when the prefix cannot match `codex:`.
+4. List Codex models through the local stdio app-server (`codex app-server`, using `PATH` or `MALVIN_CODEX`) and print each with a `codex:` prefix, including hidden catalog ids. When the catalog includes them, append tab-separated `thinking=` reasoning levels, `service=` tier ids, `hidden`, and `default`. If Codex is unavailable or the response cannot be parsed, print `(codex models unavailable: …)` and continue. Skip when the prefix cannot match `codex:`. Family aliases such as `codex:gpt-5.6` resolve at spawn time to the first live catalog id with that prefix (for example `gpt-5.6-sol`).
 5. Print blank line and: `Current: <model>` (from global `--model` when set, else `~/.malvin_home/config.toml`, else `cursor:auto`).
 
 ### Selecting thinking / speed
@@ -44,6 +44,7 @@ Bracket overrides use the same shape as the Cursor agent CLI (`id[k=v,…]`):
 |---------|---------|--------|
 | `cursor:` | `cursor:claude-opus-5[thinking=true,effort=high,fast=true]` | Passed to the Cursor SDK as `{ id, params }` |
 | `pi:` | `pi:openai/gpt-5[thinking=high]` | Passed to `pi --rpc` as `--thinking high` |
+| `codex:` | `codex:gpt-5.6-terra` | Passed to Codex `thread/start` as `model` (family names such as `gpt-5.6` map to the first matching catalog id) |
 
 For `pi:`, the only supported bracket key is `thinking`, with values `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`. Pi has no separate speed / `fast` switch. Capability `thinking=yes` in the listing means the model can use extended thinking; the bracket sets the level for a run.
 
@@ -61,6 +62,8 @@ malvin models pi:open
 malvin --model 'cursor:claude-opus-5[effort=high,fast=true]' do "say hi"
 malvin --model 'pi:openai/gpt-5[thinking=high]' do "say hi"
 malvin --model pi:openai/gpt-4o do "say hi"
+malvin models codex:
+malvin --model=codex:gpt-5.6-terra --do Hello
 malvin --model cursor:sonnet-4 models             # Current: footer shows cursor:sonnet-4
 malvin --model cursor:sonnet-4 inspire plan.md
 ```

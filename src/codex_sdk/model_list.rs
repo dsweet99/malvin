@@ -31,13 +31,52 @@ fn parse_model_rows(result: &serde_json::Value) -> Result<Vec<(String, String)>,
 }
 
 fn parse_model_row(row: &serde_json::Value) -> Option<(String, String)> {
-    Some((
-        row.get("id")?.as_str()?.to_owned(),
-        row.get("displayName")
-            .and_then(serde_json::Value::as_str)
-            .unwrap_or_default()
-            .to_owned(),
-    ))
+    Some((row.get("id")?.as_str()?.to_owned(), model_row_label(row)))
+}
+
+fn model_row_label(row: &serde_json::Value) -> String {
+    let name = row
+        .get("displayName")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("");
+    let extras = codex_listing_extras(row);
+    if extras.is_empty() {
+        name.to_owned()
+    } else if name.is_empty() {
+        extras
+    } else {
+        format!("{name}\t{extras}")
+    }
+}
+
+fn codex_listing_extras(row: &serde_json::Value) -> String {
+    let mut parts = Vec::new();
+    if let Some(values) = joined_ids(row.get("supportedReasoningEfforts"), "reasoningEffort") {
+        parts.push(format!("thinking={values}"));
+    }
+    if let Some(values) = joined_ids(row.get("serviceTiers"), "id") {
+        parts.push(format!("service={values}"));
+    }
+    if row.get("hidden").and_then(serde_json::Value::as_bool) == Some(true) {
+        parts.push("hidden".into());
+    }
+    if row.get("isDefault").and_then(serde_json::Value::as_bool) == Some(true) {
+        parts.push("default".into());
+    }
+    parts.join(" ")
+}
+
+fn joined_ids(field: Option<&serde_json::Value>, key: &str) -> Option<String> {
+    let ids: Vec<&str> = field?
+        .as_array()?
+        .iter()
+        .filter_map(|value| value.get(key).and_then(serde_json::Value::as_str))
+        .collect();
+    if ids.is_empty() {
+        None
+    } else {
+        Some(ids.join("|"))
+    }
 }
 
 fn parse_next_cursor(result: &serde_json::Value) -> Option<String> {
@@ -129,5 +168,29 @@ mod tests {
             parse_model_row(&serde_json::json!({"id": "valid"})),
             Some(("valid".into(), String::new()))
         );
+    }
+
+    #[test]
+    fn model_list_row_appends_thinking_service_and_flags() {
+        let row = serde_json::json!({
+            "id": "gpt-terra",
+            "displayName": "Terra",
+            "hidden": true,
+            "isDefault": true,
+            "supportedReasoningEfforts": [
+                {"reasoningEffort": "low"},
+                {"reasoningEffort": "high"}
+            ],
+            "serviceTiers": [{"id": "priority"}]
+        });
+        assert_eq!(
+            parse_model_row(&row),
+            Some((
+                "gpt-terra".into(),
+                "Terra\tthinking=low|high service=priority hidden default".into()
+            ))
+        );
+        assert!(joined_ids(Some(&serde_json::json!([])), "id").is_none());
+        assert!(codex_listing_extras(&serde_json::json!({"id": "x"})).is_empty());
     }
 }

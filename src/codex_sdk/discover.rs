@@ -82,10 +82,15 @@ pub(crate) fn resolve_codex_model_slug(
         .ok_or_else(|| format!("Codex model `{slug}` is not in the live model catalog"))
 }
 
+#[cfg(test)]
 pub(crate) fn models_from_list_response(
     value: &serde_json::Value,
 ) -> Result<Vec<(String, String)>, String> {
     parse_model_list_page(value).map(|page| page.models)
+}
+
+pub(crate) fn list_page_from_response(value: &serde_json::Value) -> Result<ModelListPage, String> {
+    parse_model_list_page(value)
 }
 
 pub(crate) fn model_list_params(cursor: Option<&str>) -> serde_json::Value {
@@ -152,6 +157,7 @@ mod tests {
         assert!(page.models.is_empty());
         let _ = model_list_params(None);
         let _ = models_from_list_response(&serde_json::json!({"result":{"data":[]}}));
+        let _ = list_page_from_response(&serde_json::json!({"result":{"data":[]}}));
         let _ = resolve_codex_model_slug("x", &[]);
         let _ = list_codex_models();
         let _ = resolve_codex_bin();
