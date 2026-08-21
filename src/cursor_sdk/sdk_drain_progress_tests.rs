@@ -67,7 +67,7 @@ async fn assert_run_done_after_progress() {
         labels,
         async {
             Ok::<_, crate::acp::AgentError>(crate::bridge_protocol::BridgeEvent::RunDone {
-                status: "finished".into(),
+                status: crate::bridge_protocol::RunDoneStatus::Finished,
                 result: Some("virtual-long-turn".into()),
                 usage: None,
                 error: None,

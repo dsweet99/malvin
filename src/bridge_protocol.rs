@@ -1,6 +1,10 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+#[path = "bridge_protocol_status.rs"]
+mod bridge_protocol_status;
+pub use bridge_protocol_status::RunDoneStatus;
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum BridgeRequest {
@@ -62,7 +66,7 @@ pub enum BridgeEvent {
         usage: Value,
     },
     RunDone {
-        status: String,
+        status: RunDoneStatus,
         result: Option<String>,
         usage: Option<Value>,
         error: Option<String>,
@@ -86,7 +90,22 @@ pub fn encode_request(req: &BridgeRequest) -> Result<String, String> {
 }
 
 pub fn decode_event(line: &str) -> Result<BridgeEvent, String> {
-    serde_json::from_str(line).map_err(|e| format!("bridge event parse: {e}"))
+    let mut ev: BridgeEvent =
+        serde_json::from_str(line).map_err(|e| format!("bridge event parse: {e}"))?;
+    canonicalize_run_done(&mut ev);
+    Ok(ev)
+}
+
+/// Shared `run_done.status` vocabulary for Cursor, Pi, and Codex traces.
+#[must_use]
+pub fn canonical_run_done_status(status: &str) -> &'static str {
+    RunDoneStatus::from_raw(status).as_str()
+}
+
+pub fn canonicalize_run_done(ev: &mut BridgeEvent) {
+    if let BridgeEvent::RunDone { status, .. } = ev {
+        *status = RunDoneStatus::from_raw(status.as_str());
+    }
 }
 
 #[cfg(test)]
@@ -146,17 +165,25 @@ mod bridge_protocol_tests {
 
     #[test]
     fn decode_run_done_and_fatal() {
+        assert_eq!(canonical_run_done_status("completed"), "finished");
+        assert_eq!(canonical_run_done_status("failed"), "error");
+        assert_eq!(canonical_run_done_status("interrupted"), "cancelled");
+        assert_eq!(canonical_run_done_status("finished"), "finished");
         let done = decode_event(
-            r#"{"event":"run_done","status":"finished","result":"hi","usage":{"inputTokens":1,"outputTokens":2}}"#,
+            r#"{"event":"run_done","status":"completed","result":"hi","usage":{"inputTokens":1,"outputTokens":2}}"#,
         )
         .expect("decode");
         match done {
             BridgeEvent::RunDone { status, result, .. } => {
-                assert_eq!(status, "finished");
+                assert_eq!(status, RunDoneStatus::Finished);
                 assert_eq!(result.as_deref(), Some("hi"));
             }
             other => panic!("unexpected {other:?}"),
         }
+        let failed = decode_event(r#"{"event":"run_done","status":"failed"}"#).expect("failed");
+        assert!(
+            matches!(failed, BridgeEvent::RunDone { status, .. } if status == RunDoneStatus::Error)
+        );
         let fatal =
             decode_event(r#"{"event":"fatal","message":"boom","retryable":true}"#).expect("fatal");
         match fatal {

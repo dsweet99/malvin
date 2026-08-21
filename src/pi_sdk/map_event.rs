@@ -1,6 +1,6 @@
 use serde_json::{Value, json};
 
-use crate::bridge_protocol::BridgeEvent;
+use crate::bridge_protocol::{BridgeEvent, RunDoneStatus};
 
 use super::map_event_summary::tool_summary_from_pi;
 
@@ -111,9 +111,9 @@ fn map_agent_end(raw: &Value) -> BridgeEvent {
         }
     });
     let status = if err.is_some() {
-        "error".to_string()
+        RunDoneStatus::Error
     } else {
-        "finished".to_string()
+        RunDoneStatus::Finished
     };
     BridgeEvent::RunDone {
         status,

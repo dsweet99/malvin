@@ -30,6 +30,74 @@ fn maps_assistant_and_reasoning_deltas() {
         [BridgeEvent::Thinking { text }] if text == "plan"
     ));
     assert!(map_codex_stream_events("item/agentMessage/delta", &json!({ "delta": "" })).is_empty());
+    let reasoning_item = map_codex_stream_events(
+        "item/completed",
+        &json!({
+            "item": {
+                "id": "r1",
+                "type": "reasoning",
+                "content": ["think"],
+                "summary": ["plan"]
+            }
+        }),
+    );
+    assert!(matches!(
+        reasoning_item.as_slice(),
+        [BridgeEvent::Thinking { text }] if text == "think"
+    ));
+    let usage = map_codex_stream_events(
+        "thread/tokenUsage/updated",
+        &json!({
+            "tokenUsage": {
+                "last": {
+                    "inputTokens": 4,
+                    "outputTokens": 2,
+                    "cachedInputTokens": 1,
+                    "cacheWriteInputTokens": 0,
+                    "reasoningOutputTokens": 3,
+                    "totalTokens": 10
+                }
+            }
+        }),
+    );
+    match usage.as_slice() {
+        [BridgeEvent::Usage { usage }] => {
+            assert_eq!(usage["inputTokens"], 4);
+            assert_eq!(usage["cacheReadTokens"], 1);
+            assert_eq!(usage["reasoningTokens"], 3);
+        }
+        other => panic!("unexpected {other:?}"),
+    }
+    assert!(map_codex_stream_events("thread/tokenUsage/updated", &json!({})).is_empty());
+    let objects = map_codex_stream_events(
+        "item/completed",
+        &json!({
+            "item": {
+                "id": "r2",
+                "type": "reasoning",
+                "content": [{"text": "why"}]
+            }
+        }),
+    );
+    assert!(matches!(
+        objects.as_slice(),
+        [BridgeEvent::Thinking { text }] if text == "why"
+    ));
+    let wrapped = map_codex_stream_events(
+        "item/started",
+        &json!({
+            "item": {
+                "id": "c2",
+                "type": "commandExecution",
+                "command": "/bin/bash -lc cat README.md"
+            }
+        }),
+    );
+    assert!(matches!(
+        wrapped.as_slice(),
+        [BridgeEvent::ToolCall { name, summary, .. }]
+            if name.as_deref() == Some("read") && summary.as_deref() == Some("Read cat README.md")
+    ));
 }
 
 #[test]

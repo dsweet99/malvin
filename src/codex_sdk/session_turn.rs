@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use crate::acp::AgentError;
 use crate::bridge_protocol::BridgeEvent;
 use crate::bridge_sdk::BridgeSession;
@@ -6,6 +8,9 @@ use crate::bridge_sdk::BridgeSession;
 pub(super) struct TurnState {
     pub(super) response_text: String,
     pub(super) turn_id: Option<String>,
+    pub(super) usage: Option<serde_json::Value>,
+    pub(super) started: Option<Instant>,
+    pub(super) counted_step: bool,
 }
 
 pub(super) async fn consume_codex_turn(session: &BridgeSession) -> Result<(), AgentError> {
@@ -58,10 +63,10 @@ fn handle_codex_event(
         return None;
     }
     if turn_is_complete(method, state, value) {
-        return Some(finish_codex_turn(
+        return Some(super::session_turn_done::finish_codex_turn(
             session,
             value,
-            std::mem::take(&mut state.response_text),
+            std::mem::take(state),
         ));
     }
     emit_turn_stream(session, method, value, state);
@@ -70,6 +75,9 @@ fn handle_codex_event(
 
 fn remember_turn_id(session: &BridgeSession, state: &mut TurnState, id: &str) {
     state.turn_id = Some(id.to_owned());
+    if state.started.is_none() {
+        state.started = Some(Instant::now());
+    }
     super::session_io::set_codex_turn_id(session, Some(id.to_owned()));
 }
 
@@ -110,6 +118,18 @@ fn emit_turn_stream(
     for ev in super::map_event::map_codex_stream_events(method, params) {
         if let BridgeEvent::Assistant { text } = &ev {
             state.response_text.push_str(text);
+            if !state.counted_step {
+                crate::bridge_sdk::note_sdk_step(session.timing.as_ref());
+                state.counted_step = true;
+            }
+        }
+        if let BridgeEvent::Usage { usage } = &ev {
+            state.usage = Some(usage.clone());
+        }
+        if let BridgeEvent::ToolCall { phase, .. } = &ev {
+            if phase == "start" {
+                crate::bridge_sdk::note_sdk_step(session.timing.as_ref());
+            }
         }
         crate::bridge_sdk::handle_stream_event(session, &ev);
     }
@@ -125,45 +145,8 @@ fn completed_agent_text<'a>(method: &str, params: &'a serde_json::Value) -> Opti
     item_agent_text(params.get("item")?)
 }
 
-fn record_codex_result(session: &BridgeSession, result: Option<&String>) {
-    if let Some(text) = result {
-        *session
-            .last_response
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) = text.clone();
-        crate::bridge_sdk::feed_do_dm_run_result(text);
-    }
-}
-
-fn emit_codex_done(session: &BridgeSession, status: &str, result: Option<String>) {
-    let ev = BridgeEvent::RunDone {
-        status: status.into(),
-        result,
-        usage: None,
-        error: None,
-        duration_ms: None,
-    };
-    crate::bridge_sdk::handle_stream_event(session, &ev);
-}
-
 fn turn_matches(turn_id: Option<&String>, event_turn: Option<&str>) -> bool {
     turn_id.is_none_or(|id| event_turn.is_none_or(|event| event == id))
-}
-
-fn finish_codex_turn(
-    session: &BridgeSession,
-    value: &serde_json::Value,
-    response_text: String,
-) -> Result<(), AgentError> {
-    let status = value
-        .pointer("/params/turn/status")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| AgentError("codex turn completed without status".into()))?;
-    let result = agent_message_from_turn(value, response_text);
-    record_codex_result(session, result.as_ref());
-    emit_codex_done(session, status, result);
-    super::session_io::set_codex_turn_id(session, None);
-    finish_codex_status(value, status)
 }
 
 pub(super) fn agent_message_from_turn(
@@ -187,26 +170,6 @@ fn item_agent_text(item: &serde_json::Value) -> Option<&str> {
         .filter(|text| !text.is_empty())
 }
 
-pub(super) fn finish_codex_status(
-    value: &serde_json::Value,
-    status: &str,
-) -> Result<(), AgentError> {
-    if !codex_turn_status_is_failure(status) {
-        return Ok(());
-    }
-    let detail = value
-        .pointer("/params/turn/error/message")
-        .and_then(|v| v.as_str())
-        .unwrap_or(status);
-    Err(AgentError(format!("codex turn {detail}")))
-}
-
-fn codex_turn_status_is_failure(status: &str) -> bool {
-    crate::bridge_sdk::run_done_status_is_failure(status)
-        || status == "failed"
-        || status == "interrupted"
-}
-
 #[cfg(test)]
 mod tests {
     #[test]
@@ -216,12 +179,11 @@ mod tests {
         let _ = stringify!(event_turn_matches);
         let _ = stringify!(event_turn_id);
         let _ = stringify!(emit_turn_stream);
-        let _ = stringify!(record_codex_result);
-        let _ = stringify!(emit_codex_done);
         let _ = stringify!(turn_matches);
-        let _ = stringify!(finish_codex_turn);
-        let _ = stringify!(finish_codex_status);
         let _ = stringify!(consume_codex_turn);
+        let _ = stringify!(elapsed_ms);
+        let _ = stringify!(logged_run_done);
+        let _ = stringify!(canonicalize_run_done);
         let _ = stringify!(rpc_error);
         let _ = stringify!(capture_rpc_turn_id);
         let _ = stringify!(remember_turn_id);
@@ -230,7 +192,6 @@ mod tests {
         let _ = stringify!(agent_message_from_turn);
         let _ = stringify!(turn_item_agent_text);
         let _ = stringify!(item_agent_text);
-        let _ = stringify!(codex_turn_status_is_failure);
         let _ = stringify!(completed_agent_text);
     }
 }

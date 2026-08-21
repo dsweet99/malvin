@@ -155,8 +155,8 @@ async fn discard_optional_trailing_run_done(session: &BridgeSession) {
 }
 
 #[must_use]
-pub(crate) fn run_done_status_is_failure(status: &str) -> bool {
-    status == "error" || status == "cancelled"
+pub(crate) const fn run_done_status_is_failure(status: crate::bridge_protocol::RunDoneStatus) -> bool {
+    status.is_failure()
 }
 
 fn finish_run_done(session: &BridgeSession, ev: &BridgeEvent) -> Result<(), AgentError> {
@@ -181,9 +181,9 @@ fn finish_run_done(session: &BridgeSession, ev: &BridgeEvent) -> Result<(), Agen
         super::log_adapter::feed_do_dm_run_result(text);
     }
     super::log_adapter::handle_stream_event(session, ev);
-    if run_done_status_is_failure(status) {
+    if run_done_status_is_failure(*status) {
         return Err(AgentError(error.clone().unwrap_or_else(|| {
-            if status == "cancelled" {
+            if *status == crate::bridge_protocol::RunDoneStatus::Cancelled {
                 "run cancelled".into()
             } else {
                 "run error".into()
@@ -225,8 +225,9 @@ mod tests {
 
     #[test]
     fn cancelled_and_error_are_failures() {
-        assert!(run_done_status_is_failure("error"));
-        assert!(run_done_status_is_failure("cancelled"));
-        assert!(!run_done_status_is_failure("finished"));
+        use crate::bridge_protocol::RunDoneStatus;
+        assert!(run_done_status_is_failure(RunDoneStatus::Error));
+        assert!(run_done_status_is_failure(RunDoneStatus::Cancelled));
+        assert!(!run_done_status_is_failure(RunDoneStatus::Finished));
     }
 }

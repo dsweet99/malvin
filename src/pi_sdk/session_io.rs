@@ -175,9 +175,9 @@ fn pi_finish_run_done(session: &BridgeSession, ev: &BridgeEvent) -> Result<(), A
         crate::bridge_sdk::feed_do_dm_run_result(text);
     }
     crate::bridge_sdk::handle_stream_event(session, ev);
-    if crate::bridge_sdk::run_done_status_is_failure(status) {
+    if crate::bridge_sdk::run_done_status_is_failure(*status) {
         return Err(AgentError(error.clone().unwrap_or_else(|| {
-            if status == "cancelled" {
+            if *status == crate::bridge_protocol::RunDoneStatus::Cancelled {
                 "run cancelled".into()
             } else {
                 "run error".into()

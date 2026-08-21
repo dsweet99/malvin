@@ -1,6 +1,20 @@
 
 
 export type NoForcePolicy = "sandbox" | "fail_fast" | "auto_review";
+export type RunDoneStatus = "finished" | "error" | "cancelled";
+
+export function canonicalRunDoneStatus(status: string): RunDoneStatus {
+  if (status === "failed" || status === "error") {
+    return "error";
+  }
+  if (status === "interrupted" || status === "cancelled") {
+    return "cancelled";
+  }
+  if (status === "completed" || status === "finished") {
+    return "finished";
+  }
+  return "error";
+}
 
 export type CreateOp = {
   op: "create";
@@ -59,7 +73,7 @@ export type BridgeEvent =
   | { event: "usage"; usage: Record<string, number> }
   | {
       event: "run_done";
-      status: string;
+      status: RunDoneStatus;
       result?: string;
       usage?: Record<string, number>;
       error?: string;

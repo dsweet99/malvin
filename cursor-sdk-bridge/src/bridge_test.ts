@@ -7,6 +7,7 @@ import {
   isStaleAuthText,
   progressHeartbeatDue,
 } from "./bridge_policy.js";
+import { canonicalRunDoneStatus } from "./protocol.js";
 
 describe("stale auth misclassification", () => {
   it("detects forum Authentication / idle-token forms", () => {
@@ -22,6 +23,16 @@ describe("stale auth misclassification", () => {
       true,
     );
     assert.equal(isStaleAuthText("", "request timed out"), false);
+  });
+});
+
+describe("canonical run_done status", () => {
+  it("collapses aliases to finished, error, or cancelled", () => {
+    assert.equal(canonicalRunDoneStatus("completed"), "finished");
+    assert.equal(canonicalRunDoneStatus("finished"), "finished");
+    assert.equal(canonicalRunDoneStatus("failed"), "error");
+    assert.equal(canonicalRunDoneStatus("interrupted"), "cancelled");
+    assert.equal(canonicalRunDoneStatus("bogus"), "error");
   });
 });
 

@@ -23,16 +23,31 @@ fn misc_tool_summary(ty: &str, item: &Value) -> Option<(String, String)> {
 }
 
 fn command_summary(item: &Value) -> (String, String) {
-    let cmd = item
-        .get("command")
+    item.get("command")
         .and_then(Value::as_str)
         .map(codex_flatten_ws)
-        .filter(|s| !s.is_empty());
-    let summary = cmd.map_or_else(
-        || "Run".into(),
-        |c| format!("Run {}", shorten_middle(&c, TOOL_DISPLAY_MAX_WIDTH)),
-    );
-    ("shell".into(), summary)
+        .filter(|s| !s.is_empty())
+        .map_or_else(|| ("shell".into(), "Run".into()), labeled_bash)
+}
+
+fn labeled_bash(cmd: String) -> (String, String) {
+    use crate::tool_summary::{BashToolKind, classify_bash_command};
+    let inner = inner_cmd(&cmd);
+    let short = shorten_middle(inner, TOOL_DISPLAY_MAX_WIDTH);
+    match classify_bash_command(inner) {
+        BashToolKind::Read => ("read".into(), format!("Read {short}")),
+        BashToolKind::Search => ("grep".into(), format!("Search {short}")),
+        BashToolKind::Edit => ("edit".into(), format!("Edit {short}")),
+        BashToolKind::Run => ("shell".into(), format!("Run {short}")),
+    }
+}
+
+fn inner_cmd(cmd: &str) -> &str {
+    cmd.strip_prefix("/bin/bash -lc ")
+        .or_else(|| cmd.strip_prefix("bash -lc "))
+        .or_else(|| cmd.strip_prefix("/bin/sh -lc "))
+        .or_else(|| cmd.strip_prefix("sh -lc "))
+        .map_or(cmd, |rest| rest.trim_matches(|c| c == '\'' || c == '"'))
 }
 
 fn file_change_summary(item: &Value) -> (String, String) {
@@ -57,18 +72,18 @@ fn named_tool_summary(item: &Value) -> (String, String) {
         .and_then(Value::as_str)
         .filter(|s| !s.is_empty())
         .unwrap_or("tool");
-    let summary = named_tool_label(name, item.get("arguments"));
-    (name.into(), summary)
+    let n = name.to_ascii_lowercase();
+    if n == "bash" || n == "shell" {
+        let Some(cmd) = command_from_args(item.get("arguments")) else {
+            return ("shell".into(), "Run".into());
+        };
+        return labeled_bash(cmd);
+    }
+    (name.into(), named_tool_label(name, item.get("arguments")))
 }
 
 fn named_tool_label(name: &str, args: Option<&Value>) -> String {
     let n = name.to_ascii_lowercase();
-    if n == "bash" || n == "shell" {
-        return command_from_args(args).map_or_else(
-            || "Run".into(),
-            |c| format!("Run {}", shorten_middle(&c, TOOL_DISPLAY_MAX_WIDTH)),
-        );
-    }
     if let Some(path) = path_from_args(args) {
         let short = shorten_middle(&path, TOOL_DISPLAY_MAX_WIDTH);
         if n == "read" || n.starts_with("read_") {

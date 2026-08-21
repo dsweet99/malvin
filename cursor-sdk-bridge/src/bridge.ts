@@ -6,6 +6,7 @@ import { Agent, Cursor, CursorAgentError, configureCursorSdk } from "@cursor/sdk
 import type { AgentOptions, Run, SDKAgent } from "@cursor/sdk";
 import { modelSelectionFromRaw } from "./model_selection.js";
 import {
+  canonicalRunDoneStatus,
   emit,
   parseRequest,
   type BridgeRequest,
@@ -273,7 +274,7 @@ async function handleSend(req: SendOp, alreadyRecovered = false): Promise<void> 
     }
     emit({
       event: "run_done",
-      status: result.status,
+      status: canonicalRunDoneStatus(String(result.status ?? "")),
       result: result.result,
       usage: usageRecord(result.usage as Record<string, number> | undefined),
       error: errObj?.message,

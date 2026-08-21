@@ -56,7 +56,7 @@ fn maps_agent_end_to_run_done_with_usage() {
                 ..
             },
         ] => {
-            assert_eq!(status, "finished");
+            assert_eq!(*status, crate::bridge_protocol::RunDoneStatus::Finished);
             assert_eq!(result.as_deref(), Some("yo"));
             assert!(error.is_none());
             assert_eq!(
@@ -168,7 +168,7 @@ fn maps_agent_end_error_and_plain_content() {
                 ..
             },
         ] => {
-            assert_eq!(status, "error");
+            assert_eq!(*status, crate::bridge_protocol::RunDoneStatus::Error);
             assert_eq!(result.as_deref(), Some("plain"));
             assert_eq!(error.as_deref(), Some("boom"));
         }

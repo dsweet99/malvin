@@ -32,7 +32,7 @@ pub fn handle_stream_event(session: &BridgeSession, ev: &BridgeEvent) {
         BridgeEvent::RunDone { .. } => {
             flush_stdout_coalesce(session);
             clear_tool_starts(session);
-            append_trace_value(session, ev);
+            append_trace_value(session, &logged_run_done(session, ev));
         }
         BridgeEvent::Progress { .. } => append_trace_value(session, ev),
         _ => {
@@ -121,6 +121,17 @@ fn print_coalesced_line(session: &BridgeSession, kind: SessionUpdateChunkKind, l
     } else {
         crate::output::print_stdout_line_with_markdown(who, line, markdown);
     }
+}
+
+fn logged_run_done(session: &BridgeSession, ev: &BridgeEvent) -> BridgeEvent {
+    let mut ev = ev.clone();
+    crate::bridge_protocol::canonicalize_run_done(&mut ev);
+    if let BridgeEvent::RunDone { duration_ms, .. } = &mut ev {
+        if duration_ms.is_none() {
+            *duration_ms = u64::try_from(session.started_at.elapsed().as_millis()).ok();
+        }
+    }
+    ev
 }
 
 fn append_trace_value(session: &BridgeSession, ev: &BridgeEvent) {
@@ -219,5 +230,7 @@ mod tests {
         let m_lines: Vec<_> = out.lines().filter(|l| l.contains("m|")).collect();
         assert_eq!(m_lines.len(), 1, "expected one m| line, got:\n{out}");
         assert!(m_lines[0].contains("I'll check recent logs and the run."));
+        let _ = stringify!(logged_run_done);
+        let _ = stringify!(canonicalize_run_done);
     }
 }

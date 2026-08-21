@@ -9,7 +9,8 @@ pub(crate) fn map_codex_stream_events(method: &str, params: &Value) -> Vec<Bridg
         "item/agentMessage/delta" => assistant_delta(params),
         "item/reasoning/textDelta" | "item/reasoning/summaryTextDelta" => thinking_delta(params),
         "item/started" => item_tool_event(params, "start"),
-        "item/completed" => item_tool_event(params, "complete"),
+        "item/completed" => item_completed_events(params),
+        "thread/tokenUsage/updated" => super::map_event_usage::usage_event(params),
         _ => Vec::new(),
     }
 }
@@ -42,6 +43,41 @@ fn item_tool_event(params: &Value, default_phase: &str) -> Vec<BridgeEvent> {
         .and_then(|item| tool_from_item(item, default_phase))
         .into_iter()
         .collect()
+}
+
+fn item_completed_events(params: &Value) -> Vec<BridgeEvent> {
+    let Some(item) = params.get("item") else {
+        return Vec::new();
+    };
+    if let Some(ev) = tool_from_item(item, "complete") {
+        return vec![ev];
+    }
+    reasoning_from_item(item).into_iter().collect()
+}
+
+fn reasoning_from_item(item: &Value) -> Option<BridgeEvent> {
+    if item.get("type").and_then(Value::as_str) != Some("reasoning") {
+        return None;
+    }
+    let text =
+        joined_strings(item.get("content")).or_else(|| joined_strings(item.get("summary")))?;
+    Some(BridgeEvent::Thinking { text })
+}
+
+fn joined_strings(value: Option<&Value>) -> Option<String> {
+    let parts: Vec<&str> = value?
+        .as_array()?
+        .iter()
+        .filter_map(string_part)
+        .filter(|s| !s.is_empty())
+        .collect();
+    (!parts.is_empty()).then(|| parts.join(""))
+}
+
+fn string_part(value: &Value) -> Option<&str> {
+    value
+        .as_str()
+        .or_else(|| value.get("text").and_then(Value::as_str))
 }
 
 fn tool_from_item(item: &Value, default_phase: &str) -> Option<BridgeEvent> {

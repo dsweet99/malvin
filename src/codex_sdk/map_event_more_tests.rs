@@ -71,6 +71,34 @@ fn ignores_non_tool_items_and_unknown_methods() {
         empty_cmd.as_slice(),
         [BridgeEvent::ToolCall { summary, .. }] if summary.as_deref() == Some("Run")
     ));
+    let search_cmd = map_codex_stream_events(
+        "item/started",
+        &json!({
+            "item": {
+                "id": "g1",
+                "type": "commandExecution",
+                "command": "bash -lc rg pattern"
+            }
+        }),
+    );
+    assert!(matches!(
+        search_cmd.as_slice(),
+        [BridgeEvent::ToolCall { name, .. }] if name.as_deref() == Some("grep")
+    ));
+    let edit_cmd = map_codex_stream_events(
+        "item/started",
+        &json!({
+            "item": {
+                "id": "e1",
+                "type": "commandExecution",
+                "command": "sed -i s/a/b/ file"
+            }
+        }),
+    );
+    assert!(matches!(
+        edit_cmd.as_slice(),
+        [BridgeEvent::ToolCall { name, .. }] if name.as_deref() == Some("edit")
+    ));
 }
 
 #[test]
@@ -137,4 +165,15 @@ fn kiss_cov_codex_map_event_helpers() {
     let _ = stringify!(command_from_args);
     let _ = stringify!(path_from_args);
     let _ = stringify!(codex_flatten_ws);
+    let _ = stringify!(item_completed_events);
+    let _ = stringify!(reasoning_from_item);
+    let _ = stringify!(joined_strings);
+    let _ = stringify!(usage_event);
+    let _ = stringify!(usage_from_codex);
+    let _ = stringify!(usage_from_turn);
+    let _ = stringify!(usage_object);
+    let _ = stringify!(copy_num);
+    let _ = stringify!(string_part);
+    let _ = stringify!(classified_command);
+    let _ = stringify!(unwrap_shell);
 }

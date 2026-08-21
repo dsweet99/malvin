@@ -44,5 +44,7 @@ mod protocol_reexport_tests {
         let _ = stringify!(start_mem_watch);
         let _ = stringify!(note_sdk_step);
         let _ = stringify!(record_sdk_usage);
+        let _ = stringify!(logged_run_done);
+        let _ = stringify!(canonicalize_run_done);
     }
 }

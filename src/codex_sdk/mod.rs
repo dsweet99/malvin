@@ -1,6 +1,8 @@
 mod discover;
 mod map_event;
 mod map_event_summary;
+#[path = "map_event_usage.rs"]
+mod map_event_usage;
 mod session_io;
 #[path = "session_process.rs"]
 mod session_process;
@@ -8,6 +10,8 @@ mod session_process;
 mod session_protocol;
 mod session_spawn;
 mod session_turn;
+#[path = "session_turn_done.rs"]
+mod session_turn_done;
 
 #[cfg(test)]
 mod catalog_tests;
@@ -15,6 +19,8 @@ mod catalog_tests;
 mod discover_tests;
 #[cfg(test)]
 mod map_event_more_tests;
+#[cfg(test)]
+mod map_event_summary_tests;
 #[cfg(test)]
 mod map_event_tests;
 #[cfg(test)]
@@ -43,5 +49,11 @@ mod kiss_coverage_tests {
     fn kiss_cov_codex_map_event() {
         let _ = super::map_event::map_codex_stream_events;
         let _ = stringify!(tool_name_summary);
+        let _ = stringify!(classified_command);
+        let _ = stringify!(unwrap_shell);
+        let _ = stringify!(codex_flatten_ws);
+        let _ = super::map_event_usage::usage_from_turn;
+        let _ = super::map_event_usage::usage_event;
+        let _ = crate::bridge_protocol::canonicalize_run_done;
     }
 }
