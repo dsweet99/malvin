@@ -73,7 +73,8 @@ def fast_tasks_list_cmd() -> None:
     default=None,
     help=(
         "Model id passed through to malvin (ignored unless --agent=malvin); "
-        "pi: models bind-mount the host pi binary via MALVIN_PI"
+        "pi: models bind-mount the host pi binary; codex: models bind-mount "
+        "the Codex npm package and Node.js"
     ),
 )
 @click.option(

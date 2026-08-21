@@ -5,7 +5,9 @@ The agent container mounts a staged copy of ``workspace/`` at ``/app``, plus
 (when ``--agent=malvin``) the host ``malvin`` binary and read-only
 ``cursor-sdk-bridge`` (for ``cursor:`` models). When ``--model`` selects a
 ``pi:`` id, the host ``pi`` binary is also bind-mounted and ``MALVIN_PI`` is
-set (malvin does not bundle Pi). ``--agent=cursor`` skips malvin and runs
+set. For ``codex:`` ids, the Codex package and Node.js executable are mounted
+and ``MALVIN_CODEX`` points at the package's JavaScript CLI (malvin does not
+bundle either external backend). ``--agent=cursor`` skips malvin and runs
 ``cursor-agent`` instead. ``grade.py``, ``goldens/``, and other grader material
 stay on the host and are never bind-mounted or baked into the agent image.
 
@@ -17,6 +19,7 @@ Usage::
     python ops/fast_task.py solve FT-01 --main
     python ops/fast_task.py solve FT-01 --model cursor:auto
     python ops/fast_task.py solve FT-01 --model pi:openrouter/~x-ai/grok-latest
+    python ops/fast_task.py solve FT-01 --model codex:gpt-5.6-terra
     python ops/fast_task.py solve FT-01 --creative
     python ops/fast_task.py tasks
     python ops/fast_task.py self-test
@@ -64,6 +67,7 @@ CURSOR_SDK_BRIDGE_JS_REMOTE = f"{CURSOR_SDK_BRIDGE_REMOTE}/dist/bridge.js"
 PI_BIN_REMOTE = "/opt/malvin/pi"
 CODEX_BIN_REMOTE = "/opt/malvin/codex/bin/codex.js"
 CODEX_PACKAGE_REMOTE = "/opt/malvin/codex"
+CODEX_AUTH_REMOTE = "/root/.codex/auth.json"
 NODE_BIN_REMOTE = "/opt/malvin/node"
 TOOLCHAIN_PATH = (
     "/root/.cargo/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin"
@@ -131,6 +135,31 @@ def ft_resolve_codex_bin() -> Path | None:
     path = Path(which)
     if path.is_file() and os.access(path, os.X_OK):
         return path.resolve()
+    return None
+
+
+def ft_resolve_codex_package(codex_bin: Path) -> Path | None:
+    """Return the Codex npm package containing a resolved ``bin/codex.js``.
+
+    A host command may be a shell wrapper. Mounting its grandparent would not
+    put Codex's JavaScript entrypoint at the fixed container path, so fast
+    tasks intentionally support only the resolved npm package layout.
+    """
+    resolved = codex_bin.resolve()
+    package = resolved.parent.parent
+    expected = package / "bin" / "codex.js"
+    if resolved.name != "codex.js" or resolved.parent.name != "bin":
+        return None
+    if expected != resolved or not (package / "package.json").is_file():
+        return None
+    return package
+
+
+def ft_resolve_codex_auth_file() -> Path | None:
+    """Host Codex login state, when available for a read-only container mount."""
+    auth_file = Path.home() / ".codex" / "auth.json"
+    if auth_file.is_file() and os.access(auth_file, os.R_OK):
+        return auth_file.resolve()
     return None
 
 
@@ -313,8 +342,19 @@ def ft_assert_stage_isolated(staged: Path) -> None:
             raise click.ClickException(f"Staged workspace must not contain grade.py: {path}")
 
 def ft_resolve_malvin_binary() -> Path | None:
-    """Best-effort host ``malvin`` binary path for run-time bind mount."""
-    return _ft_resolve_host_binary("malvin")
+    """Resolve the current repository build, else an installed ``malvin``.
+
+    Fast tasks are run from a checkout specifically to exercise its current
+    implementation. Prefer ``target/debug/malvin`` when it is newer than the
+    installed executable so an older ``~/.cargo/bin/malvin`` cannot silently
+    mask a just-built backend change.
+    """
+    installed = _ft_resolve_host_binary("malvin")
+    debug = (REPO_ROOT / "target" / "debug" / "malvin").resolve()
+    if debug.is_file() and os.access(debug, os.X_OK):
+        if installed is None or debug.stat().st_mtime >= installed.stat().st_mtime:
+            return debug
+    return installed
 
 def ft_resolve_malvin_main_binary() -> Path | None:
     """Best-effort host ``malvin-main`` binary path for ``--main`` bind mount."""
@@ -346,6 +386,7 @@ RUN apt-get update -qq \\
     && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir pytest
 RUN curl -fsSL https://cursor.com/install | bash
+RUN mkdir -p /root/.codex
 ENV PATH="{TOOLCHAIN_PATH}"
 WORKDIR /app
 """
@@ -518,13 +559,18 @@ def ft_docker_agent_cmd(
         if ft_malvin_args_request_codex(malvin_args):
             host_codex = ft_resolve_codex_bin()
             host_node = ft_resolve_node_bin()
-            if host_codex is None or host_node is None:
+            codex_package = (
+                ft_resolve_codex_package(host_codex)
+                if host_codex is not None
+                else None
+            )
+            if codex_package is None or host_node is None:
                 raise click.ClickException(
-                    "codex and node binaries not found on PATH (or MALVIN_CODEX); "
+                    "Codex npm package and node binary not found on PATH "
+                    "(or MALVIN_CODEX); "
                     "required for codex: models inside the agent container "
-                    "(malvin does not bundle codex)"
+                    "(MALVIN_CODEX must resolve to <package>/bin/codex.js)"
                 )
-            codex_package = host_codex.parent.parent
             volume_mounts = [
                 "-v",
                 f"{codex_package}:{CODEX_PACKAGE_REMOTE}:ro",
@@ -532,10 +578,19 @@ def ft_docker_agent_cmd(
                 f"{host_node}:{NODE_BIN_REMOTE}:ro",
                 *volume_mounts,
             ]
+            codex_auth = ft_resolve_codex_auth_file()
+            if codex_auth is not None:
+                volume_mounts = [
+                    "-v",
+                    f"{codex_auth}:{CODEX_AUTH_REMOTE}:ro",
+                    *volume_mounts,
+                ]
             bridge_env = [
                 *bridge_env,
                 "-e",
                 f"MALVIN_CODEX={CODEX_BIN_REMOTE}",
+                "-e",
+                "MALVIN_CODEX_OUTER_SANDBOX=1",
             ]
     container_path = (
         f"{Path(NODE_BIN_REMOTE).parent}:{TOOLCHAIN_PATH}"
@@ -786,6 +841,8 @@ def ft_run_solve(
     if timeout_sec <= 0:
         raise click.ClickException("timeout_sec must be positive")
     task_dir = ft_resolve_task_dir(task_id)
+    if not dry_run and not ft_docker_available():
+        raise click.ClickException("Docker daemon is not available")
     run_root = ft_run_root(task_id, results_dir)
     workspace = ft_stage_workspace(task_dir, run_root)
     image = ft_ensure_agent_image(
@@ -832,8 +889,6 @@ def ft_run_solve(
             "stdout": "",
         }
     else:
-        if not ft_docker_available():
-            raise click.ClickException("Docker daemon is not available")
         ft_preflight_workspace_mount(image=image, workspace=workspace)
         if agent_name == AGENT_CURSOR:
             agent_label = "cursor-agent"
@@ -931,10 +986,13 @@ def run_fast_task_self_tests() -> None:
     _ft_test_docker_agent_cmd_nonleak()
     _ft_test_docker_agent_cmd_cursor()
     _ft_test_docker_agent_cmd_pi()
+    _ft_test_docker_agent_cmd_codex()
     _ft_test_assert_agent_cmd_rejects_task_root()
     _ft_test_grade_on_host_starter_reward_zero()
+    _ft_test_solve_checks_docker_before_build()
     _ft_test_solve_help_and_dry_run()
     _ft_test_solve_main_dry_run()
+    _ft_test_resolve_malvin_binary_prefers_current_repo_build()
     _ft_test_resolve_malvin_main_binary()
     _ft_test_resolve_agent_helpers()
     _ft_test_relay_streams_before_wait()
@@ -972,6 +1030,7 @@ def _ft_test_stage_workspace_isolated() -> None:
 def _ft_test_dockerfile_nonleak() -> None:
     text = ft_dockerfile_for_agent()
     assert "pytest" in text
+    assert "mkdir -p /root/.codex" in text
     assert "malvin_bin" not in text
     assert MALVIN_BIN_REMOTE not in text
     ft_assert_dockerfile_nonleak(text)
@@ -1097,6 +1156,73 @@ def _ft_test_docker_agent_cmd_pi() -> None:
         finally:
             _ft_mod.ft_resolve_pi_bin = old_resolve  # type: ignore[assignment]
 
+def _ft_test_docker_agent_cmd_codex() -> None:
+    """``codex:`` models mount the npm package and Node.js executable."""
+    assert ft_malvin_args_request_codex(()) is False
+    assert ft_malvin_args_request_codex(("--model", "cursor:auto")) is False
+    assert ft_malvin_args_request_codex(("--model", "codex:gpt-5.6-terra")) is True
+    assert ft_malvin_args_request_codex(("--model=codex:gpt-5.6-terra",)) is True
+
+    with tempfile.TemporaryDirectory(prefix="ft-codex-") as tmp:
+        root = Path(tmp)
+        ws = root / "workspace"
+        ws.mkdir()
+        (ws / "plan.md").write_text("x\n", encoding="utf-8")
+        host_malvin = root / "malvin"
+        host_malvin.write_bytes(b"\x7fELF")
+        package = root / "codex-package"
+        codex_bin = package / "bin" / "codex.js"
+        codex_bin.parent.mkdir(parents=True)
+        codex_bin.write_text("#!/usr/bin/env node\n", encoding="utf-8")
+        codex_bin.chmod(0o755)
+        (package / "package.json").write_text("{}\n", encoding="utf-8")
+        node_bin = root / "node"
+        node_bin.write_text("#!/bin/sh\n", encoding="utf-8")
+        node_bin.chmod(0o755)
+        auth_file = root / "auth.json"
+        auth_file.write_text("{}\n", encoding="utf-8")
+
+        assert ft_resolve_codex_package(codex_bin) == package
+        assert ft_resolve_codex_package(root / "codex-wrapper") is None
+        module = sys.modules[__name__]
+        old_codex = module.ft_resolve_codex_bin
+        old_node = module.ft_resolve_node_bin
+        old_auth = module.ft_resolve_codex_auth_file
+        try:
+            module.ft_resolve_codex_bin = lambda: codex_bin  # type: ignore[assignment]
+            module.ft_resolve_node_bin = lambda: node_bin  # type: ignore[assignment]
+            module.ft_resolve_codex_auth_file = lambda: auth_file  # type: ignore[assignment]
+            cmd = ft_docker_agent_cmd(
+                image=DEFAULT_IMAGE,
+                workspace=ws,
+                malvin_binary=host_malvin,
+                malvin_args=("--model", "codex:gpt-5.6-terra"),
+            )
+            mounts = [cmd[i + 1] for i, token in enumerate(cmd) if token == "-v"]
+            assert f"{package}:{CODEX_PACKAGE_REMOTE}:ro" in mounts
+            assert f"{node_bin}:{NODE_BIN_REMOTE}:ro" in mounts
+            assert f"{auth_file}:{CODEX_AUTH_REMOTE}:ro" in mounts
+            assert f"MALVIN_CODEX={CODEX_BIN_REMOTE}" in cmd
+            assert "MALVIN_CODEX_OUTER_SANDBOX=1" in cmd
+            assert f"PATH={Path(NODE_BIN_REMOTE).parent}:{TOOLCHAIN_PATH}" in cmd
+
+            module.ft_resolve_node_bin = lambda: None  # type: ignore[assignment]
+            try:
+                ft_docker_agent_cmd(
+                    image=DEFAULT_IMAGE,
+                    workspace=ws,
+                    malvin_binary=host_malvin,
+                    malvin_args=("--model", "codex:gpt-5.6-terra"),
+                )
+                raise AssertionError("expected missing Codex dependency rejection")
+            except click.ClickException as exc:
+                assert "Codex npm package and node binary not found" in str(exc)
+        finally:
+            module.ft_resolve_codex_bin = old_codex  # type: ignore[assignment]
+            module.ft_resolve_node_bin = old_node  # type: ignore[assignment]
+            module.ft_resolve_codex_auth_file = old_auth  # type: ignore[assignment]
+
+
 def _ft_test_assert_agent_cmd_rejects_task_root() -> None:
     task_dir = ft_resolve_task_dir("FT-01")
     bad = [
@@ -1141,6 +1267,28 @@ def _ft_test_grade_on_host_starter_reward_zero() -> None:
         assert result["reward"] == 0
         assert result["pass"] is False
         assert reward_out.read_text(encoding="utf-8").strip() == "0"
+
+
+def _ft_test_solve_checks_docker_before_build() -> None:
+    """Unavailable Docker fails before staging or attempting an image build."""
+    original_available = ft_docker_available
+    original_ensure = ft_ensure_agent_image
+    try:
+        globals()["ft_docker_available"] = lambda: False
+
+        def image_build_must_not_run(**_kwargs: Any) -> str:
+            raise AssertionError("image build must not run without Docker")
+
+        globals()["ft_ensure_agent_image"] = image_build_must_not_run
+        try:
+            ft_run_solve("FT-01")
+            raise AssertionError("expected unavailable Docker rejection")
+        except click.ClickException as exc:
+            assert str(exc) == "Docker daemon is not available"
+    finally:
+        globals()["ft_docker_available"] = original_available
+        globals()["ft_ensure_agent_image"] = original_ensure
+
 
 def _ft_test_solve_help_and_dry_run() -> None:
     from toolchain_repos import load_ops_entry
@@ -1505,6 +1653,32 @@ def _ft_test_resolve_malvin_main_binary() -> None:
             assert missing is None
         finally:
             os.environ["PATH"] = old_path
+
+
+def _ft_test_resolve_malvin_binary_prefers_current_repo_build() -> None:
+    """A newer checkout build wins over a stale installed executable."""
+    with tempfile.TemporaryDirectory(prefix="ft-malvin-bin-") as tmp:
+        root = Path(tmp)
+        debug = root / "target" / "debug" / "malvin"
+        debug.parent.mkdir(parents=True)
+        debug.write_text("#!/bin/sh\n", encoding="utf-8")
+        debug.chmod(0o755)
+        installed = root / "installed-malvin"
+        installed.write_text("#!/bin/sh\n", encoding="utf-8")
+        installed.chmod(0o755)
+        os.utime(installed, (1, 1))
+        os.utime(debug, (2, 2))
+        original_root = globals()["REPO_ROOT"]
+        original_resolver = globals()["_ft_resolve_host_binary"]
+        globals()["REPO_ROOT"] = root
+        globals()["_ft_resolve_host_binary"] = lambda _name: installed
+        try:
+            assert ft_resolve_malvin_binary() == debug.resolve()
+            os.utime(installed, (3, 3))
+            assert ft_resolve_malvin_binary() == installed.resolve()
+        finally:
+            globals()["REPO_ROOT"] = original_root
+            globals()["_ft_resolve_host_binary"] = original_resolver
 
 def _ft_test_resolve_agent_helpers() -> None:
     """Cover agent-id normalize + cursor/pi host-resolve edge branches."""

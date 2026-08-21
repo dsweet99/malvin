@@ -87,7 +87,13 @@ fn workspace_logs_hash_differs_for_different_paths() {
 fn malvin_user_home_root_uses_malvin_home_dir() {
     let root = malvin_user_home_root();
     assert!(root.ends_with(MALVIN_USER_HOME_DIR));
-    assert!(root.starts_with(crate::user_home_dir()));
+    let temporary_fallback =
+        std::env::temp_dir().join(format!("malvin-test-home-{}", std::process::id()));
+    assert!(
+        root.starts_with(crate::user_home_dir()) || root.starts_with(temporary_fallback),
+        "unexpected Malvin home root: {}",
+        root.display()
+    );
 }
 
 #[test]

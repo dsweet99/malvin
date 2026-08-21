@@ -33,6 +33,11 @@ pub(crate) async fn codex_start_thread(
     cwd: &std::path::Path,
 ) -> Result<(), AgentError> {
     let model = resolve_model_on_session(session, model).await?;
+    let sandbox = if super::session_process::codex_uses_outer_sandbox() {
+        "danger-full-access"
+    } else {
+        "workspace-write"
+    };
     let response = request(
         session,
         "thread/start",
@@ -40,7 +45,7 @@ pub(crate) async fn codex_start_thread(
             "model": model,
             "cwd": cwd,
             "approvalPolicy": "never",
-            "sandbox": "workspace-write",
+            "sandbox": sandbox,
             "ephemeral": true
         }),
     )

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { eventsAfterStreamFailure, isInterruptOp, isStaleAuthText, progressHeartbeatDue, } from "./bridge_policy.js";
+import { canonicalRunDoneStatus } from "./protocol.js";
 describe("stale auth misclassification", () => {
     it("detects forum Authentication / idle-token forms", () => {
         assert.equal(isStaleAuthText("AuthenticationError", "x"), true);
@@ -9,6 +10,15 @@ describe("stale auth misclassification", () => {
         assert.equal(isStaleAuthText("", "[unauthenticated] Error"), true);
         assert.equal(isStaleAuthText("", "If you are logged in, try logging out and back in."), true);
         assert.equal(isStaleAuthText("", "request timed out"), false);
+    });
+});
+describe("canonical run_done status", () => {
+    it("collapses aliases to finished, error, or cancelled", () => {
+        assert.equal(canonicalRunDoneStatus("completed"), "finished");
+        assert.equal(canonicalRunDoneStatus("finished"), "finished");
+        assert.equal(canonicalRunDoneStatus("failed"), "error");
+        assert.equal(canonicalRunDoneStatus("interrupted"), "cancelled");
+        assert.equal(canonicalRunDoneStatus("bogus"), "error");
     });
 });
 describe("bridge stream failure protocol", () => {

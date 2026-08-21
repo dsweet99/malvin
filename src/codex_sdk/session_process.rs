@@ -55,6 +55,24 @@ type CodexSessionIo = (
     std::sync::Arc<std::sync::Mutex<String>>,
 );
 
+pub(crate) const CODEX_OUTER_SANDBOX_ENV: &str = "MALVIN_CODEX_OUTER_SANDBOX";
+
+pub(crate) fn codex_uses_outer_sandbox() -> bool {
+    codex_uses_outer_sandbox_value(std::env::var(CODEX_OUTER_SANDBOX_ENV).ok().as_deref())
+}
+
+fn codex_uses_outer_sandbox_value(value: Option<&str>) -> bool {
+    value == Some("1")
+}
+
+fn configure_codex_sandbox(cmd: &mut tokio::process::Command, outer_sandbox: bool) {
+    if outer_sandbox {
+        cmd.arg("--dangerously-bypass-approvals-and-sandbox")
+            .arg("-c")
+            .arg("sandbox_mode=\"danger-full-access\"");
+    }
+}
+
 pub(super) fn build_codex_session_io(
     stdin: tokio::process::ChildStdin,
     stdout: tokio::process::ChildStdout,
@@ -72,6 +90,10 @@ pub(super) fn configured_codex_command(
     cwd: &std::path::Path,
 ) -> tokio::process::Command {
     let mut cmd = crate::malvin_sandbox::malvin_tokio_command(bin);
+    // Fast tasks already run in Docker, where Codex's nested bubblewrap
+    // sandbox cannot create a user namespace. Ordinary Codex runs retain
+    // Codex's workspace-write sandbox.
+    configure_codex_sandbox(&mut cmd, codex_uses_outer_sandbox());
     cmd.arg("app-server")
         .arg("--stdio")
         .current_dir(cwd)
@@ -102,9 +124,52 @@ pub(super) fn spawn_codex_process(args: &BridgeSpawnArgs<'_>) -> Result<CodexPro
 
 #[cfg(test)]
 mod tests {
-    use super::CodexProcess;
+    use super::{
+        CodexProcess, codex_uses_outer_sandbox_value, configure_codex_sandbox,
+        configured_codex_command,
+    };
     #[test]
     fn kiss_cov_codex_process_type() {
         let _: Option<CodexProcess> = None;
+    }
+
+    #[test]
+    fn configured_codex_command_uses_default_sandbox() {
+        let cmd = configured_codex_command(
+            std::path::PathBuf::from("codex"),
+            std::path::Path::new("/work"),
+        );
+        let args: Vec<_> = cmd
+            .as_std()
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(args, ["app-server", "--stdio",]);
+    }
+
+    #[test]
+    fn codex_outer_sandbox_is_opt_in() {
+        assert!(codex_uses_outer_sandbox_value(Some("1")));
+        assert!(!codex_uses_outer_sandbox_value(Some("true")));
+        assert!(!codex_uses_outer_sandbox_value(None));
+    }
+
+    #[test]
+    fn configured_codex_command_uses_outer_sandbox_when_requested() {
+        let mut cmd = tokio::process::Command::new("codex");
+        configure_codex_sandbox(&mut cmd, true);
+        let args: Vec<_> = cmd
+            .as_std()
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(
+            args,
+            [
+                "--dangerously-bypass-approvals-and-sandbox",
+                "-c",
+                "sandbox_mode=\"danger-full-access\"",
+            ]
+        );
     }
 }

@@ -2,7 +2,7 @@ import "./parent_death.js";
 import * as readline from "node:readline";
 import { Agent, Cursor, CursorAgentError, configureCursorSdk } from "@cursor/sdk";
 import { modelSelectionFromRaw } from "./model_selection.js";
-import { emit, parseRequest, } from "./protocol.js";
+import { canonicalRunDoneStatus, emit, parseRequest, } from "./protocol.js";
 import { eventsAfterStreamFailure, exitCodeForSignal, isInterruptOp, progressHeartbeatDue, isStaleAuthMisclassification, isStaleAuthText, } from "./bridge_policy.js";
 import { forwardSdkMessage, usageRecord } from "./sdk_map.js";
 export { eventsAfterStreamFailure, exitCodeForSignal, isInterruptOp, isStaleAuthMisclassification, isStaleAuthText, } from "./bridge_policy.js";
@@ -234,7 +234,7 @@ async function handleSend(req, alreadyRecovered = false) {
         }
         emit({
             event: "run_done",
-            status: result.status,
+            status: canonicalRunDoneStatus(String(result.status ?? "")),
             result: result.result,
             usage: usageRecord(result.usage),
             error: errObj?.message,

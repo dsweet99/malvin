@@ -38,3 +38,17 @@ Each grader’s `--self-test` builds **temporary** FAIL (starter copy) and PASS 
 ## Isolation note
 
 Agent invocation uses `workspace/plan.md` so malvin’s work directory is `workspace/`. Graders and `goldens/` sit outside that directory. Agents should not walk to `../` to read grade material.
+
+## Codex backend
+
+For a `codex:` model, the fast-task runner bind-mounts the host Codex npm
+package and host Node.js executable into the container. The host `codex`
+command (or `MALVIN_CODEX`) must resolve to the package entrypoint
+`<package>/bin/codex.js`. When present, `~/.codex/auth.json` is mounted
+read-only so the container can use the host's Codex login without exposing the
+rest of its Codex state. When running from this repository, a newer executable
+at `target/debug/malvin` is used in preference to an older installed `malvin`.
+
+```bash
+./ops/fast_task.py solve --model=codex:gpt-5.6-terra FT-01
+```
