@@ -62,11 +62,10 @@ fn write_sticky_node_bin(path: &std::path::Path) {
 fn node_candidates() -> Vec<PathBuf> {
     let mut out = Vec::new();
     push_unique(&mut out, crate::support_paths::lookup_bin_on_path("node"));
-    if let Some(agent) = crate::support_paths::agent_or_cursor_agent_bin() {
-        if let Some(dir) = agent.parent() {
+    if let Some(agent) = crate::support_paths::agent_or_cursor_agent_bin()
+        && let Some(dir) = agent.parent() {
             push_unique(&mut out, Some(dir.join("node")));
         }
-    }
     for bundled in cursor_agent_version_nodes() {
         push_unique(&mut out, Some(bundled));
     }

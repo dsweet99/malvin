@@ -2,7 +2,7 @@
 name = "malvin"
 version = "0.2.3"
 edition = "2024"
-rust-version = "1.87"
+rust-version = "1.96"
 description = "Non-interactive research and coding agent"
 license = "MIT"
 readme = "README.md"
@@ -51,7 +51,10 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["std", "registry"] }
 termimad = "0.34"
 unicode-width = "0.2"
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.39", features = ["bundled"] }
+pi = { package = "pi_agent_rust", version = "0.1.23", default-features = false, features = ["sqlite-sessions"] }
+asupersync = { version = "0.3.10", default-features = false }
+async-trait = "0.1"
 
 [dev-dependencies]
 portable-pty = "0.8"

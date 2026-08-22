@@ -46,7 +46,7 @@ pub fn heartbeat_stdout_suppressed() -> bool {
     HEARTBEAT_STDOUT_SUPPRESSED.load(Ordering::Relaxed)
 }
 
-const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(60);
+const HEARTBEAT_INTERVAL: Duration = Duration::from_mins(1);
 
 #[cfg(test)]
 const HEARTBEAT_POLL_INTERVAL: Duration = Duration::from_millis(10);

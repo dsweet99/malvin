@@ -4,8 +4,7 @@
 The agent container mounts a staged copy of ``workspace/`` at ``/app``, plus
 (when ``--agent=malvin``) the host ``malvin`` binary and read-only
 ``cursor-sdk-bridge`` (for ``cursor:`` models). When ``--model`` selects a
-``pi:`` id, the host ``pi`` binary is also bind-mounted and ``MALVIN_PI`` is
-set. For ``codex:`` ids, the Codex package and Node.js executable are mounted
+``pi:`` id, the container does **not** need a host ``pi`` binary. For ``codex:`` ids, the Codex package and Node.js executable are mounted
 and ``MALVIN_CODEX`` points at the package's JavaScript CLI (malvin does not
 bundle either external backend). ``--agent=cursor`` skips malvin and runs
 ``cursor-agent`` instead. ``grade.py``, ``goldens/``, and other grader material
@@ -64,7 +63,6 @@ MALVIN_BIN_REMOTE = "/root/.cargo/bin/malvin"
 CURSOR_SDK_BRIDGE_REMOTE = "/opt/malvin/cursor-sdk-bridge"
 CURSOR_SDK_BRIDGE_JS_REMOTE = f"{CURSOR_SDK_BRIDGE_REMOTE}/dist/bridge.js"
 
-PI_BIN_REMOTE = "/opt/malvin/pi"
 CODEX_BIN_REMOTE = "/opt/malvin/codex/bin/codex.js"
 CODEX_PACKAGE_REMOTE = "/opt/malvin/codex"
 CODEX_AUTH_REMOTE = "/root/.codex/auth.json"
@@ -92,22 +90,6 @@ def ft_resolve_cursor_sdk_bridge_dir() -> Path | None:
     bridge = (REPO_ROOT / "cursor-sdk-bridge").resolve()
     if (bridge / "dist" / "bridge.js").is_file():
         return bridge
-    return None
-
-def ft_resolve_pi_bin() -> Path | None:
-    """Host ``pi`` binary (``MALVIN_PI`` or ``PATH``), or None."""
-    override = os.environ.get("MALVIN_PI")
-    if override:
-        path = Path(override).expanduser()
-        if path.is_file() and os.access(path, os.X_OK):
-            return path.resolve()
-        return None
-    which = shutil.which("pi")
-    if not which:
-        return None
-    path = Path(which)
-    if path.is_file() and os.access(path, os.X_OK):
-        return path.resolve()
     return None
 
 def ft_resolve_node_bin() -> Path | None:
@@ -538,24 +520,6 @@ def ft_docker_agent_cmd(
             "-e",
             f"MALVIN_CURSOR_SDK_BRIDGE={CURSOR_SDK_BRIDGE_JS_REMOTE}",
         ]
-        if ft_malvin_args_request_pi(malvin_args):
-            host_pi = ft_resolve_pi_bin()
-            if host_pi is None:
-                raise click.ClickException(
-                    "pi binary not found on PATH (or MALVIN_PI); "
-                    "required for pi: models inside the agent container "
-                    "(malvin does not bundle pi)"
-                )
-            volume_mounts = [
-                "-v",
-                f"{host_pi}:{PI_BIN_REMOTE}:ro",
-                *volume_mounts,
-            ]
-            bridge_env = [
-                *bridge_env,
-                "-e",
-                f"MALVIN_PI={PI_BIN_REMOTE}",
-            ]
         if ft_malvin_args_request_codex(malvin_args):
             host_codex = ft_resolve_codex_bin()
             host_node = ft_resolve_node_bin()
@@ -1101,60 +1065,35 @@ def _ft_test_docker_agent_cmd_cursor() -> None:
         assert "--verbose" not in cmd
 
 def _ft_test_docker_agent_cmd_pi() -> None:
-    """``pi:`` models bind-mount host pi and set ``MALVIN_PI``."""
+    """``pi:`` models do not require a host ``pi`` binary."""
     assert ft_malvin_args_request_pi(()) is False
     assert ft_malvin_args_request_pi(("--model", "cursor:auto")) is False
     assert ft_malvin_args_request_pi(("--model", "pi:openai/gpt-4o")) is True
     assert ft_malvin_args_request_pi(("--model=pi:openrouter/x",)) is True
     assert ft_malvin_args_request_pi(("--model=cursor:auto",)) is False
 
-    host_pi = ft_resolve_pi_bin()
     with tempfile.TemporaryDirectory(prefix="ft-pi-") as tmp:
         ws = Path(tmp) / "workspace"
         ws.mkdir()
         (ws / "plan.md").write_text("x\n", encoding="utf-8")
         host_malvin = Path(tmp) / "malvin"
         host_malvin.write_bytes(b"\x7fELF")
-        if host_pi is not None:
-            cmd = ft_docker_agent_cmd(
-                image=DEFAULT_IMAGE,
-                workspace=ws,
-                malvin_binary=host_malvin,
-                malvin_args=("--model", "pi:openai/gpt-4o"),
-            )
-            mounts = [cmd[i + 1] for i, token in enumerate(cmd) if token == "-v"]
-            assert any(
-                m == f"{host_pi}:{PI_BIN_REMOTE}:ro" for m in mounts
-            ), mounts
-            assert f"MALVIN_PI={PI_BIN_REMOTE}" in cmd
-            assert "--model" in cmd
-            assert "pi:openai/gpt-4o" in cmd
-            
-            base = ft_docker_agent_cmd(
-                image=DEFAULT_IMAGE,
-                workspace=ws,
-                malvin_binary=host_malvin,
-            )
-            base_mounts = [base[i + 1] for i, token in enumerate(base) if token == "-v"]
-            assert not any(m.endswith(f":{PI_BIN_REMOTE}:ro") for m in base_mounts)
-            assert f"MALVIN_PI={PI_BIN_REMOTE}" not in base
+        cmd = ft_docker_agent_cmd(
+            image=DEFAULT_IMAGE,
+            workspace=ws,
+            malvin_binary=host_malvin,
+            malvin_args=("--model", "pi:openai/gpt-4o"),
+        )
+        assert "--model" in cmd
+        assert "pi:openai/gpt-4o" in cmd
 
-        _ft_mod = sys.modules[__name__]
-        old_resolve = _ft_mod.ft_resolve_pi_bin
-        try:
-            _ft_mod.ft_resolve_pi_bin = lambda: None  # type: ignore[assignment]
-            try:
-                ft_docker_agent_cmd(
-                    image=DEFAULT_IMAGE,
-                    workspace=ws,
-                    malvin_binary=host_malvin,
-                    malvin_args=("--model", "pi:openai/gpt-4o"),
-                )
-                raise AssertionError("expected missing pi rejection")
-            except click.ClickException as exc:
-                assert "pi binary not found" in str(exc)
-        finally:
-            _ft_mod.ft_resolve_pi_bin = old_resolve  # type: ignore[assignment]
+        base = ft_docker_agent_cmd(
+            image=DEFAULT_IMAGE,
+            workspace=ws,
+            malvin_binary=host_malvin,
+        )
+        base_mounts = [base[i + 1] for i, token in enumerate(base) if token == "-v"]
+        assert base_mounts
 
 def _ft_test_docker_agent_cmd_codex() -> None:
     """``codex:`` models mount the npm package and Node.js executable."""
@@ -1400,33 +1339,28 @@ def _ft_assert_solve_model_and_agent_dry_runs(cli, runner, tmp: Path) -> None:
     assert model_cmd[mi + 1 : mi + 3] == ["--model", "cursor:composer"]
     assert model_cmd[-1] == "plan.md"
 
-    if ft_resolve_pi_bin() is not None:
-        pi_tmp = tmp / "pi-model"
-        pi_tmp.mkdir()
-        pi_result = runner.invoke(
-            cli,
-            [
-                "solve",
-                "FT-01",
-                "--model",
-                "pi:openai/gpt-4o",
-                "--dry-run",
-                "--skip-grade",
-                "--results-dir",
-                str(pi_tmp),
-            ],
-            catch_exceptions=False,
-        )
-        assert pi_result.exit_code == 0, pi_result.output
-        pi_meta_paths = list(pi_tmp.glob("FT-01/*/metadata.json"))
-        assert pi_meta_paths, pi_result.output
-        pi_cmd = json.loads(pi_meta_paths[0].read_text(encoding="utf-8"))[
-            "docker_cmd"
-        ]
-        assert f"MALVIN_PI={PI_BIN_REMOTE}" in pi_cmd
-        assert any(token.endswith(f":{PI_BIN_REMOTE}:ro") for token in pi_cmd)
-        assert "--model" in pi_cmd
-        assert "pi:openai/gpt-4o" in pi_cmd
+    pi_tmp = tmp / "pi-model"
+    pi_tmp.mkdir()
+    pi_result = runner.invoke(
+        cli,
+        [
+            "solve",
+            "FT-01",
+            "--model",
+            "pi:openai/gpt-4o",
+            "--dry-run",
+            "--skip-grade",
+            "--results-dir",
+            str(pi_tmp),
+        ],
+        catch_exceptions=False,
+    )
+    assert pi_result.exit_code == 0, pi_result.output
+    pi_meta_paths = list(pi_tmp.glob("FT-01/*/metadata.json"))
+    assert pi_meta_paths, pi_result.output
+    pi_cmd = json.loads(pi_meta_paths[0].read_text(encoding="utf-8"))["docker_cmd"]
+    assert "--model" in pi_cmd
+    assert "pi:openai/gpt-4o" in pi_cmd
 
     cursor_tmp = tmp / "cursor"
     cursor_tmp.mkdir()
@@ -1520,33 +1454,32 @@ def _ft_assert_solve_creative_dry_runs(cli, runner, tmp: Path) -> None:
         assert conflict.exit_code != 0, (label, conflict.output)
         assert "mutually exclusive" in conflict.output, (label, conflict.output)
 
-    if ft_resolve_pi_bin() is not None:
-        pi_creative_tmp = tmp / "creative-pi"
-        pi_creative_tmp.mkdir()
-        pi_creative = runner.invoke(
-            cli,
-            [
-                "solve",
-                "FT-01",
-                "--creative",
-                "--model",
-                "pi:openai/gpt-4o",
-                "--dry-run",
-                "--skip-grade",
-                "--results-dir",
-                str(pi_creative_tmp),
-            ],
-            catch_exceptions=False,
-        )
-        assert pi_creative.exit_code == 0, pi_creative.output
-        pi_metas = list(pi_creative_tmp.glob("FT-01/*/metadata.json"))
-        assert pi_metas, pi_creative.output
-        pi_cmd = json.loads(pi_metas[0].read_text(encoding="utf-8"))["docker_cmd"]
-        assert "malvin" in pi_cmd
-        pmi = pi_cmd.index("malvin")
-        assert "--creative" in pi_cmd[pmi:]
-        assert "--model" in pi_cmd[pmi:]
-        assert "pi:openai/gpt-4o" in pi_cmd[pmi:]
+    pi_creative_tmp = tmp / "creative-pi"
+    pi_creative_tmp.mkdir()
+    pi_creative = runner.invoke(
+        cli,
+        [
+            "solve",
+            "FT-01",
+            "--creative",
+            "--model",
+            "pi:openai/gpt-4o",
+            "--dry-run",
+            "--skip-grade",
+            "--results-dir",
+            str(pi_creative_tmp),
+        ],
+        catch_exceptions=False,
+    )
+    assert pi_creative.exit_code == 0, pi_creative.output
+    pi_metas = list(pi_creative_tmp.glob("FT-01/*/metadata.json"))
+    assert pi_metas, pi_creative.output
+    pi_cmd = json.loads(pi_metas[0].read_text(encoding="utf-8"))["docker_cmd"]
+    assert "malvin" in pi_cmd
+    pmi = pi_cmd.index("malvin")
+    assert "--creative" in pi_cmd[pmi:]
+    assert "--model" in pi_cmd[pmi:]
+    assert "pi:openai/gpt-4o" in pi_cmd[pmi:]
 
     assert ft_malvin_args_request_creative(()) is False
     assert ft_malvin_args_request_creative(("--creative",)) is True
@@ -1704,40 +1637,6 @@ def _ft_test_resolve_agent_helpers() -> None:
             assert ft_resolve_cursor_sdk_bridge_dir() is None
         finally:
             globals()["REPO_ROOT"] = original_root
-
-    with tempfile.TemporaryDirectory(prefix="ft-pi-resolve-") as tmp:
-        stub = Path(tmp) / "pi"
-        stub.write_text("#!/bin/sh\n", encoding="utf-8")
-        stub.chmod(0o755)
-        old_pi = os.environ.get("MALVIN_PI")
-        os.environ["MALVIN_PI"] = str(stub)
-        try:
-            assert ft_resolve_pi_bin() == stub.resolve()
-            os.environ["MALVIN_PI"] = str(Path(tmp) / "missing")
-            assert ft_resolve_pi_bin() is None
-            non_exec = Path(tmp) / "pi-noexec"
-            non_exec.write_text("x", encoding="utf-8")
-            non_exec.chmod(0o644)
-            os.environ["MALVIN_PI"] = str(non_exec)
-            assert ft_resolve_pi_bin() is None
-        finally:
-            if old_pi is None:
-                os.environ.pop("MALVIN_PI", None)
-            else:
-                os.environ["MALVIN_PI"] = old_pi
-
-    old_which = shutil.which
-    try:
-        shutil.which = lambda _name: None  # type: ignore[assignment]
-        
-        old_pi = os.environ.pop("MALVIN_PI", None)
-        try:
-            assert ft_resolve_pi_bin() is None
-        finally:
-            if old_pi is not None:
-                os.environ["MALVIN_PI"] = old_pi
-    finally:
-        shutil.which = old_which  # type: ignore[assignment]
 
 _FT_RELAY_SPY_SEEN: list[str] = []
 _FT_RELAY_SPY_ORIG = sys.stdout.write

@@ -21,6 +21,11 @@ pub struct MemWatchHandles {
 }
 
 #[cfg(unix)]
+pub async fn watch_process_group_memory_with_optional_pgid(handles: MemWatchHandles) {
+    watch_session_memory(handles, true).await;
+}
+
+#[cfg(unix)]
 pub async fn watch_process_group_memory(handles: MemWatchHandles) {
     watch_process_group_memory_with_rss_sampler(handles, |pgid, baseline| {
         crate::malvin_sandbox::malvin_session_rss_bytes(pgid, baseline)
@@ -33,6 +38,25 @@ pub async fn watch_process_group_memory_with_rss_sampler(
     handles: MemWatchHandles,
     sample_rss: fn(Option<u32>, &HashSet<u32>) -> Option<u64>,
 ) {
+    watch_session_memory_with_rss_sampler(handles, sample_rss, false).await;
+}
+
+#[cfg(unix)]
+async fn watch_session_memory(handles: MemWatchHandles, allow_none_pgid: bool) {
+    watch_session_memory_with_rss_sampler(
+        handles,
+        crate::malvin_sandbox::malvin_session_rss_bytes,
+        allow_none_pgid,
+    )
+    .await;
+}
+
+#[cfg(unix)]
+async fn watch_session_memory_with_rss_sampler(
+    handles: MemWatchHandles,
+    sample_rss: fn(Option<u32>, &HashSet<u32>) -> Option<u64>,
+    allow_none_pgid: bool,
+) {
     let MemWatchHandles {
         reader_dead,
         pgid,
@@ -40,12 +64,17 @@ pub async fn watch_process_group_memory_with_rss_sampler(
         spawn_pid_baseline,
         run_dir,
     } = handles;
+    let watch_pgid = if allow_none_pgid && pgid == 0 {
+        None
+    } else {
+        Some(pgid)
+    };
     let mut consecutive_rss_failures = 0u32;
     loop {
-        if !crate::malvin_sandbox::sandbox_still_alive(Some(pgid), &spawn_pid_baseline) {
+        if !crate::malvin_sandbox::sandbox_still_alive(watch_pgid, &spawn_pid_baseline) {
             return;
         }
-        let rss = sample_rss(Some(pgid), &spawn_pid_baseline);
+        let rss = sample_rss(watch_pgid, &spawn_pid_baseline);
         let allow_fail_closed = !reader_dead.load(std::sync::atomic::Ordering::SeqCst);
         if memory_watch_should_terminate(
             rss,
@@ -81,7 +110,7 @@ pub async fn watch_process_group_memory_with_rss_sampler(
                 },
             );
             crate::acp::unix_process_group_teardown::terminate_agent_process_group(
-                Some(pgid),
+                watch_pgid,
                 &spawn_pid_baseline,
             )
             .await;
@@ -131,100 +160,9 @@ fn memory_watch_should_terminate(
 mod process_group_mem_watch_tests;
 
 #[cfg(all(test, unix))]
-mod policy_tests {
-    use super::{MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES, memory_watch_should_terminate};
-
-    #[test]
-    fn memory_watch_should_terminate_on_over_limit() {
-        let mut failures = 0;
-        assert!(memory_watch_should_terminate(
-            Some(100),
-            50,
-            &mut failures,
-            true
-        ));
-        assert_eq!(failures, 0);
-    }
-
-    #[test]
-    fn memory_watch_should_not_terminate_when_under_limit() {
-        let mut failures = 0;
-        assert!(!memory_watch_should_terminate(
-            Some(10),
-            50,
-            &mut failures,
-            true
-        ));
-        assert_eq!(failures, 0);
-    }
-
-    #[test]
-    fn memory_watch_fail_closed_after_consecutive_none_samples() {
-        let mut failures = 0;
-        for _ in 0..MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES - 1 {
-            assert!(!memory_watch_should_terminate(
-                None,
-                u64::MAX,
-                &mut failures,
-                true
-            ));
-        }
-        assert!(memory_watch_should_terminate(
-            None,
-            u64::MAX,
-            &mut failures,
-            true
-        ));
-    }
-
-    #[test]
-    fn memory_watch_no_fail_closed_when_disallowed() {
-        let mut failures = 0;
-        for _ in 0..MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES + 2 {
-            assert!(!memory_watch_should_terminate(
-                None,
-                u64::MAX,
-                &mut failures,
-                false
-            ));
-        }
-        assert_eq!(failures, 0);
-        assert!(memory_watch_should_terminate(
-            Some(100),
-            50,
-            &mut failures,
-            false
-        ));
-    }
-
-    #[test]
-    fn memory_watch_resets_failure_counter_after_successful_sample() {
-        let mut failures = 2;
-        assert!(!memory_watch_should_terminate(
-            Some(1),
-            u64::MAX,
-            &mut failures,
-            true
-        ));
-        assert_eq!(failures, 0);
-        assert!(!memory_watch_should_terminate(
-            None,
-            u64::MAX,
-            &mut failures,
-            true
-        ));
-        assert_eq!(failures, 1);
-    }
-}
+#[path = "process_group_mem_watch_policy_tests.rs"]
+mod process_group_mem_watch_policy_tests;
 
 #[cfg(test)]
-mod kiss_cov_auto {
-    use super::*;
-    #[test]
-    fn kiss_cov_watch_sampler() {
-        let _ = (
-            watch_process_group_memory,
-            watch_process_group_memory_with_rss_sampler,
-        );
-    }
-}
+#[path = "process_group_mem_watch_oom_marker_tests.rs"]
+mod process_group_mem_watch_oom_marker_tests;

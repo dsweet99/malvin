@@ -4,7 +4,8 @@ use crate::output::{AcpTeeDirection, AcpTeeStdoutEvent, WHO_T};
 use crate::tool_summary::{humanize_duration, tool_summary_stdout_display};
 
 use super::log_adapter::append_trace_line;
-use super::session::{BridgeSession, ToolCallStart};
+use super::session::ToolCallStart;
+use super::stream_log::StreamLog;
 
 pub(crate) struct ToolCallFields<'a> {
     pub phase: &'a str,
@@ -13,7 +14,7 @@ pub(crate) struct ToolCallFields<'a> {
     pub tool_call_id: Option<&'a str>,
 }
 
-pub(crate) fn emit_tool(session: &BridgeSession, fields: ToolCallFields<'_>) {
+pub(crate) fn emit_tool(session: &StreamLog, fields: ToolCallFields<'_>) {
     let ToolCallFields {
         phase,
         name,
@@ -54,7 +55,7 @@ pub(crate) fn emit_tool(session: &BridgeSession, fields: ToolCallFields<'_>) {
     }
 }
 
-pub(crate) fn clear_tool_starts(session: &BridgeSession) {
+pub(crate) fn clear_tool_starts(session: &StreamLog) {
     session
         .tool_starts
         .lock()
@@ -62,7 +63,7 @@ pub(crate) fn clear_tool_starts(session: &BridgeSession) {
         .clear();
 }
 
-fn note_tool_start(session: &BridgeSession, tool_call_id: Option<&str>, summary: &str) {
+fn note_tool_start(session: &StreamLog, tool_call_id: Option<&str>, summary: &str) {
     let Some(id) = tool_call_id.filter(|s| !s.is_empty()) else {
         return;
     };
@@ -79,7 +80,7 @@ fn note_tool_start(session: &BridgeSession, tool_call_id: Option<&str>, summary:
     );
 }
 
-fn take_tool_start(session: &BridgeSession, tool_call_id: Option<&str>) -> Option<ToolCallStart> {
+fn take_tool_start(session: &StreamLog, tool_call_id: Option<&str>) -> Option<ToolCallStart> {
     let id = tool_call_id.filter(|s| !s.is_empty())?;
     session
         .tool_starts
@@ -95,7 +96,7 @@ struct DoneLineInput<'a> {
     phase: &'a str,
 }
 
-fn format_tool_done_line(session: &BridgeSession, input: &DoneLineInput<'_>) -> String {
+fn format_tool_done_line(session: &StreamLog, input: &DoneLineInput<'_>) -> String {
     let start = take_tool_start(session, input.tool_call_id);
     let from_start = start.as_ref().map_or("", |s| s.summary.as_str());
     let base = if input.subject.len() >= from_start.len() {
@@ -130,7 +131,7 @@ pub(super) fn compose_tool_done_line(
     }
 }
 
-fn tee_tool_line(session: &BridgeSession, plain: &str) {
+fn tee_tool_line(session: &StreamLog, plain: &str) {
     let display = tool_summary_stdout_display(plain);
     let ts = crate::output::timestamp_now_string();
     crate::output::print_stdout_acp_tool_summary_tee(

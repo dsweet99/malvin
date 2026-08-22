@@ -41,13 +41,7 @@ pub(crate) async fn codex_start_thread(
     let response = request(
         session,
         "thread/start",
-        serde_json::json!({
-            "model": model,
-            "cwd": cwd,
-            "approvalPolicy": "never",
-            "sandbox": sandbox,
-            "ephemeral": true
-        }),
+        thread_start_params(model, cwd, sandbox, session.log.service.as_deref()),
     )
     .await?;
     if response.get("error").is_some() {
@@ -81,6 +75,25 @@ pub(crate) async fn request(
             return Ok(value);
         }
     }
+}
+
+fn thread_start_params(
+    model: String,
+    cwd: &std::path::Path,
+    sandbox: &str,
+    service: Option<&str>,
+) -> serde_json::Value {
+    let mut params = serde_json::json!({
+        "model": model,
+        "cwd": cwd,
+        "approvalPolicy": "never",
+        "sandbox": sandbox,
+        "ephemeral": true
+    });
+    if let Some(service) = service {
+        params["serviceTier"] = serde_json::Value::String(service.to_owned());
+    }
+    params
 }
 
 pub(crate) fn response_error(context: &str, response: &serde_json::Value) -> AgentError {
@@ -126,4 +139,29 @@ async fn list_models_on_session(
 
 async fn write(session: &BridgeSession, value: &serde_json::Value) -> Result<(), AgentError> {
     super::session_io::write_json(session, value).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::thread_start_params;
+    use std::path::Path;
+
+    #[test]
+    fn thread_start_includes_optional_service() {
+        let with_service = thread_start_params(
+            "gpt-5.6-sol".into(),
+            Path::new("/work"),
+            "workspace-write",
+            Some("priority"),
+        );
+        assert_eq!(with_service["serviceTier"], "priority");
+        assert_eq!(with_service["model"], "gpt-5.6-sol");
+        let bare = thread_start_params(
+            "gpt-5.6-sol".into(),
+            Path::new("/work"),
+            "workspace-write",
+            None,
+        );
+        assert!(bare.get("serviceTier").is_none());
+    }
 }

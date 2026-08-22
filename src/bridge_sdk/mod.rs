@@ -3,6 +3,7 @@ mod log_adapter;
 mod log_adapter_tool;
 mod session;
 mod session_io;
+mod stream_log;
 mod timing;
 
 #[cfg(test)]
@@ -19,6 +20,7 @@ pub(crate) use drain_idle::{DrainIdleHealthCtx, DrainIdleLabels, await_next_with
 
 pub(crate) use log_adapter::{feed_do_dm_run_result, handle_stream_event};
 pub use session::{BridgeSession, BridgeSpawnArgs, BridgeWire, SDK_BRIDGE_MAX_AGE, ToolCallStart};
+pub use stream_log::StreamLog;
 pub use session_io::write_request;
 pub(crate) use session_io::{
     CreateArgs, ResumeArgs, run_done_status_is_failure, send_create, send_resume, start_mem_watch,
@@ -36,7 +38,6 @@ mod protocol_reexport_tests {
         let _ = stringify!(BridgeSpawnArgs);
         let _ = stringify!(BridgeWire);
         let _ = stringify!(NodeBridge);
-        let _ = stringify!(PiRpc);
         let _ = stringify!(ToolCallStart);
         let _ = stringify!(SDK_BRIDGE_MAX_AGE);
         let _ = stringify!(send_create);

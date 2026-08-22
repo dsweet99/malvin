@@ -101,16 +101,9 @@ fn cursor_assemble_session(
         spawn_pid_baseline: handles.baseline,
         reader_dead: Arc::new(AtomicBool::new(false)),
         work_dir: args.cwd.to_path_buf(),
-        io: args.io,
-        last_response: Arc::new(Mutex::new(String::new())),
-        timing: args.timing,
-        run_dir: args.run_dir,
-        started_at: std::time::Instant::now(),
+        log: crate::bridge_sdk::StreamLog::from_spawn(&args, false),
         agent_id: Mutex::new(None),
         turn_id: Mutex::new(None),
-        stdout_coalesce: Mutex::new(crate::acp::TraceChunkCoalescer::default()),
-        tool_starts: Mutex::new(std::collections::HashMap::new()),
-        normalize_pi_usage: false,
         wire: crate::bridge_sdk::BridgeWire::NodeBridge,
     }
 }

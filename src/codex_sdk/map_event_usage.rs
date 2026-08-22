@@ -44,11 +44,10 @@ fn copy_num(
     from: &str,
     to: &str,
 ) {
-    if let Some(v) = src.get(from) {
-        if v.as_u64().is_some() || v.as_i64().is_some() || v.as_f64().is_some() {
+    if let Some(v) = src.get(from)
+        && (v.as_u64().is_some() || v.as_i64().is_some() || v.as_f64().is_some()) {
             dest.insert(to.to_string(), v.clone());
         }
-    }
 }
 
 #[cfg(test)]

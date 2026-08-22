@@ -27,7 +27,7 @@ mod unix_sandbox_monitor;
 pub(crate) use unix_process_ancestor::is_ancestor_pid;
 #[cfg(unix)]
 pub(crate) use unix_process_group_kill_targets::{
-    clear_session_spawn_affiliation, refresh_session_spawn_affiliation,
+    clear_session_spawn_affiliation, note_session_affiliated_pid, refresh_session_spawn_affiliation,
 };
 #[cfg(unix)]
 pub(crate) use unix_process_group_ps::pid_alive;
@@ -41,7 +41,9 @@ pub use unix_sandbox_monitor::sandbox_monitor_pids;
 
 mod process_group_mem_watch;
 #[cfg(unix)]
-pub use process_group_mem_watch::{MemWatchHandles, watch_process_group_memory};
+pub use process_group_mem_watch::{
+    MemWatchHandles, watch_process_group_memory, watch_process_group_memory_with_optional_pgid,
+};
 
 #[path = "process_group_terminate.rs"]
 mod process_group_terminate;

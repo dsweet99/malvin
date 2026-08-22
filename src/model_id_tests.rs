@@ -46,6 +46,24 @@ fn parse_bracket_overrides() {
     assert_eq!(pi.slug, "openai/gpt-4o");
     assert_eq!(pi.thinking_param(), Some("high"));
     assert_eq!(pi.canonical(), "pi:openai/gpt-4o[thinking=high]");
+    let codex = parse_model_id("codex:gpt-5.6[thinking=high,service=priority]").expect("codex");
+    assert_eq!(codex.slug, "gpt-5.6");
+    assert_eq!(codex.thinking_param(), Some("high"));
+    assert_eq!(codex.service_param(), Some("priority"));
+    assert_eq!(
+        codex.canonical(),
+        "codex:gpt-5.6[thinking=high,service=priority]"
+    );
+    assert!(
+        parse_model_id("codex:gpt-5.6[fast=true]")
+            .expect_err("codex only thinking/service")
+            .contains("thinking")
+    );
+    assert!(
+        parse_model_id("codex:gpt-5.6[thinking=off]")
+            .expect_err("bad codex level")
+            .contains("thinking")
+    );
     assert!(
         parse_model_id("cursor:opus[")
             .expect_err("unbalanced")

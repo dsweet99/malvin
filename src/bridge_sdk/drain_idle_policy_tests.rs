@@ -31,7 +31,7 @@ async fn injected_dead_health_fails_at_first_slice() {
     let elapsed = started.elapsed();
     crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
     assert!(err.0.contains("bridge timed out"));
-    assert_eq!(elapsed, Duration::from_secs(60));
+    assert_eq!(elapsed, Duration::from_mins(1));
 }
 
 #[tokio::test(start_paused = true)]
@@ -52,7 +52,7 @@ async fn injected_hung_health_waits_full_idle() {
     let elapsed = started.elapsed();
     crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
     assert!(err.0.contains("pi rpc timed out"));
-    assert_eq!(elapsed, Duration::from_secs(120));
+    assert_eq!(elapsed, Duration::from_mins(2));
 }
 
 #[tokio::test(start_paused = true)]
@@ -77,7 +77,7 @@ async fn missing_pgid_gets_no_health_extend() {
     let elapsed = started.elapsed();
     crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
     assert!(err.0.contains("bridge timed out"));
-    assert_eq!(elapsed, Duration::from_secs(120));
+    assert_eq!(elapsed, Duration::from_mins(2));
 }
 
 #[tokio::test(start_paused = true)]
@@ -98,7 +98,7 @@ async fn repeated_busy_health_stops_at_exactly_two_idle_windows() {
     let elapsed = started.elapsed();
     crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
     assert!(err.0.contains("bridge timed out"));
-    assert_eq!(elapsed, Duration::from_secs(240));
+    assert_eq!(elapsed, Duration::from_mins(4));
 }
 
 #[tokio::test(start_paused = true)]
@@ -124,7 +124,7 @@ async fn successful_event_starts_a_fresh_next_event_idle_budget() {
     }
     let elapsed = prompt_started.elapsed();
     crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
-    assert_eq!(elapsed, Duration::from_secs(180));
+    assert_eq!(elapsed, Duration::from_mins(3));
 }
 
 #[test]

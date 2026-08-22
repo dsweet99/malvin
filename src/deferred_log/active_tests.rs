@@ -88,7 +88,7 @@ fn try_push_queues_heartbeat_when_defer_sink_mutex_held() {
         "contention".to_string(),
         PathBuf::new(),
         crate::deferred_log::config::DeferredLogConfig {
-            max_age: std::time::Duration::from_secs(3600),
+            max_age: std::time::Duration::from_hours(1),
             max_drain_per_log: 64,
             cursor_dir: PathBuf::new(),
         },

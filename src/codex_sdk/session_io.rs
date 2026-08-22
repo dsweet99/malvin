@@ -57,9 +57,16 @@ pub(crate) async fn codex_send_prompt(
     set_codex_turn_id(session, None);
     write_json(
         session,
-        &serde_json::json!({"method":"turn/start","id":next_id(),"params":{
-            "threadId":thread_id,"input":[{"type":"text","text":prompt}]
-        }}),
+        &serde_json::json!({
+            "method": "turn/start",
+            "id": next_id(),
+            "params": turn_start_params(
+                &thread_id,
+                prompt,
+                session.log.thinking.as_deref(),
+                session.log.service.as_deref(),
+            )
+        }),
     )
     .await?;
     super::session_turn::consume_codex_turn(session).await
@@ -78,6 +85,25 @@ pub(crate) async fn codex_delete_thread(session: &BridgeSession) -> Result<(), A
         }),
     )
     .await
+}
+
+fn turn_start_params(
+    thread_id: &str,
+    prompt: &str,
+    thinking: Option<&str>,
+    service: Option<&str>,
+) -> serde_json::Value {
+    let mut params = serde_json::json!({
+        "threadId": thread_id,
+        "input": [{"type": "text", "text": prompt}]
+    });
+    if let Some(thinking) = thinking {
+        params["effort"] = serde_json::Value::String(thinking.to_owned());
+    }
+    if let Some(service) = service {
+        params["serviceTier"] = serde_json::Value::String(service.to_owned());
+    }
+    params
 }
 
 pub(crate) async fn write_json(
@@ -145,6 +171,7 @@ mod tests {
         let _ = session_string;
         let _ = set_session_string;
         let _ = codex_delete_thread;
+        let _ = turn_start_params;
     }
     #[test]
     fn interrupt_requires_thread_and_turn_ids() {
@@ -154,5 +181,16 @@ mod tests {
         let params = turn_interrupt_params(Some("th".into()), Some("t1".into())).unwrap();
         assert_eq!(params["threadId"], "th");
         assert_eq!(params["turnId"], "t1");
+    }
+
+    #[test]
+    fn turn_start_includes_effort_and_service() {
+        let params = turn_start_params("th", "hi", Some("high"), Some("priority"));
+        assert_eq!(params["effort"], "high");
+        assert_eq!(params["serviceTier"], "priority");
+        assert_eq!(params["threadId"], "th");
+        let bare = turn_start_params("th", "hi", None, None);
+        assert!(bare.get("effort").is_none());
+        assert!(bare.get("serviceTier").is_none());
     }
 }

@@ -123,14 +123,13 @@ pub(crate) fn try_log(entry: DeferredEntry) -> bool {
         return false;
     };
     let Ok(mut sink_guard) = sink.try_lock() else {
-        if !heartbeat_already_deferred(&sink) {
-            if let Some((display, log)) =
+        if !heartbeat_already_deferred(&sink)
+            && let Some((display, log)) =
                 crate::output::heartbeat_rendered_if_due(std::time::Instant::now(), true)
             {
                 crate::output::publish_heartbeat_live_terminal(&display);
                 queue_pending(super::build_display_log_entry(display, log));
             }
-        }
         queue_pending(entry);
         return true;
     };
@@ -158,13 +157,11 @@ pub(crate) fn try_push(entry: DeferredEntry) -> bool {
         return false;
     };
     let Ok(mut sink_guard) = sink.try_lock() else {
-        if entry_is_heartbeat(&entry) {
-            if let DeferredPayload::DisplayLog { display, .. } = &entry.payload {
-                if !heartbeat_already_deferred(&sink) {
+        if entry_is_heartbeat(&entry)
+            && let DeferredPayload::DisplayLog { display, .. } = &entry.payload
+                && !heartbeat_already_deferred(&sink) {
                     crate::output::publish_heartbeat_live_terminal(display);
                 }
-            }
-        }
         if !(entry_is_heartbeat(&entry) && heartbeat_already_deferred(&sink)) {
             queue_pending(entry);
         }

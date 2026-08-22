@@ -68,8 +68,8 @@ pub fn acquire_acp_spawn_lock_for_slot(work_dir: &Path, slot: &str) -> Result<()
     assert_no_peer_acp_spawn_lock_for_slot(work_dir, slot)?;
     let path = acp_spawn_lock_path(work_dir, slot);
     let self_pid = std::process::id();
-    if let Ok(contents) = std::fs::read_to_string(&path) {
-        if let Ok(holder_pid) = contents.trim().parse::<u32>() {
+    if let Ok(contents) = std::fs::read_to_string(&path)
+        && let Ok(holder_pid) = contents.trim().parse::<u32>() {
             #[cfg(unix)]
             if holder_pid != self_pid
                 && crate::acp::pid_alive(holder_pid)
@@ -80,7 +80,6 @@ pub fn acquire_acp_spawn_lock_for_slot(work_dir: &Path, slot: &str) -> Result<()
             #[cfg(not(unix))]
             let _ = holder_pid;
         }
-    }
     let chamber = acp_spawn_chamber_dir(work_dir);
     std::fs::create_dir_all(&chamber).map_err(|e| e.to_string())?;
     ensure_acp_spawn_chamber_gitignore(&chamber)?;
@@ -89,11 +88,10 @@ pub fn acquire_acp_spawn_lock_for_slot(work_dir: &Path, slot: &str) -> Result<()
 
 pub fn release_acp_spawn_lock(work_dir: &Path, slot: &str) {
     let path = acp_spawn_lock_path(work_dir, slot);
-    if let Ok(contents) = std::fs::read_to_string(&path) {
-        if contents.trim() == std::process::id().to_string() {
+    if let Ok(contents) = std::fs::read_to_string(&path)
+        && contents.trim() == std::process::id().to_string() {
             let _ = std::fs::remove_file(&path);
         }
-    }
 }
 
 #[cfg(test)]

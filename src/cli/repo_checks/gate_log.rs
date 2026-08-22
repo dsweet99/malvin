@@ -17,12 +17,11 @@ fn append_quality_gates_log_line(run_dir: &Path, who: &str, line: &str) -> std::
 }
 
 fn try_append_log_line(run_log_dir: Option<&Path>, who: &str, line: &str) {
-    if let Some(dir) = run_log_dir {
-        if let Err(e) = append_quality_gates_log_line(dir, who, line) {
+    if let Some(dir) = run_log_dir
+        && let Err(e) = append_quality_gates_log_line(dir, who, line) {
             use crate::output::print_log_warning;
             print_log_warning(&format!("failed to write quality gates log: {e}"));
         }
-    }
 }
 
 pub(crate) fn try_append_command_output(
@@ -30,14 +29,13 @@ pub(crate) fn try_append_command_output(
     command_line: &str,
     cmd_output: &std::process::Output,
 ) {
-    if let Some(dir) = run_log_dir {
-        if let Err(e) = append_quality_gates_command_output(dir, command_line, cmd_output) {
+    if let Some(dir) = run_log_dir
+        && let Err(e) = append_quality_gates_command_output(dir, command_line, cmd_output) {
             emit_repo_gate_warning(
                 &format!("failed to write quality gates log for `{command_line}`: {e}"),
                 Some(dir),
             );
         }
-    }
 }
 
 pub(crate) fn emit_repo_gate_warning(line: &str, run_log_dir: Option<&Path>) {

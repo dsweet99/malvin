@@ -51,11 +51,10 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
     let filter = models_list_prefix(&args.words)?;
     let filter_ref = filter.as_deref();
 
-    if section_may_match(filter_ref, CURSOR_PREFIX) {
-        if let Err(e) = print_cursor_models(filter_ref) {
+    if section_may_match(filter_ref, CURSOR_PREFIX)
+        && let Err(e) = print_cursor_models(filter_ref) {
             print_stdout_line(MALVIN_WHO, &format!("(cursor models unavailable: {e})"));
         }
-    }
     if section_may_match(filter_ref, PI_PREFIX) {
         match crate::pi_sdk::list_pi_models_sync() {
             Ok(models) => print_pi_models_with_live_auth(&models, filter_ref),
@@ -87,12 +86,12 @@ fn print_pi_models_with_live_auth(models: &[crate::pi_sdk::PiModelListing], filt
 fn print_pi_models(
     models: &[crate::pi_sdk::PiModelListing],
     filter: Option<&str>,
-    auth_map: &std::collections::HashMap<String, Vec<String>>,
+    _auth_map: &std::collections::HashMap<String, Vec<String>>,
 ) {
     let mut printed = false;
     for model in models {
         let provider = model.id.split('/').next().unwrap_or("");
-        if !crate::pi_sdk::provider_authenticated_from_map(provider, auth_map) {
+        if !crate::pi_sdk::is_provider_authenticated(provider) {
             continue;
         }
         let mut line = format!("pi:{}\t{}", model.id, model.name);
@@ -112,7 +111,7 @@ fn print_pi_models(
     if printed {
         print_stdout_line(
             MALVIN_WHO,
-            "Note: pi model list is cached; see `pi --help` to update it.",
+            "Note: pi model list is built in-process; rows are shown only for authenticated providers.",
         );
     }
 }

@@ -4,6 +4,7 @@ mod factory;
 mod sdk_client;
 mod sdk_client_prompt;
 mod sdk_client_session;
+mod sdk_session;
 
 #[cfg(test)]
 pub(crate) mod test_support;
@@ -24,3 +25,4 @@ pub use backend_ops::{
 };
 pub use factory::{build_agent_backend, build_agent_backend_with_tee};
 pub use sdk_client::{BridgeKind, SdkClient};
+pub(crate) use sdk_session::SdkSession;

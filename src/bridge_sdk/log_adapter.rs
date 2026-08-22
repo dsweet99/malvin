@@ -5,9 +5,9 @@ use crate::output::{WHO_B, WHO_M};
 use crate::bridge_protocol::BridgeEvent;
 
 use super::log_adapter_tool::{ToolCallFields, clear_tool_starts, emit_tool};
-use super::session::BridgeSession;
+use super::stream_log::StreamLog;
 
-pub fn handle_stream_event(session: &BridgeSession, ev: &BridgeEvent) {
+pub fn handle_stream_event(session: &StreamLog, ev: &BridgeEvent) {
     match ev {
         BridgeEvent::Assistant { text } => emit_assistant(session, text),
         BridgeEvent::Thinking { text } => emit_thinking(session, text),
@@ -54,7 +54,7 @@ pub(crate) fn feed_do_dm_run_result(text: &str) {
     crate::output::feed_do_dm_stdout_text(&terminated);
 }
 
-fn emit_assistant(session: &BridgeSession, text: &str) {
+fn emit_assistant(session: &StreamLog, text: &str) {
     append_trace_raw(session, "assistant", text);
     if session.io.no_tee || text.is_empty() {
         return;
@@ -62,7 +62,7 @@ fn emit_assistant(session: &BridgeSession, text: &str) {
     tee_coalesced(session, SessionUpdateChunkKind::Message, text);
 }
 
-fn emit_thinking(session: &BridgeSession, text: &str) {
+fn emit_thinking(session: &StreamLog, text: &str) {
     append_trace_raw(session, "thinking", text);
     if session.io.no_tee || !session.io.show_thoughts_on_stdout || text.is_empty() {
         return;
@@ -70,7 +70,7 @@ fn emit_thinking(session: &BridgeSession, text: &str) {
     tee_coalesced(session, SessionUpdateChunkKind::Thought, text);
 }
 
-fn tee_coalesced(session: &BridgeSession, kind: SessionUpdateChunkKind, text: &str) {
+fn tee_coalesced(session: &StreamLog, kind: SessionUpdateChunkKind, text: &str) {
     let emissions = {
         let mut coalesce = session
             .stdout_coalesce
@@ -83,7 +83,7 @@ fn tee_coalesced(session: &BridgeSession, kind: SessionUpdateChunkKind, text: &s
     }
 }
 
-fn flush_stdout_coalesce(session: &BridgeSession) {
+fn flush_stdout_coalesce(session: &StreamLog) {
     if session.io.no_tee {
         let _ = session
             .stdout_coalesce
@@ -107,7 +107,7 @@ fn flush_stdout_coalesce(session: &BridgeSession) {
     }
 }
 
-fn print_coalesced_line(session: &BridgeSession, kind: SessionUpdateChunkKind, line: &str) {
+fn print_coalesced_line(session: &StreamLog, kind: SessionUpdateChunkKind, line: &str) {
     if line.is_empty() {
         return;
     }
@@ -123,29 +123,28 @@ fn print_coalesced_line(session: &BridgeSession, kind: SessionUpdateChunkKind, l
     }
 }
 
-fn logged_run_done(session: &BridgeSession, ev: &BridgeEvent) -> BridgeEvent {
+fn logged_run_done(session: &StreamLog, ev: &BridgeEvent) -> BridgeEvent {
     let mut ev = ev.clone();
     crate::bridge_protocol::canonicalize_run_done(&mut ev);
-    if let BridgeEvent::RunDone { duration_ms, .. } = &mut ev {
-        if duration_ms.is_none() {
+    if let BridgeEvent::RunDone { duration_ms, .. } = &mut ev
+        && duration_ms.is_none() {
             *duration_ms = u64::try_from(session.started_at.elapsed().as_millis()).ok();
         }
-    }
     ev
 }
 
-fn append_trace_value(session: &BridgeSession, ev: &BridgeEvent) {
+fn append_trace_value(session: &StreamLog, ev: &BridgeEvent) {
     if let Ok(raw) = serde_json::to_string(ev) {
         append_trace_line(session, &raw);
     }
 }
 
-fn append_trace_raw(session: &BridgeSession, kind: &str, text: &str) {
+fn append_trace_raw(session: &StreamLog, kind: &str, text: &str) {
     let raw = serde_json::json!({ "event": kind, "text": text }).to_string();
     append_trace_line(session, &raw);
 }
 
-pub(crate) fn append_trace_line(session: &BridgeSession, line: &str) {
+pub(crate) fn append_trace_line(session: &StreamLog, line: &str) {
     let Some(run_dir) = session.run_dir.as_ref() else {
         return;
     };

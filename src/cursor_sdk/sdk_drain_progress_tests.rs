@@ -54,7 +54,7 @@ async fn progress_allows_more_than_ten_minutes_without_prompt_ceiling() {
         ));
     }
     assert_run_done_after_progress().await;
-    assert!(prompt_started.elapsed() > std::time::Duration::from_secs(600));
+    assert!(prompt_started.elapsed() > std::time::Duration::from_mins(10));
     bug_clear_env();
 }
 

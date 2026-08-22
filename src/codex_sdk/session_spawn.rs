@@ -42,6 +42,7 @@ mod tests {
         let _ = response_error;
         let _ = stringify!(resolve_model_on_session);
         let _ = stringify!(list_models_on_session);
+        let _ = stringify!(thread_start_params);
         let _ = codex_initialize;
         let _ = codex_start_thread;
     }

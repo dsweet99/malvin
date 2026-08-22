@@ -11,13 +11,8 @@ fn pi_mock_io() -> AgentIoOptions {
     }
 }
 
-fn pi_mock_bin() -> std::path::PathBuf {
-    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/pi_sdk/mock_pi.sh")
-}
-
 fn pi_install_mock_env() {
     unsafe {
-        std::env::set_var("MALVIN_PI", pi_mock_bin());
         std::env::set_var("OPENAI_API_KEY", "test-key");
         std::env::set_var(crate::acp::MALVIN_TEST_NO_REAL_AGENT_ENV, "1");
     }
@@ -25,7 +20,7 @@ fn pi_install_mock_env() {
 
 fn pi_clear_mock_env() {
     unsafe {
-        std::env::remove_var("MALVIN_PI");
+        std::env::remove_var(crate::acp::MALVIN_TEST_NO_REAL_AGENT_ENV);
     }
 }
 
@@ -43,10 +38,13 @@ async fn pi_sdk_client_mock_rpc_prompt_records_usage() {
     let mut client = pi_mock_client(tmp.path());
     let timing = client.attach_run_timing_for_session();
     client.begin_coder_session(tmp.path()).await.expect("begin");
-    assert!(matches!(
-        client.session.as_ref().map(|s| s.wire),
-        Some(crate::bridge_sdk::BridgeWire::PiRpc)
-    ));
+    assert!(
+        client
+            .session
+            .as_ref()
+            .and_then(|s| s.as_bridge())
+            .is_none()
+    );
     run_hello_prompt(&mut client, tmp.path()).await;
     assert_eq!(
         client.last_coder_prompt_agent_response().as_deref(),
@@ -146,31 +144,5 @@ async fn pi_sdk_empty_assistant_result_clears_prior_response() {
         "missing agent_end text must not leave prior turn text"
     );
     client.end_coder_session().await.expect("end");
-    pi_clear_mock_env();
-}
-
-#[tokio::test]
-async fn pi_sdk_new_session_ack_idle_timeout() {
-    let _guard = crate::test_utils::test_env_lock();
-    pi_install_mock_env();
-    unsafe {
-        std::env::set_var("MOCK_PI_HANG_NEW_SESSION", "1");
-        std::env::set_var("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS", "200");
-    }
-    let tmp = tempfile::tempdir().expect("tmp");
-    let mut client = pi_mock_client(tmp.path());
-    let err = client
-        .begin_coder_session(tmp.path())
-        .await
-        .expect_err("hung new_session must time out");
-    assert!(
-        err.0.contains("pi rpc timed out") && err.0.contains("response ACK"),
-        "unexpected: {}",
-        err.0
-    );
-    unsafe {
-        std::env::remove_var("MOCK_PI_HANG_NEW_SESSION");
-        std::env::remove_var("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS");
-    }
     pi_clear_mock_env();
 }

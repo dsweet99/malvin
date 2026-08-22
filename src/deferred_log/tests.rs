@@ -45,7 +45,7 @@ fn force_flush_enriches_read_when_store_present() {
             "sess".to_string(),
             tmp.path().to_path_buf(),
             DeferredLogConfig {
-                max_age: Duration::from_secs(60),
+                max_age: Duration::from_mins(1),
                 max_drain_per_log: 64,
                 cursor_dir: tmp.path().to_path_buf(),
             },
@@ -68,7 +68,7 @@ fn force_flush_emits_fallback_when_store_missing() {
             "missing-sess".to_string(),
             tmp.path().to_path_buf(),
             DeferredLogConfig {
-                max_age: Duration::from_secs(60),
+                max_age: Duration::from_mins(1),
                 max_drain_per_log: 64,
                 cursor_dir: tmp.path().to_path_buf(),
             },

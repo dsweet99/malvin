@@ -112,12 +112,12 @@ mod tests {
             Duration::from_secs(5)
         );
         assert_eq!(
-            sdk_drain_idle_slice(Duration::from_secs(120)),
+            sdk_drain_idle_slice(Duration::from_mins(2)),
             Duration::from_millis(SDK_DRAIN_IDLE_SLICE_MAX_MS)
         );
         assert_eq!(
-            sdk_drain_idle_max_wait(Duration::from_secs(600)),
-            Duration::from_secs(1200)
+            sdk_drain_idle_max_wait(Duration::from_mins(10)),
+            Duration::from_mins(20)
         );
     }
 

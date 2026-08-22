@@ -2,8 +2,9 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use crate::acp::AgentIoOptions;
-use crate::bridge_sdk::BridgeSession;
 use crate::model_id::{ModelBackend, ParsedModel};
+
+use super::sdk_session::SdkSession;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BridgeKind {
@@ -18,7 +19,7 @@ pub struct SdkClient {
     pub io: AgentIoOptions,
     pub prompts_log_run_dir: Option<PathBuf>,
     pub max_acp_retries: u32,
-    pub(crate) session: Option<BridgeSession>,
+    pub(crate) session: Option<SdkSession>,
     pub(crate) session_cwd: Option<PathBuf>,
     pub(crate) last_agent_id: Option<String>,
     pub(crate) timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,

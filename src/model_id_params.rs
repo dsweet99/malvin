@@ -99,6 +99,42 @@ pub(super) fn validate_pi_thinking_params(params: &[ModelParam]) -> Result<(), S
     Ok(())
 }
 
+const CODEX_THINKING_LEVELS: &[&str] = &["low", "medium", "high", "xhigh", "max", "ultra"];
+
+pub(super) fn validate_codex_params(params: &[ModelParam]) -> Result<(), String> {
+    for p in params {
+        match p.id.as_str() {
+            "thinking" => require_known_value("codex thinking", CODEX_THINKING_LEVELS, &p.value)?,
+            "service" => require_nonempty_service(&p.value)?,
+            other => {
+                return Err(format!(
+                    "codex model bracket overrides only support `thinking` and `service` (got `{other}`)",
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn require_known_value(label: &str, allowed: &[&str], value: &str) -> Result<(), String> {
+    if allowed.contains(&value) {
+        Ok(())
+    } else {
+        Err(format!(
+            "{label} must be one of {} (got `{value}`)",
+            allowed.join("|")
+        ))
+    }
+}
+
+fn require_nonempty_service(value: &str) -> Result<(), String> {
+    if value.is_empty() {
+        Err("codex service must be a non-empty catalog tier id".into())
+    } else {
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod model_id_params_kiss_cov {
     #[test]
@@ -110,5 +146,8 @@ mod model_id_params_kiss_cov {
         let _ = stringify!(bracket_shape_error);
         let _ = stringify!(kv_error);
         let _ = stringify!(validate_pi_thinking_params);
+        let _ = super::validate_codex_params;
+        let _ = super::require_known_value;
+        let _ = super::require_nonempty_service;
     }
 }

@@ -1,28 +1,45 @@
 use crate::acp::AuthError;
 
-use super::discover::resolve_pi_bin;
-
 pub fn ensure_pi_authenticated(model: &str) -> Result<(), AuthError> {
-    resolve_pi_bin().map_err(AuthError)?;
     let parsed = crate::model_id::parse_model_id(model).map_err(AuthError)?;
     let Some((provider, _)) = parsed.pi_provider_and_model() else {
         return Err(AuthError(format!(
             "pi model id must be `pi:<provider>/<model>` (got `{model}`)"
         )));
     };
-    if let Some(keys) = provider_auth_env_keys(provider) {
-        if !keys.iter().any(|k| env_nonempty(k)) {
-            return Err(AuthError(format!(
-                "pi backend is not authenticated for provider `{provider}`. Set {} (or pass credentials via Pi’s own config).",
-                keys.join(" or ")
-            )));
-        }
+    if provider_has_access(provider) {
+        return Ok(());
     }
-    Ok(())
+    let keys = provider_auth_env_keys(provider).unwrap_or(&[]);
+    if keys.is_empty() {
+        return Ok(());
+    }
+    Err(AuthError(format!(
+        "pi backend is not authenticated for provider `{provider}`. Set {} or store credentials in Pi’s auth file ({}).",
+        keys.join(" or "),
+        pi::sdk::Config::auth_path().display()
+    )))
 }
 
 pub fn is_provider_authenticated(provider: &str) -> bool {
-    provider_auth_env_keys(provider).is_none_or(|keys| keys.iter().any(|k| env_nonempty(k)))
+    provider_has_access(provider)
+}
+
+fn provider_has_access(provider: &str) -> bool {
+    if provider_auth_env_keys(provider).is_none_or(|keys| keys.iter().any(|k| env_nonempty(k))) {
+        return true;
+    }
+    stored_credential_present(provider)
+}
+
+fn stored_credential_present(provider: &str) -> bool {
+    let Ok(auth) = pi::auth::AuthStorage::load(pi::sdk::Config::auth_path()) else {
+        return false;
+    };
+    !matches!(
+        auth.credential_status(provider),
+        pi::auth::CredentialStatus::Missing
+    ) || auth.has_stored_credential(provider)
 }
 
 #[must_use]
@@ -64,25 +81,22 @@ mod tests {
     #[test]
     fn mapped_provider_requires_key() {
         crate::acp::with_env("OPENAI_API_KEY", None, || {
-            crate::acp::with_env("MALVIN_PI", None, || {
-                if resolve_pi_bin().is_ok() {
-                    assert!(ensure_pi_authenticated("pi:openai/gpt-4o").is_err());
-                }
-            });
+            if !stored_credential_present("openai") {
+                assert!(ensure_pi_authenticated("pi:openai/gpt-4o").is_err());
+            }
         });
     }
 
     #[test]
     fn is_provider_authenticated_checks_known_and_unknown_providers() {
-        // Known provider without key → false
         crate::acp::with_env("OPENAI_API_KEY", None, || {
-            assert!(!is_provider_authenticated("openai"));
+            if !stored_credential_present("openai") {
+                assert!(!is_provider_authenticated("openai"));
+            }
         });
-        // Known provider with key → true
         crate::acp::with_env("OPENAI_API_KEY", Some("test-key"), || {
             assert!(is_provider_authenticated("openai"));
         });
-        // Unknown provider → true (permissive, no keys to check)
         assert!(is_provider_authenticated("some-unknown"));
     }
 
@@ -93,7 +107,9 @@ mod tests {
             assert!(is_provider_authenticated("deep-seek"));
         });
         crate::acp::with_env("DEEPSEEK_API_KEY", None, || {
-            assert!(!is_provider_authenticated("deepseek"));
+            if !stored_credential_present("deepseek") && !stored_credential_present("deep-seek") {
+                assert!(!is_provider_authenticated("deepseek"));
+            }
         });
     }
 }

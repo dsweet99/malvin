@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -12,13 +12,13 @@ use crate::acp::{AgentError, AgentIoOptions};
 use crate::bridge_protocol::BridgeRequest;
 
 use super::session_io::{drain_until_run_done, write_request};
+use super::stream_log::StreamLog;
 
-pub const SDK_BRIDGE_MAX_AGE: Duration = Duration::from_secs(10 * 60);
+pub const SDK_BRIDGE_MAX_AGE: Duration = Duration::from_mins(10);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BridgeWire {
     NodeBridge,
-    PiRpc,
     CodexRpc,
 }
 
@@ -36,23 +36,31 @@ pub struct BridgeSession {
     pub spawn_pid_baseline: HashSet<u32>,
     pub reader_dead: Arc<AtomicBool>,
     pub work_dir: PathBuf,
-    pub io: AgentIoOptions,
-    pub last_response: Arc<Mutex<String>>,
-    pub timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
-    pub run_dir: Option<PathBuf>,
-    pub started_at: Instant,
+    pub log: StreamLog,
     pub agent_id: Mutex<Option<String>>,
     pub turn_id: Mutex<Option<String>>,
-    pub(crate) stdout_coalesce: Mutex<crate::acp::TraceChunkCoalescer>,
-    pub tool_starts: Mutex<HashMap<String, ToolCallStart>>,
-    pub normalize_pi_usage: bool,
     pub wire: BridgeWire,
+}
+
+impl std::ops::Deref for BridgeSession {
+    type Target = StreamLog;
+
+    fn deref(&self) -> &Self::Target {
+        &self.log
+    }
+}
+
+impl std::ops::DerefMut for BridgeSession {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.log
+    }
 }
 
 pub struct BridgeSpawnArgs<'a> {
     pub cwd: &'a Path,
     pub model: &'a str,
     pub thinking: Option<&'a str>,
+    pub service: Option<&'a str>,
     pub io: AgentIoOptions,
     pub run_dir: Option<PathBuf>,
     pub timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
@@ -71,7 +79,6 @@ impl BridgeSession {
                 write_request(self, &req).await?;
                 drain_until_run_done(self).await
             }
-            BridgeWire::PiRpc => crate::pi_sdk::send_prompt(self, prompt).await,
             BridgeWire::CodexRpc => crate::codex_sdk::send_prompt(self, prompt).await,
         }
     }
@@ -82,9 +89,6 @@ impl BridgeSession {
             BridgeWire::NodeBridge => {
                 let _ = write_request(&self, &BridgeRequest::Cancel {}).await;
                 let _ = write_request(&self, &BridgeRequest::Close {}).await;
-            }
-            BridgeWire::PiRpc => {
-                let _ = crate::pi_sdk::write_abort(&self).await;
             }
             BridgeWire::CodexRpc => {
                 let _ = crate::codex_sdk::write_abort(&self).await;

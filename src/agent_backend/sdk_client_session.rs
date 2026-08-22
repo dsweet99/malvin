@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::acp::{AgentError, AuthError, backoff_after_agent_failure, retries_noun};
+use crate::agent_backend::sdk_session::SdkSession;
 use crate::bridge_sdk::{BridgeSpawnArgs, SDK_BRIDGE_MAX_AGE};
 
 use super::sdk_client::{BridgeKind, SdkClient};
@@ -110,7 +111,7 @@ fn spawn_thinking_wire(client: &SdkClient) -> Option<String> {
     client
         .model
         .thinking_param()
-        .filter(|_| matches!(client.kind, BridgeKind::Pi))
+        .filter(|_| matches!(client.kind, BridgeKind::Pi | BridgeKind::Codex))
         .map(str::to_string)
 }
 
@@ -124,6 +125,7 @@ fn bridge_spawn_args<'a>(
         cwd,
         model,
         thinking,
+        service: client.model.service_param(),
         io: client.io,
         run_dir: client.prompts_log_run_dir.clone(),
         timing: client.timing.clone(),
@@ -139,17 +141,21 @@ fn bridge_spawn_args<'a>(
 async fn spawn_for_kind(
     kind: BridgeKind,
     args: BridgeSpawnArgs<'_>,
-) -> Result<crate::bridge_sdk::BridgeSession, AgentError> {
+) -> Result<crate::agent_backend::sdk_session::SdkSession, AgentError> {
     match kind {
-        BridgeKind::Cursor => crate::cursor_sdk::spawn_bridge(args).await,
+        BridgeKind::Cursor => crate::cursor_sdk::spawn_bridge(args)
+            .await
+            .map(|session| SdkSession::Bridge(Box::new(session))),
         BridgeKind::Pi => crate::pi_sdk::spawn_bridge(args).await,
-        BridgeKind::Codex => crate::codex_sdk::spawn_bridge(args).await,
+        BridgeKind::Codex => crate::codex_sdk::spawn_bridge(args)
+            .await
+            .map(|session| SdkSession::Bridge(Box::new(session))),
     }
 }
 
 fn adopt_spawned_session(
     client: &mut SdkClient,
-    s: crate::bridge_sdk::BridgeSession,
+    s: crate::agent_backend::sdk_session::SdkSession,
     cwd: PathBuf,
 ) {
     if matches!(client.kind, BridgeKind::Cursor) {
@@ -168,8 +174,14 @@ fn note_spawn_failure(client: &mut SdkClient, err: AgentError) -> String {
     last_error
 }
 
-fn remember_agent_id_from(client: &mut SdkClient, session: &crate::bridge_sdk::BridgeSession) {
-    let id = session
+fn remember_agent_id_from(
+    client: &mut SdkClient,
+    session: &crate::agent_backend::sdk_session::SdkSession,
+) {
+    let Some(bridge) = session.as_bridge() else {
+        return;
+    };
+    let id = bridge
         .agent_id
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)

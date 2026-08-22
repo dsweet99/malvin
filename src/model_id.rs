@@ -90,9 +90,18 @@ impl ParsedModel {
 
     #[must_use]
     pub fn thinking_param(&self) -> Option<&str> {
+        self.named_param("thinking")
+    }
+
+    #[must_use]
+    pub fn service_param(&self) -> Option<&str> {
+        self.named_param("service")
+    }
+
+    fn named_param(&self, id: &str) -> Option<&str> {
         self.params
             .iter()
-            .find(|p| p.id == "thinking")
+            .find(|p| p.id == id)
             .map(|p| p.value.as_str())
     }
 }
@@ -109,7 +118,7 @@ pub fn parse_model_id(raw: &str) -> Result<ParsedModel, String> {
         return parse_pi(rest);
     }
     if let Some(rest) = raw.strip_prefix(CODEX_PREFIX) {
-        return parsed(ModelBackend::Codex, rest);
+        return parse_codex(rest);
     }
     Err(legacy_or_unprefixed_error(raw))
 }
@@ -151,6 +160,12 @@ fn parse_pi(rest: &str) -> Result<ParsedModel, String> {
 
 fn split_first_slash(s: &str) -> Option<(&str, &str)> {
     s.split_once('/')
+}
+
+fn parse_codex(rest: &str) -> Result<ParsedModel, String> {
+    let model = parsed(ModelBackend::Codex, rest)?;
+    model_id_params::validate_codex_params(&model.params)?;
+    Ok(model)
 }
 
 fn parsed(backend: ModelBackend, slug: &str) -> Result<ParsedModel, String> {

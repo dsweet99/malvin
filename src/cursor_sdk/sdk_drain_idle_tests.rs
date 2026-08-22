@@ -45,7 +45,11 @@ async fn long_idle_never_run_done_still_blocked_at_800ms() {
     bug_set_drain_idle_timeout_ms(5000);
     let mut client = bug_client(tmp.path(), 1);
     client.begin_coder_session(tmp.path()).await.expect("begin");
-    let session = client.session.as_ref().expect("session");
+    let session = client
+        .session
+        .as_ref()
+        .and_then(|s| s.as_bridge())
+        .expect("session");
     let raced = tokio::time::timeout(
         std::time::Duration::from_millis(800),
         session.send_prompt("NEVER_RUN_DONE please"),

@@ -54,7 +54,7 @@ fn kiss_cov_bridge_sdk_shared_type_names() {
     BridgeKind();
     BridgeWire();
     NodeBridge();
-    PiRpc();
+    NodeBridge();
     SdkClientInit();
     CreateArgs();
     ResumeArgs();
@@ -103,14 +103,6 @@ fn kiss_cov_sdk_bridge_build_install_names() {
 
 #[test]
 fn kiss_cov_pi_sdk_discover_auth_models() {
-    resolve_pi_bin();
-    pi_missing_binary_message();
-    pi_version_ok();
-    path_is_executable();
-    parse_pi_version();
-    parse_semver_triple();
-    leading_u32();
-    PI_MIN_VERSION();
     ensure_pi_authenticated();
     provider_auth_env_keys();
     provider_auth_env_keys_primary();
@@ -119,7 +111,6 @@ fn kiss_cov_pi_sdk_discover_auth_models() {
     pi_list_models_timeout();
     PiModelListing();
     DEFAULT_PI_LIST_MODELS_TIMEOUT_MS();
-    PI_MISSING_HINT();
     pi_sdk_client_from_raw();
 }
 
@@ -127,118 +118,29 @@ fn kiss_cov_pi_sdk_discover_auth_models() {
 fn kiss_cov_pi_sdk_live_provider_auth() {
     list_pi_provider_auth_sync();
     provider_authenticated_from_map();
-    parse_list_providers_table();
-    is_dash_row();
-    providers_header_columns();
-    ProviderColumns();
-    record_provider_row();
-    auth_env_keys_from_cell();
-    is_auth_env_key();
     env_nonempty();
     print_pi_models_with_live_auth();
 }
 
-#[test]
-fn kiss_cov_pi_sdk_models_list_helpers() {
-    parse_list_models_table();
-    is_separator_line();
-    is_provider_id();
-    is_noise_line();
-    header_columns();
-    HeaderColumns();
-    listing_from_fixed_columns();
-    listing_from_whitespace_row();
-    thinking_from_fixed_columns();
-    parse_thinking_cell();
-}
 
-#[test]
-fn kiss_cov_pi_sdk_protocol() {
-    pi_encode_request();
-    pi_decode_line();
-    decode_response_line();
-    json_error_string();
-    prompt_request();
-    new_session_request();
-    abort_request();
-    PiRequest();
-    PiLine();
-}
-
-#[test]
-fn kiss_cov_pi_sdk_map_a() {
-    map_pi_event();
-    map_message_update();
-    tool_call_from_execution();
-    tool_end_phase();
-    tool_summary_from_pi();
-    bash_summary();
-    path_arg();
-    path_tool_summary();
-    flatten_ws();
-    map_agent_end();
-    last_assistant_text();
-    assistant_message_text();
-    aggregate_usage();
-    usage_u64();
-    text_delta_top_level();
-    thinking_delta_top_level();
-    top_level_delta_text();
-}
 
 #[test]
 fn kiss_cov_pi_sdk_spawn() {
     pi_spawn_bridge();
     spawn_bridge();
     split_provider_model();
-    pi_open_bridge_session();
-    PiChildStdio();
-    pi_take_stdio();
-    pi_note_sandbox();
-    pi_assemble_session();
-    pi_build_command();
+    fake_embedded_session();
+    live_embedded_session();
+    start_embedded_mem_watch();
+    watch_embedded_memory();
+    isolated_tool_factory();
+    IsolatedToolFactory();
+    IsolatedBash();
+    PiEmbeddedSession();
+    PiRuntime();
 }
 
 #[test]
 fn kiss_cov_codex_discover() {
     path_is_executable();
-}
-
-#[test]
-fn kiss_cov_pi_discover() {
-    path_is_executable();
-}
-
-#[test]
-fn kiss_cov_pi_sdk_rpc_io() {
-    codex_spawn_bridge();
-    codex_initialize();
-    codex_start_thread();
-    request();
-    response_error();
-    codex_write_abort();
-    codex_send_prompt();
-    read_json_waiting();
-    next_id();
-    set_codex_turn_id();
-    turn_interrupt_params();
-    read_json_waiting();
-    read_json_line();
-    session_string();
-    set_session_string();
-}
-
-#[test]
-fn kiss_cov_pi_sdk_rpc_io_b() {
-    pi_send_prompt();
-    pi_wait_for_response();
-    pi_read_line();
-    pi_drain_until_run_done();
-    pi_read_line_with_idle_timeout();
-    pi_finish_run_done();
-    pi_next_req_id();
-    PI_REQ_SEQ();
-    BridgeWire();
-    NodeBridge();
-    PiRpc();
 }

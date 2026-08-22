@@ -34,16 +34,13 @@ pub(super) fn build_codex_session(
         spawn_pid_baseline: baseline,
         reader_dead: io.2,
         work_dir: args.cwd.to_path_buf(),
-        io: args.io,
-        last_response: io.3,
-        timing: args.timing.clone(),
-        run_dir: args.run_dir.clone(),
-        started_at: std::time::Instant::now(),
+        log: {
+            let mut log = crate::bridge_sdk::StreamLog::from_spawn(args, false);
+            log.last_response = io.3;
+            log
+        },
         agent_id: std::sync::Mutex::new(None),
         turn_id: std::sync::Mutex::new(None),
-        stdout_coalesce: std::sync::Mutex::new(crate::acp::TraceChunkCoalescer::default()),
-        tool_starts: std::sync::Mutex::new(std::collections::HashMap::default()),
-        normalize_pi_usage: false,
         wire: BridgeWire::CodexRpc,
     }
 }

@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 use super::child_wait::{spawn_piped_process_group, wait_child_with_timeout};
 
 #[cfg(unix)]
-pub const LIVE_AGENT_CMD_TIMEOUT: Duration = Duration::from_secs(300);
+pub const LIVE_AGENT_CMD_TIMEOUT: Duration = Duration::from_mins(5);
 
 pub fn require_openrouter_key_when_gate_set(gate_name: &str) {
     assert!(

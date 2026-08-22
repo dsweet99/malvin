@@ -56,7 +56,6 @@ def test_fast_task_kiss_coverage_witnesses() -> None:
         fast_task.ft_resolve_malvin_main_binary,
         fast_task._ft_resolve_host_binary,
         fast_task.ft_resolve_cursor_sdk_bridge_dir,
-        fast_task.ft_resolve_pi_bin,
         fast_task.ft_resolve_node_bin,
         fast_task.ft_resolve_codex_bin,
         fast_task.ft_resolve_codex_package,

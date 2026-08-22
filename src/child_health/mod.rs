@@ -66,16 +66,14 @@ pub const fn health_indicates_progress(before: &ChildHealth, after: &ChildHealth
     if before.cpu_time_total != after.cpu_time_total {
         return true;
     }
-    if let (Some(a), Some(b)) = (before.voluntary_ctxt, after.voluntary_ctxt) {
-        if a != b {
+    if let (Some(a), Some(b)) = (before.voluntary_ctxt, after.voluntary_ctxt)
+        && a != b {
             return true;
         }
-    }
-    if let (Some(a), Some(b)) = (before.thread_count, after.thread_count) {
-        if a != b {
+    if let (Some(a), Some(b)) = (before.thread_count, after.thread_count)
+        && a != b {
             return true;
         }
-    }
     false
 }
 

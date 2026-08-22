@@ -13,11 +13,11 @@ struct EnsureFixture {
 }
 
 fn bridge_started_at(client: &CursorSdkClient) -> Instant {
-    client.session.as_ref().expect("open").started_at
+    client.session.as_ref().and_then(|s| s.as_bridge()).expect("open").started_at
 }
 
 fn backdate_bridge(client: &mut CursorSdkClient, started: Instant) {
-    client.session.as_mut().expect("open").started_at = started
+    client.session.as_mut().and_then(|s| s.as_bridge_mut()).expect("open").started_at = started
         .checked_sub(SDK_BRIDGE_MAX_AGE + Duration::from_secs(1))
         .expect("backdate");
 }

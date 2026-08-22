@@ -126,11 +126,10 @@ fn emit_turn_stream(
         if let BridgeEvent::Usage { usage } = &ev {
             state.usage = Some(usage.clone());
         }
-        if let BridgeEvent::ToolCall { phase, .. } = &ev {
-            if phase == "start" {
+        if let BridgeEvent::ToolCall { phase, .. } = &ev
+            && phase == "start" {
                 crate::bridge_sdk::note_sdk_step(session.timing.as_ref());
             }
-        }
         crate::bridge_sdk::handle_stream_event(session, &ev);
     }
     if let Some(text) = completed_agent_text(method, params) {

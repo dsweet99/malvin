@@ -26,7 +26,7 @@ pub fn aged_defer_shared(session: &str) -> SharedDeferSink {
         session.to_string(),
         PathBuf::new(),
         DeferredLogConfig {
-            max_age: Duration::from_secs(3600),
+            max_age: Duration::from_hours(1),
             max_drain_per_log: 64,
             cursor_dir: PathBuf::new(),
         },

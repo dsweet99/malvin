@@ -151,7 +151,11 @@ async fn cancel_during_slow_send_is_honored() {
     let tmp = bug_prepare();
     let mut client = bug_client(tmp.path(), 1);
     client.begin_coder_session(tmp.path()).await.expect("begin");
-    let session = client.session.as_ref().expect("session");
+    let session = client
+        .session
+        .as_ref()
+        .and_then(|s| s.as_bridge())
+        .expect("session");
     let prompt_fut = session.send_prompt("SLOW_SEND please");
     let cancel_fut = async {
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
