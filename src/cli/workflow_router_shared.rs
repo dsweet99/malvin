@@ -26,6 +26,7 @@ pub(crate) fn prefer_gate_outcome_over_summarize<T>(
 pub(crate) fn clear_quality_gates_log_for_next_agent(
     artifacts: &RunArtifacts,
 ) -> Result<(), String> {
+    crate::gate_loop_session::set_quality_gates_just_ran(false);
     crate::artifacts::ensure_quality_gates_log_file(artifacts).map_err(|e| e.to_string())
 }
 
@@ -55,6 +56,18 @@ pub(crate) fn run_router_workspace_gates(
         RepoGateOutput::Tagged,
         Some(artifacts.run_dir.as_path()),
     );
+    // A completed gate run — pass or per-command failure — executed the checks
+    // and captured their output in quality_gates.log, so later router_a turns
+    // may point at it. Setup errors (e.g. missing .malvin/gates) mean nothing
+    // ran and leave the flag off. Command failures carry the marker plus an
+    // exit-code suffix (see RepoGateFailure::into_error); pure Message
+    // failures do not.
+    crate::gate_loop_session::set_quality_gates_just_ran(match &gate_result {
+        Ok(()) => true,
+        Err(detail) => {
+            crate::repo_checks::is_gate_failure_error(detail) && detail.contains("failed (exit")
+        }
+    });
     let restore_result = restore_session_dotfiles_for_gates(
         work_dir,
         session_dotfile_backups,

@@ -117,6 +117,16 @@ pub(crate) fn render_router_code_extra(input: RouterCodeExtraInput<'_>) -> Resul
     let body = store
         .render_prompt_only(ROUTER_CODE_EXTRA_MD, ctx.as_map())
         .map_err(|e: PromptError| e.0)?;
+    if gates && crate::gate_loop_session::quality_gates_just_ran() {
+        let path = ctx
+            .get("quality_gates_log")
+            .map_or_else(String::new, Clone::clone);
+        return Ok(format!(
+            "{body}\n\nThe quality gates were just run, and their output is in `{path}`.\n"
+        )
+        .trim()
+        .to_string());
+    }
     Ok(body.trim().to_string())
 }
 

@@ -90,6 +90,59 @@ fn build_router_a_prompt_omits_code_checks_when_gates_disabled() {
 }
 
 #[test]
+fn router_code_extra_note_absent_when_gates_have_not_run() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = flow_test_artifacts(&tmp);
+    crate::seed_malvin_checks(tmp.path(), "true\n");
+    let store = prepare_router_prompt_store().expect("store");
+    crate::gate_loop_session::set_quality_gates_just_ran(false);
+    let body = build_router_a_prompt(RouterAPromptInput {
+        store: &store,
+        artifacts: &artifacts,
+        model: DEFAULT_CLI_MODEL,
+        git: false,
+        gates: true,
+    })
+    .expect("router_a");
+    assert!(
+        !body.contains("quality gates were just run"),
+        "note must be absent before any gate run: {body}"
+    );
+    assert!(!body.contains("{{"));
+}
+
+#[test]
+fn router_code_extra_note_present_after_gates_just_ran() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = flow_test_artifacts(&tmp);
+    crate::seed_malvin_checks(tmp.path(), "true\n");
+    let store = prepare_router_prompt_store().expect("store");
+    crate::gate_loop_session::set_quality_gates_just_ran(true);
+    let body = build_router_a_prompt(RouterAPromptInput {
+        store: &store,
+        artifacts: &artifacts,
+        model: DEFAULT_CLI_MODEL,
+        git: false,
+        gates: true,
+    })
+    .expect("router_a");
+    crate::gate_loop_session::set_quality_gates_just_ran(false);
+    assert!(
+        body.contains("The quality gates were just run, and their output is in `"),
+        "note must be present right after a gate run: {body}"
+    );
+    assert!(
+        body.contains("quality_gates.log"),
+        "note must name the quality_gates.log path: {body}"
+    );
+    assert!(!body.contains("{{"));
+    assert!(
+        !body.contains("NB: The code checks may have already been run"),
+        "old unconditional NB line must be gone: {body}"
+    );
+}
+
+#[test]
 fn build_router_summarize_prompt_renders_dm_body_without_unresolved_braces() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);

@@ -123,6 +123,29 @@ fn run_router_workspace_gates_refreshes_quality_gates_log() {
         assert!(!log.contains("stale output"));
     });
 }
+
+#[test]
+fn failed_gate_run_does_not_set_just_ran_flag() {
+    crate::test_utils::with_isolated_home(|_| {
+        let (_tmp, _bin, _guard, artifacts, backups) = gate_failure_fixture(1);
+        run_router_workspace_gates(&artifacts, &backups, true).expect_err("gates fail");
+        assert!(
+            crate::gate_loop_session::quality_gates_just_ran(),
+            "completed-but-failed gate run captured output; just_ran must be set"
+        );
+
+        // A setup error (nothing executed) must leave the flag off.
+        clear_quality_gates_log_for_next_agent(&artifacts).expect("clear");
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let (artifacts2, backups2) = missing_checks_fixture(tmp.path());
+        run_router_workspace_gates(&artifacts2, &backups2, true).expect_err("missing checks fail");
+        assert!(
+            !crate::gate_loop_session::quality_gates_just_ran(),
+            "setup failure (nothing ran) must not set just_ran"
+        );
+    });
+}
+
 #[test]
 fn gate_iteration_context_overrides_exp_log() {
     crate::test_utils::with_isolated_home(|_| {
@@ -198,35 +221,6 @@ fn run_router_workspace_gates_leaves_session_gitignore_after_post_gate_restore()
         );
     });
 }
-pub(crate) fn router_gates_restore_fixture(
-    work: &std::path::Path,
-) -> (
-    crate::artifacts::RunArtifacts,
-    crate::artifacts::SessionDotfileBackups,
-) {
-    std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
-    std::fs::write(work.join(".malvin/gates"), "true\n").expect("gates");
-    let artifacts =
-        crate::artifacts::create_run_artifacts_from_text("code", Some(work)).expect("artifacts");
-    let backups = crate::artifacts::SessionDotfileBackups::snapshot(work).expect("snapshot");
-    (artifacts, backups)
-}
-pub(crate) fn gitignore_restore_failure_fixture(
-    work: &std::path::Path,
-) -> (
-    crate::artifacts::RunArtifacts,
-    crate::artifacts::SessionDotfileBackups,
-) {
-    std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
-    std::fs::write(work.join(".malvin/gates"), "true\n").expect("gates");
-    let artifacts =
-        crate::artifacts::create_run_artifacts_from_text("code", Some(work)).expect("artifacts");
-    std::fs::write(work.join(".gitignore"), "orig\n").expect("gitignore");
-    let backups = crate::artifacts::SessionDotfileBackups::snapshot(work).expect("snapshot");
-    std::fs::remove_file(work.join(".gitignore")).expect("remove gitignore");
-    std::fs::create_dir(work.join(".gitignore")).expect("gitignore dir");
-    (artifacts, backups)
-}
 #[test]
 fn restore_failure_prevents_gate_run() {
     crate::test_utils::with_isolated_home(|_| {
@@ -248,3 +242,6 @@ fn prefer_gate_outcome_keeps_gate_error_when_restore_also_fails() {
 #[path = "workflow_router_shared_tests_tail.rs"]
 mod workflow_router_shared_tests_tail;
 pub(crate) use workflow_router_shared_tests_tail::artifact_storage_available;
+pub(crate) use workflow_router_shared_tests_tail::{
+    gitignore_restore_failure_fixture, router_gates_restore_fixture,
+};

@@ -37,9 +37,48 @@ fn assert_live_auth_filter(out: &str) {
     // `load_for_listing`. Their access rule therefore lives at the auth layer,
     // not in the printed table.
     assert!(
-        crate::pi_sdk::is_provider_authenticated("llamacpp"),
+        crate::pi_sdk::provider_authenticated_from_map(
+            "llamacpp",
+            &std::collections::HashMap::new()
+        ),
         "keyless local provider should count as authenticated without env keys"
     );
+}
+
+#[test]
+fn run_models_filters_pi_rows_using_stored_credentials_too() {
+    use crate::output::{enable_stdout_capture, take_captured_stdout};
+    use crate::test_utils::test_env_lock;
+
+    let _lock = test_env_lock();
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let home = isolated_pi_home(tmp.path());
+    crate::acp::with_env("PI_CODING_AGENT_DIR", Some(&home), || {
+        // Store an openai credential in pi's auth file only (no env keys).
+        {
+            let auth_path = pi::sdk::Config::auth_path();
+            let mut auth =
+                pi::auth::AuthStorage::load(auth_path.clone()).expect("load auth storage");
+            auth.set(
+                "openai",
+                pi::auth::AuthCredential::ApiKey {
+                    key: "stored-key".to_string(),
+                },
+            );
+            auth.save().expect("save auth storage");
+        }
+        enable_stdout_capture();
+        run_models_pi_only_with_openrouter_key();
+        let out = take_captured_stdout();
+        assert!(
+            !out.contains("pi:openai/"),
+            "stored credential alone must NOT list a provider; env API key required: {out}"
+        );
+        assert!(
+            out.contains("pi:openrouter/"),
+            "env-key provider must still list: {out}"
+        );
+    });
 }
 
 #[test]

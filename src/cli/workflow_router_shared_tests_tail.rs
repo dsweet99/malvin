@@ -89,3 +89,60 @@ fn prefer_gate_outcome_surfaces_restore_when_gate_passed() {
     .unwrap_err();
     assert!(err.contains("malvin_checks restore"));
 }
+
+#[test]
+fn passing_gate_run_sets_just_ran_and_clear_resets_it() {
+    crate::test_utils::with_isolated_home(|_| {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let (_bin, _guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "true", 0);
+        let (artifacts, backups) = router_gates_restore_fixture(tmp.path());
+        // Parallel tests share the process-global flag; only assert the
+        // transition caused by this test's own gate run.
+        run_router_workspace_gates(&artifacts, &backups, true).expect("gates pass");
+        assert!(
+            crate::gate_loop_session::quality_gates_just_ran(),
+            "completed gate run must set just_ran"
+        );
+
+        // Clearing for the next agent turn resets it.
+        clear_quality_gates_log_for_next_agent(&artifacts).expect("clear");
+        assert!(
+            !crate::gate_loop_session::quality_gates_just_ran(),
+            "clearing the quality gates log must reset just_ran"
+        );
+        assert_eq!(
+            std::fs::read_to_string(artifacts.quality_gates_log_path()).expect("read"),
+            ""
+        );
+    });
+}
+
+pub(crate) fn router_gates_restore_fixture(
+    work: &std::path::Path,
+) -> (
+    crate::artifacts::RunArtifacts,
+    crate::artifacts::SessionDotfileBackups,
+) {
+    std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
+    std::fs::write(work.join(".malvin/gates"), "true\n").expect("gates");
+    let artifacts =
+        crate::artifacts::create_run_artifacts_from_text("code", Some(work)).expect("artifacts");
+    let backups = crate::artifacts::SessionDotfileBackups::snapshot(work).expect("snapshot");
+    (artifacts, backups)
+}
+pub(crate) fn gitignore_restore_failure_fixture(
+    work: &std::path::Path,
+) -> (
+    crate::artifacts::RunArtifacts,
+    crate::artifacts::SessionDotfileBackups,
+) {
+    std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
+    std::fs::write(work.join(".malvin/gates"), "true\n").expect("gates");
+    let artifacts =
+        crate::artifacts::create_run_artifacts_from_text("code", Some(work)).expect("artifacts");
+    std::fs::write(work.join(".gitignore"), "orig\n").expect("gitignore");
+    let backups = crate::artifacts::SessionDotfileBackups::snapshot(work).expect("snapshot");
+    std::fs::remove_file(work.join(".gitignore")).expect("remove gitignore");
+    std::fs::create_dir(work.join(".gitignore")).expect("gitignore dir");
+    (artifacts, backups)
+}
