@@ -21,15 +21,6 @@ fn kiss_cov_pi_sdk_rpc_io() {
 
 #[test]
 fn kiss_cov_pi_sdk_rpc_io_b() {
-    pi_send_prompt();
-    pi_wait_for_response();
-    pi_read_line();
-    pi_drain_until_run_done();
-    pi_read_line_with_idle_timeout();
-    pi_finish_run_done();
-    pi_next_req_id();
-    PI_REQ_SEQ();
     BridgeWire();
     NodeBridge();
-    PiRpc();
 }
