@@ -62,6 +62,70 @@ async fn fake_session_begin_end_leaves_no_pi_runtime_thread() {
     );
 }
 
+// Nit-2 handoff (.malvin/incomplete_handoff_pi_sdk_nit_polish.md): explicit
+// lifecycle proof for the real embedded runtime. The mock-env client tests
+// cannot observe the thread (fake_embedded_session has runtime: None), so
+// this test drives PiRuntime directly.
+//
+// Determinism: PiRuntime::start returns only after the worker sends ready,
+// and the worker then blocks on cmd_rx.recv(), so the named thread
+// necessarily exists when start() returns Ok. shutdown() joins the thread
+// before returning, so it necessarily does not exist afterwards. No sleeps.
+//
+// Offline: provider/model/api_key construction performs local work only;
+// network I/O happens at prompt time, which this test never issues. Same
+// shape as the published crate's hermetic create_agent_session tests.
+//
+// HOME is redirected to a tempdir so Config/AuthStorage loads never touch
+// production config (VISION.md).
+#[test]
+fn pi_runtime_lifecycle_starts_and_joins_named_thread() {
+    crate::test_utils::with_isolated_home(|work| {
+        let options = pi::sdk::SessionOptions {
+            provider: Some("openai".to_string()),
+            model: Some("gpt-4o".to_string()),
+            api_key: Some("dummy-key".to_string()),
+            working_directory: Some(work.to_path_buf()),
+            no_session: true,
+            tool_factory: Some(crate::pi_sdk::isolated_bash::isolated_tool_factory()),
+            ..pi::sdk::SessionOptions::default()
+        };
+        assert!(
+            !pi_sdk_named_thread_exists(),
+            "precondition: no malvin-pi-sdk thread before PiRuntime::start"
+        );
+        let mut runtime = super::runtime::PiRuntime::start(options).expect("runtime starts");
+        assert!(
+            pi_sdk_named_thread_exists(),
+            "malvin-pi-sdk thread must exist while the runtime is live"
+        );
+        runtime.shutdown();
+        assert!(
+            !pi_sdk_named_thread_exists(),
+            "malvin-pi-sdk thread must be joined after shutdown"
+        );
+    });
+}
+
+// Kiss's static coverage matcher attributes test-body references only in the
+// plain function body, not inside the with_isolated_home closure, so the
+// helper gets a direct smoke exercise here. Both outcomes are valid: other
+// tests may legitimately hold a live malvin-pi-sdk thread concurrently.
+#[test]
+fn pi_sdk_named_thread_helper_reads_proc_without_panicking() {
+    let _exists = pi_sdk_named_thread_exists();
+}
+
+fn pi_sdk_named_thread_exists() -> bool {
+    let Ok(entries) = std::fs::read_dir("/proc/self/task") else {
+        return false;
+    };
+    entries.flatten().any(|entry| {
+        std::fs::read_to_string(entry.path().join("comm"))
+            .is_ok_and(|name| name.trim() == "malvin-pi-sdk")
+    })
+}
+
 fn leftover_pi_runtime_threads() -> Vec<String> {
     let Ok(entries) = std::fs::read_dir("/proc/self/task") else {
         return Vec::new();
