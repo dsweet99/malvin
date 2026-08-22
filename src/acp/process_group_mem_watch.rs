@@ -14,15 +14,10 @@ const MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES: u32 = 3;
 
 pub struct MemWatchHandles {
     pub reader_dead: Arc<std::sync::atomic::AtomicBool>,
-    pub pgid: u32,
+    pub pgid: Option<u32>,
     pub limit_bytes: u64,
     pub spawn_pid_baseline: HashSet<u32>,
     pub run_dir: Option<std::path::PathBuf>,
-}
-
-#[cfg(unix)]
-pub async fn watch_process_group_memory_with_optional_pgid(handles: MemWatchHandles) {
-    watch_session_memory(handles, true).await;
 }
 
 #[cfg(unix)]
@@ -38,37 +33,21 @@ pub async fn watch_process_group_memory_with_rss_sampler(
     handles: MemWatchHandles,
     sample_rss: fn(Option<u32>, &HashSet<u32>) -> Option<u64>,
 ) {
-    watch_session_memory_with_rss_sampler(handles, sample_rss, false).await;
-}
-
-#[cfg(unix)]
-async fn watch_session_memory(handles: MemWatchHandles, allow_none_pgid: bool) {
-    watch_session_memory_with_rss_sampler(
-        handles,
-        crate::malvin_sandbox::malvin_session_rss_bytes,
-        allow_none_pgid,
-    )
-    .await;
+    watch_session_memory_with_rss_sampler(handles, sample_rss).await;
 }
 
 #[cfg(unix)]
 async fn watch_session_memory_with_rss_sampler(
     handles: MemWatchHandles,
     sample_rss: fn(Option<u32>, &HashSet<u32>) -> Option<u64>,
-    allow_none_pgid: bool,
 ) {
     let MemWatchHandles {
         reader_dead,
-        pgid,
+        pgid: watch_pgid,
         limit_bytes,
         spawn_pid_baseline,
         run_dir,
     } = handles;
-    let watch_pgid = if allow_none_pgid && pgid == 0 {
-        None
-    } else {
-        Some(pgid)
-    };
     let mut consecutive_rss_failures = 0u32;
     loop {
         if !crate::malvin_sandbox::sandbox_still_alive(watch_pgid, &spawn_pid_baseline) {
@@ -86,7 +65,7 @@ async fn watch_session_memory_with_rss_sampler(
                 || {
                     warn!(
                         limit_bytes,
-                        pgid,
+                        pgid = watch_pgid,
                         consecutive_failures = consecutive_rss_failures,
                         "malvin sandbox cannot measure memory; terminating (fail-closed)"
                     );
@@ -95,7 +74,9 @@ async fn watch_session_memory_with_rss_sampler(
                 |rss_bytes| {
                     warn!(
                         rss_bytes,
-                        limit_bytes, pgid, "malvin sandbox exceeded memory limit; terminating"
+                        limit_bytes,
+                        pgid = watch_pgid,
+                        "malvin sandbox exceeded memory limit; terminating"
                     );
                     (crate::sandbox_oom::OOM_REASON_MEMORY_LIMIT, Some(rss_bytes))
                 },
@@ -106,7 +87,7 @@ async fn watch_session_memory_with_rss_sampler(
                     reason,
                     rss_bytes,
                     limit_bytes,
-                    pgid,
+                    pgid: watch_pgid.unwrap_or(0),
                 },
             );
             crate::acp::unix_process_group_teardown::terminate_agent_process_group(

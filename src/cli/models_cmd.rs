@@ -58,7 +58,7 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
     }
     if section_may_match(filter_ref, PI_PREFIX) {
         match crate::pi_sdk::list_pi_models_sync() {
-            Ok(models) => print_pi_models_with_live_auth(&models, filter_ref),
+            Ok(models) => print_pi_models(&models, filter_ref),
             Err(e) => {
                 print_stdout_line(MALVIN_WHO, &format!("(pi models unavailable: {e})"));
             }
@@ -71,28 +71,11 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn print_pi_models_with_live_auth(models: &[crate::pi_sdk::PiModelListing], filter: Option<&str>) {
-    match crate::pi_sdk::list_pi_provider_auth_sync() {
-        Ok(map) => print_pi_models(models, filter, &map),
-        Err(e) => {
-            print_stdout_line(
-                MALVIN_WHO,
-                &format!("(pi provider auth map unavailable: {e})"),
-            );
-            print_pi_models(models, filter, &std::collections::HashMap::new());
-        }
-    }
-}
-
-fn print_pi_models(
-    models: &[crate::pi_sdk::PiModelListing],
-    filter: Option<&str>,
-    auth_map: &std::collections::HashMap<String, Vec<String>>,
-) {
+fn print_pi_models(models: &[crate::pi_sdk::PiModelListing], filter: Option<&str>) {
     let mut printed = false;
     for model in models {
         let provider = model.id.split('/').next().unwrap_or("");
-        if !crate::pi_sdk::provider_authenticated_from_map(provider, auth_map) {
+        if !crate::pi_sdk::is_provider_authenticated(provider) {
             continue;
         }
         let mut line = format!("pi:{}\t{}", model.id, model.name);
@@ -112,7 +95,7 @@ fn print_pi_models(
     if printed {
         print_stdout_line(
             MALVIN_WHO,
-            "Note: pi model list is built in-process; rows are shown only for providers with an API key in the environment.",
+            "Note: pi model list is built in-process; rows are shown only for providers you can run (environment API key or stored Pi credential).",
         );
     }
 }

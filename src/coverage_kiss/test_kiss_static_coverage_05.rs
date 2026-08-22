@@ -114,10 +114,20 @@ fn kiss_cov_pi_sdk_discover_auth_models() {
 
 #[test]
 fn kiss_cov_pi_sdk_live_provider_auth() {
-    list_pi_provider_auth_sync();
-    provider_authenticated_from_map();
-    env_nonempty();
-    print_pi_models_with_live_auth();
+    is_provider_authenticated();
+    provider_has_access();
+    stored_credential_present();
+    print_pi_models();
+}
+
+#[test]
+fn kiss_cov_codex_auth_names() {
+    ensure_codex_authenticated();
+    has_codex_login();
+    codex_auth_path();
+    auth_file_has_login();
+    nonempty_json_str();
+    env_key_nonempty();
 }
 
 #[test]

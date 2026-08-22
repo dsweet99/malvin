@@ -102,7 +102,7 @@ fn maps_typed_tool_and_agent_end() {
             assert_eq!(
                 usage
                     .as_ref()
-                    .and_then(|u| u.get("input"))
+                    .and_then(|u| u.get("inputTokens"))
                     .and_then(serde_json::Value::as_u64),
                 Some(10)
             );

@@ -8,14 +8,14 @@ use super::bridge_path::resolve_bridge_js;
 
 pub(crate) async fn cursor_spawn_bridge(
     args: BridgeSpawnArgs<'_>,
+    resume_agent_id: Option<&str>,
 ) -> Result<BridgeSession, AgentError> {
     crate::malvin_sandbox::assert_dead_before_next_spawn().map_err(AgentError)?;
     let model = args.model.to_string();
-    let resume_id = args.resume_agent_id.clone();
     let session = cursor_open_bridge_session(args)?;
     start_mem_watch(&session);
     let api_key = effective_sdk_api_key();
-    if let Some(agent_id) = resume_id {
+    if let Some(agent_id) = resume_agent_id {
         send_resume(
             &session,
             crate::bridge_sdk::ResumeArgs {
@@ -101,9 +101,10 @@ fn cursor_assemble_session(
         spawn_pid_baseline: handles.baseline,
         reader_dead: Arc::new(AtomicBool::new(false)),
         work_dir: args.cwd.to_path_buf(),
-        log: crate::bridge_sdk::StreamLog::from_spawn(&args, false),
+        log: crate::bridge_sdk::StreamLog::from_spawn(&args),
         agent_id: Mutex::new(None),
         turn_id: Mutex::new(None),
+        service: None,
         wire: crate::bridge_sdk::BridgeWire::NodeBridge,
     }
 }

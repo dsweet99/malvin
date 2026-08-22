@@ -12,47 +12,12 @@ pub fn note_sdk_step(timing: Option<&Arc<Mutex<RunTiming>>>) {
     g.steps = g.steps.saturating_add(1);
 }
 
-pub fn record_sdk_usage(timing: Option<&Arc<Mutex<RunTiming>>>, usage: &Value, normalize_pi: bool) {
+pub fn record_sdk_usage(timing: Option<&Arc<Mutex<RunTiming>>>, usage: &Value) {
     let Some(t) = timing else {
         return;
     };
-    let normalized = if normalize_pi {
-        normalize_pi_usage_to_acp(usage)
-    } else {
-        usage.clone()
-    };
     let mut g = t.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    g.record_acp_usage_if_present(&normalized);
-}
-
-fn normalize_pi_usage_to_acp(usage: &Value) -> Value {
-    let Some(obj) = usage.as_object() else {
-        return usage.clone();
-    };
-    let mut out = serde_json::Map::new();
-    for (k, v) in obj {
-        out.insert(k.clone(), v.clone());
-    }
-    copy_u64_alias(obj, &mut out, "input", "inputTokens");
-    copy_u64_alias(obj, &mut out, "output", "outputTokens");
-    copy_u64_alias(obj, &mut out, "cacheRead", "cacheReadTokens");
-    copy_u64_alias(obj, &mut out, "cacheWrite", "cacheWriteTokens");
-    Value::Object(out)
-}
-
-fn copy_u64_alias(
-    src: &serde_json::Map<String, Value>,
-    dest: &mut serde_json::Map<String, Value>,
-    from: &str,
-    to: &str,
-) {
-    if dest.contains_key(to) {
-        return;
-    }
-    if let Some(v) = src.get(from)
-        && (v.as_u64().is_some() || v.as_i64().is_some() || v.as_f64().is_some()) {
-            dest.insert(to.to_string(), v.clone());
-        }
+    g.record_acp_usage_if_present(usage);
 }
 
 #[cfg(test)]
@@ -75,7 +40,7 @@ mod tests {
             "cacheReadTokens": 2,
             "cacheWriteTokens": 1
         });
-        record_sdk_usage(Some(&t), &usage, false);
+        record_sdk_usage(Some(&t), &usage);
         let (tokens_in, tokens_out, cache_read, cache_write) = {
             let g = t.lock().unwrap();
             (g.tokens_in, g.tokens_out, g.cache_read, g.cache_write)
@@ -84,23 +49,5 @@ mod tests {
         assert_eq!(tokens_out, Some(3));
         assert_eq!(cache_read, Some(2));
         assert_eq!(cache_write, Some(1));
-    }
-
-    #[test]
-    fn record_pi_usage_aliases() {
-        let t = Arc::new(Mutex::new(RunTiming::default()));
-        let usage = serde_json::json!({
-            "input": 10,
-            "output": 3,
-            "cacheRead": 2,
-            "cacheWrite": 1
-        });
-        record_sdk_usage(Some(&t), &usage, true);
-        let (tokens_in, tokens_out) = {
-            let g = t.lock().unwrap();
-            (g.tokens_in, g.tokens_out)
-        };
-        assert_eq!(tokens_in, Some(13));
-        assert_eq!(tokens_out, Some(3));
     }
 }

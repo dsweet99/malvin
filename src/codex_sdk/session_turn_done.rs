@@ -11,7 +11,7 @@ pub(super) fn finish_codex_turn(
 ) -> Result<(), AgentError> {
     let ev = run_done_from_turn(value, state)?;
     if let BridgeEvent::RunDone { usage: Some(u), .. } = &ev {
-        crate::bridge_sdk::record_sdk_usage(session.timing.as_ref(), u, false);
+        crate::bridge_sdk::record_sdk_usage(session.timing.as_ref(), u);
     }
     if let BridgeEvent::RunDone {
         result: Some(text), ..

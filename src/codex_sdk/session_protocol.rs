@@ -32,7 +32,6 @@ pub(crate) async fn codex_start_thread(
     model: &str,
     cwd: &std::path::Path,
 ) -> Result<(), AgentError> {
-    let model = resolve_model_on_session(session, model).await?;
     let sandbox = if super::session_process::codex_uses_outer_sandbox() {
         "danger-full-access"
     } else {
@@ -41,7 +40,7 @@ pub(crate) async fn codex_start_thread(
     let response = request(
         session,
         "thread/start",
-        thread_start_params(model, cwd, sandbox, session.log.service.as_deref()),
+        thread_start_params(model.to_owned(), cwd, sandbox, session.service.as_deref()),
     )
     .await?;
     if response.get("error").is_some() {
@@ -101,40 +100,6 @@ pub(crate) fn response_error(context: &str, response: &serde_json::Value) -> Age
         "{context}: {}",
         response.get("error").unwrap_or(response)
     ))
-}
-
-async fn resolve_model_on_session(
-    session: &BridgeSession,
-    slug: &str,
-) -> Result<String, AgentError> {
-    list_models_on_session(session).await.map_or_else(
-        |_| Ok(slug.to_owned()),
-        |models| super::discover::resolve_codex_model_slug(slug, &models).map_err(AgentError),
-    )
-}
-
-async fn list_models_on_session(
-    session: &BridgeSession,
-) -> Result<Vec<(String, String)>, AgentError> {
-    let mut all = Vec::new();
-    let mut cursor = None;
-    loop {
-        let response = request(
-            session,
-            "model/list",
-            super::discover::model_list_params(cursor.as_deref()),
-        )
-        .await?;
-        if response.get("error").is_some() {
-            return Err(response_error("codex model/list", &response));
-        }
-        let page = super::discover::list_page_from_response(&response).map_err(AgentError)?;
-        all.extend(page.models);
-        match page.next_cursor {
-            Some(next) => cursor = Some(next),
-            None => return Ok(all),
-        }
-    }
 }
 
 async fn write(session: &BridgeSession, value: &serde_json::Value) -> Result<(), AgentError> {

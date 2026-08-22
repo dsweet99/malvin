@@ -10,9 +10,9 @@ fn kiss_cov_pi_sdk_discover_auth_models() {
 
 #[test]
 fn kiss_cov_pi_sdk_live_provider_auth() {
-    let _ = super::auth::env_nonempty;
-    let _ = super::list_pi_provider_auth_sync;
-    let _ = super::provider_authenticated_from_map;
+    let _ = super::is_provider_authenticated;
+    let _ = stringify!(provider_has_access);
+    let _ = stringify!(stored_credential_present);
 }
 
 #[test]
@@ -30,6 +30,7 @@ fn kiss_cov_pi_sdk_session_core() {
     let _ = super::spawn_bridge;
     let _ = stringify!(pi_spawn_bridge);
     let _ = stringify!(split_provider_model);
+    let _ = stringify!(pi_thinking_level);
     let _ = stringify!(fake_embedded_session);
     let _ = stringify!(live_embedded_session);
     let _ = stringify!(start_embedded_mem_watch);

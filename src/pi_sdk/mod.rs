@@ -6,7 +6,6 @@ mod map_agent_event;
 mod map_agent_event_end;
 mod map_event_summary;
 mod models_list;
-mod providers_list;
 mod runtime;
 mod session;
 mod session_fake;
@@ -16,7 +15,6 @@ pub use auth::{ensure_pi_authenticated, is_provider_authenticated};
 pub use models_list::{
     DEFAULT_PI_LIST_MODELS_TIMEOUT_MS, PiModelListing, list_pi_models_sync, pi_list_models_timeout,
 };
-pub use providers_list::{list_pi_provider_auth_sync, provider_authenticated_from_map};
 
 /// Compile-only probe: fail CI if `pi_agent_rust` does not export `SessionOptions`.
 #[allow(dead_code)]
@@ -40,7 +38,6 @@ pub fn pi_sdk_client_from_raw(
         });
     crate::agent_backend::SdkClient::with_max_retries(
         model,
-        crate::agent_backend::BridgeKind::Pi,
         io,
         max_retries,
     )

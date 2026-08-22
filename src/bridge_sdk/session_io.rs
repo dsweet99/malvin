@@ -91,7 +91,8 @@ async fn read_event_with_timeout(
         .await
         .unwrap_or_else(|_| {
             Err(AgentError(format!(
-                "bridge timed out waiting for {waiting_for} after {timeout:?} of silence"
+                "{} waiting for {waiting_for} after {timeout:?} of silence",
+                crate::acp::DRAIN_IDLE_PREFIX_BRIDGE
             )))
         })
 }
@@ -135,7 +136,7 @@ async fn read_event_with_idle_timeout(
     waiting_for: &str,
 ) -> Result<BridgeEvent, AgentError> {
     let labels = super::DrainIdleLabels {
-        prefix: "bridge timed out",
+        prefix: crate::acp::DRAIN_IDLE_PREFIX_BRIDGE,
         waiting_for,
     };
     let health = Some(super::DrainIdleHealthCtx {
@@ -171,7 +172,7 @@ fn finish_run_done(session: &BridgeSession, ev: &BridgeEvent) -> Result<(), Agen
         return Ok(());
     };
     if let Some(u) = usage {
-        record_sdk_usage(session.timing.as_ref(), u, session.normalize_pi_usage);
+        record_sdk_usage(session.timing.as_ref(), u);
     }
     *session
         .last_response
@@ -204,7 +205,7 @@ pub(crate) fn start_mem_watch(session: &BridgeSession) {
         };
         let handles = crate::acp::MemWatchHandles {
             reader_dead: std::sync::Arc::clone(&session.reader_dead),
-            pgid,
+            pgid: Some(pgid),
             limit_bytes: crate::mem_limit_config::load_mem_limit_bytes(&session.work_dir),
             spawn_pid_baseline: session.spawn_pid_baseline.clone(),
             run_dir: session.run_dir.clone(),

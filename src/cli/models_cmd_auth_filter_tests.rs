@@ -35,13 +35,6 @@ fn assert_live_auth_filter(out: &str) {
         !out.contains("pi:cohere/"),
         "provider whose API key is unset must be hidden: {out}"
     );
-    assert!(
-        !crate::pi_sdk::provider_authenticated_from_map(
-            "llamacpp",
-            &std::collections::HashMap::new()
-        ),
-        "keyless or unmapped providers must not list without an env API key"
-    );
 }
 
 #[test]
@@ -70,8 +63,8 @@ fn run_models_filters_pi_rows_using_stored_credentials_too() {
         run_models_pi_only_with_openrouter_key();
         let out = take_captured_stdout();
         assert!(
-            !out.contains("pi:openai/"),
-            "stored credential alone must NOT list a provider; env API key required: {out}"
+            out.contains("pi:openai/"),
+            "stored credential must list the same providers a run would accept: {out}"
         );
         assert!(
             out.contains("pi:openrouter/"),

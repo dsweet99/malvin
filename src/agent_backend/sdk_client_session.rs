@@ -11,7 +11,7 @@ impl SdkClient {
         match self.kind {
             BridgeKind::Cursor => crate::cursor_sdk::ensure_sdk_authenticated(),
             BridgeKind::Pi => crate::pi_sdk::ensure_pi_authenticated(&self.model.canonical()),
-            BridgeKind::Codex => Ok(()),
+            BridgeKind::Codex => crate::codex_sdk::ensure_codex_authenticated(),
         }
     }
 
@@ -33,6 +33,7 @@ impl SdkClient {
     }
 
     pub async fn begin_coder_session(&mut self, cwd: &Path) -> Result<(), AgentError> {
+        reject_no_force(self)?;
         if self.session.is_some() {
             return Err(AgentError(format!(
                 "{} SDK session is already open",
@@ -42,42 +43,7 @@ impl SdkClient {
         let cwd = crate::acp::resolve_acp_session_cwd(cwd)?;
         let model = spawn_model_wire(self);
         let thinking = spawn_thinking_wire(self);
-        let mut last_error = String::new();
-        let max_attempts = self.max_acp_retries;
-        let mut attempts_used = 0_u32;
-        for attempt in 1..=max_attempts {
-            attempts_used = attempt;
-            match spawn_for_kind(
-                self.kind,
-                bridge_spawn_args(self, &cwd, &model, thinking.as_deref()),
-            )
-            .await
-            {
-                Ok(s) => {
-                    adopt_spawned_session(self, s, cwd);
-                    return Ok(());
-                }
-                Err(e) => {
-                    last_error = note_spawn_failure(self, e);
-                    if backoff_after_agent_failure(
-                        self.timing.as_ref(),
-                        &last_error,
-                        attempt,
-                        max_attempts,
-                    )
-                    .await?
-                    {
-                        break;
-                    }
-                }
-            }
-        }
-        let retries = attempts_used.saturating_sub(1);
-        Err(AgentError(format!(
-            "{}-sdk-bridge failed to spawn after {retries} {}. Last error:\n{last_error}",
-            kind_label(self.kind),
-            retries_noun(retries)
-        )))
+        spawn_with_retries(self, cwd, &model, thinking.as_deref()).await
     }
 
     pub async fn end_coder_session(&mut self) -> Result<(), AgentError> {
@@ -99,12 +65,73 @@ const fn kind_label(kind: BridgeKind) -> &'static str {
     }
 }
 
+fn reject_no_force(client: &SdkClient) -> Result<(), AgentError> {
+    if client.io.force {
+        Ok(())
+    } else {
+        Err(AgentError(crate::acp::NO_FORCE_MSG.into()))
+    }
+}
+
 fn spawn_model_wire(client: &SdkClient) -> String {
     match client.kind {
         BridgeKind::Cursor => client.model.cursor_bridge_model(),
         BridgeKind::Pi => client.model.slug.clone(),
         BridgeKind::Codex => client.model.slug.clone(),
     }
+}
+
+fn cursor_resume_id(client: &SdkClient) -> Option<String> {
+    matches!(client.kind, BridgeKind::Cursor)
+        .then(|| client.last_agent_id.clone())
+        .flatten()
+}
+
+async fn spawn_with_retries(
+    client: &mut SdkClient,
+    cwd: PathBuf,
+    model: &str,
+    thinking: Option<&str>,
+) -> Result<(), AgentError> {
+    let resume_agent_id = cursor_resume_id(client);
+    let mut last_error = String::new();
+    let max_attempts = client.max_acp_retries;
+    let mut attempts_used = 0_u32;
+    for attempt in 1..=max_attempts {
+        attempts_used = attempt;
+        match spawn_for_kind(
+            client.kind,
+            bridge_spawn_args(client, &cwd, model, thinking),
+            resume_agent_id.as_deref(),
+            spawn_service_wire(client).as_deref(),
+        )
+        .await
+        {
+            Ok(s) => {
+                adopt_spawned_session(client, s, cwd);
+                return Ok(());
+            }
+            Err(e) => {
+                last_error = note_spawn_failure(client, e);
+                if backoff_after_agent_failure(
+                    client.timing.as_ref(),
+                    &last_error,
+                    attempt,
+                    max_attempts,
+                )
+                .await?
+                {
+                    break;
+                }
+            }
+        }
+    }
+    let retries = attempts_used.saturating_sub(1);
+    Err(AgentError(format!(
+        "{}-sdk-bridge failed to spawn after {retries} {}. Last error:\n{last_error}",
+        kind_label(client.kind),
+        retries_noun(retries)
+    )))
 }
 
 fn spawn_thinking_wire(client: &SdkClient) -> Option<String> {
@@ -125,29 +152,32 @@ fn bridge_spawn_args<'a>(
         cwd,
         model,
         thinking,
-        service: client.model.service_param(),
         io: client.io,
         run_dir: client.prompts_log_run_dir.clone(),
         timing: client.timing.clone(),
-        resume_agent_id: match client.kind {
-            BridgeKind::Cursor => client.last_agent_id.clone(),
-            BridgeKind::Pi => None,
-            BridgeKind::Codex => None,
-        },
-        normalize_pi_usage: matches!(client.kind, BridgeKind::Pi),
     }
+}
+
+fn spawn_service_wire(client: &SdkClient) -> Option<String> {
+    client
+        .model
+        .service_param()
+        .filter(|_| matches!(client.kind, BridgeKind::Codex))
+        .map(str::to_string)
 }
 
 async fn spawn_for_kind(
     kind: BridgeKind,
     args: BridgeSpawnArgs<'_>,
+    resume_agent_id: Option<&str>,
+    service: Option<&str>,
 ) -> Result<crate::agent_backend::sdk_session::SdkSession, AgentError> {
     match kind {
-        BridgeKind::Cursor => crate::cursor_sdk::spawn_bridge(args)
+        BridgeKind::Cursor => crate::cursor_sdk::spawn_bridge(args, resume_agent_id)
             .await
             .map(|session| SdkSession::Bridge(Box::new(session))),
         BridgeKind::Pi => crate::pi_sdk::spawn_bridge(args).await,
-        BridgeKind::Codex => crate::codex_sdk::spawn_bridge(args)
+        BridgeKind::Codex => crate::codex_sdk::spawn_bridge(args, service)
             .await
             .map(|session| SdkSession::Bridge(Box::new(session))),
     }
@@ -190,3 +220,7 @@ fn remember_agent_id_from(
         client.last_agent_id = Some(id);
     }
 }
+
+#[cfg(test)]
+#[path = "sdk_client_session_tests.rs"]
+mod sdk_client_session_tests;

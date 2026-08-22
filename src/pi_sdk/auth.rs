@@ -26,7 +26,7 @@ pub fn is_provider_authenticated(provider: &str) -> bool {
 }
 
 fn provider_has_access(provider: &str) -> bool {
-    if provider_auth_env_keys(provider).is_none_or(|keys| keys.iter().any(|k| env_nonempty(k))) {
+    if provider_auth_env_keys(provider).is_none_or(|keys| keys.iter().any(|k| crate::acp::env_key_nonempty(k))) {
         return true;
     }
     stored_credential_present(provider)
@@ -46,12 +46,6 @@ fn stored_credential_present(provider: &str) -> bool {
 pub(crate) fn provider_auth_env_keys(provider: &str) -> Option<&'static [&'static str]> {
     let keys = pi::provider_metadata::provider_auth_env_keys(provider);
     if keys.is_empty() { None } else { Some(keys) }
-}
-
-pub(crate) fn env_nonempty(key: &str) -> bool {
-    std::env::var(key)
-        .ok()
-        .is_some_and(|v| !v.trim().trim_start_matches('\u{feff}').is_empty())
 }
 
 #[cfg(test)]

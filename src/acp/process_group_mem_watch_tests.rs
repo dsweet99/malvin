@@ -52,7 +52,7 @@ async fn watch_process_group_memory_fail_closed_when_rss_unavailable() {
     watch_process_group_memory_with_rss_sampler(
         MemWatchHandles {
             reader_dead: Arc::clone(&reader_dead),
-            pgid,
+            pgid: Some(pgid),
             limit_bytes: u64::MAX,
             spawn_pid_baseline: baseline,
             run_dir: None,
@@ -74,7 +74,7 @@ async fn watch_process_group_memory_no_fail_closed_when_reader_dead() {
     let watch = watch_process_group_memory_with_rss_sampler(
         MemWatchHandles {
             reader_dead: Arc::clone(&reader_dead),
-            pgid,
+            pgid: Some(pgid),
             limit_bytes: u64::MAX,
             spawn_pid_baseline: baseline,
             run_dir: None,
@@ -101,7 +101,7 @@ async fn watch_process_group_memory_still_kills_over_limit_when_reader_dead() {
     watch_process_group_memory_with_rss_sampler(
         MemWatchHandles {
             reader_dead: Arc::clone(&reader_dead),
-            pgid,
+            pgid: Some(pgid),
             limit_bytes: 1,
             spawn_pid_baseline: baseline,
             run_dir: None,
@@ -130,7 +130,7 @@ async fn watch_process_group_memory_writes_sandbox_oom_marker() {
     watch_process_group_memory_with_rss_sampler(
         MemWatchHandles {
             reader_dead: Arc::new(AtomicBool::new(false)),
-            pgid,
+            pgid: Some(pgid),
             limit_bytes: 1,
             spawn_pid_baseline: baseline,
             run_dir: Some(artifacts.run_dir.clone()),
@@ -158,7 +158,7 @@ async fn watch_process_group_memory_writes_marker_without_gate_iteration() {
     watch_process_group_memory_with_rss_sampler(
         MemWatchHandles {
             reader_dead: Arc::new(AtomicBool::new(false)),
-            pgid,
+            pgid: Some(pgid),
             limit_bytes: 1,
             spawn_pid_baseline: baseline,
             run_dir: Some(artifacts.run_dir.clone()),

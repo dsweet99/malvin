@@ -64,7 +64,7 @@ pub(crate) async fn codex_send_prompt(
                 &thread_id,
                 prompt,
                 session.log.thinking.as_deref(),
-                session.log.service.as_deref(),
+                session.service.as_deref(),
             )
         }),
     )
@@ -87,6 +87,13 @@ pub(crate) async fn codex_delete_thread(session: &BridgeSession) -> Result<(), A
     .await
 }
 
+fn codex_effort_from_thinking(thinking: &str) -> String {
+    match thinking {
+        "off" | "minimal" => "low".to_owned(),
+        other => other.to_owned(),
+    }
+}
+
 fn turn_start_params(
     thread_id: &str,
     prompt: &str,
@@ -98,7 +105,7 @@ fn turn_start_params(
         "input": [{"type": "text", "text": prompt}]
     });
     if let Some(thinking) = thinking {
-        params["effort"] = serde_json::Value::String(thinking.to_owned());
+        params["effort"] = serde_json::Value::String(codex_effort_from_thinking(thinking));
     }
     if let Some(service) = service {
         params["serviceTier"] = serde_json::Value::String(service.to_owned());
@@ -126,7 +133,7 @@ pub(crate) async fn read_json_waiting(
     waiting_for: &str,
 ) -> Result<serde_json::Value, AgentError> {
     let labels = crate::bridge_sdk::DrainIdleLabels {
-        prefix: "codex timed out",
+        prefix: crate::acp::DRAIN_IDLE_PREFIX_CODEX,
         waiting_for,
     };
     let health = Some(crate::bridge_sdk::DrainIdleHealthCtx {
@@ -192,5 +199,7 @@ mod tests {
         let bare = turn_start_params("th", "hi", None, None);
         assert!(bare.get("effort").is_none());
         assert!(bare.get("serviceTier").is_none());
+        let mapped = turn_start_params("th", "hi", Some("off"), None);
+        assert_eq!(mapped["effort"], "low");
     }
 }

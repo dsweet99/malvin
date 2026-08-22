@@ -1,11 +1,11 @@
 use super::discover::codex_path_is_executable;
-use super::discover::{ModelListPage, resolve_codex_model_slug};
+use super::discover::ModelListPage;
 
 #[test]
 fn kiss_cov_discover_names() {
     let page = ModelListPage::empty();
     assert!(page.models.is_empty());
-    let _ = resolve_codex_model_slug("missing-model-for-coverage", &[]);
+    let _ = ModelListPage::empty();
 }
 
 #[test]

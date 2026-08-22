@@ -27,7 +27,6 @@ pub struct SdkClient {
 
 struct SdkClientInit {
     model: ParsedModel,
-    kind: BridgeKind,
     io: AgentIoOptions,
     max_acp_retries: u32,
 }
@@ -37,7 +36,6 @@ impl SdkClient {
     pub fn new_cursor(model: ParsedModel, io: AgentIoOptions) -> Self {
         Self::from_init(SdkClientInit {
             model,
-            kind: BridgeKind::Cursor,
             io,
             max_acp_retries: crate::support_paths::DEFAULT_MAX_ACP_RETRIES,
         })
@@ -47,7 +45,15 @@ impl SdkClient {
     pub fn new_pi(model: ParsedModel, io: AgentIoOptions) -> Self {
         Self::from_init(SdkClientInit {
             model,
-            kind: BridgeKind::Pi,
+            io,
+            max_acp_retries: crate::support_paths::DEFAULT_MAX_ACP_RETRIES,
+        })
+    }
+
+    #[must_use]
+    pub fn new_codex(model: ParsedModel, io: AgentIoOptions) -> Self {
+        Self::from_init(SdkClientInit {
+            model,
             io,
             max_acp_retries: crate::support_paths::DEFAULT_MAX_ACP_RETRIES,
         })
@@ -56,13 +62,11 @@ impl SdkClient {
     #[must_use]
     pub fn with_max_retries(
         model: ParsedModel,
-        kind: BridgeKind,
         io: AgentIoOptions,
         max_acp_retries: u32,
     ) -> Self {
         Self::from_init(SdkClientInit {
             model,
-            kind,
             io,
             max_acp_retries,
         })
@@ -70,13 +74,10 @@ impl SdkClient {
 
     #[must_use]
     fn from_init(init: SdkClientInit) -> Self {
-        debug_assert!(
-            bridge_kind_matches_backend(init.kind, init.model.backend),
-            "BridgeKind must match ParsedModel backend"
-        );
+        let kind = bridge_kind_from_backend(init.model.backend);
         Self {
             model: init.model,
-            kind: init.kind,
+            kind,
             io: init.io,
             prompts_log_run_dir: None,
             max_acp_retries: if init.max_acp_retries == 0 {
@@ -136,11 +137,10 @@ fn sync_timing_to_open_session(client: &mut SdkClient) {
     }
 }
 
-const fn bridge_kind_matches_backend(kind: BridgeKind, backend: ModelBackend) -> bool {
-    matches!(
-        (kind, backend),
-        (BridgeKind::Cursor, ModelBackend::Cursor)
-            | (BridgeKind::Pi, ModelBackend::Pi)
-            | (BridgeKind::Codex, ModelBackend::Codex)
-    )
+const fn bridge_kind_from_backend(backend: ModelBackend) -> BridgeKind {
+    match backend {
+        ModelBackend::Cursor => BridgeKind::Cursor,
+        ModelBackend::Pi => BridgeKind::Pi,
+        ModelBackend::Codex => BridgeKind::Codex,
+    }
 }

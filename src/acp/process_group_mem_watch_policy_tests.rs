@@ -92,7 +92,7 @@ mod policy_tests {
 mod kiss_cov_auto {
     #[cfg(unix)]
     use super::super::{
-        MemWatchHandles, watch_process_group_memory, watch_process_group_memory_with_optional_pgid,
+        MemWatchHandles, watch_process_group_memory,
         watch_process_group_memory_with_rss_sampler,
     };
 
@@ -101,7 +101,6 @@ mod kiss_cov_auto {
     fn kiss_cov_watch_sampler() {
         let _ = (
             watch_process_group_memory,
-            watch_process_group_memory_with_optional_pgid,
             watch_process_group_memory_with_rss_sampler,
         );
         let _handles: Option<MemWatchHandles> = None;

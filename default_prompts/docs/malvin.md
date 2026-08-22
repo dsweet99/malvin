@@ -62,7 +62,7 @@ Hypothesis budget for bare `malvin REQUEST`. When the flag is omitted, `[default
 
 ### `--no-force`
 
-By default agent backends run tools headlessly (auto-approved). `--no-force` is not supported on `cursor:` or `pi:` (no interactive approval prompt); malvin fails fast with a clear error.
+By default agent backends run tools headlessly (auto-approved). `--no-force` is not supported on `cursor:`, `pi:`, or `codex:` (no interactive approval prompt); malvin fails fast with a clear error before any session starts.
 
 ### `--no-tenacious`
 

@@ -21,7 +21,7 @@ pub enum DrainHealthVerdict {
     DeadOrZombie,
 }
 
-/// Labels for silence errors (`bridge timed out` / `pi rpc timed out`).
+/// Labels for silence errors (`DRAIN_IDLE_PREFIX_*` in `src/acp/agent_helpers.rs`).
 #[derive(Debug, Clone, Copy)]
 pub struct DrainIdleLabels<'a> {
     pub prefix: &'a str,

@@ -43,6 +43,21 @@ fn child_health_transport_errors_require_coder_session_teardown() {
 }
 
 #[test]
+fn live_drain_idle_prefixes_require_coder_session_teardown() {
+    for prefix in [
+        crate::acp::DRAIN_IDLE_PREFIX_BRIDGE,
+        crate::acp::DRAIN_IDLE_PREFIX_PI,
+        crate::acp::DRAIN_IDLE_PREFIX_CODEX,
+    ] {
+        let msg = format!("{prefix} waiting for event after 1s of silence");
+        assert!(
+            agent_error_requires_coder_session_teardown(&msg),
+            "{msg}"
+        );
+    }
+}
+
+#[test]
 fn cursor_agent_busy_strings_are_detected() {
     assert!(agent_string_is_cursor_agent_busy(
         "Agent agent-7b61bfe2-fa7a-47bd-8f5b-96c158067bc8 already has active run"

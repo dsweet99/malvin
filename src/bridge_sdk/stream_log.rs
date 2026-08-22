@@ -15,14 +15,12 @@ pub struct StreamLog {
     pub started_at: Instant,
     pub(crate) stdout_coalesce: Mutex<crate::acp::TraceChunkCoalescer>,
     pub tool_starts: Mutex<HashMap<String, ToolCallStart>>,
-    pub normalize_pi_usage: bool,
     pub thinking: Option<String>,
-    pub service: Option<String>,
 }
 
 impl StreamLog {
     #[must_use]
-    pub fn new(io: AgentIoOptions, normalize_pi_usage: bool) -> Self {
+    pub fn new(io: AgentIoOptions) -> Self {
         Self {
             io,
             last_response: Arc::new(Mutex::new(String::new())),
@@ -31,19 +29,16 @@ impl StreamLog {
             started_at: Instant::now(),
             stdout_coalesce: Mutex::new(crate::acp::TraceChunkCoalescer::default()),
             tool_starts: Mutex::new(HashMap::new()),
-            normalize_pi_usage,
             thinking: None,
-            service: None,
         }
     }
 
     #[must_use]
-    pub fn from_spawn(args: &super::BridgeSpawnArgs<'_>, normalize_pi_usage: bool) -> Self {
-        let mut log = Self::new(args.io, normalize_pi_usage);
+    pub fn from_spawn(args: &super::BridgeSpawnArgs<'_>) -> Self {
+        let mut log = Self::new(args.io);
         log.timing = args.timing.clone();
         log.run_dir = args.run_dir.clone();
         log.thinking = args.thinking.map(str::to_string);
-        log.service = args.service.map(str::to_string);
         log
     }
 

@@ -37,3 +37,26 @@ Notes:
 - FT-28 finished with malvin exit 0 but failed the host grader.
 - FT-35 hit the 600s agent timeout (`timed_out: true`, exit 124).
 - Artifacts are under `/home/dsweet/.malvin_home/fast_task_results/<TASK>/<timestamp>/`.
+
+## `pi:openrouter/stealth/ox-alpha`
+
+Requested model: `pi:openrouter/stealth/ox-alpha`.
+Command: `./ops/fast_task.py solve --model=pi:openrouter/stealth/ox-alpha TASK_NAME`.
+Results root: `/home/dsweet/.malvin_home/fast_task_results`.
+Run column is the results-directory timestamp; FT-28 was attempted twice.
+
+| Task | Run | Reward | malvin exit | agent_seconds | Result |
+|---|---|---:|---:|---:|---|
+| FT-01 | 20260822T134445Z | 1 | 124 | 612.6 | PASS (timed out) |
+| FT-28 | 20260822T135641Z | 0 | 124 | 605.3 | FAIL (timed out) |
+| FT-28 | 20260822T141607Z | 0 | 124 | 605.3 | FAIL (timed out) |
+
+Totals: 1/3 runs passed. Distinct tasks: 1/2 passed. Mean agent_seconds: 607.7. Sum agent_seconds: 1823.2.
+
+Notes:
+
+- All three runs hit the 600s agent timeout (`timed_out: true`, exit 124).
+- FT-01 still graded PASS: metadata shows `grade.pass = true` (`reward = 1`, grader exit 0) despite the timeout — the fix and its public-test pass landed in the workspace before the session was killed, and the remaining time went to post-fix verification logging.
+- FT-28 failed both ox-alpha attempts (reward 0); the later 20260822T145003Z FT-28 run used a different model and is out of scope here.
+- Only FT-01 and FT-28 have been attempted with this model so far; this table covers a partial campaign.
+- Artifacts are under `/home/dsweet/.malvin_home/fast_task_results/<TASK>/<timestamp>/`.

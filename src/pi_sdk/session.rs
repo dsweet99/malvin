@@ -132,7 +132,7 @@ async fn recv_event_with_idle(
     events_rx: &mut mpsc::UnboundedReceiver<AgentEvent>,
 ) -> Result<Option<AgentEvent>, AgentError> {
     let labels = DrainIdleLabels {
-        prefix: "pi sdk timed out",
+        prefix: crate::acp::DRAIN_IDLE_PREFIX_PI,
         waiting_for: "agent_end",
     };
     let health = Some(DrainIdleHealthCtx {
@@ -178,7 +178,7 @@ pub(crate) fn finish_run_done(log: &StreamLog, ev: &BridgeEvent) -> Result<(), A
         return Ok(());
     };
     if let Some(u) = usage {
-        record_sdk_usage(log.timing.as_ref(), u, log.normalize_pi_usage);
+        record_sdk_usage(log.timing.as_ref(), u);
     }
     *log.last_response
         .lock()

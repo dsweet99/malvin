@@ -2,10 +2,9 @@ use crate::cli::{
     AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions, agent_io_options,
     default_workflow_stdout_tee_flags,
 };
-use crate::model_id::ModelBackend;
 
 use super::backend::AgentBackend;
-use super::sdk_client::{BridgeKind, SdkClient};
+use super::sdk_client::SdkClient;
 
 pub fn build_agent_backend(
     shared: &SharedOpts,
@@ -27,18 +26,14 @@ pub fn build_agent_backend_with_tee(
 ) -> Result<AgentBackend, String> {
     let model = shared.model.clone();
     let io = agent_io_options(shared, workflow, tee);
-    let kind = match model.backend {
-        ModelBackend::Cursor => BridgeKind::Cursor,
-        ModelBackend::Pi => BridgeKind::Pi,
-        ModelBackend::Codex => BridgeKind::Codex,
-    };
-    let client = SdkClient::with_max_retries(model, kind, io, shared.max_acp_retries);
+    let client = SdkClient::with_max_retries(model, io, shared.max_acp_retries);
     Ok(crate::agent_backend::agent_backend_from_client(client))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::agent_backend::sdk_client::BridgeKind;
     use crate::agent_backend::test_support::shared_opts;
     use crate::cli::WorkflowCliOptions;
 
@@ -79,5 +74,16 @@ mod tests {
                 .expect("pi sdk");
         assert!(matches!(backend.kind, BridgeKind::Pi));
         assert_eq!(backend.model.canonical(), "pi:openai/gpt-4o");
+    }
+
+    #[test]
+    fn build_agent_backend_selects_codex_when_prefixed() {
+        let mut shared = shared_opts(false);
+        shared.model = crate::model_id::parse_model_id("codex:gpt-5.6").expect("model");
+        let backend =
+            build_agent_backend(&shared, WorkflowCliOptions { force: false }, false, "code")
+                .expect("codex sdk");
+        assert!(matches!(backend.kind, BridgeKind::Codex));
+        assert_eq!(backend.model.canonical(), "codex:gpt-5.6");
     }
 }

@@ -6,7 +6,6 @@ pub(crate) mod catalog;
 mod model_list;
 
 use catalog::{CatalogChild, list_models_from_child, spawn_codex_model_server};
-use model_list::parse_model_list_page;
 
 #[derive(Debug)]
 pub(crate) struct ModelListPage {
@@ -61,36 +60,11 @@ pub fn list_codex_models() -> Result<Vec<(String, String)>, String> {
     list_models_from_child(&mut catalog.child)
 }
 
-/// Resolve a Codex model slug against a catalog page.
-///
-/// Codex model IDs can include deployment variants (for example,
-/// `gpt-5.6-sol`), while users commonly select the family name. Prefer an
-/// exact catalog ID and otherwise use the first catalog ID with that family
-/// prefix. The catalog order is Codex's preference order.
-pub(crate) fn resolve_codex_model_slug(
-    slug: &str,
-    models: &[(String, String)],
-) -> Result<String, String> {
-    if models.iter().any(|(id, _)| id == slug) {
-        return Ok(slug.to_owned());
-    }
-    let prefix = format!("{slug}-");
-    models
-        .iter()
-        .find(|(id, _)| id.starts_with(&prefix))
-        .map(|(id, _)| id.clone())
-        .ok_or_else(|| format!("Codex model `{slug}` is not in the live model catalog"))
-}
-
 #[cfg(test)]
 pub(crate) fn models_from_list_response(
     value: &serde_json::Value,
 ) -> Result<Vec<(String, String)>, String> {
-    parse_model_list_page(value).map(|page| page.models)
-}
-
-pub(crate) fn list_page_from_response(value: &serde_json::Value) -> Result<ModelListPage, String> {
-    parse_model_list_page(value)
+    model_list::parse_model_list_page(value).map(|page| page.models)
 }
 
 pub(crate) fn model_list_params(cursor: Option<&str>) -> serde_json::Value {
@@ -119,23 +93,6 @@ mod tests {
     }
 
     #[test]
-    fn hidden_catalog_ids_resolve() {
-        let models = vec![
-            ("gpt-5.6-sol".into(), "Sol".into()),
-            ("gpt-reserve".into(), "Reserve".into()),
-        ];
-        assert_eq!(
-            resolve_codex_model_slug("gpt-reserve", &models).unwrap(),
-            "gpt-reserve"
-        );
-        assert_eq!(
-            resolve_codex_model_slug("gpt-5.6", &models).unwrap(),
-            "gpt-5.6-sol"
-        );
-        assert!(resolve_codex_model_slug("missing", &models).is_err());
-    }
-
-    #[test]
     fn models_from_list_response_reads_ids() {
         let value = serde_json::json!({
             "result": {"data": [{"id": "gpt-reserve", "displayName": "Reserve"}]}
@@ -157,8 +114,6 @@ mod tests {
         assert!(page.models.is_empty());
         let _ = model_list_params(None);
         let _ = models_from_list_response(&serde_json::json!({"result":{"data":[]}}));
-        let _ = list_page_from_response(&serde_json::json!({"result":{"data":[]}}));
-        let _ = resolve_codex_model_slug("x", &[]);
         let _ = list_codex_models();
         let _ = resolve_codex_bin();
         let _ = codex_missing_binary_message();
@@ -190,9 +145,10 @@ mod tests {
                 list_codex_models().unwrap(),
                 vec![("gpt-test".into(), "Test".into())]
             );
-            let resolved =
-                resolve_codex_model_slug("gpt-test", &list_codex_models().unwrap()).unwrap();
-            assert_eq!(resolved, "gpt-test");
+            assert_eq!(
+                list_codex_models().unwrap()[0].0,
+                "gpt-test"
+            );
         });
     }
 

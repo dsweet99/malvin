@@ -11,18 +11,22 @@ pub(super) type CodexProcess = (
     std::collections::HashSet<u32>,
 );
 
-pub(super) fn spawn_codex_session(args: &BridgeSpawnArgs<'_>) -> Result<BridgeSession, AgentError> {
+pub(super) fn spawn_codex_session(
+    args: &BridgeSpawnArgs<'_>,
+    service: Option<&str>,
+) -> Result<BridgeSession, AgentError> {
     let mut process = spawn_codex_process(args)?;
     let baseline = crate::malvin_sandbox::malvin_spawn_baseline();
     process.4 = baseline;
     crate::malvin_sandbox::note_active_sandbox_session(process.3, process.4.clone(), args.cwd)
         .map_err(AgentError)?;
-    Ok(build_codex_session(args, process))
+    Ok(build_codex_session(args, process, service))
 }
 
 pub(super) fn build_codex_session(
     args: &BridgeSpawnArgs<'_>,
     process: CodexProcess,
+    service: Option<&str>,
 ) -> BridgeSession {
     let (child, stdin, stdout, pgid, baseline) = process;
     let io = build_codex_session_io(stdin, stdout);
@@ -35,12 +39,13 @@ pub(super) fn build_codex_session(
         reader_dead: io.2,
         work_dir: args.cwd.to_path_buf(),
         log: {
-            let mut log = crate::bridge_sdk::StreamLog::from_spawn(args, false);
+            let mut log = crate::bridge_sdk::StreamLog::from_spawn(args);
             log.last_response = io.3;
             log
         },
         agent_id: std::sync::Mutex::new(None),
         turn_id: std::sync::Mutex::new(None),
+        service: service.map(str::to_owned),
         wire: BridgeWire::CodexRpc,
     }
 }

@@ -47,7 +47,7 @@ async fn watch_process_group_memory_enforces_after_reader_dead() {
     let reader_dead = Arc::new(AtomicBool::new(true));
     watch_process_group_memory(MemWatchHandles {
         reader_dead,
-        pgid: agent_pgid,
+        pgid: Some(agent_pgid),
         limit_bytes: 1,
         spawn_pid_baseline: baseline,
         run_dir: None,
@@ -73,7 +73,7 @@ async fn malvin_oom_watcher_kills_agent_sleep_at_low_limit() {
     );
     watch_process_group_memory(MemWatchHandles {
         reader_dead: Arc::new(AtomicBool::new(false)),
-        pgid: agent_pgid,
+        pgid: Some(agent_pgid),
         limit_bytes: 1,
         spawn_pid_baseline: baseline,
         run_dir: None,

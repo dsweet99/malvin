@@ -78,7 +78,11 @@ fn kv_error(part: &str) -> String {
     }
 }
 
-const PI_THINKING_LEVELS: &[&str] = &["off", "minimal", "low", "medium", "high", "xhigh", "max"];
+/// Shared `thinking=` vocabulary for `pi:` and `codex:`.
+/// Wire adapters map levels a vendor does not name (`ultra` on Pi, `off`/`minimal` on Codex).
+const THINKING_LEVELS: &[&str] = &[
+    "off", "minimal", "low", "medium", "high", "xhigh", "max", "ultra",
+];
 
 pub(super) fn validate_pi_thinking_params(params: &[ModelParam]) -> Result<(), String> {
     for p in params {
@@ -88,23 +92,15 @@ pub(super) fn validate_pi_thinking_params(params: &[ModelParam]) -> Result<(), S
                 p.id
             ));
         }
-        if !PI_THINKING_LEVELS.contains(&p.value.as_str()) {
-            return Err(format!(
-                "pi thinking must be one of {} (got `{}`)",
-                PI_THINKING_LEVELS.join("|"),
-                p.value
-            ));
-        }
+        require_known_value("thinking", THINKING_LEVELS, &p.value)?;
     }
     Ok(())
 }
 
-const CODEX_THINKING_LEVELS: &[&str] = &["low", "medium", "high", "xhigh", "max", "ultra"];
-
 pub(super) fn validate_codex_params(params: &[ModelParam]) -> Result<(), String> {
     for p in params {
         match p.id.as_str() {
-            "thinking" => require_known_value("codex thinking", CODEX_THINKING_LEVELS, &p.value)?,
+            "thinking" => require_known_value("thinking", THINKING_LEVELS, &p.value)?,
             "service" => require_nonempty_service(&p.value)?,
             other => {
                 return Err(format!(

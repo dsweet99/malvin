@@ -1,3 +1,4 @@
+mod auth;
 mod discover;
 mod map_event;
 mod map_event_summary;
@@ -26,6 +27,7 @@ mod map_event_tests;
 #[cfg(test)]
 mod session_turn_tests;
 
+pub(crate) use auth::ensure_codex_authenticated;
 pub(crate) use discover::list_codex_models;
 pub(crate) use session_io::{
     codex_delete_thread as delete_thread, codex_send_prompt as send_prompt,
@@ -55,5 +57,11 @@ mod kiss_coverage_tests {
         let _ = super::map_event_usage::usage_from_turn;
         let _ = super::map_event_usage::usage_event;
         let _ = crate::bridge_protocol::canonicalize_run_done;
+        let _ = super::ensure_codex_authenticated;
+        let _ = stringify!(has_codex_login);
+        let _ = stringify!(codex_auth_path);
+        let _ = stringify!(auth_file_has_login);
+        let _ = stringify!(nonempty_json_str);
+        let _ = stringify!(codex_effort_from_thinking);
     }
 }

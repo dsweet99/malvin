@@ -3,14 +3,13 @@ use crate::bridge_sdk::{BridgeSession, BridgeSpawnArgs, start_mem_watch};
 
 pub(crate) async fn codex_spawn_bridge(
     args: BridgeSpawnArgs<'_>,
+    service: Option<&str>,
 ) -> Result<BridgeSession, AgentError> {
     if !args.io.force {
-        return Err(AgentError(
-            "--no-force is not supported for codex: (malvin runs Codex tools headlessly; no interactive approval)".into(),
-        ));
+        return Err(AgentError(crate::acp::NO_FORCE_MSG.into()));
     }
     crate::malvin_sandbox::assert_dead_before_next_spawn().map_err(AgentError)?;
-    let session = spawn_codex_session(&args)?;
+    let session = spawn_codex_session(&args, service)?;
     start_mem_watch(&session);
     codex_initialize(&session).await?;
     codex_start_thread(&session, args.model, args.cwd).await?;
@@ -40,8 +39,6 @@ mod tests {
         let _ = codex_spawn_bridge;
         let _ = request;
         let _ = response_error;
-        let _ = stringify!(resolve_model_on_session);
-        let _ = stringify!(list_models_on_session);
         let _ = stringify!(thread_start_params);
         let _ = codex_initialize;
         let _ = codex_start_thread;
@@ -86,7 +83,6 @@ mod unix_tests {
     fn mock_client() -> crate::agent_backend::SdkClient {
         crate::agent_backend::SdkClient::with_max_retries(
             crate::model_id::parse_model_id("codex:gpt-5.6").unwrap(),
-            crate::agent_backend::BridgeKind::Codex,
             mock_io(),
             1,
         )

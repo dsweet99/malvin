@@ -24,7 +24,6 @@ pub fn cursor_sdk_client_from_raw(
         });
     CursorSdkClient::with_max_retries(
         model,
-        crate::agent_backend::BridgeKind::Cursor,
         io,
         max_retries,
     )

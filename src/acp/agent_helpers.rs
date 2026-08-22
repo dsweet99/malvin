@@ -4,17 +4,33 @@ use super::AgentError;
 
 pub(crate) const MALVIN_TEST_NO_REAL_AGENT_ENV: &str = "MALVIN_TEST_NO_REAL_AGENT";
 
+pub(crate) const NO_FORCE_MSG: &str =
+    "--no-force is not supported (malvin runs tools headlessly; no interactive approval)";
+
+/// Idle-timeout prefixes. Drain emit sites and teardown needles share these so a
+/// timeout cannot miss session recycle.
+pub(crate) const DRAIN_IDLE_PREFIX_BRIDGE: &str = "bridge timed out";
+pub(crate) const DRAIN_IDLE_PREFIX_PI: &str = "pi rpc timed out";
+pub(crate) const DRAIN_IDLE_PREFIX_CODEX: &str = "codex timed out";
+
 pub(crate) fn test_no_real_agent_enabled() -> bool {
     std::env::var_os(MALVIN_TEST_NO_REAL_AGENT_ENV).is_some_and(|v| !v.is_empty() && v != "0")
 }
 
 pub(crate) fn has_api_key() -> bool {
     for key in ["CURSOR_AGENT_API_KEY", "CURSOR_API_KEY", "AGENT_API_KEY"] {
-        if std::env::var_os(key).is_some_and(|v| !v.is_empty()) {
+        if env_key_nonempty(key) {
             return true;
         }
     }
     false
+}
+
+#[must_use]
+pub(crate) fn env_key_nonempty(key: &str) -> bool {
+    std::env::var(key)
+        .ok()
+        .is_some_and(|v| !v.trim().trim_start_matches('\u{feff}').is_empty())
 }
 
 pub(crate) fn resolve_acp_session_cwd(cwd: &Path) -> Result<PathBuf, AgentError> {
@@ -66,5 +82,10 @@ mod agent_helpers_tests {
     fn smoke_agent_helper_symbols() {
         let _ = test_no_real_agent_enabled();
         let _ = has_api_key();
+        let _ = env_key_nonempty("CURSOR_API_KEY");
+        let _ = NO_FORCE_MSG;
+        let _ = DRAIN_IDLE_PREFIX_BRIDGE;
+        let _ = DRAIN_IDLE_PREFIX_PI;
+        let _ = DRAIN_IDLE_PREFIX_CODEX;
     }
 }

@@ -59,10 +59,17 @@ fn parse_bracket_overrides() {
             .expect_err("codex only thinking/service")
             .contains("thinking")
     );
-    assert!(
+    assert_eq!(
         parse_model_id("codex:gpt-5.6[thinking=off]")
-            .expect_err("bad codex level")
-            .contains("thinking")
+            .expect("shared thinking vocabulary")
+            .thinking_param(),
+        Some("off")
+    );
+    assert_eq!(
+        parse_model_id("pi:openai/gpt-4o[thinking=ultra]")
+            .expect("shared thinking vocabulary")
+            .thinking_param(),
+        Some("ultra")
     );
     assert!(
         parse_model_id("cursor:opus[")
@@ -75,7 +82,7 @@ fn parse_bracket_overrides() {
             .contains("thinking")
     );
     assert!(
-        parse_model_id("pi:openai/gpt-4o[thinking=ultra]")
+        parse_model_id("pi:openai/gpt-4o[thinking=nope]")
             .expect_err("bad level")
             .contains("thinking")
     );

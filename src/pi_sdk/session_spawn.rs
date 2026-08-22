@@ -16,8 +16,6 @@ use super::session::PiEmbeddedSession;
 
 type SandboxBaseline = HashSet<u32>;
 
-const NO_FORCE_MSG: &str = "--no-force is not supported for pi: (malvin runs Pi tools headlessly; no interactive approval)";
-
 fn sandbox_note_or_error(cwd: &Path) -> Result<SandboxBaseline, AgentError> {
     let baseline = crate::malvin_sandbox::malvin_spawn_baseline();
     crate::malvin_sandbox::note_active_sandbox_session(None, baseline.clone(), cwd)
@@ -27,7 +25,7 @@ fn sandbox_note_or_error(cwd: &Path) -> Result<SandboxBaseline, AgentError> {
 
 pub(crate) async fn pi_spawn_bridge(args: BridgeSpawnArgs<'_>) -> Result<SdkSession, AgentError> {
     if !args.io.force {
-        return Err(AgentError(NO_FORCE_MSG.into()));
+        return Err(AgentError(crate::acp::NO_FORCE_MSG.into()));
     }
     crate::malvin_sandbox::assert_dead_before_next_spawn().map_err(AgentError)?;
     let (provider, model) = split_provider_model(args.model)?;
@@ -45,6 +43,14 @@ fn test_no_real_agent() -> bool {
     crate::acp::test_no_real_agent_enabled()
 }
 
+fn pi_thinking_level(thinking: &str) -> Result<ThinkingLevel, String> {
+    let mapped = match thinking {
+        "ultra" => "max",
+        other => other,
+    };
+    ThinkingLevel::from_str(mapped)
+}
+
 fn build_session_options(
     args: &BridgeSpawnArgs<'_>,
     provider: &str,
@@ -52,7 +58,7 @@ fn build_session_options(
 ) -> Result<SessionOptions, AgentError> {
     let thinking = args
         .thinking
-        .map(ThinkingLevel::from_str)
+        .map(pi_thinking_level)
         .transpose()
         .map_err(AgentError)?;
     Ok(SessionOptions {
@@ -72,7 +78,7 @@ fn fake_embedded_session(args: &BridgeSpawnArgs<'_>) -> PiEmbeddedSession {
     note_sandbox_baseline(None, baseline.clone(), args.cwd);
     PiEmbeddedSession {
         runtime: None,
-        log: StreamLog::from_spawn(args, true),
+        log: StreamLog::from_spawn(args),
         work_dir: args.cwd.to_path_buf(),
         reader_dead: Arc::new(AtomicBool::new(false)),
         spawn_pid_baseline: baseline,
@@ -86,7 +92,7 @@ fn embedded_session(
     let baseline = sandbox_note_or_error(args.cwd)?;
     Ok(PiEmbeddedSession {
         runtime: Some(runtime),
-        log: StreamLog::from_spawn(args, true),
+        log: StreamLog::from_spawn(args),
         work_dir: args.cwd.to_path_buf(),
         reader_dead: Arc::new(AtomicBool::new(false)),
         spawn_pid_baseline: baseline,
@@ -139,9 +145,9 @@ async fn watch_embedded_memory(
     run_dir: Option<std::path::PathBuf>,
 ) {
     let limit_bytes = crate::mem_limit_config::load_mem_limit_bytes(&work_dir);
-    crate::acp::watch_process_group_memory_with_optional_pgid(crate::acp::MemWatchHandles {
+    crate::acp::watch_process_group_memory(crate::acp::MemWatchHandles {
         reader_dead,
-        pgid: 0,
+        pgid: None,
         limit_bytes,
         spawn_pid_baseline: baseline,
         run_dir,

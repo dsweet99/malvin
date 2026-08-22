@@ -56,9 +56,9 @@ fn aggregate_usage(messages: &[Message]) -> Option<Value> {
         return None;
     }
     Some(json!({
-        "input": input,
-        "output": output,
-        "cacheRead": cache_read,
-        "cacheWrite": cache_write,
+        "inputTokens": input,
+        "outputTokens": output,
+        "cacheReadTokens": cache_read,
+        "cacheWriteTokens": cache_write,
     }))
 }

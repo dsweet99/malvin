@@ -39,6 +39,7 @@ pub struct BridgeSession {
     pub log: StreamLog,
     pub agent_id: Mutex<Option<String>>,
     pub turn_id: Mutex<Option<String>>,
+    pub service: Option<String>,
     pub wire: BridgeWire,
 }
 
@@ -60,12 +61,9 @@ pub struct BridgeSpawnArgs<'a> {
     pub cwd: &'a Path,
     pub model: &'a str,
     pub thinking: Option<&'a str>,
-    pub service: Option<&'a str>,
     pub io: AgentIoOptions,
     pub run_dir: Option<PathBuf>,
     pub timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
-    pub resume_agent_id: Option<String>,
-    pub normalize_pi_usage: bool,
 }
 
 impl BridgeSession {

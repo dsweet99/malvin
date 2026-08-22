@@ -46,5 +46,15 @@ fn kiss_witness_unified_sdk_client_and_backend() {
     let _ = stringify!(BridgeKind);
     let _ = stringify!(new_cursor);
     let _ = stringify!(new_pi);
+    let _ = stringify!(new_codex);
+    let _ = stringify!(bridge_kind_from_backend);
+    let _ = stringify!(cursor_resume_id);
+    let _ = stringify!(spawn_with_retries);
+    let _ = stringify!(spawn_service_wire);
+    let _ = stringify!(reject_no_force);
+    let _ = stringify!(NO_FORCE_MSG);
+    let _ = stringify!(DRAIN_IDLE_PREFIX_BRIDGE);
+    let _ = stringify!(DRAIN_IDLE_PREFIX_PI);
+    let _ = stringify!(DRAIN_IDLE_PREFIX_CODEX);
     let _ = stringify!(prompts_log_run_dir);
 }
