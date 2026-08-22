@@ -77,6 +77,7 @@ fn build_router_a_prompt_omits_code_checks_when_gates_disabled() {
     let artifacts = flow_test_artifacts(&tmp);
     crate::seed_malvin_checks(tmp.path(), "echo ROUTER_CHECK_LINE\n");
     let store = prepare_router_prompt_store().expect("store");
+    crate::gate_loop_session::set_quality_gates_just_ran(true);
     let body = build_router_a_prompt(RouterAPromptInput {
         store: &store,
         artifacts: &artifacts,
@@ -85,7 +86,9 @@ fn build_router_a_prompt_omits_code_checks_when_gates_disabled() {
         gates: false,
     })
     .expect("router_a");
+    crate::gate_loop_session::set_quality_gates_just_ran(false);
     assert!(!body.contains("echo ROUTER_CHECK_LINE"));
+    assert!(!body.contains("quality gates were just run"));
     assert!(!body.contains("{{"));
 }
 

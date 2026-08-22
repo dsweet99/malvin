@@ -105,8 +105,6 @@ fn kiss_cov_sdk_bridge_build_install_names() {
 fn kiss_cov_pi_sdk_discover_auth_models() {
     ensure_pi_authenticated();
     provider_auth_env_keys();
-    provider_auth_env_keys_primary();
-    provider_auth_env_keys_secondary();
     list_pi_models_sync();
     pi_list_models_timeout();
     PiModelListing();
@@ -121,8 +119,6 @@ fn kiss_cov_pi_sdk_live_provider_auth() {
     env_nonempty();
     print_pi_models_with_live_auth();
 }
-
-
 
 #[test]
 fn kiss_cov_pi_sdk_spawn() {

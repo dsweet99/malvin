@@ -28,20 +28,19 @@ fn assert_live_auth_filter(out: &str) {
         "openrouter should remain when OPENROUTER_API_KEY is set: {out}"
     );
     assert!(
-        out.contains("pi:zhipuai/"),
-        "provider absent from the env-key map should remain: {out}"
+        !out.contains("pi:zhipuai/"),
+        "provider whose API key is unset must be hidden: {out}"
     );
-    // Keyless local providers (llamacpp et al.) have no registry listing rows
-    // on crates.io `pi_agent_rust` 0.1.23: `ad_hoc_model_entry` synthesizes
-    // entries only on the per-request resolve path, never in
-    // `load_for_listing`. Their access rule therefore lives at the auth layer,
-    // not in the printed table.
     assert!(
-        crate::pi_sdk::provider_authenticated_from_map(
+        !out.contains("pi:cohere/"),
+        "provider whose API key is unset must be hidden: {out}"
+    );
+    assert!(
+        !crate::pi_sdk::provider_authenticated_from_map(
             "llamacpp",
             &std::collections::HashMap::new()
         ),
-        "keyless local provider should count as authenticated without env keys"
+        "keyless or unmapped providers must not list without an env API key"
     );
 }
 

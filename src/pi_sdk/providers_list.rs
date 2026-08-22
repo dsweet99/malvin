@@ -28,11 +28,8 @@ pub fn list_pi_provider_auth_sync() -> Result<HashMap<String, Vec<String>>, Stri
 
 #[must_use]
 pub fn provider_authenticated_from_map(provider: &str, map: &HashMap<String, Vec<String>>) -> bool {
-    match map.get(provider) {
-        None => true,
-        Some(keys) if keys.is_empty() => true,
-        Some(keys) => keys.iter().any(|k| env_nonempty(k)),
-    }
+    map.get(provider)
+        .is_some_and(|keys| !keys.is_empty() && keys.iter().any(|k| env_nonempty(k)))
 }
 
 #[cfg(test)]
@@ -48,8 +45,14 @@ mod providers_list_tests {
         map.insert("llamacpp".into(), vec![]);
         crate::acp::with_env("OPENAI_API_KEY", None, || {
             assert!(!provider_authenticated_from_map("openai", &map));
-            assert!(provider_authenticated_from_map("llamacpp", &map));
-            assert!(provider_authenticated_from_map("unknown", &map));
+            assert!(!provider_authenticated_from_map("llamacpp", &map));
+            assert!(!provider_authenticated_from_map("unknown", &map));
+        });
+        crate::acp::with_env("OPENAI_API_KEY", Some(""), || {
+            assert!(!provider_authenticated_from_map("openai", &map));
+        });
+        crate::acp::with_env("OPENAI_API_KEY", Some("   "), || {
+            assert!(!provider_authenticated_from_map("openai", &map));
         });
         crate::acp::with_env("OPENAI_API_KEY", Some("k"), || {
             assert!(provider_authenticated_from_map("openai", &map));

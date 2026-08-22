@@ -44,28 +44,8 @@ fn stored_credential_present(provider: &str) -> bool {
 
 #[must_use]
 pub(crate) fn provider_auth_env_keys(provider: &str) -> Option<&'static [&'static str]> {
-    provider_auth_env_keys_primary(provider).or_else(|| provider_auth_env_keys_secondary(provider))
-}
-
-fn provider_auth_env_keys_primary(provider: &str) -> Option<&'static [&'static str]> {
-    match provider {
-        "openai" => Some(&["OPENAI_API_KEY"]),
-        "anthropic" => Some(&["ANTHROPIC_API_KEY"]),
-        "openrouter" => Some(&["OPENROUTER_API_KEY"]),
-        "google" | "gemini" => Some(&["GOOGLE_API_KEY", "GEMINI_API_KEY"]),
-        "groq" => Some(&["GROQ_API_KEY"]),
-        _ => None,
-    }
-}
-
-fn provider_auth_env_keys_secondary(provider: &str) -> Option<&'static [&'static str]> {
-    match provider {
-        "deepseek" | "deep-seek" => Some(&["DEEPSEEK_API_KEY"]),
-        "cerebras" => Some(&["CEREBRAS_API_KEY"]),
-        "xai" => Some(&["XAI_API_KEY"]),
-        "mistral" => Some(&["MISTRAL_API_KEY"]),
-        _ => None,
-    }
+    let keys = pi::provider_metadata::provider_auth_env_keys(provider);
+    if keys.is_empty() { None } else { Some(keys) }
 }
 
 pub(crate) fn env_nonempty(key: &str) -> bool {
