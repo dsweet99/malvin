@@ -9,25 +9,13 @@ pub(crate) const ROUTER_DOC: &str = include_str!("../../default_prompts/docs/rou
 
 pub(crate) const DO_DOC: &str = include_str!("../../default_prompts/docs/do.md");
 
-const fn gate_loop_command_doc(cmd: &Commands) -> Option<&'static str> {
-    match cmd {
-        Commands::Tidy(_) => Some(include_str!("../../default_prompts/docs/tidy.md")),
-        Commands::Write(_) => Some(include_str!("../../default_prompts/docs/write.md")),
-        _ => None,
-    }
-}
-
 pub(crate) const fn command_doc_markdown(cmd: &Commands) -> &'static str {
-    if let Some(doc) = gate_loop_command_doc(cmd) {
-        return doc;
-    }
     match cmd {
+        Commands::Write(_) => include_str!("../../default_prompts/docs/write.md"),
         Commands::Inspire(_) | Commands::Adaptix(_) => {
             include_str!("../../default_prompts/docs/inspire.md")
         }
         Commands::Models(_) => include_str!("../../default_prompts/docs/models.md"),
-        Commands::Init(_) => include_str!("../../default_prompts/docs/init.md"),
-        _ => panic!("uncovered command doc"),
     }
 }
 

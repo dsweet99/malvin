@@ -99,10 +99,11 @@ fn smoke_agent_io_options_maps_flags() {
 }
 
 #[test]
-fn smoke_cli_parse_init_subcommand() {
+fn init_is_not_a_subcommand_and_parses_as_bare_request() {
     use clap::Parser;
-    let cli = Cli::try_parse_from(["malvin", "init"]).unwrap();
-    assert!(matches!(cli.command, Some(Commands::Init(_))));
+    let cli = Cli::try_parse_from(["malvin", "init"]).expect("parse");
+    assert!(cli.command.is_none());
+    assert_eq!(cli.request.as_deref(), Some("init"));
 }
 
 #[test]

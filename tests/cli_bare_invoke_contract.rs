@@ -2,7 +2,7 @@ mod common;
 
 use clap::CommandFactory;
 use common::with_isolated_home;
-use malvin::cli::{Cli, Commands, parse_cli_with_config_defaults};
+use malvin::cli::{Cli, parse_cli_with_config_defaults};
 
 fn parse(argv: &[&str]) -> Cli {
     let mut out = None;
@@ -36,6 +36,13 @@ fn do_subcommand_is_removed() {
 }
 
 #[test]
+fn init_is_not_a_subcommand_and_parses_as_bare_request() {
+    let cli = parse(&["malvin", "init"]);
+    assert!(cli.command.is_none());
+    assert_eq!(cli.request.as_deref(), Some("init"));
+}
+
+#[test]
 fn code_is_not_a_subcommand_and_parses_as_bare_request() {
     let cli = parse(&["malvin", "code"]);
     assert!(cli.command.is_none());
@@ -43,9 +50,11 @@ fn code_is_not_a_subcommand_and_parses_as_bare_request() {
 }
 
 #[test]
-fn tidy_subcommand_still_parses() {
-    let cli = parse(&["malvin", "tidy"]);
-    assert!(matches!(cli.command, Some(Commands::Tidy(_))));
+fn gates_only_route_parses_without_request() {
+    let cli = parse(&["malvin", "-g"]);
+    assert!(cli.command.is_none());
+    assert!(cli.request.is_none());
+    assert!(cli.shared.gates);
 }
 
 #[test]

@@ -1,12 +1,13 @@
 use super::{
-    Commands, DefaultRouteDispatch, Exit, command_accepts_session_name, dispatch_command,
-    dispatch_default_route, dispatch_do_workflow, finish_entrypoint, prepare_cli_output,
-    print_command_error, unsupported_name_error,
+    DefaultRouteDispatch, Exit, command_accepts_session_name, dispatch_command,
+    dispatch_default_route, dispatch_do_workflow, dispatch_gates_only_route, finish_entrypoint,
+    prepare_cli_output, print_command_error, unsupported_name_error,
 };
 use crate::cli::args::Cli;
+use crate::cli::config_defaults::is_gates_only_route;
 use crate::cli::entrypoint_checks::{
     ensure_malvin_checks_for_command, ensure_malvin_checks_for_default_route,
-    ensure_malvin_checks_for_do_workflow,
+    ensure_malvin_checks_for_do_workflow, ensure_malvin_checks_for_gates_only_route,
 };
 use crate::do_flow::DoArgs;
 
@@ -27,51 +28,6 @@ fn parse_cli_args_or_exit(
     }
 }
 
-fn entrypoint_short_help_when_request_missing(
-    doc: bool,
-    request: Option<&String>,
-    subcommand: &str,
-) -> Option<Exit> {
-    if doc || request.is_some() {
-        return None;
-    }
-    let _ = crate::cli::commands_help::print_subcommand_short_help(subcommand);
-    Some(Exit::Success)
-}
-
-fn entrypoint_do_short_help() -> Exit {
-    let text = "\
-One-shot agent turn (non-looping)
-
-Usage: malvin --do [OPTION]... [REQUEST]
-
-Arguments:
-  [REQUEST]  Existing `.md` path or literal text
-
-Use malvin --help to see options.
-";
-    let _ = std::io::Write::write_all(&mut std::io::stdout().lock(), text.as_bytes());
-    Exit::Success
-}
-
-fn entrypoint_request_missing_short_help(cli: &Cli) -> Option<Exit> {
-    if cli.do_workflow {
-        if cli.shared.doc || cli.request.is_some() {
-            return None;
-        }
-        return Some(entrypoint_do_short_help());
-    }
-    let command = cli.command.as_ref()?;
-    let (request, subcommand) = match command {
-        Commands::Inspire(inspire) | Commands::Adaptix(inspire) => {
-            (inspire.request.as_ref(), "inspire")
-        }
-        Commands::Write(write_args) => (write_args.request.as_ref(), "write"),
-        _ => return None,
-    };
-    entrypoint_short_help_when_request_missing(cli.shared.doc, request, subcommand)
-}
-
 fn entrypoint_doc_exit(cli: &Cli) -> Exit {
     match crate::cli::command_docs::print_doc_for_cli(cli) {
         Ok(()) => Exit::Success,
@@ -87,11 +43,16 @@ fn entrypoint_before_dispatch(cli: &Cli) -> Option<Exit> {
         print_command_error("`--do` cannot be combined with a subcommand");
         return Some(Exit::Failure);
     }
-    if cli.command.is_none() && cli.request.is_none() && !cli.shared.doc && !cli.do_workflow {
+    if cli.command.is_none()
+        && cli.request.is_none()
+        && !cli.shared.doc
+        && !cli.do_workflow
+        && !is_gates_only_route(cli)
+    {
         let _ = crate::cli::commands_help::print_commands_only_help();
         return Some(Exit::Success);
     }
-    if let Some(exit) = entrypoint_request_missing_short_help(cli) {
+    if let Some(exit) = super::entrypoint_short_help::entrypoint_request_missing_short_help(cli) {
         return Some(exit);
     }
     if cli.shared.doc {
@@ -108,7 +69,10 @@ fn entrypoint_preflight(cli: &Cli) -> Option<Exit> {
         });
     }
     if let Some(command) = cli.command.as_ref() {
-        return ensure_malvin_checks_for_command(command).err().map(|e| {
+        ensure_malvin_checks_for_command(command);
+    }
+    if is_gates_only_route(cli) {
+        return ensure_malvin_checks_for_gates_only_route().err().map(|e| {
             print_command_error(&e);
             Exit::Failure
         });
@@ -133,17 +97,15 @@ fn entrypoint_acquire_session(
 
 fn entrypoint_validate_name(cli: &Cli) -> Option<Exit> {
     cli.shared.name.as_ref()?;
-    if cli.do_workflow || default_route_accepts_session_name(cli) {
+    if cli.do_workflow || default_route_accepts_session_name(cli) || is_gates_only_route(cli) {
         return None;
     }
-    let command = cli
+    cli
         .command
         .as_ref()
         .expect("command or default route request");
-    unsupported_name_error(command).map(|message| {
-        print_command_error(message);
-        Exit::Failure
-    })
+    print_command_error(unsupported_name_error());
+    Some(Exit::Failure)
 }
 
 const fn default_route_accepts_session_name(cli: &Cli) -> bool {
@@ -180,6 +142,7 @@ fn run_entrypoint(cli: Cli, matches: clap::ArgMatches) -> Exit {
         return exit;
     }
     let accepts_name = cli.do_workflow
+        || is_gates_only_route(&cli)
         || cli
             .command
             .as_ref()
@@ -218,6 +181,14 @@ fn dispatch_after_session(cli: Cli, matches: clap::ArgMatches) -> Exit {
             shared: &mut shared,
             matches: &matches,
         }))
+    } else if is_gates_only_route(&cli) {
+        let mut shared = cli.shared;
+        finish_entrypoint(dispatch_gates_only_route(
+            cli.max_loops,
+            cli.max_hypotheses,
+            &mut shared,
+            &matches,
+        ))
     } else {
         Exit::Success
     }

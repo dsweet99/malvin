@@ -22,7 +22,7 @@ fn kiss_exec_witness_02_14() {
     connect_budget();
     PreparedContextMode();
     IterationFixture();
-    InitArgs();
+    InitWorkflowOpts();
     render_init_router_request();
     decide_router_gates_exit();
     set_active_gate_iteration();

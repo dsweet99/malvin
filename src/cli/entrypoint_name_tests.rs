@@ -116,24 +116,11 @@ fn models_command_rejects_session_name() {
 }
 
 #[test]
-fn tidy_command_accepts_session_name() {
-    use crate::cli::tidy_flow::TidyArgs;
-    assert!(command_accepts_session_name(&Commands::Tidy(TidyArgs {
-        max_loops: 1,
-        max_hypotheses: 5,
-        tenacious: false,
-        quick: false,
-    })));
-}
-
-#[test]
-fn init_command_accepts_session_name() {
-    use crate::cli::init_flow::InitArgs;
-    assert!(command_accepts_session_name(&Commands::Init(InitArgs {
-        max_loops: 1,
-        max_hypotheses: 5,
-        tenacious: false,
-    })));
+fn gates_only_route_accepts_session_name() {
+    use clap::Parser;
+    assert!(crate::cli::config_defaults::is_gates_only_route(
+        &crate::cli::Cli::try_parse_from(["malvin", "-g"]).expect("parse")
+    ));
 }
 
 #[test]

@@ -1,7 +1,7 @@
 use crate::cli::{SharedOpts, WorkflowCliOptions};
 use crate::router_flow::{RouterArgs, run_router};
 
-use super::{TidyArgs, effective_tidy_max_loops};
+use super::effective_tidy_max_loops;
 
 pub(crate) const TIDY_ROUTER_REQUEST: &str = "Get the gates to pass.";
 
@@ -13,7 +13,8 @@ pub(crate) fn tidy_shared_with_gates_forced(shared: &SharedOpts) -> SharedOpts {
 }
 
 pub async fn run_tidy(
-    tidy: TidyArgs,
+    max_loops: usize,
+    max_hypotheses: usize,
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
@@ -21,8 +22,8 @@ pub async fn run_tidy(
     run_router(
         RouterArgs {
             request: Some(TIDY_ROUTER_REQUEST.to_string()),
-            max_loops: effective_tidy_max_loops(tidy.max_loops),
-            max_hypotheses: tidy.max_hypotheses,
+            max_loops: effective_tidy_max_loops(max_loops),
+            max_hypotheses,
         },
         &shared,
         workflow,

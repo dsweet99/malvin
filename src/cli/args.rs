@@ -1,8 +1,6 @@
 use clap::{Parser, Subcommand};
 
-use super::init_flow::InitArgs;
 use super::shared_opts::SharedOpts;
-use super::tidy_flow::TidyArgs;
 use super::write_flow::WriteArgs;
 
 pub use super::models_cmd::ModelsArgs;
@@ -41,10 +39,6 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// Discover quality gates and write `.malvin/gates`
-    Init(InitArgs),
-    /// Ensure all checks pass
-    Tidy(TidyArgs),
     /// Write a LaTeX PDF on code or concepts
     Write(WriteArgs),
     /// Explore creative boundaries (MBC2)

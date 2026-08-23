@@ -73,9 +73,9 @@ mod tests {
     }
 
     #[test]
-    fn commands_only_help_lists_init() {
+    fn commands_only_help_omits_init() {
         let cmd = Cli::command();
-        assert!(help_lists_subcommand(&cmd, "init"));
+        assert!(!help_lists_subcommand(&cmd, "init"));
     }
 
     #[test]
@@ -86,7 +86,7 @@ mod tests {
         assert!(text.contains("Usage: malvin [OPTION]... [REQUEST]"));
         assert!(text.contains("malvin [OPTION]... <COMMAND>"));
         assert!(text.contains("Commands:"));
-        assert!(text.contains("tidy"));
+        assert!(!text.contains("tidy"));
     }
 
     #[test]
@@ -95,7 +95,7 @@ mod tests {
         let cmd = Cli::command();
         assert!(help.contains("Commands:"));
         assert!(!help_lists_subcommand(&cmd, "code"));
-        assert!(help_lists_subcommand(&cmd, "tidy"));
+        assert!(!help_lists_subcommand(&cmd, "tidy"));
         assert!(help.contains("Usage: malvin [OPTION]... [REQUEST]"));
         assert!(help.contains("malvin [OPTION]... <COMMAND>"));
         assert!(help.contains("malvin --help"));
@@ -126,15 +126,15 @@ mod tests {
             .collect();
         assert!(!names.iter().any(|n| n == "code"));
         assert!(!names.iter().any(|n| n == "delight"));
-        assert_eq!(names, vec!["init", "tidy", "write", "inspire", "models"]);
+        assert_eq!(names, vec!["write", "inspire", "models"]);
     }
 
     #[test]
     fn format_command_lines_aligns_names() {
         let cmd = Cli::command();
         let lines = format_command_lines(&visible_subcommands(&cmd));
-        assert!(lines.iter().any(|line| line.starts_with("  tidy")));
-        assert!(!lines.iter().any(|line| line.starts_with("  code")));
+        assert!(lines.iter().any(|line| line.starts_with("  write")));
+        assert!(!lines.iter().any(|line| line.starts_with("  init")));
     }
 
     #[test]

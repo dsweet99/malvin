@@ -25,10 +25,10 @@ mod tests {
 
     #[test]
     fn subcommand_flag_from_command_line_detects_cli_overrides() {
-        let matches = Cli::command().get_matches_from(["malvin", "tidy"]);
+        let matches = Cli::command().get_matches_from(["malvin", "write", "topic"]);
         assert!(!subcommand_flag_from_command_line(
             &matches,
-            "tidy",
+            "write",
             "max_loops"
         ));
         assert!(!subcommand_flag_from_command_line(
@@ -37,10 +37,10 @@ mod tests {
             "max_loops"
         ));
 
-        let explicit = Cli::command().get_matches_from(["malvin", "tidy", "--max-loops", "2"]);
+        let explicit = Cli::command().get_matches_from(["malvin", "write", "topic", "--max-loops", "2"]);
         assert!(subcommand_flag_from_command_line(
             &explicit,
-            "tidy",
+            "write",
             "max_loops"
         ));
     }

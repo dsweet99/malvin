@@ -13,7 +13,7 @@ fn global_quiet_long_and_short_parse() {
 #[test]
 fn quiet_parses_on_router_wrappers() {
     for argv in [
-        ["malvin", "-q", "tidy"].as_slice(),
+        ["malvin", "-q", "-g"].as_slice(),
         ["malvin", "-q", "write", "topic"].as_slice(),
     ] {
         let cli = Cli::try_parse_from(argv).expect("parse");
@@ -22,13 +22,11 @@ fn quiet_parses_on_router_wrappers() {
 }
 
 #[test]
-fn tidy_short_q_is_global_quiet_not_deprecated_quick() {
-    let cli = Cli::try_parse_from(["malvin", "tidy", "-q"]).expect("parse");
+fn gates_only_short_q_is_global_quiet() {
+    let cli = Cli::try_parse_from(["malvin", "-g", "-q"]).expect("parse");
     assert!(cli.shared.quiet);
-    match cli.command {
-        Some(crate::cli::Commands::Tidy(t)) => assert!(!t.quick),
-        other => panic!("expected Tidy, got {other:?}"),
-    }
+    assert!(cli.shared.gates);
+    assert!(cli.request.is_none());
 }
 
 #[test]

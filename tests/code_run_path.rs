@@ -84,10 +84,10 @@ fn assert_malvin_subcommand_not_kiss_gated_without_auth(
 }
 
 #[test]
-fn malvin_tidy_is_not_kiss_gated_when_kiss_missing_from_path() {
+fn malvin_gates_only_is_not_kiss_gated_when_kiss_missing_from_path() {
     let work = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(work.path().join(".git")).unwrap();
-    assert_malvin_subcommand_not_kiss_gated_without_auth(&["tidy"], Some(work.path()));
+    assert_malvin_subcommand_not_kiss_gated_without_auth(&["-g"], Some(work.path()));
 }
 
 #[test]

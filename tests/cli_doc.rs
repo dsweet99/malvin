@@ -132,8 +132,8 @@ fn bare_malvin_shows_commands_only_and_exits_zero() {
         "bare stdout must show <COMMAND> usage: {bare_s}"
     );
     assert!(
-        bare_s.contains("tidy"),
-        "bare stdout must list tidy subcommand: {bare_s}"
+        !bare_s.contains("tidy"),
+        "bare stdout must not list removed tidy subcommand: {bare_s}"
     );
     assert!(
         !bare_s.lines().any(|line| line.starts_with("  code ")),
@@ -155,7 +155,7 @@ fn bare_malvin_shows_commands_only_and_exits_zero() {
         .collect();
     assert_eq!(
         command_names,
-        ["init", "tidy", "write", "inspire", "models"],
+        ["write", "inspire", "models"],
         "bare stdout command order: {bare_s}"
     );
     assert!(
@@ -212,7 +212,7 @@ fn malvin_help_usage_matches_mutually_exclusive_forms() {
     assert!(
         help_s.contains("bare malvin REQUEST")
             && help_s.contains("--do")
-            && help_s.contains("tidy"),
-        "full help --name must state supported invocations: {help_s}"
+            && help_s.contains("--gates"),
+        "full help must state supported invocations: {help_s}"
     );
 }

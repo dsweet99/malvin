@@ -13,13 +13,6 @@ fn prepare_cli_output_applies_background_flag() {
 }
 
 #[test]
-fn entrypoint_from_init_doc_argv_exits_success() {
-    with_isolated_home(|_| {
-        assert_eq!(entrypoint_from(["malvin", "init", "--doc"]), Exit::Success);
-    });
-}
-
-#[test]
 fn entrypoint_from_doc_argv_exits_success() {
     with_isolated_home(|_| {
         assert_eq!(entrypoint_from(["malvin", "--doc"]), Exit::Success);
@@ -84,4 +77,27 @@ fn kiss_cov_entrypoint_dispatch_and_commands() {
 
     let _ = crate::cli::entrypoint_commands::run_inspire_command;
     let _ = crate::cli::entrypoint_commands::run_write_command;
+}
+
+#[test]
+fn dispatch_gates_only_route_runs_tenacious_preflight() {
+    use crate::cli::args::Cli;
+    use crate::cli::SharedOpts;
+    use clap::CommandFactory;
+
+    crate::test_utils::with_isolated_home(|work| {
+        let cwd = std::env::current_dir().expect("cwd");
+        std::env::set_current_dir(work).expect("chdir");
+        let mut shared = SharedOpts::test_defaults();
+        shared.gates = true;
+        let matches = Cli::command().get_matches_from(["malvin", "-g", "--no-tenacious"]);
+        let result = super::dispatch_gates_only_route(
+            1,
+            5,
+            &mut shared,
+            &matches,
+        );
+        assert!(result.is_err(), "expected router failure without agent: {result:?}");
+        std::env::set_current_dir(cwd).expect("restore cwd");
+    });
 }

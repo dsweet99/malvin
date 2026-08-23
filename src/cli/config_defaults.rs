@@ -32,40 +32,24 @@ pub(crate) fn apply_loop_defaults(
     }
 }
 
-pub(crate) struct CodeWorkflowLoopMut<'a> {
-    pub subcommand: &'a str,
-    pub max_loops: &'a mut usize,
-    pub max_hypotheses: &'a mut usize,
-    pub agent: &'a AgentConfig,
-}
-
-fn apply_code_workflow_loop_defaults(matches: &ArgMatches, loops: CodeWorkflowLoopMut<'_>) {
-    apply_loop_defaults(
-        matches,
-        loops.subcommand,
-        LoopDefaultMut {
-            max_loops: loops.max_loops,
-            max_hypotheses: loops.max_hypotheses,
-            config_max_loops: loops.agent.max_loops_code,
-            config_max_hypotheses: loops.agent.max_hypotheses,
-        },
-    );
-}
-
 fn apply_write_loop_defaults(
     matches: &ArgMatches,
     write_args: &mut crate::cli::write_flow::WriteArgs,
     agent: &AgentConfig,
     review: &crate::malvin_config_file::ReviewConfig,
 ) {
-    if !subcommand_flag_from_command_line(matches, "write", "max_loops") {
-        write_args.max_loops = agent.max_loops_code;
-    }
-    if !subcommand_flag_from_command_line(matches, "write", "max_hypotheses") {
-        write_args.max_hypotheses = review
-            .max_hypotheses
-            .unwrap_or(crate::malvin_config_file::DEFAULT_WRITE_MAX_HYPOTHESES);
-    }
+    apply_loop_defaults(
+        matches,
+        "write",
+        LoopDefaultMut {
+            max_loops: &mut write_args.max_loops,
+            max_hypotheses: &mut write_args.max_hypotheses,
+            config_max_loops: agent.max_loops_code,
+            config_max_hypotheses: review
+                .max_hypotheses
+                .unwrap_or(crate::malvin_config_file::DEFAULT_WRITE_MAX_HYPOTHESES),
+        },
+    );
 }
 
 fn apply_gate_loop_command_defaults(
@@ -75,24 +59,6 @@ fn apply_gate_loop_command_defaults(
     review: &crate::malvin_config_file::ReviewConfig,
 ) {
     match command {
-        Commands::Tidy(tidy) => apply_code_workflow_loop_defaults(
-            matches,
-            CodeWorkflowLoopMut {
-                subcommand: "tidy",
-                max_loops: &mut tidy.max_loops,
-                max_hypotheses: &mut tidy.max_hypotheses,
-                agent,
-            },
-        ),
-        Commands::Init(init) => apply_code_workflow_loop_defaults(
-            matches,
-            CodeWorkflowLoopMut {
-                subcommand: "init",
-                max_loops: &mut init.max_loops,
-                max_hypotheses: &mut init.max_hypotheses,
-                agent,
-            },
-        ),
         Commands::Write(write_args) => {
             apply_write_loop_defaults(matches, write_args, agent, review);
         }
@@ -143,10 +109,34 @@ const fn is_bare_default_route(cli: &Cli) -> bool {
     !cli.do_workflow && cli.command.is_none() && cli.request.is_some()
 }
 
+#[must_use]
+pub(crate) const fn is_gates_only_route(cli: &Cli) -> bool {
+    !cli.do_workflow && cli.command.is_none() && cli.request.is_none() && cli.shared.gates
+}
+
+fn apply_gates_only_loop_defaults(matches: &ArgMatches, cli: &mut Cli, agent: &AgentConfig) {
+    if !global_flag_from_command_line(matches, "max_loops") {
+        cli.max_loops = agent.max_loops_code;
+    }
+    if !global_flag_from_command_line(matches, "max_hypotheses") {
+        cli.max_hypotheses = agent.max_hypotheses;
+    }
+}
+
 const fn uses_lightweight_config_path(cli: &Cli) -> bool {
     cli.do_workflow
         || matches!(cli.command, Some(Commands::Models(_)))
         || (cli.command.is_none() && cli.request.is_some())
+}
+
+fn apply_gates_only_workspace_defaults(
+    matches: &ArgMatches,
+    cli: &mut Cli,
+) -> Result<(), String> {
+    let agent = load_agent_config(matches)?;
+    apply_shared_config_defaults(matches, &mut cli.shared, &agent);
+    apply_gates_only_loop_defaults(matches, cli, &agent);
+    finalize_shared_model(matches, &mut cli.shared)
 }
 
 pub fn apply_workspace_config_defaults(matches: &ArgMatches, cli: &mut Cli) -> Result<(), String> {
@@ -157,6 +147,9 @@ pub fn apply_workspace_config_defaults(matches: &ArgMatches, cli: &mut Cli) -> R
             apply_default_route_max_hypotheses(matches, cli)?;
         }
         return Ok(());
+    }
+    if is_gates_only_route(cli) {
+        return apply_gates_only_workspace_defaults(matches, cli);
     }
     let Some(command) = cli.command.as_mut() else {
         return finalize_shared_model(matches, &mut cli.shared);

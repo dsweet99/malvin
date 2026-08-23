@@ -82,7 +82,7 @@ max_loops = 9
         .expect("write");
         std::env::set_current_dir(work).expect("cd");
         let matches =
-            Cli::command().get_matches_from(["malvin", "--model", "cursor:composer-2", "tidy"]);
+            Cli::command().get_matches_from(["malvin", "--model", "cursor:composer-2", "-g"]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         apply_workspace_config_defaults(&matches, &mut cli).expect("cli model wins");
         assert_eq!(cli.shared.model.canonical(), "cursor:composer-2");

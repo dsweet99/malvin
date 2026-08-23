@@ -51,7 +51,7 @@ pub struct SharedOpts {
     /// Print built-in documentation and exit
     #[arg(long, global = true, default_value_t = false)]
     pub doc: bool,
-    /// Session name for bare malvin REQUEST, `--do`, `tidy`, and `init` (default: random five-character id)
+    /// Session name for bare malvin REQUEST, `--do`, and `malvin -g` (default: random five-character id)
     #[arg(long, global = true)]
     pub name: Option<String>,
     /// Allow the agent to run `git commit`

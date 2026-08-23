@@ -123,11 +123,11 @@ mod tests {
     fn apply_gate_loop_tenacious_expands_unless_opted_out() {
         use crate::cli::Cli;
         use clap::CommandFactory;
-        let matches = Cli::command().get_matches_from(["malvin", "tidy"]);
+        let matches = Cli::command().get_matches_from(["malvin", "write", "topic", "--tenacious"]);
         let mut loops = 1usize;
         let mut retries = 3u32;
         apply_gate_loop_tenacious(GateLoopTenaciousApply {
-            subcommand: "tidy",
+            subcommand: "write",
             max_loops: &mut loops,
             tenacious: true,
             no_tenacious: false,

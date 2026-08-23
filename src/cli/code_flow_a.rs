@@ -39,7 +39,7 @@ pub fn agent_io_options(
 pub fn format_workspace_gate_failure(command: &str, detail: &str) -> String {
     format!(
         "ERR: Workspace checks did not pass; the next step did not run.\n\
-Run `malvin tidy`, then retry `{command}`.\n\
+Run `malvin -g`, then retry `{command}`.\n\
 \n\
 {detail}"
     )

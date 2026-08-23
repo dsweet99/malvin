@@ -56,12 +56,12 @@ fn write_agent_config_adds_agent_section_to_partial_file() {
 #[test]
 fn apply_loop_defaults_honors_partial_cli_overrides() {
     with_seeded_agent_config(|| {
-        let matches = Cli::command().get_matches_from(["malvin", "tidy", "--max-loops", "3"]);
+        let matches = Cli::command().get_matches_from(["malvin", "write", "topic", "--max-loops", "3"]);
         let mut max_loops = 3_usize;
         let mut max_hypotheses = 5_usize;
         apply_loop_defaults(
             &matches,
-            "tidy",
+            "write",
             LoopDefaultMut {
                 max_loops: &mut max_loops,
                 max_hypotheses: &mut max_hypotheses,
@@ -75,11 +75,11 @@ fn apply_loop_defaults_honors_partial_cli_overrides() {
 
 #[test]
 fn flag_and_shared_helpers_detect_and_apply_defaults() {
-    let matches = Cli::command().get_matches_from(["malvin", "tidy"]);
+    let matches = Cli::command().get_matches_from(["malvin", "write", "topic"]);
     assert!(!global_flag_from_command_line(&matches, "model"));
     assert!(!subcommand_flag_from_command_line(
         &matches,
-        "tidy",
+        "write",
         "max_loops"
     ));
     assert!(!subcommand_flag_from_command_line(
@@ -118,7 +118,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
     let mut max_hypotheses = 1_usize;
     apply_loop_defaults(
         &matches,
-        "tidy",
+        "write",
         LoopDefaultMut {
             max_loops: &mut max_loops,
             max_hypotheses: &mut max_hypotheses,
@@ -130,22 +130,20 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
 }
 
 #[test]
-fn apply_workspace_config_defaults_overrides_unset_flags() {
+fn apply_workspace_config_defaults_overrides_unset_flags_for_gates_only() {
     with_seeded_agent_config(|| {
-        let matches = Cli::command().get_matches_from(["malvin", "tidy"]);
+        let matches = Cli::command().get_matches_from(["malvin", "-g"]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
         assert_eq!(cli.shared.model.canonical(), "cursor:cfg-model");
         assert_eq!(cli.shared.max_acp_retries, 8);
-        match cli.command.expect("command") {
-            Commands::Tidy(tidy) => assert_eq!(tidy.max_loops, 7),
-            other => panic!("expected tidy, got {other:?}"),
-        }
+        assert!(cli.command.is_none());
+        assert_eq!(cli.max_loops, 7);
     });
 }
 
 #[test]
-fn apply_workspace_config_defaults_respects_explicit_cli_flags() {
+fn apply_workspace_config_defaults_respects_explicit_cli_flags_for_gates_only() {
     with_seeded_agent_config(|| {
         let matches = Cli::command().get_matches_from([
             "malvin",
@@ -153,7 +151,7 @@ fn apply_workspace_config_defaults_respects_explicit_cli_flags() {
             "cursor:cli-model",
             "--max-acp-retries",
             "2",
-            "tidy",
+            "-g",
             "--max-loops",
             "3",
         ]);
@@ -161,10 +159,7 @@ fn apply_workspace_config_defaults_respects_explicit_cli_flags() {
         apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
         assert_eq!(cli.shared.model.canonical(), "cursor:cli-model");
         assert_eq!(cli.shared.max_acp_retries, 2);
-        match cli.command.expect("command") {
-            Commands::Tidy(tidy) => assert_eq!(tidy.max_loops, 3),
-            other => panic!("expected tidy, got {other:?}"),
-        }
+        assert_eq!(cli.max_loops, 3);
     });
 }
 
@@ -173,8 +168,6 @@ fn assert_workflow_defaults(argv: &[&str]) {
     let mut cli = Cli::from_arg_matches(&matches).expect("cli");
     apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
     match cli.command.expect("command") {
-        Commands::Tidy(a) => assert_eq!(a.max_loops, 7),
-        Commands::Init(a) => assert_eq!(a.max_loops, 7),
         Commands::Write(a) => assert_eq!(a.max_loops, 7),
         other => panic!("unexpected command {other:?}"),
     }
@@ -183,8 +176,6 @@ fn assert_workflow_defaults(argv: &[&str]) {
 #[test]
 fn apply_workspace_config_defaults_for_workflow_commands() {
     with_seeded_agent_config(|| {
-        assert_workflow_defaults(&["malvin", "tidy"]);
-        assert_workflow_defaults(&["malvin", "init"]);
         assert_workflow_defaults(&["malvin", "write", "topic"]);
     });
 }
@@ -215,27 +206,15 @@ fn apply_workspace_config_defaults_for_inspire() {
 }
 
 #[test]
-fn parse_cli_with_config_defaults_tidy() {
+fn parse_cli_with_config_defaults_gates_only() {
     crate::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(work).expect("chdir");
-        let (cli, _) = parse_cli_with_config_defaults(["malvin", "tidy"]).expect("parse");
-        match cli.command.expect("command") {
-            Commands::Tidy(t) => {
-                assert!(t.max_loops >= 1);
-            }
-            other => panic!("expected tidy, got {other:?}"),
-        }
+        let (cli, _) = parse_cli_with_config_defaults(["malvin", "-g"]).expect("parse");
+        assert!(cli.command.is_none());
+        assert!(cli.request.is_none());
+        assert!(cli.shared.gates);
+        assert!(cli.max_loops >= 1);
         std::env::set_current_dir(cwd).expect("restore cwd");
-    });
-}
-
-#[test]
-fn parse_cli_with_config_defaults_init_with_name_probe() {
-    crate::test_utils::with_isolated_home(|_| {
-        let (cli, _) = parse_cli_with_config_defaults(["malvin", "--name", "probe", "init"])
-            .expect("parse init with name");
-        assert_eq!(cli.shared.name.as_deref(), Some("probe"));
-        assert!(matches!(cli.command, Some(Commands::Init(_))));
     });
 }

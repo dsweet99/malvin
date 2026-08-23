@@ -9,8 +9,8 @@ fn smoke_cov_cli_cli_units_0() {
     let _: Option<crate::cli::exit::Exit> = None;
     let _ = crate::cli::init_flow::run_init;
     let _ = crate::cli::init_flow::render_init_router_request;
-    let _ = stringify!(crate::cli::init_flow::InitArgs);
-    let _: Option<crate::cli::init_flow::InitArgs> = None;
+    let _ = stringify!(crate::cli::init_flow::InitWorkflowOpts);
+    let _: Option<crate::cli::init_flow::InitWorkflowOpts> = None;
     let _ = crate::cli::init_flow::effective_init_max_loops;
 }
 
@@ -86,7 +86,6 @@ fn smoke_cov_cli_router_test_units() {
 
 #[test]
 fn smoke_cov_cli_cli_tidy_flow_units() {
-    let _: Option<crate::cli::tidy_flow::TidyArgs> = None;
     let _ = crate::cli::tidy_flow::run_tidy;
     let _ = crate::cli::tidy_flow::effective_tidy_max_loops;
     let _ = crate::cli::tidy_flow::TIDY_ROUTER_REQUEST;

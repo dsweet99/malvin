@@ -1,22 +1,24 @@
 use super::{
-    Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_init, run_router, run_tidy,
+    Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_init, run_router,
 };
 use crate::do_flow::DoArgs;
 
-pub(crate) const fn command_accepts_session_name(command: &Commands) -> bool {
-    matches!(command, Commands::Tidy(_) | Commands::Init(_))
+pub(crate) const fn command_accepts_session_name(_command: &Commands) -> bool {
+    false
 }
 
-pub(crate) const fn unsupported_name_error(command: &Commands) -> Option<&'static str> {
-    if command_accepts_session_name(command) {
-        return None;
-    }
-    Some("`--name` is only supported for bare `malvin REQUEST`, `--do`, `tidy`, and `init`")
+pub(crate) const fn unsupported_name_error() -> &'static str {
+    "`--name` is only supported for bare `malvin REQUEST`, `--do`, and `malvin -g`"
 }
 
 #[path = "entrypoint_from.rs"]
 mod entrypoint_from;
+#[path = "entrypoint_gates_only.rs"]
+mod entrypoint_gates_only;
+#[path = "entrypoint_short_help.rs"]
+mod entrypoint_short_help;
 pub use entrypoint_from::entrypoint_from;
+pub(crate) use entrypoint_gates_only::dispatch_gates_only_route;
 
 pub fn print_command_error(message: &str) {
     use crate::output::{MALVIN_WHO, print_log_error, print_stderr_line};
@@ -103,44 +105,6 @@ pub(crate) fn dispatch_command(
 ) -> Result<(), String> {
     let mut shared = shared.clone();
     match command {
-        Commands::Init(mut init) => {
-            super::loop_opts::apply_gate_loop_tenacious(super::loop_opts::GateLoopTenaciousApply {
-                subcommand: "init",
-                max_loops: &mut init.max_loops,
-                tenacious: init.tenacious,
-                no_tenacious: shared.no_tenacious,
-                max_acp_retries: &mut shared.max_acp_retries,
-                matches,
-            });
-            run_async_cli(|| {
-                run_init(
-                    init,
-                    &shared,
-                    WorkflowCliOptions {
-                        force: !shared.no_force,
-                    },
-                )
-            })
-        }
-        Commands::Tidy(mut tidy) => {
-            super::loop_opts::apply_gate_loop_tenacious(super::loop_opts::GateLoopTenaciousApply {
-                subcommand: "tidy",
-                max_loops: &mut tidy.max_loops,
-                tenacious: tidy.tenacious,
-                no_tenacious: shared.no_tenacious,
-                max_acp_retries: &mut shared.max_acp_retries,
-                matches,
-            });
-            run_async_cli(|| {
-                run_tidy(
-                    tidy,
-                    &shared,
-                    WorkflowCliOptions {
-                        force: !shared.no_force,
-                    },
-                )
-            })
-        }
         cmd @ Commands::Write(_) => {
             super::entrypoint_commands::dispatch_plan_authoring_gate(cmd, &mut shared, matches)
         }
@@ -186,6 +150,21 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
         shared.no_tenacious,
         matches,
     );
+    if crate::cli::init_flow::should_bootstrap_gates(shared)? {
+        let bootstrap_shared = crate::cli::init_flow::shared_for_init_bootstrap(shared);
+        return run_async_cli(|| {
+            run_init(
+                crate::cli::init_flow::InitWorkflowOpts {
+                    max_loops,
+                    max_hypotheses,
+                },
+                &bootstrap_shared,
+                WorkflowCliOptions {
+                    force: !shared.no_force,
+                },
+            )
+        });
+    }
     run_async_cli(|| {
         run_router(
             RouterArgs {
