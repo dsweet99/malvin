@@ -86,6 +86,10 @@ pub(crate) fn is_session_affiliated_pid(pid: u32) -> bool {
     lock_or_recover(&AFFILIATED_PIDS).contains(&pid)
 }
 
+pub(crate) fn has_noted_session_affiliated_pids() -> bool {
+    !lock_or_recover(&AFFILIATED_PIDS).is_empty()
+}
+
 pub(crate) fn session_affiliated_or_agent_acp(pid: u32) -> bool {
     is_session_affiliated_pid(pid)
         || crate::acp::unix_process_group_ps::looks_like_malvin_agent_acp(pid)

@@ -95,7 +95,7 @@ fn clock_hung_fails_only_after_idle_deadline() {
 #[tokio::test]
 async fn drain_sample_pids_falls_back_to_pgid() {
     let baseline = HashSet::new();
-    let pids = drain_sample_pids(std::process::id(), &baseline).await;
+    let pids = drain_sample_pids(Some(std::process::id()), &baseline).await;
     assert!(!pids.is_empty());
 }
 

@@ -10,15 +10,21 @@ pub fn ensure_pi_authenticated(model: &str) -> Result<(), AuthError> {
     if provider_has_access(provider) {
         return Ok(());
     }
-    let keys = provider_auth_env_keys(provider).unwrap_or(&[]);
-    if keys.is_empty() {
-        return Ok(());
-    }
-    Err(AuthError(format!(
-        "pi backend is not authenticated for provider `{provider}`. Set {} or store credentials in Pi’s auth file ({}).",
-        keys.join(" or "),
-        pi::sdk::Config::auth_path().display()
-    )))
+    provider_auth_env_keys(provider).map_or_else(
+        || {
+            Err(AuthError(format!(
+                "pi backend is not authenticated for provider `{provider}`. Store credentials in Pi’s auth file ({}).",
+                pi::sdk::Config::auth_path().display()
+            )))
+        },
+        |keys| {
+            Err(AuthError(format!(
+                "pi backend is not authenticated for provider `{provider}`. Set {} or store credentials in Pi’s auth file ({}).",
+                keys.join(" or "),
+                pi::sdk::Config::auth_path().display()
+            )))
+        },
+    )
 }
 
 pub fn is_provider_authenticated(provider: &str) -> bool {
@@ -26,10 +32,11 @@ pub fn is_provider_authenticated(provider: &str) -> bool {
 }
 
 fn provider_has_access(provider: &str) -> bool {
-    if provider_auth_env_keys(provider).is_none_or(|keys| keys.iter().any(|k| crate::acp::env_key_nonempty(k))) {
-        return true;
+    match provider_auth_env_keys(provider) {
+        None => stored_credential_present(provider),
+        Some(keys) if keys.iter().any(|k| crate::acp::env_key_nonempty(k)) => true,
+        Some(_) => stored_credential_present(provider),
     }
-    stored_credential_present(provider)
 }
 
 fn stored_credential_present(provider: &str) -> bool {
@@ -62,6 +69,24 @@ mod tests {
     }
 
     #[test]
+    fn unknown_provider_requires_stored_credential() {
+        crate::acp::with_env("OPENAI_API_KEY", None, || {
+            assert!(!is_provider_authenticated("some-unknown"));
+            let err = ensure_pi_authenticated("pi:some-unknown/foo").expect_err("must fail");
+            assert!(err.0.contains("some-unknown"));
+        });
+    }
+
+    #[test]
+    fn finish_after_channel_closed_maps_dropped_reply_to_error() {
+        let err = crate::pi_sdk::session::finish_after_channel_closed(Err(
+            "pi sdk runtime stopped".into(),
+        ))
+        .expect_err("dropped reply must fail");
+        assert!(err.0.contains("runtime stopped"));
+    }
+
+    #[test]
     fn is_provider_authenticated_checks_known_and_unknown_providers() {
         crate::acp::with_env("OPENAI_API_KEY", None, || {
             if !stored_credential_present("openai") {
@@ -71,7 +96,7 @@ mod tests {
         crate::acp::with_env("OPENAI_API_KEY", Some("test-key"), || {
             assert!(is_provider_authenticated("openai"));
         });
-        assert!(is_provider_authenticated("some-unknown"));
+        assert!(!is_provider_authenticated("some-unknown"));
     }
 
     #[test]

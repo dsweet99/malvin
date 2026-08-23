@@ -147,60 +147,17 @@ fn isolated_shell() -> &'static str {
 }
 
 fn wait_isolated_output(
-    mut child: std::process::Child,
+    child: std::process::Child,
     timeout: Option<Duration>,
 ) -> pi::sdk::Result<std::process::Output> {
     let Some(limit) = timeout else {
+        let child = child;
         return child
             .wait_with_output()
             .map_err(|e| pi::error::Error::tool("bash", format!("isolated bash wait: {e}")));
     };
-    let started = std::time::Instant::now();
-    loop {
-        match child.try_wait() {
-            Ok(Some(status)) => return read_reaped_output(child, status),
-            Ok(None) if started.elapsed() < limit => {
-                std::thread::sleep(Duration::from_millis(20));
-            }
-            Ok(None) => {
-                let _ = child.kill();
-                let _ = child.wait();
-                return Err(pi::error::Error::tool(
-                    "bash",
-                    format!("isolated bash timed out after {limit:?}"),
-                ));
-            }
-            Err(e) => {
-                return Err(pi::error::Error::tool(
-                    "bash",
-                    format!("isolated bash wait: {e}"),
-                ));
-            }
-        }
-    }
-}
-
-fn read_reaped_output(
-    mut child: std::process::Child,
-    status: std::process::ExitStatus,
-) -> pi::sdk::Result<std::process::Output> {
-    use std::io::Read;
-
-    let mut stdout = Vec::new();
-    let mut stderr = Vec::new();
-    if let Some(mut pipe) = child.stdout.take() {
-        pipe.read_to_end(&mut stdout)
-            .map_err(|e| pi::error::Error::tool("bash", format!("isolated bash stdout: {e}")))?;
-    }
-    if let Some(mut pipe) = child.stderr.take() {
-        pipe.read_to_end(&mut stderr)
-            .map_err(|e| pi::error::Error::tool("bash", format!("isolated bash stderr: {e}")))?;
-    }
-    Ok(std::process::Output {
-        status,
-        stdout,
-        stderr,
-    })
+    crate::command_output_timeout::wait_piped_child_with_timeout(child, limit, "isolated bash")
+        .map_err(|e| pi::error::Error::tool("bash", e))
 }
 
 #[must_use]
@@ -211,9 +168,44 @@ pub(crate) fn isolated_tool_factory() -> Arc<dyn ToolFactory> {
 #[cfg(test)]
 mod tests {
     use super::isolated_shell;
+    use super::{run_isolated_bash, spawn_isolated_shell, wait_isolated_output};
+    use std::time::{Duration, Instant};
 
     #[test]
     fn isolated_shell_is_nonempty() {
         assert!(!isolated_shell().is_empty());
+    }
+
+    #[test]
+    fn wait_isolated_output_drains_large_stdout_without_deadlock() {
+        let dir = tempfile::tempdir().expect("tmpdir");
+        let child = spawn_isolated_shell(dir.path(), "python3 -c 'print(\"x\" * 131072)'")
+            .expect("spawn");
+        let started = Instant::now();
+        let output = wait_isolated_output(child, Some(Duration::from_secs(5))).expect("output");
+        assert!(output.status.success(), "stderr={}", String::from_utf8_lossy(&output.stderr));
+        assert!(output.stdout.len() >= 131_072);
+        assert!(
+            started.elapsed() < Duration::from_secs(3),
+            "large stdout must not deadlock: {:?}",
+            started.elapsed()
+        );
+    }
+
+    #[test]
+    fn run_isolated_bash_large_stderr_completes() {
+        let dir = tempfile::tempdir().expect("tmpdir");
+        let output = run_isolated_bash(
+            dir.path(),
+            "python3 -c 'import sys; sys.stderr.write(\"y\" * 131072)'",
+            Some(5),
+            None,
+        )
+        .expect("bash");
+        assert!(!output.is_error);
+        let pi::model::ContentBlock::Text(text) = &output.content[0] else {
+            panic!("expected text output");
+        };
+        assert!(text.text.len() >= 131_072);
     }
 }

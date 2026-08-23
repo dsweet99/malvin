@@ -48,7 +48,28 @@ pub fn command_output_with_timeout(
     })
 }
 
-fn take_pipe_readers(child: &mut Child, label: &str) -> Result<(PipeReader, PipeReader), String> {
+pub(crate) fn wait_piped_child_with_timeout(
+    mut child: Child,
+    timeout: Duration,
+    label: &str,
+) -> Result<Output, String> {
+    let (stdout_handle, stderr_handle) = take_pipe_readers(&mut child, label)?;
+    let status = match wait_child_with_timeout(&mut child, timeout, label) {
+        Ok(status) => status,
+        Err(e) => {
+            let _ = stdout_handle.join();
+            let _ = stderr_handle.join();
+            return Err(e);
+        }
+    };
+    Ok(Output {
+        status,
+        stdout: join_pipe_reader(stdout_handle, label, "stdout")?,
+        stderr: join_pipe_reader(stderr_handle, label, "stderr")?,
+    })
+}
+
+pub(crate) fn take_pipe_readers(child: &mut Child, label: &str) -> Result<(PipeReader, PipeReader), String> {
     let stdout_pipe = child
         .stdout
         .take()
@@ -69,7 +90,7 @@ fn read_pipe_to_end(mut pipe: impl Read) -> std::io::Result<Vec<u8>> {
     Ok(buf)
 }
 
-fn join_pipe_reader(handle: PipeReader, label: &str, stream: &str) -> Result<Vec<u8>, String> {
+pub(crate) fn join_pipe_reader(handle: PipeReader, label: &str, stream: &str) -> Result<Vec<u8>, String> {
     handle
         .join()
         .map_err(|_| format!("{label}: {stream} reader panicked"))?
@@ -157,6 +178,7 @@ mod tests {
     fn kiss_cov_command_output_timeout_symbols() {
         let _ = stringify!(timeout_ms_from_env);
         let _ = stringify!(command_output_with_timeout);
+        let _ = stringify!(wait_piped_child_with_timeout);
         let _ = stringify!(take_pipe_readers);
         let _ = stringify!(read_pipe_to_end);
         let _ = stringify!(join_pipe_reader);

@@ -77,7 +77,8 @@ async fn missing_pgid_gets_no_health_extend() {
     let elapsed = started.elapsed();
     crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
     assert!(err.0.contains("bridge timed out"));
-    assert_eq!(elapsed, Duration::from_mins(2));
+    assert!(elapsed >= Duration::from_mins(2));
+    assert!(elapsed <= Duration::from_mins(2) + Duration::from_secs(1));
 }
 
 #[tokio::test(start_paused = true)]

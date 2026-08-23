@@ -63,6 +63,13 @@ impl Drop for PiEmbeddedSession {
             runtime.abort();
             runtime.shutdown();
         }
+        #[cfg(unix)]
+        {
+            crate::acp::terminate_agent_process_group_for_interrupt(
+                None,
+                &self.spawn_pid_baseline,
+            );
+        }
         crate::malvin_sandbox::clear_active_sandbox_session();
     }
 }
@@ -92,7 +99,11 @@ async fn drain_agent_events(
             done = &mut reply, if prompt_result.is_none() => {
                 prompt_result = Some(done.unwrap_or_else(|_| Err("pi sdk runtime stopped".into())));
                 if events_rx.is_empty() {
-                    return finish_after_channel_closed(prompt_result.take().unwrap_or(Ok(())));
+                    return finish_after_channel_closed(
+                        prompt_result
+                            .take()
+                            .unwrap_or_else(|| Err("pi sdk runtime stopped".into())),
+                    );
                 }
             }
             event = next => {
@@ -100,7 +111,9 @@ async fn drain_agent_events(
                     Ok(Some(event)) => {
                         if handle_mapped_events(session, &event)? {
                             return finish_after_channel_closed(
-                                prompt_result.take().unwrap_or(Ok(())),
+                                prompt_result.take().unwrap_or_else(|| {
+                                    Err("pi sdk runtime stopped".into())
+                                }),
                             );
                         }
                     }
@@ -110,7 +123,9 @@ async fn drain_agent_events(
                         // it here is safe (exactly once).
                         let result = match prompt_result.take() {
                             Some(result) => result,
-                            None => reply.await.unwrap_or(Ok(())),
+                            None => reply
+                                .await
+                                .unwrap_or_else(|_| Err("pi sdk runtime stopped".into())),
                         };
                         return finish_after_channel_closed(result);
                     }
@@ -162,7 +177,7 @@ fn handle_mapped_events(
     Ok(done)
 }
 
-fn finish_after_channel_closed(prompt_result: Result<(), String>) -> Result<(), AgentError> {
+pub(crate) fn finish_after_channel_closed(prompt_result: Result<(), String>) -> Result<(), AgentError> {
     prompt_result.map_err(AgentError)
 }
 

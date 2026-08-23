@@ -105,10 +105,12 @@ pub(crate) fn teardown_agent_sandbox_blocking(
     spawn_baseline: &HashSet<u32>,
 ) {
     let orphan_scan = !spawn_baseline.is_empty();
-    if process_group_id.is_none() && !orphan_scan {
+    let affiliated_scan = process_group_id.is_none()
+        && super::unix_process_group_kill_targets::has_noted_session_affiliated_pids();
+    if process_group_id.is_none() && !orphan_scan && !affiliated_scan {
         return;
     }
-    let baseline_opt = orphan_scan.then_some(spawn_baseline);
+    let baseline_opt = (orphan_scan || affiliated_scan).then_some(spawn_baseline);
     if test_fast_acp_teardown_enabled() {
         teardown_agent_sandbox_fast_tick(process_group_id, baseline_opt);
         return;
@@ -121,10 +123,12 @@ pub(crate) fn teardown_agent_sandbox_for_interrupt(
     spawn_baseline: &HashSet<u32>,
 ) {
     let orphan_scan = !spawn_baseline.is_empty();
-    if process_group_id.is_none() && !orphan_scan {
+    let affiliated_scan = process_group_id.is_none()
+        && super::unix_process_group_kill_targets::has_noted_session_affiliated_pids();
+    if process_group_id.is_none() && !orphan_scan && !affiliated_scan {
         return;
     }
-    if orphan_scan {
+    if orphan_scan || affiliated_scan {
         let targets = kill_targets_for_teardown(process_group_id, Some(spawn_baseline));
         for pid in targets {
             signal_pid(pid, 9);

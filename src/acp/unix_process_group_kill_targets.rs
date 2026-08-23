@@ -10,8 +10,9 @@ use super::unix_process_group_ps::{
     process_group_member_pids,
 };
 pub(crate) use session_spawn_affiliation::{
-    clear_session_spawn_affiliation, is_session_affiliated_pid, note_session_affiliated_pid,
-    refresh_session_spawn_affiliation, session_affiliated_or_agent_acp,
+    clear_session_spawn_affiliation, has_noted_session_affiliated_pids, is_session_affiliated_pid,
+    note_session_affiliated_pid, refresh_session_spawn_affiliation,
+    session_affiliated_or_agent_acp,
 };
 
 pub(crate) fn descendant_pids(roots: &HashSet<u32>, rows: &[ProcRow]) -> HashSet<u32> {
@@ -93,6 +94,17 @@ pub(crate) fn malvin_session_spawn_pids(baseline: &HashSet<u32>, rows: &[ProcRow
         .collect()
 }
 
+fn extend_baseline_teardown_targets(
+    targets: &mut HashSet<u32>,
+    baseline: &HashSet<u32>,
+    rows: &[ProcRow],
+) {
+    targets.extend(reparented_init_orphans(baseline, rows));
+    targets.extend(affiliated_session_pids(baseline, rows));
+    targets.extend(baseline_amnestied_agent_orphans(baseline, rows));
+    targets.extend(malvin_session_spawn_pids(baseline, rows));
+}
+
 pub(crate) fn kill_targets_for_teardown(
     process_group_id: Option<u32>,
     spawn_baseline: Option<&HashSet<u32>>,
@@ -108,10 +120,9 @@ pub(crate) fn kill_targets_for_teardown(
         targets.extend(descendant_pids(&pg_members, &rows));
     }
     if let Some(baseline) = spawn_baseline.filter(|b| !b.is_empty()) {
-        targets.extend(reparented_init_orphans(baseline, &rows));
-        targets.extend(affiliated_session_pids(baseline, &rows));
-        targets.extend(baseline_amnestied_agent_orphans(baseline, &rows));
-        targets.extend(malvin_session_spawn_pids(baseline, &rows));
+        extend_baseline_teardown_targets(&mut targets, baseline, &rows);
+    } else if process_group_id.is_none() {
+        targets.extend(affiliated_session_pids(&HashSet::new(), &rows));
     }
     targets
 }

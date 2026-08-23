@@ -121,8 +121,8 @@ where
 {
     await_next_with_idle_using(labels, read, move |slice| async move {
         match health {
-            Some(ctx) if ctx.process_group_id.is_some() => sample_drain_health(ctx, slice).await,
-            _ => DrainHealthVerdict::AppearsHung,
+            Some(ctx) => sample_drain_health(ctx, slice).await,
+            None => DrainHealthVerdict::AppearsHung,
         }
     })
     .await
@@ -169,31 +169,35 @@ pub(crate) async fn sample_drain_health(
     ctx: DrainIdleHealthCtx<'_>,
     slice: Duration,
 ) -> DrainHealthVerdict {
-    let Some(pgid) = ctx.process_group_id else {
-        return DrainHealthVerdict::AppearsHung;
-    };
-    let pids = drain_sample_pids(pgid, ctx.spawn_pid_baseline).await;
+    let pids = drain_sample_pids(ctx.process_group_id, ctx.spawn_pid_baseline).await;
     if pids.is_empty() {
         return DrainHealthVerdict::DeadOrZombie;
     }
     aggregate_pid_health(&pids, silence_grace_for_rpc_timeout(slice)).await
 }
 
-pub(crate) async fn drain_sample_pids(pgid: u32, spawn_pid_baseline: &HashSet<u32>) -> Vec<u32> {
+pub(crate) async fn drain_sample_pids(
+    pgid: Option<u32>,
+    spawn_pid_baseline: &HashSet<u32>,
+) -> Vec<u32> {
     let baseline = spawn_pid_baseline.clone();
     tokio::task::spawn_blocking(move || drain_sample_pids_blocking(pgid, &baseline))
         .await
-        .unwrap_or_else(|_| vec![pgid])
+        .unwrap_or_else(|_| pgid.map_or_else(Vec::new, |id| vec![id]))
 }
 
-fn drain_sample_pids_blocking(pgid: u32, spawn_pid_baseline: &HashSet<u32>) -> Vec<u32> {
+fn drain_sample_pids_blocking(
+    pgid: Option<u32>,
+    spawn_pid_baseline: &HashSet<u32>,
+) -> Vec<u32> {
     #[cfg(unix)]
     {
-        let mut pids: Vec<u32> = crate::acp::sandbox_monitor_pids(Some(pgid), spawn_pid_baseline)
-            .into_iter()
-            .collect();
-        if pids.is_empty() {
-            pids.push(pgid);
+        let mut pids: Vec<u32> =
+            crate::acp::sandbox_monitor_pids(pgid, spawn_pid_baseline)
+                .into_iter()
+                .collect();
+        if pids.is_empty() && let Some(id) = pgid {
+            pids.push(id);
         }
         pids.sort_unstable();
         pids.dedup();
@@ -202,7 +206,7 @@ fn drain_sample_pids_blocking(pgid: u32, spawn_pid_baseline: &HashSet<u32>) -> V
     #[cfg(not(unix))]
     {
         let _ = spawn_pid_baseline;
-        vec![pgid]
+        pgid.map_or_else(Vec::new, |id| vec![id])
     }
 }
 

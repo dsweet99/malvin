@@ -11,12 +11,35 @@ use super::super::hostile_orphan_test_util::{
 use super::super::hostile_orphan_test_util::{
     process_alive, read_orphan_pid, spawn_hostile_agent_acp_orphan, wait_for_init_reparent,
 };
-use super::super::process_group_terminate::terminate_agent_process_group_blocking;
+use super::super::process_group_terminate::{
+    terminate_agent_process_group_blocking, terminate_agent_process_group_for_interrupt,
+};
 use super::super::unix_process_group_ps::ProcRow;
 use super::{
     descendant_pids, kill_targets_for_teardown, terminate_agent_process_group,
     terminate_process_group,
 };
+
+#[test]
+fn terminate_blocking_kills_note_affiliated_pid_without_pgid() {
+    crate::test_utils::enable_test_fast_teardown();
+    let baseline = crate::malvin_sandbox::malvin_spawn_baseline();
+    let mut cmd = Command::new("sleep");
+    cmd.arg("120").process_group(0);
+    let mut child = cmd.spawn().expect("spawn sleep");
+    super::super::unix_process_group_kill_targets::note_session_affiliated_pid(child.id());
+    assert!(
+        super::super::unix_process_group_kill_targets::is_session_affiliated_pid(child.id()),
+        "note_session_affiliated_pid must record pid"
+    );
+    let targets = kill_targets_for_teardown(None, Some(&baseline));
+    assert!(
+        targets.contains(&child.id()),
+        "affiliated pid must be a teardown target: {targets:?}"
+    );
+    terminate_agent_process_group_for_interrupt(None, &baseline);
+    child.wait().expect("affiliated child must exit after teardown");
+}
 
 #[test]
 fn descendant_pids_walks_child_chain() {
