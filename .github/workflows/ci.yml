@@ -5,9 +5,8 @@ on:
     branches: [main]
   pull_request:
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+# No workflow-level concurrency: cancel-in-progress left CI #10 wedged for
+# 35+ minutes while later runs (with fixed 4-way shards) waited in queue.
 
 env:
   MALVIN_SKIP_SDK_BRIDGES: "1"
