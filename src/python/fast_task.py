@@ -338,6 +338,16 @@ def ft_resolve_malvin_binary() -> Path | None:
             return debug
     return installed
 
+def _ft_dry_run_stub_binary(run_root: Path, name: str) -> Path:
+    """Create a throwaway executable under ``run_root`` for dry-run argv mounts."""
+    stub_dir = run_root / ".dry_run_stubs"
+    stub_dir.mkdir(parents=True, exist_ok=True)
+    stub = stub_dir / name
+    if not stub.is_file():
+        stub.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        stub.chmod(0o755)
+    return stub.resolve()
+
 def ft_resolve_malvin_main_binary() -> Path | None:
     """Best-effort host ``malvin-main`` binary path for ``--main`` bind mount."""
     return _ft_resolve_host_binary("malvin-main")
@@ -819,17 +829,23 @@ def ft_run_solve(
         if use_main:
             host_malvin = ft_resolve_malvin_main_binary()
             if host_malvin is None:
-                raise click.ClickException(
-                    "No host malvin-main binary found "
-                    "(PATH or ~/.cargo/bin/malvin-main)"
-                )
+                if dry_run:
+                    host_malvin = _ft_dry_run_stub_binary(run_root, "malvin-main")
+                else:
+                    raise click.ClickException(
+                        "No host malvin-main binary found "
+                        "(PATH or ~/.cargo/bin/malvin-main)"
+                    )
         else:
             host_malvin = ft_resolve_malvin_binary()
             if host_malvin is None:
-                raise click.ClickException(
-                    "No host malvin binary found (PATH or ~/.cargo/bin/malvin); "
-                    "build malvin on the host or use --agent=cursor / --main"
-                )
+                if dry_run:
+                    host_malvin = _ft_dry_run_stub_binary(run_root, "malvin")
+                else:
+                    raise click.ClickException(
+                        "No host malvin binary found (PATH or ~/.cargo/bin/malvin); "
+                        "build malvin on the host or use --agent=cursor / --main"
+                    )
     cmd = ft_docker_agent_cmd(
         image=image,
         workspace=workspace,
