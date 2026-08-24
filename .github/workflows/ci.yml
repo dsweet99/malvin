@@ -39,9 +39,9 @@ jobs:
       - name: pytest tests
         run: python -m pytest tests --tb=short -ra -q
 
-  rust-gates:
+  rust-lint:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -52,10 +52,6 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: nextest
-
       - name: cargo clippy
         run: cargo clippy --jobs 1 --all-targets --all-features -- -D warnings -W clippy::cargo
 
@@ -65,7 +61,31 @@ jobs:
       - name: kiss check
         run: kiss check
 
-      - name: malvin rust test gate
-        run: ./admin/malvin_rust_test_gate.sh
+  rust-test:
+    needs: rust-lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        partition: [1, 2]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.96.0
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+
+      - name: build test binaries
+        run: cargo test --no-run --all-targets
+
+      - name: malvin rust test gate partition
+        run: cargo nextest run --partition hash:${{ matrix.partition }}/2
         env:
           NEXTEST_RETRIES: "1"
