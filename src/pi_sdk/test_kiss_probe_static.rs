@@ -55,5 +55,7 @@ fn kiss_probe_static_models_refresh_tokens() {
     fetch_provider_models_sync();
     resolve_provider_api_key();
     authenticated_providers();
+    provider_supports_pi_live_model_fetch();
+    openai_compat_models_url();
     PI_MODEL_CACHE_TTL();
 }

@@ -15,6 +15,8 @@ fn kiss_cov_pi_sdk_discover_auth_models() {
     let _ = stringify!(resolve_provider_api_key);
     let _ = stringify!(authenticated_providers);
     let _ = stringify!(provider_needs_refresh);
+    let _ = stringify!(provider_supports_pi_live_model_fetch);
+    let _ = stringify!(openai_compat_models_url);
     let _ = stringify!(fetch_provider_models_sync);
     let _ = stringify!(static_registry_lookup);
     let _ = stringify!(append_live_models);

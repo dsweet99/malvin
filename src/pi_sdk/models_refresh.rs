@@ -89,6 +89,32 @@ fn authenticated_providers() -> Vec<&'static str> {
         .collect()
 }
 
+/// Whether Pi's OpenAI-compatible `/v1/models` probe can succeed for this provider.
+///
+/// Cursor is excluded: malvin lists Cursor models via `cursor-sdk-bridge`, and Pi's
+/// generic `{base_url}/models` probe against Cursor's `AgentService` endpoint returns
+/// HTTP 464 instead of a model catalog.
+fn provider_supports_pi_live_model_fetch(provider: &str) -> bool {
+    if provider.eq_ignore_ascii_case("cursor") {
+        return false;
+    }
+    let Some(defaults) = pi::provider_metadata::provider_routing_defaults(provider) else {
+        return false;
+    };
+    openai_compat_models_url(&defaults).is_some()
+}
+
+fn openai_compat_models_url(defaults: &pi::provider_metadata::ProviderRoutingDefaults) -> Option<String> {
+    let base = defaults.base_url.trim_end_matches('/');
+    if base.is_empty() {
+        return None;
+    }
+    if base.ends_with("/messages") || base.contains("/v1beta") || base.contains("googleapis.com") {
+        return None;
+    }
+    Some(format!("{base}/models"))
+}
+
 fn provider_needs_refresh(provider: &str, force: bool) -> bool {
     if force {
         return true;
@@ -117,6 +143,11 @@ fn fetch_provider_models_sync(provider: &str, force: bool) -> Vec<String> {
 pub(crate) fn refresh_pi_provider_caches_if_stale(force: bool) -> HashMap<String, Vec<String>> {
     let mut live = HashMap::new();
     for provider in authenticated_providers() {
+        if !provider_supports_pi_live_model_fetch(provider)
+            || resolve_provider_api_key(provider).trim().is_empty()
+        {
+            continue;
+        }
         if provider_needs_refresh(provider, force) {
             let ids = fetch_provider_models_sync(provider, true);
             if !ids.is_empty() {

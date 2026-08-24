@@ -10,6 +10,35 @@ use super::{
 };
 
 #[test]
+fn cursor_provider_is_excluded_from_live_fetch() {
+    crate::acp::with_env("CURSOR_API_KEY", Some("test-key"), || {
+        crate::test_utils::with_isolated_home(|_| {
+            let live = refresh_pi_provider_caches_if_stale(true);
+            assert!(
+                !live.contains_key("cursor"),
+                "cursor must not use Pi live fetch: {live:?}"
+            );
+        });
+    });
+}
+
+#[test]
+fn live_fetch_skips_providers_without_api_key() {
+    crate::test_utils::with_isolated_home(|_| {
+        crate::acp::with_env("OPENAI_API_KEY", None, || {
+            if !super::super::auth::is_provider_authenticated("openai") {
+                return;
+            }
+            let live = refresh_pi_provider_caches_if_stale(true);
+            assert!(
+                !live.contains_key("openai"),
+                "empty api key must skip live fetch: {live:?}"
+            );
+        });
+    });
+}
+
+#[test]
 fn provider_cache_round_trip_and_freshness() {
     crate::test_utils::with_isolated_home(|_| {
         save_provider_cache("openrouter", &["a".into(), "b".into()]);
