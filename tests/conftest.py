@@ -31,7 +31,10 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     """Stub Modal app lookup when host credentials are absent."""
     if _modal_credentials_configured():
         return
-    import modal
+    try:
+        import modal
+    except ImportError:
+        return
 
     session._modal_lookup_patcher = patch.object(  # type: ignore[attr-defined]
         modal.App, "lookup", return_value=MagicMock(name="modal_app")

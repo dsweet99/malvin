@@ -32,7 +32,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install Python tools
-        run: pip install pytest 'ruff==0.15.14'
+        run: pip install pytest 'ruff==0.15.14' click modal
 
       - name: ruff check
         run: ruff check
