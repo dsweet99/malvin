@@ -86,6 +86,7 @@ jobs:
         run: cargo test --no-run --all-targets
 
       - name: malvin rust test gate partition
-        run: cargo nextest run --partition hash:${{ matrix.partition }}/4
+        # Wall-clock cap per shard; runners are slower than local nextest.
+        run: timeout 40m cargo nextest run --partition hash:${{ matrix.partition }}/4
         env:
           NEXTEST_RETRIES: "1"
