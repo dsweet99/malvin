@@ -28,8 +28,13 @@ def _modal_credentials_configured() -> bool:
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:
-    """Stub Modal app lookup when host credentials are absent."""
-    if _modal_credentials_configured():
+    """Stub Modal app lookup for unit tests unless live Modal is requested.
+
+    Always stub under CI / when credentials are absent. Opt into live Modal with
+    ``MALVIN_LIVE_MODAL=1`` when credentials are configured.
+    """
+    live = os.environ.get("MALVIN_LIVE_MODAL", "") == "1"
+    if live and _modal_credentials_configured():
         return
     try:
         import modal

@@ -102,14 +102,33 @@ def _oracle_fix(workspace: Path) -> None:
     (workspace / "statsutil" / "__init__.py").write_text(ORACLE_INIT, encoding="utf-8")
 
 
+def _with_stub_kiss_if_needed(td: Path) -> None:
+    """Ensure ``kiss`` is on PATH for self-test when the host has no kiss-ai.
+
+    Real grading still requires a real ``kiss`` binary; evaluate() returns 0
+    when kiss is missing. Self-test only needs a successful exit from the
+    ``kiss check`` gate line so pytest / hidden-test logic can be verified.
+    """
+    if _kiss_available():
+        return
+    bin_dir = td / "bin"
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    stub = bin_dir / "kiss"
+    stub.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    stub.chmod(0o755)
+    os.environ["PATH"] = f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+
+
 def self_test() -> None:
     src = default_workspace()
     with tempfile.TemporaryDirectory() as td:
-        fail_ws = Path(td) / "fail"
+        td_path = Path(td)
+        _with_stub_kiss_if_needed(td_path)
+        fail_ws = td_path / "fail"
         shutil.copytree(src, fail_ws)
         assert evaluate(fail_ws) == 0, "starter must fail"
 
-        pass_ws = Path(td) / "pass"
+        pass_ws = td_path / "pass"
         shutil.copytree(src, pass_ws)
         _oracle_fix(pass_ws)
         assert evaluate(pass_ws) == 1, "oracle must pass"

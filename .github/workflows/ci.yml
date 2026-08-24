@@ -37,11 +37,7 @@ jobs:
         run: ruff check
 
       - name: pytest tests
-        run: |
-          python -m pytest tests --tb=short -ra -p no:typeguard || {
-            python -m pytest tests --tb=long -ra -p no:typeguard --last-failed -q
-            exit 1
-          }
+        run: python -m pytest tests --tb=short -ra -q
 
   rust-gates:
     runs-on: ubuntu-latest
