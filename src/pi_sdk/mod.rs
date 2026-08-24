@@ -6,6 +6,7 @@ mod map_agent_event;
 mod map_agent_event_end;
 mod map_event_summary;
 mod models_list;
+mod models_refresh;
 mod runtime;
 mod session;
 mod session_fake;
@@ -49,5 +50,7 @@ mod client_mock_tests;
 mod kiss_coverage_tests;
 #[cfg(test)]
 mod map_agent_event_tests;
+#[cfg(test)]
+mod session_drain_race_tests;
 #[cfg(test)]
 mod session_spawn_tests;

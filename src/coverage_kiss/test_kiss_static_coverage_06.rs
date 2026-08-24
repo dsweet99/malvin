@@ -26,6 +26,8 @@ fn kiss_cov_pi_sdk_client_mock_helpers() {
     pi_sdk_agent_end_before_ack_completes();
     pi_sdk_empty_assistant_result_clears_prior_response();
     pi_sdk_new_session_ack_idle_timeout();
+    agent_end_before_reply_oneshot_returns_ok();
+    minimal_session();
     run_hello_prompt();
     write_exec_script();
 }

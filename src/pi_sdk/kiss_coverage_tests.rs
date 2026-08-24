@@ -4,6 +4,22 @@ fn kiss_cov_pi_sdk_discover_auth_models() {
     let _ = super::auth::provider_auth_env_keys;
     let _ = super::list_pi_models_sync;
     let _ = super::pi_list_models_timeout;
+    let _ = super::models_refresh::refresh_pi_provider_caches_if_stale;
+    let _ = super::models_refresh::merge_registry_with_live;
+    let _ = super::models_refresh::load_provider_cache;
+    let _ = super::models_refresh::save_provider_cache;
+    let _ = stringify!(ProviderModelCache);
+    let _ = stringify!(cache_is_fresh);
+    let _ = stringify!(pi_model_cache_dir);
+    let _ = stringify!(pi_model_cache_path);
+    let _ = stringify!(resolve_provider_api_key);
+    let _ = stringify!(authenticated_providers);
+    let _ = stringify!(provider_needs_refresh);
+    let _ = stringify!(fetch_provider_models_sync);
+    let _ = stringify!(static_registry_lookup);
+    let _ = stringify!(append_live_models);
+    let _ = stringify!(append_static_models_without_live);
+    let _ = stringify!(PI_MODEL_CACHE_TTL);
     let _ = stringify!(PiModelListing);
     let _ = stringify!(DEFAULT_PI_LIST_MODELS_TIMEOUT_MS);
 }

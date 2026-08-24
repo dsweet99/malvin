@@ -39,3 +39,21 @@ fn kiss_probe_static_tokens_b() {
     leftover_pi_runtime_threads();
     session_spawn_tests::fake_session_begin_end_leaves_no_pi_runtime_thread();
 }
+
+#[test]
+fn kiss_probe_static_models_refresh_tokens() {
+    ProviderModelCache();
+    cache_is_fresh();
+    load_provider_cache();
+    save_provider_cache();
+    refresh_pi_provider_caches_if_stale();
+    merge_registry_with_live();
+    append_live_models();
+    append_static_models_without_live();
+    static_registry_lookup();
+    provider_needs_refresh();
+    fetch_provider_models_sync();
+    resolve_provider_api_key();
+    authenticated_providers();
+    PI_MODEL_CACHE_TTL();
+}

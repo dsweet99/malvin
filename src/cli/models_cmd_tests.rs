@@ -65,6 +65,11 @@ fn models_subcommand_parse_invokes_cli_helpers() {
     use clap::Parser;
     let cli = Cli::try_parse_from(["malvin", "models"]).expect("parse");
     assert!(matches!(cli.command, Some(Commands::Models(_))));
+    let refresh = Cli::try_parse_from(["malvin", "models", "--refresh", "pi:"]).expect("parse");
+    match refresh.command {
+        Some(Commands::Models(args)) => assert!(args.refresh),
+        _ => panic!("expected Models"),
+    }
 }
 
 #[cfg(unix)]

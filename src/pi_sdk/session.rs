@@ -74,7 +74,7 @@ impl Drop for PiEmbeddedSession {
     }
 }
 
-async fn drain_agent_events(
+pub(crate) async fn drain_agent_events(
     session: &PiEmbeddedSession,
     mut events_rx: mpsc::UnboundedReceiver<AgentEvent>,
     reply: tokio::sync::oneshot::Receiver<Result<(), String>>,
@@ -111,11 +111,10 @@ async fn drain_agent_events(
                 match event {
                     Ok(Some(event)) => {
                         if handle_mapped_events(session, &event)? {
-                            return finish_after_channel_closed(
-                                prompt_result.take().unwrap_or_else(|| {
-                                    Err("pi sdk runtime stopped".into())
-                                }),
-                            );
+                            // RunDone already validated status; the runtime reply
+                            // oneshot may still be pending (AgentEnd events arrive
+                            // before prompt_with_abort returns).
+                            return Ok(());
                         }
                         turn.check_max_deadline(DrainIdleLabels {
                             prefix: crate::acp::DRAIN_IDLE_PREFIX_PI,
