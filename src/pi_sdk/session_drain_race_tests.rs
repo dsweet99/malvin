@@ -24,6 +24,8 @@ fn minimal_session() -> PiEmbeddedSession {
         work_dir: std::env::temp_dir(),
         reader_dead: Arc::new(AtomicBool::new(false)),
         spawn_pid_baseline: HashSet::new(),
+        pi_provider: String::new(),
+        pi_model: String::new(),
     }
 }
 
@@ -31,7 +33,7 @@ fn minimal_session() -> PiEmbeddedSession {
 async fn agent_end_before_reply_oneshot_returns_ok() {
     let session = minimal_session();
     let (events_tx, events_rx) = mpsc::unbounded_channel();
-    for event in fake_events_for_prompt("AGENT_END_BEFORE_ACK") {
+    for event in fake_events_for_prompt("AGENT_END_BEFORE_ACK", "", "") {
         events_tx.send(event).expect("event");
     }
     drop(events_tx);

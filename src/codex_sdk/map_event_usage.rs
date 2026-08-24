@@ -45,9 +45,10 @@ fn copy_num(
     to: &str,
 ) {
     if let Some(v) = src.get(from)
-        && (v.as_u64().is_some() || v.as_i64().is_some() || v.as_f64().is_some()) {
-            dest.insert(to.to_string(), v.clone());
-        }
+        && (v.as_u64().is_some() || v.as_i64().is_some() || v.as_f64().is_some())
+    {
+        dest.insert(to.to_string(), v.clone());
+    }
 }
 
 #[cfg(test)]

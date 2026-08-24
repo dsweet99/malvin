@@ -4,7 +4,7 @@
 
 #[test]
 fn kiss_probe_static_tokens_a() {
-    fake_events_for_prompt();
+    fake_events_for_prompt("", "", "");
     empty_agent_end();
     streamed_hello_events();
     map_agent_end();
@@ -43,7 +43,8 @@ fn kiss_probe_static_tokens_b() {
 #[test]
 fn kiss_probe_static_models_refresh_tokens() {
     ProviderModelCache();
-    cache_is_fresh();
+    cache_fetched_at_is_fresh();
+    unix_now_secs();
     load_provider_cache();
     save_provider_cache();
     refresh_pi_provider_caches_if_stale();
@@ -58,4 +59,28 @@ fn kiss_probe_static_models_refresh_tokens() {
     provider_supports_pi_live_model_fetch();
     openai_compat_models_url();
     PI_MODEL_CACHE_TTL();
+}
+
+#[test]
+fn kiss_probe_static_openrouter_pricing_tokens() {
+    warm_openrouter_pricing_cache();
+    lookup_model_cost();
+    fetch_billed_cost_from_generation_ids();
+    GenerationResponse();
+    GenerationData();
+    aggregate_cost_usd();
+    AggregatedCostUsd();
+    OpenRouterModelsResponse();
+    OpenRouterModelEntry();
+    OpenRouterPricing();
+    PricingCache();
+    parse_rate_per_million();
+    model_cost_from_pricing();
+    load_cache();
+    save_cache();
+    fetch_live_pricing_sync();
+    fetch_live_pricing_async();
+    pricing_from_models_body();
+    openrouter_lookup_ids();
+    models_url();
 }

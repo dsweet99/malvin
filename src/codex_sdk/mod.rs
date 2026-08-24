@@ -28,7 +28,7 @@ mod map_event_tests;
 mod session_turn_tests;
 
 pub(crate) use auth::ensure_codex_authenticated;
-pub(crate) use discover::list_codex_models;
+pub(crate) use discover::list_codex_display_models;
 pub(crate) use session_io::{
     codex_delete_thread as delete_thread, codex_send_prompt as send_prompt,
     codex_write_abort as write_abort,

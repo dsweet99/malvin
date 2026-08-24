@@ -1,8 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 
+use super::cache_clock::{cache_fetched_at_is_fresh, unix_now_secs};
 use pi::auth::AuthStorage;
 use pi::sdk::{Config, ModelRegistry};
 use serde::{Deserialize, Serialize};
@@ -28,17 +29,6 @@ fn pi_model_cache_path(provider: &str) -> PathBuf {
     pi_model_cache_dir().join(format!("{provider}.json"))
 }
 
-fn now_secs() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs()
-}
-
-fn cache_is_fresh(fetched_at_secs: u64) -> bool {
-    now_secs().saturating_sub(fetched_at_secs) < PI_MODEL_CACHE_TTL.as_secs()
-}
-
 pub(crate) fn load_provider_cache(provider: &str) -> Option<ProviderModelCache> {
     let body = fs::read_to_string(pi_model_cache_path(provider)).ok()?;
     serde_json::from_str(&body).ok()
@@ -50,7 +40,7 @@ pub(crate) fn save_provider_cache(provider: &str, model_ids: &[String]) {
         return;
     }
     let payload = ProviderModelCache {
-        fetched_at_secs: now_secs(),
+        fetched_at_secs: unix_now_secs(),
         model_ids: model_ids.to_vec(),
     };
     let path = pi_model_cache_path(provider);
@@ -64,7 +54,7 @@ pub(crate) fn save_provider_cache(provider: &str, model_ids: &[String]) {
     }
 }
 
-fn resolve_provider_api_key(provider: &str) -> String {
+pub(crate) fn resolve_provider_api_key(provider: &str) -> String {
     if let Ok(auth) = AuthStorage::load(Config::auth_path())
         && let Some(key) = auth.api_key(provider)
         && !key.trim().is_empty()
@@ -121,7 +111,7 @@ fn provider_needs_refresh(provider: &str, force: bool) -> bool {
     }
     !matches!(
         load_provider_cache(provider),
-        Some(cache) if cache_is_fresh(cache.fetched_at_secs)
+        Some(cache) if cache_fetched_at_is_fresh(cache.fetched_at_secs, PI_MODEL_CACHE_TTL)
     )
 }
 

@@ -32,7 +32,7 @@ pub(crate) const fn models_args_marker(_args: &ModelsArgs) -> &'static str {
 }
 
 fn print_codex_models(filter: Option<&str>) {
-    match crate::codex_sdk::list_codex_models() {
+    match crate::codex_sdk::list_codex_display_models() {
         Ok(models) => {
             for (id, name) in models {
                 let line = format!("codex:{id}\t{name}");

@@ -1,5 +1,6 @@
 mod copy;
 mod npm;
+mod pi_patch;
 mod sync;
 
 use std::env;
@@ -40,6 +41,7 @@ pub fn run_build_script() {
     println!("cargo:rerun-if-env-changed=HOME");
 
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR"));
+    pi_patch::apply_pi_openrouter_cost_patch(&manifest_dir);
     emit_rerun_if_changed(&manifest_dir);
 
     if env::var_os("DOCS_RS").is_some() {

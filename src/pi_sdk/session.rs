@@ -23,6 +23,8 @@ pub(crate) struct PiEmbeddedSession {
     pub(crate) work_dir: PathBuf,
     pub(crate) reader_dead: Arc<AtomicBool>,
     pub(crate) spawn_pid_baseline: HashSet<u32>,
+    pub(crate) pi_provider: String,
+    pub(crate) pi_model: String,
 }
 
 impl PiEmbeddedSession {
@@ -226,7 +228,7 @@ pub(crate) fn finish_run_done(log: &StreamLog, ev: &BridgeEvent) -> Result<(), A
 
 async fn send_fake_prompt(session: &PiEmbeddedSession, prompt: &str) -> Result<(), AgentError> {
     let (tx, rx) = mpsc::unbounded_channel();
-    for event in fake_events_for_prompt(prompt) {
+    for event in fake_events_for_prompt(prompt, &session.pi_provider, &session.pi_model) {
         let _ = tx.send(event);
     }
     drop(tx);

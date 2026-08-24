@@ -74,11 +74,14 @@ pub(super) fn reported_cost_usd(
     obj: &serde_json::Map<String, serde_json::Value>,
 ) -> Option<ReportedCostUsd> {
     let cost = obj.get("costUsd")?.as_object()?;
-    let input = f64_field(cost, "input")?;
-    let output = f64_field(cost, "output")?;
+    let input = f64_field(cost, "input").unwrap_or(0.0);
+    let output = f64_field(cost, "output").unwrap_or(0.0);
     let cache_read = f64_field(cost, "cacheRead").unwrap_or(0.0);
     let cache_write = f64_field(cost, "cacheWrite").unwrap_or(0.0);
     let total = f64_field(cost, "total").unwrap_or(input + output + cache_read + cache_write);
+    if total == 0.0 && input == 0.0 && output == 0.0 && cache_read == 0.0 && cache_write == 0.0 {
+        return None;
+    }
     Some(ReportedCostUsd {
         input,
         output,
@@ -208,6 +211,20 @@ mod unit_tests {
         assert_eq!(cost.cache_read, 0.0);
         assert_eq!(cost.cache_write, 0.0);
         assert_eq!(cost.total, 0.3);
+    }
+
+    #[test]
+    #[allow(clippy::float_cmp)]
+    fn reported_cost_usd_accepts_total_only_payload() {
+        let obj = serde_json::json!({
+            "costUsd": {
+                "total": 0.0042
+            }
+        });
+        let cost = reported_cost_usd(obj.as_object().expect("obj")).expect("cost");
+        assert_eq!(cost.total, 0.0042);
+        assert_eq!(cost.input, 0.0);
+        assert_eq!(cost.output, 0.0);
     }
 
     #[test]
