@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Duration;
 
 use async_trait::async_trait;
 use pi::sdk::{
@@ -8,6 +7,10 @@ use pi::sdk::{
 };
 use pi::tools::ToolEffects;
 use serde_json::Value;
+
+#[path = "isolated_bash_exec.rs"]
+mod isolated_bash_exec;
+pub(crate) use isolated_bash_exec::{interrupt_active_isolated_bash, run_isolated_bash};
 
 pub(crate) struct IsolatedToolFactory;
 
@@ -79,87 +82,6 @@ impl Tool for IsolatedBash {
     }
 }
 
-fn spawn_isolated_shell(cwd: &Path, command: &str) -> pi::sdk::Result<std::process::Child> {
-    let shell = isolated_shell();
-    let mut cmd = crate::malvin_sandbox::malvin_std_command(shell);
-    cmd.arg("-c")
-        .arg(command)
-        .current_dir(cwd)
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped());
-    cmd.spawn().map_err(|e| {
-        pi::error::Error::tool("bash", format!("Failed to spawn isolated shell: {e}"))
-    })
-}
-
-fn tool_text_output(text: String, output: &std::process::Output) -> ToolOutput {
-    ToolOutput {
-        content: vec![pi::model::ContentBlock::Text(pi::model::TextContent::new(
-            text,
-        ))],
-        details: Some(serde_json::json!({
-            "exitCode": output.status.code().unwrap_or(-1),
-            "isolated": true,
-        })),
-        is_error: !output.status.success(),
-    }
-}
-
-fn run_isolated_bash(
-    cwd: &Path,
-    command: &str,
-    timeout_secs: Option<u64>,
-    on_update: Option<&(dyn Fn(ToolUpdate) + Send + Sync)>,
-) -> pi::sdk::Result<ToolOutput> {
-    let timeout = match timeout_secs {
-        None => Some(Duration::from_mins(2)),
-        Some(0) => None,
-        Some(secs) => Some(Duration::from_secs(secs)),
-    };
-    let child = spawn_isolated_shell(cwd, command)?;
-    #[cfg(unix)]
-    crate::acp::note_session_affiliated_pid(child.id());
-    let output = wait_isolated_output(child, timeout)?;
-    let text = format!(
-        "{}{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    if let Some(cb) = on_update {
-        cb(ToolUpdate {
-            content: vec![pi::model::ContentBlock::Text(pi::model::TextContent::new(
-                text.clone(),
-            ))],
-            details: None,
-        });
-    }
-    Ok(tool_text_output(text, &output))
-}
-
-fn isolated_shell() -> &'static str {
-    for path in ["/bin/bash", "/usr/bin/bash", "/usr/local/bin/bash"] {
-        if Path::new(path).exists() {
-            return path;
-        }
-    }
-    "sh"
-}
-
-fn wait_isolated_output(
-    child: std::process::Child,
-    timeout: Option<Duration>,
-) -> pi::sdk::Result<std::process::Output> {
-    let Some(limit) = timeout else {
-        let child = child;
-        return child
-            .wait_with_output()
-            .map_err(|e| pi::error::Error::tool("bash", format!("isolated bash wait: {e}")));
-    };
-    crate::command_output_timeout::wait_piped_child_with_timeout(child, limit, "isolated bash")
-        .map_err(|e| pi::error::Error::tool("bash", e))
-}
-
 #[must_use]
 pub(crate) fn isolated_tool_factory() -> Arc<dyn ToolFactory> {
     Arc::new(IsolatedToolFactory)
@@ -167,9 +89,16 @@ pub(crate) fn isolated_tool_factory() -> Arc<dyn ToolFactory> {
 
 #[cfg(test)]
 mod tests {
-    use super::isolated_shell;
-    use super::{run_isolated_bash, spawn_isolated_shell, wait_isolated_output};
+    use super::isolated_bash_exec::{
+        interrupt_active_isolated_bash, isolated_shell, reap_isolated_shell_process_group,
+        run_isolated_bash, spawn_isolated_shell, wait_isolated_output,
+    };
     use std::time::{Duration, Instant};
+
+    #[test]
+    fn interrupt_with_no_active_shell_is_noop() {
+        interrupt_active_isolated_bash();
+    }
 
     #[test]
     fn isolated_shell_is_nonempty() {
@@ -207,5 +136,106 @@ mod tests {
             panic!("expected text output");
         };
         assert!(text.text.len() >= 131_072);
+    }
+
+    #[test]
+    fn timeout_zero_uses_default_cap() {
+        let dir = tempfile::tempdir().expect("tmpdir");
+        let started = Instant::now();
+        run_isolated_bash(dir.path(), "sleep 2", Some(0), None).expect("bash with timeout 0");
+        assert!(
+            started.elapsed() >= Duration::from_secs(2),
+            "timeout 0 must use the default cap and wait for the command"
+        );
+        assert!(
+            started.elapsed() < Duration::from_mins(2),
+            "timeout 0 must not disable the wall-clock cap"
+        );
+    }
+
+    #[test]
+    fn kpop_timeout_positive_caps_long_sleep() {
+        let dir = tempfile::tempdir().expect("tmpdir");
+        let started = Instant::now();
+        let err = run_isolated_bash(dir.path(), "sleep 5", Some(2), None)
+            .expect_err("timeout 2 must cap sleep 5");
+        assert!(
+            started.elapsed() < Duration::from_secs(4),
+            "positive timeout must fail before sleep finishes: {:?}",
+            started.elapsed()
+        );
+        let _ = err;
+    }
+
+    #[test]
+    fn run_isolated_bash_reaps_background_sleep() {
+        let dir = tempfile::tempdir().expect("tmpdir");
+        run_isolated_bash(dir.path(), "sleep 30 &", Some(5), None).expect("bash");
+        std::thread::sleep(Duration::from_millis(200));
+        let pgrep = std::process::Command::new("pgrep")
+            .args(["-f", "sleep 30"])
+            .output()
+            .expect("pgrep");
+        assert!(
+            pgrep.stdout.is_empty(),
+            "background sleep must be reaped when isolated bash returns"
+        );
+    }
+
+    #[test]
+    fn background_sleep_not_in_affiliation_set() {
+        use crate::acp::{
+            clear_session_spawn_affiliation_for_test, is_session_affiliated_pid,
+            note_session_affiliated_pid, refresh_session_spawn_affiliation,
+        };
+        clear_session_spawn_affiliation_for_test();
+        let dir = tempfile::tempdir().expect("tmpdir");
+        let baseline = crate::malvin_sandbox::malvin_spawn_baseline();
+        let mut child = spawn_isolated_shell(dir.path(), "sleep 30 &").expect("spawn");
+        note_session_affiliated_pid(child.id());
+        std::thread::sleep(Duration::from_millis(500));
+        let _ = child.try_wait().expect("wait");
+        refresh_session_spawn_affiliation(None, &baseline);
+        let pgrep = std::process::Command::new("pgrep")
+            .args(["-f", "sleep 30"])
+            .output()
+            .expect("pgrep");
+        let sleep_pids: Vec<u32> = String::from_utf8_lossy(&pgrep.stdout)
+            .split_whitespace()
+            .filter_map(|s| s.parse().ok())
+            .collect();
+        assert!(
+            !sleep_pids.is_empty(),
+            "precondition: background sleep must be running before reap"
+        );
+        assert!(
+            sleep_pids
+                .iter()
+                .all(|pid| !is_session_affiliated_pid(*pid)),
+            "background sleep must not be in affiliation set (only shell PID was noted): {sleep_pids:?}"
+        );
+        reap_isolated_shell_process_group(child.id());
+        clear_session_spawn_affiliation_for_test();
+    }
+
+    #[test]
+    fn background_job_reaped_after_isolated_shell() {
+        let dir = tempfile::tempdir().expect("tmpdir");
+        let mut child = spawn_isolated_shell(dir.path(), "sleep 30 &").expect("spawn");
+        let shell_pgid = child.id();
+        std::thread::sleep(Duration::from_millis(500));
+        assert!(
+            child.try_wait().expect("wait").is_some(),
+            "shell must exit while background sleep keeps running"
+        );
+        reap_isolated_shell_process_group(shell_pgid);
+        let pgrep = std::process::Command::new("pgrep")
+            .args(["-f", "sleep 30"])
+            .output()
+            .expect("pgrep");
+        assert!(
+            pgrep.stdout.is_empty(),
+            "background sleep must be reaped after isolated shell exits"
+        );
     }
 }

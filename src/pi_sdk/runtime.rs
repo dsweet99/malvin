@@ -1,4 +1,5 @@
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::JoinHandle;
 
 use pi::sdk::{AbortHandle, AgentEvent, AgentSessionHandle, SessionOptions};
@@ -17,7 +18,13 @@ struct PromptCmd {
 pub(crate) struct PiRuntime {
     cmd_tx: std::sync::mpsc::Sender<PiCmd>,
     abort: Arc<Mutex<Option<AbortHandle>>>,
+    shutdown_requested: Arc<AtomicBool>,
     thread: Option<JoinHandle<()>>,
+}
+
+struct PiLoopCtl {
+    abort: Arc<Mutex<Option<AbortHandle>>>,
+    shutdown_requested: Arc<AtomicBool>,
 }
 
 impl PiRuntime {
@@ -25,10 +32,16 @@ impl PiRuntime {
         let (cmd_tx, cmd_rx) = std::sync::mpsc::channel();
         let (ready_tx, ready_rx) = std::sync::mpsc::channel();
         let abort = Arc::new(Mutex::new(None));
-        let abort_for_thread = Arc::clone(&abort);
+        let shutdown_requested = Arc::new(AtomicBool::new(false));
+        let ctl = PiLoopCtl {
+            abort: Arc::clone(&abort),
+            shutdown_requested: Arc::clone(&shutdown_requested),
+        };
         let thread = std::thread::Builder::new()
             .name("malvin-pi-sdk".into())
-            .spawn(move || run_pi_thread(options, cmd_rx, ready_tx, abort_for_thread))
+            .spawn(move || {
+                run_pi_thread(options, cmd_rx, ready_tx, ctl);
+            })
             .map_err(|e| format!("pi sdk thread: {e}"))?;
         ready_rx
             .recv()
@@ -36,6 +49,7 @@ impl PiRuntime {
         Ok(Self {
             cmd_tx,
             abort,
+            shutdown_requested,
             thread: Some(thread),
         })
     }
@@ -68,6 +82,9 @@ impl PiRuntime {
     }
 
     pub(crate) fn shutdown(&mut self) {
+        self.shutdown_requested.store(true, Ordering::SeqCst);
+        self.abort();
+        super::isolated_bash::interrupt_active_isolated_bash();
         let _ = self.cmd_tx.send(PiCmd::Shutdown);
         if let Some(thread) = self.thread.take() {
             let _ = thread.join();
@@ -85,7 +102,7 @@ fn run_pi_thread(
     options: SessionOptions,
     cmd_rx: std::sync::mpsc::Receiver<PiCmd>,
     ready_tx: std::sync::mpsc::Sender<Result<(), String>>,
-    abort: Arc<Mutex<Option<AbortHandle>>>,
+    ctl: PiLoopCtl,
 ) {
     let runtime = match asupersync::runtime::RuntimeBuilder::current_thread().build() {
         Ok(runtime) => runtime,
@@ -97,7 +114,7 @@ fn run_pi_thread(
     match runtime.block_on(pi::sdk::create_agent_session(options)) {
         Ok(handle) => {
             let _ = ready_tx.send(Ok(()));
-            serve_session(runtime, handle, cmd_rx, abort);
+            serve_session(runtime, handle, cmd_rx, &ctl);
         }
         Err(e) => {
             let _ = ready_tx.send(Err(format!("pi create_agent_session: {e}")));
@@ -109,31 +126,52 @@ fn serve_session(
     runtime: asupersync::runtime::Runtime,
     mut handle: AgentSessionHandle,
     cmd_rx: std::sync::mpsc::Receiver<PiCmd>,
-    abort: Arc<Mutex<Option<AbortHandle>>>,
+    ctl: &PiLoopCtl,
 ) {
     while let Ok(cmd) = cmd_rx.recv() {
         match cmd {
             PiCmd::Shutdown => break,
-            PiCmd::Prompt(prompt) => run_prompt(&runtime, &mut handle, prompt, &abort),
+            PiCmd::Prompt(prompt) => {
+                run_prompt(&runtime, &mut handle, prompt, ctl);
+            }
         }
     }
+}
+
+fn take_test_prompt_if_blocked(prompt: PromptCmd, ctl: &PiLoopCtl) -> Option<PromptCmd> {
+    if let Ok(secs) = std::env::var("MALVIN_TEST_PI_PROMPT_BLOCK_SECS")
+        && let Ok(secs) = secs.parse::<u64>()
+    {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(secs);
+        while std::time::Instant::now() < deadline
+            && !ctl.shutdown_requested.load(Ordering::SeqCst)
+        {
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        let _ = prompt.reply.send(Ok(()));
+        return None;
+    }
+    Some(prompt)
 }
 
 fn run_prompt(
     runtime: &asupersync::runtime::Runtime,
     handle: &mut AgentSessionHandle,
     prompt: PromptCmd,
-    abort: &Arc<Mutex<Option<AbortHandle>>>,
+    ctl: &PiLoopCtl,
 ) {
+    let Some(prompt) = take_test_prompt_if_blocked(prompt, ctl) else {
+        return;
+    };
     let (abort_handle, signal) = AgentSessionHandle::new_abort_handle();
-    *abort
+    *ctl.abort
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(abort_handle);
     let events = prompt.events;
     let result = runtime.block_on(handle.prompt_with_abort(prompt.text, signal, move |event| {
         let _ = events.send(event);
     }));
-    *abort
+    *ctl.abort
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
     let _ = prompt

@@ -1,7 +1,25 @@
+use std::collections::HashMap;
+use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{LazyLock, Mutex};
+use std::thread::ThreadId;
 
 use crate::acp_spawn_sweep::{acp_spawn_chamber_dir, ensure_acp_spawn_chamber_gitignore};
+
+#[path = "acp_spawn_lock_peer.rs"]
+mod acp_spawn_lock_peer;
+#[path = "acp_spawn_lock_probe.rs"]
+mod acp_spawn_lock_probe;
+
+pub use acp_spawn_lock_peer::{
+    assert_no_peer_acp_spawn_lock, assert_no_peer_acp_spawn_lock_for_slot,
+};
+use acp_spawn_lock_probe::{LockProbe, probe_existing_acp_spawn_lock};
+
+const ACQUIRE_MAX_ATTEMPTS: usize = 4;
+
+pub(crate) static IN_PROCESS_ACP_LOCK_SLOTS: LazyLock<Mutex<HashMap<String, ThreadId>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 static ACTIVE_ACP_LOCK_SLOT: Mutex<Option<String>> = Mutex::new(None);
 
@@ -25,78 +43,100 @@ pub(crate) fn acp_spawn_lock_path(work_dir: &Path, slot: &str) -> PathBuf {
     acp_spawn_chamber_dir(work_dir).join(format!("{slot}.lock"))
 }
 
-pub fn assert_no_peer_acp_spawn_lock(work_dir: &Path) -> Result<(), String> {
-    assert_no_peer_acp_spawn_lock_for_slot(work_dir, &active_acp_lock_slot())
-}
-
-pub fn assert_no_peer_acp_spawn_lock_for_slot(work_dir: &Path, slot: &str) -> Result<(), String> {
-    let path = acp_spawn_lock_path(work_dir, slot);
-    let Ok(contents) = std::fs::read_to_string(&path) else {
-        return Ok(());
-    };
-    let Some(holder_pid) = contents.trim().parse::<u32>().ok() else {
-        let _ = std::fs::remove_file(&path);
-        return Ok(());
-    };
-    let self_pid = std::process::id();
-    if holder_pid == self_pid {
-        return Ok(());
-    }
-    #[cfg(unix)]
-    if crate::acp::pid_alive(holder_pid) {
-        if crate::acp::is_ancestor_pid(holder_pid, self_pid) {
-            return Ok(());
-        }
-        return Err(format!(
-            "ACP spawn lock held by pid {holder_pid} at {}; another malvin session cannot spawn another agent on this lock slot while it is active in this workspace",
-            path.display()
-        ));
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = holder_pid;
-    }
-    let _ = std::fs::remove_file(&path);
-    Ok(())
-}
-
 pub(crate) fn acquire_acp_spawn_lock(work_dir: &Path) -> Result<(), String> {
     acquire_acp_spawn_lock_for_slot(work_dir, &active_acp_lock_slot())
 }
 
+fn register_in_process_lock(slot: &str) {
+    IN_PROCESS_ACP_LOCK_SLOTS
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .insert(slot.to_string(), std::thread::current().id());
+}
+
+fn try_create_lock_file(path: &Path, slot: &str, self_pid: u32) -> Result<Option<()>, String> {
+    match std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+    {
+        Ok(mut file) => {
+            writeln!(file, "{self_pid}").map_err(|e| e.to_string())?;
+            register_in_process_lock(slot);
+            Ok(Some(()))
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => Ok(None),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
 pub fn acquire_acp_spawn_lock_for_slot(work_dir: &Path, slot: &str) -> Result<(), String> {
-    assert_no_peer_acp_spawn_lock_for_slot(work_dir, slot)?;
     let path = acp_spawn_lock_path(work_dir, slot);
     let self_pid = std::process::id();
-    if let Ok(contents) = std::fs::read_to_string(&path)
-        && let Ok(holder_pid) = contents.trim().parse::<u32>() {
-            #[cfg(unix)]
-            if holder_pid != self_pid
-                && crate::acp::pid_alive(holder_pid)
-                && crate::acp::is_ancestor_pid(holder_pid, self_pid)
-            {
-                return Ok(());
-            }
-            #[cfg(not(unix))]
-            let _ = holder_pid;
-        }
     let chamber = acp_spawn_chamber_dir(work_dir);
     std::fs::create_dir_all(&chamber).map_err(|e| e.to_string())?;
     ensure_acp_spawn_chamber_gitignore(&chamber)?;
-    std::fs::write(&path, self_pid.to_string()).map_err(|e| e.to_string())
+
+    for _ in 0..ACQUIRE_MAX_ATTEMPTS {
+        match probe_existing_acp_spawn_lock(&path, slot, self_pid) {
+            LockProbe::Held => return Ok(()),
+            LockProbe::Busy(err) => return Err(err),
+            LockProbe::InProgress => {
+                std::thread::sleep(std::time::Duration::from_millis(1));
+                continue;
+            }
+            LockProbe::Stale => {
+                let _ = std::fs::remove_file(&path);
+            }
+            LockProbe::Missing => {}
+        }
+
+        if try_create_lock_file(&path, slot, self_pid)?.is_some() {
+            return Ok(());
+        }
+    }
+
+    Err(format!(
+        "ACP spawn lock busy at {}; another malvin session cannot spawn another agent on this lock slot while it is active in this workspace",
+        path.display()
+    ))
 }
 
 pub fn release_acp_spawn_lock(work_dir: &Path, slot: &str) {
+    IN_PROCESS_ACP_LOCK_SLOTS
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .remove(slot);
     let path = acp_spawn_lock_path(work_dir, slot);
     if let Ok(contents) = std::fs::read_to_string(&path)
-        && contents.trim() == std::process::id().to_string() {
-            let _ = std::fs::remove_file(&path);
-        }
+        && contents.trim() == std::process::id().to_string()
+    {
+        let _ = std::fs::remove_file(&path);
+    }
+}
+
+#[cfg(unix)]
+pub fn wait_for_dir_entry_count(dir: &Path, count: usize) {
+    while std::fs::read_dir(dir).map_or(0, std::iter::Iterator::count) < count {
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::{Arc, Barrier};
+
+    fn spawn_concurrent_acquire(
+        barrier: Arc<Barrier>,
+        work_path: PathBuf,
+        slot: &'static str,
+    ) -> std::thread::JoinHandle<Result<(), String>> {
+        std::thread::spawn(move || {
+            barrier.wait();
+            acquire_acp_spawn_lock_for_slot(&work_path, slot)
+        })
+    }
 
     #[cfg(unix)]
     #[test]
@@ -161,5 +201,42 @@ mod tests {
         assert_no_peer_acp_spawn_lock_for_slot(work, &parent_slot).expect("descendant must pass");
         acquire_acp_spawn_lock_for_slot(work, &parent_slot).expect("descendant acquire");
         release_acp_spawn_lock(work, &parent_slot);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn acp_spawn_lock_toctou_probe_from_env() {
+        let Some(work) = std::env::var_os("MALVIN_ACP_LOCK_TOCTOU_PROBE") else {
+            return;
+        };
+        let work = Path::new(&work);
+        let slot =
+            std::env::var("MALVIN_ACP_LOCK_TOCTOU_SLOT").unwrap_or_else(|_| "kpop_toctou".into());
+        let ready_dir = std::env::var("MALVIN_ACP_LOCK_TOCTOU_READY_DIR").expect("ready dir");
+        let ready_dir = Path::new(&ready_dir);
+        std::fs::create_dir_all(ready_dir).expect("ready dir");
+        std::fs::write(ready_dir.join(std::process::id().to_string()), b"1").expect("ready");
+        wait_for_dir_entry_count(ready_dir, 2);
+        acquire_acp_spawn_lock_for_slot(work, &slot).expect("child acquire");
+        release_acp_spawn_lock(work, &slot);
+    }
+
+    #[test]
+    fn acp_spawn_lock_toctou_rejects_concurrent_acquire() {
+        crate::test_utils::with_isolated_home(|work| {
+            let slot = "kpop_toctou";
+            let barrier = Arc::new(Barrier::new(2));
+            let work_path = work.to_path_buf();
+            let t0 = spawn_concurrent_acquire(Arc::clone(&barrier), work_path.clone(), slot);
+            let t1 = spawn_concurrent_acquire(barrier, work_path, slot);
+            let r0 = t0.join().expect("thread 0");
+            let r1 = t1.join().expect("thread 1");
+            let successes = usize::from(r0.is_ok()) + usize::from(r1.is_ok());
+            assert_eq!(
+                successes, 1,
+                "exactly one concurrent acquire must succeed: {r0:?} {r1:?}"
+            );
+            release_acp_spawn_lock(work, slot);
+        });
     }
 }

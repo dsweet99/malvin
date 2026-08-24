@@ -81,6 +81,7 @@ async fn drain_agent_events(
 ) -> Result<(), AgentError> {
     tokio::pin!(reply);
     let mut prompt_result: Option<Result<(), String>> = None;
+    let mut turn = crate::bridge_sdk::DrainIdleTurn::new();
     loop {
         if session.reader_dead.load(Ordering::SeqCst) {
             session.runtime.as_ref().inspect(|runtime| runtime.abort());
@@ -93,7 +94,7 @@ async fn drain_agent_events(
         // re-awaiting it elsewhere would panic ("called after complete");
         // instead the outcome is cached in `prompt_result` and reused by the
         // exit paths. `biased` + reply-first makes that ordering deterministic.
-        let next = recv_event_with_idle(session, &mut events_rx);
+        let next = recv_event_with_idle(session, &mut events_rx, &mut turn);
         tokio::select! {
             biased;
             done = &mut reply, if prompt_result.is_none() => {
@@ -116,6 +117,10 @@ async fn drain_agent_events(
                                 }),
                             );
                         }
+                        turn.check_max_deadline(DrainIdleLabels {
+                            prefix: crate::acp::DRAIN_IDLE_PREFIX_PI,
+                            waiting_for: "agent_end",
+                        })?;
                     }
                     Ok(None) => {
                         // Reply not yet cached means the first arm never won;
@@ -145,6 +150,7 @@ async fn drain_agent_events(
 async fn recv_event_with_idle(
     session: &PiEmbeddedSession,
     events_rx: &mut mpsc::UnboundedReceiver<AgentEvent>,
+    turn: &mut crate::bridge_sdk::DrainIdleTurn,
 ) -> Result<Option<AgentEvent>, AgentError> {
     let labels = DrainIdleLabels {
         prefix: crate::acp::DRAIN_IDLE_PREFIX_PI,
@@ -154,8 +160,13 @@ async fn recv_event_with_idle(
         process_group_id: None,
         spawn_pid_baseline: &session.spawn_pid_baseline,
     });
-    crate::bridge_sdk::await_next_with_idle(labels, health, async { Ok(events_rx.recv().await) })
-        .await
+    crate::bridge_sdk::await_next_with_idle_in_turn(
+        labels,
+        health,
+        async { Ok(events_rx.recv().await) },
+        turn,
+    )
+    .await
 }
 
 fn handle_mapped_events(

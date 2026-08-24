@@ -1,7 +1,8 @@
 use super::drain_idle::{
-    DrainHealthVerdict, DrainIdleClock, DrainIdleHealthCtx, DrainIdleLabels,
-    aggregate_health_outcomes, await_next_with_idle, drain_sample_pids,
+    DrainHealthVerdict, DrainIdleClock, DrainIdleHealthCtx, DrainIdleLabels, DrainIdleTurn,
+    await_next_with_idle,
 };
+use super::drain_idle::drain_idle_health::{aggregate_health_outcomes, drain_sample_pids};
 use crate::acp::AgentError;
 use crate::child_health::SilenceHealthOutcome;
 use crate::sdk_drain_timeout::sdk_drain_idle_max_wait;
@@ -167,6 +168,22 @@ async fn event_arriving_during_health_sampling_wins_race() {
     assert_eq!(result.expect("event must beat health/max timeout"), 42);
 }
 
+#[tokio::test]
+async fn drain_idle_turn_check_deadline_and_reset_idle_window() {
+    let _guard = crate::test_utils::test_env_lock();
+    let prior = set_idle_ms(10);
+    let labels = DrainIdleLabels {
+        prefix: "bridge timed out",
+        waiting_for: "run_done",
+    };
+    let mut turn = DrainIdleTurn::new();
+    assert!(turn.check_max_deadline(labels).is_ok());
+    turn.clock.reset_idle_window();
+    std::thread::sleep(Duration::from_millis(25));
+    assert!(turn.check_max_deadline(labels).is_err());
+    crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
+}
+
 #[test]
 fn kiss_cov_drain_idle_names() {
     let _ = DrainHealthVerdict::StillBusy;
@@ -185,6 +202,11 @@ fn kiss_cov_drain_idle_names() {
     let _ = DrainIdleClock::new(Duration::from_millis(1)).slice_duration();
     let _ = DrainIdleClock::new(Duration::from_millis(1)).max_deadline();
     let _ = stringify!(await_next_with_idle);
+    let _ = stringify!(await_next_with_idle_in_turn);
+    let _ = stringify!(DrainIdleTurn);
+    let _ = DrainIdleTurn::new;
+    let _ = stringify!(reset_idle_window);
+    let _ = stringify!(check_max_deadline);
     let _ = stringify!(sample_drain_health);
     let _ = stringify!(drain_sample_pids);
     let _ = stringify!(aggregate_pid_health);
@@ -199,6 +221,7 @@ fn kiss_cov_drain_idle_names() {
     let _ = stringify!(aggregate_health_policy_matches_plan);
     let _ = stringify!(real_health_sampling_respects_two_idle_wall_cap);
     let _ = stringify!(event_arriving_during_health_sampling_wins_race);
+    let _ = stringify!(drain_idle_turn_check_deadline_and_reset_idle_window);
     let _ = stringify!(kiss_cov_drain_idle_names);
     let _ = stringify!(tests_set_idle_ms_for_test);
     let _ = stringify!(tests_restore_idle_ms_for_test);

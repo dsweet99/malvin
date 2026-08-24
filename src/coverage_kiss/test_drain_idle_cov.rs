@@ -5,8 +5,12 @@ fn kiss_cov_drain_idle_witness_a() {
     DrainHealthVerdict();
     DrainIdleLabels();
     DrainIdleHealthCtx();
+    DrainIdleTurn();
     DrainIdleClock();
     silence_error();
+    await_next_with_idle_in_turn();
+    reset_idle_window();
+    check_max_deadline();
     await_next_with_idle();
     await_next_with_idle_using();
     sample_drain_health();
@@ -32,7 +36,8 @@ fn kiss_cov_drain_idle_witness_b() {
     injected_hung_health_waits_full_idle();
     missing_pgid_gets_no_health_extend();
     repeated_busy_health_stops_at_exactly_two_idle_windows();
-    successful_event_starts_a_fresh_next_event_idle_budget();
+    shared_turn_budget_caps_cumulative_event_wall_time();
+    drain_idle_turn_check_deadline_and_reset_idle_window();
     real_health_sampling_respects_two_idle_wall_cap();
     event_arriving_during_health_sampling_wins_race();
 }
@@ -42,7 +47,7 @@ fn kiss_cov_drain_idle_witness_c() {
     kiss_cov_drain_idle_names();
     progress_events_keep_drain_alive_past_idle_budget();
     injected_busy_health_extends_then_delivers_event();
-    progress_allows_more_than_ten_minutes_without_prompt_ceiling();
+    continuous_events_hit_cumulative_turn_deadline();
     maps_progress_for_protocol_compatibility();
     run_progress_prompt();
     tests_set_idle_ms_for_test();

@@ -173,6 +173,13 @@ fn kiss_exec_witness_04_09() {
     TimingPhase();
     AcpStepProxy();
     CostPolicy();
+    AcpUsageFields();
+    ReportedCostUsd();
+    reasoning_is_additive();
+    reported_cost_usd();
+    add_optional_sum();
+    u64_field();
+    record_acp_usage_rate_estimate();
     format_token_field();
     format_cost_field();
     token_fields_fragment();

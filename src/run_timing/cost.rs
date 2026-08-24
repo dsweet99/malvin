@@ -26,19 +26,63 @@ fn input_tokens_for_cost(r: &RunTiming) -> u64 {
         .saturating_sub(cache_write)
 }
 
+const fn has_reported_cost_components(r: &RunTiming) -> bool {
+    r.reported_cost_in.is_some()
+        || r.reported_cost_out.is_some()
+        || r.reported_cost_read.is_some()
+        || r.reported_cost_write.is_some()
+}
+
+const fn has_estimated_cost_components(r: &RunTiming) -> bool {
+    r.estimated_cost_in.is_some()
+        || r.estimated_cost_out.is_some()
+        || r.estimated_cost_read.is_some()
+        || r.estimated_cost_write.is_some()
+}
+
 const fn has_cost_observation(r: &RunTiming) -> bool {
     r.tokens_in.is_some()
         || r.tokens_out.is_some()
         || r.cache_read.is_some()
         || r.cache_write.is_some()
+        || r.reasoning_tokens.is_some()
         || !r.tx_costs.is_empty()
+        || has_reported_cost_components(r)
+        || has_estimated_cost_components(r)
         || r.unknown_tx_count > 0
+}
+
+fn merged_cost_stats(r: &RunTiming, source: &str) -> serde_json::Value {
+    let cost_in = r.reported_cost_in.unwrap_or(0.0) + r.estimated_cost_in.unwrap_or(0.0);
+    let cost_out = r.reported_cost_out.unwrap_or(0.0) + r.estimated_cost_out.unwrap_or(0.0);
+    let cost_read = r.reported_cost_read.unwrap_or(0.0) + r.estimated_cost_read.unwrap_or(0.0);
+    let cost_write = r.reported_cost_write.unwrap_or(0.0) + r.estimated_cost_write.unwrap_or(0.0);
+    let cost_tot = cost_in + cost_out + cost_read + cost_write;
+    let tx_count = u64::try_from(r.tx_costs.len()).unwrap_or(u64::MAX);
+    serde_json::json!({
+        "cost_in": cost_in,
+        "cost_out": cost_out,
+        "cost_read": cost_read,
+        "cost_write": cost_write,
+        "cost_tot": cost_tot,
+        "tx_count": tx_count,
+        "unknown_tx_count": r.unknown_tx_count,
+        "source": source,
+    })
 }
 
 #[must_use]
 pub fn cost_stats(r: &RunTiming) -> Option<serde_json::Value> {
     if !has_cost_observation(r) {
         return None;
+    }
+    if has_reported_cost_components(r) {
+        let source = if has_estimated_cost_components(r) {
+            "mixed"
+        } else {
+            "reported"
+        };
+        return Some(merged_cost_stats(r, source));
     }
     let (cost_in, cost_out, cost_read, cost_write) = r.token_cost_rates.estimate_components(
         input_tokens_for_cost(r),
@@ -118,6 +162,37 @@ mod tests {
         assert!((stats["cost_read"].as_f64().unwrap() - 0.0002).abs() < 1e-12);
         assert!((stats["cost_write"].as_f64().unwrap() - 0.0005).abs() < 1e-12);
         assert!((stats["cost_tot"].as_f64().unwrap() - 0.0167).abs() < 1e-12);
+    }
+
+    #[test]
+    #[allow(clippy::float_cmp)]
+    fn cost_stats_prefers_reported_usd_components() {
+        let r = RunTiming {
+            reported_cost_in: Some(0.01),
+            reported_cost_out: Some(0.02),
+            reported_cost_read: Some(0.001),
+            reported_cost_write: Some(0.0),
+            tx_costs: vec![0.031],
+            ..Default::default()
+        };
+        let stats = cost_stats(&r).expect("stats");
+        assert_eq!(stats["source"], "reported");
+        assert!((stats["cost_tot"].as_f64().unwrap() - 0.031).abs() < 1e-12);
+    }
+
+    #[test]
+    #[allow(clippy::float_cmp)]
+    fn cost_stats_merges_reported_and_estimated_components() {
+        let r = RunTiming {
+            reported_cost_in: Some(0.01),
+            estimated_cost_in: Some(10.0),
+            tx_costs: vec![0.01, 10.0],
+            ..Default::default()
+        };
+        let stats = cost_stats(&r).expect("stats");
+        assert_eq!(stats["source"], "mixed");
+        assert!((stats["cost_in"].as_f64().unwrap() - 10.01).abs() < 1e-12);
+        assert!((stats["cost_tot"].as_f64().unwrap() - 10.01).abs() < 1e-12);
     }
 
     #[test]

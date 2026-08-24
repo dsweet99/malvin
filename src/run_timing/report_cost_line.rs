@@ -37,8 +37,12 @@ fn token_fields_fragment(json: &Value) -> String {
         || "n/a".to_string(),
         |t| format_token_field(t, "cache_write"),
     );
+    let reasoning = tokens.map_or_else(
+        || "n/a".to_string(),
+        |t| format_token_field(t, "reasoning"),
+    );
     format!(
-        "steps = {steps} tokens_in = {tokens_in} tokens_out = {tokens_out} cache_read = {cache_read} cache_write = {cache_write}"
+        "steps = {steps} tokens_in = {tokens_in} tokens_out = {tokens_out} cache_read = {cache_read} cache_write = {cache_write} reasoning = {reasoning}"
     )
 }
 
@@ -90,7 +94,7 @@ mod tests {
         assert!(line.starts_with(RUN_COST_SUMMARY_PREFIX));
         assert_eq!(
             line,
-            "COST: steps = 9 tokens_in = 221270 tokens_out = 15003 cache_read = 1200 cache_write = 80 cost_in = 0.0500 cost_out = 0.0300 cost_read = 0.0020 cost_write = 0.0022 cost_tot = 0.0842"
+            "COST: steps = 9 tokens_in = 221270 tokens_out = 15003 cache_read = 1200 cache_write = 80 reasoning = n/a cost_in = 0.0500 cost_out = 0.0300 cost_read = 0.0020 cost_write = 0.0022 cost_tot = 0.0842"
         );
     }
 
@@ -99,7 +103,7 @@ mod tests {
         let line = format_cost_stdout_line_from_json(&json!({}));
         assert_eq!(
             line,
-            "COST: steps = 0 tokens_in = n/a tokens_out = n/a cache_read = n/a cache_write = n/a cost_in = n/a cost_out = n/a cost_read = n/a cost_write = n/a cost_tot = n/a"
+            "COST: steps = 0 tokens_in = n/a tokens_out = n/a cache_read = n/a cache_write = n/a reasoning = n/a cost_in = n/a cost_out = n/a cost_read = n/a cost_write = n/a cost_tot = n/a"
         );
     }
 

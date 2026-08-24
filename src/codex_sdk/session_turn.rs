@@ -15,8 +15,9 @@ pub(super) struct TurnState {
 
 pub(super) async fn consume_codex_turn(session: &BridgeSession) -> Result<(), AgentError> {
     let mut state = TurnState::default();
+    let mut turn = crate::bridge_sdk::DrainIdleTurn::new();
     loop {
-        let value = super::session_io::read_json_waiting(session, "turn event").await?;
+        let value = super::session_io::read_json_waiting(session, "turn event", &mut turn).await?;
         if let Some(err) = rpc_error(&value) {
             return Err(err);
         }
@@ -24,6 +25,10 @@ pub(super) async fn consume_codex_turn(session: &BridgeSession) -> Result<(), Ag
         if let Some(result) = handle_codex_event(session, &value, &mut state) {
             return result;
         }
+        turn.check_max_deadline(crate::bridge_sdk::DrainIdleLabels {
+            prefix: crate::acp::DRAIN_IDLE_PREFIX_CODEX,
+            waiting_for: "turn event",
+        })?;
     }
 }
 

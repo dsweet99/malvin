@@ -33,6 +33,16 @@ pub fn looks_like_md_file_path_arg(arg: &str) -> bool {
         && !md_path_has_invalid_components(Path::new(trimmed))
 }
 
+fn md_path_is_within_cwd(cwd: &Path, path: &Path) -> bool {
+    let Ok(cwd_canon) = cwd.canonicalize() else {
+        return false;
+    };
+    let Ok(path_canon) = path.canonicalize() else {
+        return false;
+    };
+    path_canon == cwd_canon || path_canon.starts_with(&cwd_canon)
+}
+
 #[must_use]
 #[allow(clippy::case_sensitive_file_extension_comparisons)]
 pub fn is_existing_md_file_path(arg: &str) -> Option<PathBuf> {
@@ -47,7 +57,13 @@ pub fn is_existing_md_file_path(arg: &str) -> Option<PathBuf> {
     } else {
         cwd.join(path)
     };
-    resolved.is_file().then_some(resolved)
+    if !resolved.is_file() {
+        return None;
+    }
+    if !md_path_is_within_cwd(&cwd, &resolved) {
+        return None;
+    }
+    Some(resolved)
 }
 
 pub fn resolve_user_md_request(arg: &str) -> Result<(String, PathBuf), String> {
@@ -84,6 +100,27 @@ mod tests {
         assert!(md_path_has_invalid_components(Path::new("../x.md")));
         assert!(md_path_has_invalid_components(Path::new("./x.md")));
         assert!(!md_path_has_invalid_components(Path::new("dir/x.md")));
+    }
+
+    #[test]
+    fn resolve_user_md_request_rejects_symlink_outside_cwd() {
+        #[cfg(unix)]
+        {
+            use super::is_existing_md_file_path;
+            use std::os::unix::fs::symlink;
+            let _guard = crate::test_utils::test_env_lock();
+            let tmp = tempfile::tempdir().unwrap();
+            let outside = tempfile::tempdir().unwrap();
+            std::fs::write(outside.path().join("secret.md"), "stolen").unwrap();
+            let old_cwd = std::env::current_dir().unwrap();
+            std::env::set_current_dir(tmp.path()).unwrap();
+            symlink(outside.path().join("secret.md"), tmp.path().join("steal.md")).unwrap();
+            assert!(is_existing_md_file_path("steal.md").is_none());
+            let (text, wd) = resolve_user_md_request("steal.md").unwrap();
+            assert_eq!(text, "steal.md");
+            assert_eq!(wd, std::path::PathBuf::from("."));
+            std::env::set_current_dir(old_cwd).unwrap();
+        }
     }
 
     #[test]

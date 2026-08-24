@@ -11,7 +11,19 @@ keywords = ["malvin"]
 categories = ["development-tools"]
 # Broken local symlinks under .cursor/ break `cargo package` when present as
 # untracked files; keep them out of the published crate.
-exclude = [".cursor/", ".cursorrules"]
+exclude = [
+    ".cursor/",
+    ".cursorrules",
+    ".malvin/incomplete_handoff_*",
+    ".malvin/fast_task_results/",
+    ".requested_plan.md",
+    "opt_prog.md",
+    "plan.md",
+    "report-disc.md",
+    "report.md",
+    "summary-ft.md",
+    "bugs.md",
+]
 # Agent backends need the Node bridge under cursor-sdk-bridge/.
 # build.rs installs @cursor/sdk into ~/.malvin_home/sdk-bridges/
 # during cargo build / cargo install when in-tree bridges are not already built

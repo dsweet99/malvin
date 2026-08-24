@@ -55,7 +55,7 @@ fn cost_line_uses_na_when_never_observed() {
     let line = format_cost_stdout_line_from_json(&json);
     assert_eq!(
         line,
-        "COST: steps = 0 tokens_in = n/a tokens_out = n/a cache_read = n/a cache_write = n/a cost_in = n/a cost_out = n/a cost_read = n/a cost_write = n/a cost_tot = n/a"
+        "COST: steps = 0 tokens_in = n/a tokens_out = n/a cache_read = n/a cache_write = n/a reasoning = n/a cost_in = n/a cost_out = n/a cost_read = n/a cost_write = n/a cost_tot = n/a"
     );
 }
 
@@ -87,6 +87,6 @@ fn cost_line_shows_cache_fields_and_estimated_cost_after_sdk_shaped_usage() {
     let line = format_cost_stdout_line_from_json(&json);
     assert_eq!(
         line,
-        "COST: steps = 0 tokens_in = 13 tokens_out = 3 cache_read = 2 cache_write = 1 cost_in = 0.0100 cost_out = 0.0060 cost_read = 0.0002 cost_write = 0.0005 cost_tot = 0.0167"
+        "COST: steps = 0 tokens_in = 13 tokens_out = 3 cache_read = 2 cache_write = 1 reasoning = n/a cost_in = 0.0100 cost_out = 0.0060 cost_read = 0.0002 cost_write = 0.0005 cost_tot = 0.0167"
     );
 }

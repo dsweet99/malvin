@@ -1,3 +1,4 @@
+mod acp_usage;
 mod cost;
 mod lifecycle;
 mod report;
@@ -65,6 +66,15 @@ pub struct RunTiming {
     pub(crate) tokens_out: Option<u64>,
     pub(crate) cache_read: Option<u64>,
     pub(crate) cache_write: Option<u64>,
+    pub(crate) reasoning_tokens: Option<u64>,
+    pub(crate) reported_cost_in: Option<f64>,
+    pub(crate) reported_cost_out: Option<f64>,
+    pub(crate) reported_cost_read: Option<f64>,
+    pub(crate) reported_cost_write: Option<f64>,
+    pub(crate) estimated_cost_in: Option<f64>,
+    pub(crate) estimated_cost_out: Option<f64>,
+    pub(crate) estimated_cost_read: Option<f64>,
+    pub(crate) estimated_cost_write: Option<f64>,
     pub(crate) tool_call_starts: u64,
     pub(crate) usage_tx_count: u32,
     pub(crate) unknown_usage_tx_count: u32,
@@ -95,6 +105,15 @@ impl Default for RunTiming {
             tokens_out: None,
             cache_read: None,
             cache_write: None,
+            reasoning_tokens: None,
+            reported_cost_in: None,
+            reported_cost_out: None,
+            reported_cost_read: None,
+            reported_cost_write: None,
+            estimated_cost_in: None,
+            estimated_cost_out: None,
+            estimated_cost_read: None,
+            estimated_cost_write: None,
             tool_call_starts: 0,
             usage_tx_count: 0,
             unknown_usage_tx_count: 0,
@@ -167,6 +186,8 @@ impl RunTiming {
         report::write_json_only(self, run_dir)
     }
 }
+
+pub(crate) use tokens::acp_usage_payload_is_observable;
 
 pub use cost::record_completion_cost;
 pub use lifecycle::{

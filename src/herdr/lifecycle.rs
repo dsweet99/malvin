@@ -4,7 +4,7 @@ use std::sync::{Mutex, OnceLock};
 use super::bind::emit_bind_reports;
 use super::env::HerdrEnv;
 use super::request::{clear_metadata_teardown, next_seq, report_agent};
-use super::send::{send_request, send_request_checked};
+use super::send::send_request_checked;
 use super::trace::log_herdr_failure;
 use serde_json::Value;
 
@@ -101,7 +101,7 @@ fn notify_working_inner() {
     let Some(snap) = active_snapshot() else {
         return;
     };
-    send_request(
+    if let Err(detail) = send_request_checked(
         &snap.socket_path,
         &report_agent(
             &snap.pane_id,
@@ -109,7 +109,9 @@ fn notify_working_inner() {
             snap.agent_session_id.as_deref(),
             next_seq(),
         ),
-    );
+    ) {
+        log_herdr_failure(snap.run_dir.as_deref(), "working", &detail);
+    }
 }
 
 pub fn notify_run_end() {

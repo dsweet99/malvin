@@ -131,6 +131,7 @@ pub(crate) async fn write_json(
 pub(crate) async fn read_json_waiting(
     session: &BridgeSession,
     waiting_for: &str,
+    turn: &mut crate::bridge_sdk::DrainIdleTurn,
 ) -> Result<serde_json::Value, AgentError> {
     let labels = crate::bridge_sdk::DrainIdleLabels {
         prefix: crate::acp::DRAIN_IDLE_PREFIX_CODEX,
@@ -140,7 +141,13 @@ pub(crate) async fn read_json_waiting(
         process_group_id: session.process_group_id,
         spawn_pid_baseline: &session.spawn_pid_baseline,
     });
-    crate::bridge_sdk::await_next_with_idle(labels, health, read_json_line(session)).await
+    crate::bridge_sdk::await_next_with_idle_in_turn(
+        labels,
+        health,
+        read_json_line(session),
+        turn,
+    )
+    .await
 }
 
 async fn read_json_line(session: &BridgeSession) -> Result<serde_json::Value, AgentError> {

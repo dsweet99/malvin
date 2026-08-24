@@ -103,6 +103,8 @@ fn kiss_exec_witness_01_06() {
 #[test]
 fn kiss_exec_witness_01_07() {
     terminate_agent_process_group_kills_sleep_child();
+    terminate_blocking_kills_note_affiliated_pid_without_pgid();
+    async_teardown_kills_affiliated_pid_without_pgid();
     baseline_amnestied_agent_acp_orphan_killed_on_teardown();
     malvin_sibling_outside_agent_pg_killed_on_teardown();
     busy_session_with_dead_transport();

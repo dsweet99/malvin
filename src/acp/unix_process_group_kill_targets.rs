@@ -14,6 +14,8 @@ pub(crate) use session_spawn_affiliation::{
     note_session_affiliated_pid, refresh_session_spawn_affiliation,
     session_affiliated_or_agent_acp,
 };
+#[cfg(test)]
+pub(crate) use session_spawn_affiliation::clear_session_spawn_affiliation_for_test;
 
 pub(crate) fn descendant_pids(roots: &HashSet<u32>, rows: &[ProcRow]) -> HashSet<u32> {
     let mut children: HashMap<u32, Vec<u32>> = HashMap::new();

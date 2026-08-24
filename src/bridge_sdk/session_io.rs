@@ -3,7 +3,7 @@ use crate::acp::AgentError;
 use super::session::BridgeSession;
 use super::timing::{note_sdk_step, record_sdk_usage};
 use crate::bridge_protocol::{BridgeEvent, BridgeRequest, decode_event, encode_request};
-use crate::sdk_drain_timeout::sdk_bridge_startup_timeout;
+use super::session_handshake::wait_for_ok;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
 
 pub(crate) struct CreateArgs<'a> {
@@ -82,51 +82,34 @@ pub(crate) async fn read_event(session: &BridgeSession) -> Result<BridgeEvent, A
     decode_event(line.trim()).map_err(AgentError)
 }
 
-async fn read_event_with_timeout(
-    session: &BridgeSession,
-    waiting_for: &str,
-    timeout: std::time::Duration,
-) -> Result<BridgeEvent, AgentError> {
-    tokio::time::timeout(timeout, read_event(session))
-        .await
-        .unwrap_or_else(|_| {
-            Err(AgentError(format!(
-                "{} waiting for {waiting_for} after {timeout:?} of silence",
-                crate::acp::DRAIN_IDLE_PREFIX_BRIDGE
-            )))
-        })
-}
-
-async fn wait_for_ok(session: &BridgeSession) -> Result<(), AgentError> {
-    loop {
-        match read_event_with_timeout(session, "ok", sdk_bridge_startup_timeout()).await? {
-            BridgeEvent::Ok { agent_id } => {
-                if let Some(id) = agent_id {
-                    *session
-                        .agent_id
-                        .lock()
-                        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(id);
-                }
-                return Ok(());
-            }
-            BridgeEvent::Fatal { message, .. } => return Err(AgentError(message)),
-            _ => {}
-        }
-    }
-}
-
 pub(crate) async fn drain_until_run_done(session: &BridgeSession) -> Result<(), AgentError> {
     use super::log_adapter::handle_stream_event;
+    let mut turn = super::DrainIdleTurn::new();
+    let mut last_usage: Option<serde_json::Value> = None;
+    let labels = super::DrainIdleLabels {
+        prefix: crate::acp::DRAIN_IDLE_PREFIX_BRIDGE,
+        waiting_for: "run_done",
+    };
     loop {
-        let ev = read_event_with_idle_timeout(session, "run_done").await?;
+        let ev = read_event_with_idle_timeout(session, "run_done", &mut turn).await?;
         match &ev {
             BridgeEvent::Step { .. } => note_sdk_step(session.timing.as_ref()),
-            BridgeEvent::RunDone { .. } => return finish_run_done(session, &ev),
+            BridgeEvent::Usage { usage } => {
+                last_usage = Some(usage.clone());
+                handle_stream_event(session, &ev);
+                turn.check_max_deadline(labels)?;
+            }
+            BridgeEvent::RunDone { .. } => {
+                return finish_run_done(session, &ev, last_usage.as_ref());
+            }
             BridgeEvent::Fatal { message, .. } => {
                 discard_optional_trailing_run_done(session).await;
                 return Err(AgentError(message.clone()));
             }
-            _ => handle_stream_event(session, &ev),
+            _ => {
+                handle_stream_event(session, &ev);
+                turn.check_max_deadline(labels)?;
+            }
         }
     }
 }
@@ -134,6 +117,7 @@ pub(crate) async fn drain_until_run_done(session: &BridgeSession) -> Result<(), 
 async fn read_event_with_idle_timeout(
     session: &BridgeSession,
     waiting_for: &str,
+    turn: &mut super::DrainIdleTurn,
 ) -> Result<BridgeEvent, AgentError> {
     let labels = super::DrainIdleLabels {
         prefix: crate::acp::DRAIN_IDLE_PREFIX_BRIDGE,
@@ -143,7 +127,7 @@ async fn read_event_with_idle_timeout(
         process_group_id: session.process_group_id,
         spawn_pid_baseline: &session.spawn_pid_baseline,
     });
-    super::await_next_with_idle(labels, health, read_event(session)).await
+    super::await_next_with_idle_in_turn(labels, health, read_event(session), turn).await
 }
 
 async fn discard_optional_trailing_run_done(session: &BridgeSession) {
@@ -160,7 +144,11 @@ pub(crate) const fn run_done_status_is_failure(status: crate::bridge_protocol::R
     status.is_failure()
 }
 
-fn finish_run_done(session: &BridgeSession, ev: &BridgeEvent) -> Result<(), AgentError> {
+fn finish_run_done(
+    session: &BridgeSession,
+    ev: &BridgeEvent,
+    last_usage: Option<&serde_json::Value>,
+) -> Result<(), AgentError> {
     let BridgeEvent::RunDone {
         status,
         result,
@@ -171,7 +159,11 @@ fn finish_run_done(session: &BridgeSession, ev: &BridgeEvent) -> Result<(), Agen
     else {
         return Ok(());
     };
-    if let Some(u) = usage {
+    let effective_usage = match usage {
+        Some(v) if crate::run_timing::acp_usage_payload_is_observable(v) => Some(v),
+        _ => last_usage,
+    };
+    if let Some(u) = effective_usage {
         record_sdk_usage(session.timing.as_ref(), u);
     }
     *session

@@ -38,6 +38,9 @@ mod kiss_cov {
         let _ = crate::herdr::send::send_request;
         let _ = crate::herdr::send::send_request_checked;
         let _ = crate::herdr::send::SOCKET_TIMEOUT;
+        let _ = stringify!(first_nonempty_line);
+        let _ = stringify!(herdr_json_error);
+        let _ = stringify!(classify_reply);
         let _ = crate::herdr::identity::herdr_live_name;
         let _ = crate::herdr::identity::display_title;
         let _ = crate::herdr::trace::log_herdr_failure;

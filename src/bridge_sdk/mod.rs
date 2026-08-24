@@ -2,6 +2,7 @@ mod drain_idle;
 mod log_adapter;
 mod log_adapter_tool;
 mod session;
+mod session_handshake;
 mod session_io;
 mod stream_log;
 mod timing;
@@ -16,7 +17,11 @@ mod drain_idle_policy_tests;
 
 #[cfg(test)]
 pub(crate) use drain_idle::{DrainHealthVerdict, await_next_with_idle_using};
-pub(crate) use drain_idle::{DrainIdleHealthCtx, DrainIdleLabels, await_next_with_idle};
+pub(crate) use drain_idle::{
+    DrainIdleHealthCtx, DrainIdleLabels, DrainIdleTurn, await_next_with_idle_in_turn,
+};
+#[cfg(test)]
+pub(crate) use drain_idle::DrainIdleClock;
 
 pub(crate) use log_adapter::{feed_do_dm_run_result, handle_stream_event};
 pub use session::{BridgeSession, BridgeSpawnArgs, BridgeWire, SDK_BRIDGE_MAX_AGE, ToolCallStart};

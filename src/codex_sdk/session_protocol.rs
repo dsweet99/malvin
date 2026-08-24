@@ -68,11 +68,20 @@ pub(crate) async fn request(
         &serde_json::json!({"method": method, "id": id, "params": params}),
     )
     .await?;
+    let mut turn = crate::bridge_sdk::DrainIdleTurn::new();
     loop {
-        let value = super::session_io::read_json_waiting(session, "rpc reply").await?;
+        turn.check_max_deadline(crate::bridge_sdk::DrainIdleLabels {
+            prefix: crate::acp::DRAIN_IDLE_PREFIX_CODEX,
+            waiting_for: "rpc reply",
+        })?;
+        let value = super::session_io::read_json_waiting(session, "rpc reply", &mut turn).await?;
         if value.get("id").and_then(serde_json::Value::as_u64) == Some(id) {
             return Ok(value);
         }
+        turn.check_max_deadline(crate::bridge_sdk::DrainIdleLabels {
+            prefix: crate::acp::DRAIN_IDLE_PREFIX_CODEX,
+            waiting_for: "rpc reply",
+        })?;
     }
 }
 

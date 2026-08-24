@@ -38,6 +38,10 @@ fn kiss_cov_pi_sdk_session_core() {
     let _ = stringify!(isolated_tool_factory);
     let _ = stringify!(PiEmbeddedSession);
     let _ = stringify!(PiRuntime);
+    let _ = stringify!(PiLoopCtl);
+    let _ = stringify!(PromptCmd);
+    let _ = stringify!(take_test_prompt_if_blocked);
+    let _ = stringify!(pi_blocking_session_options);
     let _ = stringify!(map_pi_agent_event);
     let _ = stringify!(pi_sdk_client_from_raw);
     let _ = crate::bridge_sdk::BridgeWire::NodeBridge;

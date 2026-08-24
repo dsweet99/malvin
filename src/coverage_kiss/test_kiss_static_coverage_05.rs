@@ -144,6 +144,13 @@ fn kiss_cov_pi_sdk_spawn() {
     IsolatedBash();
     PiEmbeddedSession();
     PiRuntime();
+    PiLoopCtl();
+    PromptCmd();
+    isolated_shell_is_nonempty();
+    interrupt_active_isolated_bash();
+    acp_spawn_lock_round_trip();
+    acp_spawn_lock_toctou_rejects_concurrent_acquire();
+    spawn_concurrent_acquire();
 }
 
 #[test]

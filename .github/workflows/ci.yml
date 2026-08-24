@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  MALVIN_SKIP_SDK_BRIDGES: "1"
+  MALVIN_SKIP_DOCKER_SELFTESTS: "1"
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.96.0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tools
+        run: |
+          pip install pytest ruff
+          cargo install kiss-ai --version 0.4.9 --locked
+
+      - name: ruff check
+        run: ruff check
+
+      - name: kiss check
+        run: kiss check
+
+      - name: cargo clippy
+        run: cargo clippy --jobs 3 --all-targets --all-features -- -D warnings -W clippy::cargo
+
+      - name: pytest tests
+        run: pytest tests
+
+      - name: malvin rust test gate
+        run: ./admin/malvin_rust_test_gate.sh

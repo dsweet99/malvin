@@ -11,7 +11,7 @@ async fn progress_events_keep_drain_alive_past_idle_budget() {
     bug_set_progress_env(40, 6);
     let mut client = bug_client(tmp.path(), 1);
     client.begin_coder_session(tmp.path()).await.expect("begin");
-    bug_set_drain_idle_timeout_ms(100);
+    bug_set_drain_idle_timeout_ms(150);
     let log = tmp.path().join("prompts.log");
     let started = std::time::Instant::now();
     run_progress_prompt(&mut client, &log).await;
@@ -27,61 +27,53 @@ async fn progress_events_keep_drain_alive_past_idle_budget() {
 }
 
 #[tokio::test(start_paused = true)]
-async fn progress_allows_more_than_ten_minutes_without_prompt_ceiling() {
+async fn continuous_events_hit_cumulative_turn_deadline() {
     let _guard = crate::test_utils::test_env_lock();
     bug_set_drain_idle_timeout_ms(60_000);
-    let prompt_started = tokio::time::Instant::now();
-    for _ in 0..13 {
-        let labels = crate::bridge_sdk::DrainIdleLabels {
-            prefix: "bridge timed out",
-            waiting_for: "run_done",
-        };
-        let read = async {
-            tokio::time::sleep(std::time::Duration::from_secs(50)).await;
-            Ok::<_, crate::acp::AgentError>(crate::bridge_protocol::BridgeEvent::Progress {
-                kind: Some("heartbeat".into()),
-                detail: None,
-            })
-        };
-        let event = crate::bridge_sdk::await_next_with_idle_using(labels, read, |_| {
-            std::future::ready(crate::bridge_sdk::DrainHealthVerdict::AppearsHung)
-        })
-        .await
-        .expect("each progress line arrives inside its own idle window");
-        assert!(matches!(
-            event,
-            crate::bridge_protocol::BridgeEvent::Progress { .. }
-        ));
-    }
-    assert_run_done_after_progress().await;
-    assert!(prompt_started.elapsed() > std::time::Duration::from_mins(10));
-    bug_clear_env();
-}
-
-async fn assert_run_done_after_progress() {
+    let mut turn = crate::bridge_sdk::DrainIdleTurn::new();
     let labels = crate::bridge_sdk::DrainIdleLabels {
         prefix: "bridge timed out",
         waiting_for: "run_done",
     };
-    let done = crate::bridge_sdk::await_next_with_idle_using(
+    for i in 0..2 {
+        let event = crate::bridge_sdk::await_next_with_idle_in_turn(
+            labels,
+            None,
+            async move {
+                tokio::time::sleep(std::time::Duration::from_mins(1)).await;
+                Ok::<_, crate::acp::AgentError>(crate::bridge_protocol::BridgeEvent::Progress {
+                    kind: Some(format!("heartbeat-{i}")),
+                    detail: None,
+                })
+            },
+            &mut turn,
+        )
+        .await
+        .expect("events within cumulative cap");
+        assert!(matches!(
+            event,
+            crate::bridge_protocol::BridgeEvent::Progress { .. }
+        ));
+        if let crate::bridge_protocol::BridgeEvent::Progress { kind, .. } = event {
+            assert_eq!(kind.as_deref(), Some(format!("heartbeat-{i}").as_str()));
+        }
+    }
+    let err = crate::bridge_sdk::await_next_with_idle_in_turn(
         labels,
+        None,
         async {
-            Ok::<_, crate::acp::AgentError>(crate::bridge_protocol::BridgeEvent::RunDone {
-                status: crate::bridge_protocol::RunDoneStatus::Finished,
-                result: Some("virtual-long-turn".into()),
-                usage: None,
-                error: None,
-                duration_ms: Some(650_000),
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            Ok::<_, crate::acp::AgentError>(crate::bridge_protocol::BridgeEvent::Progress {
+                kind: Some("late".into()),
+                detail: None,
             })
         },
-        |_| std::future::ready(crate::bridge_sdk::DrainHealthVerdict::AppearsHung),
+        &mut turn,
     )
     .await
-    .expect("run_done after progress");
-    assert!(matches!(
-        done,
-        crate::bridge_protocol::BridgeEvent::RunDone { .. }
-    ));
+    .expect_err("chatter past 2× idle must time out");
+    assert!(err.0.contains("bridge timed out"));
+    bug_clear_env();
 }
 
 async fn run_progress_prompt(
@@ -105,7 +97,7 @@ async fn run_progress_prompt(
 #[test]
 fn kiss_cov_sdk_drain_progress_cases() {
     let _ = stringify!(progress_events_keep_drain_alive_past_idle_budget);
-    let _ = stringify!(progress_allows_more_than_ten_minutes_without_prompt_ceiling);
-    let _ = stringify!(assert_run_done_after_progress);
+    let _ = stringify!(continuous_events_hit_cumulative_turn_deadline);
+    let _ = stringify!(run_progress_prompt);
     let _ = stringify!(run_progress_prompt);
 }

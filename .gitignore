@@ -3,6 +3,15 @@ target/
 **/*.py[cod]
 **/*.rs.bk
 .malvin/logs/
+.malvin/incomplete_handoff_*
+.malvin/fast_task_results/
+.requested_plan.md
+opt_prog.md
+plan.md
+report-disc.md
+report.md
+summary-ft.md
+bugs.md
 .malvin_checks
 /log
 /log_2

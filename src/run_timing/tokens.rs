@@ -1,14 +1,9 @@
 use crate::llm_transport::ResponseUsage;
 
+use super::acp_usage::{
+    AcpUsageFields, add_optional_sum, reported_cost_usd, u64_field, usage_payload_is_observable,
+};
 use super::{AcpStepProxy, RunTiming};
-
-fn u64_field(obj: &serde_json::Map<String, serde_json::Value>, key: &str) -> Option<u64> {
-    obj.get(key).and_then(serde_json::Value::as_u64)
-}
-
-fn add_optional_sum(slot: &mut Option<u64>, n: u64) {
-    *slot = Some(slot.unwrap_or(0).saturating_add(n));
-}
 
 impl RunTiming {
     pub fn record_completion_step(&mut self, usage: Option<&ResponseUsage>) {
@@ -65,54 +60,48 @@ impl RunTiming {
         let Some(obj) = usage.as_object() else {
             return;
         };
-        let input = u64_field(obj, "inputTokens");
-        let output = u64_field(obj, "outputTokens");
-        let cache_read = u64_field(obj, "cacheReadTokens");
-        let cache_write = u64_field(obj, "cacheWriteTokens");
-        if input.is_none() && output.is_none() && cache_read.is_none() && cache_write.is_none() {
+        let fields = AcpUsageFields {
+            input: u64_field(obj, "inputTokens"),
+            output: u64_field(obj, "outputTokens"),
+            cache_read: u64_field(obj, "cacheReadTokens"),
+            cache_write: u64_field(obj, "cacheWriteTokens"),
+            reasoning: u64_field(obj, "reasoningTokens"),
+            total: u64_field(obj, "totalTokens"),
+            skip_rate_estimate: false,
+        };
+        let reported = reported_cost_usd(obj);
+        if !usage_payload_is_observable(obj) {
             return;
         }
-        self.apply_acp_usage_fields(input, output, cache_read, cache_write);
-    }
-
-    fn apply_acp_usage_fields(
-        &mut self,
-        input: Option<u64>,
-        output: Option<u64>,
-        cache_read: Option<u64>,
-        cache_write: Option<u64>,
-    ) {
-        self.usage_tx_count = self.usage_tx_count.saturating_add(1);
-        let input_n = input.unwrap_or(0);
-        let output_n = output.unwrap_or(0);
-        let cache_read_n = cache_read.unwrap_or(0);
-        let cache_write_n = cache_write.unwrap_or(0);
-        let tokens_in = input_n + cache_read_n + cache_write_n;
-        if input.is_some() || cache_read.is_some() || cache_write.is_some() {
-            add_optional_sum(&mut self.tokens_in, tokens_in);
-        }
-        if let Some(n) = cache_read {
-            add_optional_sum(&mut self.cache_read, n);
-        }
-        if let Some(n) = cache_write {
-            add_optional_sum(&mut self.cache_write, n);
-        }
-        if let Some(n) = output {
-            add_optional_sum(&mut self.tokens_out, n);
-        }
-        if matches!(self.cost_policy, super::CostPolicy::EstimateFromRates) {
-            let estimated =
-                self.token_cost_rates
-                    .estimate_usd(input_n, output_n, cache_read_n, cache_write_n);
-            self.tx_costs.push(estimated);
-        } else if matches!(self.cost_policy, super::CostPolicy::Zero) {
-            self.tx_costs.push(0.0);
+        let fields = AcpUsageFields {
+            skip_rate_estimate: reported.is_some(),
+            ..fields
+        };
+        self.apply_acp_usage_fields(fields);
+        if let Some(cost) = reported {
+            self.record_reported_cost_usd(&cost);
         }
     }
 }
 
+pub(crate) fn acp_usage_payload_is_observable(usage: &serde_json::Value) -> bool {
+    usage
+        .as_object()
+        .is_some_and(usage_payload_is_observable)
+}
+
 fn optional_u64_json(v: Option<u64>) -> serde_json::Value {
     v.map_or(serde_json::Value::Null, |n| serde_json::json!(n))
+}
+
+fn insert_optional_token_count(
+    obj: &mut serde_json::Map<String, serde_json::Value>,
+    key: &str,
+    value: Option<u64>,
+) {
+    if let Some(n) = value {
+        obj.insert(key.into(), serde_json::json!(n));
+    }
 }
 
 #[must_use]
@@ -121,12 +110,9 @@ pub fn tokens_stats(r: &RunTiming) -> serde_json::Value {
     obj.insert("steps".into(), serde_json::json!(r.steps));
     obj.insert("tokens_in".into(), optional_u64_json(r.tokens_in));
     obj.insert("tokens_out".into(), optional_u64_json(r.tokens_out));
-    if let Some(n) = r.cache_read {
-        obj.insert("cache_read".into(), serde_json::json!(n));
-    }
-    if let Some(n) = r.cache_write {
-        obj.insert("cache_write".into(), serde_json::json!(n));
-    }
+    insert_optional_token_count(&mut obj, "cache_read", r.cache_read);
+    insert_optional_token_count(&mut obj, "cache_write", r.cache_write);
+    insert_optional_token_count(&mut obj, "reasoning", r.reasoning_tokens);
     obj.insert("usage_tx_count".into(), serde_json::json!(r.usage_tx_count));
     obj.insert(
         "unknown_usage_tx_count".into(),

@@ -41,6 +41,26 @@ fn terminate_blocking_kills_note_affiliated_pid_without_pgid() {
     child.wait().expect("affiliated child must exit after teardown");
 }
 
+#[tokio::test]
+async fn async_teardown_kills_affiliated_pid_without_pgid() {
+    crate::test_utils::enable_test_fast_teardown();
+    let baseline = HashSet::new();
+    let mut cmd = Command::new("sleep");
+    cmd.arg("120").process_group(0);
+    let mut child = cmd.spawn().expect("spawn sleep");
+    super::super::unix_process_group_kill_targets::note_session_affiliated_pid(child.id());
+    let targets = kill_targets_for_teardown(None, Some(&baseline));
+    assert!(
+        targets.contains(&child.id()),
+        "affiliated pid must be a teardown target: {targets:?}"
+    );
+    terminate_agent_process_group(None, &baseline).await;
+    assert!(
+        child.try_wait().expect("wait").is_some(),
+        "graceful async teardown must kill affiliated child when pgid is None"
+    );
+}
+
 #[test]
 fn descendant_pids_walks_child_chain() {
     let rows = vec![
@@ -166,6 +186,15 @@ mod kiss_cov_gate_refs {
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {
+        let _ = terminate_blocking_kills_note_affiliated_pid_without_pgid;
+        let _ = async_teardown_kills_affiliated_pid_without_pgid;
+        let _ = descendant_pids_walks_child_chain;
+        let _ = terminate_agent_process_group_blocking_noop_without_targets;
+        let _ = kill_targets_empty_baseline_skips_orphan_scan;
+        let _ = reap_baseline_amnestied_agent_orphans_blocking_noop_without_orphans;
+        let _ = signal_targets_noop_for_empty_set;
+        let _ = terminate_process_group_kills_sleep_child;
+        let _ = terminate_agent_process_group_kills_sleep_child;
         let _ = malvin_sibling_outside_agent_pg_killed_on_teardown;
         #[cfg(target_os = "linux")]
         let _ = baseline_amnestied_agent_acp_orphan_killed_on_teardown;

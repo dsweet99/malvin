@@ -67,7 +67,7 @@ async fn long_idle_never_run_done_still_blocked_at_800ms() {
 async fn keep_alive_events_do_not_trip_idle_drain_timeout() {
     let _guard = crate::test_utils::test_env_lock();
     let tmp = bug_prepare();
-    bug_set_drain_idle_timeout_ms(200);
+    bug_set_drain_idle_timeout_ms(300);
     let mut client = bug_client(tmp.path(), 1);
     client.begin_coder_session(tmp.path()).await.expect("begin");
     let log = tmp.path().join("prompts.log");
@@ -106,10 +106,17 @@ async fn injected_busy_health_extends_then_delivers_event() {
         tokio::time::sleep(std::time::Duration::from_millis(300)).await;
         Ok::<_, crate::acp::AgentError>(42)
     };
-    let got = crate::bridge_sdk::await_next_with_idle_using(labels, read, move |_| {
-        samples_for_health.fetch_add(1, Ordering::SeqCst);
-        std::future::ready(crate::bridge_sdk::DrainHealthVerdict::StillBusy)
-    })
+    let idle = std::time::Duration::from_millis(200);
+    let mut clock = crate::bridge_sdk::DrainIdleClock::new(idle);
+    let got = crate::bridge_sdk::await_next_with_idle_using(
+        labels,
+        read,
+        move |_| {
+            samples_for_health.fetch_add(1, Ordering::SeqCst);
+            std::future::ready(crate::bridge_sdk::DrainHealthVerdict::StillBusy)
+        },
+        &mut clock,
+    )
     .await
     .expect("busy health must extend until the event arrives");
     let elapsed = started.elapsed();

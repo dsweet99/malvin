@@ -116,6 +116,50 @@ fn pi_sdk_named_thread_helper_reads_proc_without_panicking() {
     let _exists = pi_sdk_named_thread_exists();
 }
 
+fn pi_blocking_session_options(work: &std::path::Path) -> pi::sdk::SessionOptions {
+    pi::sdk::SessionOptions {
+        provider: Some("openai".to_string()),
+        model: Some("gpt-4o".to_string()),
+        api_key: Some("dummy-key".to_string()),
+        working_directory: Some(work.to_path_buf()),
+        no_session: true,
+        tool_factory: Some(crate::pi_sdk::isolated_bash::isolated_tool_factory()),
+        ..pi::sdk::SessionOptions::default()
+    }
+}
+
+#[test]
+fn pi_blocking_session_options_sets_working_directory() {
+    let dir = tempfile::tempdir().expect("tmpdir");
+    let options = pi_blocking_session_options(dir.path());
+    assert_eq!(options.working_directory.as_deref(), Some(dir.path()));
+}
+
+#[test]
+fn pi_runtime_shutdown_returns_during_in_flight_prompt() {
+    crate::test_utils::with_isolated_home(|work| {
+        unsafe {
+            std::env::set_var("MALVIN_TEST_PI_PROMPT_BLOCK_SECS", "2");
+        }
+        let mut runtime =
+            super::runtime::PiRuntime::start(pi_blocking_session_options(work)).expect("runtime starts");
+        let (events_tx, _events_rx) = tokio::sync::mpsc::unbounded_channel();
+        runtime
+            .prompt("kpop block".into(), events_tx)
+            .expect("prompt queued");
+        let started = std::time::Instant::now();
+        runtime.shutdown();
+        unsafe {
+            std::env::remove_var("MALVIN_TEST_PI_PROMPT_BLOCK_SECS");
+        }
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(1),
+            "PiRuntime::shutdown must not block until in-flight prompt work completes: {:?}",
+            started.elapsed()
+        );
+    });
+}
+
 fn pi_sdk_named_thread_exists() -> bool {
     let Ok(entries) = std::fs::read_dir("/proc/self/task") else {
         return false;

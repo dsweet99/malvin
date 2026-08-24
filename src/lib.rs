@@ -56,7 +56,7 @@ mod acp_spawn_sweep;
 mod session_name;
 pub use acp_spawn_lock::{
     acquire_acp_spawn_lock_for_slot, active_acp_lock_slot, assert_no_peer_acp_spawn_lock_for_slot,
-    release_acp_spawn_lock, set_active_acp_lock_slot,
+    release_acp_spawn_lock, set_active_acp_lock_slot, wait_for_dir_entry_count,
 };
 pub use acp_spawn_sweep::sweep_stale_acp_spawn_locks;
 pub use session_name::{

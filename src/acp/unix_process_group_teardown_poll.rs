@@ -162,17 +162,19 @@ pub(crate) async fn teardown_agent_sandbox_async(
     spawn_baseline: Option<&HashSet<u32>>,
 ) {
     let orphan_scan = spawn_baseline.is_some_and(|b| !b.is_empty());
-    if process_group_id.is_none() && !orphan_scan {
+    let affiliated_scan = process_group_id.is_none()
+        && super::unix_process_group_kill_targets::has_noted_session_affiliated_pids();
+    if process_group_id.is_none() && !orphan_scan && !affiliated_scan {
         return;
     }
-    let baseline_opt = spawn_baseline.filter(|b| !b.is_empty());
+    let empty_baseline = HashSet::new();
+    let baseline_for_alive = spawn_baseline.unwrap_or(&empty_baseline);
+    let baseline_opt = (orphan_scan || affiliated_scan).then_some(baseline_for_alive);
     if test_fast_acp_teardown_enabled() {
         teardown_agent_sandbox_fast_tick(process_group_id, baseline_opt);
         tokio::time::sleep(std::time::Duration::from_millis(20)).await;
         return;
     }
-    let empty_baseline = HashSet::new();
-    let baseline_for_alive = spawn_baseline.unwrap_or(&empty_baseline);
     teardown_agent_sandbox_slow_async(process_group_id, baseline_opt, baseline_for_alive).await;
 }
 

@@ -56,7 +56,9 @@ fn send_request_swallows_missing_socket() {
 fn classify_reply_detects_herdr_error_json() {
     assert!(classify_reply(br#"{"id":"1","error":{"code":"x","message":"no"}}"#).is_err());
     assert!(classify_reply(br#"{"result":{"type":"ok"}}"#).is_ok());
-    assert!(classify_reply(b"").is_ok());
+    assert!(classify_reply(b"").is_err());
+    assert!(classify_reply(b"HTTP/1.1 500").is_err());
+    assert!(classify_reply(br#"{"id":"1"}"#).is_err());
 }
 
 #[cfg(target_os = "linux")]
