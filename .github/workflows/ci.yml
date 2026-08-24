@@ -41,6 +41,7 @@ jobs:
 
   rust-gates:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -50,6 +51,10 @@ jobs:
           components: clippy
 
       - uses: Swatinem/rust-cache@v2
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
 
       - name: cargo clippy
         run: cargo clippy --jobs 1 --all-targets --all-features -- -D warnings -W clippy::cargo
@@ -62,3 +67,5 @@ jobs:
 
       - name: malvin rust test gate
         run: ./admin/malvin_rust_test_gate.sh
+        env:
+          NEXTEST_RETRIES: "1"
