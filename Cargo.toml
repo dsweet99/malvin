@@ -1,6 +1,6 @@
 [package]
 name = "malvin"
-version = "0.2.3"
+version = "0.2.4"
 edition = "2024"
 rust-version = "1.96"
 description = "Non-interactive research and coding agent"
@@ -15,6 +15,7 @@ exclude = [
     ".cursor/",
     ".cursorrules",
     ".malvin/incomplete_handoff_*",
+    ".malvin/mbc2_*",
     ".malvin/fast_task_results/",
     ".requested_plan.md",
     "opt_prog.md",

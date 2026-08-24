@@ -4,7 +4,7 @@ while IFS= read -r line; do
   id=$(rpc_id "$line")
   case "$line" in
     *model/list*)
-      printf '%s\n' "{\"id\":${id:-2},\"result\":{\"data\":[{\"id\":\"gpt-test\"},{\"id\":\"gpt-5.6\"}]}}"
+      printf '%s\n' "{\"id\":${id:-2},\"result\":{\"data\":[{\"id\":\"gpt-test\"},{\"id\":\"gpt-5.6-sol\"}]}}"
       ;;
     *initialize*)
       printf '%s\n' "{\"id\":${id:-1},\"result\":{}}"
@@ -13,7 +13,7 @@ while IFS= read -r line; do
       case "$line" in
         *\"ephemeral\":true*\"sandbox\":\"workspace-write\"*|*\"ephemeral\":true*\"sandbox\":\"danger-full-access\"*)
           case "$line" in
-            *gpt-5.6*) printf '%s\n' "{\"id\":${id:-2},\"result\":{\"thread\":{\"id\":\"thread-test\"}}}" ;;
+            *gpt-5.6-sol*) printf '%s\n' "{\"id\":${id:-2},\"result\":{\"thread\":{\"id\":\"thread-test\"}}}" ;;
             *) printf '%s\n' "{\"id\":${id:-2},\"error\":{\"message\":\"wrong model\"}}" ;;
           esac
           ;;

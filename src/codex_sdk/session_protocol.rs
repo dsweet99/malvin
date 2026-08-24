@@ -32,15 +32,10 @@ pub(crate) async fn codex_start_thread(
     model: &str,
     cwd: &std::path::Path,
 ) -> Result<(), AgentError> {
-    let sandbox = if super::session_process::codex_uses_outer_sandbox() {
-        "danger-full-access"
-    } else {
-        "workspace-write"
-    };
     let response = request(
         session,
         "thread/start",
-        thread_start_params(model.to_owned(), cwd, sandbox, session.service.as_deref()),
+        resolved_thread_start_params(model, cwd, session.service.as_deref())?,
     )
     .await?;
     if response.get("error").is_some() {
@@ -83,6 +78,20 @@ pub(crate) async fn request(
             waiting_for: "rpc reply",
         })?;
     }
+}
+
+fn resolved_thread_start_params(
+    model: &str,
+    cwd: &std::path::Path,
+    service: Option<&str>,
+) -> Result<serde_json::Value, AgentError> {
+    let model = super::discover::resolve_codex_model(model).map_err(AgentError)?;
+    let sandbox = if super::session_process::codex_uses_outer_sandbox() {
+        "danger-full-access"
+    } else {
+        "workspace-write"
+    };
+    Ok(thread_start_params(model, cwd, sandbox, service))
 }
 
 fn thread_start_params(
