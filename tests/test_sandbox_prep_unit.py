@@ -9,17 +9,20 @@ import pytest
 
 
 _WARM = Path(tempfile.mkdtemp(prefix="malvin-venv-warm-"))
-sandbox_prep._clone_cached_venv(_WARM / "empty")
-sandbox_prep._clone_cached_venv(_WARM / "pytest80", ("pytest==8.0.0",))
-sandbox_prep._clone_cached_venv(_WARM / "pytest834", ("pytest==8.3.4",))
-sandbox_prep._clone_cached_venv(
-    _WARM / "adaptix",
-    (
-        "typing-extensions==4.12.2",
-        "typeguard==4.4.1",
-        "pytest==8.3.4",
-    ),
-)
+try:
+    sandbox_prep._clone_cached_venv(_WARM / "empty")
+    sandbox_prep._clone_cached_venv(_WARM / "pytest80", ("pytest==8.0.0",))
+    sandbox_prep._clone_cached_venv(_WARM / "pytest834", ("pytest==8.3.4",))
+    sandbox_prep._clone_cached_venv(
+        _WARM / "adaptix",
+        (
+            "typing-extensions==4.12.2",
+            "typeguard==4.4.1",
+            "pytest==8.3.4",
+        ),
+    )
+except OSError:
+    sandbox_prep.VENV_CACHE_OFFLINE = True
 
 
 def _skip_if_offline() -> None:

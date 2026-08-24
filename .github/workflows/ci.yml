@@ -31,14 +31,17 @@ jobs:
             'ruff==0.15.14' \
             'click==8.4.2' \
             'modal==1.5.0' \
-            'typing-extensions==4.12.2' \
-            'typeguard==4.4.1'
+            'typing-extensions==4.12.2'
 
       - name: ruff check
         run: ruff check
 
       - name: pytest tests
-        run: python -m pytest tests --tb=short -ra
+        run: |
+          python -m pytest tests --tb=short -ra -p no:typeguard || {
+            python -m pytest tests --tb=long -ra -p no:typeguard --last-failed -q
+            exit 1
+          }
 
   rust-gates:
     runs-on: ubuntu-latest

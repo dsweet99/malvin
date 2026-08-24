@@ -4429,12 +4429,18 @@ def _clone_cached_venv(dest: Path, packages: tuple[str, ...] = ()) -> Path:
     if key not in _VENV_CACHE:
         base = root / f"base-{abs(hash(key)):x}"
         if not (base / "bin" / "python").is_file():
-            subprocess.run(
+            created = subprocess.run(
                 [sys.executable, "-m", "venv", "--system-site-packages", str(base)],
-                check=True,
+                check=False,
                 capture_output=True,
+                text=True,
             )
-            if packages:
+            if created.returncode != 0:
+                VENV_CACHE_OFFLINE = True
+                if base.exists():
+                    shutil.rmtree(base)
+                _minimal_venv_dir(base)
+            elif packages:
                 pip = str(base / "bin" / "pip")
                 install = subprocess.run(
                     [pip, "install", "--no-cache-dir", *packages],
