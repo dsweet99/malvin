@@ -30,7 +30,7 @@ jobs:
 
       - name: Install tools
         run: |
-          pip install pytest ruff
+          pip install pytest 'ruff==0.15.14'
           cargo install kiss-ai --version 0.4.9 --locked
 
       - name: ruff check
