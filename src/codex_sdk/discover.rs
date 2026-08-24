@@ -60,6 +60,32 @@ pub fn list_codex_models() -> Result<Vec<(String, String)>, String> {
     list_models_from_child(&mut catalog.child)
 }
 
+/// Resolve a Codex model slug against the live catalog.
+///
+/// Codex model IDs can include deployment variants (for example, `gpt-5.6-sol`),
+/// while users commonly select the family name. Prefer an exact catalog ID and
+/// otherwise use the first catalog ID with that family prefix. The catalog order
+/// is Codex's preference order. When listing fails, the requested slug is kept.
+pub fn resolve_codex_model(slug: &str) -> Result<String, String> {
+    list_codex_models()
+        .map_or_else(|_| Ok(slug.to_owned()), |models| resolve_codex_model_slug(slug, &models))
+}
+
+pub(crate) fn resolve_codex_model_slug(
+    slug: &str,
+    models: &[(String, String)],
+) -> Result<String, String> {
+    if models.iter().any(|(id, _)| id == slug) {
+        return Ok(slug.to_owned());
+    }
+    let prefix = format!("{slug}-");
+    models
+        .iter()
+        .find(|(id, _)| id.starts_with(&prefix))
+        .map(|(id, _)| id.clone())
+        .ok_or_else(|| format!("Codex model `{slug}` is not in the live model catalog"))
+}
+
 #[cfg(test)]
 pub(crate) fn models_from_list_response(
     value: &serde_json::Value,
@@ -109,6 +135,27 @@ mod tests {
     }
 
     #[test]
+    fn resolve_codex_model_slug_exact_and_family() {
+        let models = vec![
+            ("gpt-5.6-sol".into(), "Sol".into()),
+            ("gpt-5.6-terra".into(), "Terra".into()),
+        ];
+        assert_eq!(
+            resolve_codex_model_slug("gpt-5.6-sol", &models).unwrap(),
+            "gpt-5.6-sol"
+        );
+        assert_eq!(
+            resolve_codex_model_slug("gpt-5.6", &models).unwrap(),
+            "gpt-5.6-sol"
+        );
+        assert!(
+            resolve_codex_model_slug("missing", &models)
+                .unwrap_err()
+                .contains("not in the live model catalog")
+        );
+    }
+
+    #[test]
     fn kiss_cov_discover() {
         let page = ModelListPage::empty();
         assert!(page.models.is_empty());
@@ -116,6 +163,8 @@ mod tests {
         let _ = models_from_list_response(&serde_json::json!({"result":{"data":[]}}));
         let _ = list_codex_models();
         let _ = resolve_codex_bin();
+        let _ = resolve_codex_model("gpt-5.6");
+        let _ = resolve_codex_model_slug("gpt-5.6", &[]);
         let _ = codex_missing_binary_message();
     }
 

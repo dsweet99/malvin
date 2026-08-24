@@ -2,7 +2,9 @@ target/
 **/__pycache__/
 **/*.py[cod]
 **/*.rs.bk
+src/pi_sdk/isolated_bash_tests_recovered.txt
 .malvin/logs/
+.malvin/mbc2_*
 .malvin/incomplete_handoff_*
 .malvin/fast_task_results/
 .requested_plan.md

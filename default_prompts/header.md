@@ -43,6 +43,8 @@ Predicted running time: <prediction>
 
 Malvin caps sandbox memory (see `Sandbox memory:` under Current state). If USS exceeds the limit, malvin kills the agent process group and the session fails.
 
+## Gates
+- Don't change the configs for the gates commands (linters, etc.). The user configured them that way as an expression of their preferences, which you should respect.
 - Do not run overlapping heavy commands from `.malvin/gates` in one shell line with `&&`, `;`, or `&`.
 - When running gates by hand, execute at most one `.malvin/gates` line at a time; wait for exit before starting the next.
 - Child processes get a conservative glibc arena cap (`MALLOC_ARENA_MAX`); malvin does not overwrite job or thread env vars you set.
