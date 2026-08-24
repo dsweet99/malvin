@@ -23,24 +23,28 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.96.0
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Install tools
-        run: |
-          pip install pytest 'ruff==0.15.14'
-          cargo install kiss-ai --version 0.4.9 --locked
+      - name: Install Python tools
+        run: pip install pytest 'ruff==0.15.14'
 
       - name: ruff check
         run: ruff check
 
+      - name: cargo clippy
+        run: cargo clippy --jobs 1 --all-targets --all-features -- -D warnings -W clippy::cargo
+
+      - name: Install kiss
+        run: cargo install kiss-ai --version 0.4.9 --locked
+
       - name: kiss check
         run: kiss check
-
-      - name: cargo clippy
-        run: cargo clippy --jobs 3 --all-targets --all-features -- -D warnings -W clippy::cargo
 
       - name: pytest tests
         run: pytest tests
