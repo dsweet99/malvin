@@ -10,12 +10,37 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CARGO_TERM_COLOR: always
   MALVIN_SKIP_SDK_BRIDGES: "1"
   MALVIN_SKIP_DOCKER_SELFTESTS: "1"
+  PYTHONPATH: src/python
 
 jobs:
-  gates:
+  python-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python tools
+        run: |
+          pip install \
+            'pytest==8.3.4' \
+            'ruff==0.15.14' \
+            'click==8.4.2' \
+            'modal==1.5.0' \
+            'typing-extensions==4.12.2' \
+            'typeguard==4.4.1'
+
+      - name: ruff check
+        run: ruff check
+
+      - name: pytest tests
+        run: python -m pytest tests --tb=short -ra
+
+  rust-gates:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,16 +52,6 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install Python tools
-        run: pip install pytest 'ruff==0.15.14' click modal
-
-      - name: ruff check
-        run: ruff check
-
       - name: cargo clippy
         run: cargo clippy --jobs 1 --all-targets --all-features -- -D warnings -W clippy::cargo
 
@@ -45,9 +60,6 @@ jobs:
 
       - name: kiss check
         run: kiss check
-
-      - name: pytest tests
-        run: pytest tests
 
       - name: malvin rust test gate
         run: ./admin/malvin_rust_test_gate.sh
