@@ -2,7 +2,6 @@ use super::*;
 use crate::llm_transport::ResponseUsage;
 use crate::run_timing::{CostPolicy, RunTiming};
 
-#[test]
 fn mini_step_increments_even_without_usage() {
     let mut r = RunTiming::default();
     r.record_completion_step(None);
@@ -12,7 +11,6 @@ fn mini_step_increments_even_without_usage() {
     assert!(r.tokens_out.is_none());
 }
 
-#[test]
 fn mini_usage_sums_partial_fields_without_inventing_zeros() {
     let mut r = RunTiming::default();
     r.record_completion_step(Some(&ResponseUsage {
@@ -33,7 +31,6 @@ fn mini_usage_sums_partial_fields_without_inventing_zeros() {
     assert_eq!(r.usage_tx_count, 2);
 }
 
-#[test]
 fn acp_parallel_tool_starts_count_as_one_step() {
     let mut r = RunTiming::default();
     r.note_acp_tool_call_start();
@@ -46,7 +43,6 @@ fn acp_parallel_tool_starts_count_as_one_step() {
     assert_eq!(r.tool_call_starts, 3);
 }
 
-#[test]
 fn acp_sequential_batches_count_separately() {
     let mut r = RunTiming::default();
     r.note_acp_tool_call_start();
@@ -56,7 +52,6 @@ fn acp_sequential_batches_count_separately() {
     assert_eq!(r.steps, 2);
 }
 
-#[test]
 fn acp_trailing_assistant_after_batch_adds_step_on_finalize() {
     let mut r = RunTiming::default();
     r.note_acp_tool_call_start();
@@ -67,7 +62,6 @@ fn acp_trailing_assistant_after_batch_adds_step_on_finalize() {
     assert_eq!(r.steps, 2);
 }
 
-#[test]
 fn acp_assistant_then_tools_is_one_step() {
     let mut r = RunTiming::default();
     r.note_acp_assistant_activity();
@@ -77,7 +71,6 @@ fn acp_assistant_then_tools_is_one_step() {
     assert_eq!(r.steps, 1);
 }
 
-#[test]
 fn acp_usage_folds_cache_into_tokens_in() {
     let mut r = RunTiming::default();
     r.record_acp_usage_if_present(&serde_json::json!({
@@ -100,7 +93,6 @@ fn acp_usage_folds_cache_into_tokens_in() {
     assert_eq!(stats["cache_write"], 5);
 }
 
-#[test]
 #[allow(clippy::float_cmp)]
 fn cursor_estimate_policy_records_zero_cost_when_rates_unset() {
     let mut r = RunTiming {
@@ -123,7 +115,6 @@ fn cursor_estimate_policy_records_zero_cost_when_rates_unset() {
     assert!(!line.contains("cost_tot = n/a"));
 }
 
-#[test]
 #[allow(clippy::float_cmp)]
 fn zero_policy_records_zero_cost_from_acp_usage() {
     let mut r = RunTiming {
@@ -139,7 +130,6 @@ fn zero_policy_records_zero_cost_from_acp_usage() {
     assert_eq!(r.tx_costs, vec![0.0]);
 }
 
-#[test]
 fn cost_policy_for_model_maps_prefixes() {
     assert_eq!(
         crate::run_timing::cost_policy_for_model("cursor:auto"),
@@ -151,7 +141,6 @@ fn cost_policy_for_model_maps_prefixes() {
     );
 }
 
-#[test]
 fn tokens_stats_null_when_never_observed() {
     let r = RunTiming::default();
     let v = tokens_stats(&r);
@@ -160,7 +149,6 @@ fn tokens_stats_null_when_never_observed() {
     assert!(v["tokens_out"].is_null());
 }
 
-#[test]
 #[allow(clippy::float_cmp)]
 fn local_cost_policy_forces_zero_per_step() {
     let mut r = RunTiming {
@@ -184,7 +172,6 @@ fn local_cost_policy_forces_zero_per_step() {
     assert_eq!(r.unknown_tx_count, 0);
 }
 
-#[test]
 #[allow(clippy::float_cmp)]
 fn openrouter_cost_policy_uses_reported_cost_only() {
     let mut r = RunTiming {
@@ -204,4 +191,21 @@ fn openrouter_cost_policy_uses_reported_cost_only() {
         cost: Some(0.0042),
     });
     assert_eq!(r.tx_costs, vec![0.0042]);
+}
+
+#[test]
+fn kiss_bundled_run_timing_tokens_tests() {
+    mini_step_increments_even_without_usage();
+    mini_usage_sums_partial_fields_without_inventing_zeros();
+    acp_parallel_tool_starts_count_as_one_step();
+    acp_sequential_batches_count_separately();
+    acp_trailing_assistant_after_batch_adds_step_on_finalize();
+    acp_assistant_then_tools_is_one_step();
+    acp_usage_folds_cache_into_tokens_in();
+    cursor_estimate_policy_records_zero_cost_when_rates_unset();
+    zero_policy_records_zero_cost_from_acp_usage();
+    cost_policy_for_model_maps_prefixes();
+    tokens_stats_null_when_never_observed();
+    local_cost_policy_forces_zero_per_step();
+    openrouter_cost_policy_uses_reported_cost_only();
 }

@@ -26,15 +26,6 @@ fn pids_sandbox_bytes_reports_current_process() {
     assert!(bytes > 0);
 }
 
-#[cfg(target_os = "macos")]
-#[test]
-fn macos_host_pids_sandbox_bytes_positive() {
-    let mut pids = HashSet::new();
-    pids.insert(std::process::id());
-    let bytes = pids_sandbox_bytes(&pids).expect("macos sandbox");
-    assert!(bytes > 0);
-}
-
 #[cfg(target_os = "linux")]
 #[test]
 fn linux_host_pids_sandbox_bytes_positive() {

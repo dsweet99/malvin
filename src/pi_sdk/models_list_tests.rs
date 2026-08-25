@@ -44,17 +44,25 @@ fn pi_list_models_timeout_env_clamps_and_defaults() {
 
 #[test]
 fn list_pi_models_sync_reads_crate_registry() {
-    let _lock = crate::test_utils::test_env_lock();
     let tmp = tempfile::tempdir().expect("tmpdir");
-    crate::acp::with_env(
-        "PI_CODING_AGENT_DIR",
-        Some(tmp.path().to_str().expect("utf8")),
-        || {
-            let rows = list_pi_models_sync().expect("crate registry");
-            assert!(
-                rows.iter().any(|row| row.id.contains('/')),
-                "expected provider/model ids, got {rows:?}"
-            );
-        },
-    );
+    crate::test_utils::with_isolated_home(|_| {
+        let _saved = crate::test_utils::SavedEnvVars::capture(&[
+            "PI_CODING_AGENT_DIR",
+            "OPENAI_API_KEY",
+            "OPENROUTER_API_KEY",
+            "ANTHROPIC_API_KEY",
+        ]);
+        #[allow(unsafe_code)]
+        unsafe {
+            std::env::set_var("PI_CODING_AGENT_DIR", tmp.path());
+            std::env::remove_var("OPENAI_API_KEY");
+            std::env::remove_var("OPENROUTER_API_KEY");
+            std::env::remove_var("ANTHROPIC_API_KEY");
+        }
+        let rows = list_pi_models_sync(false).expect("crate registry");
+        assert!(
+            rows.iter().any(|row| row.id.contains('/')),
+            "expected provider/model ids, got {rows:?}"
+        );
+    });
 }

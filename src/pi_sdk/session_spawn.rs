@@ -11,6 +11,7 @@ use crate::agent_backend::SdkSession;
 use crate::bridge_sdk::{BridgeSpawnArgs, StreamLog};
 
 use super::isolated_bash::isolated_tool_factory;
+use super::openrouter_pricing;
 use super::runtime::PiRuntime;
 use super::session::PiEmbeddedSession;
 
@@ -23,6 +24,25 @@ fn sandbox_note_or_error(cwd: &Path) -> Result<SandboxBaseline, AgentError> {
     Ok(baseline)
 }
 
+fn prewarm_openrouter_pricing(provider: &str) {
+    if provider.eq_ignore_ascii_case("openrouter") {
+        openrouter_pricing::warm_openrouter_pricing_cache(false);
+    }
+}
+
+fn spawn_live_pi_bridge(
+    args: &BridgeSpawnArgs<'_>,
+    provider: &str,
+    model: &str,
+) -> Result<SdkSession, AgentError> {
+    prewarm_openrouter_pricing(provider);
+    let options = build_session_options(args, provider, model)?;
+    let runtime = PiRuntime::start(options).map_err(AgentError)?;
+    let session = embedded_session(args, runtime, provider, model)?;
+    start_embedded_mem_watch(&session);
+    Ok(SdkSession::Pi(Box::new(session)))
+}
+
 pub(crate) async fn pi_spawn_bridge(args: BridgeSpawnArgs<'_>) -> Result<SdkSession, AgentError> {
     if !args.io.force {
         return Err(AgentError(crate::acp::NO_FORCE_MSG.into()));
@@ -30,13 +50,11 @@ pub(crate) async fn pi_spawn_bridge(args: BridgeSpawnArgs<'_>) -> Result<SdkSess
     crate::malvin_sandbox::assert_dead_before_next_spawn().map_err(AgentError)?;
     let (provider, model) = split_provider_model(args.model)?;
     if test_no_real_agent() {
-        return Ok(SdkSession::Pi(Box::new(fake_embedded_session(&args))));
+        return Ok(SdkSession::Pi(Box::new(fake_embedded_session(
+            &args, provider, model,
+        ))));
     }
-    let options = build_session_options(&args, provider, model)?;
-    let runtime = PiRuntime::start(options).map_err(AgentError)?;
-    let session = embedded_session(&args, runtime)?;
-    start_embedded_mem_watch(&session);
-    Ok(SdkSession::Pi(Box::new(session)))
+    spawn_live_pi_bridge(&args, provider, model)
 }
 
 fn test_no_real_agent() -> bool {
@@ -73,7 +91,7 @@ fn build_session_options(
     })
 }
 
-fn fake_embedded_session(args: &BridgeSpawnArgs<'_>) -> PiEmbeddedSession {
+fn fake_embedded_session(args: &BridgeSpawnArgs<'_>, provider: &str, model: &str) -> PiEmbeddedSession {
     let baseline = crate::malvin_sandbox::malvin_spawn_baseline();
     note_sandbox_baseline(None, baseline.clone(), args.cwd);
     PiEmbeddedSession {
@@ -82,12 +100,16 @@ fn fake_embedded_session(args: &BridgeSpawnArgs<'_>) -> PiEmbeddedSession {
         work_dir: args.cwd.to_path_buf(),
         reader_dead: Arc::new(AtomicBool::new(false)),
         spawn_pid_baseline: baseline,
+        pi_provider: provider.to_string(),
+        pi_model: model.to_string(),
     }
 }
 
 fn embedded_session(
     args: &BridgeSpawnArgs<'_>,
     runtime: PiRuntime,
+    provider: &str,
+    model: &str,
 ) -> Result<PiEmbeddedSession, AgentError> {
     let baseline = sandbox_note_or_error(args.cwd)?;
     Ok(PiEmbeddedSession {
@@ -96,6 +118,8 @@ fn embedded_session(
         work_dir: args.cwd.to_path_buf(),
         reader_dead: Arc::new(AtomicBool::new(false)),
         spawn_pid_baseline: baseline,
+        pi_provider: provider.to_string(),
+        pi_model: model.to_string(),
     })
 }
 

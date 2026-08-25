@@ -9,6 +9,7 @@ fn run_models_pi_only_with_openrouter_key() {
         crate::acp::with_env("OPENROUTER_API_KEY", Some("k"), || {
             run_models(
                 ModelsArgs {
+                    refresh: false,
                     words: vec!["pi:".into()],
                 },
                 crate::config::DEFAULT_CLI_MODEL,
@@ -102,6 +103,7 @@ fn run_models_lists_pi_rows_without_pi_binary() {
             enable_stdout_capture();
             run_models(
                 ModelsArgs {
+                    refresh: false,
                     words: vec!["pi:".into()],
                 },
                 crate::config::DEFAULT_CLI_MODEL,

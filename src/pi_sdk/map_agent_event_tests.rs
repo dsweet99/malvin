@@ -71,6 +71,12 @@ fn maps_typed_tool_and_agent_end() {
         usage: Usage {
             input: 10,
             output: 2,
+            cost: pi::model::Cost {
+                input: 0.01,
+                output: 0.02,
+                total: 0.03,
+                ..pi::model::Cost::default()
+            },
             ..Usage::default()
         },
         ..AssistantMessage::default()
@@ -105,6 +111,14 @@ fn maps_typed_tool_and_agent_end() {
                     .and_then(|u| u.get("inputTokens"))
                     .and_then(serde_json::Value::as_u64),
                 Some(10)
+            );
+            assert_eq!(
+                usage
+                    .as_ref()
+                    .and_then(|u| u.get("costUsd"))
+                    .and_then(|c| c.get("total"))
+                    .and_then(serde_json::Value::as_f64),
+                Some(0.03)
             );
         }
         other => panic!("unexpected {other:?}"),

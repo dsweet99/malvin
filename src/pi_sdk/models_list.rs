@@ -22,18 +22,11 @@ pub fn pi_list_models_timeout() -> Duration {
     )
 }
 
-pub fn list_pi_models_sync() -> Result<Vec<PiModelListing>, String> {
+pub fn list_pi_models_sync(refresh: bool) -> Result<Vec<PiModelListing>, String> {
     let auth = AuthStorage::load(Config::auth_path()).map_err(|e| e.to_string())?;
+    let live_by_provider = super::models_refresh::refresh_pi_provider_caches_if_stale(refresh);
     let registry = ModelRegistry::load_for_listing(&auth, None);
-    let models: Vec<PiModelListing> = registry
-        .models()
-        .iter()
-        .map(|entry| PiModelListing {
-            id: format!("{}/{}", entry.model.provider, entry.model.id),
-            name: entry.model.name.clone(),
-            thinking: Some(entry.model.reasoning),
-        })
-        .collect();
+    let models = super::models_refresh::merge_registry_with_live(&registry, &live_by_provider);
     if models.is_empty() {
         return Err("pi model registry produced no models".to_string());
     }

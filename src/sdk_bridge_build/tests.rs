@@ -21,35 +21,30 @@ fn cursor_ready_tree(root: &Path) -> PathBuf {
     src
 }
 
-#[test]
 fn bridges_declare_cursor_marker() {
     assert_eq!(BRIDGES.len(), 1);
     assert_eq!(BRIDGES[0].package_marker, "@cursor/sdk/package.json");
     assert!(BRIDGES[0].min_node >= (22, 13));
 }
 
-#[test]
 fn fnv1a64_is_stable() {
     assert_eq!(fnv1a64(b""), 0xcbf2_9ce4_8422_2325);
     assert_ne!(fnv1a64(b"a"), fnv1a64(b"b"));
     assert_eq!(fnv1a64(b"lock"), fnv1a64(b"lock"));
 }
 
-#[test]
 fn parse_node_version_accepts_v_prefix() {
     assert_eq!(npm::parse_node_version("v22.13.0"), Some((22, 13)));
     assert_eq!(npm::parse_node_version("22.8.1"), Some((22, 8)));
     assert_eq!(npm::parse_node_version("nope"), None);
 }
 
-#[test]
 fn which_finds_sh_on_unix() {
     let _g = crate::test_utils::test_env_lock();
     assert!(npm::which("sh").is_some());
     assert!(npm::which("definitely-not-a-real-bin-xyz").is_none());
 }
 
-#[test]
 fn sdk_share_dir_uses_home() {
     let _g = crate::test_utils::test_env_lock();
     let tmp = tempdir().unwrap();
@@ -61,7 +56,6 @@ fn sdk_share_dir_uses_home() {
     });
 }
 
-#[test]
 fn copy_dir_recursive_copies_nested_files() {
     let tmp = tempdir().unwrap();
     let from = tmp.path().join("from");
@@ -82,7 +76,6 @@ fn sync_fixture_with_dist(tmp: &TempDir) -> (PathBuf, PathBuf) {
     (src, dest)
 }
 
-#[test]
 fn sync_bridge_payload_copies_dist_when_present() {
     let tmp = tempdir().unwrap();
     let (src, dest) = sync_fixture_with_dist(&tmp);
@@ -103,7 +96,6 @@ fn sync_fixture_sources(tmp: &TempDir) -> (PathBuf, PathBuf) {
     (src, dest)
 }
 
-#[test]
 fn sync_bridge_payload_copies_sources_without_dist() {
     let tmp = tempdir().unwrap();
     let (src, dest) = sync_fixture_sources(&tmp);
@@ -112,7 +104,6 @@ fn sync_bridge_payload_copies_sources_without_dist() {
     assert!(dest.join("tsconfig.json").is_file());
 }
 
-#[test]
 fn in_tree_ready_requires_marker_and_dist() {
     let tmp = tempdir().unwrap();
     let src = tmp.path().join("cursor-sdk-bridge");
@@ -138,7 +129,6 @@ fn share_fixture(tmp: &TempDir) -> (PathBuf, PathBuf, &'static [u8]) {
     (src, dest, lock)
 }
 
-#[test]
 fn share_bridge_ready_checks_stamp() {
     let tmp = tempdir().unwrap();
     let (src, dest, lock) = share_fixture(&tmp);
@@ -152,20 +142,17 @@ fn share_bridge_ready_checks_stamp() {
     assert!(share_bridge_ready(&src, &dest, bridge));
 }
 
-#[test]
 fn ensure_bridge_reuses_in_tree_ready_tree() {
     let tmp = tempdir().unwrap();
     let _ = cursor_ready_tree(tmp.path());
     ensure_bridge(tmp.path(), &BRIDGES[0]);
 }
 
-#[test]
 fn run_build_script_skips_when_env_set() {
     let _g = crate::test_utils::test_env_lock();
     crate::acp::with_env("MALVIN_SKIP_SDK_BRIDGES", Some("1"), run_build_script);
 }
 
-#[test]
 fn run_build_script_skips_on_docs_rs() {
     let _g = crate::test_utils::test_env_lock();
     crate::acp::with_env("DOCS_RS", Some("1"), || {
@@ -173,7 +160,6 @@ fn run_build_script_skips_on_docs_rs() {
     });
 }
 
-#[test]
 fn write_stamp_and_verify_install_round_trip() {
     let tmp = tempdir().unwrap();
     let dest = tmp.path().join("dest");
@@ -189,7 +175,6 @@ fn write_stamp_and_verify_install_round_trip() {
     assert!(dest.join(".malvin-npm-stamp").is_file());
 }
 
-#[test]
 fn resolve_npm_prefers_npm_env() {
     let _g = crate::test_utils::test_env_lock();
     let tmp = tempdir().unwrap();
@@ -207,11 +192,30 @@ fn resolve_npm_prefers_npm_env() {
     });
 }
 
-#[test]
 fn check_node_version_accepts_current_node() {
     let _g = crate::test_utils::test_env_lock();
     if npm::which("node").is_none() {
         return;
     }
     check_node_version(&BRIDGES[0]);
+}
+
+#[test]
+fn kiss_bundled_sdk_bridge_build_tests() {
+    bridges_declare_cursor_marker();
+    fnv1a64_is_stable();
+    parse_node_version_accepts_v_prefix();
+    which_finds_sh_on_unix();
+    sdk_share_dir_uses_home();
+    copy_dir_recursive_copies_nested_files();
+    sync_bridge_payload_copies_dist_when_present();
+    sync_bridge_payload_copies_sources_without_dist();
+    in_tree_ready_requires_marker_and_dist();
+    share_bridge_ready_checks_stamp();
+    ensure_bridge_reuses_in_tree_ready_tree();
+    run_build_script_skips_when_env_set();
+    run_build_script_skips_on_docs_rs();
+    write_stamp_and_verify_install_round_trip();
+    resolve_npm_prefers_npm_env();
+    check_node_version_accepts_current_node();
 }

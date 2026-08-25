@@ -33,6 +33,12 @@ fn kiss_cov_models_args_clap_parse_and_destructure() {
         .expect("models matches");
     let _parsed = ModelsArgs::from_arg_matches(sub).expect("models from_arg_matches");
     let _cloned = kiss_witness_clone(&ModelsArgs::default());
+    let refresh = Cli::try_parse_from(["malvin", "models", "--refresh"]).expect("refresh");
+    if let Some(Commands::Models(args)) = refresh.command {
+        assert!(args.refresh);
+    } else {
+        panic!("expected Models --refresh");
+    }
 }
 
 #[test]

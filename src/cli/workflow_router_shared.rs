@@ -56,12 +56,6 @@ pub(crate) fn run_router_workspace_gates(
         RepoGateOutput::Tagged,
         Some(artifacts.run_dir.as_path()),
     );
-    // A completed gate run — pass or per-command failure — executed the checks
-    // and captured their output in quality_gates.log, so later router_a turns
-    // may point at it. Setup errors (e.g. missing .malvin/gates) mean nothing
-    // ran and leave the flag off. Command failures carry the marker plus an
-    // exit-code suffix (see RepoGateFailure::into_error); pure Message
-    // failures do not.
     crate::gate_loop_session::set_quality_gates_just_ran(match &gate_result {
         Ok(()) => true,
         Err(detail) => {

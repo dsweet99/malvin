@@ -49,7 +49,6 @@ fn with_log<F: FnOnce()>(run: F) -> String {
     std::fs::read_to_string(path).unwrap_or_default()
 }
 
-#[test]
 fn immediate_emit_prints_display_not_log_on_terminal() {
     let display = "malvin.| hb-probe";
     let log = "20260524.000000.000 malvin.|hb-probe";
@@ -59,7 +58,6 @@ fn immediate_emit_prints_display_not_log_on_terminal() {
     assert!(!terminal.starts_with("20"));
 }
 
-#[test]
 fn heartbeat_route_prints_display_on_terminal() {
     let (display, log) = heartbeat_pair("heartbeat");
     let (terminal, disk) = with_render_capture(|| write_heartbeat_log_line(&display, &log));
@@ -68,7 +66,6 @@ fn heartbeat_route_prints_display_on_terminal() {
     assert!(!terminal.starts_with("20"));
 }
 
-#[test]
 fn flush_raw_line_with_ts_writes_log_without_defer() {
     let (terminal, disk) = with_render_capture(|| {
         crate::output::flush_stdout_raw_line_with_ts(
@@ -80,7 +77,6 @@ fn flush_raw_line_with_ts_writes_log_without_defer() {
     assert_eq!(terminal.trim(), "raw-flush-probe");
 }
 
-#[test]
 fn flush_only_writes_timestamped_log_not_display_prefix() {
     let display = "malvin.| flush-probe";
     let log = "20260524.000000.000 malvin.|flush-probe";
@@ -92,7 +88,6 @@ fn flush_only_writes_timestamped_log_not_display_prefix() {
     assert!(!terminal.starts_with("20"));
 }
 
-#[test]
 fn tagged_route_writes_immediate_log_when_no_defer() {
     let (display, log) = tagged_pair("tagged-route");
     let (terminal, disk) = with_render_capture(|| print_stdout_rendered_line(&display, &log));
@@ -108,7 +103,6 @@ fn tagged_route_writes_immediate_log_when_no_defer() {
     assert!(!terminal.starts_with("20"));
 }
 
-#[test]
 fn heartbeat_route_writes_immediate_log_when_no_defer() {
     let (display, log) = heartbeat_pair("heartbeat");
     let (terminal, disk) = with_render_capture(|| write_heartbeat_log_line(&display, &log));
@@ -117,7 +111,6 @@ fn heartbeat_route_writes_immediate_log_when_no_defer() {
     assert!(!terminal.starts_with("20"));
 }
 
-#[test]
 fn heartbeat_route_respects_stdout_color_gate() {
     use std::time::Instant;
 
@@ -132,7 +125,6 @@ fn heartbeat_route_respects_stdout_color_gate() {
     }
 }
 
-#[test]
 fn route_all_preludes_emit_when_defer_inactive() {
     let (display, log) = tagged_pair("prelude-probe");
     let (terminal, disk) = with_render_capture(|| {
@@ -145,7 +137,6 @@ fn route_all_preludes_emit_when_defer_inactive() {
     assert!(!terminal.starts_with("20"));
 }
 
-#[test]
 fn defer_hooks_capture_tagged_and_heartbeat_routes() {
     let text = with_log(|| {
         let shared = Arc::new(std::sync::Mutex::new(
@@ -165,7 +156,6 @@ fn defer_hooks_capture_tagged_and_heartbeat_routes() {
     crate::deferred_log::unregister_active_sink();
 }
 
-#[test]
 fn tagged_route_defers_when_session_active() {
     let (display, log) = tagged_pair("tag-defer");
     let shared = Arc::new(std::sync::Mutex::new(
@@ -187,7 +177,6 @@ fn tagged_route_defers_when_session_active() {
     assert!(!terminal.starts_with("20"));
 }
 
-#[test]
 fn heartbeat_route_defers_when_session_active() {
     let (display, log) = heartbeat_pair("heartbeat");
     let shared = Arc::new(std::sync::Mutex::new(
@@ -209,7 +198,6 @@ fn heartbeat_route_defers_when_session_active() {
     assert!(!terminal.starts_with("20"));
 }
 
-#[test]
 fn heartbeat_route_defers_then_flush_preserves_split() {
     let (display, log) = heartbeat_pair("heartbeat");
     let shared = Arc::new(std::sync::Mutex::new(
@@ -232,4 +220,20 @@ fn heartbeat_route_defers_then_flush_preserves_split() {
     assert_eq!(terminal.trim(), display);
     assert_eq!(disk.lines().next().expect("log line"), log);
     assert!(!terminal.starts_with("20"));
+}
+
+#[test]
+fn kiss_bundled_output_stdout_render_tests() {
+    immediate_emit_prints_display_not_log_on_terminal();
+    heartbeat_route_prints_display_on_terminal();
+    flush_raw_line_with_ts_writes_log_without_defer();
+    flush_only_writes_timestamped_log_not_display_prefix();
+    tagged_route_writes_immediate_log_when_no_defer();
+    heartbeat_route_writes_immediate_log_when_no_defer();
+    heartbeat_route_respects_stdout_color_gate();
+    route_all_preludes_emit_when_defer_inactive();
+    defer_hooks_capture_tagged_and_heartbeat_routes();
+    tagged_route_defers_when_session_active();
+    heartbeat_route_defers_when_session_active();
+    heartbeat_route_defers_then_flush_preserves_split();
 }

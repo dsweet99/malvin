@@ -19,8 +19,6 @@ pub(crate) struct ProcRow {
 
 #[cfg(unix)]
 pub fn snapshot_pids() -> HashSet<u32> {
-    // Prefer /proc on Linux (and any Unix where it exists): avoids forking `ps`
-    // every mem-watch poll, which is both slower and fragile under sandbox memory pressure.
     if let Some(pids) = unix_process_group_ps_proc::snapshot_pids_from_proc()
         && proc_pid_snapshot_is_usable(&pids)
     {

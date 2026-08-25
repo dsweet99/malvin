@@ -66,14 +66,18 @@ mod tests {
     fn ensure_codex_authenticated_ok_with_env_key() {
         let _lock = crate::test_utils::test_env_lock();
         let tmp = tempfile::tempdir().expect("tmp");
-        crate::acp::with_env("CODEX_HOME", Some(tmp.path().to_str().expect("utf8")), || {
-            crate::acp::with_env("OPENAI_API_KEY", Some("test-key"), || {
-                crate::acp::with_env("MALVIN_CODEX", None, || {
-                    if resolve_codex_bin().is_ok() {
-                        assert!(ensure_codex_authenticated().is_ok());
-                    }
+        crate::acp::with_env(
+            "CODEX_HOME",
+            Some(tmp.path().to_str().expect("utf8")),
+            || {
+                crate::acp::with_env("OPENAI_API_KEY", Some("test-key"), || {
+                    crate::acp::with_env("MALVIN_CODEX", None, || {
+                        if resolve_codex_bin().is_ok() {
+                            assert!(ensure_codex_authenticated().is_ok());
+                        }
+                    });
                 });
-            });
-        });
+            },
+        );
     }
 }

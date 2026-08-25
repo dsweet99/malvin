@@ -8,7 +8,6 @@ use super::{
 };
 use crate::prompt_stratification::WorkflowRenderContext;
 
-#[test]
 fn resolve_path_against_base_resolves_relative_plan_path() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let base = tmp.path().canonicalize().expect("base");
@@ -16,7 +15,6 @@ fn resolve_path_against_base_resolves_relative_plan_path() {
     assert!(resolved.ends_with("plan.md"));
 }
 
-#[test]
 fn resolve_path_against_base_resolves_absolute_missing_file_under_base() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let base = tmp.path().canonicalize().expect("base");
@@ -30,7 +28,6 @@ fn resolve_path_against_base_resolves_absolute_missing_file_under_base() {
     assert!(resolved.ends_with("src/foo.rs"));
 }
 
-#[test]
 fn resolve_nonexistent_path_cases() {
     let _ = resolve_nonexistent_path;
     assert_eq!(resolve_nonexistent_path(Path::new("")), PathBuf::from(""));
@@ -48,7 +45,6 @@ fn resolve_nonexistent_path_cases() {
     assert!(deep_resolved.ends_with("a/b/c/d.md"));
 }
 
-#[test]
 fn format_prompt_path_fallback_uses_resolved_path_display() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let outside = std::env::temp_dir().join(format!("malvin_outside_{}", std::process::id()));
@@ -66,7 +62,6 @@ fn format_prompt_path_fallback_uses_resolved_path_display() {
     let _ = std::fs::remove_dir_all(&outside);
 }
 
-#[test]
 fn insert_quality_gates_log_paths_sets_alias() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
@@ -86,7 +81,6 @@ fn insert_quality_gates_log_paths_sets_alias() {
     );
 }
 
-#[test]
 fn insert_artifact_paths_sets_logs_dir_to_home_bucket() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
@@ -104,7 +98,6 @@ fn insert_artifact_paths_sets_logs_dir_to_home_bucket() {
     );
 }
 
-#[test]
 fn insert_artifact_paths_populates_expected_keys() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
@@ -129,7 +122,6 @@ fn insert_artifact_paths_populates_expected_keys() {
     );
 }
 
-#[test]
 fn workflow_context_paths_only_includes_current_state() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
@@ -141,7 +133,6 @@ fn workflow_context_paths_only_includes_current_state() {
     assert!(ctx.get("current_state").expect("state").contains("User:"));
 }
 
-#[test]
 fn workflow_context_paths_only_sets_git_extra_from_flag() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
@@ -159,7 +150,6 @@ fn workflow_context_paths_only_sets_git_extra_from_flag() {
     assert_eq!(format_git_extra(true), GIT_EXTRA_ENABLED);
 }
 
-#[test]
 fn insert_current_state_populates_key() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
@@ -175,7 +165,6 @@ fn insert_current_state_populates_key() {
     );
 }
 
-#[test]
 fn insert_formatted_stores_workflow_relative_path() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
@@ -185,7 +174,6 @@ fn insert_formatted_stores_workflow_relative_path() {
     assert_eq!(ctx.get("plan_path").map(String::as_str), Some("./plan.md"));
 }
 
-#[test]
 fn resolve_user_brief_path_uses_context_override() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
@@ -203,7 +191,6 @@ fn resolve_user_brief_path_uses_context_override() {
     );
 }
 
-#[test]
 fn resolve_user_brief_path_falls_back_to_plan_path() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
@@ -220,7 +207,6 @@ fn resolve_user_brief_path_falls_back_to_plan_path() {
     );
 }
 
-#[test]
 fn workflow_context_returns_plan_path_and_quality_gates() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan_path = tmp.path().join("plan.md");
@@ -234,4 +220,22 @@ fn workflow_context_returns_plan_path_and_quality_gates() {
         .expect("context");
     assert!(ctx.contains_key("plan_path"));
     assert!(ctx.contains_key("quality_gates"));
+}
+
+#[test]
+fn kiss_bundled_workflow_context_tests() {
+    resolve_path_against_base_resolves_relative_plan_path();
+    resolve_path_against_base_resolves_absolute_missing_file_under_base();
+    resolve_nonexistent_path_cases();
+    format_prompt_path_fallback_uses_resolved_path_display();
+    insert_quality_gates_log_paths_sets_alias();
+    insert_artifact_paths_sets_logs_dir_to_home_bucket();
+    insert_artifact_paths_populates_expected_keys();
+    workflow_context_paths_only_includes_current_state();
+    workflow_context_paths_only_sets_git_extra_from_flag();
+    insert_current_state_populates_key();
+    insert_formatted_stores_workflow_relative_path();
+    resolve_user_brief_path_uses_context_override();
+    resolve_user_brief_path_falls_back_to_plan_path();
+    workflow_context_returns_plan_path_and_quality_gates();
 }

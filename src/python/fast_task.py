@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Run malvin on a ``fast_tasks/<ID>`` workspace in local Docker; grade on the host.
 
 The agent container mounts a staged copy of ``workspace/`` at ``/app``, plus
@@ -1144,9 +1143,9 @@ def _ft_test_docker_agent_cmd_codex() -> None:
         old_node = module.ft_resolve_node_bin
         old_auth = module.ft_resolve_codex_auth_file
         try:
-            module.ft_resolve_codex_bin = lambda: codex_bin  # type: ignore[assignment]
-            module.ft_resolve_node_bin = lambda: node_bin  # type: ignore[assignment]
-            module.ft_resolve_codex_auth_file = lambda: auth_file  # type: ignore[assignment]
+            module.ft_resolve_codex_bin = lambda: codex_bin
+            module.ft_resolve_node_bin = lambda: node_bin
+            module.ft_resolve_codex_auth_file = lambda: auth_file
             cmd = ft_docker_agent_cmd(
                 image=DEFAULT_IMAGE,
                 workspace=ws,
@@ -1161,7 +1160,7 @@ def _ft_test_docker_agent_cmd_codex() -> None:
             assert "MALVIN_CODEX_OUTER_SANDBOX=1" in cmd
             assert f"PATH={Path(NODE_BIN_REMOTE).parent}:{TOOLCHAIN_PATH}" in cmd
 
-            module.ft_resolve_node_bin = lambda: None  # type: ignore[assignment]
+            module.ft_resolve_node_bin = lambda: None
             try:
                 ft_docker_agent_cmd(
                     image=DEFAULT_IMAGE,
@@ -1173,9 +1172,9 @@ def _ft_test_docker_agent_cmd_codex() -> None:
             except click.ClickException as exc:
                 assert "Codex npm package and node binary not found" in str(exc)
         finally:
-            module.ft_resolve_codex_bin = old_codex  # type: ignore[assignment]
-            module.ft_resolve_node_bin = old_node  # type: ignore[assignment]
-            module.ft_resolve_codex_auth_file = old_auth  # type: ignore[assignment]
+            module.ft_resolve_codex_bin = old_codex
+            module.ft_resolve_node_bin = old_node
+            module.ft_resolve_codex_auth_file = old_auth
 
 
 def _ft_test_assert_agent_cmd_rejects_task_root() -> None:
@@ -1263,7 +1262,7 @@ def _ft_test_solve_help_and_dry_run() -> None:
     assert "--main" in help_result.output
     assert "--model" in help_result.output
     assert "--creative" in help_result.output
-    assert "--cursor" in help_result.output  # mentioned by --creative help
+    assert "--cursor" in help_result.output
     assert DEFAULT_AGENT_TIMEOUT_SEC == 600
     with tempfile.TemporaryDirectory(prefix="ft-dry-") as tmp:
         result = runner.invoke(
@@ -1671,11 +1670,11 @@ def _ft_test_relay_streams_before_wait() -> None:
     _FT_RELAY_SPY_SEEN.clear()
     _FT_RELAY_SPY_ORIG = sys.stdout.write
     cmd = [sys.executable, "-c", "print('stream-line-1', flush=True)"]
-    sys.stdout.write = _ft_relay_stdout_spy  # type: ignore[method-assign]
+    sys.stdout.write = _ft_relay_stdout_spy
     try:
         code, captured, timed_out = ft_relay_subprocess_stdout(cmd, timeout_sec=5.0)
     finally:
-        sys.stdout.write = _FT_RELAY_SPY_ORIG  # type: ignore[method-assign]
+        sys.stdout.write = _FT_RELAY_SPY_ORIG
     assert code == 0
     assert timed_out is False
     assert "stream-line-1" in captured
@@ -1700,7 +1699,7 @@ def _ft_test_relay_timeout_kills_slow_command() -> None:
 def _ft_test_print_evaluation_includes_reward() -> None:
     _FT_ECHO_CAPTURE.clear()
     original = click.echo
-    click.echo = _ft_echo_capture  # type: ignore[assignment]
+    click.echo = _ft_echo_capture
     try:
         ft_print_evaluation_summary(
             {"reward": 0, "pass": False},
@@ -1708,7 +1707,7 @@ def _ft_test_print_evaluation_includes_reward() -> None:
             Path("/tmp/artifacts"),
         )
     finally:
-        click.echo = original  # type: ignore[assignment]
+        click.echo = original
     text = "\n".join(_FT_ECHO_CAPTURE)
     assert "=== Evaluation ===" in text
     assert "reward: 0" in text

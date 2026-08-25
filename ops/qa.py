@@ -1,8 +1,8 @@
-#!/usr/bin/env python3
 """Click CLI for Cursor SDK shutdown QA repros — implementation in ``src/python/qa.py``."""
 
 from __future__ import annotations
 
+import importlib
 import sys
 from pathlib import Path
 
@@ -11,9 +11,7 @@ import click
 _src = Path(__file__).resolve().parents[1] / "src" / "python"
 if str(_src) not in sys.path:
     sys.path.insert(0, str(_src))
-from _ops_bootstrap import load_library  # noqa: E402
-
-_lib = load_library("qa")
+_lib = importlib.import_module("_ops_bootstrap").load_library("qa")
 
 @click.group()
 def qa_cli() -> None:

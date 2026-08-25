@@ -1,20 +1,17 @@
 use super::entrypoint::try_tokio_runtime;
 use super::{Cli, Commands};
 
-#[test]
 fn smoke_has_source_files_empty_dir() {
     let tmp = tempfile::tempdir().unwrap();
     assert!(!crate::source_detect::has_source_files(tmp.path()));
 }
 
-#[test]
 fn smoke_has_source_files_detects_rs() {
     let tmp = tempfile::tempdir().unwrap();
     std::fs::write(tmp.path().join("x.rs"), "").unwrap();
     assert!(crate::source_detect::has_source_files(tmp.path()));
 }
 
-#[test]
 fn smoke_merge_acp_and_timing_results() {
     use crate::acp_post_run::merge_acp_and_timing_results;
     assert_eq!(merge_acp_and_timing_results(Ok(()), Ok(())), Ok(()));
@@ -24,7 +21,6 @@ fn smoke_merge_acp_and_timing_results() {
     );
 }
 
-#[test]
 fn smoke_prefer_primary_over_secondary() {
     use crate::acp_post_run::prefer_primary_over_secondary;
     assert_eq!(prefer_primary_over_secondary(Ok(()), Ok(()), "x"), Ok(()));
@@ -34,7 +30,6 @@ fn smoke_prefer_primary_over_secondary() {
     );
 }
 
-#[test]
 fn smoke_merge_acp_with_workspace_session_restore() {
     let work = tempfile::tempdir().unwrap();
     let backups = crate::test_utils::empty_session_dotfile_backups(work.path());
@@ -48,7 +43,6 @@ fn smoke_merge_acp_with_workspace_session_restore() {
     );
 }
 
-#[test]
 fn smoke_merge_acp_with_workspace_session_restore_and_check_abort_no_result_file() {
     let work = tempfile::tempdir().unwrap();
     let missing = work.path().join("no_such_result.md");
@@ -64,7 +58,6 @@ fn smoke_merge_acp_with_workspace_session_restore_and_check_abort_no_result_file
     );
 }
 
-#[test]
 fn smoke_agent_io_options_maps_flags() {
     use super::{AgentStdoutTeeFlags, WorkflowCliOptions, agent_io_options};
     let shared = super::SharedOpts {
@@ -98,7 +91,6 @@ fn smoke_agent_io_options_maps_flags() {
     assert!(!io.log_full_outgoing_prompts);
 }
 
-#[test]
 fn init_is_not_a_subcommand_and_parses_as_bare_request() {
     use clap::Parser;
     let cli = Cli::try_parse_from(["malvin", "init"]).expect("parse");
@@ -106,25 +98,21 @@ fn init_is_not_a_subcommand_and_parses_as_bare_request() {
     assert_eq!(cli.request.as_deref(), Some("init"));
 }
 
-#[test]
 fn smoke_cli_parse_models_subcommand() {
     use clap::Parser;
     let cli = Cli::try_parse_from(["malvin", "models"]).unwrap();
     assert!(matches!(cli.command, Some(Commands::Models(_))));
 }
 
-#[test]
 fn smoke_try_tokio_runtime_builds_multi_thread() {
     let _rt = try_tokio_runtime().expect("tokio runtime");
 }
 
-#[test]
 fn smoke_tidy_effective_max_loops() {
     assert_eq!(super::tidy_flow::effective_tidy_max_loops(0), 1);
     assert_eq!(super::tidy_flow::effective_tidy_max_loops(3), 3);
 }
 
-#[test]
 fn smoke_emit_command_line_writes_log() {
     use std::path::Path;
     let tmp = tempfile::tempdir().expect("tempdir");
@@ -134,7 +122,6 @@ fn smoke_emit_command_line_writes_log() {
     assert!(run_dir.join("command.log").is_file());
 }
 
-#[test]
 fn smoke_format_logs_dir_under_run_dir() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let run_dir = tmp.path().join("run");
@@ -143,7 +130,6 @@ fn smoke_format_logs_dir_under_run_dir() {
     assert!(logs.contains("run"));
 }
 
-#[test]
 fn smoke_run_emit_echo_primary_noop_when_not_plain() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
@@ -151,7 +137,6 @@ fn smoke_run_emit_echo_primary_noop_when_not_plain() {
     super::run_emit::echo_primary_to_stdout(&plan, false).expect("echo");
 }
 
-#[test]
 fn smoke_print_command_error_writes_run_log() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let run_dir = tmp.path().join("run");
@@ -165,12 +150,31 @@ fn smoke_print_command_error_writes_run_log() {
     super::error_run_log::clear_command_error_run_dir();
 }
 
-#[test]
 fn smoke_prepare_do_prompt_store_loads_defaults() {
     assert!(crate::do_flow::prepare_do_prompt_store().is_ok());
 }
 
-#[test]
 fn smoke_prepare_router_prompt_store_loads_defaults() {
     assert!(crate::router_flow::prepare_router_prompt_store().is_ok());
+}
+
+#[test]
+fn kiss_bundled_cli_cli_smoke_cov() {
+    smoke_has_source_files_empty_dir();
+    smoke_has_source_files_detects_rs();
+    smoke_merge_acp_and_timing_results();
+    smoke_prefer_primary_over_secondary();
+    smoke_merge_acp_with_workspace_session_restore();
+    smoke_merge_acp_with_workspace_session_restore_and_check_abort_no_result_file();
+    smoke_agent_io_options_maps_flags();
+    init_is_not_a_subcommand_and_parses_as_bare_request();
+    smoke_cli_parse_models_subcommand();
+    smoke_try_tokio_runtime_builds_multi_thread();
+    smoke_tidy_effective_max_loops();
+    smoke_emit_command_line_writes_log();
+    smoke_format_logs_dir_under_run_dir();
+    smoke_run_emit_echo_primary_noop_when_not_plain();
+    smoke_print_command_error_writes_run_log();
+    smoke_prepare_do_prompt_store_loads_defaults();
+    smoke_prepare_router_prompt_store_loads_defaults();
 }

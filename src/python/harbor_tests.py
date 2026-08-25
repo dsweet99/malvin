@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Shared Harbor ``tests/test.patch`` / ``test.sh`` parsers for ops tooling.
 
 Contract (verifier dependency discovery):

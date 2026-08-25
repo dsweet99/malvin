@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Bootstrap ``src/python`` onto ``sys.path`` for thin ``ops/`` entry scripts.
 
 Python puts the script directory (``ops/``) at ``sys.path[0]`` for

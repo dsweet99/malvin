@@ -14,6 +14,9 @@ pub(crate) use models_cmd_filter::{line_matches_prefix, models_list_prefix, sect
 #[derive(Args, Debug, Clone, Default)]
 #[command(override_usage = "malvin models [OPTION]... [PREFIX]...")]
 pub struct ModelsArgs {
+    /// Force-refresh provider model catalogs (bypasses the daily Pi cache).
+    #[arg(long)]
+    pub refresh: bool,
     /// Optional prefix filter (for example `cursor:`, `pi:`, or `codex:`)
     #[arg(
         value_name = "PREFIX",
@@ -29,7 +32,7 @@ pub(crate) const fn models_args_marker(_args: &ModelsArgs) -> &'static str {
 }
 
 fn print_codex_models(filter: Option<&str>) {
-    match crate::codex_sdk::list_codex_models() {
+    match crate::codex_sdk::list_codex_display_models() {
         Ok(models) => {
             for (id, name) in models {
                 let line = format!("codex:{id}\t{name}");
@@ -57,7 +60,7 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
         print_stdout_line(MALVIN_WHO, &format!("(cursor models unavailable: {e})"));
     }
     if section_may_match(filter_ref, PI_PREFIX) {
-        match crate::pi_sdk::list_pi_models_sync() {
+        match crate::pi_sdk::list_pi_models_sync(args.refresh) {
             Ok(models) => print_pi_models(&models, filter_ref),
             Err(e) => {
                 print_stdout_line(MALVIN_WHO, &format!("(pi models unavailable: {e})"));
@@ -95,7 +98,7 @@ fn print_pi_models(models: &[crate::pi_sdk::PiModelListing], filter: Option<&str
     if printed {
         print_stdout_line(
             MALVIN_WHO,
-            "Note: pi model list is built in-process; rows are shown only for providers you can run (environment API key or stored Pi credential).",
+            "Note: pi model list refreshes live provider catalogs at most once per day (use --refresh to force); rows are shown only for providers you can run (environment API key or stored Pi credential).",
         );
     }
 }

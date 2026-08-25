@@ -141,13 +141,8 @@ pub(crate) async fn read_json_waiting(
         process_group_id: session.process_group_id,
         spawn_pid_baseline: &session.spawn_pid_baseline,
     });
-    crate::bridge_sdk::await_next_with_idle_in_turn(
-        labels,
-        health,
-        read_json_line(session),
-        turn,
-    )
-    .await
+    crate::bridge_sdk::await_next_with_idle_in_turn(labels, health, read_json_line(session), turn)
+        .await
 }
 
 async fn read_json_line(session: &BridgeSession) -> Result<serde_json::Value, AgentError> {

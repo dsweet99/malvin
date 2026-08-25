@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 
 """Run malvin on Modal, forwarding host CLI arguments to the remote malvin process.
 

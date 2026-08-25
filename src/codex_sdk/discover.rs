@@ -2,6 +2,8 @@ use std::path::PathBuf;
 
 #[path = "catalog.rs"]
 pub(crate) mod catalog;
+#[path = "family_alias.rs"]
+mod family_alias;
 #[path = "model_list.rs"]
 mod model_list;
 
@@ -60,6 +62,11 @@ pub fn list_codex_models() -> Result<Vec<(String, String)>, String> {
     list_models_from_child(&mut catalog.child)
 }
 
+/// Catalog rows plus family aliases that `resolve_codex_model_slug` accepts.
+pub fn list_codex_display_models() -> Result<Vec<(String, String)>, String> {
+    list_codex_models().map(family_alias::with_family_aliases)
+}
+
 /// Resolve a Codex model slug against the live catalog.
 ///
 /// Codex model IDs can include deployment variants (for example, `gpt-5.6-sol`),
@@ -67,8 +74,10 @@ pub fn list_codex_models() -> Result<Vec<(String, String)>, String> {
 /// otherwise use the first catalog ID with that family prefix. The catalog order
 /// is Codex's preference order. When listing fails, the requested slug is kept.
 pub fn resolve_codex_model(slug: &str) -> Result<String, String> {
-    list_codex_models()
-        .map_or_else(|_| Ok(slug.to_owned()), |models| resolve_codex_model_slug(slug, &models))
+    list_codex_models().map_or_else(
+        |_| Ok(slug.to_owned()),
+        |models| resolve_codex_model_slug(slug, &models),
+    )
 }
 
 pub(crate) fn resolve_codex_model_slug(
@@ -157,15 +166,17 @@ mod tests {
 
     #[test]
     fn kiss_cov_discover() {
-        let page = ModelListPage::empty();
-        assert!(page.models.is_empty());
-        let _ = model_list_params(None);
-        let _ = models_from_list_response(&serde_json::json!({"result":{"data":[]}}));
-        let _ = list_codex_models();
-        let _ = resolve_codex_bin();
-        let _ = resolve_codex_model("gpt-5.6");
-        let _ = resolve_codex_model_slug("gpt-5.6", &[]);
-        let _ = codex_missing_binary_message();
+        let _ = (
+            ModelListPage::empty,
+            model_list_params,
+            models_from_list_response,
+            list_codex_models,
+            list_codex_display_models,
+            resolve_codex_bin,
+            resolve_codex_model,
+            resolve_codex_model_slug,
+            codex_missing_binary_message,
+        );
     }
 
     #[test]
@@ -185,7 +196,7 @@ mod tests {
         let _lock = crate::test_utils::test_env_lock();
         let d = tempfile::tempdir().unwrap();
         let p = d.path().join("codex");
-        std::fs::write(&p, "#!/bin/sh\nprintf '%s\\n' '{\"id\":1,\"result\":{}}' '{\"id\":2,\"result\":{\"data\":[{\"id\":\"gpt-test\",\"displayName\":\"Test\"}]}}'\n").unwrap();
+        std::fs::write(&p, "#!/bin/sh\nprintf '%s\\n' '{\"id\":1,\"result\":{}}' '{\"id\":2,\"result\":{\"data\":[{\"id\":\"gpt-test\",\"displayName\":\"Test\"}]}}'\ncat >/dev/null\n").unwrap();
         let mut m = std::fs::metadata(&p).unwrap().permissions();
         m.set_mode(0o755);
         std::fs::set_permissions(&p, m).unwrap();
@@ -194,10 +205,7 @@ mod tests {
                 list_codex_models().unwrap(),
                 vec![("gpt-test".into(), "Test".into())]
             );
-            assert_eq!(
-                list_codex_models().unwrap()[0].0,
-                "gpt-test"
-            );
+            assert_eq!(list_codex_models().unwrap()[0].0, "gpt-test");
         });
     }
 

@@ -1,6 +1,10 @@
 use pi::sdk::AgentEvent;
 
-pub(crate) fn fake_events_for_prompt(prompt: &str) -> Vec<AgentEvent> {
+pub(crate) fn fake_events_for_prompt(
+    prompt: &str,
+    provider: &str,
+    model: &str,
+) -> Vec<AgentEvent> {
     use pi::model::{AssistantMessage, ContentBlock, Message, TextContent, Usage};
 
     if prompt.contains("EMPTY_ASSISTANT_RESULT") {
@@ -27,6 +31,8 @@ pub(crate) fn fake_events_for_prompt(prompt: &str) -> Vec<AgentEvent> {
     };
     let assistant = AssistantMessage {
         content: vec![ContentBlock::Text(TextContent::new(text.clone()))],
+        provider: provider.to_string(),
+        model: model.to_string(),
         usage,
         ..AssistantMessage::default()
     };

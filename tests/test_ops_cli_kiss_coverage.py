@@ -35,7 +35,7 @@ def test_ops_cli_kiss_coverage_witnesses() -> None:
         qa_all_cmd,
         qa_selftest_cmd,
     )
-    if False:  # pragma: no cover
+    if False:
         fast_task_cli()
         fast_tasks_list_cmd()
         fast_task_solve()

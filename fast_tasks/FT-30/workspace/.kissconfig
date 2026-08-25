@@ -1,10 +1,16 @@
 # Fast-task kiss thresholds (stable defaults)
 
-[gate]
-test_coverage_threshold = 90
+[global]
 min_similarity = 0.9
 duplication_enabled = true
 orphan_module_enabled = true
+comment_removal_enabled = false
+docs_allowed = ["./"]
+orphan_allowed = []
+
+[test]
+test_coverage_threshold = 90
+test_coverage_scope = "codebase"
 
 [python]
 statements_per_function = 35

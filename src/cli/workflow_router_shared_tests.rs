@@ -18,12 +18,10 @@ pub(crate) fn router_render_fixture(
     store.ensure_defaults().expect("defaults");
     (tmp, store, artifacts)
 }
-#[test]
 fn effective_max_loops_is_at_least_one() {
     assert_eq!(effective_max_loops(0), 1);
     assert_eq!(effective_max_loops(3), 3);
 }
-#[test]
 fn router_workflow_context_includes_quality_gates() {
     crate::test_utils::with_isolated_home(|_| {
         let (_tmp, _store, artifacts) = router_render_fixture("code");
@@ -32,7 +30,6 @@ fn router_workflow_context_includes_quality_gates() {
         assert!(ctx.contains_key("quality_gates"));
     });
 }
-#[test]
 fn router_workflow_context_without_gates_omits_quality_gates() {
     crate::test_utils::with_isolated_home(|_| {
         let (_tmp, _store, artifacts) = router_render_fixture("code");
@@ -45,13 +42,11 @@ fn router_workflow_context_without_gates_omits_quality_gates() {
         assert!(!ctx.contains_key("quality_gates"));
     });
 }
-#[test]
 fn prefer_gate_outcome_over_summarize_keeps_gate_error() {
     let err =
         prefer_gate_outcome_over_summarize::<()>(Err("gate boom".into()), Ok(())).unwrap_err();
     assert!(err.contains("gate boom"));
 }
-#[test]
 fn prefer_gate_outcome_over_summarize_surfaces_summarize_when_gate_ok() {
     let err =
         prefer_gate_outcome_over_summarize(Ok("ok"), Err("summarize boom".into())).unwrap_err();
@@ -59,7 +54,6 @@ fn prefer_gate_outcome_over_summarize_surfaces_summarize_when_gate_ok() {
     let ok = prefer_gate_outcome_over_summarize(Ok(7), Ok(())).expect("ok");
     assert_eq!(ok, 7);
 }
-#[test]
 fn write_checks_do_not_pass_for_artifacts_writes_markers() {
     crate::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tempdir");
@@ -74,7 +68,6 @@ fn write_checks_do_not_pass_for_artifacts_writes_markers() {
         );
     });
 }
-#[test]
 fn clear_quality_gates_log_for_next_agent_empties_file() {
     crate::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tempdir");
@@ -103,7 +96,6 @@ pub(crate) fn gate_failure_fixture(
     let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snapshot");
     (tmp, bin, guard, artifacts, backups)
 }
-#[test]
 fn run_router_workspace_gates_refreshes_quality_gates_log() {
     crate::test_utils::with_isolated_home(|_| {
         let (_tmp, _bin, _guard, artifacts, backups) = gate_failure_fixture(1);
@@ -124,7 +116,6 @@ fn run_router_workspace_gates_refreshes_quality_gates_log() {
     });
 }
 
-#[test]
 fn failed_gate_run_does_not_set_just_ran_flag() {
     crate::test_utils::with_isolated_home(|_| {
         let (_tmp, _bin, _guard, artifacts, backups) = gate_failure_fixture(1);
@@ -146,7 +137,6 @@ fn failed_gate_run_does_not_set_just_ran_flag() {
     });
 }
 
-#[test]
 fn gate_iteration_context_overrides_exp_log() {
     crate::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tempdir");
@@ -183,7 +173,6 @@ pub(crate) fn missing_checks_fixture(
     let backups = crate::artifacts::SessionDotfileBackups::snapshot(work).expect("snapshot");
     (artifacts, backups)
 }
-#[test]
 fn run_router_workspace_gates_fails_when_checks_missing() {
     crate::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tempdir");
@@ -196,7 +185,6 @@ fn run_router_workspace_gates_fails_when_checks_missing() {
         );
     });
 }
-#[test]
 fn run_router_workspace_gates_restores_before_executing_checks() {
     crate::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tempdir");
@@ -206,7 +194,6 @@ fn run_router_workspace_gates_restores_before_executing_checks() {
         run_router_workspace_gates(&artifacts, &backups, true).expect("gates pass after restore");
     });
 }
-#[test]
 fn run_router_workspace_gates_leaves_session_gitignore_after_post_gate_restore() {
     crate::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tempdir");
@@ -221,7 +208,6 @@ fn run_router_workspace_gates_leaves_session_gitignore_after_post_gate_restore()
         );
     });
 }
-#[test]
 fn restore_failure_prevents_gate_run() {
     crate::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tempdir");
@@ -231,7 +217,6 @@ fn restore_failure_prevents_gate_run() {
         assert!(err.contains("gitignore restore"));
     });
 }
-#[test]
 fn prefer_gate_outcome_keeps_gate_error_when_restore_also_fails() {
     let gate = Err("__MALVIN_GATE_FAILURE__:`false` failed (exit 1)".into());
     let restore = Err("gitignore restore: Is a directory".into());
@@ -245,3 +230,22 @@ pub(crate) use workflow_router_shared_tests_tail::artifact_storage_available;
 pub(crate) use workflow_router_shared_tests_tail::{
     gitignore_restore_failure_fixture, router_gates_restore_fixture,
 };
+
+#[test]
+fn kiss_bundled_cli_workflow_router_shared_tests() {
+    effective_max_loops_is_at_least_one();
+    router_workflow_context_includes_quality_gates();
+    router_workflow_context_without_gates_omits_quality_gates();
+    prefer_gate_outcome_over_summarize_keeps_gate_error();
+    prefer_gate_outcome_over_summarize_surfaces_summarize_when_gate_ok();
+    write_checks_do_not_pass_for_artifacts_writes_markers();
+    clear_quality_gates_log_for_next_agent_empties_file();
+    run_router_workspace_gates_refreshes_quality_gates_log();
+    failed_gate_run_does_not_set_just_ran_flag();
+    gate_iteration_context_overrides_exp_log();
+    run_router_workspace_gates_fails_when_checks_missing();
+    run_router_workspace_gates_restores_before_executing_checks();
+    run_router_workspace_gates_leaves_session_gitignore_after_post_gate_restore();
+    restore_failure_prevents_gate_run();
+    prefer_gate_outcome_keeps_gate_error_when_restore_also_fails();
+}

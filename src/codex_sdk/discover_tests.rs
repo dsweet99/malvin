@@ -1,5 +1,5 @@
-use super::discover::codex_path_is_executable;
 use super::discover::ModelListPage;
+use super::discover::codex_path_is_executable;
 
 #[test]
 fn kiss_cov_discover_names() {

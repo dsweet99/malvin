@@ -92,9 +92,6 @@ pub(super) fn configured_codex_command(
     cwd: &std::path::Path,
 ) -> tokio::process::Command {
     let mut cmd = crate::malvin_sandbox::malvin_tokio_command(bin);
-    // Fast tasks already run in Docker, where Codex's nested bubblewrap
-    // sandbox cannot create a user namespace. Ordinary Codex runs retain
-    // Codex's workspace-write sandbox.
     configure_codex_sandbox(&mut cmd, codex_uses_outer_sandbox());
     cmd.arg("app-server")
         .arg("--stdio")

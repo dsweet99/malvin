@@ -23,6 +23,8 @@ pub(crate) struct PiEmbeddedSession {
     pub(crate) work_dir: PathBuf,
     pub(crate) reader_dead: Arc<AtomicBool>,
     pub(crate) spawn_pid_baseline: HashSet<u32>,
+    pub(crate) pi_provider: String,
+    pub(crate) pi_model: String,
 }
 
 impl PiEmbeddedSession {
@@ -74,7 +76,7 @@ impl Drop for PiEmbeddedSession {
     }
 }
 
-async fn drain_agent_events(
+pub(crate) async fn drain_agent_events(
     session: &PiEmbeddedSession,
     mut events_rx: mpsc::UnboundedReceiver<AgentEvent>,
     reply: tokio::sync::oneshot::Receiver<Result<(), String>>,
@@ -89,11 +91,6 @@ async fn drain_agent_events(
                 "pi session aborted (memory limit or shutdown)".into(),
             ));
         }
-        // Invariant: `reply` is polled only through the first select arm. A
-        // tokio oneshot receiver is consumed by any winning poll, so
-        // re-awaiting it elsewhere would panic ("called after complete");
-        // instead the outcome is cached in `prompt_result` and reused by the
-        // exit paths. `biased` + reply-first makes that ordering deterministic.
         let next = recv_event_with_idle(session, &mut events_rx, &mut turn);
         tokio::select! {
             biased;
@@ -111,11 +108,7 @@ async fn drain_agent_events(
                 match event {
                     Ok(Some(event)) => {
                         if handle_mapped_events(session, &event)? {
-                            return finish_after_channel_closed(
-                                prompt_result.take().unwrap_or_else(|| {
-                                    Err("pi sdk runtime stopped".into())
-                                }),
-                            );
+                            return Ok(());
                         }
                         turn.check_max_deadline(DrainIdleLabels {
                             prefix: crate::acp::DRAIN_IDLE_PREFIX_PI,
@@ -123,9 +116,6 @@ async fn drain_agent_events(
                         })?;
                     }
                     Ok(None) => {
-                        // Reply not yet cached means the first arm never won;
-                        // the receiver was therefore never polled, so awaiting
-                        // it here is safe (exactly once).
                         let result = match prompt_result.take() {
                             Some(result) => result,
                             None => reply
@@ -227,7 +217,7 @@ pub(crate) fn finish_run_done(log: &StreamLog, ev: &BridgeEvent) -> Result<(), A
 
 async fn send_fake_prompt(session: &PiEmbeddedSession, prompt: &str) -> Result<(), AgentError> {
     let (tx, rx) = mpsc::unbounded_channel();
-    for event in fake_events_for_prompt(prompt) {
+    for event in fake_events_for_prompt(prompt, &session.pi_provider, &session.pi_model) {
         let _ = tx.send(event);
     }
     drop(tx);

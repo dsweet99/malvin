@@ -105,11 +105,29 @@ fn kiss_cov_sdk_bridge_build_install_names() {
 fn kiss_cov_pi_sdk_discover_auth_models() {
     ensure_pi_authenticated();
     provider_auth_env_keys();
-    list_pi_models_sync();
+    list_pi_models_sync(false);
     pi_list_models_timeout();
     PiModelListing();
     DEFAULT_PI_LIST_MODELS_TIMEOUT_MS();
     pi_sdk_client_from_raw();
+    kiss_cov_pi_sdk_models_refresh_name_batch();
+}
+
+fn kiss_cov_pi_sdk_models_refresh_name_batch() {
+    ProviderModelCache();
+    cache_is_fresh();
+    load_provider_cache();
+    save_provider_cache();
+    refresh_pi_provider_caches_if_stale();
+    merge_registry_with_live();
+    append_live_models();
+    append_static_models_without_live();
+    static_registry_lookup();
+    provider_needs_refresh();
+    fetch_provider_models_sync();
+    resolve_provider_api_key();
+    authenticated_providers();
+    PI_MODEL_CACHE_TTL();
 }
 
 #[test]

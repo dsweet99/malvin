@@ -73,8 +73,9 @@ fn cursor_store_ingests_tool_call_path() {
     cache.ingest_new_blobs();
 }
 
-#[test]
-#[ignore = "manual: uses live ~/.cursor store.db from defer_enrich e2e"]
+/// Manual live check against `~/.cursor` store.db from a `defer_enrich` e2e session.
+/// Not a `#[test]`: kiss schedules ignored tests but nextest skips them, which breaks coverage.
+#[allow(dead_code)]
 fn live_cursor_store_ingests_read_path() {
     let session_id = std::env::var("MALVIN_LIVE_SESSION_ID")
         .unwrap_or_else(|_| "06c114e6-7f81-4763-ae05-f4c1ae2f9e09".to_string());

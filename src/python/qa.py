@@ -252,7 +252,7 @@ def repro_sigkill_stdin_hold_abandons_bridge() -> int:
         
         fixed = (not abandoned) and ctrl_dead
         return _emit_result(name, fixed=fixed, detail=detail)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log(f"ERROR {exc}")
         return _emit_result(name, False, {"error": str(exc)})
     finally:

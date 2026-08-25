@@ -2,7 +2,6 @@ use super::*;
 use tracing::Callsite;
 use tracing::Level;
 
-#[test]
 fn init_tracing_installs_layer() {
     init_tracing();
     crate::output::clear_captured_stderr_lines();
@@ -11,7 +10,6 @@ fn init_tracing_installs_layer() {
     assert!(lines.iter().any(|l| l.contains("init-smoke")));
 }
 
-#[test]
 fn install_malvin_tracing_warns_when_subscriber_already_set() {
     crate::output::clear_captured_stderr_lines();
     install_malvin_tracing();
@@ -24,13 +22,11 @@ fn install_malvin_tracing_warns_when_subscriber_already_set() {
     );
 }
 
-#[test]
 fn malvin_log_accepts_tracing_level_filters_debug() {
     assert!(malvin_log_accepts_tracing_level(Level::INFO));
     assert!(!malvin_log_accepts_tracing_level(Level::DEBUG));
 }
 
-#[test]
 fn llama_cpp_crate_targets_drop_info_keep_warn() {
     use tracing::subscriber::Subscriber;
 
@@ -56,7 +52,6 @@ fn llama_cpp_crate_targets_drop_info_keep_warn() {
     assert!(!is_llama_cpp_crate_target("malvin::z"));
 }
 
-#[test]
 fn emit_malvin_tracing_log_routes_by_level() {
     crate::output::clear_captured_stderr_lines();
     emit_malvin_tracing_log(Level::ERROR, "err-level");
@@ -69,7 +64,6 @@ fn emit_malvin_tracing_log_routes_by_level() {
     assert!(lines.iter().any(|l| l.contains("info-level")));
 }
 
-#[test]
 fn tracing_field_formatting_collects_message_and_custom_fields() {
     assert_eq!(format_debug_tracing_field("message", &"x"), "x");
     assert_eq!(format_debug_tracing_field("k", &"val"), "\"val\"");
@@ -81,7 +75,6 @@ fn tracing_field_formatting_collects_message_and_custom_fields() {
     assert_eq!(buf, "k=v; hello");
 }
 
-#[test]
 fn log_field_visitor_record_str_and_record_debug_collect_fields() {
     use tracing::field::Visit;
 
@@ -103,7 +96,6 @@ fn log_field_visitor_record_str_and_record_debug_collect_fields() {
     assert_eq!(buf, "hello key=\"val\"");
 }
 
-#[test]
 fn subscriber_register_callsite_and_enabled_filter_levels() {
     use tracing::subscriber::Subscriber;
 
@@ -128,7 +120,6 @@ fn subscriber_register_callsite_and_enabled_filter_levels() {
     assert!(!sub.enabled(debug_cs.metadata()));
 }
 
-#[test]
 fn subscriber_event_and_process_malvin_tracing_event_emit_to_stderr() {
     use tracing::field::Value;
     use tracing::subscriber::Subscriber;
@@ -158,7 +149,6 @@ fn subscriber_event_and_process_malvin_tracing_event_emit_to_stderr() {
     assert!(lines.iter().any(|l| l.contains("direct-event")));
 }
 
-#[test]
 fn subscriber_new_span_record_follows_from_enter_exit_hooks() {
     use tracing::subscriber::Subscriber;
 
@@ -180,7 +170,6 @@ fn subscriber_new_span_record_follows_from_enter_exit_hooks() {
     sub.exit(&id);
 }
 
-#[test]
 fn process_malvin_tracing_event_emits_info_not_debug() {
     use tracing::dispatcher::Dispatch;
 
@@ -195,7 +184,6 @@ fn process_malvin_tracing_event_emits_info_not_debug() {
     assert!(!lines.iter().any(|l| l.contains("debug-hidden")));
 }
 
-#[test]
 fn span_lifecycle_does_not_change_event_stderr_output() {
     use tracing::dispatcher::Dispatch;
 
@@ -237,4 +225,20 @@ fn span_lifecycle_does_not_change_event_stderr_output() {
         .collect();
     assert_eq!(event_lines, span_lines);
     assert_eq!(event_lines.len(), 1);
+}
+
+#[test]
+fn kiss_bundled_tracing_init_tests() {
+    init_tracing_installs_layer();
+    install_malvin_tracing_warns_when_subscriber_already_set();
+    malvin_log_accepts_tracing_level_filters_debug();
+    llama_cpp_crate_targets_drop_info_keep_warn();
+    emit_malvin_tracing_log_routes_by_level();
+    tracing_field_formatting_collects_message_and_custom_fields();
+    log_field_visitor_record_str_and_record_debug_collect_fields();
+    subscriber_register_callsite_and_enabled_filter_levels();
+    subscriber_event_and_process_malvin_tracing_event_emit_to_stderr();
+    subscriber_new_span_record_follows_from_enter_exit_hooks();
+    process_malvin_tracing_event_emits_info_not_debug();
+    span_lifecycle_does_not_change_event_stderr_output();
 }
