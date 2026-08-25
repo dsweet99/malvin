@@ -1,0 +1,95 @@
+--- a/src/providers/openai.rs
++++ b/src/providers/openai.rs
+@@ -454,6 +454,16 @@
+             ));
+         }
+ 
++        if self.provider.eq_ignore_ascii_case("openrouter") {
++            if let Some((_, id)) = response
++                .headers()
++                .iter()
++                .find(|(name, _)| name.eq_ignore_ascii_case("x-generation-id"))
++            {
++                note_openrouter_generation_id(id);
++            }
++        }
++
+         let content_type = response
+             .headers()
+             .iter()
+@@ -739,6 +749,44 @@
+     }
+ }
+ 
++fn apply_openrouter_usage_cost(usage: &OpenAIUsage, cost: &mut crate::model::Cost) {
++    if let Some(details) = &usage.cost_details {
++        if let Some(v) = details.upstream_inference_prompt_cost {
++            cost.input = v;
++        }
++        if let Some(v) = details.upstream_inference_completions_cost {
++            cost.output = v;
++        }
++        if let Some(v) = details.upstream_inference_cost {
++            cost.total = v;
++        }
++    }
++    if let Some(v) = usage.cost {
++        cost.total = v;
++    }
++    if cost.total <= 0.0 && (cost.input > 0.0 || cost.output > 0.0) {
++        cost.total = cost.input + cost.output + cost.cache_read + cost.cache_write;
++    }
++}
++
++use std::cell::RefCell;
++
++thread_local! {
++    static OPENROUTER_GENERATION_IDS: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
++}
++
++/// Generation ids from recent OpenRouter streaming responses (`X-Generation-Id` header).
++pub fn take_openrouter_generation_ids() -> Vec<String> {
++    OPENROUTER_GENERATION_IDS.with(|ids| std::mem::take(&mut *ids.borrow_mut()))
++}
++
++fn note_openrouter_generation_id(id: &str) {
++    let id = id.trim();
++    if !id.is_empty() {
++        OPENROUTER_GENERATION_IDS.with(|ids| ids.borrow_mut().push(id.to_string()));
++    }
++}
++
+ impl<S> StreamState<S>
+ where
+     S: Stream<Item = std::result::Result<Vec<u8>, std::io::Error>> + Unpin,
+@@ -797,6 +845,9 @@
+                 .unwrap_or_else(|| usage.prompt_tokens.saturating_sub(cached));
+             self.partial.usage.output = usage.completion_tokens.unwrap_or(0);
+             self.partial.usage.total_tokens = usage.total_tokens;
++            if self.partial.provider.eq_ignore_ascii_case("openrouter") {
++                apply_openrouter_usage_cost(&usage, &mut self.partial.usage.cost);
++            }
+         }
+ 
+         if let Some(error) = chunk.error {
+@@ -1278,6 +1329,20 @@
+     /// When present it is the authoritative source for `usage.input`.
+     #[serde(default)]
+     prompt_cache_miss_tokens: Option<u64>,
++    #[serde(default)]
++    cost: Option<f64>,
++    #[serde(default)]
++    cost_details: Option<OpenAICostDetails>,
++}
++
++#[derive(Debug, Deserialize, Default)]
++struct OpenAICostDetails {
++    #[serde(default)]
++    upstream_inference_cost: Option<f64>,
++    #[serde(default)]
++    upstream_inference_prompt_cost: Option<f64>,
++    #[serde(default)]
++    upstream_inference_completions_cost: Option<f64>,
+ }
+ 
+ #[derive(Debug, Deserialize)]
