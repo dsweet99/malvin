@@ -1,5 +1,5 @@
 use super::{
-    Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_init, run_router,
+    Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_router,
 };
 use crate::do_flow::DoArgs;
 
@@ -150,22 +150,18 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
         shared.no_tenacious,
         matches,
     );
-    if crate::cli::init_flow::should_bootstrap_gates(shared)? {
-        let bootstrap_shared = crate::cli::init_flow::shared_for_init_bootstrap(shared);
-        return run_async_cli(|| {
-            run_init(
-                crate::cli::init_flow::InitWorkflowOpts {
-                    max_loops,
-                    max_hypotheses,
-                },
-                &bootstrap_shared,
-                WorkflowCliOptions {
-                    force: !shared.no_force,
-                },
-            )
-        });
-    }
-    run_async_cli(|| {
+    run_async_cli(|| async {
+        crate::cli::init_flow::maybe_run_init_bootstrap(
+            crate::cli::init_flow::InitWorkflowOpts {
+                max_loops,
+                max_hypotheses,
+            },
+            shared,
+            WorkflowCliOptions {
+                force: !shared.no_force,
+            },
+        )
+        .await?;
         run_router(
             RouterArgs {
                 request: Some(request),
@@ -177,6 +173,7 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
                 force: !shared.no_force,
             },
         )
+        .await
     })
 }
 

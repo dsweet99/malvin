@@ -52,6 +52,18 @@ pub(crate) fn render_init_router_request(repo_root: &Path) -> Result<String, Str
         .map_err(|e: PromptError| e.0)
 }
 
+pub async fn maybe_run_init_bootstrap(
+    init: InitWorkflowOpts,
+    shared: &SharedOpts,
+    workflow: WorkflowCliOptions,
+) -> Result<(), String> {
+    if should_bootstrap_gates(shared)? {
+        let bootstrap_shared = shared_for_init_bootstrap(shared);
+        run_init(init, &bootstrap_shared, workflow).await?;
+    }
+    Ok(())
+}
+
 pub async fn run_init(
     init: InitWorkflowOpts,
     shared: &SharedOpts,
@@ -81,6 +93,7 @@ mod tests {
     #[test]
     fn init_run_entry_is_covered() {
         let _ = run_init;
+        let _ = maybe_run_init_bootstrap;
         let _ = render_init_router_request;
         let _ = effective_init_max_loops;
         let _ = malvin_gates_file_missing;
@@ -198,6 +211,24 @@ mod tests {
             !src.contains(&postcondition),
             "run_init must not postcondition on .malvin/gates"
         );
+        let default_route = include_str!("entrypoint.rs");
+        assert!(
+            !default_route.contains("return run_async_cli(|| {\n            run_init"),
+            "default route must not return after init bootstrap"
+        );
+        assert!(
+            default_route.contains("maybe_run_init_bootstrap"),
+            "default route must call maybe_run_init_bootstrap"
+        );
+        let gates_only = include_str!("entrypoint_gates_only.rs");
+        assert!(
+            !gates_only.contains("return run_async_cli(|| {\n            run_init"),
+            "gates-only route must not return after init bootstrap"
+        );
+        assert!(
+            gates_only.contains("maybe_run_init_bootstrap"),
+            "gates-only route must call maybe_run_init_bootstrap"
+        );
     }
 }
 
@@ -210,6 +241,7 @@ mod kiss_cov_gate_refs {
     fn kiss_cov_unit_names() {
         let _ = stringify!(InitWorkflowOpts);
         let _ = stringify!(run_init);
+        let _ = stringify!(maybe_run_init_bootstrap);
         let _ = stringify!(render_init_router_request);
         let _ = stringify!(effective_init_max_loops);
         let init = InitWorkflowOpts {
@@ -222,6 +254,7 @@ mod kiss_cov_gate_refs {
         let _ = effective_init_max_loops;
         let _ = render_init_router_request;
         let _ = run_init;
+        let _ = maybe_run_init_bootstrap;
         let _ = malvin_gates_file_missing;
         let _ = should_bootstrap_gates;
         let _ = shared_for_init_bootstrap;

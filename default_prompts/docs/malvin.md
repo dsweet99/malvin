@@ -227,7 +227,7 @@ malvin inspire "explore API boundaries"
 
 ## Gate-loop and document commands
 
-`malvin -g` without a request is a thin wrapper: it composes a fixed request (`Get the gates to pass.`) and invokes the **default router** with `--gates` on. When `.malvin/gates` is missing, malvin runs the init workflow instead (see **Quality gates** above).
+`malvin -g` without a request is a thin wrapper: it composes a fixed request (`Get the gates to pass.`) and invokes the **default router** with `--gates` on. When `.malvin/gates` is missing, malvin runs the init workflow first, then this gate-fix workflow (see **Quality gates** above).
 
 `malvin write` starts one agent session and sends two prompts in order (`write_a.md`, then `write_b.md`). It does not use the default router.
 
