@@ -1,8 +1,8 @@
-#!/usr/bin/env python3
 """Click CLI for fast_task — implementation in ``src/python/fast_task.py``."""
 
 from __future__ import annotations
 
+import importlib
 import sys
 from pathlib import Path
 from typing import Any
@@ -12,9 +12,7 @@ import click
 _src = Path(__file__).resolve().parents[1] / "src" / "python"
 if str(_src) not in sys.path:
     sys.path.insert(0, str(_src))
-from _ops_bootstrap import load_library  # noqa: E402
-
-_lib = load_library("fast_task")
+_lib = importlib.import_module("_ops_bootstrap").load_library("fast_task")
 
 @click.group()
 def fast_task_cli() -> None:

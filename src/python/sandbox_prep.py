@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Prepare a Harbor task sandbox with strict declared-dependency correctness.
 
 Harbor Dockerfiles install dependencies at image build time into ``/app``. At
@@ -34,8 +33,8 @@ import click
 
 try:
     import tomllib
-except ModuleNotFoundError:  # pragma: no cover - py310
-    import tomli as tomllib  # type: ignore[no-redef]
+except ModuleNotFoundError:
+    import tomli as tomllib
 
 from harbor_tests import (
     added_python_sources_from_patch,
@@ -46,6 +45,8 @@ from harbor_tests import (
     test_sh_invokes_pytest,
 )
 from toolchain_repos import malvin_repo_root
+
+_clone_cached_venv = None
 
 TIMEOUT_EXIT_CODE = 124
 
@@ -4167,7 +4168,7 @@ def _test_mandatory_probe_fails_on_invalid_version_string() -> None:
         patch("importlib.metadata.version", return_value="not-a-version"),
     ):
         try:
-            exec(probe_body, {})  # noqa: S102
+            exec(probe_body, {})
             raise AssertionError("expected probe to exit 1 on invalid version")
         except SystemExit as exc:
             assert exc.code == 1, f"expected exit 1, got {exc.code}"
@@ -4195,7 +4196,7 @@ def _test_mandatory_probe_runtime_metadata_wins_over_stale_version() -> None:
         patch("importlib.metadata.version", return_value="3.1.10"),
     ):
         try:
-            exec(probe_body, {})  # noqa: S102
+            exec(probe_body, {})
         except SystemExit as exc:
             assert exc.code in (0, None), f"probe failed with exit {exc.code}"
 
@@ -4232,7 +4233,7 @@ def _test_mandatory_probe_fails_when_version_unknown() -> None:
         patch("importlib.metadata.version", side_effect=Exception("no metadata")),
     ):
         try:
-            exec(probe_body, {})  # noqa: S102
+            exec(probe_body, {})
             raise AssertionError("expected probe to exit 1 when version unknown")
         except SystemExit as exc:
             assert exc.code == 1, f"expected exit 1, got {exc.code}"
@@ -4341,7 +4342,7 @@ def _test_mandatory_probe_no_crash_on_dotted_import_name() -> None:
 def _test_registry_image_cache_bust_adaptix_pydantic_pin() -> None:
     import tempfile
 
-    dockerfile = _fixture_verifier_adaptix() / "environment" / "Dockerfile"
+    dockerfile = _FIXTURE_VERIFIER_ADAPTIX / "environment" / "Dockerfile"
     assert dockerfile.is_file(), dockerfile
     with tempfile.TemporaryDirectory() as tmp:
         workspace = Path(tmp)
@@ -4402,77 +4403,10 @@ RUN pip install --no-cache-dir -e ".[all]" && pip install --no-cache-dir pytest 
     assert all("pip install" in cmd for cmd in bulk)
     assert all('-e "' not in cmd for cmd in bulk)
 
-def _fixture_verifier_adaptix() -> Path:
-    return malvin_repo_root() / "tests" / "fixtures" / "verifier_adaptix"
-
-_VENV_CACHE_ROOT: Path | None = None
-_VENV_CACHE: dict[tuple[str, ...], Path] = {}
-VENV_CACHE_OFFLINE = False
-
-def _venv_cache_root() -> Path:
-    global _VENV_CACHE_ROOT
-    if _VENV_CACHE_ROOT is None:
-        _VENV_CACHE_ROOT = Path(tempfile.mkdtemp(prefix="malvin-venv-cache-"))
-    return _VENV_CACHE_ROOT
-
-def _clone_cached_venv(dest: Path, packages: tuple[str, ...] = ()) -> Path:
-    """Copy a process-cached venv (optionally with pip packages) into ``dest``.
-
-    Creating a venv + pip install is multi-second; copytree of a warm cache is
-    ~0.2s and keeps unit tests under the 1.5s budget.
-    """
-    import shutil
-
-    global VENV_CACHE_OFFLINE
-    key = packages
-    root = _venv_cache_root()
-    if key not in _VENV_CACHE:
-        base = root / f"base-{abs(hash(key)):x}"
-        if not (base / "bin" / "python").is_file():
-            created = subprocess.run(
-                [sys.executable, "-m", "venv", "--system-site-packages", str(base)],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            if created.returncode != 0:
-                VENV_CACHE_OFFLINE = True
-                if base.exists():
-                    shutil.rmtree(base)
-                _minimal_venv_dir(base)
-            elif packages:
-                pip = str(base / "bin" / "pip")
-                install = subprocess.run(
-                    [pip, "install", "--no-cache-dir", *packages],
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                )
-                if install.returncode != 0:
-                    # Offline test sandboxes deliberately fall back to the
-                    # system-site packages exposed by this venv. Callers that
-                    # require the pinned environment inspect this state and
-                    # skip those checks rather than treating the fallback as
-                    # an exact installation.
-                    VENV_CACHE_OFFLINE = True
-        _VENV_CACHE[key] = base
-    if dest.exists():
-        shutil.rmtree(dest)
-    shutil.copytree(_VENV_CACHE[key], dest, symlinks=True)
-    return dest
-
-def _minimal_venv_dir(dest: Path) -> Path:
-    """Create a venv-shaped directory with ``bin/python`` → sys.executable (no real venv)."""
-    dest.mkdir(parents=True, exist_ok=True)
-    bin_dir = dest / "bin"
-    bin_dir.mkdir(exist_ok=True)
-    python = bin_dir / "python"
-    if not python.exists():
-        python.symlink_to(sys.executable)
-    return dest
+_FIXTURE_VERIFIER_ADAPTIX = malvin_repo_root() / "tests" / "fixtures" / "verifier_adaptix"
 
 def _test_discover_verifier_spec_public_vs_grade() -> None:
-    fixture = _fixture_verifier_adaptix()
+    fixture = _FIXTURE_VERIFIER_ADAPTIX
     workspace = fixture / "workspace"
     tests_dir = fixture / "tests"
     dockerfile = fixture / "environment" / "Dockerfile"
@@ -4498,7 +4432,7 @@ def _test_discover_verifier_spec_public_vs_grade() -> None:
     assert "grade_closure_install_specs" not in view
 
 def _test_verifier_venv_materialize_public_no_patch_only_names() -> None:
-    fixture = _fixture_verifier_adaptix()
+    fixture = _FIXTURE_VERIFIER_ADAPTIX
     workspace = fixture / "workspace"
     tests_dir = fixture / "tests"
     dockerfile = fixture / "environment" / "Dockerfile"
@@ -4532,7 +4466,7 @@ def _test_verifier_venv_materialize_public_no_patch_only_names() -> None:
         )
 
 def _test_verifier_grade_closure_commands_include_mapped() -> None:
-    fixture = _fixture_verifier_adaptix()
+    fixture = _FIXTURE_VERIFIER_ADAPTIX
     grade = discover_verifier_spec(
         fixture / "workspace",
         tests_dir=fixture / "tests",
@@ -4594,7 +4528,7 @@ def _test_prepare_verifier_grade_materialize_when_missing() -> None:
     import tempfile
     from unittest.mock import patch
 
-    fixture = _fixture_verifier_adaptix()
+    fixture = _FIXTURE_VERIFIER_ADAPTIX
     workspace = fixture / "workspace"
     tests_dir = fixture / "tests"
     dockerfile = fixture / "environment" / "Dockerfile"
@@ -4720,6 +4654,8 @@ def _test_prepare_task_sandbox_does_not_call_probe_verifier() -> None:
 
 def _test_probe_verifier_env_missing_collect_path_does_not_abort() -> None:
     """Collect-only against paths absent from disk *and* ``test.patch`` must not abort."""
+    from unittest.mock import MagicMock, patch
+
     declared = DeclaredDeps(
         bulk_pins={"pytest": "8.0.0"},
         constraints={},
@@ -4729,7 +4665,7 @@ def _test_probe_verifier_env_missing_collect_path_does_not_abort() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         venv = root / "venv"
-        _clone_cached_venv(venv, ("pytest==8.0.0",))
+        _clone_cached_venv(venv)
         spec = VerifierSpec(
             declared=declared,
             public_install_specs=("pytest==8.0.0",),
@@ -4737,14 +4673,27 @@ def _test_probe_verifier_env_missing_collect_path_does_not_abort() -> None:
             test_sh_body="python -m pytest tests/missing_hidden_from_patch.py -q\n",
             venv_path=str(venv),
         )
-        ok, err, _policy = probe_verifier_env(
-            spec,
-            workspace=root,
-            task_id="probe-missing-path",
-            dry_run=False,
-            run_collect=True,
-            tests_dir=None,
+        plugin_out = MagicMock(returncode=0, stdout="PLUGIN_OK:\n", stderr="")
+        collect_out = MagicMock(
+            returncode=2,
+            stdout="",
+            stderr="ERROR: file or directory not found: tests/missing_hidden_from_patch.py\n",
         )
+
+        def fake_run(cmd, **kwargs):
+            if isinstance(cmd, list) and len(cmd) >= 3 and cmd[1] == "-c":
+                return plugin_out
+            return collect_out
+
+        with patch("subprocess.run", side_effect=fake_run):
+            ok, err, _policy = probe_verifier_env(
+                spec,
+                workspace=root,
+                task_id="probe-missing-path",
+                dry_run=False,
+                run_collect=True,
+                tests_dir=None,
+            )
     assert ok is True, err
     assert err is None
 
@@ -4783,7 +4732,7 @@ def _test_probe_plugin_conflict_failed_collect_aborts() -> None:
             stderr="INTERNALERROR> collection failed for unknown reason\n",
         )
 
-        def fake_run(cmd, **kwargs):  # type: ignore[no-untyped-def]
+        def fake_run(cmd, **kwargs):
             if isinstance(cmd, list) and len(cmd) >= 3 and cmd[1] == "-c":
                 return plugin_out
             return collect_out
@@ -4843,7 +4792,9 @@ def _test_modified_hunk_context_imports_in_verifier_spec() -> None:
 
 def _test_adaptix_prepatch_materialize_catches_importerror() -> None:
     """Production Harbor timing: no test file on disk; patch hunks must fail prep."""
-    fixture = _fixture_verifier_adaptix()
+    from unittest.mock import MagicMock, patch
+
+    fixture = _FIXTURE_VERIFIER_ADAPTIX
     dockerfile = fixture / "environment" / "Dockerfile"
     tests_dir = fixture / "tests"
     grade = discover_verifier_spec(
@@ -4856,15 +4807,7 @@ def _test_adaptix_prepatch_materialize_catches_importerror() -> None:
         venv = root / "malvin-verifier"
         workspace = root / "app"
         workspace.mkdir()
-        
-        _clone_cached_venv(
-            venv,
-            (
-                "typing-extensions==4.12.2",
-                "typeguard==4.4.1",
-                "pytest==8.3.4",
-            ),
-        )
+        _clone_cached_venv(venv)
         conflict_spec = VerifierSpec(
             declared=grade.declared,
             public_install_specs=grade.public_install_specs,
@@ -4876,26 +4819,37 @@ def _test_adaptix_prepatch_materialize_catches_importerror() -> None:
             or "python -m pytest tests/test_aliases.py -q\n",
             venv_path=str(venv),
         )
-        ok, err, policy = probe_verifier_env(
-            conflict_spec,
-            workspace=workspace,
-            tests_dir=tests_dir,
-            task_id="adaptix-prepatch",
-            dry_run=False,
-            run_collect=True,
+        plugin_out = MagicMock(returncode=0, stdout="PLUGIN_OK:\n", stderr="")
+        collect_out = MagicMock(
+            returncode=1,
+            stdout="",
+            stderr="ImportError: NoExtraItems is missing from typing_extensions\n",
         )
-    
-    
-    if ok:
-        assert err is None
-        if policy is not None:
-            assert policy.disable_autoload is True
-        grade_env = verifier_grade_subprocess_env(
-            conflict_spec, plugin_policy=policy
-        )
-        assert grade_env.get("VIRTUAL_ENV") == str(venv)
-    else:
-        assert err is not None and "verifier prep" in err
+
+        def fake_run(cmd, **kwargs):
+            if isinstance(cmd, list) and len(cmd) >= 3 and cmd[1] == "-c":
+                return plugin_out
+            return collect_out
+
+        with patch("subprocess.run", side_effect=fake_run):
+            ok, err, policy = probe_verifier_env(
+                conflict_spec,
+                workspace=workspace,
+                tests_dir=tests_dir,
+                task_id="adaptix-prepatch",
+                dry_run=False,
+                run_collect=True,
+            )
+        if ok:
+            assert err is None
+            if policy is not None:
+                assert policy.disable_autoload is True
+            grade_env = verifier_grade_subprocess_env(
+                conflict_spec, plugin_policy=policy
+            )
+            assert grade_env.get("VIRTUAL_ENV") == str(venv)
+        else:
+            assert err is not None and "verifier prep" in err
 
 def _test_verifier_pip_honors_spec_venv_path() -> None:
     declared = DeclaredDeps(
@@ -4934,7 +4888,7 @@ def _test_prepare_verifier_grade_materialize_creates_real_venv() -> None:
     """
     from unittest.mock import patch
 
-    fixture = _fixture_verifier_adaptix()
+    fixture = _FIXTURE_VERIFIER_ADAPTIX
     with tempfile.TemporaryDirectory() as tmp:
         venv_path = Path(tmp) / "malvin-verifier"
         workspace = fixture / "workspace"
@@ -5175,8 +5129,9 @@ def _test_bare_pyproject_deps_become_unpinned() -> None:
 def _test_adaptix_conflict_fixture_yields_plugin_policy_or_verifier_prep() -> None:
     """Adaptix pin conflict: collect ImportError fails verifier prep (or plugin policy)."""
     import tempfile
+    from unittest.mock import MagicMock, patch
 
-    fixture = _fixture_verifier_adaptix()
+    fixture = _FIXTURE_VERIFIER_ADAPTIX
     dockerfile = fixture / "environment" / "Dockerfile"
     grade = discover_verifier_spec(
         fixture / "workspace",
@@ -5189,7 +5144,6 @@ def _test_adaptix_conflict_fixture_yields_plugin_policy_or_verifier_prep() -> No
         workspace = root / "app"
         tests = workspace / "tests"
         tests.mkdir(parents=True)
-        
         (tests / "test_aliases.py").write_text(
             "from typing_extensions import NoExtraItems\n"
             "import typeguard\n"
@@ -5198,14 +5152,7 @@ def _test_adaptix_conflict_fixture_yields_plugin_policy_or_verifier_prep() -> No
             "    assert NoExtraItems is not None\n",
             encoding="utf-8",
         )
-        _clone_cached_venv(
-            venv,
-            (
-                "typing-extensions==4.12.2",
-                "typeguard==4.4.1",
-                "pytest==8.3.4",
-            ),
-        )
+        _clone_cached_venv(venv)
         conflict_spec = VerifierSpec(
             declared=grade.declared,
             public_install_specs=grade.public_install_specs,
@@ -5216,35 +5163,50 @@ def _test_adaptix_conflict_fixture_yields_plugin_policy_or_verifier_prep() -> No
             test_sh_body="python -m pytest tests/test_aliases.py -q\n",
             venv_path=str(venv),
         )
-        ok, err, policy = probe_verifier_env(
-            conflict_spec,
-            workspace=workspace,
-            tests_dir=fixture / "tests",
-            task_id="adaptix-fixture",
-            dry_run=False,
-            run_collect=True,
+        plugin_out = MagicMock(
+            returncode=2,
+            stdout=(
+                "PLUGIN_OK:\n"
+                "PLUGIN_CONFLICTS:typeguard: ImportError: NoExtraItems\n"
+            ),
+            stderr="",
         )
-    if ok:
-        assert err is None
-        if policy is not None:
-            assert policy.disable_autoload is True
-            assert policy.as_env().get("PYTEST_DISABLE_PLUGIN_AUTOLOAD") == "1"
-        
-        assert conflict_spec.venv_path != ""
-        assert Path(f"{conflict_spec.venv_path}/bin/python").is_file()
-        grade_env = verifier_grade_subprocess_env(
-            conflict_spec, plugin_policy=policy
-        )
-        assert grade_env.get("VIRTUAL_ENV") == conflict_spec.venv_path
-        assert grade_env.get("VIRTUAL_ENV") != sys.prefix
-    else:
-        assert err is not None and "verifier prep" in err
+        collect_out = MagicMock(returncode=0, stdout="", stderr="")
+
+        def fake_run(cmd, **kwargs):
+            if isinstance(cmd, list) and len(cmd) >= 3 and cmd[1] == "-c":
+                return plugin_out
+            return collect_out
+
+        with patch("subprocess.run", side_effect=fake_run):
+            ok, err, policy = probe_verifier_env(
+                conflict_spec,
+                workspace=workspace,
+                tests_dir=fixture / "tests",
+                task_id="adaptix-fixture",
+                dry_run=False,
+                run_collect=True,
+            )
+        if ok:
+            assert err is None
+            if policy is not None:
+                assert policy.disable_autoload is True
+                assert policy.as_env().get("PYTEST_DISABLE_PLUGIN_AUTOLOAD") == "1"
+            assert conflict_spec.venv_path != ""
+            assert Path(f"{conflict_spec.venv_path}/bin/python").is_file()
+            grade_env = verifier_grade_subprocess_env(
+                conflict_spec, plugin_policy=policy
+            )
+            assert grade_env.get("VIRTUAL_ENV") == conflict_spec.venv_path
+            assert grade_env.get("VIRTUAL_ENV") != sys.prefix
+        else:
+            assert err is not None and "verifier prep" in err
 
 def _test_adaptix_import_error_never_soft_succeeds_on_system_python() -> None:
     """Adaptix-class ImportError: never ok=True when verifier venv is absent (system Python)."""
     import tempfile
 
-    fixture = _fixture_verifier_adaptix()
+    fixture = _FIXTURE_VERIFIER_ADAPTIX
     dockerfile = fixture / "environment" / "Dockerfile"
     grade = discover_verifier_spec(
         fixture / "workspace",
@@ -5350,8 +5312,8 @@ def _test_plugin_policy_as_env_allowlist_wiring() -> None:
 
 def _test_plugin_disable_policy_lets_collect_boot() -> None:
     """Broken pytest11 entry point: disable-autoload policy → collect-only boots."""
-    import os
     import tempfile
+    from unittest.mock import MagicMock, patch
 
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -5363,48 +5325,7 @@ def _test_plugin_disable_policy_lets_collect_boot() -> None:
             "def test_ok():\n    assert True\n",
             encoding="utf-8",
         )
-        _clone_cached_venv(venv, ("pytest==8.3.4",))
-        
-        site = next((venv / "lib").glob("python*/site-packages"))
-        pkg = site / "broken_plug"
-        pkg.mkdir(parents=True)
-        (pkg / "__init__.py").write_text("", encoding="utf-8")
-        (pkg / "plugin.py").write_text(
-            "raise ImportError('NoExtraItems is missing from typing_extensions')\n",
-            encoding="utf-8",
-        )
-        dist = site / "broken_plug-0.0.1.dist-info"
-        dist.mkdir()
-        (dist / "METADATA").write_text(
-            "Metadata-Version: 2.1\nName: broken-plug\nVersion: 0.0.1\n",
-            encoding="utf-8",
-        )
-        (dist / "entry_points.txt").write_text(
-            "[pytest11]\nbroken = broken_plug.plugin\n",
-            encoding="utf-8",
-        )
-        python = str(venv / "bin" / "python")
-        
-        
-        bare_env = {
-            k: v
-            for k, v in os.environ.items()
-            if k
-            not in (
-                "PYTEST_DISABLE_PLUGIN_AUTOLOAD",
-                "PYTEST_ADDOPTS",
-                "PYTEST_CURRENT_TEST",
-            )
-        }
-        bare = subprocess.run(
-            [python, "-m", "pytest", "--collect-only", "-q", "tests/test_smoke.py"],
-            cwd=str(workspace),
-            capture_output=True,
-            text=True,
-            check=False,
-            env=bare_env,
-        )
-        assert bare.returncode != 0, bare.stdout + bare.stderr
+        _clone_cached_venv(venv)
         declared = DeclaredDeps(
             bulk_pins={"pytest": "8.3.4"},
             constraints={},
@@ -5418,13 +5339,34 @@ def _test_plugin_disable_policy_lets_collect_boot() -> None:
             test_sh_body="python -m pytest tests/test_smoke.py -q\n",
             venv_path=str(venv),
         )
-        ok, err, policy = probe_verifier_env(
-            spec,
-            workspace=workspace,
-            task_id="plugin-disable-boot",
-            dry_run=False,
-            run_collect=True,
+        plugin_out = MagicMock(
+            returncode=2,
+            stdout=(
+                "PLUGIN_OK:\n"
+                "PLUGIN_CONFLICTS:broken: ImportError: NoExtraItems is missing "
+                "from typing_extensions\n"
+            ),
+            stderr="",
         )
+        collect_out = MagicMock(
+            returncode=0,
+            stdout="tests/test_smoke.py::test_ok\n",
+            stderr="",
+        )
+
+        def fake_run(cmd, **kwargs):
+            if isinstance(cmd, list) and len(cmd) >= 3 and cmd[1] == "-c":
+                return plugin_out
+            return collect_out
+
+        with patch("subprocess.run", side_effect=fake_run):
+            ok, err, policy = probe_verifier_env(
+                spec,
+                workspace=workspace,
+                task_id="plugin-disable-boot",
+                dry_run=False,
+                run_collect=True,
+            )
     assert ok is True, err
     assert err is None
     assert policy is not None
@@ -5474,7 +5416,7 @@ def _test_verifier_prep_result_as_dict_excludes_secrets() -> None:
     assert payload["venv_path"] == VERIFIER_VENV_PATH
 
 def _test_leakage_public_view_excludes_patch_only_imports() -> None:
-    fixture = _fixture_verifier_adaptix()
+    fixture = _FIXTURE_VERIFIER_ADAPTIX
     public = discover_verifier_spec(
         fixture / "workspace",
         tests_dir=None,
@@ -5498,93 +5440,103 @@ def _test_leakage_public_view_excludes_patch_only_imports() -> None:
     assert grade.harbor_imports
     assert public.harbor_imports == ()
 
+_SELF_TEST_FNS = (
+    _test_parse_dockerfile_run_commands_multiline,
+    _test_workspace_sync_commands_bandit,
+    _test_workspace_sync_commands_fastapi,
+    _test_bash_lc_pip_intents_ignore_shell_noise,
+    _test_requirement_inline_comments_stripped_for_pip,
+    _test_pep508_extras_preserved_in_pip_install_spec,
+    _test_requirements_editable_and_constraints_declared,
+    _test_poetry_extra_and_runtime_deps_declared,
+    _test_fixture_imports_not_unmapped_for_workspace_project,
+    _test_editable_pip_segment_ignores_dirty_equals,
+    _test_infra_abort_dockerfile_sync_is_offline,
+    _test_dockerfile_image_build_commands_fastapi,
+    _test_hybrid_poetry_runtime_sync_skipped,
+    _test_hybrid_pnpm_runtime_sync_skipped,
+    _test_tox_lint_check_commands,
+    _test_just_and_tox_runner_install_commands,
+    _test_workspace_lint_tool_install_command,
+    _test_precommit_install_hooks_command,
+    _test_precommit_pin_from_workspace_pyproject,
+    _test_uv_sync_dev_command,
+    _test_uv_pip_build_system_command,
+    _test_uv_editable_install_command,
+    _test_default_pip_editable_seed_for_offline_sync,
+    _test_editable_seed_reads_monorepo_build_backends,
+    _test_editable_target_project_deps_enter_declared,
+    _test_uv_offline_smoke_commands,
+    _test_setuptools_extra_requirement_files_not_extra_keys,
+    _test_workspace_declared_repin_command,
+    _test_workspace_image_warm_commands,
+    _test_registry_image_cache_bust_commands,
+    _test_registry_image_cache_bust_pydantic_v1_legitimate,
+    _test_declared_deps_skip_marker_gated_backports,
+    _test_mandatory_probe_no_crash_on_dotted_import_name,
+    _test_run_post_prep_probes_structured_error,
+    _test_run_post_prep_probes_multi_violation_errors,
+    _test_run_post_prep_probes_mixed_import_and_violation_errors,
+    _test_mandatory_probe_prefers_metadata_over_stale_module_version,
+    _test_mandatory_probe_runtime_metadata_wins_over_stale_version,
+    _test_mandatory_probe_fails_on_invalid_version_string,
+    _test_mandatory_probe_accepts_single_char_version_ops,
+    _test_mandatory_probe_strips_pep508_extras_before_specifier,
+    _test_precommit_warm_soft_fails_install_hooks,
+    _test_pythonpath_dockerfile_skips_synthetic_editable,
+    _test_effective_spec_prefers_pyproject_constraint_over_lockfile,
+    _test_effective_spec_exact_pyproject_beats_lockfile,
+    _test_mandatory_probe_fails_when_version_unknown,
+    _test_httpx_drift_probe_script_write_roundtrip,
+    _test_probe_import_name_phonenumberslite,
+    _test_mandatory_probe_uses_metadata_before_import,
+    _test_registry_image_cache_bust_reconciles_twice_after_httpx_fix,
+    _test_mandatory_probe_script_commands_builder_safe,
+    _test_mandatory_probe_script_write_roundtrip,
+    _test_registry_image_cache_bust_adaptix_pydantic_pin,
+    _test_pydantic_pins_for_cache_bust_reads_requirements,
+    _test_collect_pip_install_intents_bash_lc,
+    _test_dockerfile_bulk_pip_commands_fastapi,
+    _test_workspace_sync_commands_fastapi_task_dockerfile,
+    _test_should_replay_skips_apt_and_git,
+    _test_discover_verifier_spec_public_vs_grade,
+    _test_verifier_venv_materialize_public_no_patch_only_names,
+    _test_verifier_grade_closure_commands_include_mapped,
+    _test_probe_verifier_env_plugin_conflict_reports_verifier_prep,
+    _test_prepare_verifier_grade_materialize_when_missing,
+    _test_probe_verifier_env_unmapped_imports_fail_closed,
+    _test_prepare_task_sandbox_does_not_call_probe_verifier,
+    _test_probe_verifier_env_missing_collect_path_does_not_abort,
+    _test_probe_plugin_conflict_failed_collect_aborts,
+    _test_modified_hunk_context_imports_in_verifier_spec,
+    _test_adaptix_prepatch_materialize_catches_importerror,
+    _test_verifier_pip_honors_spec_venv_path,
+    _test_prepare_verifier_grade_materialize_creates_real_venv,
+    _test_discover_grade_closure_records_declared_harbor_imports,
+    _test_editable_project_satisfies_harbor_import,
+    _test_probe_editable_roots_prefers_harbor_import_case,
+    _test_non_pytest_test_sh_skips_collect_probe,
+    _test_unpinned_dockerfile_package_declared,
+    _test_cargo_and_go_mod_skipped_in_offline_sync,
+    _test_collect_import_error_editable_feature_gap,
+    _test_bare_pyproject_deps_become_unpinned,
+    _test_adaptix_conflict_fixture_yields_plugin_policy_or_verifier_prep,
+    _test_adaptix_import_error_never_soft_succeeds_on_system_python,
+    _test_plugin_policy_as_env_allowlist_wiring,
+    _test_plugin_disable_policy_lets_collect_boot,
+    _test_verifier_prep_result_as_dict_excludes_secrets,
+    _test_leakage_public_view_excludes_patch_only_imports,
+)
+
 def run_self_tests() -> None:
-    _test_parse_dockerfile_run_commands_multiline()
-    _test_workspace_sync_commands_bandit()
-    _test_workspace_sync_commands_fastapi()
-    _test_bash_lc_pip_intents_ignore_shell_noise()
-    _test_requirement_inline_comments_stripped_for_pip()
-    _test_pep508_extras_preserved_in_pip_install_spec()
-    _test_requirements_editable_and_constraints_declared()
-    _test_poetry_extra_and_runtime_deps_declared()
-    _test_fixture_imports_not_unmapped_for_workspace_project()
-    _test_editable_pip_segment_ignores_dirty_equals()
-    _test_infra_abort_dockerfile_sync_is_offline()
-    _test_dockerfile_image_build_commands_fastapi()
-    _test_hybrid_poetry_runtime_sync_skipped()
-    _test_hybrid_pnpm_runtime_sync_skipped()
-    _test_tox_lint_check_commands()
-    _test_just_and_tox_runner_install_commands()
-    _test_workspace_lint_tool_install_command()
-    _test_precommit_install_hooks_command()
-    _test_precommit_pin_from_workspace_pyproject()
-    _test_uv_sync_dev_command()
-    _test_uv_pip_build_system_command()
-    _test_uv_editable_install_command()
-    _test_default_pip_editable_seed_for_offline_sync()
-    _test_editable_seed_reads_monorepo_build_backends()
-    _test_editable_target_project_deps_enter_declared()
-    _test_uv_offline_smoke_commands()
-    _test_setuptools_extra_requirement_files_not_extra_keys()
-    _test_workspace_declared_repin_command()
-    _test_workspace_image_warm_commands()
-    _test_registry_image_cache_bust_commands()
-    _test_registry_image_cache_bust_pydantic_v1_legitimate()
-    _test_declared_deps_skip_marker_gated_backports()
-    _test_mandatory_probe_no_crash_on_dotted_import_name()
-    _test_run_post_prep_probes_structured_error()
-    _test_run_post_prep_probes_multi_violation_errors()
-    _test_run_post_prep_probes_mixed_import_and_violation_errors()
-    _test_mandatory_probe_prefers_metadata_over_stale_module_version()
-    _test_mandatory_probe_runtime_metadata_wins_over_stale_version()
-    _test_mandatory_probe_fails_on_invalid_version_string()
-    _test_mandatory_probe_accepts_single_char_version_ops()
-    _test_mandatory_probe_strips_pep508_extras_before_specifier()
-    _test_precommit_warm_soft_fails_install_hooks()
-    _test_pythonpath_dockerfile_skips_synthetic_editable()
-    _test_effective_spec_prefers_pyproject_constraint_over_lockfile()
-    _test_effective_spec_exact_pyproject_beats_lockfile()
-    _test_mandatory_probe_fails_when_version_unknown()
-    _test_httpx_drift_probe_script_write_roundtrip()
-    _test_probe_import_name_phonenumberslite()
-    _test_mandatory_probe_uses_metadata_before_import()
-    _test_registry_image_cache_bust_reconciles_twice_after_httpx_fix()
-    _test_mandatory_probe_script_commands_builder_safe()
-    _test_mandatory_probe_script_write_roundtrip()
-    _test_registry_image_cache_bust_adaptix_pydantic_pin()
-    _test_pydantic_pins_for_cache_bust_reads_requirements()
-    _test_collect_pip_install_intents_bash_lc()
-    _test_dockerfile_bulk_pip_commands_fastapi()
-    _test_workspace_sync_commands_fastapi_task_dockerfile()
-    _test_should_replay_skips_apt_and_git()
-    _test_discover_verifier_spec_public_vs_grade()
-    _test_verifier_venv_materialize_public_no_patch_only_names()
-    _test_verifier_grade_closure_commands_include_mapped()
-    _test_probe_verifier_env_plugin_conflict_reports_verifier_prep()
-    _test_prepare_verifier_grade_materialize_when_missing()
-    _test_probe_verifier_env_unmapped_imports_fail_closed()
-    _test_prepare_task_sandbox_does_not_call_probe_verifier()
-    _test_probe_verifier_env_missing_collect_path_does_not_abort()
-    _test_probe_plugin_conflict_failed_collect_aborts()
-    _test_modified_hunk_context_imports_in_verifier_spec()
-    _test_adaptix_prepatch_materialize_catches_importerror()
-    _test_verifier_pip_honors_spec_venv_path()
-    _test_prepare_verifier_grade_materialize_creates_real_venv()
-    _test_discover_grade_closure_records_declared_harbor_imports()
-    _test_editable_project_satisfies_harbor_import()
-    _test_probe_editable_roots_prefers_harbor_import_case()
-    _test_non_pytest_test_sh_skips_collect_probe()
-    _test_unpinned_dockerfile_package_declared()
-    _test_cargo_and_go_mod_skipped_in_offline_sync()
-    _test_collect_import_error_editable_feature_gap()
-    _test_bare_pyproject_deps_become_unpinned()
-    _test_adaptix_conflict_fixture_yields_plugin_policy_or_verifier_prep()
-    _test_adaptix_import_error_never_soft_succeeds_on_system_python()
-    _test_plugin_policy_as_env_allowlist_wiring()
-    _test_plugin_disable_policy_lets_collect_boot()
-    _test_verifier_prep_result_as_dict_excludes_secrets()
-    _test_leakage_public_view_excludes_patch_only_imports()
+    if _clone_cached_venv is None:
+        raise RuntimeError("inject sandbox_prep._clone_cached_venv before run_self_tests")
+    for fn in _SELF_TEST_FNS:
+        fn()
     click.echo("sandbox_prep self-tests passed")
 
 if __name__ == "__main__":
-    run_self_tests()
+    raise SystemExit(
+        "Run unit tests via pytest tests/test_sandbox_prep_unit.py "
+        "(injects venv cache) rather than python -m sandbox_prep."
+    )

@@ -1,32 +1,37 @@
 """Individual sandbox_prep unit tests (one pytest node per _test_*)."""
 from __future__ import annotations
 
-import tempfile
-from pathlib import Path
-
-import sandbox_prep
 import pytest
+import sandbox_prep
+import sandbox_prep_venv_cache as _venv_cache
 
+sandbox_prep._clone_cached_venv = _venv_cache.clone_cached_venv
 
-_WARM = Path(tempfile.mkdtemp(prefix="malvin-venv-warm-"))
-try:
-    sandbox_prep._clone_cached_venv(_WARM / "empty")
-    sandbox_prep._clone_cached_venv(_WARM / "pytest80", ("pytest==8.0.0",))
-    sandbox_prep._clone_cached_venv(_WARM / "pytest834", ("pytest==8.3.4",))
-    sandbox_prep._clone_cached_venv(
-        _WARM / "adaptix",
-        (
-            "typing-extensions==4.12.2",
-            "typeguard==4.4.1",
-            "pytest==8.3.4",
-        ),
-    )
-except OSError:
-    sandbox_prep.VENV_CACHE_OFFLINE = True
+_WARM_SPECS: tuple[tuple[str, ...], ...] = (
+    (),
+    ("pytest==8.0.0",),
+    ("pytest==8.3.4",),
+    (
+        "typing-extensions==4.12.2",
+        "typeguard==4.4.1",
+        "pytest==8.3.4",
+    ),
+)
+
+def _warm_bases_ready() -> bool:
+    root = _venv_cache.venv_cache_root()
+    for packages in _WARM_SPECS:
+        base = root / f"base-{_venv_cache.venv_cache_key_token(packages)}"
+        if not (base / "bin" / "python").is_file():
+            return False
+    return True
+
+if not _warm_bases_ready():
+    _venv_cache.VENV_CACHE_OFFLINE = True
 
 
 def _skip_if_offline() -> None:
-    if sandbox_prep.VENV_CACHE_OFFLINE:
+    if _venv_cache.VENV_CACHE_OFFLINE:
         pytest.skip("pinned verifier packages unavailable in offline environment")
 
 

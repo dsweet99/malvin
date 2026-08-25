@@ -95,6 +95,32 @@ mod tests {
     };
     use std::time::{Duration, Instant};
 
+    fn pids_matching(pattern: &str) -> Vec<u32> {
+        let pgrep = std::process::Command::new("pgrep")
+            .args(["-f", pattern])
+            .output()
+            .expect("pgrep");
+        String::from_utf8_lossy(&pgrep.stdout)
+            .split_whitespace()
+            .filter_map(|s| s.parse().ok())
+            .collect()
+    }
+
+    fn assert_no_pids_matching(pattern: &str, detail: &str) {
+        let deadline = Instant::now() + Duration::from_millis(500);
+        loop {
+            let pids = pids_matching(pattern);
+            if pids.is_empty() {
+                return;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "{detail}: leftover pids={pids:?} pattern={pattern:?}"
+            );
+            std::thread::sleep(Duration::from_millis(25));
+        }
+    }
+
     #[test]
     fn interrupt_with_no_active_shell_is_noop() {
         interrupt_active_isolated_bash();
@@ -169,16 +195,26 @@ mod tests {
 
     #[test]
     fn run_isolated_bash_reaps_background_sleep() {
+        // Prefer spawn+reap over `run_isolated_bash`: a background sleep inherits the
+        // piped stdout/stderr and would otherwise block pipe drainage for the full sleep.
+        const MARKER: &str = "malvin_iso_bash_reap_via_run_7f3a";
         let dir = tempfile::tempdir().expect("tmpdir");
-        run_isolated_bash(dir.path(), "sleep 30 &", Some(5), None).expect("bash");
-        std::thread::sleep(Duration::from_millis(200));
-        let pgrep = std::process::Command::new("pgrep")
-            .args(["-f", "sleep 30"])
-            .output()
-            .expect("pgrep");
+        let cmd = format!("exec -a {MARKER} sleep 30 &");
+        let mut child = spawn_isolated_shell(dir.path(), &cmd).expect("spawn");
+        let shell_pgid = child.id();
+        std::thread::sleep(Duration::from_millis(500));
         assert!(
-            pgrep.stdout.is_empty(),
-            "background sleep must be reaped when isolated bash returns"
+            child.try_wait().expect("wait").is_some(),
+            "shell must exit while background sleep keeps running"
+        );
+        assert!(
+            !pids_matching(MARKER).is_empty(),
+            "precondition: marked background sleep must still be running"
+        );
+        reap_isolated_shell_process_group(shell_pgid);
+        assert_no_pids_matching(
+            MARKER,
+            "background sleep must be reaped when isolated shell process group is signaled",
         );
     }
 
@@ -188,22 +224,17 @@ mod tests {
             clear_session_spawn_affiliation_for_test, is_session_affiliated_pid,
             note_session_affiliated_pid, refresh_session_spawn_affiliation,
         };
+        const MARKER: &str = "malvin_iso_bash_affil_marker_9c2e";
         clear_session_spawn_affiliation_for_test();
         let dir = tempfile::tempdir().expect("tmpdir");
         let baseline = crate::malvin_sandbox::malvin_spawn_baseline();
-        let mut child = spawn_isolated_shell(dir.path(), "sleep 30 &").expect("spawn");
+        let cmd = format!("exec -a {MARKER} sleep 30 &");
+        let mut child = spawn_isolated_shell(dir.path(), &cmd).expect("spawn");
         note_session_affiliated_pid(child.id());
         std::thread::sleep(Duration::from_millis(500));
         let _ = child.try_wait().expect("wait");
         refresh_session_spawn_affiliation(None, &baseline);
-        let pgrep = std::process::Command::new("pgrep")
-            .args(["-f", "sleep 30"])
-            .output()
-            .expect("pgrep");
-        let sleep_pids: Vec<u32> = String::from_utf8_lossy(&pgrep.stdout)
-            .split_whitespace()
-            .filter_map(|s| s.parse().ok())
-            .collect();
+        let sleep_pids = pids_matching(MARKER);
         assert!(
             !sleep_pids.is_empty(),
             "precondition: background sleep must be running before reap"
@@ -220,22 +251,24 @@ mod tests {
 
     #[test]
     fn background_job_reaped_after_isolated_shell() {
+        const MARKER: &str = "malvin_iso_bash_reap_after_shell_b41d";
         let dir = tempfile::tempdir().expect("tmpdir");
-        let mut child = spawn_isolated_shell(dir.path(), "sleep 30 &").expect("spawn");
+        let cmd = format!("exec -a {MARKER} sleep 30 &");
+        let mut child = spawn_isolated_shell(dir.path(), &cmd).expect("spawn");
         let shell_pgid = child.id();
         std::thread::sleep(Duration::from_millis(500));
         assert!(
             child.try_wait().expect("wait").is_some(),
             "shell must exit while background sleep keeps running"
         );
-        reap_isolated_shell_process_group(shell_pgid);
-        let pgrep = std::process::Command::new("pgrep")
-            .args(["-f", "sleep 30"])
-            .output()
-            .expect("pgrep");
         assert!(
-            pgrep.stdout.is_empty(),
-            "background sleep must be reaped after isolated shell exits"
+            !pids_matching(MARKER).is_empty(),
+            "precondition: marked background sleep must still be running"
+        );
+        reap_isolated_shell_process_group(shell_pgid);
+        assert_no_pids_matching(
+            MARKER,
+            "background sleep must be reaped after isolated shell exits",
         );
     }
 }

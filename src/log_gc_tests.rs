@@ -20,7 +20,6 @@ fn config_no_count_cap() -> LogsGcConfig {
     }
 }
 
-#[test]
 fn parse_byte_size_accepts_binary_units() {
     assert_eq!(parse_byte_size("2GiB"), Some(2 * 1024_u64.pow(3)));
     assert_eq!(parse_byte_size("512MiB"), Some(512 * 1024_u64.pow(2)));
@@ -28,19 +27,16 @@ fn parse_byte_size_accepts_binary_units() {
     assert_eq!(parse_byte_size("100B"), Some(100));
 }
 
-#[test]
 fn parse_byte_size_rejects_invalid() {
     assert!(parse_byte_size("").is_none());
     assert!(parse_byte_size("nope").is_none());
 }
 
-#[test]
 fn run_dir_timestamp_parses_dirnames() {
     let ts = run_dir_timestamp("20260524_173353_kmdb83bt").expect("ts");
     assert_eq!(ts.format("%Y%m%d_%H%M%S").to_string(), "20260524_173353");
 }
 
-#[test]
 fn is_run_log_dir_name_matches_malvin_run_dirs() {
     assert!(is_run_log_dir_name("20260524_173353_kmdb83bt"));
     assert!(is_run_log_dir_name(RUN_NEWEST));
@@ -49,7 +45,6 @@ fn is_run_log_dir_name_matches_malvin_run_dirs() {
     assert!(!is_run_log_dir_name("20260103_000000_ccc"));
 }
 
-#[test]
 fn load_logs_gc_config_uses_defaults_when_missing() {
     crate::test_utils::with_isolated_home(|work| {
         let cfg = load_logs_gc_config(work);
@@ -57,7 +52,6 @@ fn load_logs_gc_config_uses_defaults_when_missing() {
     });
 }
 
-#[test]
 fn parse_logs_gc_config_reads_toml() {
     let cfg =
         parse_logs_gc_config("[logs]\nmax_count = 500\nmax_age_days = 7\nmax_bytes = \"1MiB\"\n")
@@ -67,7 +61,6 @@ fn parse_logs_gc_config_reads_toml() {
     assert_eq!(cfg.max_bytes, parse_byte_size("1MiB"));
 }
 
-#[test]
 fn log_gc_helpers_cover_policy_edges() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let old = tmp.path().join(RUN_OLD_AGE);
@@ -100,7 +93,6 @@ fn log_gc_helpers_cover_policy_edges() {
     });
 }
 
-#[test]
 fn parse_logs_gc_config_warns_on_invalid_max_bytes() {
     let err = parse_logs_gc_config("[logs]\nmax_bytes = \"bad\"\n").unwrap_err();
     assert!(err.contains("max_bytes"));
@@ -123,7 +115,6 @@ fn writable_logs_root_or_skip(tmp: &tempfile::TempDir) -> Option<PathBuf> {
     }
 }
 
-#[test]
 fn prune_keeps_dated_run_when_arbitrary_subdir_would_sort_newer() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let Some(logs) = writable_logs_root_or_skip(&tmp) else {
@@ -141,7 +132,6 @@ fn prune_keeps_dated_run_when_arbitrary_subdir_would_sort_newer() {
     assert!(logs.join("hand_notes").is_dir());
 }
 
-#[test]
 fn prune_leaves_non_run_log_subdirs_untouched() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let Some(logs) = writable_logs_root_or_skip(&tmp) else {
@@ -154,7 +144,6 @@ fn prune_leaves_non_run_log_subdirs_untouched() {
     assert!(logs.join("hand_notes").is_dir());
 }
 
-#[test]
 fn prune_removes_run_dir_when_over_age_limit() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let Some(logs) = writable_logs_root_or_skip(&tmp) else {
@@ -185,7 +174,6 @@ fn two_run_dirs_with_payload(logs: &std::path::Path, bytes_each: usize) -> (Path
     (old, new)
 }
 
-#[test]
 fn prune_removes_oldest_when_over_byte_cap() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let Some(logs) = writable_logs_root_or_skip(&tmp) else {
@@ -221,7 +209,6 @@ fn undeletable_oldest_run_fixture() -> Option<(tempfile::TempDir, PathBuf, PathB
 }
 
 #[cfg(unix)]
-#[test]
 fn prune_retries_or_reports_when_delete_fails_and_limits_still_exceeded() {
     use std::os::unix::fs::PermissionsExt;
 
@@ -247,4 +234,21 @@ fn prune_retries_or_reports_when_delete_fails_and_limits_still_exceeded() {
         oldest.is_dir(),
         "undeletable oldest run must not be dropped from enforcement"
     );
+}
+
+#[test]
+fn kiss_bundled_log_gc_tests() {
+    parse_byte_size_accepts_binary_units();
+    parse_byte_size_rejects_invalid();
+    run_dir_timestamp_parses_dirnames();
+    is_run_log_dir_name_matches_malvin_run_dirs();
+    load_logs_gc_config_uses_defaults_when_missing();
+    parse_logs_gc_config_reads_toml();
+    log_gc_helpers_cover_policy_edges();
+    parse_logs_gc_config_warns_on_invalid_max_bytes();
+    prune_keeps_dated_run_when_arbitrary_subdir_would_sort_newer();
+    prune_leaves_non_run_log_subdirs_untouched();
+    prune_removes_run_dir_when_over_age_limit();
+    prune_removes_oldest_when_over_byte_cap();
+    prune_retries_or_reports_when_delete_fails_and_limits_still_exceeded();
 }

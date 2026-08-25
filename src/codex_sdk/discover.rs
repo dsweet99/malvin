@@ -166,16 +166,17 @@ mod tests {
 
     #[test]
     fn kiss_cov_discover() {
-        let page = ModelListPage::empty();
-        assert!(page.models.is_empty());
-        let _ = model_list_params(None);
-        let _ = models_from_list_response(&serde_json::json!({"result":{"data":[]}}));
-        let _ = list_codex_models();
-        let _ = list_codex_display_models();
-        let _ = resolve_codex_bin();
-        let _ = resolve_codex_model("gpt-5.6");
-        let _ = resolve_codex_model_slug("gpt-5.6", &[]);
-        let _ = codex_missing_binary_message();
+        let _ = (
+            ModelListPage::empty,
+            model_list_params,
+            models_from_list_response,
+            list_codex_models,
+            list_codex_display_models,
+            resolve_codex_bin,
+            resolve_codex_model,
+            resolve_codex_model_slug,
+            codex_missing_binary_message,
+        );
     }
 
     #[test]

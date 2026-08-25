@@ -8,7 +8,6 @@ use crate::workspace_paths::{
     workspace_logs_hash, write_work_dir_manifest,
 };
 
-#[test]
 fn path_helpers_and_workspace_marker() {
     let _ = crate::seed_malvin_config;
     crate::test_utils::with_isolated_home(|work| {
@@ -24,7 +23,6 @@ fn path_helpers_and_workspace_marker() {
     });
 }
 
-#[test]
 fn malvin_data_root_uses_git_toplevel_when_inside_repo() {
     let tmp = tempfile::tempdir().unwrap();
     let repo = tmp.path().join("repo");
@@ -51,7 +49,6 @@ fn malvin_data_root_uses_git_toplevel_when_inside_repo() {
     );
 }
 
-#[test]
 fn resolve_malvin_checks_path_falls_back_to_legacy_cwd_relative() {
     crate::test_utils::with_isolated_home(|work| {
         let legacy = legacy_malvin_checks_path(work);
@@ -61,7 +58,6 @@ fn resolve_malvin_checks_path_falls_back_to_legacy_cwd_relative() {
     });
 }
 
-#[test]
 fn workspace_logs_hash_is_stable_hex() {
     let tmp = tempfile::tempdir().unwrap();
     let w = tmp.path().join("proj");
@@ -73,7 +69,6 @@ fn workspace_logs_hash_is_stable_hex() {
     assert!(h1.bytes().all(|b| b.is_ascii_hexdigit()));
 }
 
-#[test]
 fn workspace_logs_hash_differs_for_different_paths() {
     let tmp = tempfile::tempdir().unwrap();
     let a = tmp.path().join("a");
@@ -83,7 +78,6 @@ fn workspace_logs_hash_differs_for_different_paths() {
     assert_ne!(workspace_logs_hash(&a), workspace_logs_hash(&b));
 }
 
-#[test]
 fn malvin_user_home_root_uses_malvin_home_dir() {
     let root = malvin_user_home_root();
     assert!(root.ends_with(MALVIN_USER_HOME_DIR));
@@ -96,7 +90,6 @@ fn malvin_user_home_root_uses_malvin_home_dir() {
     );
 }
 
-#[test]
 fn malvin_logs_root_lives_under_home_not_workspace() {
     let tmp = tempfile::tempdir().unwrap();
     let w = tmp.path().join("ws");
@@ -106,14 +99,12 @@ fn malvin_logs_root_lives_under_home_not_workspace() {
     assert!(!root.starts_with(w));
 }
 
-#[test]
 fn malvin_snapshots_root_lives_under_home() {
     let root = malvin_home_snapshots_root();
     assert!(root.ends_with(".malvin/snapshots") || root.ends_with(".malvin\\snapshots"));
     assert_eq!(snapshot_category_dir("gitignore"), root.join("gitignore"));
 }
 
-#[test]
 fn find_malvin_logs_root_none_until_bucket_exists() {
     let tmp = tempfile::tempdir().unwrap();
     let w = tmp.path().join("fresh");
@@ -124,7 +115,6 @@ fn find_malvin_logs_root_none_until_bucket_exists() {
     assert_eq!(find_malvin_logs_root(&w).as_deref(), Some(bucket.as_path()));
 }
 
-#[test]
 fn work_dir_manifest_round_trip() {
     let tmp = tempfile::tempdir().unwrap();
     let ws = tmp.path().join("ws");
@@ -136,7 +126,6 @@ fn work_dir_manifest_round_trip() {
     assert_eq!(read, canonical_work_dir_for_logs(&ws));
 }
 
-#[test]
 fn remove_legacy_malvin_checks_file_deletes_legacy_not_layout_checks() {
     crate::test_utils::with_isolated_home(|work| {
         assert!(
@@ -159,7 +148,6 @@ fn remove_legacy_malvin_checks_file_deletes_legacy_not_layout_checks() {
     });
 }
 
-#[test]
 fn home_malvin_config_write_blocked_without_test_mutation_flag() {
     use crate::malvin_config_file::{open_malvin_config, write_config_value};
 
@@ -176,4 +164,20 @@ fn home_malvin_config_write_blocked_without_test_mutation_flag() {
         );
         crate::test_utils::allow_home_malvin_config_mutation_for_test();
     });
+}
+
+#[test]
+fn kiss_bundled_workspace_paths_tests() {
+    path_helpers_and_workspace_marker();
+    malvin_data_root_uses_git_toplevel_when_inside_repo();
+    resolve_malvin_checks_path_falls_back_to_legacy_cwd_relative();
+    workspace_logs_hash_is_stable_hex();
+    workspace_logs_hash_differs_for_different_paths();
+    malvin_user_home_root_uses_malvin_home_dir();
+    malvin_logs_root_lives_under_home_not_workspace();
+    malvin_snapshots_root_lives_under_home();
+    find_malvin_logs_root_none_until_bucket_exists();
+    work_dir_manifest_round_trip();
+    remove_legacy_malvin_checks_file_deletes_legacy_not_layout_checks();
+    home_malvin_config_write_blocked_without_test_mutation_flag();
 }

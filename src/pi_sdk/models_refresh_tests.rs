@@ -10,7 +10,6 @@ use super::{
 };
 use super::super::cache_clock::{cache_fetched_at_is_fresh, unix_now_secs};
 
-#[test]
 fn cursor_provider_is_excluded_from_live_fetch() {
     crate::acp::with_env("CURSOR_API_KEY", Some("test-key"), || {
         crate::test_utils::with_isolated_home(|_| {
@@ -23,7 +22,6 @@ fn cursor_provider_is_excluded_from_live_fetch() {
     });
 }
 
-#[test]
 fn live_fetch_skips_providers_without_api_key() {
     crate::test_utils::with_isolated_home(|_| {
         crate::acp::with_env("OPENAI_API_KEY", None, || {
@@ -39,12 +37,10 @@ fn live_fetch_skips_providers_without_api_key() {
     });
 }
 
-#[test]
 fn now_secs_returns_positive_epoch() {
     assert!(unix_now_secs() > 0);
 }
 
-#[test]
 fn resolve_provider_api_key_returns_empty_when_unconfigured() {
     crate::test_utils::with_isolated_home(|_| {
         crate::acp::with_env("OPENAI_API_KEY", None, || {
@@ -55,7 +51,6 @@ fn resolve_provider_api_key_returns_empty_when_unconfigured() {
         });
     });
 }
-#[test]
 fn resolve_provider_api_key_reads_env_when_auth_missing() {
     crate::test_utils::with_isolated_home(|_| {
         crate::acp::with_env("OPENROUTER_API_KEY", Some("env-or-key"), || {
@@ -67,7 +62,6 @@ fn resolve_provider_api_key_reads_env_when_auth_missing() {
     });
 }
 
-#[test]
 fn openai_compat_models_url_skips_non_openai_endpoints() {
     let google = pi::provider_metadata::provider_routing_defaults("google").expect("google");
     assert!(super::openai_compat_models_url(&google).is_none());
@@ -79,7 +73,6 @@ fn openai_compat_models_url_skips_non_openai_endpoints() {
     );
 }
 
-#[test]
 fn provider_cache_round_trip_and_freshness() {
     crate::test_utils::with_isolated_home(|_| {
         save_provider_cache("openrouter", &["a".into(), "b".into()]);
@@ -95,7 +88,6 @@ fn provider_cache_round_trip_and_freshness() {
     });
 }
 
-#[test]
 fn merge_registry_with_live_prefers_live_ids_and_enriches_metadata() {
     let auth = AuthStorage::load(pi::sdk::Config::auth_path()).expect("auth");
     let registry = ModelRegistry::load_for_listing(&auth, None);
@@ -122,7 +114,6 @@ fn merge_registry_with_live_prefers_live_ids_and_enriches_metadata() {
     );
 }
 
-#[test]
 fn refresh_skips_network_when_cache_is_fresh() {
     crate::test_utils::with_isolated_home(|_| {
         crate::acp::with_env("OPENROUTER_API_KEY", Some("test-key"), || {
@@ -136,7 +127,6 @@ fn refresh_skips_network_when_cache_is_fresh() {
     });
 }
 
-#[test]
 fn merge_registry_with_live_keeps_static_when_provider_not_refreshed() {
     let auth = AuthStorage::load(pi::sdk::Config::auth_path()).expect("auth");
     let registry = ModelRegistry::load_for_listing(&auth, None);
@@ -148,7 +138,6 @@ fn merge_registry_with_live_keeps_static_when_provider_not_refreshed() {
     );
 }
 
-#[test]
 fn load_provider_cache_rejects_invalid_json() {
     crate::test_utils::with_isolated_home(|_| {
         let dir = crate::workspace_paths::malvin_user_home_root().join("pi-model-cache");
@@ -158,7 +147,6 @@ fn load_provider_cache_rejects_invalid_json() {
     });
 }
 
-#[test]
 fn stale_cache_is_not_treated_as_fresh() {
     crate::test_utils::with_isolated_home(|_| {
         let dir = crate::workspace_paths::malvin_user_home_root().join("pi-model-cache");
@@ -175,4 +163,20 @@ fn stale_cache_is_not_treated_as_fresh() {
             PI_MODEL_CACHE_TTL
         ));
     });
+}
+
+#[test]
+fn kiss_bundled_pi_sdk_models_refresh_tests() {
+    cursor_provider_is_excluded_from_live_fetch();
+    live_fetch_skips_providers_without_api_key();
+    now_secs_returns_positive_epoch();
+    resolve_provider_api_key_returns_empty_when_unconfigured();
+    resolve_provider_api_key_reads_env_when_auth_missing();
+    openai_compat_models_url_skips_non_openai_endpoints();
+    provider_cache_round_trip_and_freshness();
+    merge_registry_with_live_prefers_live_ids_and_enriches_metadata();
+    refresh_skips_network_when_cache_is_fresh();
+    merge_registry_with_live_keeps_static_when_provider_not_refreshed();
+    load_provider_cache_rejects_invalid_json();
+    stale_cache_is_not_treated_as_fresh();
 }

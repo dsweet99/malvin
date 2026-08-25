@@ -11,7 +11,6 @@ fn abort_result_path(dir: &tempfile::TempDir) -> PathBuf {
     result
 }
 
-#[test]
 fn merge_timing_ok_acp_ok_propagates_timing_err() {
     assert_eq!(
         merge_acp_and_timing_results(Ok(()), Err(std::io::Error::other("disk"))),
@@ -19,7 +18,6 @@ fn merge_timing_ok_acp_ok_propagates_timing_err() {
     );
 }
 
-#[test]
 fn merge_timing_ok_acp_err_drops_timing_result() {
     assert_eq!(
         merge_acp_and_timing_results(Err("acp".into()), Err(std::io::Error::other("disk"))),
@@ -27,12 +25,10 @@ fn merge_timing_ok_acp_err_drops_timing_result() {
     );
 }
 
-#[test]
 fn merge_both_ok() {
     assert_eq!(merge_acp_and_timing_results(Ok(()), Ok(())), Ok(()));
 }
 
-#[test]
 fn prefer_primary_appends_secondary_error_when_primary_fails() {
     assert_eq!(
         prefer_primary_over_secondary(
@@ -44,7 +40,6 @@ fn prefer_primary_appends_secondary_error_when_primary_fails() {
     );
 }
 
-#[test]
 fn prefer_primary_surfaces_secondary_when_primary_ok() {
     assert_eq!(
         prefer_primary_over_secondary(Ok(()), Err("restore".into()), "x"),
@@ -52,7 +47,6 @@ fn prefer_primary_surfaces_secondary_when_primary_ok() {
     );
 }
 
-#[test]
 fn merge_error_mentions_restore_detects_workspace_failure() {
     assert!(crate::acp_post_run::merge_error_mentions_restore(
         "workspace session restore failed: disk"
@@ -62,12 +56,10 @@ fn merge_error_mentions_restore_detects_workspace_failure() {
     ));
 }
 
-#[test]
 fn prefer_primary_ok_when_both_ok() {
     assert_eq!(prefer_primary_over_secondary(Ok(()), Ok(()), "x"), Ok(()));
 }
 
-#[test]
 fn prefer_primary_surfaces_primary_when_secondary_ok() {
     assert_eq!(
         prefer_primary_over_secondary(Err("wf".into()), Ok(()), "x"),
@@ -75,7 +67,6 @@ fn prefer_primary_surfaces_primary_when_secondary_ok() {
     );
 }
 
-#[test]
 fn duplicate_safe_restore_error_does_not_repeat_restore_prefix() {
     assert_eq!(
         duplicate_safe_restore_error("wf failed; workspace session restore failed: restore")
@@ -84,7 +75,6 @@ fn duplicate_safe_restore_error_does_not_repeat_restore_prefix() {
     );
 }
 
-#[test]
 fn duplicate_safe_restore_error_adds_restore_prefix_when_missing() {
     assert_eq!(
         duplicate_safe_restore_error("wf failed"),
@@ -92,7 +82,6 @@ fn duplicate_safe_restore_error_adds_restore_prefix_when_missing() {
     );
 }
 
-#[test]
 fn merge_with_abort_after_successful_restore() {
     let tmp = tempfile::tempdir().unwrap();
     let result = abort_result_path(&tmp);
@@ -108,7 +97,6 @@ fn merge_with_abort_after_successful_restore() {
     assert_eq!(err, "ABORT: stop");
 }
 
-#[test]
 fn merge_with_abort_does_not_claim_restore_failed_when_restore_succeeded() {
     let tmp = tempfile::tempdir().unwrap();
     let result = abort_result_path(&tmp);
@@ -129,7 +117,6 @@ fn merge_with_abort_does_not_claim_restore_failed_when_restore_succeeded() {
     );
 }
 
-#[test]
 fn duplicate_safe_restore_error_recognizes_slot_restore_prefix() {
     let err = "wf failed; malvin_checks restore: permission denied";
     assert_eq!(duplicate_safe_restore_error(err), err);
@@ -144,7 +131,6 @@ fn work_dir_with_checks(
     (work, backups)
 }
 
-#[test]
 fn merge_with_abort_combines_restore_failure() {
     let tmp = tempfile::tempdir().unwrap();
     let result = abort_result_path(&tmp);
@@ -159,4 +145,22 @@ fn merge_with_abort_combines_restore_failure() {
     .unwrap_err();
     assert!(err.contains("ABORT: stop"));
     assert!(err.contains("wf failed"));
+}
+
+#[test]
+fn kiss_bundled_cli_acp_post_run_tests() {
+    merge_timing_ok_acp_ok_propagates_timing_err();
+    merge_timing_ok_acp_err_drops_timing_result();
+    merge_both_ok();
+    prefer_primary_appends_secondary_error_when_primary_fails();
+    prefer_primary_surfaces_secondary_when_primary_ok();
+    merge_error_mentions_restore_detects_workspace_failure();
+    prefer_primary_ok_when_both_ok();
+    prefer_primary_surfaces_primary_when_secondary_ok();
+    duplicate_safe_restore_error_does_not_repeat_restore_prefix();
+    duplicate_safe_restore_error_adds_restore_prefix_when_missing();
+    merge_with_abort_after_successful_restore();
+    merge_with_abort_does_not_claim_restore_failed_when_restore_succeeded();
+    duplicate_safe_restore_error_recognizes_slot_restore_prefix();
+    merge_with_abort_combines_restore_failure();
 }

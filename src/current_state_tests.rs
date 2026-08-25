@@ -3,7 +3,6 @@ use super::{
     format_sandbox_memory_line, format_user_identity,
 };
 
-#[test]
 fn format_user_identity_includes_name() {
     let id = format_user_identity();
     assert!(!id.is_empty());
@@ -14,7 +13,6 @@ fn format_user_identity_includes_name() {
     }
 }
 
-#[test]
 fn assemble_user_identity_with_full_name() {
     assert_eq!(
         assemble_user_identity("dsweet", Some(1000), Some("David Sweet")),
@@ -22,7 +20,6 @@ fn assemble_user_identity_with_full_name() {
     );
 }
 
-#[test]
 fn assemble_user_identity_omits_redundant_full_name() {
     assert_eq!(
         assemble_user_identity("dsweet", Some(1000), Some("dsweet")),
@@ -30,7 +27,6 @@ fn assemble_user_identity_omits_redundant_full_name() {
     );
 }
 
-#[test]
 fn assemble_user_identity_omits_empty_full_name() {
     assert_eq!(
         assemble_user_identity("dsweet", Some(1000), Some("")),
@@ -38,7 +34,6 @@ fn assemble_user_identity_omits_empty_full_name() {
     );
 }
 
-#[test]
 fn assemble_user_identity_without_uid() {
     assert_eq!(
         assemble_user_identity("unknown", None, Some("Bob")),
@@ -47,7 +42,6 @@ fn assemble_user_identity_without_uid() {
 }
 
 #[cfg(unix)]
-#[test]
 fn format_user_identity_includes_gecos_full_name_when_distinct() {
     let id = format_user_identity();
     let uid = super::effective_user_id().expect("uid");
@@ -61,7 +55,6 @@ fn format_user_identity_includes_gecos_full_name_when_distinct() {
 }
 
 #[cfg(unix)]
-#[test]
 fn current_sandbox_rss_bytes_when_agent_registered() {
     crate::active_agent_heartbeat::clear_active_agent_process_groups_for_test();
     let pgid = std::process::id();
@@ -73,12 +66,10 @@ fn current_sandbox_rss_bytes_when_agent_registered() {
     crate::active_agent_heartbeat::clear_active_agent_process_groups_for_test();
 }
 
-#[test]
 fn infer_gate_retry_reasons_empty_without_artifacts() {
     assert!(super::infer_gate_retry_reasons(None, 2).is_empty());
 }
 
-#[test]
 fn infer_gate_retry_reasons_empty_for_first_iteration() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
@@ -86,7 +77,6 @@ fn infer_gate_retry_reasons_empty_for_first_iteration() {
     assert!(super::infer_gate_retry_reasons(Some(&artifacts), 1).is_empty());
 }
 
-#[test]
 fn gate_iteration_oom_killed_false_when_marker_missing() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
@@ -96,12 +86,10 @@ fn gate_iteration_oom_killed_false_when_marker_missing() {
     ));
 }
 
-#[test]
 fn format_local_datetime_is_non_empty() {
     assert!(!format_local_datetime().is_empty());
 }
 
-#[test]
 fn format_sandbox_memory_line_includes_limit_and_available() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let line = format_sandbox_memory_line(tmp.path());
@@ -110,19 +98,16 @@ fn format_sandbox_memory_line_includes_limit_and_available() {
     assert!(line.contains("available"));
 }
 
-#[test]
 fn format_retry_line_first_run_is_not_retry() {
     let line = format_retry_line(None, None);
     assert!(line.contains("not a retry"));
 }
 
-#[test]
 fn format_retry_line_first_gate_iteration_is_not_retry() {
     let line = format_retry_line(Some(1), None);
     assert!(line.contains("first outer gate-loop"));
 }
 
-#[test]
 fn format_retry_line_second_iteration_is_retry_without_done() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
@@ -133,7 +118,6 @@ fn format_retry_line_second_iteration_is_retry_without_done() {
     assert!(line.contains("quality gates"));
 }
 
-#[test]
 fn format_retry_line_detects_oom_from_sandbox_marker() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
@@ -155,7 +139,6 @@ fn format_retry_line_detects_oom_from_sandbox_marker() {
     assert!(line.contains("OOM"));
 }
 
-#[test]
 fn format_retry_line_gates_failure_after_done() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
@@ -167,7 +150,6 @@ fn format_retry_line_gates_failure_after_done() {
     assert!(line.contains("quality gates"));
 }
 
-#[test]
 fn format_current_state_joins_all_sections() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let text = format_current_state(tmp.path(), None, None);
@@ -177,7 +159,6 @@ fn format_current_state_joins_all_sections() {
     assert!(text.contains("Retry:"));
 }
 
-#[test]
 fn kiss_cov_current_state_non_unix_branch() {
     crate::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tempdir");
@@ -191,7 +172,6 @@ fn kiss_cov_current_state_non_unix_branch() {
     });
 }
 
-#[test]
 fn append_unsolved_reason_records_missing_marker() {
     crate::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tempdir");
@@ -206,7 +186,6 @@ fn append_unsolved_reason_records_missing_marker() {
     });
 }
 
-#[test]
 fn append_oom_reason_records_memory_kill() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
@@ -229,7 +208,6 @@ fn append_oom_reason_records_memory_kill() {
     assert!(reasons.iter().any(|r| r.contains("OOM")));
 }
 
-#[test]
 fn append_gates_reason_after_done_session() {
     crate::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tempdir");
@@ -242,4 +220,30 @@ fn append_gates_reason_after_done_session() {
         super::append_unsolved_reason(&mut reasons, &artifacts, 1);
         assert!(reasons.iter().any(|r| r.contains("quality gates")));
     });
+}
+
+#[test]
+fn kiss_bundled_current_state_tests() {
+    format_user_identity_includes_name();
+    assemble_user_identity_with_full_name();
+    assemble_user_identity_omits_redundant_full_name();
+    assemble_user_identity_omits_empty_full_name();
+    assemble_user_identity_without_uid();
+    format_user_identity_includes_gecos_full_name_when_distinct();
+    current_sandbox_rss_bytes_when_agent_registered();
+    infer_gate_retry_reasons_empty_without_artifacts();
+    infer_gate_retry_reasons_empty_for_first_iteration();
+    gate_iteration_oom_killed_false_when_marker_missing();
+    format_local_datetime_is_non_empty();
+    format_sandbox_memory_line_includes_limit_and_available();
+    format_retry_line_first_run_is_not_retry();
+    format_retry_line_first_gate_iteration_is_not_retry();
+    format_retry_line_second_iteration_is_retry_without_done();
+    format_retry_line_detects_oom_from_sandbox_marker();
+    format_retry_line_gates_failure_after_done();
+    format_current_state_joins_all_sections();
+    kiss_cov_current_state_non_unix_branch();
+    append_unsolved_reason_records_missing_marker();
+    append_oom_reason_records_memory_kill();
+    append_gates_reason_after_done_session();
 }

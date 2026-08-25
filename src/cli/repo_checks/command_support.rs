@@ -134,3 +134,7 @@ pub fn apply_fake_path_if_present(_: &mut Command) {}
 #[cfg(test)]
 #[path = "command_support_tests.rs"]
 mod command_support_tests;
+
+#[cfg(all(test, windows))]
+#[path = "windows_fake_command_path_tests.rs"]
+mod windows_fake_command_path_tests;

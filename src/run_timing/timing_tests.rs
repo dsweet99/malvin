@@ -6,7 +6,6 @@ use super::{
 };
 use std::time::{Duration, Instant};
 
-#[test]
 fn run_timing_json_phases_include_only_implement() {
     let mut r = RunTiming::default();
     r.mark_wall_start(Instant::now());
@@ -28,7 +27,6 @@ fn run_timing_json_phases_include_only_implement() {
     }
 }
 
-#[test]
 fn elapsed_so_far_advances_after_wall_start() {
     let mut r = RunTiming::default();
     assert_eq!(r.elapsed_so_far(), Duration::ZERO);
@@ -37,7 +35,6 @@ fn elapsed_so_far_advances_after_wall_start() {
     assert!(r.elapsed_so_far() >= Duration::from_millis(5));
 }
 
-#[test]
 fn record_llm_and_backoff_accumulate_on_arc_timing() {
     let timing = RunTiming::new_arc();
     record_llm(
@@ -66,13 +63,11 @@ fn record_llm_and_backoff_accumulate_on_arc_timing() {
     );
 }
 
-#[test]
 fn record_llm_and_backoff_noop_when_timing_slot_none() {
     record_llm(None, TimingPhase::Implement, Duration::from_millis(100));
     record_backoff(None, Duration::from_millis(100));
 }
 
-#[test]
 fn implement_phase_accumulates_timing() {
     let mut r = RunTiming::default();
     r.mark_wall_start(Instant::now());
@@ -86,7 +81,6 @@ fn implement_phase_accumulates_timing() {
     assert_eq!(phases.get("implement").unwrap().as_u64().unwrap(), 150);
 }
 
-#[test]
 fn attach_new_run_timing_and_finalize_json_only() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let mut slot: Option<Arc<Mutex<RunTiming>>> = None;
@@ -96,7 +90,6 @@ fn attach_new_run_timing_and_finalize_json_only() {
     assert!(tmp.path().join(super::RUN_TIMING_JSON_FILE).is_file());
 }
 
-#[test]
 fn tool_call_wall_duration_accumulates_in_run_timing() {
     let mut r = RunTiming::default();
     r.add_tool_call_wall("read", Duration::from_millis(30));
@@ -130,7 +123,6 @@ fn tool_call_wall_duration_accumulates_in_run_timing() {
     );
 }
 
-#[test]
 fn tool_call_kinds_accumulate_in_independent_buckets() {
     let mut r = RunTiming::default();
     r.add_tool_call_wall("read", Duration::from_millis(40));
@@ -148,7 +140,6 @@ fn tool_call_kinds_accumulate_in_independent_buckets() {
     assert_eq!(json["tool_calls_ms"].as_u64(), Some(95));
 }
 
-#[test]
 fn wall_clock_ms_for_json_uses_elapsed_when_wall_end_open() {
     let mut r = RunTiming::default();
     r.mark_wall_start(Instant::now());
@@ -158,7 +149,6 @@ fn wall_clock_ms_for_json_uses_elapsed_when_wall_end_open() {
     assert!(r.wall_duration().is_none());
 }
 
-#[test]
 fn persist_open_run_timing_json_keeps_wall_end_unset() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let mut slot: Option<Arc<Mutex<RunTiming>>> = None;
@@ -175,7 +165,6 @@ fn persist_open_run_timing_json_keeps_wall_end_unset() {
     assert!(json.contains("\"llm_wait_ms\": 100"));
 }
 
-#[test]
 fn accumulate_run_timing_across_two_sessions() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let mut slot: Option<Arc<Mutex<RunTiming>>> = None;
@@ -198,14 +187,12 @@ fn accumulate_run_timing_across_two_sessions() {
     assert_eq!(llm_ms, 1_500);
 }
 
-#[test]
 fn run_timing_without_wall_start_yields_null_wall_ms() {
     let mut r = RunTiming::default();
     r.add_llm_phase(TimingPhase::Implement, Duration::from_millis(100));
     assert!(report::wall_clock_ms_for_json(&r).is_none());
 }
 
-#[test]
 fn attach_new_run_timing_enables_wall_ms_after_finalize() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let mut slot: Option<Arc<Mutex<RunTiming>>> = None;
@@ -224,7 +211,6 @@ fn attach_new_run_timing_enables_wall_ms_after_finalize() {
     assert!(json["wall_clock_ms"].as_u64().is_some());
 }
 
-#[test]
 fn finalize_and_emit_run_timing_writes_summary() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let timing = RunTiming::new_arc();
@@ -235,4 +221,22 @@ fn finalize_and_emit_run_timing_writes_summary() {
     }
     finalize_and_emit_run_timing(tmp.path(), &timing).expect("emit");
     assert!(tmp.path().join(super::RUN_TIMING_JSON_FILE).is_file());
+}
+
+#[test]
+fn kiss_bundled_run_timing_timing_tests() {
+    run_timing_json_phases_include_only_implement();
+    elapsed_so_far_advances_after_wall_start();
+    record_llm_and_backoff_accumulate_on_arc_timing();
+    record_llm_and_backoff_noop_when_timing_slot_none();
+    implement_phase_accumulates_timing();
+    attach_new_run_timing_and_finalize_json_only();
+    tool_call_wall_duration_accumulates_in_run_timing();
+    tool_call_kinds_accumulate_in_independent_buckets();
+    wall_clock_ms_for_json_uses_elapsed_when_wall_end_open();
+    persist_open_run_timing_json_keeps_wall_end_unset();
+    accumulate_run_timing_across_two_sessions();
+    run_timing_without_wall_start_yields_null_wall_ms();
+    attach_new_run_timing_enables_wall_ms_after_finalize();
+    finalize_and_emit_run_timing_writes_summary();
 }

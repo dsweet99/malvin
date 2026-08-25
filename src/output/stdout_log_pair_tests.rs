@@ -9,7 +9,6 @@ use crate::output::{
     is_log_timestamp_token, stdout_tagged_display_and_log_line,
 };
 
-#[test]
 fn heartbeat_stdout_ansi_keeps_who_color_through_payload() {
     let payload = "HB: 20260524.000000";
     let line = format_heartbeat_stdout_ansi(MALVIN_WHO, payload);
@@ -17,7 +16,6 @@ fn heartbeat_stdout_ansi_keeps_who_color_through_payload() {
     assert!(line.contains('\x1b'));
 }
 
-#[test]
 fn tagged_log_line_includes_timestamp_and_payload() {
     let line = tagged_log_line("20260524.000000.000", MALVIN_WHO, "probe");
     assert!(line.contains("probe"));
@@ -26,7 +24,6 @@ fn tagged_log_line_includes_timestamp_and_payload() {
     ));
 }
 
-#[test]
 fn tagged_display_and_log_line_splits_terminal_from_log() {
     let (display, log) =
         tagged_display_and_log_line_for_color(MALVIN_WHO, "hb", Some("20260524.000000.000"), false);
@@ -35,7 +32,6 @@ fn tagged_display_and_log_line_splits_terminal_from_log() {
     assert_eq!(display, format_line_stdout(MALVIN_WHO, "hb"));
 }
 
-#[test]
 fn stderr_tagged_pair_uses_stderr_format() {
     let (display, log) =
         stderr_tagged_display_and_log_line(MALVIN_WHO, "err", Some("20260524.000000.000"));
@@ -43,7 +39,6 @@ fn stderr_tagged_pair_uses_stderr_format() {
     assert!(log.contains("err"));
 }
 
-#[test]
 fn acp_tee_display_and_log_split_prefix_from_payload() {
     let ctx = AcpTeeLineFmt {
         ts: "20260524.000000.000",
@@ -58,21 +53,18 @@ fn acp_tee_display_and_log_split_prefix_from_payload() {
     assert!(acp_tee_payload_prefix_width(&acp_tee_payload_prefix(&ctx)) > 0);
 }
 
-#[test]
 fn tagged_display_resolves_timestamp_when_none() {
     let (_display, log) = stdout_tagged_display_and_log_line(MALVIN_WHO, "now-ts", None);
     let ts = log.split_whitespace().next().expect("timestamp");
     assert!(is_log_timestamp_token(ts));
 }
 
-#[test]
 fn tagged_display_line_with_timestamp_ansi_includes_payload() {
     let line = tagged_display_line_with_timestamp_ansi("20260524.000000.000", MALVIN_WHO, "ansi");
     assert!(line.contains("ansi"));
     assert!(line.contains("20260524.000000.000"));
 }
 
-#[test]
 fn tagged_display_and_log_line_color_branch() {
     let (display, log) = tagged_display_and_log_line_for_color(
         MALVIN_WHO,
@@ -84,7 +76,6 @@ fn tagged_display_and_log_line_color_branch() {
     assert!(log.contains("color"));
 }
 
-#[test]
 fn acp_bracket_color_covers_both_directions() {
     let to_ctx = AcpTeeLineFmt {
         ts: "20260524.000000.000",
@@ -104,7 +95,6 @@ fn acp_bracket_color_covers_both_directions() {
     );
 }
 
-#[test]
 fn acp_agent_who_prefix_matches_stdout_navy() {
     use crate::output::{format_line_stdout_ansi, who_tag_ansi};
     use crate::terminal_palette::ansi_tool_navy;
@@ -133,7 +123,6 @@ fn acp_agent_who_prefix_matches_stdout_navy() {
     }
 }
 
-#[test]
 fn acp_bracket_payload_supports_dim_mode() {
     let ctx = AcpTeeLineFmt {
         ts: "20260524.000000.000",
@@ -192,7 +181,6 @@ pub(crate) fn assert_acp_tool_summary_dim_preserves_bracket(line: &str) {
     );
 }
 
-#[test]
 fn kiss_cov_assert_tool_payload_helpers() {
     use crate::output::who_tag_ansi;
     use crate::terminal_palette::{ANSI_BOLD, ANSI_DIM, ANSI_RESET, ansi_tool_dark};
@@ -202,4 +190,20 @@ fn kiss_cov_assert_tool_payload_helpers() {
         format!("{who}|{ANSI_RESET}{ANSI_DIM}{ANSI_BOLD}{dark}Run{ANSI_RESET}{ANSI_DIM} something");
     assert_tool_payload_uses_verb_styling(&line);
     assert_acp_tool_summary_dim_preserves_bracket(&line);
+}
+
+#[test]
+fn kiss_bundled_output_stdout_log_pair_tests() {
+    heartbeat_stdout_ansi_keeps_who_color_through_payload();
+    tagged_log_line_includes_timestamp_and_payload();
+    tagged_display_and_log_line_splits_terminal_from_log();
+    stderr_tagged_pair_uses_stderr_format();
+    acp_tee_display_and_log_split_prefix_from_payload();
+    tagged_display_resolves_timestamp_when_none();
+    tagged_display_line_with_timestamp_ansi_includes_payload();
+    tagged_display_and_log_line_color_branch();
+    acp_bracket_color_covers_both_directions();
+    acp_agent_who_prefix_matches_stdout_navy();
+    acp_bracket_payload_supports_dim_mode();
+    kiss_cov_assert_tool_payload_helpers();
 }

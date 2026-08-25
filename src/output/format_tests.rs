@@ -7,7 +7,6 @@ use super::{
     print_stdout_raw_line, print_stdout_text, set_stdout_log_path,
 };
 
-#[test]
 fn formats_expected_mini_header() {
     let delim = format_who_tag_delim(WHO_M);
     assert_eq!(
@@ -16,7 +15,6 @@ fn formats_expected_mini_header() {
     );
 }
 
-#[test]
 fn log_tag_inner_is_fixed_width() {
     assert_eq!(
         format_log_tag_inner("plan").chars().count(),
@@ -29,7 +27,6 @@ fn log_tag_inner_is_fixed_width() {
     );
 }
 
-#[test]
 fn ansi_timestamp_line_keeps_payload_plain() {
     let plain = format_line_with_timestamp("20260413.121314.015", WHO_M, "hello");
     assert!(!plain.contains('\x1b'));
@@ -38,7 +35,6 @@ fn ansi_timestamp_line_keeps_payload_plain() {
     assert!(ansi.ends_with("hello"));
 }
 
-#[test]
 fn detects_prefixed_and_unprefixed_command_prelude() {
     let prefix = format_who_tag_prefix(MALVIN_WHO);
     assert!(is_command_prelude_line("Command: malvin code plan.md"));
@@ -55,7 +51,6 @@ fn detects_prefixed_and_unprefixed_command_prelude() {
     ));
 }
 
-#[test]
 fn command_prelude_detection_ignores_unrelated_bracket_command_substrings() {
     assert!(
         !is_command_prelude_line("agent note | Command: not a malvin prelude"),
@@ -63,7 +58,6 @@ fn command_prelude_detection_ignores_unrelated_bracket_command_substrings() {
     );
 }
 
-#[test]
 fn command_prelude_rejects_short_who_tags_and_non_timestamp_prefixes() {
     assert!(!is_command_prelude_line("mm| Command: malvin code"));
     assert!(!is_command_prelude_line("agent-ts o| Command: malvin code"));
@@ -72,7 +66,6 @@ fn command_prelude_rejects_short_who_tags_and_non_timestamp_prefixes() {
     assert!(!is_command_prelude_line("not a command"));
 }
 
-#[test]
 fn command_prelude_rejects_dot_only_timestamp_token() {
     use super::is_log_timestamp_token;
 
@@ -84,7 +77,6 @@ fn command_prelude_rejects_dot_only_timestamp_token() {
     );
 }
 
-#[test]
 fn who_tag_payload_and_timestamp_token_helpers() {
     use super::{
         is_log_timestamp_token, payload_after_fixed_width_bracket_tag,
@@ -117,7 +109,6 @@ fn who_tag_payload_and_timestamp_token_helpers() {
     assert_eq!(payload_after_fixed_width_who_tag("no-pipe-tag"), None);
 }
 
-#[test]
 fn exported_constants_match_public_contract() {
     assert_eq!(MALVIN_WHO, WHO_O);
     assert_eq!(super::WARNING_WHO, "w");
@@ -126,7 +117,6 @@ fn exported_constants_match_public_contract() {
     assert_eq!(format_acp_directional_tag_prefix('<', "router"), WHO_M);
 }
 
-#[test]
 fn ansi_who_tag_uses_palette_for_warning_error_and_default() {
     use crate::terminal_palette::{ansi_tool_amber, ansi_tool_coral, ansi_tool_navy};
 
@@ -140,7 +130,6 @@ fn ansi_who_tag_uses_palette_for_warning_error_and_default() {
     assert!(default.contains(ansi_tool_navy()));
 }
 
-#[test]
 fn smoke_print_and_format_paths_cover_helpers() {
     assert_eq!(format_acp_directional_tag_prefix('>', "x"), WHO_U);
     assert_eq!(format_acp_directional_tag_prefix('<', "x"), WHO_M);
@@ -160,7 +149,6 @@ fn smoke_print_and_format_paths_cover_helpers() {
     assert_eq!(it.next(), Some("y"));
 }
 
-#[test]
 fn stdout_log_timestamps_disk_but_not_live_display() {
     let (display, log_line) = crate::output::stdout_tagged_display_and_log_line(WHO_U, "m", None);
     assert_ne!(display, log_line);
@@ -175,7 +163,6 @@ fn stdout_log_timestamps_disk_but_not_live_display() {
     assert!(log_line.contains("|m"));
 }
 
-#[test]
 fn append_stdout_log_line_writes_when_path_set() {
     let _guard = super::STDOUT_LOG_TEST_LOCK
         .lock()
@@ -189,13 +176,30 @@ fn append_stdout_log_line_writes_when_path_set() {
     assert!(text.contains("append probe"));
 }
 
-#[test]
 fn timestamp_now_string_cross_module_smoke() {
     assert!(!crate::time_format::timestamp_now_string().is_empty());
 }
 
-#[test]
 fn output_timestamp_wrapper_nonempty() {
     assert!(!super::timestamp_now_string().is_empty());
     assert!(!crate::time_format::timestamp_now_string().is_empty());
+}
+
+#[test]
+fn kiss_bundled_output_format_tests() {
+    formats_expected_mini_header();
+    log_tag_inner_is_fixed_width();
+    ansi_timestamp_line_keeps_payload_plain();
+    detects_prefixed_and_unprefixed_command_prelude();
+    command_prelude_detection_ignores_unrelated_bracket_command_substrings();
+    command_prelude_rejects_short_who_tags_and_non_timestamp_prefixes();
+    command_prelude_rejects_dot_only_timestamp_token();
+    who_tag_payload_and_timestamp_token_helpers();
+    exported_constants_match_public_contract();
+    ansi_who_tag_uses_palette_for_warning_error_and_default();
+    smoke_print_and_format_paths_cover_helpers();
+    stdout_log_timestamps_disk_but_not_live_display();
+    append_stdout_log_line_writes_when_path_set();
+    timestamp_now_string_cross_module_smoke();
+    output_timestamp_wrapper_nonempty();
 }

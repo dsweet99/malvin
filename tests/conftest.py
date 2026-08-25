@@ -41,7 +41,7 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     except ImportError:
         return
 
-    session._modal_lookup_patcher = patch.object(  # type: ignore[attr-defined]
+    session._modal_lookup_patcher = patch.object(
         modal.App, "lookup", return_value=MagicMock(name="modal_app")
     )
     session._modal_lookup_patcher.start()

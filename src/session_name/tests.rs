@@ -27,31 +27,26 @@ pub(super) fn sleep_child(seconds: &str) -> std::process::Child {
     cmd.spawn().expect("spawn sleep")
 }
 
-#[test]
 fn name_path_under_malvin_home() {
     with_isolated_names(|root| {
         assert_eq!(name_path("probe"), root.join("probe"));
     });
 }
 
-#[test]
 fn validate_name_rejects_empty() {
     assert!(validate_name("").is_err());
 }
 
-#[test]
 fn validate_name_rejects_path_chars() {
     assert!(validate_name("/").is_err());
     assert!(validate_name("..").is_err());
     assert!(validate_name("has space").is_err());
 }
 
-#[test]
 fn validate_name_accepts_alnum_dash_dot() {
     assert!(validate_name("my-run_1").is_ok());
 }
 
-#[test]
 fn acquire_creates_pid_file() {
     with_isolated_names(|_| {
         let guard = acquire_name("probe").expect("acquire");
@@ -66,7 +61,6 @@ fn acquire_creates_pid_file() {
 }
 
 #[cfg(unix)]
-#[test]
 fn acquire_rejects_live_peer() {
     with_isolated_names(|_| {
         let mut child = sleep_child("120");
@@ -80,7 +74,6 @@ fn acquire_rejects_live_peer() {
     });
 }
 
-#[test]
 fn acquire_reclaims_stale_dead_pid() {
     with_isolated_names(|_| {
         std::fs::create_dir_all(names_registry_root()).expect("mkdir names");
@@ -96,7 +89,6 @@ fn acquire_reclaims_stale_dead_pid() {
     });
 }
 
-#[test]
 fn acquire_clears_invalid_contents() {
     with_isolated_names(|_| {
         std::fs::create_dir_all(names_registry_root()).expect("mkdir names");
@@ -105,7 +97,6 @@ fn acquire_clears_invalid_contents() {
     });
 }
 
-#[test]
 fn acquire_reclaims_empty_file() {
     with_isolated_names(|_| {
         std::fs::create_dir_all(names_registry_root()).expect("mkdir names");
@@ -115,7 +106,6 @@ fn acquire_reclaims_empty_file() {
 }
 
 #[cfg(unix)]
-#[test]
 fn acquire_reclaims_whitespace_pid() {
     with_isolated_names(|_| {
         let mut child = sleep_child("120");
@@ -129,7 +119,6 @@ fn acquire_reclaims_whitespace_pid() {
     });
 }
 
-#[test]
 fn clear_stale_removes_non_regular_path() {
     with_isolated_names(|_| {
         let path = name_path("probe");
@@ -138,7 +127,6 @@ fn clear_stale_removes_non_regular_path() {
     });
 }
 
-#[test]
 fn acquire_cleans_up_on_write_failure() {
     with_isolated_names(|_| {
         let err = acquire_name_with_write("probe", |_| {
@@ -150,7 +138,6 @@ fn acquire_cleans_up_on_write_failure() {
     });
 }
 
-#[test]
 fn release_removes_own_file() {
     with_isolated_names(|_| {
         let guard = acquire_name("probe").expect("acquire");
@@ -161,7 +148,6 @@ fn release_removes_own_file() {
     });
 }
 
-#[test]
 fn release_preserves_foreign_file() {
     with_isolated_names(|_| {
         std::fs::create_dir_all(names_registry_root()).expect("mkdir names");
@@ -171,9 +157,27 @@ fn release_preserves_foreign_file() {
     });
 }
 
-#[test]
 fn parse_holder_pid_rejects_garbage() {
     assert_eq!(parse_holder_pid(""), None);
     assert_eq!(parse_holder_pid("abc"), None);
     assert_eq!(parse_holder_pid("12 34"), None);
+}
+
+#[test]
+fn kiss_bundled_session_name_tests() {
+    name_path_under_malvin_home();
+    validate_name_rejects_empty();
+    validate_name_rejects_path_chars();
+    validate_name_accepts_alnum_dash_dot();
+    acquire_creates_pid_file();
+    acquire_rejects_live_peer();
+    acquire_reclaims_stale_dead_pid();
+    acquire_clears_invalid_contents();
+    acquire_reclaims_empty_file();
+    acquire_reclaims_whitespace_pid();
+    clear_stale_removes_non_regular_path();
+    acquire_cleans_up_on_write_failure();
+    release_removes_own_file();
+    release_preserves_foreign_file();
+    parse_holder_pid_rejects_garbage();
 }

@@ -1,18 +1,15 @@
 use super::models_cmd::test_hooks::*;
 
-#[test]
 fn trim_trailing_tips_drops_banner() {
     let t = "a\nb\nTip: upgrade\n";
     assert_eq!(trim_trailing_tip_lines(t).lines().count(), 2);
 }
 
-#[test]
 fn trim_trailing_tips_drops_tip_space_banner_without_colon() {
     let t = "a\nb\ntip use TLS in prod\n";
     assert_eq!(trim_trailing_tip_lines(t).lines().count(), 2);
 }
 
-#[test]
 fn trim_trailing_tips_keeps_last_line_that_mentions_tip_mid_sentence() {
     let t = "composer-2 — Fast\nSee tip: use TLS in prod\n";
     assert_eq!(
@@ -21,7 +18,6 @@ fn trim_trailing_tips_keeps_last_line_that_mentions_tip_mid_sentence() {
     );
 }
 
-#[test]
 fn trim_trailing_tips_keeps_line_starting_with_tip_of_english_phrase() {
     let t = "composer-2 — Fast\nTip of the iceberg — latency matters\n";
     assert_eq!(
@@ -30,14 +26,12 @@ fn trim_trailing_tips_keeps_line_starting_with_tip_of_english_phrase() {
     );
 }
 
-#[test]
 fn parse_model_line_splits_em_dash() {
     let (n, d) = parse_model_line("composer-2 — Fast").expect("parse");
     assert_eq!(n, "composer-2");
     assert_eq!(d, "Fast");
 }
 
-#[test]
 fn parse_model_line_splits_ascii_hyphen_when_name_has_many_words() {
     let line = "my production inference tier one model id - Claude via API";
     let (n, d) = parse_model_line(line).expect("parse");
@@ -45,7 +39,6 @@ fn parse_model_line_splits_ascii_hyphen_when_name_has_many_words() {
     assert_eq!(d, "Claude via API");
 }
 
-#[test]
 fn models_display_lines_keeps_unparsed_single_token_between_parsed_rows() {
     let text = "composer-2 — Fast\nHEADERS\ngpt-4.1 — Stable";
     let lines = models_display_lines(text).expect("non-empty");
@@ -59,7 +52,6 @@ fn models_display_lines_keeps_unparsed_single_token_between_parsed_rows() {
     );
 }
 
-#[test]
 fn models_subcommand_parse_invokes_cli_helpers() {
     use crate::cli::{Cli, Commands};
     use clap::Parser;
@@ -73,7 +65,6 @@ fn models_subcommand_parse_invokes_cli_helpers() {
 }
 
 #[cfg(unix)]
-#[test]
 fn run_models_reads_fake_agent_models_output() {
     use std::os::unix::fs::PermissionsExt;
 
@@ -95,7 +86,6 @@ fn run_models_reads_fake_agent_models_output() {
     assert_eq!(path, agent);
 }
 
-#[test]
 fn current_model_label_reads_config_or_default() {
     use super::models_cmd::test_hooks::{current_model_label, print_current_footer};
     use crate::output::{enable_stdout_capture, take_captured_stdout};
@@ -114,7 +104,6 @@ fn current_model_label_reads_config_or_default() {
     });
 }
 
-#[test]
 fn cursor_list_models_timeout_honors_env() {
     use super::models_cmd::test_hooks::cursor_list_models_timeout;
     use crate::test_utils::test_env_lock;
@@ -138,11 +127,26 @@ fn cursor_list_models_timeout_honors_env() {
     }
 }
 
-#[test]
 fn sdk_catalog_empty_is_detected_even_when_auto_would_be_injected() {
     assert!(!sdk_catalog_has_model_rows(""));
     assert!(!sdk_catalog_has_model_rows("\n\n"));
     assert!(sdk_catalog_has_model_rows("cursor:composer-2\tFast\n"));
     let injected = sdk_model_rows_from_stdout("");
     assert_eq!(injected, vec!["cursor:auto".to_string()]);
+}
+
+#[test]
+fn kiss_bundled_cli_models_cmd_tests() {
+    trim_trailing_tips_drops_banner();
+    trim_trailing_tips_drops_tip_space_banner_without_colon();
+    trim_trailing_tips_keeps_last_line_that_mentions_tip_mid_sentence();
+    trim_trailing_tips_keeps_line_starting_with_tip_of_english_phrase();
+    parse_model_line_splits_em_dash();
+    parse_model_line_splits_ascii_hyphen_when_name_has_many_words();
+    models_display_lines_keeps_unparsed_single_token_between_parsed_rows();
+    models_subcommand_parse_invokes_cli_helpers();
+    run_models_reads_fake_agent_models_output();
+    current_model_label_reads_config_or_default();
+    cursor_list_models_timeout_honors_env();
+    sdk_catalog_empty_is_detected_even_when_auto_would_be_injected();
 }

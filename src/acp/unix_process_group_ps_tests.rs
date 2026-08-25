@@ -1,18 +1,15 @@
 #![cfg(all(test, unix))]
 
-#[test]
 fn parse_u32_field_parses_integers() {
     assert_eq!(super::parse_u32_field(" 42 "), Some(42));
     assert_eq!(super::parse_u32_field("x"), None);
 }
 
-#[test]
 fn list_proc_rows_includes_current_process() {
     let rows = super::list_proc_rows().expect("proc rows");
     assert!(rows.iter().any(|row| row.pid == std::process::id()));
 }
 
-#[test]
 fn proc_snapshots_without_self_are_rejected() {
     assert!(!super::proc_pid_snapshot_is_usable(
         &std::collections::HashSet::new()
@@ -20,7 +17,6 @@ fn proc_snapshots_without_self_are_rejected() {
     assert!(!super::proc_row_snapshot_is_usable(&[]));
 }
 
-#[test]
 fn proc_snapshots_with_self_are_accepted() {
     let me = std::process::id();
     assert!(super::proc_pid_snapshot_is_usable(
@@ -34,7 +30,6 @@ fn proc_snapshots_with_self_are_accepted() {
 }
 
 #[cfg(target_os = "linux")]
-#[test]
 fn list_proc_rows_matches_ps_for_self_via_proc_path() {
     let me = std::process::id();
     let via_public = super::list_proc_rows().expect("list_proc_rows");
@@ -71,7 +66,6 @@ fn list_proc_rows_matches_ps_for_self_via_proc_path() {
     );
 }
 
-#[test]
 fn parse_pid_list_reads_ps_output() {
     let pids = super::parse_pid_list(b"  42\n19531\n");
     assert_eq!(pids.len(), 2);
@@ -79,7 +73,6 @@ fn parse_pid_list_reads_ps_output() {
     assert!(pids.contains(&19_531));
 }
 
-#[test]
 fn parse_proc_rows_reads_ps_output() {
     let rows = super::parse_proc_rows(b"  42  42    1\n19531 19531 42\n");
     assert_eq!(rows.len(), 2);
@@ -88,13 +81,11 @@ fn parse_proc_rows_reads_ps_output() {
     assert_eq!(rows[0].ppid, 1);
 }
 
-#[test]
 fn list_pids_from_ps_returns_current_process() {
     let pids = super::list_pids_from_ps().expect("ps listing");
     assert!(pids.contains(&std::process::id()));
 }
 
-#[test]
 fn looks_like_agent_acp_cmdline_matches_malvin_argv() {
     assert!(super::looks_like_agent_acp_cmdline(
         b"agent\0--force\0--model\0auto\0acp\0"
@@ -106,7 +97,6 @@ fn looks_like_agent_acp_cmdline_matches_malvin_argv() {
     assert!(!super::looks_like_agent_acp_cmdline(b"agent\0serve\0"));
 }
 
-#[test]
 fn is_safe_kill_target_rejects_init_and_self() {
     let protected = super::host_protected_pids(&[]);
     assert!(!super::is_safe_kill_target(super::INIT_PID, &protected));
@@ -117,7 +107,6 @@ fn is_safe_kill_target_rejects_init_and_self() {
     ));
 }
 
-#[test]
 fn process_group_member_pids_includes_self() {
     let me = std::process::id();
     let rows = super::list_proc_rows().expect("proc rows");
@@ -130,7 +119,6 @@ fn process_group_member_pids_includes_self() {
     assert!(members.contains(&me));
 }
 
-#[test]
 fn spawned_pids_since_baseline_excludes_baseline_members() {
     let mut baseline = super::snapshot_pids();
     baseline.insert(std::process::id());
@@ -139,7 +127,6 @@ fn spawned_pids_since_baseline_excludes_baseline_members() {
 }
 
 #[cfg(target_os = "linux")]
-#[test]
 fn read_proc_cmdline_and_environ_reads_current_process() {
     let me = std::process::id();
     assert!(super::read_proc_cmdline(me).is_some_and(|cmdline| !cmdline.is_empty()));
@@ -147,7 +134,6 @@ fn read_proc_cmdline_and_environ_reads_current_process() {
 }
 
 #[cfg(target_os = "linux")]
-#[test]
 fn looks_like_malvin_agent_acp_ignores_inherited_malvin_workspace_on_sleep() {
     let mut child = std::process::Command::new("sh");
     child
@@ -164,12 +150,10 @@ fn looks_like_malvin_agent_acp_ignores_inherited_malvin_workspace_on_sleep() {
     let _ = child.wait();
 }
 
-#[test]
 fn signal_pid_is_noop_for_invalid_pid() {
     super::signal_pid(999_999_999, 15);
 }
 
-#[test]
 fn pid_alive_reports_self_alive_and_reaped_child_dead() {
     assert!(
         super::pid_alive(std::process::id()),
@@ -188,7 +172,6 @@ fn pid_alive_reports_self_alive_and_reaped_child_dead() {
     );
 }
 
-#[test]
 fn signal_pid_kill_round_trip_without_kill_binary() {
     // Direct libc::kill must stop a child; the old path forked `/bin/kill` for this.
     let mut child = std::process::Command::new("sleep")
@@ -207,4 +190,25 @@ fn signal_pid_kill_round_trip_without_kill_binary() {
         !super::pid_alive(child_pid),
         "after SIGKILL + wait, pid must be dead via kill(2)"
     );
+}
+
+#[test]
+fn kiss_bundled_acp_unix_process_group_ps_tests() {
+    parse_u32_field_parses_integers();
+    list_proc_rows_includes_current_process();
+    proc_snapshots_without_self_are_rejected();
+    proc_snapshots_with_self_are_accepted();
+    list_proc_rows_matches_ps_for_self_via_proc_path();
+    parse_pid_list_reads_ps_output();
+    parse_proc_rows_reads_ps_output();
+    list_pids_from_ps_returns_current_process();
+    looks_like_agent_acp_cmdline_matches_malvin_argv();
+    is_safe_kill_target_rejects_init_and_self();
+    process_group_member_pids_includes_self();
+    spawned_pids_since_baseline_excludes_baseline_members();
+    read_proc_cmdline_and_environ_reads_current_process();
+    looks_like_malvin_agent_acp_ignores_inherited_malvin_workspace_on_sleep();
+    signal_pid_is_noop_for_invalid_pid();
+    pid_alive_reports_self_alive_and_reaped_child_dead();
+    signal_pid_kill_round_trip_without_kill_binary();
 }

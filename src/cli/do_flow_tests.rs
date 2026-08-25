@@ -21,7 +21,6 @@ fn mock_do_prompt_store(tmp: &tempfile::TempDir) -> PromptStore {
     PromptStore::with_root(prompt_root)
 }
 
-#[test]
 fn combine_do_prompt_file_and_user_joins_rendered_template_and_request() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let prompt_root = tmp.path().join("prompts");
@@ -36,14 +35,12 @@ fn combine_do_prompt_file_and_user_joins_rendered_template_and_request() {
     assert_header_user_join(&combined, "TMPL", "BODY");
 }
 
-#[test]
 fn prepare_do_prompt_store_loads_default_templates() {
     let store = prepare_do_prompt_store().expect("store");
     assert!(store.validate_exists(HEADER_MD).is_ok());
     assert!(store.validate_exists(DO_HEADER_MD).is_ok());
 }
 
-#[test]
 fn build_do_coder_run_succeeds_without_checks_in_non_git_workspace() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts_no_checks(&tmp);
@@ -66,7 +63,6 @@ fn build_do_coder_run_succeeds_without_checks_in_non_git_workspace() {
     assert_eq!(run.combined.matches("USER_TOKEN").count(), 1);
 }
 
-#[test]
 fn build_do_coder_run_combines_both_headers_and_user() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
@@ -84,7 +80,6 @@ fn build_do_coder_run_combines_both_headers_and_user() {
     assert_eq!(trace_user, "USER_TOKEN");
 }
 
-#[test]
 fn build_do_coder_run_default_store_produces_dual_headers() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
@@ -107,7 +102,6 @@ fn build_do_coder_run_default_store_produces_dual_headers() {
     assert_eq!(run.combined.matches("USER_TOKEN").count(), 1);
 }
 
-#[test]
 fn combine_do_acp_prompt_joins_rendered_header_and_request() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let store = mock_do_prompt_store(&tmp);
@@ -124,7 +118,6 @@ fn combine_do_acp_prompt_joins_rendered_header_and_request() {
     assert_header_user_join(&combined, "CODING_HDR", "USER_TOKEN");
 }
 
-#[test]
 fn combine_do_raw_header_and_user_joins_rendered_do_header_and_request() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let prompt_root = tmp.path().join("prompts");
@@ -144,7 +137,6 @@ fn combine_do_raw_header_and_user_joins_rendered_do_header_and_request() {
     assert_header_user_join(&combined, "DO_TOKEN", "USER_RAW_TOKEN");
 }
 
-#[test]
 fn cli_accepts_do_and_passes_request() {
     use crate::cli::Cli;
 
@@ -154,7 +146,6 @@ fn cli_accepts_do_and_passes_request() {
     assert!(cli.command.is_none());
 }
 
-#[test]
 fn cli_rejects_do_thoughts_flag() {
     use crate::cli::Cli;
 
@@ -166,7 +157,6 @@ fn cli_rejects_do_thoughts_flag() {
     );
 }
 
-#[test]
 fn cli_accepts_all_shared_flags_before_subcommand() {
     use crate::cli::Cli;
 
@@ -185,7 +175,6 @@ fn cli_accepts_all_shared_flags_before_subcommand() {
     assert_eq!(cli.request.as_deref(), Some("z"));
 }
 
-#[test]
 fn cli_accepts_max_acp_retries_global_flag() {
     use crate::cli::Cli;
     use crate::config::DEFAULT_MAX_ACP_RETRIES;
@@ -198,7 +187,6 @@ fn cli_accepts_max_acp_retries_global_flag() {
     assert_eq!(cli.shared.max_acp_retries, 5);
 }
 
-#[test]
 fn cli_accepts_verbose_short_and_long_global_flags() {
     use crate::cli::Cli;
 
@@ -211,4 +199,20 @@ fn cli_accepts_verbose_short_and_long_global_flags() {
     assert!(cli.shared.verbose);
     assert!(cli.do_workflow);
     assert_eq!(cli.request.as_deref(), Some("y"));
+}
+
+#[test]
+fn kiss_bundled_cli_do_flow_tests() {
+    combine_do_prompt_file_and_user_joins_rendered_template_and_request();
+    prepare_do_prompt_store_loads_default_templates();
+    build_do_coder_run_succeeds_without_checks_in_non_git_workspace();
+    build_do_coder_run_combines_both_headers_and_user();
+    build_do_coder_run_default_store_produces_dual_headers();
+    combine_do_acp_prompt_joins_rendered_header_and_request();
+    combine_do_raw_header_and_user_joins_rendered_do_header_and_request();
+    cli_accepts_do_and_passes_request();
+    cli_rejects_do_thoughts_flag();
+    cli_accepts_all_shared_flags_before_subcommand();
+    cli_accepts_max_acp_retries_global_flag();
+    cli_accepts_verbose_short_and_long_global_flags();
 }

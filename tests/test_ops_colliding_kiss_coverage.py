@@ -22,7 +22,7 @@ _malvin_modal_main = _ops_malvin_modal.main
 
 def test_ops_colliding_name_kiss_coverage() -> None:
     """Kiss matches colliding names via aliased Call nodes; do not execute them."""
-    if False:  # pragma: no cover
+    if False:
         _sandbox_prep__remaining_sec()
         _malvin_modal__test_sandbox_app()
         _malvin_modal_cli()
