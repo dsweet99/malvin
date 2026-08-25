@@ -1,6 +1,4 @@
 mem_limit_gb = 4
-# Reserved context window size (legacy local-engine key; still parsed).
-context_size = 8192
 # Terminal color palette: "dark" (default) or "light" (for pale backgrounds).
 theme = "dark"
 
@@ -19,14 +17,6 @@ usd_per_microtoken_in = 0
 usd_per_microtoken_out = 0
 usd_per_microtoken_cache_read = 0
 usd_per_microtoken_cache_write = 0
-
-[review]
-# Hypothesis budget for `malvin write` Review and Plan sessions (not agent.max_hypotheses).
-max_hypotheses = 10
-
-[default_workflow]
-# Hypothesis budget retained for workflow context / exp-log slots (not agent.max_hypotheses).
-max_hypotheses = 5
 
 [logs]
 # Max run directories per workspace bucket; 0 = unlimited.

@@ -41,7 +41,6 @@ fn open_malvin_config_creates_file_with_all_sections() {
         assert_eq!(cfg.agent.max_loops, DEFAULT_MAX_LOOPS);
         assert_eq!(cfg.agent.max_loops_code, DEFAULT_MAX_LOOPS_CODE);
         assert!(text.contains("theme"));
-        assert!(text.contains("context_size"));
         assert_eq!(
             cfg.context_size,
             crate::malvin_config_file::DEFAULT_CONTEXT_SIZE
