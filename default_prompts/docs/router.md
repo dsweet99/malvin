@@ -7,7 +7,7 @@ Outer agent sessions (`--max-loops`): each session sends `header.md`, then `rout
 | | |
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
-| Output | Styled stdout on a TTY (same startup chrome as `tidy` / `inspire`); with `--quiet` / `-q`, only `MALVIN_DM_*` bodies |
+| Output | Styled stdout on a TTY (same startup chrome as `tidy` / `inspire`); with `--quiet` / `-q`, only `__MALVIN_DM_*__` bodies |
 | Logs | `router_N.log` under `~/.malvin_home/logs/<hash>/<run>/` (one file per outer session) |
 | Requires | No `.malvin/gates` at startup (unless `--gates` later needs them) |
 
@@ -45,7 +45,7 @@ See `malvin --doc`. Notable for the default route:
 | `-g` / `--gates` | When `router_a` emits `__MALVIN_DONE__`, run workspace `.malvin/gates`. Pass stops success; fail continues (new outer session). Exhausted budget with failing gates fails the run after exit summarize. Also injects check text into `router_a.md` via `{{ code_extra }}`. |
 | `--creative` | Use the creative router_b prompt for the optional work turn |
 | `--no-tenacious` | Keep normal `--max-loops` / `--max-acp-retries` (default tenacious expands both) |
-| `--quiet` / `-q` | Stdout shows only `MALVIN_DM_*` bodies (not `-b`). Plain `--do` is already DM-body-only without `--verbose` |
+| `--quiet` / `-q` | Stdout shows only `__MALVIN_DM_*__` bodies (not `-b`). Plain `--do` is already DM-body-only without `--verbose` |
 | `--verbose` | Full prompt bodies in `prompts.log`; with `--do`, also same live agent stdout log classes as the default workflow |
 
 ## Prompt workflow

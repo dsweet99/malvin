@@ -97,10 +97,6 @@ async fn injected_busy_health_extends_then_delivers_event() {
     bug_set_drain_idle_timeout_ms(200);
     let samples = Arc::new(AtomicUsize::new(0));
     let samples_for_health = Arc::clone(&samples);
-    let labels = crate::bridge_sdk::DrainIdleLabels {
-        prefix: "bridge timed out",
-        waiting_for: "run_done",
-    };
     let started = std::time::Instant::now();
     let read = async {
         tokio::time::sleep(std::time::Duration::from_millis(300)).await;
@@ -108,14 +104,22 @@ async fn injected_busy_health_extends_then_delivers_event() {
     };
     let idle = std::time::Duration::from_millis(200);
     let mut clock = crate::bridge_sdk::DrainIdleClock::new(idle);
-    let got = crate::bridge_sdk::await_next_with_idle_using(
+    let labels = crate::bridge_sdk::DrainIdleLabels {
+        prefix: "bridge timed out",
+        waiting_for: "run_done",
+    };
+    let mut wait = crate::bridge_sdk::DrainIdleWaitOpts {
         labels,
+        clock: &mut clock,
+        extend_turn_on_busy_health: false,
+    };
+    let got = crate::bridge_sdk::await_next_with_idle_using(
+        &mut wait,
         read,
         move |_| {
             samples_for_health.fetch_add(1, Ordering::SeqCst);
             std::future::ready(crate::bridge_sdk::DrainHealthVerdict::StillBusy)
         },
-        &mut clock,
     )
     .await
     .expect("busy health must extend until the event arrives");

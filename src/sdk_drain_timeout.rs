@@ -48,6 +48,15 @@ pub const fn sdk_drain_idle_max_wait(idle: Duration) -> Duration {
     idle.saturating_mul(2)
 }
 
+/// Hard wall-clock cap for an entire drain turn (extendable on productive activity).
+pub const SDK_DRAIN_IDLE_MAX_TURN_MULTIPLIER: u32 = 10;
+
+/// Max turn duration before productive extensions are capped.
+#[must_use]
+pub const fn sdk_drain_idle_max_turn(idle: Duration) -> Duration {
+    idle.saturating_mul(SDK_DRAIN_IDLE_MAX_TURN_MULTIPLIER)
+}
+
 #[cfg(test)]
 pub(crate) fn tests_set_idle_ms_for_test(ms: u64) {
     unsafe {
@@ -119,6 +128,10 @@ mod tests {
             sdk_drain_idle_max_wait(Duration::from_mins(10)),
             Duration::from_mins(20)
         );
+        assert_eq!(
+            sdk_drain_idle_max_turn(Duration::from_mins(10)),
+            Duration::from_mins(100)
+        );
     }
 
     #[test]
@@ -128,6 +141,8 @@ mod tests {
         let _ = stringify!(sdk_drain_idle_timeout_from_env);
         let _ = stringify!(sdk_drain_idle_slice);
         let _ = stringify!(sdk_drain_idle_max_wait);
+        let _ = stringify!(sdk_drain_idle_max_turn);
+        let _ = stringify!(SDK_DRAIN_IDLE_MAX_TURN_MULTIPLIER);
         let _ = stringify!(sdk_drain_idle_timeout_from_env_rejects_zero_and_garbage);
         let _ = stringify!(sdk_drain_idle_slice_and_max_wait);
     }

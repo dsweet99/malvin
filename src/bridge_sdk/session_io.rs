@@ -4,6 +4,7 @@ use super::session::BridgeSession;
 use super::timing::{note_sdk_step, record_sdk_usage};
 use crate::bridge_protocol::{BridgeEvent, BridgeRequest, decode_event, encode_request};
 use super::session_handshake::wait_for_ok;
+use super::session_io_productive::{note_productive_bridge_event, tools_in_flight};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
 
 pub(crate) struct CreateArgs<'a> {
@@ -92,6 +93,7 @@ pub(crate) async fn drain_until_run_done(session: &BridgeSession) -> Result<(), 
     };
     loop {
         let ev = read_event_with_idle_timeout(session, "run_done", &mut turn).await?;
+        note_productive_bridge_event(session, &mut turn, &ev);
         match &ev {
             BridgeEvent::Step { .. } => note_sdk_step(session.timing.as_ref()),
             BridgeEvent::Usage { usage } => {
@@ -126,6 +128,7 @@ async fn read_event_with_idle_timeout(
     let health = Some(super::DrainIdleHealthCtx {
         process_group_id: session.process_group_id,
         spawn_pid_baseline: &session.spawn_pid_baseline,
+        tools_in_flight: tools_in_flight(session),
     });
     super::await_next_with_idle_in_turn(labels, health, read_event(session), turn).await
 }

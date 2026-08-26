@@ -31,11 +31,11 @@ mod inspire_tests {
             "inspire_summarize.md body must ask for a DM: {out}"
         );
         assert!(
-            out.contains("MALVIN_DM_START"),
+            out.contains("__MALVIN_DM_START__"),
             "inspire_summarize.md must define the DM start marker: {out}"
         );
         assert!(
-            out.contains("MALVIN_DM_END"),
+            out.contains("__MALVIN_DM_END__"),
             "inspire_summarize.md must define the DM end marker: {out}"
         );
         assert!(

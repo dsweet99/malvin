@@ -185,9 +185,10 @@ fn bridge_transport_errors_require_coder_session_teardown() {
         "bridge write: broken pipe",
         "bridge flush: broken pipe",
         "bridge read: connection reset",
-        "bridge drain timed out waiting for run_done after 1s of silence",
-        "bridge timed out waiting for run_done after 1s of silence",
-        "bridge timed out waiting for ok after 1s of silence",
+        "bridge drain timed out waiting for run_done after 1s without a bridge event",
+        "bridge timed out waiting for run_done after 1s without a bridge event",
+        "bridge timed out waiting for run_done after turn ran 1192s (limit 6000s)",
+        "bridge timed out waiting for ok after 1s without a bridge event",
         "Agent agent-7b61bfe2-fa7a-47bd-8f5b-96c158067bc8 already has active run",
     ] {
         assert!(agent_error_requires_coder_session_teardown(msg), "{msg}");

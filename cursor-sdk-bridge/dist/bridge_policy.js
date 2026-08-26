@@ -3,6 +3,9 @@ export const PROGRESS_HEARTBEAT_MS = 15_000;
 export function progressHeartbeatDue(runOpen, closing, lastForwardedAt, now) {
     return runOpen && !closing && now - lastForwardedAt >= PROGRESS_HEARTBEAT_MS;
 }
+export function runAcceptsProgressHeartbeat(currentRun, runPending, closing, lastForwardedAt, now) {
+    return progressHeartbeatDue(currentRun || runPending, closing, lastForwardedAt, now);
+}
 function errorMessage(err) {
     if (err instanceof Error)
         return err.message;

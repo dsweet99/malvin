@@ -52,7 +52,7 @@ Restore normal retry budgets (global flag; see `malvin --doc`).
 
 ## Global options
 
-See `malvin --doc`. `--quiet` / `-q` prints only `MALVIN_DM_START`/`END` bodies on stdout (not the same as `-b`).
+See `malvin --doc`. `--quiet` / `-q` prints only `__MALVIN_DM_START__`/`END` bodies on stdout (not the same as `-b`).
 
 ## Success criteria
 

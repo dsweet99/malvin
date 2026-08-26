@@ -140,6 +140,7 @@ pub(crate) async fn read_json_waiting(
     let health = Some(crate::bridge_sdk::DrainIdleHealthCtx {
         process_group_id: session.process_group_id,
         spawn_pid_baseline: &session.spawn_pid_baseline,
+        tools_in_flight: false,
     });
     crate::bridge_sdk::await_next_with_idle_in_turn(labels, health, read_json_line(session), turn)
         .await

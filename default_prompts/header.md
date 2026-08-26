@@ -93,9 +93,9 @@ When addressing the operator:
 Most output lands in logs. To reach the operator directly, use a DM fence:
 
 ```
-MALVIN_DM_START
+__MALVIN_DM_START__
 Your message to the user
-MALVIN_DM_END
+__MALVIN_DM_END__
 ```
 
 Use DM only when directed to, or in an emergency.

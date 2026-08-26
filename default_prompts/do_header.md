@@ -6,12 +6,12 @@ You are in `malvin --do` right now.
 
 The user sees **only** text between these two exact lines (copy them exactly):
 
-MALVIN_DM_START
+__MALVIN_DM_START__
 your answer here
-MALVIN_DM_END
+__MALVIN_DM_END__
 
 Hard rules:
-- Always emit both markers with those exact spellings (all caps, underscores).
+- Always emit both markers with those exact spellings (double underscores, all caps).
 - Put the full answer inside the fence. Text outside the fence is not shown on plain `malvin --do`.
 - If you use tools first, you must still finish with a closed DM fence that contains the answer.
 - Do not wrap the markers in a markdown code fence.

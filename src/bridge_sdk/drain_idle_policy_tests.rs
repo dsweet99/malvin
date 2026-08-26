@@ -1,7 +1,8 @@
 use super::drain_idle::{
     DrainHealthVerdict, DrainIdleClock, DrainIdleHealthCtx, DrainIdleLabels, DrainIdleTurn,
-    await_next_with_idle, await_next_with_idle_in_turn, await_next_with_idle_using,
+    await_next_with_idle, await_next_with_idle_in_turn,
 };
+use super::{DrainIdleWaitOpts, await_next_with_idle_using};
 use crate::acp::AgentError;
 use std::collections::HashSet;
 use std::time::Duration;
@@ -19,14 +20,19 @@ async fn injected_dead_health_fails_at_first_slice() {
     let prior = set_policy_idle_ms(120_000);
     let started = Instant::now();
     let mut clock = DrainIdleClock::new(Duration::from_mins(2));
+    let labels = DrainIdleLabels {
+        prefix: "bridge timed out",
+        waiting_for: "run_done",
+    };
+    let mut wait = DrainIdleWaitOpts {
+        labels,
+        clock: &mut clock,
+        extend_turn_on_busy_health: false,
+    };
     let err = await_next_with_idle_using(
-        DrainIdleLabels {
-            prefix: "bridge timed out",
-            waiting_for: "run_done",
-        },
+        &mut wait,
         std::future::pending::<Result<(), AgentError>>(),
         |_| std::future::ready(DrainHealthVerdict::DeadOrZombie),
-        &mut clock,
     )
     .await
     .expect_err("dead child must fail on the first 60s health sample");
@@ -42,14 +48,19 @@ async fn injected_hung_health_waits_full_idle() {
     let prior = set_policy_idle_ms(120_000);
     let started = Instant::now();
     let mut clock = DrainIdleClock::new(Duration::from_mins(2));
+    let labels = DrainIdleLabels {
+        prefix: "pi rpc timed out",
+        waiting_for: "agent_end",
+    };
+    let mut wait = DrainIdleWaitOpts {
+        labels,
+        clock: &mut clock,
+        extend_turn_on_busy_health: false,
+    };
     let err = await_next_with_idle_using(
-        DrainIdleLabels {
-            prefix: "pi rpc timed out",
-            waiting_for: "agent_end",
-        },
+        &mut wait,
         std::future::pending::<Result<(), AgentError>>(),
         |_| std::future::ready(DrainHealthVerdict::AppearsHung),
-        &mut clock,
     )
     .await
     .expect_err("hung child must fail only after the idle budget");
@@ -73,6 +84,7 @@ async fn missing_pgid_gets_no_health_extend() {
         Some(DrainIdleHealthCtx {
             process_group_id: None,
             spawn_pid_baseline: &baseline,
+            tools_in_flight: false,
         }),
         std::future::pending::<Result<(), AgentError>>(),
     )
@@ -91,14 +103,19 @@ async fn repeated_busy_health_stops_at_exactly_two_idle_windows() {
     let prior = set_policy_idle_ms(120_000);
     let started = Instant::now();
     let mut clock = DrainIdleClock::new(Duration::from_mins(2));
+    let labels = DrainIdleLabels {
+        prefix: "bridge timed out",
+        waiting_for: "run_done",
+    };
+    let mut wait = DrainIdleWaitOpts {
+        labels,
+        clock: &mut clock,
+        extend_turn_on_busy_health: false,
+    };
     let err = await_next_with_idle_using(
-        DrainIdleLabels {
-            prefix: "bridge timed out",
-            waiting_for: "run_done",
-        },
+        &mut wait,
         std::future::pending::<Result<(), AgentError>>(),
         |_| std::future::ready(DrainHealthVerdict::StillBusy),
-        &mut clock,
     )
     .await
     .expect_err("busy health must not exceed max_wait");

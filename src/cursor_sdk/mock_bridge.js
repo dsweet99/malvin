@@ -199,6 +199,49 @@ async function handleSend(req) {
     return;
   }
 
+  if (prompt.includes("LONG_TOOL_TURN_THEN_DONE")) {
+    const periodMs = Math.max(
+      1,
+      Number.parseInt(process.env.MOCK_BRIDGE_TOOL_PERIOD_MS || "60", 10) || 60,
+    );
+    const pulses = Math.max(
+      4,
+      Number.parseInt(process.env.MOCK_BRIDGE_TOOL_PULSES || "8", 10) || 8,
+    );
+    const toolId = "mock-long-shell";
+    emit({
+      event: "tool_call",
+      phase: "start",
+      name: "shell",
+      summary: "Run long compile",
+      toolCallId: toolId,
+    });
+    for (let i = 0; i < pulses; i++) {
+      await sleep(periodMs);
+      emit({ event: "progress", kind: "heartbeat", detail: `tool-pulse-${i}` });
+    }
+    emit({
+      event: "tool_call",
+      phase: "complete",
+      name: "shell",
+      summary: "Run long compile",
+      toolCallId: toolId,
+    });
+    emit({
+      event: "run_done",
+      status: "finished",
+      result: "long-tool-turn-done",
+      usage: {
+        inputTokens: 1,
+        outputTokens: 1,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+      },
+      durationMs: periodMs * pulses,
+    });
+    return;
+  }
+
   if (prompt.includes("PROGRESS_THEN_DONE")) {
     const periodMs = Math.max(
       1,
@@ -229,7 +272,7 @@ async function handleSend(req) {
 
   const fenced = prompt.includes("NEED_DM");
   const result = fenced
-    ? "MALVIN_DM_START\nHello.\nMALVIN_DM_END"
+    ? "__MALVIN_DM_START__\nHello.\n__MALVIN_DM_END__"
     : "mock reply";
   emit({ event: "assistant", text: fenced ? "Hello" : "mock reply" });
   emit({ event: "step", kind: "onStep" });

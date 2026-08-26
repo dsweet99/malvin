@@ -21,9 +21,17 @@ impl DrainIdleTurn {
         }
     }
 
+    pub(crate) const fn idle(&self) -> Duration {
+        self.idle
+    }
+
     pub(crate) fn check_max_deadline(&self, labels: DrainIdleLabels<'_>) -> Result<(), AgentError> {
-        if Instant::now() >= self.clock.max_deadline() {
-            Err(labels.silence_error(self.idle))
+        let now = Instant::now();
+        if now >= self.clock.max_deadline() {
+            Err(labels.turn_budget_error(
+                self.clock.turn_elapsed(),
+                self.clock.turn_limit(),
+            ))
         } else {
             Ok(())
         }

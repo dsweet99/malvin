@@ -45,6 +45,20 @@ pub(super) fn bug_clear_progress_env() {
     }
 }
 
+pub(super) fn bug_set_tool_turn_env(period_ms: u64, pulses: u64) {
+    unsafe {
+        std::env::set_var("MOCK_BRIDGE_TOOL_PERIOD_MS", period_ms.to_string());
+        std::env::set_var("MOCK_BRIDGE_TOOL_PULSES", pulses.to_string());
+    }
+}
+
+pub(super) fn bug_clear_tool_turn_env() {
+    unsafe {
+        std::env::remove_var("MOCK_BRIDGE_TOOL_PERIOD_MS");
+        std::env::remove_var("MOCK_BRIDGE_TOOL_PULSES");
+    }
+}
+
 pub(super) fn bug_clear_env() {
     unsafe {
         std::env::remove_var("MALVIN_CURSOR_SDK_BRIDGE");
@@ -52,6 +66,7 @@ pub(super) fn bug_clear_env() {
         std::env::remove_var("MOCK_BRIDGE_HANG_CREATE");
     }
     bug_clear_progress_env();
+    bug_clear_tool_turn_env();
 }
 
 pub(super) fn bug_set_drain_idle_timeout_ms(ms: u64) {

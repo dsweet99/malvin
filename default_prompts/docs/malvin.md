@@ -43,7 +43,7 @@ Suppress all stdout from malvin and the agent. Run logs under `~/.malvin_home/lo
 
 ### `-q` / `--quiet`
 
-On the **default router** (bare `malvin REQUEST` and `malvin -g`) and on one-shot agent commands that tee styled agent stdout (`write`, `inspire`), print only the text between `MALVIN_DM_START` and `MALVIN_DM_END` fences to process stdout. Startup chrome, agent stream, heartbeats, prompt-name lines, fence markers, and TIMING/COST lines are omitted from stdout. Run-dir logs and stderr are unchanged.
+On the **default router** (bare `malvin REQUEST` and `malvin -g`) and on one-shot agent commands that tee styled agent stdout (`write`, `inspire`), print only the text between `__MALVIN_DM_START__` and `__MALVIN_DM_END__` fences to process stdout. Startup chrome, agent stream, heartbeats, prompt-name lines, fence markers, and TIMING/COST lines are omitted from stdout. Run-dir logs and stderr are unchanged.
 
 This is **not** the same as `-b` / `--background` (which suppresses all stdout, including DM bodies). It is also **not** required for plain `malvin --do`: without `--verbose`, `--do` is already DM-body-only on stdout. With `--verbose`, `--do` tees the same live agent log classes as the default workflow (see `-v` / `--verbose` below).
 
@@ -181,10 +181,13 @@ While waiting for the next Cursor SDK bridge or Pi RPC line, malvin applies a **
 | Clock | Meaning | Default |
 |-------|---------|---------|
 | Idle budget | Max silence since the last successful bridge/Pi event (or since the wait started) | `MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS` (600000 ms) |
+| Turn cap (base) | Max wall clock for one prompt drain before productive extension | `2 × idle` (~1200s default) |
+| Turn cap (extended) | Hard ceiling after infra heartbeats / tool activity | `10 × idle` (~6000s default) |
 | Slice | How long to block on one read before sampling sandbox child health | `min(60000 ms, idle remaining)` |
 | Health extend | If sandbox PIDs show CPU / ctxt / thread progress (`StillBusy`), refresh the idle budget once more, capped at `max_wait = 2 × idle` for that next-event wait | — |
+| Infra turn heartbeat | Tool start extends turn cap by `2 × idle`; bridge `progress` heartbeats extend by `idle` while a tool is in flight; `StillBusy` health extends turn cap by `idle`; I/O-bound work with open tools is treated like `StillBusy` | — |
 
-Missing a line for the full (possibly health-extended) idle window fails with `bridge timed out` / `pi rpc timed out` and tears down the coder session for retry. Local stdout heartbeats (`Orienting`, …) do **not** reset drain idle.
+Missing a line for the full (possibly health-extended) idle window fails with `bridge timed out … without a bridge event`. Hitting the cumulative turn cap fails with `bridge timed out … after turn ran … (limit …)`. Local stdout heartbeats (`Orienting`, …) do **not** reset drain idle.
 
 The Cursor SDK bridge also emits automatic `{ "event": "progress", "kind": "heartbeat" }` lines when a run is in flight and no SDK message/step has been forwarded for 15s. Those `progress` events reset the per-event idle budget like any other bridge line (they are recorded in `trace.jsonl`, not teed to narrative stdout).
 

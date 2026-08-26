@@ -4,12 +4,12 @@ Write a summary of your generated ideas as a DM to the user. Write it as first-p
 Put the complete response inside this DM fence, with each marker alone on its own line:
 
 ```text
-MALVIN_DM_START
+__MALVIN_DM_START__
 Your summary to the user
-MALVIN_DM_END
+__MALVIN_DM_END__
 ```
 
-Always finish with the closing `MALVIN_DM_END` marker.
+Always finish with the closing `__MALVIN_DM_END__` marker.
 
 The user is interested in your ideas *not* in how you generate them. (Nothing personal. That's what the logs are for.) Stay focused.
 

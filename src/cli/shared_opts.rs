@@ -4,7 +4,7 @@ use clap::Args;
 use crate::model_id::{ParsedModel, parse_model_id};
 
 const QUIET_HELPTEXT: &str =
-    "Print only `MALVIN_DM_START`/`END` bodies on stdout (default router; not `-b`)";
+    "Print only `__MALVIN_DM_START__`/`END` bodies on stdout (default router; not `-b`)";
 
 #[derive(Args, Debug)]
 pub struct GlobalOpts {
@@ -33,7 +33,7 @@ pub struct SharedOpts {
     /// Run workspace quality gates; treat failures as loop or exit criteria
     #[arg(short = 'g', long, global = true, default_value_t = false)]
     pub gates: bool,
-    /// Print only `MALVIN_DM_START`/`END` bodies on stdout (default router; not `-b`)
+    /// Print only `__MALVIN_DM_START__`/`END` bodies on stdout (default router; not `-b`)
     #[arg(
         short = 'q',
         long,

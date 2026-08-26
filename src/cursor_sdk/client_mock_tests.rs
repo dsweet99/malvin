@@ -172,7 +172,7 @@ fn assert_dm_hello(out: &str, client: &CursorSdkClient) {
     assert_eq!(out, "Hello.");
     assert_eq!(
         client.last_coder_prompt_agent_response().as_deref(),
-        Some("MALVIN_DM_START\nHello.\nMALVIN_DM_END")
+        Some("__MALVIN_DM_START__\nHello.\n__MALVIN_DM_END__")
     );
 }
 
