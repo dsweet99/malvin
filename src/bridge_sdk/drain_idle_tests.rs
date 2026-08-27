@@ -213,7 +213,30 @@ fn turn_budget_error_reports_elapsed_not_configured_idle() {
     let err = labels.turn_budget_error(Duration::from_secs(1192), Duration::from_mins(100));
     assert!(err.0.contains("turn ran"));
     assert!(err.0.contains("1192s"));
+    assert!(err.0.contains("turn budget exhausted"));
     assert!(!err.0.contains("silence"));
+}
+
+#[test]
+fn silence_error_labels_bridge_quiet() {
+    let labels = DrainIdleLabels {
+        prefix: "bridge timed out",
+        waiting_for: "run_done",
+    };
+    let quiet = labels.silence_error_detail(Duration::from_secs(1), false);
+    assert!(
+        quiet.0.contains("bridge quiet; likely hung or stalled"),
+        "{quiet:?}"
+    );
+    let labels = DrainIdleLabels {
+        prefix: "bridge timed out",
+        waiting_for: "run_done",
+    };
+    let tools = labels.silence_error_detail(Duration::from_secs(1), true);
+    assert!(
+        tools.0.contains("bridge quiet while tools_in_flight"),
+        "{tools:?}"
+    );
 }
 
 #[tokio::test]
@@ -241,7 +264,7 @@ fn kiss_cov_drain_idle_names() {
         prefix: "bridge timed out",
         waiting_for: "ok",
     };
-    let _ = labels.silence_error(Duration::from_millis(1));
+    let _ = labels.silence_error_detail(Duration::from_millis(1), false);
     let _ = labels.turn_budget_error(Duration::from_millis(1), Duration::from_millis(2));
     let baseline = HashSet::new();
     let _ = DrainIdleHealthCtx {
@@ -275,6 +298,7 @@ fn kiss_cov_drain_idle_names() {
     let _ = stringify!(tool_start_extends_cumulative_turn_budget);
     let _ = stringify!(extend_turn_budget_raises_turn_deadline);
     let _ = stringify!(turn_budget_error_reports_elapsed_not_configured_idle);
+    let _ = stringify!(silence_error_labels_bridge_quiet);
     let _ = stringify!(kiss_cov_drain_idle_names);
     let _ = stringify!(tests_set_idle_ms_for_test);
     let _ = stringify!(tests_restore_idle_ms_for_test);

@@ -22,7 +22,8 @@ impl DrainIdleWaitOpts<'_> {
         if Instant::now() >= self.clock.max_deadline() {
             self.turn_budget_error()
         } else {
-            self.labels.silence_error(idle)
+            self.labels
+                .silence_error_detail(idle, self.extend_turn_on_busy_health)
         }
     }
 
@@ -30,7 +31,8 @@ impl DrainIdleWaitOpts<'_> {
         if Instant::now() >= self.clock.max_deadline() {
             self.turn_budget_error()
         } else {
-            self.labels.silence_error(idle)
+            self.labels
+                .silence_error_detail(idle, self.extend_turn_on_busy_health)
         }
     }
 }

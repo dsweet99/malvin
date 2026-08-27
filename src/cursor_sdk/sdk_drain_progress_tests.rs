@@ -27,6 +27,32 @@ async fn progress_events_keep_drain_alive_past_idle_budget() {
     bug_clear_env();
 }
 
+/// Heartbeats alone (no tools) must extend the turn cap past base `2×idle`.
+#[tokio::test]
+async fn heartbeat_only_turn_extends_past_base_cap() {
+    let _guard = crate::test_utils::test_env_lock();
+    let tmp = bug_prepare();
+    // 8 × 60ms = 480ms wall > base turn cap 2×150ms = 300ms.
+    bug_set_progress_env(60, 8);
+    bug_set_drain_idle_timeout_ms(150);
+    let mut client = bug_client(tmp.path(), 1);
+    client.begin_coder_session(tmp.path()).await.expect("begin");
+    let log = tmp.path().join("prompts.log");
+    let started = std::time::Instant::now();
+    run_progress_prompt(&mut client, &log).await;
+    let elapsed = started.elapsed();
+    assert!(
+        elapsed > std::time::Duration::from_millis(300),
+        "expected wall past base 2×150ms cap via heartbeat turn-extend, got {elapsed:?}"
+    );
+    assert_eq!(
+        client.last_coder_prompt_agent_response().as_deref(),
+        Some("progressed")
+    );
+    client.end_coder_session().await.expect("end");
+    bug_clear_env();
+}
+
 #[tokio::test(start_paused = true)]
 async fn continuous_events_hit_cumulative_turn_deadline() {
     let _guard = crate::test_utils::test_env_lock();
@@ -136,6 +162,7 @@ async fn run_progress_prompt(
 #[test]
 fn kiss_cov_sdk_drain_progress_cases() {
     let _ = stringify!(progress_events_keep_drain_alive_past_idle_budget);
+    let _ = stringify!(heartbeat_only_turn_extends_past_base_cap);
     let _ = stringify!(continuous_events_hit_cumulative_turn_deadline);
     let _ = stringify!(long_tool_turn_completes_past_base_turn_cap);
     let _ = stringify!(bug_set_tool_turn_env);

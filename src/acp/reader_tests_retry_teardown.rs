@@ -13,8 +13,8 @@ fn child_health_transport_errors_require_coder_session_teardown() {
         "acp child process is zombie",
         "acp stdout closed",
         "acp: WritableIterable is closed",
-        "bridge drain timed out waiting for run_done after 1s without a bridge event",
-        "bridge timed out waiting for run_done after 1s without a bridge event",
+        "bridge drain timed out waiting for run_done after 1s without a bridge event (bridge quiet; likely hung or stalled)",
+        "bridge timed out waiting for run_done after 1s without a bridge event (bridge quiet; likely hung or stalled)",
         "pi rpc drain timed out waiting for agent_end after 45s of silence",
         "pi rpc timed out waiting for agent_end after 45s of silence",
         "pi rpc stdout closed",
@@ -49,7 +49,9 @@ fn live_drain_idle_prefixes_require_coder_session_teardown() {
         crate::acp::DRAIN_IDLE_PREFIX_PI,
         crate::acp::DRAIN_IDLE_PREFIX_CODEX,
     ] {
-        let msg = format!("{prefix} waiting for event after 1s without a bridge event");
+        let msg = format!(
+            "{prefix} waiting for event after 1s without a bridge event (bridge quiet; likely hung or stalled)"
+        );
         assert!(
             agent_error_requires_coder_session_teardown(&msg),
             "{msg}"

@@ -63,10 +63,13 @@ pub(crate) fn clear_tool_starts(session: &StreamLog) {
         .clear();
 }
 
+const ANON_TOOL_ID: &str = "__malvin_anon_tool__";
+
+/// Record a tool start; empty `toolCallId` uses [`ANON_TOOL_ID`] so `tools_in_flight` still arms.
 fn note_tool_start(session: &StreamLog, tool_call_id: Option<&str>, summary: &str) {
-    let Some(id) = tool_call_id.filter(|s| !s.is_empty()) else {
-        return;
-    };
+    let id = tool_call_id
+        .filter(|s| !s.is_empty())
+        .unwrap_or(ANON_TOOL_ID);
     let mut starts = session
         .tool_starts
         .lock()
@@ -81,12 +84,14 @@ fn note_tool_start(session: &StreamLog, tool_call_id: Option<&str>, summary: &st
 }
 
 fn take_tool_start(session: &StreamLog, tool_call_id: Option<&str>) -> Option<ToolCallStart> {
-    let id = tool_call_id.filter(|s| !s.is_empty())?;
-    session
+    let mut starts = session
         .tool_starts
         .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .remove(id)
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if let Some(id) = tool_call_id.filter(|s| !s.is_empty()) {
+        return starts.remove(id);
+    }
+    starts.remove(ANON_TOOL_ID)
 }
 
 struct DoneLineInput<'a> {

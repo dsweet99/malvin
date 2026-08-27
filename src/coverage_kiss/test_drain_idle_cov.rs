@@ -7,7 +7,8 @@ fn kiss_cov_drain_idle_witness_a() {
     DrainIdleHealthCtx();
     DrainIdleTurn();
     DrainIdleClock();
-    silence_error();
+    silence_error_detail();
+    silence_error_labels_bridge_quiet();
     await_next_with_idle_in_turn();
     reset_idle_window();
     check_max_deadline();
@@ -46,6 +47,7 @@ fn kiss_cov_drain_idle_witness_b() {
 fn kiss_cov_drain_idle_witness_c() {
     kiss_cov_drain_idle_names();
     progress_events_keep_drain_alive_past_idle_budget();
+    heartbeat_only_turn_extends_past_base_cap();
     injected_busy_health_extends_then_delivers_event();
     continuous_events_hit_cumulative_turn_deadline();
     maps_progress_for_protocol_compatibility();

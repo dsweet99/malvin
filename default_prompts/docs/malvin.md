@@ -185,11 +185,13 @@ While waiting for the next Cursor SDK bridge or Pi RPC line, malvin applies a **
 | Turn cap (extended) | Hard ceiling after infra heartbeats / tool activity | `10 × idle` (~6000s default) |
 | Slice | How long to block on one read before sampling sandbox child health | `min(60000 ms, idle remaining)` |
 | Health extend | If sandbox PIDs show CPU / ctxt / thread progress (`StillBusy`), refresh the idle budget once more, capped at `max_wait = 2 × idle` for that next-event wait | — |
-| Infra turn heartbeat | Tool start extends turn cap by `2 × idle`; bridge `progress` heartbeats extend by `idle` while a tool is in flight; `StillBusy` health extends turn cap by `idle`; I/O-bound work with open tools is treated like `StillBusy` | — |
+| Infra turn heartbeat | Tool start extends turn cap by `2 × idle`; bridge `progress` heartbeats extend by `idle` whenever the SDK run is open (alive signal); `StillBusy` health extends turn cap by `idle`; I/O-bound work with open tools is treated like `StillBusy` | — |
 
-Missing a line for the full (possibly health-extended) idle window fails with `bridge timed out … without a bridge event`. Hitting the cumulative turn cap fails with `bridge timed out … after turn ran … (limit …)`. Local stdout heartbeats (`Orienting`, …) do **not** reset drain idle.
+Missing a line for the full (possibly health-extended) idle window fails with `bridge timed out … without a bridge event (bridge quiet; …)` — that is the hung/stalled bridge signal (no NDJSON lines, including heartbeats). Hitting the cumulative turn cap fails with `… after turn ran … (limit …; turn budget exhausted)` — the bridge may still have been emitting events. Local stdout heartbeats (`Orienting`, …) do **not** reset drain idle.
 
-The Cursor SDK bridge also emits automatic `{ "event": "progress", "kind": "heartbeat" }` lines when a run is in flight and no SDK message/step has been forwarded for 15s. Those `progress` events reset the per-event idle budget like any other bridge line (they are recorded in `trace.jsonl`, not teed to narrative stdout).
+The Cursor SDK bridge also emits automatic `{ "event": "progress", "kind": "heartbeat" }` lines when a run is in flight and no SDK message/step has been forwarded for 15s. Those `progress` events reset the per-event idle budget like any other bridge line and extend the cumulative turn cap (they are recorded in `trace.jsonl`, not teed to narrative stdout).
+
+**Differentiation:** continuing heartbeats (or other bridge lines) ⇒ SDK bridge alive, keep waiting up to the turn ceiling; full idle window with no bridge lines ⇒ quiet/hung bridge, fail and tear down. Open tracked tools additionally remap sandbox `AppearsHung` → `StillBusy` as a backup when the event loop cannot heartbeat during I/O-bound work.
 
 **Limitation:** work backgrounded outside the bridge sandbox process group (for example a nested Docker `malvin` after the outer shell tool call has already completed) is not visible to child-health sampling. That case relies on the outer SDK run staying open so automatic `progress` heartbeats (or other bridge events) keep arriving inside the idle budget. Once `run_done` fires, progress stops; further silence still hits idle.
 

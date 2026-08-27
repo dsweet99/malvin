@@ -34,16 +34,23 @@ pub struct DrainIdleLabels<'a> {
 }
 
 impl DrainIdleLabels<'_> {
-    pub(crate) fn silence_error(self, idle: Duration) -> AgentError {
+    /// No bridge/Pi line for the full idle window — bridge went quiet (hung or stalled).
+    pub(crate) fn silence_error_detail(self, idle: Duration, tools_in_flight: bool) -> AgentError {
+        let why = if tools_in_flight {
+            "bridge quiet while tools_in_flight"
+        } else {
+            "bridge quiet; likely hung or stalled"
+        };
         AgentError(format!(
-            "{} waiting for {} after {idle:?} without a bridge event",
+            "{} waiting for {} after {idle:?} without a bridge event ({why})",
             self.prefix, self.waiting_for
         ))
     }
 
+    /// Cumulative turn ceiling exhausted (may still have been receiving events).
     pub(crate) fn turn_budget_error(self, elapsed: Duration, limit: Duration) -> AgentError {
         AgentError(format!(
-            "{} waiting for {} after turn ran {elapsed:?} (limit {limit:?})",
+            "{} waiting for {} after turn ran {elapsed:?} (limit {limit:?}; turn budget exhausted)",
             self.prefix, self.waiting_for
         ))
     }
