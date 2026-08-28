@@ -9,9 +9,12 @@ pub(crate) const NO_FORCE_MSG: &str =
 
 /// Idle-timeout prefixes. Drain emit sites and teardown needles share these so a
 /// timeout cannot miss session recycle.
-pub(crate) const DRAIN_IDLE_PREFIX_BRIDGE: &str = "bridge timed out";
-pub(crate) const DRAIN_IDLE_PREFIX_PI: &str = "pi rpc timed out";
-pub(crate) const DRAIN_IDLE_PREFIX_CODEX: &str = "codex timed out";
+pub(crate) const DRAIN_IDLE_PREFIX_BRIDGE: &str =
+    crate::model_id::ModelBackend::Cursor.drain_idle_prefix();
+pub(crate) const DRAIN_IDLE_PREFIX_PI: &str =
+    crate::model_id::ModelBackend::Pi.drain_idle_prefix();
+pub(crate) const DRAIN_IDLE_PREFIX_CODEX: &str =
+    crate::model_id::ModelBackend::Codex.drain_idle_prefix();
 
 pub(crate) fn test_no_real_agent_enabled() -> bool {
     std::env::var_os(MALVIN_TEST_NO_REAL_AGENT_ENV).is_some_and(|v| !v.is_empty() && v != "0")

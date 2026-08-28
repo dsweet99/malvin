@@ -17,9 +17,12 @@ use super::session::PiEmbeddedSession;
 
 type SandboxBaseline = HashSet<u32>;
 
-fn sandbox_note_or_error(cwd: &Path) -> Result<SandboxBaseline, AgentError> {
+fn sandbox_note_or_error(
+    ticket: crate::malvin_sandbox::SandboxSpawnTicket,
+    cwd: &Path,
+) -> Result<SandboxBaseline, AgentError> {
     let baseline = crate::malvin_sandbox::malvin_spawn_baseline();
-    crate::malvin_sandbox::note_active_sandbox_session(None, baseline.clone(), cwd)
+    crate::malvin_sandbox::note_active_sandbox_session(ticket, None, baseline.clone(), cwd)
         .map_err(AgentError)?;
     Ok(baseline)
 }
@@ -31,6 +34,7 @@ fn prewarm_openrouter_pricing(provider: &str) {
 }
 
 fn spawn_live_pi_bridge(
+    ticket: crate::malvin_sandbox::SandboxSpawnTicket,
     args: &BridgeSpawnArgs<'_>,
     provider: &str,
     model: &str,
@@ -38,7 +42,7 @@ fn spawn_live_pi_bridge(
     prewarm_openrouter_pricing(provider);
     let options = build_session_options(args, provider, model)?;
     let runtime = PiRuntime::start(options).map_err(AgentError)?;
-    let session = embedded_session(args, runtime, provider, model)?;
+    let session = embedded_session(ticket, args, runtime, (provider, model))?;
     start_embedded_mem_watch(&session);
     Ok(SdkSession::Pi(Box::new(session)))
 }
@@ -47,14 +51,14 @@ pub(crate) async fn pi_spawn_bridge(args: BridgeSpawnArgs<'_>) -> Result<SdkSess
     if !args.io.force {
         return Err(AgentError(crate::acp::NO_FORCE_MSG.into()));
     }
-    crate::malvin_sandbox::assert_dead_before_next_spawn().map_err(AgentError)?;
+    let ticket = crate::malvin_sandbox::take_sandbox_spawn_ticket().map_err(AgentError)?;
     let (provider, model) = split_provider_model(args.model)?;
     if test_no_real_agent() {
         return Ok(SdkSession::Pi(Box::new(fake_embedded_session(
-            &args, provider, model,
+            ticket, &args, provider, model,
         ))));
     }
-    spawn_live_pi_bridge(&args, provider, model)
+    spawn_live_pi_bridge(ticket, &args, provider, model)
 }
 
 fn test_no_real_agent() -> bool {
@@ -91,9 +95,14 @@ fn build_session_options(
     })
 }
 
-fn fake_embedded_session(args: &BridgeSpawnArgs<'_>, provider: &str, model: &str) -> PiEmbeddedSession {
+fn fake_embedded_session(
+    ticket: crate::malvin_sandbox::SandboxSpawnTicket,
+    args: &BridgeSpawnArgs<'_>,
+    provider: &str,
+    model: &str,
+) -> PiEmbeddedSession {
     let baseline = crate::malvin_sandbox::malvin_spawn_baseline();
-    note_sandbox_baseline(None, baseline.clone(), args.cwd);
+    note_sandbox_baseline(ticket, None, baseline.clone(), args.cwd);
     PiEmbeddedSession {
         runtime: None,
         log: StreamLog::from_spawn(args),
@@ -106,12 +115,13 @@ fn fake_embedded_session(args: &BridgeSpawnArgs<'_>, provider: &str, model: &str
 }
 
 fn embedded_session(
+    ticket: crate::malvin_sandbox::SandboxSpawnTicket,
     args: &BridgeSpawnArgs<'_>,
     runtime: PiRuntime,
-    provider: &str,
-    model: &str,
+    model_id: (&str, &str),
 ) -> Result<PiEmbeddedSession, AgentError> {
-    let baseline = sandbox_note_or_error(args.cwd)?;
+    let (provider, model) = model_id;
+    let baseline = sandbox_note_or_error(ticket, args.cwd)?;
     Ok(PiEmbeddedSession {
         runtime: Some(runtime),
         log: StreamLog::from_spawn(args),
@@ -123,8 +133,13 @@ fn embedded_session(
     })
 }
 
-fn note_sandbox_baseline(pgid: Option<u32>, baseline: SandboxBaseline, cwd: &Path) {
-    let _ = crate::malvin_sandbox::note_active_sandbox_session(pgid, baseline.clone(), cwd);
+fn note_sandbox_baseline(
+    ticket: crate::malvin_sandbox::SandboxSpawnTicket,
+    pgid: Option<u32>,
+    baseline: SandboxBaseline,
+    cwd: &Path,
+) {
+    let _ = crate::malvin_sandbox::note_active_sandbox_session(ticket, pgid, baseline.clone(), cwd);
 }
 
 pub(crate) fn split_provider_model(slug: &str) -> Result<(&str, &str), AgentError> {

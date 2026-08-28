@@ -24,5 +24,9 @@ pub use backend_ops::{
     agent_backend_set_run_timing, agent_backend_timing,
 };
 pub use factory::{build_agent_backend, build_agent_backend_with_tee};
-pub use sdk_client::{BridgeKind, SdkClient};
+pub use sdk_client::SdkClient;
+#[cfg(test)]
+pub(crate) use sdk_client::{begun_cwd, live_session, live_session_mut, new_cursor, new_pi};
+#[cfg(test)]
+pub(crate) use sdk_client_session::sdk_bridge_needs_restart;
 pub(crate) use sdk_session::SdkSession;

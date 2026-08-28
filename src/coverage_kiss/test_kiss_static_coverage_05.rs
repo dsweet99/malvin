@@ -51,15 +51,12 @@ fn kiss_cov_bridge_sdk_spawn_names_cursor() {
 
 #[test]
 fn kiss_cov_bridge_sdk_shared_type_names() {
-    BridgeKind();
-    BridgeWire();
-    NodeBridge();
-    NodeBridge();
-    SdkClientInit();
+    ModelBackend();
+    
     CreateArgs();
     ResumeArgs();
     SdkClient();
-    from_init();
+    
     sync_timing_to_open_session();
     cursor_sdk_marker_present();
     encode_request();

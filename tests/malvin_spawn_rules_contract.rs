@@ -30,7 +30,7 @@ fn dead_before_next_rejects_live_prior_sandbox() {
     let mut child = sleep_child("120");
     let pgid = child.id();
     let work = fresh_workdir("malvin_dead_before_next_reject");
-    note_active_sandbox_session(Some(pgid), baseline, &work).expect("note");
+    note_active_sandbox_session(malvin::malvin_sandbox::take_sandbox_spawn_ticket().expect("ticket"), Some(pgid), baseline, &work).expect("note");
     let err = assert_dead_before_next_spawn().expect_err("live prior sandbox");
     assert!(
         err.contains("still alive"),
@@ -50,7 +50,7 @@ fn dead_before_next_allows_after_prior_sandbox_cleared() {
     let mut child = sleep_child("1");
     let pgid = child.id();
     let work = fresh_workdir("malvin_dead_before_next_clear");
-    note_active_sandbox_session(Some(pgid), baseline, &work).expect("note");
+    note_active_sandbox_session(malvin::malvin_sandbox::take_sandbox_spawn_ticket().expect("ticket"), Some(pgid), baseline, &work).expect("note");
     let _ = child.kill();
     let _ = child.wait();
     clear_active_sandbox_session();
@@ -95,7 +95,7 @@ fn acp_spawn_lock_acquired_and_released_by_session_lifecycle() {
         .join(".malvin")
         .join("acp_spawn")
         .join("lifecycle.lock");
-    note_active_sandbox_session(None, baseline, &work).expect("acquire lock");
+    note_active_sandbox_session(malvin::malvin_sandbox::take_sandbox_spawn_ticket().expect("ticket"), None, baseline, &work).expect("acquire lock");
     assert!(lock.is_file(), "lock file should exist after note_active");
     assert_eq!(
         std::fs::read_to_string(&lock).expect("read lock").trim(),
@@ -127,7 +127,7 @@ fn note_active_sandbox_session_rejects_live_peer_lock() {
     malvin::set_active_acp_lock_slot("peerslot".to_string());
     write_peer_acp_lock(&work, "peerslot", child.id());
     let baseline = snapshot_pids();
-    let err = note_active_sandbox_session(None, baseline, &work).expect_err("peer blocks note");
+    let err = note_active_sandbox_session(malvin::malvin_sandbox::take_sandbox_spawn_ticket().expect("ticket"), None, baseline, &work).expect_err("peer blocks note");
     assert!(
         err.contains("ACP spawn lock held"),
         "expected peer lock error, got: {err}"
@@ -143,7 +143,7 @@ fn session_lifecycle_does_not_touch_acp_spawn_lock() {
     let work = fresh_workdir("malvin_no_lock_lifecycle");
     let baseline = snapshot_pids();
     malvin::set_active_acp_lock_slot("foreignslot".to_string());
-    note_active_sandbox_session(None, baseline, &work).expect("note");
+    note_active_sandbox_session(malvin::malvin_sandbox::take_sandbox_spawn_ticket().expect("ticket"), None, baseline, &work).expect("note");
     let lock = work
         .join(".malvin")
         .join("acp_spawn")

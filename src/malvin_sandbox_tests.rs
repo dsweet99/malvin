@@ -73,7 +73,9 @@ fn sandbox_commands_force_malloc_arena_max_to_two() {
 fn note_active_sandbox_session_cleared_after_end() {
     let tmp = tempfile::tempdir().expect("tempdir");
     crate::malvin_sandbox::clear_active_sandbox_session_for_test();
+    let ticket = crate::malvin_sandbox::take_sandbox_spawn_ticket().expect("ticket");
     crate::malvin_sandbox::note_active_sandbox_session(
+        ticket,
         None,
         crate::malvin_sandbox::malvin_spawn_baseline(),
         tmp.path(),

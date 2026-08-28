@@ -33,7 +33,7 @@ pub fn build_agent_backend_with_tee(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::agent_backend::sdk_client::BridgeKind;
+    use crate::model_id::ModelBackend;
     use crate::agent_backend::test_support::shared_opts;
     use crate::cli::WorkflowCliOptions;
 
@@ -43,7 +43,7 @@ mod tests {
         let backend =
             build_agent_backend(&shared, WorkflowCliOptions { force: false }, false, "code")
                 .expect("cursor sdk");
-        assert!(matches!(backend.kind, BridgeKind::Cursor));
+        assert!(matches!(backend.model.backend, ModelBackend::Cursor));
         assert_eq!(
             backend.model.canonical(),
             shared.model.canonical(),
@@ -72,7 +72,7 @@ mod tests {
         let backend =
             build_agent_backend(&shared, WorkflowCliOptions { force: false }, false, "code")
                 .expect("pi sdk");
-        assert!(matches!(backend.kind, BridgeKind::Pi));
+        assert!(matches!(backend.model.backend, ModelBackend::Pi));
         assert_eq!(backend.model.canonical(), "pi:openai/gpt-4o");
     }
 
@@ -83,7 +83,7 @@ mod tests {
         let backend =
             build_agent_backend(&shared, WorkflowCliOptions { force: false }, false, "code")
                 .expect("codex sdk");
-        assert!(matches!(backend.kind, BridgeKind::Codex));
+        assert!(matches!(backend.model.backend, ModelBackend::Codex));
         assert_eq!(backend.model.canonical(), "codex:gpt-5.6");
     }
 }

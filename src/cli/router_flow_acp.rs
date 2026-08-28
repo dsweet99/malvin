@@ -115,7 +115,7 @@ pub(crate) async fn finalize_router_acp_iteration(
         )?;
         run_router_summarize_coder_prompt(input.client, &body, log_path.as_path()).await?;
     }
-    let keep_session = input.client.keeps_coder_session_for_process_life();
+    let keep_session = true;
     let run_dir = input.artifacts.run_dir.clone();
     let parts: SessionEndParts<'_> = (input.client, run_dir.as_path(), &timing, input.session_end);
     match (exit_summarize, keep_session) {

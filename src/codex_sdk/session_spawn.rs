@@ -1,16 +1,23 @@
 use crate::acp::AgentError;
-use crate::bridge_sdk::{BridgeSession, BridgeSpawnArgs, start_mem_watch};
+use crate::bridge_sdk::{BridgeSpawnArgs, MemWatchArgs, start_mem_watch};
+use super::session::CodexSession;
 
 pub(crate) async fn codex_spawn_bridge(
     args: BridgeSpawnArgs<'_>,
     service: Option<&str>,
-) -> Result<BridgeSession, AgentError> {
+) -> Result<CodexSession, AgentError> {
     if !args.io.force {
         return Err(AgentError(crate::acp::NO_FORCE_MSG.into()));
     }
-    crate::malvin_sandbox::assert_dead_before_next_spawn().map_err(AgentError)?;
-    let session = spawn_codex_session(&args, service)?;
-    start_mem_watch(&session);
+    let ticket = crate::malvin_sandbox::take_sandbox_spawn_ticket().map_err(AgentError)?;
+    let session = spawn_codex_session(&args, service, ticket)?;
+    start_mem_watch(MemWatchArgs {
+        process_group_id: session.process_group_id,
+        reader_dead: &session.reader_dead,
+        work_dir: &session.work_dir,
+        spawn_pid_baseline: &session.spawn_pid_baseline,
+        run_dir: session.run_dir.as_deref(),
+    });
     codex_initialize(&session).await?;
     codex_start_thread(&session, args.model, args.cwd).await?;
     Ok(session)
@@ -114,9 +121,7 @@ mod unix_tests {
         }
         let mut client = mock_client();
         client.begin_coder_session(tmp.path()).await.unwrap();
-        client
-            .session
-            .as_ref()
+        crate::agent_backend::live_session(&client)
             .unwrap()
             .send_prompt("test")
             .await
@@ -142,9 +147,7 @@ mod unix_tests {
         }
         let mut client = mock_client();
         client.begin_coder_session(tmp.path()).await.unwrap();
-        let err = client
-            .session
-            .as_ref()
+        let err = crate::agent_backend::live_session(&client)
             .unwrap()
             .send_prompt("test")
             .await
@@ -176,9 +179,7 @@ mod unix_tests {
         }
         let mut client = mock_client();
         client.begin_coder_session(tmp.path()).await.unwrap();
-        let err = client
-            .session
-            .as_ref()
+        let err = crate::agent_backend::live_session(&client)
             .unwrap()
             .send_prompt("test")
             .await

@@ -67,9 +67,7 @@ fn assert_usage(timing: &std::sync::Arc<std::sync::Mutex<crate::run_timing::RunT
 
 fn assert_session_timing_synced(client: &CursorSdkClient) {
     assert!(
-        client
-            .session
-            .as_ref()
+        crate::agent_backend::live_session(client)
             .and_then(|s| s.timing.as_ref())
             .is_some()
     );

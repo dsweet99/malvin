@@ -21,6 +21,6 @@ fn kiss_cov_pi_sdk_rpc_io() {
 
 #[test]
 fn kiss_cov_pi_sdk_rpc_io_b() {
-    BridgeWire();
-    NodeBridge();
+    ;
+    ModelBackend();
 }

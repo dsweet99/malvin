@@ -1,29 +1,17 @@
 use std::collections::HashSet;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
 
 use tokio::io::BufReader;
 use tokio::process::{Child, ChildStdin, ChildStdout};
 use tokio::sync::Mutex as AsyncMutex;
 
-use crate::acp::{AgentError, AgentIoOptions};
-use crate::bridge_protocol::BridgeRequest;
+use crate::acp::AgentError;
+use crate::bridge_sdk::StreamLog;
 
-use super::session_io::{drain_until_run_done, write_request};
-use super::stream_log::StreamLog;
-
-pub const SDK_BRIDGE_MAX_AGE: Duration = Duration::from_mins(10);
-
-#[derive(Debug, Clone)]
-pub struct ToolCallStart {
-    pub started: Instant,
-    pub summary: String,
-}
-
-/// Cursor Node JSON-line bridge session.
-pub struct BridgeSession {
+/// Codex app-server JSON-RPC session (stdio child process).
+pub struct CodexSession {
     pub child: AsyncMutex<Option<Child>>,
     pub stdin: Arc<AsyncMutex<ChildStdin>>,
     pub stdout: Arc<AsyncMutex<BufReader<ChildStdout>>>,
@@ -32,10 +20,12 @@ pub struct BridgeSession {
     pub reader_dead: Arc<AtomicBool>,
     pub work_dir: PathBuf,
     pub log: StreamLog,
-    pub agent_id: Mutex<Option<String>>,
+    pub thread_id: Mutex<Option<String>>,
+    pub turn_id: Mutex<Option<String>>,
+    pub service: Option<String>,
 }
 
-impl std::ops::Deref for BridgeSession {
+impl std::ops::Deref for CodexSession {
     type Target = StreamLog;
 
     fn deref(&self) -> &Self::Target {
@@ -43,35 +33,21 @@ impl std::ops::Deref for BridgeSession {
     }
 }
 
-impl std::ops::DerefMut for BridgeSession {
+impl std::ops::DerefMut for CodexSession {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.log
     }
 }
 
-pub struct BridgeSpawnArgs<'a> {
-    pub cwd: &'a Path,
-    pub model: &'a str,
-    pub thinking: Option<&'a str>,
-    pub io: AgentIoOptions,
-    pub run_dir: Option<PathBuf>,
-    pub timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
-}
-
-impl BridgeSession {
+impl CodexSession {
     pub async fn send_prompt(&self, prompt: &str) -> Result<(), AgentError> {
-        let req = BridgeRequest::Send {
-            prompt: prompt.to_string(),
-            force_stuck: None,
-        };
-        write_request(self, &req).await?;
-        drain_until_run_done(self).await
+        super::session_io::codex_send_prompt(self, prompt).await
     }
 
     pub async fn shutdown(self) -> Result<(), AgentError> {
         self.reader_dead.store(true, Ordering::SeqCst);
-        let _ = write_request(&self, &BridgeRequest::Cancel {}).await;
-        let _ = write_request(&self, &BridgeRequest::Close {}).await;
+        let _ = super::session_io::codex_write_abort(&self).await;
+        let _ = super::session_io::codex_delete_thread(&self).await;
         #[cfg(unix)]
         {
             crate::acp::terminate_agent_process_group(
@@ -92,13 +68,13 @@ impl BridgeSession {
     }
 }
 
-impl Drop for BridgeSession {
+impl Drop for CodexSession {
     fn drop(&mut self) {
-        bridge_session_drop_teardown(self);
+        codex_session_drop_teardown(self);
     }
 }
 
-fn bridge_session_drop_teardown(session: &BridgeSession) {
+fn codex_session_drop_teardown(session: &CodexSession) {
     session.reader_dead.store(true, Ordering::SeqCst);
     let child_gone = session.child.try_lock().is_ok_and(|slot| slot.is_none());
     if child_gone {
@@ -111,7 +87,7 @@ fn bridge_session_drop_teardown(session: &BridgeSession) {
             session.process_group_id,
             &session.spawn_pid_baseline,
         );
-        take_bridge_child_without_tokio_drop(session);
+        take_codex_child_without_tokio_drop(session);
     }
     #[cfg(not(unix))]
     {
@@ -125,7 +101,7 @@ fn bridge_session_drop_teardown(session: &BridgeSession) {
 }
 
 #[cfg(unix)]
-fn take_bridge_child_without_tokio_drop(session: &BridgeSession) {
+fn take_codex_child_without_tokio_drop(session: &CodexSession) {
     if tokio::runtime::Handle::try_current().is_ok() {
         return;
     }

@@ -2,91 +2,49 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use crate::acp::AgentIoOptions;
-use crate::model_id::{ModelBackend, ParsedModel};
+use crate::model_id::ParsedModel;
 
 use super::sdk_session::SdkSession;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BridgeKind {
-    Cursor,
-    Pi,
-    Codex,
+/// Session begun via `begin_coder_session`: cwd is always present; `live` may be
+/// cleared after transport teardown while cwd remains for respawn.
+pub(crate) struct BegunCoderSession {
+    pub(crate) cwd: PathBuf,
+    pub(crate) live: Option<SdkSession>,
 }
 
 pub struct SdkClient {
     pub model: ParsedModel,
-    pub kind: BridgeKind,
     pub io: AgentIoOptions,
     pub prompts_log_run_dir: Option<PathBuf>,
     pub max_acp_retries: u32,
-    pub(crate) session: Option<SdkSession>,
-    pub(crate) session_cwd: Option<PathBuf>,
+    pub(crate) coder: Option<BegunCoderSession>,
     pub(crate) last_agent_id: Option<String>,
     pub(crate) timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
 }
 
-struct SdkClientInit {
-    model: ParsedModel,
-    io: AgentIoOptions,
-    max_acp_retries: u32,
-}
-
 impl SdkClient {
     #[must_use]
-    pub fn new_cursor(model: ParsedModel, io: AgentIoOptions) -> Self {
-        Self::from_init(SdkClientInit {
+    pub const fn new(model: ParsedModel, io: AgentIoOptions) -> Self {
+        Self::with_max_retries(
             model,
             io,
-            max_acp_retries: crate::support_paths::DEFAULT_MAX_ACP_RETRIES,
-        })
+            crate::support_paths::DEFAULT_MAX_ACP_RETRIES,
+        )
     }
 
     #[must_use]
-    pub fn new_pi(model: ParsedModel, io: AgentIoOptions) -> Self {
-        Self::from_init(SdkClientInit {
-            model,
-            io,
-            max_acp_retries: crate::support_paths::DEFAULT_MAX_ACP_RETRIES,
-        })
-    }
-
-    #[must_use]
-    pub fn new_codex(model: ParsedModel, io: AgentIoOptions) -> Self {
-        Self::from_init(SdkClientInit {
-            model,
-            io,
-            max_acp_retries: crate::support_paths::DEFAULT_MAX_ACP_RETRIES,
-        })
-    }
-
-    #[must_use]
-    pub fn with_max_retries(
+    pub const fn with_max_retries(
         model: ParsedModel,
         io: AgentIoOptions,
         max_acp_retries: u32,
     ) -> Self {
-        Self::from_init(SdkClientInit {
+        Self {
             model,
             io,
-            max_acp_retries,
-        })
-    }
-
-    #[must_use]
-    fn from_init(init: SdkClientInit) -> Self {
-        let kind = bridge_kind_from_backend(init.model.backend);
-        Self {
-            model: init.model,
-            kind,
-            io: init.io,
             prompts_log_run_dir: None,
-            max_acp_retries: if init.max_acp_retries == 0 {
-                1
-            } else {
-                init.max_acp_retries
-            },
-            session: None,
-            session_cwd: None,
+            max_acp_retries: if max_acp_retries == 0 { 1 } else { max_acp_retries },
+            coder: None,
             last_agent_id: None,
             timing: None,
         }
@@ -106,18 +64,15 @@ impl SdkClient {
     }
 
     #[must_use]
-    pub const fn has_open_coder_session(&self) -> bool {
-        self.session.is_some()
-    }
-
-    #[must_use]
-    pub const fn keeps_coder_session_for_process_life(&self) -> bool {
-        true
+    pub fn has_open_coder_session(&self) -> bool {
+        self.coder
+            .as_ref()
+            .is_some_and(|home| home.live.is_some())
     }
 
     #[must_use]
     pub fn last_coder_prompt_agent_response(&self) -> Option<String> {
-        let session = self.session.as_ref()?;
+        let session = live_session(self)?;
         let text = session
             .last_response
             .lock()
@@ -131,16 +86,42 @@ impl SdkClient {
     }
 }
 
-fn sync_timing_to_open_session(client: &mut SdkClient) {
-    if let Some(session) = client.session.as_mut() {
-        session.timing = client.timing.clone();
-    }
+#[cfg(test)]
+#[must_use]
+pub const fn new_cursor(model: ParsedModel, io: AgentIoOptions) -> SdkClient {
+    SdkClient::new(model, io)
 }
 
-const fn bridge_kind_from_backend(backend: ModelBackend) -> BridgeKind {
-    match backend {
-        ModelBackend::Cursor => BridgeKind::Cursor,
-        ModelBackend::Pi => BridgeKind::Pi,
-        ModelBackend::Codex => BridgeKind::Codex,
+#[cfg(test)]
+#[must_use]
+pub const fn new_pi(model: ParsedModel, io: AgentIoOptions) -> SdkClient {
+    SdkClient::new(model, io)
+}
+
+#[cfg(test)]
+#[must_use]
+pub const fn new_codex(model: ParsedModel, io: AgentIoOptions) -> SdkClient {
+    SdkClient::new(model, io)
+}
+
+#[must_use]
+pub(crate) fn live_session(client: &SdkClient) -> Option<&SdkSession> {
+    client.coder.as_ref().and_then(|c| c.live.as_ref())
+}
+
+#[must_use]
+pub(crate) fn live_session_mut(client: &mut SdkClient) -> Option<&mut SdkSession> {
+    client.coder.as_mut().and_then(|c| c.live.as_mut())
+}
+
+#[must_use]
+pub(crate) fn begun_cwd(client: &SdkClient) -> Option<&PathBuf> {
+    client.coder.as_ref().map(|c| &c.cwd)
+}
+
+fn sync_timing_to_open_session(client: &mut SdkClient) {
+    let timing = client.timing.clone();
+    if let Some(session) = live_session_mut(client) {
+        session.timing = timing;
     }
 }

@@ -1,7 +1,7 @@
 use crate::acp::AgentError;
-use crate::bridge_sdk::BridgeSession;
+use super::session::CodexSession;
 
-pub(crate) async fn codex_initialize(session: &BridgeSession) -> Result<(), AgentError> {
+pub(crate) async fn codex_initialize(session: &CodexSession) -> Result<(), AgentError> {
     let response = request(
         session,
         "initialize",
@@ -28,7 +28,7 @@ pub(crate) async fn codex_initialize(session: &BridgeSession) -> Result<(), Agen
 }
 
 pub(crate) async fn codex_start_thread(
-    session: &BridgeSession,
+    session: &CodexSession,
     model: &str,
     cwd: &std::path::Path,
 ) -> Result<(), AgentError> {
@@ -46,14 +46,14 @@ pub(crate) async fn codex_start_thread(
         .and_then(|v| v.as_str())
         .ok_or_else(|| AgentError("codex thread/start response missing thread id".into()))?;
     *session
-        .agent_id
+        .thread_id
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(id.to_owned());
     Ok(())
 }
 
 pub(crate) async fn request(
-    session: &BridgeSession,
+    session: &CodexSession,
     method: &str,
     params: serde_json::Value,
 ) -> Result<serde_json::Value, AgentError> {
@@ -120,7 +120,7 @@ pub(crate) fn response_error(context: &str, response: &serde_json::Value) -> Age
     ))
 }
 
-async fn write(session: &BridgeSession, value: &serde_json::Value) -> Result<(), AgentError> {
+async fn write(session: &CodexSession, value: &serde_json::Value) -> Result<(), AgentError> {
     super::session_io::write_json(session, value).await
 }
 

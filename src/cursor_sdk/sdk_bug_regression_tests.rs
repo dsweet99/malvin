@@ -98,7 +98,7 @@ async fn bridge_stdout_closed_single_attempt_tears_down_session() {
     let err = expect_prompt_err(&mut client, "CLOSE_STDOUT", &log).await;
     assert_err_has(&err, &["bridge stdout closed", "stdout"]);
     assert!(!client.has_open_coder_session());
-    assert!(client.session_cwd.is_some());
+    assert!(crate::agent_backend::begun_cwd(&client).is_some());
     client
         .run_coder_prompt(
             "hi",
@@ -151,10 +151,8 @@ async fn cancel_during_slow_send_is_honored() {
     let tmp = bug_prepare();
     let mut client = bug_client(tmp.path(), 1);
     client.begin_coder_session(tmp.path()).await.expect("begin");
-    let session = client
-        .session
-        .as_ref()
-        .and_then(|s| s.as_bridge())
+    let session = crate::agent_backend::live_session(&client)
+        .and_then(|s| s.as_cursor())
         .expect("session");
     let prompt_fut = session.send_prompt("SLOW_SEND please");
     let cancel_fut = async {

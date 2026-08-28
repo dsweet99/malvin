@@ -33,6 +33,27 @@ pub enum ModelBackend {
     Codex,
 }
 
+impl ModelBackend {
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Cursor => "cursor",
+            Self::Pi => "pi",
+            Self::Codex => "codex",
+        }
+    }
+
+    /// Idle-timeout error prefix for this backend's drain loop.
+    #[must_use]
+    pub const fn drain_idle_prefix(self) -> &'static str {
+        match self {
+            Self::Cursor => "bridge timed out",
+            Self::Pi => "pi rpc timed out",
+            Self::Codex => "codex timed out",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParsedModel {
     pub backend: ModelBackend,

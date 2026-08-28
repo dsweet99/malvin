@@ -39,7 +39,7 @@ fn peer_acp_spawn_lock_allows_descendant_process() {
     let work = fresh_workdir("malvin_peer_acp_spawn_lock_descendant");
     let baseline = snapshot_pids();
     set_active_acp_lock_slot("parentslot".to_string());
-    note_active_sandbox_session(None, baseline, &work).expect("parent acquire");
+    note_active_sandbox_session(malvin::malvin_sandbox::take_sandbox_spawn_ticket().expect("ticket"), None, baseline, &work).expect("parent acquire");
     let holder_pid = std::process::id().to_string();
     let lock = work
         .join(".malvin")

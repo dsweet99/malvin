@@ -1,11 +1,11 @@
 use crate::acp::AgentError;
 use crate::bridge_protocol::{BridgeEvent, RunDoneStatus};
-use crate::bridge_sdk::BridgeSession;
+use super::session::CodexSession;
 
 use super::session_turn::{TurnState, agent_message_from_turn};
 
 pub(super) fn finish_codex_turn(
-    session: &BridgeSession,
+    session: &CodexSession,
     value: &serde_json::Value,
     state: TurnState,
 ) -> Result<(), AgentError> {
@@ -71,7 +71,7 @@ fn elapsed_ms(started: Option<std::time::Instant>) -> Option<u64> {
     started.and_then(|s| u64::try_from(s.elapsed().as_millis()).ok())
 }
 
-fn record_codex_result(session: &BridgeSession, text: &str) {
+fn record_codex_result(session: &CodexSession, text: &str) {
     *session
         .last_response
         .lock()

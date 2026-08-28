@@ -13,11 +13,17 @@ struct EnsureFixture {
 }
 
 fn bridge_started_at(client: &CursorSdkClient) -> Instant {
-    client.session.as_ref().and_then(|s| s.as_bridge()).expect("open").started_at
+    crate::agent_backend::live_session(client)
+        .and_then(|s| s.as_cursor())
+        .expect("open")
+        .started_at
 }
 
 fn backdate_bridge(client: &mut CursorSdkClient, started: Instant) {
-    client.session.as_mut().and_then(|s| s.as_bridge_mut()).expect("open").started_at = started
+    crate::agent_backend::live_session_mut(client)
+        .and_then(|s| s.as_cursor_mut())
+        .expect("open")
+        .started_at = started
         .checked_sub(SDK_BRIDGE_MAX_AGE + Duration::from_secs(1))
         .expect("backdate");
 }
@@ -48,7 +54,7 @@ async fn end_fixture(mut fixture: EnsureFixture) {
 async fn cursor_sdk_ensure_reuses_fresh_bridge() {
     let _guard = crate::test_utils::test_env_lock();
     let mut fixture = open_ensure_fixture().await;
-    assert!(!fixture.client.sdk_bridge_needs_restart());
+    assert!(!crate::agent_backend::sdk_bridge_needs_restart(&fixture.client));
     fixture
         .client
         .ensure_coder_session(fixture.tmp.path())
@@ -67,14 +73,14 @@ async fn cursor_sdk_ensure_restarts_stale_bridge() {
     let _guard = crate::test_utils::test_env_lock();
     let mut fixture = open_ensure_fixture().await;
     backdate_bridge(&mut fixture.client, fixture.started);
-    assert!(fixture.client.sdk_bridge_needs_restart());
+    assert!(crate::agent_backend::sdk_bridge_needs_restart(&fixture.client));
     fixture
         .client
         .ensure_coder_session(fixture.tmp.path())
         .await
         .expect("ensure restart");
     assert!(bridge_started_at(&fixture.client) > fixture.started);
-    assert!(!fixture.client.sdk_bridge_needs_restart());
+    assert!(!crate::agent_backend::sdk_bridge_needs_restart(&fixture.client));
     prompt_once(&mut fixture.client, &fixture.tmp.path().join("prompts.log")).await;
     end_fixture(fixture).await;
 }

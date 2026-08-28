@@ -170,7 +170,6 @@ pub mod prompts;
 pub mod reliability_tier;
 pub mod repo_gates;
 pub mod run_timing;
-pub mod session_sandbox_policy;
 pub mod stdout_log_path;
 pub mod acp_post_run {
     pub use crate::run_timing::acp_post_run::*;

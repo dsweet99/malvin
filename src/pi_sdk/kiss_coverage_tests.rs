@@ -97,5 +97,5 @@ fn kiss_cov_pi_sdk_session_core() {
     let _ = stringify!(pi_blocking_session_options);
     let _ = stringify!(map_pi_agent_event);
     let _ = stringify!(pi_sdk_client_from_raw);
-    let _ = crate::bridge_sdk::BridgeWire::NodeBridge;
+    let _ = crate::model_id::ModelBackend::Cursor;
 }
