@@ -41,7 +41,7 @@ impl DrainIdleLabels<'_> {
         } else {
             "bridge quiet; likely hung or stalled"
         };
-        AgentError(format!(
+        AgentError::session_dead(format!(
             "{} waiting for {} after {idle:?} without a bridge event ({why})",
             self.prefix, self.waiting_for
         ))
@@ -49,7 +49,7 @@ impl DrainIdleLabels<'_> {
 
     /// Cumulative turn ceiling exhausted (may still have been receiving events).
     pub(crate) fn turn_budget_error(self, elapsed: Duration, limit: Duration) -> AgentError {
-        AgentError(format!(
+        AgentError::session_dead(format!(
             "{} waiting for {} after turn ran {elapsed:?} (limit {limit:?}; turn budget exhausted)",
             self.prefix, self.waiting_for
         ))

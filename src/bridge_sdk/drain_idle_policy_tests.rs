@@ -38,7 +38,7 @@ async fn injected_dead_health_fails_at_first_slice() {
     .expect_err("dead child must fail on the first 60s health sample");
     let elapsed = started.elapsed();
     crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
-    assert!(err.0.contains("bridge timed out"));
+    assert!(err.message.contains("bridge timed out"));
     assert_eq!(elapsed, Duration::from_mins(1));
 }
 
@@ -66,7 +66,7 @@ async fn injected_hung_health_waits_full_idle() {
     .expect_err("hung child must fail only after the idle budget");
     let elapsed = started.elapsed();
     crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
-    assert!(err.0.contains("pi rpc timed out"));
+    assert!(err.message.contains("pi rpc timed out"));
     assert_eq!(elapsed, Duration::from_mins(2));
 }
 
@@ -92,7 +92,7 @@ async fn missing_pgid_gets_no_health_extend() {
     .expect_err("missing pgid must retain the original idle timeout");
     let elapsed = started.elapsed();
     crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
-    assert!(err.0.contains("bridge timed out"));
+    assert!(err.message.contains("bridge timed out"));
     assert!(elapsed >= Duration::from_mins(2));
     assert!(elapsed <= Duration::from_mins(2) + Duration::from_secs(1));
 }
@@ -121,7 +121,7 @@ async fn repeated_busy_health_stops_at_exactly_two_idle_windows() {
     .expect_err("busy health must not exceed max_wait");
     let elapsed = started.elapsed();
     crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
-    assert!(err.0.contains("bridge timed out"));
+    assert!(err.message.contains("bridge timed out"));
     assert_eq!(elapsed, Duration::from_mins(4));
 }
 
@@ -169,8 +169,8 @@ async fn shared_turn_budget_caps_cumulative_event_wall_time() {
     )
     .await
     .expect_err("third event must exceed cumulative max_wait");
-    assert!(err.0.contains("bridge timed out"));
-    assert!(err.0.contains("event"));
+    assert!(err.message.contains("bridge timed out"));
+    assert!(err.message.contains("event"));
     crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
 }
 

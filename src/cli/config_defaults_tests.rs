@@ -89,7 +89,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
     ));
 
     let agent = AgentConfig {
-        model: "cursor:cfg".into(),
+        model: crate::model_id::parse_model_id("cursor:cfg").expect("model"),
         max_loops: 8,
         max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
         max_loops_code: 6,

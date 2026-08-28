@@ -72,7 +72,7 @@ pub fn load_agent_config_lenient(work_dir: &Path) -> AgentConfig {
     if let Some(table) = on_disk.get_mut("agent").and_then(toml::Value::as_table_mut) {
         table.insert(
             "model".into(),
-            toml::Value::String(AgentConfig::default().model),
+            toml::Value::String(AgentConfig::default().model.canonical()),
         );
     }
     let Ok(merged) = toml::to_string(&on_disk) else {

@@ -121,11 +121,11 @@ pub(crate) async fn write_json(
     stdin
         .write_all(format!("{value}\n").as_bytes())
         .await
-        .map_err(|e| AgentError(format!("codex write: {e}")))?;
+        .map_err(|e| AgentError::session_dead(format!("codex write: {e}")))?;
     stdin
         .flush()
         .await
-        .map_err(|e| AgentError(format!("codex flush: {e}")))
+        .map_err(|e| AgentError::session_dead(format!("codex flush: {e}")))
 }
 
 pub(crate) async fn read_json_waiting(
@@ -152,12 +152,12 @@ async fn read_json_line(session: &CodexSession) -> Result<serde_json::Value, Age
         let mut out = session.stdout.lock().await;
         out.read_line(&mut line)
             .await
-            .map_err(|e| AgentError(format!("codex read: {e}")))?
+            .map_err(|e| AgentError::session_dead(format!("codex read: {e}")))?
     };
     if n == 0 {
-        return Err(AgentError("codex stdout closed".into()));
+        return Err(AgentError::session_dead("codex stdout closed"));
     }
-    serde_json::from_str(&line).map_err(|e| AgentError(format!("codex JSON-RPC parse: {e}")))
+    serde_json::from_str(&line).map_err(|e| AgentError::session_dead(format!("codex JSON-RPC parse: {e}")))
 }
 
 #[cfg(test)]

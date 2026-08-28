@@ -69,7 +69,7 @@ mod wrap_agent_bundle;
 #[path = "wrap_retry_policy.rs"]
 mod wrap_retry_policy;
 pub(crate) use wrap_agent_bundle::*;
-pub use wrap_agent_bundle::{AgentError, AgentIoOptions, AuthError};
+pub use wrap_agent_bundle::{AgentError, AgentFault, AgentIoOptions, AuthError};
 pub(crate) use wrap_retry_policy::*;
 
 #[path = "agent_helpers.rs"]

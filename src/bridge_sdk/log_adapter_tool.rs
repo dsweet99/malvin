@@ -4,7 +4,7 @@ use crate::output::{AcpTeeDirection, AcpTeeStdoutEvent, WHO_T};
 use crate::tool_summary::{humanize_duration, tool_summary_stdout_display};
 
 use super::log_adapter::append_trace_line;
-use super::session::ToolCallStart;
+use super::spawn_args::ToolCallStart;
 use super::stream_log::StreamLog;
 
 pub(crate) struct ToolCallFields<'a> {

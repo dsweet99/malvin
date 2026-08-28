@@ -81,7 +81,7 @@ async fn pi_sdk_noforce_fails_fast() {
         .begin_coder_session(tmp.path())
         .await
         .expect_err("noforce");
-    assert!(err.0.contains("--no-force"));
+    assert!(err.message.contains("--no-force"));
     pi_clear_mock_env();
 }
 

@@ -11,7 +11,7 @@ pub(crate) async fn cursor_spawn_bridge(
     resume_agent_id: Option<&str>,
 ) -> Result<BridgeSession, AgentError> {
     let ticket = crate::malvin_sandbox::take_sandbox_spawn_ticket().map_err(AgentError)?;
-    let model = args.model.to_string();
+    let model = args.wire_model();
     let session = cursor_open_bridge_session(args, ticket)?;
     start_mem_watch(MemWatchArgs {
         process_group_id: session.process_group_id,

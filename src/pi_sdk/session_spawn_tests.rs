@@ -2,7 +2,7 @@
 fn kiss_cov_session_and_spawn_names() {
     let _ = super::spawn_bridge;
     let _ = stringify!(pi_spawn_bridge);
-    let _ = stringify!(split_provider_model);
+    let _ = stringify!(pi_provider_and_model);
     let _ = stringify!(fake_embedded_session);
     let _ = stringify!(live_embedded_session);
     let _ = stringify!(start_embedded_mem_watch);
@@ -11,20 +11,25 @@ fn kiss_cov_session_and_spawn_names() {
 }
 
 #[test]
-fn split_provider_model_first_slash() {
+fn pi_provider_and_model_first_slash() {
+    use crate::model_id::parse_model_id;
     assert_eq!(
-        super::session_spawn::split_provider_model("openai/gpt-4o").expect("ok"),
+        parse_model_id("pi:openai/gpt-4o")
+            .expect("ok")
+            .pi_provider_and_model()
+            .expect("pi"),
         ("openai", "gpt-4o")
     );
     assert_eq!(
-        super::session_spawn::split_provider_model("openrouter/anthropic/claude-3-haiku")
-            .expect("ok"),
+        parse_model_id("pi:openrouter/anthropic/claude-3-haiku")
+            .expect("ok")
+            .pi_provider_and_model()
+            .expect("pi"),
         ("openrouter", "anthropic/claude-3-haiku")
     );
     assert!(
-        super::session_spawn::split_provider_model("noslash")
+        parse_model_id("pi:noslash")
             .expect_err("err")
-            .0
             .contains("provider")
     );
 }

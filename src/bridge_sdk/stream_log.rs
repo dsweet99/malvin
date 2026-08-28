@@ -5,7 +5,7 @@ use std::time::Instant;
 
 use crate::acp::AgentIoOptions;
 
-use super::session::ToolCallStart;
+use super::spawn_args::ToolCallStart;
 
 pub struct StreamLog {
     pub io: AgentIoOptions,

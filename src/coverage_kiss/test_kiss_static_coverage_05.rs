@@ -149,7 +149,7 @@ fn kiss_cov_codex_auth_names() {
 fn kiss_cov_pi_sdk_spawn() {
     pi_spawn_bridge();
     spawn_bridge();
-    split_provider_model();
+    pi_provider_and_model();
     fake_embedded_session();
     live_embedded_session();
     start_embedded_mem_watch();

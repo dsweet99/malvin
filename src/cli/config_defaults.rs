@@ -167,10 +167,9 @@ pub(crate) fn apply_shared_config_defaults(
     shared: &mut SharedOpts,
     agent: &AgentConfig,
 ) {
-    if !global_flag_from_command_line(matches, "model")
-        && let Ok(parsed) = crate::model_id::parse_model_id(&agent.model) {
-            shared.model = parsed;
-        }
+    if !global_flag_from_command_line(matches, "model") {
+        shared.model = agent.model.clone();
+    }
     if !global_flag_from_command_line(matches, "max_acp_retries") {
         shared.max_acp_retries = agent.max_acp_retries;
     }

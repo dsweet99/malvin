@@ -20,14 +20,14 @@ fn openrouter_billing_failure_substring_is_detected_case_insensitively() {
 fn openrouter_billing_errors_do_not_retry_even_with_high_max() {
     let msg = "mini HTTP failed after 1 transport attempts (limit 3): OpenRouter billing/credit failure (402): no credits";
     let err = plan_agent_retry(msg, 1, 9999).expect_err("billing must fail fast");
-    assert_eq!(err.0, msg);
+    assert_eq!(err.message, msg);
 }
 
 fn insufficient_credits_provider_phrasing_fails_fast() {
     let msg = "mini HTTP failed after 1 transport attempts (limit 3): Provider: Insufficient credits. Add more using https://openrouter.ai/settings/credits";
     assert!(agent_string_is_openrouter_billing_failure(msg));
     let err = plan_agent_retry(msg, 1, 9999).expect_err("insufficient credits must fail fast");
-    assert_eq!(err.0, msg);
+    assert_eq!(err.message, msg);
 }
 
 fn upgrade_plan_substring_is_detected_case_insensitively() {
@@ -40,7 +40,7 @@ fn upgrade_plan_substring_is_detected_case_insensitively() {
 fn upgrade_plan_errors_do_not_retry() {
     let msg = "billing: upgrade your plan to continue";
     let err = plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS).expect_err("upgrade plan must fail fast");
-    assert_eq!(err.0, msg);
+    assert_eq!(err.message, msg);
 }
 
 fn operational_upgrade_plan_for_emit_detects_line_and_stream_flag() {
@@ -64,7 +64,7 @@ fn cannot_use_model_errors_do_not_retry() {
     assert!(agent_string_is_cannot_use_model(msg));
     let err =
         plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS).expect_err("invalid model must fail fast");
-    assert_eq!(err.0, msg);
+    assert_eq!(err.message, msg);
 }
 
 fn usage_limit_substring_is_detected_case_insensitively() {
@@ -80,14 +80,14 @@ fn usage_limit_errors_do_not_retry_even_with_high_max() {
     let msg =
         "You've hit your usage limit\nYou've saved $2502 on API model usage this month with Ultra.";
     let err = plan_agent_retry(msg, 1, 9999).expect_err("usage limit must fail fast");
-    assert_eq!(err.0, msg);
+    assert_eq!(err.message, msg);
 }
 
 fn cannot_use_model_fails_fast_even_when_error_also_looks_retriable() {
     let msg = "rpc [unavailable]: Cannot use this model";
     let err = plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS)
         .expect_err("model error must beat retriable match");
-    assert_eq!(err.0, msg);
+    assert_eq!(err.message, msg);
 }
 
 fn transient_errors_retry_with_backoff() {

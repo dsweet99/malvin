@@ -52,7 +52,12 @@ pub(crate) async fn pi_spawn_bridge(args: BridgeSpawnArgs<'_>) -> Result<SdkSess
         return Err(AgentError(crate::acp::NO_FORCE_MSG.into()));
     }
     let ticket = crate::malvin_sandbox::take_sandbox_spawn_ticket().map_err(AgentError)?;
-    let (provider, model) = split_provider_model(args.model)?;
+    let (provider, model) = args.model.pi_provider_and_model().ok_or_else(|| {
+        AgentError(format!(
+            "pi model id must be `pi:<provider>/<model>` (got `{}`)",
+            args.model.canonical()
+        ))
+    })?;
     if test_no_real_agent() {
         return Ok(SdkSession::Pi(Box::new(fake_embedded_session(
             ticket, &args, provider, model,
@@ -142,20 +147,6 @@ fn note_sandbox_baseline(
     let _ = crate::malvin_sandbox::note_active_sandbox_session(ticket, pgid, baseline.clone(), cwd);
 }
 
-pub(crate) fn split_provider_model(slug: &str) -> Result<(&str, &str), AgentError> {
-    let Some((provider, model)) = slug.split_once('/') else {
-        return Err(AgentError(format!(
-            "pi model id must be `pi:<provider>/<model>` (got slug `{slug}`)"
-        )));
-    };
-    if provider.is_empty() || model.is_empty() {
-        return Err(AgentError(format!(
-            "pi model id must be `pi:<provider>/<model>` (got slug `{slug}`)"
-        )));
-    }
-    Ok((provider, model))
-}
-
 fn start_embedded_mem_watch(session: &PiEmbeddedSession) {
     #[cfg(unix)]
     {
@@ -196,12 +187,13 @@ async fn watch_embedded_memory(
 
 #[cfg(test)]
 mod thinking_arg_tests {
-    use super::split_provider_model;
+    use crate::model_id::parse_model_id;
 
     #[test]
     fn split_keeps_model_path_after_first_slash() {
+        let model = parse_model_id("pi:openai/gpt-5").expect("ok");
         assert_eq!(
-            split_provider_model("openai/gpt-5").expect("ok"),
+            model.pi_provider_and_model().expect("pi"),
             ("openai", "gpt-5")
         );
     }

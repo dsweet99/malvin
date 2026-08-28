@@ -1,8 +1,8 @@
 use std::path::Path;
 
 use crate::acp::{
-    AgentError, CoderPromptOptions, agent_error_requires_coder_session_teardown,
-    agent_string_is_cursor_agent_busy, backoff_after_agent_failure, retries_noun,
+    AgentError, AgentFault, CoderPromptOptions, agent_string_is_cursor_agent_busy,
+    backoff_after_agent_failure, retries_noun,
 };
 use crate::model_id::ModelBackend;
 
@@ -29,8 +29,8 @@ impl SdkClient {
             match run_one(self, prompt, phase).await {
                 Ok(()) => return Ok(()),
                 Err(e) => {
-                    last_error = e.0;
-                    teardown_sdk_session_after_transport_error(self, &last_error).await;
+                    teardown_sdk_session_after_transport_error(self, &e).await;
+                    last_error = e.message;
                     if single {
                         break;
                     }
@@ -56,14 +56,16 @@ impl SdkClient {
     }
 }
 
-async fn teardown_sdk_session_after_transport_error(client: &mut SdkClient, err: &str) {
-    if agent_error_requires_coder_session_teardown(err) {
-        let forget_agent = matches!(client.model.backend, ModelBackend::Cursor)
-            && agent_string_is_cursor_agent_busy(err);
-        let _ = client.end_coder_session().await;
-        if forget_agent {
-            client.last_agent_id = None;
-        }
+async fn teardown_sdk_session_after_transport_error(client: &mut SdkClient, err: &AgentError) {
+    if !err.requires_coder_session_teardown() {
+        return;
+    }
+    let forget_agent = matches!(client.model.backend, ModelBackend::Cursor)
+        && (err.fault == AgentFault::CursorBusy
+            || agent_string_is_cursor_agent_busy(&err.message));
+    let _ = client.end_coder_session().await;
+    if forget_agent {
+        client.last_agent_id = None;
     }
 }
 

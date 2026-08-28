@@ -82,7 +82,7 @@ fn kiss_cov_pi_sdk_session_core() {
     let _ = stringify!(pi_spawn_bridge);
     let _ = stringify!(prewarm_openrouter_pricing);
     let _ = stringify!(spawn_live_pi_bridge);
-    let _ = stringify!(split_provider_model);
+    let _ = stringify!(pi_provider_and_model);
     let _ = stringify!(pi_thinking_level);
     let _ = stringify!(fake_embedded_session);
     let _ = stringify!(live_embedded_session);

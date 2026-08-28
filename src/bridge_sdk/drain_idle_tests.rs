@@ -32,8 +32,8 @@ async fn await_next_times_out_without_health_extend() {
     )
     .await
     .expect_err("must time out");
-    assert!(err.0.contains("bridge timed out"));
-    assert!(err.0.contains("run_done"));
+    assert!(err.message.contains("bridge timed out"));
+    assert!(err.message.contains("run_done"));
     assert!(started.elapsed() >= Duration::from_millis(80));
     crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
 }
@@ -190,8 +190,8 @@ async fn tool_start_extends_cumulative_turn_budget() {
     let err = turn
         .check_max_deadline(labels)
         .expect_err("extended budget must still have a finite cap");
-    assert!(err.0.contains("turn ran"));
-    assert!(err.0.contains("limit"));
+    assert!(err.message.contains("turn ran"));
+    assert!(err.message.contains("limit"));
     crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
 }
 
@@ -211,10 +211,10 @@ fn turn_budget_error_reports_elapsed_not_configured_idle() {
         waiting_for: "run_done",
     };
     let err = labels.turn_budget_error(Duration::from_secs(1192), Duration::from_mins(100));
-    assert!(err.0.contains("turn ran"));
-    assert!(err.0.contains("1192s"));
-    assert!(err.0.contains("turn budget exhausted"));
-    assert!(!err.0.contains("silence"));
+    assert!(err.message.contains("turn ran"));
+    assert!(err.message.contains("1192s"));
+    assert!(err.message.contains("turn budget exhausted"));
+    assert!(!err.message.contains("silence"));
 }
 
 #[test]
@@ -225,7 +225,7 @@ fn silence_error_labels_bridge_quiet() {
     };
     let quiet = labels.silence_error_detail(Duration::from_secs(1), false);
     assert!(
-        quiet.0.contains("bridge quiet; likely hung or stalled"),
+        quiet.message.contains("bridge quiet; likely hung or stalled"),
         "{quiet:?}"
     );
     let labels = DrainIdleLabels {
@@ -234,7 +234,7 @@ fn silence_error_labels_bridge_quiet() {
     };
     let tools = labels.silence_error_detail(Duration::from_secs(1), true);
     assert!(
-        tools.0.contains("bridge quiet while tools_in_flight"),
+        tools.message.contains("bridge quiet while tools_in_flight"),
         "{tools:?}"
     );
 }

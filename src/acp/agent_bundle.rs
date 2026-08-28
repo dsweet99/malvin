@@ -6,9 +6,79 @@ pub(crate) async fn agent_backoff_sleep(d: std::time::Duration) {
     tokio::time::sleep(d).await;
 }
 
+/// Why an [`AgentError`] occurred, for session-recycle decisions.
+///
+/// Prefer setting this at the emit site over matching error prose later.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum AgentFault {
+    /// No typed session implication; teardown may still use legacy message needles.
+    #[default]
+    Ordinary,
+    /// Child, bridge, or stdio transport is dead or unusable.
+    SessionDead,
+    /// Cursor agent already has an active run.
+    CursorBusy,
+    /// Cursor SDK auth looks stale.
+    StaleAuth,
+}
+
 #[derive(Debug, Clone, thiserror::Error)]
-#[error("{0}")]
-pub struct AgentError(pub String);
+#[error("{message}")]
+pub struct AgentError {
+    pub message: String,
+    pub fault: AgentFault,
+}
+
+impl AgentError {
+    #[must_use]
+    pub fn ordinary(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            fault: AgentFault::Ordinary,
+        }
+    }
+
+    #[must_use]
+    pub fn session_dead(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            fault: AgentFault::SessionDead,
+        }
+    }
+
+    #[must_use]
+    pub fn cursor_busy(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            fault: AgentFault::CursorBusy,
+        }
+    }
+
+    #[must_use]
+    pub fn stale_auth(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            fault: AgentFault::StaleAuth,
+        }
+    }
+
+    #[must_use]
+    pub fn requires_coder_session_teardown(&self) -> bool {
+        match self.fault {
+            AgentFault::SessionDead | AgentFault::CursorBusy | AgentFault::StaleAuth => true,
+            AgentFault::Ordinary => {
+                crate::acp::agent_error_requires_coder_session_teardown(&self.message)
+            }
+        }
+    }
+}
+
+/// Ordinary [`AgentError`] constructor (value-namespace alias for call-site ergonomics).
+#[allow(non_snake_case)]
+#[must_use]
+pub fn AgentError(message: String) -> AgentError {
+    AgentError::ordinary(message)
+}
 
 #[derive(Debug, Clone, thiserror::Error)]
 #[error("{0}")]
@@ -32,6 +102,7 @@ fn agent_error_display_roundtrip() {
     let err = AgentError("e".into());
     assert_eq!(err.to_string(), "e");
     assert_eq!(format!("{err}"), "e");
+    assert_eq!(err.fault, AgentFault::Ordinary);
 }
 
 #[cfg(test)]
@@ -55,6 +126,14 @@ fn agent_error_error_trait() {
 fn auth_error_error_trait() {
     let err = AuthError("a".into());
     let _: &dyn std::error::Error = &err;
+}
+
+#[cfg(test)]
+#[test]
+fn agent_error_session_dead_fault() {
+    let err = AgentError::session_dead("bridge write: broken");
+    assert_eq!(err.fault, AgentFault::SessionDead);
+    assert!(err.requires_coder_session_teardown());
 }
 
 #[cfg(test)]

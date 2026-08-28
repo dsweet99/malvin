@@ -12,7 +12,7 @@ fn missing_content_is_detected_case_insensitively() {
 fn missing_content_fails_fast_without_retry_sleep() {
     let msg = "mini HTTP failed after 1 transport attempts (limit 3): OpenRouter response missing assistant content";
     let err = plan_agent_retry(msg, 1, 99).expect_err("must fail fast");
-    assert_eq!(err.0, msg);
+    assert_eq!(err.message, msg);
     assert!(matches!(
         plan_agent_retry("rate limited", 1, 99).expect("retryable"),
         AgentRetryOutcome::Sleep(_)

@@ -103,9 +103,9 @@ pub(super) fn bug_prepare() -> tempfile::TempDir {
 
 pub(super) fn assert_err_has(err: &crate::acp::AgentError, needles: &[&str]) {
     assert!(
-        needles.iter().any(|n| err.0.contains(n)),
+        needles.iter().any(|n| err.message.contains(n)),
         "unexpected: {}",
-        err.0
+        err.message
     );
 }
 

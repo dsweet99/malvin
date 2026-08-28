@@ -147,7 +147,9 @@ fn reject_bare_legacy_and_empty_slug() {
 fn require_config_and_helpers() {
     assert!(require_config_model("auto").is_err());
     assert_eq!(
-        require_config_model("pi:openai/gpt-4o").expect("ok"),
+        require_config_model("pi:openai/gpt-4o")
+            .expect("ok")
+            .canonical(),
         "pi:openai/gpt-4o"
     );
     assert_eq!(provider_slug("pi:openai/gpt-4o"), "openai/gpt-4o");

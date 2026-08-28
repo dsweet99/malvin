@@ -19,7 +19,8 @@ pub(crate) async fn codex_spawn_bridge(
         run_dir: session.run_dir.as_deref(),
     });
     codex_initialize(&session).await?;
-    codex_start_thread(&session, args.model, args.cwd).await?;
+    let model = args.wire_model();
+    codex_start_thread(&session, &model, args.cwd).await?;
     Ok(session)
 }
 
@@ -55,7 +56,7 @@ mod tests {
     fn test_response_error_and_id() {
         assert!(crate::codex_sdk::session_io::next_id() > 0);
         let error = response_error("context", &serde_json::json!({"error":{"message":"bad"}}));
-        assert!(error.0.contains("context") && error.0.contains("bad"));
+        assert!(error.message.contains("context") && error.message.contains("bad"));
     }
 }
 
@@ -153,9 +154,9 @@ mod unix_tests {
             .await
             .expect_err("silent turn must time out");
         assert!(
-            err.0.contains("codex timed out") && err.0.contains("turn event"),
+            err.message.contains("codex timed out") && err.message.contains("turn event"),
             "unexpected: {}",
-            err.0
+            err.message
         );
         let _ = client.end_coder_session().await;
         unsafe {
@@ -184,7 +185,7 @@ mod unix_tests {
             .send_prompt("test")
             .await
             .expect_err("failed turn");
-        assert!(err.0.contains("auth"), "unexpected: {}", err.0);
+        assert!(err.message.contains("auth"), "unexpected: {}", err.message);
         let _ = client.end_coder_session().await;
         unsafe {
             std::env::remove_var("MALVIN_CODEX_FAIL_TURN");

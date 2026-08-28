@@ -8,7 +8,7 @@ use serde_json::json;
 fn failed_and_interrupted_turns_are_errors() {
     let failed = json!({"params":{"turn":{"status":"failed","error":{"message":"auth"}}}});
     let err = finish_codex_status(&failed, "failed").unwrap_err();
-    assert!(err.0.contains("auth"));
+    assert!(err.message.contains("auth"));
     assert!(finish_codex_status(&json!({}), "interrupted").is_err());
     assert!(finish_codex_status(&json!({}), "completed").is_ok());
     assert!(rpc_error(&json!({"error":{"message":"bad"}})).is_some());

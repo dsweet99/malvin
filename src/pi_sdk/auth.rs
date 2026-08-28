@@ -83,7 +83,7 @@ mod tests {
             "pi sdk runtime stopped".into(),
         ))
         .expect_err("dropped reply must fail");
-        assert!(err.0.contains("runtime stopped"));
+        assert!(err.message.contains("runtime stopped"));
     }
 
     #[test]

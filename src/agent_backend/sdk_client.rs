@@ -6,11 +6,56 @@ use crate::model_id::ParsedModel;
 
 use super::sdk_session::SdkSession;
 
-/// Session begun via `begin_coder_session`: cwd is always present; `live` may be
-/// cleared after transport teardown while cwd remains for respawn.
-pub(crate) struct BegunCoderSession {
-    pub(crate) cwd: PathBuf,
-    pub(crate) live: Option<SdkSession>,
+/// Coder session after `begin_coder_session`.
+///
+/// `NeedsRespawn` keeps cwd so transport teardown can reopen without calling begin again.
+pub(crate) enum BegunCoderSession {
+    Live { cwd: PathBuf, session: SdkSession },
+    NeedsRespawn { cwd: PathBuf },
+}
+
+impl BegunCoderSession {
+    #[must_use]
+    pub(crate) const fn cwd(&self) -> &PathBuf {
+        match self {
+            Self::Live { cwd, .. } | Self::NeedsRespawn { cwd } => cwd,
+        }
+    }
+
+    #[must_use]
+    pub(crate) const fn live_session(&self) -> Option<&SdkSession> {
+        match self {
+            Self::Live { session, .. } => Some(session),
+            Self::NeedsRespawn { .. } => None,
+        }
+    }
+
+    #[must_use]
+    pub(crate) const fn live_session_mut(&mut self) -> Option<&mut SdkSession> {
+        match self {
+            Self::Live { session, .. } => Some(session),
+            Self::NeedsRespawn { .. } => None,
+        }
+    }
+
+    /// Take the live session, leaving [`NeedsRespawn`] with the same cwd.
+    pub(crate) fn take_live_session(&mut self) -> Option<SdkSession> {
+        match std::mem::replace(
+            self,
+            Self::NeedsRespawn {
+                cwd: PathBuf::new(),
+            },
+        ) {
+            Self::Live { cwd, session } => {
+                *self = Self::NeedsRespawn { cwd };
+                Some(session)
+            }
+            Self::NeedsRespawn { cwd } => {
+                *self = Self::NeedsRespawn { cwd };
+                None
+            }
+        }
+    }
 }
 
 pub struct SdkClient {
@@ -64,10 +109,8 @@ impl SdkClient {
     }
 
     #[must_use]
-    pub fn has_open_coder_session(&self) -> bool {
-        self.coder
-            .as_ref()
-            .is_some_and(|home| home.live.is_some())
+    pub const fn has_open_coder_session(&self) -> bool {
+        matches!(self.coder, Some(BegunCoderSession::Live { .. }))
     }
 
     #[must_use]
@@ -106,17 +149,20 @@ pub const fn new_codex(model: ParsedModel, io: AgentIoOptions) -> SdkClient {
 
 #[must_use]
 pub(crate) fn live_session(client: &SdkClient) -> Option<&SdkSession> {
-    client.coder.as_ref().and_then(|c| c.live.as_ref())
+    client.coder.as_ref().and_then(BegunCoderSession::live_session)
 }
 
 #[must_use]
 pub(crate) fn live_session_mut(client: &mut SdkClient) -> Option<&mut SdkSession> {
-    client.coder.as_mut().and_then(|c| c.live.as_mut())
+    client
+        .coder
+        .as_mut()
+        .and_then(BegunCoderSession::live_session_mut)
 }
 
 #[must_use]
 pub(crate) fn begun_cwd(client: &SdkClient) -> Option<&PathBuf> {
-    client.coder.as_ref().map(|c| &c.cwd)
+    client.coder.as_ref().map(BegunCoderSession::cwd)
 }
 
 fn sync_timing_to_open_session(client: &mut SdkClient) {

@@ -201,12 +201,12 @@ fn parsed(backend: ModelBackend, slug: &str) -> Result<ParsedModel, String> {
     })
 }
 
-pub fn require_config_model(raw: &str) -> Result<String, String> {
+pub fn require_config_model(raw: &str) -> Result<ParsedModel, String> {
     let raw = raw.trim();
     if raw.is_empty() {
-        return Ok(crate::support_paths::DEFAULT_CLI_MODEL.to_string());
+        return parse_model_id(crate::support_paths::DEFAULT_CLI_MODEL);
     }
-    require_prefixed_model(raw)
+    parse_model_id(raw)
 }
 
 #[must_use]

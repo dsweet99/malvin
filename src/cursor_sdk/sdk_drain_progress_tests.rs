@@ -99,7 +99,7 @@ async fn continuous_events_hit_cumulative_turn_deadline() {
     )
     .await
     .expect_err("chatter past 2× idle must time out");
-    assert!(err.0.contains("bridge timed out"));
+    assert!(err.message.contains("bridge timed out"));
     bug_clear_env();
 }
 

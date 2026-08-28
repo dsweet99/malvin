@@ -59,11 +59,11 @@ pub async fn write_request(session: &BridgeSession, req: &BridgeRequest) -> Resu
     stdin
         .write_all(format!("{line}\n").as_bytes())
         .await
-        .map_err(|e| AgentError(format!("bridge write: {e}")))?;
+        .map_err(|e| AgentError::session_dead(format!("bridge write: {e}")))?;
     stdin
         .flush()
         .await
-        .map_err(|e| AgentError(format!("bridge flush: {e}")))?;
+        .map_err(|e| AgentError::session_dead(format!("bridge flush: {e}")))?;
     drop(stdin);
     Ok(())
 }
@@ -75,10 +75,10 @@ pub(crate) async fn read_event(session: &BridgeSession) -> Result<BridgeEvent, A
         stdout
             .read_line(&mut line)
             .await
-            .map_err(|e| AgentError(format!("bridge read: {e}")))?
+            .map_err(|e| AgentError::session_dead(format!("bridge read: {e}")))?
     };
     if n == 0 {
-        return Err(AgentError("bridge stdout closed".into()));
+        return Err(AgentError::session_dead("bridge stdout closed"));
     }
     decode_event(line.trim()).map_err(AgentError)
 }

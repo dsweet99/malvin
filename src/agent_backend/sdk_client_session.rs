@@ -35,13 +35,15 @@ impl SdkClient {
             )));
         }
         let cwd = crate::acp::resolve_acp_session_cwd(cwd)?;
-        let model = spawn_model_wire(self);
         let thinking = spawn_thinking_wire(self);
-        spawn_with_retries(self, cwd, &model, thinking.as_deref()).await
+        spawn_with_retries(self, cwd, thinking.as_deref()).await
     }
 
     pub async fn end_coder_session(&mut self) -> Result<(), AgentError> {
-        let Some(s) = self.coder.as_mut().and_then(|home| home.live.take()) else {
+        let Some(home) = self.coder.as_mut() else {
+            return Ok(());
+        };
+        let Some(s) = home.take_live_session() else {
             return Ok(());
         };
         if matches!(self.model.backend, ModelBackend::Cursor) {
@@ -66,13 +68,6 @@ fn reject_no_force(client: &SdkClient) -> Result<(), AgentError> {
     }
 }
 
-fn spawn_model_wire(client: &SdkClient) -> String {
-    match client.model.backend {
-        ModelBackend::Cursor => client.model.cursor_bridge_model(),
-        ModelBackend::Pi | ModelBackend::Codex => client.model.slug.clone(),
-    }
-}
-
 fn cursor_resume_id(client: &SdkClient) -> Option<String> {
     matches!(client.model.backend, ModelBackend::Cursor)
         .then(|| client.last_agent_id.clone())
@@ -82,7 +77,6 @@ fn cursor_resume_id(client: &SdkClient) -> Option<String> {
 async fn spawn_with_retries(
     client: &mut SdkClient,
     cwd: PathBuf,
-    model: &str,
     thinking: Option<&str>,
 ) -> Result<(), AgentError> {
     let resume_agent_id = cursor_resume_id(client);
@@ -93,7 +87,7 @@ async fn spawn_with_retries(
         attempts_used = attempt;
         match spawn_for_backend(
             client.model.backend,
-            bridge_spawn_args(client, &cwd, model, thinking),
+            bridge_spawn_args(client, &cwd, thinking),
             resume_agent_id.as_deref(),
             spawn_service_wire(client).as_deref(),
         )
@@ -137,12 +131,11 @@ fn spawn_thinking_wire(client: &SdkClient) -> Option<String> {
 fn bridge_spawn_args<'a>(
     client: &'a SdkClient,
     cwd: &'a Path,
-    model: &'a str,
     thinking: Option<&'a str>,
 ) -> BridgeSpawnArgs<'a> {
     BridgeSpawnArgs {
         cwd,
-        model,
+        model: &client.model,
         thinking,
         io: client.io,
         run_dir: client.prompts_log_run_dir.clone(),
@@ -179,15 +172,15 @@ fn adopt_spawned_session(client: &mut SdkClient, s: SdkSession, cwd: PathBuf) {
     if matches!(client.model.backend, ModelBackend::Cursor) {
         remember_agent_id_from(client, &s);
     }
-    client.coder = Some(BegunCoderSession {
+    client.coder = Some(BegunCoderSession::Live {
         cwd,
-        live: Some(s),
+        session: s,
     });
     crate::herdr::notify_reclaim();
 }
 
 fn note_spawn_failure(client: &mut SdkClient, err: AgentError) -> String {
-    let mut last_error = err.0;
+    let mut last_error = err.message;
     if matches!(client.model.backend, ModelBackend::Cursor) && client.last_agent_id.take().is_some() {
         last_error = format!("{last_error} (resume failed; will create)");
     }

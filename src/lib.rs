@@ -113,7 +113,7 @@ pub mod cursor_sdk;
 pub mod pi_sdk;
 #[cfg(test)]
 pub(crate) mod sdk_bridge_build;
-pub use acp::{AgentError, AgentIoOptions, AuthError, CoderPromptOptions};
+pub use acp::{AgentError, AgentFault, AgentIoOptions, AuthError, CoderPromptOptions};
 #[cfg(unix)]
 pub use acp::{snapshot_pids, terminate_agent_process_group};
 pub use ansi_strip::strip_ansi_escapes;
