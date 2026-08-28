@@ -1,13 +1,13 @@
 use crate::artifacts::RunArtifacts;
 use crate::cli::flow_prompt_combine::{
-    DualHeaderPromptInput, combine_acp_prompt_header_and_user, combine_mode_header_and_user,
-    combine_prompt_file_and_user,
+    combine_acp_prompt_header_and_user, combine_mode_header_and_user, combine_prompt_file_and_user,
+    DualHeaderPromptInput,
 };
 use crate::orchestrator::workflow_context_paths_only;
 use crate::prompt_stratification::WorkflowRenderContext;
 use crate::prompts::{
-    KPOP_COMMON_MD, PromptError, PromptStore, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD,
-    header_prompt_file, router_a_prompt_file, router_b_prompt_file,
+    header_prompt_file, kpop_common_prompt_file, router_a_prompt_file, router_b_prompt_file,
+    PromptError, PromptStore, RouterBPromptFlags, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD,
 };
 use crate::workflow_context::PromptModelOpts;
 use std::path::Path;
@@ -15,18 +15,16 @@ use std::path::Path;
 #[path = "router_flow_prompt_summarize.rs"]
 mod router_flow_prompt_summarize;
 pub(crate) use router_flow_prompt_summarize::{
-    RouterSummarizePromptInput, build_router_summarize_prompt,
+    build_router_summarize_prompt, RouterSummarizePromptInput,
 };
-
-pub(crate) type RouterKpopCommonPromptInput<'a> =
-    (&'a PromptStore, &'a RunArtifacts, &'a str, bool, usize);
 
 #[path = "router_flow_prompt_turns.rs"]
 mod router_flow_prompt_turns;
 pub(crate) use router_flow_prompt_turns::{
-    RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput, build_router_a_prompt,
-    build_router_b_prompt, build_router_header_prompt, build_router_kpop_common_prompt,
-    router_b_prompt_label,
+    build_router_a_prompt, build_router_b_prompt, build_router_header_prompt,
+    build_router_kpop_common_prompt, kpop_common_prompt_label, router_a_prompt_label,
+    router_b_prompt_label, RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput,
+    RouterKpopCommonPromptInput,
 };
 
 pub fn prepare_router_prompt_store() -> Result<PromptStore, String> {
@@ -39,10 +37,22 @@ pub fn prepare_router_prompt_store() -> Result<PromptStore, String> {
 fn validate_router_required_prompts(store: &PromptStore) -> Result<(), String> {
     let required = [
         header_prompt_file(),
-        KPOP_COMMON_MD,
-        router_a_prompt_file(),
-        router_b_prompt_file(false),
-        router_b_prompt_file(true),
+        kpop_common_prompt_file(false),
+        kpop_common_prompt_file(true),
+        router_a_prompt_file(false),
+        router_a_prompt_file(true),
+        router_b_prompt_file(RouterBPromptFlags {
+            creative: false,
+            no_kpop: false,
+        }),
+        router_b_prompt_file(RouterBPromptFlags {
+            creative: true,
+            no_kpop: false,
+        }),
+        router_b_prompt_file(RouterBPromptFlags {
+            creative: false,
+            no_kpop: true,
+        }),
         ROUTER_CODE_EXTRA_MD,
         ROUTER_SUMMARIZE_MD,
     ];
@@ -82,7 +92,7 @@ pub fn combine_router_raw_header_and_user(
         text,
         model: opts.model,
         git: opts.git,
-        mode_template: router_a_prompt_file(),
+        mode_template: router_a_prompt_file(false),
     })
 }
 
@@ -139,7 +149,10 @@ mod kiss_cov_gate_refs {
         let _ = build_router_header_prompt;
         let _ = build_router_a_prompt;
         let _ = build_router_b_prompt;
+        let _ = build_router_kpop_common_prompt;
         let _ = router_b_prompt_label;
+        let _ = kpop_common_prompt_label;
+        let _ = router_a_prompt_label;
         let _ = build_router_summarize_prompt;
         let _ = render_router_code_extra;
     }

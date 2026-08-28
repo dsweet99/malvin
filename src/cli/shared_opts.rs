@@ -1,7 +1,7 @@
 pub use crate::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use clap::Args;
 
-use crate::model_id::{ParsedModel, parse_model_id};
+use crate::model_id::{parse_model_id, ParsedModel};
 
 const QUIET_HELPTEXT: &str =
     "Print only `__MALVIN_DM_START__`/`END` bodies on stdout (default router; not `-b`)";
@@ -60,6 +60,9 @@ pub struct SharedOpts {
     /// Use the creative `router_b` prompt on the default router
     #[arg(long, global = true, default_value_t = false)]
     pub creative: bool,
+    /// Use `_no_kpop` prompt variants on the default router
+    #[arg(long = "no-kpop", global = true, default_value_t = false, hide = true)]
+    pub no_kpop: bool,
 }
 
 impl SharedOpts {
@@ -90,6 +93,7 @@ impl SharedOpts {
             name: None,
             git: false,
             creative: false,
+            no_kpop: false,
         }
     }
 }

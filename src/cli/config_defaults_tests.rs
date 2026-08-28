@@ -1,6 +1,6 @@
 use super::{
-    LoopDefaultMut, apply_loop_defaults, apply_shared_config_defaults,
-    apply_workspace_config_defaults, global_flag_from_command_line, parse_cli_with_config_defaults,
+    apply_loop_defaults, apply_shared_config_defaults, apply_workspace_config_defaults,
+    global_flag_from_command_line, parse_cli_with_config_defaults, LoopDefaultMut,
 };
 use crate::cli::config_loop::subcommand_flag_from_command_line;
 use crate::cli::{Cli, Commands, SharedOpts};
@@ -56,7 +56,8 @@ fn write_agent_config_adds_agent_section_to_partial_file() {
 #[test]
 fn apply_loop_defaults_honors_partial_cli_overrides() {
     with_seeded_agent_config(|| {
-        let matches = Cli::command().get_matches_from(["malvin", "write", "topic", "--max-loops", "3"]);
+        let matches =
+            Cli::command().get_matches_from(["malvin", "write", "topic", "--max-loops", "3"]);
         let mut max_loops = 3_usize;
         let mut max_hypotheses = 5_usize;
         apply_loop_defaults(
@@ -109,6 +110,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
         name: None,
         git: false,
         creative: false,
+        no_kpop: false,
     };
     apply_shared_config_defaults(&matches, &mut shared, &agent);
     assert_eq!(shared.model.canonical(), "cursor:cfg");

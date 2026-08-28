@@ -6,7 +6,7 @@ mod inspire_tests {
     use crate::inspire_flow::{
         build_inspire_render_context, render_inspire_prompt, render_inspire_summarize_prompt,
     };
-    use crate::prompts::{PromptStore, malformed_brace_placeholders, render_inspire_mbc2_prompt};
+    use crate::prompts::{malformed_brace_placeholders, render_inspire_mbc2_prompt, PromptStore};
 
     #[test]
     fn render_inspire_prompt_substitutes_user_prompt() {
@@ -105,6 +105,7 @@ mod inspire_tests {
             name: None,
             git: false,
             creative: false,
+            no_kpop: false,
         };
         let backend = crate::cli::build_agent_backend(
             &shared,
@@ -157,6 +158,7 @@ mod inspire_tests {
             name: None,
             git: false,
             creative: false,
+            no_kpop: false,
         };
         crate::cli::run_emit::emit_run_startup_sequence(
             &artifacts,

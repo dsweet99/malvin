@@ -36,6 +36,15 @@ fn cli_accepts_global_creative_option() {
 }
 
 #[test]
+fn cli_accepts_global_no_kpop_option() {
+    use crate::cli::Cli;
+
+    let cli = Cli::try_parse_from(["malvin", "--no-kpop", "route this task"]).expect("parse");
+    assert!(cli.shared.no_kpop);
+    assert_eq!(cli.request.as_deref(), Some("route this task"));
+}
+
+#[test]
 fn router_client_uses_router_style_agent_io_not_do_style() {
     use crate::agent_backend::build_agent_backend;
     use crate::cli::{SharedOpts, WorkflowCliOptions};
@@ -53,6 +62,7 @@ fn router_client_uses_router_style_agent_io_not_do_style() {
         name: None,
         git: false,
         creative: false,
+        no_kpop: false,
     };
     let backend = build_agent_backend(
         &shared,

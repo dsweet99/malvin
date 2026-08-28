@@ -59,7 +59,7 @@ fn smoke_merge_acp_with_workspace_session_restore_and_check_abort_no_result_file
 }
 
 fn smoke_agent_io_options_maps_flags() {
-    use super::{AgentStdoutTeeFlags, WorkflowCliOptions, agent_io_options};
+    use super::{agent_io_options, AgentStdoutTeeFlags, WorkflowCliOptions};
     let shared = super::SharedOpts {
         model: crate::model_id::parse_model_id("cursor:m").expect("model"),
         no_force: false,
@@ -73,6 +73,7 @@ fn smoke_agent_io_options_maps_flags() {
         name: None,
         git: false,
         creative: false,
+        no_kpop: false,
     };
     let io = agent_io_options(
         &shared,
