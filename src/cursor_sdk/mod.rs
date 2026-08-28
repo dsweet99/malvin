@@ -1,6 +1,7 @@
 #![cfg_attr(test, allow(unsafe_code))]
 
 mod auth;
+mod bridge_stderr;
 pub(crate) mod bridge_path;
 pub(crate) mod node_resolve;
 mod protocol;

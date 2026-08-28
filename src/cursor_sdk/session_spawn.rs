@@ -67,6 +67,11 @@ fn cursor_take_stdio(child: &mut tokio::process::Child) -> Result<CursorChildStd
         .stdout
         .take()
         .ok_or_else(|| AgentError("bridge stdout missing".into()))?;
+    let stderr = child
+        .stderr
+        .take()
+        .ok_or_else(|| AgentError("bridge stderr missing".into()))?;
+    super::bridge_stderr::start_filtered_forward(stderr);
     Ok(CursorChildStdio {
         stdin,
         stdout,
@@ -128,7 +133,7 @@ fn cursor_build_bridge_command(
         .current_dir(cwd)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
+        .stderr(Stdio::piped())
         .env("MALLOC_ARENA_MAX", "2");
     if let Some(k) = effective_sdk_api_key() {
         cmd.env("CURSOR_API_KEY", k);

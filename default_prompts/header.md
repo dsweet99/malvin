@@ -46,6 +46,7 @@ Malvin caps sandbox memory (see `Sandbox memory:` under Current state). If USS e
 ## Gates
 - Don't change the configs for the gates commands (linters, etc.). The user configured them that way as an expression of their preferences, which you should respect.
 - Do not run overlapping heavy commands from `.malvin/gates` in one shell line with `&&`, `;`, or `&`.
+- Prefer waiting for tool commands to finish; if you must background one, close inherited control descriptors (`3>&- 4>&-`) and redirect stdio so nothing holds the parent pipes open.
 - When running gates by hand, execute at most one `.malvin/gates` line at a time; wait for exit before starting the next.
 - Child processes get a conservative glibc arena cap (`MALLOC_ARENA_MAX`); malvin does not overwrite job or thread env vars you set.
 - Prefer narrow checks while iterating; run the full gate set once, sequentially, at the end.
