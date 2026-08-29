@@ -41,7 +41,7 @@ pub(super) fn entrypoint_request_missing_short_help(cli: &Cli) -> Option<Exit> {
             (inspire.request.as_ref(), "inspire")
         }
         Commands::Write(write_args) => (write_args.request.as_ref(), "write"),
-        Commands::Models(_) => return None,
+        Commands::Models(_) | Commands::Admin(_) => return None,
     };
     entrypoint_short_help_when_request_missing(cli.shared.doc, request, subcommand)
 }

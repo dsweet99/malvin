@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 
+use super::admin_cmd::AdminArgs;
 use super::shared_opts::SharedOpts;
 use super::write_flow::WriteArgs;
 
@@ -49,4 +50,6 @@ pub enum Commands {
     Adaptix(InspireArgs),
     /// List available models
     Models(ModelsArgs),
+    /// Operator maintenance commands
+    Admin(AdminArgs),
 }

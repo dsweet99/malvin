@@ -112,6 +112,7 @@ pub(crate) fn dispatch_command(
             super::entrypoint_commands::run_inspire_command(inspire, &shared)
         }
         Commands::Models(models) => dispatch_models(models, &shared),
+        Commands::Admin(admin) => super::run_admin(admin),
     }
 }
 

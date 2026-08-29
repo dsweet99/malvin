@@ -1,9 +1,6 @@
-#[path = "lifecycle_io_support.rs"]
-mod lifecycle_io_support;
-
 use crate::herdr::{notify_reclaim, notify_run_end, notify_run_start, notify_working};
 use crate::herdr::{reset_session_for_test, session_active_for_test, session_has_binding_for_test};
-use lifecycle_io_support::{
+use crate::herdr::lifecycle_io_support::{
     agent_state_of, assert_bind_shape, assert_idle_then_clear_metadata, collect_until_deadline,
     collect_until_teardown_clear, herdr_test_env_lock, install_test_herdr_env, method_of,
     restore_test_herdr_env, spawn_request_collector, with_herdr_fixture,

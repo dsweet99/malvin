@@ -62,7 +62,7 @@ fn apply_gate_loop_command_defaults(
         Commands::Write(write_args) => {
             apply_write_loop_defaults(matches, write_args, agent, review);
         }
-        Commands::Inspire(_) | Commands::Adaptix(_) | Commands::Models(_) => {}
+        Commands::Inspire(_) | Commands::Adaptix(_) | Commands::Models(_) | Commands::Admin(_) => {}
     }
 }
 
@@ -125,7 +125,10 @@ fn apply_gates_only_loop_defaults(matches: &ArgMatches, cli: &mut Cli, agent: &A
 
 const fn uses_lightweight_config_path(cli: &Cli) -> bool {
     cli.do_workflow
-        || matches!(cli.command, Some(Commands::Models(_)))
+        || matches!(
+            cli.command,
+            Some(Commands::Models(_) | Commands::Admin(_))
+        )
         || (cli.command.is_none() && cli.request.is_some())
 }
 

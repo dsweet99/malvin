@@ -1,3 +1,4 @@
+pub(crate) mod admin_cmd;
 pub(crate) mod args;
 pub(crate) mod cli_request;
 pub(crate) mod command_docs;
@@ -65,6 +66,7 @@ pub(crate) mod workflow_router_shared_tests;
 pub use crate::do_flow::run_do;
 pub use crate::inspire_flow::run_inspire;
 pub use crate::router_flow::run_router;
+pub use admin_cmd::{AdminArgs, AdminCommand, run_admin};
 pub use args::{Cli, Commands, InspireArgs};
 pub use config_defaults::parse_cli_with_config_defaults;
 pub use entrypoint::entrypoint;

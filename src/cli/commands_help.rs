@@ -126,7 +126,7 @@ mod tests {
             .collect();
         assert!(!names.iter().any(|n| n == "code"));
         assert!(!names.iter().any(|n| n == "delight"));
-        assert_eq!(names, vec!["write", "inspire", "models"]);
+        assert_eq!(names, vec!["write", "inspire", "models", "admin"]);
     }
 
     #[test]
