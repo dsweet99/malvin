@@ -15,10 +15,12 @@ fn timing_line_implement_echoes_json_ms_via_same_formatter() {
     r.add_llm_phase(TimingPhase::Implement, Duration::from_millis(23_451));
     let json: Value = to_json_value(&r);
     let line = format_timing_stdout_line_from_json(&json);
+    assert_eq!(json["phases_ms"]["implement"], 23_451);
     assert!(
-        line.contains("implement = 23.5s"),
-        "TIMING line should round implement ms; line={line:?} json={json}"
+        !line.contains("implement = "),
+        "TIMING line must omit phase fields; line={line:?}"
     );
+    assert!(line.contains("llm_wait = 23.5s"), "line={line:?}");
 }
 
 #[test]
@@ -35,7 +37,9 @@ fn timing_line_from_json_matches_to_json_value_snapshot() {
     r.add_llm_phase(TimingPhase::Implement, Duration::from_millis(500));
     let json = to_json_value(&r);
     let line = format_timing_stdout_line_from_json(&json);
-    assert!(line.contains("implement = "));
+    assert!(json["phases_ms"]["implement"].as_u64().unwrap() >= 500);
+    assert!(!line.contains("implement = "));
+    assert!(line.contains("llm_wait = "));
 }
 
 #[test]
@@ -43,14 +47,14 @@ fn timing_line_uses_phase_display_name_alias_when_present() {
     use crate::run_timing::{RunTiming, TimingPhase};
 
     let mut r = RunTiming::default();
-    r.set_implement_display_name("raw");
+    r.set_implement_display_name("router");
     r.mark_wall_start(std::time::Instant::now());
     r.mark_wall_end(std::time::Instant::now());
     r.add_llm_phase(TimingPhase::Implement, Duration::from_millis(100));
     let json = to_json_value(&r);
     let line = format_timing_stdout_line_from_json(&json);
-    assert_eq!(json["phase_display_names"]["implement"], "raw");
-    assert!(line.contains("raw = "));
+    assert_eq!(json["phase_display_names"]["implement"], "router");
+    assert!(!line.contains("router = "));
     assert!(!line.contains("implement = "));
 }
 
@@ -66,7 +70,8 @@ fn timing_line_uses_one_decimal_and_includes_live_buckets() {
     assert!(line.starts_with(RUN_TIMING_SUMMARY_PREFIX));
     assert!(line.contains("wall = "));
     assert!(line.contains("llm_wait = "));
-    assert!(line.contains("implement = 0.1s"));
+    assert!(!line.contains("implement = "));
+    assert!(!line.contains("router = "));
     assert!(!line.contains("summary = "));
     assert!(!line.contains("concerns = "));
     assert!(!line.contains("check_plan = "));
