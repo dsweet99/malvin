@@ -31,8 +31,13 @@ fn cli_accepts_global_creative_option() {
     use crate::cli::Cli;
 
     let cli = Cli::try_parse_from(["malvin", "--creative", "route this task"]).expect("parse");
-    assert!(cli.shared.creative);
+    assert_eq!(cli.shared.creative, Some(1.0));
     assert_eq!(cli.request.as_deref(), Some("route this task"));
+
+    let with_p =
+        Cli::try_parse_from(["malvin", "--creative=0.6", "route this task"]).expect("parse");
+    assert_eq!(with_p.shared.creative, Some(0.6));
+    assert_eq!(with_p.request.as_deref(), Some("route this task"));
 }
 
 #[test]
@@ -50,6 +55,7 @@ fn router_client_uses_router_style_agent_io_not_do_style() {
     use crate::cli::{SharedOpts, WorkflowCliOptions};
 
     let shared = SharedOpts {
+        background: false,
         model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("model"),
         no_force: true,
         no_tenacious: false,
@@ -59,9 +65,8 @@ fn router_client_uses_router_style_agent_io_not_do_style() {
         verbose: false,
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
-        name: None,
         git: false,
-        creative: false,
+        creative: None,
         no_kpop: false,
     };
     let backend = build_agent_backend(

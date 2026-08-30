@@ -170,8 +170,8 @@ def ft_malvin_args_request_codex(malvin_args: tuple[str, ...]) -> bool:
 
 
 def ft_malvin_args_request_creative(malvin_args: tuple[str, ...]) -> bool:
-    """True when ``malvin_args`` include ``--creative``."""
-    return "--creative" in malvin_args
+    """True when ``malvin_args`` include ``--creative`` or ``--creative=...``."""
+    return any(a == "--creative" or a.startswith("--creative=") for a in malvin_args)
 
 def ft_assert_creative_compatible(agent: str, malvin_args: tuple[str, ...]) -> None:
     """Fail when ``--creative`` is paired with cursor agent backends."""
@@ -1498,6 +1498,7 @@ def _ft_assert_solve_creative_dry_runs(cli, runner, tmp: Path) -> None:
 
     assert ft_malvin_args_request_creative(()) is False
     assert ft_malvin_args_request_creative(("--creative",)) is True
+    assert ft_malvin_args_request_creative(("--creative=0.6",)) is True
     try:
         ft_assert_creative_compatible(AGENT_CURSOR, ("--creative",))
         raise AssertionError("expected creative/cursor rejection")

@@ -2,7 +2,7 @@ use super::{MALVIN_OVERVIEW_DOC, ROUTER_DOC, command_doc_markdown, print_doc_to_
 use crate::cli::Cli;
 use crate::cli::models_cmd::ModelsArgs;
 use crate::cli::write_flow::WriteArgs;
-use crate::cli::{Commands, InspireArgs};
+use crate::cli::{AdminArgs, AdminCommand, Commands, InspireArgs};
 use clap::Parser;
 
 fn capture_doc(command: Option<&Commands>) -> Result<Vec<u8>, String> {
@@ -13,9 +13,14 @@ fn capture_doc(command: Option<&Commands>) -> Result<Vec<u8>, String> {
 
 #[test]
 fn subcommand_doc_embeds_have_malvin_heading() {
-    let md = command_doc_markdown(&Commands::Models(ModelsArgs::default()));
+    let md = command_doc_markdown(&Commands::Admin(AdminArgs {
+        command: AdminCommand::Models(ModelsArgs::default()),
+    }));
     assert!(md.starts_with("# malvin "));
-    let md = command_doc_markdown(&Commands::Inspire(InspireArgs { request: None }));
+    let md = command_doc_markdown(&Commands::Inspire(InspireArgs {
+        shared: crate::cli::SharedOpts::test_defaults(),
+        request: None,
+    }));
     assert!(md.starts_with("# malvin inspire"));
     assert!(ROUTER_DOC.starts_with("# malvin"));
 }
@@ -33,7 +38,10 @@ fn print_doc_none_writes_overview_then_router() {
 
 #[test]
 fn print_doc_inspire_writes_subcommand_md() {
-    let cmd = Commands::Inspire(InspireArgs { request: None });
+    let cmd = Commands::Inspire(InspireArgs {
+        shared: crate::cli::SharedOpts::test_defaults(),
+        request: None,
+    });
     let out = capture_doc(Some(&cmd)).expect("capture");
     assert_eq!(out.as_slice(), command_doc_markdown(&cmd).as_bytes());
     assert!(out.starts_with(b"# malvin inspire"));
@@ -83,6 +91,7 @@ fn write_doc_parses_with_request_when_doc_flag_set() {
 #[test]
 fn print_doc_write_writes_subcommand_md() {
     let cmd = Commands::Write(WriteArgs {
+        shared: crate::cli::SharedOpts::test_defaults(),
         request: Some("topic".to_string()),
         out_path: "write.tex".to_string(),
         max_loops: 3,
@@ -98,10 +107,17 @@ fn print_doc_write_writes_subcommand_md() {
 fn malvin_doc_embeds_name_section() {
     let out = capture_doc(None).expect("capture");
     let text = String::from_utf8(out).expect("utf8");
-    assert!(text.contains("--name"), "doc must mention --name");
+    assert!(
+        text.contains("Session names") || text.contains(".malvin_home/names"),
+        "doc must describe session names"
+    );
     assert!(
         text.contains(".malvin_home/names") || text.contains("already holds"),
         "doc must describe registry or duplicate-name behavior"
+    );
+    assert!(
+        !text.contains("### `--name"),
+        "doc must not document removed --name option"
     );
 }
 

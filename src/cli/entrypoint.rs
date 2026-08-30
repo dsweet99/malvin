@@ -3,14 +3,6 @@ use super::{
 };
 use crate::do_flow::DoArgs;
 
-pub(crate) const fn command_accepts_session_name(_command: &Commands) -> bool {
-    false
-}
-
-pub(crate) const fn unsupported_name_error() -> &'static str {
-    "`--name` is only supported for bare `malvin REQUEST`, `--do`, and `malvin -g`"
-}
-
 #[path = "entrypoint_from.rs"]
 mod entrypoint_from;
 #[path = "entrypoint_gates_only.rs"]
@@ -88,14 +80,14 @@ pub(crate) fn finish_entrypoint(res: Result<(), String>) -> Exit {
     }
 }
 
-pub(crate) fn prepare_cli_output(global: &crate::cli::args::GlobalOpts) {
+pub(crate) fn prepare_cli_output(shared: &SharedOpts) {
     let theme = std::env::current_dir()
         .ok()
         .map(|cwd| crate::malvin_config_file::load_malvin_config(&cwd).theme)
         .unwrap_or_default();
     crate::terminal_palette::init_terminal_theme(theme);
     crate::output::init_stdout_style();
-    crate::output::set_stdout_suppressed(global.background);
+    crate::output::set_stdout_suppressed(shared.background);
 }
 
 pub(crate) fn dispatch_command(
@@ -105,14 +97,41 @@ pub(crate) fn dispatch_command(
 ) -> Result<(), String> {
     let mut shared = shared.clone();
     match command {
-        cmd @ Commands::Write(_) => {
-            super::entrypoint_commands::dispatch_plan_authoring_gate(cmd, &mut shared, matches)
+        Commands::Write(write_args) => {
+            crate::cli::shared_opts::overlay_shared_opts_from_subcommand(
+                &mut shared,
+                &write_args.shared,
+                matches,
+                "write",
+            );
+            super::entrypoint_commands::dispatch_plan_authoring_gate(
+                Commands::Write(write_args),
+                &mut shared,
+                matches,
+            )
         }
-        Commands::Inspire(inspire) | Commands::Adaptix(inspire) => {
+        Commands::Inspire(inspire) => {
+            crate::cli::shared_opts::overlay_shared_opts_from_subcommand(
+                &mut shared,
+                &inspire.shared,
+                matches,
+                "inspire",
+            );
             super::entrypoint_commands::run_inspire_command(inspire, &shared)
         }
-        Commands::Models(models) => dispatch_models(models, &shared),
-        Commands::Admin(admin) => super::run_admin(admin),
+        Commands::Adaptix(inspire) => {
+            crate::cli::shared_opts::overlay_shared_opts_from_subcommand(
+                &mut shared,
+                &inspire.shared,
+                matches,
+                "adaptix",
+            );
+            super::entrypoint_commands::run_inspire_command(inspire, &shared)
+        }
+        Commands::Admin(admin) => {
+            let model = shared.model.canonical();
+            super::run_admin(admin, &model)
+        }
     }
 }
 
@@ -176,14 +195,6 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
         )
         .await
     })
-}
-
-fn dispatch_models(
-    models: super::models_cmd::ModelsArgs,
-    shared: &super::SharedOpts,
-) -> Result<(), String> {
-    let model = shared.model.canonical();
-    super::models_cmd::run_models(models, &model)
 }
 
 #[cfg(test)]

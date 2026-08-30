@@ -22,9 +22,9 @@ pub(crate) use router_flow_prompt_summarize::{
 mod router_flow_prompt_turns;
 pub(crate) use router_flow_prompt_turns::{
     build_router_a_prompt, build_router_b_prompt, build_router_header_prompt,
-    build_router_kpop_common_prompt, kpop_common_prompt_label, router_a_prompt_label,
-    router_b_prompt_label, RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput,
-    RouterKpopCommonPromptInput,
+    build_router_kpop_common_prompt, build_router_mbc2_prompt, kpop_common_prompt_label,
+    router_a_prompt_label, router_b_prompt_label, RouterAPromptInput, RouterBPromptInput,
+    RouterHeaderPromptInput, RouterKpopCommonPromptInput,
 };
 
 pub fn prepare_router_prompt_store() -> Result<PromptStore, String> {
@@ -39,6 +39,7 @@ fn validate_router_required_prompts(store: &PromptStore) -> Result<(), String> {
         header_prompt_file(),
         kpop_common_prompt_file(false),
         kpop_common_prompt_file(true),
+        "mbc2.md",
         router_a_prompt_file(false),
         router_a_prompt_file(true),
         router_b_prompt_file(RouterBPromptFlags {
@@ -150,6 +151,7 @@ mod kiss_cov_gate_refs {
         let _ = build_router_a_prompt;
         let _ = build_router_b_prompt;
         let _ = build_router_kpop_common_prompt;
+        let _ = build_router_mbc2_prompt;
         let _ = router_b_prompt_label;
         let _ = kpop_common_prompt_label;
         let _ = router_a_prompt_label;

@@ -92,6 +92,7 @@ mod inspire_tests {
     fn inspire_client_uses_styled_agent_io_not_raw_do_style() {
         use crate::cli::{SharedOpts, WorkflowCliOptions};
         let shared = SharedOpts {
+            background: false,
             model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL)
                 .expect("model"),
             no_force: true,
@@ -102,9 +103,8 @@ mod inspire_tests {
             verbose: false,
             max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
-            name: None,
             git: false,
-            creative: false,
+            creative: None,
             no_kpop: false,
         };
         let backend = crate::cli::build_agent_backend(
@@ -145,6 +145,7 @@ mod inspire_tests {
                 Err(error) => panic!("art: {error}"),
             };
         let shared = SharedOpts {
+            background: false,
             model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL)
                 .expect("model"),
             no_force: true,
@@ -155,9 +156,8 @@ mod inspire_tests {
             verbose: false,
             max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
-            name: None,
             git: false,
-            creative: false,
+            creative: None,
             no_kpop: false,
         };
         crate::cli::run_emit::emit_run_startup_sequence(

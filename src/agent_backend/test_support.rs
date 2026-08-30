@@ -15,6 +15,7 @@ pub fn test_io() -> crate::acp::AgentIoOptions {
 #[must_use]
 pub fn shared_opts(_unused: bool) -> SharedOpts {
     SharedOpts {
+        background: false,
         model: crate::model_id::parse_model_id("cursor:auto").expect("model"),
         no_force: false,
         no_tenacious: false,
@@ -23,9 +24,8 @@ pub fn shared_opts(_unused: bool) -> SharedOpts {
         verbose: false,
         max_acp_retries: 3,
         doc: false,
-        name: None,
         git: false,
-        creative: false,
+        creative: None,
         no_kpop: false,
     }
 }

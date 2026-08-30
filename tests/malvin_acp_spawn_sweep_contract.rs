@@ -79,7 +79,7 @@ fn malvin_doc_does_not_sweep_but_models_does() {
     let stale = chamber.join("dead.lock");
     std::fs::write(&stale, "424242").expect("stale lock");
     let home = tempfile::tempdir().expect("home");
-    let models = run_malvin_home(home.path(), work, &["models", "pi:"]);
+    let models = run_malvin_home(home.path(), work, &["admin", "models", "pi:"]);
     assert!(
         models.status.success(),
         "stderr={}",

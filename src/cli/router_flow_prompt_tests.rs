@@ -3,9 +3,9 @@ use crate::flow_prompt_join_test_helpers::flow_test_artifacts;
 use crate::prompts::PromptStore;
 use crate::router_flow::router_flow_prompt::{
     build_router_a_prompt, build_router_b_prompt, build_router_header_prompt,
-    build_router_kpop_common_prompt, build_router_summarize_prompt, prepare_router_prompt_store,
-    router_b_prompt_label, RouterAPromptInput, RouterBPromptInput, RouterKpopCommonPromptInput,
-    RouterSummarizePromptInput,
+    build_router_kpop_common_prompt, build_router_mbc2_prompt, build_router_summarize_prompt,
+    prepare_router_prompt_store, router_b_prompt_label, RouterAPromptInput, RouterBPromptInput,
+    RouterKpopCommonPromptInput, RouterSummarizePromptInput,
 };
 
 #[test]
@@ -234,6 +234,25 @@ fn build_router_b_prompt_selects_creative_template_when_flag_set() {
             no_kpop: true,
         }),
         "router_b_no_kpop.md"
+    );
+}
+
+#[test]
+fn build_router_mbc2_prompt_embeds_plan_text() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = flow_test_artifacts(&tmp);
+    let store = prepare_router_prompt_store().expect("store");
+    let body = build_router_mbc2_prompt(&store, &artifacts)
+        .expect("mbc2");
+    assert!(!body.contains("{{"));
+    assert!(
+        body.contains("MBC2"),
+        "must render mbc2.md: {body}"
+    );
+    let plan = std::fs::read_to_string(&artifacts.plan_path).expect("plan");
+    assert!(
+        body.contains(plan.trim()),
+        "mbc2 must embed plan text; body={body}"
     );
 }
 

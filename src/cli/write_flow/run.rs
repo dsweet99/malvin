@@ -201,6 +201,7 @@ mod tests {
     #[test]
     fn write_client_uses_styled_agent_io() {
         let shared = SharedOpts {
+            background: false,
             model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL)
                 .expect("model"),
             no_force: true,
@@ -210,9 +211,8 @@ mod tests {
             verbose: false,
             max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
-            name: None,
             git: false,
-            creative: false,
+            creative: None,
             no_kpop: false,
         };
         let io = new_write_client(&shared, WorkflowCliOptions { force: false })

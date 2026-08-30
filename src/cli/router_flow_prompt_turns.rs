@@ -54,6 +54,23 @@ pub(crate) fn build_router_kpop_common_prompt(
         .map(|body| body.trim().to_string())
 }
 
+/// Render `mbc2.md` for a creative router iteration (after `kpop_common`).
+pub(crate) fn build_router_mbc2_prompt(
+    store: &PromptStore,
+    artifacts: &RunArtifacts,
+) -> Result<String, String> {
+    let user_prompt = std::fs::read_to_string(&artifacts.plan_path).map_err(|e| {
+        format!(
+            "failed to read user request for mbc2 ({}): {e}",
+            artifacts.plan_path.display()
+        )
+    })?;
+    let ctx = crate::inspire_flow::build_inspire_render_context(&user_prompt);
+    crate::prompts::render_inspire_mbc2_prompt(store, &ctx)
+        .map_err(|e: PromptError| e.0)
+        .map(|body| body.trim().to_string())
+}
+
 pub(crate) struct RouterAPromptInput<'a> {
     pub store: &'a PromptStore,
     pub artifacts: &'a RunArtifacts,

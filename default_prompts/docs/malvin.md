@@ -17,7 +17,7 @@ malvin [OPTION]... [REQUEST]
 
 These forms are mutually exclusive: pass a request **or** a subcommand, not both on one synopsis line. `malvin --help` uses the same two-line usage.
 
-Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`, stop on `__MALVIN_DONE__`, exit `router_summarize`). With no request and no subcommand, malvin prints a short command catalog and exits 0. `malvin -g` without a request runs the gate-fix workflow (fixed request `Get the gates to pass.` with `--gates` on). Use `--do` for a one-shot turn, or subcommands `write`, `inspire`, `models`, `admin`. Omitting `REQUEST` for `--do`, `write`, or `inspire` likewise prints short usage and exits 0.
+Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`, stop on `__MALVIN_DONE__`, exit `router_summarize`). With no request and no subcommand, malvin prints a short command catalog and exits 0. `malvin -g` without a request runs the gate-fix workflow (fixed request `Get the gates to pass.` with `--gates` on). Use `--do` for a one-shot turn, or subcommands `write`, `inspire`, `admin`. Omitting `REQUEST` for `--do`, `write`, or `inspire` likewise prints short usage and exits 0.
 
 ## Commands
 
@@ -28,13 +28,15 @@ Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`,
 | `malvin -g` | Fix quality gates via the default router with fixed request `Get the gates to pass.` (no positional request) |
 | `write` | Write a LaTeX PDF on code or concepts via a composed default-router request |
 | `inspire` | MBC2 boundary exploration then `inspire_summarize` on the same agent |
-| `models` | List `cursor:`, `pi:`, and `codex:` model ids |
+| `admin` | Operator maintenance (`models`, `reset-herdr`, …) |
 
 Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prompts/docs/<command>.md`); for the one-shot workflow use `malvin --do --doc`. The default-route contract (`router.md`) is printed after this overview when you run `malvin --doc`.
 
 ## Global options
 
-These flags are **global**: they may appear before or after the subcommand name.
+`--doc` is a true global: it may appear before or after any subcommand, including `admin`.
+
+Agent-session flags (`-b` / `--background`, `--model`, `--gates`, `-q`, `-v`, `--git`, `--creative[=PROB]`, `--no-force`, `--no-tenacious`, `--max-acp-retries`, …) apply to bare `malvin REQUEST`, `--do`, `write`, and `inspire`. On `write` / `inspire` they may appear before or after the subcommand name. The `admin` help listing omits them; pass `--model` before `admin models` only when you want to set that command’s `Current:` footer.
 
 
 ### `-b` / `--background`
@@ -49,7 +51,7 @@ This is **not** the same as `-b` / `--background` (which suppresses all stdout, 
 
 ### `--model <MODEL>`
 
-Model id for agent-backed commands. Default: `cursor:auto`. Use `cursor:` for the Cursor SDK backend, or `pi:<provider>/<model>` for the in-process Pi backend (linked `pi_agent_rust`; uses env keys or credentials already stored by Pi). Optional bracket overrides select thinking / speed where the backend supports them, for example `cursor:claude-opus-5[effort=high,fast=true]` or `pi:openai/gpt-5[thinking=high]` (see `malvin models --doc`). Legacy `prime:` ids are rejected.
+Model id for agent-backed commands. Default: `cursor:auto`. Use `cursor:` for the Cursor SDK backend, or `pi:<provider>/<model>` for the in-process Pi backend (linked `pi_agent_rust`; uses env keys or credentials already stored by Pi). Optional bracket overrides select thinking / speed where the backend supports them, for example `cursor:claude-opus-5[effort=high,fast=true]` or `pi:openai/gpt-5[thinking=high]` (see `malvin admin models --doc`). Legacy `prime:` ids are rejected.
 
 ### `--max-loops <N>` (default: 1)
 
@@ -85,23 +87,23 @@ Maximum bounded attempts per Cursor SDK bridge spawn or `send`/`wait`, with 1s /
 
 Allow the agent to run `git commit`. Off by default (agents are otherwise steered away from committing).
 
-### `--creative`
+### `--creative[=PROB]`
 
-On the default router (bare `malvin REQUEST` and `malvin -g`), send the creative router_b prompt when the optional router_b turn runs. Off by default.
+On the default router (bare `malvin REQUEST` and `malvin -g`), when creative mode is sampled for an outer iteration: send `mbc2.md` after `kpop_common.md`, and use `router_b_creative.md` instead of `router_b.md` for the optional work turn. Both changes share one Bernoulli draw per outer iteration. `--creative` alone uses probability `1.0`; `--creative=0.6` uses `0.6`. Off by default.
 
-### `--name <NAME>`
+### Session names
 
-Optional session name for bare `malvin REQUEST`, `--do`, and `malvin -g`. When omitted on those invocations, malvin assigns a unique five-character id (`[a-z0-9]`). Every command that accepts `--name` acquires a session name lock before substantive work.
+For bare `malvin REQUEST`, `--do`, and `malvin -g`, malvin assigns a unique five-character session id (`[a-z0-9]`) and acquires a session name lock before substantive work.
 
-Malvin registers the top-level process under this name in a per-user registry at `~/.malvin_home/names/<NAME>` (one line: holder PID). If another live malvin process already holds the same name, the new invocation exits immediately with status 1. Stale or abandoned name files left by crashes, `SIGKILL`, or partial writes are reclaimed automatically on the next acquire — no manual cleanup under `~/.malvin_home/names/`.
+Malvin registers the top-level process under this id in a per-user registry at `~/.malvin_home/names/<ID>` (one line: holder PID). If another live malvin process already holds the same id, the new invocation exits immediately with status 1. Stale or abandoned name files left by crashes, `SIGKILL`, or partial writes are reclaimed automatically on the next acquire — no manual cleanup under `~/.malvin_home/names/`.
 
-Session names are independent of the workspace-scoped `.malvin/acp_spawn/<slot>.lock` files (one live agent/bridge session per lock slot in a workspace). Two malvin processes with different `--name` values may both register names and hold live sessions in the same workspace concurrently; only one process may hold each lock slot at a time.
+Session names are independent of the workspace-scoped `.malvin/acp_spawn/<slot>.lock` files (one live agent/bridge session per lock slot in a workspace). Two malvin processes with different session ids may both register names and hold live sessions in the same workspace concurrently; only one process may hold each lock slot at a time.
 
 `.malvin/acp_spawn/` holds ephemeral PID lock files at the workspace **git root** when `cwd` is inside a git work tree; outside git, locks and quality-gate lists live under `~/.malvin/acp_spawn/` and `~/.malvin/gates/` (shared). Advice and workspace config copies remain `{cwd}/.malvin/advice.md` and `{cwd}/.malvin/config.toml`. Legacy `{cwd}/.malvin/checks` files are read as a fallback until migrated; new writes always target the resolved root.
 
 Any lock whose holder PID is dead (or whose contents are not a valid PID) is safe to delete manually. Lock files are not version-controlled; if they were accidentally committed, run `git rm -r --cached .malvin/acp_spawn/`. Malvin reclaims stale locks automatically on startup in a workspace (directory sweep after early-exit paths such as `--doc`, bare help, and missing-request short help) and when a slot is acquired; live sessions are never disturbed.
 
-`--doc`, `--help`, `--version`, and `malvin` with no subcommand parse `--name` but do not acquire or release a name lock.
+`--doc`, `--help`, `--version`, and `malvin` with no subcommand do not acquire or release a name lock.
 
 ### `--doc`
 
@@ -210,7 +212,7 @@ After most agent-backed commands create a new run directory and emit the startup
 ## External dependencies
 
 - **Node.js**: ≥ 22.13 with `npm` on `PATH`. `cargo install malvin` / `cargo build` run `build.rs`, which installs the Cursor SDK bridge under `~/.malvin_home/sdk-bridges/` when the in-tree bridge is not already built (required for `cursor:` agent backends). Set `MALVIN_SKIP_SDK_BRIDGES=1` only to compile the binary without that SDK.
-- **Cursor SDK**: `@cursor/sdk` via `cursor-sdk-bridge/` (installed at build time), and a Cursor API key (`CURSOR_API_KEY`, or `CURSOR_AGENT_API_KEY` / `AGENT_API_KEY`) for `cursor:` models. `malvin models` lists Cursor models via the bridge when possible; falls back to `agent` / `cursor-agent` on `PATH` if the SDK path fails.
+- **Cursor SDK**: `@cursor/sdk` via `cursor-sdk-bridge/` (installed at build time), and a Cursor API key (`CURSOR_API_KEY`, or `CURSOR_AGENT_API_KEY` / `AGENT_API_KEY`) for `cursor:` models. `malvin admin models` lists Cursor models via the bridge when possible; falls back to `agent` / `cursor-agent` on `PATH` if the SDK path fails.
 - **OpenRouter**: `OPENROUTER_API_KEY` when using `pi:openrouter/…` models.
 - **Pi SDK**: malvin links crates.io `pi_agent_rust` and lists or runs `pi:` models from that registry. Provider keys follow Pi’s env vars or credentials already stored under Pi’s auth path (`PI_CODING_AGENT_DIR` / `~/.pi/agent`). An external `pi` binary is not required.
 - **pre-commit**: optional; malvin does not install hooks automatically.

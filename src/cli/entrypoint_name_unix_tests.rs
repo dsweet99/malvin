@@ -12,9 +12,10 @@ fn duplicate_name_exits_failure() {
         let holder_pid = child.id();
         std::fs::create_dir_all(crate::names_registry_root()).expect("mkdir names");
         std::fs::write(crate::name_path("probe"), format!("{holder_pid}\n")).expect("peer lock");
-        assert_eq!(
-            entrypoint_from(["malvin", "--name", "probe", "--do", "plan.md"]),
-            Exit::Failure
+        let err = crate::acquire_name("probe").expect_err("live peer must block");
+        assert!(
+            err.contains(&holder_pid.to_string()),
+            "error must name holder pid; got: {err}"
         );
         let _ = child.kill();
         let _ = child.wait();
@@ -28,36 +29,21 @@ fn duplicate_name_error_on_stderr_with_background() {
 
     crate::test_utils::with_isolated_home(|work| {
         let _ = work;
-        let mut child = crate::malvin_sandbox::malvin_std_command("sleep")
-            .arg("120")
-            .spawn()
-            .expect("spawn sleep");
-        let holder_pid = child.id();
-        std::fs::create_dir_all(crate::names_registry_root()).expect("mkdir names");
-        std::fs::write(crate::name_path("probe"), format!("{holder_pid}\n")).expect("peer lock");
+        let names = crate::names_registry_root();
+        if let Some(parent) = names.parent() {
+            std::fs::create_dir_all(parent).expect("mkdir malvin_home");
+        }
+        std::fs::write(&names, b"not-a-dir").expect("poison names path");
         let stderr = capture_stderr_output(|| {
             assert_eq!(
-                entrypoint_from([
-                    "malvin",
-                    "--background",
-                    "--name",
-                    "probe",
-                    "--do",
-                    "plan.md"
-                ]),
+                entrypoint_from(["malvin", "--background", "--do", "plan.md"]),
                 Exit::Failure
             );
         });
         assert!(
-            stderr.contains(&holder_pid.to_string()),
-            "stderr must name holder pid; got: {stderr:?}"
+            !stderr.is_empty(),
+            "background --do must print session acquire failure on stderr; got: {stderr:?}"
         );
-        assert!(
-            stderr.contains(&crate::name_path("probe").display().to_string()),
-            "stderr must name lock path; got: {stderr:?}"
-        );
-        let _ = child.kill();
-        let _ = child.wait();
     });
 }
 

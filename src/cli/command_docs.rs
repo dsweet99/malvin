@@ -15,8 +15,14 @@ pub(crate) const fn command_doc_markdown(cmd: &Commands) -> &'static str {
         Commands::Inspire(_) | Commands::Adaptix(_) => {
             include_str!("../../default_prompts/docs/inspire.md")
         }
-        Commands::Models(_) => include_str!("../../default_prompts/docs/models.md"),
-        Commands::Admin(_) => include_str!("../../default_prompts/docs/admin.md"),
+        Commands::Admin(admin) => match &admin.command {
+            super::AdminCommand::Models(_) => {
+                include_str!("../../default_prompts/docs/models.md")
+            }
+            super::AdminCommand::ResetHerdr => {
+                include_str!("../../default_prompts/docs/admin.md")
+            }
+        },
     }
 }
 

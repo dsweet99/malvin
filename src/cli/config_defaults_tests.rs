@@ -98,6 +98,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
     };
     let config_max_loops = agent.max_loops;
     let mut shared = SharedOpts {
+        background: false,
         model: crate::model_id::parse_model_id("cursor:old").expect("model"),
         no_force: false,
         no_tenacious: false,
@@ -107,9 +108,8 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
         verbose: false,
         max_acp_retries: 1,
         doc: false,
-        name: None,
         git: false,
-        creative: false,
+        creative: None,
         no_kpop: false,
     };
     apply_shared_config_defaults(&matches, &mut shared, &agent);

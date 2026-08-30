@@ -1,13 +1,15 @@
 use super::{
     Exit, dispatch_command, entrypoint_from, finish_entrypoint, prepare_cli_output, run_async_cli,
 };
-use crate::cli::args::GlobalOpts;
+use crate::cli::SharedOpts;
 use crate::test_utils::with_isolated_home;
 
 #[test]
 fn prepare_cli_output_applies_background_flag() {
     crate::output::set_stdout_suppressed(false);
-    prepare_cli_output(&GlobalOpts { background: true });
+    let mut shared = SharedOpts::test_defaults();
+    shared.background = true;
+    prepare_cli_output(&shared);
     assert!(crate::output::stdout_suppressed());
     crate::output::set_stdout_suppressed(false);
 }

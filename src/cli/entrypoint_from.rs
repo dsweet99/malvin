@@ -1,7 +1,6 @@
 use super::{
-    DefaultRouteDispatch, Exit, command_accepts_session_name, dispatch_command,
-    dispatch_default_route, dispatch_do_workflow, dispatch_gates_only_route, finish_entrypoint,
-    prepare_cli_output, print_command_error, unsupported_name_error,
+    DefaultRouteDispatch, Exit, dispatch_command, dispatch_default_route, dispatch_do_workflow,
+    dispatch_gates_only_route, finish_entrypoint, prepare_cli_output, print_command_error,
 };
 use crate::cli::args::Cli;
 use crate::cli::config_defaults::is_gates_only_route;
@@ -86,29 +85,14 @@ fn entrypoint_preflight(cli: &Cli) -> Option<Exit> {
     None
 }
 
-fn entrypoint_acquire_session(
-    opt_name: Option<&str>,
-) -> Result<(String, crate::SessionNameGuard), Exit> {
-    crate::acquire_session_name(opt_name).map_err(|e| {
+fn entrypoint_acquire_session() -> Result<(String, crate::SessionNameGuard), Exit> {
+    crate::acquire_session_name(None).map_err(|e| {
         print_command_error(&e);
         Exit::Failure
     })
 }
 
-fn entrypoint_validate_name(cli: &Cli) -> Option<Exit> {
-    cli.shared.name.as_ref()?;
-    if cli.do_workflow || default_route_accepts_session_name(cli) || is_gates_only_route(cli) {
-        return None;
-    }
-    cli
-        .command
-        .as_ref()
-        .expect("command or default route request");
-    print_command_error(unsupported_name_error());
-    Some(Exit::Failure)
-}
-
-const fn default_route_accepts_session_name(cli: &Cli) -> bool {
+const fn default_route_needs_session_name(cli: &Cli) -> bool {
     cli.command.is_none() && cli.request.is_some() && !cli.do_workflow
 }
 
@@ -130,26 +114,18 @@ fn entrypoint_sweep_stale_acp_spawn_locks() {
 }
 
 fn run_entrypoint(cli: Cli, matches: clap::ArgMatches) -> Exit {
-    prepare_cli_output(&cli.global);
+    prepare_cli_output(&cli.shared);
     if let Some(exit) = entrypoint_before_dispatch(&cli) {
         return exit;
     }
     entrypoint_sweep_stale_acp_spawn_locks();
-    if let Some(exit) = entrypoint_validate_name(&cli) {
-        return exit;
-    }
     if let Some(exit) = entrypoint_preflight(&cli) {
         return exit;
     }
-    let accepts_name = cli.do_workflow
-        || is_gates_only_route(&cli)
-        || cli
-            .command
-            .as_ref()
-            .is_some_and(command_accepts_session_name)
-        || default_route_accepts_session_name(&cli);
-    if accepts_name {
-        let _session_name_guard = match entrypoint_acquire_session(cli.shared.name.as_deref()) {
+    let needs_session =
+        cli.do_workflow || is_gates_only_route(&cli) || default_route_needs_session_name(&cli);
+    if needs_session {
+        let _session_name_guard = match entrypoint_acquire_session() {
             Ok((session_name, guard)) => {
                 crate::set_active_acp_lock_slot(session_name);
                 guard
@@ -198,7 +174,6 @@ pub fn entrypoint_from(
     args: impl IntoIterator<Item = impl Into<std::ffi::OsString> + Clone>,
 ) -> Exit {
     crate::init_from_env();
-    let args: Vec<std::ffi::OsString> = args.into_iter().map(Into::into).collect();
     match parse_cli_args_or_exit(args) {
         Ok((cli, matches)) => run_entrypoint(cli, matches),
         Err(exit) => exit,

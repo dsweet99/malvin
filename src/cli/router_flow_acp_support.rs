@@ -8,7 +8,7 @@ use std::path::Path;
 
 use super::router_flow_coder_prompts::{
     run_router_a_coder_prompt, run_router_b_coder_prompt, run_router_header_coder_prompt,
-    run_router_kpop_common_coder_prompt,
+    run_router_kpop_common_coder_prompt, run_router_mbc2_coder_prompt,
 };
 use super::RouterAcpIterationInput;
 
@@ -51,6 +51,7 @@ pub(crate) async fn run_router_turns(
     let work_dir = input.artifacts.work_dir.as_path();
     let iteration_backups = SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)?;
     let model = input.shared.model.canonical();
+    let creative = input.shared.sample_creative_this_iteration();
     run_router_header(input, log_path, &model).await?;
     let no_kpop = input.shared.no_kpop;
     let kpop = router_flow_prompt::build_router_kpop_common_prompt(
@@ -72,6 +73,13 @@ pub(crate) async fn run_router_turns(
         )
         .await?;
     }
+    if creative {
+        let mbc2 = router_flow_prompt::build_router_mbc2_prompt(
+            input.prompt_store,
+            input.artifacts,
+        )?;
+        run_router_mbc2_coder_prompt(input.client, &mbc2, log_path).await?;
+    }
     run_router_a_coder_prompt(
         input.client,
         &router_flow_prompt::build_router_a_prompt(router_flow_prompt::RouterAPromptInput {
@@ -86,7 +94,7 @@ pub(crate) async fn run_router_turns(
         router_flow_prompt::router_a_prompt_label(no_kpop),
     )
     .await?;
-    let done = finish_router_a_maybe_b(input, log_path, &model).await?;
+    let done = finish_router_a_maybe_b(input, log_path, &model, creative).await?;
     Ok(RouterTurnsOutcome {
         iteration_backups,
         done,
@@ -115,6 +123,7 @@ async fn finish_router_a_maybe_b(
     input: &mut RouterAcpIterationInput<'_>,
     log_path: &Path,
     model: &str,
+    creative: bool,
 ) -> Result<bool, String> {
     let chat = input
         .client
@@ -122,7 +131,6 @@ async fn finish_router_a_maybe_b(
         .unwrap_or_default();
     let done = chat_has_malvin_done(&chat);
     if !done {
-        let creative = input.shared.creative;
         let no_kpop = input.shared.no_kpop;
         let router_b =
             router_flow_prompt::build_router_b_prompt(router_flow_prompt::RouterBPromptInput {

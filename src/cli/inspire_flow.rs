@@ -16,6 +16,8 @@ use crate::run_timing::TimingPhase;
 #[derive(Args, Debug)]
 #[command(override_usage = "malvin inspire [OPTION]... [REQUEST]")]
 pub struct InspireArgs {
+    #[command(flatten)]
+    pub shared: SharedOpts,
     /// Existing `.md` path or literal text
     pub request: Option<String>,
 }

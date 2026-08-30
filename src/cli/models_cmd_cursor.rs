@@ -91,7 +91,7 @@ fn print_filtered_model_rows(rows: &[String], filter: Option<&str>) {
 
 pub(super) fn resolve_models_cli() -> Result<PathBuf, String> {
     agent_or_cursor_agent_bin().ok_or_else(|| {
-        "Neither `agent` nor `cursor-agent` was found on PATH. Install the Cursor CLI agent to list models (`malvin models`)."
+        "Neither `agent` nor `cursor-agent` was found on PATH. Install the Cursor CLI agent to list models (`malvin admin models`)."
             .to_string()
     })
 }

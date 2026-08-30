@@ -61,6 +61,7 @@ fn smoke_merge_acp_with_workspace_session_restore_and_check_abort_no_result_file
 fn smoke_agent_io_options_maps_flags() {
     use super::{agent_io_options, AgentStdoutTeeFlags, WorkflowCliOptions};
     let shared = super::SharedOpts {
+        background: false,
         model: crate::model_id::parse_model_id("cursor:m").expect("model"),
         no_force: false,
         no_tenacious: false,
@@ -70,9 +71,8 @@ fn smoke_agent_io_options_maps_flags() {
         verbose: false,
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
-        name: None,
         git: false,
-        creative: false,
+        creative: None,
         no_kpop: false,
     };
     let io = agent_io_options(
@@ -101,8 +101,13 @@ fn init_is_not_a_subcommand_and_parses_as_bare_request() {
 
 fn smoke_cli_parse_models_subcommand() {
     use clap::Parser;
-    let cli = Cli::try_parse_from(["malvin", "models"]).unwrap();
-    assert!(matches!(cli.command, Some(Commands::Models(_))));
+    let cli = Cli::try_parse_from(["malvin", "admin", "models"]).unwrap();
+    assert!(matches!(
+        cli.command,
+        Some(Commands::Admin(crate::cli::AdminArgs {
+            command: crate::cli::AdminCommand::Models(_),
+        }))
+    ));
 }
 
 fn smoke_try_tokio_runtime_builds_multi_thread() {
