@@ -4,8 +4,6 @@ use super::admin_cmd::AdminArgs;
 use super::shared_opts::SharedOpts;
 use super::write_flow::WriteArgs;
 
-pub use crate::inspire_flow::InspireArgs;
-
 #[derive(Parser, Debug)]
 #[allow(clippy::struct_excessive_bools)]
 #[command(
@@ -38,12 +36,6 @@ pub struct Cli {
 pub enum Commands {
     /// Write a LaTeX PDF on code or concepts
     Write(WriteArgs),
-    /// Explore creative boundaries (MBC2)
-    #[command(name = "inspire")]
-    Inspire(InspireArgs),
-    /// Explore creative boundaries (legacy name)
-    #[command(name = "adaptix", hide = true)]
-    Adaptix(InspireArgs),
     /// Operator maintenance commands
     Admin(AdminArgs),
 }

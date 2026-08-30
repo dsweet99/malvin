@@ -158,8 +158,8 @@ impl DrainIdleClock {
     }
 }
 
-/// Await the next bridge/pi read with sliced idle + optional health extend.
-#[allow(dead_code)]
+/// Test helper: one-shot idle await with a fresh turn budget.
+#[cfg(test)]
 pub async fn await_next_with_idle<T, Fut>(
     labels: DrainIdleLabels<'_>,
     health: Option<DrainIdleHealthCtx<'_>>,

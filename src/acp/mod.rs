@@ -80,6 +80,6 @@ pub(crate) use agent_helpers::*;
 mod backoff;
 pub(crate) use backoff::backoff_after_agent_failure;
 
-#[cfg(unix)]
+#[cfg(all(unix, any(test, debug_assertions)))]
 #[path = "hostile_orphan_test_util.rs"]
 pub mod hostile_orphan_test_util;

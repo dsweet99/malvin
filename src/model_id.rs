@@ -209,19 +209,6 @@ pub fn require_config_model(raw: &str) -> Result<ParsedModel, String> {
     parse_model_id(raw)
 }
 
-#[must_use]
-pub fn provider_slug(raw: &str) -> String {
-    match parse_model_id(raw) {
-        Ok(parsed) => parsed.slug,
-        Err(_) => raw.to_string(),
-    }
-}
-
-#[must_use]
-pub fn uses_pi_backend(raw: &str) -> bool {
-    parse_model_id(raw).is_ok_and(|p| p.is_pi())
-}
-
 pub fn require_prefixed_model(raw: &str) -> Result<String, String> {
     Ok(parse_model_id(raw)?.canonical())
 }

@@ -161,7 +161,7 @@ fn kiss_exec_witness_04_08() {
     apply_node_compile_cache();
     EnvHomeGuard();
     prompts::embedded_defaults_tests::drop();
-    render_inspire_mbc2_prompt();
+    render_mbc2_prompt();
     prompt_source_desc();
     ReliabilityTierFlags();
 }

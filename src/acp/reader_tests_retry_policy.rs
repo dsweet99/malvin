@@ -1,9 +1,7 @@
 use crate::acp::{
     AgentRetryOutcome, agent_string_is_cannot_use_model,
     agent_string_is_openrouter_billing_failure, agent_string_is_upgrade_plan,
-    agent_string_is_usage_limit, emit_operational_upgrade_plan_stop,
-    operational_upgrade_plan_for_emit, plan_agent_retry, retries_noun,
-    upgrade_plan_stream_from_buffer,
+    agent_string_is_usage_limit, plan_agent_retry, retries_noun, upgrade_plan_stream_from_buffer,
 };
 use crate::support_paths::DEFAULT_MAX_ACP_RETRIES;
 use std::time::Duration;
@@ -41,15 +39,6 @@ fn upgrade_plan_errors_do_not_retry() {
     let msg = "billing: upgrade your plan to continue";
     let err = plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS).expect_err("upgrade plan must fail fast");
     assert_eq!(err.message, msg);
-}
-
-fn operational_upgrade_plan_for_emit_detects_line_and_stream_flag() {
-    assert!(operational_upgrade_plan_for_emit(
-        "billing: upgrade your plan to continue",
-        false
-    ));
-    assert!(operational_upgrade_plan_for_emit("partial", true));
-    assert!(!operational_upgrade_plan_for_emit("ok", false));
 }
 
 fn upgrade_plan_stream_from_buffer_tracks_split_coalesce() {
@@ -175,27 +164,6 @@ fn retries_noun_singular_and_plural() {
     assert_eq!(retries_noun(2), "retries");
 }
 
-fn emit_operational_upgrade_plan_stop_prints_once() {
-    let _guard = crate::output::STDOUT_LOG_TEST_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    crate::output::clear_captured_stderr_lines();
-    let mut warned = false;
-    emit_operational_upgrade_plan_stop(&mut warned);
-    emit_operational_upgrade_plan_stop(&mut warned);
-    let stderr = crate::output::take_captured_stderr_lines().join("");
-    assert!(
-        stderr.contains(crate::acp::UPGRADE_PLAN_STOP_MESSAGE) && stderr.contains("Stopping.."),
-        "stderr: {stderr:?}"
-    );
-    assert_eq!(
-        stderr
-            .matches(crate::acp::UPGRADE_PLAN_STOP_MESSAGE)
-            .count(),
-        1
-    );
-}
-
 #[test]
 fn kiss_bundled_acp_reader_tests_retry_policy() {
     openrouter_billing_failure_substring_is_detected_case_insensitively();
@@ -203,7 +171,6 @@ fn kiss_bundled_acp_reader_tests_retry_policy() {
     insufficient_credits_provider_phrasing_fails_fast();
     upgrade_plan_substring_is_detected_case_insensitively();
     upgrade_plan_errors_do_not_retry();
-    operational_upgrade_plan_for_emit_detects_line_and_stream_flag();
     upgrade_plan_stream_from_buffer_tracks_split_coalesce();
     cannot_use_model_errors_do_not_retry();
     usage_limit_substring_is_detected_case_insensitively();
@@ -218,5 +185,4 @@ fn kiss_bundled_acp_reader_tests_retry_policy() {
     slot_restore_error_stops_retrying_without_sleep();
     restore_failure_stops_retrying_without_sleep();
     retries_noun_singular_and_plural();
-    emit_operational_upgrade_plan_stop_prints_once();
 }

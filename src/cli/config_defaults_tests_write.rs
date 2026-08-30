@@ -33,7 +33,7 @@ fn assert_write_max_hypotheses(cli_args: &[&str], expected: usize) {
         apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
         match cli.command.expect("command") {
             Commands::Write(a) => assert_eq!(a.max_hypotheses, expected),
-            other => panic!("expected write, got {other:?}"),
+            Commands::Admin(_) => panic!("expected write, got Admin"),
         }
         std::env::set_current_dir(cwd).expect("restore");
     });
@@ -50,7 +50,7 @@ fn write_max_hypotheses_defaults_to_ten_not_agent() {
                 assert_eq!(a.max_hypotheses, 10);
                 assert_eq!(a.max_loops, 7);
             }
-            other => panic!("expected write, got {other:?}"),
+            Commands::Admin(_) => panic!("expected write, got Admin"),
         }
     });
 }

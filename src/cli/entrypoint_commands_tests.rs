@@ -3,7 +3,6 @@ use super::*;
 #[test]
 fn kiss_cov_entrypoint_command_wrappers() {
     let _ = run_write_command;
-    let _ = run_inspire_command;
 }
 
 #[test]

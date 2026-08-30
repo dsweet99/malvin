@@ -7,7 +7,7 @@ Outer agent sessions (`--max-loops`): each session sends `header.md`, then `kpop
 | | |
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
-| Output | Styled stdout on a TTY (same startup chrome as `tidy` / `inspire`); with `--quiet` / `-q`, only `__MALVIN_DM_*__` bodies |
+| Output | Styled stdout on a TTY (same startup chrome as `tidy` / `write`); with `--quiet` / `-q`, only `__MALVIN_DM_*__` bodies |
 | Logs | `router_N.log` under `~/.malvin_home/logs/<hash>/<run>/` (one file per outer session) |
 | Requires | No `.malvin/gates` at startup (unless `--gates` later needs them) |
 

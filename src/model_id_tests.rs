@@ -152,9 +152,10 @@ fn require_config_and_helpers() {
             .canonical(),
         "pi:openai/gpt-4o"
     );
-    assert_eq!(provider_slug("pi:openai/gpt-4o"), "openai/gpt-4o");
-    assert!(uses_pi_backend("pi:openai/gpt-4o"));
-    assert!(!uses_pi_backend("cursor:auto"));
+    let pi = parse_model_id("pi:openai/gpt-4o").expect("pi");
+    assert_eq!(pi.slug, "openai/gpt-4o");
+    assert!(pi.is_pi());
+    assert!(!parse_model_id("cursor:auto").expect("cursor").is_pi());
 }
 
 #[test]

@@ -65,8 +65,8 @@ pub(crate) fn build_router_mbc2_prompt(
             artifacts.plan_path.display()
         )
     })?;
-    let ctx = crate::inspire_flow::build_inspire_render_context(&user_prompt);
-    crate::prompts::render_inspire_mbc2_prompt(store, &ctx)
+    let ctx = crate::prompts::build_mbc2_render_context(&user_prompt);
+    crate::prompts::render_mbc2_prompt(store, &ctx)
         .map_err(|e: PromptError| e.0)
         .map(|body| body.trim().to_string())
 }

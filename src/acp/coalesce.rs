@@ -150,24 +150,6 @@ impl VerboseIoCoalescer {
     }
 }
 
-#[allow(dead_code)]
-pub(crate) fn session_update_chunk_parts(v: &Value) -> Option<(SessionUpdateChunkKind, &str)> {
-    if v.get("method").and_then(Value::as_str) != Some("session/update") {
-        return None;
-    }
-    let update = v.pointer("/params/update")?;
-    let kind = match update.get("sessionUpdate").and_then(Value::as_str)? {
-        "agent_message_chunk" => SessionUpdateChunkKind::Message,
-        "agent_thought_chunk" => SessionUpdateChunkKind::Thought,
-        _ => return None,
-    };
-    let text = update
-        .pointer("/content/text")
-        .and_then(Value::as_str)
-        .unwrap_or("");
-    Some((kind, text))
-}
-
 #[cfg(test)]
 mod coalesce_tests {
     use super::{

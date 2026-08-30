@@ -17,7 +17,7 @@ malvin [OPTION]... [REQUEST]
 
 These forms are mutually exclusive: pass a request **or** a subcommand, not both on one synopsis line. `malvin --help` uses the same two-line usage.
 
-Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`, stop on `__MALVIN_DONE__`, exit `router_summarize`). With no request and no subcommand, malvin prints a short command catalog and exits 0. `malvin -g` without a request runs the gate-fix workflow (fixed request `Get the gates to pass.` with `--gates` on). Use `--do` for a one-shot turn, or subcommands `write`, `inspire`, `admin`. Omitting `REQUEST` for `--do`, `write`, or `inspire` likewise prints short usage and exits 0.
+Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`, stop on `__MALVIN_DONE__`, exit `router_summarize`). With no request and no subcommand, malvin prints a short command catalog and exits 0. `malvin -g` without a request runs the gate-fix workflow (fixed request `Get the gates to pass.` with `--gates` on). Use `--do` for a one-shot turn, or subcommands `write`, `admin`. Omitting `REQUEST` for `--do` or `write` likewise prints short usage and exits 0.
 
 ## Commands
 
@@ -27,7 +27,6 @@ Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`,
 | `--do` | One-shot agent turn (non-looping) |
 | `malvin -g` | Fix quality gates via the default router with fixed request `Get the gates to pass.` (no positional request) |
 | `write` | Write a LaTeX PDF on code or concepts via a composed default-router request |
-| `inspire` | MBC2 boundary exploration then `inspire_summarize` on the same agent |
 | `admin` | Operator maintenance (`models`, `reset-herdr`, …) |
 
 Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prompts/docs/<command>.md`); for the one-shot workflow use `malvin --do --doc`. The default-route contract (`router.md`) is printed after this overview when you run `malvin --doc`.
@@ -36,7 +35,7 @@ Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prom
 
 `--doc` is a true global: it may appear before or after any subcommand, including `admin`.
 
-Agent-session flags (`-b` / `--background`, `--model`, `--gates`, `-q`, `-v`, `--git`, `--creative[=PROB]`, `--no-force`, `--no-tenacious`, `--max-acp-retries`, …) apply to bare `malvin REQUEST`, `--do`, `write`, and `inspire`. On `write` / `inspire` they may appear before or after the subcommand name. The `admin` help listing omits them; pass `--model` before `admin models` only when you want to set that command’s `Current:` footer.
+Agent-session flags (`-b` / `--background`, `--model`, `--gates`, `-q`, `-v`, `--git`, `--creative[=PROB]`, `--no-force`, `--no-tenacious`, `--max-acp-retries`, …) apply to bare `malvin REQUEST`, `--do`, and `write`. On `write` they may appear before or after the subcommand name. The `admin` help listing omits them; pass `--model` before `admin models` only when you want to set that command’s `Current:` footer.
 
 
 ### `-b` / `--background`
@@ -45,7 +44,7 @@ Suppress all stdout from malvin and the agent. Run logs under `~/.malvin_home/lo
 
 ### `-q` / `--quiet`
 
-On the **default router** (bare `malvin REQUEST` and `malvin -g`) and on one-shot agent commands that tee styled agent stdout (`write`, `inspire`), print only the text between `__MALVIN_DM_START__` and `__MALVIN_DM_END__` fences to process stdout. Startup chrome, agent stream, heartbeats, prompt-name lines, fence markers, and TIMING/COST lines are omitted from stdout. Run-dir logs and stderr are unchanged.
+On the **default router** (bare `malvin REQUEST` and `malvin -g`) and on one-shot agent commands that tee styled agent stdout (`write`), print only the text between `__MALVIN_DM_START__` and `__MALVIN_DM_END__` fences to process stdout. Startup chrome, agent stream, heartbeats, prompt-name lines, fence markers, and TIMING/COST lines are omitted from stdout. Run-dir logs and stderr are unchanged.
 
 This is **not** the same as `-b` / `--background` (which suppresses all stdout, including DM bodies). It is also **not** required for plain `malvin --do`: without `--verbose`, `--do` is already DM-body-only on stdout. With `--verbose`, `--do` tees the same live agent log classes as the default workflow (see `-v` / `--verbose` below).
 
@@ -121,7 +120,7 @@ When `--gates` is set and `.malvin/gates` is missing, malvin runs the init workf
 
 With `--gates` and an existing `.malvin/gates`, malvin runs workspace quality gates from that file at the repo git root (one shell command per non-empty, non-comment line). Full-line comments starting with `#` are ignored. `malvin -g` without a request always enables this harness.
 
-Other invocations (`--do`, bare `malvin REQUEST`, `inspire`, `write`) do not require `.malvin/gates` at startup and may run outside a git repo. With `--gates` on a bare `malvin REQUEST`, malvin runs workspace gates when `router_a` emits `__MALVIN_DONE__` and continues that outer loop when they fail (see the default-route section of `malvin --doc`). Without `--gates` (the default for other commands), malvin does not run those checks directly on the default route. `header.md` notes about gates lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
+Other invocations (`--do`, bare `malvin REQUEST`, `write`) do not require `.malvin/gates` at startup and may run outside a git repo. With `--gates` on a bare `malvin REQUEST`, malvin runs workspace gates when `router_a` emits `__MALVIN_DONE__` and continues that outer loop when they fail (see the default-route section of `malvin --doc`). Without `--gates` (the default for other commands), malvin does not run those checks directly on the default route. `header.md` notes about gates lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
 
 ### `-h` / `--help`
 
@@ -138,7 +137,7 @@ Every agent-backed command creates `~/.malvin_home/logs/<hash>/<timestamp>_<toke
 | File | Role |
 |------|------|
 | `plan_<random>.md` or `request.md` | Copy of user input for this run |
-| `do.log`, `router_1.log`, `router_2.log`, `inspire.log`, … | Per-iteration or per-prompt transcripts |
+| `do.log`, `router_1.log`, `router_2.log`, … | Per-iteration or per-prompt transcripts |
 | `stdout.log` | Tee of agent stdout — **narrative** channel |
 | `trace.jsonl` | Audit record (sdk-shaped JSONL for Cursor SDK; Mini uses its own event shapes) — **authoritative** for semantics (tool results, shrink/fork, LLM usage) |
 | `prompts.log` | Outgoing prompts (names only, or full bodies with `--verbose`) |
@@ -223,13 +222,13 @@ Several commands accept a positional request. `<REQUEST>` is always exactly **on
 
 | Command | Path argument | Work directory |
 |---------|---------------|----------------|
-| bare `malvin REQUEST`, `--do`, `inspire` | Existing `.md` file path (no whitespace; case-sensitive `.md` suffix) reads that file; nonexistent `.md` paths are literal text | Parent of the file, or `.` for literal text |
+| bare `malvin REQUEST`, `--do` | Existing `.md` file path (no whitespace; case-sensitive `.md` suffix) reads that file; nonexistent `.md` paths are literal text | Parent of the file, or `.` for literal text |
 
 Examples:
 
 ```text
 malvin --do "fix the typo"
-malvin inspire "explore API boundaries"
+malvin --creative "explore API boundaries"
 ```
 
 ## Gate-loop and document commands

@@ -110,24 +110,6 @@ pub(crate) fn dispatch_command(
                 matches,
             )
         }
-        Commands::Inspire(inspire) => {
-            crate::cli::shared_opts::overlay_shared_opts_from_subcommand(
-                &mut shared,
-                &inspire.shared,
-                matches,
-                "inspire",
-            );
-            super::entrypoint_commands::run_inspire_command(inspire, &shared)
-        }
-        Commands::Adaptix(inspire) => {
-            crate::cli::shared_opts::overlay_shared_opts_from_subcommand(
-                &mut shared,
-                &inspire.shared,
-                matches,
-                "adaptix",
-            );
-            super::entrypoint_commands::run_inspire_command(inspire, &shared)
-        }
         Commands::Admin(admin) => {
             let model = shared.model.canonical();
             super::run_admin(admin, &model)

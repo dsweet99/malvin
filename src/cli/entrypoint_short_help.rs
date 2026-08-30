@@ -37,9 +37,6 @@ pub(super) fn entrypoint_request_missing_short_help(cli: &Cli) -> Option<Exit> {
     }
     let command = cli.command.as_ref()?;
     let (request, subcommand) = match command {
-        Commands::Inspire(inspire) | Commands::Adaptix(inspire) => {
-            (inspire.request.as_ref(), "inspire")
-        }
         Commands::Write(write_args) => (write_args.request.as_ref(), "write"),
         Commands::Admin(_) => return None,
     };

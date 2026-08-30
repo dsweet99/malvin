@@ -199,10 +199,10 @@ fn build_router_b_prompt_selects_creative_template_when_flag_set() {
         "default router_b must keep KPop satisfy instruction: {plain}"
     );
     assert!(
-        !plain.contains("malvin inspire"),
-        "default router_b must not mention inspire: {plain}"
+        !plain.contains("MBC2"),
+        "default router_b must not mention MBC2: {plain}"
     );
-    assert!(creative.contains("malvin inspire"));
+    assert!(creative.contains("MBC2"));
     assert!(
         creative.contains("KPop: Satisfy the requirements."),
         "creative router_b must keep KPop satisfy instruction: {creative}"
@@ -302,7 +302,7 @@ fn build_router_prompts_select_no_kpop_templates_when_flag_set() {
         "no_kpop router_b must omit KPop: prefix: {b}"
     );
     assert!(
-        !b.contains("malvin inspire"),
+        !b.contains("MBC2"),
         "no_kpop wins over creative for router_b: {b}"
     );
     assert!(b.contains("Satisfy the requirements"));

@@ -56,11 +56,11 @@ fn default_router_prompts_follow_vision_problem_solving_language() {
     let creative = crate::prompts::default_file("router_b_creative.md").expect("router_b_creative");
     assert!(
         router_b.contains("KPop: Satisfy the requirements.")
-            && !router_b.contains("malvin inspire"),
-        "router_b must keep KPop satisfy instruction without inspire"
+            && !router_b.contains("MBC2"),
+        "router_b must keep KPop satisfy instruction without MBC2"
     );
     assert!(
-        creative.contains("KPop: Satisfy the requirements.") && creative.contains("malvin inspire"),
-        "router_b_creative must keep KPop satisfy instruction and inspire"
+        creative.contains("KPop: Satisfy the requirements.") && creative.contains("MBC2"),
+        "router_b_creative must keep KPop satisfy instruction and MBC2"
     );
 }

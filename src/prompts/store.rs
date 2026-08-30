@@ -152,7 +152,12 @@ pub fn render_header(
     Ok(render_template(&header_raw, context))
 }
 
-pub fn render_inspire_mbc2_prompt(
+#[must_use]
+pub fn build_mbc2_render_context(user_prompt: &str) -> std::collections::HashMap<String, String> {
+    std::collections::HashMap::from([("user_prompt".into(), user_prompt.to_string())])
+}
+
+pub fn render_mbc2_prompt(
     store: &PromptStore,
     context: &std::collections::HashMap<String, String>,
 ) -> Result<String, PromptError> {

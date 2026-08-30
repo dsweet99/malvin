@@ -15,13 +15,11 @@ pub const ROUTER_CODE_EXTRA_MD: &str = "router_code_extra.md";
 pub const ROUTER_SUMMARIZE_MD: &str = "router_summarize.md";
 pub const WRITE_A_MD: &str = "write_a.md";
 pub const WRITE_B_MD: &str = "write_b.md";
-pub const INSPIRE_SUMMARIZE_MD: &str = "inspire_summarize.md";
 
 pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD];
 
 pub const DEFAULT_PROMPTS: &[&str] = &[
     "mbc2.md",
-    INSPIRE_SUMMARIZE_MD,
     "init_constraints.md",
     HEADER_MD,
     KPOP_COMMON_MD,
@@ -245,12 +243,12 @@ mod router_header_embed_tests {
         .expect("router_b_creative");
         assert!(!b_creative.contains("{{"));
         assert!(
-            b_creative.contains("malvin inspire"),
-            "creative router_b must mention inspire: {b_creative}"
+            b_creative.contains("MBC2"),
+            "creative router_b must mention MBC2: {b_creative}"
         );
         assert!(
-            !b.contains("malvin inspire"),
-            "default router_b must not mention inspire: {b}"
+            !b.contains("MBC2"),
+            "default router_b must not mention MBC2: {b}"
         );
         let summarize = build_router_summarize_prompt(RouterSummarizePromptInput {
             store: &store,

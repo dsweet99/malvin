@@ -176,11 +176,6 @@ pub(crate) fn who_tag_ansi(who: &str) -> &'static str {
     }
 }
 
-#[must_use]
-pub fn format_line_with_timestamp_ansi(ts: &str, who: &str, line: &str) -> String {
-    stdout_log_pair::tagged_display_line_with_timestamp_ansi(ts, who, line)
-}
-
 pub fn init_stdout_style() {
     apply_stdout_style(std::env::var_os("NO_COLOR").is_none());
 }

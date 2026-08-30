@@ -62,7 +62,7 @@ fn apply_gate_loop_command_defaults(
         Commands::Write(write_args) => {
             apply_write_loop_defaults(matches, write_args, agent, review);
         }
-        Commands::Inspire(_) | Commands::Adaptix(_) | Commands::Admin(_) => {}
+        Commands::Admin(_) => {}
     }
 }
 

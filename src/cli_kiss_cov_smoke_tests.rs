@@ -5,7 +5,7 @@ fn smoke_cov_cli_cli_units_0() {
     let _ = stringify!(crate::cli::entrypoint::dispatch_command);
     let _ = crate::cli::entrypoint::print_command_error;
     let _ = crate::cli::entrypoint::print_command_error;
-    let _ = crate::cli::entrypoint_commands::run_inspire_command;
+    let _ = crate::cli::entrypoint_commands::run_write_command;
     let _: Option<crate::cli::exit::Exit> = None;
     let _ = crate::cli::init_flow::run_init;
     let _ = crate::cli::init_flow::render_init_router_request;
@@ -121,12 +121,8 @@ fn smoke_cov_cli_cli_symbols_a() {
     assert!(request.is_none());
     let _ = stringify!(DoRunPrep);
     let _ = stringify!(new_do_client);
-    let _: Option<crate::inspire_flow::InspireArgs> = None;
-    let _ = stringify!(InspireRunPrep);
-    let _ = crate::inspire_flow::render_inspire_prompt;
-    let _ = crate::inspire_flow::render_inspire_summarize_prompt;
-    let _ = crate::inspire_flow::build_inspire_render_context;
-    let _ = crate::inspire_flow::run_inspire;
+    let _ = crate::prompts::build_mbc2_render_context;
+    let _ = crate::prompts::render_mbc2_prompt;
     let _: Option<crate::cli::models_cmd::ModelsArgs> = None;
     let _: Option<crate::cli::WorkflowCliOptions> = None;
     let _: Option<crate::cli::AgentStdoutTeeFlags> = None;

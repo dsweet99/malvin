@@ -1,6 +1,6 @@
 use super::{
-    DO_HEADER_MD, HEADER_MD, INSPIRE_SUMMARIZE_MD, KPOP_COMMON_MD, KPOP_COMMON_NO_KPOP_MD,
-    ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD, WRITE_A_MD, WRITE_B_MD,
+    DO_HEADER_MD, HEADER_MD, KPOP_COMMON_MD, KPOP_COMMON_NO_KPOP_MD, ROUTER_CODE_EXTRA_MD,
+    ROUTER_SUMMARIZE_MD, WRITE_A_MD, WRITE_B_MD,
 };
 
 pub const ROUTER_A_MD: &str = "router_a.md";
@@ -64,7 +64,6 @@ fn default_constraints_prompt(name: &str) -> Option<&'static str> {
 fn default_mbc2_prompt(name: &str) -> Option<&'static str> {
     match name {
         "mbc2.md" => Some(include_str!("../../default_prompts/mbc2.md")),
-        INSPIRE_SUMMARIZE_MD => Some(include_str!("../../default_prompts/inspire_summarize.md")),
         _ => None,
     }
 }
@@ -116,7 +115,7 @@ mod tests {
         assert!(default_file("router_summarize.md").is_some());
         assert!(default_file("write_a.md").is_some());
         assert!(default_file("write_b.md").is_some());
-        assert!(default_file("inspire_summarize.md").is_some());
+        assert!(default_file("mbc2.md").is_some());
         assert!(default_file(KPOP_COMMON_MD).is_some());
         assert!(default_file(KPOP_COMMON_NO_KPOP_MD).is_some());
         assert!(default_file(ROUTER_A_NO_KPOP_MD).is_some());

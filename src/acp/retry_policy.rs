@@ -5,33 +5,14 @@ pub(crate) const fn retries_noun(n: u32) -> &'static str {
     if n == 1 { "retry" } else { "retries" }
 }
 
-#[allow(dead_code)]
-pub(crate) const UPGRADE_PLAN_STOP_MESSAGE: &str = "Upgrade your plan to continue";
-
 pub(crate) fn agent_string_is_upgrade_plan(msg: &str) -> bool {
     msg.to_ascii_lowercase()
         .contains("upgrade your plan to continue")
 }
 
 #[must_use]
-#[allow(dead_code)]
-pub(crate) fn operational_upgrade_plan_for_emit(line: &str, stream_upgrade_plan: bool) -> bool {
-    agent_string_is_upgrade_plan(line) || stream_upgrade_plan
-}
-
-#[must_use]
 pub(crate) fn upgrade_plan_stream_from_buffer(buf: &str) -> bool {
     agent_string_is_upgrade_plan(buf)
-}
-
-#[allow(dead_code)]
-pub(crate) fn emit_operational_upgrade_plan_stop(warned: &mut bool) {
-    if *warned {
-        return;
-    }
-    crate::output::print_log_error(UPGRADE_PLAN_STOP_MESSAGE);
-    crate::output::print_log_error("Stopping..");
-    *warned = true;
 }
 
 pub(crate) fn agent_string_is_cannot_use_model(msg: &str) -> bool {
@@ -73,21 +54,6 @@ pub(crate) fn agent_string_is_cursor_http2_transport_error(msg: &str) -> bool {
             && (text.contains("cancel") || text.contains("0x8")))
 }
 
-#[must_use]
-#[allow(dead_code)]
-pub(crate) fn cursor_http2_transport_error_message(msg: &str) -> Option<&'static str> {
-    let text = msg.to_ascii_lowercase();
-    if text.contains("ping timed out") {
-        Some("RetriableError: [unavailable] PING timed out")
-    } else if text.contains("http/2 stream closed")
-        && (text.contains("cancel") || text.contains("0x8"))
-    {
-        Some("RetriableError: [canceled] http/2 stream closed with error code CANCEL (0x8)")
-    } else {
-        None
-    }
-}
-
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum IterableClosedStream {
     Writable,
@@ -106,37 +72,12 @@ pub(crate) fn iterable_closed_stream_from_buffer(buf: &str) -> Option<IterableCl
     }
 }
 
-#[allow(dead_code)]
+#[cfg(test)]
 const fn iterable_closed_stream_message(kind: IterableClosedStream) -> &'static str {
     match kind {
         IterableClosedStream::Writable => "acp: WritableIterable is closed",
         IterableClosedStream::Readable => "acp: ReadableIterable is closed",
     }
-}
-
-#[must_use]
-#[allow(dead_code)]
-pub(crate) fn operational_iterable_closed_log_line(msg: &str) -> Option<&'static str> {
-    let text = msg.to_ascii_lowercase();
-    if text.contains("writableiterable is closed") {
-        Some("acp: WritableIterable is closed")
-    } else if text.contains("readableiterable is closed") {
-        Some("acp: ReadableIterable is closed")
-    } else {
-        None
-    }
-}
-
-#[must_use]
-#[allow(dead_code)]
-pub(crate) fn operational_iterable_closed_for_emit(
-    line: &str,
-    stream_iterable_closed: Option<IterableClosedStream>,
-) -> Option<&'static str> {
-    if let Some(line) = operational_iterable_closed_log_line(line) {
-        return Some(line);
-    }
-    stream_iterable_closed.map(iterable_closed_stream_message)
 }
 
 #[derive(Debug)]

@@ -171,7 +171,7 @@ fn assert_workflow_defaults(argv: &[&str]) {
     apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
     match cli.command.expect("command") {
         Commands::Write(a) => assert_eq!(a.max_loops, 7),
-        other => panic!("unexpected command {other:?}"),
+        Commands::Admin(_) => panic!("unexpected command Admin"),
     }
 }
 
@@ -194,16 +194,6 @@ fn apply_workspace_config_defaults_skips_do() {
         apply_workspace_config_defaults(&do_matches, &mut do_cli).expect("apply");
         assert!(!config_path.exists());
         std::env::set_current_dir(cwd).expect("restore cwd");
-    });
-}
-
-#[test]
-fn apply_workspace_config_defaults_for_inspire() {
-    with_seeded_agent_config(|| {
-        let inspire = Cli::command().get_matches_from(["malvin", "inspire", "ideas"]);
-        let mut inspire_cli = Cli::from_arg_matches(&inspire).expect("cli");
-        apply_workspace_config_defaults(&inspire, &mut inspire_cli).expect("apply");
-        assert_eq!(inspire_cli.shared.model.canonical(), "cursor:cfg-model");
     });
 }
 

@@ -28,7 +28,7 @@ If `REQUEST` is omitted (and `--doc` is not set), malvin prints short usage on s
 
 ### `[REQUEST]`
 
-Required to run. Exactly **one shell argument**. Quote for internal spaces. Topic as literal text, or an existing `.md` file path (same rules as `inspire`).
+Required to run. Exactly **one shell argument**. Quote for internal spaces. Topic as literal text, or an existing `.md` file path (same rules as bare `malvin REQUEST`).
 
 When `REQUEST` names an existing `.md` file, the work directory is that file's parent; otherwise the work directory is `.` (cwd). With the default `--out-path`, outputs land in that work directory. A custom `--out-path` resolves against the current working directory instead.
 
@@ -65,7 +65,7 @@ All of the following must hold:
 
 | Command | When |
 |---------|------|
-| `malvin inspire` | One-shot MBC2 ideation |
+| `malvin --creative REQUEST` | Default router with MBC2 creative turns |
 | bare `malvin REQUEST` | Default router (multi-turn problem-solving) |
 
 ## Examples

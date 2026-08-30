@@ -6,9 +6,9 @@ pub use template::*;
 
 pub use defaults::{
     header_prompt_file, kpop_common_prompt_file, router_a_prompt_file, router_b_prompt_file,
-    RouterBPromptFlags, DO_HEADER_MD, HEADER_MD, INSPIRE_SUMMARIZE_MD, KPOP_COMMON_MD,
-    KPOP_COMMON_NO_KPOP_MD, ROUTER_A_MD, ROUTER_A_NO_KPOP_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD,
-    ROUTER_B_NO_KPOP_MD, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD, WRITE_A_MD, WRITE_B_MD,
+    RouterBPromptFlags, DO_HEADER_MD, HEADER_MD, KPOP_COMMON_MD, KPOP_COMMON_NO_KPOP_MD,
+    ROUTER_A_MD, ROUTER_A_NO_KPOP_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD, ROUTER_B_NO_KPOP_MD,
+    ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD, WRITE_A_MD, WRITE_B_MD,
 };
 
 #[allow(unused_imports)]
@@ -57,7 +57,7 @@ fn unresolved_braces_error(prompt_file: Option<&str>) -> PromptError {
 pub struct PromptError(pub String);
 
 pub use crate::user_home::user_home_dir;
-pub use store::{render_header, render_inspire_mbc2_prompt, PromptStore};
+pub use store::{build_mbc2_render_context, render_header, render_mbc2_prompt, PromptStore};
 
 #[cfg(test)]
 mod embedded_defaults_tests;

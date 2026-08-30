@@ -140,7 +140,9 @@ pub use run_timing::{
 };
 pub mod artifacts;
 mod child_health;
+#[cfg(any(test, debug_assertions))]
 mod test_poll;
+#[cfg(any(test, debug_assertions))]
 pub use test_poll::{
     test_post_teardown_poll_interval, test_post_teardown_wait_budget, test_wait_until_async,
 };
@@ -184,8 +186,6 @@ pub mod cli;
 mod coverage_kiss;
 #[path = "cli/do_flow.rs"]
 pub mod do_flow;
-#[path = "cli/inspire_flow.rs"]
-pub mod inspire_flow;
 #[cfg(test)]
 #[path = "lib_test_modules.rs"]
 mod lib_test_modules;

@@ -2,7 +2,7 @@ use super::{MALVIN_OVERVIEW_DOC, ROUTER_DOC, command_doc_markdown, print_doc_to_
 use crate::cli::Cli;
 use crate::cli::models_cmd::ModelsArgs;
 use crate::cli::write_flow::WriteArgs;
-use crate::cli::{AdminArgs, AdminCommand, Commands, InspireArgs};
+use crate::cli::{AdminArgs, AdminCommand, Commands};
 use clap::Parser;
 
 fn capture_doc(command: Option<&Commands>) -> Result<Vec<u8>, String> {
@@ -17,11 +17,16 @@ fn subcommand_doc_embeds_have_malvin_heading() {
         command: AdminCommand::Models(ModelsArgs::default()),
     }));
     assert!(md.starts_with("# malvin "));
-    let md = command_doc_markdown(&Commands::Inspire(InspireArgs {
+    let md = command_doc_markdown(&Commands::Write(WriteArgs {
         shared: crate::cli::SharedOpts::test_defaults(),
         request: None,
+        out_path: "write.tex".to_string(),
+        max_loops: 3,
+        max_hypotheses: 5,
+        tenacious: true,
+        out_path_explicit: false,
     }));
-    assert!(md.starts_with("# malvin inspire"));
+    assert!(md.starts_with("# malvin write"));
     assert!(ROUTER_DOC.starts_with("# malvin"));
 }
 
@@ -34,17 +39,6 @@ fn print_doc_none_writes_overview_then_router() {
     assert!(text.starts_with(MALVIN_OVERVIEW_DOC));
     assert!(text.contains(ROUTER_DOC));
     assert!(text.contains("# malvin (default route)"));
-}
-
-#[test]
-fn print_doc_inspire_writes_subcommand_md() {
-    let cmd = Commands::Inspire(InspireArgs {
-        shared: crate::cli::SharedOpts::test_defaults(),
-        request: None,
-    });
-    let out = capture_doc(Some(&cmd)).expect("capture");
-    assert_eq!(out.as_slice(), command_doc_markdown(&cmd).as_bytes());
-    assert!(out.starts_with(b"# malvin inspire"));
 }
 
 #[test]
@@ -66,12 +60,12 @@ fn do_doc_parses_with_do_flag() {
 }
 
 #[test]
-fn inspire_doc_parses_without_request_when_doc_flag_set() {
-    let cli = Cli::try_parse_from(["malvin", "inspire", "--doc"]).expect("parse");
+fn write_doc_parses_without_request_when_doc_flag_set() {
+    let cli = Cli::try_parse_from(["malvin", "write", "--doc"]).expect("parse");
     assert!(cli.shared.doc);
     match cli.command.as_ref() {
-        Some(Commands::Inspire(i)) => assert!(i.request.is_none()),
-        _ => panic!("expected Inspire"),
+        Some(Commands::Write(w)) => assert!(w.request.is_none()),
+        _ => panic!("expected Write"),
     }
 }
 

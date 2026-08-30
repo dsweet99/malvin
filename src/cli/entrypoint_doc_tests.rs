@@ -42,9 +42,9 @@ fn entrypoint_from_bare_malvin_exits_success() {
 }
 
 #[test]
-fn entrypoint_from_inspire_without_request_exits_success() {
+fn entrypoint_from_write_without_request_exits_success() {
     with_isolated_home(|_| {
-        assert_eq!(entrypoint_from(["malvin", "inspire"]), Exit::Success);
+        assert_eq!(entrypoint_from(["malvin", "write"]), Exit::Success);
     });
 }
 
@@ -77,7 +77,6 @@ fn run_async_cli_runs_immediate_ok_future() {
 fn kiss_cov_entrypoint_dispatch_and_commands() {
     let _ = (dispatch_command, finish_entrypoint);
 
-    let _ = crate::cli::entrypoint_commands::run_inspire_command;
     let _ = crate::cli::entrypoint_commands::run_write_command;
 }
 
