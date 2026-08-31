@@ -3,40 +3,28 @@
 from __future__ import annotations
 
 import csv
-import importlib.util
 import json
 import math
 import sys
 from pathlib import Path
 
-NOTEBOOK_MID_SSE = 0.000421955831
+NOTEBOOK_X = 45.0
+NOTEBOOK_SCORE = 1.0
 
 
-def _load_predict(workspace: Path):
-    path = workspace / "predict.py"
-    if not path.is_file():
-        raise SystemExit("missing predict.py")
-    spec = importlib.util.spec_from_file_location("ft40_predict", path)
-    if spec is None or spec.loader is None:
-        raise SystemExit("cannot load predict.py")
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    fn = getattr(mod, "predict", None)
-    if not callable(fn):
-        raise SystemExit("predict.py must define callable predict(x)")
-    return fn
-
-
-def mid_sse(workspace: Path, predict) -> float:
-    path = workspace / "data" / "midrange.csv"
-    total = 0.0
+def grid_best_x(root: Path) -> float:
+    path = root / "data" / "grid.csv"
+    best_x = None
+    best_score = float("-inf")
     with path.open(encoding="utf-8") as f:
         for row in csv.DictReader(f):
             x = float(row["x"])
-            y = float(row["y"])
-            err = float(predict(x)) - y
-            total += err * err
-    return total
+            score = float(row["score"])
+            if score > best_score or (score == best_score and (best_x is None or x < best_x)):
+                best_score = score
+                best_x = x
+    assert best_x is not None
+    return best_x
 
 
 def main() -> int:
@@ -50,31 +38,30 @@ def main() -> int:
     except json.JSONDecodeError as exc:
         print(f"FAIL: bad JSON: {exc}", file=sys.stderr)
         return 1
-    if set(data.keys()) != {"mid_sse"}:
-        print("FAIL: answer.json keys must be exactly mid_sse", file=sys.stderr)
+    if set(data.keys()) != {"x_star", "score", "grid_best_x"}:
+        print("FAIL: answer.json keys must be exactly x_star, score, grid_best_x", file=sys.stderr)
         return 1
     try:
-        claimed = float(data["mid_sse"])
+        x_star = float(data["x_star"])
+        score = float(data["score"])
+        grid_best = float(data["grid_best_x"])
     except (TypeError, ValueError):
-        print("FAIL: mid_sse must be numeric", file=sys.stderr)
+        print("FAIL: fields must be numeric", file=sys.stderr)
         return 1
-    if isinstance(data["mid_sse"], bool):
-        print("FAIL: mid_sse must be numeric, not bool", file=sys.stderr)
+    for key in ("x_star", "score", "grid_best_x"):
+        if isinstance(data[key], bool):
+            print(f"FAIL: {key} must be numeric, not bool", file=sys.stderr)
+            return 1
+    expected = grid_best_x(root)
+    if not math.isclose(grid_best, expected, abs_tol=1e-9):
+        print(f"FAIL: grid_best_x={grid_best} != {expected}", file=sys.stderr)
         return 1
-
-    predict = _load_predict(root)
-    actual = mid_sse(root, predict)
-    if abs(claimed - actual) > 1e-9:
-        print(
-            f"FAIL: mid_sse={claimed} != recomputed {actual}",
-            file=sys.stderr,
-        )
-        return 1
-
-    if math.isclose(claimed, NOTEBOOK_MID_SSE, abs_tol=5e-6):
-        print("PASS (notebook-consistent)")
-        return 0
-    print("PASS (schema + mid_sse match)")
+    notebook_ok = (
+        math.isclose(x_star, NOTEBOOK_X, abs_tol=1e-9)
+        and math.isclose(score, NOTEBOOK_SCORE, abs_tol=1e-6)
+        and math.isclose(grid_best, NOTEBOOK_X, abs_tol=1e-9)
+    )
+    print("PASS (notebook-consistent)" if notebook_ok else "PASS (schema + grid_best_x)")
     return 0
 
 
