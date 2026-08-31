@@ -23,6 +23,7 @@ pub(super) fn install_mock_bridge_env(mock: &std::path::Path) {
 pub(super) fn clear_mock_bridge_env() {
     unsafe {
         std::env::remove_var("MALVIN_CURSOR_SDK_BRIDGE");
+        std::env::remove_var("MOCK_BRIDGE_ONCE_DIR");
     }
 }
 
@@ -184,6 +185,55 @@ async fn cursor_sdk_run_done_result_feeds_do_dm_stdout() {
     client.begin_coder_session(tmp.path()).await.expect("begin");
     let out = prompt_need_dm_with_capture(&mut client, &tmp.path().join("prompts.log")).await;
     assert_dm_hello(&out, &client);
+    client.end_coder_session().await.expect("end");
+    clear_mock_bridge_env();
+}
+
+#[tokio::test]
+async fn fresh_agent_on_retry_recreates_after_non_teardown_timeout() {
+    let _guard = crate::test_utils::test_env_lock();
+    install_mock_bridge_env(&mock_bridge_path());
+    let tmp = tempfile::tempdir().expect("tmp");
+    let once_dir = tmp.path().join("once");
+    std::fs::create_dir_all(&once_dir).expect("once dir");
+    unsafe {
+        std::env::set_var("MOCK_BRIDGE_ONCE_DIR", &once_dir);
+    }
+    let mut client = crate::cursor_sdk::cursor_sdk_client_from_raw("cursor:auto", mock_io(), 3);
+    client.prompts_log_run_dir = Some(tmp.path().to_path_buf());
+    let _ = client.attach_run_timing_for_session();
+    client
+        .begin_coder_session(tmp.path())
+        .await
+        .expect("begin");
+    client
+        .run_coder_prompt(
+            "NON_TEARDOWN_TIMEOUT_ONCE please",
+            &tmp.path().join("prompts.log"),
+            "router_header",
+            CoderPromptOptions {
+                llm_phase: Some(crate::run_timing::TimingPhase::Implement),
+                fresh_agent_on_retry: true,
+                ..CoderPromptOptions::default()
+            },
+        )
+        .await
+        .expect("header retry on fresh agent");
+    let boots = std::fs::read_to_string(once_dir.join("boots")).expect("boots log");
+    let creates = boots.lines().filter(|l| *l == "create").count();
+    let resumes = boots.lines().filter(|l| *l == "resume").count();
+    assert!(
+        creates >= 2,
+        "fresh_agent_on_retry must create again after timeout; boots={boots:?}"
+    );
+    assert_eq!(
+        resumes, 0,
+        "fresh_agent_on_retry must not Cursor-resume the prior agent; boots={boots:?}"
+    );
+    assert!(
+        once_dir.join("non_teardown_timeout_once").exists(),
+        "mock must have injected the one-shot timeout"
+    );
     client.end_coder_session().await.expect("end");
     clear_mock_bridge_env();
 }

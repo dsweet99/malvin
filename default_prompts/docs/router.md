@@ -1,6 +1,6 @@
 # malvin (default route)
 
-Outer agent sessions (`--max-loops`): each session sends `header.md`, then `kpop_common.md`, then optionally `mbc2.md` when `--creative` samples on for that iteration, then `router_a.md`. A lone-line `__MALVIN_DONE__` in the `router_a` reply can stop the loop (optionally after `--gates` checks). Otherwise the same session receives `router_b.md` (or `router_b_creative.md` when that iteration sampled creative), and another outer session may start when budget remains. When exiting, `router_summarize.md` runs once on the final open session.
+Outer agent sessions (`--max-loops`): each freshly created coder agent context sends `header.md` once, then `kpop_common.md`, then optionally `mbc2.md` when `--creative` samples on for that iteration, then `router_a.md`. When the outer loop continues with the coder session kept open, or when a Cursor bridge restart resumes the same `agent_id`, later iterations skip `header.md` and resume at `kpop_common.md`. A lone-line `__MALVIN_DONE__` in the `router_a` reply can stop the loop (optionally after `--gates` checks). Otherwise the same session receives `router_b.md` (or `router_b_creative.md` when that iteration sampled creative), and another outer iteration may start when budget remains. When exiting, `router_summarize.md` runs once on the final open session.
 
 ## Summary
 
@@ -50,11 +50,11 @@ See `malvin --doc`. Notable for the default route:
 
 ## Prompt workflow
 
-Each outer session opens one coder session and sends:
+Each outer iteration opens or reuses one coder session and sends:
 
 | Turn | Piece | Role |
 |------|-------|------|
-| 1 | `header.md` | Standard Malvin context |
+| 1 (fresh agent only) | `header.md` | Standard Malvin context; omitted when reusing a kept-open session or Cursor-resuming the same agent. ACP retries of this turn create a fresh agent so `header.md` is not re-delivered into the prior conversation. |
 | 2 | `kpop_common.md` | Karl Popper hypothesis-and-falsification method |
 | 3 (optional) | `mbc2.md` | When `--creative` samples on for this iteration: MBC2 boundary exploration on the user request |
 | 4 | `router_a.md` | Ask whether requirements are unsatisfied; optional `{{ code_extra }}` when `--gates` |

@@ -8,7 +8,7 @@ use super::backend::AgentBackend;
 pub async fn agent_backend_ensure_coder_session(
     backend: &mut AgentBackend,
     cwd: &Path,
-) -> Result<(), AgentError> {
+) -> Result<bool, AgentError> {
     backend.ensure_coder_session(cwd).await
 }
 

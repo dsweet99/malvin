@@ -48,10 +48,12 @@ pub(crate) type SessionEndParts<'a> = (
     RunTimingSessionEnd,
 );
 
+/// Ensure a coder session is open.
+/// Returns `true` when a fresh agent context was created (send `header.md`).
 pub(crate) async fn begin_coder_session_if_needed(
     client: &mut AgentBackend,
     work_dir: &Path,
-) -> Result<(), String> {
+) -> Result<bool, String> {
     agent_backend_ensure_coder_session(client, work_dir)
         .await
         .map_err(|e| e.to_string())
@@ -63,20 +65,23 @@ pub(crate) async fn run_router_acp_open_iteration(
     let work_dir = input.artifacts.work_dir.as_path();
     let log_path = router_iteration_log_path(input.artifacts, input.agent_loop);
     let timing = agent_backend_attach_run_timing_for_session(input.client);
-    if let Err(e) = begin_coder_session_if_needed(input.client, work_dir).await {
-        agent_backend_set_run_timing(input.client, None);
-        return RouterAcpIterationOutcome {
-            acp_result: Err(e),
-            iteration_backups: snapshot_iteration_backups(work_dir),
-            done: false,
-            session_alive: false,
-            timing: None,
-        };
-    }
+    let fresh_context = match begin_coder_session_if_needed(input.client, work_dir).await {
+        Ok(fresh_context) => fresh_context,
+        Err(e) => {
+            agent_backend_set_run_timing(input.client, None);
+            return RouterAcpIterationOutcome {
+                acp_result: Err(e),
+                iteration_backups: snapshot_iteration_backups(work_dir),
+                done: false,
+                session_alive: false,
+                timing: None,
+            };
+        }
+    };
     agent_backend_set_implement_display_name(input.client, "router");
     let session_end = input.session_end;
     let run_dir = input.artifacts.run_dir.clone();
-    match run_router_turns(&mut input, log_path.as_path()).await {
+    match run_router_turns(&mut input, log_path.as_path(), fresh_context).await {
         Ok(turns) => RouterAcpIterationOutcome {
             acp_result: Ok(()),
             iteration_backups: turns.iteration_backups,

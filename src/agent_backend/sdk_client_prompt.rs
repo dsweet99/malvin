@@ -30,6 +30,9 @@ impl SdkClient {
                 Ok(()) => return Ok(()),
                 Err(e) => {
                     teardown_sdk_session_after_transport_error(self, &e).await;
+                    if opts.fresh_agent_on_retry {
+                        force_fresh_agent_for_retry(self).await;
+                    }
                     last_error = e.message;
                     if single {
                         break;
@@ -67,6 +70,12 @@ async fn teardown_sdk_session_after_transport_error(client: &mut SdkClient, err:
     if forget_agent {
         client.last_agent_id = None;
     }
+}
+
+/// End any open coder session and drop Cursor resume id so the next attempt creates a new agent.
+async fn force_fresh_agent_for_retry(client: &mut SdkClient) {
+    let _ = client.end_coder_session().await;
+    client.last_agent_id = None;
 }
 
 async fn run_one(

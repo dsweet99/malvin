@@ -23,6 +23,14 @@ pub(crate) enum RouterExitSummarize {
     Skip,
 }
 
+/// Whether this outer iteration should prompt with `header.md`.
+/// True only when `ensure_coder_session` created a fresh agent context
+/// (`true`), not when it reused an open session or resumed a prior Cursor agent.
+#[must_use]
+pub(crate) const fn should_send_router_header(fresh_agent_context: bool) -> bool {
+    fresh_agent_context
+}
+
 pub(crate) fn router_iteration_log_path(
     artifacts: &RunArtifacts,
     agent_loop: usize,
@@ -47,12 +55,16 @@ pub(crate) fn snapshot_iteration_backups(work_dir: &Path) -> SessionDotfileBacku
 pub(crate) async fn run_router_turns(
     input: &mut RouterAcpIterationInput<'_>,
     log_path: &Path,
+    send_header: bool,
 ) -> Result<RouterTurnsOutcome, String> {
     let work_dir = input.artifacts.work_dir.as_path();
     let iteration_backups = SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)?;
     let model = input.shared.model.canonical();
     let creative = input.shared.sample_creative_this_iteration();
-    run_router_header(input, log_path, &model).await?;
+    if should_send_router_header(send_header) {
+        run_router_header(input, log_path, &model).await?;
+    }
+    let _exp_log = ensure_gate_exp_log_file(input.artifacts, 1).map_err(|e| e.to_string())?;
     let no_kpop = input.shared.no_kpop;
     let kpop = router_flow_prompt::build_router_kpop_common_prompt(
         router_flow_prompt::RouterKpopCommonPromptInput {
@@ -115,7 +127,6 @@ async fn run_router_header(
         },
     )?;
     run_router_header_coder_prompt(input.client, &header, log_path).await?;
-    let _exp_log = ensure_gate_exp_log_file(input.artifacts, 1).map_err(|e| e.to_string())?;
     Ok(())
 }
 

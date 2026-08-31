@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import * as fs from "node:fs";
+import * as path from "node:path";
 import * as readline from "node:readline";
 
 let created = false;
@@ -12,6 +14,35 @@ function emit(obj) {
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+function noteBoot(kind) {
+  const dir = process.env.MOCK_BRIDGE_ONCE_DIR;
+  if (!dir) {
+    return;
+  }
+  try {
+    fs.appendFileSync(path.join(dir, "boots"), `${kind}\n`);
+  } catch {
+    // ignore logging failures in mock
+  }
+}
+
+function consumeOnceFlag(name) {
+  const dir = process.env.MOCK_BRIDGE_ONCE_DIR;
+  if (!dir) {
+    return false;
+  }
+  const flag = path.join(dir, name);
+  if (fs.existsSync(flag)) {
+    return false;
+  }
+  try {
+    fs.writeFileSync(flag, "1");
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 let agentId = "mock-agent";
@@ -42,6 +73,7 @@ async function handleCreate(req) {
   created = true;
   bootKind = "create";
   agentId = "mock-agent";
+  noteBoot("create");
   emit({ event: "ok", agentId });
 }
 
@@ -69,6 +101,7 @@ async function handleResume(req) {
   created = true;
   bootKind = "resume";
   agentId = String(req.agentId);
+  noteBoot("resume");
   emit({ event: "ok", agentId });
 }
 
@@ -78,6 +111,15 @@ async function handleSend(req) {
     return;
   }
   const prompt = String(req.prompt || "");
+
+  if (prompt.includes("NON_TEARDOWN_TIMEOUT_ONCE") && consumeOnceFlag("non_teardown_timeout_once")) {
+    emit({
+      event: "fatal",
+      message: "request timed out",
+      retryable: true,
+    });
+    return;
+  }
 
   if (prompt.includes("CLOSE_STDOUT")) {
     emit({ event: "assistant", text: "closing" });

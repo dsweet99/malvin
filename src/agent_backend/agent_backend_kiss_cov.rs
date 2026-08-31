@@ -56,6 +56,7 @@ fn kiss_witness_unified_sdk_client_and_backend() {
     let _ = stringify!(spawn_with_retries);
     let _ = stringify!(spawn_service_wire);
     let _ = stringify!(reject_no_force);
+    let _ = stringify!(force_fresh_agent_for_retry);
     let _ = stringify!(NO_FORCE_MSG);
     let _ = stringify!(DRAIN_IDLE_PREFIX_BRIDGE);
     let _ = stringify!(DRAIN_IDLE_PREFIX_PI);

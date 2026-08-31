@@ -23,7 +23,7 @@ Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`,
 
 | Command | Purpose |
 |---------|---------|
-| *(default)* | Bare `malvin REQUEST` — `header` → `router_a` → optional `router_b`; exit `router_summarize`; outer `--max-loops` sessions |
+| *(default)* | Bare `malvin REQUEST` — `header` (fresh agent only) → `router_a` → optional `router_b`; exit `router_summarize`; outer `--max-loops` iterations |
 | `--do` | One-shot agent turn (non-looping) |
 | `malvin -g` | Fix quality gates via the default router with fixed request `Get the gates to pass.` (no positional request) |
 | `write` | Write a LaTeX PDF on code or concepts via a composed default-router request |

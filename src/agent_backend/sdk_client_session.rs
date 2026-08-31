@@ -16,27 +16,24 @@ impl SdkClient {
         }
     }
 
-    pub async fn ensure_coder_session(&mut self, cwd: &Path) -> Result<(), AgentError> {
+    /// Ensure a coder session is open.
+    ///
+    /// Returns `true` only when a **fresh** agent context was created (so callers may
+    /// send `header.md`). Returns `false` when an open session was reused, or when a
+    /// Cursor bridge restart **resumed** a prior `agent_id` (same conversation).
+    pub async fn ensure_coder_session(&mut self, cwd: &Path) -> Result<bool, AgentError> {
         if sdk_bridge_needs_restart(self) {
             self.end_coder_session().await?;
         }
         if self.has_open_coder_session() {
-            return Ok(());
+            return Ok(false);
         }
-        self.begin_coder_session(cwd).await
+        let resumed = begin_coder_session_resumed(self, cwd).await?;
+        Ok(!resumed)
     }
 
     pub async fn begin_coder_session(&mut self, cwd: &Path) -> Result<(), AgentError> {
-        reject_no_force(self)?;
-        if self.has_open_coder_session() {
-            return Err(AgentError(format!(
-                "{} SDK session is already open",
-                self.model.backend.label()
-            )));
-        }
-        let cwd = crate::acp::resolve_acp_session_cwd(cwd)?;
-        let thinking = spawn_thinking_wire(self);
-        spawn_with_retries(self, cwd, thinking.as_deref()).await
+        begin_coder_session_resumed(self, cwd).await.map(|_| ())
     }
 
     pub async fn end_coder_session(&mut self) -> Result<(), AgentError> {
@@ -60,6 +57,20 @@ pub(crate) fn sdk_bridge_needs_restart(client: &SdkClient) -> bool {
         .is_some_and(|s| s.started_at.elapsed() >= SDK_BRIDGE_MAX_AGE)
 }
 
+/// Begin a coder session. Returns `true` when Cursor resume attached a prior agent.
+async fn begin_coder_session_resumed(client: &mut SdkClient, cwd: &Path) -> Result<bool, AgentError> {
+    reject_no_force(client)?;
+    if client.has_open_coder_session() {
+        return Err(AgentError(format!(
+            "{} SDK session is already open",
+            client.model.backend.label()
+        )));
+    }
+    let cwd = crate::acp::resolve_acp_session_cwd(cwd)?;
+    let thinking = spawn_thinking_wire(client);
+    spawn_with_retries(client, cwd, thinking.as_deref()).await
+}
+
 fn reject_no_force(client: &SdkClient) -> Result<(), AgentError> {
     if client.io.force {
         Ok(())
@@ -74,11 +85,12 @@ fn cursor_resume_id(client: &SdkClient) -> Option<String> {
         .flatten()
 }
 
+/// Spawn a bridge session. On success, returns whether the spawn used Cursor resume.
 async fn spawn_with_retries(
     client: &mut SdkClient,
     cwd: PathBuf,
     thinking: Option<&str>,
-) -> Result<(), AgentError> {
+) -> Result<bool, AgentError> {
     let resume_agent_id = cursor_resume_id(client);
     let mut last_error = String::new();
     let max_attempts = client.max_acp_retries;
@@ -95,7 +107,7 @@ async fn spawn_with_retries(
         {
             Ok(s) => {
                 adopt_spawned_session(client, s, cwd);
-                return Ok(());
+                return Ok(resume_agent_id.is_some());
             }
             Err(e) => {
                 last_error = note_spawn_failure(client, e);

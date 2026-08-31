@@ -33,10 +33,11 @@ async fn open_ensure_fixture() -> EnsureFixture {
     let tmp = tempfile::tempdir().expect("tmp");
     let mut client = mock_client(tmp.path());
     let _ = client.attach_run_timing_for_session();
-    client
+    let started_new = client
         .ensure_coder_session(tmp.path())
         .await
         .expect("ensure");
+    assert!(started_new, "first ensure must create a fresh agent context");
     let started = bridge_started_at(&client);
     EnsureFixture {
         client,
@@ -55,11 +56,15 @@ async fn cursor_sdk_ensure_reuses_fresh_bridge() {
     let _guard = crate::test_utils::test_env_lock();
     let mut fixture = open_ensure_fixture().await;
     assert!(!crate::agent_backend::sdk_bridge_needs_restart(&fixture.client));
-    fixture
+    let started = fixture
         .client
         .ensure_coder_session(fixture.tmp.path())
         .await
         .expect("ensure again");
+    assert!(
+        !started,
+        "fresh bridge must report reuse (false), not a fresh agent context"
+    );
     assert_eq!(
         fixture.started,
         bridge_started_at(&fixture.client),
@@ -74,11 +79,15 @@ async fn cursor_sdk_ensure_restarts_stale_bridge() {
     let mut fixture = open_ensure_fixture().await;
     backdate_bridge(&mut fixture.client, fixture.started);
     assert!(crate::agent_backend::sdk_bridge_needs_restart(&fixture.client));
-    fixture
+    let fresh_context = fixture
         .client
         .ensure_coder_session(fixture.tmp.path())
         .await
         .expect("ensure restart");
+    assert!(
+        !fresh_context,
+        "stale bridge resume continues the prior agent; do not send header.md again"
+    );
     assert!(bridge_started_at(&fixture.client) > fixture.started);
     assert!(!crate::agent_backend::sdk_bridge_needs_restart(&fixture.client));
     prompt_once(&mut fixture.client, &fixture.tmp.path().join("prompts.log")).await;
