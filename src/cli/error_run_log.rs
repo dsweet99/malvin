@@ -3,13 +3,10 @@ use std::sync::Mutex;
 
 use crate::output::{ERROR_WHO, format_line};
 
-static COMMAND_ERROR_RUN_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
 static LAST_EMITTED_COMMAND_ERROR: Mutex<Option<String>> = Mutex::new(None);
 
 pub fn set_command_error_run_dir(path: Option<PathBuf>) {
-    *COMMAND_ERROR_RUN_DIR
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner) = path.clone();
+    crate::run_id::set_active_run_dir(path.clone());
     if let Some(run_dir) = path.as_ref() {
         crate::herdr::notify_run_start(run_dir);
     }
@@ -17,10 +14,7 @@ pub fn set_command_error_run_dir(path: Option<PathBuf>) {
 
 #[cfg(test)]
 pub fn command_error_run_dir() -> Option<PathBuf> {
-    COMMAND_ERROR_RUN_DIR
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .clone()
+    crate::run_id::active_run_dir()
 }
 
 pub fn clear_command_error_run_dir() {
@@ -50,11 +44,7 @@ pub fn append_command_error_to_run_log(message: &str) {
     if crate::repo_checks::is_gate_failure_error(message) {
         return;
     }
-    let Some(dir) = COMMAND_ERROR_RUN_DIR
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .clone()
-    else {
+    let Some(dir) = crate::run_id::active_run_dir() else {
         return;
     };
     let path = dir.join("malvin_error.log");
@@ -74,6 +64,9 @@ mod tests {
 
     #[test]
     fn command_error_run_dir_reads_active_binding() {
+        let _lock = crate::run_id::ACTIVE_RUN_DIR_TEST_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_command_error_run_dir();
         assert_eq!(command_error_run_dir(), None);
         let dir = tempdir().expect("tempdir");
@@ -86,6 +79,9 @@ mod tests {
 
     #[test]
     fn append_command_error_writes_malvin_error_log() {
+        let _lock = crate::run_id::ACTIVE_RUN_DIR_TEST_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let dir = tempdir().expect("tempdir");
         set_command_error_run_dir(Some(dir.path().to_path_buf()));
         append_command_error_to_run_log("something went wrong");

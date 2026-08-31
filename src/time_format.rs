@@ -17,6 +17,13 @@ pub fn heartbeat_payload_now() -> String {
         payload.push_str(", ");
         payload.push_str(&stats);
     }
+    if let Some(id) = crate::run_id::active_run_dir()
+        .as_deref()
+        .and_then(crate::run_id::short_malvin_log_id)
+    {
+        payload.push_str(" · ");
+        payload.push_str(&id);
+    }
     payload
 }
 
@@ -76,5 +83,30 @@ mod tests {
             "20260524.000000 Still alive."
         ));
         assert!(!super::heartbeat_payload_has_wall_clock_prefix("HB: old"));
+    }
+
+    #[test]
+    fn heartbeat_payload_now_appends_short_malvin_log_id() {
+        let _guard = crate::run_id::ACTIVE_RUN_DIR_TEST_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        crate::run_id::set_active_run_dir(None);
+        let bare = super::heartbeat_payload_now();
+        assert!(
+            !bare.contains('·'),
+            "no run dir ⇒ no center-dot suffix: {bare}"
+        );
+
+        let run = std::path::PathBuf::from(
+            "/home/dsweet/.malvin_home/logs/eb7ef333a92a6d41/20260830_024330_estp91hf",
+        );
+        crate::run_id::set_active_run_dir(Some(run));
+        let payload = super::heartbeat_payload_now();
+        crate::run_id::set_active_run_dir(None);
+        assert!(
+            payload.ends_with(" · eb7ef333a92a6d41/20260830_024330_estp91hf"),
+            "expected short log id suffix, got {payload}"
+        );
+        assert!(super::heartbeat_payload_has_wall_clock_prefix(&payload));
     }
 }

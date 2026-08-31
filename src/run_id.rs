@@ -1,6 +1,37 @@
 use chrono::Utc;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+
+static ACTIVE_RUN_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
+
+#[cfg(test)]
+pub(crate) static ACTIVE_RUN_DIR_TEST_LOCK: Mutex<()> = Mutex::new(());
+
+pub(crate) fn set_active_run_dir(path: Option<PathBuf>) {
+    *ACTIVE_RUN_DIR
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = path;
+}
+
+#[must_use]
+pub(crate) fn active_run_dir() -> Option<PathBuf> {
+    ACTIVE_RUN_DIR
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .clone()
+}
+
+/// Unique log path under `~/.malvin_home/logs/`: `<hash>/<run_id>`.
+#[must_use]
+pub(crate) fn short_malvin_log_id(run_dir: &Path) -> Option<String> {
+    let run = run_dir.file_name()?.to_str()?;
+    let hash = run_dir.parent()?.file_name()?.to_str()?;
+    if run.is_empty() || hash.is_empty() {
+        return None;
+    }
+    Some(format!("{hash}/{run}"))
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RunDirOptions {
@@ -81,6 +112,40 @@ fn create_run_dir_with_id(
         ErrorKind::AlreadyExists,
         "run directory id collision limit exceeded",
     ))
+}
+
+#[cfg(test)]
+mod short_log_id_tests {
+    use super::*;
+
+    #[test]
+    fn short_malvin_log_id_takes_hash_and_run() {
+        let path = Path::new("/home/dsweet/.malvin_home/logs/eb7ef333a92a6d41/20260830_024330_estp91hf");
+        assert_eq!(
+            short_malvin_log_id(path).as_deref(),
+            Some("eb7ef333a92a6d41/20260830_024330_estp91hf")
+        );
+    }
+
+    #[test]
+    fn short_malvin_log_id_none_without_parent() {
+        assert!(short_malvin_log_id(Path::new("only_run")).is_none());
+        assert!(short_malvin_log_id(Path::new("/")).is_none());
+    }
+
+    #[test]
+    fn active_run_dir_round_trip() {
+        let _guard = ACTIVE_RUN_DIR_TEST_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        set_active_run_dir(None);
+        assert!(active_run_dir().is_none());
+        let path = PathBuf::from("/tmp/malvin-active-run/hash/run");
+        set_active_run_dir(Some(path.clone()));
+        assert_eq!(active_run_dir(), Some(path));
+        set_active_run_dir(None);
+        assert!(active_run_dir().is_none());
+    }
 }
 
 #[cfg(test)]
