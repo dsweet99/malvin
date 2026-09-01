@@ -5,10 +5,11 @@ from __future__ import annotations
 import argparse
 import os
 import shutil
-import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+import pytest
 
 
 TASK_ID = "FT-13"
@@ -40,20 +41,39 @@ def _pytest(ws: Path, impl_file: Path) -> int:
         (td_path / "impl" / "__init__.py").write_text("", encoding="utf-8")
         shutil.copy2(ws / "tests" / "test_normalize.py", td_path / "tests" / "test_normalize.py")
         (td_path / "tests" / "__init__.py").write_text("", encoding="utf-8")
-        # Make imports work: tests should import from impl.normalize
-        env = {
-            **os.environ,
-            "PYTHONPATH": str(td_path),
-            "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
-        }
-        proc = subprocess.run(
-            [sys.executable, "-m", "pytest", "-q", "tests/test_normalize.py", "-p", "no:cacheprovider"],
-            cwd=td_path,
-            capture_output=True,
-            text=True,
-            env=env,
-        )
-        return proc.returncode
+        for key in list(sys.modules):
+            if key == "impl" or key.startswith("impl."):
+                del sys.modules[key]
+            if key == "tests" or key.startswith("tests."):
+                del sys.modules[key]
+        old_path = sys.path[:]
+        old_cwd = Path.cwd()
+        old_pythonpath = os.environ.get("PYTHONPATH")
+        old_no_plugins = os.environ.get("PYTEST_DISABLE_PLUGIN_AUTOLOAD")
+        try:
+            os.chdir(td_path)
+            sys.path.insert(0, str(td_path))
+            os.environ["PYTHONPATH"] = str(td_path)
+            os.environ["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
+            return pytest.main(
+                ["-q", "tests/test_normalize.py", "-p", "no:cacheprovider"],
+            )
+        finally:
+            os.chdir(old_cwd)
+            sys.path[:] = old_path
+            if old_pythonpath is None:
+                os.environ.pop("PYTHONPATH", None)
+            else:
+                os.environ["PYTHONPATH"] = old_pythonpath
+            if old_no_plugins is None:
+                os.environ.pop("PYTEST_DISABLE_PLUGIN_AUTOLOAD", None)
+            else:
+                os.environ["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = old_no_plugins
+            for key in list(sys.modules):
+                if key == "impl" or key.startswith("impl."):
+                    del sys.modules[key]
+                if key == "tests" or key.startswith("tests."):
+                    del sys.modules[key]
 
 
 def evaluate(workspace: Path) -> int:

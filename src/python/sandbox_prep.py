@@ -2486,7 +2486,8 @@ def _mandatory_probe_python(declared: DeclaredDeps) -> str:
         "                errors.append(f'pydantic {version} violates {spec_str}')\n"
         "            continue\n"
         "        errors.append(f'{display_name}: version check failed ({version!r} vs {spec_str}: {exc})')\n"
-        "if importlib.util.find_spec('httpx'):\n"
+        "if 'httpx' in "
+        f"{sorted(declared.package_names())!r} and importlib.util.find_spec('httpx'):\n"
         "    import httpx\n"
         "    if httpx.__name__ != 'httpx':\n"
         "        errors.append(f'httpx namespace drift: {httpx.__name__}')\n"
@@ -4163,9 +4164,16 @@ def _test_mandatory_probe_fails_on_invalid_version_string() -> None:
     probe_body = _mandatory_probe_python(
         DeclaredDeps({}, {"badver": "==1.0.0"}, (), {})
     )
+    real_find_spec = importlib.util.find_spec
     with (
         patch.dict(sys.modules, {"badver": fake_mod}),
         patch("importlib.metadata.version", return_value="not-a-version"),
+        patch(
+            "importlib.util.find_spec",
+            side_effect=lambda name, *args, **kwargs: None
+            if name == "httpx"
+            else real_find_spec(name, *args, **kwargs),
+        ),
     ):
         try:
             exec(probe_body, {})
@@ -4191,9 +4199,16 @@ def _test_mandatory_probe_runtime_metadata_wins_over_stale_version() -> None:
     probe_body = _mandatory_probe_python(
         DeclaredDeps({}, {"terminaltables": "==3.1.10"}, (), {})
     )
+    real_find_spec = importlib.util.find_spec
     with (
         patch.dict(sys.modules, {"terminaltables": fake_mod}),
         patch("importlib.metadata.version", return_value="3.1.10"),
+        patch(
+            "importlib.util.find_spec",
+            side_effect=lambda name, *args, **kwargs: None
+            if name == "httpx"
+            else real_find_spec(name, *args, **kwargs),
+        ),
     ):
         try:
             exec(probe_body, {})
@@ -4228,9 +4243,16 @@ def _test_mandatory_probe_fails_when_version_unknown() -> None:
     probe_body = _mandatory_probe_python(
         DeclaredDeps({}, {"silentpkg": "==9.9.9"}, (), {})
     )
+    real_find_spec = importlib.util.find_spec
     with (
         patch.dict(sys.modules, {"silentpkg": fake_mod}),
         patch("importlib.metadata.version", side_effect=Exception("no metadata")),
+        patch(
+            "importlib.util.find_spec",
+            side_effect=lambda name, *args, **kwargs: None
+            if name == "httpx"
+            else real_find_spec(name, *args, **kwargs),
+        ),
     ):
         try:
             exec(probe_body, {})
