@@ -47,7 +47,7 @@ impl PiEmbeddedSession {
         self.reader_dead.store(true, Ordering::SeqCst);
         if let Some(mut runtime) = self.runtime.take() {
             runtime.abort();
-            runtime.shutdown();
+            let _ = runtime.shutdown();
         }
         #[cfg(unix)]
         {
@@ -63,7 +63,7 @@ impl Drop for PiEmbeddedSession {
         self.reader_dead.store(true, Ordering::SeqCst);
         if let Some(mut runtime) = self.runtime.take() {
             runtime.abort();
-            runtime.shutdown();
+            let _ = runtime.shutdown();
         }
         #[cfg(unix)]
         {

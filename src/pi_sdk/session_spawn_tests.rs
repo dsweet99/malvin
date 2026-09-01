@@ -75,7 +75,8 @@ async fn fake_session_begin_end_leaves_no_pi_runtime_thread() {
 // Determinism: PiRuntime::start returns only after the worker sends ready,
 // and the worker then blocks on cmd_rx.recv(), so the named thread
 // necessarily exists when start() returns Ok. shutdown() joins the thread
-// before returning, so it necessarily does not exist afterwards. No sleeps.
+// before returning; we assert join() success rather than scanning /proc
+// afterwards, because Linux child threads inherit the parent's comm name.
 //
 // Offline: provider/model/api_key construction performs local work only;
 // network I/O happens at prompt time, which this test never issues. Same
@@ -104,11 +105,9 @@ fn pi_runtime_lifecycle_starts_and_joins_named_thread() {
             pi_sdk_named_thread_exists(),
             "malvin-pi-sdk thread must exist while the runtime is live"
         );
-        runtime.shutdown();
-        assert!(
-            !pi_sdk_named_thread_exists(),
-            "malvin-pi-sdk thread must be joined after shutdown"
-        );
+        runtime
+            .shutdown()
+            .expect("malvin-pi-sdk thread must be joined after shutdown");
     });
 }
 
@@ -153,7 +152,7 @@ fn pi_runtime_shutdown_returns_during_in_flight_prompt() {
             .prompt("kpop block".into(), events_tx)
             .expect("prompt queued");
         let started = std::time::Instant::now();
-        runtime.shutdown();
+        let _ = runtime.shutdown();
         unsafe {
             std::env::remove_var("MALVIN_TEST_PI_PROMPT_BLOCK_SECS");
         }
