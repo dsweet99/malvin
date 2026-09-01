@@ -7,6 +7,14 @@ pub(crate) const MALVIN_TEST_NO_REAL_AGENT_ENV: &str = "MALVIN_TEST_NO_REAL_AGEN
 pub(crate) const NO_FORCE_MSG: &str =
     "--no-force is not supported (malvin runs tools headlessly; no interactive approval)";
 
+/// Shared product rule: tools must be force-approved (`--force` / not `--no-force`).
+pub(crate) fn require_force(force: bool) -> Result<(), AgentError> {
+    if force {
+        Ok(())
+    } else {
+        Err(AgentError(NO_FORCE_MSG.into()))
+    }
+}
 /// Idle-timeout prefixes. Drain emit sites and teardown needles share these so a
 /// timeout cannot miss session recycle.
 pub(crate) const DRAIN_IDLE_PREFIX_BRIDGE: &str =
@@ -87,6 +95,7 @@ mod agent_helpers_tests {
         let _ = has_api_key();
         let _ = env_key_nonempty("CURSOR_API_KEY");
         let _ = NO_FORCE_MSG;
+        let _ = require_force(true);
         let _ = DRAIN_IDLE_PREFIX_BRIDGE;
         let _ = DRAIN_IDLE_PREFIX_PI;
         let _ = DRAIN_IDLE_PREFIX_CODEX;

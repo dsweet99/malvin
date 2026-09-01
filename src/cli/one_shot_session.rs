@@ -28,7 +28,7 @@ pub fn resolve_one_shot_request_artifacts(
         None => create_run_artifacts_from_text(&text, Some(work_dir.as_path()))
             .map_err(|e| e.to_string())?,
     };
-    crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
+    crate::run_id::activate_run(artifacts.run_dir.clone());
     Ok((text, artifacts))
 }
 

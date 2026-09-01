@@ -3,9 +3,7 @@ use super::{
     snapshot_iteration_backups, RouterExitSummarize, RouterTurnsOutcome,
 };
 use crate::artifacts::SessionDotfileBackups;
-use crate::cli::error_run_log::{
-    clear_command_error_run_dir, command_error_run_dir, set_command_error_run_dir,
-};
+use crate::cli::error_run_log::{clear_command_error_run_dir, command_error_run_dir};
 
 #[test]
 fn kiss_cov_router_acp_support_unit_names() {
@@ -20,10 +18,11 @@ fn kiss_cov_router_acp_support_unit_names() {
 
 #[test]
 fn router_header_only_when_coder_session_is_new() {
-    // Contract for run_router_turns(..., send_header): true after a fresh create,
-    // false when keep_session reused the open session or Cursor resume continued one.
-    assert!(super::should_send_router_header(true));
-    assert!(!super::should_send_router_header(false));
+    use crate::agent_backend::CoderSessionEnsure;
+    // Contract for run_router_turns(..., ensure): Fresh after a create,
+    // Reused when keep_session reused the open session or Cursor resume continued one.
+    assert!(super::should_send_router_header(CoderSessionEnsure::Fresh));
+    assert!(!super::should_send_router_header(CoderSessionEnsure::Reused));
 }
 
 #[test]
@@ -48,7 +47,7 @@ fn router_error_run_log_binding_survives_snapshot() {
     crate::test_utils::with_isolated_home(|workspace| {
         let router_dir = workspace.join("router-run");
         std::fs::create_dir_all(&router_dir).expect("router run dir");
-        set_command_error_run_dir(Some(router_dir.clone()));
+        crate::run_id::activate_run(router_dir.clone());
         let _ = SessionDotfileBackups::snapshot_after_ensuring_home_config(workspace);
         assert_eq!(command_error_run_dir(), Some(router_dir));
         clear_command_error_run_dir();

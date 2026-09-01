@@ -147,7 +147,7 @@ fn smoke_print_command_error_writes_run_log() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let run_dir = tmp.path().join("run");
     std::fs::create_dir_all(&run_dir).expect("mkdir");
-    super::error_run_log::set_command_error_run_dir(Some(run_dir.clone()));
+    crate::run_id::activate_run(run_dir.clone());
     super::entrypoint::print_command_error("gate failed");
     let log = run_dir.join("malvin_error.log");
     assert!(log.is_file());

@@ -4,11 +4,12 @@ use std::sync::{Arc, Mutex};
 use crate::acp::AgentError;
 
 use super::backend::AgentBackend;
+use super::sdk_client_session::CoderSessionEnsure;
 
 pub async fn agent_backend_ensure_coder_session(
     backend: &mut AgentBackend,
     cwd: &Path,
-) -> Result<bool, AgentError> {
+) -> Result<CoderSessionEnsure, AgentError> {
     backend.ensure_coder_session(cwd).await
 }
 

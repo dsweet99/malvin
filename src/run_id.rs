@@ -14,6 +14,19 @@ pub(crate) fn set_active_run_dir(path: Option<PathBuf>) {
         .unwrap_or_else(std::sync::PoisonError::into_inner) = path;
 }
 
+/// Bind the active run directory and notify herdr that a run started.
+/// Owns run-lifecycle side effects that used to live behind `error_run_log`.
+pub(crate) fn activate_run(path: PathBuf) {
+    set_active_run_dir(Some(path.clone()));
+    crate::herdr::notify_run_start(&path);
+}
+
+/// Notify herdr that the run ended and clear the active run directory.
+pub(crate) fn deactivate_run() {
+    crate::herdr::notify_run_end();
+    set_active_run_dir(None);
+}
+
 #[must_use]
 pub(crate) fn active_run_dir() -> Option<PathBuf> {
     ACTIVE_RUN_DIR

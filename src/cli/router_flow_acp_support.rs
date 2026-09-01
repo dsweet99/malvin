@@ -24,11 +24,13 @@ pub(crate) enum RouterExitSummarize {
 }
 
 /// Whether this outer iteration should prompt with `header.md`.
-/// True only when `ensure_coder_session` created a fresh agent context
-/// (`true`), not when it reused an open session or resumed a prior Cursor agent.
+/// True only when `ensure_coder_session` created a fresh agent context,
+/// not when it reused an open session or resumed a prior Cursor agent.
 #[must_use]
-pub(crate) const fn should_send_router_header(fresh_agent_context: bool) -> bool {
-    fresh_agent_context
+pub(crate) const fn should_send_router_header(
+    ensure: crate::agent_backend::CoderSessionEnsure,
+) -> bool {
+    ensure.is_fresh()
 }
 
 pub(crate) fn router_iteration_log_path(
@@ -55,13 +57,13 @@ pub(crate) fn snapshot_iteration_backups(work_dir: &Path) -> SessionDotfileBacku
 pub(crate) async fn run_router_turns(
     input: &mut RouterAcpIterationInput<'_>,
     log_path: &Path,
-    send_header: bool,
+    ensure: crate::agent_backend::CoderSessionEnsure,
 ) -> Result<RouterTurnsOutcome, String> {
     let work_dir = input.artifacts.work_dir.as_path();
     let iteration_backups = SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)?;
     let model = input.shared.model.canonical();
     let creative = input.shared.sample_creative_this_iteration();
-    if should_send_router_header(send_header) {
+    if should_send_router_header(ensure) {
         run_router_header(input, log_path, &model).await?;
     }
     let _exp_log = ensure_gate_exp_log_file(input.artifacts, 1).map_err(|e| e.to_string())?;

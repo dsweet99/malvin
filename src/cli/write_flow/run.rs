@@ -58,7 +58,7 @@ fn create_write_artifacts(
         crate::run_id::RunDirOptions { gc: false },
     )
     .map_err(|e| e.to_string())?;
-    crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
+    crate::run_id::activate_run(artifacts.run_dir.clone());
     Ok(artifacts)
 }
 

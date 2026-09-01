@@ -50,7 +50,7 @@ fn finish_router_run_artifacts(
     if shared.gates {
         crate::artifacts::init_quality_gates_log_pending(artifacts).map_err(|e| e.to_string())?;
     }
-    crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
+    crate::run_id::activate_run(artifacts.run_dir.clone());
     emit_run_startup_banner(
         artifacts,
         RunStartupEmitOpts::from_shared(shared, true),

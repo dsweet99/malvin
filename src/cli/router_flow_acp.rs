@@ -49,11 +49,11 @@ pub(crate) type SessionEndParts<'a> = (
 );
 
 /// Ensure a coder session is open.
-/// Returns `true` when a fresh agent context was created (send `header.md`).
+/// Returns [`CoderSessionEnsure::Fresh`] when a fresh agent context was created (send `header.md`).
 pub(crate) async fn begin_coder_session_if_needed(
     client: &mut AgentBackend,
     work_dir: &Path,
-) -> Result<bool, String> {
+) -> Result<crate::agent_backend::CoderSessionEnsure, String> {
     agent_backend_ensure_coder_session(client, work_dir)
         .await
         .map_err(|e| e.to_string())

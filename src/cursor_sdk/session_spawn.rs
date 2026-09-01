@@ -10,6 +10,7 @@ pub(crate) async fn cursor_spawn_bridge(
     args: BridgeSpawnArgs<'_>,
     resume_agent_id: Option<&str>,
 ) -> Result<BridgeSession, AgentError> {
+    crate::acp::require_force(args.io.force)?;
     let ticket = crate::malvin_sandbox::take_sandbox_spawn_ticket().map_err(AgentError)?;
     let model = args.wire_model();
     let session = cursor_open_bridge_session(args, ticket)?;

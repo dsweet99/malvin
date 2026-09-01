@@ -7,6 +7,25 @@ use crate::model_id::ModelBackend;
 
 use super::sdk_client::{BegunCoderSession, SdkClient};
 
+/// Outcome of ensuring a coder session is open.
+///
+/// Encodes the header protocol that used to be a bare `bool`: only [`Fresh`]
+/// means callers should send `header.md`.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CoderSessionEnsure {
+    /// A new agent context was created — send `header.md`.
+    Fresh,
+    /// An open session was reused, or a Cursor bridge resumed a prior `agent_id`.
+    Reused,
+}
+
+impl CoderSessionEnsure {
+    #[must_use]
+    pub const fn is_fresh(self) -> bool {
+        matches!(self, Self::Fresh)
+    }
+}
+
 impl SdkClient {
     pub fn ensure_authenticated(&self) -> Result<(), AuthError> {
         match self.model.backend {
@@ -18,18 +37,26 @@ impl SdkClient {
 
     /// Ensure a coder session is open.
     ///
-    /// Returns `true` only when a **fresh** agent context was created (so callers may
-    /// send `header.md`). Returns `false` when an open session was reused, or when a
-    /// Cursor bridge restart **resumed** a prior `agent_id` (same conversation).
-    pub async fn ensure_coder_session(&mut self, cwd: &Path) -> Result<bool, AgentError> {
+    /// Returns [`CoderSessionEnsure::Fresh`] only when a **fresh** agent context was
+    /// created (so callers may send `header.md`). Returns [`CoderSessionEnsure::Reused`]
+    /// when an open session was reused, or when a Cursor bridge restart **resumed** a
+    /// prior `agent_id` (same conversation).
+    pub async fn ensure_coder_session(
+        &mut self,
+        cwd: &Path,
+    ) -> Result<CoderSessionEnsure, AgentError> {
         if sdk_bridge_needs_restart(self) {
             self.end_coder_session().await?;
         }
         if self.has_open_coder_session() {
-            return Ok(false);
+            return Ok(CoderSessionEnsure::Reused);
         }
         let resumed = begin_coder_session_resumed(self, cwd).await?;
-        Ok(!resumed)
+        Ok(if resumed {
+            CoderSessionEnsure::Reused
+        } else {
+            CoderSessionEnsure::Fresh
+        })
     }
 
     pub async fn begin_coder_session(&mut self, cwd: &Path) -> Result<(), AgentError> {
@@ -72,11 +99,7 @@ async fn begin_coder_session_resumed(client: &mut SdkClient, cwd: &Path) -> Resu
 }
 
 fn reject_no_force(client: &SdkClient) -> Result<(), AgentError> {
-    if client.io.force {
-        Ok(())
-    } else {
-        Err(AgentError(crate::acp::NO_FORCE_MSG.into()))
-    }
+    crate::acp::require_force(client.io.force)
 }
 
 fn cursor_resume_id(client: &SdkClient) -> Option<String> {

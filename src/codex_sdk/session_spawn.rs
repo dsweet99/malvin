@@ -6,9 +6,7 @@ pub(crate) async fn codex_spawn_bridge(
     args: BridgeSpawnArgs<'_>,
     service: Option<&str>,
 ) -> Result<CodexSession, AgentError> {
-    if !args.io.force {
-        return Err(AgentError(crate::acp::NO_FORCE_MSG.into()));
-    }
+    crate::acp::require_force(args.io.force)?;
     let ticket = crate::malvin_sandbox::take_sandbox_spawn_ticket().map_err(AgentError)?;
     let session = spawn_codex_session(&args, service, ticket)?;
     start_mem_watch(MemWatchArgs {

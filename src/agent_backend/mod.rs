@@ -25,6 +25,7 @@ pub use backend_ops::{
 };
 pub use factory::{build_agent_backend, build_agent_backend_with_tee};
 pub use sdk_client::SdkClient;
+pub use sdk_client_session::CoderSessionEnsure;
 #[cfg(test)]
 pub(crate) use sdk_client::{begun_cwd, live_session, live_session_mut, new_cursor, new_pi};
 #[cfg(test)]

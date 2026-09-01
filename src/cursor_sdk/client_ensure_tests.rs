@@ -37,7 +37,10 @@ async fn open_ensure_fixture() -> EnsureFixture {
         .ensure_coder_session(tmp.path())
         .await
         .expect("ensure");
-    assert!(started_new, "first ensure must create a fresh agent context");
+    assert!(
+        started_new.is_fresh(),
+        "first ensure must create a fresh agent context"
+    );
     let started = bridge_started_at(&client);
     EnsureFixture {
         client,
@@ -62,8 +65,8 @@ async fn cursor_sdk_ensure_reuses_fresh_bridge() {
         .await
         .expect("ensure again");
     assert!(
-        !started,
-        "fresh bridge must report reuse (false), not a fresh agent context"
+        !started.is_fresh(),
+        "fresh bridge must report reuse, not a fresh agent context"
     );
     assert_eq!(
         fixture.started,
@@ -85,7 +88,7 @@ async fn cursor_sdk_ensure_restarts_stale_bridge() {
         .await
         .expect("ensure restart");
     assert!(
-        !fresh_context,
+        !fresh_context.is_fresh(),
         "stale bridge resume continues the prior agent; do not send header.md again"
     );
     assert!(bridge_started_at(&fixture.client) > fixture.started);
