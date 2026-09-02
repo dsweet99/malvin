@@ -1,5 +1,5 @@
 use super::{ANSI_RESET, ERROR_WHO, WARNING_WHO, WHO_B, format_who_tag_prefix};
-use crate::terminal_palette::{ansi_tool_amber, ansi_tool_coral, ansi_tool_navy};
+use crate::terminal_palette::{ansi_error, ansi_tool_name, ansi_warning, ansi_who_tag};
 
 pub(crate) use super::stdout_render::{flush_stdout_rendered_line, print_stdout_rendered_line};
 pub(crate) use super::who_tag_ansi;
@@ -18,9 +18,13 @@ pub fn format_line_stdout(who: &str, line: &str) -> String {
 pub fn format_line_stdout_ansi(who: &str, line: &str) -> String {
     let prefix = format_who_tag_prefix(who);
     match who {
-        WARNING_WHO => format!("{}{prefix}{line}{ANSI_RESET}", ansi_tool_amber()),
-        ERROR_WHO => format!("{}{prefix}{line}{ANSI_RESET}", ansi_tool_coral()),
+        WARNING_WHO => format!("{}{prefix}{line}{ANSI_RESET}", ansi_warning()),
+        ERROR_WHO => format!("{}{prefix}{line}{ANSI_RESET}", ansi_error()),
         WHO_B => format!("{}{prefix}{line}{ANSI_RESET}", super::ANSI_DIM),
+        super::WHO_A => {
+            let tag_color = who_tag_ansi(who);
+            format!("{tag_color}{prefix}{ANSI_RESET}{}{line}{ANSI_RESET}", ansi_tool_name())
+        }
         _ => {
             let tag_color = who_tag_ansi(who);
             format!("{tag_color}{prefix}{ANSI_RESET}{line}")
@@ -32,7 +36,7 @@ pub fn format_line_stdout_ansi(who: &str, line: &str) -> String {
 pub fn format_heartbeat_stdout_ansi(who: &str, line: &str) -> String {
     format!(
         "{}{}{line}{ANSI_RESET}",
-        ansi_tool_navy(),
+        ansi_who_tag(),
         super::format_who_tag_delim(who)
     )
 }
@@ -147,7 +151,7 @@ mod tests {
 
     #[test]
     fn heartbeat_ansi_display_uses_uniform_who_tag_color() {
-        use crate::terminal_palette::ansi_tool_navy;
+        use crate::terminal_palette::ansi_who_tag;
 
         let payload = "20260524.000000 Still alive.";
         let (display, log) =
@@ -163,8 +167,8 @@ mod tests {
         assert!(!display.starts_with("20"));
         assert!(log.starts_with("20260524.000000.000"));
         assert!(
-            display.starts_with(ansi_tool_navy()),
-            "heartbeat line must open with navy who-tag; got {display:?}"
+            display.starts_with(ansi_who_tag()),
+            "heartbeat line must open with who_tag color; got {display:?}"
         );
         let reset_before_payload = format!("|{}{payload}", super::ANSI_RESET);
         assert!(
@@ -172,6 +176,31 @@ mod tests {
             "must not reset color before payload"
         );
         assert!(display.ends_with(super::ANSI_RESET));
+    }
+
+    #[test]
+    fn agent_start_ansi_payload_uses_tool_name_color() {
+        use crate::output::WHO_A;
+        use crate::terminal_palette::{ANSI_RESET, ansi_tool_name, ansi_who_tag};
+
+        let line = format_line_stdout_ansi(WHO_A, "cursor:auto");
+        let who = ansi_who_tag();
+        let tool = ansi_tool_name();
+        assert!(
+            line.starts_with(who),
+            "a| who-tag must use who_tag color; got {line:?}"
+        );
+        let tool_pos = line.find(tool).expect("tool_name color on a| line");
+        let payload_pos = line.find("cursor:auto").expect("payload");
+        assert!(
+            tool_pos < payload_pos,
+            "provider:model must be wrapped in tool_name color: {line:?}"
+        );
+        assert!(
+            line[tool_pos..].contains(&format!("cursor:auto{ANSI_RESET}")),
+            "payload must sit inside tool_name span: {line:?}"
+        );
+        assert_ne!(who, tool, "who_tag and tool_name slots must differ");
     }
 
     #[test]

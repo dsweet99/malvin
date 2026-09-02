@@ -152,7 +152,7 @@ static LOG_USE_COLOR: AtomicBool = AtomicBool::new(false);
 pub(crate) static STDOUT_LOG_TEST_LOCK: Mutex<()> = Mutex::new(());
 
 pub(crate) use crate::terminal_palette::{
-    ANSI_DIM, ANSI_RESET, ansi_tool_amber, ansi_tool_coral, ansi_tool_navy,
+    ANSI_DIM, ANSI_RESET, ansi_error, ansi_warning, ansi_who_tag,
 };
 
 #[must_use]
@@ -169,10 +169,10 @@ pub fn format_line(who: &str, line: &str) -> String {
 
 pub(crate) fn who_tag_ansi(who: &str) -> &'static str {
     match who {
-        WARNING_WHO => ansi_tool_amber(),
-        ERROR_WHO => ansi_tool_coral(),
+        WARNING_WHO => ansi_warning(),
+        ERROR_WHO => ansi_error(),
         who_tag::WHO_B => ANSI_DIM,
-        _ => ansi_tool_navy(),
+        _ => ansi_who_tag(),
     }
 }
 

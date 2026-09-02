@@ -119,16 +119,16 @@ fn exported_constants_match_public_contract() {
 }
 
 fn ansi_who_tag_uses_palette_for_warning_error_and_default() {
-    use crate::terminal_palette::{ansi_tool_amber, ansi_tool_coral, ansi_tool_navy};
+    use crate::terminal_palette::{ansi_warning, ansi_error, ansi_who_tag};
 
     let ts = "20260413.121314.015";
     let warn = tagged_display_line_with_timestamp_ansi(ts, super::WARNING_WHO, "");
     let err = tagged_display_line_with_timestamp_ansi(ts, super::ERROR_WHO, "");
     let default = tagged_display_line_with_timestamp_ansi(ts, WHO_M, "");
-    assert!(warn.contains(ansi_tool_amber()));
-    assert!(err.contains(ansi_tool_coral()));
-    assert!(!warn.contains(ansi_tool_coral()));
-    assert!(default.contains(ansi_tool_navy()));
+    assert!(warn.contains(ansi_warning()));
+    assert!(err.contains(ansi_error()));
+    assert!(!warn.contains(ansi_error()));
+    assert!(default.contains(ansi_who_tag()));
 }
 
 fn smoke_print_and_format_paths_cover_helpers() {

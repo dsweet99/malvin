@@ -5,10 +5,10 @@ use super::{
 
 #[test]
 fn ansi_error_and_warning_color_entire_display_line() {
-    use crate::terminal_palette::{ANSI_RESET, ansi_tool_amber, ansi_tool_coral};
+    use crate::terminal_palette::{ANSI_RESET, ansi_warning, ansi_error};
 
     let err = format_line_stdout_ansi(super::ERROR_WHO, "ACP failed");
-    let coral_pos = err.find(ansi_tool_coral()).expect("coral");
+    let coral_pos = err.find(ansi_error()).expect("coral");
     let reset_pos = err.rfind(ANSI_RESET).expect("reset");
     let payload_pos = err.find("ACP failed").expect("payload");
     assert_eq!(
@@ -21,7 +21,7 @@ fn ansi_error_and_warning_color_entire_display_line() {
         "error tag and payload must stay inside coral span: {err:?}"
     );
     let warn = format_line_stdout_ansi(super::WARNING_WHO, "disk low");
-    let amber_pos = warn.find(ansi_tool_amber()).expect("amber");
+    let amber_pos = warn.find(ansi_warning()).expect("amber");
     let reset_pos = warn.rfind(ANSI_RESET).expect("reset");
     let payload_pos = warn.find("disk low").expect("payload");
     assert_eq!(
@@ -37,7 +37,7 @@ fn ansi_error_and_warning_color_entire_display_line() {
 
 #[test]
 fn ansi_thought_tag_uses_uniform_dim_grey() {
-    use crate::terminal_palette::{ANSI_DIM, ansi_tool_dark, ansi_tool_navy};
+    use crate::terminal_palette::{ANSI_DIM, ansi_tool_name, ansi_who_tag};
 
     let line = format_line_stdout_ansi(WHO_B, "fail with max_abs=1.0.");
     assert!(
@@ -45,8 +45,8 @@ fn ansi_thought_tag_uses_uniform_dim_grey() {
         "thought display must space after pipe; got {line:?}"
     );
     assert!(line.contains(ANSI_DIM));
-    assert!(!line.contains(ansi_tool_navy()));
-    assert!(!line.contains(ansi_tool_dark()));
+    assert!(!line.contains(ansi_who_tag()));
+    assert!(!line.contains(ansi_tool_name()));
     let dim_start = line.find(ANSI_DIM).expect("dim");
     assert!(line[dim_start..].contains("fail with max_abs=1.0."));
 }
