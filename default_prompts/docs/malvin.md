@@ -170,7 +170,7 @@ COST: steps = N tokens_in = X tokens_out = Y cache_read = A cache_write = B cost
 
 Each run writes two parallel channels with different contracts:
 
-- **`stdout.log` (narrative):** lossy, human-oriented lines with who-tags (`m|`, `t|`, `u|`, `b|`, …). Use for skimming a run and vocabulary/ordering checks.
+- **`stdout.log` (narrative):** lossy, human-oriented lines with who-tags (`m|`, `t|`, `u|`, `b|`, `a|`, …). Use for skimming a run and vocabulary/ordering checks. An `a|<provider>:<model>` line (for example `a|cursor:auto`) is written each time a fresh agent context is started.
 - **`trace.jsonl` (audit):** machine-authoritative JSONL (Cursor SDK events such as `assistant` / `thinking` / `tool_call` / `progress` / `run_done`; Mini retains its own audit shapes). Use for tool results, shrink/fork events, and gate-loop audit tooling.
 
 Consumers must know which file to trust for which question. Named types live in `src/observability/` (`ObservabilityChannel`, `AuditEventKind`).

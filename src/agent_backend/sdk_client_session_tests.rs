@@ -9,19 +9,19 @@ fn service_wire_is_codex_only() {
         test_io(),
         1,
     );
-    assert!(spawn_service_wire(&cursor).is_none());
+    assert!(spawn::spawn_service_wire(&cursor).is_none());
 
     let pi = SdkClient::with_max_retries(
         parse_model_id("pi:openai/gpt-4o[thinking=high]").expect("pi"),
         test_io(),
         1,
     );
-    assert!(spawn_service_wire(&pi).is_none());
+    assert!(spawn::spawn_service_wire(&pi).is_none());
 
     let codex = SdkClient::with_max_retries(
         parse_model_id("codex:gpt-5.6[service=priority]").expect("codex"),
         test_io(),
         1,
     );
-    assert_eq!(spawn_service_wire(&codex).as_deref(), Some("priority"));
+    assert_eq!(spawn::spawn_service_wire(&codex).as_deref(), Some("priority"));
 }

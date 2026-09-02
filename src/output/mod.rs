@@ -136,7 +136,7 @@ pub fn append_outgoing_prompt_log_lines(body: &str) {
 }
 
 pub use who_tag::{
-    LOG_TAG_INNER_WIDTH, WHO_B, WHO_H, WHO_M, WHO_O, WHO_T, WHO_U,
+    LOG_TAG_INNER_WIDTH, WHO_A, WHO_B, WHO_H, WHO_M, WHO_O, WHO_T, WHO_U,
     format_acp_directional_tag_prefix, format_log_tag_inner, format_who_tag_delim,
     format_who_tag_prefix, is_command_prelude_line,
 };
