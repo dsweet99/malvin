@@ -1,4 +1,4 @@
-use super::sdk_client::{BridgeKind, SdkClient};
+use crate::model_id::ModelBackend;
 use super::test_support::test_io;
 use crate::model_id::parse_model_id;
 
@@ -25,13 +25,17 @@ fn ensure_run_timing_for_session_installs_when_missing() {
 #[test]
 fn kiss_witness_unified_sdk_client_and_backend() {
     let model = parse_model_id("cursor:auto").expect("model");
-    let cursor = SdkClient::new_cursor(model, test_io());
+    let cursor = crate::agent_backend::new_cursor(model, test_io());
     assert_eq!(cursor.model.canonical(), "cursor:auto");
-    assert!(matches!(cursor.kind, BridgeKind::Cursor));
+    assert!(matches!(cursor.model.backend, ModelBackend::Cursor));
 
     let pi_model = parse_model_id("pi:openai/gpt-4o").expect("pi");
-    let pi = SdkClient::new_pi(pi_model, test_io());
-    assert!(matches!(pi.kind, BridgeKind::Pi));
+    let pi = crate::agent_backend::new_pi(pi_model, test_io());
+    assert!(matches!(pi.model.backend, ModelBackend::Pi));
+
+    let codex_model = parse_model_id("codex:gpt-5.6").expect("codex");
+    let codex = crate::agent_backend::sdk_client::new_codex(codex_model, test_io());
+    assert!(matches!(codex.model.backend, ModelBackend::Codex));
 
     let mut backend = crate::agent_backend::agent_backend_from_client(cursor);
     assert!(backend.prompts_log_run_dir.is_none());
@@ -42,16 +46,20 @@ fn kiss_witness_unified_sdk_client_and_backend() {
         crate::support_paths::DEFAULT_MAX_ACP_RETRIES
     );
     assert!(!backend.has_open_coder_session());
-    assert!(backend.keeps_coder_session_for_process_life());
-    let _ = stringify!(BridgeKind);
+    let _ = stringify!(ModelBackend);
     let _ = stringify!(new_cursor);
     let _ = stringify!(new_pi);
     let _ = stringify!(new_codex);
-    let _ = stringify!(bridge_kind_from_backend);
+    let _ = stringify!(backend);
+    let _ = stringify!(BegunCoderSession);
     let _ = stringify!(cursor_resume_id);
     let _ = stringify!(spawn_with_retries);
     let _ = stringify!(spawn_service_wire);
     let _ = stringify!(reject_no_force);
+    let _ = stringify!(require_force);
+    let _ = stringify!(CoderSessionEnsure);
+    let _ = stringify!(emit_agent_started_log);
+    let _ = stringify!(force_fresh_agent_for_retry);
     let _ = stringify!(NO_FORCE_MSG);
     let _ = stringify!(DRAIN_IDLE_PREFIX_BRIDGE);
     let _ = stringify!(DRAIN_IDLE_PREFIX_PI);

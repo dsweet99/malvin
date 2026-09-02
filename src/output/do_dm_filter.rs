@@ -1,7 +1,7 @@
 use std::sync::Mutex;
 
-pub const DM_START: &str = "MALVIN_DM_START";
-pub const DM_END: &str = "MALVIN_DM_END";
+pub const DM_START: &str = "__MALVIN_DM_START__";
+pub const DM_END: &str = "__MALVIN_DM_END__";
 
 #[derive(Default)]
 struct DmFilter {
@@ -151,9 +151,9 @@ mod tests {
     #[test]
     fn streaming_chunks_across_markers() {
         let out = with_dm_capture(|| {
-            feed_do_dm_stdout_text("MALVIN_DM_");
-            feed_do_dm_stdout_text("START\nxi\nMALVIN_DM_");
-            feed_do_dm_stdout_text("END\n");
+            feed_do_dm_stdout_text("__MALVIN_DM_");
+            feed_do_dm_stdout_text("START__\nxi\n__MALVIN_DM_");
+            feed_do_dm_stdout_text("END__\n");
         });
         assert_eq!(out, "xi");
     }

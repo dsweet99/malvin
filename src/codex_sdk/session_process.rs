@@ -1,6 +1,8 @@
 use super::discover::resolve_codex_bin;
+use super::session::CodexSession;
 use crate::acp::AgentError;
-use crate::bridge_sdk::{BridgeSession, BridgeSpawnArgs, BridgeWire};
+use crate::bridge_sdk::BridgeSpawnArgs;
+use crate::malvin_sandbox::SandboxSpawnTicket;
 use std::process::Stdio;
 
 pub(super) type CodexProcess = (
@@ -14,12 +16,18 @@ pub(super) type CodexProcess = (
 pub(super) fn spawn_codex_session(
     args: &BridgeSpawnArgs<'_>,
     service: Option<&str>,
-) -> Result<BridgeSession, AgentError> {
+    ticket: SandboxSpawnTicket,
+) -> Result<CodexSession, AgentError> {
     let mut process = spawn_codex_process(args)?;
     let baseline = crate::malvin_sandbox::malvin_spawn_baseline();
     process.4 = baseline;
-    crate::malvin_sandbox::note_active_sandbox_session(process.3, process.4.clone(), args.cwd)
-        .map_err(AgentError)?;
+    crate::malvin_sandbox::note_active_sandbox_session(
+        ticket,
+        process.3,
+        process.4.clone(),
+        args.cwd,
+    )
+    .map_err(AgentError)?;
     Ok(build_codex_session(args, process, service))
 }
 
@@ -27,10 +35,10 @@ pub(super) fn build_codex_session(
     args: &BridgeSpawnArgs<'_>,
     process: CodexProcess,
     service: Option<&str>,
-) -> BridgeSession {
+) -> CodexSession {
     let (child, stdin, stdout, pgid, baseline) = process;
     let io = build_codex_session_io(stdin, stdout);
-    BridgeSession {
+    CodexSession {
         child: tokio::sync::Mutex::new(Some(child)),
         stdin: io.0,
         stdout: io.1,
@@ -43,10 +51,9 @@ pub(super) fn build_codex_session(
             log.last_response = io.3;
             log
         },
-        agent_id: std::sync::Mutex::new(None),
+        thread_id: std::sync::Mutex::new(None),
         turn_id: std::sync::Mutex::new(None),
         service: service.map(str::to_owned),
-        wire: BridgeWire::CodexRpc,
     }
 }
 
@@ -69,10 +76,9 @@ fn codex_uses_outer_sandbox_value(value: Option<&str>) -> bool {
 
 fn configure_codex_sandbox(cmd: &mut tokio::process::Command, outer_sandbox: bool) {
     if outer_sandbox {
-        cmd.arg("--dangerously-bypass-approvals-and-sandbox")
-            .arg("-c")
-            .arg("sandbox_mode=\"danger-full-access\"");
+        cmd.arg("--dangerously-bypass-approvals-and-sandbox");
     }
+    cmd.arg("-c").arg("sandbox_mode=\"danger-full-access\"");
 }
 
 pub(super) fn build_codex_session_io(
@@ -143,7 +149,15 @@ mod tests {
             .get_args()
             .map(|arg| arg.to_string_lossy().into_owned())
             .collect();
-        assert_eq!(args, ["app-server", "--stdio",]);
+        assert_eq!(
+            args,
+            [
+                "-c",
+                "sandbox_mode=\"danger-full-access\"",
+                "app-server",
+                "--stdio",
+            ]
+        );
     }
 
     #[test]
@@ -170,5 +184,17 @@ mod tests {
                 "sandbox_mode=\"danger-full-access\"",
             ]
         );
+    }
+
+    #[test]
+    fn configure_codex_sandbox_sets_mode_without_outer_bypass() {
+        let mut cmd = tokio::process::Command::new("codex");
+        configure_codex_sandbox(&mut cmd, false);
+        let args: Vec<_> = cmd
+            .as_std()
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(args, ["-c", "sandbox_mode=\"danger-full-access\"",]);
     }
 }

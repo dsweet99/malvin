@@ -14,8 +14,8 @@ pub(crate) fn agent_config_from_table(agent: &toml::Value) -> Result<AgentConfig
 }
 
 fn agent_config_base(agent: &toml::Value, defaults: &AgentConfig) -> Result<AgentConfig, String> {
-    let raw_model =
-        super::read_string(agent.get("model")).unwrap_or_else(|| defaults.model.clone());
+    let raw_model = super::read_string(agent.get("model"))
+        .unwrap_or_else(|| defaults.model.canonical());
     let model = crate::model_id::require_config_model(&raw_model)?;
     Ok(AgentConfig {
         model,

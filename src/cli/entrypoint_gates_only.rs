@@ -1,7 +1,7 @@
 use super::run_async_cli;
 use crate::cli::{
     init_flow::{self, InitWorkflowOpts},
-    run_init, run_tidy, WorkflowCliOptions,
+    run_tidy, WorkflowCliOptions,
 };
 
 pub(crate) fn dispatch_gates_only_route(
@@ -16,22 +16,18 @@ pub(crate) fn dispatch_gates_only_route(
         shared.no_tenacious,
         matches,
     );
-    if init_flow::should_bootstrap_gates(shared)? {
-        let bootstrap_shared = init_flow::shared_for_init_bootstrap(shared);
-        return run_async_cli(|| {
-            run_init(
-                InitWorkflowOpts {
-                    max_loops,
-                    max_hypotheses,
-                },
-                &bootstrap_shared,
-                WorkflowCliOptions {
-                    force: !shared.no_force,
-                },
-            )
-        });
-    }
-    run_async_cli(|| {
+    run_async_cli(|| async {
+        init_flow::maybe_run_init_bootstrap(
+            InitWorkflowOpts {
+                max_loops,
+                max_hypotheses,
+            },
+            shared,
+            WorkflowCliOptions {
+                force: !shared.no_force,
+            },
+        )
+        .await?;
         run_tidy(
             max_loops,
             max_hypotheses,
@@ -40,5 +36,6 @@ pub(crate) fn dispatch_gates_only_route(
                 force: !shared.no_force,
             },
         )
+        .await
     })
 }

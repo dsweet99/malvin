@@ -195,7 +195,7 @@ pub fn generate_auto_name_with(
         }
     }
     Err(
-        "failed to allocate a unique auto-generated session name after 16 attempts; retry or pass --name"
+        "failed to allocate a unique auto-generated session name after 16 attempts; retry"
             .into(),
     )
 }

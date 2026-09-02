@@ -1,15 +1,7 @@
 use super::{
-    Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_init, run_router,
+    Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_router,
 };
 use crate::do_flow::DoArgs;
-
-pub(crate) const fn command_accepts_session_name(_command: &Commands) -> bool {
-    false
-}
-
-pub(crate) const fn unsupported_name_error() -> &'static str {
-    "`--name` is only supported for bare `malvin REQUEST`, `--do`, and `malvin -g`"
-}
 
 #[path = "entrypoint_from.rs"]
 mod entrypoint_from;
@@ -88,14 +80,14 @@ pub(crate) fn finish_entrypoint(res: Result<(), String>) -> Exit {
     }
 }
 
-pub(crate) fn prepare_cli_output(global: &crate::cli::args::GlobalOpts) {
+pub(crate) fn prepare_cli_output(shared: &SharedOpts) {
     let theme = std::env::current_dir()
         .ok()
         .map(|cwd| crate::malvin_config_file::load_malvin_config(&cwd).theme)
         .unwrap_or_default();
     crate::terminal_palette::init_terminal_theme(theme);
     crate::output::init_stdout_style();
-    crate::output::set_stdout_suppressed(global.background);
+    crate::output::set_stdout_suppressed(shared.background);
 }
 
 pub(crate) fn dispatch_command(
@@ -105,13 +97,23 @@ pub(crate) fn dispatch_command(
 ) -> Result<(), String> {
     let mut shared = shared.clone();
     match command {
-        cmd @ Commands::Write(_) => {
-            super::entrypoint_commands::dispatch_plan_authoring_gate(cmd, &mut shared, matches)
+        Commands::Write(write_args) => {
+            crate::cli::shared_opts::overlay_shared_opts_from_subcommand(
+                &mut shared,
+                &write_args.shared,
+                matches,
+                "write",
+            );
+            super::entrypoint_commands::dispatch_plan_authoring_gate(
+                Commands::Write(write_args),
+                &mut shared,
+                matches,
+            )
         }
-        Commands::Inspire(inspire) | Commands::Adaptix(inspire) => {
-            super::entrypoint_commands::run_inspire_command(inspire, &shared)
+        Commands::Admin(admin) => {
+            let model = shared.model.canonical();
+            super::run_admin(admin, &model)
         }
-        Commands::Models(models) => dispatch_models(models, &shared),
     }
 }
 
@@ -150,22 +152,18 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
         shared.no_tenacious,
         matches,
     );
-    if crate::cli::init_flow::should_bootstrap_gates(shared)? {
-        let bootstrap_shared = crate::cli::init_flow::shared_for_init_bootstrap(shared);
-        return run_async_cli(|| {
-            run_init(
-                crate::cli::init_flow::InitWorkflowOpts {
-                    max_loops,
-                    max_hypotheses,
-                },
-                &bootstrap_shared,
-                WorkflowCliOptions {
-                    force: !shared.no_force,
-                },
-            )
-        });
-    }
-    run_async_cli(|| {
+    run_async_cli(|| async {
+        crate::cli::init_flow::maybe_run_init_bootstrap(
+            crate::cli::init_flow::InitWorkflowOpts {
+                max_loops,
+                max_hypotheses,
+            },
+            shared,
+            WorkflowCliOptions {
+                force: !shared.no_force,
+            },
+        )
+        .await?;
         run_router(
             RouterArgs {
                 request: Some(request),
@@ -177,15 +175,8 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
                 force: !shared.no_force,
             },
         )
+        .await
     })
-}
-
-fn dispatch_models(
-    models: super::models_cmd::ModelsArgs,
-    shared: &super::SharedOpts,
-) -> Result<(), String> {
-    let model = shared.model.canonical();
-    super::models_cmd::run_models(models, &model)
 }
 
 #[cfg(test)]

@@ -38,6 +38,7 @@ fn kiss_cov_cursor_sdk_client_api() {
     let _ = stringify!(end_coder_session);
     let _ = stringify!(bridge_spawn_args);
     let _ = stringify!(adopt_spawned_session);
+    let _ = stringify!(emit_agent_started_log);
     let _ = stringify!(note_spawn_failure);
     let _ = stringify!(remember_agent_id_from);
     let _ = stringify!(SDK_BRIDGE_MAX_AGE);

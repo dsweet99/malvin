@@ -1,22 +1,7 @@
 use super::write_flow::WriteArgs;
-use super::{Commands, SharedOpts, WorkflowCliOptions, run_inspire, run_write};
+use super::{Commands, SharedOpts, WorkflowCliOptions, run_write};
 
 use super::entrypoint::run_async_cli;
-
-pub(crate) fn run_inspire_command(
-    inspire: crate::inspire_flow::InspireArgs,
-    shared: &SharedOpts,
-) -> Result<(), String> {
-    run_async_cli(|| {
-        run_inspire(
-            inspire,
-            shared,
-            WorkflowCliOptions {
-                force: !shared.no_force,
-            },
-        )
-    })
-}
 
 pub(crate) fn run_write_command(
     mut write_args: WriteArgs,
@@ -51,9 +36,9 @@ pub(crate) fn dispatch_plan_authoring_gate(
 ) -> Result<(), String> {
     match command {
         Commands::Write(write_args) => run_write_command(write_args, shared, matches),
-        other => Err(format!(
-            "internal: unexpected plan-authoring command {other:?}"
-        )),
+        Commands::Admin(_) => Err(
+            "internal: unexpected plan-authoring command Admin".to_string(),
+        ),
     }
 }
 

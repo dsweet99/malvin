@@ -33,6 +33,27 @@ pub enum ModelBackend {
     Codex,
 }
 
+impl ModelBackend {
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Cursor => "cursor",
+            Self::Pi => "pi",
+            Self::Codex => "codex",
+        }
+    }
+
+    /// Idle-timeout error prefix for this backend's drain loop.
+    #[must_use]
+    pub const fn drain_idle_prefix(self) -> &'static str {
+        match self {
+            Self::Cursor => "bridge timed out",
+            Self::Pi => "pi rpc timed out",
+            Self::Codex => "codex timed out",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParsedModel {
     pub backend: ModelBackend,
@@ -180,25 +201,12 @@ fn parsed(backend: ModelBackend, slug: &str) -> Result<ParsedModel, String> {
     })
 }
 
-pub fn require_config_model(raw: &str) -> Result<String, String> {
+pub fn require_config_model(raw: &str) -> Result<ParsedModel, String> {
     let raw = raw.trim();
     if raw.is_empty() {
-        return Ok(crate::support_paths::DEFAULT_CLI_MODEL.to_string());
+        return parse_model_id(crate::support_paths::DEFAULT_CLI_MODEL);
     }
-    require_prefixed_model(raw)
-}
-
-#[must_use]
-pub fn provider_slug(raw: &str) -> String {
-    match parse_model_id(raw) {
-        Ok(parsed) => parsed.slug,
-        Err(_) => raw.to_string(),
-    }
-}
-
-#[must_use]
-pub fn uses_pi_backend(raw: &str) -> bool {
-    parse_model_id(raw).is_ok_and(|p| p.is_pi())
+    parse_model_id(raw)
 }
 
 pub fn require_prefixed_model(raw: &str) -> Result<String, String> {

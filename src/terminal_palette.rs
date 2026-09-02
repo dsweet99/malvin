@@ -11,32 +11,39 @@ pub enum TerminalTheme {
     Light,
 }
 
+/// Semantic terminal colors. Field names describe role, not hue.
 #[derive(Clone, Copy)]
 pub(crate) struct Palette {
-    coral: &'static str,
-    amber: &'static str,
-    navy: &'static str,
-    teal: &'static str,
-    dark: &'static str,
-    white: &'static str,
+    /// Errors / failure marks (✗).
+    pub(crate) error: &'static str,
+    /// Warnings.
+    pub(crate) warning: &'static str,
+    /// Who-tag chrome and heartbeat.
+    pub(crate) who_tag: &'static str,
+    /// Secondary accents (paths, · separators, ✓).
+    pub(crate) accent: &'static str,
+    /// Tool names/verbs and agent-start `provider:model` text.
+    pub(crate) tool_name: &'static str,
+    /// Primary body text (agent messages).
+    pub(crate) body: &'static str,
 }
 
 const DARK_PALETTE: Palette = Palette {
-    coral: "\x1b[38;2;224;122;95m",
-    amber: "\x1b[38;2;245;158;66m",
-    navy: "\x1b[38;2;110;113;142m",
-    teal: "\x1b[38;2;129;178;154m",
-    dark: "\x1b[38;2;158;128;78m",
-    white: "\x1b[38;2;235;235;235m",
+    error: "\x1b[38;2;224;122;95m",
+    warning: "\x1b[38;2;245;158;66m",
+    who_tag: "\x1b[38;2;110;113;142m",
+    accent: "\x1b[38;2;129;178;154m",
+    tool_name: "\x1b[38;2;158;128;78m",
+    body: "\x1b[38;2;235;235;235m",
 };
 
 const LIGHT_PALETTE: Palette = Palette {
-    coral: "\x1b[38;2;179;78;61m",
-    amber: "\x1b[38;2;196;98;44m",
-    navy: "\x1b[38;2;55;57;72m",
-    teal: "\x1b[38;2;77;118;98m",
-    dark: "\x1b[38;2;48;48;50m",
-    white: "\x1b[38;2;24;24;26m",
+    error: "\x1b[38;2;179;78;61m",
+    warning: "\x1b[38;2;196;98;44m",
+    who_tag: "\x1b[38;2;55;57;72m",
+    accent: "\x1b[38;2;77;118;98m",
+    tool_name: "\x1b[38;2;48;48;50m",
+    body: "\x1b[38;2;24;24;26m",
 };
 
 const THEME_DARK: u8 = 0;
@@ -59,28 +66,28 @@ pub(crate) fn active_palette() -> Palette {
     }
 }
 
-pub(crate) fn ansi_tool_coral() -> &'static str {
-    active_palette().coral
+pub(crate) fn ansi_error() -> &'static str {
+    active_palette().error
 }
 
-pub(crate) fn ansi_tool_amber() -> &'static str {
-    active_palette().amber
+pub(crate) fn ansi_warning() -> &'static str {
+    active_palette().warning
 }
 
-pub(crate) fn ansi_tool_navy() -> &'static str {
-    active_palette().navy
+pub(crate) fn ansi_who_tag() -> &'static str {
+    active_palette().who_tag
 }
 
-pub(crate) fn ansi_tool_teal() -> &'static str {
-    active_palette().teal
+pub(crate) fn ansi_accent() -> &'static str {
+    active_palette().accent
 }
 
-pub(crate) fn ansi_tool_dark() -> &'static str {
-    active_palette().dark
+pub(crate) fn ansi_tool_name() -> &'static str {
+    active_palette().tool_name
 }
 
-pub(crate) fn ansi_tool_white() -> &'static str {
-    active_palette().white
+pub(crate) fn ansi_body() -> &'static str {
+    active_palette().body
 }
 
 #[cfg(test)]

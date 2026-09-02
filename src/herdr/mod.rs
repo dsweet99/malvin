@@ -3,15 +3,21 @@ mod env;
 mod identity;
 mod lifecycle;
 mod request;
+mod reset;
 mod send;
 mod trace;
 
 pub use lifecycle::{notify_reclaim, notify_run_end, notify_run_start, notify_working};
+pub use reset::reset_to_not_working;
 
 #[cfg(test)]
 pub(crate) use lifecycle::{
     reset_session_for_test, session_active_for_test, session_has_binding_for_test,
 };
+
+#[cfg(test)]
+#[path = "lifecycle_io_support.rs"]
+pub(crate) mod lifecycle_io_support;
 
 #[cfg(test)]
 #[path = "lifecycle_io_tests.rs"]
@@ -25,6 +31,7 @@ mod kiss_cov {
         let _ = super::notify_reclaim;
         let _ = super::notify_working;
         let _ = super::notify_run_end;
+        let _ = super::reset_to_not_working;
         let _ = crate::herdr::env::HerdrEnv::from_os_env;
         let _ = crate::herdr::env::from_values;
         let _ = crate::herdr::request::next_seq;

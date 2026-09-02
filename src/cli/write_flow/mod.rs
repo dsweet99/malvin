@@ -1,5 +1,7 @@
 use clap::Args;
 
+use crate::cli::SharedOpts;
+
 pub(crate) mod prep;
 mod run;
 
@@ -8,6 +10,8 @@ pub use run::run_write;
 #[derive(Args, Debug, Clone)]
 #[command(override_usage = "malvin write [OPTION]... [REQUEST]")]
 pub struct WriteArgs {
+    #[command(flatten)]
+    pub shared: SharedOpts,
     /// Existing `.md` path or literal text describing what to write about
     pub request: Option<String>,
     /// Workspace path for the LaTeX output (PDF uses the same stem with `.pdf`)

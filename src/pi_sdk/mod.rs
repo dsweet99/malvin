@@ -35,17 +35,9 @@ pub fn pi_sdk_client_from_raw(
     io: crate::acp::AgentIoOptions,
     max_retries: u32,
 ) -> crate::agent_backend::SdkClient {
-    let model =
-        crate::model_id::parse_model_id(model).unwrap_or_else(|_| crate::model_id::ParsedModel {
-            backend: crate::model_id::ModelBackend::Pi,
-            slug: "openai/gpt-4o".into(),
-            params: Vec::new(),
-        });
-    crate::agent_backend::SdkClient::with_max_retries(
-        model,
-        io,
-        max_retries,
-    )
+    let model = crate::model_id::parse_model_id(model)
+        .unwrap_or_else(|e| panic!("pi_sdk_client_from_raw requires a valid model id: {e}"));
+    crate::agent_backend::SdkClient::with_max_retries(model, io, max_retries)
 }
 
 #[cfg(test)]

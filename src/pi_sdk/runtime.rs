@@ -81,20 +81,20 @@ impl PiRuntime {
         }
     }
 
-    pub(crate) fn shutdown(&mut self) {
+    pub(crate) fn shutdown(&mut self) -> std::thread::Result<()> {
         self.shutdown_requested.store(true, Ordering::SeqCst);
         self.abort();
         super::isolated_bash::interrupt_active_isolated_bash();
         let _ = self.cmd_tx.send(PiCmd::Shutdown);
-        if let Some(thread) = self.thread.take() {
-            let _ = thread.join();
-        }
+        self.thread
+            .take()
+            .map_or_else(|| Ok(()), std::thread::JoinHandle::join)
     }
 }
 
 impl Drop for PiRuntime {
     fn drop(&mut self) {
-        self.shutdown();
+        let _ = self.shutdown();
     }
 }
 

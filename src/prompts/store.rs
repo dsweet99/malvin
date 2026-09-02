@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use super::PromptError;
-use super::defaults::{DEFAULT_PROMPTS, HEADER_MD, REQUIRED_PROMPTS, default_file};
+use super::defaults::{default_file, DEFAULT_PROMPTS, HEADER_MD, REQUIRED_PROMPTS};
 use super::enforce_template_placeholders_resolved_in;
 use super::render_template;
+use super::PromptError;
 
 #[derive(Debug, Clone)]
 pub struct PromptStore {
@@ -152,7 +152,12 @@ pub fn render_header(
     Ok(render_template(&header_raw, context))
 }
 
-pub fn render_inspire_mbc2_prompt(
+#[must_use]
+pub fn build_mbc2_render_context(user_prompt: &str) -> std::collections::HashMap<String, String> {
+    std::collections::HashMap::from([("user_prompt".into(), user_prompt.to_string())])
+}
+
+pub fn render_mbc2_prompt(
     store: &PromptStore,
     context: &std::collections::HashMap<String, String>,
 ) -> Result<String, PromptError> {

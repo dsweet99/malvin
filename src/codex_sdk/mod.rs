@@ -4,6 +4,7 @@ mod map_event;
 mod map_event_summary;
 #[path = "map_event_usage.rs"]
 mod map_event_usage;
+mod session;
 mod session_io;
 #[path = "session_process.rs"]
 mod session_process;
@@ -29,10 +30,7 @@ mod session_turn_tests;
 
 pub(crate) use auth::ensure_codex_authenticated;
 pub(crate) use discover::list_codex_display_models;
-pub(crate) use session_io::{
-    codex_delete_thread as delete_thread, codex_send_prompt as send_prompt,
-    codex_write_abort as write_abort,
-};
+pub(crate) use session::CodexSession;
 pub(crate) use session_spawn::codex_spawn_bridge as spawn_bridge;
 
 #[cfg(test)]

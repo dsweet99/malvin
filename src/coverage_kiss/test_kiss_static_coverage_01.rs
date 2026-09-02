@@ -193,8 +193,8 @@ fn kiss_exec_witness_01_13() {
     WriteRunPrep();
     DualHeaderPromptInput();
     DualHeaderCoderRun();
-    InspireArgs();
-    InspireRunPrep();
+    build_mbc2_render_context();
+    render_mbc2_prompt();
     GateInlineSummarizeCtx();
     run_gate_inline_summarize_first_iteration();
     write_summarize_fixture_exp_logs();

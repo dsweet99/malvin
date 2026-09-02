@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use crate::log_gc_config::LogsGcConfig;
+use crate::model_id::{ParsedModel, parse_model_id};
 use crate::output::print_log_warning;
 use crate::support_paths::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use crate::terminal_palette::TerminalTheme;
@@ -44,7 +45,7 @@ const DEFAULT_MALVIN_CONFIG_TEMPLATE: &str = include_str!(concat!(
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AgentConfig {
-    pub model: String,
+    pub model: ParsedModel,
     pub max_hypotheses: usize,
     pub max_loops: usize,
     pub max_loops_code: usize,
@@ -54,7 +55,7 @@ pub struct AgentConfig {
 impl Default for AgentConfig {
     fn default() -> Self {
         Self {
-            model: DEFAULT_CLI_MODEL.to_string(),
+            model: parse_model_id(DEFAULT_CLI_MODEL).expect("DEFAULT_CLI_MODEL must parse"),
             max_hypotheses: DEFAULT_MAX_HYPOTHESES,
             max_loops: DEFAULT_MAX_LOOPS,
             max_loops_code: DEFAULT_MAX_LOOPS_CODE,

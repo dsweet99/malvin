@@ -5,7 +5,6 @@ use std::sync::{Mutex, OnceLock};
 
 pub use crate::acp_spawn_lock::assert_no_peer_acp_spawn_lock;
 use crate::acp_spawn_lock::{acquire_acp_spawn_lock, release_acp_spawn_lock};
-use crate::session_sandbox_policy::SandboxSpawnPolicyAspect;
 
 #[cfg(unix)]
 use crate::acp::sandbox_monitor_pids;
@@ -27,11 +26,10 @@ struct ActiveSandboxSession {
 
 static ACTIVE_SANDBOX_SESSION: Mutex<Option<ActiveSandboxSession>> = Mutex::new(None);
 
-const MALVIN_STD_COMMAND_ASPECTS: &[SandboxSpawnPolicyAspect] = &[
-    SandboxSpawnPolicyAspect::ProcessGroupIsolation,
-    SandboxSpawnPolicyAspect::MallocArenaCap,
-    SandboxSpawnPolicyAspect::ParentDeathSignal,
-];
+/// Proof that the previous sandbox was cleared before this spawn attempt.
+/// Consumed by [`note_active_sandbox_session`] so spawn paths cannot skip the gate.
+#[derive(Debug)]
+pub struct SandboxSpawnTicket(());
 
 pub fn init_malvin_spawn_baseline() {
     #[cfg(unix)]
@@ -52,7 +50,6 @@ pub fn malvin_spawn_baseline() -> HashSet<u32> {
 #[cfg(unix)]
 pub fn isolate_child_process_group(cmd: &mut std::process::Command) {
     use std::os::unix::process::CommandExt;
-    let _aspect = SandboxSpawnPolicyAspect::ProcessGroupIsolation;
     cmd.process_group(0);
 }
 
@@ -69,7 +66,6 @@ pub fn isolate_tokio_child_process_group(cmd: &mut tokio::process::Command) {
 pub fn isolate_tokio_child_process_group(_: &mut tokio::process::Command) {}
 
 fn apply_sandbox_resource_limits(cmd: &mut std::process::Command) {
-    let _aspect = SandboxSpawnPolicyAspect::MallocArenaCap;
     cmd.env("MALLOC_ARENA_MAX", "2");
 }
 
@@ -79,7 +75,6 @@ fn apply_sandbox_resource_limits_tokio(cmd: &mut tokio::process::Command) {
 
 #[must_use]
 pub fn malvin_std_command(program: impl AsRef<OsStr>) -> std::process::Command {
-    let _ = MALVIN_STD_COMMAND_ASPECTS;
     let mut cmd = std::process::Command::new(program);
     isolate_child_process_group(&mut cmd);
     install_parent_death_signal(&mut cmd);
@@ -89,7 +84,6 @@ pub fn malvin_std_command(program: impl AsRef<OsStr>) -> std::process::Command {
 
 #[must_use]
 pub fn malvin_tokio_command(program: impl AsRef<OsStr>) -> tokio::process::Command {
-    let _ = MALVIN_STD_COMMAND_ASPECTS;
     let mut cmd = tokio::process::Command::new(program);
     isolate_tokio_child_process_group(&mut cmd);
     install_tokio_parent_death_signal(&mut cmd);
@@ -97,8 +91,14 @@ pub fn malvin_tokio_command(program: impl AsRef<OsStr>) -> tokio::process::Comma
     cmd
 }
 
+/// Gate the next spawn: previous sandbox processes must already be dead.
+#[must_use = "pass the ticket to note_active_sandbox_session after spawn"]
+pub fn take_sandbox_spawn_ticket() -> Result<SandboxSpawnTicket, String> {
+    assert_dead_before_next_spawn()?;
+    Ok(SandboxSpawnTicket(()))
+}
+
 pub fn assert_dead_before_next_spawn() -> Result<(), String> {
-    let _aspect = SandboxSpawnPolicyAspect::DeadBeforeNextSpawn;
     let still_alive = {
         let prior = ACTIVE_SANDBOX_SESSION
             .lock()
@@ -117,11 +117,11 @@ pub fn assert_dead_before_next_spawn() -> Result<(), String> {
 }
 
 pub fn note_active_sandbox_session(
+    _ticket: SandboxSpawnTicket,
     pgid: Option<u32>,
     baseline: HashSet<u32>,
     work_dir: &Path,
 ) -> Result<(), String> {
-    let _aspect = SandboxSpawnPolicyAspect::AcpSpawnLock;
     let acp_lock_slot = crate::acp_spawn_lock::active_acp_lock_slot();
     acquire_acp_spawn_lock(work_dir)?;
     *ACTIVE_SANDBOX_SESSION
@@ -175,7 +175,6 @@ pub fn malvin_session_rss_bytes(
     agent_pgid: Option<u32>,
     session_baseline: &HashSet<u32>,
 ) -> Option<u64> {
-    let _aspect = SandboxSpawnPolicyAspect::SessionRssMonitor;
     let pids = sandbox_monitor_pids(agent_pgid, session_baseline);
     pids_sandbox_bytes(&pids)
 }
@@ -216,7 +215,21 @@ mod tests {
         let _ = super::install_parent_death_signal;
         let _ = super::install_tokio_parent_death_signal;
         let _ = super::sandbox_still_alive;
+        let _ = super::take_sandbox_spawn_ticket;
         let _ = super::malvin_std_command("true");
         let _ = super::malvin_tokio_command("true");
+    }
+
+    #[test]
+    fn sandbox_spawn_ticket_requires_clear_gate() {
+        let ticket = super::take_sandbox_spawn_ticket().expect("clear");
+        super::note_active_sandbox_session(
+            ticket,
+            None,
+            std::collections::HashSet::new(),
+            std::path::Path::new("."),
+        )
+        .expect("note");
+        super::clear_active_sandbox_session();
     }
 }

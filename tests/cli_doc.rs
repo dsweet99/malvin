@@ -54,51 +54,32 @@ fn malvin_code_is_not_a_documented_subcommand() {
 }
 
 #[test]
-fn malvin_inspire_without_request_shows_short_usage_and_exits_zero() {
+fn malvin_inspire_is_not_a_documented_subcommand() {
     let tmp = isolated_home();
-    let bare = malvin_cmd(tmp.path())
-        .args(["inspire"])
+    let out = malvin_cmd(tmp.path())
+        .args(["inspire", "--doc"])
         .output()
-        .expect("spawn malvin inspire");
-    let help = malvin_cmd(tmp.path())
-        .args(["inspire", "--help"])
-        .output()
-        .expect("spawn malvin inspire --help");
+        .expect("spawn malvin inspire --doc");
     assert!(
-        bare.status.success(),
+        out.status.success(),
         "stderr={}",
-        String::from_utf8_lossy(&bare.stderr)
+        String::from_utf8_lossy(&out.stderr)
     );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        !stdout.contains("# malvin inspire"),
+        "removed inspire workflow must not have --doc content: {stdout}"
+    );
+    assert!(stdout.contains("# malvin (top-level CLI)"));
+    let help = malvin_cmd(tmp.path())
+        .arg("--help")
+        .output()
+        .expect("spawn malvin --help");
     assert!(help.status.success());
-    let bare_s = String::from_utf8_lossy(&bare.stdout);
     let help_s = String::from_utf8_lossy(&help.stdout);
-    assert_ne!(
-        bare.stdout, help.stdout,
-        "malvin inspire must not duplicate full --help"
-    );
     assert!(
-        bare_s.contains("Explore creative boundaries"),
-        "inspire stdout: {bare_s}"
-    );
-    assert!(
-        bare_s.contains("Usage: malvin inspire [OPTION]... [REQUEST]"),
-        "inspire stdout must show REQUEST usage: {bare_s}"
-    );
-    assert!(
-        bare_s.contains("malvin inspire --help"),
-        "inspire stdout must point to --help: {bare_s}"
-    );
-    assert!(
-        !bare_s.contains("Options:"),
-        "inspire stdout must omit options: {bare_s}"
-    );
-    assert!(
-        help_s.contains("Options:"),
-        "full help must list options: {help_s}"
-    );
-    assert!(
-        help_s.contains("--model"),
-        "full help must list inspire flags: {help_s}"
+        !help_s.lines().any(|line| line.starts_with("  inspire ")),
+        "top-level help must omit inspire: {help_s}"
     );
 }
 
@@ -155,7 +136,7 @@ fn bare_malvin_shows_commands_only_and_exits_zero() {
         .collect();
     assert_eq!(
         command_names,
-        ["write", "inspire", "models"],
+        ["write", "admin"],
         "bare stdout command order: {bare_s}"
     );
     assert!(

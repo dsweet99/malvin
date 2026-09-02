@@ -105,8 +105,8 @@ fn embedded_do_header_is_a_single_text_block_with_closing_newline() {
     assert!(lower.contains("do not restate"));
     assert!(lower.contains("required output format"));
     assert!(lower.contains("failed response"));
-    assert!(s.contains("MALVIN_DM_START"));
-    assert!(s.contains("MALVIN_DM_END"));
+    assert!(s.contains("__MALVIN_DM_START__"));
+    assert!(s.contains("__MALVIN_DM_END__"));
     assert!(!lower.contains("user request is:"));
     assert!(!s.contains("You'll\n find"));
 }

@@ -5,6 +5,9 @@ pub struct CoderPromptOptions<'a> {
     pub stdout_bracket_label: Option<&'a str>,
     pub single_attempt: bool,
     pub append_trace: bool,
+    /// When true, each ACP retry ends the coder session and clears Cursor `last_agent_id`
+    /// so the next attempt creates a fresh agent context (used for `header.md`).
+    pub fresh_agent_on_retry: bool,
 }
 
 #[test]
@@ -15,4 +18,5 @@ fn coder_prompt_options_default_constructs() {
     assert!(opts.stdout_bracket_label.is_none());
     assert!(!opts.single_attempt);
     assert!(!opts.append_trace);
+    assert!(!opts.fresh_agent_on_retry);
 }

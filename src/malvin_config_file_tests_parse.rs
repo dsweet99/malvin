@@ -23,7 +23,7 @@ fn parse_malvin_config_falls_back_when_values_invalid_or_missing() {
         cfg.logs.max_age_days,
         crate::log_gc_config::LogsGcConfig::default().max_age_days
     );
-    assert_eq!(cfg.agent.model, DEFAULT_CLI_MODEL);
+    assert_eq!(cfg.agent.model.canonical(), DEFAULT_CLI_MODEL);
     let full = MalvinConfig {
         mem_limit_gb: cfg.mem_limit_gb,
         context_size: cfg.context_size,

@@ -6,6 +6,7 @@ pub const WHO_M: &str = "m";
 pub const WHO_B: &str = "b";
 pub const WHO_T: &str = "t";
 pub const WHO_U: &str = "u";
+pub const WHO_A: &str = "a";
 
 #[must_use]
 pub fn format_log_tag_inner(label: &str) -> String {
@@ -90,7 +91,9 @@ mod tests {
 
     #[test]
     fn who_tag_display_space_after_pipe_classifies_tags() {
-        use super::{WHO_B, WHO_H, WHO_M, WHO_O, WHO_T, WHO_U, who_tag_display_space_after_pipe};
+        use super::{
+            WHO_A, WHO_B, WHO_H, WHO_M, WHO_O, WHO_T, WHO_U, who_tag_display_space_after_pipe,
+        };
 
         assert!(who_tag_display_space_after_pipe(WHO_B));
         assert!(who_tag_display_space_after_pipe(WHO_T));
@@ -98,6 +101,7 @@ mod tests {
         assert!(!who_tag_display_space_after_pipe(WHO_O));
         assert!(!who_tag_display_space_after_pipe(WHO_H));
         assert!(!who_tag_display_space_after_pipe(WHO_U));
+        assert!(!who_tag_display_space_after_pipe(WHO_A));
     }
 
     #[test]

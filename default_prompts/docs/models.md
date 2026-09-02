@@ -1,4 +1,4 @@
-# malvin models
+# malvin admin models
 
 List model ids for malvin runs. No malvin prompts and no run directory under `~/.malvin_home/logs/`.
 
@@ -17,12 +17,12 @@ Discover valid `--model` values for other malvin commands. Cursor SDK models use
 ## Usage
 
 ```text
-malvin models [OPTION]... [PREFIX]...
+malvin admin models [OPTION]... [PREFIX]...
 ```
 
 ## Global options
 
-See `malvin --doc`. Global `--model` sets the `Current:` footer for this subcommand (overrides `~/.malvin_home/config.toml` when passed). Color follows the `NO_COLOR` environment variable.
+See `malvin --doc`. `admin` help does not list agent-session flags. Global `--model` before the subcommand (for example `malvin --model cursor:sonnet-4 admin models`) sets the `Current:` footer (overrides `~/.malvin_home/config.toml` when passed). Color follows the `NO_COLOR` environment variable.
 
 Agent runs with `pi:` (like `cursor:` and `codex:`) always force tool auto-run. `--no-force` is not supported and fails fast before any session starts. `pi:` uses the linked `pi_agent_rust` crate and the operator’s Pi auth/config. Codex still requires a separate binary (`PATH` or `MALVIN_CODEX`; malvin does not bundle it) and a Codex login (`codex login`, `OPENAI_API_KEY`, or `$CODEX_HOME/auth.json`).
 
@@ -50,26 +50,26 @@ For `pi:` and `codex:`, `thinking` uses the same levels: `off`, `minimal`, `low`
 
 For `codex:`, the other supported bracket key is `service` (a catalog `service=` tier id such as `priority`). Unknown catalog slugs are rejected when `model/list` succeeds.
 
-Optional trailing words form a **prefix filter** on printed model ids. Words are joined with `/` inserted between path segments when needed (so `malvin models pi: open` → `pi:open`). Examples: `malvin models pi:` lists only Pi models; `malvin models pi:open` lists Pi ids whose full id starts with `pi:open` (e.g. `pi:openai/…` and `pi:openrouter/…`). Catalog sections that cannot match the prefix are not queried.
+Optional trailing words form a **prefix filter** on printed model ids. Words are joined with `/` inserted between path segments when needed (so `malvin admin models pi: open` → `pi:open`). Examples: `malvin admin models pi:` lists only Pi models; `malvin admin models pi:open` lists Pi ids whose full id starts with `pi:open` (e.g. `pi:openai/…` and `pi:openrouter/…`). Catalog sections that cannot match the prefix are not queried.
 
 `--refresh` forces a live refetch of Pi provider catalogs, bypassing the daily on-disk cache.
 
-There is **no** `malvin models download` action. Local GGUF / `prime:` backends are not supported.
+There is **no** `malvin admin models download` action. Local GGUF / `prime:` backends are not supported.
 
 ## Examples
 
 ```text
-malvin models
-malvin models cursor:
-malvin models pi:
-malvin models pi:open
+malvin admin models
+malvin admin models cursor:
+malvin admin models pi:
+malvin admin models pi:open
 malvin --model 'cursor:claude-opus-5[effort=high,fast=true]' do "say hi"
 malvin --model 'pi:openai/gpt-5[thinking=high]' do "say hi"
 malvin --model pi:openai/gpt-4o do "say hi"
-malvin models codex:
-malvin models --refresh pi:
+malvin admin models codex:
+malvin admin models --refresh pi:
 malvin --model=codex:gpt-5.6 --do Hello
 malvin --model='codex:gpt-5.6[thinking=high,service=priority]' --do Hello
-malvin --model cursor:sonnet-4 models             # Current: footer shows cursor:sonnet-4
-malvin --model cursor:sonnet-4 inspire plan.md
+malvin --model cursor:sonnet-4 admin models             # Current: footer shows cursor:sonnet-4
+malvin --model cursor:sonnet-4 --creative plan.md
 ```

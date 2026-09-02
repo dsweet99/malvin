@@ -7,37 +7,49 @@ fn kiss_cov_models_args_clap_parse_and_destructure() {
     use clap::{CommandFactory, FromArgMatches, Parser};
 
     use super::{ModelsArgs, models_args_marker};
-    use crate::cli::{Cli, Commands};
+    use crate::cli::{AdminArgs, AdminCommand, Cli, Commands};
 
-    let cli = Cli::try_parse_from(["malvin", "models"]).expect("parse models");
+    let cli = Cli::try_parse_from(["malvin", "admin", "models"]).expect("parse models");
     match cli.command {
-        Some(Commands::Models(args)) => {
+        Some(Commands::Admin(AdminArgs {
+            command: AdminCommand::Models(args),
+        })) => {
             assert_eq!(models_args_marker(&args), "models");
             let _args = kiss_witness_clone(&args);
         }
-        _ => panic!("expected Models subcommand"),
+        _ => panic!("expected Admin::Models subcommand"),
     }
-    let reparse = Cli::try_parse_from(["malvin", "models"]).expect("reparse");
-    if let Some(Commands::Models(second)) = reparse.command {
+    let reparse = Cli::try_parse_from(["malvin", "admin", "models"]).expect("reparse");
+    if let Some(Commands::Admin(AdminArgs {
+        command: AdminCommand::Models(second),
+    })) = reparse.command
+    {
         assert_eq!(models_args_marker(&second), "models");
         assert!(format!("{second:?}").starts_with("ModelsArgs"));
         let _second = kiss_witness_clone(&second);
     } else {
-        panic!("second parse should yield Models");
+        panic!("second parse should yield Admin::Models");
     }
     let cmd = Cli::command();
-    assert!(cmd.find_subcommand("models").is_some());
-    let matches = Cli::command().get_matches_from(["malvin", "models"]);
+    let admin = cmd.find_subcommand("admin").expect("admin");
+    assert!(admin.find_subcommand("models").is_some());
+    let matches = Cli::command().get_matches_from(["malvin", "admin", "models"]);
     let sub = matches
+        .subcommand_matches("admin")
+        .expect("admin matches")
         .subcommand_matches("models")
         .expect("models matches");
     let _parsed = ModelsArgs::from_arg_matches(sub).expect("models from_arg_matches");
     let _cloned = kiss_witness_clone(&ModelsArgs::default());
-    let refresh = Cli::try_parse_from(["malvin", "models", "--refresh"]).expect("refresh");
-    if let Some(Commands::Models(args)) = refresh.command {
+    let refresh =
+        Cli::try_parse_from(["malvin", "admin", "models", "--refresh"]).expect("refresh");
+    if let Some(Commands::Admin(AdminArgs {
+        command: AdminCommand::Models(args),
+    })) = refresh.command
+    {
         assert!(args.refresh);
     } else {
-        panic!("expected Models --refresh");
+        panic!("expected Admin::Models --refresh");
     }
 }
 

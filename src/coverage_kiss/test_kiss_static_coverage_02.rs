@@ -26,7 +26,7 @@ fn kiss_exec_witness_02_01() {
     RouterHeaderPromptInput();
     RouterAPromptInput();
     RouterBPromptInput();
-    GlobalOpts();
+    SharedOpts();
     TidyArgs();
     write_checks_do_not_pass_to_review_path();
     post_router_session_gates();

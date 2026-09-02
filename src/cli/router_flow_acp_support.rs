@@ -1,16 +1,16 @@
 use crate::artifacts::{
-    GitignoreBackup, MalvinChecksBackup, MalvinConfigWorkspaceBackup, RunArtifacts,
-    SessionDotfileBackups, VisionBackup, ensure_gate_exp_log_file,
+    ensure_gate_exp_log_file, GitignoreBackup, MalvinChecksBackup, MalvinConfigWorkspaceBackup,
+    RunArtifacts, SessionDotfileBackups, VisionBackup,
 };
 use crate::router_flow::router_flow_no_work::chat_has_malvin_done;
 use crate::router_flow::router_flow_prompt;
 use std::path::Path;
 
-use super::RouterAcpIterationInput;
 use super::router_flow_coder_prompts::{
     run_router_a_coder_prompt, run_router_b_coder_prompt, run_router_header_coder_prompt,
-    run_router_kpop_common_coder_prompt,
+    run_router_kpop_common_coder_prompt, run_router_mbc2_coder_prompt,
 };
+use super::RouterAcpIterationInput;
 
 pub(crate) struct RouterTurnsOutcome {
     pub iteration_backups: SessionDotfileBackups,
@@ -21,6 +21,16 @@ pub(crate) struct RouterTurnsOutcome {
 pub(crate) enum RouterExitSummarize {
     Run,
     Skip,
+}
+
+/// Whether this outer iteration should prompt with `header.md`.
+/// True only when `ensure_coder_session` created a fresh agent context,
+/// not when it reused an open session or resumed a prior Cursor agent.
+#[must_use]
+pub(crate) const fn should_send_router_header(
+    ensure: crate::agent_backend::CoderSessionEnsure,
+) -> bool {
+    ensure.is_fresh()
 }
 
 pub(crate) fn router_iteration_log_path(
@@ -47,19 +57,43 @@ pub(crate) fn snapshot_iteration_backups(work_dir: &Path) -> SessionDotfileBacku
 pub(crate) async fn run_router_turns(
     input: &mut RouterAcpIterationInput<'_>,
     log_path: &Path,
+    ensure: crate::agent_backend::CoderSessionEnsure,
 ) -> Result<RouterTurnsOutcome, String> {
     let work_dir = input.artifacts.work_dir.as_path();
     let iteration_backups = SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)?;
     let model = input.shared.model.canonical();
-    run_router_header(input, log_path, &model).await?;
-    let kpop = router_flow_prompt::build_router_kpop_common_prompt((
-        input.prompt_store,
-        input.artifacts,
-        &model,
-        input.shared.git,
-        input.max_hypotheses,
-    ))?;
-    run_router_kpop_common_coder_prompt(input.client, &kpop, log_path).await?;
+    let creative = input.shared.sample_creative_this_iteration();
+    if should_send_router_header(ensure) {
+        run_router_header(input, log_path, &model).await?;
+    }
+    let _exp_log = ensure_gate_exp_log_file(input.artifacts, 1).map_err(|e| e.to_string())?;
+    let no_kpop = input.shared.no_kpop;
+    let kpop = router_flow_prompt::build_router_kpop_common_prompt(
+        router_flow_prompt::RouterKpopCommonPromptInput {
+            store: input.prompt_store,
+            artifacts: input.artifacts,
+            model: &model,
+            git: input.shared.git,
+            max_hypotheses: input.max_hypotheses,
+            no_kpop,
+        },
+    )?;
+    if !kpop.is_empty() {
+        run_router_kpop_common_coder_prompt(
+            input.client,
+            &kpop,
+            log_path,
+            router_flow_prompt::kpop_common_prompt_label(no_kpop),
+        )
+        .await?;
+    }
+    if creative {
+        let mbc2 = router_flow_prompt::build_router_mbc2_prompt(
+            input.prompt_store,
+            input.artifacts,
+        )?;
+        run_router_mbc2_coder_prompt(input.client, &mbc2, log_path).await?;
+    }
     run_router_a_coder_prompt(
         input.client,
         &router_flow_prompt::build_router_a_prompt(router_flow_prompt::RouterAPromptInput {
@@ -68,11 +102,13 @@ pub(crate) async fn run_router_turns(
             model: &model,
             git: input.shared.git,
             gates: input.shared.gates,
+            no_kpop,
         })?,
         log_path,
+        router_flow_prompt::router_a_prompt_label(no_kpop),
     )
     .await?;
-    let done = finish_router_a_maybe_b(input, log_path, &model).await?;
+    let done = finish_router_a_maybe_b(input, log_path, &model, creative).await?;
     Ok(RouterTurnsOutcome {
         iteration_backups,
         done,
@@ -93,7 +129,6 @@ async fn run_router_header(
         },
     )?;
     run_router_header_coder_prompt(input.client, &header, log_path).await?;
-    let _exp_log = ensure_gate_exp_log_file(input.artifacts, 1).map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -101,6 +136,7 @@ async fn finish_router_a_maybe_b(
     input: &mut RouterAcpIterationInput<'_>,
     log_path: &Path,
     model: &str,
+    creative: bool,
 ) -> Result<bool, String> {
     let chat = input
         .client
@@ -108,7 +144,7 @@ async fn finish_router_a_maybe_b(
         .unwrap_or_default();
     let done = chat_has_malvin_done(&chat);
     if !done {
-        let creative = input.shared.creative;
+        let no_kpop = input.shared.no_kpop;
         let router_b =
             router_flow_prompt::build_router_b_prompt(router_flow_prompt::RouterBPromptInput {
                 store: input.prompt_store,
@@ -116,12 +152,16 @@ async fn finish_router_a_maybe_b(
                 model,
                 git: input.shared.git,
                 creative,
+                no_kpop,
             })?;
         run_router_b_coder_prompt(
             input.client,
             &router_b,
             log_path,
-            router_flow_prompt::router_b_prompt_label(creative),
+            router_flow_prompt::router_b_prompt_label(crate::prompts::RouterBPromptFlags {
+                creative,
+                no_kpop,
+            }),
         )
         .await?;
     }

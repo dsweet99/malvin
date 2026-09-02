@@ -1,6 +1,7 @@
 #![cfg_attr(test, allow(unsafe_code))]
 
 mod auth;
+mod bridge_stderr;
 pub(crate) mod bridge_path;
 pub(crate) mod node_resolve;
 mod protocol;
@@ -16,17 +17,9 @@ pub fn cursor_sdk_client_from_raw(
     io: crate::acp::AgentIoOptions,
     max_retries: u32,
 ) -> CursorSdkClient {
-    let model =
-        crate::model_id::parse_model_id(model).unwrap_or_else(|_| crate::model_id::ParsedModel {
-            backend: crate::model_id::ModelBackend::Cursor,
-            slug: "auto".into(),
-            params: Vec::new(),
-        });
-    CursorSdkClient::with_max_retries(
-        model,
-        io,
-        max_retries,
-    )
+    let model = crate::model_id::parse_model_id(model)
+        .unwrap_or_else(|e| panic!("cursor_sdk_client_from_raw requires a valid model id: {e}"));
+    CursorSdkClient::with_max_retries(model, io, max_retries)
 }
 
 #[cfg(test)]

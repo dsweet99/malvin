@@ -51,15 +51,12 @@ fn kiss_cov_bridge_sdk_spawn_names_cursor() {
 
 #[test]
 fn kiss_cov_bridge_sdk_shared_type_names() {
-    BridgeKind();
-    BridgeWire();
-    NodeBridge();
-    NodeBridge();
-    SdkClientInit();
+    ModelBackend();
+    
     CreateArgs();
     ResumeArgs();
     SdkClient();
-    from_init();
+    
     sync_timing_to_open_session();
     cursor_sdk_marker_present();
     encode_request();
@@ -152,7 +149,7 @@ fn kiss_cov_codex_auth_names() {
 fn kiss_cov_pi_sdk_spawn() {
     pi_spawn_bridge();
     spawn_bridge();
-    split_provider_model();
+    pi_provider_and_model();
     fake_embedded_session();
     live_embedded_session();
     start_embedded_mem_watch();

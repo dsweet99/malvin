@@ -1,4 +1,4 @@
-use crate::acp::coalesce::{SessionUpdateChunkKind, VerboseIoCoalescer, coalesce_append_chunk};
+use crate::acp::coalesce::{SessionUpdateChunkKind, coalesce_append_chunk};
 
 #[derive(Default)]
 pub(crate) struct TraceChunkCoalescer {
@@ -118,12 +118,6 @@ struct FlushStreamCtx<'a> {
     out: &'a mut Vec<TraceChunkEmission>,
     iterable_closed: &'a mut Option<crate::acp::IterableClosedStream>,
     upgrade_plan: &'a mut bool,
-}
-
-#[allow(dead_code)]
-pub(crate) struct VerboseTraceCoalesceState<'a> {
-    pub verbose: &'a mut VerboseIoCoalescer,
-    pub trace: &'a mut TraceChunkCoalescer,
 }
 
 #[test]

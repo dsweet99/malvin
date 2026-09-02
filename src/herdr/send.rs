@@ -9,7 +9,7 @@ use serde_json::Value;
 
 pub const SOCKET_TIMEOUT: Duration = Duration::from_millis(500);
 
-#[allow(dead_code)]
+#[cfg(test)]
 pub fn send_request(socket_path: &Path, request: &Value) {
     let _ = send_request_checked(socket_path, request);
 }

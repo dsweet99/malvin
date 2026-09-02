@@ -1,11 +1,8 @@
 use clap::{Parser, Subcommand};
 
+use super::admin_cmd::AdminArgs;
 use super::shared_opts::SharedOpts;
 use super::write_flow::WriteArgs;
-
-pub use super::models_cmd::ModelsArgs;
-pub use super::shared_opts::GlobalOpts;
-pub use crate::inspire_flow::InspireArgs;
 
 #[derive(Parser, Debug)]
 #[allow(clippy::struct_excessive_bools)]
@@ -18,8 +15,6 @@ pub use crate::inspire_flow::InspireArgs;
     after_help = "Bare malvin REQUEST runs autonomous routing. Use `--do` for a one-shot turn, or subcommands for named workflows."
 )]
 pub struct Cli {
-    #[command(flatten)]
-    pub global: GlobalOpts,
     #[command(flatten)]
     pub shared: SharedOpts,
     /// One-shot agent turn (non-looping)
@@ -41,12 +36,6 @@ pub struct Cli {
 pub enum Commands {
     /// Write a LaTeX PDF on code or concepts
     Write(WriteArgs),
-    /// Explore creative boundaries (MBC2)
-    #[command(name = "inspire")]
-    Inspire(InspireArgs),
-    /// Explore creative boundaries (legacy name)
-    #[command(name = "adaptix", hide = true)]
-    Adaptix(InspireArgs),
-    /// List available models
-    Models(ModelsArgs),
+    /// Operator maintenance commands
+    Admin(AdminArgs),
 }

@@ -1,15 +1,15 @@
-use crate::agent_backend::{AgentBackend, build_agent_backend};
+use crate::agent_backend::{build_agent_backend, AgentBackend};
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::cli::one_shot_session::{
-    OneShotCoderGuard, finish_one_shot_after_prompt, finish_one_shot_auth_and_backups,
+    finish_one_shot_after_prompt, finish_one_shot_auth_and_backups, OneShotCoderGuard,
 };
-use crate::cli::run_emit::{RunStartupEmitOpts, emit_run_logs_line, emit_run_startup_banner};
+use crate::cli::run_emit::{emit_run_logs_line, emit_run_startup_banner, RunStartupEmitOpts};
 use crate::cli::{SharedOpts, WorkflowCliOptions};
 use crate::run_timing::TimingPhase;
 use crate::workflow_context::format_prompt_path;
 
-use super::WriteArgs;
 use super::prep::{compose_write_a_prompt, compose_write_b_prompt, write_preflight};
+use super::WriteArgs;
 
 struct WriteRunPrep {
     client: AgentBackend,
@@ -58,7 +58,7 @@ fn create_write_artifacts(
         crate::run_id::RunDirOptions { gc: false },
     )
     .map_err(|e| e.to_string())?;
-    crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
+    crate::run_id::activate_run(artifacts.run_dir.clone());
     Ok(artifacts)
 }
 
@@ -201,6 +201,7 @@ mod tests {
     #[test]
     fn write_client_uses_styled_agent_io() {
         let shared = SharedOpts {
+            background: false,
             model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL)
                 .expect("model"),
             no_force: true,
@@ -210,9 +211,9 @@ mod tests {
             verbose: false,
             max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
-            name: None,
             git: false,
-            creative: false,
+            creative: None,
+            no_kpop: false,
         };
         let io = new_write_client(&shared, WorkflowCliOptions { force: false })
             .expect("backend")

@@ -2,6 +2,7 @@ use crate::acp::CoderPromptOptions;
 
 use super::sdk_bug_helpers::{
     bug_clear_env, bug_client, bug_prepare, bug_set_drain_idle_timeout_ms, bug_set_progress_env,
+    bug_set_tool_turn_env,
 };
 
 #[tokio::test]
@@ -22,6 +23,32 @@ async fn progress_events_keep_drain_alive_past_idle_budget() {
     );
     let trace = std::fs::read_to_string(tmp.path().join("trace.jsonl")).unwrap_or_default();
     assert!(trace.contains("\"event\":\"progress\""), "{trace}");
+    client.end_coder_session().await.expect("end");
+    bug_clear_env();
+}
+
+/// Heartbeats alone (no tools) must extend the turn cap past base `2×idle`.
+#[tokio::test]
+async fn heartbeat_only_turn_extends_past_base_cap() {
+    let _guard = crate::test_utils::test_env_lock();
+    let tmp = bug_prepare();
+    // 8 × 60ms = 480ms wall > base turn cap 2×150ms = 300ms.
+    bug_set_progress_env(60, 8);
+    bug_set_drain_idle_timeout_ms(150);
+    let mut client = bug_client(tmp.path(), 1);
+    client.begin_coder_session(tmp.path()).await.expect("begin");
+    let log = tmp.path().join("prompts.log");
+    let started = std::time::Instant::now();
+    run_progress_prompt(&mut client, &log).await;
+    let elapsed = started.elapsed();
+    assert!(
+        elapsed > std::time::Duration::from_millis(300),
+        "expected wall past base 2×150ms cap via heartbeat turn-extend, got {elapsed:?}"
+    );
+    assert_eq!(
+        client.last_coder_prompt_agent_response().as_deref(),
+        Some("progressed")
+    );
     client.end_coder_session().await.expect("end");
     bug_clear_env();
 }
@@ -72,7 +99,45 @@ async fn continuous_events_hit_cumulative_turn_deadline() {
     )
     .await
     .expect_err("chatter past 2× idle must time out");
-    assert!(err.0.contains("bridge timed out"));
+    assert!(err.message.contains("bridge timed out"));
+    bug_clear_env();
+}
+
+#[tokio::test]
+async fn long_tool_turn_completes_past_base_turn_cap() {
+    let _guard = crate::test_utils::test_env_lock();
+    let tmp = bug_prepare();
+    bug_set_tool_turn_env(60, 8);
+    bug_set_drain_idle_timeout_ms(150);
+    let mut client = bug_client(tmp.path(), 1);
+    client.begin_coder_session(tmp.path()).await.expect("begin");
+    let log = tmp.path().join("prompts.log");
+    let started = std::time::Instant::now();
+    client
+        .run_coder_prompt(
+            "LONG_TOOL_TURN_THEN_DONE please",
+            &log,
+            "coder",
+            CoderPromptOptions {
+                llm_phase: Some(crate::run_timing::TimingPhase::Implement),
+                ..CoderPromptOptions::default()
+            },
+        )
+        .await
+        .expect("long tool turn must finish past base 2× idle cap");
+    let elapsed = started.elapsed();
+    assert!(
+        elapsed > std::time::Duration::from_millis(300),
+        "expected wall time past base 2×150ms cap, got {elapsed:?}"
+    );
+    assert_eq!(
+        client.last_coder_prompt_agent_response().as_deref(),
+        Some("long-tool-turn-done")
+    );
+    let trace = std::fs::read_to_string(tmp.path().join("trace.jsonl")).unwrap_or_default();
+    assert!(trace.contains("\"event\":\"tool_call\""), "{trace}");
+    assert!(trace.contains("\"kind\":\"heartbeat\""), "{trace}");
+    client.end_coder_session().await.expect("end");
     bug_clear_env();
 }
 
@@ -97,7 +162,8 @@ async fn run_progress_prompt(
 #[test]
 fn kiss_cov_sdk_drain_progress_cases() {
     let _ = stringify!(progress_events_keep_drain_alive_past_idle_budget);
+    let _ = stringify!(heartbeat_only_turn_extends_past_base_cap);
     let _ = stringify!(continuous_events_hit_cumulative_turn_deadline);
-    let _ = stringify!(run_progress_prompt);
-    let _ = stringify!(run_progress_prompt);
+    let _ = stringify!(long_tool_turn_completes_past_base_turn_cap);
+    let _ = stringify!(bug_set_tool_turn_env);
 }

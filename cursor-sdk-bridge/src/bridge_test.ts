@@ -6,6 +6,7 @@ import {
   isInterruptOp,
   isStaleAuthText,
   progressHeartbeatDue,
+  runAcceptsProgressHeartbeat,
 } from "./bridge_policy.js";
 import { canonicalRunDoneStatus } from "./protocol.js";
 
@@ -65,6 +66,17 @@ describe("progress heartbeat policy", () => {
     assert.equal(progressHeartbeatDue(true, false, 1000, 16_000), true);
     assert.equal(progressHeartbeatDue(false, false, 1000, 20_000), false);
     assert.equal(progressHeartbeatDue(true, true, 1000, 20_000), false);
+  });
+
+  it("treats runPending like an open run for heartbeats", () => {
+    assert.equal(
+      runAcceptsProgressHeartbeat(false, true, false, 1000, 16_000),
+      true,
+    );
+    assert.equal(
+      runAcceptsProgressHeartbeat(false, false, false, 1000, 16_000),
+      false,
+    );
   });
 });
 

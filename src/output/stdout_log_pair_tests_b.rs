@@ -3,7 +3,7 @@ use crate::output::stdout_log_pair::{
     tagged_log_line,
 };
 use crate::output::{
-    ERROR_WHO, WARNING_WHO, WHO_B, WHO_H, WHO_M, WHO_O, WHO_T, WHO_U, format_who_tag_delim,
+    ERROR_WHO, WARNING_WHO, WHO_A, WHO_B, WHO_H, WHO_M, WHO_O, WHO_T, WHO_U, format_who_tag_delim,
     format_who_tag_prefix,
 };
 
@@ -12,7 +12,7 @@ fn log_line_uses_delim_without_trailing_space(log: &str, who: &str, payload: &st
     log.ends_with(&format!("{delim}{payload}"))
 }
 
-const FUZZ_WHO_TAGS: &[&str] = &[WHO_O, WHO_M, WHO_B, WHO_T, WHO_U, WHO_H];
+const FUZZ_WHO_TAGS: &[&str] = &[WHO_O, WHO_M, WHO_B, WHO_T, WHO_U, WHO_H, WHO_A];
 
 #[test]
 fn tagged_log_line_omits_space_after_who_pipe_for_all_tags() {
@@ -23,6 +23,7 @@ fn tagged_log_line_omits_space_after_who_pipe_for_all_tags() {
         WHO_T,
         WHO_U,
         WHO_H,
+        WHO_A,
         ERROR_WHO,
         WARNING_WHO,
     ];

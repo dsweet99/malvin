@@ -15,13 +15,9 @@ fn smoke_cov_cli_cross_file_symbols_b() {
     let _ = stringify!(RouterAcpIterationOutcome);
     let _ = stringify!(RouterAgentLoopInput);
     let _ = stringify!(RouterAgentLoopOutcome);
-    let _ = stringify!(InspireRunPrep);
-    let _ = stringify!(prepare_inspire_prompt_store);
-    let _ = stringify!(new_inspire_client);
-    let _ = stringify!(inspire_emit_startup_banner);
-    let _ = stringify!(prepare_inspire_run);
-    let _ = stringify!(run_inspire_coder_prompt);
-    let _ = stringify!(run_inspire_coder_session);
+    let _ = stringify!(build_mbc2_render_context);
+    let _ = stringify!(render_mbc2_prompt);
+    let _ = stringify!(build_router_mbc2_prompt);
     let _ = stringify!(test_router_args);
     let _ = stringify!(install_mock_agent_env);
     let _ = stringify!(write_mock_agent);

@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import * as fs from "node:fs";
+import * as path from "node:path";
 import * as readline from "node:readline";
 
 let created = false;
@@ -12,6 +14,35 @@ function emit(obj) {
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+function noteBoot(kind) {
+  const dir = process.env.MOCK_BRIDGE_ONCE_DIR;
+  if (!dir) {
+    return;
+  }
+  try {
+    fs.appendFileSync(path.join(dir, "boots"), `${kind}\n`);
+  } catch {
+    // ignore logging failures in mock
+  }
+}
+
+function consumeOnceFlag(name) {
+  const dir = process.env.MOCK_BRIDGE_ONCE_DIR;
+  if (!dir) {
+    return false;
+  }
+  const flag = path.join(dir, name);
+  if (fs.existsSync(flag)) {
+    return false;
+  }
+  try {
+    fs.writeFileSync(flag, "1");
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 let agentId = "mock-agent";
@@ -42,6 +73,7 @@ async function handleCreate(req) {
   created = true;
   bootKind = "create";
   agentId = "mock-agent";
+  noteBoot("create");
   emit({ event: "ok", agentId });
 }
 
@@ -69,6 +101,7 @@ async function handleResume(req) {
   created = true;
   bootKind = "resume";
   agentId = String(req.agentId);
+  noteBoot("resume");
   emit({ event: "ok", agentId });
 }
 
@@ -78,6 +111,15 @@ async function handleSend(req) {
     return;
   }
   const prompt = String(req.prompt || "");
+
+  if (prompt.includes("NON_TEARDOWN_TIMEOUT_ONCE") && consumeOnceFlag("non_teardown_timeout_once")) {
+    emit({
+      event: "fatal",
+      message: "request timed out",
+      retryable: true,
+    });
+    return;
+  }
 
   if (prompt.includes("CLOSE_STDOUT")) {
     emit({ event: "assistant", text: "closing" });
@@ -199,6 +241,49 @@ async function handleSend(req) {
     return;
   }
 
+  if (prompt.includes("LONG_TOOL_TURN_THEN_DONE")) {
+    const periodMs = Math.max(
+      1,
+      Number.parseInt(process.env.MOCK_BRIDGE_TOOL_PERIOD_MS || "60", 10) || 60,
+    );
+    const pulses = Math.max(
+      4,
+      Number.parseInt(process.env.MOCK_BRIDGE_TOOL_PULSES || "8", 10) || 8,
+    );
+    const toolId = "mock-long-shell";
+    emit({
+      event: "tool_call",
+      phase: "start",
+      name: "shell",
+      summary: "Run long compile",
+      toolCallId: toolId,
+    });
+    for (let i = 0; i < pulses; i++) {
+      await sleep(periodMs);
+      emit({ event: "progress", kind: "heartbeat", detail: `tool-pulse-${i}` });
+    }
+    emit({
+      event: "tool_call",
+      phase: "complete",
+      name: "shell",
+      summary: "Run long compile",
+      toolCallId: toolId,
+    });
+    emit({
+      event: "run_done",
+      status: "finished",
+      result: "long-tool-turn-done",
+      usage: {
+        inputTokens: 1,
+        outputTokens: 1,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+      },
+      durationMs: periodMs * pulses,
+    });
+    return;
+  }
+
   if (prompt.includes("PROGRESS_THEN_DONE")) {
     const periodMs = Math.max(
       1,
@@ -229,7 +314,7 @@ async function handleSend(req) {
 
   const fenced = prompt.includes("NEED_DM");
   const result = fenced
-    ? "MALVIN_DM_START\nHello.\nMALVIN_DM_END"
+    ? "__MALVIN_DM_START__\nHello.\n__MALVIN_DM_END__"
     : "mock reply";
   emit({ event: "assistant", text: fenced ? "Hello" : "mock reply" });
   emit({ event: "step", kind: "onStep" });

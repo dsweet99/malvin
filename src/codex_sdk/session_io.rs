@@ -2,7 +2,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
 
 use crate::acp::AgentError;
-use crate::bridge_sdk::BridgeSession;
+use super::session::CodexSession;
 
 static SEQ: AtomicU64 = AtomicU64::new(1);
 pub(crate) fn next_id() -> u64 {
@@ -21,7 +21,7 @@ fn set_session_string(lock: &std::sync::Mutex<Option<String>>, value: Option<Str
         .unwrap_or_else(std::sync::PoisonError::into_inner) = value;
 }
 
-pub(crate) fn set_codex_turn_id(session: &BridgeSession, turn_id: Option<String>) {
+pub(crate) fn set_codex_turn_id(session: &CodexSession, turn_id: Option<String>) {
     set_session_string(&session.turn_id, turn_id);
 }
 
@@ -34,9 +34,9 @@ pub(crate) fn turn_interrupt_params(
     Some(serde_json::json!({ "threadId": thread_id, "turnId": turn_id }))
 }
 
-pub(crate) async fn codex_write_abort(session: &BridgeSession) -> Result<(), AgentError> {
+pub(crate) async fn codex_write_abort(session: &CodexSession) -> Result<(), AgentError> {
     let Some(params) = turn_interrupt_params(
-        session_string(&session.agent_id),
+        session_string(&session.thread_id),
         session_string(&session.turn_id),
     ) else {
         return Ok(());
@@ -49,10 +49,10 @@ pub(crate) async fn codex_write_abort(session: &BridgeSession) -> Result<(), Age
 }
 
 pub(crate) async fn codex_send_prompt(
-    session: &BridgeSession,
+    session: &CodexSession,
     prompt: &str,
 ) -> Result<(), AgentError> {
-    let thread_id = session_string(&session.agent_id)
+    let thread_id = session_string(&session.thread_id)
         .ok_or_else(|| AgentError("codex thread id unavailable".into()))?;
     set_codex_turn_id(session, None);
     write_json(
@@ -72,8 +72,8 @@ pub(crate) async fn codex_send_prompt(
     super::session_turn::consume_codex_turn(session).await
 }
 
-pub(crate) async fn codex_delete_thread(session: &BridgeSession) -> Result<(), AgentError> {
-    let Some(thread_id) = session_string(&session.agent_id).filter(|id| !id.is_empty()) else {
+pub(crate) async fn codex_delete_thread(session: &CodexSession) -> Result<(), AgentError> {
+    let Some(thread_id) = session_string(&session.thread_id).filter(|id| !id.is_empty()) else {
         return Ok(());
     };
     write_json(
@@ -114,22 +114,22 @@ fn turn_start_params(
 }
 
 pub(crate) async fn write_json(
-    session: &BridgeSession,
+    session: &CodexSession,
     value: &serde_json::Value,
 ) -> Result<(), AgentError> {
     let mut stdin = session.stdin.lock().await;
     stdin
         .write_all(format!("{value}\n").as_bytes())
         .await
-        .map_err(|e| AgentError(format!("codex write: {e}")))?;
+        .map_err(|e| AgentError::session_dead(format!("codex write: {e}")))?;
     stdin
         .flush()
         .await
-        .map_err(|e| AgentError(format!("codex flush: {e}")))
+        .map_err(|e| AgentError::session_dead(format!("codex flush: {e}")))
 }
 
 pub(crate) async fn read_json_waiting(
-    session: &BridgeSession,
+    session: &CodexSession,
     waiting_for: &str,
     turn: &mut crate::bridge_sdk::DrainIdleTurn,
 ) -> Result<serde_json::Value, AgentError> {
@@ -140,23 +140,24 @@ pub(crate) async fn read_json_waiting(
     let health = Some(crate::bridge_sdk::DrainIdleHealthCtx {
         process_group_id: session.process_group_id,
         spawn_pid_baseline: &session.spawn_pid_baseline,
+        tools_in_flight: false,
     });
     crate::bridge_sdk::await_next_with_idle_in_turn(labels, health, read_json_line(session), turn)
         .await
 }
 
-async fn read_json_line(session: &BridgeSession) -> Result<serde_json::Value, AgentError> {
+async fn read_json_line(session: &CodexSession) -> Result<serde_json::Value, AgentError> {
     let mut line = String::new();
     let n = {
         let mut out = session.stdout.lock().await;
         out.read_line(&mut line)
             .await
-            .map_err(|e| AgentError(format!("codex read: {e}")))?
+            .map_err(|e| AgentError::session_dead(format!("codex read: {e}")))?
     };
     if n == 0 {
-        return Err(AgentError("codex stdout closed".into()));
+        return Err(AgentError::session_dead("codex stdout closed"));
     }
-    serde_json::from_str(&line).map_err(|e| AgentError(format!("codex JSON-RPC parse: {e}")))
+    serde_json::from_str(&line).map_err(|e| AgentError::session_dead(format!("codex JSON-RPC parse: {e}")))
 }
 
 #[cfg(test)]

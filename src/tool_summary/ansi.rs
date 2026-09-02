@@ -1,7 +1,7 @@
 use std::fmt::Write as _;
 
 use super::types::{
-    ANSI_BOLD, ANSI_DIM, ANSI_RESET, ansi_tool_coral, ansi_tool_dark, ansi_tool_teal,
+    ANSI_BOLD, ANSI_DIM, ANSI_RESET, ansi_error, ansi_tool_name, ansi_accent,
 };
 
 const DONE_VERB_PREFIXES: &[&str] = &["Read ", "Edit ", "Search ", "Run "];
@@ -20,8 +20,8 @@ pub(crate) fn split_outer_brackets(plain: &str) -> (&str, &str, &str) {
         .map_or(("", plain, ""), |inner| ("[", inner, "]"))
 }
 
-fn dark_bracket(bracket: &str) -> String {
-    format!("{}{bracket}{ANSI_RESET}", ansi_tool_dark())
+fn tool_name_bracket(bracket: &str) -> String {
+    format!("{}{bracket}{ANSI_RESET}", ansi_tool_name())
 }
 
 pub(crate) fn apply_tool_summary_ansi(plain: &str) -> String {
@@ -29,18 +29,18 @@ pub(crate) fn apply_tool_summary_ansi(plain: &str) -> String {
     let mut out = if open.is_empty() {
         String::new()
     } else {
-        dark_bracket(open)
+        tool_name_bracket(open)
     };
     let mut rest = inner;
     while let Some(idx) = rest.find('·') {
         let (left, right) = rest.split_at(idx);
         out.push_str(&ansi_style_tool_segment(left));
-        let _ = write!(out, "{}·{ANSI_RESET}", ansi_tool_teal());
+        let _ = write!(out, "{}·{ANSI_RESET}", ansi_accent());
         rest = right.trim_start_matches('·').trim_start();
     }
     out.push_str(&ansi_style_tool_segment(rest));
     if !close.is_empty() {
-        out.push_str(&dark_bracket(close));
+        out.push_str(&tool_name_bracket(close));
     }
     out
 }
@@ -51,10 +51,10 @@ pub(crate) fn ansi_style_tool_segment(seg: &str) -> String {
         return String::new();
     }
     if seg.contains('✓') {
-        return seg.replace('✓', &format!("{}✓{ANSI_RESET}", ansi_tool_teal()));
+        return seg.replace('✓', &format!("{}✓{ANSI_RESET}", ansi_accent()));
     }
     if seg.contains('✗') {
-        return seg.replace('✗', &format!("{}✗{ANSI_RESET}", ansi_tool_coral()));
+        return seg.replace('✗', &format!("{}✗{ANSI_RESET}", ansi_error()));
     }
     ansi_style_tool_segment_running_or_path(seg)
 }
@@ -69,8 +69,8 @@ pub(crate) fn tool_line_colon_prefix(seg: &str) -> (&str, &str) {
     ("", seg)
 }
 
-pub(crate) fn ansi_style_dark_verb(verb: &str) -> String {
-    format!("{ANSI_BOLD}{}{verb}{ANSI_RESET}", ansi_tool_dark())
+pub(crate) fn ansi_style_tool_name_verb(verb: &str) -> String {
+    format!("{ANSI_BOLD}{}{verb}{ANSI_RESET}", ansi_tool_name())
 }
 
 pub(crate) fn ansi_style_running_verb(seg: &str) -> String {
@@ -79,7 +79,7 @@ pub(crate) fn ansi_style_running_verb(seg: &str) -> String {
     let (verb, tail) = body.split_at(verb_end);
     format!(
         "{colon}{}{}",
-        ansi_style_dark_verb(verb),
+        ansi_style_tool_name_verb(verb),
         ansi_style_path_tail(tail)
     )
 }
@@ -89,7 +89,7 @@ pub(crate) fn ansi_style_done_verb(seg: &str) -> String {
     for prefix in DONE_VERB_PREFIXES {
         if let Some(tail) = body.strip_prefix(prefix) {
             let verb = prefix.trim_end();
-            let mut out = format!("{colon}{}", ansi_style_dark_verb(verb));
+            let mut out = format!("{colon}{}", ansi_style_tool_name_verb(verb));
             if !tail.is_empty() {
                 out.push(' ');
                 out.push_str(&ansi_style_path_tail(tail));
@@ -99,7 +99,7 @@ pub(crate) fn ansi_style_done_verb(seg: &str) -> String {
     }
     if body_is_search_done_verb(body) {
         let tail = body.strip_prefix("Search").unwrap_or(body).trim_start();
-        let mut out = format!("{colon}{}", ansi_style_dark_verb("Search"));
+        let mut out = format!("{colon}{}", ansi_style_tool_name_verb("Search"));
         if !tail.is_empty() {
             out.push(' ');
             out.push_str(&ansi_style_path_tail(tail));
@@ -152,7 +152,7 @@ pub(crate) fn ansi_style_path_tail(seg: &str) -> String {
     if is_byte_size_segment(seg) {
         return format!("{ANSI_DIM}{seg}{ANSI_RESET}");
     }
-    format!("{}{seg}{ANSI_RESET}", ansi_tool_teal())
+    format!("{}{seg}{ANSI_RESET}", ansi_accent())
 }
 
 #[cfg(test)]

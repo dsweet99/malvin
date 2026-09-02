@@ -50,7 +50,7 @@ fn finish_router_run_artifacts(
     if shared.gates {
         crate::artifacts::init_quality_gates_log_pending(artifacts).map_err(|e| e.to_string())?;
     }
-    crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
+    crate::run_id::activate_run(artifacts.run_dir.clone());
     emit_run_startup_banner(
         artifacts,
         RunStartupEmitOpts::from_shared(shared, true),
@@ -107,6 +107,25 @@ pub async fn run_router(
     result
 }
 
+/// Spawn the coder bridge while ensuring home config / dotfile snapshot is ready
+/// for the first outer iteration (same overlap pattern as `do_flow`).
+async fn begin_router_session_overlapping_prep(
+    client: &mut AgentBackend,
+    artifacts: &RunArtifacts,
+) -> Result<(), String> {
+    let begin = client.begin_coder_session(&artifacts.work_dir);
+    let snapshot = async {
+        crate::artifacts::SessionDotfileBackups::snapshot_after_ensuring_home_config(
+            &artifacts.work_dir,
+        )
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+    };
+    let (begin_res, snapshot_res) = tokio::join!(begin, snapshot);
+    begin_res.map_err(|e| e.to_string())?;
+    snapshot_res
+}
+
 async fn run_router_body(
     router_args: RouterArgs,
     shared: &SharedOpts,
@@ -115,10 +134,7 @@ async fn run_router_body(
 ) -> Result<(), String> {
     let mut prep = prepare_router_run(&router_args, shared, workflow).await?;
     prep.client.prompts_log_run_dir = Some(prep.artifacts.run_dir.clone());
-    prep.client
-        .begin_coder_session(&prep.artifacts.work_dir)
-        .await
-        .map_err(|e| e.to_string())?;
+    begin_router_session_overlapping_prep(&mut prep.client, &prep.artifacts).await?;
     emit_run_logs_line(&prep.artifacts)?;
 
     let loop_outcome =
@@ -151,6 +167,7 @@ mod kiss_static_fn_item_refs {
     fn kiss_static_fn_item_refs() {
         let _ = run_router;
         let _ = run_router_body;
+        let _ = super::begin_router_session_overlapping_prep;
     }
 }
 

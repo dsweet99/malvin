@@ -1,5 +1,5 @@
 use crate::malvin_constants::{STDOUT_LOG, TRACE_JSONL};
-pub use crate::output::{WHO_B, WHO_H, WHO_M, WHO_O, WHO_T, WHO_U};
+pub use crate::output::{WHO_A, WHO_B, WHO_H, WHO_M, WHO_O, WHO_T, WHO_U};
 
 pub(crate) mod emit;
 #[allow(unused_imports)]
@@ -24,6 +24,8 @@ pub enum NarrativeWhoTag {
     Thought,
     Heartbeat,
     Ops,
+    /// Fresh agent-context start (`a|<provider>:<model>`).
+    AgentStart,
 }
 
 impl NarrativeWhoTag {
@@ -36,6 +38,7 @@ impl NarrativeWhoTag {
             Self::Thought => WHO_B,
             Self::Heartbeat => WHO_H,
             Self::Ops => WHO_O,
+            Self::AgentStart => WHO_A,
         }
     }
 }
@@ -64,9 +67,11 @@ mod tests {
             NarrativeWhoTag::Thought,
             NarrativeWhoTag::Heartbeat,
             NarrativeWhoTag::Ops,
+            NarrativeWhoTag::AgentStart,
         ] {
             assert_eq!(tag.as_str().len(), 1);
         }
+        assert_eq!(NarrativeWhoTag::AgentStart.as_str(), WHO_A);
     }
 
     #[test]

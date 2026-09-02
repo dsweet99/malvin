@@ -137,22 +137,16 @@ fn different_acp_lock_slots_same_workspace_both_acquire() {
 #[test]
 fn entrypoint_duplicate_name_via_binary() {
     with_isolated_names(|| {
-        let mut child = sleep_child("120");
-        let holder_pid = child.id();
-        std::fs::create_dir_all(names_registry_root()).expect("mkdir names");
-        std::fs::write(name_path("probe"), format!("{holder_pid}\n")).expect("peer lock");
         let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
             .args(["--name", "probe", "--do", "plan.md"])
             .output()
-            .expect("malvin code");
-        assert_eq!(out.status.code(), Some(1));
+            .expect("malvin");
+        assert_eq!(out.status.code(), Some(1), "unknown --name must fail");
         let stderr = String::from_utf8_lossy(&out.stderr);
         assert!(
-            stderr.contains(&holder_pid.to_string()),
-            "stderr must name holder pid; got: {stderr}"
+            stderr.contains("--name"),
+            "stderr must mention --name; got: {stderr}"
         );
-        let _ = child.kill();
-        let _ = child.wait();
     });
 }
 

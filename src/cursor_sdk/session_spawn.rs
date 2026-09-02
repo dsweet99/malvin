@@ -1,6 +1,6 @@
 use crate::acp::AgentError;
 use crate::bridge_sdk::{
-    BridgeSession, BridgeSpawnArgs, send_create, send_resume, start_mem_watch,
+    BridgeSession, BridgeSpawnArgs, MemWatchArgs, send_create, send_resume, start_mem_watch,
 };
 
 use super::auth::effective_sdk_api_key;
@@ -10,10 +10,17 @@ pub(crate) async fn cursor_spawn_bridge(
     args: BridgeSpawnArgs<'_>,
     resume_agent_id: Option<&str>,
 ) -> Result<BridgeSession, AgentError> {
-    crate::malvin_sandbox::assert_dead_before_next_spawn().map_err(AgentError)?;
-    let model = args.model.to_string();
-    let session = cursor_open_bridge_session(args)?;
-    start_mem_watch(&session);
+    crate::acp::require_force(args.io.force)?;
+    let ticket = crate::malvin_sandbox::take_sandbox_spawn_ticket().map_err(AgentError)?;
+    let model = args.wire_model();
+    let session = cursor_open_bridge_session(args, ticket)?;
+    start_mem_watch(MemWatchArgs {
+        process_group_id: session.process_group_id,
+        reader_dead: &session.reader_dead,
+        work_dir: &session.work_dir,
+        spawn_pid_baseline: &session.spawn_pid_baseline,
+        run_dir: session.run_dir.as_deref(),
+    });
     let api_key = effective_sdk_api_key();
     if let Some(agent_id) = resume_agent_id {
         send_resume(
@@ -41,13 +48,16 @@ pub(crate) async fn cursor_spawn_bridge(
     Ok(session)
 }
 
-fn cursor_open_bridge_session(args: BridgeSpawnArgs<'_>) -> Result<BridgeSession, AgentError> {
+fn cursor_open_bridge_session(
+    args: BridgeSpawnArgs<'_>,
+    ticket: crate::malvin_sandbox::SandboxSpawnTicket,
+) -> Result<BridgeSession, AgentError> {
     let (node, bridge) = cursor_resolve_node_and_bridge()?;
     let mut child = cursor_build_bridge_command(&node, &bridge, args.cwd)
         .spawn()
         .map_err(|e| AgentError(format!("spawn cursor-sdk-bridge: {e}")))?;
     let handles = cursor_take_stdio(&mut child)?;
-    cursor_note_sandbox(args.cwd, handles.pgid, &handles.baseline)?;
+    cursor_note_sandbox(ticket, args.cwd, handles.pgid, &handles.baseline)?;
     Ok(cursor_assemble_session(args, child, handles))
 }
 
@@ -67,6 +77,11 @@ fn cursor_take_stdio(child: &mut tokio::process::Child) -> Result<CursorChildStd
         .stdout
         .take()
         .ok_or_else(|| AgentError("bridge stdout missing".into()))?;
+    let stderr = child
+        .stderr
+        .take()
+        .ok_or_else(|| AgentError("bridge stderr missing".into()))?;
+    super::bridge_stderr::start_filtered_forward(stderr);
     Ok(CursorChildStdio {
         stdin,
         stdout,
@@ -76,11 +91,12 @@ fn cursor_take_stdio(child: &mut tokio::process::Child) -> Result<CursorChildStd
 }
 
 fn cursor_note_sandbox(
+    ticket: crate::malvin_sandbox::SandboxSpawnTicket,
     cwd: &std::path::Path,
     pgid: Option<u32>,
     baseline: &std::collections::HashSet<u32>,
 ) -> Result<(), AgentError> {
-    crate::malvin_sandbox::note_active_sandbox_session(pgid, baseline.clone(), cwd)
+    crate::malvin_sandbox::note_active_sandbox_session(ticket, pgid, baseline.clone(), cwd)
         .map_err(AgentError)
 }
 
@@ -103,9 +119,6 @@ fn cursor_assemble_session(
         work_dir: args.cwd.to_path_buf(),
         log: crate::bridge_sdk::StreamLog::from_spawn(&args),
         agent_id: Mutex::new(None),
-        turn_id: Mutex::new(None),
-        service: None,
-        wire: crate::bridge_sdk::BridgeWire::NodeBridge,
     }
 }
 
@@ -128,7 +141,7 @@ fn cursor_build_bridge_command(
         .current_dir(cwd)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
+        .stderr(Stdio::piped())
         .env("MALLOC_ARENA_MAX", "2");
     if let Some(k) = effective_sdk_api_key() {
         cmd.env("CURSOR_API_KEY", k);

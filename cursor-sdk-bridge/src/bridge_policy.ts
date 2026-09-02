@@ -13,6 +13,21 @@ export function progressHeartbeatDue(
   return runOpen && !closing && now - lastForwardedAt >= PROGRESS_HEARTBEAT_MS;
 }
 
+export function runAcceptsProgressHeartbeat(
+  currentRun: boolean,
+  runPending: boolean,
+  closing: boolean,
+  lastForwardedAt: number,
+  now: number,
+): boolean {
+  return progressHeartbeatDue(
+    currentRun || runPending,
+    closing,
+    lastForwardedAt,
+    now,
+  );
+}
+
 function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   return String(err);

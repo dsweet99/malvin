@@ -6,4 +6,5 @@ fn kiss_witness_router_run_prep() {
     let _ = stringify!(prompt_store);
     let _ = super::new_router_client;
     let _ = super::prepare_router_run;
+    let _ = super::begin_router_session_overlapping_prep;
 }

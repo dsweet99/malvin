@@ -62,7 +62,7 @@ fn apply_gate_loop_command_defaults(
         Commands::Write(write_args) => {
             apply_write_loop_defaults(matches, write_args, agent, review);
         }
-        Commands::Inspire(_) | Commands::Adaptix(_) | Commands::Models(_) => {}
+        Commands::Admin(_) => {}
     }
 }
 
@@ -125,7 +125,10 @@ fn apply_gates_only_loop_defaults(matches: &ArgMatches, cli: &mut Cli, agent: &A
 
 const fn uses_lightweight_config_path(cli: &Cli) -> bool {
     cli.do_workflow
-        || matches!(cli.command, Some(Commands::Models(_)))
+        || matches!(
+            cli.command,
+            Some(Commands::Admin(_))
+        )
         || (cli.command.is_none() && cli.request.is_some())
 }
 
@@ -167,10 +170,9 @@ pub(crate) fn apply_shared_config_defaults(
     shared: &mut SharedOpts,
     agent: &AgentConfig,
 ) {
-    if !global_flag_from_command_line(matches, "model")
-        && let Ok(parsed) = crate::model_id::parse_model_id(&agent.model) {
-            shared.model = parsed;
-        }
+    if !global_flag_from_command_line(matches, "model") {
+        shared.model = agent.model.clone();
+    }
     if !global_flag_from_command_line(matches, "max_acp_retries") {
         shared.max_acp_retries = agent.max_acp_retries;
     }

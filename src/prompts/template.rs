@@ -125,7 +125,7 @@ mod template_kiss {
 
     #[test]
     fn malformed_brace_placeholders_rejects_unspaced_key() {
-        let _ = crate::prompts::render_inspire_mbc2_prompt;
+        let _ = crate::prompts::render_mbc2_prompt;
         let _ = crate::prompts::render_header;
         let _ = super::is_spaced_brace_placeholder_inner;
         let bad = super::malformed_brace_placeholders("x {{plan_path}} y");

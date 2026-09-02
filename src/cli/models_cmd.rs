@@ -12,7 +12,7 @@ use models_cmd_cursor::print_cursor_models;
 pub(crate) use models_cmd_filter::{line_matches_prefix, models_list_prefix, section_may_match};
 
 #[derive(Args, Debug, Clone, Default)]
-#[command(override_usage = "malvin models [OPTION]... [PREFIX]...")]
+#[command(override_usage = "malvin admin models [OPTION]... [PREFIX]...")]
 pub struct ModelsArgs {
     /// Force-refresh provider model catalogs (bypasses the daily Pi cache).
     #[arg(long)]

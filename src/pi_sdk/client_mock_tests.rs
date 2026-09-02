@@ -39,10 +39,8 @@ async fn pi_sdk_client_mock_rpc_prompt_records_usage() {
     let timing = client.attach_run_timing_for_session();
     client.begin_coder_session(tmp.path()).await.expect("begin");
     assert!(
-        client
-            .session
-            .as_ref()
-            .and_then(|s| s.as_bridge())
+        crate::agent_backend::live_session(&client)
+            .and_then(|s| s.as_cursor())
             .is_none()
     );
     run_hello_prompt(&mut client, tmp.path()).await;
@@ -83,7 +81,7 @@ async fn pi_sdk_noforce_fails_fast() {
         .begin_coder_session(tmp.path())
         .await
         .expect_err("noforce");
-    assert!(err.0.contains("--no-force"));
+    assert!(err.message.contains("--no-force"));
     pi_clear_mock_env();
 }
 

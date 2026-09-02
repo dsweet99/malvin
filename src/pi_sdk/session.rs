@@ -47,7 +47,7 @@ impl PiEmbeddedSession {
         self.reader_dead.store(true, Ordering::SeqCst);
         if let Some(mut runtime) = self.runtime.take() {
             runtime.abort();
-            runtime.shutdown();
+            let _ = runtime.shutdown();
         }
         #[cfg(unix)]
         {
@@ -63,7 +63,7 @@ impl Drop for PiEmbeddedSession {
         self.reader_dead.store(true, Ordering::SeqCst);
         if let Some(mut runtime) = self.runtime.take() {
             runtime.abort();
-            runtime.shutdown();
+            let _ = runtime.shutdown();
         }
         #[cfg(unix)]
         {
@@ -149,6 +149,7 @@ async fn recv_event_with_idle(
     let health = Some(DrainIdleHealthCtx {
         process_group_id: None,
         spawn_pid_baseline: &session.spawn_pid_baseline,
+        tools_in_flight: false,
     });
     crate::bridge_sdk::await_next_with_idle_in_turn(
         labels,

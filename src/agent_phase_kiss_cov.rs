@@ -8,7 +8,6 @@ fn heartbeat_phases_follow_runtime_signals() {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     crate::agent_phase::reset_phase_state_for_test();
     assert_eq!(crate::agent_phase::heartbeat_label(), "Orienting");
-    crate::agent_phase::note_thought_activity();
     crate::agent_phase::reset_for_run();
     crate::agent_phase::enter_verifying();
     crate::agent_phase::leave_verifying();

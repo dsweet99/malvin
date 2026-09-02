@@ -1,6 +1,4 @@
-use super::discover::catalog::{
-    CatalogChild, list_models_from_child, reap_catalog_child, spawn_codex_model_server,
-};
+use super::discover::catalog::{CatalogChild, reap_catalog_child, spawn_codex_model_server};
 
 #[test]
 fn kiss_cov_catalog_names() {
@@ -15,11 +13,6 @@ fn catalog_wrap_drop_and_reap() {
     let mut wrapped = CatalogChild::wrap(child);
     reap_catalog_child(&mut wrapped.child);
     drop(wrapped);
-    let err = spawn_codex_model_server().err().or_else(|| {
-        let mut child = spawn_codex_model_server().ok()?;
-        list_models_from_child(&mut child).err()
-    });
-    let _ = err;
 }
 
 #[test]

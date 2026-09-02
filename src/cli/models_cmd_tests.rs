@@ -53,14 +53,22 @@ fn models_display_lines_keeps_unparsed_single_token_between_parsed_rows() {
 }
 
 fn models_subcommand_parse_invokes_cli_helpers() {
-    use crate::cli::{Cli, Commands};
+    use crate::cli::{AdminArgs, AdminCommand, Cli, Commands};
     use clap::Parser;
-    let cli = Cli::try_parse_from(["malvin", "models"]).expect("parse");
-    assert!(matches!(cli.command, Some(Commands::Models(_))));
-    let refresh = Cli::try_parse_from(["malvin", "models", "--refresh", "pi:"]).expect("parse");
+    let cli = Cli::try_parse_from(["malvin", "admin", "models"]).expect("parse");
+    assert!(matches!(
+        cli.command,
+        Some(Commands::Admin(AdminArgs {
+            command: AdminCommand::Models(_),
+        }))
+    ));
+    let refresh =
+        Cli::try_parse_from(["malvin", "admin", "models", "--refresh", "pi:"]).expect("parse");
     match refresh.command {
-        Some(Commands::Models(args)) => assert!(args.refresh),
-        _ => panic!("expected Models"),
+        Some(Commands::Admin(AdminArgs {
+            command: AdminCommand::Models(args),
+        })) => assert!(args.refresh),
+        _ => panic!("expected Admin::Models"),
     }
 }
 

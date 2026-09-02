@@ -111,19 +111,19 @@ mod tests {
     }
 
     #[test]
-    fn render_subcommand_short_help_inspire_omits_options() {
-        let help = render_subcommand_short_help("inspire").expect("inspire subcommand");
-        assert!(help.contains("Explore creative boundaries"));
-        assert!(help.contains("Usage: malvin inspire [OPTION]... [REQUEST]"));
+    fn render_subcommand_short_help_write_omits_options() {
+        let help = render_subcommand_short_help("write").expect("write subcommand");
+        assert!(help.contains("Write a LaTeX PDF"));
+        assert!(help.contains("Usage: malvin write"));
         assert!(help.contains("Arguments:"));
-        assert!(help.contains("malvin inspire --help"));
+        assert!(help.contains("malvin write --help"));
         assert!(!help.contains("Options:"));
         assert!(!help.contains("--model"));
     }
 
     #[test]
     fn print_subcommand_short_help_invokes_stdout_path() {
-        print_subcommand_short_help("inspire").expect("stdout");
+        print_subcommand_short_help("write").expect("stdout");
     }
 
     #[test]

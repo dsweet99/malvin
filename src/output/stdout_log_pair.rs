@@ -31,6 +31,7 @@ pub(crate) fn tagged_log_line(ts: &str, who: &str, payload: &str) -> String {
     format!("{ts} {}{payload}", format_who_tag_delim(who))
 }
 
+#[cfg(test)]
 pub(crate) fn tagged_display_line_with_timestamp_ansi(
     ts: &str,
     who: &str,

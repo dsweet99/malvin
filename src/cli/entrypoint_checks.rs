@@ -24,7 +24,8 @@ mod tests {
         ensure_malvin_checks_for_gates_only_route,
     };
     use crate::cli::Commands;
-    use crate::cli::args::ModelsArgs;
+    use crate::cli::models_cmd::ModelsArgs;
+    use crate::cli::{AdminArgs, AdminCommand};
 
     #[test]
     fn ensure_malvin_checks_for_command_writes_config_not_checks() {
@@ -65,7 +66,9 @@ mod tests {
 
             std::fs::remove_file(&config).expect("remove config for models test");
 
-            ensure_malvin_checks_for_command(&Commands::Models(ModelsArgs::default()));
+            ensure_malvin_checks_for_command(&Commands::Admin(AdminArgs {
+                command: AdminCommand::Models(ModelsArgs::default()),
+            }));
             assert!(!checks.exists());
             assert!(!config.exists());
 

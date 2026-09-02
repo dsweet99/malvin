@@ -69,7 +69,7 @@ mod wrap_agent_bundle;
 #[path = "wrap_retry_policy.rs"]
 mod wrap_retry_policy;
 pub(crate) use wrap_agent_bundle::*;
-pub use wrap_agent_bundle::{AgentError, AgentIoOptions, AuthError};
+pub use wrap_agent_bundle::{AgentError, AgentFault, AgentIoOptions, AuthError};
 pub(crate) use wrap_retry_policy::*;
 
 #[path = "agent_helpers.rs"]
@@ -80,6 +80,6 @@ pub(crate) use agent_helpers::*;
 mod backoff;
 pub(crate) use backoff::backoff_after_agent_failure;
 
-#[cfg(unix)]
+#[cfg(all(unix, any(test, debug_assertions)))]
 #[path = "hostile_orphan_test_util.rs"]
 pub mod hostile_orphan_test_util;

@@ -1,11 +1,12 @@
 use std::path::Path;
 
 use crate::acp::{
-    AgentError, CoderPromptOptions, agent_error_requires_coder_session_teardown,
-    agent_string_is_cursor_agent_busy, backoff_after_agent_failure, retries_noun,
+    AgentError, AgentFault, CoderPromptOptions, agent_string_is_cursor_agent_busy,
+    backoff_after_agent_failure, retries_noun,
 };
+use crate::model_id::ModelBackend;
 
-use super::sdk_client::{BridgeKind, SdkClient};
+use super::sdk_client::SdkClient;
 
 impl SdkClient {
     pub async fn run_coder_prompt(
@@ -15,7 +16,7 @@ impl SdkClient {
         who: &str,
         opts: CoderPromptOptions<'_>,
     ) -> Result<(), AgentError> {
-        if self.session.is_none() && self.session_cwd.is_none() {
+        if self.coder.is_none() {
             return Err(AgentError("begin_coder_session was not called".into()));
         }
         emit_prompt_stdout(self, prompt, who, &opts);
@@ -28,8 +29,11 @@ impl SdkClient {
             match run_one(self, prompt, phase).await {
                 Ok(()) => return Ok(()),
                 Err(e) => {
-                    last_error = e.0;
-                    teardown_sdk_session_after_transport_error(self, &last_error).await;
+                    teardown_sdk_session_after_transport_error(self, &e).await;
+                    if opts.fresh_agent_on_retry {
+                        force_fresh_agent_for_retry(self).await;
+                    }
+                    last_error = e.message;
                     if single {
                         break;
                     }
@@ -47,27 +51,31 @@ impl SdkClient {
             }
         }
         let retries = max_attempts.saturating_sub(1);
-        let label = match self.kind {
-            BridgeKind::Cursor => "cursor",
-            BridgeKind::Pi => "pi",
-            BridgeKind::Codex => "codex",
-        };
         Err(AgentError(format!(
-            "{label} SDK prompt failed after {retries} {}. Last error:\n{last_error}",
+            "{} SDK prompt failed after {retries} {}. Last error:\n{last_error}",
+            self.model.backend.label(),
             retries_noun(retries)
         )))
     }
 }
 
-async fn teardown_sdk_session_after_transport_error(client: &mut SdkClient, err: &str) {
-    if agent_error_requires_coder_session_teardown(err) {
-        let forget_agent =
-            matches!(client.kind, BridgeKind::Cursor) && agent_string_is_cursor_agent_busy(err);
-        let _ = client.end_coder_session().await;
-        if forget_agent {
-            client.last_agent_id = None;
-        }
+async fn teardown_sdk_session_after_transport_error(client: &mut SdkClient, err: &AgentError) {
+    if !err.requires_coder_session_teardown() {
+        return;
     }
+    let forget_agent = matches!(client.model.backend, ModelBackend::Cursor)
+        && (err.fault == AgentFault::CursorBusy
+            || agent_string_is_cursor_agent_busy(&err.message));
+    let _ = client.end_coder_session().await;
+    if forget_agent {
+        client.last_agent_id = None;
+    }
+}
+
+/// End any open coder session and drop Cursor resume id so the next attempt creates a new agent.
+async fn force_fresh_agent_for_retry(client: &mut SdkClient) {
+    let _ = client.end_coder_session().await;
+    client.last_agent_id = None;
 }
 
 async fn run_one(
@@ -76,9 +84,7 @@ async fn run_one(
     phase: Option<crate::run_timing::TimingPhase>,
 ) -> Result<(), AgentError> {
     ensure_open_session(client).await?;
-    let session = client
-        .session
-        .as_ref()
+    let session = super::sdk_client::live_session(client)
         .ok_or_else(|| AgentError("begin_coder_session was not called".into()))?;
     let started = std::time::Instant::now();
     let result = session.send_prompt(prompt).await;
@@ -89,12 +95,11 @@ async fn run_one(
 }
 
 async fn ensure_open_session(client: &mut SdkClient) -> Result<(), AgentError> {
-    if client.session.is_some() {
+    if client.has_open_coder_session() {
         return Ok(());
     }
-    let cwd = client
-        .session_cwd
-        .clone()
+    let cwd = super::sdk_client::begun_cwd(client)
+        .cloned()
         .ok_or_else(|| AgentError("begin_coder_session was not called".into()))?;
     client.begin_coder_session(&cwd).await
 }

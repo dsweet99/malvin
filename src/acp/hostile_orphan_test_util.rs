@@ -210,7 +210,7 @@ pub fn assert_sibling_monitored_and_blocks_spawn(
     baseline: &std::collections::HashSet<u32>,
 ) {
     use crate::acp::sandbox_monitor_pids;
-    use crate::malvin_sandbox::{assert_dead_before_next_spawn, note_active_sandbox_session};
+    use crate::malvin_sandbox::{assert_dead_before_next_spawn, note_active_sandbox_session, take_sandbox_spawn_ticket};
 
     let work = std::env::temp_dir().join(format!(
         "malvin_hostile_orphan_blocks_spawn_{}",
@@ -218,7 +218,8 @@ pub fn assert_sibling_monitored_and_blocks_spawn(
     ));
     let _ = std::fs::remove_dir_all(&work);
     std::fs::create_dir_all(&work).expect("mkdir work");
-    note_active_sandbox_session(Some(agent_pgid), baseline.clone(), &work).expect("note");
+    let ticket = take_sandbox_spawn_ticket().expect("ticket");
+    note_active_sandbox_session(ticket, Some(agent_pgid), baseline.clone(), &work).expect("note");
     let monitor = sandbox_monitor_pids(Some(agent_pgid), baseline);
     assert!(
         monitor.contains(&sibling_pid),

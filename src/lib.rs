@@ -113,7 +113,7 @@ pub mod cursor_sdk;
 pub mod pi_sdk;
 #[cfg(test)]
 pub(crate) mod sdk_bridge_build;
-pub use acp::{AgentError, AgentIoOptions, AuthError, CoderPromptOptions};
+pub use acp::{AgentError, AgentFault, AgentIoOptions, AuthError, CoderPromptOptions};
 #[cfg(unix)]
 pub use acp::{snapshot_pids, terminate_agent_process_group};
 pub use ansi_strip::strip_ansi_escapes;
@@ -140,7 +140,9 @@ pub use run_timing::{
 };
 pub mod artifacts;
 mod child_health;
+#[cfg(any(test, debug_assertions))]
 mod test_poll;
+#[cfg(any(test, debug_assertions))]
 pub use test_poll::{
     test_post_teardown_poll_interval, test_post_teardown_wait_budget, test_wait_until_async,
 };
@@ -170,7 +172,6 @@ pub mod prompts;
 pub mod reliability_tier;
 pub mod repo_gates;
 pub mod run_timing;
-pub mod session_sandbox_policy;
 pub mod stdout_log_path;
 pub mod acp_post_run {
     pub use crate::run_timing::acp_post_run::*;
@@ -185,8 +186,6 @@ pub mod cli;
 mod coverage_kiss;
 #[path = "cli/do_flow.rs"]
 pub mod do_flow;
-#[path = "cli/inspire_flow.rs"]
-pub mod inspire_flow;
 #[cfg(test)]
 #[path = "lib_test_modules.rs"]
 mod lib_test_modules;

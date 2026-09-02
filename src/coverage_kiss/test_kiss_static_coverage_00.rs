@@ -13,7 +13,6 @@ fn kiss_exec_witness_00_01() {
     flush_other_stream();
     flush_stream();
     FlushStreamCtx();
-    VerboseTraceCoalesceState();
 }
 
 #[test]

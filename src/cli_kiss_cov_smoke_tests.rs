@@ -5,7 +5,7 @@ fn smoke_cov_cli_cli_units_0() {
     let _ = stringify!(crate::cli::entrypoint::dispatch_command);
     let _ = crate::cli::entrypoint::print_command_error;
     let _ = crate::cli::entrypoint::print_command_error;
-    let _ = crate::cli::entrypoint_commands::run_inspire_command;
+    let _ = crate::cli::entrypoint_commands::run_write_command;
     let _: Option<crate::cli::exit::Exit> = None;
     let _ = crate::cli::init_flow::run_init;
     let _ = crate::cli::init_flow::render_init_router_request;
@@ -19,7 +19,7 @@ fn smoke_cov_cli_cli_units_1a() {
     let _: Option<crate::repo_checks::RepoGateOutput> = None;
     let _: Option<crate::repo_checks::RepoGateFailure> = None;
     let _ = crate::cli::run_emit::emit_run_startup_sequence;
-    let _: Option<crate::cli::shared_opts::GlobalOpts> = None;
+    let _: Option<crate::cli::shared_opts::SharedOpts> = None;
 }
 
 #[test]
@@ -41,6 +41,7 @@ fn smoke_cov_cli_cli_units_1b() {
     let _ = crate::do_flow::do_flow_prompt::build_do_coder_run_with_store;
     let _ = crate::do_flow::do_flow_prompt::build_do_coder_run;
     let shared = crate::cli::SharedOpts {
+        background: false,
         model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("model"),
         no_force: false,
         no_tenacious: false,
@@ -50,9 +51,9 @@ fn smoke_cov_cli_cli_units_1b() {
         verbose: false,
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
-        name: None,
         git: false,
-        creative: false,
+        creative: None,
+        no_kpop: false,
     };
     let _ = shared.model;
 }
@@ -120,12 +121,8 @@ fn smoke_cov_cli_cli_symbols_a() {
     assert!(request.is_none());
     let _ = stringify!(DoRunPrep);
     let _ = stringify!(new_do_client);
-    let _: Option<crate::inspire_flow::InspireArgs> = None;
-    let _ = stringify!(InspireRunPrep);
-    let _ = crate::inspire_flow::render_inspire_prompt;
-    let _ = crate::inspire_flow::render_inspire_summarize_prompt;
-    let _ = crate::inspire_flow::build_inspire_render_context;
-    let _ = crate::inspire_flow::run_inspire;
+    let _ = crate::prompts::build_mbc2_render_context;
+    let _ = crate::prompts::render_mbc2_prompt;
     let _: Option<crate::cli::models_cmd::ModelsArgs> = None;
     let _: Option<crate::cli::WorkflowCliOptions> = None;
     let _: Option<crate::cli::AgentStdoutTeeFlags> = None;

@@ -7,4 +7,4 @@ mod inline {
 }
 
 pub(crate) use inline::*;
-pub use inline::{AgentError, AgentIoOptions, AuthError};
+pub use inline::{AgentError, AgentFault, AgentIoOptions, AuthError};

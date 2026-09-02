@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use crate::acp::AgentError;
 use crate::bridge_protocol::BridgeEvent;
-use crate::bridge_sdk::BridgeSession;
+use super::session::CodexSession;
 
 #[derive(Default)]
 pub(super) struct TurnState {
@@ -13,7 +13,7 @@ pub(super) struct TurnState {
     pub(super) counted_step: bool,
 }
 
-pub(super) async fn consume_codex_turn(session: &BridgeSession) -> Result<(), AgentError> {
+pub(super) async fn consume_codex_turn(session: &CodexSession) -> Result<(), AgentError> {
     let mut state = TurnState::default();
     let mut turn = crate::bridge_sdk::DrainIdleTurn::new();
     loop {
@@ -41,7 +41,7 @@ pub(super) fn rpc_error(value: &serde_json::Value) -> Option<AgentError> {
         .map(|err| AgentError(format!("codex RPC error: {err}")))
 }
 
-fn capture_rpc_turn_id(session: &BridgeSession, state: &mut TurnState, value: &serde_json::Value) {
+fn capture_rpc_turn_id(session: &CodexSession, state: &mut TurnState, value: &serde_json::Value) {
     let Some(id) = value
         .pointer("/result/turn/id")
         .or_else(|| value.pointer("/result/id"))
@@ -53,7 +53,7 @@ fn capture_rpc_turn_id(session: &BridgeSession, state: &mut TurnState, value: &s
 }
 
 fn handle_codex_event(
-    session: &BridgeSession,
+    session: &CodexSession,
     value: &serde_json::Value,
     state: &mut TurnState,
 ) -> Option<Result<(), AgentError>> {
@@ -78,7 +78,7 @@ fn handle_codex_event(
     None
 }
 
-fn remember_turn_id(session: &BridgeSession, state: &mut TurnState, id: &str) {
+fn remember_turn_id(session: &CodexSession, state: &mut TurnState, id: &str) {
     state.turn_id = Some(id.to_owned());
     if state.started.is_none() {
         state.started = Some(Instant::now());
@@ -111,7 +111,7 @@ fn event_turn_id(value: &serde_json::Value) -> Option<&str> {
 }
 
 fn emit_turn_stream(
-    session: &BridgeSession,
+    session: &CodexSession,
     method: &str,
     value: &serde_json::Value,
     state: &mut TurnState,

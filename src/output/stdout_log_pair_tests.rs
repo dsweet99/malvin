@@ -97,7 +97,7 @@ fn acp_bracket_color_covers_both_directions() {
 
 fn acp_agent_who_prefix_matches_stdout_navy() {
     use crate::output::{format_line_stdout_ansi, who_tag_ansi};
-    use crate::terminal_palette::ansi_tool_navy;
+    use crate::terminal_palette::ansi_who_tag;
 
     for who in [WHO_M, WHO_O] {
         let stdout_prefix = format_line_stdout_ansi(who, "");
@@ -109,7 +109,7 @@ fn acp_agent_who_prefix_matches_stdout_navy() {
             dim_payload: false,
         });
         assert!(
-            stdout_prefix.contains(ansi_tool_navy()),
+            stdout_prefix.contains(ansi_who_tag()),
             "stdout who={who} must use navy; got {stdout_prefix:?}"
         );
         assert!(
@@ -137,19 +137,19 @@ fn acp_bracket_payload_supports_dim_mode() {
 
 #[cfg(test)]
 pub(crate) fn assert_tool_payload_uses_verb_styling(line: &str) {
-    use crate::terminal_palette::{ANSI_BOLD, ANSI_DIM, ANSI_RESET, ansi_tool_dark};
+    use crate::terminal_palette::{ANSI_BOLD, ANSI_DIM, ANSI_RESET, ansi_tool_name};
 
     let dim_sep = format!("{ANSI_RESET}{ANSI_DIM}");
     let dim_start = line
         .find(&dim_sep)
         .unwrap_or_else(|| panic!("expected dim tool payload; got {line:?}"));
     let payload = &line[dim_start + dim_sep.len()..];
-    let dark_verb = format!("{ANSI_BOLD}{}", ansi_tool_dark());
+    let dark_verb = format!("{ANSI_BOLD}{}", ansi_tool_name());
     assert!(
         payload.contains(&dark_verb),
         "payload verb must use dark bold styling; got {payload:?} in {line:?}"
     );
-    let dark_open = format!("{}[", ansi_tool_dark());
+    let dark_open = format!("{}[", ansi_tool_name());
     assert!(
         !payload.starts_with(&dark_open),
         "payload must not start with styled open bracket; got {payload:?} in {line:?}"
@@ -183,9 +183,9 @@ pub(crate) fn assert_acp_tool_summary_dim_preserves_bracket(line: &str) {
 
 fn kiss_cov_assert_tool_payload_helpers() {
     use crate::output::who_tag_ansi;
-    use crate::terminal_palette::{ANSI_BOLD, ANSI_DIM, ANSI_RESET, ansi_tool_dark};
+    use crate::terminal_palette::{ANSI_BOLD, ANSI_DIM, ANSI_RESET, ansi_tool_name};
     let who = who_tag_ansi(WHO_T);
-    let dark = ansi_tool_dark();
+    let dark = ansi_tool_name();
     let line =
         format!("{who}|{ANSI_RESET}{ANSI_DIM}{ANSI_BOLD}{dark}Run{ANSI_RESET}{ANSI_DIM} something");
     assert_tool_payload_uses_verb_styling(&line);

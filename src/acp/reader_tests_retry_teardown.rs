@@ -1,11 +1,11 @@
 use crate::acp::{
     agent_error_requires_coder_session_teardown, agent_string_is_cursor_agent_busy,
     agent_string_is_cursor_http2_transport_error, agent_string_is_stale_cursor_sdk_auth,
-    cursor_http2_transport_error_message,
 };
 
 #[test]
 fn child_health_transport_errors_require_coder_session_teardown() {
+    let _guard = crate::test_utils::test_env_lock();
     crate::test_utils::clear_test_no_real_agent_env();
     for msg in [
         "acp child process appears hung",
@@ -13,8 +13,8 @@ fn child_health_transport_errors_require_coder_session_teardown() {
         "acp child process is zombie",
         "acp stdout closed",
         "acp: WritableIterable is closed",
-        "bridge drain timed out waiting for run_done after 1s of silence",
-        "bridge timed out waiting for run_done after 1s of silence",
+        "bridge drain timed out waiting for run_done after 1s without a bridge event (bridge quiet; likely hung or stalled)",
+        "bridge timed out waiting for run_done after 1s without a bridge event (bridge quiet; likely hung or stalled)",
         "pi rpc drain timed out waiting for agent_end after 45s of silence",
         "pi rpc timed out waiting for agent_end after 45s of silence",
         "pi rpc stdout closed",
@@ -49,7 +49,9 @@ fn live_drain_idle_prefixes_require_coder_session_teardown() {
         crate::acp::DRAIN_IDLE_PREFIX_PI,
         crate::acp::DRAIN_IDLE_PREFIX_CODEX,
     ] {
-        let msg = format!("{prefix} waiting for event after 1s of silence");
+        let msg = format!(
+            "{prefix} waiting for event after 1s without a bridge event (bridge quiet; likely hung or stalled)"
+        );
         assert!(
             agent_error_requires_coder_session_teardown(&msg),
             "{msg}"
@@ -68,6 +70,7 @@ fn cursor_agent_busy_strings_are_detected() {
 
 #[test]
 fn mock_agent_mode_keeps_session_after_ping_retriable_error() {
+    let _guard = crate::test_utils::test_env_lock();
     crate::test_utils::enable_test_fast_teardown();
     assert!(!agent_error_requires_coder_session_teardown(
         "Error: RetriableError: [unavailable] PING timed out"
@@ -75,30 +78,24 @@ fn mock_agent_mode_keeps_session_after_ping_retriable_error() {
     assert!(agent_error_requires_coder_session_teardown(
         "acp child process is not running"
     ));
+    crate::test_utils::clear_test_no_real_agent_env();
 }
 
 #[test]
-fn cursor_http2_transport_errors_are_detected_and_normalized() {
+fn cursor_http2_transport_errors_are_detected() {
     assert!(agent_string_is_cursor_http2_transport_error(
         "Error: RetriableError: [unavailable] PING timed out"
     ));
-    assert_eq!(
-        cursor_http2_transport_error_message("Error: RetriableError: [unavailable] PING timed out"),
-        Some("RetriableError: [unavailable] PING timed out")
-    );
     assert!(agent_string_is_cursor_http2_transport_error(
         "Error: RetriableError: [canceled] http/2 stream closed with error code CANCEL (0x8)"
     ));
-    assert_eq!(
-        cursor_http2_transport_error_message(
-            "\n\nError: RetriableError: [canceled] http/2 stream closed with error code CANCEL (0x8)"
-        ),
-        Some("RetriableError: [canceled] http/2 stream closed with error code CANCEL (0x8)")
-    );
+    assert!(agent_string_is_cursor_http2_transport_error(
+        "\n\nError: RetriableError: [canceled] http/2 stream closed with error code CANCEL (0x8)"
+    ));
     assert!(!agent_string_is_cursor_http2_transport_error(
         "wrote review_requirements.json"
     ));
-    assert!(cursor_http2_transport_error_message("ok").is_none());
+    assert!(!agent_string_is_cursor_http2_transport_error("ok"));
 }
 
 #[test]

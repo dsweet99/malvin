@@ -13,7 +13,7 @@ model = "cursor:gpt-5"
 "model-mini" = "openai/gpt-4o"
 "#;
     let agent = parse_agent_config(text).expect("parse");
-    assert_eq!(agent.model, "cursor:gpt-5");
+    assert_eq!(agent.model.canonical(), "cursor:gpt-5");
 }
 
 #[test]
@@ -51,7 +51,7 @@ max_loops = 5
             before, after,
             "existing config.toml must never be rewritten"
         );
-        assert_eq!(cfg.agent.model, DEFAULT_CLI_MODEL);
+        assert_eq!(cfg.agent.model.canonical(), DEFAULT_CLI_MODEL);
         assert!(after.contains("model = \"auto\""));
     });
 }
@@ -83,7 +83,7 @@ max_acp_retries = 5
     assert_eq!(
         agent,
         AgentConfig {
-            model: "cursor:gpt-5".to_string(),
+            model: crate::model_id::parse_model_id("cursor:gpt-5").expect("model"),
             max_loops: 3,
             max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
             max_loops_code: DEFAULT_MAX_LOOPS_CODE,

@@ -4,6 +4,7 @@ use super::session::BridgeSession;
 use super::timing::{note_sdk_step, record_sdk_usage};
 use crate::bridge_protocol::{BridgeEvent, BridgeRequest, decode_event, encode_request};
 use super::session_handshake::wait_for_ok;
+use super::session_io_productive::{note_productive_bridge_event, tools_in_flight};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
 
 pub(crate) struct CreateArgs<'a> {
@@ -58,11 +59,11 @@ pub async fn write_request(session: &BridgeSession, req: &BridgeRequest) -> Resu
     stdin
         .write_all(format!("{line}\n").as_bytes())
         .await
-        .map_err(|e| AgentError(format!("bridge write: {e}")))?;
+        .map_err(|e| AgentError::session_dead(format!("bridge write: {e}")))?;
     stdin
         .flush()
         .await
-        .map_err(|e| AgentError(format!("bridge flush: {e}")))?;
+        .map_err(|e| AgentError::session_dead(format!("bridge flush: {e}")))?;
     drop(stdin);
     Ok(())
 }
@@ -74,10 +75,10 @@ pub(crate) async fn read_event(session: &BridgeSession) -> Result<BridgeEvent, A
         stdout
             .read_line(&mut line)
             .await
-            .map_err(|e| AgentError(format!("bridge read: {e}")))?
+            .map_err(|e| AgentError::session_dead(format!("bridge read: {e}")))?
     };
     if n == 0 {
-        return Err(AgentError("bridge stdout closed".into()));
+        return Err(AgentError::session_dead("bridge stdout closed"));
     }
     decode_event(line.trim()).map_err(AgentError)
 }
@@ -92,6 +93,7 @@ pub(crate) async fn drain_until_run_done(session: &BridgeSession) -> Result<(), 
     };
     loop {
         let ev = read_event_with_idle_timeout(session, "run_done", &mut turn).await?;
+        note_productive_bridge_event(session, &mut turn, &ev);
         match &ev {
             BridgeEvent::Step { .. } => note_sdk_step(session.timing.as_ref()),
             BridgeEvent::Usage { usage } => {
@@ -126,6 +128,7 @@ async fn read_event_with_idle_timeout(
     let health = Some(super::DrainIdleHealthCtx {
         process_group_id: session.process_group_id,
         spawn_pid_baseline: &session.spawn_pid_baseline,
+        tools_in_flight: tools_in_flight(session),
     });
     super::await_next_with_idle_in_turn(labels, health, read_event(session), turn).await
 }
@@ -186,21 +189,29 @@ fn finish_run_done(
     Ok(())
 }
 
-pub(crate) fn start_mem_watch(session: &BridgeSession) {
+pub(crate) struct MemWatchArgs<'a> {
+    pub process_group_id: Option<u32>,
+    pub reader_dead: &'a std::sync::Arc<std::sync::atomic::AtomicBool>,
+    pub work_dir: &'a std::path::Path,
+    pub spawn_pid_baseline: &'a std::collections::HashSet<u32>,
+    pub run_dir: Option<&'a std::path::Path>,
+}
+
+pub(crate) fn start_mem_watch(args: MemWatchArgs<'_>) {
     #[cfg(unix)]
     {
         if crate::acp::test_no_real_agent_enabled() {
             return;
         }
-        let Some(pgid) = session.process_group_id else {
+        let Some(pgid) = args.process_group_id else {
             return;
         };
         let handles = crate::acp::MemWatchHandles {
-            reader_dead: std::sync::Arc::clone(&session.reader_dead),
+            reader_dead: std::sync::Arc::clone(args.reader_dead),
             pgid: Some(pgid),
-            limit_bytes: crate::mem_limit_config::load_mem_limit_bytes(&session.work_dir),
-            spawn_pid_baseline: session.spawn_pid_baseline.clone(),
-            run_dir: session.run_dir.clone(),
+            limit_bytes: crate::mem_limit_config::load_mem_limit_bytes(args.work_dir),
+            spawn_pid_baseline: args.spawn_pid_baseline.clone(),
+            run_dir: args.run_dir.map(std::path::Path::to_path_buf),
         };
         tokio::spawn(async move {
             crate::acp::watch_process_group_memory(handles).await;
@@ -208,7 +219,7 @@ pub(crate) fn start_mem_watch(session: &BridgeSession) {
     }
     #[cfg(not(unix))]
     {
-        let _ = session;
+        let _ = args;
     }
 }
 

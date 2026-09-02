@@ -142,27 +142,33 @@ mod tests {
     #[test]
     fn quiet_node_cli_suppresses_sqlite_experimental_warning() {
         let node = resolve_node_bin().expect("modern node");
-        let bridge_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("cursor-sdk-bridge");
-        let mut cmd = std::process::Command::new(&node);
-        apply_quiet_node_cli_std(&mut cmd);
-        let output = cmd
+        // Parent sandboxes often export NODE_NO_WARNINGS=1; clear it so the child
+        // only stays quiet when apply_quiet_node_cli_std sets flags/env.
+        let noisy = Command::new(&node)
+            .env_remove("NODE_NO_WARNINGS")
             .args([
                 "-e",
-                r#"
-import { Agent } from "@cursor/sdk";
-try {
-  await Agent.create({
-    apiKey: "sk-test-invalid",
-    model: { id: "composer-2" },
-    local: { cwd: "/tmp", settingSources: ["project"] },
-  });
-} catch {
-}
-"#,
+                r#"process.emitWarning("SQLite is an experimental feature","ExperimentalWarning")"#,
             ])
-            .current_dir(&bridge_dir)
             .output()
-            .expect("spawn node");
+            .expect("spawn noisy node");
+        let noisy_stderr = String::from_utf8_lossy(&noisy.stderr);
+        assert!(
+            noisy_stderr.contains("ExperimentalWarning")
+                && noisy_stderr.contains("SQLite is an experimental"),
+            "precondition: unclean node should emit SQLite ExperimentalWarning, got: {noisy_stderr}"
+        );
+
+        let mut quiet = Command::new(&node);
+        quiet.env_remove("NODE_NO_WARNINGS");
+        apply_quiet_node_cli_std(&mut quiet);
+        let output = quiet
+            .args([
+                "-e",
+                r#"process.emitWarning("SQLite is an experimental feature","ExperimentalWarning")"#,
+            ])
+            .output()
+            .expect("spawn quiet node");
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
             !stderr.contains("ExperimentalWarning"),

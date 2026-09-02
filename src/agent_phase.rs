@@ -117,10 +117,6 @@ pub fn note_orienting() {
     });
 }
 
-pub fn clear_orienting() {
-    with_state(|s| s.orienting = false);
-}
-
 pub fn enter_verifying() {
     with_state(|s| {
         s.verifying_depth = s.verifying_depth.saturating_add(1);
@@ -134,20 +130,6 @@ pub fn leave_verifying() {
 
 pub fn set_reporting(active: bool) {
     with_state(|s| s.reporting = active);
-}
-
-pub fn print_done_with_reporting_phase() {
-    use crate::output::{MALVIN_WHO, print_stdout_line};
-    set_reporting(true);
-    print_stdout_line(MALVIN_WHO, "DONE");
-    set_reporting(false);
-}
-
-pub fn note_thought_activity() {
-    with_state(|s| {
-        s.reasoning = true;
-        s.orienting = false;
-    });
 }
 
 pub(crate) fn observe_tool_update(parsed: &ParsedToolUpdate, tracker: &ToolSummaryTracker) {

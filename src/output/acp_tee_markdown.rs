@@ -1,5 +1,5 @@
 use super::{ANSI_DIM, ANSI_RESET};
-use crate::terminal_palette::ansi_tool_white;
+use crate::terminal_palette::ansi_body;
 use termimad::MadSkin;
 
 #[derive(Clone, Copy, Debug)]
@@ -83,8 +83,8 @@ fn needs_block_markdown_render(line: &str) -> bool {
 }
 
 pub(crate) fn agent_rendered_markup_payload(rendered: &str) -> String {
-    let wrapped = rendered.replace(ANSI_RESET, &format!("{ANSI_RESET}{}", ansi_tool_white()));
-    format!("{}{wrapped}{ANSI_RESET}", ansi_tool_white())
+    let wrapped = rendered.replace(ANSI_RESET, &format!("{ANSI_RESET}{}", ansi_body()));
+    format!("{}{wrapped}{ANSI_RESET}", ansi_body())
 }
 
 fn dim_rendered_markup_payload(rendered: &str) -> String {
@@ -117,7 +117,7 @@ mod termimad_tests {
         let dimmed = dim_rendered_markup_payload("x");
         assert!(dimmed.contains(super::ANSI_DIM));
         let agent = super::agent_rendered_markup_payload("agent");
-        assert!(agent.contains(super::ansi_tool_white()));
+        assert!(agent.contains(super::ansi_body()));
         let on = TermimadStdoutGate {
             emit_stdout_markdown: true,
             dim_payload: false,

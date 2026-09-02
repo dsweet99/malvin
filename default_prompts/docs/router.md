@@ -1,19 +1,19 @@
 # malvin (default route)
 
-Outer agent sessions (`--max-loops`): each session sends `header.md`, then `router_a.md`. A lone-line `__MALVIN_DONE__` in the `router_a` reply can stop the loop (optionally after `--gates` checks). Otherwise the same session receives `router_b.md` (or `router_b_creative.md` with `--creative`), and another outer session may start when budget remains. When exiting, `router_summarize.md` runs once on the final open session.
+Outer agent sessions (`--max-loops`): each freshly created coder agent context sends `header.md` once, then `kpop_common.md`, then optionally `mbc2.md` when `--creative` samples on for that iteration, then `router_a.md`. When the outer loop continues with the coder session kept open, or when a Cursor bridge restart resumes the same `agent_id`, later iterations skip `header.md` and resume at `kpop_common.md`. A lone-line `__MALVIN_DONE__` in the `router_a` reply can stop the loop (optionally after `--gates` checks). Otherwise the same session receives `router_b.md` (or `router_b_creative.md` when that iteration sampled creative), and another outer iteration may start when budget remains. When exiting, `router_summarize.md` runs once on the final open session.
 
 ## Summary
 
 | | |
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
-| Output | Styled stdout on a TTY (same startup chrome as `tidy` / `inspire`); with `--quiet` / `-q`, only `MALVIN_DM_*` bodies |
+| Output | Styled stdout on a TTY (same startup chrome as `tidy` / `write`); with `--quiet` / `-q`, only `__MALVIN_DM_*__` bodies |
 | Logs | `router_N.log` under `~/.malvin_home/logs/<hash>/<run>/` (one file per outer session) |
 | Requires | No `.malvin/gates` at startup (unless `--gates` later needs them) |
 
 ## Intention
 
-Read the user request (on disk as `plan_*.md` / `{{ user_request_path }}`), ask whether requirements are still unsatisfied (`router_a.md`), and either stop on `__MALVIN_DONE__` or continue with `router_b.md` (or `router_b_creative.md` with `--creative`) to satisfy them. When the outer loop decides to exit, send `router_summarize.md` once on that final already-open coder session before teardown. Repeat for another outer agent lifetime when `--max-loops` allows and stop conditions are not met.
+Read the user request (on disk as `plan_*.md` / `{{ user_request_path }}`), ask whether requirements are still unsatisfied (`router_a.md`), and either stop on `__MALVIN_DONE__` or continue with `router_b.md` (or `router_b_creative.md` when `--creative` samples on) to satisfy them. When the outer loop decides to exit, send `router_summarize.md` once on that final already-open coder session before teardown. Repeat for another outer agent lifetime when `--max-loops` allows and stop conditions are not met.
 
 ## Usage
 
@@ -43,21 +43,22 @@ See `malvin --doc`. Notable for the default route:
 | `--max-loops` | Outer agent-session budget (default 1). Tenacious expands to 9999 unless this flag is set on the command line. |
 | `--max-hypotheses` | Hypothesis budget (default 5). When omitted, `[default_workflow].max_hypotheses` is used. Explicit CLI wins over config. |
 | `-g` / `--gates` | When `router_a` emits `__MALVIN_DONE__`, run workspace `.malvin/gates`. Pass stops success; fail continues (new outer session). Exhausted budget with failing gates fails the run after exit summarize. Also injects check text into `router_a.md` via `{{ code_extra }}`. |
-| `--creative` | Use the creative router_b prompt for the optional work turn |
+| `--creative[=PROB]` | Per outer iteration, with probability `PROB` (default `1.0` when the flag is set): send `mbc2.md` after `kpop_common.md`, and use `router_b_creative.md` for the optional work turn |
 | `--no-tenacious` | Keep normal `--max-loops` / `--max-acp-retries` (default tenacious expands both) |
-| `--quiet` / `-q` | Stdout shows only `MALVIN_DM_*` bodies (not `-b`). Plain `--do` is already DM-body-only without `--verbose` |
+| `--quiet` / `-q` | Stdout shows only `__MALVIN_DM_*__` bodies (not `-b`). Plain `--do` is already DM-body-only without `--verbose` |
 | `--verbose` | Full prompt bodies in `prompts.log`; with `--do`, also same live agent stdout log classes as the default workflow |
 
 ## Prompt workflow
 
-Each outer session opens one coder session and sends:
+Each outer iteration opens or reuses one coder session and sends:
 
 | Turn | Piece | Role |
 |------|-------|------|
-| 1 | `header.md` | Standard Malvin context |
+| 1 (fresh agent only) | `header.md` | Standard Malvin context; omitted when reusing a kept-open session or Cursor-resuming the same agent. ACP retries of this turn create a fresh agent so `header.md` is not re-delivered into the prior conversation. |
 | 2 | `kpop_common.md` | Karl Popper hypothesis-and-falsification method |
-| 3 | `router_a.md` | Ask whether requirements are unsatisfied; optional `{{ code_extra }}` when `--gates` |
-| 4 (optional) | `router_b.md` or `router_b_creative.md` | Run only when `router_a` did **not** emit `__MALVIN_DONE__` alone on a line; `--creative` selects `router_b_creative.md` |
+| 3 (optional) | `mbc2.md` | When `--creative` samples on for this iteration: MBC2 boundary exploration on the user request |
+| 4 | `router_a.md` | Ask whether requirements are unsatisfied; optional `{{ code_extra }}` when `--gates` |
+| 5 (optional) | `router_b.md` or `router_b_creative.md` | Run only when `router_a` did **not** emit `__MALVIN_DONE__` alone on a line; creative sample selects `router_b_creative.md` |
 | Exit only | `router_summarize.md` | **Once per run**, when exiting the outer loop: pass to the same already-open final coder session before teardown |
 
 ### Stop / continue (without `--gates`)
@@ -102,4 +103,5 @@ malvin "Investigate flaky tests"
 malvin plan.md
 malvin --gates "Get the gates to pass"
 malvin --creative --max-loops 3 notes/idea.md
+malvin --creative=0.6 --max-loops 5 notes/idea.md
 ```
