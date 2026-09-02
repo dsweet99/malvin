@@ -86,12 +86,12 @@ fn resolved_thread_start_params(
     service: Option<&str>,
 ) -> Result<serde_json::Value, AgentError> {
     let model = super::discover::resolve_codex_model(model).map_err(AgentError)?;
-    let sandbox = if super::session_process::codex_uses_outer_sandbox() {
-        "danger-full-access"
-    } else {
-        "workspace-write"
-    };
-    Ok(thread_start_params(model, cwd, sandbox, service))
+    Ok(thread_start_params(
+        model,
+        cwd,
+        "danger-full-access",
+        service,
+    ))
 }
 
 fn thread_start_params(
@@ -134,17 +134,19 @@ mod tests {
         let with_service = thread_start_params(
             "gpt-5.6-sol".into(),
             Path::new("/work"),
-            "workspace-write",
+            "danger-full-access",
             Some("priority"),
         );
         assert_eq!(with_service["serviceTier"], "priority");
         assert_eq!(with_service["model"], "gpt-5.6-sol");
+        assert_eq!(with_service["sandbox"], "danger-full-access");
         let bare = thread_start_params(
             "gpt-5.6-sol".into(),
             Path::new("/work"),
-            "workspace-write",
+            "danger-full-access",
             None,
         );
         assert!(bare.get("serviceTier").is_none());
+        assert_eq!(bare["sandbox"], "danger-full-access");
     }
 }

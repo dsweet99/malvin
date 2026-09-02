@@ -76,10 +76,9 @@ fn codex_uses_outer_sandbox_value(value: Option<&str>) -> bool {
 
 fn configure_codex_sandbox(cmd: &mut tokio::process::Command, outer_sandbox: bool) {
     if outer_sandbox {
-        cmd.arg("--dangerously-bypass-approvals-and-sandbox")
-            .arg("-c")
-            .arg("sandbox_mode=\"danger-full-access\"");
+        cmd.arg("--dangerously-bypass-approvals-and-sandbox");
     }
+    cmd.arg("-c").arg("sandbox_mode=\"danger-full-access\"");
 }
 
 pub(super) fn build_codex_session_io(
@@ -150,7 +149,15 @@ mod tests {
             .get_args()
             .map(|arg| arg.to_string_lossy().into_owned())
             .collect();
-        assert_eq!(args, ["app-server", "--stdio",]);
+        assert_eq!(
+            args,
+            [
+                "-c",
+                "sandbox_mode=\"danger-full-access\"",
+                "app-server",
+                "--stdio",
+            ]
+        );
     }
 
     #[test]
@@ -177,5 +184,17 @@ mod tests {
                 "sandbox_mode=\"danger-full-access\"",
             ]
         );
+    }
+
+    #[test]
+    fn configure_codex_sandbox_sets_mode_without_outer_bypass() {
+        let mut cmd = tokio::process::Command::new("codex");
+        configure_codex_sandbox(&mut cmd, false);
+        let args: Vec<_> = cmd
+            .as_std()
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(args, ["-c", "sandbox_mode=\"danger-full-access\"",]);
     }
 }
