@@ -33,6 +33,8 @@ fn kiss_cov_cursor_sdk_client_api() {
     let _ = stringify!(last_coder_prompt_agent_response);
     let _ = stringify!(ensure_authenticated);
     let _ = stringify!(ensure_coder_session);
+    let _ = stringify!(start_coder_session);
+    let _ = stringify!(bind_session_header);
     let _ = stringify!(sdk_bridge_needs_restart);
     let _ = stringify!(begin_coder_session);
     let _ = stringify!(end_coder_session);

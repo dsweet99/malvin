@@ -56,9 +56,8 @@ fn kiss_witness_cli_and_artifacts_d() {
     let _ = stringify!(assert_header_user_join);
     let _ = stringify!(assert_dual_workflow_header_join);
     let _ = stringify!(flow_test_artifacts);
-    let _ = stringify!(DualHeaderCoderRun);
     let _ = stringify!(DualHeaderPromptInput);
-    let _ = stringify!(build_dual_header_coder_run_with_store);
+    let _ = stringify!(bind_do_header);
     let _ = stringify!(mock_router_prompt_store);
     let _ = stringify!(router_workflow_context_with_gates);
     let _ = stringify!(router_workflow_context);

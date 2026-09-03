@@ -234,3 +234,44 @@ async fn fresh_agent_on_retry_recreates_after_non_teardown_timeout() {
     client.end_coder_session().await.expect("end");
     clear_mock_bridge_env();
 }
+
+#[tokio::test]
+async fn start_coder_session_requires_bound_header() {
+    let _guard = crate::test_utils::test_env_lock();
+    install_mock_bridge_env(&mock_bridge_path());
+    let tmp = tempfile::tempdir().expect("tmp");
+    let mut client = mock_client(tmp.path());
+    let err = client
+        .start_coder_session(tmp.path())
+        .await
+        .expect_err("missing header");
+    assert!(err.message.contains("bind_session_header"), "got {err:?}");
+    clear_mock_bridge_env();
+}
+
+#[tokio::test]
+async fn start_coder_session_sends_header_even_if_session_already_open() {
+    let _guard = crate::test_utils::test_env_lock();
+    install_mock_bridge_env(&mock_bridge_path());
+    let tmp = tempfile::tempdir().expect("tmp");
+    let mut client = mock_client(tmp.path());
+    client.io.log_full_outgoing_prompts = true;
+    let _ = client.attach_run_timing_for_session();
+    client.begin_coder_session(tmp.path()).await.expect("begin");
+    let log = tmp.path().join("prompts.log");
+    client.bind_session_header(
+        "__MALVIN_DM_START__\nbound-header".into(),
+        log.clone(),
+        "header.md",
+    );
+    let ensure = client.start_coder_session(tmp.path()).await.expect("start");
+    assert!(!ensure.is_fresh(), "overlapping spawn must still be Reused");
+    assert!(client.header_delivered);
+    let text = std::fs::read_to_string(&log).expect("log");
+    assert!(
+        text.contains("bound-header"),
+        "header.md must be sent after early spawn; got {text:?}"
+    );
+    client.end_coder_session().await.expect("end");
+    clear_mock_bridge_env();
+}

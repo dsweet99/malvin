@@ -58,6 +58,14 @@ impl BegunCoderSession {
     }
 }
 
+/// Bound spawn-time header text delivered once per fresh agent.
+#[derive(Clone, Debug)]
+pub struct CoderSessionHeader {
+    pub prompt: String,
+    pub log_path: PathBuf,
+    pub stdout_label: String,
+}
+
 pub struct SdkClient {
     pub model: ParsedModel,
     pub io: AgentIoOptions,
@@ -66,6 +74,8 @@ pub struct SdkClient {
     pub(crate) coder: Option<BegunCoderSession>,
     pub(crate) last_agent_id: Option<String>,
     pub(crate) timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
+    pub(crate) session_header: Option<CoderSessionHeader>,
+    pub(crate) header_delivered: bool,
 }
 
 impl SdkClient {
@@ -92,7 +102,18 @@ impl SdkClient {
             coder: None,
             last_agent_id: None,
             timing: None,
+            session_header: None,
+            header_delivered: false,
         }
+    }
+
+    /// Bind the spawn-time header prompt. Required before [`Self::start_coder_session`].
+    pub fn bind_session_header(&mut self, prompt: String, log_path: PathBuf, stdout_label: &str) {
+        self.session_header = Some(CoderSessionHeader {
+            prompt,
+            log_path,
+            stdout_label: stdout_label.to_string(),
+        });
     }
 
     pub fn set_run_timing(&mut self, timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>) {

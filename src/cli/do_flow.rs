@@ -97,15 +97,25 @@ async fn begin_do_session_overlapping_prompt_prep(
     text: &str,
     shared: &SharedOpts,
 ) -> Result<(do_flow_prompt::DoCoderRun, SessionDotfileBackups), String> {
-    let begin = client.begin_coder_session(&artifacts.work_dir);
+    let store = do_flow_prompt::prepare_do_prompt_store()?;
+    crate::cli::session_header::bind_do_header(crate::cli::session_header::BindMalvinHeader {
+        client,
+        store: &store,
+        artifacts,
+        model: &shared.model.canonical(),
+        git: shared.git,
+        log_path: artifacts.log_path("do_header"),
+    })?;
+    let begin = client.start_coder_session(&artifacts.work_dir);
     let model = shared.model.canonical();
     let git = shared.git;
     let coder_backup = async {
-        let coder = do_flow_prompt::build_do_coder_run(
+        let coder = do_flow_prompt::build_do_coder_run_with_store(
+            &store,
             artifacts,
             text,
             crate::workflow_context::PromptModelOpts::new(&model, git),
-        )?;
+        );
         let session_dotfile_backups =
             SessionDotfileBackups::snapshot_after_ensuring_home_config(&artifacts.work_dir)?;
         Ok::<_, String>((coder, session_dotfile_backups))

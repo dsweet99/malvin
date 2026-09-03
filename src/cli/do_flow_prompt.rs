@@ -1,7 +1,7 @@
 use crate::artifacts::RunArtifacts;
 use crate::cli::flow_prompt_combine::{
-    DualHeaderPromptInput, build_dual_header_coder_run_with_store,
-    combine_acp_prompt_header_and_user, combine_mode_header_and_user, combine_prompt_file_and_user,
+    DualHeaderPromptInput, combine_acp_prompt_header_and_user, combine_mode_header_and_user,
+    combine_prompt_file_and_user,
 };
 use crate::prompt_stratification::WorkflowRenderContext;
 use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptError, PromptStore};
@@ -58,33 +58,19 @@ pub fn combine_do_raw_header_and_user(
     })
 }
 
+/// Work-turn body for `--do` after spawn already delivered `header.md` + `do_header.md`.
+#[must_use]
 pub(crate) fn build_do_coder_run_with_store(
-    store: &PromptStore,
-    artifacts: &RunArtifacts,
+    _store: &PromptStore,
+    _artifacts: &RunArtifacts,
     text: &str,
-    opts: PromptModelOpts<'_>,
-) -> Result<DoCoderRun, String> {
-    let run = build_dual_header_coder_run_with_store(DualHeaderPromptInput {
-        store,
-        artifacts,
-        text,
-        model: opts.model,
-        git: opts.git,
-        mode_template: DO_HEADER_MD,
-    })?;
-    Ok(DoCoderRun {
-        combined: run.combined,
-        header_user_for_trace: run.header_user_for_trace,
-    })
-}
-
-pub(crate) fn build_do_coder_run(
-    artifacts: &RunArtifacts,
-    text: &str,
-    opts: PromptModelOpts<'_>,
-) -> Result<DoCoderRun, String> {
-    let store = prepare_do_prompt_store()?;
-    build_do_coder_run_with_store(&store, artifacts, text, opts)
+    _opts: PromptModelOpts<'_>,
+) -> DoCoderRun {
+    let user = text.trim_end().to_string();
+    DoCoderRun {
+        combined: user.clone(),
+        header_user_for_trace: (String::new(), user),
+    }
 }
 
 #[cfg(test)]
@@ -94,5 +80,7 @@ mod kiss_cov_gate_refs {
     #[test]
     fn kiss_cov_unit_names() {
         let _: Option<DoCoderRun> = None;
+        let _ = build_do_coder_run_with_store;
+        let _ = prepare_do_prompt_store;
     }
 }

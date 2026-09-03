@@ -8,6 +8,7 @@ fn kiss_witness_backend_ops() {
     let _ = super::backend_ops::agent_backend_attach_run_timing_for_session;
     let _ = super::backend_ops::agent_backend_ensure_run_timing_for_session;
     let _ = super::backend_ops::agent_backend_ensure_coder_session;
+    let _ = super::backend_ops::agent_backend_start_coder_session;
     let _ = super::backend_ops::agent_backend_timing;
 }
 
@@ -58,6 +59,9 @@ fn kiss_witness_unified_sdk_client_and_backend() {
     let _ = stringify!(reject_no_force);
     let _ = stringify!(require_force);
     let _ = stringify!(CoderSessionEnsure);
+    let _ = stringify!(start_coder_session);
+    let _ = stringify!(bind_session_header);
+    let _ = stringify!(deliver_session_header_if_needed);
     let _ = stringify!(emit_agent_started_log);
     let _ = stringify!(force_fresh_agent_for_retry);
     let _ = stringify!(NO_FORCE_MSG);

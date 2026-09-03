@@ -7,6 +7,7 @@ use crate::acp::{
 use crate::model_id::ModelBackend;
 
 use super::sdk_client::SdkClient;
+use super::sdk_client_session_header::send_bound_session_header;
 
 impl SdkClient {
     pub async fn run_coder_prompt(
@@ -59,7 +60,10 @@ impl SdkClient {
     }
 }
 
-async fn teardown_sdk_session_after_transport_error(client: &mut SdkClient, err: &AgentError) {
+pub(super) async fn teardown_sdk_session_after_transport_error(
+    client: &mut SdkClient,
+    err: &AgentError,
+) {
     if !err.requires_coder_session_teardown() {
         return;
     }
@@ -72,9 +76,10 @@ async fn teardown_sdk_session_after_transport_error(client: &mut SdkClient, err:
 }
 
 /// End any open coder session and drop Cursor resume id so the next attempt creates a new agent.
-async fn force_fresh_agent_for_retry(client: &mut SdkClient) {
+pub(super) async fn force_fresh_agent_for_retry(client: &mut SdkClient) {
     let _ = client.end_coder_session().await;
     client.last_agent_id = None;
+    client.header_delivered = false;
 }
 
 async fn run_one(
@@ -100,10 +105,16 @@ async fn ensure_open_session(client: &mut SdkClient) -> Result<(), AgentError> {
     let cwd = super::sdk_client::begun_cwd(client)
         .cloned()
         .ok_or_else(|| AgentError("begin_coder_session was not called".into()))?;
-    client.begin_coder_session(&cwd).await
+    client.begin_coder_session(&cwd).await?;
+    send_bound_session_header(client).await
 }
 
-fn emit_prompt_stdout(client: &SdkClient, prompt: &str, who: &str, opts: &CoderPromptOptions<'_>) {
+pub(super) fn emit_prompt_stdout(
+    client: &SdkClient,
+    prompt: &str,
+    who: &str,
+    opts: &CoderPromptOptions<'_>,
+) {
     if client.io.raw_output || client.io.no_tee {
         return;
     }
@@ -114,7 +125,7 @@ fn emit_prompt_stdout(client: &SdkClient, prompt: &str, who: &str, opts: &CoderP
     }
 }
 
-fn append_prompt_files(
+pub(super) fn append_prompt_files(
     client: &SdkClient,
     prompt: &str,
     log_path: &Path,

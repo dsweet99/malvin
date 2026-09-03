@@ -36,6 +36,7 @@ pub(super) async fn spawn_with_retries(
             Ok(s) => {
                 adopt_spawned_session(client, s, cwd);
                 let resumed = resume_agent_id.is_some();
+                client.header_delivered = resumed;
                 if !resumed {
                     emit_agent_started_log(client);
                 }

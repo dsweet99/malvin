@@ -17,17 +17,6 @@ fn kiss_cov_router_acp_support_unit_names() {
 }
 
 #[test]
-fn router_header_only_when_coder_session_is_new() {
-    use crate::agent_backend::CoderSessionEnsure;
-    // Contract for run_router_turns(..., ensure): Fresh after a create,
-    // Reused when keep_session reused the open session or Cursor resume continued one.
-    assert!(super::should_send_router_header(CoderSessionEnsure::Fresh));
-    assert!(!super::should_send_router_header(
-        CoderSessionEnsure::Reused
-    ));
-}
-
-#[test]
 fn snapshot_iteration_backups_returns_bundle() {
     crate::test_utils::with_isolated_home(|workspace| {
         let backups = snapshot_iteration_backups(workspace);

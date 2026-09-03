@@ -14,6 +14,7 @@ pub(crate) mod exit;
 pub(crate) mod init_flow;
 pub(crate) mod models_cmd;
 pub(crate) mod run_emit;
+pub(crate) mod session_header;
 pub(crate) mod shared_opts;
 pub(crate) mod tidy_flow;
 pub(crate) mod write_flow;

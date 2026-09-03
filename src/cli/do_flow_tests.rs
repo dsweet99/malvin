@@ -3,11 +3,11 @@ use std::collections::HashMap;
 
 use crate::config::DEFAULT_CLI_MODEL;
 use crate::do_flow::do_flow_prompt::{
-    build_do_coder_run, build_do_coder_run_with_store, combine_do_acp_prompt_header_and_user,
+    build_do_coder_run_with_store, combine_do_acp_prompt_header_and_user,
     combine_do_prompt_file_and_user, combine_do_raw_header_and_user, prepare_do_prompt_store,
 };
 use crate::flow_prompt_join_test_helpers::{
-    assert_dual_workflow_header_join, assert_header_user_join, flow_test_artifacts,
+    assert_header_user_join, flow_test_artifacts,
     flow_test_artifacts_no_checks,
 };
 use crate::prompt_stratification::WorkflowRenderContext;
@@ -44,26 +44,25 @@ fn prepare_do_prompt_store_loads_default_templates() {
 fn build_do_coder_run_succeeds_without_checks_in_non_git_workspace() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts_no_checks(&tmp);
-    let run = build_do_coder_run(
+    let store = prepare_do_prompt_store().expect("store");
+    let run = build_do_coder_run_with_store(
+        &store,
         &artifacts,
         "USER_TOKEN",
         crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false),
-    )
-    .expect("run");
-    assert!(run.combined.contains("Know thyself"));
-    assert!(run.combined.contains("malvin --do"));
+    );
+    assert_eq!(run.combined, "USER_TOKEN");
     assert!(
-        run.combined.contains("Context Prep"),
-        "do prompt must include standard header content"
+        !run.combined.contains("Know thyself"),
+        "headers are sent at spawn, not in the do work prompt"
     );
     assert!(
-        !run.combined.contains("{{"),
-        "do prompt must expand all template placeholders without checks"
+        !run.combined.contains("malvin --do"),
+        "do_header.md is sent at spawn, not in the do work prompt"
     );
-    assert_eq!(run.combined.matches("USER_TOKEN").count(), 1);
 }
 
-fn build_do_coder_run_combines_both_headers_and_user() {
+fn build_do_coder_run_work_prompt_is_user_only() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
     let store = mock_do_prompt_store(&tmp);
@@ -72,34 +71,28 @@ fn build_do_coder_run_combines_both_headers_and_user() {
         &artifacts,
         "USER_TOKEN\n\n",
         crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false),
-    )
-    .expect("run");
-    assert_dual_workflow_header_join(&run.combined, "CODING_HDR", "DO_HDR", "USER_TOKEN");
+    );
+    assert_eq!(run.combined, "USER_TOKEN");
     let (trace_header, trace_user) = &run.header_user_for_trace;
-    assert_header_user_join(trace_header, "CODING_HDR", "DO_HDR");
+    assert!(trace_header.is_empty());
     assert_eq!(trace_user, "USER_TOKEN");
+    assert!(
+        !run.combined.contains("CODING_HDR") && !run.combined.contains("DO_HDR"),
+        "spawn binds header.md + do_header.md; work turn is user only"
+    );
 }
 
-fn build_do_coder_run_default_store_produces_dual_headers() {
+fn build_do_coder_run_default_store_work_prompt_is_user() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
-    let run = build_do_coder_run(
+    let store = prepare_do_prompt_store().expect("store");
+    let run = build_do_coder_run_with_store(
+        &store,
         &artifacts,
         "USER_TOKEN",
         crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false),
-    )
-    .expect("run");
-    assert!(run.combined.contains("Know thyself"));
-    assert!(run.combined.contains("malvin --do"));
-    assert!(
-        run.combined.contains("Context Prep"),
-        "do prompt must include standard header content"
     );
-    assert!(
-        run.combined.contains("User:"),
-        "do prompt must render current_state from workflow context"
-    );
-    assert_eq!(run.combined.matches("USER_TOKEN").count(), 1);
+    assert_eq!(run.combined, "USER_TOKEN");
 }
 
 fn combine_do_acp_prompt_joins_rendered_header_and_request() {
@@ -206,8 +199,8 @@ fn kiss_bundled_cli_do_flow_tests() {
     combine_do_prompt_file_and_user_joins_rendered_template_and_request();
     prepare_do_prompt_store_loads_default_templates();
     build_do_coder_run_succeeds_without_checks_in_non_git_workspace();
-    build_do_coder_run_combines_both_headers_and_user();
-    build_do_coder_run_default_store_produces_dual_headers();
+    build_do_coder_run_work_prompt_is_user_only();
+    build_do_coder_run_default_store_work_prompt_is_user();
     combine_do_acp_prompt_joins_rendered_header_and_request();
     combine_do_raw_header_and_user_joins_rendered_do_header_and_request();
     cli_accepts_do_and_passes_request();

@@ -12,12 +12,6 @@ pub(crate) struct DualHeaderPromptInput<'a> {
     pub mode_template: &'a str,
 }
 
-impl<'a> DualHeaderPromptInput<'a> {
-    const fn prompt_opts(&self) -> PromptModelOpts<'a> {
-        PromptModelOpts::new(self.model, self.git)
-    }
-}
-
 pub(crate) fn combine_prompt_file_and_user(
     store: &PromptStore,
     text: &str,
@@ -62,32 +56,6 @@ pub(crate) fn combine_mode_header_and_user(
     combine_prompt_file_and_user(input.store, input.text, input.mode_template, &context)
 }
 
-pub(crate) struct DualHeaderCoderRun {
-    pub combined: String,
-    pub header_user_for_trace: (String, String),
-}
-
-pub(crate) fn build_dual_header_coder_run_with_store(
-    input: DualHeaderPromptInput<'_>,
-) -> Result<DualHeaderCoderRun, String> {
-    let (_, coding_header, _) =
-        combine_acp_prompt_header_and_user(input.store, input.artifacts, "", input.prompt_opts())?;
-    let (_, mode_header, user) = combine_mode_header_and_user(input)?;
-    let combined = join_labeled_strata([
-        (PromptStratum::WorkflowHeader, &coding_header),
-        (PromptStratum::WorkflowHeader, &mode_header),
-        (PromptStratum::UserRequest, &user),
-    ]);
-    let trace_header = join_labeled_strata([
-        (PromptStratum::WorkflowHeader, &coding_header),
-        (PromptStratum::WorkflowHeader, &mode_header),
-    ]);
-    Ok(DualHeaderCoderRun {
-        combined,
-        header_user_for_trace: (trace_header, user),
-    })
-}
-
 #[cfg(test)]
 #[allow(unused_imports)]
 mod kiss_cov_gate_refs {
@@ -95,6 +63,7 @@ mod kiss_cov_gate_refs {
     #[test]
     fn kiss_cov_unit_names() {
         let _: Option<DualHeaderPromptInput<'_>> = None;
-        let _: Option<DualHeaderCoderRun> = None;
+        let _ = combine_mode_header_and_user;
+        let _ = combine_acp_prompt_header_and_user;
     }
 }

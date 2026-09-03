@@ -2,8 +2,9 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use crate::agent_backend::{
-    AgentBackend, agent_backend_attach_run_timing_for_session, agent_backend_ensure_coder_session,
+    AgentBackend, agent_backend_attach_run_timing_for_session,
     agent_backend_set_implement_display_name, agent_backend_set_run_timing,
+    agent_backend_start_coder_session,
 };
 use crate::artifacts::{
     RunArtifacts, SessionDotfileBackups, create_run_artifacts_from_text, resolve_user_md_request,
@@ -53,7 +54,7 @@ impl OneShotCoderGuard {
         implement_label: &'static str,
     ) -> Result<Self, String> {
         let timing = agent_backend_attach_run_timing_for_session(client);
-        if let Err(e) = agent_backend_ensure_coder_session(client, &artifacts.work_dir).await {
+        if let Err(e) = agent_backend_start_coder_session(client, &artifacts.work_dir).await {
             agent_backend_set_run_timing(client, None);
             return Err(e.to_string());
         }
