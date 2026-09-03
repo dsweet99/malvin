@@ -2,8 +2,8 @@ use pi::model::{Cost, Message};
 use pi::provider::ModelCost;
 use pi::sdk::{Config, ModelRegistry};
 
-use super::openrouter_pricing;
 use super::openrouter_billed_cost;
+use super::openrouter_pricing;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub(super) struct AggregatedCostUsd {
@@ -120,7 +120,8 @@ pub(super) fn aggregate_cost_usd(messages: &[Message]) -> AggregatedCostUsd {
         if cost_is_present(&assistant.usage.cost) {
             continue;
         }
-        let Some(rates) = lookup_rates(&assistant.provider, &assistant.model, registry.as_ref()) else {
+        let Some(rates) = lookup_rates(&assistant.provider, &assistant.model, registry.as_ref())
+        else {
             continue;
         };
         totals.absorb(&cost_from_model_rates(&rates, &assistant.usage));

@@ -114,11 +114,12 @@ pub(crate) fn human_execute_done(
     if super::human_a::execute_stdout_failed(parsed, exit, raw) {
         let mut line = format!("Run {cmd} · exit {exit} · {dur} · ✗");
         if let Some(r) = raw
-            && let Some(err) = stderr_headline(r).or_else(|| stdout_headline(r)) {
-                let short = shorten_middle(err, TOOL_DISPLAY_MAX_WIDTH);
-                line.push_str(" · ");
-                line.push_str(&short);
-            }
+            && let Some(err) = stderr_headline(r).or_else(|| stdout_headline(r))
+        {
+            let short = shorten_middle(err, TOOL_DISPLAY_MAX_WIDTH);
+            line.push_str(" · ");
+            line.push_str(&short);
+        }
         return line;
     }
     format!("Run {cmd} · {dur} · ✓")

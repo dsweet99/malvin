@@ -134,11 +134,15 @@ mod tests {
     #[test]
     fn wait_isolated_output_drains_large_stdout_without_deadlock() {
         let dir = tempfile::tempdir().expect("tmpdir");
-        let child = spawn_isolated_shell(dir.path(), "python3 -c 'print(\"x\" * 131072)'")
-            .expect("spawn");
+        let child =
+            spawn_isolated_shell(dir.path(), "python3 -c 'print(\"x\" * 131072)'").expect("spawn");
         let started = Instant::now();
         let output = wait_isolated_output(child, Some(Duration::from_secs(5))).expect("output");
-        assert!(output.status.success(), "stderr={}", String::from_utf8_lossy(&output.stderr));
+        assert!(
+            output.status.success(),
+            "stderr={}",
+            String::from_utf8_lossy(&output.stderr)
+        );
         assert!(output.stdout.len() >= 131_072);
         assert!(
             started.elapsed() < Duration::from_secs(3),

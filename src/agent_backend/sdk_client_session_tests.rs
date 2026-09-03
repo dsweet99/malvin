@@ -23,5 +23,8 @@ fn service_wire_is_codex_only() {
         test_io(),
         1,
     );
-    assert_eq!(spawn::spawn_service_wire(&codex).as_deref(), Some("priority"));
+    assert_eq!(
+        spawn::spawn_service_wire(&codex).as_deref(),
+        Some("priority")
+    );
 }

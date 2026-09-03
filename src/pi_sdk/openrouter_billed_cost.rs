@@ -37,7 +37,10 @@ pub(super) fn cost_from_generation_data(data: &GenerationData) -> Option<Cost> {
 
 async fn fetch_generation_cost_async(api_key: &str, generation_id: &str) -> Option<Cost> {
     let client = pi::http::client::Client::new();
-    let url = format!("{OPENROUTER_GENERATION_URL}?id={}", urlencoding(generation_id));
+    let url = format!(
+        "{OPENROUTER_GENERATION_URL}?id={}",
+        urlencoding(generation_id)
+    );
     let response = client
         .get(&url)
         .header("Authorization", format!("Bearer {api_key}"))

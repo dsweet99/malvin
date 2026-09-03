@@ -36,9 +36,7 @@ pub(crate) fn dispatch_plan_authoring_gate(
 ) -> Result<(), String> {
     match command {
         Commands::Write(write_args) => run_write_command(write_args, shared, matches),
-        Commands::Admin(_) => Err(
-            "internal: unexpected plan-authoring command Admin".to_string(),
-        ),
+        Commands::Admin(_) => Err("internal: unexpected plan-authoring command Admin".to_string()),
     }
 }
 

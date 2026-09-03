@@ -55,9 +55,10 @@ pub fn spawn_request_collector(listener: UnixListener) -> Receiver<Value> {
             };
             let mut line = String::new();
             if BufReader::new(&mut conn).read_line(&mut line).is_ok()
-                && let Ok(v) = serde_json::from_str::<Value>(line.trim()) {
-                    let _ = tx.send(v);
-                }
+                && let Ok(v) = serde_json::from_str::<Value>(line.trim())
+            {
+                let _ = tx.send(v);
+            }
             let _ = conn.write_all(br#"{"result":{"type":"ok"}}"#);
         }
     });

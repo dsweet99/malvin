@@ -61,7 +61,10 @@ fn run_toctou_child_probe(work: &Path, slot: &str, ready_dir: &Path) {
 }
 
 #[cfg(unix)]
-fn assert_exactly_one_child_succeeded(status0: std::process::ExitStatus, status1: std::process::ExitStatus) {
+fn assert_exactly_one_child_succeeded(
+    status0: std::process::ExitStatus,
+    status1: std::process::ExitStatus,
+) {
     assert!(
         status0.success() ^ status1.success(),
         "exactly one cross-process acquire must succeed (TOCTOU fixed): {status0:?} {status1:?}"

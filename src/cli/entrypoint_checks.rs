@@ -45,7 +45,8 @@ mod tests {
             assert!(!checks.exists());
             assert!(!config.exists());
 
-            ensure_malvin_checks_for_gates_only_route().expect("gates-only route should materialize config only");
+            ensure_malvin_checks_for_gates_only_route()
+                .expect("gates-only route should materialize config only");
             assert!(!checks.is_file());
             assert!(config.is_file());
             assert!(

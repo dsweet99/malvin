@@ -46,7 +46,10 @@ fn load_malvin_config_does_not_create_missing_file() {
         assert!(!path.exists());
         let cfg = load_malvin_config(work);
         assert!(!path.exists());
-        assert_eq!(cfg.agent.model.canonical(), crate::support_paths::DEFAULT_CLI_MODEL);
+        assert_eq!(
+            cfg.agent.model.canonical(),
+            crate::support_paths::DEFAULT_CLI_MODEL
+        );
     });
 }
 

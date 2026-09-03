@@ -1,8 +1,8 @@
 use pi::model::Cost;
 
 use super::{
-    cost_from_generation_data, fetch_billed_cost_from_generation_ids, urlencoding, GenerationData,
-    GenerationResponse,
+    GenerationData, GenerationResponse, cost_from_generation_data,
+    fetch_billed_cost_from_generation_ids, urlencoding,
 };
 
 #[test]

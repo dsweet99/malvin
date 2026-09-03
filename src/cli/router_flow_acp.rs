@@ -1,6 +1,7 @@
 use crate::agent_backend::{
-    AgentBackend, agent_backend_attach_run_timing_for_session, agent_backend_ensure_coder_session,
+    AgentBackend, agent_backend_attach_run_timing_for_session,
     agent_backend_set_implement_display_name, agent_backend_set_run_timing,
+    agent_backend_start_coder_session,
 };
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::cli::SharedOpts;
@@ -16,11 +17,9 @@ pub(crate) mod router_flow_acp_support;
 #[path = "router_flow_coder_prompts.rs"]
 mod router_flow_coder_prompts;
 
-pub(crate) use router_flow_acp_support::RouterExitSummarize;
+pub(crate) use router_flow_acp_support::{RouterExitSummarize, router_iteration_log_path};
 
-use router_flow_acp_support::{
-    router_iteration_log_path, run_router_turns, snapshot_iteration_backups,
-};
+use router_flow_acp_support::{run_router_turns, snapshot_iteration_backups};
 use router_flow_coder_prompts::run_router_summarize_coder_prompt;
 
 pub(crate) struct RouterAcpIterationOutcome {
@@ -48,13 +47,12 @@ pub(crate) type SessionEndParts<'a> = (
     RunTimingSessionEnd,
 );
 
-/// Ensure a coder session is open.
-/// Returns [`CoderSessionEnsure::Fresh`] when a fresh agent context was created (send `header.md`).
+/// Ensure a coder session is open and the bound header has been sent if this agent is new.
 pub(crate) async fn begin_coder_session_if_needed(
     client: &mut AgentBackend,
     work_dir: &Path,
 ) -> Result<crate::agent_backend::CoderSessionEnsure, String> {
-    agent_backend_ensure_coder_session(client, work_dir)
+    agent_backend_start_coder_session(client, work_dir)
         .await
         .map_err(|e| e.to_string())
 }
@@ -65,7 +63,7 @@ pub(crate) async fn run_router_acp_open_iteration(
     let work_dir = input.artifacts.work_dir.as_path();
     let log_path = router_iteration_log_path(input.artifacts, input.agent_loop);
     let timing = agent_backend_attach_run_timing_for_session(input.client);
-    let fresh_context = match begin_coder_session_if_needed(input.client, work_dir).await {
+    let _fresh_context = match begin_coder_session_if_needed(input.client, work_dir).await {
         Ok(fresh_context) => fresh_context,
         Err(e) => {
             agent_backend_set_run_timing(input.client, None);
@@ -81,7 +79,7 @@ pub(crate) async fn run_router_acp_open_iteration(
     agent_backend_set_implement_display_name(input.client, "router");
     let session_end = input.session_end;
     let run_dir = input.artifacts.run_dir.clone();
-    match run_router_turns(&mut input, log_path.as_path(), fresh_context).await {
+    match run_router_turns(&mut input, log_path.as_path()).await {
         Ok(turns) => RouterAcpIterationOutcome {
             acp_result: Ok(()),
             iteration_backups: turns.iteration_backups,

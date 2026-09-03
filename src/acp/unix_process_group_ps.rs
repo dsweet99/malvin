@@ -67,9 +67,10 @@ pub(crate) fn parse_pid_list(bytes: &[u8]) -> HashSet<u32> {
     let mut pids = HashSet::new();
     for line in bytes.split(|b| *b == b'\n') {
         if let Ok(text) = std::str::from_utf8(line)
-            && let Ok(pid) = text.trim().parse::<u32>() {
-                pids.insert(pid);
-            }
+            && let Ok(pid) = text.trim().parse::<u32>()
+        {
+            pids.insert(pid);
+        }
     }
     pids
 }

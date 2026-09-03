@@ -1,6 +1,6 @@
+use super::session::CodexSession;
 use crate::acp::AgentError;
 use crate::bridge_protocol::{BridgeEvent, RunDoneStatus};
-use super::session::CodexSession;
 
 use super::session_turn::{TurnState, agent_message_from_turn};
 

@@ -111,14 +111,10 @@ async fn injected_busy_health_extends_then_delivers_event() {
         clock: &mut clock,
         extend_turn_on_busy_health: false,
     };
-    let got = crate::bridge_sdk::await_next_with_idle_using(
-        &mut wait,
-        read,
-        move |_| {
-            samples_for_health.fetch_add(1, Ordering::SeqCst);
-            std::future::ready(crate::bridge_sdk::DrainHealthVerdict::StillBusy)
-        },
-    )
+    let got = crate::bridge_sdk::await_next_with_idle_using(&mut wait, read, move |_| {
+        samples_for_health.fetch_add(1, Ordering::SeqCst);
+        std::future::ready(crate::bridge_sdk::DrainHealthVerdict::StillBusy)
+    })
     .await
     .expect("busy health must extend until the event arrives");
     let elapsed = started.elapsed();

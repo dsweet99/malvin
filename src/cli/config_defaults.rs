@@ -125,17 +125,11 @@ fn apply_gates_only_loop_defaults(matches: &ArgMatches, cli: &mut Cli, agent: &A
 
 const fn uses_lightweight_config_path(cli: &Cli) -> bool {
     cli.do_workflow
-        || matches!(
-            cli.command,
-            Some(Commands::Admin(_))
-        )
+        || matches!(cli.command, Some(Commands::Admin(_)))
         || (cli.command.is_none() && cli.request.is_some())
 }
 
-fn apply_gates_only_workspace_defaults(
-    matches: &ArgMatches,
-    cli: &mut Cli,
-) -> Result<(), String> {
+fn apply_gates_only_workspace_defaults(matches: &ArgMatches, cli: &mut Cli) -> Result<(), String> {
     let agent = load_agent_config(matches)?;
     apply_shared_config_defaults(matches, &mut cli.shared, &agent);
     apply_gates_only_loop_defaults(matches, cli, &agent);

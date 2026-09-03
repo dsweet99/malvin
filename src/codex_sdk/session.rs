@@ -8,7 +8,7 @@ use tokio::process::{Child, ChildStdin, ChildStdout};
 use tokio::sync::Mutex as AsyncMutex;
 
 use crate::acp::AgentError;
-use crate::bridge_sdk::{StreamLog, StdioTeardown, drop_stdio_child};
+use crate::bridge_sdk::{StdioTeardown, StreamLog, drop_stdio_child};
 
 /// Codex app-server JSON-RPC session (stdio child process).
 pub struct CodexSession {

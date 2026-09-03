@@ -13,6 +13,13 @@ pub async fn agent_backend_ensure_coder_session(
     backend.ensure_coder_session(cwd).await
 }
 
+pub async fn agent_backend_start_coder_session(
+    backend: &mut AgentBackend,
+    cwd: &Path,
+) -> Result<CoderSessionEnsure, AgentError> {
+    backend.start_coder_session(cwd).await
+}
+
 pub fn agent_backend_set_run_timing(
     backend: &mut AgentBackend,
     timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,

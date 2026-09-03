@@ -1,15 +1,15 @@
-use crate::agent_backend::{build_agent_backend, AgentBackend};
+use crate::agent_backend::{AgentBackend, build_agent_backend};
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::cli::one_shot_session::{
-    finish_one_shot_after_prompt, finish_one_shot_auth_and_backups, OneShotCoderGuard,
+    OneShotCoderGuard, finish_one_shot_after_prompt, finish_one_shot_auth_and_backups,
 };
-use crate::cli::run_emit::{emit_run_logs_line, emit_run_startup_banner, RunStartupEmitOpts};
+use crate::cli::run_emit::{RunStartupEmitOpts, emit_run_logs_line, emit_run_startup_banner};
 use crate::cli::{SharedOpts, WorkflowCliOptions};
 use crate::run_timing::TimingPhase;
 use crate::workflow_context::format_prompt_path;
 
-use super::prep::{compose_write_a_prompt, compose_write_b_prompt, write_preflight};
 use super::WriteArgs;
+use super::prep::{compose_write_a_prompt, compose_write_b_prompt, write_preflight};
 
 struct WriteRunPrep {
     client: AgentBackend,
@@ -88,6 +88,7 @@ async fn prepare_write_run(
     )?;
     crate::run_id::maybe_gc_after_run_created(&artifacts.work_dir, &artifacts.run_dir);
     let session_dotfile_backups = finish_one_shot_auth_and_backups(&mut client, &artifacts)?;
+    bind_write_session_header(&mut client, shared, &artifacts)?;
     let (prompt_a, prompt_b) =
         prepare_write_prompts(&request_text, (&tex_display, &pdf_display), &artifacts)?;
     Ok(WriteRunPrep {
@@ -96,6 +97,25 @@ async fn prepare_write_run(
         prompt_a,
         prompt_b,
         session_dotfile_backups,
+    })
+}
+
+fn bind_write_session_header(
+    client: &mut AgentBackend,
+    shared: &SharedOpts,
+    artifacts: &RunArtifacts,
+) -> Result<(), String> {
+    let store = crate::prompts::PromptStore::default_store();
+    store
+        .ensure_defaults()
+        .map_err(|e: crate::prompts::PromptError| e.0)?;
+    crate::cli::session_header::bind_malvin_header(crate::cli::session_header::BindMalvinHeader {
+        client,
+        store: &store,
+        artifacts,
+        model: &shared.model.canonical(),
+        git: shared.git,
+        log_path: artifacts.log_path("header"),
     })
 }
 
@@ -142,10 +162,6 @@ pub async fn run_write(
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
     let mut prep = prepare_write_run(write_args, shared, workflow).await?;
-    prep.client
-        .begin_coder_session(&prep.artifacts.work_dir)
-        .await
-        .map_err(|e| e.to_string())?;
     emit_run_logs_line(&prep.artifacts)?;
     let acp_res = run_write_coder_session(
         &mut prep.client,
@@ -179,6 +195,7 @@ mod tests {
             run_write_coder_prompt,
             run_write_coder_session,
             prepare_write_run,
+            bind_write_session_header,
         );
     }
 

@@ -1,6 +1,6 @@
 use super::{
-    empty_iteration_backups, router_iteration_log_path, run_router_turns,
-    snapshot_iteration_backups, RouterExitSummarize, RouterTurnsOutcome,
+    RouterExitSummarize, RouterTurnsOutcome, empty_iteration_backups, router_iteration_log_path,
+    run_router_turns, snapshot_iteration_backups,
 };
 use crate::artifacts::SessionDotfileBackups;
 use crate::cli::error_run_log::{clear_command_error_run_dir, command_error_run_dir};
@@ -14,15 +14,6 @@ fn kiss_cov_router_acp_support_unit_names() {
     let _ = RouterExitSummarize::Run;
     let _ = RouterExitSummarize::Skip;
     let _: Option<RouterTurnsOutcome> = None;
-}
-
-#[test]
-fn router_header_only_when_coder_session_is_new() {
-    use crate::agent_backend::CoderSessionEnsure;
-    // Contract for run_router_turns(..., ensure): Fresh after a create,
-    // Reused when keep_session reused the open session or Cursor resume continued one.
-    assert!(super::should_send_router_header(CoderSessionEnsure::Fresh));
-    assert!(!super::should_send_router_header(CoderSessionEnsure::Reused));
 }
 
 #[test]

@@ -11,11 +11,11 @@ mod spawn;
 
 /// Outcome of ensuring a coder session is open.
 ///
-/// Encodes the header protocol that used to be a bare `bool`: only [`Fresh`]
-/// means callers should send `header.md`.
+/// Production flows use [`SdkClient::start_coder_session`], which sends the bound
+/// header for a fresh agent. [`Fresh`] vs [`Reused`] is recorded for tests and logs.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CoderSessionEnsure {
-    /// A new agent context was created — send `header.md`.
+    /// A new agent context was created (header is sent by [`SdkClient::start_coder_session`]).
     Fresh,
     /// An open session was reused, or a Cursor bridge resumed a prior `agent_id`.
     Reused,
@@ -37,12 +37,30 @@ impl SdkClient {
         }
     }
 
-    /// Ensure a coder session is open.
+    /// Open a coder session and send the bound header when this agent still needs one.
+    ///
+    /// Call [`Self::bind_session_header`] first. Tests that spawn without prompts may
+    /// still use [`Self::begin_coder_session`].
+    pub async fn start_coder_session(
+        &mut self,
+        cwd: &Path,
+    ) -> Result<CoderSessionEnsure, AgentError> {
+        if self.session_header.is_none() {
+            return Err(AgentError(
+                "start_coder_session requires bind_session_header so a header is always sent"
+                    .into(),
+            ));
+        }
+        let ensure = self.ensure_coder_session(cwd).await?;
+        self.deliver_session_header_if_needed().await?;
+        Ok(ensure)
+    }
+
+    /// Ensure a coder session is open (spawn only; does not send a header).
     ///
     /// Returns [`CoderSessionEnsure::Fresh`] only when a **fresh** agent context was
-    /// created (so callers may send `header.md`). Returns [`CoderSessionEnsure::Reused`]
-    /// when an open session was reused, or when a Cursor bridge restart **resumed** a
-    /// prior `agent_id` (same conversation).
+    /// created. Returns [`CoderSessionEnsure::Reused`] when an open session was
+    /// reused, or when a Cursor bridge restart **resumed** a prior `agent_id`.
     pub async fn ensure_coder_session(
         &mut self,
         cwd: &Path,
@@ -63,6 +81,10 @@ impl SdkClient {
 
     pub async fn begin_coder_session(&mut self, cwd: &Path) -> Result<(), AgentError> {
         begin_coder_session_resumed(self, cwd).await.map(|_| ())
+    }
+
+    pub(crate) async fn deliver_session_header_if_needed(&mut self) -> Result<(), AgentError> {
+        super::sdk_client_session_header::send_bound_session_header(self).await
     }
 
     pub async fn end_coder_session(&mut self) -> Result<(), AgentError> {
@@ -87,7 +109,10 @@ pub(crate) fn sdk_bridge_needs_restart(client: &SdkClient) -> bool {
 }
 
 /// Begin a coder session. Returns `true` when Cursor resume attached a prior agent.
-async fn begin_coder_session_resumed(client: &mut SdkClient, cwd: &Path) -> Result<bool, AgentError> {
+async fn begin_coder_session_resumed(
+    client: &mut SdkClient,
+    cwd: &Path,
+) -> Result<bool, AgentError> {
     reject_no_force(client)?;
     if client.has_open_coder_session() {
         return Err(AgentError(format!(

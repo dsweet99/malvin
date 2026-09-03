@@ -2,12 +2,12 @@ use std::collections::HashMap;
 
 use crate::config::DEFAULT_CLI_MODEL;
 use crate::flow_prompt_join_test_helpers::{assert_header_user_join, flow_test_artifacts};
-use crate::prompts::{PromptStore, HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD};
+use crate::prompts::{HEADER_MD, PromptStore, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD};
 use crate::router_flow::router_flow_prompt::{
+    RouterAPromptInput, RouterHeaderPromptInput, RouterKpopCommonPromptInput,
     build_router_a_prompt, build_router_header_prompt, build_router_kpop_common_prompt,
     combine_router_acp_prompt_header_and_user, combine_router_prompt_file_and_user,
-    combine_router_raw_header_and_user, prepare_router_prompt_store, RouterAPromptInput,
-    RouterHeaderPromptInput, RouterKpopCommonPromptInput,
+    combine_router_raw_header_and_user, prepare_router_prompt_store,
 };
 
 fn write_router_mock_prompt_files(prompt_root: &std::path::Path) {

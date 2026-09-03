@@ -39,7 +39,8 @@ fn smoke_cov_cli_cli_units_1b() {
     let _ = crate::do_flow::do_flow_prompt::combine_do_acp_prompt_header_and_user;
     let _ = crate::do_flow::do_flow_prompt::combine_do_raw_header_and_user;
     let _ = crate::do_flow::do_flow_prompt::build_do_coder_run_with_store;
-    let _ = crate::do_flow::do_flow_prompt::build_do_coder_run;
+    let _ = crate::cli::session_header::bind_malvin_header;
+    let _ = crate::cli::session_header::bind_do_header;
     let shared = crate::cli::SharedOpts {
         background: false,
         model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("model"),

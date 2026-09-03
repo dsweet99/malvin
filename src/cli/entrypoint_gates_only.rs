@@ -1,7 +1,8 @@
 use super::run_async_cli;
 use crate::cli::{
+    WorkflowCliOptions,
     init_flow::{self, InitWorkflowOpts},
-    run_tidy, WorkflowCliOptions,
+    run_tidy,
 };
 
 pub(crate) fn dispatch_gates_only_route(

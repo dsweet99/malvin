@@ -12,9 +12,10 @@ pub(super) fn tool_summary_from_pi(name: Option<&str>, args: Option<&Value>) -> 
         return Some(bash_summary(args));
     }
     if let Some(path) = path_arg(args)
-        && let Some(summary) = path_tool_summary(&n, &path) {
-            return Some(summary);
-        }
+        && let Some(summary) = path_tool_summary(&n, &path)
+    {
+        return Some(summary);
+    }
     Some(label.to_string())
 }
 

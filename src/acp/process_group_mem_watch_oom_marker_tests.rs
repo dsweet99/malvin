@@ -4,8 +4,7 @@
 use super::record_sandbox_oom_marker;
 use crate::artifacts::create_run_artifacts_from_text;
 use crate::sandbox_oom::{
-    OOM_REASON_MEASUREMENT_FAIL_CLOSED, SandboxOomKillFacts,
-    gate_iteration_oom_killed,
+    OOM_REASON_MEASUREMENT_FAIL_CLOSED, SandboxOomKillFacts, gate_iteration_oom_killed,
 };
 
 #[cfg(unix)]

@@ -45,9 +45,7 @@ pub use unix_sandbox_monitor::sandbox_monitor_pids;
 
 mod process_group_mem_watch;
 #[cfg(unix)]
-pub use process_group_mem_watch::{
-    MemWatchHandles, watch_process_group_memory,
-};
+pub use process_group_mem_watch::{MemWatchHandles, watch_process_group_memory};
 
 #[path = "process_group_terminate.rs"]
 mod process_group_terminate;

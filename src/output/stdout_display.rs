@@ -1,5 +1,5 @@
 use super::{ANSI_RESET, ERROR_WHO, WARNING_WHO, WHO_B, format_who_tag_prefix};
-use crate::terminal_palette::{ansi_error, ansi_tool_name, ansi_warning, ansi_who_tag};
+use crate::terminal_palette::{ANSI_BOLD, ansi_error, ansi_tool_name, ansi_warning, ansi_who_tag};
 
 pub(crate) use super::stdout_render::{flush_stdout_rendered_line, print_stdout_rendered_line};
 pub(crate) use super::who_tag_ansi;
@@ -23,7 +23,10 @@ pub fn format_line_stdout_ansi(who: &str, line: &str) -> String {
         WHO_B => format!("{}{prefix}{line}{ANSI_RESET}", super::ANSI_DIM),
         super::WHO_A => {
             let tag_color = who_tag_ansi(who);
-            format!("{tag_color}{prefix}{ANSI_RESET}{}{line}{ANSI_RESET}", ansi_tool_name())
+            format!(
+                "{tag_color}{prefix}{ANSI_RESET}{ANSI_BOLD}{}{line}{ANSI_RESET}",
+                ansi_tool_name()
+            )
         }
         _ => {
             let tag_color = who_tag_ansi(who);
@@ -181,26 +184,30 @@ mod tests {
     #[test]
     fn agent_start_ansi_payload_uses_tool_name_color() {
         use crate::output::WHO_A;
-        use crate::terminal_palette::{ANSI_RESET, ansi_tool_name, ansi_who_tag};
+        use crate::terminal_palette::{ANSI_BOLD, ANSI_RESET, ansi_tool_name, ansi_who_tag};
 
         let line = format_line_stdout_ansi(WHO_A, "cursor:auto");
         let who = ansi_who_tag();
-        let tool = ansi_tool_name();
+        let tool = format!("{ANSI_BOLD}{}", ansi_tool_name());
         assert!(
             line.starts_with(who),
             "a| who-tag must use who_tag color; got {line:?}"
         );
-        let tool_pos = line.find(tool).expect("tool_name color on a| line");
+        let tool_pos = line.find(&tool).expect("bold tool_name color on a| line");
         let payload_pos = line.find("cursor:auto").expect("payload");
         assert!(
             tool_pos < payload_pos,
-            "provider:model must be wrapped in tool_name color: {line:?}"
+            "provider:model must match tool-name brightness: {line:?}"
         );
         assert!(
             line[tool_pos..].contains(&format!("cursor:auto{ANSI_RESET}")),
             "payload must sit inside tool_name span: {line:?}"
         );
-        assert_ne!(who, tool, "who_tag and tool_name slots must differ");
+        assert_ne!(
+            who,
+            ansi_tool_name(),
+            "who_tag and tool_name slots must differ"
+        );
     }
 
     #[test]

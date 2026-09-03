@@ -12,7 +12,8 @@ pub(super) enum LockProbe {
     Stale,
 }
 
-fn in_process_slots() -> std::sync::MutexGuard<'static, std::collections::HashMap<String, ThreadId>> {
+fn in_process_slots() -> std::sync::MutexGuard<'static, std::collections::HashMap<String, ThreadId>>
+{
     IN_PROCESS_ACP_LOCK_SLOTS
         .lock()
         .unwrap_or_else(PoisonError::into_inner)

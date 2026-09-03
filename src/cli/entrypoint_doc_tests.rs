@@ -82,8 +82,8 @@ fn kiss_cov_entrypoint_dispatch_and_commands() {
 
 #[test]
 fn dispatch_gates_only_route_runs_tenacious_preflight() {
-    use crate::cli::args::Cli;
     use crate::cli::SharedOpts;
+    use crate::cli::args::Cli;
     use clap::CommandFactory;
 
     crate::test_utils::with_isolated_home(|work| {
@@ -92,13 +92,11 @@ fn dispatch_gates_only_route_runs_tenacious_preflight() {
         let mut shared = SharedOpts::test_defaults();
         shared.gates = true;
         let matches = Cli::command().get_matches_from(["malvin", "-g", "--no-tenacious"]);
-        let result = super::dispatch_gates_only_route(
-            1,
-            5,
-            &mut shared,
-            &matches,
+        let result = super::dispatch_gates_only_route(1, 5, &mut shared, &matches);
+        assert!(
+            result.is_err(),
+            "expected router failure without agent: {result:?}"
         );
-        assert!(result.is_err(), "expected router failure without agent: {result:?}");
         std::env::set_current_dir(cwd).expect("restore cwd");
     });
 }

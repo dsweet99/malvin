@@ -107,9 +107,10 @@ pub(crate) fn write_preflight(
     }
     for path in [&outputs.tex_path, &outputs.pdf_path] {
         if let Some(parent) = path.parent()
-            && !parent.as_os_str().is_empty() {
-                std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-            }
+            && !parent.as_os_str().is_empty()
+        {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
     }
     Ok((text, request_work_dir, outputs))
 }

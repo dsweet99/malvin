@@ -194,10 +194,7 @@ pub fn generate_auto_name_with(
             return Ok((name, guard));
         }
     }
-    Err(
-        "failed to allocate a unique auto-generated session name after 16 attempts; retry"
-            .into(),
-    )
+    Err("failed to allocate a unique auto-generated session name after 16 attempts; retry".into())
 }
 
 pub fn generate_auto_name() -> Result<(String, SessionNameGuard), String> {
@@ -213,9 +210,10 @@ pub fn acquire_session_name(opt_name: Option<&str>) -> Result<(String, SessionNa
 pub fn release_name(name: &str) {
     let path = name_path(name);
     if let Ok(contents) = std::fs::read_to_string(&path)
-        && parse_holder_pid(&contents) == Some(std::process::id()) {
-            let _ = std::fs::remove_file(&path);
-        }
+        && parse_holder_pid(&contents) == Some(std::process::id())
+    {
+        let _ = std::fs::remove_file(&path);
+    }
 }
 
 pub fn assert_no_peer_name_lock(name: &str) -> Result<(), String> {

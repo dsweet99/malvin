@@ -1,10 +1,10 @@
 use crate::acp::AgentError;
 
 use super::session::BridgeSession;
-use super::timing::{note_sdk_step, record_sdk_usage};
-use crate::bridge_protocol::{BridgeEvent, BridgeRequest, decode_event, encode_request};
 use super::session_handshake::wait_for_ok;
 use super::session_io_productive::{note_productive_bridge_event, tools_in_flight};
+use super::timing::{note_sdk_step, record_sdk_usage};
+use crate::bridge_protocol::{BridgeEvent, BridgeRequest, decode_event, encode_request};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
 
 pub(crate) struct CreateArgs<'a> {
@@ -143,7 +143,9 @@ async fn discard_optional_trailing_run_done(session: &BridgeSession) {
 }
 
 #[must_use]
-pub(crate) const fn run_done_status_is_failure(status: crate::bridge_protocol::RunDoneStatus) -> bool {
+pub(crate) const fn run_done_status_is_failure(
+    status: crate::bridge_protocol::RunDoneStatus,
+) -> bool {
     status.is_failure()
 }
 

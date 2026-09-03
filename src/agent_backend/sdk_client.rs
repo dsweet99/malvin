@@ -58,6 +58,14 @@ impl BegunCoderSession {
     }
 }
 
+/// Bound spawn-time header text delivered once per fresh agent.
+#[derive(Clone, Debug)]
+pub struct CoderSessionHeader {
+    pub prompt: String,
+    pub log_path: PathBuf,
+    pub stdout_label: String,
+}
+
 pub struct SdkClient {
     pub model: ParsedModel,
     pub io: AgentIoOptions,
@@ -66,16 +74,14 @@ pub struct SdkClient {
     pub(crate) coder: Option<BegunCoderSession>,
     pub(crate) last_agent_id: Option<String>,
     pub(crate) timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
+    pub(crate) session_header: Option<CoderSessionHeader>,
+    pub(crate) header_delivered: bool,
 }
 
 impl SdkClient {
     #[must_use]
     pub const fn new(model: ParsedModel, io: AgentIoOptions) -> Self {
-        Self::with_max_retries(
-            model,
-            io,
-            crate::support_paths::DEFAULT_MAX_ACP_RETRIES,
-        )
+        Self::with_max_retries(model, io, crate::support_paths::DEFAULT_MAX_ACP_RETRIES)
     }
 
     #[must_use]
@@ -88,11 +94,26 @@ impl SdkClient {
             model,
             io,
             prompts_log_run_dir: None,
-            max_acp_retries: if max_acp_retries == 0 { 1 } else { max_acp_retries },
+            max_acp_retries: if max_acp_retries == 0 {
+                1
+            } else {
+                max_acp_retries
+            },
             coder: None,
             last_agent_id: None,
             timing: None,
+            session_header: None,
+            header_delivered: false,
         }
+    }
+
+    /// Bind the spawn-time header prompt. Required before [`Self::start_coder_session`].
+    pub fn bind_session_header(&mut self, prompt: String, log_path: PathBuf, stdout_label: &str) {
+        self.session_header = Some(CoderSessionHeader {
+            prompt,
+            log_path,
+            stdout_label: stdout_label.to_string(),
+        });
     }
 
     pub fn set_run_timing(&mut self, timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>) {
@@ -149,7 +170,10 @@ pub const fn new_codex(model: ParsedModel, io: AgentIoOptions) -> SdkClient {
 
 #[must_use]
 pub(crate) fn live_session(client: &SdkClient) -> Option<&SdkSession> {
-    client.coder.as_ref().and_then(BegunCoderSession::live_session)
+    client
+        .coder
+        .as_ref()
+        .and_then(BegunCoderSession::live_session)
 }
 
 #[must_use]

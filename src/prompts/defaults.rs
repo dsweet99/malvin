@@ -2,9 +2,9 @@
 mod default_files;
 
 pub use default_files::{
-    default_file, header_prompt_file, kpop_common_prompt_file, router_a_prompt_file,
-    router_b_prompt_file, RouterBPromptFlags, ROUTER_A_MD, ROUTER_A_NO_KPOP_MD,
-    ROUTER_B_CREATIVE_MD, ROUTER_B_MD, ROUTER_B_NO_KPOP_MD,
+    ROUTER_A_MD, ROUTER_A_NO_KPOP_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD, ROUTER_B_NO_KPOP_MD,
+    RouterBPromptFlags, default_file, header_prompt_file, kpop_common_prompt_file,
+    router_a_prompt_file, router_b_prompt_file,
 };
 
 pub const HEADER_MD: &str = "header.md";
@@ -38,8 +38,8 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
 
 #[cfg(test)]
 mod review_plan_embed_tests {
-    use super::default_file;
     use super::DEFAULT_PROMPTS;
+    use super::default_file;
     use crate::prompts::malformed_brace_placeholders;
 
     #[test]
@@ -82,7 +82,7 @@ mod advice_path_embed_tests {
     use crate::artifacts::create_run_artifacts;
     use crate::config::DEFAULT_CLI_MODEL;
     use crate::orchestrator::workflow_context_paths_only;
-    use crate::prompts::{render_header, PromptStore};
+    use crate::prompts::{PromptStore, render_header};
 
     #[test]
     fn embedded_header_render_without_unresolved_braces() {
@@ -131,18 +131,18 @@ mod router_header_embed_tests {
     use std::path::Path;
 
     use super::{
-        default_file, DO_HEADER_MD, HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD,
-        ROUTER_SUMMARIZE_MD,
+        DO_HEADER_MD, HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD,
+        ROUTER_SUMMARIZE_MD, default_file,
     };
     use crate::artifacts::create_run_artifacts;
     use crate::config::DEFAULT_CLI_MODEL;
     use crate::orchestrator::workflow_context_paths_only;
-    use crate::prompts::{render_header, PromptStore};
+    use crate::prompts::{PromptStore, render_header};
     use crate::router_flow::router_flow_prompt::{
-        build_router_a_prompt, build_router_b_prompt, build_router_header_prompt,
-        build_router_kpop_common_prompt, build_router_summarize_prompt,
-        prepare_router_prompt_store, RouterAPromptInput, RouterBPromptInput,
-        RouterHeaderPromptInput, RouterKpopCommonPromptInput, RouterSummarizePromptInput,
+        RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput,
+        RouterKpopCommonPromptInput, RouterSummarizePromptInput, build_router_a_prompt,
+        build_router_b_prompt, build_router_header_prompt, build_router_kpop_common_prompt,
+        build_router_summarize_prompt, prepare_router_prompt_store,
     };
 
     fn embedded_router_fixture() -> (

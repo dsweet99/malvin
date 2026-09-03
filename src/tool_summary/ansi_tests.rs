@@ -1,9 +1,9 @@
 use super::{
-    ansi_style_tool_name_verb, ansi_style_done_verb, ansi_style_running_verb, apply_tool_summary_ansi,
-    is_byte_size_segment, split_outer_brackets, tool_line_colon_prefix,
+    ansi_style_done_verb, ansi_style_running_verb, ansi_style_tool_name_verb,
+    apply_tool_summary_ansi, is_byte_size_segment, split_outer_brackets, tool_line_colon_prefix,
 };
 use crate::terminal_palette::ANSI_DIM;
-use crate::tool_summary::types::{ANSI_BOLD, ANSI_RESET, ansi_tool_name, ansi_accent};
+use crate::tool_summary::types::{ANSI_BOLD, ANSI_RESET, ansi_accent, ansi_tool_name};
 
 fn covers_running_and_done_helpers() {
     assert!(ansi_style_running_verb("Reading path…").contains("Reading"));
@@ -136,6 +136,25 @@ fn search_done_without_query_uses_dark_verb_not_teal() {
     );
 }
 
+fn glob_done_uses_dark_verb_not_teal() {
+    let styled = apply_tool_summary_ansi("Glob **/* · 41ms");
+    let verb = format!("{ANSI_BOLD}{}Glob", ansi_tool_name());
+    let teal_verb = format!("{}Glob", ansi_accent());
+    let teal_pat = format!("{}**/*{ANSI_RESET}", ansi_accent());
+    assert!(
+        styled.contains(&verb),
+        "Glob must use tool-name color; got {styled:?}"
+    );
+    assert!(
+        !styled.contains(&teal_verb),
+        "Glob verb must not be teal; got {styled:?}"
+    );
+    assert!(
+        styled.contains(&teal_pat),
+        "glob pattern must stay teal; got {styled:?}"
+    );
+}
+
 fn edit_search_and_editing_verbs_use_bold_dark() {
     let dark = format!("{ANSI_BOLD}{}", ansi_tool_name());
     for plain in [
@@ -144,6 +163,8 @@ fn edit_search_and_editing_verbs_use_bold_dark() {
         "Searching rg foo…",
         "Search rg needle · 1ms",
         "Search · matches",
+        "Glob **/* · 41ms",
+        "Glob",
     ] {
         assert!(
             apply_tool_summary_ansi(plain).contains(&dark),
@@ -175,6 +196,7 @@ fn kiss_bundled_tool_summary_ansi_tests() {
     tool_path_args_use_teal();
     split_outer_brackets_and_byte_size_segments();
     search_done_without_query_uses_dark_verb_not_teal();
+    glob_done_uses_dark_verb_not_teal();
     edit_search_and_editing_verbs_use_bold_dark();
     styled_running_and_done_lines_use_palette();
 }

@@ -5,8 +5,8 @@ use pi::provider::ModelCost;
 
 use super::super::cache_clock::{cache_fetched_at_is_fresh, unix_now_secs};
 use super::{
-    cache_path, fetch_live_pricing_sync, load_cache, lookup_model_cost, openrouter_lookup_ids,
-    parse_rate_per_million, save_cache, warm_openrouter_pricing_cache, CACHE_TTL,
+    CACHE_TTL, cache_path, fetch_live_pricing_sync, load_cache, lookup_model_cost,
+    openrouter_lookup_ids, parse_rate_per_million, save_cache, warm_openrouter_pricing_cache,
 };
 
 #[test]
@@ -52,8 +52,8 @@ fn fetch_live_pricing_parses_mock_models_response() {
 #[test]
 #[allow(clippy::float_cmp)]
 fn model_cost_from_pricing_parses_cache_tiers() {
-    use super::model_cost_from_pricing;
     use super::OpenRouterPricing;
+    use super::model_cost_from_pricing;
 
     let cost = model_cost_from_pricing(&OpenRouterPricing {
         prompt: "0.000002".into(),

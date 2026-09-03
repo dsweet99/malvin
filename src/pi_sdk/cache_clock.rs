@@ -22,7 +22,10 @@ mod tests {
 
     #[test]
     fn cache_freshness_respects_ttl() {
-        assert!(cache_fetched_at_is_fresh(unix_now_secs(), Duration::from_hours(24)));
+        assert!(cache_fetched_at_is_fresh(
+            unix_now_secs(),
+            Duration::from_hours(24)
+        ));
         let stale = unix_now_secs().saturating_sub(Duration::from_hours(25).as_secs());
         assert!(!cache_fetched_at_is_fresh(stale, Duration::from_hours(24)));
     }

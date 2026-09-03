@@ -1,7 +1,5 @@
 use crate::cli::args::Cli;
-use crate::cli::loop_opts::{
-    TENACIOUS_MAX_ACP_RETRIES, TENACIOUS_MAX_LOOPS,
-};
+use crate::cli::loop_opts::{TENACIOUS_MAX_ACP_RETRIES, TENACIOUS_MAX_LOOPS};
 use clap::{CommandFactory, FromArgMatches};
 
 #[test]
@@ -34,10 +32,7 @@ fn gates_only_no_tenacious_keeps_normal_budgets() {
         shared.no_tenacious,
         &matches,
     );
-    assert_eq!(
-        max_loops,
-        crate::malvin_config_file::DEFAULT_MAX_LOOPS
-    );
+    assert_eq!(max_loops, crate::malvin_config_file::DEFAULT_MAX_LOOPS);
     assert_eq!(
         shared.max_acp_retries,
         crate::config::DEFAULT_MAX_ACP_RETRIES

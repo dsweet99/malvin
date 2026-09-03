@@ -1,6 +1,6 @@
+use super::session::CodexSession;
 use crate::acp::AgentError;
 use crate::bridge_sdk::{BridgeSpawnArgs, MemWatchArgs, start_mem_watch};
-use super::session::CodexSession;
 
 pub(crate) async fn codex_spawn_bridge(
     args: BridgeSpawnArgs<'_>,

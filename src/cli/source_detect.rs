@@ -61,9 +61,10 @@ pub fn has_extension_files(dir: &Path, ext: &str) -> bool {
                 }
             } else if file_type.is_dir() {
                 if let Some(name) = path.file_name().and_then(|n| n.to_str())
-                    && (name.starts_with('.') || name == "target" || name == "__pycache__") {
-                        continue;
-                    }
+                    && (name.starts_with('.') || name == "target" || name == "__pycache__")
+                {
+                    continue;
+                }
                 if check_dir(&path, ext) {
                     return true;
                 }
@@ -96,9 +97,10 @@ pub fn has_workspace_marker_files(dir: &Path) -> bool {
                 }
             } else if file_type.is_dir() {
                 if let Some(name) = path.file_name().and_then(|n| n.to_str())
-                    && (name.starts_with('.') || name == "target" || name == "__pycache__") {
-                        continue;
-                    }
+                    && (name.starts_with('.') || name == "target" || name == "__pycache__")
+                {
+                    continue;
+                }
                 if check_dir(&path) {
                     return true;
                 }

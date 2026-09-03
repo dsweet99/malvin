@@ -36,6 +36,7 @@ pub(super) async fn spawn_with_retries(
             Ok(s) => {
                 adopt_spawned_session(client, s, cwd);
                 let resumed = resume_agent_id.is_some();
+                client.header_delivered = resumed;
                 if !resumed {
                     emit_agent_started_log(client);
                 }
@@ -116,10 +117,7 @@ fn adopt_spawned_session(client: &mut SdkClient, s: SdkSession, cwd: PathBuf) {
     if matches!(client.model.backend, ModelBackend::Cursor) {
         remember_agent_id_from(client, &s);
     }
-    client.coder = Some(BegunCoderSession::Live {
-        cwd,
-        session: s,
-    });
+    client.coder = Some(BegunCoderSession::Live { cwd, session: s });
     crate::herdr::notify_reclaim();
 }
 
@@ -129,7 +127,8 @@ fn emit_agent_started_log(client: &SdkClient) {
 
 fn note_spawn_failure(client: &mut SdkClient, err: AgentError) -> String {
     let mut last_error = err.message;
-    if matches!(client.model.backend, ModelBackend::Cursor) && client.last_agent_id.take().is_some() {
+    if matches!(client.model.backend, ModelBackend::Cursor) && client.last_agent_id.take().is_some()
+    {
         last_error = format!("{last_error} (resume failed; will create)");
     }
     last_error

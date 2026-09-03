@@ -1,8 +1,8 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
 
-use crate::acp::AgentError;
 use super::session::CodexSession;
+use crate::acp::AgentError;
 
 static SEQ: AtomicU64 = AtomicU64::new(1);
 pub(crate) fn next_id() -> u64 {
@@ -157,7 +157,8 @@ async fn read_json_line(session: &CodexSession) -> Result<serde_json::Value, Age
     if n == 0 {
         return Err(AgentError::session_dead("codex stdout closed"));
     }
-    serde_json::from_str(&line).map_err(|e| AgentError::session_dead(format!("codex JSON-RPC parse: {e}")))
+    serde_json::from_str(&line)
+        .map_err(|e| AgentError::session_dead(format!("codex JSON-RPC parse: {e}")))
 }
 
 #[cfg(test)]

@@ -38,7 +38,9 @@ fn terminate_blocking_kills_note_affiliated_pid_without_pgid() {
         "affiliated pid must be a teardown target: {targets:?}"
     );
     terminate_agent_process_group_for_interrupt(None, &baseline);
-    child.wait().expect("affiliated child must exit after teardown");
+    child
+        .wait()
+        .expect("affiliated child must exit after teardown");
 }
 
 #[tokio::test]

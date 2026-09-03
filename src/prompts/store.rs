@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use super::defaults::{default_file, DEFAULT_PROMPTS, HEADER_MD, REQUIRED_PROMPTS};
+use super::PromptError;
+use super::defaults::{DEFAULT_PROMPTS, HEADER_MD, REQUIRED_PROMPTS, default_file};
 use super::enforce_template_placeholders_resolved_in;
 use super::render_template;
-use super::PromptError;
 
 #[derive(Debug, Clone)]
 pub struct PromptStore {

@@ -196,9 +196,10 @@ pub(crate) fn merge_missing_keys(into: &mut toml::Value, template: &toml::Value)
                     continue;
                 }
                 if let Some(existing) = into_table.get_mut(key)
-                    && merge_missing_keys(existing, template_value) {
-                        changed = true;
-                    }
+                    && merge_missing_keys(existing, template_value)
+                {
+                    changed = true;
+                }
             }
             changed
         }

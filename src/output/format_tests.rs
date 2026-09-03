@@ -1,4 +1,5 @@
 use super::acp_tee::{AcpTeeDirection, print_stdout_acp_tee_line};
+use super::stdout_log_pair::tagged_display_line_with_timestamp_ansi;
 use super::{
     LOG_TAG_INNER_WIDTH, MALVIN_WHO, WHO_M, WHO_O, WHO_T, WHO_U, format_acp_directional_tag_prefix,
     format_line, format_line_with_timestamp, format_log_tag_inner, format_who_tag_delim,
@@ -6,7 +7,6 @@ use super::{
     print_outgoing_prompt_log, print_stderr_line, print_stdout_line, print_stdout_raw_line,
     print_stdout_text, set_stdout_log_path,
 };
-use super::stdout_log_pair::tagged_display_line_with_timestamp_ansi;
 
 fn formats_expected_mini_header() {
     let delim = format_who_tag_delim(WHO_M);
@@ -119,7 +119,7 @@ fn exported_constants_match_public_contract() {
 }
 
 fn ansi_who_tag_uses_palette_for_warning_error_and_default() {
-    use crate::terminal_palette::{ansi_warning, ansi_error, ansi_who_tag};
+    use crate::terminal_palette::{ansi_error, ansi_warning, ansi_who_tag};
 
     let ts = "20260413.121314.015";
     let warn = tagged_display_line_with_timestamp_ansi(ts, super::WARNING_WHO, "");

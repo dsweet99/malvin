@@ -1,19 +1,19 @@
 #![cfg_attr(test, allow(unsafe_code))]
 
-mod cache_clock;
 mod auth;
+mod cache_clock;
 mod isolated_bash;
 mod map_agent_event;
 mod map_agent_event_end;
 mod map_event_summary;
 mod models_list;
 mod models_refresh;
+mod openrouter_billed_cost;
+mod openrouter_pricing;
 mod runtime;
 mod session;
 mod session_fake;
 mod session_spawn;
-mod openrouter_pricing;
-mod openrouter_billed_cost;
 mod usage_cost;
 
 pub use auth::{ensure_pi_authenticated, is_provider_authenticated};

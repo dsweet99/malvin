@@ -6,7 +6,9 @@ use std::time::Duration;
 use tokio::time::Instant;
 
 use crate::acp::AgentError;
-use crate::sdk_drain_timeout::{sdk_drain_idle_max_turn, sdk_drain_idle_max_wait, sdk_drain_idle_slice};
+use crate::sdk_drain_timeout::{
+    sdk_drain_idle_max_turn, sdk_drain_idle_max_wait, sdk_drain_idle_slice,
+};
 
 #[path = "drain_idle_health.rs"]
 pub(crate) mod drain_idle_health;
@@ -14,9 +16,9 @@ pub(crate) mod drain_idle_health;
 mod drain_idle_turn;
 #[path = "drain_idle_wait.rs"]
 mod drain_idle_wait;
+use drain_idle_health::sample_drain_health;
 pub(crate) use drain_idle_turn::DrainIdleTurn;
 pub(crate) use drain_idle_wait::{DrainIdleWaitOpts, await_next_with_idle_using};
-use drain_idle_health::sample_drain_health;
 
 /// Aggregate sandbox health for one drain-idle slice miss.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

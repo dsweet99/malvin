@@ -52,10 +52,7 @@ fn live_drain_idle_prefixes_require_coder_session_teardown() {
         let msg = format!(
             "{prefix} waiting for event after 1s without a bridge event (bridge quiet; likely hung or stalled)"
         );
-        assert!(
-            agent_error_requires_coder_session_teardown(&msg),
-            "{msg}"
-        );
+        assert!(agent_error_requires_coder_session_teardown(&msg), "{msg}");
     }
 }
 

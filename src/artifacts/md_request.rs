@@ -114,7 +114,11 @@ mod tests {
             std::fs::write(outside.path().join("secret.md"), "stolen").unwrap();
             let old_cwd = std::env::current_dir().unwrap();
             std::env::set_current_dir(tmp.path()).unwrap();
-            symlink(outside.path().join("secret.md"), tmp.path().join("steal.md")).unwrap();
+            symlink(
+                outside.path().join("secret.md"),
+                tmp.path().join("steal.md"),
+            )
+            .unwrap();
             assert!(is_existing_md_file_path("steal.md").is_none());
             let (text, wd) = resolve_user_md_request("steal.md").unwrap();
             assert_eq!(text, "steal.md");

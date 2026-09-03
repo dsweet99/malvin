@@ -41,8 +41,7 @@ fn kiss_cov_models_args_clap_parse_and_destructure() {
         .expect("models matches");
     let _parsed = ModelsArgs::from_arg_matches(sub).expect("models from_arg_matches");
     let _cloned = kiss_witness_clone(&ModelsArgs::default());
-    let refresh =
-        Cli::try_parse_from(["malvin", "admin", "models", "--refresh"]).expect("refresh");
+    let refresh = Cli::try_parse_from(["malvin", "admin", "models", "--refresh"]).expect("refresh");
     if let Some(Commands::Admin(AdminArgs {
         command: AdminCommand::Models(args),
     })) = refresh.command

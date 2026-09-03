@@ -101,9 +101,9 @@ pub fn default_file(name: &str) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::{
-        default_constraints_prompt, default_file, header_prompt_file, kpop_common_prompt_file,
-        router_a_prompt_file, router_b_prompt_file, RouterBPromptFlags, HEADER_MD, ROUTER_A_MD,
-        ROUTER_A_NO_KPOP_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD, ROUTER_B_NO_KPOP_MD,
+        HEADER_MD, ROUTER_A_MD, ROUTER_A_NO_KPOP_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD,
+        ROUTER_B_NO_KPOP_MD, RouterBPromptFlags, default_constraints_prompt, default_file,
+        header_prompt_file, kpop_common_prompt_file, router_a_prompt_file, router_b_prompt_file,
     };
     use crate::prompts::{KPOP_COMMON_MD, KPOP_COMMON_NO_KPOP_MD};
 
