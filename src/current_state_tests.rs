@@ -46,12 +46,13 @@ fn format_user_identity_includes_gecos_full_name_when_distinct() {
     let id = format_user_identity();
     let uid = super::effective_user_id().expect("uid");
     if let Some(full_name) = super::passwd_gecos_full_name(uid)
-        && full_name != std::env::var("USER").unwrap_or_default() {
-            assert!(
-                id.contains(&full_name),
-                "expected full name {full_name:?} in {id:?}"
-            );
-        }
+        && full_name != std::env::var("USER").unwrap_or_default()
+    {
+        assert!(
+            id.contains(&full_name),
+            "expected full name {full_name:?} in {id:?}"
+        );
+    }
 }
 
 #[cfg(unix)]

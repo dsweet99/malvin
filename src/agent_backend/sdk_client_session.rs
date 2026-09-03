@@ -87,7 +87,10 @@ pub(crate) fn sdk_bridge_needs_restart(client: &SdkClient) -> bool {
 }
 
 /// Begin a coder session. Returns `true` when Cursor resume attached a prior agent.
-async fn begin_coder_session_resumed(client: &mut SdkClient, cwd: &Path) -> Result<bool, AgentError> {
+async fn begin_coder_session_resumed(
+    client: &mut SdkClient,
+    cwd: &Path,
+) -> Result<bool, AgentError> {
     reject_no_force(client)?;
     if client.has_open_coder_session() {
         return Err(AgentError(format!(

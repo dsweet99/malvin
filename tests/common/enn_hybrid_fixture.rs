@@ -6,9 +6,10 @@ pub fn write_repo_files(root: &Path, pairs: &[(&str, &str)]) {
     for (rel, content) in pairs {
         let path = root.join(rel);
         if let Some(parent) = path.parent()
-            && !parent.as_os_str().is_empty() {
-                std::fs::create_dir_all(parent).expect("create parent dirs");
-            }
+            && !parent.as_os_str().is_empty()
+        {
+            std::fs::create_dir_all(parent).expect("create parent dirs");
+        }
         std::fs::write(path, content).expect("write repo file");
     }
 }

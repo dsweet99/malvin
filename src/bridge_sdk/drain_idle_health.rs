@@ -28,17 +28,15 @@ pub(crate) async fn drain_sample_pids(
         .unwrap_or_else(|_| pgid.map_or_else(Vec::new, |id| vec![id]))
 }
 
-fn drain_sample_pids_blocking(
-    pgid: Option<u32>,
-    spawn_pid_baseline: &HashSet<u32>,
-) -> Vec<u32> {
+fn drain_sample_pids_blocking(pgid: Option<u32>, spawn_pid_baseline: &HashSet<u32>) -> Vec<u32> {
     #[cfg(unix)]
     {
-        let mut pids: Vec<u32> =
-            crate::acp::sandbox_monitor_pids(pgid, spawn_pid_baseline)
-                .into_iter()
-                .collect();
-        if pids.is_empty() && let Some(id) = pgid {
+        let mut pids: Vec<u32> = crate::acp::sandbox_monitor_pids(pgid, spawn_pid_baseline)
+            .into_iter()
+            .collect();
+        if pids.is_empty()
+            && let Some(id) = pgid
+        {
             pids.push(id);
         }
         pids.sort_unstable();

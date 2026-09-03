@@ -67,13 +67,15 @@ pub const fn health_indicates_progress(before: &ChildHealth, after: &ChildHealth
         return true;
     }
     if let (Some(a), Some(b)) = (before.voluntary_ctxt, after.voluntary_ctxt)
-        && a != b {
-            return true;
-        }
+        && a != b
+    {
+        return true;
+    }
     if let (Some(a), Some(b)) = (before.thread_count, after.thread_count)
-        && a != b {
-            return true;
-        }
+        && a != b
+    {
+        return true;
+    }
     false
 }
 

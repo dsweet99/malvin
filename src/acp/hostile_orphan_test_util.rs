@@ -210,7 +210,9 @@ pub fn assert_sibling_monitored_and_blocks_spawn(
     baseline: &std::collections::HashSet<u32>,
 ) {
     use crate::acp::sandbox_monitor_pids;
-    use crate::malvin_sandbox::{assert_dead_before_next_spawn, note_active_sandbox_session, take_sandbox_spawn_ticket};
+    use crate::malvin_sandbox::{
+        assert_dead_before_next_spawn, note_active_sandbox_session, take_sandbox_spawn_ticket,
+    };
 
     let work = std::env::temp_dir().join(format!(
         "malvin_hostile_orphan_blocks_spawn_{}",

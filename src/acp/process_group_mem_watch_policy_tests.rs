@@ -92,8 +92,7 @@ mod policy_tests {
 mod kiss_cov_auto {
     #[cfg(unix)]
     use super::super::{
-        MemWatchHandles, watch_process_group_memory,
-        watch_process_group_memory_with_rss_sampler,
+        MemWatchHandles, watch_process_group_memory, watch_process_group_memory_with_rss_sampler,
     };
 
     #[test]

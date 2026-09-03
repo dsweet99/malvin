@@ -69,7 +69,10 @@ pub(crate) fn wait_piped_child_with_timeout(
     })
 }
 
-pub(crate) fn take_pipe_readers(child: &mut Child, label: &str) -> Result<(PipeReader, PipeReader), String> {
+pub(crate) fn take_pipe_readers(
+    child: &mut Child,
+    label: &str,
+) -> Result<(PipeReader, PipeReader), String> {
     let stdout_pipe = child
         .stdout
         .take()
@@ -90,7 +93,11 @@ fn read_pipe_to_end(mut pipe: impl Read) -> std::io::Result<Vec<u8>> {
     Ok(buf)
 }
 
-pub(crate) fn join_pipe_reader(handle: PipeReader, label: &str, stream: &str) -> Result<Vec<u8>, String> {
+pub(crate) fn join_pipe_reader(
+    handle: PipeReader,
+    label: &str,
+    stream: &str,
+) -> Result<Vec<u8>, String> {
     handle
         .join()
         .map_err(|_| format!("{label}: {stream} reader panicked"))?

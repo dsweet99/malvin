@@ -71,11 +71,7 @@ pub struct SdkClient {
 impl SdkClient {
     #[must_use]
     pub const fn new(model: ParsedModel, io: AgentIoOptions) -> Self {
-        Self::with_max_retries(
-            model,
-            io,
-            crate::support_paths::DEFAULT_MAX_ACP_RETRIES,
-        )
+        Self::with_max_retries(model, io, crate::support_paths::DEFAULT_MAX_ACP_RETRIES)
     }
 
     #[must_use]
@@ -88,7 +84,11 @@ impl SdkClient {
             model,
             io,
             prompts_log_run_dir: None,
-            max_acp_retries: if max_acp_retries == 0 { 1 } else { max_acp_retries },
+            max_acp_retries: if max_acp_retries == 0 {
+                1
+            } else {
+                max_acp_retries
+            },
             coder: None,
             last_agent_id: None,
             timing: None,
@@ -149,7 +149,10 @@ pub const fn new_codex(model: ParsedModel, io: AgentIoOptions) -> SdkClient {
 
 #[must_use]
 pub(crate) fn live_session(client: &SdkClient) -> Option<&SdkSession> {
-    client.coder.as_ref().and_then(BegunCoderSession::live_session)
+    client
+        .coder
+        .as_ref()
+        .and_then(BegunCoderSession::live_session)
 }
 
 #[must_use]

@@ -1,5 +1,5 @@
-use crate::model_id::ModelBackend;
 use super::test_support::test_io;
+use crate::model_id::ModelBackend;
 use crate::model_id::parse_model_id;
 
 #[test]

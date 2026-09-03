@@ -5,10 +5,12 @@ use std::time::Duration;
 use pi::sdk::{ToolOutput, ToolUpdate};
 
 #[cfg(unix)]
-static ACTIVE_ISOLATED_BASH_PID: LazyLock<Mutex<Option<u32>>> =
-    LazyLock::new(|| Mutex::new(None));
+static ACTIVE_ISOLATED_BASH_PID: LazyLock<Mutex<Option<u32>>> = LazyLock::new(|| Mutex::new(None));
 
-pub(crate) fn spawn_isolated_shell(cwd: &Path, command: &str) -> pi::sdk::Result<std::process::Child> {
+pub(crate) fn spawn_isolated_shell(
+    cwd: &Path,
+    command: &str,
+) -> pi::sdk::Result<std::process::Child> {
     let shell = isolated_shell();
     let mut cmd = crate::malvin_sandbox::malvin_std_command(shell);
     cmd.arg("-c")
@@ -17,9 +19,8 @@ pub(crate) fn spawn_isolated_shell(cwd: &Path, command: &str) -> pi::sdk::Result
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped());
-    cmd.spawn().map_err(|e| {
-        pi::error::Error::tool("bash", format!("Failed to spawn isolated shell: {e}"))
-    })
+    cmd.spawn()
+        .map_err(|e| pi::error::Error::tool("bash", format!("Failed to spawn isolated shell: {e}")))
 }
 
 fn tool_text_output(text: String, output: &std::process::Output) -> ToolOutput {

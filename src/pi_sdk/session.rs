@@ -67,10 +67,7 @@ impl Drop for PiEmbeddedSession {
         }
         #[cfg(unix)]
         {
-            crate::acp::terminate_agent_process_group_for_interrupt(
-                None,
-                &self.spawn_pid_baseline,
-            );
+            crate::acp::terminate_agent_process_group_for_interrupt(None, &self.spawn_pid_baseline);
         }
         crate::malvin_sandbox::clear_active_sandbox_session();
     }
@@ -179,7 +176,9 @@ fn handle_mapped_events(
     Ok(done)
 }
 
-pub(crate) fn finish_after_channel_closed(prompt_result: Result<(), String>) -> Result<(), AgentError> {
+pub(crate) fn finish_after_channel_closed(
+    prompt_result: Result<(), String>,
+) -> Result<(), AgentError> {
     prompt_result.map_err(AgentError)
 }
 

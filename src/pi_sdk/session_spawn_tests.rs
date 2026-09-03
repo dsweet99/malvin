@@ -145,8 +145,8 @@ fn pi_runtime_shutdown_returns_during_in_flight_prompt() {
         unsafe {
             std::env::set_var("MALVIN_TEST_PI_PROMPT_BLOCK_SECS", "2");
         }
-        let mut runtime =
-            super::runtime::PiRuntime::start(pi_blocking_session_options(work)).expect("runtime starts");
+        let mut runtime = super::runtime::PiRuntime::start(pi_blocking_session_options(work))
+            .expect("runtime starts");
         let (events_tx, _events_rx) = tokio::sync::mpsc::unbounded_channel();
         runtime
             .prompt("kpop block".into(), events_tx)

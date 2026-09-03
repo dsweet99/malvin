@@ -37,7 +37,8 @@ mod tests {
             "max_loops"
         ));
 
-        let explicit = Cli::command().get_matches_from(["malvin", "write", "topic", "--max-loops", "2"]);
+        let explicit =
+            Cli::command().get_matches_from(["malvin", "write", "topic", "--max-loops", "2"]);
         assert!(subcommand_flag_from_command_line(
             &explicit,
             "write",

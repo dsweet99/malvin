@@ -1,10 +1,18 @@
 use std::fmt::Write as _;
 
-use super::types::{
-    ANSI_BOLD, ANSI_DIM, ANSI_RESET, ansi_error, ansi_tool_name, ansi_accent,
-};
+use super::types::{ANSI_BOLD, ANSI_DIM, ANSI_RESET, ansi_accent, ansi_error, ansi_tool_name};
 
-const DONE_VERB_PREFIXES: &[&str] = &["Read ", "Edit ", "Search ", "Run "];
+const DONE_VERBS: &[&str] = &[
+    "Read",
+    "Edit",
+    "Search",
+    "Run",
+    "Glob",
+    "Write",
+    "Delete",
+    "WebSearch",
+    "Task",
+];
 
 pub fn tool_summary_stdout_display(plain: &str) -> String {
     if !crate::output::stdout_use_color() {
@@ -86,20 +94,8 @@ pub(crate) fn ansi_style_running_verb(seg: &str) -> String {
 
 pub(crate) fn ansi_style_done_verb(seg: &str) -> String {
     let (colon, body) = tool_line_colon_prefix(seg);
-    for prefix in DONE_VERB_PREFIXES {
-        if let Some(tail) = body.strip_prefix(prefix) {
-            let verb = prefix.trim_end();
-            let mut out = format!("{colon}{}", ansi_style_tool_name_verb(verb));
-            if !tail.is_empty() {
-                out.push(' ');
-                out.push_str(&ansi_style_path_tail(tail));
-            }
-            return out;
-        }
-    }
-    if body_is_search_done_verb(body) {
-        let tail = body.strip_prefix("Search").unwrap_or(body).trim_start();
-        let mut out = format!("{colon}{}", ansi_style_tool_name_verb("Search"));
+    if let Some((verb, tail)) = take_done_verb(body) {
+        let mut out = format!("{colon}{}", ansi_style_tool_name_verb(verb));
         if !tail.is_empty() {
             out.push(' ');
             out.push_str(&ansi_style_path_tail(tail));
@@ -109,9 +105,16 @@ pub(crate) fn ansi_style_done_verb(seg: &str) -> String {
     format!("{colon}{}", ansi_style_path_tail(body))
 }
 
-fn body_is_search_done_verb(body: &str) -> bool {
-    body.strip_prefix("Search")
-        .is_some_and(|rest| rest.is_empty() || rest.starts_with(' ') || rest.starts_with('·'))
+pub(crate) fn take_done_verb(body: &str) -> Option<(&str, &str)> {
+    for verb in DONE_VERBS {
+        let Some(rest) = body.strip_prefix(*verb) else {
+            continue;
+        };
+        if rest.is_empty() || rest.starts_with(' ') || rest.starts_with('·') {
+            return Some((*verb, rest.trim_start()));
+        }
+    }
+    None
 }
 
 pub(crate) fn ansi_style_tool_segment_running_or_path(seg: &str) -> String {
@@ -124,7 +127,7 @@ pub(crate) fn ansi_style_tool_segment_running_or_path(seg: &str) -> String {
     {
         return ansi_style_running_verb(seg);
     }
-    if body.starts_with("Read ") || body.starts_with("Edit ") || body_is_search_done_verb(body) {
+    if take_done_verb(body).is_some() {
         return ansi_style_done_verb(seg);
     }
     if is_tool_metadata_segment(seg) {
@@ -157,16 +160,24 @@ pub(crate) fn ansi_style_path_tail(seg: &str) -> String {
 
 #[cfg(test)]
 mod inline_tests {
-    use super::{apply_tool_summary_ansi, body_is_search_done_verb};
+    use super::{apply_tool_summary_ansi, take_done_verb};
 
     #[test]
     fn body_is_search_done_verb_covers_bare_and_spaced_forms() {
-        assert!(body_is_search_done_verb("Search"));
-        assert!(body_is_search_done_verb("Search "));
-        assert!(body_is_search_done_verb("Search · matches"));
-        assert!(body_is_search_done_verb("Search needle · 1ms"));
-        assert!(!body_is_search_done_verb("Searching"));
-        assert!(!body_is_search_done_verb("Research"));
+        assert_eq!(take_done_verb("Search"), Some(("Search", "")));
+        assert_eq!(take_done_verb("Search "), Some(("Search", "")));
+        assert_eq!(
+            take_done_verb("Search · matches"),
+            Some(("Search", "· matches"))
+        );
+        assert_eq!(
+            take_done_verb("Search needle · 1ms"),
+            Some(("Search", "needle · 1ms"))
+        );
+        assert!(take_done_verb("Searching").is_none());
+        assert!(take_done_verb("Research").is_none());
+        assert_eq!(take_done_verb("Glob **/*"), Some(("Glob", "**/*")));
+        assert_eq!(take_done_verb("Glob"), Some(("Glob", "")));
     }
 
     #[test]

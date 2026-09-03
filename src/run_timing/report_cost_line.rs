@@ -37,10 +37,8 @@ fn token_fields_fragment(json: &Value) -> String {
         || "n/a".to_string(),
         |t| format_token_field(t, "cache_write"),
     );
-    let reasoning = tokens.map_or_else(
-        || "n/a".to_string(),
-        |t| format_token_field(t, "reasoning"),
-    );
+    let reasoning =
+        tokens.map_or_else(|| "n/a".to_string(), |t| format_token_field(t, "reasoning"));
     format!(
         "steps = {steps} tokens_in = {tokens_in} tokens_out = {tokens_out} cache_read = {cache_read} cache_write = {cache_write} reasoning = {reasoning}"
     )

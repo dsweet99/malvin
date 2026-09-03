@@ -75,7 +75,9 @@ async fn cursor_sdk_ensure_reuses_fresh_bridge() {
     let mut fixture = open_ensure_fixture().await;
     let stdout_log = fixture.tmp.path().join("stdout.log");
     let model = fixture.client.model.canonical();
-    assert!(!crate::agent_backend::sdk_bridge_needs_restart(&fixture.client));
+    assert!(!crate::agent_backend::sdk_bridge_needs_restart(
+        &fixture.client
+    ));
     let started = fixture
         .client
         .ensure_coder_session(fixture.tmp.path())
@@ -105,7 +107,9 @@ async fn cursor_sdk_ensure_restarts_stale_bridge() {
     let stdout_log = fixture.tmp.path().join("stdout.log");
     let model = fixture.client.model.canonical();
     backdate_bridge(&mut fixture.client, fixture.started);
-    assert!(crate::agent_backend::sdk_bridge_needs_restart(&fixture.client));
+    assert!(crate::agent_backend::sdk_bridge_needs_restart(
+        &fixture.client
+    ));
     let fresh_context = fixture
         .client
         .ensure_coder_session(fixture.tmp.path())
@@ -116,7 +120,9 @@ async fn cursor_sdk_ensure_restarts_stale_bridge() {
         "stale bridge resume continues the prior agent; do not send header.md again"
     );
     assert!(bridge_started_at(&fixture.client) > fixture.started);
-    assert!(!crate::agent_backend::sdk_bridge_needs_restart(&fixture.client));
+    assert!(!crate::agent_backend::sdk_bridge_needs_restart(
+        &fixture.client
+    ));
     assert_eq!(
         count_agent_start_log_lines(&stdout_log, &model),
         1,

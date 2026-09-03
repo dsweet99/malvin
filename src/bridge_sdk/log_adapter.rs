@@ -127,9 +127,10 @@ fn logged_run_done(session: &StreamLog, ev: &BridgeEvent) -> BridgeEvent {
     let mut ev = ev.clone();
     crate::bridge_protocol::canonicalize_run_done(&mut ev);
     if let BridgeEvent::RunDone { duration_ms, .. } = &mut ev
-        && duration_ms.is_none() {
-            *duration_ms = u64::try_from(session.started_at.elapsed().as_millis()).ok();
-        }
+        && duration_ms.is_none()
+    {
+        *duration_ms = u64::try_from(session.started_at.elapsed().as_millis()).ok();
+    }
     ev
 }
 

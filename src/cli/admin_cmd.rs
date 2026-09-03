@@ -51,7 +51,8 @@ mod tests {
 
     #[test]
     fn parses_admin_models() {
-        let cli = Cli::try_parse_from(["malvin", "admin", "models", "--refresh", "pi:"]).expect("parse");
+        let cli =
+            Cli::try_parse_from(["malvin", "admin", "models", "--refresh", "pi:"]).expect("parse");
         match cli.command {
             Some(Commands::Admin(AdminArgs {
                 command: AdminCommand::Models(args),
@@ -90,10 +91,7 @@ mod tests {
                 "admin help must not present {needle}; got:\n{help}"
             );
         }
-        assert!(
-            help.contains("--doc"),
-            "admin keeps --doc; got:\n{help}"
-        );
+        assert!(help.contains("--doc"), "admin keeps --doc; got:\n{help}");
     }
 
     #[test]

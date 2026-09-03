@@ -18,7 +18,10 @@ pub(super) struct ReportedCostUsd {
     pub total: f64,
 }
 
-pub(super) fn u64_field(obj: &serde_json::Map<String, serde_json::Value>, key: &str) -> Option<u64> {
+pub(super) fn u64_field(
+    obj: &serde_json::Map<String, serde_json::Value>,
+    key: &str,
+) -> Option<u64> {
     obj.get(key).and_then(serde_json::Value::as_u64)
 }
 
@@ -61,7 +64,9 @@ pub(super) fn reasoning_is_additive(fields: &AcpUsageFields) -> bool {
     with == total && with != without
 }
 
-pub(super) fn usage_payload_is_observable(obj: &serde_json::Map<String, serde_json::Value>) -> bool {
+pub(super) fn usage_payload_is_observable(
+    obj: &serde_json::Map<String, serde_json::Value>,
+) -> bool {
     u64_field(obj, "inputTokens").is_some()
         || u64_field(obj, "outputTokens").is_some()
         || u64_field(obj, "cacheReadTokens").is_some()
@@ -145,24 +150,17 @@ impl RunTiming {
         cache_n: (u64, u64),
     ) {
         let (cache_read_n, cache_write_n) = cache_n;
-        if !skip_rate_estimate && matches!(self.cost_policy, super::CostPolicy::EstimateFromRates)
-        {
-            let (cost_in, cost_out, cost_read, cost_write) = self.token_cost_rates.estimate_components(
-                input_n,
-                output_n,
-                cache_read_n,
-                cache_write_n,
-            );
+        if !skip_rate_estimate && matches!(self.cost_policy, super::CostPolicy::EstimateFromRates) {
+            let (cost_in, cost_out, cost_read, cost_write) = self
+                .token_cost_rates
+                .estimate_components(input_n, output_n, cache_read_n, cache_write_n);
             add_optional_f64_sum(&mut self.estimated_cost_in, cost_in);
             add_optional_f64_sum(&mut self.estimated_cost_out, cost_out);
             add_optional_f64_sum(&mut self.estimated_cost_read, cost_read);
             add_optional_f64_sum(&mut self.estimated_cost_write, cost_write);
-            let estimated = self.token_cost_rates.estimate_usd(
-                input_n,
-                output_n,
-                cache_read_n,
-                cache_write_n,
-            );
+            let estimated =
+                self.token_cost_rates
+                    .estimate_usd(input_n, output_n, cache_read_n, cache_write_n);
             self.tx_costs.push(estimated);
         } else if matches!(self.cost_policy, super::CostPolicy::Zero) {
             self.tx_costs.push(0.0);

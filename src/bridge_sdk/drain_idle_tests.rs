@@ -1,8 +1,8 @@
+use super::drain_idle::drain_idle_health::{aggregate_health_outcomes, drain_sample_pids};
 use super::drain_idle::{
     DrainHealthVerdict, DrainIdleClock, DrainIdleHealthCtx, DrainIdleLabels, DrainIdleTurn,
     await_next_with_idle,
 };
-use super::drain_idle::drain_idle_health::{aggregate_health_outcomes, drain_sample_pids};
 use crate::acp::AgentError;
 use crate::child_health::SilenceHealthOutcome;
 use crate::sdk_drain_timeout::sdk_drain_idle_max_wait;
@@ -180,7 +180,9 @@ async fn tool_start_extends_cumulative_turn_budget() {
     };
     let mut turn = DrainIdleTurn::new();
     turn.clock
-        .extend_turn_budget(crate::sdk_drain_timeout::sdk_drain_idle_max_wait(turn.idle()));
+        .extend_turn_budget(crate::sdk_drain_timeout::sdk_drain_idle_max_wait(
+            turn.idle(),
+        ));
     tokio::time::sleep(Duration::from_secs(121)).await;
     assert!(
         turn.check_max_deadline(labels).is_ok(),
@@ -225,7 +227,9 @@ fn silence_error_labels_bridge_quiet() {
     };
     let quiet = labels.silence_error_detail(Duration::from_secs(1), false);
     assert!(
-        quiet.message.contains("bridge quiet; likely hung or stalled"),
+        quiet
+            .message
+            .contains("bridge quiet; likely hung or stalled"),
         "{quiet:?}"
     );
     let labels = DrainIdleLabels {

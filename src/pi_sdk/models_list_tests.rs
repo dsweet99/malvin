@@ -1,6 +1,4 @@
-use super::{
-    DEFAULT_PI_LIST_MODELS_TIMEOUT_MS, list_pi_models_sync, pi_list_models_timeout,
-};
+use super::{DEFAULT_PI_LIST_MODELS_TIMEOUT_MS, list_pi_models_sync, pi_list_models_timeout};
 
 #[test]
 fn pi_list_models_timeout_env_clamps_and_defaults() {

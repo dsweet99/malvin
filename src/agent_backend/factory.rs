@@ -33,9 +33,9 @@ pub fn build_agent_backend_with_tee(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model_id::ModelBackend;
     use crate::agent_backend::test_support::shared_opts;
     use crate::cli::WorkflowCliOptions;
+    use crate::model_id::ModelBackend;
 
     #[test]
     fn build_agent_backend_selects_cursor_sdk() {

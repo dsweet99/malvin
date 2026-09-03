@@ -1,5 +1,5 @@
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
 use pi::sdk::{AbortHandle, AgentEvent, AgentSessionHandle, SessionOptions};
@@ -143,8 +143,7 @@ fn take_test_prompt_if_blocked(prompt: PromptCmd, ctl: &PiLoopCtl) -> Option<Pro
         && let Ok(secs) = secs.parse::<u64>()
     {
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(secs);
-        while std::time::Instant::now() < deadline
-            && !ctl.shutdown_requested.load(Ordering::SeqCst)
+        while std::time::Instant::now() < deadline && !ctl.shutdown_requested.load(Ordering::SeqCst)
         {
             std::thread::sleep(std::time::Duration::from_millis(20));
         }

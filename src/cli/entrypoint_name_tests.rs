@@ -1,4 +1,4 @@
-use super::{entrypoint_from, Commands, Exit};
+use super::{Commands, Exit, entrypoint_from};
 use crate::cli::models_cmd::ModelsArgs;
 
 fn shared_opts_parses_git_flag_default_off() {
@@ -73,7 +73,11 @@ fn doc_does_not_create_name_files() {
         let root = crate::names_registry_root();
         assert_eq!(entrypoint_from(["malvin", "--doc"]), Exit::Success);
         assert!(
-            !root.exists() || std::fs::read_dir(&root).expect("read names").next().is_none(),
+            !root.exists()
+                || std::fs::read_dir(&root)
+                    .expect("read names")
+                    .next()
+                    .is_none(),
             "doc must not create name files"
         );
     });
@@ -85,7 +89,11 @@ fn bare_help_does_not_create_name_files() {
         let root = crate::names_registry_root();
         assert_eq!(entrypoint_from(["malvin"]), Exit::Success);
         assert!(
-            !root.exists() || std::fs::read_dir(&root).expect("read names").next().is_none(),
+            !root.exists()
+                || std::fs::read_dir(&root)
+                    .expect("read names")
+                    .next()
+                    .is_none(),
             "bare help must not create name files"
         );
     });

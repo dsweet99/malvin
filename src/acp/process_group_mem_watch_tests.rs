@@ -1,11 +1,6 @@
-use super::{
-    MemWatchHandles, watch_process_group_memory_with_rss_sampler,
-};
+use super::{MemWatchHandles, watch_process_group_memory_with_rss_sampler};
 use crate::artifacts::{RunArtifacts, create_run_artifacts_from_text};
-use crate::sandbox_oom::{
-    OOM_REASON_MEMORY_LIMIT,
-    gate_iteration_oom_killed,
-};
+use crate::sandbox_oom::{OOM_REASON_MEMORY_LIMIT, gate_iteration_oom_killed};
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;

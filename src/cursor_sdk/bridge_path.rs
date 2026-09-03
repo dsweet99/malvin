@@ -109,11 +109,12 @@ fn cursor_candidate_roots() -> Vec<PathBuf> {
             .join("sdk-bridges"),
     );
     if let Ok(exe) = std::env::current_exe()
-        && let Some(dir) = exe.parent() {
-            roots.push(dir.to_path_buf());
-            if let Some(parent) = dir.parent() {
-                roots.push(parent.to_path_buf());
-            }
+        && let Some(dir) = exe.parent()
+    {
+        roots.push(dir.to_path_buf());
+        if let Some(parent) = dir.parent() {
+            roots.push(parent.to_path_buf());
         }
+    }
     roots
 }

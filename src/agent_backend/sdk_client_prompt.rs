@@ -64,8 +64,7 @@ async fn teardown_sdk_session_after_transport_error(client: &mut SdkClient, err:
         return;
     }
     let forget_agent = matches!(client.model.backend, ModelBackend::Cursor)
-        && (err.fault == AgentFault::CursorBusy
-            || agent_string_is_cursor_agent_busy(&err.message));
+        && (err.fault == AgentFault::CursorBusy || agent_string_is_cursor_agent_busy(&err.message));
     let _ = client.end_coder_session().await;
     if forget_agent {
         client.last_agent_id = None;

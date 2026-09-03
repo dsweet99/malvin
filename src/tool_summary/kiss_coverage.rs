@@ -171,4 +171,5 @@ fn kiss_cov_tool_summary_human_b_detail_symbols_for_kiss() {
     let _ = super::ansi::ansi_style_tool_segment;
     let _ = super::ansi::ansi_style_tool_segment_running_or_path;
     let _ = super::ansi::ansi_style_path_tail;
+    let _ = super::ansi::take_done_verb;
 }

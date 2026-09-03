@@ -1,7 +1,7 @@
 use crate::bridge_protocol::BridgeEvent;
 
-use super::session::BridgeSession;
 use super::DrainIdleTurn;
+use super::session::BridgeSession;
 
 pub(super) fn tools_in_flight(session: &BridgeSession) -> bool {
     !session

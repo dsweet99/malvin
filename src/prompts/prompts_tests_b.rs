@@ -48,10 +48,12 @@ fn enforce_no_unresolved_braces_ok_when_clean() {
 
 #[test]
 fn enforce_no_unresolved_braces_allows_user_content_with_non_placeholder_braces() {
-    assert!(crate::prompts::enforce_no_unresolved_braces(
-        "docs mention unresolved `{{…}}` or literal `{{ before ACP`"
-    )
-    .is_ok());
+    assert!(
+        crate::prompts::enforce_no_unresolved_braces(
+            "docs mention unresolved `{{…}}` or literal `{{ before ACP`"
+        )
+        .is_ok()
+    );
 }
 
 #[test]

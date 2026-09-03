@@ -49,9 +49,10 @@ pub(super) fn to_json_value(r: &RunTiming) -> Value {
         "tokens": tokens_stats(r),
     });
     if let Some(cost) = cost_stats(r)
-        && let Some(map) = obj.as_object_mut() {
-            map.insert("cost".into(), cost);
-        }
+        && let Some(map) = obj.as_object_mut()
+    {
+        map.insert("cost".into(), cost);
+    }
     obj
 }
 

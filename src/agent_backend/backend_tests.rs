@@ -1,7 +1,7 @@
 use super::factory::build_agent_backend;
-use crate::model_id::ModelBackend;
 use super::test_support::{shared_opts, test_io};
 use crate::cli::WorkflowCliOptions;
+use crate::model_id::ModelBackend;
 
 #[test]
 fn test_io_returns_agent_io_options_with_expected_flags() {

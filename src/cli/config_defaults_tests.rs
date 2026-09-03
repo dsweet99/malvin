@@ -1,6 +1,6 @@
 use super::{
-    apply_loop_defaults, apply_shared_config_defaults, apply_workspace_config_defaults,
-    global_flag_from_command_line, parse_cli_with_config_defaults, LoopDefaultMut,
+    LoopDefaultMut, apply_loop_defaults, apply_shared_config_defaults,
+    apply_workspace_config_defaults, global_flag_from_command_line, parse_cli_with_config_defaults,
 };
 use crate::cli::config_loop::subcommand_flag_from_command_line;
 use crate::cli::{Cli, Commands, SharedOpts};

@@ -1,15 +1,15 @@
-use crate::agent_backend::{build_agent_backend, AgentBackend};
+use crate::agent_backend::{AgentBackend, build_agent_backend};
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::cli::one_shot_session::{
-    finish_one_shot_after_prompt, finish_one_shot_auth_and_backups, OneShotCoderGuard,
+    OneShotCoderGuard, finish_one_shot_after_prompt, finish_one_shot_auth_and_backups,
 };
-use crate::cli::run_emit::{emit_run_logs_line, emit_run_startup_banner, RunStartupEmitOpts};
+use crate::cli::run_emit::{RunStartupEmitOpts, emit_run_logs_line, emit_run_startup_banner};
 use crate::cli::{SharedOpts, WorkflowCliOptions};
 use crate::run_timing::TimingPhase;
 use crate::workflow_context::format_prompt_path;
 
-use super::prep::{compose_write_a_prompt, compose_write_b_prompt, write_preflight};
 use super::WriteArgs;
+use super::prep::{compose_write_a_prompt, compose_write_b_prompt, write_preflight};
 
 struct WriteRunPrep {
     client: AgentBackend,

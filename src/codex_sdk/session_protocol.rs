@@ -1,5 +1,5 @@
-use crate::acp::AgentError;
 use super::session::CodexSession;
+use crate::acp::AgentError;
 
 pub(crate) async fn codex_initialize(session: &CodexSession) -> Result<(), AgentError> {
     let response = request(

@@ -42,10 +42,10 @@ pub(crate) fn log_with_heartbeat(sink: &mut DeferredLogSink, entry: DeferredEntr
     if !active::defer_already_has_heartbeat(sink)
         && let Some((display, log)) =
             crate::output::heartbeat_rendered_if_due(std::time::Instant::now(), true)
-        {
-            crate::output::publish_heartbeat_live_terminal(&display);
-            sink.push_entry(build_display_log_entry(display, log));
-        }
+    {
+        crate::output::publish_heartbeat_live_terminal(&display);
+        sink.push_entry(build_display_log_entry(display, log));
+    }
     sink.push_entry(entry);
 }
 

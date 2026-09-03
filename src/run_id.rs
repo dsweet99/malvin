@@ -133,7 +133,8 @@ mod short_log_id_tests {
 
     #[test]
     fn short_malvin_log_id_takes_hash_and_run() {
-        let path = Path::new("/home/dsweet/.malvin_home/logs/eb7ef333a92a6d41/20260830_024330_estp91hf");
+        let path =
+            Path::new("/home/dsweet/.malvin_home/logs/eb7ef333a92a6d41/20260830_024330_estp91hf");
         assert_eq!(
             short_malvin_log_id(path).as_deref(),
             Some("eb7ef333a92a6d41/20260830_024330_estp91hf")

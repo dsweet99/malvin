@@ -1,11 +1,11 @@
 use crate::artifacts::RunArtifacts;
 use crate::orchestrator::workflow_context_paths_only;
 use crate::prompts::{
-    header_prompt_file, kpop_common_prompt_file, router_a_prompt_file, router_b_prompt_file,
-    PromptError, PromptStore, RouterBPromptFlags,
+    PromptError, PromptStore, RouterBPromptFlags, header_prompt_file, kpop_common_prompt_file,
+    router_a_prompt_file, router_b_prompt_file,
 };
 
-use super::{render_router_code_extra, RouterCodeExtraInput};
+use super::{RouterCodeExtraInput, render_router_code_extra};
 
 pub(crate) struct RouterHeaderPromptInput<'a> {
     pub store: &'a PromptStore,

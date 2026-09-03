@@ -1,6 +1,4 @@
-use super::{
-    Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_router,
-};
+use super::{Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_router};
 use crate::do_flow::DoArgs;
 
 #[path = "entrypoint_from.rs"]

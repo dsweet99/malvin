@@ -4,7 +4,8 @@ use std::fs;
 use std::process::Command;
 
 use super::{
-    apply_fake_path_if_present, fake_command_dir_for_path_env, run_command_for, set_fake_command_dir,
+    apply_fake_path_if_present, fake_command_dir_for_path_env, run_command_for,
+    set_fake_command_dir,
 };
 
 #[test]

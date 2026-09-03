@@ -94,7 +94,9 @@ fn provider_supports_pi_live_model_fetch(provider: &str) -> bool {
     openai_compat_models_url(&defaults).is_some()
 }
 
-fn openai_compat_models_url(defaults: &pi::provider_metadata::ProviderRoutingDefaults) -> Option<String> {
+fn openai_compat_models_url(
+    defaults: &pi::provider_metadata::ProviderRoutingDefaults,
+) -> Option<String> {
     let base = defaults.base_url.trim_end_matches('/');
     if base.is_empty() {
         return None;

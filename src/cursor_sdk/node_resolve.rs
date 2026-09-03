@@ -63,9 +63,10 @@ fn node_candidates() -> Vec<PathBuf> {
     let mut out = Vec::new();
     push_unique(&mut out, crate::support_paths::lookup_bin_on_path("node"));
     if let Some(agent) = crate::support_paths::agent_or_cursor_agent_bin()
-        && let Some(dir) = agent.parent() {
-            push_unique(&mut out, Some(dir.join("node")));
-        }
+        && let Some(dir) = agent.parent()
+    {
+        push_unique(&mut out, Some(dir.join("node")));
+    }
     for bundled in cursor_agent_version_nodes() {
         push_unique(&mut out, Some(bundled));
     }

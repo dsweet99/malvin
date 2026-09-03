@@ -3,7 +3,7 @@ use clap::parser::ValueSource;
 use clap::{ArgMatches, Args};
 use rand::Rng;
 
-use crate::model_id::{parse_model_id, ParsedModel};
+use crate::model_id::{ParsedModel, parse_model_id};
 
 const QUIET_HELPTEXT: &str =
     "Print only `__MALVIN_DM_START__`/`END` bodies on stdout (default router; not `-b`)";
@@ -89,7 +89,10 @@ pub(crate) fn overlay_shared_opts_from_subcommand(
     matches: &ArgMatches,
     subcommand: &str,
 ) {
-    let Some(sub_m) = matches.subcommand().filter(|(n, _)| *n == subcommand).map(|(_, m)| m)
+    let Some(sub_m) = matches
+        .subcommand()
+        .filter(|(n, _)| *n == subcommand)
+        .map(|(_, m)| m)
     else {
         return;
     };
@@ -114,7 +117,12 @@ fn overlay_shared_bool_fields(
 ) {
     overlay_shared_bool_if(on_cli, "background", &mut base.background, sub.background);
     overlay_shared_bool_if(on_cli, "no_force", &mut base.no_force, sub.no_force);
-    overlay_shared_bool_if(on_cli, "no_tenacious", &mut base.no_tenacious, sub.no_tenacious);
+    overlay_shared_bool_if(
+        on_cli,
+        "no_tenacious",
+        &mut base.no_tenacious,
+        sub.no_tenacious,
+    );
     overlay_shared_bool_if(on_cli, "gates", &mut base.gates, sub.gates);
     overlay_shared_bool_if(on_cli, "quiet", &mut base.quiet, sub.quiet);
     overlay_shared_bool_if(on_cli, "verbose", &mut base.verbose, sub.verbose);
@@ -125,12 +133,7 @@ fn overlay_shared_bool_fields(
     overlay_shared_bool_if(on_cli, "no_kpop", &mut base.no_kpop, sub.no_kpop);
 }
 
-fn overlay_shared_bool_if(
-    on_cli: &impl Fn(&str) -> bool,
-    id: &str,
-    dst: &mut bool,
-    src: bool,
-) {
+fn overlay_shared_bool_if(on_cli: &impl Fn(&str) -> bool, id: &str, dst: &mut bool, src: bool) {
     if on_cli(id) {
         *dst = src;
     }
@@ -237,7 +240,8 @@ mod overlay_tests {
         assert_eq!(on.shared.creative, Some(1.0));
         assert!(on.shared.sample_creative_this_iteration());
 
-        let p = crate::cli::Cli::try_parse_from(["malvin", "--creative=0.6", "--doc"]).expect("parse");
+        let p =
+            crate::cli::Cli::try_parse_from(["malvin", "--creative=0.6", "--doc"]).expect("parse");
         assert_eq!(p.shared.creative, Some(0.6));
 
         let zero =
@@ -256,12 +260,8 @@ mod overlay_tests {
 
     #[test]
     fn overlay_prefers_write_subcommand_creative() {
-        let matches = Cli::command().get_matches_from([
-            "malvin",
-            "write",
-            "--creative=0.4",
-            "topic",
-        ]);
+        let matches =
+            Cli::command().get_matches_from(["malvin", "write", "--creative=0.4", "topic"]);
         let cli = Cli::from_arg_matches(&matches).expect("from matches");
         let mut shared = SharedOpts::test_defaults();
         let Commands::Write(write) = cli.command.expect("write") else {

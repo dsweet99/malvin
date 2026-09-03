@@ -1,16 +1,16 @@
 use crate::artifacts::{
-    ensure_gate_exp_log_file, GitignoreBackup, MalvinChecksBackup, MalvinConfigWorkspaceBackup,
-    RunArtifacts, SessionDotfileBackups, VisionBackup,
+    GitignoreBackup, MalvinChecksBackup, MalvinConfigWorkspaceBackup, RunArtifacts,
+    SessionDotfileBackups, VisionBackup, ensure_gate_exp_log_file,
 };
 use crate::router_flow::router_flow_no_work::chat_has_malvin_done;
 use crate::router_flow::router_flow_prompt;
 use std::path::Path;
 
+use super::RouterAcpIterationInput;
 use super::router_flow_coder_prompts::{
     run_router_a_coder_prompt, run_router_b_coder_prompt, run_router_header_coder_prompt,
     run_router_kpop_common_coder_prompt, run_router_mbc2_coder_prompt,
 };
-use super::RouterAcpIterationInput;
 
 pub(crate) struct RouterTurnsOutcome {
     pub iteration_backups: SessionDotfileBackups,
@@ -88,10 +88,8 @@ pub(crate) async fn run_router_turns(
         .await?;
     }
     if creative {
-        let mbc2 = router_flow_prompt::build_router_mbc2_prompt(
-            input.prompt_store,
-            input.artifacts,
-        )?;
+        let mbc2 =
+            router_flow_prompt::build_router_mbc2_prompt(input.prompt_store, input.artifacts)?;
         run_router_mbc2_coder_prompt(input.client, &mbc2, log_path).await?;
     }
     run_router_a_coder_prompt(

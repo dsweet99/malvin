@@ -202,10 +202,7 @@ async fn fresh_agent_on_retry_recreates_after_non_teardown_timeout() {
     let mut client = crate::cursor_sdk::cursor_sdk_client_from_raw("cursor:auto", mock_io(), 3);
     client.prompts_log_run_dir = Some(tmp.path().to_path_buf());
     let _ = client.attach_run_timing_for_session();
-    client
-        .begin_coder_session(tmp.path())
-        .await
-        .expect("begin");
+    client.begin_coder_session(tmp.path()).await.expect("begin");
     client
         .run_coder_prompt(
             "NON_TEARDOWN_TIMEOUT_ONCE please",

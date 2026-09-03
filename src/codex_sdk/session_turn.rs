@@ -1,8 +1,8 @@
 use std::time::Instant;
 
+use super::session::CodexSession;
 use crate::acp::AgentError;
 use crate::bridge_protocol::BridgeEvent;
-use super::session::CodexSession;
 
 #[derive(Default)]
 pub(super) struct TurnState {

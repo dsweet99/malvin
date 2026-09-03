@@ -4,11 +4,11 @@ use std::fs;
 use pi::auth::AuthStorage;
 use pi::sdk::ModelRegistry;
 
-use super::{
-    load_provider_cache, merge_registry_with_live, refresh_pi_provider_caches_if_stale,
-    save_provider_cache, PI_MODEL_CACHE_TTL,
-};
 use super::super::cache_clock::{cache_fetched_at_is_fresh, unix_now_secs};
+use super::{
+    PI_MODEL_CACHE_TTL, load_provider_cache, merge_registry_with_live,
+    refresh_pi_provider_caches_if_stale, save_provider_cache,
+};
 
 fn cursor_provider_is_excluded_from_live_fetch() {
     crate::acp::with_env("CURSOR_API_KEY", Some("test-key"), || {

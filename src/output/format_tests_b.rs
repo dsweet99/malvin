@@ -5,7 +5,7 @@ use super::{
 
 #[test]
 fn ansi_error_and_warning_color_entire_display_line() {
-    use crate::terminal_palette::{ANSI_RESET, ansi_warning, ansi_error};
+    use crate::terminal_palette::{ANSI_RESET, ansi_error, ansi_warning};
 
     let err = format_line_stdout_ansi(super::ERROR_WHO, "ACP failed");
     let coral_pos = err.find(ansi_error()).expect("coral");

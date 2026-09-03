@@ -85,9 +85,7 @@ impl RunTiming {
 }
 
 pub(crate) fn acp_usage_payload_is_observable(usage: &serde_json::Value) -> bool {
-    usage
-        .as_object()
-        .is_some_and(usage_payload_is_observable)
+    usage.as_object().is_some_and(usage_payload_is_observable)
 }
 
 fn optional_u64_json(v: Option<u64>) -> serde_json::Value {
