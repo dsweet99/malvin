@@ -152,9 +152,10 @@ impl SharedOpts {
 
     /// Sample whether this outer router iteration applies creative turns.
     ///
-    /// When `--creative` is unset, returns false. When set, both the post-kpop
-    /// `mbc2.md` turn and `router_b_creative.md` (vs `router_b.md`) apply together
-    /// with the configured probability (default 1.0).
+    /// When `--creative` is unset, returns false. When set, both including
+    /// `mbc2.md` in the aggregated initial prompt and `router_b_creative.md`
+    /// (vs `router_b.md`) apply together with the configured probability
+    /// (default 1.0).
     #[must_use]
     pub(crate) fn sample_creative_this_iteration(&self) -> bool {
         match self.creative {

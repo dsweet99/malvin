@@ -4,6 +4,8 @@ use std::path::{Path, PathBuf};
 use crate::artifacts::resolve_user_md_request;
 use crate::cli::cli_request::require_cli_request;
 use crate::cli::default_output_path::allocate_default_tex_pdf_pair;
+use crate::artifacts::RunArtifacts;
+use crate::cli::session_header::{WriteInitialHeaderInput, build_write_initial_prompt};
 use crate::prompts::{PromptError, PromptStore, WRITE_A_MD, WRITE_B_MD};
 
 pub(crate) const WRITE_TEX_BASENAME: &str = "write.tex";
@@ -55,6 +57,7 @@ pub(crate) fn write_resolved_output_paths(
 }
 
 pub(crate) fn compose_write_a_prompt(
+    store: &PromptStore,
     request_text: &str,
     workspace_dir: &str,
 ) -> Result<String, String> {
@@ -62,12 +65,13 @@ pub(crate) fn compose_write_a_prompt(
         ("workspace_dir".to_string(), workspace_dir.to_string()),
         ("request_text".to_string(), request_text.to_string()),
     ]);
-    PromptStore::default_store()
+    store
         .render_prompt_only(WRITE_A_MD, &ctx)
         .map_err(|e: PromptError| e.0)
 }
 
 pub(crate) fn compose_write_b_prompt(
+    store: &PromptStore,
     tex_display: &str,
     pdf_display: &str,
     workspace_dir: &str,
@@ -77,7 +81,7 @@ pub(crate) fn compose_write_b_prompt(
         ("pdf_display".to_string(), pdf_display.to_string()),
         ("workspace_dir".to_string(), workspace_dir.to_string()),
     ]);
-    PromptStore::default_store()
+    store
         .render_prompt_only(WRITE_B_MD, &ctx)
         .map_err(|e: PromptError| e.0)
 }
@@ -115,13 +119,54 @@ pub(crate) fn write_preflight(
     Ok((text, request_work_dir, outputs))
 }
 
+
+/// Inputs for write's aggregated spawn prompt (`header.md` + `write_a.md`).
+pub(crate) struct WriteInitialPromptInput<'a> {
+    pub store: &'a PromptStore,
+    pub artifacts: &'a RunArtifacts,
+    pub model: &'a str,
+    pub git: bool,
+    pub request_text: &'a str,
+    pub workspace_dir: &'a str,
+}
+
+pub(crate) struct WriteInitialPrompt {
+    pub body: String,
+    pub stdout_label: String,
+    pub log_who: &'static str,
+}
+
+/// Aggregate `header.md` and `write_a.md` for one host send at session start.
+///
+/// Write does not fold router-only options (`--creative`, `--gates`, `--no-kpop`,
+/// `--max-hypotheses`) into this prompt; those affect the default router only.
+/// `--out-path` is applied later in `write_b.md`.
+pub(crate) fn build_write_workflow_initial_prompt(
+    input: WriteInitialPromptInput<'_>,
+) -> Result<WriteInitialPrompt, String> {
+    let write_a = compose_write_a_prompt(input.store, input.request_text, input.workspace_dir)?;
+    let aggregated = build_write_initial_prompt(WriteInitialHeaderInput {
+        store: input.store,
+        artifacts: input.artifacts,
+        model: input.model,
+        git: input.git,
+        write_a_body: write_a,
+    })?;
+    Ok(WriteInitialPrompt {
+        body: aggregated.body,
+        stdout_label: aggregated.stdout_label,
+        log_who: aggregated.log_who,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn compose_write_a_embeds_request_and_workspace() {
-        let body = compose_write_a_prompt("how gates exit", "./.malvin_home/logs/run")
+        let store = PromptStore::default_store();
+        let body = compose_write_a_prompt(&store, "how gates exit", "./.malvin_home/logs/run")
             .expect("compose write_a");
         let expected = crate::prompts::render_template(
             include_str!("../../../default_prompts/write_a.md"),
@@ -141,8 +186,14 @@ mod tests {
 
     #[test]
     fn compose_write_b_embeds_out_paths_and_workspace() {
-        let body = compose_write_b_prompt("write.tex", "write.pdf", "./.malvin_home/logs/run")
-            .expect("compose write_b");
+        let store = PromptStore::default_store();
+        let body = compose_write_b_prompt(
+            &store,
+            "write.tex",
+            "write.pdf",
+            "./.malvin_home/logs/run",
+        )
+        .expect("compose write_b");
         let expected = crate::prompts::render_template(
             include_str!("../../../default_prompts/write_b.md"),
             &HashMap::from([
@@ -170,3 +221,7 @@ mod tests {
         assert!(err.contains("write") && err.contains("REQUEST"));
     }
 }
+
+#[cfg(test)]
+#[path = "initial_tests.rs"]
+mod initial_tests;

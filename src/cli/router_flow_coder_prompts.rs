@@ -1,65 +1,26 @@
 use crate::agent_backend::AgentBackend;
 
-pub(crate) async fn run_router_a_coder_prompt(
-    client: &mut AgentBackend,
-    prompt: &str,
-    log_path: &std::path::Path,
-    stdout_bracket_label: &str,
-) -> Result<(), String> {
-    client
-        .run_coder_prompt(
-            prompt,
-            log_path,
-            "router_a",
-            crate::acp::CoderPromptOptions {
-                llm_phase: Some(crate::run_timing::TimingPhase::Implement),
-                do_trace_split: None,
-                stdout_bracket_label: Some(stdout_bracket_label),
-                append_trace: true,
-                ..Default::default()
-            },
-        )
-        .await
-        .map_err(|e| e.to_string())
+pub(crate) struct RouterInitialCoderPrompt<'a> {
+    pub client: &'a mut AgentBackend,
+    pub prompt: &'a str,
+    pub log_path: &'a std::path::Path,
+    pub stdout_bracket_label: &'a str,
+    pub log_who: &'a str,
 }
 
-pub(crate) async fn run_router_kpop_common_coder_prompt(
-    client: &mut AgentBackend,
-    prompt: &str,
-    log_path: &std::path::Path,
-    stdout_bracket_label: &str,
+pub(crate) async fn run_router_initial_coder_prompt(
+    input: RouterInitialCoderPrompt<'_>,
 ) -> Result<(), String> {
-    client
+    input
+        .client
         .run_coder_prompt(
-            prompt,
-            log_path,
-            "kpop_common",
+            input.prompt,
+            input.log_path,
+            input.log_who,
             crate::acp::CoderPromptOptions {
                 llm_phase: Some(crate::run_timing::TimingPhase::Implement),
                 do_trace_split: None,
-                stdout_bracket_label: Some(stdout_bracket_label),
-                append_trace: true,
-                ..Default::default()
-            },
-        )
-        .await
-        .map_err(|e| e.to_string())
-}
-
-pub(crate) async fn run_router_mbc2_coder_prompt(
-    client: &mut AgentBackend,
-    prompt: &str,
-    log_path: &std::path::Path,
-) -> Result<(), String> {
-    client
-        .run_coder_prompt(
-            prompt,
-            log_path,
-            "mbc2",
-            crate::acp::CoderPromptOptions {
-                llm_phase: Some(crate::run_timing::TimingPhase::Implement),
-                do_trace_split: None,
-                stdout_bracket_label: Some("mbc2.md"),
+                stdout_bracket_label: Some(input.stdout_bracket_label),
                 append_trace: true,
                 ..Default::default()
             },
@@ -120,9 +81,8 @@ mod kiss_cov_gate_refs {
 
     #[test]
     fn kiss_cov_unit_names() {
-        let _ = run_router_a_coder_prompt;
-        let _ = run_router_kpop_common_coder_prompt;
-        let _ = run_router_mbc2_coder_prompt;
+        let _ = run_router_initial_coder_prompt;
+        let _: Option<RouterInitialCoderPrompt<'_>> = None;
         let _ = run_router_b_coder_prompt;
         let _ = run_router_summarize_coder_prompt;
         let _ = header_prompt_file;

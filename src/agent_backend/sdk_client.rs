@@ -64,6 +64,8 @@ pub struct CoderSessionHeader {
     pub prompt: String,
     pub log_path: PathBuf,
     pub stdout_label: String,
+    /// Short name written to `prompts.log` (e.g. `header`, `router_initial`).
+    pub log_who: String,
 }
 
 pub struct SdkClient {
@@ -109,10 +111,22 @@ impl SdkClient {
 
     /// Bind the spawn-time header prompt. Required before [`Self::start_coder_session`].
     pub fn bind_session_header(&mut self, prompt: String, log_path: PathBuf, stdout_label: &str) {
+        self.bind_session_header_parts(prompt, log_path, stdout_label, "header");
+    }
+
+    /// Bind spawn-time prompt with an explicit `prompts.log` who-tag.
+    pub fn bind_session_header_parts(
+        &mut self,
+        prompt: String,
+        log_path: PathBuf,
+        stdout_label: &str,
+        log_who: &str,
+    ) {
         self.session_header = Some(CoderSessionHeader {
             prompt,
             log_path,
             stdout_label: stdout_label.to_string(),
+            log_who: log_who.to_string(),
         });
     }
 

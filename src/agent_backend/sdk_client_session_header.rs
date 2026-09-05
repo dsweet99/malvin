@@ -15,8 +15,8 @@ pub(super) async fn send_bound_session_header(client: &mut SdkClient) -> Result<
         return Ok(());
     };
     let opts = header_prompt_options(&header.stdout_label);
-    emit_prompt_stdout(client, &header.prompt, "header", &opts);
-    append_prompt_files(client, &header.prompt, &header.log_path, "header")?;
+    emit_prompt_stdout(client, &header.prompt, &header.log_who, &opts);
+    append_prompt_files(client, &header.prompt, &header.log_path, &header.log_who)?;
     try_send_header_with_retries(client, &header, &opts).await
 }
 

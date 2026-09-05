@@ -27,6 +27,14 @@ pub(crate) use router_flow_prompt_turns::{
     router_a_prompt_label, router_b_prompt_label,
 };
 
+#[path = "router_flow_prompt_initial.rs"]
+mod router_flow_prompt_initial;
+pub(crate) use router_flow_prompt_initial::{
+    RouterInitialPromptInput, build_router_initial_prompt,
+};
+#[cfg(test)]
+pub(crate) use router_flow_prompt_initial::RouterInitialPrompt;
+
 pub fn prepare_router_prompt_store() -> Result<PromptStore, String> {
     let store = PromptStore::default_store();
     store.ensure_defaults().map_err(|e: PromptError| e.0)?;
@@ -152,6 +160,8 @@ mod kiss_cov_gate_refs {
         let _ = build_router_b_prompt;
         let _ = build_router_kpop_common_prompt;
         let _ = build_router_mbc2_prompt;
+        let _ = build_router_initial_prompt;
+        let _: Option<RouterInitialPrompt> = None;
         let _ = router_b_prompt_label;
         let _ = kpop_common_prompt_label;
         let _ = router_a_prompt_label;

@@ -38,3 +38,19 @@ fn prompt_stratum_variants_exist() {
         PromptStratum::MiniConstraints,
     );
 }
+
+
+#[test]
+fn aggregated_builder_skips_empty_and_joins_labels() {
+    use super::{AggregatedInitialPromptBuilder};
+    let mut b = AggregatedInitialPromptBuilder::new();
+    b.push_nonempty("a.md", String::new());
+    b.push_nonempty("b.md", "B".into());
+    b.push_nonempty("c.md", "C".into());
+    let out = b.finish("who");
+    assert_eq!(out.log_who, "who");
+    assert_eq!(out.stdout_label, "b.md+c.md");
+    assert!(out.body.contains('B'));
+    assert!(out.body.contains('C'));
+    assert!(!out.body.contains("a.md"));
+}

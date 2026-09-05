@@ -5,16 +5,16 @@ use crate::cli::one_shot_session::{
 };
 use crate::cli::run_emit::{RunStartupEmitOpts, emit_run_logs_line, emit_run_startup_banner};
 use crate::cli::{SharedOpts, WorkflowCliOptions};
+use crate::prompts::PromptStore;
 use crate::run_timing::TimingPhase;
 use crate::workflow_context::format_prompt_path;
 
 use super::WriteArgs;
-use super::prep::{compose_write_a_prompt, compose_write_b_prompt, write_preflight};
+use super::prep::{WriteInitialPromptInput, build_write_workflow_initial_prompt, compose_write_b_prompt, write_preflight};
 
 struct WriteRunPrep {
     client: AgentBackend,
     artifacts: RunArtifacts,
-    prompt_a: String,
     prompt_b: String,
     session_dotfile_backups: SessionDotfileBackups,
 }
@@ -35,19 +35,6 @@ fn write_workspace_dir_display(artifacts: &RunArtifacts) -> String {
     format_prompt_path(&artifacts.run_dir, &artifacts.work_dir)
 }
 
-fn prepare_write_prompts(
-    request_text: &str,
-    out_paths: (&str, &str),
-    artifacts: &RunArtifacts,
-) -> Result<(String, String), String> {
-    let workspace_dir = write_workspace_dir_display(artifacts);
-    let (tex_display, pdf_display) = out_paths;
-    Ok((
-        compose_write_a_prompt(request_text, &workspace_dir)?,
-        compose_write_b_prompt(tex_display, pdf_display, &workspace_dir)?,
-    ))
-}
-
 fn create_write_artifacts(
     request_text: &str,
     request_work_dir: &std::path::Path,
@@ -60,6 +47,39 @@ fn create_write_artifacts(
     .map_err(|e| e.to_string())?;
     crate::run_id::activate_run(artifacts.run_dir.clone());
     Ok(artifacts)
+}
+
+fn prepare_write_prompt_store() -> Result<PromptStore, String> {
+    let store = PromptStore::default_store();
+    store
+        .ensure_defaults()
+        .map_err(|e: crate::prompts::PromptError| e.0)?;
+    Ok(store)
+}
+
+fn bind_write_initial_prompt(
+    client: &mut AgentBackend,
+    shared: &SharedOpts,
+    artifacts: &RunArtifacts,
+    request_text: &str,
+) -> Result<(), String> {
+    let store = prepare_write_prompt_store()?;
+    let workspace_dir = write_workspace_dir_display(artifacts);
+    let initial = build_write_workflow_initial_prompt(WriteInitialPromptInput {
+        store: &store,
+        artifacts,
+        model: &shared.model.canonical(),
+        git: shared.git,
+        request_text,
+        workspace_dir: &workspace_dir,
+    })?;
+    client.bind_session_header_parts(
+        initial.body,
+        artifacts.log_path(initial.log_who),
+        &initial.stdout_label,
+        initial.log_who,
+    );
+    Ok(())
 }
 
 async fn prepare_write_run(
@@ -88,34 +108,15 @@ async fn prepare_write_run(
     )?;
     crate::run_id::maybe_gc_after_run_created(&artifacts.work_dir, &artifacts.run_dir);
     let session_dotfile_backups = finish_one_shot_auth_and_backups(&mut client, &artifacts)?;
-    bind_write_session_header(&mut client, shared, &artifacts)?;
-    let (prompt_a, prompt_b) =
-        prepare_write_prompts(&request_text, (&tex_display, &pdf_display), &artifacts)?;
+    bind_write_initial_prompt(&mut client, shared, &artifacts, &request_text)?;
+    let store = prepare_write_prompt_store()?;
+    let workspace_dir = write_workspace_dir_display(&artifacts);
+    let prompt_b = compose_write_b_prompt(&store, &tex_display, &pdf_display, &workspace_dir)?;
     Ok(WriteRunPrep {
         client,
         artifacts,
-        prompt_a,
         prompt_b,
         session_dotfile_backups,
-    })
-}
-
-fn bind_write_session_header(
-    client: &mut AgentBackend,
-    shared: &SharedOpts,
-    artifacts: &RunArtifacts,
-) -> Result<(), String> {
-    let store = crate::prompts::PromptStore::default_store();
-    store
-        .ensure_defaults()
-        .map_err(|e: crate::prompts::PromptError| e.0)?;
-    crate::cli::session_header::bind_malvin_header(crate::cli::session_header::BindMalvinHeader {
-        client,
-        store: &store,
-        artifacts,
-        model: &shared.model.canonical(),
-        git: shared.git,
-        log_path: artifacts.log_path("header"),
     })
 }
 
@@ -144,15 +145,10 @@ async fn run_write_coder_prompt(
 async fn run_write_coder_session(
     client: &mut AgentBackend,
     artifacts: &RunArtifacts,
-    prompt_a: &str,
     prompt_b: &str,
 ) -> Result<(), String> {
     let guard = OneShotCoderGuard::begin(client, artifacts, "write").await?;
-    let run_res = async {
-        run_write_coder_prompt(client, artifacts, prompt_a, "write_a").await?;
-        run_write_coder_prompt(client, artifacts, prompt_b, "write_b").await
-    }
-    .await;
+    let run_res = run_write_coder_prompt(client, artifacts, prompt_b, "write_b").await;
     guard.finish(client, run_res).await
 }
 
@@ -163,13 +159,8 @@ pub async fn run_write(
 ) -> Result<(), String> {
     let mut prep = prepare_write_run(write_args, shared, workflow).await?;
     emit_run_logs_line(&prep.artifacts)?;
-    let acp_res = run_write_coder_session(
-        &mut prep.client,
-        &prep.artifacts,
-        &prep.prompt_a,
-        &prep.prompt_b,
-    )
-    .await;
+    let acp_res =
+        run_write_coder_session(&mut prep.client, &prep.artifacts, &prep.prompt_b).await;
     finish_one_shot_after_prompt(
         acp_res,
         &prep.artifacts.work_dir,
@@ -188,14 +179,14 @@ mod tests {
         let _: Option<WriteRunPrep> = None;
         let _ = (
             run_write,
-            prepare_write_prompts,
             write_workspace_dir_display,
             new_write_client,
             create_write_artifacts,
             run_write_coder_prompt,
             run_write_coder_session,
             prepare_write_run,
-            bind_write_session_header,
+            bind_write_initial_prompt,
+            prepare_write_prompt_store,
         );
     }
 
@@ -209,8 +200,9 @@ mod tests {
         let tex = format_prompt_path(&work.join("write.tex"), &work);
         let pdf = format_prompt_path(&work.join("write.pdf"), &work);
         assert_eq!((tex.as_str(), pdf.as_str()), ("./write.tex", "./write.pdf"));
-        let (a, b) = prepare_write_prompts("how gates exit", (&tex, &pdf), &artifacts).expect("p");
-        assert!(a.contains("how gates exit") && a.contains("notes.tex") && !a.contains("{{"));
+        let workspace_dir = write_workspace_dir_display(&artifacts);
+        let store = PromptStore::default_store();
+        let b = compose_write_b_prompt(&store, &tex, &pdf, &workspace_dir).expect("b");
         assert!(b.contains("`./write.tex`") && b.contains("`./write.pdf`"));
         assert!(!b.contains("`docs/write.tex`") && !b.contains("{{"));
     }

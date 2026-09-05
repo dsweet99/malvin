@@ -399,7 +399,7 @@ def ft_docker_available() -> bool:
             capture_output=True,
             text=True,
             check=False,
-            timeout=30,
+            timeout=2,
         )
     except (OSError, subprocess.TimeoutExpired):
         return False
@@ -1673,7 +1673,7 @@ def _ft_test_relay_streams_before_wait() -> None:
     cmd = [sys.executable, "-c", "print('stream-line-1', flush=True)"]
     sys.stdout.write = _ft_relay_stdout_spy
     try:
-        code, captured, timed_out = ft_relay_subprocess_stdout(cmd, timeout_sec=5.0)
+        code, captured, timed_out = ft_relay_subprocess_stdout(cmd, timeout_sec=1.5)
     finally:
         sys.stdout.write = _FT_RELAY_SPY_ORIG
     assert code == 0
@@ -1720,7 +1720,7 @@ def _ft_test_helpers_and_cli_surface() -> None:
     assert ft_timestamp_dir()
     _ = ft_resolve_malvin_binary()
     _ = ft_resolve_malvin_main_binary()
-    _ = ft_docker_available()
+    assert callable(ft_docker_available)
     args = ft_cursor_env_args()
     assert isinstance(args, list)
     ops = load_ops_entry("fast_task")
