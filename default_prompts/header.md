@@ -36,7 +36,9 @@ Predicted running time: <prediction>
 ## Subagents
 
 - Avoid ordinary subagents (CLI `malvin` is allowed). Nested agents tend to overcomplicate.
-- Do not defeat linters by editing their configs; restored configs make that work wasted.
+- You must never alter a linter config (unless explicitly directed to by the user).
+  - Examples. .kissconfig, .pre-commit-config.yaml, pyproject.yaml, Cargo.toml
+- You must never alter a `VISION.md` file (unless explicitly directed to by the user).
 - Respect every `VISION.md` you encounter.
 
 ## Sandbox memory
