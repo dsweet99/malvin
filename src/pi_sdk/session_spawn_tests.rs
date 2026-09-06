@@ -96,11 +96,14 @@ fn pi_runtime_lifecycle_starts_and_joins_named_thread() {
             tool_factory: Some(crate::pi_sdk::isolated_bash::isolated_tool_factory()),
             ..pi::sdk::SessionOptions::default()
         };
+        // Thread-name checks use `/proc/self/task/*/comm` (Linux only).
+        #[cfg(target_os = "linux")]
         assert!(
             !pi_sdk_named_thread_exists(),
             "precondition: no malvin-pi-sdk thread before PiRuntime::start"
         );
         let mut runtime = super::runtime::PiRuntime::start(options).expect("runtime starts");
+        #[cfg(target_os = "linux")]
         assert!(
             pi_sdk_named_thread_exists(),
             "malvin-pi-sdk thread must exist while the runtime is live"

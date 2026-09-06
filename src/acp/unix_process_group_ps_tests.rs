@@ -198,6 +198,7 @@ fn kiss_bundled_acp_unix_process_group_ps_tests() {
     list_proc_rows_includes_current_process();
     proc_snapshots_without_self_are_rejected();
     proc_snapshots_with_self_are_accepted();
+    #[cfg(target_os = "linux")]
     list_proc_rows_matches_ps_for_self_via_proc_path();
     parse_pid_list_reads_ps_output();
     parse_proc_rows_reads_ps_output();
@@ -206,7 +207,9 @@ fn kiss_bundled_acp_unix_process_group_ps_tests() {
     is_safe_kill_target_rejects_init_and_self();
     process_group_member_pids_includes_self();
     spawned_pids_since_baseline_excludes_baseline_members();
+    #[cfg(target_os = "linux")]
     read_proc_cmdline_and_environ_reads_current_process();
+    #[cfg(target_os = "linux")]
     looks_like_malvin_agent_acp_ignores_inherited_malvin_workspace_on_sleep();
     signal_pid_is_noop_for_invalid_pid();
     pid_alive_reports_self_alive_and_reaped_child_dead();

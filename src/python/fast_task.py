@@ -1605,7 +1605,12 @@ def _ft_test_resolve_malvin_main_binary() -> None:
 
 
 def _ft_test_resolve_malvin_binary_prefers_current_repo_build() -> None:
-    """A newer checkout build wins over a stale installed executable."""
+    """A newer checkout build wins over a stale installed executable.
+
+    The host-binary stub returns ``installed.resolve()`` to mirror production
+    ``_ft_resolve_host_binary``. Comparing an unresolved tempfile path to
+    ``.resolve()`` fails on macOS (``/var`` vs ``/private/var``).
+    """
     with tempfile.TemporaryDirectory(prefix="ft-malvin-bin-") as tmp:
         root = Path(tmp)
         debug = root / "target" / "debug" / "malvin"
@@ -1620,7 +1625,7 @@ def _ft_test_resolve_malvin_binary_prefers_current_repo_build() -> None:
         original_root = globals()["REPO_ROOT"]
         original_resolver = globals()["_ft_resolve_host_binary"]
         globals()["REPO_ROOT"] = root
-        globals()["_ft_resolve_host_binary"] = lambda _name: installed
+        globals()["_ft_resolve_host_binary"] = lambda _name: installed.resolve()
         try:
             assert ft_resolve_malvin_binary() == debug.resolve()
             os.utime(installed, (3, 3))
