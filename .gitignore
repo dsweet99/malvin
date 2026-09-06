@@ -10,7 +10,7 @@ src/pi_sdk/isolated_bash_tests_recovered.txt
 .malvin/fast_task_results/
 .requested_plan.md
 opt_prog.md
-plan.md
+./plan.md
 report-disc.md
 report.md
 summary-ft.md
