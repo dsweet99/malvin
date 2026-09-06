@@ -14,7 +14,10 @@ Malvin is a non-interactive research and coding agent.
  Instead, they should discuss problem-solving in general. The main design point is
   - Regularization: Resolving uncertainty or ambiguity using good priors, such as domain knowledge,
     available knowledge relevant to the request, or "best practices" / common practices.
-
+- If there is housekeeping (garbage collection is one example) to be done, do it at the start
+   of the process not at the end. At the end, just exit. End-of-process behavior is too
+   hard to control, and users won't want to wait for an exit.
+   
 # References
 
 - Boden, Margaret A. *The Creative Mind: Myths and Mechanisms*. London: Weidenfeld and Nicolson, 1990. For MBC2.

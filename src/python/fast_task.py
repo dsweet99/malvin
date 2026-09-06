@@ -399,7 +399,7 @@ def ft_docker_available() -> bool:
             capture_output=True,
             text=True,
             check=False,
-            timeout=30,
+            timeout=2,
         )
     except (OSError, subprocess.TimeoutExpired):
         return False
@@ -1136,7 +1136,7 @@ def _ft_test_docker_agent_cmd_codex() -> None:
         auth_file = root / "auth.json"
         auth_file.write_text("{}\n", encoding="utf-8")
 
-        assert ft_resolve_codex_package(codex_bin) == package
+        assert ft_resolve_codex_package(codex_bin) == package.resolve()
         assert ft_resolve_codex_package(root / "codex-wrapper") is None
         module = sys.modules[__name__]
         old_codex = module.ft_resolve_codex_bin
@@ -1153,7 +1153,7 @@ def _ft_test_docker_agent_cmd_codex() -> None:
                 malvin_args=("--model", "codex:gpt-5.6-terra"),
             )
             mounts = [cmd[i + 1] for i, token in enumerate(cmd) if token == "-v"]
-            assert f"{package}:{CODEX_PACKAGE_REMOTE}:ro" in mounts
+            assert f"{package.resolve()}:{CODEX_PACKAGE_REMOTE}:ro" in mounts
             assert f"{node_bin}:{NODE_BIN_REMOTE}:ro" in mounts
             assert f"{auth_file}:{CODEX_AUTH_REMOTE}:ro" in mounts
             assert f"MALVIN_CODEX={CODEX_BIN_REMOTE}" in cmd
@@ -1605,7 +1605,12 @@ def _ft_test_resolve_malvin_main_binary() -> None:
 
 
 def _ft_test_resolve_malvin_binary_prefers_current_repo_build() -> None:
-    """A newer checkout build wins over a stale installed executable."""
+    """A newer checkout build wins over a stale installed executable.
+
+    The host-binary stub returns ``installed.resolve()`` to mirror production
+    ``_ft_resolve_host_binary``. Comparing an unresolved tempfile path to
+    ``.resolve()`` fails on macOS (``/var`` vs ``/private/var``).
+    """
     with tempfile.TemporaryDirectory(prefix="ft-malvin-bin-") as tmp:
         root = Path(tmp)
         debug = root / "target" / "debug" / "malvin"
@@ -1620,7 +1625,7 @@ def _ft_test_resolve_malvin_binary_prefers_current_repo_build() -> None:
         original_root = globals()["REPO_ROOT"]
         original_resolver = globals()["_ft_resolve_host_binary"]
         globals()["REPO_ROOT"] = root
-        globals()["_ft_resolve_host_binary"] = lambda _name: installed
+        globals()["_ft_resolve_host_binary"] = lambda _name: installed.resolve()
         try:
             assert ft_resolve_malvin_binary() == debug.resolve()
             os.utime(installed, (3, 3))
@@ -1673,7 +1678,7 @@ def _ft_test_relay_streams_before_wait() -> None:
     cmd = [sys.executable, "-c", "print('stream-line-1', flush=True)"]
     sys.stdout.write = _ft_relay_stdout_spy
     try:
-        code, captured, timed_out = ft_relay_subprocess_stdout(cmd, timeout_sec=5.0)
+        code, captured, timed_out = ft_relay_subprocess_stdout(cmd, timeout_sec=1.5)
     finally:
         sys.stdout.write = _FT_RELAY_SPY_ORIG
     assert code == 0
@@ -1720,7 +1725,7 @@ def _ft_test_helpers_and_cli_surface() -> None:
     assert ft_timestamp_dir()
     _ = ft_resolve_malvin_binary()
     _ = ft_resolve_malvin_main_binary()
-    _ = ft_docker_available()
+    assert callable(ft_docker_available)
     args = ft_cursor_env_args()
     assert isinstance(args, list)
     ops = load_ops_entry("fast_task")

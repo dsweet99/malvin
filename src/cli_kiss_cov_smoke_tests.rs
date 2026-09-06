@@ -39,8 +39,9 @@ fn smoke_cov_cli_cli_units_1b() {
     let _ = crate::do_flow::do_flow_prompt::combine_do_acp_prompt_header_and_user;
     let _ = crate::do_flow::do_flow_prompt::combine_do_raw_header_and_user;
     let _ = crate::do_flow::do_flow_prompt::build_do_coder_run_with_store;
-    let _ = crate::cli::session_header::bind_malvin_header;
+    let _ = crate::cli::session_header::render_malvin_header_body;
     let _ = crate::cli::session_header::bind_do_header;
+    let _ = crate::cli::session_header::build_write_initial_prompt;
     let shared = crate::cli::SharedOpts {
         background: false,
         model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("model"),
@@ -104,7 +105,10 @@ fn smoke_cov_cli_cli_write_flow_units() {
     let _ = crate::cli::write_flow::prep::write_preflight;
     let _ = stringify!(WriteRunPrep);
     let _ = stringify!(prepare_write_run);
-    let _ = stringify!(prepare_write_prompts);
+    let _ = stringify!(bind_write_initial_prompt);
+    let _ = stringify!(build_write_workflow_initial_prompt);
+    let _ = stringify!(AggregatedInitialPromptBuilder);
+    let _ = crate::prompt_stratification::AggregatedInitialPromptBuilder::new;
     let _ = stringify!(write_workspace_dir_display);
     let _ = stringify!(new_write_client);
     let _ = stringify!(create_write_artifacts);

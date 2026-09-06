@@ -17,7 +17,7 @@ pub struct WriteArgs {
     /// Workspace path for the LaTeX output (PDF uses the same stem with `.pdf`)
     #[arg(long, default_value = "write.tex")]
     pub out_path: String,
-    /// Outer loop budget (CLI compatibility; write uses a fixed two-prompt session)
+    /// Outer loop budget (CLI compatibility; write uses aggregated initial + `write_b`)
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE)]
     pub max_loops: usize,
     /// Hypothesis budget

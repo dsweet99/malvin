@@ -1,5 +1,44 @@
 use std::collections::HashMap;
 
+/// One host send that joins the workflow's initial prompt pieces.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AggregatedInitialPrompt {
+    pub body: String,
+    pub stdout_label: String,
+    pub log_who: &'static str,
+}
+
+/// Collect nonempty labeled pieces, then join them for a single host prompt.
+#[derive(Debug, Default)]
+pub struct AggregatedInitialPromptBuilder {
+    strata: Vec<(PromptStratum, String)>,
+    labels: Vec<&'static str>,
+}
+
+impl AggregatedInitialPromptBuilder {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn push_nonempty(&mut self, label: &'static str, body: String) {
+        if body.is_empty() {
+            return;
+        }
+        self.strata.push((PromptStratum::WorkflowHeader, body));
+        self.labels.push(label);
+    }
+
+    #[must_use]
+    pub fn finish(self, log_who: &'static str) -> AggregatedInitialPrompt {
+        AggregatedInitialPrompt {
+            body: join_labeled_strata(self.strata),
+            stdout_label: self.labels.join("+"),
+            log_who,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PromptStratum {
     EmbeddedTemplate,

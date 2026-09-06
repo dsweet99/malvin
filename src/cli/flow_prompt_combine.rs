@@ -3,6 +3,7 @@ use crate::prompt_stratification::{PromptStratum, WorkflowRenderContext, join_la
 use crate::prompts::{PromptError, PromptStore, render_header};
 use crate::workflow_context::PromptModelOpts;
 
+
 pub(crate) struct DualHeaderPromptInput<'a> {
     pub store: &'a PromptStore,
     pub artifacts: &'a RunArtifacts,

@@ -1,6 +1,6 @@
 # malvin (default route)
 
-Outer agent sessions (`--max-loops`): `start_coder_session` sends `header.md` once for each freshly created coder agent context, then the session receives `kpop_common.md`, then optionally `mbc2.md` when `--creative` samples on for that iteration, then `router_a.md`. When the outer loop continues with the coder session kept open, or when a Cursor bridge restart resumes the same `agent_id`, later iterations skip `header.md` and resume at `kpop_common.md`. A lone-line `__MALVIN_DONE__` in the `router_a` reply can stop the loop (optionally after `--gates` checks). Otherwise the same session receives `router_b.md` (or `router_b_creative.md` when that iteration sampled creative), and another outer iteration may start when budget remains. When exiting, `router_summarize.md` runs once on the final open session.
+Outer agent sessions (`--max-loops`): for each freshly created coder agent, malvin aggregates the initial prompts required by the active options—`header.md`, `kpop_common.md`, optionally `mbc2.md` when `--creative` samples on, and `router_a.md`—and sends them as **one** host prompt via `start_coder_session`. When the outer loop continues with the coder session kept open, or when a Cursor bridge restart resumes the same `agent_id`, later iterations skip `header.md` and send the remaining initial pieces (`kpop_common` + optional `mbc2` + `router_a`) as one aggregated follow-up turn. A lone-line `__MALVIN_DONE__` in that initial turn's reply can stop the loop (optionally after `--gates` checks). Otherwise the same session receives `router_b.md` (or `router_b_creative.md` when that iteration sampled creative), and another outer iteration may start when budget remains. When exiting, `router_summarize.md` runs once on the final open session.
 
 ## Summary
 
@@ -43,27 +43,24 @@ See `malvin --doc`. Notable for the default route:
 | `--max-loops` | Outer agent-session budget (default 1). Tenacious expands to 9999 unless this flag is set on the command line. |
 | `--max-hypotheses` | Hypothesis budget (default 5). When omitted, `[default_workflow].max_hypotheses` is used. Explicit CLI wins over config. |
 | `-g` / `--gates` | When `router_a` emits `__MALVIN_DONE__`, run workspace `.malvin/gates`. Pass stops success; fail continues (new outer session). Exhausted budget with failing gates fails the run after exit summarize. Also injects check text into `router_a.md` via `{{ code_extra }}`. |
-| `--creative[=PROB]` | Per outer iteration, with probability `PROB` (default `1.0` when the flag is set): send `mbc2.md` after `kpop_common.md`, and use `router_b_creative.md` for the optional work turn |
+| `--creative[=PROB]` | Per outer iteration, with probability `PROB` (default `1.0` when the flag is set): include `mbc2.md` in the aggregated initial prompt (after `kpop_common`), and use `router_b_creative.md` for the optional work turn |
 | `--no-tenacious` | Keep normal `--max-loops` / `--max-acp-retries` (default tenacious expands both) |
 | `--quiet` / `-q` | Stdout shows only `__MALVIN_DM_*__` bodies (not `-b`). Plain `--do` is already DM-body-only without `--verbose` |
 | `--verbose` | Full prompt bodies in `prompts.log`; with `--do`, also same live agent stdout log classes as the default workflow |
 
 ## Prompt workflow
 
-Each outer iteration opens or reuses one coder session via `start_coder_session`, which always sends `header.md` when the agent context is new (including after an early overlapping spawn). Reused sessions and Cursor resumes of the same `agent_id` do not get a second copy.
+Each outer iteration ensures one coder session. On a **fresh** agent, malvin binds and sends one aggregated initial prompt (composition respects `no_kpop`, `--gates`, and the creative sample). Reused sessions and Cursor resumes of the same `agent_id` omit `header.md` from that aggregate. ACP retries of the spawn delivery create a fresh agent so the aggregated header is not re-delivered into the prior conversation.
 
 | Turn | Piece | Role |
 |------|-------|------|
-| 1 (fresh agent only) | `header.md` | Standard Malvin context, including the `__MALVIN_DM_START__` / `__MALVIN_DM_END__` fence. Sent by `start_coder_session`, not by a later router turn. ACP retries of this turn create a fresh agent so `header.md` is not re-delivered into the prior conversation. |
-| 2 | `kpop_common.md` | Karl Popper hypothesis-and-falsification method |
-| 3 (optional) | `mbc2.md` | When `--creative` samples on for this iteration: MBC2 boundary exploration on the user request |
-| 4 | `router_a.md` | Ask whether requirements are unsatisfied; optional `{{ code_extra }}` when `--gates` |
-| 5 (optional) | `router_b.md` or `router_b_creative.md` | Run only when `router_a` did **not** emit `__MALVIN_DONE__` alone on a line; creative sample selects `router_b_creative.md` |
+| 1 (aggregated) | `header.md` (fresh only) + `kpop_common.md` + optional `mbc2.md` + `router_a.md` | One host send. Header: standard Malvin context including the `__MALVIN_DM_*__` fence. KPop: hypothesis method. MBC2: when `--creative` samples on. `router_a`: ask whether requirements are unsatisfied; optional `{{ code_extra }}` when `--gates`. |
+| 2 (optional) | `router_b.md` or `router_b_creative.md` | Run only when the aggregated initial turn did **not** emit `__MALVIN_DONE__` alone on a line; creative sample selects `router_b_creative.md` |
 | Exit only | `router_summarize.md` | **Once per run**, when exiting the outer loop: pass to the same already-open final coder session before teardown |
 
 ### Stop / continue (without `--gates`)
 
-After `router_a`, if any line trims to exactly `__MALVIN_DONE__`, skip `router_b` and stop success. Otherwise send `router_b` and, if outer budget remains, tear down **without** summarize and start another session. Exhausting the budget without `--gates` is success (with the single exit summarize on that final session).
+After the aggregated initial turn, if any line trims to exactly `__MALVIN_DONE__`, skip `router_b` and stop success. Otherwise send `router_b` and, if outer budget remains, tear down **without** summarize and start another session. Exhausting the budget without `--gates` is success (with the single exit summarize on that final session).
 
 ### Stop / continue (with `--gates`)
 

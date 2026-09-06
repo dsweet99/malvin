@@ -63,19 +63,6 @@ pub(crate) async fn run_router_acp_open_iteration(
     let work_dir = input.artifacts.work_dir.as_path();
     let log_path = router_iteration_log_path(input.artifacts, input.agent_loop);
     let timing = agent_backend_attach_run_timing_for_session(input.client);
-    let _fresh_context = match begin_coder_session_if_needed(input.client, work_dir).await {
-        Ok(fresh_context) => fresh_context,
-        Err(e) => {
-            agent_backend_set_run_timing(input.client, None);
-            return RouterAcpIterationOutcome {
-                acp_result: Err(e),
-                iteration_backups: snapshot_iteration_backups(work_dir),
-                done: false,
-                session_alive: false,
-                timing: None,
-            };
-        }
-    };
     agent_backend_set_implement_display_name(input.client, "router");
     let session_end = input.session_end;
     let run_dir = input.artifacts.run_dir.clone();

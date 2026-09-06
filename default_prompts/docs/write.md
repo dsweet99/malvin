@@ -1,6 +1,6 @@
 # malvin write
 
-Produce a short, reader-friendly **LaTeX explanation** by starting one agent session and sending two prompts in order: research notes from `write_a.md`, then the paper from `write_b.md`.
+Produce a short, reader-friendly **LaTeX explanation** by starting one agent session: an aggregated initial host prompt (`header.md` + `write_a.md`), then `write_b.md` for the paper.
 
 ## Summary
 
@@ -8,8 +8,8 @@ Produce a short, reader-friendly **LaTeX explanation** by starting one agent ses
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
 | Output | `write.tex` and `write.pdf` (or `--out-path`); paths are named in the `write_b` prompt |
-| Session | One agent: `write_a` (research → `notes.tex` in the run log dir) → wait → `write_b` (LaTeX + PDF from those notes) |
-| Exit policy | Both prompts complete successfully |
+| Session | One agent: aggregated `header.md` + `write_a.md` (research → `notes.tex` in the run log dir) → wait → `write_b.md` (LaTeX + PDF from those notes) |
+| Exit policy | Both host prompts complete successfully |
 | Requires | No `.malvin/gates` preflight (document workflow) |
 
 ## Intention
@@ -32,6 +32,15 @@ Required to run. Exactly **one shell argument**. Quote for internal spaces. Topi
 
 When `REQUEST` names an existing `.md` file, the work directory is that file's parent; otherwise the work directory is `.` (cwd). With the default `--out-path`, outputs land in that work directory. A custom `--out-path` resolves against the current working directory instead.
 
+## Prompt workflow
+
+| Turn | Piece | Role |
+|------|-------|------|
+| 1 (aggregated, at spawn) | `header.md` + `write_a.md` | One host send via `start_coder_session`. Header: standard Malvin context (`--model`, `--git`). `write_a`: research notes → `notes.tex`. |
+| 2 | `write_b.md` | Paper + PDF using `--out-path` (and derived `.pdf`) |
+
+Shared agent flags such as `--creative`, `--gates`, and `--no-kpop` are accepted on `write` for CLI uniformity with other agent commands, but they do **not** change write's prompt pieces (those options apply to the default router). `--max-hypotheses` is kept for config/CLI compatibility and is not injected into write prompts.
+
 ## Options
 
 ### `--out-path <PATH>` (default: `write.tex`)
@@ -40,7 +49,7 @@ LaTeX output path. malvin derives the PDF path by replacing the `.tex` extension
 
 ### `--max-loops <N>` (default: 3)
 
-Kept for CLI compatibility with other gate-loop wrappers. The write session is a fixed two-prompt sequence and does not use this budget.
+Kept for CLI compatibility with other gate-loop wrappers. The write session is a fixed two-prompt sequence (aggregated initial + `write_b`) and does not use this budget.
 
 ### `--tenacious` (default: on)
 
@@ -59,7 +68,7 @@ See `malvin --doc`. `--quiet` / `-q` prints only `__MALVIN_DM_START__`/`END` bod
 All of the following must hold:
 
 1. Preflight passed (default outputs may have been auto-allocated; non-default paths must not have pre-existed).
-2. The agent finished `write_a` and then `write_b` without error.
+2. The agent finished the aggregated initial turn (`header` + `write_a`) and then `write_b` without error.
 
 ## Related commands
 

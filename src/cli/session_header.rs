@@ -4,7 +4,7 @@ use crate::agent_backend::AgentBackend;
 use crate::artifacts::RunArtifacts;
 use crate::orchestrator::workflow_context_paths_only;
 use crate::prompt_stratification::{PromptStratum, join_labeled_strata};
-use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptError, PromptStore, render_header};
+use crate::prompts::{DO_HEADER_MD, PromptError, PromptStore, render_header};
 
 pub struct BindMalvinHeader<'a> {
     pub client: &'a mut AgentBackend,
@@ -15,17 +15,16 @@ pub struct BindMalvinHeader<'a> {
     pub log_path: PathBuf,
 }
 
-/// Bind rendered `header.md` so [`AgentBackend::start_coder_session`] delivers it
-/// to a freshly created agent (router / write).
-pub fn bind_malvin_header(input: BindMalvinHeader<'_>) -> Result<(), String> {
-    let ctx = workflow_context_paths_only(input.artifacts, input.model, input.git);
-    let prompt = render_header(input.store, ctx.as_map()).map_err(|e| e.0)?;
-    input.client.bind_session_header(
-        prompt.trim().to_string(),
-        input.log_path,
-        HEADER_MD,
-    );
-    Ok(())
+/// Render `header.md` with the standard Malvin workspace context.
+pub fn render_malvin_header_body(
+    store: &PromptStore,
+    artifacts: &RunArtifacts,
+    model: &str,
+    git: bool,
+) -> Result<String, String> {
+    let ctx = workflow_context_paths_only(artifacts, model, git);
+    let prompt = render_header(store, ctx.as_map()).map_err(|e| e.0)?;
+    Ok(prompt.trim().to_string())
 }
 
 /// Bind spawn header for `--do`: `do_header.md` (mode) with `header.md` context,
@@ -47,6 +46,30 @@ pub fn bind_do_header(input: BindMalvinHeader<'_>) -> Result<(), String> {
     Ok(())
 }
 
+pub struct WriteInitialHeaderInput<'a> {
+    pub store: &'a PromptStore,
+    pub artifacts: &'a RunArtifacts,
+    pub model: &'a str,
+    pub git: bool,
+    pub write_a_body: String,
+}
+
+/// Aggregate `header.md` with a workflow-specific first body (for example `write_a.md`).
+pub fn build_write_initial_prompt(
+    input: WriteInitialHeaderInput<'_>,
+) -> Result<crate::prompt_stratification::AggregatedInitialPrompt, String> {
+    use crate::prompt_stratification::AggregatedInitialPromptBuilder;
+    use crate::prompts::{WRITE_A_MD, header_prompt_file};
+
+    let mut builder = AggregatedInitialPromptBuilder::new();
+    builder.push_nonempty(
+        header_prompt_file(),
+        render_malvin_header_body(input.store, input.artifacts, input.model, input.git)?,
+    );
+    builder.push_nonempty(WRITE_A_MD, input.write_a_body);
+    Ok(builder.finish("write_initial"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -55,15 +78,18 @@ mod tests {
 
     #[test]
     fn kiss_cov_bind_malvin_header() {
-        let _ = super::bind_malvin_header;
         let _ = super::bind_do_header;
+        let _ = super::render_malvin_header_body;
+        let _ = super::build_write_initial_prompt;
         let _: Option<super::BindMalvinHeader<'_>> = None;
+        let _: Option<super::WriteInitialHeaderInput<'_>> = None;
     }
 
     #[test]
     fn kiss_cov_bind_session_headers() {
-        let _ = super::bind_malvin_header;
         let _ = super::bind_do_header;
+        let _ = super::render_malvin_header_body;
+        let _ = super::build_write_initial_prompt;
     }
 
     #[test]
