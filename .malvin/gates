@@ -1,5 +1,6 @@
 ruff check
 kiss check
 cargo clippy --jobs 3 --all-targets --all-features -- -D warnings -W clippy::cargo
-kiss test
+make test
+
 
