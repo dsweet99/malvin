@@ -1136,7 +1136,7 @@ def _ft_test_docker_agent_cmd_codex() -> None:
         auth_file = root / "auth.json"
         auth_file.write_text("{}\n", encoding="utf-8")
 
-        assert ft_resolve_codex_package(codex_bin) == package
+        assert ft_resolve_codex_package(codex_bin) == package.resolve()
         assert ft_resolve_codex_package(root / "codex-wrapper") is None
         module = sys.modules[__name__]
         old_codex = module.ft_resolve_codex_bin
@@ -1153,7 +1153,7 @@ def _ft_test_docker_agent_cmd_codex() -> None:
                 malvin_args=("--model", "codex:gpt-5.6-terra"),
             )
             mounts = [cmd[i + 1] for i, token in enumerate(cmd) if token == "-v"]
-            assert f"{package}:{CODEX_PACKAGE_REMOTE}:ro" in mounts
+            assert f"{package.resolve()}:{CODEX_PACKAGE_REMOTE}:ro" in mounts
             assert f"{node_bin}:{NODE_BIN_REMOTE}:ro" in mounts
             assert f"{auth_file}:{CODEX_AUTH_REMOTE}:ro" in mounts
             assert f"MALVIN_CODEX={CODEX_BIN_REMOTE}" in cmd
