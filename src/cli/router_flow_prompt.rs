@@ -21,10 +21,13 @@ pub(crate) use router_flow_prompt_summarize::{
 #[path = "router_flow_prompt_turns.rs"]
 mod router_flow_prompt_turns;
 pub(crate) use router_flow_prompt_turns::{
-    RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput, RouterKpopCommonPromptInput,
+    RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput,
     build_router_a_prompt, build_router_b_prompt, build_router_header_prompt,
-    build_router_kpop_common_prompt, build_router_mbc2_prompt, kpop_common_prompt_label,
-    router_a_prompt_label, router_b_prompt_label,
+    build_router_mbc2_prompt, router_a_prompt_label, router_b_prompt_label,
+};
+#[cfg(test)]
+pub(crate) use router_flow_prompt_turns::{
+    RouterKpopCommonPromptInput, build_router_kpop_common_prompt,
 };
 
 #[path = "router_flow_prompt_initial.rs"]
@@ -163,7 +166,6 @@ mod kiss_cov_gate_refs {
         let _ = build_router_initial_prompt;
         let _: Option<RouterInitialPrompt> = None;
         let _ = router_b_prompt_label;
-        let _ = kpop_common_prompt_label;
         let _ = router_a_prompt_label;
         let _ = build_router_summarize_prompt;
         let _ = render_router_code_extra;

@@ -46,6 +46,8 @@ fn default_embedded_placeholder_context() -> HashMap<String, String> {
         ("quality_gates".to_string(), String::new()),
         ("advice_path".to_string(), "./.malvin/advice.md".to_string()),
         ("git_extra".to_string(), String::new()),
+        ("kpop_insert".to_string(), String::new()),
+        ("agents_insert".to_string(), String::new()),
     ]);
     insert_header_runtime_placeholders(&mut ctx);
     ctx

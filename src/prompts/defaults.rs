@@ -123,6 +123,18 @@ mod advice_path_embed_tests {
             header.contains("User:"),
             "header must render current_state from workflow context"
         );
+        assert!(
+            !header.contains("Workspace `AGENTS.md`"),
+            "missing AGENTS.md must leave agents_insert empty"
+        );
+        std::fs::write(tmp.path().join("AGENTS.md"), "Prefer ripwire for maps.\n")
+            .expect("agents");
+        let ctx_with = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL, false);
+        let header_with = render_header(&store, ctx_with.as_map()).expect("header with agents");
+        assert!(
+            header_with.contains("Prefer ripwire for maps."),
+            "header must embed workspace AGENTS.md via agents_insert"
+        );
     }
 }
 
@@ -189,9 +201,15 @@ mod router_header_embed_tests {
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
             git: false,
+            max_hypotheses: 5,
+            no_kpop: false,
         })
         .expect("header turn");
         assert!(!header_turn.contains("{{"));
+        assert!(
+            header_turn.contains("KPop") || header_turn.contains("Karl Popper"),
+            "router header must embed kpop_insert when no_kpop is false"
+        );
         let kpop_turn = build_router_kpop_common_prompt(RouterKpopCommonPromptInput {
             store: &store,
             artifacts: &artifacts,

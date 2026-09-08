@@ -59,7 +59,7 @@ pub(crate) async fn run_router_turns(
     })
 }
 
-/// Bind/send the aggregated initial prompts (header + kpop + optional mbc2 + `router_a`).
+/// Bind/send the aggregated initial prompts (header with kpop insert + optional mbc2 + `router_a`).
 async fn deliver_router_initial_turn(
     input: &mut RouterAcpIterationInput<'_>,
     log_path: &Path,

@@ -315,10 +315,30 @@ fn build_router_prompts_use_canonical_templates() {
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
             git: false,
+            max_hypotheses: 5,
+            no_kpop: false,
         },
     )
     .expect("header");
-    assert!(!header.to_ascii_lowercase().contains("falsifiable"));
+    assert!(
+        header.to_ascii_lowercase().contains("falsifiable"),
+        "header embeds kpop_common via kpop_insert"
+    );
+    let header_no = build_router_header_prompt(
+        crate::router_flow::router_flow_prompt::RouterHeaderPromptInput {
+            store: &store,
+            artifacts: &artifacts,
+            model: DEFAULT_CLI_MODEL,
+            git: false,
+            max_hypotheses: 5,
+            no_kpop: true,
+        },
+    )
+    .expect("header no_kpop");
+    assert!(
+        !header_no.to_ascii_lowercase().contains("falsifiable"),
+        "no_kpop header must omit kpop method language"
+    );
     let a = build_router_a_prompt(RouterAPromptInput {
         store: &store,
         artifacts: &artifacts,

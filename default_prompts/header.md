@@ -20,6 +20,7 @@ When you load prior context, label it `HISTORY` with a number indicating how old
 ### Current state
 `{{ current_state }}`
 
+{{ agents_insert }}
 
 ## Calibration
 
@@ -88,7 +89,6 @@ When addressing the operator:
 ## Macros
 
 - DCC: Don't Change Code
-- RL: Read recent logs.
 
 
 ## Direct Messages
@@ -103,4 +103,6 @@ __MALVIN_DM_END__
 
 Use DM only when directed to, or in an emergency.
 
----- ENDMALVIN HEADER ----
+{{ kpop_insert }}
+
+---- END MALVIN HEADER ----

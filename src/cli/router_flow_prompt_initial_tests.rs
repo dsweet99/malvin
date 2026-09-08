@@ -6,7 +6,11 @@ use crate::test_utils::with_isolated_home;
 
 fn write_minimal_router_prompts(prompt_root: &std::path::Path) {
     std::fs::create_dir_all(prompt_root).expect("mkdir");
-    std::fs::write(prompt_root.join(HEADER_MD), "HEADER_BODY\n").expect("header");
+    std::fs::write(
+        prompt_root.join(HEADER_MD),
+        "HEADER_BODY\n{{ kpop_insert }}\n",
+    )
+    .expect("header");
     std::fs::write(prompt_root.join(KPOP_COMMON_MD), "KPOP_BODY {{ max_hypotheses }}\n")
         .expect("kpop");
     std::fs::write(prompt_root.join("mbc2.md"), "MBC2 {{ user_prompt }}\n").expect("mbc2");
@@ -61,9 +65,9 @@ fn initial_prompt_joins_header_kpop_and_router_a_in_order() {
         assert!(header_at < kpop_at && kpop_at < a_at);
         assert_eq!(
             out.stdout_label.split('+').collect::<Vec<_>>(),
-            vec![HEADER_MD, KPOP_COMMON_MD, ROUTER_A_MD]
+            vec![HEADER_MD, ROUTER_A_MD]
         );
-        assert_eq!(out.stdout_label, "header.md+kpop_common.md+router_a.md");
+        assert_eq!(out.stdout_label, "header.md+router_a.md");
         assert_eq!(out.log_who, "router_initial");
         assert!(!out.body.contains("MBC2"));
     });
@@ -127,9 +131,13 @@ fn initial_prompt_omits_header_when_not_included() {
         })
         .expect("initial");
         assert!(!out.body.contains("HEADER_BODY"));
+        assert!(
+            !out.body.contains("KPOP_BODY"),
+            "kpop lives in header via kpop_insert; skipped with header"
+        );
         assert_eq!(
             out.stdout_label.split('+').collect::<Vec<_>>(),
-            vec![KPOP_COMMON_MD, ROUTER_A_MD]
+            vec![ROUTER_A_MD]
         );
     });
 }
@@ -186,7 +194,7 @@ fn initial_prompt_git_and_max_hypotheses_affect_composition() {
         write_minimal_router_prompts(&prompt_root);
         std::fs::write(
             prompt_root.join(HEADER_MD),
-            "HEADER git={{ git_extra }}\n",
+            "HEADER git={{ git_extra }}\n{{ kpop_insert }}\n",
         )
         .expect("header");
         let store = PromptStore::with_root(prompt_root);

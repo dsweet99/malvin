@@ -12,12 +12,23 @@ pub(crate) struct RouterHeaderPromptInput<'a> {
     pub artifacts: &'a RunArtifacts,
     pub model: &'a str,
     pub git: bool,
+    pub max_hypotheses: usize,
+    pub no_kpop: bool,
 }
 
 pub(crate) fn build_router_header_prompt(
     input: RouterHeaderPromptInput<'_>,
 ) -> Result<String, String> {
-    let ctx = workflow_context_paths_only(input.artifacts, input.model, input.git);
+    let mut ctx = workflow_context_paths_only(input.artifacts, input.model, input.git);
+    let kpop = build_router_kpop_common_prompt(RouterKpopCommonPromptInput {
+        store: input.store,
+        artifacts: input.artifacts,
+        model: input.model,
+        git: input.git,
+        max_hypotheses: input.max_hypotheses,
+        no_kpop: input.no_kpop,
+    })?;
+    ctx.insert("kpop_insert", kpop);
     let body = input
         .store
         .render_prompt_only(header_prompt_file(), ctx.as_map())
@@ -54,7 +65,7 @@ pub(crate) fn build_router_kpop_common_prompt(
         .map(|body| body.trim().to_string())
 }
 
-/// Render `mbc2.md` for a creative router iteration (after `kpop_common`).
+/// Render `mbc2.md` for a creative router iteration (after header / kpop insert).
 pub(crate) fn build_router_mbc2_prompt(
     store: &PromptStore,
     artifacts: &RunArtifacts,
@@ -129,11 +140,6 @@ pub(crate) fn build_router_b_prompt(input: RouterBPromptInput<'_>) -> Result<Str
 #[must_use]
 pub(crate) const fn router_b_prompt_label(flags: RouterBPromptFlags) -> &'static str {
     router_b_prompt_file(flags)
-}
-
-#[must_use]
-pub(crate) const fn kpop_common_prompt_label(no_kpop: bool) -> &'static str {
-    kpop_common_prompt_file(no_kpop)
 }
 
 #[must_use]

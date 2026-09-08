@@ -124,6 +124,23 @@ pub const fn format_git_extra(git: bool) -> &'static str {
     if git { GIT_EXTRA_ENABLED } else { "" }
 }
 
+/// Workspace root file Cursor-style agents may auto-load; malvin injects it into `header.md`.
+pub const AGENTS_MD_FILENAME: &str = "AGENTS.md";
+
+/// Read `AGENTS.md` from `work_dir` and format a header insert, or empty if missing/blank.
+#[must_use]
+pub fn format_agents_md_insert(work_dir: &Path) -> String {
+    let path = work_dir.join(AGENTS_MD_FILENAME);
+    let Ok(raw) = std::fs::read_to_string(&path) else {
+        return String::new();
+    };
+    let body = raw.trim();
+    if body.is_empty() {
+        return String::new();
+    }
+    format!("## Workspace `{AGENTS_MD_FILENAME}`\n\n{body}\n")
+}
+
 #[must_use]
 pub fn workflow_context_paths_only(
     artifacts: &RunArtifacts,
@@ -135,6 +152,11 @@ pub fn workflow_context_paths_only(
     insert_current_state(&mut context, artifacts, &artifacts.work_dir);
     context.insert("malvin_command".to_string(), format_malvin_command(model));
     context.insert("git_extra".to_string(), format_git_extra(git).to_string());
+    context.insert("kpop_insert".to_string(), String::new());
+    context.insert(
+        "agents_insert".to_string(),
+        format_agents_md_insert(&artifacts.work_dir),
+    );
     WorkflowRenderContext::new(context)
 }
 

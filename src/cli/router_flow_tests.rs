@@ -71,10 +71,58 @@ fn build_router_header_prompt_renders_without_unresolved_braces() {
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
         git: false,
+        max_hypotheses: 5,
+        no_kpop: false,
     })
     .expect("header");
     assert!(body.contains("Know thyself") || body.contains("Context Prep") || !body.is_empty());
     assert!(!body.contains("{{"));
+    assert!(
+        body.contains("KPop") || body.contains("Karl Popper"),
+        "header must include kpop_insert when no_kpop is false"
+    );
+}
+
+#[test]
+fn build_router_header_prompt_embeds_workspace_agents_md() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = flow_test_artifacts(&tmp);
+    std::fs::write(tmp.path().join("AGENTS.md"), "Prefer ripwire for maps.\n").expect("agents");
+    let store = prepare_router_prompt_store().expect("store");
+    let body = build_router_header_prompt(RouterHeaderPromptInput {
+        store: &store,
+        artifacts: &artifacts,
+        model: DEFAULT_CLI_MODEL,
+        git: false,
+        max_hypotheses: 5,
+        no_kpop: true,
+    })
+    .expect("header");
+    assert!(
+        body.contains("## Workspace `AGENTS.md`") && body.contains("Prefer ripwire for maps."),
+        "router header must embed workspace AGENTS.md via agents_insert: {body}"
+    );
+}
+
+#[test]
+fn build_router_header_prompt_no_kpop_leaves_kpop_insert_empty() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = flow_test_artifacts(&tmp);
+    let store = prepare_router_prompt_store().expect("store");
+    let body = build_router_header_prompt(RouterHeaderPromptInput {
+        store: &store,
+        artifacts: &artifacts,
+        model: DEFAULT_CLI_MODEL,
+        git: false,
+        max_hypotheses: 5,
+        no_kpop: true,
+    })
+    .expect("header no_kpop");
+    assert!(!body.contains("{{"));
+    assert!(
+        !body.contains("Karl Popper") && !body.to_ascii_lowercase().contains("falsifiable"),
+        "no_kpop must resolve kpop_insert to empty: {body}"
+    );
 }
 
 #[test]

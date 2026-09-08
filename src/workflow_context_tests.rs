@@ -2,9 +2,10 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use super::{
-    GIT_EXTRA_ENABLED, format_git_extra, format_prompt_path, insert_artifact_paths,
-    insert_current_state, insert_formatted, resolve_nonexistent_path, resolve_path_against_base,
-    resolve_user_brief_path, workflow_context_paths_only,
+    AGENTS_MD_FILENAME, GIT_EXTRA_ENABLED, format_agents_md_insert, format_git_extra,
+    format_prompt_path, insert_artifact_paths, insert_current_state, insert_formatted,
+    resolve_nonexistent_path, resolve_path_against_base, resolve_user_brief_path,
+    workflow_context_paths_only,
 };
 use crate::prompt_stratification::WorkflowRenderContext;
 
@@ -131,6 +132,44 @@ fn workflow_context_paths_only_includes_current_state() {
     let ctx = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, false);
     assert!(ctx.contains_key("current_state"));
     assert!(ctx.get("current_state").expect("state").contains("User:"));
+    assert_eq!(
+        ctx.get("kpop_insert").map(String::as_str),
+        Some(""),
+        "shared header key defaults empty for non-router consumers"
+    );
+    assert_eq!(
+        ctx.get("agents_insert").map(String::as_str),
+        Some(""),
+        "missing AGENTS.md yields empty agents_insert"
+    );
+}
+
+fn format_agents_md_insert_cases() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    assert_eq!(format_agents_md_insert(tmp.path()), "");
+    std::fs::write(tmp.path().join(AGENTS_MD_FILENAME), "   \n").expect("blank");
+    assert_eq!(format_agents_md_insert(tmp.path()), "");
+    std::fs::write(tmp.path().join(AGENTS_MD_FILENAME), "Use ripwire.\n").expect("body");
+    let got = format_agents_md_insert(tmp.path());
+    assert!(
+        got.contains("## Workspace `AGENTS.md`") && got.contains("Use ripwire."),
+        "expected labeled AGENTS.md body, got {got:?}"
+    );
+}
+
+fn workflow_context_paths_only_embeds_agents_md() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let plan = tmp.path().join("plan.md");
+    std::fs::write(&plan, "p").expect("write");
+    std::fs::write(tmp.path().join(AGENTS_MD_FILENAME), "Prefer narrow checks.\n").expect("agents");
+    let artifacts =
+        crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
+    let ctx = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, false);
+    let insert = ctx.get("agents_insert").expect("agents_insert");
+    assert!(
+        insert.contains("Prefer narrow checks."),
+        "workspace AGENTS.md must populate agents_insert: {insert:?}"
+    );
 }
 
 fn workflow_context_paths_only_sets_git_extra_from_flag() {
@@ -232,6 +271,8 @@ fn kiss_bundled_workflow_context_tests() {
     insert_artifact_paths_sets_logs_dir_to_home_bucket();
     insert_artifact_paths_populates_expected_keys();
     workflow_context_paths_only_includes_current_state();
+    format_agents_md_insert_cases();
+    workflow_context_paths_only_embeds_agents_md();
     workflow_context_paths_only_sets_git_extra_from_flag();
     insert_current_state_populates_key();
     insert_formatted_stores_workflow_relative_path();
