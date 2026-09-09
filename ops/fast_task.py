@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Click CLI for fast_task — implementation in ``src/python/fast_task.py``."""
 
 from __future__ import annotations

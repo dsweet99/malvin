@@ -3,8 +3,11 @@
 The agent container mounts a staged copy of ``workspace/`` at ``/app``, plus
 (when ``--agent=malvin``) the host ``malvin`` binary and read-only
 ``cursor-sdk-bridge`` (for ``cursor:`` models). When ``--model`` selects a
-``rpi:`` id, the container does **not** need a host ``pi`` binary. For ``codex:`` ids, the Codex package and Node.js executable are mounted
-and ``MALVIN_CODEX`` points at the package's JavaScript CLI (malvin does not
+``rpi:`` id, the container does **not** need a host ``pi`` binary. For
+``pi:`` ids, the npm Pi coding-agent package and Node.js executable are
+mounted and ``MALVIN_PI`` points at the package RPC entry. For ``codex:``
+ids, the Codex package and Node.js executable are mounted and
+``MALVIN_CODEX`` points at the package's JavaScript CLI (malvin does not
 bundle either external backend). ``--agent=cursor`` skips malvin and runs
 ``cursor-agent`` instead. ``grade.py``, ``goldens/``, and other grader material
 stay on the host and are never bind-mounted or baked into the agent image.
@@ -17,6 +20,7 @@ Usage::
     python ops/fast_task.py solve FT-01 --main
     python ops/fast_task.py solve FT-01 --model cursor:auto
     python ops/fast_task.py solve FT-01 --model rpi:openrouter/~x-ai/grok-latest
+    python ops/fast_task.py solve FT-01 --model pi:openrouter/x-ai/grok-4.6
     python ops/fast_task.py solve FT-01 --model codex:gpt-5.6-terra
     python ops/fast_task.py solve FT-01 --creative
     python ops/fast_task.py tasks
@@ -65,10 +69,17 @@ CURSOR_SDK_BRIDGE_JS_REMOTE = f"{CURSOR_SDK_BRIDGE_REMOTE}/dist/bridge.js"
 CODEX_BIN_REMOTE = "/opt/malvin/codex/bin/codex.js"
 CODEX_PACKAGE_REMOTE = "/opt/malvin/codex"
 CODEX_AUTH_REMOTE = "/root/.codex/auth.json"
+NPM_PI_PACKAGE_REMOTE = "/opt/malvin/pi"
 NODE_BIN_REMOTE = "/opt/malvin/node"
 TOOLCHAIN_PATH = (
     "/root/.cargo/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin"
     ":/usr/sbin:/usr/bin:/sbin:/bin"
+)
+_NPM_PI_ENTRY_RELS = (
+    "dist/bundle/rpc-entry.js",
+    "dist/rpc-entry.js",
+    "dist/bundle/cli.js",
+    "dist/cli.js",
 )
 AGENT_MALVIN = "malvin"
 AGENT_CURSOR = "cursor"
@@ -144,29 +155,82 @@ def ft_resolve_codex_auth_file() -> Path | None:
     return None
 
 
-def ft_malvin_args_request_pi(malvin_args: tuple[str, ...]) -> bool:
-    """True when ``malvin_args`` select a ``rpi:`` ``--model``."""
+def ft_resolve_npm_pi_entry() -> Path | None:
+    """Host npm Pi RPC/CLI entry (``MALVIN_PI`` or sdk-bridges install), or None."""
+    override = os.environ.get("MALVIN_PI")
+    if override:
+        path = Path(override).expanduser()
+        if path.is_file():
+            return path.resolve()
+        return None
+    for root in _npm_pi_package_candidate_roots():
+        for rel in _NPM_PI_ENTRY_RELS:
+            candidate = root / rel
+            if candidate.is_file():
+                return candidate.resolve()
+    return None
+
+
+def ft_resolve_npm_pi_package(entry: Path) -> Path | None:
+    """Return the ``pi-coding-agent`` package root containing ``entry``."""
+    cur = entry.resolve()
+    if cur.is_file():
+        cur = cur.parent
+    for _ in range(8):
+        pkg_json = cur / "package.json"
+        if pkg_json.is_file():
+            try:
+                name = json.loads(pkg_json.read_text(encoding="utf-8")).get("name", "")
+            except (OSError, json.JSONDecodeError, TypeError):
+                name = ""
+            if isinstance(name, str) and name.endswith("pi-coding-agent"):
+                return cur
+        if cur.parent == cur:
+            break
+        cur = cur.parent
+    return None
+
+
+def _npm_pi_package_candidate_roots() -> list[Path]:
+    roots: list[Path] = []
+    _push_npm_pi_scoped(roots, Path("node_modules"))
+    home = Path.home()
+    _push_npm_pi_scoped(roots, home / ".malvin_home" / "sdk-bridges" / "node_modules")
+    return roots
+
+
+def _push_npm_pi_scoped(out: list[Path], modules: Path) -> None:
+    for scope in ("@earendil-works", "@mariozechner"):
+        pkg = modules / scope / "pi-coding-agent"
+        if pkg.is_dir():
+            out.append(pkg)
+
+
+def _ft_model_prefix_requested(malvin_args: tuple[str, ...], prefix: str) -> bool:
     for i, arg in enumerate(malvin_args):
         if arg == "--model" and i + 1 < len(malvin_args):
-            if malvin_args[i + 1].startswith("rpi:"):
+            if malvin_args[i + 1].startswith(prefix):
                 return True
         elif arg.startswith("--model="):
             value = arg.split("=", 1)[1]
-            if value.startswith("rpi:"):
+            if value.startswith(prefix):
                 return True
     return False
 
+
+def ft_malvin_args_request_pi(malvin_args: tuple[str, ...]) -> bool:
+    """True when ``malvin_args`` select a ``rpi:`` ``--model``."""
+    return _ft_model_prefix_requested(malvin_args, "rpi:")
+
+
+def ft_malvin_args_request_npm_pi(malvin_args: tuple[str, ...]) -> bool:
+    """True when ``malvin_args`` select a ``pi:`` ``--model`` (npm TypeScript Pi)."""
+    return _ft_model_prefix_requested(malvin_args, "pi:")
+
+
 def ft_malvin_args_request_codex(malvin_args: tuple[str, ...]) -> bool:
     """True when ``malvin_args`` select a ``codex:`` ``--model``."""
-    for i, arg in enumerate(malvin_args):
-        if arg == "--model" and i + 1 < len(malvin_args):
-            if malvin_args[i + 1].startswith("codex:"):
-                return True
-        elif arg.startswith("--model="):
-            value = arg.split("=", 1)[1]
-            if value.startswith("codex:"):
-                return True
-    return False
+    return _ft_model_prefix_requested(malvin_args, "codex:")
 
 
 def ft_malvin_args_request_creative(malvin_args: tuple[str, ...]) -> bool:
@@ -529,45 +593,18 @@ def ft_docker_agent_cmd(
             "-e",
             f"MALVIN_CURSOR_SDK_BRIDGE={CURSOR_SDK_BRIDGE_JS_REMOTE}",
         ]
-        if ft_malvin_args_request_codex(malvin_args):
-            host_codex = ft_resolve_codex_bin()
-            host_node = ft_resolve_node_bin()
-            codex_package = (
-                ft_resolve_codex_package(host_codex)
-                if host_codex is not None
-                else None
-            )
-            if codex_package is None or host_node is None:
-                raise click.ClickException(
-                    "Codex npm package and node binary not found on PATH "
-                    "(or MALVIN_CODEX); "
-                    "required for codex: models inside the agent container "
-                    "(MALVIN_CODEX must resolve to <package>/bin/codex.js)"
-                )
-            volume_mounts = [
-                "-v",
-                f"{codex_package}:{CODEX_PACKAGE_REMOTE}:ro",
-                "-v",
-                f"{host_node}:{NODE_BIN_REMOTE}:ro",
-                *volume_mounts,
-            ]
-            codex_auth = ft_resolve_codex_auth_file()
-            if codex_auth is not None:
-                volume_mounts = [
-                    "-v",
-                    f"{codex_auth}:{CODEX_AUTH_REMOTE}:ro",
-                    *volume_mounts,
-                ]
-            bridge_env = [
-                *bridge_env,
-                "-e",
-                f"MALVIN_CODEX={CODEX_BIN_REMOTE}",
-                "-e",
-                "MALVIN_CODEX_OUTER_SANDBOX=1",
-            ]
+        volume_mounts, bridge_env = _ft_maybe_mount_codex(
+            volume_mounts, bridge_env, malvin_args
+        )
+        volume_mounts, bridge_env = _ft_maybe_mount_npm_pi(
+            volume_mounts, bridge_env, malvin_args
+        )
+    needs_node = ft_malvin_args_request_codex(malvin_args) or ft_malvin_args_request_npm_pi(
+        malvin_args
+    )
     container_path = (
         f"{Path(NODE_BIN_REMOTE).parent}:{TOOLCHAIN_PATH}"
-        if ft_malvin_args_request_codex(malvin_args)
+        if needs_node
         else TOOLCHAIN_PATH
     )
     cmd = [
@@ -599,6 +636,87 @@ def ft_docker_agent_cmd(
         cmd.extend(["malvin", *malvin_args, "plan.md"])
     ft_assert_agent_cmd_nonleak(cmd, task_parent=ws.parent)
     return cmd
+
+
+def _ft_maybe_mount_codex(
+    volume_mounts: list[str],
+    bridge_env: list[str],
+    malvin_args: tuple[str, ...],
+) -> tuple[list[str], list[str]]:
+    if not ft_malvin_args_request_codex(malvin_args):
+        return volume_mounts, bridge_env
+    host_codex = ft_resolve_codex_bin()
+    host_node = ft_resolve_node_bin()
+    codex_package = (
+        ft_resolve_codex_package(host_codex) if host_codex is not None else None
+    )
+    if codex_package is None or host_node is None:
+        raise click.ClickException(
+            "Codex npm package and node binary not found on PATH "
+            "(or MALVIN_CODEX); "
+            "required for codex: models inside the agent container "
+            "(MALVIN_CODEX must resolve to <package>/bin/codex.js)"
+        )
+    volume_mounts = [
+        "-v",
+        f"{codex_package}:{CODEX_PACKAGE_REMOTE}:ro",
+        "-v",
+        f"{host_node}:{NODE_BIN_REMOTE}:ro",
+        *volume_mounts,
+    ]
+    codex_auth = ft_resolve_codex_auth_file()
+    if codex_auth is not None:
+        volume_mounts = [
+            "-v",
+            f"{codex_auth}:{CODEX_AUTH_REMOTE}:ro",
+            *volume_mounts,
+        ]
+    bridge_env = [
+        *bridge_env,
+        "-e",
+        f"MALVIN_CODEX={CODEX_BIN_REMOTE}",
+        "-e",
+        "MALVIN_CODEX_OUTER_SANDBOX=1",
+    ]
+    return volume_mounts, bridge_env
+
+
+def _ft_maybe_mount_npm_pi(
+    volume_mounts: list[str],
+    bridge_env: list[str],
+    malvin_args: tuple[str, ...],
+) -> tuple[list[str], list[str]]:
+    if not ft_malvin_args_request_npm_pi(malvin_args):
+        return volume_mounts, bridge_env
+    host_entry = ft_resolve_npm_pi_entry()
+    host_node = ft_resolve_node_bin()
+    pi_package = (
+        ft_resolve_npm_pi_package(host_entry) if host_entry is not None else None
+    )
+    if host_entry is None or pi_package is None or host_node is None:
+        raise click.ClickException(
+            "npm Pi package (@earendil-works/pi-coding-agent) and node binary "
+            "not found (set MALVIN_PI to rpc-entry.js/cli.js, or install under "
+            "~/.malvin_home/sdk-bridges); required for pi: models inside the "
+            "agent container"
+        )
+    rel = host_entry.resolve().relative_to(pi_package.resolve()).as_posix()
+    remote_entry = f"{NPM_PI_PACKAGE_REMOTE}/{rel}"
+    volume_mounts = [
+        "-v",
+        f"{pi_package}:{NPM_PI_PACKAGE_REMOTE}:ro",
+        "-v",
+        f"{host_node}:{NODE_BIN_REMOTE}:ro",
+        *volume_mounts,
+    ]
+    bridge_env = [
+        *bridge_env,
+        "-e",
+        f"MALVIN_PI={remote_entry}",
+        "-e",
+        f"MALVIN_NODE={NODE_BIN_REMOTE}",
+    ]
+    return volume_mounts, bridge_env
 
 def ft_assert_agent_cmd_nonleak(
     cmd: list[str],
@@ -965,6 +1083,7 @@ def run_fast_task_self_tests() -> None:
     _ft_test_docker_agent_cmd_nonleak()
     _ft_test_docker_agent_cmd_cursor()
     _ft_test_docker_agent_cmd_pi()
+    _ft_test_docker_agent_cmd_npm_pi()
     _ft_test_docker_agent_cmd_codex()
     _ft_test_assert_agent_cmd_rejects_task_root()
     _ft_test_grade_on_host_starter_reward_zero()
@@ -1109,6 +1228,69 @@ def _ft_test_docker_agent_cmd_pi() -> None:
         )
         base_mounts = [base[i + 1] for i, token in enumerate(base) if token == "-v"]
         assert base_mounts
+
+def _ft_test_docker_agent_cmd_npm_pi() -> None:
+    """``pi:`` models mount the npm Pi package and Node.js executable."""
+    assert ft_malvin_args_request_npm_pi(()) is False
+    assert ft_malvin_args_request_npm_pi(("--model", "rpi:openai/gpt-4o")) is False
+    assert ft_malvin_args_request_npm_pi(("--model", "pi:openrouter/x-ai/grok-4.6")) is True
+    assert ft_malvin_args_request_npm_pi(("--model=pi:openrouter/x",)) is True
+
+    with tempfile.TemporaryDirectory(prefix="ft-npm-pi-") as tmp:
+        root = Path(tmp)
+        ws = root / "workspace"
+        ws.mkdir()
+        (ws / "plan.md").write_text("x\n", encoding="utf-8")
+        host_malvin = root / "malvin"
+        host_malvin.write_bytes(b"\x7fELF")
+        package = root / "pi-coding-agent"
+        entry = package / "dist" / "bundle" / "rpc-entry.js"
+        entry.parent.mkdir(parents=True)
+        entry.write_text("#!/usr/bin/env node\n", encoding="utf-8")
+        (package / "package.json").write_text(
+            '{"name":"@earendil-works/pi-coding-agent"}\n',
+            encoding="utf-8",
+        )
+        node_bin = root / "node"
+        node_bin.write_text("#!/bin/sh\n", encoding="utf-8")
+        node_bin.chmod(0o755)
+
+        assert ft_resolve_npm_pi_package(entry) == package.resolve()
+        module = sys.modules[__name__]
+        old_entry = module.ft_resolve_npm_pi_entry
+        old_node = module.ft_resolve_node_bin
+        try:
+            module.ft_resolve_npm_pi_entry = lambda: entry
+            module.ft_resolve_node_bin = lambda: node_bin
+            cmd = ft_docker_agent_cmd(
+                image=DEFAULT_IMAGE,
+                workspace=ws,
+                malvin_binary=host_malvin,
+                malvin_args=("--model", "pi:openrouter/x-ai/grok-4.6"),
+            )
+            mounts = [cmd[i + 1] for i, token in enumerate(cmd) if token == "-v"]
+            assert f"{package.resolve()}:{NPM_PI_PACKAGE_REMOTE}:ro" in mounts
+            assert f"{node_bin}:{NODE_BIN_REMOTE}:ro" in mounts
+            assert (
+                f"MALVIN_PI={NPM_PI_PACKAGE_REMOTE}/dist/bundle/rpc-entry.js" in cmd
+            )
+            assert f"MALVIN_NODE={NODE_BIN_REMOTE}" in cmd
+            assert f"PATH={Path(NODE_BIN_REMOTE).parent}:{TOOLCHAIN_PATH}" in cmd
+
+            module.ft_resolve_node_bin = lambda: None
+            try:
+                ft_docker_agent_cmd(
+                    image=DEFAULT_IMAGE,
+                    workspace=ws,
+                    malvin_binary=host_malvin,
+                    malvin_args=("--model", "pi:openrouter/x-ai/grok-4.6"),
+                )
+                raise AssertionError("expected missing npm Pi dependency rejection")
+            except click.ClickException as exc:
+                assert "npm Pi package" in str(exc)
+        finally:
+            module.ft_resolve_npm_pi_entry = old_entry
+            module.ft_resolve_node_bin = old_node
 
 def _ft_test_docker_agent_cmd_codex() -> None:
     """``codex:`` models mount the npm package and Node.js executable."""

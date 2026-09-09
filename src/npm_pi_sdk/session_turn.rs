@@ -46,7 +46,7 @@ async fn handle_line(
     }
     for ev in super::map_event::map_npm_pi_event(value, state) {
         if let BridgeEvent::RunDone { .. } = &ev {
-            crate::bridge_sdk::handle_stream_event(session, &ev);
+            feed_and_handle_run_done(session, &ev);
             return Some(Ok(()));
         }
         crate::bridge_sdk::handle_stream_event(session, &ev);
@@ -99,12 +99,30 @@ fn finish_settled(session: &NpmPiSession, state: &mut TurnState) {
     if let BridgeEvent::RunDone { usage: Some(u), .. } = &ev {
         crate::bridge_sdk::record_sdk_usage(session.timing.as_ref(), u);
     }
-    crate::bridge_sdk::handle_stream_event(session, &ev);
+    feed_and_handle_run_done(session, &ev);
+}
+
+/// Match `bridge_sdk::finish_run_done`: extract `--do` DM bodies before logging `RunDone`.
+fn feed_and_handle_run_done(session: &NpmPiSession, ev: &BridgeEvent) {
+    feed_run_done_dm(ev);
+    crate::bridge_sdk::handle_stream_event(session, ev);
+}
+
+fn feed_run_done_dm(ev: &BridgeEvent) {
+    if let BridgeEvent::RunDone {
+        result: Some(text), ..
+    } = ev
+    {
+        crate::bridge_sdk::feed_do_dm_run_result(text);
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::output::{
+        DM_END, DM_START, enable_stdout_capture, set_do_dm_stdout_mode, take_captured_stdout,
+    };
 
     #[test]
     fn prompt_reject_maps_error() {
@@ -119,5 +137,22 @@ mod tests {
             .expect("handled")
             .expect_err("reject");
         assert!(err.message.contains("busy"));
+    }
+
+    #[test]
+    fn feed_run_done_dm_extracts_fenced_body() {
+        set_do_dm_stdout_mode(true);
+        enable_stdout_capture();
+        let ev = BridgeEvent::RunDone {
+            status: RunDoneStatus::Finished,
+            result: Some(format!("{DM_START}\nHello.\n{DM_END}")),
+            usage: None,
+            error: None,
+            duration_ms: None,
+        };
+        feed_run_done_dm(&ev);
+        let out = take_captured_stdout();
+        set_do_dm_stdout_mode(false);
+        assert_eq!(out.trim(), "Hello.");
     }
 }

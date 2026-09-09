@@ -17,9 +17,20 @@ pub fn list_npm_pi_display_models() -> Result<Vec<(String, String)>, String> {
             err.trim().chars().take(240).collect::<String>()
         ));
     }
-    Ok(parse_list_models_table(&String::from_utf8_lossy(
+    Ok(parse_list_models_table(&list_models_table_text(
         &output.stdout,
+        &output.stderr,
     )))
+}
+
+/// Prefer stdout; fall back to stderr (npm `rpc-entry.js` prints `--list-models` there).
+fn list_models_table_text(stdout: &[u8], stderr: &[u8]) -> String {
+    let stdout = String::from_utf8_lossy(stdout);
+    if stdout.trim().is_empty() {
+        String::from_utf8_lossy(stderr).into_owned()
+    } else {
+        stdout.into_owned()
+    }
 }
 
 fn parse_list_models_table(stdout: &str) -> Vec<(String, String)> {
@@ -67,5 +78,17 @@ anthropic   claude-4     200K     32K      yes       yes
         assert!(rows[0].1.contains("thinking=no"));
         assert_eq!(rows[1].0, "anthropic/claude-4");
         assert!(rows[1].1.contains("thinking=yes"));
+    }
+
+    #[test]
+    fn list_models_table_text_falls_back_to_stderr() {
+        let from_stdout = list_models_table_text(
+            b"provider model\nopenai gpt-4o 1 1 no yes\n",
+            b"noise\n",
+        );
+        assert!(from_stdout.contains("openai"));
+        let from_stderr =
+            list_models_table_text(b"  \n", b"provider model\nopenai gpt-4o 1 1 no yes\n");
+        assert!(from_stderr.contains("openai"));
     }
 }
