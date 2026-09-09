@@ -69,7 +69,12 @@ pub(super) fn spawn_thinking_wire(client: &SdkClient) -> Option<String> {
     client
         .model
         .thinking_param()
-        .filter(|_| matches!(client.model.backend, ModelBackend::Pi | ModelBackend::Codex))
+        .filter(|_| {
+            matches!(
+                client.model.backend,
+                ModelBackend::NpmPi | ModelBackend::Pi | ModelBackend::Codex
+            )
+        })
         .map(str::to_string)
 }
 
@@ -106,6 +111,9 @@ async fn spawn_for_backend(
         ModelBackend::Cursor => crate::cursor_sdk::spawn_bridge(args, resume_agent_id)
             .await
             .map(|session| SdkSession::Cursor(Box::new(session))),
+        ModelBackend::NpmPi => crate::npm_pi_sdk::spawn_bridge(args)
+            .await
+            .map(|session| SdkSession::NpmPi(Box::new(session))),
         ModelBackend::Pi => crate::pi_sdk::spawn_bridge(args).await,
         ModelBackend::Codex => crate::codex_sdk::spawn_bridge(args, service)
             .await

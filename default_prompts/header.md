@@ -24,7 +24,7 @@ When you load prior context, label it `HISTORY` with a number indicating how old
 
 ## Calibration
 
-Before work likely to exceed three minutes, state an estimate:
+Before starting work state an estimate:
 
 ```text
 Predicted running time: <prediction>

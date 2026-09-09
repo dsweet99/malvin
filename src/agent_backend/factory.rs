@@ -77,6 +77,17 @@ mod tests {
     }
 
     #[test]
+    fn build_agent_backend_selects_npm_pi_when_prefixed() {
+        let mut shared = shared_opts(false);
+        shared.model = crate::model_id::parse_model_id("pi:openai/gpt-4o").expect("model");
+        let backend =
+            build_agent_backend(&shared, WorkflowCliOptions { force: false }, false, "code")
+                .expect("npm pi");
+        assert!(matches!(backend.model.backend, ModelBackend::NpmPi));
+        assert_eq!(backend.model.canonical(), "pi:openai/gpt-4o");
+    }
+
+    #[test]
     fn build_agent_backend_selects_codex_when_prefixed() {
         let mut shared = shared_opts(false);
         shared.model = crate::model_id::parse_model_id("codex:gpt-5.6").expect("model");

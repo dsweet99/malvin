@@ -1,4 +1,4 @@
-use crate::model_id::{CODEX_PREFIX, CURSOR_PREFIX, RPI_PREFIX};
+use crate::model_id::{CODEX_PREFIX, CURSOR_PREFIX, PI_PREFIX, RPI_PREFIX};
 use crate::output::{MALVIN_WHO, print_stdout_line};
 use clap::Args;
 
@@ -17,7 +17,7 @@ pub struct ModelsArgs {
     /// Force-refresh provider model catalogs (bypasses the daily Pi cache).
     #[arg(long)]
     pub refresh: bool,
-    /// Optional prefix filter (for example `cursor:`, `rpi:`, or `codex:`)
+    /// Optional prefix filter (for example `cursor:`, `pi:`, `rpi:`, or `codex:`)
     #[arg(
         value_name = "PREFIX",
         trailing_var_arg = true,
@@ -59,6 +59,14 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
     {
         print_stdout_line(MALVIN_WHO, &format!("(cursor models unavailable: {e})"));
     }
+    if section_may_match(filter_ref, PI_PREFIX) {
+        match crate::npm_pi_sdk::list_npm_pi_display_models() {
+            Ok(models) => print_npm_pi_models(&models, filter_ref),
+            Err(e) => {
+                print_stdout_line(MALVIN_WHO, &format!("(pi models unavailable: {e})"));
+            }
+        }
+    }
     if section_may_match(filter_ref, RPI_PREFIX) {
         match crate::pi_sdk::list_pi_models_sync(args.refresh) {
             Ok(models) => print_pi_models(&models, filter_ref),
@@ -72,6 +80,15 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
     }
     print_current_footer(current_model);
     Ok(())
+}
+
+fn print_npm_pi_models(models: &[(String, String)], filter: Option<&str>) {
+    for (id, detail) in models {
+        let line = format!("{PI_PREFIX}{id}\t{detail}");
+        if line_matches_prefix(&line, filter) {
+            print_stdout_line(MALVIN_WHO, &line);
+        }
+    }
 }
 
 fn print_pi_models(models: &[crate::pi_sdk::PiModelListing], filter: Option<&str>) {

@@ -28,7 +28,7 @@ impl BridgeSpawnArgs<'_> {
     pub fn wire_model(&self) -> String {
         match self.model.backend {
             ModelBackend::Cursor => self.model.cursor_bridge_model(),
-            ModelBackend::Pi | ModelBackend::Codex => self.model.slug.clone(),
+            ModelBackend::NpmPi | ModelBackend::Pi | ModelBackend::Codex => self.model.slug.clone(),
         }
     }
 }

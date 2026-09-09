@@ -110,6 +110,7 @@ pub mod bridge_protocol;
 pub mod bridge_sdk;
 pub mod codex_sdk;
 pub mod cursor_sdk;
+pub mod npm_pi_sdk;
 pub mod pi_sdk;
 #[cfg(test)]
 pub(crate) mod sdk_bridge_build;

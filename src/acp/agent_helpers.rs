@@ -19,6 +19,8 @@ pub(crate) fn require_force(force: bool) -> Result<(), AgentError> {
 /// timeout cannot miss session recycle.
 pub(crate) const DRAIN_IDLE_PREFIX_BRIDGE: &str =
     crate::model_id::ModelBackend::Cursor.drain_idle_prefix();
+pub(crate) const DRAIN_IDLE_PREFIX_NPM_PI: &str =
+    crate::model_id::ModelBackend::NpmPi.drain_idle_prefix();
 pub(crate) const DRAIN_IDLE_PREFIX_PI: &str = crate::model_id::ModelBackend::Pi.drain_idle_prefix();
 pub(crate) const DRAIN_IDLE_PREFIX_CODEX: &str =
     crate::model_id::ModelBackend::Codex.drain_idle_prefix();
@@ -96,6 +98,7 @@ mod agent_helpers_tests {
         let _ = NO_FORCE_MSG;
         let _ = require_force(true);
         let _ = DRAIN_IDLE_PREFIX_BRIDGE;
+        let _ = DRAIN_IDLE_PREFIX_NPM_PI;
         let _ = DRAIN_IDLE_PREFIX_PI;
         let _ = DRAIN_IDLE_PREFIX_CODEX;
     }

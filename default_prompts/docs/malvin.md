@@ -1,6 +1,6 @@
 # malvin (top-level CLI)
 
-malvin is a non-interactive research and coding agent. It runs agent sessions against a workspace through the Cursor SDK (`cursor:` models via a Node bridge to `@cursor/sdk`), an in-process Pi SDK (`rpi:` models via linked `pi_agent_rust`), or a local Codex app-server (`codex:` models via `codex app-server`). Each agent-backed invocation creates an isolated run directory under `~/.malvin_home/logs/<hash>/` and records prompts, stdout, and artifacts there. When the workspace root contains a non-empty `AGENTS.md`, malvin embeds it in `header.md` via `{{ agents_insert }}` so every fresh-header session sees that guidance without relying on Cursor rule auto-load.
+malvin is a non-interactive research and coding agent. It runs agent sessions against a workspace through the Cursor SDK (`cursor:` models via a Node bridge to `@cursor/sdk`), the official TypeScript/npm Pi agent (`pi:` models via RPC), an in-process rust Pi SDK (`rpi:` models via linked `pi_agent_rust`), or a local Codex app-server (`codex:` models via `codex app-server`). Each agent-backed invocation creates an isolated run directory under `~/.malvin_home/logs/<hash>/` and records prompts, stdout, and artifacts there. When the workspace root contains a non-empty `AGENTS.md`, malvin embeds it in `header.md` via `{{ agents_insert }}` so every fresh-header session sees that guidance without relying on Cursor rule auto-load.
 
 ## How to read this documentation
 
@@ -61,7 +61,7 @@ Hypothesis budget for bare `malvin REQUEST` and `malvin -g`. When the flag is om
 
 ### `--no-force`
 
-By default agent backends run tools headlessly (auto-approved). `--no-force` is not supported on `cursor:`, `rpi:`, or `codex:` (no interactive approval prompt); malvin fails fast with a clear error before any session starts.
+By default agent backends run tools headlessly (auto-approved). `--no-force` is not supported on `cursor:`, `pi:`, `rpi:`, or `codex:` (no interactive approval prompt); malvin fails fast with a clear error before any session starts.
 
 ### `--no-tenacious`
 

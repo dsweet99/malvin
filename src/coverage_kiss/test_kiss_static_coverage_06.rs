@@ -9,6 +9,7 @@ fn kiss_cov_retry_teardown_helpers() {
     text_has_any();
     CHILD_OR_BRIDGE_DEAD_NEEDLES();
     DRAIN_IDLE_PREFIX_BRIDGE();
+    DRAIN_IDLE_PREFIX_NPM_PI();
     DRAIN_IDLE_PREFIX_PI();
     DRAIN_IDLE_PREFIX_CODEX();
     live_drain_idle_prefixes_require_coder_session_teardown();

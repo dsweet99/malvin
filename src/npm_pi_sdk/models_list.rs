@@ -1,0 +1,71 @@
+use std::process::Command;
+
+use super::discover::resolve_npm_pi_entry;
+
+pub fn list_npm_pi_display_models() -> Result<Vec<(String, String)>, String> {
+    let entry = resolve_npm_pi_entry()?;
+    let node = crate::cursor_sdk::node_resolve::resolve_node_bin()?;
+    let output = Command::new(node)
+        .arg(&entry)
+        .arg("--list-models")
+        .output()
+        .map_err(|e| format!("spawn npm pi --list-models: {e}"))?;
+    if !output.status.success() {
+        let err = String::from_utf8_lossy(&output.stderr);
+        return Err(format!(
+            "npm pi --list-models failed: {}",
+            err.trim().chars().take(240).collect::<String>()
+        ));
+    }
+    Ok(parse_list_models_table(&String::from_utf8_lossy(
+        &output.stdout,
+    )))
+}
+
+fn parse_list_models_table(stdout: &str) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    for line in stdout.lines() {
+        let line = line.trim_end();
+        if line.is_empty() || line.starts_with("provider") {
+            continue;
+        }
+        let cols: Vec<&str> = line.split_whitespace().collect();
+        if cols.len() < 2 {
+            continue;
+        }
+        let provider = cols[0];
+        let model = cols[1];
+        if provider.is_empty() || model.is_empty() {
+            continue;
+        }
+        let id = format!("{provider}/{model}");
+        let thinking = cols.get(4).copied().unwrap_or("no");
+        let detail = if thinking == "yes" {
+            format!("{model}\tthinking=yes")
+        } else {
+            format!("{model}\tthinking=no")
+        };
+        out.push((id, detail));
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_table_rows() {
+        let sample = "\
+provider    model        context  max-out  thinking  images
+openai      gpt-4o       128K     16.4K    no        yes
+anthropic   claude-4     200K     32K      yes       yes
+";
+        let rows = parse_list_models_table(sample);
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].0, "openai/gpt-4o");
+        assert!(rows[0].1.contains("thinking=no"));
+        assert_eq!(rows[1].0, "anthropic/claude-4");
+        assert!(rows[1].1.contains("thinking=yes"));
+    }
+}

@@ -71,7 +71,7 @@ def fast_tasks_list_cmd() -> None:
     default=None,
     help=(
         "Model id passed through to malvin (ignored unless --agent=malvin); "
-        "rrpi: models use the linked pi_agent_rust crate; codex: models bind-mount "
+        "pi: uses the npm Pi agent; rpi: uses linked pi_agent_rust; codex: models bind-mount "
         "the Codex npm package and Node.js"
     ),
 )

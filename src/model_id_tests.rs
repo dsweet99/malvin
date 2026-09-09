@@ -6,10 +6,16 @@ fn parse_cursor_and_pi() {
     assert_eq!(c.backend, ModelBackend::Cursor);
     assert_eq!(c.canonical(), "cursor:auto");
     assert!(c.params.is_empty());
-    let pi = parse_model_id("rpi:openai/gpt-4o").expect("pi");
-    assert!(pi.is_pi());
-    assert_eq!(pi.canonical(), "rpi:openai/gpt-4o");
-    assert_eq!(pi.pi_provider_and_model(), Some(("openai", "gpt-4o")));
+    let rpi = parse_model_id("rpi:openai/gpt-4o").expect("rpi");
+    assert!(rpi.is_pi());
+    assert!(!rpi.is_npm_pi());
+    assert_eq!(rpi.canonical(), "rpi:openai/gpt-4o");
+    assert_eq!(rpi.pi_provider_and_model(), Some(("openai", "gpt-4o")));
+    let npm = parse_model_id("pi:openai/gpt-4o").expect("npm pi");
+    assert!(npm.is_npm_pi());
+    assert!(!npm.is_pi());
+    assert_eq!(npm.canonical(), "pi:openai/gpt-4o");
+    assert_eq!(npm.pi_provider_and_model(), Some(("openai", "gpt-4o")));
     let pi_nested = parse_model_id("rpi:openrouter/anthropic/claude-3-haiku").expect("pi nested");
     assert_eq!(
         pi_nested.pi_provider_and_model(),
@@ -141,11 +147,7 @@ fn reject_bare_legacy_and_empty_slug() {
             .expect_err("legacy")
             .contains("local")
     );
-    assert!(
-        parse_model_id("pi:openai/gpt-4o")
-            .expect_err("legacy pi")
-            .contains("rpi:")
-    );
+    assert!(parse_model_id("pi:openai").is_err());
 }
 
 #[test]

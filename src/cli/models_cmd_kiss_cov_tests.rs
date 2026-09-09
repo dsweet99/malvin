@@ -75,6 +75,7 @@ fn kiss_cov_models_cmd_run_helpers() {
     let _ = stringify!(run_cursor_sdk_models_js);
     let _ = stringify!(print_filtered_model_rows);
     let _ = stringify!(print_pi_models);
+    let _ = stringify!(print_npm_pi_models);
     let _ = stringify!(is_provider_authenticated);
 }
 

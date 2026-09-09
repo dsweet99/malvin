@@ -32,6 +32,9 @@ impl SdkClient {
     pub fn ensure_authenticated(&self) -> Result<(), AuthError> {
         match self.model.backend {
             ModelBackend::Cursor => crate::cursor_sdk::ensure_sdk_authenticated(),
+            ModelBackend::NpmPi => {
+                crate::npm_pi_sdk::ensure_npm_pi_authenticated(&self.model.canonical())
+            }
             ModelBackend::Pi => crate::pi_sdk::ensure_pi_authenticated(&self.model.canonical()),
             ModelBackend::Codex => crate::codex_sdk::ensure_codex_authenticated(),
         }

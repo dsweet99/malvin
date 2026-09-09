@@ -1,8 +1,11 @@
 #[path = "model_id_params.rs"]
 mod model_id_params;
 pub use model_id_params::{format_bracket_params, split_bracket_params};
+#[path = "model_id_legacy.rs"]
+mod model_id_legacy;
 
 pub const CURSOR_PREFIX: &str = "cursor:";
+pub const PI_PREFIX: &str = "pi:";
 pub const RPI_PREFIX: &str = "rpi:";
 pub const CODEX_PREFIX: &str = "codex:";
 
@@ -10,18 +13,8 @@ pub const MINI_PREFIX: &str = "mini:";
 pub const OPENROUTER_PREFIX: &str = "openrouter:";
 pub const LOCAL_PREFIX: &str = "local:";
 pub const PRIME_PREFIX: &str = "prime:";
-pub const LEGACY_PI_PREFIX: &str = "pi:";
 
-pub const UNPREFIXED_MODEL_MESSAGE: &str = "model id must use a `cursor:`, `rpi:`, or `codex:` prefix (for example `cursor:auto`, `rpi:openai/gpt-4o`, or `codex:gpt-5.6`)";
-
-const LEGACY_MINI_HINT: &str =
-    "legacy `mini:` prefix removed; use `rpi:` (for example `rpi:openrouter/<slug>`)";
-const LEGACY_OPENROUTER_HINT: &str = "legacy `openrouter:` prefix removed; use `rpi:openrouter/<slug>` (for example `rpi:openrouter/anthropic/claude-3-haiku`)";
-const LEGACY_LOCAL_HINT: &str =
-    "legacy `local:` prefix removed; local GGUF models are no longer supported";
-const LEGACY_PRIME_HINT: &str = "legacy `prime:` prefix removed; use `cursor:` or `rpi:` (for example `cursor:auto` or `rpi:openai/gpt-4o`)";
-const LEGACY_PI_HINT: &str =
-    "legacy `pi:` prefix removed; use `rpi:` (for example `rpi:openai/gpt-4o`)";
+pub const UNPREFIXED_MODEL_MESSAGE: &str = "model id must use a `cursor:`, `pi:`, `rpi:`, or `codex:` prefix (for example `cursor:auto`, `pi:openai/gpt-4o`, or `codex:gpt-5.6`)";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModelParam {
@@ -32,6 +25,9 @@ pub struct ModelParam {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModelBackend {
     Cursor,
+    /// Official TypeScript/npm Pi agent (`pi:`).
+    NpmPi,
+    /// Linked rust `pi_agent_rust` backend (`rpi:`).
     Pi,
     Codex,
 }
@@ -41,6 +37,7 @@ impl ModelBackend {
     pub const fn label(self) -> &'static str {
         match self {
             Self::Cursor => "cursor",
+            Self::NpmPi => "pi",
             Self::Pi => "rpi",
             Self::Codex => "codex",
         }
@@ -51,6 +48,7 @@ impl ModelBackend {
     pub const fn drain_idle_prefix(self) -> &'static str {
         match self {
             Self::Cursor => "bridge timed out",
+            Self::NpmPi => "npm pi rpc timed out",
             Self::Pi => "pi rpc timed out",
             Self::Codex => "codex timed out",
         }
@@ -75,6 +73,7 @@ impl ParsedModel {
     pub fn canonical(&self) -> String {
         let base = match self.backend {
             ModelBackend::Cursor => format!("{CURSOR_PREFIX}{}", self.slug),
+            ModelBackend::NpmPi => format!("{PI_PREFIX}{}", self.slug),
             ModelBackend::Pi => format!("{RPI_PREFIX}{}", self.slug),
             ModelBackend::Codex => format!("{CODEX_PREFIX}{}", self.slug),
         };
@@ -91,13 +90,18 @@ impl ParsedModel {
     }
 
     #[must_use]
+    pub const fn is_npm_pi(&self) -> bool {
+        matches!(self.backend, ModelBackend::NpmPi)
+    }
+
+    #[must_use]
     pub const fn is_codex(&self) -> bool {
         matches!(self.backend, ModelBackend::Codex)
     }
 
     #[must_use]
     pub fn pi_provider_and_model(&self) -> Option<(&str, &str)> {
-        if !self.is_pi() {
+        if !matches!(self.backend, ModelBackend::Pi | ModelBackend::NpmPi) {
             return None;
         }
         split_first_slash(&self.slug).filter(|(p, m)| !p.is_empty() && !m.is_empty())
@@ -138,41 +142,31 @@ pub fn parse_model_id(raw: &str) -> Result<ParsedModel, String> {
     if let Some(rest) = raw.strip_prefix(CURSOR_PREFIX) {
         return parsed(ModelBackend::Cursor, rest);
     }
+    if let Some(rest) = raw.strip_prefix(PI_PREFIX) {
+        return parse_provider_slash_model(rest, ModelBackend::NpmPi, "pi");
+    }
     if let Some(rest) = raw.strip_prefix(RPI_PREFIX) {
-        return parse_pi(rest);
+        return parse_provider_slash_model(rest, ModelBackend::Pi, "rpi");
     }
     if let Some(rest) = raw.strip_prefix(CODEX_PREFIX) {
         return parse_codex(rest);
     }
-    Err(legacy_or_unprefixed_error(raw))
+    Err(model_id_legacy::legacy_or_unprefixed_error(raw))
 }
 
-fn legacy_or_unprefixed_error(raw: &str) -> String {
-    if raw.starts_with(LEGACY_PI_PREFIX) {
-        return LEGACY_PI_HINT.to_string();
-    }
-    if raw.starts_with(PRIME_PREFIX) {
-        return LEGACY_PRIME_HINT.to_string();
-    }
-    if raw.starts_with(MINI_PREFIX) {
-        return LEGACY_MINI_HINT.to_string();
-    }
-    if raw.starts_with(OPENROUTER_PREFIX) {
-        return LEGACY_OPENROUTER_HINT.to_string();
-    }
-    if raw.starts_with(LOCAL_PREFIX) {
-        return LEGACY_LOCAL_HINT.to_string();
-    }
-    UNPREFIXED_MODEL_MESSAGE.to_string()
-}
-
-fn parse_pi(rest: &str) -> Result<ParsedModel, String> {
+fn parse_provider_slash_model(
+    rest: &str,
+    backend: ModelBackend,
+    prefix_label: &str,
+) -> Result<ParsedModel, String> {
     let rest = rest.trim();
     if rest.is_empty() {
         return Err(UNPREFIXED_MODEL_MESSAGE.to_string());
     }
     let (slug, params) = split_bracket_params(rest)?;
-    let err = || format!("rpi model id must be `rpi:<provider>/<model>` (got `rpi:{rest}`)");
+    let err = || {
+        format!("{prefix_label} model id must be `{prefix_label}:<provider>/<model>` (got `{prefix_label}:{rest}`)")
+    };
     let Some((provider, model)) = split_first_slash(&slug) else {
         return Err(err());
     };
@@ -181,7 +175,7 @@ fn parse_pi(rest: &str) -> Result<ParsedModel, String> {
     }
     model_id_params::validate_pi_thinking_params(&params)?;
     Ok(ParsedModel {
-        backend: ModelBackend::Pi,
+        backend,
         slug,
         params,
     })
