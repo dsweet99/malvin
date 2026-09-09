@@ -6,9 +6,8 @@ use crate::terminal_palette::TerminalTheme;
 use std::collections::BTreeMap;
 
 use super::{
-    AgentConfig, DEFAULT_CONTEXT_SIZE, DefaultWorkflowConfig, MalvinConfig, ReviewConfig,
-    parse_agent_config, parse_context_size, parse_default_workflow_config,
-    parse_model_token_cost_rates, parse_review_config, parse_theme,
+    AgentConfig, DEFAULT_CONTEXT_SIZE, DefaultWorkflowConfig, MalvinConfig, parse_agent_config,
+    parse_context_size, parse_default_workflow_config, parse_model_token_cost_rates, parse_theme,
 };
 
 pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
@@ -18,7 +17,7 @@ pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
         "[agent.*.*] usd_per_microtoken_*",
         BTreeMap::new(),
     );
-    let (logs, agent, review, default_workflow) = parse_config_sections(text);
+    let (logs, agent, default_workflow) = parse_config_sections(text);
     MalvinConfig {
         mem_limit_gb,
         context_size,
@@ -26,7 +25,6 @@ pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
         token_cost_rates,
         logs,
         agent,
-        review,
         default_workflow,
     }
 }
@@ -47,14 +45,7 @@ fn parse_top_level_keys(text: &str) -> (u64, u32, TerminalTheme) {
     )
 }
 
-fn parse_config_sections(
-    text: &str,
-) -> (
-    LogsGcConfig,
-    AgentConfig,
-    ReviewConfig,
-    DefaultWorkflowConfig,
-) {
+fn parse_config_sections(text: &str) -> (LogsGcConfig, AgentConfig, DefaultWorkflowConfig) {
     (
         parse_or_warn(
             parse_logs_gc_config(text),
@@ -62,11 +53,6 @@ fn parse_config_sections(
             LogsGcConfig::default(),
         ),
         parse_or_warn(parse_agent_config(text), "[agent]", AgentConfig::default()),
-        parse_or_warn(
-            parse_review_config(text),
-            "[review]",
-            ReviewConfig::default(),
-        ),
         parse_or_warn(
             parse_default_workflow_config(text),
             "[default_workflow]",

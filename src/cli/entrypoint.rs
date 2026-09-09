@@ -93,21 +93,8 @@ pub(crate) fn dispatch_command(
     shared: &SharedOpts,
     matches: &clap::ArgMatches,
 ) -> Result<(), String> {
-    let mut shared = shared.clone();
+    let _ = matches;
     match command {
-        Commands::Write(write_args) => {
-            crate::cli::shared_opts::overlay_shared_opts_from_subcommand(
-                &mut shared,
-                &write_args.shared,
-                matches,
-                "write",
-            );
-            super::entrypoint_commands::dispatch_plan_authoring_gate(
-                Commands::Write(write_args),
-                &mut shared,
-                matches,
-            )
-        }
         Commands::Admin(admin) => {
             let model = shared.model.canonical();
             super::run_admin(admin, &model)

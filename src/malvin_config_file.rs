@@ -16,8 +16,6 @@ mod malvin_config_default_workflow;
 mod malvin_config_open;
 #[path = "malvin_config_parse.rs"]
 mod malvin_config_parse;
-#[path = "malvin_config_review.rs"]
-mod malvin_config_review;
 #[path = "malvin_config_top.rs"]
 mod malvin_config_top;
 pub(crate) use malvin_config_agent::parse_agent_config;
@@ -29,14 +27,12 @@ pub use malvin_config_open::{
 pub(crate) use malvin_config_parse::{
     parse_malvin_config, read_f64, read_string, read_u32, read_u64, read_usize,
 };
-pub(crate) use malvin_config_review::parse_review_config;
 pub use malvin_config_top::{DEFAULT_CONTEXT_SIZE, TokenCostRates};
 pub(crate) use malvin_config_top::{parse_context_size, parse_model_token_cost_rates, parse_theme};
 
 pub const DEFAULT_MAX_HYPOTHESES: usize = 5;
 pub const DEFAULT_MAX_LOOPS: usize = 1;
 pub const DEFAULT_MAX_LOOPS_CODE: usize = 3;
-pub const DEFAULT_WRITE_MAX_HYPOTHESES: usize = 10;
 
 const DEFAULT_MALVIN_CONFIG_TEMPLATE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -65,11 +61,6 @@ impl Default for AgentConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct ReviewConfig {
-    pub max_hypotheses: Option<usize>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct DefaultWorkflowConfig {
     pub max_hypotheses: Option<usize>,
 }
@@ -89,7 +80,6 @@ pub struct MalvinConfig {
     pub token_cost_rates: BTreeMap<String, TokenCostRates>,
     pub logs: LogsGcConfig,
     pub agent: AgentConfig,
-    pub review: ReviewConfig,
     pub default_workflow: DefaultWorkflowConfig,
 }
 

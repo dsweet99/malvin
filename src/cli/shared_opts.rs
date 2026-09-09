@@ -1,6 +1,5 @@
 pub use crate::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
-use clap::parser::ValueSource;
-use clap::{ArgMatches, Args};
+use clap::Args;
 use rand::Rng;
 
 use crate::model_id::{ParsedModel, parse_model_id};
@@ -82,63 +81,6 @@ pub struct SharedOpts {
     pub no_kpop: bool,
 }
 
-/// Copy agent flags set on a subcommand over root `SharedOpts` (non-global shared opts).
-pub(crate) fn overlay_shared_opts_from_subcommand(
-    base: &mut SharedOpts,
-    sub: &SharedOpts,
-    matches: &ArgMatches,
-    subcommand: &str,
-) {
-    let Some(sub_m) = matches
-        .subcommand()
-        .filter(|(n, _)| *n == subcommand)
-        .map(|(_, m)| m)
-    else {
-        return;
-    };
-    let on_cli = |id: &str| {
-        sub_m
-            .value_source(id)
-            .is_some_and(|source| source == ValueSource::CommandLine)
-    };
-    if on_cli("model") {
-        base.model = sub.model.clone();
-    }
-    if on_cli("max_acp_retries") {
-        base.max_acp_retries = sub.max_acp_retries;
-    }
-    overlay_shared_bool_fields(base, sub, &on_cli);
-}
-
-fn overlay_shared_bool_fields(
-    base: &mut SharedOpts,
-    sub: &SharedOpts,
-    on_cli: &impl Fn(&str) -> bool,
-) {
-    overlay_shared_bool_if(on_cli, "background", &mut base.background, sub.background);
-    overlay_shared_bool_if(on_cli, "no_force", &mut base.no_force, sub.no_force);
-    overlay_shared_bool_if(
-        on_cli,
-        "no_tenacious",
-        &mut base.no_tenacious,
-        sub.no_tenacious,
-    );
-    overlay_shared_bool_if(on_cli, "gates", &mut base.gates, sub.gates);
-    overlay_shared_bool_if(on_cli, "quiet", &mut base.quiet, sub.quiet);
-    overlay_shared_bool_if(on_cli, "verbose", &mut base.verbose, sub.verbose);
-    overlay_shared_bool_if(on_cli, "git", &mut base.git, sub.git);
-    if on_cli("creative") {
-        base.creative = sub.creative;
-    }
-    overlay_shared_bool_if(on_cli, "no_kpop", &mut base.no_kpop, sub.no_kpop);
-}
-
-fn overlay_shared_bool_if(on_cli: &impl Fn(&str) -> bool, id: &str, dst: &mut bool, src: bool) {
-    if on_cli(id) {
-        *dst = src;
-    }
-}
-
 impl SharedOpts {
     #[must_use]
     pub(crate) fn tee_startup_stdout(&self) -> bool {
@@ -190,46 +132,6 @@ impl SharedOpts {
 
 #[cfg(test)]
 mod overlay_tests {
-    use super::overlay_shared_opts_from_subcommand;
-    use crate::cli::{Cli, Commands, SharedOpts};
-    use clap::{CommandFactory, FromArgMatches};
-
-    #[test]
-    fn overlay_prefers_write_subcommand_model() {
-        let matches = Cli::command().get_matches_from([
-            "malvin",
-            "write",
-            "--model",
-            "cursor:sonnet-4",
-            "topic",
-        ]);
-        let cli = Cli::from_arg_matches(&matches).expect("from matches");
-        let mut shared = SharedOpts::test_defaults();
-        let Commands::Write(write) = cli.command.expect("write") else {
-            panic!("expected write");
-        };
-        overlay_shared_opts_from_subcommand(&mut shared, &write.shared, &matches, "write");
-        assert_eq!(shared.model.canonical(), "cursor:sonnet-4");
-    }
-
-    #[test]
-    fn overlay_keeps_root_model_when_write_omits_flag() {
-        let matches = Cli::command().get_matches_from([
-            "malvin",
-            "--model",
-            "cursor:composer-2",
-            "write",
-            "topic",
-        ]);
-        let cli = Cli::from_arg_matches(&matches).expect("from matches");
-        let mut shared = cli.shared.clone();
-        let Commands::Write(write) = cli.command.expect("write") else {
-            panic!("expected write");
-        };
-        overlay_shared_opts_from_subcommand(&mut shared, &write.shared, &matches, "write");
-        assert_eq!(shared.model.canonical(), "cursor:composer-2");
-    }
-
     #[test]
     fn creative_flag_defaults_off_and_accepts_probability() {
         use clap::Parser;
@@ -257,18 +159,5 @@ mod overlay_tests {
         assert!(super::parse_creative_probability("-0.1").is_err());
         assert!(super::parse_creative_probability("nope").is_err());
         assert_eq!(super::parse_creative_probability("0.5").ok(), Some(0.5));
-    }
-
-    #[test]
-    fn overlay_prefers_write_subcommand_creative() {
-        let matches =
-            Cli::command().get_matches_from(["malvin", "write", "--creative=0.4", "topic"]);
-        let cli = Cli::from_arg_matches(&matches).expect("from matches");
-        let mut shared = SharedOpts::test_defaults();
-        let Commands::Write(write) = cli.command.expect("write") else {
-            panic!("expected write");
-        };
-        overlay_shared_opts_from_subcommand(&mut shared, &write.shared, &matches, "write");
-        assert_eq!(shared.creative, Some(0.4));
     }
 }

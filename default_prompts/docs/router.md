@@ -7,7 +7,7 @@ Outer agent sessions (`--max-loops`): for each freshly created coder agent, malv
 | | |
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
-| Output | Styled stdout on a TTY (same startup chrome as `tidy` / `write`); with `--quiet` / `-q`, only `__MALVIN_DM_*__` bodies |
+| Output | Styled stdout on a TTY (same startup chrome as other agent workflows); with `--quiet` / `-q`, only `__MALVIN_DM_*__` bodies |
 | Logs | `router_N.log` under `~/.malvin_home/logs/<hash>/<run>/` (one file per outer session) |
 | Requires | No `.malvin/gates` at startup (unless `--gates` later needs them) |
 

@@ -17,7 +17,7 @@ malvin [OPTION]... [REQUEST]
 
 These forms are mutually exclusive: pass a request **or** a subcommand, not both on one synopsis line. `malvin --help` uses the same two-line usage.
 
-Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`, stop on `__MALVIN_DONE__`, exit `router_summarize`). With no request and no subcommand, malvin prints a short command catalog and exits 0. `malvin -g` without a request runs the gate-fix workflow (fixed request `Get the gates to pass.` with `--gates` on). Use `--do` for a one-shot turn, or subcommands `write`, `admin`. Omitting `REQUEST` for `--do` or `write` likewise prints short usage and exits 0.
+Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`, stop on `__MALVIN_DONE__`, exit `router_summarize`). With no request and no subcommand, malvin prints a short command catalog and exits 0. `malvin -g` without a request runs the gate-fix workflow (fixed request `Get the gates to pass.` with `--gates` on). Use `--do` for a one-shot turn, or the `admin` subcommand. Omitting `REQUEST` for `--do` likewise prints short usage and exits 0.
 
 ## Commands
 
@@ -26,7 +26,6 @@ Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`,
 | *(default)* | Bare `malvin REQUEST` — aggregated initial (`header` when fresh, with `kpop_insert` from `kpop_common` unless `--no-kpop`, + optional `mbc2` + `router_a`) → optional `router_b`; exit `router_summarize`; outer `--max-loops` iterations |
 | `--do` | One-shot agent turn (non-looping) |
 | `malvin -g` | Fix quality gates via the default router with fixed request `Get the gates to pass.` (no positional request) |
-| `write` | Write a LaTeX PDF on code or concepts via a composed default-router request |
 | `admin` | Operator maintenance (`models`, `reset-herdr`, …) |
 
 Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prompts/docs/<command>.md`); for the one-shot workflow use `malvin --do --doc`. The default-route contract (`router.md`) is printed after this overview when you run `malvin --doc`.
@@ -35,7 +34,7 @@ Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prom
 
 `--doc` is a true global: it may appear before or after any subcommand, including `admin`.
 
-Agent-session flags (`-b` / `--background`, `--model`, `--gates`, `-q`, `-v`, `--git`, `--creative[=PROB]`, `--no-force`, `--no-tenacious`, `--max-acp-retries`, …) apply to bare `malvin REQUEST`, `--do`, and `write`. On `write` they may appear before or after the subcommand name. The `admin` help listing omits them; pass `--model` before `admin models` only when you want to set that command’s `Current:` footer.
+Agent-session flags (`-b` / `--background`, `--model`, `--gates`, `-q`, `-v`, `--git`, `--creative[=PROB]`, `--no-force`, `--no-tenacious`, `--max-acp-retries`, …) apply to bare `malvin REQUEST` and `--do`. The `admin` help listing omits them; pass `--model` before `admin models` only when you want to set that command’s `Current:` footer.
 
 
 ### `-b` / `--background`
@@ -44,7 +43,7 @@ Suppress all stdout from malvin and the agent. Run logs under `~/.malvin_home/lo
 
 ### `-q` / `--quiet`
 
-On the **default router** (bare `malvin REQUEST` and `malvin -g`) and on one-shot agent commands that tee styled agent stdout (`write`), print only the text between `__MALVIN_DM_START__` and `__MALVIN_DM_END__` fences to process stdout. Startup chrome, agent stream, heartbeats, prompt-name lines, fence markers, and TIMING/COST lines are omitted from stdout. Run-dir logs and stderr are unchanged.
+On the **default router** (bare `malvin REQUEST` and `malvin -g`), print only the text between `__MALVIN_DM_START__` and `__MALVIN_DM_END__` fences to process stdout. Startup chrome, agent stream, heartbeats, prompt-name lines, fence markers, and TIMING/COST lines are omitted from stdout. Run-dir logs and stderr are unchanged.
 
 This is **not** the same as `-b` / `--background` (which suppresses all stdout, including DM bodies). It is also **not** required for plain `malvin --do`: without `--verbose`, `--do` is already DM-body-only on stdout. With `--verbose`, `--do` tees the same live agent log classes as the default workflow (see `-v` / `--verbose` below).
 
@@ -54,11 +53,11 @@ Model id for agent-backed commands. Default: `cursor:auto`. Use `cursor:` for th
 
 ### `--max-loops <N>` (default: 1)
 
-Outer agent-session budget for bare `malvin REQUEST` and `malvin -g`. `0` is treated as `1`. `write` exposes its own `--max-loops` with a default of `3`.
+Outer agent-session budget for bare `malvin REQUEST` and `malvin -g`. `0` is treated as `1`.
 
 ### `--max-hypotheses <N>` (default: 5)
 
-Hypothesis budget for bare `malvin REQUEST` and `malvin -g`. When the flag is omitted, `[default_workflow].max_hypotheses` from `~/.malvin_home/config.toml` is used (fallback 5). Explicit CLI wins over config. `0` is treated as `5`. `write` exposes its own `--max-hypotheses`.
+Hypothesis budget for bare `malvin REQUEST` and `malvin -g`. When the flag is omitted, `[default_workflow].max_hypotheses` from `~/.malvin_home/config.toml` is used (fallback 5). Explicit CLI wins over config. `0` is treated as `5`.
 
 ### `--no-force`
 
@@ -66,7 +65,7 @@ By default agent backends run tools headlessly (auto-approved). `--no-force` is 
 
 ### `--no-tenacious`
 
-By default `write` expands to `--max-loops=9999` and `--max-acp-retries=9999`. The bare default route and `malvin -g` expand both `--max-loops=9999` and `--max-acp-retries=9999` unless the matching flag was set explicitly on the command line. `--no-tenacious` restores normal budgets.
+By default the bare default route and `malvin -g` expand both `--max-loops=9999` and `--max-acp-retries=9999` unless the matching flag was set explicitly on the command line. `--no-tenacious` restores normal budgets.
 
 ### `-g` / `--gates`
 
@@ -120,7 +119,7 @@ When `--gates` is set and `.malvin/gates` is missing, malvin runs the init workf
 
 With `--gates` and an existing `.malvin/gates`, malvin runs workspace quality gates from that file at the repo git root (one shell command per non-empty, non-comment line). Full-line comments starting with `#` are ignored. `malvin -g` without a request always enables this harness.
 
-Other invocations (`--do`, bare `malvin REQUEST`, `write`) do not require `.malvin/gates` at startup and may run outside a git repo. With `--gates` on a bare `malvin REQUEST`, malvin runs workspace gates when `router_a` emits `__MALVIN_DONE__` and continues that outer loop when they fail (see the default-route section of `malvin --doc`). Without `--gates` (the default for other commands), malvin does not run those checks directly on the default route. `header.md` notes about gates lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
+Other invocations (`--do`, bare `malvin REQUEST`) do not require `.malvin/gates` at startup and may run outside a git repo. With `--gates` on a bare `malvin REQUEST`, malvin runs workspace gates when `router_a` emits `__MALVIN_DONE__` and continues that outer loop when they fail (see the default-route section of `malvin --doc`). Without `--gates` (the default for other commands), malvin does not run those checks directly on the default route. `header.md` notes about gates lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
 
 ### `-h` / `--help`
 
@@ -202,7 +201,7 @@ Malvin may defer agent stdout lines briefly before writing them to the terminal 
 
 ## Home config (`~/.malvin_home/config.toml`)
 
-Top-level keys include `mem_limit_gb` and `theme`. Cursor cost rates `usd_per_microtoken_in`, `usd_per_microtoken_out`, `usd_per_microtoken_cache_read`, and `usd_per_microtoken_cache_write` (dollars per million tokens; all default `0`) live under per-model tables such as `[agent.cursor.auto]` (model id `cursor:auto`). Sections include `[agent]`, `[review]` (`max_hypotheses` for `malvin write` when `--max-hypotheses` is omitted), `[default_workflow]` (`max_hypotheses` for bare `malvin REQUEST` when `--max-hypotheses` is omitted, default 5), and `[logs]`.
+Top-level keys include `mem_limit_gb` and `theme`. Cursor cost rates `usd_per_microtoken_in`, `usd_per_microtoken_out`, `usd_per_microtoken_cache_read`, and `usd_per_microtoken_cache_write` (dollars per million tokens; all default `0`) live under per-model tables such as `[agent.cursor.auto]` (model id `cursor:auto`). Sections include `[agent]`, `[default_workflow]` (`max_hypotheses` for bare `malvin REQUEST` when `--max-hypotheses` is omitted, default 5), and `[logs]`.
 
 ## Log retention
 
@@ -231,11 +230,9 @@ malvin --do "fix the typo"
 malvin --creative "explore API boundaries"
 ```
 
-## Gate-loop and document commands
+## Gate-loop commands
 
 `malvin -g` without a request is a thin wrapper: it composes a fixed request (`Get the gates to pass.`) and invokes the **default router** with `--gates` on. When `.malvin/gates` is missing, malvin runs the init workflow first, then this gate-fix workflow (see **Quality gates** above).
 
-`malvin write` starts one agent session with an aggregated initial prompt (`header.md` + `write_a.md`), then sends `write_b.md`. It does not use the default router.
-
-See `malvin write --doc` and the default-route section of `malvin --doc`.
+See the default-route section of `malvin --doc`.
 

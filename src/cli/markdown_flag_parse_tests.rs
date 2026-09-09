@@ -14,7 +14,7 @@ fn global_quiet_long_and_short_parse() {
 fn quiet_parses_on_router_wrappers() {
     for argv in [
         ["malvin", "-q", "-g"].as_slice(),
-        ["malvin", "-q", "write", "topic"].as_slice(),
+        ["malvin", "-q", "--do", "topic"].as_slice(),
     ] {
         let cli = Cli::try_parse_from(argv).expect("parse");
         assert!(cli.shared.quiet, "argv={argv:?}");

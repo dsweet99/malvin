@@ -13,8 +13,6 @@ pub const KPOP_COMMON_NO_KPOP_MD: &str = "kpop_common_no_kpop.md";
 pub const DO_HEADER_MD: &str = "do_header.md";
 pub const ROUTER_CODE_EXTRA_MD: &str = "router_code_extra.md";
 pub const ROUTER_SUMMARIZE_MD: &str = "router_summarize.md";
-pub const WRITE_A_MD: &str = "write_a.md";
-pub const WRITE_B_MD: &str = "write_b.md";
 
 pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD];
 
@@ -32,8 +30,6 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     ROUTER_B_NO_KPOP_MD,
     ROUTER_CODE_EXTRA_MD,
     ROUTER_SUMMARIZE_MD,
-    WRITE_A_MD,
-    WRITE_B_MD,
 ];
 
 #[cfg(test)]

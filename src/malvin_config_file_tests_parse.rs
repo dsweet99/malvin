@@ -31,7 +31,6 @@ fn parse_malvin_config_falls_back_when_values_invalid_or_missing() {
         token_cost_rates: cfg.token_cost_rates.clone(),
         logs: cfg.logs,
         agent: cfg.agent.clone(),
-        review: cfg.review.clone(),
         default_workflow: cfg.default_workflow.clone(),
     };
     assert_eq!(full.agent, cfg.agent);

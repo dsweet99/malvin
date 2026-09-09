@@ -1,7 +1,6 @@
 use clap::parser::ValueSource;
 use clap::{ArgMatches, CommandFactory, FromArgMatches};
 
-use super::config_loop::subcommand_flag_from_command_line;
 use super::{Cli, Commands, SharedOpts};
 use crate::malvin_config_file::AgentConfig;
 use crate::model_id::require_prefixed_model;
@@ -10,60 +9,6 @@ pub(crate) fn global_flag_from_command_line(matches: &ArgMatches, id: &str) -> b
     matches
         .value_source(id)
         .is_some_and(|source| source == ValueSource::CommandLine)
-}
-
-pub(crate) struct LoopDefaultMut<'a> {
-    pub max_loops: &'a mut usize,
-    pub max_hypotheses: &'a mut usize,
-    pub config_max_loops: usize,
-    pub config_max_hypotheses: usize,
-}
-
-pub(crate) fn apply_loop_defaults(
-    matches: &ArgMatches,
-    subcommand: &str,
-    loops: LoopDefaultMut<'_>,
-) {
-    if !subcommand_flag_from_command_line(matches, subcommand, "max_loops") {
-        *loops.max_loops = loops.config_max_loops;
-    }
-    if !subcommand_flag_from_command_line(matches, subcommand, "max_hypotheses") {
-        *loops.max_hypotheses = loops.config_max_hypotheses;
-    }
-}
-
-fn apply_write_loop_defaults(
-    matches: &ArgMatches,
-    write_args: &mut crate::cli::write_flow::WriteArgs,
-    agent: &AgentConfig,
-    review: &crate::malvin_config_file::ReviewConfig,
-) {
-    apply_loop_defaults(
-        matches,
-        "write",
-        LoopDefaultMut {
-            max_loops: &mut write_args.max_loops,
-            max_hypotheses: &mut write_args.max_hypotheses,
-            config_max_loops: agent.max_loops_code,
-            config_max_hypotheses: review
-                .max_hypotheses
-                .unwrap_or(crate::malvin_config_file::DEFAULT_WRITE_MAX_HYPOTHESES),
-        },
-    );
-}
-
-fn apply_gate_loop_command_defaults(
-    matches: &ArgMatches,
-    command: &mut Commands,
-    agent: &AgentConfig,
-    review: &crate::malvin_config_file::ReviewConfig,
-) {
-    match command {
-        Commands::Write(write_args) => {
-            apply_write_loop_defaults(matches, write_args, agent, review);
-        }
-        Commands::Admin(_) => {}
-    }
 }
 
 fn finalize_shared_model(matches: &ArgMatches, shared: &mut SharedOpts) -> Result<(), String> {
@@ -148,14 +93,6 @@ pub fn apply_workspace_config_defaults(matches: &ArgMatches, cli: &mut Cli) -> R
     if is_gates_only_route(cli) {
         return apply_gates_only_workspace_defaults(matches, cli);
     }
-    let Some(command) = cli.command.as_mut() else {
-        return finalize_shared_model(matches, &mut cli.shared);
-    };
-    let agent = load_agent_config(matches)?;
-    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    let review = crate::malvin_config_file::load_malvin_config(&cwd).review;
-    apply_shared_config_defaults(matches, &mut cli.shared, &agent);
-    apply_gate_loop_command_defaults(matches, command, &agent, &review);
     finalize_shared_model(matches, &mut cli.shared)
 }
 
@@ -187,10 +124,6 @@ pub fn parse_cli_with_config_defaults(
 #[cfg(test)]
 #[path = "config_defaults_tests.rs"]
 mod config_defaults_tests;
-
-#[cfg(test)]
-#[path = "config_defaults_tests_write.rs"]
-mod config_defaults_tests_write;
 
 #[cfg(test)]
 #[path = "config_defaults_tests_legacy_model.rs"]

@@ -1,6 +1,6 @@
 use super::{
     DO_HEADER_MD, HEADER_MD, KPOP_COMMON_MD, KPOP_COMMON_NO_KPOP_MD, ROUTER_CODE_EXTRA_MD,
-    ROUTER_SUMMARIZE_MD, WRITE_A_MD, WRITE_B_MD,
+    ROUTER_SUMMARIZE_MD,
 };
 
 pub const ROUTER_A_MD: &str = "router_a.md";
@@ -92,8 +92,6 @@ pub fn default_file(name: &str) -> Option<&'static str> {
                 Some(include_str!("../../default_prompts/kpop_common_no_kpop.md"))
             }
             DO_HEADER_MD => Some(include_str!("../../default_prompts/do_header.md")),
-            WRITE_A_MD => Some(include_str!("../../default_prompts/write_a.md")),
-            WRITE_B_MD => Some(include_str!("../../default_prompts/write_b.md")),
             _ => None,
         })
 }
@@ -113,8 +111,6 @@ mod tests {
         assert!(default_file("router_b.md").is_some());
         assert!(default_file("router_b_creative.md").is_some());
         assert!(default_file("router_summarize.md").is_some());
-        assert!(default_file("write_a.md").is_some());
-        assert!(default_file("write_b.md").is_some());
         assert!(default_file("mbc2.md").is_some());
         assert!(default_file(KPOP_COMMON_MD).is_some());
         assert!(default_file(KPOP_COMMON_NO_KPOP_MD).is_some());

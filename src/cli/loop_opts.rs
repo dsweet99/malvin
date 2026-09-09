@@ -3,45 +3,13 @@ use clap::ArgMatches;
 use crate::reliability_tier::{ReliabilityTier, ReliabilityTierFlags};
 
 use super::config_defaults::global_flag_from_command_line;
-use super::config_loop::subcommand_flag_from_command_line;
 
-pub const DEFAULT_TENACIOUS: bool = true;
 pub const TENACIOUS_MAX_LOOPS: usize = 9999;
 pub const TENACIOUS_MAX_ACP_RETRIES: u32 = 9999;
 
 pub struct TenaciousBudgetGuard {
     pub max_loops_explicit: bool,
     pub max_acp_retries_explicit: bool,
-}
-
-#[must_use]
-pub fn tenacious_budget_guard(matches: &ArgMatches, subcommand: &str) -> TenaciousBudgetGuard {
-    TenaciousBudgetGuard {
-        max_loops_explicit: subcommand_flag_from_command_line(matches, subcommand, "max_loops"),
-        max_acp_retries_explicit: global_flag_from_command_line(matches, "max_acp_retries"),
-    }
-}
-
-pub struct GateLoopTenaciousApply<'a> {
-    pub subcommand: &'a str,
-    pub max_loops: &'a mut usize,
-    pub tenacious: bool,
-    pub no_tenacious: bool,
-    pub max_acp_retries: &'a mut u32,
-    pub matches: &'a ArgMatches,
-}
-
-pub fn apply_gate_loop_tenacious(input: GateLoopTenaciousApply<'_>) {
-    let tier = ReliabilityTier::resolve(ReliabilityTierFlags {
-        tenacious: input.tenacious,
-        no_tenacious: input.no_tenacious,
-    });
-    apply_tenacious(
-        input.max_loops,
-        input.max_acp_retries,
-        tier,
-        tenacious_budget_guard(input.matches, input.subcommand),
-    );
 }
 
 pub fn apply_default_route_tenacious(
@@ -54,14 +22,15 @@ pub fn apply_default_route_tenacious(
         tenacious: true,
         no_tenacious,
     });
-    if tier == ReliabilityTier::Tenacious {
-        if !global_flag_from_command_line(matches, "max_loops") {
-            *max_loops = TENACIOUS_MAX_LOOPS;
-        }
-        if !global_flag_from_command_line(matches, "max_acp_retries") {
-            *max_acp_retries = TENACIOUS_MAX_ACP_RETRIES;
-        }
-    }
+    apply_tenacious(
+        max_loops,
+        max_acp_retries,
+        tier,
+        TenaciousBudgetGuard {
+            max_loops_explicit: global_flag_from_command_line(matches, "max_loops"),
+            max_acp_retries_explicit: global_flag_from_command_line(matches, "max_acp_retries"),
+        },
+    );
 }
 
 #[allow(clippy::missing_const_for_fn)]
@@ -120,20 +89,13 @@ mod tests {
     }
 
     #[test]
-    fn apply_gate_loop_tenacious_expands_unless_opted_out() {
+    fn apply_default_route_tenacious_expands_unless_opted_out() {
         use crate::cli::Cli;
         use clap::CommandFactory;
-        let matches = Cli::command().get_matches_from(["malvin", "write", "topic", "--tenacious"]);
+        let matches = Cli::command().get_matches_from(["malvin", "topic"]);
         let mut loops = 1usize;
         let mut retries = 3u32;
-        apply_gate_loop_tenacious(GateLoopTenaciousApply {
-            subcommand: "write",
-            max_loops: &mut loops,
-            tenacious: true,
-            no_tenacious: false,
-            max_acp_retries: &mut retries,
-            matches: &matches,
-        });
+        apply_default_route_tenacious(&mut loops, &mut retries, false, &matches);
         assert_eq!(loops, TENACIOUS_MAX_LOOPS);
         assert_eq!(retries, TENACIOUS_MAX_ACP_RETRIES);
     }

@@ -33,15 +33,6 @@ pub fn resolve_one_shot_request_artifacts(
     Ok((text, artifacts))
 }
 
-pub fn finish_one_shot_auth_and_backups(
-    client: &mut AgentBackend,
-    artifacts: &RunArtifacts,
-) -> Result<SessionDotfileBackups, String> {
-    client.ensure_authenticated().map_err(|e| e.to_string())?;
-    client.prompts_log_run_dir = Some(artifacts.run_dir.clone());
-    SessionDotfileBackups::snapshot_after_ensuring_home_config(&artifacts.work_dir)
-}
-
 pub struct OneShotCoderGuard {
     timing: Arc<Mutex<crate::run_timing::RunTiming>>,
     run_dir: PathBuf,
@@ -105,7 +96,6 @@ mod kiss_cov {
     #[test]
     fn kiss_static_fn_item_refs() {
         let _ = super::resolve_one_shot_request_artifacts;
-        let _ = super::finish_one_shot_auth_and_backups;
         let _ = super::finish_one_shot_after_prompt;
         let _ = stringify!(OneShotCoderGuard);
     }

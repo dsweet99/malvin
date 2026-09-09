@@ -1,5 +1,4 @@
 use super::{Commands, Exit, entrypoint_from};
-use crate::cli::models_cmd::ModelsArgs;
 
 fn shared_opts_parses_git_flag_default_off() {
     use clap::Parser;
@@ -118,18 +117,12 @@ fn gates_only_route_needs_session() {
     ));
 }
 
-fn write_command_is_not_gates_only() {
-    use crate::cli::write_flow::WriteArgs;
-    let _ = Commands::Write(WriteArgs {
-        shared: crate::cli::SharedOpts::test_defaults(),
-        request: Some("topic".to_string()),
-        out_path: "write.tex".to_string(),
-        max_loops: 1,
-        max_hypotheses: 5,
-        tenacious: false,
-        out_path_explicit: false,
+fn admin_command_is_not_gates_only() {
+    use crate::cli::{AdminArgs, AdminCommand};
+    use crate::cli::models_cmd::ModelsArgs;
+    let _ = Commands::Admin(AdminArgs {
+        command: AdminCommand::Models(ModelsArgs::default()),
     });
-    let _ = ModelsArgs::default();
 }
 
 fn name_flag_is_rejected_by_clap() {
@@ -159,6 +152,6 @@ fn kiss_bundled_cli_entrypoint_name_tests() {
     bare_help_does_not_create_name_files();
     do_workflow_parses_without_name_flag();
     gates_only_route_needs_session();
-    write_command_is_not_gates_only();
+    admin_command_is_not_gates_only();
     name_flag_is_rejected_by_clap();
 }

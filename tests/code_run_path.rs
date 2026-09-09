@@ -91,10 +91,47 @@ fn malvin_gates_only_is_not_kiss_gated_when_kiss_missing_from_path() {
 }
 
 #[test]
-fn write_skips_external_linter_preflight() {
+fn admin_skips_external_linter_preflight() {
     let work = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(work.path().join(".git")).unwrap();
-    assert_malvin_subcommand_not_kiss_gated_without_auth(&["write", "topic"], Some(work.path()));
+    let (_root, isolated_bin, isolated_home) = isolated_path_and_home();
+    #[cfg(unix)]
+    let out = run_malvin_path_timed(&isolated_bin, |c| {
+        clear_agent_api_env(c);
+        c.env("HOME", &isolated_home);
+        c.current_dir(work.path());
+        c.args(["admin", "models", "--doc"]);
+    });
+    #[cfg(not(unix))]
+    let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
+        .env("PATH", &isolated_bin)
+        .env("HOME", &isolated_home)
+        .env_remove("CURSOR_AGENT_API_KEY")
+        .env_remove("CURSOR_API_KEY")
+        .env_remove("AGENT_API_KEY")
+        .env_remove("MALVIN_AGENT_ACP_BIN")
+        .current_dir(work.path())
+        .args(["admin", "models", "--doc"])
+        .output()
+        .expect("spawn malvin");
+    assert!(
+        out.status.success(),
+        "admin --doc must succeed without kiss/auth; stdout/stderr: {out:?}"
+    );
+    let msg = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        !msg.contains("cargo install kiss-ai")
+            && !msg.contains("`kiss` is not installed or not on PATH"),
+        "admin must not run kiss precheck; got: {msg:?}"
+    );
+    assert!(
+        msg.contains("# malvin admin models"),
+        "expected admin models doc; got: {msg:?}"
+    );
 }
 
 #[test]

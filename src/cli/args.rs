@@ -2,7 +2,6 @@ use clap::{Parser, Subcommand};
 
 use super::admin_cmd::AdminArgs;
 use super::shared_opts::SharedOpts;
-use super::write_flow::WriteArgs;
 
 #[derive(Parser, Debug)]
 #[allow(clippy::struct_excessive_bools)]
@@ -34,8 +33,6 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// Write a LaTeX PDF on code or concepts
-    Write(WriteArgs),
     /// Operator maintenance commands
     Admin(AdminArgs),
 }
