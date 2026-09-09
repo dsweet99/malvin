@@ -21,7 +21,7 @@ fn cursor_and_pi_backends_construct_from_prefixed_models() {
     );
     assert!(matches!(sdk.model.backend, ModelBackend::Cursor));
     let pi = crate::agent_backend::agent_backend_from_client({
-        let model = crate::model_id::parse_model_id("pi:openai/gpt-4o").expect("model");
+        let model = crate::model_id::parse_model_id("rpi:openai/gpt-4o").expect("model");
         crate::agent_backend::new_pi(model, test_io())
     });
     assert!(matches!(pi.model.backend, ModelBackend::Pi));
@@ -30,7 +30,7 @@ fn cursor_and_pi_backends_construct_from_prefixed_models() {
 #[test]
 fn build_agent_backend_selects_pi_for_pi_model() {
     let mut shared = shared_opts(false);
-    shared.model = crate::model_id::parse_model_id("pi:openai/gpt-4o").expect("model");
+    shared.model = crate::model_id::parse_model_id("rpi:openai/gpt-4o").expect("model");
     let backend = build_agent_backend(&shared, WorkflowCliOptions { force: false }, false, "code")
         .expect("pi backend");
     assert!(matches!(backend.model.backend, ModelBackend::Pi));

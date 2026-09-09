@@ -25,7 +25,7 @@ fn pi_clear_mock_env() {
 }
 
 fn pi_mock_client(run_dir: &std::path::Path) -> crate::agent_backend::SdkClient {
-    let mut client = crate::pi_sdk::pi_sdk_client_from_raw("pi:openai/gpt-4o", pi_mock_io(), 1);
+    let mut client = crate::pi_sdk::pi_sdk_client_from_raw("rpi:openai/gpt-4o", pi_mock_io(), 1);
     client.prompts_log_run_dir = Some(run_dir.to_path_buf());
     client
 }
@@ -75,7 +75,7 @@ async fn pi_sdk_noforce_fails_fast() {
     let tmp = tempfile::tempdir().expect("tmp");
     let mut io = pi_mock_io();
     io.force = false;
-    let mut client = crate::pi_sdk::pi_sdk_client_from_raw("pi:openai/gpt-4o", io, 1);
+    let mut client = crate::pi_sdk::pi_sdk_client_from_raw("rpi:openai/gpt-4o", io, 1);
     client.prompts_log_run_dir = Some(tmp.path().to_path_buf());
     let err = client
         .begin_coder_session(tmp.path())

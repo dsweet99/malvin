@@ -52,13 +52,13 @@ mod tests {
     #[test]
     fn parses_admin_models() {
         let cli =
-            Cli::try_parse_from(["malvin", "admin", "models", "--refresh", "pi:"]).expect("parse");
+            Cli::try_parse_from(["malvin", "admin", "models", "--refresh", "rpi:"]).expect("parse");
         match cli.command {
             Some(Commands::Admin(AdminArgs {
                 command: AdminCommand::Models(args),
             })) => {
                 assert!(args.refresh);
-                assert_eq!(args.words, vec!["pi:".to_string()]);
+                assert_eq!(args.words, vec!["rpi:".to_string()]);
             }
             other => panic!("expected Admin::Models, got {other:?}"),
         }

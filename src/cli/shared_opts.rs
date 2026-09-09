@@ -29,14 +29,14 @@ pub struct SharedOpts {
     /// Suppress all stdout
     #[arg(short = 'b', long, default_value_t = false)]
     pub background: bool,
-    /// Model id (`cursor:`, `pi:`, or `codex:`)
+    /// Model id (`cursor:`, `rpi:`, or `codex:`)
     #[arg(
         long,
         default_value = DEFAULT_CLI_MODEL,
         value_parser = parse_model_id
     )]
     pub model: ParsedModel,
-    /// Do not auto-approve tool calls (unsupported on `cursor:`, `pi:`, and `codex:`; fails fast)
+    /// Do not auto-approve tool calls (unsupported on `cursor:`, `rpi:`, and `codex:`; fails fast)
     #[arg(long, default_value_t = false)]
     pub no_force: bool,
     /// Do not expand gate-loop budgets to tenacious limits (tenacious on by default)

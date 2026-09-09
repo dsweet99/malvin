@@ -52,7 +52,7 @@ pub(crate) async fn pi_spawn_bridge(args: BridgeSpawnArgs<'_>) -> Result<SdkSess
     let ticket = crate::malvin_sandbox::take_sandbox_spawn_ticket().map_err(AgentError)?;
     let (provider, model) = args.model.pi_provider_and_model().ok_or_else(|| {
         AgentError(format!(
-            "pi model id must be `pi:<provider>/<model>` (got `{}`)",
+            "rpi model id must be `rpi:<provider>/<model>` (got `{}`)",
             args.model.canonical()
         ))
     })?;
@@ -189,7 +189,7 @@ mod thinking_arg_tests {
 
     #[test]
     fn split_keeps_model_path_after_first_slash() {
-        let model = parse_model_id("pi:openai/gpt-5").expect("ok");
+        let model = parse_model_id("rpi:openai/gpt-5").expect("ok");
         assert_eq!(
             model.pi_provider_and_model().expect("pi"),
             ("openai", "gpt-5")

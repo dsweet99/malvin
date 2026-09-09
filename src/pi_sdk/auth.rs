@@ -4,7 +4,7 @@ pub fn ensure_pi_authenticated(model: &str) -> Result<(), AuthError> {
     let parsed = crate::model_id::parse_model_id(model).map_err(AuthError)?;
     let Some((provider, _)) = parsed.pi_provider_and_model() else {
         return Err(AuthError(format!(
-            "pi model id must be `pi:<provider>/<model>` (got `{model}`)"
+            "rpi model id must be `rpi:<provider>/<model>` (got `{model}`)"
         )));
     };
     if provider_has_access(provider) {
@@ -63,7 +63,7 @@ mod tests {
     fn mapped_provider_requires_key() {
         crate::acp::with_env("OPENAI_API_KEY", None, || {
             if !stored_credential_present("openai") {
-                assert!(ensure_pi_authenticated("pi:openai/gpt-4o").is_err());
+                assert!(ensure_pi_authenticated("rpi:openai/gpt-4o").is_err());
             }
         });
     }
@@ -72,7 +72,7 @@ mod tests {
     fn unknown_provider_requires_stored_credential() {
         crate::acp::with_env("OPENAI_API_KEY", None, || {
             assert!(!is_provider_authenticated("some-unknown"));
-            let err = ensure_pi_authenticated("pi:some-unknown/foo").expect_err("must fail");
+            let err = ensure_pi_authenticated("rpi:some-unknown/foo").expect_err("must fail");
             assert!(err.0.contains("some-unknown"));
         });
     }

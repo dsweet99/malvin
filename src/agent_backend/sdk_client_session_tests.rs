@@ -12,7 +12,7 @@ fn service_wire_is_codex_only() {
     assert!(spawn::spawn_service_wire(&cursor).is_none());
 
     let pi = SdkClient::with_max_retries(
-        parse_model_id("pi:openai/gpt-4o[thinking=high]").expect("pi"),
+        parse_model_id("rpi:openai/gpt-4o[thinking=high]").expect("pi"),
         test_io(),
         1,
     );

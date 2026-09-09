@@ -68,5 +68,5 @@ Flag reference: `malvin --help`. Behavioral contracts: `malvin --doc` and `malvi
 
 # EXPERIMENTAL - USE AT YOUR OWN RISK
 
-- pi: models (links crates.io `pi_agent_rust`; uses the operator’s Pi auth/config)
+- rpi: models (links crates.io `pi_agent_rust`; uses the operator’s Pi auth/config)
 - Codex: models (requires an externally installed `codex` binary; local stdio app-server)

@@ -1,6 +1,6 @@
 # malvin (top-level CLI)
 
-malvin is a non-interactive research and coding agent. It runs agent sessions against a workspace through the Cursor SDK (`cursor:` models via a Node bridge to `@cursor/sdk`), an in-process Pi SDK (`pi:` models via linked `pi_agent_rust`), or a local Codex app-server (`codex:` models via `codex app-server`). Each agent-backed invocation creates an isolated run directory under `~/.malvin_home/logs/<hash>/` and records prompts, stdout, and artifacts there. When the workspace root contains a non-empty `AGENTS.md`, malvin embeds it in `header.md` via `{{ agents_insert }}` so every fresh-header session sees that guidance without relying on Cursor rule auto-load.
+malvin is a non-interactive research and coding agent. It runs agent sessions against a workspace through the Cursor SDK (`cursor:` models via a Node bridge to `@cursor/sdk`), an in-process Pi SDK (`rpi:` models via linked `pi_agent_rust`), or a local Codex app-server (`codex:` models via `codex app-server`). Each agent-backed invocation creates an isolated run directory under `~/.malvin_home/logs/<hash>/` and records prompts, stdout, and artifacts there. When the workspace root contains a non-empty `AGENTS.md`, malvin embeds it in `header.md` via `{{ agents_insert }}` so every fresh-header session sees that guidance without relying on Cursor rule auto-load.
 
 ## How to read this documentation
 
@@ -49,7 +49,7 @@ This is **not** the same as `-b` / `--background` (which suppresses all stdout, 
 
 ### `--model <MODEL>`
 
-Model id for agent-backed commands. Default: `cursor:auto`. Use `cursor:` for the Cursor SDK backend, or `pi:<provider>/<model>` for the in-process Pi backend (linked `pi_agent_rust`; uses env keys or credentials already stored by Pi). Optional bracket overrides select thinking / speed where the backend supports them, for example `cursor:claude-opus-5[effort=high,fast=true]` or `pi:openai/gpt-5[thinking=high]` (see `malvin admin models --doc`). Legacy `prime:` ids are rejected.
+Model id for agent-backed commands. Default: `cursor:auto`. Use `cursor:` for the Cursor SDK backend, or `rpi:<provider>/<model>` for the in-process Pi backend (linked `pi_agent_rust`; uses env keys or credentials already stored by Pi). Optional bracket overrides select thinking / speed where the backend supports them, for example `cursor:claude-opus-5[effort=high,fast=true]` or `rpi:openai/gpt-5[thinking=high]` (see `malvin admin models --doc`). Legacy `prime:` ids are rejected.
 
 ### `--max-loops <N>` (default: 1)
 
@@ -61,7 +61,7 @@ Hypothesis budget for bare `malvin REQUEST` and `malvin -g`. When the flag is om
 
 ### `--no-force`
 
-By default agent backends run tools headlessly (auto-approved). `--no-force` is not supported on `cursor:`, `pi:`, or `codex:` (no interactive approval prompt); malvin fails fast with a clear error before any session starts.
+By default agent backends run tools headlessly (auto-approved). `--no-force` is not supported on `cursor:`, `rpi:`, or `codex:` (no interactive approval prompt); malvin fails fast with a clear error before any session starts.
 
 ### `--no-tenacious`
 
@@ -211,8 +211,8 @@ After most agent-backed commands create a new run directory and emit the startup
 
 - **Node.js**: ≥ 22.13 with `npm` on `PATH`. `cargo install malvin` / `cargo build` run `build.rs`, which installs the Cursor SDK bridge under `~/.malvin_home/sdk-bridges/` when the in-tree bridge is not already built (required for `cursor:` agent backends). Set `MALVIN_SKIP_SDK_BRIDGES=1` only to compile the binary without that SDK.
 - **Cursor SDK**: `@cursor/sdk` via `cursor-sdk-bridge/` (installed at build time), and a Cursor API key (`CURSOR_API_KEY`, or `CURSOR_AGENT_API_KEY` / `AGENT_API_KEY`) for `cursor:` models. `malvin admin models` lists Cursor models via the bridge when possible; falls back to `agent` / `cursor-agent` on `PATH` if the SDK path fails.
-- **OpenRouter**: `OPENROUTER_API_KEY` when using `pi:openrouter/…` models.
-- **Pi SDK**: malvin links crates.io `pi_agent_rust` and lists or runs `pi:` models from that registry. Provider keys follow Pi’s env vars or credentials already stored under Pi’s auth path (`PI_CODING_AGENT_DIR` / `~/.pi/agent`). An external `pi` binary is not required.
+- **OpenRouter**: `OPENROUTER_API_KEY` when using `rpi:openrouter/…` models.
+- **Pi SDK**: malvin links crates.io `pi_agent_rust` and lists or runs `rpi:` models from that registry. Provider keys follow Pi’s env vars or credentials already stored under Pi’s auth path (`PI_CODING_AGENT_DIR` / `~/.pi/agent`). An external `pi` binary is not required.
 - **pre-commit**: optional; malvin does not install hooks automatically.
 
 ## Request syntax

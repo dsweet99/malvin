@@ -78,7 +78,7 @@ fn kv_error(part: &str) -> String {
     }
 }
 
-/// Shared `thinking=` vocabulary for `pi:` and `codex:`.
+/// Shared `thinking=` vocabulary for `rpi:` and `codex:`.
 /// Wire adapters map levels a vendor does not name (`ultra` on Pi, `off`/`minimal` on Codex).
 const THINKING_LEVELS: &[&str] = &[
     "off", "minimal", "low", "medium", "high", "xhigh", "max", "ultra",

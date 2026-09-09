@@ -26,7 +26,7 @@ malvin admin reset-herdr
 
 ### `models`
 
-List `cursor:`, `pi:`, and `codex:` model ids. See `malvin admin models --doc` for the full contract.
+List `cursor:`, `rpi:`, and `codex:` model ids. See `malvin admin models --doc` for the full contract.
 
 ### `reset-herdr`
 

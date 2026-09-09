@@ -14,21 +14,21 @@ fn kiss_cov_session_and_spawn_names() {
 fn pi_provider_and_model_first_slash() {
     use crate::model_id::parse_model_id;
     assert_eq!(
-        parse_model_id("pi:openai/gpt-4o")
+        parse_model_id("rpi:openai/gpt-4o")
             .expect("ok")
             .pi_provider_and_model()
             .expect("pi"),
         ("openai", "gpt-4o")
     );
     assert_eq!(
-        parse_model_id("pi:openrouter/anthropic/claude-3-haiku")
+        parse_model_id("rpi:openrouter/anthropic/claude-3-haiku")
             .expect("ok")
             .pi_provider_and_model()
             .expect("pi"),
         ("openrouter", "anthropic/claude-3-haiku")
     );
     assert!(
-        parse_model_id("pi:noslash")
+        parse_model_id("rpi:noslash")
             .expect_err("err")
             .contains("provider")
     );
@@ -43,7 +43,7 @@ async fn fake_session_begin_end_leaves_no_pi_runtime_thread() {
     }
     let tmp = tempfile::tempdir().expect("tmp");
     let mut client = crate::pi_sdk::pi_sdk_client_from_raw(
-        "pi:openai/gpt-4o",
+        "rpi:openai/gpt-4o",
         crate::acp::AgentIoOptions {
             force: true,
             no_tee: true,

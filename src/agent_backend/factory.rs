@@ -68,12 +68,12 @@ mod tests {
     #[test]
     fn build_agent_backend_selects_pi_when_prefixed() {
         let mut shared = shared_opts(false);
-        shared.model = crate::model_id::parse_model_id("pi:openai/gpt-4o").expect("model");
+        shared.model = crate::model_id::parse_model_id("rpi:openai/gpt-4o").expect("model");
         let backend =
             build_agent_backend(&shared, WorkflowCliOptions { force: false }, false, "code")
                 .expect("pi sdk");
         assert!(matches!(backend.model.backend, ModelBackend::Pi));
-        assert_eq!(backend.model.canonical(), "pi:openai/gpt-4o");
+        assert_eq!(backend.model.canonical(), "rpi:openai/gpt-4o");
     }
 
     #[test]

@@ -5,7 +5,7 @@ Malvin is a non-interactive research and coding agent.
 
 # Constraints
 
-- `pi:` models should look basically the same as `cursor:` models to the user when they view the log files or stdout log, despite the difference in agent backend.
+- `rpi:` models should look basically the same as `cursor:` models to the user when they view the log files or stdout log, despite the difference in agent backend.
 - No production config files should be touched by unit tests.
 - Each unit test runs in under 1.5s.
 - `header.md` and default-workflow (router) prompts should *not* explicitly mention

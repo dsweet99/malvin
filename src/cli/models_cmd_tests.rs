@@ -63,7 +63,7 @@ fn models_subcommand_parse_invokes_cli_helpers() {
         }))
     ));
     let refresh =
-        Cli::try_parse_from(["malvin", "admin", "models", "--refresh", "pi:"]).expect("parse");
+        Cli::try_parse_from(["malvin", "admin", "models", "--refresh", "rpi:"]).expect("parse");
     match refresh.command {
         Some(Commands::Admin(AdminArgs {
             command: AdminCommand::Models(args),

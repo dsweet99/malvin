@@ -3,7 +3,7 @@
 The agent container mounts a staged copy of ``workspace/`` at ``/app``, plus
 (when ``--agent=malvin``) the host ``malvin`` binary and read-only
 ``cursor-sdk-bridge`` (for ``cursor:`` models). When ``--model`` selects a
-``pi:`` id, the container does **not** need a host ``pi`` binary. For ``codex:`` ids, the Codex package and Node.js executable are mounted
+``rpi:`` id, the container does **not** need a host ``pi`` binary. For ``codex:`` ids, the Codex package and Node.js executable are mounted
 and ``MALVIN_CODEX`` points at the package's JavaScript CLI (malvin does not
 bundle either external backend). ``--agent=cursor`` skips malvin and runs
 ``cursor-agent`` instead. ``grade.py``, ``goldens/``, and other grader material
@@ -16,7 +16,7 @@ Usage::
     python ops/fast_task.py solve FT-01 --agent=cursor
     python ops/fast_task.py solve FT-01 --main
     python ops/fast_task.py solve FT-01 --model cursor:auto
-    python ops/fast_task.py solve FT-01 --model pi:openrouter/~x-ai/grok-latest
+    python ops/fast_task.py solve FT-01 --model rpi:openrouter/~x-ai/grok-latest
     python ops/fast_task.py solve FT-01 --model codex:gpt-5.6-terra
     python ops/fast_task.py solve FT-01 --creative
     python ops/fast_task.py tasks
@@ -145,14 +145,14 @@ def ft_resolve_codex_auth_file() -> Path | None:
 
 
 def ft_malvin_args_request_pi(malvin_args: tuple[str, ...]) -> bool:
-    """True when ``malvin_args`` select a ``pi:`` ``--model``."""
+    """True when ``malvin_args`` select a ``rpi:`` ``--model``."""
     for i, arg in enumerate(malvin_args):
         if arg == "--model" and i + 1 < len(malvin_args):
-            if malvin_args[i + 1].startswith("pi:"):
+            if malvin_args[i + 1].startswith("rpi:"):
                 return True
         elif arg.startswith("--model="):
             value = arg.split("=", 1)[1]
-            if value.startswith("pi:"):
+            if value.startswith("rpi:"):
                 return True
     return False
 
@@ -1080,11 +1080,11 @@ def _ft_test_docker_agent_cmd_cursor() -> None:
         assert "--verbose" not in cmd
 
 def _ft_test_docker_agent_cmd_pi() -> None:
-    """``pi:`` models do not require a host ``pi`` binary."""
+    """``rpi:`` models do not require a host ``pi`` binary."""
     assert ft_malvin_args_request_pi(()) is False
     assert ft_malvin_args_request_pi(("--model", "cursor:auto")) is False
-    assert ft_malvin_args_request_pi(("--model", "pi:openai/gpt-4o")) is True
-    assert ft_malvin_args_request_pi(("--model=pi:openrouter/x",)) is True
+    assert ft_malvin_args_request_pi(("--model", "rpi:openai/gpt-4o")) is True
+    assert ft_malvin_args_request_pi(("--model=rpi:openrouter/x",)) is True
     assert ft_malvin_args_request_pi(("--model=cursor:auto",)) is False
 
     with tempfile.TemporaryDirectory(prefix="ft-pi-") as tmp:
@@ -1097,10 +1097,10 @@ def _ft_test_docker_agent_cmd_pi() -> None:
             image=DEFAULT_IMAGE,
             workspace=ws,
             malvin_binary=host_malvin,
-            malvin_args=("--model", "pi:openai/gpt-4o"),
+            malvin_args=("--model", "rpi:openai/gpt-4o"),
         )
         assert "--model" in cmd
-        assert "pi:openai/gpt-4o" in cmd
+        assert "rpi:openai/gpt-4o" in cmd
 
         base = ft_docker_agent_cmd(
             image=DEFAULT_IMAGE,
@@ -1362,7 +1362,7 @@ def _ft_assert_solve_model_and_agent_dry_runs(cli, runner, tmp: Path) -> None:
             "solve",
             "FT-01",
             "--model",
-            "pi:openai/gpt-4o",
+            "rpi:openai/gpt-4o",
             "--dry-run",
             "--skip-grade",
             "--results-dir",
@@ -1375,7 +1375,7 @@ def _ft_assert_solve_model_and_agent_dry_runs(cli, runner, tmp: Path) -> None:
     assert pi_meta_paths, pi_result.output
     pi_cmd = json.loads(pi_meta_paths[0].read_text(encoding="utf-8"))["docker_cmd"]
     assert "--model" in pi_cmd
-    assert "pi:openai/gpt-4o" in pi_cmd
+    assert "rpi:openai/gpt-4o" in pi_cmd
 
     cursor_tmp = tmp / "cursor"
     cursor_tmp.mkdir()
@@ -1422,7 +1422,7 @@ def _ft_assert_solve_model_and_agent_dry_runs(cli, runner, tmp: Path) -> None:
     _ft_assert_solve_creative_dry_runs(cli, runner, tmp)
 
 def _ft_assert_solve_creative_dry_runs(cli, runner, tmp: Path) -> None:
-    """``--creative`` forwards to malvin; rejects cursor agent; allows pi:."""
+    """``--creative`` forwards to malvin; rejects cursor agent; allows rpi:."""
     creative_tmp = tmp / "creative"
     creative_tmp.mkdir()
     creative_result = runner.invoke(
@@ -1478,7 +1478,7 @@ def _ft_assert_solve_creative_dry_runs(cli, runner, tmp: Path) -> None:
             "FT-01",
             "--creative",
             "--model",
-            "pi:openai/gpt-4o",
+            "rpi:openai/gpt-4o",
             "--dry-run",
             "--skip-grade",
             "--results-dir",
@@ -1494,7 +1494,7 @@ def _ft_assert_solve_creative_dry_runs(cli, runner, tmp: Path) -> None:
     pmi = pi_cmd.index("malvin")
     assert "--creative" in pi_cmd[pmi:]
     assert "--model" in pi_cmd[pmi:]
-    assert "pi:openai/gpt-4o" in pi_cmd[pmi:]
+    assert "rpi:openai/gpt-4o" in pi_cmd[pmi:]
 
     assert ft_malvin_args_request_creative(()) is False
     assert ft_malvin_args_request_creative(("--creative",)) is True
@@ -1511,7 +1511,7 @@ def _ft_assert_solve_creative_dry_runs(cli, runner, tmp: Path) -> None:
         assert "mutually exclusive" in str(exc)
     ft_assert_creative_compatible(AGENT_MALVIN, ("--creative",))
     ft_assert_creative_compatible(
-        AGENT_MALVIN, ("--creative", "--model", "pi:openai/gpt-4o")
+        AGENT_MALVIN, ("--creative", "--model", "rpi:openai/gpt-4o")
     )
     ft_assert_creative_compatible(AGENT_MALVIN, ("--creative", "--pi"))
     ft_assert_creative_compatible(AGENT_CURSOR, ())
