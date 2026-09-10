@@ -23,7 +23,6 @@ pub struct BridgeSpawnArgs<'a> {
 }
 
 impl BridgeSpawnArgs<'_> {
-    /// Backend-specific model string placed on the wire / child argv.
     #[must_use]
     pub fn wire_model(&self) -> String {
         match self.model.backend {

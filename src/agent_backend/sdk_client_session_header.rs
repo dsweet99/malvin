@@ -6,7 +6,6 @@ use super::sdk_client_prompt::{
     teardown_sdk_session_after_transport_error,
 };
 
-/// Send the bound spawn header once per fresh agent context.
 pub(super) async fn send_bound_session_header(client: &mut SdkClient) -> Result<(), AgentError> {
     if client.header_delivered {
         return Ok(());

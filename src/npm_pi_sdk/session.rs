@@ -10,7 +10,6 @@ use tokio::sync::Mutex as AsyncMutex;
 use crate::acp::AgentError;
 use crate::bridge_sdk::{StdioTeardown, StreamLog, drop_stdio_child};
 
-/// Official npm Pi agent RPC session (stdio child process).
 pub struct NpmPiSession {
     pub child: AsyncMutex<Option<Child>>,
     pub stdin: Arc<AsyncMutex<ChildStdin>>,

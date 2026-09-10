@@ -179,12 +179,21 @@ fn finish_run_done(
         super::log_adapter::feed_do_dm_run_result(text);
     }
     super::log_adapter::handle_stream_event(session, ev);
+    if *status == crate::bridge_protocol::RunDoneStatus::Unknown {
+        tracing::warn!(
+            result = result.as_deref(),
+            error = error.as_deref(),
+            "run_done unknown status; surfacing result/error"
+        );
+    }
     if run_done_status_is_failure(*status) {
         return Err(AgentError(error.clone().unwrap_or_else(|| {
-            if *status == crate::bridge_protocol::RunDoneStatus::Cancelled {
-                "run cancelled".into()
-            } else {
-                "run error".into()
+            match *status {
+                crate::bridge_protocol::RunDoneStatus::Cancelled => "run cancelled".into(),
+                crate::bridge_protocol::RunDoneStatus::Unknown => {
+                    "run finished with unknown status".into()
+                }
+                _ => "run error".into(),
             }
         })));
     }
@@ -234,6 +243,7 @@ mod tests {
         use crate::bridge_protocol::RunDoneStatus;
         assert!(run_done_status_is_failure(RunDoneStatus::Error));
         assert!(run_done_status_is_failure(RunDoneStatus::Cancelled));
+        assert!(run_done_status_is_failure(RunDoneStatus::Unknown));
         assert!(!run_done_status_is_failure(RunDoneStatus::Finished));
     }
 }

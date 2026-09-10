@@ -9,7 +9,6 @@ use super::{
     build_router_header_prompt, build_router_mbc2_prompt, router_a_prompt_label,
 };
 
-/// Inputs for the aggregated first router turn (header + setup + `router_a`).
 #[allow(clippy::struct_excessive_bools)]
 pub(crate) struct RouterInitialPromptInput<'a> {
     pub store: &'a PromptStore,
@@ -20,19 +19,13 @@ pub(crate) struct RouterInitialPromptInput<'a> {
     pub no_kpop: bool,
     pub creative: bool,
     pub max_hypotheses: usize,
-    /// When true, include `header.md` (fresh agent). When false, skip it (reused/resumed).
     pub include_header: bool,
 }
 
-/// Aggregated initial router prompt for one host send.
 pub(crate) type RouterInitialPrompt = AggregatedInitialPrompt;
 
 const ROUTER_INITIAL_LOG_WHO: &str = "router_initial";
 
-/// Render and join the initial router pieces for the active workflow options.
-///
-/// Order: optional `header.md` (with `{{ kpop_insert }}` from `kpop_common`, empty
-/// when `no_kpop`), optional `mbc2.md` when creative, then `router_a`.
 pub(crate) fn build_router_initial_prompt(
     input: RouterInitialPromptInput<'_>,
 ) -> Result<RouterInitialPrompt, String> {

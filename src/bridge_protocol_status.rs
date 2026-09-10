@@ -1,15 +1,11 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-/// Shared `run_done.status` vocabulary for Cursor, Pi, and Codex traces.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RunDoneStatus {
-    #[serde(alias = "completed")]
     Finished,
-    #[serde(alias = "failed")]
     Error,
-    #[serde(alias = "interrupted")]
     Cancelled,
+    Unknown,
 }
 
 impl RunDoneStatus {
@@ -19,7 +15,11 @@ impl RunDoneStatus {
             "completed" | "finished" => Self::Finished,
             "failed" | "error" => Self::Error,
             "interrupted" | "cancelled" => Self::Cancelled,
-            _ => Self::Error,
+            "unknown" => Self::Unknown,
+            other => {
+                tracing::warn!(status = other, "unknown run_done status");
+                Self::Unknown
+            }
         }
     }
 
@@ -29,12 +29,26 @@ impl RunDoneStatus {
             Self::Finished => "finished",
             Self::Error => "error",
             Self::Cancelled => "cancelled",
+            Self::Unknown => "unknown",
         }
     }
 
     #[must_use]
     pub const fn is_failure(self) -> bool {
-        matches!(self, Self::Error | Self::Cancelled)
+        matches!(self, Self::Error | Self::Cancelled | Self::Unknown)
+    }
+}
+
+impl Serialize for RunDoneStatus {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for RunDoneStatus {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let raw = String::deserialize(deserializer)?;
+        Ok(Self::from_raw(&raw))
     }
 }
 
@@ -49,7 +63,7 @@ mod tests {
     use super::RunDoneStatus;
 
     #[test]
-    fn aliases_collapse_to_three_statuses() {
+    fn aliases_and_unknown_status() {
         assert_eq!(
             RunDoneStatus::from_raw("completed"),
             RunDoneStatus::Finished
@@ -60,13 +74,16 @@ mod tests {
             RunDoneStatus::from_raw("interrupted"),
             RunDoneStatus::Cancelled
         );
-        assert_eq!(RunDoneStatus::from_raw("bogus"), RunDoneStatus::Error);
+        assert_eq!(RunDoneStatus::from_raw("bogus"), RunDoneStatus::Unknown);
+        assert_eq!(RunDoneStatus::from_raw("unknown"), RunDoneStatus::Unknown);
         assert_eq!(RunDoneStatus::from("cancelled"), RunDoneStatus::Cancelled);
         assert_eq!(RunDoneStatus::Finished.as_str(), "finished");
         assert_eq!(RunDoneStatus::Error.as_str(), "error");
         assert_eq!(RunDoneStatus::Cancelled.as_str(), "cancelled");
+        assert_eq!(RunDoneStatus::Unknown.as_str(), "unknown");
         assert!(RunDoneStatus::Error.is_failure());
         assert!(RunDoneStatus::Cancelled.is_failure());
+        assert!(RunDoneStatus::Unknown.is_failure());
         assert!(!RunDoneStatus::Finished.is_failure());
         assert_eq!(
             serde_json::to_string(&RunDoneStatus::Finished).unwrap(),
@@ -76,8 +93,8 @@ mod tests {
         assert_eq!(decoded, RunDoneStatus::Finished);
         let failed: RunDoneStatus = serde_json::from_str("\"failed\"").unwrap();
         assert_eq!(failed, RunDoneStatus::Error);
-        let unknown: Result<RunDoneStatus, _> = serde_json::from_str("\"bogus\"");
-        assert!(unknown.is_err());
+        let unknown: RunDoneStatus = serde_json::from_str("\"bogus\"").unwrap();
+        assert_eq!(unknown, RunDoneStatus::Unknown);
     }
 
     #[test]
@@ -90,5 +107,6 @@ mod tests {
         let _ = stringify!(Finished);
         let _ = stringify!(Error);
         let _ = stringify!(Cancelled);
+        let _ = stringify!(Unknown);
     }
 }

@@ -96,7 +96,6 @@ pub fn decode_event(line: &str) -> Result<BridgeEvent, String> {
     Ok(ev)
 }
 
-/// Shared `run_done.status` vocabulary for Cursor, Pi, and Codex traces.
 #[must_use]
 pub fn canonical_run_done_status(status: &str) -> &'static str {
     RunDoneStatus::from_raw(status).as_str()
@@ -184,6 +183,18 @@ mod bridge_protocol_tests {
         assert!(
             matches!(failed, BridgeEvent::RunDone { status, .. } if status == RunDoneStatus::Error)
         );
+        let unknown =
+            decode_event(r#"{"event":"run_done","status":"bogus","error":"detail"}"#)
+                .expect("unknown");
+        assert!(matches!(
+            unknown,
+            BridgeEvent::RunDone {
+                status: RunDoneStatus::Unknown,
+                error: Some(ref e),
+                ..
+            } if e == "detail"
+        ));
+        assert_eq!(canonical_run_done_status("bogus"), "unknown");
         let fatal =
             decode_event(r#"{"event":"fatal","message":"boom","retryable":true}"#).expect("fatal");
         match fatal {

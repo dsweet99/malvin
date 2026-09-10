@@ -9,20 +9,17 @@ pub const ROUTER_B_MD: &str = "router_b.md";
 pub const ROUTER_B_CREATIVE_MD: &str = "router_b_creative.md";
 pub const ROUTER_B_NO_KPOP_MD: &str = "router_b_no_kpop.md";
 
-/// Flags that select among `router_b` prompt variants.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct RouterBPromptFlags {
     pub creative: bool,
     pub no_kpop: bool,
 }
 
-/// Active router header template.
 #[must_use]
 pub const fn header_prompt_file() -> &'static str {
     HEADER_MD
 }
 
-/// Active `kpop_common` template (`no_kpop` selects the stripped variant).
 #[must_use]
 pub const fn kpop_common_prompt_file(no_kpop: bool) -> &'static str {
     if no_kpop {
@@ -32,7 +29,6 @@ pub const fn kpop_common_prompt_file(no_kpop: bool) -> &'static str {
     }
 }
 
-/// Active `router_a` template (`no_kpop` selects the stripped variant).
 #[must_use]
 pub const fn router_a_prompt_file(no_kpop: bool) -> &'static str {
     if no_kpop {
@@ -42,7 +38,6 @@ pub const fn router_a_prompt_file(no_kpop: bool) -> &'static str {
     }
 }
 
-/// Active `router_b` template (`no_kpop` wins over `creative`).
 #[must_use]
 pub const fn router_b_prompt_file(flags: RouterBPromptFlags) -> &'static str {
     if flags.no_kpop {

@@ -1,9 +1,7 @@
-"""Kiss coverage witnesses for ops/malvin_modal.py."""
 from __future__ import annotations
 
 import malvin_modal as _mod
 from toolchain_repos import load_ops_entry
-
 
 def test_malvin_modal_kiss_coverage_witnesses() -> None:
     ops = load_ops_entry("malvin_modal")

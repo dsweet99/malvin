@@ -1,4 +1,3 @@
-"""Shared Modal sandbox app lookup for ops entrypoints."""
 
 from __future__ import annotations
 
@@ -9,7 +8,6 @@ from unittest.mock import patch
 import modal
 
 def lookup_sandbox_app(module_app: modal.App, app_name: str) -> modal.App:
-    """Return an initialized Modal app for sandbox creation."""
     if module_app.app_id is not None:
         return module_app
     return modal.App.lookup(app_name, create_if_missing=True)
@@ -20,7 +18,6 @@ def test_sandbox_app_lookup(
     app_name: str,
     sandbox_app: Any,
 ) -> None:
-    """Unit-test ``sandbox_app`` lookup vs module-bound app."""
     lookup_app = SimpleNamespace(app_id="lookup-id")
     bound_app = SimpleNamespace(app_id="module-id")
     with patch(f"{module_name}.app", SimpleNamespace(app_id=None)):

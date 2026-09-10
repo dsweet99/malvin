@@ -13,7 +13,6 @@ fn cursor_resume_id(client: &SdkClient) -> Option<String> {
         .flatten()
 }
 
-/// Spawn a bridge session. On success, returns whether the spawn used Cursor resume.
 pub(super) async fn spawn_with_retries(
     client: &mut SdkClient,
     cwd: PathBuf,

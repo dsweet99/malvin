@@ -1,4 +1,3 @@
-"""Kiss coverage witnesses for src/python/sandbox_prep_venv_cache.py."""
 from __future__ import annotations
 
 import sandbox_prep_venv_cache as _mod

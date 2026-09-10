@@ -102,7 +102,6 @@ fn finish_settled(session: &NpmPiSession, state: &mut TurnState) {
     feed_and_handle_run_done(session, &ev);
 }
 
-/// Match `bridge_sdk::finish_run_done`: extract `--do` DM bodies before logging `RunDone`.
 fn feed_and_handle_run_done(session: &NpmPiSession, ev: &BridgeEvent) {
     feed_run_done_dm(ev);
     crate::bridge_sdk::handle_stream_event(session, ev);

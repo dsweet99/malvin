@@ -1,6 +1,3 @@
-//! Kiss static coverage witness for the embedded pi::sdk units.
-//! Bare call-shaped tokens; this file is scanned, not compiled (style matches
-//! src/coverage_kiss/test_kiss_static_coverage_00..06).
 
 #[test]
 fn kiss_probe_static_tokens_a() {

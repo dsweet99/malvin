@@ -65,7 +65,6 @@ pub(crate) fn build_router_kpop_common_prompt(
         .map(|body| body.trim().to_string())
 }
 
-/// Render `mbc2.md` for a creative router iteration (after header / kpop insert).
 pub(crate) fn build_router_mbc2_prompt(
     store: &PromptStore,
     artifacts: &RunArtifacts,

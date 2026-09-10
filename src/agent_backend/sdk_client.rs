@@ -6,9 +6,6 @@ use crate::model_id::ParsedModel;
 
 use super::sdk_session::SdkSession;
 
-/// Coder session after `begin_coder_session`.
-///
-/// `NeedsRespawn` keeps cwd so transport teardown can reopen without calling begin again.
 pub(crate) enum BegunCoderSession {
     Live { cwd: PathBuf, session: SdkSession },
     NeedsRespawn { cwd: PathBuf },
@@ -38,7 +35,6 @@ impl BegunCoderSession {
         }
     }
 
-    /// Take the live session, leaving [`NeedsRespawn`] with the same cwd.
     pub(crate) fn take_live_session(&mut self) -> Option<SdkSession> {
         match std::mem::replace(
             self,
@@ -58,13 +54,11 @@ impl BegunCoderSession {
     }
 }
 
-/// Bound spawn-time header text delivered once per fresh agent.
 #[derive(Clone, Debug)]
 pub struct CoderSessionHeader {
     pub prompt: String,
     pub log_path: PathBuf,
     pub stdout_label: String,
-    /// Short name written to `prompts.log` (e.g. `header`, `router_initial`).
     pub log_who: String,
 }
 
@@ -109,12 +103,10 @@ impl SdkClient {
         }
     }
 
-    /// Bind the spawn-time header prompt. Required before [`Self::start_coder_session`].
     pub fn bind_session_header(&mut self, prompt: String, log_path: PathBuf, stdout_label: &str) {
         self.bind_session_header_parts(prompt, log_path, stdout_label, "header");
     }
 
-    /// Bind spawn-time prompt with an explicit `prompts.log` who-tag.
     pub fn bind_session_header_parts(
         &mut self,
         prompt: String,

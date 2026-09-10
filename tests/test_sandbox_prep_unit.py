@@ -1,4 +1,3 @@
-"""Individual sandbox_prep unit tests (one pytest node per _test_*)."""
 from __future__ import annotations
 
 import pytest
@@ -29,11 +28,9 @@ def _warm_bases_ready() -> bool:
 if not _warm_bases_ready():
     _venv_cache.VENV_CACHE_OFFLINE = True
 
-
 def _skip_if_offline() -> None:
     if _venv_cache.VENV_CACHE_OFFLINE:
         pytest.skip("pinned verifier packages unavailable in offline environment")
-
 
 def test_sandbox_prep_parse_dockerfile_run_commands_multiline() -> None:
     sandbox_prep._test_parse_dockerfile_run_commands_multiline()

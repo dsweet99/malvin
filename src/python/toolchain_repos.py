@@ -1,4 +1,3 @@
-"""Shared malvin repo root helpers for ops Modal scripts."""
 
 from __future__ import annotations
 
@@ -12,10 +11,6 @@ from types import ModuleType
 import click
 
 def malvin_repo_root() -> Path:
-    """Return the malvin repository root (directory with ``Cargo.toml`` + ``ops/``).
-
-    Works when this module lives under ``ops/`` or ``src/python/``.
-    """
     here = Path(__file__).resolve()
     for parent in (here.parent, *here.parents):
         if (
@@ -27,11 +22,6 @@ def malvin_repo_root() -> Path:
     raise RuntimeError(f"malvin repo root not found from {here}")
 
 def load_ops_entry(modname: str) -> ModuleType:
-    """Load ``ops/<modname>.py`` under a unique name (CLI surface for CliRunner).
-
-    Library modules in ``src/python`` must not define Click commands; self-tests
-    that exercise the CLI load the thin ops entry via this helper.
-    """
     root = malvin_repo_root()
     ops_dir = root / "ops"
     boot_path = root / "src" / "python" / "_ops_bootstrap.py"
@@ -75,7 +65,6 @@ def load_ops_entry(modname: str) -> ModuleType:
     return mod
 
 def resolve_malvin_cmd() -> str:
-    """Return malvin executable: ``MALVIN`` env, repo target build, then PATH."""
     override = os.environ.get("MALVIN")
     if override:
         return override
@@ -88,14 +77,12 @@ def resolve_malvin_cmd() -> str:
     return on_path if on_path else "malvin"
 
 def validate_toolchain_repos() -> Path:
-    """Ensure the local malvin tree exists before building agent images."""
     malvin_repo = malvin_repo_root()
     if not (malvin_repo / "Cargo.toml").is_file():
         raise click.ClickException(f"malvin repo not found: {malvin_repo}")
     return malvin_repo
 
 def cursor_sdk_shutdown_qa():
-    """Return the Cursor SDK shutdown QA library (anchors ``qa`` in the import graph)."""
     import qa as qa_mod
 
     return qa_mod

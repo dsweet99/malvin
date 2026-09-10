@@ -1,4 +1,3 @@
-"""Packaging contract for sibling fast_tasks/ eval tree (not kiss-covered; see .kissignore)."""
 from __future__ import annotations
 
 import importlib.util
@@ -20,7 +19,6 @@ _SPEC.loader.exec_module(_FT)
 
 TASK_IDS = list(_FT.TASK_IDS)
 
-
 def test_fast_tasks_inventory() -> None:
     assert FAST.is_dir()
     assert (FAST / "README.md").is_file()
@@ -31,13 +29,10 @@ def test_fast_tasks_inventory() -> None:
         assert (FAST / tid / "workspace" / "plan.md").is_file()
         assert (FAST / tid / "grade.py").is_file()
 
-
 def test_fast_tasks_inventory_contracts() -> None:
-    """DROPPED / plan length / import isolation from run_selftests.check_inventory."""
     before = _FT.check_inventory()
     assert before
     assert not (set(before) & _FT.DROPPED)
-
 
 @pytest.mark.parametrize("tid", TASK_IDS)
 def test_fast_tasks_starter_reward_is_zero(tid: str) -> None:
@@ -67,7 +62,6 @@ def test_fast_tasks_starter_reward_is_zero(tid: str) -> None:
         )
         assert proc.returncode == 0, (tid, proc.stderr, proc.stdout)
         assert reward.read_text(encoding="utf-8").strip() == "0", tid
-
 
 @pytest.mark.parametrize("tid", TASK_IDS)
 def test_fast_tasks_grader_selftest(tid: str) -> None:

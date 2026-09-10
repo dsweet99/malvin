@@ -1,4 +1,3 @@
-"""Kiss coverage witnesses for ops Click / Modal entry surfaces."""
 
 from __future__ import annotations
 
@@ -19,7 +18,6 @@ qa_list_cmd = _ops_qa.qa_list_cmd
 qa_sigkill_stdin_hold_abandons_bridge = _ops_qa.qa_sigkill_stdin_hold_abandons_bridge
 qa_all_cmd = _ops_qa.qa_all_cmd
 qa_selftest_cmd = _ops_qa.qa_selftest_cmd
-
 
 def test_ops_cli_kiss_coverage_witnesses() -> None:
     _ = (

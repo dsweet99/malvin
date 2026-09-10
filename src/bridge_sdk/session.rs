@@ -14,7 +14,6 @@ use super::session_io::{drain_until_run_done, write_request};
 use super::stdio_teardown::{StdioTeardown, drop_stdio_child};
 use super::stream_log::StreamLog;
 
-/// Cursor Node JSON-line bridge session.
 pub struct BridgeSession {
     pub child: AsyncMutex<Option<Child>>,
     pub stdin: Arc<AsyncMutex<ChildStdin>>,

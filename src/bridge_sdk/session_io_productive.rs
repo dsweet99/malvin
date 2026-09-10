@@ -11,11 +11,6 @@ pub(super) fn tools_in_flight(session: &BridgeSession) -> bool {
         .is_empty()
 }
 
-/// Extend the drain turn budget on productive Cursor bridge signals.
-///
-/// Tool starts bump by `2×idle`. Heartbeats bump by `idle` whenever the SDK run is open
-/// (alive signal; does not require `tools_in_flight`). Silence for a full idle window
-/// remains the hung/quiet bridge failure.
 pub(super) fn note_productive_bridge_event(
     _session: &BridgeSession,
     turn: &mut DrainIdleTurn,

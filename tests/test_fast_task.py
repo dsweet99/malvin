@@ -1,4 +1,3 @@
-"""Unit tests for ops/fast_task.py (no live agent)."""
 
 from __future__ import annotations
 
@@ -8,7 +7,6 @@ import fast_task
 from click.testing import CliRunner
 from toolchain_repos import load_ops_entry
 
-
 def test_fast_task_self_tests_via_cli() -> None:
     cli = load_ops_entry("fast_task").fast_task_cli
     runner = CliRunner()
@@ -16,14 +14,12 @@ def test_fast_task_self_tests_via_cli() -> None:
     assert result.exit_code == 0, result.output
     assert "ALL fast_task self-tests OK" in result.output
 
-
 def test_fast_task_cli_tasks() -> None:
     cli = load_ops_entry("fast_task").fast_task_cli
     runner = CliRunner()
     result = runner.invoke(cli, ["tasks"])
     assert result.exit_code == 0, result.output
     assert "FT-01" in result.output
-
 
 def test_fast_task_default_results_falls_back_when_read_only(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(fast_task, "ft_default_results_dir", lambda: tmp_path / "readonly")
@@ -39,7 +35,6 @@ def test_fast_task_default_results_falls_back_when_read_only(monkeypatch, tmp_pa
     run_root = fast_task.ft_run_root("FT-01", None)
     assert run_root.is_dir()
     assert run_root.is_relative_to(tmp_path / ".malvin" / "fast_task_results")
-
 
 def test_fast_task_kiss_coverage_witnesses() -> None:
     ops = load_ops_entry("fast_task")

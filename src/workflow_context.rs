@@ -124,10 +124,8 @@ pub const fn format_git_extra(git: bool) -> &'static str {
     if git { GIT_EXTRA_ENABLED } else { "" }
 }
 
-/// Workspace root file Cursor-style agents may auto-load; malvin injects it into `header.md`.
 pub const AGENTS_MD_FILENAME: &str = "AGENTS.md";
 
-/// Read `AGENTS.md` from `work_dir` and format a header insert, or empty if missing/blank.
 #[must_use]
 pub fn format_agents_md_insert(work_dir: &Path) -> String {
     let path = work_dir.join(AGENTS_MD_FILENAME);

@@ -53,6 +53,15 @@ pub(super) fn finish_codex_status(
     status: impl Into<RunDoneStatus>,
 ) -> Result<(), AgentError> {
     let status = status.into();
+    if status == RunDoneStatus::Unknown {
+        let err = value
+            .pointer("/params/turn/error/message")
+            .and_then(|v| v.as_str());
+        tracing::warn!(
+            error = err,
+            "codex run_done unknown status; surfacing turn error"
+        );
+    }
     let Some(detail) = turn_error_message(value, status) else {
         return Ok(());
     };

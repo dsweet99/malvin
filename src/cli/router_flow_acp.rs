@@ -47,7 +47,6 @@ pub(crate) type SessionEndParts<'a> = (
     RunTimingSessionEnd,
 );
 
-/// Ensure a coder session is open and the bound header has been sent if this agent is new.
 pub(crate) async fn begin_coder_session_if_needed(
     client: &mut AgentBackend,
     work_dir: &Path,

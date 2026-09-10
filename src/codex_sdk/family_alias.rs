@@ -1,8 +1,3 @@
-/// Append family aliases that `resolve_codex_model_slug` accepts.
-///
-/// A family is the catalog id with its last `-segment` removed. It is listed
-/// only when two or more catalog ids share that prefix and the family itself
-/// is not already a catalog id. The alias points at the first matching row.
 pub(super) fn with_family_aliases(models: Vec<(String, String)>) -> Vec<(String, String)> {
     let aliases = family_alias_rows(&models);
     let mut listed = models;
@@ -125,5 +120,16 @@ mod tests {
         assert!(family_alias_rows(&[]).is_empty());
         assert!(unique_families(&[]).is_empty());
         assert!(with_family_aliases(Vec::new()).is_empty());
+    }
+
+    #[test]
+    fn family_alias_idempotent_metamorphic() {
+        let once = with_family_aliases(vec![
+            row("gpt-5.6-sol"),
+            row("gpt-5.6-terra"),
+            row("gpt-5.5"),
+        ]);
+        let twice = with_family_aliases(once.clone());
+        assert_eq!(twice, once);
     }
 }

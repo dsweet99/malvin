@@ -1,5 +1,23 @@
 #!/usr/bin/env python3
-"""Click CLI for fast_task — implementation in ``src/python/fast_task.py``."""
+"""Click CLI for fast_task — implementation in ``src/python/fast_task.py``.
+
+Usage::
+
+    python ops/fast_task.py solve FT-01
+    python ops/fast_task.py solve FT-01 --dry-run
+    python ops/fast_task.py solve FT-01 --agent=cursor
+    python ops/fast_task.py solve FT-01 --main
+    python ops/fast_task.py solve FT-01 --model cursor:auto
+    python ops/fast_task.py solve FT-01 --model rpi:openrouter/~x-ai/grok-latest
+    python ops/fast_task.py solve FT-01 --model pi:openrouter/x-ai/grok-4.6
+    python ops/fast_task.py solve FT-01 --model codex:gpt-5.6-terra
+    python ops/fast_task.py solve FT-01 --creative
+    python ops/fast_task.py tasks
+    python ops/fast_task.py self-test
+
+Results default to ``~/.malvin_home/fast_task_results``. Prefer a path under
+``$HOME`` for ``--results-dir``: Snap Docker often cannot bind-mount host ``/tmp``.
+"""
 
 from __future__ import annotations
 

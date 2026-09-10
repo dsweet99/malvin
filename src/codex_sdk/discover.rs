@@ -62,17 +62,10 @@ pub fn list_codex_models() -> Result<Vec<(String, String)>, String> {
     list_models_from_child(&mut catalog.child)
 }
 
-/// Catalog rows plus family aliases that `resolve_codex_model_slug` accepts.
 pub fn list_codex_display_models() -> Result<Vec<(String, String)>, String> {
     list_codex_models().map(family_alias::with_family_aliases)
 }
 
-/// Resolve a Codex model slug against the live catalog.
-///
-/// Codex model IDs can include deployment variants (for example, `gpt-5.6-sol`),
-/// while users commonly select the family name. Prefer an exact catalog ID and
-/// otherwise use the first catalog ID with that family prefix. The catalog order
-/// is Codex's preference order. When listing fails, the requested slug is kept.
 pub fn resolve_codex_model(slug: &str) -> Result<String, String> {
     list_codex_models().map_or_else(
         |_| Ok(slug.to_owned()),

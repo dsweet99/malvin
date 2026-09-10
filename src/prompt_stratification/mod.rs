@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-/// One host send that joins the workflow's initial prompt pieces.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AggregatedInitialPrompt {
     pub body: String,
@@ -8,7 +7,6 @@ pub struct AggregatedInitialPrompt {
     pub log_who: &'static str,
 }
 
-/// Collect nonempty labeled pieces, then join them for a single host prompt.
 #[derive(Debug, Default)]
 pub struct AggregatedInitialPromptBuilder {
     strata: Vec<(PromptStratum, String)>,

@@ -25,9 +25,7 @@ pub struct ModelParam {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModelBackend {
     Cursor,
-    /// Official TypeScript/npm Pi agent (`pi:`).
     NpmPi,
-    /// Linked rust `pi_agent_rust` backend (`rpi:`).
     Pi,
     Codex,
 }
@@ -43,7 +41,6 @@ impl ModelBackend {
         }
     }
 
-    /// Idle-timeout error prefix for this backend's drain loop.
     #[must_use]
     pub const fn drain_idle_prefix(self) -> &'static str {
         match self {

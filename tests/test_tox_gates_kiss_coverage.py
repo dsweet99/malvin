@@ -1,8 +1,6 @@
-"""Kiss coverage witnesses for src/python/tox_gates.py."""
 from __future__ import annotations
 
 import tox_gates as _mod
-
 
 def test_tox_gates_kiss_coverage_witnesses() -> None:
     _ = (
@@ -28,7 +26,6 @@ def test_tox_gates_kiss_coverage_witnesses() -> None:
     _mod._test_clamp_tox_version_and_image_build_pip()
     _mod._test_tox_gate_precommit_warm_command()
     assert True
-
 
 def test_tox_gates_factor_and_offline_flags() -> None:
     _mod._test_tox_gate_check_commands_offline_flags()

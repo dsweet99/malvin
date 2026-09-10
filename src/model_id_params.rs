@@ -16,7 +16,7 @@ pub fn format_bracket_params(params: &[ModelParam]) -> String {
 pub fn split_bracket_params(raw: &str) -> Result<(String, Vec<ModelParam>), String> {
     let raw = raw.trim();
     let Some(open) = raw.find('[') else {
-        return Ok((raw.to_string(), Vec::new()));
+        return bare_slug_without_open_bracket(raw);
     };
     if !raw.ends_with(']') || open == 0 {
         return Err(bracket_shape_error(raw));
@@ -32,6 +32,15 @@ pub fn split_bracket_params(raw: &str) -> Result<(String, Vec<ModelParam>), Stri
         ));
     }
     Ok((base.to_string(), parse_bracket_inner(inner)?))
+}
+
+fn bare_slug_without_open_bracket(raw: &str) -> Result<(String, Vec<ModelParam>), String> {
+    if raw.contains(']') {
+        return Err(format!(
+            "model id has unbalanced `]` without `[` (got `{raw}`)"
+        ));
+    }
+    Ok((raw.to_string(), Vec::new()))
 }
 
 fn bracket_shape_error(raw: &str) -> String {
@@ -78,8 +87,6 @@ fn kv_error(part: &str) -> String {
     }
 }
 
-/// Shared `thinking=` vocabulary for `rpi:` and `codex:`.
-/// Wire adapters map levels a vendor does not name (`ultra` on Pi, `off`/`minimal` on Codex).
 const THINKING_LEVELS: &[&str] = &[
     "off", "minimal", "low", "medium", "high", "xhigh", "max", "ultra",
 ];
@@ -137,6 +144,7 @@ mod model_id_params_kiss_cov {
     fn kiss_cov_model_id_params_idents() {
         let _ = super::format_bracket_params;
         let _ = super::split_bracket_params;
+        let _ = stringify!(bare_slug_without_open_bracket);
         let _ = stringify!(parse_bracket_inner);
         let _ = stringify!(parse_one_param);
         let _ = stringify!(bracket_shape_error);

@@ -23,7 +23,6 @@ pub fn list_npm_pi_display_models() -> Result<Vec<(String, String)>, String> {
     )))
 }
 
-/// Prefer stdout; fall back to stderr (npm `rpc-entry.js` prints `--list-models` there).
 fn list_models_table_text(stdout: &[u8], stderr: &[u8]) -> String {
     let stdout = String::from_utf8_lossy(stdout);
     if stdout.trim().is_empty() {

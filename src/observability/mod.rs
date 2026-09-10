@@ -24,7 +24,6 @@ pub enum NarrativeWhoTag {
     Thought,
     Heartbeat,
     Ops,
-    /// Fresh agent-context start (`a|<provider>:<model>`).
     AgentStart,
 }
 

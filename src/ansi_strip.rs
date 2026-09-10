@@ -76,6 +76,35 @@ mod tests {
             "OSC may end with ST (ESC \\) instead of BEL"
         );
     }
+
+    #[test]
+    fn strip_ansi_preserves_lone_esc() {
+        assert_eq!(
+            strip_ansi_escapes("\x1b"),
+            "\x1b",
+            "bare ESC without CSI/OSC introducer is preserved"
+        );
+        assert_eq!(strip_ansi_escapes("lone\x1besc"), "lone\x1besc");
+    }
+
+    #[test]
+    fn strip_ansi_metamorphic_idempotent_and_plain_text() {
+        let samples = [
+            "",
+            "plain",
+            "\x1b[31mfoo\x1b[0m",
+            "a\x1b]0;title\x07b",
+            "lone\x1besc",
+            "mix\x1b[2J\x1b]1;x\x07end",
+        ];
+        for raw in samples {
+            let once = strip_ansi_escapes(raw);
+            let twice = strip_ansi_escapes(&once);
+            assert_eq!(once, twice, "idempotent for {raw:?}");
+        }
+        assert_eq!(strip_ansi_escapes("no-esc"), "no-esc");
+        assert_eq!(strip_ansi_escapes("\x1b"), "\x1b");
+    }
 }
 
 #[cfg(test)]

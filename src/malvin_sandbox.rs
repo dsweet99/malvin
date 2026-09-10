@@ -26,8 +26,6 @@ struct ActiveSandboxSession {
 
 static ACTIVE_SANDBOX_SESSION: Mutex<Option<ActiveSandboxSession>> = Mutex::new(None);
 
-/// Proof that the previous sandbox was cleared before this spawn attempt.
-/// Consumed by [`note_active_sandbox_session`] so spawn paths cannot skip the gate.
 #[derive(Debug)]
 pub struct SandboxSpawnTicket(());
 
@@ -91,7 +89,6 @@ pub fn malvin_tokio_command(program: impl AsRef<OsStr>) -> tokio::process::Comma
     cmd
 }
 
-/// Gate the next spawn: previous sandbox processes must already be dead.
 #[must_use = "pass the ticket to note_active_sandbox_session after spawn"]
 pub fn take_sandbox_spawn_ticket() -> Result<SandboxSpawnTicket, String> {
     assert_dead_before_next_spawn()?;

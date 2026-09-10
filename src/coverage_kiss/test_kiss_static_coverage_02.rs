@@ -1,4 +1,3 @@
-//! Kiss static coverage contract (call-shaped tokens; not compiled).
 
 
 #[test]

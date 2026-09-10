@@ -15,7 +15,6 @@ pub struct BindMalvinHeader<'a> {
     pub log_path: PathBuf,
 }
 
-/// Render `header.md` with the standard Malvin workspace context.
 pub fn render_malvin_header_body(
     store: &PromptStore,
     artifacts: &RunArtifacts,
@@ -27,8 +26,6 @@ pub fn render_malvin_header_body(
     Ok(prompt.trim().to_string())
 }
 
-/// Bind spawn header for `--do`: `do_header.md` (mode) with `header.md` context,
-/// so both are delivered at spawn rather than on the work turn.
 pub fn bind_do_header(input: BindMalvinHeader<'_>) -> Result<(), String> {
     let ctx = workflow_context_paths_only(input.artifacts, input.model, input.git);
     let coding = render_malvin_header_body(input.store, input.artifacts, input.model, input.git)?;

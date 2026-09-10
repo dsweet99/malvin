@@ -9,15 +9,9 @@ use super::sdk_client::SdkClient;
 #[path = "sdk_client_session_spawn.rs"]
 mod spawn;
 
-/// Outcome of ensuring a coder session is open.
-///
-/// Production flows use [`SdkClient::start_coder_session`], which sends the bound
-/// header for a fresh agent. [`Fresh`] vs [`Reused`] is recorded for tests and logs.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CoderSessionEnsure {
-    /// A new agent context was created (header is sent by [`SdkClient::start_coder_session`]).
     Fresh,
-    /// An open session was reused, or a Cursor bridge resumed a prior `agent_id`.
     Reused,
 }
 
@@ -40,10 +34,6 @@ impl SdkClient {
         }
     }
 
-    /// Open a coder session and send the bound header when this agent still needs one.
-    ///
-    /// Call [`Self::bind_session_header`] first. Tests that spawn without prompts may
-    /// still use [`Self::begin_coder_session`].
     pub async fn start_coder_session(
         &mut self,
         cwd: &Path,
@@ -59,11 +49,6 @@ impl SdkClient {
         Ok(ensure)
     }
 
-    /// Ensure a coder session is open (spawn only; does not send a header).
-    ///
-    /// Returns [`CoderSessionEnsure::Fresh`] only when a **fresh** agent context was
-    /// created. Returns [`CoderSessionEnsure::Reused`] when an open session was
-    /// reused, or when a Cursor bridge restart **resumed** a prior `agent_id`.
     pub async fn ensure_coder_session(
         &mut self,
         cwd: &Path,
@@ -111,7 +96,6 @@ pub(crate) fn sdk_bridge_needs_restart(client: &SdkClient) -> bool {
         .is_some_and(|s| s.started_at.elapsed() >= SDK_BRIDGE_MAX_AGE)
 }
 
-/// Begin a coder session. Returns `true` when Cursor resume attached a prior agent.
 async fn begin_coder_session_resumed(
     client: &mut SdkClient,
     cwd: &Path,

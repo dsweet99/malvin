@@ -37,9 +37,6 @@ fn add_optional_f64_sum(slot: &mut Option<f64>, n: f64) {
     *slot = Some(slot.unwrap_or(0.0) + n);
 }
 
-/// When `totalTokens` equals the sum including `reasoningTokens` but not without it,
-/// reasoning is billed separately from `outputTokens` (Codex). Cursor reports reasoning
-/// as a subset of output, so the totals do not match that pattern.
 pub(super) fn reasoning_is_additive(fields: &AcpUsageFields) -> bool {
     let Some(total) = fields.total else {
         return false;

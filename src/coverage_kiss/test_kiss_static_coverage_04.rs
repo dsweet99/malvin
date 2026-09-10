@@ -1,4 +1,3 @@
-//! Kiss static coverage contract (call-shaped tokens; not compiled).
 
 
 #[test]
@@ -30,7 +29,6 @@ fn kiss_exec_witness_03_14() {
     openrouter_error_maps_429_rate_limit();
     openrouter_error_maps_500_server_error();
 }
-
 
 #[test]
 fn kiss_exec_witness_04_00() {

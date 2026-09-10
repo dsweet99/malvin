@@ -75,7 +75,6 @@ pub(super) async fn teardown_sdk_session_after_transport_error(
     }
 }
 
-/// End any open coder session and drop Cursor resume id so the next attempt creates a new agent.
 pub(super) async fn force_fresh_agent_for_retry(client: &mut SdkClient) {
     let _ = client.end_coder_session().await;
     client.last_agent_id = None;

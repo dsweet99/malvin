@@ -1,19 +1,3 @@
-"""Prepare a Harbor task sandbox with strict declared-dependency correctness.
-
-Harbor Dockerfiles install dependencies at image build time into ``/app``. At
-runtime the host workspace is mounted over ``/app``, which can desynchronize
-editable installs and leave site-packages inconsistent with the checkout
-(HISTORY: pydantic v1 vs v2 on FastAPI tasks).
-
-Two-phase prep enforces a strict contract for Python tasks:
-
-1. **Image build (network on):** reconcile declared dependencies from Dockerfile
-   pins, ``pyproject.toml``, and ``uv.lock``, then run mandatory verification
-   probes. Image build fails when probes fail after reconcile.
-2. **Runtime prep (network off):** offline editable replay (``--no-deps
-   --no-build-isolation``) plus verification probes. Fail fast with a clear error
-   when sync or probes fail — do not run malvin in a known-bad environment.
-"""
 
 from __future__ import annotations
 
@@ -54,7 +38,6 @@ def _remaining_sec(deadline: float) -> float:
     return max(0.0, deadline - time.monotonic())
 
 def _normalize_run_command(command: str) -> str:
-    """Collapse Dockerfile line continuations into a single shell line."""
     no_continuations = command.replace("\\", " ")
     return " ".join(no_continuations.split())
 
@@ -140,7 +123,6 @@ class SandboxPrepResult:
         }
 
 def _join_continued_run_lines(lines: list[str]) -> list[str]:
-    """Merge Dockerfile RUN instructions continued with backslashes."""
     runs: list[str] = []
     current: str | None = None
     for raw in lines:
@@ -168,11 +150,9 @@ def _join_continued_run_lines(lines: list[str]) -> list[str]:
     return runs
 
 def parse_dockerfile_run_commands(dockerfile_text: str) -> list[str]:
-    """Return shell bodies of Dockerfile RUN instructions in file order."""
     return _join_continued_run_lines(dockerfile_text.splitlines())
 
 def should_replay_run_command(command: str) -> bool:
-    """True when a RUN line should be replayed after workspace mount."""
     lower = command.lower()
     if any(skip in lower for skip in _SKIP_RUN_SUBSTRINGS):
         return False
@@ -185,19 +165,15 @@ _EDITABLE_PIP_FLAG = re.compile(r"(?:^|\s)(?:-e|--editable)\s")
 _PIP_INSTALL_RE = re.compile(r"(?:^|\s)(?:pip3?|python3? -m pip)(?:\s|$)")
 
 def _is_pip_install_segment(segment: str) -> bool:
-    """True for ``pip`` / ``pip3`` / ``python -m pip`` install segments."""
     return bool(_PIP_INSTALL_RE.search(segment))
 
 def _is_editable_pip_segment(segment: str) -> bool:
-    """True when a shell segment is ``pip install -e`` (not ``dirty-equals``)."""
     return _is_pip_install_segment(segment) and bool(_EDITABLE_PIP_FLAG.search(segment))
 
 def _is_bulk_pip_segment(segment: str) -> bool:
-    """True for non-editable pip installs that require PyPI/registry network."""
     return _is_pip_install_segment(segment) and not _is_editable_pip_segment(segment)
 
 def _offline_editable_command(command: str) -> str:
-    """Replay editable installs without PyPI in offline agent sandboxes."""
     out = command.strip()
     if "--no-deps" not in out:
         out += " --no-deps"
@@ -206,7 +182,6 @@ def _offline_editable_command(command: str) -> str:
     return out
 
 def _is_network_only_segment(segment: str) -> bool:
-    """True for install segments that need registry/network (not offline replay)."""
     lower = segment.lower()
     return (
         _is_bulk_pip_segment(segment)
@@ -246,24 +221,12 @@ def workspace_sync_commands_from_dockerfile(
     *,
     offline_editable: bool = True,
 ) -> list[str]:
-    """Dependency-install RUN lines to replay offline against a mounted workspace.
-
-    Bulk ``pip install`` segments are skipped (network). Editable ``pip install -e``
-    segments are replayed with ``--no-deps --no-build-isolation``.
-    """
     if not dockerfile.is_file():
         return []
     runs = parse_dockerfile_run_commands(dockerfile.read_text(encoding="utf-8"))
     return _sync_commands_from_runs(runs, offline_editable=offline_editable)
 
 def dockerfile_image_build_commands(dockerfile: Path) -> list[str]:
-    """Editable pip segments to re-run during Modal image build (network on).
-
-    Modal may cache Dockerfile ``pip install -e`` layers incorrectly (e.g. mars-base
-    pydantic v1 survives). Re-running editable segments after ``from_dockerfile``
-    busts the cache without replaying bulk ``pip install`` waves that can upgrade
-    transitive deps (starlette) and break Harbor verifiers (httpx2).
-    """
     if not dockerfile.is_file():
         return []
     runs = parse_dockerfile_run_commands(dockerfile.read_text(encoding="utf-8"))
@@ -280,7 +243,6 @@ def dockerfile_image_build_commands(dockerfile: Path) -> list[str]:
     return commands
 
 def dockerfile_bulk_pip_commands(dockerfile: Path) -> list[str]:
-    """Non-editable ``pip install`` segments from Dockerfile RUN lines (build-time replay)."""
     if not dockerfile.is_file():
         return []
     runs = parse_dockerfile_run_commands(dockerfile.read_text(encoding="utf-8"))
@@ -363,7 +325,6 @@ _SHELL_NOISE_NAMES = frozenset(
 )
 
 def _is_plausible_distribution_name(name: str) -> bool:
-    """False for setup.py string noise and requirements filenames mistaken as packages."""
     if not name or len(name) < 2:
         return False
     if name in _SHELL_NOISE_NAMES:
@@ -374,7 +335,6 @@ def _is_plausible_distribution_name(name: str) -> bool:
     return True
 
 def _extract_pip_install_commands(shell_text: str) -> list[str]:
-    """Return normalized ``pip install …`` commands found in *shell_text*."""
     found: list[str] = []
     for match in _PIP_INSTALL_CMD_RE.finditer(shell_text):
         cmd = " ".join(match.group(0).split()).rstrip('"').rstrip("'")
@@ -383,7 +343,6 @@ def _extract_pip_install_commands(shell_text: str) -> list[str]:
     return found
 
 def collect_pip_install_intents(dockerfile_text: str) -> list[str]:
-    """Return pip install shell segments from Dockerfile RUN lines (incl. ``bash -lc``)."""
     intents: list[str] = []
     seen: set[str] = set()
 
@@ -422,7 +381,6 @@ def _pins_from_requirements_file(requirements_path: Path) -> dict[str, str]:
     return pins
 
 def _requirement_line_package(line: str) -> tuple[str, str] | None:
-    """Return ``(normalized_name, remainder_spec)`` for a requirements line, if any."""
     stripped = _strip_requirement_comment(line.strip())
     if not stripped or stripped.startswith("#"):
         return None
@@ -443,7 +401,6 @@ def _requirement_line_package(line: str) -> tuple[str, str] | None:
     return name, match.group(2).strip()
 
 def _constraints_from_requirements_file(requirements_path: Path) -> dict[str, str]:
-    """Collect non-``==`` version constraints (``>=``, ``~=``, …) from a requirements file."""
     if not requirements_path.is_file():
         return {}
     constraints: dict[str, str] = {}
@@ -459,7 +416,6 @@ def _constraints_from_requirements_file(requirements_path: Path) -> dict[str, st
     return constraints
 
 def _unpinned_from_requirements_file(requirements_path: Path) -> frozenset[str]:
-    """Bare package names (no version operator) from a requirements file."""
     if not requirements_path.is_file():
         return frozenset()
     names: set[str] = set()
@@ -473,7 +429,6 @@ def _unpinned_from_requirements_file(requirements_path: Path) -> frozenset[str]:
     return frozenset(names)
 
 def _editable_lines_from_requirements_file(requirements_path: Path) -> list[str]:
-    """Return synthetic ``pip install -e …`` intents for editable lines in *requirements_path*."""
     if not requirements_path.is_file():
         return []
     lines: list[str] = []
@@ -490,7 +445,6 @@ def _editable_lines_from_requirements_file(requirements_path: Path) -> list[str]
     return lines
 
 def collect_pinned_packages(workspace: Path, intents: list[str]) -> dict[str, str]:
-    """Collect ``name==version`` pins from pip intents and referenced ``-r`` files."""
     pins: dict[str, str] = {}
     workspace = workspace.resolve()
     for intent in intents:
@@ -501,7 +455,6 @@ def collect_pinned_packages(workspace: Path, intents: list[str]) -> dict[str, st
     return pins
 
 def collect_requirement_constraints(workspace: Path, intents: list[str]) -> dict[str, str]:
-    """Collect non-equality version constraints from referenced requirements files."""
     constraints: dict[str, str] = {}
     workspace = workspace.resolve()
     for intent in intents:
@@ -512,7 +465,6 @@ def collect_requirement_constraints(workspace: Path, intents: list[str]) -> dict
     return constraints
 
 def collect_requirement_unpinned_names(workspace: Path, intents: list[str]) -> frozenset[str]:
-    """Bare names from referenced requirements files (and nested ``-r`` editables handled elsewhere)."""
     names: set[str] = set()
     workspace = workspace.resolve()
     for intent in intents:
@@ -523,7 +475,6 @@ def collect_requirement_unpinned_names(workspace: Path, intents: list[str]) -> f
     return frozenset(names)
 
 def collect_requirement_editable_intents(workspace: Path, intents: list[str]) -> list[str]:
-    """Editable install intents declared inside ``-r`` requirements files."""
     found: list[str] = []
     seen: set[str] = set()
     workspace = workspace.resolve()
@@ -568,7 +519,6 @@ _PIP_OPTION_WITH_VALUE = frozenset(
 )
 
 def collect_unpinned_package_names(intents: list[str]) -> frozenset[str]:
-    """Bare distribution names from ``pip install`` intents (bulk or alongside ``-e``)."""
     names: set[str] = set()
     for intent in intents:
         if not _is_pip_install_segment(intent):
@@ -629,7 +579,6 @@ _EDITABLE_TARGET_RE = re.compile(
 )
 
 def _editable_target_paths(segment: str, workspace: Path) -> list[Path]:
-    """Local paths targeted by ``pip install -e`` / ``--editable`` in *segment*."""
     paths: list[Path] = []
     for match in _EDITABLE_TARGET_RE.finditer(segment):
         raw = match.group(1).strip().strip("'\"")
@@ -652,7 +601,6 @@ def _editable_target_paths(segment: str, workspace: Path) -> list[Path]:
     return paths
 
 def _read_distribution_name(project_root: Path) -> str | None:
-    """Return the packaging distribution name declared at *project_root*, if any."""
     pyproject = project_root / "pyproject.toml"
     if pyproject.is_file():
         try:
@@ -700,7 +648,6 @@ def _read_distribution_name(project_root: Path) -> str | None:
     return None
 
 def _top_level_txt_roots(project_root: Path) -> set[str]:
-    """Import roots listed in egg-info / dist-info ``top_level.txt`` files."""
     roots: set[str] = set()
     for path in project_root.glob("*.egg-info/top_level.txt"):
         try:
@@ -723,7 +670,6 @@ def _top_level_txt_roots(project_root: Path) -> set[str]:
     return roots
 
 def _filesystem_package_roots(project_root: Path) -> set[str]:
-    """Heuristic import roots from common src-/flat- layouts under *project_root*."""
     roots: set[str] = set()
     skip = {
         "tests",
@@ -758,7 +704,6 @@ def _filesystem_package_roots(project_root: Path) -> set[str]:
     return roots
 
 def import_roots_provided_by_project(project_root: Path) -> set[str]:
-    """Import roots satisfied by installing the project at *project_root* editable."""
     roots = set(_top_level_txt_roots(project_root))
     roots |= _filesystem_package_roots(project_root)
     dist_name = _read_distribution_name(project_root)
@@ -769,14 +714,12 @@ def import_roots_provided_by_project(project_root: Path) -> set[str]:
     return {r for r in roots if r}
 
 def dockerfile_uses_poetry_install(dockerfile_text: str) -> bool:
-    """True when a Dockerfile RUN installs the project via Poetry."""
     return bool(re.search(r"\bpoetry\s+install\b", dockerfile_text, re.IGNORECASE))
 
 def pythonpath_entries_from_dockerfile(
     dockerfile_text: str,
     workspace: Path,
 ) -> list[Path]:
-    """Resolve ``ENV PYTHONPATH=…`` entries that fall under *workspace*."""
     workspace = workspace.resolve()
     paths: list[Path] = []
     for match in re.finditer(
@@ -806,13 +749,6 @@ def workspace_mount_provided_import_roots(
     workspace: Path,
     dockerfile: Path | None = None,
 ) -> set[str]:
-    """Import roots satisfied by the mounted workspace (editable, PYTHONPATH, or layout).
-
-    Harbor grades run with ``cwd=/app``. Flat layouts are importable via ``sys.path``;
-    ``ENV PYTHONPATH`` and Poetry installs also expose the project without a separate
-    DeclaredDeps pin. Always include filesystem/distribution roots for the workspace
-    itself so package-under-test imports are not marked unmapped.
-    """
     workspace = workspace.resolve()
     provided = import_roots_provided_by_project(workspace)
     if dockerfile is None or not dockerfile.is_file():
@@ -835,7 +771,6 @@ def editable_provided_import_roots(
     editable_segments: tuple[str, ...],
     dockerfile: Path | None = None,
 ) -> set[str]:
-    """Union of import roots from editable installs plus the mounted workspace project."""
     provided: set[str] = set()
     workspace = workspace.resolve()
     for segment in editable_segments:
@@ -845,7 +780,6 @@ def editable_provided_import_roots(
     return provided
 
 def requirements_paths_from_dockerfile(dockerfile: Path) -> list[str]:
-    """Return ``-r`` requirements paths referenced by Dockerfile bulk pip installs."""
     if not dockerfile.is_file():
         return []
     intents = collect_pip_install_intents(dockerfile.read_text(encoding="utf-8"))
@@ -855,7 +789,6 @@ def requirements_paths_from_dockerfile(dockerfile: Path) -> list[str]:
     return paths
 
 def read_pydantic_pins_from_requirements(requirements_path: Path) -> tuple[str | None, str | None]:
-    """Return ``(pydantic, pydantic-core)`` pins from a requirements file, if present."""
     if not requirements_path.is_file():
         return None, None
     text = requirements_path.read_text(encoding="utf-8")
@@ -867,7 +800,6 @@ def read_pydantic_pins_from_requirements(requirements_path: Path) -> tuple[str |
     )
 
 def _precommit_pin_from_workspace(workspace: Path) -> str | None:
-    """Return a pinned ``pre-commit`` version declared by the workspace, if any."""
     workspace = workspace.resolve()
     candidates: list[Path] = []
     req_dir = workspace / "requirements"
@@ -916,7 +848,6 @@ def pins_for_task(
     dockerfile: Path | None,
     workspace: Path | None = None,
 ) -> dict[str, str]:
-    """Pinned packages for a task workspace (Modal image build / cache bust)."""
     if dockerfile is None or not dockerfile.is_file() or workspace is None:
         return {}
     intents = collect_pip_install_intents(dockerfile.read_text(encoding="utf-8"))
@@ -932,7 +863,6 @@ _UV_LOCK_PACKAGE_RE = re.compile(
 
 @dataclass(frozen=True)
 class DeclaredDeps:
-    """Canonical Python dependency declarations for one task workspace."""
 
     bulk_pins: dict[str, str]
     constraints: dict[str, str]
@@ -961,7 +891,6 @@ class DeclaredDeps:
         return None
 
     def pip_install_spec(self, name: str) -> str | None:
-        """Return a pip package argument for *name*, or None when not declared."""
         key = name.lower()
         spec = self.effective_spec(key)
         if spec is None:
@@ -981,7 +910,6 @@ def _normalize_package_name(name: str) -> str:
     return name.lower().replace("_", "-")
 
 def _strip_requirement_comment(line: str) -> str:
-    """Strip unquoted ``# …`` tails from requirements lines (OpenStack-style license tags)."""
     in_quote: str | None = None
     for i, ch in enumerate(line):
         if in_quote is not None:
@@ -1008,7 +936,6 @@ def _parse_dependency_spec(raw: str) -> tuple[str, str] | None:
     return name, f"{extras}{ver}"
 
 def _split_pyproject_dependency(raw: str) -> tuple[str, str, str | None] | None:
-    """Return ``(name, spec, marker)`` from one PEP 508 dependency string."""
     line = _strip_requirement_comment(raw.strip())
     if not line or line.startswith("#"):
         return None
@@ -1050,7 +977,6 @@ def _compare_version_tuple(left: tuple[int, ...], op: str, right: tuple[int, ...
     return True
 
 def _environment_marker_applies(marker: str | None) -> bool:
-    """True when a PEP 508 environment marker matches the current interpreter."""
     if not marker:
         return True
     try:
@@ -1072,7 +998,6 @@ def _environment_marker_applies(marker: str | None) -> bool:
 def _read_pyproject_dependencies(
     pyproject: Path,
 ) -> tuple[dict[str, str], frozenset[str]]:
-    """Return ``(versioned_constraints, bare_unpinned_names)`` from ``[project]`` deps."""
     if not pyproject.is_file():
         return {}, frozenset()
     raw = tomllib.loads(pyproject.read_text(encoding="utf-8"))
@@ -1116,7 +1041,6 @@ def _editable_segments_from_dockerfile(dockerfile_text: str) -> tuple[str, ...]:
     return tuple(segments)
 
 def _extras_names_from_editable_target(target: str) -> list[str]:
-    """Return extras names from an editable target like ``.[test,dev]`` or ``pkg[extra]``."""
     match = re.search(r"\[([^\]]+)\]", target)
     if not match:
         return []
@@ -1126,7 +1050,6 @@ def _optional_dependency_specs_from_pyproject(
     pyproject: Path,
     extras: list[str],
 ) -> tuple[dict[str, str], frozenset[str]]:
-    """Return ``(constraints, bare_names)`` from ``[project.optional-dependencies]`` extras."""
     if not extras or not pyproject.is_file():
         return {}, frozenset()
     try:
@@ -1163,7 +1086,6 @@ def _poetry_dependency_names(
     include_groups: tuple[str, ...] = ("dev",),
     include_optional: bool = False,
 ) -> frozenset[str]:
-    """Distribution names declared under Poetry dependencies / groups / extras tables."""
     if not pyproject.is_file():
         return frozenset()
     try:
@@ -1199,7 +1121,6 @@ def _poetry_dependency_names(
     return frozenset(names)
 
 def _poetry_extra_package_names(pyproject: Path, extras: list[str]) -> frozenset[str]:
-    """Package names listed in Poetry ``extras.<name> = [...]`` for requested extras."""
     if not extras or not pyproject.is_file():
         return frozenset()
     try:
@@ -1232,7 +1153,6 @@ _SETUP_EXTRAS_REQUIRE_KEYS_RE = re.compile(
 _SETUP_DICT_KEY_RE = re.compile(r"""['"]([A-Za-z0-9][\w.-]*)['"]\s*:""")
 
 def _extras_require_keys_from_setup_py(setup_py: Path) -> frozenset[str]:
-    """Return ``extras_require`` dict keys (setuptools extra names, not packages)."""
     if not setup_py.is_file():
         return frozenset()
     try:
@@ -1248,7 +1168,6 @@ def _extras_require_keys_from_setup_py(setup_py: Path) -> frozenset[str]:
     )
 
 def _requirement_files_for_setuptools_extra(workspace: Path, extra: str) -> list[Path]:
-    """Conventional requirement-file locations for a setuptools extra name."""
     candidates = (
         workspace / "requirements" / "extras" / f"{extra}.txt",
         workspace / "requirements" / "extras" / extra,
@@ -1261,13 +1180,6 @@ def _specs_from_setuptools_extra_files(
     workspace: Path,
     extras: list[str],
 ) -> tuple[dict[str, str], dict[str, str], frozenset[str]]:
-    """Return ``(pins, constraints, bare_names)`` from requirements files for *extras*.
-
-    Celery/Kombu-style projects map ``extras_require`` values to
-    ``requirements/extras/<name>.txt`` instead of inline PEP 508 strings. Prefer
-    those files over scraping setup.py string literals (which otherwise picks up
-    the extra *keys* as fake PyPI names).
-    """
     pins: dict[str, str] = {}
     constraints: dict[str, str] = {}
     bare: set[str] = set()
@@ -1279,12 +1191,6 @@ def _specs_from_setuptools_extra_files(
     return pins, constraints, frozenset(bare)
 
 def _requirement_names_from_setup_py(setup_py: Path) -> frozenset[str]:
-    """Best-effort package names from quoted requirement strings in ``setup.py``.
-
-    Accepts versioned PEP 508 strings anywhere, and bare names only when the whole
-    line is a list item (``\"aiofiles\",``). That drops ``name='pkg'``, ``hasattr``
-    string args, and other metadata noise while keeping inline extras bodies (gql).
-    """
     if not setup_py.is_file():
         return frozenset()
     try:
@@ -1325,7 +1231,6 @@ def declared_python_dependencies(
     workspace: Path,
     dockerfile: Path | None = None,
 ) -> DeclaredDeps:
-    """Collect declared Python deps from Dockerfile pins, pyproject, and uv.lock."""
     workspace = workspace.resolve()
     dockerfile_text = dockerfile.read_text(encoding="utf-8") if dockerfile and dockerfile.is_file() else ""
     intents = collect_pip_install_intents(dockerfile_text) if dockerfile_text else []
@@ -1449,7 +1354,6 @@ def format_prep_error(
     detail: str | None = None,
     hint: str | None = None,
 ) -> str:
-    """Human-readable short-abort message for dependency prep failures."""
     parts = [f"sandbox {phase} failed ({task_id})"]
     if package:
         parts.append(f": {package}")
@@ -1466,7 +1370,6 @@ VERIFIER_PYTHON = f"{VERIFIER_VENV_PATH}/bin/python"
 VERIFIER_PIP = f"{VERIFIER_VENV_PATH}/bin/pip"
 
 def _verifier_pip(spec: VerifierSpec | None = None, *, venv_path: str | None = None) -> str:
-    """Pip binary inside the verifier venv (honors ``spec.venv_path`` overrides)."""
     root = venv_path
     if root is None and spec is not None:
         root = spec.venv_path
@@ -1476,13 +1379,6 @@ def _verifier_pip(spec: VerifierSpec | None = None, *, venv_path: str | None = N
 
 @dataclass(frozen=True)
 class PluginPolicy:
-    """Grade-subprocess-only pytest plugin policy (never bake into agent image env).
-
-    ``as_env`` sets ``PYTEST_DISABLE_PLUGIN_AUTOLOAD`` and optional ``-p`` allowlist
-    tokens. Callers that merge into an existing env must append allowlist tokens to
-    any pre-existing ``PYTEST_ADDOPTS`` (see ``verifier_grade_subprocess_env``).
-    ``MALVIN_VERIFIER_PLUGIN_ALLOWLIST`` is debug metadata only; pytest does not read it.
-    """
 
     disable_autoload: bool = False
     allowlist: tuple[str, ...] = ()
@@ -1498,19 +1394,11 @@ class PluginPolicy:
         return env
 
 def _merge_pytest_addopts(existing: str | None, addition: str | None) -> str:
-    """Append *addition* tokens to *existing* ``PYTEST_ADDOPTS`` without dropping either."""
     parts = [p for p in ((existing or "").strip(), (addition or "").strip()) if p]
     return " ".join(parts)
 
 @dataclass(frozen=True)
 class VerifierSpec:
-    """Public + grade-only Harbor verifier dependency discovery result.
-
-    Public fields may appear on the agent image. Grade-only fields (``harbor_imports``,
-    closure install specs, plugin policy, unmapped imports) are verifier secrets —
-    persist them only in grade-phase / host metadata, never in agent-readable
-    ``sandbox_prep`` payloads.
-    """
 
     declared: DeclaredDeps
     public_install_specs: tuple[str, ...]
@@ -1525,7 +1413,6 @@ class VerifierSpec:
     grade_pythonpath: tuple[str, ...] = ()
 
     def public_view(self) -> dict[str, Any]:
-        """Agent-safe summary: no ``test.patch``-derived import or closure fields."""
         return {
             "venv_path": self.venv_path,
             "public_install_specs": list(self.public_install_specs),
@@ -1534,7 +1421,6 @@ class VerifierSpec:
         }
 
     def grade_view(self) -> dict[str, Any]:
-        """Host/grade-only view including secret discovery fields."""
         payload = self.public_view()
         payload.update(
             {
@@ -1567,19 +1453,6 @@ def discover_verifier_spec(
     tests_dir: Path | None = None,
     dockerfile: Path | None = None,
 ) -> VerifierSpec:
-    """Discover public DeclaredDeps and optional grade-only Harbor import closure.
-
-    When ``tests_dir`` is None (agent image path), grade-only fields stay empty so
-    ``test.patch`` secrets are never ingested.
-
-    ``grade_closure_install_specs`` lists declared pin specs required by Harbor
-    imports (even when those pins are already in ``public_install_specs``). Grade
-    prep may reinstall them into ``/opt/malvin-verifier``; agent-image materialize
-    never runs those grade-only commands. Unmapped third-party imports are recorded
-    for probe handling and are never invented as unpinned PyPI installs. Imports
-    satisfied by Dockerfile editable installs or the mounted workspace project are
-    not unmapped (editable replay / workspace layout provides them).
-    """
     workspace = workspace.resolve()
     declared = declared_python_dependencies(workspace, dockerfile)
     editable_segments = list(declared.editable_segments)
@@ -1665,7 +1538,6 @@ def verifier_venv_materialize_public_commands(
     *,
     workspace: Path | None = None,
 ) -> list[str]:
-    """Create ``/opt/malvin-verifier`` and install **public** DeclaredDeps only."""
     pip_bin = _verifier_pip(spec)
     commands = [
         f"python3 -m venv {shlex.quote(spec.venv_path)}",
@@ -1689,7 +1561,6 @@ def verifier_venv_materialize_public_commands(
     return commands
 
 def _rewrite_pip_segment_python(segment: str, pip_bin: str) -> str:
-    """Point a Dockerfile pip segment at *pip_bin*."""
     out = segment.strip()
     replacements = (
         ("python3 -m pip", pip_bin),
@@ -1705,7 +1576,6 @@ def _rewrite_pip_segment_python(segment: str, pip_bin: str) -> str:
     return f"{pip_bin} {out}" if not out.startswith("pip") else out.replace("pip", pip_bin, 1)
 
 def verifier_venv_apply_grade_closure_commands(spec: VerifierSpec) -> list[str]:
-    """Install grade-only closure specs into the verifier venv (requires ``/tests``)."""
     if not spec.grade_closure_install_specs:
         return []
     pkgs = " ".join(shlex.quote(s) for s in spec.grade_closure_install_specs)
@@ -1713,11 +1583,6 @@ def verifier_venv_apply_grade_closure_commands(spec: VerifierSpec) -> list[str]:
     return [f"{shlex.quote(pip_bin)} install --no-cache-dir {pkgs}"]
 
 def verifier_venv_replay_editable_commands(spec: VerifierSpec) -> list[str]:
-    """Replay Dockerfile editables into the verifier venv against the live workspace.
-
-    Image-build materialize may have installed editables against a copied ``/app``.
-    Runtime remounts replace ``/app``, so grade prep must re-link editables offline.
-    """
     pip_bin = _verifier_pip(spec)
     commands: list[str] = []
     for segment in spec.editable_segments:
@@ -1730,7 +1595,6 @@ def verifier_venv_replay_editable_commands(spec: VerifierSpec) -> list[str]:
     return commands
 
 def _distribution_name_from_requirement(req: str) -> str:
-    """Best-effort PEP 508 name token for dedupe (ignores extras/markers/versions)."""
     token = req.split(";", 1)[0].strip()
     token = token.split("[", 1)[0].strip()
     for sep in ("===", "==", ">=", "<=", "!=", "~=", ">", "<"):
@@ -1745,15 +1609,6 @@ def _editable_offline_seed_specs(
     dockerfile: Path | None = None,
     editable_segments: tuple[str, ...] | None = None,
 ) -> list[str]:
-    """Packages required in the target env before offline ``--no-build-isolation`` editables.
-
-    Hatchling imports ``editables`` at editable-build time even when it is absent
-    from ``[build-system].requires`` (python-statemachine: requires = [\"hatchling\"] only).
-
-    Build backends are collected from the workspace root pyproject and from every local
-    path targeted by Dockerfile / verifier ``pip install -e`` segments (langchain-style
-    monorepos keep hatchling under ``libs/*/pyproject.toml``, not the repo root).
-    """
     pyprojects: list[Path] = [workspace / "pyproject.toml"]
     segments: list[str] = []
     if editable_segments:
@@ -1782,12 +1637,6 @@ def default_pip_editable_seed_command(
     workspace: Path,
     dockerfile: Path | None,
 ) -> str | None:
-    """Seed default ``pip`` with build backends before offline Dockerfile editable replay.
-
-    Image warm installs Hatchling/editables into ``.venv`` via uv, but agent Prep sync
-    replays Dockerfile ``pip install -e`` against system/default pip. Without this seed,
-    ``--no-build-isolation`` fails with ``ModuleNotFoundError: editables``.
-    """
     if dockerfile is None or not dockerfile.is_file():
         return None
     if not workspace_sync_commands_from_dockerfile(dockerfile, offline_editable=True):
@@ -1804,7 +1653,6 @@ def verifier_venv_build_system_commands(
     venv_path: str | None = None,
     spec: VerifierSpec | None = None,
 ) -> list[str]:
-    """Install build backends (+ ``editables``) into the verifier venv before editable replay."""
     segments = spec.editable_segments if spec is not None else None
     requires = _editable_offline_seed_specs(workspace, editable_segments=segments)
     if not requires:
@@ -1833,7 +1681,6 @@ def _plugin_closure_probe_python() -> str:
     )
 
 def _parse_plugin_probe_names(stdout: str, *, prefix: str) -> tuple[str, ...]:
-    """Parse ``PLUGIN_OK:a,b`` or conflict names from ``PLUGIN_CONFLICTS:name: Err; ...``."""
     for line in (stdout or "").splitlines():
         line = line.strip()
         if not line.startswith(prefix):
@@ -1853,11 +1700,6 @@ def _parse_plugin_probe_names(stdout: str, *, prefix: str) -> tuple[str, ...]:
     return ()
 
 def _materialize_harbor_probe_tree(tests_dir: Path | None, dest: Path) -> tuple[str, ...]:
-    """Write Harbor hidden ``.py`` sources from ``test.patch`` hunks into *dest*.
-
-    Prefer parse-added-hunks (plan Q6). *dest* must be outside ``/app`` so agent
-    remounts never see the files. Returns relative paths written.
-    """
     if tests_dir is None:
         return ()
     written: list[str] = []
@@ -1878,7 +1720,6 @@ _CANNOT_IMPORT_FROM_RE = re.compile(
 )
 
 def _missing_module_from_import_error(err: str) -> str | None:
-    """Best-effort module path extracted from a pytest collect ImportError."""
     match = _MISSING_MODULE_RE.search(err)
     if match:
         return match.group(1)
@@ -1906,16 +1747,6 @@ def collect_import_error_is_editable_feature_gap(
     err: str,
     provided_roots: set[str],
 ) -> bool:
-    """True when collect ImportError is a missing workspace submodule (pre-solution).
-
-    Top-level missing packages (``No module named 'pwnlib'``) remain prep failures
-    when detected explicitly. Missing feature submodules and truncated
-    ``from <editable_root>...`` traces soft-succeed after a prior top-level import
-    probe has already confirmed the editable root is importable.
-
-    Explicit ``No module named '<third_party>'`` always fails closed, even when the
-    traceback also shows ``from <editable_root>`` frames (e.g. pwntools → socks).
-    """
     if not provided_roots:
         return False
     roots = {r.replace("-", "_").lower() for r in provided_roots} | {
@@ -1956,15 +1787,6 @@ def _probe_editable_roots_importable(
     harbor_imports: tuple[str, ...] = (),
     env: dict[str, str] | None = None,
 ) -> str | None:
-    """Return an error detail when Harbor-needed editable roots cannot be imported.
-
-    Only probes import roots that Harbor tests actually import and that editable
-    discovery claims to provide (e.g. ``pwnlib``, not the ``pwntools`` dist name).
-
-    Import spelling comes from Harbor AST (``IPython``), not from the distribution
-    name (``ipython``): ``import_roots_provided_by_project`` may list both, and
-    case folding would otherwise probe the wrong module.
-    """
     harbor_original: dict[str, str] = {}
     for raw in harbor_imports:
         key = raw.replace("-", "_").lower()
@@ -2021,16 +1843,6 @@ def probe_verifier_env(
     run_collect: bool = True,
     tests_dir: Path | None = None,
 ) -> tuple[bool, str | None, PluginPolicy | None]:
-    """Probe verifier venv collect/import + pytest plugin closure.
-
-    Returns ``(ok, error_message, plugin_policy)``. On plugin conflicts with declared
-    pins, returns a grade-subprocess-only ``PluginPolicy`` that disables autoload.
-    Does **not** run full Harbor ``test.sh`` (avoids reward / patch side effects).
-
-    When ``tests_dir`` is set, materializes ``test.patch`` Python hunks into a temp
-    tree outside ``/app`` before collect-only so Adaptix-class ImportErrors are not
-    masked by pre-apply missing paths.
-    """
     python_bin = f"{spec.venv_path}/bin/python"
     if dry_run:
         return True, None, None
@@ -2213,7 +2025,6 @@ def verifier_grade_subprocess_env(
     base_env: dict[str, str] | None = None,
     plugin_policy: PluginPolicy | None = None,
 ) -> dict[str, str]:
-    """Subprocess env for Harbor ``test.sh`` inside ``/opt/malvin-verifier`` only."""
     env = dict(base_env) if base_env is not None else os.environ.copy()
     env["VIRTUAL_ENV"] = spec.venv_path
     env["PATH"] = f"{spec.venv_path}/bin:" + env.get("PATH", "")
@@ -2252,7 +2063,6 @@ class VerifierPrepResult:
     public_venv_present: bool = False
 
     def as_dict(self) -> dict[str, Any]:
-        """Agent-safe status only (no rich grade-only VerifierSpec fields)."""
         return {
             "ok": self.ok,
             "error": self.error,
@@ -2268,7 +2078,6 @@ def prepare_verifier_grade(
     task_id: str = "unknown",
     dry_run: bool = False,
 ) -> VerifierPrepResult:
-    """Grade-only prep: apply ``test.patch`` closure + probe. Not for pre-agent path."""
     if tests_dir is None or not tests_dir.exists():
         return VerifierPrepResult(
             ok=False,
@@ -2411,7 +2220,6 @@ def _probe_import_name(package_name: str) -> str:
     )
 
 def _probe_checks_for_declared(declared: DeclaredDeps) -> list[tuple[str, str, str]]:
-    """Return ``(import_name, expected_spec, display_name)`` probe tuples."""
     checks: list[tuple[str, str, str]] = []
     seen: set[str] = set()
     for name in sorted(declared.package_names()):
@@ -2426,13 +2234,6 @@ def _probe_checks_for_declared(declared: DeclaredDeps) -> list[tuple[str, str, s
     return checks
 
 def _mandatory_probe_python(declared: DeclaredDeps) -> str:
-    """Python source run by image-build and runtime verification probes.
-
-    Prefer ``importlib.metadata.version(distribution)`` so packages whose import
-    root differs from the distribution name (``pyelftools`` → ``elftools``) still
-    pass when the pin is installed. Fall back to import-based discovery only when
-    metadata is absent.
-    """
     checks = _probe_checks_for_declared(declared)
     check_lines = [f"    ({import_name!r}, {spec!r}, {display!r})," for import_name, spec, display in checks]
     checks_literal = "\n".join(check_lines) if check_lines else ""
@@ -2503,7 +2304,6 @@ def _mandatory_probe_command(declared: DeclaredDeps) -> str:
 MANDATORY_PROBE_SCRIPT_PATH = "/tmp/malvin_mandatory_probe.py"
 
 def mandatory_probe_script_write_command(declared: DeclaredDeps) -> str:
-    """Write mandatory probe source to a fixed path (Modal/Docker image-build safe)."""
     encoded = base64.b64encode(_mandatory_probe_python(declared).encode()).decode()
     return f"echo {shlex.quote(encoded)} | base64 -d > {MANDATORY_PROBE_SCRIPT_PATH}"
 
@@ -2511,7 +2311,6 @@ def mandatory_probe_script_run_command() -> str:
     return f"python3 {MANDATORY_PROBE_SCRIPT_PATH}"
 
 def mandatory_probe_script_commands(declared: DeclaredDeps) -> list[str]:
-    """Return write-then-run shell steps for image-build mandatory probes."""
     return [
         mandatory_probe_script_write_command(declared),
         mandatory_probe_script_run_command(),
@@ -2538,7 +2337,6 @@ def _httpx_drift_probe_script_run_command() -> str:
     return f"python3 {_HTTPX_DRIFT_PROBE_SCRIPT_PATH}"
 
 def _httpx_drift_fix_command() -> str:
-    """Run httpx namespace probe; on drift, reinstall starlette/click/typer pins."""
     return (
         f"{_httpx_drift_probe_script_run_command()} || "
         f"pip install --no-cache-dir --force-reinstall {_HTTPX_DRIFT_FIX}"
@@ -2549,7 +2347,6 @@ _PROBE_VIOLATION_RE = re.compile(
 )
 
 def _parse_probe_stderr_fragments(detail: str) -> list[tuple[str | None, str | None, str | None]]:
-    """Return one ``(package, observed, expected)`` tuple per probe stderr fragment."""
     parsed: list[tuple[str | None, str | None, str | None]] = []
     for fragment in detail.replace(";", "\n").splitlines():
         fragment = fragment.strip()
@@ -2581,7 +2378,6 @@ def _parse_probe_stderr_fragments(detail: str) -> list[tuple[str | None, str | N
     return parsed
 
 def _parse_probe_stderr(detail: str) -> tuple[str | None, str | None, str | None]:
-    """Return the first ``(package, observed, expected)`` parsed from mandatory-probe stderr."""
     fragments = _parse_probe_stderr_fragments(detail)
     if fragments:
         return fragments[0]
@@ -2592,7 +2388,6 @@ def _reconcile_declared_deps_commands(
     *,
     registry_pull: bool = False,
 ) -> list[str]:
-    """Force-reinstall declared pins and pyproject/lockfile packages at image build."""
     cmds: list[str] = []
     if declared.bulk_pins and not registry_pull:
         pkg_args = [f"'{name}=={ver}'" for name, ver in sorted(declared.bulk_pins.items())]
@@ -2622,7 +2417,6 @@ def run_post_prep_probes(
     task_id: str,
     phase: str = "runtime probe",
 ) -> list[str]:
-    """Run verification probes; return human-readable errors (empty when ok)."""
     command = _mandatory_probe_command(declared)
     code, detail, _timed_out = _run_shell(command, workspace)
     if code == 0:
@@ -2655,7 +2449,6 @@ def pydantic_pins_for_cache_bust(
     dockerfile: Path | None,
     workspace: Path | None = None,
 ) -> tuple[str | None, str | None]:
-    """Return task pydantic pins when present in declared dependencies."""
     if dockerfile is None or not dockerfile.is_file() or workspace is None:
         return None, None
     workspace = workspace.resolve()
@@ -2670,7 +2463,6 @@ def pydantic_pins_for_cache_bust(
     return None, None
 
 def _pydantic_v1_eviction_command() -> str:
-    """Evict stale pydantic v1 when the image has pydantic but no task declaration."""
     return (
         "python3 -c \""
         "import importlib.util, sys; "
@@ -2689,7 +2481,6 @@ _TOX_RUNNER_TOOLS = ("tox", "invoke")
 _TOX_VARS_RE = re.compile(r"\{\[vars\]([^\}]+)\}")
 
 def _tox_ini_section_text(tox_text: str, header: str) -> str | None:
-    """Return the body of a tox.ini section named *header* (e.g. ``[vars]``)."""
     lines = tox_text.splitlines()
     start: int | None = None
     for index, line in enumerate(lines):
@@ -2707,11 +2498,9 @@ def _tox_ini_section_text(tox_text: str, header: str) -> str | None:
     return "\n".join(section_lines) if section_lines else ""
 
 def tox_lint_section_text(tox_text: str) -> str | None:
-    """Return the body of ``[testenv:lint]`` from a ``tox.ini`` string."""
     return _tox_ini_section_text(tox_text, "[testenv:lint]")
 
 def tox_ini_vars(tox_text: str) -> dict[str, str]:
-    """Parse ``[vars]`` substitutions from a tox.ini string."""
     section = _tox_ini_section_text(tox_text, "[vars]")
     if section is None:
         return {}
@@ -2725,7 +2514,6 @@ def tox_ini_vars(tox_text: str) -> dict[str, str]:
     return vars_map
 
 def expand_tox_vars(command: str, vars_map: dict[str, str]) -> str:
-    """Replace ``{[vars]name}`` placeholders using *vars_map*."""
 
     def _replace(match: re.Match[str]) -> str:
         return vars_map.get(match.group(1).strip(), match.group(0))
@@ -2736,7 +2524,6 @@ def workspace_has_justfile(workspace: Path) -> bool:
     return (workspace / "justfile").is_file() or (workspace / "Justfile").is_file()
 
 def tox_lint_check_commands(workspace: Path) -> list[str]:
-    """Return ``commands`` from ``[testenv:lint]`` when present (tox vars expanded)."""
     tox_path = workspace / "tox.ini"
     if not tox_path.is_file():
         return []
@@ -2764,7 +2551,6 @@ def tox_lint_check_commands(workspace: Path) -> list[str]:
     return commands
 
 def lint_gate_tool_pins(workspace: Path) -> dict[str, str]:
-    """Return pinned lint-gate tool versions declared by the workspace."""
     candidates = (
         workspace / "requirements" / "lint.txt",
         workspace / "requirements" / "dev.txt",
@@ -2778,7 +2564,6 @@ def lint_gate_tool_pins(workspace: Path) -> dict[str, str]:
     return {}
 
 def tox_runner_tool_pins(workspace: Path) -> dict[str, str]:
-    """Return pinned tox/invoke versions from workspace requirements, if any."""
     candidates = (
         workspace / "requirements" / "runner.txt",
         workspace / "requirements" / "dev.txt",
@@ -2792,11 +2577,6 @@ def tox_runner_tool_pins(workspace: Path) -> dict[str, str]:
     return {}
 
 def just_install_command(workspace: Path) -> str | None:
-    """Install the ``just`` binary when the workspace has a justfile.
-
-    Prefers a prebuilt GitHub release tarball over ``cargo install`` so image
-    builds do not recompile the Rust crate on every warm layer.
-    """
     if not workspace_has_justfile(workspace):
         return None
     
@@ -2814,12 +2594,6 @@ def just_install_command(workspace: Path) -> str | None:
     )
 
 def tox_runner_install_command(workspace: Path) -> str | None:
-    """Install tox/invoke when the workspace uses tox or just recipes that call them.
-
-    Always installs (no soft ``command -v`` skip). Tox is clamped to
-    :data:`tox_gates.MIN_TOX_FOR_SKIP_ENV_INSTALL` so offline agent checks that
-    inject ``--skip-env-install`` resolve a capable runner under TOOLCHAIN_PATH.
-    """
     from tox_gates import clamp_tox_version, image_build_pip_install_command
 
     needs_tox = (workspace / "tox.ini").is_file() or workspace_has_justfile(workspace)
@@ -2837,7 +2611,6 @@ def tox_runner_install_command(workspace: Path) -> str | None:
     return image_build_pip_install_command(args)
 
 def workspace_lint_tool_install_command(workspace: Path) -> str | None:
-    """Install tox lint-gate CLIs at image build for offline malvin quality gates."""
     if (workspace / "uv.lock").is_file():
         return None
     if not tox_lint_check_commands(workspace):
@@ -2851,12 +2624,6 @@ def workspace_lint_tool_install_command(workspace: Path) -> str | None:
 PRECOMMIT_WARM_SCRIPT_PATH = "/tmp/malvin_precommit_warm.sh"
 
 def _precommit_warm_script_body(workspace: Path) -> str:
-    """Bash script to bootstrap ``pre-commit`` and warm hook environments.
-
-    ``install-hooks`` is best-effort: configs often pin ``default_language_version``
-    to interpreters absent from Harbor images (e.g. python3.8). Failing closed on
-    that aborts image build even when ``--test`` only needs ecosystem smoke.
-    """
     pin = _precommit_pin_from_workspace(workspace)
     pip_spec = f"pre-commit=={pin}" if pin else "pre-commit"
     venv_bin = f"{_UV_PROJECT_VENV}/bin/pre-commit"
@@ -2876,7 +2643,6 @@ def _precommit_warm_script_body(workspace: Path) -> str:
     )
 
 def precommit_warm_script_write_command(workspace: Path) -> str | None:
-    """Write pre-commit warm script to a fixed path (Modal/Docker image-build safe)."""
     if not (workspace / ".pre-commit-config.yaml").is_file():
         return None
     encoded = base64.b64encode(_precommit_warm_script_body(workspace).encode()).decode()
@@ -2886,14 +2652,12 @@ def precommit_warm_script_run_command() -> str:
     return f"bash {PRECOMMIT_WARM_SCRIPT_PATH}"
 
 def precommit_warm_script_commands(workspace: Path) -> list[str]:
-    """Return write-then-run shell steps for image-build pre-commit hook warming."""
     write = precommit_warm_script_write_command(workspace)
     if write is None:
         return []
     return [write, precommit_warm_script_run_command()]
 
 def precommit_install_hooks_command(workspace: Path) -> str | None:
-    """Backward-compatible alias returning only the run step."""
     commands = precommit_warm_script_commands(workspace)
     return commands[-1] if commands else None
 
@@ -2911,7 +2675,6 @@ def _pyproject_has_uv_dev_group(workspace: Path) -> bool:
     return isinstance(groups, dict) and "dev" in groups
 
 def _read_pyproject_build_system_requires(pyproject: Path) -> list[str]:
-    """Return ``[build-system].requires`` entries from ``pyproject.toml``."""
     if not pyproject.is_file():
         return []
     raw = tomllib.loads(pyproject.read_text(encoding="utf-8"))
@@ -2924,7 +2687,6 @@ def _read_pyproject_build_system_requires(pyproject: Path) -> list[str]:
     return [req for req in requires if isinstance(req, str) and req.strip()]
 
 def _workspace_has_ruff_signal(workspace: Path) -> bool:
-    """True when ruff is likely used by malvin quality gates for this workspace."""
     pyproject = workspace / "pyproject.toml"
     if pyproject.is_file():
         raw = tomllib.loads(pyproject.read_text(encoding="utf-8"))
@@ -2943,18 +2705,12 @@ def _workspace_has_ruff_signal(workspace: Path) -> bool:
 _UV_OFFLINE_SMOKE_PREFIX = "UV_OFFLINE=1 UV_NO_SYNC=1"
 
 def uv_sync_dev_command(workspace: Path) -> str | None:
-    """Return shell steps to warm a uv venv when the workspace uses uv.
-
-    Callers must run the returned command in ``/app`` during image build with network
-    access so later offline ``uv sync`` / ``uv run`` gates can succeed.
-    """
     if not (workspace / "uv.lock").is_file():
         return None
     sync = "uv sync --group dev" if _pyproject_has_uv_dev_group(workspace) else "uv sync"
     return f"{_UV_BOOTSTRAP_SHELL} && {sync}"
 
 def uv_pip_build_system_command(workspace: Path) -> str | None:
-    """Return shell steps to cache ``[build-system].requires`` for offline ``uv run``."""
     if not (workspace / "uv.lock").is_file():
         return None
     requires = _read_pyproject_build_system_requires(workspace / "pyproject.toml")
@@ -2966,11 +2722,6 @@ def uv_pip_build_system_command(workspace: Path) -> str | None:
     )
 
 def uv_editable_install_command(workspace: Path) -> str | None:
-    """Return shell steps to pre-install the project editable for offline rebuilds.
-
-    Hatchling editable installs need the ``editables`` package even when it is not
-    listed in ``[build-system].requires``; install it before ``-e .``.
-    """
     if not (workspace / "uv.lock").is_file():
         return None
     return (
@@ -2980,11 +2731,6 @@ def uv_editable_install_command(workspace: Path) -> str | None:
     )
 
 def uv_offline_smoke_commands(workspace: Path) -> list[str]:
-    """Gate-equivalent offline checks to run at image build after cache warming.
-
-    Lint smokes (``uv run ruff check``) soft-fail like pre-commit hook install:
-    a missing console script must not abort the image build after deps warmed.
-    """
     if not (workspace / "uv.lock").is_file():
         return []
     commands: list[str] = []
@@ -3001,15 +2747,6 @@ def workspace_declared_repin_command(
     workspace: Path,
     dockerfile: Path | None = None,
 ) -> str | None:
-    """Force-reinstall declared pins after warm pip installs that may clobber them.
-
-    Example: installing tox upgrades ``packaging``, which then fails the mandatory probe
-    against Adaptix's ``packaging==24.2`` pin.
-
-    Bulk pins and pyproject/lockfile constraints share one ``pip install`` so transitive
-    deps of bulk packages cannot float past declared ranges (httpx: ``twine`` pulling
-    ``rich`` 15 while ``rich>=10,<15`` is declared).
-    """
     if dockerfile is None or not dockerfile.is_file():
         return None
     declared = declared_python_dependencies(workspace.resolve(), dockerfile)
@@ -3034,7 +2771,6 @@ def workspace_image_warm_commands(
     workspace: Path,
     dockerfile: Path | None = None,
 ) -> list[str]:
-    """Shell commands to warm offline agent quality gates at Modal image build."""
     commands: list[str] = []
     just_install = just_install_command(workspace)
     if just_install:
@@ -3092,16 +2828,6 @@ def registry_image_cache_bust_commands(
     *,
     registry_pull: bool = False,
 ) -> list[str]:
-    """Modal registry cache bust: reconcile declared deps, drift fixes, mandatory probe.
-
-    When ``pyproject.toml`` declares packages omitted from Dockerfile bulk pins (e.g.
-    aiomonitor ``pydantic>=2.0.0``), reconcile commands install them unconditionally
-    after bulk pin replay — not only when bulk pins are absent.
-
-    With ``registry_pull=True``, skip Dockerfile bulk-pin replay (full ``RUN pip install``
-    replay) because Harbor registry images already ship those pins; still reconcile
-    declared bulk pins when Modal base-image layering may have clobbered them.
-    """
     declared = (
         declared_python_dependencies(workspace.resolve(), dockerfile)
         if workspace is not None and dockerfile is not None and dockerfile.is_file()
@@ -3129,7 +2855,6 @@ def prepare_task_sandbox(
     offline_editable: bool = True,
     verify_probes: bool = True,
 ) -> SandboxPrepResult:
-    """Offline editable replay and declared-dependency verification probes."""
     workspace = workspace.resolve()
     task_id = getattr(spec, "task_id", "unknown")
     dockerfile = spec.dockerfile if getattr(spec, "dockerfile", None) and spec.dockerfile.is_file() else None
@@ -3251,7 +2976,6 @@ def _test_bash_lc_pip_intents_ignore_shell_noise() -> None:
     assert "if" not in unpinned
 
 def _test_requirement_inline_comments_stripped_for_pip() -> None:
-    """OpenStack-style ``pkg>=1 # MIT`` must not reach pip install args."""
     assert _strip_requirement_comment("beautifulsoup4>=4.8.0 # MIT") == "beautifulsoup4>=4.8.0"
     assert _requirement_line_package("beautifulsoup4>=4.8.0 # MIT") == (
         "beautifulsoup4",
@@ -3281,7 +3005,6 @@ def _test_requirement_inline_comments_stripped_for_pip() -> None:
         assert "beautifulsoup4>=4.8.0" in joined
 
 def _test_pep508_extras_preserved_in_pip_install_spec() -> None:
-    """``fastapi-cli[standard] >=0.0.8`` must not become ``fastapi-cli==[standard]…``."""
     import tempfile
 
     assert _parse_dependency_spec("fastapi-cli[standard] >=0.0.8") == (
@@ -3405,7 +3128,6 @@ def _test_editable_pip_segment_ignores_dirty_equals() -> None:
     assert _is_bulk_pip_segment("pip3 install pytest covdefaults")
 
 def _test_infra_abort_dockerfile_sync_is_offline() -> None:
-    """Offline sync must not replay network-fetching bulk pip; editable gets --no-deps."""
     import tempfile
 
     text = """FROM base
@@ -3661,7 +3383,6 @@ def _test_uv_editable_install_command() -> None:
         assert "uv pip install --python .venv -e . --no-build-isolation" in cmd
 
 def _test_default_pip_editable_seed_for_offline_sync() -> None:
-    """Dockerfile ``pip install -e`` + hatchling ⇒ system pip gets editables at warm."""
     import tempfile
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -3694,7 +3415,6 @@ def _test_default_pip_editable_seed_for_offline_sync() -> None:
         assert default_pip_editable_seed_command(root, bare) is None
 
 def _test_editable_seed_reads_monorepo_build_backends() -> None:
-    """Editable targets under libs/*/pyproject.toml must contribute hatchling seeds."""
     import tempfile
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -3730,7 +3450,6 @@ def _test_editable_seed_reads_monorepo_build_backends() -> None:
         assert venv_cmds and "hatchling" in venv_cmds[0]
 
 def _test_editable_target_project_deps_enter_declared() -> None:
-    """``pip install -e libs/core --no-deps`` still needs libs/core's pydantic pin."""
     import tempfile
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -3880,7 +3599,6 @@ def _test_workspace_image_warm_commands() -> None:
         assert "continuing" in cmds[-1]
 
 def _test_setuptools_extra_requirement_files_not_extra_keys() -> None:
-    """Kombu-style extras map to requirements files; extra keys are not PyPI names."""
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         (root / "setup.py").write_text(
@@ -4042,7 +3760,6 @@ def _test_run_post_prep_probes_mixed_import_and_violation_errors() -> None:
     assert any("pydantic" in err and "1.10.26" in err for err in errors), errors
 
 def _test_mandatory_probe_accepts_single_char_version_ops() -> None:
-    """Constraints like ``>4.6`` / ``<7`` must not become ``==>4.6`` / ``==<7``."""
     import tempfile
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -4080,7 +3797,6 @@ def _test_mandatory_probe_accepts_single_char_version_ops() -> None:
     assert proc.returncode == 0, proc.stderr
 
 def _test_mandatory_probe_strips_pep508_extras_before_specifier() -> None:
-    """Remainders like ``[standard]>=0.0.8`` must not become ``==[standard]…``."""
     probe_body = _mandatory_probe_python(
         DeclaredDeps(
             {},
@@ -4272,7 +3988,6 @@ def _test_probe_import_name_phonenumberslite() -> None:
     assert _probe_import_name("pyserial") == "serial"
 
 def _test_mandatory_probe_uses_metadata_before_import() -> None:
-    """Distribution metadata satisfies probes when the import root differs from the dist name."""
     declared = DeclaredDeps({}, {"pyelftools": ">=0.32"}, (), {})
     body = _mandatory_probe_python(declared)
     meta_at = body.index("pkg_version(display_name)")
@@ -4513,7 +4228,6 @@ def _test_verifier_grade_closure_commands_include_mapped() -> None:
     assert "PLUGIN_CONFLICTS" not in public_cmds
 
 def _test_probe_verifier_env_plugin_conflict_reports_verifier_prep() -> None:
-    """Missing verifier venv fails closed (no system-Python fallback)."""
     import tempfile
 
     declared = DeclaredDeps(
@@ -4545,7 +4259,6 @@ def _test_probe_verifier_env_plugin_conflict_reports_verifier_prep() -> None:
     assert policy is None
 
 def _test_prepare_verifier_grade_materialize_when_missing() -> None:
-    """Missing ``/opt/malvin-verifier``: materialize before probe; fail closed if absent."""
     import sys
     import tempfile
     from unittest.mock import patch
@@ -4633,7 +4346,6 @@ def _test_prepare_verifier_grade_materialize_when_missing() -> None:
         assert calls, "expected materialize attempt before fail-closed"
 
 def _test_probe_verifier_env_unmapped_imports_fail_closed() -> None:
-    """Q7: unmapped Harbor imports abort at verifier prep (no invented PyPI pins)."""
     import tempfile
 
     declared = DeclaredDeps(
@@ -4675,7 +4387,6 @@ def _test_prepare_task_sandbox_does_not_call_probe_verifier() -> None:
     assert "discover_verifier_spec" not in source
 
 def _test_probe_verifier_env_missing_collect_path_does_not_abort() -> None:
-    """Collect-only against paths absent from disk *and* ``test.patch`` must not abort."""
     from unittest.mock import MagicMock, patch
 
     declared = DeclaredDeps(
@@ -4720,7 +4431,6 @@ def _test_probe_verifier_env_missing_collect_path_does_not_abort() -> None:
     assert err is None
 
 def _test_probe_plugin_conflict_failed_collect_aborts() -> None:
-    """PLUGIN_CONFLICTS must not soft-succeed when collect-only still fails."""
     from unittest.mock import MagicMock, patch
 
     declared = DeclaredDeps(
@@ -4775,7 +4485,6 @@ def _test_probe_plugin_conflict_failed_collect_aborts() -> None:
     assert policy.disable_autoload is True
 
 def _test_modified_hunk_context_imports_in_verifier_spec() -> None:
-    """Modified test.patch hunks must surface context-line third-party imports."""
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         workspace = root / "workspace"
@@ -4813,7 +4522,6 @@ def _test_modified_hunk_context_imports_in_verifier_spec() -> None:
     assert "unmapped_imports" not in grade.public_view()
 
 def _test_adaptix_prepatch_materialize_catches_importerror() -> None:
-    """Production Harbor timing: no test file on disk; patch hunks must fail prep."""
     from unittest.mock import MagicMock, patch
 
     fixture = _FIXTURE_VERIFIER_ADAPTIX
@@ -4902,12 +4610,6 @@ def _test_verifier_pip_honors_spec_venv_path() -> None:
     )
 
 def _test_prepare_verifier_grade_materialize_creates_real_venv() -> None:
-    """End-to-end: missing venv → materialize commands produce ``bin/python``.
-
-    ``python -m venv`` / pip upgrade are multi-second; under unit tests those shell
-    steps are served from the process venv cache while still driving
-    ``prepare_verifier_grade`` through ``_run_shell``.
-    """
     from unittest.mock import patch
 
     fixture = _FIXTURE_VERIFIER_ADAPTIX
@@ -4970,7 +4672,6 @@ def _test_prepare_verifier_grade_materialize_creates_real_venv() -> None:
         assert result.public_venv_present is True
 
 def _test_discover_grade_closure_records_declared_harbor_imports() -> None:
-    """Mapped Harbor imports fill grade_closure; unmapped stay out of install commands."""
     import tempfile
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -5007,7 +4708,6 @@ def _test_discover_grade_closure_records_declared_harbor_imports() -> None:
     assert any(s.startswith("requests==") for s in grade.public_install_specs)
 
 def _test_editable_project_satisfies_harbor_import() -> None:
-    """Dockerfile ``pip install -e .`` provides Harbor imports without DeclaredDeps pins."""
     import tempfile
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -5044,7 +4744,6 @@ def _test_editable_project_satisfies_harbor_import() -> None:
     assert any("-e" in seg for seg in grade.editable_segments)
 
 def _test_probe_editable_roots_prefers_harbor_import_case() -> None:
-    """Dist name ``ipython`` must not override Harbor import spelling ``IPython``."""
     import tempfile
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -5065,7 +4764,6 @@ def _test_non_pytest_test_sh_skips_collect_probe() -> None:
     assert test_sh_invokes_pytest("python -m pytest tests/ -q\n")
 
 def _test_unpinned_dockerfile_package_declared() -> None:
-    """Bare ``pip install pytest`` becomes an unpinned DeclaredDeps name."""
     import tempfile
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -5102,7 +4800,6 @@ def _test_unpinned_dockerfile_package_declared() -> None:
     assert grade.unmapped_imports == ()
 
 def _test_cargo_and_go_mod_skipped_in_offline_sync() -> None:
-    """Network language package fetches are not replayed in offline sandbox sync."""
     cargo_runs = parse_dockerfile_run_commands("FROM x\nRUN cargo fetch\n")
     go_runs = parse_dockerfile_run_commands("FROM x\nRUN go mod download\n")
     assert _sync_commands_from_runs(cargo_runs, offline_editable=False) == []
@@ -5149,7 +4846,6 @@ def _test_bare_pyproject_deps_become_unpinned() -> None:
     assert declared.pip_install_spec("pysocks") == "pysocks"
 
 def _test_adaptix_conflict_fixture_yields_plugin_policy_or_verifier_prep() -> None:
-    """Adaptix pin conflict: collect ImportError fails verifier prep (or plugin policy)."""
     import tempfile
     from unittest.mock import MagicMock, patch
 
@@ -5225,7 +4921,6 @@ def _test_adaptix_conflict_fixture_yields_plugin_policy_or_verifier_prep() -> No
             assert err is not None and "verifier prep" in err
 
 def _test_adaptix_import_error_never_soft_succeeds_on_system_python() -> None:
-    """Adaptix-class ImportError: never ok=True when verifier venv is absent (system Python)."""
     import tempfile
 
     fixture = _FIXTURE_VERIFIER_ADAPTIX
@@ -5333,7 +5028,6 @@ def _test_plugin_policy_as_env_allowlist_wiring() -> None:
     assert "-p timeout" in grade_env["PYTEST_ADDOPTS"]
 
 def _test_plugin_disable_policy_lets_collect_boot() -> None:
-    """Broken pytest11 entry point: disable-autoload policy → collect-only boots."""
     import tempfile
     from unittest.mock import MagicMock, patch
 
@@ -5398,7 +5092,6 @@ def _test_plugin_disable_policy_lets_collect_boot() -> None:
     assert grade_env.get("PYTEST_DISABLE_PLUGIN_AUTOLOAD") == "1"
 
 def _test_verifier_prep_result_as_dict_excludes_secrets() -> None:
-    """Behavioral spy: agent-safe as_dict never carries grade-only VerifierSpec fields."""
     declared = DeclaredDeps(
         bulk_pins={"pytest": "8.3.4"},
         constraints={},

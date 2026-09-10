@@ -1,4 +1,3 @@
-//! Kiss name witnesses (call-shaped tokens). Not compiled into the crate.
 
 #[test]
 fn kiss_cov_drain_idle_witness_a() {

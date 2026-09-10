@@ -79,11 +79,6 @@ fn authenticated_providers() -> Vec<&'static str> {
         .collect()
 }
 
-/// Whether Pi's OpenAI-compatible `/v1/models` probe can succeed for this provider.
-///
-/// Cursor is excluded: malvin lists Cursor models via `cursor-sdk-bridge`, and Pi's
-/// generic `{base_url}/models` probe against Cursor's `AgentService` endpoint returns
-/// HTTP 464 instead of a model catalog.
 fn provider_supports_pi_live_model_fetch(provider: &str) -> bool {
     if provider.eq_ignore_ascii_case("cursor") {
         return false;

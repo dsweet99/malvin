@@ -10,7 +10,6 @@ const QUIET_HELPTEXT: &str =
 const CREATIVE_HELPTEXT: &str =
     "Be (more) creative; optional probability in [0,1] (default 1.0 when set)";
 
-/// Parse `--creative[=PROB]` values in `[0.0, 1.0]`.
 pub(crate) fn parse_creative_probability(s: &str) -> Result<f64, String> {
     let p: f64 = s
         .parse()
@@ -92,12 +91,6 @@ impl SharedOpts {
         true
     }
 
-    /// Sample whether this outer router iteration applies creative turns.
-    ///
-    /// When `--creative` is unset, returns false. When set, both including
-    /// `mbc2.md` in the aggregated initial prompt and `router_b_creative.md`
-    /// (vs `router_b.md`) apply together with the configured probability
-    /// (default 1.0).
     #[must_use]
     pub(crate) fn sample_creative_this_iteration(&self) -> bool {
         match self.creative {

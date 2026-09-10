@@ -16,8 +16,6 @@ pub fn active_gate_iteration() -> Option<usize> {
         .unwrap_or_else(PoisonError::into_inner)
 }
 
-/// True only while the most recent gate outcome in this process was a completed
-/// run whose output was captured to `quality_gates.log`.
 pub fn set_quality_gates_just_ran(ran: bool) {
     *QUALITY_GATES_JUST_RAN
         .lock()

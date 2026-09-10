@@ -88,12 +88,6 @@ const fn shell_binary() -> (&'static str, &'static str) {
     }
 }
 
-/// Run `.malvin/gates` lines at the git worktree toplevel when present.
-///
-/// Checks are resolved from the repo root (see `malvin_checks_path`), and the
-/// documented contract is that gate commands also execute there. Using the
-/// possibly nested agent `work_dir` as cwd breaks relative commands such as
-/// `pytest tests` when the session workspace is a subdirectory.
 #[must_use]
 pub(crate) fn gate_command_cwd(work_dir: &Path) -> PathBuf {
     crate::git_worktree_toplevel(work_dir).unwrap_or_else(|| work_dir.to_path_buf())

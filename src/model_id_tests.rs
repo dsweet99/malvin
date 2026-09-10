@@ -179,3 +179,106 @@ fn model_backend_and_parsed_model_debug() {
     assert_eq!(clone, parsed);
     let _ = format!("{parsed:?}");
 }
+
+#[test]
+fn parse_canonical_metamorphic_roundtrip() {
+    let samples = [
+        "cursor:auto",
+        "  cursor:claude-opus-5[effort=high,fast=true]  ",
+        "pi:openai/gpt-4o",
+        "rpi:openrouter/anthropic/claude-3-haiku[thinking=medium]",
+        "codex:gpt-5.6[thinking=high,service=priority]",
+    ];
+    for raw in samples {
+        let parsed = parse_model_id(raw).unwrap_or_else(|e| panic!("parse {raw:?}: {e}"));
+        let again = parse_model_id(&parsed.canonical()).expect("canonical reparse");
+        assert_eq!(again, parsed, "raw={raw:?}");
+        assert_eq!(parsed.to_string(), parsed.canonical());
+    }
+}
+
+#[test]
+fn backend_labels_drain_prefixes_and_provider_split() {
+    assert_eq!(ModelBackend::Cursor.label(), "cursor");
+    assert_eq!(ModelBackend::NpmPi.label(), "pi");
+    assert_eq!(ModelBackend::Pi.label(), "rpi");
+    assert_eq!(ModelBackend::Codex.label(), "codex");
+    assert!(
+        ModelBackend::Cursor
+            .drain_idle_prefix()
+            .contains("bridge timed out")
+    );
+    assert!(
+        ModelBackend::NpmPi
+            .drain_idle_prefix()
+            .contains("npm pi rpc timed out")
+    );
+    assert!(ModelBackend::Pi.drain_idle_prefix().contains("pi rpc timed out"));
+    assert!(ModelBackend::Codex.drain_idle_prefix().contains("codex timed out"));
+    assert!(
+        parse_model_id("cursor:auto")
+            .expect("cursor")
+            .pi_provider_and_model()
+            .is_none()
+    );
+    assert!(
+        parse_model_id("codex:gpt-5.6")
+            .expect("codex")
+            .pi_provider_and_model()
+            .is_none()
+    );
+    assert!(parse_model_id("rpi:/model").is_err());
+    assert!(parse_model_id("rpi:provider/").is_err());
+    assert!(parse_model_id("").is_err());
+    assert_eq!(
+        require_config_model("")
+            .expect("empty → default")
+            .canonical(),
+        crate::support_paths::DEFAULT_CLI_MODEL
+    );
+    assert_eq!(
+        require_config_model("   \t")
+            .expect("whitespace → default")
+            .canonical(),
+        crate::support_paths::DEFAULT_CLI_MODEL
+    );
+    assert_eq!(
+        require_prefixed_model("cursor:auto").expect("ok"),
+        "cursor:auto"
+    );
+    assert!(require_prefixed_model("auto").is_err());
+}
+
+#[test]
+fn bracket_format_split_metamorphic_and_reject_fuzz() {
+    let params = vec![
+        ModelParam {
+            id: "thinking".into(),
+            value: "low".into(),
+        },
+        ModelParam {
+            id: "service".into(),
+            value: "flex".into(),
+        },
+    ];
+    let rendered = format_bracket_params(&params);
+    let (base, round) = split_bracket_params(&format!("gpt-5.6{rendered}")).expect("roundtrip");
+    assert_eq!(base, "gpt-5.6");
+    assert_eq!(round, params);
+
+    let rejects = [
+        "x[", "x[a", "[a=1]", "x[[a=1]]", "x[a=1][b=2]", "x[a=1,]", "x[=v]", "x[k=]",
+        "x[noeq]", "x[a=1,,b=2]", "x]", "ab]c",
+    ];
+    for raw in rejects {
+        assert!(
+            split_bracket_params(raw).is_err(),
+            "expected reject for {raw:?}"
+        );
+    }
+    assert!(
+        split_bracket_params("x]")
+            .expect_err("unbalanced closer")
+            .contains(']')
+    );
+}

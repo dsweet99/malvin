@@ -83,6 +83,12 @@ mod tests {
             "20260524.000000 Still alive."
         ));
         assert!(!super::heartbeat_payload_has_wall_clock_prefix("HB: old"));
+        assert!(!super::heartbeat_payload_has_wall_clock_prefix(""));
+        assert!(!super::heartbeat_payload_has_wall_clock_prefix("20260524.00000 "));
+        assert!(!super::heartbeat_payload_has_wall_clock_prefix("20260524100000 "));
+        assert!(!super::heartbeat_payload_has_wall_clock_prefix("2026052a.000000 "));
+        assert!(!super::heartbeat_payload_has_wall_clock_prefix("20260524.000000X"));
+        assert!(!super::heartbeat_payload_has_wall_clock_prefix("20260524-000000 "));
     }
 
     #[test]

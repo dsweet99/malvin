@@ -1,4 +1,3 @@
-"""Call-shaped witnesses for colliding ops symbol names (kiss static coverage)."""
 from __future__ import annotations
 
 from sandbox_prep import _remaining_sec as _sandbox_prep__remaining_sec
@@ -19,9 +18,7 @@ _ops_malvin_modal = load_ops_entry("malvin_modal")
 _malvin_modal_cli = _ops_malvin_modal.cli
 _malvin_modal_main = _ops_malvin_modal.main
 
-
 def test_ops_colliding_name_kiss_coverage() -> None:
-    """Kiss matches colliding names via aliased Call nodes; do not execute them."""
     if False:
         _sandbox_prep__remaining_sec()
         _malvin_modal__test_sandbox_app()

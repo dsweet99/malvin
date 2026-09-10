@@ -1,4 +1,3 @@
-//! Per-next-event drain idle with optional child-health extend.
 
 use std::collections::HashSet;
 use std::future::Future;
@@ -20,7 +19,6 @@ use drain_idle_health::sample_drain_health;
 pub(crate) use drain_idle_turn::DrainIdleTurn;
 pub(crate) use drain_idle_wait::{DrainIdleWaitOpts, await_next_with_idle_using};
 
-/// Aggregate sandbox health for one drain-idle slice miss.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DrainHealthVerdict {
     StillBusy,
@@ -28,7 +26,6 @@ pub enum DrainHealthVerdict {
     DeadOrZombie,
 }
 
-/// Labels for silence errors (`DRAIN_IDLE_PREFIX_*` in `src/acp/agent_helpers.rs`).
 #[derive(Debug, Clone, Copy)]
 pub struct DrainIdleLabels<'a> {
     pub prefix: &'a str,
@@ -36,7 +33,6 @@ pub struct DrainIdleLabels<'a> {
 }
 
 impl DrainIdleLabels<'_> {
-    /// No bridge/Pi line for the full idle window — bridge went quiet (hung or stalled).
     pub(crate) fn silence_error_detail(self, idle: Duration, tools_in_flight: bool) -> AgentError {
         let why = if tools_in_flight {
             "bridge quiet while tools_in_flight"
@@ -49,7 +45,6 @@ impl DrainIdleLabels<'_> {
         ))
     }
 
-    /// Cumulative turn ceiling exhausted (may still have been receiving events).
     pub(crate) fn turn_budget_error(self, elapsed: Duration, limit: Duration) -> AgentError {
         AgentError::session_dead(format!(
             "{} waiting for {} after turn ran {elapsed:?} (limit {limit:?}; turn budget exhausted)",
@@ -58,12 +53,10 @@ impl DrainIdleLabels<'_> {
     }
 }
 
-/// Session fields needed to sample sandbox health during drain idle.
 #[derive(Debug, Clone, Copy)]
 pub struct DrainIdleHealthCtx<'a> {
     pub process_group_id: Option<u32>,
     pub spawn_pid_baseline: &'a HashSet<u32>,
-    /// When true, I/O-bound sandbox work may extend the turn budget like `StillBusy`.
     pub tools_in_flight: bool,
 }
 
@@ -102,7 +95,6 @@ impl DrainIdleClock {
         self.idle
     }
 
-    /// Infra-layer turn heartbeat: extend the cumulative turn cap on productive signals.
     pub(crate) fn extend_turn_budget(&mut self, extra: Duration) {
         let cap = self.wait_start + sdk_drain_idle_max_turn(self.idle);
         self.turn_deadline = (self.turn_deadline + extra).min(cap);
@@ -174,7 +166,6 @@ where
     await_next_with_idle_in_turn(labels, health, read, &mut turn).await
 }
 
-/// Await one read within an existing turn budget (cumulative `max_wait` across events).
 pub(crate) async fn await_next_with_idle_in_turn<T, Fut>(
     labels: DrainIdleLabels<'_>,
     health: Option<DrainIdleHealthCtx<'_>>,

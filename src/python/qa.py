@@ -1,8 +1,3 @@
-"""Cursor SDK shutdown QA scenarios (library; Click lives in ``ops/qa.py``).
-
-Regression check for the stdin-hold + SIGKILL abandonment path found
-2026-08-07. Exit 0 means FIXED, exit 1 means STILL_BROKEN (or setup failed).
-"""
 
 from __future__ import annotations
 
@@ -84,7 +79,6 @@ def _ppid_of(pid: int) -> int | None:
         return None
 
 def _write_owner_script(path: Path) -> None:
-    """Nested owner that holds bridge stdin open until SIGKILL (malvin stand-in)."""
     path.write_text(
         """\
 import json
@@ -130,7 +124,6 @@ while True:
     )
 
 def _spawn_bridge_owner(work: Path) -> tuple[subprocess.Popen[bytes], dict[str, Any]]:
-    """Start owner+bridge; return owner Popen and status dict."""
     node = resolve_node_bin()
     bridge = repo_bridge_js()
     if not bridge.is_file():
@@ -161,7 +154,6 @@ def _spawn_bridge_owner(work: Path) -> tuple[subprocess.Popen[bytes], dict[str, 
     return owner, status
 
 def _poll_bridge(bridge_pid: int, checkpoints: list[float]) -> list[dict[str, Any]]:
-    """Poll bridge liveness/PPID at absolute times from now (seconds)."""
     t0 = time.time()
     samples: list[dict[str, Any]] = []
     for wait in checkpoints:
@@ -179,17 +171,6 @@ def _poll_bridge(bridge_pid: int, checkpoints: list[float]) -> list[dict[str, An
     return samples
 
 def repro_sigkill_stdin_hold_abandons_bridge() -> int:
-    """SIGKILL parent while stdin write-end is held must not abandon bridge.
-
-    Regression for the OS-level abandonment found 2026-08-07: duplicating the parent's
-    bridge-stdin write-end via ``/proc/<owner>/fd/<n>``, then SIGKILL of the owner,
-    used to leave cursor-sdk-bridge alive under PPID=1. Plain SIGKILL (no hold) EOFs
-    stdin and the bridge exits. The fix is an early parent-death watch in the bridge
-    (plus ``PR_SET_PDEATHSIG`` on malvin-spawned children).
-
-    STILL_BROKEN = abandonment reproduced (problem still present).
-    FIXED = bridge does not survive the held-stdin SIGKILL path.
-    """
     name = "sigkill-stdin-hold-abandons-bridge"
     work = Path(tempfile.mkdtemp(prefix="malvin_qa_s6_"))
     control_dir = work / "control"
@@ -319,7 +300,6 @@ def run_all(include_live: bool = True) -> int:
     return 0 if codes and all(c == 0 for c in codes) else 1
 
 def run_self_tests() -> None:
-    """Fast, offline checks (no Cursor API; no multi-second bridge spawn)."""
     assert list(SCENARIOS) == ["sigkill-stdin-hold-abandons-bridge"]
     assert "sigkill-stdin-hold-abandons-bridge" in LOCAL_SCENARIOS
     assert not LIVE_SCENARIOS

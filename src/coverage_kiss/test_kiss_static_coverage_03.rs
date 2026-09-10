@@ -1,4 +1,3 @@
-//! Kiss static coverage contract (call-shaped tokens; not compiled).
 
 
 #[test]
@@ -27,8 +26,6 @@ fn kiss_exec_witness_02_14() {
     decide_router_gates_exit();
     set_active_gate_iteration();
 }
-
-
 
 #[test]
 fn kiss_exec_witness_03_00() {
