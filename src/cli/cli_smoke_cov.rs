@@ -63,8 +63,6 @@ fn smoke_agent_io_options_maps_flags() {
     let shared = super::SharedOpts {
         background: false,
         model: crate::model_id::parse_model_id("cursor:m").expect("model"),
-        no_force: false,
-        no_tenacious: false,
         gates: false,
 
         quiet: false,

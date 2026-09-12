@@ -1,6 +1,6 @@
 use clap::ArgMatches;
 
-use crate::reliability_tier::{ReliabilityTier, ReliabilityTierFlags};
+use crate::reliability_tier::ReliabilityTier;
 
 use super::config_defaults::global_flag_from_command_line;
 
@@ -15,17 +15,12 @@ pub struct TenaciousBudgetGuard {
 pub fn apply_default_route_tenacious(
     max_loops: &mut usize,
     max_acp_retries: &mut u32,
-    no_tenacious: bool,
     matches: &ArgMatches,
 ) {
-    let tier = ReliabilityTier::resolve(ReliabilityTierFlags {
-        tenacious: true,
-        no_tenacious,
-    });
     apply_tenacious(
         max_loops,
         max_acp_retries,
-        tier,
+        ReliabilityTier::Tenacious,
         TenaciousBudgetGuard {
             max_loops_explicit: global_flag_from_command_line(matches, "max_loops"),
             max_acp_retries_explicit: global_flag_from_command_line(matches, "max_acp_retries"),
@@ -95,7 +90,7 @@ mod tests {
         let matches = Cli::command().get_matches_from(["malvin", "topic"]);
         let mut loops = 1usize;
         let mut retries = 3u32;
-        apply_default_route_tenacious(&mut loops, &mut retries, false, &matches);
+        apply_default_route_tenacious(&mut loops, &mut retries, &matches);
         assert_eq!(loops, TENACIOUS_MAX_LOOPS);
         assert_eq!(retries, TENACIOUS_MAX_ACP_RETRIES);
     }

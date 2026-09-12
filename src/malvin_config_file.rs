@@ -31,7 +31,7 @@ pub use malvin_config_top::{DEFAULT_CONTEXT_SIZE, TokenCostRates};
 pub(crate) use malvin_config_top::{parse_context_size, parse_model_token_cost_rates, parse_theme};
 
 pub const DEFAULT_MAX_HYPOTHESES: usize = 5;
-pub const DEFAULT_MAX_LOOPS: usize = 1;
+pub const DEFAULT_MAX_LOOPS: usize = 9999;
 pub const DEFAULT_MAX_LOOPS_CODE: usize = 3;
 
 const DEFAULT_MALVIN_CONFIG_TEMPLATE: &str = include_str!(concat!(

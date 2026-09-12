@@ -17,8 +17,6 @@ pub fn shared_opts(_unused: bool) -> SharedOpts {
     SharedOpts {
         background: false,
         model: crate::model_id::parse_model_id("cursor:auto").expect("model"),
-        no_force: false,
-        no_tenacious: false,
         gates: false,
         quiet: false,
         verbose: false,

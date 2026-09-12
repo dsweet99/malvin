@@ -4,7 +4,7 @@ theme = "dark"
 
 [agent]
 model = "cursor:auto"
-max_loops = 1
+max_loops = 9999
 max_hypotheses = 5
 max_loops_code = 3
 max_acp_retries = 3

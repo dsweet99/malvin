@@ -57,8 +57,6 @@ fn router_client_uses_router_style_agent_io_not_do_style() {
     let shared = SharedOpts {
         background: false,
         model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("model"),
-        no_force: true,
-        no_tenacious: false,
         gates: false,
 
         quiet: false,

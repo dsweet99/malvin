@@ -43,8 +43,6 @@ fn smoke_cov_cli_cli_units_1b() {
     let shared = crate::cli::SharedOpts {
         background: false,
         model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("model"),
-        no_force: false,
-        no_tenacious: false,
         gates: false,
 
         quiet: false,

@@ -157,15 +157,33 @@ fn cli_accepts_all_shared_flags_before_subcommand() {
         "malvin",
         "--model",
         "cursor:composer-2",
-        "--no-force",
         "--do",
         "z",
     ])
     .expect("parse");
     assert_eq!(cli.shared.model.canonical(), "cursor:composer-2");
-    assert!(cli.shared.no_force);
     assert!(cli.do_workflow);
     assert_eq!(cli.request.as_deref(), Some("z"));
+}
+
+fn cli_rejects_max_loops_with_do() {
+    use crate::cli::Cli;
+
+    let err =
+        Cli::try_parse_from(["malvin", "--do", "--max-loops", "5", "task"]).expect_err("parse");
+    let msg = err.to_string();
+    assert!(
+        msg.contains("cannot be used with") || msg.contains("--max-loops"),
+        "expected --max-loops conflict rejected; got {msg}"
+    );
+
+    let err2 =
+        Cli::try_parse_from(["malvin", "--max-loops", "5", "--do", "task"]).expect_err("parse");
+    let msg2 = err2.to_string();
+    assert!(
+        msg2.contains("cannot be used with") || msg2.contains("--max-loops"),
+        "expected --max-loops conflict rejected; got {msg2}"
+    );
 }
 
 fn cli_accepts_max_acp_retries_global_flag() {
@@ -206,6 +224,7 @@ fn kiss_bundled_cli_do_flow_tests() {
     cli_accepts_do_and_passes_request();
     cli_rejects_do_thoughts_flag();
     cli_accepts_all_shared_flags_before_subcommand();
+    cli_rejects_max_loops_with_do();
     cli_accepts_max_acp_retries_global_flag();
     cli_accepts_verbose_short_and_long_global_flags();
 }

@@ -14,7 +14,6 @@ pub(crate) fn dispatch_gates_only_route(
     crate::cli::loop_opts::apply_default_route_tenacious(
         &mut max_loops,
         &mut shared.max_acp_retries,
-        shared.no_tenacious,
         matches,
     );
     run_async_cli(|| async {
@@ -25,7 +24,7 @@ pub(crate) fn dispatch_gates_only_route(
             },
             shared,
             WorkflowCliOptions {
-                force: !shared.no_force,
+                force: true,
             },
         )
         .await?;
@@ -34,7 +33,7 @@ pub(crate) fn dispatch_gates_only_route(
             max_hypotheses,
             shared,
             WorkflowCliOptions {
-                force: !shared.no_force,
+                force: true,
             },
         )
         .await

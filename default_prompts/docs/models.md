@@ -24,7 +24,7 @@ malvin admin models [OPTION]... [PREFIX]...
 
 See `malvin --doc`. `admin` help does not list agent-session flags. Global `--model` before the subcommand (for example `malvin --model cursor:sonnet-4 admin models`) sets the `Current:` footer (overrides `~/.malvin_home/config.toml` when passed). Color follows the `NO_COLOR` environment variable.
 
-Agent runs with `pi:`, `rpi:`, `cursor:`, and `codex:` always force tool auto-run. `--no-force` is not supported and fails fast before any session starts. `pi:` spawns the official TypeScript/npm Pi agent in RPC mode (`MALVIN_PI` to `cli.js`/`rpc-entry.js`, or a resolvable `@earendil-works/pi-coding-agent` install) and uses the operator’s Pi auth/config. `rpi:` uses the linked `pi_agent_rust` crate and the same Pi auth/config. Codex still requires a separate binary (`PATH` or `MALVIN_CODEX`; malvin does not bundle it) and a Codex login (`codex login`, `OPENAI_API_KEY`, or `$CODEX_HOME/auth.json`).
+Agent runs with `pi:`, `rpi:`, `cursor:`, and `codex:` always force tool auto-run. `pi:` spawns the official TypeScript/npm Pi agent in RPC mode (`MALVIN_PI` to `cli.js`/`rpc-entry.js`, or a resolvable `@earendil-works/pi-coding-agent` install) and uses the operator’s Pi auth/config. `rpi:` uses the linked `pi_agent_rust` crate and the same Pi auth/config. Codex still requires a separate binary (`PATH` or `MALVIN_CODEX`; malvin does not bundle it) and a Codex login (`codex login`, `OPENAI_API_KEY`, or `$CODEX_HOME/auth.json`).
 
 ## Behavior
 

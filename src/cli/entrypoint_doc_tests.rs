@@ -92,7 +92,8 @@ fn dispatch_gates_only_route_runs_tenacious_preflight() {
         std::env::set_current_dir(work).expect("chdir");
         let mut shared = SharedOpts::test_defaults();
         shared.gates = true;
-        let matches = Cli::command().get_matches_from(["malvin", "-g", "--no-tenacious"]);
+        shared.model = crate::model_id::parse_model_id("rpi:some-unknown/foo").expect("model");
+        let matches = Cli::command().get_matches_from(["malvin", "-g"]);
         let result = super::dispatch_gates_only_route(1, 5, &mut shared, &matches);
         assert!(
             result.is_err(),

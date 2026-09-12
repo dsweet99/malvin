@@ -108,7 +108,7 @@ pub fn dispatch_do_workflow(do_args: DoArgs, shared: &SharedOpts) -> Result<(), 
             do_args,
             shared,
             WorkflowCliOptions {
-                force: !shared.no_force,
+                force: true,
             },
         )
     })
@@ -134,7 +134,6 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
     super::loop_opts::apply_default_route_tenacious(
         &mut max_loops,
         &mut shared.max_acp_retries,
-        shared.no_tenacious,
         matches,
     );
     run_async_cli(|| async {
@@ -145,7 +144,7 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
             },
             shared,
             WorkflowCliOptions {
-                force: !shared.no_force,
+                force: true,
             },
         )
         .await?;
@@ -157,7 +156,7 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
             },
             shared,
             WorkflowCliOptions {
-                force: !shared.no_force,
+                force: true,
             },
         )
         .await

@@ -34,7 +34,7 @@ Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prom
 
 `--doc` is a true global: it may appear before or after any subcommand, including `admin`.
 
-Agent-session flags (`-b` / `--background`, `--model`, `--gates`, `-q`, `-v`, `--git`, `--creative[=PROB]`, `--no-force`, `--no-tenacious`, `--max-acp-retries`, …) apply to bare `malvin REQUEST` and `--do`. The `admin` help listing omits them; pass `--model` before `admin models` only when you want to set that command’s `Current:` footer.
+Agent-session flags (`-b` / `--background`, `--model`, `--gates`, `-q`, `-v`, `--git`, `--creative[=PROB]`, `--max-acp-retries`, …) apply to bare `malvin REQUEST` and `--do` (`--max-loops` and `--max-hypotheses` apply only to bare `malvin REQUEST`). The `admin` help listing omits them; pass `--model` before `admin models` only when you want to set that command’s `Current:` footer.
 
 
 ### `-b` / `--background`
@@ -51,21 +51,13 @@ This is **not** the same as `-b` / `--background` (which suppresses all stdout, 
 
 Model id for agent-backed commands. Default: `cursor:auto`. Use `cursor:` for the Cursor SDK backend, or `rpi:<provider>/<model>` for the in-process Pi backend (linked `pi_agent_rust`; uses env keys or credentials already stored by Pi). Optional bracket overrides select thinking / speed where the backend supports them, for example `cursor:claude-opus-5[effort=high,fast=true]` or `rpi:openai/gpt-5[thinking=high]` (see `malvin admin models --doc`). Legacy `prime:` ids are rejected.
 
-### `--max-loops <N>` (default: 1)
+### `--max-loops <N>` (default: 9999)
 
 Outer agent-session budget for bare `malvin REQUEST` and `malvin -g`. `0` is treated as `1`.
 
 ### `--max-hypotheses <N>` (default: 5)
 
 Hypothesis budget for bare `malvin REQUEST` and `malvin -g`. When the flag is omitted, `[default_workflow].max_hypotheses` from `~/.malvin_home/config.toml` is used (fallback 5). Explicit CLI wins over config. `0` is treated as `5`.
-
-### `--no-force`
-
-By default agent backends run tools headlessly (auto-approved). `--no-force` is not supported on `cursor:`, `pi:`, `rpi:`, or `codex:` (no interactive approval prompt); malvin fails fast with a clear error before any session starts.
-
-### `--no-tenacious`
-
-By default the bare default route and `malvin -g` expand both `--max-loops=9999` and `--max-acp-retries=9999` unless the matching flag was set explicitly on the command line. `--no-tenacious` restores normal budgets.
 
 ### `-g` / `--gates`
 
@@ -79,7 +71,7 @@ Log **full** outgoing prompt bodies to stdout and `prompts.log`. Default: only t
 
 ### `--max-acp-retries <N>` (default: 3)
 
-Maximum bounded attempts per Cursor SDK bridge spawn or `send`/`wait`, with 1s / 3s backoff between tries. `--tenacious` on gate-loop commands sets this to 9999.
+Maximum bounded attempts per Cursor SDK bridge spawn or `send`/`wait`, with 1s / 3s backoff between tries. Default gate loops set this to 9999.
 
 ### `--git`
 

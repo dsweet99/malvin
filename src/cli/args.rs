@@ -24,7 +24,7 @@ pub struct Cli {
     /// Existing `.md` path or literal text (bare malvin REQUEST, or request for `--do`)
     pub request: Option<String>,
     /// Outer agent-session budget for bare malvin REQUEST
-    #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS)]
+    #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS, conflicts_with = "do_workflow")]
     pub max_loops: usize,
     /// Hypothesis budget for bare malvin REQUEST
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES)]

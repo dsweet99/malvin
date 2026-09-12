@@ -65,8 +65,6 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
     let mut shared = SharedOpts {
         background: false,
         model: crate::model_id::parse_model_id("cursor:old").expect("model"),
-        no_force: false,
-        no_tenacious: false,
         gates: false,
 
         quiet: false,

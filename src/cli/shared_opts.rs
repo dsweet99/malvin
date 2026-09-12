@@ -35,12 +35,6 @@ pub struct SharedOpts {
         value_parser = parse_model_id
     )]
     pub model: ParsedModel,
-    /// Do not auto-approve tool calls (unsupported on `cursor:`, `pi:`, `rpi:`, and `codex:`; fails fast)
-    #[arg(long, default_value_t = false)]
-    pub no_force: bool,
-    /// Do not expand gate-loop budgets to tenacious limits (tenacious on by default)
-    #[arg(long = "no-tenacious", default_value_t = false)]
-    pub no_tenacious: bool,
     /// Run workspace quality gates; treat failures as loop or exit criteria
     #[arg(short = 'g', long, default_value_t = false)]
     pub gates: bool,
@@ -109,8 +103,6 @@ impl SharedOpts {
         Self {
             background: false,
             model: parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("default model"),
-            no_force: true,
-            no_tenacious: false,
             gates: false,
             quiet: false,
             verbose: false,
