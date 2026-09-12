@@ -13,6 +13,47 @@ fn cursor_resume_id(client: &SdkClient) -> Option<String> {
         .flatten()
 }
 
+fn record_spawn_success(
+    client: &mut SdkClient,
+    session: SdkSession,
+    cwd: PathBuf,
+    resume_agent_id: Option<&str>,
+) -> bool {
+    client.record_backend_success();
+    adopt_spawned_session(client, session, cwd);
+    let resumed = resume_agent_id.is_some();
+    client.header_delivered = resumed;
+    if !resumed {
+        emit_agent_started_log(client);
+    }
+    resumed
+}
+
+async fn handle_spawn_failure(
+    client: &mut SdkClient,
+    err: AgentError,
+    attempt: u32,
+    max_attempts: u32,
+) -> Result<(String, bool), AgentError> {
+    let last_error = note_spawn_failure(client, err);
+    if client.record_backend_error(&last_error) {
+        return Err(AgentError(
+            crate::agent_backend::backend_error_tracker::format_backend_consecutive_error_message(
+                client.model.backend.label(),
+                &last_error,
+            ),
+        ));
+    }
+    let stop = backoff_after_agent_failure(
+        client.timing.as_ref(),
+        &last_error,
+        attempt,
+        max_attempts,
+    )
+    .await?;
+    Ok((last_error, stop))
+}
+
 pub(super) async fn spawn_with_retries(
     client: &mut SdkClient,
     cwd: PathBuf,
@@ -32,25 +73,11 @@ pub(super) async fn spawn_with_retries(
         )
         .await
         {
-            Ok(s) => {
-                adopt_spawned_session(client, s, cwd);
-                let resumed = resume_agent_id.is_some();
-                client.header_delivered = resumed;
-                if !resumed {
-                    emit_agent_started_log(client);
-                }
-                return Ok(resumed);
-            }
+            Ok(s) => return Ok(record_spawn_success(client, s, cwd, resume_agent_id.as_deref())),
             Err(e) => {
-                last_error = note_spawn_failure(client, e);
-                if backoff_after_agent_failure(
-                    client.timing.as_ref(),
-                    &last_error,
-                    attempt,
-                    max_attempts,
-                )
-                .await?
-                {
+                let (err_msg, stop) = handle_spawn_failure(client, e, attempt, max_attempts).await?;
+                last_error = err_msg;
+                if stop {
                     break;
                 }
             }

@@ -72,6 +72,7 @@ pub struct SdkClient {
     pub(crate) timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
     pub(crate) session_header: Option<CoderSessionHeader>,
     pub(crate) header_delivered: bool,
+    pub(crate) backend_error_tracker: super::backend_error_tracker::BackendErrorTracker,
 }
 
 impl SdkClient {
@@ -100,6 +101,7 @@ impl SdkClient {
             timing: None,
             session_header: None,
             header_delivered: false,
+            backend_error_tracker: super::backend_error_tracker::BackendErrorTracker::empty(),
         }
     }
 
@@ -153,6 +155,19 @@ impl SdkClient {
         } else {
             Some(text)
         }
+    }
+
+    pub fn record_backend_success(&mut self) {
+        self.backend_error_tracker.record_success();
+    }
+
+    pub fn record_backend_error(&mut self, error: &str) -> bool {
+        self.backend_error_tracker.record_error(error)
+    }
+
+    #[must_use]
+    pub const fn backend_error_tracker(&self) -> &super::backend_error_tracker::BackendErrorTracker {
+        &self.backend_error_tracker
     }
 }
 

@@ -244,3 +244,7 @@ pub fn format_prompt_path(path: &Path, base_dir: &Path) -> String {
 #[cfg(test)]
 #[path = "workflow_context_tests.rs"]
 mod workflow_context_tests;
+
+#[cfg(test)]
+#[path = "workflow_context_tests_tail.rs"]
+mod workflow_context_tests_tail;

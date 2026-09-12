@@ -1,4 +1,5 @@
 mod backend;
+pub mod backend_error_tracker;
 mod backend_ops;
 mod factory;
 mod sdk_client;
@@ -17,14 +18,21 @@ pub(crate) mod test_support;
 mod backend_tests;
 
 #[cfg(test)]
+#[path = "backend_error_tracker_tests.rs"]
+mod backend_error_tracker_tests;
+
+#[cfg(test)]
 #[path = "agent_backend_kiss_cov.rs"]
 mod agent_backend_kiss_cov;
 
 pub use backend::{AgentBackend, agent_backend_from_client};
+pub use backend_error_tracker::{BackendErrorTracker, MAX_CONSECUTIVE_SAME_BACKEND_ERRORS};
 pub use backend_ops::{
     agent_backend_attach_run_timing_for_session, agent_backend_ensure_coder_session,
-    agent_backend_ensure_run_timing_for_session, agent_backend_set_implement_display_name,
-    agent_backend_set_run_timing, agent_backend_start_coder_session, agent_backend_timing,
+    agent_backend_ensure_run_timing_for_session, agent_backend_record_error,
+    agent_backend_record_success, agent_backend_set_implement_display_name,
+    agent_backend_set_run_timing, agent_backend_should_stop_and_exit,
+    agent_backend_start_coder_session, agent_backend_timing,
 };
 pub use factory::{build_agent_backend, build_agent_backend_with_tee};
 pub use sdk_client::SdkClient;

@@ -22,42 +22,60 @@ impl SdkClient {
         }
         emit_prompt_stdout(self, prompt, who, &opts);
         append_prompt_files(self, prompt, log_path, who)?;
-        let single = opts.single_attempt;
-        let max_attempts = if single { 1 } else { self.max_acp_retries };
-        let mut last_error = String::new();
-        for attempt in 1..=max_attempts {
-            let phase = opts.llm_phase;
-            match run_one(self, prompt, phase).await {
-                Ok(()) => return Ok(()),
-                Err(e) => {
-                    teardown_sdk_session_after_transport_error(self, &e).await;
-                    if opts.fresh_agent_on_retry {
-                        force_fresh_agent_for_retry(self).await;
-                    }
-                    last_error = e.message;
-                    if single {
-                        break;
-                    }
-                    if backoff_after_agent_failure(
-                        self.timing.as_ref(),
-                        &last_error,
-                        attempt,
-                        max_attempts,
-                    )
-                    .await?
-                    {
-                        break;
-                    }
+        execute_prompt_with_retries(self, prompt, &opts).await
+    }
+}
+
+async fn execute_prompt_with_retries(
+    client: &mut SdkClient,
+    prompt: &str,
+    opts: &CoderPromptOptions<'_>,
+) -> Result<(), AgentError> {
+    let single = opts.single_attempt;
+    let max_attempts = if single { 1 } else { client.max_acp_retries };
+    let mut last_error = String::new();
+    for attempt in 1..=max_attempts {
+        match run_one(client, prompt, opts.llm_phase).await {
+            Ok(()) => {
+                client.record_backend_success();
+                return Ok(());
+            }
+            Err(e) => {
+                teardown_sdk_session_after_transport_error(client, &e).await;
+                if opts.fresh_agent_on_retry {
+                    force_fresh_agent_for_retry(client).await;
+                }
+                last_error = e.message;
+                if client.record_backend_error(&last_error) {
+                    return Err(AgentError(
+                        super::backend_error_tracker::format_backend_consecutive_error_message(
+                            client.model.backend.label(),
+                            &last_error,
+                        ),
+                    ));
+                }
+                if single {
+                    break;
+                }
+                if backoff_after_agent_failure(
+                    client.timing.as_ref(),
+                    &last_error,
+                    attempt,
+                    max_attempts,
+                )
+                .await?
+                {
+                    break;
                 }
             }
         }
-        let retries = max_attempts.saturating_sub(1);
-        Err(AgentError(format!(
-            "{} SDK prompt failed after {retries} {}. Last error:\n{last_error}",
-            self.model.backend.label(),
-            retries_noun(retries)
-        )))
     }
+    let retries = max_attempts.saturating_sub(1);
+    Err(AgentError(format!(
+        "{} SDK prompt failed after {retries} {}. Last error:\n{last_error}",
+        client.model.backend.label(),
+        retries_noun(retries)
+    )))
 }
 
 pub(super) async fn teardown_sdk_session_after_transport_error(

@@ -6,30 +6,22 @@ use crate::test_utils::with_isolated_home;
 
 fn write_minimal_router_prompts(prompt_root: &std::path::Path) {
     std::fs::create_dir_all(prompt_root).expect("mkdir");
-    std::fs::write(
-        prompt_root.join(HEADER_MD),
-        "HEADER_BODY\n{{ kpop_insert }}\n",
-    )
-    .expect("header");
-    std::fs::write(prompt_root.join(KPOP_COMMON_MD), "KPOP_BODY {{ max_hypotheses }}\n")
-        .expect("kpop");
-    std::fs::write(prompt_root.join("mbc2.md"), "MBC2 {{ user_prompt }}\n").expect("mbc2");
-    std::fs::write(
-        prompt_root.join(ROUTER_A_MD),
-        "ROUTER_A {{ user_request_path }} {{ code_extra }}\n",
-    )
-    .expect("router_a");
-    std::fs::write(
-        prompt_root.join("router_code_extra.md"),
-        "CODE_EXTRA\n",
-    )
-    .expect("code_extra");
-    std::fs::write(prompt_root.join("kpop_common_no_kpop.md"), "\n").expect("kpop_no");
-    std::fs::write(
-        prompt_root.join("router_a_no_kpop.md"),
-        "ROUTER_A_NO_KPOP {{ code_extra }}\n",
-    )
-    .expect("router_a_no");
+    write_router_prompt_files(prompt_root);
+}
+
+fn write_router_prompt_files(prompt_root: &std::path::Path) {
+    let files = [
+        (HEADER_MD, "HEADER_BODY\n{{ kpop_insert }}\n"),
+        (KPOP_COMMON_MD, "KPOP_BODY {{ max_hypotheses }}\n"),
+        ("mbc2.md", "MBC2 {{ user_prompt }}\n"),
+        (ROUTER_A_MD, "ROUTER_A {{ user_request_path }} {{ code_extra }}\n"),
+        ("router_code_extra.md", "CODE_EXTRA\n"),
+        ("kpop_common_no_kpop.md", "\n"),
+        ("router_a_no_kpop.md", "ROUTER_A_NO_KPOP {{ code_extra }}\n"),
+    ];
+    for (name, content) in files {
+        std::fs::write(prompt_root.join(name), content).expect("write prompt");
+    }
 }
 
 #[test]

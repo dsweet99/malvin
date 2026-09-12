@@ -44,11 +44,20 @@ async fn try_send_header_with_retries(
     for attempt in 1..=max_attempts {
         match send_header_once(client, &header.prompt, opts).await {
             Ok(()) => {
+                client.record_backend_success();
                 client.header_delivered = true;
                 return Ok(());
             }
             Err(e) => {
                 last_error = recover_header_send_failure(client, e).await?;
+                if client.record_backend_error(&last_error) {
+                    return Err(AgentError(
+                        super::backend_error_tracker::format_backend_consecutive_error_message(
+                            client.model.backend.label(),
+                            &last_error,
+                        ),
+                    ));
+                }
                 if backoff_after_agent_failure(
                     client.timing.as_ref(),
                     &last_error,

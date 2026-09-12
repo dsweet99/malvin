@@ -44,7 +44,7 @@ fn auto_name_retries_on_live_collision() {
 fn auto_name_reclaims_stale_file_on_draw() {
     with_isolated_names(|_| {
         std::fs::create_dir_all(names_registry_root()).expect("mkdir names");
-        std::fs::write(name_path("aaaaa"), "424242\n").expect("stale");
+        std::fs::write(name_path("aaaaa"), "4194303\n").expect("stale");
         let (name, guard) =
             generate_auto_name_with(|_| "aaaaa".to_string()).expect("reclaim stale draw");
         assert_eq!(name, "aaaaa");
@@ -96,7 +96,7 @@ fn acquire_session_name_supports_explicit_and_auto() {
 fn assert_no_peer_name_lock_clears_stale_file() {
     with_isolated_names(|_| {
         std::fs::create_dir_all(names_registry_root()).expect("mkdir names");
-        std::fs::write(name_path("probe"), "424242\n").expect("stale pid");
+        std::fs::write(name_path("probe"), "4194303\n").expect("stale pid");
         assert_no_peer_name_lock("probe").expect("stale cleared");
         assert!(!name_path("probe").exists());
     });

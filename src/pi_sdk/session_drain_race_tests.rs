@@ -37,8 +37,6 @@ async fn agent_end_before_reply_oneshot_returns_ok() {
         events_tx.send(event).expect("event");
     }
     drop(events_tx);
-    // Leave reply pending — mirrors real PiRuntime where AgentEnd events
-    // arrive before prompt_with_abort sends the ack oneshot.
     let (_reply_tx, reply_rx) = tokio::sync::oneshot::channel();
     drain_agent_events(&session, events_rx, reply_rx)
         .await

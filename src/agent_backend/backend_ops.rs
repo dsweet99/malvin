@@ -61,3 +61,16 @@ pub fn agent_backend_timing(
 ) -> Option<&Arc<Mutex<crate::run_timing::RunTiming>>> {
     backend.timing.as_ref()
 }
+
+pub fn agent_backend_record_success(backend: &mut AgentBackend) {
+    backend.record_backend_success();
+}
+
+pub fn agent_backend_record_error(backend: &mut AgentBackend, error: &str) -> bool {
+    backend.record_backend_error(error)
+}
+
+#[must_use]
+pub const fn agent_backend_should_stop_and_exit(backend: &AgentBackend) -> bool {
+    backend.backend_error_tracker().should_stop_and_exit()
+}

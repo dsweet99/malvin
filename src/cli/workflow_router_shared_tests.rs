@@ -125,7 +125,6 @@ fn failed_gate_run_does_not_set_just_ran_flag() {
             "completed-but-failed gate run captured output; just_ran must be set"
         );
 
-        // A setup error (nothing executed) must leave the flag off.
         clear_quality_gates_log_for_next_agent(&artifacts).expect("clear");
         let tmp = tempfile::tempdir().expect("tempdir");
         let (artifacts2, backups2) = missing_checks_fixture(tmp.path());

@@ -1,6 +1,3 @@
-//! Policy and witness tests split out of `process_group_mem_watch.rs` (kiss
-//! lines-per-file limit). The watched loop itself stays in the parent module.
-
 #[cfg(all(test, unix))]
 mod policy_tests {
     use super::super::{MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES, memory_watch_should_terminate};

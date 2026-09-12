@@ -10,6 +10,25 @@ fn kiss_witness_backend_ops() {
     let _ = super::backend_ops::agent_backend_ensure_coder_session;
     let _ = super::backend_ops::agent_backend_start_coder_session;
     let _ = super::backend_ops::agent_backend_timing;
+    let _ = super::backend_ops::agent_backend_record_success;
+    let _ = super::backend_ops::agent_backend_record_error;
+    let _ = super::backend_ops::agent_backend_should_stop_and_exit;
+}
+
+#[test]
+fn agent_backend_tracks_consecutive_errors_via_ops() {
+    let model = parse_model_id("cursor:auto").expect("model");
+    let mut backend = crate::agent_backend::new_cursor(model, test_io());
+    assert!(!super::backend_ops::agent_backend_should_stop_and_exit(&backend));
+    assert!(!super::backend_ops::agent_backend_record_error(&mut backend, "test_err"));
+    assert!(!super::backend_ops::agent_backend_record_error(&mut backend, "test_err"));
+    assert!(!super::backend_ops::agent_backend_should_stop_and_exit(&backend));
+    assert!(super::backend_ops::agent_backend_record_error(&mut backend, "test_err"));
+    assert!(super::backend_ops::agent_backend_should_stop_and_exit(&backend));
+
+    super::backend_ops::agent_backend_record_success(&mut backend);
+    assert!(!super::backend_ops::agent_backend_should_stop_and_exit(&backend));
+    assert_eq!(backend.backend_error_tracker().consecutive_count(), 0);
 }
 
 #[test]
@@ -70,4 +89,7 @@ fn kiss_witness_unified_sdk_client_and_backend() {
     let _ = stringify!(DRAIN_IDLE_PREFIX_PI);
     let _ = stringify!(DRAIN_IDLE_PREFIX_CODEX);
     let _ = stringify!(prompts_log_run_dir);
+    let _ = stringify!(BackendErrorTracker);
+    let _ = stringify!(MAX_CONSECUTIVE_SAME_BACKEND_ERRORS);
+    let _ = stringify!(format_backend_consecutive_error_message);
 }

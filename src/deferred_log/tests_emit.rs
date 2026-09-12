@@ -1,12 +1,6 @@
-use std::path::PathBuf;
-use std::time::Duration;
-
-use crate::deferred_log::config::{
-    DeferredLogConfig, defer_log_cursor_dir_from_env, defer_log_enabled_from_env,
-    defer_log_max_age_from_env, defer_log_max_drain_from_env, env_is_zero,
-};
+use crate::deferred_log::config::*;
 use crate::deferred_log::emit::emit_deferred_entry;
-use crate::deferred_log::enrich::{enriched_tool_plain, styled_tool_payload, synthetic_tool_done};
+use crate::deferred_log::enrich::*;
 use crate::deferred_log::sink_build::build_display_log_entry;
 use crate::deferred_log::test_fixtures::{
     SharedDeferSink, capture_stdout_log, capture_stdout_render, test_tool_entry,
@@ -14,11 +8,10 @@ use crate::deferred_log::test_fixtures::{
 };
 use crate::deferred_log::tool_enrich::tool_drain_enrich_fields;
 use crate::deferred_log::types::{DeferredPayload, ToolDrainMeta};
-use crate::deferred_log::{
-    AcpTeeBuild, TeeSinkMeta, build_acp_tee_entry, build_raw_line_entry, install_stdout_hooks,
-    register_active_sink, unregister_active_sink,
-};
+use crate::deferred_log::*;
+use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 #[test]
 fn emit_display_log_entry_writes_timestamped_log_line() {
