@@ -77,6 +77,7 @@ pub fn malvin_std_command(program: impl AsRef<OsStr>) -> std::process::Command {
     isolate_child_process_group(&mut cmd);
     install_parent_death_signal(&mut cmd);
     apply_sandbox_resource_limits(&mut cmd);
+    crate::herdr::strip_herdr_env(&mut cmd);
     cmd
 }
 
@@ -86,6 +87,7 @@ pub fn malvin_tokio_command(program: impl AsRef<OsStr>) -> tokio::process::Comma
     isolate_tokio_child_process_group(&mut cmd);
     install_tokio_parent_death_signal(&mut cmd);
     apply_sandbox_resource_limits_tokio(&mut cmd);
+    crate::herdr::strip_herdr_env_tokio(&mut cmd);
     cmd
 }
 

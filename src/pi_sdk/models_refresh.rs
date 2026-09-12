@@ -127,7 +127,7 @@ fn fetch_provider_models_sync(provider: &str, force: bool) -> Vec<String> {
     result.unwrap_or_default()
 }
 
-pub(crate) fn refresh_pi_provider_caches_if_stale(force: bool) -> HashMap<String, Vec<String>> {
+pub fn refresh_pi_provider_caches_if_stale(force: bool) -> HashMap<String, Vec<String>> {
     let mut live = HashMap::new();
     for provider in authenticated_providers() {
         if !provider_supports_pi_live_model_fetch(provider)

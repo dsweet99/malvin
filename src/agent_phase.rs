@@ -122,6 +122,7 @@ pub fn enter_verifying() {
         s.verifying_depth = s.verifying_depth.saturating_add(1);
         s.orienting = false;
     });
+    crate::herdr::notify_working();
 }
 
 pub fn leave_verifying() {

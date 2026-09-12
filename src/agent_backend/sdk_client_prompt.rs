@@ -51,6 +51,7 @@ async fn execute_prompt_with_retries(
                         super::backend_error_tracker::format_backend_consecutive_error_message(
                             client.model.backend.label(),
                             &last_error,
+                            client.max_acp_retries,
                         ),
                     ));
                 }

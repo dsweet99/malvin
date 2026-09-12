@@ -41,6 +41,7 @@ async fn handle_spawn_failure(
             crate::agent_backend::backend_error_tracker::format_backend_consecutive_error_message(
                 client.model.backend.label(),
                 &last_error,
+                client.max_acp_retries,
             ),
         ));
     }

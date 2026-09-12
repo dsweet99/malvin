@@ -17,6 +17,50 @@ pub fn resolve_npm_pi_entry() -> Result<PathBuf, String> {
     first_entry_candidate().ok_or_else(|| NPM_PI_MISSING_HINT.to_string())
 }
 
+pub fn resolve_npm_pi_cli_entry() -> Result<PathBuf, String> {
+    if let Some(path) = std::env::var_os("MALVIN_PI").filter(|v| !v.is_empty()) {
+        let path = PathBuf::from(path);
+        if !path.is_file() {
+            return Err(format!(
+                "MALVIN_PI points to a missing file ({}); {NPM_PI_MISSING_HINT}",
+                path.display()
+            ));
+        }
+        if path.file_name().is_some_and(|n| n == "cli.js") {
+            return Ok(path);
+        }
+        if let Some(sibling) = sibling_cli_candidate(&path) {
+            return Ok(sibling);
+        }
+        return Ok(path);
+    }
+    first_cli_entry_candidate().ok_or_else(|| NPM_PI_MISSING_HINT.to_string())
+}
+
+fn sibling_cli_candidate(path: &std::path::Path) -> Option<PathBuf> {
+    let parent = path.parent()?;
+    [parent.join("cli.js"), parent.join("bundle/cli.js")]
+        .into_iter()
+        .find(|candidate| candidate.is_file())
+}
+
+fn first_cli_entry_candidate() -> Option<PathBuf> {
+    for root in candidate_package_roots() {
+        for rel in [
+            "dist/bundle/cli.js",
+            "dist/cli.js",
+            "dist/bundle/rpc-entry.js",
+            "dist/rpc-entry.js",
+        ] {
+            let candidate = root.join(rel);
+            if candidate.is_file() {
+                return Some(candidate);
+            }
+        }
+    }
+    None
+}
+
 fn first_entry_candidate() -> Option<PathBuf> {
     for root in candidate_package_roots() {
         for rel in [

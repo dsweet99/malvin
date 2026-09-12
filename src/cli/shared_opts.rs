@@ -4,8 +4,7 @@ use rand::Rng;
 
 use crate::model_id::{ParsedModel, parse_model_id};
 
-const QUIET_HELPTEXT: &str =
-    "Print only `__MALVIN_DM_START__`/`END` bodies on stdout (default router; not `-b`)";
+const QUIET_HELPTEXT: &str = "Only long the final response, not the whole session";
 
 const CREATIVE_HELPTEXT: &str =
     "Be (more) creative; optional probability in [0,1] (default 1.0 when set)";
@@ -25,9 +24,6 @@ pub(crate) fn parse_creative_probability(s: &str) -> Result<f64, String> {
 #[derive(Args, Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct SharedOpts {
-    /// Suppress all stdout
-    #[arg(short = 'b', long, default_value_t = false)]
-    pub background: bool,
     /// Model id (`cursor:`, `pi:`, `rpi:`, or `codex:`)
     #[arg(
         long,
@@ -38,7 +34,7 @@ pub struct SharedOpts {
     /// Run workspace quality gates; treat failures as loop or exit criteria
     #[arg(short = 'g', long, default_value_t = false)]
     pub gates: bool,
-    /// Print only `__MALVIN_DM_START__`/`END` bodies on stdout (default router; not `-b`)
+    /// Only long the final response, not the whole session
     #[arg(
         short = 'q',
         long,
@@ -55,9 +51,6 @@ pub struct SharedOpts {
     /// Print built-in documentation and exit
     #[arg(long, global = true, default_value_t = false)]
     pub doc: bool,
-    /// Allow the agent to run `git commit`
-    #[arg(long, default_value_t = false)]
-    pub git: bool,
     /// Be (more) creative; optional probability in [0,1] (default 1.0 when set)
     #[arg(
         long,
@@ -101,14 +94,12 @@ impl SharedOpts {
     #[must_use]
     pub(crate) fn test_defaults() -> Self {
         Self {
-            background: false,
             model: parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("default model"),
             gates: false,
             quiet: false,
             verbose: false,
             max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
-            git: false,
             creative: None,
             no_kpop: false,
         }

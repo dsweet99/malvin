@@ -54,6 +54,8 @@ const HEARTBEAT_POLL_INTERVAL: Duration = Duration::from_millis(10);
 const HEARTBEAT_POLL_INTERVAL: Duration = Duration::from_secs(1);
 
 static LAST_HEARTBEAT: Mutex<Option<Instant>> = Mutex::new(None);
+static LAST_HERDR_WORKING_PULSE: Mutex<Option<Instant>> = Mutex::new(None);
+const HERDR_WORKING_PULSE_INTERVAL: Duration = Duration::from_secs(15);
 static WALL_CLOCK_POLLER: OnceLock<()> = OnceLock::new();
 
 #[cfg(test)]
@@ -111,8 +113,25 @@ pub(crate) fn maybe_emit_stdout_heartbeat() {
     try_emit_heartbeat_if_due(Instant::now(), true);
 }
 
+fn maybe_pulse_herdr_working(now: Instant) {
+    let mut guard = LAST_HERDR_WORKING_PULSE
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if guard.is_some_and(|last| {
+        now.checked_duration_since(last)
+            .is_some_and(|d| d < HERDR_WORKING_PULSE_INTERVAL)
+    }) {
+        return;
+    }
+    *guard = Some(now);
+    drop(guard);
+    crate::herdr::notify_working();
+}
+
 pub(crate) fn poll_wall_clock_heartbeat_if_due() {
-    try_emit_heartbeat_if_due(Instant::now(), false);
+    let now = Instant::now();
+    try_emit_heartbeat_if_due(now, false);
+    maybe_pulse_herdr_working(now);
 }
 
 #[cfg(test)]
@@ -142,6 +161,9 @@ pub(crate) fn spawn_wall_clock_poller_if_needed() {
 #[cfg(test)]
 pub(crate) fn reset_stdout_heartbeat_for_test() {
     *LAST_HEARTBEAT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
+    *LAST_HERDR_WORKING_PULSE
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
 }

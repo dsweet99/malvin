@@ -55,7 +55,6 @@ fn router_client_uses_router_style_agent_io_not_do_style() {
     use crate::cli::{SharedOpts, WorkflowCliOptions};
 
     let shared = SharedOpts {
-        background: false,
         model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("model"),
         gates: false,
 
@@ -63,7 +62,6 @@ fn router_client_uses_router_style_agent_io_not_do_style() {
         verbose: false,
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
-        git: false,
         creative: None,
         no_kpop: false,
     };

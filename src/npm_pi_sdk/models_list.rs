@@ -1,6 +1,27 @@
 use std::process::Command;
 
-use super::discover::resolve_npm_pi_entry;
+use super::discover::{resolve_npm_pi_cli_entry, resolve_npm_pi_entry};
+
+pub fn refresh_npm_pi_models() -> Result<(), String> {
+    let entry = resolve_npm_pi_cli_entry()?;
+    let node = crate::cursor_sdk::node_resolve::resolve_node_bin()?;
+    let output = Command::new(node)
+        .arg(&entry)
+        .arg("update")
+        .arg("--models")
+        .output()
+        .map_err(|e| format!("spawn npm pi update --models: {e}"))?;
+    if !output.status.success() {
+        let err = String::from_utf8_lossy(&output.stderr);
+        let out = String::from_utf8_lossy(&output.stdout);
+        let msg = if err.trim().is_empty() { out } else { err };
+        return Err(format!(
+            "npm pi update --models failed: {}",
+            msg.trim().chars().take(240).collect::<String>()
+        ));
+    }
+    Ok(())
+}
 
 pub fn list_npm_pi_display_models() -> Result<Vec<(String, String)>, String> {
     let entry = resolve_npm_pi_entry()?;

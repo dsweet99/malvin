@@ -128,15 +128,11 @@ async fn run_router_body(
         })
         .await?;
 
-    let r = crate::acp_post_run::merge_acp_restore_check_abort_then_print_timing(
+    crate::acp_post_run::merge_acp_restore_check_abort_then_print_timing(
         loop_outcome.last_acp,
         &prep.artifacts,
         &loop_outcome.last_backups,
-    );
-    if r.is_ok() {
-        crate::cli::error_run_log::clear_command_error_run_dir();
-    }
-    r
+    )
 }
 
 #[cfg(test)]

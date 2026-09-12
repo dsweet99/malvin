@@ -78,14 +78,14 @@ pub(crate) fn finish_entrypoint(res: Result<(), String>) -> Exit {
     }
 }
 
-pub(crate) fn prepare_cli_output(shared: &SharedOpts) {
+pub(crate) fn prepare_cli_output(_shared: &SharedOpts) {
     let theme = std::env::current_dir()
         .ok()
         .map(|cwd| crate::malvin_config_file::load_malvin_config(&cwd).theme)
         .unwrap_or_default();
     crate::terminal_palette::init_terminal_theme(theme);
     crate::output::init_stdout_style();
-    crate::output::set_stdout_suppressed(shared.background);
+    crate::output::set_stdout_suppressed(false);
 }
 
 pub(crate) fn dispatch_command(

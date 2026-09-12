@@ -34,18 +34,14 @@ Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prom
 
 `--doc` is a true global: it may appear before or after any subcommand, including `admin`.
 
-Agent-session flags (`-b` / `--background`, `--model`, `--gates`, `-q`, `-v`, `--git`, `--creative[=PROB]`, `--max-acp-retries`, …) apply to bare `malvin REQUEST` and `--do` (`--max-loops` and `--max-hypotheses` apply only to bare `malvin REQUEST`). The `admin` help listing omits them; pass `--model` before `admin models` only when you want to set that command’s `Current:` footer.
+Agent-session flags (`--model`, `--gates`, `-q`, `-v`, `--creative[=PROB]`, `--max-acp-retries`, …) apply to bare `malvin REQUEST` and `--do` (`--max-loops` and `--max-hypotheses` apply only to bare `malvin REQUEST`). The `admin` help listing omits them; pass `--model` before `admin models` only when you want to set that command’s `Current:` footer.
 
-
-### `-b` / `--background`
-
-Suppress all stdout from malvin and the agent. Run logs under `~/.malvin_home/logs/` are unchanged.
 
 ### `-q` / `--quiet`
 
 On the **default router** (bare `malvin REQUEST` and `malvin -g`), print only the text between `__MALVIN_DM_START__` and `__MALVIN_DM_END__` fences to process stdout. Startup chrome, agent stream, heartbeats, prompt-name lines, fence markers, and TIMING/COST lines are omitted from stdout. Run-dir logs and stderr are unchanged.
 
-This is **not** the same as `-b` / `--background` (which suppresses all stdout, including DM bodies). It is also **not** required for plain `malvin --do`: without `--verbose`, `--do` is already DM-body-only on stdout. With `--verbose`, `--do` tees the same live agent log classes as the default workflow (see `-v` / `--verbose` below).
+It is also **not** required for plain `malvin --do`: without `--verbose`, `--do` is already DM-body-only on stdout. With `--verbose`, `--do` tees the same live agent log classes as the default workflow (see `-v` / `--verbose` below).
 
 ### `--model <MODEL>`
 
@@ -72,10 +68,6 @@ Log **full** outgoing prompt bodies to stdout and `prompts.log`. Default: only t
 ### `--max-acp-retries <N>` (default: 3)
 
 Maximum bounded attempts per Cursor SDK bridge spawn or `send`/`wait`, with 1s / 3s backoff between tries. Default gate loops set this to 9999.
-
-### `--git`
-
-Allow the agent to run `git commit`. Off by default (agents are otherwise steered away from committing).
 
 ### `--creative[=PROB]`
 

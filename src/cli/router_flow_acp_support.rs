@@ -72,7 +72,7 @@ async fn deliver_router_initial_turn(
             store: input.prompt_store,
             artifacts: input.artifacts,
             model: &model,
-            git: input.shared.git,
+            git: false,
             gates: input.shared.gates,
             no_kpop: input.shared.no_kpop,
             creative,
@@ -129,7 +129,7 @@ async fn finish_router_a_maybe_b(
                 store: input.prompt_store,
                 artifacts: input.artifacts,
                 model,
-                git: input.shared.git,
+                git: false,
                 creative,
                 no_kpop,
             })?;

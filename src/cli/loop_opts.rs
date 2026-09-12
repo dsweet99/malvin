@@ -31,17 +31,13 @@ pub fn apply_default_route_tenacious(
 #[allow(clippy::missing_const_for_fn)]
 pub fn apply_tenacious(
     max_loops: &mut usize,
-    max_acp_retries: &mut u32,
+    _max_acp_retries: &mut u32,
     tier: ReliabilityTier,
     guard: TenaciousBudgetGuard,
 ) {
-    if tier == ReliabilityTier::Tenacious {
-        if !guard.max_loops_explicit {
-            *max_loops = TENACIOUS_MAX_LOOPS;
-        }
-        if !guard.max_acp_retries_explicit {
-            *max_acp_retries = TENACIOUS_MAX_ACP_RETRIES;
-        }
+    let _ = guard.max_acp_retries_explicit;
+    if tier == ReliabilityTier::Tenacious && !guard.max_loops_explicit {
+        *max_loops = TENACIOUS_MAX_LOOPS;
     }
 }
 
@@ -63,7 +59,7 @@ mod tests {
             },
         );
         assert_eq!(loops, TENACIOUS_MAX_LOOPS);
-        assert_eq!(retries, TENACIOUS_MAX_ACP_RETRIES);
+        assert_eq!(retries, 3);
     }
 
     #[test]
@@ -80,7 +76,7 @@ mod tests {
             },
         );
         assert_eq!(loops, 3);
-        assert_eq!(retries, TENACIOUS_MAX_ACP_RETRIES);
+        assert_eq!(retries, 3);
     }
 
     #[test]
@@ -92,7 +88,7 @@ mod tests {
         let mut retries = 3u32;
         apply_default_route_tenacious(&mut loops, &mut retries, &matches);
         assert_eq!(loops, TENACIOUS_MAX_LOOPS);
-        assert_eq!(retries, TENACIOUS_MAX_ACP_RETRIES);
+        assert_eq!(retries, 3);
     }
 
     #[test]

@@ -99,7 +99,7 @@ pub(crate) async fn finalize_router_acp_iteration(
                 store: input.prompt_store,
                 artifacts: input.artifacts,
                 model: &model,
-                git: input.shared.git,
+                git: false,
             },
         )?;
         run_router_summarize_coder_prompt(input.client, &body, log_path.as_path()).await?;

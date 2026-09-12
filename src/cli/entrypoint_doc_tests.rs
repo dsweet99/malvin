@@ -5,12 +5,11 @@ use crate::cli::SharedOpts;
 use crate::test_utils::with_isolated_home;
 
 #[test]
-fn prepare_cli_output_applies_background_flag() {
-    crate::output::set_stdout_suppressed(false);
-    let mut shared = SharedOpts::test_defaults();
-    shared.background = true;
+fn prepare_cli_output_initializes_output_state() {
+    crate::output::set_stdout_suppressed(true);
+    let shared = SharedOpts::test_defaults();
     prepare_cli_output(&shared);
-    assert!(crate::output::stdout_suppressed());
+    assert!(!crate::output::stdout_suppressed());
     crate::output::set_stdout_suppressed(false);
 }
 
@@ -22,16 +21,15 @@ fn entrypoint_from_doc_argv_exits_success() {
 }
 
 #[test]
-fn entrypoint_from_background_suppresses_stdout() {
-    with_isolated_home(|_| {
-        crate::output::set_stdout_suppressed(false);
-        assert_eq!(
-            entrypoint_from(["malvin", "--background", "--doc"]),
-            Exit::Success
-        );
-        assert!(crate::output::stdout_suppressed());
-        crate::output::set_stdout_suppressed(false);
-    });
+fn entrypoint_from_background_is_rejected() {
+    use clap::Parser;
+    let err = crate::cli::Cli::try_parse_from(["malvin", "--background", "--doc"])
+        .expect_err("--background must be rejected");
+    let msg = err.to_string();
+    assert!(
+        msg.contains("unexpected") || msg.contains("unknown") || msg.contains("--background"),
+        "clap must reject --background; got {msg}"
+    );
 }
 
 #[test]
@@ -52,7 +50,7 @@ fn entrypoint_from_admin_models_doc_exits_success() {
 }
 
 #[test]
-fn entrypoint_from_doc_does_not_suppress_stdout_without_background() {
+fn entrypoint_from_doc_does_not_suppress_stdout() {
     with_isolated_home(|_| {
         crate::output::set_stdout_suppressed(false);
         assert_eq!(entrypoint_from(["malvin", "--doc"]), Exit::Success);

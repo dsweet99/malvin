@@ -11,7 +11,10 @@ fn clear_agent_api_env(cmd: &mut Command) {
     cmd.env_remove("CURSOR_AGENT_API_KEY")
         .env_remove("CURSOR_API_KEY")
         .env_remove("AGENT_API_KEY")
-        .env_remove("MALVIN_AGENT_ACP_BIN");
+        .env_remove("MALVIN_AGENT_ACP_BIN")
+        .env_remove("HERDR_ENV")
+        .env_remove("HERDR_SOCKET_PATH")
+        .env_remove("HERDR_PANE_ID");
 }
 
 #[cfg(unix)]
@@ -77,6 +80,9 @@ fn assert_malvin_subcommand_not_kiss_gated_without_auth(
         .env_remove("CURSOR_API_KEY")
         .env_remove("AGENT_API_KEY")
         .env_remove("MALVIN_AGENT_ACP_BIN")
+        .env_remove("HERDR_ENV")
+        .env_remove("HERDR_SOCKET_PATH")
+        .env_remove("HERDR_PANE_ID")
         .args(args)
         .output()
         .expect("spawn malvin");
@@ -110,6 +116,9 @@ fn admin_skips_external_linter_preflight() {
         .env_remove("CURSOR_API_KEY")
         .env_remove("AGENT_API_KEY")
         .env_remove("MALVIN_AGENT_ACP_BIN")
+        .env_remove("HERDR_ENV")
+        .env_remove("HERDR_SOCKET_PATH")
+        .env_remove("HERDR_PANE_ID")
         .current_dir(work.path())
         .args(["admin", "models", "--doc"])
         .output()

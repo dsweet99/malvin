@@ -87,21 +87,22 @@ impl SdkClient {
         io: AgentIoOptions,
         max_acp_retries: u32,
     ) -> Self {
+        let retries = if max_acp_retries == 0 {
+            1
+        } else {
+            max_acp_retries
+        };
         Self {
             model,
             io,
             prompts_log_run_dir: None,
-            max_acp_retries: if max_acp_retries == 0 {
-                1
-            } else {
-                max_acp_retries
-            },
+            max_acp_retries: retries,
             coder: None,
             last_agent_id: None,
             timing: None,
             session_header: None,
             header_delivered: false,
-            backend_error_tracker: super::backend_error_tracker::BackendErrorTracker::empty(),
+            backend_error_tracker: super::backend_error_tracker::BackendErrorTracker::with_max_consecutive(retries),
         }
     }
 
@@ -162,6 +163,8 @@ impl SdkClient {
     }
 
     pub fn record_backend_error(&mut self, error: &str) -> bool {
+        self.backend_error_tracker
+            .set_max_consecutive(self.max_acp_retries);
         self.backend_error_tracker.record_error(error)
     }
 

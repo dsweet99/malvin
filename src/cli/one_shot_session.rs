@@ -82,13 +82,9 @@ pub fn finish_one_shot_after_prompt(
     backups: &SessionDotfileBackups,
     result_md: &PathBuf,
 ) -> Result<(), String> {
-    let r = crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
+    crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
         acp_res, work_dir, backups, result_md,
-    );
-    if r.is_ok() {
-        crate::cli::error_run_log::clear_command_error_run_dir();
-    }
-    r
+    )
 }
 
 #[cfg(test)]

@@ -63,7 +63,6 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
         max_acp_retries: 6,
     };
     let mut shared = SharedOpts {
-        background: false,
         model: crate::model_id::parse_model_id("cursor:old").expect("model"),
         gates: false,
 
@@ -71,7 +70,6 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
         verbose: false,
         max_acp_retries: 1,
         doc: false,
-        git: false,
         creative: None,
         no_kpop: false,
     };

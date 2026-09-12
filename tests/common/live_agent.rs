@@ -42,6 +42,9 @@ fn live_agent_auth_available() -> bool {
 pub fn command_output_live_agent(cmd: &mut Command) -> std::io::Result<std::process::Output> {
     cmd.env_remove("MALVIN_TEST_NO_REAL_AGENT");
     cmd.env_remove("MALVIN_AGENT_ACP_BIN");
+    cmd.env_remove("HERDR_ENV");
+    cmd.env_remove("HERDR_SOCKET_PATH");
+    cmd.env_remove("HERDR_PANE_ID");
     let (child, stdout_jh, stderr_jh) = spawn_piped_process_group(cmd)?;
     wait_child_with_timeout(
         child,

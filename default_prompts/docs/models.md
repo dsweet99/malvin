@@ -66,10 +66,10 @@ malvin admin models cursor:
 malvin admin models pi:
 malvin admin models rpi:
 malvin admin models rpi:open
-malvin --model 'cursor:claude-opus-5[effort=high,fast=true]' do "say hi"
-malvin --model 'pi:openai/gpt-5[thinking=high]' do "say hi"
-malvin --model 'rpi:openai/gpt-5[thinking=high]' do "say hi"
-malvin --model rpi:openai/gpt-4o do "say hi"
+malvin --model 'cursor:claude-opus-5[effort=high,fast=true]' --do "say hi"
+malvin --model 'pi:openai/gpt-5[thinking=high]' --do "say hi"
+malvin --model 'rpi:openai/gpt-5[thinking=high]' --do "say hi"
+malvin --model rpi:openai/gpt-4o --do "say hi"
 malvin admin models codex:
 malvin admin models --refresh rpi:
 malvin --model=codex:gpt-5.6 --do Hello

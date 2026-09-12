@@ -63,6 +63,9 @@ fn observe_non_execute(state: &mut PhaseState, kind: ToolKind, phase: u8) {
         }
         return;
     }
+    if phase == TOOL_PHASE_START {
+        crate::herdr::notify_working();
+    }
     state.active_tool = Some((kind, phase));
 }
 

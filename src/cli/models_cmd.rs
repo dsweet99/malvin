@@ -8,6 +8,8 @@ mod models_cmd_cursor;
 mod models_cmd_filter;
 #[path = "models_cmd_parse.rs"]
 mod models_cmd_parse;
+#[path = "models_cmd_refresh.rs"]
+pub(crate) mod models_cmd_refresh;
 use models_cmd_cursor::print_cursor_models;
 pub(crate) use models_cmd_filter::{line_matches_prefix, models_list_prefix, section_may_match};
 
@@ -54,6 +56,12 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
     let filter = models_list_prefix(&args.words)?;
     let filter_ref = filter.as_deref();
 
+    let now = models_cmd_refresh::unix_now_secs();
+    let force_refresh = args.refresh || models_cmd_refresh::models_refresh_is_due(now);
+    if force_refresh {
+        models_cmd_refresh::perform_models_refresh();
+    }
+
     if section_may_match(filter_ref, CURSOR_PREFIX)
         && let Err(e) = print_cursor_models(filter_ref)
     {
@@ -68,7 +76,7 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
         }
     }
     if section_may_match(filter_ref, RPI_PREFIX) {
-        match crate::pi_sdk::list_pi_models_sync(args.refresh) {
+        match crate::pi_sdk::list_pi_models_sync(false) {
             Ok(models) => print_pi_models(&models, filter_ref),
             Err(e) => {
                 print_stdout_line(MALVIN_WHO, &format!("(rpi models unavailable: {e})"));
@@ -213,6 +221,18 @@ pub(crate) mod test_hooks {
 
     pub fn print_current_footer() {
         super::print_current_footer(crate::config::DEFAULT_CLI_MODEL);
+    }
+
+    pub fn models_refresh_is_due(now_secs: u64) -> bool {
+        super::models_cmd_refresh::models_refresh_is_due(now_secs)
+    }
+
+    pub fn save_last_refresh_secs(now_secs: u64) -> Result<(), String> {
+        super::models_cmd_refresh::save_last_refresh_secs(now_secs)
+    }
+
+    pub fn load_last_refresh_secs() -> Option<u64> {
+        super::models_cmd_refresh::load_last_refresh_secs()
     }
 }
 

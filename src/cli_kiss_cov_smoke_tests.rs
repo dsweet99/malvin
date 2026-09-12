@@ -41,7 +41,6 @@ fn smoke_cov_cli_cli_units_1b() {
     let _ = crate::cli::session_header::render_malvin_header_body;
     let _ = crate::cli::session_header::bind_do_header;
     let shared = crate::cli::SharedOpts {
-        background: false,
         model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("model"),
         gates: false,
 
@@ -49,7 +48,6 @@ fn smoke_cov_cli_cli_units_1b() {
         verbose: false,
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
-        git: false,
         creative: None,
         no_kpop: false,
     };
