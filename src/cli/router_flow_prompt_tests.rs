@@ -90,6 +90,37 @@ fn build_router_a_prompt_omits_code_checks_when_gates_disabled() {
     crate::gate_loop_session::set_quality_gates_just_ran(false);
     assert!(!body.contains("echo ROUTER_CHECK_LINE"));
     assert!(!body.contains("quality gates were just run"));
+    assert!(
+        !body.contains("__begin_gates_output__"),
+        "empty code_checks must yield empty code_extra: {body}"
+    );
+    assert!(!body.contains("{{"));
+}
+
+#[test]
+fn build_router_a_prompt_omits_code_extra_when_gate_commands_empty() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = flow_test_artifacts(&tmp);
+    crate::seed_malvin_checks(tmp.path(), "# no commands\n\n  \n");
+    let store = prepare_router_prompt_store().expect("store");
+    crate::gate_loop_session::set_quality_gates_just_ran(true);
+    let body = build_router_a_prompt(RouterAPromptInput {
+        store: &store,
+        artifacts: &artifacts,
+        model: DEFAULT_CLI_MODEL,
+        gates: true,
+        no_kpop: false,
+    })
+    .expect("router_a");
+    crate::gate_loop_session::set_quality_gates_just_ran(false);
+    assert!(
+        !body.contains("__begin_gates_output__"),
+        "whitespace-only code_checks must yield empty code_extra: {body}"
+    );
+    assert!(
+        !body.contains("quality gates were just run"),
+        "empty code_extra must not append the post-gates note: {body}"
+    );
     assert!(!body.contains("{{"));
 }
 

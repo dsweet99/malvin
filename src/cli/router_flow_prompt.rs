@@ -119,6 +119,27 @@ pub(crate) struct RouterCodeExtraInput<'a> {
     pub gates: bool,
 }
 
+fn gates_enabled_code_checks(gates: bool, work_dir: &Path) -> Result<String, String> {
+    if gates {
+        router_code_checks_text(work_dir)
+    } else {
+        Ok(String::new())
+    }
+}
+
+fn code_extra_with_optional_gates_note(body: String, quality_gates_log: Option<&str>) -> String {
+    quality_gates_log.map_or_else(
+        || body.trim().to_string(),
+        |path| {
+            format!(
+                "{body}\n\nThe quality gates were just run, and their output is in `{path}`.\n"
+            )
+            .trim()
+            .to_string()
+        },
+    )
+}
+
 pub(crate) fn render_router_code_extra(input: RouterCodeExtraInput<'_>) -> Result<String, String> {
     let RouterCodeExtraInput {
         store,
@@ -126,27 +147,21 @@ pub(crate) fn render_router_code_extra(input: RouterCodeExtraInput<'_>) -> Resul
         model,
         gates,
     } = input;
+    let code_checks = gates_enabled_code_checks(gates, artifacts.work_dir.as_path())?;
+    if code_checks.trim().is_empty() {
+        return Ok(String::new());
+    }
     let mut ctx = workflow_context_paths_only(artifacts, model);
-    let code_checks = if gates {
-        router_code_checks_text(artifacts.work_dir.as_path())?
-    } else {
-        String::new()
-    };
     ctx.insert("code_checks".to_string(), code_checks);
     let body = store
         .render_prompt_only(ROUTER_CODE_EXTRA_MD, ctx.as_map())
         .map_err(|e: PromptError| e.0)?;
-    if gates && crate::gate_loop_session::quality_gates_just_ran() {
-        let path = ctx
-            .get("quality_gates_log")
-            .map_or_else(String::new, Clone::clone);
-        return Ok(format!(
-            "{body}\n\nThe quality gates were just run, and their output is in `{path}`.\n"
-        )
-        .trim()
-        .to_string());
-    }
-    Ok(body.trim().to_string())
+    let note_path = if gates && crate::gate_loop_session::quality_gates_just_ran() {
+        ctx.get("quality_gates_log").map(String::as_str)
+    } else {
+        None
+    };
+    Ok(code_extra_with_optional_gates_note(body, note_path))
 }
 
 #[cfg(test)]
