@@ -75,6 +75,7 @@ fn kiss_cov_models_cmd_run_helpers() {
     let _ = stringify!(run_cursor_sdk_models_js);
     let _ = stringify!(print_filtered_model_rows);
     let _ = stringify!(print_pi_models);
+    let _ = stringify!(print_npm_pi_models);
     let _ = stringify!(is_provider_authenticated);
 }
 
@@ -191,4 +192,16 @@ fn kiss_cov_run_models_fake_agent_branchy_executable() {
     } else {
         panic!("fake agent models should succeed");
     }
+}
+
+#[test]
+fn kiss_cov_models_refresh_timestamp_lifecycle() {
+    let _lock = crate::test_utils::test_env_lock();
+    let now = super::models_cmd_refresh::unix_now_secs();
+    super::test_hooks::save_last_refresh_secs(now).expect("save");
+    let loaded = super::test_hooks::load_last_refresh_secs().expect("load");
+    assert_eq!(loaded, now);
+    assert!(!super::test_hooks::models_refresh_is_due(now));
+    let future = now + super::models_cmd_refresh::MODELS_REFRESH_INTERVAL_SECS + 1;
+    assert!(super::test_hooks::models_refresh_is_due(future));
 }

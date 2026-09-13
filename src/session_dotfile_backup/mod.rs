@@ -1,9 +1,12 @@
 mod alloc;
+mod dotfile_backup_state;
 pub(crate) mod gate_restore_checks;
 pub(crate) mod gate_restore_merge;
 pub(crate) mod gate_restore_repair;
 mod gitignore_tree;
+mod named_file_tree;
 mod slots;
+mod typed_slot_backups;
 #[cfg(test)]
 mod tree_test_support;
 mod vision_tree;
@@ -14,10 +17,12 @@ pub use gate_restore_repair::repair_invalid_malvin_home_config_on_disk;
 
 use std::path::Path;
 
+pub use dotfile_backup_state::{DotfileBackupPayload, DotfileBackupState, DotfileBackupStateRef};
 pub use gitignore_tree::{
     GitignoreBackup, GitignoreFileBackup, backup_workspace_gitignore_if_present,
     backup_workspace_gitignore_if_present_with_id, restore_workspace_gitignore_backup,
 };
+pub use typed_slot_backups::{MalvinChecksBackup, MalvinConfigWorkspaceBackup};
 pub use vision_tree::{
     VisionBackup, VisionFileBackup, backup_workspace_vision_if_present,
     backup_workspace_vision_if_present_with_id, restore_workspace_vision_backup,
@@ -32,29 +37,6 @@ pub use wrappers::{
 use slots::{backup_slot, restore_slot};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DotfileBackupPayload {
-    pub backup_path: std::path::PathBuf,
-    pub bytes: Vec<u8>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DotfileBackupState {
-    Missing,
-    Present(DotfileBackupPayload),
-}
-
-pub type MalvinChecksBackup = DotfileBackupState;
-pub type MalvinConfigWorkspaceBackup = DotfileBackupState;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SessionDotfileParts {
-    pub malvin_checks: MalvinChecksBackup,
-    pub gitignore: GitignoreBackup,
-    pub vision: VisionBackup,
-    pub malvin_config_workspace: MalvinConfigWorkspaceBackup,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionDotfileBackups {
     pub malvin_checks: MalvinChecksBackup,
     pub gitignore: GitignoreBackup,
@@ -64,12 +46,12 @@ pub struct SessionDotfileBackups {
 
 impl SessionDotfileBackups {
     #[must_use]
-    pub fn from_parts(parts: SessionDotfileParts) -> Self {
+    pub const fn all_missing() -> Self {
         Self {
-            malvin_checks: parts.malvin_checks,
-            gitignore: parts.gitignore,
-            vision: parts.vision,
-            malvin_config_workspace: parts.malvin_config_workspace,
+            malvin_checks: MalvinChecksBackup::Missing,
+            gitignore: GitignoreBackup::Missing,
+            vision: VisionBackup::Missing,
+            malvin_config_workspace: MalvinConfigWorkspaceBackup::Missing,
         }
     }
 
@@ -91,14 +73,16 @@ impl SessionDotfileBackups {
         mut generate_id: impl FnMut(usize) -> String,
     ) -> Result<Self, String> {
         Ok(Self {
-            malvin_checks: backup_slot(0, work_dir, &mut generate_id)?,
+            malvin_checks: backup_slot(slots::MALVIN_CHECKS_SLOT, work_dir, &mut generate_id)?
+                .into(),
             gitignore: gitignore_tree::backup_gitignore_tree(work_dir, &mut generate_id)?,
             vision: vision_tree::backup_vision_tree(work_dir, &mut generate_id)?,
             malvin_config_workspace: backup_slot(
                 slots::MALVIN_CONFIG_WORKSPACE_SLOT,
                 work_dir,
                 &mut generate_id,
-            )?,
+            )?
+            .into(),
         })
     }
 
@@ -119,8 +103,12 @@ pub fn restore_workspace_session_dotfiles(
     bundle: &SessionDotfileBackups,
 ) -> Result<(), String> {
     restore_workspace_session_dotfiles_excluding_malvin_checks(work_dir, bundle)?;
-    restore_slot(work_dir, &bundle.malvin_checks, 0)
-        .map(|()| crate::remove_legacy_malvin_checks_file(work_dir))
+    restore_slot(
+        work_dir,
+        bundle.malvin_checks.as_slot_state(),
+        slots::MALVIN_CHECKS_SLOT,
+    )
+    .map(|()| crate::remove_legacy_malvin_checks_file(work_dir))
 }
 
 #[allow(clippy::missing_errors_doc)]
@@ -132,7 +120,7 @@ pub fn restore_workspace_session_dotfiles_excluding_malvin_checks(
     vision_tree::restore_workspace_vision_backup(work_dir, &bundle.vision)?;
     restore_slot(
         work_dir,
-        &bundle.malvin_config_workspace,
+        bundle.malvin_config_workspace.as_slot_state(),
         slots::MALVIN_CONFIG_WORKSPACE_SLOT,
     )
 }

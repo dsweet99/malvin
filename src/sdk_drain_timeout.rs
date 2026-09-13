@@ -3,10 +3,8 @@
 use std::time::Duration;
 
 pub const DEFAULT_SDK_DRAIN_IDLE_TIMEOUT_MS: u64 = 600_000;
-/// Minimum time allowed for a newly spawned bridge to acknowledge create/resume.
 pub const SDK_BRIDGE_STARTUP_TIMEOUT_MIN_MS: u64 = 1_000;
 
-/// Max time to block on one bridge/pi read before a child-health sample (slice).
 pub const SDK_DRAIN_IDLE_SLICE_MAX_MS: u64 = 60_000;
 
 #[must_use]
@@ -34,24 +32,18 @@ pub fn sdk_bridge_startup_timeout() -> Duration {
     sdk_drain_idle_timeout_from_env().max(Duration::from_millis(SDK_BRIDGE_STARTUP_TIMEOUT_MIN_MS))
 }
 
-/// How long to wait on `read_event` before sampling child health.
-///
-/// Always `min(60s, idle_remaining)` so short idle budgets (tests) slice tightly.
 #[must_use]
 pub fn sdk_drain_idle_slice(idle_remaining: Duration) -> Duration {
     idle_remaining.min(Duration::from_millis(SDK_DRAIN_IDLE_SLICE_MAX_MS))
 }
 
-/// Wall-clock cap for one next-event wait: at most one full extra idle window from health.
 #[must_use]
 pub const fn sdk_drain_idle_max_wait(idle: Duration) -> Duration {
     idle.saturating_mul(2)
 }
 
-/// Hard wall-clock cap for an entire drain turn (extendable on productive activity).
 pub const SDK_DRAIN_IDLE_MAX_TURN_MULTIPLIER: u32 = 10;
 
-/// Max turn duration before productive extensions are capped.
 #[must_use]
 pub const fn sdk_drain_idle_max_turn(idle: Duration) -> Duration {
     idle.saturating_mul(SDK_DRAIN_IDLE_MAX_TURN_MULTIPLIER)
@@ -132,6 +124,20 @@ mod tests {
             sdk_drain_idle_max_turn(Duration::from_mins(10)),
             Duration::from_mins(100)
         );
+    }
+
+    #[test]
+    fn sdk_bridge_startup_timeout_floors_below_min() {
+        let _lock = test_env_lock();
+        let prior = std::env::var_os("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS");
+        tests_set_idle_ms_for_test(100);
+        assert_eq!(
+            sdk_bridge_startup_timeout(),
+            Duration::from_millis(SDK_BRIDGE_STARTUP_TIMEOUT_MIN_MS)
+        );
+        tests_set_idle_ms_for_test(5_000);
+        assert_eq!(sdk_bridge_startup_timeout(), Duration::from_secs(5));
+        tests_restore_idle_ms_for_test(prior);
     }
 
     #[test]

@@ -1,9 +1,6 @@
-use super::{
-    LoopDefaultMut, apply_loop_defaults, apply_shared_config_defaults,
-    apply_workspace_config_defaults, global_flag_from_command_line, parse_cli_with_config_defaults,
-};
-use crate::cli::config_loop::subcommand_flag_from_command_line;
-use crate::cli::{Cli, Commands, SharedOpts};
+use super::{apply_shared_config_defaults, apply_workspace_config_defaults, global_flag_from_command_line,
+    parse_cli_with_config_defaults};
+use crate::cli::{Cli, SharedOpts};
 use crate::malvin_config_file::AgentConfig;
 use clap::{CommandFactory, FromArgMatches};
 
@@ -54,40 +51,9 @@ fn write_agent_config_adds_agent_section_to_partial_file() {
 }
 
 #[test]
-fn apply_loop_defaults_honors_partial_cli_overrides() {
-    with_seeded_agent_config(|| {
-        let matches =
-            Cli::command().get_matches_from(["malvin", "write", "topic", "--max-loops", "3"]);
-        let mut max_loops = 3_usize;
-        let mut max_hypotheses = 5_usize;
-        apply_loop_defaults(
-            &matches,
-            "write",
-            LoopDefaultMut {
-                max_loops: &mut max_loops,
-                max_hypotheses: &mut max_hypotheses,
-                config_max_loops: 9,
-                config_max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
-            },
-        );
-        assert_eq!(max_loops, 3);
-    });
-}
-
-#[test]
 fn flag_and_shared_helpers_detect_and_apply_defaults() {
-    let matches = Cli::command().get_matches_from(["malvin", "write", "topic"]);
+    let matches = Cli::command().get_matches_from(["malvin", "admin", "models"]);
     assert!(!global_flag_from_command_line(&matches, "model"));
-    assert!(!subcommand_flag_from_command_line(
-        &matches,
-        "write",
-        "max_loops"
-    ));
-    assert!(!subcommand_flag_from_command_line(
-        &matches,
-        "missing",
-        "max_loops"
-    ));
 
     let agent = AgentConfig {
         model: crate::model_id::parse_model_id("cursor:cfg").expect("model"),
@@ -96,39 +62,15 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
         max_loops_code: 6,
         max_acp_retries: 6,
     };
-    let config_max_loops = agent.max_loops;
     let mut shared = SharedOpts {
-        background: false,
         model: crate::model_id::parse_model_id("cursor:old").expect("model"),
-        no_force: false,
-        no_tenacious: false,
-        gates: false,
-
-        quiet: false,
         verbose: false,
         max_acp_retries: 1,
         doc: false,
-        git: false,
-        creative: None,
-        no_kpop: false,
     };
     apply_shared_config_defaults(&matches, &mut shared, &agent);
     assert_eq!(shared.model.canonical(), "cursor:cfg");
     assert_eq!(shared.max_acp_retries, 6);
-
-    let mut max_loops = 1_usize;
-    let mut max_hypotheses = 1_usize;
-    apply_loop_defaults(
-        &matches,
-        "write",
-        LoopDefaultMut {
-            max_loops: &mut max_loops,
-            max_hypotheses: &mut max_hypotheses,
-            config_max_loops,
-            config_max_hypotheses: agent.max_hypotheses,
-        },
-    );
-    assert_eq!(max_loops, 8);
 }
 
 #[test]
@@ -140,7 +82,7 @@ fn apply_workspace_config_defaults_overrides_unset_flags_for_gates_only() {
         assert_eq!(cli.shared.model.canonical(), "cursor:cfg-model");
         assert_eq!(cli.shared.max_acp_retries, 8);
         assert!(cli.command.is_none());
-        assert_eq!(cli.max_loops, 7);
+        assert_eq!(cli.router.max_loops, 7);
     });
 }
 
@@ -161,24 +103,18 @@ fn apply_workspace_config_defaults_respects_explicit_cli_flags_for_gates_only() 
         apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
         assert_eq!(cli.shared.model.canonical(), "cursor:cli-model");
         assert_eq!(cli.shared.max_acp_retries, 2);
-        assert_eq!(cli.max_loops, 3);
+        assert_eq!(cli.router.max_loops, 3);
     });
 }
 
-fn assert_workflow_defaults(argv: &[&str]) {
-    let matches = Cli::command().get_matches_from(argv);
-    let mut cli = Cli::from_arg_matches(&matches).expect("cli");
-    apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
-    match cli.command.expect("command") {
-        Commands::Write(a) => assert_eq!(a.max_loops, 7),
-        Commands::Admin(_) => panic!("unexpected command Admin"),
-    }
-}
-
 #[test]
-fn apply_workspace_config_defaults_for_workflow_commands() {
+fn apply_workspace_config_defaults_for_admin_command() {
     with_seeded_agent_config(|| {
-        assert_workflow_defaults(&["malvin", "write", "topic"]);
+        let matches = Cli::command().get_matches_from(["malvin", "admin", "models"]);
+        let mut cli = Cli::from_arg_matches(&matches).expect("cli");
+        apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
+        assert_eq!(cli.shared.model.canonical(), "cursor:cfg-model");
+        assert!(matches!(cli.command, Some(crate::cli::Commands::Admin(_))));
     });
 }
 
@@ -205,8 +141,8 @@ fn parse_cli_with_config_defaults_gates_only() {
         let (cli, _) = parse_cli_with_config_defaults(["malvin", "-g"]).expect("parse");
         assert!(cli.command.is_none());
         assert!(cli.request.is_none());
-        assert!(cli.shared.gates);
-        assert!(cli.max_loops >= 1);
+        assert!(cli.router.gates);
+        assert!(cli.router.max_loops >= 1);
         std::env::set_current_dir(cwd).expect("restore cwd");
     });
 }

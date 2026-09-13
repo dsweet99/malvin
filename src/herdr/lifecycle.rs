@@ -30,6 +30,15 @@ fn live_io_allowed() -> bool {
     }
     #[cfg(not(test))]
     {
+        if std::env::var_os("MALVIN_NO_HERDR").is_some() {
+            return false;
+        }
+        if std::env::var_os("MALVIN_TEST_NO_REAL_AGENT").is_some()
+            || std::env::var_os("NEXTEST").is_some()
+        {
+            return std::env::var_os("MALVIN_LIVE_HERDR").is_some()
+                || std::env::var_os("MALVIN_TEST_HERDR_IO").is_some();
+        }
         true
     }
 }

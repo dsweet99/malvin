@@ -136,7 +136,7 @@ fn cost_policy_for_model_maps_prefixes() {
         CostPolicy::EstimateFromRates
     );
     assert_eq!(
-        crate::run_timing::cost_policy_for_model("pi:openai/gpt-4o"),
+        crate::run_timing::cost_policy_for_model("rpi:openai/gpt-4o"),
         CostPolicy::EstimateFromRates
     );
 }

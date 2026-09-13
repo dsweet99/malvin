@@ -29,7 +29,6 @@ fn build_router_a_prompt_expands_malvin_command_with_active_model() {
         store: &store,
         artifacts: &artifacts,
         model: "composer-2",
-        git: false,
         gates: false,
         no_kpop: false,
     })
@@ -47,7 +46,6 @@ fn build_router_a_prompt_renders_without_unresolved_braces() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         gates: false,
         no_kpop: false,
     })
@@ -66,7 +64,6 @@ fn build_router_a_prompt_includes_code_checks_when_gates_enabled() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         gates: true,
         no_kpop: false,
     })
@@ -86,7 +83,6 @@ fn build_router_a_prompt_omits_code_checks_when_gates_disabled() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         gates: false,
         no_kpop: false,
     })
@@ -94,6 +90,37 @@ fn build_router_a_prompt_omits_code_checks_when_gates_disabled() {
     crate::gate_loop_session::set_quality_gates_just_ran(false);
     assert!(!body.contains("echo ROUTER_CHECK_LINE"));
     assert!(!body.contains("quality gates were just run"));
+    assert!(
+        !body.contains("__begin_gates_output__"),
+        "empty code_checks must yield empty code_extra: {body}"
+    );
+    assert!(!body.contains("{{"));
+}
+
+#[test]
+fn build_router_a_prompt_omits_code_extra_when_gate_commands_empty() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = flow_test_artifacts(&tmp);
+    crate::seed_malvin_checks(tmp.path(), "# no commands\n\n  \n");
+    let store = prepare_router_prompt_store().expect("store");
+    crate::gate_loop_session::set_quality_gates_just_ran(true);
+    let body = build_router_a_prompt(RouterAPromptInput {
+        store: &store,
+        artifacts: &artifacts,
+        model: DEFAULT_CLI_MODEL,
+        gates: true,
+        no_kpop: false,
+    })
+    .expect("router_a");
+    crate::gate_loop_session::set_quality_gates_just_ran(false);
+    assert!(
+        !body.contains("__begin_gates_output__"),
+        "whitespace-only code_checks must yield empty code_extra: {body}"
+    );
+    assert!(
+        !body.contains("quality gates were just run"),
+        "empty code_extra must not append the post-gates note: {body}"
+    );
     assert!(!body.contains("{{"));
 }
 
@@ -108,7 +135,6 @@ fn router_code_extra_note_absent_when_gates_have_not_run() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         gates: true,
         no_kpop: false,
     })
@@ -131,7 +157,6 @@ fn router_code_extra_note_present_after_gates_just_ran() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         gates: true,
         no_kpop: false,
     })
@@ -161,7 +186,6 @@ fn build_router_summarize_prompt_renders_dm_body_without_unresolved_braces() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
     })
     .expect("router_summarize");
     assert!(!body.contains("{{"));
@@ -180,7 +204,6 @@ fn build_router_b_prompt_selects_creative_template_when_flag_set() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         creative: false,
         no_kpop: false,
     })
@@ -189,7 +212,6 @@ fn build_router_b_prompt_selects_creative_template_when_flag_set() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         creative: true,
         no_kpop: false,
     })
@@ -261,7 +283,6 @@ fn build_router_prompts_select_no_kpop_templates_when_flag_set() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         max_hypotheses: 3,
         no_kpop: true,
     })
@@ -274,7 +295,6 @@ fn build_router_prompts_select_no_kpop_templates_when_flag_set() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         gates: false,
         no_kpop: true,
     })
@@ -288,7 +308,6 @@ fn build_router_prompts_select_no_kpop_templates_when_flag_set() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         creative: true,
         no_kpop: true,
     })
@@ -314,16 +333,33 @@ fn build_router_prompts_use_canonical_templates() {
             store: &store,
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
-            git: false,
+            max_hypotheses: 5,
+            no_kpop: false,
         },
     )
     .expect("header");
-    assert!(!header.to_ascii_lowercase().contains("falsifiable"));
+    assert!(
+        header.to_ascii_lowercase().contains("falsifiable"),
+        "header embeds kpop_common via kpop_insert"
+    );
+    let header_no = build_router_header_prompt(
+        crate::router_flow::router_flow_prompt::RouterHeaderPromptInput {
+            store: &store,
+            artifacts: &artifacts,
+            model: DEFAULT_CLI_MODEL,
+            max_hypotheses: 5,
+            no_kpop: true,
+        },
+    )
+    .expect("header no_kpop");
+    assert!(
+        !header_no.to_ascii_lowercase().contains("falsifiable"),
+        "no_kpop header must omit kpop method language"
+    );
     let a = build_router_a_prompt(RouterAPromptInput {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         gates: false,
         no_kpop: false,
     })
@@ -333,7 +369,6 @@ fn build_router_prompts_use_canonical_templates() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         creative: false,
         no_kpop: false,
     })

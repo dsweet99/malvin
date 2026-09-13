@@ -1,4 +1,3 @@
-//! Shared stdio child teardown for Cursor bridge and Codex sessions.
 
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -6,7 +5,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::process::Child;
 use tokio::sync::Mutex as AsyncMutex;
 
-/// Fields required to tear down a sandboxed stdio agent child.
 pub(crate) struct StdioTeardown<'a> {
     pub child: &'a AsyncMutex<Option<Child>>,
     pub process_group_id: Option<u32>,
@@ -30,7 +28,6 @@ impl<'a> StdioTeardown<'a> {
         }
     }
 
-    /// Async shutdown path: signal process group, kill child, clear sandbox note.
     pub(crate) async fn shutdown_kill_and_clear(self) {
         self.reader_dead.store(true, Ordering::SeqCst);
         #[cfg(unix)]
@@ -51,7 +48,6 @@ impl<'a> StdioTeardown<'a> {
         crate::malvin_sandbox::clear_active_sandbox_session();
     }
 
-    /// `Drop` path: avoid Tokio destructor on a foreign runtime; always clear sandbox.
     pub(crate) fn drop_teardown(self) {
         self.reader_dead.store(true, Ordering::SeqCst);
         let child_gone = self.child.try_lock().is_ok_and(|slot| slot.is_none());

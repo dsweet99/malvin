@@ -203,12 +203,21 @@ pub(crate) fn finish_run_done(log: &StreamLog, ev: &BridgeEvent) -> Result<(), A
         crate::bridge_sdk::feed_do_dm_run_result(text);
     }
     crate::bridge_sdk::handle_stream_event(log, ev);
+    if *status == crate::bridge_protocol::RunDoneStatus::Unknown {
+        tracing::warn!(
+            result = result.as_deref(),
+            error = error.as_deref(),
+            "run_done unknown status; surfacing result/error"
+        );
+    }
     if run_done_status_is_failure(*status) {
         return Err(AgentError(error.clone().unwrap_or_else(|| {
-            if *status == crate::bridge_protocol::RunDoneStatus::Cancelled {
-                "run cancelled".into()
-            } else {
-                "run error".into()
+            match *status {
+                crate::bridge_protocol::RunDoneStatus::Cancelled => "run cancelled".into(),
+                crate::bridge_protocol::RunDoneStatus::Unknown => {
+                    "run finished with unknown status".into()
+                }
+                _ => "run error".into(),
             }
         })));
     }

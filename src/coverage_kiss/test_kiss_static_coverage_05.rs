@@ -1,4 +1,3 @@
-//! Kiss static coverage contract (call-shaped tokens; not compiled).
 
 #[test]
 fn kiss_exec_witness_04_12() {

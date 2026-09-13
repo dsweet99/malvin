@@ -1,4 +1,4 @@
-use crate::model_id::{CODEX_PREFIX, CURSOR_PREFIX, PI_PREFIX};
+use crate::model_id::{CODEX_PREFIX, CURSOR_PREFIX, PI_PREFIX, RPI_PREFIX};
 use crate::output::{MALVIN_WHO, print_stdout_line};
 use clap::Args;
 
@@ -8,16 +8,18 @@ mod models_cmd_cursor;
 mod models_cmd_filter;
 #[path = "models_cmd_parse.rs"]
 mod models_cmd_parse;
+#[path = "models_cmd_refresh.rs"]
+pub(crate) mod models_cmd_refresh;
 use models_cmd_cursor::print_cursor_models;
 pub(crate) use models_cmd_filter::{line_matches_prefix, models_list_prefix, section_may_match};
 
 #[derive(Args, Debug, Clone, Default)]
 #[command(override_usage = "malvin admin models [OPTION]... [PREFIX]...")]
 pub struct ModelsArgs {
-    /// Force-refresh provider model catalogs (bypasses the daily Pi cache).
+    /// Force-refresh `pi:` and `rpi:` model catalogs (also runs automatically every 24h).
     #[arg(long)]
     pub refresh: bool,
-    /// Optional prefix filter (for example `cursor:`, `pi:`, or `codex:`)
+    /// Optional prefix filter (for example `cursor:`, `pi:`, `rpi:`, or `codex:`)
     #[arg(
         value_name = "PREFIX",
         trailing_var_arg = true,
@@ -54,16 +56,30 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
     let filter = models_list_prefix(&args.words)?;
     let filter_ref = filter.as_deref();
 
+    let now = models_cmd_refresh::unix_now_secs();
+    let force_refresh = args.refresh || models_cmd_refresh::models_refresh_is_due(now);
+    if force_refresh {
+        models_cmd_refresh::perform_models_refresh();
+    }
+
     if section_may_match(filter_ref, CURSOR_PREFIX)
         && let Err(e) = print_cursor_models(filter_ref)
     {
         print_stdout_line(MALVIN_WHO, &format!("(cursor models unavailable: {e})"));
     }
     if section_may_match(filter_ref, PI_PREFIX) {
-        match crate::pi_sdk::list_pi_models_sync(args.refresh) {
-            Ok(models) => print_pi_models(&models, filter_ref),
+        match crate::npm_pi_sdk::list_npm_pi_display_models() {
+            Ok(models) => print_npm_pi_models(&models, filter_ref),
             Err(e) => {
                 print_stdout_line(MALVIN_WHO, &format!("(pi models unavailable: {e})"));
+            }
+        }
+    }
+    if section_may_match(filter_ref, RPI_PREFIX) {
+        match crate::pi_sdk::list_pi_models_sync(false) {
+            Ok(models) => print_pi_models(&models, filter_ref),
+            Err(e) => {
+                print_stdout_line(MALVIN_WHO, &format!("(rpi models unavailable: {e})"));
             }
         }
     }
@@ -74,6 +90,15 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
     Ok(())
 }
 
+fn print_npm_pi_models(models: &[(String, String)], filter: Option<&str>) {
+    for (id, detail) in models {
+        let line = format!("{PI_PREFIX}{id}\t{detail}");
+        if line_matches_prefix(&line, filter) {
+            print_stdout_line(MALVIN_WHO, &line);
+        }
+    }
+}
+
 fn print_pi_models(models: &[crate::pi_sdk::PiModelListing], filter: Option<&str>) {
     let mut printed = false;
     for model in models {
@@ -81,7 +106,7 @@ fn print_pi_models(models: &[crate::pi_sdk::PiModelListing], filter: Option<&str
         if !crate::pi_sdk::is_provider_authenticated(provider) {
             continue;
         }
-        let mut line = format!("pi:{}\t{}", model.id, model.name);
+        let mut line = format!("{RPI_PREFIX}{}\t{}", model.id, model.name);
         if let Some(thinking) = model.thinking {
             line.push('\t');
             line.push_str(if thinking {
@@ -98,7 +123,7 @@ fn print_pi_models(models: &[crate::pi_sdk::PiModelListing], filter: Option<&str
     if printed {
         print_stdout_line(
             MALVIN_WHO,
-            "Note: pi model list refreshes live provider catalogs at most once per day (use --refresh to force); rows are shown only for providers you can run (environment API key or stored Pi credential).",
+            "Note: pi:/rpi: model lists refresh live provider catalogs at most once per day (use --refresh to force); rpi: rows are shown only for providers you can run (environment API key or stored Pi credential).",
         );
     }
 }
@@ -196,6 +221,18 @@ pub(crate) mod test_hooks {
 
     pub fn print_current_footer() {
         super::print_current_footer(crate::config::DEFAULT_CLI_MODEL);
+    }
+
+    pub fn models_refresh_is_due(now_secs: u64) -> bool {
+        super::models_cmd_refresh::models_refresh_is_due(now_secs)
+    }
+
+    pub fn save_last_refresh_secs(now_secs: u64) -> Result<(), String> {
+        super::models_cmd_refresh::save_last_refresh_secs(now_secs)
+    }
+
+    pub fn load_last_refresh_secs() -> Option<u64> {
+        super::models_cmd_refresh::load_last_refresh_secs()
     }
 }
 

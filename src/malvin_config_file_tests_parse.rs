@@ -31,7 +31,6 @@ fn parse_malvin_config_falls_back_when_values_invalid_or_missing() {
         token_cost_rates: cfg.token_cost_rates.clone(),
         logs: cfg.logs,
         agent: cfg.agent.clone(),
-        review: cfg.review.clone(),
         default_workflow: cfg.default_workflow.clone(),
     };
     assert_eq!(full.agent, cfg.agent);
@@ -96,25 +95,25 @@ fn parse_model_token_cost_rates_defaults_and_rejects_negative() {
         super::TokenCostRates::default()
     );
     let pi = parse_malvin_config(
-        "[agent.pi.\"openai/gpt-4o-mini\"]\nusd_per_microtoken_in = 1.5\nusd_per_microtoken_out = 2.5\n",
+        "[agent.rpi.\"openai/gpt-4o-mini\"]\nusd_per_microtoken_in = 1.5\nusd_per_microtoken_out = 2.5\n",
     );
     assert!(
-        (pi.token_cost_rates_for("pi:openai/gpt-4o-mini")
+        (pi.token_cost_rates_for("rpi:openai/gpt-4o-mini")
             .usd_per_microtoken_in
             - 1.5)
             .abs()
             < f64::EPSILON
     );
     assert!(
-        (pi.token_cost_rates_for("pi:openai/gpt-4o-mini")
+        (pi.token_cost_rates_for("rpi:openai/gpt-4o-mini")
             .usd_per_microtoken_out
             - 2.5)
             .abs()
             < f64::EPSILON
     );
     let nested = parse_model_token_cost_rates(
-        "[agent.pi.openai.gpt-4o-mini]\nusd_per_microtoken_in = 9.0\n",
+        "[agent.rpi.openai.gpt-4o-mini]\nusd_per_microtoken_in = 9.0\n",
     )
     .expect("parse");
-    assert!(!nested.contains_key("pi:openai/gpt-4o-mini"));
+    assert!(!nested.contains_key("rpi:openai/gpt-4o-mini"));
 }

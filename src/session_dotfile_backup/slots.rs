@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use super::DotfileBackupState;
+use super::DotfileBackupStateRef;
 use super::alloc::{DotfileBackupLabels, allocate_backup_dir, remove_if_exists};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -36,10 +37,10 @@ pub(super) fn dotfile_source_path(slot: usize, work_dir: &Path) -> PathBuf {
     }
 }
 
-const GITIGNORE_FILE: &str = ".gitignore";
-pub(super) const MALVIN_CONFIG_WORKSPACE_SLOT: usize = 2;
+pub(super) const MALVIN_CHECKS_SLOT: usize = 0;
+pub(super) const MALVIN_CONFIG_WORKSPACE_SLOT: usize = 1;
 
-pub(super) const DOTFILE_ROWS: [DotfileSpecRow; 3] = [
+pub(super) const DOTFILE_ROWS: [DotfileSpecRow; 2] = [
     DotfileSpecRow {
         rel: crate::MALVIN_CHECKS_REL,
         home_subdir: "malvin_checks",
@@ -48,15 +49,6 @@ pub(super) const DOTFILE_ROWS: [DotfileSpecRow; 3] = [
         restore_lbl: "malvin_checks restore",
         copy_err: ".malvin/gates backup copy",
         restore_copy_err: "malvin_checks restore",
-    },
-    DotfileSpecRow {
-        rel: GITIGNORE_FILE,
-        home_subdir: "gitignore",
-        mkdir_lbl: "gitignore backup mkdir",
-        collision_lbl: "gitignore backup mkdir",
-        restore_lbl: "gitignore restore",
-        copy_err: ".gitignore backup copy",
-        restore_copy_err: "gitignore restore",
     },
     DotfileSpecRow {
         rel: crate::MALVIN_CONFIG_REL,
@@ -100,7 +92,7 @@ pub(super) fn backup_slot(
 
 pub(super) fn restore_slot(
     work_dir: &Path,
-    backup: &DotfileBackupState,
+    backup: DotfileBackupStateRef<'_>,
     slot: usize,
 ) -> Result<(), String> {
     let spec = &DOTFILE_ROWS[slot];
@@ -108,8 +100,8 @@ pub(super) fn restore_slot(
     let dst = dotfile_source_path(slot, work_dir);
     let lbls = labels(spec);
     match backup {
-        DotfileBackupState::Missing => remove_if_exists(&dst, lbls.restore),
-        DotfileBackupState::Present(payload) => {
+        DotfileBackupStateRef::Missing => remove_if_exists(&dst, lbls.restore),
+        DotfileBackupStateRef::Present(payload) => {
             if let Some(parent) = dst.parent() {
                 std::fs::create_dir_all(parent)
                     .map_err(|e| format!("{}: {e}", spec.restore_lbl))?;

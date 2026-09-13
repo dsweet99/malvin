@@ -6,26 +6,22 @@ use crate::test_utils::with_isolated_home;
 
 fn write_minimal_router_prompts(prompt_root: &std::path::Path) {
     std::fs::create_dir_all(prompt_root).expect("mkdir");
-    std::fs::write(prompt_root.join(HEADER_MD), "HEADER_BODY\n").expect("header");
-    std::fs::write(prompt_root.join(KPOP_COMMON_MD), "KPOP_BODY {{ max_hypotheses }}\n")
-        .expect("kpop");
-    std::fs::write(prompt_root.join("mbc2.md"), "MBC2 {{ user_prompt }}\n").expect("mbc2");
-    std::fs::write(
-        prompt_root.join(ROUTER_A_MD),
-        "ROUTER_A {{ user_request_path }} {{ code_extra }}\n",
-    )
-    .expect("router_a");
-    std::fs::write(
-        prompt_root.join("router_code_extra.md"),
-        "CODE_EXTRA\n",
-    )
-    .expect("code_extra");
-    std::fs::write(prompt_root.join("kpop_common_no_kpop.md"), "\n").expect("kpop_no");
-    std::fs::write(
-        prompt_root.join("router_a_no_kpop.md"),
-        "ROUTER_A_NO_KPOP {{ code_extra }}\n",
-    )
-    .expect("router_a_no");
+    write_router_prompt_files(prompt_root);
+}
+
+fn write_router_prompt_files(prompt_root: &std::path::Path) {
+    let files = [
+        (HEADER_MD, "HEADER_BODY\n{{ kpop_insert }}\n"),
+        (KPOP_COMMON_MD, "KPOP_BODY {{ max_hypotheses }}\n"),
+        ("mbc2.md", "MBC2 {{ user_prompt }}\n"),
+        (ROUTER_A_MD, "ROUTER_A {{ user_request_path }} {{ code_extra }}\n"),
+        ("router_code_extra.md", "CODE_EXTRA\n"),
+        ("kpop_common_no_kpop.md", "\n"),
+        ("router_a_no_kpop.md", "ROUTER_A_NO_KPOP {{ code_extra }}\n"),
+    ];
+    for (name, content) in files {
+        std::fs::write(prompt_root.join(name), content).expect("write prompt");
+    }
 }
 
 #[test]
@@ -44,7 +40,6 @@ fn initial_prompt_joins_header_kpop_and_router_a_in_order() {
             store: &store,
             artifacts: &artifacts,
             model: "cursor:auto",
-            git: false,
             gates: false,
             no_kpop: false,
             creative: false,
@@ -61,9 +56,9 @@ fn initial_prompt_joins_header_kpop_and_router_a_in_order() {
         assert!(header_at < kpop_at && kpop_at < a_at);
         assert_eq!(
             out.stdout_label.split('+').collect::<Vec<_>>(),
-            vec![HEADER_MD, KPOP_COMMON_MD, ROUTER_A_MD]
+            vec![HEADER_MD, ROUTER_A_MD]
         );
-        assert_eq!(out.stdout_label, "header.md+kpop_common.md+router_a.md");
+        assert_eq!(out.stdout_label, "header.md+router_a.md");
         assert_eq!(out.log_who, "router_initial");
         assert!(!out.body.contains("MBC2"));
     });
@@ -85,7 +80,6 @@ fn initial_prompt_adds_mbc2_when_creative() {
             store: &store,
             artifacts: &artifacts,
             model: "cursor:auto",
-            git: false,
             gates: false,
             no_kpop: false,
             creative: true,
@@ -118,7 +112,6 @@ fn initial_prompt_omits_header_when_not_included() {
             store: &store,
             artifacts: &artifacts,
             model: "cursor:auto",
-            git: false,
             gates: false,
             no_kpop: false,
             creative: false,
@@ -127,9 +120,13 @@ fn initial_prompt_omits_header_when_not_included() {
         })
         .expect("initial");
         assert!(!out.body.contains("HEADER_BODY"));
+        assert!(
+            !out.body.contains("KPOP_BODY"),
+            "kpop lives in header via kpop_insert; skipped with header"
+        );
         assert_eq!(
             out.stdout_label.split('+').collect::<Vec<_>>(),
-            vec![KPOP_COMMON_MD, ROUTER_A_MD]
+            vec![ROUTER_A_MD]
         );
     });
 }
@@ -151,7 +148,6 @@ fn initial_prompt_respects_no_kpop_and_gates() {
             store: &store,
             artifacts: &artifacts,
             model: "cursor:auto",
-            git: false,
             gates: true,
             no_kpop: true,
             creative: false,
@@ -186,38 +182,36 @@ fn initial_prompt_git_and_max_hypotheses_affect_composition() {
         write_minimal_router_prompts(&prompt_root);
         std::fs::write(
             prompt_root.join(HEADER_MD),
-            "HEADER git={{ git_extra }}\n",
+            "HEADER\n{{ kpop_insert }}\n",
         )
         .expect("header");
         let store = PromptStore::with_root(prompt_root);
-        let with_git = build_router_initial_prompt(RouterInitialPromptInput {
+        let hi = build_router_initial_prompt(RouterInitialPromptInput {
             store: &store,
             artifacts: &artifacts,
             model: "cursor:auto",
-            git: true,
             gates: false,
             no_kpop: false,
             creative: false,
             max_hypotheses: 7,
             include_header: true,
         })
-        .expect("git");
-        let no_git = build_router_initial_prompt(RouterInitialPromptInput {
+        .expect("hi");
+        let lo = build_router_initial_prompt(RouterInitialPromptInput {
             store: &store,
             artifacts: &artifacts,
             model: "cursor:auto",
-            git: false,
             gates: false,
             no_kpop: false,
             creative: false,
             max_hypotheses: 3,
             include_header: true,
         })
-        .expect("no_git");
-        assert_ne!(with_git.body, no_git.body);
-        assert!(with_git.body.contains("KPOP_BODY 7") || with_git.body.contains('7'));
-        assert!(no_git.body.contains("KPOP_BODY 3") || no_git.body.contains('3'));
-        assert!(!with_git.body.contains("write_a"));
-        assert!(!with_git.body.contains("write_b"));
+        .expect("lo");
+        assert_ne!(hi.body, lo.body);
+        assert!(hi.body.contains("KPOP_BODY 7") || hi.body.contains('7'));
+        assert!(lo.body.contains("KPOP_BODY 3") || lo.body.contains('3'));
+        assert!(!hi.body.contains("write_a"));
+        assert!(!hi.body.contains("write_b"));
     });
 }

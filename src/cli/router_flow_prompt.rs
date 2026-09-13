@@ -21,10 +21,13 @@ pub(crate) use router_flow_prompt_summarize::{
 #[path = "router_flow_prompt_turns.rs"]
 mod router_flow_prompt_turns;
 pub(crate) use router_flow_prompt_turns::{
-    RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput, RouterKpopCommonPromptInput,
+    RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput,
     build_router_a_prompt, build_router_b_prompt, build_router_header_prompt,
-    build_router_kpop_common_prompt, build_router_mbc2_prompt, kpop_common_prompt_label,
-    router_a_prompt_label, router_b_prompt_label,
+    build_router_mbc2_prompt, router_a_prompt_label, router_b_prompt_label,
+};
+#[cfg(test)]
+pub(crate) use router_flow_prompt_turns::{
+    RouterKpopCommonPromptInput, build_router_kpop_common_prompt,
 };
 
 #[path = "router_flow_prompt_initial.rs"]
@@ -100,7 +103,6 @@ pub fn combine_router_raw_header_and_user(
         artifacts,
         text,
         model: opts.model,
-        git: opts.git,
         mode_template: router_a_prompt_file(false),
     })
 }
@@ -114,8 +116,28 @@ pub(crate) struct RouterCodeExtraInput<'a> {
     pub store: &'a PromptStore,
     pub artifacts: &'a RunArtifacts,
     pub model: &'a str,
-    pub git: bool,
     pub gates: bool,
+}
+
+fn gates_enabled_code_checks(gates: bool, work_dir: &Path) -> Result<String, String> {
+    if gates {
+        router_code_checks_text(work_dir)
+    } else {
+        Ok(String::new())
+    }
+}
+
+fn code_extra_with_optional_gates_note(body: String, quality_gates_log: Option<&str>) -> String {
+    quality_gates_log.map_or_else(
+        || body.trim().to_string(),
+        |path| {
+            format!(
+                "{body}\n\nThe quality gates were just run, and their output is in `{path}`.\n"
+            )
+            .trim()
+            .to_string()
+        },
+    )
 }
 
 pub(crate) fn render_router_code_extra(input: RouterCodeExtraInput<'_>) -> Result<String, String> {
@@ -123,30 +145,23 @@ pub(crate) fn render_router_code_extra(input: RouterCodeExtraInput<'_>) -> Resul
         store,
         artifacts,
         model,
-        git,
         gates,
     } = input;
-    let mut ctx = workflow_context_paths_only(artifacts, model, git);
-    let code_checks = if gates {
-        router_code_checks_text(artifacts.work_dir.as_path())?
-    } else {
-        String::new()
-    };
+    let code_checks = gates_enabled_code_checks(gates, artifacts.work_dir.as_path())?;
+    if code_checks.trim().is_empty() {
+        return Ok(String::new());
+    }
+    let mut ctx = workflow_context_paths_only(artifacts, model);
     ctx.insert("code_checks".to_string(), code_checks);
     let body = store
         .render_prompt_only(ROUTER_CODE_EXTRA_MD, ctx.as_map())
         .map_err(|e: PromptError| e.0)?;
-    if gates && crate::gate_loop_session::quality_gates_just_ran() {
-        let path = ctx
-            .get("quality_gates_log")
-            .map_or_else(String::new, Clone::clone);
-        return Ok(format!(
-            "{body}\n\nThe quality gates were just run, and their output is in `{path}`.\n"
-        )
-        .trim()
-        .to_string());
-    }
-    Ok(body.trim().to_string())
+    let note_path = if gates && crate::gate_loop_session::quality_gates_just_ran() {
+        ctx.get("quality_gates_log").map(String::as_str)
+    } else {
+        None
+    };
+    Ok(code_extra_with_optional_gates_note(body, note_path))
 }
 
 #[cfg(test)]
@@ -163,7 +178,6 @@ mod kiss_cov_gate_refs {
         let _ = build_router_initial_prompt;
         let _: Option<RouterInitialPrompt> = None;
         let _ = router_b_prompt_label;
-        let _ = kpop_common_prompt_label;
         let _ = router_a_prompt_label;
         let _ = build_router_summarize_prompt;
         let _ = render_router_code_extra;

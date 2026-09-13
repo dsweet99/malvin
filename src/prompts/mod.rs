@@ -7,8 +7,8 @@ pub use template::*;
 pub use defaults::{
     DO_HEADER_MD, HEADER_MD, KPOP_COMMON_MD, KPOP_COMMON_NO_KPOP_MD, ROUTER_A_MD,
     ROUTER_A_NO_KPOP_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD, ROUTER_B_NO_KPOP_MD,
-    ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD, RouterBPromptFlags, WRITE_A_MD, WRITE_B_MD,
-    header_prompt_file, kpop_common_prompt_file, router_a_prompt_file, router_b_prompt_file,
+    ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD, RouterBPromptFlags, header_prompt_file,
+    kpop_common_prompt_file, router_a_prompt_file, router_b_prompt_file,
 };
 
 #[allow(unused_imports)]

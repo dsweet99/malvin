@@ -4,7 +4,7 @@ mod run;
 pub use run::run_tidy;
 
 #[cfg(test)]
-pub(crate) use run::{TIDY_ROUTER_REQUEST, tidy_shared_with_gates_forced};
+pub(crate) use run::{TIDY_ROUTER_REQUEST, tidy_router_with_gates_forced};
 
 #[must_use]
 pub(crate) fn effective_tidy_max_loops(max_loops: usize) -> usize {
@@ -14,7 +14,7 @@ pub(crate) fn effective_tidy_max_loops(max_loops: usize) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::SharedOpts;
+    use crate::cli::{RouterOpts, SharedOpts};
 
     #[test]
     fn tidy_effective_max_loops_is_at_least_one() {
@@ -29,8 +29,10 @@ mod tests {
     #[test]
     fn tidy_forces_gates_on_regardless_of_cli() {
         let shared = SharedOpts::test_defaults();
-        assert!(!shared.gates);
-        let forced = tidy_shared_with_gates_forced(&shared);
+        let router = RouterOpts::test_defaults();
+        assert!(!router.gates);
+        let forced = tidy_router_with_gates_forced(&router);
         assert!(forced.gates);
+        let _ = shared;
     }
 }

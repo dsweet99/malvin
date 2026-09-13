@@ -1,6 +1,3 @@
-//! OOM-marker tests split out of `process_group_mem_watch_tests.rs` (kiss
-//! lines-per-file limit).
-
 use super::record_sandbox_oom_marker;
 use crate::artifacts::create_run_artifacts_from_text;
 use crate::sandbox_oom::{

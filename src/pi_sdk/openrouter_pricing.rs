@@ -131,10 +131,6 @@ fn fetch_live_pricing_sync(api_key: &str, url: &str) -> Option<HashMap<String, M
     runtime.block_on(fetch_live_pricing_async(api_key, url))
 }
 
-/// Fetch `OpenRouter` `/models` pricing into `~/.malvin_home/openrouter-pricing.json`.
-///
-/// Safe to call before Pi starts; uses a dedicated current-thread `asupersync` runtime
-/// and Pi's HTTP client (same sync-fetch pattern as `models_refresh`).
 pub(crate) fn warm_openrouter_pricing_cache(force: bool) {
     if !force
         && let Some(cache) = load_cache()

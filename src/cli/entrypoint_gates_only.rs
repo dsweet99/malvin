@@ -1,20 +1,29 @@
 use super::run_async_cli;
 use crate::cli::{
-    WorkflowCliOptions,
+    AgentRouteOpts, RouterOpts, SharedOpts,
     init_flow::{self, InitWorkflowOpts},
     run_tidy,
 };
 
-pub(crate) fn dispatch_gates_only_route(
-    mut max_loops: usize,
-    max_hypotheses: usize,
-    shared: &mut crate::cli::SharedOpts,
-    matches: &clap::ArgMatches,
-) -> Result<(), String> {
+pub(crate) struct GatesOnlyDispatch<'a> {
+    pub max_loops: usize,
+    pub max_hypotheses: usize,
+    pub shared: &'a mut SharedOpts,
+    pub router: &'a mut RouterOpts,
+    pub matches: &'a clap::ArgMatches,
+}
+
+pub(crate) fn dispatch_gates_only_route(input: GatesOnlyDispatch<'_>) -> Result<(), String> {
+    let GatesOnlyDispatch {
+        mut max_loops,
+        max_hypotheses,
+        shared,
+        router,
+        matches,
+    } = input;
     crate::cli::loop_opts::apply_default_route_tenacious(
         &mut max_loops,
         &mut shared.max_acp_retries,
-        shared.no_tenacious,
         matches,
     );
     run_async_cli(|| async {
@@ -24,18 +33,13 @@ pub(crate) fn dispatch_gates_only_route(
                 max_hypotheses,
             },
             shared,
-            WorkflowCliOptions {
-                force: !shared.no_force,
-            },
+            router
         )
         .await?;
         run_tidy(
             max_loops,
             max_hypotheses,
-            shared,
-            WorkflowCliOptions {
-                force: !shared.no_force,
-            },
+            AgentRouteOpts { shared, router }
         )
         .await
     })

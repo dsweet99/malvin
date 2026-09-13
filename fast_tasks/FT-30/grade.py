@@ -15,11 +15,26 @@ TASK_ID = "FT-30"
 REQUIRED_CHECKS = ("kiss check", "pytest tests")
 
 ORACLE_INIT = '''\
-"""Public stats helpers for this workspace."""
-
 from statsutil._rolling import rolling_mean
 
 __all__ = ["rolling_mean"]
+'''
+
+ORACLE_ROLLING = '''\
+def rolling_mean(values: list[float], window: int) -> list[float]:
+    assert isinstance(values, list)
+    assert isinstance(window, int)
+    assert window >= 1
+    n = len(values)
+    if n < window:
+        return []
+    out: list[float] = []
+    running = sum(values[:window])
+    out.append(running / window)
+    for i in range(window, n):
+        running += values[i] - values[i - window]
+        out.append(running / window)
+    return out
 '''
 
 
@@ -100,6 +115,7 @@ def evaluate(workspace: Path) -> int:
 
 def _oracle_fix(workspace: Path) -> None:
     (workspace / "statsutil" / "__init__.py").write_text(ORACLE_INIT, encoding="utf-8")
+    (workspace / "statsutil" / "_rolling.py").write_text(ORACLE_ROLLING, encoding="utf-8")
 
 
 def _with_stub_kiss_if_needed(td: Path) -> None:

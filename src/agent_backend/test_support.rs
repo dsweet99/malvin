@@ -3,7 +3,6 @@ use crate::cli::SharedOpts;
 #[must_use]
 pub fn test_io() -> crate::acp::AgentIoOptions {
     crate::acp::AgentIoOptions {
-        force: true,
         no_tee: true,
         raw_output: true,
         show_thoughts_on_stdout: false,
@@ -15,17 +14,9 @@ pub fn test_io() -> crate::acp::AgentIoOptions {
 #[must_use]
 pub fn shared_opts(_unused: bool) -> SharedOpts {
     SharedOpts {
-        background: false,
         model: crate::model_id::parse_model_id("cursor:auto").expect("model"),
-        no_force: false,
-        no_tenacious: false,
-        gates: false,
-        quiet: false,
         verbose: false,
         max_acp_retries: 3,
         doc: false,
-        git: false,
-        creative: None,
-        no_kpop: false,
     }
 }

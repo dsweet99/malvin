@@ -13,8 +13,6 @@ pub const KPOP_COMMON_NO_KPOP_MD: &str = "kpop_common_no_kpop.md";
 pub const DO_HEADER_MD: &str = "do_header.md";
 pub const ROUTER_CODE_EXTRA_MD: &str = "router_code_extra.md";
 pub const ROUTER_SUMMARIZE_MD: &str = "router_summarize.md";
-pub const WRITE_A_MD: &str = "write_a.md";
-pub const WRITE_B_MD: &str = "write_b.md";
 
 pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD];
 
@@ -32,8 +30,6 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     ROUTER_B_NO_KPOP_MD,
     ROUTER_CODE_EXTRA_MD,
     ROUTER_SUMMARIZE_MD,
-    WRITE_A_MD,
-    WRITE_B_MD,
 ];
 
 #[cfg(test)]
@@ -99,7 +95,7 @@ mod advice_path_embed_tests {
             create_run_artifacts(Path::new(&plan_path), Some(tmp.path())).expect("artifacts");
         let store = PromptStore::default_store();
         store.ensure_defaults().expect("defaults");
-        let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL, false);
+        let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL);
         let header = render_header(&store, ctx.as_map()).expect("header");
         assert!(
             !header.contains("{{"),
@@ -122,6 +118,18 @@ mod advice_path_embed_tests {
         assert!(
             header.contains("User:"),
             "header must render current_state from workflow context"
+        );
+        assert!(
+            !header.contains("Workspace `AGENTS.md`"),
+            "missing AGENTS.md must leave agents_insert empty"
+        );
+        std::fs::write(tmp.path().join("AGENTS.md"), "Prefer ripwire for maps.\n")
+            .expect("agents");
+        let ctx_with = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL);
+        let header_with = render_header(&store, ctx_with.as_map()).expect("header with agents");
+        assert!(
+            header_with.contains("Prefer ripwire for maps."),
+            "header must embed workspace AGENTS.md via agents_insert"
         );
     }
 }
@@ -178,7 +186,7 @@ mod router_header_embed_tests {
     #[test]
     fn embedded_header_and_router_render_without_unresolved_braces() {
         let (_tmp, artifacts, store) = embedded_router_fixture();
-        let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL, false);
+        let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL);
         let header = render_header(&store, ctx.as_map()).expect("header");
         assert!(
             !header.contains("{{"),
@@ -188,15 +196,19 @@ mod router_header_embed_tests {
             store: &store,
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
-            git: false,
+            max_hypotheses: 5,
+            no_kpop: false,
         })
         .expect("header turn");
         assert!(!header_turn.contains("{{"));
+        assert!(
+            header_turn.contains("KPop") || header_turn.contains("Karl Popper"),
+            "router header must embed kpop_insert when no_kpop is false"
+        );
         let kpop_turn = build_router_kpop_common_prompt(RouterKpopCommonPromptInput {
             store: &store,
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
-            git: false,
             max_hypotheses: 5,
             no_kpop: false,
         })
@@ -206,7 +218,6 @@ mod router_header_embed_tests {
             store: &store,
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
-            git: false,
             gates: false,
             no_kpop: false,
         })
@@ -216,7 +227,6 @@ mod router_header_embed_tests {
             store: &store,
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
-            git: false,
             gates: true,
             no_kpop: false,
         })
@@ -226,7 +236,6 @@ mod router_header_embed_tests {
             store: &store,
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
-            git: false,
             creative: false,
             no_kpop: false,
         })
@@ -236,7 +245,6 @@ mod router_header_embed_tests {
             store: &store,
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
-            git: false,
             creative: true,
             no_kpop: false,
         })
@@ -254,7 +262,6 @@ mod router_header_embed_tests {
             store: &store,
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
-            git: false,
         })
         .expect("summarize");
         assert!(!summarize.contains("{{"));

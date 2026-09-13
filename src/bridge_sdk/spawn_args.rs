@@ -23,12 +23,11 @@ pub struct BridgeSpawnArgs<'a> {
 }
 
 impl BridgeSpawnArgs<'_> {
-    /// Backend-specific model string placed on the wire / child argv.
     #[must_use]
     pub fn wire_model(&self) -> String {
         match self.model.backend {
             ModelBackend::Cursor => self.model.cursor_bridge_model(),
-            ModelBackend::Pi | ModelBackend::Codex => self.model.slug.clone(),
+            ModelBackend::NpmPi | ModelBackend::Pi | ModelBackend::Codex => self.model.slug.clone(),
         }
     }
 }

@@ -27,12 +27,10 @@ async fn progress_events_keep_drain_alive_past_idle_budget() {
     bug_clear_env();
 }
 
-/// Heartbeats alone (no tools) must extend the turn cap past base `2×idle`.
 #[tokio::test]
 async fn heartbeat_only_turn_extends_past_base_cap() {
     let _guard = crate::test_utils::test_env_lock();
     let tmp = bug_prepare();
-    // 8 × 60ms = 480ms wall > base turn cap 2×150ms = 300ms.
     bug_set_progress_env(60, 8);
     bug_set_drain_idle_timeout_ms(150);
     let mut client = bug_client(tmp.path(), 1);
@@ -111,12 +109,25 @@ async fn long_tool_turn_completes_past_base_turn_cap() {
     bug_set_drain_idle_timeout_ms(150);
     let mut client = bug_client(tmp.path(), 1);
     client.begin_coder_session(tmp.path()).await.expect("begin");
-    let log = tmp.path().join("prompts.log");
+    let elapsed = run_long_tool_prompt(&mut client, &tmp.path().join("prompts.log")).await;
+    assert!(
+        elapsed > std::time::Duration::from_millis(300),
+        "expected wall time past base 2×150ms cap, got {elapsed:?}"
+    );
+    assert_long_tool_turn_done(&client, tmp.path());
+    client.end_coder_session().await.expect("end");
+    bug_clear_env();
+}
+
+async fn run_long_tool_prompt(
+    client: &mut crate::cursor_sdk::CursorSdkClient,
+    log: &std::path::Path,
+) -> std::time::Duration {
     let started = std::time::Instant::now();
     client
-        .run_coder_prompt(
+        .active_coder_session().expect("active coder session").run_coder_prompt(
             "LONG_TOOL_TURN_THEN_DONE please",
-            &log,
+            log,
             "coder",
             CoderPromptOptions {
                 llm_phase: Some(crate::run_timing::TimingPhase::Implement),
@@ -125,20 +136,17 @@ async fn long_tool_turn_completes_past_base_turn_cap() {
         )
         .await
         .expect("long tool turn must finish past base 2× idle cap");
-    let elapsed = started.elapsed();
-    assert!(
-        elapsed > std::time::Duration::from_millis(300),
-        "expected wall time past base 2×150ms cap, got {elapsed:?}"
-    );
+    started.elapsed()
+}
+
+fn assert_long_tool_turn_done(client: &crate::cursor_sdk::CursorSdkClient, tmp_dir: &std::path::Path) {
     assert_eq!(
         client.last_coder_prompt_agent_response().as_deref(),
         Some("long-tool-turn-done")
     );
-    let trace = std::fs::read_to_string(tmp.path().join("trace.jsonl")).unwrap_or_default();
+    let trace = std::fs::read_to_string(tmp_dir.join("trace.jsonl")).unwrap_or_default();
     assert!(trace.contains("\"event\":\"tool_call\""), "{trace}");
     assert!(trace.contains("\"kind\":\"heartbeat\""), "{trace}");
-    client.end_coder_session().await.expect("end");
-    bug_clear_env();
 }
 
 async fn run_progress_prompt(
@@ -146,7 +154,7 @@ async fn run_progress_prompt(
     log: &std::path::Path,
 ) {
     client
-        .run_coder_prompt(
+        .active_coder_session().expect("active coder session").run_coder_prompt(
             "PROGRESS_THEN_DONE please",
             log,
             "coder",

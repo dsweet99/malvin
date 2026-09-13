@@ -6,7 +6,6 @@ use crate::sdk_drain_timeout::sdk_drain_idle_timeout_from_env;
 
 use super::{DrainIdleClock, DrainIdleLabels};
 
-/// Shared wall-clock budget for a multi-event drain (turn / handshake).
 pub(crate) struct DrainIdleTurn {
     pub(crate) clock: DrainIdleClock,
     idle: Duration,

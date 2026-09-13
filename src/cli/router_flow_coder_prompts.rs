@@ -1,7 +1,7 @@
-use crate::agent_backend::AgentBackend;
+use crate::agent_backend::SdkClient;
 
 pub(crate) struct RouterInitialCoderPrompt<'a> {
-    pub client: &'a mut AgentBackend,
+    pub client: &'a mut SdkClient,
     pub prompt: &'a str,
     pub log_path: &'a std::path::Path,
     pub stdout_bracket_label: &'a str,
@@ -13,7 +13,7 @@ pub(crate) async fn run_router_initial_coder_prompt(
 ) -> Result<(), String> {
     input
         .client
-        .run_coder_prompt(
+        .active_coder_session().map_err(|e| e.to_string())?.run_coder_prompt(
             input.prompt,
             input.log_path,
             input.log_who,
@@ -30,13 +30,13 @@ pub(crate) async fn run_router_initial_coder_prompt(
 }
 
 pub(crate) async fn run_router_b_coder_prompt(
-    client: &mut AgentBackend,
+    client: &mut SdkClient,
     prompt: &str,
     log_path: &std::path::Path,
     stdout_bracket_label: &str,
 ) -> Result<(), String> {
     client
-        .run_coder_prompt(
+        .active_coder_session().map_err(|e| e.to_string())?.run_coder_prompt(
             prompt,
             log_path,
             "router_b",
@@ -53,12 +53,12 @@ pub(crate) async fn run_router_b_coder_prompt(
 }
 
 pub(crate) async fn run_router_summarize_coder_prompt(
-    client: &mut AgentBackend,
+    client: &mut SdkClient,
     prompt: &str,
     log_path: &std::path::Path,
 ) -> Result<(), String> {
     client
-        .run_coder_prompt(
+        .active_coder_session().map_err(|e| e.to_string())?.run_coder_prompt(
             prompt,
             log_path,
             "router_summarize",

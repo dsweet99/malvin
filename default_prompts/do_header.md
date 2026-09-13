@@ -17,6 +17,7 @@ Hard rules:
 - Do not wrap the markers in a markdown code fence.
 - Do not omit the markers. An answer without them is a failed response.
 - Do not emit placeholder words like "your answer here"; put the real answer.
+- Do not emit your response more than once. Wait until the end to emit.
 
 Your response should be short and to the point.
 - No status updates.

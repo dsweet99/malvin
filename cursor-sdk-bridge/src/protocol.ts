@@ -1,6 +1,3 @@
-
-
-export type NoForcePolicy = "sandbox" | "fail_fast" | "auto_review";
 export type RunDoneStatus = "finished" | "error" | "cancelled";
 
 export function canonicalRunDoneStatus(status: string): RunDoneStatus {
@@ -21,10 +18,6 @@ export type CreateOp = {
   cwd: string;
   model: string;
   apiKey?: string;
-  settingSources?: string[];
-  sandboxEnabled?: boolean;
-  autoReview?: boolean;
-  noForcePolicy?: NoForcePolicy;
 };
 
 export type ResumeOp = {
@@ -33,17 +26,12 @@ export type ResumeOp = {
   cwd: string;
   model: string;
   apiKey?: string;
-  settingSources?: string[];
-  sandboxEnabled?: boolean;
-  autoReview?: boolean;
-  noForcePolicy?: NoForcePolicy;
 };
 
 export type SendOp = {
   op: "send";
   prompt: string;
   runId?: string;
-  forceStuck?: boolean;
 };
 
 export type CancelOp = { op: "cancel" };

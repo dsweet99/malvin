@@ -77,7 +77,6 @@ fn fetch_generation_cost_sync(api_key: &str, generation_id: &str) -> Option<Cost
     runtime.block_on(fetch_generation_cost_async(api_key, generation_id))
 }
 
-/// Sum billed `OpenRouter` costs for generation ids captured during the `Pi` stream.
 pub(super) fn fetch_billed_cost_from_generation_ids() -> Option<AggregatedCostUsd> {
     let ids = take_openrouter_generation_ids();
     if ids.is_empty() {

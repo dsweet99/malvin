@@ -26,7 +26,7 @@ fn assert_default_route_max_hypotheses(cli_args: &[&str], expected: usize) {
         crate::malvin_config_file::open_malvin_config(work).expect("seed");
         write_default_workflow_max_hypotheses(work, 11);
         let (cli, _) = parse_cli_with_config_defaults(cli_args).expect("parse");
-        assert_eq!(cli.max_hypotheses, expected);
+        assert_eq!(cli.router.max_hypotheses, expected);
         std::env::set_current_dir(cwd).expect("restore cwd");
     });
 }
@@ -51,7 +51,7 @@ fn default_route_max_hypotheses_defaults_to_five() {
     crate::test_utils::with_isolated_home(|_| {
         let (cli, _) = parse_cli_with_config_defaults(["malvin", "hello"]).expect("parse");
         assert_eq!(
-            cli.max_hypotheses,
+            cli.router.max_hypotheses,
             crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES
         );
     });
@@ -72,7 +72,7 @@ fn default_route_max_hypotheses_flag_after_request_parses() {
     crate::test_utils::with_isolated_home(|_| {
         let (cli, _) = parse_cli_with_config_defaults(["malvin", "hello", "--max-hypotheses", "7"])
             .expect("parse flag after request");
-        assert_eq!(cli.max_hypotheses, 7);
+        assert_eq!(cli.router.max_hypotheses, 7);
         assert_eq!(cli.request.as_deref(), Some("hello"));
     });
 }

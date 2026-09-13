@@ -11,7 +11,6 @@ pub(crate) const DO_DOC: &str = include_str!("../../default_prompts/docs/do.md")
 
 pub(crate) const fn command_doc_markdown(cmd: &Commands) -> &'static str {
     match cmd {
-        Commands::Write(_) => include_str!("../../default_prompts/docs/write.md"),
         Commands::Admin(admin) => match &admin.command {
             super::AdminCommand::Models(_) => {
                 include_str!("../../default_prompts/docs/models.md")

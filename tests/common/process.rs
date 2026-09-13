@@ -16,6 +16,9 @@ pub fn command_output_with_timeout(
 ) -> std::io::Result<std::process::Output> {
     cmd.env("MALVIN_TEST_NO_REAL_AGENT", "1");
     cmd.env("MALLOC_ARENA_MAX", "2");
+    cmd.env_remove("HERDR_ENV");
+    cmd.env_remove("HERDR_SOCKET_PATH");
+    cmd.env_remove("HERDR_PANE_ID");
     let (child, stdout_jh, stderr_jh) = spawn_piped_process_group(cmd)?;
     wait_child_with_timeout(child, stdout_jh, stderr_jh, Instant::now() + timeout)
 }

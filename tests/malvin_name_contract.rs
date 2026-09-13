@@ -138,6 +138,9 @@ fn different_acp_lock_slots_same_workspace_both_acquire() {
 fn entrypoint_duplicate_name_via_binary() {
     with_isolated_names(|| {
         let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
+            .env_remove("HERDR_ENV")
+            .env_remove("HERDR_SOCKET_PATH")
+            .env_remove("HERDR_PANE_ID")
             .args(["--name", "probe", "--do", "plan.md"])
             .output()
             .expect("malvin");

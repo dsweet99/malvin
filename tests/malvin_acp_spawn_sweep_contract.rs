@@ -35,6 +35,9 @@ fn run_malvin_home(
 ) -> std::process::Output {
     Command::new(env!("CARGO_BIN_EXE_malvin"))
         .env("HOME", home)
+        .env_remove("HERDR_ENV")
+        .env_remove("HERDR_SOCKET_PATH")
+        .env_remove("HERDR_PANE_ID")
         .current_dir(work)
         .args(args)
         .output()
@@ -79,7 +82,7 @@ fn malvin_doc_does_not_sweep_but_models_does() {
     let stale = chamber.join("dead.lock");
     std::fs::write(&stale, "424242").expect("stale lock");
     let home = tempfile::tempdir().expect("home");
-    let models = run_malvin_home(home.path(), work, &["admin", "models", "pi:"]);
+    let models = run_malvin_home(home.path(), work, &["admin", "models", "rpi:"]);
     assert!(
         models.status.success(),
         "stderr={}",

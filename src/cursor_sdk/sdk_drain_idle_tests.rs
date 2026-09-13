@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use super::sdk_bug_helpers::{
     assert_err_has, bug_clear_env, bug_client, bug_prepare, bug_set_drain_idle_timeout_ms,
-    expect_prompt_err,
+    expect_prompt_err, run_implement_prompt,
 };
 
 #[tokio::test]
@@ -18,18 +18,7 @@ async fn never_run_done_idle_timeout_tears_down_and_retries() {
     let err = expect_prompt_err(&mut client, "NEVER_RUN_DONE please", &log).await;
     assert_err_has(&err, &["bridge timed out", "run_done"]);
     assert!(!client.has_open_coder_session());
-    client
-        .run_coder_prompt(
-            "hi",
-            &log,
-            "coder",
-            CoderPromptOptions {
-                llm_phase: Some(crate::run_timing::TimingPhase::Implement),
-                ..CoderPromptOptions::default()
-            },
-        )
-        .await
-        .expect("retry after drain idle timeout");
+    run_implement_prompt(&mut client, "hi", &log).await;
     assert_eq!(
         client.last_coder_prompt_agent_response().as_deref(),
         Some("mock reply")
@@ -70,7 +59,7 @@ async fn keep_alive_events_do_not_trip_idle_drain_timeout() {
     client.begin_coder_session(tmp.path()).await.expect("begin");
     let log = tmp.path().join("prompts.log");
     client
-        .run_coder_prompt(
+        .active_coder_session().expect("active coder session").run_coder_prompt(
             "KEEP_ALIVE_THEN_DONE please",
             &log,
             "coder",
@@ -163,34 +152,12 @@ async fn empty_result_run_done_clears_prior_last_response() {
     let mut client = bug_client(tmp.path(), 1);
     client.begin_coder_session(tmp.path()).await.expect("begin");
     let log = tmp.path().join("prompts.log");
-    client
-        .run_coder_prompt(
-            "hi",
-            &log,
-            "coder",
-            CoderPromptOptions {
-                llm_phase: Some(crate::run_timing::TimingPhase::Implement),
-                ..CoderPromptOptions::default()
-            },
-        )
-        .await
-        .expect("first turn");
+    run_implement_prompt(&mut client, "hi", &log).await;
     assert_eq!(
         client.last_coder_prompt_agent_response().as_deref(),
         Some("mock reply")
     );
-    client
-        .run_coder_prompt(
-            "EMPTY_RESULT_RUN_DONE please",
-            &log,
-            "coder",
-            CoderPromptOptions {
-                llm_phase: Some(crate::run_timing::TimingPhase::Implement),
-                ..CoderPromptOptions::default()
-            },
-        )
-        .await
-        .expect("empty-result turn");
+    run_implement_prompt(&mut client, "EMPTY_RESULT_RUN_DONE please", &log).await;
     assert_eq!(
         client.last_coder_prompt_agent_response(),
         None,

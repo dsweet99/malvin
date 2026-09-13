@@ -1,34 +1,32 @@
 use super::{Commands, Exit, entrypoint_from};
-use crate::cli::models_cmd::ModelsArgs;
 
-fn shared_opts_parses_git_flag_default_off() {
+fn git_flag_is_rejected_by_clap() {
     use clap::Parser;
-    let cli = crate::cli::Cli::try_parse_from(["malvin", "--doc"]).expect("parse");
-    assert!(!cli.shared.git);
+    let err = crate::cli::Cli::try_parse_from(["malvin", "--git", "--doc"])
+        .expect_err("--git must be rejected");
+    let msg = err.to_string();
+    assert!(
+        msg.contains("unexpected") || msg.contains("unknown") || msg.contains("--git"),
+        "clap must reject --git; got {msg}"
+    );
 }
 
-fn shared_opts_parses_git_flag_on() {
-    use clap::Parser;
-    let cli = crate::cli::Cli::try_parse_from(["malvin", "--git", "--doc"]).expect("parse");
-    assert!(cli.shared.git);
-}
-
-fn help_lists_git_flag() {
+fn help_omits_git_flag() {
     use clap::CommandFactory;
     let help = crate::cli::Cli::command().render_help().to_string();
-    assert!(help.contains("--git"), "help={help}");
+    assert!(!help.contains("--git"), "help={help}");
 }
 
 fn shared_opts_parses_creative_flag_default_off() {
     use clap::Parser;
     let cli = crate::cli::Cli::try_parse_from(["malvin", "--doc"]).expect("parse");
-    assert!(cli.shared.creative.is_none());
+    assert!(cli.router.creative.is_none());
 }
 
 fn shared_opts_parses_creative_flag_on() {
     use clap::Parser;
     let cli = crate::cli::Cli::try_parse_from(["malvin", "--creative", "--doc"]).expect("parse");
-    assert_eq!(cli.shared.creative, Some(1.0));
+    assert_eq!(cli.router.creative, Some(1.0));
 }
 
 fn help_lists_creative_flag() {
@@ -40,13 +38,13 @@ fn help_lists_creative_flag() {
 fn shared_opts_parses_no_kpop_flag_default_off() {
     use clap::Parser;
     let cli = crate::cli::Cli::try_parse_from(["malvin", "--doc"]).expect("parse");
-    assert!(!cli.shared.no_kpop);
+    assert!(!cli.router.no_kpop);
 }
 
 fn shared_opts_parses_no_kpop_flag_on() {
     use clap::Parser;
     let cli = crate::cli::Cli::try_parse_from(["malvin", "--no-kpop", "--doc"]).expect("parse");
-    assert!(cli.shared.no_kpop);
+    assert!(cli.router.no_kpop);
 }
 
 fn help_hides_no_kpop_flag() {
@@ -118,18 +116,12 @@ fn gates_only_route_needs_session() {
     ));
 }
 
-fn write_command_is_not_gates_only() {
-    use crate::cli::write_flow::WriteArgs;
-    let _ = Commands::Write(WriteArgs {
-        shared: crate::cli::SharedOpts::test_defaults(),
-        request: Some("topic".to_string()),
-        out_path: "write.tex".to_string(),
-        max_loops: 1,
-        max_hypotheses: 5,
-        tenacious: false,
-        out_path_explicit: false,
+fn admin_command_is_not_gates_only() {
+    use crate::cli::{AdminArgs, AdminCommand};
+    use crate::cli::models_cmd::ModelsArgs;
+    let _ = Commands::Admin(AdminArgs {
+        command: AdminCommand::Models(ModelsArgs::default()),
     });
-    let _ = ModelsArgs::default();
 }
 
 fn name_flag_is_rejected_by_clap() {
@@ -145,9 +137,8 @@ fn name_flag_is_rejected_by_clap() {
 
 #[test]
 fn kiss_bundled_cli_entrypoint_name_tests() {
-    shared_opts_parses_git_flag_default_off();
-    shared_opts_parses_git_flag_on();
-    help_lists_git_flag();
+    git_flag_is_rejected_by_clap();
+    help_omits_git_flag();
     shared_opts_parses_creative_flag_default_off();
     shared_opts_parses_creative_flag_on();
     help_lists_creative_flag();
@@ -159,6 +150,6 @@ fn kiss_bundled_cli_entrypoint_name_tests() {
     bare_help_does_not_create_name_files();
     do_workflow_parses_without_name_flag();
     gates_only_route_needs_session();
-    write_command_is_not_gates_only();
+    admin_command_is_not_gates_only();
     name_flag_is_rejected_by_clap();
 }

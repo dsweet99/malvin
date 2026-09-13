@@ -7,11 +7,6 @@ use crate::child_health::{
 
 use super::{DrainHealthVerdict, DrainIdleHealthCtx};
 
-/// Sample sandbox health for one idle slice.
-///
-/// When ``process_group_id`` is missing there is no sandbox child set to judge.
-/// Sampling host descendants can ``StillBusy``-extend forever (e.g. the agent
-/// process), so this returns ``AppearsHung`` and keeps the original idle budget.
 pub(crate) async fn sample_drain_health(
     ctx: DrainIdleHealthCtx<'_>,
     slice: Duration,

@@ -1,9 +1,7 @@
-"""Kiss coverage witnesses for src/python/qa.py."""
 
 from __future__ import annotations
 
 import qa as _mod
-
 
 def test_qa_kiss_coverage_witnesses() -> None:
     _ = """

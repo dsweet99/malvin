@@ -1,4 +1,3 @@
-"""Kiss coverage witnesses for src/python/modal_sandbox_lifecycle.py."""
 from __future__ import annotations
 
 import modal_sandbox_lifecycle as _mod

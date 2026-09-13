@@ -6,19 +6,12 @@ pub(crate) async fn agent_backoff_sleep(d: std::time::Duration) {
     tokio::time::sleep(d).await;
 }
 
-/// Why an [`AgentError`] occurred, for session-recycle decisions.
-///
-/// Prefer setting this at the emit site over matching error prose later.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum AgentFault {
-    /// No typed session implication; teardown may still use legacy message needles.
     #[default]
     Ordinary,
-    /// Child, bridge, or stdio transport is dead or unusable.
     SessionDead,
-    /// Cursor agent already has an active run.
     CursorBusy,
-    /// Cursor SDK auth looks stale.
     StaleAuth,
 }
 
@@ -73,7 +66,6 @@ impl AgentError {
     }
 }
 
-/// Ordinary [`AgentError`] constructor (value-namespace alias for call-site ergonomics).
 #[allow(non_snake_case)]
 #[must_use]
 pub fn AgentError(message: String) -> AgentError {
@@ -87,7 +79,6 @@ pub struct AuthError(pub String);
 #[derive(Debug, Clone, Copy)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct AgentIoOptions {
-    pub force: bool,
     pub no_tee: bool,
     pub raw_output: bool,
     pub show_thoughts_on_stdout: bool,
@@ -140,12 +131,11 @@ fn agent_error_session_dead_fault() {
 #[test]
 fn agent_io_options_default_fields() {
     let io = AgentIoOptions {
-        force: false,
         no_tee: false,
         raw_output: false,
         show_thoughts_on_stdout: false,
         emit_stdout_markdown: false,
         log_full_outgoing_prompts: false,
     };
-    assert!(!io.force);
+    assert!(!io.no_tee);
 }

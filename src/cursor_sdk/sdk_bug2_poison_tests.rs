@@ -14,7 +14,7 @@ async fn fatal_then_run_done_does_not_poison_next_prompt() {
     let err = expect_prompt_err(&mut client, "FATAL_THEN_RUN_DONE", &log).await;
     assert_err_has(&err, &["stream error"]);
     client
-        .run_coder_prompt(
+        .active_coder_session().expect("active coder session").run_coder_prompt(
             "hi",
             &log,
             "coder",

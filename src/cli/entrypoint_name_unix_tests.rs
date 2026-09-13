@@ -24,7 +24,7 @@ fn duplicate_name_exits_failure() {
 
 #[cfg(unix)]
 #[test]
-fn duplicate_name_error_on_stderr_with_background() {
+fn duplicate_name_error_on_stderr() {
     use crate::test_stderr_capture::capture_stderr_output;
 
     crate::test_utils::with_isolated_home(|work| {
@@ -36,13 +36,13 @@ fn duplicate_name_error_on_stderr_with_background() {
         std::fs::write(&names, b"not-a-dir").expect("poison names path");
         let stderr = capture_stderr_output(|| {
             assert_eq!(
-                entrypoint_from(["malvin", "--background", "--do", "plan.md"]),
+                entrypoint_from(["malvin", "--do", "plan.md"]),
                 Exit::Failure
             );
         });
         assert!(
             !stderr.is_empty(),
-            "background --do must print session acquire failure on stderr; got: {stderr:?}"
+            "--do must print session acquire failure on stderr; got: {stderr:?}"
         );
     });
 }

@@ -2,7 +2,7 @@ use crate::acp::{AgentIoOptions, CoderPromptOptions};
 
 fn pi_mock_io() -> AgentIoOptions {
     AgentIoOptions {
-        force: true,
+
         no_tee: true,
         raw_output: true,
         show_thoughts_on_stdout: false,
@@ -25,7 +25,7 @@ fn pi_clear_mock_env() {
 }
 
 fn pi_mock_client(run_dir: &std::path::Path) -> crate::agent_backend::SdkClient {
-    let mut client = crate::pi_sdk::pi_sdk_client_from_raw("pi:openai/gpt-4o", pi_mock_io(), 1);
+    let mut client = crate::pi_sdk::pi_sdk_client_from_raw("rpi:openai/gpt-4o", pi_mock_io(), 1);
     client.prompts_log_run_dir = Some(run_dir.to_path_buf());
     client
 }
@@ -54,9 +54,19 @@ async fn pi_sdk_client_mock_rpc_prompt_records_usage() {
 }
 
 async fn run_hello_prompt(client: &mut crate::agent_backend::SdkClient, run_dir: &std::path::Path) {
+    run_pi_prompt(client, run_dir, "hello").await;
+}
+
+async fn run_pi_prompt(
+    client: &mut crate::agent_backend::SdkClient,
+    run_dir: &std::path::Path,
+    prompt: &str,
+) {
     client
+        .active_coder_session()
+        .expect("active coder session")
         .run_coder_prompt(
-            "hello",
+            prompt,
             &run_dir.join("prompts.log"),
             "coder",
             CoderPromptOptions {
@@ -68,22 +78,6 @@ async fn run_hello_prompt(client: &mut crate::agent_backend::SdkClient, run_dir:
         .expect("prompt");
 }
 
-#[tokio::test]
-async fn pi_sdk_noforce_fails_fast() {
-    let _guard = crate::test_utils::test_env_lock();
-    pi_install_mock_env();
-    let tmp = tempfile::tempdir().expect("tmp");
-    let mut io = pi_mock_io();
-    io.force = false;
-    let mut client = crate::pi_sdk::pi_sdk_client_from_raw("pi:openai/gpt-4o", io, 1);
-    client.prompts_log_run_dir = Some(tmp.path().to_path_buf());
-    let err = client
-        .begin_coder_session(tmp.path())
-        .await
-        .expect_err("noforce");
-    assert!(err.message.contains("--no-force"));
-    pi_clear_mock_env();
-}
 
 #[tokio::test]
 async fn pi_sdk_agent_end_before_ack_completes() {
@@ -93,7 +87,7 @@ async fn pi_sdk_agent_end_before_ack_completes() {
     let mut client = pi_mock_client(tmp.path());
     client.begin_coder_session(tmp.path()).await.expect("begin");
     client
-        .run_coder_prompt(
+        .active_coder_session().expect("active coder session").run_coder_prompt(
             "AGENT_END_BEFORE_ACK please",
             &tmp.path().join("prompts.log"),
             "coder",
@@ -124,18 +118,7 @@ async fn pi_sdk_empty_assistant_result_clears_prior_response() {
         client.last_coder_prompt_agent_response().as_deref(),
         Some("echo:hello")
     );
-    client
-        .run_coder_prompt(
-            "EMPTY_ASSISTANT_RESULT please",
-            &tmp.path().join("prompts.log"),
-            "coder",
-            CoderPromptOptions {
-                llm_phase: Some(crate::run_timing::TimingPhase::Implement),
-                ..CoderPromptOptions::default()
-            },
-        )
-        .await
-        .expect("empty result turn");
+    run_pi_prompt(&mut client, tmp.path(), "EMPTY_ASSISTANT_RESULT please").await;
     assert_eq!(
         client.last_coder_prompt_agent_response(),
         None,

@@ -1,7 +1,6 @@
 use super::{MALVIN_OVERVIEW_DOC, ROUTER_DOC, command_doc_markdown, print_doc_to_writer};
 use crate::cli::Cli;
 use crate::cli::models_cmd::ModelsArgs;
-use crate::cli::write_flow::WriteArgs;
 use crate::cli::{AdminArgs, AdminCommand, Commands};
 use clap::Parser;
 
@@ -17,16 +16,6 @@ fn subcommand_doc_embeds_have_malvin_heading() {
         command: AdminCommand::Models(ModelsArgs::default()),
     }));
     assert!(md.starts_with("# malvin "));
-    let md = command_doc_markdown(&Commands::Write(WriteArgs {
-        shared: crate::cli::SharedOpts::test_defaults(),
-        request: None,
-        out_path: "write.tex".to_string(),
-        max_loops: 3,
-        max_hypotheses: 5,
-        tenacious: true,
-        out_path_explicit: false,
-    }));
-    assert!(md.starts_with("# malvin write"));
     assert!(ROUTER_DOC.starts_with("# malvin"));
 }
 
@@ -60,41 +49,22 @@ fn do_doc_parses_with_do_flag() {
 }
 
 #[test]
-fn write_doc_parses_without_request_when_doc_flag_set() {
-    let cli = Cli::try_parse_from(["malvin", "write", "--doc"]).expect("parse");
+fn admin_doc_parses_with_doc_flag() {
+    let cli = Cli::try_parse_from(["malvin", "admin", "models", "--doc"]).expect("parse");
     assert!(cli.shared.doc);
     match cli.command.as_ref() {
-        Some(Commands::Write(w)) => assert!(w.request.is_none()),
-        _ => panic!("expected Write"),
+        Some(Commands::Admin(_)) => {}
+        _ => panic!("expected Admin"),
     }
 }
 
 #[test]
-fn write_doc_parses_with_request_when_doc_flag_set() {
-    let cli = Cli::try_parse_from(["malvin", "write", "topic.md", "--doc"]).expect("parse");
-    assert!(cli.shared.doc);
-    match cli.command.as_ref() {
-        Some(Commands::Write(e)) => {
-            assert_eq!(e.request.as_deref(), Some("topic.md"));
-            assert_eq!(e.out_path, "write.tex");
-        }
-        _ => panic!("expected Write"),
-    }
-}
-
-#[test]
-fn print_doc_write_writes_subcommand_md() {
-    let cmd = Commands::Write(WriteArgs {
-        shared: crate::cli::SharedOpts::test_defaults(),
-        request: Some("topic".to_string()),
-        out_path: "write.tex".to_string(),
-        max_loops: 3,
-        max_hypotheses: 5,
-        tenacious: true,
-        out_path_explicit: false,
+fn print_doc_admin_writes_subcommand_md() {
+    let cmd = Commands::Admin(AdminArgs {
+        command: AdminCommand::Models(ModelsArgs::default()),
     });
     let out = capture_doc(Some(&cmd)).expect("capture");
-    assert!(out.starts_with(b"# malvin write"));
+    assert!(out.starts_with(b"# malvin"));
 }
 
 #[test]

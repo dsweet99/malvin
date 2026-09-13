@@ -10,6 +10,9 @@ fn isolated_home() -> tempfile::TempDir {
 fn malvin_cmd(home_root: &std::path::Path) -> std::process::Command {
     let mut cmd = std::process::Command::new(env!("CARGO_BIN_EXE_malvin"));
     cmd.env("HOME", home_root.join("home"));
+    cmd.env_remove("HERDR_ENV");
+    cmd.env_remove("HERDR_SOCKET_PATH");
+    cmd.env_remove("HERDR_PANE_ID");
     cmd
 }
 
@@ -136,7 +139,7 @@ fn bare_malvin_shows_commands_only_and_exits_zero() {
         .collect();
     assert_eq!(
         command_names,
-        ["write", "admin"],
+        ["admin"],
         "bare stdout command order: {bare_s}"
     );
     assert!(

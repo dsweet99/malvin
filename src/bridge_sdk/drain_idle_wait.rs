@@ -37,7 +37,6 @@ impl DrainIdleWaitOpts<'_> {
     }
 }
 
-/// Testable core with an injectable health sampler.
 pub(crate) async fn await_next_with_idle_using<T, Fut, H, HFut>(
     opts: &mut DrainIdleWaitOpts<'_>,
     read: Fut,

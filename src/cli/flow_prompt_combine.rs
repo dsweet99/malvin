@@ -9,7 +9,6 @@ pub(crate) struct DualHeaderPromptInput<'a> {
     pub artifacts: &'a RunArtifacts,
     pub text: &'a str,
     pub model: &'a str,
-    pub git: bool,
     pub mode_template: &'a str,
 }
 
@@ -39,7 +38,7 @@ pub(crate) fn combine_acp_prompt_header_and_user(
     opts: PromptModelOpts<'_>,
 ) -> Result<(String, String, String), String> {
     use crate::orchestrator::workflow_context_paths_only;
-    let context = workflow_context_paths_only(artifacts, opts.model, opts.git);
+    let context = workflow_context_paths_only(artifacts, opts.model);
     let header = render_header(store, context.as_map()).map_err(|e: PromptError| e.0)?;
     let user = text.trim_end().to_string();
     let combined = join_labeled_strata([
@@ -53,7 +52,7 @@ pub(crate) fn combine_mode_header_and_user(
     input: DualHeaderPromptInput<'_>,
 ) -> Result<(String, String, String), String> {
     use crate::orchestrator::workflow_context_paths_only;
-    let context = workflow_context_paths_only(input.artifacts, input.model, input.git);
+    let context = workflow_context_paths_only(input.artifacts, input.model);
     combine_prompt_file_and_user(input.store, input.text, input.mode_template, &context)
 }
 

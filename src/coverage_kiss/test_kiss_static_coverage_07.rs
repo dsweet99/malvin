@@ -1,4 +1,3 @@
-//! Kiss static coverage contract (call-shaped tokens; not compiled).
 
 #[test]
 fn kiss_cov_pi_sdk_rpc_io() {

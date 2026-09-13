@@ -1,4 +1,3 @@
-"""Tox gate discovery, warm commands, and offline flag rewriting for sandbox prep."""
 
 from __future__ import annotations
 
@@ -26,7 +25,6 @@ def _tox_version_key(version: str) -> tuple[int, ...]:
     return tuple(parts) if parts else (0,)
 
 def clamp_tox_version(version: str | None = None) -> str:
-    """Return a tox version that supports offline ``--skip-env-install``."""
     floor = MIN_TOX_FOR_SKIP_ENV_INSTALL
     if version is None or not str(version).strip():
         return floor
@@ -36,7 +34,6 @@ def clamp_tox_version(version: str | None = None) -> str:
     return floor
 
 def image_build_pip_install_command(packages: str) -> str:
-    """Pip-install *packages* into ``/opt/venv`` when present (TOOLCHAIN_PATH)."""
     pkgs = packages.strip()
     if not pkgs:
         raise ValueError("packages must be non-empty")
@@ -49,7 +46,6 @@ def image_build_pip_install_command(packages: str) -> str:
     )
 
 def _expand_tox_envlist_token(token: str) -> list[str]:
-    """Expand a single tox envlist factor, including simple ``{a,b}`` braces."""
     stripped = token.strip()
     if not stripped:
         return []
@@ -60,7 +56,6 @@ def _expand_tox_envlist_token(token: str) -> list[str]:
     return [f"{prefix}{part.strip()}{suffix}" for part in body.split(",") if part.strip()]
 
 def _split_tox_envlist(raw: str) -> list[str]:
-    """Split an envlist value on commas that are outside ``{…}`` factors."""
     tokens: list[str] = []
     buf: list[str] = []
     depth = 0
@@ -84,7 +79,6 @@ def _split_tox_envlist(raw: str) -> list[str]:
     return tokens
 
 def is_tox_invocation(command: str) -> bool:
-    """True when *command* invokes the tox CLI (direct or ``python -m tox``)."""
     tokens = command.split()
     if not tokens:
         return False
@@ -98,12 +92,6 @@ def is_tox_invocation(command: str) -> bool:
     )
 
 def ensure_tox_skip_missing_interpreters(command: str) -> str:
-    """Append ``--skip-missing-interpreters true`` when *command* invokes tox.
-
-    Harbor images often ship a single Python while upstream ``tox.ini`` lists
-    factor envs (``py310``, …). Failing closed on a missing interpreter aborts
-    image warm and init-checks even when other gate envs are fine.
-    """
     if not is_tox_invocation(command):
         return command
     parts = command.split()
@@ -112,7 +100,6 @@ def ensure_tox_skip_missing_interpreters(command: str) -> str:
     return " ".join(parts)
 
 def ensure_tox_offline_skip_flags(command: str) -> str:
-    """Append tox offline skip flags when *command* invokes tox."""
     if not is_tox_invocation(command):
         return command
     parts = ensure_tox_skip_missing_interpreters(command).split()
@@ -122,7 +109,6 @@ def ensure_tox_offline_skip_flags(command: str) -> str:
     return " ".join(parts)
 
 def tox_gate_env_names(workspace: Path) -> list[str]:
-    """Return gate-like tox env names from ``envlist`` and ``[testenv:…]`` headers."""
     tox_path = workspace / "tox.ini"
     if not tox_path.is_file():
         return []
@@ -147,23 +133,12 @@ def tox_gate_env_names(workspace: Path) -> list[str]:
     return names
 
 def tox_cpython_factor_executable(name: str) -> str | None:
-    """Map tox factor env ``py310`` / ``py39`` / ``py27`` to ``python3.10`` / ``python3.9`` / ``python2.7``.
-
-    Returns ``None`` for non-factor gate names (``pep8``, ``format``, ``pypy3``, …).
-    """
     match = re.fullmatch(r"py([23])(\d{1,2})", name.strip(), flags=re.IGNORECASE)
     if match is None:
         return None
     return f"python{match.group(1)}.{int(match.group(2))}"
 
 def tox_gate_check_commands(workspace: Path) -> list[str]:
-    """Return offline-safe ``tox run -e …`` lines for gate environments.
-
-    Factor envs (``py310``, …) are wrapped in an in-container interpreter probe so
-    ``source .malvin/gates`` under ``set -e`` continues when Harbor lacks that
-    Python. Tox's ``--skip-missing-interpreters`` alone still exits non-zero when
-    the only selected env is skipped.
-    """
     commands: list[str] = []
     for name in tox_gate_env_names(workspace):
         cmd = ensure_tox_offline_skip_flags(f"tox run -e {name}")
@@ -177,7 +152,6 @@ def tox_gate_check_commands(workspace: Path) -> list[str]:
     return commands
 
 def tox_gate_env_warm_command(workspace: Path) -> str | None:
-    """Pre-create gate tox envs at image build for offline ``--skip-env-install`` runs."""
     names = tox_gate_env_names(workspace)
     if not names:
         return None
@@ -186,16 +160,6 @@ def tox_gate_env_warm_command(workspace: Path) -> str | None:
     )
 
 def tox_gate_precommit_warm_command(workspace: Path) -> str | None:
-    """Warm pre-commit hooks under each tox gate env interpreter (image build).
-
-    Tox gate envs often pin ``base_python`` (e.g. adaptix lint → python3.11).
-    Default ``pre-commit install-hooks`` only populates caches for the default
-    interpreter; agent sandboxes cannot reach PyPI under the Cursor CIDR
-    allowlist, so lint-env ``pre-commit run`` would otherwise fail offline.
-    Soft-fail: missing envs or hook install errors must not abort image build.
-    Uses explicit ``.tox/<env>/bin/python`` paths (not a glob) so empty
-    expansions cannot silently skip work under ``bash -lc "…"`` image layers.
-    """
     if not (workspace / ".pre-commit-config.yaml").is_file():
         return None
     names = tox_gate_env_names(workspace)
@@ -298,7 +262,6 @@ def _test_tox_gate_precommit_warm_command() -> None:
         assert ".tox/*/" not in cmd
 
 def _test_tox_gate_env_names_omit_mypy_typecheck() -> None:
-    """mypy/typecheck are not agent tox-gate envs (pristine snapshots often fail them)."""
     import tempfile
 
     with tempfile.TemporaryDirectory() as tmp:

@@ -13,18 +13,63 @@ fn cursor_resume_id(client: &SdkClient) -> Option<String> {
         .flatten()
 }
 
-/// Spawn a bridge session. On success, returns whether the spawn used Cursor resume.
+fn record_spawn_success(
+    client: &mut SdkClient,
+    session: SdkSession,
+    cwd: PathBuf,
+    resume_agent_id: Option<&str>,
+) -> bool {
+    client.record_backend_success();
+    adopt_spawned_session(client, session, cwd);
+    let resumed = resume_agent_id.is_some();
+    if resumed {
+        client.header_lifecycle.mark_satisfied_keeping_header();
+    } else {
+        client.header_lifecycle.mark_fresh_spawn();
+    }
+    if !resumed {
+        emit_agent_started_log(client);
+    }
+    resumed
+}
+
+async fn handle_spawn_failure(
+    client: &mut SdkClient,
+    err: AgentError,
+    attempt: u32,
+    max_attempts: u32,
+) -> Result<(String, bool), AgentError> {
+    let last_error = note_spawn_failure(client, err);
+    if client.record_backend_error(&last_error) {
+        return Err(AgentError(
+            crate::agent_backend::backend_error_tracker::format_backend_consecutive_error_message(
+                client.model.backend.label(),
+                &last_error,
+                client.max_acp_retries,
+            ),
+        ));
+    }
+    let stop = backoff_after_agent_failure(
+        client.timing.as_ref(),
+        &last_error,
+        attempt,
+        max_attempts,
+    )
+    .await?;
+    Ok((last_error, stop))
+}
+
 pub(super) async fn spawn_with_retries(
     client: &mut SdkClient,
     cwd: PathBuf,
     thinking: Option<&str>,
 ) -> Result<bool, AgentError> {
     let resume_agent_id = cursor_resume_id(client);
-    let mut last_error = String::new();
-    let max_attempts = client.max_acp_retries;
+    let mut last_error;
+    let backoff_ceiling = u32::MAX;
     let mut attempts_used = 0_u32;
-    for attempt in 1..=max_attempts {
-        attempts_used = attempt;
+    loop {
+        attempts_used = attempts_used.saturating_add(1);
         match spawn_for_backend(
             client.model.backend,
             bridge_spawn_args(client, &cwd, thinking),
@@ -33,25 +78,12 @@ pub(super) async fn spawn_with_retries(
         )
         .await
         {
-            Ok(s) => {
-                adopt_spawned_session(client, s, cwd);
-                let resumed = resume_agent_id.is_some();
-                client.header_delivered = resumed;
-                if !resumed {
-                    emit_agent_started_log(client);
-                }
-                return Ok(resumed);
-            }
+            Ok(s) => return Ok(record_spawn_success(client, s, cwd, resume_agent_id.as_deref())),
             Err(e) => {
-                last_error = note_spawn_failure(client, e);
-                if backoff_after_agent_failure(
-                    client.timing.as_ref(),
-                    &last_error,
-                    attempt,
-                    max_attempts,
-                )
-                .await?
-                {
+                let (err_msg, stop) =
+                    handle_spawn_failure(client, e, attempts_used, backoff_ceiling).await?;
+                last_error = err_msg;
+                if stop {
                     break;
                 }
             }
@@ -69,7 +101,12 @@ pub(super) fn spawn_thinking_wire(client: &SdkClient) -> Option<String> {
     client
         .model
         .thinking_param()
-        .filter(|_| matches!(client.model.backend, ModelBackend::Pi | ModelBackend::Codex))
+        .filter(|_| {
+            matches!(
+                client.model.backend,
+                ModelBackend::NpmPi | ModelBackend::Pi | ModelBackend::Codex
+            )
+        })
         .map(str::to_string)
 }
 
@@ -106,6 +143,9 @@ async fn spawn_for_backend(
         ModelBackend::Cursor => crate::cursor_sdk::spawn_bridge(args, resume_agent_id)
             .await
             .map(|session| SdkSession::Cursor(Box::new(session))),
+        ModelBackend::NpmPi => crate::npm_pi_sdk::spawn_bridge(args)
+            .await
+            .map(|session| SdkSession::NpmPi(Box::new(session))),
         ModelBackend::Pi => crate::pi_sdk::spawn_bridge(args).await,
         ModelBackend::Codex => crate::codex_sdk::spawn_bridge(args, service)
             .await
@@ -117,7 +157,7 @@ fn adopt_spawned_session(client: &mut SdkClient, s: SdkSession, cwd: PathBuf) {
     if matches!(client.model.backend, ModelBackend::Cursor) {
         remember_agent_id_from(client, &s);
     }
-    client.coder = Some(BegunCoderSession::Live { cwd, session: s });
+    client.coder = BegunCoderSession::Live { cwd, session: s };
     crate::herdr::notify_reclaim();
 }
 

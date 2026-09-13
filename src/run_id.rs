@@ -14,14 +14,11 @@ pub(crate) fn set_active_run_dir(path: Option<PathBuf>) {
         .unwrap_or_else(std::sync::PoisonError::into_inner) = path;
 }
 
-/// Bind the active run directory and notify herdr that a run started.
-/// Owns run-lifecycle side effects that used to live behind `error_run_log`.
 pub(crate) fn activate_run(path: PathBuf) {
     set_active_run_dir(Some(path.clone()));
     crate::herdr::notify_run_start(&path);
 }
 
-/// Notify herdr that the run ended and clear the active run directory.
 pub(crate) fn deactivate_run() {
     crate::herdr::notify_run_end();
     set_active_run_dir(None);
@@ -35,7 +32,6 @@ pub(crate) fn active_run_dir() -> Option<PathBuf> {
         .clone()
 }
 
-/// Unique log path under `~/.malvin_home/logs/`: `<hash>/<run_id>`.
 #[must_use]
 pub(crate) fn short_malvin_log_id(run_dir: &Path) -> Option<String> {
     let run = run_dir.file_name()?.to_str()?;
@@ -184,6 +180,17 @@ mod collision_tests {
 
         assert_eq!(run_dir, run_root.join("aaabbbcd"));
         assert!(run_dir.is_dir());
+    }
+
+    #[test]
+    fn create_run_dir_errors_after_collision_limit() {
+        let tmp = tempfile::tempdir().unwrap();
+        let run_root = crate::malvin_logs_root(tmp.path());
+        std::fs::create_dir_all(&run_root).unwrap();
+        std::fs::create_dir_all(run_root.join("stuck")).unwrap();
+        let err = create_run_dir_with_id(&run_root, |_| "stuck".to_string()).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::AlreadyExists);
+        assert!(err.to_string().contains("collision limit"));
     }
 
     #[test]

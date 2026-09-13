@@ -1,11 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use crate::agent_backend::{
-    AgentBackend, agent_backend_attach_run_timing_for_session,
-    agent_backend_set_implement_display_name, agent_backend_set_run_timing,
-    agent_backend_start_coder_session,
-};
+use crate::agent_backend::{SdkClient, set_implement_display_name};
 use crate::artifacts::{
     RunArtifacts, SessionDotfileBackups, create_run_artifacts_from_text, resolve_user_md_request,
 };
@@ -33,15 +29,6 @@ pub fn resolve_one_shot_request_artifacts(
     Ok((text, artifacts))
 }
 
-pub fn finish_one_shot_auth_and_backups(
-    client: &mut AgentBackend,
-    artifacts: &RunArtifacts,
-) -> Result<SessionDotfileBackups, String> {
-    client.ensure_authenticated().map_err(|e| e.to_string())?;
-    client.prompts_log_run_dir = Some(artifacts.run_dir.clone());
-    SessionDotfileBackups::snapshot_after_ensuring_home_config(&artifacts.work_dir)
-}
-
 pub struct OneShotCoderGuard {
     timing: Arc<Mutex<crate::run_timing::RunTiming>>,
     run_dir: PathBuf,
@@ -49,16 +36,16 @@ pub struct OneShotCoderGuard {
 
 impl OneShotCoderGuard {
     pub async fn begin(
-        client: &mut AgentBackend,
+        client: &mut SdkClient,
         artifacts: &RunArtifacts,
         implement_label: &'static str,
     ) -> Result<Self, String> {
-        let timing = agent_backend_attach_run_timing_for_session(client);
-        if let Err(e) = agent_backend_start_coder_session(client, &artifacts.work_dir).await {
-            agent_backend_set_run_timing(client, None);
+        let timing = client.attach_run_timing_for_session();
+        if let Err(e) = client.start_coder_session(&artifacts.work_dir).await {
+            client.set_run_timing(None);
             return Err(e.to_string());
         }
-        agent_backend_set_implement_display_name(client, implement_label);
+        set_implement_display_name(client, implement_label);
         Ok(Self {
             timing,
             run_dir: artifacts.run_dir.clone(),
@@ -67,7 +54,7 @@ impl OneShotCoderGuard {
 
     pub async fn finish(
         self,
-        client: &mut AgentBackend,
+        client: &mut SdkClient,
         run_res: Result<(), String>,
     ) -> Result<(), String> {
         let end_res = client.end_coder_session().await.map_err(|e| e.to_string());
@@ -91,13 +78,9 @@ pub fn finish_one_shot_after_prompt(
     backups: &SessionDotfileBackups,
     result_md: &PathBuf,
 ) -> Result<(), String> {
-    let r = crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
+    crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
         acp_res, work_dir, backups, result_md,
-    );
-    if r.is_ok() {
-        crate::cli::error_run_log::clear_command_error_run_dir();
-    }
-    r
+    )
 }
 
 #[cfg(test)]
@@ -105,7 +88,6 @@ mod kiss_cov {
     #[test]
     fn kiss_static_fn_item_refs() {
         let _ = super::resolve_one_shot_request_artifacts;
-        let _ = super::finish_one_shot_auth_and_backups;
         let _ = super::finish_one_shot_after_prompt;
         let _ = stringify!(OneShotCoderGuard);
     }

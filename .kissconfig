@@ -4,9 +4,8 @@
 [global]
 min_similarity = 0.9
 duplication_enabled = true
-orphan_module_enabled = false
 comment_removal_enabled = true
-docs_allowed = ["./"]
+docs_allowed = ["ops", "fast_tests"]
 orphan_allowed = []
 
 [test]

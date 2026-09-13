@@ -10,7 +10,7 @@ fn run_models_pi_only_with_openrouter_key() {
             run_models(
                 ModelsArgs {
                     refresh: false,
-                    words: vec!["pi:".into()],
+                    words: vec!["rpi:".into()],
                 },
                 crate::config::DEFAULT_CLI_MODEL,
             )
@@ -21,19 +21,19 @@ fn run_models_pi_only_with_openrouter_key() {
 
 fn assert_live_auth_filter(out: &str) {
     assert!(
-        !out.contains("pi:openai/"),
+        !out.contains("rpi:openai/"),
         "openai should be filtered without OPENAI_API_KEY: {out}"
     );
     assert!(
-        out.contains("pi:openrouter/"),
+        out.contains("rpi:openrouter/"),
         "openrouter should remain when OPENROUTER_API_KEY is set: {out}"
     );
     assert!(
-        !out.contains("pi:zhipuai/"),
+        !out.contains("rpi:zhipuai/"),
         "provider whose API key is unset must be hidden: {out}"
     );
     assert!(
-        !out.contains("pi:cohere/"),
+        !out.contains("rpi:cohere/"),
         "provider whose API key is unset must be hidden: {out}"
     );
 }
@@ -64,11 +64,11 @@ fn run_models_filters_pi_rows_using_stored_credentials_too() {
         run_models_pi_only_with_openrouter_key();
         let out = take_captured_stdout();
         assert!(
-            out.contains("pi:openai/"),
+            out.contains("rpi:openai/"),
             "stored credential must list the same providers a run would accept: {out}"
         );
         assert!(
-            out.contains("pi:openrouter/"),
+            out.contains("rpi:openrouter/"),
             "env-key provider must still list: {out}"
         );
     });
@@ -104,7 +104,7 @@ fn run_models_lists_pi_rows_without_pi_binary() {
             run_models(
                 ModelsArgs {
                     refresh: false,
-                    words: vec!["pi:".into()],
+                    words: vec!["rpi:".into()],
                 },
                 crate::config::DEFAULT_CLI_MODEL,
             )
@@ -115,7 +115,7 @@ fn run_models_lists_pi_rows_without_pi_binary() {
                 "crate registry should list models: {out}"
             );
             assert!(
-                out.contains("pi:openrouter/"),
+                out.contains("rpi:openrouter/"),
                 "should list pi models: {out}"
             );
         });

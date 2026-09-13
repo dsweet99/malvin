@@ -7,6 +7,7 @@ mod reset;
 mod send;
 mod trace;
 
+pub use env::{strip_herdr_env, strip_herdr_env_tokio};
 pub use lifecycle::{notify_reclaim, notify_run_end, notify_run_start, notify_working};
 pub use reset::reset_to_not_working;
 
@@ -27,6 +28,8 @@ mod lifecycle_io_tests;
 mod kiss_cov {
     #[test]
     fn kiss_cov_public_entrypoints() {
+        let _ = super::strip_herdr_env;
+        let _ = super::strip_herdr_env_tokio;
         let _ = super::notify_run_start;
         let _ = super::notify_reclaim;
         let _ = super::notify_working;

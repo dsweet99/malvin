@@ -6,12 +6,11 @@ use super::sdk_client_prompt::{
     teardown_sdk_session_after_transport_error,
 };
 
-/// Send the bound spawn header once per fresh agent context.
 pub(super) async fn send_bound_session_header(client: &mut SdkClient) -> Result<(), AgentError> {
-    if client.header_delivered {
+    if client.header_lifecycle.is_satisfied() {
         return Ok(());
     }
-    let Some(header) = client.session_header.clone() else {
+    let Some(header) = client.header_lifecycle.pending_header().cloned() else {
         return Ok(());
     };
     let opts = header_prompt_options(&header.stdout_label);
@@ -40,21 +39,33 @@ async fn try_send_header_with_retries(
     header: &CoderSessionHeader,
     opts: &CoderPromptOptions<'_>,
 ) -> Result<(), AgentError> {
-    let max_attempts = client.max_acp_retries;
-    let mut last_error = String::new();
-    for attempt in 1..=max_attempts {
+    let backoff_ceiling = u32::MAX;
+    let mut last_error;
+    let mut attempts_used = 0_u32;
+    loop {
+        attempts_used = attempts_used.saturating_add(1);
         match send_header_once(client, &header.prompt, opts).await {
             Ok(()) => {
-                client.header_delivered = true;
+                client.record_backend_success();
+                client.header_lifecycle.mark_satisfied_keeping_header();
                 return Ok(());
             }
             Err(e) => {
                 last_error = recover_header_send_failure(client, e).await?;
+                if client.record_backend_error(&last_error) {
+                    return Err(AgentError(
+                        super::backend_error_tracker::format_backend_consecutive_error_message(
+                            client.model.backend.label(),
+                            &last_error,
+                            client.max_acp_retries,
+                        ),
+                    ));
+                }
                 if backoff_after_agent_failure(
                     client.timing.as_ref(),
                     &last_error,
-                    attempt,
-                    max_attempts,
+                    attempts_used,
+                    backoff_ceiling,
                 )
                 .await?
                 {
@@ -63,7 +74,7 @@ async fn try_send_header_with_retries(
             }
         }
     }
-    let retries = max_attempts.saturating_sub(1);
+    let retries = attempts_used.saturating_sub(1);
     Err(AgentError(format!(
         "{} SDK header prompt failed after {retries} {}. Last error:\n{last_error}",
         client.model.backend.label(),

@@ -1,4 +1,4 @@
-use super::{Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_router};
+use super::{Commands, Exit, SharedOpts, run_do, run_router};
 use crate::do_flow::DoArgs;
 
 #[path = "entrypoint_from.rs"]
@@ -8,7 +8,7 @@ mod entrypoint_gates_only;
 #[path = "entrypoint_short_help.rs"]
 mod entrypoint_short_help;
 pub use entrypoint_from::entrypoint_from;
-pub(crate) use entrypoint_gates_only::dispatch_gates_only_route;
+pub(crate) use entrypoint_gates_only::{GatesOnlyDispatch, dispatch_gates_only_route};
 
 pub fn print_command_error(message: &str) {
     use crate::output::{MALVIN_WHO, print_log_error, print_stderr_line};
@@ -78,40 +78,24 @@ pub(crate) fn finish_entrypoint(res: Result<(), String>) -> Exit {
     }
 }
 
-pub(crate) fn prepare_cli_output(shared: &SharedOpts) {
+pub(crate) fn prepare_cli_output(_shared: &SharedOpts) {
     let theme = std::env::current_dir()
         .ok()
         .map(|cwd| crate::malvin_config_file::load_malvin_config(&cwd).theme)
         .unwrap_or_default();
     crate::terminal_palette::init_terminal_theme(theme);
     crate::output::init_stdout_style();
-    crate::output::set_stdout_suppressed(shared.background);
+    crate::output::set_stdout_suppressed(false);
 }
 
 pub(crate) fn dispatch_command(
     command: Commands,
-    shared: &SharedOpts,
+    model: &str,
     matches: &clap::ArgMatches,
 ) -> Result<(), String> {
-    let mut shared = shared.clone();
+    let _ = matches;
     match command {
-        Commands::Write(write_args) => {
-            crate::cli::shared_opts::overlay_shared_opts_from_subcommand(
-                &mut shared,
-                &write_args.shared,
-                matches,
-                "write",
-            );
-            super::entrypoint_commands::dispatch_plan_authoring_gate(
-                Commands::Write(write_args),
-                &mut shared,
-                matches,
-            )
-        }
-        Commands::Admin(admin) => {
-            let model = shared.model.canonical();
-            super::run_admin(admin, &model)
-        }
+        Commands::Admin(admin) => super::run_admin(admin, model),
     }
 }
 
@@ -119,10 +103,7 @@ pub fn dispatch_do_workflow(do_args: DoArgs, shared: &SharedOpts) -> Result<(), 
     run_async_cli(|| {
         run_do(
             do_args,
-            shared,
-            WorkflowCliOptions {
-                force: !shared.no_force,
-            },
+            shared
         )
     })
 }
@@ -132,6 +113,7 @@ pub struct DefaultRouteDispatch<'a> {
     pub max_loops: usize,
     pub max_hypotheses: usize,
     pub shared: &'a mut SharedOpts,
+    pub router: &'a mut super::RouterOpts,
     pub matches: &'a clap::ArgMatches,
 }
 
@@ -142,12 +124,12 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
         mut max_loops,
         max_hypotheses,
         shared,
+        router,
         matches,
     } = input;
     super::loop_opts::apply_default_route_tenacious(
         &mut max_loops,
         &mut shared.max_acp_retries,
-        shared.no_tenacious,
         matches,
     );
     run_async_cli(|| async {
@@ -157,9 +139,7 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
                 max_hypotheses,
             },
             shared,
-            WorkflowCliOptions {
-                force: !shared.no_force,
-            },
+            router
         )
         .await?;
         run_router(
@@ -168,10 +148,10 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
                 max_loops,
                 max_hypotheses,
             },
-            shared,
-            WorkflowCliOptions {
-                force: !shared.no_force,
-            },
+            crate::cli::AgentRouteOpts {
+                shared,
+                router,
+            }
         )
         .await
     })

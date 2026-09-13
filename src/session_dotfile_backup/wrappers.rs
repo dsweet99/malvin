@@ -15,7 +15,8 @@ pub fn backup_workspace_malvin_checks_if_present_with_id(
     work_dir: &Path,
     mut generate_id: impl FnMut(usize) -> String,
 ) -> Result<MalvinChecksBackup, String> {
-    super::slots::backup_slot(0, work_dir, &mut generate_id)
+    super::slots::backup_slot(super::slots::MALVIN_CHECKS_SLOT, work_dir, &mut generate_id)
+        .map(Into::into)
 }
 
 #[allow(clippy::missing_errors_doc)]
@@ -23,7 +24,7 @@ pub fn restore_workspace_malvin_checks_backup(
     work_dir: &Path,
     backup: &MalvinChecksBackup,
 ) -> Result<(), String> {
-    super::slots::restore_slot(work_dir, backup, 0)
+    super::slots::restore_slot(work_dir, backup.as_slot_state(), super::slots::MALVIN_CHECKS_SLOT)
 }
 
 #[allow(clippy::missing_errors_doc)]
@@ -46,6 +47,7 @@ pub fn backup_workspace_malvin_config_workspace_if_present_with_id(
         work_dir,
         &mut generate_id,
     )
+    .map(Into::into)
 }
 
 #[allow(clippy::missing_errors_doc)]
@@ -53,5 +55,9 @@ pub fn restore_workspace_malvin_config_workspace_backup(
     work_dir: &Path,
     backup: &MalvinConfigWorkspaceBackup,
 ) -> Result<(), String> {
-    super::slots::restore_slot(work_dir, backup, super::slots::MALVIN_CONFIG_WORKSPACE_SLOT)
+    super::slots::restore_slot(
+        work_dir,
+        backup.as_slot_state(),
+        super::slots::MALVIN_CONFIG_WORKSPACE_SLOT,
+    )
 }

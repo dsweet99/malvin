@@ -6,11 +6,17 @@ fn parse_cursor_and_pi() {
     assert_eq!(c.backend, ModelBackend::Cursor);
     assert_eq!(c.canonical(), "cursor:auto");
     assert!(c.params.is_empty());
-    let pi = parse_model_id("pi:openai/gpt-4o").expect("pi");
-    assert!(pi.is_pi());
-    assert_eq!(pi.canonical(), "pi:openai/gpt-4o");
-    assert_eq!(pi.pi_provider_and_model(), Some(("openai", "gpt-4o")));
-    let pi_nested = parse_model_id("pi:openrouter/anthropic/claude-3-haiku").expect("pi nested");
+    let rpi = parse_model_id("rpi:openai/gpt-4o").expect("rpi");
+    assert!(rpi.is_pi());
+    assert!(!rpi.is_npm_pi());
+    assert_eq!(rpi.canonical(), "rpi:openai/gpt-4o");
+    assert_eq!(rpi.pi_provider_and_model(), Some(("openai", "gpt-4o")));
+    let npm = parse_model_id("pi:openai/gpt-4o").expect("npm pi");
+    assert!(npm.is_npm_pi());
+    assert!(!npm.is_pi());
+    assert_eq!(npm.canonical(), "pi:openai/gpt-4o");
+    assert_eq!(npm.pi_provider_and_model(), Some(("openai", "gpt-4o")));
+    let pi_nested = parse_model_id("rpi:openrouter/anthropic/claude-3-haiku").expect("pi nested");
     assert_eq!(
         pi_nested.pi_provider_and_model(),
         Some(("openrouter", "anthropic/claude-3-haiku"))
@@ -42,10 +48,10 @@ fn parse_bracket_overrides() {
         c.cursor_bridge_model(),
         "claude-opus-5[effort=high,fast=true]"
     );
-    let pi = parse_model_id("pi:openai/gpt-4o[thinking=high]").expect("pi thinking");
+    let pi = parse_model_id("rpi:openai/gpt-4o[thinking=high]").expect("pi thinking");
     assert_eq!(pi.slug, "openai/gpt-4o");
     assert_eq!(pi.thinking_param(), Some("high"));
-    assert_eq!(pi.canonical(), "pi:openai/gpt-4o[thinking=high]");
+    assert_eq!(pi.canonical(), "rpi:openai/gpt-4o[thinking=high]");
     let codex = parse_model_id("codex:gpt-5.6[thinking=high,service=priority]").expect("codex");
     assert_eq!(codex.slug, "gpt-5.6");
     assert_eq!(codex.thinking_param(), Some("high"));
@@ -66,7 +72,7 @@ fn parse_bracket_overrides() {
         Some("off")
     );
     assert_eq!(
-        parse_model_id("pi:openai/gpt-4o[thinking=ultra]")
+        parse_model_id("rpi:openai/gpt-4o[thinking=ultra]")
             .expect("shared thinking vocabulary")
             .thinking_param(),
         Some("ultra")
@@ -77,12 +83,12 @@ fn parse_bracket_overrides() {
             .contains(']')
     );
     assert!(
-        parse_model_id("pi:openai/gpt-4o[fast=true]")
+        parse_model_id("rpi:openai/gpt-4o[fast=true]")
             .expect_err("pi only thinking")
             .contains("thinking")
     );
     assert!(
-        parse_model_id("pi:openai/gpt-4o[thinking=nope]")
+        parse_model_id("rpi:openai/gpt-4o[thinking=nope]")
             .expect_err("bad level")
             .contains("thinking")
     );
@@ -120,7 +126,7 @@ fn format_and_split_bracket_params_helpers() {
 fn reject_bare_legacy_and_empty_slug() {
     assert!(parse_model_id("auto").is_err());
     assert!(parse_model_id("cursor:").is_err());
-    assert!(parse_model_id("pi:openai").is_err());
+    assert!(parse_model_id("rpi:openai").is_err());
     assert!(
         parse_model_id("prime:openai/gpt-4o")
             .expect_err("legacy prime")
@@ -134,25 +140,26 @@ fn reject_bare_legacy_and_empty_slug() {
     assert!(
         parse_model_id("openrouter:x")
             .expect_err("legacy")
-            .contains("pi:openrouter/")
+            .contains("rpi:openrouter/")
     );
     assert!(
         parse_model_id("local:qwen35_9b_q4")
             .expect_err("legacy")
             .contains("local")
     );
+    assert!(parse_model_id("pi:openai").is_err());
 }
 
 #[test]
 fn require_config_and_helpers() {
     assert!(require_config_model("auto").is_err());
     assert_eq!(
-        require_config_model("pi:openai/gpt-4o")
+        require_config_model("rpi:openai/gpt-4o")
             .expect("ok")
             .canonical(),
-        "pi:openai/gpt-4o"
+        "rpi:openai/gpt-4o"
     );
-    let pi = parse_model_id("pi:openai/gpt-4o").expect("pi");
+    let pi = parse_model_id("rpi:openai/gpt-4o").expect("pi");
     assert_eq!(pi.slug, "openai/gpt-4o");
     assert!(pi.is_pi());
     assert!(!parse_model_id("cursor:auto").expect("cursor").is_pi());
@@ -171,4 +178,107 @@ fn model_backend_and_parsed_model_debug() {
     let clone = parsed.clone();
     assert_eq!(clone, parsed);
     let _ = format!("{parsed:?}");
+}
+
+#[test]
+fn parse_canonical_metamorphic_roundtrip() {
+    let samples = [
+        "cursor:auto",
+        "  cursor:claude-opus-5[effort=high,fast=true]  ",
+        "pi:openai/gpt-4o",
+        "rpi:openrouter/anthropic/claude-3-haiku[thinking=medium]",
+        "codex:gpt-5.6[thinking=high,service=priority]",
+    ];
+    for raw in samples {
+        let parsed = parse_model_id(raw).unwrap_or_else(|e| panic!("parse {raw:?}: {e}"));
+        let again = parse_model_id(&parsed.canonical()).expect("canonical reparse");
+        assert_eq!(again, parsed, "raw={raw:?}");
+        assert_eq!(parsed.to_string(), parsed.canonical());
+    }
+}
+
+#[test]
+fn backend_labels_drain_prefixes_and_provider_split() {
+    assert_eq!(ModelBackend::Cursor.label(), "cursor");
+    assert_eq!(ModelBackend::NpmPi.label(), "pi");
+    assert_eq!(ModelBackend::Pi.label(), "rpi");
+    assert_eq!(ModelBackend::Codex.label(), "codex");
+    assert!(
+        ModelBackend::Cursor
+            .drain_idle_prefix()
+            .contains("bridge timed out")
+    );
+    assert!(
+        ModelBackend::NpmPi
+            .drain_idle_prefix()
+            .contains("npm pi rpc timed out")
+    );
+    assert!(ModelBackend::Pi.drain_idle_prefix().contains("pi rpc timed out"));
+    assert!(ModelBackend::Codex.drain_idle_prefix().contains("codex timed out"));
+    assert!(
+        parse_model_id("cursor:auto")
+            .expect("cursor")
+            .pi_provider_and_model()
+            .is_none()
+    );
+    assert!(
+        parse_model_id("codex:gpt-5.6")
+            .expect("codex")
+            .pi_provider_and_model()
+            .is_none()
+    );
+    assert!(parse_model_id("rpi:/model").is_err());
+    assert!(parse_model_id("rpi:provider/").is_err());
+    assert!(parse_model_id("").is_err());
+    assert_eq!(
+        require_config_model("")
+            .expect("empty → default")
+            .canonical(),
+        crate::support_paths::DEFAULT_CLI_MODEL
+    );
+    assert_eq!(
+        require_config_model("   \t")
+            .expect("whitespace → default")
+            .canonical(),
+        crate::support_paths::DEFAULT_CLI_MODEL
+    );
+    assert_eq!(
+        require_prefixed_model("cursor:auto").expect("ok"),
+        "cursor:auto"
+    );
+    assert!(require_prefixed_model("auto").is_err());
+}
+
+#[test]
+fn bracket_format_split_metamorphic_and_reject_fuzz() {
+    let params = vec![
+        ModelParam {
+            id: "thinking".into(),
+            value: "low".into(),
+        },
+        ModelParam {
+            id: "service".into(),
+            value: "flex".into(),
+        },
+    ];
+    let rendered = format_bracket_params(&params);
+    let (base, round) = split_bracket_params(&format!("gpt-5.6{rendered}")).expect("roundtrip");
+    assert_eq!(base, "gpt-5.6");
+    assert_eq!(round, params);
+
+    let rejects = [
+        "x[", "x[a", "[a=1]", "x[[a=1]]", "x[a=1][b=2]", "x[a=1,]", "x[=v]", "x[k=]",
+        "x[noeq]", "x[a=1,,b=2]", "x]", "ab]c",
+    ];
+    for raw in rejects {
+        assert!(
+            split_bracket_params(raw).is_err(),
+            "expected reject for {raw:?}"
+        );
+    }
+    assert!(
+        split_bracket_params("x]")
+            .expect_err("unbalanced closer")
+            .contains(']')
+    );
 }

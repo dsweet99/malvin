@@ -20,10 +20,11 @@ When you load prior context, label it `HISTORY` with a number indicating how old
 ### Current state
 `{{ current_state }}`
 
+{{ agents_insert }}
 
 ## Calibration
 
-Before work likely to exceed three minutes, state an estimate:
+Before starting work state an estimate:
 
 ```text
 Predicted running time: <prediction>
@@ -54,7 +55,6 @@ Malvin caps sandbox memory (see `Sandbox memory:` under Current state). If USS e
 - Prefer narrow checks while iterating; run the full gate set once, sequentially, at the end.
 - The built-in gate runner already runs `.malvin/gates` one line at a time. Do not also launch those same commands in parallel in the same turn.
 
-{{ git_extra }}
 ---
 
 ## Thinking and Reasoning
@@ -88,7 +88,6 @@ When addressing the operator:
 ## Macros
 
 - DCC: Don't Change Code
-- RL: Read recent logs.
 
 
 ## Direct Messages
@@ -103,4 +102,6 @@ __MALVIN_DM_END__
 
 Use DM only when directed to, or in an emergency.
 
----- ENDMALVIN HEADER ----
+{{ kpop_insert }}
+
+---- END MALVIN HEADER ----

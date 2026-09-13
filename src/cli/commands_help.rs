@@ -5,8 +5,6 @@ use clap::builder::Command;
 
 use super::Cli;
 
-pub use super::commands_help_subcommand::print_subcommand_short_help;
-
 fn visible_subcommands(cmd: &Command) -> Vec<&Command> {
     cmd.get_subcommands()
         .filter(|sub| !sub.is_hide_set())
@@ -126,14 +124,14 @@ mod tests {
             .collect();
         assert!(!names.iter().any(|n| n == "code"));
         assert!(!names.iter().any(|n| n == "delight"));
-        assert_eq!(names, vec!["write", "admin"]);
+        assert_eq!(names, vec!["admin"]);
     }
 
     #[test]
     fn format_command_lines_aligns_names() {
         let cmd = Cli::command();
         let lines = format_command_lines(&visible_subcommands(&cmd));
-        assert!(lines.iter().any(|line| line.starts_with("  write")));
+        assert!(lines.iter().any(|line| line.starts_with("  admin")));
         assert!(!lines.iter().any(|line| line.starts_with("  init")));
     }
 

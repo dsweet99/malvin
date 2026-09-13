@@ -46,6 +46,7 @@ fn child_health_transport_errors_require_coder_session_teardown() {
 fn live_drain_idle_prefixes_require_coder_session_teardown() {
     for prefix in [
         crate::acp::DRAIN_IDLE_PREFIX_BRIDGE,
+        crate::acp::DRAIN_IDLE_PREFIX_NPM_PI,
         crate::acp::DRAIN_IDLE_PREFIX_PI,
         crate::acp::DRAIN_IDLE_PREFIX_CODEX,
     ] {

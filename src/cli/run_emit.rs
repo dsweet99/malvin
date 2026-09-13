@@ -70,6 +70,15 @@ impl RunStartupEmitOpts {
             model: shared.model.canonical(),
         }
     }
+
+    #[must_use]
+    pub fn from_route(opts: super::AgentRouteOpts<'_>, host_resources: bool) -> Self {
+        Self {
+            tee_stdout: opts.router.tee_startup_stdout(),
+            host_resources,
+            model: opts.shared.model.canonical(),
+        }
+    }
 }
 
 pub fn emit_run_startup_banner(
@@ -149,8 +158,8 @@ mod tests {
             "Model: cursor:composer-2"
         );
         assert_eq!(
-            format_model_line("pi:openai/gpt-4o"),
-            "Model: pi:openai/gpt-4o"
+            format_model_line("rpi:openai/gpt-4o"),
+            "Model: rpi:openai/gpt-4o"
         );
     }
 
@@ -160,12 +169,12 @@ mod tests {
         let run_dir = tmp.path().join("run");
         std::fs::create_dir_all(&run_dir).expect("mkdir");
         std::fs::write(run_dir.join("command.log"), "existing\n").expect("seed");
-        append_command_log_line(&run_dir, false, &format_model_line("pi:openai/gpt-4o"))
+        append_command_log_line(&run_dir, false, &format_model_line("rpi:openai/gpt-4o"))
             .expect("emit");
         let text = std::fs::read_to_string(run_dir.join("command.log")).expect("read");
         let delim = format_who_tag_delim(WHO_U);
         assert!(
-            text.contains("existing") && text.contains(&format!(" {delim}Model: pi:openai/gpt-4o"))
+            text.contains("existing") && text.contains(&format!(" {delim}Model: rpi:openai/gpt-4o"))
         );
     }
 
@@ -230,14 +239,14 @@ mod tests {
                 RunStartupEmitOpts {
                     tee_stdout: false,
                     host_resources: false,
-                    model: "pi:openai/gpt-4o".into(),
+                    model: "rpi:openai/gpt-4o".into(),
                 },
                 "code",
             )
             .expect("startup");
             let log = std::fs::read_to_string(artifacts.run_dir.join("command.log")).expect("log");
             assert!(log.contains("Command:") && !log.contains("Memory:"));
-            assert!(log.contains("Model: pi:openai/gpt-4o"));
+            assert!(log.contains("Model: rpi:openai/gpt-4o"));
         });
     }
 }

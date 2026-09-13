@@ -113,7 +113,7 @@ fn insert_artifact_paths_populates_context() {
         plan_path,
         work_dir: tmp.path().to_path_buf(),
     };
-    let ctx = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, false);
+    let ctx = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL);
     assert!(ctx.contains_key("plan_path"));
     assert!(ctx.contains_key("run_meta_dir"));
     assert!(ctx.contains_key("review_path"));

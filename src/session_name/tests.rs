@@ -151,7 +151,7 @@ fn release_removes_own_file() {
 fn release_preserves_foreign_file() {
     with_isolated_names(|_| {
         std::fs::create_dir_all(names_registry_root()).expect("mkdir names");
-        std::fs::write(name_path("probe"), "424242\n").expect("foreign pid");
+        std::fs::write(name_path("probe"), "4194303\n").expect("foreign pid");
         release_name("probe");
         assert!(name_path("probe").exists(), "foreign file preserved");
     });

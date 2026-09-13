@@ -20,8 +20,8 @@ pub use auth::{ensure_pi_authenticated, is_provider_authenticated};
 pub use models_list::{
     DEFAULT_PI_LIST_MODELS_TIMEOUT_MS, PiModelListing, list_pi_models_sync, pi_list_models_timeout,
 };
+pub use models_refresh::refresh_pi_provider_caches_if_stale;
 
-/// Compile-only probe: fail CI if `pi_agent_rust` does not export `SessionOptions`.
 #[allow(dead_code)]
 const _: fn() = || {
     let _ = std::any::type_name::<pi::sdk::SessionOptions>();

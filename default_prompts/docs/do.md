@@ -42,7 +42,6 @@ See `malvin --doc`. Notable for `--do`:
 |------|----------------|
 | `--quiet` / `-q` | Not needed without `--verbose`: `--do` is already DM-body-only |
 | `--verbose` / `-v` | Same stdout log classes as the default workflow (thoughts, narrative tee, full prompt bodies); also full bodies in `prompts.log` |
-| `-b` / `--background` | Suppresses all stdout, including DM bodies |
 
 ## Prompt workflow
 

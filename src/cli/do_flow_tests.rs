@@ -1,4 +1,3 @@
-use clap::Parser;
 use std::collections::HashMap;
 
 use crate::config::DEFAULT_CLI_MODEL;
@@ -49,7 +48,7 @@ fn build_do_coder_run_succeeds_without_checks_in_non_git_workspace() {
         &store,
         &artifacts,
         "USER_TOKEN",
-        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false),
+        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
     );
     assert_eq!(run.combined, "USER_TOKEN");
     assert!(
@@ -70,7 +69,7 @@ fn build_do_coder_run_work_prompt_is_user_only() {
         &store,
         &artifacts,
         "USER_TOKEN\n\n",
-        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false),
+        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
     );
     assert_eq!(run.combined, "USER_TOKEN");
     let (trace_header, trace_user) = &run.header_user_for_trace;
@@ -90,7 +89,7 @@ fn build_do_coder_run_default_store_work_prompt_is_user() {
         &store,
         &artifacts,
         "USER_TOKEN",
-        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false),
+        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
     );
     assert_eq!(run.combined, "USER_TOKEN");
 }
@@ -103,7 +102,7 @@ fn combine_do_acp_prompt_joins_rendered_header_and_request() {
         &store,
         &artifacts,
         "USER_TOKEN",
-        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false),
+        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
     )
     .expect("combine");
     assert_eq!(header, "CODING_HDR");
@@ -122,76 +121,12 @@ fn combine_do_raw_header_and_user_joins_rendered_do_header_and_request() {
         &store,
         &artifacts,
         "USER_RAW_TOKEN\n\n",
-        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false),
+        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
     )
     .expect("combine");
     assert_eq!(header, "DO_TOKEN");
     assert_eq!(user, "USER_RAW_TOKEN");
     assert_header_user_join(&combined, "DO_TOKEN", "USER_RAW_TOKEN");
-}
-
-fn cli_accepts_do_and_passes_request() {
-    use crate::cli::Cli;
-
-    let cli = Cli::try_parse_from(["malvin", "--do", "fix the bug"]).expect("parse");
-    assert!(cli.do_workflow);
-    assert_eq!(cli.request.as_deref(), Some("fix the bug"));
-    assert!(cli.command.is_none());
-}
-
-fn cli_rejects_do_thoughts_flag() {
-    use crate::cli::Cli;
-
-    let err = Cli::try_parse_from(["malvin", "--do", "--thoughts", "z"]).expect_err("parse");
-    let msg = err.to_string();
-    assert!(
-        msg.contains("unexpected argument") || msg.contains("--thoughts"),
-        "expected --thoughts rejected; got {msg}"
-    );
-}
-
-fn cli_accepts_all_shared_flags_before_subcommand() {
-    use crate::cli::Cli;
-
-    let cli = Cli::try_parse_from([
-        "malvin",
-        "--model",
-        "cursor:composer-2",
-        "--no-force",
-        "--do",
-        "z",
-    ])
-    .expect("parse");
-    assert_eq!(cli.shared.model.canonical(), "cursor:composer-2");
-    assert!(cli.shared.no_force);
-    assert!(cli.do_workflow);
-    assert_eq!(cli.request.as_deref(), Some("z"));
-}
-
-fn cli_accepts_max_acp_retries_global_flag() {
-    use crate::cli::Cli;
-    use crate::config::DEFAULT_MAX_ACP_RETRIES;
-
-    let cli = Cli::try_parse_from(["malvin", "--do", "task"]).expect("parse");
-    assert_eq!(cli.shared.max_acp_retries, DEFAULT_MAX_ACP_RETRIES);
-
-    let cli =
-        Cli::try_parse_from(["malvin", "--max-acp-retries", "5", "--do", "task"]).expect("parse");
-    assert_eq!(cli.shared.max_acp_retries, 5);
-}
-
-fn cli_accepts_verbose_short_and_long_global_flags() {
-    use crate::cli::Cli;
-
-    let cli = Cli::try_parse_from(["malvin", "-v", "--do", "x"]).expect("parse");
-    assert!(cli.shared.verbose);
-    assert!(cli.do_workflow);
-    assert_eq!(cli.request.as_deref(), Some("x"));
-
-    let cli = Cli::try_parse_from(["malvin", "--do", "--verbose", "y"]).expect("parse");
-    assert!(cli.shared.verbose);
-    assert!(cli.do_workflow);
-    assert_eq!(cli.request.as_deref(), Some("y"));
 }
 
 #[test]
@@ -203,9 +138,4 @@ fn kiss_bundled_cli_do_flow_tests() {
     build_do_coder_run_default_store_work_prompt_is_user();
     combine_do_acp_prompt_joins_rendered_header_and_request();
     combine_do_raw_header_and_user_joins_rendered_do_header_and_request();
-    cli_accepts_do_and_passes_request();
-    cli_rejects_do_thoughts_flag();
-    cli_accepts_all_shared_flags_before_subcommand();
-    cli_accepts_max_acp_retries_global_flag();
-    cli_accepts_verbose_short_and_long_global_flags();
 }

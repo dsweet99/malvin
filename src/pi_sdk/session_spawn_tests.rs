@@ -14,21 +14,21 @@ fn kiss_cov_session_and_spawn_names() {
 fn pi_provider_and_model_first_slash() {
     use crate::model_id::parse_model_id;
     assert_eq!(
-        parse_model_id("pi:openai/gpt-4o")
+        parse_model_id("rpi:openai/gpt-4o")
             .expect("ok")
             .pi_provider_and_model()
             .expect("pi"),
         ("openai", "gpt-4o")
     );
     assert_eq!(
-        parse_model_id("pi:openrouter/anthropic/claude-3-haiku")
+        parse_model_id("rpi:openrouter/anthropic/claude-3-haiku")
             .expect("ok")
             .pi_provider_and_model()
             .expect("pi"),
         ("openrouter", "anthropic/claude-3-haiku")
     );
     assert!(
-        parse_model_id("pi:noslash")
+        parse_model_id("rpi:noslash")
             .expect_err("err")
             .contains("provider")
     );
@@ -43,9 +43,9 @@ async fn fake_session_begin_end_leaves_no_pi_runtime_thread() {
     }
     let tmp = tempfile::tempdir().expect("tmp");
     let mut client = crate::pi_sdk::pi_sdk_client_from_raw(
-        "pi:openai/gpt-4o",
+        "rpi:openai/gpt-4o",
         crate::acp::AgentIoOptions {
-            force: true,
+
             no_tee: true,
             raw_output: true,
             show_thoughts_on_stdout: false,
@@ -67,23 +67,6 @@ async fn fake_session_begin_end_leaves_no_pi_runtime_thread() {
     );
 }
 
-// Nit-2 handoff (.malvin/incomplete_handoff_pi_sdk_nit_polish.md): explicit
-// lifecycle proof for the real embedded runtime. The mock-env client tests
-// cannot observe the thread (fake_embedded_session has runtime: None), so
-// this test drives PiRuntime directly.
-//
-// Determinism: PiRuntime::start returns only after the worker sends ready,
-// and the worker then blocks on cmd_rx.recv(), so the named thread
-// necessarily exists when start() returns Ok. shutdown() joins the thread
-// before returning; we assert join() success rather than scanning /proc
-// afterwards, because Linux child threads inherit the parent's comm name.
-//
-// Offline: provider/model/api_key construction performs local work only;
-// network I/O happens at prompt time, which this test never issues. Same
-// shape as the published crate's hermetic create_agent_session tests.
-//
-// HOME is redirected to a tempdir so Config/AuthStorage loads never touch
-// production config (VISION.md).
 #[test]
 fn pi_runtime_lifecycle_starts_and_joins_named_thread() {
     crate::test_utils::with_isolated_home(|work| {
@@ -96,7 +79,6 @@ fn pi_runtime_lifecycle_starts_and_joins_named_thread() {
             tool_factory: Some(crate::pi_sdk::isolated_bash::isolated_tool_factory()),
             ..pi::sdk::SessionOptions::default()
         };
-        // Thread-name checks use `/proc/self/task/*/comm` (Linux only).
         #[cfg(target_os = "linux")]
         assert!(
             !pi_sdk_named_thread_exists(),
@@ -114,10 +96,6 @@ fn pi_runtime_lifecycle_starts_and_joins_named_thread() {
     });
 }
 
-// Kiss's static coverage matcher attributes test-body references only in the
-// plain function body, not inside the with_isolated_home closure, so the
-// helper gets a direct smoke exercise here. Both outcomes are valid: other
-// tests may legitimately hold a live malvin-pi-sdk thread concurrently.
 #[test]
 fn pi_sdk_named_thread_helper_reads_proc_without_panicking() {
     let _exists = pi_sdk_named_thread_exists();

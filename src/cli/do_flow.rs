@@ -1,4 +1,4 @@
-use crate::agent_backend::{AgentBackend, build_agent_backend, build_agent_backend_with_tee};
+use crate::agent_backend::{SdkClient, build_agent_backend, build_agent_backend_with_tee};
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::cli::one_shot_session::{
     finish_one_shot_after_prompt, resolve_one_shot_request_artifacts,
@@ -6,7 +6,7 @@ use crate::cli::one_shot_session::{
 use crate::cli::run_emit::{
     RunStartupEmitOpts, emit_command_line, emit_run_logs_line, emit_run_startup_banner,
 };
-use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions};
+use crate::cli::{AgentStdoutTeeFlags, SharedOpts};
 use crate::output::agent_stdout_tee_enabled;
 
 #[path = "do_flow_acp.rs"]
@@ -25,7 +25,7 @@ pub struct DoArgs {
 }
 
 struct DoRunPrep {
-    client: AgentBackend,
+    client: SdkClient,
     artifacts: RunArtifacts,
     coder: do_flow_prompt::DoCoderRun,
     session_dotfile_backups: SessionDotfileBackups,
@@ -33,10 +33,9 @@ struct DoRunPrep {
 
 fn new_do_client(
     shared: &SharedOpts,
-    workflow: WorkflowCliOptions,
-) -> Result<AgentBackend, String> {
+) -> Result<SdkClient, String> {
     if shared.verbose {
-        return build_agent_backend(shared, workflow, shared.acp_stdout_markdown_enabled(), "do");
+        return build_agent_backend(shared, shared.acp_stdout_markdown_enabled());
     }
     let interactive = agent_stdout_tee_enabled();
     let emit_markdown = interactive && shared.acp_stdout_markdown_enabled();
@@ -53,15 +52,14 @@ fn new_do_client(
             show_thoughts_on_stdout: false,
         }
     };
-    build_agent_backend_with_tee(shared, workflow, tee)
+    build_agent_backend_with_tee(shared, tee)
 }
 
 async fn prepare_do_run(
     do_args: &DoArgs,
     shared: &SharedOpts,
-    workflow: WorkflowCliOptions,
 ) -> Result<DoRunPrep, String> {
-    let mut client = new_do_client(shared, workflow)?;
+    let mut client = new_do_client(shared)?;
     let (text, artifacts) = resolve_one_shot_request_artifacts(
         do_args.request.as_ref(),
         "--do",
@@ -92,7 +90,7 @@ async fn prepare_do_run(
 }
 
 async fn begin_do_session_overlapping_prompt_prep(
-    client: &mut AgentBackend,
+    client: &mut SdkClient,
     artifacts: &RunArtifacts,
     text: &str,
     shared: &SharedOpts,
@@ -103,18 +101,16 @@ async fn begin_do_session_overlapping_prompt_prep(
         store: &store,
         artifacts,
         model: &shared.model.canonical(),
-        git: shared.git,
         log_path: artifacts.log_path("do_header"),
     })?;
     let begin = client.start_coder_session(&artifacts.work_dir);
     let model = shared.model.canonical();
-    let git = shared.git;
     let coder_backup = async {
         let coder = do_flow_prompt::build_do_coder_run_with_store(
             &store,
             artifacts,
             text,
-            crate::workflow_context::PromptModelOpts::new(&model, git),
+            crate::workflow_context::PromptModelOpts::new(&model),
         );
         let session_dotfile_backups =
             SessionDotfileBackups::snapshot_after_ensuring_home_config(&artifacts.work_dir)?;
@@ -128,7 +124,6 @@ async fn begin_do_session_overlapping_prompt_prep(
 pub async fn run_do(
     do_args: DoArgs,
     shared: &SharedOpts,
-    workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
     let interactive = agent_stdout_tee_enabled();
     let emit_markdown = interactive && shared.acp_stdout_markdown_enabled();
@@ -138,7 +133,7 @@ pub async fn run_do(
         emit_markdown: dm_only && emit_markdown,
     });
     crate::output::set_heartbeat_stdout_suppressed(dm_only);
-    let result = run_do_body(do_args, shared, workflow).await;
+    let result = run_do_body(do_args, shared).await;
     crate::output::set_do_dm_stdout_opts(crate::output::DoDmStdoutOpts::default());
     crate::output::set_heartbeat_stdout_suppressed(false);
     result
@@ -147,9 +142,8 @@ pub async fn run_do(
 async fn run_do_body(
     do_args: DoArgs,
     shared: &SharedOpts,
-    workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
-    let mut prep = prepare_do_run(&do_args, shared, workflow).await?;
+    let mut prep = prepare_do_run(&do_args, shared).await?;
     if shared.verbose {
         emit_run_logs_line(&prep.artifacts)?;
     }

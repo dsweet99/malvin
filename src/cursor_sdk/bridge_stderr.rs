@@ -1,4 +1,3 @@
-//! Filter known noisy `[shell-exec]` close-timeout warnings from the Cursor SDK bridge.
 
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::ChildStderr;

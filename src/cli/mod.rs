@@ -3,24 +3,20 @@ pub(crate) mod args;
 pub(crate) mod cli_request;
 pub(crate) mod command_docs;
 mod commands_help;
-mod commands_help_subcommand;
 mod config_defaults;
-mod config_loop;
 pub(crate) mod entrypoint;
 mod entrypoint_checks;
-pub(crate) mod entrypoint_commands;
 pub(crate) mod error_run_log;
 pub(crate) mod exit;
 pub(crate) mod init_flow;
+pub(crate) mod malvin_workflow;
 pub(crate) mod models_cmd;
 pub(crate) mod run_emit;
 pub(crate) mod session_header;
 pub(crate) mod shared_opts;
 pub(crate) mod tidy_flow;
-pub(crate) mod write_flow;
 
 mod code_flow_a;
-pub(crate) mod default_output_path;
 pub(crate) mod flow_prompt_combine;
 pub(crate) mod loop_opts;
 pub(crate) mod one_shot_session;
@@ -28,7 +24,7 @@ pub(crate) mod workflow_router_shared;
 
 pub use crate::agent_backend::{build_agent_backend, build_agent_backend_with_tee};
 pub use code_flow_a::{
-    AgentStdoutTeeFlags, WorkflowCliOptions, agent_io_options, default_workflow_stdout_tee_flags,
+    AgentStdoutTeeFlags, agent_io_options, default_workflow_stdout_tee_flags,
     format_workspace_gate_failure,
 };
 
@@ -47,6 +43,9 @@ mod command_log_tests;
 #[cfg(test)]
 #[path = "do_flow_tests.rs"]
 mod do_flow_tests;
+#[cfg(test)]
+#[path = "do_flow_cli_tests.rs"]
+mod do_flow_cli_tests;
 #[cfg(test)]
 mod gate_error_regression;
 #[cfg(test)]
@@ -74,6 +73,5 @@ pub use exit::Exit;
 pub use init_flow::run_init;
 pub use loop_opts::{TENACIOUS_MAX_ACP_RETRIES, TENACIOUS_MAX_LOOPS};
 pub use run_emit::emit_run_startup_sequence;
-pub use shared_opts::SharedOpts;
+pub use shared_opts::{AgentRouteOpts, RouterOpts, SharedOpts};
 pub use tidy_flow::run_tidy;
-pub use write_flow::run_write;

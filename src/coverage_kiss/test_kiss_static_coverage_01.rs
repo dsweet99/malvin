@@ -1,4 +1,3 @@
-//! Kiss static coverage contract (call-shaped tokens; not compiled).
 
 
 #[test]
@@ -175,11 +174,8 @@ fn kiss_exec_witness_01_12() {
     SilenceHealthOutcome();
     evaluate_after_acp_silence();
     ChecksDiscoveryOpts();
-    WorkflowCliOptions();
     AgentStdoutTeeFlags();
-    LoopDefaultMut();
     CodeWorkflowLoopMut();
-    assert_workflow_defaults();
     DoArgs();
 }
 
@@ -188,9 +184,6 @@ fn kiss_exec_witness_01_13() {
     DoRunPrep();
     DoCoderRun();
     Exit();
-    WriteArgs();
-    WriteResolvedOutputs();
-    WriteRunPrep();
     DualHeaderPromptInput();
     DualHeaderCoderRun();
     build_mbc2_render_context();
@@ -198,26 +191,16 @@ fn kiss_exec_witness_01_13() {
     GateInlineSummarizeCtx();
     run_gate_inline_summarize_first_iteration();
     write_summarize_fixture_exp_logs();
-    prepare_write_run();
-    bind_write_initial_prompt();
-    write_workspace_dir_display();
-    new_write_client();
-    create_write_artifacts();
-    run_write_coder_prompt();
-    run_write_coder_session();
 }
 
 #[test]
 fn kiss_exec_witness_01_14() {
-    build_write_workflow_initial_prompt();
     AggregatedInitialPromptBuilder();
     run_inline_summarize_on_open_mock_session();
     TenaciousBudgetGuard();
-    GateLoopTenaciousApply();
     test_scan_for_extension_handles_symlink_cycles();
     RepoGateCommandFailure();
     gate_failure_summary();
     RepoGateOutput();
 }
-
 

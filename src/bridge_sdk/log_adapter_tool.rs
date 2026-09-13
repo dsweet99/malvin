@@ -65,7 +65,6 @@ pub(crate) fn clear_tool_starts(session: &StreamLog) {
 
 const ANON_TOOL_ID: &str = "__malvin_anon_tool__";
 
-/// Record a tool start; empty `toolCallId` uses [`ANON_TOOL_ID`] so `tools_in_flight` still arms.
 fn note_tool_start(session: &StreamLog, tool_call_id: Option<&str>, summary: &str) {
     let id = tool_call_id
         .filter(|s| !s.is_empty())

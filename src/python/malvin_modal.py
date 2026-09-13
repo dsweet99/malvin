@@ -1,21 +1,4 @@
 
-"""Run malvin on Modal, forwarding host CLI arguments to the remote malvin process.
-
-Modal sandboxes do not inherit interactive ``agent login`` sessions from the host.
-Export ``CURSOR_AGENT_API_KEY``, ``CURSOR_API_KEY``, or ``AGENT_API_KEY`` in the
-shell that launches this command (or set ``MODAL_CURSOR_SECRET_NAME`` for a Modal-stored
-secret).
-
-Runtime dependency: install Modal with ``pip install modal`` or ``uv pip install modal``.
-
-Gating smoke test (requires Modal credentials and network)::
-
-    modal run ops/malvin_modal.py -- --version
-
-Local unit tests (no Modal credentials)::
-
-    python ops/malvin_modal.py --self-test
-"""
 
 from __future__ import annotations
 
@@ -79,7 +62,6 @@ _BASE_IMAGE = (
 )
 
 def build_ignore_patterns() -> list[str]:
-    """Patterns for ``add_local_dir`` upload excludes."""
     return [
         "target/",
         "experiments/",
@@ -90,19 +72,16 @@ def build_ignore_patterns() -> list[str]:
     ]
 
 def parse_malvin_argv(argv: list[str]) -> list[str]:
-    """Return malvin args; text after the first ``--`` when present."""
     if "--" in argv:
         return list(argv[argv.index("--") + 1 :])
     return list(argv)
 
 def relay_stream(reader: Any, sink: TextIO) -> None:
-    """Copy text chunks from *reader* to *sink* in order."""
     for chunk in reader:
         sink.write(chunk)
         sink.flush()
 
 def workspace_image() -> modal.Image:
-    """Image with the caller cwd mounted at ``/workspace``."""
     return _BASE_IMAGE.add_local_dir(
         os.getcwd(),
         remote_path=WORKSPACE,
@@ -110,22 +89,18 @@ def workspace_image() -> modal.Image:
     )
 
 def present_cursor_keys() -> list[str]:
-    """Return Cursor env var names that are set locally."""
     return [key for key in CURSOR_ENV_KEYS if os.environ.get(key)]
 
 def cursor_credentials_available() -> bool:
-    """Return True when local env keys or a named Modal secret can supply credentials."""
     if present_cursor_keys():
         return True
     return bool(os.environ.get(MODAL_CURSOR_SECRET_NAME_ENV))
 
 def require_cursor_credentials_for_agent() -> None:
-    """Fail fast on the host when Modal agent runs lack Cursor credentials."""
     if not cursor_credentials_available():
         raise click.ClickException(_CURSOR_CREDENTIALS_ERROR)
 
 def cursor_secrets() -> list[modal.Secret]:
-    """Inject Cursor API keys present in the local environment."""
     present = present_cursor_keys()
     if present:
         return [modal.Secret.from_local_environ(present)]
@@ -135,12 +110,10 @@ def cursor_secrets() -> list[modal.Secret]:
     return []
 
 def finish_process(proc: Any) -> int:
-    """Wait for *proc* and return its exit code."""
     proc.wait()
     return int(proc.returncode or 0)
 
 def stream_process_output(proc: Any, out: TextIO, err: TextIO) -> None:
-    """Relay sandbox stdout/stderr to local streams concurrently."""
     threads = [
         threading.Thread(target=relay_stream, args=(proc.stdout, out), daemon=True),
         threading.Thread(target=relay_stream, args=(proc.stderr, err), daemon=True),
@@ -151,7 +124,6 @@ def stream_process_output(proc: Any, out: TextIO, err: TextIO) -> None:
         thread.join()
 
 def run_local_malvin_usage() -> str:
-    """Return bare ``malvin`` usage text from a local subprocess when available."""
     try:
         result = subprocess.run(
             ["malvin"],
@@ -171,22 +143,18 @@ def run_local_malvin_usage() -> str:
     return "malvin produced no usage output.\n"
 
 def render_empty_argv_help(ctx: click.Context) -> str:
-    """Compose malvin usage followed by wrapper usage for empty forwarded argv."""
     malvin_text = run_local_malvin_usage().rstrip()
     wrapper_text = ctx.get_help().rstrip()
     return f"{malvin_text}\n\n{wrapper_text}\n"
 
 def print_empty_argv_help(ctx: click.Context) -> None:
-    """Print composite help for empty forwarded argv."""
     sys.stdout.write(render_empty_argv_help(ctx))
     sys.stdout.flush()
 
 def sandbox_app() -> modal.App:
-    """Return an initialized Modal app for sandbox creation."""
     return lookup_sandbox_app(app, APP_NAME)
 
 def run_malvin_remote(malvin_argv: list[str]) -> int:
-    """Create sandbox, exec malvin, stream I/O, terminate sandbox."""
     require_cursor_credentials_for_agent()
     image = workspace_image()
     secrets = cursor_secrets()
@@ -216,7 +184,6 @@ def run_malvin_remote(malvin_argv: list[str]) -> int:
         release_modal_sandbox(sandbox)
 
 def dispatch_cli(ctx: click.Context, self_test: bool) -> None:
-    """Click command body for the Modal malvin wrapper."""
     if self_test:
         run_unit_tests()
         raise SystemExit(0)
@@ -314,7 +281,6 @@ def _test_modal_remote_missing_credentials() -> None:
             os.environ[MODAL_CURSOR_SECRET_NAME_ENV] = saved_secret
 
 def run_unit_tests() -> None:
-    """UT-ARGV, UT-IGNORE, UT-RELAY, UT-EXIT, UT-MODAL, UT-CLICK — no Modal network."""
     _test_static_helpers()
     _test_cursor_and_stream()
     _test_sandbox_app()

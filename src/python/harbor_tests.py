@@ -1,19 +1,3 @@
-"""Shared Harbor ``tests/test.patch`` / ``test.sh`` parsers for ops tooling.
-
-Contract (verifier dependency discovery):
-- **Inputs:** task workspace, optional ``tests/`` dir, Dockerfile path.
-- **Public layer:** ``DeclaredDeps`` from workspace manifests (agent-readable).
-- **Grade-only layer:** imports / closure / plugin policy derived from ``test.patch``
-  or Harbor ``test.sh`` — never bake these into agent-phase metadata or agent image
-  materialize commands.
-- **Verifier venv:** ``/opt/malvin-verifier`` (outside ``/app``; remounts cannot wipe it).
-- **Non-leakage:** agent must not observe ``tests/``, ``test.patch``, solution patches,
-  ``test.patch``-derived install deltas, or rich grade-only ``VerifierSpec`` fields.
-- **Out of scope:** Docker host ``grade_workspace`` (fresh Harbor image); non-Python tasks.
-
-Parse-added-hunks is preferred over apply-to-tree. When apply is required, use a temp
-directory outside ``/app`` and never leave hidden tests on disk for the agent phase.
-"""
 
 from __future__ import annotations
 
@@ -30,7 +14,6 @@ _PYTEST_INVOCATION_RE = re.compile(
 )
 
 def embedded_file_body_from_patch(patch_path: Path, relative_path: str) -> str | None:
-    """Return added body for ``relative_path`` from a unified diff patch, if present."""
     if not patch_path.is_file():
         return None
     target_suffixes = {
@@ -60,23 +43,12 @@ def embedded_file_body_from_patch(patch_path: Path, relative_path: str) -> str |
     return "\n".join(added)
 
 def embedded_test_sh_from_patch(patch_path: Path) -> str | None:
-    """Return added ``test.sh`` body from a Harbor ``test.patch``, if present."""
     return embedded_file_body_from_patch(patch_path, "test.sh")
 
 def embedded_test_py_from_patch(patch_path: Path) -> str | None:
-    """Return added ``test.py`` body from a Harbor ``test.patch``, if present."""
     return embedded_file_body_from_patch(patch_path, "test.py")
 
 def added_python_sources_from_patch(patch_path: Path) -> dict[str, str]:
-    """Map relative paths → reconstructed NEW-side bodies for ``.py`` hunks.
-
-    Prefer this over applying ``test.patch`` into a workspace tree. Paths are as
-    written in ``+++ b/...`` headers (no leading ``b/``).
-
-    For modified files, include unified-diff context lines (leading space) as well
-    as ``+`` lines so third-party imports that appear only as unchanged context are
-    not dropped from discovery / probe materialize. Deleted (``-``) lines are omitted.
-    """
     if not patch_path.is_file():
         return {}
     text = patch_path.read_text(encoding="utf-8")
@@ -118,7 +90,6 @@ def added_python_sources_from_patch(patch_path: Path) -> dict[str, str]:
     return sources
 
 def resolve_harbor_test_sh_body(tests_dir: Path | None) -> str | None:
-    """Return Harbor ``test.sh`` body from ``tests/test.sh`` or embedded patch content."""
     if tests_dir is None:
         return None
     direct = tests_dir / "test.sh"
@@ -127,7 +98,6 @@ def resolve_harbor_test_sh_body(tests_dir: Path | None) -> str | None:
     return embedded_test_sh_from_patch(tests_dir / "test.patch")
 
 def is_stdlib_module(name: str) -> bool:
-    """Return True when *name* is a top-level stdlib (or built-in) module."""
     root = name.split(".", 1)[0]
     stdlib = getattr(sys, "stdlib_module_names", None)
     if stdlib is not None:
@@ -176,14 +146,12 @@ _IMPORT_TO_DISTRIBUTION: dict[str, str] = {
 }
 
 def distribution_name_for_import(import_name: str) -> str:
-    """Map a top-level import name to a likely PyPI / DeclaredDeps key."""
     root = import_name.split(".", 1)[0]
     if root in _IMPORT_TO_DISTRIBUTION:
         return _IMPORT_TO_DISTRIBUTION[root]
     return root.replace("_", "-").lower()
 
 def top_level_imports_from_source(source: str) -> set[str]:
-    """Return top-level imported module roots from Python *source* via AST."""
     try:
         tree = ast.parse(source)
     except SyntaxError:
@@ -222,16 +190,10 @@ _ANALYSIS_SAMPLE_SEGMENTS = frozenset(
 _LOCAL_IMPORT_ROOTS = frozenset({"tests", "test", "conftest", "challenge"})
 
 def is_analysis_sample_path(path: str | Path) -> bool:
-    """True when *path* looks like fixture/sample code rather than a test module."""
     parts = Path(str(path)).parts
     return any(part.lower() in _ANALYSIS_SAMPLE_SEGMENTS for part in parts)
 
 def harbor_imports_from_tests_dir(tests_dir: Path | None) -> tuple[str, ...]:
-    """Third-party top-level imports discovered from Harbor patch / test sources.
-
-    Skips analysis-sample paths (``fixtures/``, ``examples/``, …) whose imports are
-    code under test, not verifier runtime dependencies.
-    """
     if tests_dir is None:
         return ()
     found: set[str] = set()
@@ -262,7 +224,6 @@ def harbor_imports_from_tests_dir(tests_dir: Path | None) -> tuple[str, ...]:
     return tuple(third_party)
 
 def pytest_args_from_test_sh(script: str | None) -> tuple[str, ...]:
-    """Extract pytest argument tokens from the first pytest invocation in *script*."""
     if not script:
         return ()
     for raw in script.splitlines():
@@ -282,7 +243,6 @@ def pytest_args_from_test_sh(script: str | None) -> tuple[str, ...]:
     return ()
 
 def test_sh_invokes_pytest(script: str | None) -> bool:
-    """True when Harbor ``test.sh`` directly invokes pytest (not stestr/custom runners)."""
     if not script:
         return False
     for raw in script.splitlines():
@@ -299,7 +259,6 @@ def collect_only_pytest_command(
     *,
     extra_args: tuple[str, ...] = (),
 ) -> str:
-    """Build a ``pytest --collect-only`` command mirroring Harbor ``test.sh`` args."""
     args = list(pytest_args_from_test_sh(script))
     if "--collect-only" not in args and "--co" not in args:
         args.insert(0, "--collect-only")

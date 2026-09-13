@@ -11,20 +11,13 @@ pub enum TerminalTheme {
     Light,
 }
 
-/// Semantic terminal colors. Field names describe role, not hue.
 #[derive(Clone, Copy)]
 pub(crate) struct Palette {
-    /// Errors / failure marks (✗).
     pub(crate) error: &'static str,
-    /// Warnings.
     pub(crate) warning: &'static str,
-    /// Who-tag chrome and heartbeat.
     pub(crate) who_tag: &'static str,
-    /// Secondary accents (paths, · separators, ✓).
     pub(crate) accent: &'static str,
-    /// Tool names/verbs and agent-start `provider:model` text.
     pub(crate) tool_name: &'static str,
-    /// Primary body text (agent messages).
     pub(crate) body: &'static str,
 }
 

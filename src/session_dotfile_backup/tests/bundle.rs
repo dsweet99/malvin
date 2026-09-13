@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use crate::artifacts::{MalvinChecksBackup, MalvinConfigWorkspaceBackup, SessionDotfileBackups};
+use crate::artifacts::SessionDotfileBackups;
 use crate::repo_gates::MALVIN_CHECKS_FILE;
 use crate::seed_malvin_config;
 use crate::test_utils::with_isolated_home;
@@ -27,15 +27,6 @@ fn assert_workspace_restored(work: &Path) {
     assert_eq!(std::fs::read_to_string(&m).unwrap(), "m\n");
     assert_eq!(std::fs::read_to_string(&cfg).unwrap(), "c2\n");
     assert_eq!(std::fs::read_to_string(&gi).unwrap(), "g\n");
-}
-
-fn empty_parts() -> crate::session_dotfile_backup::SessionDotfileParts {
-    crate::session_dotfile_backup::SessionDotfileParts {
-        malvin_checks: MalvinChecksBackup::Missing,
-        gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
-        vision: crate::session_dotfile_backup::VisionBackup::Missing,
-        malvin_config_workspace: MalvinConfigWorkspaceBackup::Missing,
-    }
 }
 
 #[test]
@@ -78,7 +69,7 @@ fn restore_session_dotfiles_strips_legacy_root_checks_file() {
     let work = tmp.path();
     std::fs::create_dir_all(work).unwrap();
     std::fs::write(work.join(".malvin_checks"), "legacy\n").unwrap();
-    SessionDotfileBackups::from_parts(empty_parts())
+    SessionDotfileBackups::all_missing()
         .restore(work)
         .unwrap();
     assert!(!work.join(".malvin_checks").exists());

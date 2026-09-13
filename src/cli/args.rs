@@ -1,8 +1,7 @@
 use clap::{Parser, Subcommand};
 
 use super::admin_cmd::AdminArgs;
-use super::shared_opts::SharedOpts;
-use super::write_flow::WriteArgs;
+use super::shared_opts::{RouterOpts, SharedOpts};
 
 #[derive(Parser, Debug)]
 #[allow(clippy::struct_excessive_bools)]
@@ -17,6 +16,8 @@ use super::write_flow::WriteArgs;
 pub struct Cli {
     #[command(flatten)]
     pub shared: SharedOpts,
+    #[command(flatten)]
+    pub router: RouterOpts,
     /// One-shot agent turn (non-looping)
     #[arg(long = "do", default_value_t = false)]
     pub do_workflow: bool,
@@ -24,18 +25,10 @@ pub struct Cli {
     pub command: Option<Commands>,
     /// Existing `.md` path or literal text (bare malvin REQUEST, or request for `--do`)
     pub request: Option<String>,
-    /// Outer agent-session budget for bare malvin REQUEST
-    #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS)]
-    pub max_loops: usize,
-    /// Hypothesis budget for bare malvin REQUEST
-    #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES)]
-    pub max_hypotheses: usize,
 }
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// Write a LaTeX PDF on code or concepts
-    Write(WriteArgs),
     /// Operator maintenance commands
     Admin(AdminArgs),
 }

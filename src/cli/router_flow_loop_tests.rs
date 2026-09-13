@@ -1,6 +1,7 @@
 use super::restore_router_iteration_dotfiles;
 use crate::session_dotfile_backup::{
-    DotfileBackupState, GitignoreBackup, SessionDotfileBackups, VisionBackup, VisionFileBackup,
+    GitignoreBackup, MalvinChecksBackup, MalvinConfigWorkspaceBackup, SessionDotfileBackups,
+    VisionBackup, VisionFileBackup,
 };
 
 #[test]
@@ -12,13 +13,13 @@ fn restore_router_iteration_keeps_agent_vision_edits() {
         let anchor = SessionDotfileBackups::snapshot(work).expect("anchor");
         std::fs::write(
             work.join("VISION.md"),
-            "- `pi:` models should look basically the same as `cursor:` models.\n",
+            "- `rpi:` models should look basically the same as `cursor:` models.\n",
         )
         .expect("edit");
         let merged = restore_router_iteration_dotfiles(work, &anchor).expect("restore");
         let text = std::fs::read_to_string(work.join("VISION.md")).expect("read");
         assert!(
-            text.contains("`pi:`") && !text.contains("prine:"),
+            text.contains("`rpi:`") && !text.contains("prine:"),
             "expected agent VISION edit kept, got: {text:?}"
         );
         assert!(matches!(merged.vision, VisionBackup::Present { .. }));
@@ -45,10 +46,10 @@ fn kiss_witness_restore_router_iteration_dotfiles() {
     let _ = stringify!(RouterAgentLoopInput);
     let _ = stringify!(RouterAgentLoopOutcome);
     let empty = SessionDotfileBackups {
-        malvin_checks: DotfileBackupState::Missing,
+        malvin_checks: MalvinChecksBackup::Missing,
         gitignore: GitignoreBackup::Missing,
         vision: VisionBackup::Missing,
-        malvin_config_workspace: DotfileBackupState::Missing,
+        malvin_config_workspace: MalvinConfigWorkspaceBackup::Missing,
     };
     let _ = matches!(empty.vision, VisionBackup::Missing);
     let _ = VisionFileBackup {

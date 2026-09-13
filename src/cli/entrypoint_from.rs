@@ -1,6 +1,7 @@
 use super::{
-    DefaultRouteDispatch, Exit, dispatch_command, dispatch_default_route, dispatch_do_workflow,
-    dispatch_gates_only_route, finish_entrypoint, prepare_cli_output, print_command_error,
+    DefaultRouteDispatch, Exit, GatesOnlyDispatch, dispatch_command, dispatch_default_route,
+    dispatch_do_workflow, dispatch_gates_only_route, finish_entrypoint, prepare_cli_output,
+    print_command_error,
 };
 use crate::cli::args::Cli;
 use crate::cli::config_defaults::is_gates_only_route;
@@ -37,9 +38,13 @@ fn entrypoint_doc_exit(cli: &Cli) -> Exit {
     }
 }
 
-fn entrypoint_before_dispatch(cli: &Cli) -> Option<Exit> {
+fn entrypoint_before_dispatch(cli: &Cli, matches: &clap::ArgMatches) -> Option<Exit> {
     if cli.do_workflow && cli.command.is_some() {
         print_command_error("`--do` cannot be combined with a subcommand");
+        return Some(Exit::Failure);
+    }
+    if let Some(msg) = reject_admin_with_workflow_only_flags(cli, matches) {
+        print_command_error(&msg);
         return Some(Exit::Failure);
     }
     if cli.command.is_none()
@@ -56,6 +61,31 @@ fn entrypoint_before_dispatch(cli: &Cli) -> Option<Exit> {
     }
     if cli.shared.doc {
         return Some(entrypoint_doc_exit(cli));
+    }
+    None
+}
+
+fn reject_admin_with_workflow_only_flags(cli: &Cli, matches: &clap::ArgMatches) -> Option<String> {
+    use crate::cli::config_defaults::global_flag_from_command_line;
+
+    const WORKFLOW_ONLY: &[(&str, &str)] = &[
+        ("quiet", "--quiet / -q"),
+        ("gates", "--gates / -g"),
+        ("creative", "--creative"),
+        ("no_kpop", "--no-kpop"),
+        ("max_loops", "--max-loops"),
+        ("max_hypotheses", "--max-hypotheses"),
+        ("verbose", "--verbose / -v"),
+        ("max_acp_retries", "--max-acp-retries"),
+    ];
+
+    if !matches!(cli.command, Some(crate::cli::Commands::Admin(_))) {
+        return None;
+    }
+    for (id, flag) in WORKFLOW_ONLY {
+        if global_flag_from_command_line(matches, id) {
+            return Some(format!("{flag} cannot be combined with `admin`"));
+        }
     }
     None
 }
@@ -115,7 +145,7 @@ fn entrypoint_sweep_stale_acp_spawn_locks() {
 
 fn run_entrypoint(cli: Cli, matches: clap::ArgMatches) -> Exit {
     prepare_cli_output(&cli.shared);
-    if let Some(exit) = entrypoint_before_dispatch(&cli) {
+    if let Some(exit) = entrypoint_before_dispatch(&cli, &matches) {
         return exit;
     }
     entrypoint_sweep_stale_acp_spawn_locks();
@@ -138,35 +168,42 @@ fn run_entrypoint(cli: Cli, matches: clap::ArgMatches) -> Exit {
 }
 
 fn dispatch_after_session(cli: Cli, matches: clap::ArgMatches) -> Exit {
-    if cli.do_workflow {
-        return finish_entrypoint(dispatch_do_workflow(
-            DoArgs {
-                request: cli.request,
-            },
-            &cli.shared,
-        ));
-    }
-    if let Some(command) = cli.command {
-        finish_entrypoint(dispatch_command(command, &cli.shared, &matches))
-    } else if let Some(request) = cli.request {
-        let mut shared = cli.shared;
-        finish_entrypoint(dispatch_default_route(DefaultRouteDispatch {
-            request,
-            max_loops: cli.max_loops,
-            max_hypotheses: cli.max_hypotheses,
-            shared: &mut shared,
-            matches: &matches,
-        }))
-    } else if is_gates_only_route(&cli) {
-        let mut shared = cli.shared;
-        finish_entrypoint(dispatch_gates_only_route(
-            cli.max_loops,
-            cli.max_hypotheses,
-            &mut shared,
+    use crate::cli::malvin_workflow::{MalvinWorkflow, malvin_workflow_from_cli};
+
+    let Some(workflow) = malvin_workflow_from_cli(cli) else {
+        return Exit::Success;
+    };
+    match workflow {
+        MalvinWorkflow::Do { request, shared } => {
+            finish_entrypoint(dispatch_do_workflow(DoArgs { request }, &shared))
+        }
+        MalvinWorkflow::Admin { admin, model } => finish_entrypoint(dispatch_command(
+            crate::cli::Commands::Admin(admin),
+            &model.canonical(),
             &matches,
-        ))
-    } else {
-        Exit::Success
+        )),
+        MalvinWorkflow::DefaultRoute {
+            request,
+            mut shared,
+            mut router,
+        } => finish_entrypoint(dispatch_default_route(DefaultRouteDispatch {
+            request,
+            max_loops: router.max_loops,
+            max_hypotheses: router.max_hypotheses,
+            shared: &mut shared,
+            router: &mut router,
+            matches: &matches,
+        })),
+        MalvinWorkflow::GatesOnly {
+            mut shared,
+            mut router,
+        } => finish_entrypoint(dispatch_gates_only_route(GatesOnlyDispatch {
+            max_loops: router.max_loops,
+            max_hypotheses: router.max_hypotheses,
+            shared: &mut shared,
+            router: &mut router,
+            matches: &matches,
+        })),
     }
 }
 

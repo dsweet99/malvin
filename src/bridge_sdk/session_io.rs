@@ -25,12 +25,10 @@ pub(crate) async fn send_create(
     session: &BridgeSession,
     args: CreateArgs<'_>,
 ) -> Result<(), AgentError> {
-    let no_force = (!session.io.force).then_some("fail_fast");
     let req = BridgeRequest::Create {
         cwd: args.cwd.display().to_string(),
         model: args.model.to_string(),
         api_key: args.api_key,
-        no_force_policy: no_force,
         models_json_path: args.models_json_path.map(str::to_string),
     };
     write_request(session, &req).await?;
@@ -41,13 +39,11 @@ pub(crate) async fn send_resume(
     session: &BridgeSession,
     args: ResumeArgs<'_>,
 ) -> Result<(), AgentError> {
-    let no_force = (!session.io.force).then_some("fail_fast");
     let req = BridgeRequest::Resume {
         agent_id: args.agent_id.to_string(),
         cwd: args.cwd.display().to_string(),
         model: args.model.to_string(),
         api_key: args.api_key,
-        no_force_policy: no_force,
     };
     write_request(session, &req).await?;
     wait_for_ok(session).await
@@ -179,12 +175,21 @@ fn finish_run_done(
         super::log_adapter::feed_do_dm_run_result(text);
     }
     super::log_adapter::handle_stream_event(session, ev);
+    if *status == crate::bridge_protocol::RunDoneStatus::Unknown {
+        tracing::warn!(
+            result = result.as_deref(),
+            error = error.as_deref(),
+            "run_done unknown status; surfacing result/error"
+        );
+    }
     if run_done_status_is_failure(*status) {
         return Err(AgentError(error.clone().unwrap_or_else(|| {
-            if *status == crate::bridge_protocol::RunDoneStatus::Cancelled {
-                "run cancelled".into()
-            } else {
-                "run error".into()
+            match *status {
+                crate::bridge_protocol::RunDoneStatus::Cancelled => "run cancelled".into(),
+                crate::bridge_protocol::RunDoneStatus::Unknown => {
+                    "run finished with unknown status".into()
+                }
+                _ => "run error".into(),
             }
         })));
     }
@@ -234,6 +239,7 @@ mod tests {
         use crate::bridge_protocol::RunDoneStatus;
         assert!(run_done_status_is_failure(RunDoneStatus::Error));
         assert!(run_done_status_is_failure(RunDoneStatus::Cancelled));
+        assert!(run_done_status_is_failure(RunDoneStatus::Unknown));
         assert!(!run_done_status_is_failure(RunDoneStatus::Finished));
     }
 }

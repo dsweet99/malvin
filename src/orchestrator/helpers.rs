@@ -63,7 +63,6 @@ mod helpers_kiss_inline {
         let ctx = crate::workflow_context::workflow_context_paths_only(
             &artifacts,
             crate::config::DEFAULT_CLI_MODEL,
-            false,
         );
         assert!(ctx.contains_key("quality_gates_log"));
         let _ = format_prompt_path(&plan_path, &artifacts.work_dir);

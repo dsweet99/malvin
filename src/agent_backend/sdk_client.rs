@@ -6,19 +6,25 @@ use crate::model_id::ParsedModel;
 
 use super::sdk_session::SdkSession;
 
-/// Coder session after `begin_coder_session`.
-///
-/// `NeedsRespawn` keeps cwd so transport teardown can reopen without calling begin again.
+pub(crate) use super::sdk_client_header_lifecycle::{CoderSessionHeader, SessionHeaderLifecycle};
+
 pub(crate) enum BegunCoderSession {
+    Idle,
     Live { cwd: PathBuf, session: SdkSession },
     NeedsRespawn { cwd: PathBuf },
 }
 
 impl BegunCoderSession {
     #[must_use]
-    pub(crate) const fn cwd(&self) -> &PathBuf {
+    pub(crate) const fn is_idle(&self) -> bool {
+        matches!(self, Self::Idle)
+    }
+
+    #[must_use]
+    pub(crate) const fn cwd(&self) -> Option<&PathBuf> {
         match self {
-            Self::Live { cwd, .. } | Self::NeedsRespawn { cwd } => cwd,
+            Self::Idle => None,
+            Self::Live { cwd, .. } | Self::NeedsRespawn { cwd } => Some(cwd),
         }
     }
 
@@ -26,7 +32,7 @@ impl BegunCoderSession {
     pub(crate) const fn live_session(&self) -> Option<&SdkSession> {
         match self {
             Self::Live { session, .. } => Some(session),
-            Self::NeedsRespawn { .. } => None,
+            Self::Idle | Self::NeedsRespawn { .. } => None,
         }
     }
 
@@ -34,38 +40,22 @@ impl BegunCoderSession {
     pub(crate) const fn live_session_mut(&mut self) -> Option<&mut SdkSession> {
         match self {
             Self::Live { session, .. } => Some(session),
-            Self::NeedsRespawn { .. } => None,
+            Self::Idle | Self::NeedsRespawn { .. } => None,
         }
     }
 
-    /// Take the live session, leaving [`NeedsRespawn`] with the same cwd.
     pub(crate) fn take_live_session(&mut self) -> Option<SdkSession> {
-        match std::mem::replace(
-            self,
-            Self::NeedsRespawn {
-                cwd: PathBuf::new(),
-            },
-        ) {
+        match std::mem::replace(self, Self::Idle) {
             Self::Live { cwd, session } => {
                 *self = Self::NeedsRespawn { cwd };
                 Some(session)
             }
-            Self::NeedsRespawn { cwd } => {
-                *self = Self::NeedsRespawn { cwd };
+            other => {
+                *self = other;
                 None
             }
         }
     }
-}
-
-/// Bound spawn-time header text delivered once per fresh agent.
-#[derive(Clone, Debug)]
-pub struct CoderSessionHeader {
-    pub prompt: String,
-    pub log_path: PathBuf,
-    pub stdout_label: String,
-    /// Short name written to `prompts.log` (e.g. `header`, `router_initial`).
-    pub log_who: String,
 }
 
 pub struct SdkClient {
@@ -73,11 +63,11 @@ pub struct SdkClient {
     pub io: AgentIoOptions,
     pub prompts_log_run_dir: Option<PathBuf>,
     pub max_acp_retries: u32,
-    pub(crate) coder: Option<BegunCoderSession>,
+    pub(crate) coder: BegunCoderSession,
     pub(crate) last_agent_id: Option<String>,
     pub(crate) timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
-    pub(crate) session_header: Option<CoderSessionHeader>,
-    pub(crate) header_delivered: bool,
+    pub(crate) header_lifecycle: SessionHeaderLifecycle,
+    pub(crate) backend_error_tracker: super::backend_error_tracker::BackendErrorTracker,
 }
 
 impl SdkClient {
@@ -92,29 +82,28 @@ impl SdkClient {
         io: AgentIoOptions,
         max_acp_retries: u32,
     ) -> Self {
+        let retries = if max_acp_retries == 0 {
+            1
+        } else {
+            max_acp_retries
+        };
         Self {
             model,
             io,
             prompts_log_run_dir: None,
-            max_acp_retries: if max_acp_retries == 0 {
-                1
-            } else {
-                max_acp_retries
-            },
-            coder: None,
+            max_acp_retries: retries,
+            coder: BegunCoderSession::Idle,
             last_agent_id: None,
             timing: None,
-            session_header: None,
-            header_delivered: false,
+            header_lifecycle: SessionHeaderLifecycle::Unbound,
+            backend_error_tracker: super::backend_error_tracker::BackendErrorTracker::with_max_consecutive(retries),
         }
     }
 
-    /// Bind the spawn-time header prompt. Required before [`Self::start_coder_session`].
     pub fn bind_session_header(&mut self, prompt: String, log_path: PathBuf, stdout_label: &str) {
         self.bind_session_header_parts(prompt, log_path, stdout_label, "header");
     }
 
-    /// Bind spawn-time prompt with an explicit `prompts.log` who-tag.
     pub fn bind_session_header_parts(
         &mut self,
         prompt: String,
@@ -122,7 +111,7 @@ impl SdkClient {
         stdout_label: &str,
         log_who: &str,
     ) {
-        self.session_header = Some(CoderSessionHeader {
+        self.header_lifecycle.bind(CoderSessionHeader {
             prompt,
             log_path,
             stdout_label: stdout_label.to_string(),
@@ -145,7 +134,7 @@ impl SdkClient {
 
     #[must_use]
     pub const fn has_open_coder_session(&self) -> bool {
-        matches!(self.coder, Some(BegunCoderSession::Live { .. }))
+        matches!(self.coder, BegunCoderSession::Live { .. })
     }
 
     #[must_use]
@@ -162,6 +151,41 @@ impl SdkClient {
             Some(text)
         }
     }
+
+    pub fn record_backend_success(&mut self) {
+        self.backend_error_tracker.record_success();
+    }
+
+    pub fn record_backend_error(&mut self, error: &str) -> bool {
+        self.backend_error_tracker
+            .set_max_consecutive(self.max_acp_retries);
+        self.backend_error_tracker.record_error(error)
+    }
+
+    #[must_use]
+    pub const fn backend_error_tracker(&self) -> &super::backend_error_tracker::BackendErrorTracker {
+        &self.backend_error_tracker
+    }
+}
+
+#[must_use]
+pub fn ensure_run_timing_for_session(
+    client: &mut SdkClient,
+) -> Arc<Mutex<crate::run_timing::RunTiming>> {
+    if let Some(t) = client.timing.clone() {
+        return t;
+    }
+    client.attach_run_timing_for_session()
+}
+
+pub fn set_implement_display_name(client: &SdkClient, label: &'static str) {
+    let Some(timing) = client.timing.as_ref() else {
+        return;
+    };
+    timing
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .set_implement_display_name(label);
 }
 
 #[cfg(test)]
@@ -183,29 +207,54 @@ pub const fn new_codex(model: ParsedModel, io: AgentIoOptions) -> SdkClient {
 }
 
 #[must_use]
-pub(crate) fn live_session(client: &SdkClient) -> Option<&SdkSession> {
-    client
-        .coder
-        .as_ref()
-        .and_then(BegunCoderSession::live_session)
+pub(crate) const fn live_session(client: &SdkClient) -> Option<&SdkSession> {
+    client.coder.live_session()
 }
 
 #[must_use]
-pub(crate) fn live_session_mut(client: &mut SdkClient) -> Option<&mut SdkSession> {
-    client
-        .coder
-        .as_mut()
-        .and_then(BegunCoderSession::live_session_mut)
+pub(crate) const fn live_session_mut(client: &mut SdkClient) -> Option<&mut SdkSession> {
+    client.coder.live_session_mut()
 }
 
 #[must_use]
-pub(crate) fn begun_cwd(client: &SdkClient) -> Option<&PathBuf> {
-    client.coder.as_ref().map(BegunCoderSession::cwd)
+pub(crate) const fn begun_cwd(client: &SdkClient) -> Option<&PathBuf> {
+    client.coder.cwd()
 }
 
 fn sync_timing_to_open_session(client: &mut SdkClient) {
     let timing = client.timing.clone();
     if let Some(session) = live_session_mut(client) {
         session.timing = timing;
+    }
+}
+
+#[cfg(test)]
+mod begun_coder_session_tests {
+    use super::BegunCoderSession;
+    use std::path::PathBuf;
+
+    #[test]
+    fn idle_has_no_cwd_and_take_live_is_noop() {
+        let mut slot = BegunCoderSession::Idle;
+        assert!(slot.is_idle());
+        assert!(slot.cwd().is_none());
+        assert!(slot.live_session().is_none());
+        assert!(slot.take_live_session().is_none());
+        assert!(slot.is_idle());
+    }
+
+    #[test]
+    fn needs_respawn_keeps_cwd_without_live_session() {
+        let mut slot = BegunCoderSession::NeedsRespawn {
+            cwd: PathBuf::from("/tmp/work"),
+        };
+        assert!(!slot.is_idle());
+        assert_eq!(slot.cwd(), Some(&PathBuf::from("/tmp/work")));
+        assert!(slot.live_session().is_none());
+        assert!(slot.take_live_session().is_none());
+        assert!(matches!(
+            slot,
+            BegunCoderSession::NeedsRespawn { cwd } if cwd == *"/tmp/work"
+        ));
     }
 }

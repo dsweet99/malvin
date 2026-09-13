@@ -1,28 +1,32 @@
 use crate::acp::CoderPromptOptions;
 
 use super::sdk_bug_helpers::{
-    assert_err_has, bug_clear_env, bug_client, bug_client_noforce, bug_prepare, expect_prompt_err,
+    assert_err_has, bug_bridge_js, bug_clear_env, bug_client, bug_install_env,
+    bug_point_bridge_at_missing, bug_prepare, expect_prompt_err,
 };
+
+async fn begin_then_end(path: &std::path::Path) {
+    let mut client = bug_client(path, 1);
+    client.begin_coder_session(path).await.expect("begin");
+    client.end_coder_session().await.expect("end");
+}
 
 #[tokio::test]
 async fn failed_create_drop_clears_sandbox_for_next_spawn() {
     let _guard = crate::test_utils::test_env_lock();
     let tmp = bug_prepare();
-    let mut client = bug_client_noforce(tmp.path());
+    bug_point_bridge_at_missing(tmp.path());
+    let mut client = bug_client(tmp.path(), 1);
     let err = client
         .begin_coder_session(tmp.path())
         .await
-        .expect_err("no-force create must fail");
-    assert_err_has(&err, &["--no-force", "not supported"]);
+        .expect_err("missing bridge must fail create");
+    assert_err_has(&err, &["No such file", "not found", "ENOENT", "spawn", "bridge"]);
     assert!(!client.has_open_coder_session());
     crate::malvin_sandbox::assert_dead_before_next_spawn()
         .expect("sandbox must be clear after failed BridgeSession drop");
-    let mut client2 = bug_client(tmp.path(), 1);
-    client2
-        .begin_coder_session(tmp.path())
-        .await
-        .expect("second begin after failed create");
-    client2.end_coder_session().await.expect("end");
+    bug_install_env(&bug_bridge_js());
+    begin_then_end(tmp.path()).await;
     bug_clear_env();
 }
 
@@ -39,7 +43,7 @@ async fn agent_busy_after_resume_forgets_id_and_creates_fresh() {
     assert!(!client.has_open_coder_session());
     assert_eq!(client.last_agent_id.as_deref(), Some("mock-agent"));
     client
-        .run_coder_prompt(
+        .active_coder_session().expect("active coder session").run_coder_prompt(
             "AGENT_BUSY_ON_RESUME please",
             &log,
             "coder",
@@ -68,7 +72,7 @@ async fn stale_authentication_teardown_resume_retries() {
     assert_eq!(client.last_agent_id.as_deref(), Some("mock-agent"));
     let log = tmp.path().join("prompts.log");
     client
-        .run_coder_prompt(
+        .active_coder_session().expect("active coder session").run_coder_prompt(
             "AUTH_ONCE please",
             &log,
             "coder",
@@ -100,7 +104,7 @@ async fn bridge_stdout_closed_single_attempt_tears_down_session() {
     assert!(!client.has_open_coder_session());
     assert!(crate::agent_backend::begun_cwd(&client).is_some());
     client
-        .run_coder_prompt(
+        .active_coder_session().expect("active coder session").run_coder_prompt(
             "hi",
             &log,
             "coder",

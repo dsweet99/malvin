@@ -6,7 +6,6 @@ pub(crate) async fn codex_spawn_bridge(
     args: BridgeSpawnArgs<'_>,
     service: Option<&str>,
 ) -> Result<CodexSession, AgentError> {
-    crate::acp::require_force(args.io.force)?;
     let ticket = crate::malvin_sandbox::take_sandbox_spawn_ticket().map_err(AgentError)?;
     let session = spawn_codex_session(&args, service, ticket)?;
     start_mem_watch(MemWatchArgs {
@@ -77,7 +76,7 @@ mod unix_tests {
 
     const fn mock_io() -> crate::acp::AgentIoOptions {
         crate::acp::AgentIoOptions {
-            force: true,
+
             no_tee: true,
             raw_output: true,
             show_thoughts_on_stdout: false,

@@ -4,21 +4,10 @@ use super::AgentError;
 
 pub(crate) const MALVIN_TEST_NO_REAL_AGENT_ENV: &str = "MALVIN_TEST_NO_REAL_AGENT";
 
-pub(crate) const NO_FORCE_MSG: &str =
-    "--no-force is not supported (malvin runs tools headlessly; no interactive approval)";
-
-/// Shared product rule: tools must be force-approved (`--force` / not `--no-force`).
-pub(crate) fn require_force(force: bool) -> Result<(), AgentError> {
-    if force {
-        Ok(())
-    } else {
-        Err(AgentError(NO_FORCE_MSG.into()))
-    }
-}
-/// Idle-timeout prefixes. Drain emit sites and teardown needles share these so a
-/// timeout cannot miss session recycle.
 pub(crate) const DRAIN_IDLE_PREFIX_BRIDGE: &str =
     crate::model_id::ModelBackend::Cursor.drain_idle_prefix();
+pub(crate) const DRAIN_IDLE_PREFIX_NPM_PI: &str =
+    crate::model_id::ModelBackend::NpmPi.drain_idle_prefix();
 pub(crate) const DRAIN_IDLE_PREFIX_PI: &str = crate::model_id::ModelBackend::Pi.drain_idle_prefix();
 pub(crate) const DRAIN_IDLE_PREFIX_CODEX: &str =
     crate::model_id::ModelBackend::Codex.drain_idle_prefix();
@@ -93,9 +82,8 @@ mod agent_helpers_tests {
         let _ = test_no_real_agent_enabled();
         let _ = has_api_key();
         let _ = env_key_nonempty("CURSOR_API_KEY");
-        let _ = NO_FORCE_MSG;
-        let _ = require_force(true);
         let _ = DRAIN_IDLE_PREFIX_BRIDGE;
+        let _ = DRAIN_IDLE_PREFIX_NPM_PI;
         let _ = DRAIN_IDLE_PREFIX_PI;
         let _ = DRAIN_IDLE_PREFIX_CODEX;
     }

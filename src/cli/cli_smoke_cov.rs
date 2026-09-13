@@ -59,32 +59,21 @@ fn smoke_merge_acp_with_workspace_session_restore_and_check_abort_no_result_file
 }
 
 fn smoke_agent_io_options_maps_flags() {
-    use super::{AgentStdoutTeeFlags, WorkflowCliOptions, agent_io_options};
+    use super::{AgentStdoutTeeFlags, agent_io_options};
     let shared = super::SharedOpts {
-        background: false,
         model: crate::model_id::parse_model_id("cursor:m").expect("model"),
-        no_force: false,
-        no_tenacious: false,
-        gates: false,
-
-        quiet: false,
         verbose: false,
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
-        git: false,
-        creative: None,
-        no_kpop: false,
     };
     let io = agent_io_options(
         &shared,
-        WorkflowCliOptions { force: true },
         AgentStdoutTeeFlags {
             emit_stdout_markdown: true,
             raw_output: true,
             show_thoughts_on_stdout: false,
         },
     );
-    assert!(io.force);
     assert!(!io.no_tee);
     assert!(io.raw_output);
     assert!(!io.show_thoughts_on_stdout);

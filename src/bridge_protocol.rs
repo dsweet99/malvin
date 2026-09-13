@@ -13,8 +13,6 @@ pub enum BridgeRequest {
         model: String,
         #[serde(rename = "apiKey", skip_serializing_if = "Option::is_none")]
         api_key: Option<String>,
-        #[serde(rename = "noForcePolicy", skip_serializing_if = "Option::is_none")]
-        no_force_policy: Option<&'static str>,
         #[serde(rename = "modelsJsonPath", skip_serializing_if = "Option::is_none")]
         models_json_path: Option<String>,
     },
@@ -25,13 +23,9 @@ pub enum BridgeRequest {
         model: String,
         #[serde(rename = "apiKey", skip_serializing_if = "Option::is_none")]
         api_key: Option<String>,
-        #[serde(rename = "noForcePolicy", skip_serializing_if = "Option::is_none")]
-        no_force_policy: Option<&'static str>,
     },
     Send {
         prompt: String,
-        #[serde(rename = "forceStuck", skip_serializing_if = "Option::is_none")]
-        force_stuck: Option<bool>,
     },
     #[serde(rename = "cancel")]
     Cancel {},
@@ -96,7 +90,6 @@ pub fn decode_event(line: &str) -> Result<BridgeEvent, String> {
     Ok(ev)
 }
 
-/// Shared `run_done.status` vocabulary for Cursor, Pi, and Codex traces.
 #[must_use]
 pub fn canonical_run_done_status(status: &str) -> &'static str {
     RunDoneStatus::from_raw(status).as_str()
@@ -118,19 +111,19 @@ mod bridge_protocol_tests {
             cwd: "/tmp".into(),
             model: "auto".into(),
             api_key: Some("k".into()),
-            no_force_policy: Some("fail_fast"),
             models_json_path: None,
         })
         .expect("encode");
         assert!(cursor.contains("\"apiKey\":\"k\""));
-        assert!(cursor.contains("\"noForcePolicy\":\"fail_fast\""));
+        assert!(!cursor.contains("noForcePolicy"));
+        assert!(!cursor.contains("sandboxEnabled"));
+        assert!(!cursor.contains("autoReview"));
         assert!(!cursor.contains("modelsJsonPath"));
 
         let prime_local = encode_request(&BridgeRequest::Create {
             cwd: "/tmp".into(),
             model: "local/qwen35_9b_q4".into(),
             api_key: None,
-            no_force_policy: None,
             models_json_path: Some("/tmp/models.json".into()),
         })
         .expect("local create");
@@ -139,10 +132,9 @@ mod bridge_protocol_tests {
     }
 
     #[test]
-    fn encode_send_skips_force_stuck_when_none() {
+    fn encode_send_omits_force_stuck() {
         let send = encode_request(&BridgeRequest::Send {
             prompt: "hi".into(),
-            force_stuck: None,
         })
         .expect("send");
         assert!(send.contains("\"op\":\"send\""));
@@ -156,11 +148,13 @@ mod bridge_protocol_tests {
             cwd: "/tmp".into(),
             model: "auto".into(),
             api_key: Some("k".into()),
-            no_force_policy: None,
         })
         .expect("encode");
         assert!(line.contains("\"op\":\"resume\""));
         assert!(line.contains("\"agentId\":\"bc-123\""));
+        assert!(!line.contains("noForcePolicy"));
+        assert!(!line.contains("sandboxEnabled"));
+        assert!(!line.contains("autoReview"));
     }
 
     #[test]
@@ -184,6 +178,18 @@ mod bridge_protocol_tests {
         assert!(
             matches!(failed, BridgeEvent::RunDone { status, .. } if status == RunDoneStatus::Error)
         );
+        let unknown =
+            decode_event(r#"{"event":"run_done","status":"bogus","error":"detail"}"#)
+                .expect("unknown");
+        assert!(matches!(
+            unknown,
+            BridgeEvent::RunDone {
+                status: RunDoneStatus::Unknown,
+                error: Some(ref e),
+                ..
+            } if e == "detail"
+        ));
+        assert_eq!(canonical_run_done_status("bogus"), "unknown");
         let fatal =
             decode_event(r#"{"event":"fatal","message":"boom","retryable":true}"#).expect("fatal");
         match fatal {

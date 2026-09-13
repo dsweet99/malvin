@@ -70,11 +70,56 @@ fn build_router_header_prompt_renders_without_unresolved_braces() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
+        max_hypotheses: 5,
+        no_kpop: false,
     })
     .expect("header");
     assert!(body.contains("Know thyself") || body.contains("Context Prep") || !body.is_empty());
     assert!(!body.contains("{{"));
+    assert!(
+        body.contains("KPop") || body.contains("Karl Popper"),
+        "header must include kpop_insert when no_kpop is false"
+    );
+}
+
+#[test]
+fn build_router_header_prompt_embeds_workspace_agents_md() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = flow_test_artifacts(&tmp);
+    std::fs::write(tmp.path().join("AGENTS.md"), "Prefer ripwire for maps.\n").expect("agents");
+    let store = prepare_router_prompt_store().expect("store");
+    let body = build_router_header_prompt(RouterHeaderPromptInput {
+        store: &store,
+        artifacts: &artifacts,
+        model: DEFAULT_CLI_MODEL,
+        max_hypotheses: 5,
+        no_kpop: true,
+    })
+    .expect("header");
+    assert!(
+        body.contains("## Workspace `AGENTS.md`") && body.contains("Prefer ripwire for maps."),
+        "router header must embed workspace AGENTS.md via agents_insert: {body}"
+    );
+}
+
+#[test]
+fn build_router_header_prompt_no_kpop_leaves_kpop_insert_empty() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = flow_test_artifacts(&tmp);
+    let store = prepare_router_prompt_store().expect("store");
+    let body = build_router_header_prompt(RouterHeaderPromptInput {
+        store: &store,
+        artifacts: &artifacts,
+        model: DEFAULT_CLI_MODEL,
+        max_hypotheses: 5,
+        no_kpop: true,
+    })
+    .expect("header no_kpop");
+    assert!(!body.contains("{{"));
+    assert!(
+        !body.contains("Karl Popper") && !body.to_ascii_lowercase().contains("falsifiable"),
+        "no_kpop must resolve kpop_insert to empty: {body}"
+    );
 }
 
 #[test]
@@ -86,7 +131,6 @@ fn build_router_kpop_common_prompt_renders_budget_and_log() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         max_hypotheses: 7,
         no_kpop: false,
     })
@@ -105,7 +149,6 @@ fn build_router_a_prompt_includes_user_request_path() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         gates: false,
         no_kpop: false,
     })
@@ -123,7 +166,7 @@ fn combine_router_acp_prompt_joins_rendered_header_and_request() {
         &store,
         &artifacts,
         "USER_TOKEN",
-        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false),
+        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
     )
     .expect("combine");
     assert_eq!(header, "CODING_HDR");
@@ -143,7 +186,7 @@ fn combine_router_raw_header_and_user_joins_rendered_router_a_and_request() {
         &store,
         &artifacts,
         "USER_RAW_TOKEN\n\n",
-        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false),
+        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
     )
     .expect("combine");
     assert_eq!(header, "ROUTER_A_TOKEN");

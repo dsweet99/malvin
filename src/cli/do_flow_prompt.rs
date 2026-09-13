@@ -53,12 +53,10 @@ pub fn combine_do_raw_header_and_user(
         artifacts,
         text,
         model: opts.model,
-        git: opts.git,
         mode_template: DO_HEADER_MD,
     })
 }
 
-/// Work-turn body for `--do` after spawn already delivered `header.md` + `do_header.md`.
 #[must_use]
 pub(crate) fn build_do_coder_run_with_store(
     _store: &PromptStore,

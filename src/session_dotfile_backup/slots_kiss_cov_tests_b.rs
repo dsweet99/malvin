@@ -1,7 +1,7 @@
 use super::slots::{DOTFILE_ROWS, DotfileSpecRow, dotfile_source_path, labels_for_test};
 use super::slots_kiss_cov_shared::{
-    MALVIN_CONFIG_WORKSPACE_SLOT, ROW_WITNESS_0, ROW_WITNESS_1, ROW_WITNESS_2,
-    dotfile_spec_row_field_count, write_merged_default_malvin_config,
+    MALVIN_CONFIG_WORKSPACE_SLOT, ROW_WITNESS_0, ROW_WITNESS_1, dotfile_spec_row_field_count,
+    write_merged_default_malvin_config,
 };
 use std::path::Path;
 
@@ -41,7 +41,7 @@ fn kiss_cov_dotfile_spec_row_copy_clone_traits() {
 
 #[test]
 fn kiss_cov_dotfile_spec_row_const_eval_witnesses() {
-    let witnesses = [&ROW_WITNESS_0, &ROW_WITNESS_1, &ROW_WITNESS_2];
+    let witnesses = [&ROW_WITNESS_0, &ROW_WITNESS_1];
     for row in witnesses {
         let &DotfileSpecRow {
             rel,

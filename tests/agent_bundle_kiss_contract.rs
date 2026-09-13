@@ -18,12 +18,11 @@ fn auth_error_fmt_display_roundtrip() {
 fn agent_io_options_type_witness() {
     use malvin::acp::AgentIoOptions;
     let io = AgentIoOptions {
-        force: false,
         no_tee: true,
         raw_output: false,
         show_thoughts_on_stdout: false,
         emit_stdout_markdown: false,
         log_full_outgoing_prompts: false,
     };
-    assert!(!io.force);
+    assert!(io.no_tee);
 }

@@ -14,7 +14,7 @@ pub(crate) fn artifact_storage_available() -> bool {
 macro_rules! router_workflow_context_with_gates {
     ($artifacts:expr, $opts:expr, $include:expr) => {{
         let mut context =
-            $crate::orchestrator::workflow_context_paths_only($artifacts, $opts.model, $opts.git);
+            $crate::orchestrator::workflow_context_paths_only($artifacts, $opts.model);
         if $include {
             context.insert(
                 "quality_gates".to_string(),
@@ -28,10 +28,10 @@ macro_rules! router_workflow_context_with_gates {
 
 #[macro_export]
 macro_rules! router_workflow_context {
-    ($artifacts:expr, $model:expr, $git:expr $(,)?) => {
+    ($artifacts:expr, $model:expr $(,)?) => {
         $crate::router_workflow_context_with_gates!(
             $artifacts,
-            $crate::workflow_context::PromptModelOpts::new($model, $git),
+            $crate::workflow_context::PromptModelOpts::new($model),
             true
         )
     };
@@ -39,10 +39,10 @@ macro_rules! router_workflow_context {
 
 #[macro_export]
 macro_rules! router_workflow_context_without_gates {
-    ($artifacts:expr, $model:expr, $git:expr $(,)?) => {
+    ($artifacts:expr, $model:expr $(,)?) => {
         $crate::router_workflow_context_with_gates!(
             $artifacts,
-            $crate::workflow_context::PromptModelOpts::new($model, $git),
+            $crate::workflow_context::PromptModelOpts::new($model),
             false
         )
     };

@@ -34,19 +34,21 @@ fn default_store_with_unset_home() -> String {
 }
 
 fn default_embedded_placeholder_context() -> HashMap<String, String> {
-    let mut ctx = HashMap::from([
-        ("plan_path".to_string(), "/p".to_string()),
-        ("result_path".to_string(), "/r".to_string()),
-        ("malvin_output_path".to_string(), "/logs/run".to_string()),
-        ("workspace_dir".to_string(), "/logs/run".to_string()),
-        (
-            "malvin_command".to_string(),
-            "malvin --model=cursor:auto".to_string(),
-        ),
-        ("quality_gates".to_string(), String::new()),
-        ("advice_path".to_string(), "./.malvin/advice.md".to_string()),
-        ("git_extra".to_string(), String::new()),
-    ]);
+    let entries = [
+        ("plan_path", "/p"),
+        ("result_path", "/r"),
+        ("malvin_output_path", "/logs/run"),
+        ("workspace_dir", "/logs/run"),
+        ("malvin_command", "malvin --model=cursor:auto"),
+        ("quality_gates", ""),
+        ("advice_path", "./.malvin/advice.md"),
+        ("kpop_insert", ""),
+        ("agents_insert", ""),
+    ];
+    let mut ctx: HashMap<String, String> = entries
+        .into_iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
     insert_header_runtime_placeholders(&mut ctx);
     ctx
 }

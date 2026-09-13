@@ -1,11 +1,11 @@
 use crate::session_dotfile_backup::slots::{DOTFILE_ROWS, DotfileSpecRow};
 use std::path::Path;
 
-pub(super) const MALVIN_CONFIG_WORKSPACE_SLOT: usize = 2;
+pub(super) const MALVIN_CONFIG_WORKSPACE_SLOT: usize =
+    crate::session_dotfile_backup::slots::MALVIN_CONFIG_WORKSPACE_SLOT;
 
 pub(super) const ROW_WITNESS_0: DotfileSpecRow = DOTFILE_ROWS[0];
 pub(super) const ROW_WITNESS_1: DotfileSpecRow = DOTFILE_ROWS[1];
-pub(super) const ROW_WITNESS_2: DotfileSpecRow = DOTFILE_ROWS[2];
 
 pub(super) fn dotfile_spec_row_field_count(row: &DotfileSpecRow) -> usize {
     let &DotfileSpecRow {
