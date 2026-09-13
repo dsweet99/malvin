@@ -4,7 +4,8 @@ use rand::Rng;
 
 use crate::model_id::{ParsedModel, parse_model_id};
 
-const QUIET_HELPTEXT: &str = "Only long the final response, not the whole session";
+const QUIET_HELPTEXT: &str =
+    "Print only `__MALVIN_DM_START__`/`END` bodies on stdout (default router)";
 
 const CREATIVE_HELPTEXT: &str =
     "Be (more) creative; optional probability in [0,1] (default 1.0 when set)";
@@ -46,7 +47,7 @@ pub struct SharedOpts {
 /// Options that apply only to default-route / gates-only loops.
 #[derive(Args, Debug, Clone)]
 pub struct RouterOpts {
-    /// Only long the final response, not the whole session
+    /// Print only `__MALVIN_DM_START__`/`END` bodies on stdout (default router)
     #[arg(
         short = 'q',
         long,

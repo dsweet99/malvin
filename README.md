@@ -45,9 +45,9 @@ You can also pass a request file instead of a string:
 ```bash
 malvin code_review.md
 ```
-That works well in CI or cron. For no stdout at all, use `-b`:
+That works well in CI or cron. For quieter stdout on the default router, use `-q` (DM bodies only). For no process stdout at all, redirect:
 ```bash
-malvin -b overnight_logs_alerter.md
+malvin overnight_logs_alerter.md >/dev/null
 ```
 For example, `overnight_logs_alerter.md` might tell malvin to scan prod logs and report oddities via Slack. Malvin *always* writes run logs under `~/.malvin_home/logs` (useful for process improvement and as later context).
 
