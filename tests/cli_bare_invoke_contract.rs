@@ -54,7 +54,7 @@ fn gates_only_route_parses_without_request() {
     let cli = parse(&["malvin", "-g"]);
     assert!(cli.command.is_none());
     assert!(cli.request.is_none());
-    assert!(cli.shared.gates);
+    assert!(cli.router.gates);
 }
 
 #[test]

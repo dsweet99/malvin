@@ -6,12 +6,11 @@ fn encode_create_uses_camel_case_api_key() {
         cwd: "/tmp".into(),
         model: "auto".into(),
         api_key: Some("k".into()),
-        no_force_policy: Some("fail_fast"),
         models_json_path: None,
     })
     .expect("encode");
     assert!(line.contains("\"apiKey\":\"k\""));
-    assert!(line.contains("\"noForcePolicy\":\"fail_fast\""));
+    assert!(!line.contains("noForcePolicy"));
     assert!(line.contains("\"op\":\"create\""));
 }
 

@@ -70,6 +70,15 @@ impl RunStartupEmitOpts {
             model: shared.model.canonical(),
         }
     }
+
+    #[must_use]
+    pub fn from_route(opts: super::AgentRouteOpts<'_>, host_resources: bool) -> Self {
+        Self {
+            tee_stdout: opts.router.tee_startup_stdout(),
+            host_resources,
+            model: opts.shared.model.canonical(),
+        }
+    }
 }
 
 pub fn emit_run_startup_banner(

@@ -161,7 +161,7 @@ fn kiss_cov_cross_file_symbols_a() {
     let _: Option<crate::run_timing::acp_post_run::RunTimingSessionEnd> = None;
     let _: Option<crate::run_timing::acp_post_run::RunTimingAfterBackend> = None;
     let _: Option<crate::session_dotfile_backup::DotfileBackupPayload> = None;
-    let _: Option<crate::session_dotfile_backup::SessionDotfileParts> = None;
+    let _: Option<crate::session_dotfile_backup::SessionDotfileBackups> = None;
     let _ = stringify!(ActiveAgentSandbox);
     let _ = stringify!(ActiveAgentStatsSource);
     let _ = stringify!(AcpTeeDirection);

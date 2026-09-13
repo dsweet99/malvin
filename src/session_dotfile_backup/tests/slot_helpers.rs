@@ -3,13 +3,8 @@ use super::slots::{
 };
 use super::{DotfileBackupState, SessionDotfileBackups, restore_workspace_session_dotfiles};
 
-fn empty_parts() -> crate::session_dotfile_backup::SessionDotfileParts {
-    crate::session_dotfile_backup::SessionDotfileParts {
-        malvin_checks: DotfileBackupState::Missing,
-        gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
-        vision: crate::session_dotfile_backup::VisionBackup::Missing,
-        malvin_config_workspace: DotfileBackupState::Missing,
-    }
+fn empty_parts() -> SessionDotfileBackups {
+    SessionDotfileBackups::all_missing()
 }
 
 #[test]
@@ -18,7 +13,7 @@ fn restore_excluding_malvin_checks_on_bundle() {
     let work = tmp.path();
     std::fs::create_dir_all(work.join(".malvin")).unwrap();
     std::fs::write(work.join(crate::MALVIN_CHECKS_REL), "c\n").unwrap();
-    let bundle = SessionDotfileBackups::from_parts(empty_parts());
+    let bundle = empty_parts();
     bundle.restore_excluding_malvin_checks(work).unwrap();
     assert!(work.join(crate::MALVIN_CHECKS_REL).is_file());
 }
@@ -73,8 +68,8 @@ fn dotfile_slot_helpers_and_session_restore_noop() {
     let tmp = tempfile::tempdir().unwrap();
     let mut id = |n: usize| format!("slot{n}");
     let _ = backup_slot(0, tmp.path(), &mut id);
-    let _ = restore_slot(tmp.path(), &DotfileBackupState::Missing, 0);
-    let bundle = SessionDotfileBackups::from_parts(empty_parts());
+    let _ = restore_slot(tmp.path(), DotfileBackupState::Missing.as_slot_state(), 0);
+    let bundle = empty_parts();
     restore_workspace_session_dotfiles(tmp.path(), &bundle).unwrap();
 }
 

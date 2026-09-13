@@ -1,11 +1,6 @@
 use super::SharedOpts;
 
 #[derive(Debug, Clone, Copy)]
-pub struct WorkflowCliOptions {
-    pub force: bool,
-}
-
-#[derive(Debug, Clone, Copy)]
 pub struct AgentStdoutTeeFlags {
     pub emit_stdout_markdown: bool,
     pub raw_output: bool,
@@ -23,11 +18,9 @@ pub const fn default_workflow_stdout_tee_flags(emit_stdout_markdown: bool) -> Ag
 
 pub fn agent_io_options(
     shared: &SharedOpts,
-    workflow: WorkflowCliOptions,
     tee: AgentStdoutTeeFlags,
 ) -> crate::acp::AgentIoOptions {
     crate::acp::AgentIoOptions {
-        force: workflow.force,
         no_tee: crate::output::stdout_suppressed(),
         raw_output: tee.raw_output,
         show_thoughts_on_stdout: tee.show_thoughts_on_stdout,

@@ -1,11 +1,11 @@
 use crate::session_dotfile_backup::gate_restore_merge::merge_for_gate_restore;
 use crate::session_dotfile_backup::{
-    DotfileBackupPayload, DotfileBackupState, GitignoreBackup, GitignoreFileBackup,
-    SessionDotfileBackups,
+    DotfileBackupPayload, GitignoreBackup, GitignoreFileBackup, MalvinChecksBackup,
+    MalvinConfigWorkspaceBackup, SessionDotfileBackups,
 };
 
-fn present(bytes: &[u8]) -> DotfileBackupState {
-    DotfileBackupState::Present(DotfileBackupPayload {
+fn present(bytes: &[u8]) -> MalvinChecksBackup {
+    MalvinChecksBackup::Present(DotfileBackupPayload {
         backup_path: std::path::PathBuf::from("/tmp/test"),
         bytes: bytes.to_vec(),
     })
@@ -21,12 +21,12 @@ fn gitignore_present(bytes: &[u8]) -> GitignoreBackup {
     }
 }
 
-fn bundle_with(gitignore: GitignoreBackup, checks: DotfileBackupState) -> SessionDotfileBackups {
+fn bundle_with(gitignore: GitignoreBackup, checks: MalvinChecksBackup) -> SessionDotfileBackups {
     SessionDotfileBackups {
         malvin_checks: checks,
         gitignore,
         vision: crate::session_dotfile_backup::VisionBackup::Missing,
-        malvin_config_workspace: DotfileBackupState::Missing,
+        malvin_config_workspace: MalvinConfigWorkspaceBackup::Missing,
     }
 }
 
@@ -39,7 +39,7 @@ fn merge_rejects_deleted_vision() {
             bytes: bytes.to_vec(),
         }],
     };
-    let mut anchor = bundle_with(GitignoreBackup::Missing, DotfileBackupState::Missing);
+    let mut anchor = bundle_with(GitignoreBackup::Missing, MalvinChecksBackup::Missing);
     anchor.vision = vision_present(b"baseline\n");
     let mut progress = anchor.clone();
     progress.vision = crate::session_dotfile_backup::VisionBackup::Missing;
@@ -58,7 +58,7 @@ fn merge_rejects_deleted_gitignore() {
     assert!(matches!(merged.gitignore, GitignoreBackup::Present { .. }));
     assert!(matches!(
         merged.malvin_checks,
-        DotfileBackupState::Present(_)
+        MalvinChecksBackup::Present(_)
     ));
 }
 
@@ -67,7 +67,7 @@ fn merge_rejects_tampered_malvin_checks() {
     let anchor = bundle_with(GitignoreBackup::Missing, present(b"make lint\n"));
     let progress = bundle_with(GitignoreBackup::Missing, present(b"TAMPERED\n"));
     let merged = merge_for_gate_restore(&anchor, &progress);
-    let DotfileBackupState::Present(ref payload) = merged.malvin_checks else {
+    let MalvinChecksBackup::Present(ref payload) = merged.malvin_checks else {
         panic!("expected malvin_checks present");
     };
     assert_eq!(payload.bytes, b"make lint\n");
@@ -82,7 +82,7 @@ fn merge_keeps_agent_edited_vision_content() {
             bytes: bytes.to_vec(),
         }],
     };
-    let mut anchor = bundle_with(GitignoreBackup::Missing, DotfileBackupState::Missing);
+    let mut anchor = bundle_with(GitignoreBackup::Missing, MalvinChecksBackup::Missing);
     anchor.vision = vision_present(b"baseline\n");
     let mut progress = anchor.clone();
     progress.vision = vision_present(b"improved vision\n");
@@ -134,7 +134,7 @@ fn merge_keeps_progress_when_vision_present_without_root_file() {
             bytes: b"pkg\n".to_vec(),
         }],
     };
-    let mut anchor = bundle_with(GitignoreBackup::Missing, DotfileBackupState::Missing);
+    let mut anchor = bundle_with(GitignoreBackup::Missing, MalvinChecksBackup::Missing);
     anchor.vision = crate::session_dotfile_backup::VisionBackup::Missing;
     let mut progress = anchor.clone();
     progress.vision = nested_only;

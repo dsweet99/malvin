@@ -79,7 +79,6 @@ pub struct AuthError(pub String);
 #[derive(Debug, Clone, Copy)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct AgentIoOptions {
-    pub force: bool,
     pub no_tee: bool,
     pub raw_output: bool,
     pub show_thoughts_on_stdout: bool,
@@ -132,12 +131,11 @@ fn agent_error_session_dead_fault() {
 #[test]
 fn agent_io_options_default_fields() {
     let io = AgentIoOptions {
-        force: false,
         no_tee: false,
         raw_output: false,
         show_thoughts_on_stdout: false,
         emit_stdout_markdown: false,
         log_full_outgoing_prompts: false,
     };
-    assert!(!io.force);
+    assert!(!io.no_tee);
 }

@@ -95,7 +95,7 @@ mod advice_path_embed_tests {
             create_run_artifacts(Path::new(&plan_path), Some(tmp.path())).expect("artifacts");
         let store = PromptStore::default_store();
         store.ensure_defaults().expect("defaults");
-        let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL, false);
+        let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL);
         let header = render_header(&store, ctx.as_map()).expect("header");
         assert!(
             !header.contains("{{"),
@@ -125,7 +125,7 @@ mod advice_path_embed_tests {
         );
         std::fs::write(tmp.path().join("AGENTS.md"), "Prefer ripwire for maps.\n")
             .expect("agents");
-        let ctx_with = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL, false);
+        let ctx_with = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL);
         let header_with = render_header(&store, ctx_with.as_map()).expect("header with agents");
         assert!(
             header_with.contains("Prefer ripwire for maps."),
@@ -186,7 +186,7 @@ mod router_header_embed_tests {
     #[test]
     fn embedded_header_and_router_render_without_unresolved_braces() {
         let (_tmp, artifacts, store) = embedded_router_fixture();
-        let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL, false);
+        let ctx = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL);
         let header = render_header(&store, ctx.as_map()).expect("header");
         assert!(
             !header.contains("{{"),
@@ -196,7 +196,6 @@ mod router_header_embed_tests {
             store: &store,
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
-            git: false,
             max_hypotheses: 5,
             no_kpop: false,
         })
@@ -210,7 +209,6 @@ mod router_header_embed_tests {
             store: &store,
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
-            git: false,
             max_hypotheses: 5,
             no_kpop: false,
         })
@@ -220,7 +218,6 @@ mod router_header_embed_tests {
             store: &store,
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
-            git: false,
             gates: false,
             no_kpop: false,
         })
@@ -230,7 +227,6 @@ mod router_header_embed_tests {
             store: &store,
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
-            git: false,
             gates: true,
             no_kpop: false,
         })
@@ -240,7 +236,6 @@ mod router_header_embed_tests {
             store: &store,
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
-            git: false,
             creative: false,
             no_kpop: false,
         })
@@ -250,7 +245,6 @@ mod router_header_embed_tests {
             store: &store,
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
-            git: false,
             creative: true,
             no_kpop: false,
         })
@@ -268,7 +262,6 @@ mod router_header_embed_tests {
             store: &store,
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
-            git: false,
         })
         .expect("summarize");
         assert!(!summarize.contains("{{"));

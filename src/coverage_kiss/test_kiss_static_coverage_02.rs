@@ -26,6 +26,8 @@ fn kiss_exec_witness_02_01() {
     RouterAPromptInput();
     RouterBPromptInput();
     SharedOpts();
+    RouterOpts();
+    AgentRouteOpts();
     TidyArgs();
     write_checks_do_not_pass_to_review_path();
     post_router_session_gates();
@@ -118,7 +120,6 @@ fn kiss_exec_witness_02_07() {
     BridgeEvent();
     fatal_then_run_done_does_not_poison_next_prompt();
     bug_mock_io_forced();
-    bug_mock_io_noforce();
     bug_install_env();
     bug_clear_env();
     bug_set_drain_idle_timeout_ms();
@@ -128,7 +129,6 @@ fn kiss_exec_witness_02_07() {
 
 #[test]
 fn kiss_exec_witness_02_08() {
-    bug_client_noforce();
     bug_prepare();
     assert_err_has();
     expect_prompt_err();

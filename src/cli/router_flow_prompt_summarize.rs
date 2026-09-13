@@ -6,7 +6,6 @@ pub(crate) struct RouterSummarizePromptInput<'a> {
     pub store: &'a PromptStore,
     pub artifacts: &'a RunArtifacts,
     pub model: &'a str,
-    pub git: bool,
 }
 
 pub(crate) fn build_router_summarize_prompt(
@@ -16,9 +15,8 @@ pub(crate) fn build_router_summarize_prompt(
         store,
         artifacts,
         model,
-        git,
     } = input;
-    let ctx = workflow_context_paths_only(artifacts, model, git);
+    let ctx = workflow_context_paths_only(artifacts, model);
     let body = store
         .render_prompt_only(ROUTER_SUMMARIZE_MD, ctx.as_map())
         .map_err(|e: PromptError| e.0)?;

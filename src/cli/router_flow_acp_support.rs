@@ -1,7 +1,5 @@
-use crate::agent_backend::agent_backend_start_coder_session;
 use crate::artifacts::{
-    GitignoreBackup, MalvinChecksBackup, MalvinConfigWorkspaceBackup, RunArtifacts,
-    SessionDotfileBackups, VisionBackup, ensure_gate_exp_log_file,
+    RunArtifacts, SessionDotfileBackups, ensure_gate_exp_log_file,
 };
 use crate::router_flow::router_flow_no_work::chat_has_malvin_done;
 use crate::router_flow::router_flow_prompt;
@@ -30,13 +28,8 @@ pub(crate) fn router_iteration_log_path(
     artifacts.log_path(&format!("router_{agent_loop}"))
 }
 
-pub(crate) fn empty_iteration_backups() -> SessionDotfileBackups {
-    SessionDotfileBackups::from_parts(crate::session_dotfile_backup::SessionDotfileParts {
-        malvin_checks: MalvinChecksBackup::Missing,
-        gitignore: GitignoreBackup::Missing,
-        vision: VisionBackup::Missing,
-        malvin_config_workspace: MalvinConfigWorkspaceBackup::Missing,
-    })
+pub(crate) const fn empty_iteration_backups() -> SessionDotfileBackups {
+    SessionDotfileBackups::all_missing()
 }
 
 pub(crate) fn snapshot_iteration_backups(work_dir: &Path) -> SessionDotfileBackups {
@@ -49,7 +42,7 @@ pub(crate) async fn run_router_turns(
     log_path: &Path,
 ) -> Result<RouterTurnsOutcome, String> {
     let model = input.shared.model.canonical();
-    let creative = input.shared.sample_creative_this_iteration();
+    let creative = input.router.sample_creative_this_iteration();
     let _exp_log = ensure_gate_exp_log_file(input.artifacts, 1).map_err(|e| e.to_string())?;
     let iteration_backups = deliver_router_initial_turn(input, log_path, creative).await?;
     let done = finish_router_a_maybe_b(input, log_path, &model, creative).await?;
@@ -66,15 +59,14 @@ async fn deliver_router_initial_turn(
 ) -> Result<SessionDotfileBackups, String> {
     let work_dir = input.artifacts.work_dir.as_path();
     let model = input.shared.model.canonical();
-    let include_header = !input.client.header_delivered;
+    let include_header = !input.client.header_lifecycle.is_satisfied();
     let initial =
         router_flow_prompt::build_router_initial_prompt(router_flow_prompt::RouterInitialPromptInput {
             store: input.prompt_store,
             artifacts: input.artifacts,
             model: &model,
-            git: false,
-            gates: input.shared.gates,
-            no_kpop: input.shared.no_kpop,
+            gates: input.router.gates,
+            no_kpop: input.router.no_kpop,
             creative,
             max_hypotheses: input.max_hypotheses,
             include_header,
@@ -87,7 +79,7 @@ async fn deliver_router_initial_turn(
             &initial.stdout_label,
             initial.log_who,
         );
-        let begin = agent_backend_start_coder_session(input.client, work_dir);
+        let begin = input.client.start_coder_session(work_dir);
         let snapshot = async {
             SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)
                 .map_err(|e| e.to_string())
@@ -123,13 +115,12 @@ async fn finish_router_a_maybe_b(
         .unwrap_or_default();
     let done = chat_has_malvin_done(&chat);
     if !done {
-        let no_kpop = input.shared.no_kpop;
+        let no_kpop = input.router.no_kpop;
         let router_b =
             router_flow_prompt::build_router_b_prompt(router_flow_prompt::RouterBPromptInput {
                 store: input.prompt_store,
                 artifacts: input.artifacts,
                 model,
-                git: false,
                 creative,
                 no_kpop,
             })?;

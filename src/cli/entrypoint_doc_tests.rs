@@ -50,6 +50,86 @@ fn entrypoint_from_admin_models_doc_exits_success() {
 }
 
 #[test]
+fn entrypoint_from_admin_rejects_gates_flag() {
+    use crate::test_stderr_capture::capture_stderr_output;
+
+    with_isolated_home(|_| {
+        let stderr = capture_stderr_output(|| {
+            assert_eq!(
+                entrypoint_from(["malvin", "-g", "admin", "models", "--doc"]),
+                Exit::Failure
+            );
+        });
+        assert!(
+            stderr.contains("admin") && (stderr.contains("--gates") || stderr.contains("-g")),
+            "expected admin+gates rejection; stderr={stderr:?}"
+        );
+    });
+}
+
+#[test]
+fn entrypoint_from_admin_rejects_quiet_flag() {
+    use crate::test_stderr_capture::capture_stderr_output;
+
+    with_isolated_home(|_| {
+        let stderr = capture_stderr_output(|| {
+            assert_eq!(
+                entrypoint_from(["malvin", "-q", "admin", "models", "--doc"]),
+                Exit::Failure
+            );
+        });
+        assert!(
+            stderr.contains("admin") && (stderr.contains("--quiet") || stderr.contains("-q")),
+            "expected admin+quiet rejection; stderr={stderr:?}"
+        );
+    });
+}
+
+#[test]
+fn entrypoint_from_admin_rejects_verbose_flag() {
+    use crate::test_stderr_capture::capture_stderr_output;
+
+    with_isolated_home(|_| {
+        let stderr = capture_stderr_output(|| {
+            assert_eq!(
+                entrypoint_from(["malvin", "-v", "admin", "models", "--doc"]),
+                Exit::Failure
+            );
+        });
+        assert!(
+            stderr.contains("admin")
+                && (stderr.contains("--verbose") || stderr.contains("-v")),
+            "expected admin+verbose rejection; stderr={stderr:?}"
+        );
+    });
+}
+
+#[test]
+fn entrypoint_from_admin_rejects_max_acp_retries_flag() {
+    use crate::test_stderr_capture::capture_stderr_output;
+
+    with_isolated_home(|_| {
+        let stderr = capture_stderr_output(|| {
+            assert_eq!(
+                entrypoint_from([
+                    "malvin",
+                    "--max-acp-retries",
+                    "9",
+                    "admin",
+                    "models",
+                    "--doc"
+                ]),
+                Exit::Failure
+            );
+        });
+        assert!(
+            stderr.contains("admin") && stderr.contains("--max-acp-retries"),
+            "expected admin+max-acp-retries rejection; stderr={stderr:?}"
+        );
+    });
+}
+
+#[test]
 fn entrypoint_from_doc_does_not_suppress_stdout() {
     with_isolated_home(|_| {
         crate::output::set_stdout_suppressed(false);
@@ -89,10 +169,17 @@ fn dispatch_gates_only_route_runs_tenacious_preflight() {
         let cwd = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(work).expect("chdir");
         let mut shared = SharedOpts::test_defaults();
-        shared.gates = true;
+        let mut router = crate::cli::RouterOpts::test_defaults();
+        router.gates = true;
         shared.model = crate::model_id::parse_model_id("rpi:some-unknown/foo").expect("model");
         let matches = Cli::command().get_matches_from(["malvin", "-g"]);
-        let result = super::dispatch_gates_only_route(1, 5, &mut shared, &matches);
+        let result = super::dispatch_gates_only_route(super::GatesOnlyDispatch {
+            max_loops: 1,
+            max_hypotheses: 5,
+            shared: &mut shared,
+            router: &mut router,
+            matches: &matches,
+        });
         assert!(
             result.is_err(),
             "expected router failure without agent: {result:?}"

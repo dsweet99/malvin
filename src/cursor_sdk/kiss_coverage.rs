@@ -179,12 +179,10 @@ fn kiss_cov_cursor_sdk_mock_helpers() {
     let _ = stringify!(run_mock_prompt);
     let _ = stringify!(assert_usage);
     let _ = stringify!(bug_mock_io_forced);
-    let _ = stringify!(bug_mock_io_noforce);
     let _ = stringify!(bug_install_env);
     let _ = stringify!(bug_clear_env);
     let _ = stringify!(bug_bridge_js);
     let _ = stringify!(bug_client);
-    let _ = stringify!(bug_client_noforce);
     let _ = stringify!(bug_prepare);
     let _ = stringify!(assert_err_has);
     let _ = stringify!(expect_prompt_err);

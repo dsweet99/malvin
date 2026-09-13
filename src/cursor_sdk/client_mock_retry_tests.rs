@@ -32,7 +32,7 @@ async fn fresh_agent_on_retry_recreates_after_non_teardown_timeout() {
 
 async fn run_fresh_agent_retry_prompt(client: &mut CursorSdkClient, tmp_path: &std::path::Path) {
     client
-        .run_coder_prompt(
+        .active_coder_session().expect("active coder session").run_coder_prompt(
             "NON_TEARDOWN_TIMEOUT_ONCE please",
             &tmp_path.join("prompts.log"),
             "router_header",
@@ -96,7 +96,7 @@ async fn run_and_assert_header_session(
     client.begin_coder_session(dir).await.expect("begin");
     let ensure = client.start_coder_session(dir).await.expect("start");
     assert!(!ensure.is_fresh(), "overlapping spawn must still be Reused");
-    assert!(client.header_delivered);
+    assert!(client.header_lifecycle.is_satisfied());
     assert_header_text_in_log(log);
 }
 

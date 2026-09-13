@@ -42,7 +42,6 @@ fn default_embedded_placeholder_context() -> HashMap<String, String> {
         ("malvin_command", "malvin --model=cursor:auto"),
         ("quality_gates", ""),
         ("advice_path", "./.malvin/advice.md"),
-        ("git_extra", ""),
         ("kpop_insert", ""),
         ("agents_insert", ""),
     ];

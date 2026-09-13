@@ -16,7 +16,7 @@ pub(crate) use models_cmd_filter::{line_matches_prefix, models_list_prefix, sect
 #[derive(Args, Debug, Clone, Default)]
 #[command(override_usage = "malvin admin models [OPTION]... [PREFIX]...")]
 pub struct ModelsArgs {
-    /// Force-refresh provider model catalogs (bypasses the daily Pi cache).
+    /// Force-refresh `pi:` and `rpi:` model catalogs (also runs automatically every 24h).
     #[arg(long)]
     pub refresh: bool,
     /// Optional prefix filter (for example `cursor:`, `pi:`, `rpi:`, or `codex:`)
@@ -123,7 +123,7 @@ fn print_pi_models(models: &[crate::pi_sdk::PiModelListing], filter: Option<&str
     if printed {
         print_stdout_line(
             MALVIN_WHO,
-            "Note: pi model list refreshes live provider catalogs at most once per day (use --refresh to force); rows are shown only for providers you can run (environment API key or stored Pi credential).",
+            "Note: pi:/rpi: model lists refresh live provider catalogs at most once per day (use --refresh to force); rpi: rows are shown only for providers you can run (environment API key or stored Pi credential).",
         );
     }
 }

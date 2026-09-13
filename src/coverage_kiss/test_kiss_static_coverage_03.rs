@@ -77,7 +77,6 @@ fn kiss_exec_witness_03_04() {
     retry_pollution_mock_client();
     run_retry_pollution_prompt();
     assert_retry_history_reflects_memory_model();
-    begin_coder_session_fails_fast_when_no_force();
     ShrinkEvent();
     BashFence();
     FenceParseWarning();

@@ -22,7 +22,11 @@ fn record_spawn_success(
     client.record_backend_success();
     adopt_spawned_session(client, session, cwd);
     let resumed = resume_agent_id.is_some();
-    client.header_delivered = resumed;
+    if resumed {
+        client.header_lifecycle.mark_satisfied_keeping_header();
+    } else {
+        client.header_lifecycle.mark_fresh_spawn();
+    }
     if !resumed {
         emit_agent_started_log(client);
     }
@@ -61,11 +65,11 @@ pub(super) async fn spawn_with_retries(
     thinking: Option<&str>,
 ) -> Result<bool, AgentError> {
     let resume_agent_id = cursor_resume_id(client);
-    let mut last_error = String::new();
-    let max_attempts = client.max_acp_retries;
+    let mut last_error;
+    let backoff_ceiling = u32::MAX;
     let mut attempts_used = 0_u32;
-    for attempt in 1..=max_attempts {
-        attempts_used = attempt;
+    loop {
+        attempts_used = attempts_used.saturating_add(1);
         match spawn_for_backend(
             client.model.backend,
             bridge_spawn_args(client, &cwd, thinking),
@@ -76,7 +80,8 @@ pub(super) async fn spawn_with_retries(
         {
             Ok(s) => return Ok(record_spawn_success(client, s, cwd, resume_agent_id.as_deref())),
             Err(e) => {
-                let (err_msg, stop) = handle_spawn_failure(client, e, attempt, max_attempts).await?;
+                let (err_msg, stop) =
+                    handle_spawn_failure(client, e, attempts_used, backoff_ceiling).await?;
                 last_error = err_msg;
                 if stop {
                     break;
@@ -152,7 +157,7 @@ fn adopt_spawned_session(client: &mut SdkClient, s: SdkSession, cwd: PathBuf) {
     if matches!(client.model.backend, ModelBackend::Cursor) {
         remember_agent_id_from(client, &s);
     }
-    client.coder = Some(BegunCoderSession::Live { cwd, session: s });
+    client.coder = BegunCoderSession::Live { cwd, session: s };
     crate::herdr::notify_reclaim();
 }
 

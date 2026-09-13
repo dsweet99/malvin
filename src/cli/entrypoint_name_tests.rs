@@ -20,13 +20,13 @@ fn help_omits_git_flag() {
 fn shared_opts_parses_creative_flag_default_off() {
     use clap::Parser;
     let cli = crate::cli::Cli::try_parse_from(["malvin", "--doc"]).expect("parse");
-    assert!(cli.shared.creative.is_none());
+    assert!(cli.router.creative.is_none());
 }
 
 fn shared_opts_parses_creative_flag_on() {
     use clap::Parser;
     let cli = crate::cli::Cli::try_parse_from(["malvin", "--creative", "--doc"]).expect("parse");
-    assert_eq!(cli.shared.creative, Some(1.0));
+    assert_eq!(cli.router.creative, Some(1.0));
 }
 
 fn help_lists_creative_flag() {
@@ -38,13 +38,13 @@ fn help_lists_creative_flag() {
 fn shared_opts_parses_no_kpop_flag_default_off() {
     use clap::Parser;
     let cli = crate::cli::Cli::try_parse_from(["malvin", "--doc"]).expect("parse");
-    assert!(!cli.shared.no_kpop);
+    assert!(!cli.router.no_kpop);
 }
 
 fn shared_opts_parses_no_kpop_flag_on() {
     use clap::Parser;
     let cli = crate::cli::Cli::try_parse_from(["malvin", "--no-kpop", "--doc"]).expect("parse");
-    assert!(cli.shared.no_kpop);
+    assert!(cli.router.no_kpop);
 }
 
 fn help_hides_no_kpop_flag() {

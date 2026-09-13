@@ -21,6 +21,7 @@ pub(crate) fn parse_creative_probability(s: &str) -> Result<f64, String> {
     Ok(p)
 }
 
+/// Options shared across workflows (model, logging, retries, docs).
 #[derive(Args, Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct SharedOpts {
@@ -31,26 +32,32 @@ pub struct SharedOpts {
         value_parser = parse_model_id
     )]
     pub model: ParsedModel,
-    /// Run workspace quality gates; treat failures as loop or exit criteria
-    #[arg(short = 'g', long, default_value_t = false)]
-    pub gates: bool,
-    /// Only long the final response, not the whole session
-    #[arg(
-        short = 'q',
-        long,
-        default_value_t = false,
-        help = QUIET_HELPTEXT
-    )]
-    pub quiet: bool,
     /// Log full outgoing agent prompts to stdout and `prompts.log`
     #[arg(short, long, default_value_t = false)]
     pub verbose: bool,
-    /// Max agent retries per spawn or gate iteration
+    /// Stop after N consecutive identical backend errors (default 3)
     #[arg(long = "max-acp-retries", default_value_t = DEFAULT_MAX_ACP_RETRIES)]
     pub max_acp_retries: u32,
     /// Print built-in documentation and exit
     #[arg(long, global = true, default_value_t = false)]
     pub doc: bool,
+}
+
+/// Options that apply only to default-route / gates-only loops.
+#[derive(Args, Debug, Clone)]
+pub struct RouterOpts {
+    /// Only long the final response, not the whole session
+    #[arg(
+        short = 'q',
+        long,
+        default_value_t = false,
+        conflicts_with = "do_workflow",
+        help = QUIET_HELPTEXT
+    )]
+    pub quiet: bool,
+    /// Run workspace quality gates; treat failures as loop or exit criteria
+    #[arg(short = 'g', long, default_value_t = false, conflicts_with = "do_workflow")]
+    pub gates: bool,
     /// Be (more) creative; optional probability in [0,1] (default 1.0 when set)
     #[arg(
         long,
@@ -59,23 +66,56 @@ pub struct SharedOpts {
         require_equals = true,
         value_name = "PROB",
         value_parser = parse_creative_probability,
+        conflicts_with = "do_workflow",
         help = CREATIVE_HELPTEXT
     )]
     pub creative: Option<f64>,
     /// Turn off `KPop`
-    #[arg(long = "no-kpop", default_value_t = false, hide = true)]
+    #[arg(
+        long = "no-kpop",
+        default_value_t = false,
+        hide = true,
+        conflicts_with = "do_workflow"
+    )]
     pub no_kpop: bool,
+    /// Outer agent-session budget for bare malvin REQUEST
+    #[arg(
+        long,
+        default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS,
+        conflicts_with = "do_workflow"
+    )]
+    pub max_loops: usize,
+    /// Hypothesis budget for bare malvin REQUEST
+    #[arg(
+        long,
+        default_value_t = crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
+        conflicts_with = "do_workflow"
+    )]
+    pub max_hypotheses: usize,
 }
 
 impl SharedOpts {
     #[must_use]
     pub(crate) fn tee_startup_stdout(&self) -> bool {
-        !self.quiet && !crate::output::stdout_suppressed()
+        !crate::output::stdout_suppressed()
     }
 
     #[must_use]
     pub(crate) const fn acp_stdout_markdown_enabled(&self) -> bool {
         true
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct AgentRouteOpts<'a> {
+    pub shared: &'a SharedOpts,
+    pub router: &'a RouterOpts,
+}
+
+impl RouterOpts {
+    #[must_use]
+    pub(crate) fn tee_startup_stdout(&self) -> bool {
+        !self.quiet && !crate::output::stdout_suppressed()
     }
 
     #[must_use]
@@ -95,13 +135,24 @@ impl SharedOpts {
     pub(crate) fn test_defaults() -> Self {
         Self {
             model: parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("default model"),
-            gates: false,
-            quiet: false,
             verbose: false,
             max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
+        }
+    }
+}
+
+#[cfg(test)]
+impl RouterOpts {
+    #[must_use]
+    pub(crate) fn test_defaults() -> Self {
+        Self {
+            quiet: false,
+            gates: false,
             creative: None,
             no_kpop: false,
+            max_loops: crate::malvin_config_file::DEFAULT_MAX_LOOPS,
+            max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
         }
     }
 }
@@ -112,21 +163,21 @@ mod overlay_tests {
     fn creative_flag_defaults_off_and_accepts_probability() {
         use clap::Parser;
         let off = crate::cli::Cli::try_parse_from(["malvin", "--doc"]).expect("parse");
-        assert!(off.shared.creative.is_none());
-        assert!(!off.shared.sample_creative_this_iteration());
+        assert!(off.router.creative.is_none());
+        assert!(!off.router.sample_creative_this_iteration());
 
         let on = crate::cli::Cli::try_parse_from(["malvin", "--creative", "--doc"]).expect("parse");
-        assert_eq!(on.shared.creative, Some(1.0));
-        assert!(on.shared.sample_creative_this_iteration());
+        assert_eq!(on.router.creative, Some(1.0));
+        assert!(on.router.sample_creative_this_iteration());
 
         let p =
             crate::cli::Cli::try_parse_from(["malvin", "--creative=0.6", "--doc"]).expect("parse");
-        assert_eq!(p.shared.creative, Some(0.6));
+        assert_eq!(p.router.creative, Some(0.6));
 
         let zero =
             crate::cli::Cli::try_parse_from(["malvin", "--creative=0", "--doc"]).expect("parse");
-        assert_eq!(zero.shared.creative, Some(0.0));
-        assert!(!zero.shared.sample_creative_this_iteration());
+        assert_eq!(zero.router.creative, Some(0.0));
+        assert!(!zero.router.sample_creative_this_iteration());
     }
 
     #[test]

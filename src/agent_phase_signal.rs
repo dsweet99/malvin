@@ -4,13 +4,19 @@ use crate::tool_summary::{
     execute_effective_exit, execute_stdout_failed,
 };
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum PhaseSideEffect {
+    None,
+    NotifyWorking,
+}
+
 pub(super) fn observe_tool_update_state(
     state: &mut PhaseState,
     parsed: &ParsedToolUpdate,
     tracker: &ToolSummaryTracker,
-) {
+) -> PhaseSideEffect {
     let Some(kind) = tool_kind_for(parsed, tracker) else {
-        return;
+        return PhaseSideEffect::None;
     };
     state.orienting = false;
     state.reasoning = false;
@@ -37,36 +43,42 @@ fn observe_execute(
     state: &mut PhaseState,
     parsed: &ParsedToolUpdate,
     tracker: &ToolSummaryTracker,
-) {
+) -> PhaseSideEffect {
     match parsed.phase {
         TOOL_PHASE_START => {
             state.running_shells = state.running_shells.saturating_add(1);
             state.active_tool = Some((ToolKind::Execute, parsed.phase));
-            crate::herdr::notify_working();
+            PhaseSideEffect::NotifyWorking
         }
-        TOOL_PHASE_RUNNING => state.active_tool = Some((ToolKind::Execute, parsed.phase)),
+        TOOL_PHASE_RUNNING => {
+            state.active_tool = Some((ToolKind::Execute, parsed.phase));
+            PhaseSideEffect::None
+        }
         TOOL_PHASE_DONE => {
             state.running_shells = state.running_shells.saturating_sub(1);
             if execute_failed(parsed) && execute_looks_like_test(parsed, tracker) {
                 state.debugging = true;
             }
             state.active_tool = None;
+            PhaseSideEffect::None
         }
-        _ => {}
+        _ => PhaseSideEffect::None,
     }
 }
 
-fn observe_non_execute(state: &mut PhaseState, kind: ToolKind, phase: u8) {
+fn observe_non_execute(state: &mut PhaseState, kind: ToolKind, phase: u8) -> PhaseSideEffect {
     if phase == TOOL_PHASE_DONE {
         if state.active_tool.is_some_and(|(k, _)| k == kind) {
             state.active_tool = None;
         }
-        return;
-    }
-    if phase == TOOL_PHASE_START {
-        crate::herdr::notify_working();
+        return PhaseSideEffect::None;
     }
     state.active_tool = Some((kind, phase));
+    if phase == TOOL_PHASE_START {
+        PhaseSideEffect::NotifyWorking
+    } else {
+        PhaseSideEffect::None
+    }
 }
 
 fn execute_failed(parsed: &ParsedToolUpdate) -> bool {

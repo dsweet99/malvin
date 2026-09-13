@@ -62,14 +62,6 @@ async function handleCreate(req) {
     await sleep(60_000);
     return;
   }
-  if (req.noForcePolicy === "fail_fast") {
-    emit({
-      event: "fatal",
-      message: "--no-force is not supported with the Cursor SDK backend",
-      retryable: false,
-    });
-    return;
-  }
   created = true;
   bootKind = "create";
   agentId = "mock-agent";
@@ -82,14 +74,6 @@ async function handleResume(req) {
     emit({
       event: "fatal",
       message: "agent already created",
-      retryable: false,
-    });
-    return;
-  }
-  if (req.noForcePolicy === "fail_fast") {
-    emit({
-      event: "fatal",
-      message: "--no-force is not supported with the Cursor SDK backend",
       retryable: false,
     });
     return;

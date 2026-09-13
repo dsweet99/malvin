@@ -1,8 +1,8 @@
-use crate::agent_backend::{AgentBackend, build_agent_backend};
+use crate::agent_backend::{SdkClient, build_agent_backend};
 use crate::artifacts::{RunArtifacts, resolve_user_md_request};
 use crate::cli::cli_request::require_cli_request;
 use crate::cli::run_emit::{RunStartupEmitOpts, emit_run_logs_line, emit_run_startup_banner};
-use crate::cli::{SharedOpts, WorkflowCliOptions};
+use crate::cli::{AgentRouteOpts, SharedOpts};
 use crate::prompts::PromptStore;
 #[path = "router_flow_acp.rs"]
 pub(crate) mod router_flow_acp;
@@ -25,35 +25,29 @@ pub struct RouterArgs {
 }
 
 struct RouterRunPrep {
-    client: AgentBackend,
+    client: SdkClient,
     artifacts: RunArtifacts,
     prompt_store: PromptStore,
 }
 
 fn new_router_client(
     shared: &SharedOpts,
-    workflow: WorkflowCliOptions,
-) -> Result<AgentBackend, String> {
-    build_agent_backend(
-        shared,
-        workflow,
-        shared.acp_stdout_markdown_enabled(),
-        "router",
-    )
+) -> Result<SdkClient, String> {
+    build_agent_backend(shared, shared.acp_stdout_markdown_enabled())
 }
 
 fn finish_router_run_artifacts(
     artifacts: &RunArtifacts,
-    shared: &SharedOpts,
+    opts: AgentRouteOpts<'_>,
     request: &str,
 ) -> Result<(), String> {
-    if shared.gates {
+    if opts.router.gates {
         crate::artifacts::init_quality_gates_log_pending(artifacts).map_err(|e| e.to_string())?;
     }
     crate::run_id::activate_run(artifacts.run_dir.clone());
     emit_run_startup_banner(
         artifacts,
-        RunStartupEmitOpts::from_shared(shared, true),
+        RunStartupEmitOpts::from_route(opts, true),
         request,
     )?;
     crate::run_id::maybe_gc_after_run_created(&artifacts.work_dir, &artifacts.run_dir);
@@ -62,10 +56,9 @@ fn finish_router_run_artifacts(
 
 async fn prepare_router_run(
     router_args: &RouterArgs,
-    shared: &SharedOpts,
-    workflow: WorkflowCliOptions,
+    opts: AgentRouteOpts<'_>,
 ) -> Result<RouterRunPrep, String> {
-    let client = new_router_client(shared, workflow)?;
+    let client = new_router_client(opts.shared)?;
     let request = require_cli_request(router_args.request.as_ref(), "")?;
     let (text, work_dir) = resolve_user_md_request(&request)?;
     let artifacts = crate::artifacts::create_run_artifacts_from_text_opts(
@@ -74,7 +67,7 @@ async fn prepare_router_run(
         crate::run_id::RunDirOptions { gc: false },
     )
     .map_err(|e| e.to_string())?;
-    finish_router_run_artifacts(&artifacts, shared, &request)?;
+    finish_router_run_artifacts(&artifacts, opts, &request)?;
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let prompt_store = prepare_router_prompt_store()?;
     Ok(RouterRunPrep {
@@ -86,21 +79,20 @@ async fn prepare_router_run(
 
 pub async fn run_router(
     router_args: RouterArgs,
-    shared: &SharedOpts,
-    workflow: WorkflowCliOptions,
+    opts: AgentRouteOpts<'_>,
 ) -> Result<(), String> {
     let request = require_cli_request(router_args.request.as_ref(), "")?;
-    if shared.quiet {
+    if opts.router.quiet {
         let interactive = crate::output::agent_stdout_tee_enabled();
-        let emit_markdown = interactive && shared.acp_stdout_markdown_enabled();
+        let emit_markdown = interactive && opts.shared.acp_stdout_markdown_enabled();
         crate::output::set_do_dm_stdout_opts(crate::output::DoDmStdoutOpts {
             enabled: true,
             emit_markdown,
         });
         crate::output::set_heartbeat_stdout_suppressed(true);
     }
-    let result = run_router_body(router_args, shared, workflow, &request).await;
-    if shared.quiet {
+    let result = run_router_body(router_args, opts, &request).await;
+    if opts.router.quiet {
         crate::output::set_do_dm_stdout_opts(crate::output::DoDmStdoutOpts::default());
         crate::output::set_heartbeat_stdout_suppressed(false);
     }
@@ -109,11 +101,10 @@ pub async fn run_router(
 
 async fn run_router_body(
     router_args: RouterArgs,
-    shared: &SharedOpts,
-    workflow: WorkflowCliOptions,
+    opts: AgentRouteOpts<'_>,
     _request: &str,
 ) -> Result<(), String> {
-    let mut prep = prepare_router_run(&router_args, shared, workflow).await?;
+    let mut prep = prepare_router_run(&router_args, opts).await?;
     prep.client.prompts_log_run_dir = Some(prep.artifacts.run_dir.clone());
     emit_run_logs_line(&prep.artifacts)?;
 
@@ -122,7 +113,8 @@ async fn run_router_body(
             client: &mut prep.client,
             artifacts: &prep.artifacts,
             prompt_store: &prep.prompt_store,
-            shared,
+            shared: opts.shared,
+            router: opts.router,
             max_loops: router_args.max_loops,
             max_hypotheses: router_args.max_hypotheses,
         })

@@ -11,7 +11,6 @@ pub(crate) struct RouterHeaderPromptInput<'a> {
     pub store: &'a PromptStore,
     pub artifacts: &'a RunArtifacts,
     pub model: &'a str,
-    pub git: bool,
     pub max_hypotheses: usize,
     pub no_kpop: bool,
 }
@@ -19,12 +18,11 @@ pub(crate) struct RouterHeaderPromptInput<'a> {
 pub(crate) fn build_router_header_prompt(
     input: RouterHeaderPromptInput<'_>,
 ) -> Result<String, String> {
-    let mut ctx = workflow_context_paths_only(input.artifacts, input.model, input.git);
+    let mut ctx = workflow_context_paths_only(input.artifacts, input.model);
     let kpop = build_router_kpop_common_prompt(RouterKpopCommonPromptInput {
         store: input.store,
         artifacts: input.artifacts,
         model: input.model,
-        git: input.git,
         max_hypotheses: input.max_hypotheses,
         no_kpop: input.no_kpop,
     })?;
@@ -40,7 +38,6 @@ pub(crate) struct RouterKpopCommonPromptInput<'a> {
     pub store: &'a PromptStore,
     pub artifacts: &'a RunArtifacts,
     pub model: &'a str,
-    pub git: bool,
     pub max_hypotheses: usize,
     pub no_kpop: bool,
 }
@@ -49,7 +46,7 @@ pub(crate) fn build_router_kpop_common_prompt(
     input: RouterKpopCommonPromptInput<'_>,
 ) -> Result<String, String> {
     let template = kpop_common_prompt_file(input.no_kpop);
-    let mut ctx = workflow_context_paths_only(input.artifacts, input.model, input.git);
+    let mut ctx = workflow_context_paths_only(input.artifacts, input.model);
     ctx.insert("max_hypotheses", input.max_hypotheses.to_string());
     ctx.insert(
         "exp_log",
@@ -85,7 +82,6 @@ pub(crate) struct RouterAPromptInput<'a> {
     pub store: &'a PromptStore,
     pub artifacts: &'a RunArtifacts,
     pub model: &'a str,
-    pub git: bool,
     pub gates: bool,
     pub no_kpop: bool,
 }
@@ -95,16 +91,14 @@ pub(crate) fn build_router_a_prompt(input: RouterAPromptInput<'_>) -> Result<Str
         store,
         artifacts,
         model,
-        git,
         gates,
         no_kpop,
     } = input;
-    let mut ctx = workflow_context_paths_only(artifacts, model, git);
+    let mut ctx = workflow_context_paths_only(artifacts, model);
     let code_extra = render_router_code_extra(RouterCodeExtraInput {
         store,
         artifacts,
         model,
-        git,
         gates,
     })?;
     ctx.insert("code_extra".to_string(), code_extra);
@@ -118,7 +112,6 @@ pub(crate) struct RouterBPromptInput<'a> {
     pub store: &'a PromptStore,
     pub artifacts: &'a RunArtifacts,
     pub model: &'a str,
-    pub git: bool,
     pub creative: bool,
     pub no_kpop: bool,
 }
@@ -128,7 +121,7 @@ pub(crate) fn build_router_b_prompt(input: RouterBPromptInput<'_>) -> Result<Str
         creative: input.creative,
         no_kpop: input.no_kpop,
     });
-    let ctx = workflow_context_paths_only(input.artifacts, input.model, input.git);
+    let ctx = workflow_context_paths_only(input.artifacts, input.model);
     let body = input
         .store
         .render_prompt_only(template, ctx.as_map())

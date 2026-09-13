@@ -104,24 +104,16 @@ pub fn format_malvin_command(model: &str) -> String {
     format!("malvin --model={model}")
 }
 
-pub const GIT_EXTRA_ENABLED: &str = "You may run 'git commit'.";
-
 #[derive(Clone, Copy, Debug)]
 pub struct PromptModelOpts<'a> {
     pub model: &'a str,
-    pub git: bool,
 }
 
 impl<'a> PromptModelOpts<'a> {
     #[must_use]
-    pub const fn new(model: &'a str, git: bool) -> Self {
-        Self { model, git }
+    pub const fn new(model: &'a str) -> Self {
+        Self { model }
     }
-}
-
-#[must_use]
-pub const fn format_git_extra(git: bool) -> &'static str {
-    if git { GIT_EXTRA_ENABLED } else { "" }
 }
 
 pub const AGENTS_MD_FILENAME: &str = "AGENTS.md";
@@ -143,13 +135,11 @@ pub fn format_agents_md_insert(work_dir: &Path) -> String {
 pub fn workflow_context_paths_only(
     artifacts: &RunArtifacts,
     model: &str,
-    git: bool,
 ) -> WorkflowRenderContext {
     let mut context = HashMap::new();
     insert_artifact_paths(&mut context, artifacts);
     insert_current_state(&mut context, artifacts, &artifacts.work_dir);
     context.insert("malvin_command".to_string(), format_malvin_command(model));
-    context.insert("git_extra".to_string(), format_git_extra(git).to_string());
     context.insert("kpop_insert".to_string(), String::new());
     context.insert(
         "agents_insert".to_string(),
@@ -164,7 +154,7 @@ pub fn workflow_context(
     prompts: &PromptStore,
     model: &str,
 ) -> Result<WorkflowRenderContext, PromptError> {
-    let mut context = workflow_context_paths_only(artifacts, model, false);
+    let mut context = workflow_context_paths_only(artifacts, model);
     context.insert(
         "quality_gates".to_string(),
         crate::repo_gates::prompt_quality_gates_markdown_ephemeral(&artifacts.work_dir)

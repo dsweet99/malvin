@@ -125,7 +125,7 @@ async fn run_long_tool_prompt(
 ) -> std::time::Duration {
     let started = std::time::Instant::now();
     client
-        .run_coder_prompt(
+        .active_coder_session().expect("active coder session").run_coder_prompt(
             "LONG_TOOL_TURN_THEN_DONE please",
             log,
             "coder",
@@ -154,7 +154,7 @@ async fn run_progress_prompt(
     log: &std::path::Path,
 ) {
     client
-        .run_coder_prompt(
+        .active_coder_session().expect("active coder session").run_coder_prompt(
             "PROGRESS_THEN_DONE please",
             log,
             "coder",

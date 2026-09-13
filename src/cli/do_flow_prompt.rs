@@ -53,7 +53,6 @@ pub fn combine_do_raw_header_and_user(
         artifacts,
         text,
         model: opts.model,
-        git: opts.git,
         mode_template: DO_HEADER_MD,
     })
 }

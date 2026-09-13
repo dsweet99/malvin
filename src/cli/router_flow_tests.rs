@@ -70,7 +70,6 @@ fn build_router_header_prompt_renders_without_unresolved_braces() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         max_hypotheses: 5,
         no_kpop: false,
     })
@@ -93,7 +92,6 @@ fn build_router_header_prompt_embeds_workspace_agents_md() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         max_hypotheses: 5,
         no_kpop: true,
     })
@@ -113,7 +111,6 @@ fn build_router_header_prompt_no_kpop_leaves_kpop_insert_empty() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         max_hypotheses: 5,
         no_kpop: true,
     })
@@ -134,7 +131,6 @@ fn build_router_kpop_common_prompt_renders_budget_and_log() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         max_hypotheses: 7,
         no_kpop: false,
     })
@@ -153,7 +149,6 @@ fn build_router_a_prompt_includes_user_request_path() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         gates: false,
         no_kpop: false,
     })
@@ -171,7 +166,7 @@ fn combine_router_acp_prompt_joins_rendered_header_and_request() {
         &store,
         &artifacts,
         "USER_TOKEN",
-        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false),
+        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
     )
     .expect("combine");
     assert_eq!(header, "CODING_HDR");
@@ -191,7 +186,7 @@ fn combine_router_raw_header_and_user_joins_rendered_router_a_and_request() {
         &store,
         &artifacts,
         "USER_RAW_TOKEN\n\n",
-        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL, false),
+        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
     )
     .expect("combine");
     assert_eq!(header, "ROUTER_A_TOKEN");

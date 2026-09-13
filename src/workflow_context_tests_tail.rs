@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 
 use super::{
-    AGENTS_MD_FILENAME, GIT_EXTRA_ENABLED, format_agents_md_insert, format_git_extra,
-    insert_current_state, insert_formatted, resolve_user_brief_path,
-    workflow_context_paths_only,
+    AGENTS_MD_FILENAME, format_agents_md_insert, insert_current_state, insert_formatted,
+    resolve_user_brief_path, workflow_context_paths_only,
 };
 use crate::prompt_stratification::WorkflowRenderContext;
 
@@ -27,7 +26,7 @@ fn workflow_context_paths_only_embeds_agents_md() {
     std::fs::write(tmp.path().join(AGENTS_MD_FILENAME), "Prefer narrow checks.\n").expect("agents");
     let artifacts =
         crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
-    let ctx = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, false);
+    let ctx = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL);
     let insert = ctx.get("agents_insert").expect("agents_insert");
     assert!(
         insert.contains("Prefer narrow checks."),
@@ -35,18 +34,17 @@ fn workflow_context_paths_only_embeds_agents_md() {
     );
 }
 
-fn workflow_context_paths_only_sets_git_extra_from_flag() {
+fn workflow_context_paths_only_omits_removed_git_extra() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "p").expect("write");
     let artifacts =
         crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
-    let with_git = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, true);
-    assert_eq!(with_git.get("git_extra").expect("git"), GIT_EXTRA_ENABLED);
-    let no_git = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, false);
-    assert_eq!(no_git.get("git_extra").expect("git"), "");
-    assert_eq!(format_git_extra(true), GIT_EXTRA_ENABLED);
-    assert_eq!(format_git_extra(false), "");
+    let ctx = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL);
+    assert!(
+        ctx.get("git_extra").is_none(),
+        "git_extra placeholder must not remain after --git removal"
+    );
 }
 
 fn insert_current_state_populates_key() {
@@ -124,7 +122,7 @@ fn workflow_context_returns_plan_path_and_quality_gates() {
 fn kiss_bundled_workflow_context_tests_tail() {
     format_agents_md_insert_cases();
     workflow_context_paths_only_embeds_agents_md();
-    workflow_context_paths_only_sets_git_extra_from_flag();
+    workflow_context_paths_only_omits_removed_git_extra();
     insert_current_state_populates_key();
     insert_formatted_stores_workflow_relative_path();
     resolve_user_brief_path_uses_context_override();

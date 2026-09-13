@@ -53,7 +53,7 @@ fn slots_branchy_witness_covers_dotfile_rows() {
         let mut id = |n: usize| format!("slots-branchy-{n}");
         let backup = backup_slot(0, work, &mut id).expect("backup");
         if matches!(backup, DotfileBackupState::Present(_)) {
-            restore_slot(work, &backup, 0).expect("restore");
+            restore_slot(work, backup.as_slot_state(), 0).expect("restore");
         } else if matches!(backup, DotfileBackupState::Missing) {
             panic!("missing backup");
         } else {
@@ -66,7 +66,7 @@ fn slots_branchy_witness_covers_dotfile_rows() {
 fn kiss_cov_slots_static_unit_refs() {
     let _ = DotfileSpecRow::rel_path;
     let _ = labels_for_test;
-    let _: [DotfileSpecRow; 3] = DOTFILE_ROWS;
+    let _: [DotfileSpecRow; 2] = DOTFILE_ROWS;
 }
 
 #[test]
@@ -86,9 +86,10 @@ fn kiss_cov_slots_workspace_config_slot_roundtrip() {
         let mut generate_id = |n: usize| format!("kiss-cfg-{n}");
         let backup =
             backup_slot(MALVIN_CONFIG_WORKSPACE_SLOT, work, &mut generate_id).expect("backup");
-        match backup {
+        match &backup {
             DotfileBackupState::Present(_) => {
-                restore_slot(work, &backup, MALVIN_CONFIG_WORKSPACE_SLOT).expect("restore");
+                restore_slot(work, backup.as_slot_state(), MALVIN_CONFIG_WORKSPACE_SLOT)
+                    .expect("restore");
             }
             DotfileBackupState::Missing => panic!("workspace config slot should backup"),
         }
@@ -100,13 +101,13 @@ fn kiss_cov_slots_backup_restore_roundtrip() {
     crate::test_utils::with_isolated_home(|work| {
         std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
         std::fs::write(work.join(".malvin/gates"), "make lint\n").expect("gates");
-        std::fs::write(work.join(".gitignore"), "target/\n").expect("gitignore");
+        std::fs::write(work.join(crate::MALVIN_CONFIG_REL), "workspace-config\n").expect("config");
         let mut generate_id = |n: usize| format!("kiss-slot-{n}");
         for slot in 0..DOTFILE_ROWS.len() {
             let backup = backup_slot(slot, work, &mut generate_id).expect("backup");
-            match backup {
+            match &backup {
                 DotfileBackupState::Present(_) => {
-                    restore_slot(work, &backup, slot).expect("restore");
+                    restore_slot(work, backup.as_slot_state(), slot).expect("restore");
                 }
                 DotfileBackupState::Missing => {}
             }

@@ -25,7 +25,7 @@ fn effective_max_loops_is_at_least_one() {
 fn router_workflow_context_includes_quality_gates() {
     crate::test_utils::with_isolated_home(|_| {
         let (_tmp, _store, artifacts) = router_render_fixture("code");
-        let ctx = router_workflow_context!(&artifacts, crate::config::DEFAULT_CLI_MODEL, false)
+        let ctx = router_workflow_context!(&artifacts, crate::config::DEFAULT_CLI_MODEL)
             .expect("context");
         assert!(ctx.contains_key("quality_gates"));
     });
@@ -36,7 +36,6 @@ fn router_workflow_context_without_gates_omits_quality_gates() {
         let ctx = router_workflow_context_without_gates!(
             &artifacts,
             crate::config::DEFAULT_CLI_MODEL,
-            false,
         )
         .expect("context");
         assert!(!ctx.contains_key("quality_gates"));
@@ -142,7 +141,7 @@ fn gate_iteration_context_overrides_exp_log() {
         crate::seed_malvin_checks(tmp.path(), "true\n");
         let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
             .expect("artifacts");
-        let base = router_workflow_context!(&artifacts, crate::config::DEFAULT_CLI_MODEL, false)
+        let base = router_workflow_context!(&artifacts, crate::config::DEFAULT_CLI_MODEL)
             .expect("ctx");
         let iter_log = artifacts.gate_exp_log_path(2);
         let ctx = gate_iteration_context!(&base, &artifacts, &iter_log, 2);

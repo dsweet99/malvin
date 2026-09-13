@@ -1,4 +1,7 @@
-use super::{DotfileBackupPayload, DotfileBackupState, SessionDotfileBackups, SessionDotfileParts};
+use super::{
+    DotfileBackupPayload, DotfileBackupState, MalvinChecksBackup, MalvinConfigWorkspaceBackup,
+    SessionDotfileBackups,
+};
 
 #[test]
 fn kiss_cov_dotfile_backup_payload_construct_destructure() {
@@ -13,35 +16,35 @@ fn kiss_cov_dotfile_backup_payload_construct_destructure() {
 }
 
 #[test]
-fn kiss_cov_session_dotfile_parts_construct_destructure() {
-    let missing = DotfileBackupState::Missing;
-    let parts = SessionDotfileParts {
-        malvin_checks: missing.clone(),
+fn kiss_cov_session_dotfile_backups_construct_destructure() {
+    let backups = SessionDotfileBackups {
+        malvin_checks: MalvinChecksBackup::Missing,
         gitignore: super::GitignoreBackup::Missing,
         vision: super::VisionBackup::Missing,
-        malvin_config_workspace: missing,
+        malvin_config_workspace: MalvinConfigWorkspaceBackup::Missing,
     };
-    let touched = std::hint::black_box(parts);
-    let SessionDotfileParts {
+    let touched = std::hint::black_box(backups);
+    let SessionDotfileBackups {
         malvin_checks,
         gitignore,
         vision,
         malvin_config_workspace,
     } = touched;
-    assert!(matches!(malvin_checks, DotfileBackupState::Missing));
+    assert!(matches!(malvin_checks, MalvinChecksBackup::Missing));
     assert!(matches!(gitignore, super::GitignoreBackup::Missing));
     assert!(matches!(vision, super::VisionBackup::Missing));
     assert!(matches!(
         malvin_config_workspace,
-        DotfileBackupState::Missing
+        MalvinConfigWorkspaceBackup::Missing
     ));
-    let backups = SessionDotfileBackups::from_parts(SessionDotfileParts {
-        malvin_checks: DotfileBackupState::Missing,
-        gitignore: super::GitignoreBackup::Missing,
-        vision: super::VisionBackup::Missing,
-        malvin_config_workspace: DotfileBackupState::Missing,
-    });
-    assert!(matches!(backups.malvin_checks, DotfileBackupState::Missing));
+    let empty = SessionDotfileBackups::all_missing();
+    assert!(matches!(empty.malvin_checks, MalvinChecksBackup::Missing));
+    // Cross-kind assignment requires an explicit DotfileBackupState bridge; the field
+    // types themselves are distinct (representable-invalid-state fix).
+    let checks = MalvinChecksBackup::Missing;
+    let config: MalvinConfigWorkspaceBackup = DotfileBackupState::from(checks).into();
+    assert!(matches!(config, MalvinConfigWorkspaceBackup::Missing));
+    let _ = DotfileBackupState::Missing;
 }
 
 #[test]
@@ -64,6 +67,38 @@ fn kiss_cov_vision_file_backup_construct_destructure() {
     let super::vision_tree::VisionFileBackup { rel, bytes } = file;
     assert_eq!(rel, std::path::PathBuf::from("VISION.md"));
     assert_eq!(bytes, b"# Vision\n");
+}
+
+#[test]
+fn gitignore_and_vision_file_backups_are_distinct_types() {
+    use std::any::TypeId;
+    use super::named_file_tree::NamedFileEntry;
+    use super::gitignore_tree::GitignoreFileBackup;
+    use super::vision_tree::VisionFileBackup;
+
+    assert_ne!(
+        TypeId::of::<GitignoreFileBackup>(),
+        TypeId::of::<VisionFileBackup>(),
+        "gitignore and vision file backups must not unify"
+    );
+    assert_ne!(
+        TypeId::of::<GitignoreFileBackup>(),
+        TypeId::of::<NamedFileEntry>(),
+        "gitignore file backup must not be a NamedFileEntry alias"
+    );
+    assert_ne!(
+        TypeId::of::<VisionFileBackup>(),
+        TypeId::of::<NamedFileEntry>(),
+        "vision file backup must not be a NamedFileEntry alias"
+    );
+
+    let entry = NamedFileEntry {
+        rel: std::path::PathBuf::from(".gitignore"),
+        bytes: b"x\n".to_vec(),
+    };
+    let gitignore = GitignoreFileBackup::from(entry.clone());
+    let roundtrip = NamedFileEntry::from(gitignore);
+    assert_eq!(roundtrip, entry);
 }
 
 #[test]

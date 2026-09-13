@@ -40,7 +40,6 @@ fn initial_prompt_joins_header_kpop_and_router_a_in_order() {
             store: &store,
             artifacts: &artifacts,
             model: "cursor:auto",
-            git: false,
             gates: false,
             no_kpop: false,
             creative: false,
@@ -81,7 +80,6 @@ fn initial_prompt_adds_mbc2_when_creative() {
             store: &store,
             artifacts: &artifacts,
             model: "cursor:auto",
-            git: false,
             gates: false,
             no_kpop: false,
             creative: true,
@@ -114,7 +112,6 @@ fn initial_prompt_omits_header_when_not_included() {
             store: &store,
             artifacts: &artifacts,
             model: "cursor:auto",
-            git: false,
             gates: false,
             no_kpop: false,
             creative: false,
@@ -151,7 +148,6 @@ fn initial_prompt_respects_no_kpop_and_gates() {
             store: &store,
             artifacts: &artifacts,
             model: "cursor:auto",
-            git: false,
             gates: true,
             no_kpop: true,
             creative: false,
@@ -186,38 +182,36 @@ fn initial_prompt_git_and_max_hypotheses_affect_composition() {
         write_minimal_router_prompts(&prompt_root);
         std::fs::write(
             prompt_root.join(HEADER_MD),
-            "HEADER git={{ git_extra }}\n{{ kpop_insert }}\n",
+            "HEADER\n{{ kpop_insert }}\n",
         )
         .expect("header");
         let store = PromptStore::with_root(prompt_root);
-        let with_git = build_router_initial_prompt(RouterInitialPromptInput {
+        let hi = build_router_initial_prompt(RouterInitialPromptInput {
             store: &store,
             artifacts: &artifacts,
             model: "cursor:auto",
-            git: true,
             gates: false,
             no_kpop: false,
             creative: false,
             max_hypotheses: 7,
             include_header: true,
         })
-        .expect("git");
-        let no_git = build_router_initial_prompt(RouterInitialPromptInput {
+        .expect("hi");
+        let lo = build_router_initial_prompt(RouterInitialPromptInput {
             store: &store,
             artifacts: &artifacts,
             model: "cursor:auto",
-            git: false,
             gates: false,
             no_kpop: false,
             creative: false,
             max_hypotheses: 3,
             include_header: true,
         })
-        .expect("no_git");
-        assert_ne!(with_git.body, no_git.body);
-        assert!(with_git.body.contains("KPOP_BODY 7") || with_git.body.contains('7'));
-        assert!(no_git.body.contains("KPOP_BODY 3") || no_git.body.contains('3'));
-        assert!(!with_git.body.contains("write_a"));
-        assert!(!with_git.body.contains("write_b"));
+        .expect("lo");
+        assert_ne!(hi.body, lo.body);
+        assert!(hi.body.contains("KPOP_BODY 7") || hi.body.contains('7'));
+        assert!(lo.body.contains("KPOP_BODY 3") || lo.body.contains('3'));
+        assert!(!hi.body.contains("write_a"));
+        assert!(!hi.body.contains("write_b"));
     });
 }

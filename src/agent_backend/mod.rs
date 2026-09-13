@@ -1,8 +1,8 @@
-mod backend;
 pub mod backend_error_tracker;
-mod backend_ops;
 mod factory;
 mod sdk_client;
+mod sdk_client_active;
+mod sdk_client_header_lifecycle;
 mod sdk_client_prompt;
 mod sdk_client_session;
 mod sdk_client_session_header;
@@ -25,17 +25,10 @@ mod backend_error_tracker_tests;
 #[path = "agent_backend_kiss_cov.rs"]
 mod agent_backend_kiss_cov;
 
-pub use backend::{AgentBackend, agent_backend_from_client};
 pub use backend_error_tracker::{BackendErrorTracker, MAX_CONSECUTIVE_SAME_BACKEND_ERRORS};
-pub use backend_ops::{
-    agent_backend_attach_run_timing_for_session, agent_backend_ensure_coder_session,
-    agent_backend_ensure_run_timing_for_session, agent_backend_record_error,
-    agent_backend_record_success, agent_backend_set_implement_display_name,
-    agent_backend_set_run_timing, agent_backend_should_stop_and_exit,
-    agent_backend_start_coder_session, agent_backend_timing,
-};
 pub use factory::{build_agent_backend, build_agent_backend_with_tee};
-pub use sdk_client::SdkClient;
+pub use sdk_client::{SdkClient, ensure_run_timing_for_session, set_implement_display_name};
+pub use sdk_client_active::ActiveCoderSession;
 #[cfg(test)]
 pub(crate) use sdk_client::{begun_cwd, live_session, live_session_mut, new_cursor, new_pi};
 pub use sdk_client_session::CoderSessionEnsure;

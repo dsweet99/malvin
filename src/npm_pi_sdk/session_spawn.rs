@@ -3,7 +3,6 @@ use crate::acp::AgentError;
 use crate::bridge_sdk::{BridgeSpawnArgs, MemWatchArgs, start_mem_watch};
 
 pub(crate) async fn npm_pi_spawn_bridge(args: BridgeSpawnArgs<'_>) -> Result<NpmPiSession, AgentError> {
-    crate::acp::require_force(args.io.force)?;
     let ticket = crate::malvin_sandbox::take_sandbox_spawn_ticket().map_err(AgentError)?;
     if crate::acp::test_no_real_agent_enabled() {
         return Err(AgentError(

@@ -195,7 +195,7 @@ fn kiss_exec_witness_04_10() {
     tamper_gitignore_tree();
     assert_gitignore_contents();
     DotfileBackupPayload();
-    SessionDotfileParts();
+    SessionDotfileBackups();
     DotfileSpecRow();
     labels_for_test();
     dotfile_spec_row_field_count();

@@ -1,11 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use crate::agent_backend::{
-    AgentBackend, agent_backend_attach_run_timing_for_session,
-    agent_backend_set_implement_display_name, agent_backend_set_run_timing,
-    agent_backend_start_coder_session,
-};
+use crate::agent_backend::{SdkClient, set_implement_display_name};
 use crate::artifacts::{
     RunArtifacts, SessionDotfileBackups, create_run_artifacts_from_text, resolve_user_md_request,
 };
@@ -40,16 +36,16 @@ pub struct OneShotCoderGuard {
 
 impl OneShotCoderGuard {
     pub async fn begin(
-        client: &mut AgentBackend,
+        client: &mut SdkClient,
         artifacts: &RunArtifacts,
         implement_label: &'static str,
     ) -> Result<Self, String> {
-        let timing = agent_backend_attach_run_timing_for_session(client);
-        if let Err(e) = agent_backend_start_coder_session(client, &artifacts.work_dir).await {
-            agent_backend_set_run_timing(client, None);
+        let timing = client.attach_run_timing_for_session();
+        if let Err(e) = client.start_coder_session(&artifacts.work_dir).await {
+            client.set_run_timing(None);
             return Err(e.to_string());
         }
-        agent_backend_set_implement_display_name(client, implement_label);
+        set_implement_display_name(client, implement_label);
         Ok(Self {
             timing,
             run_dir: artifacts.run_dir.clone(),
@@ -58,7 +54,7 @@ impl OneShotCoderGuard {
 
     pub async fn finish(
         self,
-        client: &mut AgentBackend,
+        client: &mut SdkClient,
         run_res: Result<(), String>,
     ) -> Result<(), String> {
         let end_res = client.end_coder_session().await.map_err(|e| e.to_string());

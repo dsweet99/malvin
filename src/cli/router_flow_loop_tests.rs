@@ -1,6 +1,7 @@
 use super::restore_router_iteration_dotfiles;
 use crate::session_dotfile_backup::{
-    DotfileBackupState, GitignoreBackup, SessionDotfileBackups, VisionBackup, VisionFileBackup,
+    GitignoreBackup, MalvinChecksBackup, MalvinConfigWorkspaceBackup, SessionDotfileBackups,
+    VisionBackup, VisionFileBackup,
 };
 
 #[test]
@@ -45,10 +46,10 @@ fn kiss_witness_restore_router_iteration_dotfiles() {
     let _ = stringify!(RouterAgentLoopInput);
     let _ = stringify!(RouterAgentLoopOutcome);
     let empty = SessionDotfileBackups {
-        malvin_checks: DotfileBackupState::Missing,
+        malvin_checks: MalvinChecksBackup::Missing,
         gitignore: GitignoreBackup::Missing,
         vision: VisionBackup::Missing,
-        malvin_config_workspace: DotfileBackupState::Missing,
+        malvin_config_workspace: MalvinConfigWorkspaceBackup::Missing,
     };
     let _ = matches!(empty.vision, VisionBackup::Missing);
     let _ = VisionFileBackup {

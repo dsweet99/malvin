@@ -44,7 +44,6 @@ impl BridgeSession {
     pub async fn send_prompt(&self, prompt: &str) -> Result<(), AgentError> {
         let req = BridgeRequest::Send {
             prompt: prompt.to_string(),
-            force_stuck: None,
         };
         write_request(self, &req).await?;
         drain_until_run_done(self).await

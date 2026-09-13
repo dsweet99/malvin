@@ -113,28 +113,11 @@ function agentOptionsFromBoot(req: AgentBootOp, apiKey: string): AgentOptions {
     cwd: req.cwd,
     settingSources: [],
   };
-  if (req.sandboxEnabled || req.noForcePolicy === "sandbox") {
-    local.sandboxOptions = { enabled: true };
-  }
-  if (req.autoReview || req.noForcePolicy === "auto_review") {
-    local.autoReview = true;
-  }
   return {
     apiKey,
     model: modelSelectionFromRaw(req.model || "auto"),
     local,
   };
-}
-
-function rejectNoForce(req: AgentBootOp): boolean {
-  if (req.noForcePolicy !== "fail_fast") return false;
-  emit({
-    event: "fatal",
-    message:
-      "--no-force is not supported with the Cursor SDK backend (no interactive tool approval). Omit --no-force.",
-    retryable: false,
-  });
-  return true;
 }
 
 function requireApiKey(req: AgentBootOp): string | undefined {
@@ -154,7 +137,6 @@ async function handleCreate(req: CreateOp): Promise<void> {
     emit({ event: "fatal", message: "agent already created", retryable: false });
     return;
   }
-  if (rejectNoForce(req)) return;
   const apiKey = requireApiKey(req);
   if (!apiKey) return;
   try {
@@ -174,7 +156,6 @@ async function handleResume(req: ResumeOp): Promise<void> {
     emit({ event: "fatal", message: "agent already created", retryable: false });
     return;
   }
-  if (rejectNoForce(req)) return;
   const apiKey = requireApiKey(req);
   if (!apiKey) return;
   if (!req.agentId?.trim()) {
@@ -245,7 +226,6 @@ async function handleSend(req: SendOp, alreadyRecovered = false): Promise<void> 
         noteForwarded();
         emit({ event: "step", kind: "onStep" });
       },
-      local: req.forceStuck ? { force: true } : undefined,
     });
     runPending.value = false;
     try {

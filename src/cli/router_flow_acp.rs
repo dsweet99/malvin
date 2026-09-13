@@ -1,10 +1,6 @@
-use crate::agent_backend::{
-    AgentBackend, agent_backend_attach_run_timing_for_session,
-    agent_backend_set_implement_display_name, agent_backend_set_run_timing,
-    agent_backend_start_coder_session,
-};
+use crate::agent_backend::{SdkClient, set_implement_display_name};
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
-use crate::cli::SharedOpts;
+use crate::cli::{RouterOpts, SharedOpts};
 use crate::prompts::PromptStore;
 use crate::router_flow::router_flow_prompt;
 use crate::run_timing::acp_post_run::RunTimingSessionEnd;
@@ -31,27 +27,29 @@ pub(crate) struct RouterAcpIterationOutcome {
 }
 
 pub(crate) struct RouterAcpIterationInput<'a> {
-    pub client: &'a mut AgentBackend,
+    pub client: &'a mut SdkClient,
     pub artifacts: &'a RunArtifacts,
     pub prompt_store: &'a PromptStore,
     pub shared: &'a SharedOpts,
+    pub router: &'a RouterOpts,
     pub agent_loop: usize,
     pub session_end: RunTimingSessionEnd,
     pub max_hypotheses: usize,
 }
 
 pub(crate) type SessionEndParts<'a> = (
-    &'a mut AgentBackend,
+    &'a mut SdkClient,
     &'a Path,
     &'a Arc<Mutex<crate::run_timing::RunTiming>>,
     RunTimingSessionEnd,
 );
 
 pub(crate) async fn begin_coder_session_if_needed(
-    client: &mut AgentBackend,
+    client: &mut SdkClient,
     work_dir: &Path,
 ) -> Result<crate::agent_backend::CoderSessionEnsure, String> {
-    agent_backend_start_coder_session(client, work_dir)
+    client
+        .start_coder_session(work_dir)
         .await
         .map_err(|e| e.to_string())
 }
@@ -61,8 +59,8 @@ pub(crate) async fn run_router_acp_open_iteration(
 ) -> RouterAcpIterationOutcome {
     let work_dir = input.artifacts.work_dir.as_path();
     let log_path = router_iteration_log_path(input.artifacts, input.agent_loop);
-    let timing = agent_backend_attach_run_timing_for_session(input.client);
-    agent_backend_set_implement_display_name(input.client, "router");
+    let timing = input.client.attach_run_timing_for_session();
+    set_implement_display_name(input.client, "router");
     let session_end = input.session_end;
     let run_dir = input.artifacts.run_dir.clone();
     match run_router_turns(&mut input, log_path.as_path()).await {
@@ -99,7 +97,6 @@ pub(crate) async fn finalize_router_acp_iteration(
                 store: input.prompt_store,
                 artifacts: input.artifacts,
                 model: &model,
-                git: false,
             },
         )?;
         run_router_summarize_coder_prompt(input.client, &body, log_path.as_path()).await?;
@@ -146,6 +143,6 @@ pub(crate) async fn abort_router_acp_session(
     crate::output::print_log_error(&err);
     crate::cli::error_run_log::note_command_error_emitted(&err);
     crate::cli::error_run_log::append_command_error_to_run_log(&err);
-    agent_backend_set_run_timing(parts.0, None);
+    parts.0.set_run_timing(None);
     end_router_acp_session(parts, Err(err)).await
 }

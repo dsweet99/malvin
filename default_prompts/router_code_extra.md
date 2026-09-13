@@ -1,8 +1,8 @@
 
-In addition to other requirements, fix all failues, violations, etc. in this gates output (if therr are any):
-__begin_gates__
+In addition to other requirements, fix all gate failures:
+__begin_gates_output__
 ```
 {{ code_checks }}
 ```
-__end_gates__
+__end_gates_output__
 

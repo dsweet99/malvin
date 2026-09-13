@@ -25,12 +25,10 @@ pub(crate) async fn send_create(
     session: &BridgeSession,
     args: CreateArgs<'_>,
 ) -> Result<(), AgentError> {
-    let no_force = (!session.io.force).then_some("fail_fast");
     let req = BridgeRequest::Create {
         cwd: args.cwd.display().to_string(),
         model: args.model.to_string(),
         api_key: args.api_key,
-        no_force_policy: no_force,
         models_json_path: args.models_json_path.map(str::to_string),
     };
     write_request(session, &req).await?;
@@ -41,13 +39,11 @@ pub(crate) async fn send_resume(
     session: &BridgeSession,
     args: ResumeArgs<'_>,
 ) -> Result<(), AgentError> {
-    let no_force = (!session.io.force).then_some("fail_fast");
     let req = BridgeRequest::Resume {
         agent_id: args.agent_id.to_string(),
         cwd: args.cwd.display().to_string(),
         model: args.model.to_string(),
         api_key: args.api_key,
-        no_force_policy: no_force,
     };
     write_request(session, &req).await?;
     wait_for_ok(session).await

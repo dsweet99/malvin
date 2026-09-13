@@ -103,7 +103,6 @@ pub fn combine_router_raw_header_and_user(
         artifacts,
         text,
         model: opts.model,
-        git: opts.git,
         mode_template: router_a_prompt_file(false),
     })
 }
@@ -117,7 +116,6 @@ pub(crate) struct RouterCodeExtraInput<'a> {
     pub store: &'a PromptStore,
     pub artifacts: &'a RunArtifacts,
     pub model: &'a str,
-    pub git: bool,
     pub gates: bool,
 }
 
@@ -126,10 +124,9 @@ pub(crate) fn render_router_code_extra(input: RouterCodeExtraInput<'_>) -> Resul
         store,
         artifacts,
         model,
-        git,
         gates,
     } = input;
-    let mut ctx = workflow_context_paths_only(artifacts, model, git);
+    let mut ctx = workflow_context_paths_only(artifacts, model);
     let code_checks = if gates {
         router_code_checks_text(artifacts.work_dir.as_path())?
     } else {

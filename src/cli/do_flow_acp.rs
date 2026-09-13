@@ -1,4 +1,4 @@
-use crate::agent_backend::AgentBackend;
+use crate::agent_backend::SdkClient;
 use crate::artifacts::RunArtifacts;
 use crate::cli::one_shot_session::OneShotCoderGuard;
 use crate::run_timing::TimingPhase;
@@ -6,13 +6,13 @@ use crate::run_timing::TimingPhase;
 use super::do_flow_prompt;
 
 pub(super) async fn run_do_coder_prompt(
-    client: &mut AgentBackend,
+    client: &mut SdkClient,
     artifacts: &RunArtifacts,
     coder: &do_flow_prompt::DoCoderRun,
 ) -> Result<(), String> {
     let (ref header, ref user) = coder.header_user_for_trace;
     client
-        .run_coder_prompt(
+        .active_coder_session().map_err(|e| e.to_string())?.run_coder_prompt(
             &coder.combined,
             &artifacts.log_path("do"),
             "do",
@@ -28,7 +28,7 @@ pub(super) async fn run_do_coder_prompt(
 }
 
 pub(super) async fn run_do_acp(
-    client: &mut AgentBackend,
+    client: &mut SdkClient,
     artifacts: &RunArtifacts,
     coder: do_flow_prompt::DoCoderRun,
 ) -> Result<(), String> {

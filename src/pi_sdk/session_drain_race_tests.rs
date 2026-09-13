@@ -14,7 +14,7 @@ fn minimal_session() -> PiEmbeddedSession {
     PiEmbeddedSession {
         runtime: None,
         log: StreamLog::new(AgentIoOptions {
-            force: true,
+
             no_tee: true,
             raw_output: true,
             show_thoughts_on_stdout: false,

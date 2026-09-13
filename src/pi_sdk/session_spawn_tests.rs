@@ -45,7 +45,7 @@ async fn fake_session_begin_end_leaves_no_pi_runtime_thread() {
     let mut client = crate::pi_sdk::pi_sdk_client_from_raw(
         "rpi:openai/gpt-4o",
         crate::acp::AgentIoOptions {
-            force: true,
+
             no_tee: true,
             raw_output: true,
             show_thoughts_on_stdout: false,

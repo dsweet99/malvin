@@ -7,9 +7,10 @@ use crate::acp::{
 use crate::model_id::ModelBackend;
 
 use super::sdk_client::SdkClient;
+use super::sdk_client_active::ActiveCoderSession;
 use super::sdk_client_session_header::send_bound_session_header;
 
-impl SdkClient {
+impl ActiveCoderSession<'_> {
     pub async fn run_coder_prompt(
         &mut self,
         prompt: &str,
@@ -17,12 +18,13 @@ impl SdkClient {
         who: &str,
         opts: CoderPromptOptions<'_>,
     ) -> Result<(), AgentError> {
-        if self.coder.is_none() {
-            return Err(AgentError("begin_coder_session was not called".into()));
-        }
-        emit_prompt_stdout(self, prompt, who, &opts);
-        append_prompt_files(self, prompt, log_path, who)?;
-        execute_prompt_with_retries(self, prompt, &opts).await
+        debug_assert!(
+            !self.client.coder.is_idle(),
+            "ActiveCoderSession must not wrap an idle coder slot"
+        );
+        emit_prompt_stdout(self.client, prompt, who, &opts);
+        append_prompt_files(self.client, prompt, log_path, who)?;
+        execute_prompt_with_retries(self.client, prompt, &opts).await
     }
 }
 
@@ -32,9 +34,11 @@ async fn execute_prompt_with_retries(
     opts: &CoderPromptOptions<'_>,
 ) -> Result<(), AgentError> {
     let single = opts.single_attempt;
-    let max_attempts = if single { 1 } else { client.max_acp_retries };
-    let mut last_error = String::new();
-    for attempt in 1..=max_attempts {
+    let backoff_ceiling = if single { 1 } else { u32::MAX };
+    let mut last_error;
+    let mut attempts_used = 0_u32;
+    loop {
+        attempts_used = attempts_used.saturating_add(1);
         match run_one(client, prompt, opts.llm_phase).await {
             Ok(()) => {
                 client.record_backend_success();
@@ -61,8 +65,8 @@ async fn execute_prompt_with_retries(
                 if backoff_after_agent_failure(
                     client.timing.as_ref(),
                     &last_error,
-                    attempt,
-                    max_attempts,
+                    attempts_used,
+                    backoff_ceiling,
                 )
                 .await?
                 {
@@ -71,7 +75,7 @@ async fn execute_prompt_with_retries(
             }
         }
     }
-    let retries = max_attempts.saturating_sub(1);
+    let retries = attempts_used.saturating_sub(1);
     Err(AgentError(format!(
         "{} SDK prompt failed after {retries} {}. Last error:\n{last_error}",
         client.model.backend.label(),
@@ -97,7 +101,7 @@ pub(super) async fn teardown_sdk_session_after_transport_error(
 pub(super) async fn force_fresh_agent_for_retry(client: &mut SdkClient) {
     let _ = client.end_coder_session().await;
     client.last_agent_id = None;
-    client.header_delivered = false;
+    client.header_lifecycle.require_redelivery();
 }
 
 async fn run_one(

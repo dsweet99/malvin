@@ -14,7 +14,6 @@ pub(crate) struct RouterInitialPromptInput<'a> {
     pub store: &'a PromptStore,
     pub artifacts: &'a RunArtifacts,
     pub model: &'a str,
-    pub git: bool,
     pub gates: bool,
     pub no_kpop: bool,
     pub creative: bool,
@@ -36,7 +35,6 @@ pub(crate) fn build_router_initial_prompt(
             store: input.store,
             artifacts: input.artifacts,
             model: input.model,
-            git: input.git,
             max_hypotheses: input.max_hypotheses,
             no_kpop: input.no_kpop,
         })?;
@@ -52,7 +50,6 @@ pub(crate) fn build_router_initial_prompt(
         store: input.store,
         artifacts: input.artifacts,
         model: input.model,
-        git: input.git,
         gates: input.gates,
         no_kpop: input.no_kpop,
     })?;

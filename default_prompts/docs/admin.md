@@ -12,7 +12,7 @@ Operator maintenance commands. No agent session and no run directory under `~/.m
 
 ## Intention
 
-Fix local malvin/herdr bookkeeping, or list available model ids, without starting a research or coding turn. Agent-session flags (`-b`, `--model`, `-g`, …) are not listed on `admin` help; see `malvin --doc`.
+Fix local malvin/herdr bookkeeping, or list available model ids, without starting a research or coding turn. Agent-session flags (`--model`, `-g`, …) are not listed on `admin` help; see `malvin --doc`.
 
 ## Usage
 

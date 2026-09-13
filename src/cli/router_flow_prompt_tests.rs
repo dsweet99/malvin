@@ -29,7 +29,6 @@ fn build_router_a_prompt_expands_malvin_command_with_active_model() {
         store: &store,
         artifacts: &artifacts,
         model: "composer-2",
-        git: false,
         gates: false,
         no_kpop: false,
     })
@@ -47,7 +46,6 @@ fn build_router_a_prompt_renders_without_unresolved_braces() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         gates: false,
         no_kpop: false,
     })
@@ -66,7 +64,6 @@ fn build_router_a_prompt_includes_code_checks_when_gates_enabled() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         gates: true,
         no_kpop: false,
     })
@@ -86,7 +83,6 @@ fn build_router_a_prompt_omits_code_checks_when_gates_disabled() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         gates: false,
         no_kpop: false,
     })
@@ -108,7 +104,6 @@ fn router_code_extra_note_absent_when_gates_have_not_run() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         gates: true,
         no_kpop: false,
     })
@@ -131,7 +126,6 @@ fn router_code_extra_note_present_after_gates_just_ran() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         gates: true,
         no_kpop: false,
     })
@@ -161,7 +155,6 @@ fn build_router_summarize_prompt_renders_dm_body_without_unresolved_braces() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
     })
     .expect("router_summarize");
     assert!(!body.contains("{{"));
@@ -180,7 +173,6 @@ fn build_router_b_prompt_selects_creative_template_when_flag_set() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         creative: false,
         no_kpop: false,
     })
@@ -189,7 +181,6 @@ fn build_router_b_prompt_selects_creative_template_when_flag_set() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         creative: true,
         no_kpop: false,
     })
@@ -261,7 +252,6 @@ fn build_router_prompts_select_no_kpop_templates_when_flag_set() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         max_hypotheses: 3,
         no_kpop: true,
     })
@@ -274,7 +264,6 @@ fn build_router_prompts_select_no_kpop_templates_when_flag_set() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         gates: false,
         no_kpop: true,
     })
@@ -288,7 +277,6 @@ fn build_router_prompts_select_no_kpop_templates_when_flag_set() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         creative: true,
         no_kpop: true,
     })
@@ -314,7 +302,6 @@ fn build_router_prompts_use_canonical_templates() {
             store: &store,
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
-            git: false,
             max_hypotheses: 5,
             no_kpop: false,
         },
@@ -329,7 +316,6 @@ fn build_router_prompts_use_canonical_templates() {
             store: &store,
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
-            git: false,
             max_hypotheses: 5,
             no_kpop: true,
         },
@@ -343,7 +329,6 @@ fn build_router_prompts_use_canonical_templates() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         gates: false,
         no_kpop: false,
     })
@@ -353,7 +338,6 @@ fn build_router_prompts_use_canonical_templates() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        git: false,
         creative: false,
         no_kpop: false,
     })

@@ -64,14 +64,9 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
     };
     let mut shared = SharedOpts {
         model: crate::model_id::parse_model_id("cursor:old").expect("model"),
-        gates: false,
-
-        quiet: false,
         verbose: false,
         max_acp_retries: 1,
         doc: false,
-        creative: None,
-        no_kpop: false,
     };
     apply_shared_config_defaults(&matches, &mut shared, &agent);
     assert_eq!(shared.model.canonical(), "cursor:cfg");
@@ -87,7 +82,7 @@ fn apply_workspace_config_defaults_overrides_unset_flags_for_gates_only() {
         assert_eq!(cli.shared.model.canonical(), "cursor:cfg-model");
         assert_eq!(cli.shared.max_acp_retries, 8);
         assert!(cli.command.is_none());
-        assert_eq!(cli.max_loops, 7);
+        assert_eq!(cli.router.max_loops, 7);
     });
 }
 
@@ -108,7 +103,7 @@ fn apply_workspace_config_defaults_respects_explicit_cli_flags_for_gates_only() 
         apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
         assert_eq!(cli.shared.model.canonical(), "cursor:cli-model");
         assert_eq!(cli.shared.max_acp_retries, 2);
-        assert_eq!(cli.max_loops, 3);
+        assert_eq!(cli.router.max_loops, 3);
     });
 }
 
@@ -146,8 +141,8 @@ fn parse_cli_with_config_defaults_gates_only() {
         let (cli, _) = parse_cli_with_config_defaults(["malvin", "-g"]).expect("parse");
         assert!(cli.command.is_none());
         assert!(cli.request.is_none());
-        assert!(cli.shared.gates);
-        assert!(cli.max_loops >= 1);
+        assert!(cli.router.gates);
+        assert!(cli.router.max_loops >= 1);
         std::env::set_current_dir(cwd).expect("restore cwd");
     });
 }

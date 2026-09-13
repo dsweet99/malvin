@@ -3,9 +3,9 @@ use super::router_flow_acp::{
     RouterAcpIterationInput, RouterAcpIterationOutcome, finalize_router_acp_iteration,
     run_router_acp_open_iteration,
 };
-use crate::agent_backend::AgentBackend;
+use crate::agent_backend::SdkClient;
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups, merge_and_sanitize_for_gate_restore};
-use crate::cli::SharedOpts;
+use crate::cli::{RouterOpts, SharedOpts};
 use crate::cli::format_workspace_gate_failure;
 use crate::cli::workflow_router_shared::effective_max_loops;
 use crate::prompts::PromptStore;
@@ -19,10 +19,11 @@ pub(crate) use router_flow_loop_decide::{
 };
 
 pub(crate) struct RouterAgentLoopInput<'a> {
-    pub client: &'a mut AgentBackend,
+    pub client: &'a mut SdkClient,
     pub artifacts: &'a RunArtifacts,
     pub prompt_store: &'a PromptStore,
     pub shared: &'a SharedOpts,
+    pub router: &'a RouterOpts,
     pub max_loops: usize,
     pub max_hypotheses: usize,
 }
@@ -91,6 +92,7 @@ async fn run_one_router_loop_step(
         artifacts: input.artifacts,
         prompt_store: input.prompt_store,
         shared: input.shared,
+        router: input.router,
         agent_loop,
         session_end,
         max_hypotheses: input.max_hypotheses,
@@ -118,7 +120,7 @@ async fn finish_router_loop_step(
         artifacts: input.artifacts,
         backups: &last_backups,
         done: open.done,
-        gates: input.shared.gates,
+        gates: input.router.gates,
         agent_loop,
         max_loops,
     });
@@ -129,6 +131,7 @@ async fn finish_router_loop_step(
             artifacts: input.artifacts,
             prompt_store: input.prompt_store,
             shared: input.shared,
+            router: input.router,
             agent_loop,
             session_end,
             max_hypotheses: input.max_hypotheses,

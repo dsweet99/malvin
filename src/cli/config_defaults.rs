@@ -42,7 +42,7 @@ fn apply_default_route_max_hypotheses(matches: &ArgMatches, cli: &mut Cli) -> Re
     let configured = crate::malvin_config_file::load_malvin_config(&cwd)
         .default_workflow
         .max_hypotheses_or_default();
-    cli.max_hypotheses = if configured == 0 {
+    cli.router.max_hypotheses = if configured == 0 {
         crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES
     } else {
         configured
@@ -56,15 +56,15 @@ const fn is_bare_default_route(cli: &Cli) -> bool {
 
 #[must_use]
 pub(crate) const fn is_gates_only_route(cli: &Cli) -> bool {
-    !cli.do_workflow && cli.command.is_none() && cli.request.is_none() && cli.shared.gates
+    !cli.do_workflow && cli.command.is_none() && cli.request.is_none() && cli.router.gates
 }
 
 fn apply_gates_only_loop_defaults(matches: &ArgMatches, cli: &mut Cli, agent: &AgentConfig) {
     if !global_flag_from_command_line(matches, "max_loops") {
-        cli.max_loops = agent.max_loops_code;
+        cli.router.max_loops = agent.max_loops_code;
     }
     if !global_flag_from_command_line(matches, "max_hypotheses") {
-        cli.max_hypotheses = agent.max_hypotheses;
+        cli.router.max_hypotheses = agent.max_hypotheses;
     }
 }
 

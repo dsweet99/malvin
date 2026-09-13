@@ -14,7 +14,7 @@ pub(crate) use create::{
 
 pub use crate::session_dotfile_backup::{
     GitignoreBackup, MalvinChecksBackup, MalvinConfigWorkspaceBackup, SessionDotfileBackups,
-    SessionDotfileParts, VisionBackup, backup_workspace_gitignore_if_present,
+    VisionBackup, backup_workspace_gitignore_if_present,
     backup_workspace_gitignore_if_present_with_id, backup_workspace_malvin_checks_if_present,
     backup_workspace_malvin_checks_if_present_with_id,
     backup_workspace_malvin_config_workspace_if_present,

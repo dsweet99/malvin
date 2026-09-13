@@ -8,9 +8,7 @@ KPop may be referenced later on like a command, "KPop: <PROBLEM_STATEMENT_OR_QUE
 
 Apply this method to the PROBLEM_STATEMENT_OR_QUESTION.
 
-Write a brief, broad summary of whatever is in or near the scope of the request. Nake it organizer, like a map, outline, graph, table, etc. -- whatever is sensible in this context.
-
-Next, repeat this loop until you think you've solved the PROBLEM_STATEMENT_OR_QUESTION:
+Repeat this loop:
 LOOP_START
 
 - **Hypothesize**: Hypothesize one falsifiable explanation of the cause of the problem.

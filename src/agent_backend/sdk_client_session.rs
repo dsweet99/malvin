@@ -38,7 +38,7 @@ impl SdkClient {
         &mut self,
         cwd: &Path,
     ) -> Result<CoderSessionEnsure, AgentError> {
-        if self.session_header.is_none() {
+        if self.header_lifecycle.is_unbound() {
             return Err(AgentError(
                 "start_coder_session requires bind_session_header so a header is always sent"
                     .into(),
@@ -76,10 +76,7 @@ impl SdkClient {
     }
 
     pub async fn end_coder_session(&mut self) -> Result<(), AgentError> {
-        let Some(home) = self.coder.as_mut() else {
-            return Ok(());
-        };
-        let Some(s) = home.take_live_session() else {
+        let Some(s) = self.coder.take_live_session() else {
             return Ok(());
         };
         if matches!(self.model.backend, ModelBackend::Cursor) {
@@ -100,7 +97,6 @@ async fn begin_coder_session_resumed(
     client: &mut SdkClient,
     cwd: &Path,
 ) -> Result<bool, AgentError> {
-    reject_no_force(client)?;
     if client.has_open_coder_session() {
         return Err(AgentError(format!(
             "{} SDK session is already open",
@@ -112,9 +108,6 @@ async fn begin_coder_session_resumed(
     spawn::spawn_with_retries(client, cwd, thinking.as_deref()).await
 }
 
-fn reject_no_force(client: &SdkClient) -> Result<(), AgentError> {
-    crate::acp::require_force(client.io.force)
-}
 
 #[cfg(test)]
 #[path = "sdk_client_session_tests.rs"]

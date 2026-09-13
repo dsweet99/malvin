@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use crate::cli::{SharedOpts, WorkflowCliOptions};
+use crate::cli::{RouterOpts, SharedOpts};
 use crate::prompts::{PromptError, PromptStore};
 use crate::router_flow::{RouterArgs, run_router};
 
@@ -24,13 +24,13 @@ pub(crate) fn malvin_gates_file_missing() -> Result<bool, String> {
     Ok(!cwd.join(crate::MALVIN_CHECKS_REL).is_file())
 }
 
-pub(crate) fn should_bootstrap_gates(shared: &SharedOpts) -> Result<bool, String> {
-    Ok(shared.gates && malvin_gates_file_missing()?)
+pub(crate) fn should_bootstrap_gates(router: &RouterOpts) -> Result<bool, String> {
+    Ok(router.gates && malvin_gates_file_missing()?)
 }
 
 #[must_use]
-pub(crate) fn shared_for_init_bootstrap(shared: &SharedOpts) -> SharedOpts {
-    let mut bootstrap = shared.clone();
+pub(crate) fn router_for_init_bootstrap(router: &RouterOpts) -> RouterOpts {
+    let mut bootstrap = router.clone();
     bootstrap.gates = false;
     bootstrap
 }
@@ -55,11 +55,11 @@ pub(crate) fn render_init_router_request(repo_root: &Path) -> Result<String, Str
 pub async fn maybe_run_init_bootstrap(
     init: InitWorkflowOpts,
     shared: &SharedOpts,
-    workflow: WorkflowCliOptions,
+    router: &RouterOpts,
 ) -> Result<(), String> {
-    if should_bootstrap_gates(shared)? {
-        let bootstrap_shared = shared_for_init_bootstrap(shared);
-        run_init(init, &bootstrap_shared, workflow).await?;
+    if should_bootstrap_gates(router)? {
+        let bootstrap_router = router_for_init_bootstrap(router);
+        run_init(init, shared, &bootstrap_router).await?;
     }
     Ok(())
 }
@@ -67,7 +67,7 @@ pub async fn maybe_run_init_bootstrap(
 pub async fn run_init(
     init: InitWorkflowOpts,
     shared: &SharedOpts,
-    workflow: WorkflowCliOptions,
+    router: &RouterOpts,
 ) -> Result<(), String> {
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
     let request = render_init_router_request(&cwd)?;
@@ -77,8 +77,7 @@ pub async fn run_init(
             max_loops: effective_init_max_loops(init.max_loops),
             max_hypotheses: init.max_hypotheses,
         },
-        shared,
-        workflow,
+        crate::cli::AgentRouteOpts { shared, router },
     )
     .await
 }
@@ -86,7 +85,7 @@ pub async fn run_init(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::SharedOpts;
+    use crate::cli::RouterOpts;
     use crate::cli::args::Cli;
     use clap::{CommandFactory, FromArgMatches};
 
@@ -98,7 +97,7 @@ mod tests {
         let _ = effective_init_max_loops;
         let _ = malvin_gates_file_missing;
         let _ = should_bootstrap_gates;
-        let _ = shared_for_init_bootstrap;
+        let _ = router_for_init_bootstrap;
     }
 
     #[test]
@@ -136,12 +135,12 @@ mod tests {
         crate::test_utils::with_isolated_home(|work| {
             let cwd = std::env::current_dir().expect("cwd");
             std::env::set_current_dir(work).expect("chdir");
-            let mut shared = SharedOpts::test_defaults();
-            shared.gates = true;
+            let mut router = RouterOpts::test_defaults();
+            router.gates = true;
             assert!(malvin_gates_file_missing().expect("probe"));
-            assert!(should_bootstrap_gates(&shared).expect("bootstrap"));
-            shared.gates = false;
-            assert!(!should_bootstrap_gates(&shared).expect("bootstrap off"));
+            assert!(should_bootstrap_gates(&router).expect("bootstrap"));
+            router.gates = false;
+            assert!(!should_bootstrap_gates(&router).expect("bootstrap off"));
             std::env::set_current_dir(cwd).expect("restore cwd");
         });
     }
@@ -161,10 +160,10 @@ mod tests {
             );
             std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
             std::fs::write(work.join(".malvin/checks"), "true\n").expect("legacy checks");
-            let mut shared = SharedOpts::test_defaults();
-            shared.gates = true;
+            let mut router = RouterOpts::test_defaults();
+            router.gates = true;
             assert!(
-                should_bootstrap_gates(&shared).expect("bootstrap"),
+                should_bootstrap_gates(&router).expect("bootstrap"),
                 "legacy checks must not block bootstrap when .malvin/gates is missing"
             );
             std::env::set_current_dir(cwd).expect("restore cwd");
@@ -172,12 +171,12 @@ mod tests {
     }
 
     #[test]
-    fn shared_for_init_bootstrap_clears_gates_flag() {
-        let mut shared = SharedOpts::test_defaults();
-        shared.gates = true;
-        let bootstrap = shared_for_init_bootstrap(&shared);
+    fn router_for_init_bootstrap_clears_gates_flag() {
+        let mut router = RouterOpts::test_defaults();
+        router.gates = true;
+        let bootstrap = router_for_init_bootstrap(&router);
         assert!(!bootstrap.gates);
-        assert!(shared.gates);
+        assert!(router.gates);
     }
 
     #[test]
@@ -257,6 +256,6 @@ mod kiss_cov_gate_refs {
         let _ = maybe_run_init_bootstrap;
         let _ = malvin_gates_file_missing;
         let _ = should_bootstrap_gates;
-        let _ = shared_for_init_bootstrap;
+        let _ = router_for_init_bootstrap;
     }
 }

@@ -67,7 +67,7 @@ Log **full** outgoing prompt bodies to stdout and `prompts.log`. Default: only t
 
 ### `--max-acp-retries <N>` (default: 3)
 
-Maximum bounded attempts per Cursor SDK bridge spawn or `send`/`wait`, with 1s / 3s backoff between tries. Default gate loops set this to 9999.
+Stop after N consecutive identical backend errors (spawn, header, or prompt), with 1s / 3s backoff between tries. Distinct errors reset the consecutive counter. Fail-fast classes (billing, usage limit, invalid model, and similar) still exit immediately.
 
 ### `--creative[=PROB]`
 
@@ -131,7 +131,7 @@ Every agent-backed command creates `~/.malvin_home/logs/<hash>/<timestamp>_<toke
 
 ### Session footnotes (`TIMING` / `COST`)
 
-At the end of a timed run (before `DONE`), malvin writes footnote lines to `stdout.log` (and to process stdout unless `-q` / `-b`):
+At the end of a timed run (before `DONE`), malvin writes footnote lines to `stdout.log` (and to process stdout unless `-q`):
 
 ```text
 TIMING: wall = … llm_wait = … …

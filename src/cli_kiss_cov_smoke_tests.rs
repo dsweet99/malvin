@@ -42,14 +42,9 @@ fn smoke_cov_cli_cli_units_1b() {
     let _ = crate::cli::session_header::bind_do_header;
     let shared = crate::cli::SharedOpts {
         model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("model"),
-        gates: false,
-
-        quiet: false,
         verbose: false,
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
-        creative: None,
-        no_kpop: false,
     };
     let _ = shared.model;
 }
@@ -86,7 +81,7 @@ fn smoke_cov_cli_cli_tidy_flow_units() {
     let _ = crate::cli::tidy_flow::run_tidy;
     let _ = crate::cli::tidy_flow::effective_tidy_max_loops;
     let _ = crate::cli::tidy_flow::TIDY_ROUTER_REQUEST;
-    let _ = crate::cli::tidy_flow::tidy_shared_with_gates_forced;
+    let _ = crate::cli::tidy_flow::tidy_router_with_gates_forced;
 }
 
 #[test]
@@ -100,6 +95,8 @@ fn smoke_cov_cli_cli_admin_units() {
 #[test]
 fn smoke_cov_cli_cli_symbols_a() {
     let _: Option<crate::cli::SharedOpts> = None;
+    let _: Option<crate::cli::RouterOpts> = None;
+    let _: Option<crate::cli::AgentRouteOpts<'_>> = None;
     let _: Option<crate::cli::Cli> = None;
     let _: Option<crate::cli::Commands> = None;
     let do_args = crate::do_flow::DoArgs { request: None };
@@ -110,7 +107,6 @@ fn smoke_cov_cli_cli_symbols_a() {
     let _ = crate::prompts::build_mbc2_render_context;
     let _ = crate::prompts::render_mbc2_prompt;
     let _: Option<crate::cli::models_cmd::ModelsArgs> = None;
-    let _: Option<crate::cli::WorkflowCliOptions> = None;
     let _: Option<crate::cli::AgentStdoutTeeFlags> = None;
     let _ = crate::do_flow::prepare_do_prompt_store;
     let _ = crate::router_flow::prepare_router_prompt_store;

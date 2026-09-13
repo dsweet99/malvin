@@ -91,7 +91,6 @@ fn router_workflow_context_exp_log_is_under_home_malvin_logs() {
         let ctx = crate::workflow_context::workflow_context_paths_only(
             &art,
             crate::config::DEFAULT_CLI_MODEL,
-            false,
         );
         let exp_log = ctx
             .get("exp_log")
@@ -133,7 +132,6 @@ fn exp_log_path_from_repo_root_work_dir() {
         let ctx = crate::workflow_context::workflow_context_paths_only(
             &art,
             crate::config::DEFAULT_CLI_MODEL,
-            false,
         );
         let exp_log = ctx.get("exp_log").cloned().unwrap_or_default();
         let run_meta_dir = ctx.get("run_meta_dir").cloned().unwrap_or_default();

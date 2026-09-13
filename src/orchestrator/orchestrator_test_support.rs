@@ -10,7 +10,7 @@ use crate::prompts::PromptStore;
 #[must_use]
 pub fn io_opts() -> AgentIoOptions {
     AgentIoOptions {
-        force: false,
+
         no_tee: true,
         raw_output: true,
         show_thoughts_on_stdout: false,
@@ -25,14 +25,8 @@ pub fn no_session_client() -> CursorSdkClient {
 }
 
 #[must_use]
-pub fn empty_dotfile_backups() -> SessionDotfileBackups {
-    SessionDotfileBackups::from_parts(crate::session_dotfile_backup::SessionDotfileParts {
-        malvin_checks: MalvinChecksBackup::Missing,
-        gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
-        vision: crate::session_dotfile_backup::VisionBackup::Missing,
-        malvin_config_workspace:
-            crate::session_dotfile_backup::MalvinConfigWorkspaceBackup::Missing,
-    })
+pub const fn empty_dotfile_backups() -> SessionDotfileBackups {
+    SessionDotfileBackups::all_missing()
 }
 
 pub fn workflow_ctx_for_smoke(
@@ -50,7 +44,7 @@ pub fn workflow_ctx_for_smoke(
     let artifacts =
         create_run_artifacts_from_text(run_artifact_body, Some(tmp.path())).expect("art");
     let store = PromptStore::default_store();
-    let ctx = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL, false);
+    let ctx = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL);
     (artifacts, store, ctx)
 }
 

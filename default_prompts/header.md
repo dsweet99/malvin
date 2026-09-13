@@ -55,7 +55,6 @@ Malvin caps sandbox memory (see `Sandbox memory:` under Current state). If USS e
 - Prefer narrow checks while iterating; run the full gate set once, sequentially, at the end.
 - The built-in gate runner already runs `.malvin/gates` one line at a time. Do not also launch those same commands in parallel in the same turn.
 
-{{ git_extra }}
 ---
 
 ## Thinking and Reasoning

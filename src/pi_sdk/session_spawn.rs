@@ -48,7 +48,6 @@ fn spawn_live_pi_bridge(
 }
 
 pub(crate) async fn pi_spawn_bridge(args: BridgeSpawnArgs<'_>) -> Result<SdkSession, AgentError> {
-    crate::acp::require_force(args.io.force)?;
     let ticket = crate::malvin_sandbox::take_sandbox_spawn_ticket().map_err(AgentError)?;
     let (provider, model) = args.model.pi_provider_and_model().ok_or_else(|| {
         AgentError(format!(

@@ -174,7 +174,6 @@ fn kiss_exec_witness_01_12() {
     SilenceHealthOutcome();
     evaluate_after_acp_silence();
     ChecksDiscoveryOpts();
-    WorkflowCliOptions();
     AgentStdoutTeeFlags();
     CodeWorkflowLoopMut();
     DoArgs();

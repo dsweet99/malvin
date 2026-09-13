@@ -122,7 +122,7 @@ pub fn enter_verifying() {
         s.verifying_depth = s.verifying_depth.saturating_add(1);
         s.orienting = false;
     });
-    crate::herdr::notify_working();
+    apply_phase_side_effect(agent_phase_signal::PhaseSideEffect::NotifyWorking);
 }
 
 pub fn leave_verifying() {
@@ -134,7 +134,14 @@ pub fn set_reporting(active: bool) {
 }
 
 pub(crate) fn observe_tool_update(parsed: &ParsedToolUpdate, tracker: &ToolSummaryTracker) {
-    with_state(|s| agent_phase_signal::observe_tool_update_state(s, parsed, tracker));
+    let effect = with_state(|s| agent_phase_signal::observe_tool_update_state(s, parsed, tracker));
+    apply_phase_side_effect(effect);
+}
+
+fn apply_phase_side_effect(effect: agent_phase_signal::PhaseSideEffect) {
+    if matches!(effect, agent_phase_signal::PhaseSideEffect::NotifyWorking) {
+        crate::herdr::notify_working();
+    }
 }
 
 #[must_use]
