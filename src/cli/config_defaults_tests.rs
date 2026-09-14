@@ -1,5 +1,7 @@
-use super::{apply_shared_config_defaults, apply_workspace_config_defaults, global_flag_from_command_line,
-    parse_cli_with_config_defaults};
+use super::{
+    apply_shared_config_defaults, apply_workspace_config_defaults, global_flag_from_command_line,
+    parse_cli_with_config_defaults,
+};
 use crate::cli::{Cli, SharedOpts};
 use crate::malvin_config_file::AgentConfig;
 use clap::{CommandFactory, FromArgMatches};
@@ -20,9 +22,7 @@ pub(super) fn write_agent_config(work_dir: &std::path::Path) {
             .collect::<Vec<_>>()
             .join("\n");
     }
-    text.push_str(
-        "\n[agent]\nmodel = \"cursor:cfg-model\"\nmax_loops = 9\nmax_loops_code = 7\nmax_acp_retries = 8\n",
-    );
+    text.push_str("\n[agent]\nmodel = \"cursor:cfg-model\"\nmax_acp_retries = 8\n");
     std::fs::write(&path, text).expect("write");
 }
 
@@ -57,9 +57,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
 
     let agent = AgentConfig {
         model: crate::model_id::parse_model_id("cursor:cfg").expect("model"),
-        max_loops: 8,
         max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
-        max_loops_code: 6,
         max_acp_retries: 6,
     };
     let mut shared = SharedOpts {
@@ -82,7 +80,10 @@ fn apply_workspace_config_defaults_overrides_unset_flags_for_gates_only() {
         assert_eq!(cli.shared.model.canonical(), "cursor:cfg-model");
         assert_eq!(cli.shared.max_acp_retries, 8);
         assert!(cli.command.is_none());
-        assert_eq!(cli.router.max_loops, 7);
+        assert_eq!(
+            cli.router.max_loops,
+            crate::malvin_config_file::DEFAULT_MAX_LOOPS
+        );
     });
 }
 

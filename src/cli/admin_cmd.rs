@@ -14,7 +14,7 @@ pub enum AdminCommand {
     /// List available models
     Models(ModelsArgs),
     /// Reset herdr agent state to idle (not working)
-    #[command(name = "reset-herdr")]
+    #[command(name = "reset-herdr", visible_alias = "rh")]
     ResetHerdr,
 }
 
@@ -46,6 +46,17 @@ mod tests {
                 command: AdminCommand::ResetHerdr,
             })) => {}
             other => panic!("expected Admin::ResetHerdr, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parses_admin_rh_alias_for_reset_herdr() {
+        let cli = Cli::try_parse_from(["malvin", "admin", "rh"]).expect("parse");
+        match cli.command {
+            Some(Commands::Admin(AdminArgs {
+                command: AdminCommand::ResetHerdr,
+            })) => {}
+            other => panic!("expected Admin::ResetHerdr via rh, got {other:?}"),
         }
     }
 

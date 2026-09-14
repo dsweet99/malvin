@@ -1,8 +1,8 @@
 [package]
 name = "malvin"
-version = "0.2.6"
+version = "0.2.7"
 edition = "2024"
-rust-version = "1.96"
+rust-version = "1.95"
 description = "Non-interactive research and coding agent"
 license = "MIT"
 readme = "README.md"
@@ -68,6 +68,8 @@ rusqlite = { version = "0.39", features = ["bundled"] }
 pi = { package = "pi_agent_rust", version = "0.1.23", default-features = false, features = ["sqlite-sessions"] }
 asupersync = { version = "0.3.10", default-features = false }
 async-trait = "0.1"
+# gix (via pi_agent_rust → vergen-gix) accepts kstring 2.0.0+; 2.0.3+ raises MSRV to 1.96.
+kstring = "=2.0.2"
 
 [dev-dependencies]
 portable-pty = "0.8"

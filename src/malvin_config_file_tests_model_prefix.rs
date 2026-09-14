@@ -1,5 +1,5 @@
 use super::malvin_config_agent::parse_agent_config;
-use super::{AgentConfig, DEFAULT_MAX_LOOPS_CODE, open_malvin_config};
+use super::{AgentConfig, open_malvin_config};
 use crate::model_id::UNPREFIXED_MODEL_MESSAGE;
 use crate::support_paths::DEFAULT_CLI_MODEL;
 use crate::test_utils::with_isolated_home;
@@ -68,6 +68,7 @@ fn open_malvin_config_writes_prefixed_model_on_fresh_init() {
             "expected prefixed model in config, got:\n{text}"
         );
         assert!(!text.contains("model-mini"));
+        assert!(!text.contains("max_loops"));
     });
 }
 
@@ -76,7 +77,6 @@ fn parse_agent_config_reads_values_with_prefixed_default_shape() {
     let text = r#"
 [agent]
 model = "cursor:gpt-5"
-max_loops = 3
 max_acp_retries = 5
 "#;
     let agent = parse_agent_config(text).expect("parse");
@@ -84,9 +84,7 @@ max_acp_retries = 5
         agent,
         AgentConfig {
             model: crate::model_id::parse_model_id("cursor:gpt-5").expect("model"),
-            max_loops: 3,
             max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
-            max_loops_code: DEFAULT_MAX_LOOPS_CODE,
             max_acp_retries: 5,
         }
     );

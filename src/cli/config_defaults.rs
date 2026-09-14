@@ -60,9 +60,6 @@ pub(crate) const fn is_gates_only_route(cli: &Cli) -> bool {
 }
 
 fn apply_gates_only_loop_defaults(matches: &ArgMatches, cli: &mut Cli, agent: &AgentConfig) {
-    if !global_flag_from_command_line(matches, "max_loops") {
-        cli.router.max_loops = agent.max_loops_code;
-    }
     if !global_flag_from_command_line(matches, "max_hypotheses") {
         cli.router.max_hypotheses = agent.max_hypotheses;
     }

@@ -4,9 +4,7 @@ theme = "dark"
 
 [agent]
 model = "cursor:auto"
-max_loops = 9999
 max_hypotheses = 5
-max_loops_code = 3
 max_acp_retries = 3
 
 # Cursor-mode USD cost rates ($ per million tokens) for model `cursor:auto`.
