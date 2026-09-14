@@ -71,3 +71,7 @@ Flag reference: `malvin --help`. Behavioral contracts: `malvin --doc` and `malvi
 - pi: models (TypeScript/npm `@earendil-works/pi-coding-agent` RPC; set `MALVIN_PI` or install the package)
 - rpi: models (links crates.io `pi_agent_rust`; uses the operator’s Pi auth/config)
 - Codex: models (requires an externally installed `codex` binary; local stdio app-server)
+
+## Support
+
+If this project helps you, please consider [sponsoring](https://github.com/sponsors/dsweet99) or see [SUPPORT.md](./SUPPORT.md).
