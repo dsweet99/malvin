@@ -16,7 +16,7 @@ pub const GATE_FAILURE_MARKER: &str = "__MALVIN_GATE_FAILURE__:";
 
 impl RepoGateFailure {
     pub(crate) fn emit_repo_gate_failure_stderr(&self) {
-        use crate::output::{MALVIN_WHO, print_stderr_line};
+        use malvin::output::{MALVIN_WHO, print_stderr_line};
         match self {
             Self::Message(message) => print_stderr_line(MALVIN_WHO, message),
             Self::Command(failure) => {
@@ -52,7 +52,7 @@ impl RepoGateFailure {
 }
 
 fn emit_repo_gate_multiline_stderr(who: &str, text: &str) {
-    use crate::output::print_stderr_line;
+    use malvin::output::print_stderr_line;
     if text.is_empty() {
         print_stderr_line(who, "");
         return;

@@ -151,6 +151,14 @@ fn ensure_bridge_reuses_in_tree_ready_tree() {
 fn run_build_script_skips_when_env_set() {
     let _g = crate::test_utils::test_env_lock();
     crate::acp::with_env("MALVIN_SKIP_SDK_BRIDGES", Some("1"), run_build_script);
+    crate::acp::with_env("MALVIN_DISABLE_LLD", Some("1"), lld::emit_fast_bin_linker_args);
+    if let Some(dir) = lld::rustc_gcc_ld_dir() {
+        assert!(
+            dir.components().any(|c| c.as_os_str() == "gcc-ld"),
+            "unexpected gcc-ld path: {}",
+            dir.display()
+        );
+    }
 }
 
 fn run_build_script_skips_on_docs_rs() {

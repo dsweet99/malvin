@@ -2,8 +2,8 @@ use super::{
     RepoGateOutput,
     gate_log::{emit_repo_gate_line, emit_repo_gate_warning},
 };
-use crate::output::{MALVIN_WHO, WARNING_WHO, format_who_tag_delim};
-use crate::test_stderr_capture::capture_stderr_output;
+use malvin::output::{MALVIN_WHO, WARNING_WHO, format_who_tag_delim};
+use malvin::test_stderr_capture::capture_stderr_output;
 
 const GATE_WARN_MSG: &str = "quality gate warning for regression test";
 
@@ -37,7 +37,7 @@ fn quality_gates_log_stderr_gate_warning_must_use_malvin_who_tag() {
         stderr.contains(&malvin_tag) && !stderr.contains(&warning_tag),
         "stderr must use malvin who tag, got: {stderr:?}"
     );
-    let log = std::fs::read_to_string(tmp.path().join(crate::artifacts::QUALITY_GATES_LOG))
+    let log = std::fs::read_to_string(tmp.path().join(malvin::artifacts::QUALITY_GATES_LOG))
         .expect("quality_gates.log");
     assert!(
         log.contains(&malvin_tag) && log.contains(msg),
@@ -54,7 +54,7 @@ fn repo_gate_stderr_output_must_match_malvin_log_format() {
         emit_repo_gate_warning(msg, Some(tmp.path()));
     });
 
-    let log_path = tmp.path().join(crate::artifacts::QUALITY_GATES_LOG);
+    let log_path = tmp.path().join(malvin::artifacts::QUALITY_GATES_LOG);
     let log = std::fs::read_to_string(&log_path).expect("quality_gates.log");
     assert!(
         log.contains(&malvin_tag) && log.contains(msg),

@@ -9,7 +9,7 @@ pub fn run_repo_workspace_gates(
     output: RepoGateOutput,
     run_log_dir: Option<&Path>,
 ) -> Result<(), String> {
-    use crate::artifacts::{
+    use malvin::artifacts::{
         backup_workspace_malvin_checks_if_present, restore_workspace_malvin_checks_backup,
     };
     let malvin_checks_backup = backup_workspace_malvin_checks_if_present(work_dir)?;
@@ -48,7 +48,7 @@ pub fn prepare_repo_workspace(
 }
 
 fn prepare_repo_workspace_with_details(work_dir: &Path) -> Result<(), RepoGateFailure> {
-    crate::session_dotfile_backup::repair_invalid_malvin_home_config_on_disk(work_dir)
+    malvin::session_dotfile_backup::repair_invalid_malvin_home_config_on_disk(work_dir)
         .map_err(RepoGateFailure::Message)?;
     Ok(())
 }
@@ -59,7 +59,7 @@ fn run_quality_gates_with_details(
     run_log_dir: Option<&Path>,
 ) -> Result<(), RepoGateFailure> {
     let commands =
-        crate::repo_gates::gate_command_lines(work_dir).map_err(RepoGateFailure::Message)?;
+        malvin::repo_gates::gate_command_lines(work_dir).map_err(RepoGateFailure::Message)?;
     run_malvin_checks_with_details(work_dir, output, run_log_dir, &commands)
 }
 
@@ -69,14 +69,14 @@ fn run_malvin_checks_with_details(
     run_log_dir: Option<&Path>,
     commands: &[String],
 ) -> Result<(), RepoGateFailure> {
-    crate::agent_phase::enter_verifying();
+    malvin::agent_phase::enter_verifying();
     let result = (|| {
         for command in commands.iter().filter(|c| !c.trim().is_empty()) {
             run_shell_command_line_with_details(work_dir, output, run_log_dir, command)?;
         }
         Ok(())
     })();
-    crate::agent_phase::leave_verifying();
+    malvin::agent_phase::leave_verifying();
     result
 }
 
@@ -90,7 +90,7 @@ const fn shell_binary() -> (&'static str, &'static str) {
 
 #[must_use]
 pub(crate) fn gate_command_cwd(work_dir: &Path) -> PathBuf {
-    crate::git_worktree_toplevel(work_dir).unwrap_or_else(|| work_dir.to_path_buf())
+    malvin::git_worktree_toplevel(work_dir).unwrap_or_else(|| work_dir.to_path_buf())
 }
 
 fn run_shell_command_line_with_details(
@@ -105,7 +105,7 @@ fn run_shell_command_line_with_details(
     }
     emit_repo_gate_line(output, &format!("Running `{command_line}`"), run_log_dir);
     let (shell, arg) = shell_binary();
-    let mut command = crate::malvin_sandbox::malvin_std_command(shell);
+    let mut command = malvin::malvin_sandbox::malvin_std_command(shell);
     command
         .arg(arg)
         .arg(command_line)

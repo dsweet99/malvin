@@ -1,4 +1,4 @@
-use crate::artifacts::{
+use malvin::artifacts::{
     RunArtifacts, SessionDotfileBackups, ensure_gate_exp_log_file,
 };
 use crate::router_flow::router_flow_no_work::chat_has_malvin_done;
@@ -59,7 +59,7 @@ async fn deliver_router_initial_turn(
 ) -> Result<SessionDotfileBackups, String> {
     let work_dir = input.artifacts.work_dir.as_path();
     let model = input.shared.model.canonical();
-    let include_header = !input.client.header_lifecycle.is_satisfied();
+    let include_header = !malvin::agent_backend::session_header_is_satisfied(input.client);
     let initial =
         router_flow_prompt::build_router_initial_prompt(router_flow_prompt::RouterInitialPromptInput {
             store: input.prompt_store,
@@ -128,7 +128,7 @@ async fn finish_router_a_maybe_b(
             input.client,
             &router_b,
             log_path,
-            router_flow_prompt::router_b_prompt_label(crate::prompts::RouterBPromptFlags {
+            router_flow_prompt::router_b_prompt_label(malvin::prompts::RouterBPromptFlags {
                 creative,
                 no_kpop,
             }),

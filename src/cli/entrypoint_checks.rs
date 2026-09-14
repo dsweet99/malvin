@@ -4,17 +4,17 @@ pub const fn ensure_malvin_checks_for_command(_cmd: &Commands) {}
 
 pub fn ensure_malvin_checks_for_gates_only_route() -> Result<(), String> {
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    crate::repo_gates::ensure_default_malvin_config_file(&cwd)
+    malvin::repo_gates::ensure_default_malvin_config_file(&cwd)
 }
 
 pub fn ensure_malvin_checks_for_do_workflow() -> Result<(), String> {
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    crate::repo_gates::ensure_default_malvin_config_file(&cwd)
+    malvin::repo_gates::ensure_default_malvin_config_file(&cwd)
 }
 
 pub fn ensure_malvin_checks_for_default_route() -> Result<(), String> {
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    crate::repo_gates::ensure_default_malvin_config_file(&cwd)
+    malvin::repo_gates::ensure_default_malvin_config_file(&cwd)
 }
 
 #[cfg(test)]
@@ -29,7 +29,7 @@ mod tests {
 
     #[test]
     fn ensure_malvin_checks_for_command_writes_config_not_checks() {
-        crate::test_utils::with_isolated_home(|work| {
+        malvin::test_utils::with_isolated_home(|work| {
             assert!(
                 std::process::Command::new("git")
                     .args(["init"])
@@ -40,8 +40,8 @@ mod tests {
             );
             let cwd = std::env::current_dir().expect("cwd");
             std::env::set_current_dir(work).expect("chdir");
-            let checks = crate::malvin_checks_path(work);
-            let config = crate::malvin_config_path(work);
+            let checks = malvin::malvin_checks_path(work);
+            let config = malvin::malvin_config_path(work);
             assert!(!checks.exists());
             assert!(!config.exists());
 

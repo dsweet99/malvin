@@ -115,7 +115,7 @@ pub(crate) fn apply_quiet_node_cli(cmd: &mut tokio::process::Command) {
     cmd.env("NODE_NO_WARNINGS", "1");
 }
 
-pub(crate) fn apply_quiet_node_cli_std(cmd: &mut std::process::Command) {
+pub fn apply_quiet_node_cli_std(cmd: &mut std::process::Command) {
     cmd.arg("--no-warnings");
     cmd.env("NODE_NO_WARNINGS", "1");
 }

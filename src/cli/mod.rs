@@ -22,12 +22,15 @@ pub(crate) mod loop_opts;
 pub(crate) mod one_shot_session;
 pub(crate) mod workflow_router_shared;
 
-pub use crate::agent_backend::{build_agent_backend, build_agent_backend_with_tee};
-pub use code_flow_a::{
-    AgentStdoutTeeFlags, agent_io_options, default_workflow_stdout_tee_flags,
-    format_workspace_gate_failure,
+pub use malvin::agent_backend::{
+    AgentStdoutTeeFlags, agent_io_options, build_agent_backend, build_agent_backend_with_tee,
+    default_workflow_stdout_tee_flags,
 };
+pub use code_flow_a::format_workspace_gate_failure;
 
+#[cfg(test)]
+#[path = "bare_invoke_contract_tests.rs"]
+mod bare_invoke_contract_tests;
 #[cfg(test)]
 #[path = "acp_post_run_tests.rs"]
 mod acp_post_run_tests;

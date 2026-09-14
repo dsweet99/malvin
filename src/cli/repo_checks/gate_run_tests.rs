@@ -1,7 +1,7 @@
 use super::*;
-use crate::output::{ERROR_WHO, MALVIN_WHO, WARNING_WHO, format_who_tag_delim};
+use malvin::output::{ERROR_WHO, MALVIN_WHO, WARNING_WHO, format_who_tag_delim};
 use crate::repo_checks::command_support::set_fake_command_dir;
-use crate::test_stderr_capture::capture_stderr_output;
+use malvin::test_stderr_capture::capture_stderr_output;
 
 #[cfg(unix)]
 fn install_zero_exit_gate_bins(bin_dir: &std::path::Path) {
@@ -44,7 +44,7 @@ fn gate_commands_run_at_git_toplevel_from_nested_work_dir() {
     let nested = root.join("nested");
     fs::create_dir_all(&nested).expect("mkdir nested");
     fs::write(root.join("ROOT_ONLY"), "x\n").expect("root marker");
-    let checks = crate::malvin_checks_path(root);
+    let checks = malvin::malvin_checks_path(root);
     fs::create_dir_all(checks.parent().expect("checks parent")).expect("mkdir .malvin");
     // Relative path must resolve only when cwd is the git toplevel.
     fs::write(&checks, "test -f ROOT_ONLY\n").expect("write checks");
@@ -97,7 +97,7 @@ fn install_exit_one_gate_bin(bin_dir: &std::path::Path, name: &str) {
 fn failing_gate_run_stderr_uses_malvin_not_error_or_warning() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let work = tmp.path();
-    crate::seed_malvin_checks(work, "failgate\n");
+    malvin::seed_malvin_checks(work, "failgate\n");
     let bin_dir = tempfile::tempdir().expect("bindir");
     install_exit_one_gate_bin(bin_dir.path(), "failgate");
     let _guard = set_fake_command_dir(bin_dir.path());
@@ -131,7 +131,7 @@ fn minimal_git_workspace() -> (tempfile::TempDir, std::path::PathBuf) {
         "[package]\nname = \"m\"\nversion = \"0.1.0\"\n",
     )
     .expect("Cargo.toml");
-    crate::seed_malvin_checks(&work, "true\nlint check\n");
+    malvin::seed_malvin_checks(&work, "true\nlint check\n");
     (tmp, work)
 }
 

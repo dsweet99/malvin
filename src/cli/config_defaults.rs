@@ -2,8 +2,8 @@ use clap::parser::ValueSource;
 use clap::{ArgMatches, CommandFactory, FromArgMatches};
 
 use super::{Cli, Commands, SharedOpts};
-use crate::malvin_config_file::AgentConfig;
-use crate::model_id::require_prefixed_model;
+use malvin::malvin_config_file::AgentConfig;
+use malvin::model_id::require_prefixed_model;
 
 pub(crate) fn global_flag_from_command_line(matches: &ArgMatches, id: &str) -> bool {
     matches
@@ -20,9 +20,9 @@ fn finalize_shared_model(matches: &ArgMatches, shared: &mut SharedOpts) -> Resul
 fn load_agent_config(matches: &ArgMatches) -> Result<AgentConfig, String> {
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
     if global_flag_from_command_line(matches, "model") {
-        return Ok(crate::malvin_config_file::load_agent_config_lenient(&cwd));
+        return Ok(malvin::malvin_config_file::load_agent_config_lenient(&cwd));
     }
-    crate::malvin_config_file::load_agent_config_strict(&cwd)
+    malvin::malvin_config_file::load_agent_config_strict(&cwd)
 }
 
 fn apply_shared_and_finalize(
@@ -39,11 +39,11 @@ fn apply_default_route_max_hypotheses(matches: &ArgMatches, cli: &mut Cli) -> Re
         return Ok(());
     }
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    let configured = crate::malvin_config_file::load_malvin_config(&cwd)
+    let configured = malvin::malvin_config_file::load_malvin_config(&cwd)
         .default_workflow
         .max_hypotheses_or_default();
     cli.router.max_hypotheses = if configured == 0 {
-        crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES
+        malvin::malvin_config_file::DEFAULT_MAX_HYPOTHESES
     } else {
         configured
     };

@@ -1,11 +1,11 @@
-use crate::artifacts::RunArtifacts;
+use malvin::artifacts::RunArtifacts;
 use crate::cli::flow_prompt_combine::{
     DualHeaderPromptInput, combine_acp_prompt_header_and_user, combine_mode_header_and_user,
     combine_prompt_file_and_user,
 };
-use crate::prompt_stratification::WorkflowRenderContext;
-use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptError, PromptStore};
-use crate::workflow_context::PromptModelOpts;
+use malvin::prompt_stratification::WorkflowRenderContext;
+use malvin::prompts::{DO_HEADER_MD, HEADER_MD, PromptError, PromptStore};
+use malvin::workflow_context::PromptModelOpts;
 
 pub(crate) struct DoCoderRun {
     pub combined: String,

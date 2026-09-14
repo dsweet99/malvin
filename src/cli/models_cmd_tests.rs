@@ -96,12 +96,12 @@ fn run_models_reads_fake_agent_models_output() {
 
 fn current_model_label_reads_config_or_default() {
     use super::models_cmd::test_hooks::{current_model_label, print_current_footer};
-    use crate::output::{enable_stdout_capture, take_captured_stdout};
+    use malvin::output::{enable_stdout_capture, take_captured_stdout};
 
-    crate::test_utils::with_isolated_home(|work| {
+    malvin::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(work).expect("chdir");
-        crate::malvin_config_file::open_malvin_config(work).expect("seed");
+        malvin::malvin_config_file::open_malvin_config(work).expect("seed");
         let label = current_model_label();
         assert!(label.starts_with("cursor:"), "{label}");
         enable_stdout_capture();
@@ -114,7 +114,7 @@ fn current_model_label_reads_config_or_default() {
 
 fn cursor_list_models_timeout_honors_env() {
     use super::models_cmd::test_hooks::cursor_list_models_timeout;
-    use crate::test_utils::test_env_lock;
+    use malvin::test_utils::test_env_lock;
 
     let _lock = test_env_lock();
     let prior = std::env::var_os("MALVIN_CURSOR_LIST_MODELS_TIMEOUT_MS");

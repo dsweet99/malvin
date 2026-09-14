@@ -22,9 +22,9 @@ pub fn run_admin(args: AdminArgs, current_model: &str) -> Result<(), String> {
     match args.command {
         AdminCommand::Models(models) => super::models_cmd::run_models(models, current_model),
         AdminCommand::ResetHerdr => {
-            crate::herdr::reset_to_not_working()?;
-            crate::output::print_stdout_line(
-                crate::output::MALVIN_WHO,
+            malvin::herdr::reset_to_not_working()?;
+            malvin::output::print_stdout_line(
+                malvin::output::MALVIN_WHO,
                 "herdr state reset to idle (not working)",
             );
             Ok(())

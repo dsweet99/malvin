@@ -1,6 +1,6 @@
-use crate::artifacts::RunArtifacts;
-use crate::orchestrator::workflow_context_paths_only;
-use crate::prompts::{
+use malvin::artifacts::RunArtifacts;
+use malvin::orchestrator::workflow_context_paths_only;
+use malvin::prompts::{
     PromptError, PromptStore, RouterBPromptFlags, header_prompt_file, kpop_common_prompt_file,
     router_a_prompt_file, router_b_prompt_file,
 };
@@ -50,7 +50,7 @@ pub(crate) fn build_router_kpop_common_prompt(
     ctx.insert("max_hypotheses", input.max_hypotheses.to_string());
     ctx.insert(
         "exp_log",
-        crate::format_prompt_path(
+        malvin::format_prompt_path(
             input.artifacts.gate_exp_log_path(1).as_path(),
             input.artifacts.work_dir.as_path(),
         ),
@@ -72,8 +72,8 @@ pub(crate) fn build_router_mbc2_prompt(
             artifacts.plan_path.display()
         )
     })?;
-    let ctx = crate::prompts::build_mbc2_render_context(&user_prompt);
-    crate::prompts::render_mbc2_prompt(store, &ctx)
+    let ctx = malvin::prompts::build_mbc2_render_context(&user_prompt);
+    malvin::prompts::render_mbc2_prompt(store, &ctx)
         .map_err(|e: PromptError| e.0)
         .map(|body| body.trim().to_string())
 }

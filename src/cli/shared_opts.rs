@@ -1,8 +1,8 @@
-pub use crate::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
+pub use malvin::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use clap::Args;
 use rand::Rng;
 
-use crate::model_id::{ParsedModel, parse_model_id};
+use malvin::model_id::{ParsedModel, parse_model_id};
 
 const QUIET_HELPTEXT: &str =
     "Print only `__MALVIN_DM_START__`/`END` bodies on stdout (default router)";
@@ -82,14 +82,14 @@ pub struct RouterOpts {
     /// Outer agent-session budget for bare malvin REQUEST
     #[arg(
         long,
-        default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS,
+        default_value_t = malvin::malvin_config_file::DEFAULT_MAX_LOOPS,
         conflicts_with = "do_workflow"
     )]
     pub max_loops: usize,
     /// Hypothesis budget for bare malvin REQUEST
     #[arg(
         long,
-        default_value_t = crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
+        default_value_t = malvin::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
         conflicts_with = "do_workflow"
     )]
     pub max_hypotheses: usize,
@@ -98,7 +98,7 @@ pub struct RouterOpts {
 impl SharedOpts {
     #[must_use]
     pub(crate) fn tee_startup_stdout(&self) -> bool {
-        !crate::output::stdout_suppressed()
+        !malvin::output::stdout_suppressed()
     }
 
     #[must_use]
@@ -116,7 +116,7 @@ pub struct AgentRouteOpts<'a> {
 impl RouterOpts {
     #[must_use]
     pub(crate) fn tee_startup_stdout(&self) -> bool {
-        !self.quiet && !crate::output::stdout_suppressed()
+        !self.quiet && !malvin::output::stdout_suppressed()
     }
 
     #[must_use]
@@ -135,9 +135,9 @@ impl SharedOpts {
     #[must_use]
     pub(crate) fn test_defaults() -> Self {
         Self {
-            model: parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("default model"),
+            model: parse_model_id(malvin::config::DEFAULT_CLI_MODEL).expect("default model"),
             verbose: false,
-            max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
+            max_acp_retries: malvin::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
         }
     }
@@ -152,8 +152,8 @@ impl RouterOpts {
             gates: false,
             creative: None,
             no_kpop: false,
-            max_loops: crate::malvin_config_file::DEFAULT_MAX_LOOPS,
-            max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
+            max_loops: malvin::malvin_config_file::DEFAULT_MAX_LOOPS,
+            max_hypotheses: malvin::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
         }
     }
 }

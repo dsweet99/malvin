@@ -1,4 +1,4 @@
-use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
+use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::cli::workflow_router_shared::run_router_workspace_gates;
 use crate::router_flow::router_flow_acp::RouterExitSummarize;
 
@@ -38,13 +38,13 @@ pub(crate) fn decide_router_gates_exit(
     agent_loop: usize,
     max_loops: usize,
 ) -> RouterLoopDecision {
-    crate::gate_loop_session::set_active_gate_iteration(Some(agent_loop));
+    malvin::gate_loop_session::set_active_gate_iteration(Some(agent_loop));
     let decision = match run_router_workspace_gates(artifacts, backups, true) {
         Ok(()) => RouterLoopDecision::Exit,
         Err(detail) if agent_loop == max_loops => RouterLoopDecision::ExitGatesFailed(detail),
         Err(_) => RouterLoopDecision::Continue,
     };
-    crate::gate_loop_session::set_active_gate_iteration(None);
+    malvin::gate_loop_session::set_active_gate_iteration(None);
     decision
 }
 

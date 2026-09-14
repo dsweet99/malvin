@@ -1,6 +1,6 @@
-use crate::artifacts::RunArtifacts;
-use crate::orchestrator::workflow_context_paths_only;
-use crate::prompts::{PromptError, PromptStore, ROUTER_SUMMARIZE_MD};
+use malvin::artifacts::RunArtifacts;
+use malvin::orchestrator::workflow_context_paths_only;
+use malvin::prompts::{PromptError, PromptStore, ROUTER_SUMMARIZE_MD};
 
 pub(crate) struct RouterSummarizePromptInput<'a> {
     pub store: &'a PromptStore,

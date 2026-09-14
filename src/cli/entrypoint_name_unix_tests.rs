@@ -3,16 +3,16 @@ use super::{Exit, entrypoint_from};
 #[cfg(unix)]
 #[test]
 fn duplicate_name_exits_failure() {
-    crate::test_utils::with_isolated_home(|work| {
+    malvin::test_utils::with_isolated_home(|work| {
         let _ = work;
-        let mut child = crate::malvin_sandbox::malvin_std_command("sleep")
+        let mut child = malvin::malvin_sandbox::malvin_std_command("sleep")
             .arg("120")
             .spawn()
             .expect("spawn sleep");
         let holder_pid = child.id();
-        std::fs::create_dir_all(crate::names_registry_root()).expect("mkdir names");
-        std::fs::write(crate::name_path("probe"), format!("{holder_pid}\n")).expect("peer lock");
-        let err = crate::acquire_name("probe").expect_err("live peer must block");
+        std::fs::create_dir_all(malvin::names_registry_root()).expect("mkdir names");
+        std::fs::write(malvin::name_path("probe"), format!("{holder_pid}\n")).expect("peer lock");
+        let err = malvin::acquire_name("probe").expect_err("live peer must block");
         assert!(
             err.contains(&holder_pid.to_string()),
             "error must name holder pid; got: {err}"
@@ -25,11 +25,11 @@ fn duplicate_name_exits_failure() {
 #[cfg(unix)]
 #[test]
 fn duplicate_name_error_on_stderr() {
-    use crate::test_stderr_capture::capture_stderr_output;
+    use malvin::test_stderr_capture::capture_stderr_output;
 
-    crate::test_utils::with_isolated_home(|work| {
+    malvin::test_utils::with_isolated_home(|work| {
         let _ = work;
-        let names = crate::names_registry_root();
+        let names = malvin::names_registry_root();
         if let Some(parent) = names.parent() {
             std::fs::create_dir_all(parent).expect("mkdir malvin_home");
         }

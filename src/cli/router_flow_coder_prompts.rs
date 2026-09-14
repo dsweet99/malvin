@@ -1,4 +1,4 @@
-use crate::agent_backend::SdkClient;
+use malvin::agent_backend::SdkClient;
 
 pub(crate) struct RouterInitialCoderPrompt<'a> {
     pub client: &'a mut SdkClient,
@@ -17,8 +17,8 @@ pub(crate) async fn run_router_initial_coder_prompt(
             input.prompt,
             input.log_path,
             input.log_who,
-            crate::acp::CoderPromptOptions {
-                llm_phase: Some(crate::run_timing::TimingPhase::Implement),
+            malvin::acp::CoderPromptOptions {
+                llm_phase: Some(malvin::run_timing::TimingPhase::Implement),
                 do_trace_split: None,
                 stdout_bracket_label: Some(input.stdout_bracket_label),
                 append_trace: true,
@@ -40,8 +40,8 @@ pub(crate) async fn run_router_b_coder_prompt(
             prompt,
             log_path,
             "router_b",
-            crate::acp::CoderPromptOptions {
-                llm_phase: Some(crate::run_timing::TimingPhase::Implement),
+            malvin::acp::CoderPromptOptions {
+                llm_phase: Some(malvin::run_timing::TimingPhase::Implement),
                 do_trace_split: None,
                 stdout_bracket_label: Some(stdout_bracket_label),
                 append_trace: true,
@@ -62,8 +62,8 @@ pub(crate) async fn run_router_summarize_coder_prompt(
             prompt,
             log_path,
             "router_summarize",
-            crate::acp::CoderPromptOptions {
-                llm_phase: Some(crate::run_timing::TimingPhase::Implement),
+            malvin::acp::CoderPromptOptions {
+                llm_phase: Some(malvin::run_timing::TimingPhase::Implement),
                 do_trace_split: None,
                 stdout_bracket_label: Some("router_summarize.md"),
                 append_trace: true,
@@ -77,7 +77,7 @@ pub(crate) async fn run_router_summarize_coder_prompt(
 #[cfg(test)]
 mod kiss_cov_gate_refs {
     use super::*;
-    use crate::prompts::{header_prompt_file, kpop_common_prompt_file, router_a_prompt_file};
+    use malvin::prompts::{header_prompt_file, kpop_common_prompt_file, router_a_prompt_file};
 
     #[test]
     fn kiss_cov_unit_names() {
@@ -88,12 +88,12 @@ mod kiss_cov_gate_refs {
         let _ = header_prompt_file;
         let _ = router_a_prompt_file;
         let _ = kpop_common_prompt_file;
-        let _ = crate::agent_backend::header_prompt_options_for_test;
+        let _ = malvin::agent_backend::header_prompt_options_for_test;
     }
 
     #[test]
     fn router_header_retries_use_fresh_agent() {
-        let opts = crate::agent_backend::header_prompt_options_for_test();
+        let opts = malvin::agent_backend::header_prompt_options_for_test();
         assert!(
             opts.fresh_agent_on_retry,
             "spawn header must not re-send header.md into the same agent on ACP retry"

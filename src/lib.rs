@@ -32,9 +32,11 @@
     clippy::single_match,
     clippy::needless_pass_by_ref_mut
 )]
+#[cfg(test)]
+extern crate self as malvin;
 mod log_gc;
 mod log_gc_config;
-mod malvin_config_file;
+pub mod malvin_config_file;
 mod workflow_name_aliases;
 pub use workflow_name_aliases::{
     WORKSPACE_CONFIG_PATHS, canonical_workflow_name, resolve_session_log_path,
@@ -42,7 +44,7 @@ pub use workflow_name_aliases::{
 };
 pub mod agent;
 mod current_state;
-mod gate_loop_session;
+pub mod gate_loop_session;
 pub mod llm_transport;
 pub mod mem_limit_config;
 mod sandbox_oom;
@@ -52,7 +54,7 @@ pub use sandbox_oom::{
     SandboxOomKillRecord, gate_iteration_oom_killed, record_sandbox_oom_kill,
 };
 mod acp_spawn_lock;
-mod acp_spawn_sweep;
+pub mod acp_spawn_sweep;
 mod session_name;
 pub use acp_spawn_lock::{
     acquire_acp_spawn_lock_for_slot, active_acp_lock_slot, assert_no_peer_acp_spawn_lock_for_slot,
@@ -87,8 +89,8 @@ pub use workspace_paths::{
     read_work_dir_manifest, remove_legacy_malvin_checks_file, resolve_malvin_checks_path,
     workspace_logs_hash, write_work_dir_manifest,
 };
-mod run_id;
-mod terminal_palette;
+pub mod run_id;
+pub mod terminal_palette;
 pub use run_id::{RunDirOptions, build_identifier, create_run_dir};
 mod active_agent_heartbeat;
 pub mod agent_phase;
@@ -181,10 +183,12 @@ pub mod acp_post_run {
 mod acp_tests;
 #[cfg(test)]
 mod agent_phase_kiss_cov;
+#[cfg(test)]
 #[path = "cli/mod.rs"]
 pub mod cli;
 #[cfg(test)]
 mod coverage_kiss;
+#[cfg(test)]
 #[path = "cli/do_flow.rs"]
 pub mod do_flow;
 #[cfg(test)]
@@ -197,10 +201,13 @@ mod malvin_kiss_coverage;
 mod malvin_kiss_coverage_b;
 #[cfg(test)]
 mod malvin_test_seed;
+#[cfg(test)]
 #[path = "cli/repo_checks/mod.rs"]
 pub mod repo_checks;
+#[cfg(test)]
 #[path = "cli/router_flow.rs"]
 pub mod router_flow;
+#[cfg(test)]
 #[path = "cli/source_detect.rs"]
 pub mod source_detect;
 #[cfg(test)]

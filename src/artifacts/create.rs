@@ -12,12 +12,12 @@ fn random_plan_request_filename() -> String {
     )
 }
 
-pub(crate) fn ensure_quality_gates_log_file(artifacts: &RunArtifacts) -> std::io::Result<()> {
+pub fn ensure_quality_gates_log_file(artifacts: &RunArtifacts) -> std::io::Result<()> {
     let path = artifacts.quality_gates_log_path();
     std::fs::write(&path, "")
 }
 
-pub(crate) fn init_quality_gates_log_pending(artifacts: &RunArtifacts) -> std::io::Result<()> {
+pub fn init_quality_gates_log_pending(artifacts: &RunArtifacts) -> std::io::Result<()> {
     std::fs::write(
         artifacts.quality_gates_log_path(),
         crate::malvin_constants::QUALITY_GATES_LOG_PENDING,
@@ -28,7 +28,7 @@ pub(crate) fn ensure_exp_log_file(artifacts: &RunArtifacts) -> std::io::Result<P
     write_empty_exp_log(&artifacts.exp_log_path())
 }
 
-pub(crate) fn ensure_gate_exp_log_file(
+pub fn ensure_gate_exp_log_file(
     artifacts: &RunArtifacts,
     iteration: usize,
 ) -> std::io::Result<PathBuf> {

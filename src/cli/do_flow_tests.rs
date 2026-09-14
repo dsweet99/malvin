@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 
-use crate::config::DEFAULT_CLI_MODEL;
+use malvin::config::DEFAULT_CLI_MODEL;
 use crate::do_flow::do_flow_prompt::{
     build_do_coder_run_with_store, combine_do_acp_prompt_header_and_user,
     combine_do_prompt_file_and_user, combine_do_raw_header_and_user, prepare_do_prompt_store,
 };
-use crate::flow_prompt_join_test_helpers::{
+use malvin::flow_prompt_join_test_helpers::{
     assert_header_user_join, flow_test_artifacts,
     flow_test_artifacts_no_checks,
 };
-use crate::prompt_stratification::WorkflowRenderContext;
-use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptStore};
+use malvin::prompt_stratification::WorkflowRenderContext;
+use malvin::prompts::{DO_HEADER_MD, HEADER_MD, PromptStore};
 
 fn mock_do_prompt_store(tmp: &tempfile::TempDir) -> PromptStore {
     let prompt_root = tmp.path().join("prompts");
@@ -48,7 +48,7 @@ fn build_do_coder_run_succeeds_without_checks_in_non_git_workspace() {
         &store,
         &artifacts,
         "USER_TOKEN",
-        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
+        malvin::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
     );
     assert_eq!(run.combined, "USER_TOKEN");
     assert!(
@@ -69,7 +69,7 @@ fn build_do_coder_run_work_prompt_is_user_only() {
         &store,
         &artifacts,
         "USER_TOKEN\n\n",
-        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
+        malvin::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
     );
     assert_eq!(run.combined, "USER_TOKEN");
     let (trace_header, trace_user) = &run.header_user_for_trace;
@@ -89,7 +89,7 @@ fn build_do_coder_run_default_store_work_prompt_is_user() {
         &store,
         &artifacts,
         "USER_TOKEN",
-        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
+        malvin::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
     );
     assert_eq!(run.combined, "USER_TOKEN");
 }
@@ -102,7 +102,7 @@ fn combine_do_acp_prompt_joins_rendered_header_and_request() {
         &store,
         &artifacts,
         "USER_TOKEN",
-        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
+        malvin::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
     )
     .expect("combine");
     assert_eq!(header, "CODING_HDR");
@@ -121,7 +121,7 @@ fn combine_do_raw_header_and_user_joins_rendered_do_header_and_request() {
         &store,
         &artifacts,
         "USER_RAW_TOKEN\n\n",
-        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
+        malvin::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
     )
     .expect("combine");
     assert_eq!(header, "DO_TOKEN");

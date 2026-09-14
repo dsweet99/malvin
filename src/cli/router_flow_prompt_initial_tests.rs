@@ -1,8 +1,8 @@
 use super::{
     RouterInitialPromptInput, build_router_initial_prompt,
 };
-use crate::prompts::{HEADER_MD, KPOP_COMMON_MD, PromptStore, ROUTER_A_MD};
-use crate::test_utils::with_isolated_home;
+use malvin::prompts::{HEADER_MD, KPOP_COMMON_MD, PromptStore, ROUTER_A_MD};
+use malvin::test_utils::with_isolated_home;
 
 fn write_minimal_router_prompts(prompt_root: &std::path::Path) {
     std::fs::create_dir_all(prompt_root).expect("mkdir");
@@ -27,10 +27,10 @@ fn write_router_prompt_files(prompt_root: &std::path::Path) {
 #[test]
 fn initial_prompt_joins_header_kpop_and_router_a_in_order() {
     with_isolated_home(|work| {
-        let artifacts = crate::artifacts::create_run_artifacts_from_text_opts(
+        let artifacts = malvin::artifacts::create_run_artifacts_from_text_opts(
             "req",
             Some(work),
-            crate::run_id::RunDirOptions::default(),
+            malvin::run_id::RunDirOptions::default(),
         )
         .expect("artifacts");
         let prompt_root = artifacts.run_dir.join("prompts");
@@ -67,10 +67,10 @@ fn initial_prompt_joins_header_kpop_and_router_a_in_order() {
 #[test]
 fn initial_prompt_adds_mbc2_when_creative() {
     with_isolated_home(|work| {
-        let artifacts = crate::artifacts::create_run_artifacts_from_text_opts(
+        let artifacts = malvin::artifacts::create_run_artifacts_from_text_opts(
             "creative request",
             Some(work),
-            crate::run_id::RunDirOptions::default(),
+            malvin::run_id::RunDirOptions::default(),
         )
         .expect("artifacts");
         let prompt_root = artifacts.run_dir.join("prompts");
@@ -99,10 +99,10 @@ fn initial_prompt_adds_mbc2_when_creative() {
 #[test]
 fn initial_prompt_omits_header_when_not_included() {
     with_isolated_home(|work| {
-        let artifacts = crate::artifacts::create_run_artifacts_from_text_opts(
+        let artifacts = malvin::artifacts::create_run_artifacts_from_text_opts(
             "req",
             Some(work),
-            crate::run_id::RunDirOptions::default(),
+            malvin::run_id::RunDirOptions::default(),
         )
         .expect("artifacts");
         let prompt_root = artifacts.run_dir.join("prompts");
@@ -134,13 +134,13 @@ fn initial_prompt_omits_header_when_not_included() {
 #[test]
 fn initial_prompt_respects_no_kpop_and_gates() {
     with_isolated_home(|work| {
-        let artifacts = crate::artifacts::create_run_artifacts_from_text_opts(
+        let artifacts = malvin::artifacts::create_run_artifacts_from_text_opts(
             "req",
             Some(work),
-            crate::run_id::RunDirOptions::default(),
+            malvin::run_id::RunDirOptions::default(),
         )
         .expect("artifacts");
-        crate::seed_malvin_checks(artifacts.work_dir.as_path(), "echo INITIAL_GATE\n");
+        malvin::seed_malvin_checks(artifacts.work_dir.as_path(), "echo INITIAL_GATE\n");
         let prompt_root = artifacts.run_dir.join("prompts");
         write_minimal_router_prompts(&prompt_root);
         let store = PromptStore::with_root(prompt_root);
@@ -172,10 +172,10 @@ fn initial_prompt_respects_no_kpop_and_gates() {
 #[test]
 fn initial_prompt_git_and_max_hypotheses_affect_composition() {
     with_isolated_home(|work| {
-        let artifacts = crate::artifacts::create_run_artifacts_from_text_opts(
+        let artifacts = malvin::artifacts::create_run_artifacts_from_text_opts(
             "req",
             Some(work),
-            crate::run_id::RunDirOptions::default(),
+            malvin::run_id::RunDirOptions::default(),
         )
         .expect("artifacts");
         let prompt_root = artifacts.run_dir.join("prompts");

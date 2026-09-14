@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use crate::config::DEFAULT_CLI_MODEL;
-use crate::flow_prompt_join_test_helpers::{assert_header_user_join, flow_test_artifacts};
-use crate::prompts::{HEADER_MD, PromptStore, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD};
+use malvin::config::DEFAULT_CLI_MODEL;
+use malvin::flow_prompt_join_test_helpers::{assert_header_user_join, flow_test_artifacts};
+use malvin::prompts::{HEADER_MD, PromptStore, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD};
 use crate::router_flow::router_flow_prompt::{
     RouterAPromptInput, RouterHeaderPromptInput, RouterKpopCommonPromptInput,
     build_router_a_prompt, build_router_header_prompt, build_router_kpop_common_prompt,
@@ -41,7 +41,7 @@ fn combine_router_prompt_file_and_user_joins_rendered_template_and_request() {
     std::fs::create_dir_all(&prompt_root).expect("mkdir");
     std::fs::write(prompt_root.join(HEADER_MD), "TMPL\n").expect("tmpl");
     let store = PromptStore::with_root(prompt_root);
-    let ctx = crate::prompt_stratification::WorkflowRenderContext::from(HashMap::from([(
+    let ctx = malvin::prompt_stratification::WorkflowRenderContext::from(HashMap::from([(
         "k".into(),
         "v".into(),
     )]));
@@ -166,7 +166,7 @@ fn combine_router_acp_prompt_joins_rendered_header_and_request() {
         &store,
         &artifacts,
         "USER_TOKEN",
-        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
+        malvin::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
     )
     .expect("combine");
     assert_eq!(header, "CODING_HDR");
@@ -186,7 +186,7 @@ fn combine_router_raw_header_and_user_joins_rendered_router_a_and_request() {
         &store,
         &artifacts,
         "USER_RAW_TOKEN\n\n",
-        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
+        malvin::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
     )
     .expect("combine");
     assert_eq!(header, "ROUTER_A_TOKEN");
