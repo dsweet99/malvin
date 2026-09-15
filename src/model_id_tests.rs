@@ -21,6 +21,12 @@ fn parse_cursor_and_pi() {
         pi_nested.pi_provider_and_model(),
         Some(("openrouter", "anthropic/claude-3-haiku"))
     );
+    let local = parse_model_id("rpi:local/whatever_model_name").expect("local alias");
+    assert_eq!(local.canonical(), "rpi:local/whatever_model_name");
+    assert_eq!(
+        local.pi_provider_and_model(),
+        Some(("ollama", "whatever_model_name"))
+    );
     let codex = parse_model_id("codex:gpt-5.6").expect("codex");
     assert!(codex.is_codex());
     assert_eq!(codex.canonical(), "codex:gpt-5.6");

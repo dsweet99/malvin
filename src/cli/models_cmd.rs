@@ -123,7 +123,7 @@ fn print_pi_models(models: &[crate::pi_sdk::PiModelListing], filter: Option<&str
     if printed {
         print_stdout_line(
             MALVIN_WHO,
-            "Note: pi:/rpi: model lists refresh live provider catalogs at most once per day (use --refresh to force); rpi: rows are shown only for providers you can run (environment API key or stored Pi credential).",
+            "Note: pi:/rpi: model lists refresh live provider catalogs at most once per day (use --refresh to force); rpi: rows are shown only for providers you can run (environment API key, stored Pi credential, keyless local provider, or keyless models.json entry).",
         );
     }
 }

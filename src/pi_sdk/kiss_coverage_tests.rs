@@ -19,12 +19,34 @@ fn kiss_cov_pi_sdk_discover_auth_models() {
     let _ = stringify!(provider_supports_pi_live_model_fetch);
     let _ = stringify!(openai_compat_models_url);
     let _ = stringify!(fetch_provider_models_sync);
+    let _ = super::local_endpoint::parse_http_authority_host_port;
+    let _ = super::local_endpoint::http_base_url_is_listening;
+    let _ = super::local_endpoint::keyless_local_provider_is_listening;
+    let _ = stringify!(KEYLESS_LOCAL_REACHABILITY_TIMEOUT);
+    let _ = stringify!(scheme_and_rest);
+    let _ = stringify!(default_port_for_scheme);
+    let _ = stringify!(parse_bracketed_host_port);
+    let _ = stringify!(parse_host_port_pair);
     let _ = stringify!(static_registry_lookup);
     let _ = stringify!(append_live_models);
     let _ = stringify!(append_static_models_without_live);
+    let _ = super::models_refresh_merge::merge_registry_with_live;
     let _ = stringify!(PI_MODEL_CACHE_TTL);
     let _ = stringify!(PiModelListing);
     let _ = stringify!(DEFAULT_PI_LIST_MODELS_TIMEOUT_MS);
+    let _ = stringify!(KEYLESS_LOCAL_API_KEY);
+    let _ = stringify!(LOCAL_LLM_BASE_URL_ENV);
+    let _ = stringify!(ensure_capped_local_model_catalog);
+    let _ = stringify!(context_size_for_workdir);
+    let _ = stringify!(max_tokens_for_context);
+    let _ = stringify!(apply_capped_model);
+    let _ = stringify!(upsert_model_entry);
+    let _ = stringify!(clamp_all_provider_models);
+    let _ = stringify!(apply_context_cap);
+    let _ = stringify!(write_models_json);
+    let _ = super::local_context::ensure_capped_local_model_catalog;
+    let _ = super::local_context::context_size_for_workdir;
+    let _ = super::local_context::max_tokens_for_context;
 }
 
 #[test]
@@ -63,6 +85,7 @@ fn kiss_cov_pi_sdk_openrouter_usage() {
 fn kiss_cov_pi_sdk_live_provider_auth() {
     let _ = super::is_provider_authenticated;
     let _ = stringify!(provider_has_access);
+    let _ = stringify!(custom_provider_is_keyless);
     let _ = stringify!(stored_credential_present);
 }
 
@@ -84,11 +107,24 @@ fn kiss_cov_pi_sdk_session_core() {
     let _ = stringify!(spawn_live_pi_bridge);
     let _ = stringify!(pi_provider_and_model);
     let _ = stringify!(pi_thinking_level);
+    let _ = stringify!(local_append_system_prompt);
+    let _ = stringify!(local_enabled_tools);
+    let _ = stringify!(LOCAL_ENABLED_TOOLS);
+    let _ = stringify!(local_max_tool_iterations);
+    let _ = stringify!(local_session_overrides);
+    let _ = stringify!(ensure_local_catalog);
     let _ = stringify!(fake_embedded_session);
     let _ = stringify!(live_embedded_session);
     let _ = stringify!(start_embedded_mem_watch);
     let _ = stringify!(watch_embedded_memory);
     let _ = stringify!(isolated_tool_factory);
+    let _ = stringify!(CompleteWrite);
+    let _ = stringify!(stubby_write_error);
+    let _ = stringify!(write_field_str);
+    let _ = stringify!(path_looks_like_bin);
+    let _ = stringify!(push_escaped);
+    let _ = stringify!(unescape_local_write_content);
+    let _ = stringify!(normalize_write_input);
     let _ = stringify!(PiEmbeddedSession);
     let _ = stringify!(PiRuntime);
     let _ = stringify!(PiLoopCtl);

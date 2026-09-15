@@ -175,6 +175,59 @@ def ft_malvin_args_request_npm_pi(malvin_args: tuple[str, ...]) -> bool:
 def ft_malvin_args_request_codex(malvin_args: tuple[str, ...]) -> bool:
     return _ft_model_prefix_requested(malvin_args, "codex:")
 
+_LOCAL_RPI_PROVIDERS = ("ollama/", "llamacpp/", "mistralrs/", "local/")
+
+def ft_malvin_args_request_local_rpi(malvin_args: tuple[str, ...]) -> bool:
+    for i, arg in enumerate(malvin_args):
+        value = None
+        if arg == "--model" and i + 1 < len(malvin_args):
+            value = malvin_args[i + 1]
+        elif arg.startswith("--model="):
+            value = arg.split("=", 1)[1]
+        if value is None:
+            continue
+        lower = value.lower()
+        if not lower.startswith("rpi:"):
+            continue
+        rest = lower[4:]
+        if any(rest.startswith(p) for p in _LOCAL_RPI_PROVIDERS):
+            return True
+    return False
+
+
+def ft_host_malvin_is_linux_elf(malvin_binary: Path) -> bool:
+    try:
+        with malvin_binary.open("rb") as fh:
+            return fh.read(4) == b"\x7fELF"
+    except OSError:
+        return False
+
+
+def ft_local_rpi_needs_host_agent(
+    *,
+    agent_name: str,
+    malvin_args: tuple[str, ...],
+    malvin_binary: Path | None,
+) -> bool:
+    return (
+        agent_name == AGENT_MALVIN
+        and malvin_binary is not None
+        and ft_malvin_args_request_local_rpi(malvin_args)
+        and not ft_host_malvin_is_linux_elf(malvin_binary)
+    )
+
+
+def ft_host_agent_cmd(
+    *,
+    workspace: Path,
+    malvin_binary: Path,
+    malvin_args: tuple[str, ...],
+) -> list[str]:
+    run_args = list(malvin_args)
+    if ft_malvin_args_request_local_rpi(malvin_args) and "--do" not in run_args:
+        run_args = ["--do", *run_args]
+    return [str(malvin_binary.resolve()), *run_args, "plan.md"]
+
 def ft_malvin_args_request_creative(malvin_args: tuple[str, ...]) -> bool:
     return any(a == "--creative" or a.startswith("--creative=") for a in malvin_args)
 
@@ -494,6 +547,7 @@ def ft_docker_agent_cmd(
         volume_mounts, bridge_env = _ft_maybe_mount_npm_pi(
             volume_mounts, bridge_env, malvin_args
         )
+        bridge_env = _ft_maybe_local_rpi_env(bridge_env, malvin_args)
     needs_node = ft_malvin_args_request_codex(malvin_args) or ft_malvin_args_request_npm_pi(
         malvin_args
     )
@@ -502,10 +556,18 @@ def ft_docker_agent_cmd(
         if needs_node
         else TOOLCHAIN_PATH
     )
+    local_rpi = (
+        agent_name == AGENT_MALVIN and ft_malvin_args_request_local_rpi(malvin_args)
+    )
     cmd = [
         "docker",
         "run",
         "--rm",
+        *(
+            ["--add-host=host.docker.internal:host-gateway"]
+            if local_rpi
+            else []
+        ),
         *ft_cursor_env_args(),
         *volume_mounts,
         *bridge_env,
@@ -528,7 +590,10 @@ def ft_docker_agent_cmd(
         
         cmd.extend(["sh", "-c", CURSOR_AGENT_SHELL])
     else:
-        cmd.extend(["malvin", *malvin_args, "plan.md"])
+        run_args = list(malvin_args)
+        if ft_malvin_args_request_local_rpi(malvin_args) and "--do" not in run_args:
+            run_args = ["--do", *run_args]
+        cmd.extend(["malvin", *run_args, "plan.md"])
     ft_assert_agent_cmd_nonleak(cmd, task_parent=ws.parent)
     return cmd
 
@@ -611,6 +676,30 @@ def _ft_maybe_mount_npm_pi(
     ]
     return volume_mounts, bridge_env
 
+def _ft_maybe_local_rpi_env(
+    bridge_env: list[str],
+    malvin_args: tuple[str, ...],
+) -> list[str]:
+    if not ft_malvin_args_request_local_rpi(malvin_args):
+        return bridge_env
+    raw = (
+        os.environ.get(
+            "MALVIN_LOCAL_LLM_BASE_URL",
+            "http://host.docker.internal:11434/v1",
+        ).strip()
+        or "http://host.docker.internal:11434/v1"
+    )
+    base = (
+        raw.replace("://127.0.0.1", "://host.docker.internal")
+        .replace("://localhost", "://host.docker.internal")
+        .replace("://[::1]", "://host.docker.internal")
+    )
+    return [
+        *bridge_env,
+        "-e",
+        f"MALVIN_LOCAL_LLM_BASE_URL={base}",
+    ]
+
 def ft_assert_agent_cmd_nonleak(
     cmd: list[str],
     *,
@@ -658,18 +747,21 @@ def ft_relay_subprocess_stdout(
     cmd: list[str],
     *,
     timeout_sec: float = DEFAULT_AGENT_TIMEOUT_SEC,
+    cwd: str | None = None,
+    env: dict[str, str] | None = None,
 ) -> tuple[int, str, bool]:
     if timeout_sec <= 0:
         return TIMEOUT_EXIT_CODE, "", True
-    env = os.environ.copy()
-    env.setdefault("MALVIN_FORCE_STDOUT_TEE", "1")
+    run_env = os.environ.copy() if env is None else dict(env)
+    run_env.setdefault("MALVIN_FORCE_STDOUT_TEE", "1")
     proc = subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
         bufsize=1,
-        env=env,
+        env=run_env,
+        cwd=cwd,
         start_new_session=True,
     )
     chunks: list[str] = []
@@ -808,37 +900,43 @@ def ft_run_solve(
     if timeout_sec <= 0:
         raise click.ClickException("timeout_sec must be positive")
     task_dir = ft_resolve_task_dir(task_id)
-    if not dry_run and not ft_docker_available():
+    host_malvin: Path | None = None
+    if agent_name == AGENT_MALVIN:
+        host_malvin = (
+            ft_resolve_malvin_main_binary() if use_main else ft_resolve_malvin_binary()
+        )
+    skip_docker = ft_local_rpi_needs_host_agent(
+        agent_name=agent_name,
+        malvin_args=malvin_args,
+        malvin_binary=host_malvin,
+    )
+    if not dry_run and not skip_docker and not ft_docker_available():
         raise click.ClickException("Docker daemon is not available")
     run_root = ft_run_root(task_id, results_dir)
     workspace = ft_stage_workspace(task_dir, run_root)
-    image = ft_ensure_agent_image(
-        image=docker_image or DEFAULT_IMAGE,
-        base_image=base_image,
-        dry_run=dry_run,
-    )
-    host_malvin: Path | None = None
+    if skip_docker:
+        image = docker_image or DEFAULT_IMAGE
+    else:
+        image = ft_ensure_agent_image(
+            image=docker_image or DEFAULT_IMAGE,
+            base_image=base_image,
+            dry_run=dry_run,
+        )
     if agent_name == AGENT_MALVIN:
-        if use_main:
-            host_malvin = ft_resolve_malvin_main_binary()
-            if host_malvin is None:
-                if dry_run:
-                    host_malvin = _ft_dry_run_stub_binary(run_root, "malvin-main")
-                else:
-                    raise click.ClickException(
-                        "No host malvin-main binary found "
-                        "(PATH or ~/.cargo/bin/malvin-main)"
-                    )
-        else:
-            host_malvin = ft_resolve_malvin_binary()
-            if host_malvin is None:
-                if dry_run:
-                    host_malvin = _ft_dry_run_stub_binary(run_root, "malvin")
-                else:
-                    raise click.ClickException(
-                        "No host malvin binary found (PATH or ~/.cargo/bin/malvin); "
-                        "build malvin on the host or use --agent=cursor / --main"
-                    )
+        if host_malvin is None:
+            if dry_run:
+                stub_name = "malvin-main" if use_main else "malvin"
+                host_malvin = _ft_dry_run_stub_binary(run_root, stub_name)
+            elif use_main:
+                raise click.ClickException(
+                    "No host malvin-main binary found "
+                    "(PATH or ~/.cargo/bin/malvin-main)"
+                )
+            else:
+                raise click.ClickException(
+                    "No host malvin binary found (PATH or ~/.cargo/bin/malvin); "
+                    "build malvin on the host or use --agent=cursor / --main"
+                )
     cmd = ft_docker_agent_cmd(
         image=image,
         workspace=workspace,
@@ -846,6 +944,14 @@ def ft_run_solve(
         malvin_args=malvin_args,
         agent=agent_name,
     )
+    host_agent = skip_docker
+    if host_agent:
+        assert host_malvin is not None
+        cmd = ft_host_agent_cmd(
+            workspace=workspace,
+            malvin_binary=host_malvin,
+            malvin_args=malvin_args,
+        )
     click.echo(f"Staged workspace: {workspace}")
     click.echo(f"Agent command: {ft_redact_cmd_for_display(cmd)}")
     click.echo(f"Agent timeout: {timeout_sec:.0f}s")
@@ -862,17 +968,34 @@ def ft_run_solve(
             "stdout": "",
         }
     else:
-        ft_preflight_workspace_mount(image=image, workspace=workspace)
-        if agent_name == AGENT_CURSOR:
-            agent_label = "cursor-agent"
-        elif use_main:
-            agent_label = "malvin-main"
+        if host_agent:
+            click.echo(
+                "Running malvin on host for local rpi: "
+                "(host binary is not a Linux ELF; Docker would fail with exec format error)"
+            )
+            host_env = os.environ.copy()
+            host_env.setdefault(
+                "MALVIN_LOCAL_LLM_BASE_URL",
+                "http://127.0.0.1:11434/v1",
+            )
+            code, captured, timed_out = ft_relay_subprocess_stdout(
+                cmd,
+                timeout_sec=timeout_sec,
+                cwd=str(workspace),
+                env=host_env,
+            )
         else:
-            agent_label = "malvin"
-        click.echo(f"Running {agent_label} in local Docker (workspace-only mount)...")
-        code, captured, timed_out = ft_relay_subprocess_stdout(
-            cmd, timeout_sec=timeout_sec
-        )
+            ft_preflight_workspace_mount(image=image, workspace=workspace)
+            if agent_name == AGENT_CURSOR:
+                agent_label = "cursor-agent"
+            elif use_main:
+                agent_label = "malvin-main"
+            else:
+                agent_label = "malvin"
+            click.echo(f"Running {agent_label} in local Docker (workspace-only mount)...")
+            code, captured, timed_out = ft_relay_subprocess_stdout(
+                cmd, timeout_sec=timeout_sec
+            )
         if timed_out:
             click.echo(f"Agent timed out after {timeout_sec:.0f}s")
         agent_result = {
@@ -881,6 +1004,7 @@ def ft_run_solve(
             "timed_out": timed_out,
             "timeout_sec": timeout_sec,
             "stdout": captured,
+            "host_agent": host_agent,
         }
 
     reward_out = run_root / "reward.txt"
@@ -1076,6 +1200,42 @@ def _ft_test_docker_agent_cmd_pi() -> None:
     assert ft_malvin_args_request_pi(("--model", "rpi:openai/gpt-4o")) is True
     assert ft_malvin_args_request_pi(("--model=rpi:openrouter/x",)) is True
     assert ft_malvin_args_request_pi(("--model=cursor:auto",)) is False
+    assert ft_malvin_args_request_local_rpi(()) is False
+    assert ft_malvin_args_request_local_rpi(("--model", "rpi:openai/gpt-4o")) is False
+    assert ft_malvin_args_request_local_rpi(("--model", "rpi:ollama/malvin-llama32")) is True
+    assert ft_malvin_args_request_local_rpi(("--model=rpi:local/x",)) is True
+    assert ft_malvin_args_request_local_rpi(("--model", "rpi:llamacpp/m",)) is True
+    with tempfile.TemporaryDirectory(prefix="ft-elf-") as tmp:
+        mach = Path(tmp) / "mach-o"
+        mach.write_bytes(b"\xcf\xfa\xed\xfe" + b"\0" * 32)
+        elf = Path(tmp) / "elf"
+        elf.write_bytes(b"\x7fELF" + b"\0" * 32)
+        assert ft_host_malvin_is_linux_elf(elf) is True
+        assert ft_host_malvin_is_linux_elf(mach) is False
+        assert (
+            ft_local_rpi_needs_host_agent(
+                agent_name=AGENT_MALVIN,
+                malvin_args=("--model", "rpi:ollama/x"),
+                malvin_binary=mach,
+            )
+            is True
+        )
+        assert (
+            ft_local_rpi_needs_host_agent(
+                agent_name=AGENT_MALVIN,
+                malvin_args=("--model", "rpi:ollama/x"),
+                malvin_binary=elf,
+            )
+            is False
+        )
+        host_cmd = ft_host_agent_cmd(
+            workspace=Path(tmp),
+            malvin_binary=mach,
+            malvin_args=("--model", "rpi:ollama/x"),
+        )
+        assert host_cmd[0] == str(mach.resolve())
+        assert "--do" in host_cmd
+        assert host_cmd[-1] == "plan.md"
 
     with tempfile.TemporaryDirectory(prefix="ft-pi-") as tmp:
         ws = Path(tmp) / "workspace"
@@ -1083,6 +1243,27 @@ def _ft_test_docker_agent_cmd_pi() -> None:
         (ws / "plan.md").write_text("x\n", encoding="utf-8")
         host_malvin = Path(tmp) / "malvin"
         host_malvin.write_bytes(b"\x7fELF")
+        cmd = ft_docker_agent_cmd(
+            image=DEFAULT_IMAGE,
+            workspace=ws,
+            malvin_binary=host_malvin,
+            malvin_args=("--model", "rpi:ollama/malvin-qwen-coder"),
+        )
+        assert "--add-host=host.docker.internal:host-gateway" in cmd
+        assert any(
+            t.startswith("MALVIN_LOCAL_LLM_BASE_URL=http://host.docker.internal:11434/v1")
+            for t in cmd
+        )
+        assert "--do" in cmd
+        cloud_cmd = ft_docker_agent_cmd(
+            image=DEFAULT_IMAGE,
+            workspace=ws,
+            malvin_binary=host_malvin,
+            malvin_args=("--model", "rpi:openai/gpt-4o"),
+        )
+        assert "--add-host=host.docker.internal:host-gateway" not in cloud_cmd
+        assert not any(t.startswith("MALVIN_LOCAL_LLM_BASE_URL=") for t in cloud_cmd)
+        assert "--do" not in cloud_cmd
         cmd = ft_docker_agent_cmd(
             image=DEFAULT_IMAGE,
             workspace=ws,

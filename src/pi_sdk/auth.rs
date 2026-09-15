@@ -32,11 +32,32 @@ pub fn is_provider_authenticated(provider: &str) -> bool {
 }
 
 fn provider_has_access(provider: &str) -> bool {
+    if pi::provider_metadata::provider_is_keyless_local(provider) {
+        return true;
+    }
+    if custom_provider_is_keyless(provider) {
+        return true;
+    }
     match provider_auth_env_keys(provider) {
         None => stored_credential_present(provider),
         Some(keys) if keys.iter().any(|k| crate::acp::env_key_nonempty(k)) => true,
         Some(_) => stored_credential_present(provider),
     }
+}
+
+fn custom_provider_is_keyless(provider: &str) -> bool {
+    let Ok(auth) = pi::auth::AuthStorage::load(pi::sdk::Config::auth_path()) else {
+        return false;
+    };
+    let models_path = pi::models::default_models_path(&pi::sdk::Config::global_dir());
+    if !models_path.is_file() {
+        return false;
+    }
+    let registry = pi::sdk::ModelRegistry::load_for_listing(&auth, Some(models_path));
+    registry.models().iter().any(|entry| {
+        pi::provider_metadata::provider_ids_match(&entry.model.provider, provider)
+            && !entry.auth_header
+    })
 }
 
 fn stored_credential_present(provider: &str) -> bool {
@@ -66,6 +87,22 @@ mod tests {
                 assert!(ensure_pi_authenticated("rpi:openai/gpt-4o").is_err());
             }
         });
+    }
+
+    #[test]
+    fn keyless_local_providers_skip_credential_gate() {
+        for provider in ["ollama", "llamacpp", "mistralrs"] {
+            assert!(
+                is_provider_authenticated(provider),
+                "{provider} must be runnable without stored credentials"
+            );
+            assert!(
+                ensure_pi_authenticated(&format!("rpi:{provider}/some-model")).is_ok(),
+                "{provider} must pass ensure_pi_authenticated"
+            );
+        }
+        assert!(ensure_pi_authenticated("rpi:local/whatever_model_name").is_ok());
+        assert!(!pi::provider_metadata::provider_is_keyless_local("lmstudio"));
     }
 
     #[test]

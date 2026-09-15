@@ -62,6 +62,65 @@ fn resolve_provider_api_key_reads_env_when_auth_missing() {
     });
 }
 
+fn resolve_provider_api_key_uses_dummy_for_keyless_local() {
+    crate::test_utils::with_isolated_home(|_| {
+        assert_eq!(
+            super::resolve_provider_api_key("ollama").as_str(),
+            super::super::local_context::KEYLESS_LOCAL_API_KEY
+        );
+        assert_eq!(
+            super::resolve_provider_api_key("llamacpp").as_str(),
+            super::super::local_context::KEYLESS_LOCAL_API_KEY
+        );
+    });
+}
+
+fn parse_http_authority_host_port_covers_common_forms() {
+    assert_eq!(
+        super::super::local_endpoint::parse_http_authority_host_port("http://127.0.0.1:8080/v1"),
+        Some(("127.0.0.1".into(), 8080))
+    );
+    assert_eq!(
+        super::super::local_endpoint::parse_http_authority_host_port("http://localhost/v1"),
+        Some(("localhost".into(), 80))
+    );
+    assert_eq!(
+        super::super::local_endpoint::parse_http_authority_host_port("https://example.com/v1"),
+        Some(("example.com".into(), 443))
+    );
+    assert_eq!(
+        super::super::local_endpoint::parse_http_authority_host_port("http://[::1]:1234/v1"),
+        Some(("::1".into(), 1234))
+    );
+    assert!(
+        super::super::local_endpoint::parse_http_authority_host_port("not-a-url").is_none()
+    );
+}
+
+fn http_base_url_is_listening_detects_open_and_closed_ports() {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
+    let port = listener.local_addr().expect("addr").port();
+    let open = format!("http://127.0.0.1:{port}/v1");
+    assert!(super::super::local_endpoint::http_base_url_is_listening(&open));
+    drop(listener);
+    let closed = format!("http://127.0.0.1:{port}/v1");
+    assert!(!super::super::local_endpoint::http_base_url_is_listening(&closed));
+}
+
+fn refresh_skips_unreachable_keyless_local_providers() {
+    crate::test_utils::with_isolated_home(|_| {
+        let live = refresh_pi_provider_caches_if_stale(true);
+        for provider in ["llamacpp", "mistralrs"] {
+            if !super::super::local_endpoint::keyless_local_provider_is_listening(provider) {
+                assert!(
+                    !live.contains_key(provider),
+                    "unreachable {provider} must not be live-fetched: {live:?}"
+                );
+            }
+        }
+    });
+}
+
 fn openai_compat_models_url_skips_non_openai_endpoints() {
     let google = pi::provider_metadata::provider_routing_defaults("google").expect("google");
     assert!(super::openai_compat_models_url(&google).is_none());
@@ -172,6 +231,10 @@ fn kiss_bundled_pi_sdk_models_refresh_tests() {
     now_secs_returns_positive_epoch();
     resolve_provider_api_key_returns_empty_when_unconfigured();
     resolve_provider_api_key_reads_env_when_auth_missing();
+    resolve_provider_api_key_uses_dummy_for_keyless_local();
+    parse_http_authority_host_port_covers_common_forms();
+    http_base_url_is_listening_detects_open_and_closed_ports();
+    refresh_skips_unreachable_keyless_local_providers();
     openai_compat_models_url_skips_non_openai_endpoints();
     provider_cache_round_trip_and_freshness();
     merge_registry_with_live_prefers_live_ids_and_enriches_metadata();

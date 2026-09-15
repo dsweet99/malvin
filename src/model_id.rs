@@ -101,7 +101,14 @@ impl ParsedModel {
         if !matches!(self.backend, ModelBackend::Pi | ModelBackend::NpmPi) {
             return None;
         }
-        split_first_slash(&self.slug).filter(|(p, m)| !p.is_empty() && !m.is_empty())
+        let (provider, model) =
+            split_first_slash(&self.slug).filter(|(p, m)| !p.is_empty() && !m.is_empty())?;
+        let provider = if provider.eq_ignore_ascii_case("local") {
+            "ollama"
+        } else {
+            provider
+        };
+        Some((provider, model))
     }
 
     #[must_use]

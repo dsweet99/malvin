@@ -3,11 +3,14 @@
 mod auth;
 mod cache_clock;
 mod isolated_bash;
+mod local_context;
+mod local_endpoint;
 mod map_agent_event;
 mod map_agent_event_end;
 mod map_event_summary;
 mod models_list;
 mod models_refresh;
+mod models_refresh_merge;
 mod openrouter_billed_cost;
 mod openrouter_pricing;
 mod runtime;

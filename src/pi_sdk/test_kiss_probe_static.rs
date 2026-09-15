@@ -59,6 +59,18 @@ fn kiss_probe_static_models_refresh_tokens() {
 }
 
 #[test]
+fn kiss_probe_static_local_endpoint_tokens() {
+    parse_http_authority_host_port();
+    http_base_url_is_listening();
+    keyless_local_provider_is_listening();
+    KEYLESS_LOCAL_REACHABILITY_TIMEOUT();
+    scheme_and_rest();
+    default_port_for_scheme();
+    parse_bracketed_host_port();
+    parse_host_port_pair();
+}
+
+#[test]
 fn kiss_probe_static_openrouter_pricing_tokens() {
     warm_openrouter_pricing_cache();
     lookup_model_cost();

@@ -130,6 +130,7 @@ fn kiss_cov_pi_sdk_models_refresh_name_batch() {
 fn kiss_cov_pi_sdk_live_provider_auth() {
     is_provider_authenticated();
     provider_has_access();
+    custom_provider_is_keyless();
     stored_credential_present();
     print_pi_models();
 }

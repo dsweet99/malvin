@@ -8,6 +8,8 @@ fn kiss_cov_session_and_spawn_names() {
     let _ = stringify!(start_embedded_mem_watch);
     let _ = stringify!(watch_embedded_memory);
     let _ = stringify!(isolated_tool_factory);
+    let _ = stringify!(local_append_system_prompt);
+    let _ = stringify!(local_enabled_tools);
 }
 
 #[test]
