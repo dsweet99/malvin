@@ -7,5 +7,12 @@ Do not give a play-by-play of your own actions, steps, or session mechanics. In 
 
 Be sure to provide evidence (e.g., measurements, citations, calculations, reasoning, etc.) for any claims you make as well as evidence that the user's request has been satisfied.
 
-Oh, and don't forget to put the summary between the DM fences.
+Oh, and don't forget to put the summary between the DM fences, like this:
+
+```
+__MALVIN_DM_START__
+Your summary
+__MALVIN_DM_END__
+```
+
 
