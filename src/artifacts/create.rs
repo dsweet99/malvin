@@ -117,6 +117,34 @@ pub fn create_run_artifacts_from_text_opts(
     Ok(artifacts)
 }
 
+pub fn refresh_plan_copy_from_source(
+    plan_source: &Path,
+    plan_target: &Path,
+) -> std::io::Result<()> {
+    std::fs::copy(plan_source, plan_target)?;
+    Ok(())
+}
+
+pub fn maybe_refresh_watched_plan(
+    watch: bool,
+    source: Option<&Path>,
+    plan_target: &Path,
+) -> Result<(), String> {
+    if !watch {
+        return Ok(());
+    }
+    let Some(source) = source else {
+        return Ok(());
+    };
+    refresh_plan_copy_from_source(source, plan_target).map_err(|e| {
+        format!(
+            "failed to re-copy watched request {} -> {}: {e}",
+            source.display(),
+            plan_target.display()
+        )
+    })
+}
+
 #[cfg(test)]
 #[allow(unused_imports)]
 mod kiss_cov_gate_refs {
@@ -126,5 +154,7 @@ mod kiss_cov_gate_refs {
         let _ = ensure_exp_log_file;
         let _ = ensure_exp_log_exists;
         let _ = init_quality_gates_log_pending;
+        let _ = refresh_plan_copy_from_source;
+        let _ = maybe_refresh_watched_plan;
     }
 }

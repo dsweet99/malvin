@@ -166,3 +166,32 @@ fn is_existing_md_file_path_rejects_invalid_and_directory() {
     assert!(is_existing_md_file_path("notes.md").is_none());
     std::env::set_current_dir(old_cwd).unwrap();
 }
+
+#[test]
+fn refresh_plan_copy_from_source_overwrites_target() {
+    let tmp = tempfile::tempdir().unwrap();
+    let source = tmp.path().join("req.md");
+    let target = tmp.path().join("plan_abc12.md");
+    std::fs::write(&source, "v1").unwrap();
+    std::fs::write(&target, "stale").unwrap();
+    refresh_plan_copy_from_source(&source, &target).unwrap();
+    assert_eq!(std::fs::read_to_string(&target).unwrap(), "v1");
+    std::fs::write(&source, "v2").unwrap();
+    refresh_plan_copy_from_source(&source, &target).unwrap();
+    assert_eq!(std::fs::read_to_string(&target).unwrap(), "v2");
+}
+
+#[test]
+fn maybe_refresh_watched_plan_respects_flag_and_missing_source() {
+    let tmp = tempfile::tempdir().unwrap();
+    let source = tmp.path().join("req.md");
+    let target = tmp.path().join("plan_xyz99.md");
+    std::fs::write(&source, "fresh").unwrap();
+    std::fs::write(&target, "old").unwrap();
+    maybe_refresh_watched_plan(false, Some(source.as_path()), &target).unwrap();
+    assert_eq!(std::fs::read_to_string(&target).unwrap(), "old");
+    maybe_refresh_watched_plan(true, None, &target).unwrap();
+    assert_eq!(std::fs::read_to_string(&target).unwrap(), "old");
+    maybe_refresh_watched_plan(true, Some(source.as_path()), &target).unwrap();
+    assert_eq!(std::fs::read_to_string(&target).unwrap(), "fresh");
+}

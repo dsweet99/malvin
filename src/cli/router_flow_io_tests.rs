@@ -41,6 +41,23 @@ fn cli_accepts_global_creative_option() {
 }
 
 #[test]
+fn cli_accepts_watch_option() {
+    use crate::cli::Cli;
+
+    let off = Cli::try_parse_from(["malvin", "route this task"]).expect("parse");
+    assert!(!off.router.watch);
+
+    let on = Cli::try_parse_from(["malvin", "--watch", "plan.md"]).expect("parse");
+    assert!(on.router.watch);
+    assert_eq!(on.request.as_deref(), Some("plan.md"));
+
+    assert!(
+        Cli::try_parse_from(["malvin", "--do", "--watch", "plan.md"]).is_err(),
+        "--watch conflicts with --do"
+    );
+}
+
+#[test]
 fn cli_accepts_global_no_kpop_option() {
     use crate::cli::Cli;
 

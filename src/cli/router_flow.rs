@@ -2,8 +2,9 @@ use crate::cli::cli_request::require_cli_request;
 use crate::cli::run_emit::{RunStartupEmitOpts, emit_run_logs_line, emit_run_startup_banner};
 use crate::cli::{AgentRouteOpts, SharedOpts};
 use malvin::agent_backend::{SdkClient, build_agent_backend};
-use malvin::artifacts::{RunArtifacts, resolve_user_md_request};
+use malvin::artifacts::{RunArtifacts, is_existing_md_file_path, resolve_user_md_request};
 use malvin::prompts::PromptStore;
+use std::path::PathBuf;
 #[path = "router_flow_acp.rs"]
 pub(crate) mod router_flow_acp;
 #[path = "router_flow_loop.rs"]
@@ -28,6 +29,7 @@ struct RouterRunPrep {
     client: SdkClient,
     artifacts: RunArtifacts,
     prompt_store: PromptStore,
+    watch_source: Option<PathBuf>,
 }
 
 fn new_router_client(shared: &SharedOpts) -> Result<SdkClient, String> {
@@ -62,6 +64,7 @@ async fn prepare_router_run(
 ) -> Result<RouterRunPrep, String> {
     let client = new_router_client(opts.shared)?;
     let request = require_cli_request(router_args.request.as_ref(), "")?;
+    let watch_source = is_existing_md_file_path(&request);
     let (text, work_dir) = resolve_user_md_request(&request)?;
     let artifacts = malvin::artifacts::create_run_artifacts_from_text_opts(
         &text,
@@ -76,6 +79,7 @@ async fn prepare_router_run(
         client,
         artifacts,
         prompt_store,
+        watch_source,
     })
 }
 
@@ -116,6 +120,7 @@ async fn run_router_body(
             router: opts.router,
             max_loops: router_args.max_loops,
             max_hypotheses: router_args.max_hypotheses,
+            watch_source: prep.watch_source.as_deref(),
         })
         .await?;
 

@@ -26,6 +26,7 @@ pub(crate) struct RouterAgentLoopInput<'a> {
     pub router: &'a RouterOpts,
     pub max_loops: usize,
     pub max_hypotheses: usize,
+    pub watch_source: Option<&'a Path>,
 }
 
 pub(crate) struct RouterAgentLoopOutcome {
@@ -82,6 +83,11 @@ async fn run_one_router_loop_step(
     agent_loop: usize,
     max_loops: usize,
 ) -> Result<RouterLoopStepResult, String> {
+    malvin::artifacts::maybe_refresh_watched_plan(
+        input.router.watch,
+        input.watch_source,
+        input.artifacts.plan_path.as_path(),
+    )?;
     let session_end = if agent_loop == max_loops {
         RunTimingSessionEnd::Finalize
     } else {

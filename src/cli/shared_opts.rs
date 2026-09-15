@@ -10,6 +10,9 @@ const QUIET_HELPTEXT: &str =
 const CREATIVE_HELPTEXT: &str =
     "Be (more) creative; optional probability in [0,1] (default 1.0 when set)";
 
+const WATCH_HELPTEXT: &str =
+    "Re-copy the request `.md` into the run log dir before each outer loop (overwrite)";
+
 pub(crate) fn parse_creative_probability(s: &str) -> Result<f64, String> {
     let p: f64 = s
         .parse()
@@ -46,6 +49,7 @@ pub struct SharedOpts {
 
 /// Options that apply only to default-route / gates-only loops.
 #[derive(Args, Debug, Clone)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct RouterOpts {
     /// Print only `__MALVIN_DM_START__`/`END` bodies on stdout (default router)
     #[arg(
@@ -76,6 +80,14 @@ pub struct RouterOpts {
         help = CREATIVE_HELPTEXT
     )]
     pub creative: Option<f64>,
+    /// Re-copy the request `.md` into the run log dir before each outer loop
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with = "do_workflow",
+        help = WATCH_HELPTEXT
+    )]
+    pub watch: bool,
     /// Turn off `KPop`
     #[arg(
         long = "no-kpop",
@@ -156,6 +168,7 @@ impl RouterOpts {
             quiet: false,
             gates: false,
             creative: None,
+            watch: false,
             no_kpop: false,
             max_loops: malvin::malvin_config_file::DEFAULT_MAX_LOOPS,
             max_hypotheses: malvin::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
