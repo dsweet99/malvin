@@ -12,7 +12,7 @@ pub(crate) const DRAIN_IDLE_PREFIX_PI: &str = crate::model_id::ModelBackend::Pi.
 pub(crate) const DRAIN_IDLE_PREFIX_CODEX: &str =
     crate::model_id::ModelBackend::Codex.drain_idle_prefix();
 
-pub(crate) fn test_no_real_agent_enabled() -> bool {
+pub fn test_no_real_agent_enabled() -> bool {
     std::env::var_os(MALVIN_TEST_NO_REAL_AGENT_ENV).is_some_and(|v| !v.is_empty() && v != "0")
 }
 

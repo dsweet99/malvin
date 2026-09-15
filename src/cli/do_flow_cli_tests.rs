@@ -1,7 +1,7 @@
 use clap::Parser;
 
 use crate::cli::Cli;
-use crate::config::DEFAULT_MAX_ACP_RETRIES;
+use malvin::config::DEFAULT_MAX_ACP_RETRIES;
 
 fn cli_accepts_do_and_passes_request() {
     let cli = Cli::try_parse_from(["malvin", "--do", "fix the bug"]).expect("parse");

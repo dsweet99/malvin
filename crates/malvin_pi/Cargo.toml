@@ -1,0 +1,11 @@
+[package]
+name = "malvin_pi"
+version = "0.2.7"
+edition = "2024"
+rust-version = "1.95"
+publish = false
+
+[dependencies]
+# gix (via pi_agent_rust → vergen-gix) accepts kstring 2.0.0+; 2.0.3+ raises MSRV to 1.96.
+kstring = "=2.0.2"
+pi_agent_rust = { version = "0.1.23", default-features = false, features = ["sqlite-sessions"] }

@@ -1,6 +1,6 @@
-use crate::config::DEFAULT_CLI_MODEL;
-use crate::flow_prompt_join_test_helpers::flow_test_artifacts;
-use crate::prompts::PromptStore;
+use malvin::config::DEFAULT_CLI_MODEL;
+use malvin::flow_prompt_join_test_helpers::flow_test_artifacts;
+use malvin::prompts::PromptStore;
 use crate::router_flow::router_flow_prompt::{
     RouterAPromptInput, RouterBPromptInput, RouterKpopCommonPromptInput,
     RouterSummarizePromptInput, build_router_a_prompt, build_router_b_prompt,
@@ -58,7 +58,7 @@ fn build_router_a_prompt_renders_without_unresolved_braces() {
 fn build_router_a_prompt_includes_code_checks_when_gates_enabled() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
-    crate::seed_malvin_checks(tmp.path(), "echo ROUTER_CHECK_LINE\n");
+    malvin::seed_malvin_checks(tmp.path(), "echo ROUTER_CHECK_LINE\n");
     let store = prepare_router_prompt_store().expect("store");
     let body = build_router_a_prompt(RouterAPromptInput {
         store: &store,
@@ -76,9 +76,9 @@ fn build_router_a_prompt_includes_code_checks_when_gates_enabled() {
 fn build_router_a_prompt_omits_code_checks_when_gates_disabled() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
-    crate::seed_malvin_checks(tmp.path(), "echo ROUTER_CHECK_LINE\n");
+    malvin::seed_malvin_checks(tmp.path(), "echo ROUTER_CHECK_LINE\n");
     let store = prepare_router_prompt_store().expect("store");
-    crate::gate_loop_session::set_quality_gates_just_ran(true);
+    malvin::gate_loop_session::set_quality_gates_just_ran(true);
     let body = build_router_a_prompt(RouterAPromptInput {
         store: &store,
         artifacts: &artifacts,
@@ -87,7 +87,7 @@ fn build_router_a_prompt_omits_code_checks_when_gates_disabled() {
         no_kpop: false,
     })
     .expect("router_a");
-    crate::gate_loop_session::set_quality_gates_just_ran(false);
+    malvin::gate_loop_session::set_quality_gates_just_ran(false);
     assert!(!body.contains("echo ROUTER_CHECK_LINE"));
     assert!(!body.contains("quality gates were just run"));
     assert!(
@@ -101,9 +101,9 @@ fn build_router_a_prompt_omits_code_checks_when_gates_disabled() {
 fn build_router_a_prompt_omits_code_extra_when_gate_commands_empty() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
-    crate::seed_malvin_checks(tmp.path(), "# no commands\n\n  \n");
+    malvin::seed_malvin_checks(tmp.path(), "# no commands\n\n  \n");
     let store = prepare_router_prompt_store().expect("store");
-    crate::gate_loop_session::set_quality_gates_just_ran(true);
+    malvin::gate_loop_session::set_quality_gates_just_ran(true);
     let body = build_router_a_prompt(RouterAPromptInput {
         store: &store,
         artifacts: &artifacts,
@@ -112,7 +112,7 @@ fn build_router_a_prompt_omits_code_extra_when_gate_commands_empty() {
         no_kpop: false,
     })
     .expect("router_a");
-    crate::gate_loop_session::set_quality_gates_just_ran(false);
+    malvin::gate_loop_session::set_quality_gates_just_ran(false);
     assert!(
         !body.contains("__begin_gates_output__"),
         "whitespace-only code_checks must yield empty code_extra: {body}"
@@ -128,9 +128,9 @@ fn build_router_a_prompt_omits_code_extra_when_gate_commands_empty() {
 fn router_code_extra_note_absent_when_gates_have_not_run() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
-    crate::seed_malvin_checks(tmp.path(), "true\n");
+    malvin::seed_malvin_checks(tmp.path(), "true\n");
     let store = prepare_router_prompt_store().expect("store");
-    crate::gate_loop_session::set_quality_gates_just_ran(false);
+    malvin::gate_loop_session::set_quality_gates_just_ran(false);
     let body = build_router_a_prompt(RouterAPromptInput {
         store: &store,
         artifacts: &artifacts,
@@ -150,9 +150,9 @@ fn router_code_extra_note_absent_when_gates_have_not_run() {
 fn router_code_extra_note_present_after_gates_just_ran() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
-    crate::seed_malvin_checks(tmp.path(), "true\n");
+    malvin::seed_malvin_checks(tmp.path(), "true\n");
     let store = prepare_router_prompt_store().expect("store");
-    crate::gate_loop_session::set_quality_gates_just_ran(true);
+    malvin::gate_loop_session::set_quality_gates_just_ran(true);
     let body = build_router_a_prompt(RouterAPromptInput {
         store: &store,
         artifacts: &artifacts,
@@ -161,7 +161,7 @@ fn router_code_extra_note_present_after_gates_just_ran() {
         no_kpop: false,
     })
     .expect("router_a");
-    crate::gate_loop_session::set_quality_gates_just_ran(false);
+    malvin::gate_loop_session::set_quality_gates_just_ran(false);
     assert!(
         body.contains("The quality gates were just run, and their output is in `"),
         "note must be present right after a gate run: {body}"
@@ -230,28 +230,28 @@ fn build_router_b_prompt_selects_creative_template_when_flag_set() {
         "creative router_b must keep KPop satisfy instruction: {creative}"
     );
     assert_eq!(
-        router_b_prompt_label(crate::prompts::RouterBPromptFlags {
+        router_b_prompt_label(malvin::prompts::RouterBPromptFlags {
             creative: false,
             no_kpop: false,
         }),
         "router_b.md"
     );
     assert_eq!(
-        router_b_prompt_label(crate::prompts::RouterBPromptFlags {
+        router_b_prompt_label(malvin::prompts::RouterBPromptFlags {
             creative: true,
             no_kpop: false,
         }),
         "router_b_creative.md"
     );
     assert_eq!(
-        router_b_prompt_label(crate::prompts::RouterBPromptFlags {
+        router_b_prompt_label(malvin::prompts::RouterBPromptFlags {
             creative: false,
             no_kpop: true,
         }),
         "router_b_no_kpop.md"
     );
     assert_eq!(
-        router_b_prompt_label(crate::prompts::RouterBPromptFlags {
+        router_b_prompt_label(malvin::prompts::RouterBPromptFlags {
             creative: true,
             no_kpop: true,
         }),

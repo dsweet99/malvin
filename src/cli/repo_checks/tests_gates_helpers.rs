@@ -75,7 +75,7 @@ pub(super) fn workspace_git_kissconfig_90_cargo_rs_py(work: &Path) {
 
 pub(super) fn workspace_git_malvin_checks_line(work: &Path, line: &str) {
     git_init_work(work);
-    let path = crate::malvin_checks_path(work);
+    let path = malvin::malvin_checks_path(work);
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).expect("checks parent");
     }
@@ -85,7 +85,7 @@ pub(super) fn workspace_git_malvin_checks_line(work: &Path, line: &str) {
 pub(super) fn workspace_git_precommit_malvin_checks_cargo_main(work: &Path) {
     workspace_git_cargo_main_only(work);
     fs::write(work.join(".pre-commit-config.yaml"), "repos:\n").expect("pre-commit");
-    let path = crate::malvin_checks_path(work);
+    let path = malvin::malvin_checks_path(work);
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).expect("checks parent");
     }

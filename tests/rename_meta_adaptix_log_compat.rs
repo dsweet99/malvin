@@ -2,8 +2,6 @@ mod common;
 
 use std::path::Path;
 
-use clap::Parser;
-use malvin::cli::Cli;
 use malvin::output::{MALVIN_WHO, WHO_U, format_line, format_who_tag_prefix};
 use malvin::{MALVIN_USER_HOME_DIR, workspace_logs_hash};
 
@@ -55,20 +53,6 @@ fn seed_legacy_adaptix_run(work_dir: &Path, home: &Path) -> std::path::PathBuf {
     malvin::write_work_dir_manifest(&run_dir, work_dir).expect("manifest");
     write_legacy_workspace_meta_toml(work_dir);
     run_dir
-}
-
-#[test]
-fn adaptix_subcommand_is_removed() {
-    use clap::CommandFactory;
-    assert!(
-        !Cli::command()
-            .get_subcommands()
-            .any(|c| c.get_name() == "adaptix" || c.get_name() == "inspire"),
-        "inspire/adaptix must not be clap subcommands"
-    );
-    let cli = Cli::try_parse_from(["malvin", "adaptix"]).expect("bare request");
-    assert!(cli.command.is_none());
-    assert_eq!(cli.request.as_deref(), Some("adaptix"));
 }
 
 #[test]

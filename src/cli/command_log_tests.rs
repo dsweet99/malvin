@@ -1,6 +1,6 @@
 use std::os::unix::fs::PermissionsExt;
 
-use crate::output::{WHO_U, format_who_tag_delim};
+use malvin::output::{WHO_U, format_who_tag_delim};
 use tempfile::tempdir;
 
 use super::run_emit::emit_command_line;

@@ -1,4 +1,5 @@
 mod copy;
+mod lld;
 mod npm;
 mod pi_patch;
 mod sync;
@@ -7,6 +8,7 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use lld::{emit_dev_dynamic_rpaths, emit_fast_bin_linker_args};
 use npm::{check_node_version, resolve_npm, run_npm};
 use sync::sync_bridge_payload;
 
@@ -39,10 +41,13 @@ pub fn run_build_script() {
     println!("cargo:rerun-if-env-changed=MALVIN_SKIP_SDK_BRIDGES");
     println!("cargo:rerun-if-env-changed=DOCS_RS");
     println!("cargo:rerun-if-env-changed=HOME");
+    println!("cargo:rerun-if-env-changed=MALVIN_DISABLE_LLD");
 
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR"));
     pi_patch::apply_pi_openrouter_cost_patch(&manifest_dir);
     emit_rerun_if_changed(&manifest_dir);
+    emit_fast_bin_linker_args();
+    emit_dev_dynamic_rpaths();
 
     if env::var_os("DOCS_RS").is_some() {
         return;
@@ -130,11 +135,29 @@ fn install_npm_deps(dest: &Path, bridge: &Bridge) {
         bridge.label,
         dest.display()
     );
+    println!(
+        "cargo:warning=malvin: running npm ci for {} (progress on stderr)",
+        bridge.label
+    );
     let dist_js = dest.join("dist").join("bridge.js");
     if dist_js.is_file() {
-        run_npm(&npm, dest, &["ci", "--omit=dev"]);
+        run_npm(
+            &npm,
+            dest,
+            &[
+                "ci",
+                "--omit=dev",
+                "--no-audit",
+                "--no-fund",
+                "--prefer-offline",
+            ],
+        );
     } else {
-        run_npm(&npm, dest, &["ci"]);
+        run_npm(
+            &npm,
+            dest,
+            &["ci", "--no-audit", "--no-fund", "--prefer-offline"],
+        );
         eprintln!(
             "malvin: building {} bridge (npm run build)…",
             bridge.dir_name

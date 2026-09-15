@@ -1,5 +1,5 @@
-use crate::model_id::{CODEX_PREFIX, CURSOR_PREFIX, PI_PREFIX, RPI_PREFIX};
-use crate::output::{MALVIN_WHO, print_stdout_line};
+use malvin::model_id::{CODEX_PREFIX, CURSOR_PREFIX, PI_PREFIX, RPI_PREFIX};
+use malvin::output::{MALVIN_WHO, print_stdout_line};
 use clap::Args;
 
 #[path = "models_cmd_cursor.rs"]
@@ -29,12 +29,10 @@ pub struct ModelsArgs {
 }
 
 #[cfg(test)]
-pub(crate) const fn models_args_marker(_args: &ModelsArgs) -> &'static str {
-    "models"
-}
+pub(crate) const fn models_args_marker(_args: &ModelsArgs) -> &'static str { "models" }
 
 fn print_codex_models(filter: Option<&str>) {
-    match crate::codex_sdk::list_codex_display_models() {
+    match malvin::codex_sdk::list_codex_display_models() {
         Ok(models) => {
             for (id, name) in models {
                 let line = format!("codex:{id}\t{name}");
@@ -68,7 +66,7 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
         print_stdout_line(MALVIN_WHO, &format!("(cursor models unavailable: {e})"));
     }
     if section_may_match(filter_ref, PI_PREFIX) {
-        match crate::npm_pi_sdk::list_npm_pi_display_models() {
+        match malvin::npm_pi_sdk::list_npm_pi_display_models() {
             Ok(models) => print_npm_pi_models(&models, filter_ref),
             Err(e) => {
                 print_stdout_line(MALVIN_WHO, &format!("(pi models unavailable: {e})"));
@@ -76,7 +74,7 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
         }
     }
     if section_may_match(filter_ref, RPI_PREFIX) {
-        match crate::pi_sdk::list_pi_models_sync(false) {
+        match malvin::pi_sdk::list_pi_models_sync(false) {
             Ok(models) => print_pi_models(&models, filter_ref),
             Err(e) => {
                 print_stdout_line(MALVIN_WHO, &format!("(rpi models unavailable: {e})"));
@@ -99,11 +97,11 @@ fn print_npm_pi_models(models: &[(String, String)], filter: Option<&str>) {
     }
 }
 
-fn print_pi_models(models: &[crate::pi_sdk::PiModelListing], filter: Option<&str>) {
+fn print_pi_models(models: &[malvin::pi_sdk::PiModelListing], filter: Option<&str>) {
     let mut printed = false;
     for model in models {
         let provider = model.id.split('/').next().unwrap_or("");
-        if !crate::pi_sdk::is_provider_authenticated(provider) {
+        if !malvin::pi_sdk::is_provider_authenticated(provider) {
             continue;
         }
         let mut line = format!("{RPI_PREFIX}{}\t{}", model.id, model.name);
@@ -123,7 +121,7 @@ fn print_pi_models(models: &[crate::pi_sdk::PiModelListing], filter: Option<&str
     if printed {
         print_stdout_line(
             MALVIN_WHO,
-            "Note: pi:/rpi: model lists refresh live provider catalogs at most once per day (use --refresh to force); rpi: rows are shown only for providers you can run (environment API key, stored Pi credential, keyless local provider, or keyless models.json entry).",
+            "Note: pi:/rpi: model lists refresh live provider catalogs at most once per day (use --refresh to force); rpi: rows are shown only for providers you can run (environment API key, stored Pi credential, Pi-detected local CLI auth such as Codex, keyless local provider, or keyless models.json entry). Older malvin ≤0.2.3 listed every provider; cargo install of 0.2.4+ needs rustc 1.95+.",
         );
     }
 }
@@ -216,11 +214,11 @@ pub(crate) mod test_hooks {
     }
 
     pub fn current_model_label() -> String {
-        crate::config::DEFAULT_CLI_MODEL.to_string()
+        malvin::config::DEFAULT_CLI_MODEL.to_string()
     }
 
     pub fn print_current_footer() {
-        super::print_current_footer(crate::config::DEFAULT_CLI_MODEL);
+        super::print_current_footer(malvin::config::DEFAULT_CLI_MODEL);
     }
 
     pub fn models_refresh_is_due(now_secs: u64) -> bool {

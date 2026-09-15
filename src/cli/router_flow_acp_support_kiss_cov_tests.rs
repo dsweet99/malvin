@@ -1,4 +1,4 @@
-use crate::artifacts::SessionDotfileBackups;
+use malvin::artifacts::SessionDotfileBackups;
 
 #[test]
 fn kiss_cov_router_acp_support_fn_names() {

@@ -5,14 +5,14 @@ fn isolated_pi_home(tmp: &std::path::Path) -> String {
 }
 
 fn run_models_pi_only_with_openrouter_key() {
-    crate::acp::with_env("OPENAI_API_KEY", None, || {
-        crate::acp::with_env("OPENROUTER_API_KEY", Some("k"), || {
+    malvin::acp::with_env("OPENAI_API_KEY", None, || {
+        malvin::acp::with_env("OPENROUTER_API_KEY", Some("k"), || {
             run_models(
                 ModelsArgs {
                     refresh: false,
                     words: vec!["rpi:".into()],
                 },
-                crate::config::DEFAULT_CLI_MODEL,
+                malvin::config::DEFAULT_CLI_MODEL,
             )
             .expect("filtered models");
         });
@@ -40,13 +40,13 @@ fn assert_live_auth_filter(out: &str) {
 
 #[test]
 fn run_models_filters_pi_rows_using_stored_credentials_too() {
-    use crate::output::{enable_stdout_capture, take_captured_stdout};
-    use crate::test_utils::test_env_lock;
+    use malvin::output::{enable_stdout_capture, take_captured_stdout};
+    use malvin::test_utils::test_env_lock;
 
     let _lock = test_env_lock();
     let tmp = tempfile::tempdir().expect("tempdir");
     let home = isolated_pi_home(tmp.path());
-    crate::acp::with_env("PI_CODING_AGENT_DIR", Some(&home), || {
+    malvin::acp::with_env("PI_CODING_AGENT_DIR", Some(&home), || {
         // Store an openai credential in pi's auth file only (no env keys).
         {
             let auth_path = pi::sdk::Config::auth_path();
@@ -76,13 +76,13 @@ fn run_models_filters_pi_rows_using_stored_credentials_too() {
 
 #[test]
 fn run_models_filters_pi_rows_using_live_provider_auth_map() {
-    use crate::output::{enable_stdout_capture, take_captured_stdout};
-    use crate::test_utils::test_env_lock;
+    use malvin::output::{enable_stdout_capture, take_captured_stdout};
+    use malvin::test_utils::test_env_lock;
 
     let _lock = test_env_lock();
     let tmp = tempfile::tempdir().expect("tempdir");
     let home = isolated_pi_home(tmp.path());
-    crate::acp::with_env("PI_CODING_AGENT_DIR", Some(&home), || {
+    malvin::acp::with_env("PI_CODING_AGENT_DIR", Some(&home), || {
         enable_stdout_capture();
         run_models_pi_only_with_openrouter_key();
         let out = take_captured_stdout();
@@ -92,21 +92,21 @@ fn run_models_filters_pi_rows_using_live_provider_auth_map() {
 
 #[test]
 fn run_models_lists_pi_rows_without_pi_binary() {
-    use crate::output::{enable_stdout_capture, take_captured_stdout};
-    use crate::test_utils::test_env_lock;
+    use malvin::output::{enable_stdout_capture, take_captured_stdout};
+    use malvin::test_utils::test_env_lock;
 
     let _lock = test_env_lock();
     let tmp = tempfile::tempdir().expect("tempdir");
     let home = isolated_pi_home(tmp.path());
-    crate::acp::with_env("PI_CODING_AGENT_DIR", Some(&home), || {
-        crate::acp::with_env("OPENROUTER_API_KEY", Some("k"), || {
+    malvin::acp::with_env("PI_CODING_AGENT_DIR", Some(&home), || {
+        malvin::acp::with_env("OPENROUTER_API_KEY", Some("k"), || {
             enable_stdout_capture();
             run_models(
                 ModelsArgs {
                     refresh: false,
                     words: vec!["rpi:".into()],
                 },
-                crate::config::DEFAULT_CLI_MODEL,
+                malvin::config::DEFAULT_CLI_MODEL,
             )
             .expect("crate models");
             let out = take_captured_stdout();

@@ -1,14 +1,14 @@
 use std::io::Write;
 use std::path::Path;
 
-use crate::artifacts::RunArtifacts;
-use crate::format_logs_dir;
-use crate::mem_limit_config::format_host_resources_line;
-use crate::output::{MALVIN_WHO, WHO_U, format_line, print_stdout_line, print_stdout_text};
+use malvin::artifacts::RunArtifacts;
+use malvin::format_logs_dir;
+use malvin::mem_limit_config::format_host_resources_line;
+use malvin::output::{MALVIN_WHO, WHO_U, format_line, print_stdout_line, print_stdout_text};
 
 pub fn emit_command_line(run_dir: &Path, echo_stdout: bool) -> Result<(), String> {
-    crate::init_from_env();
-    let cmd = crate::command_line().expect("init_from_env populates argv via OnceLock");
+    malvin::init_from_env();
+    let cmd = malvin::command_line().expect("init_from_env populates argv via OnceLock");
     let line = format!("Command: {cmd}");
     if echo_stdout {
         print_stdout_line(WHO_U, &line);
@@ -86,10 +86,10 @@ pub fn emit_run_startup_banner(
     opts: RunStartupEmitOpts,
     _cli_request: &str,
 ) -> Result<(), String> {
-    crate::agent_phase::reset_for_run();
-    crate::agent_phase::note_orienting();
+    malvin::agent_phase::reset_for_run();
+    malvin::agent_phase::note_orienting();
     emit_command_line(&artifacts.run_dir, opts.tee_stdout)?;
-    if opts.host_resources && !crate::acp::test_no_real_agent_enabled() {
+    if opts.host_resources && !malvin::acp::test_no_real_agent_enabled() {
         emit_host_resources_line(&artifacts.run_dir, opts.tee_stdout)?;
     }
     append_command_log_line(
@@ -124,7 +124,7 @@ mod tests {
         RunStartupEmitOpts, append_command_log_line, emit_host_resources_line, emit_run_logs_line,
         emit_run_startup_banner, emit_run_startup_sequence, format_model_line,
     };
-    use crate::output::{WHO_U, format_who_tag_delim};
+    use malvin::output::{WHO_U, format_who_tag_delim};
 
     #[test]
     fn emit_command_line_uses_user_who_tag() {
@@ -180,11 +180,11 @@ mod tests {
 
     #[test]
     fn emit_run_startup_banner_writes_command_without_requiring_logs() {
-        crate::test_utils::with_isolated_home(|_| {
-            crate::test_utils::clear_test_no_real_agent_env();
+        malvin::test_utils::with_isolated_home(|_| {
+            malvin::test_utils::clear_test_no_real_agent_env();
             let tmp = tempfile::tempdir().expect("tempdir");
             let artifacts =
-                crate::artifacts::create_run_artifacts_from_text("hi", Some(tmp.path()))
+                malvin::artifacts::create_run_artifacts_from_text("hi", Some(tmp.path()))
                     .expect("art");
             emit_run_startup_banner(
                 &artifacts,
@@ -204,11 +204,11 @@ mod tests {
 
     #[test]
     fn emit_run_startup_sequence_includes_host_resources_when_requested() {
-        crate::test_utils::with_isolated_home(|_| {
-            crate::test_utils::clear_test_no_real_agent_env();
+        malvin::test_utils::with_isolated_home(|_| {
+            malvin::test_utils::clear_test_no_real_agent_env();
             let tmp = tempfile::tempdir().expect("tempdir");
             let artifacts =
-                crate::artifacts::create_run_artifacts_from_text("hi", Some(tmp.path()))
+                malvin::artifacts::create_run_artifacts_from_text("hi", Some(tmp.path()))
                     .expect("art");
             emit_run_startup_sequence(
                 &artifacts,
@@ -229,10 +229,10 @@ mod tests {
 
     #[test]
     fn emit_run_startup_sequence_omits_host_resources_when_disabled() {
-        crate::test_utils::with_isolated_home(|_| {
+        malvin::test_utils::with_isolated_home(|_| {
             let tmp = tempfile::tempdir().expect("tempdir");
             let artifacts =
-                crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
+                malvin::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
                     .expect("art");
             emit_run_startup_sequence(
                 &artifacts,

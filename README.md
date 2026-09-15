@@ -3,13 +3,19 @@
 
 ## Installation
 
-Requires [Node.js](https://nodejs.org/) ≥ 22.13 (with `npm` on `PATH`). During
-`cargo install` / `cargo build`, malvin's build script installs the Cursor SDK
+Requires **Rust 1.95+** (`rustup update` / `rustup install 1.95.0`) and
+[Node.js](https://nodejs.org/) ≥ 22.13 (with `npm` on `PATH`). Current crates.io
+releases declare `rust-version = "1.95"`; with an older rustc, `cargo install malvin`
+fails and leaves any prior binary in place (releases through `0.2.3` list every
+`rpi:` provider; `0.2.4+` lists only providers you can run).
+
+During `cargo install` / `cargo build`, malvin's build script installs the Cursor SDK
 (`@cursor/sdk`) under `~/.malvin_home/sdk-bridges/`
 (skipped when the repo already has a built in-tree bridge).
 
 ```bash
-cargo install malvin
+rustup install 1.95.0 && rustup default 1.95.0   # if needed
+cargo install malvin --force
 ```
 
 Without Node/npm the Rust build fails unless you set `MALVIN_SKIP_SDK_BRIDGES=1`
@@ -71,3 +77,7 @@ Flag reference: `malvin --help`. Behavioral contracts: `malvin --doc` and `malvi
 - pi: models (TypeScript/npm `@earendil-works/pi-coding-agent` RPC; set `MALVIN_PI` or install the package)
 - rpi: models (links crates.io `pi_agent_rust`; uses the operator’s Pi auth/config)
 - Codex: models (requires an externally installed `codex` binary; local stdio app-server)
+
+## Support
+
+If this project helps you, please consider [sponsoring](https://github.com/sponsors/dsweet99) or see [SUPPORT.md](./SUPPORT.md).

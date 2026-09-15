@@ -72,7 +72,7 @@ pub(crate) use wrap_retry_policy::*;
 
 #[path = "agent_helpers.rs"]
 mod agent_helpers;
-pub(crate) use agent_helpers::*;
+pub use agent_helpers::*;
 
 #[path = "backoff.rs"]
 mod backoff;

@@ -2963,9 +2963,9 @@ dependencies = [
 
 [[package]]
 name = "kstring"
-version = "2.0.4"
+version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b609e7ca5ea38f093c20a4a102335b247221c9643b7a6bc3510f196f99499a9e"
+checksum = "558bf9508a558512042d3095138b1f7b8fe90c5467d94f9f1da28b3731c5dbd1"
 dependencies = [
  "static_assertions",
 ]
@@ -3096,7 +3096,7 @@ checksum = "112b39cec0b298b6c1999fee3e31427f74f676e4cb9879ed1a121b43661a4154"
 
 [[package]]
 name = "malvin"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "asupersync",
  "async-trait",
@@ -3105,9 +3105,10 @@ dependencies = [
  "encoding_rs",
  "errno",
  "futures",
+ "kstring",
  "libc",
  "libproc",
- "pi_agent_rust",
+ "malvin_pi",
  "portable-pty",
  "rand 0.8.7",
  "reqwest",
@@ -3123,6 +3124,14 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "unicode-width 0.2.2",
+]
+
+[[package]]
+name = "malvin_pi"
+version = "0.2.7"
+dependencies = [
+ "kstring",
+ "pi_agent_rust",
 ]
 
 [[package]]

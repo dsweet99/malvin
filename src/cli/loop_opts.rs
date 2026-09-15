@@ -1,6 +1,6 @@
 use clap::ArgMatches;
 
-use crate::reliability_tier::ReliabilityTier;
+use malvin::reliability_tier::ReliabilityTier;
 
 use super::config_defaults::global_flag_from_command_line;
 

@@ -1,8 +1,8 @@
-use crate::artifacts::RunArtifacts;
-use crate::prompt_stratification::{
+use malvin::artifacts::RunArtifacts;
+use malvin::prompt_stratification::{
     AggregatedInitialPrompt, AggregatedInitialPromptBuilder,
 };
-use crate::prompts::{PromptStore, header_prompt_file};
+use malvin::prompts::{PromptStore, header_prompt_file};
 
 use super::{
     RouterAPromptInput, RouterHeaderPromptInput, build_router_a_prompt,

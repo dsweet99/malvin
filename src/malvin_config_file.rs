@@ -32,7 +32,6 @@ pub(crate) use malvin_config_top::{parse_context_size, parse_model_token_cost_ra
 
 pub const DEFAULT_MAX_HYPOTHESES: usize = 5;
 pub const DEFAULT_MAX_LOOPS: usize = 9999;
-pub const DEFAULT_MAX_LOOPS_CODE: usize = 3;
 
 const DEFAULT_MALVIN_CONFIG_TEMPLATE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -43,8 +42,6 @@ const DEFAULT_MALVIN_CONFIG_TEMPLATE: &str = include_str!(concat!(
 pub struct AgentConfig {
     pub model: ParsedModel,
     pub max_hypotheses: usize,
-    pub max_loops: usize,
-    pub max_loops_code: usize,
     pub max_acp_retries: u32,
 }
 
@@ -53,8 +50,6 @@ impl Default for AgentConfig {
         Self {
             model: parse_model_id(DEFAULT_CLI_MODEL).expect("DEFAULT_CLI_MODEL must parse"),
             max_hypotheses: DEFAULT_MAX_HYPOTHESES,
-            max_loops: DEFAULT_MAX_LOOPS,
-            max_loops_code: DEFAULT_MAX_LOOPS_CODE,
             max_acp_retries: DEFAULT_MAX_ACP_RETRIES,
         }
     }

@@ -1,12 +1,11 @@
-mod common;
-
 use clap::CommandFactory;
-use common::with_isolated_home;
-use malvin::cli::{Cli, parse_cli_with_config_defaults};
+
+use super::{Cli, parse_cli_with_config_defaults};
+use malvin::test_utils::with_isolated_home;
 
 fn parse(argv: &[&str]) -> Cli {
     let mut out = None;
-    with_isolated_home(|_work, _home| {
+    with_isolated_home(|_work| {
         out = Some(parse_cli_with_config_defaults(argv).expect("parse").0);
     });
     out.expect("parsed under isolated home")
@@ -85,4 +84,17 @@ fn multiple_bare_request_args_are_rejected() {
         msg.contains("unexpected") || msg.contains("too many"),
         "expected parse error for multiple bare requests, got: {msg}"
     );
+}
+
+#[test]
+fn adaptix_subcommand_is_removed() {
+    assert!(
+        !Cli::command()
+            .get_subcommands()
+            .any(|c| c.get_name() == "adaptix" || c.get_name() == "inspire"),
+        "inspire/adaptix must not be clap subcommands"
+    );
+    let cli = parse(&["malvin", "adaptix"]);
+    assert!(cli.command.is_none());
+    assert_eq!(cli.request.as_deref(), Some("adaptix"));
 }

@@ -2,7 +2,7 @@ use super::{Cli, apply_workspace_config_defaults, parse_cli_with_config_defaults
 use clap::{CommandFactory, FromArgMatches};
 
 fn write_default_workflow_max_hypotheses(work: &std::path::Path, value: i64) {
-    let path = crate::malvin_config_path(work);
+    let path = malvin::malvin_config_path(work);
     let mut parsed = std::fs::read_to_string(&path)
         .expect("read")
         .parse::<toml::Value>()
@@ -20,10 +20,10 @@ fn write_default_workflow_max_hypotheses(work: &std::path::Path, value: i64) {
 }
 
 fn assert_default_route_max_hypotheses(cli_args: &[&str], expected: usize) {
-    crate::test_utils::with_isolated_home(|work| {
+    malvin::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(work).expect("chdir");
-        crate::malvin_config_file::open_malvin_config(work).expect("seed");
+        malvin::malvin_config_file::open_malvin_config(work).expect("seed");
         write_default_workflow_max_hypotheses(work, 11);
         let (cli, _) = parse_cli_with_config_defaults(cli_args).expect("parse");
         assert_eq!(cli.router.max_hypotheses, expected);
@@ -33,10 +33,10 @@ fn assert_default_route_max_hypotheses(cli_args: &[&str], expected: usize) {
 
 #[test]
 fn apply_workspace_config_defaults_skips_default_route() {
-    crate::test_utils::with_isolated_home(|work| {
+    malvin::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(work).expect("chdir");
-        let config_path = crate::malvin_config_path(work);
+        let config_path = malvin::malvin_config_path(work);
         assert!(!config_path.exists());
         let route_matches = Cli::command().get_matches_from(["malvin", "hello"]);
         let mut route_cli = Cli::from_arg_matches(&route_matches).expect("cli");
@@ -48,11 +48,11 @@ fn apply_workspace_config_defaults_skips_default_route() {
 
 #[test]
 fn default_route_max_hypotheses_defaults_to_five() {
-    crate::test_utils::with_isolated_home(|_| {
+    malvin::test_utils::with_isolated_home(|_| {
         let (cli, _) = parse_cli_with_config_defaults(["malvin", "hello"]).expect("parse");
         assert_eq!(
             cli.router.max_hypotheses,
-            crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES
+            malvin::malvin_config_file::DEFAULT_MAX_HYPOTHESES
         );
     });
 }
@@ -69,7 +69,7 @@ fn default_route_max_hypotheses_cli_wins_over_config() {
 
 #[test]
 fn default_route_max_hypotheses_flag_after_request_parses() {
-    crate::test_utils::with_isolated_home(|_| {
+    malvin::test_utils::with_isolated_home(|_| {
         let (cli, _) = parse_cli_with_config_defaults(["malvin", "hello", "--max-hypotheses", "7"])
             .expect("parse flag after request");
         assert_eq!(cli.router.max_hypotheses, 7);

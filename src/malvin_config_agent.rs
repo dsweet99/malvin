@@ -21,9 +21,6 @@ fn agent_config_base(agent: &toml::Value, defaults: &AgentConfig) -> Result<Agen
         model,
         max_hypotheses: super::read_usize(agent.get("max_hypotheses"))
             .unwrap_or(defaults.max_hypotheses),
-        max_loops: super::read_usize(agent.get("max_loops")).unwrap_or(defaults.max_loops),
-        max_loops_code: super::read_usize(agent.get("max_loops_code"))
-            .unwrap_or(defaults.max_loops_code),
         max_acp_retries: super::read_u32(agent.get("max_acp_retries"))
             .unwrap_or(defaults.max_acp_retries),
     })

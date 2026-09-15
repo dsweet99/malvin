@@ -38,8 +38,8 @@ fn bare_cli_model_is_rejected() {
 
 #[test]
 fn bare_config_model_is_rejected() {
-    use crate::test_utils::with_isolated_home;
-    use crate::workspace_paths::malvin_config_path;
+    use malvin::test_utils::with_isolated_home;
+    use malvin::workspace_paths::malvin_config_path;
     with_isolated_home(|work| {
         let path = malvin_config_path(work);
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
@@ -66,8 +66,8 @@ model = "auto"
 
 #[test]
 fn cli_model_overrides_bare_config_model() {
-    use crate::test_utils::with_isolated_home;
-    use crate::workspace_paths::malvin_config_path;
+    use malvin::test_utils::with_isolated_home;
+    use malvin::workspace_paths::malvin_config_path;
     with_isolated_home(|work| {
         let path = malvin_config_path(work);
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");

@@ -51,17 +51,18 @@ fn cli_accepts_global_no_kpop_option() {
 
 #[test]
 fn router_client_uses_router_style_agent_io_not_do_style() {
-    use crate::agent_backend::build_agent_backend;
+    use malvin::agent_backend::build_agent_backend;
     use crate::cli::{SharedOpts};
 
     let shared = SharedOpts {
-        model: crate::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("model"),
+        model: malvin::model_id::parse_model_id(malvin::config::DEFAULT_CLI_MODEL).expect("model"),
         verbose: false,
-        max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
+        max_acp_retries: malvin::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
     };
     let backend = build_agent_backend(
-        &shared,
+        shared.model.clone(),
+        shared.max_acp_retries,
         shared.acp_stdout_markdown_enabled(),
     )
     .expect("backend");

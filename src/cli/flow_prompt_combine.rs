@@ -1,7 +1,7 @@
-use crate::artifacts::RunArtifacts;
-use crate::prompt_stratification::{PromptStratum, WorkflowRenderContext, join_labeled_strata};
-use crate::prompts::{PromptError, PromptStore, render_header};
-use crate::workflow_context::PromptModelOpts;
+use malvin::artifacts::RunArtifacts;
+use malvin::prompt_stratification::{PromptStratum, WorkflowRenderContext, join_labeled_strata};
+use malvin::prompts::{PromptError, PromptStore, render_header};
+use malvin::workflow_context::PromptModelOpts;
 
 
 pub(crate) struct DualHeaderPromptInput<'a> {
@@ -37,7 +37,7 @@ pub(crate) fn combine_acp_prompt_header_and_user(
     text: &str,
     opts: PromptModelOpts<'_>,
 ) -> Result<(String, String, String), String> {
-    use crate::orchestrator::workflow_context_paths_only;
+    use malvin::orchestrator::workflow_context_paths_only;
     let context = workflow_context_paths_only(artifacts, opts.model);
     let header = render_header(store, context.as_map()).map_err(|e: PromptError| e.0)?;
     let user = text.trim_end().to_string();
@@ -51,7 +51,7 @@ pub(crate) fn combine_acp_prompt_header_and_user(
 pub(crate) fn combine_mode_header_and_user(
     input: DualHeaderPromptInput<'_>,
 ) -> Result<(String, String, String), String> {
-    use crate::orchestrator::workflow_context_paths_only;
+    use malvin::orchestrator::workflow_context_paths_only;
     let context = workflow_context_paths_only(input.artifacts, input.model);
     combine_prompt_file_and_user(input.store, input.text, input.mode_template, &context)
 }

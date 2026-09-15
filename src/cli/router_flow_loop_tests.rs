@@ -1,12 +1,12 @@
 use super::restore_router_iteration_dotfiles;
-use crate::session_dotfile_backup::{
+use malvin::session_dotfile_backup::{
     GitignoreBackup, MalvinChecksBackup, MalvinConfigWorkspaceBackup, SessionDotfileBackups,
     VisionBackup, VisionFileBackup,
 };
 
 #[test]
 fn restore_router_iteration_keeps_agent_vision_edits() {
-    crate::test_utils::with_isolated_home(|_| {
+    malvin::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tmpdir");
         let work = tmp.path();
         std::fs::write(work.join("VISION.md"), "baseline prine:\n").expect("write");
@@ -28,7 +28,7 @@ fn restore_router_iteration_keeps_agent_vision_edits() {
 
 #[test]
 fn restore_router_iteration_restores_deleted_vision() {
-    crate::test_utils::with_isolated_home(|_| {
+    malvin::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tmpdir");
         let work = tmp.path();
         std::fs::write(work.join("VISION.md"), "keep me\n").expect("write");

@@ -29,14 +29,14 @@ fn default_router_prompts_follow_vision_problem_solving_language() {
         "router_b_creative.md",
         "router_summarize.md",
     ] {
-        let body = crate::prompts::default_file(name)
+        let body = malvin::prompts::default_file(name)
             .unwrap_or_else(|| panic!("missing default prompt {name}"))
             .to_ascii_lowercase();
         for needle in vision_forbidden {
             assert!(!body.contains(needle), "{name} must not contain {needle:?}");
         }
     }
-    let router_a = crate::prompts::default_file("router_a.md").expect("router_a");
+    let router_a = malvin::prompts::default_file("router_a.md").expect("router_a");
     assert!(
         router_a.contains("KPop: Find unsatisfied requirements")
             && router_a.contains("__MALVIN_DONE__")
@@ -44,7 +44,7 @@ fn default_router_prompts_follow_vision_problem_solving_language() {
         "router_a should ask for unsatisfied requirements without falsification language"
     );
     for name in ["router_a.md", "router_b.md", "router_b_creative.md"] {
-        let body = crate::prompts::default_file(name)
+        let body = malvin::prompts::default_file(name)
             .unwrap_or_else(|| panic!("missing {name}"))
             .to_ascii_lowercase();
         assert!(body.contains("kpop:"), "{name} must keep KPop steering");
@@ -52,8 +52,8 @@ fn default_router_prompts_follow_vision_problem_solving_language() {
             assert!(!body.contains(needle), "{name} must not contain {needle:?}");
         }
     }
-    let router_b = crate::prompts::default_file("router_b.md").expect("router_b");
-    let creative = crate::prompts::default_file("router_b_creative.md").expect("router_b_creative");
+    let router_b = malvin::prompts::default_file("router_b.md").expect("router_b");
+    let creative = malvin::prompts::default_file("router_b_creative.md").expect("router_b_creative");
     assert!(
         router_b.contains("KPop: Satisfy the requirements.") && !router_b.contains("MBC2"),
         "router_b must keep KPop satisfy instruction without MBC2"

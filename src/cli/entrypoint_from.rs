@@ -115,8 +115,8 @@ fn entrypoint_preflight(cli: &Cli) -> Option<Exit> {
     None
 }
 
-fn entrypoint_acquire_session() -> Result<(String, crate::SessionNameGuard), Exit> {
-    crate::acquire_session_name(None).map_err(|e| {
+fn entrypoint_acquire_session() -> Result<(String, malvin::SessionNameGuard), Exit> {
+    malvin::acquire_session_name(None).map_err(|e| {
         print_command_error(&e);
         Exit::Failure
     })
@@ -130,11 +130,11 @@ fn entrypoint_sweep_stale_acp_spawn_locks() {
     let Ok(cwd) = std::env::current_dir() else {
         return;
     };
-    let chamber = crate::malvin_acp_spawn_chamber_dir(&cwd);
+    let chamber = malvin::malvin_acp_spawn_chamber_dir(&cwd);
     if !chamber.is_dir() {
         return;
     }
-    if let Err(e) = crate::acp_spawn_sweep::sweep_stale_acp_spawn_locks(&cwd) {
+    if let Err(e) = malvin::acp_spawn_sweep::sweep_stale_acp_spawn_locks(&cwd) {
         tracing::warn!(
             target: "malvin::entrypoint",
             error = %e,
@@ -157,7 +157,7 @@ fn run_entrypoint(cli: Cli, matches: clap::ArgMatches) -> Exit {
     if needs_session {
         let _session_name_guard = match entrypoint_acquire_session() {
             Ok((session_name, guard)) => {
-                crate::set_active_acp_lock_slot(session_name);
+                malvin::set_active_acp_lock_slot(session_name);
                 guard
             }
             Err(exit) => return exit,
@@ -210,7 +210,7 @@ fn dispatch_after_session(cli: Cli, matches: clap::ArgMatches) -> Exit {
 pub fn entrypoint_from(
     args: impl IntoIterator<Item = impl Into<std::ffi::OsString> + Clone>,
 ) -> Exit {
-    crate::init_from_env();
+    malvin::init_from_env();
     match parse_cli_args_or_exit(args) {
         Ok((cli, matches)) => run_entrypoint(cli, matches),
         Err(exit) => exit,
