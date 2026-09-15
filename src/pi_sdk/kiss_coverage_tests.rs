@@ -88,8 +88,12 @@ fn kiss_cov_pi_sdk_openrouter_usage() {
 #[test]
 fn kiss_cov_pi_sdk_live_provider_auth() {
     let _ = super::is_provider_authenticated;
+    let _ = super::is_provider_listable;
     let _ = stringify!(provider_has_access);
+    let _ = stringify!(provider_has_stored_or_env_access);
     let _ = stringify!(custom_provider_is_keyless);
+    let _ = stringify!(models_json_provider);
+    let _ = stringify!(ModelsJsonProvider);
     let _ = stringify!(stored_credential_present);
 }
 
@@ -121,6 +125,7 @@ fn kiss_cov_pi_sdk_session_core() {
     let _ = stringify!(live_embedded_session);
     let _ = stringify!(start_embedded_mem_watch);
     let _ = stringify!(watch_embedded_memory);
+    let _ = super::session_spawn_watch::start_embedded_mem_watch;
     let _ = stringify!(isolated_tool_factory);
     let _ = stringify!(CompleteWrite);
     let _ = stringify!(stubby_write_error);

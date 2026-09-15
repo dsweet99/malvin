@@ -17,8 +17,9 @@ fn merge_restore_check_abort_then_print_timing_noops_without_json() {
     malvin::test_utils::with_isolated_home(|_| {
         let work = tempfile::tempdir().unwrap();
         let empty = malvin::test_utils::empty_session_dotfile_backups(work.path());
-        let artifacts = malvin::artifacts::create_run_artifacts_from_text("code", Some(work.path()))
-            .expect("artifacts");
+        let artifacts =
+            malvin::artifacts::create_run_artifacts_from_text("code", Some(work.path()))
+                .expect("artifacts");
         merge_acp_restore_check_abort_then_print_timing(Ok(()), &artifacts, &empty).expect("merge");
     });
 }
@@ -28,8 +29,9 @@ fn merge_restore_check_abort_then_print_timing_emits_timing_and_cost() {
     malvin::test_utils::with_isolated_home(|_| {
         let work = tempfile::tempdir().unwrap();
         let empty = malvin::test_utils::empty_session_dotfile_backups(work.path());
-        let artifacts = malvin::artifacts::create_run_artifacts_from_text("code", Some(work.path()))
-            .expect("artifacts");
+        let artifacts =
+            malvin::artifacts::create_run_artifacts_from_text("code", Some(work.path()))
+                .expect("artifacts");
         seed_run_timing_json(&artifacts.run_dir);
 
         let log_path = artifacts.run_dir.join("stdout.log");

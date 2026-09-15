@@ -11,10 +11,10 @@ pub use entrypoint_from::entrypoint_from;
 pub(crate) use entrypoint_gates_only::{GatesOnlyDispatch, dispatch_gates_only_route};
 
 pub fn print_command_error(message: &str) {
-    use malvin::output::{MALVIN_WHO, print_log_error, print_stderr_line};
     use crate::repo_checks::{
         GATE_FAILURE_MARKER, is_gate_failure_error, is_pure_gate_failure_summary,
     };
+    use malvin::output::{MALVIN_WHO, print_log_error, print_stderr_line};
     if is_pure_gate_failure_summary(message) {
         return;
     }
@@ -100,12 +100,7 @@ pub(crate) fn dispatch_command(
 }
 
 pub fn dispatch_do_workflow(do_args: DoArgs, shared: &SharedOpts) -> Result<(), String> {
-    run_async_cli(|| {
-        run_do(
-            do_args,
-            shared
-        )
-    })
+    run_async_cli(|| run_do(do_args, shared))
 }
 
 pub struct DefaultRouteDispatch<'a> {
@@ -139,7 +134,7 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
                 max_hypotheses,
             },
             shared,
-            router
+            router,
         )
         .await?;
         run_router(
@@ -148,10 +143,7 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
                 max_loops,
                 max_hypotheses,
             },
-            crate::cli::AgentRouteOpts {
-                shared,
-                router,
-            }
+            crate::cli::AgentRouteOpts { shared, router },
         )
         .await
     })

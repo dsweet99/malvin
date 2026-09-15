@@ -22,15 +22,12 @@ pub(crate) mod loop_opts;
 pub(crate) mod one_shot_session;
 pub(crate) mod workflow_router_shared;
 
+pub use code_flow_a::format_workspace_gate_failure;
 pub use malvin::agent_backend::{
     AgentStdoutTeeFlags, agent_io_options, build_agent_backend, build_agent_backend_with_tee,
     default_workflow_stdout_tee_flags,
 };
-pub use code_flow_a::format_workspace_gate_failure;
 
-#[cfg(test)]
-#[path = "bare_invoke_contract_tests.rs"]
-mod bare_invoke_contract_tests;
 #[cfg(test)]
 #[path = "acp_post_run_tests.rs"]
 mod acp_post_run_tests;
@@ -38,17 +35,20 @@ mod acp_post_run_tests;
 #[path = "acp_post_run_timing_print_tests.rs"]
 pub(crate) mod acp_post_run_timing_print_tests;
 #[cfg(test)]
+#[path = "bare_invoke_contract_tests.rs"]
+mod bare_invoke_contract_tests;
+#[cfg(test)]
 mod cli_cross_cov;
 #[cfg(test)]
 mod cli_smoke_cov;
 #[cfg(test)]
 mod command_log_tests;
 #[cfg(test)]
-#[path = "do_flow_tests.rs"]
-mod do_flow_tests;
-#[cfg(test)]
 #[path = "do_flow_cli_tests.rs"]
 mod do_flow_cli_tests;
+#[cfg(test)]
+#[path = "do_flow_tests.rs"]
+mod do_flow_tests;
 #[cfg(test)]
 mod gate_error_regression;
 #[cfg(test)]

@@ -43,7 +43,7 @@ fn spawn_live_pi_bridge(
     let options = build_session_options(args, provider, model)?;
     let runtime = PiRuntime::start(options).map_err(AgentError)?;
     let session = embedded_session(ticket, args, runtime, (provider, model))?;
-    start_embedded_mem_watch(&session);
+    super::session_spawn_watch::start_embedded_mem_watch(&session);
     Ok(SdkSession::Pi(Box::new(session)))
 }
 
@@ -77,20 +77,27 @@ fn pi_thinking_level(thinking: &str) -> Result<ThinkingLevel, String> {
 
 const LOCAL_ENABLED_TOOLS: &[&str] = &["read", "bash", "edit", "write", "grep", "find", "ls"];
 
-fn local_append_system_prompt(keyless: bool) -> Option<String> {
+pub(crate) fn local_append_system_prompt(keyless: bool) -> Option<String> {
     keyless.then(|| {
         concat!(
             "You are a non-interactive CLI agent. For any shell/file action emit ONLY ",
             "a JSON tool call {\"name\":\"bash\",\"parameters\":{\"command\":\"...\"}} ",
             "(or read/write/edit/grep/find/ls). Never invent results. Never answer with ",
-            "markdown ```bash fences. Stay in the workspace unless a temp path is named."
+            "markdown ```bash fences. Stay in the workspace unless a temp path is named. ",
+            "For HTTP(S) downloads prefer curl -L -o FILE URL. ",
+            "To count files prefer bash with find . -type f | wc -l; do not install packages."
         )
         .to_string()
     })
 }
 
-fn local_enabled_tools(keyless: bool) -> Option<Vec<String>> {
-    keyless.then(|| LOCAL_ENABLED_TOOLS.iter().map(|s| (*s).to_string()).collect())
+pub(crate) fn local_enabled_tools(keyless: bool) -> Option<Vec<String>> {
+    keyless.then(|| {
+        LOCAL_ENABLED_TOOLS
+            .iter()
+            .map(|s| (*s).to_string())
+            .collect()
+    })
 }
 
 fn local_max_tool_iterations(keyless: bool) -> usize {
@@ -101,7 +108,11 @@ fn local_max_tool_iterations(keyless: bool) -> usize {
     }
 }
 
-fn ensure_local_catalog(cwd: &std::path::Path, provider: &str, model: &str) -> Result<(), AgentError> {
+fn ensure_local_catalog(
+    cwd: &std::path::Path,
+    provider: &str,
+    model: &str,
+) -> Result<(), AgentError> {
     let context_size = super::local_context::context_size_for_workdir(cwd);
     super::local_context::ensure_capped_local_model_catalog(provider, model, context_size)
         .map_err(AgentError)?;
@@ -195,90 +206,4 @@ fn note_sandbox_baseline(
     cwd: &Path,
 ) {
     let _ = crate::malvin_sandbox::note_active_sandbox_session(ticket, pgid, baseline.clone(), cwd);
-}
-
-fn start_embedded_mem_watch(session: &PiEmbeddedSession) {
-    #[cfg(unix)]
-    {
-        if crate::acp::test_no_real_agent_enabled() {
-            return;
-        }
-        let reader_dead = Arc::clone(&session.reader_dead);
-        let baseline = session.spawn_pid_baseline.clone();
-        let work_dir = session.work_dir.clone();
-        let run_dir = session.log.run_dir.clone();
-        tokio::spawn(async move {
-            watch_embedded_memory(reader_dead, baseline, work_dir, run_dir).await;
-        });
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = session;
-    }
-}
-
-#[cfg(unix)]
-async fn watch_embedded_memory(
-    reader_dead: Arc<AtomicBool>,
-    baseline: std::collections::HashSet<u32>,
-    work_dir: std::path::PathBuf,
-    run_dir: Option<std::path::PathBuf>,
-) {
-    let limit_bytes = crate::mem_limit_config::load_mem_limit_bytes(&work_dir);
-    crate::acp::watch_process_group_memory(crate::acp::MemWatchHandles {
-        reader_dead,
-        pgid: None,
-        limit_bytes,
-        spawn_pid_baseline: baseline,
-        run_dir,
-    })
-    .await;
-}
-
-#[cfg(test)]
-mod thinking_arg_tests {
-    use crate::model_id::parse_model_id;
-
-    #[test]
-    fn split_keeps_model_path_after_first_slash() {
-        let model = parse_model_id("rpi:openai/gpt-5").expect("ok");
-        assert_eq!(
-            model.pi_provider_and_model().expect("pi"),
-            ("openai", "gpt-5")
-        );
-    }
-}
-
-#[cfg(test)]
-mod local_options_tests {
-    use super::{local_append_system_prompt, local_enabled_tools};
-
-    #[test]
-    fn local_append_prompt_has_no_task_answers() {
-        let prompt = local_append_system_prompt(true).expect("keyless prompt");
-        for needle in [
-            "ringbuf",
-            "csvcut",
-            "answer.json",
-            "Nguyen",
-            "-70",
-            "ONLY JSON",
-        ] {
-            assert!(
-                !prompt.contains(needle),
-                "local append must not contain {needle:?}: {prompt}"
-            );
-        }
-        assert!(local_append_system_prompt(false).is_none());
-    }
-
-    #[test]
-    fn local_enabled_tools_are_the_core_set() {
-        let tools = local_enabled_tools(true).expect("keyless tools");
-        assert_eq!(
-            tools,
-            vec!["read", "bash", "edit", "write", "grep", "find", "ls"]
-        );
-        assert!(local_enabled_tools(false).is_none());
-    }
 }

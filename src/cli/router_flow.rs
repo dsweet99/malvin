@@ -1,8 +1,8 @@
-use malvin::agent_backend::{SdkClient, build_agent_backend};
-use malvin::artifacts::{RunArtifacts, resolve_user_md_request};
 use crate::cli::cli_request::require_cli_request;
 use crate::cli::run_emit::{RunStartupEmitOpts, emit_run_logs_line, emit_run_startup_banner};
 use crate::cli::{AgentRouteOpts, SharedOpts};
+use malvin::agent_backend::{SdkClient, build_agent_backend};
+use malvin::artifacts::{RunArtifacts, resolve_user_md_request};
 use malvin::prompts::PromptStore;
 #[path = "router_flow_acp.rs"]
 pub(crate) mod router_flow_acp;
@@ -30,9 +30,7 @@ struct RouterRunPrep {
     prompt_store: PromptStore,
 }
 
-fn new_router_client(
-    shared: &SharedOpts,
-) -> Result<SdkClient, String> {
+fn new_router_client(shared: &SharedOpts) -> Result<SdkClient, String> {
     build_agent_backend(
         shared.model.clone(),
         shared.max_acp_retries,
@@ -81,10 +79,7 @@ async fn prepare_router_run(
     })
 }
 
-pub async fn run_router(
-    router_args: RouterArgs,
-    opts: AgentRouteOpts<'_>,
-) -> Result<(), String> {
+pub async fn run_router(router_args: RouterArgs, opts: AgentRouteOpts<'_>) -> Result<(), String> {
     let request = require_cli_request(router_args.request.as_ref(), "")?;
     if opts.router.quiet {
         let interactive = malvin::output::agent_stdout_tee_enabled();

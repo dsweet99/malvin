@@ -178,9 +178,8 @@ mod bridge_protocol_tests {
         assert!(
             matches!(failed, BridgeEvent::RunDone { status, .. } if status == RunDoneStatus::Error)
         );
-        let unknown =
-            decode_event(r#"{"event":"run_done","status":"bogus","error":"detail"}"#)
-                .expect("unknown");
+        let unknown = decode_event(r#"{"event":"run_done","status":"bogus","error":"detail"}"#)
+            .expect("unknown");
         assert!(matches!(
             unknown,
             BridgeEvent::RunDone {

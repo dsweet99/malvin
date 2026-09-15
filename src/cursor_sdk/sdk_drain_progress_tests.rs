@@ -125,7 +125,9 @@ async fn run_long_tool_prompt(
 ) -> std::time::Duration {
     let started = std::time::Instant::now();
     client
-        .active_coder_session().expect("active coder session").run_coder_prompt(
+        .active_coder_session()
+        .expect("active coder session")
+        .run_coder_prompt(
             "LONG_TOOL_TURN_THEN_DONE please",
             log,
             "coder",
@@ -139,7 +141,10 @@ async fn run_long_tool_prompt(
     started.elapsed()
 }
 
-fn assert_long_tool_turn_done(client: &crate::cursor_sdk::CursorSdkClient, tmp_dir: &std::path::Path) {
+fn assert_long_tool_turn_done(
+    client: &crate::cursor_sdk::CursorSdkClient,
+    tmp_dir: &std::path::Path,
+) {
     assert_eq!(
         client.last_coder_prompt_agent_response().as_deref(),
         Some("long-tool-turn-done")
@@ -154,7 +159,9 @@ async fn run_progress_prompt(
     log: &std::path::Path,
 ) {
     client
-        .active_coder_session().expect("active coder session").run_coder_prompt(
+        .active_coder_session()
+        .expect("active coder session")
+        .run_coder_prompt(
             "PROGRESS_THEN_DONE please",
             log,
             "coder",

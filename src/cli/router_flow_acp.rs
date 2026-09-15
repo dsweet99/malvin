@@ -1,8 +1,8 @@
+use crate::cli::{RouterOpts, SharedOpts};
+use crate::router_flow::router_flow_prompt;
 use malvin::agent_backend::{SdkClient, set_implement_display_name};
 use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
-use crate::cli::{RouterOpts, SharedOpts};
 use malvin::prompts::PromptStore;
-use crate::router_flow::router_flow_prompt;
 use malvin::run_timing::acp_post_run::RunTimingSessionEnd;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -117,13 +117,15 @@ pub(crate) fn emit_router_acp_timing(
     agent_result: Result<(), String>,
 ) -> Result<(), String> {
     let (client, run_dir, timing, session_end) = parts;
-    malvin::acp_post_run::emit_run_timing_after_backend(malvin::acp_post_run::RunTimingAfterBackend {
-        backend: client,
-        run_dir,
-        timing,
-        agent_result,
-        session_end,
-    })
+    malvin::acp_post_run::emit_run_timing_after_backend(
+        malvin::acp_post_run::RunTimingAfterBackend {
+            backend: client,
+            run_dir,
+            timing,
+            agent_result,
+            session_end,
+        },
+    )
 }
 
 pub(crate) async fn end_router_acp_session(

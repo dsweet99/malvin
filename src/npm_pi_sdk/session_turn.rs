@@ -17,7 +17,8 @@ pub(super) async fn consume_npm_pi_turn(
     let mut state = TurnState::default();
     let mut turn = crate::bridge_sdk::DrainIdleTurn::new();
     loop {
-        let value = super::session_io::read_json_waiting(session, "npm pi event", &mut turn).await?;
+        let value =
+            super::session_io::read_json_waiting(session, "npm pi event", &mut turn).await?;
         if let Some(result) = handle_line(session, &value, &mut state, prompt_id).await {
             return result;
         }

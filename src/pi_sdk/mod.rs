@@ -18,9 +18,10 @@ mod runtime;
 mod session;
 mod session_fake;
 mod session_spawn;
+mod session_spawn_watch;
 mod usage_cost;
 
-pub use auth::{ensure_pi_authenticated, is_provider_authenticated};
+pub use auth::{ensure_pi_authenticated, is_provider_authenticated, is_provider_listable};
 pub use local_lifecycle::{housekeep_local_llms, model_needs_local_llm};
 pub use models_list::{
     DEFAULT_PI_LIST_MODELS_TIMEOUT_MS, PiModelListing, list_pi_models_sync, pi_list_models_timeout,
@@ -33,6 +34,8 @@ const _: fn() = || {
 };
 pub(crate) use session::PiEmbeddedSession;
 pub(crate) use session_spawn::pi_spawn_bridge as spawn_bridge;
+#[cfg(test)]
+pub(crate) use session_spawn::{local_append_system_prompt, local_enabled_tools};
 
 #[must_use]
 pub fn pi_sdk_client_from_raw(

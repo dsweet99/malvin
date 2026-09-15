@@ -147,7 +147,9 @@ fn apply_capped_model(root: &mut Value, spec: &CapModelSpec<'_>) -> Result<(), S
     let providers = providers_object(root)?;
     let provider_entry = provider_object(providers, spec.provider, spec.base_url, spec.api)?;
     provider_entry.insert("baseUrl".into(), json!(spec.base_url));
-    provider_entry.entry("api").or_insert_with(|| json!(spec.api));
+    provider_entry
+        .entry("api")
+        .or_insert_with(|| json!(spec.api));
     provider_entry
         .entry("authHeader")
         .or_insert_with(|| json!(false));
@@ -234,7 +236,8 @@ mod tests {
                         .expect("ensure");
                     let path = pi::models::default_models_path(&pi::sdk::Config::global_dir());
                     let root: Value =
-                        serde_json::from_str(&fs::read_to_string(path).expect("read")).expect("json");
+                        serde_json::from_str(&fs::read_to_string(path).expect("read"))
+                            .expect("json");
                     assert_eq!(
                         root["providers"]["ollama"]["baseUrl"],
                         "http://host.docker.internal:11434/v1"
@@ -279,7 +282,9 @@ mod tests {
             ensure_capped_local_model_catalog("ollama", "new-model", 8192).expect("ensure");
             let root: Value =
                 serde_json::from_str(&fs::read_to_string(&path).expect("read")).expect("json");
-            let models = root["providers"]["ollama"]["models"].as_array().expect("arr");
+            let models = root["providers"]["ollama"]["models"]
+                .as_array()
+                .expect("arr");
             let by_id: std::collections::HashMap<&str, &Value> = models
                 .iter()
                 .filter_map(|m| m.get("id").and_then(Value::as_str).map(|id| (id, m)))

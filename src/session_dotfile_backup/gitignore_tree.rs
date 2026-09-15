@@ -3,8 +3,8 @@ use std::path::{Path, PathBuf};
 use super::alloc::DotfileBackupLabels;
 use super::named_file_tree::{
     NamedFileEntry, NamedFileTreePolicy, NamedFileTreeState, backup_named_file_tree,
-    collect_workspace_named_file_relpaths, restore_missing_named_files, restore_present_named_files,
-    typed_named_file_backup,
+    collect_workspace_named_file_relpaths, restore_missing_named_files,
+    restore_present_named_files, typed_named_file_backup,
 };
 
 const GITIGNORE_NAME: &str = ".gitignore";
@@ -63,7 +63,10 @@ pub(super) fn backup_gitignore_tree(
 ) -> Result<GitignoreBackup, String> {
     let rels = collect_workspace_gitignore_relpaths(work_dir);
     Ok(from_state(backup_named_file_tree(
-        work_dir, &rels, generate_id, &POLICY,
+        work_dir,
+        &rels,
+        generate_id,
+        &POLICY,
     )?))
 }
 
@@ -86,10 +89,7 @@ pub fn restore_workspace_gitignore_backup(
 fn from_state(state: NamedFileTreeState) -> GitignoreBackup {
     match state {
         NamedFileTreeState::Missing => GitignoreBackup::Missing,
-        NamedFileTreeState::Present {
-            backup_root,
-            files,
-        } => GitignoreBackup::Present {
+        NamedFileTreeState::Present { backup_root, files } => GitignoreBackup::Present {
             backup_root,
             files: files.into_iter().map(GitignoreFileBackup::from).collect(),
         },

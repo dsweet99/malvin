@@ -1,5 +1,3 @@
-use malvin::agent_backend::{SdkClient, build_agent_backend, build_agent_backend_with_tee};
-use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::cli::one_shot_session::{
     finish_one_shot_after_prompt, resolve_one_shot_request_artifacts,
 };
@@ -7,6 +5,8 @@ use crate::cli::run_emit::{
     RunStartupEmitOpts, emit_command_line, emit_run_logs_line, emit_run_startup_banner,
 };
 use crate::cli::{AgentStdoutTeeFlags, SharedOpts};
+use malvin::agent_backend::{SdkClient, build_agent_backend, build_agent_backend_with_tee};
+use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
 use malvin::output::agent_stdout_tee_enabled;
 
 #[path = "do_flow_acp.rs"]
@@ -31,9 +31,7 @@ struct DoRunPrep {
     session_dotfile_backups: SessionDotfileBackups,
 }
 
-fn new_do_client(
-    shared: &SharedOpts,
-) -> Result<SdkClient, String> {
+fn new_do_client(shared: &SharedOpts) -> Result<SdkClient, String> {
     if shared.verbose {
         return build_agent_backend(
             shared.model.clone(),
@@ -64,10 +62,7 @@ fn new_do_client(
     )
 }
 
-async fn prepare_do_run(
-    do_args: &DoArgs,
-    shared: &SharedOpts,
-) -> Result<DoRunPrep, String> {
+async fn prepare_do_run(do_args: &DoArgs, shared: &SharedOpts) -> Result<DoRunPrep, String> {
     let mut client = new_do_client(shared)?;
     let (text, artifacts) = resolve_one_shot_request_artifacts(
         do_args.request.as_ref(),
@@ -130,10 +125,7 @@ async fn begin_do_session_overlapping_prompt_prep(
     coder_backup_res
 }
 
-pub async fn run_do(
-    do_args: DoArgs,
-    shared: &SharedOpts,
-) -> Result<(), String> {
+pub async fn run_do(do_args: DoArgs, shared: &SharedOpts) -> Result<(), String> {
     let interactive = agent_stdout_tee_enabled();
     let emit_markdown = interactive && shared.acp_stdout_markdown_enabled();
     let dm_only = !shared.verbose;
@@ -148,10 +140,7 @@ pub async fn run_do(
     result
 }
 
-async fn run_do_body(
-    do_args: DoArgs,
-    shared: &SharedOpts,
-) -> Result<(), String> {
+async fn run_do_body(do_args: DoArgs, shared: &SharedOpts) -> Result<(), String> {
     let mut prep = prepare_do_run(&do_args, shared).await?;
     if shared.verbose {
         emit_run_logs_line(&prep.artifacts)?;

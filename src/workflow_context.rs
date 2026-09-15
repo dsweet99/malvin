@@ -132,10 +132,7 @@ pub fn format_agents_md_insert(work_dir: &Path) -> String {
 }
 
 #[must_use]
-pub fn workflow_context_paths_only(
-    artifacts: &RunArtifacts,
-    model: &str,
-) -> WorkflowRenderContext {
+pub fn workflow_context_paths_only(artifacts: &RunArtifacts, model: &str) -> WorkflowRenderContext {
     let mut context = HashMap::new();
     insert_artifact_paths(&mut context, artifacts);
     insert_current_state(&mut context, artifacts, &artifacts.work_dir);

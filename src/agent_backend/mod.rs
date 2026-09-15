@@ -32,9 +32,9 @@ pub use factory::{
     default_workflow_stdout_tee_flags,
 };
 pub use sdk_client::{SdkClient, ensure_run_timing_for_session, set_implement_display_name};
-pub use sdk_client_active::ActiveCoderSession;
 #[cfg(test)]
 pub(crate) use sdk_client::{begun_cwd, live_session, live_session_mut, new_cursor, new_pi};
+pub use sdk_client_active::ActiveCoderSession;
 pub use sdk_client_session::CoderSessionEnsure;
 #[cfg(test)]
 pub(crate) use sdk_client_session::sdk_bridge_needs_restart;

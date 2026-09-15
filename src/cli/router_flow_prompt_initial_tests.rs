@@ -1,6 +1,4 @@
-use super::{
-    RouterInitialPromptInput, build_router_initial_prompt,
-};
+use super::{RouterInitialPromptInput, build_router_initial_prompt};
 use malvin::prompts::{HEADER_MD, KPOP_COMMON_MD, PromptStore, ROUTER_A_MD};
 use malvin::test_utils::with_isolated_home;
 
@@ -14,7 +12,10 @@ fn write_router_prompt_files(prompt_root: &std::path::Path) {
         (HEADER_MD, "HEADER_BODY\n{{ kpop_insert }}\n"),
         (KPOP_COMMON_MD, "KPOP_BODY {{ max_hypotheses }}\n"),
         ("mbc2.md", "MBC2 {{ user_prompt }}\n"),
-        (ROUTER_A_MD, "ROUTER_A {{ user_request_path }} {{ code_extra }}\n"),
+        (
+            ROUTER_A_MD,
+            "ROUTER_A {{ user_request_path }} {{ code_extra }}\n",
+        ),
         ("router_code_extra.md", "CODE_EXTRA\n"),
         ("kpop_common_no_kpop.md", "\n"),
         ("router_a_no_kpop.md", "ROUTER_A_NO_KPOP {{ code_extra }}\n"),
@@ -160,8 +161,7 @@ fn initial_prompt_respects_no_kpop_and_gates() {
         assert!(out.body.contains("ROUTER_A_NO_KPOP"));
         assert!(out.body.contains("echo INITIAL_GATE") || out.body.contains("CODE_EXTRA"));
         assert!(
-            !out
-                .stdout_label
+            !out.stdout_label
                 .split('+')
                 .any(|l| l == "kpop_common.md" || l == "kpop_common_no_kpop.md")
         );
@@ -180,11 +180,7 @@ fn initial_prompt_git_and_max_hypotheses_affect_composition() {
         .expect("artifacts");
         let prompt_root = artifacts.run_dir.join("prompts");
         write_minimal_router_prompts(&prompt_root);
-        std::fs::write(
-            prompt_root.join(HEADER_MD),
-            "HEADER\n{{ kpop_insert }}\n",
-        )
-        .expect("header");
+        std::fs::write(prompt_root.join(HEADER_MD), "HEADER\n{{ kpop_insert }}\n").expect("header");
         let store = PromptStore::with_root(prompt_root);
         let hi = build_router_initial_prompt(RouterInitialPromptInput {
             store: &store,

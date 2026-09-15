@@ -68,16 +68,14 @@ pub(super) fn parse_node_version(v: &str) -> Option<(u32, u32)> {
 }
 
 pub(super) fn run_npm(npm: &Path, dir: &Path, args: &[&str]) {
-    let status = npm_command(npm, dir, args)
-        .status()
-        .unwrap_or_else(|e| {
-            panic!(
-                "failed to run `{} {}` in {}: {e}",
-                npm.display(),
-                args.join(" "),
-                dir.display()
-            )
-        });
+    let status = npm_command(npm, dir, args).status().unwrap_or_else(|e| {
+        panic!(
+            "failed to run `{} {}` in {}: {e}",
+            npm.display(),
+            args.join(" "),
+            dir.display()
+        )
+    });
     assert!(
         status.success(),
         "`{} {}` failed in {} (status {status}). \

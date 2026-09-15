@@ -179,7 +179,8 @@ pub(crate) fn restore_present_named_files(
     for file in files {
         let dst = work_dir.join(&file.rel);
         if let Some(parent) = dst.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", policy.labels.restore))?;
+            std::fs::create_dir_all(parent)
+                .map_err(|e| format!("{}: {e}", policy.labels.restore))?;
         }
         std::fs::write(&dst, &file.bytes)
             .map_err(|e| format!("{}: {e}", policy.restore_write_error))?;

@@ -102,10 +102,8 @@ anthropic   claude-4     200K     32K      yes       yes
 
     #[test]
     fn list_models_table_text_falls_back_to_stderr() {
-        let from_stdout = list_models_table_text(
-            b"provider model\nopenai gpt-4o 1 1 no yes\n",
-            b"noise\n",
-        );
+        let from_stdout =
+            list_models_table_text(b"provider model\nopenai gpt-4o 1 1 no yes\n", b"noise\n");
         assert!(from_stdout.contains("openai"));
         let from_stderr =
             list_models_table_text(b"  \n", b"provider model\nopenai gpt-4o 1 1 no yes\n");

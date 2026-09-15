@@ -10,7 +10,6 @@ use crate::prompts::PromptStore;
 #[must_use]
 pub fn io_opts() -> AgentIoOptions {
     AgentIoOptions {
-
         no_tee: true,
         raw_output: true,
         show_thoughts_on_stdout: false,

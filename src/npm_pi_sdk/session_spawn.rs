@@ -2,7 +2,9 @@ use super::session::NpmPiSession;
 use crate::acp::AgentError;
 use crate::bridge_sdk::{BridgeSpawnArgs, MemWatchArgs, start_mem_watch};
 
-pub(crate) async fn npm_pi_spawn_bridge(args: BridgeSpawnArgs<'_>) -> Result<NpmPiSession, AgentError> {
+pub(crate) async fn npm_pi_spawn_bridge(
+    args: BridgeSpawnArgs<'_>,
+) -> Result<NpmPiSession, AgentError> {
     let ticket = crate::malvin_sandbox::take_sandbox_spawn_ticket().map_err(AgentError)?;
     if crate::acp::test_no_real_agent_enabled() {
         return Err(AgentError(

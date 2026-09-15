@@ -35,9 +35,9 @@ mod bridge_path_tests;
 #[cfg(test)]
 mod client_ensure_tests;
 #[cfg(test)]
-mod client_mock_tests;
-#[cfg(test)]
 mod client_mock_retry_tests;
+#[cfg(test)]
+mod client_mock_tests;
 #[cfg(test)]
 mod kiss_coverage;
 #[cfg(test)]

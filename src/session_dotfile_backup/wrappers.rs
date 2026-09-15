@@ -24,7 +24,11 @@ pub fn restore_workspace_malvin_checks_backup(
     work_dir: &Path,
     backup: &MalvinChecksBackup,
 ) -> Result<(), String> {
-    super::slots::restore_slot(work_dir, backup.as_slot_state(), super::slots::MALVIN_CHECKS_SLOT)
+    super::slots::restore_slot(
+        work_dir,
+        backup.as_slot_state(),
+        super::slots::MALVIN_CHECKS_SLOT,
+    )
 }
 
 #[allow(clippy::missing_errors_doc)]

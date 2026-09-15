@@ -3,8 +3,8 @@ use super::{
     parse_cli_with_config_defaults,
 };
 use crate::cli::{Cli, SharedOpts};
-use malvin::malvin_config_file::AgentConfig;
 use clap::{CommandFactory, FromArgMatches};
+use malvin::malvin_config_file::AgentConfig;
 
 pub(super) fn write_agent_config(work_dir: &std::path::Path) {
     let path = malvin::malvin_config_path(work_dir);

@@ -27,6 +27,12 @@ fn parse_cursor_and_pi() {
         local.pi_provider_and_model(),
         Some(("ollama", "whatever_model_name"))
     );
+    let local_nested = parse_model_id("rpi:local/ollama/qwen2.5:1.5b").expect("local nested");
+    assert_eq!(local_nested.canonical(), "rpi:local/ollama/qwen2.5:1.5b");
+    assert_eq!(
+        local_nested.pi_provider_and_model(),
+        Some(("ollama", "qwen2.5:1.5b"))
+    );
     let codex = parse_model_id("codex:gpt-5.6").expect("codex");
     assert!(codex.is_codex());
     assert_eq!(codex.canonical(), "codex:gpt-5.6");
@@ -219,8 +225,16 @@ fn backend_labels_drain_prefixes_and_provider_split() {
             .drain_idle_prefix()
             .contains("npm pi rpc timed out")
     );
-    assert!(ModelBackend::Pi.drain_idle_prefix().contains("pi rpc timed out"));
-    assert!(ModelBackend::Codex.drain_idle_prefix().contains("codex timed out"));
+    assert!(
+        ModelBackend::Pi
+            .drain_idle_prefix()
+            .contains("pi rpc timed out")
+    );
+    assert!(
+        ModelBackend::Codex
+            .drain_idle_prefix()
+            .contains("codex timed out")
+    );
     assert!(
         parse_model_id("cursor:auto")
             .expect("cursor")
@@ -273,8 +287,18 @@ fn bracket_format_split_metamorphic_and_reject_fuzz() {
     assert_eq!(round, params);
 
     let rejects = [
-        "x[", "x[a", "[a=1]", "x[[a=1]]", "x[a=1][b=2]", "x[a=1,]", "x[=v]", "x[k=]",
-        "x[noeq]", "x[a=1,,b=2]", "x]", "ab]c",
+        "x[",
+        "x[a",
+        "[a=1]",
+        "x[[a=1]]",
+        "x[a=1][b=2]",
+        "x[a=1,]",
+        "x[=v]",
+        "x[k=]",
+        "x[noeq]",
+        "x[a=1,,b=2]",
+        "x]",
+        "ab]c",
     ];
     for raw in rejects {
         assert!(

@@ -12,6 +12,7 @@ pub(crate) fn spawn_isolated_shell(
     command: &str,
 ) -> pi::sdk::Result<std::process::Child> {
     let shell = isolated_shell();
+    let command = rewrite_wget_downloads_to_curl(command);
     let mut cmd = crate::malvin_sandbox::malvin_std_command(shell);
     cmd.arg("-c")
         .arg(command)
@@ -21,6 +22,44 @@ pub(crate) fn spawn_isolated_shell(
         .stderr(std::process::Stdio::piped());
     cmd.spawn()
         .map_err(|e| pi::error::Error::tool("bash", format!("Failed to spawn isolated shell: {e}")))
+}
+
+fn rewrite_wget_downloads_to_curl(command: &str) -> String {
+    let trimmed = command.trim();
+    let Some(rest) = trimmed.strip_prefix("wget") else {
+        return command.to_string();
+    };
+    if !rest.starts_with(|c: char| c.is_whitespace()) && !rest.is_empty() {
+        return command.to_string();
+    }
+    let tokens: Vec<&str> = rest.split_whitespace().collect();
+    let mut out_path: Option<&str> = None;
+    let mut url: Option<&str> = None;
+    let mut i = 0;
+    while i < tokens.len() {
+        let tok = tokens[i];
+        if tok == "-O" || tok == "--output-document" {
+            if let Some(path) = tokens.get(i + 1) {
+                out_path = Some(*path);
+                i += 2;
+                continue;
+            }
+        } else if let Some(path) = tok.strip_prefix("-O") {
+            if !path.is_empty() {
+                out_path = Some(path);
+                i += 1;
+                continue;
+            }
+        } else if tok.starts_with("http://") || tok.starts_with("https://") {
+            url = Some(tok);
+        }
+        i += 1;
+    }
+    match (out_path, url) {
+        (Some(path), Some(url)) => format!("curl -L --fail -o {path} {url}"),
+        (None, Some(url)) => format!("curl -L --fail -O {url}"),
+        _ => command.to_string(),
+    }
 }
 
 fn tool_text_output(text: String, output: &std::process::Output) -> ToolOutput {
@@ -149,4 +188,31 @@ pub(crate) fn wait_isolated_output(
     };
     crate::command_output_timeout::wait_piped_child_with_timeout(child, limit, "isolated bash")
         .map_err(|e| pi::error::Error::tool("bash", e))
+}
+
+#[cfg(test)]
+mod rewrite_wget_tests {
+    use super::rewrite_wget_downloads_to_curl;
+
+    #[test]
+    fn rewrite_wget_o_flag_to_curl() {
+        assert_eq!(
+            rewrite_wget_downloads_to_curl(
+                "wget -O /tmp/arxiv.pdf https://arxiv.org/pdf/2506.12818"
+            ),
+            "curl -L --fail -o /tmp/arxiv.pdf https://arxiv.org/pdf/2506.12818"
+        );
+        assert_eq!(
+            rewrite_wget_downloads_to_curl("wget -O/tmp/x.pdf https://example.com/a"),
+            "curl -L --fail -o /tmp/x.pdf https://example.com/a"
+        );
+        assert_eq!(
+            rewrite_wget_downloads_to_curl("curl -L -o /tmp/x https://example.com"),
+            "curl -L -o /tmp/x https://example.com"
+        );
+        assert_eq!(
+            rewrite_wget_downloads_to_curl("wget2 -O /tmp/x https://example.com"),
+            "wget2 -O /tmp/x https://example.com"
+        );
+    }
 }

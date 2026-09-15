@@ -1,6 +1,6 @@
+use clap::Args;
 use malvin::model_id::{CODEX_PREFIX, CURSOR_PREFIX, PI_PREFIX, RPI_PREFIX};
 use malvin::output::{MALVIN_WHO, print_stdout_line};
-use clap::Args;
 
 #[path = "models_cmd_cursor.rs"]
 mod models_cmd_cursor;
@@ -29,7 +29,9 @@ pub struct ModelsArgs {
 }
 
 #[cfg(test)]
-pub(crate) const fn models_args_marker(_args: &ModelsArgs) -> &'static str { "models" }
+pub(crate) const fn models_args_marker(_args: &ModelsArgs) -> &'static str {
+    "models"
+}
 
 fn print_codex_models(filter: Option<&str>) {
     match malvin::codex_sdk::list_codex_display_models() {
@@ -97,14 +99,34 @@ fn print_npm_pi_models(models: &[(String, String)], filter: Option<&str>) {
     }
 }
 
+fn rpi_display_id(model_id: &str) -> String {
+    let provider = model_id.split('/').next().unwrap_or("");
+    if pi::provider_metadata::provider_is_keyless_local(provider) {
+        format!("local/{model_id}")
+    } else {
+        model_id.to_string()
+    }
+}
+
+#[cfg(test)]
+#[test]
+fn rpi_display_id_covers_local_and_cloud() {
+    assert_eq!(
+        rpi_display_id("ollama/qwen2.5:1.5b"),
+        "local/ollama/qwen2.5:1.5b"
+    );
+    assert_eq!(rpi_display_id("openai/gpt-4o"), "openai/gpt-4o");
+}
+
 fn print_pi_models(models: &[malvin::pi_sdk::PiModelListing], filter: Option<&str>) {
     let mut printed = false;
     for model in models {
         let provider = model.id.split('/').next().unwrap_or("");
-        if !malvin::pi_sdk::is_provider_authenticated(provider) {
+        if !malvin::pi_sdk::is_provider_listable(provider) {
             continue;
         }
-        let mut line = format!("{RPI_PREFIX}{}\t{}", model.id, model.name);
+        let display_id = rpi_display_id(&model.id);
+        let mut line = format!("{RPI_PREFIX}{display_id}\t{}", model.name);
         if let Some(thinking) = model.thinking {
             line.push('\t');
             line.push_str(if thinking {
@@ -121,7 +143,7 @@ fn print_pi_models(models: &[malvin::pi_sdk::PiModelListing], filter: Option<&st
     if printed {
         print_stdout_line(
             MALVIN_WHO,
-            "Note: pi:/rpi: model lists refresh live provider catalogs at most once per day (use --refresh to force); rpi: rows are shown only for providers you can run (environment API key, stored Pi credential, Pi-detected local CLI auth such as Codex, keyless local provider, or keyless models.json entry). Older malvin ≤0.2.3 listed every provider; cargo install of 0.2.4+ needs rustc 1.95+.",
+            "Note: pi:/rpi: model lists refresh live provider catalogs at most once per day (use --refresh to force); rpi: rows are shown only for providers you can run (environment API key, stored Pi credential, Pi-detected local CLI auth such as Codex, a reachable keyless local server, or a reachable keyless models.json endpoint). Older malvin ≤0.2.3 listed every provider; cargo install of 0.2.4+ needs rustc 1.95+.",
         );
     }
 }

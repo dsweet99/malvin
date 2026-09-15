@@ -33,14 +33,9 @@ pub(crate) fn dispatch_gates_only_route(input: GatesOnlyDispatch<'_>) -> Result<
                 max_hypotheses,
             },
             shared,
-            router
+            router,
         )
         .await?;
-        run_tidy(
-            max_loops,
-            max_hypotheses,
-            AgentRouteOpts { shared, router }
-        )
-        .await
+        run_tidy(max_loops, max_hypotheses, AgentRouteOpts { shared, router }).await
     })
 }

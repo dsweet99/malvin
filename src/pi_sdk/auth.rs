@@ -1,3 +1,4 @@
+use super::local_endpoint::{http_base_url_is_listening, keyless_local_provider_is_listening};
 use crate::acp::AuthError;
 
 pub fn ensure_pi_authenticated(model: &str) -> Result<(), AuthError> {
@@ -31,6 +32,21 @@ pub fn is_provider_authenticated(provider: &str) -> bool {
     provider_has_access(provider)
 }
 
+pub fn is_provider_listable(provider: &str) -> bool {
+    if pi::provider_metadata::provider_is_keyless_local(provider) {
+        return keyless_local_provider_is_listening(provider);
+    }
+    if let Some(custom) = models_json_provider(provider)
+        && !custom.auth_header
+    {
+        return custom
+            .base_url
+            .as_deref()
+            .is_some_and(http_base_url_is_listening);
+    }
+    provider_has_stored_or_env_access(provider)
+}
+
 fn provider_has_access(provider: &str) -> bool {
     if pi::provider_metadata::provider_is_keyless_local(provider) {
         return true;
@@ -38,6 +54,10 @@ fn provider_has_access(provider: &str) -> bool {
     if custom_provider_is_keyless(provider) {
         return true;
     }
+    provider_has_stored_or_env_access(provider)
+}
+
+fn provider_has_stored_or_env_access(provider: &str) -> bool {
     match provider_auth_env_keys(provider) {
         None => stored_credential_present(provider),
         Some(keys) if keys.iter().any(|k| crate::acp::env_key_nonempty(k)) => true,
@@ -45,19 +65,40 @@ fn provider_has_access(provider: &str) -> bool {
     }
 }
 
-fn custom_provider_is_keyless(provider: &str) -> bool {
-    let Ok(auth) = pi::auth::AuthStorage::load(pi::sdk::Config::auth_path()) else {
-        return false;
-    };
+struct ModelsJsonProvider {
+    auth_header: bool,
+    base_url: Option<String>,
+}
+
+fn models_json_provider(provider: &str) -> Option<ModelsJsonProvider> {
     let models_path = pi::models::default_models_path(&pi::sdk::Config::global_dir());
-    if !models_path.is_file() {
-        return false;
+    let body = std::fs::read_to_string(models_path).ok()?;
+    let root: serde_json::Value = serde_json::from_str(&body).ok()?;
+    let providers = root.get("providers")?.as_object()?;
+    for (name, cfg) in providers {
+        if !pi::provider_metadata::provider_ids_match(name, provider) {
+            continue;
+        }
+        let auth_header = cfg
+            .get("authHeader")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(true);
+        let base_url = cfg
+            .get("baseUrl")
+            .and_then(serde_json::Value::as_str)
+            .map(str::trim)
+            .filter(|url| !url.is_empty())
+            .map(str::to_string);
+        return Some(ModelsJsonProvider {
+            auth_header,
+            base_url,
+        });
     }
-    let registry = pi::sdk::ModelRegistry::load_for_listing(&auth, Some(models_path));
-    registry.models().iter().any(|entry| {
-        pi::provider_metadata::provider_ids_match(&entry.model.provider, provider)
-            && !entry.auth_header
-    })
+    None
+}
+
+fn custom_provider_is_keyless(provider: &str) -> bool {
+    models_json_provider(provider).is_some_and(|entry| !entry.auth_header)
 }
 
 fn stored_credential_present(provider: &str) -> bool {
@@ -102,7 +143,55 @@ mod tests {
             );
         }
         assert!(ensure_pi_authenticated("rpi:local/whatever_model_name").is_ok());
-        assert!(!pi::provider_metadata::provider_is_keyless_local("lmstudio"));
+        assert!(ensure_pi_authenticated("rpi:local/ollama/qwen2.5:1.5b").is_ok());
+        assert!(!pi::provider_metadata::provider_is_keyless_local(
+            "lmstudio"
+        ));
+        for provider in ["llamacpp", "mistralrs"] {
+            if !keyless_local_provider_is_listening(provider) {
+                assert!(
+                    !is_provider_listable(provider),
+                    "{provider} must be hidden from admin models when its server is down"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn models_json_does_not_unlock_headerless_cloud_providers() {
+        let _lock = crate::test_utils::test_env_lock();
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let home = tmp.path().join("pi-home");
+        std::fs::create_dir_all(&home).expect("pi home");
+        std::fs::write(
+            home.join("models.json"),
+            r#"{"providers":{"ollama":{"baseUrl":"http://127.0.0.1:11434/v1","api":"openai-completions","authHeader":false,"models":[{"id":"lite"}]}}}"#,
+        )
+        .expect("write models.json");
+        crate::acp::with_env(
+            "PI_CODING_AGENT_DIR",
+            Some(home.to_str().expect("utf8")),
+            || {
+                crate::acp::with_env("ZENMUX_API_KEY", None, || {
+                    crate::acp::with_env("ANTHROPIC_API_KEY", None, || {
+                        crate::acp::with_env("COHERE_API_KEY", None, || {
+                            assert!(
+                                custom_provider_is_keyless("ollama"),
+                                "ollama models.json entry is keyless"
+                            );
+                            assert!(!custom_provider_is_keyless("zenmux"));
+                            assert!(!custom_provider_is_keyless("anthropic"));
+                            assert!(!custom_provider_is_keyless("cohere"));
+                            assert!(!custom_provider_is_keyless("google"));
+                            assert!(!custom_provider_is_keyless("amazon-bedrock"));
+                            assert!(!is_provider_listable("zenmux"));
+                            assert!(!is_provider_listable("anthropic"));
+                            assert!(!is_provider_listable("cohere"));
+                        });
+                    });
+                });
+            },
+        );
     }
 
     #[test]

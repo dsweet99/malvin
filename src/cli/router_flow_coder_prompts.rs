@@ -13,7 +13,9 @@ pub(crate) async fn run_router_initial_coder_prompt(
 ) -> Result<(), String> {
     input
         .client
-        .active_coder_session().map_err(|e| e.to_string())?.run_coder_prompt(
+        .active_coder_session()
+        .map_err(|e| e.to_string())?
+        .run_coder_prompt(
             input.prompt,
             input.log_path,
             input.log_who,
@@ -36,7 +38,9 @@ pub(crate) async fn run_router_b_coder_prompt(
     stdout_bracket_label: &str,
 ) -> Result<(), String> {
     client
-        .active_coder_session().map_err(|e| e.to_string())?.run_coder_prompt(
+        .active_coder_session()
+        .map_err(|e| e.to_string())?
+        .run_coder_prompt(
             prompt,
             log_path,
             "router_b",
@@ -58,7 +62,9 @@ pub(crate) async fn run_router_summarize_coder_prompt(
     log_path: &std::path::Path,
 ) -> Result<(), String> {
     client
-        .active_coder_session().map_err(|e| e.to_string())?.run_coder_prompt(
+        .active_coder_session()
+        .map_err(|e| e.to_string())?
+        .run_coder_prompt(
             prompt,
             log_path,
             "router_summarize",

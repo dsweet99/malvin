@@ -69,9 +69,7 @@ fn restore_session_dotfiles_strips_legacy_root_checks_file() {
     let work = tmp.path();
     std::fs::create_dir_all(work).unwrap();
     std::fs::write(work.join(".malvin_checks"), "legacy\n").unwrap();
-    SessionDotfileBackups::all_missing()
-        .restore(work)
-        .unwrap();
+    SessionDotfileBackups::all_missing().restore(work).unwrap();
     assert!(!work.join(".malvin_checks").exists());
 }
 

@@ -1,13 +1,12 @@
 use std::collections::HashMap;
 
-use malvin::config::DEFAULT_CLI_MODEL;
 use crate::do_flow::do_flow_prompt::{
     build_do_coder_run_with_store, combine_do_acp_prompt_header_and_user,
     combine_do_prompt_file_and_user, combine_do_raw_header_and_user, prepare_do_prompt_store,
 };
+use malvin::config::DEFAULT_CLI_MODEL;
 use malvin::flow_prompt_join_test_helpers::{
-    assert_header_user_join, flow_test_artifacts,
-    flow_test_artifacts_no_checks,
+    assert_header_user_join, flow_test_artifacts, flow_test_artifacts_no_checks,
 };
 use malvin::prompt_stratification::WorkflowRenderContext;
 use malvin::prompts::{DO_HEADER_MD, HEADER_MD, PromptStore};

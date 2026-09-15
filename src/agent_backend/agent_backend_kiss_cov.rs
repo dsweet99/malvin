@@ -20,8 +20,7 @@ fn agent_backend_tracks_consecutive_errors_via_ops() {
 
 #[test]
 fn ensure_run_timing_for_session_installs_when_missing() {
-    let mut backend =
-        crate::cursor_sdk::cursor_sdk_client_from_raw("cursor:auto", test_io(), 1);
+    let mut backend = crate::cursor_sdk::cursor_sdk_client_from_raw("cursor:auto", test_io(), 1);
     assert!(backend.timing.is_none());
     let timing = crate::agent_backend::ensure_run_timing_for_session(&mut backend);
     let again = crate::agent_backend::ensure_run_timing_for_session(&mut backend);

@@ -1,8 +1,8 @@
-use malvin::artifacts::RunArtifacts;
 use crate::cli::flow_prompt_combine::{
     DualHeaderPromptInput, combine_acp_prompt_header_and_user, combine_mode_header_and_user,
     combine_prompt_file_and_user,
 };
+use malvin::artifacts::RunArtifacts;
 use malvin::prompt_stratification::WorkflowRenderContext;
 use malvin::prompts::{DO_HEADER_MD, HEADER_MD, PromptError, PromptStore};
 use malvin::workflow_context::PromptModelOpts;
