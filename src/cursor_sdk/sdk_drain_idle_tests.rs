@@ -59,7 +59,9 @@ async fn keep_alive_events_do_not_trip_idle_drain_timeout() {
     client.begin_coder_session(tmp.path()).await.expect("begin");
     let log = tmp.path().join("prompts.log");
     client
-        .active_coder_session().expect("active coder session").run_coder_prompt(
+        .active_coder_session()
+        .expect("active coder session")
+        .run_coder_prompt(
             "KEEP_ALIVE_THEN_DONE please",
             &log,
             "coder",

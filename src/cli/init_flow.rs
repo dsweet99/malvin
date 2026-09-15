@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use crate::cli::{RouterOpts, SharedOpts};
-use malvin::prompts::{PromptError, PromptStore};
 use crate::router_flow::{RouterArgs, run_router};
+use malvin::prompts::{PromptError, PromptStore};
 
 #[must_use]
 pub(crate) fn effective_init_max_loops(max_loops: usize) -> usize {

@@ -117,8 +117,8 @@ fn gates_only_route_needs_session() {
 }
 
 fn admin_command_is_not_gates_only() {
-    use crate::cli::{AdminArgs, AdminCommand};
     use crate::cli::models_cmd::ModelsArgs;
+    use crate::cli::{AdminArgs, AdminCommand};
     let _ = Commands::Admin(AdminArgs {
         command: AdminCommand::Models(ModelsArgs::default()),
     });

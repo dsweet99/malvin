@@ -103,11 +103,11 @@ impl ParsedModel {
         }
         let (provider, model) =
             split_first_slash(&self.slug).filter(|(p, m)| !p.is_empty() && !m.is_empty())?;
-        let provider = if provider.eq_ignore_ascii_case("local") {
-            "ollama"
-        } else {
-            provider
-        };
+        if provider.eq_ignore_ascii_case("local") {
+            return split_first_slash(model)
+                .filter(|(p, m)| !p.is_empty() && !m.is_empty())
+                .or(Some(("ollama", model)));
+        }
         Some((provider, model))
     }
 
@@ -169,7 +169,9 @@ fn parse_provider_slash_model(
     }
     let (slug, params) = split_bracket_params(rest)?;
     let err = || {
-        format!("{prefix_label} model id must be `{prefix_label}:<provider>/<model>` (got `{prefix_label}:{rest}`)")
+        format!(
+            "{prefix_label} model id must be `{prefix_label}:<provider>/<model>` (got `{prefix_label}:{rest}`)"
+        )
     };
     let Some((provider, model)) = split_first_slash(&slug) else {
         return Err(err());

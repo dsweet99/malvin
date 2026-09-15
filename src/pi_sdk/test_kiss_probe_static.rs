@@ -1,4 +1,3 @@
-
 #[test]
 fn kiss_probe_static_tokens_a() {
     fake_events_for_prompt("", "", "");
@@ -33,7 +32,11 @@ fn kiss_probe_static_tokens_b() {
     last_text();
     run_models_pi_only_with_openrouter_key();
     assert_live_auth_filter();
+    is_provider_listable();
+    models_json_provider();
     leftover_pi_runtime_threads();
+    start_embedded_mem_watch();
+    watch_embedded_memory();
     session_spawn_tests::fake_session_begin_end_leaves_no_pi_runtime_thread();
 }
 
@@ -53,6 +56,8 @@ fn kiss_probe_static_models_refresh_tokens() {
     fetch_provider_models_sync();
     resolve_provider_api_key();
     authenticated_providers();
+    is_provider_listable();
+    models_json_provider();
     provider_supports_pi_live_model_fetch();
     openai_compat_models_url();
     PI_MODEL_CACHE_TTL();

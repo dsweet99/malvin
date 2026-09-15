@@ -1,5 +1,5 @@
-pub use malvin::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use clap::Args;
+pub use malvin::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use rand::Rng;
 
 use malvin::model_id::{ParsedModel, parse_model_id};
@@ -57,7 +57,12 @@ pub struct RouterOpts {
     )]
     pub quiet: bool,
     /// Run workspace quality gates; treat failures as loop or exit criteria
-    #[arg(short = 'g', long, default_value_t = false, conflicts_with = "do_workflow")]
+    #[arg(
+        short = 'g',
+        long,
+        default_value_t = false,
+        conflicts_with = "do_workflow"
+    )]
     pub gates: bool,
     /// Be (more) creative; optional probability in [0,1] (default 1.0 when set)
     #[arg(

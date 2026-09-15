@@ -28,7 +28,9 @@ impl DotfileBackupState {
     }
 }
 
-pub(super) const fn slot_state_ref(payload: Option<&DotfileBackupPayload>) -> DotfileBackupStateRef<'_> {
+pub(super) const fn slot_state_ref(
+    payload: Option<&DotfileBackupPayload>,
+) -> DotfileBackupStateRef<'_> {
     match payload {
         None => DotfileBackupStateRef::Missing,
         Some(payload) => DotfileBackupStateRef::Present(payload),

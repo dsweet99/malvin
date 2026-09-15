@@ -1,4 +1,3 @@
-
 #[test]
 fn kiss_exec_witness_04_12() {
     Palette();
@@ -51,11 +50,11 @@ fn kiss_cov_bridge_sdk_spawn_names_cursor() {
 #[test]
 fn kiss_cov_bridge_sdk_shared_type_names() {
     ModelBackend();
-    
+
     CreateArgs();
     ResumeArgs();
     SdkClient();
-    
+
     sync_timing_to_open_session();
     cursor_sdk_marker_present();
     encode_request();
@@ -129,8 +128,12 @@ fn kiss_cov_pi_sdk_models_refresh_name_batch() {
 #[test]
 fn kiss_cov_pi_sdk_live_provider_auth() {
     is_provider_authenticated();
+    is_provider_listable();
     provider_has_access();
+    provider_has_stored_or_env_access();
     custom_provider_is_keyless();
+    models_json_provider();
+    ModelsJsonProvider();
     stored_credential_present();
     print_pi_models();
 }

@@ -191,7 +191,10 @@ mod tests {
             housekeep_local_llms(true);
             assert!(marker.is_file(), "must keep marker when local still needed");
             housekeep_local_llms(false);
-            assert!(!marker.is_file(), "must clear marker after idle housekeeping");
+            assert!(
+                !marker.is_file(),
+                "must clear marker after idle housekeeping"
+            );
         });
     }
 

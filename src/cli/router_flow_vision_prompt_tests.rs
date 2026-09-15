@@ -53,7 +53,8 @@ fn default_router_prompts_follow_vision_problem_solving_language() {
         }
     }
     let router_b = malvin::prompts::default_file("router_b.md").expect("router_b");
-    let creative = malvin::prompts::default_file("router_b_creative.md").expect("router_b_creative");
+    let creative =
+        malvin::prompts::default_file("router_b_creative.md").expect("router_b_creative");
     assert!(
         router_b.contains("KPop: Satisfy the requirements.") && !router_b.contains("MBC2"),
         "router_b must keep KPop satisfy instruction without MBC2"

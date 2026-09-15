@@ -97,8 +97,7 @@ fn entrypoint_from_admin_rejects_verbose_flag() {
             );
         });
         assert!(
-            stderr.contains("admin")
-                && (stderr.contains("--verbose") || stderr.contains("-v")),
+            stderr.contains("admin") && (stderr.contains("--verbose") || stderr.contains("-v")),
             "expected admin+verbose rejection; stderr={stderr:?}"
         );
     });

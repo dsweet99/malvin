@@ -3,7 +3,6 @@ use malvin::prompt_stratification::{PromptStratum, WorkflowRenderContext, join_l
 use malvin::prompts::{PromptError, PromptStore, render_header};
 use malvin::workflow_context::PromptModelOpts;
 
-
 pub(crate) struct DualHeaderPromptInput<'a> {
     pub store: &'a PromptStore,
     pub artifacts: &'a RunArtifacts,

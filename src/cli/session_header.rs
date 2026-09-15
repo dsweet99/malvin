@@ -77,7 +77,6 @@ mod tests {
             let mut client = malvin::cursor_sdk::cursor_sdk_client_from_raw(
                 "cursor:auto",
                 malvin::acp::AgentIoOptions {
-
                     no_tee: true,
                     raw_output: true,
                     show_thoughts_on_stdout: false,
@@ -94,8 +93,8 @@ mod tests {
                 log_path: artifacts.log_path("do_header"),
             })
             .expect("bind");
-            let (prompt, stdout_label) = malvin::agent_backend::pending_session_header(&client)
-                .expect("bound");
+            let (prompt, stdout_label) =
+                malvin::agent_backend::pending_session_header(&client).expect("bound");
             assert!(prompt.contains("HDR"));
             assert!(prompt.contains("DO"));
             assert_eq!(stdout_label, DO_HEADER_MD);

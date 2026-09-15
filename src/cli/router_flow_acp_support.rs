@@ -1,8 +1,6 @@
-use malvin::artifacts::{
-    RunArtifacts, SessionDotfileBackups, ensure_gate_exp_log_file,
-};
 use crate::router_flow::router_flow_no_work::chat_has_malvin_done;
 use crate::router_flow::router_flow_prompt;
+use malvin::artifacts::{RunArtifacts, SessionDotfileBackups, ensure_gate_exp_log_file};
 use std::path::Path;
 
 use super::RouterAcpIterationInput;
@@ -60,8 +58,8 @@ async fn deliver_router_initial_turn(
     let work_dir = input.artifacts.work_dir.as_path();
     let model = input.shared.model.canonical();
     let include_header = !malvin::agent_backend::session_header_is_satisfied(input.client);
-    let initial =
-        router_flow_prompt::build_router_initial_prompt(router_flow_prompt::RouterInitialPromptInput {
+    let initial = router_flow_prompt::build_router_initial_prompt(
+        router_flow_prompt::RouterInitialPromptInput {
             store: input.prompt_store,
             artifacts: input.artifacts,
             model: &model,
@@ -70,7 +68,8 @@ async fn deliver_router_initial_turn(
             creative,
             max_hypotheses: input.max_hypotheses,
             include_header,
-        })?;
+        },
+    )?;
 
     if include_header {
         input.client.bind_session_header_parts(

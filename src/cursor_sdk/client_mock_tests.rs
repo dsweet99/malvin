@@ -3,7 +3,6 @@ use crate::cursor_sdk::CursorSdkClient;
 
 pub(super) fn mock_io() -> AgentIoOptions {
     AgentIoOptions {
-
         no_tee: true,
         raw_output: true,
         show_thoughts_on_stdout: false,
@@ -35,7 +34,9 @@ pub(super) fn mock_client(run_dir: &std::path::Path) -> CursorSdkClient {
 
 pub(super) async fn prompt_once(client: &mut CursorSdkClient, log: &std::path::Path) {
     client
-        .active_coder_session().expect("active coder session").run_coder_prompt(
+        .active_coder_session()
+        .expect("active coder session")
+        .run_coder_prompt(
             "hi",
             log,
             "coder",
@@ -151,7 +152,9 @@ async fn prompt_need_dm_with_capture(
     crate::output::set_do_dm_stdout_mode(true);
     crate::output::enable_stdout_capture();
     client
-        .active_coder_session().expect("active coder session").run_coder_prompt(
+        .active_coder_session()
+        .expect("active coder session")
+        .run_coder_prompt(
             "NEED_DM please",
             log,
             "coder",

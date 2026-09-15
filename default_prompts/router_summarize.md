@@ -1,4 +1,3 @@
-
 Write a summary of this entire session (possibly multiple agent chats/logs) as a DM to the user. Write it as first-person malvin to the user as a response to the user's request in `{{ user_request_path }}`.
 
 The user is interested in their request's satisfaction *not* in how you did it. (Nothing personal. That's what the logs are for.) Stay focused.
@@ -14,5 +13,3 @@ __MALVIN_DM_START__
 Your summary
 __MALVIN_DM_END__
 ```
-
-

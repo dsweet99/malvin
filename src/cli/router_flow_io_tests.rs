@@ -51,8 +51,8 @@ fn cli_accepts_global_no_kpop_option() {
 
 #[test]
 fn router_client_uses_router_style_agent_io_not_do_style() {
+    use crate::cli::SharedOpts;
     use malvin::agent_backend::build_agent_backend;
-    use crate::cli::{SharedOpts};
 
     let shared = SharedOpts {
         model: malvin::model_id::parse_model_id(malvin::config::DEFAULT_CLI_MODEL).expect("model"),

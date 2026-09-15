@@ -20,14 +20,8 @@ fn cli_rejects_do_thoughts_flag() {
 }
 
 fn cli_accepts_all_shared_flags_before_subcommand() {
-    let cli = Cli::try_parse_from([
-        "malvin",
-        "--model",
-        "cursor:composer-2",
-        "--do",
-        "z",
-    ])
-    .expect("parse");
+    let cli = Cli::try_parse_from(["malvin", "--model", "cursor:composer-2", "--do", "z"])
+        .expect("parse");
     assert_eq!(cli.shared.model.canonical(), "cursor:composer-2");
     assert!(cli.do_workflow);
     assert_eq!(cli.request.as_deref(), Some("z"));
@@ -68,8 +62,7 @@ fn cli_rejects_gates_with_do() {
 }
 
 fn cli_rejects_creative_with_do() {
-    let err =
-        Cli::try_parse_from(["malvin", "--do", "--creative=0.8", "task"]).expect_err("parse");
+    let err = Cli::try_parse_from(["malvin", "--do", "--creative=0.8", "task"]).expect_err("parse");
     let msg = err.to_string();
     assert!(
         msg.contains("cannot be used with") || msg.contains("--creative"),

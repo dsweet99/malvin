@@ -103,7 +103,9 @@ pub(crate) fn gitignore_root_bytes(backup: &GitignoreBackup) -> Option<&[u8]> {
     match backup {
         GitignoreBackup::Missing => None,
         GitignoreBackup::Present { files, .. } => root_file_bytes_by_name(
-            files.iter().map(|file| (file.rel.as_path(), file.bytes.as_slice())),
+            files
+                .iter()
+                .map(|file| (file.rel.as_path(), file.bytes.as_slice())),
             ".gitignore",
         ),
     }
@@ -117,7 +119,9 @@ pub(crate) fn vision_root_bytes(backup: &VisionBackup) -> Option<&[u8]> {
     match backup {
         VisionBackup::Missing => None,
         VisionBackup::Present { files, .. } => root_file_bytes_by_name(
-            files.iter().map(|file| (file.rel.as_path(), file.bytes.as_slice())),
+            files
+                .iter()
+                .map(|file| (file.rel.as_path(), file.bytes.as_slice())),
             "VISION.md",
         ),
     }

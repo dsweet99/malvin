@@ -49,13 +49,9 @@ async fn handle_spawn_failure(
             ),
         ));
     }
-    let stop = backoff_after_agent_failure(
-        client.timing.as_ref(),
-        &last_error,
-        attempt,
-        max_attempts,
-    )
-    .await?;
+    let stop =
+        backoff_after_agent_failure(client.timing.as_ref(), &last_error, attempt, max_attempts)
+            .await?;
     Ok((last_error, stop))
 }
 
@@ -78,7 +74,14 @@ pub(super) async fn spawn_with_retries(
         )
         .await
         {
-            Ok(s) => return Ok(record_spawn_success(client, s, cwd, resume_agent_id.as_deref())),
+            Ok(s) => {
+                return Ok(record_spawn_success(
+                    client,
+                    s,
+                    cwd,
+                    resume_agent_id.as_deref(),
+                ));
+            }
             Err(e) => {
                 let (err_msg, stop) =
                     handle_spawn_failure(client, e, attempts_used, backoff_ceiling).await?;

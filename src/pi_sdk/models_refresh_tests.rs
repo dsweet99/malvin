@@ -92,19 +92,21 @@ fn parse_http_authority_host_port_covers_common_forms() {
         super::super::local_endpoint::parse_http_authority_host_port("http://[::1]:1234/v1"),
         Some(("::1".into(), 1234))
     );
-    assert!(
-        super::super::local_endpoint::parse_http_authority_host_port("not-a-url").is_none()
-    );
+    assert!(super::super::local_endpoint::parse_http_authority_host_port("not-a-url").is_none());
 }
 
 fn http_base_url_is_listening_detects_open_and_closed_ports() {
     let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
     let port = listener.local_addr().expect("addr").port();
     let open = format!("http://127.0.0.1:{port}/v1");
-    assert!(super::super::local_endpoint::http_base_url_is_listening(&open));
+    assert!(super::super::local_endpoint::http_base_url_is_listening(
+        &open
+    ));
     drop(listener);
     let closed = format!("http://127.0.0.1:{port}/v1");
-    assert!(!super::super::local_endpoint::http_base_url_is_listening(&closed));
+    assert!(!super::super::local_endpoint::http_base_url_is_listening(
+        &closed
+    ));
 }
 
 fn refresh_skips_unreachable_keyless_local_providers() {

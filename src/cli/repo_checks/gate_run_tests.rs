@@ -1,6 +1,6 @@
 use super::*;
-use malvin::output::{ERROR_WHO, MALVIN_WHO, WARNING_WHO, format_who_tag_delim};
 use crate::repo_checks::command_support::set_fake_command_dir;
+use malvin::output::{ERROR_WHO, MALVIN_WHO, WARNING_WHO, format_who_tag_delim};
 use malvin::test_stderr_capture::capture_stderr_output;
 
 #[cfg(unix)]

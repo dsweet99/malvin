@@ -174,7 +174,8 @@ mod tests {
         let text = std::fs::read_to_string(run_dir.join("command.log")).expect("read");
         let delim = format_who_tag_delim(WHO_U);
         assert!(
-            text.contains("existing") && text.contains(&format!(" {delim}Model: rpi:openai/gpt-4o"))
+            text.contains("existing")
+                && text.contains(&format!(" {delim}Model: rpi:openai/gpt-4o"))
         );
     }
 

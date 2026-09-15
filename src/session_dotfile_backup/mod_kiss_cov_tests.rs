@@ -71,10 +71,10 @@ fn kiss_cov_vision_file_backup_construct_destructure() {
 
 #[test]
 fn gitignore_and_vision_file_backups_are_distinct_types() {
-    use std::any::TypeId;
-    use super::named_file_tree::NamedFileEntry;
     use super::gitignore_tree::GitignoreFileBackup;
+    use super::named_file_tree::NamedFileEntry;
     use super::vision_tree::VisionFileBackup;
+    use std::any::TypeId;
 
     assert_ne!(
         TypeId::of::<GitignoreFileBackup>(),

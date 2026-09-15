@@ -183,14 +183,12 @@ fn finish_run_done(
         );
     }
     if run_done_status_is_failure(*status) {
-        return Err(AgentError(error.clone().unwrap_or_else(|| {
-            match *status {
-                crate::bridge_protocol::RunDoneStatus::Cancelled => "run cancelled".into(),
-                crate::bridge_protocol::RunDoneStatus::Unknown => {
-                    "run finished with unknown status".into()
-                }
-                _ => "run error".into(),
+        return Err(AgentError(error.clone().unwrap_or_else(|| match *status {
+            crate::bridge_protocol::RunDoneStatus::Cancelled => "run cancelled".into(),
+            crate::bridge_protocol::RunDoneStatus::Unknown => {
+                "run finished with unknown status".into()
             }
+            _ => "run error".into(),
         })));
     }
     Ok(())

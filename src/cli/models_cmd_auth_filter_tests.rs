@@ -121,3 +121,65 @@ fn run_models_lists_pi_rows_without_pi_binary() {
         });
     });
 }
+
+#[test]
+fn run_models_does_not_treat_models_json_as_unlocking_all_headerless_providers() {
+    use malvin::output::{enable_stdout_capture, take_captured_stdout};
+    use malvin::test_utils::test_env_lock;
+
+    let _lock = test_env_lock();
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let home = isolated_pi_home(tmp.path());
+    std::fs::create_dir_all(&home).expect("pi home");
+    std::fs::write(
+        std::path::Path::new(&home).join("models.json"),
+        r#"{"providers":{"ollama":{"baseUrl":"http://127.0.0.1:11434/v1","api":"openai-completions","authHeader":false,"models":[{"id":"lite"}]}}}"#,
+    )
+    .expect("write models.json");
+    malvin::acp::with_env("PI_CODING_AGENT_DIR", Some(&home), || {
+        malvin::acp::with_env("OPENAI_API_KEY", None, || {
+            malvin::acp::with_env("ANTHROPIC_API_KEY", None, || {
+                malvin::acp::with_env("ZENMUX_API_KEY", None, || {
+                    malvin::acp::with_env("COHERE_API_KEY", None, || {
+                        malvin::acp::with_env("OPENROUTER_API_KEY", Some("k"), || {
+                            enable_stdout_capture();
+                            run_models(
+                                ModelsArgs {
+                                    refresh: false,
+                                    words: vec!["rpi:".into()],
+                                },
+                                malvin::config::DEFAULT_CLI_MODEL,
+                            )
+                            .expect("filtered models");
+                            let out = take_captured_stdout();
+                            assert!(
+                                out.contains("rpi:openrouter/"),
+                                "openrouter env key must still list: {out}"
+                            );
+                            assert!(
+                                !out.contains("rpi:zenmux/"),
+                                "models.json must not list zenmux: {out}"
+                            );
+                            assert!(
+                                !out.contains("rpi:anthropic/"),
+                                "models.json must not list anthropic: {out}"
+                            );
+                            assert!(
+                                !out.contains("rpi:cohere/"),
+                                "models.json must not list cohere: {out}"
+                            );
+                            assert!(
+                                !out.contains("rpi:google/"),
+                                "models.json must not list google: {out}"
+                            );
+                            assert!(
+                                !out.contains("rpi:amazon-bedrock/"),
+                                "models.json must not list bedrock: {out}"
+                            );
+                        });
+                    });
+                });
+            });
+        });
+    });
+}

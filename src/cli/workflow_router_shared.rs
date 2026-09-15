@@ -1,8 +1,8 @@
 use std::path::Path;
 
-use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
 #[cfg(test)]
 use crate::cli::format_workspace_gate_failure;
+use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
 use malvin::nested_budget_scopes::BudgetScopeLayer;
 
 use crate::repo_checks::{RepoGateOutput, run_repo_workspace_gates};

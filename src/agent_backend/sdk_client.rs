@@ -96,7 +96,8 @@ impl SdkClient {
             last_agent_id: None,
             timing: None,
             header_lifecycle: SessionHeaderLifecycle::Unbound,
-            backend_error_tracker: super::backend_error_tracker::BackendErrorTracker::with_max_consecutive(retries),
+            backend_error_tracker:
+                super::backend_error_tracker::BackendErrorTracker::with_max_consecutive(retries),
         }
     }
 
@@ -163,7 +164,9 @@ impl SdkClient {
     }
 
     #[must_use]
-    pub const fn backend_error_tracker(&self) -> &super::backend_error_tracker::BackendErrorTracker {
+    pub const fn backend_error_tracker(
+        &self,
+    ) -> &super::backend_error_tracker::BackendErrorTracker {
         &self.backend_error_tracker
     }
 }

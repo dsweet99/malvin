@@ -108,7 +108,6 @@ async fn begin_coder_session_resumed(
     spawn::spawn_with_retries(client, cwd, thinking.as_deref()).await
 }
 
-
 #[cfg(test)]
 #[path = "sdk_client_session_tests.rs"]
 mod sdk_client_session_tests;

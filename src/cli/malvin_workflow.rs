@@ -117,9 +117,7 @@ mod tests {
         let workflow = malvin_workflow_from_cli(cli).expect("default route");
         match workflow {
             MalvinWorkflow::DefaultRoute {
-                request,
-                router,
-                ..
+                request, router, ..
             } => {
                 assert_eq!(request, "build it");
                 assert_eq!(router.max_loops, 4);
@@ -152,14 +150,8 @@ mod tests {
 
     #[test]
     fn admin_workflow_payload_carries_model_only() {
-        let cli = Cli::try_parse_from([
-            "malvin",
-            "--model",
-            "cursor:auto",
-            "admin",
-            "models",
-        ])
-        .expect("parse");
+        let cli = Cli::try_parse_from(["malvin", "--model", "cursor:auto", "admin", "models"])
+            .expect("parse");
         let workflow = malvin_workflow_from_cli(cli).expect("admin workflow");
         match workflow {
             MalvinWorkflow::Admin { model, .. } => {

@@ -1,8 +1,8 @@
-use malvin::output::{ERROR_WHO, format_who_tag_delim};
 use crate::repo_checks::{
     GATE_FAILURE_MARKER, RepoGateCommandFailure, RepoGateFailure, is_gate_failure_error,
     repo_gate_failure_to_string,
 };
+use malvin::output::{ERROR_WHO, format_who_tag_delim};
 use malvin::test_stderr_capture::capture_stderr_output;
 
 use super::entrypoint::print_command_error;

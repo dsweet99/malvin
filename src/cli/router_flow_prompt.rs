@@ -1,8 +1,8 @@
-use malvin::artifacts::RunArtifacts;
 use crate::cli::flow_prompt_combine::{
     DualHeaderPromptInput, combine_acp_prompt_header_and_user, combine_mode_header_and_user,
     combine_prompt_file_and_user,
 };
+use malvin::artifacts::RunArtifacts;
 use malvin::orchestrator::workflow_context_paths_only;
 use malvin::prompt_stratification::WorkflowRenderContext;
 use malvin::prompts::{
@@ -21,9 +21,9 @@ pub(crate) use router_flow_prompt_summarize::{
 #[path = "router_flow_prompt_turns.rs"]
 mod router_flow_prompt_turns;
 pub(crate) use router_flow_prompt_turns::{
-    RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput,
-    build_router_a_prompt, build_router_b_prompt, build_router_header_prompt,
-    build_router_mbc2_prompt, router_a_prompt_label, router_b_prompt_label,
+    RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput, build_router_a_prompt,
+    build_router_b_prompt, build_router_header_prompt, build_router_mbc2_prompt,
+    router_a_prompt_label, router_b_prompt_label,
 };
 #[cfg(test)]
 pub(crate) use router_flow_prompt_turns::{
@@ -32,11 +32,11 @@ pub(crate) use router_flow_prompt_turns::{
 
 #[path = "router_flow_prompt_initial.rs"]
 mod router_flow_prompt_initial;
+#[cfg(test)]
+pub(crate) use router_flow_prompt_initial::RouterInitialPrompt;
 pub(crate) use router_flow_prompt_initial::{
     RouterInitialPromptInput, build_router_initial_prompt,
 };
-#[cfg(test)]
-pub(crate) use router_flow_prompt_initial::RouterInitialPrompt;
 
 pub fn prepare_router_prompt_store() -> Result<PromptStore, String> {
     let store = PromptStore::default_store();
@@ -131,11 +131,9 @@ fn code_extra_with_optional_gates_note(body: String, quality_gates_log: Option<&
     quality_gates_log.map_or_else(
         || body.trim().to_string(),
         |path| {
-            format!(
-                "{body}\n\nThe quality gates were just run, and their output is in `{path}`.\n"
-            )
-            .trim()
-            .to_string()
+            format!("{body}\n\nThe quality gates were just run, and their output is in `{path}`.\n")
+                .trim()
+                .to_string()
         },
     )
 }
