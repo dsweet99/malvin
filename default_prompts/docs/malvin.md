@@ -126,7 +126,7 @@ Every agent-backed command creates `~/.malvin_home/logs/<hash>/<timestamp>_<toke
 | `prompts.log` | Outgoing prompts (names only, or full bodies with `--verbose`) |
 | `quality_gates.log` | Workspace gate commands and output when gates run |
 | `run_timing.json` | Wall/LLM timing, token/step aggregates, and optional cost |
-| `_run/exp_log_*.md` | Experiment / gate-loop logs |
+| `_run/exp_log_*.md` | Experiment / gate-loop logs (`exp_log_<run>.md` scaffold; `exp_log_<run>_gN.md` per outer router loop — kept, never truncated) |
 | `result.md` | `ABORT:` prefix stops workflows that check it |
 
 ### Session footnotes (`TIMING` / `COST`)

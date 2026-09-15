@@ -21,13 +21,10 @@ pub(crate) use router_flow_prompt_summarize::{
 #[path = "router_flow_prompt_turns.rs"]
 mod router_flow_prompt_turns;
 pub(crate) use router_flow_prompt_turns::{
-    RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput, build_router_a_prompt,
-    build_router_b_prompt, build_router_header_prompt, build_router_mbc2_prompt,
-    router_a_prompt_label, router_b_prompt_label,
-};
-#[cfg(test)]
-pub(crate) use router_flow_prompt_turns::{
-    RouterKpopCommonPromptInput, build_router_kpop_common_prompt,
+    RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput, RouterKpopCommonPromptInput,
+    build_router_a_prompt, build_router_b_prompt, build_router_header_prompt,
+    build_router_kpop_common_prompt, build_router_mbc2_prompt, router_a_prompt_label,
+    router_b_prompt_label,
 };
 
 #[path = "router_flow_prompt_initial.rs"]

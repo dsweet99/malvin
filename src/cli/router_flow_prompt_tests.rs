@@ -285,6 +285,7 @@ fn build_router_prompts_select_no_kpop_templates_when_flag_set() {
         model: DEFAULT_CLI_MODEL,
         max_hypotheses: 3,
         no_kpop: true,
+        gate_iteration: 1,
     })
     .expect("kpop_common_no_kpop");
     assert!(
@@ -335,6 +336,7 @@ fn build_router_prompts_use_canonical_templates() {
             model: DEFAULT_CLI_MODEL,
             max_hypotheses: 5,
             no_kpop: false,
+            gate_iteration: 1,
         },
     )
     .expect("header");
@@ -349,6 +351,7 @@ fn build_router_prompts_use_canonical_templates() {
             model: DEFAULT_CLI_MODEL,
             max_hypotheses: 5,
             no_kpop: true,
+            gate_iteration: 1,
         },
     )
     .expect("header no_kpop");

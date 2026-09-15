@@ -197,6 +197,7 @@ mod router_header_embed_tests {
             model: DEFAULT_CLI_MODEL,
             max_hypotheses: 5,
             no_kpop: false,
+            gate_iteration: 1,
         })
         .expect("header turn");
         assert!(!header_turn.contains("{{"));
@@ -210,6 +211,7 @@ mod router_header_embed_tests {
             model: DEFAULT_CLI_MODEL,
             max_hypotheses: 5,
             no_kpop: false,
+            gate_iteration: 1,
         })
         .expect("kpop common turn");
         assert!(!kpop_turn.contains("{{"));

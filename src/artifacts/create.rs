@@ -25,17 +25,17 @@ pub fn init_quality_gates_log_pending(artifacts: &RunArtifacts) -> std::io::Resu
 }
 
 pub(crate) fn ensure_exp_log_file(artifacts: &RunArtifacts) -> std::io::Result<PathBuf> {
-    write_empty_exp_log(&artifacts.exp_log_path())
+    ensure_exp_log_exists(&artifacts.exp_log_path())
 }
 
 pub fn ensure_gate_exp_log_file(
     artifacts: &RunArtifacts,
     iteration: usize,
 ) -> std::io::Result<PathBuf> {
-    write_empty_exp_log(&artifacts.gate_exp_log_path(iteration))
+    ensure_exp_log_exists(&artifacts.gate_exp_log_path(iteration))
 }
 
-fn write_empty_exp_log(exp_log_path: &Path) -> std::io::Result<PathBuf> {
+fn ensure_exp_log_exists(exp_log_path: &Path) -> std::io::Result<PathBuf> {
     let exp_parent = exp_log_path.parent().ok_or_else(|| {
         Error::new(
             ErrorKind::InvalidInput,
@@ -43,7 +43,9 @@ fn write_empty_exp_log(exp_log_path: &Path) -> std::io::Result<PathBuf> {
         )
     })?;
     std::fs::create_dir_all(exp_parent)?;
-    std::fs::write(exp_log_path, "")?;
+    if !exp_log_path.exists() {
+        std::fs::write(exp_log_path, "")?;
+    }
     Ok(exp_log_path.to_path_buf())
 }
 
@@ -122,7 +124,7 @@ mod kiss_cov_gate_refs {
     #[test]
     fn kiss_cov_unit_names() {
         let _ = ensure_exp_log_file;
-        let _ = write_empty_exp_log;
+        let _ = ensure_exp_log_exists;
         let _ = init_quality_gates_log_pending;
     }
 }

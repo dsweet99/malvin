@@ -41,7 +41,8 @@ pub(crate) async fn run_router_turns(
 ) -> Result<RouterTurnsOutcome, String> {
     let model = input.shared.model.canonical();
     let creative = input.router.sample_creative_this_iteration();
-    let _exp_log = ensure_gate_exp_log_file(input.artifacts, 1).map_err(|e| e.to_string())?;
+    let _exp_log =
+        ensure_gate_exp_log_file(input.artifacts, input.agent_loop).map_err(|e| e.to_string())?;
     let iteration_backups = deliver_router_initial_turn(input, log_path, creative).await?;
     let done = finish_router_a_maybe_b(input, log_path, &model, creative).await?;
     Ok(RouterTurnsOutcome {
@@ -68,6 +69,7 @@ async fn deliver_router_initial_turn(
             creative,
             max_hypotheses: input.max_hypotheses,
             include_header,
+            gate_iteration: input.agent_loop,
         },
     )?;
 

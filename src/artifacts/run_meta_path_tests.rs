@@ -34,6 +34,13 @@ fn gate_exp_log_path_is_scoped_per_iteration() {
         assert!(g1.to_string_lossy().contains("_g1.md"));
         super::create::ensure_gate_exp_log_file(&art, 1).unwrap();
         assert!(g1.is_file());
+        std::fs::write(&g1, "keep me").unwrap();
+        super::create::ensure_gate_exp_log_file(&art, 1).unwrap();
+        assert_eq!(std::fs::read_to_string(&g1).unwrap(), "keep me");
+        super::create::ensure_gate_exp_log_file(&art, 2).unwrap();
+        assert!(g2.is_file());
+        assert_eq!(std::fs::read_to_string(&g1).unwrap(), "keep me");
+        assert_eq!(std::fs::read_to_string(&g2).unwrap(), "");
     });
 }
 
