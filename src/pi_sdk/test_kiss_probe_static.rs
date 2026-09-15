@@ -68,6 +68,13 @@ fn kiss_probe_static_local_endpoint_tokens() {
     default_port_for_scheme();
     parse_bracketed_host_port();
     parse_host_port_pair();
+    ensure_local_provider_running();
+    note_local_model_in_use();
+    housekeep_local_llms();
+    model_needs_local_llm();
+    RUNTIME_MARKER();
+    RUNTIME_PATH_ENV();
+    OLLAMA_BIN_ENV();
 }
 
 #[test]

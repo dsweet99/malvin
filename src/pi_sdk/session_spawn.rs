@@ -80,11 +80,10 @@ const LOCAL_ENABLED_TOOLS: &[&str] = &["read", "bash", "edit", "write", "grep", 
 fn local_append_system_prompt(keyless: bool) -> Option<String> {
     keyless.then(|| {
         concat!(
-            "Use tools by emitting JSON objects ",
-            "{\"name\":\"<tool>\",\"parameters\":{...}}. ",
-            "Never stub or omit file contents in write/edit. ",
-            "Read plan.md first. Stay inside the workspace. ",
-            "After edits, run the verification command named in plan.md."
+            "You are a non-interactive CLI agent. For any shell/file action emit ONLY ",
+            "a JSON tool call {\"name\":\"bash\",\"parameters\":{\"command\":\"...\"}} ",
+            "(or read/write/edit/grep/find/ls). Never invent results. Never answer with ",
+            "markdown ```bash fences. Stay in the workspace unless a temp path is named."
         )
         .to_string()
     })
@@ -105,7 +104,12 @@ fn local_max_tool_iterations(keyless: bool) -> usize {
 fn ensure_local_catalog(cwd: &std::path::Path, provider: &str, model: &str) -> Result<(), AgentError> {
     let context_size = super::local_context::context_size_for_workdir(cwd);
     super::local_context::ensure_capped_local_model_catalog(provider, model, context_size)
-        .map_err(AgentError)
+        .map_err(AgentError)?;
+    if pi::provider_metadata::provider_is_keyless_local(provider) {
+        super::local_lifecycle::ensure_local_provider_running(provider).map_err(AgentError)?;
+        super::local_lifecycle::note_local_model_in_use(model).map_err(AgentError)?;
+    }
+    Ok(())
 }
 
 fn local_session_overrides(keyless: bool) -> (Option<String>, Option<Vec<String>>, usize) {

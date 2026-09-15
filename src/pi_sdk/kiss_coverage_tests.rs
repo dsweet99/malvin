@@ -22,6 +22,10 @@ fn kiss_cov_pi_sdk_discover_auth_models() {
     let _ = super::local_endpoint::parse_http_authority_host_port;
     let _ = super::local_endpoint::http_base_url_is_listening;
     let _ = super::local_endpoint::keyless_local_provider_is_listening;
+    let _ = super::local_lifecycle::ensure_local_provider_running;
+    let _ = super::local_lifecycle::note_local_model_in_use;
+    let _ = super::local_lifecycle::housekeep_local_llms;
+    let _ = super::local_lifecycle::model_needs_local_llm;
     let _ = stringify!(KEYLESS_LOCAL_REACHABILITY_TIMEOUT);
     let _ = stringify!(scheme_and_rest);
     let _ = stringify!(default_port_for_scheme);

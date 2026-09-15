@@ -27,6 +27,13 @@ pub fn apply_pi_openrouter_cost_patch(manifest_dir: &Path) {
             label: "local LLM text tool-call recovery",
         },
         PiPatchSpec {
+            patch_rel: "admin/patches/pi_agent_rust-0.1.23-fenced-bash-recovery.patch",
+            marker_rel: "src/agent.rs",
+            marker: "tool_call_from_fenced_bash",
+            cfg_name: "malvin_pi_fenced_bash_recovery_patch",
+            label: "local LLM fenced bash recovery",
+        },
+        PiPatchSpec {
             patch_rel: "admin/patches/pi_agent_rust-0.1.23-edit-arg-aliases.patch",
             marker_rel: "src/tools.rs",
             marker: "alias = \"old\", alias = \"old_text\"",
