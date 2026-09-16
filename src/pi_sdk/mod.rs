@@ -18,6 +18,7 @@ mod local_llm_test_lock;
 mod map_agent_event;
 mod map_agent_event_end;
 mod map_event_summary;
+pub(crate) use map_event_summary::tool_summary_from_pi;
 mod models_list;
 mod models_refresh;
 mod models_refresh_merge;
