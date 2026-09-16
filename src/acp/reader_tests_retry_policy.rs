@@ -1,7 +1,8 @@
 use crate::acp::{
     AgentRetryOutcome, agent_string_is_cannot_use_model,
-    agent_string_is_openrouter_billing_failure, agent_string_is_upgrade_plan,
-    agent_string_is_usage_limit, plan_agent_retry, retries_noun, upgrade_plan_stream_from_buffer,
+    agent_string_is_model_does_not_support_tools, agent_string_is_openrouter_billing_failure,
+    agent_string_is_upgrade_plan, agent_string_is_usage_limit, plan_agent_retry, retries_noun,
+    upgrade_plan_stream_from_buffer,
 };
 use crate::support_paths::DEFAULT_MAX_ACP_RETRIES;
 use std::time::Duration;
@@ -53,6 +54,13 @@ fn cannot_use_model_errors_do_not_retry() {
     assert!(agent_string_is_cannot_use_model(msg));
     let err =
         plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS).expect_err("invalid model must fail fast");
+    assert_eq!(err.message, msg);
+}
+
+fn model_does_not_support_tools_errors_do_not_retry() {
+    let msg = "Provider error: ollama: OpenAI API error (HTTP 400): {\"error\":{\"message\":\"registry.ollama.ai/library/malvin-phi3-mini:latest does not support tools\",\"type\":\"invalid_request_error\",\"param\":null,\"code\":null}}";
+    assert!(agent_string_is_model_does_not_support_tools(msg));
+    let err = plan_agent_retry(msg, 1, 9999).expect_err("no-tools must fail fast");
     assert_eq!(err.message, msg);
 }
 
@@ -173,6 +181,7 @@ fn kiss_bundled_acp_reader_tests_retry_policy() {
     upgrade_plan_errors_do_not_retry();
     upgrade_plan_stream_from_buffer_tracks_split_coalesce();
     cannot_use_model_errors_do_not_retry();
+    model_does_not_support_tools_errors_do_not_retry();
     usage_limit_substring_is_detected_case_insensitively();
     usage_limit_errors_do_not_retry_even_with_high_max();
     cannot_use_model_fails_fast_even_when_error_also_looks_retriable();

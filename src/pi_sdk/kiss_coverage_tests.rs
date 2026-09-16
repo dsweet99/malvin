@@ -135,8 +135,14 @@ fn kiss_cov_pi_sdk_session_core() {
     let _ = stringify!(local_append_system_prompt);
     let _ = stringify!(local_enabled_tools);
     let _ = stringify!(LOCAL_ENABLED_TOOLS);
+    let _ = stringify!(LOCAL_TEXT_ONLY_APPEND);
+    let _ = stringify!(LocalAgentMode);
     let _ = stringify!(local_max_tool_iterations);
+    let _ = stringify!(keyless_local_tools_enabled);
     let _ = stringify!(local_session_overrides);
+    let _ = stringify!(session_spawn_local);
+    let _ = stringify!(ollama_model_supports_tools);
+    let _ = stringify!(capabilities_include_tools);
     let _ = stringify!(ensure_local_catalog);
     let _ = stringify!(fake_embedded_session);
     let _ = stringify!(live_embedded_session);

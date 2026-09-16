@@ -14,6 +14,7 @@ use super::isolated_bash::isolated_tool_factory;
 use super::openrouter_pricing;
 use super::runtime::PiRuntime;
 use super::session::PiEmbeddedSession;
+use super::session_spawn_local::local_session_overrides;
 
 type SandboxBaseline = HashSet<u32>;
 
@@ -75,39 +76,6 @@ fn pi_thinking_level(thinking: &str) -> Result<ThinkingLevel, String> {
     ThinkingLevel::from_str(mapped)
 }
 
-const LOCAL_ENABLED_TOOLS: &[&str] = &["read", "bash", "edit", "write", "grep", "find", "ls"];
-
-pub(crate) fn local_append_system_prompt(keyless: bool) -> Option<String> {
-    keyless.then(|| {
-        concat!(
-            "You are a non-interactive CLI agent. For any shell/file action emit ONLY ",
-            "a JSON tool call {\"name\":\"bash\",\"parameters\":{\"command\":\"...\"}} ",
-            "(or read/write/edit/grep/find/ls). Never invent results. Never answer with ",
-            "markdown ```bash fences. Stay in the workspace unless a temp path is named. ",
-            "For HTTP(S) downloads prefer curl -L -o FILE URL. ",
-            "To count files prefer bash with find . -type f | wc -l; do not install packages."
-        )
-        .to_string()
-    })
-}
-
-pub(crate) fn local_enabled_tools(keyless: bool) -> Option<Vec<String>> {
-    keyless.then(|| {
-        LOCAL_ENABLED_TOOLS
-            .iter()
-            .map(|s| (*s).to_string())
-            .collect()
-    })
-}
-
-fn local_max_tool_iterations(keyless: bool) -> usize {
-    if keyless {
-        40
-    } else {
-        SessionOptions::default().max_tool_iterations
-    }
-}
-
 fn ensure_local_catalog(
     cwd: &std::path::Path,
     provider: &str,
@@ -120,14 +88,6 @@ fn ensure_local_catalog(
         super::local_lifecycle::ensure_local_llm(provider, model).map_err(AgentError)?;
     }
     Ok(())
-}
-
-fn local_session_overrides(keyless: bool) -> (Option<String>, Option<Vec<String>>, usize) {
-    (
-        local_append_system_prompt(keyless),
-        local_enabled_tools(keyless),
-        local_max_tool_iterations(keyless),
-    )
 }
 
 fn build_session_options(
@@ -143,7 +103,7 @@ fn build_session_options(
     ensure_local_catalog(args.cwd, provider, model)?;
     let keyless = pi::provider_metadata::provider_is_keyless_local(provider);
     let (append_system_prompt, enabled_tools, max_tool_iterations) =
-        local_session_overrides(keyless);
+        local_session_overrides(keyless, provider, model);
     Ok(SessionOptions {
         provider: Some(provider.to_string()),
         model: Some(model.to_string()),

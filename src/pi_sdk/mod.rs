@@ -27,6 +27,7 @@ mod runtime;
 mod session;
 mod session_fake;
 mod session_spawn;
+mod session_spawn_local;
 mod session_spawn_watch;
 mod usage_cost;
 
@@ -51,7 +52,9 @@ const _: fn() = || {
 pub(crate) use session::PiEmbeddedSession;
 pub(crate) use session_spawn::pi_spawn_bridge as spawn_bridge;
 #[cfg(test)]
-pub(crate) use session_spawn::{local_append_system_prompt, local_enabled_tools};
+pub(crate) use session_spawn_local::{
+    LocalAgentMode, local_append_system_prompt, local_enabled_tools,
+};
 
 #[must_use]
 pub fn pi_sdk_client_from_raw(
