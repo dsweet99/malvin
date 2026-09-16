@@ -105,6 +105,7 @@ fn kiss_cov_pi_sdk_openrouter_usage() {
 #[test]
 fn kiss_cov_pi_sdk_live_provider_auth() {
     let _ = super::is_provider_authenticated;
+    let _ = super::provider_known_in_rust_metadata;
     let _ = super::is_provider_listable;
     let _ = stringify!(provider_has_access);
     let _ = stringify!(provider_has_stored_or_env_access);

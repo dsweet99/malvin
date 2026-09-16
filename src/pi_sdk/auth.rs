@@ -32,6 +32,11 @@ pub fn is_provider_authenticated(provider: &str) -> bool {
     provider_has_access(provider)
 }
 
+#[must_use]
+pub fn provider_known_in_rust_metadata(provider: &str) -> bool {
+    pi::provider_metadata::canonical_provider_id(provider).is_some()
+}
+
 pub fn is_provider_listable(provider: &str) -> bool {
     if pi::provider_metadata::provider_is_keyless_local(provider) {
         return keyless_local_provider_is_listening(provider);

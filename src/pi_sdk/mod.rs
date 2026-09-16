@@ -31,7 +31,10 @@ mod session_spawn_local;
 mod session_spawn_watch;
 mod usage_cost;
 
-pub use auth::{ensure_pi_authenticated, is_provider_authenticated, is_provider_listable};
+pub use auth::{
+    ensure_pi_authenticated, is_provider_authenticated, is_provider_listable,
+    provider_known_in_rust_metadata,
+};
 pub use local_lifecycle::{housekeep_local_llms, model_needs_local_llm};
 pub use local_llm_daemon::run_local_llm_manager;
 pub use local_llm_paths::INTERNAL_MANAGER_FLAG;
