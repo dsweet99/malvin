@@ -101,14 +101,11 @@ pub(crate) async fn finalize_router_acp_iteration(
         )?;
         run_router_summarize_coder_prompt(input.client, &body, log_path.as_path()).await?;
     }
-    let keep_session = true;
     let run_dir = input.artifacts.run_dir.clone();
     let parts: SessionEndParts<'_> = (input.client, run_dir.as_path(), &timing, input.session_end);
-    match (exit_summarize, keep_session) {
-        (RouterExitSummarize::Run, _) | (RouterExitSummarize::Skip, false) => {
-            end_router_acp_session(parts, Ok(())).await
-        }
-        (RouterExitSummarize::Skip, true) => emit_router_acp_timing(parts, Ok(())),
+    match exit_summarize {
+        RouterExitSummarize::Run => end_router_acp_session(parts, Ok(())).await,
+        RouterExitSummarize::Skip => emit_router_acp_timing(parts, Ok(())),
     }
 }
 

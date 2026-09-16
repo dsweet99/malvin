@@ -40,7 +40,7 @@ impl SdkClient {
     ) -> Result<CoderSessionEnsure, AgentError> {
         if self.header_lifecycle.is_unbound() {
             return Err(AgentError(
-                "start_coder_session requires bind_session_header so a header is always sent"
+                "start_coder_session requires bind_session_header before ensure/deliver"
                     .into(),
             ));
         }
