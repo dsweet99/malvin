@@ -19,6 +19,10 @@ pub(crate) fn agent_string_is_cannot_use_model(msg: &str) -> bool {
     msg.to_ascii_lowercase().contains("cannot use this model")
 }
 
+pub(crate) fn agent_string_is_model_does_not_support_tools(msg: &str) -> bool {
+    msg.to_ascii_lowercase().contains("does not support tools")
+}
+
 pub(crate) fn agent_string_is_usage_limit(msg: &str) -> bool {
     msg.to_ascii_lowercase()
         .contains("you've hit your usage limit")
@@ -98,6 +102,7 @@ pub(crate) fn plan_agent_retry(
 ) -> Result<AgentRetryOutcome, AgentError> {
     if agent_string_is_upgrade_plan(last_error)
         || agent_string_is_cannot_use_model(last_error)
+        || agent_string_is_model_does_not_support_tools(last_error)
         || agent_string_is_usage_limit(last_error)
         || agent_string_is_openrouter_billing_failure(last_error)
         || agent_string_is_openrouter_missing_content(last_error)

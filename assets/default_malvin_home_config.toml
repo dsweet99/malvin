@@ -1,4 +1,6 @@
 mem_limit_gb = 4
+# Keep the local-LLM manager alive this long after the last local-model call.
+time_since_last_call_seconds = 600
 # Terminal color palette: "dark" (default) or "light" (for pale backgrounds).
 theme = "dark"
 

@@ -73,13 +73,34 @@ fn kiss_probe_static_local_endpoint_tokens() {
     default_port_for_scheme();
     parse_bracketed_host_port();
     parse_host_port_pair();
-    ensure_local_provider_running();
-    note_local_model_in_use();
+    ensure_local_llm();
     housekeep_local_llms();
     model_needs_local_llm();
-    RUNTIME_MARKER();
-    RUNTIME_PATH_ENV();
-    OLLAMA_BIN_ENV();
+    run_local_llm_manager();
+    reclaim_stale_manager_files();
+    ensure_via_manager();
+    hold_via_manager();
+    release_via_manager();
+    touch_via_manager();
+    start_keepalive();
+    stop_keepalive();
+    hold_local_llm();
+    release_local_llm();
+    INTERNAL_MANAGER_FLAG();
+    DEFAULT_IDLE_SECS();
+    ManagerRequest();
+    ManagerResponse();
+    ensure_provider_running();
+    try_acquire_lock();
+    idle_secs();
+    manager_sock_path();
+    manager_lock_path();
+    ollama_bin();
+    KEYLESS_LOCAL_REACHABILITY_TIMEOUT();
+    scheme_and_rest();
+    default_port_for_scheme();
+    parse_bracketed_host_port();
+    parse_host_port_pair();
 }
 
 #[test]

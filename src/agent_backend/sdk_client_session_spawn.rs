@@ -19,7 +19,6 @@ fn record_spawn_success(
     cwd: PathBuf,
     resume_agent_id: Option<&str>,
 ) -> bool {
-    client.record_backend_success();
     adopt_spawned_session(client, session, cwd);
     let resumed = resume_agent_id.is_some();
     if resumed {

@@ -148,7 +148,7 @@ fn run_entrypoint(cli: Cli, matches: clap::ArgMatches) -> Exit {
     if let Some(exit) = entrypoint_before_dispatch(&cli, &matches) {
         return exit;
     }
-    malvin::pi_sdk::housekeep_local_llms(malvin::pi_sdk::model_needs_local_llm(&cli.shared.model));
+    malvin::pi_sdk::housekeep_local_llms();
     entrypoint_sweep_stale_acp_spawn_locks();
     if let Some(exit) = entrypoint_preflight(&cli) {
         return exit;

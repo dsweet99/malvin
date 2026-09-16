@@ -186,7 +186,8 @@ fn split_keeps_model_path_after_first_slash() {
 
 #[test]
 fn local_append_prompt_has_no_task_answers() {
-    let prompt = super::local_append_system_prompt(true).expect("keyless prompt");
+    let prompt =
+        super::local_append_system_prompt(super::LocalAgentMode::KeylessTools).expect("prompt");
     for needle in [
         "ringbuf",
         "csvcut",
@@ -200,15 +201,27 @@ fn local_append_prompt_has_no_task_answers() {
             "local append must not contain {needle:?}: {prompt}"
         );
     }
-    assert!(super::local_append_system_prompt(false).is_none());
+    assert!(super::local_append_system_prompt(super::LocalAgentMode::NonKeyless).is_none());
 }
 
 #[test]
 fn local_enabled_tools_are_the_core_set() {
-    let tools = super::local_enabled_tools(true).expect("keyless tools");
+    let tools =
+        super::local_enabled_tools(super::LocalAgentMode::KeylessTools).expect("keyless tools");
     assert_eq!(
         tools,
         vec!["read", "bash", "edit", "write", "grep", "find", "ls"]
     );
-    assert!(super::local_enabled_tools(false).is_none());
+    assert!(super::local_enabled_tools(super::LocalAgentMode::NonKeyless).is_none());
+}
+
+#[test]
+fn local_no_tools_path_is_empty_enabled_tools() {
+    let tools =
+        super::local_enabled_tools(super::LocalAgentMode::KeylessTextOnly).expect("no-tools vec");
+    assert!(tools.is_empty());
+    let prompt = super::local_append_system_prompt(super::LocalAgentMode::KeylessTextOnly)
+        .expect("text-only");
+    assert!(prompt.contains("no tools"), "{prompt}");
+    assert!(!prompt.contains("JSON tool call"), "{prompt}");
 }
