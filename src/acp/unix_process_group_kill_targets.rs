@@ -126,5 +126,8 @@ pub(crate) fn kill_targets_for_teardown(
     } else if process_group_id.is_none() {
         targets.extend(affiliated_session_pids(&HashSet::new(), &rows));
     }
+    if let Some(pid) = crate::pi_sdk::local_llm_manager_pid() {
+        targets.remove(&pid);
+    }
     targets
 }

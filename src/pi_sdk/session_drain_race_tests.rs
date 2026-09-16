@@ -25,6 +25,7 @@ fn minimal_session() -> PiEmbeddedSession {
         spawn_pid_baseline: HashSet::new(),
         pi_provider: String::new(),
         pi_model: String::new(),
+        local_hold: false,
     }
 }
 

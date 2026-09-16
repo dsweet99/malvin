@@ -6,6 +6,15 @@ mod isolated_bash;
 mod local_context;
 mod local_endpoint;
 mod local_lifecycle;
+mod local_llm_client;
+mod local_llm_daemon;
+mod local_llm_keepalive;
+mod local_llm_lock;
+mod local_llm_ollama;
+mod local_llm_paths;
+mod local_llm_protocol;
+#[cfg(test)]
+mod local_llm_test_lock;
 mod map_agent_event;
 mod map_agent_event_end;
 mod map_event_summary;
@@ -23,6 +32,13 @@ mod usage_cost;
 
 pub use auth::{ensure_pi_authenticated, is_provider_authenticated, is_provider_listable};
 pub use local_lifecycle::{housekeep_local_llms, model_needs_local_llm};
+pub use local_llm_daemon::run_local_llm_manager;
+pub use local_llm_paths::INTERNAL_MANAGER_FLAG;
+
+#[must_use]
+pub fn local_llm_manager_pid() -> Option<u32> {
+    local_llm_lock::lock_holder_pid(&local_llm_paths::manager_lock_path())
+}
 pub use models_list::{
     DEFAULT_PI_LIST_MODELS_TIMEOUT_MS, PiModelListing, list_pi_models_sync, pi_list_models_timeout,
 };

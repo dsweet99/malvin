@@ -117,8 +117,7 @@ fn ensure_local_catalog(
     super::local_context::ensure_capped_local_model_catalog(provider, model, context_size)
         .map_err(AgentError)?;
     if pi::provider_metadata::provider_is_keyless_local(provider) {
-        super::local_lifecycle::ensure_local_provider_running(provider).map_err(AgentError)?;
-        super::local_lifecycle::note_local_model_in_use(model).map_err(AgentError)?;
+        super::local_lifecycle::ensure_local_llm(provider, model).map_err(AgentError)?;
     }
     Ok(())
 }
@@ -177,6 +176,7 @@ fn fake_embedded_session(
         spawn_pid_baseline: baseline,
         pi_provider: provider.to_string(),
         pi_model: model.to_string(),
+        local_hold: take_local_hold(provider).unwrap_or(false),
     }
 }
 
@@ -188,6 +188,7 @@ fn embedded_session(
 ) -> Result<PiEmbeddedSession, AgentError> {
     let (provider, model) = model_id;
     let baseline = sandbox_note_or_error(ticket, args.cwd)?;
+    let local_hold = take_local_hold(provider)?;
     Ok(PiEmbeddedSession {
         runtime: Some(runtime),
         log: StreamLog::from_spawn(args),
@@ -196,7 +197,16 @@ fn embedded_session(
         spawn_pid_baseline: baseline,
         pi_provider: provider.to_string(),
         pi_model: model.to_string(),
+        local_hold,
     })
+}
+
+fn take_local_hold(provider: &str) -> Result<bool, AgentError> {
+    if !pi::provider_metadata::provider_is_keyless_local(provider) {
+        return Ok(false);
+    }
+    super::local_lifecycle::hold_local_llm().map_err(AgentError)?;
+    Ok(true)
 }
 
 fn note_sandbox_baseline(
