@@ -46,6 +46,7 @@ fn initial_prompt_joins_header_kpop_and_router_a_in_order() {
             creative: false,
             max_hypotheses: 5,
             include_header: true,
+            gate_iteration: 1,
         })
         .expect("initial");
         assert!(out.body.contains("HEADER_BODY"));
@@ -86,6 +87,7 @@ fn initial_prompt_adds_mbc2_when_creative() {
             creative: true,
             max_hypotheses: 5,
             include_header: true,
+            gate_iteration: 1,
         })
         .expect("initial");
         assert!(out.body.contains("MBC2"));
@@ -118,16 +120,17 @@ fn initial_prompt_omits_header_when_not_included() {
             creative: false,
             max_hypotheses: 5,
             include_header: false,
+            gate_iteration: 2,
         })
         .expect("initial");
         assert!(!out.body.contains("HEADER_BODY"));
         assert!(
-            !out.body.contains("KPOP_BODY"),
-            "kpop lives in header via kpop_insert; skipped with header"
+            out.body.contains("KPOP_BODY"),
+            "without header, kpop must still name this loop's exp log"
         );
         assert_eq!(
             out.stdout_label.split('+').collect::<Vec<_>>(),
-            vec![ROUTER_A_MD]
+            vec![KPOP_COMMON_MD, ROUTER_A_MD]
         );
     });
 }
@@ -154,6 +157,7 @@ fn initial_prompt_respects_no_kpop_and_gates() {
             creative: false,
             max_hypotheses: 5,
             include_header: true,
+            gate_iteration: 1,
         })
         .expect("initial");
         assert!(out.body.contains("HEADER_BODY"));
@@ -191,6 +195,7 @@ fn initial_prompt_git_and_max_hypotheses_affect_composition() {
             creative: false,
             max_hypotheses: 7,
             include_header: true,
+            gate_iteration: 1,
         })
         .expect("hi");
         let lo = build_router_initial_prompt(RouterInitialPromptInput {
@@ -202,6 +207,7 @@ fn initial_prompt_git_and_max_hypotheses_affect_composition() {
             creative: false,
             max_hypotheses: 3,
             include_header: true,
+            gate_iteration: 1,
         })
         .expect("lo");
         assert_ne!(hi.body, lo.body);

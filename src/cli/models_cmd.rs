@@ -119,7 +119,6 @@ fn rpi_display_id_covers_local_and_cloud() {
 }
 
 fn print_pi_models(models: &[malvin::pi_sdk::PiModelListing], filter: Option<&str>) {
-    let mut printed = false;
     for model in models {
         let provider = model.id.split('/').next().unwrap_or("");
         if !malvin::pi_sdk::is_provider_listable(provider) {
@@ -137,14 +136,7 @@ fn print_pi_models(models: &[malvin::pi_sdk::PiModelListing], filter: Option<&st
         }
         if line_matches_prefix(&line, filter) {
             print_stdout_line(MALVIN_WHO, &line);
-            printed = true;
         }
-    }
-    if printed {
-        print_stdout_line(
-            MALVIN_WHO,
-            "Note: pi:/rpi: model lists refresh live provider catalogs at most once per day (use --refresh to force); rpi: rows are shown only for providers you can run (environment API key, stored Pi credential, Pi-detected local CLI auth such as Codex, a reachable keyless local server, or a reachable keyless models.json endpoint). Older malvin ≤0.2.3 listed every provider; cargo install of 0.2.4+ needs rustc 1.95+.",
-        );
     }
 }
 

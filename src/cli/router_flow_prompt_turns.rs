@@ -13,6 +13,7 @@ pub(crate) struct RouterHeaderPromptInput<'a> {
     pub model: &'a str,
     pub max_hypotheses: usize,
     pub no_kpop: bool,
+    pub gate_iteration: usize,
 }
 
 pub(crate) fn build_router_header_prompt(
@@ -25,6 +26,7 @@ pub(crate) fn build_router_header_prompt(
         model: input.model,
         max_hypotheses: input.max_hypotheses,
         no_kpop: input.no_kpop,
+        gate_iteration: input.gate_iteration,
     })?;
     ctx.insert("kpop_insert", kpop);
     let body = input
@@ -40,6 +42,7 @@ pub(crate) struct RouterKpopCommonPromptInput<'a> {
     pub model: &'a str,
     pub max_hypotheses: usize,
     pub no_kpop: bool,
+    pub gate_iteration: usize,
 }
 
 pub(crate) fn build_router_kpop_common_prompt(
@@ -48,10 +51,15 @@ pub(crate) fn build_router_kpop_common_prompt(
     let template = kpop_common_prompt_file(input.no_kpop);
     let mut ctx = workflow_context_paths_only(input.artifacts, input.model);
     ctx.insert("max_hypotheses", input.max_hypotheses.to_string());
+    let iteration = if input.gate_iteration == 0 {
+        1
+    } else {
+        input.gate_iteration
+    };
     ctx.insert(
         "exp_log",
         malvin::format_prompt_path(
-            input.artifacts.gate_exp_log_path(1).as_path(),
+            input.artifacts.gate_exp_log_path(iteration).as_path(),
             input.artifacts.work_dir.as_path(),
         ),
     );

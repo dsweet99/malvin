@@ -3,9 +3,11 @@ use malvin::prompt_stratification::{AggregatedInitialPrompt, AggregatedInitialPr
 use malvin::prompts::{PromptStore, header_prompt_file};
 
 use super::{
-    RouterAPromptInput, RouterHeaderPromptInput, build_router_a_prompt, build_router_header_prompt,
+    RouterAPromptInput, RouterHeaderPromptInput, RouterKpopCommonPromptInput,
+    build_router_a_prompt, build_router_header_prompt, build_router_kpop_common_prompt,
     build_router_mbc2_prompt, router_a_prompt_label,
 };
+use malvin::prompts::kpop_common_prompt_file;
 
 #[allow(clippy::struct_excessive_bools)]
 pub(crate) struct RouterInitialPromptInput<'a> {
@@ -17,6 +19,7 @@ pub(crate) struct RouterInitialPromptInput<'a> {
     pub creative: bool,
     pub max_hypotheses: usize,
     pub include_header: bool,
+    pub gate_iteration: usize,
 }
 
 pub(crate) type RouterInitialPrompt = AggregatedInitialPrompt;
@@ -35,8 +38,19 @@ pub(crate) fn build_router_initial_prompt(
             model: input.model,
             max_hypotheses: input.max_hypotheses,
             no_kpop: input.no_kpop,
+            gate_iteration: input.gate_iteration,
         })?;
         builder.push_nonempty(header_prompt_file(), header);
+    } else if !input.no_kpop {
+        let kpop = build_router_kpop_common_prompt(RouterKpopCommonPromptInput {
+            store: input.store,
+            artifacts: input.artifacts,
+            model: input.model,
+            max_hypotheses: input.max_hypotheses,
+            no_kpop: input.no_kpop,
+            gate_iteration: input.gate_iteration,
+        })?;
+        builder.push_nonempty(kpop_common_prompt_file(false), kpop);
     }
 
     if input.creative {

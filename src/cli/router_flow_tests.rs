@@ -72,6 +72,7 @@ fn build_router_header_prompt_renders_without_unresolved_braces() {
         model: DEFAULT_CLI_MODEL,
         max_hypotheses: 5,
         no_kpop: false,
+        gate_iteration: 1,
     })
     .expect("header");
     assert!(body.contains("Know thyself") || body.contains("Context Prep") || !body.is_empty());
@@ -94,6 +95,7 @@ fn build_router_header_prompt_embeds_workspace_agents_md() {
         model: DEFAULT_CLI_MODEL,
         max_hypotheses: 5,
         no_kpop: true,
+        gate_iteration: 1,
     })
     .expect("header");
     assert!(
@@ -113,6 +115,7 @@ fn build_router_header_prompt_no_kpop_leaves_kpop_insert_empty() {
         model: DEFAULT_CLI_MODEL,
         max_hypotheses: 5,
         no_kpop: true,
+        gate_iteration: 1,
     })
     .expect("header no_kpop");
     assert!(!body.contains("{{"));
@@ -133,11 +136,23 @@ fn build_router_kpop_common_prompt_renders_budget_and_log() {
         model: DEFAULT_CLI_MODEL,
         max_hypotheses: 7,
         no_kpop: false,
+        gate_iteration: 1,
     })
     .expect("kpop common");
     assert!(body.contains("max_hypotheses = `7`"));
     assert!(body.contains("exp_log_"));
+    assert!(body.contains("_g1.md") || body.contains("_g1"));
     assert!(!body.contains("{{"));
+    let body2 = build_router_kpop_common_prompt(RouterKpopCommonPromptInput {
+        store: &store,
+        artifacts: &artifacts,
+        model: DEFAULT_CLI_MODEL,
+        max_hypotheses: 7,
+        no_kpop: false,
+        gate_iteration: 2,
+    })
+    .expect("kpop common g2");
+    assert!(body2.contains("_g2.md") || body2.contains("_g2"));
 }
 
 #[test]

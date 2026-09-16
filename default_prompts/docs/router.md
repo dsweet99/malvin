@@ -44,6 +44,7 @@ See `malvin --doc`. Notable for the default route:
 | `--max-hypotheses` | Hypothesis budget (default 5). When omitted, `[default_workflow].max_hypotheses` is used. Explicit CLI wins over config. |
 | `-g` / `--gates` | When `router_a` emits `__MALVIN_DONE__`, run workspace `.malvin/gates`. Pass stops success; fail continues (new outer session). Exhausted budget with failing gates fails the run after exit summarize. Also injects check text into `router_a.md` via `{{ code_extra }}`. |
 | `--creative[=PROB]` | Per outer iteration, with probability `PROB` (default `1.0` when the flag is set): include `mbc2.md` in the aggregated initial prompt (after header / kpop insert), and use `router_b_creative.md` for the optional work turn |
+| `--watch` | Before each outer loop, re-copy the operator request `.md` onto the run `plan_*.md` (overwrite). No-op for literal-text REQUEST |
 | `--quiet` / `-q` | Stdout shows only `__MALVIN_DM_*__` bodies. Plain `--do` is already DM-body-only without `--verbose` |
 | `--verbose` | Full prompt bodies in `prompts.log`; with `--do`, also same live agent stdout log classes as the default workflow |
 
