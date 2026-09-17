@@ -50,13 +50,13 @@ fn apply_default_route_max_hypotheses(matches: &ArgMatches, cli: &mut Cli) -> Re
     Ok(())
 }
 
-const fn is_bare_default_route(cli: &Cli) -> bool {
-    !cli.do_workflow && cli.command.is_none() && cli.has_request()
+fn is_bare_default_route(cli: &Cli) -> bool {
+    cli.command.is_none() && cli.has_router_request()
 }
 
 #[must_use]
 pub(crate) const fn is_gates_only_route(cli: &Cli) -> bool {
-    !cli.do_workflow && cli.command.is_none() && !cli.has_request() && cli.router.gates
+    !cli.do_workflow() && cli.command.is_none() && !cli.has_request() && cli.router.gates
 }
 
 fn apply_gates_only_loop_defaults(matches: &ArgMatches, cli: &mut Cli, agent: &AgentConfig) {
@@ -66,9 +66,37 @@ fn apply_gates_only_loop_defaults(matches: &ArgMatches, cli: &mut Cli, agent: &A
 }
 
 const fn uses_lightweight_config_path(cli: &Cli) -> bool {
-    cli.do_workflow
+    cli.do_workflow()
         || matches!(cli.command, Some(Commands::Admin(_)))
         || (cli.command.is_none() && cli.has_request())
+}
+
+const ROUTER_ONLY_WITH_PURE_DO: &[(&str, &str)] = &[
+    ("quiet", "--quiet / -q"),
+    ("gates", "--gates / -g"),
+    ("creative", "--creative"),
+    ("no_kpop", "--no-kpop"),
+    ("max_loops", "--max-loops"),
+    ("max_hypotheses", "--max-hypotheses"),
+    ("watch", "--watch"),
+];
+
+fn reject_router_only_flags_on_pure_do(
+    matches: &ArgMatches,
+    cli: &Cli,
+) -> Result<(), clap::Error> {
+    if !cli.do_workflow() || cli.has_router_request() {
+        return Ok(());
+    }
+    for (id, flag) in ROUTER_ONLY_WITH_PURE_DO {
+        if global_flag_from_command_line(matches, id) {
+            return Err(clap::Error::raw(
+                clap::error::ErrorKind::ArgumentConflict,
+                format!("{flag} cannot be used with `--do` unless another REQUEST uses the router"),
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn apply_gates_only_workspace_defaults(matches: &ArgMatches, cli: &mut Cli) -> Result<(), String> {
@@ -109,9 +137,17 @@ pub(crate) fn apply_shared_config_defaults(
 pub fn parse_cli_with_config_defaults(
     args: impl IntoIterator<Item = impl Into<std::ffi::OsString> + Clone>,
 ) -> Result<(Cli, ArgMatches), clap::Error> {
+    let args: Vec<std::ffi::OsString> = args.into_iter().map(Into::into).collect();
     let cmd = Cli::command();
-    let matches = cmd.try_get_matches_from(args)?;
+    let matches = cmd.try_get_matches_from(args.clone())?;
     let mut cli = Cli::from_arg_matches(&matches)?;
+    match crate::cli::request_argv::classify_top_level_requests(&args) {
+        Ok(tagged) => cli.tagged_requests = tagged,
+        Err(e) => {
+            return Err(clap::Error::raw(clap::error::ErrorKind::InvalidValue, e));
+        }
+    }
+    reject_router_only_flags_on_pure_do(&matches, &cli)?;
     if let Err(e) = apply_workspace_config_defaults(&matches, &mut cli) {
         return Err(clap::Error::raw(clap::error::ErrorKind::InvalidValue, e));
     }

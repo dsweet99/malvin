@@ -1,5 +1,8 @@
 use clap::Parser;
 
+use crate::cli::config_defaults::parse_cli_with_config_defaults;
+use malvin::test_utils::with_isolated_home;
+
 #[test]
 fn cli_accepts_default_route_request() {
     use crate::cli::Cli;
@@ -51,9 +54,13 @@ fn cli_accepts_watch_option() {
     assert!(on.router.watch);
     assert_eq!(on.first_request().map(String::as_str), Some("plan.md"));
 
+    let mut watch_err = None;
+    with_isolated_home(|_work| {
+        watch_err = Some(parse_cli_with_config_defaults(["malvin", "--do", "--watch", "plan.md"]));
+    });
     assert!(
-        Cli::try_parse_from(["malvin", "--do", "--watch", "plan.md"]).is_err(),
-        "--watch conflicts with --do"
+        watch_err.expect("ran").is_err(),
+        "--watch conflicts with pure --do"
     );
 }
 
@@ -76,6 +83,7 @@ fn router_client_uses_router_style_agent_io_not_do_style() {
         verbose: false,
         max_acp_retries: malvin::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
+        iml: false,
     };
     let backend = build_agent_backend(
         shared.model.clone(),

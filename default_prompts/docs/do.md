@@ -18,16 +18,23 @@ Answer a question, perform a one-off task, or continue informal work without a g
 ## Usage
 
 ```text
-malvin --do [OPTION]... [REQUEST]...
+malvin --do [OPTION]... REQUEST
 ```
 
-If `REQUEST` is omitted (and `--doc` is not set), malvin prints short usage on stdout and exits 0. Multiple `REQUEST` args each run as an independent one-shot session (new run directory each).
+Each `--do` applies only to the single `REQUEST` that follows it (options may appear between `--do` and that request). Additional `REQUEST` args without their own `--do` use the default router. If `--do` is present with no following request (and `--doc` is not set), malvin prints short usage on stdout and exits 0.
 
 ## Arguments
 
-### `[REQUEST]...`
+### `REQUEST`
 
-Required to run. One or more shell arguments; each is a separate request (quote any argument that contains spaces, e.g. `malvin --do "fix the typo"`). Literal text, or an existing `.md` file path (same rules as bare `malvin REQUEST`).
+Required to run a do-mode turn. One shell argument (quote any argument that contains spaces, e.g. `malvin --do "fix the typo"`). Literal text, or an existing `.md` file path (same rules as bare `malvin REQUEST`). Repeat `--do` before each request that should be one-shot:
+
+```text
+malvin --do "Hello" "Research the topic"
+malvin "router task" --do "one-shot" --do "another one-shot"
+```
+
+In the first example, only `Hello` is do-mode; `Research the topic` uses the router.
 
 | Form | Work directory | Stored as |
 |------|----------------|-----------|
@@ -42,6 +49,7 @@ See `malvin --doc`. Notable for `--do`:
 |------|----------------|
 | `--quiet` / `-q` | Not needed without `--verbose`: `--do` is already DM-body-only |
 | `--verbose` / `-v` | Same stdout log classes as the default workflow (thoughts, narrative tee, full prompt bodies); also full bodies in `prompts.log` |
+| `--iml` | the Infinite Meta-Loop: after all REQUEST args finish once, repeat the full sequence forever |
 
 ## Prompt workflow
 
@@ -73,4 +81,5 @@ malvin --do Hello
 malvin --do "List failing tests and suggest fixes"
 malvin --do notes/task.md
 malvin --verbose --do "Show the full agent stream"
+malvin --do "Hello" "Research the topic"
 ```

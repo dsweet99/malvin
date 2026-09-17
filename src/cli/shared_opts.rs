@@ -13,6 +13,8 @@ const CREATIVE_HELPTEXT: &str =
 const WATCH_HELPTEXT: &str =
     "Re-copy the request `.md` into the run log dir before each outer loop (overwrite)";
 
+const IML_HELPTEXT: &str = "the Infinite Meta-Loop";
+
 pub(crate) fn parse_creative_probability(s: &str) -> Result<f64, String> {
     let p: f64 = s
         .parse()
@@ -45,6 +47,9 @@ pub struct SharedOpts {
     /// Print built-in documentation and exit
     #[arg(long, global = true, default_value_t = false)]
     pub doc: bool,
+    /// Cycle through all REQUEST args forever (as if re-invoking the same command line)
+    #[arg(long = "iml", default_value_t = false, help = IML_HELPTEXT)]
+    pub iml: bool,
 }
 
 /// Options that apply only to default-route / gates-only loops.
@@ -52,21 +57,10 @@ pub struct SharedOpts {
 #[allow(clippy::struct_excessive_bools)]
 pub struct RouterOpts {
     /// Print only `__MALVIN_DM_START__`/`END` bodies on stdout (default router)
-    #[arg(
-        short = 'q',
-        long,
-        default_value_t = false,
-        conflicts_with = "do_workflow",
-        help = QUIET_HELPTEXT
-    )]
+    #[arg(short = 'q', long, default_value_t = false, help = QUIET_HELPTEXT)]
     pub quiet: bool,
     /// Run workspace quality gates; treat failures as loop or exit criteria
-    #[arg(
-        short = 'g',
-        long,
-        default_value_t = false,
-        conflicts_with = "do_workflow"
-    )]
+    #[arg(short = 'g', long, default_value_t = false)]
     pub gates: bool,
     /// Be (more) creative; optional probability in [0,1] (default 1.0 when set)
     #[arg(
@@ -76,39 +70,20 @@ pub struct RouterOpts {
         require_equals = true,
         value_name = "PROB",
         value_parser = parse_creative_probability,
-        conflicts_with = "do_workflow",
         help = CREATIVE_HELPTEXT
     )]
     pub creative: Option<f64>,
     /// Re-copy the request `.md` into the run log dir before each outer loop
-    #[arg(
-        long,
-        default_value_t = false,
-        conflicts_with = "do_workflow",
-        help = WATCH_HELPTEXT
-    )]
+    #[arg(long, default_value_t = false, help = WATCH_HELPTEXT)]
     pub watch: bool,
     /// Turn off `KPop`
-    #[arg(
-        long = "no-kpop",
-        default_value_t = false,
-        hide = true,
-        conflicts_with = "do_workflow"
-    )]
+    #[arg(long = "no-kpop", default_value_t = false, hide = true)]
     pub no_kpop: bool,
     /// Outer agent-session budget for bare malvin REQUEST
-    #[arg(
-        long,
-        default_value_t = malvin::malvin_config_file::DEFAULT_MAX_LOOPS,
-        conflicts_with = "do_workflow"
-    )]
+    #[arg(long, default_value_t = malvin::malvin_config_file::DEFAULT_MAX_LOOPS)]
     pub max_loops: usize,
     /// Hypothesis budget for bare malvin REQUEST
-    #[arg(
-        long,
-        default_value_t = malvin::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
-        conflicts_with = "do_workflow"
-    )]
+    #[arg(long, default_value_t = malvin::malvin_config_file::DEFAULT_MAX_HYPOTHESES)]
     pub max_hypotheses: usize,
 }
 
@@ -156,6 +131,7 @@ impl SharedOpts {
             verbose: false,
             max_acp_retries: malvin::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
+            iml: false,
         }
     }
 }
@@ -205,5 +181,26 @@ mod overlay_tests {
         assert!(super::parse_creative_probability("-0.1").is_err());
         assert!(super::parse_creative_probability("nope").is_err());
         assert_eq!(super::parse_creative_probability("0.5").ok(), Some(0.5));
+    }
+
+    #[test]
+    fn iml_flag_defaults_off_and_parses() {
+        use clap::Parser;
+        let off = crate::cli::Cli::try_parse_from(["malvin", "--doc"]).expect("parse");
+        assert!(!off.shared.iml);
+
+        let on = crate::cli::Cli::try_parse_from(["malvin", "--iml", "--doc"]).expect("parse");
+        assert!(on.shared.iml);
+    }
+
+    #[test]
+    fn help_lists_iml_as_infinite_meta_loop() {
+        use clap::CommandFactory;
+        let help = crate::cli::Cli::command().render_help().to_string();
+        assert!(help.contains("--iml"), "help={help}");
+        assert!(
+            help.contains("the Infinite Meta-Loop"),
+            "help must label --iml as the Infinite Meta-Loop; got {help}"
+        );
     }
 }

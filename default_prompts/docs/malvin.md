@@ -17,14 +17,14 @@ malvin [OPTION]... [REQUEST]...
 
 These forms are mutually exclusive: pass request(s) **or** a subcommand, not both on one synopsis line. `malvin --help` uses the same two-line usage.
 
-Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`, stop on `__MALVIN_DONE__`, exit `router_summarize`). Multiple `REQUEST` arguments each run as an independent default-route invocation (new run directory, full outer loop, summarize). With no request and no subcommand, malvin prints a short command catalog and exits 0. `malvin -g` without a request runs the gate-fix workflow (fixed request `Get the gates to pass.` with `--gates` on). Use `--do` for a one-shot turn, or the `admin` subcommand. Omitting `REQUEST` for `--do` likewise prints short usage and exits 0.
+Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`, stop on `__MALVIN_DONE__`, exit `router_summarize`). Multiple `REQUEST` arguments each run as an independent default-route invocation (new run directory, full outer loop, summarize). With no request and no subcommand, malvin prints a short command catalog and exits 0. `malvin -g` without a request runs the gate-fix workflow (fixed request `Get the gates to pass.` with `--gates` on). Each `--do` applies only to the `REQUEST` that immediately follows it (one-shot turn); other `REQUEST` args still use the router. The `admin` subcommand covers operator maintenance. Omitting `REQUEST` after a lone `--do` prints short usage and exits 0.
 
 ## Commands
 
 | Command | Purpose |
 |---------|---------|
 | *(default)* | Bare `malvin REQUEST` — aggregated initial (`header` when fresh, with `kpop_insert` from `kpop_common` unless `--no-kpop`, + optional `mbc2` + `router_a`) → optional `router_b`; exit `router_summarize`; outer `--max-loops` iterations |
-| `--do` | One-shot agent turn (non-looping) |
+| `--do` | One-shot agent turn for the following REQUEST (repeatable; other REQUESTs stay on the router) |
 | `malvin -g` | Fix quality gates via the default router with fixed request `Get the gates to pass.` (no positional request) |
 | `admin` | Operator maintenance (`models`, `reset-herdr`/`rh`, …) |
 
@@ -34,7 +34,7 @@ Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prom
 
 `--doc` is a true global: it may appear before or after any subcommand, including `admin`.
 
-Agent-session flags (`--model`, `--gates`, `-q`, `-v`, `--creative[=PROB]`, `--max-acp-retries`, …) apply to bare `malvin REQUEST` and `--do` (`--max-loops`, `--max-hypotheses`, and `--watch` apply only to bare `malvin REQUEST` and `malvin -g`). The `admin` help listing omits them; pass `--model` before `admin models` only when you want to set that command’s `Current:` footer.
+Agent-session flags (`--model`, `--gates`, `-q`, `-v`, `--creative[=PROB]`, `--max-acp-retries`, `--iml`, …) apply to bare `malvin REQUEST` and `--do` (`--max-loops`, `--max-hypotheses`, and `--watch` apply only to bare `malvin REQUEST` and `malvin -g`). The `admin` help listing omits them; pass `--model` before `admin models` only when you want to set that command’s `Current:` footer.
 
 
 ### `-q` / `--quiet`
@@ -75,7 +75,11 @@ On the default router (bare `malvin REQUEST` and `malvin -g`), when creative mod
 
 ### `--watch`
 
-On the default router (bare `malvin REQUEST` and `malvin -g`), before each outer loop iteration, re-copy the operator's request `.md` file onto the run's `plan_*.md` artifact (overwrite). No effect when `REQUEST` is literal text (not an existing `.md` path). Conflicts with `--do`.
+On the default router (bare `malvin REQUEST` and `malvin -g`), before each outer loop iteration, re-copy the operator's request `.md` file onto the run's `plan_*.md` artifact (overwrite). No effect when `REQUEST` is literal text (not an existing `.md` path). Has no effect on `--do` requests; when the invocation is pure `--do` (no router REQUEST), `--watch` is rejected.
+
+### `--iml`
+
+the Infinite Meta-Loop. After every REQUEST in the invocation has run once (preserving `--do` vs router tagging and order), start again from the first REQUEST and repeat forever — as if the same command line were re-invoked. A failing REQUEST stops the process (the loop does not continue past an error). Init bootstrap, when needed, still runs once at the start of the process. Applies to bare `malvin REQUEST…`, mixed/`--do` request lists, and `malvin -g`.
 
 ### Session names
 
@@ -240,16 +244,18 @@ After most agent-backed commands create a new run directory and emit the startup
 
 ## Request syntax
 
-Several commands accept positional request arguments. Each `<REQUEST>` is **one shell argument**; quote it when the text contains spaces. Malvin does not join multiple unquoted shell words into a single request. On the bare default route and `--do`, multiple `REQUEST` arguments each run independently (new log directory, full workflow for that request, including summarize on the default route).
+Several commands accept positional request arguments. Each `<REQUEST>` is **one shell argument**; quote it when the text contains spaces. Malvin does not join multiple unquoted shell words into a single request. On the bare default route, multiple `REQUEST` arguments each run independently (new log directory, full router loop, summarize). Each `--do` tags only the next `REQUEST` as a one-shot session; any other `REQUEST` (before or after) uses the router. You can interleave them, for example `malvin "router task" --do "one-shot" "another router task"`.
 
 | Command | Path argument | Work directory |
 |---------|---------------|----------------|
-| bare `malvin REQUEST…`, `--do` | Existing `.md` file path (no whitespace; case-sensitive `.md` suffix) reads that file; nonexistent `.md` paths are literal text | Parent of the file, or `.` for literal text |
+| bare `malvin REQUEST…`, `--do REQUEST` | Existing `.md` file path (no whitespace; case-sensitive `.md` suffix) reads that file; nonexistent `.md` paths are literal text | Parent of the file, or `.` for literal text |
 
 Examples:
 
 ```text
 malvin --do "fix the typo"
+malvin --do "Hello" "Research the topic"
+malvin "Write a function" --do "What time is it?" "Find a bug" --do "Summarize in report.md"
 malvin --creative "explore API boundaries"
 malvin request_1.md request_2.md
 ```

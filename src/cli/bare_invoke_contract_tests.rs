@@ -19,7 +19,7 @@ fn help_lists_subcommand_line(help: &str, name: &str) -> bool {
 #[test]
 fn do_flag_parses() {
     let cli = parse(&["malvin", "--do", "task"]);
-    assert!(cli.do_workflow);
+    assert!(cli.do_workflow());
     assert_eq!(cli.first_request().map(String::as_str), Some("task"));
     assert!(cli.command.is_none());
 }
@@ -29,7 +29,7 @@ fn do_subcommand_is_removed() {
     // Former `do` subcommand is gone; `do` / `task` are ordinary bare requests.
     let cli = parse(&["malvin", "do", "task"]);
     assert!(cli.command.is_none());
-    assert!(!cli.do_workflow);
+    assert!(!cli.do_workflow());
     assert_eq!(cli.requests, vec!["do".to_string(), "task".to_string()]);
 }
 
@@ -59,7 +59,7 @@ fn gates_only_route_parses_without_request() {
 fn bare_request_without_subcommand_parses_as_default_route() {
     let cli = parse(&["malvin", "investigate"]);
     assert!(cli.command.is_none());
-    assert!(!cli.do_workflow);
+    assert!(!cli.do_workflow());
     assert_eq!(cli.first_request().map(String::as_str), Some("investigate"));
 }
 
@@ -79,7 +79,7 @@ fn cli_help_omits_removed_subcommands() {
 fn multiple_bare_request_args_parse_as_independent_requests() {
     let cli = parse(&["malvin", "plan_1.md", "plan_2.md"]);
     assert!(cli.command.is_none());
-    assert!(!cli.do_workflow);
+    assert!(!cli.do_workflow());
     assert_eq!(
         cli.requests,
         vec!["plan_1.md".to_string(), "plan_2.md".to_string()]

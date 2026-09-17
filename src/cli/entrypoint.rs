@@ -1,13 +1,17 @@
-use super::{Commands, Exit, SharedOpts, run_do, run_router};
-use crate::do_flow::DoArgs;
+use super::{Commands, Exit, SharedOpts};
 
 #[path = "entrypoint_from.rs"]
 mod entrypoint_from;
 #[path = "entrypoint_gates_only.rs"]
 mod entrypoint_gates_only;
+#[path = "entrypoint_dispatch.rs"]
+mod entrypoint_dispatch;
 #[path = "entrypoint_short_help.rs"]
 mod entrypoint_short_help;
 pub use entrypoint_from::entrypoint_from;
+pub use entrypoint_dispatch::{
+    DefaultRouteDispatch, dispatch_default_route, dispatch_do_workflow, dispatch_mixed_requests,
+};
 pub(crate) use entrypoint_gates_only::{GatesOnlyDispatch, dispatch_gates_only_route};
 
 pub fn print_command_error(message: &str) {
@@ -106,64 +110,6 @@ pub(crate) fn dispatch_command(
     match command {
         Commands::Admin(admin) => super::run_admin(admin, model),
     }
-}
-
-pub fn dispatch_do_workflow(requests: Vec<String>, shared: &SharedOpts) -> Result<(), String> {
-    run_async_cli(|| async {
-        for request in requests {
-            run_do(DoArgs { request: Some(request) }, shared).await?;
-        }
-        Ok(())
-    })
-}
-
-pub struct DefaultRouteDispatch<'a> {
-    pub requests: Vec<String>,
-    pub max_loops: usize,
-    pub max_hypotheses: usize,
-    pub shared: &'a mut SharedOpts,
-    pub router: &'a mut super::RouterOpts,
-    pub matches: &'a clap::ArgMatches,
-}
-
-pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), String> {
-    use crate::router_flow::RouterArgs;
-    let DefaultRouteDispatch {
-        requests,
-        mut max_loops,
-        max_hypotheses,
-        shared,
-        router,
-        matches,
-    } = input;
-    super::loop_opts::apply_default_route_tenacious(
-        &mut max_loops,
-        &mut shared.max_acp_retries,
-        matches,
-    );
-    run_async_cli(|| async {
-        crate::cli::init_flow::maybe_run_init_bootstrap(
-            crate::cli::init_flow::InitWorkflowOpts {
-                max_loops,
-                max_hypotheses,
-            },
-            shared,
-            router,
-        )
-        .await?;
-        for request in requests {
-            run_router(
-                RouterArgs {
-                    request: Some(request),
-                    max_loops,
-                    max_hypotheses,
-                },
-                crate::cli::AgentRouteOpts { shared, router },
-            )
-            .await?;
-        }
-        Ok(())
-    })
 }
 
 #[cfg(test)]

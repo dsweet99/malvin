@@ -2,6 +2,7 @@ pub(crate) mod admin_cmd;
 pub(crate) mod args;
 pub(crate) mod cli_request;
 pub(crate) mod command_docs;
+pub(crate) mod request_argv;
 mod commands_help;
 mod config_defaults;
 pub(crate) mod entrypoint;
@@ -13,6 +14,7 @@ pub(crate) mod malvin_workflow;
 pub(crate) mod models_cmd;
 pub(crate) mod run_emit;
 pub(crate) mod session_header;
+pub(crate) mod iml_loop;
 pub(crate) mod shared_opts;
 pub(crate) mod tidy_flow;
 

@@ -210,7 +210,7 @@ mod tests {
             !src.contains(&postcondition),
             "run_init must not postcondition on .malvin/gates"
         );
-        let default_route = include_str!("entrypoint.rs");
+        let default_route = include_str!("entrypoint_dispatch.rs");
         assert!(
             !default_route.contains("return run_async_cli(|| {\n            run_init"),
             "default route must not return after init bootstrap"

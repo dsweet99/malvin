@@ -1,7 +1,7 @@
 use super::{
     DefaultRouteDispatch, Exit, GatesOnlyDispatch, dispatch_command, dispatch_default_route,
-    dispatch_do_workflow, dispatch_gates_only_route, finish_entrypoint, prepare_cli_output,
-    print_command_error,
+    dispatch_do_workflow, dispatch_gates_only_route, dispatch_mixed_requests, finish_entrypoint,
+    prepare_cli_output, print_command_error,
 };
 use crate::cli::args::Cli;
 use crate::cli::config_defaults::is_gates_only_route;
@@ -37,7 +37,7 @@ fn entrypoint_doc_exit(cli: &Cli) -> Exit {
 }
 
 fn entrypoint_before_dispatch(cli: &Cli, matches: &clap::ArgMatches) -> Option<Exit> {
-    if cli.do_workflow && cli.command.is_some() {
+    if cli.do_workflow() && cli.command.is_some() {
         print_command_error("`--do` cannot be combined with a subcommand");
         return Some(Exit::Failure);
     }
@@ -48,7 +48,7 @@ fn entrypoint_before_dispatch(cli: &Cli, matches: &clap::ArgMatches) -> Option<E
     if cli.command.is_none()
         && !cli.has_request()
         && !cli.shared.doc
-        && !cli.do_workflow
+        && !cli.do_workflow()
         && !is_gates_only_route(cli)
     {
         let _ = crate::cli::commands_help::print_commands_only_help();
@@ -75,6 +75,7 @@ fn reject_admin_with_workflow_only_flags(cli: &Cli, matches: &clap::ArgMatches) 
         ("max_hypotheses", "--max-hypotheses"),
         ("verbose", "--verbose / -v"),
         ("max_acp_retries", "--max-acp-retries"),
+        ("iml", "--iml"),
     ];
 
     if !matches!(cli.command, Some(crate::cli::Commands::Admin(_))) {
@@ -89,11 +90,11 @@ fn reject_admin_with_workflow_only_flags(cli: &Cli, matches: &clap::ArgMatches) 
 }
 
 fn entrypoint_preflight(cli: &Cli) -> Option<Exit> {
-    if cli.do_workflow {
-        return ensure_malvin_checks_for_do_workflow().err().map(|e| {
-            print_command_error(&e);
-            Exit::Failure
-        });
+    if cli.has_do_request()
+        && let Err(e) = ensure_malvin_checks_for_do_workflow()
+    {
+        print_command_error(&e);
+        return Some(Exit::Failure);
     }
     if let Some(command) = cli.command.as_ref() {
         ensure_malvin_checks_for_command(command);
@@ -104,7 +105,7 @@ fn entrypoint_preflight(cli: &Cli) -> Option<Exit> {
             Exit::Failure
         });
     }
-    if cli.has_request() {
+    if cli.has_router_request() {
         return ensure_malvin_checks_for_default_route().err().map(|e| {
             print_command_error(&e);
             Exit::Failure
@@ -120,8 +121,8 @@ fn entrypoint_acquire_session() -> Result<(String, malvin::SessionNameGuard), Ex
     })
 }
 
-const fn default_route_needs_session_name(cli: &Cli) -> bool {
-    cli.command.is_none() && cli.has_request() && !cli.do_workflow
+fn default_route_needs_session_name(cli: &Cli) -> bool {
+    cli.command.is_none() && cli.has_router_request()
 }
 
 fn entrypoint_sweep_stale_acp_spawn_locks() {
@@ -152,7 +153,7 @@ fn run_entrypoint(cli: Cli, matches: clap::ArgMatches) -> Exit {
         return exit;
     }
     let needs_session =
-        cli.do_workflow || is_gates_only_route(&cli) || default_route_needs_session_name(&cli);
+        cli.has_do_request() || is_gates_only_route(&cli) || default_route_needs_session_name(&cli);
     if needs_session {
         let _session_name_guard = match entrypoint_acquire_session() {
             Ok((session_name, guard)) => {
@@ -193,6 +194,16 @@ fn dispatch_after_session(cli: Cli, matches: clap::ArgMatches) -> Exit {
             router: &mut router,
             matches: &matches,
         })),
+        MalvinWorkflow::Mixed {
+            jobs,
+            mut shared,
+            mut router,
+        } => finish_entrypoint(dispatch_mixed_requests(
+            jobs,
+            &mut shared,
+            &mut router,
+            &matches,
+        )),
         MalvinWorkflow::GatesOnly {
             mut shared,
             mut router,
