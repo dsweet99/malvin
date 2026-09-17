@@ -65,6 +65,7 @@ async fn deliver_router_initial_turn(
             artifacts: input.artifacts,
             model: &model,
             gates: input.router.gates,
+            gates_just_ran: malvin::gate_loop_session::quality_gates_just_ran(),
             no_kpop: input.router.no_kpop,
             creative,
             max_hypotheses: input.max_hypotheses,

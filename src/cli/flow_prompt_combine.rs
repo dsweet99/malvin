@@ -1,5 +1,5 @@
 use malvin::artifacts::RunArtifacts;
-use malvin::prompt_stratification::{PromptStratum, WorkflowRenderContext, join_labeled_strata};
+use malvin::prompt_stratification::{WorkflowRenderContext, join_strata};
 use malvin::prompts::{PromptError, PromptStore, render_header};
 use malvin::workflow_context::PromptModelOpts;
 
@@ -23,10 +23,7 @@ pub(crate) fn combine_prompt_file_and_user(
         .map_err(|e: PromptError| e.0)?;
     let header = header_body.trim_end().to_string();
     let user = text.trim_end().to_string();
-    let combined = join_labeled_strata([
-        (PromptStratum::WorkflowHeader, &header),
-        (PromptStratum::UserRequest, &user),
-    ]);
+    let combined = join_strata([&header, &user]);
     Ok((combined, header, user))
 }
 
@@ -40,10 +37,7 @@ pub(crate) fn combine_acp_prompt_header_and_user(
     let context = workflow_context_paths_only(artifacts, opts.model);
     let header = render_header(store, context.as_map()).map_err(|e: PromptError| e.0)?;
     let user = text.trim_end().to_string();
-    let combined = join_labeled_strata([
-        (PromptStratum::WorkflowHeader, &header),
-        (PromptStratum::UserRequest, &user),
-    ]);
+    let combined = join_strata([&header, &user]);
     Ok((combined, header, user))
 }
 

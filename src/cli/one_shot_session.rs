@@ -25,6 +25,7 @@ pub fn resolve_one_shot_request_artifacts(
         None => create_run_artifacts_from_text(&text, Some(work_dir.as_path()))
             .map_err(|e| e.to_string())?,
     };
+    malvin::gate_loop_session::reset_for_independent_run();
     malvin::run_id::activate_run(artifacts.run_dir.clone());
     Ok((text, artifacts))
 }

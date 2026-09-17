@@ -220,6 +220,7 @@ mod router_header_embed_tests {
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
             gates: false,
+            gates_just_ran: false,
             no_kpop: false,
         })
         .expect("router_a");
@@ -229,6 +230,7 @@ mod router_header_embed_tests {
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
             gates: true,
+            gates_just_ran: false,
             no_kpop: false,
         })
         .expect("router_a gates");

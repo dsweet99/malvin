@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use malvin::agent_backend::SdkClient;
 use malvin::artifacts::RunArtifacts;
 use malvin::orchestrator::workflow_context_paths_only;
-use malvin::prompt_stratification::{PromptStratum, join_labeled_strata};
+use malvin::prompt_stratification::join_strata;
 use malvin::prompts::{DO_HEADER_MD, PromptError, PromptStore, render_header};
 
 pub struct BindMalvinHeader<'a> {
@@ -31,10 +31,7 @@ pub fn bind_do_header(input: BindMalvinHeader<'_>) -> Result<(), String> {
         .store
         .render_prompt_only(DO_HEADER_MD, ctx.as_map())
         .map_err(|e: PromptError| e.0)?;
-    let prompt = join_labeled_strata([
-        (PromptStratum::WorkflowHeader, coding.trim_end()),
-        (PromptStratum::WorkflowHeader, mode.trim_end()),
-    ]);
+    let prompt = join_strata([coding.trim_end(), mode.trim_end()]);
     input
         .client
         .bind_session_header(prompt, input.log_path, DO_HEADER_MD);

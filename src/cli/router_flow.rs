@@ -45,6 +45,7 @@ fn finish_router_run_artifacts(
     opts: AgentRouteOpts<'_>,
     request: &str,
 ) -> Result<(), String> {
+    malvin::gate_loop_session::reset_for_independent_run();
     if opts.router.gates {
         malvin::artifacts::init_quality_gates_log_pending(artifacts).map_err(|e| e.to_string())?;
     }

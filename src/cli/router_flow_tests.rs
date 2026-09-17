@@ -165,6 +165,7 @@ fn build_router_a_prompt_includes_user_request_path() {
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
         gates: false,
+        gates_just_ran: false,
         no_kpop: false,
     })
     .expect("router_a");

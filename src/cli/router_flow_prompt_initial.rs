@@ -15,6 +15,7 @@ pub(crate) struct RouterInitialPromptInput<'a> {
     pub artifacts: &'a RunArtifacts,
     pub model: &'a str,
     pub gates: bool,
+    pub gates_just_ran: bool,
     pub no_kpop: bool,
     pub creative: bool,
     pub max_hypotheses: usize,
@@ -63,6 +64,7 @@ pub(crate) fn build_router_initial_prompt(
         artifacts: input.artifacts,
         model: input.model,
         gates: input.gates,
+        gates_just_ran: input.gates_just_ran,
         no_kpop: input.no_kpop,
     })?;
     builder.push_nonempty(router_a_prompt_label(input.no_kpop), router_a);

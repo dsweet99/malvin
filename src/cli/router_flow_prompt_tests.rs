@@ -30,6 +30,7 @@ fn build_router_a_prompt_expands_malvin_command_with_active_model() {
         artifacts: &artifacts,
         model: "composer-2",
         gates: false,
+        gates_just_ran: false,
         no_kpop: false,
     })
     .expect("router_a");
@@ -47,6 +48,7 @@ fn build_router_a_prompt_renders_without_unresolved_braces() {
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
         gates: false,
+        gates_just_ran: false,
         no_kpop: false,
     })
     .expect("router_a");
@@ -65,6 +67,7 @@ fn build_router_a_prompt_includes_code_checks_when_gates_enabled() {
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
         gates: true,
+        gates_just_ran: false,
         no_kpop: false,
     })
     .expect("router_a");
@@ -78,16 +81,15 @@ fn build_router_a_prompt_omits_code_checks_when_gates_disabled() {
     let artifacts = flow_test_artifacts(&tmp);
     malvin::seed_malvin_checks(tmp.path(), "echo ROUTER_CHECK_LINE\n");
     let store = prepare_router_prompt_store().expect("store");
-    malvin::gate_loop_session::set_quality_gates_just_ran(true);
     let body = build_router_a_prompt(RouterAPromptInput {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
         gates: false,
+        gates_just_ran: true,
         no_kpop: false,
     })
     .expect("router_a");
-    malvin::gate_loop_session::set_quality_gates_just_ran(false);
     assert!(!body.contains("echo ROUTER_CHECK_LINE"));
     assert!(!body.contains("quality gates were just run"));
     assert!(
@@ -103,16 +105,15 @@ fn build_router_a_prompt_omits_code_extra_when_gate_commands_empty() {
     let artifacts = flow_test_artifacts(&tmp);
     malvin::seed_malvin_checks(tmp.path(), "# no commands\n\n  \n");
     let store = prepare_router_prompt_store().expect("store");
-    malvin::gate_loop_session::set_quality_gates_just_ran(true);
     let body = build_router_a_prompt(RouterAPromptInput {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
         gates: true,
+        gates_just_ran: true,
         no_kpop: false,
     })
     .expect("router_a");
-    malvin::gate_loop_session::set_quality_gates_just_ran(false);
     assert!(
         !body.contains("__begin_gates_output__"),
         "whitespace-only code_checks must yield empty code_extra: {body}"
@@ -130,12 +131,12 @@ fn router_code_extra_note_absent_when_gates_have_not_run() {
     let artifacts = flow_test_artifacts(&tmp);
     malvin::seed_malvin_checks(tmp.path(), "true\n");
     let store = prepare_router_prompt_store().expect("store");
-    malvin::gate_loop_session::set_quality_gates_just_ran(false);
     let body = build_router_a_prompt(RouterAPromptInput {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
         gates: true,
+        gates_just_ran: false,
         no_kpop: false,
     })
     .expect("router_a");
@@ -147,21 +148,46 @@ fn router_code_extra_note_absent_when_gates_have_not_run() {
 }
 
 #[test]
-fn router_code_extra_note_present_after_gates_just_ran() {
+fn router_a_prompt_ignores_process_global_gates_just_ran_flag() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
     malvin::seed_malvin_checks(tmp.path(), "true\n");
     let store = prepare_router_prompt_store().expect("store");
+    // Global may be stale from a prior request; prompt text follows the input only.
     malvin::gate_loop_session::set_quality_gates_just_ran(true);
     let body = build_router_a_prompt(RouterAPromptInput {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
         gates: true,
+        gates_just_ran: false,
         no_kpop: false,
     })
     .expect("router_a");
     malvin::gate_loop_session::set_quality_gates_just_ran(false);
+    assert!(
+        !body.contains("quality gates were just run"),
+        "prompt builders must not read process-global just_ran: {body}"
+    );
+}
+
+#[test]
+fn router_code_extra_note_present_after_gates_just_ran() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = flow_test_artifacts(&tmp);
+    malvin::seed_malvin_checks(tmp.path(), "true\n");
+    let store = prepare_router_prompt_store().expect("store");
+    // Global false proves the note comes from the explicit input, not shared state.
+    malvin::gate_loop_session::set_quality_gates_just_ran(false);
+    let body = build_router_a_prompt(RouterAPromptInput {
+        store: &store,
+        artifacts: &artifacts,
+        model: DEFAULT_CLI_MODEL,
+        gates: true,
+        gates_just_ran: true,
+        no_kpop: false,
+    })
+    .expect("router_a");
     assert!(
         body.contains("The quality gates were just run, and their output is in `"),
         "note must be present right after a gate run: {body}"
@@ -297,6 +323,7 @@ fn build_router_prompts_select_no_kpop_templates_when_flag_set() {
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
         gates: false,
+        gates_just_ran: false,
         no_kpop: true,
     })
     .expect("router_a_no_kpop");
@@ -364,6 +391,7 @@ fn build_router_prompts_use_canonical_templates() {
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
         gates: false,
+        gates_just_ran: false,
         no_kpop: false,
     })
     .expect("router_a");

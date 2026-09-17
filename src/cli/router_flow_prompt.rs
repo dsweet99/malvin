@@ -114,6 +114,7 @@ pub(crate) struct RouterCodeExtraInput<'a> {
     pub artifacts: &'a RunArtifacts,
     pub model: &'a str,
     pub gates: bool,
+    pub gates_just_ran: bool,
 }
 
 fn gates_enabled_code_checks(gates: bool, work_dir: &Path) -> Result<String, String> {
@@ -141,6 +142,7 @@ pub(crate) fn render_router_code_extra(input: RouterCodeExtraInput<'_>) -> Resul
         artifacts,
         model,
         gates,
+        gates_just_ran,
     } = input;
     let code_checks = gates_enabled_code_checks(gates, artifacts.work_dir.as_path())?;
     if code_checks.trim().is_empty() {
@@ -151,7 +153,7 @@ pub(crate) fn render_router_code_extra(input: RouterCodeExtraInput<'_>) -> Resul
     let body = store
         .render_prompt_only(ROUTER_CODE_EXTRA_MD, ctx.as_map())
         .map_err(|e: PromptError| e.0)?;
-    let note_path = if gates && malvin::gate_loop_session::quality_gates_just_ran() {
+    let note_path = if gates && gates_just_ran {
         ctx.get("quality_gates_log").map(String::as_str)
     } else {
         None

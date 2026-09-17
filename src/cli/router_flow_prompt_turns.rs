@@ -91,6 +91,7 @@ pub(crate) struct RouterAPromptInput<'a> {
     pub artifacts: &'a RunArtifacts,
     pub model: &'a str,
     pub gates: bool,
+    pub gates_just_ran: bool,
     pub no_kpop: bool,
 }
 
@@ -100,6 +101,7 @@ pub(crate) fn build_router_a_prompt(input: RouterAPromptInput<'_>) -> Result<Str
         artifacts,
         model,
         gates,
+        gates_just_ran,
         no_kpop,
     } = input;
     let mut ctx = workflow_context_paths_only(artifacts, model);
@@ -108,6 +110,7 @@ pub(crate) fn build_router_a_prompt(input: RouterAPromptInput<'_>) -> Result<Str
         artifacts,
         model,
         gates,
+        gates_just_ran,
     })?;
     ctx.insert("code_extra".to_string(), code_extra);
     let body = store
