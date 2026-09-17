@@ -34,12 +34,12 @@ fn cli_accepts_global_creative_option() {
     use crate::cli::Cli;
 
     let cli = Cli::try_parse_from(["malvin", "--creative", "route this task"]).expect("parse");
-    assert_eq!(cli.router.creative, Some(1.0));
+    assert_eq!(cli.router.creative_probability(), Some(1.0));
     assert_eq!(cli.first_request().map(String::as_str), Some("route this task"));
 
     let with_p =
         Cli::try_parse_from(["malvin", "--creative=0.6", "route this task"]).expect("parse");
-    assert_eq!(with_p.router.creative, Some(0.6));
+    assert_eq!(with_p.router.creative_probability(), Some(0.6));
     assert_eq!(with_p.first_request().map(String::as_str), Some("route this task"));
 }
 

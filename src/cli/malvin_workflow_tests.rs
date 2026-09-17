@@ -71,13 +71,13 @@ fn default_route_carries_loop_budgets_and_router_opts() {
     .expect("parse");
     let workflow = malvin_workflow_from_cli(cli).expect("default route");
     match workflow {
-        MalvinWorkflow::DefaultRoute {
-            requests, router, ..
-        } => {
-            assert_eq!(requests, vec!["build it".to_string()]);
+        MalvinWorkflow::DefaultRoute { jobs, router, .. } => {
+            assert_eq!(jobs.len(), 1);
+            assert_eq!(jobs[0].text, "build it");
+            assert_eq!(jobs[0].creative, Some(0.5));
             assert_eq!(router.max_loops, 4);
             assert_eq!(router.max_hypotheses, 7);
-            assert_eq!(router.creative, Some(0.5));
+            assert_eq!(router.creative_probability(), Some(0.5));
             assert!(!router.gates);
         }
         other => panic!("expected DefaultRoute, got {other:?}"),
@@ -89,10 +89,40 @@ fn default_route_carries_multiple_independent_requests() {
     let cli = Cli::try_parse_from(["malvin", "plan_1.md", "plan_2.md"]).expect("parse");
     let workflow = malvin_workflow_from_cli(cli).expect("default route");
     match workflow {
-        MalvinWorkflow::DefaultRoute { requests, .. } => {
+        MalvinWorkflow::DefaultRoute { jobs, .. } => {
             assert_eq!(
-                requests,
-                vec!["plan_1.md".to_string(), "plan_2.md".to_string()]
+                jobs.iter().map(|j| j.text.as_str()).collect::<Vec<_>>(),
+                vec!["plan_1.md", "plan_2.md"]
+            );
+        }
+        other => panic!("expected DefaultRoute, got {other:?}"),
+    }
+}
+
+#[test]
+fn each_creative_applies_only_to_following_request_in_workflow() {
+    let cli = parse(&[
+        "malvin",
+        "plain",
+        "--creative",
+        "spark",
+        "plain2",
+        "--creative=0.25",
+        "spark2",
+    ]);
+    let workflow = malvin_workflow_from_cli(cli).expect("default route");
+    match workflow {
+        MalvinWorkflow::DefaultRoute { jobs, .. } => {
+            assert_eq!(
+                jobs.iter()
+                    .map(|j| (j.text.as_str(), j.creative))
+                    .collect::<Vec<_>>(),
+                vec![
+                    ("plain", None),
+                    ("spark", Some(1.0)),
+                    ("plain2", None),
+                    ("spark2", Some(0.25)),
+                ]
             );
         }
         other => panic!("expected DefaultRoute, got {other:?}"),

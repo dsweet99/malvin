@@ -12,7 +12,7 @@ use super::shared_opts::{RouterOpts, SharedOpts};
     about = "Non-interactive research and coding agent",
     disable_help_subcommand = true,
     override_usage = "malvin [OPTION]... [REQUEST]...\n   or: malvin [OPTION]... <COMMAND>",
-    after_help = "Bare malvin REQUEST runs autonomous routing. Multiple REQUEST args each run independently (new log dir, full router loop, summarize). Each `--do` applies only to the REQUEST that immediately follows it; other REQUEST args use the router. `--iml` (the Infinite Meta-Loop) cycles through all REQUEST args forever."
+    after_help = "Bare malvin REQUEST runs autonomous routing. Multiple REQUEST args each run independently (new log dir, full router loop, summarize). Each `--do` and each `--creative` applies only to the REQUEST that immediately follows it (repeatable). Other REQUEST args use the router without those prefixes. `--iml` (the Infinite Meta-Loop) cycles through all REQUEST args forever."
 )]
 pub struct Cli {
     #[command(flatten)]

@@ -1,4 +1,4 @@
-use clap::Args;
+use clap::{ArgAction, Args};
 pub use malvin::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use rand::Rng;
 
@@ -8,7 +8,7 @@ const QUIET_HELPTEXT: &str =
     "Print only `__MALVIN_DM_START__`/`END` bodies on stdout (default router)";
 
 const CREATIVE_HELPTEXT: &str =
-    "Be (more) creative; optional probability in [0,1] (default 1.0 when set)";
+    "Be (more) creative for the REQUEST that immediately follows; optional probability in [0,1] (default 1.0 when set; repeatable)";
 
 const WATCH_HELPTEXT: &str =
     "Re-copy the request `.md` into the run log dir before each outer loop (overwrite)";
@@ -62,7 +62,7 @@ pub struct RouterOpts {
     /// Run workspace quality gates; treat failures as loop or exit criteria
     #[arg(short = 'g', long, default_value_t = false)]
     pub gates: bool,
-    /// Be (more) creative; optional probability in [0,1] (default 1.0 when set)
+    /// Be (more) creative for the REQUEST that immediately follows (repeatable)
     #[arg(
         long,
         num_args = 0..=1,
@@ -70,9 +70,10 @@ pub struct RouterOpts {
         require_equals = true,
         value_name = "PROB",
         value_parser = parse_creative_probability,
+        action = ArgAction::Append,
         help = CREATIVE_HELPTEXT
     )]
-    pub creative: Option<f64>,
+    pub creative: Vec<f64>,
     /// Re-copy the request `.md` into the run log dir before each outer loop
     #[arg(long, default_value_t = false, help = WATCH_HELPTEXT)]
     pub watch: bool,
@@ -112,8 +113,19 @@ impl RouterOpts {
     }
 
     #[must_use]
+    pub(crate) fn creative_probability(&self) -> Option<f64> {
+        self.creative.last().copied()
+    }
+
+    #[must_use]
+    pub(crate) fn with_creative_probability(mut self, creative: Option<f64>) -> Self {
+        self.creative = creative.map_or_else(Vec::new, |p| vec![p]);
+        self
+    }
+
+    #[must_use]
     pub(crate) fn sample_creative_this_iteration(&self) -> bool {
-        match self.creative {
+        match self.creative_probability() {
             None => false,
             Some(p) if p <= 0.0 => false,
             Some(p) if p >= 1.0 => true,
@@ -143,7 +155,7 @@ impl RouterOpts {
         Self {
             quiet: false,
             gates: false,
-            creative: None,
+            creative: Vec::new(),
             watch: false,
             no_kpop: false,
             max_loops: malvin::malvin_config_file::DEFAULT_MAX_LOOPS,
@@ -158,21 +170,32 @@ mod overlay_tests {
     fn creative_flag_defaults_off_and_accepts_probability() {
         use clap::Parser;
         let off = crate::cli::Cli::try_parse_from(["malvin", "--doc"]).expect("parse");
-        assert!(off.router.creative.is_none());
+        assert!(off.router.creative_probability().is_none());
         assert!(!off.router.sample_creative_this_iteration());
 
         let on = crate::cli::Cli::try_parse_from(["malvin", "--creative", "--doc"]).expect("parse");
-        assert_eq!(on.router.creative, Some(1.0));
+        assert_eq!(on.router.creative_probability(), Some(1.0));
         assert!(on.router.sample_creative_this_iteration());
 
         let p =
             crate::cli::Cli::try_parse_from(["malvin", "--creative=0.6", "--doc"]).expect("parse");
-        assert_eq!(p.router.creative, Some(0.6));
+        assert_eq!(p.router.creative_probability(), Some(0.6));
 
         let zero =
             crate::cli::Cli::try_parse_from(["malvin", "--creative=0", "--doc"]).expect("parse");
-        assert_eq!(zero.router.creative, Some(0.0));
+        assert_eq!(zero.router.creative_probability(), Some(0.0));
         assert!(!zero.router.sample_creative_this_iteration());
+
+        let multi = crate::cli::Cli::try_parse_from([
+            "malvin",
+            "--creative",
+            "a",
+            "--creative=0.5",
+            "b",
+            "--doc",
+        ])
+        .expect("parse");
+        assert_eq!(multi.router.creative, vec![1.0, 0.5]);
     }
 
     #[test]

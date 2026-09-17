@@ -29,6 +29,10 @@ struct MixedPass<'a> {
     max_hypotheses: usize,
 }
 
+fn router_opts_for_job(base: &RouterOpts, job: &TaggedRequest) -> RouterOpts {
+    base.clone().with_creative_probability(job.creative)
+}
+
 async fn run_mixed_jobs_once(pass: MixedPass<'_>) -> Result<(), String> {
     use crate::cli::request_argv::RequestKind;
     use crate::router_flow::RouterArgs;
@@ -38,6 +42,7 @@ async fn run_mixed_jobs_once(pass: MixedPass<'_>) -> Result<(), String> {
                 run_do(DoArgs { request: Some(job.text.clone()) }, pass.shared).await?;
             }
             RequestKind::Router => {
+                let router = router_opts_for_job(pass.router, job);
                 run_router(
                     RouterArgs {
                         request: Some(job.text.clone()),
@@ -46,7 +51,7 @@ async fn run_mixed_jobs_once(pass: MixedPass<'_>) -> Result<(), String> {
                     },
                     crate::cli::AgentRouteOpts {
                         shared: pass.shared,
-                        router: pass.router,
+                        router: &router,
                     },
                 )
                 .await?;
@@ -98,7 +103,7 @@ pub fn dispatch_mixed_requests(
 }
 
 pub struct DefaultRouteDispatch<'a> {
-    pub requests: Vec<String>,
+    pub jobs: Vec<TaggedRequest>,
     pub max_loops: usize,
     pub max_hypotheses: usize,
     pub shared: &'a mut SharedOpts,
@@ -109,7 +114,7 @@ pub struct DefaultRouteDispatch<'a> {
 pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), String> {
     use crate::router_flow::RouterArgs;
     let DefaultRouteDispatch {
-        requests,
+        jobs,
         mut max_loops,
         max_hypotheses,
         shared,
@@ -135,20 +140,21 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
         )
         .await?;
         iml_loop::run_with_iml(iml, || {
-            let requests = requests.clone();
+            let jobs = jobs.clone();
             let shared = shared.clone();
             let router = router.clone();
             async move {
-                for request in requests {
+                for job in jobs {
+                    let job_router = router_opts_for_job(&router, &job);
                     run_router(
                         RouterArgs {
-                            request: Some(request),
+                            request: Some(job.text),
                             max_loops,
                             max_hypotheses,
                         },
                         crate::cli::AgentRouteOpts {
                             shared: &shared,
-                            router: &router,
+                            router: &job_router,
                         },
                     )
                     .await?;

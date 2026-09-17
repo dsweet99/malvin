@@ -15,7 +15,7 @@ pub(crate) enum MalvinWorkflow {
         model: ParsedModel,
     },
     DefaultRoute {
-        requests: Vec<String>,
+        jobs: Vec<TaggedRequest>,
         shared: SharedOpts,
         router: RouterOpts,
     },
@@ -39,11 +39,17 @@ fn synthesize_tagged(cli: &Cli) -> Vec<TaggedRequest> {
     } else {
         RequestKind::Router
     };
+    let creative = if matches!(kind, RequestKind::Router) {
+        cli.router.creative_probability()
+    } else {
+        None
+    };
     cli.requests
         .iter()
         .map(|text| TaggedRequest {
             text: text.clone(),
             kind,
+            creative,
         })
         .collect()
 }
@@ -52,6 +58,12 @@ fn texts_of_kind(jobs: &[TaggedRequest], kind: RequestKind) -> Vec<String> {
     jobs.iter()
         .filter(|j| j.kind == kind)
         .map(|j| j.text.clone())
+        .collect()
+}
+
+fn router_jobs(jobs: Vec<TaggedRequest>) -> Vec<TaggedRequest> {
+    jobs.into_iter()
+        .filter(TaggedRequest::is_router)
         .collect()
 }
 
@@ -81,7 +93,7 @@ pub(crate) fn malvin_workflow_from_cli(cli: Cli) -> Option<MalvinWorkflow> {
             });
         }
         return Some(MalvinWorkflow::DefaultRoute {
-            requests: texts_of_kind(&jobs, RequestKind::Router),
+            jobs: router_jobs(jobs),
             shared: cli.shared,
             router: cli.router,
         });

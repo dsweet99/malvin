@@ -78,8 +78,8 @@ fn cli_rejects_gates_with_pure_do() {
 fn cli_rejects_creative_with_pure_do() {
     let msg = parse_err(&["malvin", "--do", "--creative=0.8", "task"]);
     assert!(
-        msg.contains("cannot be used with") || msg.contains("--creative"),
-        "expected --creative conflict rejected; got {msg}"
+        msg.contains("requires a REQUEST") || msg.contains("--do") || msg.contains("--creative"),
+        "expected --do/--creative adjacency rejection; got {msg}"
     );
 }
 

@@ -183,11 +183,11 @@ fn dispatch_after_session(cli: Cli, matches: clap::ArgMatches) -> Exit {
             &matches,
         )),
         MalvinWorkflow::DefaultRoute {
-            requests,
+            jobs,
             mut shared,
             mut router,
         } => finish_entrypoint(dispatch_default_route(DefaultRouteDispatch {
-            requests,
+            jobs,
             max_loops: router.max_loops,
             max_hypotheses: router.max_hypotheses,
             shared: &mut shared,
