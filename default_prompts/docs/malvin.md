@@ -191,6 +191,40 @@ Malvin may defer agent stdout lines briefly before writing them to the terminal 
 
 Top-level keys include `mem_limit_gb` and `theme`. Cursor cost rates `usd_per_microtoken_in`, `usd_per_microtoken_out`, `usd_per_microtoken_cache_read`, and `usd_per_microtoken_cache_write` (dollars per million tokens; all default `0`) live under per-model tables such as `[agent.cursor.auto]` (model id `cursor:auto`). Sections include `[agent]`, `[default_workflow]` (`max_hypotheses` for bare `malvin REQUEST` when `--max-hypotheses` is omitted, default 5), and `[logs]`.
 
+## Local LLMs (`~/.malvin_home/local_llms.json`)
+
+Malvin runs keyless local models through `rpi:local/<provider>/<model>` (today: Ollama). The operator’s curated registry lives at `~/.malvin_home/local_llms.json`. When that file lists one or more models, `malvin admin models` keeps only those keyless-local ids (cloud providers are unchanged). When the file is missing or `"models"` is empty, listing stays unfiltered (every reachable local model appears).
+
+### Schema
+
+```json
+{
+  "models": [
+    {
+      "id": "ollama/malvin-qwen14:latest",
+      "source": "qwen2.5-coder:14b",
+      "notes": "optional free-text"
+    }
+  ]
+}
+```
+
+- **`id`** (required): Pi-style `provider/model` (no `rpi:` / `local/` prefix). Display and CLI use `rpi:local/<id>`.
+- **`source`** (optional): upstream pull tag or weights origin used to install the model.
+- **`notes`** (optional): why this model is kept (host RAM, FT results, tool support, and so on).
+
+### Agent workflow (install / configure)
+
+When the operator asks to find, install, or configure a local LLM via the normal malvin interface:
+
+1. **Research** size and tool support against host RAM (`Sandbox memory` / machine GiB). Prefer Ollama library tags or a Modelfile wrapper with `PARAMETER num_ctx` aligned to `context_size` in `~/.malvin_home/config.toml`.
+2. **Install** with the provider CLI (Ollama: `ollama pull <tag>`, or `ollama create <name> -f Modelfile`). Malvin does not bundle a download subcommand.
+3. **Configure** by upserting an entry in `~/.malvin_home/local_llms.json` (create the file with the schema above if missing). Keep only models the operator wants listed.
+4. **Verify** with `malvin admin models rpi:local` and a short `malvin --do --model=rpi:local/<provider>/<model> …` probe when appropriate.
+5. **Remove** by deleting the Ollama tag (optional) and removing the matching object from `local_llms.json`.
+
+Runtime auto-start / idle stop for Ollama is separate (local LLM manager under `~/.malvin_home/`); the JSON file is the curated catalog, not the process supervisor.
+
 ## Log retention
 
 After most agent-backed commands create a new run directory and emit the startup `Command:` line, malvin may prune older directories under `~/.malvin_home/logs/<hash>/` according to `~/.malvin_home/config.toml` `[logs]` settings (`max_count`, `max_age_days`, `max_bytes`). The active run is protected during prune. Set `max_count = 0` for unlimited run count (byte and age caps still apply). Agent-backed commands (including `malvin --do` and `malvin -g`) ensure the home config file exists with defaults. After upgrading to a build with default `max_count = 1000`, the next GC-enabled command may delete excess oldest runs once.

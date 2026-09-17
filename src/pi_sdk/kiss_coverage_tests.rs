@@ -36,6 +36,14 @@ fn kiss_cov_pi_sdk_discover_auth_models() {
     let _ = super::local_lifecycle::hold_local_llm;
     let _ = super::local_lifecycle::release_local_llm;
     let _ = super::local_llm_manager_pid;
+    let _ = super::local_llms_config::local_llms_config_path;
+    let _ = super::local_llms_config::load_local_llms_config;
+    let _ = super::local_llms_config::save_local_llms_config;
+    let _ = super::local_llms_config::filter_listings_by_local_llms_config;
+    let _ = stringify!(LOCAL_LLMS_CONFIG_FILE);
+    let _ = stringify!(LocalLlmEntry);
+    let _ = stringify!(LocalLlmsConfig);
+    let _ = stringify!(configured_allowlist);
     let _ = stringify!(INTERNAL_MANAGER_FLAG);
     let _ = stringify!(time_since_last_call_seconds);
     let _ = stringify!(DEFAULT_IDLE_SECS);

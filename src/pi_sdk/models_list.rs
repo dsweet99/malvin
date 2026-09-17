@@ -28,6 +28,7 @@ pub fn list_pi_models_sync(refresh: bool) -> Result<Vec<PiModelListing>, String>
     let models_path = pi::models::default_models_path(&Config::global_dir());
     let registry = ModelRegistry::load_for_listing(&auth, Some(models_path));
     let models = super::models_refresh::merge_registry_with_live(&registry, &live_by_provider);
+    let models = super::local_llms_config::filter_listings_by_local_llms_config(models);
     if models.is_empty() {
         return Err("pi model registry produced no models".to_string());
     }
