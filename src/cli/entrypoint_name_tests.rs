@@ -104,7 +104,7 @@ fn do_workflow_parses_without_name_flag() {
         let (cli, _) =
             parse_cli_with_config_defaults(["malvin", "--do", "say hello"]).expect("parse --do");
         assert!(cli.do_workflow);
-        assert_eq!(cli.request.as_deref(), Some("say hello"));
+        assert_eq!(cli.first_request().map(String::as_str), Some("say hello"));
         assert!(cli.command.is_none());
     });
 }

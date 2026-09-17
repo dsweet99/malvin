@@ -127,7 +127,7 @@ mod tests {
             .expect("parse");
         let cli = Cli::from_arg_matches(&matches).expect("cli");
         assert!(cli.command.is_none());
-        assert_eq!(cli.request.as_deref(), Some("init"));
+        assert_eq!(cli.first_request().map(String::as_str), Some("init"));
     }
 
     #[test]

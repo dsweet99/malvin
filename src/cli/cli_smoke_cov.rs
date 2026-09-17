@@ -79,7 +79,7 @@ fn init_is_not_a_subcommand_and_parses_as_bare_request() {
     use clap::Parser;
     let cli = Cli::try_parse_from(["malvin", "init"]).expect("parse");
     assert!(cli.command.is_none());
-    assert_eq!(cli.request.as_deref(), Some("init"));
+    assert_eq!(cli.first_request().map(String::as_str), Some("init"));
 }
 
 fn smoke_cli_parse_models_subcommand() {

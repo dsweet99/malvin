@@ -5,10 +5,10 @@ pub(super) fn entrypoint_do_short_help() -> Exit {
     let text = "\
 One-shot agent turn (non-looping)
 
-Usage: malvin --do [OPTION]... [REQUEST]
+Usage: malvin --do [OPTION]... [REQUEST]...
 
 Arguments:
-  [REQUEST]  Existing `.md` path or literal text
+  [REQUEST]...  Existing `.md` path or literal text (each runs independently)
 
 Use malvin --help to see options.
 ";
@@ -18,7 +18,7 @@ Use malvin --help to see options.
 
 pub(super) fn entrypoint_request_missing_short_help(cli: &Cli) -> Option<Exit> {
     if cli.do_workflow {
-        if cli.shared.doc || cli.request.is_some() {
+        if cli.shared.doc || cli.has_request() {
             return None;
         }
         return Some(entrypoint_do_short_help());

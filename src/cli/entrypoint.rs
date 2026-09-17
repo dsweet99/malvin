@@ -108,12 +108,17 @@ pub(crate) fn dispatch_command(
     }
 }
 
-pub fn dispatch_do_workflow(do_args: DoArgs, shared: &SharedOpts) -> Result<(), String> {
-    run_async_cli(|| run_do(do_args, shared))
+pub fn dispatch_do_workflow(requests: Vec<String>, shared: &SharedOpts) -> Result<(), String> {
+    run_async_cli(|| async {
+        for request in requests {
+            run_do(DoArgs { request: Some(request) }, shared).await?;
+        }
+        Ok(())
+    })
 }
 
 pub struct DefaultRouteDispatch<'a> {
-    pub request: String,
+    pub requests: Vec<String>,
     pub max_loops: usize,
     pub max_hypotheses: usize,
     pub shared: &'a mut SharedOpts,
@@ -124,7 +129,7 @@ pub struct DefaultRouteDispatch<'a> {
 pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), String> {
     use crate::router_flow::RouterArgs;
     let DefaultRouteDispatch {
-        request,
+        requests,
         mut max_loops,
         max_hypotheses,
         shared,
@@ -146,15 +151,18 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
             router,
         )
         .await?;
-        run_router(
-            RouterArgs {
-                request: Some(request),
-                max_loops,
-                max_hypotheses,
-            },
-            crate::cli::AgentRouteOpts { shared, router },
-        )
-        .await
+        for request in requests {
+            run_router(
+                RouterArgs {
+                    request: Some(request),
+                    max_loops,
+                    max_hypotheses,
+                },
+                crate::cli::AgentRouteOpts { shared, router },
+            )
+            .await?;
+        }
+        Ok(())
     })
 }
 

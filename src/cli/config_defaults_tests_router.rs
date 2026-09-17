@@ -73,6 +73,6 @@ fn default_route_max_hypotheses_flag_after_request_parses() {
         let (cli, _) = parse_cli_with_config_defaults(["malvin", "hello", "--max-hypotheses", "7"])
             .expect("parse flag after request");
         assert_eq!(cli.router.max_hypotheses, 7);
-        assert_eq!(cli.request.as_deref(), Some("hello"));
+        assert_eq!(cli.first_request().map(String::as_str), Some("hello"));
     });
 }

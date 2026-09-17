@@ -35,7 +35,7 @@ fn commands_only_help_lines(cmd: &Command) -> Vec<String> {
         lines.push(about.to_string());
         lines.push(String::new());
     }
-    lines.push("Usage: malvin [OPTION]... [REQUEST]".to_string());
+    lines.push("Usage: malvin [OPTION]... [REQUEST]...".to_string());
     lines.push("   or: malvin [OPTION]... <COMMAND>".to_string());
     lines.push(String::new());
     lines.push("Commands:".to_string());
@@ -81,7 +81,7 @@ mod tests {
         let cmd = Cli::command();
         let lines = commands_only_help_lines(&cmd);
         let text = lines.join("\n");
-        assert!(text.contains("Usage: malvin [OPTION]... [REQUEST]"));
+        assert!(text.contains("Usage: malvin [OPTION]... [REQUEST]..."));
         assert!(text.contains("malvin [OPTION]... <COMMAND>"));
         assert!(text.contains("Commands:"));
         assert!(!text.contains("tidy"));
@@ -94,7 +94,7 @@ mod tests {
         assert!(help.contains("Commands:"));
         assert!(!help_lists_subcommand(&cmd, "code"));
         assert!(!help_lists_subcommand(&cmd, "tidy"));
-        assert!(help.contains("Usage: malvin [OPTION]... [REQUEST]"));
+        assert!(help.contains("Usage: malvin [OPTION]... [REQUEST]..."));
         assert!(help.contains("malvin [OPTION]... <COMMAND>"));
         assert!(help.contains("malvin --help"));
         assert!(!help.contains("Options:"));

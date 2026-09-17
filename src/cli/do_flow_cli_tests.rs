@@ -6,7 +6,7 @@ use malvin::config::DEFAULT_MAX_ACP_RETRIES;
 fn cli_accepts_do_and_passes_request() {
     let cli = Cli::try_parse_from(["malvin", "--do", "fix the bug"]).expect("parse");
     assert!(cli.do_workflow);
-    assert_eq!(cli.request.as_deref(), Some("fix the bug"));
+    assert_eq!(cli.first_request().map(String::as_str), Some("fix the bug"));
     assert!(cli.command.is_none());
 }
 
@@ -24,7 +24,7 @@ fn cli_accepts_all_shared_flags_before_subcommand() {
         .expect("parse");
     assert_eq!(cli.shared.model.canonical(), "cursor:composer-2");
     assert!(cli.do_workflow);
-    assert_eq!(cli.request.as_deref(), Some("z"));
+    assert_eq!(cli.first_request().map(String::as_str), Some("z"));
 }
 
 fn cli_rejects_max_loops_with_do() {
@@ -118,12 +118,12 @@ fn cli_accepts_verbose_short_and_long_global_flags() {
     let cli = Cli::try_parse_from(["malvin", "-v", "--do", "x"]).expect("parse");
     assert!(cli.shared.verbose);
     assert!(cli.do_workflow);
-    assert_eq!(cli.request.as_deref(), Some("x"));
+    assert_eq!(cli.first_request().map(String::as_str), Some("x"));
 
     let cli = Cli::try_parse_from(["malvin", "--do", "--verbose", "y"]).expect("parse");
     assert!(cli.shared.verbose);
     assert!(cli.do_workflow);
-    assert_eq!(cli.request.as_deref(), Some("y"));
+    assert_eq!(cli.first_request().map(String::as_str), Some("y"));
 }
 
 #[test]

@@ -51,12 +51,12 @@ fn apply_default_route_max_hypotheses(matches: &ArgMatches, cli: &mut Cli) -> Re
 }
 
 const fn is_bare_default_route(cli: &Cli) -> bool {
-    !cli.do_workflow && cli.command.is_none() && cli.request.is_some()
+    !cli.do_workflow && cli.command.is_none() && cli.has_request()
 }
 
 #[must_use]
 pub(crate) const fn is_gates_only_route(cli: &Cli) -> bool {
-    !cli.do_workflow && cli.command.is_none() && cli.request.is_none() && cli.router.gates
+    !cli.do_workflow && cli.command.is_none() && !cli.has_request() && cli.router.gates
 }
 
 fn apply_gates_only_loop_defaults(matches: &ArgMatches, cli: &mut Cli, agent: &AgentConfig) {
@@ -68,7 +68,7 @@ fn apply_gates_only_loop_defaults(matches: &ArgMatches, cli: &mut Cli, agent: &A
 const fn uses_lightweight_config_path(cli: &Cli) -> bool {
     cli.do_workflow
         || matches!(cli.command, Some(Commands::Admin(_)))
-        || (cli.command.is_none() && cli.request.is_some())
+        || (cli.command.is_none() && cli.has_request())
 }
 
 fn apply_gates_only_workspace_defaults(matches: &ArgMatches, cli: &mut Cli) -> Result<(), String> {

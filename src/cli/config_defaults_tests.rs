@@ -141,7 +141,7 @@ fn parse_cli_with_config_defaults_gates_only() {
         std::env::set_current_dir(work).expect("chdir");
         let (cli, _) = parse_cli_with_config_defaults(["malvin", "-g"]).expect("parse");
         assert!(cli.command.is_none());
-        assert!(cli.request.is_none());
+        assert!(!cli.has_request());
         assert!(cli.router.gates);
         assert!(cli.router.max_loops >= 1);
         std::env::set_current_dir(cwd).expect("restore cwd");

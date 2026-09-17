@@ -18,16 +18,16 @@ Answer a question, perform a one-off task, or continue informal work without a g
 ## Usage
 
 ```text
-malvin --do [OPTION]... [REQUEST]
+malvin --do [OPTION]... [REQUEST]...
 ```
 
-If `REQUEST` is omitted (and `--doc` is not set), malvin prints short usage on stdout and exits 0.
+If `REQUEST` is omitted (and `--doc` is not set), malvin prints short usage on stdout and exits 0. Multiple `REQUEST` args each run as an independent one-shot session (new run directory each).
 
 ## Arguments
 
-### `[REQUEST]`
+### `[REQUEST]...`
 
-Required to run. Exactly **one shell argument**. Quote for internal spaces (e.g. `malvin --do "fix the typo"`). Literal text, or an existing `.md` file path (same rules as bare `malvin REQUEST`).
+Required to run. One or more shell arguments; each is a separate request (quote any argument that contains spaces, e.g. `malvin --do "fix the typo"`). Literal text, or an existing `.md` file path (same rules as bare `malvin REQUEST`).
 
 | Form | Work directory | Stored as |
 |------|----------------|-----------|

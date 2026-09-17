@@ -6,7 +6,7 @@ use malvin::model_id::ParsedModel;
 #[derive(Debug)]
 pub(crate) enum MalvinWorkflow {
     Do {
-        request: Option<String>,
+        requests: Vec<String>,
         shared: SharedOpts,
     },
     Admin {
@@ -14,7 +14,7 @@ pub(crate) enum MalvinWorkflow {
         model: ParsedModel,
     },
     DefaultRoute {
-        request: String,
+        requests: Vec<String>,
         shared: SharedOpts,
         router: RouterOpts,
     },
@@ -28,7 +28,7 @@ pub(crate) enum MalvinWorkflow {
 pub(crate) fn malvin_workflow_from_cli(cli: Cli) -> Option<MalvinWorkflow> {
     if cli.do_workflow {
         return Some(MalvinWorkflow::Do {
-            request: cli.request,
+            requests: cli.requests,
             shared: cli.shared,
         });
     }
@@ -38,9 +38,9 @@ pub(crate) fn malvin_workflow_from_cli(cli: Cli) -> Option<MalvinWorkflow> {
             model: cli.shared.model,
         });
     }
-    if let Some(request) = cli.request {
+    if !cli.requests.is_empty() {
         return Some(MalvinWorkflow::DefaultRoute {
-            request,
+            requests: cli.requests,
             shared: cli.shared,
             router: cli.router,
         });
@@ -65,8 +65,11 @@ mod tests {
         let cli = Cli::try_parse_from(["malvin", "--do", "fix it"]).expect("parse");
         let workflow = malvin_workflow_from_cli(cli).expect("do workflow");
         match workflow {
-            MalvinWorkflow::Do { request, shared: _ } => {
-                assert_eq!(request.as_deref(), Some("fix it"));
+            MalvinWorkflow::Do {
+                requests,
+                shared: _,
+            } => {
+                assert_eq!(requests, vec!["fix it".to_string()]);
             }
             MalvinWorkflow::Admin { .. }
             | MalvinWorkflow::DefaultRoute { .. }
@@ -117,13 +120,28 @@ mod tests {
         let workflow = malvin_workflow_from_cli(cli).expect("default route");
         match workflow {
             MalvinWorkflow::DefaultRoute {
-                request, router, ..
+                requests, router, ..
             } => {
-                assert_eq!(request, "build it");
+                assert_eq!(requests, vec!["build it".to_string()]);
                 assert_eq!(router.max_loops, 4);
                 assert_eq!(router.max_hypotheses, 7);
                 assert_eq!(router.creative, Some(0.5));
                 assert!(!router.gates);
+            }
+            other => panic!("expected DefaultRoute, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn default_route_carries_multiple_independent_requests() {
+        let cli = Cli::try_parse_from(["malvin", "plan_1.md", "plan_2.md"]).expect("parse");
+        let workflow = malvin_workflow_from_cli(cli).expect("default route");
+        match workflow {
+            MalvinWorkflow::DefaultRoute { requests, .. } => {
+                assert_eq!(
+                    requests,
+                    vec!["plan_1.md".to_string(), "plan_2.md".to_string()]
+                );
             }
             other => panic!("expected DefaultRoute, got {other:?}"),
         }

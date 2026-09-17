@@ -11,13 +11,13 @@ malvin is a non-interactive research and coding agent. It runs agent sessions ag
 ## Usage
 
 ```text
-malvin [OPTION]... [REQUEST]
+malvin [OPTION]... [REQUEST]...
    or: malvin [OPTION]... <COMMAND>
 ```
 
-These forms are mutually exclusive: pass a request **or** a subcommand, not both on one synopsis line. `malvin --help` uses the same two-line usage.
+These forms are mutually exclusive: pass request(s) **or** a subcommand, not both on one synopsis line. `malvin --help` uses the same two-line usage.
 
-Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`, stop on `__MALVIN_DONE__`, exit `router_summarize`). With no request and no subcommand, malvin prints a short command catalog and exits 0. `malvin -g` without a request runs the gate-fix workflow (fixed request `Get the gates to pass.` with `--gates` on). Use `--do` for a one-shot turn, or the `admin` subcommand. Omitting `REQUEST` for `--do` likewise prints short usage and exits 0.
+Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`, stop on `__MALVIN_DONE__`, exit `router_summarize`). Multiple `REQUEST` arguments each run as an independent default-route invocation (new run directory, full outer loop, summarize). With no request and no subcommand, malvin prints a short command catalog and exits 0. `malvin -g` without a request runs the gate-fix workflow (fixed request `Get the gates to pass.` with `--gates` on). Use `--do` for a one-shot turn, or the `admin` subcommand. Omitting `REQUEST` for `--do` likewise prints short usage and exits 0.
 
 ## Commands
 
@@ -240,17 +240,18 @@ After most agent-backed commands create a new run directory and emit the startup
 
 ## Request syntax
 
-Several commands accept a positional request. `<REQUEST>` is always exactly **one shell argument**; quote it when the text contains spaces. Malvin does not join multiple unquoted shell words into a single request.
+Several commands accept positional request arguments. Each `<REQUEST>` is **one shell argument**; quote it when the text contains spaces. Malvin does not join multiple unquoted shell words into a single request. On the bare default route and `--do`, multiple `REQUEST` arguments each run independently (new log directory, full workflow for that request, including summarize on the default route).
 
 | Command | Path argument | Work directory |
 |---------|---------------|----------------|
-| bare `malvin REQUEST`, `--do` | Existing `.md` file path (no whitespace; case-sensitive `.md` suffix) reads that file; nonexistent `.md` paths are literal text | Parent of the file, or `.` for literal text |
+| bare `malvin REQUEST…`, `--do` | Existing `.md` file path (no whitespace; case-sensitive `.md` suffix) reads that file; nonexistent `.md` paths are literal text | Parent of the file, or `.` for literal text |
 
 Examples:
 
 ```text
 malvin --do "fix the typo"
 malvin --creative "explore API boundaries"
+malvin request_1.md request_2.md
 ```
 
 ## Gate-loop commands

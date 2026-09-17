@@ -9,8 +9,6 @@ use crate::cli::entrypoint_checks::{
     ensure_malvin_checks_for_command, ensure_malvin_checks_for_default_route,
     ensure_malvin_checks_for_do_workflow, ensure_malvin_checks_for_gates_only_route,
 };
-use crate::do_flow::DoArgs;
-
 fn parse_cli_args_or_exit(
     args: impl IntoIterator<Item = impl Into<std::ffi::OsString> + Clone>,
 ) -> Result<(Cli, clap::ArgMatches), Exit> {
@@ -48,7 +46,7 @@ fn entrypoint_before_dispatch(cli: &Cli, matches: &clap::ArgMatches) -> Option<E
         return Some(Exit::Failure);
     }
     if cli.command.is_none()
-        && cli.request.is_none()
+        && !cli.has_request()
         && !cli.shared.doc
         && !cli.do_workflow
         && !is_gates_only_route(cli)
@@ -106,7 +104,7 @@ fn entrypoint_preflight(cli: &Cli) -> Option<Exit> {
             Exit::Failure
         });
     }
-    if cli.request.is_some() {
+    if cli.has_request() {
         return ensure_malvin_checks_for_default_route().err().map(|e| {
             print_command_error(&e);
             Exit::Failure
@@ -123,7 +121,7 @@ fn entrypoint_acquire_session() -> Result<(String, malvin::SessionNameGuard), Ex
 }
 
 const fn default_route_needs_session_name(cli: &Cli) -> bool {
-    cli.command.is_none() && cli.request.is_some() && !cli.do_workflow
+    cli.command.is_none() && cli.has_request() && !cli.do_workflow
 }
 
 fn entrypoint_sweep_stale_acp_spawn_locks() {
@@ -175,8 +173,8 @@ fn dispatch_after_session(cli: Cli, matches: clap::ArgMatches) -> Exit {
         return Exit::Success;
     };
     match workflow {
-        MalvinWorkflow::Do { request, shared } => {
-            finish_entrypoint(dispatch_do_workflow(DoArgs { request }, &shared))
+        MalvinWorkflow::Do { requests, shared } => {
+            finish_entrypoint(dispatch_do_workflow(requests, &shared))
         }
         MalvinWorkflow::Admin { admin, model } => finish_entrypoint(dispatch_command(
             crate::cli::Commands::Admin(admin),
@@ -184,11 +182,11 @@ fn dispatch_after_session(cli: Cli, matches: clap::ArgMatches) -> Exit {
             &matches,
         )),
         MalvinWorkflow::DefaultRoute {
-            request,
+            requests,
             mut shared,
             mut router,
         } => finish_entrypoint(dispatch_default_route(DefaultRouteDispatch {
-            request,
+            requests,
             max_loops: router.max_loops,
             max_hypotheses: router.max_hypotheses,
             shared: &mut shared,

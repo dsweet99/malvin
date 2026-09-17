@@ -18,16 +18,16 @@ Read the user request (on disk as `plan_*.md` / `{{ user_request_path }}`), ask 
 ## Usage
 
 ```text
-malvin [OPTION]... [REQUEST]
+malvin [OPTION]... [REQUEST]...
 ```
 
-There is no `router` subcommand. Bare `malvin REQUEST` is the default autonomous routing workflow. If `REQUEST` is omitted (and no subcommand is given), malvin prints the command catalog on stdout and exits 0.
+There is no `router` subcommand. Bare `malvin REQUEST` is the default autonomous routing workflow. Multiple `REQUEST` args each run as an independent invocation (new run directory under `~/.malvin_home/logs/`, full outer router loop, exit `router_summarize`). If `REQUEST` is omitted (and no subcommand is given), malvin prints the command catalog on stdout and exits 0.
 
 ## Arguments
 
-### `[REQUEST]`
+### `[REQUEST]...`
 
-Required to run the default route. Exactly **one shell argument**. Quote for internal spaces. Literal text, or an existing `.md` file path (same rules as `--do`).
+Required to run the default route. One or more shell arguments; each is a separate request (quote any argument that contains spaces). Literal text, or an existing `.md` file path (same rules as `--do`).
 
 | Form | Work directory | Stored as |
 |------|----------------|-----------|
@@ -100,6 +100,7 @@ Missing section falls back to 5. Explicit `--max-hypotheses` wins over this sect
 ```text
 malvin "Investigate flaky tests"
 malvin plan.md
+malvin request_1.md request_2.md
 malvin --gates "Get the gates to pass"
 malvin --creative --max-loops 3 notes/idea.md
 malvin --creative=0.6 --max-loops 5 notes/idea.md

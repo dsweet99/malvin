@@ -6,7 +6,7 @@ fn cli_accepts_default_route_request() {
 
     let cli = Cli::try_parse_from(["malvin", "route this task"]).expect("parse");
     assert!(cli.command.is_none());
-    assert_eq!(cli.request.as_deref(), Some("route this task"));
+    assert_eq!(cli.first_request().map(String::as_str), Some("route this task"));
     assert!(!cli.router.gates);
 }
 
@@ -32,12 +32,12 @@ fn cli_accepts_global_creative_option() {
 
     let cli = Cli::try_parse_from(["malvin", "--creative", "route this task"]).expect("parse");
     assert_eq!(cli.router.creative, Some(1.0));
-    assert_eq!(cli.request.as_deref(), Some("route this task"));
+    assert_eq!(cli.first_request().map(String::as_str), Some("route this task"));
 
     let with_p =
         Cli::try_parse_from(["malvin", "--creative=0.6", "route this task"]).expect("parse");
     assert_eq!(with_p.router.creative, Some(0.6));
-    assert_eq!(with_p.request.as_deref(), Some("route this task"));
+    assert_eq!(with_p.first_request().map(String::as_str), Some("route this task"));
 }
 
 #[test]
@@ -49,7 +49,7 @@ fn cli_accepts_watch_option() {
 
     let on = Cli::try_parse_from(["malvin", "--watch", "plan.md"]).expect("parse");
     assert!(on.router.watch);
-    assert_eq!(on.request.as_deref(), Some("plan.md"));
+    assert_eq!(on.first_request().map(String::as_str), Some("plan.md"));
 
     assert!(
         Cli::try_parse_from(["malvin", "--do", "--watch", "plan.md"]).is_err(),
@@ -63,7 +63,7 @@ fn cli_accepts_global_no_kpop_option() {
 
     let cli = Cli::try_parse_from(["malvin", "--no-kpop", "route this task"]).expect("parse");
     assert!(cli.router.no_kpop);
-    assert_eq!(cli.request.as_deref(), Some("route this task"));
+    assert_eq!(cli.first_request().map(String::as_str), Some("route this task"));
 }
 
 #[test]
