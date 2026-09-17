@@ -220,7 +220,7 @@ When the operator asks to find, install, or configure a local LLM via the normal
 1. **Research** size and tool support against host RAM (`Sandbox memory` / machine GiB). Prefer Ollama library tags or a Modelfile wrapper with `PARAMETER num_ctx` aligned to `context_size` in `~/.malvin_home/config.toml`.
 2. **Install** with the provider CLI (Ollama: `ollama pull <tag>`, or `ollama create <name> -f Modelfile`). Malvin does not bundle a download subcommand.
 3. **Configure** by upserting an entry in `~/.malvin_home/local_llms.json` (create the file with the schema above if missing). Keep only models the operator wants listed.
-4. **Verify** with `malvin admin models rpi:local` and a short `malvin --do --model=rpi:local/<provider>/<model> …` probe when appropriate.
+4. **Verify** with `malvin admin models rpi:local` (keyless-local catalogs are always live-fetched when the provider is listening; cloud providers still use the daily cache / `--refresh`) and a short `malvin --do --model=rpi:local/<provider>/<model> …` probe when appropriate.
 5. **Remove** by deleting the Ollama tag (optional) and removing the matching object from `local_llms.json`.
 
 Runtime auto-start / idle stop for Ollama is separate (local LLM manager under `~/.malvin_home/`); the JSON file is the curated catalog, not the process supervisor.

@@ -111,6 +111,9 @@ fn provider_needs_refresh(provider: &str, force: bool) -> bool {
     if force {
         return true;
     }
+    if pi::provider_metadata::provider_is_keyless_local(provider) {
+        return true;
+    }
     !matches!(
         load_provider_cache(provider),
         Some(cache) if cache_fetched_at_is_fresh(cache.fetched_at_secs, PI_MODEL_CACHE_TTL)
@@ -132,33 +135,56 @@ fn fetch_provider_models_sync(provider: &str, force: bool) -> Vec<String> {
     result.unwrap_or_default()
 }
 
+fn insert_live_ids(live: &mut HashMap<String, Vec<String>>, provider: &str, ids: Vec<String>) {
+    live.insert(provider.to_string(), ids);
+}
+
+fn record_fetched_provider(
+    live: &mut HashMap<String, Vec<String>>,
+    provider: &str,
+    keyless: bool,
+    ids: Vec<String>,
+) {
+    if keyless || !ids.is_empty() {
+        save_provider_cache(provider, &ids);
+        insert_live_ids(live, provider, ids);
+    }
+}
+
+fn record_cached_provider(live: &mut HashMap<String, Vec<String>>, provider: &str, keyless: bool) {
+    if let Some(cache) = load_provider_cache(provider)
+        && !cache.model_ids.is_empty()
+    {
+        insert_live_ids(live, provider, cache.model_ids);
+    } else if keyless {
+        insert_live_ids(live, provider, Vec::new());
+    }
+}
+
+fn refresh_one_provider(live: &mut HashMap<String, Vec<String>>, provider: &str, force: bool) {
+    if !provider_supports_pi_live_model_fetch(provider) {
+        return;
+    }
+    let api_key = resolve_provider_api_key(provider);
+    let keyless = pi::provider_metadata::provider_is_keyless_local(provider);
+    if api_key.trim().is_empty() && !keyless {
+        return;
+    }
+    if keyless && !keyless_local_provider_is_listening(provider) {
+        insert_live_ids(live, provider, Vec::new());
+        return;
+    }
+    if provider_needs_refresh(provider, force) {
+        record_fetched_provider(live, provider, keyless, fetch_provider_models_sync(provider, true));
+        return;
+    }
+    record_cached_provider(live, provider, keyless);
+}
+
 pub fn refresh_pi_provider_caches_if_stale(force: bool) -> HashMap<String, Vec<String>> {
     let mut live = HashMap::new();
     for provider in authenticated_providers() {
-        if !provider_supports_pi_live_model_fetch(provider) {
-            continue;
-        }
-        let api_key = resolve_provider_api_key(provider);
-        let keyless = pi::provider_metadata::provider_is_keyless_local(provider);
-        if api_key.trim().is_empty() && !keyless {
-            continue;
-        }
-        if keyless && !keyless_local_provider_is_listening(provider) {
-            continue;
-        }
-        if provider_needs_refresh(provider, force) {
-            let ids = fetch_provider_models_sync(provider, true);
-            if !ids.is_empty() {
-                save_provider_cache(provider, &ids);
-                live.insert(provider.to_string(), ids);
-            }
-            continue;
-        }
-        if let Some(cache) = load_provider_cache(provider)
-            && !cache.model_ids.is_empty()
-        {
-            live.insert(provider.to_string(), cache.model_ids);
-        }
+        refresh_one_provider(&mut live, provider, force);
     }
     live
 }
@@ -166,3 +192,7 @@ pub fn refresh_pi_provider_caches_if_stale(force: bool) -> HashMap<String, Vec<S
 #[cfg(test)]
 #[path = "models_refresh_tests.rs"]
 mod models_refresh_tests;
+
+#[cfg(test)]
+#[path = "models_refresh_cache_tests.rs"]
+mod models_refresh_cache_tests;
