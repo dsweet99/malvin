@@ -131,7 +131,6 @@ fn kiss_cov_tool_summary_human_symbols_for_kiss() {
     let _ = super::human_a_done::human_done_line;
     let _ = super::human_a_done::human_search_start;
     let _ = super::human_a_done::search_query_from;
-    let _ = super::human_b::relativize_tool_path;
     let _ = super::human_b::human_read_subject;
     let _ = super::ansi::apply_tool_summary_ansi;
     let _ = super::human_b::human_edit_subject;

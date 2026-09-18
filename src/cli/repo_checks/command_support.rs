@@ -71,12 +71,6 @@ pub fn test_fake_command_path(command: &str) -> Option<PathBuf> {
     })
 }
 
-#[cfg(not(test))]
-#[allow(dead_code)]
-const fn test_fake_command_path(_: &str) -> Option<PathBuf> {
-    None
-}
-
 #[cfg(test)]
 pub struct FakeCommandDirGuard {
     pub(crate) previous: Option<PathBuf>,

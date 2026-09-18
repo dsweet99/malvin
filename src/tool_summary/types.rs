@@ -17,7 +17,6 @@ pub enum ToolSummaryDetail {
 #[derive(Default)]
 pub struct ToolSummaryTracker {
     pub(crate) calls: HashMap<String, ToolCallRecord>,
-    path_base: Option<std::path::PathBuf>,
     run_timing: Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
 }
 
@@ -28,14 +27,6 @@ impl ToolSummaryTracker {
 
     pub(crate) fn record_mut(&mut self, id: &str) -> Option<&mut ToolCallRecord> {
         self.calls.get_mut(id)
-    }
-
-    pub(crate) fn set_work_dir(&mut self, work_dir: std::path::PathBuf) {
-        self.path_base = Some(work_dir);
-    }
-
-    pub(crate) fn work_dir(&self) -> Option<&std::path::Path> {
-        self.path_base.as_deref()
     }
 
     #[allow(dead_code)]

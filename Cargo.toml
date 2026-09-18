@@ -71,7 +71,6 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["std", "registry"] }
 termimad = "0.34"
 unicode-width = "0.2"
-rusqlite = { version = "0.39", features = ["bundled"] }
 pi = { path = "crates/malvin_pi", package = "malvin_pi" }
 asupersync = { version = "0.3.10", default-features = false }
 async-trait = "0.1"

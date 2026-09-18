@@ -16,18 +16,15 @@ pub(crate) mod terminal_wrap;
 mod test_modules;
 mod who_tag;
 
-#[allow(dead_code)]
-pub(crate) use stdout_defer::register_defer_stdout_hooks;
 #[allow(unused_imports)]
 pub(crate) use stdout_defer::{try_defer_heartbeat, try_defer_tagged_stdout};
-#[allow(dead_code)]
-pub(crate) use stdout_heartbeat::{heartbeat_rendered_if_due, log_contains_heartbeat};
+#[cfg(test)]
+pub(crate) use stdout_heartbeat::heartbeat_rendered_if_due;
 #[cfg(test)]
 pub(crate) use stdout_render::emit_stdout_rendered_immediate;
-#[allow(dead_code)]
-pub(crate) use stdout_render::{
-    flush_stdout_rendered_line, publish_heartbeat_live_terminal, write_heartbeat_log_line,
-};
+#[cfg(test)]
+pub(crate) use stdout_render::publish_heartbeat_live_terminal;
+pub(crate) use stdout_render::write_heartbeat_log_line;
 
 pub(crate) use stdout_display::{
     format_heartbeat_stdout_ansi, format_line_stdout, format_line_stdout_ansi, logical_lines,
@@ -35,7 +32,6 @@ pub(crate) use stdout_display::{
 
 #[cfg(test)]
 pub(crate) use stdout_heartbeat::{
-    HEARTBEAT_TEST_LOCK, heartbeat_log_offset, poll_wall_clock_heartbeat_if_due,
     reset_stdout_heartbeat_for_test, test_set_last_heartbeat_elapsed,
 };
 
@@ -57,11 +53,7 @@ pub use acp_tee::{
     print_stdout_acp_tool_summary_tee, termimad_inline_payload_for_stdout,
     termimad_text_lines_for_stdout,
 };
-#[allow(dead_code)]
-pub(crate) use acp_tee::{
-    flush_stdout_acp_tee_line_with_timestamp, flush_stdout_acp_tool_summary_tee,
-};
-#[allow(dead_code)]
+#[cfg(test)]
 pub(crate) use stdout_display::flush_stdout_raw_line_with_ts;
 
 #[cfg(test)]

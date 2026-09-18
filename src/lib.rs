@@ -101,10 +101,7 @@ mod tracing_init;
 mod user_home;
 pub use active_agent_heartbeat::active_agent_heartbeat_stats;
 pub use user_home::user_home_dir;
-mod cursor_store;
-mod deferred_log;
 pub mod tool_summary;
-pub use cursor_store::store_db_contains_substring;
 pub mod acp;
 pub mod agent_backend;
 pub mod ansi_strip;
@@ -207,12 +204,6 @@ pub mod repo_checks;
 #[cfg(test)]
 #[path = "cli/router_flow.rs"]
 pub mod router_flow;
-#[cfg(test)]
-#[path = "cli/source_detect.rs"]
-pub mod source_detect;
-#[cfg(test)]
-#[path = "cli/source_detect_kiss_cov_tests.rs"]
-mod source_detect_kiss_cov_tests;
 #[cfg(all(test, unix))]
 mod test_stderr_capture;
 #[cfg(test)]

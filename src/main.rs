@@ -32,8 +32,6 @@ mod do_flow;
 mod repo_checks;
 #[path = "cli/router_flow.rs"]
 mod router_flow;
-#[path = "cli/source_detect.rs"]
-mod source_detect;
 
 fn main() -> cli::Exit {
     cli::entrypoint()

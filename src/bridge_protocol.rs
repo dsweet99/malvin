@@ -90,11 +90,6 @@ pub fn decode_event(line: &str) -> Result<BridgeEvent, String> {
     Ok(ev)
 }
 
-#[must_use]
-pub fn canonical_run_done_status(status: &str) -> &'static str {
-    RunDoneStatus::from_raw(status).as_str()
-}
-
 pub fn canonicalize_run_done(ev: &mut BridgeEvent) {
     if let BridgeEvent::RunDone { status, .. } = ev {
         *status = RunDoneStatus::from_raw(status.as_str());
@@ -159,10 +154,6 @@ mod bridge_protocol_tests {
 
     #[test]
     fn decode_run_done_and_fatal() {
-        assert_eq!(canonical_run_done_status("completed"), "finished");
-        assert_eq!(canonical_run_done_status("failed"), "error");
-        assert_eq!(canonical_run_done_status("interrupted"), "cancelled");
-        assert_eq!(canonical_run_done_status("finished"), "finished");
         let done = decode_event(
             r#"{"event":"run_done","status":"completed","result":"hi","usage":{"inputTokens":1,"outputTokens":2}}"#,
         )
@@ -188,7 +179,6 @@ mod bridge_protocol_tests {
                 ..
             } if e == "detail"
         ));
-        assert_eq!(canonical_run_done_status("bogus"), "unknown");
         let fatal =
             decode_event(r#"{"event":"fatal","message":"boom","retryable":true}"#).expect("fatal");
         match fatal {

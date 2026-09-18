@@ -1,14 +1,10 @@
-use std::collections::HashMap;
-
 use crate::do_flow::do_flow_prompt::{
-    build_do_coder_run_with_store, combine_do_acp_prompt_header_and_user,
-    combine_do_prompt_file_and_user, combine_do_raw_header_and_user, prepare_do_prompt_store,
+    build_do_coder_run_with_store, prepare_do_prompt_store,
 };
 use malvin::config::DEFAULT_CLI_MODEL;
 use malvin::flow_prompt_join_test_helpers::{
-    assert_header_user_join, flow_test_artifacts, flow_test_artifacts_no_checks,
+    flow_test_artifacts, flow_test_artifacts_no_checks,
 };
-use malvin::prompt_stratification::WorkflowRenderContext;
 use malvin::prompts::{DO_HEADER_MD, HEADER_MD, PromptStore};
 
 fn mock_do_prompt_store(tmp: &tempfile::TempDir) -> PromptStore {
@@ -17,20 +13,6 @@ fn mock_do_prompt_store(tmp: &tempfile::TempDir) -> PromptStore {
     std::fs::write(prompt_root.join(HEADER_MD), "CODING_HDR\n").expect("header");
     std::fs::write(prompt_root.join(DO_HEADER_MD), "DO_HDR\n").expect("do_header");
     PromptStore::with_root(prompt_root)
-}
-
-fn combine_do_prompt_file_and_user_joins_rendered_template_and_request() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let prompt_root = tmp.path().join("prompts");
-    std::fs::create_dir_all(&prompt_root).expect("mkdir");
-    std::fs::write(prompt_root.join(HEADER_MD), "TMPL\n").expect("tmpl");
-    let store = PromptStore::with_root(prompt_root);
-    let ctx = WorkflowRenderContext::from(HashMap::from([("k".into(), "v".into())]));
-    let (combined, header, user) =
-        combine_do_prompt_file_and_user(&store, "BODY\n", HEADER_MD, &ctx).expect("combine");
-    assert_eq!(header, "TMPL");
-    assert_eq!(user, "BODY");
-    assert_header_user_join(&combined, "TMPL", "BODY");
 }
 
 fn prepare_do_prompt_store_loads_default_templates() {
@@ -93,48 +75,10 @@ fn build_do_coder_run_default_store_work_prompt_is_user() {
     assert_eq!(run.combined, "USER_TOKEN");
 }
 
-fn combine_do_acp_prompt_joins_rendered_header_and_request() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let store = mock_do_prompt_store(&tmp);
-    let artifacts = flow_test_artifacts(&tmp);
-    let (combined, header, user) = combine_do_acp_prompt_header_and_user(
-        &store,
-        &artifacts,
-        "USER_TOKEN",
-        malvin::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
-    )
-    .expect("combine");
-    assert_eq!(header, "CODING_HDR");
-    assert_eq!(user, "USER_TOKEN");
-    assert_header_user_join(&combined, "CODING_HDR", "USER_TOKEN");
-}
-
-fn combine_do_raw_header_and_user_joins_rendered_do_header_and_request() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let prompt_root = tmp.path().join("prompts");
-    std::fs::create_dir_all(&prompt_root).expect("mkdir");
-    std::fs::write(prompt_root.join(DO_HEADER_MD), "DO_TOKEN\n").expect("do_header");
-    let artifacts = flow_test_artifacts(&tmp);
-    let store = PromptStore::with_root(prompt_root);
-    let (combined, header, user) = combine_do_raw_header_and_user(
-        &store,
-        &artifacts,
-        "USER_RAW_TOKEN\n\n",
-        malvin::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
-    )
-    .expect("combine");
-    assert_eq!(header, "DO_TOKEN");
-    assert_eq!(user, "USER_RAW_TOKEN");
-    assert_header_user_join(&combined, "DO_TOKEN", "USER_RAW_TOKEN");
-}
-
 #[test]
 fn kiss_bundled_cli_do_flow_tests() {
-    combine_do_prompt_file_and_user_joins_rendered_template_and_request();
     prepare_do_prompt_store_loads_default_templates();
     build_do_coder_run_succeeds_without_checks_in_non_git_workspace();
     build_do_coder_run_work_prompt_is_user_only();
     build_do_coder_run_default_store_work_prompt_is_user();
-    combine_do_acp_prompt_joins_rendered_header_and_request();
-    combine_do_raw_header_and_user_joins_rendered_do_header_and_request();
 }

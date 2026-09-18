@@ -1,17 +1,6 @@
 use super::entrypoint::try_tokio_runtime;
 use super::{Cli, Commands};
 
-fn smoke_has_source_files_empty_dir() {
-    let tmp = tempfile::tempdir().unwrap();
-    assert!(!crate::source_detect::has_source_files(tmp.path()));
-}
-
-fn smoke_has_source_files_detects_rs() {
-    let tmp = tempfile::tempdir().unwrap();
-    std::fs::write(tmp.path().join("x.rs"), "").unwrap();
-    assert!(crate::source_detect::has_source_files(tmp.path()));
-}
-
 fn smoke_merge_acp_and_timing_results() {
     use malvin::acp_post_run::merge_acp_and_timing_results;
     assert_eq!(merge_acp_and_timing_results(Ok(()), Ok(())), Ok(()));
@@ -149,8 +138,6 @@ fn smoke_prepare_router_prompt_store_loads_defaults() {
 
 #[test]
 fn kiss_bundled_cli_cli_smoke_cov() {
-    smoke_has_source_files_empty_dir();
-    smoke_has_source_files_detects_rs();
     smoke_merge_acp_and_timing_results();
     smoke_prefer_primary_over_secondary();
     smoke_merge_acp_with_workspace_session_restore();

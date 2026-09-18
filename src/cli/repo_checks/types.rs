@@ -72,13 +72,6 @@ pub fn is_pure_gate_failure_summary(message: &str) -> bool {
     message.starts_with(GATE_FAILURE_MARKER)
 }
 
-#[must_use]
-pub fn gate_failure_summary(message: &str) -> &str {
-    message
-        .find(GATE_FAILURE_MARKER)
-        .map_or(message, |pos| &message[pos + GATE_FAILURE_MARKER.len()..])
-}
-
 pub(crate) fn repo_gate_failure_to_string(failure: RepoGateFailure) -> String {
     failure.emit_repo_gate_failure_stderr();
     failure.into_error()
@@ -119,11 +112,6 @@ mod kiss_cov_auto {
     fn kiss_cov_is_pure_gate_failure_summary() {
         let _ = is_pure_gate_failure_summary;
     }
-
-    #[test]
-    fn kiss_cov_gate_failure_summary() {
-        let _ = gate_failure_summary;
-    }
 }
 
 #[cfg(test)]
@@ -133,7 +121,6 @@ mod kiss_cov_gate_refs {
     #[test]
     fn kiss_cov_unit_names() {
         let _ = emit_repo_gate_multiline_stderr;
-        let _ = gate_failure_summary;
         let _ = is_pure_gate_failure_summary;
     }
 }

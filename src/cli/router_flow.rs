@@ -13,10 +13,7 @@ pub(crate) mod router_flow_loop;
 pub(crate) mod router_flow_no_work;
 pub(crate) mod router_flow_prompt;
 
-pub use router_flow_prompt::{
-    combine_router_acp_prompt_header_and_user, combine_router_prompt_file_and_user,
-    combine_router_raw_header_and_user, prepare_router_prompt_store,
-};
+pub use router_flow_prompt::prepare_router_prompt_store;
 
 #[derive(Debug)]
 pub struct RouterArgs {

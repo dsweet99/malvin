@@ -5,7 +5,6 @@ use malvin::reliability_tier::ReliabilityTier;
 use super::config_defaults::global_flag_from_command_line;
 
 pub const TENACIOUS_MAX_LOOPS: usize = 9999;
-pub const TENACIOUS_MAX_ACP_RETRIES: u32 = 9999;
 
 pub struct TenaciousBudgetGuard {
     pub max_loops_explicit: bool,

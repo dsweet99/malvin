@@ -19,8 +19,8 @@ mod types;
 pub(crate) use ansi::apply_tool_summary_ansi;
 pub use ansi::tool_summary_stdout_display;
 pub use classify_bash::{
-    BashToolKind, ClassifiedToolLineInput, TOOL_COMMENT_LOG_PREFIX_CHARS, bash_kind_wire_name,
-    classify_bash_command, format_classified_tool_line, tool_comment_log_prefix,
+    BashToolKind, ClassifiedToolLineInput, TOOL_COMMENT_LOG_PREFIX_CHARS, classify_bash_command,
+    format_classified_tool_line, tool_comment_log_prefix,
 };
 #[allow(unused_imports)]
 pub(crate) use human_a::{execute_effective_exit, execute_stdout_failed};
@@ -28,8 +28,6 @@ pub(crate) use human_a::{execute_effective_exit, execute_stdout_failed};
 pub(crate) use human_a_done::{human_done_line, human_read_done};
 pub(crate) use human_b::escape_tool_subject_fragment;
 pub(crate) use human_b::humanize_duration;
-#[allow(unused_imports)]
-pub(crate) use human_b::relativize_tool_path;
 #[allow(unused_imports)]
 pub(crate) use parse::{
     LineRange, ParsedToolUpdate, json_number, parse_tool_update, tool_phase_label,

@@ -21,5 +21,5 @@ pub use gate_run::{run_repo_workspace_gates, run_repo_workspace_gates_with_detai
 pub(crate) use types::repo_gate_failure_to_string;
 pub use types::{
     GATE_FAILURE_MARKER, RepoGateCommandFailure, RepoGateFailure, RepoGateOutput,
-    gate_failure_summary, is_gate_failure_error, is_pure_gate_failure_summary,
+    is_gate_failure_error, is_pure_gate_failure_summary,
 };

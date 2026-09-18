@@ -109,20 +109,11 @@ pub fn emit_run_logs_line(artifacts: &RunArtifacts) -> Result<(), String> {
     Ok(())
 }
 
-pub fn emit_run_startup_sequence(
-    artifacts: &RunArtifacts,
-    opts: RunStartupEmitOpts,
-    cli_request: &str,
-) -> Result<(), String> {
-    emit_run_startup_banner(artifacts, opts, cli_request)?;
-    emit_run_logs_line(artifacts)
-}
-
 #[cfg(test)]
 mod tests {
     use super::{
         RunStartupEmitOpts, append_command_log_line, emit_host_resources_line, emit_run_logs_line,
-        emit_run_startup_banner, emit_run_startup_sequence, format_model_line,
+        emit_run_startup_banner, format_model_line,
     };
     use malvin::output::{WHO_U, format_who_tag_delim};
 
@@ -211,7 +202,7 @@ mod tests {
             let artifacts =
                 malvin::artifacts::create_run_artifacts_from_text("hi", Some(tmp.path()))
                     .expect("art");
-            emit_run_startup_sequence(
+            emit_run_startup_banner(
                 &artifacts,
                 RunStartupEmitOpts {
                     tee_stdout: false,
@@ -235,7 +226,7 @@ mod tests {
             let artifacts =
                 malvin::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
                     .expect("art");
-            emit_run_startup_sequence(
+            emit_run_startup_banner(
                 &artifacts,
                 RunStartupEmitOpts {
                     tee_stdout: false,

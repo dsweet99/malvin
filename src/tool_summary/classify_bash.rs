@@ -128,15 +128,6 @@ pub fn format_classified_tool_line(input: ClassifiedToolLineInput<'_>) -> String
     classified_tool_status_line(&head, &dur, input.exit_code, input.comment)
 }
 
-pub const fn bash_kind_wire_name(kind: BashToolKind) -> &'static str {
-    match kind {
-        BashToolKind::Read => "read",
-        BashToolKind::Search => "search",
-        BashToolKind::Edit => "edit",
-        BashToolKind::Run => "execute",
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

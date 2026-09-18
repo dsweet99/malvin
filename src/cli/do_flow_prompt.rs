@@ -1,9 +1,4 @@
-use crate::cli::flow_prompt_combine::{
-    DualHeaderPromptInput, combine_acp_prompt_header_and_user, combine_mode_header_and_user,
-    combine_prompt_file_and_user,
-};
 use malvin::artifacts::RunArtifacts;
-use malvin::prompt_stratification::WorkflowRenderContext;
 use malvin::prompts::{DO_HEADER_MD, HEADER_MD, PromptError, PromptStore};
 use malvin::workflow_context::PromptModelOpts;
 
@@ -22,39 +17,6 @@ pub fn prepare_do_prompt_store() -> Result<PromptStore, String> {
         .validate_exists(DO_HEADER_MD)
         .map_err(|e: PromptError| e.0)?;
     Ok(store)
-}
-
-pub fn combine_do_prompt_file_and_user(
-    store: &PromptStore,
-    text: &str,
-    template_file: &str,
-    context: &WorkflowRenderContext,
-) -> Result<(String, String, String), String> {
-    combine_prompt_file_and_user(store, text, template_file, context)
-}
-
-pub fn combine_do_acp_prompt_header_and_user(
-    store: &PromptStore,
-    artifacts: &RunArtifacts,
-    text: &str,
-    opts: PromptModelOpts<'_>,
-) -> Result<(String, String, String), String> {
-    combine_acp_prompt_header_and_user(store, artifacts, text, opts)
-}
-
-pub fn combine_do_raw_header_and_user(
-    store: &PromptStore,
-    artifacts: &RunArtifacts,
-    text: &str,
-    opts: PromptModelOpts<'_>,
-) -> Result<(String, String, String), String> {
-    combine_mode_header_and_user(DualHeaderPromptInput {
-        store,
-        artifacts,
-        text,
-        model: opts.model,
-        mode_template: DO_HEADER_MD,
-    })
 }
 
 #[must_use]

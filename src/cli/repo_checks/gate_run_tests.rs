@@ -60,12 +60,6 @@ fn gate_commands_run_at_git_toplevel_from_nested_work_dir() {
 }
 
 #[test]
-fn source_like_files_absent_in_empty_dir() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    assert!(!crate::source_detect::has_source_files(tmp.path()));
-}
-
-#[test]
 fn prepare_repo_workspace_succeeds_on_empty_dir() {
     let tmp = tempfile::tempdir().expect("tempdir");
     prepare_repo_workspace(tmp.path(), RepoGateOutput::Tagged, None).expect("prepare");

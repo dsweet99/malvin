@@ -1,15 +1,9 @@
-use crate::cli::flow_prompt_combine::{
-    DualHeaderPromptInput, combine_acp_prompt_header_and_user, combine_mode_header_and_user,
-    combine_prompt_file_and_user,
-};
 use malvin::artifacts::RunArtifacts;
 use malvin::orchestrator::workflow_context_paths_only;
-use malvin::prompt_stratification::WorkflowRenderContext;
 use malvin::prompts::{
     PromptError, PromptStore, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD, RouterBPromptFlags,
     header_prompt_file, kpop_common_prompt_file, router_a_prompt_file, router_b_prompt_file,
 };
-use malvin::workflow_context::PromptModelOpts;
 use std::path::Path;
 
 #[path = "router_flow_prompt_summarize.rs"]
@@ -69,39 +63,6 @@ fn validate_router_required_prompts(store: &PromptStore) -> Result<(), String> {
         store.validate_exists(name).map_err(|e: PromptError| e.0)?;
     }
     Ok(())
-}
-
-pub fn combine_router_prompt_file_and_user(
-    store: &PromptStore,
-    text: &str,
-    template_file: &str,
-    context: &WorkflowRenderContext,
-) -> Result<(String, String, String), String> {
-    combine_prompt_file_and_user(store, text, template_file, context)
-}
-
-pub fn combine_router_acp_prompt_header_and_user(
-    store: &PromptStore,
-    artifacts: &RunArtifacts,
-    text: &str,
-    opts: PromptModelOpts<'_>,
-) -> Result<(String, String, String), String> {
-    combine_acp_prompt_header_and_user(store, artifacts, text, opts)
-}
-
-pub fn combine_router_raw_header_and_user(
-    store: &PromptStore,
-    artifacts: &RunArtifacts,
-    text: &str,
-    opts: PromptModelOpts<'_>,
-) -> Result<(String, String, String), String> {
-    combine_mode_header_and_user(DualHeaderPromptInput {
-        store,
-        artifacts,
-        text,
-        model: opts.model,
-        mode_template: router_a_prompt_file(false),
-    })
 }
 
 pub(crate) fn router_code_checks_text(work_dir: &Path) -> Result<String, String> {

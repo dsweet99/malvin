@@ -19,7 +19,6 @@ pub(crate) mod shared_opts;
 pub(crate) mod tidy_flow;
 
 mod code_flow_a;
-pub(crate) mod flow_prompt_combine;
 pub(crate) mod loop_opts;
 pub(crate) mod one_shot_session;
 pub(crate) mod workflow_router_shared;
@@ -76,7 +75,6 @@ pub use config_defaults::parse_cli_with_config_defaults;
 pub use entrypoint::entrypoint;
 pub use exit::Exit;
 pub use init_flow::run_init;
-pub use loop_opts::{TENACIOUS_MAX_ACP_RETRIES, TENACIOUS_MAX_LOOPS};
-pub use run_emit::emit_run_startup_sequence;
+pub use loop_opts::TENACIOUS_MAX_LOOPS;
 pub use shared_opts::{AgentRouteOpts, RouterOpts, SharedOpts};
 pub use tidy_flow::run_tidy;

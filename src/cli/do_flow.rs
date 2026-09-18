@@ -14,10 +14,7 @@ mod do_flow_acp;
 pub(crate) mod do_flow_prompt;
 
 use do_flow_acp::run_do_acp;
-pub use do_flow_prompt::{
-    combine_do_acp_prompt_header_and_user, combine_do_prompt_file_and_user,
-    combine_do_raw_header_and_user, prepare_do_prompt_store,
-};
+pub use do_flow_prompt::{prepare_do_prompt_store};
 
 #[derive(Debug)]
 pub struct DoArgs {
