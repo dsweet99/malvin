@@ -1,6 +1,6 @@
 use crate::cli::{RouterOpts, SharedOpts};
 use crate::router_flow::router_flow_prompt;
-use malvin::agent_backend::{SdkClient, set_implement_display_name};
+use malvin::agent_backend::{set_implement_display_name, SdkClient};
 use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
 use malvin::prompts::PromptStore;
 use malvin::run_timing::acp_post_run::RunTimingSessionEnd;
@@ -13,17 +13,21 @@ pub(crate) mod router_flow_acp_support;
 #[path = "router_flow_coder_prompts.rs"]
 mod router_flow_coder_prompts;
 
-pub(crate) use router_flow_acp_support::{RouterExitSummarize, router_iteration_log_path};
+pub(crate) use router_flow_acp_support::{router_iteration_log_path, RouterExitSummarize};
 
 use router_flow_acp_support::{run_router_turns, snapshot_iteration_backups};
 use router_flow_coder_prompts::run_router_summarize_coder_prompt;
 
-pub(crate) struct RouterAcpIterationOutcome {
-    pub acp_result: Result<(), String>,
-    pub iteration_backups: SessionDotfileBackups,
-    pub done: bool,
-    pub session_alive: bool,
-    pub timing: Option<Arc<Mutex<malvin::run_timing::RunTiming>>>,
+pub(crate) enum RouterAcpIterationOutcome {
+    Closed {
+        acp_result: Result<(), String>,
+        iteration_backups: SessionDotfileBackups,
+    },
+    Open {
+        iteration_backups: SessionDotfileBackups,
+        done: bool,
+        timing: Arc<Mutex<malvin::run_timing::RunTiming>>,
+    },
 }
 
 pub(crate) struct RouterAcpIterationInput<'a> {
@@ -64,21 +68,16 @@ pub(crate) async fn run_router_acp_open_iteration(
     let session_end = input.session_end;
     let run_dir = input.artifacts.run_dir.clone();
     match run_router_turns(&mut input, log_path.as_path()).await {
-        Ok(turns) => RouterAcpIterationOutcome {
-            acp_result: Ok(()),
+        Ok(turns) => RouterAcpIterationOutcome::Open {
             iteration_backups: turns.iteration_backups,
             done: turns.done,
-            session_alive: true,
-            timing: Some(timing),
+            timing,
         },
         Err(e) => {
             let parts: SessionEndParts<'_> = (input.client, &run_dir, &timing, session_end);
-            RouterAcpIterationOutcome {
+            RouterAcpIterationOutcome::Closed {
                 acp_result: abort_router_acp_session(parts, e).await,
                 iteration_backups: snapshot_iteration_backups(work_dir),
-                done: false,
-                session_alive: false,
-                timing: None,
             }
         }
     }

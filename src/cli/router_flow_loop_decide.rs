@@ -59,6 +59,20 @@ pub(crate) const fn decide_router_loop_exit_not_done(
     }
 }
 
+pub(crate) fn prefer_exit_gates_over_acp(
+    last_acp: &Result<(), String>,
+    decision: Option<RouterLoopDecision>,
+) -> RouterLoopDecision {
+    match decision {
+        Some(RouterLoopDecision::ExitGatesFailed(detail)) => {
+            RouterLoopDecision::ExitGatesFailed(detail)
+        }
+        _ if last_acp.is_err() => RouterLoopDecision::Exit,
+        Some(RouterLoopDecision::Continue) => RouterLoopDecision::Continue,
+        Some(RouterLoopDecision::Exit) | None => RouterLoopDecision::Exit,
+    }
+}
+
 pub(crate) const fn router_exit_summarize_for(
     decision: &RouterLoopDecision,
 ) -> RouterExitSummarize {
