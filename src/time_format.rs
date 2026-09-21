@@ -27,6 +27,7 @@ pub fn heartbeat_payload_now() -> String {
     payload
 }
 
+#[cfg(test)]
 #[must_use]
 pub fn heartbeat_payload_has_wall_clock_prefix(payload: &str) -> bool {
     let Some(ts) = payload.get(..15) else {

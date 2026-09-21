@@ -19,20 +19,11 @@ mod who_tag;
 #[allow(unused_imports)]
 pub(crate) use stdout_defer::{try_defer_heartbeat, try_defer_tagged_stdout};
 #[cfg(test)]
-pub(crate) use stdout_heartbeat::heartbeat_rendered_if_due;
-#[cfg(test)]
 pub(crate) use stdout_render::emit_stdout_rendered_immediate;
-#[cfg(test)]
-pub(crate) use stdout_render::publish_heartbeat_live_terminal;
 pub(crate) use stdout_render::write_heartbeat_log_line;
 
 pub(crate) use stdout_display::{
     format_heartbeat_stdout_ansi, format_line_stdout, format_line_stdout_ansi, logical_lines,
-};
-
-#[cfg(test)]
-pub(crate) use stdout_heartbeat::{
-    reset_stdout_heartbeat_for_test, test_set_last_heartbeat_elapsed,
 };
 
 pub use do_dm_filter::{DM_END, DM_START, feed_do_dm_stdout_text};
@@ -53,8 +44,6 @@ pub use acp_tee::{
     print_stdout_acp_tool_summary_tee, termimad_inline_payload_for_stdout,
     termimad_text_lines_for_stdout,
 };
-#[cfg(test)]
-pub(crate) use stdout_display::flush_stdout_raw_line_with_ts;
 
 #[cfg(test)]
 mod acp_tee_termimad_tests;

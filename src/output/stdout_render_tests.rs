@@ -1,6 +1,6 @@
 use crate::output::stdout_render::{
-    StdoutRenderPrelude, emit_stdout_rendered_immediate, flush_stdout_rendered_line,
-    print_stdout_rendered_line, route_stdout_rendered_line, write_heartbeat_log_line,
+    StdoutRenderPrelude, emit_stdout_rendered_immediate, print_stdout_rendered_line,
+    route_stdout_rendered_line, write_heartbeat_log_line,
 };
 use crate::output::{
     MALVIN_WHO, STDOUT_LOG_TEST_LOCK, enable_stdout_capture, is_log_timestamp_token,
@@ -53,11 +53,12 @@ fn heartbeat_route_prints_display_on_terminal() {
 }
 
 fn flush_raw_line_with_ts_writes_log_without_defer() {
+    let (display, log) = crate::output::stdout_log_pair::stdout_raw_display_and_log_line(
+        "raw-flush-probe",
+        Some("20260524.000000.000"),
+    );
     let (terminal, disk) = with_render_capture(|| {
-        crate::output::flush_stdout_raw_line_with_ts(
-            "raw-flush-probe",
-            Some("20260524.000000.000"),
-        );
+        route_stdout_rendered_line(&display, &log, StdoutRenderPrelude::FlushOnly);
     });
     assert!(disk.contains("raw-flush-probe"));
     assert_eq!(terminal.trim(), "raw-flush-probe");
@@ -66,7 +67,9 @@ fn flush_raw_line_with_ts_writes_log_without_defer() {
 fn flush_only_writes_timestamped_log_not_display_prefix() {
     let display = "malvin.| flush-probe";
     let log = "20260524.000000.000 malvin.|flush-probe";
-    let (terminal, disk) = with_render_capture(|| flush_stdout_rendered_line(display, log));
+    let (terminal, disk) = with_render_capture(|| {
+        route_stdout_rendered_line(display, log, StdoutRenderPrelude::FlushOnly);
+    });
     assert_eq!(disk.lines().next().expect("log line"), log);
     assert_eq!(terminal.trim(), display);
     let ts = log.split_whitespace().next().expect("timestamp");

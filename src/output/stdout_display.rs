@@ -1,7 +1,7 @@
 use super::{ANSI_RESET, ERROR_WHO, WARNING_WHO, WHO_B, format_who_tag_prefix};
 use crate::terminal_palette::{ANSI_BOLD, ansi_error, ansi_tool_name, ansi_warning, ansi_who_tag};
 
-pub(crate) use super::stdout_render::{flush_stdout_rendered_line, print_stdout_rendered_line};
+pub(crate) use super::stdout_render::print_stdout_rendered_line;
 pub(crate) use super::who_tag_ansi;
 
 pub(crate) fn logical_lines(text: &str) -> impl Iterator<Item = &str> {
@@ -61,12 +61,6 @@ pub fn print_stdout_raw_line(line: &str) {
 pub fn print_stdout_raw_line_with_ts(line: &str, ts: Option<&str>) {
     let (display, log) = super::stdout_log_pair::stdout_raw_display_and_log_line(line, ts);
     print_stdout_rendered_line(&display, &log);
-}
-
-#[allow(dead_code)]
-pub(crate) fn flush_stdout_raw_line_with_ts(line: &str, ts: Option<&str>) {
-    let (display, log) = super::stdout_log_pair::stdout_raw_display_and_log_line(line, ts);
-    flush_stdout_rendered_line(&display, &log);
 }
 
 #[cfg(test)]

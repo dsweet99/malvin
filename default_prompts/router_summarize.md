@@ -8,8 +8,9 @@ Be sure to provide evidence (e.g., measurements, citations, calculations, reason
 
 Write plainly and clearly. Use complete sentences. Assume the reader is intelligent and interested in what you have to say. Don't use invented terms or shorthand phrases that use for thinking. If you use an uncommon (not invented!) term, define or explain it.
 
-Oh, and don't forget to put the summary between the DM fences, like this:
+Finally, write a tl;dr or the summary; 1-2 sentences.
 
+Oh, and don't forget to put the summary between the DM fences, like this:
 ```
 __MALVIN_DM_START__
 Your summary

@@ -1,6 +1,5 @@
 #![cfg_attr(test, allow(unsafe_code))]
 
-mod import_prelude;
 mod jsonl_trace;
 mod outgoing_prompt_trace;
 pub use outgoing_prompt_trace::CoderPromptOptions;

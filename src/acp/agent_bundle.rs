@@ -40,22 +40,6 @@ impl AgentError {
     }
 
     #[must_use]
-    pub fn cursor_busy(message: impl Into<String>) -> Self {
-        Self {
-            message: message.into(),
-            fault: AgentFault::CursorBusy,
-        }
-    }
-
-    #[must_use]
-    pub fn stale_auth(message: impl Into<String>) -> Self {
-        Self {
-            message: message.into(),
-            fault: AgentFault::StaleAuth,
-        }
-    }
-
-    #[must_use]
     pub fn requires_coder_session_teardown(&self) -> bool {
         match self.fault {
             AgentFault::SessionDead | AgentFault::CursorBusy | AgentFault::StaleAuth => true,

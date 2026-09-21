@@ -1,10 +1,6 @@
 use crate::malvin_constants::{STDOUT_LOG, TRACE_JSONL};
 pub use crate::output::{WHO_A, WHO_B, WHO_H, WHO_M, WHO_O, WHO_T, WHO_U};
 
-pub(crate) mod emit;
-#[allow(unused_imports)]
-pub(crate) use emit::{AUDIT_CHANNEL, NARRATIVE_CHANNEL};
-
 pub const RUN_NARRATIVE_LOG: &str = STDOUT_LOG;
 pub const RUN_AUDIT_LOG: &str = TRACE_JSONL;
 

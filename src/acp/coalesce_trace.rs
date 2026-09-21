@@ -10,8 +10,6 @@ pub(crate) struct TraceChunkCoalescer {
     thought_iterable_closed: Option<crate::acp::IterableClosedStream>,
     message_upgrade_plan: bool,
     thought_upgrade_plan: bool,
-    #[allow(dead_code)]
-    pub tool_tracker: crate::tool_summary::ToolSummaryTracker,
 }
 
 pub(crate) type TraceChunkEmission = (

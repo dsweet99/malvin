@@ -34,22 +34,6 @@ pub(crate) fn teardown_total_cap() -> std::time::Duration {
 }
 
 #[must_use]
-#[allow(dead_code)]
-pub(crate) fn shutdown_cancel_timeout() -> std::time::Duration {
-    if test_fast_acp_teardown_enabled() {
-        return std::time::Duration::ZERO;
-    }
-    #[cfg(debug_assertions)]
-    {
-        std::time::Duration::from_millis(100)
-    }
-    #[cfg(not(debug_assertions))]
-    {
-        std::time::Duration::from_millis(250)
-    }
-}
-
-#[must_use]
 pub(crate) fn teardown_kill_after_polls() -> u32 {
     if test_fast_acp_teardown_enabled() {
         return 0;
@@ -64,15 +48,6 @@ pub(crate) fn teardown_kill_after_polls() -> u32 {
     }
 }
 
-#[must_use]
-#[allow(dead_code)]
-pub(crate) fn shutdown_child_wait_timeout() -> std::time::Duration {
-    if test_fast_acp_teardown_enabled() {
-        return std::time::Duration::from_millis(50);
-    }
-    teardown_total_cap()
-}
-
 #[cfg(test)]
 mod kiss_cov_auto {
     use super::*;
@@ -83,9 +58,7 @@ mod kiss_cov_auto {
             test_fast_acp_teardown_enabled(),
             teardown_poll_interval(),
             teardown_total_cap(),
-            shutdown_cancel_timeout(),
             teardown_kill_after_polls(),
-            shutdown_child_wait_timeout(),
         );
     }
 }
