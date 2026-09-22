@@ -13,10 +13,14 @@ pub(crate) mod router_flow_acp_support;
 #[path = "router_flow_coder_prompts.rs"]
 mod router_flow_coder_prompts;
 
+#[path = "router_flow_summary_line.rs"]
+mod router_flow_summary_line;
+
 pub(crate) use router_flow_acp_support::{router_iteration_log_path, RouterExitSummarize};
 
 use router_flow_acp_support::{run_router_turns, snapshot_iteration_backups};
 use router_flow_coder_prompts::run_router_summarize_coder_prompt;
+use router_flow_summary_line::emit_router_summary_line;
 
 pub(crate) enum RouterAcpIterationOutcome {
     Closed {
@@ -90,15 +94,7 @@ pub(crate) async fn finalize_router_acp_iteration(
 ) -> Result<(), String> {
     let log_path = router_iteration_log_path(input.artifacts, input.agent_loop);
     if matches!(exit_summarize, RouterExitSummarize::Run) {
-        let model = input.shared.model.canonical();
-        let body = router_flow_prompt::build_router_summarize_prompt(
-            router_flow_prompt::RouterSummarizePromptInput {
-                store: input.prompt_store,
-                artifacts: input.artifacts,
-                model: &model,
-            },
-        )?;
-        run_router_summarize_coder_prompt(input.client, &body, log_path.as_path()).await?;
+        run_exit_summarize_then_log_summary(input, log_path.as_path()).await?;
     }
     let run_dir = input.artifacts.run_dir.clone();
     let parts: SessionEndParts<'_> = (input.client, run_dir.as_path(), &timing, input.session_end);
@@ -106,6 +102,22 @@ pub(crate) async fn finalize_router_acp_iteration(
         RouterExitSummarize::Run => end_router_acp_session(parts, Ok(())).await,
         RouterExitSummarize::Skip => emit_router_acp_timing(parts, Ok(())),
     }
+}
+
+async fn run_exit_summarize_then_log_summary(
+    input: &mut RouterAcpIterationInput<'_>,
+    log_path: &Path,
+) -> Result<(), String> {
+    let model = input.shared.model.canonical();
+    let body = router_flow_prompt::build_router_summarize_prompt(
+        router_flow_prompt::RouterSummarizePromptInput {
+            store: input.prompt_store,
+            artifacts: input.artifacts,
+            model: &model,
+        },
+    )?;
+    run_router_summarize_coder_prompt(input.client, &body, log_path).await?;
+    emit_router_summary_line(input.artifacts, input.agent_loop)
 }
 
 pub(crate) fn emit_router_acp_timing(
