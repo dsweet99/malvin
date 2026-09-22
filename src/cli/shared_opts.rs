@@ -2,6 +2,7 @@ use clap::{ArgAction, Args};
 pub use malvin::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use rand::Rng;
 
+use malvin::malvin_config_file::parse_model_cli_arg;
 use malvin::model_id::{ParsedModel, parse_model_id};
 
 const QUIET_HELPTEXT: &str =
@@ -31,11 +32,11 @@ pub(crate) fn parse_creative_probability(s: &str) -> Result<f64, String> {
 #[derive(Args, Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct SharedOpts {
-    /// Model id (`cursor:`, `pi:`, `rpi:`, or `codex:`)
+    /// Model id (`cursor:`, `pi:`, `rpi:`, `codex:`, or a config nickname)
     #[arg(
         long,
         default_value = DEFAULT_CLI_MODEL,
-        value_parser = parse_model_id
+        value_parser = parse_model_cli_arg
     )]
     pub model: ParsedModel,
     /// Log full outgoing agent prompts to stdout and `prompts.log`

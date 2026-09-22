@@ -58,6 +58,9 @@ mod markdown_flag_parse_tests;
 #[path = "models_cmd_auth_filter_tests.rs"]
 mod models_cmd_auth_filter_tests;
 #[cfg(test)]
+#[path = "models_cmd_disable_rpi_tests.rs"]
+mod models_cmd_disable_rpi_tests;
+#[cfg(test)]
 #[path = "models_cmd_tests.rs"]
 mod models_cmd_tests;
 #[cfg(test)]

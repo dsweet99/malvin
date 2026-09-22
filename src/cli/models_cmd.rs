@@ -52,16 +52,30 @@ fn print_current_footer(current_model: &str) {
     print_stdout_line(MALVIN_WHO, &format!("Current: {current_model}"));
 }
 
+fn rpi_models_enabled() -> bool {
+    let Ok(cwd) = std::env::current_dir() else {
+        return true;
+    };
+    !malvin::malvin_config_file::load_malvin_config(&cwd).disable_rpi
+}
+
 pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
     let filter = models_list_prefix(&args.words)?;
     let filter_ref = filter.as_deref();
+    maybe_refresh_models_catalog(args.refresh);
+    print_models_sections(filter_ref);
+    print_current_footer(current_model);
+    Ok(())
+}
 
+fn maybe_refresh_models_catalog(force: bool) {
     let now = models_cmd_refresh::unix_now_secs();
-    let force_refresh = args.refresh || models_cmd_refresh::models_refresh_is_due(now);
-    if force_refresh {
+    if force || models_cmd_refresh::models_refresh_is_due(now) {
         models_cmd_refresh::perform_models_refresh();
     }
+}
 
+fn print_models_sections(filter_ref: Option<&str>) {
     if section_may_match(filter_ref, CURSOR_PREFIX)
         && let Err(e) = print_cursor_models(filter_ref)
     {
@@ -75,7 +89,7 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
             }
         }
     }
-    if section_may_match(filter_ref, RPI_PREFIX) {
+    if rpi_models_enabled() && section_may_match(filter_ref, RPI_PREFIX) {
         match malvin::pi_sdk::list_pi_models_sync(false) {
             Ok(models) => print_pi_models(&models, filter_ref),
             Err(e) => {
@@ -86,8 +100,6 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
     if section_may_match(filter_ref, CODEX_PREFIX) {
         print_codex_models(filter_ref);
     }
-    print_current_footer(current_model);
-    Ok(())
 }
 
 fn print_npm_pi_models(models: &[(String, String)], filter: Option<&str>) {

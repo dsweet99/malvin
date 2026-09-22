@@ -2,9 +2,15 @@ use std::path::Path;
 
 use super::{
     AgentConfig, MalvinConfig, ensure_config_parent_dir, merge_missing_keys, parse_agent_config,
-    parse_malvin_config, parse_template_value, write_config_value,
+    parse_disable_rpi, parse_malvin_config, parse_nicknames, parse_template_value, write_config_value,
 };
 use crate::workspace_paths::malvin_config_path;
+
+fn parse_agent_config_text(text: &str) -> Result<AgentConfig, String> {
+    let nicknames = parse_nicknames(text)?;
+    let disable_rpi = parse_disable_rpi(text)?;
+    parse_agent_config(text, &nicknames, disable_rpi)
+}
 
 pub(super) fn create_malvin_config_from_template(
     path: &Path,
@@ -43,14 +49,14 @@ pub fn load_agent_config_strict(work_dir: &Path) -> Result<AgentConfig, String> 
         return Ok(AgentConfig::default());
     };
     let Ok(template) = parse_template_value() else {
-        return parse_agent_config(&text);
+        return parse_agent_config_text(&text);
     };
     let Ok(mut on_disk) = text.parse::<toml::Value>() else {
         return Err(format!("invalid TOML in {}", path.display()));
     };
     let _ = merge_missing_keys(&mut on_disk, &template);
     let merged = toml::to_string(&on_disk).map_err(|e| e.to_string())?;
-    parse_agent_config(&merged)
+    parse_agent_config_text(&merged)
 }
 
 #[must_use]
@@ -78,5 +84,5 @@ pub fn load_agent_config_lenient(work_dir: &Path) -> AgentConfig {
     let Ok(merged) = toml::to_string(&on_disk) else {
         return AgentConfig::default();
     };
-    parse_agent_config(&merged).unwrap_or_default()
+    parse_agent_config_text(&merged).unwrap_or_default()
 }

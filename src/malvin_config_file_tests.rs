@@ -5,6 +5,11 @@ use super::{
 use crate::support_paths::DEFAULT_CLI_MODEL;
 use crate::test_utils::with_isolated_home;
 use crate::workspace_paths::malvin_config_path;
+use std::collections::BTreeMap;
+
+fn parse_agent(text: &str) -> Result<super::AgentConfig, String> {
+    parse_agent_config(text, &BTreeMap::new(), false)
+}
 
 fn merge_missing_keys_adds_top_level_and_nested_tables() {
     let template = parse_template_value().expect("template");
@@ -83,7 +88,7 @@ model = "cursor:gpt-5"
 max_hypotheses = 3
 max_acp_retries = 5
 "#;
-    let agent = parse_agent_config(text).expect("parse");
+    let agent = parse_agent(text).expect("parse");
     assert_eq!(agent.model.canonical(), "cursor:gpt-5");
     assert_eq!(agent.max_hypotheses, 3);
     assert_eq!(agent.max_acp_retries, 5);
@@ -96,7 +101,7 @@ model = "cursor:m"
 max_hypotheses = "2"
 max_acp_retries = "4"
 "#;
-    let agent = parse_agent_config(text).expect("parse");
+    let agent = parse_agent(text).expect("parse");
     assert_eq!(agent.max_hypotheses, 2);
     assert_eq!(agent.max_acp_retries, 4);
 }
@@ -168,7 +173,7 @@ max_loops = 1
 max_loops_code = 4
 max_acp_retries = 2
 "#;
-    let agent = parse_agent_config(text).expect("parse");
+    let agent = parse_agent(text).expect("parse");
     assert_eq!(agent.max_acp_retries, 2);
     assert_eq!(
         agent.max_hypotheses,
