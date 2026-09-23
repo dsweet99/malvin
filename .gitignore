@@ -34,3 +34,7 @@ _logs*/
 .cursorrules
 .vscode
 
+
+# Local operator scratch (not for crates.io)
+iml.sh
+loops.md

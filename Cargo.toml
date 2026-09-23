@@ -31,10 +31,6 @@ exclude = [
 # (requires Node ≥ 22.13).
 build = "build.rs"
 
-[workspace]
-members = [".", "crates/malvin_pi"]
-resolver = "2"
-
 [profile.dev]
 incremental = true
 codegen-units = 8
@@ -71,11 +67,11 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["std", "registry"] }
 termimad = "0.34"
 unicode-width = "0.2"
-pi = { path = "crates/malvin_pi", package = "malvin_pi" }
+# Pin kstring so pi_agent_rust’s gix/vergen stack stays on MSRV 1.95 (2.0.3+ needs 1.96).
+kstring = "=2.0.2"
+pi = { package = "pi_agent_rust", version = "0.1.23", default-features = false, features = ["sqlite-sessions"] }
 asupersync = { version = "0.3.10", default-features = false }
 async-trait = "0.1"
-# gix (via pi_agent_rust → vergen-gix) accepts kstring 2.0.0+; 2.0.3+ raises MSRV to 1.96.
-kstring = "=2.0.2"
 
 [dev-dependencies]
 portable-pty = "0.8"

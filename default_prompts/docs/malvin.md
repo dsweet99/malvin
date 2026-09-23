@@ -238,7 +238,7 @@ After most agent-backed commands create a new run directory and emit the startup
 
 ## External dependencies
 
-- **Rust**: ≥ 1.95 (`rust-version` on current crates.io releases). With an older rustc, `cargo install malvin` fails; a leftover ≤0.2.3 binary lists every `rpi:` provider instead of only authenticated ones.
+- **Rust**: ≥ 1.95 (`rust-version` in this package; crates.io `0.2.6` declared 1.96). With an older rustc, `cargo install malvin` fails; a leftover ≤0.2.3 binary lists every `rpi:` provider instead of only authenticated ones.
 - **Node.js**: ≥ 22.13 with `npm` on `PATH`. `cargo install malvin` / `cargo build` run `build.rs`, which installs the Cursor SDK bridge under `~/.malvin_home/sdk-bridges/` when the in-tree bridge is not already built (required for `cursor:` agent backends). Set `MALVIN_SKIP_SDK_BRIDGES=1` only to compile the binary without that SDK.
 - **Cursor SDK**: `@cursor/sdk` via `cursor-sdk-bridge/` (installed at build time), and a Cursor API key (`CURSOR_API_KEY`, or `CURSOR_AGENT_API_KEY` / `AGENT_API_KEY`) for `cursor:` models. `malvin admin models` lists Cursor models via the bridge when possible; falls back to `agent` / `cursor-agent` on `PATH` if the SDK path fails.
 - **OpenRouter**: `OPENROUTER_API_KEY` when using `rpi:openrouter/…` models.

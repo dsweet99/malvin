@@ -3087,7 +3087,7 @@ dependencies = [
  "kstring",
  "libc",
  "libproc",
- "malvin_pi",
+ "pi_agent_rust",
  "portable-pty",
  "rand 0.8.7",
  "reqwest",
@@ -3102,14 +3102,6 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "unicode-width 0.2.2",
-]
-
-[[package]]
-name = "malvin_pi"
-version = "0.2.7"
-dependencies = [
- "kstring",
- "pi_agent_rust",
 ]
 
 [[package]]
