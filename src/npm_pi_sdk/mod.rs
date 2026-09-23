@@ -10,6 +10,8 @@ mod session_spawn;
 mod session_turn;
 
 #[cfg(test)]
+mod issue43_drain_tests;
+#[cfg(test)]
 mod kiss_coverage_tests;
 #[cfg(test)]
 mod map_event_tests;

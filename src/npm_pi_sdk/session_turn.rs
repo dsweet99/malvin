@@ -10,6 +10,11 @@ pub(super) struct TurnState {
     pub(super) settled: bool,
 }
 
+struct ActiveTurn<'a> {
+    state: &'a mut TurnState,
+    drain: &'a mut crate::bridge_sdk::DrainIdleTurn,
+}
+
 pub(super) async fn consume_npm_pi_turn(
     session: &NpmPiSession,
     prompt_id: &str,
@@ -19,8 +24,14 @@ pub(super) async fn consume_npm_pi_turn(
     loop {
         let value =
             super::session_io::read_json_waiting(session, "npm pi event", &mut turn).await?;
-        if let Some(result) = handle_line(session, &value, &mut state, prompt_id).await {
-            return result;
+        {
+            let mut active = ActiveTurn {
+                state: &mut state,
+                drain: &mut turn,
+            };
+            if let Some(result) = handle_line(session, &value, prompt_id, &mut active).await {
+                return result;
+            }
         }
         turn.check_max_deadline(crate::bridge_sdk::DrainIdleLabels {
             prefix: crate::model_id::ModelBackend::NpmPi.drain_idle_prefix(),
@@ -29,15 +40,26 @@ pub(super) async fn consume_npm_pi_turn(
     }
 }
 
+pub(super) fn feed_mapped_bridge_events(
+    session: &crate::bridge_sdk::StreamLog,
+    turn: &mut crate::bridge_sdk::DrainIdleTurn,
+    events: &[BridgeEvent],
+) {
+    for ev in events {
+        crate::bridge_sdk::note_productive_bridge_event(session, turn, ev);
+        crate::bridge_sdk::handle_stream_event(session, ev);
+    }
+}
+
 async fn handle_line(
     session: &NpmPiSession,
     value: &serde_json::Value,
-    state: &mut TurnState,
     prompt_id: &str,
+    active: &mut ActiveTurn<'_>,
 ) -> Option<Result<(), AgentError>> {
     let ty = value.get("type").and_then(|v| v.as_str()).unwrap_or("");
     if ty == "response" {
-        return handle_response(value, state, prompt_id);
+        return handle_response(value, active.state, prompt_id);
     }
     if ty == "extension_ui_request" {
         if let Err(e) = super::map_event::auto_reply_extension_ui(session, value).await {
@@ -45,15 +67,15 @@ async fn handle_line(
         }
         return None;
     }
-    for ev in super::map_event::map_npm_pi_event(value, state) {
+    for ev in super::map_event::map_npm_pi_event(value, active.state) {
         if let BridgeEvent::RunDone { .. } = &ev {
             feed_and_handle_run_done(session, &ev);
             return Some(Ok(()));
         }
-        crate::bridge_sdk::handle_stream_event(session, &ev);
+        feed_mapped_bridge_events(session, active.drain, std::slice::from_ref(&ev));
     }
-    if state.settled {
-        finish_settled(session, state);
+    if active.state.settled {
+        finish_settled(session, active.state);
         return Some(Ok(()));
     }
     None

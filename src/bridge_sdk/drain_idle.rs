@@ -86,8 +86,9 @@ impl DrainIdleClock {
         Instant::now().saturating_duration_since(self.wait_start)
     }
 
-    pub(crate) const fn turn_limit(&self) -> Duration {
-        sdk_drain_idle_max_turn(self.idle)
+    pub(crate) fn turn_limit(&self) -> Duration {
+        self.turn_deadline
+            .saturating_duration_since(self.wait_start)
     }
 
     pub(crate) const fn idle(&self) -> Duration {

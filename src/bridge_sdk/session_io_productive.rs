@@ -1,9 +1,9 @@
 use crate::bridge_protocol::BridgeEvent;
 
 use super::DrainIdleTurn;
-use super::session::BridgeSession;
+use super::stream_log::StreamLog;
 
-pub(super) fn tools_in_flight(session: &BridgeSession) -> bool {
+pub(crate) fn tools_in_flight(session: &StreamLog) -> bool {
     !session
         .tool_starts
         .lock()
@@ -11,8 +11,8 @@ pub(super) fn tools_in_flight(session: &BridgeSession) -> bool {
         .is_empty()
 }
 
-pub(super) fn note_productive_bridge_event(
-    _session: &BridgeSession,
+pub(crate) fn note_productive_bridge_event(
+    _session: &StreamLog,
     turn: &mut DrainIdleTurn,
     ev: &BridgeEvent,
 ) {

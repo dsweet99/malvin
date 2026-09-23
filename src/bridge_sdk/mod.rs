@@ -28,6 +28,7 @@ pub(crate) use drain_idle::{
 pub(crate) use drain_idle::{DrainIdleWaitOpts, await_next_with_idle_using};
 
 pub(crate) use log_adapter::{feed_do_dm_run_result, handle_stream_event};
+pub(crate) use session_io_productive::{note_productive_bridge_event, tools_in_flight};
 pub use session::BridgeSession;
 pub use session_io::write_request;
 pub(crate) use session_io::{
