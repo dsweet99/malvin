@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use super::{
-    format_prompt_path, insert_artifact_paths, resolve_nonexistent_path,
-    resolve_path_against_base, workflow_context_paths_only,
+    format_prompt_path, insert_artifact_paths, resolve_nonexistent_path, resolve_path_against_base,
+    workflow_context_paths_only,
 };
 
 fn resolve_path_against_base_resolves_relative_plan_path() {

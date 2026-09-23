@@ -1,20 +1,11 @@
 use serde_json::Value;
 
-use std::path::Path;
-
 use super::format::{edit_paths, start_label};
 use super::parse::{LineRange, ParsedToolUpdate};
 use super::types::{TOOL_DISPLAY_MAX_WIDTH, ToolCallRecord, ToolSummaryTracker, shorten_middle};
 
-pub(crate) fn relativize_tool_path(path: &str, work_dir: Option<&Path>) -> String {
-    let Some(base) = work_dir else {
-        return path.to_string();
-    };
-    crate::workflow_context::format_prompt_path(Path::new(path), base)
-}
-
-fn display_tool_path(path: &str, tracker: &ToolSummaryTracker) -> String {
-    relativize_tool_path(path, tracker.work_dir())
+fn display_tool_path(path: &str, _tracker: &ToolSummaryTracker) -> String {
+    path.to_string()
 }
 
 pub(crate) fn human_read_subject(

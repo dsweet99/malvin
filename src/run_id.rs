@@ -14,18 +14,18 @@ pub(crate) fn set_active_run_dir(path: Option<PathBuf>) {
         .unwrap_or_else(std::sync::PoisonError::into_inner) = path;
 }
 
-pub(crate) fn activate_run(path: PathBuf) {
+pub fn activate_run(path: PathBuf) {
     set_active_run_dir(Some(path.clone()));
     crate::herdr::notify_run_start(&path);
 }
 
-pub(crate) fn deactivate_run() {
+pub fn deactivate_run() {
     crate::herdr::notify_run_end();
     set_active_run_dir(None);
 }
 
 #[must_use]
-pub(crate) fn active_run_dir() -> Option<PathBuf> {
+pub fn active_run_dir() -> Option<PathBuf> {
     ACTIVE_RUN_DIR
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)

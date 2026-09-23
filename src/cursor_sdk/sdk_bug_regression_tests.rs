@@ -21,7 +21,10 @@ async fn failed_create_drop_clears_sandbox_for_next_spawn() {
         .begin_coder_session(tmp.path())
         .await
         .expect_err("missing bridge must fail create");
-    assert_err_has(&err, &["No such file", "not found", "ENOENT", "spawn", "bridge"]);
+    assert_err_has(
+        &err,
+        &["No such file", "not found", "ENOENT", "spawn", "bridge"],
+    );
     assert!(!client.has_open_coder_session());
     crate::malvin_sandbox::assert_dead_before_next_spawn()
         .expect("sandbox must be clear after failed BridgeSession drop");
@@ -43,7 +46,9 @@ async fn agent_busy_after_resume_forgets_id_and_creates_fresh() {
     assert!(!client.has_open_coder_session());
     assert_eq!(client.last_agent_id.as_deref(), Some("mock-agent"));
     client
-        .active_coder_session().expect("active coder session").run_coder_prompt(
+        .active_coder_session()
+        .expect("active coder session")
+        .run_coder_prompt(
             "AGENT_BUSY_ON_RESUME please",
             &log,
             "coder",
@@ -72,7 +77,9 @@ async fn stale_authentication_teardown_resume_retries() {
     assert_eq!(client.last_agent_id.as_deref(), Some("mock-agent"));
     let log = tmp.path().join("prompts.log");
     client
-        .active_coder_session().expect("active coder session").run_coder_prompt(
+        .active_coder_session()
+        .expect("active coder session")
+        .run_coder_prompt(
             "AUTH_ONCE please",
             &log,
             "coder",
@@ -104,7 +111,9 @@ async fn bridge_stdout_closed_single_attempt_tears_down_session() {
     assert!(!client.has_open_coder_session());
     assert!(crate::agent_backend::begun_cwd(&client).is_some());
     client
-        .active_coder_session().expect("active coder session").run_coder_prompt(
+        .active_coder_session()
+        .expect("active coder session")
+        .run_coder_prompt(
             "hi",
             &log,
             "coder",

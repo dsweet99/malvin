@@ -1,12 +1,18 @@
 mem_limit_gb = 4
+# Keep the local-LLM manager alive this long after the last local-model call.
+time_since_last_call_seconds = 600
 # Terminal color palette: "dark" (default) or "light" (for pale backgrounds).
 theme = "dark"
+# When true, reject `rpi:` models and omit them from `malvin admin models`.
+disable_rpi = false
+
+# Short names for `--model` / `[agent].model` (no ':' in the key).
+# [nicknames]
+# astra = "pi:openrouter/openai/this/is/too/long/gpt-astra"
 
 [agent]
 model = "cursor:auto"
-max_loops = 9999
 max_hypotheses = 5
-max_loops_code = 3
 max_acp_retries = 3
 
 # Cursor-mode USD cost rates ($ per million tokens) for model `cursor:auto`.

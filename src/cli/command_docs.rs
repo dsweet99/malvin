@@ -34,16 +34,16 @@ pub(crate) fn print_doc_to_writer(
     command: Option<&Commands>,
     mut out: impl Write,
 ) -> Result<(), String> {
-    let text = doc_text(command).replace("{{ advice_path }}", crate::MALVIN_ADVICE_REL);
+    let text = doc_text(command).replace("{{ advice_path }}", malvin::MALVIN_ADVICE_REL);
     out.write_all(text.as_bytes())
         .map_err(|e| format!("stdout: {e}"))?;
     Ok(())
 }
 
 pub(crate) fn print_doc_for_cli_to_writer(cli: &Cli, out: impl Write) -> Result<(), String> {
-    if cli.do_workflow {
+    if cli.do_workflow() {
         let mut out = out;
-        let text = DO_DOC.replace("{{ advice_path }}", crate::MALVIN_ADVICE_REL);
+        let text = DO_DOC.replace("{{ advice_path }}", malvin::MALVIN_ADVICE_REL);
         return out
             .write_all(text.as_bytes())
             .map_err(|e| format!("stdout: {e}"));

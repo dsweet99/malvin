@@ -3,8 +3,8 @@ use std::path::{Path, PathBuf};
 use super::alloc::DotfileBackupLabels;
 use super::named_file_tree::{
     NamedFileEntry, NamedFileTreePolicy, NamedFileTreeState, backup_named_file_tree,
-    collect_workspace_named_file_relpaths, restore_missing_named_files, restore_present_named_files,
-    typed_named_file_backup,
+    collect_workspace_named_file_relpaths, restore_missing_named_files,
+    restore_present_named_files, typed_named_file_backup,
 };
 
 const VISION_NAME: &str = "VISION.md";
@@ -63,7 +63,10 @@ pub(super) fn backup_vision_tree(
 ) -> Result<VisionBackup, String> {
     let rels = collect_workspace_vision_relpaths(work_dir);
     Ok(from_state(backup_named_file_tree(
-        work_dir, &rels, generate_id, &POLICY,
+        work_dir,
+        &rels,
+        generate_id,
+        &POLICY,
     )?))
 }
 
@@ -86,10 +89,7 @@ pub fn restore_workspace_vision_backup(
 fn from_state(state: NamedFileTreeState) -> VisionBackup {
     match state {
         NamedFileTreeState::Missing => VisionBackup::Missing,
-        NamedFileTreeState::Present {
-            backup_root,
-            files,
-        } => VisionBackup::Present {
+        NamedFileTreeState::Present { backup_root, files } => VisionBackup::Present {
             backup_root,
             files: files.into_iter().map(VisionFileBackup::from).collect(),
         },

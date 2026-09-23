@@ -29,6 +29,11 @@ pub fn quality_gates_just_ran() -> bool {
         .unwrap_or_else(PoisonError::into_inner)
 }
 
+pub fn reset_for_independent_run() {
+    set_active_gate_iteration(None);
+    set_quality_gates_just_ran(false);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -46,6 +51,15 @@ mod tests {
         set_quality_gates_just_ran(true);
         assert!(quality_gates_just_ran());
         set_quality_gates_just_ran(false);
+        assert!(!quality_gates_just_ran());
+    }
+
+    #[test]
+    fn reset_for_independent_run_clears_process_global_gate_flags() {
+        set_active_gate_iteration(Some(9));
+        set_quality_gates_just_ran(true);
+        reset_for_independent_run();
+        assert_eq!(active_gate_iteration(), None);
         assert!(!quality_gates_just_ran());
     }
 }

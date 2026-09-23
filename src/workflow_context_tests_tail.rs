@@ -23,7 +23,11 @@ fn workflow_context_paths_only_embeds_agents_md() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "p").expect("write");
-    std::fs::write(tmp.path().join(AGENTS_MD_FILENAME), "Prefer narrow checks.\n").expect("agents");
+    std::fs::write(
+        tmp.path().join(AGENTS_MD_FILENAME),
+        "Prefer narrow checks.\n",
+    )
+    .expect("agents");
     let artifacts =
         crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
     let ctx = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL);

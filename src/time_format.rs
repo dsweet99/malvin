@@ -27,6 +27,7 @@ pub fn heartbeat_payload_now() -> String {
     payload
 }
 
+#[cfg(test)]
 #[must_use]
 pub fn heartbeat_payload_has_wall_clock_prefix(payload: &str) -> bool {
     let Some(ts) = payload.get(..15) else {
@@ -84,11 +85,21 @@ mod tests {
         ));
         assert!(!super::heartbeat_payload_has_wall_clock_prefix("HB: old"));
         assert!(!super::heartbeat_payload_has_wall_clock_prefix(""));
-        assert!(!super::heartbeat_payload_has_wall_clock_prefix("20260524.00000 "));
-        assert!(!super::heartbeat_payload_has_wall_clock_prefix("20260524100000 "));
-        assert!(!super::heartbeat_payload_has_wall_clock_prefix("2026052a.000000 "));
-        assert!(!super::heartbeat_payload_has_wall_clock_prefix("20260524.000000X"));
-        assert!(!super::heartbeat_payload_has_wall_clock_prefix("20260524-000000 "));
+        assert!(!super::heartbeat_payload_has_wall_clock_prefix(
+            "20260524.00000 "
+        ));
+        assert!(!super::heartbeat_payload_has_wall_clock_prefix(
+            "20260524100000 "
+        ));
+        assert!(!super::heartbeat_payload_has_wall_clock_prefix(
+            "2026052a.000000 "
+        ));
+        assert!(!super::heartbeat_payload_has_wall_clock_prefix(
+            "20260524.000000X"
+        ));
+        assert!(!super::heartbeat_payload_has_wall_clock_prefix(
+            "20260524-000000 "
+        ));
     }
 
     #[test]

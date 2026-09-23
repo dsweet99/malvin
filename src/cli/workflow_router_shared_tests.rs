@@ -7,14 +7,14 @@ pub(crate) fn router_render_fixture(
     workflow: &str,
 ) -> (
     tempfile::TempDir,
-    crate::prompts::PromptStore,
-    crate::artifacts::RunArtifacts,
+    malvin::prompts::PromptStore,
+    malvin::artifacts::RunArtifacts,
 ) {
     let tmp = tempfile::tempdir().expect("tempdir");
-    crate::seed_malvin_checks(tmp.path(), "true\n");
-    let artifacts = crate::artifacts::create_run_artifacts_from_text(workflow, Some(tmp.path()))
+    malvin::seed_malvin_checks(tmp.path(), "true\n");
+    let artifacts = malvin::artifacts::create_run_artifacts_from_text(workflow, Some(tmp.path()))
         .expect("artifacts");
-    let store = crate::prompts::PromptStore::default_store();
+    let store = malvin::prompts::PromptStore::default_store();
     store.ensure_defaults().expect("defaults");
     (tmp, store, artifacts)
 }
@@ -23,21 +23,19 @@ fn effective_max_loops_is_at_least_one() {
     assert_eq!(effective_max_loops(3), 3);
 }
 fn router_workflow_context_includes_quality_gates() {
-    crate::test_utils::with_isolated_home(|_| {
+    malvin::test_utils::with_isolated_home(|_| {
         let (_tmp, _store, artifacts) = router_render_fixture("code");
-        let ctx = router_workflow_context!(&artifacts, crate::config::DEFAULT_CLI_MODEL)
+        let ctx = router_workflow_context!(&artifacts, malvin::config::DEFAULT_CLI_MODEL)
             .expect("context");
         assert!(ctx.contains_key("quality_gates"));
     });
 }
 fn router_workflow_context_without_gates_omits_quality_gates() {
-    crate::test_utils::with_isolated_home(|_| {
+    malvin::test_utils::with_isolated_home(|_| {
         let (_tmp, _store, artifacts) = router_render_fixture("code");
-        let ctx = router_workflow_context_without_gates!(
-            &artifacts,
-            crate::config::DEFAULT_CLI_MODEL,
-        )
-        .expect("context");
+        let ctx =
+            router_workflow_context_without_gates!(&artifacts, malvin::config::DEFAULT_CLI_MODEL,)
+                .expect("context");
         assert!(!ctx.contains_key("quality_gates"));
     });
 }
@@ -54,9 +52,9 @@ fn prefer_gate_outcome_over_summarize_surfaces_summarize_when_gate_ok() {
     assert_eq!(ok, 7);
 }
 fn write_checks_do_not_pass_for_artifacts_writes_markers() {
-    crate::test_utils::with_isolated_home(|_| {
+    malvin::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let artifacts = crate::artifacts::create_run_artifacts_from_text("tidy", Some(tmp.path()))
+        let artifacts = malvin::artifacts::create_run_artifacts_from_text("tidy", Some(tmp.path()))
             .expect("artifacts");
         let workspace_review = tmp.path().join("review.md");
         write_checks_do_not_pass_for_artifacts!(&artifacts).expect("write");
@@ -68,9 +66,9 @@ fn write_checks_do_not_pass_for_artifacts_writes_markers() {
     });
 }
 fn clear_quality_gates_log_for_next_agent_empties_file() {
-    crate::test_utils::with_isolated_home(|_| {
+    malvin::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
+        let artifacts = malvin::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
             .expect("artifacts");
         let qlog = artifacts.quality_gates_log_path();
         std::fs::write(&qlog, "stale output").expect("write");
@@ -84,19 +82,19 @@ pub(crate) fn gate_failure_fixture(
     tempfile::TempDir,
     tempfile::TempDir,
     crate::repo_checks::FakeCommandDirGuard,
-    crate::artifacts::RunArtifacts,
-    crate::artifacts::SessionDotfileBackups,
+    malvin::artifacts::RunArtifacts,
+    malvin::artifacts::SessionDotfileBackups,
 ) {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let (bin, guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "false", exit_code);
-    std::fs::write(crate::malvin_checks_path(tmp.path()), "false\n").expect("checks");
-    let artifacts = crate::artifacts::create_run_artifacts_from_text("tidy", Some(tmp.path()))
+    let (bin, guard) = malvin::test_agent_client::write_fake_gate(tmp.path(), "false", exit_code);
+    std::fs::write(malvin::malvin_checks_path(tmp.path()), "false\n").expect("checks");
+    let artifacts = malvin::artifacts::create_run_artifacts_from_text("tidy", Some(tmp.path()))
         .expect("artifacts");
-    let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snapshot");
+    let backups = malvin::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snapshot");
     (tmp, bin, guard, artifacts, backups)
 }
 fn run_router_workspace_gates_refreshes_quality_gates_log() {
-    crate::test_utils::with_isolated_home(|_| {
+    malvin::test_utils::with_isolated_home(|_| {
         let (_tmp, _bin, _guard, artifacts, backups) = gate_failure_fixture(1);
         std::fs::write(artifacts.quality_gates_log_path(), "stale output").expect("write");
         let err = run_router_workspace_gates(&artifacts, &backups, true).expect_err("gates fail");
@@ -116,11 +114,11 @@ fn run_router_workspace_gates_refreshes_quality_gates_log() {
 }
 
 fn failed_gate_run_does_not_set_just_ran_flag() {
-    crate::test_utils::with_isolated_home(|_| {
+    malvin::test_utils::with_isolated_home(|_| {
         let (_tmp, _bin, _guard, artifacts, backups) = gate_failure_fixture(1);
         run_router_workspace_gates(&artifacts, &backups, true).expect_err("gates fail");
         assert!(
-            crate::gate_loop_session::quality_gates_just_ran(),
+            malvin::gate_loop_session::quality_gates_just_ran(),
             "completed-but-failed gate run captured output; just_ran must be set"
         );
 
@@ -129,20 +127,20 @@ fn failed_gate_run_does_not_set_just_ran_flag() {
         let (artifacts2, backups2) = missing_checks_fixture(tmp.path());
         run_router_workspace_gates(&artifacts2, &backups2, true).expect_err("missing checks fail");
         assert!(
-            !crate::gate_loop_session::quality_gates_just_ran(),
+            !malvin::gate_loop_session::quality_gates_just_ran(),
             "setup failure (nothing ran) must not set just_ran"
         );
     });
 }
 
 fn gate_iteration_context_overrides_exp_log() {
-    crate::test_utils::with_isolated_home(|_| {
+    malvin::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tempdir");
-        crate::seed_malvin_checks(tmp.path(), "true\n");
-        let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
+        malvin::seed_malvin_checks(tmp.path(), "true\n");
+        let artifacts = malvin::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
             .expect("artifacts");
-        let base = router_workflow_context!(&artifacts, crate::config::DEFAULT_CLI_MODEL)
-            .expect("ctx");
+        let base =
+            router_workflow_context!(&artifacts, malvin::config::DEFAULT_CLI_MODEL).expect("ctx");
         let iter_log = artifacts.gate_exp_log_path(2);
         let ctx = gate_iteration_context!(&base, &artifacts, &iter_log, 2);
         let exp = ctx.get("exp_log").expect("exp_log");
@@ -152,27 +150,27 @@ fn gate_iteration_context_overrides_exp_log() {
 pub(crate) fn missing_checks_fixture(
     work: &std::path::Path,
 ) -> (
-    crate::artifacts::RunArtifacts,
-    crate::artifacts::SessionDotfileBackups,
+    malvin::artifacts::RunArtifacts,
+    malvin::artifacts::SessionDotfileBackups,
 ) {
-    if crate::git_worktree_toplevel(work).is_none() {
+    if malvin::git_worktree_toplevel(work).is_none() {
         std::process::Command::new("git")
             .args(["init"])
             .current_dir(work)
             .status()
             .expect("git init");
     }
-    let checks_path = crate::malvin_checks_path(work);
+    let checks_path = malvin::malvin_checks_path(work);
     if checks_path.is_file() {
         std::fs::remove_file(&checks_path).expect("remove checks");
     }
     let artifacts =
-        crate::artifacts::create_run_artifacts_from_text("code", Some(work)).expect("artifacts");
-    let backups = crate::artifacts::SessionDotfileBackups::snapshot(work).expect("snapshot");
+        malvin::artifacts::create_run_artifacts_from_text("code", Some(work)).expect("artifacts");
+    let backups = malvin::artifacts::SessionDotfileBackups::snapshot(work).expect("snapshot");
     (artifacts, backups)
 }
 fn run_router_workspace_gates_fails_when_checks_missing() {
-    crate::test_utils::with_isolated_home(|_| {
+    malvin::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tempdir");
         let (artifacts, backups) = missing_checks_fixture(tmp.path());
         let err =
@@ -184,18 +182,18 @@ fn run_router_workspace_gates_fails_when_checks_missing() {
     });
 }
 fn run_router_workspace_gates_restores_before_executing_checks() {
-    crate::test_utils::with_isolated_home(|_| {
+    malvin::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let (_bin, _guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "true", 0);
+        let (_bin, _guard) = malvin::test_agent_client::write_fake_gate(tmp.path(), "true", 0);
         let (artifacts, backups) = router_gates_restore_fixture(tmp.path());
-        std::fs::write(crate::malvin_checks_path(tmp.path()), "false\n").expect("tamper");
+        std::fs::write(malvin::malvin_checks_path(tmp.path()), "false\n").expect("tamper");
         run_router_workspace_gates(&artifacts, &backups, true).expect("gates pass after restore");
     });
 }
 fn run_router_workspace_gates_leaves_session_gitignore_after_post_gate_restore() {
-    crate::test_utils::with_isolated_home(|_| {
+    malvin::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let (_bin, _guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "true", 0);
+        let (_bin, _guard) = malvin::test_agent_client::write_fake_gate(tmp.path(), "true", 0);
         std::fs::write(tmp.path().join(".gitignore"), "gi\n").expect("drifted gitignore");
         let (artifacts, backups) = router_gates_restore_fixture(tmp.path());
         run_router_workspace_gates(&artifacts, &backups, true).expect("gates pass");
@@ -207,7 +205,7 @@ fn run_router_workspace_gates_leaves_session_gitignore_after_post_gate_restore()
     });
 }
 fn restore_failure_prevents_gate_run() {
-    crate::test_utils::with_isolated_home(|_| {
+    malvin::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tempdir");
         let (artifacts, backups) = gitignore_restore_failure_fixture(tmp.path());
         let err =

@@ -7,9 +7,7 @@ pub(super) const LEGACY_LOCAL_HINT: &str =
 pub(super) const LEGACY_PRIME_HINT: &str =
     "legacy `prime:` prefix removed; use `cursor:`, `pi:`, or `rpi:`";
 
-use super::{
-    LOCAL_PREFIX, MINI_PREFIX, OPENROUTER_PREFIX, PRIME_PREFIX, UNPREFIXED_MODEL_MESSAGE,
-};
+use super::{LOCAL_PREFIX, MINI_PREFIX, OPENROUTER_PREFIX, PRIME_PREFIX, UNPREFIXED_MODEL_MESSAGE};
 
 pub(super) fn legacy_or_unprefixed_error(raw: &str) -> String {
     if raw.starts_with(PRIME_PREFIX) {

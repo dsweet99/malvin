@@ -1,12 +1,12 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use crate::agent_backend::{SdkClient, set_implement_display_name};
-use crate::artifacts::{
+use crate::cli::cli_request::require_cli_request;
+use malvin::agent_backend::{SdkClient, set_implement_display_name};
+use malvin::artifacts::{
     RunArtifacts, SessionDotfileBackups, create_run_artifacts_from_text, resolve_user_md_request,
 };
-use crate::cli::cli_request::require_cli_request;
-use crate::run_id::RunDirOptions;
+use malvin::run_id::RunDirOptions;
 
 pub fn resolve_one_shot_request_artifacts(
     request: Option<&String>,
@@ -16,7 +16,7 @@ pub fn resolve_one_shot_request_artifacts(
     let request = require_cli_request(request, command)?;
     let (text, work_dir) = resolve_user_md_request(&request)?;
     let artifacts = match run_dir_opts {
-        Some(opts) => crate::artifacts::create_run_artifacts_from_text_opts(
+        Some(opts) => malvin::artifacts::create_run_artifacts_from_text_opts(
             &text,
             Some(work_dir.as_path()),
             opts,
@@ -25,12 +25,13 @@ pub fn resolve_one_shot_request_artifacts(
         None => create_run_artifacts_from_text(&text, Some(work_dir.as_path()))
             .map_err(|e| e.to_string())?,
     };
-    crate::run_id::activate_run(artifacts.run_dir.clone());
+    malvin::gate_loop_session::reset_for_independent_run();
+    malvin::run_id::activate_run(artifacts.run_dir.clone());
     Ok((text, artifacts))
 }
 
 pub struct OneShotCoderGuard {
-    timing: Arc<Mutex<crate::run_timing::RunTiming>>,
+    timing: Arc<Mutex<malvin::run_timing::RunTiming>>,
     run_dir: PathBuf,
 }
 
@@ -58,12 +59,12 @@ impl OneShotCoderGuard {
         run_res: Result<(), String>,
     ) -> Result<(), String> {
         let end_res = client.end_coder_session().await.map_err(|e| e.to_string());
-        let merged = crate::acp_post_run::prefer_primary_over_secondary(
+        let merged = malvin::acp_post_run::prefer_primary_over_secondary(
             run_res,
             end_res,
             "end coder session",
         );
-        crate::acp_post_run::emit_run_timing_json_only_after_backend(
+        malvin::acp_post_run::emit_run_timing_json_only_after_backend(
             client,
             &self.run_dir,
             &self.timing,
@@ -78,7 +79,7 @@ pub fn finish_one_shot_after_prompt(
     backups: &SessionDotfileBackups,
     result_md: &PathBuf,
 ) -> Result<(), String> {
-    crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
+    malvin::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
         acp_res, work_dir, backups, result_md,
     )
 }

@@ -61,12 +61,6 @@ pub fn print_stdout_acp_tool_summary_tee(ev: &AcpTeeStdoutEvent<'_>, display_pay
     route_acp_rendered(&display, &log, StdoutRenderPrelude::TaggedWithHeartbeat);
 }
 
-#[allow(dead_code)]
-pub(crate) fn flush_stdout_acp_tool_summary_tee(ev: &AcpTeeStdoutEvent<'_>, display_payload: &str) {
-    let (display, log) = tool_summary_tee_display_and_log(ev, display_payload);
-    route_acp_rendered(&display, &log, StdoutRenderPrelude::FlushOnly);
-}
-
 pub fn print_stdout_acp_tee_line_with_timestamp(ev: &AcpTeeStdoutEvent<'_>) {
     let ctx = AcpTeeLineFmt {
         ts: ev.ts,
@@ -79,22 +73,6 @@ pub fn print_stdout_acp_tee_line_with_timestamp(ev: &AcpTeeStdoutEvent<'_>) {
         &ctx,
         ev.emit_stdout_markdown,
         StdoutRenderPrelude::TaggedWithHeartbeat,
-    );
-}
-
-#[allow(dead_code)]
-pub(crate) fn flush_stdout_acp_tee_line_with_timestamp(ev: &AcpTeeStdoutEvent<'_>) {
-    let ctx = AcpTeeLineFmt {
-        ts: ev.ts,
-        direction: ev.direction,
-        who: ev.who,
-        line: ev.line,
-        dim_payload: ev.dim_payload,
-    };
-    print_stdout_acp_tee_line_with_timestamp_payload(
-        &ctx,
-        ev.emit_stdout_markdown,
-        StdoutRenderPrelude::FlushOnly,
     );
 }
 
@@ -198,16 +176,6 @@ mod kiss_cov_auto {
     #[test]
     fn kiss_cov_print_stdout_acp_tee_line_with_timestamp_payload() {
         let _ = print_stdout_acp_tee_line_with_timestamp_payload;
-    }
-
-    #[test]
-    fn kiss_cov_flush_stdout_acp_tool_summary_tee() {
-        let _ = super::flush_stdout_acp_tool_summary_tee;
-    }
-
-    #[test]
-    fn kiss_cov_flush_stdout_acp_tee_line_with_timestamp() {
-        let _ = super::flush_stdout_acp_tee_line_with_timestamp;
     }
 }
 

@@ -40,25 +40,6 @@ fn smoke_emit_without_log_path_skips_disk_append() {
     assert!(text.contains("[probe] y"));
 }
 
-fn smoke_publish_heartbeat_live_terminal() {
-    let _guard = crate::output::STDOUT_LOG_TEST_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let path = tmp.path().join("stdout.log");
-    crate::output::set_stdout_log_path(Some(path.clone()));
-    crate::output::enable_stdout_capture();
-    crate::output::reset_stdout_heartbeat_for_test();
-    crate::output::test_set_last_heartbeat_elapsed(std::time::Duration::from_secs(61));
-    let display = "malvin.| 20260524.000000 Waiting";
-    crate::output::publish_heartbeat_live_terminal(display);
-    let terminal = crate::output::take_captured_stdout();
-    crate::output::set_stdout_log_path(None);
-    assert_eq!(terminal.trim(), display);
-    assert!(std::fs::read_to_string(path).unwrap_or_default().is_empty());
-    assert!(crate::output::heartbeat_rendered_if_due(std::time::Instant::now(), false).is_none());
-}
-
 fn smoke_time_format_and_stdout_log_path() {
     assert!(!crate::time_format::timestamp_now_string().is_empty());
     let _guard = crate::agent_phase::AGENT_PHASE_TEST_LOCK
@@ -183,8 +164,6 @@ fn kiss_cov_acp_session_unit_tests() {
     let _ = stringify!(MemWatchHandles);
     let _ = stringify!(AffiliationCtx);
     let _ = stringify!(TeeStdoutEmit);
-    let _ = stringify!(shutdown_cancel_timeout);
-    let _ = stringify!(shutdown_child_wait_timeout);
     let _ = stringify!(cancel_rejected_as_unsupported);
     let _ = stringify!(best_effort_session_cancel);
     let _ = stringify!(wait_killed_child);
@@ -200,7 +179,6 @@ fn kiss_cov_cli_helper_symbols() {
 }
 
 fn kiss_cov_coverage_kiss_gate_refs() {
-    let _ = stringify!(kiss_cov_coalesce_private_helpers);
     let _ = stringify!(kiss_cov_reader_tests_helpers_symbols);
 }
 
@@ -214,7 +192,6 @@ fn kiss_bundled_malvin_kiss_coverage() {
     smoke_active_agent_heartbeat_stats();
     smoke_agent_phase_verifying_and_reporting();
     smoke_emit_without_log_path_skips_disk_append();
-    smoke_publish_heartbeat_live_terminal();
     smoke_time_format_and_stdout_log_path();
     smoke_artifacts_create();
     smoke_artifacts_resolve_user_md_request();

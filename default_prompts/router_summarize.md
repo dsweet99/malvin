@@ -1,4 +1,3 @@
-
 Write a summary of this entire session (possibly multiple agent chats/logs) as a DM to the user. Write it as first-person malvin to the user as a response to the user's request in `{{ user_request_path }}`.
 
 The user is interested in their request's satisfaction *not* in how you did it. (Nothing personal. That's what the logs are for.) Stay focused.
@@ -7,5 +6,13 @@ Do not give a play-by-play of your own actions, steps, or session mechanics. In 
 
 Be sure to provide evidence (e.g., measurements, citations, calculations, reasoning, etc.) for any claims you make as well as evidence that the user's request has been satisfied.
 
-Oh, and don't forget to put the summary between the DM fences.
+Write plainly and clearly. Use complete sentences. Assume the reader is intelligent and interested in what you have to say. Don't use invented terms or shorthand phrases that use for thinking. If you use an uncommon (not invented!) term, define or explain it.
 
+Finally, write a tl;dr or the summary; 1-2 sentences.
+
+Oh, and don't forget to put the summary between the DM fences, like this:
+```
+__MALVIN_DM_START__
+Your summary
+__MALVIN_DM_END__
+```

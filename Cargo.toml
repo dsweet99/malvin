@@ -1,8 +1,8 @@
 [package]
 name = "malvin"
-version = "0.2.6"
+version = "0.2.7"
 edition = "2024"
-rust-version = "1.96"
+rust-version = "1.95"
 description = "Non-interactive research and coding agent"
 license = "MIT"
 readme = "README.md"
@@ -37,6 +37,9 @@ codegen-units = 8
 debug = 0
 lto = false
 
+[profile.dev.package.malvin]
+codegen-units = 16
+
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 clap = { version = "4", features = ["derive"] }
@@ -64,7 +67,8 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["std", "registry"] }
 termimad = "0.34"
 unicode-width = "0.2"
-rusqlite = { version = "0.39", features = ["bundled"] }
+# Pin kstring so pi_agent_rust’s gix/vergen stack stays on MSRV 1.95 (2.0.3+ needs 1.96).
+kstring = "=2.0.2"
 pi = { package = "pi_agent_rust", version = "0.1.23", default-features = false, features = ["sqlite-sessions"] }
 asupersync = { version = "0.3.10", default-features = false }
 async-trait = "0.1"
@@ -80,6 +84,9 @@ path = "src/lib.rs"
 [[bin]]
 name = "malvin"
 path = "src/main.rs"
+test = false
+doctest = false
+bench = false
 
 [lints.rust]
 unsafe_code = "deny"

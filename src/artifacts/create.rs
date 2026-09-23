@@ -12,12 +12,12 @@ fn random_plan_request_filename() -> String {
     )
 }
 
-pub(crate) fn ensure_quality_gates_log_file(artifacts: &RunArtifacts) -> std::io::Result<()> {
+pub fn ensure_quality_gates_log_file(artifacts: &RunArtifacts) -> std::io::Result<()> {
     let path = artifacts.quality_gates_log_path();
     std::fs::write(&path, "")
 }
 
-pub(crate) fn init_quality_gates_log_pending(artifacts: &RunArtifacts) -> std::io::Result<()> {
+pub fn init_quality_gates_log_pending(artifacts: &RunArtifacts) -> std::io::Result<()> {
     std::fs::write(
         artifacts.quality_gates_log_path(),
         crate::malvin_constants::QUALITY_GATES_LOG_PENDING,
@@ -25,17 +25,17 @@ pub(crate) fn init_quality_gates_log_pending(artifacts: &RunArtifacts) -> std::i
 }
 
 pub(crate) fn ensure_exp_log_file(artifacts: &RunArtifacts) -> std::io::Result<PathBuf> {
-    write_empty_exp_log(&artifacts.exp_log_path())
+    ensure_exp_log_exists(&artifacts.exp_log_path())
 }
 
-pub(crate) fn ensure_gate_exp_log_file(
+pub fn ensure_gate_exp_log_file(
     artifacts: &RunArtifacts,
     iteration: usize,
 ) -> std::io::Result<PathBuf> {
-    write_empty_exp_log(&artifacts.gate_exp_log_path(iteration))
+    ensure_exp_log_exists(&artifacts.gate_exp_log_path(iteration))
 }
 
-fn write_empty_exp_log(exp_log_path: &Path) -> std::io::Result<PathBuf> {
+fn ensure_exp_log_exists(exp_log_path: &Path) -> std::io::Result<PathBuf> {
     let exp_parent = exp_log_path.parent().ok_or_else(|| {
         Error::new(
             ErrorKind::InvalidInput,
@@ -43,7 +43,9 @@ fn write_empty_exp_log(exp_log_path: &Path) -> std::io::Result<PathBuf> {
         )
     })?;
     std::fs::create_dir_all(exp_parent)?;
-    std::fs::write(exp_log_path, "")?;
+    if !exp_log_path.exists() {
+        std::fs::write(exp_log_path, "")?;
+    }
     Ok(exp_log_path.to_path_buf())
 }
 
@@ -115,6 +117,34 @@ pub fn create_run_artifacts_from_text_opts(
     Ok(artifacts)
 }
 
+pub fn refresh_plan_copy_from_source(
+    plan_source: &Path,
+    plan_target: &Path,
+) -> std::io::Result<()> {
+    std::fs::copy(plan_source, plan_target)?;
+    Ok(())
+}
+
+pub fn maybe_refresh_watched_plan(
+    watch: bool,
+    source: Option<&Path>,
+    plan_target: &Path,
+) -> Result<(), String> {
+    if !watch {
+        return Ok(());
+    }
+    let Some(source) = source else {
+        return Ok(());
+    };
+    refresh_plan_copy_from_source(source, plan_target).map_err(|e| {
+        format!(
+            "failed to re-copy watched request {} -> {}: {e}",
+            source.display(),
+            plan_target.display()
+        )
+    })
+}
+
 #[cfg(test)]
 #[allow(unused_imports)]
 mod kiss_cov_gate_refs {
@@ -122,7 +152,9 @@ mod kiss_cov_gate_refs {
     #[test]
     fn kiss_cov_unit_names() {
         let _ = ensure_exp_log_file;
-        let _ = write_empty_exp_log;
+        let _ = ensure_exp_log_exists;
         let _ = init_quality_gates_log_pending;
+        let _ = refresh_plan_copy_from_source;
+        let _ = maybe_refresh_watched_plan;
     }
 }

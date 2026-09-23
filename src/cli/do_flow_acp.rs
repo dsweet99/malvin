@@ -1,7 +1,7 @@
-use crate::agent_backend::SdkClient;
-use crate::artifacts::RunArtifacts;
 use crate::cli::one_shot_session::OneShotCoderGuard;
-use crate::run_timing::TimingPhase;
+use malvin::agent_backend::SdkClient;
+use malvin::artifacts::RunArtifacts;
+use malvin::run_timing::TimingPhase;
 
 use super::do_flow_prompt;
 
@@ -12,11 +12,13 @@ pub(super) async fn run_do_coder_prompt(
 ) -> Result<(), String> {
     let (ref header, ref user) = coder.header_user_for_trace;
     client
-        .active_coder_session().map_err(|e| e.to_string())?.run_coder_prompt(
+        .active_coder_session()
+        .map_err(|e| e.to_string())?
+        .run_coder_prompt(
             &coder.combined,
             &artifacts.log_path("do"),
             "do",
-            crate::acp::CoderPromptOptions {
+            malvin::acp::CoderPromptOptions {
                 llm_phase: Some(TimingPhase::Implement),
                 do_trace_split: Some((header.as_str(), user.as_str())),
                 stdout_bracket_label: None,

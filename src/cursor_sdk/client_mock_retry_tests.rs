@@ -5,7 +5,10 @@ use super::client_mock_tests::{
     clear_mock_bridge_env, install_mock_bridge_env, mock_bridge_path, mock_client, mock_io,
 };
 
-fn prepare_retry_test_client(tmp: &tempfile::TempDir, once_dir: &std::path::Path) -> CursorSdkClient {
+fn prepare_retry_test_client(
+    tmp: &tempfile::TempDir,
+    once_dir: &std::path::Path,
+) -> CursorSdkClient {
     std::fs::create_dir_all(once_dir).expect("once dir");
     unsafe {
         std::env::set_var("MOCK_BRIDGE_ONCE_DIR", once_dir);
@@ -32,7 +35,9 @@ async fn fresh_agent_on_retry_recreates_after_non_teardown_timeout() {
 
 async fn run_fresh_agent_retry_prompt(client: &mut CursorSdkClient, tmp_path: &std::path::Path) {
     client
-        .active_coder_session().expect("active coder session").run_coder_prompt(
+        .active_coder_session()
+        .expect("active coder session")
+        .run_coder_prompt(
             "NON_TEARDOWN_TIMEOUT_ONCE please",
             &tmp_path.join("prompts.log"),
             "router_header",

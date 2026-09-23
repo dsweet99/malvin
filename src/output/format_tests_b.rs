@@ -79,28 +79,3 @@ fn outgoing_prompt_log_who_tag_uses_stem_bracket_keeps_md() {
         "print_outgoing_prompt_log must not print live terminal lines; got {live:?}"
     );
 }
-
-#[test]
-fn defer_stdout_hooks_route_through_active_sink() {
-    use std::path::PathBuf;
-    use std::sync::Arc;
-
-    let _guard = super::STDOUT_LOG_TEST_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let shared = Arc::new(std::sync::Mutex::new(
-        crate::deferred_log::DeferredLogSink::for_prompt("fmt_hook".to_string(), PathBuf::new())
-            .expect("defer sink"),
-    ));
-    crate::deferred_log::register_active_sink(Arc::clone(&shared));
-    crate::deferred_log::install_stdout_hooks();
-    assert!(super::try_defer_tagged_stdout("d", "l"));
-    assert!(crate::output::stdout_defer::try_defer_heartbeat(
-        "hb-d", "hb-l"
-    ));
-    crate::deferred_log::unregister_active_sink();
-    assert!(!super::try_defer_tagged_stdout("d", "l"));
-    assert!(!crate::output::stdout_defer::try_defer_heartbeat(
-        "hb-d", "hb-l"
-    ));
-}

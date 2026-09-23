@@ -1,14 +1,12 @@
-use crate::artifacts::{
-    RunArtifacts, SessionDotfileBackups, ensure_gate_exp_log_file,
-};
 use crate::router_flow::router_flow_no_work::chat_has_malvin_done;
 use crate::router_flow::router_flow_prompt;
+use malvin::artifacts::{ensure_gate_exp_log_file, RunArtifacts, SessionDotfileBackups};
 use std::path::Path;
 
-use super::RouterAcpIterationInput;
 use super::router_flow_coder_prompts::{
-    RouterInitialCoderPrompt, run_router_b_coder_prompt, run_router_initial_coder_prompt,
+    run_router_b_coder_prompt, run_router_initial_coder_prompt, RouterInitialCoderPrompt,
 };
+use super::RouterAcpIterationInput;
 
 pub(crate) struct RouterTurnsOutcome {
     pub iteration_backups: SessionDotfileBackups,
@@ -43,7 +41,8 @@ pub(crate) async fn run_router_turns(
 ) -> Result<RouterTurnsOutcome, String> {
     let model = input.shared.model.canonical();
     let creative = input.router.sample_creative_this_iteration();
-    let _exp_log = ensure_gate_exp_log_file(input.artifacts, 1).map_err(|e| e.to_string())?;
+    let _exp_log =
+        ensure_gate_exp_log_file(input.artifacts, input.agent_loop).map_err(|e| e.to_string())?;
     let iteration_backups = deliver_router_initial_turn(input, log_path, creative).await?;
     let done = finish_router_a_maybe_b(input, log_path, &model, creative).await?;
     Ok(RouterTurnsOutcome {
@@ -59,18 +58,21 @@ async fn deliver_router_initial_turn(
 ) -> Result<SessionDotfileBackups, String> {
     let work_dir = input.artifacts.work_dir.as_path();
     let model = input.shared.model.canonical();
-    let include_header = !input.client.header_lifecycle.is_satisfied();
-    let initial =
-        router_flow_prompt::build_router_initial_prompt(router_flow_prompt::RouterInitialPromptInput {
+    let include_header = !malvin::agent_backend::session_header_is_satisfied(input.client);
+    let initial = router_flow_prompt::build_router_initial_prompt(
+        router_flow_prompt::RouterInitialPromptInput {
             store: input.prompt_store,
             artifacts: input.artifacts,
             model: &model,
             gates: input.router.gates,
+            gates_just_ran: malvin::gate_loop_session::quality_gates_just_ran(),
             no_kpop: input.router.no_kpop,
             creative,
             max_hypotheses: input.max_hypotheses,
             include_header,
-        })?;
+            gate_iteration: input.agent_loop,
+        },
+    )?;
 
     if include_header {
         input.client.bind_session_header_parts(
@@ -128,7 +130,7 @@ async fn finish_router_a_maybe_b(
             input.client,
             &router_b,
             log_path,
-            router_flow_prompt::router_b_prompt_label(crate::prompts::RouterBPromptFlags {
+            router_flow_prompt::router_b_prompt_label(malvin::prompts::RouterBPromptFlags {
                 creative,
                 no_kpop,
             }),

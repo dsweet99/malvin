@@ -1,5 +1,5 @@
 use super::factory::build_agent_backend;
-use super::test_support::{shared_opts, test_io};
+use super::test_support::test_io;
 use crate::model_id::ModelBackend;
 
 #[test]
@@ -25,9 +25,7 @@ fn cursor_and_pi_backends_construct_from_prefixed_models() {
 
 #[test]
 fn build_agent_backend_selects_pi_for_pi_model() {
-    let mut shared = shared_opts(false);
-    shared.model = crate::model_id::parse_model_id("rpi:openai/gpt-4o").expect("model");
-    let backend = build_agent_backend(&shared, false)
-        .expect("pi backend");
+    let model = crate::model_id::parse_model_id("rpi:openai/gpt-4o").expect("model");
+    let backend = build_agent_backend(model, 3, false).expect("pi backend");
     assert!(matches!(backend.model.backend, ModelBackend::Pi));
 }

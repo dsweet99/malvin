@@ -7,7 +7,10 @@ fn kiss_cov_session_and_spawn_names() {
     let _ = stringify!(live_embedded_session);
     let _ = stringify!(start_embedded_mem_watch);
     let _ = stringify!(watch_embedded_memory);
+    let _ = super::session_spawn_watch::start_embedded_mem_watch;
     let _ = stringify!(isolated_tool_factory);
+    let _ = stringify!(local_append_system_prompt);
+    let _ = stringify!(local_enabled_tools);
 }
 
 #[test]
@@ -45,7 +48,6 @@ async fn fake_session_begin_end_leaves_no_pi_runtime_thread() {
     let mut client = crate::pi_sdk::pi_sdk_client_from_raw(
         "rpi:openai/gpt-4o",
         crate::acp::AgentIoOptions {
-
             no_tee: true,
             raw_output: true,
             show_thoughts_on_stdout: false,
@@ -170,4 +172,56 @@ fn leftover_pi_runtime_threads() -> Vec<String> {
         }
     }
     names
+}
+
+#[test]
+fn split_keeps_model_path_after_first_slash() {
+    use crate::model_id::parse_model_id;
+    let model = parse_model_id("rpi:openai/gpt-5").expect("ok");
+    assert_eq!(
+        model.pi_provider_and_model().expect("pi"),
+        ("openai", "gpt-5")
+    );
+}
+
+#[test]
+fn local_append_prompt_has_no_task_answers() {
+    let prompt =
+        super::local_append_system_prompt(super::LocalAgentMode::KeylessTools).expect("prompt");
+    for needle in [
+        "ringbuf",
+        "csvcut",
+        "answer.json",
+        "Nguyen",
+        "-70",
+        "ONLY JSON",
+    ] {
+        assert!(
+            !prompt.contains(needle),
+            "local append must not contain {needle:?}: {prompt}"
+        );
+    }
+    assert!(super::local_append_system_prompt(super::LocalAgentMode::NonKeyless).is_none());
+}
+
+#[test]
+fn local_enabled_tools_are_the_core_set() {
+    let tools =
+        super::local_enabled_tools(super::LocalAgentMode::KeylessTools).expect("keyless tools");
+    assert_eq!(
+        tools,
+        vec!["read", "bash", "edit", "write", "grep", "find", "ls"]
+    );
+    assert!(super::local_enabled_tools(super::LocalAgentMode::NonKeyless).is_none());
+}
+
+#[test]
+fn local_no_tools_path_is_empty_enabled_tools() {
+    let tools =
+        super::local_enabled_tools(super::LocalAgentMode::KeylessTextOnly).expect("no-tools vec");
+    assert!(tools.is_empty());
+    let prompt = super::local_append_system_prompt(super::LocalAgentMode::KeylessTextOnly)
+        .expect("text-only");
+    assert!(prompt.contains("no tools"), "{prompt}");
+    assert!(!prompt.contains("JSON tool call"), "{prompt}");
 }

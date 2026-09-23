@@ -1,21 +1,21 @@
 use super::router_flow_acp::router_flow_acp_support::empty_iteration_backups;
 use super::router_flow_acp::{
-    RouterAcpIterationInput, RouterAcpIterationOutcome, finalize_router_acp_iteration,
-    run_router_acp_open_iteration,
+    finalize_router_acp_iteration, run_router_acp_open_iteration, RouterAcpIterationInput,
+    RouterAcpIterationOutcome,
 };
-use crate::agent_backend::SdkClient;
-use crate::artifacts::{RunArtifacts, SessionDotfileBackups, merge_and_sanitize_for_gate_restore};
-use crate::cli::{RouterOpts, SharedOpts};
 use crate::cli::format_workspace_gate_failure;
 use crate::cli::workflow_router_shared::effective_max_loops;
-use crate::prompts::PromptStore;
-use crate::run_timing::acp_post_run::RunTimingSessionEnd;
+use crate::cli::{RouterOpts, SharedOpts};
+use malvin::agent_backend::SdkClient;
+use malvin::artifacts::{merge_and_sanitize_for_gate_restore, RunArtifacts, SessionDotfileBackups};
+use malvin::prompts::PromptStore;
+use malvin::run_timing::acp_post_run::RunTimingSessionEnd;
 use std::path::Path;
 
 #[path = "router_flow_loop_decide.rs"]
 mod router_flow_loop_decide;
 pub(crate) use router_flow_loop_decide::{
-    RouterLoopDecision, RouterLoopExitInput, decide_router_loop_exit, router_exit_summarize_for,
+    decide_router_loop_exit, router_exit_summarize_for, RouterLoopDecision, RouterLoopExitInput,
 };
 
 pub(crate) struct RouterAgentLoopInput<'a> {
@@ -26,6 +26,7 @@ pub(crate) struct RouterAgentLoopInput<'a> {
     pub router: &'a RouterOpts,
     pub max_loops: usize,
     pub max_hypotheses: usize,
+    pub watch_source: Option<&'a Path>,
 }
 
 pub(crate) struct RouterAgentLoopOutcome {
@@ -60,13 +61,10 @@ pub(crate) async fn run_router_agent_loops(
         let step = run_one_router_loop_step(&mut input, agent_loop, max_loops).await?;
         last_acp = step.last_acp;
         last_backups = step.last_backups;
-        if last_acp.is_err() {
-            break;
-        }
-        match step.decision {
-            None | Some(RouterLoopDecision::Exit) => break,
-            Some(RouterLoopDecision::Continue) => {}
-            Some(RouterLoopDecision::ExitGatesFailed(detail)) => {
+        match router_flow_loop_decide::prefer_exit_gates_over_acp(&last_acp, step.decision) {
+            RouterLoopDecision::Continue => {}
+            RouterLoopDecision::Exit => break,
+            RouterLoopDecision::ExitGatesFailed(detail) => {
                 return Err(format_workspace_gate_failure("malvin", &detail));
             }
         }
@@ -82,6 +80,11 @@ async fn run_one_router_loop_step(
     agent_loop: usize,
     max_loops: usize,
 ) -> Result<RouterLoopStepResult, String> {
+    malvin::artifacts::maybe_refresh_watched_plan(
+        input.router.watch,
+        input.watch_source,
+        input.artifacts.plan_path.as_path(),
+    )?;
     let session_end = if agent_loop == max_loops {
         RunTimingSessionEnd::Finalize
     } else {
@@ -108,23 +111,33 @@ async fn finish_router_loop_step(
 ) -> Result<RouterLoopStepResult, String> {
     let (agent_loop, max_loops, session_end) = ids;
     let work_dir = input.artifacts.work_dir.as_path();
-    let last_backups = restore_router_iteration_dotfiles(work_dir, &open.iteration_backups)?;
-    if !open.session_alive {
+    let (acp_result, iteration_backups, open_session) = match open {
+        RouterAcpIterationOutcome::Closed {
+            acp_result,
+            iteration_backups,
+        } => (acp_result, iteration_backups, None),
+        RouterAcpIterationOutcome::Open {
+            iteration_backups,
+            done,
+            timing,
+        } => (Ok(()), iteration_backups, Some((done, timing))),
+    };
+    let last_backups = restore_router_iteration_dotfiles(work_dir, &iteration_backups)?;
+    let Some((done, timing)) = open_session else {
         return Ok(RouterLoopStepResult {
-            last_acp: open.acp_result,
+            last_acp: acp_result,
             last_backups,
             decision: None,
         });
-    }
+    };
     let decision = decide_router_loop_exit(RouterLoopExitInput {
         artifacts: input.artifacts,
         backups: &last_backups,
-        done: open.done,
+        done,
         gates: input.router.gates,
         agent_loop,
         max_loops,
     });
-    let timing = open.timing.expect("alive session carries timing");
     let last_acp = finalize_router_acp_iteration(
         &mut RouterAcpIterationInput {
             client: input.client,

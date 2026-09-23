@@ -1,4 +1,4 @@
-use super::{PromptStratum, WorkflowRenderContext, join_labeled_strata, join_strata};
+use super::{AggregatedInitialPromptBuilder, WorkflowRenderContext, join_strata};
 
 #[test]
 fn join_strata_skips_empty_and_trims_trailing_whitespace() {
@@ -17,32 +17,7 @@ fn workflow_render_context_round_trip() {
 }
 
 #[test]
-fn join_labeled_strata_matches_join_strata_output() {
-    assert_eq!(
-        join_labeled_strata([
-            (PromptStratum::WorkflowHeader, "header"),
-            (PromptStratum::UserRequest, "body"),
-        ]),
-        join_strata(["header", "body"])
-    );
-}
-
-#[test]
-fn prompt_stratum_variants_exist() {
-    let _ = (
-        PromptStratum::EmbeddedTemplate,
-        PromptStratum::PlaceholderContext,
-        PromptStratum::WorkflowHeader,
-        PromptStratum::UserRequest,
-        PromptStratum::GateLoopBlock,
-        PromptStratum::MiniConstraints,
-    );
-}
-
-
-#[test]
 fn aggregated_builder_skips_empty_and_joins_labels() {
-    use super::{AggregatedInitialPromptBuilder};
     let mut b = AggregatedInitialPromptBuilder::new();
     b.push_nonempty("a.md", String::new());
     b.push_nonempty("b.md", "B".into());

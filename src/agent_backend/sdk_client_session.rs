@@ -40,7 +40,7 @@ impl SdkClient {
     ) -> Result<CoderSessionEnsure, AgentError> {
         if self.header_lifecycle.is_unbound() {
             return Err(AgentError(
-                "start_coder_session requires bind_session_header so a header is always sent"
+                "start_coder_session requires bind_session_header before ensure/deliver"
                     .into(),
             ));
         }
@@ -107,7 +107,6 @@ async fn begin_coder_session_resumed(
     let thinking = spawn::spawn_thinking_wire(client);
     spawn::spawn_with_retries(client, cwd, thinking.as_deref()).await
 }
-
 
 #[cfg(test)]
 #[path = "sdk_client_session_tests.rs"]

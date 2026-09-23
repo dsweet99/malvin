@@ -14,6 +14,7 @@ use super::isolated_bash::isolated_tool_factory;
 use super::openrouter_pricing;
 use super::runtime::PiRuntime;
 use super::session::PiEmbeddedSession;
+use super::session_spawn_local::local_session_overrides;
 
 type SandboxBaseline = HashSet<u32>;
 
@@ -43,7 +44,7 @@ fn spawn_live_pi_bridge(
     let options = build_session_options(args, provider, model)?;
     let runtime = PiRuntime::start(options).map_err(AgentError)?;
     let session = embedded_session(ticket, args, runtime, (provider, model))?;
-    start_embedded_mem_watch(&session);
+    super::session_spawn_watch::start_embedded_mem_watch(&session);
     Ok(SdkSession::Pi(Box::new(session)))
 }
 
@@ -75,6 +76,20 @@ fn pi_thinking_level(thinking: &str) -> Result<ThinkingLevel, String> {
     ThinkingLevel::from_str(mapped)
 }
 
+fn ensure_local_catalog(
+    cwd: &std::path::Path,
+    provider: &str,
+    model: &str,
+) -> Result<(), AgentError> {
+    let context_size = super::local_context::context_size_for_workdir(cwd);
+    super::local_context::ensure_capped_local_model_catalog(provider, model, context_size)
+        .map_err(AgentError)?;
+    if pi::provider_metadata::provider_is_keyless_local(provider) {
+        super::local_lifecycle::ensure_local_llm(provider, model).map_err(AgentError)?;
+    }
+    Ok(())
+}
+
 fn build_session_options(
     args: &BridgeSpawnArgs<'_>,
     provider: &str,
@@ -85,14 +100,22 @@ fn build_session_options(
         .map(pi_thinking_level)
         .transpose()
         .map_err(AgentError)?;
+    ensure_local_catalog(args.cwd, provider, model)?;
+    let keyless = pi::provider_metadata::provider_is_keyless_local(provider);
+    let (append_system_prompt, enabled_tools, max_tool_iterations) =
+        local_session_overrides(keyless, provider, model);
     Ok(SessionOptions {
         provider: Some(provider.to_string()),
         model: Some(model.to_string()),
+        api_key: keyless.then(|| super::local_context::KEYLESS_LOCAL_API_KEY.to_string()),
         thinking,
+        append_system_prompt,
+        enabled_tools,
         working_directory: Some(args.cwd.to_path_buf()),
         no_session: true,
         extension_paths: Vec::new(),
         tool_factory: Some(isolated_tool_factory()),
+        max_tool_iterations,
         ..SessionOptions::default()
     })
 }
@@ -113,6 +136,7 @@ fn fake_embedded_session(
         spawn_pid_baseline: baseline,
         pi_provider: provider.to_string(),
         pi_model: model.to_string(),
+        local_hold: take_local_hold(provider).unwrap_or(false),
     }
 }
 
@@ -124,6 +148,7 @@ fn embedded_session(
 ) -> Result<PiEmbeddedSession, AgentError> {
     let (provider, model) = model_id;
     let baseline = sandbox_note_or_error(ticket, args.cwd)?;
+    let local_hold = take_local_hold(provider)?;
     Ok(PiEmbeddedSession {
         runtime: Some(runtime),
         log: StreamLog::from_spawn(args),
@@ -132,7 +157,16 @@ fn embedded_session(
         spawn_pid_baseline: baseline,
         pi_provider: provider.to_string(),
         pi_model: model.to_string(),
+        local_hold,
     })
+}
+
+fn take_local_hold(provider: &str) -> Result<bool, AgentError> {
+    if !pi::provider_metadata::provider_is_keyless_local(provider) {
+        return Ok(false);
+    }
+    super::local_lifecycle::hold_local_llm().map_err(AgentError)?;
+    Ok(true)
 }
 
 fn note_sandbox_baseline(
@@ -142,56 +176,4 @@ fn note_sandbox_baseline(
     cwd: &Path,
 ) {
     let _ = crate::malvin_sandbox::note_active_sandbox_session(ticket, pgid, baseline.clone(), cwd);
-}
-
-fn start_embedded_mem_watch(session: &PiEmbeddedSession) {
-    #[cfg(unix)]
-    {
-        if crate::acp::test_no_real_agent_enabled() {
-            return;
-        }
-        let reader_dead = Arc::clone(&session.reader_dead);
-        let baseline = session.spawn_pid_baseline.clone();
-        let work_dir = session.work_dir.clone();
-        let run_dir = session.log.run_dir.clone();
-        tokio::spawn(async move {
-            watch_embedded_memory(reader_dead, baseline, work_dir, run_dir).await;
-        });
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = session;
-    }
-}
-
-#[cfg(unix)]
-async fn watch_embedded_memory(
-    reader_dead: Arc<AtomicBool>,
-    baseline: std::collections::HashSet<u32>,
-    work_dir: std::path::PathBuf,
-    run_dir: Option<std::path::PathBuf>,
-) {
-    let limit_bytes = crate::mem_limit_config::load_mem_limit_bytes(&work_dir);
-    crate::acp::watch_process_group_memory(crate::acp::MemWatchHandles {
-        reader_dead,
-        pgid: None,
-        limit_bytes,
-        spawn_pid_baseline: baseline,
-        run_dir,
-    })
-    .await;
-}
-
-#[cfg(test)]
-mod thinking_arg_tests {
-    use crate::model_id::parse_model_id;
-
-    #[test]
-    fn split_keeps_model_path_after_first_slash() {
-        let model = parse_model_id("rpi:openai/gpt-5").expect("ok");
-        assert_eq!(
-            model.pi_provider_and_model().expect("pi"),
-            ("openai", "gpt-5")
-        );
-    }
 }

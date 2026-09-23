@@ -34,7 +34,7 @@ all: bridges
 	cargo build --release
 
 install: bridges
-	cargo install --path . --force --locked
+	cargo install --path . --force --locked --config 'build.rustflags=[]'
 
 test: bridges
 	pytest tests && cargo nextest run

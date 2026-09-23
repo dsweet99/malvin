@@ -1,6 +1,6 @@
-use crate::model_id::{CODEX_PREFIX, CURSOR_PREFIX, PI_PREFIX, RPI_PREFIX};
-use crate::output::{MALVIN_WHO, print_stdout_line};
 use clap::Args;
+use malvin::model_id::{CODEX_PREFIX, CURSOR_PREFIX, PI_PREFIX, RPI_PREFIX};
+use malvin::output::{MALVIN_WHO, print_stdout_line};
 
 #[path = "models_cmd_cursor.rs"]
 mod models_cmd_cursor;
@@ -34,7 +34,7 @@ pub(crate) const fn models_args_marker(_args: &ModelsArgs) -> &'static str {
 }
 
 fn print_codex_models(filter: Option<&str>) {
-    match crate::codex_sdk::list_codex_display_models() {
+    match malvin::codex_sdk::list_codex_display_models() {
         Ok(models) => {
             for (id, name) in models {
                 let line = format!("codex:{id}\t{name}");
@@ -52,31 +52,45 @@ fn print_current_footer(current_model: &str) {
     print_stdout_line(MALVIN_WHO, &format!("Current: {current_model}"));
 }
 
+fn rpi_models_enabled() -> bool {
+    let Ok(cwd) = std::env::current_dir() else {
+        return true;
+    };
+    !malvin::malvin_config_file::load_malvin_config(&cwd).disable_rpi
+}
+
 pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
     let filter = models_list_prefix(&args.words)?;
     let filter_ref = filter.as_deref();
+    maybe_refresh_models_catalog(args.refresh);
+    print_models_sections(filter_ref);
+    print_current_footer(current_model);
+    Ok(())
+}
 
+fn maybe_refresh_models_catalog(force: bool) {
     let now = models_cmd_refresh::unix_now_secs();
-    let force_refresh = args.refresh || models_cmd_refresh::models_refresh_is_due(now);
-    if force_refresh {
+    if force || models_cmd_refresh::models_refresh_is_due(now) {
         models_cmd_refresh::perform_models_refresh();
     }
+}
 
+fn print_models_sections(filter_ref: Option<&str>) {
     if section_may_match(filter_ref, CURSOR_PREFIX)
         && let Err(e) = print_cursor_models(filter_ref)
     {
         print_stdout_line(MALVIN_WHO, &format!("(cursor models unavailable: {e})"));
     }
     if section_may_match(filter_ref, PI_PREFIX) {
-        match crate::npm_pi_sdk::list_npm_pi_display_models() {
+        match malvin::npm_pi_sdk::list_npm_pi_display_models() {
             Ok(models) => print_npm_pi_models(&models, filter_ref),
             Err(e) => {
                 print_stdout_line(MALVIN_WHO, &format!("(pi models unavailable: {e})"));
             }
         }
     }
-    if section_may_match(filter_ref, RPI_PREFIX) {
-        match crate::pi_sdk::list_pi_models_sync(false) {
+    if rpi_models_enabled() && section_may_match(filter_ref, RPI_PREFIX) {
+        match malvin::pi_sdk::list_pi_models_sync(false) {
             Ok(models) => print_pi_models(&models, filter_ref),
             Err(e) => {
                 print_stdout_line(MALVIN_WHO, &format!("(rpi models unavailable: {e})"));
@@ -86,8 +100,6 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
     if section_may_match(filter_ref, CODEX_PREFIX) {
         print_codex_models(filter_ref);
     }
-    print_current_footer(current_model);
-    Ok(())
 }
 
 fn print_npm_pi_models(models: &[(String, String)], filter: Option<&str>) {
@@ -99,14 +111,33 @@ fn print_npm_pi_models(models: &[(String, String)], filter: Option<&str>) {
     }
 }
 
-fn print_pi_models(models: &[crate::pi_sdk::PiModelListing], filter: Option<&str>) {
-    let mut printed = false;
+fn rpi_display_id(model_id: &str) -> String {
+    let provider = model_id.split('/').next().unwrap_or("");
+    if pi::provider_metadata::provider_is_keyless_local(provider) {
+        format!("local/{model_id}")
+    } else {
+        model_id.to_string()
+    }
+}
+
+#[cfg(test)]
+#[test]
+fn rpi_display_id_covers_local_and_cloud() {
+    assert_eq!(
+        rpi_display_id("ollama/qwen2.5:1.5b"),
+        "local/ollama/qwen2.5:1.5b"
+    );
+    assert_eq!(rpi_display_id("openai/gpt-4o"), "openai/gpt-4o");
+}
+
+fn print_pi_models(models: &[malvin::pi_sdk::PiModelListing], filter: Option<&str>) {
     for model in models {
         let provider = model.id.split('/').next().unwrap_or("");
-        if !crate::pi_sdk::is_provider_authenticated(provider) {
+        if !malvin::pi_sdk::is_provider_listable(provider) {
             continue;
         }
-        let mut line = format!("{RPI_PREFIX}{}\t{}", model.id, model.name);
+        let display_id = rpi_display_id(&model.id);
+        let mut line = format!("{RPI_PREFIX}{display_id}\t{}", model.name);
         if let Some(thinking) = model.thinking {
             line.push('\t');
             line.push_str(if thinking {
@@ -117,14 +148,7 @@ fn print_pi_models(models: &[crate::pi_sdk::PiModelListing], filter: Option<&str
         }
         if line_matches_prefix(&line, filter) {
             print_stdout_line(MALVIN_WHO, &line);
-            printed = true;
         }
-    }
-    if printed {
-        print_stdout_line(
-            MALVIN_WHO,
-            "Note: pi:/rpi: model lists refresh live provider catalogs at most once per day (use --refresh to force); rpi: rows are shown only for providers you can run (environment API key or stored Pi credential).",
-        );
     }
 }
 
@@ -216,11 +240,11 @@ pub(crate) mod test_hooks {
     }
 
     pub fn current_model_label() -> String {
-        crate::config::DEFAULT_CLI_MODEL.to_string()
+        malvin::config::DEFAULT_CLI_MODEL.to_string()
     }
 
     pub fn print_current_footer() {
-        super::print_current_footer(crate::config::DEFAULT_CLI_MODEL);
+        super::print_current_footer(malvin::config::DEFAULT_CLI_MODEL);
     }
 
     pub fn models_refresh_is_due(now_secs: u64) -> bool {

@@ -21,7 +21,7 @@ pub fn unix_now_secs() -> u64 {
 
 #[must_use]
 pub fn models_refresh_record_path() -> PathBuf {
-    crate::workspace_paths::malvin_user_home_root().join("last_models_refresh.json")
+    malvin::workspace_paths::malvin_user_home_root().join("last_models_refresh.json")
 }
 
 #[must_use]
@@ -52,8 +52,8 @@ pub fn models_refresh_is_due(now_secs: u64) -> bool {
 
 pub fn perform_models_refresh() {
     let now = unix_now_secs();
-    let _ = crate::npm_pi_sdk::refresh_npm_pi_models();
-    let _ = crate::pi_sdk::refresh_pi_provider_caches_if_stale(true);
+    let _ = malvin::npm_pi_sdk::refresh_npm_pi_models();
+    let _ = malvin::pi_sdk::refresh_pi_provider_caches_if_stale(true);
     let _ = save_last_refresh_secs(now);
 }
 

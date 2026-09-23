@@ -1,11 +1,4 @@
 #[test]
-fn kiss_cov_coalesce_private_helpers() {
-    let mut coalescer = crate::acp::VerboseIoCoalescer::default();
-    coalescer.feed(crate::acp::SessionUpdateChunkKind::Message, "hello ");
-    coalescer.flush_all();
-}
-
-#[test]
 fn kiss_cov_coalesce_trace_flush_helpers() {
     let mut coalescer = crate::acp::TraceChunkCoalescer::default();
     let _ = coalescer.feed(crate::acp::SessionUpdateChunkKind::Message, "chunk");

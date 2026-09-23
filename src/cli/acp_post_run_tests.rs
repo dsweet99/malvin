@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::acp_post_run::{
+use malvin::acp_post_run::{
     duplicate_safe_restore_error, merge_acp_and_timing_results,
     merge_acp_with_workspace_session_restore_and_check_abort, prefer_primary_over_secondary,
 };
@@ -48,10 +48,10 @@ fn prefer_primary_surfaces_secondary_when_primary_ok() {
 }
 
 fn merge_error_mentions_restore_detects_workspace_failure() {
-    assert!(crate::acp_post_run::merge_error_mentions_restore(
+    assert!(malvin::acp_post_run::merge_error_mentions_restore(
         "workspace session restore failed: disk"
     ));
-    assert!(!crate::acp_post_run::merge_error_mentions_restore(
+    assert!(!malvin::acp_post_run::merge_error_mentions_restore(
         "unrelated"
     ));
 }
@@ -86,7 +86,7 @@ fn merge_with_abort_after_successful_restore() {
     let tmp = tempfile::tempdir().unwrap();
     let result = abort_result_path(&tmp);
     let work = tempfile::tempdir().unwrap();
-    let empty = crate::test_utils::empty_session_dotfile_backups(work.path());
+    let empty = malvin::test_utils::empty_session_dotfile_backups(work.path());
     let err = merge_acp_with_workspace_session_restore_and_check_abort(
         Ok(()),
         work.path(),
@@ -101,7 +101,7 @@ fn merge_with_abort_does_not_claim_restore_failed_when_restore_succeeded() {
     let tmp = tempfile::tempdir().unwrap();
     let result = abort_result_path(&tmp);
     let work = tempfile::tempdir().unwrap();
-    let empty = crate::test_utils::empty_session_dotfile_backups(work.path());
+    let empty = malvin::test_utils::empty_session_dotfile_backups(work.path());
     let err = merge_acp_with_workspace_session_restore_and_check_abort(
         Err("wf failed".into()),
         work.path(),
@@ -124,10 +124,10 @@ fn duplicate_safe_restore_error_recognizes_slot_restore_prefix() {
 
 fn work_dir_with_checks(
     content: &str,
-) -> (tempfile::TempDir, crate::artifacts::SessionDotfileBackups) {
+) -> (tempfile::TempDir, malvin::artifacts::SessionDotfileBackups) {
     let work = tempfile::tempdir().unwrap();
-    crate::seed_malvin_checks(work.path(), content);
-    let backups = crate::test_utils::empty_session_dotfile_backups(work.path());
+    malvin::seed_malvin_checks(work.path(), content);
+    let backups = malvin::test_utils::empty_session_dotfile_backups(work.path());
     (work, backups)
 }
 
@@ -135,7 +135,7 @@ fn merge_with_abort_combines_restore_failure() {
     let tmp = tempfile::tempdir().unwrap();
     let result = abort_result_path(&tmp);
     let (work, backups) = work_dir_with_checks("x\n");
-    crate::seed_malvin_checks(work.path(), "changed\n");
+    malvin::seed_malvin_checks(work.path(), "changed\n");
     let err = merge_acp_with_workspace_session_restore_and_check_abort(
         Err("wf failed".into()),
         work.path(),

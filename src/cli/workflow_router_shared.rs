@@ -1,9 +1,9 @@
 use std::path::Path;
 
-use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 #[cfg(test)]
 use crate::cli::format_workspace_gate_failure;
-use crate::nested_budget_scopes::BudgetScopeLayer;
+use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
+use malvin::nested_budget_scopes::BudgetScopeLayer;
 
 use crate::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
 
@@ -26,8 +26,8 @@ pub(crate) fn prefer_gate_outcome_over_summarize<T>(
 pub(crate) fn clear_quality_gates_log_for_next_agent(
     artifacts: &RunArtifacts,
 ) -> Result<(), String> {
-    crate::gate_loop_session::set_quality_gates_just_ran(false);
-    crate::artifacts::ensure_quality_gates_log_file(artifacts).map_err(|e| e.to_string())
+    malvin::gate_loop_session::set_quality_gates_just_ran(false);
+    malvin::artifacts::ensure_quality_gates_log_file(artifacts).map_err(|e| e.to_string())
 }
 
 fn restore_session_dotfiles_for_gates(
@@ -49,14 +49,14 @@ pub(crate) fn run_router_workspace_gates(
 ) -> Result<(), String> {
     let work_dir = artifacts.work_dir.as_path();
     restore_session_dotfiles_for_gates(work_dir, session_dotfile_backups, restore_malvin_checks)?;
-    crate::session_dotfile_backup::repair_invalid_malvin_home_config_on_disk(work_dir)?;
+    malvin::session_dotfile_backup::repair_invalid_malvin_home_config_on_disk(work_dir)?;
     clear_quality_gates_log_for_next_agent(artifacts)?;
     let gate_result = run_repo_workspace_gates(
         work_dir,
         RepoGateOutput::Tagged,
         Some(artifacts.run_dir.as_path()),
     );
-    crate::gate_loop_session::set_quality_gates_just_ran(match &gate_result {
+    malvin::gate_loop_session::set_quality_gates_just_ran(match &gate_result {
         Ok(()) => true,
         Err(detail) => {
             crate::repo_checks::is_gate_failure_error(detail) && detail.contains("failed (exit")

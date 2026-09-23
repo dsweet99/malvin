@@ -5,11 +5,12 @@ pub(super) fn entrypoint_do_short_help() -> Exit {
     let text = "\
 One-shot agent turn (non-looping)
 
-Usage: malvin --do [OPTION]... [REQUEST]
+Usage: malvin --do [OPTION]... REQUEST
 
 Arguments:
-  [REQUEST]  Existing `.md` path or literal text
+  REQUEST  Existing `.md` path or literal text (one-shot for this request only)
 
+Each `--do` tags only the following REQUEST. Other REQUEST args use the router.
 Use malvin --help to see options.
 ";
     let _ = std::io::Write::write_all(&mut std::io::stdout().lock(), text.as_bytes());
@@ -17,8 +18,8 @@ Use malvin --help to see options.
 }
 
 pub(super) fn entrypoint_request_missing_short_help(cli: &Cli) -> Option<Exit> {
-    if cli.do_workflow {
-        if cli.shared.doc || cli.request.is_some() {
+    if cli.do_workflow() {
+        if cli.shared.doc || cli.has_request() {
             return None;
         }
         return Some(entrypoint_do_short_help());

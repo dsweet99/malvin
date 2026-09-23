@@ -13,12 +13,6 @@ pub(crate) fn emit_stdout_rendered_immediate(display: &str, log: &str) {
     super::append_stdout_log_line(log);
 }
 
-#[allow(dead_code)]
-pub(crate) fn publish_heartbeat_live_terminal(display: &str) {
-    super::print_stdout_display_line(display);
-    super::stdout_heartbeat::mark_heartbeat_emitted(std::time::Instant::now());
-}
-
 pub(crate) fn route_stdout_rendered_line(display: &str, log: &str, prelude: StdoutRenderPrelude) {
     let deferred = match prelude {
         StdoutRenderPrelude::FlushOnly => false,
@@ -47,9 +41,4 @@ pub(crate) fn print_stdout_rendered_line(display: &str, log: &str) {
 
 pub(crate) fn write_heartbeat_log_line(display: &str, log: &str) {
     route_stdout_rendered_line(display, log, StdoutRenderPrelude::HeartbeatOnly);
-}
-
-#[allow(dead_code)]
-pub(crate) fn flush_stdout_rendered_line(display: &str, log: &str) {
-    route_stdout_rendered_line(display, log, StdoutRenderPrelude::FlushOnly);
 }

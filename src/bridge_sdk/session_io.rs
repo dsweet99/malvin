@@ -124,7 +124,7 @@ async fn read_event_with_idle_timeout(
     let health = Some(super::DrainIdleHealthCtx {
         process_group_id: session.process_group_id,
         spawn_pid_baseline: &session.spawn_pid_baseline,
-        tools_in_flight: tools_in_flight(session),
+        tools_in_flight: tools_in_flight(&session.log),
     });
     super::await_next_with_idle_in_turn(labels, health, read_event(session), turn).await
 }
@@ -183,14 +183,12 @@ fn finish_run_done(
         );
     }
     if run_done_status_is_failure(*status) {
-        return Err(AgentError(error.clone().unwrap_or_else(|| {
-            match *status {
-                crate::bridge_protocol::RunDoneStatus::Cancelled => "run cancelled".into(),
-                crate::bridge_protocol::RunDoneStatus::Unknown => {
-                    "run finished with unknown status".into()
-                }
-                _ => "run error".into(),
+        return Err(AgentError(error.clone().unwrap_or_else(|| match *status {
+            crate::bridge_protocol::RunDoneStatus::Cancelled => "run cancelled".into(),
+            crate::bridge_protocol::RunDoneStatus::Unknown => {
+                "run finished with unknown status".into()
             }
+            _ => "run error".into(),
         })));
     }
     Ok(())

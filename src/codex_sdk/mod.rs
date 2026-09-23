@@ -29,7 +29,7 @@ mod map_event_tests;
 mod session_turn_tests;
 
 pub(crate) use auth::ensure_codex_authenticated;
-pub(crate) use discover::list_codex_display_models;
+pub use discover::list_codex_display_models;
 pub(crate) use session::CodexSession;
 pub(crate) use session_spawn::codex_spawn_bridge as spawn_bridge;
 

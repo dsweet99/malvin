@@ -2,7 +2,6 @@ use crate::acp::{AgentIoOptions, CoderPromptOptions};
 
 fn pi_mock_io() -> AgentIoOptions {
     AgentIoOptions {
-
         no_tee: true,
         raw_output: true,
         show_thoughts_on_stdout: false,
@@ -78,7 +77,6 @@ async fn run_pi_prompt(
         .expect("prompt");
 }
 
-
 #[tokio::test]
 async fn pi_sdk_agent_end_before_ack_completes() {
     let _guard = crate::test_utils::test_env_lock();
@@ -87,7 +85,9 @@ async fn pi_sdk_agent_end_before_ack_completes() {
     let mut client = pi_mock_client(tmp.path());
     client.begin_coder_session(tmp.path()).await.expect("begin");
     client
-        .active_coder_session().expect("active coder session").run_coder_prompt(
+        .active_coder_session()
+        .expect("active coder session")
+        .run_coder_prompt(
             "AGENT_END_BEFORE_ACK please",
             &tmp.path().join("prompts.log"),
             "coder",

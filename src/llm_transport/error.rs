@@ -31,8 +31,6 @@ pub enum TransportError {
 }
 
 impl TransportError {
-    pub const FAIL_FAST_MARKER: &'static str = "MALVIN_MINI_MISSING_CONTENT_FAIL_FAST_V1";
-
     #[must_use]
     pub const fn is_billing_failure(&self) -> bool {
         matches!(self, Self::BillingFailure { .. })

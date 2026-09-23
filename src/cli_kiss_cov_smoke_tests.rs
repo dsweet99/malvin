@@ -1,7 +1,6 @@
 #[test]
 fn smoke_cov_cli_cli_units_0() {
     let _ = crate::cli::build_agent_backend;
-    let _ = crate::do_flow::do_flow_prompt::combine_do_prompt_file_and_user;
     let _ = stringify!(crate::cli::entrypoint::dispatch_command);
     let _ = crate::cli::entrypoint::print_command_error;
     let _ = crate::cli::entrypoint::print_command_error;
@@ -17,7 +16,6 @@ fn smoke_cov_cli_cli_units_0() {
 fn smoke_cov_cli_cli_units_1a() {
     let _: Option<crate::repo_checks::RepoGateOutput> = None;
     let _: Option<crate::repo_checks::RepoGateFailure> = None;
-    let _ = crate::cli::run_emit::emit_run_startup_sequence;
     let _: Option<crate::cli::shared_opts::SharedOpts> = None;
 }
 
@@ -35,8 +33,6 @@ fn smoke_cov_cli_cli_units_1b() {
     assert_eq!(hdr, "hdr");
     assert_eq!(user, "user");
     let _ = crate::do_flow::do_flow_prompt::prepare_do_prompt_store;
-    let _ = crate::do_flow::do_flow_prompt::combine_do_acp_prompt_header_and_user;
-    let _ = crate::do_flow::do_flow_prompt::combine_do_raw_header_and_user;
     let _ = crate::do_flow::do_flow_prompt::build_do_coder_run_with_store;
     let _ = crate::cli::session_header::render_malvin_header_body;
     let _ = crate::cli::session_header::bind_do_header;
@@ -45,6 +41,7 @@ fn smoke_cov_cli_cli_units_1b() {
         verbose: false,
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
+        iml: false,
     };
     let _ = shared.model;
 }

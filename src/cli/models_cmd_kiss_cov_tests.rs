@@ -75,8 +75,10 @@ fn kiss_cov_models_cmd_run_helpers() {
     let _ = stringify!(run_cursor_sdk_models_js);
     let _ = stringify!(print_filtered_model_rows);
     let _ = stringify!(print_pi_models);
+    let _ = stringify!(rpi_display_id);
     let _ = stringify!(print_npm_pi_models);
     let _ = stringify!(is_provider_authenticated);
+    let _ = stringify!(is_provider_listable);
 }
 
 #[test]
@@ -122,8 +124,8 @@ fn kiss_cov_parse_model_line_all_branches_single_test() {
 }
 
 #[cfg(unix)]
-fn clear_cursor_api_keys_for_models_test() -> crate::test_utils::SavedEnvVars {
-    let saved = crate::test_utils::SavedEnvVars::capture(&[
+fn clear_cursor_api_keys_for_models_test() -> malvin::test_utils::SavedEnvVars {
+    let saved = malvin::test_utils::SavedEnvVars::capture(&[
         "CURSOR_API_KEY",
         "CURSOR_AGENT_API_KEY",
         "AGENT_API_KEY",
@@ -154,7 +156,7 @@ fn kiss_cov_run_models_soft_fails_cursor_and_continues() {
     use super::test_hooks::print_cursor_models_via_cli_for_test;
     use crate::repo_checks::set_fake_command_dir;
 
-    let _lock = crate::test_utils::test_env_lock();
+    let _lock = malvin::test_utils::test_env_lock();
     let _saved = clear_cursor_api_keys_for_models_test();
     let tmp = tempfile::tempdir().expect("tempdir");
     install_failing_fake_agent(tmp.path());
@@ -196,7 +198,7 @@ fn kiss_cov_run_models_fake_agent_branchy_executable() {
 
 #[test]
 fn kiss_cov_models_refresh_timestamp_lifecycle() {
-    let _lock = crate::test_utils::test_env_lock();
+    let _lock = malvin::test_utils::test_env_lock();
     let now = super::models_cmd_refresh::unix_now_secs();
     super::test_hooks::save_last_refresh_secs(now).expect("save");
     let loaded = super::test_hooks::load_last_refresh_secs().expect("load");

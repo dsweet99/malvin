@@ -76,7 +76,6 @@ mod unix_tests {
 
     const fn mock_io() -> crate::acp::AgentIoOptions {
         crate::acp::AgentIoOptions {
-
             no_tee: true,
             raw_output: true,
             show_thoughts_on_stdout: false,

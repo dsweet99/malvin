@@ -2,11 +2,11 @@ use std::path::PathBuf;
 use std::process::Output;
 use std::time::Duration;
 
-use crate::agent_or_cursor_agent_bin;
-use crate::ansi_strip::strip_ansi_escapes;
-use crate::command_output_timeout::{command_output_with_timeout, timeout_ms_from_env};
-use crate::model_id::CURSOR_PREFIX;
-use crate::output::{MALVIN_WHO, print_stdout_line};
+use malvin::agent_or_cursor_agent_bin;
+use malvin::ansi_strip::strip_ansi_escapes;
+use malvin::command_output_timeout::{command_output_with_timeout, timeout_ms_from_env};
+use malvin::model_id::CURSOR_PREFIX;
+use malvin::output::{MALVIN_WHO, print_stdout_line};
 
 use super::line_matches_prefix;
 use super::models_cmd_parse::{print_parsed_or_fallback_prefixed, trim_trailing_tip_lines};
@@ -47,10 +47,10 @@ pub(super) fn sdk_catalog_has_model_rows(raw: &str) -> bool {
 }
 
 fn run_cursor_sdk_models_js() -> Result<Output, String> {
-    let models_js = crate::cursor_sdk::bridge_path::resolve_models_js()?;
-    let node = crate::cursor_sdk::node_resolve::resolve_node_bin()?;
-    let mut cmd = crate::malvin_sandbox::malvin_std_command(&node);
-    crate::cursor_sdk::node_resolve::apply_quiet_node_cli_std(&mut cmd);
+    let models_js = malvin::cursor_sdk::bridge_path::resolve_models_js()?;
+    let node = malvin::cursor_sdk::node_resolve::resolve_node_bin()?;
+    let mut cmd = malvin::malvin_sandbox::malvin_std_command(&node);
+    malvin::cursor_sdk::node_resolve::apply_quiet_node_cli_std(&mut cmd);
     cmd.arg(&models_js);
     let output =
         command_output_with_timeout(cmd, cursor_list_models_timeout(), "cursor SDK models")?;
@@ -98,7 +98,7 @@ pub(super) fn resolve_models_cli() -> Result<PathBuf, String> {
 
 pub(super) fn print_cursor_models_via_cli(filter: Option<&str>) -> Result<(), String> {
     let bin = resolve_models_cli()?;
-    let mut cmd = crate::malvin_sandbox::malvin_std_command(&bin);
+    let mut cmd = malvin::malvin_sandbox::malvin_std_command(&bin);
     cmd.arg("models");
     let output = command_output_with_timeout(
         cmd,

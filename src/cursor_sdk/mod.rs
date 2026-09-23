@@ -1,9 +1,9 @@
 #![cfg_attr(test, allow(unsafe_code))]
 
 mod auth;
-pub(crate) mod bridge_path;
+pub mod bridge_path;
 mod bridge_stderr;
-pub(crate) mod node_resolve;
+pub mod node_resolve;
 mod protocol;
 mod session_spawn;
 
@@ -35,9 +35,9 @@ mod bridge_path_tests;
 #[cfg(test)]
 mod client_ensure_tests;
 #[cfg(test)]
-mod client_mock_tests;
-#[cfg(test)]
 mod client_mock_retry_tests;
+#[cfg(test)]
+mod client_mock_tests;
 #[cfg(test)]
 mod kiss_coverage;
 #[cfg(test)]

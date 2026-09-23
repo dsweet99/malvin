@@ -1,11 +1,15 @@
 use super::{
-    DEFAULT_MAX_LOOPS, DEFAULT_MAX_LOOPS_CODE, ensure_config_parent_dir, load_malvin_config,
-    merge_missing_keys, open_malvin_config, parse_agent_config, parse_template_value,
-    read_on_disk_config_value, write_config_value,
+    ensure_config_parent_dir, load_malvin_config, merge_missing_keys, open_malvin_config,
+    parse_agent_config, parse_template_value, read_on_disk_config_value, write_config_value,
 };
 use crate::support_paths::DEFAULT_CLI_MODEL;
 use crate::test_utils::with_isolated_home;
 use crate::workspace_paths::malvin_config_path;
+use std::collections::BTreeMap;
+
+fn parse_agent(text: &str) -> Result<super::AgentConfig, String> {
+    parse_agent_config(text, &BTreeMap::new(), false)
+}
 
 fn merge_missing_keys_adds_top_level_and_nested_tables() {
     let template = parse_template_value().expect("template");
@@ -37,9 +41,12 @@ fn open_malvin_config_creates_file_with_all_sections() {
         assert!(text.contains("[agent]"));
         assert!(text.contains("[agent.cursor.auto]"));
         assert!(!text.contains("mpc"));
+        assert!(!text.contains("max_loops"));
         assert_eq!(cfg.agent.model.canonical(), DEFAULT_CLI_MODEL);
-        assert_eq!(cfg.agent.max_loops, DEFAULT_MAX_LOOPS);
-        assert_eq!(cfg.agent.max_loops_code, DEFAULT_MAX_LOOPS_CODE);
+        assert_eq!(
+            cfg.agent.max_hypotheses,
+            crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES
+        );
         assert!(text.contains("theme"));
         assert_eq!(
             cfg.context_size,
@@ -78,12 +85,12 @@ fn parse_agent_config_reads_values() {
     let text = r#"
 [agent]
 model = "cursor:gpt-5"
-max_loops = 3
+max_hypotheses = 3
 max_acp_retries = 5
 "#;
-    let agent = parse_agent_config(text).expect("parse");
+    let agent = parse_agent(text).expect("parse");
     assert_eq!(agent.model.canonical(), "cursor:gpt-5");
-    assert_eq!(agent.max_loops, 3);
+    assert_eq!(agent.max_hypotheses, 3);
     assert_eq!(agent.max_acp_retries, 5);
 }
 
@@ -91,11 +98,11 @@ fn parse_agent_config_accepts_string_numbers() {
     let text = r#"
 [agent]
 model = "cursor:m"
-max_loops = "2"
+max_hypotheses = "2"
 max_acp_retries = "4"
 "#;
-    let agent = parse_agent_config(text).expect("parse");
-    assert_eq!(agent.max_loops, 2);
+    let agent = parse_agent(text).expect("parse");
+    assert_eq!(agent.max_hypotheses, 2);
     assert_eq!(agent.max_acp_retries, 4);
 }
 
@@ -158,16 +165,20 @@ fn load_malvin_config_reads_light_theme() {
     });
 }
 
-fn parse_agent_config_reads_max_loops_code() {
+fn parse_agent_config_ignores_legacy_max_loops_keys() {
     let text = r#"
 [agent]
 model = "cursor:m"
 max_loops = 1
 max_loops_code = 4
+max_acp_retries = 2
 "#;
-    let agent = parse_agent_config(text).expect("parse");
-    assert_eq!(agent.max_loops, 1);
-    assert_eq!(agent.max_loops_code, 4);
+    let agent = parse_agent(text).expect("parse");
+    assert_eq!(agent.max_acp_retries, 2);
+    assert_eq!(
+        agent.max_hypotheses,
+        crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES
+    );
 }
 
 fn load_malvin_config_uses_defaults_for_invalid_on_disk_toml() {
@@ -223,7 +234,7 @@ fn kiss_bundled_malvin_config_file_tests() {
     parse_context_size_reads_top_level_key();
     open_malvin_config_merges_theme_in_memory_only();
     load_malvin_config_reads_light_theme();
-    parse_agent_config_reads_max_loops_code();
+    parse_agent_config_ignores_legacy_max_loops_keys();
     load_malvin_config_uses_defaults_for_invalid_on_disk_toml();
     load_malvin_config_merges_partial_file_in_memory_only();
     config_io_helpers_read_missing_file_as_empty_table();

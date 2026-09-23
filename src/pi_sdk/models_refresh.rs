@@ -1,15 +1,17 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::time::Duration;
 
 use super::cache_clock::{cache_fetched_at_is_fresh, unix_now_secs};
 use pi::auth::AuthStorage;
-use pi::sdk::{Config, ModelRegistry};
+use pi::sdk::Config;
 use serde::{Deserialize, Serialize};
 
 use super::auth::is_provider_authenticated;
-use super::models_list::PiModelListing;
+use super::local_endpoint::keyless_local_provider_is_listening;
+
+pub(crate) use super::models_refresh_merge::merge_registry_with_live;
 
 pub const PI_MODEL_CACHE_TTL: Duration = Duration::from_hours(24);
 
@@ -68,6 +70,9 @@ pub(crate) fn resolve_provider_api_key(provider: &str) -> String {
             return value;
         }
     }
+    if pi::provider_metadata::provider_is_keyless_local(provider) {
+        return super::local_context::KEYLESS_LOCAL_API_KEY.to_string();
+    }
     String::new()
 }
 
@@ -106,6 +111,9 @@ fn provider_needs_refresh(provider: &str, force: bool) -> bool {
     if force {
         return true;
     }
+    if pi::provider_metadata::provider_is_keyless_local(provider) {
+        return true;
+    }
     !matches!(
         load_provider_cache(provider),
         Some(cache) if cache_fetched_at_is_fresh(cache.fetched_at_secs, PI_MODEL_CACHE_TTL)
@@ -127,107 +135,64 @@ fn fetch_provider_models_sync(provider: &str, force: bool) -> Vec<String> {
     result.unwrap_or_default()
 }
 
+fn insert_live_ids(live: &mut HashMap<String, Vec<String>>, provider: &str, ids: Vec<String>) {
+    live.insert(provider.to_string(), ids);
+}
+
+fn record_fetched_provider(
+    live: &mut HashMap<String, Vec<String>>,
+    provider: &str,
+    keyless: bool,
+    ids: Vec<String>,
+) {
+    if keyless || !ids.is_empty() {
+        save_provider_cache(provider, &ids);
+        insert_live_ids(live, provider, ids);
+    }
+}
+
+fn record_cached_provider(live: &mut HashMap<String, Vec<String>>, provider: &str, keyless: bool) {
+    if let Some(cache) = load_provider_cache(provider)
+        && !cache.model_ids.is_empty()
+    {
+        insert_live_ids(live, provider, cache.model_ids);
+    } else if keyless {
+        insert_live_ids(live, provider, Vec::new());
+    }
+}
+
+fn refresh_one_provider(live: &mut HashMap<String, Vec<String>>, provider: &str, force: bool) {
+    if !provider_supports_pi_live_model_fetch(provider) {
+        return;
+    }
+    let api_key = resolve_provider_api_key(provider);
+    let keyless = pi::provider_metadata::provider_is_keyless_local(provider);
+    if api_key.trim().is_empty() && !keyless {
+        return;
+    }
+    if keyless && !keyless_local_provider_is_listening(provider) {
+        insert_live_ids(live, provider, Vec::new());
+        return;
+    }
+    if provider_needs_refresh(provider, force) {
+        record_fetched_provider(live, provider, keyless, fetch_provider_models_sync(provider, true));
+        return;
+    }
+    record_cached_provider(live, provider, keyless);
+}
+
 pub fn refresh_pi_provider_caches_if_stale(force: bool) -> HashMap<String, Vec<String>> {
     let mut live = HashMap::new();
     for provider in authenticated_providers() {
-        if !provider_supports_pi_live_model_fetch(provider)
-            || resolve_provider_api_key(provider).trim().is_empty()
-        {
-            continue;
-        }
-        if provider_needs_refresh(provider, force) {
-            let ids = fetch_provider_models_sync(provider, true);
-            if !ids.is_empty() {
-                save_provider_cache(provider, &ids);
-                live.insert(provider.to_string(), ids);
-            }
-            continue;
-        }
-        if let Some(cache) = load_provider_cache(provider)
-            && !cache.model_ids.is_empty()
-        {
-            live.insert(provider.to_string(), cache.model_ids);
-        }
+        refresh_one_provider(&mut live, provider, force);
     }
     live
-}
-
-pub(crate) fn merge_registry_with_live(
-    registry: &ModelRegistry,
-    live_by_provider: &HashMap<String, Vec<String>>,
-) -> Vec<PiModelListing> {
-    let static_by_key = static_registry_lookup(registry);
-    let mut out = Vec::new();
-    let mut seen = HashSet::new();
-    append_live_models(&mut out, &mut seen, &static_by_key, live_by_provider);
-    append_static_models_without_live(&mut out, &mut seen, registry, live_by_provider);
-    out
-}
-
-fn static_registry_lookup(
-    registry: &ModelRegistry,
-) -> HashMap<(String, String), &pi::models::ModelEntry> {
-    registry
-        .models()
-        .iter()
-        .map(|entry| {
-            (
-                (entry.model.provider.clone(), entry.model.id.clone()),
-                entry,
-            )
-        })
-        .collect()
-}
-
-fn append_live_models(
-    out: &mut Vec<PiModelListing>,
-    seen: &mut HashSet<String>,
-    static_by_key: &HashMap<(String, String), &pi::models::ModelEntry>,
-    live_by_provider: &HashMap<String, Vec<String>>,
-) {
-    for (provider, ids) in live_by_provider {
-        for id in ids {
-            let full_id = format!("{provider}/{id}");
-            if !seen.insert(full_id.clone()) {
-                continue;
-            }
-            let (name, thinking) = static_by_key
-                .get(&(provider.clone(), id.clone()))
-                .map_or_else(
-                    || (id.clone(), None),
-                    |entry| (entry.model.name.clone(), Some(entry.model.reasoning)),
-                );
-            out.push(PiModelListing {
-                id: full_id,
-                name,
-                thinking,
-            });
-        }
-    }
-}
-
-fn append_static_models_without_live(
-    out: &mut Vec<PiModelListing>,
-    seen: &mut HashSet<String>,
-    registry: &ModelRegistry,
-    live_by_provider: &HashMap<String, Vec<String>>,
-) {
-    for entry in registry.models() {
-        let provider = entry.model.provider.as_str();
-        if live_by_provider.contains_key(provider) {
-            continue;
-        }
-        let full_id = format!("{provider}/{}", entry.model.id);
-        if seen.insert(full_id.clone()) {
-            out.push(PiModelListing {
-                id: full_id,
-                name: entry.model.name.clone(),
-                thinking: Some(entry.model.reasoning),
-            });
-        }
-    }
 }
 
 #[cfg(test)]
 #[path = "models_refresh_tests.rs"]
 mod models_refresh_tests;
+
+#[cfg(test)]
+#[path = "models_refresh_cache_tests.rs"]
+mod models_refresh_cache_tests;

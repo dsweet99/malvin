@@ -1,6 +1,6 @@
-use crate::artifacts::RunArtifacts;
-use crate::orchestrator::workflow_context_paths_only;
-use crate::prompts::{
+use malvin::artifacts::RunArtifacts;
+use malvin::orchestrator::workflow_context_paths_only;
+use malvin::prompts::{
     PromptError, PromptStore, RouterBPromptFlags, header_prompt_file, kpop_common_prompt_file,
     router_a_prompt_file, router_b_prompt_file,
 };
@@ -13,6 +13,7 @@ pub(crate) struct RouterHeaderPromptInput<'a> {
     pub model: &'a str,
     pub max_hypotheses: usize,
     pub no_kpop: bool,
+    pub gate_iteration: usize,
 }
 
 pub(crate) fn build_router_header_prompt(
@@ -25,6 +26,7 @@ pub(crate) fn build_router_header_prompt(
         model: input.model,
         max_hypotheses: input.max_hypotheses,
         no_kpop: input.no_kpop,
+        gate_iteration: input.gate_iteration,
     })?;
     ctx.insert("kpop_insert", kpop);
     let body = input
@@ -40,6 +42,7 @@ pub(crate) struct RouterKpopCommonPromptInput<'a> {
     pub model: &'a str,
     pub max_hypotheses: usize,
     pub no_kpop: bool,
+    pub gate_iteration: usize,
 }
 
 pub(crate) fn build_router_kpop_common_prompt(
@@ -48,10 +51,15 @@ pub(crate) fn build_router_kpop_common_prompt(
     let template = kpop_common_prompt_file(input.no_kpop);
     let mut ctx = workflow_context_paths_only(input.artifacts, input.model);
     ctx.insert("max_hypotheses", input.max_hypotheses.to_string());
+    let iteration = if input.gate_iteration == 0 {
+        1
+    } else {
+        input.gate_iteration
+    };
     ctx.insert(
         "exp_log",
-        crate::format_prompt_path(
-            input.artifacts.gate_exp_log_path(1).as_path(),
+        malvin::format_prompt_path(
+            input.artifacts.gate_exp_log_path(iteration).as_path(),
             input.artifacts.work_dir.as_path(),
         ),
     );
@@ -72,8 +80,8 @@ pub(crate) fn build_router_mbc2_prompt(
             artifacts.plan_path.display()
         )
     })?;
-    let ctx = crate::prompts::build_mbc2_render_context(&user_prompt);
-    crate::prompts::render_mbc2_prompt(store, &ctx)
+    let ctx = malvin::prompts::build_mbc2_render_context(&user_prompt);
+    malvin::prompts::render_mbc2_prompt(store, &ctx)
         .map_err(|e: PromptError| e.0)
         .map(|body| body.trim().to_string())
 }
@@ -83,6 +91,7 @@ pub(crate) struct RouterAPromptInput<'a> {
     pub artifacts: &'a RunArtifacts,
     pub model: &'a str,
     pub gates: bool,
+    pub gates_just_ran: bool,
     pub no_kpop: bool,
 }
 
@@ -92,6 +101,7 @@ pub(crate) fn build_router_a_prompt(input: RouterAPromptInput<'_>) -> Result<Str
         artifacts,
         model,
         gates,
+        gates_just_ran,
         no_kpop,
     } = input;
     let mut ctx = workflow_context_paths_only(artifacts, model);
@@ -100,6 +110,7 @@ pub(crate) fn build_router_a_prompt(input: RouterAPromptInput<'_>) -> Result<Str
         artifacts,
         model,
         gates,
+        gates_just_ran,
     })?;
     ctx.insert("code_extra".to_string(), code_extra);
     let body = store

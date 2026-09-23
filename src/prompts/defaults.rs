@@ -123,8 +123,7 @@ mod advice_path_embed_tests {
             !header.contains("Workspace `AGENTS.md`"),
             "missing AGENTS.md must leave agents_insert empty"
         );
-        std::fs::write(tmp.path().join("AGENTS.md"), "Prefer ripwire for maps.\n")
-            .expect("agents");
+        std::fs::write(tmp.path().join("AGENTS.md"), "Prefer ripwire for maps.\n").expect("agents");
         let ctx_with = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL);
         let header_with = render_header(&store, ctx_with.as_map()).expect("header with agents");
         assert!(
@@ -198,6 +197,7 @@ mod router_header_embed_tests {
             model: DEFAULT_CLI_MODEL,
             max_hypotheses: 5,
             no_kpop: false,
+            gate_iteration: 1,
         })
         .expect("header turn");
         assert!(!header_turn.contains("{{"));
@@ -211,6 +211,7 @@ mod router_header_embed_tests {
             model: DEFAULT_CLI_MODEL,
             max_hypotheses: 5,
             no_kpop: false,
+            gate_iteration: 1,
         })
         .expect("kpop common turn");
         assert!(!kpop_turn.contains("{{"));
@@ -219,6 +220,7 @@ mod router_header_embed_tests {
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
             gates: false,
+            gates_just_ran: false,
             no_kpop: false,
         })
         .expect("router_a");
@@ -228,6 +230,7 @@ mod router_header_embed_tests {
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
             gates: true,
+            gates_just_ran: false,
             no_kpop: false,
         })
         .expect("router_a gates");

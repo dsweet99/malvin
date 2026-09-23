@@ -20,13 +20,13 @@ fn help_omits_git_flag() {
 fn shared_opts_parses_creative_flag_default_off() {
     use clap::Parser;
     let cli = crate::cli::Cli::try_parse_from(["malvin", "--doc"]).expect("parse");
-    assert!(cli.router.creative.is_none());
+    assert!(cli.router.creative_probability().is_none());
 }
 
 fn shared_opts_parses_creative_flag_on() {
     use clap::Parser;
     let cli = crate::cli::Cli::try_parse_from(["malvin", "--creative", "--doc"]).expect("parse");
-    assert_eq!(cli.router.creative, Some(1.0));
+    assert_eq!(cli.router.creative_probability(), Some(1.0));
 }
 
 fn help_lists_creative_flag() {
@@ -66,9 +66,9 @@ fn help_omits_name_flag() {
 }
 
 fn doc_does_not_create_name_files() {
-    crate::test_utils::with_isolated_home(|work| {
+    malvin::test_utils::with_isolated_home(|work| {
         let _ = work;
-        let root = crate::names_registry_root();
+        let root = malvin::names_registry_root();
         assert_eq!(entrypoint_from(["malvin", "--doc"]), Exit::Success);
         assert!(
             !root.exists()
@@ -82,9 +82,9 @@ fn doc_does_not_create_name_files() {
 }
 
 fn bare_help_does_not_create_name_files() {
-    crate::test_utils::with_isolated_home(|work| {
+    malvin::test_utils::with_isolated_home(|work| {
         let _ = work;
-        let root = crate::names_registry_root();
+        let root = malvin::names_registry_root();
         assert_eq!(entrypoint_from(["malvin"]), Exit::Success);
         assert!(
             !root.exists()
@@ -100,11 +100,11 @@ fn bare_help_does_not_create_name_files() {
 fn do_workflow_parses_without_name_flag() {
     use crate::cli::config_defaults::parse_cli_with_config_defaults;
 
-    crate::test_utils::with_isolated_home(|_| {
+    malvin::test_utils::with_isolated_home(|_| {
         let (cli, _) =
             parse_cli_with_config_defaults(["malvin", "--do", "say hello"]).expect("parse --do");
-        assert!(cli.do_workflow);
-        assert_eq!(cli.request.as_deref(), Some("say hello"));
+        assert!(cli.do_workflow());
+        assert_eq!(cli.first_request().map(String::as_str), Some("say hello"));
         assert!(cli.command.is_none());
     });
 }
@@ -117,8 +117,8 @@ fn gates_only_route_needs_session() {
 }
 
 fn admin_command_is_not_gates_only() {
-    use crate::cli::{AdminArgs, AdminCommand};
     use crate::cli::models_cmd::ModelsArgs;
+    use crate::cli::{AdminArgs, AdminCommand};
     let _ = Commands::Admin(AdminArgs {
         command: AdminCommand::Models(ModelsArgs::default()),
     });

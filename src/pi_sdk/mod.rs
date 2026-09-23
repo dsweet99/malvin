@@ -3,20 +3,48 @@
 mod auth;
 mod cache_clock;
 mod isolated_bash;
+mod local_context;
+mod local_endpoint;
+mod local_lifecycle;
+mod local_llm_client;
+mod local_llm_daemon;
+mod local_llm_keepalive;
+mod local_llm_lock;
+mod local_llm_ollama;
+mod local_llm_paths;
+mod local_llm_protocol;
+mod local_llms_config;
+#[cfg(test)]
+mod local_llm_test_lock;
 mod map_agent_event;
 mod map_agent_event_end;
 mod map_event_summary;
+pub(crate) use map_event_summary::tool_summary_from_pi;
 mod models_list;
 mod models_refresh;
+mod models_refresh_merge;
 mod openrouter_billed_cost;
 mod openrouter_pricing;
 mod runtime;
 mod session;
 mod session_fake;
 mod session_spawn;
+mod session_spawn_local;
+mod session_spawn_watch;
 mod usage_cost;
 
-pub use auth::{ensure_pi_authenticated, is_provider_authenticated};
+pub use auth::{
+    ensure_pi_authenticated, is_provider_authenticated, is_provider_listable,
+    provider_known_in_rust_metadata,
+};
+pub use local_lifecycle::{housekeep_local_llms, model_needs_local_llm};
+pub use local_llm_daemon::run_local_llm_manager;
+pub use local_llm_paths::INTERNAL_MANAGER_FLAG;
+
+#[must_use]
+pub fn local_llm_manager_pid() -> Option<u32> {
+    local_llm_lock::lock_holder_pid(&local_llm_paths::manager_lock_path())
+}
 pub use models_list::{
     DEFAULT_PI_LIST_MODELS_TIMEOUT_MS, PiModelListing, list_pi_models_sync, pi_list_models_timeout,
 };
@@ -28,6 +56,10 @@ const _: fn() = || {
 };
 pub(crate) use session::PiEmbeddedSession;
 pub(crate) use session_spawn::pi_spawn_bridge as spawn_bridge;
+#[cfg(test)]
+pub(crate) use session_spawn_local::{
+    LocalAgentMode, local_append_system_prompt, local_enabled_tools,
+};
 
 #[must_use]
 pub fn pi_sdk_client_from_raw(

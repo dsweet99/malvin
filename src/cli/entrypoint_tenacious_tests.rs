@@ -16,7 +16,10 @@ fn gates_only_defaults_to_tenacious_without_explicit_flag() {
         &matches,
     );
     assert_eq!(max_loops, TENACIOUS_MAX_LOOPS);
-    assert_eq!(shared.max_acp_retries, crate::config::DEFAULT_MAX_ACP_RETRIES);
+    assert_eq!(
+        shared.max_acp_retries,
+        malvin::config::DEFAULT_MAX_ACP_RETRIES
+    );
 }
 
 #[test]
@@ -31,7 +34,10 @@ fn gates_only_explicit_max_loops_is_not_expanded_by_tenacious_default() {
         &matches,
     );
     assert_eq!(max_loops, 2);
-    assert_eq!(shared.max_acp_retries, crate::config::DEFAULT_MAX_ACP_RETRIES);
+    assert_eq!(
+        shared.max_acp_retries,
+        malvin::config::DEFAULT_MAX_ACP_RETRIES
+    );
 }
 
 #[test]
@@ -46,7 +52,10 @@ fn default_route_tenacious_expands_max_loops_and_leaves_acp_retries() {
         &mut shared.max_acp_retries,
         &matches,
     );
-    assert_eq!(shared.max_acp_retries, crate::config::DEFAULT_MAX_ACP_RETRIES);
+    assert_eq!(
+        shared.max_acp_retries,
+        malvin::config::DEFAULT_MAX_ACP_RETRIES
+    );
     assert_eq!(max_loops, TENACIOUS_MAX_LOOPS);
 }
 
@@ -78,5 +87,8 @@ fn default_route_explicit_max_loops_is_not_expanded_by_tenacious_default() {
         &matches,
     );
     assert_eq!(max_loops, 2);
-    assert_eq!(shared.max_acp_retries, crate::config::DEFAULT_MAX_ACP_RETRIES);
+    assert_eq!(
+        shared.max_acp_retries,
+        malvin::config::DEFAULT_MAX_ACP_RETRIES
+    );
 }

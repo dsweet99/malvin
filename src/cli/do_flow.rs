@@ -1,5 +1,3 @@
-use crate::agent_backend::{SdkClient, build_agent_backend, build_agent_backend_with_tee};
-use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::cli::one_shot_session::{
     finish_one_shot_after_prompt, resolve_one_shot_request_artifacts,
 };
@@ -7,17 +5,16 @@ use crate::cli::run_emit::{
     RunStartupEmitOpts, emit_command_line, emit_run_logs_line, emit_run_startup_banner,
 };
 use crate::cli::{AgentStdoutTeeFlags, SharedOpts};
-use crate::output::agent_stdout_tee_enabled;
+use malvin::agent_backend::{SdkClient, build_agent_backend, build_agent_backend_with_tee};
+use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
+use malvin::output::agent_stdout_tee_enabled;
 
 #[path = "do_flow_acp.rs"]
 mod do_flow_acp;
 pub(crate) mod do_flow_prompt;
 
 use do_flow_acp::run_do_acp;
-pub use do_flow_prompt::{
-    combine_do_acp_prompt_header_and_user, combine_do_prompt_file_and_user,
-    combine_do_raw_header_and_user, prepare_do_prompt_store,
-};
+pub use do_flow_prompt::{prepare_do_prompt_store};
 
 #[derive(Debug)]
 pub struct DoArgs {
@@ -31,11 +28,13 @@ struct DoRunPrep {
     session_dotfile_backups: SessionDotfileBackups,
 }
 
-fn new_do_client(
-    shared: &SharedOpts,
-) -> Result<SdkClient, String> {
+fn new_do_client(shared: &SharedOpts) -> Result<SdkClient, String> {
     if shared.verbose {
-        return build_agent_backend(shared, shared.acp_stdout_markdown_enabled());
+        return build_agent_backend(
+            shared.model.clone(),
+            shared.max_acp_retries,
+            shared.acp_stdout_markdown_enabled(),
+        );
     }
     let interactive = agent_stdout_tee_enabled();
     let emit_markdown = interactive && shared.acp_stdout_markdown_enabled();
@@ -52,18 +51,20 @@ fn new_do_client(
             show_thoughts_on_stdout: false,
         }
     };
-    build_agent_backend_with_tee(shared, tee)
+    build_agent_backend_with_tee(
+        shared.model.clone(),
+        shared.max_acp_retries,
+        tee,
+        shared.verbose,
+    )
 }
 
-async fn prepare_do_run(
-    do_args: &DoArgs,
-    shared: &SharedOpts,
-) -> Result<DoRunPrep, String> {
+async fn prepare_do_run(do_args: &DoArgs, shared: &SharedOpts) -> Result<DoRunPrep, String> {
     let mut client = new_do_client(shared)?;
     let (text, artifacts) = resolve_one_shot_request_artifacts(
         do_args.request.as_ref(),
         "--do",
-        Some(crate::run_id::RunDirOptions { gc: false }),
+        Some(malvin::run_id::RunDirOptions { gc: false }),
     )?;
     if shared.verbose {
         emit_run_startup_banner(
@@ -74,7 +75,7 @@ async fn prepare_do_run(
     } else {
         emit_command_line(&artifacts.run_dir, false)?;
     }
-    crate::run_id::maybe_gc_after_run_created(&artifacts.work_dir, &artifacts.run_dir);
+    malvin::run_id::maybe_gc_after_run_created(&artifacts.work_dir, &artifacts.run_dir);
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     client.prompts_log_run_dir = Some(artifacts.run_dir.clone());
 
@@ -110,7 +111,7 @@ async fn begin_do_session_overlapping_prompt_prep(
             &store,
             artifacts,
             text,
-            crate::workflow_context::PromptModelOpts::new(&model),
+            malvin::workflow_context::PromptModelOpts::new(&model),
         );
         let session_dotfile_backups =
             SessionDotfileBackups::snapshot_after_ensuring_home_config(&artifacts.work_dir)?;
@@ -121,28 +122,22 @@ async fn begin_do_session_overlapping_prompt_prep(
     coder_backup_res
 }
 
-pub async fn run_do(
-    do_args: DoArgs,
-    shared: &SharedOpts,
-) -> Result<(), String> {
+pub async fn run_do(do_args: DoArgs, shared: &SharedOpts) -> Result<(), String> {
     let interactive = agent_stdout_tee_enabled();
     let emit_markdown = interactive && shared.acp_stdout_markdown_enabled();
     let dm_only = !shared.verbose;
-    crate::output::set_do_dm_stdout_opts(crate::output::DoDmStdoutOpts {
+    malvin::output::set_do_dm_stdout_opts(malvin::output::DoDmStdoutOpts {
         enabled: dm_only,
         emit_markdown: dm_only && emit_markdown,
     });
-    crate::output::set_heartbeat_stdout_suppressed(dm_only);
+    malvin::output::set_heartbeat_stdout_suppressed(dm_only);
     let result = run_do_body(do_args, shared).await;
-    crate::output::set_do_dm_stdout_opts(crate::output::DoDmStdoutOpts::default());
-    crate::output::set_heartbeat_stdout_suppressed(false);
+    malvin::output::set_do_dm_stdout_opts(malvin::output::DoDmStdoutOpts::default());
+    malvin::output::set_heartbeat_stdout_suppressed(false);
     result
 }
 
-async fn run_do_body(
-    do_args: DoArgs,
-    shared: &SharedOpts,
-) -> Result<(), String> {
+async fn run_do_body(do_args: DoArgs, shared: &SharedOpts) -> Result<(), String> {
     let mut prep = prepare_do_run(&do_args, shared).await?;
     if shared.verbose {
         emit_run_logs_line(&prep.artifacts)?;
@@ -160,8 +155,8 @@ async fn run_do_body(
 #[cfg(test)]
 mod do_snapshot_tests {
     use super::SessionDotfileBackups;
-    use crate::malvin_config_path;
-    use crate::test_utils::with_isolated_home;
+    use malvin::malvin_config_path;
+    use malvin::test_utils::with_isolated_home;
 
     #[test]
     fn snapshot_do_session_dotfiles_on_empty_workdir() {

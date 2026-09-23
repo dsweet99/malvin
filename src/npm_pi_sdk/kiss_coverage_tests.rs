@@ -9,6 +9,7 @@ fn kiss_cov_npm_pi_sdk() {
     let _ = stringify!(NpmPiSession);
     let _ = stringify!(map_npm_pi_event);
     let _ = stringify!(consume_npm_pi_turn);
+    let _ = stringify!(feed_mapped_bridge_events);
     let _ = stringify!(feed_run_done_dm);
     let _ = stringify!(feed_and_handle_run_done);
     let _ = stringify!(npm_pi_send_prompt);

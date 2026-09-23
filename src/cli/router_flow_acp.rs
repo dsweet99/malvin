@@ -1,9 +1,9 @@
-use crate::agent_backend::{SdkClient, set_implement_display_name};
-use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::cli::{RouterOpts, SharedOpts};
-use crate::prompts::PromptStore;
 use crate::router_flow::router_flow_prompt;
-use crate::run_timing::acp_post_run::RunTimingSessionEnd;
+use malvin::agent_backend::{set_implement_display_name, SdkClient};
+use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
+use malvin::prompts::PromptStore;
+use malvin::run_timing::acp_post_run::RunTimingSessionEnd;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
@@ -13,17 +13,25 @@ pub(crate) mod router_flow_acp_support;
 #[path = "router_flow_coder_prompts.rs"]
 mod router_flow_coder_prompts;
 
-pub(crate) use router_flow_acp_support::{RouterExitSummarize, router_iteration_log_path};
+#[path = "router_flow_summary_line.rs"]
+mod router_flow_summary_line;
+
+pub(crate) use router_flow_acp_support::{router_iteration_log_path, RouterExitSummarize};
 
 use router_flow_acp_support::{run_router_turns, snapshot_iteration_backups};
 use router_flow_coder_prompts::run_router_summarize_coder_prompt;
+use router_flow_summary_line::emit_router_summary_line;
 
-pub(crate) struct RouterAcpIterationOutcome {
-    pub acp_result: Result<(), String>,
-    pub iteration_backups: SessionDotfileBackups,
-    pub done: bool,
-    pub session_alive: bool,
-    pub timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
+pub(crate) enum RouterAcpIterationOutcome {
+    Closed {
+        acp_result: Result<(), String>,
+        iteration_backups: SessionDotfileBackups,
+    },
+    Open {
+        iteration_backups: SessionDotfileBackups,
+        done: bool,
+        timing: Arc<Mutex<malvin::run_timing::RunTiming>>,
+    },
 }
 
 pub(crate) struct RouterAcpIterationInput<'a> {
@@ -40,14 +48,14 @@ pub(crate) struct RouterAcpIterationInput<'a> {
 pub(crate) type SessionEndParts<'a> = (
     &'a mut SdkClient,
     &'a Path,
-    &'a Arc<Mutex<crate::run_timing::RunTiming>>,
+    &'a Arc<Mutex<malvin::run_timing::RunTiming>>,
     RunTimingSessionEnd,
 );
 
 pub(crate) async fn begin_coder_session_if_needed(
     client: &mut SdkClient,
     work_dir: &Path,
-) -> Result<crate::agent_backend::CoderSessionEnsure, String> {
+) -> Result<malvin::agent_backend::CoderSessionEnsure, String> {
     client
         .start_coder_session(work_dir)
         .await
@@ -64,21 +72,16 @@ pub(crate) async fn run_router_acp_open_iteration(
     let session_end = input.session_end;
     let run_dir = input.artifacts.run_dir.clone();
     match run_router_turns(&mut input, log_path.as_path()).await {
-        Ok(turns) => RouterAcpIterationOutcome {
-            acp_result: Ok(()),
+        Ok(turns) => RouterAcpIterationOutcome::Open {
             iteration_backups: turns.iteration_backups,
             done: turns.done,
-            session_alive: true,
-            timing: Some(timing),
+            timing,
         },
         Err(e) => {
             let parts: SessionEndParts<'_> = (input.client, &run_dir, &timing, session_end);
-            RouterAcpIterationOutcome {
+            RouterAcpIterationOutcome::Closed {
                 acp_result: abort_router_acp_session(parts, e).await,
                 iteration_backups: snapshot_iteration_backups(work_dir),
-                done: false,
-                session_alive: false,
-                timing: None,
             }
         }
     }
@@ -86,30 +89,35 @@ pub(crate) async fn run_router_acp_open_iteration(
 
 pub(crate) async fn finalize_router_acp_iteration(
     input: &mut RouterAcpIterationInput<'_>,
-    timing: Arc<Mutex<crate::run_timing::RunTiming>>,
+    timing: Arc<Mutex<malvin::run_timing::RunTiming>>,
     exit_summarize: RouterExitSummarize,
 ) -> Result<(), String> {
     let log_path = router_iteration_log_path(input.artifacts, input.agent_loop);
     if matches!(exit_summarize, RouterExitSummarize::Run) {
-        let model = input.shared.model.canonical();
-        let body = router_flow_prompt::build_router_summarize_prompt(
-            router_flow_prompt::RouterSummarizePromptInput {
-                store: input.prompt_store,
-                artifacts: input.artifacts,
-                model: &model,
-            },
-        )?;
-        run_router_summarize_coder_prompt(input.client, &body, log_path.as_path()).await?;
+        run_exit_summarize_then_log_summary(input, log_path.as_path()).await?;
     }
-    let keep_session = true;
     let run_dir = input.artifacts.run_dir.clone();
     let parts: SessionEndParts<'_> = (input.client, run_dir.as_path(), &timing, input.session_end);
-    match (exit_summarize, keep_session) {
-        (RouterExitSummarize::Run, _) | (RouterExitSummarize::Skip, false) => {
-            end_router_acp_session(parts, Ok(())).await
-        }
-        (RouterExitSummarize::Skip, true) => emit_router_acp_timing(parts, Ok(())),
+    match exit_summarize {
+        RouterExitSummarize::Run => end_router_acp_session(parts, Ok(())).await,
+        RouterExitSummarize::Skip => emit_router_acp_timing(parts, Ok(())),
     }
+}
+
+async fn run_exit_summarize_then_log_summary(
+    input: &mut RouterAcpIterationInput<'_>,
+    log_path: &Path,
+) -> Result<(), String> {
+    let model = input.shared.model.canonical();
+    let body = router_flow_prompt::build_router_summarize_prompt(
+        router_flow_prompt::RouterSummarizePromptInput {
+            store: input.prompt_store,
+            artifacts: input.artifacts,
+            model: &model,
+        },
+    )?;
+    run_router_summarize_coder_prompt(input.client, &body, log_path).await?;
+    emit_router_summary_line(input.artifacts, input.agent_loop)
 }
 
 pub(crate) fn emit_router_acp_timing(
@@ -117,13 +125,15 @@ pub(crate) fn emit_router_acp_timing(
     agent_result: Result<(), String>,
 ) -> Result<(), String> {
     let (client, run_dir, timing, session_end) = parts;
-    crate::acp_post_run::emit_run_timing_after_backend(crate::acp_post_run::RunTimingAfterBackend {
-        backend: client,
-        run_dir,
-        timing,
-        agent_result,
-        session_end,
-    })
+    malvin::acp_post_run::emit_run_timing_after_backend(
+        malvin::acp_post_run::RunTimingAfterBackend {
+            backend: client,
+            run_dir,
+            timing,
+            agent_result,
+            session_end,
+        },
+    )
 }
 
 pub(crate) async fn end_router_acp_session(
@@ -132,7 +142,7 @@ pub(crate) async fn end_router_acp_session(
 ) -> Result<(), String> {
     let end_res = parts.0.end_coder_session().await.map_err(|e| e.to_string());
     let merged =
-        crate::acp_post_run::prefer_primary_over_secondary(run_res, end_res, "end coder session");
+        malvin::acp_post_run::prefer_primary_over_secondary(run_res, end_res, "end coder session");
     emit_router_acp_timing(parts, merged)
 }
 
@@ -140,7 +150,7 @@ pub(crate) async fn abort_router_acp_session(
     parts: SessionEndParts<'_>,
     err: String,
 ) -> Result<(), String> {
-    crate::output::print_log_error(&err);
+    malvin::output::print_log_error(&err);
     crate::cli::error_run_log::note_command_error_emitted(&err);
     crate::cli::error_run_log::append_command_error_to_run_log(&err);
     parts.0.set_run_timing(None);

@@ -1,20 +1,24 @@
-use super::{Commands, Exit, SharedOpts, run_do, run_router};
-use crate::do_flow::DoArgs;
+use super::{Commands, Exit, SharedOpts};
 
 #[path = "entrypoint_from.rs"]
 mod entrypoint_from;
 #[path = "entrypoint_gates_only.rs"]
 mod entrypoint_gates_only;
+#[path = "entrypoint_dispatch.rs"]
+mod entrypoint_dispatch;
 #[path = "entrypoint_short_help.rs"]
 mod entrypoint_short_help;
 pub use entrypoint_from::entrypoint_from;
+pub use entrypoint_dispatch::{
+    DefaultRouteDispatch, dispatch_default_route, dispatch_do_workflow, dispatch_mixed_requests,
+};
 pub(crate) use entrypoint_gates_only::{GatesOnlyDispatch, dispatch_gates_only_route};
 
 pub fn print_command_error(message: &str) {
-    use crate::output::{MALVIN_WHO, print_log_error, print_stderr_line};
     use crate::repo_checks::{
         GATE_FAILURE_MARKER, is_gate_failure_error, is_pure_gate_failure_summary,
     };
+    use malvin::output::{MALVIN_WHO, print_log_error, print_stderr_line};
     if is_pure_gate_failure_summary(message) {
         return;
     }
@@ -55,12 +59,21 @@ fn spawn_ctrl_c_teardown() {
         if tokio::signal::ctrl_c().await.is_err() {
             return;
         }
-        crate::malvin_sandbox::teardown_active_sandbox_for_interrupt();
+        malvin::malvin_sandbox::teardown_active_sandbox_for_interrupt();
         std::process::exit(130);
     });
 }
 
 pub fn entrypoint() -> Exit {
+    if std::env::args().nth(1).as_deref() == Some(malvin::pi_sdk::INTERNAL_MANAGER_FLAG) {
+        return match malvin::pi_sdk::run_local_llm_manager() {
+            Ok(()) => Exit::Success,
+            Err(e) => {
+                eprintln!("local llm manager: {e}");
+                Exit::Failure
+            }
+        };
+    }
     entrypoint_from(std::env::args_os())
 }
 
@@ -81,11 +94,11 @@ pub(crate) fn finish_entrypoint(res: Result<(), String>) -> Exit {
 pub(crate) fn prepare_cli_output(_shared: &SharedOpts) {
     let theme = std::env::current_dir()
         .ok()
-        .map(|cwd| crate::malvin_config_file::load_malvin_config(&cwd).theme)
+        .map(|cwd| malvin::malvin_config_file::load_malvin_config(&cwd).theme)
         .unwrap_or_default();
-    crate::terminal_palette::init_terminal_theme(theme);
-    crate::output::init_stdout_style();
-    crate::output::set_stdout_suppressed(false);
+    malvin::terminal_palette::init_terminal_theme(theme);
+    malvin::output::init_stdout_style();
+    malvin::output::set_stdout_suppressed(false);
 }
 
 pub(crate) fn dispatch_command(
@@ -97,64 +110,6 @@ pub(crate) fn dispatch_command(
     match command {
         Commands::Admin(admin) => super::run_admin(admin, model),
     }
-}
-
-pub fn dispatch_do_workflow(do_args: DoArgs, shared: &SharedOpts) -> Result<(), String> {
-    run_async_cli(|| {
-        run_do(
-            do_args,
-            shared
-        )
-    })
-}
-
-pub struct DefaultRouteDispatch<'a> {
-    pub request: String,
-    pub max_loops: usize,
-    pub max_hypotheses: usize,
-    pub shared: &'a mut SharedOpts,
-    pub router: &'a mut super::RouterOpts,
-    pub matches: &'a clap::ArgMatches,
-}
-
-pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), String> {
-    use crate::router_flow::RouterArgs;
-    let DefaultRouteDispatch {
-        request,
-        mut max_loops,
-        max_hypotheses,
-        shared,
-        router,
-        matches,
-    } = input;
-    super::loop_opts::apply_default_route_tenacious(
-        &mut max_loops,
-        &mut shared.max_acp_retries,
-        matches,
-    );
-    run_async_cli(|| async {
-        crate::cli::init_flow::maybe_run_init_bootstrap(
-            crate::cli::init_flow::InitWorkflowOpts {
-                max_loops,
-                max_hypotheses,
-            },
-            shared,
-            router
-        )
-        .await?;
-        run_router(
-            RouterArgs {
-                request: Some(request),
-                max_loops,
-                max_hypotheses,
-            },
-            crate::cli::AgentRouteOpts {
-                shared,
-                router,
-            }
-        )
-        .await
-    })
 }
 
 #[cfg(test)]

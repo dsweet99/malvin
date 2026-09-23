@@ -116,9 +116,8 @@ fn tool_call(value: &Value, phase: &str) -> BridgeEvent {
         .get("toolCallId")
         .and_then(Value::as_str)
         .map(str::to_string);
-    let summary = name
-        .as_deref()
-        .map(|n| format!("{n} tool"))
+    let args = value.get("args").or_else(|| value.get("arguments"));
+    let summary = crate::pi_sdk::tool_summary_from_pi(name.as_deref(), args)
         .or_else(|| Some(format!("tool {phase}")));
     BridgeEvent::ToolCall {
         phase: phase.into(),

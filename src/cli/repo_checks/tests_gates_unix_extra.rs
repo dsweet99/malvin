@@ -1,6 +1,6 @@
 use std::fs;
 
-use crate::test_utils::with_isolated_home;
+use malvin::test_utils::with_isolated_home;
 
 use super::command_support::set_fake_command_dir;
 use super::gate_run::prepare_repo_workspace;
@@ -39,7 +39,7 @@ fn run_repo_workspace_gates_errors_when_malvin_checks_missing() {
             "[gate]\ntest_coverage_threshold = 90\n",
         )
         .unwrap();
-        let malvin_checks = crate::malvin_checks_path(work);
+        let malvin_checks = malvin::malvin_checks_path(work);
         assert!(!malvin_checks.exists());
         let bin_dir = tempfile::tempdir().unwrap();
         let _guard = set_fake_command_dir(bin_dir.path());

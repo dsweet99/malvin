@@ -6,6 +6,19 @@ use super::sdk_client_prompt::{
     teardown_sdk_session_after_transport_error,
 };
 
+#[must_use]
+pub const fn session_header_is_satisfied(client: &SdkClient) -> bool {
+    client.header_lifecycle.is_satisfied()
+}
+
+#[must_use]
+pub fn pending_session_header(client: &SdkClient) -> Option<(String, String)> {
+    client
+        .header_lifecycle
+        .pending_header()
+        .map(|h| (h.prompt.clone(), h.stdout_label.clone()))
+}
+
 pub(super) async fn send_bound_session_header(client: &mut SdkClient) -> Result<(), AgentError> {
     if client.header_lifecycle.is_satisfied() {
         return Ok(());

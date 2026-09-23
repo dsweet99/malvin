@@ -17,6 +17,9 @@ use super::map_agent_event::map_pi_agent_event;
 use super::runtime::PiRuntime;
 use super::session_fake::fake_events_for_prompt;
 
+#[path = "session_local_hold.rs"]
+mod session_local_hold;
+
 pub(crate) struct PiEmbeddedSession {
     pub(crate) runtime: Option<PiRuntime>,
     pub(crate) log: StreamLog,
@@ -25,6 +28,7 @@ pub(crate) struct PiEmbeddedSession {
     pub(crate) spawn_pid_baseline: HashSet<u32>,
     pub(crate) pi_provider: String,
     pub(crate) pi_model: String,
+    pub(crate) local_hold: bool,
 }
 
 impl PiEmbeddedSession {
@@ -44,6 +48,7 @@ impl PiEmbeddedSession {
     }
 
     pub(crate) async fn shutdown(mut self) -> Result<(), AgentError> {
+        self.release_local_hold();
         self.reader_dead.store(true, Ordering::SeqCst);
         if let Some(mut runtime) = self.runtime.take() {
             runtime.abort();
@@ -55,21 +60,6 @@ impl PiEmbeddedSession {
         }
         crate::malvin_sandbox::clear_active_sandbox_session();
         Ok(())
-    }
-}
-
-impl Drop for PiEmbeddedSession {
-    fn drop(&mut self) {
-        self.reader_dead.store(true, Ordering::SeqCst);
-        if let Some(mut runtime) = self.runtime.take() {
-            runtime.abort();
-            let _ = runtime.shutdown();
-        }
-        #[cfg(unix)]
-        {
-            crate::acp::terminate_agent_process_group_for_interrupt(None, &self.spawn_pid_baseline);
-        }
-        crate::malvin_sandbox::clear_active_sandbox_session();
     }
 }
 
@@ -211,14 +201,12 @@ pub(crate) fn finish_run_done(log: &StreamLog, ev: &BridgeEvent) -> Result<(), A
         );
     }
     if run_done_status_is_failure(*status) {
-        return Err(AgentError(error.clone().unwrap_or_else(|| {
-            match *status {
-                crate::bridge_protocol::RunDoneStatus::Cancelled => "run cancelled".into(),
-                crate::bridge_protocol::RunDoneStatus::Unknown => {
-                    "run finished with unknown status".into()
-                }
-                _ => "run error".into(),
+        return Err(AgentError(error.clone().unwrap_or_else(|| match *status {
+            crate::bridge_protocol::RunDoneStatus::Cancelled => "run cancelled".into(),
+            crate::bridge_protocol::RunDoneStatus::Unknown => {
+                "run finished with unknown status".into()
             }
+            _ => "run error".into(),
         })));
     }
     Ok(())

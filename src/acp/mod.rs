@@ -1,6 +1,5 @@
 #![cfg_attr(test, allow(unsafe_code))]
 
-mod import_prelude;
 mod jsonl_trace;
 mod outgoing_prompt_trace;
 pub use outgoing_prompt_trace::CoderPromptOptions;
@@ -72,7 +71,7 @@ pub(crate) use wrap_retry_policy::*;
 
 #[path = "agent_helpers.rs"]
 mod agent_helpers;
-pub(crate) use agent_helpers::*;
+pub use agent_helpers::*;
 
 #[path = "backoff.rs"]
 mod backoff;

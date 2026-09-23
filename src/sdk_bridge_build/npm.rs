@@ -1,6 +1,6 @@
 use std::env;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use super::Bridge;
 
@@ -68,18 +68,14 @@ pub(super) fn parse_node_version(v: &str) -> Option<(u32, u32)> {
 }
 
 pub(super) fn run_npm(npm: &Path, dir: &Path, args: &[&str]) {
-    let status = Command::new(npm)
-        .args(args)
-        .current_dir(dir)
-        .status()
-        .unwrap_or_else(|e| {
-            panic!(
-                "failed to run `{} {}` in {}: {e}",
-                npm.display(),
-                args.join(" "),
-                dir.display()
-            )
-        });
+    let status = npm_command(npm, dir, args).status().unwrap_or_else(|e| {
+        panic!(
+            "failed to run `{} {}` in {}: {e}",
+            npm.display(),
+            args.join(" "),
+            dir.display()
+        )
+    });
     assert!(
         status.success(),
         "`{} {}` failed in {} (status {status}). \
@@ -91,4 +87,23 @@ pub(super) fn run_npm(npm: &Path, dir: &Path, args: &[&str]) {
             .and_then(|s| s.to_str())
             .unwrap_or("sdk-bridge")
     );
+}
+
+fn npm_command(npm: &Path, dir: &Path, args: &[&str]) -> Command {
+    let mut cmd = Command::new(npm);
+    cmd.args(args).current_dir(dir).stdin(Stdio::null());
+    attach_npm_stdio(&mut cmd);
+    cmd
+}
+
+fn attach_npm_stdio(cmd: &mut Command) {
+    #[cfg(unix)]
+    {
+        use std::os::fd::AsFd;
+        if let Ok(out) = std::io::stderr().as_fd().try_clone_to_owned() {
+            cmd.stdout(Stdio::from(out)).stderr(Stdio::inherit());
+            return;
+        }
+    }
+    cmd.stdout(Stdio::inherit()).stderr(Stdio::inherit());
 }

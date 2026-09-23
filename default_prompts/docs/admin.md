@@ -20,6 +20,7 @@ Fix local malvin/herdr bookkeeping, or list available model ids, without startin
 malvin admin <COMMAND>
 malvin admin models [OPTION]... [PREFIX]...
 malvin admin reset-herdr
+malvin admin rh
 ```
 
 ## Subcommands
@@ -29,6 +30,8 @@ malvin admin reset-herdr
 List `cursor:`, `pi:`, `rpi:`, and `codex:` model ids. See `malvin admin models --doc` for the full contract.
 
 ### `reset-herdr`
+
+Alias: `rh`.
 
 Set the current herdr pane's malvin agent lifecycle state to idle (not working) and clear display metadata.
 

@@ -1,56 +1,11 @@
-use std::collections::HashMap;
-
-use crate::config::DEFAULT_CLI_MODEL;
-use crate::flow_prompt_join_test_helpers::{assert_header_user_join, flow_test_artifacts};
-use crate::prompts::{HEADER_MD, PromptStore, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD};
 use crate::router_flow::router_flow_prompt::{
     RouterAPromptInput, RouterHeaderPromptInput, RouterKpopCommonPromptInput,
     build_router_a_prompt, build_router_header_prompt, build_router_kpop_common_prompt,
-    combine_router_acp_prompt_header_and_user, combine_router_prompt_file_and_user,
-    combine_router_raw_header_and_user, prepare_router_prompt_store,
+    prepare_router_prompt_store,
 };
-
-fn write_router_mock_prompt_files(prompt_root: &std::path::Path) {
-    write_prompt(prompt_root, HEADER_MD, "CODING_HDR\n");
-    write_prompt(
-        prompt_root,
-        ROUTER_A_MD,
-        "ROUTER_A\n{{ code_extra }}\nSee {{ user_request_path }}.\n",
-    );
-    write_prompt(prompt_root, ROUTER_B_MD, "ROUTER_B\n");
-    write_prompt(prompt_root, ROUTER_B_CREATIVE_MD, "ROUTER_B_CREATIVE\n");
-    write_prompt(prompt_root, "router_code_extra.md", "");
-    write_prompt(prompt_root, "router_summarize.md", "SUM\n");
-}
-
-fn write_prompt(prompt_root: &std::path::Path, name: &str, body: &str) {
-    std::fs::write(prompt_root.join(name), body).unwrap_or_else(|_| panic!("write {name}"));
-}
-
-fn mock_router_prompt_store(tmp: &tempfile::TempDir) -> PromptStore {
-    let prompt_root = tmp.path().join("prompts");
-    std::fs::create_dir_all(&prompt_root).expect("mkdir");
-    write_router_mock_prompt_files(&prompt_root);
-    PromptStore::with_root(prompt_root)
-}
-
-#[test]
-fn combine_router_prompt_file_and_user_joins_rendered_template_and_request() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let prompt_root = tmp.path().join("prompts");
-    std::fs::create_dir_all(&prompt_root).expect("mkdir");
-    std::fs::write(prompt_root.join(HEADER_MD), "TMPL\n").expect("tmpl");
-    let store = PromptStore::with_root(prompt_root);
-    let ctx = crate::prompt_stratification::WorkflowRenderContext::from(HashMap::from([(
-        "k".into(),
-        "v".into(),
-    )]));
-    let (combined, header, user) =
-        combine_router_prompt_file_and_user(&store, "BODY\n", HEADER_MD, &ctx).expect("combine");
-    assert_eq!(header, "TMPL");
-    assert_eq!(user, "BODY");
-    assert_header_user_join(&combined, "TMPL", "BODY");
-}
+use malvin::config::DEFAULT_CLI_MODEL;
+use malvin::flow_prompt_join_test_helpers::flow_test_artifacts;
+use malvin::prompts::{HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD};
 
 #[test]
 fn prepare_router_prompt_store_loads_default_templates() {
@@ -72,6 +27,7 @@ fn build_router_header_prompt_renders_without_unresolved_braces() {
         model: DEFAULT_CLI_MODEL,
         max_hypotheses: 5,
         no_kpop: false,
+        gate_iteration: 1,
     })
     .expect("header");
     assert!(body.contains("Know thyself") || body.contains("Context Prep") || !body.is_empty());
@@ -94,6 +50,7 @@ fn build_router_header_prompt_embeds_workspace_agents_md() {
         model: DEFAULT_CLI_MODEL,
         max_hypotheses: 5,
         no_kpop: true,
+        gate_iteration: 1,
     })
     .expect("header");
     assert!(
@@ -113,6 +70,7 @@ fn build_router_header_prompt_no_kpop_leaves_kpop_insert_empty() {
         model: DEFAULT_CLI_MODEL,
         max_hypotheses: 5,
         no_kpop: true,
+        gate_iteration: 1,
     })
     .expect("header no_kpop");
     assert!(!body.contains("{{"));
@@ -133,11 +91,23 @@ fn build_router_kpop_common_prompt_renders_budget_and_log() {
         model: DEFAULT_CLI_MODEL,
         max_hypotheses: 7,
         no_kpop: false,
+        gate_iteration: 1,
     })
     .expect("kpop common");
     assert!(body.contains("max_hypotheses = `7`"));
     assert!(body.contains("exp_log_"));
+    assert!(body.contains("_g1.md") || body.contains("_g1"));
     assert!(!body.contains("{{"));
+    let body2 = build_router_kpop_common_prompt(RouterKpopCommonPromptInput {
+        store: &store,
+        artifacts: &artifacts,
+        model: DEFAULT_CLI_MODEL,
+        max_hypotheses: 7,
+        no_kpop: false,
+        gate_iteration: 2,
+    })
+    .expect("kpop common g2");
+    assert!(body2.contains("_g2.md") || body2.contains("_g2"));
 }
 
 #[test]
@@ -150,48 +120,12 @@ fn build_router_a_prompt_includes_user_request_path() {
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
         gates: false,
+        gates_just_ran: false,
         no_kpop: false,
     })
     .expect("router_a");
     assert!(body.contains("__MALVIN_DONE__"));
     assert!(!body.contains("{{"));
-}
-
-#[test]
-fn combine_router_acp_prompt_joins_rendered_header_and_request() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let store = mock_router_prompt_store(&tmp);
-    let artifacts = flow_test_artifacts(&tmp);
-    let (combined, header, user) = combine_router_acp_prompt_header_and_user(
-        &store,
-        &artifacts,
-        "USER_TOKEN",
-        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
-    )
-    .expect("combine");
-    assert_eq!(header, "CODING_HDR");
-    assert_eq!(user, "USER_TOKEN");
-    assert_header_user_join(&combined, "CODING_HDR", "USER_TOKEN");
-}
-
-#[test]
-fn combine_router_raw_header_and_user_joins_rendered_router_a_and_request() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let prompt_root = tmp.path().join("prompts");
-    std::fs::create_dir_all(&prompt_root).expect("mkdir");
-    std::fs::write(prompt_root.join(ROUTER_A_MD), "ROUTER_A_TOKEN\n").expect("router_a");
-    let artifacts = flow_test_artifacts(&tmp);
-    let store = PromptStore::with_root(prompt_root);
-    let (combined, header, user) = combine_router_raw_header_and_user(
-        &store,
-        &artifacts,
-        "USER_RAW_TOKEN\n\n",
-        crate::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
-    )
-    .expect("combine");
-    assert_eq!(header, "ROUTER_A_TOKEN");
-    assert_eq!(user, "USER_RAW_TOKEN");
-    assert_header_user_join(&combined, "ROUTER_A_TOKEN", "USER_RAW_TOKEN");
 }
 
 #[cfg(test)]

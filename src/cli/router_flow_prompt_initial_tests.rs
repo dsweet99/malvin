@@ -1,8 +1,6 @@
-use super::{
-    RouterInitialPromptInput, build_router_initial_prompt,
-};
-use crate::prompts::{HEADER_MD, KPOP_COMMON_MD, PromptStore, ROUTER_A_MD};
-use crate::test_utils::with_isolated_home;
+use super::{RouterInitialPromptInput, build_router_initial_prompt};
+use malvin::prompts::{HEADER_MD, KPOP_COMMON_MD, PromptStore, ROUTER_A_MD};
+use malvin::test_utils::with_isolated_home;
 
 fn write_minimal_router_prompts(prompt_root: &std::path::Path) {
     std::fs::create_dir_all(prompt_root).expect("mkdir");
@@ -14,7 +12,10 @@ fn write_router_prompt_files(prompt_root: &std::path::Path) {
         (HEADER_MD, "HEADER_BODY\n{{ kpop_insert }}\n"),
         (KPOP_COMMON_MD, "KPOP_BODY {{ max_hypotheses }}\n"),
         ("mbc2.md", "MBC2 {{ user_prompt }}\n"),
-        (ROUTER_A_MD, "ROUTER_A {{ user_request_path }} {{ code_extra }}\n"),
+        (
+            ROUTER_A_MD,
+            "ROUTER_A {{ user_request_path }} {{ code_extra }}\n",
+        ),
         ("router_code_extra.md", "CODE_EXTRA\n"),
         ("kpop_common_no_kpop.md", "\n"),
         ("router_a_no_kpop.md", "ROUTER_A_NO_KPOP {{ code_extra }}\n"),
@@ -27,10 +28,10 @@ fn write_router_prompt_files(prompt_root: &std::path::Path) {
 #[test]
 fn initial_prompt_joins_header_kpop_and_router_a_in_order() {
     with_isolated_home(|work| {
-        let artifacts = crate::artifacts::create_run_artifacts_from_text_opts(
+        let artifacts = malvin::artifacts::create_run_artifacts_from_text_opts(
             "req",
             Some(work),
-            crate::run_id::RunDirOptions::default(),
+            malvin::run_id::RunDirOptions::default(),
         )
         .expect("artifacts");
         let prompt_root = artifacts.run_dir.join("prompts");
@@ -41,10 +42,12 @@ fn initial_prompt_joins_header_kpop_and_router_a_in_order() {
             artifacts: &artifacts,
             model: "cursor:auto",
             gates: false,
+            gates_just_ran: false,
             no_kpop: false,
             creative: false,
             max_hypotheses: 5,
             include_header: true,
+            gate_iteration: 1,
         })
         .expect("initial");
         assert!(out.body.contains("HEADER_BODY"));
@@ -67,10 +70,10 @@ fn initial_prompt_joins_header_kpop_and_router_a_in_order() {
 #[test]
 fn initial_prompt_adds_mbc2_when_creative() {
     with_isolated_home(|work| {
-        let artifacts = crate::artifacts::create_run_artifacts_from_text_opts(
+        let artifacts = malvin::artifacts::create_run_artifacts_from_text_opts(
             "creative request",
             Some(work),
-            crate::run_id::RunDirOptions::default(),
+            malvin::run_id::RunDirOptions::default(),
         )
         .expect("artifacts");
         let prompt_root = artifacts.run_dir.join("prompts");
@@ -81,10 +84,12 @@ fn initial_prompt_adds_mbc2_when_creative() {
             artifacts: &artifacts,
             model: "cursor:auto",
             gates: false,
+            gates_just_ran: false,
             no_kpop: false,
             creative: true,
             max_hypotheses: 5,
             include_header: true,
+            gate_iteration: 1,
         })
         .expect("initial");
         assert!(out.body.contains("MBC2"));
@@ -99,10 +104,10 @@ fn initial_prompt_adds_mbc2_when_creative() {
 #[test]
 fn initial_prompt_omits_header_when_not_included() {
     with_isolated_home(|work| {
-        let artifacts = crate::artifacts::create_run_artifacts_from_text_opts(
+        let artifacts = malvin::artifacts::create_run_artifacts_from_text_opts(
             "req",
             Some(work),
-            crate::run_id::RunDirOptions::default(),
+            malvin::run_id::RunDirOptions::default(),
         )
         .expect("artifacts");
         let prompt_root = artifacts.run_dir.join("prompts");
@@ -113,20 +118,22 @@ fn initial_prompt_omits_header_when_not_included() {
             artifacts: &artifacts,
             model: "cursor:auto",
             gates: false,
+            gates_just_ran: false,
             no_kpop: false,
             creative: false,
             max_hypotheses: 5,
             include_header: false,
+            gate_iteration: 2,
         })
         .expect("initial");
         assert!(!out.body.contains("HEADER_BODY"));
         assert!(
-            !out.body.contains("KPOP_BODY"),
-            "kpop lives in header via kpop_insert; skipped with header"
+            out.body.contains("KPOP_BODY"),
+            "without header, kpop must still name this loop's exp log"
         );
         assert_eq!(
             out.stdout_label.split('+').collect::<Vec<_>>(),
-            vec![ROUTER_A_MD]
+            vec![KPOP_COMMON_MD, ROUTER_A_MD]
         );
     });
 }
@@ -134,13 +141,13 @@ fn initial_prompt_omits_header_when_not_included() {
 #[test]
 fn initial_prompt_respects_no_kpop_and_gates() {
     with_isolated_home(|work| {
-        let artifacts = crate::artifacts::create_run_artifacts_from_text_opts(
+        let artifacts = malvin::artifacts::create_run_artifacts_from_text_opts(
             "req",
             Some(work),
-            crate::run_id::RunDirOptions::default(),
+            malvin::run_id::RunDirOptions::default(),
         )
         .expect("artifacts");
-        crate::seed_malvin_checks(artifacts.work_dir.as_path(), "echo INITIAL_GATE\n");
+        malvin::seed_malvin_checks(artifacts.work_dir.as_path(), "echo INITIAL_GATE\n");
         let prompt_root = artifacts.run_dir.join("prompts");
         write_minimal_router_prompts(&prompt_root);
         let store = PromptStore::with_root(prompt_root);
@@ -149,10 +156,12 @@ fn initial_prompt_respects_no_kpop_and_gates() {
             artifacts: &artifacts,
             model: "cursor:auto",
             gates: true,
+            gates_just_ran: false,
             no_kpop: true,
             creative: false,
             max_hypotheses: 5,
             include_header: true,
+            gate_iteration: 1,
         })
         .expect("initial");
         assert!(out.body.contains("HEADER_BODY"));
@@ -160,8 +169,7 @@ fn initial_prompt_respects_no_kpop_and_gates() {
         assert!(out.body.contains("ROUTER_A_NO_KPOP"));
         assert!(out.body.contains("echo INITIAL_GATE") || out.body.contains("CODE_EXTRA"));
         assert!(
-            !out
-                .stdout_label
+            !out.stdout_label
                 .split('+')
                 .any(|l| l == "kpop_common.md" || l == "kpop_common_no_kpop.md")
         );
@@ -172,29 +180,27 @@ fn initial_prompt_respects_no_kpop_and_gates() {
 #[test]
 fn initial_prompt_git_and_max_hypotheses_affect_composition() {
     with_isolated_home(|work| {
-        let artifacts = crate::artifacts::create_run_artifacts_from_text_opts(
+        let artifacts = malvin::artifacts::create_run_artifacts_from_text_opts(
             "req",
             Some(work),
-            crate::run_id::RunDirOptions::default(),
+            malvin::run_id::RunDirOptions::default(),
         )
         .expect("artifacts");
         let prompt_root = artifacts.run_dir.join("prompts");
         write_minimal_router_prompts(&prompt_root);
-        std::fs::write(
-            prompt_root.join(HEADER_MD),
-            "HEADER\n{{ kpop_insert }}\n",
-        )
-        .expect("header");
+        std::fs::write(prompt_root.join(HEADER_MD), "HEADER\n{{ kpop_insert }}\n").expect("header");
         let store = PromptStore::with_root(prompt_root);
         let hi = build_router_initial_prompt(RouterInitialPromptInput {
             store: &store,
             artifacts: &artifacts,
             model: "cursor:auto",
             gates: false,
+            gates_just_ran: false,
             no_kpop: false,
             creative: false,
             max_hypotheses: 7,
             include_header: true,
+            gate_iteration: 1,
         })
         .expect("hi");
         let lo = build_router_initial_prompt(RouterInitialPromptInput {
@@ -202,10 +208,12 @@ fn initial_prompt_git_and_max_hypotheses_affect_composition() {
             artifacts: &artifacts,
             model: "cursor:auto",
             gates: false,
+            gates_just_ran: false,
             no_kpop: false,
             creative: false,
             max_hypotheses: 3,
             include_header: true,
+            gate_iteration: 1,
         })
         .expect("lo");
         assert_ne!(hi.body, lo.body);

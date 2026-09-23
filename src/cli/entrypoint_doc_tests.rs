@@ -2,15 +2,15 @@ use super::{
     Exit, dispatch_command, entrypoint_from, finish_entrypoint, prepare_cli_output, run_async_cli,
 };
 use crate::cli::SharedOpts;
-use crate::test_utils::with_isolated_home;
+use malvin::test_utils::with_isolated_home;
 
 #[test]
 fn prepare_cli_output_initializes_output_state() {
-    crate::output::set_stdout_suppressed(true);
+    malvin::output::set_stdout_suppressed(true);
     let shared = SharedOpts::test_defaults();
     prepare_cli_output(&shared);
-    assert!(!crate::output::stdout_suppressed());
-    crate::output::set_stdout_suppressed(false);
+    assert!(!malvin::output::stdout_suppressed());
+    malvin::output::set_stdout_suppressed(false);
 }
 
 #[test]
@@ -51,7 +51,7 @@ fn entrypoint_from_admin_models_doc_exits_success() {
 
 #[test]
 fn entrypoint_from_admin_rejects_gates_flag() {
-    use crate::test_stderr_capture::capture_stderr_output;
+    use malvin::test_stderr_capture::capture_stderr_output;
 
     with_isolated_home(|_| {
         let stderr = capture_stderr_output(|| {
@@ -69,7 +69,7 @@ fn entrypoint_from_admin_rejects_gates_flag() {
 
 #[test]
 fn entrypoint_from_admin_rejects_quiet_flag() {
-    use crate::test_stderr_capture::capture_stderr_output;
+    use malvin::test_stderr_capture::capture_stderr_output;
 
     with_isolated_home(|_| {
         let stderr = capture_stderr_output(|| {
@@ -87,7 +87,7 @@ fn entrypoint_from_admin_rejects_quiet_flag() {
 
 #[test]
 fn entrypoint_from_admin_rejects_verbose_flag() {
-    use crate::test_stderr_capture::capture_stderr_output;
+    use malvin::test_stderr_capture::capture_stderr_output;
 
     with_isolated_home(|_| {
         let stderr = capture_stderr_output(|| {
@@ -97,8 +97,7 @@ fn entrypoint_from_admin_rejects_verbose_flag() {
             );
         });
         assert!(
-            stderr.contains("admin")
-                && (stderr.contains("--verbose") || stderr.contains("-v")),
+            stderr.contains("admin") && (stderr.contains("--verbose") || stderr.contains("-v")),
             "expected admin+verbose rejection; stderr={stderr:?}"
         );
     });
@@ -106,7 +105,7 @@ fn entrypoint_from_admin_rejects_verbose_flag() {
 
 #[test]
 fn entrypoint_from_admin_rejects_max_acp_retries_flag() {
-    use crate::test_stderr_capture::capture_stderr_output;
+    use malvin::test_stderr_capture::capture_stderr_output;
 
     with_isolated_home(|_| {
         let stderr = capture_stderr_output(|| {
@@ -132,15 +131,15 @@ fn entrypoint_from_admin_rejects_max_acp_retries_flag() {
 #[test]
 fn entrypoint_from_doc_does_not_suppress_stdout() {
     with_isolated_home(|_| {
-        crate::output::set_stdout_suppressed(false);
+        malvin::output::set_stdout_suppressed(false);
         assert_eq!(entrypoint_from(["malvin", "--doc"]), Exit::Success);
-        assert!(!crate::output::stdout_suppressed());
+        assert!(!malvin::output::stdout_suppressed());
     });
 }
 
 #[test]
 fn finish_entrypoint_success_and_failure_paths() {
-    use crate::test_stderr_capture::capture_stderr_output;
+    use malvin::test_stderr_capture::capture_stderr_output;
 
     assert_eq!(finish_entrypoint(Ok(())), Exit::Success);
     let stderr = capture_stderr_output(|| {
@@ -165,13 +164,13 @@ fn dispatch_gates_only_route_runs_tenacious_preflight() {
     use crate::cli::args::Cli;
     use clap::CommandFactory;
 
-    crate::test_utils::with_isolated_home(|work| {
+    malvin::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(work).expect("chdir");
         let mut shared = SharedOpts::test_defaults();
         let mut router = crate::cli::RouterOpts::test_defaults();
         router.gates = true;
-        shared.model = crate::model_id::parse_model_id("rpi:some-unknown/foo").expect("model");
+        shared.model = malvin::model_id::parse_model_id("rpi:some-unknown/foo").expect("model");
         let matches = Cli::command().get_matches_from(["malvin", "-g"]);
         let result = super::dispatch_gates_only_route(super::GatesOnlyDispatch {
             max_loops: 1,

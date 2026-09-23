@@ -1,12 +1,12 @@
 use super::restore_router_iteration_dotfiles;
-use crate::session_dotfile_backup::{
+use malvin::session_dotfile_backup::{
     GitignoreBackup, MalvinChecksBackup, MalvinConfigWorkspaceBackup, SessionDotfileBackups,
     VisionBackup, VisionFileBackup,
 };
 
 #[test]
 fn restore_router_iteration_keeps_agent_vision_edits() {
-    crate::test_utils::with_isolated_home(|_| {
+    malvin::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tmpdir");
         let work = tmp.path();
         std::fs::write(work.join("VISION.md"), "baseline prine:\n").expect("write");
@@ -28,7 +28,7 @@ fn restore_router_iteration_keeps_agent_vision_edits() {
 
 #[test]
 fn restore_router_iteration_restores_deleted_vision() {
-    crate::test_utils::with_isolated_home(|_| {
+    malvin::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tmpdir");
         let work = tmp.path();
         std::fs::write(work.join("VISION.md"), "keep me\n").expect("write");
@@ -56,4 +56,25 @@ fn kiss_witness_restore_router_iteration_dotfiles() {
         rel: std::path::PathBuf::from("VISION.md"),
         bytes: b"x".to_vec(),
     };
+}
+
+#[test]
+fn exit_gates_failed_outranks_finalize_error() {
+    use super::router_flow_loop_decide::prefer_exit_gates_over_acp;
+    use super::RouterLoopDecision;
+    let gates = Some(RouterLoopDecision::ExitGatesFailed(
+        "gate detail".to_string(),
+    ));
+    let acp_err = Err("finalize failed".to_string());
+    let decided = prefer_exit_gates_over_acp(&acp_err, gates);
+    assert!(matches!(
+        decided,
+        RouterLoopDecision::ExitGatesFailed(detail) if detail == "gate detail"
+    ));
+    let continued = prefer_exit_gates_over_acp(&acp_err, Some(RouterLoopDecision::Continue));
+    assert!(matches!(continued, RouterLoopDecision::Exit));
+    let proceed = prefer_exit_gates_over_acp(&Ok(()), Some(RouterLoopDecision::Continue));
+    assert!(matches!(proceed, RouterLoopDecision::Continue));
+    let stop = prefer_exit_gates_over_acp(&Ok(()), None);
+    assert!(matches!(stop, RouterLoopDecision::Exit));
 }

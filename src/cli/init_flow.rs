@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use crate::cli::{RouterOpts, SharedOpts};
-use crate::prompts::{PromptError, PromptStore};
 use crate::router_flow::{RouterArgs, run_router};
+use malvin::prompts::{PromptError, PromptStore};
 
 #[must_use]
 pub(crate) fn effective_init_max_loops(max_loops: usize) -> usize {
@@ -18,10 +18,10 @@ pub struct InitWorkflowOpts {
 
 pub(crate) fn malvin_gates_file_missing() -> Result<bool, String> {
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    if crate::malvin_checks_path(&cwd).is_file() {
+    if malvin::malvin_checks_path(&cwd).is_file() {
         return Ok(false);
     }
-    Ok(!cwd.join(crate::MALVIN_CHECKS_REL).is_file())
+    Ok(!cwd.join(malvin::MALVIN_CHECKS_REL).is_file())
 }
 
 pub(crate) fn should_bootstrap_gates(router: &RouterOpts) -> Result<bool, String> {
@@ -127,12 +127,12 @@ mod tests {
             .expect("parse");
         let cli = Cli::from_arg_matches(&matches).expect("cli");
         assert!(cli.command.is_none());
-        assert_eq!(cli.request.as_deref(), Some("init"));
+        assert_eq!(cli.first_request().map(String::as_str), Some("init"));
     }
 
     #[test]
     fn should_bootstrap_gates_when_gates_flag_on_and_file_missing() {
-        crate::test_utils::with_isolated_home(|work| {
+        malvin::test_utils::with_isolated_home(|work| {
             let cwd = std::env::current_dir().expect("cwd");
             std::env::set_current_dir(work).expect("chdir");
             let mut router = RouterOpts::test_defaults();
@@ -147,7 +147,7 @@ mod tests {
 
     #[test]
     fn should_bootstrap_gates_when_legacy_checks_only_and_gates_missing() {
-        crate::test_utils::with_isolated_home(|work| {
+        malvin::test_utils::with_isolated_home(|work| {
             let cwd = std::env::current_dir().expect("cwd");
             std::env::set_current_dir(work).expect("chdir");
             assert!(
@@ -210,7 +210,7 @@ mod tests {
             !src.contains(&postcondition),
             "run_init must not postcondition on .malvin/gates"
         );
-        let default_route = include_str!("entrypoint.rs");
+        let default_route = include_str!("entrypoint_dispatch.rs");
         assert!(
             !default_route.contains("return run_async_cli(|| {\n            run_init"),
             "default route must not return after init bootstrap"

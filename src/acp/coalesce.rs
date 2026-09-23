@@ -1,4 +1,3 @@
-use crate::acp::import_prelude::*;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum SessionUpdateChunkKind {
     Message,
@@ -94,84 +93,9 @@ pub(crate) fn coalesce_flush_nonempty(
     }
 }
 
-#[derive(Default)]
-#[allow(dead_code)]
-pub(crate) struct VerboseIoCoalescer {
-    pub message: String,
-    pub thought: String,
-    message_chars: usize,
-    thought_chars: usize,
-}
-
-#[allow(dead_code)]
-impl VerboseIoCoalescer {
-    pub fn feed(&mut self, kind: SessionUpdateChunkKind, chunk: &str) {
-        match kind {
-            SessionUpdateChunkKind::Message => {
-                Self::flush_if_nonempty(&mut self.thought, &mut self.thought_chars, "acp thought");
-                Self::feed_buf(
-                    &mut self.message,
-                    &mut self.message_chars,
-                    chunk,
-                    "acp message",
-                );
-            }
-            SessionUpdateChunkKind::Thought => {
-                Self::flush_if_nonempty(&mut self.message, &mut self.message_chars, "acp message");
-                Self::feed_buf(
-                    &mut self.thought,
-                    &mut self.thought_chars,
-                    chunk,
-                    "acp thought",
-                );
-            }
-        }
-    }
-
-    pub fn flush_all(&mut self) {
-        Self::flush_if_nonempty(&mut self.message, &mut self.message_chars, "acp message");
-        Self::flush_if_nonempty(&mut self.thought, &mut self.thought_chars, "acp thought");
-    }
-
-    fn feed_buf(buf: &mut String, buf_chars: &mut usize, chunk: &str, label: &'static str) {
-        let mut emissions = Vec::new();
-        coalesce_append_chunk(buf, buf_chars, chunk, &mut emissions);
-        for piece in emissions {
-            info!(target: "malvin::acp::io", "{} {}", label, piece);
-        }
-    }
-
-    fn flush_if_nonempty(buf: &mut String, buf_chars: &mut usize, label: &'static str) {
-        if !buf.is_empty() {
-            let piece = std::mem::take(buf);
-            *buf_chars = 0;
-            info!(target: "malvin::acp::io", "{} {}", label, piece);
-        }
-    }
-}
-
 #[cfg(test)]
 mod coalesce_tests {
-    use super::{
-        ACP_VERBOSE_COALESCE_MAX, SessionUpdateChunkKind, VerboseIoCoalescer, coalesce_flush_cap,
-    };
-
-    #[test]
-    fn feed_buf_and_flush_if_nonempty_fn_items() {
-        let _ = (
-            VerboseIoCoalescer::feed_buf,
-            VerboseIoCoalescer::flush_if_nonempty,
-        );
-    }
-
-    #[test]
-    fn flush_if_nonempty_clears_on_kind_switch() {
-        let mut c = VerboseIoCoalescer::default();
-        c.feed(SessionUpdateChunkKind::Message, "hold");
-        c.feed(SessionUpdateChunkKind::Thought, "think");
-        assert!(c.message.is_empty());
-        assert_eq!(c.thought, "think");
-    }
+    use super::{ACP_VERBOSE_COALESCE_MAX, coalesce_flush_cap};
 
     #[test]
     fn coalesce_flush_cap_preserves_tab_boundary_content() {

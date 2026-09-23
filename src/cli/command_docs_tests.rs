@@ -41,7 +41,7 @@ fn top_level_doc_parses_without_subcommand() {
 fn do_doc_parses_with_do_flag() {
     let cli = Cli::try_parse_from(["malvin", "--do", "--doc"]).expect("parse");
     assert!(cli.shared.doc);
-    assert!(cli.do_workflow);
+    assert!(cli.do_workflow());
     assert!(cli.command.is_none());
     let mut buf = Vec::new();
     super::print_doc_for_cli_to_writer(&cli, &mut buf).expect("write");

@@ -1,9 +1,14 @@
 use super::malvin_config_agent::parse_agent_config;
-use super::{AgentConfig, DEFAULT_MAX_LOOPS_CODE, open_malvin_config};
+use super::{AgentConfig, open_malvin_config};
 use crate::model_id::UNPREFIXED_MODEL_MESSAGE;
 use crate::support_paths::DEFAULT_CLI_MODEL;
 use crate::test_utils::with_isolated_home;
 use crate::workspace_paths::malvin_config_path;
+use std::collections::BTreeMap;
+
+fn parse_agent(text: &str) -> Result<AgentConfig, String> {
+    parse_agent_config(text, &BTreeMap::new(), false)
+}
 
 #[test]
 fn parse_agent_config_ignores_legacy_model_key() {
@@ -12,7 +17,7 @@ fn parse_agent_config_ignores_legacy_model_key() {
 model = "cursor:gpt-5"
 "model-mini" = "openai/gpt-4o"
 "#;
-    let agent = parse_agent_config(text).expect("parse");
+    let agent = parse_agent(text).expect("parse");
     assert_eq!(agent.model.canonical(), "cursor:gpt-5");
 }
 
@@ -22,7 +27,7 @@ fn parse_agent_config_rejects_bare_model() {
 [agent]
 model = "gpt-5"
 "#;
-    let err = parse_agent_config(text).expect_err("bare");
+    let err = parse_agent(text).expect_err("bare");
     assert!(
         err.contains("cursor:") || err.contains("mini:") || err == UNPREFIXED_MODEL_MESSAGE,
         "{err}"
@@ -68,6 +73,8 @@ fn open_malvin_config_writes_prefixed_model_on_fresh_init() {
             "expected prefixed model in config, got:\n{text}"
         );
         assert!(!text.contains("model-mini"));
+        assert!(!text.contains("max_loops"));
+        assert!(text.contains("disable_rpi = false"));
     });
 }
 
@@ -76,19 +83,15 @@ fn parse_agent_config_reads_values_with_prefixed_default_shape() {
     let text = r#"
 [agent]
 model = "cursor:gpt-5"
-max_loops = 3
 max_acp_retries = 5
 "#;
-    let agent = parse_agent_config(text).expect("parse");
+    let agent = parse_agent(text).expect("parse");
     assert_eq!(
         agent,
         AgentConfig {
             model: crate::model_id::parse_model_id("cursor:gpt-5").expect("model"),
-            max_loops: 3,
             max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
-            max_loops_code: DEFAULT_MAX_LOOPS_CODE,
             max_acp_retries: 5,
         }
     );
-    let _ = DEFAULT_CLI_MODEL;
 }

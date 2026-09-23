@@ -1,4 +1,4 @@
-use crate::output::{MALVIN_WHO, print_stdout_line, print_stdout_text};
+use malvin::output::{MALVIN_WHO, print_stdout_line, print_stdout_text};
 
 pub(super) fn trim_trailing_tip_lines(text: &str) -> String {
     let lines: Vec<&str> = text.lines().collect();

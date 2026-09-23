@@ -9,7 +9,7 @@ pub struct AggregatedInitialPrompt {
 
 #[derive(Debug, Default)]
 pub struct AggregatedInitialPromptBuilder {
-    strata: Vec<(PromptStratum, String)>,
+    parts: Vec<String>,
     labels: Vec<&'static str>,
 }
 
@@ -23,28 +23,18 @@ impl AggregatedInitialPromptBuilder {
         if body.is_empty() {
             return;
         }
-        self.strata.push((PromptStratum::WorkflowHeader, body));
+        self.parts.push(body);
         self.labels.push(label);
     }
 
     #[must_use]
     pub fn finish(self, log_who: &'static str) -> AggregatedInitialPrompt {
         AggregatedInitialPrompt {
-            body: join_labeled_strata(self.strata),
+            body: join_strata(self.parts),
             stdout_label: self.labels.join("+"),
             log_who,
         }
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum PromptStratum {
-    EmbeddedTemplate,
-    PlaceholderContext,
-    WorkflowHeader,
-    UserRequest,
-    GateLoopBlock,
-    MiniConstraints,
 }
 
 #[must_use]
@@ -59,15 +49,6 @@ where
         .filter(|p| !p.is_empty())
         .collect();
     trimmed.join("\n\n")
-}
-
-#[must_use]
-pub fn join_labeled_strata<I, S>(parts: I) -> String
-where
-    I: IntoIterator<Item = (PromptStratum, S)>,
-    S: AsRef<str>,
-{
-    join_strata(parts.into_iter().map(|(_, s)| s))
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

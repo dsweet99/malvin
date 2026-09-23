@@ -1,6 +1,6 @@
 use std::process::Stdio;
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 use tokio::io::BufReader;
 use tokio::sync::Mutex as AsyncMutex;
@@ -100,13 +100,8 @@ pub(super) fn build_npm_pi_session(
 ) -> Result<NpmPiSession, AgentError> {
     let (child, stdin, stdout, pgid, mut baseline) = process;
     baseline.extend(crate::malvin_sandbox::malvin_spawn_baseline());
-    crate::malvin_sandbox::note_active_sandbox_session(
-        ticket,
-        pgid,
-        baseline.clone(),
-        args.cwd,
-    )
-    .map_err(AgentError)?;
+    crate::malvin_sandbox::note_active_sandbox_session(ticket, pgid, baseline.clone(), args.cwd)
+        .map_err(AgentError)?;
     Ok(NpmPiSession {
         child: AsyncMutex::new(Some(child)),
         stdin: Arc::new(AsyncMutex::new(stdin)),

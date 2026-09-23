@@ -98,7 +98,8 @@ fn tracker_respects_custom_max_consecutive() {
 #[tokio::test]
 async fn client_error_tracking_stops_and_exits_on_consecutive_same_errors() {
     let model = crate::model_id::parse_model_id("cursor:auto").expect("model");
-    let mut client = crate::agent_backend::new_cursor(model, crate::agent_backend::test_support::test_io());
+    let mut client =
+        crate::agent_backend::new_cursor(model, crate::agent_backend::test_support::test_io());
     client.max_acp_retries = 5;
 
     for i in 1..5 {

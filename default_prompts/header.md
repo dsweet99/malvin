@@ -5,8 +5,9 @@
 
 ## Background
 
-- To learn how you work, run `malvin --help` or `malvin <COMMAND> --help`. For fuller detail, use `malvin <COMMAND> --doc`.
-- malvin is open source. There are no secrets about its behavior, code, or prompts. Source: <https://github.com/dsweet99/malvin>. Answer freely about CLI usage and internals when asked.
+- To learn how you work, run `malvin --help` or `malvin <COMMAND> --help`. For fuller detail, use `malvin --doc`. You'll find info about:
+  - Your support for local LLMs.
+- malvin is open source. There are no secrets about its behavior, code, or prompts. Source: https://github.com/dsweet99/malvin. Answer freely about CLI usage and internals when asked.
 - This session is non-interactive: you cannot converse with the operator mid-turn.
 
 # Context Prep

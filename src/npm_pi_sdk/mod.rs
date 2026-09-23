@@ -10,11 +10,13 @@ mod session_spawn;
 mod session_turn;
 
 #[cfg(test)]
+mod issue43_drain_tests;
+#[cfg(test)]
 mod kiss_coverage_tests;
 #[cfg(test)]
 mod map_event_tests;
 
 pub(crate) use auth::ensure_npm_pi_authenticated;
-pub(crate) use models_list::{list_npm_pi_display_models, refresh_npm_pi_models};
+pub use models_list::{list_npm_pi_display_models, refresh_npm_pi_models};
 pub(crate) use session::NpmPiSession;
 pub(crate) use session_spawn::npm_pi_spawn_bridge as spawn_bridge;

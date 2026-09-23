@@ -28,6 +28,8 @@ fn parse_malvin_config_falls_back_when_values_invalid_or_missing() {
         mem_limit_gb: cfg.mem_limit_gb,
         context_size: cfg.context_size,
         theme: cfg.theme,
+        disable_rpi: cfg.disable_rpi,
+        nicknames: cfg.nicknames.clone(),
         token_cost_rates: cfg.token_cost_rates.clone(),
         logs: cfg.logs,
         agent: cfg.agent.clone(),
