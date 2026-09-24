@@ -3,7 +3,7 @@ use crate::do_flow::do_flow_prompt::{
 };
 use malvin::config::DEFAULT_CLI_MODEL;
 use malvin::flow_prompt_join_test_helpers::{
-    flow_test_artifacts, flow_test_artifacts_no_checks,
+    assert_dual_workflow_header_join, flow_test_artifacts, flow_test_artifacts_no_checks,
 };
 use malvin::prompts::{DO_HEADER_MD, HEADER_MD, PromptStore};
 
@@ -21,7 +21,7 @@ fn prepare_do_prompt_store_loads_default_templates() {
     assert!(store.validate_exists(DO_HEADER_MD).is_ok());
 }
 
-fn build_do_coder_run_succeeds_without_checks_in_non_git_workspace() {
+fn build_do_coder_run_cosends_headers_with_user_in_non_git_workspace() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts_no_checks(&tmp);
     let store = prepare_do_prompt_store().expect("store");
@@ -30,19 +30,26 @@ fn build_do_coder_run_succeeds_without_checks_in_non_git_workspace() {
         &artifacts,
         "USER_TOKEN",
         malvin::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
-    );
-    assert_eq!(run.combined, "USER_TOKEN");
+    )
+    .expect("build");
     assert!(
-        !run.combined.contains("Know thyself"),
-        "headers are sent at spawn, not in the do work prompt"
+        run.combined.contains("Know thyself") || run.combined.contains("MALVIN HEADER"),
+        "coding header must ride in the co-sent prompt"
     );
     assert!(
-        !run.combined.contains("malvin --do"),
-        "do_header.md is sent at spawn, not in the do work prompt"
+        run.combined.contains("malvin --do") || run.combined.contains("do mode"),
+        "do_header.md must ride in the co-sent prompt"
     );
+    assert!(
+        run.combined.contains("USER_TOKEN"),
+        "user request must ride in the same host prompt"
+    );
+    let (trace_header, trace_user) = &run.header_user_for_trace;
+    assert!(!trace_header.is_empty());
+    assert_eq!(trace_user, "USER_TOKEN");
 }
 
-fn build_do_coder_run_work_prompt_is_user_only() {
+fn build_do_coder_run_joins_mock_headers_then_user() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
     let store = mock_do_prompt_store(&tmp);
@@ -51,18 +58,15 @@ fn build_do_coder_run_work_prompt_is_user_only() {
         &artifacts,
         "USER_TOKEN\n\n",
         malvin::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
-    );
-    assert_eq!(run.combined, "USER_TOKEN");
+    )
+    .expect("build");
+    assert_dual_workflow_header_join(&run.combined, "CODING_HDR", "DO_HDR", "USER_TOKEN");
     let (trace_header, trace_user) = &run.header_user_for_trace;
-    assert!(trace_header.is_empty());
+    assert!(trace_header.contains("CODING_HDR") && trace_header.contains("DO_HDR"));
     assert_eq!(trace_user, "USER_TOKEN");
-    assert!(
-        !run.combined.contains("CODING_HDR") && !run.combined.contains("DO_HDR"),
-        "spawn binds header.md + do_header.md; work turn is user only"
-    );
 }
 
-fn build_do_coder_run_default_store_work_prompt_is_user() {
+fn build_do_coder_run_default_store_includes_user() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
     let store = prepare_do_prompt_store().expect("store");
@@ -71,14 +75,15 @@ fn build_do_coder_run_default_store_work_prompt_is_user() {
         &artifacts,
         "USER_TOKEN",
         malvin::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
-    );
-    assert_eq!(run.combined, "USER_TOKEN");
+    )
+    .expect("build");
+    assert!(run.combined.ends_with("USER_TOKEN"));
 }
 
 #[test]
 fn kiss_bundled_cli_do_flow_tests() {
     prepare_do_prompt_store_loads_default_templates();
-    build_do_coder_run_succeeds_without_checks_in_non_git_workspace();
-    build_do_coder_run_work_prompt_is_user_only();
-    build_do_coder_run_default_store_work_prompt_is_user();
+    build_do_coder_run_cosends_headers_with_user_in_non_git_workspace();
+    build_do_coder_run_joins_mock_headers_then_user();
+    build_do_coder_run_default_store_includes_user();
 }

@@ -24,17 +24,28 @@ pub fn render_malvin_header_body(
     Ok(prompt.trim().to_string())
 }
 
-pub fn bind_do_header(input: BindMalvinHeader<'_>) -> Result<(), String> {
-    let ctx = workflow_context_paths_only(input.artifacts, input.model);
-    let coding = render_malvin_header_body(input.store, input.artifacts, input.model)?;
-    let mode = input
-        .store
+pub fn render_do_cosend_prompt(
+    store: &PromptStore,
+    artifacts: &RunArtifacts,
+    model: &str,
+    user_request: &str,
+) -> Result<(String, String), String> {
+    let ctx = workflow_context_paths_only(artifacts, model);
+    let coding = render_malvin_header_body(store, artifacts, model)?;
+    let mode = store
         .render_prompt_only(DO_HEADER_MD, ctx.as_map())
         .map_err(|e: PromptError| e.0)?;
-    let prompt = join_strata([coding.trim_end(), mode.trim_end()]);
+    let header = join_strata([coding.trim_end(), mode.trim_end()]);
+    let combined = join_strata([header.as_str(), user_request.trim_end()]);
+    Ok((header, combined))
+}
+
+pub fn bind_do_header(input: BindMalvinHeader<'_>, user_request: &str) -> Result<(), String> {
+    let (_header, prompt) =
+        render_do_cosend_prompt(input.store, input.artifacts, input.model, user_request)?;
     input
         .client
-        .bind_session_header(prompt, input.log_path, DO_HEADER_MD);
+        .bind_session_header_parts(prompt, input.log_path, DO_HEADER_MD, "do");
     Ok(())
 }
 
@@ -48,6 +59,7 @@ mod tests {
     fn kiss_cov_bind_malvin_header() {
         let _ = super::bind_do_header;
         let _ = super::render_malvin_header_body;
+        let _ = super::render_do_cosend_prompt;
         let _: Option<super::BindMalvinHeader<'_>> = None;
     }
 
@@ -55,10 +67,11 @@ mod tests {
     fn kiss_cov_bind_session_headers() {
         let _ = super::bind_do_header;
         let _ = super::render_malvin_header_body;
+        let _ = super::render_do_cosend_prompt;
     }
 
     #[test]
-    fn bind_do_header_includes_header_and_do_header_at_spawn() {
+    fn bind_do_header_cosends_header_do_header_and_user() {
         with_isolated_home(|work| {
             let artifacts = malvin::artifacts::create_run_artifacts_from_text_opts(
                 "req",
@@ -82,18 +95,22 @@ mod tests {
                 },
                 1,
             );
-            bind_do_header(BindMalvinHeader {
-                client: &mut client,
-                store: &store,
-                artifacts: &artifacts,
-                model: malvin::config::DEFAULT_CLI_MODEL,
-                log_path: artifacts.log_path("do_header"),
-            })
+            bind_do_header(
+                BindMalvinHeader {
+                    client: &mut client,
+                    store: &store,
+                    artifacts: &artifacts,
+                    model: malvin::config::DEFAULT_CLI_MODEL,
+                    log_path: artifacts.log_path("do"),
+                },
+                "USER_REQ",
+            )
             .expect("bind");
             let (prompt, stdout_label) =
                 malvin::agent_backend::pending_session_header(&client).expect("bound");
             assert!(prompt.contains("HDR"));
             assert!(prompt.contains("DO"));
+            assert!(prompt.contains("USER_REQ"));
             assert_eq!(stdout_label, DO_HEADER_MD);
         });
     }

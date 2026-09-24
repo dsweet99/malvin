@@ -53,12 +53,12 @@ See `malvin --doc`. Notable for `--do`:
 
 ## Prompt workflow
 
-`start_coder_session` sends the `--do` spawn header once when the agent is created: `header.md` plus `do_header.md` (labeled `do_header.md`). The single work prompt is then only the user request.
+`start_coder_session` sends **one** host prompt: `header.md` plus `do_header.md` plus the user request (labeled `do_header.md`). There is no follow-up work turn and no separate agent reply to the header alone.
 
 | Piece | Role |
 |-------|------|
-| `header.md` + `do_header.md` (spawn) | Standard Malvin context and do-mode persona / DM rules |
-| User request (work turn) | The operator request alone |
+| `header.md` + `do_header.md` | Standard Malvin context and do-mode persona / DM rules |
+| User request | The operator request, co-sent in the same host prompt |
 
 No implement, review, concerns, learn, or summary phases.
 

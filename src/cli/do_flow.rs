@@ -97,29 +97,22 @@ async fn begin_do_session_overlapping_prompt_prep(
     shared: &SharedOpts,
 ) -> Result<(do_flow_prompt::DoCoderRun, SessionDotfileBackups), String> {
     let store = do_flow_prompt::prepare_do_prompt_store()?;
-    crate::cli::session_header::bind_do_header(crate::cli::session_header::BindMalvinHeader {
-        client,
-        store: &store,
-        artifacts,
-        model: &shared.model.canonical(),
-        log_path: artifacts.log_path("do_header"),
-    })?;
-    let begin = client.start_coder_session(&artifacts.work_dir);
     let model = shared.model.canonical();
-    let coder_backup = async {
-        let coder = do_flow_prompt::build_do_coder_run_with_store(
-            &store,
-            artifacts,
-            text,
-            malvin::workflow_context::PromptModelOpts::new(&model),
-        );
-        let session_dotfile_backups =
-            SessionDotfileBackups::snapshot_after_ensuring_home_config(&artifacts.work_dir)?;
-        Ok::<_, String>((coder, session_dotfile_backups))
-    };
-    let (begin_res, coder_backup_res) = tokio::join!(begin, coder_backup);
-    begin_res.map_err(|e| e.to_string())?;
-    coder_backup_res
+    let coder = do_flow_prompt::build_do_coder_run_with_store(
+        &store,
+        artifacts,
+        text,
+        malvin::workflow_context::PromptModelOpts::new(&model),
+    )?;
+    client.bind_session_header_parts(
+        coder.combined.clone(),
+        artifacts.log_path("do"),
+        malvin::prompts::DO_HEADER_MD,
+        "do",
+    );
+    let session_dotfile_backups =
+        SessionDotfileBackups::snapshot_after_ensuring_home_config(&artifacts.work_dir)?;
+    Ok((coder, session_dotfile_backups))
 }
 
 pub async fn run_do(do_args: DoArgs, shared: &SharedOpts) -> Result<(), String> {
@@ -180,14 +173,13 @@ mod do_snapshot_tests {
 
 #[cfg(test)]
 mod kiss_static_fn_item_refs {
-    use super::do_flow_acp::run_do_coder_prompt;
-    use super::{run_do, run_do_acp};
+    use super::run_do;
+    use super::do_flow_acp::run_do_acp;
 
     #[test]
     fn kiss_static_fn_item_refs() {
         let _ = run_do;
         let _ = run_do_acp;
-        let _ = run_do_coder_prompt;
     }
 }
 
