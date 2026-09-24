@@ -25,8 +25,11 @@ fn default_router_prompts_follow_vision_problem_solving_language() {
     for name in [
         "header.md",
         "router_a.md",
+        "router_a_audit.md",
         "router_b.md",
-        "router_b_creative.md",
+        "router_b_satisfy.md",
+        "router_b_satisfy_brief.md",
+        "router_b_creative_lead.md",
         "router_summarize.md",
     ] {
         let body = malvin::prompts::default_file(name)
@@ -37,13 +40,23 @@ fn default_router_prompts_follow_vision_problem_solving_language() {
         }
     }
     let router_a = malvin::prompts::default_file("router_a.md").expect("router_a");
+    let router_a_audit =
+        malvin::prompts::default_file("router_a_audit.md").expect("router_a_audit");
     assert!(
-        router_a.contains("KPop: Find unsatisfied requirements")
+        router_a.contains("{{ audit_directive }}")
             && router_a.contains("__MALVIN_DONE__")
             && !router_a.to_ascii_lowercase().contains("falsif"),
-        "router_a should ask for unsatisfied requirements without falsification language"
+        "router_a should keep shared audit structure without falsification language"
     );
-    for name in ["router_a.md", "router_b.md", "router_b_creative.md"] {
+    assert!(
+        router_a_audit.contains("KPop: Find unsatisfied requirements"),
+        "router_a_audit should ask for unsatisfied requirements"
+    );
+    for name in [
+        "router_a_audit.md",
+        "router_b_satisfy.md",
+        "router_b_satisfy_brief.md",
+    ] {
         let body = malvin::prompts::default_file(name)
             .unwrap_or_else(|| panic!("missing {name}"))
             .to_ascii_lowercase();
@@ -53,14 +66,24 @@ fn default_router_prompts_follow_vision_problem_solving_language() {
         }
     }
     let router_b = malvin::prompts::default_file("router_b.md").expect("router_b");
-    let creative =
-        malvin::prompts::default_file("router_b_creative.md").expect("router_b_creative");
+    let satisfy = malvin::prompts::default_file("router_b_satisfy.md").expect("router_b_satisfy");
+    let creative_lead =
+        malvin::prompts::default_file("router_b_creative_lead.md").expect("creative_lead");
+    let satisfy_brief =
+        malvin::prompts::default_file("router_b_satisfy_brief.md").expect("satisfy_brief");
     assert!(
-        router_b.contains("KPop: Satisfy the requirements.") && !router_b.contains("MBC2"),
-        "router_b must keep KPop satisfy instruction without MBC2"
+        router_b.contains("{{ satisfy_line }}")
+            && router_b.contains("{{ creative_lead }}")
+            && !router_b.contains("MBC2"),
+        "router_b skeleton must use template keys without MBC2"
     );
     assert!(
-        creative.contains("KPop: Satisfy the requirements.") && creative.contains("MBC2"),
-        "router_b_creative must keep KPop satisfy instruction and MBC2"
+        satisfy.contains("KPop: Satisfy the requirements.") && !satisfy.contains("MBC2"),
+        "router_b_satisfy must keep KPop satisfy instruction without MBC2"
+    );
+    assert!(
+        satisfy_brief.contains("KPop: Satisfy the requirements.")
+            && creative_lead.contains("MBC2"),
+        "creative fragments must keep KPop satisfy instruction and MBC2"
     );
 }

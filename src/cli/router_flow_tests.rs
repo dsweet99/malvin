@@ -5,7 +5,7 @@ use crate::router_flow::router_flow_prompt::{
 };
 use malvin::config::DEFAULT_CLI_MODEL;
 use malvin::flow_prompt_join_test_helpers::flow_test_artifacts;
-use malvin::prompts::{HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD};
+use malvin::prompts::{HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_LEAD_MD, ROUTER_B_MD};
 
 #[test]
 fn prepare_router_prompt_store_loads_default_templates() {
@@ -13,7 +13,7 @@ fn prepare_router_prompt_store_loads_default_templates() {
     assert!(store.validate_exists(HEADER_MD).is_ok());
     assert!(store.validate_exists(ROUTER_A_MD).is_ok());
     assert!(store.validate_exists(ROUTER_B_MD).is_ok());
-    assert!(store.validate_exists(ROUTER_B_CREATIVE_MD).is_ok());
+    assert!(store.validate_exists(ROUTER_B_CREATIVE_LEAD_MD).is_ok());
 }
 
 #[test]

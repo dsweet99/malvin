@@ -1,6 +1,4 @@
 
-KPop: Satisfy the requirements. Stay in scope.
+{{ creative_lead }}{{ satisfy_line }}
 
-NB: Do not emit __MALVIN_DONE__.
-
-
+{{ done_note }}

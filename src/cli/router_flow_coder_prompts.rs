@@ -111,7 +111,7 @@ mod kiss_cov_gate_refs {
     fn router_coder_stdout_labels_match_active_prompt_files() {
         assert_eq!(header_prompt_file(), "header.md");
         assert_eq!(router_a_prompt_file(false), "router_a.md");
-        assert_eq!(router_a_prompt_file(true), "router_a_no_kpop.md");
+        assert_eq!(router_a_prompt_file(true), "router_a.md");
         assert_eq!(kpop_common_prompt_file(false), "kpop_common.md");
         assert_eq!(kpop_common_prompt_file(true), "kpop_common_no_kpop.md");
     }

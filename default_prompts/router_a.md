@@ -3,7 +3,7 @@ See user requirements at `{{ user_request_path }}`.
 
 {{ code_extra }}
 
-KPop: Find unsatisfied requirements. Find incorrectly satisfyied requirements. Highlight points of epistemic uncertainty. Stay in scope.
+{{ audit_directive }}
 
 
 If you cannot find unsatisfied requirements or errors,

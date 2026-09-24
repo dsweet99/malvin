@@ -1,8 +1,10 @@
 use malvin::artifacts::RunArtifacts;
 use malvin::orchestrator::workflow_context_paths_only;
 use malvin::prompts::{
-    PromptError, PromptStore, RouterBPromptFlags, header_prompt_file, kpop_common_prompt_file,
-    router_a_prompt_file, router_b_prompt_file,
+    PromptError, PromptStore, ROUTER_B_CREATIVE_LEAD_MD, ROUTER_B_DONE_NOTE_MD, RouterBPromptFlags,
+    header_prompt_file, kpop_common_prompt_file, router_a_audit_prompt_file, router_a_prompt_file,
+    router_b_prompt_file, router_b_satisfy_prompt_file, router_b_uses_creative_lead,
+    router_b_uses_done_note,
 };
 
 use super::{RouterCodeExtraInput, render_router_code_extra};
@@ -113,6 +115,8 @@ pub(crate) fn build_router_a_prompt(input: RouterAPromptInput<'_>) -> Result<Str
         gates_just_ran,
     })?;
     ctx.insert("code_extra".to_string(), code_extra);
+    let audit = prompt_fragment(store, router_a_audit_prompt_file(no_kpop))?;
+    ctx.insert("audit_directive".to_string(), audit);
     let body = store
         .render_prompt_only(router_a_prompt_file(no_kpop), ctx.as_map())
         .map_err(|e: PromptError| e.0)?;
@@ -127,15 +131,57 @@ pub(crate) struct RouterBPromptInput<'a> {
     pub no_kpop: bool,
 }
 
+fn prompt_fragment(store: &PromptStore, name: &str) -> Result<String, String> {
+    store
+        .render_prompt_only(name, &std::collections::HashMap::new())
+        .map_err(|e: PromptError| e.0)
+        .map(|body| body.trim().to_string())
+}
+
+fn router_b_creative_lead(store: &PromptStore, flags: RouterBPromptFlags) -> Result<String, String> {
+    if !router_b_uses_creative_lead(flags) {
+        return Ok(String::new());
+    }
+    let lead = prompt_fragment(store, ROUTER_B_CREATIVE_LEAD_MD)?;
+    if lead.is_empty() {
+        Ok(String::new())
+    } else {
+        Ok(format!("{lead}\n\n"))
+    }
+}
+
+fn router_b_done_note(store: &PromptStore, flags: RouterBPromptFlags) -> Result<String, String> {
+    if router_b_uses_done_note(flags) {
+        prompt_fragment(store, ROUTER_B_DONE_NOTE_MD)
+    } else {
+        Ok(String::new())
+    }
+}
+
+fn router_b_template_keys(
+    store: &PromptStore,
+    flags: RouterBPromptFlags,
+) -> Result<(String, String, String), String> {
+    Ok((
+        router_b_creative_lead(store, flags)?,
+        prompt_fragment(store, router_b_satisfy_prompt_file(flags))?,
+        router_b_done_note(store, flags)?,
+    ))
+}
+
 pub(crate) fn build_router_b_prompt(input: RouterBPromptInput<'_>) -> Result<String, String> {
-    let template = router_b_prompt_file(RouterBPromptFlags {
+    let flags = RouterBPromptFlags {
         creative: input.creative,
         no_kpop: input.no_kpop,
-    });
-    let ctx = workflow_context_paths_only(input.artifacts, input.model);
+    };
+    let mut ctx = workflow_context_paths_only(input.artifacts, input.model);
+    let (creative_lead, satisfy_line, done_note) = router_b_template_keys(input.store, flags)?;
+    ctx.insert("creative_lead".to_string(), creative_lead);
+    ctx.insert("satisfy_line".to_string(), satisfy_line);
+    ctx.insert("done_note".to_string(), done_note);
     let body = input
         .store
-        .render_prompt_only(template, ctx.as_map())
+        .render_prompt_only(router_b_prompt_file(flags), ctx.as_map())
         .map_err(|e: PromptError| e.0)?;
     Ok(body.trim().to_string())
 }

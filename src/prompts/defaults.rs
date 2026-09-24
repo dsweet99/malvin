@@ -2,9 +2,12 @@
 mod default_files;
 
 pub use default_files::{
-    ROUTER_A_MD, ROUTER_A_NO_KPOP_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD, ROUTER_B_NO_KPOP_MD,
-    RouterBPromptFlags, default_file, header_prompt_file, kpop_common_prompt_file,
-    router_a_prompt_file, router_b_prompt_file,
+    ROUTER_A_AUDIT_MD, ROUTER_A_AUDIT_NO_KPOP_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_LEAD_MD,
+    ROUTER_B_DONE_NOTE_MD, ROUTER_B_MD, ROUTER_B_SATISFY_BRIEF_MD, ROUTER_B_SATISFY_MD,
+    ROUTER_B_SATISFY_NO_KPOP_MD, RouterBPromptFlags, default_file, header_prompt_file,
+    kpop_common_prompt_file, router_a_audit_prompt_file, router_a_prompt_file,
+    router_b_prompt_file, router_b_satisfy_prompt_file, router_b_uses_creative_lead,
+    router_b_uses_done_note,
 };
 
 pub const HEADER_MD: &str = "header.md";
@@ -24,10 +27,14 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     KPOP_COMMON_NO_KPOP_MD,
     DO_HEADER_MD,
     ROUTER_A_MD,
-    ROUTER_A_NO_KPOP_MD,
+    ROUTER_A_AUDIT_MD,
+    ROUTER_A_AUDIT_NO_KPOP_MD,
     ROUTER_B_MD,
-    ROUTER_B_CREATIVE_MD,
-    ROUTER_B_NO_KPOP_MD,
+    ROUTER_B_SATISFY_MD,
+    ROUTER_B_SATISFY_BRIEF_MD,
+    ROUTER_B_SATISFY_NO_KPOP_MD,
+    ROUTER_B_CREATIVE_LEAD_MD,
+    ROUTER_B_DONE_NOTE_MD,
     ROUTER_CODE_EXTRA_MD,
     ROUTER_SUMMARIZE_MD,
 ];
@@ -138,7 +145,7 @@ mod router_header_embed_tests {
     use std::path::Path;
 
     use super::{
-        DO_HEADER_MD, HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD,
+        DO_HEADER_MD, HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_LEAD_MD, ROUTER_B_MD,
         ROUTER_SUMMARIZE_MD, default_file,
     };
     use crate::artifacts::create_run_artifacts;
@@ -176,7 +183,7 @@ mod router_header_embed_tests {
     fn embedded_default_files_cover_router_templates() {
         assert!(default_file(ROUTER_A_MD).is_some());
         assert!(default_file(ROUTER_B_MD).is_some());
-        assert!(default_file(ROUTER_B_CREATIVE_MD).is_some());
+        assert!(default_file(ROUTER_B_CREATIVE_LEAD_MD).is_some());
         assert!(default_file(ROUTER_SUMMARIZE_MD).is_some());
         assert!(default_file(DO_HEADER_MD).is_some());
         assert!(default_file(HEADER_MD).is_some());

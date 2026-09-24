@@ -43,19 +43,26 @@ fn validate_router_required_prompts(store: &PromptStore) -> Result<(), String> {
         kpop_common_prompt_file(true),
         "mbc2.md",
         router_a_prompt_file(false),
-        router_a_prompt_file(true),
+        malvin::prompts::router_a_audit_prompt_file(false),
+        malvin::prompts::router_a_audit_prompt_file(true),
         router_b_prompt_file(RouterBPromptFlags {
             creative: false,
             no_kpop: false,
         }),
-        router_b_prompt_file(RouterBPromptFlags {
+        malvin::prompts::router_b_satisfy_prompt_file(RouterBPromptFlags {
+            creative: false,
+            no_kpop: false,
+        }),
+        malvin::prompts::router_b_satisfy_prompt_file(RouterBPromptFlags {
             creative: true,
             no_kpop: false,
         }),
-        router_b_prompt_file(RouterBPromptFlags {
+        malvin::prompts::router_b_satisfy_prompt_file(RouterBPromptFlags {
             creative: false,
             no_kpop: true,
         }),
+        malvin::prompts::ROUTER_B_CREATIVE_LEAD_MD,
+        malvin::prompts::ROUTER_B_DONE_NOTE_MD,
         ROUTER_CODE_EXTRA_MD,
         ROUTER_SUMMARIZE_MD,
     ];
