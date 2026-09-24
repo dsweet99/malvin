@@ -1,3 +1,4 @@
+mod child_stderr;
 mod drain_idle;
 mod log_adapter;
 mod log_adapter_tool;
@@ -10,6 +11,10 @@ mod spawn_args;
 mod stdio_teardown;
 mod stream_log;
 mod timing;
+
+#[cfg(test)]
+#[path = "child_stderr_tests.rs"]
+mod child_stderr_tests;
 
 #[cfg(test)]
 #[path = "drain_idle_tests.rs"]
@@ -36,6 +41,7 @@ pub(crate) use session_io::{
     start_mem_watch,
 };
 pub use spawn_args::{BridgeSpawnArgs, SDK_BRIDGE_MAX_AGE, ToolCallStart};
+pub(crate) use child_stderr::{start_warning_forward_filtered, take_stdio_forward_stderr};
 pub(crate) use stdio_teardown::{StdioTeardown, drop_stdio_child};
 pub use stream_log::StreamLog;
 pub use timing::{note_sdk_step, record_sdk_usage};
