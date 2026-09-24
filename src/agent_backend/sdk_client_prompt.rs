@@ -4,8 +4,8 @@ use crate::acp::{
     AgentError, AgentFault, CoderPromptOptions, agent_string_is_cursor_agent_busy,
     backoff_after_agent_failure, retries_noun,
 };
-use crate::model_id::ModelBackend;
 
+use super::backend_lifecycle::BackendLifecycle;
 use super::sdk_client::SdkClient;
 use super::sdk_client_active::ActiveCoderSession;
 use super::sdk_client_session_header::send_bound_session_header;
@@ -91,7 +91,8 @@ pub(super) async fn teardown_sdk_session_after_transport_error(
     if !err.requires_coder_session_teardown() {
         return;
     }
-    let forget_agent = matches!(client.model.backend, ModelBackend::Cursor)
+    let forget_agent = BackendLifecycle::of(client.model.backend)
+        .forgets_resume_id_on_busy_teardown()
         && (err.fault == AgentFault::CursorBusy || agent_string_is_cursor_agent_busy(&err.message));
     let _ = client.end_coder_session().await;
     if forget_agent {

@@ -50,6 +50,15 @@ impl ModelBackend {
             Self::Codex => "codex timed out",
         }
     }
+
+    #[must_use]
+    pub fn bridge_wire_model(self, model: &ParsedModel) -> String {
+        debug_assert_eq!(self, model.backend);
+        match self {
+            Self::Cursor => model.cursor_bridge_model(),
+            Self::NpmPi | Self::Pi | Self::Codex => model.slug.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

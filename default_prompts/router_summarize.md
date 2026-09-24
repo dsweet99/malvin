@@ -6,7 +6,7 @@ Do not give a play-by-play of your own actions, steps, or session mechanics. In 
 
 Be sure to provide evidence (e.g., measurements, citations, calculations, reasoning, etc.) for any claims you make as well as evidence that the user's request has been satisfied.
 
-Mention any points where you faced uncertainty and had to make a decision withoit guidance from the user.
+Mention any points where you faced uncertainty and had to make a decision without guidance from the user.
 
 Write plainly and clearly. Use complete sentences. Assume the reader is intelligent and interested in what you have to say. Don't use invented terms or shorthand phrases that use for thinking. If you use an uncommon (not invented!) term, define or explain it.
 

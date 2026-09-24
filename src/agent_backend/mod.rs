@@ -1,4 +1,5 @@
 pub mod backend_error_tracker;
+mod backend_lifecycle;
 mod factory;
 mod sdk_client;
 mod sdk_client_active;
