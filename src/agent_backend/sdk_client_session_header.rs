@@ -52,7 +52,8 @@ async fn try_send_header_with_retries(
     header: &CoderSessionHeader,
     opts: &CoderPromptOptions<'_>,
 ) -> Result<(), AgentError> {
-    let backoff_ceiling = u32::MAX;
+    let backoff_ceiling = crate::nested_budget_scopes::BudgetScopeLayer::AcpSpawnRetry
+        .effective_max_attempts(u32::MAX, false);
     let mut last_error;
     let mut attempts_used = 0_u32;
     loop {

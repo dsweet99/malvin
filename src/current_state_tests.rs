@@ -109,48 +109,6 @@ fn format_retry_line_first_gate_iteration_is_not_retry() {
     assert!(line.contains("first outer gate-loop"));
 }
 
-fn format_retry_line_second_iteration_is_retry_without_done() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
-        .expect("artifacts");
-    crate::artifacts::ensure_gate_exp_log_file(&artifacts, 1).expect("exp log");
-    let line = format_retry_line(Some(2), Some(&artifacts));
-    assert!(line.contains("retry #1"));
-    assert!(line.contains("quality gates"));
-}
-
-fn format_retry_line_detects_oom_from_sandbox_marker() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
-        .expect("artifacts");
-    crate::sandbox_oom::record_sandbox_oom_kill(
-        &artifacts.run_dir,
-        crate::sandbox_oom::SandboxOomKillRecord::from_facts(
-            1,
-            crate::sandbox_oom::SandboxOomKillFacts {
-                reason: crate::sandbox_oom::OOM_REASON_MEMORY_LIMIT,
-                rss_bytes: Some(999),
-                limit_bytes: 512,
-                pgid: 42,
-            },
-        ),
-    )
-    .expect("write");
-    let line = format_retry_line(Some(2), Some(&artifacts));
-    assert!(line.contains("OOM"));
-}
-
-fn format_retry_line_gates_failure_after_done() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
-        .expect("artifacts");
-    let prev = artifacts.gate_exp_log_path(1);
-    std::fs::create_dir_all(prev.parent().expect("parent")).expect("mkdir");
-    std::fs::write(&prev, "## Step 1 — router mock\n").expect("write");
-    let line = format_retry_line(Some(2), Some(&artifacts));
-    assert!(line.contains("quality gates"));
-}
-
 fn format_current_state_joins_all_sections() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let text = format_current_state(tmp.path(), None, None);
@@ -158,69 +116,6 @@ fn format_current_state_joins_all_sections() {
     assert!(text.contains("Date/time:"));
     assert!(text.contains("Sandbox memory:"));
     assert!(text.contains("Retry:"));
-}
-
-fn kiss_cov_current_state_non_unix_branch() {
-    crate::test_utils::with_isolated_home(|_| {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let _artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
-            .expect("artifacts");
-        let _ = super::current_sandbox_rss_bytes;
-        let _ = super::effective_user_id;
-        let _ = super::append_unsolved_reason;
-        let _ = super::append_oom_reason;
-        let _ = super::append_gates_reason;
-    });
-}
-
-fn append_unsolved_reason_records_missing_marker() {
-    crate::test_utils::with_isolated_home(|_| {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
-            .expect("artifacts");
-        let prev = artifacts.gate_exp_log_path(1);
-        std::fs::create_dir_all(prev.parent().expect("parent")).expect("mkdir");
-        std::fs::write(&prev, "no marker\n").expect("write");
-        let mut reasons = Vec::new();
-        super::append_unsolved_reason(&mut reasons, &artifacts, 1);
-        assert_eq!(reasons.len(), 1);
-    });
-}
-
-fn append_oom_reason_records_memory_kill() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
-        .expect("artifacts");
-    crate::sandbox_oom::record_sandbox_oom_kill(
-        &artifacts.run_dir,
-        crate::sandbox_oom::SandboxOomKillRecord::from_facts(
-            1,
-            crate::sandbox_oom::SandboxOomKillFacts {
-                reason: crate::sandbox_oom::OOM_REASON_MEMORY_LIMIT,
-                rss_bytes: Some(999),
-                limit_bytes: 512,
-                pgid: 42,
-            },
-        ),
-    )
-    .expect("write");
-    let mut reasons = Vec::new();
-    super::append_oom_reason(&mut reasons, &artifacts, 1);
-    assert!(reasons.iter().any(|r| r.contains("OOM")));
-}
-
-fn append_gates_reason_after_done_session() {
-    crate::test_utils::with_isolated_home(|_| {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
-            .expect("artifacts");
-        let prev = artifacts.gate_exp_log_path(1);
-        std::fs::create_dir_all(prev.parent().expect("parent")).expect("mkdir");
-        std::fs::write(&prev, "## Step 1 — router mock\n").expect("write");
-        let mut reasons = Vec::new();
-        super::append_unsolved_reason(&mut reasons, &artifacts, 1);
-        assert!(reasons.iter().any(|r| r.contains("quality gates")));
-    });
 }
 
 #[test]
@@ -239,12 +134,5 @@ fn kiss_bundled_current_state_tests() {
     format_sandbox_memory_line_includes_limit_and_available();
     format_retry_line_first_run_is_not_retry();
     format_retry_line_first_gate_iteration_is_not_retry();
-    format_retry_line_second_iteration_is_retry_without_done();
-    format_retry_line_detects_oom_from_sandbox_marker();
-    format_retry_line_gates_failure_after_done();
     format_current_state_joins_all_sections();
-    kiss_cov_current_state_non_unix_branch();
-    append_unsolved_reason_records_missing_marker();
-    append_oom_reason_records_memory_kill();
-    append_gates_reason_after_done_session();
 }

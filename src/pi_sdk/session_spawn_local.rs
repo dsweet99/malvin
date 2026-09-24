@@ -70,7 +70,7 @@ fn keyless_local_tools_enabled(provider: &str, model: &str) -> bool {
     if !provider.eq_ignore_ascii_case("ollama") {
         return true;
     }
-    super::local_llm_ollama::ollama_model_supports_tools(model).unwrap_or(true)
+    super::local_llm_ollama::ollama_model_supports_tools(model).unwrap_or(false)
 }
 
 pub(crate) fn local_session_overrides(

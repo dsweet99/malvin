@@ -156,15 +156,17 @@ fn infer_gate_retry_reasons(artifacts: Option<&RunArtifacts>, iteration: usize) 
         return Vec::new();
     }
     let mut reasons = Vec::new();
-    append_unsolved_reason(&mut reasons, artifacts, prev);
     append_oom_reason(&mut reasons, artifacts, prev);
     append_gates_reason(&mut reasons, artifacts, prev);
+    append_unsolved_reason(&mut reasons, artifacts, prev);
     reasons
 }
 
 fn append_unsolved_reason(reasons: &mut Vec<String>, artifacts: &RunArtifacts, prev: usize) {
     if prev_exp_log_ran(artifacts, prev) && reasons.is_empty() {
-        reasons.push("quality gates did not pass after previous router session".to_string());
+        reasons.push(
+            "requirements still unsatisfied after previous router session".to_string(),
+        );
     }
 }
 
@@ -178,8 +180,35 @@ fn append_oom_reason(reasons: &mut Vec<String>, artifacts: &RunArtifacts, prev: 
     }
 }
 
-const fn append_gates_reason(_reasons: &mut Vec<String>, _artifacts: &RunArtifacts, _prev: usize) {}
+fn append_gates_reason(reasons: &mut Vec<String>, artifacts: &RunArtifacts, _prev: usize) {
+    if previous_quality_gates_failed(artifacts) {
+        reasons.push("quality gates did not pass after previous router session".to_string());
+    }
+}
+
+fn previous_quality_gates_failed(artifacts: &RunArtifacts) -> bool {
+    review_marks_checks_failed(artifacts) || quality_gates_log_has_nonzero_exit(artifacts)
+}
+
+fn review_marks_checks_failed(artifacts: &RunArtifacts) -> bool {
+    std::fs::read_to_string(artifacts.artifact_review_md())
+        .is_ok_and(|text| text.contains("Checks do not pass"))
+}
+
+fn quality_gates_log_has_nonzero_exit(artifacts: &RunArtifacts) -> bool {
+    let Ok(log) = std::fs::read_to_string(artifacts.quality_gates_log_path()) else {
+        return false;
+    };
+    log.lines().any(|line| {
+        line.strip_prefix("exit code: ")
+            .is_some_and(|code| code.trim() != "0")
+    })
+}
 
 #[cfg(test)]
 #[path = "current_state_tests.rs"]
 mod current_state_tests;
+
+#[cfg(test)]
+#[path = "current_state_tests_tail.rs"]
+mod current_state_tests_tail;

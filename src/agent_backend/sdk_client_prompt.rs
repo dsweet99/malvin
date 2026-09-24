@@ -34,7 +34,8 @@ async fn execute_prompt_with_retries(
     opts: &CoderPromptOptions<'_>,
 ) -> Result<(), AgentError> {
     let single = opts.single_attempt;
-    let backoff_ceiling = if single { 1 } else { u32::MAX };
+    let backoff_ceiling = crate::nested_budget_scopes::BudgetScopeLayer::AcpSpawnRetry
+        .effective_max_attempts(u32::MAX, single);
     let mut last_error;
     let mut attempts_used = 0_u32;
     loop {

@@ -64,6 +64,7 @@ fn kiss_witness_unified_sdk_client_and_backend() {
     assert!(backend.active_coder_session().is_err());
     let _ = stringify!(cursor_resume_id);
     let _ = stringify!(spawn_with_retries);
+    let _ = stringify!(record_spawn_success);
     let _ = stringify!(spawn_service_wire);
     let _ = stringify!(CoderSessionEnsure);
     let _ = stringify!(start_coder_session);

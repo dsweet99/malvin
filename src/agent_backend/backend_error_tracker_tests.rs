@@ -115,3 +115,22 @@ async fn client_error_tracking_stops_and_exits_on_consecutive_same_errors() {
     assert_eq!(client.backend_error_tracker().consecutive_count(), 0);
     assert!(!client.backend_error_tracker().should_stop_and_exit());
 }
+
+#[tokio::test]
+async fn spawn_style_success_clears_consecutive_streak_before_next_error() {
+    let model = crate::model_id::parse_model_id("cursor:auto").expect("model");
+    let mut client =
+        crate::agent_backend::new_cursor(model, crate::agent_backend::test_support::test_io());
+    client.max_acp_retries = 3;
+    assert!(!client.record_backend_error("spawn failed"));
+    assert!(!client.record_backend_error("spawn failed"));
+    assert_eq!(client.backend_error_tracker().consecutive_count(), 2);
+    client.record_backend_success();
+    assert!(!client.record_backend_error("spawn failed"));
+    assert_eq!(
+        client.backend_error_tracker().consecutive_count(),
+        1,
+        "post-success failure must start a new streak at 1"
+    );
+    assert!(!client.backend_error_tracker().should_stop_and_exit());
+}

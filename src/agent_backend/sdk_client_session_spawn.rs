@@ -20,6 +20,7 @@ fn record_spawn_success(
     resume_agent_id: Option<&str>,
 ) -> bool {
     adopt_spawned_session(client, session, cwd);
+    client.record_backend_success();
     let resumed = resume_agent_id.is_some();
     if resumed {
         client.header_lifecycle.mark_satisfied_keeping_header();
@@ -61,7 +62,8 @@ pub(super) async fn spawn_with_retries(
 ) -> Result<bool, AgentError> {
     let resume_agent_id = cursor_resume_id(client);
     let mut last_error;
-    let backoff_ceiling = u32::MAX;
+    let backoff_ceiling = crate::nested_budget_scopes::BudgetScopeLayer::AcpSpawnRetry
+        .effective_max_attempts(u32::MAX, false);
     let mut attempts_used = 0_u32;
     loop {
         attempts_used = attempts_used.saturating_add(1);
