@@ -1,4 +1,5 @@
 pub(crate) mod admin_cmd;
+pub(crate) mod advice_cmd;
 pub(crate) mod args;
 pub(crate) mod cli_request;
 pub(crate) mod command_docs;

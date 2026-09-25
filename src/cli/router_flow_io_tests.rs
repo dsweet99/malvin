@@ -83,6 +83,7 @@ fn router_client_uses_router_style_agent_io_not_do_style() {
         verbose: false,
         max_acp_retries: malvin::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
+        advice: None,
         iml: false,
     };
     let backend = build_agent_backend(

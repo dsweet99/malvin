@@ -48,6 +48,9 @@ pub struct SharedOpts {
     /// Print built-in documentation and exit
     #[arg(long, global = true, default_value_t = false)]
     pub doc: bool,
+    /// Print an advice document for TAG and exit (no run logs)
+    #[arg(long, value_name = "TAG")]
+    pub advice: Option<String>,
     /// Cycle through all REQUEST args forever (as if re-invoking the same command line)
     #[arg(long = "iml", default_value_t = false, help = IML_HELPTEXT)]
     pub iml: bool,
@@ -144,6 +147,7 @@ impl SharedOpts {
             verbose: false,
             max_acp_retries: malvin::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
+            advice: None,
             iml: false,
         }
     }

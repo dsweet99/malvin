@@ -21,6 +21,26 @@ fn entrypoint_from_doc_argv_exits_success() {
 }
 
 #[test]
+fn entrypoint_from_advice_design_exits_success() {
+    with_isolated_home(|_| {
+        assert_eq!(
+            entrypoint_from(["malvin", "--advice", "design"]),
+            Exit::Success
+        );
+    });
+}
+
+#[test]
+fn entrypoint_from_advice_unknown_tag_exits_failure() {
+    with_isolated_home(|_| {
+        assert_eq!(
+            entrypoint_from(["malvin", "--advice", "nope"]),
+            Exit::Failure
+        );
+    });
+}
+
+#[test]
 fn entrypoint_from_background_is_rejected() {
     use clap::Parser;
     let err = crate::cli::Cli::try_parse_from(["malvin", "--background", "--doc"])

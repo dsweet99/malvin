@@ -2,6 +2,8 @@ use super::{Commands, Exit, SharedOpts};
 
 #[path = "entrypoint_from.rs"]
 mod entrypoint_from;
+#[path = "entrypoint_info_flags.rs"]
+mod entrypoint_info_flags;
 #[path = "entrypoint_gates_only.rs"]
 mod entrypoint_gates_only;
 #[path = "entrypoint_dispatch.rs"]

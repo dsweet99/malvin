@@ -41,6 +41,7 @@ fn smoke_cov_cli_cli_units_1b() {
         verbose: false,
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
+        advice: None,
         iml: false,
     };
     let _ = shared.model;

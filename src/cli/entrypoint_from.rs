@@ -9,6 +9,8 @@ use crate::cli::entrypoint_checks::{
     ensure_malvin_checks_for_command, ensure_malvin_checks_for_default_route,
     ensure_malvin_checks_for_do_workflow, ensure_malvin_checks_for_gates_only_route,
 };
+use super::entrypoint_info_flags::entrypoint_advice_or_doc_exit;
+
 fn parse_cli_args_or_exit(
     args: impl IntoIterator<Item = impl Into<std::ffi::OsString> + Clone>,
 ) -> Result<(Cli, clap::ArgMatches), Exit> {
@@ -26,16 +28,6 @@ fn parse_cli_args_or_exit(
     }
 }
 
-fn entrypoint_doc_exit(cli: &Cli) -> Exit {
-    match crate::cli::command_docs::print_doc_for_cli(cli) {
-        Ok(()) => Exit::Success,
-        Err(e) => {
-            print_command_error(&e);
-            Exit::Failure
-        }
-    }
-}
-
 fn entrypoint_before_dispatch(cli: &Cli, matches: &clap::ArgMatches) -> Option<Exit> {
     if cli.do_workflow() && cli.command.is_some() {
         print_command_error("`--do` cannot be combined with a subcommand");
@@ -45,9 +37,11 @@ fn entrypoint_before_dispatch(cli: &Cli, matches: &clap::ArgMatches) -> Option<E
         print_command_error(&msg);
         return Some(Exit::Failure);
     }
+    if let Some(exit) = entrypoint_advice_or_doc_exit(cli) {
+        return Some(exit);
+    }
     if cli.command.is_none()
         && !cli.has_request()
-        && !cli.shared.doc
         && !cli.do_workflow()
         && !is_gates_only_route(cli)
     {
@@ -56,9 +50,6 @@ fn entrypoint_before_dispatch(cli: &Cli, matches: &clap::ArgMatches) -> Option<E
     }
     if let Some(exit) = super::entrypoint_short_help::entrypoint_request_missing_short_help(cli) {
         return Some(exit);
-    }
-    if cli.shared.doc {
-        return Some(entrypoint_doc_exit(cli));
     }
     None
 }

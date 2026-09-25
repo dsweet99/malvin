@@ -103,7 +103,7 @@ fn opt_takes_following_value(arg: &str) -> bool {
     long_name(arg).is_some_and(|n| {
         matches!(
             n,
-            "model" | "max-acp-retries" | "max-loops" | "max-hypotheses"
+            "model" | "max-acp-retries" | "max-loops" | "max-hypotheses" | "advice"
         )
     })
 }

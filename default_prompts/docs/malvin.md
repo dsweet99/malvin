@@ -96,7 +96,7 @@ Session names are independent of the workspace-scoped `.malvin/acp_spawn/<slot>.
 
 Any lock whose holder PID is dead (or whose contents are not a valid PID) is safe to delete manually. Lock files are not version-controlled; if they were accidentally committed, run `git rm -r --cached .malvin/acp_spawn/`. Malvin reclaims stale locks automatically on startup in a workspace (directory sweep after early-exit paths such as `--doc`, bare help, and missing-request short help) and when a slot is acquired; live sessions are never disturbed.
 
-`--doc`, `--help`, `--version`, and `malvin` with no subcommand do not acquire or release a name lock.
+`--doc`, `--advice`, `--help`, `--version`, and `malvin` with no subcommand do not acquire or release a name lock.
 
 ### `--doc`
 
@@ -107,6 +107,15 @@ Print built-in documentation and exit. Does not spawn an agent or create a run d
 - `malvin --do --doc` — documentation for the one-shot `--do` workflow.
 
 Other subcommand arguments (for example `<REQUEST>`) are not required when `--doc` is set.
+
+### `--advice`
+
+Print an embedded advice document for `TAG` to stdout and exit. Does not spawn an agent or create a run directory under `~/.malvin_home/logs/`.
+
+- `malvin --advice TAG` — body of the matching file under `default_prompts/advice/*.md`.
+- Each document has one TAG: lowercase letters and digits, starting with a letter, at most 7 characters (example: `design` for `document_design.md`).
+
+Other subcommand arguments are not required when `--advice` is set.
 
 ## Quality gates (`.malvin/gates`)
 
