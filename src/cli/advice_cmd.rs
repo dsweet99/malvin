@@ -59,7 +59,7 @@ fn advice_char_count(body: &str) -> usize {
 
 fn format_advice_list_line(entry: &AdviceEntry) -> String {
     format!(
-        "{}  {}  {} lines, {} characters",
+        "{}\t{}  {} lines, {} characters",
         entry.tag,
         entry.description,
         advice_line_count(entry.body),
@@ -67,7 +67,14 @@ fn format_advice_list_line(entry: &AdviceEntry) -> String {
     )
 }
 
+const ADVICE_LIST_USAGE: &str = "\
+Type `malvin --advice TAG` to see a full document.
+List format: tag, then description (tab after the tag), then line and character counts.";
+
 pub(crate) fn print_advice_list_to_writer(mut out: impl Write) -> Result<(), String> {
+    out.write_all(ADVICE_LIST_USAGE.as_bytes())
+        .map_err(|e| format!("stdout: {e}"))?;
+    out.write_all(b"\n").map_err(|e| format!("stdout: {e}"))?;
     for entry in ADVICE_ENTRIES {
         debug_assert!(
             word_count(entry.description) <= 7,
@@ -141,8 +148,17 @@ mod tests {
         let mut buf = Vec::new();
         print_advice_list_to_writer(&mut buf).expect("list");
         let s = String::from_utf8(buf).expect("utf8");
+        assert!(
+            s.contains("Type `malvin --advice TAG` to see a full document."),
+            "{s}"
+        );
+        assert!(s.contains("tag, then description"), "{s}");
         assert!(s.contains("design"), "{s}");
         assert!(s.contains("Document design via C.R.A.P. principles"), "{s}");
+        assert!(
+            s.contains("design\tDocument design via C.R.A.P. principles"),
+            "expected tab after tag, got: {s}"
+        );
         let design = ADVICE_ENTRIES.iter().find(|e| e.tag == "design").unwrap();
         assert!(word_count(design.description) <= 7);
         assert!(

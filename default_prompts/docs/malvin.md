@@ -112,7 +112,7 @@ Other subcommand arguments (for example `<REQUEST>`) are not required when `--do
 
 Print an embedded advice document for `TAG` to stdout and exit, or list available tags when `TAG` is omitted. Does not spawn an agent or create a run directory under `~/.malvin_home/logs/`.
 
-- `malvin --advice` — list every TAG with a brief description (at most 7 words), plus the document’s line count and character count.
+- `malvin --advice` — prints how to open a full document (`malvin --advice TAG`), then lists every TAG with a brief description (at most 7 words; tab after the tag), plus the document’s line count and character count.
 - `malvin --advice TAG` — body of the matching file under `default_prompts/advice/*.md`.
 - Each document has one TAG: lowercase letters and digits, starting with a letter, at most 7 characters (example: `design` for `document_design.md`).
 
