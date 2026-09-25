@@ -103,17 +103,28 @@ fn opt_takes_following_value(arg: &str) -> bool {
     long_name(arg).is_some_and(|n| {
         matches!(
             n,
-            "model" | "max-acp-retries" | "max-loops" | "max-hypotheses" | "advice"
+            "model" | "max-acp-retries" | "max-loops" | "max-hypotheses"
         )
     })
+}
+
+fn advice_takes_following_value(arg: &str, next: Option<&str>) -> bool {
+    if arg.contains('=') {
+        return false;
+    }
+    if long_name(arg) != Some("advice") {
+        return false;
+    }
+    next.is_some_and(|n| !is_option_token(n))
 }
 
 fn is_option_token(arg: &str) -> bool {
     arg == "-" || (arg.starts_with('-') && arg != "--")
 }
 
-fn skip_option(i: usize, arg: &str) -> usize {
-    if opt_takes_following_value(arg) {
+fn skip_option(i: usize, arg: &str, args: &[OsString]) -> usize {
+    let next = args.get(i + 1).and_then(|a| a.to_str());
+    if opt_takes_following_value(arg) || advice_takes_following_value(arg, next) {
         i + 2
     } else {
         i + 1
@@ -139,7 +150,12 @@ fn push_request(out: &mut Vec<TaggedRequest>, text: &str, pending: &mut PendingP
     });
 }
 
-fn classify_arg(arg: &str, i: usize, pending: &mut PendingPrefixes) -> Result<ArgStep, String> {
+fn classify_arg(
+    arg: &str,
+    i: usize,
+    args: &[OsString],
+    pending: &mut PendingPrefixes,
+) -> Result<ArgStep, String> {
     if let Some(p) = parse_creative_flag(arg)? {
         pending.set_creative(p)?;
         return Ok(ArgStep::Advance(i + 1));
@@ -152,7 +168,7 @@ fn classify_arg(arg: &str, i: usize, pending: &mut PendingPrefixes) -> Result<Ar
         return Ok(ArgStep::Break);
     }
     if is_option_token(arg) {
-        return Ok(ArgStep::Advance(skip_option(i, arg)));
+        return Ok(ArgStep::Advance(skip_option(i, arg, args)));
     }
     Ok(ArgStep::Request)
 }
@@ -163,7 +179,7 @@ pub fn classify_top_level_requests(args: &[OsString]) -> Result<Vec<TaggedReques
     let mut i = 1usize;
     while i < args.len() {
         let arg = os_to_str(&args[i])?;
-        match classify_arg(arg, i, &mut pending)? {
+        match classify_arg(arg, i, args, &mut pending)? {
             ArgStep::Break => break,
             ArgStep::Advance(next) => i = next,
             ArgStep::Request => {

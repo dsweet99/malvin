@@ -48,8 +48,8 @@ pub struct SharedOpts {
     /// Print built-in documentation and exit
     #[arg(long, global = true, default_value_t = false)]
     pub doc: bool,
-    /// Print an advice document for TAG and exit (no run logs)
-    #[arg(long, value_name = "TAG")]
+    /// Print advice for TAG, or list tags if TAG is omitted (no run logs)
+    #[arg(long, value_name = "TAG", num_args = 0..=1, default_missing_value = "")]
     pub advice: Option<String>,
     /// Cycle through all REQUEST args forever (as if re-invoking the same command line)
     #[arg(long = "iml", default_value_t = false, help = IML_HELPTEXT)]

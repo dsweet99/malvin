@@ -133,3 +133,33 @@ fn do_then_creative_on_next_router_request() {
     assert_eq!(tagged[1].kind, RequestKind::Router);
     assert_eq!(tagged[1].creative, Some(0.5));
 }
+
+#[test]
+fn advice_with_tag_consumes_following_token() {
+    let tagged = classify_top_level_requests(&os(&["malvin", "--advice", "design"]))
+        .expect("classify");
+    assert!(tagged.is_empty(), "{tagged:?}");
+}
+
+#[test]
+fn bare_advice_alone_leaves_no_requests() {
+    let tagged = classify_top_level_requests(&os(&["malvin", "--advice"])).expect("ok");
+    assert!(tagged.is_empty());
+}
+
+#[test]
+fn advice_equals_form_does_not_skip_next_request() {
+    let tagged =
+        classify_top_level_requests(&os(&["malvin", "--advice=design", "Write"])).expect("ok");
+    assert_eq!(tagged.len(), 1);
+    assert_eq!(tagged[0].text, "Write");
+}
+
+#[test]
+fn bare_advice_before_flag_does_not_skip_flag_token() {
+    let tagged =
+        classify_top_level_requests(&os(&["malvin", "--advice", "--max-loops", "2", "Write"]))
+            .expect("ok");
+    assert_eq!(tagged.len(), 1);
+    assert_eq!(tagged[0].text, "Write");
+}

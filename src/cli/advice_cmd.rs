@@ -1,27 +1,34 @@
 use std::io::{self, Write};
 
-const ADVICE_ENTRIES: &[(&str, &str)] = &[(
-    "design",
-    include_str!("../../default_prompts/advice/document_design.md"),
-)];
+struct AdviceEntry {
+    tag: &'static str,
+    body: &'static str,
+    description: &'static str,
+}
 
-pub(crate) fn advice_text(tag: &str) -> Result<&'static str, String> {
+const ADVICE_ENTRIES: &[AdviceEntry] = &[AdviceEntry {
+    tag: "design",
+    body: include_str!("../../default_prompts/advice/document_design.md"),
+    description: "Document design via C.R.A.P. principles",
+}];
+
+fn advice_entry(tag: &str) -> Result<&'static AdviceEntry, String> {
     if !is_valid_advice_tag(tag) {
         return Err(format!(
             "invalid --advice TAG `{tag}`: must be lowercase letters/digits, start with a letter, at most 7 characters"
         ));
     }
-    ADVICE_ENTRIES
-        .iter()
-        .find(|(t, _)| *t == tag)
-        .map(|(_, body)| *body)
-        .ok_or_else(|| {
-            let known: Vec<&str> = ADVICE_ENTRIES.iter().map(|(t, _)| *t).collect();
-            format!(
-                "unknown --advice TAG `{tag}` (known: {})",
-                known.join(", ")
-            )
-        })
+    ADVICE_ENTRIES.iter().find(|e| e.tag == tag).ok_or_else(|| {
+        let known: Vec<&str> = ADVICE_ENTRIES.iter().map(|e| e.tag).collect();
+        format!(
+            "unknown --advice TAG `{tag}` (known: {})",
+            known.join(", ")
+        )
+    })
+}
+
+pub(crate) fn advice_text(tag: &str) -> Result<&'static str, String> {
+    advice_entry(tag).map(|e| e.body)
 }
 
 fn is_valid_advice_tag(tag: &str) -> bool {
@@ -33,6 +40,50 @@ fn is_valid_advice_tag(tag: &str) -> bool {
         return false;
     }
     chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+}
+
+fn word_count(s: &str) -> usize {
+    s.split_whitespace().count()
+}
+
+fn advice_line_count(body: &str) -> usize {
+    if body.is_empty() {
+        return 0;
+    }
+    body.lines().count()
+}
+
+fn advice_char_count(body: &str) -> usize {
+    body.chars().count()
+}
+
+fn format_advice_list_line(entry: &AdviceEntry) -> String {
+    format!(
+        "{}  {}  {} lines, {} characters",
+        entry.tag,
+        entry.description,
+        advice_line_count(entry.body),
+        advice_char_count(entry.body)
+    )
+}
+
+pub(crate) fn print_advice_list_to_writer(mut out: impl Write) -> Result<(), String> {
+    for entry in ADVICE_ENTRIES {
+        debug_assert!(
+            word_count(entry.description) <= 7,
+            "advice description for `{}` exceeds 7 words",
+            entry.tag
+        );
+        let line = format_advice_list_line(entry);
+        out.write_all(line.as_bytes())
+            .map_err(|e| format!("stdout: {e}"))?;
+        out.write_all(b"\n").map_err(|e| format!("stdout: {e}"))?;
+    }
+    Ok(())
+}
+
+pub(crate) fn print_advice_list() -> Result<(), String> {
+    print_advice_list_to_writer(io::stdout().lock())
 }
 
 pub(crate) fn print_advice_to_writer(tag: &str, mut out: impl Write) -> Result<(), String> {
@@ -83,5 +134,37 @@ mod tests {
         assert!(is_valid_advice_tag("design"));
         assert!(is_valid_advice_tag("a1"));
         assert!(is_valid_advice_tag("abcdefg"));
+    }
+
+    #[test]
+    fn advice_list_includes_tag_description_lines_and_chars() {
+        let mut buf = Vec::new();
+        print_advice_list_to_writer(&mut buf).expect("list");
+        let s = String::from_utf8(buf).expect("utf8");
+        assert!(s.contains("design"), "{s}");
+        assert!(s.contains("Document design via C.R.A.P. principles"), "{s}");
+        let design = ADVICE_ENTRIES.iter().find(|e| e.tag == "design").unwrap();
+        assert!(word_count(design.description) <= 7);
+        assert!(
+            s.contains(&format!("{} lines", advice_line_count(design.body))),
+            "{s}"
+        );
+        assert!(
+            s.contains(&format!("{} characters", advice_char_count(design.body))),
+            "{s}"
+        );
+    }
+
+    #[test]
+    fn all_advice_descriptions_are_at_most_seven_words() {
+        for entry in ADVICE_ENTRIES {
+            let n = word_count(entry.description);
+            assert!(
+                n <= 7,
+                "tag `{}` description has {n} words: {}",
+                entry.tag,
+                entry.description
+            );
+        }
     }
 }

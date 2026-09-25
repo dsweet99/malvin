@@ -31,6 +31,13 @@ fn entrypoint_from_advice_design_exits_success() {
 }
 
 #[test]
+fn entrypoint_from_advice_list_exits_success() {
+    with_isolated_home(|_| {
+        assert_eq!(entrypoint_from(["malvin", "--advice"]), Exit::Success);
+    });
+}
+
+#[test]
 fn entrypoint_from_advice_unknown_tag_exits_failure() {
     with_isolated_home(|_| {
         assert_eq!(
