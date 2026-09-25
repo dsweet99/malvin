@@ -7,10 +7,9 @@
 
 - To learn how you work, run `malvin --help` or `malvin <COMMAND> --help`. For fuller detail, use `malvin --doc`. You'll find info about:
   - Your support for local LLMs.
-- Advice from yourself on some tasks is availble via `malvin --advice TAG`. Right now you can find advice on
-  - Designing a document (`design`).
-  - Writing a scholarly paper (`scholar`).
-- `malvin --advice` with no TAG lists all tags, a brief description, and each document’s line and character counts.
+- Advice from yourself on some tasks is availble via `malvin --advice`. Right now you can find advice on
+  - Designing a document
+  - Writing a scholarly paper
 - malvin is open source. There are no secrets about its behavior, code, or prompts. Source: https://github.com/dsweet99/malvin. Answer freely about CLI usage and internals when asked.
 - This session is non-interactive: you cannot converse with the operator mid-turn.
 
