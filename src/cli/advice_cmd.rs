@@ -6,11 +6,18 @@ struct AdviceEntry {
     description: &'static str,
 }
 
-const ADVICE_ENTRIES: &[AdviceEntry] = &[AdviceEntry {
-    tag: "design",
-    body: include_str!("../../default_prompts/advice/document_design.md"),
-    description: "Document design via C.R.A.P. principles",
-}];
+const ADVICE_ENTRIES: &[AdviceEntry] = &[
+    AdviceEntry {
+        tag: "design",
+        body: include_str!("../../default_prompts/advice/document_design.md"),
+        description: "Document design via C.R.A.P. principles",
+    },
+    AdviceEntry {
+        tag: "scholar",
+        body: include_str!("../../default_prompts/advice/scholarly.md"),
+        description: "Scholarly ML paper writing advice",
+    },
+];
 
 fn advice_entry(tag: &str) -> Result<&'static AdviceEntry, String> {
     if !is_valid_advice_tag(tag) {
@@ -121,10 +128,20 @@ mod tests {
     }
 
     #[test]
+    fn scholar_tag_prints_scholarly_advice() {
+        let mut buf = Vec::new();
+        print_advice_to_writer("scholar", &mut buf).expect("print");
+        let s = String::from_utf8(buf).expect("utf8");
+        assert!(s.contains("XYZ+1"));
+        assert!(s.contains("Scholarly paper advice"));
+    }
+
+    #[test]
     fn unknown_tag_errors() {
         let err = advice_text("nope").expect_err("unknown");
         assert!(err.contains("unknown"), "{err}");
         assert!(err.contains("design"), "{err}");
+        assert!(err.contains("scholar"), "{err}");
     }
 
     #[test]
@@ -159,14 +176,30 @@ mod tests {
             s.contains("design\tDocument design via C.R.A.P. principles"),
             "expected tab after tag, got: {s}"
         );
+        assert!(s.contains("scholar"), "{s}");
+        assert!(s.contains("Scholarly ML paper writing advice"), "{s}");
+        assert!(
+            s.contains("scholar\tScholarly ML paper writing advice"),
+            "expected tab after tag, got: {s}"
+        );
         let design = ADVICE_ENTRIES.iter().find(|e| e.tag == "design").unwrap();
+        let scholar = ADVICE_ENTRIES.iter().find(|e| e.tag == "scholar").unwrap();
         assert!(word_count(design.description) <= 7);
+        assert!(word_count(scholar.description) <= 7);
         assert!(
             s.contains(&format!("{} lines", advice_line_count(design.body))),
             "{s}"
         );
         assert!(
             s.contains(&format!("{} characters", advice_char_count(design.body))),
+            "{s}"
+        );
+        assert!(
+            s.contains(&format!("{} lines", advice_line_count(scholar.body))),
+            "{s}"
+        );
+        assert!(
+            s.contains(&format!("{} characters", advice_char_count(scholar.body))),
             "{s}"
         );
     }

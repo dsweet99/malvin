@@ -114,7 +114,8 @@ Print an embedded advice document for `TAG` to stdout and exit, or list availabl
 
 - `malvin --advice` — prints how to open a full document (`malvin --advice TAG`), then lists every TAG with a brief description (at most 7 words; tab after the tag), plus the document’s line count and character count.
 - `malvin --advice TAG` — body of the matching file under `default_prompts/advice/*.md`.
-- Each document has one TAG: lowercase letters and digits, starting with a letter, at most 7 characters (example: `design` for `document_design.md`).
+- Each document has one TAG: lowercase letters and digits, starting with a letter, at most 7 characters (examples: `design` for `document_design.md`; `scholar` for `scholarly.md`).
+- The `scholar` advice is adapted from *How to ML Paper* by Jakob N. Foerster.
 
 Other subcommand arguments are not required when `--advice` is set.
 
