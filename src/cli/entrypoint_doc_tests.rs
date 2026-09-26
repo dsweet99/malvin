@@ -21,10 +21,10 @@ fn entrypoint_from_doc_argv_exits_success() {
 }
 
 #[test]
-fn entrypoint_from_advice_design_exits_success() {
+fn entrypoint_from_advice_doc_design_exits_success() {
     with_isolated_home(|_| {
         assert_eq!(
-            entrypoint_from(["malvin", "--advice", "design"]),
+            entrypoint_from(["malvin", "--advice", "doc_design"]),
             Exit::Success
         );
     });
@@ -35,6 +35,16 @@ fn entrypoint_from_advice_scholar_exits_success() {
     with_isolated_home(|_| {
         assert_eq!(
             entrypoint_from(["malvin", "--advice", "scholar"]),
+            Exit::Success
+        );
+    });
+}
+
+#[test]
+fn entrypoint_from_advice_report_exits_success() {
+    with_isolated_home(|_| {
+        assert_eq!(
+            entrypoint_from(["malvin", "--advice", "report"]),
             Exit::Success
         );
     });

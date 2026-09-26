@@ -1,3 +1,6 @@
+description: Design a beautiful document
+
+
 Beautiful document design follows the foundational **C.R.A.P.** principles—**Contrast, Repetition, Alignment, and Proximity**—to make pages readable, organized, and attractive.
 
 ## Core Design Rules

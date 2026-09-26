@@ -12,7 +12,7 @@ src/pi_sdk/isolated_bash_tests_recovered.txt
 opt_prog.md
 ./plan.md
 report-disc.md
-report.md
+/report.md
 summary-ft.md
 bugs.md
 .malvin_checks

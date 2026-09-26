@@ -1,4 +1,4 @@
-# Scholarly paper advice for malvin
+description: Write a technical report or scholarly paper
 
 Use when drafting a scholarly paper. Prefer structure, clarity, and verifiable claims over human-process ceremony (authorship politics, social promo, Overleaf UI).
 

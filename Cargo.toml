@@ -21,7 +21,7 @@ exclude = [
     "opt_prog.md",
     "plan.md",
     "report-disc.md",
-    "report.md",
+    "/report.md",
     "summary-ft.md",
     "bugs.md",
 ]

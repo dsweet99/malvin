@@ -6,23 +6,12 @@ struct AdviceEntry {
     description: &'static str,
 }
 
-const ADVICE_ENTRIES: &[AdviceEntry] = &[
-    AdviceEntry {
-        tag: "design",
-        body: include_str!("../../default_prompts/advice/document_design.md"),
-        description: "Document design via C.R.A.P. principles",
-    },
-    AdviceEntry {
-        tag: "scholar",
-        body: include_str!("../../default_prompts/advice/scholarly.md"),
-        description: "Scholarly ML paper writing advice",
-    },
-];
+include!(concat!(env!("OUT_DIR"), "/advice_registry.rs"));
 
 fn advice_entry(tag: &str) -> Result<&'static AdviceEntry, String> {
     if !is_valid_advice_tag(tag) {
         return Err(format!(
-            "invalid --advice TAG `{tag}`: must be lowercase letters/digits, start with a letter, at most 7 characters"
+            "invalid --advice TAG `{tag}`: must be lowercase letters/digits/underscores, start with a letter, at most 32 characters"
         ));
     }
     ADVICE_ENTRIES.iter().find(|e| e.tag == tag).ok_or_else(|| {
@@ -43,10 +32,10 @@ fn is_valid_advice_tag(tag: &str) -> bool {
     let Some(first) = chars.next() else {
         return false;
     };
-    if !first.is_ascii_lowercase() || tag.len() > 7 {
+    if !first.is_ascii_lowercase() || tag.len() > 32 {
         return false;
     }
-    chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+    chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
 }
 
 fn word_count(s: &str) -> usize {
@@ -117,11 +106,14 @@ pub(crate) fn print_advice(tag: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashSet;
+    use std::fs;
+    use std::path::Path;
 
     #[test]
-    fn design_tag_prints_document_design() {
+    fn doc_design_tag_prints_document_design() {
         let mut buf = Vec::new();
-        print_advice_to_writer("design", &mut buf).expect("print");
+        print_advice_to_writer("doc_design", &mut buf).expect("print");
         let s = String::from_utf8(buf).expect("utf8");
         assert!(s.contains("C.R.A.P."));
         assert!(s.contains("Contrast"));
@@ -133,14 +125,24 @@ mod tests {
         print_advice_to_writer("scholar", &mut buf).expect("print");
         let s = String::from_utf8(buf).expect("utf8");
         assert!(s.contains("XYZ+1"));
-        assert!(s.contains("Scholarly paper advice"));
+        assert!(s.contains("Canonical structure"));
+    }
+
+    #[test]
+    fn report_tag_prints_report_advice() {
+        let mut buf = Vec::new();
+        print_advice_to_writer("report", &mut buf).expect("print");
+        let s = String::from_utf8(buf).expect("utf8");
+        assert!(s.contains("technically sophisticated reader"));
+        assert!(s.contains("plain English"));
     }
 
     #[test]
     fn unknown_tag_errors() {
         let err = advice_text("nope").expect_err("unknown");
         assert!(err.contains("unknown"), "{err}");
-        assert!(err.contains("design"), "{err}");
+        assert!(err.contains("doc_design"), "{err}");
+        assert!(err.contains("report"), "{err}");
         assert!(err.contains("scholar"), "{err}");
     }
 
@@ -148,16 +150,18 @@ mod tests {
     fn invalid_tag_shape_errors() {
         assert!(advice_text("Bad").is_err());
         assert!(advice_text("1abc").is_err());
-        assert!(advice_text("toolongx").is_err());
         assert!(advice_text("").is_err());
         assert!(advice_text("a-b").is_err());
+        assert!(advice_text(&"a".repeat(33)).is_err());
     }
 
     #[test]
     fn valid_tag_shape_accepted_for_lookup() {
         assert!(is_valid_advice_tag("design"));
+        assert!(is_valid_advice_tag("doc_design"));
         assert!(is_valid_advice_tag("a1"));
         assert!(is_valid_advice_tag("abcdefg"));
+        assert!(is_valid_advice_tag(&"a".repeat(32)));
     }
 
     #[test]
@@ -170,38 +174,22 @@ mod tests {
             "{s}"
         );
         assert!(s.contains("tag, then description"), "{s}");
-        assert!(s.contains("design"), "{s}");
-        assert!(s.contains("Document design via C.R.A.P. principles"), "{s}");
-        assert!(
-            s.contains("design\tDocument design via C.R.A.P. principles"),
-            "expected tab after tag, got: {s}"
-        );
-        assert!(s.contains("scholar"), "{s}");
-        assert!(s.contains("Scholarly ML paper writing advice"), "{s}");
-        assert!(
-            s.contains("scholar\tScholarly ML paper writing advice"),
-            "expected tab after tag, got: {s}"
-        );
-        let design = ADVICE_ENTRIES.iter().find(|e| e.tag == "design").unwrap();
-        let scholar = ADVICE_ENTRIES.iter().find(|e| e.tag == "scholar").unwrap();
-        assert!(word_count(design.description) <= 7);
-        assert!(word_count(scholar.description) <= 7);
-        assert!(
-            s.contains(&format!("{} lines", advice_line_count(design.body))),
-            "{s}"
-        );
-        assert!(
-            s.contains(&format!("{} characters", advice_char_count(design.body))),
-            "{s}"
-        );
-        assert!(
-            s.contains(&format!("{} lines", advice_line_count(scholar.body))),
-            "{s}"
-        );
-        assert!(
-            s.contains(&format!("{} characters", advice_char_count(scholar.body))),
-            "{s}"
-        );
+        for entry in ADVICE_ENTRIES {
+            assert!(
+                s.contains(&format!("{}\t{}", entry.tag, entry.description)),
+                "expected tab after tag for {}, got: {s}",
+                entry.tag
+            );
+            assert!(word_count(entry.description) <= 7);
+            assert!(
+                s.contains(&format!("{} lines", advice_line_count(entry.body))),
+                "{s}"
+            );
+            assert!(
+                s.contains(&format!("{} characters", advice_char_count(entry.body))),
+                "{s}"
+            );
+        }
     }
 
     #[test]
@@ -214,6 +202,62 @@ mod tests {
                 entry.tag,
                 entry.description
             );
+        }
+    }
+
+    #[test]
+    fn advice_descriptions_come_from_first_line_without_prefix() {
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("default_prompts/advice");
+        for entry in ADVICE_ENTRIES {
+            let path = dir.join(format!("{}.md", entry.tag));
+            let content = fs::read_to_string(&path).expect("read advice md");
+            let first = content.lines().next().expect("non-empty advice md");
+            let value = first
+                .strip_prefix("description:")
+                .unwrap_or_else(|| panic!("{}: first line must be `description: ...`", entry.tag))
+                .trim();
+            assert_eq!(
+                entry.description, value,
+                "registry description must match first-line value for {}",
+                entry.tag
+            );
+            assert!(
+                !entry.description.starts_with("description:"),
+                "description must not retain the `description:` prefix: {}",
+                entry.description
+            );
+        }
+    }
+
+    #[test]
+    fn every_advice_md_stem_is_registered_as_tag() {
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("default_prompts/advice");
+        let mut stems = HashSet::new();
+        for entry in fs::read_dir(&dir).expect("read advice dir") {
+            let entry = entry.expect("dir entry");
+            let path = entry.path();
+            if path.extension().and_then(|e| e.to_str()) != Some("md") {
+                continue;
+            }
+            let stem = path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .expect("utf8 stem")
+                .to_string();
+            assert!(
+                is_valid_advice_tag(&stem),
+                "advice file stem `{stem}` must be a valid --advice TAG"
+            );
+            stems.insert(stem);
+        }
+        let tags: HashSet<&str> = ADVICE_ENTRIES.iter().map(|e| e.tag).collect();
+        assert_eq!(
+            stems,
+            tags.iter().map(|t| (*t).to_string()).collect(),
+            "ADVICE_ENTRIES tags must equal advice/*.md stems"
+        );
+        for entry in ADVICE_ENTRIES {
+            assert!(stems.contains(entry.tag));
         }
     }
 }
