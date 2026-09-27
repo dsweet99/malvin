@@ -33,7 +33,7 @@ _logs*/
 .cursor
 .cursorrules
 .vscode
-
+_reports
 
 # Local operator scratch (not for crates.io)
 iml.sh
