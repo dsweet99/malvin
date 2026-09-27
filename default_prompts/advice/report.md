@@ -1,33 +1,18 @@
 description: Write a short report, especially an .md
 
-Write the report for a technically sophisticated reader who has not been following the work closely.
 
-Your primary goal is comprehension, not compactness or sounding technical.
+The user is interested in their request's satisfaction *not* in how you did it. (Nothing personal. That's what the logs are for.) Stay focused.
 
-Use plain English. Prefer ordinary words over jargon. Never invent shorthand, labels, abbreviations, metaphors, or compressed phrases just to save space. If a project-specific term is necessary, define it the first time you use it.
+Do not give a play-by-play of your own actions, steps, or session mechanics. In particular, do not: re-quote your own prior DMs; cite session log paths, timestamps, or stdout.log as proof of having spoken; narrate gap analysis, control-flow markers, or other internal process. Don't list actions not taken (unless that's germaine.) Report on what was asked.
 
-Write complete sentences. Make every paragraph understandable on its own. Prefer concrete descriptions of what happened, what changed, why it matters, and what remains unresolved.
+Be sure to provide concrete evidence (e.g., measurements, citations, calculations, reasoning, etc.) for any material claim you make as well as evidence that the user's request has been satisfied.
 
-Do not write compressed phrases like:
-- “semantic A vs B preference”
-- “pins the buggy asymmetry”
-- “worktree-feeding sources”
-unless those terms are already established for the reader and genuinely useful.
+Prefer concrete names when they make the explanation easier to follow. Avoid ambiguous pronouns and vague references.
 
-Do not assume that names of tests, functions, files, issue numbers, or internal concepts explain themselves. State the human meaning first; include the exact identifier afterward when useful.
+Mention any points where you faced uncertainty and had to make a decision without guidance from the user.
 
-Organize by importance, not chronology. For each section:
-1. State the main point in one clear sentence.
-2. Explain the relevant evidence or details.
-3. State the consequence or next action, if any.
+Write plainly and clearly. Use complete sentences. Assume the reader is intelligent and interested in what you have to say. Don't use invented terms or shorthand phrases that use for thinking. If you use an uncommon (not invented!) term, define or explain it.
 
-Use headings and bullets to improve scanning, but do not turn sentences into fragments.
-
-Distinguish clearly between:
-- completed work,
-- current findings,
-- unresolved problems,
-- evidence and test results,
-- recommendations or next steps.
+Use headings, bullets, and tables to improve scanning, but do not turn sentences into fragments.
 
 Before finishing, reread the report as an outsider. Rewrite any sentence that requires knowledge of the logs, private shorthand, or hidden context to understand.
