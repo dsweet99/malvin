@@ -15,3 +15,7 @@ Beautiful document design follows the foundational **C.R.A.P.** principles—**C
 - **Limit Font Sizes:** Use no more than 2 to 3 typeface sizes (such as a main title, a heading, and body text) to establish a clear visual hierarchy.
 - **Breathing Room:** Leave generous negative space around blocks of text and images so the layout does not feel cluttered or overwhelming.
 - **Intentional Visuals:** Use high-resolution photography or structured tables sparingly to break up long text and clarify data relationships rather than just for random decoration.
+
+## Notes
+- TeX's cleverness can help you get uniformity with less effort. Look for "programmatic" TeX solitions instead of making lots of little tweaks and nudges.
+
