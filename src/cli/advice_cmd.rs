@@ -42,30 +42,13 @@ fn word_count(s: &str) -> usize {
     s.split_whitespace().count()
 }
 
-fn advice_line_count(body: &str) -> usize {
-    if body.is_empty() {
-        return 0;
-    }
-    body.lines().count()
-}
-
-fn advice_char_count(body: &str) -> usize {
-    body.chars().count()
-}
-
 fn format_advice_list_line(entry: &AdviceEntry) -> String {
-    format!(
-        "{}\t{}  {} lines, {} characters",
-        entry.tag,
-        entry.description,
-        advice_line_count(entry.body),
-        advice_char_count(entry.body)
-    )
+    format!("{}: {}", entry.tag, entry.description)
 }
 
 const ADVICE_LIST_USAGE: &str = "\
 Type `malvin --advice TAG` to see a full document.
-List format: tag, then description (tab after the tag), then line and character counts.";
+TAG: Description";
 
 pub(crate) fn print_advice_list_to_writer(mut out: impl Write) -> Result<(), String> {
     out.write_all(ADVICE_LIST_USAGE.as_bytes())
@@ -133,8 +116,8 @@ mod tests {
         let mut buf = Vec::new();
         print_advice_to_writer("report", &mut buf).expect("print");
         let s = String::from_utf8(buf).expect("utf8");
-        assert!(s.contains("technically sophisticated reader"));
-        assert!(s.contains("plain English"));
+        assert!(s.contains("concrete evidence"));
+        assert!(s.contains("complete sentences"));
     }
 
     #[test]
@@ -165,31 +148,22 @@ mod tests {
     }
 
     #[test]
-    fn advice_list_includes_tag_description_lines_and_chars() {
+    fn advice_list_prints_tag_colon_description_lines() {
         let mut buf = Vec::new();
         print_advice_list_to_writer(&mut buf).expect("list");
         let s = String::from_utf8(buf).expect("utf8");
-        assert!(
-            s.contains("Type `malvin --advice TAG` to see a full document."),
+        let lines: Vec<&str> = s.lines().collect();
+        assert_eq!(
+            lines[0], "Type `malvin --advice TAG` to see a full document.",
             "{s}"
         );
-        assert!(s.contains("tag, then description"), "{s}");
-        for entry in ADVICE_ENTRIES {
-            assert!(
-                s.contains(&format!("{}\t{}", entry.tag, entry.description)),
-                "expected tab after tag for {}, got: {s}",
-                entry.tag
-            );
-            assert!(word_count(entry.description) <= 7);
-            assert!(
-                s.contains(&format!("{} lines", advice_line_count(entry.body))),
-                "{s}"
-            );
-            assert!(
-                s.contains(&format!("{} characters", advice_char_count(entry.body))),
-                "{s}"
-            );
-        }
+        assert_eq!(lines[1], "TAG: Description", "{s}");
+        assert!(!s.contains("List format"), "{s}");
+        let expected: Vec<String> = ADVICE_ENTRIES
+            .iter()
+            .map(|e| format!("{}: {}", e.tag, e.description))
+            .collect();
+        assert_eq!(lines[2..], expected[..], "{s}");
     }
 
     #[test]

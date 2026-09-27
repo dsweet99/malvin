@@ -38,6 +38,13 @@ mod isolated_home;
 pub use isolated_home::with_isolated_home;
 
 #[cfg(test)]
+#[path = "test_logs_bucket.rs"]
+mod logs_bucket;
+
+#[cfg(test)]
+pub use logs_bucket::TestLogsBucket;
+
+#[cfg(test)]
 pub fn empty_session_dotfile_backups(work: &Path) -> crate::artifacts::SessionDotfileBackups {
     crate::artifacts::SessionDotfileBackups::snapshot(work).expect("snapshot session dotfiles")
 }

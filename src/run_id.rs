@@ -164,12 +164,12 @@ mod collision_tests {
 
     #[test]
     fn create_run_dir_retries_collision_ids() {
-        let tmp = tempfile::tempdir().unwrap();
-        let run_root = crate::malvin_logs_root(tmp.path());
-        std::fs::create_dir_all(&run_root).unwrap();
+        let logs = crate::test_utils::TestLogsBucket::new("run-id-collision-retry");
+        let run_root = logs.bucket();
+        std::fs::create_dir_all(run_root).unwrap();
         std::fs::create_dir_all(run_root.join("aaabbbcc")).unwrap();
 
-        let run_dir = create_run_dir_with_id(&run_root, |attempt| {
+        let run_dir = create_run_dir_with_id(run_root, |attempt| {
             if attempt == 0 {
                 "aaabbbcc".to_string()
             } else {
@@ -180,26 +180,29 @@ mod collision_tests {
 
         assert_eq!(run_dir, run_root.join("aaabbbcd"));
         assert!(run_dir.is_dir());
+        drop(logs);
     }
 
     #[test]
     fn create_run_dir_errors_after_collision_limit() {
-        let tmp = tempfile::tempdir().unwrap();
-        let run_root = crate::malvin_logs_root(tmp.path());
-        std::fs::create_dir_all(&run_root).unwrap();
+        let logs = crate::test_utils::TestLogsBucket::new("run-id-collision-limit");
+        let run_root = logs.bucket();
         std::fs::create_dir_all(run_root.join("stuck")).unwrap();
-        let err = create_run_dir_with_id(&run_root, |_| "stuck".to_string()).unwrap_err();
+        let err = create_run_dir_with_id(run_root, |_| "stuck".to_string()).unwrap_err();
         assert_eq!(err.kind(), ErrorKind::AlreadyExists);
         assert!(err.to_string().contains("collision limit"));
+        drop(logs);
     }
 
     #[test]
     fn create_run_dir_and_build_identifier_smoke() {
-        let tmp = tempfile::tempdir().unwrap();
+        let logs = crate::test_utils::TestLogsBucket::new("run-id-smoke");
         let id = build_identifier();
         assert!(!id.is_empty());
-        let dir = create_run_dir(Some(tmp.path()), RunDirOptions::default()).unwrap();
+        let dir = create_run_dir(Some(logs.work()), RunDirOptions::default()).unwrap();
         assert!(dir.is_dir());
+        assert_eq!(dir.parent(), Some(logs.bucket()));
+        drop(logs);
     }
 
     #[test]

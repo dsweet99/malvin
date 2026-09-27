@@ -46,7 +46,7 @@ It is also **not** required for plain `malvin --do`: without `--verbose`, `--do`
 
 ### `--model <MODEL>`
 
-Model id for agent-backed commands. Default: `cursor:auto`. Use `cursor:` for the Cursor SDK backend, or `rpi:<provider>/<model>` for the in-process Pi backend (linked `pi_agent_rust`; uses env keys or credentials already stored by Pi). Optional bracket overrides select thinking / speed where the backend supports them, for example `cursor:claude-opus-5[effort=high,fast=true]` or `rpi:openai/gpt-5[thinking=high]` (see `malvin admin models --doc`). Legacy `prime:` ids are rejected.
+Model id for agent-backed commands. Default: `cursor:auto` (or `[agent].model` in `~/.malvin_home/config.toml`). Prefixes: `cursor:` for the Cursor SDK backend; `pi:<provider>/<model>` for the official TypeScript/npm Pi agent (RPC); `rpi:<provider>/<model>` for the in-process Pi backend (linked `pi_agent_rust`; uses env keys or credentials already stored by Pi; keyless locals are `rpi:local/<provider>/<model>`); `codex:<model>` for a local Codex app-server. An unprefixed name is looked up in `[nicknames]` in the home config. Optional bracket overrides select thinking / speed where the backend supports them, for example `cursor:claude-opus-5[effort=high,fast=true]` or `rpi:openai/gpt-5[thinking=high]` (see `malvin admin models --doc`). Legacy `prime:` and `mini:` ids are rejected.
 
 ### `--max-loops <N>` (default: 9999)
 
@@ -68,7 +68,7 @@ Log **full** outgoing prompt bodies to stdout and `prompts.log`. Default: only t
 
 ### `--max-acp-retries <N>` (default: 3)
 
-Stop after N consecutive identical backend errors (spawn, header, or prompt), with 1s / 3s backoff between tries. Distinct errors reset the consecutive counter. Fail-fast classes (billing, usage limit, invalid model, and similar) still exit immediately.
+Stop after N consecutive identical backend errors (spawn, header, or prompt), with 1s / 3s backoff between tries. When the flag is omitted, `[agent].max_acp_retries` from `~/.malvin_home/config.toml` is used. Distinct errors reset the consecutive counter. Fail-fast classes (billing, usage limit, invalid model, and similar) still exit immediately.
 
 ### `--creative[=PROB]`
 
@@ -112,7 +112,7 @@ Other subcommand arguments (for example `<REQUEST>`) are not required when `--do
 
 Print an embedded advice document for `TAG` to stdout and exit, or list available tags when `TAG` is omitted. Does not spawn an agent or create a run directory under `~/.malvin_home/logs/`.
 
-- `malvin --advice` — prints how to open a full document (`malvin --advice TAG`), then lists every TAG with a brief description (at most 7 words; tab after the tag), plus the document’s line count and character count.
+- `malvin --advice` — prints how to open a full document (`malvin --advice TAG`), then a `TAG: Description` heading line, then one `<tag>: <description>` line per TAG (description at most 7 words).
 - `malvin --advice TAG` — body of the matching file under `default_prompts/advice/*.md`.
 - Each document’s TAG is the filename without `.md`: lowercase letters, digits, and underscores, starting with a letter, at most 32 characters (examples: `doc_design` for `doc_design.md`; `scholar` for `scholar.md`; `report` for `report.md`). Every `.md` file in that directory is listed; rebuild absorbs added or renamed files.
 - The first line of each advice file must be `description: ...` (value at most 7 words). The build fails if that line is missing or malformed; the listed description is the value after `description:`.
@@ -145,7 +145,7 @@ Every agent-backed command creates `~/.malvin_home/logs/<hash>/<timestamp>_<toke
 | `plan_<random>.md` or `request.md` | Copy of user input for this run |
 | `do.log`, `router_1.log`, `router_2.log`, … | Per-iteration or per-prompt transcripts |
 | `stdout.log` | Tee of agent stdout — **narrative** channel |
-| `trace.jsonl` | Audit record (sdk-shaped JSONL for Cursor SDK; Mini uses its own event shapes) — **authoritative** for semantics (tool results, shrink/fork, LLM usage) |
+| `trace.jsonl` | Audit record (sdk-shaped JSONL; Pi and Codex events are mapped into the same shapes) — **authoritative** for semantics (tool results, shrink/fork, LLM usage) |
 | `prompts.log` | Outgoing prompts (names only, or full bodies with `--verbose`) |
 | `quality_gates.log` | Workspace gate commands and output when gates run |
 | `run_timing.json` | Wall/LLM timing, token/step aggregates, and optional cost |
@@ -161,7 +161,7 @@ TIMING: wall = … llm_wait = … …
 COST: steps = N tokens_in = X tokens_out = Y cache_read = A cache_write = B cost_in = … cost_out = … cost_read = … cost_write = … cost_tot = …
 ```
 
-- **`steps`:** Mini / OpenRouter / Local count one step per successful LLM completion. Cursor SDK counts one step per SDK `onStep` boundary (not tool-call batch proxies). Raw tool-call counts are not printed as `steps`.
+- **`steps`:** Approximate count of agent steps. Cursor SDK counts SDK `onStep` boundaries; the other backends (`pi:`, `rpi:`, `codex:`) derive steps from assistant replies and tool-call batches (one batch of parallel tool calls counts as one step). Raw tool-call counts are not printed as `steps`.
 - **`tokens_in` / `tokens_out`:** Numeric when the backend reports usage. Cursor SDK folds one `result.usage` (`TokenUsage`) per `send` into these fields (cache read/write counted in `tokens_in`). When usage is absent, fields stay `n/a`.
 - **`cache_read` / `cache_write`:** Separate cache token totals from the same usage objects when reported (`cacheReadTokens` / `cacheWriteTokens`). Still included in `tokens_in`. When absent, fields stay `n/a`.
 - **`cost_in` / `cost_out` / `cost_read` / `cost_write` / `cost_tot`:** Estimated USD from per-model rates in `~/.malvin_home/config.toml` × token counts / 1e6. Rates are dollars per million tokens (`usd_per_microtoken_*`) under `[agent.<provider>.<name>]` for the run model (e.g. `[agent.cursor.auto]` for `cursor:auto`):
@@ -177,7 +177,7 @@ COST: steps = N tokens_in = X tokens_out = Y cache_read = A cache_write = B cost
 Each run writes two parallel channels with different contracts:
 
 - **`stdout.log` (narrative):** lossy, human-oriented lines with who-tags (`m|`, `t|`, `u|`, `b|`, `a|`, …). Use for skimming a run and vocabulary/ordering checks. An `a|<provider>:<model>` line (for example `a|cursor:auto`) is written each time a fresh agent context is started.
-- **`trace.jsonl` (audit):** machine-authoritative JSONL (Cursor SDK events such as `assistant` / `thinking` / `tool_call` / `progress` / `run_done`; Mini retains its own audit shapes). Use for tool results, shrink/fork events, and gate-loop audit tooling.
+- **`trace.jsonl` (audit):** machine-authoritative JSONL (bridge events such as `assistant` / `thinking` / `tool_call` / `progress` / `run_done`). Use for tool results, shrink/fork events, and gate-loop audit tooling.
 
 Consumers must know which file to trust for which question. Named types live in `src/observability/` (`ObservabilityChannel`, `AuditEventKind`).
 
@@ -201,10 +201,6 @@ The Cursor SDK bridge also emits automatic `{ "event": "progress", "kind": "hear
 **Differentiation:** continuing heartbeats (or other bridge lines) ⇒ SDK bridge alive, keep waiting up to the turn ceiling; full idle window with no bridge lines ⇒ quiet/hung bridge, fail and tear down. Open tracked tools additionally remap sandbox `AppearsHung` → `StillBusy` as a backup when the event loop cannot heartbeat during I/O-bound work.
 
 **Limitation:** work backgrounded outside the bridge sandbox process group (for example a nested Docker `malvin` after the outer shell tool call has already completed) is not visible to child-health sampling. That case relies on the outer SDK run staying open so automatic `progress` heartbeats (or other bridge events) keep arriving inside the idle budget. Once `run_done` fires, progress stops; further silence still hits idle.
-
-## Deferred stdout logging
-
-Malvin may defer agent stdout lines briefly before writing them to the terminal and `stdout.log` (legacy enrichment path). Each line waits until it has been queued for at least **`max_age`** (default **1000ms**, env `MALVIN_DEFER_LOG_MAX_AGE_MS`) so tool summaries can be enriched while preserving FIFO order. Set `MALVIN_DEFER_LOG=0` to disable deferral.
 
 ## Home config (`~/.malvin_home/config.toml`)
 
@@ -254,7 +250,9 @@ After most agent-backed commands create a new run directory and emit the startup
 - **Node.js**: ≥ 22.13 with `npm` on `PATH`. `cargo install malvin` / `cargo build` run `build.rs`, which installs the Cursor SDK bridge under `~/.malvin_home/sdk-bridges/` when the in-tree bridge is not already built (required for `cursor:` agent backends). Set `MALVIN_SKIP_SDK_BRIDGES=1` only to compile the binary without that SDK.
 - **Cursor SDK**: `@cursor/sdk` via `cursor-sdk-bridge/` (installed at build time), and a Cursor API key (`CURSOR_API_KEY`, or `CURSOR_AGENT_API_KEY` / `AGENT_API_KEY`) for `cursor:` models. `malvin admin models` lists Cursor models via the bridge when possible; falls back to `agent` / `cursor-agent` on `PATH` if the SDK path fails.
 - **OpenRouter**: `OPENROUTER_API_KEY` when using `rpi:openrouter/…` models.
-- **Pi SDK**: malvin links crates.io `pi_agent_rust` and lists or runs `rpi:` models from that registry. Provider keys follow Pi’s env vars or credentials already stored under Pi’s auth path (`PI_CODING_AGENT_DIR` / `~/.pi/agent`). An external `pi` binary is not required.
+- **Pi SDK**: malvin links crates.io `pi_agent_rust` and lists or runs `rpi:` models from that registry. Provider keys follow Pi’s env vars or credentials already stored under Pi’s auth path (`PI_CODING_AGENT_DIR` / `~/.pi/agent`). An external `pi` binary is not required for `rpi:`.
+- **npm Pi**: `pi:` models require the official `@earendil-works/pi-coding-agent` install (or `MALVIN_PI` pointing at its `cli.js` / `rpc-entry.js`) and use the same Pi auth/config.
+- **Codex**: `codex:` models require a separate `codex` binary (`PATH` or `MALVIN_CODEX`; not bundled) and a Codex login (`codex login`, `OPENAI_API_KEY`, or `$CODEX_HOME/auth.json`).
 - **pre-commit**: optional; malvin does not install hooks automatically.
 
 ## Request syntax
