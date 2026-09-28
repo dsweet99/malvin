@@ -176,8 +176,19 @@ def ft_malvin_args_request_codex(malvin_args: tuple[str, ...]) -> bool:
     return _ft_model_prefix_requested(malvin_args, "codex:")
 
 _LOCAL_RPI_PROVIDERS = ("ollama/", "llamacpp/", "mistralrs/", "local/")
+_OLLAMA_RPI_PROVIDERS = ("ollama/", "local/ollama/")
 
 def ft_malvin_args_request_local_rpi(malvin_args: tuple[str, ...]) -> bool:
+    return _ft_rpi_model_has_prefix(malvin_args, _LOCAL_RPI_PROVIDERS)
+
+
+def ft_malvin_args_request_ollama_rpi(malvin_args: tuple[str, ...]) -> bool:
+    return _ft_rpi_model_has_prefix(malvin_args, _OLLAMA_RPI_PROVIDERS)
+
+
+def _ft_rpi_model_has_prefix(
+    malvin_args: tuple[str, ...], prefixes: tuple[str, ...]
+) -> bool:
     for i, arg in enumerate(malvin_args):
         value = None
         if arg == "--model" and i + 1 < len(malvin_args):
@@ -190,7 +201,7 @@ def ft_malvin_args_request_local_rpi(malvin_args: tuple[str, ...]) -> bool:
         if not lower.startswith("rpi:"):
             continue
         rest = lower[4:]
-        if any(rest.startswith(p) for p in _LOCAL_RPI_PROVIDERS):
+        if any(rest.startswith(p) for p in prefixes):
             return True
     return False
 
@@ -974,10 +985,11 @@ def ft_run_solve(
                 "(host binary is not a Linux ELF; Docker would fail with exec format error)"
             )
             host_env = os.environ.copy()
-            host_env.setdefault(
-                "MALVIN_LOCAL_LLM_BASE_URL",
-                "http://127.0.0.1:11434/v1",
-            )
+            if ft_malvin_args_request_ollama_rpi(malvin_args):
+                host_env.setdefault(
+                    "MALVIN_LOCAL_LLM_BASE_URL",
+                    "http://127.0.0.1:11434/v1",
+                )
             code, captured, timed_out = ft_relay_subprocess_stdout(
                 cmd,
                 timeout_sec=timeout_sec,
@@ -1205,6 +1217,9 @@ def _ft_test_docker_agent_cmd_pi() -> None:
     assert ft_malvin_args_request_local_rpi(("--model", "rpi:ollama/malvin-llama32")) is True
     assert ft_malvin_args_request_local_rpi(("--model=rpi:local/x",)) is True
     assert ft_malvin_args_request_local_rpi(("--model", "rpi:llamacpp/m",)) is True
+    assert ft_malvin_args_request_ollama_rpi(("--model=rpi:local/ollama/x",)) is True
+    assert ft_malvin_args_request_ollama_rpi(("--model=rpi:local/llamacpp/m",)) is False
+    assert ft_malvin_args_request_ollama_rpi(("--model", "rpi:openai/gpt-4o")) is False
     with tempfile.TemporaryDirectory(prefix="ft-elf-") as tmp:
         mach = Path(tmp) / "mach-o"
         mach.write_bytes(b"\xcf\xfa\xed\xfe" + b"\0" * 32)

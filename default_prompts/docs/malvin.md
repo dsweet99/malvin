@@ -241,6 +241,8 @@ When the operator asks to find, install, or configure a local LLM via the normal
 
 Runtime auto-start / idle stop for Ollama is separate (local LLM manager under `~/.malvin_home/`); the JSON file is the curated catalog, not the process supervisor. Malvin auto-starts only Ollama. Other keyless providers (`llamacpp` at `http://127.0.0.1:8080/v1`, `mistralrs`) must already be listening, for example under a launchd user agent; use them when a model needs a runtime Ollama cannot provide (such as a vendor fork of llama.cpp).
 
+On a small host, a resident server of one provider can exhaust GPU memory for another (on Apple silicon the log shows `kIOGPUCommandBufferCallbackErrorOutOfMemory`). Malvin then retries repeatedly with `Compute error` or `unexpected Content-Type application/x-ndjson`. Stop the other server (for example `launchctl bootout gui/$UID/<label>`), run `ollama stop <model>` to unload the failed runner, and retry.
+
 ## Log retention
 
 After most agent-backed commands create a new run directory and emit the startup `Command:` line, malvin may prune older directories under `~/.malvin_home/logs/<hash>/` according to `~/.malvin_home/config.toml` `[logs]` settings (`max_count`, `max_age_days`, `max_bytes`). The active run is protected during prune. Set `max_count = 0` for unlimited run count (byte and age caps still apply). Agent-backed commands (including `malvin --do` and `malvin -g`) ensure the home config file exists with defaults. After upgrading to a build with default `max_count = 1000`, the next GC-enabled command may delete excess oldest runs once.
