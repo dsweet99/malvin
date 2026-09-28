@@ -20,8 +20,6 @@ pub enum TransportError {
     ProviderTransport { provider: String, detail: String },
     #[error("{provider}: {detail}")]
     ProviderError { provider: String, detail: String },
-    #[error("HTTP transport error: {0}")]
-    Network(String),
     #[error("Engine error: {0}")]
     Engine(String),
     #[error("JSON decode error: {0}")]
@@ -68,12 +66,6 @@ pub fn body_indicates_prompt_too_long(body: &str) -> bool {
 #[must_use]
 pub fn is_prompt_too_long_error(err: &TransportError) -> bool {
     body_indicates_prompt_too_long(&err.to_string())
-}
-
-impl From<reqwest::Error> for TransportError {
-    fn from(err: reqwest::Error) -> Self {
-        Self::Network(err.to_string())
-    }
 }
 
 impl From<serde_json::Error> for TransportError {
