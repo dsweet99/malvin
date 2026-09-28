@@ -2,6 +2,8 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::sync::OnceLock;
 
+const MIN_NODE: (u32, u32) = (22, 13);
+
 pub fn resolve_node_bin() -> Result<PathBuf, String> {
     static CACHED: OnceLock<Result<PathBuf, String>> = OnceLock::new();
     CACHED.get_or_init(resolve_node_bin_uncached).clone()
@@ -24,13 +26,15 @@ fn resolve_node_bin_uncached() -> Result<PathBuf, String> {
     let mut tried = Vec::new();
     for candidate in node_candidates() {
         tried.push(candidate.display().to_string());
-        if node_major_version(&candidate).is_some_and(|m| m >= 22) {
+        if node_is_modern(&candidate) {
             write_sticky_node_bin(&candidate);
             return Ok(candidate);
         }
     }
     Err(format!(
-        "Node >= 22.13 required for cursor-sdk-bridge; tried: {}",
+        "Node >= {}.{} required for cursor-sdk-bridge; tried: {}",
+        MIN_NODE.0,
+        MIN_NODE.1,
         tried.join(", ")
     ))
 }
@@ -44,7 +48,7 @@ fn sticky_node_bin_path() -> PathBuf {
 fn read_sticky_node_bin() -> Option<PathBuf> {
     let path = std::fs::read_to_string(sticky_node_bin_path()).ok()?;
     let path = PathBuf::from(path.trim());
-    if path.is_file() && node_major_version(&path).is_some_and(|m| m >= 22) {
+    if path.is_file() && node_is_modern(&path) {
         Some(path)
     } else {
         None
@@ -99,15 +103,23 @@ fn cursor_agent_version_nodes() -> Vec<PathBuf> {
         .collect()
 }
 
-fn node_major_version(bin: &std::path::Path) -> Option<u32> {
+fn node_is_modern(bin: &std::path::Path) -> bool {
+    node_version(bin).is_some_and(|v| v >= MIN_NODE)
+}
+
+fn node_version(bin: &std::path::Path) -> Option<(u32, u32)> {
     let output = Command::new(bin).arg("--version").output().ok()?;
     if !output.status.success() {
         return None;
     }
-    let text = String::from_utf8_lossy(&output.stdout);
-    let trimmed = text.trim().trim_start_matches('v');
-    let major = trimmed.split('.').next()?;
-    major.parse().ok()
+    parse_node_version(&String::from_utf8_lossy(&output.stdout))
+}
+
+fn parse_node_version(text: &str) -> Option<(u32, u32)> {
+    let mut parts = text.trim().trim_start_matches('v').split('.');
+    let major = parts.next()?.parse().ok()?;
+    let minor = parts.next()?.parse().ok()?;
+    Some((major, minor))
 }
 
 pub(crate) fn apply_quiet_node_cli(cmd: &mut tokio::process::Command) {
@@ -128,7 +140,16 @@ mod tests {
     fn resolve_node_bin_finds_modern_node() {
         let path = resolve_node_bin().expect("modern node");
         assert!(path.is_file());
-        assert!(node_major_version(&path).unwrap() >= 22);
+        assert!(node_version(&path).unwrap() >= MIN_NODE);
+    }
+
+    #[test]
+    fn parse_node_version_rejects_old_minor() {
+        assert_eq!(parse_node_version("v22.12.0\n"), Some((22, 12)));
+        assert!(parse_node_version("v22.12.0").unwrap() < MIN_NODE);
+        assert!(parse_node_version("v22.13.1").unwrap() >= MIN_NODE);
+        assert!(parse_node_version("v24.0.0").unwrap() >= MIN_NODE);
+        assert_eq!(parse_node_version("nope"), None);
     }
 
     #[test]

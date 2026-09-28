@@ -5,9 +5,12 @@ Node ≥ 22.13 sidecar that speaks malvin's JSONL bridge protocol and drives
 
 ## Install
 
-`cargo build` / `cargo install malvin` run the crate `build.rs`, which installs
-`@cursor/sdk` under `~/.malvin_home/sdk-bridges/cursor-sdk-bridge/` when this
-tree has no `node_modules` yet. For a manual in-tree rebuild:
+The malvin binary embeds `package.json`, `package-lock.json`, and the non-test
+`dist/*.js` files. At run time (first `cursor:` use, or
+`malvin admin setup-cursor`) it writes them to
+`~/.malvin_home/sdk-bridges/cursor-sdk-bridge/` and runs `npm ci --omit=dev`
+there. The build does not run npm, so commit `dist/` after changing `src/`.
+For a manual in-tree rebuild:
 
 ```bash
 cd cursor-sdk-bridge

@@ -24,22 +24,37 @@ fn cursor_bridge_depends_on_cursor_sdk() {
     );
 }
 
+fn build_script_sources() -> Vec<(PathBuf, String)> {
+    let mut paths = vec![manifest_dir().join("build.rs")];
+    for entry in fs::read_dir(manifest_dir().join("src/sdk_bridge_build")).expect("read_dir") {
+        paths.push(entry.expect("entry").path());
+    }
+    paths
+        .into_iter()
+        .map(|p| {
+            let text = fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()));
+            (p, text)
+        })
+        .collect()
+}
+
 #[test]
-fn build_rs_requires_sdk_bridge_install() {
-    let path = manifest_dir().join("build.rs");
-    let text = fs::read_to_string(&path).expect("build.rs");
-    assert!(
-        text.contains("sdk_bridge_build") && text.contains("run_build_script"),
-        "build.rs must delegate SDK bridge install to sdk_bridge_build"
-    );
-    let logic = fs::read_to_string(manifest_dir().join("src/sdk_bridge_build/mod.rs"))
-        .expect("sdk_bridge_build");
-    assert!(
-        logic.contains("@cursor/sdk") && logic.contains("sdk-bridges"),
-        "sdk_bridge_build must install Cursor SDK npm deps under sdk-bridges"
-    );
-    assert!(
-        logic.contains("MALVIN_SKIP_SDK_BRIDGES"),
-        "sdk_bridge_build must document the skip escape hatch"
-    );
+fn build_script_needs_no_node_or_npm() {
+    for (path, text) in build_script_sources() {
+        for needle in ["npm", "node", "sdk-bridges", ".malvin_home"] {
+            assert!(
+                !text.contains(needle),
+                "{} mentions {needle:?}; the Cursor SDK is installed at run time, not by build.rs",
+                path.display()
+            );
+        }
+    }
+}
+
+#[test]
+fn cursor_sdk_is_installed_at_run_time() {
+    let path = manifest_dir().join("src/cursor_sdk/bridge_install.rs");
+    let text = fs::read_to_string(&path).expect("bridge_install.rs");
+    assert!(text.contains("sdk-bridges") && text.contains("@cursor/sdk"));
+    assert!(text.contains("include_bytes!"));
 }

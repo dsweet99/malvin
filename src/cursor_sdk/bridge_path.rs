@@ -2,7 +2,6 @@ use std::path::{Path, PathBuf};
 
 const ENV_BRIDGE: &str = "MALVIN_CURSOR_SDK_BRIDGE";
 const BRIDGE_JS: &str = "cursor-sdk-bridge/dist/bridge.js";
-const MODELS_JS: &str = "cursor-sdk-bridge/dist/models.js";
 const SDK_MARKER: &str = "cursor-sdk-bridge/node_modules/@cursor/sdk/package.json";
 
 pub fn resolve_bridge_js() -> Result<PathBuf, String> {
@@ -19,78 +18,24 @@ pub fn resolve_bridge_js() -> Result<PathBuf, String> {
     if let Some(path) = cursor_first_ready_bridge_js() {
         return Ok(path);
     }
-    if let Some(path) = cursor_first_any_bridge_js() {
-        return Ok(path);
-    }
-    Err(
-        "cursor-sdk-bridge/dist/bridge.js not found (Cursor SDK bridge). \
-         Reinstall with `cargo install malvin` (build.rs installs @cursor/sdk under \
-         ~/.malvin_home/sdk-bridges/), or run `npm ci && npm run build` in cursor-sdk-bridge/, \
-         or set MALVIN_CURSOR_SDK_BRIDGE"
-            .to_string(),
-    )
+    super::bridge_install::ensure_installed()
+        .map_err(|e| super::bridge_install::install_failed_message(&e))
 }
 
 pub fn resolve_models_js() -> Result<PathBuf, String> {
-    if let Ok(bridge) = resolve_bridge_js() {
-        let models = bridge.with_file_name("models.js");
-        if models.is_file() {
-            return Ok(models);
-        }
+    let models = resolve_bridge_js()?.with_file_name("models.js");
+    if models.is_file() {
+        return Ok(models);
     }
-    if let Some(path) = cursor_first_ready_models_js() {
-        return Ok(path);
-    }
-    if let Some(path) = cursor_first_any_models_js() {
-        return Ok(path);
-    }
-    Err("cursor-sdk-bridge/dist/models.js not found".to_string())
+    Err(format!("{} not found", models.display()))
 }
 
 fn cursor_first_ready_bridge_js() -> Option<PathBuf> {
-    for root in cursor_candidate_roots() {
-        if !cursor_sdk_marker_present(&root) {
-            continue;
-        }
-        let candidate = root.join(BRIDGE_JS);
-        if candidate.is_file() {
-            return Some(candidate);
-        }
-    }
-    None
-}
-
-fn cursor_first_any_bridge_js() -> Option<PathBuf> {
-    for root in cursor_candidate_roots() {
-        let candidate = root.join(BRIDGE_JS);
-        if candidate.is_file() {
-            return Some(candidate);
-        }
-    }
-    None
-}
-
-fn cursor_first_ready_models_js() -> Option<PathBuf> {
-    for root in cursor_candidate_roots() {
-        if !cursor_sdk_marker_present(&root) {
-            continue;
-        }
-        let candidate = root.join(MODELS_JS);
-        if candidate.is_file() {
-            return Some(candidate);
-        }
-    }
-    None
-}
-
-fn cursor_first_any_models_js() -> Option<PathBuf> {
-    for root in cursor_candidate_roots() {
-        let candidate = root.join(MODELS_JS);
-        if candidate.is_file() {
-            return Some(candidate);
-        }
-    }
-    None
+    cursor_candidate_roots()
+        .into_iter()
+        .filter(|root| cursor_sdk_marker_present(root))
+        .map(|root| root.join(BRIDGE_JS))
+        .find(|candidate| candidate.is_file())
 }
 
 pub(crate) fn cursor_sdk_marker_present(root: &Path) -> bool {
@@ -103,11 +48,6 @@ fn cursor_candidate_roots() -> Vec<PathBuf> {
         roots.push(cwd);
     }
     roots.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")));
-    roots.push(
-        crate::user_home::user_home_dir()
-            .join(".malvin_home")
-            .join("sdk-bridges"),
-    );
     if let Ok(exe) = std::env::current_exe()
         && let Some(dir) = exe.parent()
     {
