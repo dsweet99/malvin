@@ -181,6 +181,9 @@ mod tests {
 
     #[test]
     fn ensure_reaches_running_manager() {
+        let Some(provider) = crate::pi_sdk::local_llm_ollama::down_non_ollama_provider() else {
+            return;
+        };
         let _guard = crate::pi_sdk::local_llm_test_lock::local_llm_test_env_lock()
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -194,10 +197,10 @@ mod tests {
                 with_env("MALVIN_TIME_SINCE_LAST_CALL_SECONDS", Some("1"), || {
                     let handle = std::thread::spawn(run_local_llm_manager);
                     wait_for_socket(&sock).expect("sock");
-                    let err = try_ensure("llamacpp", "x").expect_err("down");
+                    let err = try_ensure(provider, "x").expect_err("down");
                     assert!(err.contains("auto-start only"), "{err}");
                     assert!(
-                        ensure_via_manager("llamacpp", "x").is_err(),
+                        ensure_via_manager(provider, "x").is_err(),
                         "app error must not spawn forever"
                     );
                     handle.join().expect("join").expect("manager ok");

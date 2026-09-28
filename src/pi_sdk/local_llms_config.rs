@@ -15,6 +15,8 @@ pub struct LocalLlmEntry {
     pub source: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notes: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context_size: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
@@ -49,6 +51,18 @@ pub fn save_local_llms_config(cfg: &LocalLlmsConfig) -> Result<(), String> {
     fs::write(&temp, format!("{body}\n")).map_err(|e| format!("write {}: {e}", temp.display()))?;
     fs::rename(&temp, &path).map_err(|e| format!("rename {}: {e}", path.display()))?;
     Ok(())
+}
+
+#[must_use]
+pub(crate) fn context_size_override(provider: &str, model: &str) -> Option<u32> {
+    let id = format!("{provider}/{model}");
+    load_local_llms_config()
+        .ok()?
+        .models
+        .into_iter()
+        .find(|m| m.id.trim() == id)
+        .and_then(|m| m.context_size)
+        .filter(|&n| n > 0)
 }
 
 fn configured_allowlist(cfg: &LocalLlmsConfig) -> Option<HashSet<String>> {
@@ -126,6 +140,7 @@ mod tests {
                     id: "ollama/keeper:latest".into(),
                     source: Some("qwen2.5-coder:7b".into()),
                     notes: Some("ft".into()),
+                    context_size: None,
                 }],
             })
             .expect("save");
@@ -151,6 +166,33 @@ mod tests {
             assert_eq!(out[1].id, "openai/gpt-4o");
             let loaded = load_local_llms_config().expect("load");
             assert_eq!(loaded.models[0].source.as_deref(), Some("qwen2.5-coder:7b"));
+        });
+    }
+
+    #[test]
+    fn context_size_override_matches_provider_and_model() {
+        crate::test_utils::with_isolated_home(|_| {
+            assert_eq!(context_size_override("llamacpp", "big"), None);
+            save_local_llms_config(&LocalLlmsConfig {
+                models: vec![
+                    LocalLlmEntry {
+                        id: "llamacpp/big".into(),
+                        source: None,
+                        notes: None,
+                        context_size: Some(65536),
+                    },
+                    LocalLlmEntry {
+                        id: "ollama/zero:latest".into(),
+                        source: None,
+                        notes: None,
+                        context_size: Some(0),
+                    },
+                ],
+            })
+            .expect("save");
+            assert_eq!(context_size_override("llamacpp", "big"), Some(65536));
+            assert_eq!(context_size_override("ollama", "big"), None);
+            assert_eq!(context_size_override("ollama", "zero:latest"), None);
         });
     }
 }

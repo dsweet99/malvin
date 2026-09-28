@@ -81,7 +81,8 @@ fn ensure_local_catalog(
     provider: &str,
     model: &str,
 ) -> Result<(), AgentError> {
-    let context_size = super::local_context::context_size_for_workdir(cwd);
+    let context_size = super::local_llms_config::context_size_override(provider, model)
+        .unwrap_or_else(|| super::local_context::context_size_for_workdir(cwd));
     super::local_context::ensure_capped_local_model_catalog(provider, model, context_size)
         .map_err(AgentError)?;
     if pi::provider_metadata::provider_is_keyless_local(provider) {

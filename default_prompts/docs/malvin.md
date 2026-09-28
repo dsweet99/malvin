@@ -208,7 +208,7 @@ Top-level keys include `mem_limit_gb`, `theme`, and `disable_rpi` (default `fals
 
 ## Local LLMs (`~/.malvin_home/local_llms.json`)
 
-Malvin runs keyless local models through `rpi:local/<provider>/<model>` (today: Ollama). The operator’s curated registry lives at `~/.malvin_home/local_llms.json`. When that file lists one or more models, `malvin admin models` keeps only those keyless-local ids (cloud providers are unchanged). When the file is missing or `"models"` is empty, listing stays unfiltered (every reachable local model appears).
+Malvin runs keyless local models through `rpi:local/<provider>/<model>` (keyless providers: `ollama`, `llamacpp`, `mistralrs`). The operator’s curated registry lives at `~/.malvin_home/local_llms.json`. When that file lists one or more models, `malvin admin models` keeps only those keyless-local ids (cloud providers are unchanged). When the file is missing or `"models"` is empty, listing stays unfiltered (every reachable local model appears).
 
 ### Schema
 
@@ -227,18 +227,19 @@ Malvin runs keyless local models through `rpi:local/<provider>/<model>` (today: 
 - **`id`** (required): Pi-style `provider/model` (no `rpi:` / `local/` prefix). Display and CLI use `rpi:local/<id>`.
 - **`source`** (optional): upstream pull tag or weights origin used to install the model.
 - **`notes`** (optional): why this model is kept (host RAM, FT results, tool support, and so on).
+- **`context_size`** (optional, positive integer): per-model override of `context_size` from `~/.malvin_home/config.toml`. Malvin writes it as `contextWindow` (and one quarter of it as `maxTokens`) into Pi’s `models.json` for sessions on this model. Reasoning models that think before answering need a large value; the server’s own context (`num_ctx`, `llama-server -c`) must be at least this large.
 
 ### Agent workflow (install / configure)
 
 When the operator asks to find, install, or configure a local LLM via the normal malvin interface:
 
-1. **Research** size and tool support against host RAM (`Sandbox memory` / machine GiB). Prefer Ollama library tags or a Modelfile wrapper with `PARAMETER num_ctx` aligned to `context_size` in `~/.malvin_home/config.toml`.
+1. **Research** size and tool support against host RAM (`Sandbox memory` / machine GiB). Prefer Ollama library tags or a Modelfile wrapper with `PARAMETER num_ctx` equal to the model’s effective context size: its `context_size` in `local_llms.json` when set, otherwise `context_size` in `~/.malvin_home/config.toml`. For reasoning models, set a per-model `context_size` large enough that one quarter of it covers thinking plus the answer. Ollama returns thinking in a `reasoning` field that Pi does not display, so a too-small budget can end a turn with an empty answer.
 2. **Install** with the provider CLI (Ollama: `ollama pull <tag>`, or `ollama create <name> -f Modelfile`). Malvin does not bundle a download subcommand.
 3. **Configure** by upserting an entry in `~/.malvin_home/local_llms.json` (create the file with the schema above if missing). Keep only models the operator wants listed.
 4. **Verify** with `malvin admin models rpi:local` (keyless-local catalogs are always live-fetched when the provider is listening; cloud providers still use the daily cache / `--refresh`) and a short `malvin --do --model=rpi:local/<provider>/<model> …` probe when appropriate.
 5. **Remove** by deleting the Ollama tag (optional) and removing the matching object from `local_llms.json`.
 
-Runtime auto-start / idle stop for Ollama is separate (local LLM manager under `~/.malvin_home/`); the JSON file is the curated catalog, not the process supervisor.
+Runtime auto-start / idle stop for Ollama is separate (local LLM manager under `~/.malvin_home/`); the JSON file is the curated catalog, not the process supervisor. Malvin auto-starts only Ollama. Other keyless providers (`llamacpp` at `http://127.0.0.1:8080/v1`, `mistralrs`) must already be listening, for example under a launchd user agent; use them when a model needs a runtime Ollama cannot provide (such as a vendor fork of llama.cpp).
 
 ## Log retention
 
