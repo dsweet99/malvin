@@ -31,6 +31,7 @@ mod session_fake;
 mod session_spawn;
 mod session_spawn_local;
 mod session_spawn_watch;
+mod tool_args_normalize;
 mod usage_cost;
 
 pub use auth::{

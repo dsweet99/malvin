@@ -1,5 +1,6 @@
 
 See user requirements at `{{ user_request_path }}`.
+{{ request_inline }}
 
 {{ code_extra }}
 

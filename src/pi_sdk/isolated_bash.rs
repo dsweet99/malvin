@@ -8,6 +8,8 @@ use pi::sdk::{
 use pi::tools::ToolEffects;
 use serde_json::Value;
 
+use super::tool_args_normalize::wrap_tool_args;
+
 #[path = "isolated_bash_exec.rs"]
 mod isolated_bash_exec;
 pub(crate) use isolated_bash_exec::{interrupt_active_isolated_bash, run_isolated_bash};
@@ -20,15 +22,14 @@ impl ToolFactory for IsolatedToolFactory {
         let tools = registry.into_tools();
         let mut replaced = Vec::with_capacity(tools.len());
         for tool in tools {
-            if tool.name() == "bash" {
-                replaced.push(
-                    Box::new(IsolatedBash::from_builtin(tool, cwd.to_path_buf())) as Box<dyn Tool>,
-                );
+            let tool: Box<dyn Tool> = if tool.name() == "bash" {
+                Box::new(IsolatedBash::from_builtin(tool, cwd.to_path_buf()))
             } else if tool.name() == "write" {
-                replaced.push(Box::new(CompleteWrite::from_builtin(tool)) as Box<dyn Tool>);
+                Box::new(CompleteWrite::from_builtin(tool))
             } else {
-                replaced.push(tool);
-            }
+                tool
+            };
+            replaced.push(wrap_tool_args(tool));
         }
         ToolRegistry::from_tools(replaced)
     }

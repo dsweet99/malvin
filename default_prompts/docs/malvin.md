@@ -227,7 +227,7 @@ Malvin runs keyless local models through `rpi:local/<provider>/<model>` (keyless
 - **`id`** (required): Pi-style `provider/model` (no `rpi:` / `local/` prefix). Display and CLI use `rpi:local/<id>`.
 - **`source`** (optional): upstream pull tag or weights origin used to install the model.
 - **`notes`** (optional): why this model is kept (host RAM, FT results, tool support, and so on).
-- **`context_size`** (optional, positive integer): per-model override of `context_size` from `~/.malvin_home/config.toml`. Malvin writes it as `contextWindow` (and one quarter of it as `maxTokens`) into Pi’s `models.json` for sessions on this model. Reasoning models that think before answering need a large value; the server’s own context (`num_ctx`, `llama-server -c`) must be at least this large.
+- **`context_size`** (optional, positive integer): per-model override of `context_size` from `~/.malvin_home/config.toml`. Malvin writes it as `contextWindow` (and one quarter of it as `maxTokens`) into Pi’s `models.json` for sessions on this model. Reasoning models that think before answering (for example Qwen3) need a large value, at least 32768; the server’s own context (`num_ctx`, `llama-server -c`) must be at least this large.
 
 ### Agent workflow (install / configure)
 
@@ -242,6 +242,8 @@ When the operator asks to find, install, or configure a local LLM via the normal
 Runtime auto-start / idle stop for Ollama is separate (local LLM manager under `~/.malvin_home/`); the JSON file is the curated catalog, not the process supervisor. Malvin auto-starts only Ollama. Other keyless providers (`llamacpp` at `http://127.0.0.1:8080/v1`, `mistralrs`) must already be listening, for example under a launchd user agent; use them when a model needs a runtime Ollama cannot provide (such as a vendor fork of llama.cpp).
 
 On a small host, a resident server of one provider can exhaust GPU memory for another (on Apple silicon the log shows `kIOGPUCommandBufferCallbackErrorOutOfMemory`). Malvin then fails with `Compute error` or `unexpected Content-Type application/x-ndjson` (after `--max-acp-retries` identical errors, or the local cap of 10 errors / 5 minutes) and adds a hint pointing here. Stop the other server (for example `launchctl bootout gui/$UID/<label>`), run `ollama stop <model>` to unload the failed runner, and retry.
+
+Small local models have limits of their own. Models below about 7B parameters, or without the `tools` capability (for example Gemma 3 4B), can answer questions but should not be expected to edit files; many of them never make a tool call. Full mode (bare `malvin REQUEST`) sends a long header and runs several turns, so on local models it is slow and often times out; prefer `malvin --do` for them. For `rpi:` models, malvin repairs two common argument mistakes before Pi sees a tool call: for `read`, `write`, `edit`, `ls`, and `find` it accepts `file`, `file_path`, and `filePath` as aliases for `path`, and for any tool it converts the strings `"true"`, `"false"`, and whole numbers to booleans and integers where the tool's schema declares those types. The default route also puts the request text (up to 8 KB) into the prompt for `rpi:` models, because Pi's `read` tool cannot open the run directory's `plan_*.md`, and it tells them to append to the KPop log with `bash`, because Pi's `write` and `edit` tools cannot reach the run directory either.
 
 ## Log retention
 

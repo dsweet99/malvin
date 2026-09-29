@@ -68,6 +68,7 @@ fn path_arg(args: Option<&serde_json::Map<String, Value>>) -> Option<String> {
         a.get("path")
             .or_else(|| a.get("file_path"))
             .or_else(|| a.get("filePath"))
+            .or_else(|| a.get("file"))
     })
     .and_then(Value::as_str)
     .map(flatten_ws)

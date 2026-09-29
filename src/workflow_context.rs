@@ -150,6 +150,7 @@ pub fn workflow_context_paths_only(artifacts: &RunArtifacts, model: &str) -> Wor
     context.insert("malvin_command".to_string(), format_malvin_command(model));
     context.insert("kpop_insert".to_string(), String::new());
     context.insert("rpi_extra".to_string(), format_rpi_extra(model));
+    crate::workflow_rpi_prompt::insert_rpi_prompt_keys(&mut context, model, &artifacts.plan_path);
     context.insert(
         "agents_insert".to_string(),
         format_agents_md_insert(&artifacts.work_dir),
