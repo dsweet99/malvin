@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use super::{
-    AGENTS_MD_FILENAME, format_agents_md_insert, insert_current_state, insert_formatted,
-    resolve_user_brief_path, workflow_context_paths_only,
+    AGENTS_MD_FILENAME, RPI_HEADER_MD, format_agents_md_insert, format_rpi_extra,
+    insert_current_state, insert_formatted, resolve_user_brief_path, workflow_context_paths_only,
 };
 use crate::prompt_stratification::WorkflowRenderContext;
 
@@ -36,6 +36,32 @@ fn workflow_context_paths_only_embeds_agents_md() {
         insert.contains("Prefer narrow checks."),
         "workspace AGENTS.md must populate agents_insert: {insert:?}"
     );
+}
+
+fn format_rpi_extra_only_for_rpi_models() {
+    assert!(!RPI_HEADER_MD.trim().is_empty());
+    assert_eq!(format_rpi_extra("rpi:openai/gpt-4o"), RPI_HEADER_MD);
+    assert_eq!(format_rpi_extra("rpi:local/ollama/qwen3:8b"), RPI_HEADER_MD);
+    assert_eq!(format_rpi_extra("pi:openai/gpt-4o"), "");
+    assert_eq!(format_rpi_extra("cursor:auto"), "");
+    assert_eq!(format_rpi_extra("codex:gpt-5"), "");
+    assert_eq!(format_rpi_extra("not a model"), "");
+}
+
+fn header_embeds_rpi_extra_only_for_rpi_models() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let plan = tmp.path().join("plan.md");
+    std::fs::write(&plan, "p").expect("write");
+    let artifacts =
+        crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
+    let store = crate::prompts::PromptStore::default_store();
+    let render = |model: &str| {
+        let ctx = workflow_context_paths_only(&artifacts, model);
+        crate::prompts::render_header(&store, ctx.as_map()).expect("header")
+    };
+    let marker = RPI_HEADER_MD.trim();
+    assert!(render("rpi:openai/gpt-4o").contains(marker));
+    assert!(!render("cursor:auto").contains(marker));
 }
 
 fn workflow_context_paths_only_omits_removed_git_extra() {
@@ -126,6 +152,8 @@ fn workflow_context_returns_plan_path_and_quality_gates() {
 fn kiss_bundled_workflow_context_tests_tail() {
     format_agents_md_insert_cases();
     workflow_context_paths_only_embeds_agents_md();
+    format_rpi_extra_only_for_rpi_models();
+    header_embeds_rpi_extra_only_for_rpi_models();
     workflow_context_paths_only_omits_removed_git_extra();
     insert_current_state_populates_key();
     insert_formatted_stores_workflow_relative_path();
