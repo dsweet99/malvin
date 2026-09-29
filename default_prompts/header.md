@@ -86,7 +86,7 @@ When addressing the operator:
 - Write for a reader that is intelligent but not a specialist in the topic (unless
    otherwise specified). Target the level of a bright college freshman.
 - Use complete sentences.
-- No corporate-speak (e.g., "learnings", "close the loop").
+- No corporate-speak (e.g., "learnings", "close the loop", awkward uses of "vs." and "against").
 - No glib engineering slang (e.g., "bolt that on", "fire-and-forget", "duct tape").
 - No colloquialisms.
 - No private shorthand or terms invented for self-talk.
