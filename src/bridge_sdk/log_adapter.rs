@@ -16,7 +16,7 @@ pub fn handle_stream_event(session: &StreamLog, ev: &BridgeEvent) {
             name,
             summary,
             tool_call_id,
-            ..
+            error,
         } => {
             flush_stdout_coalesce(session);
             emit_tool(
@@ -26,6 +26,7 @@ pub fn handle_stream_event(session: &StreamLog, ev: &BridgeEvent) {
                     name: name.as_deref(),
                     summary: summary.as_deref(),
                     tool_call_id: tool_call_id.as_deref(),
+                    error: error.as_deref(),
                 },
             );
         }

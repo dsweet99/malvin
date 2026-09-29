@@ -8,17 +8,20 @@ use tokio::sync::mpsc;
 
 use crate::acp::AgentError;
 use crate::bridge_protocol::BridgeEvent;
-use crate::bridge_sdk::{
-    DrainIdleHealthCtx, DrainIdleLabels, StreamLog, note_sdk_step, record_sdk_usage,
-    run_done_status_is_failure,
-};
+use crate::bridge_sdk::{DrainIdleHealthCtx, DrainIdleLabels, StreamLog, note_sdk_step};
 
 use super::map_agent_event::map_pi_agent_event;
+use super::map_agent_event_end::output_cap_error;
 use super::runtime::PiRuntime;
 use super::session_fake::fake_events_for_prompt;
 
 #[path = "session_local_hold.rs"]
 mod session_local_hold;
+#[path = "session_run_done.rs"]
+mod session_run_done;
+
+use session_run_done::finish_output_cap;
+pub(crate) use session_run_done::finish_run_done;
 
 pub(crate) struct PiEmbeddedSession {
     pub(crate) runtime: Option<PiRuntime>,
@@ -29,6 +32,7 @@ pub(crate) struct PiEmbeddedSession {
     pub(crate) pi_provider: String,
     pub(crate) pi_model: String,
     pub(crate) local_hold: bool,
+    pub(crate) output_cap: Option<u64>,
 }
 
 impl PiEmbeddedSession {
@@ -152,10 +156,21 @@ fn handle_mapped_events(
     event: &AgentEvent,
 ) -> Result<bool, AgentError> {
     let mut done = false;
-    for ev in map_pi_agent_event(event) {
+    let cap_error = match event {
+        AgentEvent::AgentEnd {
+            messages,
+            error: None,
+            ..
+        } => output_cap_error(messages, session.output_cap),
+        _ => None,
+    };
+    for mut ev in map_pi_agent_event(event) {
         match &ev {
             BridgeEvent::Step { .. } => note_sdk_step(session.log.timing.as_ref()),
             BridgeEvent::RunDone { .. } => {
+                if let Some(message) = cap_error.clone() {
+                    return Err(finish_output_cap(&session.log, &mut ev, message));
+                }
                 finish_run_done(&session.log, &ev)?;
                 done = true;
             }
@@ -170,46 +185,6 @@ pub(crate) fn finish_after_channel_closed(
     prompt_result: Result<(), String>,
 ) -> Result<(), AgentError> {
     prompt_result.map_err(AgentError)
-}
-
-pub(crate) fn finish_run_done(log: &StreamLog, ev: &BridgeEvent) -> Result<(), AgentError> {
-    let BridgeEvent::RunDone {
-        status,
-        result,
-        usage,
-        error,
-        ..
-    } = ev
-    else {
-        return Ok(());
-    };
-    if let Some(u) = usage {
-        record_sdk_usage(log.timing.as_ref(), u);
-    }
-    *log.last_response
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner) = result.clone().unwrap_or_default();
-    if let Some(text) = result {
-        crate::bridge_sdk::feed_do_dm_run_result(text);
-    }
-    crate::bridge_sdk::handle_stream_event(log, ev);
-    if *status == crate::bridge_protocol::RunDoneStatus::Unknown {
-        tracing::warn!(
-            result = result.as_deref(),
-            error = error.as_deref(),
-            "run_done unknown status; surfacing result/error"
-        );
-    }
-    if run_done_status_is_failure(*status) {
-        return Err(AgentError(error.clone().unwrap_or_else(|| match *status {
-            crate::bridge_protocol::RunDoneStatus::Cancelled => "run cancelled".into(),
-            crate::bridge_protocol::RunDoneStatus::Unknown => {
-                "run finished with unknown status".into()
-            }
-            _ => "run error".into(),
-        })));
-    }
-    Ok(())
 }
 
 async fn send_fake_prompt(session: &PiEmbeddedSession, prompt: &str) -> Result<(), AgentError> {

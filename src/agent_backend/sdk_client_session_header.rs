@@ -66,6 +66,7 @@ async fn try_send_header_with_retries(
                 client.header_lifecycle.mark_satisfied_keeping_header();
                 return Ok(());
             }
+            Err(e) if e.fault == AgentFault::OutputCap => return Err(e),
             Err(e) => {
                 last_error = recover_header_send_failure(client, e).await?;
                 if let Some(stop) = backend_error_stop(client, &last_error) {

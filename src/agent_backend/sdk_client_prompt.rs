@@ -46,7 +46,14 @@ async fn execute_prompt_with_retries(
                 client.record_backend_success();
                 return Ok(());
             }
-            Err(e) if e.fault == AgentFault::BackendRetryLimit => return Err(e),
+            Err(e)
+                if matches!(
+                    e.fault,
+                    AgentFault::BackendRetryLimit | AgentFault::OutputCap
+                ) =>
+            {
+                return Err(e);
+            }
             Err(e) => {
                 teardown_sdk_session_after_transport_error(client, &e).await;
                 if opts.fresh_agent_on_retry {

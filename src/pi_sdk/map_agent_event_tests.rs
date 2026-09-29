@@ -125,6 +125,60 @@ fn maps_typed_tool_and_agent_end() {
     }
 }
 
+fn tool_end(content: Vec<ContentBlock>, is_error: bool) -> Vec<BridgeEvent> {
+    map_pi_agent_event(&AgentEvent::ToolExecutionEnd {
+        tool_call_id: "t9".into(),
+        tool_name: "read".into(),
+        result: pi::sdk::ToolOutput {
+            content,
+            details: None,
+            is_error,
+        },
+        is_error,
+    })
+}
+
+#[test]
+fn tool_error_text_is_carried_in_bridge_event() {
+    let evs = tool_end(
+        vec![ContentBlock::Text(TextContent::new("missing field `path`"))],
+        true,
+    );
+    assert!(matches!(
+        evs.as_slice(),
+        [BridgeEvent::ToolCall { phase, error, .. }]
+            if phase == "error" && error.as_deref() == Some("missing field `path`")
+    ));
+    let encoded = serde_json::to_string(&evs[0]).expect("encode");
+    assert!(encoded.contains("missing field `path`"), "{encoded}");
+}
+
+#[test]
+fn tool_error_text_is_truncated_and_success_output_is_dropped() {
+    let long = "x".repeat(2000);
+    let evs = tool_end(vec![ContentBlock::Text(TextContent::new(long))], true);
+    let [
+        BridgeEvent::ToolCall {
+            error: Some(error), ..
+        },
+    ] = evs.as_slice()
+    else {
+        panic!("unexpected {evs:?}");
+    };
+    assert_eq!(error.chars().count(), 501);
+    assert!(error.ends_with('…'));
+    let ok = tool_end(
+        vec![ContentBlock::Text(TextContent::new("file body"))],
+        false,
+    );
+    assert!(matches!(
+        ok.as_slice(),
+        [BridgeEvent::ToolCall { phase, error: None, .. }] if phase == "complete"
+    ));
+    let encoded = serde_json::to_string(&ok[0]).expect("encode");
+    assert!(!encoded.contains("error"), "{encoded}");
+}
+
 #[test]
 fn typed_extension_error_is_fatal() {
     let evs = map_pi_agent_event(&AgentEvent::ExtensionError {

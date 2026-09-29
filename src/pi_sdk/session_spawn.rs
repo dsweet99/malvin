@@ -81,14 +81,26 @@ fn ensure_local_catalog(
     provider: &str,
     model: &str,
 ) -> Result<(), AgentError> {
-    let context_size = super::local_llms_config::context_size_override(provider, model)
-        .unwrap_or_else(|| super::local_context::context_size_for_workdir(cwd));
+    let context_size = local_context_size(cwd, provider, model);
     super::local_context::ensure_capped_local_model_catalog(provider, model, context_size)
         .map_err(AgentError)?;
     if pi::provider_metadata::provider_is_keyless_local(provider) {
         super::local_lifecycle::ensure_local_llm(provider, model).map_err(AgentError)?;
     }
     Ok(())
+}
+
+fn local_context_size(cwd: &Path, provider: &str, model: &str) -> u32 {
+    super::local_llms_config::context_size_override(provider, model)
+        .unwrap_or_else(|| super::local_context::context_size_for_workdir(cwd))
+}
+
+fn local_output_cap(cwd: &Path, provider: &str, model: &str) -> Option<u64> {
+    pi::provider_metadata::provider_is_keyless_local(provider).then(|| {
+        u64::from(super::local_context::max_tokens_for_context(
+            local_context_size(cwd, provider, model),
+        ))
+    })
 }
 
 fn build_session_options(
@@ -138,6 +150,7 @@ fn fake_embedded_session(
         pi_provider: provider.to_string(),
         pi_model: model.to_string(),
         local_hold: take_local_hold(provider).unwrap_or(false),
+        output_cap: local_output_cap(args.cwd, provider, model),
     }
 }
 
@@ -159,6 +172,7 @@ fn embedded_session(
         pi_provider: provider.to_string(),
         pi_model: model.to_string(),
         local_hold,
+        output_cap: local_output_cap(args.cwd, provider, model),
     })
 }
 

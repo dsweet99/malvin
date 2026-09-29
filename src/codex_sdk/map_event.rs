@@ -88,6 +88,7 @@ fn tool_from_item(item: &Value, default_phase: &str) -> Option<BridgeEvent> {
         name: Some(name),
         summary: Some(summary),
         tool_call_id: item.get("id").and_then(Value::as_str).map(str::to_string),
+        error: None,
     })
 }
 

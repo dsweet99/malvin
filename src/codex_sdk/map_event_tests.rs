@@ -116,7 +116,7 @@ fn maps_command_execution_start_and_failure() {
     );
     assert!(matches!(
         start.as_slice(),
-        [BridgeEvent::ToolCall { phase, name, summary, tool_call_id }]
+        [BridgeEvent::ToolCall { phase, name, summary, tool_call_id, .. }]
             if phase == "start"
                 && name.as_deref() == Some("shell")
                 && summary.as_deref() == Some("Run ls -la")

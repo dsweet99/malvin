@@ -18,6 +18,12 @@ pub(crate) fn fake_events_for_prompt(prompt: &str, provider: &str, model: &str) 
     if prompt.contains("EMPTY_ASSISTANT_RESULT") {
         return vec![empty_agent_end(prompt)];
     }
+    if prompt.contains("TOOL_ERROR_READ") {
+        return tool_error_events(prompt);
+    }
+    if prompt.contains("OUTPUT_CAP_THINKING") {
+        return vec![output_cap_agent_end(prompt)];
+    }
     let early = prompt.contains("AGENT_END_BEFORE_ACK");
     let text = if early {
         "early-end".to_string()
@@ -88,6 +94,61 @@ fn empty_agent_end(prompt: &str) -> AgentEvent {
             content: pi::model::UserContent::Text(prompt.to_string()),
             timestamp: 0,
         })],
+        error: None,
+    }
+}
+
+pub(crate) const FAKE_TOOL_ERROR_TEXT: &str = "missing field `path`";
+
+fn tool_error_events(prompt: &str) -> Vec<AgentEvent> {
+    use pi::model::{ContentBlock, TextContent};
+
+    vec![
+        AgentEvent::ToolExecutionStart {
+            tool_call_id: "t1".into(),
+            tool_name: "read".into(),
+            args: serde_json::json!({ "file": "plan.md" }),
+        },
+        AgentEvent::ToolExecutionEnd {
+            tool_call_id: "t1".into(),
+            tool_name: "read".into(),
+            result: pi::sdk::ToolOutput {
+                content: vec![ContentBlock::Text(TextContent::new(FAKE_TOOL_ERROR_TEXT))],
+                details: None,
+                is_error: true,
+            },
+            is_error: true,
+        },
+        empty_agent_end(prompt),
+    ]
+}
+
+pub(crate) const FAKE_OUTPUT_CAP_TOKENS: u64 = 4096;
+
+fn output_cap_agent_end(prompt: &str) -> AgentEvent {
+    use pi::model::{AssistantMessage, ContentBlock, Message, ThinkingContent, Usage};
+
+    let assistant = AssistantMessage {
+        content: vec![ContentBlock::Thinking(ThinkingContent {
+            thinking: "hmm".into(),
+            thinking_signature: None,
+        })],
+        usage: Usage {
+            input: 10,
+            output: FAKE_OUTPUT_CAP_TOKENS,
+            ..Usage::default()
+        },
+        ..AssistantMessage::default()
+    };
+    AgentEvent::AgentEnd {
+        session_id: "fake".into(),
+        messages: vec![
+            Message::User(pi::model::UserMessage {
+                content: pi::model::UserContent::Text(prompt.to_string()),
+                timestamp: 0,
+            }),
+            Message::assistant(assistant),
+        ],
         error: None,
     }
 }
