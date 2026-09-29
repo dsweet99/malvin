@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use crate::acp::{AgentError, backoff_after_agent_failure, retries_noun};
 use crate::bridge_sdk::BridgeSpawnArgs;
 
+use super::super::backend_error_stop::{backend_error_stop, with_local_backend_hint};
 use super::super::backend_lifecycle::BackendLifecycle;
 use super::super::sdk_client::{BegunCoderSession, SdkClient};
 use super::super::sdk_session::SdkSession;
@@ -25,7 +26,6 @@ fn record_spawn_success(
     resume_agent_id: Option<&str>,
 ) -> bool {
     adopt_spawned_session(client, session, cwd);
-    client.record_backend_success();
     let resumed = resume_agent_id.is_some();
     if resumed {
         client.header_lifecycle.mark_satisfied_keeping_header();
@@ -45,14 +45,8 @@ async fn handle_spawn_failure(
     max_attempts: u32,
 ) -> Result<(String, bool), AgentError> {
     let last_error = note_spawn_failure(client, err);
-    if client.record_backend_error(&last_error) {
-        return Err(AgentError(
-            crate::agent_backend::backend_error_tracker::format_backend_consecutive_error_message(
-                client.model.backend.label(),
-                &last_error,
-                client.max_acp_retries,
-            ),
-        ));
+    if let Some(stop) = backend_error_stop(client, &last_error) {
+        return Err(stop);
     }
     let stop =
         backoff_after_agent_failure(client.timing.as_ref(), &last_error, attempt, max_attempts)
@@ -99,11 +93,12 @@ pub(super) async fn spawn_with_retries(
         }
     }
     let retries = attempts_used.saturating_sub(1);
-    Err(AgentError(format!(
+    let message = format!(
         "{}-sdk-bridge failed to spawn after {retries} {}. Last error:\n{last_error}",
         client.model.backend.label(),
         retries_noun(retries)
-    )))
+    );
+    Err(AgentError(with_local_backend_hint(client, message)))
 }
 
 pub(super) fn spawn_thinking_wire(client: &SdkClient) -> Option<String> {

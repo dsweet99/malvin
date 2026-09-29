@@ -96,6 +96,9 @@ When addressing the operator:
 - DCC: Don't Change Code
 
 
+{{ rpi_extra }}
+
+
 ## Direct Messages
 
 Most output lands in logs. To reach the operator directly, use a DM fence:

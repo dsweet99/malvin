@@ -1,3 +1,4 @@
+mod backend_error_stop;
 pub mod backend_error_tracker;
 mod backend_lifecycle;
 mod factory;
@@ -22,6 +23,10 @@ mod backend_tests;
 #[cfg(test)]
 #[path = "backend_error_tracker_tests.rs"]
 mod backend_error_tracker_tests;
+
+#[cfg(test)]
+#[path = "backend_error_stop_tests.rs"]
+mod backend_error_stop_tests;
 
 #[cfg(test)]
 #[path = "agent_backend_kiss_cov.rs"]

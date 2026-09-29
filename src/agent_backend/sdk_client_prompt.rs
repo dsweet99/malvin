@@ -5,6 +5,7 @@ use crate::acp::{
     backoff_after_agent_failure, retries_noun,
 };
 
+use super::backend_error_stop::{backend_error_stop, with_local_backend_hint};
 use super::backend_lifecycle::BackendLifecycle;
 use super::sdk_client::SdkClient;
 use super::sdk_client_active::ActiveCoderSession;
@@ -45,20 +46,15 @@ async fn execute_prompt_with_retries(
                 client.record_backend_success();
                 return Ok(());
             }
+            Err(e) if e.fault == AgentFault::BackendRetryLimit => return Err(e),
             Err(e) => {
                 teardown_sdk_session_after_transport_error(client, &e).await;
                 if opts.fresh_agent_on_retry {
                     force_fresh_agent_for_retry(client).await;
                 }
                 last_error = e.message;
-                if client.record_backend_error(&last_error) {
-                    return Err(AgentError(
-                        super::backend_error_tracker::format_backend_consecutive_error_message(
-                            client.model.backend.label(),
-                            &last_error,
-                            client.max_acp_retries,
-                        ),
-                    ));
+                if let Some(stop) = backend_error_stop(client, &last_error) {
+                    return Err(stop);
                 }
                 if single {
                     break;
@@ -77,11 +73,12 @@ async fn execute_prompt_with_retries(
         }
     }
     let retries = attempts_used.saturating_sub(1);
-    Err(AgentError(format!(
+    let message = format!(
         "{} SDK prompt failed after {retries} {}. Last error:\n{last_error}",
         client.model.backend.label(),
         retries_noun(retries)
-    )))
+    );
+    Err(AgentError(with_local_backend_hint(client, message)))
 }
 
 pub(super) async fn teardown_sdk_session_after_transport_error(
