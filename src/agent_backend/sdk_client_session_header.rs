@@ -1,5 +1,8 @@
-use crate::acp::{AgentError, CoderPromptOptions, backoff_after_agent_failure, retries_noun};
+use crate::acp::{
+    AgentError, AgentFault, CoderPromptOptions, backoff_after_agent_failure, retries_noun,
+};
 
+use super::backend_error_stop::{backend_error_stop, with_local_backend_hint};
 use super::sdk_client::{CoderSessionHeader, SdkClient, begun_cwd, live_session};
 use super::sdk_client_prompt::{
     append_prompt_files, emit_prompt_stdout, force_fresh_agent_for_retry,
@@ -60,20 +63,13 @@ async fn try_send_header_with_retries(
         attempts_used = attempts_used.saturating_add(1);
         match send_header_once(client, &header.prompt, opts).await {
             Ok(()) => {
-                client.record_backend_success();
                 client.header_lifecycle.mark_satisfied_keeping_header();
                 return Ok(());
             }
             Err(e) => {
                 last_error = recover_header_send_failure(client, e).await?;
-                if client.record_backend_error(&last_error) {
-                    return Err(AgentError(
-                        super::backend_error_tracker::format_backend_consecutive_error_message(
-                            client.model.backend.label(),
-                            &last_error,
-                            client.max_acp_retries,
-                        ),
-                    ));
+                if let Some(stop) = backend_error_stop(client, &last_error) {
+                    return Err(stop);
                 }
                 if backoff_after_agent_failure(
                     client.timing.as_ref(),
@@ -89,11 +85,12 @@ async fn try_send_header_with_retries(
         }
     }
     let retries = attempts_used.saturating_sub(1);
-    Err(AgentError(format!(
+    let message = format!(
         "{} SDK header prompt failed after {retries} {}. Last error:\n{last_error}",
         client.model.backend.label(),
         retries_noun(retries)
-    )))
+    );
+    Err(AgentError(with_local_backend_hint(client, message)))
 }
 
 async fn send_header_once(
@@ -118,8 +115,11 @@ async fn recover_header_send_failure(
 ) -> Result<String, AgentError> {
     teardown_sdk_session_after_transport_error(client, &err).await;
     force_fresh_agent_for_retry(client).await;
-    if let Some(cwd) = begun_cwd(client).cloned() {
-        let _ = client.begin_coder_session(&cwd).await;
+    if let Some(cwd) = begun_cwd(client).cloned()
+        && let Err(e) = client.begin_coder_session(&cwd).await
+        && e.fault == AgentFault::BackendRetryLimit
+    {
+        return Err(e);
     }
     Ok(err.message)
 }

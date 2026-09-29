@@ -1,8 +1,20 @@
+use std::sync::atomic::{AtomicU32, Ordering};
+
 use pi::sdk::AgentEvent;
+
+pub(crate) static FAKE_BACKEND_ERROR_TURNS: AtomicU32 = AtomicU32::new(0);
+
+const FAKE_BACKEND_ERROR_TURN_LIMIT: u32 = 20;
 
 pub(crate) fn fake_events_for_prompt(prompt: &str, provider: &str, model: &str) -> Vec<AgentEvent> {
     use pi::model::{AssistantMessage, ContentBlock, Message, TextContent, Usage};
 
+    if prompt.contains("PERSISTENT_BACKEND_ERROR") {
+        return vec![backend_error_agent_end(prompt, false)];
+    }
+    if prompt.contains("VARYING_BACKEND_ERROR") {
+        return vec![backend_error_agent_end(prompt, true)];
+    }
     if prompt.contains("EMPTY_ASSISTANT_RESULT") {
         return vec![empty_agent_end(prompt)];
     }
@@ -48,6 +60,25 @@ pub(crate) fn fake_events_for_prompt(prompt: &str, provider: &str, model: &str) 
         error: None,
     });
     events
+}
+
+fn backend_error_agent_end(prompt: &str, vary: bool) -> AgentEvent {
+    let turn = FAKE_BACKEND_ERROR_TURNS.fetch_add(1, Ordering::SeqCst) + 1;
+    let error = if turn > FAKE_BACKEND_ERROR_TURN_LIMIT {
+        "you've hit your usage limit (fake backend error turn limit)".to_string()
+    } else if vary {
+        format!("Compute error (turn {turn})")
+    } else {
+        "Compute error".to_string()
+    };
+    AgentEvent::AgentEnd {
+        session_id: "fake".into(),
+        messages: vec![pi::model::Message::User(pi::model::UserMessage {
+            content: pi::model::UserContent::Text(prompt.to_string()),
+            timestamp: 0,
+        })],
+        error: Some(error),
+    }
 }
 
 fn empty_agent_end(prompt: &str) -> AgentEvent {

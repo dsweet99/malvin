@@ -75,6 +75,8 @@ pub fn pi_sdk_client_from_raw(
 #[cfg(test)]
 mod client_mock_tests;
 #[cfg(test)]
+mod client_retry_tests;
+#[cfg(test)]
 mod kiss_coverage_tests;
 #[cfg(test)]
 mod map_agent_event_tests;

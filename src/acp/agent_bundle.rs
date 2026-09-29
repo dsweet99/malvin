@@ -13,6 +13,7 @@ pub enum AgentFault {
     SessionDead,
     CursorBusy,
     StaleAuth,
+    BackendRetryLimit,
 }
 
 #[derive(Debug, Clone, thiserror::Error)]
@@ -43,6 +44,7 @@ impl AgentError {
     pub fn requires_coder_session_teardown(&self) -> bool {
         match self.fault {
             AgentFault::SessionDead | AgentFault::CursorBusy | AgentFault::StaleAuth => true,
+            AgentFault::BackendRetryLimit => false,
             AgentFault::Ordinary => {
                 crate::acp::agent_error_requires_coder_session_teardown(&self.message)
             }
