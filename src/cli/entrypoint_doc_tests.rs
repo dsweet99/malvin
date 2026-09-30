@@ -58,6 +58,23 @@ fn entrypoint_from_advice_list_exits_success() {
 }
 
 #[test]
+fn entrypoint_from_credits_exits_success() {
+    with_isolated_home(|_| {
+        assert_eq!(entrypoint_from(["malvin", "--credits"]), Exit::Success);
+    });
+}
+
+#[test]
+fn entrypoint_from_credits_with_request_exits_without_running_agent() {
+    with_isolated_home(|_| {
+        assert_eq!(
+            entrypoint_from(["malvin", "--credits", "Write a poem"]),
+            Exit::Success
+        );
+    });
+}
+
+#[test]
 fn entrypoint_from_advice_unknown_tag_exits_failure() {
     with_isolated_home(|_| {
         assert_eq!(

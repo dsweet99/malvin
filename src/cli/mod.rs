@@ -3,6 +3,7 @@ pub(crate) mod advice_cmd;
 pub(crate) mod args;
 pub(crate) mod cli_request;
 pub(crate) mod command_docs;
+pub(crate) mod credits_cmd;
 pub(crate) mod request_argv;
 mod commands_help;
 mod config_defaults;

@@ -51,6 +51,9 @@ pub struct SharedOpts {
     /// Print full advice for TAG, or list tags (tag then description) if TAG is omitted (no run logs)
     #[arg(long, value_name = "TAG", num_args = 0..=1, default_missing_value = "")]
     pub advice: Option<String>,
+    /// Print credits for ideas malvin builds on and exit (no run logs)
+    #[arg(long, default_value_t = false)]
+    pub credits: bool,
     /// Cycle through all REQUEST args forever (as if re-invoking the same command line)
     #[arg(long = "iml", default_value_t = false, help = IML_HELPTEXT)]
     pub iml: bool,
@@ -148,6 +151,7 @@ impl SharedOpts {
             max_acp_retries: malvin::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
             advice: None,
+            credits: false,
             iml: false,
         }
     }

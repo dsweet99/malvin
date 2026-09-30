@@ -96,7 +96,7 @@ Session names are independent of the workspace-scoped `.malvin/acp_spawn/<slot>.
 
 Any lock whose holder PID is dead (or whose contents are not a valid PID) is safe to delete manually. Lock files are not version-controlled; if they were accidentally committed, run `git rm -r --cached .malvin/acp_spawn/`. Malvin reclaims stale locks automatically on startup in a workspace (directory sweep after early-exit paths such as `--doc`, bare help, and missing-request short help) and when a slot is acquired; live sessions are never disturbed.
 
-`--doc`, `--advice`, `--help`, `--version`, and `malvin` with no subcommand do not acquire or release a name lock.
+`--doc`, `--advice`, `--credits`, `--help`, `--version`, and `malvin` with no subcommand do not acquire or release a name lock.
 
 ### `--doc`
 
@@ -116,9 +116,12 @@ Print an embedded advice document for `TAG` to stdout and exit, or list availabl
 - `malvin --advice TAG` — body of the matching file under `default_prompts/advice/*.md`.
 - Each document’s TAG is the filename without `.md`: lowercase letters, digits, and underscores, starting with a letter, at most 32 characters (examples: `doc_design` for `doc_design.md`; `scholar` for `scholar.md`; `report` for `report.md`). Every `.md` file in that directory is listed; rebuild absorbs added or renamed files.
 - The first line of each advice file must be `description: ...` (value at most 7 words). The build fails if that line is missing or malformed; the listed description is the value after `description:`.
-- The `scholar` advice is adapted from *How to ML Paper* by Jakob N. Foerster.
 
 Other subcommand arguments are not required when `--advice` is set.
+
+### `--credits`
+
+Print credits for the published ideas malvin builds on (embedded from `default_prompts/credits.md`) to stdout and exit. Does not spawn an agent or create a run directory under `~/.malvinconf/logs/`. Other arguments (for example `<REQUEST>`) are ignored when `--credits` is set.
 
 ## Quality gates (`.malvin/gates`)
 
