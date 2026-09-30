@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import errno
+import mmap
 import os
 import shutil
 import signal
@@ -146,7 +147,7 @@ def _npm_pi_package_candidate_roots() -> list[Path]:
     roots: list[Path] = []
     _push_npm_pi_scoped(roots, Path("node_modules"))
     home = Path.home()
-    _push_npm_pi_scoped(roots, home / ".malvin_home" / "sdk-bridges" / "node_modules")
+    _push_npm_pi_scoped(roots, home / ".malvinconf" / "sdk-bridges" / "node_modules")
     return roots
 
 def _push_npm_pi_scoped(out: list[Path], modules: Path) -> None:
@@ -214,6 +215,19 @@ def ft_host_malvin_is_linux_elf(malvin_binary: Path) -> bool:
         return False
 
 
+def ft_malvin_container_home(malvin_binary: Path | None) -> str:
+    if malvin_binary is None:
+        return "/root/.malvinconf"
+    try:
+        with malvin_binary.open("rb") as fh, mmap.mmap(
+            fh.fileno(), 0, access=mmap.ACCESS_READ
+        ) as mm:
+            legacy = mm.find(b".malvin_home") >= 0 and mm.find(b".malvinconf") < 0
+    except (OSError, ValueError):
+        return "/root/.malvinconf"
+    return "/root/.malvin_home" if legacy else "/root/.malvinconf"
+
+
 def ft_local_rpi_needs_host_agent(
     *,
     agent_name: str,
@@ -266,7 +280,7 @@ def ft_default_results_dir() -> Path:
     override = os.environ.get("FAST_TASK_RESULTS")
     if override:
         return Path(override).expanduser().resolve()
-    return (Path.home() / ".malvin_home" / "fast_task_results").resolve()
+    return (Path.home() / ".malvinconf" / "fast_task_results").resolve()
 
 def ft_run_root(task_id: str, results_dir: Path | None) -> Path:
     root = (results_dir or ft_default_results_dir()).resolve()
@@ -514,13 +528,14 @@ def ft_docker_agent_cmd(
     agent_name = ft_normalize_agent(agent)
     ws = workspace.resolve()
     host_logs = ft_run_malvin_logs_dir(ws)
-    
-    
+    container_home = ft_malvin_container_home(
+        malvin_binary if agent_name == AGENT_MALVIN else None
+    )
     volume_mounts: list[str] = [
         "-v",
         f"{ws}:/app",
         "-v",
-        f"{host_logs}:/root/.malvin_home/logs",
+        f"{host_logs}:{container_home}/logs",
     ]
     bridge_env: list[str] = []
     if agent_name == AGENT_MALVIN:
@@ -666,7 +681,7 @@ def _ft_maybe_mount_npm_pi(
         raise click.ClickException(
             "npm Pi package (@earendil-works/pi-coding-agent) and node binary "
             "not found (set MALVIN_PI to rpc-entry.js/cli.js, or install under "
-            "~/.malvin_home/sdk-bridges); required for pi: models inside the "
+            "~/.malvinconf/sdk-bridges); required for pi: models inside the "
             "agent container"
         )
     rel = host_entry.resolve().relative_to(pi_package.resolve()).as_posix()
@@ -1089,6 +1104,7 @@ def run_fast_task_self_tests() -> None:
     _ft_test_stage_workspace_isolated()
     _ft_test_dockerfile_nonleak()
     _ft_test_docker_agent_cmd_nonleak()
+    _ft_test_malvin_container_home()
     _ft_test_docker_agent_cmd_cursor()
     _ft_test_docker_agent_cmd_pi()
     _ft_test_docker_agent_cmd_npm_pi()
@@ -1175,10 +1191,10 @@ def _ft_test_docker_agent_cmd_nonleak() -> None:
         )
         assert f"MALVIN_CURSOR_SDK_BRIDGE={CURSOR_SDK_BRIDGE_JS_REMOTE}" in cmd
         host_logs = ft_run_malvin_logs_dir(ws)
-        assert any(m == f"{host_logs}:/root/.malvin_home/logs" for m in mounts)
+        assert any(m == f"{host_logs}:/root/.malvinconf/logs" for m in mounts)
         assert host_logs == (ws.resolve().parent / "malvin_logs")
         assert "malvin_logs" in " ".join(mounts)
-        assert str(Path.home() / ".malvin_home" / "logs") + ":/root" not in " ".join(
+        assert str(Path.home() / ".malvinconf" / "logs") + ":/root" not in " ".join(
             mounts
         )
         joined = " ".join(cmd)
@@ -1186,6 +1202,24 @@ def _ft_test_docker_agent_cmd_nonleak() -> None:
         assert "goldens" not in joined
         assert "GIT_CONFIG_KEY_0=safe.directory" in cmd
         assert "GIT_CONFIG_VALUE_0=/app" in cmd
+
+def _ft_test_malvin_container_home() -> None:
+    with tempfile.TemporaryDirectory(prefix="ft-home-") as tmp:
+        binary = Path(tmp) / "malvin"
+        assert ft_malvin_container_home(None) == "/root/.malvinconf"
+        assert ft_malvin_container_home(binary) == "/root/.malvinconf"
+        binary.write_bytes(b"")
+        assert ft_malvin_container_home(binary) == "/root/.malvinconf"
+        binary.write_bytes(b"\x7fELF..../.malvin_home/logs")
+        assert ft_malvin_container_home(binary) == "/root/.malvin_home"
+        binary.write_bytes(b"\x7fELF.malvin_home...malvinconf.malvinconf")
+        assert ft_malvin_container_home(binary) == "/root/.malvinconf"
+        ws = Path(tmp) / "workspace"
+        ws.mkdir()
+        binary.write_bytes(b"\x7fELF.malvin_home")
+        cmd = ft_docker_agent_cmd(image=DEFAULT_IMAGE, workspace=ws, malvin_binary=binary)
+        host_logs = ft_run_malvin_logs_dir(ws)
+        assert f"{host_logs}:/root/.malvin_home/logs" in cmd
 
 def _ft_test_docker_agent_cmd_cursor() -> None:
     with tempfile.TemporaryDirectory(prefix="ft-cursor-") as tmp:

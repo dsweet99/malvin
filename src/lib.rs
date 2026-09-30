@@ -86,8 +86,8 @@ pub use workspace_paths::{
     is_malvin_workspace, legacy_malvin_checks_path, malvin_acp_spawn_chamber_dir,
     malvin_advice_path, malvin_checks_path, malvin_config_path, malvin_data_root,
     malvin_home_config_path, malvin_home_logs_root, malvin_logs_root, malvin_user_home_root,
-    read_work_dir_manifest, remove_legacy_malvin_checks_file, resolve_malvin_checks_path,
-    workspace_logs_hash, write_work_dir_manifest,
+    migrate_legacy_malvin_user_home, read_work_dir_manifest, remove_legacy_malvin_checks_file,
+    resolve_malvin_checks_path, workspace_logs_hash, write_work_dir_manifest,
 };
 pub mod run_id;
 pub mod terminal_palette;

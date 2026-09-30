@@ -60,7 +60,7 @@ impl MalvinConfig {
 pub(crate) fn reject_disabled_rpi(disable_rpi: bool, model: &ParsedModel) -> Result<(), String> {
     if disable_rpi && model.backend == ModelBackend::Pi {
         return Err(
-            "rpi: backend is disabled (set disable_rpi = false in ~/.malvin_home/config.toml)"
+            "rpi: backend is disabled (set disable_rpi = false in ~/.malvinconf/config.toml)"
                 .to_string(),
         );
     }

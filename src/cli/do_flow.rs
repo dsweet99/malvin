@@ -165,7 +165,7 @@ mod do_snapshot_tests {
             SessionDotfileBackups::snapshot_after_ensuring_home_config(work).expect("snapshot");
             assert!(
                 cfg.is_file(),
-                "do session snapshot must ensure ~/.malvin_home/config.toml exists"
+                "do session snapshot must ensure ~/.malvinconf/config.toml exists"
             );
         });
     }

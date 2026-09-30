@@ -8,7 +8,7 @@ Outer agent sessions (`--max-loops`): for each freshly created coder agent, malv
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
 | Output | Styled stdout on a TTY (same startup chrome as other agent workflows); with `--quiet` / `-q`, only `__MALVIN_DM_*__` bodies |
-| Logs | `router_N.log` under `~/.malvin_home/logs/<hash>/<run>/` (one file per outer iteration; N is the loop index. Continue keeps the coder session open, so several files can share one session) |
+| Logs | `router_N.log` under `~/.malvinconf/logs/<hash>/<run>/` (one file per outer iteration; N is the loop index. Continue keeps the coder session open, so several files can share one session) |
 | Requires | No `.malvin/gates` at startup (unless `--gates` later needs them) |
 
 ## Intention
@@ -21,7 +21,7 @@ Read the user request (on disk as `plan_*.md` / `{{ user_request_path }}`), ask 
 malvin [OPTION]... [REQUEST]...
 ```
 
-There is no `router` subcommand. Bare `malvin REQUEST` is the default autonomous routing workflow. Multiple `REQUEST` args each run as an independent invocation (new run directory under `~/.malvin_home/logs/`, full outer router loop, exit `router_summarize`). If `REQUEST` is omitted (and no subcommand is given), malvin prints the command catalog on stdout and exits 0.
+There is no `router` subcommand. Bare `malvin REQUEST` is the default autonomous routing workflow. Multiple `REQUEST` args each run as an independent invocation (new run directory under `~/.malvinconf/logs/`, full outer router loop, exit `router_summarize`). If `REQUEST` is omitted (and no subcommand is given), malvin prints the command catalog on stdout and exits 0.
 
 ## Arguments
 
@@ -92,7 +92,7 @@ When the outer loop decides to exit, malvin sends `router_summarize.md` on the s
 
 ## Config
 
-`~/.malvin_home/config.toml`:
+`~/.malvinconf/config.toml`:
 
 ```toml
 [default_workflow]

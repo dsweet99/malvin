@@ -109,7 +109,7 @@ mod advice_path_embed_tests {
             "header must expand all placeholders"
         );
         assert!(
-            header.contains(".malvin_home/logs"),
+            header.contains(".malvinconf/logs"),
             "header must render logs_dir to home logs bucket"
         );
         let workspace = ctx.get("workspace_dir").expect("workspace_dir");

@@ -29,5 +29,5 @@ usd_per_microtoken_cache_write = 0
 max_count = 1000
 # Delete runs older than this many days (dirname timestamp, else mtime).
 max_age_days = 90
-# Cap total size of ~/.malvin_home/logs/<hash>/ (B, KiB, MiB, GiB, TiB). Empty = disabled.
+# Cap total size of ~/.malvinconf/logs/<hash>/ (B, KiB, MiB, GiB, TiB). Empty = disabled.
 max_bytes = "2GiB"

@@ -1,6 +1,6 @@
 # malvin admin
 
-Operator maintenance commands. No agent session and no run directory under `~/.malvin_home/logs/`.
+Operator maintenance commands. No agent session and no run directory under `~/.malvinconf/logs/`.
 
 ## Summary
 
@@ -40,4 +40,4 @@ Requires a herdr-hosted environment: `HERDR_ENV=1`, `HERDR_SOCKET_PATH`, and `HE
 
 ### `setup-cursor`
 
-Install the Cursor SDK (`@cursor/sdk`) that `cursor:` models need. Malvin writes its bundled bridge files to `~/.malvin_home/sdk-bridges/cursor-sdk-bridge/` and runs `npm ci --omit=dev` there. Requires Node.js ≥ 22.13, `npm`, and network access to the npm registry. Running it again is cheap: npm runs only when the SDK is missing or the bundled lock file changed. Malvin also does this automatically the first time a `cursor:` model runs; use this command to install ahead of time or to see errors directly.
+Install the Cursor SDK (`@cursor/sdk`) that `cursor:` models need. Malvin writes its bundled bridge files to `~/.malvinconf/sdk-bridges/cursor-sdk-bridge/` and runs `npm ci --omit=dev` there. Requires Node.js ≥ 22.13, `npm`, and network access to the npm registry. Running it again is cheap: npm runs only when the SDK is missing or the bundled lock file changed. Malvin also does this automatically the first time a `cursor:` model runs; use this command to install ahead of time or to see errors directly.

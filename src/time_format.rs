@@ -115,7 +115,7 @@ mod tests {
         );
 
         let run = std::path::PathBuf::from(
-            "/home/dsweet/.malvin_home/logs/eb7ef333a92a6d41/20260830_024330_estp91hf",
+            "/home/dsweet/.malvinconf/logs/eb7ef333a92a6d41/20260830_024330_estp91hf",
         );
         crate::run_id::set_active_run_dir(Some(run));
         let payload = super::heartbeat_payload_now();

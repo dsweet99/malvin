@@ -51,7 +51,7 @@ pub(crate) fn fnv1a64(data: &[u8]) -> u64 {
 #[must_use]
 pub fn default_install_dir() -> PathBuf {
     crate::user_home::user_home_dir()
-        .join(".malvin_home")
+        .join(crate::MALVIN_USER_HOME_DIR)
         .join("sdk-bridges")
         .join(DIR_NAME)
 }

@@ -39,9 +39,9 @@ pub fn seed_malvin_config(workspace: &Path, content: &str) {
     );
     let path = malvin::malvin_config_path(workspace);
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).expect("mkdir ~/.malvin_home");
+        std::fs::create_dir_all(parent).expect("mkdir ~/.malvinconf");
     }
-    std::fs::write(path, content).expect("write ~/.malvin_home/config.toml");
+    std::fs::write(path, content).expect("write ~/.malvinconf/config.toml");
 }
 
 pub fn with_isolated_home<F>(f: F)

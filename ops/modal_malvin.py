@@ -4,7 +4,7 @@
 Runs malvin against a local vLLM model or an API-provided model.
 
 Everything persistent lives in one Modal Volume, `malvin-data`, mounted at /data:
-    /data/malvin_home/logs   malvin run logs; /root/.malvin_home/logs links here
+    /data/malvin_home/logs   malvin run logs; /root/.malvinconf/logs links here
     /data/hf            Hugging Face cache (model weights)
     /data/vllm          vLLM compile cache
     /data/vllm_logs     vLLM server logs, one file per container

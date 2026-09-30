@@ -154,7 +154,7 @@ fn configure_node_compile_cache(cmd: &mut tokio::process::Command) {
         return;
     }
     let cache_dir = crate::user_home::user_home_dir()
-        .join(".malvin_home")
+        .join(crate::MALVIN_USER_HOME_DIR)
         .join("node_compile_cache");
     let cache_probe = cache_dir.join(format!(".write-probe-{}", std::process::id()));
     let cache_is_writable =

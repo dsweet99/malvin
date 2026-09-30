@@ -41,7 +41,7 @@ fn resolve_node_bin_uncached() -> Result<PathBuf, String> {
 
 fn sticky_node_bin_path() -> PathBuf {
     crate::user_home::user_home_dir()
-        .join(".malvin_home")
+        .join(crate::MALVIN_USER_HOME_DIR)
         .join("node_bin")
 }
 

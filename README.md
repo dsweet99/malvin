@@ -18,7 +18,7 @@ The build needs neither Node nor network access beyond crates.io.
 `cursor:` models (including the default, `cursor:auto`) need
 [Node.js](https://nodejs.org/) ≥ 22.13 with `npm` at run time. The first time a
 `cursor:` model runs, malvin installs the Cursor SDK (`@cursor/sdk`) under
-`~/.malvin_home/sdk-bridges/` with `npm ci`. To install it ahead of time:
+`~/.malvinconf/sdk-bridges/` with `npm ci`. To install it ahead of time:
 
 ```bash
 malvin admin setup-cursor
@@ -60,7 +60,7 @@ That works well in CI or cron. For quieter stdout on the default router, use `-q
 ```bash
 malvin overnight_logs_alerter.md >/dev/null
 ```
-For example, `overnight_logs_alerter.md` might tell malvin to scan prod logs and report oddities via Slack. Malvin *always* writes run logs under `~/.malvin_home/logs` (useful for process improvement and as later context).
+For example, `overnight_logs_alerter.md` might tell malvin to scan prod logs and report oddities via Slack. Malvin *always* writes run logs under `~/.malvinconf/logs` (useful for process improvement and as later context).
 
 Flag reference: `malvin --help`. Behavioral contracts: `malvin --doc` and `malvin <COMMAND> --doc`.
 

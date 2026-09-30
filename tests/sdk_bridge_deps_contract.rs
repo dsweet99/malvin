@@ -41,7 +41,7 @@ fn build_script_sources() -> Vec<(PathBuf, String)> {
 #[test]
 fn build_script_needs_no_node_or_npm() {
     for (path, text) in build_script_sources() {
-        for needle in ["npm", "node", "sdk-bridges", ".malvin_home"] {
+        for needle in ["npm", "node", "sdk-bridges", ".malvinconf"] {
             assert!(
                 !text.contains(needle),
                 "{} mentions {needle:?}; the Cursor SDK is installed at run time, not by build.rs",
