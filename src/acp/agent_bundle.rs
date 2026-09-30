@@ -15,6 +15,10 @@ pub enum AgentFault {
     StaleAuth,
     BackendRetryLimit,
     OutputCap,
+    NonRetryable,
+    RestoreStop,
+    SessionNewInternal,
+    Http2Transport,
 }
 
 #[derive(Debug, Clone, thiserror::Error)]
@@ -45,10 +49,13 @@ impl AgentError {
     pub fn requires_coder_session_teardown(&self) -> bool {
         match self.fault {
             AgentFault::SessionDead | AgentFault::CursorBusy | AgentFault::StaleAuth => true,
-            AgentFault::BackendRetryLimit | AgentFault::OutputCap => false,
-            AgentFault::Ordinary => {
-                crate::acp::agent_error_requires_coder_session_teardown(&self.message)
-            }
+            AgentFault::Http2Transport => !crate::acp::test_no_real_agent_enabled(),
+            AgentFault::Ordinary
+            | AgentFault::BackendRetryLimit
+            | AgentFault::OutputCap
+            | AgentFault::NonRetryable
+            | AgentFault::RestoreStop
+            | AgentFault::SessionNewInternal => false,
         }
     }
 }
@@ -56,7 +63,8 @@ impl AgentError {
 #[allow(non_snake_case)]
 #[must_use]
 pub fn AgentError(message: String) -> AgentError {
-    AgentError::ordinary(message)
+    let fault = crate::acp::classify_agent_fault(&message);
+    AgentError { message, fault }
 }
 
 #[derive(Debug, Clone, thiserror::Error)]

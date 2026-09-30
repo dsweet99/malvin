@@ -78,9 +78,14 @@ fn sweep_legacy_buckets() {
 }
 
 fn is_hash_bucket_name(bucket: &Path) -> bool {
-    bucket.file_name().and_then(|n| n.to_str()).is_some_and(|n| {
-        n.len() == 16 && n.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
-    })
+    bucket
+        .file_name()
+        .and_then(|n| n.to_str())
+        .is_some_and(|n| {
+            n.len() == 16
+                && n.bytes()
+                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+        })
 }
 
 fn is_stale(path: &Path) -> bool {
@@ -124,7 +129,10 @@ mod tests {
         std::fs::create_dir_all(bucket.join("stuck")).expect("mkdir leftover bucket");
         std::fs::create_dir_all(work.join("junk")).expect("mkdir leftover work");
         let second = TestLogsBucket::new("self-test");
-        assert!(!work.join("junk").exists(), "leftover work dir must be removed at start");
+        assert!(
+            !work.join("junk").exists(),
+            "leftover work dir must be removed at start"
+        );
         assert_eq!(second.bucket(), bucket.as_path());
         assert!(!bucket.exists(), "leftover bucket must be removed at start");
         drop(second);
@@ -142,7 +150,10 @@ mod tests {
         assert!(holds_only_fixtures(&bucket));
         assert!(!is_stale(&bucket), "fresh buckets are never swept");
         std::fs::write(bucket.join("20260103_000000_ccccccc3/command.log"), b"x").expect("write");
-        assert!(!holds_only_fixtures(&bucket), "real run content keeps the bucket");
+        assert!(
+            !holds_only_fixtures(&bucket),
+            "real run content keeps the bucket"
+        );
         assert!(!is_hash_bucket_name(tmp.path()));
         assert!(!holds_only_fixtures(&tmp.path().join("missing")));
     }

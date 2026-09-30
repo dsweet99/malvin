@@ -183,9 +183,7 @@ fn infer_gate_retry_reasons(artifacts: Option<&RunArtifacts>, iteration: usize) 
 
 fn append_unsolved_reason(reasons: &mut Vec<String>, artifacts: &RunArtifacts, prev: usize) {
     if prev_exp_log_ran(artifacts, prev) && reasons.is_empty() {
-        reasons.push(
-            "requirements still unsatisfied after previous router session".to_string(),
-        );
+        reasons.push("requirements still unsatisfied after previous router session".to_string());
     }
 }
 

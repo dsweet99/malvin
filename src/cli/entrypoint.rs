@@ -1,19 +1,19 @@
 use super::{Commands, Exit, SharedOpts};
 
-#[path = "entrypoint_from.rs"]
-mod entrypoint_from;
-#[path = "entrypoint_info_flags.rs"]
-mod entrypoint_info_flags;
-#[path = "entrypoint_gates_only.rs"]
-mod entrypoint_gates_only;
 #[path = "entrypoint_dispatch.rs"]
 mod entrypoint_dispatch;
+#[path = "entrypoint_from.rs"]
+mod entrypoint_from;
+#[path = "entrypoint_gates_only.rs"]
+mod entrypoint_gates_only;
+#[path = "entrypoint_info_flags.rs"]
+mod entrypoint_info_flags;
 #[path = "entrypoint_short_help.rs"]
 mod entrypoint_short_help;
-pub use entrypoint_from::entrypoint_from;
 pub use entrypoint_dispatch::{
     DefaultRouteDispatch, dispatch_default_route, dispatch_do_workflow, dispatch_mixed_requests,
 };
+pub use entrypoint_from::entrypoint_from;
 pub(crate) use entrypoint_gates_only::{GatesOnlyDispatch, dispatch_gates_only_route};
 
 pub fn print_command_error(message: &str) {

@@ -16,8 +16,8 @@ fn over_count_cap_at_limit_does_not_prune() {
     let mut runs = list_run_dirs(&logs);
     runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
     let config = LogsGcConfig {
-        max_count: 3,
-        max_age_days: 0,
+        max_count: Some(3),
+        max_age_days: None,
         max_bytes: None,
     };
     assert!(!over_count_cap(runs.len(), config.max_count));
@@ -36,8 +36,8 @@ fn prune_removes_oldest_when_over_count_cap() {
     let mut runs = list_run_dirs(&logs);
     runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
     let config = LogsGcConfig {
-        max_count: 2,
-        max_age_days: 0,
+        max_count: Some(2),
+        max_age_days: None,
         max_bytes: None,
     };
     let (removed, _) = prune_run_dirs(&mut runs, &config, None);
@@ -46,7 +46,14 @@ fn prune_removes_oldest_when_over_count_cap() {
 }
 
 #[test]
-fn max_count_zero_means_unlimited_count() {
+fn some_zero_count_is_a_real_cap() {
+    assert!(!over_count_cap(4, None));
+    assert!(over_count_cap(4, Some(0)));
+    assert!(!over_count_cap(2, Some(2)));
+}
+
+#[test]
+fn absent_count_cap_keeps_every_run() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let logs = crate::workspace_paths::malvin_logs_root(tmp.path());
     for name in [RUN_OLDEST, RUN_MID, RUN_NEWEST] {
@@ -55,8 +62,8 @@ fn max_count_zero_means_unlimited_count() {
     let mut runs = list_run_dirs(&logs);
     runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
     let config = LogsGcConfig {
-        max_count: 0,
-        max_age_days: 0,
+        max_count: None,
+        max_age_days: None,
         max_bytes: None,
     };
     assert!(!over_count_cap(runs.len(), config.max_count));
@@ -74,8 +81,8 @@ fn size_total_matches_direct_dir_size_after_deletes() {
     let mut runs = list_run_dirs(&logs);
     runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
     let config = LogsGcConfig {
-        max_count: 0,
-        max_age_days: 0,
+        max_count: None,
+        max_age_days: None,
         max_bytes: Some(500),
     };
     let (removed, _) = prune_run_dirs(&mut runs, &config, None);

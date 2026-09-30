@@ -1,3 +1,4 @@
+mod acp_attempt_loop;
 mod backend_error_stop;
 pub mod backend_error_tracker;
 mod backend_lifecycle;

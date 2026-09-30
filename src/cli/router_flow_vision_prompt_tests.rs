@@ -82,8 +82,7 @@ fn default_router_prompts_follow_vision_problem_solving_language() {
         "router_b_satisfy must keep KPop satisfy instruction without MBC2"
     );
     assert!(
-        satisfy_brief.contains("KPop: Satisfy the requirements.")
-            && creative_lead.contains("MBC2"),
+        satisfy_brief.contains("KPop: Satisfy the requirements.") && creative_lead.contains("MBC2"),
         "creative fragments must keep KPop satisfy instruction and MBC2"
     );
 }

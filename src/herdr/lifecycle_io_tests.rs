@@ -38,9 +38,11 @@ fn done_at_timing_keeps_done_through_teardown() {
         crate::herdr::notify_run_done();
         notify_run_end();
         let reqs = collect_until_teardown_clear(rx);
-        assert!(reqs.iter().any(|v| {
-            method_of(v) == "pane.report_agent" && agent_state_of(v) == Some("done")
-        }));
+        assert!(
+            reqs.iter().any(|v| {
+                method_of(v) == "pane.report_agent" && agent_state_of(v) == Some("done")
+            })
+        );
         assert!(reqs.iter().all(|v| agent_state_of(v) != Some("idle")));
     });
     reset_session_for_test();

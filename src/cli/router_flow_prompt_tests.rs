@@ -18,11 +18,7 @@ fn build_router_a_prompt_expands_malvin_command_with_active_model() {
         "Use {{ malvin_command }}\n{{ code_extra }}\nSee {{ user_request_path }}.\n",
     )
     .expect("write router_a");
-    std::fs::write(
-        prompt_root.join("router_a_audit.md"),
-        "AUDIT\n",
-    )
-    .expect("write router_a_audit");
+    std::fs::write(prompt_root.join("router_a_audit.md"), "AUDIT\n").expect("write router_a_audit");
     std::fs::write(
         prompt_root.join("router_code_extra.md"),
         "- Make sure the code checks all pass:\n```\n{{ code_checks }}\n```\n",

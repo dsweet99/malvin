@@ -2,11 +2,11 @@ use super::log_gc_prune::{
     mtime_as_utc, needs_prune, over_age_limit, over_byte_cap, prune_run_dirs,
 };
 use super::*;
-use crate::test_utils::TestLogsBucket;
 use crate::log_gc_config::{
     LogsGcConfig, load_logs_gc_config, parse_byte_size, parse_logs_gc_config,
     parse_max_bytes_value, split_byte_size,
 };
+use crate::test_utils::TestLogsBucket;
 
 const RUN_OLDEST: &str = "20260101_000000_aaaaaaa1";
 const RUN_MID: &str = "20260102_000000_bbbbbbb2";
@@ -15,8 +15,8 @@ const RUN_OLD_AGE: &str = "20200101_000000_oldrun01";
 
 fn config_no_count_cap() -> LogsGcConfig {
     LogsGcConfig {
-        max_count: 0,
-        max_age_days: 0,
+        max_count: None,
+        max_age_days: None,
         max_bytes: None,
     }
 }
@@ -57,8 +57,8 @@ fn parse_logs_gc_config_reads_toml() {
     let cfg =
         parse_logs_gc_config("[logs]\nmax_count = 500\nmax_age_days = 7\nmax_bytes = \"1MiB\"\n")
             .expect("parse");
-    assert_eq!(cfg.max_count, 500);
-    assert_eq!(cfg.max_age_days, 7);
+    assert_eq!(cfg.max_count, Some(500));
+    assert_eq!(cfg.max_age_days, Some(7));
     assert_eq!(cfg.max_bytes, parse_byte_size("1MiB"));
 }
 
@@ -70,8 +70,8 @@ fn log_gc_helpers_cover_policy_edges() {
     let runs = vec![old.clone()];
     let total = dir_size(&old);
     let config = LogsGcConfig {
-        max_count: 0,
-        max_age_days: 30,
+        max_count: None,
+        max_age_days: Some(30),
         max_bytes: Some(0),
     };
     assert!(over_byte_cap(total, Some(0)));
@@ -155,8 +155,8 @@ fn prune_removes_run_dir_when_over_age_limit() {
     let mut runs = list_run_dirs(logs);
     runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
     let config = LogsGcConfig {
-        max_count: 0,
-        max_age_days: 30,
+        max_count: None,
+        max_age_days: Some(30),
         max_bytes: None,
     };
     let (removed, _) = prune_run_dirs(&mut runs, &config, None);
@@ -184,8 +184,8 @@ fn prune_removes_oldest_when_over_byte_cap() {
     let mut runs = list_run_dirs(logs);
     runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
     let config = LogsGcConfig {
-        max_count: 0,
-        max_age_days: 0,
+        max_count: None,
+        max_age_days: None,
         max_bytes: Some(3000),
     };
     let (removed, _) = prune_run_dirs(&mut runs, &config, None);
@@ -219,8 +219,8 @@ fn prune_retries_or_reports_when_delete_fails_and_limits_still_exceeded() {
     let mut runs = list_run_dirs(&logs);
     runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
     let config = LogsGcConfig {
-        max_count: 0,
-        max_age_days: 0,
+        max_count: None,
+        max_age_days: None,
         max_bytes: Some(1000),
     };
     let (removed, _) = prune_run_dirs(&mut runs, &config, None);

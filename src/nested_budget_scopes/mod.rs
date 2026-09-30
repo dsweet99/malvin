@@ -1,29 +1,36 @@
+use std::num::NonZeroU32;
+
+use crate::acp::AttemptCeiling;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BudgetScopeLayer {
     OuterRouterLoop,
-    AcpSpawnRetry,
+    AcpAttempt,
 }
 
 impl BudgetScopeLayer {
     #[must_use]
     pub const fn all() -> &'static [Self] {
-        &[Self::OuterRouterLoop, Self::AcpSpawnRetry]
+        &[Self::OuterRouterLoop, Self::AcpAttempt]
     }
 
     #[must_use]
     pub const fn respects_single_attempt(self) -> bool {
-        matches!(self, Self::AcpSpawnRetry)
+        matches!(self, Self::AcpAttempt)
     }
 
     #[must_use]
-    pub fn effective_max_attempts(self, limit: u32, single_attempt: bool) -> u32 {
+    pub(crate) const fn effective_attempt_ceiling(
+        self,
+        limit: Option<NonZeroU32>,
+        single_attempt: bool,
+    ) -> AttemptCeiling {
         if single_attempt && self.respects_single_attempt() {
-            1
-        } else {
-            match self {
-                Self::AcpSpawnRetry => limit.max(1),
-                Self::OuterRouterLoop => limit,
-            }
+            return AttemptCeiling::one();
+        }
+        match limit {
+            Some(n) => AttemptCeiling::AtMost(n),
+            None => AttemptCeiling::unlimited(),
         }
     }
 

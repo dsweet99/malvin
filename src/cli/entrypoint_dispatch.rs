@@ -1,5 +1,5 @@
-use super::run_async_cli;
 use super::super::{RouterOpts, SharedOpts, iml_loop, loop_opts, run_do, run_router};
+use super::run_async_cli;
 use crate::cli::request_argv::TaggedRequest;
 use crate::do_flow::DoArgs;
 
@@ -12,7 +12,13 @@ pub fn dispatch_do_workflow(requests: Vec<String>, shared: &SharedOpts) -> Resul
             let requests = requests.clone();
             async move {
                 for request in requests {
-                    run_do(DoArgs { request: Some(request) }, &shared).await?;
+                    run_do(
+                        DoArgs {
+                            request: Some(request),
+                        },
+                        &shared,
+                    )
+                    .await?;
                 }
                 Ok(())
             }
@@ -39,7 +45,13 @@ async fn run_mixed_jobs_once(pass: MixedPass<'_>) -> Result<(), String> {
     for job in pass.jobs {
         match job.kind {
             RequestKind::Do => {
-                run_do(DoArgs { request: Some(job.text.clone()) }, pass.shared).await?;
+                run_do(
+                    DoArgs {
+                        request: Some(job.text.clone()),
+                    },
+                    pass.shared,
+                )
+                .await?;
             }
             RequestKind::Router => {
                 let router = router_opts_for_job(pass.router, job);
@@ -121,11 +133,7 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
         router,
         matches,
     } = input;
-    loop_opts::apply_default_route_tenacious(
-        &mut max_loops,
-        &mut shared.max_acp_retries,
-        matches,
-    );
+    loop_opts::apply_default_route_tenacious(&mut max_loops, &mut shared.max_acp_retries, matches);
     let iml = shared.iml;
     let shared = shared.clone();
     let router = router.clone();

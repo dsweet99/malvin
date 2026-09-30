@@ -1,9 +1,11 @@
 use std::path::{Path, PathBuf};
 
-use crate::acp::{AgentError, backoff_after_agent_failure, retries_noun};
+use crate::acp::AgentError;
+use crate::nested_budget_scopes::BudgetScopeLayer;
+
+use super::super::acp_attempt_loop::{BackoffChoice, RetrySpec, retry_until_ok};
 use crate::bridge_sdk::BridgeSpawnArgs;
 
-use super::super::backend_error_stop::{backend_error_stop, with_local_backend_hint};
 use super::super::backend_lifecycle::BackendLifecycle;
 use super::super::sdk_client::{BegunCoderSession, SdkClient};
 use super::super::sdk_session::SdkSession;
@@ -38,67 +40,48 @@ fn record_spawn_success(
     resumed
 }
 
-async fn handle_spawn_failure(
-    client: &mut SdkClient,
-    err: AgentError,
-    attempt: u32,
-    max_attempts: u32,
-) -> Result<(String, bool), AgentError> {
-    let last_error = note_spawn_failure(client, err);
-    if let Some(stop) = backend_error_stop(client, &last_error) {
-        return Err(stop);
-    }
-    let stop =
-        backoff_after_agent_failure(client.timing.as_ref(), &last_error, attempt, max_attempts)
-            .await?;
-    Ok((last_error, stop))
-}
-
 pub(super) async fn spawn_with_retries(
     client: &mut SdkClient,
     cwd: PathBuf,
     thinking: Option<&str>,
 ) -> Result<bool, AgentError> {
     let resume_agent_id = cursor_resume_id(client);
-    let mut last_error;
-    let backoff_ceiling = crate::nested_budget_scopes::BudgetScopeLayer::AcpSpawnRetry
-        .effective_max_attempts(u32::MAX, false);
-    let mut attempts_used = 0_u32;
-    loop {
-        attempts_used = attempts_used.saturating_add(1);
-        match lifecycle(client)
-            .spawn_session(
-                bridge_spawn_args(client, &cwd, thinking),
-                resume_agent_id.as_deref(),
-                spawn_service_wire(client).as_deref(),
-            )
-            .await
-        {
-            Ok(s) => {
-                return Ok(record_spawn_success(
-                    client,
-                    s,
-                    cwd,
-                    resume_agent_id.as_deref(),
-                ));
-            }
-            Err(e) => {
-                let (err_msg, stop) =
-                    handle_spawn_failure(client, e, attempts_used, backoff_ceiling).await?;
-                last_error = err_msg;
-                if stop {
-                    break;
-                }
-            }
-        }
-    }
-    let retries = attempts_used.saturating_sub(1);
-    let message = format!(
-        "{}-sdk-bridge failed to spawn after {retries} {}. Last error:\n{last_error}",
-        client.model.backend.label(),
-        retries_noun(retries)
+    let lead = format!(
+        "{}-sdk-bridge failed to spawn",
+        client.model.backend.label()
     );
-    Err(AgentError(with_local_backend_hint(client, message)))
+    let spec = RetrySpec {
+        ceiling: BudgetScopeLayer::AcpAttempt.effective_attempt_ceiling(None, false),
+        failure_lead: &lead,
+        backoff: BackoffChoice::Consult,
+    };
+    retry_until_ok!(
+        client,
+        spec,
+        |c| attempt_spawn(c, &cwd, thinking, resume_agent_id.as_deref()).await,
+        |c, err| Ok(note_spawn_failure(c, err))
+    )
+}
+
+async fn attempt_spawn(
+    client: &mut SdkClient,
+    cwd: &Path,
+    thinking: Option<&str>,
+    resume_agent_id: Option<&str>,
+) -> Result<bool, AgentError> {
+    let session = lifecycle(client)
+        .spawn_session(
+            bridge_spawn_args(client, cwd, thinking),
+            resume_agent_id,
+            spawn_service_wire(client).as_deref(),
+        )
+        .await?;
+    Ok(record_spawn_success(
+        client,
+        session,
+        cwd.to_path_buf(),
+        resume_agent_id,
+    ))
 }
 
 pub(super) fn spawn_thinking_wire(client: &SdkClient) -> Option<String> {
@@ -144,12 +127,15 @@ fn emit_agent_started_log(client: &SdkClient) {
     crate::output::print_stdout_line(crate::output::WHO_A, &client.model.canonical());
 }
 
-fn note_spawn_failure(client: &mut SdkClient, err: AgentError) -> String {
-    let mut last_error = err.message;
+fn note_spawn_failure(client: &mut SdkClient, err: AgentError) -> AgentError {
+    let mut message = err.message;
     if lifecycle(client).tracks_resume_agent_id() && client.last_agent_id.take().is_some() {
-        last_error = format!("{last_error} (resume failed; will create)");
+        message = format!("{message} (resume failed; will create)");
     }
-    last_error
+    AgentError {
+        message,
+        fault: err.fault,
+    }
 }
 
 pub(super) fn remember_agent_id_from(client: &mut SdkClient, session: &SdkSession) {

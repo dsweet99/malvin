@@ -32,7 +32,8 @@ fn build_script_sources() -> Vec<(PathBuf, String)> {
     paths
         .into_iter()
         .map(|p| {
-            let text = fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()));
+            let text =
+                fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()));
             (p, text)
         })
         .collect()

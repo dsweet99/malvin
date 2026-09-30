@@ -58,14 +58,17 @@ pub(crate) const fn over_byte_cap(total_bytes: u64, max_bytes: Option<u64>) -> b
     total_bytes > cap
 }
 
-pub(crate) fn over_count_cap(run_count: usize, max_count: u64) -> bool {
-    max_count > 0 && u64::try_from(run_count).unwrap_or(u64::MAX) > max_count
+pub(crate) fn over_count_cap(run_count: usize, max_count: Option<u64>) -> bool {
+    let Some(cap) = max_count else {
+        return false;
+    };
+    u64::try_from(run_count).unwrap_or(u64::MAX) > cap
 }
 
-pub(crate) fn over_age_limit(oldest: Option<&PathBuf>, max_age_days: u64) -> bool {
-    if max_age_days == 0 {
+pub(crate) fn over_age_limit(oldest: Option<&PathBuf>, max_age_days: Option<u64>) -> bool {
+    let Some(max_age_days) = max_age_days else {
         return false;
-    }
+    };
     let Some(path) = oldest else {
         return false;
     };

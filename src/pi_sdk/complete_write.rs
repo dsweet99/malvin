@@ -144,4 +144,3 @@ impl Tool for CompleteWrite {
         self.inner.execute(tool_call_id, input, on_update).await
     }
 }
-

@@ -20,8 +20,7 @@ pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
         "[agent.*.*] usd_per_microtoken_*",
         BTreeMap::new(),
     );
-    let (logs, agent, default_workflow) =
-        parse_config_sections(text, &nicknames, disable_rpi);
+    let (logs, agent, default_workflow) = parse_config_sections(text, &nicknames, disable_rpi);
     MalvinConfig {
         mem_limit_gb,
         context_size,

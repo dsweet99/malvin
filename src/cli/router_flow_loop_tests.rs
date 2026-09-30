@@ -60,8 +60,8 @@ fn kiss_witness_restore_router_iteration_dotfiles() {
 
 #[test]
 fn exit_gates_failed_outranks_finalize_error() {
-    use super::router_flow_loop_decide::prefer_exit_gates_over_acp;
     use super::RouterLoopDecision;
+    use super::router_flow_loop_decide::prefer_exit_gates_over_acp;
     let gates = Some(RouterLoopDecision::ExitGatesFailed(
         "gate detail".to_string(),
     ));

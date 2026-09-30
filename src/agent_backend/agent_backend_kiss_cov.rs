@@ -47,7 +47,7 @@ fn kiss_witness_unified_sdk_client_and_backend() {
     backend.prompts_log_run_dir = Some(std::path::PathBuf::from("/tmp"));
     assert!(backend.prompts_log_run_dir.is_some());
     assert_eq!(
-        backend.max_acp_retries,
+        backend.max_acp_retries.get(),
         crate::support_paths::DEFAULT_MAX_ACP_RETRIES
     );
     assert!(!backend.has_open_coder_session());

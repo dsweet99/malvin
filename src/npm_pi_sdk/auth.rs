@@ -29,11 +29,7 @@ mod tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         let entry = tmp.path().join("rpc-entry.js");
         std::fs::write(&entry, "// fake npm pi entry\n").expect("write entry");
-        crate::acp::with_env(
-            "MALVIN_PI",
-            Some(entry.to_str().expect("utf8")),
-            body,
-        );
+        crate::acp::with_env("MALVIN_PI", Some(entry.to_str().expect("utf8")), body);
     }
 
     #[test]
@@ -74,7 +70,9 @@ mod tests {
     fn still_rejects_empty_env_key_builtins_without_credentials() {
         let _lock = crate::test_utils::test_env_lock();
         with_fake_npm_pi_entry(|| {
-            assert!(crate::pi_sdk::provider_known_in_rust_metadata("openai-codex"));
+            assert!(crate::pi_sdk::provider_known_in_rust_metadata(
+                "openai-codex"
+            ));
             if crate::pi_sdk::is_provider_authenticated("openai-codex") {
                 return;
             }

@@ -55,7 +55,10 @@ mod tests {
             model: "toy".into(),
         };
         let text = serde_json::to_string(&ensure).expect("ser");
-        assert_eq!(serde_json::from_str::<ManagerRequest>(&text).unwrap(), ensure);
+        assert_eq!(
+            serde_json::from_str::<ManagerRequest>(&text).unwrap(),
+            ensure
+        );
         let hold = ManagerRequest::Hold;
         let text = serde_json::to_string(&hold).expect("ser");
         assert_eq!(serde_json::from_str::<ManagerRequest>(&text).unwrap(), hold);

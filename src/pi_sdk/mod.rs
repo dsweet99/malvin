@@ -13,9 +13,9 @@ mod local_llm_lock;
 mod local_llm_ollama;
 mod local_llm_paths;
 mod local_llm_protocol;
-mod local_llms_config;
 #[cfg(test)]
 mod local_llm_test_lock;
+mod local_llms_config;
 mod map_agent_event;
 mod map_agent_event_end;
 mod map_event_summary;

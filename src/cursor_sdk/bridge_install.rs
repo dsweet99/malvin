@@ -118,7 +118,10 @@ fn lock_stamp() -> String {
 
 pub(crate) fn npm_deps_current(dest: &Path) -> bool {
     dest.join(SDK_MARKER).is_file()
-        && fs::read_to_string(dest.join(NPM_STAMP)).unwrap_or_default().trim() == lock_stamp()
+        && fs::read_to_string(dest.join(NPM_STAMP))
+            .unwrap_or_default()
+            .trim()
+            == lock_stamp()
 }
 
 fn verify_sdk_installed(dest: &Path) -> Result<(), String> {

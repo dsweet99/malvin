@@ -85,8 +85,30 @@ fn format_backend_consecutive_error_message_contains_details() {
 }
 
 #[test]
+fn config_zero_is_one_try_for_the_client_and_the_tracker() {
+    use super::backend_error_tracker::AcpRetryCount;
+    let retries = AcpRetryCount::at_least_one(0);
+    assert_eq!(retries.get(), 1);
+    assert_eq!(AcpRetryCount::at_least_one(5).get(), 5);
+    let mut tracker = BackendErrorTracker::with_limit(retries.as_consecutive_limit());
+    assert_eq!(tracker.max_consecutive(), 1);
+    tracker.set_max_consecutive(retries.as_consecutive_limit());
+    assert_eq!(tracker.max_consecutive(), 1);
+    let model = crate::model_id::parse_model_id("cursor:auto").expect("model");
+    let client = crate::agent_backend::SdkClient::with_max_retries(
+        model,
+        crate::agent_backend::test_support::test_io(),
+        0,
+    );
+    assert_eq!(client.max_acp_retries.get(), 1);
+    assert_eq!(client.backend_error_tracker().max_consecutive(), 1);
+}
+
+#[test]
 fn tracker_respects_custom_max_consecutive() {
-    let mut tracker = BackendErrorTracker::with_max_consecutive(2);
+    let mut tracker = BackendErrorTracker::with_limit(
+        super::backend_error_tracker::AcpRetryCount::at_least_one(2).as_consecutive_limit(),
+    );
     assert_eq!(tracker.max_consecutive(), 2);
     assert!(!tracker.record_error("timeout"));
     assert_eq!(tracker.consecutive_count(), 1);
@@ -100,7 +122,7 @@ async fn client_error_tracking_stops_and_exits_on_consecutive_same_errors() {
     let model = crate::model_id::parse_model_id("cursor:auto").expect("model");
     let mut client =
         crate::agent_backend::new_cursor(model, crate::agent_backend::test_support::test_io());
-    client.max_acp_retries = 5;
+    client.max_acp_retries = super::backend_error_tracker::AcpRetryCount::at_least_one(5);
 
     for i in 1..5 {
         assert!(!client.record_backend_error("same error"));
@@ -121,7 +143,7 @@ async fn spawn_style_success_clears_consecutive_streak_before_next_error() {
     let model = crate::model_id::parse_model_id("cursor:auto").expect("model");
     let mut client =
         crate::agent_backend::new_cursor(model, crate::agent_backend::test_support::test_io());
-    client.max_acp_retries = 3;
+    client.max_acp_retries = super::backend_error_tracker::AcpRetryCount::at_least_one(3);
     assert!(!client.record_backend_error("spawn failed"));
     assert!(!client.record_backend_error("spawn failed"));
     assert_eq!(client.backend_error_tracker().consecutive_count(), 2);

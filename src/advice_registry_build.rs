@@ -100,9 +100,7 @@ fn assert_no_duplicate_tags(entries: &[AdviceBuildEntry]) {
 fn description_for(content: &str, tag: &str) -> String {
     let first_line = content.lines().next().unwrap_or("");
     let Some(value) = first_line.strip_prefix("description:") else {
-        panic!(
-            "advice `{tag}`: first line must be `description: ...`, got: {first_line:?}"
-        );
+        panic!("advice `{tag}`: first line must be `description: ...`, got: {first_line:?}");
     };
     let desc = strip_optional_quotes(value.trim());
     assert!(

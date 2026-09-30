@@ -8,8 +8,7 @@ use malvin::model_id::{ParsedModel, parse_model_id};
 const QUIET_HELPTEXT: &str =
     "Print only `__MALVIN_DM_START__`/`END` bodies on stdout (default router)";
 
-const CREATIVE_HELPTEXT: &str =
-    "Be (more) creative for the REQUEST that immediately follows; optional probability in [0,1] (default 1.0 when set; repeatable)";
+const CREATIVE_HELPTEXT: &str = "Be (more) creative for the REQUEST that immediately follows; optional probability in [0,1] (default 1.0 when set; repeatable)";
 
 const WATCH_HELPTEXT: &str =
     "Re-copy the request `.md` into the run log dir before each outer loop (overwrite)";

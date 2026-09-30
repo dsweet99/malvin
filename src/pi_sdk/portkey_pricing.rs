@@ -95,7 +95,10 @@ fn entry_is_portkey(entry: &pi::sdk::ModelEntry) -> bool {
     if host_is_portkey(&entry.model.base_url) {
         return true;
     }
-    entry.headers.keys().any(|name| name_is_portkey_header(name))
+    entry
+        .headers
+        .keys()
+        .any(|name| name_is_portkey_header(name))
         || entry
             .model
             .headers

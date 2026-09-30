@@ -91,9 +91,9 @@ fn default_router_a_prompt(name: &str) -> Option<&'static str> {
     match name {
         ROUTER_A_MD => Some(include_str!("../../default_prompts/router_a.md")),
         ROUTER_A_AUDIT_MD => Some(include_str!("../../default_prompts/router_a_audit.md")),
-        ROUTER_A_AUDIT_NO_KPOP_MD => {
-            Some(include_str!("../../default_prompts/router_a_audit_no_kpop.md"))
-        }
+        ROUTER_A_AUDIT_NO_KPOP_MD => Some(include_str!(
+            "../../default_prompts/router_a_audit_no_kpop.md"
+        )),
         _ => None,
     }
 }
@@ -101,15 +101,15 @@ fn default_router_a_prompt(name: &str) -> Option<&'static str> {
 fn default_router_b_fragment(name: &str) -> Option<&'static str> {
     match name {
         ROUTER_B_SATISFY_MD => Some(include_str!("../../default_prompts/router_b_satisfy.md")),
-        ROUTER_B_SATISFY_BRIEF_MD => {
-            Some(include_str!("../../default_prompts/router_b_satisfy_brief.md"))
-        }
-        ROUTER_B_SATISFY_NO_KPOP_MD => {
-            Some(include_str!("../../default_prompts/router_b_satisfy_no_kpop.md"))
-        }
-        ROUTER_B_CREATIVE_LEAD_MD => {
-            Some(include_str!("../../default_prompts/router_b_creative_lead.md"))
-        }
+        ROUTER_B_SATISFY_BRIEF_MD => Some(include_str!(
+            "../../default_prompts/router_b_satisfy_brief.md"
+        )),
+        ROUTER_B_SATISFY_NO_KPOP_MD => Some(include_str!(
+            "../../default_prompts/router_b_satisfy_no_kpop.md"
+        )),
+        ROUTER_B_CREATIVE_LEAD_MD => Some(include_str!(
+            "../../default_prompts/router_b_creative_lead.md"
+        )),
         ROUTER_B_DONE_NOTE_MD => Some(include_str!("../../default_prompts/router_b_done_note.md")),
         _ => None,
     }

@@ -127,7 +127,6 @@ fn stale_cache_is_not_treated_as_fresh() {
     });
 }
 
-
 #[test]
 fn kiss_bundled_pi_sdk_models_refresh_cache_tests() {
     provider_cache_round_trip_and_freshness();

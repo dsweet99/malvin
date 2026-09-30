@@ -136,8 +136,8 @@ fn do_then_creative_on_next_router_request() {
 
 #[test]
 fn advice_with_tag_consumes_following_token() {
-    let tagged = classify_top_level_requests(&os(&["malvin", "--advice", "design"]))
-        .expect("classify");
+    let tagged =
+        classify_top_level_requests(&os(&["malvin", "--advice", "design"])).expect("classify");
     assert!(tagged.is_empty(), "{tagged:?}");
 }
 

@@ -14,7 +14,7 @@ mod do_flow_acp;
 pub(crate) mod do_flow_prompt;
 
 use do_flow_acp::run_do_acp;
-pub use do_flow_prompt::{prepare_do_prompt_store};
+pub use do_flow_prompt::prepare_do_prompt_store;
 
 #[derive(Debug)]
 pub struct DoArgs {
@@ -173,8 +173,8 @@ mod do_snapshot_tests {
 
 #[cfg(test)]
 mod kiss_static_fn_item_refs {
-    use super::run_do;
     use super::do_flow_acp::run_do_acp;
+    use super::run_do;
 
     #[test]
     fn kiss_static_fn_item_refs() {

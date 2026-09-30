@@ -5,7 +5,8 @@ use super::backend_error_tracker::{
 };
 use super::sdk_client::SdkClient;
 
-pub const LOCAL_BACKEND_GPU_MEMORY_HINT: &str = "Hint: the local server may be out of GPU memory; see `malvin --doc`, section Local LLMs.";
+pub const LOCAL_BACKEND_GPU_MEMORY_HINT: &str =
+    "Hint: the local server may be out of GPU memory; see `malvin --doc`, section Local LLMs.";
 
 const LOCAL_BACKEND_GPU_MEMORY_NEEDLES: &[&str] = &[
     "compute error",
@@ -38,7 +39,7 @@ pub(super) fn with_local_backend_hint(client: &SdkClient, message: String) -> St
 pub(super) fn backend_error_stop(client: &mut SdkClient, error: &str) -> Option<AgentError> {
     let label = client.model.backend.label();
     let message = if client.record_backend_error(error) {
-        format_backend_consecutive_error_message(label, error, client.max_acp_retries)
+        format_backend_consecutive_error_message(label, error, client.max_acp_retries.get())
     } else {
         let errors = is_keyless_local(client)
             .then(|| client.backend_error_tracker.local_retry_cap_errors())

@@ -62,7 +62,7 @@ pub struct SdkClient {
     pub model: ParsedModel,
     pub io: AgentIoOptions,
     pub prompts_log_run_dir: Option<PathBuf>,
-    pub max_acp_retries: u32,
+    pub max_acp_retries: super::backend_error_tracker::AcpRetryCount,
     pub(crate) coder: BegunCoderSession,
     pub(crate) last_agent_id: Option<String>,
     pub(crate) timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
@@ -82,11 +82,7 @@ impl SdkClient {
         io: AgentIoOptions,
         max_acp_retries: u32,
     ) -> Self {
-        let retries = if max_acp_retries == 0 {
-            1
-        } else {
-            max_acp_retries
-        };
+        let retries = super::backend_error_tracker::AcpRetryCount::at_least_one(max_acp_retries);
         Self {
             model,
             io,
@@ -96,8 +92,9 @@ impl SdkClient {
             last_agent_id: None,
             timing: None,
             header_lifecycle: SessionHeaderLifecycle::Unbound,
-            backend_error_tracker:
-                super::backend_error_tracker::BackendErrorTracker::with_max_consecutive(retries),
+            backend_error_tracker: super::backend_error_tracker::BackendErrorTracker::with_limit(
+                retries.as_consecutive_limit(),
+            ),
         }
     }
 
@@ -159,7 +156,7 @@ impl SdkClient {
 
     pub fn record_backend_error(&mut self, error: &str) -> bool {
         self.backend_error_tracker
-            .set_max_consecutive(self.max_acp_retries);
+            .set_max_consecutive(self.max_acp_retries.as_consecutive_limit());
         self.backend_error_tracker.record_error(error)
     }
 

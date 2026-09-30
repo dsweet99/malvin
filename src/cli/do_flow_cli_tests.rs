@@ -1,5 +1,5 @@
-use crate::cli::config_defaults::parse_cli_with_config_defaults;
 use crate::cli::Cli;
+use crate::cli::config_defaults::parse_cli_with_config_defaults;
 use clap::Parser;
 use malvin::config::DEFAULT_MAX_ACP_RETRIES;
 use malvin::test_utils::with_isolated_home;

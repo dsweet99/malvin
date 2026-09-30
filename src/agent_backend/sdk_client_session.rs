@@ -33,8 +33,7 @@ impl SdkClient {
     ) -> Result<CoderSessionEnsure, AgentError> {
         if self.header_lifecycle.is_unbound() {
             return Err(AgentError(
-                "start_coder_session requires bind_session_header before ensure/deliver"
-                    .into(),
+                "start_coder_session requires bind_session_header before ensure/deliver".into(),
             ));
         }
         let ensure = self.ensure_coder_session(cwd).await?;

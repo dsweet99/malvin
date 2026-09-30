@@ -36,10 +36,7 @@ pub(crate) fn take_stdio_forward_stderr(
     Ok((stdin, stdout))
 }
 
-async fn forward_stderr_as_warnings(
-    stderr: ChildStderr,
-    drop_line: impl Fn(&str) -> bool,
-) {
+async fn forward_stderr_as_warnings(stderr: ChildStderr, drop_line: impl Fn(&str) -> bool) {
     let mut reader = BufReader::new(stderr);
     let mut line = String::new();
     loop {

@@ -90,17 +90,12 @@ pub(crate) fn ensure_provider_running(provider: &str) -> Result<Option<u32>, Str
 
 #[must_use]
 pub(crate) fn capabilities_include_tools(capabilities: &[String]) -> bool {
-    capabilities
-        .iter()
-        .any(|c| c.eq_ignore_ascii_case("tools"))
+    capabilities.iter().any(|c| c.eq_ignore_ascii_case("tools"))
 }
 
 fn trim_openai_v1_suffix(base: &str) -> String {
     let trimmed = base.trim().trim_end_matches('/');
-    trimmed
-        .strip_suffix("/v1")
-        .unwrap_or(trimmed)
-        .to_string()
+    trimmed.strip_suffix("/v1").unwrap_or(trimmed).to_string()
 }
 
 fn ollama_api_root() -> String {

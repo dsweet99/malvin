@@ -86,11 +86,7 @@ fn path_tool_summary(n: &str, path: &str) -> Option<String> {
     None
 }
 
-fn fallback_summary(
-    label: &str,
-    n: &str,
-    args: Option<&serde_json::Map<String, Value>>,
-) -> String {
+fn fallback_summary(label: &str, n: &str, args: Option<&serde_json::Map<String, Value>>) -> String {
     let title = titled_tool_name(n).unwrap_or_else(|| title_case_label(label));
     match primary_arg_snippet(args) {
         Some(snippet) => format!("{title} {snippet}"),
@@ -110,9 +106,9 @@ fn titled_tool_name(n: &str) -> Option<String> {
 
 fn title_case_label(label: &str) -> String {
     let mut chars = label.chars();
-    chars
-        .next()
-        .map_or_else(String::new, |first| first.to_uppercase().collect::<String>() + chars.as_str())
+    chars.next().map_or_else(String::new, |first| {
+        first.to_uppercase().collect::<String>() + chars.as_str()
+    })
 }
 
 fn primary_arg_snippet(args: Option<&serde_json::Map<String, Value>>) -> Option<String> {

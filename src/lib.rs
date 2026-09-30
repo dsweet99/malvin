@@ -101,7 +101,6 @@ mod tracing_init;
 mod user_home;
 pub use active_agent_heartbeat::active_agent_heartbeat_stats;
 pub use user_home::user_home_dir;
-pub mod tool_summary;
 pub mod acp;
 pub mod agent_backend;
 pub mod ansi_strip;
@@ -113,6 +112,7 @@ pub mod npm_pi_sdk;
 pub mod pi_sdk;
 #[cfg(test)]
 pub(crate) mod sdk_bridge_build;
+pub mod tool_summary;
 pub use acp::{AgentError, AgentFault, AgentIoOptions, AuthError, CoderPromptOptions};
 #[cfg(unix)]
 pub use acp::{snapshot_pids, terminate_agent_process_group};

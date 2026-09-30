@@ -72,11 +72,7 @@ fn configured_allowlist(cfg: &LocalLlmsConfig) -> Option<HashSet<String>> {
         .map(|m| m.id.trim().to_string())
         .filter(|id| !id.is_empty())
         .collect();
-    if ids.is_empty() {
-        None
-    } else {
-        Some(ids)
-    }
+    if ids.is_empty() { None } else { Some(ids) }
 }
 
 pub(crate) fn filter_listings_by_local_llms_config(

@@ -1,11 +1,9 @@
 use std::path::Path;
 
-use crate::acp::{
-    AgentError, AgentFault, CoderPromptOptions, agent_string_is_cursor_agent_busy,
-    backoff_after_agent_failure, retries_noun,
-};
+use crate::acp::{AgentError, AgentFault, CoderPromptOptions};
+use crate::nested_budget_scopes::BudgetScopeLayer;
 
-use super::backend_error_stop::{backend_error_stop, with_local_backend_hint};
+use super::acp_attempt_loop::{BackoffChoice, RetrySpec, retry_until_ok};
 use super::backend_lifecycle::BackendLifecycle;
 use super::sdk_client::SdkClient;
 use super::sdk_client_active::ActiveCoderSession;
@@ -35,57 +33,44 @@ async fn execute_prompt_with_retries(
     opts: &CoderPromptOptions<'_>,
 ) -> Result<(), AgentError> {
     let single = opts.single_attempt;
-    let backoff_ceiling = crate::nested_budget_scopes::BudgetScopeLayer::AcpSpawnRetry
-        .effective_max_attempts(u32::MAX, single);
-    let mut last_error;
-    let mut attempts_used = 0_u32;
-    loop {
-        attempts_used = attempts_used.saturating_add(1);
-        match run_one(client, prompt, opts.llm_phase).await {
-            Ok(()) => {
-                client.record_backend_success();
-                return Ok(());
-            }
-            Err(e)
-                if matches!(
-                    e.fault,
-                    AgentFault::BackendRetryLimit | AgentFault::OutputCap
-                ) =>
-            {
-                return Err(e);
-            }
-            Err(e) => {
-                teardown_sdk_session_after_transport_error(client, &e).await;
-                if opts.fresh_agent_on_retry {
-                    force_fresh_agent_for_retry(client).await;
-                }
-                last_error = e.message;
-                if let Some(stop) = backend_error_stop(client, &last_error) {
-                    return Err(stop);
-                }
-                if single {
-                    break;
-                }
-                if backoff_after_agent_failure(
-                    client.timing.as_ref(),
-                    &last_error,
-                    attempts_used,
-                    backoff_ceiling,
-                )
-                .await?
-                {
-                    break;
-                }
-            }
-        }
+    let fresh = opts.fresh_agent_on_retry;
+    let phase = opts.llm_phase;
+    let lead = format!("{} SDK prompt failed", client.model.backend.label());
+    let spec = RetrySpec {
+        ceiling: BudgetScopeLayer::AcpAttempt.effective_attempt_ceiling(None, single),
+        failure_lead: &lead,
+        backoff: if single {
+            BackoffChoice::StopWithoutSleep
+        } else {
+            BackoffChoice::Consult
+        },
+    };
+    retry_until_ok!(
+        client,
+        spec,
+        |c| run_one(c, prompt, phase).await,
+        |c, err| recover_prompt_failure(c, err, fresh).await
+    )?;
+    client.record_backend_success();
+    Ok(())
+}
+
+async fn recover_prompt_failure(
+    client: &mut SdkClient,
+    err: AgentError,
+    fresh_agent_on_retry: bool,
+) -> Result<AgentError, AgentError> {
+    if matches!(
+        err.fault,
+        AgentFault::BackendRetryLimit | AgentFault::OutputCap
+    ) {
+        return Err(err);
     }
-    let retries = attempts_used.saturating_sub(1);
-    let message = format!(
-        "{} SDK prompt failed after {retries} {}. Last error:\n{last_error}",
-        client.model.backend.label(),
-        retries_noun(retries)
-    );
-    Err(AgentError(with_local_backend_hint(client, message)))
+    teardown_sdk_session_after_transport_error(client, &err).await;
+    if fresh_agent_on_retry {
+        force_fresh_agent_for_retry(client).await;
+    }
+    Ok(err)
 }
 
 pub(super) async fn teardown_sdk_session_after_transport_error(
@@ -97,7 +82,7 @@ pub(super) async fn teardown_sdk_session_after_transport_error(
     }
     let forget_agent = BackendLifecycle::of(client.model.backend)
         .forgets_resume_id_on_busy_teardown()
-        && (err.fault == AgentFault::CursorBusy || agent_string_is_cursor_agent_busy(&err.message));
+        && err.fault == AgentFault::CursorBusy;
     let _ = client.end_coder_session().await;
     if forget_agent {
         client.last_agent_id = None;

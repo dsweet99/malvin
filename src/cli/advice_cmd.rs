@@ -16,10 +16,7 @@ fn advice_entry(tag: &str) -> Result<&'static AdviceEntry, String> {
     }
     ADVICE_ENTRIES.iter().find(|e| e.tag == tag).ok_or_else(|| {
         let known: Vec<&str> = ADVICE_ENTRIES.iter().map(|e| e.tag).collect();
-        format!(
-            "unknown --advice TAG `{tag}` (known: {})",
-            known.join(", ")
-        )
+        format!("unknown --advice TAG `{tag}` (known: {})", known.join(", "))
     })
 }
 

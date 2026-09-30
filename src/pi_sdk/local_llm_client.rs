@@ -51,7 +51,9 @@ fn quick_ok(req: ManagerRequest) -> Result<(), String> {
     if resp.ok {
         Ok(())
     } else {
-        Err(resp.error.unwrap_or_else(|| "manager request failed".into()))
+        Err(resp
+            .error
+            .unwrap_or_else(|| "manager request failed".into()))
     }
 }
 
@@ -91,7 +93,9 @@ fn round_trip(sock: &Path, req: &ManagerRequest, io: Duration) -> Result<Manager
 fn connect(sock: &Path, io: Duration) -> Result<UnixStream, String> {
     let stream =
         UnixStream::connect(sock).map_err(|e| format!("connect {}: {e}", sock.display()))?;
-    stream.set_read_timeout(Some(io)).map_err(|e| e.to_string())?;
+    stream
+        .set_read_timeout(Some(io))
+        .map_err(|e| e.to_string())?;
     stream
         .set_write_timeout(Some(io))
         .map_err(|e| e.to_string())?;

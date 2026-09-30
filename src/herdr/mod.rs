@@ -10,8 +10,8 @@ mod trace;
 
 pub use env::{strip_herdr_env, strip_herdr_env_tokio};
 pub use lifecycle::{notify_reclaim, notify_run_end, notify_run_start, notify_working};
-pub use run_done::notify_run_done;
 pub use reset::reset_to_not_working;
+pub use run_done::notify_run_done;
 
 #[cfg(test)]
 pub(crate) use lifecycle::{

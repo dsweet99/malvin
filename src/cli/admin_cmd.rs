@@ -39,8 +39,7 @@ pub fn run_admin(args: AdminArgs, current_model: &str) -> Result<(), String> {
 fn run_setup_cursor() -> Result<(), String> {
     use malvin::cursor_sdk::bridge_install;
     let dest = bridge_install::default_install_dir();
-    bridge_install::install_into(&dest)
-        .map_err(|e| bridge_install::install_failed_message(&e))?;
+    bridge_install::install_into(&dest).map_err(|e| bridge_install::install_failed_message(&e))?;
     malvin::output::print_stdout_line(
         malvin::output::MALVIN_WHO,
         &format!("Cursor SDK bridge ready in {}", dest.display()),

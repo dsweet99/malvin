@@ -81,10 +81,7 @@ const ROUTER_ONLY_WITH_PURE_DO: &[(&str, &str)] = &[
     ("watch", "--watch"),
 ];
 
-fn reject_router_only_flags_on_pure_do(
-    matches: &ArgMatches,
-    cli: &Cli,
-) -> Result<(), clap::Error> {
+fn reject_router_only_flags_on_pure_do(matches: &ArgMatches, cli: &Cli) -> Result<(), clap::Error> {
     if !cli.do_workflow() || cli.has_router_request() {
         return Ok(());
     }

@@ -138,7 +138,10 @@ fn prompt_fragment(store: &PromptStore, name: &str) -> Result<String, String> {
         .map(|body| body.trim().to_string())
 }
 
-fn router_b_creative_lead(store: &PromptStore, flags: RouterBPromptFlags) -> Result<String, String> {
+fn router_b_creative_lead(
+    store: &PromptStore,
+    flags: RouterBPromptFlags,
+) -> Result<String, String> {
     if !router_b_uses_creative_lead(flags) {
         return Ok(String::new());
     }

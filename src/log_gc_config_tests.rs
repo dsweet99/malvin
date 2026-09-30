@@ -3,10 +3,10 @@ use super::*;
 #[test]
 fn parse_logs_gc_config_max_count_contract() {
     let default_count = LogsGcConfig::default().max_count;
-    let cases: &[(&str, u64)] = &[
+    let cases: &[(&str, Option<u64>)] = &[
         ("[logs]\n", default_count),
-        ("[logs]\nmax_count = 500\n", 500),
-        ("[logs]\nmax_count = 0\n", 0),
+        ("[logs]\nmax_count = 500\n", Some(500)),
+        ("[logs]\nmax_count = 0\n", None),
         ("[logs]\nmax_count = true\n", default_count),
     ];
     for (toml, want_count) in cases {
@@ -19,7 +19,7 @@ fn parse_logs_gc_config_max_count_contract() {
 fn parse_logs_gc_config_reads_toml_section() {
     let cfg =
         parse_logs_gc_config("[logs]\nmax_age_days = 7\nmax_bytes = \"1MiB\"\n").expect("parse");
-    assert_eq!(cfg.max_age_days, 7);
+    assert_eq!(cfg.max_age_days, Some(7));
     assert_eq!(cfg.max_bytes, parse_byte_size("1MiB"));
     assert_eq!(cfg.max_count, LogsGcConfig::default().max_count);
 }
@@ -27,11 +27,11 @@ fn parse_logs_gc_config_reads_toml_section() {
 #[test]
 fn parse_logs_gc_config_max_age_days_contract() {
     let default_days = LogsGcConfig::default().max_age_days;
-    let cases: &[(&str, u64)] = &[
+    let cases: &[(&str, Option<u64>)] = &[
         ("[logs]\n", default_days),
-        ("[logs]\nmax_age_days = 7\n", 7),
-        ("[logs]\nmax_age_days = \"14\"\n", 14),
-        ("[logs]\nmax_age_days = 0\n", 0),
+        ("[logs]\nmax_age_days = 7\n", Some(7)),
+        ("[logs]\nmax_age_days = \"14\"\n", Some(14)),
+        ("[logs]\nmax_age_days = 0\n", None),
         ("[logs]\nmax_age_days = true\n", default_days),
         ("[logs]\nmax_age_days = 3.5\n", default_days),
         ("[logs]\nmax_age_days = []\n", default_days),

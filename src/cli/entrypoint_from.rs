@@ -1,3 +1,4 @@
+use super::entrypoint_info_flags::entrypoint_advice_or_doc_exit;
 use super::{
     DefaultRouteDispatch, Exit, GatesOnlyDispatch, dispatch_command, dispatch_default_route,
     dispatch_do_workflow, dispatch_gates_only_route, dispatch_mixed_requests, finish_entrypoint,
@@ -9,7 +10,6 @@ use crate::cli::entrypoint_checks::{
     ensure_malvin_checks_for_command, ensure_malvin_checks_for_default_route,
     ensure_malvin_checks_for_do_workflow, ensure_malvin_checks_for_gates_only_route,
 };
-use super::entrypoint_info_flags::entrypoint_advice_or_doc_exit;
 
 fn parse_cli_args_or_exit(
     args: impl IntoIterator<Item = impl Into<std::ffi::OsString> + Clone>,

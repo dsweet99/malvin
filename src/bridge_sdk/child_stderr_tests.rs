@@ -15,10 +15,7 @@ fn payload_strips_trailing_newlines() {
         backend_stderr_warning_payload("ERROR boom\n"),
         Some("ERROR boom")
     );
-    assert_eq!(
-        backend_stderr_warning_payload("warn\r\n"),
-        Some("warn")
-    );
+    assert_eq!(backend_stderr_warning_payload("warn\r\n"), Some("warn"));
 }
 
 #[test]
@@ -28,7 +25,9 @@ fn emit_logs_as_warning_who_tag() {
     let lines = crate::output::take_captured_stderr_lines();
     let warning_tag = crate::output::format_who_tag_delim(crate::output::WARNING_WHO);
     assert!(
-        lines.iter().any(|l| l.contains(&warning_tag) && l.contains("ERROR from backend")),
+        lines
+            .iter()
+            .any(|l| l.contains(&warning_tag) && l.contains("ERROR from backend")),
         "expected warning-tagged backend stderr, got {lines:?}"
     );
 }

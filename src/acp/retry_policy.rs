@@ -1,5 +1,3 @@
-use crate::support_paths::DEFAULT_MAX_ACP_RETRIES;
-
 #[must_use]
 pub(crate) const fn retries_noun(n: u32) -> &'static str {
     if n == 1 { "retry" } else { "retries" }
@@ -90,40 +88,63 @@ pub(crate) enum AgentRetryOutcome {
     Sleep(std::time::Duration),
 }
 
-fn agent_retry_should_stop(last_error: &str) -> bool {
+pub(crate) fn agent_retry_should_stop(last_error: &str) -> bool {
     last_error.contains("workspace session restore failed")
         || crate::run_timing::acp_post_run::merge_error_mentions_restore(last_error)
 }
 
+pub(crate) fn agent_text_is_non_retryable(msg: &str) -> bool {
+    agent_string_is_upgrade_plan(msg)
+        || agent_string_is_cannot_use_model(msg)
+        || agent_string_is_model_does_not_support_tools(msg)
+        || agent_string_is_usage_limit(msg)
+        || agent_string_is_openrouter_billing_failure(msg)
+        || agent_string_is_openrouter_missing_content(msg)
+}
+
 pub(crate) fn plan_agent_retry(
-    last_error: &str,
+    err: &AgentError,
+    attempt: u32,
+    ceiling: AttemptCeiling,
+) -> Result<AgentRetryOutcome, AgentError> {
+    match err.fault {
+        AgentFault::NonRetryable => return Err(err.clone()),
+        AgentFault::RestoreStop => return Ok(AgentRetryOutcome::StopRetrying),
+        AgentFault::SessionNewInternal => return Ok(session_new_internal_outcome(attempt)),
+        AgentFault::Ordinary
+        | AgentFault::SessionDead
+        | AgentFault::CursorBusy
+        | AgentFault::StaleAuth
+        | AgentFault::BackendRetryLimit
+        | AgentFault::OutputCap
+        | AgentFault::Http2Transport => {}
+    }
+    if !ceiling.allows_attempt(attempt) {
+        return Ok(AgentRetryOutcome::StopRetrying);
+    }
+    Ok(AgentRetryOutcome::Sleep(retry_sleep(attempt)))
+}
+
+const fn session_new_internal_outcome(attempt: u32) -> AgentRetryOutcome {
+    if attempt >= SESSION_NEW_INTERNAL_MAX_SPAWN_ATTEMPTS {
+        return AgentRetryOutcome::StopRetrying;
+    }
+    AgentRetryOutcome::Sleep(retry_sleep(attempt))
+}
+
+const fn retry_sleep(attempt: u32) -> std::time::Duration {
+    let secs = if attempt == 1 { 1_u64 } else { 3_u64 };
+    std::time::Duration::from_secs(secs)
+}
+
+#[cfg(test)]
+pub(crate) fn plan_text_retry(
+    msg: &str,
     attempt: u32,
     max_attempts: u32,
 ) -> Result<AgentRetryOutcome, AgentError> {
-    if agent_string_is_upgrade_plan(last_error)
-        || agent_string_is_cannot_use_model(last_error)
-        || agent_string_is_model_does_not_support_tools(last_error)
-        || agent_string_is_usage_limit(last_error)
-        || agent_string_is_openrouter_billing_failure(last_error)
-        || agent_string_is_openrouter_missing_content(last_error)
-    {
-        return Err(AgentError(last_error.to_string()));
-    }
-    if agent_retry_should_stop(last_error) {
-        return Ok(AgentRetryOutcome::StopRetrying);
-    }
-    if agent_string_is_session_new_internal_error(last_error) {
-        if attempt >= SESSION_NEW_INTERNAL_MAX_SPAWN_ATTEMPTS {
-            return Ok(AgentRetryOutcome::StopRetrying);
-        }
-        let secs = if attempt == 1 { 1_u64 } else { 3_u64 };
-        return Ok(AgentRetryOutcome::Sleep(std::time::Duration::from_secs(secs)));
-    }
-    if attempt >= max_attempts {
-        return Ok(AgentRetryOutcome::StopRetrying);
-    }
-    let secs = if attempt == 1 { 1_u64 } else { 3_u64 };
-    Ok(AgentRetryOutcome::Sleep(std::time::Duration::from_secs(secs)))
+    let err = AgentError(msg.to_string());
+    plan_agent_retry(&err, attempt, AttemptCeiling::at_most_u32(max_attempts))
 }
 
 #[cfg(test)]

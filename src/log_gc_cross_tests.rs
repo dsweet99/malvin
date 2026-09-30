@@ -85,8 +85,8 @@ fn prune_run_dirs_never_deletes_protected_active_run() {
     std::fs::create_dir_all(&current).expect("current");
     let mut runs = vec![current.clone(), old.clone()];
     let config = LogsGcConfig {
-        max_count: 1,
-        max_age_days: 0,
+        max_count: Some(1),
+        max_age_days: None,
         max_bytes: None,
     };
     let (removed, _) = prune_run_dirs(&mut runs, &config, Some(current.as_path()));
