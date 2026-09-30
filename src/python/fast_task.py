@@ -242,6 +242,17 @@ def ft_local_rpi_needs_host_agent(
     )
 
 
+def ft_assert_docker_malvin_runnable(malvin_binary: Path | None) -> None:
+    if malvin_binary is None or ft_host_malvin_is_linux_elf(malvin_binary):
+        return
+    raise click.ClickException(
+        f"Host malvin binary {malvin_binary} is not a Linux ELF executable, so the "
+        "Linux agent container cannot run it (exec format error). Run on a Linux "
+        "host, pass a local model (e.g. --model rpi:local/ollama/<model>) to run "
+        "malvin on the host, or use --agent=cursor."
+    )
+
+
 def ft_host_agent_cmd(
     *,
     workspace: Path,
@@ -938,6 +949,8 @@ def ft_run_solve(
     )
     if not dry_run and not skip_docker and not ft_docker_available():
         raise click.ClickException("Docker daemon is not available")
+    if not dry_run and not skip_docker:
+        ft_assert_docker_malvin_runnable(host_malvin)
     run_root = ft_run_root(task_id, results_dir)
     workspace = ft_stage_workspace(task_dir, run_root)
     if skip_docker:
@@ -1261,6 +1274,13 @@ def _ft_test_docker_agent_cmd_pi() -> None:
         elf.write_bytes(b"\x7fELF" + b"\0" * 32)
         assert ft_host_malvin_is_linux_elf(elf) is True
         assert ft_host_malvin_is_linux_elf(mach) is False
+        ft_assert_docker_malvin_runnable(elf)
+        ft_assert_docker_malvin_runnable(None)
+        try:
+            ft_assert_docker_malvin_runnable(mach)
+            raise AssertionError("expected non-ELF host malvin rejection")
+        except click.ClickException as exc:
+            assert "not a Linux ELF" in str(exc)
         assert (
             ft_local_rpi_needs_host_agent(
                 agent_name=AGENT_MALVIN,
