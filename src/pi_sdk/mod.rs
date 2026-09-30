@@ -25,6 +25,8 @@ mod models_refresh;
 mod models_refresh_merge;
 mod openrouter_billed_cost;
 mod openrouter_pricing;
+mod portkey_pricing;
+pub(crate) use portkey_pricing::apply_portkey_cost_usd;
 mod runtime;
 mod session;
 mod session_fake;

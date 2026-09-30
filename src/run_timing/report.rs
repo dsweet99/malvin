@@ -17,6 +17,7 @@ use report_timing_line::format_timing_stdout_line_from_json;
 fn print_timing_and_cost_summary(json: &Value) {
     print_stdout_line(MALVIN_WHO, &format_timing_stdout_line_from_json(json));
     print_stdout_line(MALVIN_WHO, &format_cost_stdout_line_from_json(json));
+    crate::herdr::notify_run_done();
 }
 
 pub(super) fn duration_ms_u64(d: Duration) -> u64 {

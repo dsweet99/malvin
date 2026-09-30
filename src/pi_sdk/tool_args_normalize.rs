@@ -1,12 +1,21 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
+use pi::jobs::JobSessionScope;
 use pi::sdk::{Tool, ToolOutput, ToolUpdate};
-use pi::tools::ToolEffects;
+use pi::tools::{ToolEffects, ToolOrigin};
 use serde_json::Value;
 
 const PATH_TOOLS: [&str; 5] = ["read", "write", "edit", "ls", "find"];
 const PATH_ALIASES: [&str; 3] = ["file", "file_path", "filePath"];
 
-pub(super) fn wrap_tool_args(tool: Box<dyn Tool>) -> Box<dyn Tool> {
+pub(super) fn bind_shared_job_scope(inner: &mut Arc<dyn Tool>, scope: JobSessionScope) {
+    if let Some(tool) = Arc::get_mut(inner) {
+        tool.bind_job_session_scope(scope);
+    }
+}
+
+pub(super) fn wrap_tool_args(tool: Arc<dyn Tool>) -> Box<dyn Tool> {
     let path_aliases = PATH_TOOLS.contains(&tool.name());
     let schema = tool.parameters();
     Box::new(NormalizedArgsTool {
@@ -57,7 +66,7 @@ pub(super) fn coerce_string_scalars(mut input: Value, schema: &Value) -> Value {
 }
 
 struct NormalizedArgsTool {
-    inner: Box<dyn Tool>,
+    inner: Arc<dyn Tool>,
     schema: Value,
     path_aliases: bool,
 }
@@ -82,6 +91,14 @@ impl Tool for NormalizedArgsTool {
 
     fn effects(&self) -> ToolEffects {
         self.inner.effects()
+    }
+
+    fn bind_job_session_scope(&mut self, scope: JobSessionScope) {
+        bind_shared_job_scope(&mut self.inner, scope);
+    }
+
+    fn origin(&self) -> ToolOrigin {
+        self.inner.origin()
     }
 
     async fn execute(

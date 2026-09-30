@@ -23,7 +23,7 @@ fn session_mutex() -> &'static Mutex<Session> {
 }
 
 #[allow(clippy::missing_const_for_fn)]
-fn live_io_allowed() -> bool {
+pub(super) fn live_io_allowed() -> bool {
     #[cfg(test)]
     {
         std::env::var_os("MALVIN_TEST_HERDR_IO").is_some()
@@ -104,6 +104,10 @@ pub fn notify_working() {
 }
 
 fn notify_working_inner() {
+    report_active_state("working");
+}
+
+pub(super) fn report_active_state(state: &str) {
     if !live_io_allowed() {
         return;
     }
@@ -114,12 +118,12 @@ fn notify_working_inner() {
         &snap.socket_path,
         &report_agent(
             &snap.pane_id,
-            "working",
+            state,
             snap.agent_session_id.as_deref(),
             next_seq(),
         ),
     ) {
-        log_herdr_failure(snap.run_dir.as_deref(), "working", &detail);
+        log_herdr_failure(snap.run_dir.as_deref(), state, &detail);
     }
 }
 
@@ -137,7 +141,7 @@ fn notify_run_end_inner() {
     };
     let idle = report_agent(
         &snap.pane_id,
-        "idle",
+        super::run_done::terminal_agent_state(),
         snap.agent_session_id.as_deref(),
         next_seq(),
     );

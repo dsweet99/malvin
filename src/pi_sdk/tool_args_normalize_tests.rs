@@ -3,7 +3,7 @@ use crate::pi_sdk::isolated_bash::IsolatedToolFactory;
 use pi::sdk::{Config, Tool, ToolFactory, default_tool_registry};
 use serde_json::json;
 
-fn builtin(name: &str, cwd: &std::path::Path) -> Box<dyn Tool> {
+fn builtin(name: &str, cwd: &std::path::Path) -> std::sync::Arc<dyn Tool> {
     default_tool_registry(&[name], cwd, &Config::default())
         .into_tools()
         .into_iter()

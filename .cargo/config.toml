@@ -5,6 +5,9 @@ rustflags = ["--cfg", "cargo_difftests"]
 
 [env]
 RUST_TEST_THREADS = "1"
+# pi_agent_rust >= 0.3 pulls fsqlite 0.3.x, whose pager and btree crates use
+# `#![feature(core_intrinsics)]` on x86_64. Allow unstable features for those two crates only.
+RUSTC_BOOTSTRAP = "fsqlite_pager,fsqlite_btree"
 
 [unstable]
 profile-rustflags = true

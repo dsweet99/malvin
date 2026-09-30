@@ -19,6 +19,7 @@ pub struct NpmPiSession {
     pub reader_dead: Arc<AtomicBool>,
     pub work_dir: PathBuf,
     pub log: StreamLog,
+    pub pi_model: Option<(String, String)>,
 }
 
 impl std::ops::Deref for NpmPiSession {

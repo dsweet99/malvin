@@ -115,7 +115,7 @@ fn finish_settled(session: &NpmPiSession, state: &mut TurnState) {
     let ev = BridgeEvent::RunDone {
         status: RunDoneStatus::Finished,
         result: (!text.is_empty()).then_some(text),
-        usage: state.usage.take(),
+        usage: usage_after_portkey(session, state.usage.take()),
         error: None,
         duration_ms: None,
     };
@@ -123,6 +123,17 @@ fn finish_settled(session: &NpmPiSession, state: &mut TurnState) {
         crate::bridge_sdk::record_sdk_usage(session.timing.as_ref(), u);
     }
     feed_and_handle_run_done(session, &ev);
+}
+
+fn usage_after_portkey(
+    session: &NpmPiSession,
+    usage: Option<serde_json::Value>,
+) -> Option<serde_json::Value> {
+    let mut usage = usage?;
+    if let Some((provider, model)) = &session.pi_model {
+        crate::pi_sdk::apply_portkey_cost_usd(provider, model, &mut usage);
+    }
+    Some(usage)
 }
 
 fn feed_and_handle_run_done(session: &NpmPiSession, ev: &BridgeEvent) {

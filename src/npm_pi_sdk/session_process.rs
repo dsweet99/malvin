@@ -104,7 +104,14 @@ pub(super) fn build_npm_pi_session(
         reader_dead: Arc::new(AtomicBool::new(false)),
         work_dir: args.cwd.to_path_buf(),
         log: StreamLog::from_spawn(args),
+        pi_model: pi_model_pair(args.model),
     })
+}
+
+fn pi_model_pair(model: &crate::model_id::ParsedModel) -> Option<(String, String)> {
+    model
+        .pi_provider_and_model()
+        .map(|(provider, id)| (provider.to_string(), id.to_string()))
 }
 
 #[cfg(test)]
