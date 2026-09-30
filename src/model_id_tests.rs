@@ -270,6 +270,19 @@ fn backend_labels_drain_prefixes_and_provider_split() {
 }
 
 #[test]
+fn bridge_wire_model_follows_backend_policy() {
+    let cursor = parse_model_id("cursor:auto[thinking=high]").expect("cursor");
+    assert_eq!(
+        cursor.backend.bridge_wire_model(&cursor),
+        cursor.cursor_bridge_model()
+    );
+    let npm = parse_model_id("pi:openai/gpt-4o[thinking=low]").expect("npm");
+    assert_eq!(npm.backend.bridge_wire_model(&npm), "openai/gpt-4o");
+    let codex = parse_model_id("codex:gpt-5.6[service=foo]").expect("codex");
+    assert_eq!(codex.backend.bridge_wire_model(&codex), "gpt-5.6");
+}
+
+#[test]
 fn bracket_format_split_metamorphic_and_reject_fuzz() {
     let params = vec![
         ModelParam {

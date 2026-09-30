@@ -14,10 +14,7 @@ pub(crate) fn emit_router_summary_line(
     num_iter: usize,
 ) -> Result<(), String> {
     let logs_dir = format_logs_dir(&artifacts.run_dir)?;
-    print_stdout_line(
-        MALVIN_WHO,
-        &format_router_summary_line(num_iter, &logs_dir),
-    );
+    print_stdout_line(MALVIN_WHO, &format_router_summary_line(num_iter, &logs_dir));
     Ok(())
 }
 

@@ -14,11 +14,12 @@ fn write_router_prompt_files(prompt_root: &std::path::Path) {
         ("mbc2.md", "MBC2 {{ user_prompt }}\n"),
         (
             ROUTER_A_MD,
-            "ROUTER_A {{ user_request_path }} {{ code_extra }}\n",
+            "ROUTER_A {{ user_request_path }} {{ code_extra }} {{ audit_directive }}\n",
         ),
         ("router_code_extra.md", "CODE_EXTRA\n"),
         ("kpop_common_no_kpop.md", "\n"),
-        ("router_a_no_kpop.md", "ROUTER_A_NO_KPOP {{ code_extra }}\n"),
+        ("router_a_audit.md", "AUDIT_KPOP\n"),
+        ("router_a_audit_no_kpop.md", "AUDIT_NO_KPOP\n"),
     ];
     for (name, content) in files {
         std::fs::write(prompt_root.join(name), content).expect("write prompt");
@@ -166,14 +167,16 @@ fn initial_prompt_respects_no_kpop_and_gates() {
         .expect("initial");
         assert!(out.body.contains("HEADER_BODY"));
         assert!(!out.body.contains("KPOP_BODY"));
-        assert!(out.body.contains("ROUTER_A_NO_KPOP"));
+        assert!(out.body.contains("ROUTER_A"));
+        assert!(out.body.contains("AUDIT_NO_KPOP"));
+        assert!(!out.body.contains("AUDIT_KPOP"));
         assert!(out.body.contains("echo INITIAL_GATE") || out.body.contains("CODE_EXTRA"));
         assert!(
             !out.stdout_label
                 .split('+')
                 .any(|l| l == "kpop_common.md" || l == "kpop_common_no_kpop.md")
         );
-        assert!(out.stdout_label.contains("router_a_no_kpop.md"));
+        assert!(out.stdout_label.contains("router_a.md"));
     });
 }
 

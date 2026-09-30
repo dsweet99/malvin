@@ -175,7 +175,12 @@ fn refresh_one_provider(live: &mut HashMap<String, Vec<String>>, provider: &str,
         return;
     }
     if provider_needs_refresh(provider, force) {
-        record_fetched_provider(live, provider, keyless, fetch_provider_models_sync(provider, true));
+        record_fetched_provider(
+            live,
+            provider,
+            keyless,
+            fetch_provider_models_sync(provider, true),
+        );
         return;
     }
     record_cached_provider(live, provider, keyless);

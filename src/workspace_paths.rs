@@ -2,10 +2,16 @@ use std::path::{Path, PathBuf};
 
 #[path = "workspace_paths_data_root.rs"]
 pub(crate) mod workspace_paths_data_root;
+#[path = "workspace_paths_legacy_home.rs"]
+pub(crate) mod workspace_paths_legacy_home;
 
 pub use workspace_paths_data_root::{
     git_worktree_toplevel, legacy_malvin_checks_path, malvin_acp_spawn_chamber_dir,
     malvin_checks_path, malvin_data_root, resolve_malvin_checks_path,
+};
+pub use workspace_paths_legacy_home::{
+    LEGACY_MALVIN_USER_HOME_DIR, LegacyHomeMigration, migrate_legacy_malvin_user_home,
+    migrate_legacy_malvin_user_home_in,
 };
 
 pub const MALVIN_DIR: &str = ".malvin";
@@ -20,7 +26,7 @@ pub const MALVIN_LOGS_REL: &str = ".malvin/logs";
 
 pub const MALVIN_CONFIG_REL: &str = ".malvin/config.toml";
 
-pub const MALVIN_USER_HOME_DIR: &str = ".malvin_home";
+pub const MALVIN_USER_HOME_DIR: &str = ".malvinconf";
 
 pub const MALVIN_HOME_CONFIG_FILE: &str = "config.toml";
 
@@ -39,7 +45,7 @@ pub(crate) fn assert_home_malvin_config_disk_io_allowed(op: &str) -> Result<(), 
         Ok(())
     } else {
         Err(format!(
-            "refusing {op} on ~/.malvin_home/config.toml without test isolation; \
+            "refusing {op} on ~/.malvinconf/config.toml without test isolation; \
              use with_isolated_home or activate_test_home (see plan.md)"
         ))
     }

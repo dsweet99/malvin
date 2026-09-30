@@ -15,7 +15,7 @@ Usage::
     python ops/fast_task.py tasks
     python ops/fast_task.py self-test
 
-Results default to ``~/.malvin_home/fast_task_results``. Prefer a path under
+Results default to ``~/.malvinconf/fast_task_results``. Prefer a path under
 ``$HOME`` for ``--results-dir``: Snap Docker often cannot bind-mount host ``/tmp``.
 """
 
@@ -51,7 +51,7 @@ def fast_tasks_list_cmd() -> None:
     "--results-dir",
     type=click.Path(path_type=Path),
     default=None,
-    help="Host results root (default: ~/.malvin_home/fast_task_results)",
+    help="Host results root (default: ~/.malvinconf/fast_task_results)",
 )
 @click.option(
     "--docker-image",

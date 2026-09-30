@@ -21,5 +21,6 @@ Loop until you think you're done or you're up to max_hypotheses = `{{ max_hypoth
 
 Log your hypotheses and test results -- as they become available -- to `{{ exp_log }}`. Be sure to log hypotheses and results
 as you generate them. They are valuable. The user and other agents will want to read them.
+{{ exp_log_note }}
 
 When you are all done, append a brief executive summary and a super-brief tl;dr to the log, and echo both to the user (the chat/context) directly.

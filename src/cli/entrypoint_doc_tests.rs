@@ -21,6 +21,70 @@ fn entrypoint_from_doc_argv_exits_success() {
 }
 
 #[test]
+fn entrypoint_from_advice_doc_design_exits_success() {
+    with_isolated_home(|_| {
+        assert_eq!(
+            entrypoint_from(["malvin", "--advice", "doc_design"]),
+            Exit::Success
+        );
+    });
+}
+
+#[test]
+fn entrypoint_from_advice_scholar_exits_success() {
+    with_isolated_home(|_| {
+        assert_eq!(
+            entrypoint_from(["malvin", "--advice", "scholar"]),
+            Exit::Success
+        );
+    });
+}
+
+#[test]
+fn entrypoint_from_advice_report_exits_success() {
+    with_isolated_home(|_| {
+        assert_eq!(
+            entrypoint_from(["malvin", "--advice", "report"]),
+            Exit::Success
+        );
+    });
+}
+
+#[test]
+fn entrypoint_from_advice_list_exits_success() {
+    with_isolated_home(|_| {
+        assert_eq!(entrypoint_from(["malvin", "--advice"]), Exit::Success);
+    });
+}
+
+#[test]
+fn entrypoint_from_credits_exits_success() {
+    with_isolated_home(|_| {
+        assert_eq!(entrypoint_from(["malvin", "--credits"]), Exit::Success);
+    });
+}
+
+#[test]
+fn entrypoint_from_credits_with_request_exits_without_running_agent() {
+    with_isolated_home(|_| {
+        assert_eq!(
+            entrypoint_from(["malvin", "--credits", "Write a poem"]),
+            Exit::Success
+        );
+    });
+}
+
+#[test]
+fn entrypoint_from_advice_unknown_tag_exits_failure() {
+    with_isolated_home(|_| {
+        assert_eq!(
+            entrypoint_from(["malvin", "--advice", "nope"]),
+            Exit::Failure
+        );
+    });
+}
+
+#[test]
 fn entrypoint_from_background_is_rejected() {
     use clap::Parser;
     let err = crate::cli::Cli::try_parse_from(["malvin", "--background", "--doc"])

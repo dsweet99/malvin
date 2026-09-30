@@ -48,7 +48,7 @@ fn cost_is_present(cost: &Cost) -> bool {
 }
 
 #[allow(clippy::cast_precision_loss)]
-fn cost_from_model_rates(rates: &ModelCost, usage: &pi::model::Usage) -> Cost {
+pub(super) fn cost_from_model_rates(rates: &ModelCost, usage: &pi::model::Usage) -> Cost {
     let input = (rates.input / 1_000_000.0) * usage.input as f64;
     let output = (rates.output / 1_000_000.0) * usage.output as f64;
     let cache_read = (rates.cache_read / 1_000_000.0) * usage.cache_read as f64;
@@ -85,24 +85,65 @@ fn lookup_rates(
     None
 }
 
-pub(super) fn aggregate_cost_usd(messages: &[Message]) -> AggregatedCostUsd {
-    let mut totals = AggregatedCostUsd::default();
-    let registry = pi::auth::AuthStorage::load(Config::auth_path())
-        .ok()
-        .map(|auth| ModelRegistry::load(&auth, None));
-    let mut saw_openrouter_without_reported = false;
+fn load_cost_registry() -> Option<ModelRegistry> {
+    let auth = pi::auth::AuthStorage::load(Config::auth_path()).ok()?;
+    let path = pi::models::default_models_path(&Config::global_dir());
+    Some(ModelRegistry::load(&auth, Some(path)))
+}
+
+fn absorb_portkey_or_reported(
+    totals: &mut AggregatedCostUsd,
+    assistant: &pi::model::AssistantMessage,
+    saw_openrouter_without_reported: &mut bool,
+) {
+    if let Some(rates) =
+        super::portkey_pricing::rates_for_pi_model(&assistant.provider, &assistant.model)
+    {
+        totals.absorb(&cost_from_model_rates(&rates, &assistant.usage));
+        return;
+    }
+    if cost_is_present(&assistant.usage.cost) {
+        totals.absorb(&assistant.usage.cost);
+        return;
+    }
+    if assistant.provider.eq_ignore_ascii_case("openrouter") {
+        *saw_openrouter_without_reported = true;
+    }
+}
+
+fn absorb_catalog_estimates(
+    totals: &mut AggregatedCostUsd,
+    messages: &[Message],
+    registry: Option<&ModelRegistry>,
+) {
     for msg in messages {
         let pi::model::Message::Assistant(assistant) = msg else {
             continue;
         };
         let assistant = assistant.as_ref();
         if cost_is_present(&assistant.usage.cost) {
-            totals.absorb(&assistant.usage.cost);
             continue;
         }
-        if assistant.provider.eq_ignore_ascii_case("openrouter") {
-            saw_openrouter_without_reported = true;
-        }
+        let Some(rates) = lookup_rates(&assistant.provider, &assistant.model, registry) else {
+            continue;
+        };
+        totals.absorb(&cost_from_model_rates(&rates, &assistant.usage));
+    }
+}
+
+pub(super) fn aggregate_cost_usd(messages: &[Message]) -> AggregatedCostUsd {
+    let mut totals = AggregatedCostUsd::default();
+    let registry = load_cost_registry();
+    let mut saw_openrouter_without_reported = false;
+    for msg in messages {
+        let pi::model::Message::Assistant(assistant) = msg else {
+            continue;
+        };
+        absorb_portkey_or_reported(
+            &mut totals,
+            assistant.as_ref(),
+            &mut saw_openrouter_without_reported,
+        );
     }
     if totals.is_present() {
         return totals;
@@ -112,20 +153,7 @@ pub(super) fn aggregate_cost_usd(messages: &[Message]) -> AggregatedCostUsd {
     {
         return billed;
     }
-    for msg in messages {
-        let pi::model::Message::Assistant(assistant) = msg else {
-            continue;
-        };
-        let assistant = assistant.as_ref();
-        if cost_is_present(&assistant.usage.cost) {
-            continue;
-        }
-        let Some(rates) = lookup_rates(&assistant.provider, &assistant.model, registry.as_ref())
-        else {
-            continue;
-        };
-        totals.absorb(&cost_from_model_rates(&rates, &assistant.usage));
-    }
+    absorb_catalog_estimates(&mut totals, messages, registry.as_ref());
     totals
 }
 

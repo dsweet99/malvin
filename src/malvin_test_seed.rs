@@ -29,9 +29,9 @@ pub fn seed_malvin_config(work: &Path, content: &str) {
     );
     let path = crate::malvin_config_path(work);
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).expect("mkdir ~/.malvin_home");
+        std::fs::create_dir_all(parent).expect("mkdir ~/.malvinconf");
     }
-    std::fs::write(path, content).expect("write ~/.malvin_home/config.toml");
+    std::fs::write(path, content).expect("write ~/.malvinconf/config.toml");
 }
 
 #[cfg(test)]

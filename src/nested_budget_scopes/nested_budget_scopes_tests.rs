@@ -1,3 +1,7 @@
+use std::num::NonZeroU32;
+
+use crate::acp::AttemptCeiling;
+
 use super::BudgetScopeLayer;
 
 #[test]
@@ -8,30 +12,36 @@ fn budget_scope_layer_all_has_two_variants() {
 #[test]
 fn budget_scope_layer_single_attempt_contracts() {
     assert!(!BudgetScopeLayer::OuterRouterLoop.respects_single_attempt());
-    assert!(BudgetScopeLayer::AcpSpawnRetry.respects_single_attempt());
+    assert!(BudgetScopeLayer::AcpAttempt.respects_single_attempt());
 }
 
 #[test]
 fn budget_scope_layer_variants_exist() {
     let _ = (
         BudgetScopeLayer::OuterRouterLoop,
-        BudgetScopeLayer::AcpSpawnRetry,
+        BudgetScopeLayer::AcpAttempt,
     );
 }
 
 #[test]
-fn effective_max_attempts_single_attempt_forces_one_at_acp_layer() {
+fn effective_attempt_ceiling_single_attempt_forces_one_at_acp_layer() {
+    let five = NonZeroU32::new(5).expect("five");
     assert_eq!(
-        BudgetScopeLayer::AcpSpawnRetry.effective_max_attempts(5, true),
-        1
+        BudgetScopeLayer::AcpAttempt.effective_attempt_ceiling(Some(five), true),
+        AttemptCeiling::one()
     );
     assert_eq!(
-        BudgetScopeLayer::AcpSpawnRetry.effective_max_attempts(5, false),
-        5
+        BudgetScopeLayer::AcpAttempt.effective_attempt_ceiling(Some(five), false),
+        AttemptCeiling::AtMost(five)
     );
     assert_eq!(
-        BudgetScopeLayer::OuterRouterLoop.effective_max_attempts(32, true),
-        32
+        BudgetScopeLayer::AcpAttempt.effective_attempt_ceiling(None, false),
+        AttemptCeiling::unlimited()
+    );
+    let thirty_two = NonZeroU32::new(32).expect("thirty two");
+    assert_eq!(
+        BudgetScopeLayer::OuterRouterLoop.effective_attempt_ceiling(Some(thirty_two), true),
+        AttemptCeiling::AtMost(thirty_two)
     );
 }
 
@@ -46,7 +56,7 @@ fn budget_scope_layer_single_attempt_flags() {
     for layer in BudgetScopeLayer::all() {
         let single = layer.respects_single_attempt();
         match layer {
-            BudgetScopeLayer::AcpSpawnRetry => {
+            BudgetScopeLayer::AcpAttempt => {
                 assert!(single);
             }
             BudgetScopeLayer::OuterRouterLoop => {
@@ -54,4 +64,11 @@ fn budget_scope_layer_single_attempt_flags() {
             }
         }
     }
+}
+
+#[test]
+fn unlimited_ceiling_allows_every_attempt_count() {
+    let ceiling = AttemptCeiling::unlimited();
+    assert!(ceiling.allows_attempt(1));
+    assert!(ceiling.allows_attempt(u32::MAX));
 }

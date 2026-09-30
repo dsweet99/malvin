@@ -62,9 +62,7 @@ fn texts_of_kind(jobs: &[TaggedRequest], kind: RequestKind) -> Vec<String> {
 }
 
 fn router_jobs(jobs: Vec<TaggedRequest>) -> Vec<TaggedRequest> {
-    jobs.into_iter()
-        .filter(TaggedRequest::is_router)
-        .collect()
+    jobs.into_iter().filter(TaggedRequest::is_router).collect()
 }
 
 #[must_use]

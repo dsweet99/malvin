@@ -32,9 +32,10 @@ pub(crate) fn local_append_system_prompt(mode: LocalAgentMode) -> Option<String>
         LocalAgentMode::NonKeyless => None,
         LocalAgentMode::KeylessTools => Some(
             concat!(
-                "You are a non-interactive CLI agent. For any shell/file action emit ONLY ",
-                "a JSON tool call {\"name\":\"bash\",\"parameters\":{\"command\":\"...\"}} ",
-                "(or read/write/edit/grep/find/ls). Never invent results. Never answer with ",
+                "You are a non-interactive CLI agent. For any shell/file action, reply with ",
+                "ONLY a tool call to one of the provided tools (bash, read, write, edit, grep, ",
+                "find, ls), in the exact tool-call format your instructions specify, with no ",
+                "text before or after it. Never invent results. Never answer with ",
                 "markdown ```bash fences. Stay in the workspace unless a temp path is named. ",
                 "For HTTP(S) downloads prefer curl -L -o FILE URL. ",
                 "To count files prefer bash with find . -type f | wc -l; do not install packages."
@@ -70,7 +71,7 @@ fn keyless_local_tools_enabled(provider: &str, model: &str) -> bool {
     if !provider.eq_ignore_ascii_case("ollama") {
         return true;
     }
-    super::local_llm_ollama::ollama_model_supports_tools(model).unwrap_or(true)
+    super::local_llm_ollama::ollama_model_supports_tools(model).unwrap_or(false)
 }
 
 pub(crate) fn local_session_overrides(

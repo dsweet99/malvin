@@ -88,6 +88,8 @@ def test_fast_task_kiss_coverage_witnesses() -> None:
         fast_task._ft_test_stage_workspace_isolated,
         fast_task._ft_test_dockerfile_nonleak,
         fast_task._ft_test_docker_agent_cmd_nonleak,
+        fast_task.ft_malvin_container_home,
+        fast_task._ft_test_malvin_container_home,
         fast_task._ft_test_docker_agent_cmd_cursor,
         fast_task._ft_test_docker_agent_cmd_pi,
         fast_task._ft_test_docker_agent_cmd_codex,

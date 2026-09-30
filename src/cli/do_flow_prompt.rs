@@ -2,6 +2,8 @@ use malvin::artifacts::RunArtifacts;
 use malvin::prompts::{DO_HEADER_MD, HEADER_MD, PromptError, PromptStore};
 use malvin::workflow_context::PromptModelOpts;
 
+use crate::cli::session_header::render_do_cosend_prompt;
+
 pub(crate) struct DoCoderRun {
     pub combined: String,
     pub header_user_for_trace: (String, String),
@@ -19,18 +21,18 @@ pub fn prepare_do_prompt_store() -> Result<PromptStore, String> {
     Ok(store)
 }
 
-#[must_use]
 pub(crate) fn build_do_coder_run_with_store(
-    _store: &PromptStore,
-    _artifacts: &RunArtifacts,
+    store: &PromptStore,
+    artifacts: &RunArtifacts,
     text: &str,
-    _opts: PromptModelOpts<'_>,
-) -> DoCoderRun {
+    opts: PromptModelOpts<'_>,
+) -> Result<DoCoderRun, String> {
+    let (header, combined) = render_do_cosend_prompt(store, artifacts, opts.model, text)?;
     let user = text.trim_end().to_string();
-    DoCoderRun {
-        combined: user.clone(),
-        header_user_for_trace: (String::new(), user),
-    }
+    Ok(DoCoderRun {
+        combined,
+        header_user_for_trace: (header, user),
+    })
 }
 
 #[cfg(test)]

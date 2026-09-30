@@ -90,17 +90,12 @@ pub(crate) fn ensure_provider_running(provider: &str) -> Result<Option<u32>, Str
 
 #[must_use]
 pub(crate) fn capabilities_include_tools(capabilities: &[String]) -> bool {
-    capabilities
-        .iter()
-        .any(|c| c.eq_ignore_ascii_case("tools"))
+    capabilities.iter().any(|c| c.eq_ignore_ascii_case("tools"))
 }
 
 fn trim_openai_v1_suffix(base: &str) -> String {
     let trimmed = base.trim().trim_end_matches('/');
-    trimmed
-        .strip_suffix("/v1")
-        .unwrap_or(trimmed)
-        .to_string()
+    trimmed.strip_suffix("/v1").unwrap_or(trimmed).to_string()
 }
 
 fn ollama_api_root() -> String {
@@ -152,12 +147,22 @@ pub(crate) fn ollama_model_supports_tools(model: &str) -> Option<bool> {
 }
 
 #[cfg(test)]
+pub(crate) fn down_non_ollama_provider() -> Option<&'static str> {
+    ["llamacpp", "mistralrs"]
+        .into_iter()
+        .find(|p| !keyless_local_provider_is_listening(p))
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn ensure_non_ollama_errors_when_down() {
-        let err = ensure_provider_running("llamacpp").expect_err("down");
+        let Some(provider) = down_non_ollama_provider() else {
+            return;
+        };
+        let err = ensure_provider_running(provider).expect_err("down");
         assert!(err.contains("auto-start only `ollama`"), "{err}");
     }
 

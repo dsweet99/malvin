@@ -1,6 +1,8 @@
 #![cfg_attr(test, allow(unsafe_code))]
 
 mod auth;
+pub mod bridge_install;
+mod bridge_install_npm;
 pub mod bridge_path;
 mod bridge_stderr;
 pub mod node_resolve;
@@ -30,6 +32,8 @@ pub(crate) async fn session_io_write_cancel_for_test(
         .await
 }
 
+#[cfg(test)]
+mod bridge_install_tests;
 #[cfg(test)]
 mod bridge_path_tests;
 #[cfg(test)]

@@ -59,23 +59,47 @@ fn text_has_any(text: &str, needles: &[&str]) -> bool {
     needles.iter().any(|n| text.contains(n))
 }
 
-#[must_use]
-pub(crate) fn agent_error_requires_coder_session_teardown(msg: &str) -> bool {
-    let text = msg.to_ascii_lowercase();
-    if text_has_any(&text, CHILD_OR_BRIDGE_DEAD_NEEDLES) {
-        return true;
+fn retry_stop_fault(msg: &str) -> Option<crate::acp::AgentFault> {
+    use crate::acp::AgentFault;
+    if crate::acp::agent_text_is_non_retryable(msg) {
+        return Some(AgentFault::NonRetryable);
+    }
+    if crate::acp::agent_retry_should_stop(msg) {
+        return Some(AgentFault::RestoreStop);
+    }
+    if crate::acp::agent_string_is_session_new_internal_error(msg) {
+        return Some(AgentFault::SessionNewInternal);
+    }
+    None
+}
+
+fn transport_fault(msg: &str) -> crate::acp::AgentFault {
+    use crate::acp::AgentFault;
+    if text_has_any(&msg.to_ascii_lowercase(), CHILD_OR_BRIDGE_DEAD_NEEDLES) {
+        return AgentFault::SessionDead;
     }
     if agent_string_is_cursor_agent_busy(msg) {
-        return true;
+        return AgentFault::CursorBusy;
     }
     if agent_string_is_stale_cursor_sdk_auth(msg) {
-        return true;
+        return AgentFault::StaleAuth;
     }
-    if !crate::acp::agent_string_is_cursor_http2_transport_error(msg) {
-        return false;
+    if crate::acp::agent_string_is_cursor_http2_transport_error(msg) {
+        return AgentFault::Http2Transport;
     }
-    if crate::acp::test_no_real_agent_enabled() {
-        return false;
+    AgentFault::Ordinary
+}
+
+#[must_use]
+pub(crate) fn classify_agent_fault(msg: &str) -> crate::acp::AgentFault {
+    if let Some(fault) = retry_stop_fault(msg) {
+        return fault;
     }
-    true
+    transport_fault(msg)
+}
+
+#[cfg(test)]
+#[must_use]
+pub(crate) fn agent_error_requires_coder_session_teardown(msg: &str) -> bool {
+    crate::acp::AgentError(msg.to_string()).requires_coder_session_teardown()
 }

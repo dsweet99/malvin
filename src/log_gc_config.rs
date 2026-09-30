@@ -9,16 +9,16 @@ const DEFAULT_MAX_BYTES: &str = "2GiB";
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[allow(clippy::struct_field_names)]
 pub struct LogsGcConfig {
-    pub max_count: u64,
-    pub max_age_days: u64,
+    pub max_count: Option<u64>,
+    pub max_age_days: Option<u64>,
     pub max_bytes: Option<u64>,
 }
 
 impl Default for LogsGcConfig {
     fn default() -> Self {
         Self {
-            max_count: DEFAULT_MAX_COUNT,
-            max_age_days: DEFAULT_MAX_AGE_DAYS,
+            max_count: Some(DEFAULT_MAX_COUNT),
+            max_age_days: Some(DEFAULT_MAX_AGE_DAYS),
             max_bytes: parse_byte_size(DEFAULT_MAX_BYTES),
         }
     }
@@ -33,8 +33,8 @@ pub(crate) fn parse_logs_gc_config(text: &str) -> Result<LogsGcConfig, String> {
     let logs = value
         .get("logs")
         .ok_or_else(|| "missing [logs] section".to_string())?;
-    let max_count = read_u64(logs.get("max_count")).unwrap_or(DEFAULT_MAX_COUNT);
-    let max_age_days = read_u64(logs.get("max_age_days")).unwrap_or(DEFAULT_MAX_AGE_DAYS);
+    let max_count = stored_cap(read_u64(logs.get("max_count")), DEFAULT_MAX_COUNT);
+    let max_age_days = stored_cap(read_u64(logs.get("max_age_days")), DEFAULT_MAX_AGE_DAYS);
     let max_bytes = match logs.get("max_bytes") {
         Some(v) => parse_max_bytes_value(v)?,
         None => parse_byte_size(DEFAULT_MAX_BYTES),
@@ -44,6 +44,14 @@ pub(crate) fn parse_logs_gc_config(text: &str) -> Result<LogsGcConfig, String> {
         max_age_days,
         max_bytes,
     })
+}
+
+const fn stored_cap(parsed: Option<u64>, default_cap: u64) -> Option<u64> {
+    match parsed {
+        Some(0) => None,
+        Some(n) => Some(n),
+        None => Some(default_cap),
+    }
 }
 
 pub(crate) fn parse_max_bytes_value(value: &toml::Value) -> Result<Option<u64>, String> {

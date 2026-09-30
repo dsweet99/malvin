@@ -8,7 +8,7 @@ One **single-turn** agent session: no gate loop, no experiment log, no review fa
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
 | Output | Default: plain stdout with only text between `__MALVIN_DM_START__` / `__MALVIN_DM_END__`. With `--verbose`: same agent log classes as the default workflow (thought tokens, narrative tee, full outgoing prompts). |
-| Log | `do.log` under `~/.malvin_home/logs/<hash>/<run>/` |
+| Log | `do.log` under `~/.malvinconf/logs/<hash>/<run>/` |
 | Requires | No `.malvin/gates` at startup |
 
 ## Intention
@@ -53,19 +53,19 @@ See `malvin --doc`. Notable for `--do`:
 
 ## Prompt workflow
 
-`start_coder_session` sends the `--do` spawn header once when the agent is created: `header.md` plus `do_header.md` (labeled `do_header.md`). The single work prompt is then only the user request.
+`start_coder_session` sends **one** host prompt: `header.md` plus `do_header.md` plus the user request (labeled `do_header.md`). There is no follow-up work turn and no separate agent reply to the header alone.
 
 | Piece | Role |
 |-------|------|
-| `header.md` + `do_header.md` (spawn) | Standard Malvin context and do-mode persona / DM rules |
-| User request (work turn) | The operator request alone |
+| `header.md` + `do_header.md` | Standard Malvin context and do-mode persona / DM rules |
+| User request | The operator request, co-sent in the same host prompt |
 
 No implement, review, concerns, learn, or summary phases.
 
 ## Session behavior
 
-- Ensures `~/.malvin_home/config.toml` exists with defaults (same as `tidy`).
-- Backs up `.gitignore`, `.malvin/gates`, and `.malvin/config.toml`; restores after the session.
+- Ensures `~/.malvinconf/config.toml` exists with defaults.
+- Backs up `.gitignore`, `VISION.md`, `.malvin/gates`, and `.malvin/config.toml`; restores after the session.
 - Checks `result.md` for `ABORT:` after the session.
 
 ## Related commands

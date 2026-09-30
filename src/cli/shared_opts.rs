@@ -8,8 +8,7 @@ use malvin::model_id::{ParsedModel, parse_model_id};
 const QUIET_HELPTEXT: &str =
     "Print only `__MALVIN_DM_START__`/`END` bodies on stdout (default router)";
 
-const CREATIVE_HELPTEXT: &str =
-    "Be (more) creative for the REQUEST that immediately follows; optional probability in [0,1] (default 1.0 when set; repeatable)";
+const CREATIVE_HELPTEXT: &str = "Be (more) creative for the REQUEST that immediately follows; optional probability in [0,1] (default 1.0 when set; repeatable)";
 
 const WATCH_HELPTEXT: &str =
     "Re-copy the request `.md` into the run log dir before each outer loop (overwrite)";
@@ -48,6 +47,12 @@ pub struct SharedOpts {
     /// Print built-in documentation and exit
     #[arg(long, global = true, default_value_t = false)]
     pub doc: bool,
+    /// Print full advice for TAG, or list tags (tag then description) if TAG is omitted (no run logs)
+    #[arg(long, value_name = "TAG", num_args = 0..=1, default_missing_value = "")]
+    pub advice: Option<String>,
+    /// Print credits for ideas malvin builds on and exit (no run logs)
+    #[arg(long, default_value_t = false)]
+    pub credits: bool,
     /// Cycle through all REQUEST args forever (as if re-invoking the same command line)
     #[arg(long = "iml", default_value_t = false, help = IML_HELPTEXT)]
     pub iml: bool,
@@ -144,6 +149,8 @@ impl SharedOpts {
             verbose: false,
             max_acp_retries: malvin::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
+            advice: None,
+            credits: false,
             iml: false,
         }
     }

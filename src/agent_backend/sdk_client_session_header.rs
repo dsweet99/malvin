@@ -1,5 +1,7 @@
-use crate::acp::{AgentError, CoderPromptOptions, backoff_after_agent_failure, retries_noun};
+use crate::acp::{AgentError, AgentFault, CoderPromptOptions};
+use crate::nested_budget_scopes::BudgetScopeLayer;
 
+use super::acp_attempt_loop::{BackoffChoice, RetrySpec, retry_until_ok};
 use super::sdk_client::{CoderSessionHeader, SdkClient, begun_cwd, live_session};
 use super::sdk_client_prompt::{
     append_prompt_files, emit_prompt_stdout, force_fresh_agent_for_retry,
@@ -52,47 +54,20 @@ async fn try_send_header_with_retries(
     header: &CoderSessionHeader,
     opts: &CoderPromptOptions<'_>,
 ) -> Result<(), AgentError> {
-    let backoff_ceiling = u32::MAX;
-    let mut last_error;
-    let mut attempts_used = 0_u32;
-    loop {
-        attempts_used = attempts_used.saturating_add(1);
-        match send_header_once(client, &header.prompt, opts).await {
-            Ok(()) => {
-                client.record_backend_success();
-                client.header_lifecycle.mark_satisfied_keeping_header();
-                return Ok(());
-            }
-            Err(e) => {
-                last_error = recover_header_send_failure(client, e).await?;
-                if client.record_backend_error(&last_error) {
-                    return Err(AgentError(
-                        super::backend_error_tracker::format_backend_consecutive_error_message(
-                            client.model.backend.label(),
-                            &last_error,
-                            client.max_acp_retries,
-                        ),
-                    ));
-                }
-                if backoff_after_agent_failure(
-                    client.timing.as_ref(),
-                    &last_error,
-                    attempts_used,
-                    backoff_ceiling,
-                )
-                .await?
-                {
-                    break;
-                }
-            }
-        }
-    }
-    let retries = attempts_used.saturating_sub(1);
-    Err(AgentError(format!(
-        "{} SDK header prompt failed after {retries} {}. Last error:\n{last_error}",
-        client.model.backend.label(),
-        retries_noun(retries)
-    )))
+    let lead = format!("{} SDK header prompt failed", client.model.backend.label());
+    let spec = RetrySpec {
+        ceiling: BudgetScopeLayer::AcpAttempt.effective_attempt_ceiling(None, false),
+        failure_lead: &lead,
+        backoff: BackoffChoice::Consult,
+    };
+    retry_until_ok!(
+        client,
+        spec,
+        |c| send_header_once(c, &header.prompt, opts).await,
+        |c, err| recover_header_send_failure(c, err).await
+    )?;
+    client.header_lifecycle.mark_satisfied_keeping_header();
+    Ok(())
 }
 
 async fn send_header_once(
@@ -114,11 +89,17 @@ async fn send_header_once(
 async fn recover_header_send_failure(
     client: &mut SdkClient,
     err: AgentError,
-) -> Result<String, AgentError> {
+) -> Result<AgentError, AgentError> {
+    if err.fault == AgentFault::OutputCap {
+        return Err(err);
+    }
     teardown_sdk_session_after_transport_error(client, &err).await;
     force_fresh_agent_for_retry(client).await;
-    if let Some(cwd) = begun_cwd(client).cloned() {
-        let _ = client.begin_coder_session(&cwd).await;
+    if let Some(cwd) = begun_cwd(client).cloned()
+        && let Err(e) = client.begin_coder_session(&cwd).await
+        && e.fault == AgentFault::BackendRetryLimit
+    {
+        return Err(e);
     }
-    Ok(err.message)
+    Ok(err)
 }

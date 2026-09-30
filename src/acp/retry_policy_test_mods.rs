@@ -1,3 +1,5 @@
+#[path = "reader_tests_fault_class.rs"]
+mod reader_tests_fault_class;
 #[path = "reader_tests_retry_policy.rs"]
 mod reader_tests_retry_policy;
 #[path = "reader_tests_retry_policy_iterable.rs"]

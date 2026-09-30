@@ -104,7 +104,7 @@ pub(super) fn configured_codex_command(
         .current_dir(cwd)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
+        .stderr(Stdio::piped())
         .env("MALLOC_ARENA_MAX", "2");
     cmd
 }
@@ -115,14 +115,7 @@ pub(super) fn spawn_codex_process(args: &BridgeSpawnArgs<'_>) -> Result<CodexPro
     let mut child = cmd
         .spawn()
         .map_err(|e| AgentError(format!("spawn codex app-server: {e}")))?;
-    let stdin = child
-        .stdin
-        .take()
-        .ok_or_else(|| AgentError("codex stdin missing".into()))?;
-    let stdout = child
-        .stdout
-        .take()
-        .ok_or_else(|| AgentError("codex stdout missing".into()))?;
+    let (stdin, stdout) = crate::bridge_sdk::take_stdio_forward_stderr(&mut child, "codex")?;
     let pgid = child.id();
     Ok((child, stdin, stdout, pgid, std::collections::HashSet::new()))
 }
@@ -136,6 +129,7 @@ mod tests {
     #[test]
     fn kiss_cov_codex_process_type() {
         let _: Option<CodexProcess> = None;
+        let _ = crate::bridge_sdk::take_stdio_forward_stderr;
     }
 
     #[test]

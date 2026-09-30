@@ -8,6 +8,11 @@ use pi::sdk::{
 use pi::tools::ToolEffects;
 use serde_json::Value;
 
+use super::tool_args_normalize::wrap_tool_args;
+
+#[path = "complete_write.rs"]
+mod complete_write;
+
 #[path = "isolated_bash_exec.rs"]
 mod isolated_bash_exec;
 pub(crate) use isolated_bash_exec::{interrupt_active_isolated_bash, run_isolated_bash};
@@ -20,27 +25,26 @@ impl ToolFactory for IsolatedToolFactory {
         let tools = registry.into_tools();
         let mut replaced = Vec::with_capacity(tools.len());
         for tool in tools {
-            if tool.name() == "bash" {
-                replaced.push(
-                    Box::new(IsolatedBash::from_builtin(tool, cwd.to_path_buf())) as Box<dyn Tool>,
-                );
+            let tool: Arc<dyn Tool> = if tool.name() == "bash" {
+                Arc::new(IsolatedBash::from_builtin(tool, cwd.to_path_buf()))
             } else if tool.name() == "write" {
-                replaced.push(Box::new(CompleteWrite::from_builtin(tool)) as Box<dyn Tool>);
+                Arc::new(complete_write::CompleteWrite::from_builtin(tool))
             } else {
-                replaced.push(tool);
-            }
+                tool
+            };
+            replaced.push(wrap_tool_args(tool));
         }
         ToolRegistry::from_tools(replaced)
     }
 }
 
 struct IsolatedBash {
-    inner: Box<dyn Tool>,
+    inner: Arc<dyn Tool>,
     cwd: PathBuf,
 }
 
 impl IsolatedBash {
-    fn from_builtin(inner: Box<dyn Tool>, cwd: PathBuf) -> Self {
+    fn from_builtin(inner: Arc<dyn Tool>, cwd: PathBuf) -> Self {
         Self { inner, cwd }
     }
 }
@@ -81,135 +85,6 @@ impl Tool for IsolatedBash {
             .to_string();
         let timeout_secs = input.get("timeout").and_then(Value::as_u64);
         run_isolated_bash(&self.cwd, &command, timeout_secs, on_update.as_deref())
-    }
-}
-
-struct CompleteWrite {
-    inner: Box<dyn Tool>,
-}
-
-impl CompleteWrite {
-    fn from_builtin(inner: Box<dyn Tool>) -> Self {
-        Self { inner }
-    }
-}
-
-fn write_field_str<'a>(input: &'a Value, keys: &[&str]) -> &'a str {
-    keys.iter()
-        .find_map(|k| input.get(*k).and_then(Value::as_str))
-        .unwrap_or("")
-}
-
-fn path_looks_like_bin(path: &str) -> bool {
-    let normalized = path.replace('\\', "/");
-    normalized.contains("/bin/") || normalized.starts_with("bin/")
-}
-
-fn stubby_write_error(input: &Value) -> Option<String> {
-    let path = write_field_str(input, &["path", "file"]);
-    if !path_looks_like_bin(path) {
-        return None;
-    }
-    let trimmed = write_field_str(input, &["content", "text", "contents"]).trim();
-    if trimmed.len() < 120 {
-        return Some(
-            "write of a bin/ script is too short; include the complete file body, not a stub"
-                .to_string(),
-        );
-    }
-    if trimmed.contains("...") && trimmed.lines().count() < 12 {
-        return Some(
-            "write of a bin/ script looks stubbed; include the complete file body".to_string(),
-        );
-    }
-    None
-}
-
-fn push_escaped(out: &mut String, next: Option<char>) -> bool {
-    match next {
-        Some('n') => out.push('\n'),
-        Some('t') => out.push('\t'),
-        Some('\\') => out.push('\\'),
-        Some('"') => out.push('"'),
-        _ => {
-            out.push('\\');
-            return false;
-        }
-    }
-    true
-}
-
-fn unescape_local_write_content(content: &str) -> String {
-    if content.contains('\n') || content.contains('\r') {
-        return content.to_string();
-    }
-    if !(content.contains("\\n") || content.contains("\\t")) {
-        return content.to_string();
-    }
-    let mut out = String::with_capacity(content.len());
-    let mut chars = content.chars().peekable();
-    while let Some(c) = chars.next() {
-        if c == '\\' {
-            let next = chars.peek().copied();
-            if push_escaped(&mut out, next) {
-                chars.next();
-            }
-        } else {
-            out.push(c);
-        }
-    }
-    out
-}
-
-fn normalize_write_input(mut input: Value) -> Value {
-    let Some(obj) = input.as_object_mut() else {
-        return input;
-    };
-    for key in ["content", "text", "contents"] {
-        if let Some(Value::String(s)) = obj.get(key).cloned() {
-            let fixed = unescape_local_write_content(&s);
-            if fixed != s {
-                obj.insert(key.to_string(), Value::String(fixed));
-            }
-            break;
-        }
-    }
-    Value::Object(obj.clone())
-}
-
-#[async_trait]
-impl Tool for CompleteWrite {
-    fn name(&self) -> &'static str {
-        "write"
-    }
-
-    fn label(&self) -> &str {
-        self.inner.label()
-    }
-
-    fn description(&self) -> &str {
-        self.inner.description()
-    }
-
-    fn parameters(&self) -> Value {
-        self.inner.parameters()
-    }
-
-    fn effects(&self) -> ToolEffects {
-        self.inner.effects()
-    }
-
-    async fn execute(
-        &self,
-        tool_call_id: &str,
-        input: Value,
-        on_update: Option<Box<dyn Fn(ToolUpdate) + Send + Sync>>,
-    ) -> pi::sdk::Result<ToolOutput> {
-        let input = normalize_write_input(input);
-        if let Some(msg) = stubby_write_error(&input) {
-            return Err(pi::error::Error::validation(msg));
-        }
-        self.inner.execute(tool_call_id, input, on_update).await
     }
 }
 
@@ -264,7 +139,7 @@ mod tests {
 
     #[test]
     fn stubby_bin_write_is_rejected() {
-        use super::stubby_write_error;
+        use super::complete_write::stubby_write_error;
         use serde_json::json;
         assert!(stubby_write_error(&json!({"path": "src/x.py", "content": "x"})).is_none());
         assert!(
@@ -280,7 +155,7 @@ mod tests {
 
     #[test]
     fn unescape_local_write_content_fixes_literal_newlines() {
-        use super::{normalize_write_input, unescape_local_write_content};
+        use super::complete_write::{normalize_write_input, unescape_local_write_content};
         use serde_json::json;
         let raw = "#!/usr/bin/env python3\\nimport csv\\nprint(1)\\n";
         let fixed = unescape_local_write_content(raw);

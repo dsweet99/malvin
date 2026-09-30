@@ -1,7 +1,7 @@
 use crate::acp::{
     AgentRetryOutcome, agent_string_is_cannot_use_model,
     agent_string_is_model_does_not_support_tools, agent_string_is_openrouter_billing_failure,
-    agent_string_is_upgrade_plan, agent_string_is_usage_limit, plan_agent_retry, retries_noun,
+    agent_string_is_upgrade_plan, agent_string_is_usage_limit, plan_text_retry, retries_noun,
     upgrade_plan_stream_from_buffer,
 };
 use crate::support_paths::DEFAULT_MAX_ACP_RETRIES;
@@ -18,14 +18,14 @@ fn openrouter_billing_failure_substring_is_detected_case_insensitively() {
 
 fn openrouter_billing_errors_do_not_retry_even_with_high_max() {
     let msg = "mini HTTP failed after 1 transport attempts (limit 3): OpenRouter billing/credit failure (402): no credits";
-    let err = plan_agent_retry(msg, 1, 9999).expect_err("billing must fail fast");
+    let err = plan_text_retry(msg, 1, 9999).expect_err("billing must fail fast");
     assert_eq!(err.message, msg);
 }
 
 fn insufficient_credits_provider_phrasing_fails_fast() {
     let msg = "mini HTTP failed after 1 transport attempts (limit 3): Provider: Insufficient credits. Add more using https://openrouter.ai/settings/credits";
     assert!(agent_string_is_openrouter_billing_failure(msg));
-    let err = plan_agent_retry(msg, 1, 9999).expect_err("insufficient credits must fail fast");
+    let err = plan_text_retry(msg, 1, 9999).expect_err("insufficient credits must fail fast");
     assert_eq!(err.message, msg);
 }
 
@@ -38,7 +38,7 @@ fn upgrade_plan_substring_is_detected_case_insensitively() {
 
 fn upgrade_plan_errors_do_not_retry() {
     let msg = "billing: upgrade your plan to continue";
-    let err = plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS).expect_err("upgrade plan must fail fast");
+    let err = plan_text_retry(msg, 1, TEST_MAX_ATTEMPTS).expect_err("upgrade plan must fail fast");
     assert_eq!(err.message, msg);
 }
 
@@ -52,15 +52,14 @@ fn upgrade_plan_stream_from_buffer_tracks_split_coalesce() {
 fn cannot_use_model_errors_do_not_retry() {
     let msg = "Error: Cannot use this model with that provider";
     assert!(agent_string_is_cannot_use_model(msg));
-    let err =
-        plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS).expect_err("invalid model must fail fast");
+    let err = plan_text_retry(msg, 1, TEST_MAX_ATTEMPTS).expect_err("invalid model must fail fast");
     assert_eq!(err.message, msg);
 }
 
 fn model_does_not_support_tools_errors_do_not_retry() {
     let msg = "Provider error: ollama: OpenAI API error (HTTP 400): {\"error\":{\"message\":\"registry.ollama.ai/library/malvin-phi3-mini:latest does not support tools\",\"type\":\"invalid_request_error\",\"param\":null,\"code\":null}}";
     assert!(agent_string_is_model_does_not_support_tools(msg));
-    let err = plan_agent_retry(msg, 1, 9999).expect_err("no-tools must fail fast");
+    let err = plan_text_retry(msg, 1, 9999).expect_err("no-tools must fail fast");
     assert_eq!(err.message, msg);
 }
 
@@ -76,13 +75,13 @@ fn usage_limit_substring_is_detected_case_insensitively() {
 fn usage_limit_errors_do_not_retry_even_with_high_max() {
     let msg =
         "You've hit your usage limit\nYou've saved $2502 on API model usage this month with Ultra.";
-    let err = plan_agent_retry(msg, 1, 9999).expect_err("usage limit must fail fast");
+    let err = plan_text_retry(msg, 1, 9999).expect_err("usage limit must fail fast");
     assert_eq!(err.message, msg);
 }
 
 fn cannot_use_model_fails_fast_even_when_error_also_looks_retriable() {
     let msg = "rpc [unavailable]: Cannot use this model";
-    let err = plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS)
+    let err = plan_text_retry(msg, 1, TEST_MAX_ATTEMPTS)
         .expect_err("model error must beat retriable match");
     assert_eq!(err.message, msg);
 }
@@ -98,7 +97,7 @@ fn transient_errors_retry_with_backoff() {
     ] {
         assert!(
             matches!(
-                plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS).unwrap(),
+                plan_text_retry(msg, 1, TEST_MAX_ATTEMPTS).unwrap(),
                 AgentRetryOutcome::Sleep(_)
             ),
             "{msg}"
@@ -114,7 +113,7 @@ fn unknown_errors_retry_with_backoff() {
     ] {
         assert!(
             matches!(
-                plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS).unwrap(),
+                plan_text_retry(msg, 1, TEST_MAX_ATTEMPTS).unwrap(),
                 AgentRetryOutcome::Sleep(_)
             ),
             "{msg}"
@@ -123,7 +122,7 @@ fn unknown_errors_retry_with_backoff() {
 }
 
 fn assert_retriable_sleep_secs(attempt: u32, expected_secs: u64) {
-    let out = plan_agent_retry("timed out", attempt, TEST_MAX_ATTEMPTS).unwrap();
+    let out = plan_text_retry("timed out", attempt, TEST_MAX_ATTEMPTS).unwrap();
     match out {
         AgentRetryOutcome::Sleep(d) => assert_eq!(d, Duration::from_secs(expected_secs)),
         AgentRetryOutcome::StopRetrying => {
@@ -141,29 +140,29 @@ fn retriable_second_attempt_sleeps_three_seconds() {
 }
 
 fn retriable_exhausts_after_max_agent_attempts() {
-    let out = plan_agent_retry("timed out", TEST_MAX_ATTEMPTS, TEST_MAX_ATTEMPTS).unwrap();
+    let out = plan_text_retry("timed out", TEST_MAX_ATTEMPTS, TEST_MAX_ATTEMPTS).unwrap();
     assert!(matches!(out, AgentRetryOutcome::StopRetrying), "{out:?}");
 }
 
 fn retriable_exhausts_after_custom_max_attempts() {
     let custom_max = 5_u32;
-    let out = plan_agent_retry("timed out", custom_max, custom_max).unwrap();
+    let out = plan_text_retry("timed out", custom_max, custom_max).unwrap();
     assert!(matches!(out, AgentRetryOutcome::StopRetrying), "{out:?}");
     assert!(matches!(
-        plan_agent_retry("timed out", custom_max - 1, custom_max).unwrap(),
+        plan_text_retry("timed out", custom_max - 1, custom_max).unwrap(),
         AgentRetryOutcome::Sleep(_)
     ));
 }
 
 fn slot_restore_error_stops_retrying_without_sleep() {
     let msg = "malvin_checks restore: disk full";
-    let out = plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS).unwrap();
+    let out = plan_text_retry(msg, 1, TEST_MAX_ATTEMPTS).unwrap();
     assert!(matches!(out, AgentRetryOutcome::StopRetrying), "{out:?}");
 }
 
 fn restore_failure_stops_retrying_without_sleep() {
     let msg = "prompt failed; workspace session restore failed (restore): disk full";
-    let out = plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS).unwrap();
+    let out = plan_text_retry(msg, 1, TEST_MAX_ATTEMPTS).unwrap();
     assert!(matches!(out, AgentRetryOutcome::StopRetrying), "{out:?}");
 }
 

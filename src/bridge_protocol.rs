@@ -52,6 +52,8 @@ pub enum BridgeEvent {
         summary: Option<String>,
         #[serde(rename = "toolCallId")]
         tool_call_id: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        error: Option<String>,
     },
     Step {
         kind: Option<String>,

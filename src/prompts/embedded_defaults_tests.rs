@@ -44,6 +44,7 @@ fn default_embedded_placeholder_context() -> HashMap<String, String> {
         ("advice_path", "./.malvin/advice.md"),
         ("kpop_insert", ""),
         ("agents_insert", ""),
+        ("rpi_extra", ""),
     ];
     let mut ctx: HashMap<String, String> = entries
         .into_iter()
@@ -60,7 +61,7 @@ fn insert_header_runtime_placeholders(ctx: &mut HashMap<String, String>) {
     );
     ctx.insert(
         "logs_dir".to_string(),
-        "/home/.malvin_home/logs/abc123".to_string(),
+        "/home/.malvinconf/logs/abc123".to_string(),
     );
     ctx.insert(
         "current_state".to_string(),

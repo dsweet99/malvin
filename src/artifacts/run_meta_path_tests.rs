@@ -106,12 +106,12 @@ fn router_workflow_context_exp_log_is_under_home_malvin_logs() {
         let home_logs = crate::malvin_home_logs_root();
         assert!(
             exp_log.contains(&home_logs.display().to_string())
-                || exp_log.contains(".malvin_home/logs"),
+                || exp_log.contains(".malvinconf/logs"),
             "exp_log must reference home logs tree, got {exp_log:?}"
         );
         assert!(
             run_meta_dir.contains(&home_logs.display().to_string())
-                || run_meta_dir.contains(".malvin_home/logs"),
+                || run_meta_dir.contains(".malvinconf/logs"),
             "run_meta_dir must reference home logs tree, got {run_meta_dir:?}"
         );
         assert!(
@@ -143,8 +143,8 @@ fn exp_log_path_from_repo_root_work_dir() {
         let exp_log = ctx.get("exp_log").cloned().unwrap_or_default();
         let run_meta_dir = ctx.get("run_meta_dir").cloned().unwrap_or_default();
         assert!(
-            exp_log.contains(".malvin_home/logs") || exp_log.starts_with('/'),
-            "exp_log must be absolute or under .malvin_home/logs, got {exp_log:?}"
+            exp_log.contains(".malvinconf/logs") || exp_log.starts_with('/'),
+            "exp_log must be absolute or under .malvinconf/logs, got {exp_log:?}"
         );
         assert!(!exp_log.starts_with("./_run"));
         assert!(!run_meta_dir.starts_with("./_run"));

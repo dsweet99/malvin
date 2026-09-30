@@ -5,7 +5,7 @@ use crate::router_flow::router_flow_prompt::{
 };
 use malvin::config::DEFAULT_CLI_MODEL;
 use malvin::flow_prompt_join_test_helpers::flow_test_artifacts;
-use malvin::prompts::{HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_MD, ROUTER_B_MD};
+use malvin::prompts::{HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_LEAD_MD, ROUTER_B_MD};
 
 #[test]
 fn prepare_router_prompt_store_loads_default_templates() {
@@ -13,7 +13,7 @@ fn prepare_router_prompt_store_loads_default_templates() {
     assert!(store.validate_exists(HEADER_MD).is_ok());
     assert!(store.validate_exists(ROUTER_A_MD).is_ok());
     assert!(store.validate_exists(ROUTER_B_MD).is_ok());
-    assert!(store.validate_exists(ROUTER_B_CREATIVE_MD).is_ok());
+    assert!(store.validate_exists(ROUTER_B_CREATIVE_LEAD_MD).is_ok());
 }
 
 #[test]
@@ -126,6 +126,51 @@ fn build_router_a_prompt_includes_user_request_path() {
     .expect("router_a");
     assert!(body.contains("__MALVIN_DONE__"));
     assert!(!body.contains("{{"));
+}
+
+#[test]
+fn build_router_kpop_common_prompt_adds_bash_log_note_only_for_rpi() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = flow_test_artifacts(&tmp);
+    let store = prepare_router_prompt_store().expect("store");
+    let render = |model: &str| {
+        build_router_kpop_common_prompt(RouterKpopCommonPromptInput {
+            store: &store,
+            artifacts: &artifacts,
+            model,
+            max_hypotheses: 5,
+            no_kpop: false,
+            gate_iteration: 2,
+        })
+        .expect("kpop common")
+    };
+    let note = malvin::workflow_rpi_prompt::RPI_EXP_LOG_NOTE;
+    let rpi = render("rpi:local/ollama/malvin-llama32:latest");
+    assert!(rpi.contains(note), "{rpi}");
+    assert!(rpi.contains("_g2"));
+    assert!(!render(DEFAULT_CLI_MODEL).contains(note));
+}
+
+#[test]
+fn build_router_a_prompt_inlines_request_text_only_for_rpi() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = flow_test_artifacts(&tmp);
+    std::fs::write(&artifacts.plan_path, "Please fix A5-marker.").expect("write plan");
+    let store = prepare_router_prompt_store().expect("store");
+    let render = |model: &str| {
+        build_router_a_prompt(RouterAPromptInput {
+            store: &store,
+            artifacts: &artifacts,
+            model,
+            gates: false,
+            gates_just_ran: false,
+            no_kpop: false,
+        })
+        .expect("router_a")
+    };
+    let rpi = render("rpi:local/ollama/malvin-llama32:latest");
+    assert!(rpi.contains("```text\nPlease fix A5-marker.\n```"), "{rpi}");
+    assert!(!render(DEFAULT_CLI_MODEL).contains("A5-marker"));
 }
 
 #[cfg(test)]

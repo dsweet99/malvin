@@ -26,6 +26,7 @@ fn decode_tool_call_with_enriched_summary() {
             name,
             summary,
             tool_call_id,
+            ..
         } => {
             assert_eq!(phase, "start");
             assert_eq!(name.as_deref(), Some("shell"));

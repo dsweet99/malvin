@@ -47,7 +47,7 @@ fn kiss_witness_unified_sdk_client_and_backend() {
     backend.prompts_log_run_dir = Some(std::path::PathBuf::from("/tmp"));
     assert!(backend.prompts_log_run_dir.is_some());
     assert_eq!(
-        backend.max_acp_retries,
+        backend.max_acp_retries.get(),
         crate::support_paths::DEFAULT_MAX_ACP_RETRIES
     );
     assert!(!backend.has_open_coder_session());
@@ -64,7 +64,11 @@ fn kiss_witness_unified_sdk_client_and_backend() {
     assert!(backend.active_coder_session().is_err());
     let _ = stringify!(cursor_resume_id);
     let _ = stringify!(spawn_with_retries);
+    let _ = stringify!(record_spawn_success);
     let _ = stringify!(spawn_service_wire);
+    let _ = stringify!(BackendLifecycle);
+    let _ = stringify!(supports_thinking_wire);
+    let _ = stringify!(tracks_resume_agent_id);
     let _ = stringify!(CoderSessionEnsure);
     let _ = stringify!(start_coder_session);
     let _ = stringify!(bind_session_header);

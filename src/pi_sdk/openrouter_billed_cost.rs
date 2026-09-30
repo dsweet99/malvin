@@ -101,7 +101,7 @@ fn take_openrouter_generation_ids() -> Vec<String> {
 }
 
 #[cfg(not(malvin_pi_openrouter_patch))]
-fn take_openrouter_generation_ids() -> Vec<String> {
+const fn take_openrouter_generation_ids() -> Vec<String> {
     Vec::new()
 }
 

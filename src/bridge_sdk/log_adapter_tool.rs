@@ -12,6 +12,7 @@ pub(crate) struct ToolCallFields<'a> {
     pub name: Option<&'a str>,
     pub summary: Option<&'a str>,
     pub tool_call_id: Option<&'a str>,
+    pub error: Option<&'a str>,
 }
 
 pub(crate) fn emit_tool(session: &StreamLog, fields: ToolCallFields<'_>) {
@@ -20,14 +21,18 @@ pub(crate) fn emit_tool(session: &StreamLog, fields: ToolCallFields<'_>) {
         name,
         summary,
         tool_call_id,
+        error,
     } = fields;
-    let payload = serde_json::json!({
+    let mut payload = serde_json::json!({
         "event": "tool_call",
         "phase": phase,
         "name": name,
         "summary": summary,
         "toolCallId": tool_call_id,
     });
+    if let Some(error) = error {
+        payload["error"] = serde_json::Value::from(error);
+    }
     append_trace_line(session, &payload.to_string());
     if session.io.no_tee || session.io.raw_output {
         return;
@@ -49,6 +54,7 @@ pub(crate) fn emit_tool(session: &StreamLog, fields: ToolCallFields<'_>) {
                     phase,
                 },
             );
+            let plain = append_tool_error(plain, phase, error);
             tee_tool_line(session, &plain);
         }
         _ => {}
@@ -135,6 +141,17 @@ pub(super) fn compose_tool_done_line(
     }
 }
 
+pub(super) fn append_tool_error(line: String, phase: &str, error: Option<&str>) -> String {
+    let Some(error) = error.filter(|_| phase == "error") else {
+        return line;
+    };
+    let one_line = error.split_whitespace().collect::<Vec<_>>().join(" ");
+    if one_line.is_empty() {
+        return line;
+    }
+    format!("{line} {one_line}")
+}
+
 fn tee_tool_line(session: &StreamLog, plain: &str) {
     let display = tool_summary_stdout_display(plain);
     let ts = crate::output::timestamp_now_string();
@@ -153,8 +170,29 @@ fn tee_tool_line(session: &StreamLog, plain: &str) {
 
 #[cfg(test)]
 mod tests {
-    use super::compose_tool_done_line;
+    use super::{append_tool_error, compose_tool_done_line};
     use std::time::Duration;
+
+    #[test]
+    fn append_tool_error_follows_cross_mark_on_one_line() {
+        let line = append_tool_error(
+            "Read plan.md · 3ms · ✗".into(),
+            "error",
+            Some("missing field `path`\n  at line 1"),
+        );
+        assert_eq!(
+            line,
+            "Read plan.md · 3ms · ✗ missing field `path` at line 1"
+        );
+    }
+
+    #[test]
+    fn append_tool_error_ignores_success_and_empty() {
+        let base = "Read a · 1ms".to_string();
+        assert_eq!(append_tool_error(base.clone(), "complete", Some("x")), base);
+        assert_eq!(append_tool_error(base.clone(), "error", Some("  ")), base);
+        assert_eq!(append_tool_error(base.clone(), "error", None), base);
+    }
 
     #[test]
     fn compose_tool_done_line_run_success() {

@@ -4,12 +4,14 @@ mod identity;
 mod lifecycle;
 mod request;
 mod reset;
+mod run_done;
 mod send;
 mod trace;
 
 pub use env::{strip_herdr_env, strip_herdr_env_tokio};
 pub use lifecycle::{notify_reclaim, notify_run_end, notify_run_start, notify_working};
 pub use reset::reset_to_not_working;
+pub use run_done::notify_run_done;
 
 #[cfg(test)]
 pub(crate) use lifecycle::{
@@ -33,6 +35,7 @@ mod kiss_cov {
         let _ = super::notify_run_start;
         let _ = super::notify_reclaim;
         let _ = super::notify_working;
+        let _ = super::notify_run_done;
         let _ = super::notify_run_end;
         let _ = super::reset_to_not_working;
         let _ = crate::herdr::env::HerdrEnv::from_os_env;

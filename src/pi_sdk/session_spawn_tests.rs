@@ -205,6 +205,31 @@ fn local_append_prompt_has_no_task_answers() {
 }
 
 #[test]
+fn local_tools_prompt_asks_for_native_calls_not_text_json() {
+    let prompt =
+        super::local_append_system_prompt(super::LocalAgentMode::KeylessTools).expect("prompt");
+    for needle in ["JSON tool call", "\"name\"", "\"parameters\"", "{"] {
+        assert!(
+            !prompt.contains(needle),
+            "local tools prompt must not show a text tool-call format ({needle:?}): {prompt}"
+        );
+    }
+    assert!(prompt.contains("ONLY a tool call"), "{prompt}");
+    assert!(
+        prompt.contains("tool-call format your instructions specify"),
+        "{prompt}"
+    );
+    let tools =
+        super::local_enabled_tools(super::LocalAgentMode::KeylessTools).expect("keyless tools");
+    for tool in tools {
+        assert!(
+            prompt.contains(&tool),
+            "prompt must name enabled tool {tool}: {prompt}"
+        );
+    }
+}
+
+#[test]
 fn local_enabled_tools_are_the_core_set() {
     let tools =
         super::local_enabled_tools(super::LocalAgentMode::KeylessTools).expect("keyless tools");

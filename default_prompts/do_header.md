@@ -29,3 +29,4 @@ Your response should be short and to the point.
 - Do not restate, summarize, or describe the user's request.
 
 Respond to the user's request inside the DM fence.
+---- END MALVIN HEADER ----

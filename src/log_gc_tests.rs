@@ -6,6 +6,7 @@ use crate::log_gc_config::{
     LogsGcConfig, load_logs_gc_config, parse_byte_size, parse_logs_gc_config,
     parse_max_bytes_value, split_byte_size,
 };
+use crate::test_utils::TestLogsBucket;
 
 const RUN_OLDEST: &str = "20260101_000000_aaaaaaa1";
 const RUN_MID: &str = "20260102_000000_bbbbbbb2";
@@ -14,8 +15,8 @@ const RUN_OLD_AGE: &str = "20200101_000000_oldrun01";
 
 fn config_no_count_cap() -> LogsGcConfig {
     LogsGcConfig {
-        max_count: 0,
-        max_age_days: 0,
+        max_count: None,
+        max_age_days: None,
         max_bytes: None,
     }
 }
@@ -56,8 +57,8 @@ fn parse_logs_gc_config_reads_toml() {
     let cfg =
         parse_logs_gc_config("[logs]\nmax_count = 500\nmax_age_days = 7\nmax_bytes = \"1MiB\"\n")
             .expect("parse");
-    assert_eq!(cfg.max_count, 500);
-    assert_eq!(cfg.max_age_days, 7);
+    assert_eq!(cfg.max_count, Some(500));
+    assert_eq!(cfg.max_age_days, Some(7));
     assert_eq!(cfg.max_bytes, parse_byte_size("1MiB"));
 }
 
@@ -69,8 +70,8 @@ fn log_gc_helpers_cover_policy_edges() {
     let runs = vec![old.clone()];
     let total = dir_size(&old);
     let config = LogsGcConfig {
-        max_count: 0,
-        max_age_days: 30,
+        max_count: None,
+        max_age_days: Some(30),
         max_bytes: Some(0),
     };
     assert!(over_byte_cap(total, Some(0)));
@@ -98,10 +99,10 @@ fn parse_logs_gc_config_warns_on_invalid_max_bytes() {
     assert!(err.contains("max_bytes"));
 }
 
-fn writable_logs_root_or_skip(tmp: &tempfile::TempDir) -> Option<PathBuf> {
-    let logs = crate::workspace_paths::malvin_logs_root(tmp.path());
-    match std::fs::create_dir_all(&logs) {
-        Ok(()) => Some(logs),
+fn writable_logs_root_or_skip(name: &str) -> Option<TestLogsBucket> {
+    let guard = TestLogsBucket::new(name);
+    match std::fs::create_dir_all(guard.bucket()) {
+        Ok(()) => Some(guard),
         Err(error)
             if matches!(
                 error.kind(),
@@ -116,13 +117,13 @@ fn writable_logs_root_or_skip(tmp: &tempfile::TempDir) -> Option<PathBuf> {
 }
 
 fn prune_keeps_dated_run_when_arbitrary_subdir_would_sort_newer() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let Some(logs) = writable_logs_root_or_skip(&tmp) else {
+    let Some(guard) = writable_logs_root_or_skip("log-gc-keeps-dated-run") else {
         return;
     };
+    let logs = guard.bucket();
     std::fs::create_dir_all(logs.join("hand_notes")).expect("mkdir");
     std::fs::create_dir_all(logs.join(RUN_NEWEST)).expect("run dir");
-    let mut runs = list_run_dirs(&logs);
+    let mut runs = list_run_dirs(logs);
     runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
     prune_run_dirs(&mut runs, &config_no_count_cap(), None);
     assert!(
@@ -133,29 +134,29 @@ fn prune_keeps_dated_run_when_arbitrary_subdir_would_sort_newer() {
 }
 
 fn prune_leaves_non_run_log_subdirs_untouched() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let Some(logs) = writable_logs_root_or_skip(&tmp) else {
+    let Some(guard) = writable_logs_root_or_skip("log-gc-non-run-subdirs") else {
         return;
     };
+    let logs = guard.bucket();
     std::fs::create_dir_all(logs.join("hand_notes")).expect("mkdir");
-    let mut runs = list_run_dirs(&logs);
+    let mut runs = list_run_dirs(logs);
     runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
     prune_run_dirs(&mut runs, &config_no_count_cap(), None);
     assert!(logs.join("hand_notes").is_dir());
 }
 
 fn prune_removes_run_dir_when_over_age_limit() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let Some(logs) = writable_logs_root_or_skip(&tmp) else {
+    let Some(guard) = writable_logs_root_or_skip("log-gc-age-limit") else {
         return;
     };
+    let logs = guard.bucket();
     let old = logs.join(RUN_OLD_AGE);
     std::fs::create_dir_all(&old).expect("mkdir");
-    let mut runs = list_run_dirs(&logs);
+    let mut runs = list_run_dirs(logs);
     runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
     let config = LogsGcConfig {
-        max_count: 0,
-        max_age_days: 30,
+        max_count: None,
+        max_age_days: Some(30),
         max_bytes: None,
     };
     let (removed, _) = prune_run_dirs(&mut runs, &config, None);
@@ -175,16 +176,16 @@ fn two_run_dirs_with_payload(logs: &std::path::Path, bytes_each: usize) -> (Path
 }
 
 fn prune_removes_oldest_when_over_byte_cap() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let Some(logs) = writable_logs_root_or_skip(&tmp) else {
+    let Some(guard) = writable_logs_root_or_skip("log-gc-byte-cap") else {
         return;
     };
-    let (old, new) = two_run_dirs_with_payload(&logs, 2000);
-    let mut runs = list_run_dirs(&logs);
+    let logs = guard.bucket();
+    let (old, new) = two_run_dirs_with_payload(logs, 2000);
+    let mut runs = list_run_dirs(logs);
     runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
     let config = LogsGcConfig {
-        max_count: 0,
-        max_age_days: 0,
+        max_count: None,
+        max_age_days: None,
         max_bytes: Some(3000),
     };
     let (removed, _) = prune_run_dirs(&mut runs, &config, None);
@@ -194,32 +195,32 @@ fn prune_removes_oldest_when_over_byte_cap() {
 }
 
 #[cfg(unix)]
-fn undeletable_oldest_run_fixture() -> Option<(tempfile::TempDir, PathBuf, PathBuf)> {
+fn undeletable_oldest_run_fixture() -> Option<(TestLogsBucket, PathBuf, PathBuf)> {
     use std::os::unix::fs::PermissionsExt;
 
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let logs = writable_logs_root_or_skip(&tmp)?;
+    let guard = writable_logs_root_or_skip("log-gc-undeletable")?;
+    let logs = guard.bucket().to_path_buf();
     let oldest = logs.join(RUN_OLDEST);
     for name in [RUN_OLDEST, RUN_MID, RUN_NEWEST] {
         std::fs::create_dir_all(logs.join(name)).expect("run dir");
         std::fs::write(logs.join(name).join("payload"), vec![0u8; 600]).expect("write");
     }
     std::fs::set_permissions(&oldest, std::fs::Permissions::from_mode(0o000)).expect("chmod");
-    Some((tmp, logs, oldest))
+    Some((guard, logs, oldest))
 }
 
 #[cfg(unix)]
 fn prune_retries_or_reports_when_delete_fails_and_limits_still_exceeded() {
     use std::os::unix::fs::PermissionsExt;
 
-    let Some((_tmp, logs, oldest)) = undeletable_oldest_run_fixture() else {
+    let Some((_guard, logs, oldest)) = undeletable_oldest_run_fixture() else {
         return;
     };
     let mut runs = list_run_dirs(&logs);
     runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
     let config = LogsGcConfig {
-        max_count: 0,
-        max_age_days: 0,
+        max_count: None,
+        max_age_days: None,
         max_bytes: Some(1000),
     };
     let (removed, _) = prune_run_dirs(&mut runs, &config, None);

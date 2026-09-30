@@ -12,19 +12,19 @@ use crate::workspace_paths::malvin_config_path;
 mod malvin_config_agent;
 #[path = "malvin_config_default_workflow.rs"]
 mod malvin_config_default_workflow;
-#[path = "malvin_config_open.rs"]
-mod malvin_config_open;
 #[path = "malvin_config_model_policy.rs"]
 mod malvin_config_model_policy;
+#[path = "malvin_config_open.rs"]
+mod malvin_config_open;
 #[path = "malvin_config_parse.rs"]
 mod malvin_config_parse;
 #[path = "malvin_config_top.rs"]
 mod malvin_config_top;
 pub(crate) use malvin_config_agent::parse_agent_config;
 pub(crate) use malvin_config_default_workflow::parse_default_workflow_config;
-use malvin_config_open::create_malvin_config_from_template;
 pub use malvin_config_model_policy::parse_model_cli_arg;
 pub(crate) use malvin_config_model_policy::{parse_disable_rpi, parse_nicknames};
+use malvin_config_open::create_malvin_config_from_template;
 pub use malvin_config_open::{
     ensure_malvin_config_file_if_missing, load_agent_config_lenient, load_agent_config_strict,
 };

@@ -1,6 +1,6 @@
 use crate::cli::{RouterOpts, SharedOpts};
 use crate::router_flow::router_flow_prompt;
-use malvin::agent_backend::{set_implement_display_name, SdkClient};
+use malvin::agent_backend::{SdkClient, set_implement_display_name};
 use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
 use malvin::prompts::PromptStore;
 use malvin::run_timing::acp_post_run::RunTimingSessionEnd;
@@ -16,7 +16,7 @@ mod router_flow_coder_prompts;
 #[path = "router_flow_summary_line.rs"]
 mod router_flow_summary_line;
 
-pub(crate) use router_flow_acp_support::{router_iteration_log_path, RouterExitSummarize};
+pub(crate) use router_flow_acp_support::{RouterExitSummarize, router_iteration_log_path};
 
 use router_flow_acp_support::{run_router_turns, snapshot_iteration_backups};
 use router_flow_coder_prompts::run_router_summarize_coder_prompt;

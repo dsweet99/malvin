@@ -19,6 +19,7 @@ pub(crate) struct RouterLoopExitInput<'a> {
 
 pub(crate) fn decide_router_loop_exit(input: RouterLoopExitInput<'_>) -> RouterLoopDecision {
     if input.done {
+        malvin::herdr::notify_working();
         if input.gates {
             return decide_router_gates_exit(
                 input.artifacts,

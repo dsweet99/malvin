@@ -124,5 +124,6 @@ fn tool_call(value: &Value, phase: &str) -> BridgeEvent {
         name,
         summary,
         tool_call_id,
+        error: None,
     }
 }

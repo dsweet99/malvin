@@ -86,8 +86,8 @@ pub use workspace_paths::{
     is_malvin_workspace, legacy_malvin_checks_path, malvin_acp_spawn_chamber_dir,
     malvin_advice_path, malvin_checks_path, malvin_config_path, malvin_data_root,
     malvin_home_config_path, malvin_home_logs_root, malvin_logs_root, malvin_user_home_root,
-    read_work_dir_manifest, remove_legacy_malvin_checks_file, resolve_malvin_checks_path,
-    workspace_logs_hash, write_work_dir_manifest,
+    migrate_legacy_malvin_user_home, read_work_dir_manifest, remove_legacy_malvin_checks_file,
+    resolve_malvin_checks_path, workspace_logs_hash, write_work_dir_manifest,
 };
 pub mod run_id;
 pub mod terminal_palette;
@@ -101,7 +101,6 @@ mod tracing_init;
 mod user_home;
 pub use active_agent_heartbeat::active_agent_heartbeat_stats;
 pub use user_home::user_home_dir;
-pub mod tool_summary;
 pub mod acp;
 pub mod agent_backend;
 pub mod ansi_strip;
@@ -113,6 +112,7 @@ pub mod npm_pi_sdk;
 pub mod pi_sdk;
 #[cfg(test)]
 pub(crate) mod sdk_bridge_build;
+pub mod tool_summary;
 pub use acp::{AgentError, AgentFault, AgentIoOptions, AuthError, CoderPromptOptions};
 #[cfg(unix)]
 pub use acp::{snapshot_pids, terminate_agent_process_group};
@@ -156,6 +156,7 @@ pub mod command_output_timeout;
 pub mod orchestrator;
 pub mod sdk_drain_timeout;
 pub mod workflow_context;
+pub mod workflow_rpi_prompt;
 pub use orchestrator::check_abort;
 #[cfg(test)]
 pub use workflow_context::workflow_context;

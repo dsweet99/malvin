@@ -4,6 +4,8 @@ use std::thread::JoinHandle;
 
 use pi::sdk::{AbortHandle, AgentEvent, AgentSessionHandle, SessionOptions};
 
+const PI_SDK_THREAD_STACK: usize = 16 * 1024 * 1024;
+
 enum PiCmd {
     Prompt(PromptCmd),
     Shutdown,
@@ -39,6 +41,7 @@ impl PiRuntime {
         };
         let thread = std::thread::Builder::new()
             .name("malvin-pi-sdk".into())
+            .stack_size(PI_SDK_THREAD_STACK)
             .spawn(move || {
                 run_pi_thread(options, cmd_rx, ready_tx, ctl);
             })

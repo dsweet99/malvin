@@ -1,4 +1,3 @@
-use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::ChildStderr;
 
 const SHELL_EXEC_TAG: &str = "[shell-exec]";
@@ -10,30 +9,7 @@ pub(crate) fn is_shell_exec_close_warn(line: &str) -> bool {
 }
 
 pub(crate) fn start_filtered_forward(stderr: ChildStderr) {
-    tokio::spawn(async move {
-        forward_filtered_stderr(stderr).await;
-    });
-}
-
-async fn forward_filtered_stderr(stderr: ChildStderr) {
-    let mut reader = BufReader::new(stderr);
-    let mut line = String::new();
-    loop {
-        line.clear();
-        match reader.read_line(&mut line).await {
-            Ok(0) => break,
-            Ok(_) if is_shell_exec_close_warn(&line) => {}
-            Ok(_) => write_stderr_line(&line),
-            Err(_) => break,
-        }
-    }
-}
-
-fn write_stderr_line(line: &str) {
-    use std::io::Write;
-    let mut err = std::io::stderr();
-    let _ = err.write_all(line.as_bytes());
-    let _ = err.flush();
+    crate::bridge_sdk::start_warning_forward_filtered(stderr, is_shell_exec_close_warn);
 }
 
 #[cfg(test)]
@@ -59,8 +35,7 @@ mod bridge_stderr_tests {
     #[test]
     fn kiss_cov_bridge_stderr_names() {
         let _ = super::start_filtered_forward;
-        let _ = stringify!(forward_filtered_stderr);
-        let _ = stringify!(write_stderr_line);
+        let _ = stringify!(is_shell_exec_close_warn);
         let _ = stringify!(SHELL_EXEC_TAG);
         let _ = stringify!(CLOSE_EVENT_MARK);
     }

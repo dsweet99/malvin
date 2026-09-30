@@ -13,9 +13,9 @@ mod local_llm_lock;
 mod local_llm_ollama;
 mod local_llm_paths;
 mod local_llm_protocol;
-mod local_llms_config;
 #[cfg(test)]
 mod local_llm_test_lock;
+mod local_llms_config;
 mod map_agent_event;
 mod map_agent_event_end;
 mod map_event_summary;
@@ -25,12 +25,15 @@ mod models_refresh;
 mod models_refresh_merge;
 mod openrouter_billed_cost;
 mod openrouter_pricing;
+mod portkey_pricing;
+pub(crate) use portkey_pricing::apply_portkey_cost_usd;
 mod runtime;
 mod session;
 mod session_fake;
 mod session_spawn;
 mod session_spawn_local;
 mod session_spawn_watch;
+mod tool_args_normalize;
 mod usage_cost;
 
 pub use auth::{
@@ -74,6 +77,8 @@ pub fn pi_sdk_client_from_raw(
 
 #[cfg(test)]
 mod client_mock_tests;
+#[cfg(test)]
+mod client_retry_tests;
 #[cfg(test)]
 mod kiss_coverage_tests;
 #[cfg(test)]

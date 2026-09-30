@@ -72,11 +72,11 @@ fn malvin_doc_embeds_name_section() {
     let out = capture_doc(None).expect("capture");
     let text = String::from_utf8(out).expect("utf8");
     assert!(
-        text.contains("Session names") || text.contains(".malvin_home/names"),
+        text.contains("Session names") || text.contains(".malvinconf/names"),
         "doc must describe session names"
     );
     assert!(
-        text.contains(".malvin_home/names") || text.contains("already holds"),
+        text.contains(".malvinconf/names") || text.contains("already holds"),
         "doc must describe registry or duplicate-name behavior"
     );
     assert!(

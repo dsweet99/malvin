@@ -4,8 +4,8 @@ fn smoke_cov_cli_cross_file_symbols_b() {
     let _ = stringify!(RouterRunPrep);
     let _ = stringify!(new_do_client);
     let _ = stringify!(prepare_do_run);
-    let _ = stringify!(run_do_coder_prompt);
     let _ = stringify!(run_do_acp);
+    let _ = stringify!(render_do_cosend_prompt);
     let _ = stringify!(new_router_client);
     let _ = stringify!(prepare_router_run);
     let _ = stringify!(run_router_coder_prompt);

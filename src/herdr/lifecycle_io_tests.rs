@@ -27,6 +27,27 @@ fn lifecycle_reports_session_working_idle_clear_over_socket() {
 }
 
 #[test]
+fn done_at_timing_keeps_done_through_teardown() {
+    let _g = herdr_test_env_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    reset_session_for_test();
+    with_herdr_fixture(|run_dir, rx| {
+        notify_run_start(run_dir);
+        let _ = collect_until_deadline(rx, Duration::from_millis(400));
+        crate::herdr::notify_run_done();
+        notify_run_end();
+        let reqs = collect_until_teardown_clear(rx);
+        assert!(
+            reqs.iter().any(|v| {
+                method_of(v) == "pane.report_agent" && agent_state_of(v) == Some("done")
+            })
+        );
+        assert!(reqs.iter().all(|v| agent_state_of(v) != Some("idle")));
+    });
+    reset_session_for_test();
+}
+
 fn notify_working_pulses_working_without_clearing_authority() {
     let _g = herdr_test_env_lock()
         .lock()

@@ -1,3 +1,4 @@
+use pi::model::StopReason;
 use pi::sdk::{ContentBlock, Message};
 use serde_json::{Value, json};
 
@@ -19,6 +20,30 @@ pub(crate) fn map_agent_end(messages: &[Message], error: Option<&str>) -> Bridge
         error: error.map(str::to_string),
         duration_ms: None,
     }
+}
+
+pub(crate) const OUTPUT_CAP_MESSAGE: &str =
+    "output cap reached while thinking; raise `context_size` for this model";
+
+#[must_use]
+pub(crate) fn output_cap_error(messages: &[Message], output_cap: Option<u64>) -> Option<String> {
+    let cap = output_cap?;
+    let assistant = messages.iter().rev().find_map(|msg| match msg {
+        Message::Assistant(assistant) => Some(assistant.as_ref()),
+        _ => None,
+    })?;
+    let visible = assistant.content.iter().any(|block| match block {
+        ContentBlock::Text(part) => !part.text.trim().is_empty(),
+        ContentBlock::ToolCall(_) => true,
+        _ => false,
+    });
+    let capped = assistant.usage.output >= cap || assistant.stop_reason == StopReason::Length;
+    (!visible && capped).then(|| {
+        format!(
+            "{OUTPUT_CAP_MESSAGE} (output tokens {}, cap {cap})",
+            assistant.usage.output
+        )
+    })
 }
 
 fn last_assistant_text(messages: &[Message]) -> Option<String> {

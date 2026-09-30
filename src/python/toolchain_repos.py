@@ -81,8 +81,3 @@ def validate_toolchain_repos() -> Path:
     if not (malvin_repo / "Cargo.toml").is_file():
         raise click.ClickException(f"malvin repo not found: {malvin_repo}")
     return malvin_repo
-
-def cursor_sdk_shutdown_qa():
-    import qa as qa_mod
-
-    return qa_mod

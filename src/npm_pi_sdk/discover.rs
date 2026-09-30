@@ -85,7 +85,8 @@ fn candidate_package_roots() -> Vec<PathBuf> {
         let home = PathBuf::from(home);
         push_scoped(
             &mut roots,
-            home.join(".malvin_home/sdk-bridges/node_modules"),
+            home.join(crate::MALVIN_USER_HOME_DIR)
+                .join("sdk-bridges/node_modules"),
         );
         push_npx_cache(&mut roots, &home.join(".npm/_npx"));
     }

@@ -15,7 +15,7 @@ pub(crate) const fn command_doc_markdown(cmd: &Commands) -> &'static str {
             super::AdminCommand::Models(_) => {
                 include_str!("../../default_prompts/docs/models.md")
             }
-            super::AdminCommand::ResetHerdr => {
+            super::AdminCommand::ResetHerdr | super::AdminCommand::SetupCursor => {
                 include_str!("../../default_prompts/docs/admin.md")
             }
         },

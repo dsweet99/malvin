@@ -33,14 +33,7 @@ pub(super) fn spawn_npm_pi_process(args: &BridgeSpawnArgs<'_>) -> Result<NpmPiPr
     let mut child = cmd
         .spawn()
         .map_err(|e| AgentError(format!("spawn npm pi rpc: {e}")))?;
-    let stdin = child
-        .stdin
-        .take()
-        .ok_or_else(|| AgentError("npm pi stdin missing".into()))?;
-    let stdout = child
-        .stdout
-        .take()
-        .ok_or_else(|| AgentError("npm pi stdout missing".into()))?;
+    let (stdin, stdout) = crate::bridge_sdk::take_stdio_forward_stderr(&mut child, "npm pi")?;
     let pgid = child.id();
     Ok((child, stdin, stdout, pgid, std::collections::HashSet::new()))
 }
@@ -79,7 +72,7 @@ fn append_provider_model(
         .current_dir(args.cwd)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
+        .stderr(Stdio::piped())
         .env("MALLOC_ARENA_MAX", "2");
     if let Some(thinking) = args.thinking {
         cmd.arg("--thinking").arg(thinking);
@@ -111,7 +104,14 @@ pub(super) fn build_npm_pi_session(
         reader_dead: Arc::new(AtomicBool::new(false)),
         work_dir: args.cwd.to_path_buf(),
         log: StreamLog::from_spawn(args),
+        pi_model: pi_model_pair(args.model),
     })
+}
+
+fn pi_model_pair(model: &crate::model_id::ParsedModel) -> Option<(String, String)> {
+    model
+        .pi_provider_and_model()
+        .map(|(provider, id)| (provider.to_string(), id.to_string()))
 }
 
 #[cfg(test)]
@@ -135,5 +135,6 @@ mod tests {
         let _ = configured_npm_pi_command;
         let _ = build_npm_pi_session;
         let _ = entry_is_rpc_entry;
+        let _ = crate::bridge_sdk::take_stdio_forward_stderr;
     }
 }

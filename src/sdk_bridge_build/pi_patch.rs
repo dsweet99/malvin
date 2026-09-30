@@ -40,11 +40,7 @@ fn apply_pi_patch(manifest_dir: &Path, spec: &PiPatchSpec) {
         return;
     }
 
-    let Some(pi_src) = find_pi_agent_rust_0_1_23_src() else {
-        println!(
-            "cargo:warning=pi_agent_rust-0.1.23 source not found; {} patch skipped",
-            spec.label
-        );
+    let Some(pi_src) = find_linked_pi_src(manifest_dir) else {
         return;
     };
 
@@ -85,12 +81,37 @@ fn apply_pi_patch(manifest_dir: &Path, spec: &PiPatchSpec) {
     }
 }
 
-fn find_pi_agent_rust_0_1_23_src() -> Option<PathBuf> {
+fn linked_pi_version(manifest_dir: &Path) -> Option<String> {
+    let text = std::fs::read_to_string(manifest_dir.join("Cargo.lock")).ok()?;
+    let mut after_name = false;
+    for line in text.lines() {
+        let line = line.trim();
+        if line == "name = \"pi_agent_rust\"" {
+            after_name = true;
+            continue;
+        }
+        if after_name {
+            let version = line
+                .strip_prefix("version = \"")
+                .and_then(|rest| rest.strip_suffix('"'))
+                .map(str::to_string);
+            return version;
+        }
+    }
+    None
+}
+
+fn find_linked_pi_src(manifest_dir: &Path) -> Option<PathBuf> {
+    let version = linked_pi_version(manifest_dir)?;
+    if version != "0.1.23" {
+        return None;
+    }
     let home = env::var_os("HOME")?;
     let registry = PathBuf::from(home).join(".cargo/registry/src");
+    let name = format!("pi_agent_rust-{version}");
     let entries = std::fs::read_dir(&registry).ok()?;
     for entry in entries.flatten() {
-        let candidate = entry.path().join("pi_agent_rust-0.1.23");
+        let candidate = entry.path().join(&name);
         if candidate.join("Cargo.toml").is_file() {
             return Some(candidate);
         }

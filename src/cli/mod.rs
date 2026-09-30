@@ -1,20 +1,22 @@
 pub(crate) mod admin_cmd;
+pub(crate) mod advice_cmd;
 pub(crate) mod args;
 pub(crate) mod cli_request;
 pub(crate) mod command_docs;
-pub(crate) mod request_argv;
 mod commands_help;
 mod config_defaults;
+pub(crate) mod credits_cmd;
 pub(crate) mod entrypoint;
 mod entrypoint_checks;
 pub(crate) mod error_run_log;
 pub(crate) mod exit;
+pub(crate) mod iml_loop;
 pub(crate) mod init_flow;
 pub(crate) mod malvin_workflow;
 pub(crate) mod models_cmd;
+pub(crate) mod request_argv;
 pub(crate) mod run_emit;
 pub(crate) mod session_header;
-pub(crate) mod iml_loop;
 pub(crate) mod shared_opts;
 pub(crate) mod tidy_flow;
 

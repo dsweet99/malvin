@@ -35,10 +35,7 @@ impl SessionHeaderLifecycle {
     }
 
     pub(crate) fn require_redelivery(&mut self) {
-        *self = match std::mem::replace(self, Self::Unbound) {
-            Self::Pending(h) | Self::Satisfied(h) => Self::Pending(h),
-            Self::Unbound => Self::Unbound,
-        };
+        self.mark_fresh_spawn();
     }
 
     #[must_use]
