@@ -1,7 +1,8 @@
 use super::{
-    assemble_user_identity, format_current_state, format_local_datetime, format_retry_line,
-    format_sandbox_memory_line, format_user_identity,
+    assemble_user_identity, format_current_state, format_elapsed_line, format_local_datetime,
+    format_retry_line, format_sandbox_memory_line, format_user_identity,
 };
+use std::time::Duration;
 
 fn format_user_identity_includes_name() {
     let id = format_user_identity();
@@ -114,8 +115,20 @@ fn format_current_state_joins_all_sections() {
     let text = format_current_state(tmp.path(), None, None);
     assert!(text.contains("User:"));
     assert!(text.contains("Date/time:"));
+    assert!(text.contains("Elapsed since router session start:"));
     assert!(text.contains("Sandbox memory:"));
     assert!(text.contains("Retry:"));
+}
+
+fn format_elapsed_line_formats_hours_minutes_seconds() {
+    let line = |secs| format_elapsed_line(Some(Duration::from_secs(secs)));
+    assert_eq!(line(7), "Elapsed since router session start: 7s");
+    assert_eq!(line(125), "Elapsed since router session start: 2m 05s");
+    assert_eq!(line(3723), "Elapsed since router session start: 1h 02m 03s");
+}
+
+fn format_elapsed_line_unknown_without_start() {
+    assert!(format_elapsed_line(None).contains("unknown"));
 }
 
 #[test]
@@ -135,4 +148,6 @@ fn kiss_bundled_current_state_tests() {
     format_retry_line_first_run_is_not_retry();
     format_retry_line_first_gate_iteration_is_not_retry();
     format_current_state_joins_all_sections();
+    format_elapsed_line_formats_hours_minutes_seconds();
+    format_elapsed_line_unknown_without_start();
 }

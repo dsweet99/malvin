@@ -13,6 +13,7 @@ pub fn format_current_state(
     [
         format!("User: {}", format_user_identity()),
         format!("Date/time: {}", format_local_datetime()),
+        format_elapsed_line(crate::gate_loop_session::router_session_elapsed()),
         format_sandbox_memory_line(work_dir),
         format_retry_line(gate_iteration, artifacts),
     ]
@@ -92,6 +93,24 @@ pub fn format_local_datetime() -> String {
     chrono::Local::now()
         .format("%Y-%m-%d %H:%M:%S %Z")
         .to_string()
+}
+
+#[must_use]
+pub fn format_elapsed_line(elapsed: Option<std::time::Duration>) -> String {
+    let Some(elapsed) = elapsed else {
+        return "Elapsed since router session start: unknown (no router session recorded)."
+            .to_string();
+    };
+    let total = elapsed.as_secs();
+    let (h, m, s) = (total / 3600, (total % 3600) / 60, total % 60);
+    let text = if h > 0 {
+        format!("{h}h {m:02}m {s:02}s")
+    } else if m > 0 {
+        format!("{m}m {s:02}s")
+    } else {
+        format!("{s}s")
+    };
+    format!("Elapsed since router session start: {text}")
 }
 
 #[must_use]
