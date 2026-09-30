@@ -9,8 +9,6 @@ readme = "README.md"
 repository = "https://github.com/dsweet99/malvin"
 keywords = ["malvin"]
 categories = ["development-tools"]
-# Broken local symlinks under .cursor/ break `cargo package` when present as
-# untracked files; keep them out of the published crate.
 exclude = [
     ".cursor/",
     ".cursorrules",
@@ -25,10 +23,6 @@ exclude = [
     "summary-ft.md",
     "bugs.md",
 ]
-# Agent backends need the Node bridge under cursor-sdk-bridge/.
-# build.rs installs @cursor/sdk into ~/.malvin_home/sdk-bridges/
-# during cargo build / cargo install when in-tree bridges are not already built
-# (requires Node ≥ 22.13).
 build = "build.rs"
 
 [profile.dev]
@@ -66,7 +60,6 @@ tokio = { version = "1", features = [
 tracing = "0.1"
 termimad = "0.34"
 unicode-width = "0.2"
-# Pin kstring so pi_agent_rust’s gix/vergen stack stays on MSRV 1.95 (2.0.3+ needs 1.96).
 kstring = "=2.0.2"
 pi = { package = "pi_agent_rust", version = "0.6.1", default-features = false, features = ["sqlite-sessions"] }
 asupersync = { version = "0.5.0", default-features = false }
