@@ -108,6 +108,9 @@ fn kiss_cov_pi_sdk_openrouter_usage() {
     let _ = stringify!(openrouter_lookup_ids);
     let _ = stringify!(cost_from_model_rates);
     let _ = stringify!(lookup_rates);
+    let _ = stringify!(rates_for_provider_model);
+    let _ = stringify!(normalize_pi_usage);
+    let _ = stringify!(cost_usd_is_positive);
 }
 
 #[test]

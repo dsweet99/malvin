@@ -117,6 +117,19 @@ fn upstream_name(pi_provider: &str, from_header: Option<String>) -> Option<Strin
     }
 }
 
+pub(super) fn openrouter_catalog_model(provider: &str, model_id: &str) -> Option<String> {
+    let registry = load_registry()?;
+    let entry = registry.find(provider, model_id)?;
+    if !entry_is_portkey(&entry) {
+        return None;
+    }
+    let upstream = upstream_name(provider, entry_header_provider(&entry))?;
+    if !upstream.eq_ignore_ascii_case("openrouter") {
+        return None;
+    }
+    Some(bare_model_id(model_id).to_string())
+}
+
 pub(super) fn rates_for_pi_model(provider: &str, model_id: &str) -> Option<ModelCost> {
     let registry = load_registry()?;
     let entry = registry.find(provider, model_id)?;
@@ -134,7 +147,13 @@ fn token_count(obj: &Map<String, Value>, keys: &[&str]) -> u64 {
 }
 
 pub(crate) fn apply_portkey_cost_usd(provider: &str, model: &str, usage: &mut Value) {
-    let Some(rates) = rates_for_pi_model(provider, model) else {
+    super::sdk_usage_fields::normalize_pi_usage(usage);
+    if super::sdk_usage_fields::cost_usd_is_positive(usage) {
+        return;
+    }
+    let Some(rates) = rates_for_pi_model(provider, model)
+        .or_else(|| super::usage_cost::rates_for_provider_model(provider, model))
+    else {
         return;
     };
     let Some(obj) = usage.as_object() else {

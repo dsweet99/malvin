@@ -38,6 +38,80 @@ fn aggregate_cost_usd_sums_reported_components() {
     assert_eq!(totals.total, 0.03);
 }
 
+fn write_openrouter_rate_cache(model_id: &str, input: f64, output: f64, cache_read: f64) {
+    let fetched_at = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    let cache = serde_json::json!({
+        "fetched_at_secs": fetched_at,
+        "by_id": {
+            model_id: {
+                "input": input,
+                "output": output,
+                "cacheRead": cache_read,
+                "cacheWrite": 0.0
+            }
+        }
+    });
+    let path = crate::workspace_paths::malvin_user_home_root().join("openrouter-pricing.json");
+    std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+    std::fs::write(path, cache.to_string()).expect("write cache");
+}
+
+#[test]
+#[allow(clippy::float_cmp)]
+fn aggregate_cost_usd_splits_total_only_bill_using_rate_cache() {
+    crate::test_utils::with_isolated_home(|_| {
+        write_openrouter_rate_cache("x-ai/grok-4.6", 2.0, 6.0, 0.5);
+        let totals = aggregate_cost_usd(&[assistant(
+            "openrouter",
+            "x-ai/grok-4.6",
+            Usage {
+                input: 11_613,
+                output: 147,
+                cache_read: 11_648,
+                ..Usage::default()
+            },
+            Cost {
+                total: 0.029_932,
+                ..Cost::default()
+            },
+        )]);
+        assert!((totals.input - 0.023_226).abs() < 1e-9);
+        assert!((totals.output - 0.000_882).abs() < 1e-9);
+        assert!((totals.cache_read - 0.005_824).abs() < 1e-9);
+        assert_eq!(totals.cache_write, 0.0);
+        assert!((totals.total - 0.029_932).abs() < 1e-12);
+    });
+}
+
+#[test]
+#[allow(clippy::float_cmp)]
+fn aggregate_cost_usd_keeps_an_explicit_component_split() {
+    crate::test_utils::with_isolated_home(|_| {
+        write_openrouter_rate_cache("x-ai/grok-4.6", 2.0, 6.0, 0.5);
+        let totals = aggregate_cost_usd(&[assistant(
+            "openrouter",
+            "x-ai/grok-4.6",
+            Usage {
+                input: 1_000_000,
+                output: 1_000_000,
+                ..Usage::default()
+            },
+            Cost {
+                input: 0.01,
+                output: 0.02,
+                total: 0.03,
+                ..Cost::default()
+            },
+        )]);
+        assert_eq!(totals.input, 0.01);
+        assert_eq!(totals.output, 0.02);
+        assert_eq!(totals.total, 0.03);
+    });
+}
+
 #[test]
 #[allow(clippy::float_cmp)]
 fn aggregate_cost_usd_accepts_total_only_reported_cost() {

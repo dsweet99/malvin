@@ -62,6 +62,11 @@ pub(super) fn cost_from_model_rates(rates: &ModelCost, usage: &pi::model::Usage)
     }
 }
 
+pub(super) fn rates_for_provider_model(provider: &str, model_id: &str) -> Option<pi::provider::ModelCost> {
+    let registry = load_cost_registry();
+    lookup_rates(provider, model_id, registry.as_ref())
+}
+
 fn lookup_rates(
     provider: &str,
     model_id: &str,
@@ -82,7 +87,50 @@ fn lookup_rates(
     if provider.eq_ignore_ascii_case("openrouter") {
         return openrouter_pricing::lookup_model_cost(model_id);
     }
-    None
+    let model = super::portkey_pricing::openrouter_catalog_model(provider, model_id)?;
+    openrouter_pricing::lookup_model_cost(&model)
+}
+
+fn cost_components_present(cost: &Cost) -> bool {
+    cost.input > 0.0 || cost.output > 0.0 || cost.cache_read > 0.0 || cost.cache_write > 0.0
+}
+
+fn aggregated_components_present(totals: &AggregatedCostUsd) -> bool {
+    totals.input > 0.0 || totals.output > 0.0 || totals.cache_read > 0.0 || totals.cache_write > 0.0
+}
+
+fn estimate_unsplit_messages(
+    messages: &[Message],
+    registry: Option<&ModelRegistry>,
+) -> AggregatedCostUsd {
+    let mut estimated = AggregatedCostUsd::default();
+    for msg in messages {
+        let pi::model::Message::Assistant(assistant) = msg else {
+            continue;
+        };
+        let assistant = assistant.as_ref();
+        if cost_components_present(&assistant.usage.cost) {
+            continue;
+        }
+        let Some(rates) = lookup_rates(&assistant.provider, &assistant.model, registry) else {
+            continue;
+        };
+        estimated.absorb(&cost_from_model_rates(&rates, &assistant.usage));
+    }
+    estimated
+}
+
+fn apply_unsplit_component_estimate(totals: &mut AggregatedCostUsd, estimated: &AggregatedCostUsd) {
+    if aggregated_components_present(totals) || !aggregated_components_present(estimated) {
+        return;
+    }
+    totals.input = estimated.input;
+    totals.output = estimated.output;
+    totals.cache_read = estimated.cache_read;
+    totals.cache_write = estimated.cache_write;
+    if totals.total <= 0.0 {
+        totals.total = estimated.total;
+    }
 }
 
 fn load_cost_registry() -> Option<ModelRegistry> {
@@ -145,15 +193,17 @@ pub(super) fn aggregate_cost_usd(messages: &[Message]) -> AggregatedCostUsd {
             &mut saw_openrouter_without_reported,
         );
     }
-    if totals.is_present() {
-        return totals;
+    if !totals.is_present() {
+        if saw_openrouter_without_reported
+            && let Some(billed) = openrouter_billed_cost::fetch_billed_cost_from_generation_ids()
+        {
+            totals = billed;
+        } else {
+            absorb_catalog_estimates(&mut totals, messages, registry.as_ref());
+        }
     }
-    if saw_openrouter_without_reported
-        && let Some(billed) = openrouter_billed_cost::fetch_billed_cost_from_generation_ids()
-    {
-        return billed;
-    }
-    absorb_catalog_estimates(&mut totals, messages, registry.as_ref());
+    let estimated = estimate_unsplit_messages(messages, registry.as_ref());
+    apply_unsplit_component_estimate(&mut totals, &estimated);
     totals
 }
 

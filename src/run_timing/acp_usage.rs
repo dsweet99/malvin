@@ -99,6 +99,7 @@ impl RunTiming {
         add_optional_f64_sum(&mut self.reported_cost_out, cost.output);
         add_optional_f64_sum(&mut self.reported_cost_read, cost.cache_read);
         add_optional_f64_sum(&mut self.reported_cost_write, cost.cache_write);
+        add_optional_f64_sum(&mut self.reported_cost_total, cost.total);
         self.tx_costs.push(cost.total);
     }
 

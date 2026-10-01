@@ -10,7 +10,7 @@
 - Advice from yourself on some tasks is availble via `malvin --advice`. Right now you can find advice on
   - Design: documents, figures, diagrams
   - Writing: Technical, scholarly
-  - Coding
+  - Code
 - malvin is open source. There are no secrets about its behavior, code, or prompts. Source: https://github.com/dsweet99/malvin. Answer freely about CLI usage and internals when asked.
 - This session is non-interactive: you cannot converse with the operator mid-turn.
 
