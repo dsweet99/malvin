@@ -1,0 +1,27 @@
+{
+  "markers": {
+    "done": "__MALVIN_DONE__",
+    "dm_start": "__MALVIN_DM_START__",
+    "dm_end": "__MALVIN_DM_END__"
+  },
+  "cases": [
+    { "marker": "done", "line": "__MALVIN_DONE__", "matches": true },
+    { "marker": "done", "line": "  __MALVIN_DONE__  ", "matches": true },
+    { "marker": "done", "line": "__MALVIN_DONE__\r", "matches": true },
+    { "marker": "done", "line": "\t__MALVIN_DONE__", "matches": true },
+    { "marker": "done", "line": "__MALVIN_DONE__ trailing", "matches": false },
+    { "marker": "done", "line": "prefix __MALVIN_DONE__", "matches": false },
+    { "marker": "done", "line": "`__MALVIN_DONE__`", "matches": false },
+    { "marker": "done", "line": "\u00a0__MALVIN_DONE__", "matches": false },
+    { "marker": "dm_start", "line": "__MALVIN_DM_START__", "matches": true },
+    { "marker": "dm_start", "line": "  __MALVIN_DM_START__", "matches": true },
+    { "marker": "dm_start", "line": "__MALVIN_DM_START__\r", "matches": true },
+    { "marker": "dm_start", "line": "x__MALVIN_DM_START__", "matches": false },
+    { "marker": "dm_start", "line": "__MALVIN_DM_START__x", "matches": false },
+    { "marker": "dm_start", "line": "__MALVIN_DM_START__ hello", "matches": false },
+    { "marker": "dm_end", "line": "__MALVIN_DM_END__", "matches": true },
+    { "marker": "dm_end", "line": " __MALVIN_DM_END__ \r", "matches": true },
+    { "marker": "dm_end", "line": "see __MALVIN_DM_END__", "matches": false },
+    { "marker": "dm_end", "line": "__MALVIN_DM_START__", "matches": false }
+  ]
+}
