@@ -17,12 +17,9 @@ pub enum AdminCommand {
     /// Reset herdr agent state to idle (not working)
     #[command(name = "reset-herdr", visible_alias = "rh")]
     ResetHerdr,
-    /// Install the Cursor SDK (needs Node.js >= 22.13 and npm) for cursor: models
-    #[command(name = "setup-cursor")]
-    SetupCursor,
 }
 
-pub(crate) const ADMIN_MISSING_SUBCOMMAND: &str = "'malvin admin' requires a subcommand but one was not provided\n  [subcommands: models, reset-herdr, rh, setup-cursor]\n\nUsage: malvin admin <COMMAND>\n\nFor more information, try 'malvin admin --help' or 'malvin admin --doc'.";
+pub(crate) const ADMIN_MISSING_SUBCOMMAND: &str = "'malvin admin' requires a subcommand but one was not provided\n  [subcommands: models, reset-herdr, rh]\n\nUsage: malvin admin <COMMAND>\n\nFor more information, try 'malvin admin --help' or 'malvin admin --doc'.";
 
 pub fn run_admin(args: AdminArgs, current_model: &str) -> Result<(), String> {
     let Some(command) = args.command else {
@@ -38,19 +35,7 @@ pub fn run_admin(args: AdminArgs, current_model: &str) -> Result<(), String> {
             );
             Ok(())
         }
-        AdminCommand::SetupCursor => run_setup_cursor(),
     }
-}
-
-fn run_setup_cursor() -> Result<(), String> {
-    use malvin::cursor_sdk::bridge_install;
-    let dest = bridge_install::default_install_dir();
-    bridge_install::install_into(&dest).map_err(|e| bridge_install::install_failed_message(&e))?;
-    malvin::output::print_stdout_line(
-        malvin::output::MALVIN_WHO,
-        &format!("Cursor SDK bridge ready in {}", dest.display()),
-    );
-    Ok(())
 }
 
 #[cfg(test)]
@@ -79,17 +64,6 @@ mod tests {
             })) => {}
             other => panic!("expected Admin::ResetHerdr via rh, got {other:?}"),
         }
-    }
-
-    #[test]
-    fn parses_admin_setup_cursor() {
-        let cli = Cli::try_parse_from(["malvin", "admin", "setup-cursor"]).expect("parse");
-        assert!(matches!(
-            cli.command,
-            Some(Commands::Admin(AdminArgs {
-                command: Some(AdminCommand::SetupCursor),
-            }))
-        ));
     }
 
     #[test]

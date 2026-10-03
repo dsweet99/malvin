@@ -21,7 +21,7 @@ CURSOR_BRIDGE_JS := cursor-sdk-bridge/dist/bridge.js
 deps:
 	@echo "Build deps (Ubuntu): sudo apt-get install gcc-10 g++-10 libcap-ng-dev"
 	@echo "cursor: models need Node >= 22.13 and npm at run time (not at build time)."
-	@echo "malvin installs @cursor/sdk into ~/.malvinconf/sdk-bridges/ on first use or via 'malvin admin setup-cursor'."
+	@echo "malvin installs @cursor/sdk into ~/.malvinconf/sdk-bridges/ on first use."
 	@echo "Manual: npm ci && npm run build in cursor-sdk-bridge/"
 
 bridges: $(CURSOR_BRIDGE_JS)

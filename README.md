@@ -3,14 +3,8 @@
 
 ## Installation
 
-Requires **Rust 1.95+** (`rustup update` / `rustup install 1.95.0`). This package
-declares `rust-version = "1.95"`; with an older rustc, `cargo install malvin`
-fails and leaves any prior binary in place (releases through `0.2.3` list every
-`rpi:` provider; `0.2.4+` lists only providers you can run).
-
 ```bash
-rustup install 1.95.0 && rustup default 1.95.0   # if needed
-cargo install malvin --force
+cargo install malvin
 ```
 
 The build needs neither Node nor network access beyond crates.io.
@@ -18,11 +12,7 @@ The build needs neither Node nor network access beyond crates.io.
 `cursor:` models (including the default, `cursor:auto`) need
 [Node.js](https://nodejs.org/) ≥ 22.13 with `npm` at run time. The first time a
 `cursor:` model runs, malvin installs the Cursor SDK (`@cursor/sdk`) under
-`~/.malvinconf/sdk-bridges/` with `npm ci`. To install it ahead of time:
-
-```bash
-malvin admin setup-cursor
-```
+`~/.malvinconf/sdk-bridges/` with `npm ci`.
 
 `rpi:` and `codex:` models do not need Node.
 

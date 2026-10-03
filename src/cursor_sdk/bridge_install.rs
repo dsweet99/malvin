@@ -4,7 +4,6 @@ use std::sync::OnceLock;
 
 use super::bridge_install_npm::npm_ci;
 
-pub const SETUP_COMMAND: &str = "malvin admin setup-cursor";
 const DIR_NAME: &str = "cursor-sdk-bridge";
 const SDK_MARKER: &str = "node_modules/@cursor/sdk/package.json";
 const LOCK_JSON: &str = "package-lock.json";
@@ -144,8 +143,8 @@ fn write_npm_stamp(dest: &Path) -> Result<(), String> {
 pub fn install_failed_message(reason: &str) -> String {
     format!(
         "Cursor SDK bridge is not installed and could not be installed: {reason}\n\
-         cursor: models need Node.js >= 22.13 with npm. Install them, then run \
-         `{SETUP_COMMAND}` (or set MALVIN_CURSOR_SDK_BRIDGE). \
+         cursor: models need Node.js >= 22.13 with npm. Install them and retry \
+         (or set MALVIN_CURSOR_SDK_BRIDGE). \
          rpi: and codex: models do not need Node."
     )
 }

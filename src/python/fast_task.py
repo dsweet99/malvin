@@ -622,7 +622,7 @@ def ft_docker_agent_cmd(
             raise click.ClickException(
                 "cursor-sdk-bridge/dist/bridge.js not found under the repo "
                 "or ~/.malvinconf/sdk-bridges/cursor-sdk-bridge; "
-                "run `malvin admin setup-cursor` or "
+                "run a `cursor:` model with malvin once, or run "
                 "`npm ci && npm run build` in cursor-sdk-bridge/ "
                 "(required for cursor: models inside the agent container)"
             )
