@@ -68,7 +68,7 @@ mod tests {
             std::fs::remove_file(&config).expect("remove config for models test");
 
             ensure_malvin_checks_for_command(&Commands::Admin(AdminArgs {
-                command: AdminCommand::Models(ModelsArgs::default()),
+                command: Some(AdminCommand::Models(ModelsArgs::default())),
             }));
             assert!(!checks.exists());
             assert!(!config.exists());

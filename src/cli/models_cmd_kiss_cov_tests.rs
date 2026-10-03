@@ -12,7 +12,7 @@ fn kiss_cov_models_args_clap_parse_and_destructure() {
     let cli = Cli::try_parse_from(["malvin", "admin", "models"]).expect("parse models");
     match cli.command {
         Some(Commands::Admin(AdminArgs {
-            command: AdminCommand::Models(args),
+            command: Some(AdminCommand::Models(args)),
         })) => {
             assert_eq!(models_args_marker(&args), "models");
             let _args = kiss_witness_clone(&args);
@@ -21,7 +21,7 @@ fn kiss_cov_models_args_clap_parse_and_destructure() {
     }
     let reparse = Cli::try_parse_from(["malvin", "admin", "models"]).expect("reparse");
     if let Some(Commands::Admin(AdminArgs {
-        command: AdminCommand::Models(second),
+        command: Some(AdminCommand::Models(second)),
     })) = reparse.command
     {
         assert_eq!(models_args_marker(&second), "models");
@@ -43,7 +43,7 @@ fn kiss_cov_models_args_clap_parse_and_destructure() {
     let _cloned = kiss_witness_clone(&ModelsArgs::default());
     let refresh = Cli::try_parse_from(["malvin", "admin", "models", "--refresh"]).expect("refresh");
     if let Some(Commands::Admin(AdminArgs {
-        command: AdminCommand::Models(args),
+        command: Some(AdminCommand::Models(args)),
     })) = refresh.command
     {
         assert!(args.refresh);

@@ -5,8 +5,9 @@ use super::models_cmd::ModelsArgs;
 #[derive(Args, Debug, Clone)]
 #[command(override_usage = "malvin admin <COMMAND>")]
 pub struct AdminArgs {
+    /// `None` only with `--doc`; parsing rejects a bare `malvin admin` otherwise.
     #[command(subcommand)]
-    pub command: AdminCommand,
+    pub command: Option<AdminCommand>,
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -21,8 +22,13 @@ pub enum AdminCommand {
     SetupCursor,
 }
 
+pub(crate) const ADMIN_MISSING_SUBCOMMAND: &str = "'malvin admin' requires a subcommand but one was not provided\n  [subcommands: models, reset-herdr, rh, setup-cursor]\n\nUsage: malvin admin <COMMAND>\n\nFor more information, try 'malvin admin --help' or 'malvin admin --doc'.";
+
 pub fn run_admin(args: AdminArgs, current_model: &str) -> Result<(), String> {
-    match args.command {
+    let Some(command) = args.command else {
+        return Err(ADMIN_MISSING_SUBCOMMAND.to_string());
+    };
+    match command {
         AdminCommand::Models(models) => super::models_cmd::run_models(models, current_model),
         AdminCommand::ResetHerdr => {
             malvin::herdr::reset_to_not_working()?;
@@ -58,7 +64,7 @@ mod tests {
         let cli = Cli::try_parse_from(["malvin", "admin", "reset-herdr"]).expect("parse");
         match cli.command {
             Some(Commands::Admin(AdminArgs {
-                command: AdminCommand::ResetHerdr,
+                command: Some(AdminCommand::ResetHerdr),
             })) => {}
             other => panic!("expected Admin::ResetHerdr, got {other:?}"),
         }
@@ -69,7 +75,7 @@ mod tests {
         let cli = Cli::try_parse_from(["malvin", "admin", "rh"]).expect("parse");
         match cli.command {
             Some(Commands::Admin(AdminArgs {
-                command: AdminCommand::ResetHerdr,
+                command: Some(AdminCommand::ResetHerdr),
             })) => {}
             other => panic!("expected Admin::ResetHerdr via rh, got {other:?}"),
         }
@@ -81,7 +87,7 @@ mod tests {
         assert!(matches!(
             cli.command,
             Some(Commands::Admin(AdminArgs {
-                command: AdminCommand::SetupCursor,
+                command: Some(AdminCommand::SetupCursor),
             }))
         ));
     }
@@ -92,7 +98,7 @@ mod tests {
             Cli::try_parse_from(["malvin", "admin", "models", "--refresh", "rpi:"]).expect("parse");
         match cli.command {
             Some(Commands::Admin(AdminArgs {
-                command: AdminCommand::Models(args),
+                command: Some(AdminCommand::Models(args)),
             })) => {
                 assert!(args.refresh);
                 assert_eq!(args.words, vec!["rpi:".to_string()]);

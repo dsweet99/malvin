@@ -59,14 +59,14 @@ fn models_subcommand_parse_invokes_cli_helpers() {
     assert!(matches!(
         cli.command,
         Some(Commands::Admin(AdminArgs {
-            command: AdminCommand::Models(_),
+            command: Some(AdminCommand::Models(_)),
         }))
     ));
     let refresh =
         Cli::try_parse_from(["malvin", "admin", "models", "--refresh", "rpi:"]).expect("parse");
     match refresh.command {
         Some(Commands::Admin(AdminArgs {
-            command: AdminCommand::Models(args),
+            command: Some(AdminCommand::Models(args)),
         })) => assert!(args.refresh),
         _ => panic!("expected Admin::Models"),
     }

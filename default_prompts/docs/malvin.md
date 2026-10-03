@@ -76,6 +76,10 @@ On the default router (bare `malvin REQUEST` and `malvin -g`), when creative mod
 
 Like `--do`, each `--creative` applies only to the `REQUEST` that immediately follows it and may be repeated (at most once per `REQUEST`). Example: `malvin "plain" --creative "spark" "plain2" --creative=0.4 "spark2"`. Intervening global flags (for example `--max-loops`) may appear between `--creative` and its `REQUEST`. A trailing `--creative` after other requests, or `--creative` immediately followed by `--do` (or the reverse), is an error. For `malvin -g` with no positional request, `--creative` still enables creative sampling for that gates-only run.
 
+### `--no-kpop`
+
+Hidden from `malvin --help`. On the default router (bare `malvin REQUEST` and `malvin -g`), turn off the KPop method: `{{ kpop_insert }}` renders empty, reused sessions do not receive `kpop_common.md`, and `router_a` / `router_b` use their no-KPop wording. Rejected with pure `--do`. Off by default.
+
 ### `--watch`
 
 On the default router (bare `malvin REQUEST` and `malvin -g`), before each outer loop iteration, re-copy the operator's request `.md` file onto the run's `plan_*.md` artifact (overwrite). No effect when `REQUEST` is literal text (not an existing `.md` path). Has no effect on `--do` requests; when the invocation is pure `--do` (no router REQUEST), `--watch` is rejected.
@@ -103,10 +107,10 @@ Any lock whose holder PID is dead (or whose contents are not a valid PID) is saf
 Print built-in documentation and exit. Does not spawn an agent or create a run directory under `~/.malvinconf/logs/`.
 
 - `malvin --doc` — this overview, then the default-route contract (`router.md`).
-- `malvin <COMMAND> --doc` — documentation for that subcommand.
+- `malvin <COMMAND> --doc` — documentation for that subcommand (`malvin admin --doc` for `admin`, `malvin admin models --doc` for `models`).
 - `malvin --do --doc` — documentation for the one-shot `--do` workflow.
 
-Other subcommand arguments (for example `<REQUEST>`) are not required when `--doc` is set.
+Other subcommand arguments (for example `<REQUEST>`) are not required when `--doc` is set. Argument validation still runs first: invalid values or combinations (for example `--model foo:bar`, `-g` with `admin`, `--do` with a subcommand, or `--watch` with pure `--do`) exit 1 with the error instead of printing documentation.
 
 ### `--advice`
 
@@ -209,7 +213,7 @@ The Cursor SDK bridge also emits automatic `{ "event": "progress", "kind": "hear
 
 `~/.malvinconf/` holds malvin's per-user state: `config.toml`, `local_llms.json`, `logs/`, `names/`, and `sdk-bridges/`. Older releases used `~/.malvin_home/`. On startup, when `~/.malvin_home/` is a real directory, malvin renames it to `~/.malvinconf`, or, if `~/.malvinconf` already exists, merges its contents in (files from `~/.malvin_home/` win on conflict). It then leaves a symlink at the old path, so malvin processes still running an older build keep working.
 
-Top-level keys include `mem_limit_gb`, `theme`, and `disable_rpi` (default `false`; when `true`, `rpi:` is rejected as a backend and omitted from `malvin admin models`). Cursor cost rates `usd_per_microtoken_in`, `usd_per_microtoken_out`, `usd_per_microtoken_cache_read`, and `usd_per_microtoken_cache_write` (dollars per million tokens; all default `0`) live under per-model tables such as `[agent.cursor.auto]` (model id `cursor:auto`). Sections include `[agent]`, `[default_workflow]` (`max_hypotheses` for bare `malvin REQUEST` when `--max-hypotheses` is omitted, default 5), `[logs]`, and optional `[nicknames]` (map short unprefixed names to full model ids for `--model` / `[agent].model`, e.g. `astra = "pi:openrouter/openai/gpt-astra"`).
+Top-level keys include `mem_limit_gb`, `theme`, and `disable_rpi` (default `false`; when `true`, `rpi:` is rejected as a backend and omitted from `malvin admin models`). Cursor cost rates `usd_per_microtoken_in`, `usd_per_microtoken_out`, `usd_per_microtoken_cache_read`, and `usd_per_microtoken_cache_write` (dollars per million tokens; all default `0`) live under per-model tables such as `[agent.cursor.auto]` (model id `cursor:auto`). Sections include `[agent]`, `[default_workflow]` (`max_hypotheses` for bare `malvin REQUEST` and `malvin -g` when `--max-hypotheses` is omitted, default 5), `[logs]`, and optional `[nicknames]` (map short unprefixed names to full model ids for `--model` / `[agent].model`, e.g. `astra = "pi:openrouter/openai/gpt-astra"`).
 
 ## Local LLMs (`~/.malvinconf/local_llms.json`)
 
