@@ -133,14 +133,6 @@ pub fn parse_cli_with_config_defaults(
     let cmd = Cli::command();
     let matches = cmd.try_get_matches_from(args.clone())?;
     let mut cli = Cli::from_arg_matches(&matches)?;
-    if !cli.shared.doc
-        && matches!(&cli.command, Some(Commands::Admin(admin)) if admin.command.is_none())
-    {
-        return Err(usage_error(
-            clap::error::ErrorKind::MissingSubcommand,
-            crate::cli::admin_cmd::ADMIN_MISSING_SUBCOMMAND,
-        ));
-    }
     match crate::cli::request_argv::classify_top_level_requests(&args) {
         Ok(tagged) => cli.tagged_requests = tagged,
         Err(e) => {

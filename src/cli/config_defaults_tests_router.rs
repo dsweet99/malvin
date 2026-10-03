@@ -72,7 +72,6 @@ fn raw_usage_errors_end_with_newline() {
     for argv in [
         &["malvin", "--watch", "--do", "x"][..],
         &["malvin", "x", "--creative"][..],
-        &["malvin", "admin"][..],
     ] {
         let err = parse_cli_with_config_defaults(argv).expect_err("usage error");
         assert!(err.to_string().ends_with('\n'), "{argv:?}: {err:?}");

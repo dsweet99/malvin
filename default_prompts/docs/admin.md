@@ -23,6 +23,8 @@ malvin admin reset-herdr
 malvin admin rh
 ```
 
+`malvin admin` with no subcommand prints a short catalog of the admin subcommands with their descriptions and exits 0, like bare `malvin`.
+
 ## Subcommands
 
 ### `models`

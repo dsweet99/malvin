@@ -5,7 +5,7 @@ use super::models_cmd::ModelsArgs;
 #[derive(Args, Debug, Clone)]
 #[command(override_usage = "malvin admin <COMMAND>")]
 pub struct AdminArgs {
-    /// `None` only with `--doc`; parsing rejects a bare `malvin admin` otherwise.
+    /// `None` for bare `malvin admin`, which prints the admin command catalog.
     #[command(subcommand)]
     pub command: Option<AdminCommand>,
 }
@@ -19,11 +19,9 @@ pub enum AdminCommand {
     ResetHerdr,
 }
 
-pub(crate) const ADMIN_MISSING_SUBCOMMAND: &str = "'malvin admin' requires a subcommand but one was not provided\n  [subcommands: models, reset-herdr, rh]\n\nUsage: malvin admin <COMMAND>\n\nFor more information, try 'malvin admin --help' or 'malvin admin --doc'.";
-
 pub fn run_admin(args: AdminArgs, current_model: &str) -> Result<(), String> {
     let Some(command) = args.command else {
-        return Err(ADMIN_MISSING_SUBCOMMAND.to_string());
+        return super::commands_help::print_admin_commands_only_help().map_err(|e| e.to_string());
     };
     match command {
         AdminCommand::Models(models) => super::models_cmd::run_models(models, current_model),
