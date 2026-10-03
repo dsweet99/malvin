@@ -65,10 +65,23 @@ LEAK_NAME_MARKERS = ("grade.py", "goldens", "golden", "solution")
 
 CURSOR_AGENT_SHELL = "cursor-agent --force -p < plan.md"
 
+def ft_installed_cursor_sdk_bridge_dir() -> Path:
+    return Path.home() / ".malvinconf" / "sdk-bridges" / "cursor-sdk-bridge"
+
+def _ft_cursor_sdk_bridge_ready(path: Path) -> bool:
+    return (path / "dist" / "bridge.js").is_file() and (
+        path / "node_modules" / "@cursor" / "sdk" / "package.json"
+    ).is_file()
+
 def ft_resolve_cursor_sdk_bridge_dir() -> Path | None:
-    bridge = (REPO_ROOT / "cursor-sdk-bridge").resolve()
-    if (bridge / "dist" / "bridge.js").is_file():
-        return bridge
+    repo_bridge = (REPO_ROOT / "cursor-sdk-bridge").resolve()
+    if _ft_cursor_sdk_bridge_ready(repo_bridge):
+        return repo_bridge
+    installed = ft_installed_cursor_sdk_bridge_dir().resolve()
+    if _ft_cursor_sdk_bridge_ready(installed):
+        return installed
+    if (repo_bridge / "dist" / "bridge.js").is_file():
+        return repo_bridge
     return None
 
 def ft_resolve_node_bin() -> Path | None:
@@ -156,6 +169,49 @@ def _push_npm_pi_scoped(out: list[Path], modules: Path) -> None:
         if pkg.is_dir():
             out.append(pkg)
 
+def ft_resolve_model(malvin_binary: Path, raw: str) -> dict[str, Any] | None:
+    try:
+        proc = subprocess.run(
+            [str(malvin_binary), "admin", "models", "--resolve", raw],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if proc.returncode != 0:
+        return None
+    lines = proc.stdout.strip().splitlines()
+    try:
+        info = json.loads(lines[-1]) if lines else None
+    except ValueError:
+        return None
+    if not isinstance(info, dict) or not isinstance(info.get("canonical"), str):
+        return None
+    return info
+
+def ft_canonicalize_model_args(
+    malvin_binary: Path, malvin_args: tuple[str, ...]
+) -> tuple[str, ...]:
+    out = list(malvin_args)
+    for i, arg in enumerate(malvin_args):
+        if arg == "--model" and i + 1 < len(malvin_args):
+            slot, raw, template = i + 1, malvin_args[i + 1], "{}"
+        elif arg.startswith("--model="):
+            slot, raw, template = i, arg.split("=", 1)[1], "--model={}"
+        else:
+            continue
+        info = ft_resolve_model(malvin_binary, raw)
+        if info is None:
+            click.echo(
+                f"Warning: {malvin_binary} could not resolve --model {raw!r}; "
+                "passing it to malvin unchanged"
+            )
+            continue
+        out[slot] = template.format(info["canonical"])
+    return tuple(out)
+
 def _ft_model_prefix_requested(malvin_args: tuple[str, ...], prefix: str) -> bool:
     for i, arg in enumerate(malvin_args):
         if arg == "--model" and i + 1 < len(malvin_args):
@@ -198,10 +254,9 @@ def _ft_rpi_model_has_prefix(
             value = arg.split("=", 1)[1]
         if value is None:
             continue
-        lower = value.lower()
-        if not lower.startswith("rpi:"):
+        if not value.startswith("rpi:"):
             continue
-        rest = lower[4:]
+        rest = value[4:]
         if any(rest.startswith(p) for p in prefixes):
             return True
     return False
@@ -565,8 +620,10 @@ def ft_docker_agent_cmd(
         host_bridge = ft_resolve_cursor_sdk_bridge_dir()
         if host_bridge is None:
             raise click.ClickException(
-                "cursor-sdk-bridge/dist/bridge.js not found under the repo; "
-                "run `npm ci && npm run build` in cursor-sdk-bridge/ "
+                "cursor-sdk-bridge/dist/bridge.js not found under the repo "
+                "or ~/.malvinconf/sdk-bridges/cursor-sdk-bridge; "
+                "run `malvin admin setup-cursor` or "
+                "`npm ci && npm run build` in cursor-sdk-bridge/ "
                 "(required for cursor: models inside the agent container)"
             )
         volume_mounts = [
@@ -942,6 +999,8 @@ def ft_run_solve(
         host_malvin = (
             ft_resolve_malvin_main_binary() if use_main else ft_resolve_malvin_binary()
         )
+    if host_malvin is not None:
+        malvin_args = ft_canonicalize_model_args(host_malvin, malvin_args)
     skip_docker = ft_local_rpi_needs_host_agent(
         agent_name=agent_name,
         malvin_args=malvin_args,
@@ -1130,6 +1189,8 @@ def run_fast_task_self_tests() -> None:
     _ft_test_resolve_malvin_binary_prefers_current_repo_build()
     _ft_test_resolve_malvin_main_binary()
     _ft_test_resolve_agent_helpers()
+    _ft_test_canonicalize_model_args()
+    _ft_test_bridge_prefers_installed_sdk_when_repo_lacks_modules()
     _ft_test_relay_streams_before_wait()
     _ft_test_relay_timeout_kills_slow_command()
     _ft_test_print_evaluation_includes_reward()
@@ -1920,6 +1981,32 @@ def _ft_test_resolve_malvin_binary_prefers_current_repo_build() -> None:
             globals()["REPO_ROOT"] = original_root
             globals()["_ft_resolve_host_binary"] = original_resolver
 
+_FT_FAKE_RESOLVER = """#!/bin/sh
+codex='{"canonical":"codex:gpt-5","backend":"codex","provider":null,"local":false}'
+case "$4" in
+  mynick|" codex:gpt-5") echo "$codex" ;;
+  *) echo "e|model id must use a known prefix" >&2; exit 1 ;;
+esac
+"""
+
+def _ft_test_canonicalize_model_args() -> None:
+    with tempfile.TemporaryDirectory(prefix="ft-resolve-") as tmp:
+        fake = Path(tmp) / "malvin"
+        fake.write_text(_FT_FAKE_RESOLVER, encoding="utf-8")
+        fake.chmod(0o755)
+        assert ft_resolve_model(fake, "mynick")["backend"] == "codex"
+        assert ft_resolve_model(fake, "RPI:ollama/x") is None
+        assert ft_resolve_model(Path(tmp) / "missing", "mynick") is None
+        args = ft_canonicalize_model_args(fake, ("--do", "--model", "mynick", "x"))
+        assert args == ("--do", "--model", "codex:gpt-5", "x")
+        assert ft_malvin_args_request_codex(args) is True
+        args = ft_canonicalize_model_args(fake, ("--model= codex:gpt-5",))
+        assert args == ("--model=codex:gpt-5",)
+        unresolved = ("--model", "RPI:ollama/x")
+        assert ft_canonicalize_model_args(fake, unresolved) == unresolved
+        assert ft_malvin_args_request_local_rpi(unresolved) is False
+        assert ft_canonicalize_model_args(fake, ("--do", "x")) == ("--do", "x")
+
 def _ft_test_resolve_agent_helpers() -> None:
     assert ft_normalize_agent("CURSOR") == AGENT_CURSOR
     assert ft_normalize_agent("") == AGENT_MALVIN
@@ -1938,11 +2025,42 @@ def _ft_test_resolve_agent_helpers() -> None:
         fake_root = Path(tmp)
         (fake_root / "cursor-sdk-bridge").mkdir()
         original_root = globals()["REPO_ROOT"]
+        original_install = globals()["ft_installed_cursor_sdk_bridge_dir"]
         globals()["REPO_ROOT"] = fake_root
+        globals()["ft_installed_cursor_sdk_bridge_dir"] = (
+            lambda: fake_root / "missing-install"
+        )
         try:
             assert ft_resolve_cursor_sdk_bridge_dir() is None
         finally:
             globals()["REPO_ROOT"] = original_root
+            globals()["ft_installed_cursor_sdk_bridge_dir"] = original_install
+
+def _ft_test_bridge_prefers_installed_sdk_when_repo_lacks_modules() -> None:
+    with tempfile.TemporaryDirectory(prefix="ft-bridge-sdk-") as tmp:
+        root = Path(tmp)
+        repo = root / "cursor-sdk-bridge"
+        (repo / "dist").mkdir(parents=True)
+        (repo / "dist" / "bridge.js").write_text("// stub\n", encoding="utf-8")
+        installed = root / "installed"
+        (installed / "dist").mkdir(parents=True)
+        (installed / "dist" / "bridge.js").write_text("// stub\n", encoding="utf-8")
+        marker = installed / "node_modules" / "@cursor" / "sdk"
+        marker.mkdir(parents=True)
+        (marker / "package.json").write_text("{}\n", encoding="utf-8")
+        original_root = globals()["REPO_ROOT"]
+        original_install = globals()["ft_installed_cursor_sdk_bridge_dir"]
+        globals()["REPO_ROOT"] = root
+        globals()["ft_installed_cursor_sdk_bridge_dir"] = lambda: installed
+        try:
+            assert ft_resolve_cursor_sdk_bridge_dir() == installed.resolve()
+            repo_marker = repo / "node_modules" / "@cursor" / "sdk"
+            repo_marker.mkdir(parents=True)
+            (repo_marker / "package.json").write_text("{}\n", encoding="utf-8")
+            assert ft_resolve_cursor_sdk_bridge_dir() == repo.resolve()
+        finally:
+            globals()["REPO_ROOT"] = original_root
+            globals()["ft_installed_cursor_sdk_bridge_dir"] = original_install
 
 _FT_RELAY_SPY_SEEN: list[str] = []
 _FT_RELAY_SPY_ORIG = sys.stdout.write

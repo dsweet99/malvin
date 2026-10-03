@@ -28,14 +28,14 @@ build = "build.rs"
 [profile.dev]
 incremental = true
 debug = "line-tables-only"
-codegen-units = 8
+codegen-units = 3
 lto = "off"
 
 [profile.release]
 lto = "off"
 
 [profile.dev.package.malvin]
-codegen-units = 8
+codegen-units = 3
 
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }

@@ -104,8 +104,7 @@ pub(super) fn configured_codex_command(
         .current_dir(cwd)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .env("MALLOC_ARENA_MAX", "2");
+        .stderr(Stdio::piped());
     cmd
 }
 

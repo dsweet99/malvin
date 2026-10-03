@@ -24,6 +24,7 @@ fn run_models_omits_rpi_when_disable_rpi() {
             ModelsArgs {
                 refresh: false,
                 words: vec!["rpi:".into()],
+                resolve: None,
             },
             malvin::config::DEFAULT_CLI_MODEL,
         )

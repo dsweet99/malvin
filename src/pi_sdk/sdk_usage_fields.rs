@@ -56,24 +56,17 @@ mod tests {
     use super::super::portkey_pricing::apply_portkey_cost_usd;
 
     fn write_openrouter_rate_cache(model_id: &str, input: f64, output: f64) {
-        let fetched_at = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-        let cache = serde_json::json!({
-            "fetched_at_secs": fetched_at,
-            "by_id": {
-                model_id: {
-                    "input": input,
-                    "output": output,
-                    "cacheRead": 0.0,
-                    "cacheWrite": 0.0
-                }
-            }
-        });
-        let path = crate::workspace_paths::malvin_user_home_root().join("openrouter-pricing.json");
-        std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
-        std::fs::write(path, cache.to_string()).expect("write cache");
+        crate::pi_sdk::openrouter_pricing::write_rate_cache_for_test(
+            std::collections::HashMap::from([(
+                model_id.to_string(),
+                pi::provider::ModelCost {
+                    input,
+                    output,
+                    cache_read: 0.0,
+                    cache_write: 0.0,
+                },
+            )]),
+        );
     }
 
     #[test]

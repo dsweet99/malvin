@@ -1,17 +1,15 @@
 use std::collections::HashMap;
-use std::fs;
-use std::path::PathBuf;
 use std::time::Duration;
 
 use pi::provider::ModelCost;
 use serde::Deserialize;
 
-use super::cache_clock::{cache_fetched_at_is_fresh, unix_now_secs};
 use super::models_refresh;
+use super::pricing_cache_file::PricingCacheFile;
 
 const OPENROUTER_MODELS_URL: &str = "https://openrouter.ai/api/v1/models";
-const CACHE_TTL: Duration = Duration::from_hours(24);
-const CACHE_FILE: &str = "openrouter-pricing.json";
+const CACHE: PricingCacheFile =
+    PricingCacheFile::new("openrouter-pricing.json", Duration::from_hours(24));
 
 fn models_url() -> String {
     #[cfg(test)]
@@ -42,16 +40,6 @@ struct OpenRouterPricing {
     input_cache_write: Option<String>,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-struct PricingCache {
-    fetched_at_secs: u64,
-    by_id: HashMap<String, ModelCost>,
-}
-
-fn cache_path() -> PathBuf {
-    crate::workspace_paths::malvin_user_home_root().join(CACHE_FILE)
-}
-
 fn parse_rate_per_million(value: &str) -> Option<f64> {
     let per_token = value.trim().parse::<f64>().ok()?;
     Some(per_token * 1_000_000.0)
@@ -72,27 +60,6 @@ fn model_cost_from_pricing(pricing: &OpenRouterPricing) -> Option<ModelCost> {
             .and_then(parse_rate_per_million)
             .unwrap_or(0.0),
     })
-}
-
-fn load_cache() -> Option<PricingCache> {
-    let body = fs::read_to_string(cache_path()).ok()?;
-    serde_json::from_str(&body).ok()
-}
-
-fn save_cache(by_id: HashMap<String, ModelCost>) {
-    let path = cache_path();
-    let temp = path.with_extension(format!("tmp-{}", std::process::id()));
-    let payload = PricingCache {
-        fetched_at_secs: unix_now_secs(),
-        by_id,
-    };
-    if let Ok(json) = serde_json::to_string(&payload) {
-        if fs::write(&temp, json).is_ok() {
-            let _ = fs::rename(temp, path);
-        } else {
-            let _ = fs::remove_file(temp);
-        }
-    }
 }
 
 fn pricing_from_models_body(body: &str) -> Option<HashMap<String, ModelCost>> {
@@ -132,10 +99,7 @@ fn fetch_live_pricing_sync(api_key: &str, url: &str) -> Option<HashMap<String, M
 }
 
 pub(crate) fn warm_openrouter_pricing_cache(force: bool) {
-    if !force
-        && let Some(cache) = load_cache()
-        && cache_fetched_at_is_fresh(cache.fetched_at_secs, CACHE_TTL)
-    {
+    if !force && CACHE.all_fresh() {
         return;
     }
     let api_key = models_refresh::resolve_provider_api_key("openrouter");
@@ -144,7 +108,7 @@ pub(crate) fn warm_openrouter_pricing_cache(force: bool) {
     }
     let fetched = fetch_live_pricing_sync(&api_key, &models_url());
     if let Some(by_id) = fetched {
-        save_cache(by_id);
+        CACHE.replace_all(by_id);
     }
 }
 
@@ -163,13 +127,15 @@ fn openrouter_lookup_ids(model_id: &str) -> Vec<String> {
 }
 
 pub(super) fn lookup_model_cost(model_id: &str) -> Option<ModelCost> {
-    let cache = load_cache()?;
-    for id in openrouter_lookup_ids(model_id) {
-        if let Some(cost) = cache.by_id.get(&id) {
-            return Some(cost.clone());
-        }
-    }
-    None
+    let by_id = CACHE.load();
+    openrouter_lookup_ids(model_id)
+        .iter()
+        .find_map(|id| by_id.get(id).map(|entry| entry.cost.clone()))
+}
+
+#[cfg(test)]
+pub(super) fn write_rate_cache_for_test(by_id: HashMap<String, ModelCost>) {
+    CACHE.replace_all(by_id);
 }
 
 #[cfg(test)]

@@ -1,4 +1,11 @@
 # cargo-difftests instrumentation profile (used only by admin/difftests_*.sh).
+# This host has 24 logical CPUs and about 15 GiB of RAM. Cargo's default is one
+# rustc job per CPU. Two concurrent rustc processes exhausted RAM and the
+# machine stalled on swap. Cap every cargo command that does not pass --jobs
+# (including the clippy pre-commit hook).
+[build]
+jobs = 1
+
 [profile.difftests]
 inherits = "dev"
 rustflags = ["--cfg", "cargo_difftests"]

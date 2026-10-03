@@ -140,8 +140,7 @@ fn cursor_build_bridge_command(
         .current_dir(cwd)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .env("MALLOC_ARENA_MAX", "2");
+        .stderr(Stdio::piped());
     if let Some(k) = effective_sdk_api_key() {
         cmd.env("CURSOR_API_KEY", k);
     }

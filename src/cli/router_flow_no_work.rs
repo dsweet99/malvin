@@ -1,5 +1,7 @@
+use malvin::output::{MALVIN_DONE, is_sentinel_line};
+
 pub(crate) fn chat_has_malvin_done(chat: &str) -> bool {
-    chat.lines().any(|line| line.trim() == "__MALVIN_DONE__")
+    chat.lines().any(|line| is_sentinel_line(line, MALVIN_DONE))
 }
 
 #[cfg(test)]

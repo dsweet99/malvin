@@ -10,6 +10,8 @@ mod models_cmd_filter;
 mod models_cmd_parse;
 #[path = "models_cmd_refresh.rs"]
 pub(crate) mod models_cmd_refresh;
+#[path = "models_cmd_resolve.rs"]
+pub(crate) mod models_cmd_resolve;
 use models_cmd_cursor::print_cursor_models;
 pub(crate) use models_cmd_filter::{line_matches_prefix, models_list_prefix, section_may_match};
 
@@ -19,6 +21,9 @@ pub struct ModelsArgs {
     /// Force-refresh `pi:` and `rpi:` model catalogs (also runs automatically every 24h).
     #[arg(long)]
     pub refresh: bool,
+    /// Print MODEL's canonical id and backend as one JSON line (nicknames expanded), then exit.
+    #[arg(long, value_name = "MODEL", conflicts_with_all = ["refresh", "words"])]
+    pub resolve: Option<String>,
     /// Optional prefix filter (for example `cursor:`, `pi:`, `rpi:`, or `codex:`)
     #[arg(
         value_name = "PREFIX",
@@ -60,6 +65,9 @@ fn rpi_models_enabled() -> bool {
 }
 
 pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
+    if let Some(raw) = args.resolve.as_deref() {
+        return models_cmd_resolve::write_resolved_model(raw, &mut std::io::stdout().lock());
+    }
     let filter = models_list_prefix(&args.words)?;
     let filter_ref = filter.as_deref();
     maybe_refresh_models_catalog(args.refresh);

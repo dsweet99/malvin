@@ -71,11 +71,23 @@ Generate thought and reasoning text as if you have an IQ of 180: precise, econom
 ## Definition: Claims vs Hypotheses
 
 - Mark uncertain reasoning as Hypothesis. Use Claim only with explicit evidence.
-- A Claim must cite evidence (code refs, logs, metrics). Without that, call it a Hypothesis.
-- Language:
-  - Hypothesis: “suggests”, “may”, “indicates”.
-  - Claim (with evidence): “shows”, “demonstrates”, “causes”.
-- Label every hypothesis as such in the text.
+- A Claim must cite evidence. Without that, call it a Hypothesis.
+ - Language:
+   - Hypothesis: “suggests”, “may”, “indicates”.
+   - Claim (with evidence): “shows”, “demonstrates”, “causes”.
+ - Label every hypothesis as such in the text.
+
+## Evidence
+- Evidence stands on its own. Evidence should be no more or less convincing to a reader when conditioning
+  on its source.
+- Evidence is ideally reproducible. A reader should understand from your writing how to reproduce the evidence,
+  or, at least, how to find out how to reproduce it.
+- Evidence is ideally based on direct observation -- measurements of some kind. Reference to a prior
+  publication of good evidence is acceptable, too (although you should determine how confident you are
+  in the publication's evidence)
+- Examples of evidence: Code output, observation logs, eval metrics
+- Examples of referenced evidence: Public data; public papers, articles, media, etc.; code in our or a public repo
+
 
 ## Style
 

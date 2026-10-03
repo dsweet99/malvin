@@ -27,6 +27,7 @@ STDERR_TAIL = 4000
 POLL_S = 0.5
 DM_START = "__MALVIN_DM_START__"
 DM_END = "__MALVIN_DM_END__"
+ASCII_WHITESPACE = " \t\n\x0c\r"
 DATA = "/data"
 MALVIN_HOME = "/root/.malvinconf"
 LOGS = f"{DATA}/malvin_home/logs"
@@ -139,6 +140,10 @@ def trace_event_text(raw):
     return "\n"
 
 
+def is_sentinel_line(line, marker):
+    return line.strip(ASCII_WHITESPACE) == marker
+
+
 class DmTail:
     def __init__(self, path):
         self.path = path
@@ -162,7 +167,7 @@ class DmTail:
         *lines, self.text = self.text.split("\n")
         body = []
         for line in lines:
-            if line == (DM_END if self.inside else DM_START):
+            if is_sentinel_line(line, DM_END if self.inside else DM_START):
                 self.inside = not self.inside
             elif self.inside:
                 body.append(line + "\n")

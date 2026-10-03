@@ -72,8 +72,7 @@ fn append_provider_model(
         .current_dir(args.cwd)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .env("MALLOC_ARENA_MAX", "2");
+        .stderr(Stdio::piped());
     if let Some(thinking) = args.thinking {
         cmd.arg("--thinking").arg(thinking);
     }

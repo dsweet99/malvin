@@ -114,15 +114,16 @@ pub(super) fn report_active_state(state: &str) {
     let Some(snap) = active_snapshot() else {
         return;
     };
-    if let Err(detail) = send_request_checked(
-        &snap.socket_path,
-        &report_agent(
-            &snap.pane_id,
-            state,
-            snap.agent_session_id.as_deref(),
-            next_seq(),
-        ),
-    ) {
+    let request = report_agent(
+        &snap.pane_id,
+        state,
+        snap.agent_session_id.as_deref(),
+        next_seq(),
+    );
+    if send_request_checked(&snap.socket_path, &request).is_ok() {
+        return;
+    }
+    if let Err(detail) = send_request_checked(&snap.socket_path, &request) {
         log_herdr_failure(snap.run_dir.as_deref(), state, &detail);
     }
 }

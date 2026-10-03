@@ -3,23 +3,15 @@ use std::fs;
 
 use pi::provider::ModelCost;
 
-use super::super::cache_clock::{cache_fetched_at_is_fresh, unix_now_secs};
 use super::{
-    CACHE_TTL, cache_path, fetch_live_pricing_sync, load_cache, lookup_model_cost,
-    openrouter_lookup_ids, parse_rate_per_million, save_cache, warm_openrouter_pricing_cache,
+    CACHE, fetch_live_pricing_sync, lookup_model_cost, openrouter_lookup_ids,
+    parse_rate_per_million, warm_openrouter_pricing_cache, write_rate_cache_for_test,
 };
 
 #[test]
 #[allow(clippy::float_cmp)]
 fn parse_rate_per_million_scales_token_price() {
     assert_eq!(parse_rate_per_million("0.000001"), Some(1.0));
-}
-
-#[test]
-fn cache_freshness_matches_daily_ttl() {
-    assert!(cache_fetched_at_is_fresh(unix_now_secs(), CACHE_TTL));
-    let stale = unix_now_secs().saturating_sub(CACHE_TTL.as_secs() + 1);
-    assert!(!cache_fetched_at_is_fresh(stale, CACHE_TTL));
 }
 
 #[test]
@@ -87,10 +79,14 @@ fn save_and_load_cache_round_trip() {
                 cache_write: 0.25,
             },
         );
-        save_cache(by_id.clone());
-        let loaded = load_cache().expect("cache");
-        assert!(cache_fetched_at_is_fresh(loaded.fetched_at_secs, CACHE_TTL));
-        assert_eq!(loaded.by_id, by_id);
+        write_rate_cache_for_test(by_id.clone());
+        let loaded = CACHE.load();
+        assert!(CACHE.all_fresh());
+        let costs: HashMap<String, ModelCost> = loaded
+            .into_iter()
+            .map(|(id, entry)| (id, entry.cost))
+            .collect();
+        assert_eq!(costs, by_id);
     });
 }
 
@@ -98,7 +94,7 @@ fn save_and_load_cache_round_trip() {
 #[allow(clippy::float_cmp)]
 fn lookup_model_cost_reads_cached_openrouter_rates() {
     crate::test_utils::with_isolated_home(|_| {
-        save_cache(HashMap::from([(
+        write_rate_cache_for_test(HashMap::from([(
             "x-ai/grok-latest".into(),
             ModelCost {
                 input: 3.0,
@@ -116,7 +112,7 @@ fn lookup_model_cost_reads_cached_openrouter_rates() {
 #[test]
 fn warm_openrouter_pricing_cache_skips_when_cache_is_fresh() {
     crate::test_utils::with_isolated_home(|_| {
-        save_cache(HashMap::from([(
+        write_rate_cache_for_test(HashMap::from([(
             "openai/gpt-4o-mini".into(),
             ModelCost {
                 input: 0.15,
@@ -125,7 +121,7 @@ fn warm_openrouter_pricing_cache_skips_when_cache_is_fresh() {
                 cache_write: 0.0,
             },
         )]));
-        let path = cache_path();
+        let path = CACHE.path();
         let before = fs::read_to_string(&path).expect("cache");
         warm_openrouter_pricing_cache(false);
         let after = fs::read_to_string(path).expect("cache");
@@ -138,7 +134,7 @@ fn warm_openrouter_pricing_cache_noops_without_api_key() {
     crate::test_utils::with_isolated_home(|_| {
         crate::acp::with_env("OPENROUTER_API_KEY", None, || {
             warm_openrouter_pricing_cache(true);
-            assert!(!cache_path().exists());
+            assert!(!CACHE.path().exists());
         });
     });
 }

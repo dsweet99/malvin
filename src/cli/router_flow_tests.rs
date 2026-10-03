@@ -124,12 +124,12 @@ fn build_router_a_prompt_includes_user_request_path() {
         no_kpop: false,
     })
     .expect("router_a");
-    assert!(body.contains("__MALVIN_DONE__"));
+    assert!(body.contains(malvin::output::MALVIN_DONE));
     assert!(!body.contains("{{"));
 }
 
 #[test]
-fn build_router_kpop_common_prompt_adds_bash_log_note_only_for_rpi() {
+fn build_router_kpop_common_prompt_has_no_rpi_cwd_note() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
     let store = prepare_router_prompt_store().expect("store");
@@ -144,11 +144,10 @@ fn build_router_kpop_common_prompt_adds_bash_log_note_only_for_rpi() {
         })
         .expect("kpop common")
     };
-    let note = malvin::workflow_rpi_prompt::RPI_EXP_LOG_NOTE;
     let rpi = render("rpi:local/ollama/malvin-llama32:latest");
-    assert!(rpi.contains(note), "{rpi}");
+    assert!(!rpi.contains("outside the working directory"), "{rpi}");
     assert!(rpi.contains("_g2"));
-    assert!(!render(DEFAULT_CLI_MODEL).contains(note));
+    assert_eq!(rpi, render(DEFAULT_CLI_MODEL));
 }
 
 #[test]

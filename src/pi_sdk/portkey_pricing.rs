@@ -69,6 +69,14 @@ fn point_rate(point: Option<&PricePoint>) -> f64 {
     point.map_or(0.0, |p| p.price * 10_000.0)
 }
 
+pub(super) fn pricing_model_path(model: &str) -> String {
+    model
+        .split('/')
+        .map(super::openrouter_billed_cost::urlencoding)
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
 pub(super) fn model_cost_from_body(body: &str) -> Option<ModelCost> {
     let parsed: PricingBody = serde_json::from_str(body).ok()?;
     let pay = parsed.pay_as_you_go?;

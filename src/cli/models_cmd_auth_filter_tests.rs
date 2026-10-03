@@ -11,6 +11,7 @@ fn run_models_pi_only_with_openrouter_key() {
                 ModelsArgs {
                     refresh: false,
                     words: vec!["rpi:".into()],
+                    resolve: None,
                 },
                 malvin::config::DEFAULT_CLI_MODEL,
             )
@@ -105,6 +106,7 @@ fn run_models_lists_pi_rows_without_pi_binary() {
                 ModelsArgs {
                     refresh: false,
                     words: vec!["rpi:".into()],
+                    resolve: None,
                 },
                 malvin::config::DEFAULT_CLI_MODEL,
             )
@@ -147,6 +149,7 @@ fn run_models_does_not_treat_models_json_as_unlocking_all_headerless_providers()
                                 ModelsArgs {
                                     refresh: false,
                                     words: vec!["rpi:".into()],
+                                    resolve: None,
                                 },
                                 malvin::config::DEFAULT_CLI_MODEL,
                             )

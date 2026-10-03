@@ -1,14 +1,4 @@
-use super::{
-    REQUEST_INLINE_MAX_BYTES, RPI_EXP_LOG_NOTE, format_exp_log_note, format_request_inline,
-    format_request_inline_text,
-};
-
-#[test]
-fn exp_log_note_only_for_rpi_models() {
-    assert_eq!(format_exp_log_note("rpi:openai/gpt-4o"), RPI_EXP_LOG_NOTE);
-    assert_eq!(format_exp_log_note("pi:openai/gpt-4o"), "");
-    assert_eq!(format_exp_log_note("cursor:auto"), "");
-}
+use super::{REQUEST_INLINE_MAX_BYTES, format_request_inline, format_request_inline_text};
 use std::path::Path;
 
 #[test]

@@ -2,16 +2,18 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use pi::sdk::{
-    Config, Tool, ToolFactory, ToolOutput, ToolRegistry, ToolUpdate, default_tool_registry,
-};
+use pi::sdk::{Config, Tool, ToolFactory, ToolOutput, ToolRegistry, ToolUpdate};
 use pi::tools::ToolEffects;
+use pi::workspace::WorkspaceHandle;
 use serde_json::Value;
 
 use super::tool_args_normalize::wrap_tool_args;
 
 #[path = "complete_write.rs"]
 mod complete_write;
+
+#[path = "outside_cwd.rs"]
+mod outside_cwd;
 
 #[path = "isolated_bash_exec.rs"]
 mod isolated_bash_exec;
@@ -21,21 +23,60 @@ pub(crate) struct IsolatedToolFactory;
 
 impl ToolFactory for IsolatedToolFactory {
     fn create_tool_registry(&self, enabled: &[&str], cwd: &Path, config: &Config) -> ToolRegistry {
-        let registry = default_tool_registry(enabled, cwd, config);
-        let tools = registry.into_tools();
-        let mut replaced = Vec::with_capacity(tools.len());
-        for tool in tools {
-            let tool: Arc<dyn Tool> = if tool.name() == "bash" {
-                Arc::new(IsolatedBash::from_builtin(tool, cwd.to_path_buf()))
-            } else if tool.name() == "write" {
-                Arc::new(complete_write::CompleteWrite::from_builtin(tool))
-            } else {
-                tool
-            };
-            replaced.push(wrap_tool_args(tool));
-        }
+        let registry = ToolRegistry::with_mutation_recorder(
+            enabled,
+            cwd,
+            Some(config),
+            None,
+            Some(&unrestricted_workspace(cwd)),
+        );
+        let mut rooted = rooted_twins(enabled, config);
+        let replaced = registry
+            .into_tools()
+            .into_iter()
+            .map(|tool| wrap_tool_args(wrap_builtin(tool, cwd, &mut rooted)))
+            .collect();
         ToolRegistry::from_tools(replaced)
     }
+}
+
+fn wrap_builtin(
+    tool: Arc<dyn Tool>,
+    cwd: &Path,
+    rooted: &mut Vec<Arc<dyn Tool>>,
+) -> Arc<dyn Tool> {
+    if tool.name() == "bash" {
+        return Arc::new(IsolatedBash::from_builtin(tool, cwd.to_path_buf()));
+    }
+    if tool.name() == "write" {
+        return Arc::new(complete_write::CompleteWrite::from_builtin(tool));
+    }
+    match rooted.iter().position(|twin| twin.name() == tool.name()) {
+        Some(i) => Arc::new(outside_cwd::OutsideCwd::new(
+            tool,
+            rooted.swap_remove(i),
+            cwd.to_path_buf(),
+        )),
+        None => tool,
+    }
+}
+
+fn unrestricted_workspace(cwd: &Path) -> WorkspaceHandle {
+    let mut workspace = WorkspaceHandle::single(cwd);
+    workspace.add_root(Path::new("/"));
+    workspace
+}
+
+fn rooted_twins(enabled: &[&str], config: &Config) -> Vec<Arc<dyn Tool>> {
+    let names: Vec<&str> = enabled
+        .iter()
+        .copied()
+        .filter(|name| outside_cwd::CWD_PINNED_TOOLS.contains(name))
+        .collect();
+    if names.is_empty() {
+        return Vec::new();
+    }
+    ToolRegistry::new(&names, Path::new("/"), Some(config)).into_tools()
 }
 
 struct IsolatedBash {
@@ -92,6 +133,10 @@ impl Tool for IsolatedBash {
 pub(crate) fn isolated_tool_factory() -> Arc<dyn ToolFactory> {
     Arc::new(IsolatedToolFactory)
 }
+
+#[cfg(test)]
+#[path = "isolated_bash_scope_tests.rs"]
+mod scope_tests;
 
 #[cfg(test)]
 mod tests {

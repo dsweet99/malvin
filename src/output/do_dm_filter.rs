@@ -1,7 +1,6 @@
 use std::sync::Mutex;
 
-pub const DM_START: &str = "__MALVIN_DM_START__";
-pub const DM_END: &str = "__MALVIN_DM_END__";
+use super::sentinel::{DM_END, DM_START, is_sentinel_line, may_become_sentinel_line};
 
 #[derive(Default)]
 struct DmFilter {
@@ -68,7 +67,7 @@ fn take_outside_progress(filter: &mut DmFilter) -> bool {
     };
     let line = &filter.buf[..nl];
     let rest = filter.buf[nl + 1..].to_string();
-    if line == DM_START {
+    if is_sentinel_line(line, DM_START) {
         filter.buf = rest;
         filter.inside = true;
         return true;
@@ -82,7 +81,7 @@ fn take_inside_progress(filter: &mut DmFilter) -> bool {
     while let Some(rel) = filter.buf[line_start..].find('\n') {
         let nl = line_start + rel;
         let line = &filter.buf[line_start..nl];
-        if line == DM_END {
+        if is_sentinel_line(line, DM_END) {
             let mut body = filter.buf[..line_start].to_string();
             if body.ends_with('\n') {
                 body.pop();
@@ -99,7 +98,7 @@ fn take_inside_progress(filter: &mut DmFilter) -> bool {
 }
 
 fn keep_outside_incomplete(buf: &mut String) {
-    if !DM_START.starts_with(buf.as_str()) {
+    if !may_become_sentinel_line(buf, DM_START) {
         buf.clear();
     }
 }
@@ -204,11 +203,27 @@ mod tests {
         let out = with_dm_capture(|| {
             feed_do_dm_stdout_text(&format!("x{DM_START}\nnope\n{DM_END}\n"));
             feed_do_dm_stdout_text(&format!("{DM_START}x\nnope\n{DM_END}\n"));
-            feed_do_dm_stdout_text(&format!(" {DM_START}\nnope\n{DM_END}\n"));
             feed_do_dm_stdout_text(&format!("{DM_START}\nsee {DM_END}\n{DM_END}\n"));
             feed_do_dm_stdout_text(&format!("{DM_START}\nalone\n{DM_END}\n"));
         });
         assert_eq!(out, format!("see {DM_END}\nalone"));
+    }
+
+    #[test]
+    fn accepts_markers_with_surrounding_whitespace() {
+        let out = with_dm_capture(|| {
+            feed_do_dm_stdout_text(&format!("  {DM_START}\r\nspaced\n {DM_END} \n"));
+        });
+        assert_eq!(out, "spaced");
+    }
+
+    #[test]
+    fn streaming_leading_whitespace_before_start_marker() {
+        let out = with_dm_capture(|| {
+            feed_do_dm_stdout_text("  ");
+            feed_do_dm_stdout_text(&format!("{DM_START}\nchunked\n{DM_END}\n"));
+        });
+        assert_eq!(out, "chunked");
     }
 
     #[test]

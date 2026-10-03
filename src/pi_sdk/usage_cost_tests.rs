@@ -39,24 +39,15 @@ fn aggregate_cost_usd_sums_reported_components() {
 }
 
 fn write_openrouter_rate_cache(model_id: &str, input: f64, output: f64, cache_read: f64) {
-    let fetched_at = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
-    let cache = serde_json::json!({
-        "fetched_at_secs": fetched_at,
-        "by_id": {
-            model_id: {
-                "input": input,
-                "output": output,
-                "cacheRead": cache_read,
-                "cacheWrite": 0.0
-            }
-        }
-    });
-    let path = crate::workspace_paths::malvin_user_home_root().join("openrouter-pricing.json");
-    std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
-    std::fs::write(path, cache.to_string()).expect("write cache");
+    crate::pi_sdk::openrouter_pricing::write_rate_cache_for_test(std::collections::HashMap::from([(
+        model_id.to_string(),
+        ModelCost {
+            input,
+            output,
+            cache_read,
+            cache_write: 0.0,
+        },
+    )]));
 }
 
 #[test]
@@ -160,24 +151,7 @@ fn cost_from_model_rates_multiplies_per_million_tokens() {
 #[allow(clippy::float_cmp)]
 fn aggregate_cost_usd_estimates_from_openrouter_pricing_cache() {
     crate::test_utils::with_isolated_home(|_| {
-        let fetched_at = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-        let cache = serde_json::json!({
-            "fetched_at_secs": fetched_at,
-            "by_id": {
-                "x-ai/grok-latest": {
-                    "input": 2.0,
-                    "output": 10.0,
-                    "cacheRead": 0.0,
-                    "cacheWrite": 0.0
-                }
-            }
-        });
-        let path = crate::workspace_paths::malvin_user_home_root().join("openrouter-pricing.json");
-        std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
-        std::fs::write(path, cache.to_string()).expect("write cache");
+        write_openrouter_rate_cache("x-ai/grok-latest", 2.0, 10.0, 0.0);
 
         let totals = aggregate_cost_usd(&[assistant(
             "openrouter",
@@ -199,24 +173,7 @@ fn aggregate_cost_usd_estimates_from_openrouter_pricing_cache() {
 #[allow(clippy::float_cmp)]
 fn aggregate_cost_usd_estimates_without_pi_auth_registry() {
     crate::test_utils::with_isolated_home(|_| {
-        let fetched_at = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-        let cache = serde_json::json!({
-            "fetched_at_secs": fetched_at,
-            "by_id": {
-                "~x-ai/grok-latest": {
-                    "input": 1.0,
-                    "output": 5.0,
-                    "cacheRead": 0.0,
-                    "cacheWrite": 0.0
-                }
-            }
-        });
-        let path = crate::workspace_paths::malvin_user_home_root().join("openrouter-pricing.json");
-        std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
-        std::fs::write(path, cache.to_string()).expect("write cache");
+        write_openrouter_rate_cache("~x-ai/grok-latest", 1.0, 5.0, 0.0);
 
         let totals = aggregate_cost_usd(&[assistant(
             "openrouter",
