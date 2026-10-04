@@ -30,10 +30,11 @@ $(CURSOR_BRIDGE_JS): cursor-sdk-bridge/package.json cursor-sdk-bridge/package-lo
 		cursor-sdk-bridge/tsconfig.json $(wildcard cursor-sdk-bridge/src/*.ts)
 	cd cursor-sdk-bridge && npm ci && npm run build
 
-# One release rustc was about 8 GiB RSS. The default job count is one per CPU
-# (24 here), and two rustc processes together exhausted 15 GiB. Keep `make` at one job.
+# Job count and memory limits come from .cargo/config.toml: admin/rustc_memlock.sh
+# compiles asupersync (about 9 GiB in release) alone and shares the rest.
+# release-local is the release profile plus incremental compilation (Cargo.toml).
 all: bridges
-	cargo build --release --jobs 1
+	cargo build --profile release-local
 
 install: bridges
 	cargo install --path . --force --locked --config 'build.rustflags=[]'

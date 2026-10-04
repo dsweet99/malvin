@@ -25,10 +25,11 @@ exclude = [
 ]
 build = "build.rs"
 
+# codegen-units applies to malvin only. Set on [profile.dev], it also applied to
+# dependencies and pushed one rustc for asupersync to 9.5 GiB.
 [profile.dev]
 incremental = true
 debug = "line-tables-only"
-codegen-units = 3
 lto = "off"
 
 [profile.release]
@@ -36,6 +37,16 @@ lto = "off"
 
 [profile.dev.package.malvin]
 codegen-units = 3
+
+# Backtraces lose line numbers inside dependencies; dev builds are about 14% faster.
+[profile.dev.package."*"]
+debug = false
+
+# Local optimized builds: `cargo build --profile release-local`. Shipped builds
+# (`cargo install malvin`) use [profile.release] unchanged.
+[profile.release-local]
+inherits = "release"
+incremental = true
 
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }

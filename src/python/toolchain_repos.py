@@ -69,7 +69,7 @@ def resolve_malvin_cmd() -> str:
     if override:
         return override
     root = malvin_repo_root()
-    for rel in ("target/debug/malvin", "target/release/malvin"):
+    for rel in ("target/debug/malvin", "target/release-local/malvin", "target/release/malvin"):
         candidate = root / rel
         if candidate.is_file() and os.access(candidate, os.X_OK):
             return str(candidate)
