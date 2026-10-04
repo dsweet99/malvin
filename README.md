@@ -18,6 +18,8 @@ The build needs neither Node nor network access beyond crates.io.
 (`npm install @earendil-works/pi-coding-agent` in `~/.malvinconf/sdk-bridges/`, or
 set `MALVIN_PI`). `codex:` models do not need Node.
 
+To run on [Modal](https://modal.com) instead of locally, add `--modal` (for example `malvin --modal "Make the tests pass"`). It needs Node ≥ 22.13 and Modal credentials (`modal setup`, or `MODAL_TOKEN_ID` and `MODAL_TOKEN_SECRET`). See "Running on Modal" in `malvin --doc`.
+
 ## Usage
 
 ```text

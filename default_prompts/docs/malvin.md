@@ -295,3 +295,26 @@ malvin request_1.md request_2.md
 
 See the default-route section of `malvin --doc`.
 
+
+## Running on Modal (`--modal`)
+
+`malvin --modal ...` runs the same command in a [Modal Sandbox](https://modal.com/docs/guide/sandboxes) instead of on this machine. The stream, the run logs, and the file changes match a local run. Every other flag and argument is passed to the remote malvin unchanged.
+
+- **Setup**: Node.js ≥ 22.13 with `npm` on this machine (malvin installs the Modal JS SDK under `~/.malvinconf/sdk-bridges/modal-bridge/` with `npm ci`), and Modal credentials from `modal setup` (`~/.modal.toml`) or `MODAL_TOKEN_ID` plus `MODAL_TOKEN_SECRET`. Modal credentials never leave this machine.
+- **Image**: on x86-64 Linux, malvin uploads its own binary once per build and publishes the result as the Modal image `malvin-bin:<version>-<hash>`; later runs start from it in seconds. Other hosts build the image with `cargo install malvin --version <same version>` (published versions only). The default base is `node:22-trixie-slim` plus `git`, `curl`, Python 3, and `build-essential`. `codex:` models add the `codex` CLI and `pi:` models add the npm Pi agent, each pinned to the version installed on this machine.
+- **What is uploaded**: tracked and untracked-but-not-ignored files under the current directory (never `.git`), the five newest run directories of this workspace, `~/.malvinconf/config.toml`, and any REQUEST files. The workspace is unpacked at the same absolute path, with `HOME` set to the local home path, so log directories and HISTORY paths match a local run.
+- **Credentials**: `CURSOR_API_KEY`, `CURSOR_AGENT_API_KEY`, `AGENT_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, and `OPENROUTER_API_KEY` are passed to the remote command when set, and never written into an image. `codex:` models also get `~/.codex/auth.json`, and `pi:` models get Pi's `auth.json` and `models.json`. Anyone with access to the Modal workspace can, in principle, inspect a running Sandbox.
+- **Results**: when the remote run ends, its changes come back as a git patch. Malvin applies it with `git apply`, falling back to `git apply --3way`. If neither applies cleanly, or the directory is not a git repository, the patch is kept as `modal.patch` in the new run directory. The new run directories are copied into this workspace's log directory.
+- **Lifetime**: Ctrl-C terminates the Sandbox. Each Sandbox has a hard lifetime of `[modal] timeout_h` hours (at most 24). At the start of each `--modal` run, malvin terminates Sandboxes left by this host's exited `--modal` runs.
+- **Not supported**: `--watch`, `--iml`, subcommands, GPUs, and local LLMs.
+
+Optional settings in `~/.malvinconf/config.toml`:
+
+```toml
+[modal]
+cpu = 4                 # cores (default 2)
+memory_gb = 8           # Sandbox memory (default: mem_limit_gb + 2); the remote mem_limit_gb becomes memory_gb - 2 if smaller
+timeout_h = 24          # hard Sandbox lifetime in hours (default and maximum: 24)
+image = "python:3.12"   # replaces the default base; needs glibc at least as new as this host's, plus Node >= 22.13 with npm
+setup = ["RUN pip install -r requirements.txt"]   # extra Dockerfile lines, cached by Modal
+```

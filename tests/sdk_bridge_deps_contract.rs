@@ -56,6 +56,8 @@ fn build_script_needs_no_node_or_npm() {
 fn cursor_sdk_is_installed_at_run_time() {
     let path = manifest_dir().join("src/cursor_sdk/bridge_install.rs");
     let text = fs::read_to_string(&path).expect("bridge_install.rs");
-    assert!(text.contains("sdk-bridges") && text.contains("@cursor/sdk"));
-    assert!(text.contains("include_bytes!"));
+    let shared = fs::read_to_string(manifest_dir().join("src/npm_bridge_install.rs"))
+        .expect("npm_bridge_install.rs");
+    assert!(shared.contains("sdk-bridges") && text.contains("@cursor/sdk"));
+    assert!(text.contains("include_bytes!") && text.contains("NpmBridgePackage"));
 }

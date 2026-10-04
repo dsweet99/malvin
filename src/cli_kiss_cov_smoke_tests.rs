@@ -44,6 +44,7 @@ fn smoke_cov_cli_cli_units_1b() {
         advice: None,
         credits: false,
         iml: false,
+        modal: false,
     };
     let _ = shared.model;
 }

@@ -72,6 +72,7 @@ fn reject_admin_with_workflow_only_flags(cli: &Cli, matches: &clap::ArgMatches) 
         ("verbose", "--verbose / -v"),
         ("max_acp_retries", "--max-acp-retries"),
         ("iml", "--iml"),
+        ("modal", "--modal"),
     ];
 
     if !matches!(cli.command, Some(crate::cli::Commands::Admin(_))) {
@@ -138,10 +139,13 @@ fn entrypoint_sweep_stale_acp_spawn_locks() {
     }
 }
 
-fn run_entrypoint(cli: Cli, matches: clap::ArgMatches) -> Exit {
+fn run_entrypoint(cli: Cli, matches: clap::ArgMatches, raw: &[std::ffi::OsString]) -> Exit {
     prepare_cli_output(&cli.shared);
     if let Some(exit) = entrypoint_before_dispatch(&cli, &matches) {
         return exit;
+    }
+    if cli.shared.modal {
+        return super::entrypoint_modal::run_modal_route(&cli, raw);
     }
     malvin::pi_sdk::housekeep_local_llms();
     entrypoint_sweep_stale_acp_spawn_locks();
@@ -217,8 +221,9 @@ pub fn entrypoint_from(
     args: impl IntoIterator<Item = impl Into<std::ffi::OsString> + Clone>,
 ) -> Exit {
     malvin::init_from_env();
-    match parse_cli_args_or_exit(args) {
-        Ok((cli, matches)) => run_entrypoint(cli, matches),
+    let raw: Vec<std::ffi::OsString> = args.into_iter().map(Into::into).collect();
+    match parse_cli_args_or_exit(raw.clone()) {
+        Ok((cli, matches)) => run_entrypoint(cli, matches, &raw),
         Err(exit) => exit,
     }
 }
