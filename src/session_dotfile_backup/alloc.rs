@@ -40,12 +40,10 @@ pub(crate) fn remove_if_exists(path: &Path, restore_label: &str) -> Result<(), S
 }
 
 pub(crate) fn random_backup_id(_try_index: usize) -> String {
-    use rand::Rng;
     const ALPHABET: &[u8] = b"abcdefghijklmnopqrstuvwxyz0123456789";
-    let mut rng = rand::thread_rng();
     (0..5)
         .map(|_| {
-            let i = rng.gen_range(0..ALPHABET.len());
+            let i = fastrand::usize(..ALPHABET.len());
             ALPHABET[i] as char
         })
         .collect()

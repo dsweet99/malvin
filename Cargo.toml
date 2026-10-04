@@ -25,8 +25,8 @@ exclude = [
 ]
 build = "build.rs"
 
-# codegen-units applies to malvin only. Set on [profile.dev], it also applied to
-# dependencies and pushed one rustc for asupersync to 9.5 GiB.
+# codegen-units applies to malvin only. Set on [profile.dev], it would also
+# apply to dependencies.
 [profile.dev]
 incremental = true
 debug = "line-tables-only"
@@ -51,12 +51,12 @@ incremental = true
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 clap = { version = "4", features = ["derive"] }
-rand = "0.8"
+fastrand = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tempfile = "3"
 terminal_size = "0.4"
-thiserror = "1"
+thiserror = "2"
 toml = "0.8"
 tokio = { version = "1", features = [
     "fs",
@@ -68,11 +68,9 @@ tokio = { version = "1", features = [
     "sync",
     "time",
 ] }
-tracing = "0.1"
+tracing = { version = "0.1", default-features = false, features = ["std"] }
 termimad = "0.34"
 unicode-width = "0.2"
-kstring = "=2.0.2"
-async-trait = "0.1"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["test-util"] }

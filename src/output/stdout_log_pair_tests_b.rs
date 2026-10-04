@@ -91,19 +91,17 @@ fn acp_tee_log_line_omits_space_after_who_pipe() {
 
 #[test]
 fn tagged_log_line_no_pipe_space_fuzz() {
-    use rand::{Rng, SeedableRng};
-
     let seed = std::env::var("LOG_PIPE_FUZZ_SEED")
         .ok()
         .and_then(|s| s.parse().ok())
-        .unwrap_or_else(rand::random);
+        .unwrap_or_else(|| fastrand::u64(..));
     eprintln!("tagged_log_line_no_pipe_space_fuzz seed: {seed}");
-    let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+    let mut rng = fastrand::Rng::with_seed(seed);
     let ts = "20260524.000000.000";
     for _ in 0..200 {
-        let who = FUZZ_WHO_TAGS[rng.gen_range(0..FUZZ_WHO_TAGS.len())];
-        let lead_spaces: String = (0..rng.gen_range(0..3)).map(|_| ' ').collect();
-        let payload = format!("{lead_spaces}payload{}", rng.gen_range(0..u32::MAX));
+        let who = FUZZ_WHO_TAGS[rng.usize(..FUZZ_WHO_TAGS.len())];
+        let lead_spaces: String = (0..rng.usize(0..3)).map(|_| ' ').collect();
+        let payload = format!("{lead_spaces}payload{}", rng.u32(0..u32::MAX));
         let log = tagged_log_line(ts, who, &payload);
         assert!(
             log_line_uses_delim_without_trailing_space(&log, who, &payload),

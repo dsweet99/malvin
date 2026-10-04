@@ -1,12 +1,9 @@
-use rand::Rng;
-
 #[must_use]
 pub fn random_alnum(len: usize) -> String {
     const ALPHABET: &[u8] = b"abcdefghijklmnopqrstuvwxyz0123456789";
-    let mut rng = rand::thread_rng();
     (0..len)
         .map(|_| {
-            let i = rng.gen_range(0..ALPHABET.len());
+            let i = fastrand::usize(..ALPHABET.len());
             ALPHABET[i] as char
         })
         .collect()

@@ -1,7 +1,5 @@
 use clap::{ArgAction, Args};
 pub use malvin::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
-use rand::Rng;
-
 use malvin::malvin_config_file::parse_model_cli_arg;
 use malvin::model_id::{ParsedModel, parse_model_id};
 
@@ -135,7 +133,7 @@ impl RouterOpts {
             None => false,
             Some(p) if p <= 0.0 => false,
             Some(p) if p >= 1.0 => true,
-            Some(p) => rand::thread_rng().gen_bool(p),
+            Some(p) => fastrand::f64() < p,
         }
     }
 }

@@ -1,10 +1,9 @@
-# This host has 24 logical CPUs and about 15 GiB of RAM. Two concurrent rustc
-# processes for asupersync exhausted RAM and the machine stalled on swap. The
-# wrapper compiles asupersync alone and lets other crates share the jobs below.
-# Set MALVIN_SCCACHE=0 to bypass sccache.
+# ~/.cargo/config.toml on this host sets jobs = 1. No rustc for this project
+# exceeds about 0.5 GiB, so four at once fit in RAM and build about 3.5x faster.
+# The wrapper runs sccache. Set MALVIN_SCCACHE=0 to bypass it.
 [build]
 jobs = 4
-rustc-wrapper = "admin/rustc_memlock.sh"
+rustc-wrapper = "admin/rustc_sccache.sh"
 
 # cargo-difftests instrumentation profile (used only by admin/difftests_*.sh).
 [profile.difftests]
@@ -13,9 +12,6 @@ rustflags = ["--cfg", "cargo_difftests"]
 
 [env]
 RUST_TEST_THREADS = "1"
-# pi_agent_rust >= 0.3 pulls fsqlite 0.3.x, whose pager and btree crates use
-# `#![feature(core_intrinsics)]` on x86_64. Allow unstable features for those two crates only.
-RUSTC_BOOTSTRAP = "fsqlite_pager,fsqlite_btree"
 # pi_agent_rust's build.rs embeds a build timestamp (vergen) unless this is set.
 # A new timestamp on every build made sccache recompile it (about 250 s).
 SOURCE_DATE_EPOCH = "0"
