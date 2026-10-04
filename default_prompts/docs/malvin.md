@@ -39,7 +39,7 @@ Agent-session flags (`--model`, `--gates`, `-q`, `-v`, `--creative[=PROB]`, `--m
 
 ### `--modal`
 
-Run the invocation in a Modal Sandbox instead of on this machine, then apply its file changes and copy its run logs back. Applies to bare `malvin REQUEST`, `--do`, and `malvin -g`. See **Running on Modal** below for setup, what is uploaded, how results return, and what is rejected.
+Run the invocation in a Modal Sandbox instead of on this machine, then apply its file changes and copy its run logs back. Applies to bare `malvin REQUEST`, `--do`, and `malvin -g`. Write `--modal[gpu=...,ncpu=...,timeout=...]` to choose the Sandbox's GPU, CPU count, and lifetime for this run; each suboption is optional and the order does not matter (for example `--modal[timeout=2h,gpu=A100]`). See **Running on Modal** below for the suboptions, setup, what is uploaded, how results return, and what is rejected.
 
 
 ### `-q` / `--quiet`
@@ -316,17 +316,26 @@ See the default-route section of `malvin --doc`.
 
   The new run directories are copied into this workspace's log directory. When the patch is kept, `modal.patch` goes into the newest of them, or into the workspace's log directory if none came back.
 - **Exit status and failures**: `malvin --modal` exits 0 only when the remote malvin exits 0; otherwise it exits 1. A failed remote run still returns its changes and logs, applied as above, so check the working tree after a nonzero exit. If talking to Modal fails partway (for example an upload, download, or remote setup step fails), malvin prints the error and exits 1 without applying any changes or copying any logs.
-- **Lifetime**: Ctrl-C terminates the Sandbox. Each Sandbox has a hard lifetime of `[modal] timeout_h` hours (at most 24). At the start of each `--modal` run, malvin terminates Sandboxes left by this host's exited `--modal` runs.
+- **Resources**: `--modal[gpu=...,ncpu=...,timeout=...]` sets the Sandbox's resources for one run. Each suboption is optional, they may appear in any order, and an omitted one falls back to the `[modal]` setting of the same name in `~/.malvinconf/config.toml`, then to the built-in default.
+  - `gpu`: `none` (default), a Modal GPU type such as `T4`, `A10G`, `L4`, `A100`, `A100-80GB`, or `H100`, or `TYPE:COUNT` for several GPUs (for example `T4:2`).
+  - `ncpu`: number of CPU cores reserved for the Sandbox, a positive whole number (default 1).
+  - `timeout`: the Sandbox's hard lifetime (default 30 minutes, at most 24 hours). A bare number means minutes (`timeout=45`); the suffixes `s`, `m`, and `h` select seconds, minutes, and hours (`90s`, `45m`, `2h`).
+
+  The brackets are shell glob characters, so quote the flag (`'--modal[gpu=T4]'`) if your shell complains or a file name could match it. malvin prints the resources it chose when the Sandbox starts, for example `Sandbox sb-… started (T4, 2 CPU, 18 GiB, timeout 10 min)`.
+- **Lifetime**: Ctrl-C terminates the Sandbox. When the Sandbox reaches its `timeout`, Modal stops it mid-run, so no changes or logs come back, and malvin's error says the timeout was likely reached. At the start of each `--modal` run, malvin terminates Sandboxes left by this host's exited `--modal` runs.
 - **Rejected**: `--watch`, `--iml`, and the `admin` subcommand exit 1 with an error before anything is uploaded. With `--doc`, only the `admin` combination is still rejected; the others print documentation.
-- **Not supported, but not rejected**: GPUs (there is no setting for them) and local LLMs (`pi:local/…`, `pi:ollama/…`). The Sandbox runs no local model server, so a local-model run is expected to fail inside the Sandbox rather than at startup.
+- **Not supported, but not rejected**: local LLMs (`pi:local/…`, `pi:ollama/…`). The Sandbox runs no local model server, so a local-model run is expected to fail inside the Sandbox rather than at startup.
 
 Optional settings in `~/.malvinconf/config.toml`:
 
 ```toml
 [modal]
-cpu = 4                 # cores (default 2)
+gpu = "none"            # default GPU: "none" (default), a type such as "A100", or "TYPE:COUNT"
+ncpu = 1                # default CPU cores (default 1)
+timeout = "30m"         # default hard Sandbox lifetime: minutes as an integer, or "90s" / "45m" / "2h" (default 30 minutes, at most 24 hours)
 memory_gb = 8           # Sandbox memory (default: mem_limit_gb + 2); the remote mem_limit_gb becomes memory_gb - 2 if smaller
-timeout_h = 24          # hard Sandbox lifetime in hours (default and maximum: 24)
 image = "python:3.12"   # replaces the default base; needs glibc at least as new as this host's, plus Node >= 22.13 with npm
 setup = ["RUN pip install -r requirements.txt"]   # extra Dockerfile lines, cached by Modal
 ```
+
+The older keys `cpu` and `timeout_h` are rejected with a message naming their replacements, `ncpu` and `timeout`.

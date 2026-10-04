@@ -119,6 +119,18 @@ pub(super) fn lookup_model_cost(model_id: &str) -> Option<ModelCost> {
         .find_map(|id| by_id.get(id).map(|entry| entry.cost.clone()))
 }
 
+pub(super) struct OpenRouterCatalog;
+
+impl super::pricing_source::PricingSource for OpenRouterCatalog {
+    fn lookup(&self, provider: &str, model_id: &str) -> Option<ModelCost> {
+        if provider.eq_ignore_ascii_case("openrouter") {
+            return lookup_model_cost(model_id);
+        }
+        let model = super::portkey_pricing::openrouter_catalog_model(provider, model_id)?;
+        lookup_model_cost(&model)
+    }
+}
+
 #[cfg(test)]
 pub(super) fn write_rate_cache_for_test(by_id: HashMap<String, ModelCost>) {
     CACHE.replace_all(by_id);

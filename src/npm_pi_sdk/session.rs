@@ -35,8 +35,6 @@ impl ChildProcessSession for NpmPiSession {
 
 impl JsonLineSession for NpmPiSession {
     const BACKEND: ModelBackend = ModelBackend::Pi;
-    const WIRE_LABEL: &'static str = "npm pi";
-    const PARSE_LABEL: &'static str = "JSONL";
 }
 
 impl NpmPiSession {

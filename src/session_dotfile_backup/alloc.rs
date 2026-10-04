@@ -1,7 +1,7 @@
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
-pub(crate) struct DotfileBackupLabels {
+pub struct DotfileBackupLabels {
     pub mkdir: &'static str,
     pub collision: &'static str,
     pub restore: &'static str,

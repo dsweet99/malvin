@@ -5,6 +5,7 @@ use super::{
     prepare_cli_output, print_command_error,
 };
 use crate::cli::args::Cli;
+use malvin::modal_run::options::ModalOptions;
 use crate::cli::config_defaults::is_gates_only_route;
 use crate::cli::entrypoint_checks::{
     ensure_malvin_checks_for_command, ensure_malvin_checks_for_default_route,
@@ -139,13 +140,13 @@ fn entrypoint_sweep_stale_acp_spawn_locks() {
     }
 }
 
-fn run_entrypoint(cli: Cli, matches: clap::ArgMatches, raw: &[std::ffi::OsString]) -> Exit {
+fn run_entrypoint(cli: Cli, matches: clap::ArgMatches, raw: &[std::ffi::OsString], modal: ModalOptions) -> Exit {
     prepare_cli_output(&cli.shared);
     if let Some(exit) = entrypoint_before_dispatch(&cli, &matches) {
         return exit;
     }
     if cli.shared.modal {
-        return super::entrypoint_modal::run_modal_route(&cli, raw);
+        return super::entrypoint_modal::run_modal_route(&cli, raw, modal);
     }
     malvin::pi_sdk::housekeep_local_llms();
     entrypoint_sweep_stale_acp_spawn_locks();
@@ -222,8 +223,15 @@ pub fn entrypoint_from(
 ) -> Exit {
     malvin::init_from_env();
     let raw: Vec<std::ffi::OsString> = args.into_iter().map(Into::into).collect();
+    let (raw, modal) = match malvin::modal_run::options::extract_modal_options(raw) {
+        Ok(split) => split,
+        Err(e) => {
+            print_command_error(&e);
+            return Exit::Failure;
+        }
+    };
     match parse_cli_args_or_exit(raw.clone()) {
-        Ok((cli, matches)) => run_entrypoint(cli, matches, &raw),
+        Ok((cli, matches)) => run_entrypoint(cli, matches, &raw, modal),
         Err(exit) => exit,
     }
 }

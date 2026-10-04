@@ -4,6 +4,7 @@ mod bridge;
 pub mod config;
 mod credentials;
 mod image;
+pub mod options;
 mod remote;
 mod results;
 mod session;
@@ -20,6 +21,7 @@ pub struct ModalInvocation {
     pub remote_args: Vec<OsString>,
     pub model: String,
     pub request_files: Vec<PathBuf>,
+    pub options: options::ModalOptions,
 }
 
 #[must_use]
@@ -59,10 +61,11 @@ fn announce_sweep(result: Result<usize, String>) {
     }
 }
 
-fn load_plan(cwd: &std::path::Path, model: &str) -> Result<session::Plan, String> {
+fn load_plan(cwd: &std::path::Path, inv: &ModalInvocation) -> Result<session::Plan, String> {
     let cfg_root = config::read_config_root(&crate::malvin_home_config_path())?;
-    let cfg = config::parse_modal_config(&cfg_root, crate::mem_limit_config::load_mem_limit_gb(cwd))?;
-    let spec = image::image_spec(&cfg, model, image::uploadable_binary())?;
+    let cfg = config::parse_modal_config(&cfg_root, crate::mem_limit_config::load_mem_limit_gb(cwd))?
+        .with_options(&inv.options);
+    let spec = image::image_spec(&cfg, &inv.model, image::uploadable_binary())?;
     Ok(session::Plan { cfg, cfg_root, spec })
 }
 
@@ -79,7 +82,7 @@ pub fn run_modal(inv: &ModalInvocation) -> Result<i32, String> {
     let cwd = crate::canonical_work_dir_for_logs(
         &std::env::current_dir().map_err(|e| format!("current dir: {e}"))?,
     );
-    let plan = load_plan(&cwd, &inv.model)?;
+    let plan = load_plan(&cwd, inv)?;
     let mut bridge = start_bridge()?;
     announce_sweep(sweep::sweep_stale(&mut bridge, &sweep::host_name()));
     bridge.call("ensure_image", plan.spec.request(false))?;
@@ -91,5 +94,7 @@ pub fn run_modal(inv: &ModalInvocation) -> Result<i32, String> {
 mod tests;
 #[cfg(test)]
 mod tests_io;
+#[cfg(test)]
+mod tests_options;
 #[cfg(test)]
 mod tests_remote;

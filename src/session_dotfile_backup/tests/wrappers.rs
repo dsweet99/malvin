@@ -15,7 +15,7 @@ fn wrapper_workspace_config_backup_and_restore_round_trip() {
     with_isolated_home(|work| {
         write_workspace_config(work, "ORIGINAL\n");
         let backup = backup_workspace_malvin_config_workspace_if_present(work).unwrap();
-        let MalvinConfigWorkspaceBackup::Present(payload) = &backup else {
+        let MalvinConfigWorkspaceBackup::Present(payload, _) = &backup else {
             panic!("expected workspace config backup");
         };
         assert!(payload.backup_path.is_file());
@@ -42,7 +42,7 @@ fn wrapper_workspace_config_backup_with_id_retries_collision() {
             }
         })
         .unwrap();
-        let MalvinConfigWorkspaceBackup::Present(payload) = &backup else {
+        let MalvinConfigWorkspaceBackup::Present(payload, _) = &backup else {
             panic!("expected backup");
         };
         assert!(payload.backup_path.starts_with(dir.join("bbbbb")));

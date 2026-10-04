@@ -1,0 +1,78 @@
+use std::ffi::OsString;
+
+use super::options::{
+    GpuChoice, ModalOptions, extract_modal_options, parse_gpu, parse_modal_spec, parse_ncpu, parse_timeout,
+};
+
+fn args(items: &[&str]) -> Vec<OsString> {
+    items.iter().map(OsString::from).collect()
+}
+
+#[test]
+fn suboptions_parse_in_any_order_and_each_is_optional() {
+    let all = ModalOptions {
+        gpu: Some(GpuChoice::Gpu("A100-80GB:4".to_string())),
+        ncpu: Some(8),
+        timeout_s: Some(7200),
+    };
+    assert_eq!(parse_modal_spec("gpu=A100-80GB:4,ncpu=8,timeout=2h").unwrap(), all);
+    assert_eq!(parse_modal_spec(" timeout=120 , ncpu=8,gpu=A100-80GB:4 ").unwrap(), all);
+    assert_eq!(parse_modal_spec("").unwrap(), ModalOptions::default());
+    let only_cpu = parse_modal_spec("ncpu=2").unwrap();
+    assert_eq!((only_cpu.gpu, only_cpu.ncpu, only_cpu.timeout_s), (None, Some(2), None));
+    assert_eq!(parse_modal_spec("gpu=NONE").unwrap().gpu, Some(GpuChoice::None));
+}
+
+#[test]
+fn suboptions_reject_unknown_duplicate_and_malformed_items() {
+    assert!(parse_modal_spec("cpu=2").unwrap_err().contains("unknown suboption `cpu`"));
+    assert!(parse_modal_spec("ncpu=2,ncpu=3").unwrap_err().contains("more than once"));
+    assert!(parse_modal_spec("gpu").unwrap_err().contains("key=value"));
+}
+
+#[test]
+fn value_parsers_accept_documented_forms_only() {
+    assert_eq!(parse_gpu("T4:2"), Ok(GpuChoice::Gpu("T4:2".to_string())));
+    for bad in ["", "A100:0", "A100:x", "a b", ":2"] {
+        assert!(parse_gpu(bad).is_err(), "{bad}");
+    }
+    assert_eq!(parse_ncpu("16"), Ok(16));
+    assert!(parse_ncpu("0").is_err() && parse_ncpu("1.5").is_err() && parse_ncpu("-1").is_err());
+    assert_eq!(parse_timeout("30"), Ok(1800));
+    assert_eq!(parse_timeout("90s"), Ok(90));
+    assert_eq!(parse_timeout("45m"), Ok(2700));
+    assert_eq!(parse_timeout("24h"), Ok(86400));
+    assert!(parse_timeout("25h").unwrap_err().contains("24 hours"));
+    for bad in ["0", "", "h", "1.5h", "2d", "-5"] {
+        assert!(parse_timeout(bad).is_err(), "{bad}");
+    }
+}
+
+#[test]
+fn bracketed_flag_is_rewritten_for_clap() {
+    let (out, opts) = extract_modal_options(args(&["malvin", "--modal[ncpu=4,gpu=T4]", "--do", "x"])).unwrap();
+    assert_eq!(out, args(&["malvin", "--modal", "--do", "x"]));
+    assert_eq!((opts.ncpu, opts.gpu), (Some(4), Some(GpuChoice::Gpu("T4".to_string()))));
+    let plain = args(&["malvin", "--modal", "--do", "x"]);
+    assert_eq!(extract_modal_options(plain.clone()).unwrap(), (plain, ModalOptions::default()));
+    let after_dashes = args(&["malvin", "--", "--modal[ncpu=4]"]);
+    assert_eq!(extract_modal_options(after_dashes.clone()).unwrap().0, after_dashes);
+}
+
+#[test]
+fn bracketed_flag_errors_name_the_problem() {
+    let err = |items: &[&str]| extract_modal_options(args(items)).unwrap_err();
+    assert!(err(&["malvin", "--modal[ncpu=4"]).contains("closing `]`"));
+    assert!(err(&["malvin", "--modal[ncpu=0]"]).contains("ncpu `0`"));
+    assert!(err(&["malvin", "--modal[ncpu=1]", "--modal[gpu=T4]"]).contains("more than once"));
+}
+
+#[test]
+fn failures_near_the_deadline_name_the_timeout() {
+    let at = |secs| super::session::with_timeout_hint("boom".to_string(), std::time::Duration::from_secs(secs), 90);
+    assert_eq!(at(10), "boom");
+    assert!(at(86).contains("90 s timeout") && at(86).starts_with("boom\n"));
+    assert!(at(200).contains("--modal[timeout=...]"));
+    assert!(!super::session::image_rebuild_may_help("SandboxCreate INVALID_ARGUMENT: FOO is not a valid GPU type"));
+    assert!(super::session::image_rebuild_may_help("NOT_FOUND: image malvin-bin:x"));
+}

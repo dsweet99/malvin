@@ -69,13 +69,13 @@ fn kiss_cov_models_cmd_run_helpers() {
     print_parsed_or_fallback("fallback\n");
     let _ = cursor_list_models_timeout();
     let _ = stringify!(DEFAULT_CURSOR_LIST_MODELS_TIMEOUT_MS);
-    let _ = stringify!(print_cursor_models);
-    let _ = stringify!(print_cursor_models_via_sdk);
-    let _ = stringify!(print_cursor_models_via_cli);
+    let _ = stringify!(cursor_model_listing);
+    let _ = stringify!(cursor_listing_via_sdk);
+    let _ = stringify!(cursor_listing_via_cli);
+    let _ = stringify!(listing_from_cli_text);
     let _ = stringify!(run_cursor_sdk_models_js);
-    let _ = stringify!(print_filtered_model_rows);
-    let _ = stringify!(print_pi_models);
-    let _ = stringify!(print_npm_pi_models);
+    let _ = stringify!(prefixed_rows);
+    let _ = stringify!(catalog_for);
     let _ = stringify!(is_provider_authenticated);
     let _ = stringify!(is_provider_listable);
 }
@@ -198,7 +198,7 @@ fn kiss_cov_run_models_fake_agent_branchy_executable() {
 #[test]
 fn kiss_cov_models_refresh_timestamp_lifecycle() {
     let _lock = malvin::test_utils::test_env_lock();
-    let now = super::models_cmd_refresh::unix_now_secs();
+    let now = malvin::clock::unix_now_secs();
     super::test_hooks::save_last_refresh_secs(now).expect("save");
     let loaded = super::test_hooks::load_last_refresh_secs().expect("load");
     assert_eq!(loaded, now);

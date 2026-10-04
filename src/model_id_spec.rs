@@ -8,9 +8,28 @@ pub trait BackendSpec: Sync {
     fn prefix(&self) -> &'static str;
     fn label(&self) -> &'static str;
     fn drain_idle_prefix(&self) -> &'static str;
+    fn wire_label(&self) -> &'static str;
     fn wire_model(&self, model: &ParsedModel) -> String;
     fn parse_slug(&self, rest: &str) -> Result<ParsedModel, String>;
+
+    fn wire_parse_label(&self) -> Option<&'static str> {
+        None
+    }
+
+    fn dead_session_markers(&self) -> Vec<String> {
+        let label = self.wire_label();
+        let mut markers: Vec<String> = WIRE_FAILURE_SUFFIXES
+            .iter()
+            .map(|suffix| format!("{label} {suffix}"))
+            .collect();
+        if let Some(parse) = self.wire_parse_label() {
+            markers.push(format!("{label} {} parse:", parse.to_ascii_lowercase()));
+        }
+        markers
+    }
 }
+
+const WIRE_FAILURE_SUFFIXES: [&str; 4] = ["stdout closed", "write:", "flush:", "read:"];
 
 pub(super) struct CursorSpec;
 pub(super) struct PiSpec;
@@ -27,6 +46,10 @@ impl BackendSpec for CursorSpec {
 
     fn drain_idle_prefix(&self) -> &'static str {
         "bridge timed out"
+    }
+
+    fn wire_label(&self) -> &'static str {
+        "bridge"
     }
 
     fn wire_model(&self, model: &ParsedModel) -> String {
@@ -51,6 +74,14 @@ impl BackendSpec for PiSpec {
         "npm pi rpc timed out"
     }
 
+    fn wire_label(&self) -> &'static str {
+        "npm pi"
+    }
+
+    fn wire_parse_label(&self) -> Option<&'static str> {
+        Some("JSONL")
+    }
+
     fn wire_model(&self, model: &ParsedModel) -> String {
         model.slug.clone()
     }
@@ -71,6 +102,14 @@ impl BackendSpec for CodexSpec {
 
     fn drain_idle_prefix(&self) -> &'static str {
         "codex timed out"
+    }
+
+    fn wire_label(&self) -> &'static str {
+        "codex"
+    }
+
+    fn wire_parse_label(&self) -> Option<&'static str> {
+        Some("JSON-RPC")
     }
 
     fn wire_model(&self, model: &ParsedModel) -> String {

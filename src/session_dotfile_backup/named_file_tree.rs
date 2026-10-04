@@ -1,13 +1,18 @@
+use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
 
 use super::alloc::{DotfileBackupLabels, allocate_backup_dir, remove_if_exists};
 
-pub(crate) struct NamedFileTreePolicy {
+pub struct NamedFileTreePolicy {
     pub file_name: &'static str,
     pub category: &'static str,
     pub labels: DotfileBackupLabels,
     pub copy_error: &'static str,
     pub restore_write_error: &'static str,
+}
+
+pub trait NamedFileKind {
+    const POLICY: NamedFileTreePolicy;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -16,56 +21,94 @@ pub struct NamedFileEntry {
     pub bytes: Vec<u8>,
 }
 
-macro_rules! typed_named_file_backup {
-    ($name:ident) => {
-        #[derive(Debug, Clone, PartialEq, Eq)]
-        pub struct $name {
-            pub rel: PathBuf,
-            pub bytes: Vec<u8>,
-        }
-
-        impl From<NamedFileEntry> for $name {
-            fn from(value: NamedFileEntry) -> Self {
-                Self {
-                    rel: value.rel,
-                    bytes: value.bytes,
-                }
-            }
-        }
-
-        impl From<$name> for NamedFileEntry {
-            fn from(value: $name) -> Self {
-                Self {
-                    rel: value.rel,
-                    bytes: value.bytes,
-                }
-            }
-        }
-
-        impl $name {
-            #[must_use]
-            pub fn as_named_entries(files: &[Self]) -> Vec<NamedFileEntry> {
-                files
-                    .iter()
-                    .map(|file| NamedFileEntry {
-                        rel: file.rel.clone(),
-                        bytes: file.bytes.clone(),
-                    })
-                    .collect()
-            }
-        }
-    };
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NamedFile<K> {
+    pub rel: PathBuf,
+    pub bytes: Vec<u8>,
+    kind: PhantomData<K>,
 }
 
-pub(crate) use typed_named_file_backup;
+impl<K> NamedFile<K> {
+    #[must_use]
+    pub const fn new(rel: PathBuf, bytes: Vec<u8>) -> Self {
+        Self {
+            rel,
+            bytes,
+            kind: PhantomData,
+        }
+    }
+}
+
+impl<K> From<NamedFileEntry> for NamedFile<K> {
+    fn from(value: NamedFileEntry) -> Self {
+        Self::new(value.rel, value.bytes)
+    }
+}
+
+impl<K> From<NamedFile<K>> for NamedFileEntry {
+    fn from(value: NamedFile<K>) -> Self {
+        Self {
+            rel: value.rel,
+            bytes: value.bytes,
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum NamedFileTreeState {
+pub enum NamedFileBackup<K> {
     Missing,
     Present {
         backup_root: PathBuf,
-        files: Vec<NamedFileEntry>,
+        files: Vec<NamedFile<K>>,
     },
+}
+
+impl<K: NamedFileKind> NamedFileBackup<K> {
+    #[must_use]
+    pub fn collect_relpaths(work_dir: &Path) -> Vec<PathBuf> {
+        collect_workspace_named_file_relpaths(work_dir, K::POLICY.file_name)
+    }
+
+    #[allow(clippy::missing_errors_doc)]
+    pub fn backup_if_present(work_dir: &Path) -> Result<Self, String> {
+        Self::backup_if_present_with_id(work_dir, super::alloc::random_backup_id)
+    }
+
+    #[allow(clippy::missing_errors_doc)]
+    pub fn backup_if_present_with_id(
+        work_dir: &Path,
+        mut generate_id: impl FnMut(usize) -> String,
+    ) -> Result<Self, String> {
+        Self::backup(work_dir, &mut generate_id)
+    }
+
+    pub(super) fn backup(
+        work_dir: &Path,
+        generate_id: &mut impl FnMut(usize) -> String,
+    ) -> Result<Self, String> {
+        let rels = Self::collect_relpaths(work_dir);
+        if rels.is_empty() {
+            return Ok(Self::Missing);
+        }
+        let policy = &K::POLICY;
+        let root = crate::workspace_paths::snapshot_category_dir(policy.category);
+        let dest_dir = allocate_backup_dir(&root, generate_id, &policy.labels)?;
+        let files = copy_rels_into_backup(work_dir, &dest_dir, &rels, policy)?;
+        Ok(Self::Present {
+            backup_root: dest_dir,
+            files: files.into_iter().map(NamedFile::from).collect(),
+        })
+    }
+
+    #[allow(clippy::missing_errors_doc)]
+    pub fn restore(&self, work_dir: &Path) -> Result<(), String> {
+        match self {
+            Self::Missing => {
+                restore_missing_named_files(work_dir, &Self::collect_relpaths(work_dir), &K::POLICY)
+            }
+            Self::Present { files, .. } => restore_present_named_files(work_dir, files, &K::POLICY),
+        }
+    }
 }
 
 fn walk_named_files(dir: &Path, work_dir: &Path, file_name: &str, found: &mut Vec<PathBuf>) {
@@ -114,25 +157,6 @@ pub(crate) fn collect_workspace_named_file_relpaths(
     }
 }
 
-pub(crate) fn backup_named_file_tree(
-    work_dir: &Path,
-    rels: &[PathBuf],
-    generate_id: &mut impl FnMut(usize) -> String,
-    policy: &NamedFileTreePolicy,
-) -> Result<NamedFileTreeState, String> {
-    if rels.is_empty() {
-        return Ok(NamedFileTreeState::Missing);
-    }
-
-    let root = crate::workspace_paths::snapshot_category_dir(policy.category);
-    let dest_dir = allocate_backup_dir(&root, generate_id, &policy.labels)?;
-    let files = copy_rels_into_backup(work_dir, &dest_dir, rels, policy)?;
-    Ok(NamedFileTreeState::Present {
-        backup_root: dest_dir,
-        files,
-    })
-}
-
 fn copy_rels_into_backup(
     work_dir: &Path,
     dest_dir: &Path,
@@ -159,7 +183,7 @@ fn copy_rels_into_backup(
     Ok(files)
 }
 
-pub(crate) fn restore_missing_named_files(
+fn restore_missing_named_files(
     work_dir: &Path,
     current_rels: &[PathBuf],
     policy: &NamedFileTreePolicy,
@@ -170,9 +194,9 @@ pub(crate) fn restore_missing_named_files(
     Ok(())
 }
 
-pub(crate) fn restore_present_named_files(
+fn restore_present_named_files<K>(
     work_dir: &Path,
-    files: &[NamedFileEntry],
+    files: &[NamedFile<K>],
     policy: &NamedFileTreePolicy,
 ) -> Result<(), String> {
     let snapshot_rels: std::collections::BTreeSet<_> = files.iter().map(|file| &file.rel).collect();
@@ -200,14 +224,12 @@ mod kiss_cov_auto {
     #[test]
     fn kiss_cov_named_file_tree_types() {
         let _: Option<NamedFileEntry> = None;
-        let _: Option<NamedFileTreeState> = None;
         let _ = collect_workspace_named_file_relpaths;
         let _ = collect_root_named_file_only;
         let _ = walk_named_files;
-        let _ = stringify!(backup_named_file_tree);
+        let _ = stringify!(NamedFileBackup);
         let _ = stringify!(restore_missing_named_files);
         let _ = stringify!(restore_present_named_files);
         let _ = stringify!(copy_rels_into_backup);
-        let _ = stringify!(typed_named_file_backup);
     }
 }

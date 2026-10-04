@@ -56,6 +56,58 @@ fn live_drain_idle_prefixes_require_coder_session_teardown() {
 }
 
 #[test]
+fn per_backend_wire_failures_are_session_dead() {
+    for msg in [
+        "bridge stdout closed",
+        "bridge write: x",
+        "bridge flush: x",
+        "bridge read: x",
+        "npm pi stdout closed",
+        "npm pi write: x",
+        "npm pi flush: x",
+        "npm pi read: x",
+        "npm pi JSONL parse: x",
+        "codex stdout closed",
+        "codex write: x",
+        "codex flush: x",
+        "codex read: x",
+        "codex JSON-RPC parse: x",
+    ] {
+        assert_eq!(
+            crate::acp::classify_agent_fault(msg),
+            crate::acp::AgentFault::SessionDead,
+            "{msg}"
+        );
+    }
+    assert_eq!(
+        crate::acp::classify_agent_fault("bridge event parse: x"),
+        crate::acp::AgentFault::Ordinary
+    );
+}
+
+#[test]
+fn every_backend_marker_and_parse_error_is_session_dead() {
+    let parse_err = serde_json::from_str::<serde_json::Value>("{").unwrap_err();
+    for backend in crate::model_id::ModelBackend::ALL {
+        for marker in backend.spec().dead_session_markers() {
+            assert_eq!(
+                crate::acp::classify_agent_fault(&format!("{marker} x")),
+                crate::acp::AgentFault::SessionDead,
+                "{marker}"
+            );
+        }
+        if backend.spec().wire_parse_label().is_some() {
+            let msg = crate::bridge_sdk::json_parse_error(backend, &parse_err);
+            assert_eq!(
+                crate::acp::classify_agent_fault(&msg),
+                crate::acp::AgentFault::SessionDead,
+                "{msg}"
+            );
+        }
+    }
+}
+
+#[test]
 fn cursor_agent_busy_strings_are_detected() {
     assert!(agent_string_is_cursor_agent_busy(
         "Agent agent-7b61bfe2-fa7a-47bd-8f5b-96c158067bc8 already has active run"

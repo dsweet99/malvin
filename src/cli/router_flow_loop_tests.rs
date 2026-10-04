@@ -52,10 +52,7 @@ fn kiss_witness_restore_router_iteration_dotfiles() {
         malvin_config_workspace: MalvinConfigWorkspaceBackup::Missing,
     };
     let _ = matches!(empty.vision, VisionBackup::Missing);
-    let _ = VisionFileBackup {
-        rel: std::path::PathBuf::from("VISION.md"),
-        bytes: b"x".to_vec(),
-    };
+    let _ = VisionFileBackup::new(std::path::PathBuf::from("VISION.md"), b"x".to_vec());
 }
 
 #[test]

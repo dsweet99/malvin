@@ -1,6 +1,7 @@
 use serde_json::json;
 
 use super::config::{ModalConfig, parse_modal_config, read_config_root, remote_config_text};
+use super::options::{ModalOptions, parse_modal_spec};
 use super::backend_setup::{preflight, setup_for};
 use super::credentials::{FORWARDED_ENV, forwarded_env};
 use super::image::{DEFAULT_BASE, TOOLCHAIN, crates_io_layer, image_name, image_spec};
@@ -12,27 +13,46 @@ fn cfg(text: &str, mem: u64) -> Result<ModalConfig, String> {
 #[test]
 fn modal_config_defaults_follow_the_memory_cap() {
     let c = cfg("mem_limit_gb = 16", 16).unwrap();
-    assert_eq!((c.cpu, c.memory_gb, c.timeout_h), (2, 18, 24));
+    assert_eq!((c.gpu.as_deref(), c.ncpu, c.memory_gb, c.timeout_s), (None, 1, 18, 1800));
     assert_eq!(c.remote_mem_limit_gb, 16);
     assert!(c.image.is_none() && c.setup.is_empty());
+    assert_eq!(c.describe(), "no GPU, 1 CPU, 18 GiB, timeout 30 min");
 }
 
 #[test]
 fn modal_config_reads_overrides_and_shrinks_the_remote_cap() {
-    let text = "[modal]\ncpu = 4\nmemory_gb = 8\ntimeout_h = 3\nimage = \"python:3.12\"\nsetup = [\"RUN pip install x\"]";
+    let text = "[modal]\ngpu = \"A100\"\nncpu = 4\nmemory_gb = 8\ntimeout = \"3h\"\nimage = \"python:3.12\"\nsetup = [\"RUN pip install x\"]";
     let c = cfg(text, 16).unwrap();
-    assert_eq!((c.cpu, c.memory_gb, c.timeout_h), (4, 8, 3));
+    assert_eq!((c.gpu.as_deref(), c.ncpu, c.memory_gb, c.timeout_s), (Some("A100"), 4, 8, 3 * 3600));
     assert_eq!(c.image.as_deref(), Some("python:3.12"));
     assert_eq!(c.setup, vec!["RUN pip install x".to_string()]);
     assert_eq!(c.remote_mem_limit_gb, 6);
+    let c = cfg("[modal]\ngpu = \"none\"\ntimeout = 45\nncpu = \"2\"", 4).unwrap();
+    assert_eq!((c.gpu.as_deref(), c.ncpu, c.timeout_s), (None, 2, 45 * 60));
 }
 
 #[test]
 fn modal_config_rejects_bad_values() {
-    assert!(cfg("[modal]\ntimeout_h = 25", 4).unwrap_err().contains("24 hours"));
-    assert!(cfg("[modal]\ncpu = 0", 4).unwrap_err().contains("positive"));
+    assert!(cfg("[modal]\ntimeout = \"25h\"", 4).unwrap_err().contains("24 hours"));
+    assert!(cfg("[modal]\nncpu = 0", 4).unwrap_err().contains("positive"));
+    assert!(cfg("[modal]\nmemory_gb = 0", 4).unwrap_err().contains("positive"));
+    assert!(cfg("[modal]\ngpu = \"A100:0\"", 4).unwrap_err().starts_with("[modal] gpu"));
+    assert!(cfg("[modal]\ntimeout = 1.5", 4).unwrap_err().contains("string or an integer"));
+    assert!(cfg("[modal]\ncpu = 4", 4).unwrap_err().contains("renamed to ncpu"));
+    assert!(cfg("[modal]\ntimeout_h = 3", 4).unwrap_err().contains("renamed to timeout"));
     assert!(cfg("[modal]\nsetup = \"RUN x\"", 4).unwrap_err().contains("list"));
     assert!(cfg("[modal]\nsetup = [1]", 4).unwrap_err().contains("strings"));
+}
+
+#[test]
+fn cli_suboptions_override_config_defaults() {
+    let base = cfg("[modal]\ngpu = \"T4\"\nncpu = 8\ntimeout = 90", 4).unwrap();
+    let keep = base.clone().with_options(&ModalOptions::default());
+    assert_eq!(keep, base);
+    let opts = parse_modal_spec("timeout=90s,gpu=none").unwrap();
+    let c = base.with_options(&opts);
+    assert_eq!((c.gpu.as_deref(), c.ncpu, c.timeout_s), (None, 8, 90));
+    assert_eq!(c.describe(), "no GPU, 8 CPU, 6 GiB, timeout 90 s");
 }
 
 #[test]

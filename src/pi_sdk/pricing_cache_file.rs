@@ -6,7 +6,7 @@ use std::time::Duration;
 use super::model_cost::ModelCost;
 use serde::{Deserialize, Serialize};
 
-use super::cache_clock::{cache_fetched_at_is_fresh, unix_now_secs};
+use crate::clock::{SystemClock, fetched_at_is_fresh, unix_now_secs};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(super) struct PricedEntry {
@@ -54,7 +54,7 @@ impl PricingCacheFile {
     }
 
     pub(super) fn is_fresh(&self, entry: &PricedEntry) -> bool {
-        cache_fetched_at_is_fresh(entry.fetched_at_secs, self.ttl)
+        fetched_at_is_fresh(&SystemClock, entry.fetched_at_secs, self.ttl)
     }
 
     pub(super) fn fresh_cost(&self, key: &str) -> Option<ModelCost> {

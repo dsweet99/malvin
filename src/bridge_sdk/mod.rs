@@ -2,6 +2,7 @@ mod child_process_session;
 mod child_stderr;
 mod drain_idle;
 mod json_line_session;
+mod turn_protocol;
 mod log_adapter;
 mod log_adapter_tool;
 mod session;
@@ -43,6 +44,9 @@ pub(crate) use drain_idle::{DrainIdleWaitOpts, await_next_with_idle_using};
 pub(crate) use child_process_session::{ChildProcessSession, TurnWait, await_turn_event};
 pub(crate) use child_stderr::{start_warning_forward_filtered, take_stdio_forward_stderr};
 pub(crate) use json_line_session::JsonLineSession;
+#[cfg(test)]
+pub(crate) use json_line_session::json_parse_error;
+pub(crate) use turn_protocol::{TurnProtocol, consume_turn};
 pub(crate) use log_adapter::{feed_do_dm_run_result, handle_stream_event};
 pub use session::BridgeSession;
 pub use session_io::write_request;

@@ -8,11 +8,9 @@ use super::{DrainIdleLabels, DrainIdleTurn};
 
 pub(crate) trait JsonLineSession: ChildProcessSession + Sized {
     const BACKEND: ModelBackend;
-    const WIRE_LABEL: &'static str;
-    const PARSE_LABEL: &'static str;
 
     async fn write_json(&self, value: &serde_json::Value) -> Result<(), AgentError> {
-        let label = Self::WIRE_LABEL;
+        let label = Self::BACKEND.wire_label();
         let mut stdin = self.stdio().stdin.lock().await;
         stdin
             .write_all(format!("{value}\n").as_bytes())
@@ -38,7 +36,7 @@ pub(crate) trait JsonLineSession: ChildProcessSession + Sized {
 }
 
 async fn read_json_line<S: JsonLineSession>(session: &S) -> Result<serde_json::Value, AgentError> {
-    let label = S::WIRE_LABEL;
+    let label = S::BACKEND.wire_label();
     let mut line = String::new();
     let n = {
         let mut out = session.stdio().stdout.lock().await;
@@ -50,5 +48,10 @@ async fn read_json_line<S: JsonLineSession>(session: &S) -> Result<serde_json::V
         return Err(AgentError::session_dead(format!("{label} stdout closed")));
     }
     serde_json::from_str(line.trim_end_matches(['\r', '\n']))
-        .map_err(|e| AgentError::session_dead(format!("{label} {} parse: {e}", S::PARSE_LABEL)))
+        .map_err(|e| AgentError::session_dead(json_parse_error(S::BACKEND, &e)))
+}
+
+pub(crate) fn json_parse_error(backend: ModelBackend, err: &serde_json::Error) -> String {
+    let parse = backend.spec().wire_parse_label().unwrap_or("JSON");
+    format!("{} {parse} parse: {err}", backend.wire_label())
 }

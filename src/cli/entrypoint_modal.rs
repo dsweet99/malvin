@@ -1,12 +1,17 @@
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
+use malvin::modal_run::options::ModalOptions;
 use malvin::modal_run::{ModalInvocation, reject_unsupported, remote_args, run_modal};
 
 use super::{Exit, print_command_error};
 use crate::cli::args::Cli;
 
-pub(crate) fn modal_invocation(cli: &Cli, raw: &[OsString]) -> Result<ModalInvocation, String> {
+pub(crate) fn modal_invocation(
+    cli: &Cli,
+    raw: &[OsString],
+    options: ModalOptions,
+) -> Result<ModalInvocation, String> {
     let set_flags: Vec<&str> = [("--watch", cli.router.watch), ("--iml", cli.shared.iml)]
         .into_iter()
         .filter_map(|(flag, on)| on.then_some(flag))
@@ -24,11 +29,12 @@ pub(crate) fn modal_invocation(cli: &Cli, raw: &[OsString]) -> Result<ModalInvoc
             .filter(|r| Path::new(r).is_file())
             .map(PathBuf::from)
             .collect(),
+        options,
     })
 }
 
-pub(crate) fn run_modal_route(cli: &Cli, raw: &[OsString]) -> Exit {
-    match modal_invocation(cli, raw).and_then(|inv| run_modal(&inv)) {
+pub(crate) fn run_modal_route(cli: &Cli, raw: &[OsString], options: ModalOptions) -> Exit {
+    match modal_invocation(cli, raw, options).and_then(|inv| run_modal(&inv)) {
         Ok(0) => Exit::Success,
         Ok(_) => Exit::Failure,
         Err(e) => {

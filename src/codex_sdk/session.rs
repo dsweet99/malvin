@@ -37,8 +37,6 @@ impl ChildProcessSession for CodexSession {
 
 impl JsonLineSession for CodexSession {
     const BACKEND: ModelBackend = ModelBackend::Codex;
-    const WIRE_LABEL: &'static str = "codex";
-    const PARSE_LABEL: &'static str = "JSON-RPC";
 }
 
 impl CodexSession {

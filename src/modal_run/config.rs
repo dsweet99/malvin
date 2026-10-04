@@ -1,17 +1,44 @@
 use crate::malvin_config_file::{read_string, read_u64};
 
-pub const MAX_TIMEOUT_H: u64 = 24;
-const DEFAULT_CPU: u64 = 2;
+use super::options::{
+    DEFAULT_NCPU, DEFAULT_TIMEOUT_S, GpuChoice, ModalOptions, parse_gpu, parse_ncpu, parse_timeout,
+};
+
 const HEADROOM_GB: u64 = 2;
+const RENAMED_KEYS: &[(&str, &str)] = &[("cpu", "ncpu"), ("timeout_h", "timeout")];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModalConfig {
-    pub cpu: u64,
+    pub gpu: Option<String>,
+    pub ncpu: u64,
     pub memory_gb: u64,
-    pub timeout_h: u64,
+    pub timeout_s: u64,
     pub image: Option<String>,
     pub setup: Vec<String>,
     pub remote_mem_limit_gb: u64,
+}
+
+impl ModalConfig {
+    #[must_use]
+    pub fn with_options(mut self, opts: &ModalOptions) -> Self {
+        if let Some(gpu) = &opts.gpu {
+            self.gpu = gpu.clone().into_option();
+        }
+        self.ncpu = opts.ncpu.unwrap_or(self.ncpu);
+        self.timeout_s = opts.timeout_s.unwrap_or(self.timeout_s);
+        self
+    }
+
+    #[must_use]
+    pub fn describe(&self) -> String {
+        let gpu = self.gpu.as_deref().unwrap_or("no GPU");
+        let timeout = if self.timeout_s.is_multiple_of(60) {
+            format!("{} min", self.timeout_s / 60)
+        } else {
+            format!("{} s", self.timeout_s)
+        };
+        format!("{gpu}, {} CPU, {} GiB, timeout {timeout}", self.ncpu, self.memory_gb)
+    }
 }
 
 fn read_setup(section: Option<&toml::Value>) -> Result<Vec<String>, String> {
@@ -41,19 +68,40 @@ fn read_positive(section: Option<&toml::Value>, key: &str) -> Result<Option<u64>
     }
 }
 
+fn read_parsed<T>(
+    section: Option<&toml::Value>,
+    key: &str,
+    parse: fn(&str) -> Result<T, String>,
+) -> Result<Option<T>, String> {
+    let Some(raw) = section.and_then(|s| s.get(key)) else {
+        return Ok(None);
+    };
+    let text = match raw {
+        toml::Value::String(s) => s.clone(),
+        toml::Value::Integer(i) => i.to_string(),
+        _ => return Err(format!("[modal] {key} must be a string or an integer")),
+    };
+    parse(&text).map(Some).map_err(|e| format!("[modal] {e}"))
+}
+
+fn reject_renamed(section: Option<&toml::Value>) -> Result<(), String> {
+    for (old, new) in RENAMED_KEYS {
+        if section.and_then(|s| s.get(*old)).is_some() {
+            return Err(format!("[modal] {old} was renamed to {new}; see `malvin --doc`"));
+        }
+    }
+    Ok(())
+}
+
 pub fn parse_modal_config(root: &toml::Value, local_mem_limit_gb: u64) -> Result<ModalConfig, String> {
     let section = root.get("modal");
-    let timeout_h = read_positive(section, "timeout_h")?.unwrap_or(MAX_TIMEOUT_H);
-    if timeout_h > MAX_TIMEOUT_H {
-        return Err(format!(
-            "[modal] timeout_h is {timeout_h}, but Modal Sandboxes live at most {MAX_TIMEOUT_H} hours"
-        ));
-    }
+    reject_renamed(section)?;
     let memory_gb = read_positive(section, "memory_gb")?.unwrap_or(local_mem_limit_gb + HEADROOM_GB);
     Ok(ModalConfig {
-        cpu: read_positive(section, "cpu")?.unwrap_or(DEFAULT_CPU),
+        gpu: read_parsed(section, "gpu", parse_gpu)?.and_then(GpuChoice::into_option),
+        ncpu: read_parsed(section, "ncpu", parse_ncpu)?.unwrap_or(DEFAULT_NCPU),
         memory_gb,
-        timeout_h,
+        timeout_s: read_parsed(section, "timeout", parse_timeout)?.unwrap_or(DEFAULT_TIMEOUT_S),
         image: read_string(section.and_then(|s| s.get("image"))),
         setup: read_setup(section)?,
         remote_mem_limit_gb: local_mem_limit_gb.min(memory_gb.saturating_sub(HEADROOM_GB).max(1)),

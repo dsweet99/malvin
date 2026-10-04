@@ -1,10 +1,11 @@
 use super::session::NpmPiSession;
 use crate::acp::AgentError;
 use crate::bridge_protocol::{BridgeEvent, RunDoneStatus};
-use crate::bridge_sdk::JsonLineSession;
+use crate::bridge_sdk::{DrainIdleTurn, TurnProtocol};
 
 #[derive(Default)]
-pub(super) struct TurnState {
+pub(crate) struct TurnState {
+    pub(super) prompt_id: String,
     pub(super) response_text: String,
     pub(super) usage: Option<serde_json::Value>,
     pub(super) prompt_accepted: bool,
@@ -13,36 +14,30 @@ pub(super) struct TurnState {
     pub(super) end_error: Option<AgentError>,
 }
 
-struct ActiveTurn<'a> {
-    state: &'a mut TurnState,
-    drain: &'a mut crate::bridge_sdk::DrainIdleTurn,
+impl TurnProtocol for NpmPiSession {
+    type State = TurnState;
+    const WAITING_FOR: &'static str = "npm pi event";
+
+    async fn handle(
+        &self,
+        value: &serde_json::Value,
+        state: &mut TurnState,
+        turn: &mut DrainIdleTurn,
+    ) -> Option<Result<(), AgentError>> {
+        handle_line(self, value, state, turn).await
+    }
 }
 
 pub(super) async fn consume_npm_pi_turn(
     session: &NpmPiSession,
     prompt_id: &str,
 ) -> Result<(), AgentError> {
-    let mut state = TurnState {
+    let state = TurnState {
+        prompt_id: prompt_id.to_owned(),
         output_cap: session.output_cap,
         ..TurnState::default()
     };
-    let mut turn = crate::bridge_sdk::DrainIdleTurn::new();
-    loop {
-        let value = session.read_json_waiting("npm pi event", &mut turn).await?;
-        {
-            let mut active = ActiveTurn {
-                state: &mut state,
-                drain: &mut turn,
-            };
-            if let Some(result) = handle_line(session, &value, prompt_id, &mut active).await {
-                return result;
-            }
-        }
-        turn.check_max_deadline(crate::bridge_sdk::DrainIdleLabels {
-            prefix: crate::model_id::ModelBackend::Pi.drain_idle_prefix(),
-            waiting_for: "npm pi event",
-        })?;
-    }
+    crate::bridge_sdk::consume_turn(session, state).await
 }
 
 pub(super) fn feed_mapped_bridge_events(
@@ -62,12 +57,12 @@ pub(super) fn feed_mapped_bridge_events(
 async fn handle_line(
     session: &NpmPiSession,
     value: &serde_json::Value,
-    prompt_id: &str,
-    active: &mut ActiveTurn<'_>,
+    state: &mut TurnState,
+    drain: &mut DrainIdleTurn,
 ) -> Option<Result<(), AgentError>> {
     let ty = value.get("type").and_then(|v| v.as_str()).unwrap_or("");
     if ty == "response" {
-        return handle_response(value, active.state, prompt_id);
+        return handle_response(value, state);
     }
     if ty == "extension_ui_request" {
         if let Err(e) = super::map_event::auto_reply_extension_ui(session, value).await {
@@ -75,15 +70,15 @@ async fn handle_line(
         }
         return None;
     }
-    for ev in super::map_event::map_npm_pi_event(value, active.state) {
+    for ev in super::map_event::map_npm_pi_event(value, state) {
         if let BridgeEvent::RunDone { .. } = &ev {
             feed_and_handle_run_done(session, &ev);
             return Some(Ok(()));
         }
-        feed_mapped_bridge_events(session, active.drain, std::slice::from_ref(&ev));
+        feed_mapped_bridge_events(session, drain, std::slice::from_ref(&ev));
     }
-    if active.state.settled {
-        return Some(finish_settled(session, active.state));
+    if state.settled {
+        return Some(finish_settled(session, state));
     }
     None
 }
@@ -91,10 +86,9 @@ async fn handle_line(
 fn handle_response(
     value: &serde_json::Value,
     state: &mut TurnState,
-    prompt_id: &str,
 ) -> Option<Result<(), AgentError>> {
     let id = value.get("id").and_then(|v| v.as_str()).unwrap_or("");
-    if id != prompt_id {
+    if id != state.prompt_id {
         return None;
     }
     let success = value
@@ -172,14 +166,17 @@ mod tests {
 
     #[test]
     fn prompt_reject_maps_error() {
-        let mut state = TurnState::default();
+        let mut state = TurnState {
+            prompt_id: "req-1".into(),
+            ..TurnState::default()
+        };
         let value = serde_json::json!({
             "type": "response",
             "id": "req-1",
             "success": false,
             "error": "busy"
         });
-        let err = handle_response(&value, &mut state, "req-1")
+        let err = handle_response(&value, &mut state)
             .expect("handled")
             .expect_err("reject");
         assert!(err.message.contains("busy"));

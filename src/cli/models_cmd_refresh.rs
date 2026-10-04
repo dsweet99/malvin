@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
@@ -9,14 +8,6 @@ pub const MODELS_REFRESH_INTERVAL_SECS: u64 = 24 * 60 * 60;
 pub struct ModelsRefreshRecord {
     #[serde(alias = "timestamp")]
     pub last_refresh_secs: u64,
-}
-
-#[must_use]
-pub fn unix_now_secs() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs()
 }
 
 #[must_use]
@@ -51,7 +42,7 @@ pub fn models_refresh_is_due(now_secs: u64) -> bool {
 }
 
 pub fn perform_models_refresh() {
-    let now = unix_now_secs();
+    let now = malvin::clock::unix_now_secs();
     let _ = malvin::npm_pi_sdk::refresh_npm_pi_models();
     let _ = save_last_refresh_secs(now);
 }
@@ -72,11 +63,6 @@ mod tests {
         let json = r#"{"last_refresh_secs": 987654321}"#;
         let record: ModelsRefreshRecord = serde_json::from_str(json).expect("parse");
         assert_eq!(record.last_refresh_secs, 987_654_321);
-    }
-
-    #[test]
-    fn unix_now_secs_is_reasonable() {
-        assert!(unix_now_secs() > 1_700_000_000);
     }
 
     #[test]

@@ -34,6 +34,7 @@
 )]
 #[cfg(test)]
 extern crate self as malvin;
+pub mod clock;
 mod log_gc;
 mod log_gc_config;
 pub mod malvin_config_file;

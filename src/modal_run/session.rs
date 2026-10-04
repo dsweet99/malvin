@@ -11,6 +11,8 @@ use super::remote::{self, RemotePaths};
 use super::results::{apply_patch, describe_outcome, import_logs};
 use super::workspace::{RECENT_RUN_DIRS, pack_logs, pack_workspace, recent_run_dirs};
 
+const TIMEOUT_HINT_MARGIN_S: u64 = 5;
+
 pub struct Plan {
     pub cfg: ModalConfig,
     pub cfg_root: toml::Value,
@@ -54,17 +56,23 @@ pub fn prepare(cwd: &Path, home: &Path, plan: Plan) -> Result<Prepared, String> 
 fn sandbox_request(plan: &Plan, tags: &BTreeMap<String, String>) -> Value {
     json!({
         "image": plan.spec.name,
-        "cpu": plan.cfg.cpu,
+        "gpu": plan.cfg.gpu,
+        "cpu": plan.cfg.ncpu,
         "memory_mib": plan.cfg.memory_gb * 1024,
-        "timeout_ms": plan.cfg.timeout_h * 3600 * 1000,
+        "timeout_ms": plan.cfg.timeout_s * 1000,
         "tags": tags,
     })
+}
+
+pub(super) fn image_rebuild_may_help(err: &str) -> bool {
+    !err.contains("INVALID_ARGUMENT")
 }
 
 fn start_sandbox(bridge: &mut ModalBridge, plan: &Plan, tags: &BTreeMap<String, String>) -> Result<String, String> {
     let req = sandbox_request(plan, tags);
     let reply = match bridge.call("create_sandbox", req.clone()) {
         Ok(reply) => reply,
+        Err(first) if !image_rebuild_may_help(&first) => return Err(first),
         Err(first) => {
             note(&format!("{first}; rebuilding the image and retrying once"));
             bridge.call("ensure_image", plan.spec.request(true))?;
@@ -157,12 +165,23 @@ fn finish_locally(prep: &Prepared) -> Result<(), String> {
     Ok(())
 }
 
+pub(super) fn with_timeout_hint(err: String, elapsed: std::time::Duration, timeout_s: u64) -> String {
+    if elapsed.as_secs() + TIMEOUT_HINT_MARGIN_S < timeout_s {
+        return err;
+    }
+    format!(
+        "{err}\nThe Sandbox likely reached its {timeout_s} s timeout; raise it with `--modal[timeout=...]` or `[modal] timeout` in config.toml"
+    )
+}
+
 pub fn run(bridge: &mut ModalBridge, prep: &Prepared, inv: &ModalInvocation) -> Result<i32, String> {
     let host = super::sweep::host_name();
     let tags = super::sweep::run_tags(&crate::alnum_id::random_alnum(8), &host, std::process::id());
     let sandbox_id = start_sandbox(bridge, &prep.plan, &tags)?;
-    note(&format!("Sandbox {sandbox_id} started"));
-    let result = drive(bridge, prep, inv);
+    note(&format!("Sandbox {sandbox_id} started ({})", prep.plan.cfg.describe()));
+    let started = std::time::Instant::now();
+    let result = drive(bridge, prep, inv)
+        .map_err(|e| with_timeout_hint(e, started.elapsed(), prep.plan.cfg.timeout_s));
     if !bridge.exited()
         && let Err(e) = bridge.call("terminate", json!({}))
     {

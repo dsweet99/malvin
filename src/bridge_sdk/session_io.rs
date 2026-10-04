@@ -5,7 +5,10 @@ use super::session::BridgeSession;
 use super::session_handshake::wait_for_ok;
 use super::timing::{note_sdk_step, record_sdk_usage};
 use crate::bridge_protocol::{BridgeEvent, BridgeRequest, decode_event, encode_request};
+use crate::model_id::ModelBackend;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
+
+const BRIDGE: ModelBackend = ModelBackend::Cursor;
 
 pub(crate) struct CreateArgs<'a> {
     pub cwd: &'a std::path::Path,
@@ -51,30 +54,32 @@ pub(crate) async fn send_resume(
 
 pub async fn write_request(session: &BridgeSession, req: &BridgeRequest) -> Result<(), AgentError> {
     let line = encode_request(req).map_err(AgentError)?;
+    let label = BRIDGE.wire_label();
     let mut stdin = session.stdio.stdin.lock().await;
     stdin
         .write_all(format!("{line}\n").as_bytes())
         .await
-        .map_err(|e| AgentError::session_dead(format!("bridge write: {e}")))?;
+        .map_err(|e| AgentError::session_dead(format!("{label} write: {e}")))?;
     stdin
         .flush()
         .await
-        .map_err(|e| AgentError::session_dead(format!("bridge flush: {e}")))?;
+        .map_err(|e| AgentError::session_dead(format!("{label} flush: {e}")))?;
     drop(stdin);
     Ok(())
 }
 
 pub(crate) async fn read_event(session: &BridgeSession) -> Result<BridgeEvent, AgentError> {
+    let label = BRIDGE.wire_label();
     let mut line = String::new();
     let n = {
         let mut stdout = session.stdio.stdout.lock().await;
         stdout
             .read_line(&mut line)
             .await
-            .map_err(|e| AgentError::session_dead(format!("bridge read: {e}")))?
+            .map_err(|e| AgentError::session_dead(format!("{label} read: {e}")))?
     };
     if n == 0 {
-        return Err(AgentError::session_dead("bridge stdout closed"));
+        return Err(AgentError::session_dead(format!("{label} stdout closed")));
     }
     decode_event(line.trim()).map_err(AgentError)
 }

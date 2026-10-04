@@ -55,6 +55,11 @@ impl ModelBackend {
     }
 
     #[must_use]
+    pub fn wire_label(self) -> &'static str {
+        self.spec().wire_label()
+    }
+
+    #[must_use]
     pub fn bridge_wire_model(self, model: &ParsedModel) -> String {
         debug_assert_eq!(self, model.backend);
         self.spec().wire_model(model)
