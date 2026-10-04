@@ -15,9 +15,9 @@ fn no_alias(_: &str) -> Option<String> {
 
 fn big_alias(name: &str) -> Option<String> {
     match name {
-        "big" => Some("modal[gpu=A100,mem=32]".to_string()),
-        "broken" => Some("modal[ncpu=0]".to_string()),
-        "elsewhere" => Some("aws".to_string()),
+        "big" => Some("modal:sandbox[gpu=A100,mem=32]".to_string()),
+        "broken" => Some("modal:sandbox[ncpu=0]".to_string()),
+        "elsewhere" => Some("aws:box".to_string()),
         _ => None,
     }
 }
@@ -75,17 +75,17 @@ fn value_parsers_accept_documented_forms_only() {
 
 #[test]
 fn bracketed_flag_is_rewritten_for_clap() {
-    let normalized = args(&["malvin", "--remote=modal", "--do", "x"]);
-    let (out, opts) = extract_modal_options(args(&["malvin", "--remote=modal[ncpu=4,gpu=T4]", "--do", "x"]), no_alias).unwrap();
+    let normalized = args(&["malvin", "--remote=modal:sandbox", "--do", "x"]);
+    let (out, opts) = extract_modal_options(args(&["malvin", "--remote=modal:sandbox[ncpu=4,gpu=T4]", "--do", "x"]), no_alias).unwrap();
     assert_eq!(out, normalized);
     assert_eq!((opts.ncpu, opts.gpu), (Some(4), Some(GpuChoice::Gpu("T4".to_string()))));
-    let (out, opts) = extract_modal_options(args(&["malvin", "--remote", "modal[gpu=A100]", "--do", "x"]), no_alias).unwrap();
+    let (out, opts) = extract_modal_options(args(&["malvin", "--remote", "modal:sandbox[gpu=A100,ncpu=2]", "--do", "x"]), no_alias).unwrap();
     assert_eq!(out, normalized);
-    assert_eq!(opts.gpu, Some(GpuChoice::Gpu("A100".to_string())));
-    let (out, opts) = extract_modal_options(args(&["malvin", "--remote", "modal", "--do", "x"]), no_alias).unwrap();
+    assert_eq!((opts.gpu, opts.ncpu), (Some(GpuChoice::Gpu("A100".to_string())), Some(2)));
+    let (out, opts) = extract_modal_options(args(&["malvin", "--remote", "modal:sandbox", "--do", "x"]), no_alias).unwrap();
     assert_eq!((out, opts), (normalized.clone(), ModalOptions::default()));
     assert_eq!(extract_modal_options(normalized.clone(), no_alias).unwrap(), (normalized, ModalOptions::default()));
-    let after_dashes = args(&["malvin", "--", "--remote=modal[ncpu=4]"]);
+    let after_dashes = args(&["malvin", "--", "--remote=modal:sandbox[ncpu=4]"]);
     assert_eq!(extract_modal_options(after_dashes.clone(), no_alias).unwrap().0, after_dashes);
     let other = args(&["malvin", "--remoteish=modal", "x"]);
     assert_eq!(extract_modal_options(other.clone(), no_alias).unwrap().0, other);
@@ -94,11 +94,15 @@ fn bracketed_flag_is_rewritten_for_clap() {
 #[test]
 fn bracketed_flag_errors_name_the_problem() {
     let err = |items: &[&str]| extract_modal_options(args(items), no_alias).unwrap_err();
-    assert!(err(&["malvin", "--remote=modal[ncpu=4"]).contains("closing `]`"));
-    assert!(err(&["malvin", "--remote=modal[ncpu=0]"]).contains("ncpu `0`"));
-    assert!(err(&["malvin", "--remote=modal[ncpu=1]", "--remote=modal[gpu=T4]"]).contains("more than once"));
+    assert!(err(&["malvin", "--remote=modal:sandbox[ncpu=4"]).contains("closing `]`"));
+    assert!(err(&["malvin", "--remote=modal:sandbox[ncpu=0]"]).contains("ncpu `0`"));
+    assert!(err(&["malvin", "--remote=modal:sandbox[ncpu=1]", "--remote=modal:sandbox[gpu=T4]"]).contains("more than once"));
+    assert!(err(&["malvin", "--remote=aws:box[ncpu=1]"]).contains("unknown remote provider `aws`"));
     assert!(err(&["malvin", "--remote=aws[ncpu=1]"]).contains("malvin admin remotes"));
     assert!(err(&["malvin", "--remote=Modal"]).contains("unknown remote `Modal`"));
+    assert!(err(&["malvin", "--remote=modal:gpu"]).contains("unknown modal service `gpu` (services: sandbox)"));
+    assert!(err(&["malvin", "--remote=modal[gpu=A100]"]).contains("use `modal:sandbox`"));
+    assert!(err(&["malvin", "--remote", "modal"]).contains("use `modal:sandbox`"));
     assert!(err(&["malvin", "--remote"]).contains("needs a value"));
 }
 
@@ -107,24 +111,24 @@ fn failures_near_the_deadline_name_the_timeout() {
     let at = |secs| super::session::with_timeout_hint("boom".to_string(), std::time::Duration::from_secs(secs), 90);
     assert_eq!(at(10), "boom");
     assert!(at(86).contains("90 s timeout") && at(86).starts_with("boom\n"));
-    assert!(at(200).contains("--remote=modal[timeout=...]"));
+    assert!(at(200).contains("--remote=modal:sandbox[timeout=...]"));
     assert!(!super::session::image_rebuild_may_help("SandboxCreate INVALID_ARGUMENT: FOO is not a valid GPU type"));
     assert!(super::session::image_rebuild_may_help("NOT_FOUND: image malvin-bin:x"));
 }
 
 #[test]
 fn remote_aliases_expand_before_parsing() {
-    let normalized = args(&["malvin", "--remote=modal", "--do", "x"]);
+    let normalized = args(&["malvin", "--remote=modal:sandbox", "--do", "x"]);
     for typed in [&["malvin", "--remote=big", "--do", "x"][..], &["malvin", "--remote", "big", "--do", "x"]] {
         let (out, opts) = extract_modal_options(args(typed), big_alias).unwrap();
         assert_eq!(out, normalized);
         assert_eq!((opts.gpu, opts.memory_gb), (Some(GpuChoice::Gpu("A100".to_string())), Some(32)));
     }
-    let (_, opts) = extract_modal_options(args(&["malvin", "--remote=modal[ncpu=2]"]), big_alias).unwrap();
+    let (_, opts) = extract_modal_options(args(&["malvin", "--remote=modal:sandbox[ncpu=2]"]), big_alias).unwrap();
     assert_eq!((opts.ncpu, opts.gpu), (Some(2), None));
     let err = |items: &[&str]| extract_modal_options(args(items), big_alias).unwrap_err();
-    assert!(err(&["malvin", "--remote=broken"]).contains("remote alias `broken` = `modal[ncpu=0]`: "));
-    assert!(err(&["malvin", "--remote=elsewhere"]).contains("unknown remote `aws`"));
+    assert!(err(&["malvin", "--remote=broken"]).contains("remote alias `broken` = `modal:sandbox[ncpu=0]`: "));
+    assert!(err(&["malvin", "--remote=elsewhere"]).contains("unknown remote provider `aws`"));
     assert!(err(&["malvin", "--remote=big[ncpu=2]"]).contains("unknown remote `big`"));
     assert!(err(&["malvin", "--remote=small"]).contains("[aliases.remotes]"));
 }
@@ -132,6 +136,7 @@ fn remote_aliases_expand_before_parsing() {
 #[test]
 fn builtin_remote_names_skip_the_alias_lookup() {
     let panic_alias = |name: &str| -> Option<String> { panic!("looked up {name}") };
-    assert!(extract_modal_options(args(&["malvin", "--remote=modal[ncpu=2]"]), panic_alias).is_ok());
+    assert!(extract_modal_options(args(&["malvin", "--remote=modal:sandbox[ncpu=2]"]), panic_alias).is_ok());
+    assert!(extract_modal_options(args(&["malvin", "--remote=aws:box"]), panic_alias).is_err());
     assert!(extract_modal_options(args(&["malvin", "--do", "x"]), panic_alias).is_ok());
 }

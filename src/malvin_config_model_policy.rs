@@ -24,9 +24,9 @@ pub(crate) fn parse_model_aliases(text: &str) -> Result<BTreeMap<String, String>
 pub(crate) fn parse_remote_aliases(text: &str) -> Result<BTreeMap<String, String>, String> {
     let value: toml::Value = text.parse().map_err(|e| format!("invalid TOML: {e}"))?;
     alias_table(&value, "remotes", |name| {
-        if name.contains(['[', ']', ',', '=']) {
+        if name.contains([':', '[', ']', ',', '=']) {
             return Err(format!(
-                "remote alias {name:?} must not contain '[', ']', ',' or '='"
+                "remote alias {name:?} must not contain ':', '[', ']', ',' or '='"
             ));
         }
         if BUILTIN_REMOTES.contains(&name) {

@@ -37,7 +37,7 @@ pub fn ensure_installed() -> Result<PathBuf, String> {
         .install_into(&PACKAGE.default_install_dir())
         .map_err(|e| {
             format!(
-                "malvin --remote=modal needs Node.js >= 22.13 with npm to install the Modal bridge: {e}"
+                "malvin --remote=modal:sandbox needs Node.js >= 22.13 with npm to install the Modal bridge: {e}"
             )
         })
 }

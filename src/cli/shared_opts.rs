@@ -54,11 +54,11 @@ pub struct SharedOpts {
     /// Cycle through all REQUEST args forever (as if re-invoking the same command line)
     #[arg(long = "iml", default_value_t = false, help = IML_HELPTEXT)]
     pub iml: bool,
-    /// Run on a remote machine (see `malvin admin remotes`; `[aliases.remotes]` names work too)
+    /// Run on a remote machine, as PROVIDER:SERVICE[KEY=VALUE,...] (see `malvin admin remotes`; `[aliases.remotes]` names work too)
     #[arg(
         long,
         value_name = "REMOTE",
-        value_parser = [malvin::modal_run::MODAL_REMOTE],
+        value_parser = [malvin::modal_run::MODAL_REMOTE_ID],
         hide_possible_values = true
     )]
     pub remote: Option<String>,

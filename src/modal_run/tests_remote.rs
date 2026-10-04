@@ -38,7 +38,7 @@ fn stale_ids_picks_dead_runs_on_this_host() {
 
 #[test]
 fn remote_args_drop_program_and_modal_flag() {
-    let raw: Vec<OsString> = ["malvin", "--remote=modal", "--do", "x"].map(OsString::from).to_vec();
+    let raw: Vec<OsString> = ["malvin", "--remote=modal:sandbox", "--do", "x"].map(OsString::from).to_vec();
     assert_eq!(remote_args(&raw), vec![OsString::from("--do"), OsString::from("x")]);
     assert!(reject_unsupported(&["--watch"]).unwrap_err().contains("`--watch`"));
     assert!(reject_unsupported(&["-g", "--iml"]).unwrap_err().contains("`--iml`"));

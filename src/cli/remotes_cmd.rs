@@ -1,7 +1,7 @@
 use clap::Args;
 use malvin::modal_run::gpu_types::{GPU_TYPES_URL, GpuTypes, load_gpu_types};
 use malvin::modal_run::options::{SUBOPTIONS, Suboption};
-use malvin::modal_run::{MODAL_ABOUT, MODAL_REMOTE, REMOTE_FLAG};
+use malvin::modal_run::{MODAL_ABOUT, MODAL_REMOTE_ID, REMOTE_FLAG};
 use malvin::output::{MALVIN_WHO, print_stdout_line};
 
 #[derive(Args, Debug, Clone, Default)]
@@ -17,7 +17,7 @@ fn summary_row() -> String {
         .iter()
         .map(|s| format!("{}={}", s.key, s.values))
         .collect();
-    format!("{MODAL_REMOTE}\t{}", keys.join(" "))
+    format!("{MODAL_REMOTE_ID}\t{}", keys.join(" "))
 }
 
 fn column_width(header: &str, cell: fn(&Suboption) -> &'static str) -> usize {
@@ -53,8 +53,8 @@ pub fn remotes_lines(gpu: &GpuTypes) -> Vec<String> {
     let mut lines = vec![
         summary_row(),
         String::new(),
-        format!("{MODAL_REMOTE}: {MODAL_ABOUT}."),
-        format!("Usage: malvin {REMOTE_FLAG}={MODAL_REMOTE}[KEY=VALUE,...] [OPTION]... [REQUEST]..."),
+        format!("{MODAL_REMOTE_ID}: {MODAL_ABOUT}."),
+        format!("Usage: malvin {REMOTE_FLAG}={MODAL_REMOTE_ID}[KEY=VALUE,...] [OPTION]... [REQUEST]..."),
         String::new(),
         "Suboptions (each optional, in any order; an omitted one falls back to the same".to_string(),
         "key under [modal] in ~/.malvinconf/config.toml, then to DEFAULT):".to_string(),
@@ -64,7 +64,7 @@ pub fn remotes_lines(gpu: &GpuTypes) -> Vec<String> {
     lines.extend(gpu_type_lines(gpu));
     lines.extend([
         String::new(),
-        format!("Example: malvin '{REMOTE_FLAG}={MODAL_REMOTE}[gpu=A100,mem=32,timeout=2h]' \"Train the model\""),
+        format!("Example: malvin '{REMOTE_FLAG}={MODAL_REMOTE_ID}[gpu=A100,mem=32,timeout=2h]' \"Train the model\""),
         "Quote the flag: brackets are shell glob characters.".to_string(),
     ]);
     lines
@@ -101,8 +101,8 @@ mod tests {
     #[test]
     fn remotes_lists_modal_and_every_suboption() {
         let text = remotes_lines(&listed()).join("\n");
-        assert!(text.starts_with("modal\tgpu=none|TYPE[:COUNT] ncpu=N mem=N[G|GB|GiB] timeout=N[s|m|h]"), "{text}");
-        for needle in ["  gpu ", "  ncpu ", "  mem ", "  timeout ", "H100", "--remote=modal[KEY=VALUE,...]", "30m"] {
+        assert!(text.starts_with("modal:sandbox\tgpu=none|TYPE[:COUNT] ncpu=N mem=N[G|GB|GiB] timeout=N[s|m|h]"), "{text}");
+        for needle in ["  gpu ", "  ncpu ", "  mem ", "  timeout ", "H100", "--remote=modal:sandbox[KEY=VALUE,...]", "30m"] {
             assert!(text.contains(needle), "missing {needle}: {text}");
         }
     }

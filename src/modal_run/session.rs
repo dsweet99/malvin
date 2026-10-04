@@ -170,7 +170,7 @@ pub(super) fn with_timeout_hint(err: String, elapsed: std::time::Duration, timeo
         return err;
     }
     format!(
-        "{err}\nThe Sandbox likely reached its {timeout_s} s timeout; raise it with `--remote=modal[timeout=...]` or `[modal] timeout` in config.toml"
+        "{err}\nThe Sandbox likely reached its {timeout_s} s timeout; raise it with `--remote=modal:sandbox[timeout=...]` or `[modal] timeout` in config.toml"
     )
 }
 

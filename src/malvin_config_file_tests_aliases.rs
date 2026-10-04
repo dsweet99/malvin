@@ -89,14 +89,14 @@ fn parse_remote_aliases_from_config() {
 [aliases.models]
 astra = "cursor:gpt-5"
 [aliases.remotes]
-big = " modal[gpu=A100,mem=32] "
+big = " modal:sandbox[gpu=A100,mem=32] "
 [agent]
 model = "astra"
 "#,
     );
     assert_eq!(
         cfg.remote_aliases.get("big").map(String::as_str),
-        Some("modal[gpu=A100,mem=32]")
+        Some("modal:sandbox[gpu=A100,mem=32]")
     );
     assert_eq!(cfg.agent.model.canonical(), "cursor:gpt-5");
 }
@@ -106,8 +106,9 @@ fn remote_alias_names_are_validated() {
     let err = |body: &str| {
         super::parse_remote_aliases(&format!("[aliases.remotes]\n{body}\n")).expect_err(body)
     };
-    assert!(err("modal = \"modal[gpu=T4]\"").contains("built-in remote"));
-    assert!(err("\"a[b]\" = \"modal\"").contains("must not contain"));
+    assert!(err("modal = \"modal:sandbox[gpu=T4]\"").contains("built-in remote"));
+    assert!(err("\"modal:sandbox\" = \"modal:sandbox\"").contains("must not contain ':'"));
+    assert!(err("\"a[b]\" = \"modal:sandbox\"").contains("must not contain"));
     assert!(err("big = 3").contains("aliases.remotes.big must be a string"));
     assert!(err("big = \"\"").contains("non-empty"));
     let err = super::parse_model_aliases("[aliases.models]\n\"a:b\" = \"cursor:auto\"\n")
@@ -120,9 +121,9 @@ fn load_remote_aliases_reads_home_config() {
     with_isolated_home(|work| {
         let path = malvin_config_path(work);
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
-        std::fs::write(&path, "[aliases.remotes]\nbig = \"modal[gpu=A100]\"\n[agent]\nmodel = \"cursor:auto\"\n")
+        std::fs::write(&path, "[aliases.remotes]\nbig = \"modal:sandbox[gpu=A100]\"\n[agent]\nmodel = \"cursor:auto\"\n")
             .expect("write");
         let aliases = super::load_remote_aliases();
-        assert_eq!(aliases.get("big").map(String::as_str), Some("modal[gpu=A100]"));
+        assert_eq!(aliases.get("big").map(String::as_str), Some("modal:sandbox[gpu=A100]"));
     });
 }

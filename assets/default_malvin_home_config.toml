@@ -8,9 +8,9 @@ theme = "dark"
 # [aliases.models]
 # astra = "pi:openrouter/openai/this/is/too/long/gpt-astra"
 
-# Short names for `--remote` (not `modal`; no '[', ']', ',' or '=' in the key).
+# Short names for `--remote` (not `modal`; no ':', '[', ']', ',' or '=' in the key).
 # [aliases.remotes]
-# big = "modal[gpu=A100,mem=32,timeout=2h]"
+# big = "modal:sandbox[gpu=A100,mem=32,timeout=2h]"
 
 [agent]
 model = "cursor:auto"

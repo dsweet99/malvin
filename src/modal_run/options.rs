@@ -1,6 +1,6 @@
 use std::ffi::OsString;
 
-use super::{MODAL_REMOTE, REMOTE_FLAG, REMOTE_MODAL_ARG};
+use super::{MODAL_REMOTE, MODAL_REMOTE_ID, MODAL_SERVICE, REMOTE_FLAG, REMOTE_MODAL_ARG};
 
 pub const DEFAULT_NCPU: u64 = 1;
 pub const DEFAULT_TIMEOUT_S: u64 = 30 * 60;
@@ -149,24 +149,35 @@ fn set_suboption(opts: &mut ModalOptions, key: &str, value: &str) -> Result<bool
     })
 }
 
+fn check_remote_id(id: &str) -> Result<(), String> {
+    const LISTS: &str = "`malvin admin remotes` lists the available remotes, and `[aliases.remotes]` in ~/.malvinconf/config.toml defines aliases";
+    match id.split_once(':') {
+        Some((MODAL_REMOTE, MODAL_SERVICE)) => Ok(()),
+        Some((MODAL_REMOTE, service)) => Err(format!(
+            "unknown {MODAL_REMOTE} service `{service}` (services: {MODAL_SERVICE}); {LISTS}"
+        )),
+        Some((provider, _)) => Err(format!("unknown remote provider `{provider}`; {LISTS}")),
+        None if id == MODAL_REMOTE => Err(format!(
+            "remote `{id}` needs a service, as PROVIDER:SERVICE; use `{MODAL_REMOTE_ID}`"
+        )),
+        None => Err(format!("unknown remote `{id}` (remotes are PROVIDER:SERVICE, such as `{MODAL_REMOTE_ID}`); {LISTS}")),
+    }
+}
+
 pub fn parse_remote_value(value: &str) -> Result<ModalOptions, String> {
-    let (name, spec) = match value.split_once('[') {
-        Some((name, rest)) => {
+    let (id, spec) = match value.split_once('[') {
+        Some((id, rest)) => {
             let spec = rest
                 .strip_suffix(']')
                 .ok_or_else(|| format!("`{REMOTE_FLAG}={value}` is missing its closing `]`"))?;
-            (name, Some(spec))
+            (id, Some(spec))
         }
         None => (value, None),
     };
-    if name != MODAL_REMOTE {
-        return Err(format!(
-            "unknown remote `{name}`; `malvin admin remotes` lists the available remotes, and `[aliases.remotes]` in ~/.malvinconf/config.toml defines aliases"
-        ));
-    }
+    check_remote_id(id)?;
     spec.map_or_else(
         || Ok(ModalOptions::default()),
-        |spec| parse_modal_spec(spec).map_err(|e| format!("`{REMOTE_FLAG}={MODAL_REMOTE}[...]`: {e}")),
+        |spec| parse_modal_spec(spec).map_err(|e| format!("`{REMOTE_FLAG}={MODAL_REMOTE_ID}[...]`: {e}")),
     )
 }
 
@@ -179,8 +190,8 @@ fn remote_value(arg: &str, rest: &mut impl Iterator<Item = OsString>) -> Option<
 }
 
 pub fn expand_remote_alias(value: &str, alias: impl FnOnce(&str) -> Option<String>) -> String {
-    let name = value.split_once('[').map_or(value, |(name, _)| name);
-    if name == MODAL_REMOTE {
+    let id = value.split_once('[').map_or(value, |(id, _)| id);
+    if id.contains(':') {
         return value.to_string();
     }
     alias(value.trim()).unwrap_or_else(|| value.to_string())
