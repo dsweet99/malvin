@@ -173,13 +173,43 @@ fn bridge_relays_bare_remote_stdout_as_dm_body_in_do_mode() {
     crate::output::enable_stdout_capture();
     let mut b = fake_bridge(concat!(
         r#"read l; printf '%s\n' '{"id":1,"event":"stdout","data":"I am on modal.\n\n- **CPU:** 2\n"}'; "#,
+        r#"printf '%s\n' '{"id":1,"event":"stdout","data":"o|Logs: /x\n"}'; "#,
         r#"printf '%s\n' '{"id":1,"event":"stderr","data":"added 11 packages\n"}'; "#,
+        r#"printf '%s\n' '{"id":1,"event":"log","data":"bridge note\n"}'; "#,
         r#"printf '%s\n' '{"id":1,"ok":true}'"#
     ));
+    crate::output::clear_captured_stderr_lines();
     b.call("exec", json!({})).unwrap();
+    super::session::note("Sandbox started");
     let out = crate::ansi_strip::strip_ansi_escapes(&crate::output::take_captured_stdout());
+    let err = crate::output::take_captured_stderr_lines();
     crate::output::set_do_dm_stdout_mode(false);
     assert_eq!(out, "I am on modal.\n\n- **CPU:** 2");
+    assert!(err.is_empty(), "quiet --do must not print status lines: {err:?}");
+}
+
+#[test]
+fn status_lines_reach_stderr_outside_quiet_do_mode() {
+    let _guard = crate::output::STDOUT_LOG_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    crate::output::set_do_dm_stdout_mode(false);
+    crate::output::clear_captured_stderr_lines();
+    super::session::note("Sandbox started");
+    let err = crate::output::take_captured_stderr_lines();
+    assert_eq!(err.len(), 1, "{err:?}");
+    assert!(err[0].contains("modal: Sandbox started"), "{err:?}");
+}
+
+#[test]
+fn error_lines_are_recognized_by_who_tag() {
+    use super::remote_output::is_error_line;
+    for line in ["e|boom", "\x1b[38;2;1;2;3me|\x1b[0mboom", "e|"] {
+        assert!(is_error_line(line), "{line:?}");
+    }
+    for line in ["o|e|x", "error: x", "E|x", "", "w|x"] {
+        assert!(!is_error_line(line), "{line:?}");
+    }
 }
 
 #[test]

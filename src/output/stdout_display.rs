@@ -1,7 +1,5 @@
 use super::{ANSI_RESET, ERROR_WHO, WARNING_WHO, WHO_B, format_who_tag_prefix};
-use crate::terminal_palette::{
-    ANSI_BOLD, ANSI_ITALIC, ansi_error, ansi_remote, ansi_tool_name, ansi_warning, ansi_who_tag,
-};
+use crate::terminal_palette::{ANSI_BOLD, ansi_error, ansi_tool_name, ansi_warning, ansi_who_tag};
 
 pub(crate) use super::stdout_render::print_stdout_rendered_line;
 pub(crate) use super::who_tag_ansi;
@@ -28,13 +26,6 @@ pub fn format_line_stdout_ansi(who: &str, line: &str) -> String {
             format!(
                 "{tag_color}{prefix}{ANSI_RESET}{ANSI_BOLD}{}{line}{ANSI_RESET}",
                 ansi_tool_name()
-            )
-        }
-        super::WHO_R => {
-            let tag_color = who_tag_ansi(who);
-            format!(
-                "{tag_color}{prefix}{ANSI_RESET}{ANSI_ITALIC}{}{line}{ANSI_RESET}",
-                ansi_remote()
             )
         }
         _ => {
@@ -214,15 +205,15 @@ mod tests {
     }
 
     #[test]
-    fn remote_ansi_payload_is_italic_cream() {
+    fn remote_ansi_payload_is_plain() {
         use crate::output::WHO_R;
-        use crate::terminal_palette::{ANSI_ITALIC, ANSI_RESET};
+        use crate::terminal_palette::{ANSI_RESET, ansi_who_tag};
 
         let line = format_line_stdout_ansi(WHO_R, "added 11 packages in 3s");
-        let payload_start = format!("r|{ANSI_RESET}{ANSI_ITALIC}\x1b[38;2;");
-        assert!(line.starts_with("\x1b[38;2;"), "{line:?}");
-        assert!(line.contains(&payload_start), "{line:?}");
-        assert!(line.ends_with(&format!("added 11 packages in 3s{ANSI_RESET}")), "{line:?}");
+        assert_eq!(
+            line,
+            format!("{}r|{ANSI_RESET}added 11 packages in 3s", ansi_who_tag())
+        );
         assert_eq!(format_line_stdout(WHO_R, "x"), "r|x");
     }
 

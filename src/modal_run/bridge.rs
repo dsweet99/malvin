@@ -62,7 +62,7 @@ fn relay_event(remote: &mut RemoteLines, event: &str, data: &str) {
     match event {
         "stdout" => remote.push(Stream::Stdout, data),
         "stderr" => remote.push(Stream::Stderr, data),
-        _ => crate::output::print_stderr_line(crate::output::MALVIN_WHO, data),
+        _ => super::remote_output::print_status(data),
     }
 }
 

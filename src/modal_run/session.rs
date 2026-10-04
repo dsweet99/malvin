@@ -30,7 +30,7 @@ pub struct Prepared {
 }
 
 pub(super) fn note(text: &str) {
-    crate::output::print_stderr_line(crate::output::MALVIN_WHO, &format!("modal: {text}"));
+    super::remote_output::print_status(&format!("modal: {text}"));
 }
 
 pub fn prepare(cwd: &Path, home: &Path, plan: Plan) -> Result<Prepared, String> {

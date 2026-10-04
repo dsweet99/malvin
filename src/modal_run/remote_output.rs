@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use crate::output::{WHO_R, print_stderr_line, print_stdout_line};
+use crate::output::{ERROR_WHO, MALVIN_WHO, WHO_R, print_stderr_line, print_stdout_line};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Stream {
@@ -51,11 +51,32 @@ pub(super) fn is_tagged(line: &str) -> bool {
     matches!((chars.next(), chars.next()), (Some(c), Some('|')) if c.is_ascii_lowercase())
 }
 
+pub(super) fn print_status(line: &str) {
+    if !crate::output::do_dm_stdout_mode() {
+        print_stderr_line(MALVIN_WHO, line);
+    }
+}
+
+pub(super) fn is_error_line(line: &str) -> bool {
+    crate::ansi_strip::strip_ansi_escapes(line)
+        .strip_prefix(ERROR_WHO)
+        .is_some_and(|rest| rest.starts_with('|'))
+}
+
+fn emit_do_dm(stream: Stream, line: &str) {
+    if is_error_line(line) {
+        write_raw(&mut std::io::stderr().lock(), line);
+    } else if stream == Stream::Stdout && !is_tagged(line) {
+        crate::output::emit_wrapped_do_dm_line(line);
+    }
+}
+
 fn emit(stream: Stream, line: &str) {
+    if crate::output::do_dm_stdout_mode() {
+        emit_do_dm(stream, line);
+        return;
+    }
     match (stream, is_tagged(line)) {
-        (Stream::Stdout, false) if crate::output::do_dm_stdout_mode() => {
-            crate::output::emit_wrapped_do_dm_line(line);
-        }
         (Stream::Stdout, false) => print_stdout_line(WHO_R, line),
         (Stream::Stderr, false) => print_stderr_line(WHO_R, line),
         (Stream::Stdout, true) => write_raw(&mut std::io::stdout().lock(), line),
