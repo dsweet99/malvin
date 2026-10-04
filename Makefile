@@ -41,6 +41,7 @@ install: bridges
 test: bridges
 	pytest tests && cargo nextest run
 
+# cursor-sdk-bridge/dist is tracked so that building needs no Node; clean must keep it.
 clean:
 	cargo clean
-	rm -rf cursor-sdk-bridge/dist cursor-sdk-bridge/node_modules
+	rm -rf cursor-sdk-bridge/node_modules
