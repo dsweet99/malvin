@@ -73,7 +73,7 @@ fn reject_admin_with_workflow_only_flags(cli: &Cli, matches: &clap::ArgMatches) 
         ("verbose", "--verbose / -v"),
         ("max_acp_retries", "--max-acp-retries"),
         ("iml", "--iml"),
-        ("modal", "--modal"),
+        ("remote", "--remote"),
     ];
 
     if !matches!(cli.command, Some(crate::cli::Commands::Admin(_))) {
@@ -145,7 +145,7 @@ fn run_entrypoint(cli: Cli, matches: clap::ArgMatches, raw: &[std::ffi::OsString
     if let Some(exit) = entrypoint_before_dispatch(&cli, &matches) {
         return exit;
     }
-    if cli.shared.modal {
+    if cli.shared.remote.is_some() {
         return super::entrypoint_modal::run_modal_route(&cli, raw, modal);
     }
     malvin::pi_sdk::housekeep_local_llms();

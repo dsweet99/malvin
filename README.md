@@ -18,7 +18,7 @@ The build needs neither Node nor network access beyond crates.io.
 (`npm install @earendil-works/pi-coding-agent` in `~/.malvinconf/sdk-bridges/`, or
 set `MALVIN_PI`). `codex:` models do not need Node.
 
-To run on [Modal](https://modal.com) instead of locally, add `--modal` (for example `malvin --modal "Make the tests pass"`), or `--modal[gpu=...,ncpu=...,timeout=...]` to choose a GPU, CPU count, and time limit (defaults: no GPU, 1 CPU, 30 minutes). It needs Node ≥ 22.13 and Modal credentials (`modal setup`, or `MODAL_TOKEN_ID` and `MODAL_TOKEN_SECRET`). See "Running on Modal" in `malvin --doc`.
+To run on [Modal](https://modal.com) instead of locally, add `--remote=modal` (for example `malvin --remote=modal "Make the tests pass"`), or `--remote=modal[gpu=...,ncpu=...,mem=...,timeout=...]` to choose a GPU, CPU count, memory, and time limit (defaults: no GPU, 1 CPU, 8 GiB, 30 minutes); `malvin admin remotes` lists the suboptions and their values. It needs Node ≥ 22.13 and Modal credentials (`modal setup`, or `MODAL_TOKEN_ID` and `MODAL_TOKEN_SECRET`). See "Running on Modal" in `malvin --doc`.
 
 ## Usage
 

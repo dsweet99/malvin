@@ -1,11 +1,13 @@
-use crate::malvin_config_file::{read_string, read_u64};
+use crate::malvin_config_file::read_string;
 
 use super::options::{
-    DEFAULT_NCPU, DEFAULT_TIMEOUT_S, GpuChoice, ModalOptions, parse_gpu, parse_ncpu, parse_timeout,
+    DEFAULT_MEMORY_GB, DEFAULT_NCPU, DEFAULT_TIMEOUT_S, GpuChoice, ModalOptions, parse_gpu,
+    parse_memory, parse_ncpu, parse_timeout,
 };
 
 const HEADROOM_GB: u64 = 2;
-const RENAMED_KEYS: &[(&str, &str)] = &[("cpu", "ncpu"), ("timeout_h", "timeout")];
+const RENAMED_KEYS: &[(&str, &str)] =
+    &[("cpu", "ncpu"), ("timeout_h", "timeout"), ("memory_gb", "mem"), ("memory", "mem")];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModalConfig {
@@ -15,7 +17,7 @@ pub struct ModalConfig {
     pub timeout_s: u64,
     pub image: Option<String>,
     pub setup: Vec<String>,
-    pub remote_mem_limit_gb: u64,
+    pub local_mem_limit_gb: u64,
 }
 
 impl ModalConfig {
@@ -25,8 +27,15 @@ impl ModalConfig {
             self.gpu = gpu.clone().into_option();
         }
         self.ncpu = opts.ncpu.unwrap_or(self.ncpu);
+        self.memory_gb = opts.memory_gb.unwrap_or(self.memory_gb);
         self.timeout_s = opts.timeout_s.unwrap_or(self.timeout_s);
         self
+    }
+
+    #[must_use]
+    pub fn remote_mem_limit_gb(&self) -> u64 {
+        self.local_mem_limit_gb
+            .min(self.memory_gb.saturating_sub(HEADROOM_GB).max(1))
     }
 
     #[must_use]
@@ -58,16 +67,6 @@ fn read_setup(section: Option<&toml::Value>) -> Result<Vec<String>, String> {
         .collect()
 }
 
-fn read_positive(section: Option<&toml::Value>, key: &str) -> Result<Option<u64>, String> {
-    let Some(raw) = section.and_then(|s| s.get(key)) else {
-        return Ok(None);
-    };
-    match read_u64(Some(raw)) {
-        Some(0) | None => Err(format!("[modal] {key} must be a positive integer")),
-        Some(v) => Ok(Some(v)),
-    }
-}
-
 fn read_parsed<T>(
     section: Option<&toml::Value>,
     key: &str,
@@ -96,15 +95,14 @@ fn reject_renamed(section: Option<&toml::Value>) -> Result<(), String> {
 pub fn parse_modal_config(root: &toml::Value, local_mem_limit_gb: u64) -> Result<ModalConfig, String> {
     let section = root.get("modal");
     reject_renamed(section)?;
-    let memory_gb = read_positive(section, "memory_gb")?.unwrap_or(local_mem_limit_gb + HEADROOM_GB);
     Ok(ModalConfig {
         gpu: read_parsed(section, "gpu", parse_gpu)?.and_then(GpuChoice::into_option),
         ncpu: read_parsed(section, "ncpu", parse_ncpu)?.unwrap_or(DEFAULT_NCPU),
-        memory_gb,
+        memory_gb: read_parsed(section, "mem", parse_memory)?.unwrap_or(DEFAULT_MEMORY_GB),
         timeout_s: read_parsed(section, "timeout", parse_timeout)?.unwrap_or(DEFAULT_TIMEOUT_S),
         image: read_string(section.and_then(|s| s.get("image"))),
         setup: read_setup(section)?,
-        remote_mem_limit_gb: local_mem_limit_gb.min(memory_gb.saturating_sub(HEADROOM_GB).max(1)),
+        local_mem_limit_gb,
     })
 }
 
@@ -113,7 +111,7 @@ pub fn remote_config_text(root: &toml::Value, cfg: &ModalConfig) -> Result<Strin
     let table = value
         .as_table_mut()
         .ok_or("config.toml must be a TOML table")?;
-    let gb = i64::try_from(cfg.remote_mem_limit_gb).map_err(|e| e.to_string())?;
+    let gb = i64::try_from(cfg.remote_mem_limit_gb()).map_err(|e| e.to_string())?;
     table.insert("mem_limit_gb".to_string(), toml::Value::Integer(gb));
     toml::to_string(&value).map_err(|e| format!("serialize remote config.toml: {e}"))
 }

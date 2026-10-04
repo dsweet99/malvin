@@ -15,7 +15,7 @@ ls -1 "$MALVIN_MODAL_LOGS" | sort > "$S/logs_before"
 cd "$MALVIN_MODAL_WORK"
 git init -q
 git add -A
-git -c user.name=malvin -c user.email=malvin@localhost commit -q --allow-empty --no-verify -m "malvin --modal baseline"
+git -c user.name=malvin -c user.email=malvin@localhost commit -q --allow-empty --no-verify -m "malvin --remote=modal baseline"
 git rev-parse HEAD > "$S/baseline"
 "#;
 

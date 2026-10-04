@@ -2,6 +2,7 @@ use std::sync::atomic::{AtomicU8, Ordering};
 
 pub(crate) const ANSI_BOLD: &str = "\x1b[1m";
 pub(crate) const ANSI_DIM: &str = "\x1b[90m";
+pub(crate) const ANSI_ITALIC: &str = "\x1b[3m";
 pub(crate) const ANSI_RESET: &str = "\x1b[0m";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
@@ -19,6 +20,7 @@ pub(crate) struct Palette {
     pub(crate) accent: &'static str,
     pub(crate) tool_name: &'static str,
     pub(crate) body: &'static str,
+    pub(crate) remote: &'static str,
 }
 
 const DARK_PALETTE: Palette = Palette {
@@ -28,6 +30,7 @@ const DARK_PALETTE: Palette = Palette {
     accent: "\x1b[38;2;129;178;154m",
     tool_name: "\x1b[38;2;158;128;78m",
     body: "\x1b[38;2;235;235;235m",
+    remote: "\x1b[38;2;240;228;196m",
 };
 
 const LIGHT_PALETTE: Palette = Palette {
@@ -37,6 +40,7 @@ const LIGHT_PALETTE: Palette = Palette {
     accent: "\x1b[38;2;77;118;98m",
     tool_name: "\x1b[38;2;48;48;50m",
     body: "\x1b[38;2;24;24;26m",
+    remote: "\x1b[38;2;128;106;64m",
 };
 
 const THEME_DARK: u8 = 0;
@@ -81,6 +85,10 @@ pub(crate) fn ansi_tool_name() -> &'static str {
 
 pub(crate) fn ansi_body() -> &'static str {
     active_palette().body
+}
+
+pub(crate) fn ansi_remote() -> &'static str {
+    active_palette().remote
 }
 
 #[cfg(test)]

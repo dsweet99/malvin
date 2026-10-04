@@ -6,6 +6,7 @@ mod credentials;
 mod image;
 pub mod options;
 mod remote;
+mod remote_output;
 mod results;
 mod session;
 mod sweep;
@@ -14,7 +15,11 @@ mod workspace;
 use std::ffi::OsString;
 use std::path::PathBuf;
 
-pub const MODAL_FLAG: &str = "--modal";
+pub const REMOTE_FLAG: &str = "--remote";
+pub const MODAL_REMOTE: &str = "modal";
+pub const REMOTE_MODAL_ARG: &str = "--remote=modal";
+pub const MODAL_ABOUT: &str =
+    "Run in a Modal Sandbox, then apply its file changes and copy its run logs here";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModalInvocation {
@@ -28,7 +33,7 @@ pub struct ModalInvocation {
 pub fn remote_args(raw: &[OsString]) -> Vec<OsString> {
     raw.iter()
         .skip(1)
-        .filter(|a| a.as_os_str() != MODAL_FLAG)
+        .filter(|a| a.as_os_str() != REMOTE_MODAL_ARG)
         .cloned()
         .collect()
 }
@@ -47,7 +52,7 @@ const UNSUPPORTED: &[(&str, &str)] = &[
 pub fn reject_unsupported(set_flags: &[&str]) -> Result<(), String> {
     for (flag, reason) in UNSUPPORTED {
         if set_flags.contains(flag) {
-            return Err(format!("`--modal` cannot be combined with `{flag}`: {reason}"));
+            return Err(format!("`--remote=modal` cannot be combined with `{flag}`: {reason}"));
         }
     }
     Ok(())
@@ -72,7 +77,7 @@ fn load_plan(cwd: &std::path::Path, inv: &ModalInvocation) -> Result<session::Pl
 fn start_bridge() -> Result<bridge::ModalBridge, String> {
     let bridge_js = bridge::ensure_installed()?;
     let cmd = bridge::node_bridge_command(&bridge_js)
-        .map_err(|e| format!("malvin --modal needs Node.js >= 22.13 to run the Modal bridge: {e}"))?;
+        .map_err(|e| format!("malvin --remote=modal needs Node.js >= 22.13 to run the Modal bridge: {e}"))?;
     bridge::ModalBridge::spawn(cmd)
 }
 

@@ -18,7 +18,7 @@ pub(crate) fn modal_invocation(
         .collect();
     reject_unsupported(&set_flags)?;
     if cli.command.is_some() {
-        return Err("`--modal` cannot be combined with a subcommand".to_string());
+        return Err("`--remote` cannot be combined with a subcommand".to_string());
     }
     Ok(ModalInvocation {
         remote_args: remote_args(raw),

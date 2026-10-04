@@ -27,7 +27,7 @@ Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`,
 | `--do` | One-shot agent turn for the following REQUEST (repeatable; other REQUESTs stay on the router) |
 | `--creative[=PROB]` | Creative mode for the following REQUEST only (repeatable; optional probability, default `1.0`) |
 | `malvin -g` | Fix quality gates via the default router with fixed request `Get the gates to pass.` (no positional request) |
-| `admin` | Operator maintenance (`models`, `reset-herdr`/`rh`) |
+| `admin` | Operator maintenance (`models`, `remotes`, `reset-herdr`/`rh`) |
 
 Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prompts/docs/<command>.md`); for the one-shot workflow use `malvin --do --doc`. The default-route contract (`router.md`) is printed after this overview when you run `malvin --doc`.
 
@@ -37,9 +37,9 @@ Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prom
 
 Agent-session flags (`--model`, `--gates`, `-q`, `-v`, `--creative[=PROB]`, `--max-acp-retries`, `--iml`, …) apply to bare `malvin REQUEST` and `--do` (`--max-loops`, `--max-hypotheses`, and `--watch` apply only to bare `malvin REQUEST` and `malvin -g`). The `admin` help listing omits them; pass `--model` before `admin models` only when you want to set that command’s `Current:` footer.
 
-### `--modal`
+### `--remote=REMOTE[KEY=VALUE,...]`
 
-Run the invocation in a Modal Sandbox instead of on this machine, then apply its file changes and copy its run logs back. Applies to bare `malvin REQUEST`, `--do`, and `malvin -g`. Write `--modal[gpu=...,ncpu=...,timeout=...]` to choose the Sandbox's GPU, CPU count, and lifetime for this run; each suboption is optional and the order does not matter (for example `--modal[timeout=2h,gpu=A100]`). See **Running on Modal** below for the suboptions, setup, what is uploaded, how results return, and what is rejected.
+Run the invocation on a remote machine instead of on this one, then apply its file changes and copy its run logs back. Applies to bare `malvin REQUEST`, `--do`, and `malvin -g`. `malvin admin remotes` lists the remotes and their suboptions, much as `malvin admin models` lists the ids `--model` accepts. The only remote is `modal`, which runs in a Modal Sandbox: `--remote=modal` (or `--remote modal`) uses default resources, and `--remote=modal[gpu=...,ncpu=...,mem=...,timeout=...]` chooses the Sandbox's GPU, CPU count, memory, and lifetime for this run; each suboption is optional and the order does not matter (for example `--remote=modal[timeout=2h,gpu=A100]`). Any other remote name exits 1. See **Running on Modal** below for the suboptions, setup, what is uploaded, how results return, and what is rejected.
 
 
 ### `-q` / `--quiet`
@@ -114,7 +114,7 @@ Print built-in documentation and exit. Does not spawn an agent or create a run d
 - `malvin <COMMAND> --doc` — documentation for that subcommand (`malvin admin --doc` for `admin`, `malvin admin models --doc` for `models`).
 - `malvin --do --doc` — documentation for the one-shot `--do` workflow.
 
-Other subcommand arguments (for example `<REQUEST>`) are not required when `--doc` is set. Argument validation still runs first: invalid values or combinations (for example `--model foo:bar`, `-g` or `--modal` with `admin`, `--do` with a subcommand, or `--watch` with pure `--do`) exit 1 with the error instead of printing documentation.
+Other subcommand arguments (for example `<REQUEST>`) are not required when `--doc` is set. Argument validation still runs first: invalid values or combinations (for example `--model foo:bar`, `-g` or `--remote` with `admin`, `--do` with a subcommand, or `--watch` with pure `--do`) exit 1 with the error instead of printing documentation.
 
 ### `--advice`
 
@@ -187,7 +187,7 @@ COST: steps = N tokens_in = X tokens_out = Y cache_read = A cache_write = B cost
 
 Each run writes two parallel channels with different contracts:
 
-- **`stdout.log` (narrative):** lossy, human-oriented lines with who-tags (`m|`, `t|`, `u|`, `b|`, `a|`, …). Use for skimming a run and vocabulary/ordering checks. An `a|<provider>:<model>` line (for example `a|cursor:auto`) is written each time a fresh agent context is started.
+- **`stdout.log` (narrative):** lossy, human-oriented lines with who-tags (`m|`, `t|`, `u|`, `b|`, `a|`, `r|`, …); `r|` marks untagged output relayed from a `--remote=modal` Sandbox. Use for skimming a run and vocabulary/ordering checks. An `a|<provider>:<model>` line (for example `a|cursor:auto`) is written each time a fresh agent context is started.
 - **`trace.jsonl` (audit):** machine-authoritative JSONL (bridge events such as `assistant` / `thinking` / `tool_call` / `progress` / `run_done`). Use for tool results, shrink/fork events, and gate-loop audit tooling.
 
 Consumers must know which file to trust for which question. Named types live in `src/observability/` (`ObservabilityChannel`, `AuditEventKind`).
@@ -299,9 +299,9 @@ malvin request_1.md request_2.md
 See the default-route section of `malvin --doc`.
 
 
-## Running on Modal (`--modal`)
+## Running on Modal (`--remote=modal`)
 
-`malvin --modal ...` runs the same command in a [Modal Sandbox](https://modal.com/docs/guide/sandboxes) instead of on this machine. The stream, the run logs, and the file changes match a local run. Every other flag and argument is passed to the remote malvin unchanged.
+`malvin --remote=modal ...` runs the same command in a [Modal Sandbox](https://modal.com/docs/guide/sandboxes) instead of on this machine. The stream, the run logs, and the file changes match a local run. Every other flag and argument is passed to the remote malvin unchanged; `--remote` itself is not.
 
 - **Setup**: Node.js ≥ 22.13 with `npm` on this machine (malvin installs the Modal JS SDK under `~/.malvinconf/sdk-bridges/modal-bridge/` with `npm ci`), and Modal credentials from `modal setup` (`~/.modal.toml`) or `MODAL_TOKEN_ID` plus `MODAL_TOKEN_SECRET`. Modal credentials never leave this machine.
 - **Image**: malvin publishes a Modal image named `malvin-bin:<version>-<hash>`, built once and reused by later runs, which then start in seconds. On x86-64 Linux with glibc, the image contains this machine's own malvin binary. On other hosts, the image builds malvin with `cargo install malvin --version <same version>`, which works only for versions published on crates.io. The default base is `node:22-trixie-slim` plus `git`, `curl`, Python 3, and `build-essential`. `codex:` models add the `codex` CLI and `pi:` models add the npm Pi agent, each pinned to the version installed on this machine (or `latest` when that version cannot be read).
@@ -315,14 +315,16 @@ See the default-route section of `malvin --doc`.
   - The patch could not be applied at all, or the directory is not a git repository: the working tree is untouched and the patch is kept as `modal.patch`.
 
   The new run directories are copied into this workspace's log directory. When the patch is kept, `modal.patch` goes into the newest of them, or into the workspace's log directory if none came back.
-- **Exit status and failures**: `malvin --modal` exits 0 only when the remote malvin exits 0; otherwise it exits 1. A failed remote run still returns its changes and logs, applied as above, so check the working tree after a nonzero exit. If talking to Modal fails partway (for example an upload, download, or remote setup step fails), malvin prints the error and exits 1 without applying any changes or copying any logs.
-- **Resources**: `--modal[gpu=...,ncpu=...,timeout=...]` sets the Sandbox's resources for one run. Each suboption is optional, they may appear in any order, and an omitted one falls back to the `[modal]` setting of the same name in `~/.malvinconf/config.toml`, then to the built-in default.
-  - `gpu`: `none` (default), a Modal GPU type such as `T4`, `A10G`, `L4`, `A100`, `A100-80GB`, or `H100`, or `TYPE:COUNT` for several GPUs (for example `T4:2`).
+- **Exit status and failures**: `malvin --remote=modal` exits 0 only when the remote malvin exits 0; otherwise it exits 1. A failed remote run still returns its changes and logs, applied as above, so check the working tree after a nonzero exit. If talking to Modal fails partway (for example an upload, download, or remote setup step fails), malvin prints the error and exits 1 without applying any changes or copying any logs.
+- **Resources**: `--remote=modal[gpu=...,ncpu=...,mem=...,timeout=...]` sets the Sandbox's resources for one run. Each suboption is optional, they may appear in any order, and an omitted one falls back to the `[modal]` setting of the same name in `~/.malvinconf/config.toml`, then to the built-in default. `malvin admin remotes` prints this list as a table.
+  - `gpu`: `none` (default), a Modal GPU type (one of `T4`, `L4`, `A10`, `L40S`, `A100`, `A100-40GB`, `A100-80GB`, `RTX-PRO-6000`, `H100`, `H200`, `B200`, `B300`), or `TYPE:COUNT` for several GPUs (for example `T4:2`).
   - `ncpu`: number of CPU cores reserved for the Sandbox, a positive whole number (default 1).
+  - `mem`: the Sandbox's memory in GiB, a positive whole number with an optional `G`, `GB`, or `GiB` suffix (default 8; for example `mem=16` or `mem=16G`). The remote malvin's `mem_limit_gb` is 2 less than this, or this machine's `mem_limit_gb` if that is smaller.
   - `timeout`: the Sandbox's hard lifetime (default 30 minutes, at most 24 hours). A bare number means minutes (`timeout=45`); the suffixes `s`, `m`, and `h` select seconds, minutes, and hours (`90s`, `45m`, `2h`).
 
-  The brackets are shell glob characters, so quote the flag (`'--modal[gpu=T4]'`) if your shell complains or a file name could match it. malvin prints the resources it chose when the Sandbox starts, for example `Sandbox sb-… started (T4, 2 CPU, 18 GiB, timeout 10 min)`.
-- **Lifetime**: Ctrl-C terminates the Sandbox. When the Sandbox reaches its `timeout`, Modal stops it mid-run, so no changes or logs come back, and malvin's error says the timeout was likely reached. At the start of each `--modal` run, malvin terminates Sandboxes left by this host's exited `--modal` runs.
+  The brackets are shell glob characters, so quote the flag (`'--remote=modal[gpu=T4]'`) if your shell complains or a file name could match it. malvin prints the resources it chose when the Sandbox starts, for example `Sandbox sb-… started (T4, 2 CPU, 8 GiB, timeout 10 min)`.
+- **Remote output**: lines the remote malvin prints with a who-tag (such as `o|`) appear unchanged. Every other remote line, such as npm's `added 11 packages in 3s` or the remote agent's reply, is shown with the who-tag `r|`, in italic cream text.
+- **Lifetime**: Ctrl-C terminates the Sandbox. When the Sandbox reaches its `timeout`, Modal stops it mid-run, so no changes or logs come back, and malvin's error says the timeout was likely reached. At the start of each `--remote=modal` run, malvin terminates Sandboxes left by this host's exited `--remote=modal` runs.
 - **Rejected**: `--watch`, `--iml`, and the `admin` subcommand exit 1 with an error before anything is uploaded. With `--doc`, only the `admin` combination is still rejected; the others print documentation.
 - **Not supported, but not rejected**: local LLMs (`pi:local/…`, `pi:ollama/…`). The Sandbox runs no local model server, so a local-model run is expected to fail inside the Sandbox rather than at startup.
 
@@ -333,9 +335,9 @@ Optional settings in `~/.malvinconf/config.toml`:
 gpu = "none"            # default GPU: "none" (default), a type such as "A100", or "TYPE:COUNT"
 ncpu = 1                # default CPU cores (default 1)
 timeout = "30m"         # default hard Sandbox lifetime: minutes as an integer, or "90s" / "45m" / "2h" (default 30 minutes, at most 24 hours)
-memory_gb = 8           # Sandbox memory (default: mem_limit_gb + 2); the remote mem_limit_gb becomes memory_gb - 2 if smaller
+mem = 8                 # default Sandbox memory in GiB (default 8); the remote mem_limit_gb becomes mem - 2 if smaller
 image = "python:3.12"   # replaces the default base; needs glibc at least as new as this host's, plus Node >= 22.13 with npm
 setup = ["RUN pip install -r requirements.txt"]   # extra Dockerfile lines, cached by Modal
 ```
 
-The older keys `cpu` and `timeout_h` are rejected with a message naming their replacements, `ncpu` and `timeout`.
+The older keys `cpu`, `timeout_h`, `memory_gb`, and `memory` are rejected with a message naming their replacements, `ncpu`, `timeout`, and `mem`.

@@ -1,11 +1,48 @@
 use std::ffi::OsString;
 
-use super::MODAL_FLAG;
+use super::{MODAL_REMOTE, REMOTE_FLAG, REMOTE_MODAL_ARG};
 
 pub const DEFAULT_NCPU: u64 = 1;
 pub const DEFAULT_TIMEOUT_S: u64 = 30 * 60;
+pub const DEFAULT_MEMORY_GB: u64 = 8;
 pub const MAX_TIMEOUT_S: u64 = 24 * 3600;
-const KEYS: &str = "gpu, ncpu, timeout";
+const KEYS: &str = "gpu, ncpu, mem, timeout";
+pub const GPU_TYPES: &str =
+    "T4, L4, A10, L40S, A100, A100-40GB, A100-80GB, RTX-PRO-6000, H100, H200, B200, B300";
+
+pub struct Suboption {
+    pub key: &'static str,
+    pub values: &'static str,
+    pub default: &'static str,
+    pub meaning: &'static [&'static str],
+}
+
+pub const SUBOPTIONS: [Suboption; 4] = [
+    Suboption {
+        key: "gpu",
+        values: "none|TYPE[:COUNT]",
+        default: "none",
+        meaning: &["GPUs to attach, e.g. A100 or T4:2 (COUNT defaults to 1)", "TYPE: see GPU types below"],
+    },
+    Suboption {
+        key: "ncpu",
+        values: "N",
+        default: "1",
+        meaning: &["CPU cores; N is a positive whole number"],
+    },
+    Suboption {
+        key: "mem",
+        values: "N[G|GB|GiB]",
+        default: "8",
+        meaning: &["memory in GiB; N is a positive whole number, e.g. 16 or 16G"],
+    },
+    Suboption {
+        key: "timeout",
+        values: "N[s|m|h]",
+        default: "30m",
+        meaning: &["Sandbox lifetime; a bare N is minutes; at most 24h", "e.g. 90s, 45m, or 2h"],
+    },
+];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GpuChoice {
@@ -27,6 +64,7 @@ impl GpuChoice {
 pub struct ModalOptions {
     pub gpu: Option<GpuChoice>,
     pub ncpu: Option<u64>,
+    pub memory_gb: Option<u64>,
     pub timeout_s: Option<u64>,
 }
 
@@ -50,6 +88,21 @@ pub fn parse_ncpu(raw: &str) -> Result<u64, String> {
     match raw.trim().parse::<u64>() {
         Ok(n) if n > 0 => Ok(n),
         _ => Err(format!("ncpu `{raw}` is not valid: use a positive whole number of CPUs")),
+    }
+}
+
+pub fn parse_memory(raw: &str) -> Result<u64, String> {
+    let text = raw.trim();
+    let lower = text.to_ascii_lowercase();
+    let digits = ["gib", "gb", "g"]
+        .iter()
+        .find_map(|unit| lower.strip_suffix(unit))
+        .unwrap_or(&lower);
+    match digits.parse::<u64>() {
+        Ok(n) if n > 0 => Ok(n),
+        _ => Err(format!(
+            "mem `{raw}` is not valid: use a positive whole number of GiB, such as `8` or `16G`"
+        )),
     }
 }
 
@@ -81,43 +134,71 @@ pub fn parse_modal_spec(spec: &str) -> Result<ModalOptions, String> {
         let (key, value) = item
             .split_once('=')
             .ok_or_else(|| format!("`{item}` needs the form key=value (keys: {KEYS})"))?;
-        let duplicate = match key.trim() {
-            "gpu" => opts.gpu.replace(parse_gpu(value)?).is_some(),
-            "ncpu" => opts.ncpu.replace(parse_ncpu(value)?).is_some(),
-            "timeout" => opts.timeout_s.replace(parse_timeout(value)?).is_some(),
-            other => return Err(format!("unknown suboption `{other}` (keys: {KEYS})")),
-        };
-        if duplicate {
+        if set_suboption(&mut opts, key.trim(), value)? {
             return Err(format!("suboption `{}` is given more than once", key.trim()));
         }
     }
     Ok(opts)
 }
 
-fn bracketed_spec(arg: &str) -> Option<Result<&str, String>> {
-    let rest = arg.strip_prefix(MODAL_FLAG)?.strip_prefix('[')?;
-    Some(
-        rest.strip_suffix(']')
-            .ok_or_else(|| format!("`{arg}` is missing its closing `]`")),
+fn set_suboption(opts: &mut ModalOptions, key: &str, value: &str) -> Result<bool, String> {
+    Ok(match key {
+        "gpu" => opts.gpu.replace(parse_gpu(value)?).is_some(),
+        "ncpu" => opts.ncpu.replace(parse_ncpu(value)?).is_some(),
+        "mem" => opts.memory_gb.replace(parse_memory(value)?).is_some(),
+        "timeout" => opts.timeout_s.replace(parse_timeout(value)?).is_some(),
+        other => return Err(format!("unknown suboption `{other}` (keys: {KEYS})")),
+    })
+}
+
+pub fn parse_remote_value(value: &str) -> Result<ModalOptions, String> {
+    let (name, spec) = match value.split_once('[') {
+        Some((name, rest)) => {
+            let spec = rest
+                .strip_suffix(']')
+                .ok_or_else(|| format!("`{REMOTE_FLAG}={value}` is missing its closing `]`"))?;
+            (name, Some(spec))
+        }
+        None => (value, None),
+    };
+    if name != MODAL_REMOTE {
+        return Err(format!(
+            "unknown remote `{name}`; `malvin admin remotes` lists the available remotes"
+        ));
+    }
+    spec.map_or_else(
+        || Ok(ModalOptions::default()),
+        |spec| parse_modal_spec(spec).map_err(|e| format!("`{REMOTE_FLAG}={MODAL_REMOTE}[...]`: {e}")),
     )
+}
+
+fn remote_value(arg: &str, rest: &mut impl Iterator<Item = OsString>) -> Option<Result<String, String>> {
+    if arg == REMOTE_FLAG {
+        let missing = || format!("`{REMOTE_FLAG}` needs a value; `malvin admin remotes` lists them");
+        return Some(rest.next().and_then(|v| v.into_string().ok()).ok_or_else(missing));
+    }
+    arg.strip_prefix(REMOTE_FLAG)?.strip_prefix('=').map(|v| Ok(v.to_string()))
 }
 
 pub fn extract_modal_options(raw: Vec<OsString>) -> Result<(Vec<OsString>, ModalOptions), String> {
     let mut opts = None;
     let mut out = Vec::with_capacity(raw.len());
     let mut scanning = true;
-    for arg in raw {
+    let mut args = raw.into_iter();
+    while let Some(arg) = args.next() {
         scanning &= arg.as_os_str() != "--";
-        let spec = arg.to_str().filter(|_| scanning).and_then(bracketed_spec);
-        let Some(spec) = spec else {
+        let value = arg
+            .to_str()
+            .filter(|_| scanning)
+            .and_then(|text| remote_value(text, &mut args));
+        let Some(value) = value else {
             out.push(arg);
             continue;
         };
-        let parsed = parse_modal_spec(spec?).map_err(|e| format!("`--modal[...]`: {e}"))?;
-        if opts.replace(parsed).is_some() {
-            return Err("`--modal[...]` is given more than once".to_string());
+        if opts.replace(parse_remote_value(&value?)?).is_some() {
+            return Err(format!("`{REMOTE_FLAG}` is given more than once"));
         }
-        out.push(OsString::from(MODAL_FLAG));
+        out.push(OsString::from(REMOTE_MODAL_ARG));
     }
     Ok((out, opts.unwrap_or_default()))
 }

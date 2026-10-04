@@ -7,6 +7,7 @@ pub const WHO_B: &str = "b";
 pub const WHO_T: &str = "t";
 pub const WHO_U: &str = "u";
 pub const WHO_A: &str = "a";
+pub const WHO_R: &str = "r";
 
 #[must_use]
 pub fn format_log_tag_inner(label: &str) -> String {

@@ -8,17 +8,18 @@ Operator maintenance commands. No agent session and no run directory under `~/.m
 |---|---|
 | Agent session | None |
 | `.malvin/` | Not required |
-| Output | Short status line on success (or model list for `models`) |
+| Output | Short status line on success (or model list for `models`, remote list for `remotes`) |
 
 ## Intention
 
-Fix local malvin/herdr bookkeeping or list available model ids, without starting a research or coding turn. Agent-session flags (`--model`, `-g`, …) are not listed on `admin` help; see `malvin --doc`.
+Fix local malvin/herdr bookkeeping or list available model ids and remotes, without starting a research or coding turn. Agent-session flags (`--model`, `-g`, …) are not listed on `admin` help; see `malvin --doc`.
 
 ## Usage
 
 ```text
 malvin admin <COMMAND>
 malvin admin models [OPTION]... [PREFIX]...
+malvin admin remotes
 malvin admin reset-herdr
 malvin admin rh
 ```
@@ -30,6 +31,10 @@ malvin admin rh
 ### `models`
 
 List `cursor:`, `pi:`, and `codex:` model ids. See `malvin admin models --doc` for the full contract.
+
+### `remotes`
+
+List the remotes that `--remote` accepts (only `modal` today) and each remote's suboptions: their values, defaults, and meaning, plus the GPU types Modal offers. The first line is a one-line summary in the style of `malvin admin models` (`modal<TAB>gpu=none|TYPE[:COUNT] ncpu=N mem=N[G|GB|GiB] timeout=N[s|m|h]`); a table and an example follow. See **Running on Modal** in `malvin --doc`.
 
 ### `reset-herdr`
 

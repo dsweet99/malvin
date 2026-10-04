@@ -68,7 +68,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
         advice: None,
         credits: false,
         iml: false,
-        modal: false,
+        remote: None,
     };
     apply_shared_config_defaults(&matches, &mut shared, &agent);
     assert_eq!(shared.model.canonical(), "cursor:cfg");

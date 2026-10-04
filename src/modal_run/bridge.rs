@@ -4,6 +4,7 @@ use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 
 use serde_json::{Value, json};
 
+use super::remote_output::{RemoteLines, Stream};
 use crate::npm_bridge_install::NpmBridgePackage;
 
 macro_rules! payload_file {
@@ -36,7 +37,7 @@ pub fn ensure_installed() -> Result<PathBuf, String> {
         .install_into(&PACKAGE.default_install_dir())
         .map_err(|e| {
             format!(
-                "malvin --modal needs Node.js >= 22.13 with npm to install the Modal bridge: {e}"
+                "malvin --remote=modal needs Node.js >= 22.13 with npm to install the Modal bridge: {e}"
             )
         })
 }
@@ -46,6 +47,7 @@ pub struct ModalBridge {
     stdin: Option<ChildStdin>,
     lines: Lines<BufReader<ChildStdout>>,
     next_id: u64,
+    remote: RemoteLines,
 }
 
 pub fn node_bridge_command(bridge_js: &Path) -> Result<Command, String> {
@@ -56,18 +58,10 @@ pub fn node_bridge_command(bridge_js: &Path) -> Result<Command, String> {
     Ok(cmd)
 }
 
-fn relay_event(event: &str, data: &str) {
+fn relay_event(remote: &mut RemoteLines, event: &str, data: &str) {
     match event {
-        "stdout" => {
-            let mut out = std::io::stdout().lock();
-            let _ = out.write_all(data.as_bytes());
-            let _ = out.flush();
-        }
-        "stderr" => {
-            let mut err = std::io::stderr().lock();
-            let _ = err.write_all(data.as_bytes());
-            let _ = err.flush();
-        }
+        "stdout" => remote.push(Stream::Stdout, data),
+        "stderr" => remote.push(Stream::Stderr, data),
         _ => crate::output::print_stderr_line(crate::output::MALVIN_WHO, data),
     }
 }
@@ -87,6 +81,7 @@ impl ModalBridge {
             stdin,
             lines: BufReader::new(stdout).lines(),
             next_id: 1,
+            remote: RemoteLines::default(),
         })
     }
 
@@ -107,6 +102,12 @@ impl ModalBridge {
         let id = self.next_id;
         self.next_id += 1;
         self.send(id, op, fields)?;
+        let reply = self.read_reply(op);
+        self.remote.flush();
+        reply
+    }
+
+    fn read_reply(&mut self, op: &str) -> Result<Value, String> {
         loop {
             let line = self
                 .lines
@@ -116,7 +117,7 @@ impl ModalBridge {
             let msg: Value = serde_json::from_str(&line)
                 .map_err(|e| format!("bad line from the Modal bridge ({e}): {line}"))?;
             if let Some(event) = msg.get("event").and_then(Value::as_str) {
-                relay_event(event, msg["data"].as_str().unwrap_or_default());
+                relay_event(&mut self.remote, event, msg["data"].as_str().unwrap_or_default());
                 continue;
             }
             return reply_result(op, msg);

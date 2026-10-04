@@ -149,6 +149,33 @@ fn bridge_call_relays_events_and_maps_replies() {
 }
 
 #[test]
+fn bridge_tags_bare_remote_lines_across_chunks() {
+    let _guard = crate::output::STDOUT_LOG_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    crate::output::enable_stdout_capture();
+    let mut b = fake_bridge(concat!(
+        r#"read l; printf '%s\n' '{"id":1,"event":"stdout","data":"\nadded 11 pack"}'; "#,
+        r#"printf '%s\n' '{"id":1,"event":"stdout","data":"ages in 3s\r\no|kept\ntail"}'; "#,
+        r#"printf '%s\n' '{"id":1,"ok":true}'"#
+    ));
+    b.call("exec", json!({})).unwrap();
+    let out = crate::ansi_strip::strip_ansi_escapes(&crate::output::take_captured_stdout());
+    assert_eq!(out, "r|\nr|added 11 packages in 3s\nr|tail");
+}
+
+#[test]
+fn remote_lines_with_a_who_tag_are_not_retagged() {
+    use super::remote_output::is_tagged;
+    for tagged in ["o|modal: started", "e|boom", "b| thinking", "\x1b[90mo|\x1b[0mx", "r|"] {
+        assert!(is_tagged(tagged), "{tagged:?}");
+    }
+    for bare in ["", "added 11 packages in 3s", "| a | b |", "O|x", "1|x", "ab|c", "- **CPU:** x"] {
+        assert!(!is_tagged(bare), "{bare:?}");
+    }
+}
+
+#[test]
 fn package_embeds_every_non_test_bridge_file() {
     let dist = Path::new(env!("CARGO_MANIFEST_DIR")).join("modal-bridge/dist");
     let mut on_disk: Vec<String> = fs::read_dir(&dist)

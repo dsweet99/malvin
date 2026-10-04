@@ -40,7 +40,7 @@ pub fn setup_for(model: &str) -> Result<&'static dyn ModalBackendSetup, String> 
 pub fn preflight(model: &str, home: &Path) -> Result<(), String> {
     if !modal_credentials_present(home) {
         return Err(
-            "malvin --modal needs Modal credentials. Run `modal setup`, or set MODAL_TOKEN_ID and MODAL_TOKEN_SECRET."
+            "malvin --remote=modal needs Modal credentials. Run `modal setup`, or set MODAL_TOKEN_ID and MODAL_TOKEN_SECRET."
                 .to_string(),
         );
     }
@@ -65,7 +65,7 @@ impl ModalBackendSetup for CursorSetup {
             return Ok(());
         }
         Err(
-            "malvin --modal with a cursor: model needs CURSOR_API_KEY (or CURSOR_AGENT_API_KEY / AGENT_API_KEY); `agent login` does not reach the Sandbox."
+            "malvin --remote=modal with a cursor: model needs CURSOR_API_KEY (or CURSOR_AGENT_API_KEY / AGENT_API_KEY); `agent login` does not reach the Sandbox."
                 .to_string(),
         )
     }
@@ -115,6 +115,6 @@ impl ModalBackendSetup for CodexSetup {
         if env_set("OPENAI_API_KEY") || !self.login_files(home).is_empty() {
             return Ok(());
         }
-        Err("malvin --modal with a codex: model needs OPENAI_API_KEY or ~/.codex/auth.json.".to_string())
+        Err("malvin --remote=modal with a codex: model needs OPENAI_API_KEY or ~/.codex/auth.json.".to_string())
     }
 }

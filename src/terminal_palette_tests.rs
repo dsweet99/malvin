@@ -1,13 +1,13 @@
 use super::{
     ACTIVE_THEME, DARK_PALETTE, LIGHT_PALETTE, Palette, THEME_DARK, TerminalTheme, active_palette,
-    ansi_accent, ansi_body, ansi_error, ansi_tool_name, ansi_warning, ansi_who_tag,
+    ansi_accent, ansi_body, ansi_error, ansi_remote, ansi_tool_name, ansi_warning, ansi_who_tag,
     init_terminal_theme,
 };
 use std::sync::atomic::Ordering;
 
 type SemanticEscape = (&'static str, fn() -> &'static str);
 
-fn all_semantic_escapes() -> [SemanticEscape; 6] {
+fn all_semantic_escapes() -> [SemanticEscape; 7] {
     [
         ("error", ansi_error),
         ("warning", ansi_warning),
@@ -15,6 +15,7 @@ fn all_semantic_escapes() -> [SemanticEscape; 6] {
         ("accent", ansi_accent),
         ("tool_name", ansi_tool_name),
         ("body", ansi_body),
+        ("remote", ansi_remote),
     ]
 }
 
@@ -38,6 +39,7 @@ fn dark_palette_matches_legacy_constants() {
     assert_eq!(ansi_accent(), DARK_PALETTE.accent);
     assert_eq!(ansi_tool_name(), DARK_PALETTE.tool_name);
     assert_eq!(ansi_body(), DARK_PALETTE.body);
+    assert_eq!(ansi_remote(), DARK_PALETTE.remote);
 }
 
 #[test]

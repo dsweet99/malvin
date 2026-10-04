@@ -14,6 +14,8 @@ pub struct AdminArgs {
 pub enum AdminCommand {
     /// List available models
     Models(ModelsArgs),
+    /// List remotes for `--remote` and their suboptions
+    Remotes,
     /// Reset herdr agent state to idle (not working)
     #[command(name = "reset-herdr", visible_alias = "rh")]
     ResetHerdr,
@@ -25,6 +27,10 @@ pub fn run_admin(args: AdminArgs, current_model: &str) -> Result<(), String> {
     };
     match command {
         AdminCommand::Models(models) => super::models_cmd::run_models(models, current_model),
+        AdminCommand::Remotes => {
+            super::remotes_cmd::run_remotes();
+            Ok(())
+        }
         AdminCommand::ResetHerdr => {
             malvin::herdr::reset_to_not_working()?;
             malvin::output::print_stdout_line(
@@ -77,6 +83,17 @@ mod tests {
             }
             other => panic!("expected Admin::Models, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn parses_admin_remotes() {
+        let cli = Cli::try_parse_from(["malvin", "admin", "remotes"]).expect("parse");
+        assert!(matches!(
+            cli.command,
+            Some(Commands::Admin(AdminArgs {
+                command: Some(AdminCommand::Remotes),
+            }))
+        ));
     }
 
     #[test]

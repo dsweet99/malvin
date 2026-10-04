@@ -54,9 +54,14 @@ pub struct SharedOpts {
     /// Cycle through all REQUEST args forever (as if re-invoking the same command line)
     #[arg(long = "iml", default_value_t = false, help = IML_HELPTEXT)]
     pub iml: bool,
-    /// Run this command in a Modal Sandbox, then apply its file changes and copy its run logs here; `--modal[gpu=...,ncpu=...,timeout=...]` picks resources (defaults: `[modal]` in config.toml, else none, 1, 30m)
-    #[arg(long, default_value_t = false)]
-    pub modal: bool,
+    /// Run on a remote machine (see `malvin admin remotes`)
+    #[arg(
+        long,
+        value_name = "REMOTE",
+        value_parser = [malvin::modal_run::MODAL_REMOTE],
+        hide_possible_values = true
+    )]
+    pub remote: Option<String>,
 }
 
 /// Options that apply only to default-route / gates-only loops.
@@ -153,7 +158,7 @@ impl SharedOpts {
             advice: None,
             credits: false,
             iml: false,
-            modal: false,
+            remote: None,
         }
     }
 }
