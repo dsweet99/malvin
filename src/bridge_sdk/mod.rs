@@ -37,8 +37,7 @@ pub(crate) use log_adapter::{feed_do_dm_run_result, handle_stream_event};
 pub use session::BridgeSession;
 pub use session_io::write_request;
 pub(crate) use session_io::{
-    CreateArgs, MemWatchArgs, ResumeArgs, run_done_status_is_failure, send_create, send_resume,
-    start_mem_watch,
+    CreateArgs, MemWatchArgs, ResumeArgs, send_create, send_resume, start_mem_watch,
 };
 pub(crate) use session_io_productive::{note_productive_bridge_event, tools_in_flight};
 pub use spawn_args::{BridgeSpawnArgs, SDK_BRIDGE_MAX_AGE, ToolCallStart};

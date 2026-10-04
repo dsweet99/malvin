@@ -3,7 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use pi::provider::ModelCost;
+use super::model_cost::ModelCost;
 use serde::{Deserialize, Serialize};
 
 use super::cache_clock::{cache_fetched_at_is_fresh, unix_now_secs};

@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use pi::provider::ModelCost;
 use serde::Deserialize;
 
-use super::models_refresh;
+use super::http_fetch::{HttpRequest, fetch_text};
+use super::model_cost::ModelCost;
 use super::pricing_cache_file::PricingCacheFile;
 
 const OPENROUTER_MODELS_URL: &str = "https://openrouter.ai/api/v1/models";
@@ -73,36 +73,22 @@ fn pricing_from_models_body(body: &str) -> Option<HashMap<String, ModelCost>> {
     (!by_id.is_empty()).then_some(by_id)
 }
 
-async fn fetch_live_pricing_async(api_key: &str, url: &str) -> Option<HashMap<String, ModelCost>> {
-    let client = pi::http::client::Client::new();
-    let response = client
-        .get(url)
-        .header("Authorization", format!("Bearer {api_key}"))
-        .header("Accept", "application/json")
-        .timeout(Duration::from_secs(15))
-        .send()
-        .await
-        .ok()?;
-    let status = response.status();
-    if !(200..300).contains(&status) {
-        return None;
-    }
-    let body = response.text().await.ok()?;
-    pricing_from_models_body(&body)
-}
-
 fn fetch_live_pricing_sync(api_key: &str, url: &str) -> Option<HashMap<String, ModelCost>> {
-    let Ok(runtime) = asupersync::runtime::RuntimeBuilder::current_thread().build() else {
-        return None;
-    };
-    runtime.block_on(fetch_live_pricing_async(api_key, url))
+    let headers = [("Authorization", format!("Bearer {api_key}"))];
+    let body = fetch_text(&HttpRequest {
+        url,
+        headers: &headers,
+        json_body: None,
+        timeout: Duration::from_secs(15),
+    })?;
+    pricing_from_models_body(&body)
 }
 
 pub(crate) fn warm_openrouter_pricing_cache(force: bool) {
     if !force && CACHE.all_fresh() {
         return;
     }
-    let api_key = models_refresh::resolve_provider_api_key("openrouter");
+    let api_key = super::auth::provider_api_key("openrouter").unwrap_or_default();
     if api_key.trim().is_empty() {
         return;
     }

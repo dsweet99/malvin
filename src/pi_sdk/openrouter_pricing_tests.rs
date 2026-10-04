@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fs;
 
-use pi::provider::ModelCost;
+use super::super::model_cost::ModelCost;
 
 use super::{
     CACHE, fetch_live_pricing_sync, lookup_model_cost, openrouter_lookup_ids,

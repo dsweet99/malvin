@@ -14,5 +14,5 @@ fn kiss_cov_npm_pi_sdk() {
     let _ = stringify!(feed_and_handle_run_done);
     let _ = stringify!(npm_pi_send_prompt);
     let _ = stringify!(auto_reply_extension_ui);
-    let _ = crate::model_id::ModelBackend::NpmPi;
+    let _ = crate::model_id::ModelBackend::Pi;
 }

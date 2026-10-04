@@ -6,15 +6,15 @@ mod model_id_legacy;
 
 pub const CURSOR_PREFIX: &str = "cursor:";
 pub const PI_PREFIX: &str = "pi:";
-pub const RPI_PREFIX: &str = "rpi:";
 pub const CODEX_PREFIX: &str = "codex:";
 
 pub const MINI_PREFIX: &str = "mini:";
+pub const RPI_PREFIX: &str = "rpi:";
 pub const OPENROUTER_PREFIX: &str = "openrouter:";
 pub const LOCAL_PREFIX: &str = "local:";
 pub const PRIME_PREFIX: &str = "prime:";
 
-pub const UNPREFIXED_MODEL_MESSAGE: &str = "model id must use a `cursor:`, `pi:`, `rpi:`, or `codex:` prefix (for example `cursor:auto`, `pi:openai/gpt-4o`, or `codex:gpt-5.6`)";
+pub const UNPREFIXED_MODEL_MESSAGE: &str = "model id must use a `cursor:`, `pi:`, or `codex:` prefix (for example `cursor:auto`, `pi:openai/gpt-4o`, or `codex:gpt-5.6`)";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModelParam {
@@ -25,7 +25,6 @@ pub struct ModelParam {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModelBackend {
     Cursor,
-    NpmPi,
     Pi,
     Codex,
 }
@@ -35,8 +34,7 @@ impl ModelBackend {
     pub const fn label(self) -> &'static str {
         match self {
             Self::Cursor => "cursor",
-            Self::NpmPi => "pi",
-            Self::Pi => "rpi",
+            Self::Pi => "pi",
             Self::Codex => "codex",
         }
     }
@@ -45,8 +43,7 @@ impl ModelBackend {
     pub const fn drain_idle_prefix(self) -> &'static str {
         match self {
             Self::Cursor => "bridge timed out",
-            Self::NpmPi => "npm pi rpc timed out",
-            Self::Pi => "pi rpc timed out",
+            Self::Pi => "npm pi rpc timed out",
             Self::Codex => "codex timed out",
         }
     }
@@ -56,7 +53,7 @@ impl ModelBackend {
         debug_assert_eq!(self, model.backend);
         match self {
             Self::Cursor => model.cursor_bridge_model(),
-            Self::NpmPi | Self::Pi | Self::Codex => model.slug.clone(),
+            Self::Pi | Self::Codex => model.slug.clone(),
         }
     }
 }
@@ -79,8 +76,7 @@ impl ParsedModel {
     pub fn canonical(&self) -> String {
         let base = match self.backend {
             ModelBackend::Cursor => format!("{CURSOR_PREFIX}{}", self.slug),
-            ModelBackend::NpmPi => format!("{PI_PREFIX}{}", self.slug),
-            ModelBackend::Pi => format!("{RPI_PREFIX}{}", self.slug),
+            ModelBackend::Pi => format!("{PI_PREFIX}{}", self.slug),
             ModelBackend::Codex => format!("{CODEX_PREFIX}{}", self.slug),
         };
         if self.params.is_empty() {
@@ -96,18 +92,13 @@ impl ParsedModel {
     }
 
     #[must_use]
-    pub const fn is_npm_pi(&self) -> bool {
-        matches!(self.backend, ModelBackend::NpmPi)
-    }
-
-    #[must_use]
     pub const fn is_codex(&self) -> bool {
         matches!(self.backend, ModelBackend::Codex)
     }
 
     #[must_use]
     pub fn pi_provider_and_model(&self) -> Option<(&str, &str)> {
-        if !matches!(self.backend, ModelBackend::Pi | ModelBackend::NpmPi) {
+        if !matches!(self.backend, ModelBackend::Pi) {
             return None;
         }
         let (provider, model) =
@@ -156,10 +147,7 @@ pub fn parse_model_id(raw: &str) -> Result<ParsedModel, String> {
         return parsed(ModelBackend::Cursor, rest);
     }
     if let Some(rest) = raw.strip_prefix(PI_PREFIX) {
-        return parse_provider_slash_model(rest, ModelBackend::NpmPi, "pi");
-    }
-    if let Some(rest) = raw.strip_prefix(RPI_PREFIX) {
-        return parse_provider_slash_model(rest, ModelBackend::Pi, "rpi");
+        return parse_provider_slash_model(rest, ModelBackend::Pi, "pi");
     }
     if let Some(rest) = raw.strip_prefix(CODEX_PREFIX) {
         return parse_codex(rest);

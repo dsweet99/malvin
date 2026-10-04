@@ -1,5 +1,3 @@
-use pi::sdk::SessionOptions;
-
 const LOCAL_ENABLED_TOOLS: &[&str] = &["read", "bash", "edit", "write", "grep", "find", "ls"];
 
 const LOCAL_TEXT_ONLY_APPEND: &str = concat!(
@@ -59,14 +57,6 @@ pub(crate) fn local_enabled_tools(mode: LocalAgentMode) -> Option<Vec<String>> {
     }
 }
 
-pub(crate) fn local_max_tool_iterations(mode: LocalAgentMode) -> usize {
-    match mode {
-        LocalAgentMode::KeylessTools => 40,
-        LocalAgentMode::KeylessTextOnly => 1,
-        LocalAgentMode::NonKeyless => SessionOptions::default().max_tool_iterations,
-    }
-}
-
 fn keyless_local_tools_enabled(provider: &str, model: &str) -> bool {
     if !provider.eq_ignore_ascii_case("ollama") {
         return true;
@@ -74,15 +64,63 @@ fn keyless_local_tools_enabled(provider: &str, model: &str) -> bool {
     super::local_llm_ollama::ollama_model_supports_tools(model).unwrap_or(false)
 }
 
-pub(crate) fn local_session_overrides(
-    keyless: bool,
-    provider: &str,
-    model: &str,
-) -> (Option<String>, Option<Vec<String>>, usize) {
-    let mode = LocalAgentMode::for_provider_model(keyless, provider, model);
-    (
-        local_append_system_prompt(mode),
-        local_enabled_tools(mode),
-        local_max_tool_iterations(mode),
-    )
+#[must_use]
+pub(crate) fn local_cli_args(provider: &str, model: &str) -> Vec<String> {
+    let keyless = super::provider_metadata::provider_is_keyless_local(provider);
+    local_cli_args_for_mode(LocalAgentMode::for_provider_model(keyless, provider, model))
+}
+
+pub(crate) fn local_cli_args_for_mode(mode: LocalAgentMode) -> Vec<String> {
+    let mut args = Vec::new();
+    match local_enabled_tools(mode) {
+        Some(tools) if tools.is_empty() => args.push("--no-tools".to_string()),
+        Some(tools) => {
+            args.push("--tools".to_string());
+            args.push(tools.join(","));
+        }
+        None => {}
+    }
+    if let Some(text) = local_append_system_prompt(mode) {
+        args.push("--append-system-prompt".to_string());
+        args.push(text);
+    }
+    args
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cloud_providers_get_no_extra_flags() {
+        assert!(local_cli_args("openai", "gpt-4o").is_empty());
+    }
+
+    #[test]
+    fn keyless_tool_mode_allows_core_tools() {
+        let args = local_cli_args_for_mode(LocalAgentMode::KeylessTools);
+        assert_eq!(args[0], "--tools");
+        assert_eq!(args[1], "read,bash,edit,write,grep,find,ls");
+        assert_eq!(args[2], "--append-system-prompt");
+        assert!(args[3].contains("tool call"));
+    }
+
+    #[test]
+    fn keyless_text_only_mode_disables_tools() {
+        let args = local_cli_args_for_mode(LocalAgentMode::KeylessTextOnly);
+        assert_eq!(args[0], "--no-tools");
+        assert_eq!(args[2], LOCAL_TEXT_ONLY_APPEND);
+    }
+
+    #[test]
+    fn non_ollama_local_providers_use_tools() {
+        assert_eq!(
+            LocalAgentMode::for_provider_model(true, "llamacpp", "m"),
+            LocalAgentMode::KeylessTools
+        );
+        assert_eq!(
+            LocalAgentMode::for_provider_model(false, "openai", "m"),
+            LocalAgentMode::NonKeyless
+        );
+    }
 }

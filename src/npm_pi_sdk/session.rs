@@ -20,6 +20,8 @@ pub struct NpmPiSession {
     pub work_dir: PathBuf,
     pub log: StreamLog,
     pub pi_model: Option<(String, String)>,
+    pub local_hold: bool,
+    pub output_cap: Option<u64>,
 }
 
 impl std::ops::Deref for NpmPiSession {
@@ -41,7 +43,17 @@ impl NpmPiSession {
         super::session_io::npm_pi_send_prompt(self, prompt).await
     }
 
-    pub async fn shutdown(self) -> Result<(), AgentError> {
+    fn release_local_hold(&mut self) {
+        if !std::mem::take(&mut self.local_hold) {
+            return;
+        }
+        if let Err(e) = crate::pi_sdk::release_local_llm() {
+            tracing::warn!(target: "malvin::pi_sdk", error = %e, "local llm release failed");
+        }
+    }
+
+    pub async fn shutdown(mut self) -> Result<(), AgentError> {
+        self.release_local_hold();
         let _ = super::session_io::write_json(&self, &serde_json::json!({"type":"abort"})).await;
         StdioTeardown::new(
             &self.child,
@@ -57,6 +69,7 @@ impl NpmPiSession {
 
 impl Drop for NpmPiSession {
     fn drop(&mut self) {
+        self.release_local_hold();
         drop_stdio_child(
             &self.child,
             self.process_group_id,

@@ -15,10 +15,9 @@ fn child_health_transport_errors_require_coder_session_teardown() {
         "acp: WritableIterable is closed",
         "bridge drain timed out waiting for run_done after 1s without a bridge event (bridge quiet; likely hung or stalled)",
         "bridge timed out waiting for run_done after 1s without a bridge event (bridge quiet; likely hung or stalled)",
-        "pi rpc drain timed out waiting for agent_end after 45s of silence",
-        "pi rpc timed out waiting for agent_end after 45s of silence",
-        "pi rpc stdout closed",
-        "pi rpc write: broken pipe",
+        "npm pi rpc timed out waiting for npm pi event after 45s of silence",
+        "npm pi stdout closed",
+        "npm pi write: broken pipe",
         "codex timed out waiting for turn event after 1s of silence",
         "codex stdout closed",
         "codex write: broken pipe",
@@ -46,7 +45,6 @@ fn child_health_transport_errors_require_coder_session_teardown() {
 fn live_drain_idle_prefixes_require_coder_session_teardown() {
     for prefix in [
         crate::acp::DRAIN_IDLE_PREFIX_BRIDGE,
-        crate::acp::DRAIN_IDLE_PREFIX_NPM_PI,
         crate::acp::DRAIN_IDLE_PREFIX_PI,
         crate::acp::DRAIN_IDLE_PREFIX_CODEX,
     ] {

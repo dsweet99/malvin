@@ -1,10 +1,9 @@
 use std::time::Duration;
 
-use pi::provider::ModelCost;
-
-use super::super::openrouter_billed_cost::urlencoding;
+use super::super::http_fetch::{HttpRequest, fetch_text};
+use super::super::model_cost::ModelCost;
 use super::super::pricing_cache_file::PricingCacheFile;
-use super::model_cost_from_body;
+use super::{model_cost_from_body, urlencoding};
 
 const PRICING_URL: &str = "https://api.portkey.ai/model-configs/pricing";
 const CACHE: PricingCacheFile =
@@ -49,23 +48,5 @@ pub(super) fn lookup_rates(provider: &str, model: &str) -> Option<ModelCost> {
 }
 
 fn fetch_pricing_body(url: &str) -> Option<String> {
-    let Ok(runtime) = asupersync::runtime::RuntimeBuilder::current_thread().build() else {
-        return None;
-    };
-    runtime.block_on(fetch_pricing_body_async(url))
-}
-
-async fn fetch_pricing_body_async(url: &str) -> Option<String> {
-    let client = pi::http::client::Client::new();
-    let response = client
-        .get(url)
-        .header("Accept", "application/json")
-        .timeout(Duration::from_secs(15))
-        .send()
-        .await
-        .ok()?;
-    if !(200..300).contains(&response.status()) {
-        return None;
-    }
-    response.text().await.ok()
+    fetch_text(&HttpRequest::get(url, Duration::from_secs(15)))
 }

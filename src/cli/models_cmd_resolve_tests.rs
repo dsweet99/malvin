@@ -16,17 +16,17 @@ fn resolved_json_reports_backend_provider_and_locality() {
     assert!(codex["provider"].is_null());
     assert_eq!(codex["local"], false);
 
-    let ollama = json_for("rpi:ollama/qwen");
-    assert_eq!(ollama["backend"], "rpi");
+    let ollama = json_for("pi:ollama/qwen");
+    assert_eq!(ollama["backend"], "pi");
     assert_eq!(ollama["provider"], "ollama");
     assert_eq!(ollama["local"], true);
 
-    let bare_local = json_for("rpi:local/qwen");
-    assert_eq!(bare_local["canonical"], "rpi:local/qwen");
+    let bare_local = json_for("pi:local/qwen");
+    assert_eq!(bare_local["canonical"], "pi:local/qwen");
     assert_eq!(bare_local["provider"], "ollama");
     assert_eq!(bare_local["local"], true);
 
-    let llamacpp = json_for("rpi:local/llamacpp/m");
+    let llamacpp = json_for("pi:local/llamacpp/m");
     assert_eq!(llamacpp["provider"], "llamacpp");
     assert_eq!(llamacpp["local"], true);
 
@@ -55,7 +55,7 @@ fn write_resolved_model_expands_nicknames_and_rejects_bad_ids() {
         assert_eq!(value["backend"], "codex");
 
         let mut sink = Vec::new();
-        assert!(write_resolved_model("RPI:ollama/x", &mut sink).is_err());
+        assert!(write_resolved_model("PI:ollama/x", &mut sink).is_err());
         assert!(sink.is_empty());
     });
 }

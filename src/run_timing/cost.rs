@@ -257,7 +257,7 @@ mod tests {
     fn later_session_keeps_earlier_reported_cost() {
         let mut slot = None;
         let first =
-            super::super::lifecycle::attach_new_run_timing(&mut slot, "rpi:openrouter/x-ai/grok-4.6");
+            super::super::lifecycle::attach_new_run_timing(&mut slot, "pi:openrouter/x-ai/grok-4.6");
         first.lock().unwrap().record_acp_usage_if_present(&serde_json::json!({
             "inputTokens": 100,
             "outputTokens": 10,
@@ -271,7 +271,7 @@ mod tests {
             }
         }));
         let second =
-            super::super::lifecycle::attach_new_run_timing(&mut slot, "rpi:openrouter/x-ai/grok-4.6");
+            super::super::lifecycle::attach_new_run_timing(&mut slot, "pi:openrouter/x-ai/grok-4.6");
         second.lock().unwrap().record_acp_usage_if_present(&serde_json::json!({
             "inputTokens": 50,
             "outputTokens": 5,

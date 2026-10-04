@@ -84,3 +84,59 @@ fn agent_end_fills_text_when_empty() {
     assert!(map_npm_pi_event(&end, &mut state).is_empty());
     assert_eq!(state.response_text, "done");
 }
+
+#[test]
+fn usage_sums_assistant_message_ends_and_ignores_streaming_partials() {
+    let mut state = TurnState::default();
+    let partial = serde_json::json!({
+        "type": "message_update",
+        "usage": {"input": 10, "output": 8},
+        "assistantMessageEvent": {"type": "text_delta", "delta": "x"}
+    });
+    map_npm_pi_event(&partial, &mut state);
+    assert!(state.usage.is_none());
+    for (output, cost) in [(99, 0.5), (56, 0.25)] {
+        let end = serde_json::json!({
+            "type": "message_end",
+            "message": {
+                "role": "assistant",
+                "usage": {"input": 10, "output": output, "cacheRead": 7828, "cost": {"total": cost}}
+            }
+        });
+        assert!(map_npm_pi_event(&end, &mut state).is_empty());
+    }
+    let tool = serde_json::json!({
+        "type": "message_end",
+        "message": {"role": "toolResult", "usage": {"output": 1000}}
+    });
+    map_npm_pi_event(&tool, &mut state);
+    let usage = state.usage.expect("usage summed");
+    assert_eq!(usage["input"], 20);
+    assert_eq!(usage["output"], 155);
+    assert_eq!(usage["cacheRead"], 15656);
+    assert!((usage["cost"]["total"].as_f64().unwrap() - 0.75).abs() < 1e-12);
+}
+
+#[test]
+fn turn_end_maps_to_one_step() {
+    let mut state = TurnState::default();
+    let evs = map_npm_pi_event(&serde_json::json!({"type": "turn_end"}), &mut state);
+    assert!(matches!(evs.as_slice(), [BridgeEvent::Step { .. }]));
+}
+
+#[test]
+fn agent_end_with_provider_error_records_turn_error() {
+    let mut state = TurnState::default();
+    let end = serde_json::json!({
+        "type": "agent_end",
+        "messages": [{
+            "role": "assistant",
+            "content": [],
+            "stopReason": "error",
+            "errorMessage": "no credits"
+        }]
+    });
+    assert!(map_npm_pi_event(&end, &mut state).is_empty());
+    let err = state.end_error.expect("provider error captured");
+    assert_eq!(err.message, "pi turn failed: no credits");
+}

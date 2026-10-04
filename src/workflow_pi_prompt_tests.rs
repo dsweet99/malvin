@@ -28,15 +28,16 @@ fn long_request_is_cut_on_a_char_boundary_with_a_cat_pointer() {
 }
 
 #[test]
-fn only_rpi_models_get_inline_text() {
+fn only_pi_models_get_inline_text() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "inline-marker").expect("write");
-    assert!(format_request_inline("rpi:local/ollama/llama3.2:3b", &plan).contains("inline-marker"));
+    assert!(format_request_inline("pi:local/ollama/llama3.2:3b", &plan).contains("inline-marker"));
+    assert!(format_request_inline("pi:openai/gpt-4o", &plan).contains("inline-marker"));
     assert_eq!(format_request_inline("cursor:auto", &plan), "");
-    assert_eq!(format_request_inline("pi:openai/gpt-4o", &plan), "");
+    assert_eq!(format_request_inline("codex:gpt-5", &plan), "");
     assert_eq!(
-        format_request_inline("rpi:openai/gpt-4o", &tmp.path().join("missing.md")),
+        format_request_inline("pi:openai/gpt-4o", &tmp.path().join("missing.md")),
         ""
     );
 }

@@ -29,26 +29,13 @@ pub fn command_output_with_timeout(
     label: &str,
 ) -> Result<Output, String> {
     cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
-    let mut child = cmd
+    let child = cmd
         .spawn()
         .map_err(|e| format!("{label} failed to spawn: {e}"))?;
-    let (stdout_handle, stderr_handle) = take_pipe_readers(&mut child, label)?;
-    let status = match wait_child_with_timeout(&mut child, timeout, label) {
-        Ok(status) => status,
-        Err(e) => {
-            let _ = stdout_handle.join();
-            let _ = stderr_handle.join();
-            return Err(e);
-        }
-    };
-    Ok(Output {
-        status,
-        stdout: join_pipe_reader(stdout_handle, label, "stdout")?,
-        stderr: join_pipe_reader(stderr_handle, label, "stderr")?,
-    })
+    wait_piped_child_with_timeout(child, timeout, label)
 }
 
-pub(crate) fn wait_piped_child_with_timeout(
+fn wait_piped_child_with_timeout(
     mut child: Child,
     timeout: Duration,
     label: &str,

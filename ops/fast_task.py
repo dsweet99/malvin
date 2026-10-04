@@ -8,7 +8,7 @@ Usage::
     python ops/fast_task.py solve FT-01 --agent=cursor
     python ops/fast_task.py solve FT-01 --main
     python ops/fast_task.py solve FT-01 --model cursor:auto
-    python ops/fast_task.py solve FT-01 --model rpi:openrouter/~x-ai/grok-latest
+    python ops/fast_task.py solve FT-01 --model pi:openrouter/~x-ai/grok-latest
     python ops/fast_task.py solve FT-01 --model pi:openrouter/x-ai/grok-4.6
     python ops/fast_task.py solve FT-01 --model codex:gpt-5.6-terra
     python ops/fast_task.py solve FT-01 --creative
@@ -90,7 +90,7 @@ def fast_tasks_list_cmd() -> None:
     default=None,
     help=(
         "Model id passed through to malvin (ignored unless --agent=malvin); "
-        "pi: uses the npm Pi agent; rpi: uses linked pi_agent_rust; codex: models bind-mount "
+        "pi: uses the npm Pi agent; codex: models bind-mount "
         "the Codex npm package and Node.js"
     ),
 )

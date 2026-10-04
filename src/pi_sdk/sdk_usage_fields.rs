@@ -59,7 +59,7 @@ mod tests {
         crate::pi_sdk::openrouter_pricing::write_rate_cache_for_test(
             std::collections::HashMap::from([(
                 model_id.to_string(),
-                pi::provider::ModelCost {
+                crate::pi_sdk::model_cost::ModelCost {
                     input,
                     output,
                     cache_read: 0.0,

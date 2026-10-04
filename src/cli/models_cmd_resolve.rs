@@ -6,7 +6,7 @@ use malvin::model_id::ParsedModel;
 #[must_use]
 pub(crate) fn resolved_model_json(model: &ParsedModel) -> String {
     let provider = model.pi_provider_and_model().map(|(provider, _)| provider);
-    let local = provider.is_some_and(pi::provider_metadata::provider_is_keyless_local);
+    let local = provider.is_some_and(malvin::pi_sdk::provider_is_keyless_local);
     serde_json::json!({
         "canonical": model.canonical(),
         "backend": model.backend.label(),

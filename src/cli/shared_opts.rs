@@ -31,7 +31,7 @@ pub(crate) fn parse_creative_probability(s: &str) -> Result<f64, String> {
 #[derive(Args, Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct SharedOpts {
-    /// Model id (`cursor:`, `pi:`, `rpi:`, `codex:`, or a config nickname)
+    /// Model id (`cursor:`, `pi:`, `codex:`, or a config nickname)
     #[arg(
         long,
         default_value = DEFAULT_CLI_MODEL,

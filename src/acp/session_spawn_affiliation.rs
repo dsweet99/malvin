@@ -78,6 +78,7 @@ struct AffiliationCtx<'a> {
     first_seen: &'a HashMap<u32, u32>,
 }
 
+#[cfg(any(test, debug_assertions))]
 pub(crate) fn note_session_affiliated_pid(pid: u32) {
     lock_or_recover(&AFFILIATED_PIDS).insert(pid);
 }

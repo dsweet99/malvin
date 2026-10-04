@@ -49,12 +49,14 @@ fn configured_npm_pi_command(
             args.model.canonical()
         ))
     })?;
+    crate::pi_sdk::prepare_local_llm(args.cwd, provider, model).map_err(AgentError)?;
     let mut cmd = crate::malvin_sandbox::malvin_tokio_command(node);
     cmd.arg(&entry);
     if !entry_is_rpc_entry(&entry) {
         cmd.arg("--mode").arg("rpc");
     }
     append_provider_model(&mut cmd, provider, model, args);
+    cmd.args(crate::pi_sdk::local_cli_args(provider, model));
     Ok(cmd)
 }
 
@@ -94,6 +96,7 @@ pub(super) fn build_npm_pi_session(
     baseline.extend(crate::malvin_sandbox::malvin_spawn_baseline());
     crate::malvin_sandbox::note_active_sandbox_session(ticket, pgid, baseline.clone(), args.cwd)
         .map_err(AgentError)?;
+    let local_hold = take_local_hold(args.model)?;
     Ok(NpmPiSession {
         child: AsyncMutex::new(Some(child)),
         stdin: Arc::new(AsyncMutex::new(stdin)),
@@ -104,7 +107,22 @@ pub(super) fn build_npm_pi_session(
         work_dir: args.cwd.to_path_buf(),
         log: StreamLog::from_spawn(args),
         pi_model: pi_model_pair(args.model),
+        local_hold,
+        output_cap: local_output_cap(args),
     })
+}
+
+fn local_output_cap(args: &BridgeSpawnArgs<'_>) -> Option<u64> {
+    let (provider, model) = args.model.pi_provider_and_model()?;
+    crate::pi_sdk::local_output_cap(args.cwd, provider, model)
+}
+
+fn take_local_hold(model: &crate::model_id::ParsedModel) -> Result<bool, AgentError> {
+    if !crate::pi_sdk::model_needs_local_llm(model) {
+        return Ok(false);
+    }
+    crate::pi_sdk::hold_local_llm().map_err(AgentError)?;
+    Ok(true)
 }
 
 fn pi_model_pair(model: &crate::model_id::ParsedModel) -> Option<(String, String)> {
@@ -128,12 +146,19 @@ mod tests {
     }
 
     #[test]
+    fn cloud_models_take_no_local_hold() {
+        let model = crate::model_id::parse_model_id("pi:openai/gpt-4o").expect("model");
+        assert!(!take_local_hold(&model).expect("no hold"));
+    }
+
+    #[test]
     fn kiss_cov_process_names() {
         let _ = spawn_npm_pi_session;
         let _ = spawn_npm_pi_process;
         let _ = configured_npm_pi_command;
         let _ = build_npm_pi_session;
         let _ = entry_is_rpc_entry;
+        let _ = take_local_hold;
         let _ = crate::bridge_sdk::take_stdio_forward_stderr;
     }
 }

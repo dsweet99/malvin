@@ -129,7 +129,7 @@ fn build_router_a_prompt_includes_user_request_path() {
 }
 
 #[test]
-fn build_router_kpop_common_prompt_has_no_rpi_cwd_note() {
+fn build_router_kpop_common_prompt_has_no_pi_cwd_note() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
     let store = prepare_router_prompt_store().expect("store");
@@ -144,14 +144,14 @@ fn build_router_kpop_common_prompt_has_no_rpi_cwd_note() {
         })
         .expect("kpop common")
     };
-    let rpi = render("rpi:local/ollama/malvin-llama32:latest");
-    assert!(!rpi.contains("outside the working directory"), "{rpi}");
-    assert!(rpi.contains("_g2"));
-    assert_eq!(rpi, render(DEFAULT_CLI_MODEL));
+    let pi = render("pi:local/ollama/malvin-llama32:latest");
+    assert!(!pi.contains("outside the working directory"), "{pi}");
+    assert!(pi.contains("_g2"));
+    assert_eq!(pi, render(DEFAULT_CLI_MODEL));
 }
 
 #[test]
-fn build_router_a_prompt_inlines_request_text_only_for_rpi() {
+fn build_router_a_prompt_inlines_request_text_only_for_pi() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
     std::fs::write(&artifacts.plan_path, "Please fix A5-marker.").expect("write plan");
@@ -167,8 +167,8 @@ fn build_router_a_prompt_inlines_request_text_only_for_rpi() {
         })
         .expect("router_a")
     };
-    let rpi = render("rpi:local/ollama/malvin-llama32:latest");
-    assert!(rpi.contains("```text\nPlease fix A5-marker.\n```"), "{rpi}");
+    let pi = render("pi:local/ollama/malvin-llama32:latest");
+    assert!(pi.contains("```text\nPlease fix A5-marker.\n```"), "{pi}");
     assert!(!render(DEFAULT_CLI_MODEL).contains("A5-marker"));
 }
 

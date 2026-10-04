@@ -99,7 +99,7 @@ fn install_failed_message_names_node_free_backends() {
     assert!(msg.contains("npm not found"));
     assert!(msg.contains("MALVIN_CURSOR_SDK_BRIDGE"));
     assert!(msg.contains("22.13"));
-    assert!(msg.contains("rpi:") && msg.contains("codex:"));
+    assert!(msg.contains("codex:") && !msg.contains("rpi:"));
 }
 
 #[test]

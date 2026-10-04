@@ -3,6 +3,7 @@ use std::path::Path;
 
 use serde_json::{Map, Value, json};
 
+use super::provider_metadata::{LocalProvider, local_provider_defaults, pi_models_json_path};
 use crate::malvin_config_file::load_malvin_config;
 
 #[cfg(test)]
@@ -22,7 +23,7 @@ pub(crate) fn max_tokens_for_context(context_size: u32) -> u32 {
     (context_size / 4).max(256).min(context_size)
 }
 
-fn local_provider_base_url(defaults: &pi::provider_metadata::ProviderRoutingDefaults) -> String {
+fn local_provider_base_url(defaults: &LocalProvider) -> String {
     if let Ok(value) = std::env::var(LOCAL_LLM_BASE_URL_ENV) {
         let trimmed = value.trim();
         if !trimmed.is_empty() {
@@ -61,6 +62,7 @@ fn provider_object<'a>(
             json!({
                 "baseUrl": base_url,
                 "api": api,
+                "apiKey": KEYLESS_LOCAL_API_KEY,
                 "authHeader": false,
                 "models": []
             })
@@ -151,6 +153,9 @@ fn apply_capped_model(root: &mut Value, spec: &CapModelSpec<'_>) -> Result<(), S
         .entry("api")
         .or_insert_with(|| json!(spec.api));
     provider_entry
+        .entry("apiKey")
+        .or_insert_with(|| json!(KEYLESS_LOCAL_API_KEY));
+    provider_entry
         .entry("authHeader")
         .or_insert_with(|| json!(false));
     let models = provider_entry
@@ -173,16 +178,15 @@ pub(crate) fn ensure_capped_local_model_catalog(
     model: &str,
     context_size: u32,
 ) -> Result<(), String> {
-    if !pi::provider_metadata::provider_is_keyless_local(provider) {
+    let Some(defaults) = local_provider_defaults(provider) else {
         return Ok(());
+    };
+    let base_url = local_provider_base_url(defaults);
+    let path = pi_models_json_path();
+    if let Some(agent_dir) = path.parent() {
+        fs::create_dir_all(agent_dir)
+            .map_err(|e| format!("create Pi agent dir {}: {e}", agent_dir.display()))?;
     }
-    let defaults = pi::provider_metadata::provider_routing_defaults(provider)
-        .ok_or_else(|| format!("no routing defaults for keyless provider `{provider}`"))?;
-    let base_url = local_provider_base_url(&defaults);
-    let agent_dir = pi::sdk::Config::global_dir();
-    fs::create_dir_all(&agent_dir)
-        .map_err(|e| format!("create Pi agent dir {}: {e}", agent_dir.display()))?;
-    let path = pi::models::default_models_path(&agent_dir);
     let mut root = read_models_json(&path)?;
     apply_capped_model(
         &mut root,
@@ -211,10 +215,8 @@ mod tests {
     #[test]
     fn ensure_catalog_writes_capped_ollama_model() {
         crate::test_utils::with_isolated_home(|_| {
-            let agent = pi::sdk::Config::global_dir();
-            fs::create_dir_all(&agent).expect("agent dir");
             ensure_capped_local_model_catalog("ollama", "malvin-llama32", 4096).expect("ensure");
-            let path = pi::models::default_models_path(&agent);
+            let path = pi_models_json_path();
             let root: Value =
                 serde_json::from_str(&fs::read_to_string(path).expect("read")).expect("json");
             let model = &root["providers"]["ollama"]["models"][0];
@@ -222,6 +224,7 @@ mod tests {
             assert_eq!(model["contextWindow"], 4096);
             assert_eq!(model["maxTokens"], 1024);
             assert_eq!(root["providers"]["ollama"]["authHeader"], false);
+            assert_eq!(root["providers"]["ollama"]["apiKey"], KEYLESS_LOCAL_API_KEY);
         });
     }
 
@@ -234,7 +237,7 @@ mod tests {
                 || {
                     ensure_capped_local_model_catalog("ollama", "malvin-gemma2", 8192)
                         .expect("ensure");
-                    let path = pi::models::default_models_path(&pi::sdk::Config::global_dir());
+                    let path = pi_models_json_path();
                     let root: Value =
                         serde_json::from_str(&fs::read_to_string(path).expect("read"))
                             .expect("json");
@@ -251,7 +254,7 @@ mod tests {
     fn ensure_catalog_skips_non_local_providers() {
         crate::test_utils::with_isolated_home(|_| {
             ensure_capped_local_model_catalog("openai", "gpt-4o", 8192).expect("noop");
-            let path = pi::models::default_models_path(&pi::sdk::Config::global_dir());
+            let path = pi_models_json_path();
             assert!(!path.is_file());
         });
     }
@@ -259,9 +262,8 @@ mod tests {
     #[test]
     fn ensure_catalog_clamps_sibling_models_with_large_context() {
         crate::test_utils::with_isolated_home(|_| {
-            let agent = pi::sdk::Config::global_dir();
-            fs::create_dir_all(&agent).expect("agent dir");
-            let path = pi::models::default_models_path(&agent);
+            let path = pi_models_json_path();
+            fs::create_dir_all(path.parent().expect("agent dir")).expect("agent dir");
             fs::write(
                 &path,
                 r#"{

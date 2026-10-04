@@ -8,6 +8,8 @@ pub(super) struct TurnState {
     pub(super) usage: Option<serde_json::Value>,
     pub(super) prompt_accepted: bool,
     pub(super) settled: bool,
+    pub(super) output_cap: Option<u64>,
+    pub(super) end_error: Option<AgentError>,
 }
 
 struct ActiveTurn<'a> {
@@ -19,7 +21,10 @@ pub(super) async fn consume_npm_pi_turn(
     session: &NpmPiSession,
     prompt_id: &str,
 ) -> Result<(), AgentError> {
-    let mut state = TurnState::default();
+    let mut state = TurnState {
+        output_cap: session.output_cap,
+        ..TurnState::default()
+    };
     let mut turn = crate::bridge_sdk::DrainIdleTurn::new();
     loop {
         let value =
@@ -34,7 +39,7 @@ pub(super) async fn consume_npm_pi_turn(
             }
         }
         turn.check_max_deadline(crate::bridge_sdk::DrainIdleLabels {
-            prefix: crate::model_id::ModelBackend::NpmPi.drain_idle_prefix(),
+            prefix: crate::model_id::ModelBackend::Pi.drain_idle_prefix(),
             waiting_for: "npm pi event",
         })?;
     }
@@ -47,6 +52,9 @@ pub(super) fn feed_mapped_bridge_events(
 ) {
     for ev in events {
         crate::bridge_sdk::note_productive_bridge_event(session, turn, ev);
+        if let BridgeEvent::Step { .. } = ev {
+            crate::bridge_sdk::note_sdk_step(session.timing.as_ref());
+        }
         crate::bridge_sdk::handle_stream_event(session, ev);
     }
 }
@@ -75,8 +83,7 @@ async fn handle_line(
         feed_mapped_bridge_events(session, active.drain, std::slice::from_ref(&ev));
     }
     if active.state.settled {
-        finish_settled(session, active.state);
-        return Some(Ok(()));
+        return Some(finish_settled(session, active.state));
     }
     None
 }
@@ -104,7 +111,8 @@ fn handle_response(
     None
 }
 
-fn finish_settled(session: &NpmPiSession, state: &mut TurnState) {
+fn finish_settled(session: &NpmPiSession, state: &mut TurnState) -> Result<(), AgentError> {
+    let end_error = state.end_error.take();
     let text = std::mem::take(&mut state.response_text);
     if !text.is_empty() {
         *session
@@ -113,16 +121,21 @@ fn finish_settled(session: &NpmPiSession, state: &mut TurnState) {
             .unwrap_or_else(std::sync::PoisonError::into_inner) = text.clone();
     }
     let ev = BridgeEvent::RunDone {
-        status: RunDoneStatus::Finished,
+        status: if end_error.is_some() {
+            RunDoneStatus::Error
+        } else {
+            RunDoneStatus::Finished
+        },
         result: (!text.is_empty()).then_some(text),
         usage: usage_after_portkey(session, state.usage.take()),
-        error: None,
+        error: end_error.as_ref().map(|e| e.message.clone()),
         duration_ms: None,
     };
     if let BridgeEvent::RunDone { usage: Some(u), .. } = &ev {
         crate::bridge_sdk::record_sdk_usage(session.timing.as_ref(), u);
     }
     feed_and_handle_run_done(session, &ev);
+    end_error.map_or(Ok(()), Err)
 }
 
 fn usage_after_portkey(

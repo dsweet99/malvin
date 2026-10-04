@@ -116,12 +116,12 @@ impl<'a> PromptModelOpts<'a> {
     }
 }
 
-pub const RPI_HEADER_MD: &str = include_str!("../default_prompts/rpi_header.md");
+pub const PI_HEADER_MD: &str = include_str!("../default_prompts/pi_header.md");
 
 #[must_use]
-pub fn format_rpi_extra(model: &str) -> String {
+pub fn format_pi_extra(model: &str) -> String {
     if crate::model_id::parse_model_id(model).is_ok_and(|m| m.is_pi()) {
-        RPI_HEADER_MD.to_string()
+        PI_HEADER_MD.to_string()
     } else {
         String::new()
     }
@@ -149,8 +149,8 @@ pub fn workflow_context_paths_only(artifacts: &RunArtifacts, model: &str) -> Wor
     insert_current_state(&mut context, artifacts, &artifacts.work_dir);
     context.insert("malvin_command".to_string(), format_malvin_command(model));
     context.insert("kpop_insert".to_string(), String::new());
-    context.insert("rpi_extra".to_string(), format_rpi_extra(model));
-    crate::workflow_rpi_prompt::insert_rpi_prompt_keys(&mut context, model, &artifacts.plan_path);
+    context.insert("pi_extra".to_string(), format_pi_extra(model));
+    crate::workflow_pi_prompt::insert_pi_prompt_keys(&mut context, model, &artifacts.plan_path);
     context.insert(
         "agents_insert".to_string(),
         format_agents_md_insert(&artifacts.work_dir),

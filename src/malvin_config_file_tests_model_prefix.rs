@@ -7,7 +7,7 @@ use crate::workspace_paths::malvin_config_path;
 use std::collections::BTreeMap;
 
 fn parse_agent(text: &str) -> Result<AgentConfig, String> {
-    parse_agent_config(text, &BTreeMap::new(), false)
+    parse_agent_config(text, &BTreeMap::new())
 }
 
 #[test]
@@ -74,7 +74,7 @@ fn open_malvin_config_writes_prefixed_model_on_fresh_init() {
         );
         assert!(!text.contains("model-mini"));
         assert!(!text.contains("max_loops"));
-        assert!(text.contains("disable_rpi = false"));
+        assert!(!text.contains("disable_rpi"));
     });
 }
 

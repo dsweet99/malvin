@@ -8,7 +8,7 @@ use crate::workspace_paths::malvin_config_path;
 use std::collections::BTreeMap;
 
 fn parse_agent(text: &str) -> Result<super::AgentConfig, String> {
-    parse_agent_config(text, &BTreeMap::new(), false)
+    parse_agent_config(text, &BTreeMap::new())
 }
 
 fn merge_missing_keys_adds_top_level_and_nested_tables() {

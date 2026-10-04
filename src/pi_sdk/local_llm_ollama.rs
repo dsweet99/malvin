@@ -4,6 +4,7 @@ use std::time::{Duration, Instant};
 
 use serde::Deserialize;
 
+use super::http_fetch::{HttpRequest, fetch_text};
 use super::local_context::LOCAL_LLM_BASE_URL_ENV;
 use super::local_endpoint::keyless_local_provider_is_listening;
 use super::local_llm_paths::ollama_bin;
@@ -105,7 +106,7 @@ fn ollama_api_root() -> String {
             return trim_openai_v1_suffix(trimmed);
         }
     }
-    if let Some(defaults) = pi::provider_metadata::provider_routing_defaults("ollama") {
+    if let Some(defaults) = super::provider_metadata::local_provider_defaults("ollama") {
         return trim_openai_v1_suffix(defaults.base_url);
     }
     "http://127.0.0.1:11434".to_string()
@@ -117,33 +118,50 @@ fn parse_ollama_show_capabilities(body: &str) -> Option<Vec<String>> {
         .map(|parsed| parsed.capabilities)
 }
 
-async fn fetch_ollama_show_capabilities_async(model: &str) -> Option<Vec<String>> {
+fn fetch_ollama_show_capabilities(model: &str) -> Option<Vec<String>> {
     let url = format!("{}/api/show", ollama_api_root());
-    let client = pi::http::client::Client::new();
-    let response = client
-        .post(&url)
-        .header("Content-Type", "application/json")
-        .header("Accept", "application/json")
-        .timeout(SHOW_TIMEOUT)
-        .json(&serde_json::json!({ "name": model }))
-        .ok()?
-        .send()
-        .await
-        .ok()?;
-    if !(200..300).contains(&response.status()) {
-        return None;
-    }
-    let body = response.text().await.ok()?;
-    parse_ollama_show_capabilities(&body)
+    let body = serde_json::json!({ "name": model });
+    let text = fetch_text(&HttpRequest {
+        url: &url,
+        headers: &[],
+        json_body: Some(&body),
+        timeout: SHOW_TIMEOUT,
+    })?;
+    parse_ollama_show_capabilities(&text)
 }
 
 #[must_use]
 pub(crate) fn ollama_model_supports_tools(model: &str) -> Option<bool> {
-    let Ok(runtime) = asupersync::runtime::RuntimeBuilder::current_thread().build() else {
-        return None;
-    };
-    let caps = runtime.block_on(fetch_ollama_show_capabilities_async(model))?;
+    let caps = fetch_ollama_show_capabilities(model)?;
     Some(capabilities_include_tools(&caps))
+}
+
+#[derive(Debug, Deserialize)]
+struct OllamaTagsResponse {
+    #[serde(default)]
+    models: Vec<OllamaTag>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OllamaTag {
+    name: String,
+}
+
+fn parse_ollama_tags(body: &str) -> Vec<String> {
+    serde_json::from_str::<OllamaTagsResponse>(body)
+        .map(|parsed| parsed.models.into_iter().map(|tag| tag.name).collect())
+        .unwrap_or_default()
+}
+
+#[must_use]
+pub(crate) fn list_ollama_models() -> Vec<String> {
+    if !keyless_local_provider_is_listening("ollama") {
+        return Vec::new();
+    }
+    let url = format!("{}/api/tags", ollama_api_root());
+    fetch_text(&HttpRequest::get(&url, SHOW_TIMEOUT))
+        .map(|body| parse_ollama_tags(&body))
+        .unwrap_or_default()
 }
 
 #[cfg(test)]
@@ -190,6 +208,22 @@ mod tests {
             &parse_ollama_show_capabilities(qwen).expect("qwen")
         ));
         assert!(parse_ollama_show_capabilities("not-json").is_none());
+    }
+
+    #[test]
+    fn parse_tags_lists_model_names() {
+        let body = r#"{"models":[{"name":"qwen2.5:1.5b","size":1},{"name":"llama3.2:3b"}]}"#;
+        assert_eq!(parse_ollama_tags(body), vec!["qwen2.5:1.5b", "llama3.2:3b"]);
+        assert!(parse_ollama_tags("nope").is_empty());
+    }
+
+    #[test]
+    fn show_capabilities_reads_local_server() {
+        let _lock = crate::test_utils::test_env_lock();
+        let base = super::super::http_fetch::serve_once(r#"{"capabilities":["tools"]}"#);
+        crate::acp::with_env(LOCAL_LLM_BASE_URL_ENV, Some(&format!("{base}/v1")), || {
+            assert_eq!(ollama_model_supports_tools("m"), Some(true));
+        });
     }
 
     #[test]

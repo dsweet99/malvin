@@ -1,6 +1,6 @@
 # malvin (top-level CLI)
 
-malvin is a non-interactive research and coding agent. It runs agent sessions against a workspace through the Cursor SDK (`cursor:` models via a Node bridge to `@cursor/sdk`), the official TypeScript/npm Pi agent (`pi:` models via RPC), an in-process rust Pi SDK (`rpi:` models via linked `pi_agent_rust`), or a local Codex app-server (`codex:` models via `codex app-server`). Each agent-backed invocation creates an isolated run directory under `~/.malvinconf/logs/<hash>/` and records prompts, stdout, and artifacts there. When the workspace root contains a non-empty `AGENTS.md`, malvin embeds it in `header.md` via `{{ agents_insert }}` so every fresh-header session sees that guidance without relying on Cursor rule auto-load.
+malvin is a non-interactive research and coding agent. It runs agent sessions against a workspace through the Cursor SDK (`cursor:` models via a Node bridge to `@cursor/sdk`), the official TypeScript/npm Pi agent (`pi:` models via RPC) or a local Codex app-server (`codex:` models via `codex app-server`). Each agent-backed invocation creates an isolated run directory under `~/.malvinconf/logs/<hash>/` and records prompts, stdout, and artifacts there. When the workspace root contains a non-empty `AGENTS.md`, malvin embeds it in `header.md` via `{{ agents_insert }}` so every fresh-header session sees that guidance without relying on Cursor rule auto-load.
 
 ## How to read this documentation
 
@@ -46,7 +46,7 @@ It is also **not** required for plain `malvin --do`: without `--verbose`, `--do`
 
 ### `--model <MODEL>`
 
-Model id for agent-backed commands. Default: `cursor:auto` (or `[agent].model` in `~/.malvinconf/config.toml`). Prefixes: `cursor:` for the Cursor SDK backend; `pi:<provider>/<model>` for the official TypeScript/npm Pi agent (RPC); `rpi:<provider>/<model>` for the in-process Pi backend (linked `pi_agent_rust`; uses env keys or credentials already stored by Pi; keyless locals are `rpi:local/<provider>/<model>`); `codex:<model>` for a local Codex app-server. An unprefixed name is looked up in `[nicknames]` in the home config. Optional bracket overrides select thinking / speed where the backend supports them, for example `cursor:claude-opus-5[effort=high,fast=true]` or `rpi:openai/gpt-5[thinking=high]` (see `malvin admin models --doc`). Legacy `prime:` and `mini:` ids are rejected.
+Model id for agent-backed commands. Default: `cursor:auto` (or `[agent].model` in `~/.malvinconf/config.toml`). Prefixes: `cursor:` for the Cursor SDK backend; `pi:<provider>/<model>` for the official TypeScript/npm Pi agent (RPC; uses env keys or credentials already stored by Pi; keyless locals are `pi:local/<provider>/<model>`); `codex:<model>` for a local Codex app-server. An unprefixed name is looked up in `[nicknames]` in the home config. Optional bracket overrides select thinking / speed where the backend supports them, for example `cursor:claude-opus-5[effort=high,fast=true]` or `pi:openai/gpt-5[thinking=high]` (see `malvin admin models --doc`). Legacy `prime:`, `mini:`, and `rpi:` ids are rejected.
 
 ### `--max-loops <N>` (default: 9999)
 
@@ -68,7 +68,7 @@ Log **full** outgoing prompt bodies to stdout and `prompts.log`. Default: only t
 
 ### `--max-acp-retries <N>` (default: 3)
 
-Stop after N consecutive identical backend errors (spawn, header, or prompt), with 1s / 3s backoff between tries. When the flag is omitted, `[agent].max_acp_retries` from `~/.malvinconf/config.toml` is used. Distinct errors reset the consecutive counter. Only a successful prompt turn clears it; a successful respawn or header delivery does not. For keyless local providers (`rpi:local`, `rpi:ollama`, and similar), malvin also stops after 10 backend errors or 5 minutes without a successful turn, even when the errors differ. Fail-fast classes (billing, usage limit, invalid model, and similar) still exit immediately.
+Stop after N consecutive identical backend errors (spawn, header, or prompt), with 1s / 3s backoff between tries. When the flag is omitted, `[agent].max_acp_retries` from `~/.malvinconf/config.toml` is used. Distinct errors reset the consecutive counter. Only a successful prompt turn clears it; a successful respawn or header delivery does not. For keyless local providers (`pi:local`, `pi:ollama`, and similar), malvin also stops after 10 backend errors or 5 minutes without a successful turn, even when the errors differ. Fail-fast classes (billing, usage limit, invalid model, and similar) still exit immediately.
 
 ### `--creative[=PROB]`
 
@@ -168,7 +168,7 @@ TIMING: wall = … llm_wait = … …
 COST: steps = N tokens_in = X tokens_out = Y cache_read = A cache_write = B cost_in = … cost_out = … cost_read = … cost_write = … cost_tot = …
 ```
 
-- **`steps`:** Approximate count of agent steps. Cursor SDK counts SDK `onStep` boundaries; the other backends (`pi:`, `rpi:`, `codex:`) derive steps from assistant replies and tool-call batches (one batch of parallel tool calls counts as one step). Raw tool-call counts are not printed as `steps`.
+- **`steps`:** Approximate count of agent steps. Cursor SDK counts SDK `onStep` boundaries; the other backends (`pi:`, `codex:`) derive steps from assistant replies and tool-call batches (one batch of parallel tool calls counts as one step). Raw tool-call counts are not printed as `steps`.
 - **`tokens_in` / `tokens_out`:** Numeric when the backend reports usage. Cursor SDK folds one `result.usage` (`TokenUsage`) per `send` into these fields (cache read/write counted in `tokens_in`). When usage is absent, fields stay `n/a`.
 - **`cache_read` / `cache_write`:** Separate cache token totals from the same usage objects when reported (`cacheReadTokens` / `cacheWriteTokens`). Still included in `tokens_in`. When absent, fields stay `n/a`.
 - **`cost_in` / `cost_out` / `cost_read` / `cost_write` / `cost_tot`:** Estimated USD from per-model rates in `~/.malvinconf/config.toml` × token counts / 1e6. Rates are dollars per million tokens (`usd_per_microtoken_*`) under `[agent.<provider>.<name>]` for the run model (e.g. `[agent.cursor.auto]` for `cursor:auto`):
@@ -213,11 +213,11 @@ The Cursor SDK bridge also emits automatic `{ "event": "progress", "kind": "hear
 
 `~/.malvinconf/` holds malvin's per-user state: `config.toml`, `local_llms.json`, `logs/`, `names/`, and `sdk-bridges/`. Older releases used `~/.malvin_home/`. On startup, when `~/.malvin_home/` is a real directory, malvin renames it to `~/.malvinconf`, or, if `~/.malvinconf` already exists, merges its contents in (files from `~/.malvin_home/` win on conflict). It then leaves a symlink at the old path, so malvin processes still running an older build keep working.
 
-Top-level keys include `mem_limit_gb`, `theme`, and `disable_rpi` (default `false`; when `true`, `rpi:` is rejected as a backend and omitted from `malvin admin models`). Cursor cost rates `usd_per_microtoken_in`, `usd_per_microtoken_out`, `usd_per_microtoken_cache_read`, and `usd_per_microtoken_cache_write` (dollars per million tokens; all default `0`) live under per-model tables such as `[agent.cursor.auto]` (model id `cursor:auto`). Sections include `[agent]`, `[default_workflow]` (`max_hypotheses` for bare `malvin REQUEST` and `malvin -g` when `--max-hypotheses` is omitted, default 5), `[logs]`, and optional `[nicknames]` (map short unprefixed names to full model ids for `--model` / `[agent].model`, e.g. `astra = "pi:openrouter/openai/gpt-astra"`).
+Top-level keys include `mem_limit_gb` and `theme`. Cursor cost rates `usd_per_microtoken_in`, `usd_per_microtoken_out`, `usd_per_microtoken_cache_read`, and `usd_per_microtoken_cache_write` (dollars per million tokens; all default `0`) live under per-model tables such as `[agent.cursor.auto]` (model id `cursor:auto`). Sections include `[agent]`, `[default_workflow]` (`max_hypotheses` for bare `malvin REQUEST` and `malvin -g` when `--max-hypotheses` is omitted, default 5), `[logs]`, and optional `[nicknames]` (map short unprefixed names to full model ids for `--model` / `[agent].model`, e.g. `astra = "pi:openrouter/openai/gpt-astra"`).
 
 ## Local LLMs (`~/.malvinconf/local_llms.json`)
 
-Malvin runs keyless local models through `rpi:local/<provider>/<model>` (keyless providers: `ollama`, `llamacpp`, `mistralrs`). The operator’s curated registry lives at `~/.malvinconf/local_llms.json`. When that file lists one or more models, `malvin admin models` keeps only those keyless-local ids (cloud providers are unchanged). When the file is missing or `"models"` is empty, listing stays unfiltered (every reachable local model appears).
+Malvin runs keyless local models through `pi:local/<provider>/<model>` (keyless providers: `ollama`, `llamacpp`, `mistralrs`). The operator’s curated registry lives at `~/.malvinconf/local_llms.json`. When that file lists one or more models, `malvin admin models` keeps only those keyless-local ids (cloud providers are unchanged). When the file is missing or `"models"` is empty, listing stays unfiltered (every reachable local model appears).
 
 ### Schema
 
@@ -233,7 +233,7 @@ Malvin runs keyless local models through `rpi:local/<provider>/<model>` (keyless
 }
 ```
 
-- **`id`** (required): Pi-style `provider/model` (no `rpi:` / `local/` prefix). Display and CLI use `rpi:local/<id>`.
+- **`id`** (required): Pi-style `provider/model` (no `pi:` / `local/` prefix). Display and CLI use `pi:local/<id>`.
 - **`source`** (optional): upstream pull tag or weights origin used to install the model.
 - **`notes`** (optional): why this model is kept (host RAM, FT results, tool support, and so on).
 - **`context_size`** (optional, positive integer): per-model override of `context_size` from `~/.malvinconf/config.toml`. Malvin writes it as `contextWindow` (and one quarter of it as `maxTokens`) into Pi’s `models.json` for sessions on this model. Reasoning models that think before answering (for example Qwen3) need a large value, at least 32768; the server’s own context (`num_ctx`, `llama-server -c`) must be at least this large.
@@ -245,14 +245,14 @@ When the operator asks to find, install, or configure a local LLM via the normal
 1. **Research** size and tool support against host RAM (`Sandbox memory` / machine GiB). Prefer Ollama library tags or a Modelfile wrapper with `PARAMETER num_ctx` equal to the model’s effective context size: its `context_size` in `local_llms.json` when set, otherwise `context_size` in `~/.malvinconf/config.toml`. For reasoning models, set a per-model `context_size` large enough that one quarter of it covers thinking plus the answer. Ollama returns thinking in a `reasoning` field that Pi does not display, so a too-small budget can end a turn with an empty answer. When that happens, malvin stops with the error "output cap reached while thinking; raise `context_size` for this model" and a nonzero exit code instead of retrying.
 2. **Install** with the provider CLI (Ollama: `ollama pull <tag>`, or `ollama create <name> -f Modelfile`). Malvin does not bundle a download subcommand.
 3. **Configure** by upserting an entry in `~/.malvinconf/local_llms.json` (create the file with the schema above if missing). Keep only models the operator wants listed.
-4. **Verify** with `malvin admin models rpi:local` (keyless-local catalogs are always live-fetched when the provider is listening; cloud providers still use the daily cache / `--refresh`) and a short `malvin --do --model=rpi:local/<provider>/<model> …` probe when appropriate.
+4. **Verify** with `malvin admin models pi:local` (keyless-local catalogs are always live-fetched when the provider is listening; cloud providers still use the daily cache / `--refresh`) and a short `malvin --do --model=pi:local/<provider>/<model> …` probe when appropriate.
 5. **Remove** by deleting the Ollama tag (optional) and removing the matching object from `local_llms.json`.
 
 Runtime auto-start / idle stop for Ollama is separate (local LLM manager under `~/.malvinconf/`); the JSON file is the curated catalog, not the process supervisor. Malvin auto-starts only Ollama. Other keyless providers (`llamacpp` at `http://127.0.0.1:8080/v1`, `mistralrs`) must already be listening, for example under a launchd user agent; use them when a model needs a runtime Ollama cannot provide (such as a vendor fork of llama.cpp).
 
 On a small host, a resident server of one provider can exhaust GPU memory for another (on Apple silicon the log shows `kIOGPUCommandBufferCallbackErrorOutOfMemory`). Malvin then fails with `Compute error` or `unexpected Content-Type application/x-ndjson` (after `--max-acp-retries` identical errors, or the local cap of 10 errors / 5 minutes) and adds a hint pointing here. Stop the other server (for example `launchctl bootout gui/$UID/<label>`), run `ollama stop <model>` to unload the failed runner, and retry.
 
-Small local models have limits of their own. Models below about 7B parameters, or without the `tools` capability (for example Gemma 3 4B), can answer questions but should not be expected to edit files; many of them never make a tool call. Full mode (bare `malvin REQUEST`) sends a long header and runs several turns, so on local models it is slow and often times out; prefer `malvin --do` for them. For `rpi:` models, malvin repairs two common argument mistakes before Pi sees a tool call: for `read`, `write`, `edit`, `ls`, and `find` it accepts `file`, `file_path`, and `filePath` as aliases for `path`, and for any tool it converts the strings `"true"`, `"false"`, and whole numbers to booleans and integers where the tool's schema declares those types. The default route also puts the request text (up to 8 KB) into the prompt for `rpi:` models, which saves them a tool call. Pi's file tools (`read`, `write`, `edit`, `ls`, `grep`, `find`) are limited to the working directory by default; malvin lifts that limit for `rpi:` models, so they can read and write anywhere the operator's account can.
+Small local models have limits of their own. Models below about 7B parameters, or without the `tools` capability (for example Gemma 3 4B), can answer questions but should not be expected to edit files; many of them never make a tool call. Full mode (bare `malvin REQUEST`) sends a long header and runs several turns, so on local models it is slow and often times out; prefer `malvin --do` for them. The default route puts the request text (up to 8 KB) into the prompt for `pi:` models, which saves them a tool call. When a local model spends its whole output budget thinking and returns no answer or tool call, malvin stops the turn with an output-cap error; raise `context_size` for that model.
 
 ## Log retention
 
@@ -260,11 +260,12 @@ After most agent-backed commands create a new run directory and emit the startup
 
 ## External dependencies
 
-- **Rust**: ≥ 1.95 (`rust-version` in this package; crates.io `0.2.6` declared 1.96). With an older rustc, `cargo install malvin` fails; a leftover ≤0.2.3 binary lists every `rpi:` provider instead of only authenticated ones.
-- **Node.js**: ≥ 22.13 with `npm`, needed at run time only by `cursor:` and `pi:` models. Building malvin does not need Node. `rpi:` and `codex:` models do not need Node.
+- **Rust**: ≥ 1.95 (`rust-version` in this package; crates.io `0.2.6` declared 1.96). With an older rustc, `cargo install malvin` fails.
+- **Node.js**: ≥ 22.13 with `npm` (≥ 22.19 for `pi:`, which runs Pi 1.x), needed at run time only by `cursor:` and `pi:` models. Building malvin does not need Node. `codex:` models do not need Node.
 - **Cursor SDK**: `@cursor/sdk` via `cursor-sdk-bridge/`. The compiled bridge is embedded in the malvin binary. The first time a `cursor:` model runs, malvin writes it to `~/.malvinconf/sdk-bridges/cursor-sdk-bridge/` and runs `npm ci --omit=dev` there; later runs reuse that install until the bundled lock file changes. A repo checkout whose `cursor-sdk-bridge/` already has `node_modules` is used in place. Node is found via `MALVIN_NODE`, `PATH`, or the Cursor `agent` install; npm via `MALVIN_NPM`, next to that Node, or `PATH`. `MALVIN_CURSOR_SDK_BRIDGE` overrides the bridge path. `cursor:` models also need a Cursor API key (`CURSOR_API_KEY`, or `CURSOR_AGENT_API_KEY` / `AGENT_API_KEY`). `malvin admin models` lists Cursor models via the bridge when possible; falls back to `agent` / `cursor-agent` on `PATH` if the SDK path fails.
-- **OpenRouter**: `OPENROUTER_API_KEY` when using `rpi:openrouter/…` models.
-- **Pi SDK**: malvin links crates.io `pi_agent_rust` and lists or runs `rpi:` models from that registry. Provider keys follow Pi’s env vars or credentials already stored under Pi’s auth path (`PI_CODING_AGENT_DIR` / `~/.pi/agent`). An external `pi` binary is not required for `rpi:`.
+- **OpenRouter**: `OPENROUTER_API_KEY` when using `pi:openrouter/…` models.
+- **Pi**: `pi:` models run the npm package `@earendil-works/pi-coding-agent`, which malvin installs under `~/.malvinconf/sdk-bridges/`. Provider keys follow Pi’s env vars or credentials already stored under Pi’s auth path (`PI_CODING_AGENT_DIR` / `~/.pi/agent`).
+- **curl**: used for local-model probes (Ollama) and pricing catalogs (OpenRouter, Portkey).
 - **npm Pi**: `pi:` models require the official `@earendil-works/pi-coding-agent` install (or `MALVIN_PI` pointing at its `cli.js` / `rpc-entry.js`) and use the same Pi auth/config.
 - **Codex**: `codex:` models require a separate `codex` binary (`PATH` or `MALVIN_CODEX`; not bundled) and a Codex login (`codex login`, `OPENAI_API_KEY`, or `$CODEX_HOME/auth.json`).
 - **pre-commit**: optional; malvin does not install hooks automatically.

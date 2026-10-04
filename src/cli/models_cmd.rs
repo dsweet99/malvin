@@ -1,5 +1,5 @@
 use clap::Args;
-use malvin::model_id::{CODEX_PREFIX, CURSOR_PREFIX, PI_PREFIX, RPI_PREFIX};
+use malvin::model_id::{CODEX_PREFIX, CURSOR_PREFIX, PI_PREFIX};
 use malvin::output::{MALVIN_WHO, print_stdout_line};
 
 #[path = "models_cmd_cursor.rs"]
@@ -18,13 +18,13 @@ pub(crate) use models_cmd_filter::{line_matches_prefix, models_list_prefix, sect
 #[derive(Args, Debug, Clone, Default)]
 #[command(override_usage = "malvin admin models [OPTION]... [PREFIX]...")]
 pub struct ModelsArgs {
-    /// Force-refresh `pi:` and `rpi:` model catalogs (also runs automatically every 24h).
+    /// Force-refresh the `pi:` model catalog (also runs automatically every 24h).
     #[arg(long)]
     pub refresh: bool,
     /// Print MODEL's canonical id and backend as one JSON line (nicknames expanded), then exit.
     #[arg(long, value_name = "MODEL", conflicts_with_all = ["refresh", "words"])]
     pub resolve: Option<String>,
-    /// Optional prefix filter (for example `cursor:`, `pi:`, `rpi:`, or `codex:`)
+    /// Optional prefix filter (for example `cursor:`, `pi:`, or `codex:`)
     #[arg(
         value_name = "PREFIX",
         trailing_var_arg = true,
@@ -57,13 +57,6 @@ fn print_current_footer(current_model: &str) {
     print_stdout_line(MALVIN_WHO, &format!("Current: {current_model}"));
 }
 
-fn rpi_models_enabled() -> bool {
-    let Ok(cwd) = std::env::current_dir() else {
-        return true;
-    };
-    !malvin::malvin_config_file::load_malvin_config(&cwd).disable_rpi
-}
-
 pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
     if let Some(raw) = args.resolve.as_deref() {
         return models_cmd_resolve::write_resolved_model(raw, &mut std::io::stdout().lock());
@@ -91,17 +84,12 @@ fn print_models_sections(filter_ref: Option<&str>) {
     }
     if section_may_match(filter_ref, PI_PREFIX) {
         match malvin::npm_pi_sdk::list_npm_pi_display_models() {
-            Ok(models) => print_npm_pi_models(&models, filter_ref),
+            Ok(models) => {
+                print_npm_pi_models(&malvin::pi_sdk::filter_local_listings(models), filter_ref);
+            }
             Err(e) => {
                 print_stdout_line(MALVIN_WHO, &format!("(pi models unavailable: {e})"));
-            }
-        }
-    }
-    if rpi_models_enabled() && section_may_match(filter_ref, RPI_PREFIX) {
-        match malvin::pi_sdk::list_pi_models_sync(false) {
-            Ok(models) => print_pi_models(&models, filter_ref),
-            Err(e) => {
-                print_stdout_line(MALVIN_WHO, &format!("(rpi models unavailable: {e})"));
+                print_npm_pi_models(&malvin::pi_sdk::filter_local_listings(Vec::new()), filter_ref);
             }
         }
     }
@@ -113,47 +101,6 @@ fn print_models_sections(filter_ref: Option<&str>) {
 fn print_npm_pi_models(models: &[(String, String)], filter: Option<&str>) {
     for (id, detail) in models {
         let line = format!("{PI_PREFIX}{id}\t{detail}");
-        if line_matches_prefix(&line, filter) {
-            print_stdout_line(MALVIN_WHO, &line);
-        }
-    }
-}
-
-fn rpi_display_id(model_id: &str) -> String {
-    let provider = model_id.split('/').next().unwrap_or("");
-    if pi::provider_metadata::provider_is_keyless_local(provider) {
-        format!("local/{model_id}")
-    } else {
-        model_id.to_string()
-    }
-}
-
-#[cfg(test)]
-#[test]
-fn rpi_display_id_covers_local_and_cloud() {
-    assert_eq!(
-        rpi_display_id("ollama/qwen2.5:1.5b"),
-        "local/ollama/qwen2.5:1.5b"
-    );
-    assert_eq!(rpi_display_id("openai/gpt-4o"), "openai/gpt-4o");
-}
-
-fn print_pi_models(models: &[malvin::pi_sdk::PiModelListing], filter: Option<&str>) {
-    for model in models {
-        let provider = model.id.split('/').next().unwrap_or("");
-        if !malvin::pi_sdk::is_provider_listable(provider) {
-            continue;
-        }
-        let display_id = rpi_display_id(&model.id);
-        let mut line = format!("{RPI_PREFIX}{display_id}\t{}", model.name);
-        if let Some(thinking) = model.thinking {
-            line.push('\t');
-            line.push_str(if thinking {
-                "thinking=yes"
-            } else {
-                "thinking=no"
-            });
-        }
         if line_matches_prefix(&line, filter) {
             print_stdout_line(MALVIN_WHO, &line);
         }

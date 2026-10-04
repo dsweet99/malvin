@@ -9,12 +9,11 @@ use super::unix_process_group_ps::{
     INIT_PID, ProcRow, host_protected_pids, is_safe_kill_target, list_proc_rows,
     process_group_member_pids,
 };
-#[cfg(test)]
-pub(crate) use session_spawn_affiliation::clear_session_spawn_affiliation_for_test;
+#[cfg(any(test, debug_assertions))]
+pub(crate) use session_spawn_affiliation::note_session_affiliated_pid;
 pub(crate) use session_spawn_affiliation::{
     clear_session_spawn_affiliation, has_noted_session_affiliated_pids, is_session_affiliated_pid,
-    note_session_affiliated_pid, refresh_session_spawn_affiliation,
-    session_affiliated_or_agent_acp,
+    refresh_session_spawn_affiliation, session_affiliated_or_agent_acp,
 };
 
 pub(crate) fn descendant_pids(roots: &HashSet<u32>, rows: &[ProcRow]) -> HashSet<u32> {

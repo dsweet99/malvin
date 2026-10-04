@@ -26,11 +26,7 @@ mod unix_sandbox_monitor;
 pub(crate) use unix_process_ancestor::is_ancestor_pid;
 #[cfg(unix)]
 pub(crate) use unix_process_group_kill_targets::{
-    clear_session_spawn_affiliation, note_session_affiliated_pid, refresh_session_spawn_affiliation,
-};
-#[cfg(all(unix, test))]
-pub(crate) use unix_process_group_kill_targets::{
-    clear_session_spawn_affiliation_for_test, is_session_affiliated_pid,
+    clear_session_spawn_affiliation, refresh_session_spawn_affiliation,
 };
 #[cfg(unix)]
 pub(crate) use unix_process_group_ps::pid_alive;

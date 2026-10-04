@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use pi::provider::ModelCost;
+use super::super::model_cost::ModelCost;
 
 use super::super::cache_clock::unix_now_secs;
 use super::{PricedEntry, PricingCacheFile};

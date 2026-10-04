@@ -64,7 +64,7 @@ pub(crate) fn http_base_url_is_listening(base_url: &str) -> bool {
 }
 
 pub(crate) fn keyless_local_provider_is_listening(provider: &str) -> bool {
-    let Some(defaults) = pi::provider_metadata::provider_routing_defaults(provider) else {
+    let Some(defaults) = super::provider_metadata::local_provider_defaults(provider) else {
         return false;
     };
     http_base_url_is_listening(defaults.base_url)

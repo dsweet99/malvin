@@ -108,7 +108,7 @@ When addressing the operator:
 - DCC: Don't Change Code
 
 
-{{ rpi_extra }}
+{{ pi_extra }}
 
 
 ## Direct Messages

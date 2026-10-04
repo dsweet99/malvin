@@ -14,7 +14,9 @@ The build needs neither Node nor network access beyond crates.io.
 `cursor:` model runs, malvin installs the Cursor SDK (`@cursor/sdk`) under
 `~/.malvinconf/sdk-bridges/` with `npm ci`.
 
-`rpi:` and `codex:` models do not need Node.
+`pi:` models also need Node (≥ 22.19 for Pi 1.x), plus the npm Pi agent
+(`npm install @earendil-works/pi-coding-agent` in `~/.malvinconf/sdk-bridges/`, or
+set `MALVIN_PI`). `codex:` models do not need Node.
 
 ## Usage
 
@@ -69,6 +71,5 @@ Flag reference: `malvin --help`. Behavioral contracts: `malvin --doc` and `malvi
 
 # EXPERIMENTAL - USE AT YOUR OWN RISK
 
-- pi: models (TypeScript/npm `@earendil-works/pi-coding-agent` RPC; set `MALVIN_PI` or install the package)
-- rpi: models (links crates.io `pi_agent_rust`; uses the operator’s Pi auth/config)
+- pi: models (TypeScript/npm `@earendil-works/pi-coding-agent` RPC; set `MALVIN_PI` or install the package). Local models run as `pi:local/<provider>/<model>` (Ollama, llama.cpp, mistral.rs); malvin starts Ollama when needed and writes a context-capped entry to Pi's `models.json`.
 - Codex: models (requires an externally installed `codex` binary; local stdio app-server)

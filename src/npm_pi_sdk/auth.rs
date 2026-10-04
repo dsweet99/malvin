@@ -10,14 +10,14 @@ pub fn ensure_npm_pi_authenticated(model: &str) -> Result<(), AuthError> {
             "pi model id must be `pi:<provider>/<model>` (got `{model}`)"
         )));
     };
-    if crate::pi_sdk::is_provider_authenticated(provider) {
-        return Ok(());
-    }
-    if !crate::pi_sdk::provider_known_in_rust_metadata(provider) {
+    if crate::pi_sdk::is_provider_authenticated(provider)
+        || !crate::pi_sdk::provider_has_known_credentials(provider)
+    {
         return Ok(());
     }
     Err(AuthError(format!(
-        "pi backend is not authenticated for provider `{provider}`. Set a provider API key or store credentials for the npm Pi agent."
+        "pi backend is not authenticated for provider `{provider}`. {}.",
+        crate::pi_sdk::missing_credentials_hint(provider)
     )))
 }
 
@@ -42,11 +42,11 @@ mod tests {
     }
 
     #[test]
-    fn allows_extension_providers_without_rust_auth_metadata() {
+    fn allows_extension_providers_without_known_credentials() {
         let _lock = crate::test_utils::test_env_lock();
         with_fake_npm_pi_entry(|| {
             ensure_npm_pi_authenticated("pi:issue42-ext-provider/some-model")
-                .expect("extension providers must not be false-rejected by rust-Pi auth gate");
+                .expect("extension providers must not be false-rejected by the auth gate");
         });
     }
 
@@ -67,18 +67,11 @@ mod tests {
     }
 
     #[test]
-    fn still_rejects_empty_env_key_builtins_without_credentials() {
+    fn keyless_local_models_pass_without_credentials() {
         let _lock = crate::test_utils::test_env_lock();
         with_fake_npm_pi_entry(|| {
-            assert!(crate::pi_sdk::provider_known_in_rust_metadata(
-                "openai-codex"
-            ));
-            if crate::pi_sdk::is_provider_authenticated("openai-codex") {
-                return;
-            }
-            let err = ensure_npm_pi_authenticated("pi:openai-codex/gpt-5")
-                .expect_err("known empty-env-key builtins must still fail fast");
-            assert!(err.0.contains("openai-codex"));
+            ensure_npm_pi_authenticated("pi:local/ollama/qwen2.5:1.5b").expect("local");
+            ensure_npm_pi_authenticated("pi:llamacpp/m").expect("llamacpp");
         });
     }
 }

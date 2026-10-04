@@ -1,4 +1,4 @@
-use malvin::model_id::RPI_PREFIX;
+use malvin::model_id::PI_PREFIX;
 
 pub(crate) fn models_list_prefix(words: &[String]) -> Result<Option<String>, String> {
     if words.is_empty() {
@@ -32,7 +32,7 @@ fn needs_models_filter_slash(prefix: &str) -> bool {
     if prefix.ends_with(':') || prefix.ends_with('/') {
         return false;
     }
-    prefix.starts_with(RPI_PREFIX)
+    prefix.starts_with(PI_PREFIX)
 }
 
 pub(crate) fn section_may_match(filter: Option<&str>, section_head: &str) -> bool {

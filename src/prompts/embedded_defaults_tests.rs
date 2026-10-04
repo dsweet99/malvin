@@ -44,7 +44,7 @@ fn default_embedded_placeholder_context() -> HashMap<String, String> {
         ("advice_path", "./.malvin/advice.md"),
         ("kpop_insert", ""),
         ("agents_insert", ""),
-        ("rpi_extra", ""),
+        ("pi_extra", ""),
     ];
     let mut ctx: HashMap<String, String> = entries
         .into_iter()

@@ -145,6 +145,6 @@ pub fn install_failed_message(reason: &str) -> String {
         "Cursor SDK bridge is not installed and could not be installed: {reason}\n\
          cursor: models need Node.js >= 22.13 with npm. Install them and retry \
          (or set MALVIN_CURSOR_SDK_BRIDGE). \
-         rpi: and codex: models do not need Node."
+         codex: models do not need Node."
     )
 }

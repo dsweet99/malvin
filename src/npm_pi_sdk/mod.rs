@@ -1,3 +1,4 @@
+mod agent_end_error;
 mod auth;
 mod discover;
 mod extension_ui;

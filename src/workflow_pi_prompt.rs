@@ -42,13 +42,13 @@ pub fn format_request_inline_text(text: &str, plan_path: &Path) -> String {
     format!("The requirements file contains:\n\n{fence}text\n{shown}\n{fence}\n{rest}")
 }
 
-fn is_rpi(model: &str) -> bool {
+fn is_pi(model: &str) -> bool {
     crate::model_id::parse_model_id(model).is_ok_and(|m| m.is_pi())
 }
 
 #[must_use]
 pub fn format_request_inline(model: &str, plan_path: &Path) -> String {
-    if !is_rpi(model) {
+    if !is_pi(model) {
         return String::new();
     }
     std::fs::read_to_string(plan_path)
@@ -56,7 +56,7 @@ pub fn format_request_inline(model: &str, plan_path: &Path) -> String {
         .unwrap_or_default()
 }
 
-pub fn insert_rpi_prompt_keys(
+pub fn insert_pi_prompt_keys(
     context: &mut std::collections::HashMap<String, String>,
     model: &str,
     plan_path: &Path,
@@ -68,5 +68,5 @@ pub fn insert_rpi_prompt_keys(
 }
 
 #[cfg(test)]
-#[path = "workflow_rpi_prompt_tests.rs"]
+#[path = "workflow_pi_prompt_tests.rs"]
 mod tests;

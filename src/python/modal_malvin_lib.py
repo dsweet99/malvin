@@ -15,9 +15,9 @@ import modal
 APP_NAME = "malvin"
 MODEL_ID = "RedHatAI/Qwen3.8-27B-INT4"
 SERVED_NAME = "qwen3.8-27b"
-API_MODEL = "rpi:openrouter/anthropic/claude-haiku-4.5"
-LOCAL_MODEL = f"rpi:local/llamacpp/{SERVED_NAME}"
-GROK_MODEL = "rpi:openrouter/x-ai/grok-4.7"
+API_MODEL = "pi:openrouter/anthropic/claude-haiku-4.5"
+LOCAL_MODEL = f"pi:local/llamacpp/{SERVED_NAME}"
+GROK_MODEL = "pi:openrouter/x-ai/grok-4.7"
 MAX_MODEL_LEN = 131072
 PORT = 8080
 SCALEDOWN_S = 600
@@ -43,7 +43,21 @@ if modal.is_local():
         check=True,
     )
 
-BUILD_DEPS = ("build-essential", "pkg-config", "libssl-dev", "git", "curl", "ca-certificates")
+BUILD_DEPS = (
+    "build-essential", "pkg-config", "libssl-dev", "git", "curl", "ca-certificates", "xz-utils",
+)
+NODE_DIST = "node-v22.23.2-linux-x64"
+PI_PREFIX = "/opt/pi"
+PI_PACKAGE = "@earendil-works/pi-coding-agent@1.0.2"
+INSTALL_PI = (
+    f"curl -fsSL https://nodejs.org/dist/v22.23.2/{NODE_DIST}.tar.xz | tar -xJ -C /opt"
+    f" && ln -sf /opt/{NODE_DIST}/bin/node /usr/local/bin/node"
+    f" && /opt/{NODE_DIST}/bin/npm install --prefix {PI_PREFIX} {PI_PACKAGE}"
+)
+PI_ENV = {
+    "MALVIN_PI": f"{PI_PREFIX}/node_modules/@earendil-works/pi-coding-agent/dist/bundle/rpc-entry.js",
+    "MALVIN_NODE": "/usr/local/bin/node",
+}
 RUSTUP = "curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain 1.96.0"
 BUILD_MALVIN = (
     "mkdir -p /opt/malvin && tar -xf /opt/malvin-src.tar -C /opt/malvin"
@@ -55,9 +69,10 @@ LINK_HOME = f"rm -rf {MALVIN_HOME} && mkdir -p {MALVIN_HOME} && ln -s {LOGS} {MA
 api_image = (
     modal.Image.debian_slim(python_version="3.12")
     .apt_install(*BUILD_DEPS)
-    .env({"MALVIN_DISABLE_LLD": "1"})
+    .env({"MALVIN_DISABLE_LLD": "1", **PI_ENV})
     .add_local_file(MALVIN_SRC_TAR, "/opt/malvin-src.tar", copy=True)
     .run_commands(
+        INSTALL_PI,
         f"{RUSTUP} && {BUILD_MALVIN}"
         " && rm -rf /root/.cargo /root/.rustup /opt/malvin /opt/malvin-src.tar",
         "malvin --version",
@@ -70,8 +85,8 @@ vllm_image = (
     .entrypoint([])
     .pip_install("huggingface_hub")
     .apt_install(*BUILD_DEPS)
-    .run_commands(RUSTUP)
-    .env({"MALVIN_DISABLE_LLD": "1", "HF_HOME": f"{DATA}/hf", "VLLM_CACHE_ROOT": f"{DATA}/vllm"})
+    .run_commands(RUSTUP, INSTALL_PI)
+    .env({"MALVIN_DISABLE_LLD": "1", **PI_ENV, "HF_HOME": f"{DATA}/hf", "VLLM_CACHE_ROOT": f"{DATA}/vllm"})
     .add_local_file(MALVIN_SRC_TAR, "/opt/malvin-src.tar", copy=True)
     .run_commands(BUILD_MALVIN, "malvin --version", LINK_HOME)
 )

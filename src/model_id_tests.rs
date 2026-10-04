@@ -6,29 +6,24 @@ fn parse_cursor_and_pi() {
     assert_eq!(c.backend, ModelBackend::Cursor);
     assert_eq!(c.canonical(), "cursor:auto");
     assert!(c.params.is_empty());
-    let rpi = parse_model_id("rpi:openai/gpt-4o").expect("rpi");
-    assert!(rpi.is_pi());
-    assert!(!rpi.is_npm_pi());
-    assert_eq!(rpi.canonical(), "rpi:openai/gpt-4o");
-    assert_eq!(rpi.pi_provider_and_model(), Some(("openai", "gpt-4o")));
     let npm = parse_model_id("pi:openai/gpt-4o").expect("npm pi");
-    assert!(npm.is_npm_pi());
-    assert!(!npm.is_pi());
+    assert!(npm.is_pi());
+    assert!(!c.is_pi());
     assert_eq!(npm.canonical(), "pi:openai/gpt-4o");
     assert_eq!(npm.pi_provider_and_model(), Some(("openai", "gpt-4o")));
-    let pi_nested = parse_model_id("rpi:openrouter/anthropic/claude-3-haiku").expect("pi nested");
+    let pi_nested = parse_model_id("pi:openrouter/anthropic/claude-3-haiku").expect("pi nested");
     assert_eq!(
         pi_nested.pi_provider_and_model(),
         Some(("openrouter", "anthropic/claude-3-haiku"))
     );
-    let local = parse_model_id("rpi:local/whatever_model_name").expect("local alias");
-    assert_eq!(local.canonical(), "rpi:local/whatever_model_name");
+    let local = parse_model_id("pi:local/whatever_model_name").expect("local alias");
+    assert_eq!(local.canonical(), "pi:local/whatever_model_name");
     assert_eq!(
         local.pi_provider_and_model(),
         Some(("ollama", "whatever_model_name"))
     );
-    let local_nested = parse_model_id("rpi:local/ollama/qwen2.5:1.5b").expect("local nested");
-    assert_eq!(local_nested.canonical(), "rpi:local/ollama/qwen2.5:1.5b");
+    let local_nested = parse_model_id("pi:local/ollama/qwen2.5:1.5b").expect("local nested");
+    assert_eq!(local_nested.canonical(), "pi:local/ollama/qwen2.5:1.5b");
     assert_eq!(
         local_nested.pi_provider_and_model(),
         Some(("ollama", "qwen2.5:1.5b"))
@@ -60,10 +55,10 @@ fn parse_bracket_overrides() {
         c.cursor_bridge_model(),
         "claude-opus-5[effort=high,fast=true]"
     );
-    let pi = parse_model_id("rpi:openai/gpt-4o[thinking=high]").expect("pi thinking");
+    let pi = parse_model_id("pi:openai/gpt-4o[thinking=high]").expect("pi thinking");
     assert_eq!(pi.slug, "openai/gpt-4o");
     assert_eq!(pi.thinking_param(), Some("high"));
-    assert_eq!(pi.canonical(), "rpi:openai/gpt-4o[thinking=high]");
+    assert_eq!(pi.canonical(), "pi:openai/gpt-4o[thinking=high]");
     let codex = parse_model_id("codex:gpt-5.6[thinking=high,service=priority]").expect("codex");
     assert_eq!(codex.slug, "gpt-5.6");
     assert_eq!(codex.thinking_param(), Some("high"));
@@ -84,7 +79,7 @@ fn parse_bracket_overrides() {
         Some("off")
     );
     assert_eq!(
-        parse_model_id("rpi:openai/gpt-4o[thinking=ultra]")
+        parse_model_id("pi:openai/gpt-4o[thinking=ultra]")
             .expect("shared thinking vocabulary")
             .thinking_param(),
         Some("ultra")
@@ -95,12 +90,12 @@ fn parse_bracket_overrides() {
             .contains(']')
     );
     assert!(
-        parse_model_id("rpi:openai/gpt-4o[fast=true]")
+        parse_model_id("pi:openai/gpt-4o[fast=true]")
             .expect_err("pi only thinking")
             .contains("thinking")
     );
     assert!(
-        parse_model_id("rpi:openai/gpt-4o[thinking=nope]")
+        parse_model_id("pi:openai/gpt-4o[thinking=nope]")
             .expect_err("bad level")
             .contains("thinking")
     );
@@ -138,7 +133,7 @@ fn format_and_split_bracket_params_helpers() {
 fn reject_bare_legacy_and_empty_slug() {
     assert!(parse_model_id("auto").is_err());
     assert!(parse_model_id("cursor:").is_err());
-    assert!(parse_model_id("rpi:openai").is_err());
+    assert!(parse_model_id("pi:openai").is_err());
     assert!(
         parse_model_id("prime:openai/gpt-4o")
             .expect_err("legacy prime")
@@ -152,26 +147,27 @@ fn reject_bare_legacy_and_empty_slug() {
     assert!(
         parse_model_id("openrouter:x")
             .expect_err("legacy")
-            .contains("rpi:openrouter/")
+            .contains("pi:openrouter/")
     );
     assert!(
         parse_model_id("local:qwen35_9b_q4")
             .expect_err("legacy")
             .contains("local")
     );
-    assert!(parse_model_id("pi:openai").is_err());
+    let err = parse_model_id("rpi:local/ollama/qwen2.5:1.5b").expect_err("rpi removed");
+    assert!(err.contains("`rpi:` backend removed") && err.contains("pi:local/ollama/"), "{err}");
 }
 
 #[test]
 fn require_config_and_helpers() {
     assert!(require_config_model("auto").is_err());
     assert_eq!(
-        require_config_model("rpi:openai/gpt-4o")
+        require_config_model("pi:openai/gpt-4o")
             .expect("ok")
             .canonical(),
-        "rpi:openai/gpt-4o"
+        "pi:openai/gpt-4o"
     );
-    let pi = parse_model_id("rpi:openai/gpt-4o").expect("pi");
+    let pi = parse_model_id("pi:openai/gpt-4o").expect("pi");
     assert_eq!(pi.slug, "openai/gpt-4o");
     assert!(pi.is_pi());
     assert!(!parse_model_id("cursor:auto").expect("cursor").is_pi());
@@ -198,7 +194,7 @@ fn parse_canonical_metamorphic_roundtrip() {
         "cursor:auto",
         "  cursor:claude-opus-5[effort=high,fast=true]  ",
         "pi:openai/gpt-4o",
-        "rpi:openrouter/anthropic/claude-3-haiku[thinking=medium]",
+        "pi:openrouter/anthropic/claude-3-haiku[thinking=medium]",
         "codex:gpt-5.6[thinking=high,service=priority]",
     ];
     for raw in samples {
@@ -212,8 +208,7 @@ fn parse_canonical_metamorphic_roundtrip() {
 #[test]
 fn backend_labels_drain_prefixes_and_provider_split() {
     assert_eq!(ModelBackend::Cursor.label(), "cursor");
-    assert_eq!(ModelBackend::NpmPi.label(), "pi");
-    assert_eq!(ModelBackend::Pi.label(), "rpi");
+    assert_eq!(ModelBackend::Pi.label(), "pi");
     assert_eq!(ModelBackend::Codex.label(), "codex");
     assert!(
         ModelBackend::Cursor
@@ -221,14 +216,9 @@ fn backend_labels_drain_prefixes_and_provider_split() {
             .contains("bridge timed out")
     );
     assert!(
-        ModelBackend::NpmPi
-            .drain_idle_prefix()
-            .contains("npm pi rpc timed out")
-    );
-    assert!(
         ModelBackend::Pi
             .drain_idle_prefix()
-            .contains("pi rpc timed out")
+            .contains("npm pi rpc timed out")
     );
     assert!(
         ModelBackend::Codex
@@ -247,8 +237,8 @@ fn backend_labels_drain_prefixes_and_provider_split() {
             .pi_provider_and_model()
             .is_none()
     );
-    assert!(parse_model_id("rpi:/model").is_err());
-    assert!(parse_model_id("rpi:provider/").is_err());
+    assert!(parse_model_id("pi:/model").is_err());
+    assert!(parse_model_id("pi:provider/").is_err());
     assert!(parse_model_id("").is_err());
     assert_eq!(
         require_config_model("")
