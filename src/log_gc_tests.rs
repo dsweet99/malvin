@@ -159,7 +159,7 @@ fn prune_removes_run_dir_when_over_age_limit() {
         max_age_days: Some(30),
         max_bytes: None,
     };
-    let (removed, _) = prune_run_dirs(&mut runs, &config, None);
+    let removed = prune_run_dirs(&mut runs, &config, None).removed;
     assert_eq!(removed, 1);
     assert!(!old.exists());
 }
@@ -188,7 +188,7 @@ fn prune_removes_oldest_when_over_byte_cap() {
         max_age_days: None,
         max_bytes: Some(3000),
     };
-    let (removed, _) = prune_run_dirs(&mut runs, &config, None);
+    let removed = prune_run_dirs(&mut runs, &config, None).removed;
     assert_eq!(removed, 1);
     assert!(!old.exists());
     assert!(new.is_dir());
@@ -210,7 +210,7 @@ fn undeletable_oldest_run_fixture() -> Option<(TestLogsBucket, PathBuf, PathBuf)
 }
 
 #[cfg(unix)]
-fn prune_retries_or_reports_when_delete_fails_and_limits_still_exceeded() {
+fn prune_aborts_when_delete_fails_and_limits_still_exceeded() {
     use std::os::unix::fs::PermissionsExt;
 
     let Some((_guard, logs, oldest)) = undeletable_oldest_run_fixture() else {
@@ -223,17 +223,15 @@ fn prune_retries_or_reports_when_delete_fails_and_limits_still_exceeded() {
         max_age_days: None,
         max_bytes: Some(1000),
     };
-    let (removed, _) = prune_run_dirs(&mut runs, &config, None);
+    let tally = prune_run_dirs(&mut runs, &config, None);
 
     std::fs::set_permissions(&oldest, std::fs::Permissions::from_mode(0o700)).expect("restore");
+    assert!(tally.aborted, "an undeletable run must abort the prune");
+    assert_eq!(tally.removed, 0);
     assert_eq!(
         list_run_dirs(&logs).len(),
-        2,
-        "after a failed delete, GC must still enforce byte cap on disk (got {removed} removed)"
-    );
-    assert!(
-        oldest.is_dir(),
-        "undeletable oldest run must not be dropped from enforcement"
+        3,
+        "after a failed delete, GC must not fall through to newer runs"
     );
 }
 
@@ -251,5 +249,5 @@ fn kiss_bundled_log_gc_tests() {
     prune_leaves_non_run_log_subdirs_untouched();
     prune_removes_run_dir_when_over_age_limit();
     prune_removes_oldest_when_over_byte_cap();
-    prune_retries_or_reports_when_delete_fails_and_limits_still_exceeded();
+    prune_aborts_when_delete_fails_and_limits_still_exceeded();
 }

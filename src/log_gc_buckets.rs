@@ -4,8 +4,8 @@ use crate::log_gc_config::LogsGcConfig;
 use crate::output::print_log_warning;
 use crate::workspace_paths::read_work_dir_manifest;
 
-use super::list_run_dirs;
-use super::log_gc_prune::prune_run_dirs;
+use super::log_gc_prune::{PruneTally, prune_run_dirs};
+use super::{list_run_dirs, remove_tree_or_report, report_undeletable};
 
 pub(crate) fn list_log_buckets(home_logs: &Path) -> Vec<PathBuf> {
     let mut buckets = Vec::new();
@@ -25,22 +25,21 @@ pub(crate) fn list_log_buckets(home_logs: &Path) -> Vec<PathBuf> {
     buckets
 }
 
-pub(crate) fn remove_bucket_if_empty(bucket: &Path, keep: Option<&Path>) {
+pub(crate) fn remove_bucket_if_empty(bucket: &Path, keep: Option<&Path>) -> bool {
     if keep.is_some_and(|k| k == bucket) {
-        return;
+        return true;
     }
     let Ok(mut entries) = std::fs::read_dir(bucket) else {
-        return;
+        return true;
     };
     if entries.next().is_some() {
-        return;
+        return true;
     }
     if let Err(e) = std::fs::remove_dir(bucket) {
-        print_log_warning(&format!(
-            "could not remove empty log bucket {}: {e}",
-            bucket.display()
-        ));
+        report_undeletable(bucket, &e);
+        return false;
     }
+    true
 }
 
 pub(crate) fn bucket_is_ephemeral_orphan(runs: &[PathBuf]) -> bool {
@@ -51,17 +50,18 @@ pub(crate) fn bucket_is_ephemeral_orphan(runs: &[PathBuf]) -> bool {
         .all(|run| read_work_dir_manifest(run).is_some_and(|work| !work.exists()))
 }
 
-fn remove_orphan_bucket(bucket: &Path, runs: &[PathBuf]) -> (usize, u64) {
-    let count = runs.len();
+fn remove_orphan_bucket(bucket: &Path, runs: &[PathBuf]) -> PruneTally {
     let freed = crate::log_gc::dir_size(bucket);
-    match std::fs::remove_dir_all(bucket) {
-        Ok(()) => (count, freed),
-        Err(e) => {
-            print_log_warning(&format!(
-                "could not remove orphan log bucket {}: {e}",
-                bucket.display()
-            ));
-            (0, 0)
+    if remove_tree_or_report(bucket) {
+        PruneTally {
+            removed: runs.len(),
+            freed,
+            aborted: false,
+        }
+    } else {
+        PruneTally {
+            aborted: true,
+            ..PruneTally::default()
         }
     }
 }
@@ -77,17 +77,17 @@ pub(crate) fn prune_all_log_buckets(
     for bucket in list_log_buckets(home_logs) {
         let mut runs = list_run_dirs(&bucket);
         let keep = keep_bucket.is_some_and(|k| k == bucket.as_path());
-        if !keep && bucket_is_ephemeral_orphan(&runs) {
-            let (r, f) = remove_orphan_bucket(&bucket, &runs);
-            removed = removed.saturating_add(r);
-            freed = freed.saturating_add(f);
-            continue;
+        let tally = if !keep && bucket_is_ephemeral_orphan(&runs) {
+            remove_orphan_bucket(&bucket, &runs)
+        } else {
+            runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
+            prune_run_dirs(&mut runs, config, protect_run)
+        };
+        removed = removed.saturating_add(tally.removed);
+        freed = freed.saturating_add(tally.freed);
+        if tally.aborted || !remove_bucket_if_empty(&bucket, keep_bucket) {
+            break;
         }
-        runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
-        let (r, f) = prune_run_dirs(&mut runs, config, protect_run);
-        removed = removed.saturating_add(r);
-        freed = freed.saturating_add(f);
-        remove_bucket_if_empty(&bucket, keep_bucket);
     }
     (removed, freed)
 }
