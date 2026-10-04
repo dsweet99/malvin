@@ -44,9 +44,9 @@ fn child_health_transport_errors_require_coder_session_teardown() {
 #[test]
 fn live_drain_idle_prefixes_require_coder_session_teardown() {
     for prefix in [
-        crate::acp::DRAIN_IDLE_PREFIX_BRIDGE,
-        crate::acp::DRAIN_IDLE_PREFIX_PI,
-        crate::acp::DRAIN_IDLE_PREFIX_CODEX,
+        crate::model_id::ModelBackend::Cursor.drain_idle_prefix(),
+        crate::model_id::ModelBackend::Pi.drain_idle_prefix(),
+        crate::model_id::ModelBackend::Codex.drain_idle_prefix(),
     ] {
         let msg = format!(
             "{prefix} waiting for event after 1s without a bridge event (bridge quiet; likely hung or stalled)"

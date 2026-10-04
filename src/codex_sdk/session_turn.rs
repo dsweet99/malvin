@@ -3,6 +3,7 @@ use std::time::Instant;
 use super::session::CodexSession;
 use crate::acp::AgentError;
 use crate::bridge_protocol::BridgeEvent;
+use crate::bridge_sdk::JsonLineSession;
 
 #[derive(Default)]
 pub(super) struct TurnState {
@@ -17,7 +18,7 @@ pub(super) async fn consume_codex_turn(session: &CodexSession) -> Result<(), Age
     let mut state = TurnState::default();
     let mut turn = crate::bridge_sdk::DrainIdleTurn::new();
     loop {
-        let value = super::session_io::read_json_waiting(session, "turn event", &mut turn).await?;
+        let value = session.read_json_waiting("turn event", &mut turn).await?;
         if let Some(err) = rpc_error(&value) {
             return Err(err);
         }
@@ -26,7 +27,7 @@ pub(super) async fn consume_codex_turn(session: &CodexSession) -> Result<(), Age
             return result;
         }
         turn.check_max_deadline(crate::bridge_sdk::DrainIdleLabels {
-            prefix: crate::acp::DRAIN_IDLE_PREFIX_CODEX,
+            prefix: crate::model_id::ModelBackend::Codex.drain_idle_prefix(),
             waiting_for: "turn event",
         })?;
     }
@@ -122,7 +123,7 @@ fn emit_turn_stream(
     }
     let method = value.get("method").and_then(|v| v.as_str()).unwrap_or("");
     let params = value.get("params").unwrap_or(&serde_json::Value::Null);
-    let wait = super::session_io::turn_wait(session);
+    let wait = crate::bridge_sdk::TurnWait::of(session);
     for ev in super::map_event::map_codex_stream_events(method, params) {
         wait.note_productive_event(drain, &ev);
         if let BridgeEvent::Assistant { text } = &ev {

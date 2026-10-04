@@ -1,22 +1,10 @@
-use std::process::Stdio;
-use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
-
-use tokio::io::BufReader;
-use tokio::sync::Mutex as AsyncMutex;
-
 use super::discover::resolve_npm_pi_entry;
 use super::session::NpmPiSession;
 use crate::acp::AgentError;
-use crate::bridge_sdk::{BridgeSpawnArgs, StreamLog};
+use crate::bridge_sdk::{BridgeSpawnArgs, StdioChild, StreamLog};
+use std::process::Stdio;
 
-pub(super) type NpmPiProcess = (
-    tokio::process::Child,
-    tokio::process::ChildStdin,
-    tokio::process::ChildStdout,
-    Option<u32>,
-    std::collections::HashSet<u32>,
-);
+pub(super) type NpmPiProcess = crate::bridge_sdk::SpawnedStdio;
 
 pub(super) fn spawn_npm_pi_session(
     args: &BridgeSpawnArgs<'_>,
@@ -98,14 +86,11 @@ pub(super) fn build_npm_pi_session(
         .map_err(AgentError)?;
     let local_hold = take_local_hold(args.model)?;
     Ok(NpmPiSession {
-        child: AsyncMutex::new(Some(child)),
-        stdin: Arc::new(AsyncMutex::new(stdin)),
-        stdout: Arc::new(AsyncMutex::new(BufReader::new(stdout))),
-        process_group_id: pgid,
-        spawn_pid_baseline: baseline,
-        reader_dead: Arc::new(AtomicBool::new(false)),
-        work_dir: args.cwd.to_path_buf(),
-        log: StreamLog::from_spawn(args),
+        stdio: StdioChild::new(
+            (child, stdin, stdout, pgid, baseline),
+            args.cwd.to_path_buf(),
+            StreamLog::from_spawn(args),
+        ),
         pi_model: pi_model_pair(args.model),
         local_hold,
         output_cap: local_output_cap(args),

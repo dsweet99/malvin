@@ -1,20 +1,22 @@
 use super::session::CodexSession;
-use super::session_io::turn_wait;
 use super::session_process::build_codex_session;
 use super::session_turn::{TurnState, handle_codex_event};
 use crate::acp::AgentIoOptions;
-use crate::bridge_sdk::{BridgeSpawnArgs, DrainIdleTurn};
+use crate::bridge_sdk::turn_timeout_tests::{assert_dead_session_error, cat_child, script_child};
+use crate::bridge_sdk::{BridgeSpawnArgs, DrainIdleTurn, JsonLineSession, TurnWait};
 use serde_json::json;
 
 fn cat_codex_session() -> CodexSession {
-    let mut child = tokio::process::Command::new("cat")
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .kill_on_drop(true)
-        .spawn()
-        .expect("spawn cat");
-    let stdin = child.stdin.take().expect("stdin");
-    let stdout = child.stdout.take().expect("stdout");
+    codex_session_from(cat_child())
+}
+
+fn codex_session_from(
+    (child, stdin, stdout): (
+        tokio::process::Child,
+        tokio::process::ChildStdin,
+        tokio::process::ChildStdout,
+    ),
+) -> CodexSession {
     let model = crate::model_id::parse_model_id("codex:gpt-5").expect("model");
     let args = BridgeSpawnArgs {
         cwd: std::path::Path::new("."),
@@ -46,7 +48,7 @@ async fn codex_tool_start_extends_turn_and_marks_tools_in_flight() {
         turn_id: Some("turn-1".into()),
         ..TurnState::default()
     };
-    assert!(!turn_wait(&session).health().tools_in_flight);
+    assert!(!TurnWait::of(&session).health().tools_in_flight);
     let started = json!({
         "method": "item/started",
         "params": {
@@ -60,7 +62,7 @@ async fn codex_tool_start_extends_turn_and_marks_tools_in_flight() {
         "codex tool start must extend the turn deadline"
     );
     assert!(
-        turn_wait(&session).health().tools_in_flight,
+        TurnWait::of(&session).health().tools_in_flight,
         "codex open tool must report tools_in_flight"
     );
 }
@@ -80,5 +82,55 @@ async fn codex_non_tool_event_does_not_extend_turn() {
     });
     assert!(handle_codex_event(&session, &delta, &mut state, &mut turn).is_none());
     assert_eq!(turn.clock.max_deadline(), before);
-    assert!(!turn_wait(&session).health().tools_in_flight);
+    assert!(!TurnWait::of(&session).health().tools_in_flight);
+}
+
+#[tokio::test]
+async fn codex_json_line_round_trips_through_child() {
+    let session = cat_codex_session();
+    let sent = json!({"method": "ping", "id": 7});
+    session.write_json(&sent).await.expect("write");
+    let mut turn = DrainIdleTurn::new();
+    let got = session
+        .read_json_waiting("echo", &mut turn)
+        .await
+        .expect("read");
+    assert_eq!(got, sent);
+}
+
+#[tokio::test]
+async fn codex_json_line_accepts_crlf() {
+    let session = codex_session_from(script_child("printf '{\"a\":1}\\r\\n'; exec cat"));
+    let mut turn = DrainIdleTurn::new();
+    let got = session
+        .read_json_waiting("crlf", &mut turn)
+        .await
+        .expect("read");
+    assert_eq!(got, json!({"a": 1}));
+}
+
+#[tokio::test]
+async fn codex_json_line_failures_are_dead_session_errors() {
+    let closed = codex_session_from(script_child("exit 0"));
+    let mut turn = DrainIdleTurn::new();
+    let err = closed
+        .read_json_waiting("eof", &mut turn)
+        .await
+        .unwrap_err();
+    assert_dead_session_error(&err, "codex stdout closed");
+
+    let garbled = codex_session_from(script_child("echo nope; exec cat"));
+    let err = garbled
+        .read_json_waiting("parse", &mut turn)
+        .await
+        .unwrap_err();
+    assert_dead_session_error(&err, "codex JSON-RPC parse:");
+}
+
+#[tokio::test]
+async fn codex_session_drop_marks_reader_dead() {
+    let session = cat_codex_session();
+    let reader_dead = std::sync::Arc::clone(&session.stdio.reader_dead);
+    drop(session);
+    assert!(reader_dead.load(std::sync::atomic::Ordering::SeqCst));
 }

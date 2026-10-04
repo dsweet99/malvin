@@ -1,12 +1,9 @@
-use std::collections::BTreeMap;
 use std::path::Path;
-
-use crate::model_id::{CODEX_PREFIX, PI_PREFIX};
 
 pub const PI_DIR: &str = "/opt/malvin-pi";
 pub const PI_ENTRY: &str =
     "/opt/malvin-pi/node_modules/@earendil-works/pi-coding-agent/dist/bundle/rpc-entry.js";
-const PI_PACKAGE: &str = "@earendil-works/pi-coding-agent";
+pub(super) const PI_PACKAGE: &str = "@earendil-works/pi-coding-agent";
 
 #[must_use]
 pub fn parse_version_token(text: &str) -> Option<String> {
@@ -16,7 +13,7 @@ pub fn parse_version_token(text: &str) -> Option<String> {
     valid.then(|| token.to_string())
 }
 
-fn local_codex_version() -> String {
+pub(super) fn local_codex_version() -> String {
     std::process::Command::new("codex")
         .arg("--version")
         .output()
@@ -37,30 +34,4 @@ pub fn local_pi_version(home: &Path) -> String {
         .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
         .and_then(|v| v["version"].as_str().and_then(parse_version_token))
         .unwrap_or_else(|| "latest".to_string())
-}
-
-#[must_use]
-pub fn backend_layer(model: &str, home: &Path) -> Option<Vec<String>> {
-    if model.starts_with(CODEX_PREFIX) {
-        return Some(vec![format!(
-            "RUN npm install -g --no-audit --no-fund @openai/codex@{}",
-            local_codex_version()
-        )]);
-    }
-    if model.starts_with(PI_PREFIX) {
-        return Some(vec![format!(
-            "RUN mkdir -p {PI_DIR} && cd {PI_DIR} && npm install --no-audit --no-fund {PI_PACKAGE}@{}",
-            local_pi_version(home)
-        )]);
-    }
-    None
-}
-
-#[must_use]
-pub fn backend_env(model: &str) -> BTreeMap<String, String> {
-    let mut env = BTreeMap::new();
-    if model.starts_with(PI_PREFIX) {
-        env.insert("MALVIN_PI".to_string(), PI_ENTRY.to_string());
-    }
-    env
 }

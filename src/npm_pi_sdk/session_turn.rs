@@ -1,6 +1,7 @@
 use super::session::NpmPiSession;
 use crate::acp::AgentError;
 use crate::bridge_protocol::{BridgeEvent, RunDoneStatus};
+use crate::bridge_sdk::JsonLineSession;
 
 #[derive(Default)]
 pub(super) struct TurnState {
@@ -27,8 +28,7 @@ pub(super) async fn consume_npm_pi_turn(
     };
     let mut turn = crate::bridge_sdk::DrainIdleTurn::new();
     loop {
-        let value =
-            super::session_io::read_json_waiting(session, "npm pi event", &mut turn).await?;
+        let value = session.read_json_waiting("npm pi event", &mut turn).await?;
         {
             let mut active = ActiveTurn {
                 state: &mut state,
@@ -46,13 +46,12 @@ pub(super) async fn consume_npm_pi_turn(
 }
 
 pub(super) fn feed_mapped_bridge_events(
-    session: &crate::bridge_sdk::StreamLog,
+    session: &NpmPiSession,
     turn: &mut crate::bridge_sdk::DrainIdleTurn,
     events: &[BridgeEvent],
 ) {
     for ev in events {
-        (crate::bridge_sdk::turn_timeout_extension(crate::model_id::ModelBackend::Pi)
-            .note_productive_event)(session, turn, ev);
+        crate::bridge_sdk::TurnTimeoutExtension::note_productive_event(session, turn, ev);
         if let BridgeEvent::Step { .. } = ev {
             crate::bridge_sdk::note_sdk_step(session.timing.as_ref());
         }

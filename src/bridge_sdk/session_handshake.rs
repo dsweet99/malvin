@@ -17,7 +17,7 @@ async fn read_event_with_timeout(
         .unwrap_or_else(|_| {
             Err(AgentError(format!(
                 "{} waiting for {waiting_for} after {timeout:?} of silence",
-                crate::acp::DRAIN_IDLE_PREFIX_BRIDGE
+                crate::model_id::ModelBackend::Cursor.drain_idle_prefix()
             )))
         })
 }
@@ -29,7 +29,7 @@ pub(super) async fn wait_for_ok(session: &BridgeSession) -> Result<(), AgentErro
         if remaining.is_zero() {
             return Err(AgentError(format!(
                 "{} waiting for ok after {:?} (startup handshake deadline)",
-                crate::acp::DRAIN_IDLE_PREFIX_BRIDGE,
+                crate::model_id::ModelBackend::Cursor.drain_idle_prefix(),
                 sdk_bridge_startup_timeout()
             )));
         }

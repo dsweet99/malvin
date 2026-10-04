@@ -1,6 +1,6 @@
 use super::session::CodexSession;
 use crate::acp::AgentError;
-use crate::bridge_sdk::{BridgeSpawnArgs, MemWatchArgs, start_mem_watch};
+use crate::bridge_sdk::{BridgeSpawnArgs, start_mem_watch};
 
 pub(crate) async fn codex_spawn_bridge(
     args: BridgeSpawnArgs<'_>,
@@ -8,13 +8,7 @@ pub(crate) async fn codex_spawn_bridge(
 ) -> Result<CodexSession, AgentError> {
     let ticket = crate::malvin_sandbox::take_sandbox_spawn_ticket().map_err(AgentError)?;
     let session = spawn_codex_session(&args, service, ticket)?;
-    start_mem_watch(MemWatchArgs {
-        process_group_id: session.process_group_id,
-        reader_dead: &session.reader_dead,
-        work_dir: &session.work_dir,
-        spawn_pid_baseline: &session.spawn_pid_baseline,
-        run_dir: session.run_dir.as_deref(),
-    });
+    start_mem_watch(session.stdio.mem_watch_args());
     codex_initialize(&session).await?;
     let model = args.wire_model();
     codex_start_thread(&session, &model, args.cwd).await?;
@@ -27,7 +21,7 @@ use super::session_protocol::{codex_initialize, codex_start_thread};
 #[cfg(test)]
 mod tests {
     use super::super::session_process::{
-        CodexProcess, build_codex_session, build_codex_session_io, configured_codex_command,
+        CodexProcess, build_codex_session, configured_codex_command,
         spawn_codex_process, spawn_codex_session,
     };
     use super::super::session_protocol::{request, response_error};
@@ -37,7 +31,6 @@ mod tests {
     fn kiss_cov_codex_process_type_is_referenced() {
         let _: Option<CodexProcess> = None;
         let _ = build_codex_session;
-        let _ = build_codex_session_io;
         let _ = configured_codex_command;
         let _ = spawn_codex_process;
         let _ = spawn_codex_session;

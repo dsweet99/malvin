@@ -66,16 +66,21 @@ fn binary_hash(path: &Path) -> Result<u64, String> {
     Ok(fnv1a64(&bytes))
 }
 
-pub fn image_spec(cfg: &ModalConfig, model: &str, binary: Option<PathBuf>) -> Result<ImageSpec, String> {
-    let base = cfg.image.clone().unwrap_or_else(|| DEFAULT_BASE.to_string());
+fn config_and_backend_layers(cfg: &ModalConfig, model: &str) -> Result<Vec<Vec<String>>, String> {
     let mut layers = Vec::new();
     if cfg.image.is_none() {
         layers.push(vec![TOOLCHAIN.to_string()]);
     }
-    layers.extend(super::backends::backend_layer(model, &crate::user_home_dir()));
+    layers.extend(super::backend_setup::setup_for(model)?.image_layer(&crate::user_home_dir()));
     if !cfg.setup.is_empty() {
         layers.push(cfg.setup.clone());
     }
+    Ok(layers)
+}
+
+pub fn image_spec(cfg: &ModalConfig, model: &str, binary: Option<PathBuf>) -> Result<ImageSpec, String> {
+    let base = cfg.image.clone().unwrap_or_else(|| DEFAULT_BASE.to_string());
+    let mut layers = config_and_backend_layers(cfg, model)?;
     let payload_hash = if let Some(path) = &binary {
         binary_hash(path)?
     } else {

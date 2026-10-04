@@ -1,5 +1,6 @@
 use super::session::CodexSession;
 use crate::acp::AgentError;
+use crate::bridge_sdk::JsonLineSession;
 
 pub(crate) async fn codex_initialize(session: &CodexSession) -> Result<(), AgentError> {
     let response = request(
@@ -66,15 +67,15 @@ pub(crate) async fn request(
     let mut turn = crate::bridge_sdk::DrainIdleTurn::new();
     loop {
         turn.check_max_deadline(crate::bridge_sdk::DrainIdleLabels {
-            prefix: crate::acp::DRAIN_IDLE_PREFIX_CODEX,
+            prefix: crate::model_id::ModelBackend::Codex.drain_idle_prefix(),
             waiting_for: "rpc reply",
         })?;
-        let value = super::session_io::read_json_waiting(session, "rpc reply", &mut turn).await?;
+        let value = session.read_json_waiting("rpc reply", &mut turn).await?;
         if value.get("id").and_then(serde_json::Value::as_u64) == Some(id) {
             return Ok(value);
         }
         turn.check_max_deadline(crate::bridge_sdk::DrainIdleLabels {
-            prefix: crate::acp::DRAIN_IDLE_PREFIX_CODEX,
+            prefix: crate::model_id::ModelBackend::Codex.drain_idle_prefix(),
             waiting_for: "rpc reply",
         })?;
     }
@@ -121,7 +122,7 @@ pub(crate) fn response_error(context: &str, response: &serde_json::Value) -> Age
 }
 
 async fn write(session: &CodexSession, value: &serde_json::Value) -> Result<(), AgentError> {
-    super::session_io::write_json(session, value).await
+    session.write_json(value).await
 }
 
 #[cfg(test)]

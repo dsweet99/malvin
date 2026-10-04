@@ -76,9 +76,6 @@ fn kiss_witness_unified_sdk_client_and_backend() {
     let _ = stringify!(deliver_session_header_if_needed);
     let _ = stringify!(emit_agent_started_log);
     let _ = stringify!(force_fresh_agent_for_retry);
-    let _ = stringify!(DRAIN_IDLE_PREFIX_BRIDGE);
-    let _ = stringify!(DRAIN_IDLE_PREFIX_PI);
-    let _ = stringify!(DRAIN_IDLE_PREFIX_CODEX);
     let _ = stringify!(prompts_log_run_dir);
     let _ = stringify!(BackendErrorTracker);
     let _ = stringify!(MAX_CONSECUTIVE_SAME_BACKEND_ERRORS);

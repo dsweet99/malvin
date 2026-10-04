@@ -194,7 +194,7 @@ Consumers must know which file to trust for which question. Named types live in 
 
 ## SDK drain idle (Cursor / Pi / Codex)
 
-While waiting for the next Cursor SDK bridge, Pi RPC, or Codex app-server line, malvin applies a **per-event** idle budget (not a total-prompt wall clock). Every backend must supply a turn-timeout extension (`turn_timeout_extension` in `src/bridge_sdk/turn_timeout.rs`, an exhaustive match on `ModelBackend`): how it reports open tools (`tools_in_flight`) and which events extend the turn cap. Codex has no bridge `progress` heartbeats; its tool starts extend the cap.
+While waiting for the next Cursor SDK bridge, Pi RPC, or Codex app-server line, malvin applies a **per-event** idle budget (not a total-prompt wall clock). Every backend session must implement the `TurnTimeoutExtension` trait (`src/bridge_sdk/turn_timeout.rs`, no default methods): how it reports open tools (`tools_in_flight`) and which events extend the turn cap. Codex has no bridge `progress` heartbeats; its tool starts extend the cap.
 
 | Clock | Meaning | Default |
 |-------|---------|---------|

@@ -87,7 +87,7 @@ fn upload_all(bridge: &mut ModalBridge, prep: &Prepared, inv: &ModalInvocation) 
         upload(bridge, &stage.join("logs.tar.gz"), remote::LOGS_TAR)?;
     }
     upload(bridge, &stage.join("config.toml"), &prep.paths.config_path())?;
-    for file in super::credentials::file_logins(&inv.model, &prep.home) {
+    for file in super::backend_setup::setup_for(&inv.model)?.login_files(&prep.home) {
         note(&format!("copying {} into the Sandbox for this run", file.display()));
         upload(bridge, &file, &file.display().to_string())?;
     }
@@ -117,7 +117,7 @@ fn run_malvin(bridge: &mut ModalBridge, prep: &Prepared, inv: &ModalInvocation) 
     let mut argv = vec!["malvin".to_string()];
     argv.extend(inv.remote_args.iter().map(|a| a.to_string_lossy().into_owned()));
     let mut forwarded = super::credentials::forwarded_env(|k| std::env::var(k).ok());
-    forwarded.extend(super::backends::backend_env(&inv.model));
+    forwarded.extend(super::backend_setup::setup_for(&inv.model)?.sandbox_env());
     let env = prep.paths.malvin_env(forwarded);
     let reply = bridge.call(
         "exec",

@@ -51,7 +51,7 @@ pub(crate) async fn send_resume(
 
 pub async fn write_request(session: &BridgeSession, req: &BridgeRequest) -> Result<(), AgentError> {
     let line = encode_request(req).map_err(AgentError)?;
-    let mut stdin = session.stdin.lock().await;
+    let mut stdin = session.stdio.stdin.lock().await;
     stdin
         .write_all(format!("{line}\n").as_bytes())
         .await
@@ -67,7 +67,7 @@ pub async fn write_request(session: &BridgeSession, req: &BridgeRequest) -> Resu
 pub(crate) async fn read_event(session: &BridgeSession) -> Result<BridgeEvent, AgentError> {
     let mut line = String::new();
     let n = {
-        let mut stdout = session.stdout.lock().await;
+        let mut stdout = session.stdio.stdout.lock().await;
         stdout
             .read_line(&mut line)
             .await
@@ -84,12 +84,12 @@ pub(crate) async fn drain_until_run_done(session: &BridgeSession) -> Result<(), 
     let mut turn = super::DrainIdleTurn::new();
     let mut last_usage: Option<serde_json::Value> = None;
     let labels = super::DrainIdleLabels {
-        prefix: crate::acp::DRAIN_IDLE_PREFIX_BRIDGE,
+        prefix: crate::model_id::ModelBackend::Cursor.drain_idle_prefix(),
         waiting_for: "run_done",
     };
     loop {
         let ev = read_event_with_idle_timeout(session, "run_done", &mut turn).await?;
-        turn_wait(session).note_productive_event(&mut turn, &ev);
+        TurnWait::of(session).note_productive_event(&mut turn, &ev);
         match &ev {
             BridgeEvent::Step { .. } => note_sdk_step(session.timing.as_ref()),
             BridgeEvent::Usage { usage } => {
@@ -118,19 +118,10 @@ async fn read_event_with_idle_timeout(
     turn: &mut super::DrainIdleTurn,
 ) -> Result<BridgeEvent, AgentError> {
     let labels = super::DrainIdleLabels {
-        prefix: crate::acp::DRAIN_IDLE_PREFIX_BRIDGE,
+        prefix: crate::model_id::ModelBackend::Cursor.drain_idle_prefix(),
         waiting_for,
     };
-    super::await_turn_event(turn_wait(session), labels, read_event(session), turn).await
-}
-
-const fn turn_wait(session: &BridgeSession) -> TurnWait<'_> {
-    TurnWait {
-        backend: crate::model_id::ModelBackend::Cursor,
-        log: &session.log,
-        process_group_id: session.process_group_id,
-        spawn_pid_baseline: &session.spawn_pid_baseline,
-    }
+    super::await_turn_event(TurnWait::of(session), labels, read_event(session), turn).await
 }
 
 async fn discard_optional_trailing_run_done(session: &BridgeSession) {

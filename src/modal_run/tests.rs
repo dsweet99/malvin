@@ -1,7 +1,8 @@
 use serde_json::json;
 
 use super::config::{ModalConfig, parse_modal_config, read_config_root, remote_config_text};
-use super::credentials::{FORWARDED_ENV, file_logins, forwarded_env, preflight};
+use super::backend_setup::{preflight, setup_for};
+use super::credentials::{FORWARDED_ENV, forwarded_env};
 use super::image::{DEFAULT_BASE, TOOLCHAIN, crates_io_layer, image_name, image_spec};
 
 fn cfg(text: &str, mem: u64) -> Result<ModalConfig, String> {
@@ -106,10 +107,38 @@ fn file_logins_depend_on_the_backend() {
     std::fs::write(home.join(".codex/auth.json"), "{}").unwrap();
     std::fs::write(home.join(".pi/agent/auth.json"), "{}").unwrap();
     crate::acp::with_env("PI_CODING_AGENT_DIR", None, || {
-        assert_eq!(file_logins("codex:x", home), vec![home.join(".codex/auth.json")]);
-        assert_eq!(file_logins("pi:openai/x", home), vec![home.join(".pi/agent/auth.json")]);
-        assert!(file_logins("cursor:auto", home).is_empty());
+        assert_eq!(setup_for("codex:x").unwrap().login_files(home), vec![home.join(".codex/auth.json")]);
+        assert_eq!(setup_for("pi:openai/x").unwrap().login_files(home), vec![home.join(".pi/agent/auth.json")]);
+        assert!(setup_for("cursor:auto").unwrap().login_files(home).is_empty());
     });
+}
+
+#[test]
+fn preflight_checks_each_backend_credential() {
+    let _g = crate::test_utils::test_env_lock();
+    let tmp = tempfile::tempdir().unwrap();
+    let home = tmp.path();
+    std::fs::write(home.join(".modal.toml"), "").unwrap();
+    crate::acp::with_env("OPENAI_API_KEY", None, || {
+        let err = preflight("codex:gpt-5", home).unwrap_err();
+        assert!(err.contains("OPENAI_API_KEY") && err.contains(".codex/auth.json"), "{err}");
+        std::fs::create_dir_all(home.join(".codex")).unwrap();
+        std::fs::write(home.join(".codex/auth.json"), "{}").unwrap();
+        assert!(preflight("codex:gpt-5", home).is_ok());
+        assert!(preflight("pi:openai/x", home).is_ok());
+    });
+    crate::acp::with_env("OPENAI_API_KEY", Some("sk-test"), || {
+        std::fs::remove_file(home.join(".codex/auth.json")).unwrap();
+        assert!(preflight("codex:gpt-5", home).is_ok());
+    });
+}
+
+#[test]
+fn backend_setup_rejects_unparseable_models() {
+    let tmp = tempfile::tempdir().unwrap();
+    std::fs::write(tmp.path().join(".modal.toml"), "").unwrap();
+    assert!(setup_for("gpt-5").is_err());
+    assert!(preflight("gpt-5", tmp.path()).unwrap_err().contains("prefix"));
 }
 
 #[test]

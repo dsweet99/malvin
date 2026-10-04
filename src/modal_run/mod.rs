@@ -1,3 +1,4 @@
+mod backend_setup;
 mod backends;
 mod bridge;
 pub mod config;
@@ -74,7 +75,7 @@ fn start_bridge() -> Result<bridge::ModalBridge, String> {
 
 pub fn run_modal(inv: &ModalInvocation) -> Result<i32, String> {
     let home = crate::user_home_dir();
-    credentials::preflight(&inv.model, &home)?;
+    backend_setup::preflight(&inv.model, &home)?;
     let cwd = crate::canonical_work_dir_for_logs(
         &std::env::current_dir().map_err(|e| format!("current dir: {e}"))?,
     );

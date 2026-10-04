@@ -4,12 +4,6 @@ use super::AgentError;
 
 pub(crate) const MALVIN_TEST_NO_REAL_AGENT_ENV: &str = "MALVIN_TEST_NO_REAL_AGENT";
 
-pub(crate) const DRAIN_IDLE_PREFIX_BRIDGE: &str =
-    crate::model_id::ModelBackend::Cursor.drain_idle_prefix();
-pub(crate) const DRAIN_IDLE_PREFIX_PI: &str = crate::model_id::ModelBackend::Pi.drain_idle_prefix();
-pub(crate) const DRAIN_IDLE_PREFIX_CODEX: &str =
-    crate::model_id::ModelBackend::Codex.drain_idle_prefix();
-
 pub fn test_no_real_agent_enabled() -> bool {
     std::env::var_os(MALVIN_TEST_NO_REAL_AGENT_ENV).is_some_and(|v| !v.is_empty() && v != "0")
 }
@@ -80,8 +74,5 @@ mod agent_helpers_tests {
         let _ = test_no_real_agent_enabled();
         let _ = has_api_key();
         let _ = env_key_nonempty("CURSOR_API_KEY");
-        let _ = DRAIN_IDLE_PREFIX_BRIDGE;
-        let _ = DRAIN_IDLE_PREFIX_PI;
-        let _ = DRAIN_IDLE_PREFIX_CODEX;
     }
 }

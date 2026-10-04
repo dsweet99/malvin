@@ -3,7 +3,8 @@ use std::path::Path;
 
 use serde_json::json;
 
-use super::backends::{PI_ENTRY, backend_env, backend_layer, local_pi_version, parse_version_token};
+use super::backend_setup::setup_for;
+use super::backends::{PI_ENTRY, local_pi_version, parse_version_token};
 use super::remote::{FINISH_SCRIPT, RemotePaths, SETUP_SCRIPT};
 use super::sweep::{TAG_HOST, TAG_PID, host_name, run_tags, stale_ids};
 use super::{reject_unsupported, remote_args};
@@ -52,12 +53,12 @@ fn backend_layers_install_the_cli_each_model_needs() {
     std::fs::write(pkg.join("package.json"), r#"{"version":"1.2.3"}"#).unwrap();
     assert_eq!(local_pi_version(tmp.path()), "1.2.3");
     assert_eq!(local_pi_version(&tmp.path().join("none")), "latest");
-    let pi = backend_layer("pi:openai/x", tmp.path()).unwrap();
+    let pi = setup_for("pi:openai/x").unwrap().image_layer(tmp.path()).unwrap();
     assert!(pi[0].ends_with("@earendil-works/pi-coding-agent@1.2.3"), "{pi:?}");
-    assert!(backend_layer("codex:gpt", tmp.path()).unwrap()[0].contains("@openai/codex@"));
-    assert!(backend_layer("cursor:auto", tmp.path()).is_none());
-    assert_eq!(backend_env("pi:openai/x")["MALVIN_PI"], PI_ENTRY);
-    assert!(backend_env("cursor:auto").is_empty());
+    assert!(setup_for("codex:gpt").unwrap().image_layer(tmp.path()).unwrap()[0].contains("@openai/codex@"));
+    assert!(setup_for("cursor:auto").unwrap().image_layer(tmp.path()).is_none());
+    assert_eq!(setup_for("pi:openai/x").unwrap().sandbox_env()["MALVIN_PI"], PI_ENTRY);
+    assert!(setup_for("cursor:auto").unwrap().sandbox_env().is_empty());
     assert_eq!(parse_version_token("codex-cli 0.155.0\n").as_deref(), Some("0.155.0"));
     assert_eq!(parse_version_token("v1.2").as_deref(), Some("1.2"));
     assert_eq!(parse_version_token("nope"), None);
