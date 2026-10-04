@@ -27,6 +27,8 @@ mod map_event_summary_tests;
 mod map_event_tests;
 #[cfg(test)]
 mod session_turn_tests;
+#[cfg(test)]
+mod turn_timeout_tests;
 
 pub(crate) use auth::ensure_codex_authenticated;
 pub use discover::list_codex_display_models;

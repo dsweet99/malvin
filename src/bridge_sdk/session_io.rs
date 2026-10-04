@@ -1,8 +1,8 @@
 use crate::acp::AgentError;
 
+use super::TurnWait;
 use super::session::BridgeSession;
 use super::session_handshake::wait_for_ok;
-use super::session_io_productive::{note_productive_bridge_event, tools_in_flight};
 use super::timing::{note_sdk_step, record_sdk_usage};
 use crate::bridge_protocol::{BridgeEvent, BridgeRequest, decode_event, encode_request};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
@@ -89,7 +89,7 @@ pub(crate) async fn drain_until_run_done(session: &BridgeSession) -> Result<(), 
     };
     loop {
         let ev = read_event_with_idle_timeout(session, "run_done", &mut turn).await?;
-        note_productive_bridge_event(session, &mut turn, &ev);
+        turn_wait(session).note_productive_event(&mut turn, &ev);
         match &ev {
             BridgeEvent::Step { .. } => note_sdk_step(session.timing.as_ref()),
             BridgeEvent::Usage { usage } => {
@@ -121,12 +121,16 @@ async fn read_event_with_idle_timeout(
         prefix: crate::acp::DRAIN_IDLE_PREFIX_BRIDGE,
         waiting_for,
     };
-    let health = Some(super::DrainIdleHealthCtx {
+    super::await_turn_event(turn_wait(session), labels, read_event(session), turn).await
+}
+
+const fn turn_wait(session: &BridgeSession) -> TurnWait<'_> {
+    TurnWait {
+        backend: crate::model_id::ModelBackend::Cursor,
+        log: &session.log,
         process_group_id: session.process_group_id,
         spawn_pid_baseline: &session.spawn_pid_baseline,
-        tools_in_flight: tools_in_flight(&session.log),
-    });
-    super::await_next_with_idle_in_turn(labels, health, read_event(session), turn).await
+    }
 }
 
 async fn discard_optional_trailing_run_done(session: &BridgeSession) {

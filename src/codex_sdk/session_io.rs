@@ -137,13 +137,17 @@ pub(crate) async fn read_json_waiting(
         prefix: crate::acp::DRAIN_IDLE_PREFIX_CODEX,
         waiting_for,
     };
-    let health = Some(crate::bridge_sdk::DrainIdleHealthCtx {
+    crate::bridge_sdk::await_turn_event(turn_wait(session), labels, read_json_line(session), turn)
+        .await
+}
+
+pub(super) const fn turn_wait(session: &CodexSession) -> crate::bridge_sdk::TurnWait<'_> {
+    crate::bridge_sdk::TurnWait {
+        backend: crate::model_id::ModelBackend::Codex,
+        log: &session.log,
         process_group_id: session.process_group_id,
         spawn_pid_baseline: &session.spawn_pid_baseline,
-        tools_in_flight: false,
-    });
-    crate::bridge_sdk::await_next_with_idle_in_turn(labels, health, read_json_line(session), turn)
-        .await
+    }
 }
 
 async fn read_json_line(session: &CodexSession) -> Result<serde_json::Value, AgentError> {

@@ -51,7 +51,8 @@ pub(super) fn feed_mapped_bridge_events(
     events: &[BridgeEvent],
 ) {
     for ev in events {
-        crate::bridge_sdk::note_productive_bridge_event(session, turn, ev);
+        (crate::bridge_sdk::turn_timeout_extension(crate::model_id::ModelBackend::Pi)
+            .note_productive_event)(session, turn, ev);
         if let BridgeEvent::Step { .. } = ev {
             crate::bridge_sdk::note_sdk_step(session.timing.as_ref());
         }

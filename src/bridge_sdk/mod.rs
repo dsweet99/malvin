@@ -11,6 +11,7 @@ mod spawn_args;
 mod stdio_teardown;
 mod stream_log;
 mod timing;
+mod turn_timeout;
 
 #[cfg(test)]
 #[path = "child_stderr_tests.rs"]
@@ -23,6 +24,10 @@ mod drain_idle_tests;
 #[cfg(test)]
 #[path = "drain_idle_policy_tests.rs"]
 mod drain_idle_policy_tests;
+
+#[cfg(test)]
+#[path = "turn_timeout_tests.rs"]
+mod turn_timeout_tests;
 
 #[cfg(test)]
 pub(crate) use drain_idle::{DrainHealthVerdict, DrainIdleClock};
@@ -39,11 +44,13 @@ pub use session_io::write_request;
 pub(crate) use session_io::{
     CreateArgs, MemWatchArgs, ResumeArgs, send_create, send_resume, start_mem_watch,
 };
-pub(crate) use session_io_productive::{note_productive_bridge_event, tools_in_flight};
+#[cfg(test)]
+pub(crate) use session_io_productive::tools_in_flight;
 pub use spawn_args::{BridgeSpawnArgs, SDK_BRIDGE_MAX_AGE, ToolCallStart};
 pub(crate) use stdio_teardown::{StdioTeardown, drop_stdio_child};
 pub use stream_log::StreamLog;
 pub use timing::{note_sdk_step, record_sdk_usage};
+pub(crate) use turn_timeout::{TurnWait, await_turn_event, turn_timeout_extension};
 
 #[cfg(test)]
 mod protocol_reexport_tests {
