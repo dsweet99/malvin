@@ -7,7 +7,7 @@ pub(crate) fn emit_do_dm_body(body: &str) {
     }
 }
 
-fn emit_wrapped_do_dm_line(line: &str) {
+pub(crate) fn emit_wrapped_do_dm_line(line: &str) {
     if super::do_dm_mode::do_dm_stdout_markdown() {
         emit_markdown_do_dm_line(line);
         return;

@@ -297,9 +297,13 @@ async function handleSend(req) {
   }
 
   const fenced = prompt.includes("NEED_DM");
+  const doneNeedle = process.env.MOCK_BRIDGE_DONE_WHEN_PROMPT_HAS;
+  const done = Boolean(doneNeedle) && prompt.includes(doneNeedle);
   const result = fenced
     ? "__MALVIN_DM_START__\nHello.\n__MALVIN_DM_END__"
-    : "mock reply";
+    : done
+      ? "mock reply\n__MALVIN_DONE__"
+      : "mock reply";
   emit({ event: "assistant", text: fenced ? "Hello" : "mock reply" });
   emit({ event: "step", kind: "onStep" });
   emit({

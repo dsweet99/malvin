@@ -53,6 +53,9 @@ pub(super) fn is_tagged(line: &str) -> bool {
 
 fn emit(stream: Stream, line: &str) {
     match (stream, is_tagged(line)) {
+        (Stream::Stdout, false) if crate::output::do_dm_stdout_mode() => {
+            crate::output::emit_wrapped_do_dm_line(line);
+        }
         (Stream::Stdout, false) => print_stdout_line(WHO_R, line),
         (Stream::Stderr, false) => print_stderr_line(WHO_R, line),
         (Stream::Stdout, true) => write_raw(&mut std::io::stdout().lock(), line),

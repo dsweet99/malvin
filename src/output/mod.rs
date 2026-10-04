@@ -27,6 +27,7 @@ pub(crate) use stdout_display::{
     format_heartbeat_stdout_ansi, format_line_stdout, format_line_stdout_ansi, logical_lines,
 };
 
+pub(crate) use do_dm_emit::emit_wrapped_do_dm_line;
 pub use do_dm_filter::feed_do_dm_stdout_text;
 pub use sentinel::{DM_END, DM_START, MALVIN_DONE, is_sentinel_line};
 pub use do_dm_mode::{

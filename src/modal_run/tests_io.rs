@@ -165,6 +165,24 @@ fn bridge_tags_bare_remote_lines_across_chunks() {
 }
 
 #[test]
+fn bridge_relays_bare_remote_stdout_as_dm_body_in_do_mode() {
+    let _guard = crate::output::STDOUT_LOG_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    crate::output::set_do_dm_stdout_mode(true);
+    crate::output::enable_stdout_capture();
+    let mut b = fake_bridge(concat!(
+        r#"read l; printf '%s\n' '{"id":1,"event":"stdout","data":"I am on modal.\n\n- **CPU:** 2\n"}'; "#,
+        r#"printf '%s\n' '{"id":1,"event":"stderr","data":"added 11 packages\n"}'; "#,
+        r#"printf '%s\n' '{"id":1,"ok":true}'"#
+    ));
+    b.call("exec", json!({})).unwrap();
+    let out = crate::ansi_strip::strip_ansi_escapes(&crate::output::take_captured_stdout());
+    crate::output::set_do_dm_stdout_mode(false);
+    assert_eq!(out, "I am on modal.\n\n- **CPU:** 2");
+}
+
+#[test]
 fn remote_lines_with_a_who_tag_are_not_retagged() {
     use super::remote_output::is_tagged;
     for tagged in ["o|modal: started", "e|boom", "b| thinking", "\x1b[90mo|\x1b[0mx", "r|"] {
