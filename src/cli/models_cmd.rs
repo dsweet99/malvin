@@ -22,7 +22,7 @@ pub struct ModelsArgs {
     /// Force-refresh the `pi:` model catalog (also runs automatically every 24h).
     #[arg(long)]
     pub refresh: bool,
-    /// Print MODEL's canonical id and backend as one JSON line (nicknames expanded), then exit.
+    /// Print MODEL's canonical id and backend as one JSON line (`[aliases.models]` names expanded), then exit.
     #[arg(long, value_name = "MODEL", conflicts_with_all = ["refresh", "words"])]
     pub resolve: Option<String>,
     /// Optional prefix filter (for example `cursor:`, `pi:`, or `codex:`)

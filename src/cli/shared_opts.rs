@@ -29,7 +29,7 @@ pub(crate) fn parse_creative_probability(s: &str) -> Result<f64, String> {
 #[derive(Args, Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct SharedOpts {
-    /// Model id (`cursor:`, `pi:`, `codex:`, or a config nickname)
+    /// Model id (`cursor:`, `pi:`, `codex:`, or an `[aliases.models]` name)
     #[arg(
         long,
         default_value = DEFAULT_CLI_MODEL,
@@ -54,7 +54,7 @@ pub struct SharedOpts {
     /// Cycle through all REQUEST args forever (as if re-invoking the same command line)
     #[arg(long = "iml", default_value_t = false, help = IML_HELPTEXT)]
     pub iml: bool,
-    /// Run on a remote machine (see `malvin admin remotes`)
+    /// Run on a remote machine (see `malvin admin remotes`; `[aliases.remotes]` names work too)
     #[arg(
         long,
         value_name = "REMOTE",

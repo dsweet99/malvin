@@ -8,23 +8,26 @@ use std::collections::BTreeMap;
 use super::{
     AgentConfig, DEFAULT_CONTEXT_SIZE, DefaultWorkflowConfig, MalvinConfig, parse_agent_config,
     parse_context_size, parse_default_workflow_config,
-    parse_model_token_cost_rates, parse_nicknames, parse_theme,
+    parse_model_aliases, parse_model_token_cost_rates, parse_remote_aliases, parse_theme,
 };
 
 pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
     let (mem_limit_gb, context_size, theme) = parse_top_level_keys(text);
-    let nicknames = parse_or_warn(parse_nicknames(text), "[nicknames]", BTreeMap::new());
+    let model_aliases = parse_or_warn(parse_model_aliases(text), "[aliases.models]", BTreeMap::new());
+    let remote_aliases =
+        parse_or_warn(parse_remote_aliases(text), "[aliases.remotes]", BTreeMap::new());
     let token_cost_rates = parse_or_warn(
         parse_model_token_cost_rates(text),
         "[agent.*.*] usd_per_microtoken_*",
         BTreeMap::new(),
     );
-    let (logs, agent, default_workflow) = parse_config_sections(text, &nicknames);
+    let (logs, agent, default_workflow) = parse_config_sections(text, &model_aliases);
     MalvinConfig {
         mem_limit_gb,
         context_size,
         theme,
-        nicknames,
+        model_aliases,
+        remote_aliases,
         token_cost_rates,
         logs,
         agent,
@@ -50,7 +53,7 @@ fn parse_top_level_keys(text: &str) -> (u64, u32, TerminalTheme) {
 
 fn parse_config_sections(
     text: &str,
-    nicknames: &BTreeMap<String, String>,
+    model_aliases: &BTreeMap<String, String>,
 ) -> (LogsGcConfig, AgentConfig, DefaultWorkflowConfig) {
     (
         parse_or_warn(
@@ -59,7 +62,7 @@ fn parse_config_sections(
             LogsGcConfig::default(),
         ),
         parse_or_warn(
-            parse_agent_config(text, nicknames),
+            parse_agent_config(text, model_aliases),
             "[agent]",
             AgentConfig::default(),
         ),

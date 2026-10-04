@@ -161,7 +161,7 @@ pub fn parse_remote_value(value: &str) -> Result<ModalOptions, String> {
     };
     if name != MODAL_REMOTE {
         return Err(format!(
-            "unknown remote `{name}`; `malvin admin remotes` lists the available remotes"
+            "unknown remote `{name}`; `malvin admin remotes` lists the available remotes, and `[aliases.remotes]` in ~/.malvinconf/config.toml defines aliases"
         ));
     }
     spec.map_or_else(
@@ -178,7 +178,18 @@ fn remote_value(arg: &str, rest: &mut impl Iterator<Item = OsString>) -> Option<
     arg.strip_prefix(REMOTE_FLAG)?.strip_prefix('=').map(|v| Ok(v.to_string()))
 }
 
-pub fn extract_modal_options(raw: Vec<OsString>) -> Result<(Vec<OsString>, ModalOptions), String> {
+pub fn expand_remote_alias(value: &str, alias: impl FnOnce(&str) -> Option<String>) -> String {
+    let name = value.split_once('[').map_or(value, |(name, _)| name);
+    if name == MODAL_REMOTE {
+        return value.to_string();
+    }
+    alias(value.trim()).unwrap_or_else(|| value.to_string())
+}
+
+pub fn extract_modal_options(
+    raw: Vec<OsString>,
+    alias: impl Fn(&str) -> Option<String>,
+) -> Result<(Vec<OsString>, ModalOptions), String> {
     let mut opts = None;
     let mut out = Vec::with_capacity(raw.len());
     let mut scanning = true;
@@ -193,7 +204,12 @@ pub fn extract_modal_options(raw: Vec<OsString>) -> Result<(Vec<OsString>, Modal
             out.push(arg);
             continue;
         };
-        if opts.replace(parse_remote_value(&value?)?).is_some() {
+        let typed = value?;
+        let value = expand_remote_alias(&typed, &alias);
+        let parsed = parse_remote_value(&value).map_err(|e| {
+            if value == typed { e } else { format!("remote alias `{typed}` = `{value}`: {e}") }
+        })?;
+        if opts.replace(parsed).is_some() {
             return Err(format!("`{REMOTE_FLAG}` is given more than once"));
         }
         out.push(OsString::from(REMOTE_MODAL_ARG));

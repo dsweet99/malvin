@@ -2,14 +2,14 @@ use std::path::Path;
 
 use super::{
     AgentConfig, MalvinConfig, ensure_config_parent_dir, merge_missing_keys, parse_agent_config,
-    parse_malvin_config, parse_nicknames, parse_template_value,
+    parse_malvin_config, parse_model_aliases, parse_template_value,
     write_config_value,
 };
 use crate::workspace_paths::malvin_config_path;
 
 fn parse_agent_config_text(text: &str) -> Result<AgentConfig, String> {
-    let nicknames = parse_nicknames(text)?;
-    parse_agent_config(text, &nicknames)
+    let model_aliases = parse_model_aliases(text)?;
+    parse_agent_config(text, &model_aliases)
 }
 
 pub(super) fn create_malvin_config_from_template(

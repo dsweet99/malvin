@@ -223,7 +223,8 @@ pub fn entrypoint_from(
 ) -> Exit {
     malvin::init_from_env();
     let raw: Vec<std::ffi::OsString> = args.into_iter().map(Into::into).collect();
-    let (raw, modal) = match malvin::modal_run::options::extract_modal_options(raw) {
+    let remote_alias = |name: &str| malvin::malvin_config_file::load_remote_aliases().remove(name);
+    let (raw, modal) = match malvin::modal_run::options::extract_modal_options(raw, remote_alias) {
         Ok(split) => split,
         Err(e) => {
             print_command_error(&e);
