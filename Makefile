@@ -21,7 +21,7 @@ CURSOR_BRIDGE_JS := cursor-sdk-bridge/dist/bridge.js
 deps:
 	@echo "Build deps (Ubuntu): sudo apt-get install gcc-10 g++-10 libcap-ng-dev"
 	@echo "cursor: models need Node >= 22.13 and npm at run time (not at build time)."
-	@echo "malvin installs @cursor/sdk into ~/.malvinconf/sdk-bridges/ on first use or via 'malvin admin setup-cursor'."
+	@echo "malvin installs @cursor/sdk into ~/.malvinconf/sdk-bridges/ on first use."
 	@echo "Manual: npm ci && npm run build in cursor-sdk-bridge/"
 
 bridges: $(CURSOR_BRIDGE_JS)
@@ -30,10 +30,10 @@ $(CURSOR_BRIDGE_JS): cursor-sdk-bridge/package.json cursor-sdk-bridge/package-lo
 		cursor-sdk-bridge/tsconfig.json $(wildcard cursor-sdk-bridge/src/*.ts)
 	cd cursor-sdk-bridge && npm ci && npm run build
 
-# One release rustc was about 8 GiB RSS. The default job count is one per CPU
-# (24 here), and two rustc processes together exhausted 15 GiB. Keep `make` at one job.
+# Job count and the rustc wrapper (admin/rustc_sccache.sh) come from .cargo/config.toml.
+# release-local is the release profile plus incremental compilation (Cargo.toml).
 all: bridges
-	cargo build --release --jobs 8
+	cargo build --profile release-local
 
 install: bridges
 	cargo install --path . --force --locked --config 'build.rustflags=[]'
@@ -41,6 +41,7 @@ install: bridges
 test: bridges
 	pytest tests && cargo nextest run
 
+# cursor-sdk-bridge/dist is tracked so that building needs no Node; clean must keep it.
 clean:
 	cargo clean
-	rm -rf cursor-sdk-bridge/dist cursor-sdk-bridge/node_modules
+	rm -rf cursor-sdk-bridge/node_modules

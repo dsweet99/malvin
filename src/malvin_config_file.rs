@@ -23,7 +23,7 @@ mod malvin_config_top;
 pub(crate) use malvin_config_agent::parse_agent_config;
 pub(crate) use malvin_config_default_workflow::parse_default_workflow_config;
 pub use malvin_config_model_policy::parse_model_cli_arg;
-pub(crate) use malvin_config_model_policy::{parse_disable_rpi, parse_nicknames};
+pub(crate) use malvin_config_model_policy::parse_nicknames;
 use malvin_config_open::create_malvin_config_from_template;
 pub use malvin_config_open::{
     ensure_malvin_config_file_if_missing, load_agent_config_lenient, load_agent_config_strict,
@@ -76,7 +76,6 @@ pub struct MalvinConfig {
     pub mem_limit_gb: u64,
     pub context_size: u32,
     pub theme: TerminalTheme,
-    pub disable_rpi: bool,
     pub nicknames: BTreeMap<String, String>,
     pub token_cost_rates: BTreeMap<String, TokenCostRates>,
     pub logs: LogsGcConfig,

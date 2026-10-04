@@ -1,12 +1,14 @@
-use std::collections::HashMap;
-
-use pi::provider::ModelCost;
-use pi::sdk::{Config, ModelRegistry};
 use serde::Deserialize;
 use serde_json::{Map, Value};
 
+use super::model_cost::{ModelCost, TokenUsage};
+
 #[path = "portkey_pricing_fetch.rs"]
 mod fetch;
+#[path = "portkey_route.rs"]
+mod route;
+
+use route::{CustomModelRoute, custom_model_route};
 
 #[derive(Debug, Deserialize)]
 struct PricingBody {
@@ -53,11 +55,12 @@ fn bare_model_id(model_id: &str) -> &str {
     rest.split_once('/').map_or(id, |(_, model)| model)
 }
 
-fn header_provider(headers: &HashMap<String, String>) -> Option<String> {
+fn header_provider(headers: &Map<String, Value>) -> Option<String> {
     let value = headers
         .iter()
         .find(|(name, _)| name.eq_ignore_ascii_case("x-portkey-provider"))?
         .1
+        .as_str()?
         .trim();
     if value.is_empty() || value.starts_with(['@', '$', '!']) {
         return None;
@@ -67,6 +70,14 @@ fn header_provider(headers: &HashMap<String, String>) -> Option<String> {
 
 fn point_rate(point: Option<&PricePoint>) -> f64 {
     point.map_or(0.0, |p| p.price * 10_000.0)
+}
+
+pub(super) fn pricing_model_path(model: &str) -> String {
+    model
+        .split('/')
+        .map(urlencoding)
+        .collect::<Vec<_>>()
+        .join("/")
 }
 
 pub(super) fn model_cost_from_body(body: &str) -> Option<ModelCost> {
@@ -81,29 +92,29 @@ pub(super) fn model_cost_from_body(body: &str) -> Option<ModelCost> {
     cost.is_priced().then_some(cost)
 }
 
-fn load_registry() -> Option<ModelRegistry> {
-    let auth = pi::auth::AuthStorage::load(Config::auth_path()).ok()?;
-    let path = pi::models::default_models_path(&Config::global_dir());
-    Some(ModelRegistry::load(&auth, Some(path)))
+pub(super) fn urlencoding(value: &str) -> String {
+    value
+        .bytes()
+        .map(|byte| {
+            if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'~') {
+                char::from(byte).to_string()
+            } else {
+                format!("%{byte:02X}")
+            }
+        })
+        .collect()
 }
 
-fn entry_header_provider(entry: &pi::sdk::ModelEntry) -> Option<String> {
-    header_provider(&entry.headers).or_else(|| header_provider(&entry.model.headers))
+fn route_is_portkey(route: &CustomModelRoute) -> bool {
+    host_is_portkey(&route.base_url) || route.headers.keys().any(|name| name_is_portkey_header(name))
 }
 
-fn entry_is_portkey(entry: &pi::sdk::ModelEntry) -> bool {
-    if host_is_portkey(&entry.model.base_url) {
-        return true;
+fn portkey_upstream(provider: &str, model_id: &str) -> Option<String> {
+    let route = custom_model_route(provider, model_id)?;
+    if !route_is_portkey(&route) {
+        return None;
     }
-    entry
-        .headers
-        .keys()
-        .any(|name| name_is_portkey_header(name))
-        || entry
-            .model
-            .headers
-            .keys()
-            .any(|name| name_is_portkey_header(name))
+    upstream_name(provider, header_provider(&route.headers))
 }
 
 fn upstream_name(pi_provider: &str, from_header: Option<String>) -> Option<String> {
@@ -117,14 +128,29 @@ fn upstream_name(pi_provider: &str, from_header: Option<String>) -> Option<Strin
     }
 }
 
+pub(super) fn openrouter_catalog_model(provider: &str, model_id: &str) -> Option<String> {
+    let upstream = portkey_upstream(provider, model_id)?;
+    upstream
+        .eq_ignore_ascii_case("openrouter")
+        .then(|| bare_model_id(model_id).to_string())
+}
+
 pub(super) fn rates_for_pi_model(provider: &str, model_id: &str) -> Option<ModelCost> {
-    let registry = load_registry()?;
-    let entry = registry.find(provider, model_id)?;
-    if !entry_is_portkey(&entry) {
-        return None;
-    }
-    let upstream = upstream_name(provider, entry_header_provider(&entry))?;
+    let upstream = portkey_upstream(provider, model_id)?;
     fetch::lookup_rates(&upstream, bare_model_id(model_id))
+}
+
+fn openrouter_catalog_rates(provider: &str, model_id: &str) -> Option<ModelCost> {
+    if provider.eq_ignore_ascii_case("openrouter") {
+        return super::openrouter_pricing::lookup_model_cost(model_id);
+    }
+    let model = openrouter_catalog_model(provider, model_id)?;
+    super::openrouter_pricing::lookup_model_cost(&model)
+}
+
+pub(crate) fn uses_openrouter_catalog(provider: &str, model_id: &str) -> bool {
+    provider.eq_ignore_ascii_case("openrouter")
+        || openrouter_catalog_model(provider, model_id).is_some()
 }
 
 fn token_count(obj: &Map<String, Value>, keys: &[&str]) -> u64 {
@@ -134,20 +160,24 @@ fn token_count(obj: &Map<String, Value>, keys: &[&str]) -> u64 {
 }
 
 pub(crate) fn apply_portkey_cost_usd(provider: &str, model: &str, usage: &mut Value) {
-    let Some(rates) = rates_for_pi_model(provider, model) else {
+    super::sdk_usage_fields::normalize_pi_usage(usage);
+    if super::sdk_usage_fields::cost_usd_is_positive(usage) {
+        return;
+    }
+    let Some(rates) = rates_for_pi_model(provider, model)
+        .or_else(|| openrouter_catalog_rates(provider, model))
+    else {
         return;
     };
     let Some(obj) = usage.as_object() else {
         return;
     };
-    let usage_tokens = pi::model::Usage {
+    let cost = rates.cost_for(TokenUsage {
         input: token_count(obj, &["inputTokens", "input"]),
         output: token_count(obj, &["outputTokens", "output"]),
         cache_read: token_count(obj, &["cacheReadTokens", "cacheRead", "cache_read"]),
         cache_write: token_count(obj, &["cacheWriteTokens", "cacheWrite", "cache_write"]),
-        ..pi::model::Usage::default()
-    };
-    let cost = super::usage_cost::cost_from_model_rates(&rates, &usage_tokens);
+    });
     if let Some(map) = usage.as_object_mut() {
         map.insert(
             "costUsd".into(),

@@ -1,4 +1,4 @@
-use super::{SOCKET_TIMEOUT, classify_reply, send_request, send_request_checked};
+use super::{classify_reply, send_request, send_request_checked, SOCKET_TIMEOUT};
 use serde_json::json;
 use std::io::{Read, Write};
 use std::os::unix::net::UnixListener;
@@ -50,6 +50,46 @@ fn send_request_writes_ndjson_line_to_unix_socket() {
 fn send_request_swallows_missing_socket() {
     send_request(std::path::Path::new("/no/such/herdr.sock"), &json!({}));
     assert!(send_request_checked(std::path::Path::new("/no/such/herdr.sock"), &json!({})).is_err());
+}
+
+#[test]
+fn delayed_reply_is_a_timeout_not_an_empty_body() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let sock = dir.path().join("slow.sock");
+    let Some(listener) = bind_or_skip(&sock) else {
+        return;
+    };
+    thread::spawn(move || {
+        let (mut conn, _) = listener.accept().expect("accept");
+        let mut buf = [0_u8; 256];
+        let _ = conn.read(&mut buf);
+        thread::sleep(SOCKET_TIMEOUT + Duration::from_millis(200));
+        let _ = conn.write_all(br#"{"result":{"type":"ok"}}"#);
+    });
+    let err = send_request_checked(&sock, &json!({"id":"t","method":"ping","params":{}}))
+        .expect_err("slow peer");
+    assert!(
+        err.contains("timed out"),
+        "timeout must not be labeled an empty reply: {err}"
+    );
+    assert!(!err.contains("reply empty"), "{err}");
+}
+
+#[test]
+fn peer_close_without_bytes_is_an_empty_reply() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let sock = dir.path().join("eof.sock");
+    let Some(listener) = bind_or_skip(&sock) else {
+        return;
+    };
+    thread::spawn(move || {
+        let (mut conn, _) = listener.accept().expect("accept");
+        let mut buf = [0_u8; 256];
+        let _ = conn.read(&mut buf);
+    });
+    let err = send_request_checked(&sock, &json!({"id":"t","method":"ping","params":{}}))
+        .expect_err("closed peer");
+    assert!(err.contains("reply empty"), "{err}");
 }
 
 #[test]

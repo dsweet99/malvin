@@ -93,17 +93,9 @@ mod tests {
 
     #[test]
     fn build_agent_backend_selects_pi_when_prefixed() {
-        let model = sample_model("rpi:openai/gpt-4o");
-        let backend = build_agent_backend(model, 3, false).expect("pi sdk");
-        assert!(matches!(backend.model.backend, ModelBackend::Pi));
-        assert_eq!(backend.model.canonical(), "rpi:openai/gpt-4o");
-    }
-
-    #[test]
-    fn build_agent_backend_selects_npm_pi_when_prefixed() {
         let model = sample_model("pi:openai/gpt-4o");
-        let backend = build_agent_backend(model, 3, false).expect("npm pi");
-        assert!(matches!(backend.model.backend, ModelBackend::NpmPi));
+        let backend = build_agent_backend(model, 3, false).expect("pi");
+        assert!(matches!(backend.model.backend, ModelBackend::Pi));
         assert_eq!(backend.model.canonical(), "pi:openai/gpt-4o");
     }
 

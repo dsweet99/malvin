@@ -34,7 +34,7 @@ fn kiss_witness_unified_sdk_client_and_backend() {
     assert_eq!(cursor.model.canonical(), "cursor:auto");
     assert!(matches!(cursor.model.backend, ModelBackend::Cursor));
 
-    let pi_model = parse_model_id("rpi:openai/gpt-4o").expect("pi");
+    let pi_model = parse_model_id("pi:openai/gpt-4o").expect("pi");
     let pi = crate::agent_backend::new_pi(pi_model, test_io());
     assert!(matches!(pi.model.backend, ModelBackend::Pi));
 
@@ -77,7 +77,6 @@ fn kiss_witness_unified_sdk_client_and_backend() {
     let _ = stringify!(emit_agent_started_log);
     let _ = stringify!(force_fresh_agent_for_retry);
     let _ = stringify!(DRAIN_IDLE_PREFIX_BRIDGE);
-    let _ = stringify!(DRAIN_IDLE_PREFIX_NPM_PI);
     let _ = stringify!(DRAIN_IDLE_PREFIX_PI);
     let _ = stringify!(DRAIN_IDLE_PREFIX_CODEX);
     let _ = stringify!(prompts_log_run_dir);

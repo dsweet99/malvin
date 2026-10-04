@@ -22,8 +22,22 @@ pub(crate) fn send_request_checked(socket_path: &Path, request: &Value) -> Resul
         .write_all(line.as_bytes())
         .map_err(|e| e.to_string())?;
     let mut buf = [0_u8; 4096];
-    let n = stream.read(&mut buf).unwrap_or(0);
+    let n = read_reply_bytes(&mut stream, &mut buf)?;
     classify_reply(&buf[..n])
+}
+
+fn read_reply_bytes(stream: &mut UnixStream, buf: &mut [u8]) -> Result<usize, String> {
+    match stream.read(buf) {
+        Ok(0) => Err("herdr reply empty".into()),
+        Ok(n) => Ok(n),
+        Err(e)
+            if e.kind() == std::io::ErrorKind::TimedOut
+                || e.kind() == std::io::ErrorKind::WouldBlock =>
+        {
+            Err(format!("herdr read timed out: {e}"))
+        }
+        Err(e) => Err(format!("herdr read: {e}")),
+    }
 }
 
 fn first_nonempty_line(bytes: &[u8]) -> Result<String, String> {

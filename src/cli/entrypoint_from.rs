@@ -40,18 +40,23 @@ fn entrypoint_before_dispatch(cli: &Cli, matches: &clap::ArgMatches) -> Option<E
     if let Some(exit) = entrypoint_advice_or_doc_exit(cli) {
         return Some(exit);
     }
-    if cli.command.is_none()
-        && !cli.has_request()
-        && !cli.do_workflow()
-        && !is_gates_only_route(cli)
-    {
-        let _ = crate::cli::commands_help::print_commands_only_help();
-        return Some(Exit::Success);
-    }
-    if let Some(exit) = super::entrypoint_short_help::entrypoint_request_missing_short_help(cli) {
+    if let Some(exit) = entrypoint_commands_catalog(cli) {
         return Some(exit);
     }
-    None
+    super::entrypoint_short_help::entrypoint_request_missing_short_help(cli)
+}
+
+fn entrypoint_commands_catalog(cli: &Cli) -> Option<Exit> {
+    let _ = match &cli.command {
+        None if !cli.has_request() && !cli.do_workflow() && !is_gates_only_route(cli) => {
+            crate::cli::commands_help::print_commands_only_help()
+        }
+        Some(crate::cli::Commands::Admin(admin)) if admin.command.is_none() => {
+            crate::cli::commands_help::print_admin_commands_only_help()
+        }
+        _ => return None,
+    };
+    Some(Exit::Success)
 }
 
 fn reject_admin_with_workflow_only_flags(cli: &Cli, matches: &clap::ArgMatches) -> Option<String> {

@@ -17,7 +17,7 @@ fn cursor_and_pi_backends_construct_from_prefixed_models() {
     let sdk = crate::cursor_sdk::cursor_sdk_client_from_raw("cursor:auto", test_io(), 1);
     assert!(matches!(sdk.model.backend, ModelBackend::Cursor));
     let pi = {
-        let model = crate::model_id::parse_model_id("rpi:openai/gpt-4o").expect("model");
+        let model = crate::model_id::parse_model_id("pi:openai/gpt-4o").expect("model");
         crate::agent_backend::new_pi(model, test_io())
     };
     assert!(matches!(pi.model.backend, ModelBackend::Pi));
@@ -25,7 +25,7 @@ fn cursor_and_pi_backends_construct_from_prefixed_models() {
 
 #[test]
 fn build_agent_backend_selects_pi_for_pi_model() {
-    let model = crate::model_id::parse_model_id("rpi:openai/gpt-4o").expect("model");
+    let model = crate::model_id::parse_model_id("pi:openai/gpt-4o").expect("model");
     let backend = build_agent_backend(model, 3, false).expect("pi backend");
     assert!(matches!(backend.model.backend, ModelBackend::Pi));
 }

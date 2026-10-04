@@ -5,8 +5,9 @@ use super::models_cmd::ModelsArgs;
 #[derive(Args, Debug, Clone)]
 #[command(override_usage = "malvin admin <COMMAND>")]
 pub struct AdminArgs {
+    /// `None` for bare `malvin admin`, which prints the admin command catalog.
     #[command(subcommand)]
-    pub command: AdminCommand,
+    pub command: Option<AdminCommand>,
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -16,13 +17,13 @@ pub enum AdminCommand {
     /// Reset herdr agent state to idle (not working)
     #[command(name = "reset-herdr", visible_alias = "rh")]
     ResetHerdr,
-    /// Install the Cursor SDK (needs Node.js >= 22.13 and npm) for cursor: models
-    #[command(name = "setup-cursor")]
-    SetupCursor,
 }
 
 pub fn run_admin(args: AdminArgs, current_model: &str) -> Result<(), String> {
-    match args.command {
+    let Some(command) = args.command else {
+        return super::commands_help::print_admin_commands_only_help().map_err(|e| e.to_string());
+    };
+    match command {
         AdminCommand::Models(models) => super::models_cmd::run_models(models, current_model),
         AdminCommand::ResetHerdr => {
             malvin::herdr::reset_to_not_working()?;
@@ -32,19 +33,7 @@ pub fn run_admin(args: AdminArgs, current_model: &str) -> Result<(), String> {
             );
             Ok(())
         }
-        AdminCommand::SetupCursor => run_setup_cursor(),
     }
-}
-
-fn run_setup_cursor() -> Result<(), String> {
-    use malvin::cursor_sdk::bridge_install;
-    let dest = bridge_install::default_install_dir();
-    bridge_install::install_into(&dest).map_err(|e| bridge_install::install_failed_message(&e))?;
-    malvin::output::print_stdout_line(
-        malvin::output::MALVIN_WHO,
-        &format!("Cursor SDK bridge ready in {}", dest.display()),
-    );
-    Ok(())
 }
 
 #[cfg(test)]
@@ -58,7 +47,7 @@ mod tests {
         let cli = Cli::try_parse_from(["malvin", "admin", "reset-herdr"]).expect("parse");
         match cli.command {
             Some(Commands::Admin(AdminArgs {
-                command: AdminCommand::ResetHerdr,
+                command: Some(AdminCommand::ResetHerdr),
             })) => {}
             other => panic!("expected Admin::ResetHerdr, got {other:?}"),
         }
@@ -69,33 +58,22 @@ mod tests {
         let cli = Cli::try_parse_from(["malvin", "admin", "rh"]).expect("parse");
         match cli.command {
             Some(Commands::Admin(AdminArgs {
-                command: AdminCommand::ResetHerdr,
+                command: Some(AdminCommand::ResetHerdr),
             })) => {}
             other => panic!("expected Admin::ResetHerdr via rh, got {other:?}"),
         }
     }
 
     #[test]
-    fn parses_admin_setup_cursor() {
-        let cli = Cli::try_parse_from(["malvin", "admin", "setup-cursor"]).expect("parse");
-        assert!(matches!(
-            cli.command,
-            Some(Commands::Admin(AdminArgs {
-                command: AdminCommand::SetupCursor,
-            }))
-        ));
-    }
-
-    #[test]
     fn parses_admin_models() {
         let cli =
-            Cli::try_parse_from(["malvin", "admin", "models", "--refresh", "rpi:"]).expect("parse");
+            Cli::try_parse_from(["malvin", "admin", "models", "--refresh", "pi:"]).expect("parse");
         match cli.command {
             Some(Commands::Admin(AdminArgs {
-                command: AdminCommand::Models(args),
+                command: Some(AdminCommand::Models(args)),
             })) => {
                 assert!(args.refresh);
-                assert_eq!(args.words, vec!["rpi:".to_string()]);
+                assert_eq!(args.words, vec!["pi:".to_string()]);
             }
             other => panic!("expected Admin::Models, got {other:?}"),
         }

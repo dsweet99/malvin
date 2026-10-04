@@ -15,10 +15,7 @@ impl BackendLifecycle {
 
     #[must_use]
     pub const fn supports_thinking_wire(self) -> bool {
-        matches!(
-            self.0,
-            ModelBackend::NpmPi | ModelBackend::Pi | ModelBackend::Codex
-        )
+        matches!(self.0, ModelBackend::Pi | ModelBackend::Codex)
     }
 
     #[must_use]
@@ -40,10 +37,7 @@ impl BackendLifecycle {
         debug_assert_eq!(self.0, model.backend);
         match self.0 {
             ModelBackend::Cursor => crate::cursor_sdk::ensure_sdk_authenticated(),
-            ModelBackend::NpmPi => {
-                crate::npm_pi_sdk::ensure_npm_pi_authenticated(&model.canonical())
-            }
-            ModelBackend::Pi => crate::pi_sdk::ensure_pi_authenticated(&model.canonical()),
+            ModelBackend::Pi => crate::npm_pi_sdk::ensure_npm_pi_authenticated(&model.canonical()),
             ModelBackend::Codex => crate::codex_sdk::ensure_codex_authenticated(),
         }
     }
@@ -58,10 +52,9 @@ impl BackendLifecycle {
             ModelBackend::Cursor => crate::cursor_sdk::spawn_bridge(args, resume_agent_id)
                 .await
                 .map(|session| SdkSession::Cursor(Box::new(session))),
-            ModelBackend::NpmPi => crate::npm_pi_sdk::spawn_bridge(args)
+            ModelBackend::Pi => crate::npm_pi_sdk::spawn_bridge(args)
                 .await
-                .map(|session| SdkSession::NpmPi(Box::new(session))),
-            ModelBackend::Pi => crate::pi_sdk::spawn_bridge(args).await,
+                .map(|session| SdkSession::Pi(Box::new(session))),
             ModelBackend::Codex => crate::codex_sdk::spawn_bridge(args, service)
                 .await
                 .map(|session| SdkSession::Codex(Box::new(session))),
@@ -82,11 +75,6 @@ mod tests {
         assert!(cursor.tracks_resume_agent_id());
         assert!(cursor.forgets_resume_id_on_busy_teardown());
 
-        let npm = BackendLifecycle::of(ModelBackend::NpmPi);
-        assert!(npm.supports_thinking_wire());
-        assert!(!npm.supports_service_wire());
-        assert!(!npm.tracks_resume_agent_id());
-
         let pi = BackendLifecycle::of(ModelBackend::Pi);
         assert!(pi.supports_thinking_wire());
         assert!(!pi.supports_service_wire());
@@ -102,7 +90,6 @@ mod tests {
     fn lifecycle_of_round_trips_backend() {
         for b in [
             ModelBackend::Cursor,
-            ModelBackend::NpmPi,
             ModelBackend::Pi,
             ModelBackend::Codex,
         ] {

@@ -3,17 +3,15 @@ use crate::test_utils::with_isolated_home;
 use crate::workspace_paths::malvin_config_path;
 
 #[test]
-fn parse_disable_rpi_and_nicknames_from_config() {
+fn parse_nicknames_from_config() {
     let cfg = parse_malvin_config(
         r#"
-disable_rpi = true
 [nicknames]
 astra = "pi:openrouter/openai/gpt-astra"
 [agent]
 model = "astra"
 "#,
     );
-    assert!(cfg.disable_rpi);
     assert_eq!(
         cfg.nicknames.get("astra").map(String::as_str),
         Some("pi:openrouter/openai/gpt-astra")
@@ -25,7 +23,7 @@ model = "astra"
 }
 
 #[test]
-fn disable_rpi_rejects_rpi_agent_model_with_fallback() {
+fn removed_rpi_agent_model_falls_back_to_default() {
     let cfg = parse_malvin_config(
         r#"
 disable_rpi = true
@@ -33,7 +31,6 @@ disable_rpi = true
 model = "rpi:openai/gpt-4o"
 "#,
     );
-    assert!(cfg.disable_rpi);
     assert_eq!(
         cfg.agent.model.canonical(),
         crate::support_paths::DEFAULT_CLI_MODEL
@@ -41,10 +38,9 @@ model = "rpi:openai/gpt-4o"
 }
 
 #[test]
-fn resolve_model_expands_nickname_and_rejects_disabled_rpi() {
+fn resolve_model_expands_nickname_and_rejects_rpi() {
     let cfg = parse_malvin_config(
         r#"
-disable_rpi = true
 [nicknames]
 astra = "pi:openrouter/openai/gpt-astra"
 localish = "rpi:openai/gpt-4o"
@@ -54,12 +50,8 @@ localish = "rpi:openai/gpt-4o"
         cfg.resolve_model("astra").expect("nick").canonical(),
         "pi:openrouter/openai/gpt-astra"
     );
-    let err = cfg.resolve_model("localish").expect_err("rpi blocked");
-    assert!(err.contains("disabled"), "{err}");
-    let err = cfg
-        .resolve_model("rpi:openai/gpt-4o")
-        .expect_err("direct rpi blocked");
-    assert!(err.contains("disabled"), "{err}");
+    let err = cfg.resolve_model("localish").expect_err("rpi removed");
+    assert!(err.contains("`rpi:` backend removed"), "{err}");
 }
 
 #[test]

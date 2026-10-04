@@ -3,6 +3,7 @@ mod acp_tee_markdown;
 mod do_dm_emit;
 mod do_dm_filter;
 mod do_dm_mode;
+mod sentinel;
 pub(crate) mod stderr_log;
 mod stdout_defer;
 mod stdout_display;
@@ -26,7 +27,8 @@ pub(crate) use stdout_display::{
     format_heartbeat_stdout_ansi, format_line_stdout, format_line_stdout_ansi, logical_lines,
 };
 
-pub use do_dm_filter::{DM_END, DM_START, feed_do_dm_stdout_text};
+pub use do_dm_filter::feed_do_dm_stdout_text;
+pub use sentinel::{DM_END, DM_START, MALVIN_DONE, is_sentinel_line};
 pub use do_dm_mode::{
     DoDmStdoutOpts, do_dm_stdout_mode, set_do_dm_stdout_mode, set_do_dm_stdout_opts,
 };

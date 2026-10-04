@@ -3,14 +3,8 @@
 
 ## Installation
 
-Requires **Rust 1.95+** (`rustup update` / `rustup install 1.95.0`). This package
-declares `rust-version = "1.95"`; with an older rustc, `cargo install malvin`
-fails and leaves any prior binary in place (releases through `0.2.3` list every
-`rpi:` provider; `0.2.4+` lists only providers you can run).
-
 ```bash
-rustup install 1.95.0 && rustup default 1.95.0   # if needed
-cargo install malvin --force
+cargo install malvin
 ```
 
 The build needs neither Node nor network access beyond crates.io.
@@ -18,13 +12,11 @@ The build needs neither Node nor network access beyond crates.io.
 `cursor:` models (including the default, `cursor:auto`) need
 [Node.js](https://nodejs.org/) ≥ 22.13 with `npm` at run time. The first time a
 `cursor:` model runs, malvin installs the Cursor SDK (`@cursor/sdk`) under
-`~/.malvinconf/sdk-bridges/` with `npm ci`. To install it ahead of time:
+`~/.malvinconf/sdk-bridges/` with `npm ci`.
 
-```bash
-malvin admin setup-cursor
-```
-
-`rpi:` and `codex:` models do not need Node.
+`pi:` models also need Node (≥ 22.19 for Pi 1.x), plus the npm Pi agent
+(`npm install @earendil-works/pi-coding-agent` in `~/.malvinconf/sdk-bridges/`, or
+set `MALVIN_PI`). `codex:` models do not need Node.
 
 ## Usage
 
@@ -79,6 +71,5 @@ Flag reference: `malvin --help`. Behavioral contracts: `malvin --doc` and `malvi
 
 # EXPERIMENTAL - USE AT YOUR OWN RISK
 
-- pi: models (TypeScript/npm `@earendil-works/pi-coding-agent` RPC; set `MALVIN_PI` or install the package)
-- rpi: models (links crates.io `pi_agent_rust`; uses the operator’s Pi auth/config)
+- pi: models (TypeScript/npm `@earendil-works/pi-coding-agent` RPC; set `MALVIN_PI` or install the package). Local models run as `pi:local/<provider>/<model>` (Ollama, llama.cpp, mistral.rs); malvin starts Ollama when needed and writes a context-capped entry to Pi's `models.json`.
 - Codex: models (requires an externally installed `codex` binary; local stdio app-server)

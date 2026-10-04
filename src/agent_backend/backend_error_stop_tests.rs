@@ -31,7 +31,7 @@ fn tracker_counts_differing_errors_toward_local_cap() {
 
 #[test]
 fn local_client_stops_on_differing_errors_at_cap_with_hint() {
-    let mut client = client_for("rpi:ollama/tiny");
+    let mut client = client_for("pi:ollama/tiny");
     for i in 1..LOCAL_MAX_BACKEND_ERRORS {
         assert!(backend_error_stop(&mut client, &format!("Compute error {i}")).is_none());
     }
@@ -47,7 +47,7 @@ fn local_client_stops_on_differing_errors_at_cap_with_hint() {
 
 #[test]
 fn cloud_client_has_no_local_cap_or_hint() {
-    let mut client = client_for("rpi:openai/gpt-4o");
+    let mut client = client_for("pi:openai/gpt-4o");
     for i in 1..=LOCAL_MAX_BACKEND_ERRORS * 2 {
         assert!(backend_error_stop(&mut client, &format!("Compute error {i}")).is_none());
     }
@@ -64,7 +64,7 @@ fn cloud_client_has_no_local_cap_or_hint() {
 
 #[test]
 fn local_same_error_stop_carries_hint_only_for_matching_errors() {
-    let mut client = client_for("rpi:ollama/tiny");
+    let mut client = client_for("pi:ollama/tiny");
     for _ in 1..3 {
         assert!(backend_error_stop(&mut client, "HTTP 500").is_none());
     }
@@ -88,7 +88,7 @@ fn gpu_memory_needles_match_reported_errors() {
 
 #[test]
 fn local_retry_cap_message_names_limits() {
-    let msg = format_local_backend_retry_cap_message("rpi", "boom", 10);
+    let msg = format_local_backend_retry_cap_message("pi", "boom", 10);
     assert!(msg.contains("failed 10 times"), "{msg}");
     assert!(msg.contains("300 s"), "{msg}");
     assert!(msg.ends_with("Last error:\nboom"), "{msg}");

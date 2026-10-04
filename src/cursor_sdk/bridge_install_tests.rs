@@ -1,5 +1,5 @@
 use super::bridge_install::{
-    PAYLOAD, SETUP_COMMAND, fnv1a64, install_failed_message, install_into, npm_deps_current,
+    PAYLOAD, fnv1a64, install_failed_message, install_into, npm_deps_current,
 };
 use super::bridge_install_npm::{path_with_node_first, resolve_npm};
 use std::fs;
@@ -94,12 +94,12 @@ fn install_into_reports_npm_failure() {
 }
 
 #[test]
-fn install_failed_message_names_setup_and_node_free_backends() {
+fn install_failed_message_names_node_free_backends() {
     let msg = install_failed_message("npm not found");
     assert!(msg.contains("npm not found"));
-    assert!(msg.contains(SETUP_COMMAND));
+    assert!(msg.contains("MALVIN_CURSOR_SDK_BRIDGE"));
     assert!(msg.contains("22.13"));
-    assert!(msg.contains("rpi:") && msg.contains("codex:"));
+    assert!(msg.contains("codex:") && !msg.contains("rpi:"));
 }
 
 #[test]

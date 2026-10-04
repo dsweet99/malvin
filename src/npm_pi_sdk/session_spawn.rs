@@ -11,6 +11,7 @@ pub(crate) async fn npm_pi_spawn_bridge(
             "npm pi mock session is not configured for MALVIN_TEST_NO_REAL_AGENT".into(),
         ));
     }
+    prewarm_openrouter_pricing(args.model);
     let session = super::session_process::spawn_npm_pi_session(&args, ticket)?;
     start_mem_watch(MemWatchArgs {
         process_group_id: session.process_group_id,
@@ -22,6 +23,15 @@ pub(crate) async fn npm_pi_spawn_bridge(
     Ok(session)
 }
 
+fn prewarm_openrouter_pricing(model: &crate::model_id::ParsedModel) {
+    let Some((provider, id)) = model.pi_provider_and_model() else {
+        return;
+    };
+    if crate::pi_sdk::uses_openrouter_catalog(provider, id) {
+        std::thread::spawn(|| crate::pi_sdk::warm_openrouter_pricing_cache(false));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -29,5 +39,6 @@ mod tests {
     #[test]
     fn kiss_cov_spawn_bridge() {
         let _ = npm_pi_spawn_bridge;
+        let _ = prewarm_openrouter_pricing;
     }
 }

@@ -68,6 +68,30 @@ fn default_route_max_hypotheses_cli_wins_over_config() {
 }
 
 #[test]
+fn raw_usage_errors_end_with_newline() {
+    for argv in [
+        &["malvin", "--watch", "--do", "x"][..],
+        &["malvin", "x", "--creative"][..],
+    ] {
+        let err = parse_cli_with_config_defaults(argv).expect_err("usage error");
+        assert!(err.to_string().ends_with('\n'), "{argv:?}: {err:?}");
+    }
+}
+
+#[test]
+fn default_route_explicit_zero_max_hypotheses_means_default() {
+    assert_default_route_max_hypotheses(
+        &["malvin", "--max-hypotheses", "0", "hello"],
+        malvin::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
+    );
+}
+
+#[test]
+fn gates_only_max_hypotheses_uses_default_workflow_config() {
+    assert_default_route_max_hypotheses(&["malvin", "-g"], 11);
+}
+
+#[test]
 fn default_route_max_hypotheses_flag_after_request_parses() {
     malvin::test_utils::with_isolated_home(|_| {
         let (cli, _) = parse_cli_with_config_defaults(["malvin", "hello", "--max-hypotheses", "7"])

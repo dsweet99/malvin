@@ -44,7 +44,7 @@ fn default_embedded_placeholder_context() -> HashMap<String, String> {
         ("advice_path", "./.malvin/advice.md"),
         ("kpop_insert", ""),
         ("agents_insert", ""),
-        ("rpi_extra", ""),
+        ("pi_extra", ""),
     ];
     let mut ctx: HashMap<String, String> = entries
         .into_iter()
@@ -100,6 +100,14 @@ fn render_default_header(store: &super::PromptStore, context: &HashMap<String, S
 }
 
 #[test]
+fn embedded_router_done_prompts_name_the_done_marker() {
+    for name in [super::ROUTER_A_MD, super::ROUTER_B_DONE_NOTE_MD] {
+        let s = super::default_file(name).expect("router prompt must be embedded");
+        assert!(s.contains(crate::output::MALVIN_DONE), "{name}");
+    }
+}
+
+#[test]
 fn embedded_do_header_is_a_single_text_block_with_closing_newline() {
     let s = super::default_file(super::DO_HEADER_MD).expect("do header must be embedded");
     let lower = s.to_ascii_lowercase();
@@ -108,8 +116,8 @@ fn embedded_do_header_is_a_single_text_block_with_closing_newline() {
     assert!(lower.contains("do not restate"));
     assert!(lower.contains("required output format"));
     assert!(lower.contains("failed response"));
-    assert!(s.contains("__MALVIN_DM_START__"));
-    assert!(s.contains("__MALVIN_DM_END__"));
+    assert!(s.contains(crate::output::DM_START));
+    assert!(s.contains(crate::output::DM_END));
     assert!(!lower.contains("user request is:"));
     assert!(!s.contains("You'll\n find"));
 }

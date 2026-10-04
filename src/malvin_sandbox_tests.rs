@@ -66,6 +66,12 @@ fn sandbox_commands_force_malloc_arena_max_to_two() {
             .get_envs()
             .find_map(|(k, v)| (k == "MALLOC_ARENA_MAX").then_some(v));
         assert_eq!(arenas, Some(Some(OsStr::new("2"))));
+        let tokio_cmd = crate::malvin_sandbox::malvin_tokio_command("true");
+        let arenas = tokio_cmd
+            .as_std()
+            .get_envs()
+            .find_map(|(k, v)| (k == "MALLOC_ARENA_MAX").then_some(v));
+        assert_eq!(arenas, Some(Some(OsStr::new("2"))));
     });
 }
 

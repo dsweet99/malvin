@@ -137,3 +137,32 @@ def test_dm_tail_streams_dm_bodies(tmp_path) -> None:
     body = f"pre\n{lib.DM_START}\nline one\n{lib.DM_END}\npost\n"
     trace.write_text(_event(body) + "\n" + _event("par"))
     assert tail.poll() == ["line one\n"]
+
+
+def _sentinel_fixture() -> dict:
+    path = malvin_repo_root() / "tests" / "fixtures" / "sentinel_lines.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_sentinel_markers_match_shared_fixture() -> None:
+    lib = _lib()
+    markers = _sentinel_fixture()["markers"]
+    assert lib.DM_START == markers["dm_start"]
+    assert lib.DM_END == markers["dm_end"]
+
+
+def test_sentinel_rule_matches_shared_fixture() -> None:
+    lib = _lib()
+    fixture = _sentinel_fixture()
+    for case in fixture["cases"]:
+        marker = fixture["markers"][case["marker"]]
+        assert lib.is_sentinel_line(case["line"], marker) is case["matches"], case
+
+
+def test_dm_tail_accepts_whitespace_around_markers(tmp_path) -> None:
+    lib = _lib()
+    trace = tmp_path / "trace.jsonl"
+    tail = lib.DmTail(str(trace))
+    body = f"  {lib.DM_START}\r\nspaced\n {lib.DM_END} \n"
+    trace.write_text(_event(body) + "\n" + _event("par"))
+    assert tail.poll() == ["spaced\n"]

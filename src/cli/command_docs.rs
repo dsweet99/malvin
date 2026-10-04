@@ -12,10 +12,10 @@ pub(crate) const DO_DOC: &str = include_str!("../../default_prompts/docs/do.md")
 pub(crate) const fn command_doc_markdown(cmd: &Commands) -> &'static str {
     match cmd {
         Commands::Admin(admin) => match &admin.command {
-            super::AdminCommand::Models(_) => {
+            Some(super::AdminCommand::Models(_)) => {
                 include_str!("../../default_prompts/docs/models.md")
             }
-            super::AdminCommand::ResetHerdr | super::AdminCommand::SetupCursor => {
+            None | Some(super::AdminCommand::ResetHerdr) => {
                 include_str!("../../default_prompts/docs/admin.md")
             }
         },

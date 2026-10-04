@@ -1,4 +1,3 @@
-use rand::Rng;
 use serde_json::{Value, json};
 
 pub const SOURCE: &str = "herdr:malvin";
@@ -16,7 +15,7 @@ pub fn next_request_id() -> String {
     let millis = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| d.as_millis());
-    let suffix: u32 = rand::thread_rng().gen_range(0..1_000_000);
+    let suffix: u32 = fastrand::u32(0..1_000_000);
     format!("{SOURCE}:{millis}:{suffix:06}")
 }
 

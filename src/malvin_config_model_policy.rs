@@ -1,16 +1,8 @@
 use std::collections::BTreeMap;
 
-use crate::model_id::{ModelBackend, ParsedModel, parse_model_id};
+use crate::model_id::{ParsedModel, parse_model_id};
 
 use super::MalvinConfig;
-
-pub(crate) fn parse_disable_rpi(text: &str) -> Result<bool, String> {
-    let value: toml::Value = text.parse().map_err(|e| format!("invalid TOML: {e}"))?;
-    value.get("disable_rpi").map_or(Ok(false), |v| {
-        v.as_bool()
-            .ok_or_else(|| "disable_rpi must be a boolean".to_string())
-    })
-}
 
 pub(crate) fn parse_nicknames(text: &str) -> Result<BTreeMap<String, String>, String> {
     let value: toml::Value = text.parse().map_err(|e| format!("invalid TOML: {e}"))?;
@@ -51,20 +43,8 @@ impl MalvinConfig {
 
     pub fn resolve_model(&self, raw: &str) -> Result<ParsedModel, String> {
         let expanded = self.expand_nickname(raw);
-        let model = parse_model_id(expanded)?;
-        reject_disabled_rpi(self.disable_rpi, &model)?;
-        Ok(model)
+        parse_model_id(expanded)
     }
-}
-
-pub(crate) fn reject_disabled_rpi(disable_rpi: bool, model: &ParsedModel) -> Result<(), String> {
-    if disable_rpi && model.backend == ModelBackend::Pi {
-        return Err(
-            "rpi: backend is disabled (set disable_rpi = false in ~/.malvinconf/config.toml)"
-                .to_string(),
-        );
-    }
-    Ok(())
 }
 
 pub fn parse_model_cli_arg(raw: &str) -> Result<ParsedModel, String> {

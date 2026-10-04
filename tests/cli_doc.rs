@@ -87,6 +87,39 @@ fn malvin_inspire_is_not_a_documented_subcommand() {
 }
 
 #[test]
+fn bare_malvin_admin_shows_commands_with_descriptions_and_exits_zero() {
+    let tmp = isolated_home();
+    let out = malvin_cmd(tmp.path())
+        .arg("admin")
+        .output()
+        .expect("spawn malvin admin");
+    assert!(
+        out.status.success(),
+        "stderr={}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        out.stderr.is_empty(),
+        "stderr={}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let s = String::from_utf8_lossy(&out.stdout);
+    assert!(s.contains("Usage: malvin admin <COMMAND>"), "{s}");
+    assert!(s.contains("Commands:"), "{s}");
+    assert!(
+        s.lines()
+            .any(|l| l.starts_with("  models ") && l.contains("List available models")),
+        "{s}"
+    );
+    assert!(
+        s.lines()
+            .any(|l| l.starts_with("  reset-herdr ") && l.contains("Reset herdr agent state")),
+        "{s}"
+    );
+    assert!(!s.contains("Options:"), "{s}");
+}
+
+#[test]
 fn bare_malvin_shows_commands_only_and_exits_zero() {
     let tmp = isolated_home();
     let bare = malvin_cmd(tmp.path()).output().expect("spawn malvin");

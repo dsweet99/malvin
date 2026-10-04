@@ -13,7 +13,7 @@ fn capture_doc(command: Option<&Commands>) -> Result<Vec<u8>, String> {
 #[test]
 fn subcommand_doc_embeds_have_malvin_heading() {
     let md = command_doc_markdown(&Commands::Admin(AdminArgs {
-        command: AdminCommand::Models(ModelsArgs::default()),
+        command: Some(AdminCommand::Models(ModelsArgs::default())),
     }));
     assert!(md.starts_with("# malvin "));
     assert!(ROUTER_DOC.starts_with("# malvin"));
@@ -61,10 +61,33 @@ fn admin_doc_parses_with_doc_flag() {
 #[test]
 fn print_doc_admin_writes_subcommand_md() {
     let cmd = Commands::Admin(AdminArgs {
-        command: AdminCommand::Models(ModelsArgs::default()),
+        command: Some(AdminCommand::Models(ModelsArgs::default())),
     });
     let out = capture_doc(Some(&cmd)).expect("capture");
     assert!(out.starts_with(b"# malvin"));
+}
+
+#[test]
+fn bare_admin_doc_writes_admin_md() {
+    for argv in [["malvin", "admin", "--doc"], ["malvin", "--doc", "admin"]] {
+        let cli = Cli::try_parse_from(argv).expect("parse");
+        let mut buf = Vec::new();
+        super::print_doc_for_cli_to_writer(&cli, &mut buf).expect("write");
+        assert!(buf.starts_with(b"# malvin admin\n"), "{argv:?}");
+    }
+}
+
+#[test]
+fn bare_admin_without_doc_parses_with_no_subcommand() {
+    malvin::test_utils::with_isolated_home(|_| {
+        let (cli, _) =
+            crate::cli::config_defaults::parse_cli_with_config_defaults(["malvin", "admin"])
+                .expect("bare admin parses");
+        assert!(matches!(
+            cli.command,
+            Some(Commands::Admin(AdminArgs { command: None }))
+        ));
+    });
 }
 
 #[test]

@@ -4,12 +4,10 @@ use crate::acp::AgentError;
 use crate::bridge_sdk::{BridgeSession, StreamLog};
 use crate::codex_sdk::CodexSession;
 use crate::npm_pi_sdk::NpmPiSession;
-use crate::pi_sdk::PiEmbeddedSession;
 
 pub(crate) enum SdkSession {
     Cursor(Box<BridgeSession>),
-    NpmPi(Box<NpmPiSession>),
-    Pi(Box<PiEmbeddedSession>),
+    Pi(Box<NpmPiSession>),
     Codex(Box<CodexSession>),
 }
 
@@ -19,7 +17,6 @@ impl Deref for SdkSession {
     fn deref(&self) -> &Self::Target {
         match self {
             Self::Cursor(session) => &session.log,
-            Self::NpmPi(session) => &session.log,
             Self::Pi(session) => &session.log,
             Self::Codex(session) => &session.log,
         }
@@ -30,7 +27,6 @@ impl DerefMut for SdkSession {
     fn deref_mut(&mut self) -> &mut Self::Target {
         match self {
             Self::Cursor(session) => &mut session.log,
-            Self::NpmPi(session) => &mut session.log,
             Self::Pi(session) => &mut session.log,
             Self::Codex(session) => &mut session.log,
         }
@@ -41,7 +37,6 @@ impl SdkSession {
     pub(crate) async fn send_prompt(&self, prompt: &str) -> Result<(), AgentError> {
         match self {
             Self::Cursor(session) => session.send_prompt(prompt).await,
-            Self::NpmPi(session) => session.send_prompt(prompt).await,
             Self::Pi(session) => session.send_prompt(prompt).await,
             Self::Codex(session) => session.send_prompt(prompt).await,
         }
@@ -50,7 +45,6 @@ impl SdkSession {
     pub(crate) async fn shutdown(self) -> Result<(), AgentError> {
         match self {
             Self::Cursor(session) => session.shutdown().await,
-            Self::NpmPi(session) => session.shutdown().await,
             Self::Pi(session) => session.shutdown().await,
             Self::Codex(session) => session.shutdown().await,
         }
@@ -60,7 +54,7 @@ impl SdkSession {
     pub(crate) const fn as_cursor(&self) -> Option<&BridgeSession> {
         match self {
             Self::Cursor(session) => Some(session),
-            Self::NpmPi(_) | Self::Pi(_) | Self::Codex(_) => None,
+            Self::Pi(_) | Self::Codex(_) => None,
         }
     }
 
@@ -68,7 +62,7 @@ impl SdkSession {
     pub(crate) const fn as_cursor_mut(&mut self) -> Option<&mut BridgeSession> {
         match self {
             Self::Cursor(session) => Some(session),
-            Self::NpmPi(_) | Self::Pi(_) | Self::Codex(_) => None,
+            Self::Pi(_) | Self::Codex(_) => None,
         }
     }
 

@@ -19,12 +19,11 @@ pub(super) fn map_npm_pi_event(value: &Value, state: &mut TurnState) -> Vec<Brid
                 "complete"
             },
         )],
-        "agent_end" => {
-            capture_agent_end(value, state);
-            Vec::new()
-        }
-        "agent_settled" => {
-            state.settled = true;
+        "turn_end" => vec![BridgeEvent::Step {
+            kind: Some("turn".into()),
+        }],
+        "message_end" | "agent_end" | "agent_settled" => {
+            capture_turn_state(ty, value, state);
             Vec::new()
         }
         "extension_error" => vec![BridgeEvent::Fatal {
@@ -38,10 +37,52 @@ pub(super) fn map_npm_pi_event(value: &Value, state: &mut TurnState) -> Vec<Brid
     }
 }
 
-fn map_message_update(value: &Value, state: &mut TurnState) -> Vec<BridgeEvent> {
-    if let Some(usage) = value.get("usage") {
-        state.usage = Some(usage.clone());
+fn capture_turn_state(ty: &str, value: &Value, state: &mut TurnState) {
+    match ty {
+        "message_end" => add_assistant_usage(value, state),
+        "agent_end" => capture_agent_end(value, state),
+        _ => state.settled = true,
     }
+}
+
+fn add_assistant_usage(value: &Value, state: &mut TurnState) {
+    let Some(message) = value.get("message") else {
+        return;
+    };
+    if message.get("role").and_then(Value::as_str) != Some("assistant") {
+        return;
+    }
+    let Some(usage) = message.get("usage").filter(|u| u.is_object()) else {
+        return;
+    };
+    match state.usage.as_mut() {
+        Some(total) => sum_usage(total, usage),
+        None => state.usage = Some(usage.clone()),
+    }
+}
+
+fn sum_usage(total: &mut Value, add: &Value) {
+    let (Some(total), Some(add)) = (total.as_object_mut(), add.as_object()) else {
+        return;
+    };
+    for (key, value) in add {
+        match total.get_mut(key) {
+            Some(slot) if slot.is_object() => sum_usage(slot, value),
+            Some(slot) => {
+                if let (Some(a), Some(b)) = (slot.as_u64(), value.as_u64()) {
+                    *slot = Value::from(a + b);
+                } else if let (Some(a), Some(b)) = (slot.as_f64(), value.as_f64()) {
+                    *slot = Value::from(a + b);
+                }
+            }
+            None => {
+                total.insert(key.clone(), value.clone());
+            }
+        }
+    }
+}
+
+fn map_message_update(value: &Value, state: &mut TurnState) -> Vec<BridgeEvent> {
     let Some(ev) = value.get("assistantMessageEvent") else {
         return Vec::new();
     };
@@ -70,9 +111,8 @@ fn delta_text(ev: &Value) -> Option<String> {
 }
 
 fn capture_agent_end(value: &Value, state: &mut TurnState) {
-    if let Some(usage) = value.get("usage") {
-        state.usage = Some(usage.clone());
-    }
+    state.end_error =
+        super::agent_end_error::agent_end_error(value.get("messages"), state.output_cap);
     if !state.response_text.is_empty() {
         return;
     }

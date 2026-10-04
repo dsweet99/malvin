@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import contextlib
 import errno
 import mmap
 import os
@@ -65,10 +66,23 @@ LEAK_NAME_MARKERS = ("grade.py", "goldens", "golden", "solution")
 
 CURSOR_AGENT_SHELL = "cursor-agent --force -p < plan.md"
 
+def ft_installed_cursor_sdk_bridge_dir() -> Path:
+    return Path.home() / ".malvinconf" / "sdk-bridges" / "cursor-sdk-bridge"
+
+def _ft_cursor_sdk_bridge_ready(path: Path) -> bool:
+    return (path / "dist" / "bridge.js").is_file() and (
+        path / "node_modules" / "@cursor" / "sdk" / "package.json"
+    ).is_file()
+
 def ft_resolve_cursor_sdk_bridge_dir() -> Path | None:
-    bridge = (REPO_ROOT / "cursor-sdk-bridge").resolve()
-    if (bridge / "dist" / "bridge.js").is_file():
-        return bridge
+    repo_bridge = (REPO_ROOT / "cursor-sdk-bridge").resolve()
+    if _ft_cursor_sdk_bridge_ready(repo_bridge):
+        return repo_bridge
+    installed = ft_installed_cursor_sdk_bridge_dir().resolve()
+    if _ft_cursor_sdk_bridge_ready(installed):
+        return installed
+    if (repo_bridge / "dist" / "bridge.js").is_file():
+        return repo_bridge
     return None
 
 def ft_resolve_node_bin() -> Path | None:
@@ -156,6 +170,49 @@ def _push_npm_pi_scoped(out: list[Path], modules: Path) -> None:
         if pkg.is_dir():
             out.append(pkg)
 
+def ft_resolve_model(malvin_binary: Path, raw: str) -> dict[str, Any] | None:
+    try:
+        proc = subprocess.run(
+            [str(malvin_binary), "admin", "models", "--resolve", raw],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if proc.returncode != 0:
+        return None
+    lines = proc.stdout.strip().splitlines()
+    try:
+        info = json.loads(lines[-1]) if lines else None
+    except ValueError:
+        return None
+    if not isinstance(info, dict) or not isinstance(info.get("canonical"), str):
+        return None
+    return info
+
+def ft_canonicalize_model_args(
+    malvin_binary: Path, malvin_args: tuple[str, ...]
+) -> tuple[str, ...]:
+    out = list(malvin_args)
+    for i, arg in enumerate(malvin_args):
+        if arg == "--model" and i + 1 < len(malvin_args):
+            slot, raw, template = i + 1, malvin_args[i + 1], "{}"
+        elif arg.startswith("--model="):
+            slot, raw, template = i, arg.split("=", 1)[1], "--model={}"
+        else:
+            continue
+        info = ft_resolve_model(malvin_binary, raw)
+        if info is None:
+            click.echo(
+                f"Warning: {malvin_binary} could not resolve --model {raw!r}; "
+                "passing it to malvin unchanged"
+            )
+            continue
+        out[slot] = template.format(info["canonical"])
+    return tuple(out)
+
 def _ft_model_prefix_requested(malvin_args: tuple[str, ...], prefix: str) -> bool:
     for i, arg in enumerate(malvin_args):
         if arg == "--model" and i + 1 < len(malvin_args):
@@ -168,26 +225,23 @@ def _ft_model_prefix_requested(malvin_args: tuple[str, ...], prefix: str) -> boo
     return False
 
 def ft_malvin_args_request_pi(malvin_args: tuple[str, ...]) -> bool:
-    return _ft_model_prefix_requested(malvin_args, "rpi:")
-
-def ft_malvin_args_request_npm_pi(malvin_args: tuple[str, ...]) -> bool:
     return _ft_model_prefix_requested(malvin_args, "pi:")
 
 def ft_malvin_args_request_codex(malvin_args: tuple[str, ...]) -> bool:
     return _ft_model_prefix_requested(malvin_args, "codex:")
 
-_LOCAL_RPI_PROVIDERS = ("ollama/", "llamacpp/", "mistralrs/", "local/")
-_OLLAMA_RPI_PROVIDERS = ("ollama/", "local/ollama/")
+_LOCAL_PI_PROVIDERS = ("ollama/", "llamacpp/", "mistralrs/", "local/")
+_OLLAMA_PI_PROVIDERS = ("ollama/", "local/ollama/")
 
-def ft_malvin_args_request_local_rpi(malvin_args: tuple[str, ...]) -> bool:
-    return _ft_rpi_model_has_prefix(malvin_args, _LOCAL_RPI_PROVIDERS)
-
-
-def ft_malvin_args_request_ollama_rpi(malvin_args: tuple[str, ...]) -> bool:
-    return _ft_rpi_model_has_prefix(malvin_args, _OLLAMA_RPI_PROVIDERS)
+def ft_malvin_args_request_local_pi(malvin_args: tuple[str, ...]) -> bool:
+    return _ft_pi_model_has_prefix(malvin_args, _LOCAL_PI_PROVIDERS)
 
 
-def _ft_rpi_model_has_prefix(
+def ft_malvin_args_request_ollama_pi(malvin_args: tuple[str, ...]) -> bool:
+    return _ft_pi_model_has_prefix(malvin_args, _OLLAMA_PI_PROVIDERS)
+
+
+def _ft_pi_model_has_prefix(
     malvin_args: tuple[str, ...], prefixes: tuple[str, ...]
 ) -> bool:
     for i, arg in enumerate(malvin_args):
@@ -198,10 +252,9 @@ def _ft_rpi_model_has_prefix(
             value = arg.split("=", 1)[1]
         if value is None:
             continue
-        lower = value.lower()
-        if not lower.startswith("rpi:"):
+        if not value.startswith("pi:"):
             continue
-        rest = lower[4:]
+        rest = value[3:]
         if any(rest.startswith(p) for p in prefixes):
             return True
     return False
@@ -228,7 +281,7 @@ def ft_malvin_container_home(malvin_binary: Path | None) -> str:
     return "/root/.malvin_home" if legacy else "/root/.malvinconf"
 
 
-def ft_local_rpi_needs_host_agent(
+def ft_local_pi_needs_host_agent(
     *,
     agent_name: str,
     malvin_args: tuple[str, ...],
@@ -237,7 +290,7 @@ def ft_local_rpi_needs_host_agent(
     return (
         agent_name == AGENT_MALVIN
         and malvin_binary is not None
-        and ft_malvin_args_request_local_rpi(malvin_args)
+        and ft_malvin_args_request_local_pi(malvin_args)
         and not ft_host_malvin_is_linux_elf(malvin_binary)
     )
 
@@ -248,7 +301,7 @@ def ft_assert_docker_malvin_runnable(malvin_binary: Path | None) -> None:
     raise click.ClickException(
         f"Host malvin binary {malvin_binary} is not a Linux ELF executable, so the "
         "Linux agent container cannot run it (exec format error). Run on a Linux "
-        "host, pass a local model (e.g. --model rpi:local/ollama/<model>) to run "
+        "host, pass a local model (e.g. --model pi:local/ollama/<model>) to run "
         "malvin on the host, or use --agent=cursor."
     )
 
@@ -260,7 +313,7 @@ def ft_host_agent_cmd(
     malvin_args: tuple[str, ...],
 ) -> list[str]:
     run_args = list(malvin_args)
-    if ft_malvin_args_request_local_rpi(malvin_args) and "--do" not in run_args:
+    if ft_malvin_args_request_local_pi(malvin_args) and "--do" not in run_args:
         run_args = ["--do", *run_args]
     return [str(malvin_binary.resolve()), *run_args, "plan.md"]
 
@@ -565,8 +618,10 @@ def ft_docker_agent_cmd(
         host_bridge = ft_resolve_cursor_sdk_bridge_dir()
         if host_bridge is None:
             raise click.ClickException(
-                "cursor-sdk-bridge/dist/bridge.js not found under the repo; "
-                "run `npm ci && npm run build` in cursor-sdk-bridge/ "
+                "cursor-sdk-bridge/dist/bridge.js not found under the repo "
+                "or ~/.malvinconf/sdk-bridges/cursor-sdk-bridge; "
+                "run a `cursor:` model with malvin once, or run "
+                "`npm ci && npm run build` in cursor-sdk-bridge/ "
                 "(required for cursor: models inside the agent container)"
             )
         volume_mounts = [
@@ -584,8 +639,8 @@ def ft_docker_agent_cmd(
         volume_mounts, bridge_env = _ft_maybe_mount_npm_pi(
             volume_mounts, bridge_env, malvin_args
         )
-        bridge_env = _ft_maybe_local_rpi_env(bridge_env, malvin_args)
-    needs_node = ft_malvin_args_request_codex(malvin_args) or ft_malvin_args_request_npm_pi(
+        bridge_env = _ft_maybe_local_pi_env(bridge_env, malvin_args)
+    needs_node = ft_malvin_args_request_codex(malvin_args) or ft_malvin_args_request_pi(
         malvin_args
     )
     container_path = (
@@ -593,8 +648,8 @@ def ft_docker_agent_cmd(
         if needs_node
         else TOOLCHAIN_PATH
     )
-    local_rpi = (
-        agent_name == AGENT_MALVIN and ft_malvin_args_request_local_rpi(malvin_args)
+    local_pi = (
+        agent_name == AGENT_MALVIN and ft_malvin_args_request_local_pi(malvin_args)
     )
     cmd = [
         "docker",
@@ -602,7 +657,7 @@ def ft_docker_agent_cmd(
         "--rm",
         *(
             ["--add-host=host.docker.internal:host-gateway"]
-            if local_rpi
+            if local_pi
             else []
         ),
         *ft_cursor_env_args(),
@@ -628,7 +683,7 @@ def ft_docker_agent_cmd(
         cmd.extend(["sh", "-c", CURSOR_AGENT_SHELL])
     else:
         run_args = list(malvin_args)
-        if ft_malvin_args_request_local_rpi(malvin_args) and "--do" not in run_args:
+        if ft_malvin_args_request_local_pi(malvin_args) and "--do" not in run_args:
             run_args = ["--do", *run_args]
         cmd.extend(["malvin", *run_args, "plan.md"])
     ft_assert_agent_cmd_nonleak(cmd, task_parent=ws.parent)
@@ -681,7 +736,7 @@ def _ft_maybe_mount_npm_pi(
     bridge_env: list[str],
     malvin_args: tuple[str, ...],
 ) -> tuple[list[str], list[str]]:
-    if not ft_malvin_args_request_npm_pi(malvin_args):
+    if not ft_malvin_args_request_pi(malvin_args):
         return volume_mounts, bridge_env
     host_entry = ft_resolve_npm_pi_entry()
     host_node = ft_resolve_node_bin()
@@ -713,11 +768,11 @@ def _ft_maybe_mount_npm_pi(
     ]
     return volume_mounts, bridge_env
 
-def _ft_maybe_local_rpi_env(
+def _ft_maybe_local_pi_env(
     bridge_env: list[str],
     malvin_args: tuple[str, ...],
 ) -> list[str]:
-    if not ft_malvin_args_request_local_rpi(malvin_args):
+    if not ft_malvin_args_request_local_pi(malvin_args):
         return bridge_env
     raw = (
         os.environ.get(
@@ -942,7 +997,9 @@ def ft_run_solve(
         host_malvin = (
             ft_resolve_malvin_main_binary() if use_main else ft_resolve_malvin_binary()
         )
-    skip_docker = ft_local_rpi_needs_host_agent(
+    if host_malvin is not None:
+        malvin_args = ft_canonicalize_model_args(host_malvin, malvin_args)
+    skip_docker = ft_local_pi_needs_host_agent(
         agent_name=agent_name,
         malvin_args=malvin_args,
         malvin_binary=host_malvin,
@@ -1009,11 +1066,11 @@ def ft_run_solve(
     else:
         if host_agent:
             click.echo(
-                "Running malvin on host for local rpi: "
+                "Running malvin on host for local pi: "
                 "(host binary is not a Linux ELF; Docker would fail with exec format error)"
             )
             host_env = os.environ.copy()
-            if ft_malvin_args_request_ollama_rpi(malvin_args):
+            if ft_malvin_args_request_ollama_pi(malvin_args):
                 host_env.setdefault(
                     "MALVIN_LOCAL_LLM_BASE_URL",
                     "http://127.0.0.1:11434/v1",
@@ -1130,6 +1187,8 @@ def run_fast_task_self_tests() -> None:
     _ft_test_resolve_malvin_binary_prefers_current_repo_build()
     _ft_test_resolve_malvin_main_binary()
     _ft_test_resolve_agent_helpers()
+    _ft_test_canonicalize_model_args()
+    _ft_test_bridge_prefers_installed_sdk_when_repo_lacks_modules()
     _ft_test_relay_streams_before_wait()
     _ft_test_relay_timeout_kills_slow_command()
     _ft_test_print_evaluation_includes_reward()
@@ -1256,17 +1315,17 @@ def _ft_test_docker_agent_cmd_cursor() -> None:
 def _ft_test_docker_agent_cmd_pi() -> None:
     assert ft_malvin_args_request_pi(()) is False
     assert ft_malvin_args_request_pi(("--model", "cursor:auto")) is False
-    assert ft_malvin_args_request_pi(("--model", "rpi:openai/gpt-4o")) is True
-    assert ft_malvin_args_request_pi(("--model=rpi:openrouter/x",)) is True
+    assert ft_malvin_args_request_pi(("--model", "pi:openai/gpt-4o")) is True
+    assert ft_malvin_args_request_pi(("--model=pi:openrouter/x",)) is True
     assert ft_malvin_args_request_pi(("--model=cursor:auto",)) is False
-    assert ft_malvin_args_request_local_rpi(()) is False
-    assert ft_malvin_args_request_local_rpi(("--model", "rpi:openai/gpt-4o")) is False
-    assert ft_malvin_args_request_local_rpi(("--model", "rpi:ollama/malvin-llama32")) is True
-    assert ft_malvin_args_request_local_rpi(("--model=rpi:local/x",)) is True
-    assert ft_malvin_args_request_local_rpi(("--model", "rpi:llamacpp/m",)) is True
-    assert ft_malvin_args_request_ollama_rpi(("--model=rpi:local/ollama/x",)) is True
-    assert ft_malvin_args_request_ollama_rpi(("--model=rpi:local/llamacpp/m",)) is False
-    assert ft_malvin_args_request_ollama_rpi(("--model", "rpi:openai/gpt-4o")) is False
+    assert ft_malvin_args_request_local_pi(()) is False
+    assert ft_malvin_args_request_local_pi(("--model", "pi:openai/gpt-4o")) is False
+    assert ft_malvin_args_request_local_pi(("--model", "pi:ollama/malvin-llama32")) is True
+    assert ft_malvin_args_request_local_pi(("--model=pi:local/x",)) is True
+    assert ft_malvin_args_request_local_pi(("--model", "pi:llamacpp/m",)) is True
+    assert ft_malvin_args_request_ollama_pi(("--model=pi:local/ollama/x",)) is True
+    assert ft_malvin_args_request_ollama_pi(("--model=pi:local/llamacpp/m",)) is False
+    assert ft_malvin_args_request_ollama_pi(("--model", "pi:openai/gpt-4o")) is False
     with tempfile.TemporaryDirectory(prefix="ft-elf-") as tmp:
         mach = Path(tmp) / "mach-o"
         mach.write_bytes(b"\xcf\xfa\xed\xfe" + b"\0" * 32)
@@ -1282,17 +1341,17 @@ def _ft_test_docker_agent_cmd_pi() -> None:
         except click.ClickException as exc:
             assert "not a Linux ELF" in str(exc)
         assert (
-            ft_local_rpi_needs_host_agent(
+            ft_local_pi_needs_host_agent(
                 agent_name=AGENT_MALVIN,
-                malvin_args=("--model", "rpi:ollama/x"),
+                malvin_args=("--model", "pi:ollama/x"),
                 malvin_binary=mach,
             )
             is True
         )
         assert (
-            ft_local_rpi_needs_host_agent(
+            ft_local_pi_needs_host_agent(
                 agent_name=AGENT_MALVIN,
-                malvin_args=("--model", "rpi:ollama/x"),
+                malvin_args=("--model", "pi:ollama/x"),
                 malvin_binary=elf,
             )
             is False
@@ -1300,13 +1359,13 @@ def _ft_test_docker_agent_cmd_pi() -> None:
         host_cmd = ft_host_agent_cmd(
             workspace=Path(tmp),
             malvin_binary=mach,
-            malvin_args=("--model", "rpi:ollama/x"),
+            malvin_args=("--model", "pi:ollama/x"),
         )
         assert host_cmd[0] == str(mach.resolve())
         assert "--do" in host_cmd
         assert host_cmd[-1] == "plan.md"
 
-    with tempfile.TemporaryDirectory(prefix="ft-pi-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="ft-pi-") as tmp, _ft_stub_npm_pi(Path(tmp)):
         ws = Path(tmp) / "workspace"
         ws.mkdir()
         (ws / "plan.md").write_text("x\n", encoding="utf-8")
@@ -1316,7 +1375,7 @@ def _ft_test_docker_agent_cmd_pi() -> None:
             image=DEFAULT_IMAGE,
             workspace=ws,
             malvin_binary=host_malvin,
-            malvin_args=("--model", "rpi:ollama/malvin-qwen-coder"),
+            malvin_args=("--model", "pi:ollama/malvin-qwen-coder"),
         )
         assert "--add-host=host.docker.internal:host-gateway" in cmd
         assert any(
@@ -1328,7 +1387,7 @@ def _ft_test_docker_agent_cmd_pi() -> None:
             image=DEFAULT_IMAGE,
             workspace=ws,
             malvin_binary=host_malvin,
-            malvin_args=("--model", "rpi:openai/gpt-4o"),
+            malvin_args=("--model", "pi:openai/gpt-4o"),
         )
         assert "--add-host=host.docker.internal:host-gateway" not in cloud_cmd
         assert not any(t.startswith("MALVIN_LOCAL_LLM_BASE_URL=") for t in cloud_cmd)
@@ -1337,10 +1396,10 @@ def _ft_test_docker_agent_cmd_pi() -> None:
             image=DEFAULT_IMAGE,
             workspace=ws,
             malvin_binary=host_malvin,
-            malvin_args=("--model", "rpi:openai/gpt-4o"),
+            malvin_args=("--model", "pi:openai/gpt-4o"),
         )
         assert "--model" in cmd
-        assert "rpi:openai/gpt-4o" in cmd
+        assert "pi:openai/gpt-4o" in cmd
 
         base = ft_docker_agent_cmd(
             image=DEFAULT_IMAGE,
@@ -1350,11 +1409,41 @@ def _ft_test_docker_agent_cmd_pi() -> None:
         base_mounts = [base[i + 1] for i, token in enumerate(base) if token == "-v"]
         assert base_mounts
 
+def _ft_write_fake_npm_pi(root: Path) -> tuple[Path, Path, Path]:
+    package = root / "pi-coding-agent"
+    entry = package / "dist" / "bundle" / "rpc-entry.js"
+    entry.parent.mkdir(parents=True, exist_ok=True)
+    entry.write_text("#!/usr/bin/env node\n", encoding="utf-8")
+    (package / "package.json").write_text(
+        '{"name":"@earendil-works/pi-coding-agent"}\n',
+        encoding="utf-8",
+    )
+    node_bin = root / "node"
+    node_bin.write_text("#!/bin/sh\n", encoding="utf-8")
+    node_bin.chmod(0o755)
+    return package, entry, node_bin
+
+
+@contextlib.contextmanager
+def _ft_stub_npm_pi(root: Path):
+    _, entry, node_bin = _ft_write_fake_npm_pi(root)
+    module = sys.modules[__name__]
+    old_entry = module.ft_resolve_npm_pi_entry
+    old_node = module.ft_resolve_node_bin
+    module.ft_resolve_npm_pi_entry = lambda: entry
+    module.ft_resolve_node_bin = lambda: node_bin
+    try:
+        yield
+    finally:
+        module.ft_resolve_npm_pi_entry = old_entry
+        module.ft_resolve_node_bin = old_node
+
+
 def _ft_test_docker_agent_cmd_npm_pi() -> None:
-    assert ft_malvin_args_request_npm_pi(()) is False
-    assert ft_malvin_args_request_npm_pi(("--model", "rpi:openai/gpt-4o")) is False
-    assert ft_malvin_args_request_npm_pi(("--model", "pi:openrouter/x-ai/grok-4.6")) is True
-    assert ft_malvin_args_request_npm_pi(("--model=pi:openrouter/x",)) is True
+    assert ft_malvin_args_request_pi(()) is False
+    assert ft_malvin_args_request_pi(("--model", "rpi:openai/gpt-4o")) is False
+    assert ft_malvin_args_request_pi(("--model", "pi:openrouter/x-ai/grok-4.6")) is True
+    assert ft_malvin_args_request_pi(("--model=pi:openrouter/x",)) is True
 
     with tempfile.TemporaryDirectory(prefix="ft-npm-pi-") as tmp:
         root = Path(tmp)
@@ -1363,25 +1452,12 @@ def _ft_test_docker_agent_cmd_npm_pi() -> None:
         (ws / "plan.md").write_text("x\n", encoding="utf-8")
         host_malvin = root / "malvin"
         host_malvin.write_bytes(b"\x7fELF")
-        package = root / "pi-coding-agent"
-        entry = package / "dist" / "bundle" / "rpc-entry.js"
-        entry.parent.mkdir(parents=True)
-        entry.write_text("#!/usr/bin/env node\n", encoding="utf-8")
-        (package / "package.json").write_text(
-            '{"name":"@earendil-works/pi-coding-agent"}\n',
-            encoding="utf-8",
-        )
-        node_bin = root / "node"
-        node_bin.write_text("#!/bin/sh\n", encoding="utf-8")
-        node_bin.chmod(0o755)
+        package, entry, node_bin = _ft_write_fake_npm_pi(root)
 
         assert ft_resolve_npm_pi_package(entry) == package.resolve()
         module = sys.modules[__name__]
-        old_entry = module.ft_resolve_npm_pi_entry
         old_node = module.ft_resolve_node_bin
-        try:
-            module.ft_resolve_npm_pi_entry = lambda: entry
-            module.ft_resolve_node_bin = lambda: node_bin
+        with _ft_stub_npm_pi(root):
             cmd = ft_docker_agent_cmd(
                 image=DEFAULT_IMAGE,
                 workspace=ws,
@@ -1408,9 +1484,8 @@ def _ft_test_docker_agent_cmd_npm_pi() -> None:
                 raise AssertionError("expected missing npm Pi dependency rejection")
             except click.ClickException as exc:
                 assert "npm Pi package" in str(exc)
-        finally:
-            module.ft_resolve_npm_pi_entry = old_entry
-            module.ft_resolve_node_bin = old_node
+            finally:
+                module.ft_resolve_node_bin = old_node
 
 def _ft_test_docker_agent_cmd_codex() -> None:
     assert ft_malvin_args_request_codex(()) is False
@@ -1651,26 +1726,27 @@ def _ft_assert_solve_model_and_agent_dry_runs(cli, runner, tmp: Path) -> None:
 
     pi_tmp = tmp / "pi-model"
     pi_tmp.mkdir()
-    pi_result = runner.invoke(
-        cli,
-        [
-            "solve",
-            "FT-01",
-            "--model",
-            "rpi:openai/gpt-4o",
-            "--dry-run",
-            "--skip-grade",
-            "--results-dir",
-            str(pi_tmp),
-        ],
-        catch_exceptions=False,
-    )
+    with _ft_stub_npm_pi(tmp / "stub-pi_result"):
+        pi_result = runner.invoke(
+            cli,
+            [
+                "solve",
+                "FT-01",
+                "--model",
+                "pi:openai/gpt-4o",
+                "--dry-run",
+                "--skip-grade",
+                "--results-dir",
+                str(pi_tmp),
+            ],
+            catch_exceptions=False,
+        )
     assert pi_result.exit_code == 0, pi_result.output
     pi_meta_paths = list(pi_tmp.glob("FT-01/*/metadata.json"))
     assert pi_meta_paths, pi_result.output
     pi_cmd = json.loads(pi_meta_paths[0].read_text(encoding="utf-8"))["docker_cmd"]
     assert "--model" in pi_cmd
-    assert "rpi:openai/gpt-4o" in pi_cmd
+    assert "pi:openai/gpt-4o" in pi_cmd
 
     cursor_tmp = tmp / "cursor"
     cursor_tmp.mkdir()
@@ -1765,21 +1841,22 @@ def _ft_assert_solve_creative_dry_runs(cli, runner, tmp: Path) -> None:
 
     pi_creative_tmp = tmp / "creative-pi"
     pi_creative_tmp.mkdir()
-    pi_creative = runner.invoke(
-        cli,
-        [
-            "solve",
-            "FT-01",
-            "--creative",
-            "--model",
-            "rpi:openai/gpt-4o",
-            "--dry-run",
-            "--skip-grade",
-            "--results-dir",
-            str(pi_creative_tmp),
-        ],
-        catch_exceptions=False,
-    )
+    with _ft_stub_npm_pi(tmp / "stub-pi_creative"):
+        pi_creative = runner.invoke(
+            cli,
+            [
+                "solve",
+                "FT-01",
+                "--creative",
+                "--model",
+                "pi:openai/gpt-4o",
+                "--dry-run",
+                "--skip-grade",
+                "--results-dir",
+                str(pi_creative_tmp),
+            ],
+            catch_exceptions=False,
+        )
     assert pi_creative.exit_code == 0, pi_creative.output
     pi_metas = list(pi_creative_tmp.glob("FT-01/*/metadata.json"))
     assert pi_metas, pi_creative.output
@@ -1788,7 +1865,7 @@ def _ft_assert_solve_creative_dry_runs(cli, runner, tmp: Path) -> None:
     pmi = pi_cmd.index("malvin")
     assert "--creative" in pi_cmd[pmi:]
     assert "--model" in pi_cmd[pmi:]
-    assert "rpi:openai/gpt-4o" in pi_cmd[pmi:]
+    assert "pi:openai/gpt-4o" in pi_cmd[pmi:]
 
     assert ft_malvin_args_request_creative(()) is False
     assert ft_malvin_args_request_creative(("--creative",)) is True
@@ -1805,7 +1882,7 @@ def _ft_assert_solve_creative_dry_runs(cli, runner, tmp: Path) -> None:
         assert "mutually exclusive" in str(exc)
     ft_assert_creative_compatible(AGENT_MALVIN, ("--creative",))
     ft_assert_creative_compatible(
-        AGENT_MALVIN, ("--creative", "--model", "rpi:openai/gpt-4o")
+        AGENT_MALVIN, ("--creative", "--model", "pi:openai/gpt-4o")
     )
     ft_assert_creative_compatible(AGENT_MALVIN, ("--creative", "--pi"))
     ft_assert_creative_compatible(AGENT_CURSOR, ())
@@ -1920,6 +1997,32 @@ def _ft_test_resolve_malvin_binary_prefers_current_repo_build() -> None:
             globals()["REPO_ROOT"] = original_root
             globals()["_ft_resolve_host_binary"] = original_resolver
 
+_FT_FAKE_RESOLVER = """#!/bin/sh
+codex='{"canonical":"codex:gpt-5","backend":"codex","provider":null,"local":false}'
+case "$4" in
+  mynick|" codex:gpt-5") echo "$codex" ;;
+  *) echo "e|model id must use a known prefix" >&2; exit 1 ;;
+esac
+"""
+
+def _ft_test_canonicalize_model_args() -> None:
+    with tempfile.TemporaryDirectory(prefix="ft-resolve-") as tmp:
+        fake = Path(tmp) / "malvin"
+        fake.write_text(_FT_FAKE_RESOLVER, encoding="utf-8")
+        fake.chmod(0o755)
+        assert ft_resolve_model(fake, "mynick")["backend"] == "codex"
+        assert ft_resolve_model(fake, "RPI:ollama/x") is None
+        assert ft_resolve_model(Path(tmp) / "missing", "mynick") is None
+        args = ft_canonicalize_model_args(fake, ("--do", "--model", "mynick", "x"))
+        assert args == ("--do", "--model", "codex:gpt-5", "x")
+        assert ft_malvin_args_request_codex(args) is True
+        args = ft_canonicalize_model_args(fake, ("--model= codex:gpt-5",))
+        assert args == ("--model=codex:gpt-5",)
+        unresolved = ("--model", "RPI:ollama/x")
+        assert ft_canonicalize_model_args(fake, unresolved) == unresolved
+        assert ft_malvin_args_request_local_pi(unresolved) is False
+        assert ft_canonicalize_model_args(fake, ("--do", "x")) == ("--do", "x")
+
 def _ft_test_resolve_agent_helpers() -> None:
     assert ft_normalize_agent("CURSOR") == AGENT_CURSOR
     assert ft_normalize_agent("") == AGENT_MALVIN
@@ -1938,11 +2041,42 @@ def _ft_test_resolve_agent_helpers() -> None:
         fake_root = Path(tmp)
         (fake_root / "cursor-sdk-bridge").mkdir()
         original_root = globals()["REPO_ROOT"]
+        original_install = globals()["ft_installed_cursor_sdk_bridge_dir"]
         globals()["REPO_ROOT"] = fake_root
+        globals()["ft_installed_cursor_sdk_bridge_dir"] = (
+            lambda: fake_root / "missing-install"
+        )
         try:
             assert ft_resolve_cursor_sdk_bridge_dir() is None
         finally:
             globals()["REPO_ROOT"] = original_root
+            globals()["ft_installed_cursor_sdk_bridge_dir"] = original_install
+
+def _ft_test_bridge_prefers_installed_sdk_when_repo_lacks_modules() -> None:
+    with tempfile.TemporaryDirectory(prefix="ft-bridge-sdk-") as tmp:
+        root = Path(tmp)
+        repo = root / "cursor-sdk-bridge"
+        (repo / "dist").mkdir(parents=True)
+        (repo / "dist" / "bridge.js").write_text("// stub\n", encoding="utf-8")
+        installed = root / "installed"
+        (installed / "dist").mkdir(parents=True)
+        (installed / "dist" / "bridge.js").write_text("// stub\n", encoding="utf-8")
+        marker = installed / "node_modules" / "@cursor" / "sdk"
+        marker.mkdir(parents=True)
+        (marker / "package.json").write_text("{}\n", encoding="utf-8")
+        original_root = globals()["REPO_ROOT"]
+        original_install = globals()["ft_installed_cursor_sdk_bridge_dir"]
+        globals()["REPO_ROOT"] = root
+        globals()["ft_installed_cursor_sdk_bridge_dir"] = lambda: installed
+        try:
+            assert ft_resolve_cursor_sdk_bridge_dir() == installed.resolve()
+            repo_marker = repo / "node_modules" / "@cursor" / "sdk"
+            repo_marker.mkdir(parents=True)
+            (repo_marker / "package.json").write_text("{}\n", encoding="utf-8")
+            assert ft_resolve_cursor_sdk_bridge_dir() == repo.resolve()
+        finally:
+            globals()["REPO_ROOT"] = original_root
+            globals()["ft_installed_cursor_sdk_bridge_dir"] = original_install
 
 _FT_RELAY_SPY_SEEN: list[str] = []
 _FT_RELAY_SPY_ORIG = sys.stdout.write

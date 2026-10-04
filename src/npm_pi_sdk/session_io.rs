@@ -49,7 +49,7 @@ pub(crate) async fn read_json_waiting(
     turn: &mut crate::bridge_sdk::DrainIdleTurn,
 ) -> Result<serde_json::Value, AgentError> {
     let labels = crate::bridge_sdk::DrainIdleLabels {
-        prefix: crate::model_id::ModelBackend::NpmPi.drain_idle_prefix(),
+        prefix: crate::model_id::ModelBackend::Pi.drain_idle_prefix(),
         waiting_for,
     };
     let health = Some(crate::bridge_sdk::DrainIdleHealthCtx {

@@ -23,8 +23,13 @@ pub fn attach_new_run_timing_with_cost_policy(
     cost_policy: CostPolicy,
     model: &str,
 ) -> Arc<Mutex<RunTiming>> {
+    let prior = timing_slot.as_ref().map(|timing| {
+        timing
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone()
+    });
     let timing = RunTiming::new_arc();
-    *timing_slot = Some(Arc::clone(&timing));
     {
         let mut g = timing
             .lock()
@@ -32,7 +37,11 @@ pub fn attach_new_run_timing_with_cost_policy(
         g.mark_wall_start(Instant::now());
         g.token_cost_rates = token_cost_rates_from_home_config(model);
         g.cost_policy = cost_policy;
+        if let Some(prior) = prior.as_ref() {
+            g.carry_token_and_cost_from(prior);
+        }
     }
+    *timing_slot = Some(Arc::clone(&timing));
     timing
 }
 

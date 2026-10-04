@@ -1,7 +1,5 @@
 use clap::{ArgAction, Args};
 pub use malvin::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
-use rand::Rng;
-
 use malvin::malvin_config_file::parse_model_cli_arg;
 use malvin::model_id::{ParsedModel, parse_model_id};
 
@@ -31,7 +29,7 @@ pub(crate) fn parse_creative_probability(s: &str) -> Result<f64, String> {
 #[derive(Args, Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct SharedOpts {
-    /// Model id (`cursor:`, `pi:`, `rpi:`, `codex:`, or a config nickname)
+    /// Model id (`cursor:`, `pi:`, `codex:`, or a config nickname)
     #[arg(
         long,
         default_value = DEFAULT_CLI_MODEL,
@@ -41,7 +39,7 @@ pub struct SharedOpts {
     /// Log full outgoing agent prompts to stdout and `prompts.log`
     #[arg(short, long, default_value_t = false)]
     pub verbose: bool,
-    /// Stop after N consecutive identical backend errors (default 3)
+    /// Stop after N consecutive identical backend errors
     #[arg(long = "max-acp-retries", default_value_t = DEFAULT_MAX_ACP_RETRIES)]
     pub max_acp_retries: u32,
     /// Print built-in documentation and exit
@@ -86,10 +84,10 @@ pub struct RouterOpts {
     /// Turn off `KPop`
     #[arg(long = "no-kpop", default_value_t = false, hide = true)]
     pub no_kpop: bool,
-    /// Outer agent-session budget for bare malvin REQUEST
+    /// Outer agent-session budget for bare malvin REQUEST and malvin -g
     #[arg(long, default_value_t = malvin::malvin_config_file::DEFAULT_MAX_LOOPS)]
     pub max_loops: usize,
-    /// Hypothesis budget for bare malvin REQUEST
+    /// Hypothesis budget for bare malvin REQUEST and malvin -g
     #[arg(long, default_value_t = malvin::malvin_config_file::DEFAULT_MAX_HYPOTHESES)]
     pub max_hypotheses: usize,
 }
@@ -135,7 +133,7 @@ impl RouterOpts {
             None => false,
             Some(p) if p <= 0.0 => false,
             Some(p) if p >= 1.0 => true,
-            Some(p) => rand::thread_rng().gen_bool(p),
+            Some(p) => fastrand::f64() < p,
         }
     }
 }

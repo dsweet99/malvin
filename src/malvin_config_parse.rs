@@ -7,25 +7,23 @@ use std::collections::BTreeMap;
 
 use super::{
     AgentConfig, DEFAULT_CONTEXT_SIZE, DefaultWorkflowConfig, MalvinConfig, parse_agent_config,
-    parse_context_size, parse_default_workflow_config, parse_disable_rpi,
+    parse_context_size, parse_default_workflow_config,
     parse_model_token_cost_rates, parse_nicknames, parse_theme,
 };
 
 pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
     let (mem_limit_gb, context_size, theme) = parse_top_level_keys(text);
-    let disable_rpi = parse_or_warn(parse_disable_rpi(text), "disable_rpi", false);
     let nicknames = parse_or_warn(parse_nicknames(text), "[nicknames]", BTreeMap::new());
     let token_cost_rates = parse_or_warn(
         parse_model_token_cost_rates(text),
         "[agent.*.*] usd_per_microtoken_*",
         BTreeMap::new(),
     );
-    let (logs, agent, default_workflow) = parse_config_sections(text, &nicknames, disable_rpi);
+    let (logs, agent, default_workflow) = parse_config_sections(text, &nicknames);
     MalvinConfig {
         mem_limit_gb,
         context_size,
         theme,
-        disable_rpi,
         nicknames,
         token_cost_rates,
         logs,
@@ -53,7 +51,6 @@ fn parse_top_level_keys(text: &str) -> (u64, u32, TerminalTheme) {
 fn parse_config_sections(
     text: &str,
     nicknames: &BTreeMap<String, String>,
-    disable_rpi: bool,
 ) -> (LogsGcConfig, AgentConfig, DefaultWorkflowConfig) {
     (
         parse_or_warn(
@@ -62,7 +59,7 @@ fn parse_config_sections(
             LogsGcConfig::default(),
         ),
         parse_or_warn(
-            parse_agent_config(text, nicknames, disable_rpi),
+            parse_agent_config(text, nicknames),
             "[agent]",
             AgentConfig::default(),
         ),

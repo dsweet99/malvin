@@ -4,8 +4,6 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use super::models_list::PiModelListing;
-
 pub const LOCAL_LLMS_CONFIG_FILE: &str = "local_llms.json";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -76,8 +74,8 @@ fn configured_allowlist(cfg: &LocalLlmsConfig) -> Option<HashSet<String>> {
 }
 
 pub(crate) fn filter_listings_by_local_llms_config(
-    models: Vec<PiModelListing>,
-) -> Vec<PiModelListing> {
+    models: Vec<(String, String)>,
+) -> Vec<(String, String)> {
     let cfg = match load_local_llms_config() {
         Ok(c) => c,
         Err(e) => {
@@ -94,12 +92,12 @@ pub(crate) fn filter_listings_by_local_llms_config(
     };
     models
         .into_iter()
-        .filter(|m| {
-            let provider = m.id.split('/').next().unwrap_or("");
-            if !pi::provider_metadata::provider_is_keyless_local(provider) {
+        .filter(|(id, _)| {
+            let provider = id.split('/').next().unwrap_or("");
+            if !super::provider_metadata::provider_is_keyless_local(provider) {
                 return true;
             }
-            allow.contains(&m.id)
+            allow.contains(id)
         })
         .collect()
 }
@@ -112,16 +110,8 @@ mod tests {
     fn empty_config_does_not_filter() {
         crate::test_utils::with_isolated_home(|_| {
             let input = vec![
-                PiModelListing {
-                    id: "ollama/a:latest".into(),
-                    name: "a".into(),
-                    thinking: None,
-                },
-                PiModelListing {
-                    id: "openai/gpt-4o".into(),
-                    name: "gpt-4o".into(),
-                    thinking: Some(false),
-                },
+                ("ollama/a:latest".to_string(), "a".to_string()),
+                ("openai/gpt-4o".to_string(), "gpt-4o".to_string()),
             ];
             let out = filter_listings_by_local_llms_config(input.clone());
             assert_eq!(out, input);
@@ -141,25 +131,13 @@ mod tests {
             })
             .expect("save");
             let out = filter_listings_by_local_llms_config(vec![
-                PiModelListing {
-                    id: "ollama/keeper:latest".into(),
-                    name: "keeper".into(),
-                    thinking: None,
-                },
-                PiModelListing {
-                    id: "ollama/other:latest".into(),
-                    name: "other".into(),
-                    thinking: None,
-                },
-                PiModelListing {
-                    id: "openai/gpt-4o".into(),
-                    name: "gpt-4o".into(),
-                    thinking: Some(false),
-                },
+                ("ollama/keeper:latest".to_string(), "keeper".to_string()),
+                ("ollama/other:latest".to_string(), "other".to_string()),
+                ("openai/gpt-4o".to_string(), "gpt-4o".to_string()),
             ]);
             assert_eq!(out.len(), 2);
-            assert_eq!(out[0].id, "ollama/keeper:latest");
-            assert_eq!(out[1].id, "openai/gpt-4o");
+            assert_eq!(out[0].0, "ollama/keeper:latest");
+            assert_eq!(out[1].0, "openai/gpt-4o");
             let loaded = load_local_llms_config().expect("load");
             assert_eq!(loaded.models[0].source.as_deref(), Some("qwen2.5-coder:7b"));
         });

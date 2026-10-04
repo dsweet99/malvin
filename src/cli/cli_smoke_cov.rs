@@ -77,7 +77,7 @@ fn smoke_cli_parse_models_subcommand() {
     assert!(matches!(
         cli.command,
         Some(Commands::Admin(crate::cli::AdminArgs {
-            command: crate::cli::AdminCommand::Models(_),
+            command: Some(crate::cli::AdminCommand::Models(_)),
         }))
     ));
 }

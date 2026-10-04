@@ -44,6 +44,36 @@ fn cursor_subset_reasoning_does_not_inflate_tokens_out() {
 
 #[test]
 #[allow(clippy::float_cmp)]
+fn total_only_reported_cost_keeps_billed_total() {
+    let mut r = RunTiming {
+        token_cost_rates: TokenCostRates {
+            usd_per_microtoken_in: 1_000_000.0,
+            usd_per_microtoken_out: 1_000_000.0,
+            usd_per_microtoken_cache_read: 1_000_000.0,
+            usd_per_microtoken_cache_write: 0.0,
+        },
+        ..Default::default()
+    };
+    r.record_acp_usage_if_present(&serde_json::json!({
+        "inputTokens": 1000,
+        "outputTokens": 100,
+        "cacheReadTokens": 500,
+        "costUsd": {
+            "input": 0.0,
+            "output": 0.0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "total": 0.03694
+        }
+    }));
+    let stats = super::super::cost::cost_stats(&r).expect("stats");
+    assert_eq!(stats["source"], "reported");
+    assert!((stats["cost_in"].as_f64().unwrap()).abs() < 1e-12);
+    assert!((stats["cost_tot"].as_f64().unwrap() - 0.03694).abs() < 1e-12);
+}
+
+#[test]
+#[allow(clippy::float_cmp)]
 fn reported_cost_usd_skips_rate_estimate() {
     let mut r = RunTiming {
         token_cost_rates: TokenCostRates {

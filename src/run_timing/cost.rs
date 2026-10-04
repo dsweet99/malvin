@@ -2,7 +2,45 @@ use crate::llm_transport::ResponseUsage;
 
 use super::RunTiming;
 
+fn carry_u64(slot: &mut Option<u64>, prior: Option<u64>) {
+    let Some(n) = prior else {
+        return;
+    };
+    *slot = Some(slot.unwrap_or(0).saturating_add(n));
+}
+
+fn carry_f64(slot: &mut Option<f64>, prior: Option<f64>) {
+    let Some(n) = prior else {
+        return;
+    };
+    *slot = Some(slot.unwrap_or(0.0) + n);
+}
+
 impl RunTiming {
+    pub(crate) fn carry_token_and_cost_from(&mut self, prior: &Self) {
+        carry_u64(&mut self.tokens_in, prior.tokens_in);
+        carry_u64(&mut self.tokens_out, prior.tokens_out);
+        carry_u64(&mut self.cache_read, prior.cache_read);
+        carry_u64(&mut self.cache_write, prior.cache_write);
+        carry_u64(&mut self.reasoning_tokens, prior.reasoning_tokens);
+        carry_f64(&mut self.reported_cost_in, prior.reported_cost_in);
+        carry_f64(&mut self.reported_cost_out, prior.reported_cost_out);
+        carry_f64(&mut self.reported_cost_read, prior.reported_cost_read);
+        carry_f64(&mut self.reported_cost_write, prior.reported_cost_write);
+        carry_f64(&mut self.reported_cost_total, prior.reported_cost_total);
+        carry_f64(&mut self.estimated_cost_in, prior.estimated_cost_in);
+        carry_f64(&mut self.estimated_cost_out, prior.estimated_cost_out);
+        carry_f64(&mut self.estimated_cost_read, prior.estimated_cost_read);
+        carry_f64(&mut self.estimated_cost_write, prior.estimated_cost_write);
+        self.tx_costs.extend_from_slice(&prior.tx_costs);
+        self.unknown_tx_count = self.unknown_tx_count.saturating_add(prior.unknown_tx_count);
+        self.usage_tx_count = self.usage_tx_count.saturating_add(prior.usage_tx_count);
+        self.unknown_usage_tx_count = self
+            .unknown_usage_tx_count
+            .saturating_add(prior.unknown_usage_tx_count);
+        self.steps = self.steps.saturating_add(prior.steps);
+    }
+
     pub fn record_completion_cost(&mut self, usage: &ResponseUsage) {
         if matches!(self.cost_policy, super::CostPolicy::Zero) {
             return;
@@ -52,12 +90,26 @@ const fn has_cost_observation(r: &RunTiming) -> bool {
         || r.unknown_tx_count > 0
 }
 
+fn estimated_component_sum(r: &RunTiming) -> f64 {
+    r.estimated_cost_in.unwrap_or(0.0)
+        + r.estimated_cost_out.unwrap_or(0.0)
+        + r.estimated_cost_read.unwrap_or(0.0)
+        + r.estimated_cost_write.unwrap_or(0.0)
+}
+
+fn merged_total(r: &RunTiming, component_sum: f64) -> f64 {
+    match r.reported_cost_total {
+        Some(total) if total > 0.0 => total + estimated_component_sum(r),
+        _ => component_sum,
+    }
+}
+
 fn merged_cost_stats(r: &RunTiming, source: &str) -> serde_json::Value {
     let cost_in = r.reported_cost_in.unwrap_or(0.0) + r.estimated_cost_in.unwrap_or(0.0);
     let cost_out = r.reported_cost_out.unwrap_or(0.0) + r.estimated_cost_out.unwrap_or(0.0);
     let cost_read = r.reported_cost_read.unwrap_or(0.0) + r.estimated_cost_read.unwrap_or(0.0);
     let cost_write = r.reported_cost_write.unwrap_or(0.0) + r.estimated_cost_write.unwrap_or(0.0);
-    let cost_tot = cost_in + cost_out + cost_read + cost_write;
+    let cost_tot = merged_total(r, cost_in + cost_out + cost_read + cost_write);
     let tx_count = u64::try_from(r.tx_costs.len()).unwrap_or(u64::MAX);
     serde_json::json!({
         "cost_in": cost_in,
@@ -198,5 +250,65 @@ mod tests {
     #[test]
     fn cost_stats_none_when_never_observed() {
         assert!(cost_stats(&RunTiming::default()).is_none());
+    }
+
+    #[test]
+    #[allow(clippy::float_cmp)]
+    fn later_session_keeps_earlier_reported_cost() {
+        let mut slot = None;
+        let first =
+            super::super::lifecycle::attach_new_run_timing(&mut slot, "pi:openrouter/x-ai/grok-4.6");
+        first.lock().unwrap().record_acp_usage_if_present(&serde_json::json!({
+            "inputTokens": 100,
+            "outputTokens": 10,
+            "cacheReadTokens": 40,
+            "costUsd": {
+                "input": 0.02,
+                "output": 0.01,
+                "cacheRead": 0.004,
+                "cacheWrite": 0.0,
+                "total": 0.034
+            }
+        }));
+        let second =
+            super::super::lifecycle::attach_new_run_timing(&mut slot, "pi:openrouter/x-ai/grok-4.6");
+        second.lock().unwrap().record_acp_usage_if_present(&serde_json::json!({
+            "inputTokens": 50,
+            "outputTokens": 5,
+            "cacheReadTokens": 10,
+            "costUsd": {
+                "input": 0.01,
+                "output": 0.005,
+                "cacheRead": 0.001,
+                "cacheWrite": 0.0,
+                "total": 0.016
+            }
+        }));
+        let stats = cost_stats(&second.lock().unwrap()).expect("stats");
+        assert!((stats["cost_in"].as_f64().unwrap() - 0.03).abs() < 1e-12);
+        assert!((stats["cost_out"].as_f64().unwrap() - 0.015).abs() < 1e-12);
+        assert!((stats["cost_read"].as_f64().unwrap() - 0.005).abs() < 1e-12);
+        assert!((stats["cost_tot"].as_f64().unwrap() - 0.05).abs() < 1e-12);
+        assert_eq!(stats["tx_count"], 2);
+        let (tokens_out, cache_read) = {
+            let held = second.lock().unwrap();
+            (held.tokens_out, held.cache_read)
+        };
+        assert_eq!(tokens_out, Some(15));
+        assert_eq!(cache_read, Some(50));
+    }
+
+    #[test]
+    #[allow(clippy::float_cmp)]
+    fn billed_total_wins_when_components_are_larger() {
+        let r = RunTiming {
+            reported_cost_in: Some(10.0),
+            reported_cost_total: Some(0.04),
+            tx_costs: vec![0.04],
+            ..Default::default()
+        };
+        let stats = cost_stats(&r).expect("stats");
+        assert!((stats["cost_in"].as_f64().unwrap() - 10.0).abs() < 1e-12);
+        assert!((stats["cost_tot"].as_f64().unwrap() - 0.04).abs() < 1e-12);
     }
 }

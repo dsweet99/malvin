@@ -6,8 +6,7 @@ Node ≥ 22.13 sidecar that speaks malvin's JSONL bridge protocol and drives
 ## Install
 
 The malvin binary embeds `package.json`, `package-lock.json`, and the non-test
-`dist/*.js` files. At run time (first `cursor:` use, or
-`malvin admin setup-cursor`) it writes them to
+`dist/*.js` files. The first time a `cursor:` model runs, it writes them to
 `~/.malvinconf/sdk-bridges/cursor-sdk-bridge/` and runs `npm ci --omit=dev`
 there. The build does not run npm, so commit `dist/` after changing `src/`.
 For a manual in-tree rebuild:

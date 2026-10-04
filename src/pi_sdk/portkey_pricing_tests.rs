@@ -1,4 +1,7 @@
-use super::{bare_model_id, host_is_portkey, model_cost_from_body, name_is_portkey_header};
+use super::{
+    bare_model_id, host_is_portkey, model_cost_from_body, name_is_portkey_header,
+    pricing_model_path,
+};
 
 #[test]
 fn portkey_host_and_header_detection() {
@@ -8,6 +11,12 @@ fn portkey_host_and_header_detection() {
     assert!(!host_is_portkey("https://portkey.example/v1"));
     assert!(name_is_portkey_header("X-Portkey-Api-Key"));
     assert!(!name_is_portkey_header("authorization"));
+}
+
+#[test]
+fn pricing_model_path_keeps_slashes() {
+    assert_eq!(pricing_model_path("x-ai/grok-4.6"), "x-ai/grok-4.6");
+    assert_eq!(pricing_model_path("a b/c"), "a%20b/c");
 }
 
 #[test]
