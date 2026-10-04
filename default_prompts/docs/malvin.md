@@ -37,6 +37,10 @@ Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prom
 
 Agent-session flags (`--model`, `--gates`, `-q`, `-v`, `--creative[=PROB]`, `--max-acp-retries`, `--iml`, …) apply to bare `malvin REQUEST` and `--do` (`--max-loops`, `--max-hypotheses`, and `--watch` apply only to bare `malvin REQUEST` and `malvin -g`). The `admin` help listing omits them; pass `--model` before `admin models` only when you want to set that command’s `Current:` footer.
 
+### `--modal`
+
+Run the invocation in a Modal Sandbox instead of on this machine, then apply its file changes and copy its run logs back. Applies to bare `malvin REQUEST`, `--do`, and `malvin -g`. See **Running on Modal** below for setup, what is uploaded, how results return, and what is rejected.
+
 
 ### `-q` / `--quiet`
 
@@ -110,7 +114,7 @@ Print built-in documentation and exit. Does not spawn an agent or create a run d
 - `malvin <COMMAND> --doc` — documentation for that subcommand (`malvin admin --doc` for `admin`, `malvin admin models --doc` for `models`).
 - `malvin --do --doc` — documentation for the one-shot `--do` workflow.
 
-Other subcommand arguments (for example `<REQUEST>`) are not required when `--doc` is set. Argument validation still runs first: invalid values or combinations (for example `--model foo:bar`, `-g` with `admin`, `--do` with a subcommand, or `--watch` with pure `--do`) exit 1 with the error instead of printing documentation.
+Other subcommand arguments (for example `<REQUEST>`) are not required when `--doc` is set. Argument validation still runs first: invalid values or combinations (for example `--model foo:bar`, `-g` or `--modal` with `admin`, `--do` with a subcommand, or `--watch` with pure `--do`) exit 1 with the error instead of printing documentation.
 
 ### `--advice`
 
@@ -264,9 +268,8 @@ After most agent-backed commands create a new run directory and emit the startup
 - **Node.js**: ≥ 22.13 with `npm` (≥ 22.19 for `pi:`, which runs Pi 1.x), needed at run time only by `cursor:` and `pi:` models. Building malvin does not need Node. `codex:` models do not need Node.
 - **Cursor SDK**: `@cursor/sdk` via `cursor-sdk-bridge/`. The compiled bridge is embedded in the malvin binary. The first time a `cursor:` model runs, malvin writes it to `~/.malvinconf/sdk-bridges/cursor-sdk-bridge/` and runs `npm ci --omit=dev` there; later runs reuse that install until the bundled lock file changes. A repo checkout whose `cursor-sdk-bridge/` already has `node_modules` is used in place. Node is found via `MALVIN_NODE`, `PATH`, or the Cursor `agent` install; npm via `MALVIN_NPM`, next to that Node, or `PATH`. `MALVIN_CURSOR_SDK_BRIDGE` overrides the bridge path. `cursor:` models also need a Cursor API key (`CURSOR_API_KEY`, or `CURSOR_AGENT_API_KEY` / `AGENT_API_KEY`). `malvin admin models` lists Cursor models via the bridge when possible; falls back to `agent` / `cursor-agent` on `PATH` if the SDK path fails.
 - **OpenRouter**: `OPENROUTER_API_KEY` when using `pi:openrouter/…` models.
-- **Pi**: `pi:` models run the npm package `@earendil-works/pi-coding-agent`, which malvin installs under `~/.malvinconf/sdk-bridges/`. Provider keys follow Pi’s env vars or credentials already stored under Pi’s auth path (`PI_CODING_AGENT_DIR` / `~/.pi/agent`).
+- **Pi**: `pi:` models run the official npm package `@earendil-works/pi-coding-agent` in RPC mode. Malvin does not install it. It uses `MALVIN_PI` (path to the package's `cli.js` or `rpc-entry.js`) when set, and otherwise looks for the package in `./node_modules`, `~/.malvinconf/sdk-bridges/node_modules`, and the npx cache (`~/.npm/_npx`). If none is found, `pi:` runs fail with a hint to install it (for example `npm install --prefix ~/.malvinconf/sdk-bridges @earendil-works/pi-coding-agent`). Provider keys come from Pi’s env vars or credentials already stored under Pi’s auth path (`PI_CODING_AGENT_DIR` / `~/.pi/agent`).
 - **curl**: used for local-model probes (Ollama) and pricing catalogs (OpenRouter, Portkey).
-- **npm Pi**: `pi:` models require the official `@earendil-works/pi-coding-agent` install (or `MALVIN_PI` pointing at its `cli.js` / `rpc-entry.js`) and use the same Pi auth/config.
 - **Codex**: `codex:` models require a separate `codex` binary (`PATH` or `MALVIN_CODEX`; not bundled) and a Codex login (`codex login`, `OPENAI_API_KEY`, or `$CODEX_HOME/auth.json`).
 - **pre-commit**: optional; malvin does not install hooks automatically.
 
@@ -301,12 +304,21 @@ See the default-route section of `malvin --doc`.
 `malvin --modal ...` runs the same command in a [Modal Sandbox](https://modal.com/docs/guide/sandboxes) instead of on this machine. The stream, the run logs, and the file changes match a local run. Every other flag and argument is passed to the remote malvin unchanged.
 
 - **Setup**: Node.js ≥ 22.13 with `npm` on this machine (malvin installs the Modal JS SDK under `~/.malvinconf/sdk-bridges/modal-bridge/` with `npm ci`), and Modal credentials from `modal setup` (`~/.modal.toml`) or `MODAL_TOKEN_ID` plus `MODAL_TOKEN_SECRET`. Modal credentials never leave this machine.
-- **Image**: on x86-64 Linux, malvin uploads its own binary once per build and publishes the result as the Modal image `malvin-bin:<version>-<hash>`; later runs start from it in seconds. Other hosts build the image with `cargo install malvin --version <same version>` (published versions only). The default base is `node:22-trixie-slim` plus `git`, `curl`, Python 3, and `build-essential`. `codex:` models add the `codex` CLI and `pi:` models add the npm Pi agent, each pinned to the version installed on this machine.
-- **What is uploaded**: tracked and untracked-but-not-ignored files under the current directory (never `.git`), the five newest run directories of this workspace, `~/.malvinconf/config.toml`, and any REQUEST files. The workspace is unpacked at the same absolute path, with `HOME` set to the local home path, so log directories and HISTORY paths match a local run.
+- **Image**: malvin publishes a Modal image named `malvin-bin:<version>-<hash>`, built once and reused by later runs, which then start in seconds. On x86-64 Linux with glibc, the image contains this machine's own malvin binary. On other hosts, the image builds malvin with `cargo install malvin --version <same version>`, which works only for versions published on crates.io. The default base is `node:22-trixie-slim` plus `git`, `curl`, Python 3, and `build-essential`. `codex:` models add the `codex` CLI and `pi:` models add the npm Pi agent, each pinned to the version installed on this machine (or `latest` when that version cannot be read).
+- **What is uploaded**: in a git work tree, tracked and untracked-but-not-ignored files under the current directory (never `.git`); outside git, everything under the current directory except `.git`, `target`, and `node_modules`. Also uploaded: the five newest run directories of this workspace, `~/.malvinconf/config.toml`, and any REQUEST files. The workspace is unpacked at the same absolute path, with `HOME` set to the local home path, so log directories and HISTORY paths match a local run.
 - **Credentials**: `CURSOR_API_KEY`, `CURSOR_AGENT_API_KEY`, `AGENT_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, and `OPENROUTER_API_KEY` are passed to the remote command when set, and never written into an image. `codex:` models also get `~/.codex/auth.json`, and `pi:` models get Pi's `auth.json` and `models.json`. Anyone with access to the Modal workspace can, in principle, inspect a running Sandbox.
-- **Results**: when the remote run ends, its changes come back as a git patch. Malvin applies it with `git apply`, falling back to `git apply --3way`. If neither applies cleanly, or the directory is not a git repository, the patch is kept as `modal.patch` in the new run directory. The new run directories are copied into this workspace's log directory.
+- **Results**: when the remote run ends, its changes come back as a git patch, and malvin prints which of these outcomes occurred:
+  - The remote run changed no files.
+  - `git apply` succeeded: the changes are in the working tree, unstaged.
+  - `git apply` failed but `git apply --3way` succeeded: the changes are in the working tree **and staged in the index**.
+  - The 3-way merge hit conflicts: conflict markers are left in the working tree, and the patch is also kept as `modal.patch`.
+  - The patch could not be applied at all, or the directory is not a git repository: the working tree is untouched and the patch is kept as `modal.patch`.
+
+  The new run directories are copied into this workspace's log directory. When the patch is kept, `modal.patch` goes into the newest of them, or into the workspace's log directory if none came back.
+- **Exit status and failures**: `malvin --modal` exits 0 only when the remote malvin exits 0; otherwise it exits 1. A failed remote run still returns its changes and logs, applied as above, so check the working tree after a nonzero exit. If talking to Modal fails partway (for example an upload, download, or remote setup step fails), malvin prints the error and exits 1 without applying any changes or copying any logs.
 - **Lifetime**: Ctrl-C terminates the Sandbox. Each Sandbox has a hard lifetime of `[modal] timeout_h` hours (at most 24). At the start of each `--modal` run, malvin terminates Sandboxes left by this host's exited `--modal` runs.
-- **Not supported**: `--watch`, `--iml`, subcommands, GPUs, and local LLMs.
+- **Rejected**: `--watch`, `--iml`, and the `admin` subcommand exit 1 with an error before anything is uploaded. With `--doc`, only the `admin` combination is still rejected; the others print documentation.
+- **Not supported, but not rejected**: GPUs (there is no setting for them) and local LLMs (`pi:local/…`, `pi:ollama/…`). The Sandbox runs no local model server, so a local-model run is expected to fail inside the Sandbox rather than at startup.
 
 Optional settings in `~/.malvinconf/config.toml`:
 
