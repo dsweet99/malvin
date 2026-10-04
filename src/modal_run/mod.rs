@@ -3,6 +3,7 @@ mod backends;
 mod bridge;
 pub mod config;
 mod credentials;
+pub mod gpu_types;
 mod image;
 pub mod options;
 mod remote;
@@ -97,6 +98,8 @@ pub fn run_modal(inv: &ModalInvocation) -> Result<i32, String> {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_gpu_types;
 #[cfg(test)]
 mod tests_io;
 #[cfg(test)]

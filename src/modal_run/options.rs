@@ -7,8 +7,6 @@ pub const DEFAULT_TIMEOUT_S: u64 = 30 * 60;
 pub const DEFAULT_MEMORY_GB: u64 = 8;
 pub const MAX_TIMEOUT_S: u64 = 24 * 3600;
 const KEYS: &str = "gpu, ncpu, mem, timeout";
-pub const GPU_TYPES: &str =
-    "T4, L4, A10, L40S, A100, A100-40GB, A100-80GB, RTX-PRO-6000, H100, H200, B200, B300";
 
 pub struct Suboption {
     pub key: &'static str,
@@ -74,7 +72,7 @@ pub fn parse_gpu(raw: &str) -> Result<GpuChoice, String> {
         return Ok(GpuChoice::None);
     }
     let (kind, count) = raw.split_once(':').unwrap_or((raw, "1"));
-    let kind_ok = !kind.is_empty() && kind.chars().all(|c| c.is_ascii_alphanumeric() || c == '-');
+    let kind_ok = !kind.is_empty() && kind.chars().all(|c| c.is_ascii_alphanumeric() || "-!+".contains(c));
     let count_ok = count.parse::<u64>().is_ok_and(|n| n > 0);
     if kind_ok && count_ok {
         return Ok(GpuChoice::Gpu(raw.to_string()));

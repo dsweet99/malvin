@@ -1,7 +1,7 @@
 #![cfg_attr(test, allow(unsafe_code))]
 
 mod auth;
-mod http_fetch;
+pub(crate) mod http_fetch;
 mod local_context;
 mod local_endpoint;
 mod local_lifecycle;

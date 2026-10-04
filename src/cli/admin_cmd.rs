@@ -1,6 +1,7 @@
 use clap::{Args, Subcommand};
 
 use super::models_cmd::ModelsArgs;
+use super::remotes_cmd::RemotesArgs;
 
 #[derive(Args, Debug, Clone)]
 #[command(override_usage = "malvin admin <COMMAND>")]
@@ -15,7 +16,7 @@ pub enum AdminCommand {
     /// List available models
     Models(ModelsArgs),
     /// List remotes for `--remote` and their suboptions
-    Remotes,
+    Remotes(RemotesArgs),
     /// Reset herdr agent state to idle (not working)
     #[command(name = "reset-herdr", visible_alias = "rh")]
     ResetHerdr,
@@ -27,8 +28,8 @@ pub fn run_admin(args: AdminArgs, current_model: &str) -> Result<(), String> {
     };
     match command {
         AdminCommand::Models(models) => super::models_cmd::run_models(models, current_model),
-        AdminCommand::Remotes => {
-            super::remotes_cmd::run_remotes();
+        AdminCommand::Remotes(remotes) => {
+            super::remotes_cmd::run_remotes(&remotes);
             Ok(())
         }
         AdminCommand::ResetHerdr => {
@@ -44,7 +45,7 @@ pub fn run_admin(args: AdminArgs, current_model: &str) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{AdminArgs, AdminCommand};
+    use super::{AdminArgs, AdminCommand, RemotesArgs};
     use crate::cli::{Cli, Commands};
     use clap::Parser;
 
@@ -91,7 +92,14 @@ mod tests {
         assert!(matches!(
             cli.command,
             Some(Commands::Admin(AdminArgs {
-                command: Some(AdminCommand::Remotes),
+                command: Some(AdminCommand::Remotes(RemotesArgs { refresh: false })),
+            }))
+        ));
+        let cli = Cli::try_parse_from(["malvin", "admin", "remotes", "--refresh"]).expect("parse");
+        assert!(matches!(
+            cli.command,
+            Some(Commands::Admin(AdminArgs {
+                command: Some(AdminCommand::Remotes(RemotesArgs { refresh: true })),
             }))
         ));
     }

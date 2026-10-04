@@ -36,6 +36,12 @@ List `cursor:`, `pi:`, and `codex:` model ids. See `malvin admin models --doc` f
 
 List the remotes that `--remote` accepts (only `modal` today) and each remote's suboptions: their values, defaults, and meaning, plus the GPU types Modal offers. The first line is a one-line summary in the style of `malvin admin models` (`modal<TAB>gpu=none|TYPE[:COUNT] ncpu=N mem=N[G|GB|GiB] timeout=N[s|m|h]`); a table and an example follow. See **Running on Modal** in `malvin --doc`.
 
+malvin does not keep its own list of GPU types. It reads them from the "Specifying GPU type" section of Modal's GPU guide (<https://modal.com/docs/guide/gpu.md>) and caches the list in `~/.malvinconf/modal_gpu_types.json`. It fetches again when the cache is at least 24 hours old, or every time with `--refresh`. If a fetch fails, malvin shows the cached list with a note giving its age; with no cache, it shows only the note. malvin accepts any `gpu=` value of the form `TYPE[:COUNT]`, where `TYPE` uses letters, digits, `-`, `!`, or `+`; it does not check `TYPE` against the list and passes it to Modal unchanged.
+
+Options:
+
+- `--refresh`: fetch the GPU types now, even if the cache is less than 24 hours old.
+
 ### `reset-herdr`
 
 Alias: `rh`.

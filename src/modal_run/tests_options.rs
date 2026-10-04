@@ -37,7 +37,9 @@ fn suboptions_reject_unknown_duplicate_and_malformed_items() {
 #[test]
 fn value_parsers_accept_documented_forms_only() {
     assert_eq!(parse_gpu("T4:2"), Ok(GpuChoice::Gpu("T4:2".to_string())));
-    for bad in ["", "A100:0", "A100:x", "a b", ":2"] {
+    assert_eq!(parse_gpu("H100!:8"), Ok(GpuChoice::Gpu("H100!:8".to_string())));
+    assert_eq!(parse_gpu("B200+"), Ok(GpuChoice::Gpu("B200+".to_string())));
+    for bad in ["", "A100:0", "A100:x", "a b", ":2", "T4;rm"] {
         assert!(parse_gpu(bad).is_err(), "{bad}");
     }
     assert_eq!(parse_ncpu("16"), Ok(16));
