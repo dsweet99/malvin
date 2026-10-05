@@ -59,7 +59,7 @@ fn unresolved_braces_error(prompt_file: Option<&str>) -> PromptError {
 #[error("{0}")]
 pub struct PromptError(pub String);
 
-pub use crate::user_home::user_home_dir;
+pub use crate::workspace::user_home::user_home_dir;
 pub use store::{PromptStore, build_mbc2_render_context, render_header, render_mbc2_prompt};
 
 #[cfg(test)]

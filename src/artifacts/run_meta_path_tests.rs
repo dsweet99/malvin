@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn create_run_artifacts_scaffolds_empty_quality_gates_log() {
-    crate::test_utils::with_isolated_home(|_| {
+    crate::test_support::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().unwrap();
         let art = create_run_artifacts_from_text("plan", Some(tmp.path())).unwrap();
         let qlog = art.quality_gates_log_path();
@@ -25,7 +25,7 @@ fn create_run_artifacts_scaffolds_empty_quality_gates_log() {
 
 #[test]
 fn gate_exp_log_path_is_scoped_per_iteration() {
-    crate::test_utils::with_isolated_home(|_| {
+    crate::test_support::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().unwrap();
         let art = create_run_artifacts_from_text("plan", Some(tmp.path())).unwrap();
         let g1 = art.gate_exp_log_path(1);
@@ -46,7 +46,7 @@ fn gate_exp_log_path_is_scoped_per_iteration() {
 
 #[test]
 fn trace_jsonl_path_is_under_run_dir() {
-    crate::test_utils::with_isolated_home(|_| {
+    crate::test_support::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().unwrap();
         let art = create_run_artifacts_from_text("plan", Some(tmp.path())).unwrap();
         let trace = art.run_dir.join(crate::malvin_constants::TRACE_JSONL);
@@ -59,7 +59,7 @@ fn trace_jsonl_path_is_under_run_dir() {
 
 #[test]
 fn create_run_artifacts_scaffolds_exp_log_under_run_dir() {
-    crate::test_utils::with_isolated_home(|_| {
+    crate::test_support::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().unwrap();
         let art = create_run_artifacts_from_text("plan", Some(tmp.path())).unwrap();
         let exp = art.exp_log_path();
@@ -79,7 +79,7 @@ fn create_run_artifacts_scaffolds_exp_log_under_run_dir() {
 
 #[test]
 fn create_run_artifacts_from_plan_copy_scaffolds_exp_log() {
-    crate::test_utils::with_isolated_home(|_| {
+    crate::test_support::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().unwrap();
         let plan = tmp.path().join("plan.md");
         std::fs::write(&plan, "p").unwrap();
@@ -90,7 +90,7 @@ fn create_run_artifacts_from_plan_copy_scaffolds_exp_log() {
 
 #[test]
 fn router_workflow_context_exp_log_is_under_home_malvin_logs() {
-    crate::test_utils::with_isolated_home(|_| {
+    crate::test_support::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().unwrap();
         let art = create_run_artifacts_from_text("plan body", Some(tmp.path())).unwrap();
         let exp_path = art.exp_log_path();
@@ -127,11 +127,11 @@ fn router_workflow_context_exp_log_is_under_home_malvin_logs() {
 
 #[test]
 fn exp_log_path_from_repo_root_work_dir() {
-    crate::test_utils::with_isolated_home(|_| {
+    crate::test_support::test_utils::with_isolated_home(|_| {
         let art = create_run_artifacts_from_text_opts(
             "probe",
             Some(std::path::Path::new(".")),
-            crate::run_id::RunDirOptions { gc: false },
+            crate::workspace::run_id::RunDirOptions { gc: false },
         )
         .unwrap();
         let exp_path = art.exp_log_path();

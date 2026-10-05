@@ -3,7 +3,7 @@ mod common;
 #[cfg(unix)]
 use common::{fresh_workdir, sleep_child, write_peer_acp_lock};
 #[cfg(unix)]
-use malvin::malvin_sandbox::clear_active_sandbox_session;
+use malvin::agent_process::malvin_sandbox::clear_active_sandbox_session;
 #[cfg(unix)]
 use std::process::Command;
 

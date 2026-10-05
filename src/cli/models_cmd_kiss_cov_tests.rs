@@ -123,8 +123,8 @@ fn kiss_cov_parse_model_line_all_branches_single_test() {
 }
 
 #[cfg(unix)]
-fn clear_cursor_api_keys_for_models_test() -> malvin::test_utils::SavedEnvVars {
-    let saved = malvin::test_utils::SavedEnvVars::capture(&[
+fn clear_cursor_api_keys_for_models_test() -> malvin::test_support::test_utils::SavedEnvVars {
+    let saved = malvin::test_support::test_utils::SavedEnvVars::capture(&[
         "CURSOR_API_KEY",
         "CURSOR_AGENT_API_KEY",
         "AGENT_API_KEY",
@@ -153,9 +153,9 @@ fn install_failing_fake_agent(dir: &std::path::Path) {
 #[test]
 fn kiss_cov_run_models_soft_fails_cursor_and_continues() {
     use super::test_hooks::print_cursor_models_via_cli_for_test;
-    use crate::repo_checks::set_fake_command_dir;
+    use crate::cli::repo_checks::set_fake_command_dir;
 
-    let _lock = malvin::test_utils::test_env_lock();
+    let _lock = malvin::test_support::test_utils::test_env_lock();
     let _saved = clear_cursor_api_keys_for_models_test();
     let tmp = tempfile::tempdir().expect("tempdir");
     install_failing_fake_agent(tmp.path());
@@ -174,7 +174,7 @@ fn kiss_cov_run_models_fake_agent_branchy_executable() {
     use std::os::unix::fs::PermissionsExt;
 
     use super::test_hooks::print_cursor_models_via_cli_for_test;
-    use crate::repo_checks::set_fake_command_dir;
+    use crate::cli::repo_checks::set_fake_command_dir;
 
     let tmp = tempfile::tempdir().expect("tempdir");
     let agent = tmp.path().join("agent");
@@ -197,7 +197,7 @@ fn kiss_cov_run_models_fake_agent_branchy_executable() {
 
 #[test]
 fn kiss_cov_models_refresh_timestamp_lifecycle() {
-    let _lock = malvin::test_utils::test_env_lock();
+    let _lock = malvin::test_support::test_utils::test_env_lock();
     let now = malvin::clock::unix_now_secs();
     super::test_hooks::save_last_refresh_secs(now).expect("save");
     let loaded = super::test_hooks::load_last_refresh_secs().expect("load");

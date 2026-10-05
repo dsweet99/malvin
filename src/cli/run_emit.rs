@@ -3,7 +3,7 @@ use std::path::Path;
 
 use malvin::artifacts::RunArtifacts;
 use malvin::format_logs_dir;
-use malvin::mem_limit_config::format_host_resources_line;
+use malvin::config::mem_limit_config::format_host_resources_line;
 use malvin::output::{MALVIN_WHO, WHO_U, format_line, print_stdout_line, print_stdout_text};
 
 pub fn emit_command_line(run_dir: &Path, echo_stdout: bool) -> Result<(), String> {
@@ -89,7 +89,7 @@ pub fn emit_run_startup_banner(
     malvin::agent_phase::reset_for_run();
     malvin::agent_phase::note_orienting();
     emit_command_line(&artifacts.run_dir, opts.tee_stdout)?;
-    if opts.host_resources && !malvin::acp::test_no_real_agent_enabled() {
+    if opts.host_resources && !malvin::agent_process::test_no_real_agent_enabled() {
         emit_host_resources_line(&artifacts.run_dir, opts.tee_stdout)?;
     }
     append_command_log_line(
@@ -174,8 +174,8 @@ mod tests {
 
     #[test]
     fn emit_run_startup_banner_writes_command_without_requiring_logs() {
-        malvin::test_utils::with_isolated_home(|_| {
-            malvin::test_utils::clear_test_no_real_agent_env();
+        malvin::test_support::test_utils::with_isolated_home(|_| {
+            malvin::test_support::test_utils::clear_test_no_real_agent_env();
             let tmp = tempfile::tempdir().expect("tempdir");
             let artifacts =
                 malvin::artifacts::create_run_artifacts_from_text("hi", Some(tmp.path()))
@@ -198,8 +198,8 @@ mod tests {
 
     #[test]
     fn emit_run_startup_sequence_includes_host_resources_when_requested() {
-        malvin::test_utils::with_isolated_home(|_| {
-            malvin::test_utils::clear_test_no_real_agent_env();
+        malvin::test_support::test_utils::with_isolated_home(|_| {
+            malvin::test_support::test_utils::clear_test_no_real_agent_env();
             let tmp = tempfile::tempdir().expect("tempdir");
             let artifacts =
                 malvin::artifacts::create_run_artifacts_from_text("hi", Some(tmp.path()))
@@ -223,7 +223,7 @@ mod tests {
 
     #[test]
     fn emit_run_startup_sequence_omits_host_resources_when_disabled() {
-        malvin::test_utils::with_isolated_home(|_| {
+        malvin::test_support::test_utils::with_isolated_home(|_| {
             let tmp = tempfile::tempdir().expect("tempdir");
             let artifacts =
                 malvin::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))

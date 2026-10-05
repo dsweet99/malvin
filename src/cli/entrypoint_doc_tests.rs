@@ -2,7 +2,7 @@ use super::{
     Exit, dispatch_command, entrypoint_from, finish_entrypoint, prepare_cli_output, run_async_cli,
 };
 use crate::cli::SharedOpts;
-use malvin::test_utils::with_isolated_home;
+use malvin::test_support::test_utils::with_isolated_home;
 
 #[test]
 fn prepare_cli_output_initializes_output_state() {
@@ -115,7 +115,7 @@ fn entrypoint_from_admin_models_doc_exits_success() {
 
 #[test]
 fn entrypoint_from_admin_rejects_gates_flag() {
-    use malvin::test_stderr_capture::capture_stderr_output;
+    use malvin::test_support::test_stderr_capture::capture_stderr_output;
 
     with_isolated_home(|_| {
         let stderr = capture_stderr_output(|| {
@@ -133,7 +133,7 @@ fn entrypoint_from_admin_rejects_gates_flag() {
 
 #[test]
 fn entrypoint_from_admin_rejects_quiet_flag() {
-    use malvin::test_stderr_capture::capture_stderr_output;
+    use malvin::test_support::test_stderr_capture::capture_stderr_output;
 
     with_isolated_home(|_| {
         let stderr = capture_stderr_output(|| {
@@ -151,7 +151,7 @@ fn entrypoint_from_admin_rejects_quiet_flag() {
 
 #[test]
 fn entrypoint_from_admin_rejects_verbose_flag() {
-    use malvin::test_stderr_capture::capture_stderr_output;
+    use malvin::test_support::test_stderr_capture::capture_stderr_output;
 
     with_isolated_home(|_| {
         let stderr = capture_stderr_output(|| {
@@ -169,7 +169,7 @@ fn entrypoint_from_admin_rejects_verbose_flag() {
 
 #[test]
 fn entrypoint_from_admin_rejects_max_acp_retries_flag() {
-    use malvin::test_stderr_capture::capture_stderr_output;
+    use malvin::test_support::test_stderr_capture::capture_stderr_output;
 
     with_isolated_home(|_| {
         let stderr = capture_stderr_output(|| {
@@ -203,7 +203,7 @@ fn entrypoint_from_doc_does_not_suppress_stdout() {
 
 #[test]
 fn finish_entrypoint_success_and_failure_paths() {
-    use malvin::test_stderr_capture::capture_stderr_output;
+    use malvin::test_support::test_stderr_capture::capture_stderr_output;
 
     assert_eq!(finish_entrypoint(Ok(())), Exit::Success);
     let stderr = capture_stderr_output(|| {
@@ -228,16 +228,16 @@ fn dispatch_gates_only_route_runs_tenacious_preflight() {
     use crate::cli::args::Cli;
     use clap::CommandFactory;
 
-    malvin::test_utils::with_isolated_home(|work| {
+    malvin::test_support::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(work).expect("chdir");
         let mut shared = SharedOpts::test_defaults();
         let mut router = crate::cli::RouterOpts::test_defaults();
         router.gates = true;
-        shared.model = malvin::model_id::parse_model_id("pi:some-unknown/foo").expect("model");
+        shared.model = malvin::config::model_id::parse_model_id("pi:some-unknown/foo").expect("model");
         let matches = Cli::command().get_matches_from(["malvin", "-g"]);
         let mut result = Ok(());
-        malvin::acp::with_env("MALVIN_PI", Some("/missing/pi-entry.js"), || {
+        malvin::agent_process::with_env("MALVIN_PI", Some("/missing/pi-entry.js"), || {
             result = super::dispatch_gates_only_route(super::GatesOnlyDispatch {
                 max_loops: 1,
                 max_hypotheses: 5,

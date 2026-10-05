@@ -11,7 +11,7 @@ pub(super) fn with_isolated_names<F>(f: F)
 where
     F: FnOnce(&Path),
 {
-    crate::test_utils::with_isolated_home(|work| {
+    crate::test_support::test_utils::with_isolated_home(|work| {
         let _ = work;
         let root = names_registry_root();
         if root.exists() {
@@ -22,7 +22,7 @@ where
 }
 
 pub(super) fn sleep_child(seconds: &str) -> std::process::Child {
-    let mut cmd = crate::malvin_sandbox::malvin_std_command("sleep");
+    let mut cmd = crate::agent_process::malvin_sandbox::malvin_std_command("sleep");
     cmd.arg(seconds);
     cmd.spawn().expect("spawn sleep")
 }

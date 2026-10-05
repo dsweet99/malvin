@@ -1,0 +1,105 @@
+use std::path::Path;
+
+use crate::agent_process::{AgentError, AuthError};
+use crate::backends::bridge_sdk::SDK_BRIDGE_MAX_AGE;
+
+use super::backend_lifecycle::backend_lifecycle;
+use super::sdk_client::SdkClient;
+
+#[path = "sdk_client_session_spawn.rs"]
+mod spawn;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CoderSessionEnsure {
+    Fresh,
+    Reused,
+}
+
+impl CoderSessionEnsure {
+    #[must_use]
+    pub const fn is_fresh(self) -> bool {
+        matches!(self, Self::Fresh)
+    }
+}
+
+impl SdkClient {
+    pub fn ensure_authenticated(&self) -> Result<(), AuthError> {
+        backend_lifecycle(self.model.backend).ensure_authenticated(&self.model)
+    }
+
+    pub async fn start_coder_session(
+        &mut self,
+        cwd: &Path,
+    ) -> Result<CoderSessionEnsure, AgentError> {
+        if self.header_lifecycle.is_unbound() {
+            return Err(AgentError(
+                "start_coder_session requires bind_session_header before ensure/deliver".into(),
+            ));
+        }
+        let ensure = self.ensure_coder_session(cwd).await?;
+        self.deliver_session_header_if_needed().await?;
+        Ok(ensure)
+    }
+
+    pub async fn ensure_coder_session(
+        &mut self,
+        cwd: &Path,
+    ) -> Result<CoderSessionEnsure, AgentError> {
+        if sdk_bridge_needs_restart(self) {
+            self.end_coder_session().await?;
+        }
+        if self.has_open_coder_session() {
+            return Ok(CoderSessionEnsure::Reused);
+        }
+        let resumed = begin_coder_session_resumed(self, cwd).await?;
+        Ok(if resumed {
+            CoderSessionEnsure::Reused
+        } else {
+            CoderSessionEnsure::Fresh
+        })
+    }
+
+    pub async fn begin_coder_session(&mut self, cwd: &Path) -> Result<(), AgentError> {
+        begin_coder_session_resumed(self, cwd).await.map(|_| ())
+    }
+
+    pub(crate) async fn deliver_session_header_if_needed(&mut self) -> Result<(), AgentError> {
+        super::sdk_client_session_header::send_bound_session_header(self).await
+    }
+
+    pub async fn end_coder_session(&mut self) -> Result<(), AgentError> {
+        let Some(s) = self.coder.take_live_session() else {
+            return Ok(());
+        };
+        if backend_lifecycle(self.model.backend).tracks_resume_agent_id() {
+            spawn::remember_agent_id_from(self, &s);
+        }
+        s.shutdown().await?;
+        Ok(())
+    }
+}
+
+#[must_use]
+pub(crate) fn sdk_bridge_needs_restart(client: &SdkClient) -> bool {
+    super::sdk_client::live_session(client)
+        .is_some_and(|s| s.started_at.elapsed() >= SDK_BRIDGE_MAX_AGE)
+}
+
+async fn begin_coder_session_resumed(
+    client: &mut SdkClient,
+    cwd: &Path,
+) -> Result<bool, AgentError> {
+    if client.has_open_coder_session() {
+        return Err(AgentError(format!(
+            "{} SDK session is already open",
+            client.model.backend.label()
+        )));
+    }
+    let cwd = crate::agent_process::resolve_acp_session_cwd(cwd)?;
+    let thinking = spawn::spawn_thinking_wire(client);
+    spawn::spawn_with_retries(client, cwd, thinking.as_deref()).await
+}
+
+#[cfg(test)]
+#[path = "sdk_client_session_tests.rs"]
+mod sdk_client_session_tests;

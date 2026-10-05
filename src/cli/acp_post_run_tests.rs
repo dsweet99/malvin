@@ -86,7 +86,7 @@ fn merge_with_abort_after_successful_restore() {
     let tmp = tempfile::tempdir().unwrap();
     let result = abort_result_path(&tmp);
     let work = tempfile::tempdir().unwrap();
-    let empty = malvin::test_utils::empty_session_dotfile_backups(work.path());
+    let empty = malvin::test_support::test_utils::empty_session_dotfile_backups(work.path());
     let err = merge_acp_with_workspace_session_restore_and_check_abort(
         Ok(()),
         work.path(),
@@ -101,7 +101,7 @@ fn merge_with_abort_does_not_claim_restore_failed_when_restore_succeeded() {
     let tmp = tempfile::tempdir().unwrap();
     let result = abort_result_path(&tmp);
     let work = tempfile::tempdir().unwrap();
-    let empty = malvin::test_utils::empty_session_dotfile_backups(work.path());
+    let empty = malvin::test_support::test_utils::empty_session_dotfile_backups(work.path());
     let err = merge_acp_with_workspace_session_restore_and_check_abort(
         Err("wf failed".into()),
         work.path(),
@@ -127,7 +127,7 @@ fn work_dir_with_checks(
 ) -> (tempfile::TempDir, malvin::artifacts::SessionDotfileBackups) {
     let work = tempfile::tempdir().unwrap();
     malvin::seed_malvin_checks(work.path(), content);
-    let backups = malvin::test_utils::empty_session_dotfile_backups(work.path());
+    let backups = malvin::test_support::test_utils::empty_session_dotfile_backups(work.path());
     (work, backups)
 }
 

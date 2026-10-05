@@ -2,7 +2,7 @@ use super::gpu_types::{
     GPU_TYPES_REFRESH_INTERVAL_SECS, GpuTypesRecord, GpuTypesSource, gpu_types_cache_path, load_gpu_types_from,
     load_record, parse_gpu_types, save_record,
 };
-use crate::pi_sdk::http_fetch::serve_once;
+use crate::http_fetch::serve_once;
 
 const GUIDE: &str = "# GPU\n\n## Specifying GPU type\n\nModal supports:\n\n* `T4`\n* `H100`/`H100!`\n- `B200`/`B200+`\n\nSee [pricing](/pricing) for `cost`.\n\n## Specifying GPU count\n\n* `H100:8`\n";
 const DEAD_URL: &str = "http://127.0.0.1:9/gpu.md";

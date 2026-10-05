@@ -136,7 +136,7 @@ mod tests {
 
     #[test]
     fn observe_execute_failed_gate_command_sets_debugging() {
-        crate::test_utils::with_isolated_home(|w| {
+        crate::test_support::test_utils::with_isolated_home(|w| {
             std::fs::create_dir_all(w.join(".malvin")).expect("mkdir");
             std::fs::write(w.join(".malvin/gates"), "pytest tests\n").expect("gates");
             let old = std::env::current_dir().expect("cwd");

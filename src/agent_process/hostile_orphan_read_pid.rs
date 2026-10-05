@@ -1,0 +1,53 @@
+use std::path::Path;
+use std::time::Duration;
+
+use super::process_alive;
+
+#[cfg(unix)]
+fn note_fixture_orphan_affiliation(pid: u32, agent_pgid: Option<u32>) {
+    let baseline = crate::agent_process::snapshot_pids();
+    crate::agent_process::refresh_session_spawn_affiliation(agent_pgid, &baseline);
+    if agent_pgid.is_some()
+        && !crate::agent_process::unix_process_group_kill_targets::is_session_affiliated_pid(pid)
+    {
+        crate::agent_process::unix_process_group_kill_targets::note_session_affiliated_pid(pid);
+    }
+}
+
+#[cfg(unix)]
+fn orphan_pid_if_ready(path: &Path, agent_pgid: Option<u32>) -> Option<u32> {
+    let text = std::fs::read_to_string(path).ok()?;
+    let pid = text.trim().parse::<u32>().ok()?;
+    if !process_alive(pid) {
+        return None;
+    }
+    note_fixture_orphan_affiliation(pid, agent_pgid);
+    Some(pid)
+}
+
+pub async fn read_orphan_pid(path: &Path, agent_pgid: Option<u32>) -> u32 {
+    for _ in 0..50 {
+        #[cfg(unix)]
+        {
+            let baseline = crate::agent_process::snapshot_pids();
+            crate::agent_process::refresh_session_spawn_affiliation(agent_pgid, &baseline);
+        }
+        #[cfg(unix)]
+        if let Some(pid) = orphan_pid_if_ready(path, agent_pgid) {
+            return pid;
+        }
+        #[cfg(not(unix))]
+        if let Ok(text) = std::fs::read_to_string(path) {
+            if let Ok(pid) = text.trim().parse::<u32>() {
+                if process_alive(pid) {
+                    return pid;
+                }
+            }
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    panic!(
+        "orphan pid file not written or orphan not alive: {}",
+        path.display()
+    );
+}

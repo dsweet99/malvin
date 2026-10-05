@@ -1,5 +1,6 @@
 #![allow(clippy::missing_const_for_fn)]
 
+#[cfg(test)]
 use std::path::PathBuf;
 use std::process::{Command, Output};
 #[cfg(test)]

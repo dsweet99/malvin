@@ -131,7 +131,7 @@ fn entrypoint_sweep_stale_acp_spawn_locks() {
     if !chamber.is_dir() {
         return;
     }
-    if let Err(e) = malvin::acp_spawn_sweep::sweep_stale_acp_spawn_locks(&cwd) {
+    if let Err(e) = malvin::agent_process::acp_spawn_sweep::sweep_stale_acp_spawn_locks(&cwd) {
         tracing::warn!(
             target: "malvin::entrypoint",
             error = %e,
@@ -148,7 +148,7 @@ fn run_entrypoint(cli: Cli, matches: clap::ArgMatches, raw: &[std::ffi::OsString
     if cli.shared.remote.is_some() {
         return super::entrypoint_modal::run_modal_route(&cli, raw, modal);
     }
-    malvin::pi_sdk::housekeep_local_llms();
+    malvin::local_llm::housekeep_local_llms();
     entrypoint_sweep_stale_acp_spawn_locks();
     if let Some(exit) = entrypoint_preflight(&cli) {
         return exit;
@@ -223,7 +223,7 @@ pub fn entrypoint_from(
 ) -> Exit {
     malvin::init_from_env();
     let raw: Vec<std::ffi::OsString> = args.into_iter().map(Into::into).collect();
-    let remote_alias = |name: &str| malvin::malvin_config_file::load_remote_aliases().remove(name);
+    let remote_alias = |name: &str| malvin::config::malvin_config_file::load_remote_aliases().remove(name);
     let (raw, modal) = match malvin::modal_run::options::extract_modal_options(raw, remote_alias) {
         Ok(split) => split,
         Err(e) => {

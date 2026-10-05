@@ -19,7 +19,7 @@ pub use entrypoint_from::entrypoint_from;
 pub(crate) use entrypoint_gates_only::{GatesOnlyDispatch, dispatch_gates_only_route};
 
 pub fn print_command_error(message: &str) {
-    use crate::repo_checks::{
+    use crate::cli::repo_checks::{
         GATE_FAILURE_MARKER, is_gate_failure_error, is_pure_gate_failure_summary,
     };
     use malvin::output::{MALVIN_WHO, print_log_error, print_stderr_line};
@@ -63,15 +63,15 @@ fn spawn_ctrl_c_teardown() {
         if tokio::signal::ctrl_c().await.is_err() {
             return;
         }
-        malvin::malvin_sandbox::teardown_active_sandbox_for_interrupt();
+        malvin::agent_process::malvin_sandbox::teardown_active_sandbox_for_interrupt();
         std::process::exit(130);
     });
 }
 
 pub fn entrypoint() -> Exit {
     malvin::migrate_legacy_malvin_user_home();
-    if std::env::args().nth(1).as_deref() == Some(malvin::pi_sdk::INTERNAL_MANAGER_FLAG) {
-        return match malvin::pi_sdk::run_local_llm_manager() {
+    if std::env::args().nth(1).as_deref() == Some(malvin::local_llm::INTERNAL_MANAGER_FLAG) {
+        return match malvin::local_llm::run_local_llm_manager() {
             Ok(()) => Exit::Success,
             Err(e) => {
                 eprintln!("local llm manager: {e}");
@@ -99,7 +99,7 @@ pub(crate) fn finish_entrypoint(res: Result<(), String>) -> Exit {
 pub(crate) fn prepare_cli_output(_shared: &SharedOpts) {
     let theme = std::env::current_dir()
         .ok()
-        .map(|cwd| malvin::malvin_config_file::load_malvin_config(&cwd).theme)
+        .map(|cwd| malvin::config::malvin_config_file::load_malvin_config(&cwd).theme)
         .unwrap_or_default();
     malvin::terminal_palette::init_terminal_theme(theme);
     malvin::output::init_stdout_style();

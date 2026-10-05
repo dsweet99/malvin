@@ -18,7 +18,7 @@ mod tests {
 
     #[test]
     fn startup_request_tag_label_from_file_stem_or_prompt() {
-        let _guard = crate::test_utils::test_env_lock();
+        let _guard = crate::test_support::test_utils::test_env_lock();
         let tmp = tempfile::tempdir().unwrap();
         let old_cwd = std::env::current_dir().unwrap();
         std::env::set_current_dir(tmp.path()).unwrap();

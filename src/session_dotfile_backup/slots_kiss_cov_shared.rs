@@ -30,9 +30,9 @@ pub(super) fn dotfile_spec_row_field_count(row: &DotfileSpecRow) -> usize {
 }
 
 pub(super) fn write_merged_default_malvin_config(cfg_path: &Path) {
-    let template = crate::malvin_config_file::parse_template_value().expect("template");
+    let template = crate::config::malvin_config_file::parse_template_value().expect("template");
     let mut ensured = toml::Value::Table(toml::map::Map::new());
-    crate::malvin_config_file::merge_missing_keys(&mut ensured, &template);
+    crate::config::malvin_config_file::merge_missing_keys(&mut ensured, &template);
     let mut ensured_text = toml::to_string_pretty(&ensured).expect("toml");
     if !ensured_text.ends_with('\n') {
         ensured_text.push('\n');

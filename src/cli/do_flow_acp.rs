@@ -1,5 +1,5 @@
 use crate::cli::one_shot_session::OneShotCoderGuard;
-use malvin::agent_backend::SdkClient;
+use malvin::backends::agent_backend::SdkClient;
 use malvin::artifacts::RunArtifacts;
 
 use super::do_flow_prompt;

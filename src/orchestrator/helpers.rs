@@ -1,5 +1,6 @@
 use std::path::Path;
 
+#[cfg(test)]
 pub(crate) use crate::workflow_context::insert_formatted;
 #[cfg(test)]
 pub use crate::workflow_context::workflow_context;

@@ -44,6 +44,7 @@ impl Cli {
         !self.requests.is_empty()
     }
 
+    #[cfg(test)]
     #[must_use]
     pub fn first_request(&self) -> Option<&String> {
         self.requests.first()

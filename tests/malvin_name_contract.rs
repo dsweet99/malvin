@@ -115,7 +115,7 @@ fn different_names_same_workspace_both_register() {
 #[cfg(unix)]
 #[test]
 fn different_acp_lock_slots_same_workspace_both_acquire() {
-    malvin::malvin_sandbox::clear_active_sandbox_session();
+    malvin::agent_process::malvin_sandbox::clear_active_sandbox_session();
     let work = fresh_workdir("malvin_different_acp_slots");
     std::fs::create_dir_all(work.join(".malvin/acp_spawn")).expect("mkdir .malvin");
     acquire_acp_spawn_lock_for_slot(&work, "alpha").expect("alpha");
@@ -130,7 +130,7 @@ fn different_acp_lock_slots_same_workspace_both_acquire() {
     );
     release_acp_spawn_lock(&work, "alpha");
     release_acp_spawn_lock(&work, "beta");
-    malvin::malvin_sandbox::clear_active_sandbox_session();
+    malvin::agent_process::malvin_sandbox::clear_active_sandbox_session();
 }
 
 #[cfg(unix)]

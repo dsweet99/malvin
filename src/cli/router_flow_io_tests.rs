@@ -1,7 +1,7 @@
 use clap::Parser;
 
 use crate::cli::config_defaults::parse_cli_with_config_defaults;
-use malvin::test_utils::with_isolated_home;
+use malvin::test_support::test_utils::with_isolated_home;
 
 #[test]
 fn cli_accepts_default_route_request() {
@@ -90,10 +90,10 @@ fn cli_accepts_global_no_kpop_option() {
 #[test]
 fn router_client_uses_router_style_agent_io_not_do_style() {
     use crate::cli::SharedOpts;
-    use malvin::agent_backend::build_agent_backend;
+    use malvin::backends::agent_backend::build_agent_backend;
 
     let shared = SharedOpts {
-        model: malvin::model_id::parse_model_id(malvin::config::DEFAULT_CLI_MODEL).expect("model"),
+        model: malvin::config::model_id::parse_model_id(malvin::config::DEFAULT_CLI_MODEL).expect("model"),
         verbose: false,
         max_acp_retries: malvin::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
@@ -106,8 +106,7 @@ fn router_client_uses_router_style_agent_io_not_do_style() {
         shared.model.clone(),
         shared.max_acp_retries,
         shared.acp_stdout_markdown_enabled(),
-    )
-    .expect("backend");
+    );
     let io = backend.io;
     assert!(
         !io.raw_output,

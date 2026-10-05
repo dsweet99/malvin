@@ -24,7 +24,7 @@ fn stdout_and_phase_test_locks() -> (
 }
 
 pub(crate) fn seed_run_timing_json(run_dir: &std::path::Path) {
-    use crate::llm_transport::ResponseUsage;
+    use crate::run_timing::ResponseUsage;
 
     let timing = RunTiming::new_arc();
     {

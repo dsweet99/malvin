@@ -66,7 +66,7 @@ fn help_omits_name_flag() {
 }
 
 fn doc_does_not_create_name_files() {
-    malvin::test_utils::with_isolated_home(|work| {
+    malvin::test_support::test_utils::with_isolated_home(|work| {
         let _ = work;
         let root = malvin::names_registry_root();
         assert_eq!(entrypoint_from(["malvin", "--doc"]), Exit::Success);
@@ -82,7 +82,7 @@ fn doc_does_not_create_name_files() {
 }
 
 fn bare_help_does_not_create_name_files() {
-    malvin::test_utils::with_isolated_home(|work| {
+    malvin::test_support::test_utils::with_isolated_home(|work| {
         let _ = work;
         let root = malvin::names_registry_root();
         assert_eq!(entrypoint_from(["malvin"]), Exit::Success);
@@ -100,7 +100,7 @@ fn bare_help_does_not_create_name_files() {
 fn do_workflow_parses_without_name_flag() {
     use crate::cli::config_defaults::parse_cli_with_config_defaults;
 
-    malvin::test_utils::with_isolated_home(|_| {
+    malvin::test_support::test_utils::with_isolated_home(|_| {
         let (cli, _) =
             parse_cli_with_config_defaults(["malvin", "--do", "say hello"]).expect("parse --do");
         assert!(cli.do_workflow());

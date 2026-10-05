@@ -3,7 +3,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use crate::alnum_id::random_alnum;
-use crate::workspace_paths::malvin_user_home_root;
+use crate::workspace::workspace_paths::malvin_user_home_root;
 
 const NAMES_SUBDIR: &str = "names";
 const AUTO_NAME_LEN: usize = 5;
@@ -99,7 +99,7 @@ fn live_peer_error(name: &str, holder_pid: u32, path: &Path) -> String {
 
 #[cfg(unix)]
 fn reconcile_foreign_holder(name: &str, holder_pid: u32, path: &Path) -> Result<(), String> {
-    if crate::acp::pid_alive(holder_pid) {
+    if crate::agent_process::pid_alive(holder_pid) {
         return Err(live_peer_error(name, holder_pid, path));
     }
     let _ = std::fs::remove_file(path);

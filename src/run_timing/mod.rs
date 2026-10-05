@@ -15,6 +15,7 @@ pub const RUN_TIMING_JSON_FILE: &str = "run_timing.json";
 pub const RUN_TIMING_SUMMARY_PREFIX: &str = "TIMING: ";
 
 pub use report_cost_line::RUN_COST_SUMMARY_PREFIX;
+pub use tokens::ResponseUsage;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TimingPhase {
@@ -59,7 +60,7 @@ pub struct RunTiming {
     tool_calls_other: Duration,
     pub(crate) tx_costs: Vec<f64>,
     pub(crate) unknown_tx_count: u32,
-    pub(crate) token_cost_rates: crate::malvin_config_file::TokenCostRates,
+    pub(crate) token_cost_rates: crate::config::malvin_config_file::TokenCostRates,
     pub(crate) cost_policy: CostPolicy,
     pub(crate) steps: u64,
     pub(crate) tokens_in: Option<u64>,
@@ -99,7 +100,7 @@ impl Default for RunTiming {
             tool_calls_other: Duration::ZERO,
             tx_costs: Vec::new(),
             unknown_tx_count: 0,
-            token_cost_rates: crate::malvin_config_file::TokenCostRates::default(),
+            token_cost_rates: crate::config::malvin_config_file::TokenCostRates::default(),
             cost_policy: CostPolicy::EstimateFromRates,
             steps: 0,
             tokens_in: None,

@@ -56,16 +56,16 @@ pub fn create_run_artifacts(
     create_run_artifacts_opts(
         plan_source,
         base_dir,
-        crate::run_id::RunDirOptions::default(),
+        crate::workspace::run_id::RunDirOptions::default(),
     )
 }
 
 pub fn create_run_artifacts_opts(
     plan_source: &Path,
     base_dir: Option<&Path>,
-    opts: crate::run_id::RunDirOptions,
+    opts: crate::workspace::run_id::RunDirOptions,
 ) -> std::io::Result<RunArtifacts> {
-    let run_dir = crate::run_id::create_run_dir(base_dir, opts)?;
+    let run_dir = crate::workspace::run_id::create_run_dir(base_dir, opts)?;
     let plan_target = run_dir.join(random_plan_request_filename());
     std::fs::copy(plan_source, &plan_target)?;
     let artifacts = RunArtifacts {
@@ -80,7 +80,7 @@ pub fn create_run_artifacts_opts(
     ensure_quality_gates_log_file(&artifacts)?;
     crate::write_work_dir_manifest(&artifacts.run_dir, &artifacts.work_dir)?;
     #[cfg(not(test))]
-    crate::stdout_log_path::set_stdout_log_path(Some(artifacts.stdout_log_path()));
+    crate::workspace::stdout_log_path::set_stdout_log_path(Some(artifacts.stdout_log_path()));
     Ok(artifacts)
 }
 
@@ -91,17 +91,17 @@ pub fn create_run_artifacts_from_text(
     create_run_artifacts_from_text_opts(
         plan_text,
         base_dir,
-        crate::run_id::RunDirOptions::default(),
+        crate::workspace::run_id::RunDirOptions::default(),
     )
 }
 
 pub fn create_run_artifacts_from_text_opts(
     plan_text: &str,
     base_dir: Option<&Path>,
-    opts: crate::run_id::RunDirOptions,
+    opts: crate::workspace::run_id::RunDirOptions,
 ) -> std::io::Result<RunArtifacts> {
     let work_dir = base_dir.unwrap_or_else(|| Path::new(".")).to_path_buf();
-    let run_dir = crate::run_id::create_run_dir(base_dir, opts)?;
+    let run_dir = crate::workspace::run_id::create_run_dir(base_dir, opts)?;
     let plan_target = run_dir.join(random_plan_request_filename());
     std::fs::write(&plan_target, plan_text)?;
     let artifacts = RunArtifacts {
@@ -113,7 +113,7 @@ pub fn create_run_artifacts_from_text_opts(
     ensure_quality_gates_log_file(&artifacts)?;
     crate::write_work_dir_manifest(&artifacts.run_dir, &artifacts.work_dir)?;
     #[cfg(not(test))]
-    crate::stdout_log_path::set_stdout_log_path(Some(artifacts.stdout_log_path()));
+    crate::workspace::stdout_log_path::set_stdout_log_path(Some(artifacts.stdout_log_path()));
     Ok(artifacts)
 }
 

@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn gate_command_lines_errors_when_malvin_checks_missing() {
-    crate::test_utils::with_isolated_home(|w| {
+    crate::test_support::test_utils::with_isolated_home(|w| {
         let err = gate_command_lines(w).unwrap_err();
         assert!(err.contains("is missing"), "unexpected error: {err}");
     });
@@ -10,7 +10,7 @@ fn gate_command_lines_errors_when_malvin_checks_missing() {
 
 #[test]
 fn command_matches_malvin_checks_gate_uses_checks_file_not_hardcoded_needles() {
-    crate::test_utils::with_isolated_home(|w| {
+    crate::test_support::test_utils::with_isolated_home(|w| {
         std::fs::create_dir_all(w.join(".malvin")).unwrap();
         std::fs::write(w.join(".malvin/gates"), "custom-gate --flag\n").unwrap();
         assert!(command_matches_malvin_checks_gate(

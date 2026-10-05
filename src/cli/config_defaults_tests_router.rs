@@ -20,10 +20,10 @@ fn write_default_workflow_max_hypotheses(work: &std::path::Path, value: i64) {
 }
 
 fn assert_default_route_max_hypotheses(cli_args: &[&str], expected: usize) {
-    malvin::test_utils::with_isolated_home(|work| {
+    malvin::test_support::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(work).expect("chdir");
-        malvin::malvin_config_file::open_malvin_config(work).expect("seed");
+        malvin::config::malvin_config_file::open_malvin_config(work).expect("seed");
         write_default_workflow_max_hypotheses(work, 11);
         let (cli, _) = parse_cli_with_config_defaults(cli_args).expect("parse");
         assert_eq!(cli.router.max_hypotheses, expected);
@@ -33,7 +33,7 @@ fn assert_default_route_max_hypotheses(cli_args: &[&str], expected: usize) {
 
 #[test]
 fn apply_workspace_config_defaults_skips_default_route() {
-    malvin::test_utils::with_isolated_home(|work| {
+    malvin::test_support::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(work).expect("chdir");
         let config_path = malvin::malvin_config_path(work);
@@ -48,11 +48,11 @@ fn apply_workspace_config_defaults_skips_default_route() {
 
 #[test]
 fn default_route_max_hypotheses_defaults_to_five() {
-    malvin::test_utils::with_isolated_home(|_| {
+    malvin::test_support::test_utils::with_isolated_home(|_| {
         let (cli, _) = parse_cli_with_config_defaults(["malvin", "hello"]).expect("parse");
         assert_eq!(
             cli.router.max_hypotheses,
-            malvin::malvin_config_file::DEFAULT_MAX_HYPOTHESES
+            malvin::config::malvin_config_file::DEFAULT_MAX_HYPOTHESES
         );
     });
 }
@@ -82,7 +82,7 @@ fn raw_usage_errors_end_with_newline() {
 fn default_route_explicit_zero_max_hypotheses_means_default() {
     assert_default_route_max_hypotheses(
         &["malvin", "--max-hypotheses", "0", "hello"],
-        malvin::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
+        malvin::config::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
     );
 }
 
@@ -93,7 +93,7 @@ fn gates_only_max_hypotheses_uses_default_workflow_config() {
 
 #[test]
 fn default_route_max_hypotheses_flag_after_request_parses() {
-    malvin::test_utils::with_isolated_home(|_| {
+    malvin::test_support::test_utils::with_isolated_home(|_| {
         let (cli, _) = parse_cli_with_config_defaults(["malvin", "hello", "--max-hypotheses", "7"])
             .expect("parse flag after request");
         assert_eq!(cli.router.max_hypotheses, 7);

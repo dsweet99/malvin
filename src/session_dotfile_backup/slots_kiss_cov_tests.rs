@@ -47,7 +47,7 @@ fn slots_branchy_witness_covers_dotfile_rows() {
             panic!("slot {slot} label mismatch");
         }
     }
-    crate::test_utils::with_isolated_home(|work| {
+    crate::test_support::test_utils::with_isolated_home(|work| {
         std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
         std::fs::write(work.join(".malvin/gates"), "make lint\n").expect("gates");
         let mut id = |n: usize| format!("slots-branchy-{n}");
@@ -80,7 +80,7 @@ fn kiss_static_type_refs() {
 #[cfg(unix)]
 #[test]
 fn kiss_cov_slots_workspace_config_slot_roundtrip() {
-    crate::test_utils::with_isolated_home(|work| {
+    crate::test_support::test_utils::with_isolated_home(|work| {
         std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
         std::fs::write(work.join(crate::MALVIN_CONFIG_REL), "workspace-config\n").expect("write");
         let mut generate_id = |n: usize| format!("kiss-cfg-{n}");
@@ -98,7 +98,7 @@ fn kiss_cov_slots_workspace_config_slot_roundtrip() {
 
 #[test]
 fn kiss_cov_slots_backup_restore_roundtrip() {
-    crate::test_utils::with_isolated_home(|work| {
+    crate::test_support::test_utils::with_isolated_home(|work| {
         std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
         std::fs::write(work.join(".malvin/gates"), "make lint\n").expect("gates");
         std::fs::write(work.join(crate::MALVIN_CONFIG_REL), "workspace-config\n").expect("config");

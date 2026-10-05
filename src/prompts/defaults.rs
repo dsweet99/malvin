@@ -149,15 +149,15 @@ mod router_header_embed_tests {
         ROUTER_SUMMARIZE_MD, default_file,
     };
     use crate::artifacts::create_run_artifacts;
-    use crate::config::DEFAULT_CLI_MODEL;
-    use crate::orchestrator::workflow_context_paths_only;
-    use crate::prompts::{PromptStore, render_header};
-    use crate::router_flow::router_flow_prompt::{
+    use crate::cli::router_flow::router_flow_prompt::{
         RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput,
         RouterKpopCommonPromptInput, RouterSummarizePromptInput, build_router_a_prompt,
         build_router_b_prompt, build_router_header_prompt, build_router_kpop_common_prompt,
         build_router_summarize_prompt, prepare_router_prompt_store,
     };
+    use crate::config::DEFAULT_CLI_MODEL;
+    use crate::orchestrator::workflow_context_paths_only;
+    use crate::prompts::{PromptStore, render_header};
 
     fn embedded_router_fixture() -> (
         tempfile::TempDir,

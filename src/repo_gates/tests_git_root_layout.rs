@@ -12,7 +12,7 @@ fn should_run_workspace_gates_when_malvin_dir_present() {
 
 #[test]
 fn resolve_malvin_checks_reads_legacy_cwd_relative_file() {
-    crate::test_utils::with_isolated_home(|w| {
+    crate::test_support::test_utils::with_isolated_home(|w| {
         write_legacy_checks(w, "legacy-only\n");
         assert_eq!(
             gate_command_lines(w).unwrap(),

@@ -99,7 +99,7 @@ fn gitignore_and_vision_file_backups_are_distinct_types() {
 fn kiss_cov_write_merged_default_malvin_config() {
     let _ = super::slots_kiss_cov_shared::write_merged_default_malvin_config;
 
-    crate::test_utils::with_isolated_home(|work| {
+    crate::test_support::test_utils::with_isolated_home(|work| {
         let cfg_path = crate::malvin_config_path(work);
         if let Some(parent) = cfg_path.parent() {
             std::fs::create_dir_all(parent).expect("mkdir home config parent");

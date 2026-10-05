@@ -1,5 +1,5 @@
 use super::super::RunTiming;
-use crate::malvin_config_file::TokenCostRates;
+use crate::config::malvin_config_file::TokenCostRates;
 
 #[test]
 #[allow(clippy::float_cmp)]

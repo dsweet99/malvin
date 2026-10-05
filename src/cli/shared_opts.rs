@@ -1,7 +1,7 @@
 use clap::{ArgAction, Args};
 pub use malvin::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
-use malvin::malvin_config_file::parse_model_cli_arg;
-use malvin::model_id::{ParsedModel, parse_model_id};
+use malvin::config::malvin_config_file::parse_model_cli_arg;
+use malvin::config::model_id::ParsedModel;
 
 const QUIET_HELPTEXT: &str =
     "Print only `__MALVIN_DM_START__`/`END` bodies on stdout (default router)";
@@ -93,10 +93,10 @@ pub struct RouterOpts {
     #[arg(long = "no-kpop", default_value_t = false, hide = true)]
     pub no_kpop: bool,
     /// Outer agent-session budget for bare malvin REQUEST and malvin -g
-    #[arg(long, default_value_t = malvin::malvin_config_file::DEFAULT_MAX_LOOPS)]
+    #[arg(long, default_value_t = malvin::config::malvin_config_file::DEFAULT_MAX_LOOPS)]
     pub max_loops: usize,
     /// Hypothesis budget for bare malvin REQUEST and malvin -g
-    #[arg(long, default_value_t = malvin::malvin_config_file::DEFAULT_MAX_HYPOTHESES)]
+    #[arg(long, default_value_t = malvin::config::malvin_config_file::DEFAULT_MAX_HYPOTHESES)]
     pub max_hypotheses: usize,
 }
 
@@ -151,7 +151,8 @@ impl SharedOpts {
     #[must_use]
     pub(crate) fn test_defaults() -> Self {
         Self {
-            model: parse_model_id(malvin::config::DEFAULT_CLI_MODEL).expect("default model"),
+            model: malvin::config::model_id::parse_model_id(malvin::config::DEFAULT_CLI_MODEL)
+                .expect("default model"),
             verbose: false,
             max_acp_retries: malvin::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
@@ -173,8 +174,8 @@ impl RouterOpts {
             creative: Vec::new(),
             watch: false,
             no_kpop: false,
-            max_loops: malvin::malvin_config_file::DEFAULT_MAX_LOOPS,
-            max_hypotheses: malvin::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
+            max_loops: malvin::config::malvin_config_file::DEFAULT_MAX_LOOPS,
+            max_hypotheses: malvin::config::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
         }
     }
 }

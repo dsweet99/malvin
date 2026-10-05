@@ -59,7 +59,7 @@ impl SessionDotfileBackups {
     #[allow(clippy::missing_errors_doc)]
     pub fn snapshot_after_ensuring_home_config(work_dir: &Path) -> Result<Self, String> {
         repair_invalid_malvin_home_config_on_disk(work_dir)?;
-        crate::malvin_config_file::ensure_malvin_config_file_if_missing(work_dir)?;
+        crate::config::malvin_config_file::ensure_malvin_config_file_if_missing(work_dir)?;
         Self::snapshot(work_dir)
     }
 

@@ -1,6 +1,6 @@
+use crate::cli::router_flow::router_flow_prompt;
 use crate::cli::{RouterOpts, SharedOpts};
-use crate::router_flow::router_flow_prompt;
-use malvin::agent_backend::{SdkClient, set_implement_display_name};
+use malvin::backends::agent_backend::{SdkClient, set_implement_display_name};
 use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
 use malvin::prompts::PromptStore;
 use malvin::run_timing::acp_post_run::RunTimingSessionEnd;
@@ -55,7 +55,7 @@ pub(crate) type SessionEndParts<'a> = (
 pub(crate) async fn begin_coder_session_if_needed(
     client: &mut SdkClient,
     work_dir: &Path,
-) -> Result<malvin::agent_backend::CoderSessionEnsure, String> {
+) -> Result<malvin::backends::agent_backend::CoderSessionEnsure, String> {
     client
         .start_coder_session(work_dir)
         .await

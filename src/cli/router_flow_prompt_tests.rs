@@ -1,4 +1,4 @@
-use crate::router_flow::router_flow_prompt::{
+use crate::cli::router_flow::router_flow_prompt::{
     RouterAPromptInput, RouterBPromptInput, RouterKpopCommonPromptInput,
     RouterSummarizePromptInput, build_router_a_prompt, build_router_b_prompt,
     build_router_header_prompt, build_router_kpop_common_prompt, build_router_mbc2_prompt,
@@ -358,7 +358,7 @@ fn build_router_prompts_use_canonical_templates() {
     let artifacts = flow_test_artifacts(&tmp);
     let store = prepare_router_prompt_store().expect("store");
     let header = build_router_header_prompt(
-        crate::router_flow::router_flow_prompt::RouterHeaderPromptInput {
+        crate::cli::router_flow::router_flow_prompt::RouterHeaderPromptInput {
             store: &store,
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
@@ -373,7 +373,7 @@ fn build_router_prompts_use_canonical_templates() {
         "header embeds kpop_common via kpop_insert"
     );
     let header_no = build_router_header_prompt(
-        crate::router_flow::router_flow_prompt::RouterHeaderPromptInput {
+        crate::cli::router_flow::router_flow_prompt::RouterHeaderPromptInput {
             store: &store,
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,

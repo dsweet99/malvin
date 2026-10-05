@@ -125,14 +125,14 @@ fn forwarded_env_keeps_only_set_provider_keys() {
 
 #[test]
 fn file_logins_depend_on_the_backend() {
-    let _g = crate::test_utils::test_env_lock();
+    let _g = crate::test_support::test_utils::test_env_lock();
     let tmp = tempfile::tempdir().unwrap();
     let home = tmp.path();
     std::fs::create_dir_all(home.join(".codex")).unwrap();
     std::fs::create_dir_all(home.join(".pi/agent")).unwrap();
     std::fs::write(home.join(".codex/auth.json"), "{}").unwrap();
     std::fs::write(home.join(".pi/agent/auth.json"), "{}").unwrap();
-    crate::acp::with_env("PI_CODING_AGENT_DIR", None, || {
+    crate::agent_process::with_env("PI_CODING_AGENT_DIR", None, || {
         assert_eq!(setup_for("codex:x").unwrap().login_files(home), vec![home.join(".codex/auth.json")]);
         assert_eq!(setup_for("pi:openai/x").unwrap().login_files(home), vec![home.join(".pi/agent/auth.json")]);
         assert!(setup_for("cursor:auto").unwrap().login_files(home).is_empty());
@@ -141,11 +141,11 @@ fn file_logins_depend_on_the_backend() {
 
 #[test]
 fn preflight_checks_each_backend_credential() {
-    let _g = crate::test_utils::test_env_lock();
+    let _g = crate::test_support::test_utils::test_env_lock();
     let tmp = tempfile::tempdir().unwrap();
     let home = tmp.path();
     std::fs::write(home.join(".modal.toml"), "").unwrap();
-    crate::acp::with_env("OPENAI_API_KEY", None, || {
+    crate::agent_process::with_env("OPENAI_API_KEY", None, || {
         let err = preflight("codex:gpt-5", home).unwrap_err();
         assert!(err.contains("OPENAI_API_KEY") && err.contains(".codex/auth.json"), "{err}");
         std::fs::create_dir_all(home.join(".codex")).unwrap();
@@ -153,7 +153,7 @@ fn preflight_checks_each_backend_credential() {
         assert!(preflight("codex:gpt-5", home).is_ok());
         assert!(preflight("pi:openai/x", home).is_ok());
     });
-    crate::acp::with_env("OPENAI_API_KEY", Some("sk-test"), || {
+    crate::agent_process::with_env("OPENAI_API_KEY", Some("sk-test"), || {
         std::fs::remove_file(home.join(".codex/auth.json")).unwrap();
         assert!(preflight("codex:gpt-5", home).is_ok());
     });
@@ -169,16 +169,16 @@ fn backend_setup_rejects_unparseable_models() {
 
 #[test]
 fn preflight_names_missing_modal_credentials() {
-    let _g = crate::test_utils::test_env_lock();
+    let _g = crate::test_support::test_utils::test_env_lock();
     let tmp = tempfile::tempdir().unwrap();
-    crate::acp::with_env("MODAL_TOKEN_ID", None, || {
+    crate::agent_process::with_env("MODAL_TOKEN_ID", None, || {
         let err = preflight("pi:openai/x", tmp.path()).unwrap_err();
         assert!(err.contains("modal setup") && err.contains("MODAL_TOKEN_ID"), "{err}");
         std::fs::write(tmp.path().join(".modal.toml"), "").unwrap();
         assert!(preflight("pi:openai/x", tmp.path()).is_ok());
-        crate::acp::with_env("CURSOR_API_KEY", None, || {
-            crate::acp::with_env("CURSOR_AGENT_API_KEY", None, || {
-                crate::acp::with_env("AGENT_API_KEY", None, || {
+        crate::agent_process::with_env("CURSOR_API_KEY", None, || {
+            crate::agent_process::with_env("CURSOR_AGENT_API_KEY", None, || {
+                crate::agent_process::with_env("AGENT_API_KEY", None, || {
                     assert!(preflight("cursor:auto", tmp.path()).unwrap_err().contains("CURSOR_API_KEY"));
                 });
             });

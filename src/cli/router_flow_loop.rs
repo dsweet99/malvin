@@ -6,7 +6,7 @@ use super::router_flow_acp::{
 use crate::cli::format_workspace_gate_failure;
 use crate::cli::workflow_router_shared::effective_max_loops;
 use crate::cli::{RouterOpts, SharedOpts};
-use malvin::agent_backend::SdkClient;
+use malvin::backends::agent_backend::SdkClient;
 use malvin::artifacts::{RunArtifacts, SessionDotfileBackups, merge_and_sanitize_for_gate_restore};
 use malvin::prompts::PromptStore;
 use malvin::run_timing::acp_post_run::RunTimingSessionEnd;

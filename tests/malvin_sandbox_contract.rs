@@ -6,23 +6,23 @@ use common::enable_test_fast_teardown;
 use common::test_wait_until_async;
 
 #[cfg(unix)]
-use malvin::acp::hostile_orphan_test_util::{
+use malvin::agent_process::hostile_orphan_test_util::{
     assert_sibling_monitored_and_blocks_spawn, cleanup_user_coincidental_test, process_alive,
     setup_user_init_reparented_daemon, spawn_agent_pg_and_malvin_sibling,
     spawn_isolated_agent_sleep, spawn_user_shell_cooperator,
 };
 #[cfg(target_os = "linux")]
-use malvin::acp::hostile_orphan_test_util::{
+use malvin::agent_process::hostile_orphan_test_util::{
     read_orphan_pid, spawn_hostile_agent_acp_orphan, wait_for_init_reparent,
 };
 #[cfg(unix)]
-use malvin::acp::sandbox_monitor_pids;
+use malvin::agent_process::sandbox_monitor_pids;
 #[cfg(unix)]
-use malvin::acp::{MemWatchHandles, watch_process_group_memory};
+use malvin::agent_process::{MemWatchHandles, watch_process_group_memory};
 #[cfg(unix)]
-use malvin::acp::{snapshot_pids, terminate_agent_process_group};
+use malvin::agent_process::{snapshot_pids, terminate_agent_process_group};
 #[cfg(unix)]
-use malvin::malvin_sandbox::{
+use malvin::agent_process::malvin_sandbox::{
     assert_dead_before_next_spawn, clear_active_sandbox_session, malvin_session_rss_bytes,
 };
 #[cfg(unix)]

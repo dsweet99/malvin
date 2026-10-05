@@ -1,7 +1,7 @@
 use super::{resolved_model_json, write_resolved_model};
-use malvin::model_id::parse_model_id;
-use malvin::test_utils::with_isolated_home;
-use malvin::workspace_paths::malvin_config_path;
+use malvin::config::model_id::parse_model_id;
+use malvin::test_support::test_utils::with_isolated_home;
+use malvin::workspace::workspace_paths::malvin_config_path;
 
 fn json_for(raw: &str) -> serde_json::Value {
     let model = parse_model_id(raw).expect("valid model id");

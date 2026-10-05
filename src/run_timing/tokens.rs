@@ -1,9 +1,15 @@
-use crate::llm_transport::ResponseUsage;
-
 use super::acp_usage::{
     AcpUsageFields, add_optional_sum, reported_cost_usd, u64_field, usage_payload_is_observable,
 };
 use super::{AcpStepProxy, RunTiming};
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ResponseUsage {
+    pub prompt_tokens: Option<u64>,
+    pub completion_tokens: Option<u64>,
+    pub total_tokens: Option<u64>,
+    pub cost: Option<f64>,
+}
 
 impl RunTiming {
     pub fn record_completion_step(&mut self, usage: Option<&ResponseUsage>) {

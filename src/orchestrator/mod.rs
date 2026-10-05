@@ -1,7 +1,6 @@
-#![allow(unused_imports, dead_code)]
-
 mod helpers;
 
+#[cfg(test)]
 pub(crate) use helpers::insert_formatted;
 #[cfg(test)]
 pub use helpers::workflow_context;

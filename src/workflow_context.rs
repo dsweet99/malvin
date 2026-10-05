@@ -120,7 +120,7 @@ pub const PI_HEADER_MD: &str = include_str!("../default_prompts/pi_header.md");
 
 #[must_use]
 pub fn format_pi_extra(model: &str) -> String {
-    if crate::model_id::parse_model_id(model).is_ok_and(|m| m.is_pi()) {
+    if crate::config::model_id::parse_model_id(model).is_ok_and(|m| m.is_pi()) {
         PI_HEADER_MD.to_string()
     } else {
         String::new()
@@ -172,7 +172,7 @@ pub fn workflow_context(
     );
     context.insert(
         "max_hypotheses".to_string(),
-        crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES.to_string(),
+        crate::config::malvin_config_file::DEFAULT_MAX_HYPOTHESES.to_string(),
     );
     let _ = prompts;
     Ok(context)

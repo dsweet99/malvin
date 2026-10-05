@@ -1,7 +1,7 @@
 use super::super::{RouterOpts, SharedOpts, iml_loop, loop_opts, run_do, run_router};
 use super::run_async_cli;
+use crate::cli::do_flow::DoArgs;
 use crate::cli::request_argv::TaggedRequest;
-use crate::do_flow::DoArgs;
 
 pub fn dispatch_do_workflow(requests: Vec<String>, shared: &SharedOpts) -> Result<(), String> {
     let iml = shared.iml;
@@ -41,7 +41,7 @@ fn router_opts_for_job(base: &RouterOpts, job: &TaggedRequest) -> RouterOpts {
 
 async fn run_mixed_jobs_once(pass: MixedPass<'_>) -> Result<(), String> {
     use crate::cli::request_argv::RequestKind;
-    use crate::router_flow::RouterArgs;
+    use crate::cli::router_flow::RouterArgs;
     for job in pass.jobs {
         match job.kind {
             RequestKind::Do => {
@@ -124,7 +124,7 @@ pub struct DefaultRouteDispatch<'a> {
 }
 
 pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), String> {
-    use crate::router_flow::RouterArgs;
+    use crate::cli::router_flow::RouterArgs;
     let DefaultRouteDispatch {
         jobs,
         mut max_loops,

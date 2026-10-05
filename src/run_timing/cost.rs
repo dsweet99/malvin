@@ -1,4 +1,4 @@
-use crate::llm_transport::ResponseUsage;
+use crate::run_timing::ResponseUsage;
 
 use super::RunTiming;
 
@@ -169,7 +169,7 @@ pub fn record_completion_cost(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::malvin_config_file::TokenCostRates;
+    use crate::config::malvin_config_file::TokenCostRates;
 
     #[test]
     fn cost_stats_include_unknown_tx_metadata() {

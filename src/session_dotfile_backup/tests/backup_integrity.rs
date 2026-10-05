@@ -2,7 +2,7 @@ use crate::artifacts::{
     MalvinChecksBackup, backup_workspace_malvin_checks_if_present,
     restore_workspace_malvin_checks_backup,
 };
-use crate::test_utils::with_isolated_home;
+use crate::test_support::test_utils::with_isolated_home;
 
 #[test]
 fn poisoned_disk_snapshot_does_not_change_restored_workspace_content() {

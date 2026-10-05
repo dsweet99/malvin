@@ -47,14 +47,15 @@ pub(crate) fn emit_repo_gate_warning(line: &str, run_log_dir: Option<&Path>) {
 }
 
 pub(crate) fn emit_repo_gate_line(output: RepoGateOutput, line: &str, run_log_dir: Option<&Path>) {
-    use malvin::output::{MALVIN_WHO, print_stderr_line, print_stdout_line};
+    use malvin::output::{MALVIN_WHO, print_stdout_line};
     match output {
         RepoGateOutput::Tagged => {
             print_stdout_line(MALVIN_WHO, line);
             try_append_log_line(run_log_dir, MALVIN_WHO, line);
         }
+        #[cfg(test)]
         RepoGateOutput::Stderr => {
-            print_stderr_line(MALVIN_WHO, line);
+            malvin::output::print_stderr_line(MALVIN_WHO, line);
             try_append_log_line(run_log_dir, MALVIN_WHO, line);
         }
     }

@@ -19,7 +19,7 @@ pub fn herdr_live_name(session_id: &str) -> String {
 
 #[must_use]
 pub fn display_title() -> Option<String> {
-    let slot = crate::acp_spawn_lock::active_acp_lock_slot();
+    let slot = crate::agent_process::acp_spawn_lock::active_acp_lock_slot();
     if is_pid_fallback_slot(&slot) {
         None
     } else {

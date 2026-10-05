@@ -1,8 +1,8 @@
 use super::super::report_cost_line::format_cost_stdout_line_from_json;
 use super::report_timing_line::format_timing_stdout_line_from_json;
 use super::to_json_value;
-use crate::llm_transport::ResponseUsage;
-use crate::malvin_config_file::TokenCostRates;
+use crate::config::malvin_config_file::TokenCostRates;
+use crate::run_timing::ResponseUsage;
 use crate::run_timing::RunTiming;
 
 #[test]

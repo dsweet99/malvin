@@ -1,5 +1,5 @@
+use crate::cli::router_flow::{RouterArgs, run_router};
 use crate::cli::{AgentRouteOpts, RouterOpts};
-use crate::router_flow::{RouterArgs, run_router};
 
 use super::effective_tidy_max_loops;
 

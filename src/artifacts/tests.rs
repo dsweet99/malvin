@@ -19,7 +19,7 @@ fn log_path_sanitizes_slashes_and_backslashes() {
 
 #[test]
 fn create_run_artifacts_relative_plan_uses_dot_work_dir() {
-    crate::test_utils::with_isolated_home(|_| {
+    crate::test_support::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().unwrap();
         let old_cwd = std::env::current_dir().unwrap();
         std::env::set_current_dir(tmp.path()).unwrap();
@@ -33,7 +33,7 @@ fn create_run_artifacts_relative_plan_uses_dot_work_dir() {
 
 #[test]
 fn create_run_artifacts_from_text_uses_base_dir_as_work_dir() {
-    crate::test_utils::with_isolated_home(|_| {
+    crate::test_support::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().unwrap();
         let art = create_run_artifacts_from_text("prompt", Some(tmp.path())).unwrap();
         assert_eq!(art.work_dir, tmp.path());
@@ -43,7 +43,7 @@ fn create_run_artifacts_from_text_uses_base_dir_as_work_dir() {
 
 #[test]
 fn create_run_artifacts_use_random_plan_request_filenames() {
-    crate::test_utils::with_isolated_home(|_| {
+    crate::test_support::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().unwrap();
         let source = tmp.path().join("plan.md");
         std::fs::write(&source, "from file").unwrap();
@@ -70,7 +70,7 @@ fn create_run_artifacts_use_random_plan_request_filenames() {
 
 #[test]
 fn create_run_artifacts_opts_without_gc_skips_prune() {
-    crate::test_utils::with_isolated_home(|_| {
+    crate::test_support::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().unwrap();
         let logs = crate::malvin_logs_root(tmp.path());
         std::fs::create_dir_all(logs.join("20260101_000000_keepkeep")).unwrap();
@@ -79,7 +79,7 @@ fn create_run_artifacts_opts_without_gc_skips_prune() {
         let art = create_run_artifacts_opts(
             &plan,
             Some(tmp.path()),
-            crate::run_id::RunDirOptions { gc: false },
+            crate::workspace::run_id::RunDirOptions { gc: false },
         )
         .unwrap();
         assert!(logs.join("20260101_000000_keepkeep").exists());
@@ -89,12 +89,12 @@ fn create_run_artifacts_opts_without_gc_skips_prune() {
 
 #[test]
 fn create_run_artifacts_from_text_opts_without_gc() {
-    crate::test_utils::with_isolated_home(|_| {
+    crate::test_support::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().unwrap();
         let art = create_run_artifacts_from_text_opts(
             "prompt",
             Some(tmp.path()),
-            crate::run_id::RunDirOptions { gc: false },
+            crate::workspace::run_id::RunDirOptions { gc: false },
         )
         .unwrap();
         assert_eq!(art.work_dir, tmp.path());
@@ -103,7 +103,7 @@ fn create_run_artifacts_from_text_opts_without_gc() {
 
 #[test]
 fn create_run_artifacts_from_text_writes_plan_and_exp_log() {
-    crate::test_utils::with_isolated_home(|_| {
+    crate::test_support::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().unwrap();
         let art = create_run_artifacts_from_text("plan body", Some(tmp.path())).unwrap();
         assert!(art.plan_path.is_file());
@@ -134,7 +134,7 @@ fn resolve_user_md_request_literal_uses_dot_work_dir_and_trims() {
 
 #[test]
 fn resolve_user_md_request_reads_existing_md_file() {
-    let _guard = crate::test_utils::test_env_lock();
+    let _guard = crate::test_support::test_utils::test_env_lock();
     let tmp = tempfile::tempdir().unwrap();
     let old_cwd = std::env::current_dir().unwrap();
     std::env::set_current_dir(tmp.path()).unwrap();
@@ -157,7 +157,7 @@ fn is_existing_md_file_path_rejects_invalid_and_directory() {
     assert!(is_existing_md_file_path("../missing.md").is_none());
     assert!(is_existing_md_file_path("./note.md").is_none());
     assert!(is_existing_md_file_path("plan.MD").is_none());
-    let _guard = crate::test_utils::test_env_lock();
+    let _guard = crate::test_support::test_utils::test_env_lock();
     let tmp = tempfile::tempdir().unwrap();
     let old_cwd = std::env::current_dir().unwrap();
     std::env::set_current_dir(tmp.path()).unwrap();

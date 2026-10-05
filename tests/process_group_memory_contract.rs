@@ -2,8 +2,8 @@ mod common;
 
 use std::collections::HashSet;
 
-use malvin::mem_limit_config::{default_mem_limit_gb, load_mem_limit_bytes, load_mem_limit_gb};
-use malvin::process_group_rss::pids_sandbox_bytes;
+use malvin::config::mem_limit_config::{default_mem_limit_gb, load_mem_limit_bytes, load_mem_limit_gb};
+use malvin::agent_process::process_group_rss::pids_sandbox_bytes;
 
 use common::with_isolated_home;
 

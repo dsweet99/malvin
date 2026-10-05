@@ -1,4 +1,4 @@
-use crate::do_flow::do_flow_prompt::{build_do_coder_run_with_store, prepare_do_prompt_store};
+use crate::cli::do_flow::do_flow_prompt::{build_do_coder_run_with_store, prepare_do_prompt_store};
 use malvin::config::DEFAULT_CLI_MODEL;
 use malvin::flow_prompt_join_test_helpers::{
     assert_dual_workflow_header_join, flow_test_artifacts, flow_test_artifacts_no_checks,
@@ -42,9 +42,6 @@ fn build_do_coder_run_cosends_headers_with_user_in_non_git_workspace() {
         run.combined.contains("USER_TOKEN"),
         "user request must ride in the same host prompt"
     );
-    let (trace_header, trace_user) = &run.header_user_for_trace;
-    assert!(!trace_header.is_empty());
-    assert_eq!(trace_user, "USER_TOKEN");
 }
 
 fn build_do_coder_run_joins_mock_headers_then_user() {
@@ -59,9 +56,6 @@ fn build_do_coder_run_joins_mock_headers_then_user() {
     )
     .expect("build");
     assert_dual_workflow_header_join(&run.combined, "CODING_HDR", "DO_HDR", "USER_TOKEN");
-    let (trace_header, trace_user) = &run.header_user_for_trace;
-    assert!(trace_header.contains("CODING_HDR") && trace_header.contains("DO_HDR"));
-    assert_eq!(trace_user, "USER_TOKEN");
 }
 
 fn build_do_coder_run_default_store_includes_user() {

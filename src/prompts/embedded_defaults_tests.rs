@@ -70,7 +70,7 @@ fn insert_header_runtime_placeholders(ctx: &mut HashMap<String, String>) {
 }
 
 fn default_prompt_store_with_unset_home() -> (super::PromptStore, HashMap<String, String>) {
-    let _lock = crate::test_utils::test_env_lock();
+    let _lock = crate::test_support::test_utils::test_env_lock();
     let profile = tempfile::tempdir().unwrap().path().join("profile");
     std::fs::create_dir_all(&profile).unwrap();
     let _guard = with_unset_home_profile(profile);

@@ -1,7 +1,7 @@
 use super::*;
-use crate::repo_checks::command_support::set_fake_command_dir;
+use crate::cli::repo_checks::command_support::set_fake_command_dir;
 use malvin::output::{ERROR_WHO, MALVIN_WHO, WARNING_WHO, format_who_tag_delim};
-use malvin::test_stderr_capture::capture_stderr_output;
+use malvin::test_support::test_stderr_capture::capture_stderr_output;
 
 #[cfg(unix)]
 fn install_zero_exit_gate_bins(bin_dir: &std::path::Path) {

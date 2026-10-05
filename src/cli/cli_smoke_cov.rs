@@ -21,7 +21,7 @@ fn smoke_prefer_primary_over_secondary() {
 
 fn smoke_merge_acp_with_workspace_session_restore() {
     let work = tempfile::tempdir().unwrap();
-    let backups = malvin::test_utils::empty_session_dotfile_backups(work.path());
+    let backups = malvin::test_support::test_utils::empty_session_dotfile_backups(work.path());
     assert!(
         malvin::acp_post_run::merge_acp_with_workspace_session_restore(
             Ok(()),
@@ -35,7 +35,7 @@ fn smoke_merge_acp_with_workspace_session_restore() {
 fn smoke_merge_acp_with_workspace_session_restore_and_check_abort_no_result_file() {
     let work = tempfile::tempdir().unwrap();
     let missing = work.path().join("no_such_result.md");
-    let backups = malvin::test_utils::empty_session_dotfile_backups(work.path());
+    let backups = malvin::test_support::test_utils::empty_session_dotfile_backups(work.path());
     assert!(
         malvin::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
             Ok(()),
@@ -48,7 +48,8 @@ fn smoke_merge_acp_with_workspace_session_restore_and_check_abort_no_result_file
 }
 
 fn smoke_agent_io_options_maps_flags() {
-    use super::{AgentStdoutTeeFlags, agent_io_options};
+    use super::AgentStdoutTeeFlags;
+    use malvin::backends::agent_backend::agent_io_options;
     let io = agent_io_options(
         false,
         AgentStdoutTeeFlags {
@@ -119,7 +120,7 @@ fn smoke_print_command_error_writes_run_log() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let run_dir = tmp.path().join("run");
     std::fs::create_dir_all(&run_dir).expect("mkdir");
-    malvin::run_id::activate_run(run_dir.clone());
+    malvin::workspace::run_id::activate_run(run_dir.clone());
     super::entrypoint::print_command_error("gate failed");
     let log = run_dir.join("malvin_error.log");
     assert!(log.is_file());
@@ -129,11 +130,11 @@ fn smoke_print_command_error_writes_run_log() {
 }
 
 fn smoke_prepare_do_prompt_store_loads_defaults() {
-    assert!(crate::do_flow::prepare_do_prompt_store().is_ok());
+    assert!(crate::cli::do_flow::prepare_do_prompt_store().is_ok());
 }
 
 fn smoke_prepare_router_prompt_store_loads_defaults() {
-    assert!(crate::router_flow::prepare_router_prompt_store().is_ok());
+    assert!(crate::cli::router_flow::prepare_router_prompt_store().is_ok());
 }
 
 #[test]

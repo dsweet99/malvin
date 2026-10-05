@@ -3,9 +3,9 @@ use super::{Exit, entrypoint_from};
 #[cfg(unix)]
 #[test]
 fn duplicate_name_exits_failure() {
-    malvin::test_utils::with_isolated_home(|work| {
+    malvin::test_support::test_utils::with_isolated_home(|work| {
         let _ = work;
-        let mut child = malvin::malvin_sandbox::malvin_std_command("sleep")
+        let mut child = malvin::agent_process::malvin_sandbox::malvin_std_command("sleep")
             .arg("120")
             .spawn()
             .expect("spawn sleep");
@@ -25,9 +25,9 @@ fn duplicate_name_exits_failure() {
 #[cfg(unix)]
 #[test]
 fn duplicate_name_error_on_stderr() {
-    use malvin::test_stderr_capture::capture_stderr_output;
+    use malvin::test_support::test_stderr_capture::capture_stderr_output;
 
-    malvin::test_utils::with_isolated_home(|work| {
+    malvin::test_support::test_utils::with_isolated_home(|work| {
         let _ = work;
         let names = malvin::names_registry_root();
         if let Some(parent) = names.parent() {

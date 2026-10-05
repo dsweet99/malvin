@@ -1,4 +1,4 @@
-use malvin::model_id::PI_PREFIX;
+use malvin::config::model_id::PI_PREFIX;
 
 pub(crate) fn models_list_prefix(words: &[String]) -> Result<Option<String>, String> {
     if words.is_empty() {

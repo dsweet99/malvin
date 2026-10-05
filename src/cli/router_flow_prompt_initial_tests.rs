@@ -1,6 +1,6 @@
 use super::{RouterInitialPromptInput, build_router_initial_prompt};
 use malvin::prompts::{HEADER_MD, KPOP_COMMON_MD, PromptStore, ROUTER_A_MD};
-use malvin::test_utils::with_isolated_home;
+use malvin::test_support::test_utils::with_isolated_home;
 
 fn write_minimal_router_prompts(prompt_root: &std::path::Path) {
     std::fs::create_dir_all(prompt_root).expect("mkdir");
@@ -32,7 +32,7 @@ fn initial_prompt_joins_header_kpop_and_router_a_in_order() {
         let artifacts = malvin::artifacts::create_run_artifacts_from_text_opts(
             "req",
             Some(work),
-            malvin::run_id::RunDirOptions::default(),
+            malvin::workspace::run_id::RunDirOptions::default(),
         )
         .expect("artifacts");
         let prompt_root = artifacts.run_dir.join("prompts");
@@ -74,7 +74,7 @@ fn initial_prompt_adds_mbc2_when_creative() {
         let artifacts = malvin::artifacts::create_run_artifacts_from_text_opts(
             "creative request",
             Some(work),
-            malvin::run_id::RunDirOptions::default(),
+            malvin::workspace::run_id::RunDirOptions::default(),
         )
         .expect("artifacts");
         let prompt_root = artifacts.run_dir.join("prompts");
@@ -108,7 +108,7 @@ fn initial_prompt_omits_header_when_not_included() {
         let artifacts = malvin::artifacts::create_run_artifacts_from_text_opts(
             "req",
             Some(work),
-            malvin::run_id::RunDirOptions::default(),
+            malvin::workspace::run_id::RunDirOptions::default(),
         )
         .expect("artifacts");
         let prompt_root = artifacts.run_dir.join("prompts");
@@ -145,7 +145,7 @@ fn initial_prompt_respects_no_kpop_and_gates() {
         let artifacts = malvin::artifacts::create_run_artifacts_from_text_opts(
             "req",
             Some(work),
-            malvin::run_id::RunDirOptions::default(),
+            malvin::workspace::run_id::RunDirOptions::default(),
         )
         .expect("artifacts");
         malvin::seed_malvin_checks(artifacts.work_dir.as_path(), "echo INITIAL_GATE\n");
@@ -186,7 +186,7 @@ fn initial_prompt_git_and_max_hypotheses_affect_composition() {
         let artifacts = malvin::artifacts::create_run_artifacts_from_text_opts(
             "req",
             Some(work),
-            malvin::run_id::RunDirOptions::default(),
+            malvin::workspace::run_id::RunDirOptions::default(),
         )
         .expect("artifacts");
         let prompt_root = artifacts.run_dir.join("prompts");

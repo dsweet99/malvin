@@ -244,14 +244,14 @@ fn package_embeds_every_non_test_bridge_file() {
 
 #[test]
 fn shared_installer_installs_the_modal_package() {
-    let _g = crate::test_utils::test_env_lock();
+    let _g = crate::test_support::test_utils::test_env_lock();
     let tmp = tempfile::tempdir().unwrap();
     let npm = tmp.path().join("fake-npm");
     fs::write(&npm, "#!/bin/sh\nmkdir -p node_modules/modal && echo '{}' > node_modules/modal/package.json\n").unwrap();
     let mode = std::os::unix::fs::PermissionsExt::from_mode(0o755);
     fs::set_permissions(&npm, mode).unwrap();
     let dest = tmp.path().join("bridge");
-    crate::acp::with_env("MALVIN_NPM", Some(npm.to_str().unwrap()), || {
+    crate::agent_process::with_env("MALVIN_NPM", Some(npm.to_str().unwrap()), || {
         assert_eq!(PACKAGE.install_into(&dest).unwrap(), dest.join("dist/bridge.js"));
     });
     assert!(PACKAGE.npm_deps_current(&dest));

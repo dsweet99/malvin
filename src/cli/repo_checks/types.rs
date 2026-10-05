@@ -80,6 +80,7 @@ pub(crate) fn repo_gate_failure_to_string(failure: RepoGateFailure) -> String {
 #[derive(Clone, Copy)]
 pub enum RepoGateOutput {
     Tagged,
+    #[cfg(test)]
     Stderr,
 }
 

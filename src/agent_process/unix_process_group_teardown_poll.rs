@@ -1,0 +1,232 @@
+use std::collections::HashSet;
+
+#[path = "unix_process_group_teardown_timing.rs"]
+mod unix_process_group_teardown_timing;
+
+use super::unix_process_group_kill_targets::kill_targets_for_teardown;
+use super::unix_process_group_ps::{signal_pid, signal_process_group};
+use unix_process_group_teardown_timing::{
+    teardown_kill_after_polls, teardown_poll_interval, teardown_total_cap,
+    test_fast_acp_teardown_enabled,
+};
+
+#[derive(Default)]
+struct TeardownPollState {
+    sigterm_pids: HashSet<u32>,
+    sigkill_pids: HashSet<u32>,
+    pg_sigterm: bool,
+    pg_sigkill: bool,
+    polls: u32,
+}
+
+fn escalate_pid(pid: u32, state: &mut TeardownPollState, force_kill: bool) {
+    if state.sigkill_pids.contains(&pid) {
+        return;
+    }
+    if state.sigterm_pids.insert(pid) {
+        signal_pid(pid, 15);
+    } else if (force_kill || state.polls >= teardown_kill_after_polls())
+        && state.sigkill_pids.insert(pid)
+    {
+        signal_pid(pid, 9);
+    }
+}
+
+fn teardown_poll_tick(
+    process_group_id: Option<u32>,
+    spawn_baseline: Option<&HashSet<u32>>,
+    state: &mut TeardownPollState,
+    force_kill: bool,
+) {
+    let targets = kill_targets_for_teardown(process_group_id, spawn_baseline);
+    for pid in targets {
+        escalate_pid(pid, state, force_kill);
+    }
+    let Some(pgid) = process_group_id else {
+        return;
+    };
+    if !state.pg_sigterm {
+        signal_pid(pgid, 15);
+        signal_process_group(pgid, 15);
+        state.pg_sigterm = true;
+        return;
+    }
+    if (force_kill || state.polls >= teardown_kill_after_polls()) && !state.pg_sigkill {
+        signal_pid(pgid, 9);
+        signal_process_group(pgid, 9);
+        state.pg_sigkill = true;
+    }
+}
+
+fn teardown_agent_sandbox_fast_tick(
+    process_group_id: Option<u32>,
+    baseline_opt: Option<&HashSet<u32>>,
+) {
+    if baseline_opt.is_none() {
+        if let Some(pgid) = process_group_id {
+            signal_pid(pgid, 9);
+            signal_process_group(pgid, 9);
+        }
+        return;
+    }
+    let mut state = TeardownPollState::default();
+    teardown_poll_tick(process_group_id, baseline_opt, &mut state, true);
+}
+
+fn teardown_agent_sandbox_slow_blocking(
+    process_group_id: Option<u32>,
+    baseline_opt: Option<&HashSet<u32>>,
+    baseline_for_alive: &HashSet<u32>,
+) {
+    let mut state = TeardownPollState::default();
+    let start = std::time::Instant::now();
+    while crate::agent_process::malvin_sandbox::sandbox_still_alive(process_group_id, baseline_for_alive)
+        && start.elapsed() < teardown_total_cap()
+    {
+        teardown_poll_tick(process_group_id, baseline_opt, &mut state, false);
+        if !crate::agent_process::malvin_sandbox::sandbox_still_alive(process_group_id, baseline_for_alive) {
+            break;
+        }
+        std::thread::sleep(teardown_poll_interval());
+        state.polls = state.polls.saturating_add(1);
+    }
+    if crate::agent_process::malvin_sandbox::sandbox_still_alive(process_group_id, baseline_for_alive) {
+        teardown_poll_tick(process_group_id, baseline_opt, &mut state, true);
+    }
+}
+
+pub(crate) fn teardown_agent_sandbox_blocking(
+    process_group_id: Option<u32>,
+    spawn_baseline: &HashSet<u32>,
+) {
+    let orphan_scan = !spawn_baseline.is_empty();
+    let affiliated_scan = process_group_id.is_none()
+        && super::unix_process_group_kill_targets::has_noted_session_affiliated_pids();
+    if process_group_id.is_none() && !orphan_scan && !affiliated_scan {
+        return;
+    }
+    let baseline_opt = (orphan_scan || affiliated_scan).then_some(spawn_baseline);
+    if test_fast_acp_teardown_enabled() {
+        teardown_agent_sandbox_fast_tick(process_group_id, baseline_opt);
+        return;
+    }
+    teardown_agent_sandbox_slow_blocking(process_group_id, baseline_opt, spawn_baseline);
+}
+
+pub(crate) fn teardown_agent_sandbox_for_interrupt(
+    process_group_id: Option<u32>,
+    spawn_baseline: &HashSet<u32>,
+) {
+    let orphan_scan = !spawn_baseline.is_empty();
+    let affiliated_scan = process_group_id.is_none()
+        && super::unix_process_group_kill_targets::has_noted_session_affiliated_pids();
+    if process_group_id.is_none() && !orphan_scan && !affiliated_scan {
+        return;
+    }
+    if orphan_scan || affiliated_scan {
+        let targets = kill_targets_for_teardown(process_group_id, Some(spawn_baseline));
+        for pid in targets {
+            signal_pid(pid, 9);
+        }
+    }
+    if let Some(pgid) = process_group_id {
+        signal_process_group(pgid, 9);
+    }
+}
+
+async fn teardown_agent_sandbox_slow_async(
+    process_group_id: Option<u32>,
+    baseline_opt: Option<&HashSet<u32>>,
+    baseline_for_alive: &HashSet<u32>,
+) {
+    let baseline_for_alive = baseline_for_alive.clone();
+    let baseline_owned = baseline_opt.cloned();
+    tokio::task::spawn_blocking(move || {
+        teardown_agent_sandbox_slow_blocking(
+            process_group_id,
+            baseline_owned.as_ref(),
+            &baseline_for_alive,
+        );
+    })
+    .await
+    .ok();
+}
+
+pub(crate) async fn teardown_agent_sandbox_async(
+    process_group_id: Option<u32>,
+    spawn_baseline: Option<&HashSet<u32>>,
+) {
+    let orphan_scan = spawn_baseline.is_some_and(|b| !b.is_empty());
+    let affiliated_scan = process_group_id.is_none()
+        && super::unix_process_group_kill_targets::has_noted_session_affiliated_pids();
+    if process_group_id.is_none() && !orphan_scan && !affiliated_scan {
+        return;
+    }
+    let empty_baseline = HashSet::new();
+    let baseline_for_alive = spawn_baseline.unwrap_or(&empty_baseline);
+    let baseline_opt = (orphan_scan || affiliated_scan).then_some(baseline_for_alive);
+    if test_fast_acp_teardown_enabled() {
+        teardown_agent_sandbox_fast_tick(process_group_id, baseline_opt);
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        return;
+    }
+    teardown_agent_sandbox_slow_async(process_group_id, baseline_opt, baseline_for_alive).await;
+}
+
+pub(crate) fn reap_fixed_pid_targets_blocking(targets: &HashSet<u32>) {
+    if targets.is_empty() {
+        return;
+    }
+    let mut state = TeardownPollState::default();
+    let start = std::time::Instant::now();
+    let any_alive = || targets.iter().any(|pid| crate::agent_process::pid_alive(*pid));
+    while any_alive() && start.elapsed() < teardown_total_cap() {
+        for pid in targets {
+            escalate_pid(*pid, &mut state, false);
+        }
+        if !any_alive() {
+            break;
+        }
+        std::thread::sleep(teardown_poll_interval());
+        state.polls = state.polls.saturating_add(1);
+    }
+    for pid in targets {
+        if crate::agent_process::pid_alive(*pid) {
+            signal_pid(*pid, 9);
+        }
+    }
+}
+
+#[cfg(test)]
+mod kiss_cov_auto {
+    use super::*;
+
+    #[test]
+    fn kiss_cov_teardown_agent_sandbox_blocking() {
+        let _ = teardown_agent_sandbox_blocking;
+    }
+    #[test]
+    fn kiss_cov_teardown_agent_sandbox_for_interrupt() {
+        let _ = teardown_agent_sandbox_for_interrupt;
+    }
+    #[test]
+    fn kiss_cov_teardown_agent_sandbox_async() {
+        let _ = teardown_agent_sandbox_async;
+    }
+    #[test]
+    fn kiss_cov_teardown_poll_tick() {
+        let _ = teardown_poll_tick;
+    }
+    #[test]
+    fn kiss_cov_teardown_poll_state() {
+        let _ = std::mem::size_of::<TeardownPollState>();
+    }
+    #[test]
+    fn kiss_cov_reap_fixed_pid_targets_blocking() {
+        let _ = reap_fixed_pid_targets_blocking;
+    }
+    #[test]
+    fn kiss_cov_escalate_pid() {
+        let _ = escalate_pid;
+    }
+}

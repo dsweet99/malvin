@@ -14,9 +14,9 @@ macro_rules! assert_timing_and_cost {
 
 #[test]
 fn merge_restore_check_abort_then_print_timing_noops_without_json() {
-    malvin::test_utils::with_isolated_home(|_| {
+    malvin::test_support::test_utils::with_isolated_home(|_| {
         let work = tempfile::tempdir().unwrap();
-        let empty = malvin::test_utils::empty_session_dotfile_backups(work.path());
+        let empty = malvin::test_support::test_utils::empty_session_dotfile_backups(work.path());
         let artifacts =
             malvin::artifacts::create_run_artifacts_from_text("code", Some(work.path()))
                 .expect("artifacts");
@@ -26,9 +26,9 @@ fn merge_restore_check_abort_then_print_timing_noops_without_json() {
 
 #[test]
 fn merge_restore_check_abort_then_print_timing_emits_timing_and_cost() {
-    malvin::test_utils::with_isolated_home(|_| {
+    malvin::test_support::test_utils::with_isolated_home(|_| {
         let work = tempfile::tempdir().unwrap();
-        let empty = malvin::test_utils::empty_session_dotfile_backups(work.path());
+        let empty = malvin::test_support::test_utils::empty_session_dotfile_backups(work.path());
         let artifacts =
             malvin::artifacts::create_run_artifacts_from_text("code", Some(work.path()))
                 .expect("artifacts");

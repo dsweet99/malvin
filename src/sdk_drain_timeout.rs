@@ -69,7 +69,7 @@ pub(crate) fn tests_restore_idle_ms_for_test(prior: Option<std::ffi::OsString>) 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::test_env_lock;
+    use crate::test_support::test_utils::test_env_lock;
     use std::time::Duration;
 
     #[test]

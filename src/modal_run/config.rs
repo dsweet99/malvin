@@ -1,4 +1,4 @@
-use crate::malvin_config_file::read_string;
+use crate::config::malvin_config_file::read_string;
 
 use super::options::{
     DEFAULT_MEMORY_GB, DEFAULT_NCPU, DEFAULT_TIMEOUT_S, GpuChoice, ModalOptions, parse_gpu,

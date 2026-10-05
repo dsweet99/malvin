@@ -1,7 +1,7 @@
 use crate::cli::Cli;
 use crate::cli::config_defaults::parse_cli_with_config_defaults;
 use clap::Parser;
-use malvin::test_utils::with_isolated_home;
+use malvin::test_support::test_utils::with_isolated_home;
 
 #[test]
 fn global_quiet_long_and_short_parse() {

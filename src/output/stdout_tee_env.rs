@@ -20,7 +20,7 @@ pub fn agent_stdout_tee_enabled() -> bool {
 #[cfg(test)]
 mod tests {
     use super::{agent_stdout_tee_enabled, force_stdout_tee_from_env, stdout_is_interactive};
-    use crate::test_utils::test_env_lock;
+    use crate::test_support::test_utils::test_env_lock;
 
     #[test]
     fn force_stdout_tee_from_env_requires_exact_one() {

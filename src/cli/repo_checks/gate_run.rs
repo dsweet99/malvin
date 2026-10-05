@@ -105,7 +105,7 @@ fn run_shell_command_line_with_details(
     }
     emit_repo_gate_line(output, &format!("Running `{command_line}`"), run_log_dir);
     let (shell, arg) = shell_binary();
-    let mut command = malvin::malvin_sandbox::malvin_std_command(shell);
+    let mut command = malvin::agent_process::malvin_sandbox::malvin_std_command(shell);
     command
         .arg(arg)
         .arg(command_line)

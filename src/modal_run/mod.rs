@@ -71,7 +71,7 @@ fn announce_sweep(result: Result<usize, String>) {
 
 fn load_plan(cwd: &std::path::Path, inv: &ModalInvocation) -> Result<session::Plan, String> {
     let cfg_root = config::read_config_root(&crate::malvin_home_config_path())?;
-    let cfg = config::parse_modal_config(&cfg_root, crate::mem_limit_config::load_mem_limit_gb(cwd))?
+    let cfg = config::parse_modal_config(&cfg_root, crate::config::mem_limit_config::load_mem_limit_gb(cwd))?
         .with_options(&inv.options);
     let spec = image::image_spec(&cfg, &inv.model, image::uploadable_binary())?;
     Ok(session::Plan { cfg, cfg_root, spec })

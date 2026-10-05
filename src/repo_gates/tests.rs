@@ -14,7 +14,7 @@ fn load_malvin_checks_skips_comments_and_blank_lines() {
 
 #[test]
 fn prompt_quality_gates_markdown_matches_checks_file_verbatim() {
-    crate::test_utils::with_isolated_home(|w| {
+    crate::test_support::test_utils::with_isolated_home(|w| {
         std::fs::create_dir_all(w.join(".malvin")).unwrap();
         std::fs::write(
             w.join(".malvin/gates"),
@@ -46,7 +46,7 @@ fn gate_command_lines_uses_only_malvin_checks_when_present() {
 
 #[test]
 fn ensure_default_malvin_config_file_writes_template_when_missing() {
-    crate::test_utils::with_isolated_home(|work| {
+    crate::test_support::test_utils::with_isolated_home(|work| {
         let config_path = crate::malvin_config_path(work);
         assert!(!config_path.exists());
         ensure_default_malvin_config_file(work).unwrap();
@@ -88,7 +88,7 @@ fn prompt_quality_gates_markdown_ephemeral_errors_when_checks_missing() {
 
 #[test]
 fn prompt_quality_gates_markdown_errors_when_malvin_checks_missing() {
-    crate::test_utils::with_isolated_home(|w| {
+    crate::test_support::test_utils::with_isolated_home(|w| {
         let err = prompt_quality_gates_markdown(w).unwrap_err();
         assert!(
             err.contains("is missing"),

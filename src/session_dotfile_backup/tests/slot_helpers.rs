@@ -75,7 +75,7 @@ fn dotfile_slot_helpers_and_session_restore_noop() {
 
 #[test]
 fn dotfile_source_path_checks_slot_uses_resolved_checks_path() {
-    crate::test_utils::with_isolated_home(|work| {
+    crate::test_support::test_utils::with_isolated_home(|work| {
         std::fs::create_dir_all(work.join(".malvin")).unwrap();
         std::fs::write(work.join(crate::MALVIN_CHECKS_REL), "c\n").unwrap();
         let mut id = |n: usize| format!("cfg{n}");

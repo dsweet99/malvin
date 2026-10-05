@@ -1,18 +1,7 @@
-use std::path::PathBuf;
-
-use malvin::agent_backend::SdkClient;
 use malvin::artifacts::RunArtifacts;
 use malvin::orchestrator::workflow_context_paths_only;
 use malvin::prompt_stratification::join_strata;
 use malvin::prompts::{DO_HEADER_MD, PromptError, PromptStore, render_header};
-
-pub struct BindMalvinHeader<'a> {
-    pub client: &'a mut SdkClient,
-    pub store: &'a PromptStore,
-    pub artifacts: &'a RunArtifacts,
-    pub model: &'a str,
-    pub log_path: PathBuf,
-}
 
 pub fn render_malvin_header_body(
     store: &PromptStore,
@@ -40,32 +29,42 @@ pub fn render_do_cosend_prompt(
     Ok((header, combined))
 }
 
-pub fn bind_do_header(input: BindMalvinHeader<'_>, user_request: &str) -> Result<(), String> {
-    let (_header, prompt) =
-        render_do_cosend_prompt(input.store, input.artifacts, input.model, user_request)?;
-    input
-        .client
-        .bind_session_header_parts(prompt, input.log_path, DO_HEADER_MD, "do");
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use malvin::backends::agent_backend::SdkClient;
     use malvin::prompts::{DO_HEADER_MD, HEADER_MD, PromptStore};
-    use malvin::test_utils::with_isolated_home;
+    use malvin::test_support::test_utils::with_isolated_home;
+    use std::path::PathBuf;
+
+    pub struct BindMalvinHeader<'a> {
+        pub client: &'a mut SdkClient,
+        pub store: &'a PromptStore,
+        pub artifacts: &'a RunArtifacts,
+        pub model: &'a str,
+        pub log_path: PathBuf,
+    }
+
+    pub fn bind_do_header(input: BindMalvinHeader<'_>, user_request: &str) -> Result<(), String> {
+        let (_header, prompt) =
+            render_do_cosend_prompt(input.store, input.artifacts, input.model, user_request)?;
+        input
+            .client
+            .bind_session_header_parts(prompt, input.log_path, DO_HEADER_MD, "do");
+        Ok(())
+    }
 
     #[test]
     fn kiss_cov_bind_malvin_header() {
-        let _ = super::bind_do_header;
+        let _ = bind_do_header;
         let _ = super::render_malvin_header_body;
         let _ = super::render_do_cosend_prompt;
-        let _: Option<super::BindMalvinHeader<'_>> = None;
+        let _: Option<BindMalvinHeader<'_>> = None;
     }
 
     #[test]
     fn kiss_cov_bind_session_headers() {
-        let _ = super::bind_do_header;
+        let _ = bind_do_header;
         let _ = super::render_malvin_header_body;
         let _ = super::render_do_cosend_prompt;
     }
@@ -76,7 +75,7 @@ mod tests {
             let artifacts = malvin::artifacts::create_run_artifacts_from_text_opts(
                 "req",
                 Some(work),
-                malvin::run_id::RunDirOptions::default(),
+                malvin::workspace::run_id::RunDirOptions::default(),
             )
             .expect("artifacts");
             let prompt_root = artifacts.run_dir.join("prompts");
@@ -84,9 +83,9 @@ mod tests {
             std::fs::write(prompt_root.join(HEADER_MD), "HDR\n").expect("header");
             std::fs::write(prompt_root.join(DO_HEADER_MD), "DO\n").expect("do_header");
             let store = PromptStore::with_root(prompt_root);
-            let mut client = malvin::cursor_sdk::cursor_sdk_client_from_raw(
+            let mut client = malvin::backends::cursor_sdk::cursor_sdk_client_from_raw(
                 "cursor:auto",
-                malvin::acp::AgentIoOptions {
+                malvin::agent_process::AgentIoOptions {
                     no_tee: true,
                     raw_output: true,
                     show_thoughts_on_stdout: false,
@@ -107,7 +106,7 @@ mod tests {
             )
             .expect("bind");
             let (prompt, stdout_label) =
-                malvin::agent_backend::pending_session_header(&client).expect("bound");
+                malvin::backends::agent_backend::pending_session_header(&client).expect("bound");
             assert!(prompt.contains("HDR"));
             assert!(prompt.contains("DO"));
             assert!(prompt.contains("USER_REQ"));

@@ -1,4 +1,4 @@
-use malvin::agent_backend::SdkClient;
+use malvin::backends::agent_backend::SdkClient;
 
 pub(crate) struct RouterInitialCoderPrompt<'a> {
     pub client: &'a mut SdkClient,
@@ -19,7 +19,7 @@ pub(crate) async fn run_router_initial_coder_prompt(
             input.prompt,
             input.log_path,
             input.log_who,
-            malvin::acp::CoderPromptOptions {
+            malvin::agent_process::CoderPromptOptions {
                 llm_phase: Some(malvin::run_timing::TimingPhase::Implement),
                 do_trace_split: None,
                 stdout_bracket_label: Some(input.stdout_bracket_label),
@@ -44,7 +44,7 @@ pub(crate) async fn run_router_b_coder_prompt(
             prompt,
             log_path,
             "router_b",
-            malvin::acp::CoderPromptOptions {
+            malvin::agent_process::CoderPromptOptions {
                 llm_phase: Some(malvin::run_timing::TimingPhase::Implement),
                 do_trace_split: None,
                 stdout_bracket_label: Some(stdout_bracket_label),
@@ -68,7 +68,7 @@ pub(crate) async fn run_router_summarize_coder_prompt(
             prompt,
             log_path,
             "router_summarize",
-            malvin::acp::CoderPromptOptions {
+            malvin::agent_process::CoderPromptOptions {
                 llm_phase: Some(malvin::run_timing::TimingPhase::Implement),
                 do_trace_split: None,
                 stdout_bracket_label: Some("router_summarize.md"),
@@ -94,12 +94,12 @@ mod kiss_cov_gate_refs {
         let _ = header_prompt_file;
         let _ = router_a_prompt_file;
         let _ = kpop_common_prompt_file;
-        let _ = malvin::agent_backend::header_prompt_options_for_test;
+        let _ = malvin::backends::agent_backend::header_prompt_options_for_test;
     }
 
     #[test]
     fn router_header_retries_use_fresh_agent() {
-        let opts = malvin::agent_backend::header_prompt_options_for_test();
+        let opts = malvin::backends::agent_backend::header_prompt_options_for_test();
         assert!(
             opts.fresh_agent_on_retry,
             "spawn header must not re-send header.md into the same agent on ACP retry"

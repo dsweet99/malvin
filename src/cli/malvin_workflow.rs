@@ -2,7 +2,7 @@ use crate::cli::admin_cmd::AdminArgs;
 use crate::cli::args::{Cli, Commands};
 use crate::cli::request_argv::{RequestKind, TaggedRequest};
 use crate::cli::shared_opts::{RouterOpts, SharedOpts};
-use malvin::model_id::ParsedModel;
+use malvin::config::model_id::ParsedModel;
 
 #[derive(Debug)]
 pub(crate) enum MalvinWorkflow {

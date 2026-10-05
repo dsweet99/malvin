@@ -1,5 +1,5 @@
-use crate::acp::{AgentError, AttemptCeiling, backoff_after_agent_failure};
-use crate::test_stderr_capture::capture_stderr_output;
+use crate::agent_process::{AgentError, AttemptCeiling, backoff_after_agent_failure};
+use crate::test_support::test_stderr_capture::capture_stderr_output;
 
 #[test]
 fn backoff_does_not_log_when_retry_policy_stops_immediately() {

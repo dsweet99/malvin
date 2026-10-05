@@ -51,9 +51,9 @@ pub struct ModalBridge {
 }
 
 pub fn node_bridge_command(bridge_js: &Path) -> Result<Command, String> {
-    let node = crate::cursor_sdk::node_resolve::resolve_node_bin()?;
+    let node = crate::backends::cursor_sdk::node_resolve::resolve_node_bin()?;
     let mut cmd = Command::new(node);
-    crate::cursor_sdk::node_resolve::apply_quiet_node_cli_std(&mut cmd);
+    crate::backends::cursor_sdk::node_resolve::apply_quiet_node_cli_std(&mut cmd);
     cmd.arg(bridge_js);
     Ok(cmd)
 }

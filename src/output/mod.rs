@@ -190,13 +190,13 @@ pub(crate) fn stderr_use_color() -> bool {
     log_use_color() && std::io::stderr().is_terminal()
 }
 
-pub use crate::stdout_log_path::set_stdout_log_path;
+pub use crate::workspace::stdout_log_path::set_stdout_log_path;
 pub(crate) use stdout_log_pair::{
     stdout_heartbeat_display_and_log_line, stdout_tagged_display_and_log_line,
 };
 
 pub(crate) fn append_stdout_log_line(line: &str) {
-    let Some(path) = crate::stdout_log_path::clone_stdout_log_path() else {
+    let Some(path) = crate::workspace::stdout_log_path::clone_stdout_log_path() else {
         return;
     };
     let line = crate::ansi_strip::strip_ansi_escapes(line);

@@ -96,7 +96,7 @@ pub(crate) fn duplicate_safe_restore_error(merge_error: &str) -> String {
 }
 
 pub struct RunTimingAfterBackend<'a> {
-    pub backend: &'a mut crate::agent_backend::SdkClient,
+    pub backend: &'a mut crate::backends::agent_backend::SdkClient,
     pub run_dir: &'a Path,
     pub timing: &'a Arc<Mutex<RunTiming>>,
     pub agent_result: Result<(), String>,
@@ -119,7 +119,7 @@ pub fn emit_run_timing_after_backend(req: RunTimingAfterBackend<'_>) -> Result<(
 }
 
 pub fn emit_run_timing_json_only_after_backend(
-    backend: &mut crate::agent_backend::SdkClient,
+    backend: &mut crate::backends::agent_backend::SdkClient,
     run_dir: &Path,
     timing: &Arc<Mutex<RunTiming>>,
     agent_result: Result<(), String>,

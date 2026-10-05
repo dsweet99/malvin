@@ -92,9 +92,9 @@ fn prefer_gate_outcome_surfaces_restore_when_gate_passed() {
 
 #[test]
 fn passing_gate_run_sets_just_ran_and_clear_resets_it() {
-    malvin::test_utils::with_isolated_home(|_| {
+    malvin::test_support::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let (_bin, _guard) = malvin::test_agent_client::write_fake_gate(tmp.path(), "true", 0);
+        let (_bin, _guard) = malvin::test_support::test_agent_client::write_fake_gate(tmp.path(), "true", 0);
         let (artifacts, backups) = router_gates_restore_fixture(tmp.path());
         // Parallel tests share the process-global flag; only assert the
         // transition caused by this test's own gate run.

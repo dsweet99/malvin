@@ -1,6 +1,6 @@
 use super::VisionBackup;
 use crate::session_dotfile_backup::tree_test_support::init_git_repo;
-use crate::test_utils::with_isolated_home;
+use crate::test_support::test_utils::with_isolated_home;
 use std::path::{Path, PathBuf};
 
 #[test]
@@ -64,7 +64,7 @@ fn nested_vision_round_trip_restores_tree_and_removes_agent_created_files() {
         let VisionBackup::Present { backup_root, files } = &backup else {
             panic!("expected vision tree backup");
         };
-        assert!(backup_root.starts_with(crate::workspace_paths::snapshot_category_dir("vision")));
+        assert!(backup_root.starts_with(crate::workspace::workspace_paths::snapshot_category_dir("vision")));
         assert_eq!(files.len(), 2);
 
         tamper_vision_tree(work);

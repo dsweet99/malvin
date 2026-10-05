@@ -3,9 +3,9 @@ mod common;
 #[cfg(unix)]
 use common::{fresh_workdir, sleep_child, write_peer_acp_lock};
 #[cfg(unix)]
-use malvin::acp::snapshot_pids;
+use malvin::agent_process::snapshot_pids;
 #[cfg(unix)]
-use malvin::malvin_sandbox::{
+use malvin::agent_process::malvin_sandbox::{
     assert_dead_before_next_spawn, assert_no_peer_acp_spawn_lock, clear_active_sandbox_session,
     malvin_std_command, malvin_tokio_command, note_active_sandbox_session,
 };
@@ -31,7 +31,7 @@ fn dead_before_next_rejects_live_prior_sandbox() {
     let pgid = child.id();
     let work = fresh_workdir("malvin_dead_before_next_reject");
     note_active_sandbox_session(
-        malvin::malvin_sandbox::take_sandbox_spawn_ticket().expect("ticket"),
+        malvin::agent_process::malvin_sandbox::take_sandbox_spawn_ticket().expect("ticket"),
         Some(pgid),
         baseline,
         &work,
@@ -57,7 +57,7 @@ fn dead_before_next_allows_after_prior_sandbox_cleared() {
     let pgid = child.id();
     let work = fresh_workdir("malvin_dead_before_next_clear");
     note_active_sandbox_session(
-        malvin::malvin_sandbox::take_sandbox_spawn_ticket().expect("ticket"),
+        malvin::agent_process::malvin_sandbox::take_sandbox_spawn_ticket().expect("ticket"),
         Some(pgid),
         baseline,
         &work,
@@ -108,7 +108,7 @@ fn acp_spawn_lock_acquired_and_released_by_session_lifecycle() {
         .join("acp_spawn")
         .join("lifecycle.lock");
     note_active_sandbox_session(
-        malvin::malvin_sandbox::take_sandbox_spawn_ticket().expect("ticket"),
+        malvin::agent_process::malvin_sandbox::take_sandbox_spawn_ticket().expect("ticket"),
         None,
         baseline,
         &work,
@@ -146,7 +146,7 @@ fn note_active_sandbox_session_rejects_live_peer_lock() {
     write_peer_acp_lock(&work, "peerslot", child.id());
     let baseline = snapshot_pids();
     let err = note_active_sandbox_session(
-        malvin::malvin_sandbox::take_sandbox_spawn_ticket().expect("ticket"),
+        malvin::agent_process::malvin_sandbox::take_sandbox_spawn_ticket().expect("ticket"),
         None,
         baseline,
         &work,
@@ -168,7 +168,7 @@ fn session_lifecycle_does_not_touch_acp_spawn_lock() {
     let baseline = snapshot_pids();
     malvin::set_active_acp_lock_slot("foreignslot".to_string());
     note_active_sandbox_session(
-        malvin::malvin_sandbox::take_sandbox_spawn_ticket().expect("ticket"),
+        malvin::agent_process::malvin_sandbox::take_sandbox_spawn_ticket().expect("ticket"),
         None,
         baseline,
         &work,

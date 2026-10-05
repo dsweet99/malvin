@@ -1,6 +1,6 @@
 use crate::artifacts::{GitignoreBackup, SessionDotfileBackups, create_run_artifacts_from_text};
-use crate::test_utils::with_isolated_home;
-use crate::workspace_paths::snapshot_category_dir;
+use crate::test_support::test_utils::with_isolated_home;
+use crate::workspace::workspace_paths::snapshot_category_dir;
 
 #[test]
 fn gitignore_backup_skips_when_workspace_file_missing() {

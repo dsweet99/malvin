@@ -1,7 +1,7 @@
 use clap::CommandFactory;
 
 use super::{Cli, parse_cli_with_config_defaults};
-use malvin::test_utils::with_isolated_home;
+use malvin::test_support::test_utils::with_isolated_home;
 
 fn parse(argv: &[&str]) -> Cli {
     let mut out = None;

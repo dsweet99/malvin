@@ -1,4 +1,4 @@
-use malvin::model_id::ModelBackend;
+use malvin::config::model_id::ModelBackend;
 use malvin::output::{MALVIN_WHO, print_stdout_line, print_stdout_text};
 
 use super::models_cmd_cursor::cursor_model_listing;
@@ -52,12 +52,12 @@ impl ModelCatalog for PiCatalog {
     }
 
     fn list_display_models(&self) -> ModelListing {
-        let (models, unavailable) = match malvin::npm_pi_sdk::list_npm_pi_display_models() {
+        let (models, unavailable) = match malvin::backends::pi_backend::list_npm_pi_display_models() {
             Ok(models) => (models, None),
             Err(e) => (Vec::new(), Some(e)),
         };
         ModelListing {
-            rows: prefixed_rows(self.prefix(), malvin::pi_sdk::filter_local_listings(models)),
+            rows: prefixed_rows(self.prefix(), malvin::local_llm::filter_local_listings(models)),
             unparsed: None,
             unavailable,
         }
@@ -70,7 +70,7 @@ impl ModelCatalog for CodexCatalog {
     }
 
     fn list_display_models(&self) -> ModelListing {
-        match malvin::codex_sdk::list_codex_display_models() {
+        match malvin::backends::codex_sdk::list_codex_display_models() {
             Ok(models) => ModelListing::rows(prefixed_rows(self.prefix(), models)),
             Err(e) => ModelListing::unavailable(e),
         }

@@ -1,6 +1,6 @@
 use std::num::NonZeroU32;
 
-use crate::acp::AttemptCeiling;
+use crate::agent_process::AttemptCeiling;
 
 use super::BudgetScopeLayer;
 

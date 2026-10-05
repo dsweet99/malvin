@@ -2,11 +2,11 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use crate::cli::cli_request::require_cli_request;
-use malvin::agent_backend::{SdkClient, set_implement_display_name};
+use malvin::backends::agent_backend::{SdkClient, set_implement_display_name};
 use malvin::artifacts::{
     RunArtifacts, SessionDotfileBackups, create_run_artifacts_from_text, resolve_user_md_request,
 };
-use malvin::run_id::RunDirOptions;
+use malvin::workspace::run_id::RunDirOptions;
 
 pub fn resolve_one_shot_request_artifacts(
     request: Option<&String>,
@@ -26,7 +26,7 @@ pub fn resolve_one_shot_request_artifacts(
             .map_err(|e| e.to_string())?,
     };
     malvin::gate_loop_session::reset_for_independent_run();
-    malvin::run_id::activate_run(artifacts.run_dir.clone());
+    malvin::workspace::run_id::activate_run(artifacts.run_dir.clone());
     Ok((text, artifacts))
 }
 

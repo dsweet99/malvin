@@ -43,7 +43,7 @@ pub fn format_request_inline_text(text: &str, plan_path: &Path) -> String {
 }
 
 fn is_pi(model: &str) -> bool {
-    crate::model_id::parse_model_id(model).is_ok_and(|m| m.is_pi())
+    crate::config::model_id::parse_model_id(model).is_ok_and(|m| m.is_pi())
 }
 
 #[must_use]

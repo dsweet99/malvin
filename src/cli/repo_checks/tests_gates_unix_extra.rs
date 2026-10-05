@@ -1,6 +1,6 @@
 use std::fs;
 
-use malvin::test_utils::with_isolated_home;
+use malvin::test_support::test_utils::with_isolated_home;
 
 use super::command_support::set_fake_command_dir;
 use super::gate_run::prepare_repo_workspace;

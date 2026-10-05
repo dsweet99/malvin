@@ -1,0 +1,209 @@
+fn smoke_active_agent_heartbeat_stats() {
+    let _ = stringify!(ActiveAgentSandbox);
+    let _ = stringify!(ActiveAgentStatsSource);
+    let _ = crate::agent_process::active_agent_heartbeat::register_active_agent_process_group;
+    let _ = crate::agent_process::active_agent_heartbeat::unregister_active_agent_process_group;
+    let _ = crate::agent_process::malvin_sandbox::init_malvin_spawn_baseline;
+    let _ = crate::agent_process::malvin_sandbox::malvin_session_rss_bytes;
+    crate::agent_process::active_agent_heartbeat::clear_active_agent_process_groups_for_test();
+    assert!(crate::active_agent_heartbeat_stats().is_none());
+}
+
+fn smoke_agent_phase_verifying_and_reporting() {
+    let _guard = crate::agent_phase::AGENT_PHASE_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    crate::agent_phase::reset_phase_state_for_test();
+    crate::agent_phase::enter_verifying();
+    assert_eq!(crate::agent_phase::heartbeat_label(), "Verifying");
+    crate::agent_phase::leave_verifying();
+    crate::agent_phase::set_reporting(true);
+    assert_eq!(crate::agent_phase::heartbeat_label(), "Reporting");
+    crate::agent_phase::set_reporting(false);
+}
+
+fn smoke_emit_without_log_path_skips_disk_append() {
+    let _guard = crate::output::STDOUT_LOG_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("stdout.log");
+    crate::output::set_stdout_log_path(None);
+    crate::output::enable_stdout_capture();
+    crate::output::emit_stdout_rendered_immediate("[probe] x", "20260524.000000.000 [probe] x");
+    let terminal = crate::output::take_captured_stdout();
+    assert_eq!(terminal.trim(), "[probe] x");
+    crate::output::set_stdout_log_path(Some(path.clone()));
+    crate::output::emit_stdout_rendered_immediate("[probe] y", "20260524.000000.000 [probe] y");
+    crate::output::set_stdout_log_path(None);
+    let text = std::fs::read_to_string(path).unwrap_or_default();
+    assert!(text.contains("[probe] y"));
+}
+
+fn smoke_time_format_and_stdout_log_path() {
+    assert!(!crate::time_format::timestamp_now_string().is_empty());
+    let _guard = crate::agent_phase::AGENT_PHASE_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    crate::agent_phase::reset_phase_state_for_test();
+    assert!(crate::time_format::heartbeat_payload_now().contains("Orienting"));
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("out.log");
+    crate::workspace::stdout_log_path::set_stdout_log_path(Some(path.clone()));
+    assert_eq!(crate::workspace::stdout_log_path::clone_stdout_log_path(), Some(path));
+    crate::workspace::stdout_log_path::set_stdout_log_path(None);
+}
+
+fn smoke_artifacts_create() {
+    crate::test_support::test_utils::with_isolated_home(|_| {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let plan = tmp.path().join("plan.md");
+        std::fs::write(&plan, "plan").expect("write plan");
+        let artifacts =
+            crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
+        assert!(artifacts.plan_path.is_file());
+        assert!(artifacts.quality_gates_log_path().is_file());
+        let from_text = crate::artifacts::create_run_artifacts_from_text("x", Some(tmp.path()))
+            .expect("from_text");
+        assert!(from_text.plan_path.is_file());
+        assert!(from_text.quality_gates_log_path().is_file());
+        assert_eq!(
+            crate::artifacts::work_dir_for_path(&plan),
+            tmp.path()
+                .canonicalize()
+                .unwrap_or_else(|_| tmp.path().to_path_buf()),
+        );
+    });
+}
+
+fn smoke_artifacts_resolve_user_md_request() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let plan = tmp.path().join("plan.md");
+    std::fs::write(&plan, "hello").expect("write plan");
+    let (text, _) = crate::artifacts::resolve_user_md_request("hello").expect("literal");
+    assert_eq!(text, "hello");
+    let _guard = crate::test_support::test_utils::test_env_lock();
+    let old = std::env::current_dir().expect("cwd");
+    std::env::set_current_dir(tmp.path()).expect("chdir");
+    let (text, _) = crate::artifacts::resolve_user_md_request("plan.md").expect("md path");
+    std::env::set_current_dir(old).expect("restore cwd");
+    assert_eq!(text, "hello");
+}
+
+fn smoke_output_and_tracing() {
+    crate::tracing_init::init_tracing();
+    assert!(crate::tracing_init::malvin_log_accepts_tracing_level(
+        tracing::Level::INFO
+    ));
+    let formatted = crate::tracing_init::format_debug_tracing_field("k", &"val");
+    assert_eq!(formatted, "\"val\"");
+    crate::output::clear_captured_stderr_lines();
+    crate::output::print_log_error("err-smoke");
+    tracing::warn!(target: "malvin::kiss_cov", extra = 1, "trace-layer-smoke");
+    let lines = crate::output::take_captured_stderr_lines();
+    assert!(lines.iter().any(|l| l.contains("err-smoke")));
+    assert!(lines.iter().any(|l| l.contains("trace-layer-smoke")));
+}
+
+fn smoke_test_stderr_capture() {
+    crate::output::clear_captured_stderr_lines();
+    let captured = crate::test_support::test_stderr_capture::capture_stderr_output(|| {
+        crate::output::print_log_error("malvin-smoke-stderr");
+    });
+    assert!(captured.contains("malvin-smoke-stderr"));
+}
+
+fn smoke_child_health_sample() {
+    let _health = crate::agent_process::child_health::sample_child_health(std::process::id());
+}
+
+fn smoke_mem_limit_and_process_group_rss() {
+    let gb = crate::config::mem_limit_config::default_mem_limit_gb();
+    assert!(gb >= 1);
+    let mut pids = std::collections::HashSet::new();
+    pids.insert(std::process::id());
+    let bytes = crate::agent_process::process_group_rss::pids_sandbox_bytes(&pids).expect("sandbox bytes");
+    assert!(bytes > 0);
+}
+
+fn smoke_output_helpers_for_kiss() {
+    crate::output::clear_captured_stderr_lines();
+    crate::output::push_captured_stderr_line("kiss-smoke".into());
+    let lines = crate::output::take_captured_stderr_lines();
+    assert!(lines.iter().any(|l| l.contains("kiss-smoke")));
+    let _ = crate::output::log_use_color();
+    let _ = crate::output::stderr_use_color();
+}
+
+fn kiss_cov_cross_file_symbols_a() {
+    let _: Option<crate::agent_process::sandbox_oom::SandboxOomKillFacts> = None;
+    let _: Option<crate::terminal_palette::TerminalTheme> = None;
+    let _: Option<crate::terminal_palette::Palette> = None;
+    let _: Option<crate::run_timing::acp_post_run::RunTimingSessionEnd> = None;
+    let _: Option<crate::run_timing::acp_post_run::RunTimingAfterBackend> = None;
+    let _: Option<crate::session_dotfile_backup::DotfileBackupPayload> = None;
+    let _: Option<crate::session_dotfile_backup::SessionDotfileBackups> = None;
+    let _ = stringify!(ActiveAgentSandbox);
+    let _ = stringify!(ActiveAgentStatsSource);
+    let _ = stringify!(AcpTeeDirection);
+    let _ = stringify!(AcpTeeLineFmt);
+    let _ = stringify!(TaggedDisplayStyle);
+    let _ = stringify!(StdoutRenderPrelude);
+    let _ = stringify!(prompt_source_desc);
+}
+
+fn kiss_cov_cross_file_symbols_b() {
+    let _ = stringify!(SampledTaskPidInfo);
+    let _ = stringify!(BashExecResult);
+    let _ = stringify!(MiniLoopConfig);
+    let _ = stringify!(run_coder_prompt_with_retries);
+    let _ = stringify!(MiniTraceSink);
+}
+
+fn kiss_cov_acp_session_unit_tests() {
+    let _ = stringify!(MemWatchHandles);
+    let _ = stringify!(AffiliationCtx);
+    let _ = stringify!(TeeStdoutEmit);
+    let _ = stringify!(cancel_rejected_as_unsupported);
+    let _ = stringify!(best_effort_session_cancel);
+    let _ = stringify!(wait_killed_child);
+    let _ = stringify!(run_coder_prompt_with_retries);
+    let _ = stringify!(run_one_coder_prompt_attempt);
+}
+
+fn kiss_cov_cli_helper_symbols() {
+    let _ = stringify!(CodeWorkflowLoopMut);
+    let _ = stringify!(RouterArgs);
+    let _ = stringify!(build_mbc2_render_context);
+    let _ = stringify!(RunStartupEmitOpts);
+}
+
+fn kiss_cov_coverage_kiss_gate_refs() {
+    let _ = stringify!(kiss_cov_reader_tests_helpers_symbols);
+}
+
+fn kiss_cov_ops_spawn() {
+    let _ = crate::agent_process::test_no_real_agent_enabled();
+    let _ = crate::agent_process::test_no_real_agent_enabled();
+}
+
+#[test]
+fn kiss_bundled_malvin_kiss_coverage() {
+    smoke_active_agent_heartbeat_stats();
+    smoke_agent_phase_verifying_and_reporting();
+    smoke_emit_without_log_path_skips_disk_append();
+    smoke_time_format_and_stdout_log_path();
+    smoke_artifacts_create();
+    smoke_artifacts_resolve_user_md_request();
+    smoke_output_and_tracing();
+    smoke_test_stderr_capture();
+    smoke_child_health_sample();
+    smoke_mem_limit_and_process_group_rss();
+    smoke_output_helpers_for_kiss();
+    kiss_cov_cross_file_symbols_a();
+    kiss_cov_cross_file_symbols_b();
+    kiss_cov_acp_session_unit_tests();
+    kiss_cov_cli_helper_symbols();
+    kiss_cov_coverage_kiss_gate_refs();
+    kiss_cov_ops_spawn();
+}

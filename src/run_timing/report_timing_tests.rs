@@ -118,7 +118,7 @@ fn write_json_and_print_summary_creates_file() {
 
 #[test]
 fn run_timing_json_includes_cost_block_with_reported_usage() {
-    use crate::llm_transport::ResponseUsage;
+    use crate::run_timing::ResponseUsage;
     use crate::run_timing::{RunTiming, TimingPhase};
 
     let mut r = RunTiming::default();
@@ -145,7 +145,7 @@ fn no_cost_block_when_no_cost_data() {
 #[test]
 fn cost_fields_on_combined_stdout_line_not_timing_line() {
     use super::super::report_cost_line::format_cost_stdout_line_from_json;
-    use crate::llm_transport::ResponseUsage;
+    use crate::run_timing::ResponseUsage;
     use crate::run_timing::RunTiming;
 
     let mut r = RunTiming::default();

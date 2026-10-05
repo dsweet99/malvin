@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
-use crate::pi_sdk::http_fetch::{HttpRequest, fetch_text};
+use crate::http_fetch::{HttpRequest, fetch_text};
 
 pub const GPU_TYPES_URL: &str = "https://modal.com/docs/guide/gpu.md";
 pub const GPU_TYPES_REFRESH_INTERVAL_SECS: u64 = 24 * 60 * 60;
@@ -30,7 +30,7 @@ pub struct GpuTypesSource<'a> {
 
 #[must_use]
 pub fn gpu_types_cache_path() -> PathBuf {
-    crate::workspace_paths::malvin_user_home_root().join("modal_gpu_types.json")
+    crate::workspace::workspace_paths::malvin_user_home_root().join("modal_gpu_types.json")
 }
 
 #[must_use]

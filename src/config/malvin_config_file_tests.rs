@@ -1,0 +1,242 @@
+use super::{
+    ensure_config_parent_dir, load_malvin_config, merge_missing_keys, open_malvin_config,
+    parse_agent_config, parse_template_value, read_on_disk_config_value, write_config_value,
+};
+use crate::workspace::support_paths::DEFAULT_CLI_MODEL;
+use crate::test_support::test_utils::with_isolated_home;
+use crate::workspace::workspace_paths::malvin_config_path;
+use std::collections::BTreeMap;
+
+fn parse_agent(text: &str) -> Result<super::AgentConfig, String> {
+    parse_agent_config(text, &BTreeMap::new())
+}
+
+fn merge_missing_keys_adds_top_level_and_nested_tables() {
+    let template = parse_template_value().expect("template");
+    let mut partial: toml::Value = toml::from_str("mem_limit_gb = 6\n").expect("partial");
+    assert!(merge_missing_keys(&mut partial, &template));
+    let merged = partial.as_table().expect("table");
+    assert_eq!(
+        merged.get("mem_limit_gb").and_then(toml::Value::as_integer),
+        Some(6)
+    );
+    assert!(merged.get("logs").is_some());
+    assert!(merged.get("agent").is_some());
+}
+
+fn merge_missing_keys_is_idempotent() {
+    let template = parse_template_value().expect("template");
+    let mut value = template.clone();
+    assert!(!merge_missing_keys(&mut value, &template));
+}
+
+fn open_malvin_config_creates_file_with_all_sections() {
+    with_isolated_home(|work| {
+        let path = malvin_config_path(work);
+        assert!(!path.exists());
+        let cfg = open_malvin_config(work).expect("open");
+        assert!(path.is_file());
+        let text = std::fs::read_to_string(&path).expect("read");
+        assert!(text.contains("[logs]"));
+        assert!(text.contains("[agent]"));
+        assert!(text.contains("[agent.cursor.auto]"));
+        assert!(!text.contains("mpc"));
+        assert!(!text.contains("max_loops"));
+        assert_eq!(cfg.agent.model.canonical(), DEFAULT_CLI_MODEL);
+        assert_eq!(
+            cfg.agent.max_hypotheses,
+            crate::config::malvin_config_file::DEFAULT_MAX_HYPOTHESES
+        );
+        assert!(text.contains("theme"));
+        assert_eq!(
+            cfg.context_size,
+            crate::config::malvin_config_file::DEFAULT_CONTEXT_SIZE
+        );
+        assert_eq!(cfg.theme, crate::terminal_palette::TerminalTheme::Dark);
+    });
+}
+
+fn open_malvin_config_merges_missing_agent_in_memory_only() {
+    with_isolated_home(|work| {
+        let path = malvin_config_path(work);
+        std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+        std::fs::write(
+            &path,
+            "mem_limit_gb = 6\n\n[logs]\nmax_age_days = 90\nmax_bytes = \"2GiB\"\n",
+        )
+        .expect("write");
+        let before = std::fs::read_to_string(&path).expect("read before");
+        let cfg = open_malvin_config(work).expect("open");
+        let after = std::fs::read_to_string(&path).expect("read after");
+        assert_eq!(
+            before, after,
+            "existing config.toml must never be rewritten"
+        );
+        assert_eq!(cfg.mem_limit_gb, 6);
+        assert_eq!(
+            cfg.context_size,
+            crate::config::malvin_config_file::DEFAULT_CONTEXT_SIZE
+        );
+        assert_eq!(cfg.agent.model.canonical(), DEFAULT_CLI_MODEL);
+    });
+}
+
+fn parse_agent_config_reads_values() {
+    let text = r#"
+[agent]
+model = "cursor:gpt-5"
+max_hypotheses = 3
+max_acp_retries = 5
+"#;
+    let agent = parse_agent(text).expect("parse");
+    assert_eq!(agent.model.canonical(), "cursor:gpt-5");
+    assert_eq!(agent.max_hypotheses, 3);
+    assert_eq!(agent.max_acp_retries, 5);
+}
+
+fn parse_agent_config_accepts_string_numbers() {
+    let text = r#"
+[agent]
+model = "cursor:m"
+max_hypotheses = "2"
+max_acp_retries = "4"
+"#;
+    let agent = parse_agent(text).expect("parse");
+    assert_eq!(agent.max_hypotheses, 2);
+    assert_eq!(agent.max_acp_retries, 4);
+}
+
+fn parse_theme_accepts_dark_and_light() {
+    use super::parse_theme;
+    use crate::terminal_palette::TerminalTheme;
+
+    assert_eq!(
+        parse_theme("theme = \"dark\"").expect("dark"),
+        TerminalTheme::Dark
+    );
+    assert_eq!(
+        parse_theme("theme = \"light\"").expect("light"),
+        TerminalTheme::Light
+    );
+    assert_eq!(
+        parse_theme("mem_limit_gb = 4").expect("missing"),
+        TerminalTheme::Dark
+    );
+    assert!(parse_theme("theme = \"neon\"").is_err());
+}
+
+fn parse_context_size_reads_top_level_key() {
+    use super::{DEFAULT_CONTEXT_SIZE, parse_context_size};
+    assert_eq!(
+        parse_context_size("context_size = 16384\n").expect("parse"),
+        16384
+    );
+    assert_eq!(
+        parse_context_size("mem_limit_gb = 4\n").expect("default"),
+        DEFAULT_CONTEXT_SIZE
+    );
+    assert!(
+        parse_context_size("context_size = 0\n")
+            .expect_err("zero")
+            .contains("positive")
+    );
+}
+
+fn open_malvin_config_merges_theme_in_memory_only() {
+    with_isolated_home(|work| {
+        let path = malvin_config_path(work);
+        std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+        std::fs::write(&path, "mem_limit_gb = 6\n").expect("write");
+        let before = std::fs::read_to_string(&path).expect("read before");
+        let cfg = open_malvin_config(work).expect("open");
+        let after = std::fs::read_to_string(&path).expect("read after");
+        assert_eq!(before, after);
+        assert_eq!(cfg.theme, crate::terminal_palette::TerminalTheme::Dark);
+    });
+}
+
+fn load_malvin_config_reads_light_theme() {
+    with_isolated_home(|work| {
+        let path = malvin_config_path(work);
+        std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+        std::fs::write(&path, "theme = \"light\"\n").expect("write");
+        let cfg = load_malvin_config(work);
+        assert_eq!(cfg.theme, crate::terminal_palette::TerminalTheme::Light);
+    });
+}
+
+fn parse_agent_config_ignores_legacy_max_loops_keys() {
+    let text = r#"
+[agent]
+model = "cursor:m"
+max_loops = 1
+max_loops_code = 4
+max_acp_retries = 2
+"#;
+    let agent = parse_agent(text).expect("parse");
+    assert_eq!(agent.max_acp_retries, 2);
+    assert_eq!(
+        agent.max_hypotheses,
+        crate::config::malvin_config_file::DEFAULT_MAX_HYPOTHESES
+    );
+}
+
+fn load_malvin_config_uses_defaults_for_invalid_on_disk_toml() {
+    with_isolated_home(|work| {
+        let path = malvin_config_path(work);
+        std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+        std::fs::write(&path, "not valid {{{ toml").expect("write");
+        let cfg = load_malvin_config(work);
+        assert_eq!(cfg.agent.model.canonical(), DEFAULT_CLI_MODEL);
+    });
+}
+
+fn load_malvin_config_merges_partial_file_in_memory_only() {
+    with_isolated_home(|work| {
+        let path = malvin_config_path(work);
+        std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+        std::fs::write(&path, "mem_limit_gb = 8\n").expect("write");
+        let cfg = load_malvin_config(work);
+        assert_eq!(cfg.mem_limit_gb, 8);
+        let text = std::fs::read_to_string(&path).expect("read");
+        assert!(!text.contains("[agent]"));
+    });
+}
+
+fn config_io_helpers_read_missing_file_as_empty_table() {
+    with_isolated_home(|work| {
+        let path = malvin_config_path(work);
+        let value = read_on_disk_config_value(&path).expect("read");
+        assert!(value.as_table().expect("table").is_empty());
+    });
+}
+
+fn config_io_helpers_write_and_read_round_trip() {
+    with_isolated_home(|work| {
+        let path = malvin_config_path(work);
+        ensure_config_parent_dir(&path).expect("mkdir");
+        let value: toml::Value = toml::from_str("mem_limit_gb = 3").expect("toml");
+        write_config_value(&path, &value).expect("write");
+        let read = read_on_disk_config_value(&path).expect("read");
+        assert_eq!(read.get("mem_limit_gb"), value.get("mem_limit_gb"));
+    });
+}
+
+#[test]
+fn kiss_bundled_malvin_config_file_tests() {
+    merge_missing_keys_adds_top_level_and_nested_tables();
+    merge_missing_keys_is_idempotent();
+    open_malvin_config_creates_file_with_all_sections();
+    open_malvin_config_merges_missing_agent_in_memory_only();
+    parse_agent_config_reads_values();
+    parse_agent_config_accepts_string_numbers();
+    parse_theme_accepts_dark_and_light();
+    parse_context_size_reads_top_level_key();
+    open_malvin_config_merges_theme_in_memory_only();
+    load_malvin_config_reads_light_theme();
+    parse_agent_config_ignores_legacy_max_loops_keys();
+    load_malvin_config_uses_defaults_for_invalid_on_disk_toml();
+    load_malvin_config_merges_partial_file_in_memory_only();
+    config_io_helpers_read_missing_file_as_empty_table();
+    config_io_helpers_write_and_read_round_trip();
+}

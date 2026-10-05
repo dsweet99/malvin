@@ -1,6 +1,6 @@
 use std::num::NonZeroU32;
 
-use crate::acp::AttemptCeiling;
+use crate::agent_process::AttemptCeiling;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BudgetScopeLayer {

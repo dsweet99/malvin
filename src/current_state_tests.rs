@@ -58,14 +58,14 @@ fn format_user_identity_includes_gecos_full_name_when_distinct() {
 
 #[cfg(unix)]
 fn current_sandbox_rss_bytes_when_agent_registered() {
-    crate::active_agent_heartbeat::clear_active_agent_process_groups_for_test();
+    crate::agent_process::active_agent_heartbeat::clear_active_agent_process_groups_for_test();
     let pgid = std::process::id();
-    let baseline = crate::acp::snapshot_pids();
-    crate::active_agent_heartbeat::register_active_agent_process_group(Some(pgid), baseline);
+    let baseline = crate::agent_process::snapshot_pids();
+    crate::agent_process::active_agent_heartbeat::register_active_agent_process_group(Some(pgid), baseline);
     let line = format_sandbox_memory_line(std::path::Path::new("."));
     assert!(line.contains("in use"));
-    crate::active_agent_heartbeat::unregister_active_agent_process_group(Some(pgid));
-    crate::active_agent_heartbeat::clear_active_agent_process_groups_for_test();
+    crate::agent_process::active_agent_heartbeat::unregister_active_agent_process_group(Some(pgid));
+    crate::agent_process::active_agent_heartbeat::clear_active_agent_process_groups_for_test();
 }
 
 fn infer_gate_retry_reasons_empty_without_artifacts() {
@@ -83,7 +83,7 @@ fn gate_iteration_oom_killed_false_when_marker_missing() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
         .expect("artifacts");
-    assert!(!crate::sandbox_oom::gate_iteration_oom_killed(
+    assert!(!crate::agent_process::sandbox_oom::gate_iteration_oom_killed(
         &artifacts, 1
     ));
 }

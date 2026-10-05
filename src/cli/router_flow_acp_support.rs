@@ -1,5 +1,5 @@
-use crate::router_flow::router_flow_no_work::chat_has_malvin_done;
-use crate::router_flow::router_flow_prompt;
+use crate::cli::router_flow::router_flow_no_work::chat_has_malvin_done;
+use crate::cli::router_flow::router_flow_prompt;
 use malvin::artifacts::{RunArtifacts, SessionDotfileBackups, ensure_gate_exp_log_file};
 use std::path::Path;
 
@@ -58,7 +58,7 @@ async fn deliver_router_initial_turn(
 ) -> Result<SessionDotfileBackups, String> {
     let work_dir = input.artifacts.work_dir.as_path();
     let model = input.shared.model.canonical();
-    let include_header = !malvin::agent_backend::session_header_is_satisfied(input.client);
+    let include_header = !malvin::backends::agent_backend::session_header_is_satisfied(input.client);
     let initial = router_flow_prompt::build_router_initial_prompt(
         router_flow_prompt::RouterInitialPromptInput {
             store: input.prompt_store,
@@ -136,7 +136,7 @@ async fn finish_router_a_maybe_b(
     Ok(last_response_has_malvin_done(input.client))
 }
 
-pub(crate) fn last_response_has_malvin_done(client: &malvin::agent_backend::SdkClient) -> bool {
+pub(crate) fn last_response_has_malvin_done(client: &malvin::backends::agent_backend::SdkClient) -> bool {
     client
         .last_coder_prompt_agent_response()
         .is_some_and(|chat| chat_has_malvin_done(&chat))

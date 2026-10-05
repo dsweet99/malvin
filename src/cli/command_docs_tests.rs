@@ -79,7 +79,7 @@ fn bare_admin_doc_writes_admin_md() {
 
 #[test]
 fn bare_admin_without_doc_parses_with_no_subcommand() {
-    malvin::test_utils::with_isolated_home(|_| {
+    malvin::test_support::test_utils::with_isolated_home(|_| {
         let (cli, _) =
             crate::cli::config_defaults::parse_cli_with_config_defaults(["malvin", "admin"])
                 .expect("bare admin parses");
