@@ -68,7 +68,7 @@ fn append_provider_model(
     }
 }
 
-fn entry_is_rpc_entry(entry: &std::path::Path) -> bool {
+pub(super) fn entry_is_rpc_entry(entry: &std::path::Path) -> bool {
     entry
         .file_name()
         .and_then(|n| n.to_str())

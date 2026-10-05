@@ -84,5 +84,12 @@ pub fn load_agent_config_lenient(work_dir: &Path) -> AgentConfig {
     let Ok(merged) = toml::to_string(&on_disk) else {
         return AgentConfig::default();
     };
-    parse_agent_config_text(&merged).unwrap_or_default()
+    parse_agent_config_or_warn(&merged, &path)
+}
+
+fn parse_agent_config_or_warn(text: &str, path: &Path) -> AgentConfig {
+    parse_agent_config_text(text).unwrap_or_else(|e| {
+        crate::output::print_log_warning(&format!("ignoring [agent] settings in {}: {e}", path.display()));
+        AgentConfig::default()
+    })
 }

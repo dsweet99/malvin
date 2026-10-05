@@ -6,7 +6,10 @@ use super::{
 pub(crate) fn emit_stderr_log_line(ts: &str, who: &str, line: &str) {
     let (display, log) =
         super::stdout_log_pair::stderr_tagged_display_and_log_line(who, line, Some(ts));
+    #[cfg(test)]
     eprintln!("{display}");
+    #[cfg(not(test))]
+    super::stdout_terminal::write_display_line(&mut std::io::stderr().lock(), &display);
     append_stdout_log_line(&log);
     #[cfg(test)]
     super::push_captured_stderr_line(display);

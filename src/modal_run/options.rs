@@ -72,7 +72,9 @@ pub fn parse_gpu(raw: &str) -> Result<GpuChoice, String> {
         return Ok(GpuChoice::None);
     }
     let (kind, count) = raw.split_once(':').unwrap_or((raw, "1"));
-    let kind_ok = !kind.is_empty() && kind.chars().all(|c| c.is_ascii_alphanumeric() || "-!+".contains(c));
+    let kind_ok = !kind.is_empty()
+        && !kind.eq_ignore_ascii_case("none")
+        && kind.chars().all(|c| c.is_ascii_alphanumeric() || "-!+".contains(c));
     let count_ok = count.parse::<u64>().is_ok_and(|n| n > 0);
     if kind_ok && count_ok {
         return Ok(GpuChoice::Gpu(raw.to_string()));
@@ -167,9 +169,12 @@ fn check_remote_id(id: &str) -> Result<(), String> {
 pub fn parse_remote_value(value: &str) -> Result<ModalOptions, String> {
     let (id, spec) = match value.split_once('[') {
         Some((id, rest)) => {
-            let spec = rest
-                .strip_suffix(']')
+            let (spec, tail) = rest
+                .split_once(']')
                 .ok_or_else(|| format!("`{REMOTE_FLAG}={value}` is missing its closing `]`"))?;
+            if !tail.is_empty() {
+                return Err(format!("`{REMOTE_FLAG}={value}` has unexpected text `{tail}` after its closing `]`"));
+            }
             (id, Some(spec))
         }
         None => (value, None),
@@ -189,12 +194,16 @@ fn remote_value(arg: &str, rest: &mut impl Iterator<Item = OsString>) -> Option<
     arg.strip_prefix(REMOTE_FLAG)?.strip_prefix('=').map(|v| Ok(v.to_string()))
 }
 
-pub fn expand_remote_alias(value: &str, alias: impl FnOnce(&str) -> Option<String>) -> String {
-    let id = value.split_once('[').map_or(value, |(id, _)| id);
+pub fn expand_remote_alias(value: &str, alias: impl Fn(&str) -> Option<String>) -> Result<String, String> {
+    let (id, has_spec) = value.split_once('[').map_or((value, false), |(id, _)| (id, true));
     if id.contains(':') {
-        return value.to_string();
+        return Ok(value.to_string());
     }
-    alias(value.trim()).unwrap_or_else(|| value.to_string())
+    match (has_spec, alias(id.trim())) {
+        (false, Some(expanded)) => Ok(expanded),
+        (true, Some(_)) => Err(format!("remote alias `{}` cannot take `[...]` suboptions: an alias matches only the whole value; put the suboptions in the alias, or write the full remote such as `{MODAL_REMOTE_ID}[...]`", id.trim())),
+        (_, None) => Ok(value.to_string()),
+    }
 }
 
 pub fn extract_modal_options(
@@ -216,7 +225,7 @@ pub fn extract_modal_options(
             continue;
         };
         let typed = value?;
-        let value = expand_remote_alias(&typed, &alias);
+        let value = expand_remote_alias(&typed, &alias)?;
         let parsed = parse_remote_value(&value).map_err(|e| {
             if value == typed { e } else { format!("remote alias `{typed}` = `{value}`: {e}") }
         })?;

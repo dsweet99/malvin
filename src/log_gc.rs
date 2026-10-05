@@ -85,7 +85,7 @@ pub(crate) fn remove_tree(path: &Path) -> Result<(), (PathBuf, std::io::Error)> 
 pub(crate) fn report_undeletable(path: &Path, e: &std::io::Error) {
     let abs = std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf());
     print_log_error(&format!(
-        "log GC aborted: could not delete {}: {e}",
+        "log GC skipped the rest of this log folder: could not delete {}: {e}",
         abs.display()
     ));
 }

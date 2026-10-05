@@ -3,19 +3,17 @@ use crate::mem_limit_config::{default_mem_limit_gb, parse_mem_limit_gb};
 use crate::output::print_log_warning;
 use crate::terminal_palette::TerminalTheme;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use super::{
     AgentConfig, DEFAULT_CONTEXT_SIZE, DefaultWorkflowConfig, MalvinConfig, parse_agent_config,
     parse_context_size, parse_default_workflow_config,
-    parse_model_aliases, parse_model_token_cost_rates, parse_remote_aliases, parse_theme,
+    parse_aliases_lenient, parse_model_token_cost_rates, parse_theme,
 };
 
 pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
     let (mem_limit_gb, context_size, theme) = parse_top_level_keys(text);
-    let model_aliases = parse_or_warn(parse_model_aliases(text), "[aliases.models]", BTreeMap::new());
-    let remote_aliases =
-        parse_or_warn(parse_remote_aliases(text), "[aliases.remotes]", BTreeMap::new());
+    let (model_aliases, remote_aliases) = parse_aliases_lenient(text);
     let token_cost_rates = parse_or_warn(
         parse_model_token_cost_rates(text),
         "[agent.*.*] usd_per_microtoken_*",
@@ -76,9 +74,20 @@ fn parse_config_sections(
 
 fn parse_or_warn<T>(result: Result<T, String>, label: &str, fallback: T) -> T {
     result.unwrap_or_else(|msg| {
-        print_log_warning(&format!("could not parse {label}: {msg}"));
+        warn_config_once(&format!("could not parse {label}: {msg}"));
         fallback
     })
+}
+
+pub(crate) fn warn_config_once(line: &str) {
+    static SHOWN: std::sync::Mutex<BTreeSet<String>> = std::sync::Mutex::new(BTreeSet::new());
+    let first = SHOWN
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .insert(line.to_string());
+    if first {
+        print_log_warning(line);
+    }
 }
 
 pub(crate) fn read_string(value: Option<&toml::Value>) -> Option<String> {

@@ -22,24 +22,23 @@ pub(crate) fn list_log_buckets(home_logs: &Path) -> Vec<PathBuf> {
             buckets.push(path);
         }
     }
+    buckets.sort();
     buckets
 }
 
-pub(crate) fn remove_bucket_if_empty(bucket: &Path, keep: Option<&Path>) -> bool {
+pub(crate) fn remove_bucket_if_empty(bucket: &Path, keep: Option<&Path>) {
     if keep.is_some_and(|k| k == bucket) {
-        return true;
+        return;
     }
     let Ok(mut entries) = std::fs::read_dir(bucket) else {
-        return true;
+        return;
     };
     if entries.next().is_some() {
-        return true;
+        return;
     }
     if let Err(e) = std::fs::remove_dir(bucket) {
         report_undeletable(bucket, &e);
-        return false;
     }
-    true
 }
 
 pub(crate) fn bucket_is_ephemeral_orphan(runs: &[PathBuf]) -> bool {
@@ -85,8 +84,8 @@ pub(crate) fn prune_all_log_buckets(
         };
         removed = removed.saturating_add(tally.removed);
         freed = freed.saturating_add(tally.freed);
-        if tally.aborted || !remove_bucket_if_empty(&bucket, keep_bucket) {
-            break;
+        if !tally.aborted {
+            remove_bucket_if_empty(&bucket, keep_bucket);
         }
     }
     (removed, freed)

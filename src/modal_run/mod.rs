@@ -90,6 +90,7 @@ pub fn run_modal(inv: &ModalInvocation) -> Result<i32, String> {
     let cwd = crate::canonical_work_dir_for_logs(
         &std::env::current_dir().map_err(|e| format!("current dir: {e}"))?,
     );
+    workspace::check_upload_size(&cwd, workspace::MAX_NON_GIT_UPLOAD_BYTES)?;
     let plan = load_plan(&cwd, inv)?;
     let mut bridge = start_bridge()?;
     announce_sweep(sweep::sweep_stale(&mut bridge, &sweep::host_name()));

@@ -165,3 +165,26 @@ fn undeletable_oldest_run_aborts_and_spares_newer_runs() {
         abs.display()
     );
 }
+
+#[test]
+fn undeletable_run_in_one_bucket_does_not_stop_later_buckets() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let home_logs = tmp.path().join("logs");
+    let stuck_bucket = home_logs.join("0000000000000000");
+    let ro = stuck_bucket.join("20250101_000000_stuck001").join("ro");
+    if make_read_only_dir_with_file(&ro).is_none() {
+        return;
+    }
+    let later = home_logs.join("ffffffffffffffff").join(RUN_OLDEST);
+    std::fs::create_dir_all(&later).expect("mkdir");
+    let config = LogsGcConfig {
+        max_count: None,
+        max_age_days: Some(1),
+        max_bytes: None,
+    };
+    let (removed, _) = super::log_gc_buckets::prune_all_log_buckets(&home_logs, &config, None, None);
+    restore_writable(&ro);
+    assert_eq!(removed, 1);
+    assert!(!later.exists(), "the later bucket must still be pruned");
+    assert!(stuck_bucket.is_dir());
+}

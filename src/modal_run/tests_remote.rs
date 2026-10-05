@@ -64,3 +64,20 @@ fn backend_layers_install_the_cli_each_model_needs() {
     assert_eq!(parse_version_token("nope"), None);
     assert_eq!(parse_version_token("glibc 2.31\n").as_deref(), Some("2.31"));
 }
+
+#[test]
+fn non_git_upload_over_the_cap_is_refused_and_git_trees_are_not_measured() {
+    use super::workspace::check_upload_size;
+    let tmp = tempfile::tempdir().unwrap();
+    let d = tmp.path();
+    std::fs::create_dir_all(d.join("sub")).unwrap();
+    std::fs::write(d.join("sub/data"), vec![0u8; 3000]).unwrap();
+    std::fs::create_dir_all(d.join("target")).unwrap();
+    std::fs::write(d.join("target/big"), vec![0u8; 50_000]).unwrap();
+    assert!(check_upload_size(d, 10_000).is_ok());
+    let err = check_upload_size(d, 2000).unwrap_err();
+    assert!(err.contains("not in a git work tree") && err.contains("smaller directory"), "{err}");
+    let git = std::process::Command::new("git").args(["init", "-q"]).current_dir(d).status().unwrap();
+    assert!(git.success());
+    assert!(check_upload_size(d, 2000).is_ok());
+}

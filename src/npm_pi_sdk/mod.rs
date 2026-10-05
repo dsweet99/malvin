@@ -4,6 +4,7 @@ mod discover;
 mod extension_ui;
 mod map_event;
 mod models_list;
+mod models_rpc;
 mod session;
 mod session_io;
 mod session_process;

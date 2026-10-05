@@ -93,29 +93,39 @@ fn prefixed_rows(prefix: &str, models: Vec<(String, String)>) -> Vec<String> {
 }
 
 pub(super) fn print_models_sections(filter: Option<&str>) {
+    let mut shown = 0;
     for backend in ModelBackend::ALL {
         let catalog = catalog_for(backend);
         if section_may_match(filter, catalog.prefix()) {
-            print_listing(catalog.prefix(), &catalog.list_display_models(), filter);
+            shown += print_listing(catalog.prefix(), &catalog.list_display_models(), filter);
         }
+    }
+    if let Some(f) = filter.filter(|f| !f.is_empty() && shown == 0) {
+        print_stdout_line(MALVIN_WHO, &no_match_hint(f));
     }
 }
 
-pub(super) fn print_listing(prefix: &str, listing: &ModelListing, filter: Option<&str>) {
+fn no_match_hint(filter: &str) -> String {
+    format!("(no model id starts with `{filter}`; PREFIX matches the start of an id, such as `cursor:`, `pi:`, or `codex:`)")
+}
+
+pub(super) fn print_listing(prefix: &str, listing: &ModelListing, filter: Option<&str>) -> usize {
     if let Some(e) = &listing.unavailable {
         let label = prefix.trim_end_matches(':');
         print_stdout_line(MALVIN_WHO, &format!("({label} models unavailable: {e})"));
     }
-    for row in &listing.rows {
-        if line_matches_prefix(row, filter) {
-            print_stdout_line(MALVIN_WHO, row);
-        }
+    let mut shown = 0;
+    for row in listing.rows.iter().filter(|row| line_matches_prefix(row, filter)) {
+        print_stdout_line(MALVIN_WHO, row);
+        shown += 1;
     }
     if let Some(text) = &listing.unparsed
         && filter.is_none()
     {
         print_stdout_text(MALVIN_WHO, text);
+        shown += 1;
     }
+    shown
 }
 
 #[cfg(test)]
@@ -138,7 +148,9 @@ mod tests {
             unavailable: Some("boom".into()),
         };
         enable_stdout_capture();
-        print_listing("pi:", &listing, Some("pi:a"));
+        assert_eq!(print_listing("pi:", &listing, Some("pi:a")), 1);
+        assert_eq!(print_listing("pi:", &listing, Some("pi:z")), 0);
+        assert!(no_match_hint("terra").contains("no model id starts with `terra`"));
         let filtered = take_captured_stdout();
         assert!(filtered.contains("(pi models unavailable: boom)"), "{filtered}");
         assert!(filtered.contains("pi:a/b\tx"), "{filtered}");

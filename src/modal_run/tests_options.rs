@@ -52,7 +52,7 @@ fn value_parsers_accept_documented_forms_only() {
     assert_eq!(parse_gpu("T4:2"), Ok(GpuChoice::Gpu("T4:2".to_string())));
     assert_eq!(parse_gpu("H100!:8"), Ok(GpuChoice::Gpu("H100!:8".to_string())));
     assert_eq!(parse_gpu("B200+"), Ok(GpuChoice::Gpu("B200+".to_string())));
-    for bad in ["", "A100:0", "A100:x", "a b", ":2", "T4;rm"] {
+    for bad in ["", "A100:0", "A100:x", "a b", ":2", "T4;rm", "none:2", "NONE:1"] {
         assert!(parse_gpu(bad).is_err(), "{bad}");
     }
     assert_eq!(parse_ncpu("16"), Ok(16));
@@ -95,6 +95,8 @@ fn bracketed_flag_is_rewritten_for_clap() {
 fn bracketed_flag_errors_name_the_problem() {
     let err = |items: &[&str]| extract_modal_options(args(items), no_alias).unwrap_err();
     assert!(err(&["malvin", "--remote=modal:sandbox[ncpu=4"]).contains("closing `]`"));
+    assert!(err(&["malvin", "--remote=modal:sandbox[gpu=A100]extra"]).contains("unexpected text `extra` after"));
+    assert!(err(&["malvin", "--remote=modal:sandbox[gpu=A100]]"]).contains("unexpected text `]` after"));
     assert!(err(&["malvin", "--remote=modal:sandbox[ncpu=0]"]).contains("ncpu `0`"));
     assert!(err(&["malvin", "--remote=modal:sandbox[ncpu=1]", "--remote=modal:sandbox[gpu=T4]"]).contains("more than once"));
     assert!(err(&["malvin", "--remote=aws:box[ncpu=1]"]).contains("unknown remote provider `aws`"));
@@ -129,7 +131,8 @@ fn remote_aliases_expand_before_parsing() {
     let err = |items: &[&str]| extract_modal_options(args(items), big_alias).unwrap_err();
     assert!(err(&["malvin", "--remote=broken"]).contains("remote alias `broken` = `modal:sandbox[ncpu=0]`: "));
     assert!(err(&["malvin", "--remote=elsewhere"]).contains("unknown remote provider `aws`"));
-    assert!(err(&["malvin", "--remote=big[ncpu=2]"]).contains("unknown remote `big`"));
+    assert!(err(&["malvin", "--remote=big[ncpu=2]"]).contains("remote alias `big` cannot take `[...]` suboptions"));
+    assert!(err(&["malvin", "--remote=small[ncpu=2]"]).contains("unknown remote `small`"));
     assert!(err(&["malvin", "--remote=small"]).contains("[aliases.remotes]"));
 }
 

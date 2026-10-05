@@ -117,6 +117,15 @@ fn remote_alias_names_are_validated() {
 }
 
 #[test]
+fn one_bad_alias_entry_is_skipped_and_the_rest_are_kept() {
+    let cfg = parse_malvin_config(
+        "[aliases.remotes]\nmodal = \"modal:sandbox\"\ngpu1 = \"modal:sandbox[gpu=T4]\"\n[aliases.models]\n\"a:b\" = \"cursor:auto\"\nastra = \"cursor:gpt-5\"\n",
+    );
+    assert_eq!(cfg.remote_aliases.keys().collect::<Vec<_>>(), ["gpu1"]);
+    assert_eq!(cfg.model_aliases.keys().collect::<Vec<_>>(), ["astra"]);
+}
+
+#[test]
 fn load_remote_aliases_reads_home_config() {
     with_isolated_home(|work| {
         let path = malvin_config_path(work);
