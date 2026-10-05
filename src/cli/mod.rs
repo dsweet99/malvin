@@ -14,6 +14,7 @@ pub(crate) mod iml_loop;
 pub(crate) mod init_flow;
 pub(crate) mod malvin_workflow;
 pub(crate) mod models_cmd;
+pub(crate) mod remotes_cmd;
 pub(crate) mod request_argv;
 pub(crate) mod run_emit;
 pub(crate) mod session_header;

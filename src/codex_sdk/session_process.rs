@@ -5,13 +5,7 @@ use crate::bridge_sdk::BridgeSpawnArgs;
 use crate::malvin_sandbox::SandboxSpawnTicket;
 use std::process::Stdio;
 
-pub(super) type CodexProcess = (
-    tokio::process::Child,
-    tokio::process::ChildStdin,
-    tokio::process::ChildStdout,
-    Option<u32>,
-    std::collections::HashSet<u32>,
-);
+pub(super) type CodexProcess = crate::bridge_sdk::SpawnedStdio;
 
 pub(super) fn spawn_codex_session(
     args: &BridgeSpawnArgs<'_>,
@@ -36,33 +30,17 @@ pub(super) fn build_codex_session(
     process: CodexProcess,
     service: Option<&str>,
 ) -> CodexSession {
-    let (child, stdin, stdout, pgid, baseline) = process;
-    let io = build_codex_session_io(stdin, stdout);
     CodexSession {
-        child: tokio::sync::Mutex::new(Some(child)),
-        stdin: io.0,
-        stdout: io.1,
-        process_group_id: pgid,
-        spawn_pid_baseline: baseline,
-        reader_dead: io.2,
-        work_dir: args.cwd.to_path_buf(),
-        log: {
-            let mut log = crate::bridge_sdk::StreamLog::from_spawn(args);
-            log.last_response = io.3;
-            log
-        },
+        stdio: crate::bridge_sdk::StdioChild::new(
+            process,
+            args.cwd.to_path_buf(),
+            crate::bridge_sdk::StreamLog::from_spawn(args),
+        ),
         thread_id: std::sync::Mutex::new(None),
         turn_id: std::sync::Mutex::new(None),
         service: service.map(str::to_owned),
     }
 }
-
-type CodexSessionIo = (
-    std::sync::Arc<tokio::sync::Mutex<tokio::process::ChildStdin>>,
-    std::sync::Arc<tokio::sync::Mutex<tokio::io::BufReader<tokio::process::ChildStdout>>>,
-    std::sync::Arc<std::sync::atomic::AtomicBool>,
-    std::sync::Arc<std::sync::Mutex<String>>,
-);
 
 pub(crate) const CODEX_OUTER_SANDBOX_ENV: &str = "MALVIN_CODEX_OUTER_SANDBOX";
 
@@ -79,18 +57,6 @@ fn configure_codex_sandbox(cmd: &mut tokio::process::Command, outer_sandbox: boo
         cmd.arg("--dangerously-bypass-approvals-and-sandbox");
     }
     cmd.arg("-c").arg("sandbox_mode=\"danger-full-access\"");
-}
-
-pub(super) fn build_codex_session_io(
-    stdin: tokio::process::ChildStdin,
-    stdout: tokio::process::ChildStdout,
-) -> CodexSessionIo {
-    (
-        std::sync::Arc::new(tokio::sync::Mutex::new(stdin)),
-        std::sync::Arc::new(tokio::sync::Mutex::new(tokio::io::BufReader::new(stdout))),
-        std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
-        std::sync::Arc::new(std::sync::Mutex::new(String::new())),
-    )
 }
 
 pub(super) fn configured_codex_command(

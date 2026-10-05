@@ -24,7 +24,7 @@ fn malvin_checks_backup_round_trip_restores_workspace_file() {
     with_isolated_home(|work| {
         seed_malvin_checks(work, "ORIGINAL\n");
         let backup = backup_workspace_malvin_checks_if_present(work).unwrap();
-        let MalvinChecksBackup::Present(payload) = &backup else {
+        let MalvinChecksBackup::Present(payload, _) = &backup else {
             panic!("expected backup path");
         };
         assert!(payload.backup_path.is_file());
@@ -82,7 +82,7 @@ fn malvin_checks_backup_retries_on_existing_collision() {
         })
         .unwrap();
 
-        let MalvinChecksBackup::Present(payload) = &backup else {
+        let MalvinChecksBackup::Present(payload, _) = &backup else {
             panic!("expected backup path");
         };
 

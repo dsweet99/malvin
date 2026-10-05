@@ -52,7 +52,18 @@ fn emit_stdout_display_line_raw(display: &str) {
         CAPTURED_STDOUT_LINES.with(|lines| lines.borrow_mut().push(display.to_string()));
         return;
     }
+    #[cfg(test)]
     println!("{display}");
+    #[cfg(not(test))]
+    write_display_line(&mut std::io::stdout().lock(), display);
+}
+
+pub(crate) fn write_display_line(out: &mut impl std::io::Write, display: &str) {
+    if let Err(e) = writeln!(out, "{display}")
+        && e.kind() != std::io::ErrorKind::BrokenPipe
+    {
+        panic!("failed printing display line: {e}");
+    }
 }
 
 #[cfg(test)]
@@ -78,5 +89,25 @@ mod tests {
         assert!(take_captured_stdout().is_empty());
         set_stdout_suppressed(false);
         assert!(!super::stdout_suppressed());
+    }
+
+    struct FailingWriter(std::io::ErrorKind);
+
+    impl std::io::Write for FailingWriter {
+        fn write(&mut self, _: &[u8]) -> std::io::Result<usize> {
+            Err(self.0.into())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn closed_pipe_is_ignored_but_other_write_errors_panic() {
+        super::write_display_line(&mut FailingWriter(std::io::ErrorKind::BrokenPipe), "x");
+        let other = std::panic::catch_unwind(|| {
+            super::write_display_line(&mut FailingWriter(std::io::ErrorKind::StorageFull), "x");
+        });
+        assert!(other.is_err());
     }
 }

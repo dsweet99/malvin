@@ -6,10 +6,9 @@ use malvin::agent_or_cursor_agent_bin;
 use malvin::ansi_strip::strip_ansi_escapes;
 use malvin::command_output_timeout::{command_output_with_timeout, timeout_ms_from_env};
 use malvin::model_id::CURSOR_PREFIX;
-use malvin::output::{MALVIN_WHO, print_stdout_line};
 
-use super::line_matches_prefix;
-use super::models_cmd_parse::{print_parsed_or_fallback_prefixed, trim_trailing_tip_lines};
+use super::models_cmd_catalog::ModelListing;
+use super::models_cmd_parse::{models_display_lines_filtered, trim_trailing_tip_lines};
 
 pub const DEFAULT_CURSOR_LIST_MODELS_TIMEOUT_MS: u64 = 30_000;
 
@@ -21,22 +20,17 @@ pub fn cursor_list_models_timeout() -> Duration {
     )
 }
 
-pub(super) fn print_cursor_models(filter: Option<&str>) -> Result<(), String> {
-    if print_cursor_models_via_sdk(filter).is_ok() {
-        return Ok(());
-    }
-    print_cursor_models_via_cli(filter)
+pub(super) fn cursor_model_listing() -> Result<ModelListing, String> {
+    cursor_listing_via_sdk().or_else(|_| cursor_listing_via_cli())
 }
 
-fn print_cursor_models_via_sdk(filter: Option<&str>) -> Result<(), String> {
+fn cursor_listing_via_sdk() -> Result<ModelListing, String> {
     let output = run_cursor_sdk_models_js()?;
     let raw = String::from_utf8_lossy(&output.stdout);
     if !sdk_catalog_has_model_rows(&raw) {
         return Err("cursor SDK models returned an empty catalog".to_string());
     }
-    let rows = sdk_model_rows_from_stdout(&raw);
-    print_filtered_model_rows(&rows, filter);
-    Ok(())
+    Ok(ModelListing::rows(sdk_model_rows_from_stdout(&raw)))
 }
 
 pub(super) fn sdk_catalog_has_model_rows(raw: &str) -> bool {
@@ -81,14 +75,6 @@ pub(super) fn sdk_model_rows_from_stdout(raw: &str) -> Vec<String> {
     rows
 }
 
-fn print_filtered_model_rows(rows: &[String], filter: Option<&str>) {
-    for row in rows {
-        if line_matches_prefix(row, filter) {
-            print_stdout_line(MALVIN_WHO, row);
-        }
-    }
-}
-
 pub(super) fn resolve_models_cli() -> Result<PathBuf, String> {
     agent_or_cursor_agent_bin().ok_or_else(|| {
         "Neither `agent` nor `cursor-agent` was found on PATH. Install the Cursor CLI agent to list models (`malvin admin models`)."
@@ -96,7 +82,7 @@ pub(super) fn resolve_models_cli() -> Result<PathBuf, String> {
     })
 }
 
-pub(super) fn print_cursor_models_via_cli(filter: Option<&str>) -> Result<(), String> {
+pub(super) fn cursor_listing_via_cli() -> Result<ModelListing, String> {
     let bin = resolve_models_cli()?;
     let mut cmd = malvin::malvin_sandbox::malvin_std_command(&bin);
     cmd.arg("models");
@@ -120,6 +106,15 @@ pub(super) fn print_cursor_models_via_cli(filter: Option<&str>) -> Result<(), St
     let raw = String::from_utf8_lossy(&output.stdout);
     let text = strip_ansi_escapes(raw.as_ref());
     let cleaned = trim_trailing_tip_lines(&text);
-    print_parsed_or_fallback_prefixed(&cleaned, CURSOR_PREFIX, filter);
-    Ok(())
+    Ok(listing_from_cli_text(&cleaned, CURSOR_PREFIX))
+}
+
+pub(super) fn listing_from_cli_text(text: &str, prefix: &str) -> ModelListing {
+    models_display_lines_filtered(text, prefix, None).map_or_else(
+        || ModelListing {
+            unparsed: Some(text.to_string()),
+            ..ModelListing::default()
+        },
+        ModelListing::rows,
+    )
 }

@@ -1,5 +1,3 @@
-use malvin::output::{MALVIN_WHO, print_stdout_line, print_stdout_text};
-
 pub(super) fn trim_trailing_tip_lines(text: &str) -> String {
     let lines: Vec<&str> = text.lines().collect();
     let mut end = lines.len();
@@ -55,21 +53,6 @@ pub(super) fn models_display_lines_filtered(
 pub(super) fn is_non_model_banner_line(line: &str) -> bool {
     let low = line.trim().to_ascii_lowercase();
     low == "available models" || low.starts_with("no models")
-}
-
-pub(super) fn print_parsed_or_fallback_prefixed(text: &str, prefix: &str, filter: Option<&str>) {
-    match models_display_lines_filtered(text, prefix, filter) {
-        Some(lines) => {
-            for line in lines {
-                print_stdout_line(MALVIN_WHO, &line);
-            }
-        }
-        None => {
-            if filter.is_none() {
-                print_stdout_text(MALVIN_WHO, text);
-            }
-        }
-    }
 }
 
 pub(super) fn parse_model_line(line: &str) -> Option<(&str, String)> {

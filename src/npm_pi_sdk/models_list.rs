@@ -1,6 +1,7 @@
 use std::process::Command;
 
 use super::discover::{resolve_npm_pi_cli_entry, resolve_npm_pi_entry};
+use super::models_rpc::BASE_THINKING_LEVELS;
 
 pub fn refresh_npm_pi_models() -> Result<(), String> {
     let entry = resolve_npm_pi_cli_entry()?;
@@ -24,6 +25,10 @@ pub fn refresh_npm_pi_models() -> Result<(), String> {
 }
 
 pub fn list_npm_pi_display_models() -> Result<Vec<(String, String)>, String> {
+    super::models_rpc::list_rpc_models().or_else(|_| list_table_models())
+}
+
+fn list_table_models() -> Result<Vec<(String, String)>, String> {
     let entry = resolve_npm_pi_entry()?;
     let node = crate::cursor_sdk::node_resolve::resolve_node_bin()?;
     let output = Command::new(node)
@@ -70,13 +75,12 @@ fn parse_list_models_table(stdout: &str) -> Vec<(String, String)> {
             continue;
         }
         let id = format!("{provider}/{model}");
-        let thinking = cols.get(4).copied().unwrap_or("no");
-        let detail = if thinking == "yes" {
-            format!("{model}\tthinking=yes")
+        let levels = if cols.get(4).copied() == Some("yes") {
+            BASE_THINKING_LEVELS.join("|")
         } else {
-            format!("{model}\tthinking=no")
+            "off".to_string()
         };
-        out.push((id, detail));
+        out.push((id, format!("{model}\tthinking={levels}")));
     }
     out
 }
@@ -95,9 +99,9 @@ anthropic   claude-4     200K     32K      yes       yes
         let rows = parse_list_models_table(sample);
         assert_eq!(rows.len(), 2);
         assert_eq!(rows[0].0, "openai/gpt-4o");
-        assert!(rows[0].1.contains("thinking=no"));
+        assert_eq!(rows[0].1, "gpt-4o\tthinking=off");
         assert_eq!(rows[1].0, "anthropic/claude-4");
-        assert!(rows[1].1.contains("thinking=yes"));
+        assert_eq!(rows[1].1, "claude-4\tthinking=off|minimal|low|medium|high");
     }
 
     #[test]

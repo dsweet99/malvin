@@ -10,7 +10,7 @@ fn poisoned_disk_snapshot_does_not_change_restored_workspace_content() {
         std::fs::create_dir_all(work.join(".malvin")).unwrap();
         std::fs::write(work.join(".malvin/gates"), "make lint\n").unwrap();
         let backup = backup_workspace_malvin_checks_if_present(work).unwrap();
-        let MalvinChecksBackup::Present(payload) = &backup else {
+        let MalvinChecksBackup::Present(payload, _) = &backup else {
             panic!("expected backup payload");
         };
 

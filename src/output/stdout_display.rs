@@ -205,6 +205,19 @@ mod tests {
     }
 
     #[test]
+    fn remote_ansi_payload_is_plain() {
+        use crate::output::WHO_R;
+        use crate::terminal_palette::{ANSI_RESET, ansi_who_tag};
+
+        let line = format_line_stdout_ansi(WHO_R, "added 11 packages in 3s");
+        assert_eq!(
+            line,
+            format!("{}r|{ANSI_RESET}added 11 packages in 3s", ansi_who_tag())
+        );
+        assert_eq!(format_line_stdout(WHO_R, "x"), "r|x");
+    }
+
+    #[test]
     fn heartbeat_rendered_if_due_covers_arm_and_due_paths() {
         use std::time::{Duration, Instant};
 

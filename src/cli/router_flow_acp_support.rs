@@ -111,33 +111,35 @@ async fn finish_router_a_maybe_b(
     model: &str,
     creative: bool,
 ) -> Result<bool, String> {
-    let chat = input
-        .client
-        .last_coder_prompt_agent_response()
-        .unwrap_or_default();
-    let done = chat_has_malvin_done(&chat);
-    if !done {
-        let no_kpop = input.router.no_kpop;
-        let router_b =
-            router_flow_prompt::build_router_b_prompt(router_flow_prompt::RouterBPromptInput {
-                store: input.prompt_store,
-                artifacts: input.artifacts,
-                model,
-                creative,
-                no_kpop,
-            })?;
-        run_router_b_coder_prompt(
-            input.client,
-            &router_b,
-            log_path,
-            router_flow_prompt::router_b_prompt_label(malvin::prompts::RouterBPromptFlags {
-                creative,
-                no_kpop,
-            }),
-        )
-        .await?;
+    if last_response_has_malvin_done(input.client) {
+        return Ok(true);
     }
-    Ok(done)
+    let no_kpop = input.router.no_kpop;
+    let router_b =
+        router_flow_prompt::build_router_b_prompt(router_flow_prompt::RouterBPromptInput {
+            store: input.prompt_store,
+            artifacts: input.artifacts,
+            model,
+            creative,
+            no_kpop,
+        })?;
+    run_router_b_coder_prompt(
+        input.client,
+        &router_b,
+        log_path,
+        router_flow_prompt::router_b_prompt_label(malvin::prompts::RouterBPromptFlags {
+            creative,
+            no_kpop,
+        }),
+    )
+    .await?;
+    Ok(last_response_has_malvin_done(input.client))
+}
+
+pub(crate) fn last_response_has_malvin_done(client: &malvin::agent_backend::SdkClient) -> bool {
+    client
+        .last_coder_prompt_agent_response()
+        .is_some_and(|chat| chat_has_malvin_done(&chat))
 }
 
 #[cfg(test)]
@@ -147,3 +149,7 @@ mod router_flow_acp_support_tests;
 #[cfg(test)]
 #[path = "router_flow_acp_support_kiss_cov_tests.rs"]
 mod router_flow_acp_support_kiss_cov_tests;
+
+#[cfg(test)]
+#[path = "router_flow_acp_support_done_tests.rs"]
+mod router_flow_acp_support_done_tests;

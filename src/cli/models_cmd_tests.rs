@@ -73,13 +73,10 @@ fn models_subcommand_parse_invokes_cli_helpers() {
 }
 
 #[cfg(unix)]
-fn run_models_reads_fake_agent_models_output() {
+fn write_fake_models_agent(dir: &std::path::Path) -> std::path::PathBuf {
     use std::os::unix::fs::PermissionsExt;
 
-    use crate::repo_checks::set_fake_command_dir;
-
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let agent = tmp.path().join("agent");
+    let agent = dir.join("agent");
     std::fs::write(
         &agent,
         "#!/bin/sh\nif [ \"$1\" = models ]; then printf 'composer-2 — Fast\\nTip: upgrade\\n'; exit 0; fi\nexit 1\n",
@@ -88,8 +85,21 @@ fn run_models_reads_fake_agent_models_output() {
     let mut perms = std::fs::metadata(&agent).expect("metadata").permissions();
     perms.set_mode(0o755);
     std::fs::set_permissions(&agent, perms).expect("chmod fake agent");
+    agent
+}
+
+#[cfg(unix)]
+fn run_models_reads_fake_agent_models_output() {
+    use crate::repo_checks::set_fake_command_dir;
+
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let agent = write_fake_models_agent(tmp.path());
     let _guard = set_fake_command_dir(tmp.path());
+    malvin::output::enable_stdout_capture();
     print_cursor_models_via_cli_for_test(Some("cursor:")).expect("fake agent models");
+    let out = malvin::output::take_captured_stdout();
+    assert!(out.contains("cursor:composer-2\tFast"), "{out}");
+    assert!(!out.contains("Tip"), "{out}");
     let path = resolve_models_cli().expect("fake agent on fake PATH");
     assert_eq!(path, agent);
 }

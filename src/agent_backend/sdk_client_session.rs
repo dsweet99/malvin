@@ -3,7 +3,7 @@ use std::path::Path;
 use crate::acp::{AgentError, AuthError};
 use crate::bridge_sdk::SDK_BRIDGE_MAX_AGE;
 
-use super::backend_lifecycle::BackendLifecycle;
+use super::backend_lifecycle::backend_lifecycle;
 use super::sdk_client::SdkClient;
 
 #[path = "sdk_client_session_spawn.rs"]
@@ -24,7 +24,7 @@ impl CoderSessionEnsure {
 
 impl SdkClient {
     pub fn ensure_authenticated(&self) -> Result<(), AuthError> {
-        BackendLifecycle::of(self.model.backend).ensure_authenticated(&self.model)
+        backend_lifecycle(self.model.backend).ensure_authenticated(&self.model)
     }
 
     pub async fn start_coder_session(
@@ -71,7 +71,7 @@ impl SdkClient {
         let Some(s) = self.coder.take_live_session() else {
             return Ok(());
         };
-        if BackendLifecycle::of(self.model.backend).tracks_resume_agent_id() {
+        if backend_lifecycle(self.model.backend).tracks_resume_agent_id() {
             spawn::remember_agent_id_from(self, &s);
         }
         s.shutdown().await?;

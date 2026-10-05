@@ -2,7 +2,7 @@
 
 mod auth;
 pub mod bridge_install;
-mod bridge_install_npm;
+pub(crate) mod bridge_install_npm;
 pub mod bridge_path;
 mod bridge_stderr;
 pub mod node_resolve;

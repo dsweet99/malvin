@@ -1,8 +1,7 @@
 #![cfg_attr(test, allow(unsafe_code))]
 
 mod auth;
-mod cache_clock;
-mod http_fetch;
+pub(crate) mod http_fetch;
 mod local_context;
 mod local_endpoint;
 mod local_lifecycle;
@@ -21,6 +20,7 @@ mod map_event_summary;
 pub(crate) mod model_cost;
 mod openrouter_pricing;
 mod portkey_pricing;
+mod pricing_source;
 mod pricing_cache_file;
 mod provider_metadata;
 mod sdk_usage_fields;

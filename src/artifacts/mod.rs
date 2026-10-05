@@ -12,16 +12,13 @@ pub use create::{
 
 pub use crate::session_dotfile_backup::{
     GitignoreBackup, MalvinChecksBackup, MalvinConfigWorkspaceBackup, SessionDotfileBackups,
-    VisionBackup, backup_workspace_gitignore_if_present,
-    backup_workspace_gitignore_if_present_with_id, backup_workspace_malvin_checks_if_present,
+    VisionBackup, backup_workspace_malvin_checks_if_present,
     backup_workspace_malvin_checks_if_present_with_id,
     backup_workspace_malvin_config_workspace_if_present,
     backup_workspace_malvin_config_workspace_if_present_with_id,
-    backup_workspace_vision_if_present, backup_workspace_vision_if_present_with_id,
     merge_and_sanitize_for_gate_restore, merge_for_gate_restore,
-    repair_invalid_malvin_home_config_on_disk, restore_workspace_gitignore_backup,
-    restore_workspace_malvin_checks_backup, restore_workspace_malvin_config_workspace_backup,
-    restore_workspace_session_dotfiles, restore_workspace_vision_backup,
+    repair_invalid_malvin_home_config_on_disk, restore_workspace_malvin_checks_backup,
+    restore_workspace_malvin_config_workspace_backup, restore_workspace_session_dotfiles,
 };
 
 pub use md_request::{

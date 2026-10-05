@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, NaiveDateTime, Utc};
 
-use crate::output::{MALVIN_WHO, print_log_warning, print_stdout_line};
+use crate::output::{MALVIN_WHO, print_log_error, print_log_warning, print_stdout_line};
 use crate::workspace_paths::{malvin_home_logs_root, malvin_logs_root};
 
 pub use crate::log_gc_config::load_logs_gc_config;
@@ -68,6 +68,36 @@ pub(crate) fn dir_size_inner(path: &Path) -> std::io::Result<u64> {
         total = path.metadata()?.len();
     }
     Ok(total)
+}
+
+pub(crate) fn remove_tree(path: &Path) -> Result<(), (PathBuf, std::io::Error)> {
+    let fail = |e: std::io::Error| (path.to_path_buf(), e);
+    if std::fs::symlink_metadata(path).map_err(fail)?.is_dir() {
+        for entry in std::fs::read_dir(path).map_err(fail)? {
+            remove_tree(&entry.map_err(fail)?.path())?;
+        }
+        std::fs::remove_dir(path).map_err(fail)
+    } else {
+        std::fs::remove_file(path).map_err(fail)
+    }
+}
+
+pub(crate) fn report_undeletable(path: &Path, e: &std::io::Error) {
+    let abs = std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf());
+    print_log_error(&format!(
+        "log GC skipped the rest of this log folder: could not delete {}: {e}",
+        abs.display()
+    ));
+}
+
+pub(crate) fn remove_tree_or_report(path: &Path) -> bool {
+    match remove_tree(path) {
+        Ok(()) => true,
+        Err((stuck, e)) => {
+            report_undeletable(&stuck, &e);
+            false
+        }
+    }
 }
 
 fn prune_logs(work_dir: &Path, protect_run: Option<&Path>) -> PruneResult {

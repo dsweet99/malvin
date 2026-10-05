@@ -8,6 +8,8 @@ mod entrypoint_from;
 mod entrypoint_gates_only;
 #[path = "entrypoint_info_flags.rs"]
 mod entrypoint_info_flags;
+#[path = "entrypoint_modal.rs"]
+mod entrypoint_modal;
 #[path = "entrypoint_short_help.rs"]
 mod entrypoint_short_help;
 pub use entrypoint_dispatch::{

@@ -1,11 +1,14 @@
 use crate::acp::AgentError;
 
+use super::TurnWait;
 use super::session::BridgeSession;
 use super::session_handshake::wait_for_ok;
-use super::session_io_productive::{note_productive_bridge_event, tools_in_flight};
 use super::timing::{note_sdk_step, record_sdk_usage};
 use crate::bridge_protocol::{BridgeEvent, BridgeRequest, decode_event, encode_request};
+use crate::model_id::ModelBackend;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
+
+const BRIDGE: ModelBackend = ModelBackend::Cursor;
 
 pub(crate) struct CreateArgs<'a> {
     pub cwd: &'a std::path::Path,
@@ -51,30 +54,32 @@ pub(crate) async fn send_resume(
 
 pub async fn write_request(session: &BridgeSession, req: &BridgeRequest) -> Result<(), AgentError> {
     let line = encode_request(req).map_err(AgentError)?;
-    let mut stdin = session.stdin.lock().await;
+    let label = BRIDGE.wire_label();
+    let mut stdin = session.stdio.stdin.lock().await;
     stdin
         .write_all(format!("{line}\n").as_bytes())
         .await
-        .map_err(|e| AgentError::session_dead(format!("bridge write: {e}")))?;
+        .map_err(|e| AgentError::session_dead(format!("{label} write: {e}")))?;
     stdin
         .flush()
         .await
-        .map_err(|e| AgentError::session_dead(format!("bridge flush: {e}")))?;
+        .map_err(|e| AgentError::session_dead(format!("{label} flush: {e}")))?;
     drop(stdin);
     Ok(())
 }
 
 pub(crate) async fn read_event(session: &BridgeSession) -> Result<BridgeEvent, AgentError> {
+    let label = BRIDGE.wire_label();
     let mut line = String::new();
     let n = {
-        let mut stdout = session.stdout.lock().await;
+        let mut stdout = session.stdio.stdout.lock().await;
         stdout
             .read_line(&mut line)
             .await
-            .map_err(|e| AgentError::session_dead(format!("bridge read: {e}")))?
+            .map_err(|e| AgentError::session_dead(format!("{label} read: {e}")))?
     };
     if n == 0 {
-        return Err(AgentError::session_dead("bridge stdout closed"));
+        return Err(AgentError::session_dead(format!("{label} stdout closed")));
     }
     decode_event(line.trim()).map_err(AgentError)
 }
@@ -84,12 +89,12 @@ pub(crate) async fn drain_until_run_done(session: &BridgeSession) -> Result<(), 
     let mut turn = super::DrainIdleTurn::new();
     let mut last_usage: Option<serde_json::Value> = None;
     let labels = super::DrainIdleLabels {
-        prefix: crate::acp::DRAIN_IDLE_PREFIX_BRIDGE,
+        prefix: crate::model_id::ModelBackend::Cursor.drain_idle_prefix(),
         waiting_for: "run_done",
     };
     loop {
         let ev = read_event_with_idle_timeout(session, "run_done", &mut turn).await?;
-        note_productive_bridge_event(session, &mut turn, &ev);
+        TurnWait::of(session).note_productive_event(&mut turn, &ev);
         match &ev {
             BridgeEvent::Step { .. } => note_sdk_step(session.timing.as_ref()),
             BridgeEvent::Usage { usage } => {
@@ -118,15 +123,10 @@ async fn read_event_with_idle_timeout(
     turn: &mut super::DrainIdleTurn,
 ) -> Result<BridgeEvent, AgentError> {
     let labels = super::DrainIdleLabels {
-        prefix: crate::acp::DRAIN_IDLE_PREFIX_BRIDGE,
+        prefix: crate::model_id::ModelBackend::Cursor.drain_idle_prefix(),
         waiting_for,
     };
-    let health = Some(super::DrainIdleHealthCtx {
-        process_group_id: session.process_group_id,
-        spawn_pid_baseline: &session.spawn_pid_baseline,
-        tools_in_flight: tools_in_flight(&session.log),
-    });
-    super::await_next_with_idle_in_turn(labels, health, read_event(session), turn).await
+    super::await_turn_event(TurnWait::of(session), labels, read_event(session), turn).await
 }
 
 async fn discard_optional_trailing_run_done(session: &BridgeSession) {

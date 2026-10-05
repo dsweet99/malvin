@@ -27,6 +27,7 @@ pub(crate) use stdout_display::{
     format_heartbeat_stdout_ansi, format_line_stdout, format_line_stdout_ansi, logical_lines,
 };
 
+pub(crate) use do_dm_emit::emit_wrapped_do_dm_line;
 pub use do_dm_filter::feed_do_dm_stdout_text;
 pub use sentinel::{DM_END, DM_START, MALVIN_DONE, is_sentinel_line};
 pub use do_dm_mode::{
@@ -119,7 +120,7 @@ pub fn append_outgoing_prompt_log_lines(body: &str) {
 }
 
 pub use who_tag::{
-    LOG_TAG_INNER_WIDTH, WHO_A, WHO_B, WHO_H, WHO_M, WHO_O, WHO_T, WHO_U,
+    LOG_TAG_INNER_WIDTH, WHO_A, WHO_B, WHO_H, WHO_M, WHO_O, WHO_R, WHO_T, WHO_U,
     format_acp_directional_tag_prefix, format_log_tag_inner, format_who_tag_delim,
     format_who_tag_prefix, is_command_prelude_line,
 };

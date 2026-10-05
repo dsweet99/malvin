@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use super::super::model_cost::ModelCost;
 
-use super::super::cache_clock::unix_now_secs;
+use crate::clock::unix_now_secs;
 use super::{PricedEntry, PricingCacheFile};
 
 const TTL: Duration = Duration::from_hours(24);

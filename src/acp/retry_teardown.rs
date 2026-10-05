@@ -26,24 +26,7 @@ const CHILD_OR_BRIDGE_DEAD_NEEDLES: &[&str] = &[
     "acp child process is not running",
     "acp child process is zombie",
     "acp stdout closed",
-    "bridge stdout closed",
-    "bridge write:",
-    "bridge flush:",
-    "bridge read:",
     "bridge drain timed out",
-    crate::acp::DRAIN_IDLE_PREFIX_BRIDGE,
-    crate::acp::DRAIN_IDLE_PREFIX_PI,
-    "npm pi stdout closed",
-    "npm pi write:",
-    "npm pi flush:",
-    "npm pi read:",
-    "npm pi jsonl parse:",
-    crate::acp::DRAIN_IDLE_PREFIX_CODEX,
-    "codex stdout closed",
-    "codex write:",
-    "codex flush:",
-    "codex read:",
-    "codex json-rpc parse:",
     "currently streaming",
     "iterable is closed",
     "connection stalled",
@@ -51,6 +34,17 @@ const CHILD_OR_BRIDGE_DEAD_NEEDLES: &[&str] = &[
 
 fn text_has_any(text: &str, needles: &[&str]) -> bool {
     needles.iter().any(|n| text.contains(n))
+}
+
+fn text_has_backend_dead_marker(text: &str) -> bool {
+    crate::model_id::ModelBackend::ALL.iter().any(|b| {
+        let spec = b.spec();
+        text.contains(spec.drain_idle_prefix())
+            || spec
+                .dead_session_markers()
+                .iter()
+                .any(|marker| text.contains(marker.as_str()))
+    })
 }
 
 fn retry_stop_fault(msg: &str) -> Option<crate::acp::AgentFault> {
@@ -69,7 +63,8 @@ fn retry_stop_fault(msg: &str) -> Option<crate::acp::AgentFault> {
 
 fn transport_fault(msg: &str) -> crate::acp::AgentFault {
     use crate::acp::AgentFault;
-    if text_has_any(&msg.to_ascii_lowercase(), CHILD_OR_BRIDGE_DEAD_NEEDLES) {
+    let text = msg.to_ascii_lowercase();
+    if text_has_any(&text, CHILD_OR_BRIDGE_DEAD_NEEDLES) || text_has_backend_dead_marker(&text) {
         return AgentFault::SessionDead;
     }
     if agent_string_is_cursor_agent_busy(msg) {

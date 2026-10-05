@@ -49,22 +49,16 @@ fn kiss_cov_session_dotfile_backups_construct_destructure() {
 
 #[test]
 fn kiss_cov_gitignore_file_backup_construct_destructure() {
-    let file = super::gitignore_tree::GitignoreFileBackup {
-        rel: std::path::PathBuf::from(".gitignore"),
-        bytes: b"target/\n".to_vec(),
-    };
-    let super::gitignore_tree::GitignoreFileBackup { rel, bytes } = file;
+    let file = super::gitignore_tree::GitignoreFileBackup::new(std::path::PathBuf::from(".gitignore"), b"target/\n".to_vec());
+    let super::gitignore_tree::GitignoreFileBackup { rel, bytes, .. } = file;
     assert_eq!(rel, std::path::PathBuf::from(".gitignore"));
     assert_eq!(bytes, b"target/\n");
 }
 
 #[test]
 fn kiss_cov_vision_file_backup_construct_destructure() {
-    let file = super::vision_tree::VisionFileBackup {
-        rel: std::path::PathBuf::from("VISION.md"),
-        bytes: b"# Vision\n".to_vec(),
-    };
-    let super::vision_tree::VisionFileBackup { rel, bytes } = file;
+    let file = super::vision_tree::VisionFileBackup::new(std::path::PathBuf::from("VISION.md"), b"# Vision\n".to_vec());
+    let super::vision_tree::VisionFileBackup { rel, bytes, .. } = file;
     assert_eq!(rel, std::path::PathBuf::from("VISION.md"));
     assert_eq!(bytes, b"# Vision\n");
 }

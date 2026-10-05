@@ -315,3 +315,21 @@ fn bracket_format_split_metamorphic_and_reject_fuzz() {
             .contains(']')
     );
 }
+
+#[test]
+fn every_registered_backend_spec_is_self_consistent() {
+    for backend in ModelBackend::ALL {
+        let spec = backend.spec();
+        assert_eq!(spec.prefix(), format!("{}:", spec.label()));
+        assert_eq!(backend.label(), spec.label());
+        assert!(spec.drain_idle_prefix().ends_with("timed out"));
+        let sample = format!("{}openai/gpt-5", spec.prefix());
+        let parsed = spec
+            .parse_slug("openai/gpt-5")
+            .unwrap_or_else(|e| panic!("{sample}: {e}"));
+        assert_eq!(parsed.backend, backend);
+        assert_eq!(parse_model_id(&sample).expect("parse"), parsed);
+        assert_eq!(parsed.canonical(), sample);
+        assert_eq!(backend.bridge_wire_model(&parsed), "openai/gpt-5");
+    }
+}

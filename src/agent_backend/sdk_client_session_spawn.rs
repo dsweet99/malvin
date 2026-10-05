@@ -6,12 +6,12 @@ use crate::nested_budget_scopes::BudgetScopeLayer;
 use super::super::acp_attempt_loop::{BackoffChoice, RetrySpec, retry_until_ok};
 use crate::bridge_sdk::BridgeSpawnArgs;
 
-use super::super::backend_lifecycle::BackendLifecycle;
+use super::super::backend_lifecycle::{BackendLifecycle, backend_lifecycle};
 use super::super::sdk_client::{BegunCoderSession, SdkClient};
 use super::super::sdk_session::SdkSession;
 
-const fn lifecycle(client: &SdkClient) -> BackendLifecycle {
-    BackendLifecycle::of(client.model.backend)
+const fn lifecycle(client: &SdkClient) -> &'static dyn BackendLifecycle {
+    backend_lifecycle(client.model.backend)
 }
 
 fn cursor_resume_id(client: &SdkClient) -> Option<String> {

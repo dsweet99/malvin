@@ -10,15 +10,12 @@ const NPM_CI_ARGS: &[&str] = &[
     "--prefer-offline",
 ];
 
-pub(super) fn npm_ci(dest: &Path) -> Result<(), String> {
+pub(crate) fn npm_ci(dest: &Path, label: &str) -> Result<(), String> {
     let node = super::node_resolve::resolve_node_bin()?;
     let npm = resolve_npm(&node)?;
     crate::output::print_stderr_line(
         crate::output::MALVIN_WHO,
-        &format!(
-            "installing Cursor SDK (@cursor/sdk) into {} with npm ci…",
-            dest.display()
-        ),
+        &format!("installing {label} into {} with npm ci…", dest.display()),
     );
     let status = npm_command(&npm, &node, dest)
         .status()

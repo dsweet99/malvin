@@ -3,6 +3,9 @@ mod model_id_params;
 pub use model_id_params::{format_bracket_params, split_bracket_params};
 #[path = "model_id_legacy.rs"]
 mod model_id_legacy;
+#[path = "model_id_spec.rs"]
+mod model_id_spec;
+pub use model_id_spec::BackendSpec;
 
 pub const CURSOR_PREFIX: &str = "cursor:";
 pub const PI_PREFIX: &str = "pi:";
@@ -30,31 +33,36 @@ pub enum ModelBackend {
 }
 
 impl ModelBackend {
+    pub const ALL: [Self; 3] = [Self::Cursor, Self::Pi, Self::Codex];
+
     #[must_use]
-    pub const fn label(self) -> &'static str {
+    pub const fn spec(self) -> &'static dyn BackendSpec {
         match self {
-            Self::Cursor => "cursor",
-            Self::Pi => "pi",
-            Self::Codex => "codex",
+            Self::Cursor => &model_id_spec::CursorSpec,
+            Self::Pi => &model_id_spec::PiSpec,
+            Self::Codex => &model_id_spec::CodexSpec,
         }
     }
 
     #[must_use]
-    pub const fn drain_idle_prefix(self) -> &'static str {
-        match self {
-            Self::Cursor => "bridge timed out",
-            Self::Pi => "npm pi rpc timed out",
-            Self::Codex => "codex timed out",
-        }
+    pub fn label(self) -> &'static str {
+        self.spec().label()
+    }
+
+    #[must_use]
+    pub fn drain_idle_prefix(self) -> &'static str {
+        self.spec().drain_idle_prefix()
+    }
+
+    #[must_use]
+    pub fn wire_label(self) -> &'static str {
+        self.spec().wire_label()
     }
 
     #[must_use]
     pub fn bridge_wire_model(self, model: &ParsedModel) -> String {
         debug_assert_eq!(self, model.backend);
-        match self {
-            Self::Cursor => model.cursor_bridge_model(),
-            Self::Pi | Self::Codex => model.slug.clone(),
-        }
+        self.spec().wire_model(model)
     }
 }
 
@@ -74,11 +82,7 @@ impl std::fmt::Display for ParsedModel {
 impl ParsedModel {
     #[must_use]
     pub fn canonical(&self) -> String {
-        let base = match self.backend {
-            ModelBackend::Cursor => format!("{CURSOR_PREFIX}{}", self.slug),
-            ModelBackend::Pi => format!("{PI_PREFIX}{}", self.slug),
-            ModelBackend::Codex => format!("{CODEX_PREFIX}{}", self.slug),
-        };
+        let base = format!("{}{}", self.backend.spec().prefix(), self.slug);
         if self.params.is_empty() {
             base
         } else {
@@ -143,67 +147,17 @@ pub fn parse_model_id(raw: &str) -> Result<ParsedModel, String> {
     if raw.is_empty() {
         return Err(UNPREFIXED_MODEL_MESSAGE.to_string());
     }
-    if let Some(rest) = raw.strip_prefix(CURSOR_PREFIX) {
-        return parsed(ModelBackend::Cursor, rest);
-    }
-    if let Some(rest) = raw.strip_prefix(PI_PREFIX) {
-        return parse_provider_slash_model(rest, ModelBackend::Pi, "pi");
-    }
-    if let Some(rest) = raw.strip_prefix(CODEX_PREFIX) {
-        return parse_codex(rest);
+    for backend in ModelBackend::ALL {
+        let spec = backend.spec();
+        if let Some(rest) = raw.strip_prefix(spec.prefix()) {
+            return spec.parse_slug(rest);
+        }
     }
     Err(model_id_legacy::legacy_or_unprefixed_error(raw))
 }
 
-fn parse_provider_slash_model(
-    rest: &str,
-    backend: ModelBackend,
-    prefix_label: &str,
-) -> Result<ParsedModel, String> {
-    let rest = rest.trim();
-    if rest.is_empty() {
-        return Err(UNPREFIXED_MODEL_MESSAGE.to_string());
-    }
-    let (slug, params) = split_bracket_params(rest)?;
-    let err = || {
-        format!(
-            "{prefix_label} model id must be `{prefix_label}:<provider>/<model>` (got `{prefix_label}:{rest}`)"
-        )
-    };
-    let Some((provider, model)) = split_first_slash(&slug) else {
-        return Err(err());
-    };
-    if provider.is_empty() || model.is_empty() {
-        return Err(err());
-    }
-    model_id_params::validate_pi_thinking_params(&params)?;
-    Ok(ParsedModel {
-        backend,
-        slug,
-        params,
-    })
-}
-
 fn split_first_slash(s: &str) -> Option<(&str, &str)> {
     s.split_once('/')
-}
-
-fn parse_codex(rest: &str) -> Result<ParsedModel, String> {
-    let model = parsed(ModelBackend::Codex, rest)?;
-    model_id_params::validate_codex_params(&model.params)?;
-    Ok(model)
-}
-
-fn parsed(backend: ModelBackend, slug: &str) -> Result<ParsedModel, String> {
-    let (slug, params) = split_bracket_params(slug)?;
-    if slug.is_empty() {
-        return Err(UNPREFIXED_MODEL_MESSAGE.to_string());
-    }
-    Ok(ParsedModel {
-        backend,
-        slug,
-        params,
-    })
 }
 
 pub fn require_config_model(raw: &str) -> Result<ParsedModel, String> {

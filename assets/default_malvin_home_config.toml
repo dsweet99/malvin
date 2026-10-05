@@ -5,8 +5,12 @@ time_since_last_call_seconds = 600
 theme = "dark"
 
 # Short names for `--model` / `[agent].model` (no ':' in the key).
-# [nicknames]
+# [aliases.models]
 # astra = "pi:openrouter/openai/this/is/too/long/gpt-astra"
+
+# Short names for `--remote` (not `modal`; no ':', '[', ']', ',' or '=' in the key).
+# [aliases.remotes]
+# big = "modal:sandbox[gpu=A100,mem=32,timeout=2h]"
 
 [agent]
 model = "cursor:auto"

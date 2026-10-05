@@ -3,9 +3,10 @@ use std::time::Instant;
 use super::session::CodexSession;
 use crate::acp::AgentError;
 use crate::bridge_protocol::BridgeEvent;
+use crate::bridge_sdk::{DrainIdleTurn, TurnProtocol};
 
 #[derive(Default)]
-pub(super) struct TurnState {
+pub(crate) struct TurnState {
     pub(super) response_text: String,
     pub(super) turn_id: Option<String>,
     pub(super) usage: Option<serde_json::Value>,
@@ -13,23 +14,26 @@ pub(super) struct TurnState {
     pub(super) counted_step: bool,
 }
 
-pub(super) async fn consume_codex_turn(session: &CodexSession) -> Result<(), AgentError> {
-    let mut state = TurnState::default();
-    let mut turn = crate::bridge_sdk::DrainIdleTurn::new();
-    loop {
-        let value = super::session_io::read_json_waiting(session, "turn event", &mut turn).await?;
-        if let Some(err) = rpc_error(&value) {
-            return Err(err);
+impl TurnProtocol for CodexSession {
+    type State = TurnState;
+    const WAITING_FOR: &'static str = "turn event";
+
+    async fn handle(
+        &self,
+        value: &serde_json::Value,
+        state: &mut TurnState,
+        turn: &mut DrainIdleTurn,
+    ) -> Option<Result<(), AgentError>> {
+        if let Some(err) = rpc_error(value) {
+            return Some(Err(err));
         }
-        capture_rpc_turn_id(session, &mut state, &value);
-        if let Some(result) = handle_codex_event(session, &value, &mut state) {
-            return result;
-        }
-        turn.check_max_deadline(crate::bridge_sdk::DrainIdleLabels {
-            prefix: crate::acp::DRAIN_IDLE_PREFIX_CODEX,
-            waiting_for: "turn event",
-        })?;
+        capture_rpc_turn_id(self, state, value);
+        handle_codex_event(self, value, state, turn)
     }
+}
+
+pub(super) async fn consume_codex_turn(session: &CodexSession) -> Result<(), AgentError> {
+    crate::bridge_sdk::consume_turn(session, TurnState::default()).await
 }
 
 pub(super) fn rpc_error(value: &serde_json::Value) -> Option<AgentError> {
@@ -52,10 +56,11 @@ fn capture_rpc_turn_id(session: &CodexSession, state: &mut TurnState, value: &se
     remember_turn_id(session, state, id);
 }
 
-fn handle_codex_event(
+pub(super) fn handle_codex_event(
     session: &CodexSession,
     value: &serde_json::Value,
     state: &mut TurnState,
+    drain: &mut crate::bridge_sdk::DrainIdleTurn,
 ) -> Option<Result<(), AgentError>> {
     let method = value.get("method").and_then(|v| v.as_str()).unwrap_or("");
     if method == "error" {
@@ -74,7 +79,7 @@ fn handle_codex_event(
             std::mem::take(state),
         ));
     }
-    emit_turn_stream(session, method, value, state);
+    emit_turn_stream(session, value, state, drain);
     None
 }
 
@@ -112,15 +117,18 @@ fn event_turn_id(value: &serde_json::Value) -> Option<&str> {
 
 fn emit_turn_stream(
     session: &CodexSession,
-    method: &str,
     value: &serde_json::Value,
     state: &mut TurnState,
+    drain: &mut crate::bridge_sdk::DrainIdleTurn,
 ) {
     if !event_turn_matches(state, value) {
         return;
     }
+    let method = value.get("method").and_then(|v| v.as_str()).unwrap_or("");
     let params = value.get("params").unwrap_or(&serde_json::Value::Null);
+    let wait = crate::bridge_sdk::TurnWait::of(session);
     for ev in super::map_event::map_codex_stream_events(method, params) {
+        wait.note_productive_event(drain, &ev);
         if let BridgeEvent::Assistant { text } = &ev {
             state.response_text.push_str(text);
             if !state.counted_step {

@@ -4,7 +4,7 @@ use crate::acp::{AgentError, AgentFault, CoderPromptOptions};
 use crate::nested_budget_scopes::BudgetScopeLayer;
 
 use super::acp_attempt_loop::{BackoffChoice, RetrySpec, retry_until_ok};
-use super::backend_lifecycle::BackendLifecycle;
+use super::backend_lifecycle::backend_lifecycle;
 use super::sdk_client::SdkClient;
 use super::sdk_client_active::ActiveCoderSession;
 use super::sdk_client_session_header::send_bound_session_header;
@@ -80,8 +80,7 @@ pub(super) async fn teardown_sdk_session_after_transport_error(
     if !err.requires_coder_session_teardown() {
         return;
     }
-    let forget_agent = BackendLifecycle::of(client.model.backend)
-        .forgets_resume_id_on_busy_teardown()
+    let forget_agent = backend_lifecycle(client.model.backend).forgets_resume_id_on_busy_teardown()
         && err.fault == AgentFault::CursorBusy;
     let _ = client.end_coder_session().await;
     if forget_agent {

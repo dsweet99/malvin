@@ -74,15 +74,6 @@ impl<'a> StdioTeardown<'a> {
     }
 }
 
-pub(crate) fn drop_stdio_child(
-    child: &AsyncMutex<Option<Child>>,
-    process_group_id: Option<u32>,
-    spawn_pid_baseline: &HashSet<u32>,
-    reader_dead: &AtomicBool,
-) {
-    StdioTeardown::new(child, process_group_id, spawn_pid_baseline, reader_dead).drop_teardown();
-}
-
 #[cfg(unix)]
 fn take_child_without_tokio_drop(child: &AsyncMutex<Option<Child>>) {
     if tokio::runtime::Handle::try_current().is_ok() {

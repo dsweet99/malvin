@@ -37,17 +37,17 @@ fn resolved_json_reports_backend_provider_and_locality() {
 }
 
 #[test]
-fn write_resolved_model_expands_nicknames_and_rejects_bad_ids() {
+fn write_resolved_model_expands_model_aliases_and_rejects_bad_ids() {
     with_isolated_home(|work| {
         let path = malvin_config_path(work);
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
         std::fs::write(
             &path,
-            "[nicknames]\nastra = \"codex:gpt-5\"\n[agent]\nmodel = \"cursor:auto\"\n",
+            "[aliases.models]\nastra = \"codex:gpt-5\"\n[agent]\nmodel = \"cursor:auto\"\n",
         )
         .expect("write");
         let mut out = Vec::new();
-        write_resolved_model("astra", &mut out).expect("resolve nickname");
+        write_resolved_model("astra", &mut out).expect("resolve alias");
         let text = String::from_utf8(out).expect("utf8");
         assert!(text.ends_with('\n'));
         let value: serde_json::Value = serde_json::from_str(text.trim()).expect("json");

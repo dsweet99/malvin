@@ -100,6 +100,7 @@ fn router_client_uses_router_style_agent_io_not_do_style() {
         advice: None,
         credits: false,
         iml: false,
+        remote: None,
     };
     let backend = build_agent_backend(
         shared.model.clone(),

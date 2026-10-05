@@ -1,28 +1,15 @@
-use std::collections::HashSet;
-use std::path::PathBuf;
-use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, Mutex};
-
-use tokio::io::BufReader;
-use tokio::process::{Child, ChildStdin, ChildStdout};
-use tokio::sync::Mutex as AsyncMutex;
+use std::sync::Mutex;
 
 use crate::acp::AgentError;
 use crate::bridge_protocol::BridgeRequest;
 
+use super::child_process_session::ChildProcessSession;
 use super::session_io::{drain_until_run_done, write_request};
-use super::stdio_teardown::{StdioTeardown, drop_stdio_child};
+use super::stdio_child::StdioChild;
 use super::stream_log::StreamLog;
 
 pub struct BridgeSession {
-    pub child: AsyncMutex<Option<Child>>,
-    pub stdin: Arc<AsyncMutex<ChildStdin>>,
-    pub stdout: Arc<AsyncMutex<BufReader<ChildStdout>>>,
-    pub process_group_id: Option<u32>,
-    pub spawn_pid_baseline: HashSet<u32>,
-    pub reader_dead: Arc<AtomicBool>,
-    pub work_dir: PathBuf,
-    pub log: StreamLog,
+    pub stdio: StdioChild,
     pub agent_id: Mutex<Option<String>>,
 }
 
@@ -30,13 +17,23 @@ impl std::ops::Deref for BridgeSession {
     type Target = StreamLog;
 
     fn deref(&self) -> &Self::Target {
-        &self.log
+        &self.stdio.log
     }
 }
 
 impl std::ops::DerefMut for BridgeSession {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.log
+        &mut self.stdio.log
+    }
+}
+
+impl ChildProcessSession for BridgeSession {
+    fn stdio(&self) -> &StdioChild {
+        &self.stdio
+    }
+
+    fn stdio_mut(&mut self) -> &mut StdioChild {
+        &mut self.stdio
     }
 }
 
@@ -52,29 +49,7 @@ impl BridgeSession {
     pub async fn shutdown(self) -> Result<(), AgentError> {
         let _ = write_request(&self, &BridgeRequest::Cancel {}).await;
         let _ = write_request(&self, &BridgeRequest::Close {}).await;
-        StdioTeardown::new(
-            &self.child,
-            self.process_group_id,
-            &self.spawn_pid_baseline,
-            &self.reader_dead,
-        )
-        .shutdown_kill_and_clear()
-        .await;
+        self.stdio.shutdown_kill_and_clear().await;
         Ok(())
-    }
-
-    fn abandon_child_on_drop(&mut self) {
-        drop_stdio_child(
-            &self.child,
-            self.process_group_id,
-            &self.spawn_pid_baseline,
-            &self.reader_dead,
-        );
-    }
-}
-
-impl Drop for BridgeSession {
-    fn drop(&mut self) {
-        self.abandon_child_on_drop();
     }
 }

@@ -27,7 +27,7 @@ Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`,
 | `--do` | One-shot agent turn for the following REQUEST (repeatable; other REQUESTs stay on the router) |
 | `--creative[=PROB]` | Creative mode for the following REQUEST only (repeatable; optional probability, default `1.0`) |
 | `malvin -g` | Fix quality gates via the default router with fixed request `Get the gates to pass.` (no positional request) |
-| `admin` | Operator maintenance (`models`, `reset-herdr`/`rh`) |
+| `admin` | Operator maintenance (`models`, `remotes`, `reset-herdr`/`rh`) |
 
 Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prompts/docs/<command>.md`); for the one-shot workflow use `malvin --do --doc`. The default-route contract (`router.md`) is printed after this overview when you run `malvin --doc`.
 
@@ -36,6 +36,10 @@ Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prom
 `--doc` is a true global: it may appear before or after any subcommand, including `admin`.
 
 Agent-session flags (`--model`, `--gates`, `-q`, `-v`, `--creative[=PROB]`, `--max-acp-retries`, `--iml`, …) apply to bare `malvin REQUEST` and `--do` (`--max-loops`, `--max-hypotheses`, and `--watch` apply only to bare `malvin REQUEST` and `malvin -g`). The `admin` help listing omits them; pass `--model` before `admin models` only when you want to set that command’s `Current:` footer.
+
+### `--remote=PROVIDER:SERVICE[KEY=VALUE,...]`
+
+Run the invocation on a remote machine instead of on this one, then apply its file changes and copy its run logs back. Applies to bare `malvin REQUEST`, `--do`, and `malvin -g`. A remote is written `PROVIDER:SERVICE[KEY=VALUE,...]`, the same shape as a `--model` id (`provider:model[key=value,...]`). `malvin admin remotes` lists the remotes and their suboptions, much as `malvin admin models` lists the ids `--model` accepts. The only remote is `modal:sandbox` (provider `modal`, service `sandbox`), which runs in a Modal Sandbox: `--remote=modal:sandbox` (or `--remote modal:sandbox`) uses default resources, and `--remote=modal:sandbox[gpu=...,ncpu=...,mem=...,timeout=...]` chooses the Sandbox's GPU, CPU count, memory, and lifetime for this run; each suboption is optional and the order does not matter (for example `--remote=modal:sandbox[timeout=2h,gpu=A100]`). A name listed in `[aliases.remotes]` in `~/.malvinconf/config.toml` expands to its value first (see **Home config**). Any other remote exits 1, including a bare `modal` without its service. See **Running on Modal** below for the suboptions, setup, what is uploaded, how results return, and what is rejected.
 
 
 ### `-q` / `--quiet`
@@ -46,7 +50,7 @@ It is also **not** required for plain `malvin --do`: without `--verbose`, `--do`
 
 ### `--model <MODEL>`
 
-Model id for agent-backed commands. Default: `cursor:auto` (or `[agent].model` in `~/.malvinconf/config.toml`). Prefixes: `cursor:` for the Cursor SDK backend; `pi:<provider>/<model>` for the official TypeScript/npm Pi agent (RPC; uses env keys or credentials already stored by Pi; keyless locals are `pi:local/<provider>/<model>`); `codex:<model>` for a local Codex app-server. An unprefixed name is looked up in `[nicknames]` in the home config. Optional bracket overrides select thinking / speed where the backend supports them, for example `cursor:claude-opus-5[effort=high,fast=true]` or `pi:openai/gpt-5[thinking=high]` (see `malvin admin models --doc`). Legacy `prime:`, `mini:`, and `rpi:` ids are rejected.
+Model id for agent-backed commands. Default: `cursor:auto` (or `[agent].model` in `~/.malvinconf/config.toml`). Prefixes: `cursor:` for the Cursor SDK backend; `pi:<provider>/<model>` for the official TypeScript/npm Pi agent (RPC; uses env keys or credentials already stored by Pi; keyless locals are `pi:local/<provider>/<model>`); `codex:<model>` for a local Codex app-server. An unprefixed name is looked up in `[aliases.models]` in the home config. Optional bracket overrides select thinking / speed where the backend supports them, for example `cursor:claude-opus-5[effort=high,fast=true]` or `pi:openai/gpt-5[thinking=high]` (see `malvin admin models --doc`). Legacy `prime:`, `mini:`, and `rpi:` ids are rejected.
 
 ### `--max-loops <N>` (default: 9999)
 
@@ -58,7 +62,7 @@ Hypothesis budget for bare `malvin REQUEST` and `malvin -g`. When the flag is om
 
 ### `-g` / `--gates`
 
-Inject workspace check command text into agent prompts and, for workflows that use harness gates as loop criteria, treat failures as loop or exit criteria. Off by default. When `--gates` is set and `.malvin/gates` is missing, malvin runs the init workflow first (default router with request from `init_constraints.md`, harness gates off) to discover and write `.malvin/gates`. On bare `malvin REQUEST`, `-g` / `--gates` also runs workspace `.malvin/gates` after `router_a` emits `__MALVIN_DONE__`: pass stops success; fail continues the outer loop; exhausted budget with failing gates fails the run. `malvin -g` without a request runs the gate-fix workflow with this flag on and fixed request `Get the gates to pass.` When work runs, check text is still injected into the work prompt. Agent prompts may still include available `.malvin/gates` guidance when this option is off.
+Inject workspace check command text into agent prompts and, for workflows that use harness gates as loop criteria, treat failures as loop or exit criteria. Off by default. When `--gates` is set and `.malvin/gates` is missing, malvin runs the init workflow first (default router with request from `init_constraints.md`, harness gates off) to discover and write `.malvin/gates`. On bare `malvin REQUEST`, `-g` / `--gates` also runs workspace `.malvin/gates` after `router_a` or `router_b` emits `__MALVIN_DONE__`: pass stops success; fail continues the outer loop; exhausted budget with failing gates fails the run. `malvin -g` without a request runs the gate-fix workflow with this flag on and fixed request `Get the gates to pass.` When work runs, check text is still injected into the work prompt. Agent prompts may still include available `.malvin/gates` guidance when this option is off.
 
 
 
@@ -110,7 +114,7 @@ Print built-in documentation and exit. Does not spawn an agent or create a run d
 - `malvin <COMMAND> --doc` — documentation for that subcommand (`malvin admin --doc` for `admin`, `malvin admin models --doc` for `models`).
 - `malvin --do --doc` — documentation for the one-shot `--do` workflow.
 
-Other subcommand arguments (for example `<REQUEST>`) are not required when `--doc` is set. Argument validation still runs first: invalid values or combinations (for example `--model foo:bar`, `-g` with `admin`, `--do` with a subcommand, or `--watch` with pure `--do`) exit 1 with the error instead of printing documentation.
+Other subcommand arguments (for example `<REQUEST>`) are not required when `--doc` is set. Argument validation still runs first: invalid values or combinations (for example `--model foo:bar`, `-g` or `--remote` with `admin`, `--do` with a subcommand, or `--watch` with pure `--do`) exit 1 with the error instead of printing documentation.
 
 ### `--advice`
 
@@ -133,7 +137,7 @@ When `--gates` is set and `.malvin/gates` is missing, malvin runs the init workf
 
 With `--gates` and an existing `.malvin/gates`, malvin runs workspace quality gates from that file at the repo git root (one shell command per non-empty, non-comment line). Full-line comments starting with `#` are ignored. `malvin -g` without a request always enables this harness.
 
-Other invocations (`--do`, bare `malvin REQUEST`) do not require `.malvin/gates` at startup and may run outside a git repo. With `--gates` on a bare `malvin REQUEST`, malvin runs workspace gates when `router_a` emits `__MALVIN_DONE__` and continues that outer loop when they fail (see the default-route section of `malvin --doc`). Without `--gates` (the default for other commands), malvin does not run those checks directly on the default route. `header.md` notes about gates lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
+Other invocations (`--do`, bare `malvin REQUEST`) do not require `.malvin/gates` at startup and may run outside a git repo. With `--gates` on a bare `malvin REQUEST`, malvin runs workspace gates when `router_a` or `router_b` emits `__MALVIN_DONE__` and continues that outer loop when they fail (see the default-route section of `malvin --doc`). Without `--gates` (the default for other commands), malvin does not run those checks directly on the default route. `header.md` notes about gates lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
 
 ### `-h` / `--help`
 
@@ -183,14 +187,14 @@ COST: steps = N tokens_in = X tokens_out = Y cache_read = A cache_write = B cost
 
 Each run writes two parallel channels with different contracts:
 
-- **`stdout.log` (narrative):** lossy, human-oriented lines with who-tags (`m|`, `t|`, `u|`, `b|`, `a|`, …). Use for skimming a run and vocabulary/ordering checks. An `a|<provider>:<model>` line (for example `a|cursor:auto`) is written each time a fresh agent context is started.
+- **`stdout.log` (narrative):** lossy, human-oriented lines with who-tags (`m|`, `t|`, `u|`, `b|`, `a|`, `r|`, …); `r|` marks untagged output relayed from a `--remote=modal:sandbox` Sandbox. Use for skimming a run and vocabulary/ordering checks. An `a|<provider>:<model>` line (for example `a|cursor:auto`) is written each time a fresh agent context is started.
 - **`trace.jsonl` (audit):** machine-authoritative JSONL (bridge events such as `assistant` / `thinking` / `tool_call` / `progress` / `run_done`). Use for tool results, shrink/fork events, and gate-loop audit tooling.
 
 Consumers must know which file to trust for which question. Named types live in `src/observability/` (`ObservabilityChannel`, `AuditEventKind`).
 
-## SDK drain idle (bridge / Pi)
+## SDK drain idle (Cursor / Pi / Codex)
 
-While waiting for the next Cursor SDK bridge or Pi RPC line, malvin applies a **per-event** idle budget (not a total-prompt wall clock):
+While waiting for the next Cursor SDK bridge, Pi RPC, or Codex app-server line, malvin applies a **per-event** idle budget (not a total-prompt wall clock). Every backend session must implement the `TurnTimeoutExtension` trait (`src/bridge_sdk/turn_timeout.rs`, no default methods): how it reports open tools (`tools_in_flight`) and which events extend the turn cap. Codex has no bridge `progress` heartbeats; its tool starts extend the cap.
 
 | Clock | Meaning | Default |
 |-------|---------|---------|
@@ -213,7 +217,7 @@ The Cursor SDK bridge also emits automatic `{ "event": "progress", "kind": "hear
 
 `~/.malvinconf/` holds malvin's per-user state: `config.toml`, `local_llms.json`, `logs/`, `names/`, and `sdk-bridges/`. Older releases used `~/.malvin_home/`. On startup, when `~/.malvin_home/` is a real directory, malvin renames it to `~/.malvinconf`, or, if `~/.malvinconf` already exists, merges its contents in (files from `~/.malvin_home/` win on conflict). It then leaves a symlink at the old path, so malvin processes still running an older build keep working.
 
-Top-level keys include `mem_limit_gb` and `theme`. Cursor cost rates `usd_per_microtoken_in`, `usd_per_microtoken_out`, `usd_per_microtoken_cache_read`, and `usd_per_microtoken_cache_write` (dollars per million tokens; all default `0`) live under per-model tables such as `[agent.cursor.auto]` (model id `cursor:auto`). Sections include `[agent]`, `[default_workflow]` (`max_hypotheses` for bare `malvin REQUEST` and `malvin -g` when `--max-hypotheses` is omitted, default 5), `[logs]`, and optional `[nicknames]` (map short unprefixed names to full model ids for `--model` / `[agent].model`, e.g. `astra = "pi:openrouter/openai/gpt-astra"`).
+Top-level keys include `mem_limit_gb` and `theme`. Cursor cost rates `usd_per_microtoken_in`, `usd_per_microtoken_out`, `usd_per_microtoken_cache_read`, and `usd_per_microtoken_cache_write` (dollars per million tokens; all default `0`) live under per-model tables such as `[agent.cursor.auto]` (model id `cursor:auto`). Sections include `[agent]`, `[default_workflow]` (`max_hypotheses` for bare `malvin REQUEST` and `malvin -g` when `--max-hypotheses` is omitted, default 5), `[logs]`, and optional `[aliases.models]` (map short unprefixed names to full model ids for `--model` / `[agent].model`, e.g. `astra = "pi:openrouter/openai/gpt-astra"`) and `[aliases.remotes]` (map short names to full `--remote` values, e.g. `big = "modal:sandbox[gpu=A100,mem=32]"`, so `--remote=big` means `--remote=modal:sandbox[gpu=A100,mem=32]`). An alias matches only the whole value: `--remote=big[timeout=2h]` exits 1 with a message saying so, and an alias may not be named after a built-in remote provider such as `modal` or contain `:`, `[`, `]`, `,`, or `=`; model aliases may not contain `:` either. An invalid alias entry is skipped with a warning; the other entries still work. The older `[nicknames]` table was renamed to `[aliases.models]`; malvin rejects a config that still has it, with a message saying to move its entries.
 
 ## Local LLMs (`~/.malvinconf/local_llms.json`)
 
@@ -264,9 +268,8 @@ After most agent-backed commands create a new run directory and emit the startup
 - **Node.js**: ≥ 22.13 with `npm` (≥ 22.19 for `pi:`, which runs Pi 1.x), needed at run time only by `cursor:` and `pi:` models. Building malvin does not need Node. `codex:` models do not need Node.
 - **Cursor SDK**: `@cursor/sdk` via `cursor-sdk-bridge/`. The compiled bridge is embedded in the malvin binary. The first time a `cursor:` model runs, malvin writes it to `~/.malvinconf/sdk-bridges/cursor-sdk-bridge/` and runs `npm ci --omit=dev` there; later runs reuse that install until the bundled lock file changes. A repo checkout whose `cursor-sdk-bridge/` already has `node_modules` is used in place. Node is found via `MALVIN_NODE`, `PATH`, or the Cursor `agent` install; npm via `MALVIN_NPM`, next to that Node, or `PATH`. `MALVIN_CURSOR_SDK_BRIDGE` overrides the bridge path. `cursor:` models also need a Cursor API key (`CURSOR_API_KEY`, or `CURSOR_AGENT_API_KEY` / `AGENT_API_KEY`). `malvin admin models` lists Cursor models via the bridge when possible; falls back to `agent` / `cursor-agent` on `PATH` if the SDK path fails.
 - **OpenRouter**: `OPENROUTER_API_KEY` when using `pi:openrouter/…` models.
-- **Pi**: `pi:` models run the npm package `@earendil-works/pi-coding-agent`, which malvin installs under `~/.malvinconf/sdk-bridges/`. Provider keys follow Pi’s env vars or credentials already stored under Pi’s auth path (`PI_CODING_AGENT_DIR` / `~/.pi/agent`).
+- **Pi**: `pi:` models run the official npm package `@earendil-works/pi-coding-agent` in RPC mode. Malvin does not install it. It uses `MALVIN_PI` (path to the package's `cli.js` or `rpc-entry.js`) when set, and otherwise looks for the package in `./node_modules`, `~/.malvinconf/sdk-bridges/node_modules`, and the npx cache (`~/.npm/_npx`). If none is found, `pi:` runs fail with a hint to install it (for example `npm install --prefix ~/.malvinconf/sdk-bridges @earendil-works/pi-coding-agent`). Provider keys come from Pi’s env vars or credentials already stored under Pi’s auth path (`PI_CODING_AGENT_DIR` / `~/.pi/agent`).
 - **curl**: used for local-model probes (Ollama) and pricing catalogs (OpenRouter, Portkey).
-- **npm Pi**: `pi:` models require the official `@earendil-works/pi-coding-agent` install (or `MALVIN_PI` pointing at its `cli.js` / `rpc-entry.js`) and use the same Pi auth/config.
 - **Codex**: `codex:` models require a separate `codex` binary (`PATH` or `MALVIN_CODEX`; not bundled) and a Codex login (`codex login`, `OPENAI_API_KEY`, or `$CODEX_HOME/auth.json`).
 - **pre-commit**: optional; malvin does not install hooks automatically.
 
@@ -295,3 +298,46 @@ malvin request_1.md request_2.md
 
 See the default-route section of `malvin --doc`.
 
+
+## Running on Modal (`--remote=modal:sandbox`)
+
+`malvin --remote=modal:sandbox ...` runs the same command in a [Modal Sandbox](https://modal.com/docs/guide/sandboxes) instead of on this machine. The stream, the run logs, and the file changes match a local run. Every other flag and argument is passed to the remote malvin unchanged; `--remote` itself is not.
+
+- **Setup**: Node.js ≥ 22.13 with `npm` on this machine (malvin installs the Modal JS SDK under `~/.malvinconf/sdk-bridges/modal-bridge/` with `npm ci`), and Modal credentials from `modal setup` (`~/.modal.toml`) or `MODAL_TOKEN_ID` plus `MODAL_TOKEN_SECRET`. Modal credentials never leave this machine.
+- **Image**: malvin publishes a Modal image named `malvin-bin:<version>-<hash>`, built once and reused by later runs, which then start in seconds. On x86-64 Linux with glibc, the image contains this machine's own malvin binary. On other hosts, the image builds malvin with `cargo install malvin --version <same version>`, which works only for versions published on crates.io. The default base is `node:22-trixie-slim` plus `git`, `curl`, Python 3, and `build-essential`. `codex:` models add the `codex` CLI and `pi:` models add the npm Pi agent, each pinned to the version installed on this machine (or `latest` when that version cannot be read).
+- **What is uploaded**: in a git work tree, tracked and untracked-but-not-ignored files under the current directory (never `.git`); outside git, everything under the current directory except `.git`, `target`, and `node_modules`; if that is more than 1 GiB, malvin exits 1 before contacting Modal. Also uploaded: the five newest run directories of this workspace, `~/.malvinconf/config.toml`, and any REQUEST files. The workspace is unpacked at the same absolute path, with `HOME` set to the local home path, so log directories and HISTORY paths match a local run.
+- **Credentials**: `CURSOR_API_KEY`, `CURSOR_AGENT_API_KEY`, `AGENT_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, and `OPENROUTER_API_KEY` are passed to the remote command when set, and never written into an image. `codex:` models also get `~/.codex/auth.json`, and `pi:` models get Pi's `auth.json` and `models.json`. Anyone with access to the Modal workspace can, in principle, inspect a running Sandbox.
+- **Results**: when the remote run ends, its changes come back as a git patch, and malvin prints which of these outcomes occurred:
+  - The remote run changed no files.
+  - `git apply` succeeded: the changes are in the working tree, unstaged.
+  - `git apply` failed but `git apply --3way` succeeded: the changes are in the working tree **and staged in the index**.
+  - The 3-way merge hit conflicts: conflict markers are left in the working tree, and the patch is also kept as `modal.patch`.
+  - The patch could not be applied at all, or the directory is not a git repository: the working tree is untouched and the patch is kept as `modal.patch`.
+
+  The new run directories are copied into this workspace's log directory. When the patch is kept, `modal.patch` goes into the newest of them, or into the workspace's log directory if none came back.
+- **Exit status and failures**: `malvin --remote=modal:sandbox` exits 0 only when the remote malvin exits 0; otherwise it exits 1. A failed remote run still returns its changes and logs, applied as above, so check the working tree after a nonzero exit. If talking to Modal fails partway (for example an upload, download, or remote setup step fails), malvin prints the error and exits 1 without applying any changes or copying any logs.
+- **Resources**: `--remote=modal:sandbox[gpu=...,ncpu=...,mem=...,timeout=...]` sets the Sandbox's resources for one run. Each suboption is optional, they may appear in any order, and an omitted one falls back to the `[modal]` setting of the same name in `~/.malvinconf/config.toml`, then to the built-in default. `malvin admin remotes` prints this list as a table.
+  - `gpu`: `none` (default), a Modal GPU type such as `T4` or `A100` (`malvin admin remotes` lists the current types), or `TYPE:COUNT` for several GPUs (for example `T4:2`).
+  - `ncpu`: number of CPU cores reserved for the Sandbox, a positive whole number (default 1).
+  - `mem`: the Sandbox's memory in GiB, a positive whole number with an optional `G`, `GB`, or `GiB` suffix (default 8; for example `mem=16` or `mem=16G`). The remote malvin's `mem_limit_gb` is 2 less than this, or this machine's `mem_limit_gb` if that is smaller.
+  - `timeout`: the Sandbox's hard lifetime (default 30 minutes, at most 24 hours). A bare number means minutes (`timeout=45`); the suffixes `s`, `m`, and `h` select seconds, minutes, and hours (`90s`, `45m`, `2h`).
+
+  The brackets are shell glob characters, so quote the flag (`'--remote=modal:sandbox[gpu=T4]'`) if your shell complains or a file name could match it. malvin prints the resources it chose when the Sandbox starts, for example `Sandbox sb-… started (T4, 2 CPU, 8 GiB, timeout 10 min)`.
+- **Remote output**: lines the remote malvin prints with a who-tag (such as `o|`) appear unchanged. Every other remote line, such as npm's `added 11 packages in 3s` or the remote agent's reply, is shown with the who-tag `r|`. With `--do` (and no `--verbose`), malvin prints only the DM body, as in a local `--do`: the remote agent's reply is printed untagged (rendered as markdown when stdout is a terminal), and the `modal:` status lines and other remote output are not shown; only error (`e|`) lines still reach stderr. Add `--verbose` to stream the remote run's log and the status lines.
+- **Lifetime**: Ctrl-C terminates the Sandbox. When the Sandbox reaches its `timeout`, Modal stops it mid-run, so no changes or logs come back, and malvin's error says the timeout was likely reached. At the start of each `--remote=modal:sandbox` run, malvin terminates Sandboxes left by this host's exited `--remote=modal:sandbox` runs.
+- **Rejected**: `--watch`, `--iml`, and the `admin` subcommand exit 1 with an error before anything is uploaded. With `--doc`, only the `admin` combination is still rejected; the others print documentation.
+- **Not supported, but not rejected**: local LLMs (`pi:local/…`, `pi:ollama/…`). The Sandbox runs no local model server, so a local-model run is expected to fail inside the Sandbox rather than at startup.
+
+Optional settings in `~/.malvinconf/config.toml`:
+
+```toml
+[modal]
+gpu = "none"            # default GPU: "none" (default), a type such as "A100", or "TYPE:COUNT"
+ncpu = 1                # default CPU cores (default 1)
+timeout = "30m"         # default hard Sandbox lifetime: minutes as an integer, or "90s" / "45m" / "2h" (default 30 minutes, at most 24 hours)
+mem = 8                 # default Sandbox memory in GiB (default 8); the remote mem_limit_gb becomes mem - 2 if smaller
+image = "python:3.12"   # replaces the default base; needs glibc at least as new as this host's, plus Node >= 22.13 with npm
+setup = ["RUN pip install -r requirements.txt"]   # extra Dockerfile lines, cached by Modal
+```
+
+The older keys `cpu`, `timeout_h`, `memory_gb`, and `memory` are rejected with a message naming their replacements, `ncpu`, `timeout`, and `mem`.

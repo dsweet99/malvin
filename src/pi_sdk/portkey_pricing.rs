@@ -135,17 +135,13 @@ pub(super) fn openrouter_catalog_model(provider: &str, model_id: &str) -> Option
         .then(|| bare_model_id(model_id).to_string())
 }
 
-pub(super) fn rates_for_pi_model(provider: &str, model_id: &str) -> Option<ModelCost> {
-    let upstream = portkey_upstream(provider, model_id)?;
-    fetch::lookup_rates(&upstream, bare_model_id(model_id))
-}
+pub(super) struct PortkeyLive;
 
-fn openrouter_catalog_rates(provider: &str, model_id: &str) -> Option<ModelCost> {
-    if provider.eq_ignore_ascii_case("openrouter") {
-        return super::openrouter_pricing::lookup_model_cost(model_id);
+impl super::pricing_source::PricingSource for PortkeyLive {
+    fn lookup(&self, provider: &str, model_id: &str) -> Option<ModelCost> {
+        let upstream = portkey_upstream(provider, model_id)?;
+        fetch::lookup_rates(&upstream, bare_model_id(model_id))
     }
-    let model = openrouter_catalog_model(provider, model_id)?;
-    super::openrouter_pricing::lookup_model_cost(&model)
 }
 
 pub(crate) fn uses_openrouter_catalog(provider: &str, model_id: &str) -> bool {
@@ -164,9 +160,7 @@ pub(crate) fn apply_portkey_cost_usd(provider: &str, model: &str, usage: &mut Va
     if super::sdk_usage_fields::cost_usd_is_positive(usage) {
         return;
     }
-    let Some(rates) = rates_for_pi_model(provider, model)
-        .or_else(|| openrouter_catalog_rates(provider, model))
-    else {
+    let Some(rates) = super::pricing_source::lookup_rates(provider, model) else {
         return;
     };
     let Some(obj) = usage.as_object() else {

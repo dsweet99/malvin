@@ -89,7 +89,7 @@ fn prune_run_dirs_never_deletes_protected_active_run() {
         max_age_days: None,
         max_bytes: None,
     };
-    let (removed, _) = prune_run_dirs(&mut runs, &config, Some(current.as_path()));
+    let removed = prune_run_dirs(&mut runs, &config, Some(current.as_path())).removed;
     assert_eq!(removed, 1);
     assert!(!old.exists());
     assert!(

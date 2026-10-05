@@ -34,6 +34,7 @@
 )]
 #[cfg(test)]
 extern crate self as malvin;
+pub mod clock;
 mod log_gc;
 mod log_gc_config;
 pub mod malvin_config_file;
@@ -108,6 +109,8 @@ pub mod bridge_protocol;
 pub mod bridge_sdk;
 pub mod codex_sdk;
 pub mod cursor_sdk;
+pub mod modal_run;
+mod npm_bridge_install;
 pub mod npm_pi_sdk;
 pub mod pi_sdk;
 #[cfg(test)]

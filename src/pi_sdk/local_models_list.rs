@@ -47,15 +47,15 @@ mod tests {
         crate::test_utils::with_isolated_home(|_| {
             let out = merge_listings(
                 vec![
-                    ("openai/gpt-4o".into(), "gpt-4o\tthinking=no".into()),
-                    ("ollama/qwen:1b".into(), "qwen:1b\tthinking=no".into()),
+                    ("openai/gpt-4o".into(), "gpt-4o\tthinking=off".into()),
+                    ("ollama/qwen:1b".into(), "qwen:1b\tthinking=off".into()),
                 ],
                 vec![("ollama/qwen:1b".into(), "qwen:1b\tlocal".into())],
             );
             assert_eq!(out.len(), 2);
             assert_eq!(out[0].0, "openai/gpt-4o");
             assert_eq!(out[1].0, "local/ollama/qwen:1b");
-            assert!(out[1].1.contains("thinking=no"));
+            assert!(out[1].1.contains("thinking=off"));
         });
     }
 }

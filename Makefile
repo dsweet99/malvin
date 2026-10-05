@@ -17,6 +17,7 @@ endif
 .PHONY: all install test deps bridges clean
 
 CURSOR_BRIDGE_JS := cursor-sdk-bridge/dist/bridge.js
+MODAL_BRIDGE_JS := modal-bridge/dist/bridge.js
 
 deps:
 	@echo "Build deps (Ubuntu): sudo apt-get install gcc-10 g++-10 libcap-ng-dev"
@@ -24,11 +25,15 @@ deps:
 	@echo "malvin installs @cursor/sdk into ~/.malvinconf/sdk-bridges/ on first use."
 	@echo "Manual: npm ci && npm run build in cursor-sdk-bridge/"
 
-bridges: $(CURSOR_BRIDGE_JS)
+bridges: $(CURSOR_BRIDGE_JS) $(MODAL_BRIDGE_JS)
 
 $(CURSOR_BRIDGE_JS): cursor-sdk-bridge/package.json cursor-sdk-bridge/package-lock.json \
 		cursor-sdk-bridge/tsconfig.json $(wildcard cursor-sdk-bridge/src/*.ts)
 	cd cursor-sdk-bridge && npm ci && npm run build
+
+$(MODAL_BRIDGE_JS): modal-bridge/package.json modal-bridge/package-lock.json \
+		modal-bridge/tsconfig.json $(wildcard modal-bridge/src/*.ts)
+	cd modal-bridge && npm ci && npm run build
 
 # Job count and the rustc wrapper (admin/rustc_sccache.sh) come from .cargo/config.toml.
 # release-local is the release profile plus incremental compilation (Cargo.toml).
@@ -41,7 +46,7 @@ install: bridges
 test: bridges
 	pytest tests && cargo nextest run
 
-# cursor-sdk-bridge/dist is tracked so that building needs no Node; clean must keep it.
+# cursor-sdk-bridge/dist and modal-bridge/dist are tracked so that building needs no Node; clean must keep them.
 clean:
 	cargo clean
-	rm -rf cursor-sdk-bridge/node_modules
+	rm -rf cursor-sdk-bridge/node_modules modal-bridge/node_modules

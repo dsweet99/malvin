@@ -1,7 +1,8 @@
 use clap::Args;
-use malvin::model_id::{CODEX_PREFIX, CURSOR_PREFIX, PI_PREFIX};
 use malvin::output::{MALVIN_WHO, print_stdout_line};
 
+#[path = "models_cmd_catalog.rs"]
+mod models_cmd_catalog;
 #[path = "models_cmd_cursor.rs"]
 mod models_cmd_cursor;
 #[path = "models_cmd_filter.rs"]
@@ -12,7 +13,7 @@ mod models_cmd_parse;
 pub(crate) mod models_cmd_refresh;
 #[path = "models_cmd_resolve.rs"]
 pub(crate) mod models_cmd_resolve;
-use models_cmd_cursor::print_cursor_models;
+use models_cmd_catalog::print_models_sections;
 pub(crate) use models_cmd_filter::{line_matches_prefix, models_list_prefix, section_may_match};
 
 #[derive(Args, Debug, Clone, Default)]
@@ -21,7 +22,7 @@ pub struct ModelsArgs {
     /// Force-refresh the `pi:` model catalog (also runs automatically every 24h).
     #[arg(long)]
     pub refresh: bool,
-    /// Print MODEL's canonical id and backend as one JSON line (nicknames expanded), then exit.
+    /// Print MODEL's canonical id and backend as one JSON line (`[aliases.models]` names expanded), then exit.
     #[arg(long, value_name = "MODEL", conflicts_with_all = ["refresh", "words"])]
     pub resolve: Option<String>,
     /// Optional prefix filter (for example `cursor:`, `pi:`, or `codex:`)
@@ -36,20 +37,6 @@ pub struct ModelsArgs {
 #[cfg(test)]
 pub(crate) const fn models_args_marker(_args: &ModelsArgs) -> &'static str {
     "models"
-}
-
-fn print_codex_models(filter: Option<&str>) {
-    match malvin::codex_sdk::list_codex_display_models() {
-        Ok(models) => {
-            for (id, name) in models {
-                let line = format!("codex:{id}\t{name}");
-                if line_matches_prefix(&line, filter) {
-                    print_stdout_line(MALVIN_WHO, &line);
-                }
-            }
-        }
-        Err(e) => print_stdout_line(MALVIN_WHO, &format!("(codex models unavailable: {e})")),
-    }
 }
 
 fn print_current_footer(current_model: &str) {
@@ -70,40 +57,9 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
 }
 
 fn maybe_refresh_models_catalog(force: bool) {
-    let now = models_cmd_refresh::unix_now_secs();
+    let now = malvin::clock::unix_now_secs();
     if force || models_cmd_refresh::models_refresh_is_due(now) {
         models_cmd_refresh::perform_models_refresh();
-    }
-}
-
-fn print_models_sections(filter_ref: Option<&str>) {
-    if section_may_match(filter_ref, CURSOR_PREFIX)
-        && let Err(e) = print_cursor_models(filter_ref)
-    {
-        print_stdout_line(MALVIN_WHO, &format!("(cursor models unavailable: {e})"));
-    }
-    if section_may_match(filter_ref, PI_PREFIX) {
-        match malvin::npm_pi_sdk::list_npm_pi_display_models() {
-            Ok(models) => {
-                print_npm_pi_models(&malvin::pi_sdk::filter_local_listings(models), filter_ref);
-            }
-            Err(e) => {
-                print_stdout_line(MALVIN_WHO, &format!("(pi models unavailable: {e})"));
-                print_npm_pi_models(&malvin::pi_sdk::filter_local_listings(Vec::new()), filter_ref);
-            }
-        }
-    }
-    if section_may_match(filter_ref, CODEX_PREFIX) {
-        print_codex_models(filter_ref);
-    }
-}
-
-fn print_npm_pi_models(models: &[(String, String)], filter: Option<&str>) {
-    for (id, detail) in models {
-        let line = format!("{PI_PREFIX}{id}\t{detail}");
-        if line_matches_prefix(&line, filter) {
-            print_stdout_line(MALVIN_WHO, &line);
-        }
     }
 }
 
@@ -159,7 +115,8 @@ pub(crate) mod test_hooks {
     }
 
     pub fn print_parsed_or_fallback(text: &str) {
-        models_cmd_parse::print_parsed_or_fallback_prefixed(text, "", None);
+        let listing = super::models_cmd_cursor::listing_from_cli_text(text, "");
+        super::models_cmd_catalog::print_listing("", &listing, None);
     }
 
     pub fn parse_model_line(line: &str) -> Option<(&str, String)> {
@@ -167,7 +124,9 @@ pub(crate) mod test_hooks {
     }
 
     pub fn print_cursor_models_via_cli_for_test(filter: Option<&str>) -> Result<(), String> {
-        super::models_cmd_cursor::print_cursor_models_via_cli(filter)
+        let listing = super::models_cmd_cursor::cursor_listing_via_cli()?;
+        super::models_cmd_catalog::print_listing("cursor:", &listing, filter);
+        Ok(())
     }
 
     pub fn resolve_models_cli() -> Result<std::path::PathBuf, String> {

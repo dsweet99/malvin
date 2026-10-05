@@ -1,8 +1,4 @@
-use crate::artifacts::{
-    GitignoreBackup, SessionDotfileBackups, backup_workspace_gitignore_if_present,
-    backup_workspace_gitignore_if_present_with_id, create_run_artifacts_from_text,
-    restore_workspace_gitignore_backup,
-};
+use crate::artifacts::{GitignoreBackup, SessionDotfileBackups, create_run_artifacts_from_text};
 use crate::test_utils::with_isolated_home;
 use crate::workspace_paths::snapshot_category_dir;
 
@@ -12,7 +8,7 @@ fn gitignore_backup_skips_when_workspace_file_missing() {
     let work = tmp.path().join("empty");
     std::fs::create_dir_all(&work).unwrap();
     assert_eq!(
-        backup_workspace_gitignore_if_present(&work).unwrap(),
+        GitignoreBackup::backup_if_present(&work).unwrap(),
         GitignoreBackup::Missing
     );
 }
@@ -21,14 +17,14 @@ fn gitignore_backup_skips_when_workspace_file_missing() {
 fn gitignore_backup_round_trip_restores_workspace_file() {
     with_isolated_home(|work| {
         std::fs::write(work.join(".gitignore"), "ORIGINAL\n").unwrap();
-        let backup = backup_workspace_gitignore_if_present(work).unwrap();
+        let backup = GitignoreBackup::backup_if_present(work).unwrap();
         let GitignoreBackup::Present { backup_root, files } = &backup else {
             panic!("expected backup path");
         };
         assert!(backup_root.join(".gitignore").is_file());
         assert_eq!(files.len(), 1);
         std::fs::write(work.join(".gitignore"), "MODIFIED\n").unwrap();
-        restore_workspace_gitignore_backup(work, &backup).unwrap();
+        backup.restore(work).unwrap();
         assert_eq!(
             std::fs::read_to_string(work.join(".gitignore")).unwrap(),
             "ORIGINAL\n"
@@ -41,9 +37,9 @@ fn gitignore_backup_missing_restores_by_removing_created_workspace_file() {
     let tmp = tempfile::tempdir().unwrap();
     let work = tmp.path().join("repo");
     std::fs::create_dir_all(&work).unwrap();
-    let backup = backup_workspace_gitignore_if_present(&work).unwrap();
+    let backup = GitignoreBackup::backup_if_present(&work).unwrap();
     std::fs::write(work.join(".gitignore"), "CREATED\n").unwrap();
-    restore_workspace_gitignore_backup(&work, &backup).unwrap();
+    backup.restore(&work).unwrap();
     assert!(!work.join(".gitignore").exists());
 }
 
@@ -55,7 +51,7 @@ fn gitignore_backup_retries_on_existing_collision() {
         std::fs::create_dir_all(dir.join("aaaaa")).unwrap();
 
         std::fs::write(work.join(".gitignore"), "ORIGINAL\n").unwrap();
-        let backup = backup_workspace_gitignore_if_present_with_id(work, |attempt| {
+        let backup = GitignoreBackup::backup_if_present_with_id(work, |attempt| {
             if attempt == 0 {
                 "aaaaa".to_string()
             } else {

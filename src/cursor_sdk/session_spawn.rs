@@ -1,6 +1,6 @@
 use crate::acp::AgentError;
 use crate::bridge_sdk::{
-    BridgeSession, BridgeSpawnArgs, MemWatchArgs, send_create, send_resume, start_mem_watch,
+    BridgeSession, BridgeSpawnArgs, send_create, send_resume, start_mem_watch,
 };
 
 use super::auth::effective_sdk_api_key;
@@ -13,20 +13,14 @@ pub(crate) async fn cursor_spawn_bridge(
     let ticket = crate::malvin_sandbox::take_sandbox_spawn_ticket().map_err(AgentError)?;
     let model = args.wire_model();
     let session = cursor_open_bridge_session(args, ticket)?;
-    start_mem_watch(MemWatchArgs {
-        process_group_id: session.process_group_id,
-        reader_dead: &session.reader_dead,
-        work_dir: &session.work_dir,
-        spawn_pid_baseline: &session.spawn_pid_baseline,
-        run_dir: session.run_dir.as_deref(),
-    });
+    start_mem_watch(session.stdio.mem_watch_args());
     let api_key = effective_sdk_api_key();
     if let Some(agent_id) = resume_agent_id {
         send_resume(
             &session,
             crate::bridge_sdk::ResumeArgs {
                 agent_id: &agent_id,
-                cwd: &session.work_dir,
+                cwd: &session.stdio.work_dir,
                 model: &model,
                 api_key: api_key.clone(),
             },
@@ -36,7 +30,7 @@ pub(crate) async fn cursor_spawn_bridge(
         send_create(
             &session,
             crate::bridge_sdk::CreateArgs {
-                cwd: &session.work_dir,
+                cwd: &session.stdio.work_dir,
                 model: &model,
                 api_key,
                 models_json_path: None,
@@ -104,20 +98,19 @@ fn cursor_assemble_session(
     child: tokio::process::Child,
     handles: CursorChildStdio,
 ) -> BridgeSession {
-    use std::sync::atomic::AtomicBool;
-    use std::sync::{Arc, Mutex};
-    use tokio::io::BufReader;
-    use tokio::sync::Mutex as AsyncMutex;
     BridgeSession {
-        child: AsyncMutex::new(Some(child)),
-        stdin: Arc::new(AsyncMutex::new(handles.stdin)),
-        stdout: Arc::new(AsyncMutex::new(BufReader::new(handles.stdout))),
-        process_group_id: handles.pgid,
-        spawn_pid_baseline: handles.baseline,
-        reader_dead: Arc::new(AtomicBool::new(false)),
-        work_dir: args.cwd.to_path_buf(),
-        log: crate::bridge_sdk::StreamLog::from_spawn(&args),
-        agent_id: Mutex::new(None),
+        stdio: crate::bridge_sdk::StdioChild::new(
+            (
+                child,
+                handles.stdin,
+                handles.stdout,
+                handles.pgid,
+                handles.baseline,
+            ),
+            args.cwd.to_path_buf(),
+            crate::bridge_sdk::StreamLog::from_spawn(&args),
+        ),
+        agent_id: std::sync::Mutex::new(None),
     }
 }
 

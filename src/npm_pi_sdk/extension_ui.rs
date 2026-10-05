@@ -2,6 +2,7 @@ use serde_json::Value;
 
 use super::session::NpmPiSession;
 use crate::acp::AgentError;
+use crate::bridge_sdk::JsonLineSession;
 
 pub(super) async fn auto_reply_extension_ui(
     session: &NpmPiSession,
@@ -15,7 +16,7 @@ pub(super) async fn auto_reply_extension_ui(
         return Ok(());
     }
     let response = extension_ui_response(id, method, request);
-    super::session_io::write_json(session, &response).await
+    session.write_json(&response).await
 }
 
 fn is_fire_and_forget(method: &str) -> bool {
