@@ -39,7 +39,7 @@ pub struct SharedOpts {
     /// Log full outgoing agent prompts to stdout and `prompts.log`
     #[arg(short, long, default_value_t = false)]
     pub verbose: bool,
-    /// Stop after N consecutive identical backend errors
+    /// Stop after N consecutive identical backend errors, each within 60 s of the previous one
     #[arg(long = "max-acp-retries", default_value_t = DEFAULT_MAX_ACP_RETRIES)]
     pub max_acp_retries: u32,
     /// Print built-in documentation and exit
