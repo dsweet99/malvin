@@ -202,7 +202,7 @@ While waiting for the next Cursor SDK bridge, Pi RPC, or Codex app-server line, 
 | Slice | How long to block on one read before sampling sandbox child health | `min(60000 ms, idle remaining)` |
 | Health extend | If sandbox PIDs (excluding malvin itself) show CPU / ctxt / thread progress (`StillBusy`), refresh the idle budget; I/O-bound work with open tools is treated like `StillBusy` | — |
 
-Missing a line for the full (possibly health-extended) idle window fails with `bridge timed out … without a bridge event (bridge quiet; …)` — that is the hung/stalled bridge signal (no NDJSON lines, including heartbeats). Local stdout heartbeats (`Orienting`, …) do **not** reset drain idle.
+Missing a line for the full (possibly health-extended) idle window fails with `bridge timed out … without a bridge event (bridge quiet; …)` — that is the hung/stalled bridge signal (no NDJSON lines, including heartbeats). Local stdout heartbeats (`Starting`, …) do **not** reset drain idle.
 
 The Cursor SDK bridge also emits automatic `{ "event": "progress", "kind": "heartbeat" }` lines when a run is in flight and no SDK message/step has been forwarded for 15s. Those `progress` events reset the per-event idle budget like any other bridge line (they are recorded in `trace.jsonl`, not teed to narrative stdout).
 

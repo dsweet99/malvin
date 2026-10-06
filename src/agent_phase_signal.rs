@@ -18,11 +18,10 @@ pub(super) fn observe_tool_update_state(
     let Some(kind) = tool_kind_for(parsed, tracker) else {
         return PhaseSideEffect::None;
     };
-    state.orienting = false;
-    state.reasoning = false;
+    state.starting = false;
     match kind {
         ToolKind::Execute => observe_execute(state, parsed, tracker),
-        _ => observe_non_execute(state, kind, parsed.phase),
+        _ => observe_non_execute(state, &parsed.id, kind, parsed.phase),
     }
 }
 
@@ -56,23 +55,43 @@ fn observe_execute(
         }
         TOOL_PHASE_DONE => {
             state.running_shells = state.running_shells.saturating_sub(1);
-            if execute_failed(parsed) && execute_looks_like_test(parsed, tracker) {
-                state.debugging = true;
+            if execute_looks_like_test(parsed, tracker) {
+                state.fixing = execute_failed(parsed);
             }
-            state.active_tool = None;
+            if state.active_tool.is_some_and(|(k, _)| k == ToolKind::Execute) {
+                state.active_tool = None;
+            }
             PhaseSideEffect::None
         }
         _ => PhaseSideEffect::None,
     }
 }
 
-fn observe_non_execute(state: &mut PhaseState, kind: ToolKind, phase: u8) -> PhaseSideEffect {
+fn open_tools(
+    state: &mut PhaseState,
+    kind: ToolKind,
+) -> &mut std::collections::HashSet<String> {
+    match kind {
+        ToolKind::Edit => &mut state.open_edits,
+        ToolKind::Read | ToolKind::Search => &mut state.open_reads,
+        ToolKind::Execute => unreachable!("execute is tracked by running_shells"),
+    }
+}
+
+fn observe_non_execute(
+    state: &mut PhaseState,
+    id: &str,
+    kind: ToolKind,
+    phase: u8,
+) -> PhaseSideEffect {
     if phase == TOOL_PHASE_DONE {
+        open_tools(state, kind).remove(id);
         if state.active_tool.is_some_and(|(k, _)| k == kind) {
             state.active_tool = None;
         }
         return PhaseSideEffect::None;
     }
+    open_tools(state, kind).insert(id.to_string());
     state.active_tool = Some((kind, phase));
     if phase == TOOL_PHASE_START {
         PhaseSideEffect::NotifyWorking
@@ -103,6 +122,9 @@ fn execute_looks_like_test(parsed: &ParsedToolUpdate, tracker: &ToolSummaryTrack
                 .and_then(|t| t.strip_suffix('`'))
         })
         .unwrap_or("");
+    if cmd.trim().is_empty() {
+        return false;
+    }
     std::env::current_dir()
         .is_ok_and(|wd| crate::repo_gates::command_matches_malvin_checks_gate(cmd, &wd))
 }
@@ -112,7 +134,43 @@ mod tests {
     use super::*;
     use crate::agent_phase::PhaseState;
     use crate::tool_summary::{ToolSummaryTracker, parse_tool_update};
-    use serde_json::json;
+    use serde_json::{Value, json};
+
+    fn observe_json(state: &mut PhaseState, tracker: &ToolSummaryTracker, v: &Value) {
+        observe_tool_update_state(state, &parse_tool_update(v).expect("parsed"), tracker);
+    }
+
+    fn execute_update(id: &str, status: &str, command: &str, exit_code: Option<i64>) -> Value {
+        let session = if status == "pending" {
+            "tool_call"
+        } else {
+            "tool_call_update"
+        };
+        let mut update = json!({
+            "sessionUpdate": session,
+            "toolCallId": id,
+            "kind": "execute",
+            "status": status,
+            "rawInput": {"command": command},
+        });
+        if let Some(code) = exit_code {
+            update["rawOutput"] = json!({"exitCode": code, "stdout": "", "stderr": ""});
+        }
+        json!({"method": "session/update", "params": {"update": update}})
+    }
+
+    fn with_pytest_gate(body: impl FnOnce(&mut PhaseState, &ToolSummaryTracker)) {
+        crate::test_support::test_utils::with_isolated_home(|w| {
+            std::fs::create_dir_all(w.join(".malvin")).expect("mkdir");
+            std::fs::write(w.join(".malvin/gates"), "pytest tests\n").expect("gates");
+            let old = std::env::current_dir().expect("cwd");
+            std::env::set_current_dir(w).expect("chdir");
+            let mut state = PhaseState::fresh();
+            let tracker = ToolSummaryTracker::default();
+            body(&mut state, &tracker);
+            std::env::set_current_dir(old).expect("restore cwd");
+        });
+    }
 
     #[test]
     fn observe_tool_update_state_handles_read_start() {
@@ -130,80 +188,112 @@ mod tests {
         let parsed = parse_tool_update(&v).expect("parsed");
         let tracker = ToolSummaryTracker::default();
         observe_tool_update_state(&mut state, &parsed, &tracker);
-        assert!(!state.orienting);
+        assert!(!state.starting);
         assert_eq!(state.active_tool.map(|(k, _)| k), Some(ToolKind::Read));
     }
 
     #[test]
     fn observe_execute_failed_gate_command_sets_debugging() {
-        crate::test_support::test_utils::with_isolated_home(|w| {
-            std::fs::create_dir_all(w.join(".malvin")).expect("mkdir");
-            std::fs::write(w.join(".malvin/gates"), "pytest tests\n").expect("gates");
-            let old = std::env::current_dir().expect("cwd");
-            std::env::set_current_dir(w).expect("chdir");
-
-            let mut state = PhaseState::fresh();
-            let tracker = ToolSummaryTracker::default();
-            let start = json!({
-                "method": "session/update",
-                "params": {"update": {
-                    "sessionUpdate": "tool_call",
-                    "toolCallId": "ex1",
-                    "kind": "execute",
-                    "status": "pending",
-                    "rawInput": {"command": "pytest tests"}
-                }}
-            });
-            let running = json!({
-                "method": "session/update",
-                "params": {"update": {
-                    "sessionUpdate": "tool_call_update",
-                    "toolCallId": "ex1",
-                    "kind": "execute",
-                    "status": "in_progress"
-                }}
-            });
-            let done = json!({
-                "method": "session/update",
-                "params": {"update": {
-                    "sessionUpdate": "tool_call_update",
-                    "toolCallId": "ex1",
-                    "kind": "execute",
-                    "status": "completed",
-                    "rawOutput": {"exitCode": 1, "stdout": "FAILED\n", "stderr": ""}
-                }}
-            });
-            observe_tool_update_state(
-                &mut state,
-                &parse_tool_update(&start).expect("start"),
-                &tracker,
+        with_pytest_gate(|state, tracker| {
+            observe_json(
+                state,
+                tracker,
+                &execute_update("ex1", "pending", "pytest tests", None),
             );
             assert_eq!(state.running_shells, 1);
             assert_eq!(
                 state.active_tool,
                 Some((ToolKind::Execute, TOOL_PHASE_START))
             );
-            observe_tool_update_state(
-                &mut state,
-                &parse_tool_update(&running).expect("running"),
-                &tracker,
+            observe_json(
+                state,
+                tracker,
+                &execute_update("ex1", "in_progress", "pytest tests", None),
             );
             assert_eq!(
                 state.active_tool,
                 Some((ToolKind::Execute, TOOL_PHASE_RUNNING))
             );
-            observe_tool_update_state(
-                &mut state,
-                &parse_tool_update(&done).expect("done"),
-                &tracker,
+            observe_json(
+                state,
+                tracker,
+                &execute_update("ex1", "completed", "pytest tests", Some(1)),
             );
             assert_eq!(state.running_shells, 0);
             assert!(state.active_tool.is_none());
-            assert!(
-                state.debugging,
-                "failed checks-file command should enter debugging"
+            assert!(state.fixing, "failed checks-file command should enter fixing");
+        });
+    }
+
+    #[test]
+    fn fixing_hides_behind_read_and_clears_when_a_check_passes() {
+        use crate::agent_phase::AgentPhase;
+
+        with_pytest_gate(|state, tracker| {
+            observe_json(
+                state,
+                tracker,
+                &execute_update("ex1", "pending", "pytest tests", None),
             );
-            std::env::set_current_dir(old).expect("restore cwd");
+            observe_json(
+                state,
+                tracker,
+                &execute_update("ex1", "completed", "pytest tests", Some(1)),
+            );
+            assert_eq!(state.resolve(), AgentPhase::Fixing);
+            observe_json(
+                state,
+                tracker,
+                &json!({
+                    "method": "session/update",
+                    "params": {"update": {
+                        "sessionUpdate": "tool_call",
+                        "toolCallId": "r1",
+                        "kind": "read",
+                        "status": "pending",
+                        "rawInput": {"path": "a.rs"}
+                    }}
+                }),
+            );
+            assert_eq!(state.resolve(), AgentPhase::Reading);
+            observe_json(
+                state,
+                tracker,
+                &json!({
+                    "method": "session/update",
+                    "params": {"update": {
+                        "sessionUpdate": "tool_call_update",
+                        "toolCallId": "r1",
+                        "kind": "read",
+                        "status": "completed"
+                    }}
+                }),
+            );
+            assert_eq!(state.resolve(), AgentPhase::Fixing);
+            observe_json(
+                state,
+                tracker,
+                &execute_update("other", "pending", "echo hi", None),
+            );
+            observe_json(
+                state,
+                tracker,
+                &execute_update("other", "completed", "echo hi", Some(0)),
+            );
+            assert!(state.fixing, "a passing non-check must leave fixing set");
+            observe_json(
+                state,
+                tracker,
+                &execute_update("ex2", "pending", "pytest tests", None),
+            );
+            assert_eq!(state.resolve(), AgentPhase::Running);
+            observe_json(
+                state,
+                tracker,
+                &execute_update("ex2", "completed", "pytest tests", Some(0)),
+            );
+            assert!(!state.fixing, "a later passing check should clear fixing");
+            assert_eq!(state.resolve(), AgentPhase::Thinking);
         });
     }
 
@@ -242,5 +332,80 @@ mod tests {
             &tracker,
         );
         assert!(state.active_tool.is_none());
+    }
+
+    #[test]
+    fn resolve_uses_checking_running_editing_reading_fixing_order() {
+        use crate::agent_phase::AgentPhase;
+
+        let mut state = PhaseState::fresh();
+        assert_eq!(state.resolve(), AgentPhase::Starting);
+
+        state.checking_depth = 1;
+        state.running_shells = 1;
+        state.fixing = true;
+        state.active_tool = Some((ToolKind::Edit, TOOL_PHASE_START));
+        assert_eq!(state.resolve(), AgentPhase::Checking);
+
+        state.checking_depth = 0;
+        assert_eq!(state.resolve(), AgentPhase::Running);
+
+        state.running_shells = 0;
+        assert_eq!(state.resolve(), AgentPhase::Editing);
+
+        state.active_tool = Some((ToolKind::Read, TOOL_PHASE_START));
+        assert_eq!(state.resolve(), AgentPhase::Reading);
+
+        state.active_tool = Some((ToolKind::Execute, TOOL_PHASE_RUNNING));
+        assert_eq!(state.resolve(), AgentPhase::Running);
+
+        state.active_tool = None;
+        state.starting = false;
+        assert_eq!(state.resolve(), AgentPhase::Fixing);
+
+        state.fixing = false;
+        assert_eq!(state.resolve(), AgentPhase::Thinking);
+    }
+
+    #[test]
+    fn editing_stays_ahead_of_a_later_read_until_the_edit_finishes() {
+        use crate::agent_phase::AgentPhase;
+
+        let mut state = PhaseState::fresh();
+        let tracker = ToolSummaryTracker::default();
+        let edit = json!({
+            "method": "session/update",
+            "params": {"update": {
+                "sessionUpdate": "tool_call",
+                "toolCallId": "e1",
+                "kind": "edit",
+                "status": "pending",
+                "rawInput": {"path": "a.rs"}
+            }}
+        });
+        let read = json!({
+            "method": "session/update",
+            "params": {"update": {
+                "sessionUpdate": "tool_call",
+                "toolCallId": "r1",
+                "kind": "read",
+                "status": "pending",
+                "rawInput": {"path": "b.rs"}
+            }}
+        });
+        let edit_done = json!({
+            "method": "session/update",
+            "params": {"update": {
+                "sessionUpdate": "tool_call_update",
+                "toolCallId": "e1",
+                "kind": "edit",
+                "status": "completed"
+            }}
+        });
+        observe_json(&mut state, &tracker, &edit);
+        observe_json(&mut state, &tracker, &read);
+        assert_eq!(state.resolve(), AgentPhase::Editing);
+        observe_json(&mut state, &tracker, &edit_done);
+        assert_eq!(state.resolve(), AgentPhase::Reading);
     }
 }

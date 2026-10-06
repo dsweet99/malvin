@@ -9,17 +9,15 @@ fn smoke_active_agent_heartbeat_stats() {
     assert!(crate::active_agent_heartbeat_stats().is_none());
 }
 
-fn smoke_agent_phase_verifying_and_reporting() {
+fn smoke_agent_phase_checking() {
     let _guard = crate::agent_phase::AGENT_PHASE_TEST_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     crate::agent_phase::reset_phase_state_for_test();
-    crate::agent_phase::enter_verifying();
-    assert_eq!(crate::agent_phase::heartbeat_label(), "Verifying");
-    crate::agent_phase::leave_verifying();
-    crate::agent_phase::set_reporting(true);
-    assert_eq!(crate::agent_phase::heartbeat_label(), "Reporting");
-    crate::agent_phase::set_reporting(false);
+    crate::agent_phase::enter_checking();
+    assert_eq!(crate::agent_phase::heartbeat_label(), "Checking");
+    crate::agent_phase::leave_checking();
+    assert_eq!(crate::agent_phase::heartbeat_label(), "Starting");
 }
 
 fn smoke_emit_without_log_path_skips_disk_append() {
@@ -46,11 +44,14 @@ fn smoke_time_format_and_stdout_log_path() {
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     crate::agent_phase::reset_phase_state_for_test();
-    assert!(crate::time_format::heartbeat_payload_now().contains("Orienting"));
+    assert!(crate::time_format::heartbeat_payload_now().contains("Starting"));
     let tmp = tempfile::tempdir().expect("tempdir");
     let path = tmp.path().join("out.log");
     crate::workspace::stdout_log_path::set_stdout_log_path(Some(path.clone()));
-    assert_eq!(crate::workspace::stdout_log_path::clone_stdout_log_path(), Some(path));
+    assert_eq!(
+        crate::workspace::stdout_log_path::clone_stdout_log_path(),
+        Some(path)
+    );
     crate::workspace::stdout_log_path::set_stdout_log_path(None);
 }
 
@@ -122,7 +123,8 @@ fn smoke_mem_limit_and_process_group_rss() {
     assert!(gb >= 1);
     let mut pids = std::collections::HashSet::new();
     pids.insert(std::process::id());
-    let bytes = crate::agent_process::process_group_rss::pids_sandbox_bytes(&pids).expect("sandbox bytes");
+    let bytes =
+        crate::agent_process::process_group_rss::pids_sandbox_bytes(&pids).expect("sandbox bytes");
     assert!(bytes > 0);
 }
 
@@ -190,7 +192,7 @@ fn kiss_cov_ops_spawn() {
 #[test]
 fn kiss_bundled_malvin_kiss_coverage() {
     smoke_active_agent_heartbeat_stats();
-    smoke_agent_phase_verifying_and_reporting();
+    smoke_agent_phase_checking();
     smoke_emit_without_log_path_skips_disk_append();
     smoke_time_format_and_stdout_log_path();
     smoke_artifacts_create();

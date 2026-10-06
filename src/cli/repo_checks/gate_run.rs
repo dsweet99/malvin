@@ -69,14 +69,14 @@ fn run_malvin_checks_with_details(
     run_log_dir: Option<&Path>,
     commands: &[String],
 ) -> Result<(), RepoGateFailure> {
-    malvin::agent_phase::enter_verifying();
+    malvin::agent_phase::enter_checking();
     let result = (|| {
         for command in commands.iter().filter(|c| !c.trim().is_empty()) {
             run_shell_command_line_with_details(work_dir, output, run_log_dir, command)?;
         }
         Ok(())
     })();
-    malvin::agent_phase::leave_verifying();
+    malvin::agent_phase::leave_checking();
     result
 }
 

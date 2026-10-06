@@ -75,7 +75,7 @@ mod tests {
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         crate::agent_phase::reset_phase_state_for_test();
         let payload = super::heartbeat_payload_now();
-        assert!(payload.contains("Orienting"));
+        assert!(payload.contains("Starting"));
     }
 
     #[test]
