@@ -1,7 +1,5 @@
 use crate::agent_process::AcpJsonlTrace;
 use crate::agent_process::SessionUpdateChunkKind;
-use crate::output::{WHO_B, WHO_M};
-
 use crate::backends::cursor_sdk::protocol::BridgeEvent;
 
 use super::log_adapter_tool::{ToolCallFields, clear_tool_starts, emit_tool};
@@ -72,56 +70,11 @@ fn emit_thinking(session: &StreamLog, text: &str) {
 }
 
 fn tee_coalesced(session: &StreamLog, kind: SessionUpdateChunkKind, text: &str) {
-    let emissions = {
-        let mut coalesce = session
-            .stdout_coalesce
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        coalesce.feed(kind, text)
-    };
-    for (kind, line, ..) in emissions {
-        print_coalesced_line(session, kind, &line);
-    }
+    session.stdout_coalesce.feed_and_write(kind, text);
 }
 
 fn flush_stdout_coalesce(session: &StreamLog) {
-    if session.io.no_tee {
-        let _ = session
-            .stdout_coalesce
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .flush_all();
-        return;
-    }
-    let emissions = {
-        let mut coalesce = session
-            .stdout_coalesce
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        coalesce.flush_all()
-    };
-    for (kind, line, ..) in emissions {
-        if kind == SessionUpdateChunkKind::Thought && !session.io.show_thoughts_on_stdout {
-            continue;
-        }
-        print_coalesced_line(session, kind, &line);
-    }
-}
-
-fn print_coalesced_line(session: &StreamLog, kind: SessionUpdateChunkKind, line: &str) {
-    if line.is_empty() {
-        return;
-    }
-    let who = match kind {
-        SessionUpdateChunkKind::Message => WHO_M,
-        SessionUpdateChunkKind::Thought => WHO_B,
-    };
-    let markdown = session.io.emit_stdout_markdown;
-    if session.io.raw_output && kind == SessionUpdateChunkKind::Message {
-        crate::output::print_stdout_text_with_markdown(who, line, markdown);
-    } else {
-        crate::output::print_stdout_line_with_markdown(who, line, markdown);
-    }
+    session.stdout_coalesce.flush_and_write();
 }
 
 fn logged_run_done(session: &StreamLog, ev: &BridgeEvent) -> BridgeEvent {

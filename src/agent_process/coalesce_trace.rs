@@ -75,6 +75,10 @@ impl TraceChunkCoalescer {
         out
     }
 
+    pub(crate) const fn has_pending(&self) -> bool {
+        !self.message.is_empty() || !self.thought.is_empty()
+    }
+
     pub fn flush_all(&mut self) -> Vec<TraceChunkEmission> {
         let mut out = Vec::new();
         Self::flush_stream(FlushStreamCtx {

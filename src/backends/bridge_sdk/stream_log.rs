@@ -6,6 +6,7 @@ use std::time::Instant;
 use crate::agent_process::AgentIoOptions;
 
 use super::spawn_args::ToolCallStart;
+use super::stdout_coalesce_buf::StdoutCoalesceBuf;
 
 pub struct StreamLog {
     pub io: AgentIoOptions,
@@ -13,7 +14,7 @@ pub struct StreamLog {
     pub timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
     pub run_dir: Option<PathBuf>,
     pub started_at: Instant,
-    pub(crate) stdout_coalesce: Mutex<crate::agent_process::TraceChunkCoalescer>,
+    pub(crate) stdout_coalesce: StdoutCoalesceBuf,
     pub tool_starts: Mutex<HashMap<String, ToolCallStart>>,
     pub thinking: Option<String>,
 }
@@ -27,7 +28,7 @@ impl StreamLog {
             timing: None,
             run_dir: None,
             started_at: Instant::now(),
-            stdout_coalesce: Mutex::new(crate::agent_process::TraceChunkCoalescer::default()),
+            stdout_coalesce: StdoutCoalesceBuf::new(io),
             tool_starts: Mutex::new(HashMap::new()),
             thinking: None,
         }

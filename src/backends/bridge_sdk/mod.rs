@@ -13,6 +13,7 @@ mod session_io_productive;
 mod spawn_args;
 mod stdio_child;
 mod stdio_teardown;
+mod stdout_coalesce_buf;
 mod stream_log;
 mod timing;
 mod turn_timeout;
