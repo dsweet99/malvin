@@ -23,7 +23,7 @@ pub(super) fn cat_npm_pi_session() -> NpmPiSession {
 }
 
 #[tokio::test]
-async fn npm_pi_session_extends_turn_and_reports_tools_in_flight() {
+async fn npm_pi_session_reports_tools_in_flight() {
     let session = cat_npm_pi_session();
     assert_turn_timeout_contract(&session);
 }

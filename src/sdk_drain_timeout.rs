@@ -37,18 +37,6 @@ pub fn sdk_drain_idle_slice(idle_remaining: Duration) -> Duration {
     idle_remaining.min(Duration::from_millis(SDK_DRAIN_IDLE_SLICE_MAX_MS))
 }
 
-#[must_use]
-pub const fn sdk_drain_idle_max_wait(idle: Duration) -> Duration {
-    idle.saturating_mul(2)
-}
-
-pub const SDK_DRAIN_IDLE_MAX_TURN_MULTIPLIER: u32 = 10;
-
-#[must_use]
-pub const fn sdk_drain_idle_max_turn(idle: Duration) -> Duration {
-    idle.saturating_mul(SDK_DRAIN_IDLE_MAX_TURN_MULTIPLIER)
-}
-
 #[cfg(test)]
 pub(crate) fn tests_set_idle_ms_for_test(ms: u64) {
     unsafe {
@@ -107,7 +95,7 @@ mod tests {
     }
 
     #[test]
-    fn sdk_drain_idle_slice_and_max_wait() {
+    fn sdk_drain_idle_slice_caps_at_max() {
         assert_eq!(
             sdk_drain_idle_slice(Duration::from_secs(5)),
             Duration::from_secs(5)
@@ -115,14 +103,6 @@ mod tests {
         assert_eq!(
             sdk_drain_idle_slice(Duration::from_mins(2)),
             Duration::from_millis(SDK_DRAIN_IDLE_SLICE_MAX_MS)
-        );
-        assert_eq!(
-            sdk_drain_idle_max_wait(Duration::from_mins(10)),
-            Duration::from_mins(20)
-        );
-        assert_eq!(
-            sdk_drain_idle_max_turn(Duration::from_mins(10)),
-            Duration::from_mins(100)
         );
     }
 
@@ -146,10 +126,7 @@ mod tests {
         let _ = stringify!(SDK_DRAIN_IDLE_SLICE_MAX_MS);
         let _ = stringify!(sdk_drain_idle_timeout_from_env);
         let _ = stringify!(sdk_drain_idle_slice);
-        let _ = stringify!(sdk_drain_idle_max_wait);
-        let _ = stringify!(sdk_drain_idle_max_turn);
-        let _ = stringify!(SDK_DRAIN_IDLE_MAX_TURN_MULTIPLIER);
         let _ = stringify!(sdk_drain_idle_timeout_from_env_rejects_zero_and_garbage);
-        let _ = stringify!(sdk_drain_idle_slice_and_max_wait);
+        let _ = stringify!(sdk_drain_idle_slice_caps_at_max);
     }
 }

@@ -88,19 +88,13 @@ pub(crate) async fn drain_until_run_done(session: &BridgeSession) -> Result<(), 
     use super::log_adapter::handle_stream_event;
     let mut turn = super::DrainIdleTurn::new();
     let mut last_usage: Option<serde_json::Value> = None;
-    let labels = super::DrainIdleLabels {
-        prefix: crate::config::model_id::ModelBackend::Cursor.drain_idle_prefix(),
-        waiting_for: "run_done",
-    };
     loop {
         let ev = read_event_with_idle_timeout(session, "run_done", &mut turn).await?;
-        TurnWait::of(session).note_productive_event(&mut turn, &ev);
         match &ev {
             BridgeEvent::Step { .. } => note_sdk_step(session.timing.as_ref()),
             BridgeEvent::Usage { usage } => {
                 last_usage = Some(usage.clone());
                 handle_stream_event(session, &ev);
-                turn.check_max_deadline(labels)?;
             }
             BridgeEvent::RunDone { .. } => {
                 return finish_run_done(session, &ev, last_usage.as_ref());
@@ -109,10 +103,7 @@ pub(crate) async fn drain_until_run_done(session: &BridgeSession) -> Result<(), 
                 discard_optional_trailing_run_done(session).await;
                 return Err(AgentError(message.clone()));
             }
-            _ => {
-                handle_stream_event(session, &ev);
-                turn.check_max_deadline(labels)?;
-            }
+            _ => handle_stream_event(session, &ev),
         }
     }
 }

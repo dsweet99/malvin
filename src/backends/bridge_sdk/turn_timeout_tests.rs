@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use tokio::process::{Child, ChildStdin, ChildStdout};
 
-use super::{BridgeSession, ChildProcessSession, DrainIdleTurn, StdioChild, StreamLog, TurnWait};
+use super::{BridgeSession, ChildProcessSession, StdioChild, StreamLog, TurnWait};
 use crate::agent_process::AgentIoOptions;
 use crate::backends::cursor_sdk::protocol::BridgeEvent;
 
@@ -32,10 +32,6 @@ pub(crate) fn assert_turn_timeout_contract<S: ChildProcessSession>(session: &S) 
     assert!(!wait.health().tools_in_flight);
     crate::backends::bridge_sdk::handle_stream_event(log, &tool_start());
     assert!(wait.health().tools_in_flight);
-    let mut turn = DrainIdleTurn::new();
-    let before = turn.clock.max_deadline();
-    wait.note_productive_event(&mut turn, &tool_start());
-    assert!(turn.clock.max_deadline() > before);
 }
 
 pub(crate) fn assert_dead_session_error(err: &crate::agent_process::AgentError, needle: &str) {
@@ -90,7 +86,7 @@ pub(crate) fn stdio_child_from(
 }
 
 #[tokio::test]
-async fn cursor_bridge_session_extends_turn_and_reports_tools_in_flight() {
+async fn cursor_bridge_session_reports_tools_in_flight() {
     let session = cat_bridge_session();
     assert_turn_timeout_contract(&session);
 }

@@ -46,10 +46,8 @@ fn codex_session_from(
 }
 
 #[tokio::test]
-async fn codex_tool_start_extends_turn_and_marks_tools_in_flight() {
+async fn codex_tool_start_marks_tools_in_flight() {
     let session = cat_codex_session();
-    let mut turn = DrainIdleTurn::new();
-    let before = turn.clock.max_deadline();
     let mut state = TurnState {
         turn_id: Some("turn-1".into()),
         ..TurnState::default()
@@ -62,11 +60,7 @@ async fn codex_tool_start_extends_turn_and_marks_tools_in_flight() {
             "item": {"type": "commandExecution", "id": "cmd-1", "command": "sleep 1"}
         }
     });
-    assert!(handle_codex_event(&session, &started, &mut state, &mut turn).is_none());
-    assert!(
-        turn.clock.max_deadline() > before,
-        "codex tool start must extend the turn deadline"
-    );
+    assert!(handle_codex_event(&session, &started, &mut state).is_none());
     assert!(
         TurnWait::of(&session).health().tools_in_flight,
         "codex open tool must report tools_in_flight"
@@ -74,10 +68,8 @@ async fn codex_tool_start_extends_turn_and_marks_tools_in_flight() {
 }
 
 #[tokio::test]
-async fn codex_non_tool_event_does_not_extend_turn() {
+async fn codex_non_tool_event_leaves_tools_idle() {
     let session = cat_codex_session();
-    let mut turn = DrainIdleTurn::new();
-    let before = turn.clock.max_deadline();
     let mut state = TurnState {
         turn_id: Some("turn-1".into()),
         ..TurnState::default()
@@ -86,8 +78,7 @@ async fn codex_non_tool_event_does_not_extend_turn() {
         "method": "item/agentMessage/delta",
         "params": {"turnId": "turn-1", "delta": "hi"}
     });
-    assert!(handle_codex_event(&session, &delta, &mut state, &mut turn).is_none());
-    assert_eq!(turn.clock.max_deadline(), before);
+    assert!(handle_codex_event(&session, &delta, &mut state).is_none());
     assert!(!TurnWait::of(&session).health().tools_in_flight);
 }
 

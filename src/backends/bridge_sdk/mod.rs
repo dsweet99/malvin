@@ -58,7 +58,6 @@ pub(crate) use stdio_child::SpawnedStdio;
 pub use stdio_child::StdioChild;
 pub use stream_log::StreamLog;
 pub use timing::{note_sdk_step, record_sdk_usage};
-pub(crate) use turn_timeout::TurnTimeoutExtension;
 
 #[cfg(test)]
 mod protocol_reexport_tests {

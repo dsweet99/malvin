@@ -28,7 +28,7 @@ async fn progress_events_keep_drain_alive_past_idle_budget() {
 }
 
 #[tokio::test]
-async fn heartbeat_only_turn_extends_past_base_cap() {
+async fn heartbeat_only_turn_runs_past_two_idle_windows() {
     let _guard = crate::test_support::test_utils::test_env_lock();
     let tmp = bug_prepare();
     bug_set_progress_env(60, 8);
@@ -41,7 +41,7 @@ async fn heartbeat_only_turn_extends_past_base_cap() {
     let elapsed = started.elapsed();
     assert!(
         elapsed > std::time::Duration::from_millis(300),
-        "expected wall past base 2×150ms cap via heartbeat turn-extend, got {elapsed:?}"
+        "expected heartbeats to carry the turn past 2×150ms, got {elapsed:?}"
     );
     assert_eq!(
         client.last_coder_prompt_agent_response().as_deref(),
@@ -52,7 +52,7 @@ async fn heartbeat_only_turn_extends_past_base_cap() {
 }
 
 #[tokio::test(start_paused = true)]
-async fn continuous_events_hit_cumulative_turn_deadline() {
+async fn continuous_events_have_no_cumulative_turn_deadline() {
     let _guard = crate::test_support::test_utils::test_env_lock();
     bug_set_drain_idle_timeout_ms(60_000);
     let mut turn = crate::backends::bridge_sdk::DrainIdleTurn::new();
@@ -60,7 +60,7 @@ async fn continuous_events_hit_cumulative_turn_deadline() {
         prefix: "bridge timed out",
         waiting_for: "run_done",
     };
-    for i in 0..2 {
+    for i in 0..30 {
         let event = crate::backends::bridge_sdk::await_next_with_idle_in_turn(
             labels,
             None,
@@ -74,7 +74,7 @@ async fn continuous_events_hit_cumulative_turn_deadline() {
             &mut turn,
         )
         .await
-        .expect("events within cumulative cap");
+        .expect("events inside the idle window must keep the turn alive indefinitely");
         assert!(matches!(
             event,
             crate::backends::cursor_sdk::protocol::BridgeEvent::Progress { .. }
@@ -83,26 +83,11 @@ async fn continuous_events_hit_cumulative_turn_deadline() {
             assert_eq!(kind.as_deref(), Some(format!("heartbeat-{i}").as_str()));
         }
     }
-    let err = crate::backends::bridge_sdk::await_next_with_idle_in_turn(
-        labels,
-        None,
-        async {
-            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-            Ok::<_, crate::agent_process::AgentError>(crate::backends::cursor_sdk::protocol::BridgeEvent::Progress {
-                kind: Some("late".into()),
-                detail: None,
-            })
-        },
-        &mut turn,
-    )
-    .await
-    .expect_err("chatter past 2× idle must time out");
-    assert!(err.message.contains("bridge timed out"));
     bug_clear_env();
 }
 
 #[tokio::test]
-async fn long_tool_turn_completes_past_base_turn_cap() {
+async fn long_tool_turn_runs_past_two_idle_windows() {
     let _guard = crate::test_support::test_utils::test_env_lock();
     let tmp = bug_prepare();
     bug_set_tool_turn_env(60, 8);
@@ -112,7 +97,7 @@ async fn long_tool_turn_completes_past_base_turn_cap() {
     let elapsed = run_long_tool_prompt(&mut client, &tmp.path().join("prompts.log")).await;
     assert!(
         elapsed > std::time::Duration::from_millis(300),
-        "expected wall time past base 2×150ms cap, got {elapsed:?}"
+        "expected wall time past 2×150ms, got {elapsed:?}"
     );
     assert_long_tool_turn_done(&client, tmp.path());
     client.end_coder_session().await.expect("end");
@@ -137,7 +122,7 @@ async fn run_long_tool_prompt(
             },
         )
         .await
-        .expect("long tool turn must finish past base 2× idle cap");
+        .expect("long tool turn must finish past 2× idle");
     started.elapsed()
 }
 
@@ -177,8 +162,8 @@ async fn run_progress_prompt(
 #[test]
 fn kiss_cov_sdk_drain_progress_cases() {
     let _ = stringify!(progress_events_keep_drain_alive_past_idle_budget);
-    let _ = stringify!(heartbeat_only_turn_extends_past_base_cap);
-    let _ = stringify!(continuous_events_hit_cumulative_turn_deadline);
-    let _ = stringify!(long_tool_turn_completes_past_base_turn_cap);
+    let _ = stringify!(heartbeat_only_turn_runs_past_two_idle_windows);
+    let _ = stringify!(continuous_events_have_no_cumulative_turn_deadline);
+    let _ = stringify!(long_tool_turn_runs_past_two_idle_windows);
     let _ = stringify!(bug_set_tool_turn_env);
 }

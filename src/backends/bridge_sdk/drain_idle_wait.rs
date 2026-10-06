@@ -1,6 +1,5 @@
 use std::future::Future;
 use std::time::Duration;
-use tokio::time::Instant;
 
 use crate::agent_process::AgentError;
 
@@ -9,31 +8,12 @@ use super::{DrainHealthVerdict, DrainIdleClock, DrainIdleLabels};
 pub(crate) struct DrainIdleWaitOpts<'a> {
     pub labels: DrainIdleLabels<'a>,
     pub clock: &'a mut DrainIdleClock,
-    pub extend_turn_on_busy_health: bool,
+    pub tools_in_flight: bool,
 }
 
 impl DrainIdleWaitOpts<'_> {
-    fn turn_budget_error(&self) -> AgentError {
-        self.labels
-            .turn_budget_error(self.clock.turn_elapsed(), self.clock.turn_limit())
-    }
-
-    fn slice_miss_error(&self, idle: Duration) -> AgentError {
-        if Instant::now() >= self.clock.max_deadline() {
-            self.turn_budget_error()
-        } else {
-            self.labels
-                .silence_error_detail(idle, self.extend_turn_on_busy_health)
-        }
-    }
-
-    fn verdict_miss_error(&self, idle: Duration) -> AgentError {
-        if Instant::now() >= self.clock.max_deadline() {
-            self.turn_budget_error()
-        } else {
-            self.labels
-                .silence_error_detail(idle, self.extend_turn_on_busy_health)
-        }
+    fn silence_error(&self, idle: Duration) -> AgentError {
+        self.labels.silence_error_detail(idle, self.tools_in_flight)
     }
 }
 
@@ -51,26 +31,17 @@ where
     tokio::pin!(read);
     loop {
         let Some(slice) = opts.clock.slice_duration() else {
-            return Err(opts.slice_miss_error(idle));
+            return Err(opts.silence_error(idle));
         };
         if let Ok(result) = tokio::time::timeout(slice, read.as_mut()).await {
             return result;
         }
-        let Some(remaining) = opts.clock.remaining_to_max() else {
-            return Err(opts.turn_budget_error());
-        };
         let verdict = tokio::select! {
             result = read.as_mut() => return result,
             verdict = health_sampler(slice) => verdict,
-            () = tokio::time::sleep(remaining) => {
-                return Err(opts.turn_budget_error());
-            }
         };
         if opts.clock.apply_verdict(verdict).is_err() {
-            return Err(opts.verdict_miss_error(idle));
-        }
-        if opts.extend_turn_on_busy_health && verdict == DrainHealthVerdict::StillBusy {
-            opts.clock.extend_turn_budget(idle);
+            return Err(opts.silence_error(idle));
         }
     }
 }

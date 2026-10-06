@@ -100,7 +100,7 @@ async fn injected_busy_health_extends_then_delivers_event() {
     let mut wait = crate::backends::bridge_sdk::DrainIdleWaitOpts {
         labels,
         clock: &mut clock,
-        extend_turn_on_busy_health: false,
+        tools_in_flight: false,
     };
     let got = crate::backends::bridge_sdk::await_next_with_idle_using(&mut wait, read, move |_| {
         samples_for_health.fetch_add(1, Ordering::SeqCst);

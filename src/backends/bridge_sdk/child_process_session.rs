@@ -1,9 +1,8 @@
 use std::future::Future;
 
 use crate::agent_process::AgentError;
-use crate::backends::cursor_sdk::protocol::BridgeEvent;
 
-use super::session_io_productive::{note_productive_bridge_event, tools_in_flight};
+use super::session_io_productive::tools_in_flight;
 use super::stdio_child::StdioChild;
 use super::turn_timeout::TurnTimeoutExtension;
 use super::{DrainIdleHealthCtx, DrainIdleLabels, DrainIdleTurn, await_next_with_idle_in_turn};
@@ -16,10 +15,6 @@ pub(crate) trait ChildProcessSession: Sync {
 impl<T: ChildProcessSession> TurnTimeoutExtension for T {
     fn tools_in_flight(&self) -> bool {
         tools_in_flight(&self.stdio().log)
-    }
-
-    fn note_productive_event(&self, turn: &mut DrainIdleTurn, ev: &BridgeEvent) {
-        note_productive_bridge_event(&self.stdio().log, turn, ev);
     }
 }
 
@@ -44,10 +39,6 @@ impl<'a> TurnWait<'a> {
             spawn_pid_baseline: &self.stdio.spawn_pid_baseline,
             tools_in_flight: self.extension.tools_in_flight(),
         }
-    }
-
-    pub(crate) fn note_productive_event(&self, turn: &mut DrainIdleTurn, ev: &BridgeEvent) {
-        self.extension.note_productive_event(turn, ev);
     }
 }
 

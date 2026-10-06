@@ -1,7 +1,7 @@
 use super::session::NpmPiSession;
 use crate::agent_process::AgentError;
 use crate::backends::cursor_sdk::protocol::{BridgeEvent, RunDoneStatus};
-use crate::backends::bridge_sdk::{DrainIdleTurn, TurnProtocol};
+use crate::backends::bridge_sdk::TurnProtocol;
 
 #[derive(Default)]
 pub(crate) struct TurnState {
@@ -22,9 +22,8 @@ impl TurnProtocol for NpmPiSession {
         &self,
         value: &serde_json::Value,
         state: &mut TurnState,
-        turn: &mut DrainIdleTurn,
     ) -> Option<Result<(), AgentError>> {
-        handle_line(self, value, state, turn).await
+        handle_line(self, value, state).await
     }
 }
 
@@ -40,13 +39,8 @@ pub(super) async fn consume_npm_pi_turn(
     crate::backends::bridge_sdk::consume_turn(session, state).await
 }
 
-pub(super) fn feed_mapped_bridge_events(
-    session: &NpmPiSession,
-    turn: &mut crate::backends::bridge_sdk::DrainIdleTurn,
-    events: &[BridgeEvent],
-) {
+pub(super) fn feed_mapped_bridge_events(session: &NpmPiSession, events: &[BridgeEvent]) {
     for ev in events {
-        crate::backends::bridge_sdk::TurnTimeoutExtension::note_productive_event(session, turn, ev);
         if let BridgeEvent::Step { .. } = ev {
             crate::backends::bridge_sdk::note_sdk_step(session.timing.as_ref());
         }
@@ -58,7 +52,6 @@ async fn handle_line(
     session: &NpmPiSession,
     value: &serde_json::Value,
     state: &mut TurnState,
-    drain: &mut DrainIdleTurn,
 ) -> Option<Result<(), AgentError>> {
     let ty = value.get("type").and_then(|v| v.as_str()).unwrap_or("");
     if ty == "response" {
@@ -75,7 +68,7 @@ async fn handle_line(
             feed_and_handle_run_done(session, &ev);
             return Some(Ok(()));
         }
-        feed_mapped_bridge_events(session, drain, std::slice::from_ref(&ev));
+        feed_mapped_bridge_events(session, std::slice::from_ref(&ev));
     }
     if state.settled {
         return Some(finish_settled(session, state));

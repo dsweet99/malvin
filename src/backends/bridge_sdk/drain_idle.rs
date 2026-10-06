@@ -4,9 +4,7 @@ use std::time::Duration;
 use tokio::time::Instant;
 
 use crate::agent_process::AgentError;
-use crate::sdk_drain_timeout::{
-    sdk_drain_idle_max_turn, sdk_drain_idle_max_wait, sdk_drain_idle_slice,
-};
+use crate::sdk_drain_timeout::sdk_drain_idle_slice;
 
 #[path = "drain_idle_health.rs"]
 pub(crate) mod drain_idle_health;
@@ -43,13 +41,6 @@ impl DrainIdleLabels<'_> {
             self.prefix, self.waiting_for
         ))
     }
-
-    pub(crate) fn turn_budget_error(self, elapsed: Duration, limit: Duration) -> AgentError {
-        AgentError::session_dead(format!(
-            "{} waiting for {} after turn ran {elapsed:?} (limit {limit:?}; turn budget exhausted)",
-            self.prefix, self.waiting_for
-        ))
-    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -61,84 +52,37 @@ pub struct DrainIdleHealthCtx<'a> {
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct DrainIdleClock {
-    wait_start: Instant,
     idle: Duration,
     idle_deadline: Instant,
-    turn_deadline: Instant,
 }
 
 impl DrainIdleClock {
     pub(crate) fn new(idle: Duration) -> Self {
-        let wait_start = Instant::now();
         Self {
-            wait_start,
             idle,
-            idle_deadline: wait_start + idle,
-            turn_deadline: wait_start + sdk_drain_idle_max_wait(idle),
+            idle_deadline: Instant::now() + idle,
         }
-    }
-
-    pub(crate) const fn max_deadline(&self) -> Instant {
-        self.turn_deadline
-    }
-
-    pub(crate) fn turn_elapsed(&self) -> Duration {
-        Instant::now().saturating_duration_since(self.wait_start)
-    }
-
-    pub(crate) fn turn_limit(&self) -> Duration {
-        self.turn_deadline
-            .saturating_duration_since(self.wait_start)
     }
 
     pub(crate) const fn idle(&self) -> Duration {
         self.idle
     }
 
-    pub(crate) fn extend_turn_budget(&mut self, extra: Duration) {
-        let cap = self.wait_start + sdk_drain_idle_max_turn(self.idle);
-        self.turn_deadline = (self.turn_deadline + extra).min(cap);
-        let now = Instant::now();
-        self.idle_deadline = (now + self.idle).min(self.turn_deadline);
-    }
-
     pub(crate) fn reset_idle_window(&mut self) {
-        let now = Instant::now();
-        self.idle_deadline = (now + self.idle).min(self.max_deadline());
-    }
-
-    pub(crate) fn remaining_to_max(&self) -> Option<Duration> {
-        let remaining = self
-            .max_deadline()
-            .saturating_duration_since(Instant::now());
-        (!remaining.is_zero()).then_some(remaining)
+        self.idle_deadline = Instant::now() + self.idle;
     }
 
     pub(crate) fn slice_duration(&self) -> Option<Duration> {
-        let now = Instant::now();
-        if now >= self.idle_deadline || now >= self.max_deadline() {
-            return None;
-        }
-        let cap = self
-            .idle_deadline
-            .saturating_duration_since(now)
-            .min(self.max_deadline().saturating_duration_since(now));
-        if cap.is_zero() {
-            None
-        } else {
-            Some(sdk_drain_idle_slice(cap))
-        }
+        let remaining = self.idle_deadline.saturating_duration_since(Instant::now());
+        (!remaining.is_zero()).then(|| sdk_drain_idle_slice(remaining))
     }
 
     pub(crate) fn apply_verdict(&mut self, verdict: DrainHealthVerdict) -> Result<(), ()> {
         let now = Instant::now();
-        if now >= self.max_deadline() {
-            return Err(());
-        }
         match verdict {
             DrainHealthVerdict::DeadOrZombie => Err(()),
             DrainHealthVerdict::StillBusy => {
-                self.idle_deadline = (now + self.idle).min(self.max_deadline());
+                self.idle_deadline = now + self.idle;
                 Ok(())
             }
             DrainHealthVerdict::AppearsHung => {
@@ -175,12 +119,11 @@ pub(crate) async fn await_next_with_idle_in_turn<T, Fut>(
 where
     Fut: Future<Output = Result<T, AgentError>>,
 {
-    turn.check_max_deadline(labels)?;
     let tools_in_flight = health.as_ref().is_some_and(|ctx| ctx.tools_in_flight);
     let mut wait = DrainIdleWaitOpts {
         labels,
         clock: &mut turn.clock,
-        extend_turn_on_busy_health: tools_in_flight,
+        tools_in_flight,
     };
     let result = await_next_with_idle_using(&mut wait, read, move |slice| async move {
         let verdict = match health {

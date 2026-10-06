@@ -66,18 +66,10 @@ pub(crate) async fn request(
     .await?;
     let mut turn = crate::backends::bridge_sdk::DrainIdleTurn::new();
     loop {
-        turn.check_max_deadline(crate::backends::bridge_sdk::DrainIdleLabels {
-            prefix: crate::config::model_id::ModelBackend::Codex.drain_idle_prefix(),
-            waiting_for: "rpc reply",
-        })?;
         let value = session.read_json_waiting("rpc reply", &mut turn).await?;
         if value.get("id").and_then(serde_json::Value::as_u64) == Some(id) {
             return Ok(value);
         }
-        turn.check_max_deadline(crate::backends::bridge_sdk::DrainIdleLabels {
-            prefix: crate::config::model_id::ModelBackend::Codex.drain_idle_prefix(),
-            waiting_for: "rpc reply",
-        })?;
     }
 }
 

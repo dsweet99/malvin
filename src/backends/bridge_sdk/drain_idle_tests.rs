@@ -5,10 +5,8 @@ use super::drain_idle::{
 };
 use crate::agent_process::AgentError;
 use crate::agent_process::child_health::SilenceHealthOutcome;
-use crate::sdk_drain_timeout::sdk_drain_idle_max_wait;
 use std::collections::HashSet;
 use std::time::{Duration, Instant as WallInstant};
-use tokio::time::Instant;
 
 fn set_idle_ms(ms: u64) -> Option<std::ffi::OsString> {
     let prior = std::env::var_os("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS");
@@ -54,20 +52,17 @@ async fn await_next_delivers_when_read_completes() {
 }
 
 #[test]
-fn clock_busy_extends_until_max_wait() {
-    let idle = Duration::from_millis(40);
+fn clock_busy_extends_with_no_turn_cap() {
+    let idle = Duration::from_millis(20);
     let mut clock = DrainIdleClock::new(idle);
-    assert!(clock.apply_verdict(DrainHealthVerdict::StillBusy).is_ok());
-    let deadline = Instant::now() + sdk_drain_idle_max_wait(idle) + Duration::from_millis(20);
-    let mut hit_err = false;
-    while Instant::now() < deadline {
-        if clock.apply_verdict(DrainHealthVerdict::StillBusy).is_err() {
-            hit_err = true;
-            break;
-        }
+    let until = WallInstant::now() + idle * 5;
+    while WallInstant::now() < until {
+        assert!(
+            clock.apply_verdict(DrainHealthVerdict::StillBusy).is_ok(),
+            "StillBusy must keep extending the idle window"
+        );
         std::thread::sleep(Duration::from_millis(5));
     }
-    assert!(hit_err, "StillBusy must eventually hit max_wait");
 }
 
 #[test]
@@ -118,36 +113,6 @@ fn aggregate_health_policy_matches_plan() {
 }
 
 #[tokio::test]
-async fn real_health_sampling_respects_two_idle_wall_cap() {
-    let _guard = crate::test_support::test_utils::test_env_lock();
-    let prior = set_idle_ms(5);
-    let baseline = HashSet::new();
-    let health = Some(DrainIdleHealthCtx {
-        process_group_id: Some(std::process::id()),
-        spawn_pid_baseline: &baseline,
-        tools_in_flight: false,
-    });
-    let labels = DrainIdleLabels {
-        prefix: "bridge timed out",
-        waiting_for: "run_done",
-    };
-    let started = WallInstant::now();
-    let _err = await_next_with_idle(
-        labels,
-        health,
-        std::future::pending::<Result<(), AgentError>>(),
-    )
-    .await
-    .expect_err("must time out");
-    let elapsed = started.elapsed();
-    crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
-    assert!(
-        elapsed <= Duration::from_millis(25),
-        "2× idle cap was 10 ms, but real health sampling took {elapsed:?}"
-    );
-}
-
-#[tokio::test]
 async fn event_arriving_during_health_sampling_wins_race() {
     let _guard = crate::test_support::test_utils::test_env_lock();
     let prior = set_idle_ms(20);
@@ -168,55 +133,6 @@ async fn event_arriving_during_health_sampling_wins_race() {
     let result = await_next_with_idle(labels, health, read).await;
     crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
     assert_eq!(result.expect("event must beat health/max timeout"), 42);
-}
-
-#[tokio::test(start_paused = true)]
-async fn tool_start_extends_cumulative_turn_budget() {
-    let _guard = crate::test_support::test_utils::test_env_lock();
-    let prior = set_idle_ms(60_000);
-    let labels = DrainIdleLabels {
-        prefix: "bridge timed out",
-        waiting_for: "run_done",
-    };
-    let mut turn = DrainIdleTurn::new();
-    turn.clock
-        .extend_turn_budget(crate::sdk_drain_timeout::sdk_drain_idle_max_wait(
-            turn.idle(),
-        ));
-    tokio::time::sleep(Duration::from_secs(121)).await;
-    assert!(
-        turn.check_max_deadline(labels).is_ok(),
-        "tool-start extension must carry the turn past the base 2× idle cap"
-    );
-    tokio::time::sleep(Duration::from_mins(2)).await;
-    let err = turn
-        .check_max_deadline(labels)
-        .expect_err("extended budget must still have a finite cap");
-    assert!(err.message.contains("turn ran"));
-    assert!(err.message.contains("limit"));
-    crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
-}
-
-#[test]
-fn extend_turn_budget_raises_turn_deadline() {
-    let idle = Duration::from_millis(40);
-    let mut clock = DrainIdleClock::new(idle);
-    let base = clock.max_deadline();
-    clock.extend_turn_budget(idle);
-    assert!(clock.max_deadline() > base);
-}
-
-#[test]
-fn turn_budget_error_reports_elapsed_not_configured_idle() {
-    let labels = DrainIdleLabels {
-        prefix: "bridge timed out",
-        waiting_for: "run_done",
-    };
-    let err = labels.turn_budget_error(Duration::from_secs(1192), Duration::from_mins(100));
-    assert!(err.message.contains("turn ran"));
-    assert!(err.message.contains("1192s"));
-    assert!(err.message.contains("turn budget exhausted"));
-    assert!(!err.message.contains("silence"));
 }
 
 #[test]
@@ -243,19 +159,15 @@ fn silence_error_labels_bridge_quiet() {
     );
 }
 
-#[tokio::test]
-async fn drain_idle_turn_check_deadline_and_reset_idle_window() {
+#[test]
+fn drain_idle_turn_reset_reopens_expired_idle_window() {
     let _guard = crate::test_support::test_utils::test_env_lock();
     let prior = set_idle_ms(10);
-    let labels = DrainIdleLabels {
-        prefix: "bridge timed out",
-        waiting_for: "run_done",
-    };
     let mut turn = DrainIdleTurn::new();
-    assert!(turn.check_max_deadline(labels).is_ok());
-    turn.clock.reset_idle_window();
     std::thread::sleep(Duration::from_millis(25));
-    assert!(turn.check_max_deadline(labels).is_err());
+    assert!(turn.clock.slice_duration().is_none());
+    turn.clock.reset_idle_window();
+    assert!(turn.clock.slice_duration().is_some());
     crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
 }
 
@@ -269,7 +181,6 @@ fn kiss_cov_drain_idle_names() {
         waiting_for: "ok",
     };
     let _ = labels.silence_error_detail(Duration::from_millis(1), false);
-    let _ = labels.turn_budget_error(Duration::from_millis(1), Duration::from_millis(2));
     let baseline = HashSet::new();
     let _ = DrainIdleHealthCtx {
         process_group_id: Some(1),
@@ -277,13 +188,11 @@ fn kiss_cov_drain_idle_names() {
         tools_in_flight: false,
     };
     let _ = DrainIdleClock::new(Duration::from_millis(1)).slice_duration();
-    let _ = DrainIdleClock::new(Duration::from_millis(1)).max_deadline();
     let _ = stringify!(await_next_with_idle);
     let _ = stringify!(await_next_with_idle_in_turn);
     let _ = stringify!(DrainIdleTurn);
     let _ = DrainIdleTurn::new;
     let _ = stringify!(reset_idle_window);
-    let _ = stringify!(check_max_deadline);
     let _ = stringify!(sample_drain_health);
     let _ = stringify!(drain_sample_pids);
     let _ = stringify!(aggregate_pid_health);
@@ -291,18 +200,14 @@ fn kiss_cov_drain_idle_names() {
     let _ = stringify!(set_idle_ms);
     let _ = stringify!(await_next_times_out_without_health_extend);
     let _ = stringify!(await_next_delivers_when_read_completes);
-    let _ = stringify!(clock_busy_extends_until_max_wait);
+    let _ = stringify!(clock_busy_extends_with_no_turn_cap);
     let _ = stringify!(clock_dead_fails_immediately);
     let _ = stringify!(clock_hung_fails_only_after_idle_deadline);
     let _ = stringify!(drain_sample_pids_falls_back_to_pgid);
     let _ = stringify!(aggregate_health_policy_matches_plan);
-    let _ = stringify!(real_health_sampling_respects_two_idle_wall_cap);
     let _ = stringify!(event_arriving_during_health_sampling_wins_race);
-    let _ = stringify!(extend_turn_budget);
-    let _ = stringify!(tool_start_extends_cumulative_turn_budget);
-    let _ = stringify!(extend_turn_budget_raises_turn_deadline);
-    let _ = stringify!(turn_budget_error_reports_elapsed_not_configured_idle);
     let _ = stringify!(silence_error_labels_bridge_quiet);
+    let _ = stringify!(drain_idle_turn_reset_reopens_expired_idle_window);
     let _ = stringify!(kiss_cov_drain_idle_names);
     let _ = stringify!(tests_set_idle_ms_for_test);
     let _ = stringify!(tests_restore_idle_ms_for_test);
