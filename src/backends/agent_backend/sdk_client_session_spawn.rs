@@ -3,10 +3,10 @@ use std::path::{Path, PathBuf};
 use crate::agent_process::AgentError;
 use crate::nested_budget_scopes::BudgetScopeLayer;
 
-use super::super::acp_attempt_loop::{BackoffChoice, RetrySpec, retry_until_ok};
+use super::super::acp_attempt_loop::{retry_until_ok, BackoffChoice, RetrySpec};
 use crate::backends::bridge_sdk::BridgeSpawnArgs;
 
-use super::super::backend_lifecycle::{BackendLifecycle, backend_lifecycle};
+use super::super::backend_lifecycle::{backend_lifecycle, BackendLifecycle};
 use super::super::sdk_client::{BegunCoderSession, SdkClient};
 use super::super::sdk_session::SdkSession;
 

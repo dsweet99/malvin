@@ -69,8 +69,8 @@ pub const fn router_b_uses_creative_lead(flags: RouterBPromptFlags) -> bool {
 }
 
 #[must_use]
-pub const fn router_b_uses_done_note(flags: RouterBPromptFlags) -> bool {
-    !flags.no_kpop && !flags.creative
+pub const fn router_b_uses_done_note(_flags: RouterBPromptFlags) -> bool {
+    true
 }
 
 fn default_constraints_prompt(name: &str) -> Option<&'static str> {
@@ -232,9 +232,17 @@ mod tests {
             creative: false,
             no_kpop: false,
         }));
-        assert!(!router_b_uses_done_note(RouterBPromptFlags {
+        assert!(router_b_uses_done_note(RouterBPromptFlags {
+            creative: false,
+            no_kpop: true,
+        }));
+        assert!(router_b_uses_done_note(RouterBPromptFlags {
             creative: true,
             no_kpop: false,
+        }));
+        assert!(router_b_uses_done_note(RouterBPromptFlags {
+            creative: true,
+            no_kpop: true,
         }));
     }
 }

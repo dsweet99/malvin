@@ -23,7 +23,7 @@ Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`,
 
 | Command | Purpose |
 |---------|---------|
-| *(default)* | Bare `malvin REQUEST` — aggregated initial (`header` when fresh, with `kpop_insert` from `kpop_common` unless `--no-kpop`, + optional `mbc2` + `router_a`) → optional `router_b`; exit `router_summarize`; outer `--max-loops` iterations |
+| *(default)* | Bare `malvin REQUEST` — each outer iteration starts a new agent for aggregated `header` (`kpop_insert` from `kpop_common` unless `--no-kpop`) + optional `mbc2` + `router_a`, then optional `router_b` on that agent; exit `router_summarize` on that same agent; outer `--max-loops` iterations |
 | `--do` | One-shot agent turn for the following REQUEST (repeatable; other REQUESTs stay on the router) |
 | `--creative[=PROB]` | Creative mode for the following REQUEST only (repeatable; optional probability, default `1.0`) |
 | `malvin -g` | Fix quality gates via the default router with fixed request `Get the gates to pass.` (no positional request) |
@@ -82,7 +82,7 @@ Like `--do`, each `--creative` applies only to the `REQUEST` that immediately fo
 
 ### `--no-kpop`
 
-Hidden from `malvin --help`. On the default router (bare `malvin REQUEST` and `malvin -g`), turn off the KPop method: `{{ kpop_insert }}` renders empty, reused sessions do not receive `kpop_common.md`, and `router_a` / `router_b` use their no-KPop wording. Rejected with pure `--do`. Off by default.
+Hidden from `malvin --help`. On the default router (bare `malvin REQUEST` and `malvin -g`), turn off the KPop method: `{{ kpop_insert }}` renders empty, and `router_a` / `router_b` use their no-KPop wording. Rejected with pure `--do`. Off by default.
 
 ### `--watch`
 

@@ -1,6 +1,6 @@
 use super::test_support::test_io;
-use crate::config::model_id::ModelBackend;
 use crate::config::model_id::parse_model_id;
+use crate::config::model_id::ModelBackend;
 
 #[test]
 fn agent_backend_tracks_consecutive_errors_via_ops() {
@@ -20,7 +20,8 @@ fn agent_backend_tracks_consecutive_errors_via_ops() {
 
 #[test]
 fn ensure_run_timing_for_session_installs_when_missing() {
-    let mut backend = crate::backends::cursor_sdk::cursor_sdk_client_from_raw("cursor:auto", test_io(), 1);
+    let mut backend =
+        crate::backends::cursor_sdk::cursor_sdk_client_from_raw("cursor:auto", test_io(), 1);
     assert!(backend.timing.is_none());
     let timing = crate::backends::agent_backend::ensure_run_timing_for_session(&mut backend);
     let again = crate::backends::agent_backend::ensure_run_timing_for_session(&mut backend);
@@ -73,6 +74,7 @@ fn kiss_witness_unified_sdk_client_and_backend() {
     let _ = stringify!(deliver_session_header_if_needed);
     let _ = stringify!(emit_agent_started_log);
     let _ = stringify!(force_fresh_agent_for_retry);
+    let _ = stringify!(force_fresh_coder_agent);
     let _ = stringify!(prompts_log_run_dir);
     let _ = stringify!(BackendErrorTracker);
     let _ = stringify!(MAX_CONSECUTIVE_SAME_BACKEND_ERRORS);

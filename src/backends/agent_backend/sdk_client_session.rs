@@ -77,6 +77,13 @@ impl SdkClient {
         s.shutdown().await?;
         Ok(())
     }
+
+    pub async fn force_fresh_coder_agent(&mut self) -> Result<(), AgentError> {
+        self.end_coder_session().await?;
+        self.last_agent_id = None;
+        self.header_lifecycle.require_redelivery();
+        Ok(())
+    }
 }
 
 #[must_use]

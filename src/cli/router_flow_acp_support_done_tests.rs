@@ -1,4 +1,4 @@
-use super::{RouterAcpIterationInput, router_iteration_log_path, run_router_turns};
+use super::{router_iteration_log_path, run_router_turns, RouterAcpIterationInput};
 use crate::cli::{RouterOpts, SharedOpts};
 use malvin::run_timing::acp_post_run::RunTimingSessionEnd;
 
@@ -10,7 +10,8 @@ struct MockRouterTurns {
 }
 
 fn mock_bridge_js() -> std::path::PathBuf {
-    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/backends/cursor_sdk/mock_bridge.js")
+    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("src/backends/cursor_sdk/mock_bridge.js")
 }
 
 fn cache_node_bin_while_real_home_visible() {
@@ -34,9 +35,9 @@ fn run_mock_router_turns(done_needle: &str) -> MockRouterTurns {
             std::env::set_var(DONE_NEEDLE_ENV, done_needle);
         }
         malvin::test_support::test_utils::enable_test_fast_teardown();
-        outcome = Some(malvin::test_support::test_utils::block_on_test_async(drive_router_turns(
-            workspace,
-        )));
+        outcome = Some(malvin::test_support::test_utils::block_on_test_async(
+            drive_router_turns(workspace),
+        ));
     });
     outcome.expect("router turns ran")
 }
@@ -86,19 +87,31 @@ async fn drive_router_turns(workspace: &std::path::Path) -> MockRouterTurns {
 fn done_marker_in_router_a_reply_skips_router_b() {
     let turns = run_mock_router_turns("Find unsatisfied requirements");
     assert!(turns.done);
-    assert!(!turns.router_log.contains("router_b"), "{}", turns.router_log);
+    assert!(
+        !turns.router_log.contains("router_b"),
+        "{}",
+        turns.router_log
+    );
 }
 
 #[test]
 fn done_marker_in_router_b_reply_stops_loop() {
     let turns = run_mock_router_turns("KPop: Satisfy the requirements");
-    assert!(turns.router_log.contains("router_b"), "{}", turns.router_log);
+    assert!(
+        turns.router_log.contains("router_b"),
+        "{}",
+        turns.router_log
+    );
     assert!(turns.done);
 }
 
 #[test]
 fn no_done_marker_continues_loop() {
     let turns = run_mock_router_turns("no prompt contains this needle");
-    assert!(turns.router_log.contains("router_b"), "{}", turns.router_log);
+    assert!(
+        turns.router_log.contains("router_b"),
+        "{}",
+        turns.router_log
+    );
     assert!(!turns.done);
 }

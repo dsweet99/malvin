@@ -256,6 +256,14 @@ fn build_router_b_prompt_selects_creative_template_when_flag_set() {
         creative.contains("KPop: Satisfy the requirements."),
         "creative router_b must keep KPop satisfy instruction: {creative}"
     );
+    assert!(
+        plain.contains("NB: Do not emit"),
+        "default router_b must include the done note: {plain}"
+    );
+    assert!(
+        creative.contains("NB: Do not emit"),
+        "creative router_b must include the done note: {creative}"
+    );
     assert_eq!(
         router_b_prompt_label(malvin::prompts::RouterBPromptFlags {
             creative: false,
@@ -350,6 +358,26 @@ fn build_router_prompts_select_no_kpop_templates_when_flag_set() {
         "no_kpop wins over creative for router_b: {b}"
     );
     assert!(b.contains("Satisfy the requirements"));
+    assert!(
+        b.contains("NB: Do not emit"),
+        "creative router_b must include the done note even with no_kpop: {b}"
+    );
+    let b_work = build_router_b_prompt(RouterBPromptInput {
+        store: &store,
+        artifacts: &artifacts,
+        model: DEFAULT_CLI_MODEL,
+        creative: false,
+        no_kpop: true,
+    })
+    .expect("router_b_no_kpop_work");
+    assert!(
+        !b_work.contains("KPop:"),
+        "no_kpop work turn must omit KPop: prefix: {b_work}"
+    );
+    assert!(
+        b_work.contains("NB: Do not emit"),
+        "no_kpop work turn must include the done note: {b_work}"
+    );
 }
 
 #[test]
