@@ -1,6 +1,6 @@
 use crate::agent_process::AgentError;
 
-use super::sdk_client::SdkClient;
+use super::agent_backend::sdk_client::SdkClient;
 
 pub struct ActiveCoderSession<'a> {
     pub(super) client: &'a mut SdkClient,
@@ -17,8 +17,8 @@ impl SdkClient {
 
 #[cfg(test)]
 mod tests {
-    use super::super::sdk_client::BegunCoderSession;
-    use super::super::test_support::test_io;
+    use super::super::agent_backend::sdk_client::BegunCoderSession;
+    use super::super::agent_backend::test_support::test_io;
     use super::SdkClient;
     use crate::config::model_id::parse_model_id;
     use std::path::PathBuf;

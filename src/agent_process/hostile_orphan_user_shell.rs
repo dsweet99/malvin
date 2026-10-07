@@ -1,12 +1,12 @@
-use super::process_alive;
-use super::read_orphan_pid;
-use super::wait_for_init_reparent;
+use super::hostile_orphan_test_util::process_alive;
+use super::hostile_orphan_test_util::read_orphan_pid;
+use super::hostile_orphan_test_util::wait_for_init_reparent;
 use std::io::Write;
 use std::path::Path;
 use std::process::{Child, ChildStdin, Command, Stdio};
 
 pub fn spawn_user_shell_cooperator() -> (Child, ChildStdin) {
-    let child_delay = super::hostile_script_delay_ms(200);
+    let child_delay = super::hostile_orphan_test_util::hostile_script_delay_ms(200);
     let script = format!(
         "import os,sys,time\nwhile True:\n line=sys.stdin.readline()\n if not line:\n  break\n parts=line.strip().split()\n if len(parts)>=2 and parts[0]=='DAEMON':\n  pidfile=parts[1]\n  pid=os.fork()\n  if pid==0:\n   os.setsid()\n   g=os.fork()\n   if g==0:\n    open(pidfile,'w').write(str(os.getpid()))\n    os.execvp('sleep',['sleep','120'])\n   time.sleep({child_delay} / 1000)\n   os._exit(0)\n  os.waitpid(pid,0)\n",
     );

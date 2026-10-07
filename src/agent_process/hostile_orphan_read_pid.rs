@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::time::Duration;
 
-use super::process_alive;
+use super::hostile_orphan_test_util::process_alive;
 
 #[cfg(unix)]
 fn note_fixture_orphan_affiliation(pid: u32, agent_pgid: Option<u32>) {

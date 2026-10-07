@@ -1,8 +1,8 @@
-use super::session::CodexSession;
+use super::codex_sdk::session::CodexSession;
 use crate::agent_process::AgentError;
 use crate::backends::cursor_sdk::protocol::{BridgeEvent, RunDoneStatus};
 
-use super::session_turn::{TurnState, agent_message_from_turn};
+use super::codex_sdk::session_turn::{TurnState, agent_message_from_turn};
 
 pub(super) fn finish_codex_turn(
     session: &CodexSession,
@@ -20,7 +20,7 @@ pub(super) fn finish_codex_turn(
         record_codex_result(session, text);
     }
     crate::backends::bridge_sdk::handle_stream_event(session, &ev);
-    super::session_io::set_codex_turn_id(session, None);
+    super::codex_sdk::session_io::set_codex_turn_id(session, None);
     let status = match &ev {
         BridgeEvent::RunDone { status, .. } => *status,
         _ => RunDoneStatus::Finished,
@@ -42,7 +42,7 @@ pub(super) fn run_done_from_turn(
         result: agent_message_from_turn(value, state.response_text),
         usage: state
             .usage
-            .or_else(|| super::map_event_usage::usage_from_turn(value)),
+            .or_else(|| super::codex_sdk::map_event_usage::usage_from_turn(value)),
         error: turn_error_message(value, status),
         duration_ms: turn_duration_ms(value).or_else(|| elapsed_ms(state.started)),
     })

@@ -81,3 +81,79 @@ pub use entrypoint::entrypoint;
 pub use exit::Exit;
 pub use shared_opts::{AgentRouteOpts, RouterOpts, SharedOpts};
 pub use tidy_flow::run_tidy;
+
+#[path = "do_flow_acp.rs"]
+pub(super) mod do_flow_acp;
+#[path = "do_flow_prompt.rs"]
+pub(crate) mod do_flow_prompt;
+#[path = "entrypoint_dispatch.rs"]
+pub(super) mod entrypoint_dispatch;
+#[path = "entrypoint_from.rs"]
+pub(super) mod entrypoint_from;
+#[path = "entrypoint_gates_only.rs"]
+pub(super) mod entrypoint_gates_only;
+#[path = "entrypoint_info_flags.rs"]
+pub(super) mod entrypoint_info_flags;
+#[path = "entrypoint_modal.rs"]
+pub(super) mod entrypoint_modal;
+#[path = "entrypoint_short_help.rs"]
+pub(super) mod entrypoint_short_help;
+#[path = "models_cmd_catalog.rs"]
+pub(super) mod models_cmd_catalog;
+#[path = "models_cmd_cursor.rs"]
+pub(super) mod models_cmd_cursor;
+#[path = "models_cmd_filter.rs"]
+pub(super) mod models_cmd_filter;
+#[path = "models_cmd_parse.rs"]
+pub(super) mod models_cmd_parse;
+#[path = "models_cmd_refresh.rs"]
+pub(crate) mod models_cmd_refresh;
+#[path = "models_cmd_resolve.rs"]
+pub(crate) mod models_cmd_resolve;
+#[path = "repo_checks/command_support.rs"]
+pub(super) mod repo_checks_command_support;
+#[cfg(all(test, windows))]
+#[path = "repo_checks/windows_fake_command_path_tests.rs"]
+pub(super) mod repo_checks_windows_fake_command_path_tests;
+#[path = "repo_checks/gate_log.rs"]
+pub(super) mod repo_checks_gate_log;
+#[path = "repo_checks/gate_run.rs"]
+pub(super) mod repo_checks_gate_run;
+#[path = "repo_checks/types.rs"]
+pub(super) mod repo_checks_types;
+#[cfg(all(test, unix))]
+#[path = "repo_checks/tests_gates_common.rs"]
+pub(super) mod repo_checks_tests_gates_common;
+#[cfg(all(test, unix))]
+#[path = "repo_checks/tests_gates_helpers.rs"]
+pub(super) mod repo_checks_tests_gates_helpers;
+#[cfg(all(test, unix))]
+#[path = "repo_checks/tests_gates_unix.rs"]
+pub(super) mod repo_checks_tests_gates_unix;
+#[cfg(all(test, unix))]
+#[path = "repo_checks/tests_gates_unix_extra.rs"]
+pub(super) mod repo_checks_tests_gates_unix_extra;
+#[path = "router_flow_acp.rs"]
+pub(crate) mod router_flow_acp;
+#[path = "router_flow_acp_support.rs"]
+pub(crate) mod router_flow_acp_support;
+#[path = "router_flow_coder_prompts.rs"]
+pub(super) mod router_flow_coder_prompts;
+#[path = "router_flow_summary_line.rs"]
+pub(super) mod router_flow_summary_line;
+#[path = "router_flow_loop.rs"]
+pub(crate) mod router_flow_loop;
+#[path = "router_flow_loop_decide.rs"]
+pub(super) mod router_flow_loop_decide;
+#[path = "router_flow_no_work.rs"]
+pub(crate) mod router_flow_no_work;
+#[path = "router_flow_prompt.rs"]
+pub(crate) mod router_flow_prompt;
+#[path = "router_flow_prompt_summarize.rs"]
+pub(super) mod router_flow_prompt_summarize;
+#[path = "router_flow_prompt_turns.rs"]
+pub(super) mod router_flow_prompt_turns;
+#[path = "router_flow_prompt_initial.rs"]
+pub(super) mod router_flow_prompt_initial;
+#[path = "tidy_flow/run.rs"]
+pub(super) mod tidy_flow_run;

@@ -133,19 +133,17 @@ pub fn emit_run_timing_json_only_after_backend(
     })
 }
 
-pub fn merge_acp_restore_check_abort_then_print_timing(
+pub fn merge_acp_restore_and_check_abort(
     primary: Result<(), String>,
     artifacts: &crate::artifacts::RunArtifacts,
     session_dotfile_backups: &SessionDotfileBackups,
 ) -> Result<(), String> {
-    let merged = merge_acp_with_workspace_session_restore_and_check_abort(
+    merge_acp_with_workspace_session_restore_and_check_abort(
         primary,
         &artifacts.work_dir,
         session_dotfile_backups,
         &artifacts.artifact_result_md(),
-    );
-    crate::run_timing::print_summary_from_run_dir(&artifacts.run_dir).map_err(|e| e.to_string())?;
-    merged
+    )
 }
 
 #[cfg(test)]

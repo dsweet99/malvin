@@ -1,18 +1,12 @@
 use clap::Args;
 use malvin::output::{MALVIN_WHO, print_stdout_line};
 
-#[path = "models_cmd_catalog.rs"]
-mod models_cmd_catalog;
-#[path = "models_cmd_cursor.rs"]
-mod models_cmd_cursor;
-#[path = "models_cmd_filter.rs"]
-mod models_cmd_filter;
-#[path = "models_cmd_parse.rs"]
-mod models_cmd_parse;
-#[path = "models_cmd_refresh.rs"]
-pub(crate) mod models_cmd_refresh;
-#[path = "models_cmd_resolve.rs"]
-pub(crate) mod models_cmd_resolve;
+pub(crate) use super::models_cmd_catalog as models_cmd_catalog;
+pub(crate) use super::models_cmd_cursor as models_cmd_cursor;
+pub(crate) use super::models_cmd_filter as models_cmd_filter;
+pub(crate) use super::models_cmd_parse as models_cmd_parse;
+pub(crate) use super::models_cmd_refresh as models_cmd_refresh;
+pub(crate) use super::models_cmd_resolve as models_cmd_resolve;
 use models_cmd_catalog::print_models_sections;
 pub(crate) use models_cmd_filter::{line_matches_prefix, models_list_prefix, section_may_match};
 

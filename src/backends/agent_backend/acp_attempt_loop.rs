@@ -1,10 +1,10 @@
 use crate::agent_process::{AgentError, AttemptCeiling, backoff_after_agent_failure, retries_noun};
 
-use super::backend_error_stop::{backend_error_stop, with_local_backend_hint};
-use super::sdk_client::SdkClient;
+use super::agent_backend::backend_error_stop::{backend_error_stop, with_local_backend_hint};
+use super::agent_backend::sdk_client::SdkClient;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum BackoffChoice {
+pub(crate) enum BackoffChoice {
     Consult,
     StopWithoutSleep,
 }
@@ -15,7 +15,7 @@ pub(crate) enum StopDecision {
     Exhausted,
 }
 
-pub(super) struct RetrySpec<'a> {
+pub(crate) struct RetrySpec<'a> {
     pub ceiling: AttemptCeiling,
     pub failure_lead: &'a str,
     pub backoff: BackoffChoice,

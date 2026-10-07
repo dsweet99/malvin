@@ -1,4 +1,4 @@
-use super::ChildHealth;
+use super::child_health::ChildHealth;
 
 #[must_use]
 pub(super) fn sample_child_health_other(_pid: u32) -> ChildHealth {

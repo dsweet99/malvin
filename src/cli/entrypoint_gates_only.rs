@@ -1,4 +1,4 @@
-use super::run_async_cli;
+use super::entrypoint::run_async_cli;
 use crate::cli::{
     AgentRouteOpts, RouterOpts, SharedOpts,
     init_flow::{self, InitWorkflowOpts},

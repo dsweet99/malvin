@@ -5,7 +5,7 @@ use crate::agent_process::{AgentError, AuthError};
 use crate::backends::bridge_sdk::BridgeSpawnArgs;
 use crate::config::model_id::{ModelBackend, ParsedModel};
 
-use super::sdk_session::SdkSession;
+use super::agent_backend::sdk_session::SdkSession;
 
 pub(crate) type SpawnFuture<'a> =
     Pin<Box<dyn Future<Output = Result<SdkSession, AgentError>> + Send + 'a>>;

@@ -1,28 +1,28 @@
 #![cfg(all(test, unix))]
 
 fn parse_u32_field_parses_integers() {
-    assert_eq!(super::parse_u32_field(" 42 "), Some(42));
-    assert_eq!(super::parse_u32_field("x"), None);
+    assert_eq!(super::unix_process_group_ps::parse_u32_field(" 42 "), Some(42));
+    assert_eq!(super::unix_process_group_ps::parse_u32_field("x"), None);
 }
 
 fn list_proc_rows_includes_current_process() {
-    let rows = super::list_proc_rows().expect("proc rows");
+    let rows = super::unix_process_group_ps::list_proc_rows().expect("proc rows");
     assert!(rows.iter().any(|row| row.pid == std::process::id()));
 }
 
 fn proc_snapshots_without_self_are_rejected() {
-    assert!(!super::proc_pid_snapshot_is_usable(
+    assert!(!super::unix_process_group_ps::proc_pid_snapshot_is_usable(
         &std::collections::HashSet::new()
     ));
-    assert!(!super::proc_row_snapshot_is_usable(&[]));
+    assert!(!super::unix_process_group_ps::proc_row_snapshot_is_usable(&[]));
 }
 
 fn proc_snapshots_with_self_are_accepted() {
     let me = std::process::id();
-    assert!(super::proc_pid_snapshot_is_usable(
+    assert!(super::unix_process_group_ps::proc_pid_snapshot_is_usable(
         &std::iter::once(me).collect()
     ));
-    assert!(super::proc_row_snapshot_is_usable(&[super::ProcRow {
+    assert!(super::unix_process_group_ps::proc_row_snapshot_is_usable(&[super::unix_process_group_ps::ProcRow {
         pid: me,
         pgid: me,
         ppid: 1,
@@ -32,7 +32,7 @@ fn proc_snapshots_with_self_are_accepted() {
 #[cfg(target_os = "linux")]
 fn list_proc_rows_matches_ps_for_self_via_proc_path() {
     let me = std::process::id();
-    let via_public = super::list_proc_rows().expect("list_proc_rows");
+    let via_public = super::unix_process_group_ps::list_proc_rows().expect("list_proc_rows");
     let public_row = via_public
         .iter()
         .find(|row| row.pid == me)
@@ -52,7 +52,7 @@ fn list_proc_rows_matches_ps_for_self_via_proc_path() {
         .stderr(std::process::Stdio::null())
         .output()
         .expect("ps");
-    let from_ps = super::parse_proc_rows(&out.stdout);
+    let from_ps = super::unix_process_group_ps::parse_proc_rows(&out.stdout);
     let ps_row = from_ps
         .iter()
         .find(|row| row.pid == me)
@@ -67,14 +67,14 @@ fn list_proc_rows_matches_ps_for_self_via_proc_path() {
 }
 
 fn parse_pid_list_reads_ps_output() {
-    let pids = super::parse_pid_list(b"  42\n19531\n");
+    let pids = super::unix_process_group_ps::parse_pid_list(b"  42\n19531\n");
     assert_eq!(pids.len(), 2);
     assert!(pids.contains(&42));
     assert!(pids.contains(&19_531));
 }
 
 fn parse_proc_rows_reads_ps_output() {
-    let rows = super::parse_proc_rows(b"  42  42    1\n19531 19531 42\n");
+    let rows = super::unix_process_group_ps::parse_proc_rows(b"  42  42    1\n19531 19531 42\n");
     assert_eq!(rows.len(), 2);
     assert_eq!(rows[0].pid, 42);
     assert_eq!(rows[0].pgid, 42);
@@ -82,26 +82,26 @@ fn parse_proc_rows_reads_ps_output() {
 }
 
 fn list_pids_from_ps_returns_current_process() {
-    let pids = super::list_pids_from_ps().expect("ps listing");
+    let pids = super::unix_process_group_ps::list_pids_from_ps().expect("ps listing");
     assert!(pids.contains(&std::process::id()));
 }
 
 fn looks_like_agent_acp_cmdline_matches_malvin_argv() {
-    assert!(super::looks_like_agent_acp_cmdline(
+    assert!(super::unix_process_group_ps::looks_like_agent_acp_cmdline(
         b"agent\0--force\0--model\0auto\0acp\0"
     ));
-    assert!(super::looks_like_agent_acp_cmdline(
+    assert!(super::unix_process_group_ps::looks_like_agent_acp_cmdline(
         b"/home/user/.local/bin/agent\0acp\0"
     ));
-    assert!(!super::looks_like_agent_acp_cmdline(b"sleep\x00120\0"));
-    assert!(!super::looks_like_agent_acp_cmdline(b"agent\0serve\0"));
+    assert!(!super::unix_process_group_ps::looks_like_agent_acp_cmdline(b"sleep\x00120\0"));
+    assert!(!super::unix_process_group_ps::looks_like_agent_acp_cmdline(b"agent\0serve\0"));
 }
 
 fn is_safe_kill_target_rejects_init_and_self() {
-    let protected = super::host_protected_pids(&[]);
-    assert!(!super::is_safe_kill_target(super::INIT_PID, &protected));
-    assert!(!super::is_safe_kill_target(std::process::id(), &protected));
-    assert!(super::is_safe_kill_target(
+    let protected = super::unix_process_group_ps::host_protected_pids(&[]);
+    assert!(!super::unix_process_group_ps::is_safe_kill_target(super::unix_process_group_ps::INIT_PID, &protected));
+    assert!(!super::unix_process_group_ps::is_safe_kill_target(std::process::id(), &protected));
+    assert!(super::unix_process_group_ps::is_safe_kill_target(
         std::process::id().saturating_add(1),
         &protected
     ));
@@ -109,28 +109,28 @@ fn is_safe_kill_target_rejects_init_and_self() {
 
 fn process_group_member_pids_includes_self() {
     let me = std::process::id();
-    let rows = super::list_proc_rows().expect("proc rows");
+    let rows = super::unix_process_group_ps::list_proc_rows().expect("proc rows");
     let pgid = rows
         .iter()
         .find(|row| row.pid == me)
         .map(|row| row.pgid)
         .expect("current process row");
-    let members = super::process_group_member_pids(pgid);
+    let members = super::unix_process_group_ps::process_group_member_pids(pgid);
     assert!(members.contains(&me));
 }
 
 fn spawned_pids_since_baseline_excludes_baseline_members() {
-    let mut baseline = super::snapshot_pids();
+    let mut baseline = super::unix_process_group_ps::snapshot_pids();
     baseline.insert(std::process::id());
-    let spawned = super::spawned_pids_since_baseline(&baseline);
+    let spawned = super::unix_process_group_ps::spawned_pids_since_baseline(&baseline);
     assert!(!spawned.contains(&std::process::id()));
 }
 
 #[cfg(target_os = "linux")]
 fn read_proc_cmdline_and_environ_reads_current_process() {
     let me = std::process::id();
-    assert!(super::read_proc_cmdline(me).is_some_and(|cmdline| !cmdline.is_empty()));
-    assert!(super::read_proc_environ(me).is_some());
+    assert!(super::unix_process_group_ps::read_proc_cmdline(me).is_some_and(|cmdline| !cmdline.is_empty()));
+    assert!(super::unix_process_group_ps::read_proc_environ(me).is_some());
 }
 
 #[cfg(target_os = "linux")]
@@ -143,7 +143,7 @@ fn looks_like_malvin_agent_acp_ignores_inherited_malvin_workspace_on_sleep() {
     let pid = child.id();
     std::thread::sleep(std::time::Duration::from_millis(100));
     assert!(
-        !super::looks_like_malvin_agent_acp(pid),
+        !super::unix_process_group_ps::looks_like_malvin_agent_acp(pid),
         "inherited MALVIN_WORKSPACE on sleep must not identify agent acp"
     );
     let _ = child.kill();
@@ -151,12 +151,12 @@ fn looks_like_malvin_agent_acp_ignores_inherited_malvin_workspace_on_sleep() {
 }
 
 fn signal_pid_is_noop_for_invalid_pid() {
-    super::signal_pid(999_999_999, 15);
+    super::unix_process_group_ps::signal_pid(999_999_999, 15);
 }
 
 fn pid_alive_reports_self_alive_and_reaped_child_dead() {
     assert!(
-        super::pid_alive(std::process::id()),
+        super::unix_process_group_ps::pid_alive(std::process::id()),
         "current process must be alive via kill(2) signal 0"
     );
 
@@ -167,7 +167,7 @@ fn pid_alive_reports_self_alive_and_reaped_child_dead() {
     let status = child.wait().expect("wait child");
     assert!(status.success(), "child `true` must exit 0");
     assert!(
-        !super::pid_alive(child_pid),
+        !super::unix_process_group_ps::pid_alive(child_pid),
         "reaped child pid must be dead; kill(2) must not depend on a `kill` binary on PATH"
     );
 }
@@ -179,15 +179,15 @@ fn signal_pid_kill_round_trip_without_kill_binary() {
         .spawn()
         .expect("spawn sleep");
     let child_pid = child.id();
-    assert!(super::pid_alive(child_pid), "sleep child must start alive");
-    super::signal_pid(child_pid, 9); // SIGKILL
+    assert!(super::unix_process_group_ps::pid_alive(child_pid), "sleep child must start alive");
+    super::unix_process_group_ps::signal_pid(child_pid, 9); // SIGKILL
     let status = child.wait().expect("wait signaled child");
     assert!(
         !status.success(),
         "SIGKILL must yield non-success wait status"
     );
     assert!(
-        !super::pid_alive(child_pid),
+        !super::unix_process_group_ps::pid_alive(child_pid),
         "after SIGKILL + wait, pid must be dead via kill(2)"
     );
 }

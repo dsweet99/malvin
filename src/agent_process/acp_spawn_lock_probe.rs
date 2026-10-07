@@ -2,7 +2,7 @@ use std::path::Path;
 use std::sync::PoisonError;
 use std::thread::ThreadId;
 
-use super::IN_PROCESS_ACP_LOCK_SLOTS;
+use super::acp_spawn_lock::IN_PROCESS_ACP_LOCK_SLOTS;
 
 pub(super) enum LockProbe {
     Missing,

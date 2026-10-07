@@ -1,5 +1,5 @@
-use super::discover::resolve_npm_pi_entry;
-use super::session::NpmPiSession;
+use super::pi_backend::discover::resolve_npm_pi_entry;
+use super::pi_backend::session::NpmPiSession;
 use crate::agent_process::AgentError;
 use crate::backends::bridge_sdk::{BridgeSpawnArgs, StdioChild, StreamLog};
 use std::process::Stdio;

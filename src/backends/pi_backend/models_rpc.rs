@@ -5,8 +5,8 @@ use std::time::Duration;
 
 use serde_json::Value;
 
-use super::discover::resolve_npm_pi_entry;
-use super::session_process::entry_is_rpc_entry;
+use super::pi_backend::discover::resolve_npm_pi_entry;
+use super::pi_backend::session_process::entry_is_rpc_entry;
 
 pub(super) const BASE_THINKING_LEVELS: [&str; 5] = ["off", "minimal", "low", "medium", "high"];
 const EXTENDED_THINKING_LEVELS: [&str; 7] = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];

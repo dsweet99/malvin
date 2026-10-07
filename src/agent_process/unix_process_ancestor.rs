@@ -33,7 +33,3 @@ pub(crate) fn is_ancestor_pid_from_rows(rows: &[ProcRow], ancestor: u32, pid: u3
         current = parent;
     }
 }
-
-#[cfg(all(test, unix))]
-#[path = "unix_process_ancestor_tests.rs"]
-mod unix_process_ancestor_tests;

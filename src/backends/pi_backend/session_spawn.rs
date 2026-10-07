@@ -1,4 +1,4 @@
-use super::session::NpmPiSession;
+use super::pi_backend::session::NpmPiSession;
 use crate::agent_process::AgentError;
 use crate::backends::bridge_sdk::{BridgeSpawnArgs, start_mem_watch};
 
@@ -12,7 +12,7 @@ pub(crate) async fn npm_pi_spawn_bridge(
         ));
     }
     prewarm_openrouter_pricing(args.model);
-    let session = super::session_process::spawn_npm_pi_session(&args, ticket)?;
+    let session = super::pi_backend::session_process::spawn_npm_pi_session(&args, ticket)?;
     start_mem_watch(session.stdio.mem_watch_args());
     Ok(session)
 }

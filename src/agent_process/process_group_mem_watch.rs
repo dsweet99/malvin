@@ -10,7 +10,7 @@ const POLL_INTERVAL: Duration = if cfg!(test) {
 } else {
     Duration::from_millis(500)
 };
-const MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES: u32 = 3;
+pub(crate) const MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES: u32 = 3;
 
 pub struct MemWatchHandles {
     pub reader_dead: Arc<std::sync::atomic::AtomicBool>,
@@ -118,7 +118,7 @@ fn record_sandbox_oom_marker(
 
 #[cfg(unix)]
 #[allow(clippy::missing_const_for_fn)]
-fn memory_watch_should_terminate(
+pub(crate) fn memory_watch_should_terminate(
     rss: Option<u64>,
     limit_bytes: u64,
     consecutive_failures: &mut u32,
@@ -139,10 +139,6 @@ fn memory_watch_should_terminate(
 #[cfg(test)]
 #[path = "process_group_mem_watch_tests.rs"]
 mod process_group_mem_watch_tests;
-
-#[cfg(all(test, unix))]
-#[path = "process_group_mem_watch_policy_tests.rs"]
-mod process_group_mem_watch_policy_tests;
 
 #[cfg(test)]
 #[path = "process_group_mem_watch_oom_marker_tests.rs"]

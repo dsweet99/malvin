@@ -88,3 +88,58 @@ pub(crate) use backoff::backoff_after_agent_failure;
 #[cfg(all(unix, any(test, debug_assertions)))]
 #[path = "hostile_orphan_test_util.rs"]
 pub mod hostile_orphan_test_util;
+
+#[path = "acp_spawn_lock_peer.rs"]
+pub(super) mod acp_spawn_lock_peer;
+#[path = "acp_spawn_lock_probe.rs"]
+pub(super) mod acp_spawn_lock_probe;
+#[cfg(target_os = "linux")]
+#[path = "process_group_rss/linux.rs"]
+pub(super) mod process_group_rss_linux;
+#[cfg(target_os = "macos")]
+#[path = "process_group_rss/macos.rs"]
+pub(super) mod process_group_rss_macos;
+#[cfg(target_os = "linux")]
+#[path = "child_health/linux.rs"]
+pub(super) mod child_health_linux;
+#[cfg(target_os = "macos")]
+#[path = "child_health/macos.rs"]
+pub(super) mod child_health_macos;
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+#[path = "child_health/other.rs"]
+pub(crate) mod child_health_other;
+#[cfg(unix)]
+#[cfg(all(test, unix))]
+#[path = "unix_process_ancestor_tests.rs"]
+pub(super) mod unix_process_ancestor_tests;
+#[cfg(unix)]
+#[path = "session_spawn_affiliation.rs"]
+pub(super) mod session_spawn_affiliation;
+#[cfg(unix)]
+#[path = "unix_process_group_ps_proc.rs"]
+pub(super) mod unix_process_group_ps_proc;
+#[cfg(all(test, unix))]
+#[path = "unix_process_group_ps_tests.rs"]
+pub(crate) mod unix_process_group_ps_tests;
+#[cfg(all(test, unix))]
+#[path = "unix_process_group_teardown_escalation_tests.rs"]
+pub(super) mod unix_process_group_teardown_escalation_tests;
+#[cfg(all(test, unix))]
+#[path = "unix_process_group_teardown_tests.rs"]
+pub(crate) mod unix_process_group_teardown_tests;
+#[cfg(unix)]
+#[path = "unix_process_group_teardown_timing.rs"]
+pub(super) mod unix_process_group_teardown_timing;
+#[cfg(all(test, unix))]
+#[path = "process_group_mem_watch_policy_tests.rs"]
+pub(super) mod process_group_mem_watch_policy_tests;
+#[path = "attempt_ceiling.rs"]
+pub(super) mod attempt_ceiling;
+#[path = "retry_teardown.rs"]
+pub(super) mod retry_teardown;
+#[cfg(all(unix, any(test, debug_assertions)))]
+#[path = "hostile_orphan_read_pid.rs"]
+pub(super) mod hostile_orphan_read_pid;
+#[cfg(all(unix, any(test, debug_assertions)))]
+#[path = "hostile_orphan_user_shell.rs"]
+pub(super) mod hostile_orphan_user_shell;

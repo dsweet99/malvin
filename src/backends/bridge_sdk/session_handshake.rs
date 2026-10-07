@@ -4,8 +4,8 @@ use crate::agent_process::AgentError;
 use crate::backends::cursor_sdk::protocol::BridgeEvent;
 use crate::sdk_drain_timeout::sdk_bridge_startup_timeout;
 
-use super::session::BridgeSession;
-use super::session_io::read_event;
+use super::bridge_sdk::session::BridgeSession;
+use super::bridge_sdk::session_io::read_event;
 
 async fn read_event_with_timeout(
     session: &BridgeSession,

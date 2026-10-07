@@ -3,11 +3,11 @@ use std::path::Path;
 use crate::agent_process::{AgentError, AgentFault, CoderPromptOptions};
 use crate::nested_budget_scopes::BudgetScopeLayer;
 
-use super::acp_attempt_loop::{BackoffChoice, RetrySpec, retry_until_ok};
-use super::backend_lifecycle::backend_lifecycle;
-use super::sdk_client::SdkClient;
-use super::sdk_client_active::ActiveCoderSession;
-use super::sdk_client_session_header::send_bound_session_header;
+use super::agent_backend::acp_attempt_loop::{BackoffChoice, RetrySpec, retry_until_ok};
+use super::agent_backend::backend_lifecycle::backend_lifecycle;
+use super::agent_backend::sdk_client::SdkClient;
+use super::agent_backend::sdk_client_active::ActiveCoderSession;
+use super::agent_backend::sdk_client_session_header::send_bound_session_header;
 
 impl ActiveCoderSession<'_> {
     pub async fn run_coder_prompt(
@@ -100,7 +100,7 @@ async fn run_one(
     phase: Option<crate::run_timing::TimingPhase>,
 ) -> Result<(), AgentError> {
     ensure_open_session(client).await?;
-    let session = super::sdk_client::live_session(client)
+    let session = super::agent_backend::sdk_client::live_session(client)
         .ok_or_else(|| AgentError("begin_coder_session was not called".into()))?;
     let started = std::time::Instant::now();
     let result = session.send_prompt(prompt).await;
@@ -114,7 +114,7 @@ async fn ensure_open_session(client: &mut SdkClient) -> Result<(), AgentError> {
     if client.has_open_coder_session() {
         return Ok(());
     }
-    let cwd = super::sdk_client::begun_cwd(client)
+    let cwd = super::agent_backend::sdk_client::begun_cwd(client)
         .cloned()
         .ok_or_else(|| AgentError("begin_coder_session was not called".into()))?;
     client.begin_coder_session(&cwd).await?;

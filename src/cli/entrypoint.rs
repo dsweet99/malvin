@@ -1,17 +1,11 @@
 use super::{Commands, Exit, SharedOpts};
 
-#[path = "entrypoint_dispatch.rs"]
-mod entrypoint_dispatch;
-#[path = "entrypoint_from.rs"]
-mod entrypoint_from;
-#[path = "entrypoint_gates_only.rs"]
-mod entrypoint_gates_only;
-#[path = "entrypoint_info_flags.rs"]
-mod entrypoint_info_flags;
-#[path = "entrypoint_modal.rs"]
-mod entrypoint_modal;
-#[path = "entrypoint_short_help.rs"]
-mod entrypoint_short_help;
+pub(crate) use super::entrypoint_dispatch as entrypoint_dispatch;
+pub(crate) use super::entrypoint_from as entrypoint_from;
+pub(crate) use super::entrypoint_gates_only as entrypoint_gates_only;
+pub(crate) use super::entrypoint_info_flags as entrypoint_info_flags;
+pub(crate) use super::entrypoint_modal as entrypoint_modal;
+pub(crate) use super::entrypoint_short_help as entrypoint_short_help;
 pub use entrypoint_dispatch::{
     DefaultRouteDispatch, dispatch_default_route, dispatch_do_workflow, dispatch_mixed_requests,
 };
@@ -51,6 +45,7 @@ where
     F: FnOnce() -> Fut,
     Fut: std::future::Future<Output = Result<(), String>> + Send,
 {
+    malvin::run_timing::arm_process_footnotes();
     let rt = try_tokio_runtime()?;
     rt.block_on(async {
         spawn_ctrl_c_teardown();
@@ -64,6 +59,7 @@ fn spawn_ctrl_c_teardown() {
             return;
         }
         malvin::agent_process::malvin_sandbox::teardown_active_sandbox_for_interrupt();
+        malvin::run_timing::emit_process_footnotes_if_armed();
         std::process::exit(130);
     });
 }

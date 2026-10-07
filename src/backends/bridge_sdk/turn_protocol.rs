@@ -1,6 +1,6 @@
 use crate::agent_process::AgentError;
 
-use super::{DrainIdleTurn, JsonLineSession};
+use super::bridge_sdk::{DrainIdleTurn, JsonLineSession};
 
 pub(crate) trait TurnProtocol: JsonLineSession {
     type State;

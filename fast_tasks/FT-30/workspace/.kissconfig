@@ -3,7 +3,6 @@
 [global]
 min_similarity = 0.9
 duplication_enabled = true
-orphan_module_enabled = true
 comment_removal_enabled = false
 docs_allowed = ["./"]
 orphan_allowed = []

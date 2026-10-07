@@ -1,7 +1,7 @@
 use std::process::Command;
 
-use super::discover::{resolve_npm_pi_cli_entry, resolve_npm_pi_entry};
-use super::models_rpc::BASE_THINKING_LEVELS;
+use super::pi_backend::discover::{resolve_npm_pi_cli_entry, resolve_npm_pi_entry};
+use super::pi_backend::models_rpc::BASE_THINKING_LEVELS;
 
 pub fn refresh_npm_pi_models() -> Result<(), String> {
     let entry = resolve_npm_pi_cli_entry()?;
@@ -25,7 +25,7 @@ pub fn refresh_npm_pi_models() -> Result<(), String> {
 }
 
 pub fn list_npm_pi_display_models() -> Result<Vec<(String, String)>, String> {
-    super::models_rpc::list_rpc_models().or_else(|_| list_table_models())
+    super::pi_backend::models_rpc::list_rpc_models().or_else(|_| list_table_models())
 }
 
 fn list_table_models() -> Result<Vec<(String, String)>, String> {

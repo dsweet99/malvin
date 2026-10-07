@@ -18,8 +18,8 @@ pub fn resolve_bridge_js() -> Result<PathBuf, String> {
     if let Some(path) = cursor_first_ready_bridge_js() {
         return Ok(path);
     }
-    super::bridge_install::ensure_installed()
-        .map_err(|e| super::bridge_install::install_failed_message(&e))
+    super::cursor_sdk::bridge_install::ensure_installed()
+        .map_err(|e| super::cursor_sdk::bridge_install::install_failed_message(&e))
 }
 
 pub fn resolve_models_js() -> Result<PathBuf, String> {

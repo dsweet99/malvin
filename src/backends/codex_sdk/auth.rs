@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use crate::agent_process::AuthError;
 
-use super::discover::resolve_codex_bin;
+use super::codex_sdk::discover::resolve_codex_bin;
 
 pub fn ensure_codex_authenticated() -> Result<(), AuthError> {
     resolve_codex_bin().map_err(AuthError)?;

@@ -1,4 +1,4 @@
-use super::ChildHealth;
+use super::child_health::ChildHealth;
 use std::fs;
 use std::io::ErrorKind;
 use std::time::Instant;

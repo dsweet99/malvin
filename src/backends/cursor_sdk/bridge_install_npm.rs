@@ -11,7 +11,7 @@ const NPM_CI_ARGS: &[&str] = &[
 ];
 
 pub(crate) fn npm_ci(dest: &Path, label: &str) -> Result<(), String> {
-    let node = super::node_resolve::resolve_node_bin()?;
+    let node = super::cursor_sdk::node_resolve::resolve_node_bin()?;
     let npm = resolve_npm(&node)?;
     crate::output::print_stderr_line(
         crate::output::MALVIN_WHO,

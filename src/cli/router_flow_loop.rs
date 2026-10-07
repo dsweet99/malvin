@@ -1,5 +1,5 @@
-use super::router_flow_acp::router_flow_acp_support::empty_iteration_backups;
-use super::router_flow_acp::{
+use super::router_flow::router_flow_acp::router_flow_acp_support::empty_iteration_backups;
+use super::router_flow::router_flow_acp::{
     RouterAcpIterationInput, RouterAcpIterationOutcome, finalize_router_acp_iteration,
     run_router_acp_open_iteration,
 };
@@ -12,8 +12,7 @@ use malvin::prompts::PromptStore;
 use malvin::run_timing::acp_post_run::RunTimingSessionEnd;
 use std::path::Path;
 
-#[path = "router_flow_loop_decide.rs"]
-mod router_flow_loop_decide;
+pub(crate) use super::router_flow_loop_decide as router_flow_loop_decide;
 pub(crate) use router_flow_loop_decide::{
     RouterLoopDecision, RouterLoopExitInput, decide_router_loop_exit, router_exit_summarize_for,
 };

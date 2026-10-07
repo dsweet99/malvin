@@ -4,8 +4,7 @@ use std::collections::HashSet;
 use std::process::Stdio;
 
 #[cfg(unix)]
-#[path = "unix_process_group_ps_proc.rs"]
-mod unix_process_group_ps_proc;
+pub(crate) use super::unix_process_group_ps_proc as unix_process_group_ps_proc;
 
 #[cfg(unix)]
 pub(crate) const INIT_PID: u32 = 1;
@@ -28,7 +27,7 @@ pub fn snapshot_pids() -> HashSet<u32> {
 }
 
 #[cfg(unix)]
-fn proc_pid_snapshot_is_usable(pids: &HashSet<u32>) -> bool {
+pub(crate) fn proc_pid_snapshot_is_usable(pids: &HashSet<u32>) -> bool {
     pids.contains(&std::process::id())
 }
 
@@ -58,7 +57,7 @@ pub(crate) fn list_proc_rows() -> Option<Vec<ProcRow>> {
 }
 
 #[cfg(unix)]
-fn proc_row_snapshot_is_usable(rows: &[ProcRow]) -> bool {
+pub(crate) fn proc_row_snapshot_is_usable(rows: &[ProcRow]) -> bool {
     rows.iter().any(|row| row.pid == std::process::id())
 }
 
@@ -219,7 +218,3 @@ pub fn spawned_pids_since_baseline(
 
 #[cfg(not(unix))]
 pub fn signal_process_group(_: u32, _: i32) {}
-
-#[cfg(all(test, unix))]
-#[path = "unix_process_group_ps_tests.rs"]
-pub(crate) mod unix_process_group_ps_tests;

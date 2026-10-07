@@ -9,10 +9,8 @@ use malvin::backends::agent_backend::{SdkClient, build_agent_backend, build_agen
 use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
 use malvin::output::agent_stdout_tee_enabled;
 
-#[path = "do_flow_acp.rs"]
-mod do_flow_acp;
-#[path = "do_flow_prompt.rs"]
-pub(crate) mod do_flow_prompt;
+pub(crate) use super::do_flow_acp as do_flow_acp;
+pub(crate) use super::do_flow_prompt as do_flow_prompt;
 
 use do_flow_acp::run_do_acp;
 #[cfg(test)]

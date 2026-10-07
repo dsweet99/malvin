@@ -1,6 +1,7 @@
-use super::entrypoint_info_flags::entrypoint_advice_or_doc_exit;
-use super::{
-    DefaultRouteDispatch, Exit, GatesOnlyDispatch, dispatch_command, dispatch_default_route,
+use super::entrypoint::entrypoint_info_flags::entrypoint_advice_or_doc_exit;
+use super::Exit;
+use super::entrypoint::{
+    DefaultRouteDispatch, GatesOnlyDispatch, dispatch_command, dispatch_default_route,
     dispatch_do_workflow, dispatch_gates_only_route, dispatch_mixed_requests, finish_entrypoint,
     prepare_cli_output, print_command_error,
 };
@@ -44,7 +45,7 @@ fn entrypoint_before_dispatch(cli: &Cli, matches: &clap::ArgMatches) -> Option<E
     if let Some(exit) = entrypoint_commands_catalog(cli) {
         return Some(exit);
     }
-    super::entrypoint_short_help::entrypoint_request_missing_short_help(cli)
+    super::entrypoint::entrypoint_short_help::entrypoint_request_missing_short_help(cli)
 }
 
 fn entrypoint_commands_catalog(cli: &Cli) -> Option<Exit> {
@@ -146,7 +147,7 @@ fn run_entrypoint(cli: Cli, matches: clap::ArgMatches, raw: &[std::ffi::OsString
         return exit;
     }
     if cli.shared.remote.is_some() {
-        return super::entrypoint_modal::run_modal_route(&cli, raw, modal);
+        return super::entrypoint::entrypoint_modal::run_modal_route(&cli, raw, modal);
     }
     malvin::local_llm::housekeep_local_llms();
     entrypoint_sweep_stale_acp_spawn_locks();

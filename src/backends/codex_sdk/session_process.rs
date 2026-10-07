@@ -1,5 +1,5 @@
-use super::discover::resolve_codex_bin;
-use super::session::CodexSession;
+use super::codex_sdk::discover::resolve_codex_bin;
+use super::codex_sdk::session::CodexSession;
 use crate::agent_process::AgentError;
 use crate::backends::bridge_sdk::BridgeSpawnArgs;
 use crate::agent_process::malvin_sandbox::SandboxSpawnTicket;

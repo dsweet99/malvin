@@ -1,4 +1,4 @@
-use super::session::CodexSession;
+use super::codex_sdk::session::CodexSession;
 use crate::agent_process::AgentError;
 use crate::backends::bridge_sdk::JsonLineSession;
 
@@ -58,7 +58,7 @@ pub(crate) async fn request(
     method: &str,
     params: serde_json::Value,
 ) -> Result<serde_json::Value, AgentError> {
-    let id = super::session_io::next_id();
+    let id = super::codex_sdk::session_io::next_id();
     write(
         session,
         &serde_json::json!({"method": method, "id": id, "params": params}),
@@ -78,7 +78,7 @@ fn resolved_thread_start_params(
     cwd: &std::path::Path,
     service: Option<&str>,
 ) -> Result<serde_json::Value, AgentError> {
-    let model = super::discover::resolve_codex_model(model).map_err(AgentError)?;
+    let model = super::codex_sdk::discover::resolve_codex_model(model).map_err(AgentError)?;
     Ok(thread_start_params(
         model,
         cwd,

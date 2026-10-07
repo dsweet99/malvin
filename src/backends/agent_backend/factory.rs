@@ -1,7 +1,7 @@
 use crate::agent_process::AgentIoOptions;
 use crate::config::model_id::ParsedModel;
 
-use super::sdk_client::SdkClient;
+use super::agent_backend::sdk_client::SdkClient;
 
 #[derive(Debug, Clone, Copy)]
 pub struct AgentStdoutTeeFlags {

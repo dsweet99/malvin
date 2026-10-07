@@ -70,13 +70,6 @@ pub async fn terminate_agent_process_group(_: Option<u32>, _: &std::collections:
 #[cfg(not(unix))]
 pub async fn terminate_process_group(_: Option<u32>) {}
 
-#[cfg(all(test, unix))]
-#[path = "unix_process_group_teardown_escalation_tests.rs"]
-mod unix_process_group_teardown_escalation_tests;
-#[cfg(all(test, unix))]
-#[path = "unix_process_group_teardown_tests.rs"]
-pub(crate) mod unix_process_group_teardown_tests;
-
 #[cfg(test)]
 #[allow(unused_imports)]
 mod kiss_cov_gate_refs {

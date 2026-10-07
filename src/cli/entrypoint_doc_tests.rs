@@ -215,6 +215,7 @@ fn finish_entrypoint_success_and_failure_paths() {
 #[test]
 fn run_async_cli_runs_immediate_ok_future() {
     assert!(run_async_cli(|| async { Ok(()) }).is_ok());
+    malvin::run_timing::emit_process_footnotes_if_armed();
 }
 
 #[test]

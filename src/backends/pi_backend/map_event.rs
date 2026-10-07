@@ -1,9 +1,9 @@
 use serde_json::Value;
 
-use super::session_turn::TurnState;
+use super::pi_backend::session_turn::TurnState;
 use crate::backends::cursor_sdk::protocol::BridgeEvent;
 
-pub(super) use super::extension_ui::auto_reply_extension_ui;
+pub(super) use super::pi_backend::extension_ui::auto_reply_extension_ui;
 
 pub(super) fn map_npm_pi_event(value: &Value, state: &mut TurnState) -> Vec<BridgeEvent> {
     let ty = value.get("type").and_then(Value::as_str).unwrap_or("");
@@ -112,7 +112,7 @@ fn delta_text(ev: &Value) -> Option<String> {
 
 fn capture_agent_end(value: &Value, state: &mut TurnState) {
     state.end_error =
-        super::agent_end_error::agent_end_error(value.get("messages"), state.output_cap);
+        super::pi_backend::agent_end_error::agent_end_error(value.get("messages"), state.output_cap);
     if !state.response_text.is_empty() {
         return;
     }

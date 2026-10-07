@@ -3,11 +3,10 @@ use std::path::Path;
 use crate::agent_process::{AgentError, AuthError};
 use crate::backends::bridge_sdk::SDK_BRIDGE_MAX_AGE;
 
-use super::backend_lifecycle::backend_lifecycle;
-use super::sdk_client::SdkClient;
+use super::agent_backend::backend_lifecycle::backend_lifecycle;
+use super::agent_backend::sdk_client::SdkClient;
 
-#[path = "sdk_client_session_spawn.rs"]
-mod spawn;
+pub(crate) use super::agent_backend_sdk_client_session_spawn as spawn;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CoderSessionEnsure {
@@ -64,7 +63,7 @@ impl SdkClient {
     }
 
     pub(crate) async fn deliver_session_header_if_needed(&mut self) -> Result<(), AgentError> {
-        super::sdk_client_session_header::send_bound_session_header(self).await
+        super::agent_backend::sdk_client_session_header::send_bound_session_header(self).await
     }
 
     pub async fn end_coder_session(&mut self) -> Result<(), AgentError> {
@@ -88,7 +87,7 @@ impl SdkClient {
 
 #[must_use]
 pub(crate) fn sdk_bridge_needs_restart(client: &SdkClient) -> bool {
-    super::sdk_client::live_session(client)
+    super::agent_backend::sdk_client::live_session(client)
         .is_some_and(|s| s.started_at.elapsed() >= SDK_BRIDGE_MAX_AGE)
 }
 

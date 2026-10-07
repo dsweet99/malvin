@@ -130,12 +130,10 @@ exec sleep 60
     (child, pgid)
 }
 
-#[path = "hostile_orphan_read_pid.rs"]
-mod hostile_orphan_read_pid;
+pub(crate) use super::hostile_orphan_read_pid as hostile_orphan_read_pid;
 pub use hostile_orphan_read_pid::read_orphan_pid;
 
-#[path = "hostile_orphan_user_shell.rs"]
-mod hostile_orphan_user_shell;
+pub(crate) use super::hostile_orphan_user_shell as hostile_orphan_user_shell;
 pub use hostile_orphan_user_shell::{
     cleanup_user_coincidental_test, setup_user_init_reparented_daemon, spawn_isolated_agent_sleep,
     spawn_user_coincidental_daemon, spawn_user_shell_cooperator,

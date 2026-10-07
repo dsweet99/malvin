@@ -4,8 +4,8 @@ use std::time::Instant;
 use crate::agent_process::TraceChunkEmission;
 
 #[cfg(not(test))]
-use super::write_coalesced_emissions;
-use super::{CoalesceSlot, Shared, lock_slot};
+use super::bridge_sdk::stdout_coalesce_buf::write_coalesced_emissions;
+use super::bridge_sdk::stdout_coalesce_buf::{CoalesceSlot, Shared, lock_slot};
 
 pub(super) fn worker_loop(shared: Arc<Shared>) {
     let mut slot = lock_slot(&shared);

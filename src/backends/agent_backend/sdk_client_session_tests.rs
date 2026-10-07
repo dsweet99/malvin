@@ -4,6 +4,18 @@ use crate::config::model_id::parse_model_id;
 use std::path::PathBuf;
 
 #[test]
+fn drop_folds_open_timing_into_the_process_ledger() {
+    let mut client = SdkClient::new(parse_model_id("cursor:auto").expect("model"), test_io());
+    let timing = client.attach_run_timing_for_session();
+    timing.lock().expect("lock").tokens_out = Some(9);
+    drop(client);
+    assert_eq!(
+        timing.lock().expect("lock").ledger_cursor.tokens_out,
+        Some(9)
+    );
+}
+
+#[test]
 fn service_wire_is_codex_only() {
     let cursor = SdkClient::with_max_retries(
         parse_model_id("cursor:auto[service=priority]").expect("cursor"),

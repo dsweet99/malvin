@@ -2,7 +2,7 @@ use crate::cli::one_shot_session::OneShotCoderGuard;
 use malvin::backends::agent_backend::SdkClient;
 use malvin::artifacts::RunArtifacts;
 
-use super::do_flow_prompt;
+use super::do_flow::do_flow_prompt;
 
 pub(super) async fn run_do_acp(
     client: &mut SdkClient,

@@ -3,8 +3,8 @@ use crate::backends::bridge_sdk::{
     BridgeSession, BridgeSpawnArgs, send_create, send_resume, start_mem_watch,
 };
 
-use super::auth::effective_sdk_api_key;
-use super::bridge_path::resolve_bridge_js;
+use super::cursor_sdk::auth::effective_sdk_api_key;
+use super::cursor_sdk::bridge_path::resolve_bridge_js;
 
 pub(crate) async fn cursor_spawn_bridge(
     args: BridgeSpawnArgs<'_>,
@@ -74,7 +74,7 @@ fn cursor_take_stdio(child: &mut tokio::process::Child) -> Result<CursorChildStd
         .stderr
         .take()
         .ok_or_else(|| AgentError("bridge stderr missing".into()))?;
-    super::bridge_stderr::start_filtered_forward(stderr);
+    super::cursor_sdk::bridge_stderr::start_filtered_forward(stderr);
     Ok(CursorChildStdio {
         stdin,
         stdout,
@@ -117,7 +117,7 @@ fn cursor_assemble_session(
 fn cursor_resolve_node_and_bridge() -> Result<(std::path::PathBuf, std::path::PathBuf), AgentError>
 {
     let bridge = resolve_bridge_js().map_err(AgentError)?;
-    let node = super::node_resolve::resolve_node_bin().map_err(AgentError)?;
+    let node = super::cursor_sdk::node_resolve::resolve_node_bin().map_err(AgentError)?;
     Ok((node, bridge))
 }
 
@@ -128,7 +128,7 @@ fn cursor_build_bridge_command(
 ) -> tokio::process::Command {
     use std::process::Stdio;
     let mut cmd = crate::agent_process::malvin_sandbox::malvin_tokio_command(node);
-    super::node_resolve::apply_quiet_node_cli(&mut cmd);
+    super::cursor_sdk::node_resolve::apply_quiet_node_cli(&mut cmd);
     cmd.arg(bridge)
         .current_dir(cwd)
         .stdin(Stdio::piped())

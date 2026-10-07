@@ -1,4 +1,4 @@
-use super::stream_log::StreamLog;
+use super::bridge_sdk::stream_log::StreamLog;
 
 pub(crate) fn tools_in_flight(session: &StreamLog) -> bool {
     !session

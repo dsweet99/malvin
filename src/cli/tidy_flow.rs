@@ -1,5 +1,4 @@
-#[path = "tidy_flow/run.rs"]
-mod run;
+pub(crate) use super::tidy_flow_run as run;
 
 pub use run::run_tidy;
 

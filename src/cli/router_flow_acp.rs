@@ -7,14 +7,11 @@ use malvin::run_timing::acp_post_run::RunTimingSessionEnd;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
-#[path = "router_flow_acp_support.rs"]
-pub(crate) mod router_flow_acp_support;
+pub(crate) use super::router_flow_acp_support as router_flow_acp_support;
 
-#[path = "router_flow_coder_prompts.rs"]
-mod router_flow_coder_prompts;
+pub(crate) use super::router_flow_coder_prompts as router_flow_coder_prompts;
 
-#[path = "router_flow_summary_line.rs"]
-mod router_flow_summary_line;
+pub(crate) use super::router_flow_summary_line as router_flow_summary_line;
 
 pub(crate) use router_flow_acp_support::{RouterExitSummarize, router_iteration_log_path};
 

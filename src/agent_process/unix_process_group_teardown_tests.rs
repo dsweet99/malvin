@@ -4,18 +4,18 @@ use std::collections::HashSet;
 use std::os::unix::process::CommandExt;
 use std::process::Command;
 
-use super::super::hostile_orphan_test_util::{
+use super::hostile_orphan_test_util::{
     assert_sibling_monitored_and_blocks_spawn, spawn_agent_pg_and_malvin_sibling,
 };
 #[cfg(target_os = "linux")]
-use super::super::hostile_orphan_test_util::{
+use super::hostile_orphan_test_util::{
     process_alive, read_orphan_pid, spawn_hostile_agent_acp_orphan, wait_for_init_reparent,
 };
-use super::super::process_group_terminate::{
+use super::process_group_terminate::{
     terminate_agent_process_group_blocking, terminate_agent_process_group_for_interrupt,
 };
-use super::super::unix_process_group_ps::ProcRow;
-use super::{
+use super::unix_process_group_ps::ProcRow;
+use super::unix_process_group_teardown::{
     descendant_pids, kill_targets_for_teardown, terminate_agent_process_group,
     terminate_process_group,
 };
@@ -27,9 +27,9 @@ fn terminate_blocking_kills_note_affiliated_pid_without_pgid() {
     let mut cmd = Command::new("sleep");
     cmd.arg("120").process_group(0);
     let mut child = cmd.spawn().expect("spawn sleep");
-    super::super::unix_process_group_kill_targets::note_session_affiliated_pid(child.id());
+    super::unix_process_group_kill_targets::note_session_affiliated_pid(child.id());
     assert!(
-        super::super::unix_process_group_kill_targets::is_session_affiliated_pid(child.id()),
+        super::unix_process_group_kill_targets::is_session_affiliated_pid(child.id()),
         "note_session_affiliated_pid must record pid"
     );
     let targets = kill_targets_for_teardown(None, Some(&baseline));
@@ -50,7 +50,7 @@ async fn async_teardown_kills_affiliated_pid_without_pgid() {
     let mut cmd = Command::new("sleep");
     cmd.arg("120").process_group(0);
     let mut child = cmd.spawn().expect("spawn sleep");
-    super::super::unix_process_group_kill_targets::note_session_affiliated_pid(child.id());
+    super::unix_process_group_kill_targets::note_session_affiliated_pid(child.id());
     let targets = kill_targets_for_teardown(None, Some(&baseline));
     assert!(
         targets.contains(&child.id()),
@@ -107,12 +107,12 @@ fn kill_targets_empty_baseline_skips_orphan_scan() {
 
 #[test]
 fn reap_baseline_amnestied_agent_orphans_blocking_noop_without_orphans() {
-    super::reap_baseline_amnestied_agent_orphans_blocking();
+    super::unix_process_group_teardown::reap_baseline_amnestied_agent_orphans_blocking();
 }
 
 #[tokio::test]
 async fn signal_targets_noop_for_empty_set() {
-    super::signal_targets(&HashSet::new(), None, 15).await;
+    super::unix_process_group_teardown::signal_targets(&HashSet::new(), None, 15).await;
 }
 
 #[tokio::test]
@@ -129,7 +129,7 @@ async fn terminate_process_group_kills_sleep_child() {
 #[tokio::test]
 async fn terminate_agent_process_group_kills_sleep_child() {
     crate::test_support::test_utils::clear_test_no_real_agent_env();
-    let baseline = super::super::unix_process_group_ps::snapshot_pids();
+    let baseline = super::unix_process_group_ps::snapshot_pids();
     let mut cmd = Command::new("sleep");
     cmd.arg("120").process_group(0);
     let mut child = cmd.spawn().expect("spawn sleep");
@@ -147,7 +147,7 @@ async fn baseline_amnestied_agent_acp_orphan_killed_on_teardown() {
     let (mut agent, pgid) = spawn_hostile_agent_acp_orphan(tmp.path(), &orphan_pid_file);
     let orphan_pid = read_orphan_pid(&orphan_pid_file, Some(pgid)).await;
     wait_for_init_reparent(orphan_pid).await;
-    let mut baseline = super::super::unix_process_group_ps::snapshot_pids();
+    let mut baseline = super::unix_process_group_ps::snapshot_pids();
     baseline.insert(orphan_pid);
     terminate_agent_process_group(Some(pgid), &baseline).await;
     let _ = agent.wait();
@@ -164,7 +164,7 @@ async fn malvin_sibling_outside_agent_pg_killed_on_teardown() {
 
     crate::test_support::test_utils::enable_test_fast_teardown();
     clear_active_sandbox_session();
-    let baseline = super::super::unix_process_group_ps::snapshot_pids();
+    let baseline = super::unix_process_group_ps::snapshot_pids();
     let (agent_pgid, sibling_pid, mut agent_child, mut sibling_child) =
         spawn_agent_pg_and_malvin_sibling();
     assert_sibling_monitored_and_blocks_spawn(agent_pgid, sibling_pid, &baseline);

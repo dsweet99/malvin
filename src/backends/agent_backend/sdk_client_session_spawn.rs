@@ -3,12 +3,12 @@ use std::path::{Path, PathBuf};
 use crate::agent_process::AgentError;
 use crate::nested_budget_scopes::BudgetScopeLayer;
 
-use super::super::acp_attempt_loop::{retry_until_ok, BackoffChoice, RetrySpec};
+use super::agent_backend::acp_attempt_loop::{retry_until_ok, BackoffChoice, RetrySpec};
 use crate::backends::bridge_sdk::BridgeSpawnArgs;
 
-use super::super::backend_lifecycle::{backend_lifecycle, BackendLifecycle};
-use super::super::sdk_client::{BegunCoderSession, SdkClient};
-use super::super::sdk_session::SdkSession;
+use super::agent_backend::backend_lifecycle::{backend_lifecycle, BackendLifecycle};
+use super::agent_backend::sdk_client::{BegunCoderSession, SdkClient};
+use super::agent_backend::sdk_session::SdkSession;
 
 const fn lifecycle(client: &SdkClient) -> &'static dyn BackendLifecycle {
     backend_lifecycle(client.model.backend)

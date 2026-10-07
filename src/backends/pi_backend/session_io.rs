@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use super::session::NpmPiSession;
+use super::pi_backend::session::NpmPiSession;
 use crate::agent_process::AgentError;
 use crate::backends::bridge_sdk::JsonLineSession;
 
@@ -22,7 +22,7 @@ pub(crate) async fn npm_pi_send_prompt(
             "message": prompt,
         }))
         .await?;
-    super::session_turn::consume_npm_pi_turn(session, &id).await
+    super::pi_backend::session_turn::consume_npm_pi_turn(session, &id).await
 }
 
 #[cfg(test)]

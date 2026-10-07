@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-#[path = "protocol_status.rs"]
-mod protocol_status;
+pub(crate) use super::cursor_sdk_protocol_status as protocol_status;
 pub use protocol_status::RunDoneStatus;
 
 #[derive(Debug, Clone, Serialize)]

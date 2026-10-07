@@ -4,9 +4,9 @@ use std::sync::{Arc, Mutex};
 use crate::agent_process::AgentIoOptions;
 use crate::config::model_id::ParsedModel;
 
-use super::sdk_session::SdkSession;
+use super::agent_backend::sdk_session::SdkSession;
 
-pub(crate) use super::sdk_client_header_lifecycle::{CoderSessionHeader, SessionHeaderLifecycle};
+pub(crate) use super::agent_backend::sdk_client_header_lifecycle::{CoderSessionHeader, SessionHeaderLifecycle};
 
 pub(crate) enum BegunCoderSession {
     Idle,
@@ -62,12 +62,12 @@ pub struct SdkClient {
     pub model: ParsedModel,
     pub io: AgentIoOptions,
     pub prompts_log_run_dir: Option<PathBuf>,
-    pub max_acp_retries: super::backend_error_tracker::AcpRetryCount,
+    pub max_acp_retries: super::agent_backend::backend_error_tracker::AcpRetryCount,
     pub(crate) coder: BegunCoderSession,
     pub(crate) last_agent_id: Option<String>,
     pub(crate) timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
     pub(crate) header_lifecycle: SessionHeaderLifecycle,
-    pub(crate) backend_error_tracker: super::backend_error_tracker::BackendErrorTracker,
+    pub(crate) backend_error_tracker: super::agent_backend::backend_error_tracker::BackendErrorTracker,
 }
 
 impl SdkClient {
@@ -82,7 +82,7 @@ impl SdkClient {
         io: AgentIoOptions,
         max_acp_retries: u32,
     ) -> Self {
-        let retries = super::backend_error_tracker::AcpRetryCount::at_least_one(max_acp_retries);
+        let retries = super::agent_backend::backend_error_tracker::AcpRetryCount::at_least_one(max_acp_retries);
         Self {
             model,
             io,
@@ -92,7 +92,7 @@ impl SdkClient {
             last_agent_id: None,
             timing: None,
             header_lifecycle: SessionHeaderLifecycle::Unbound,
-            backend_error_tracker: super::backend_error_tracker::BackendErrorTracker::with_limit(
+            backend_error_tracker: super::agent_backend::backend_error_tracker::BackendErrorTracker::with_limit(
                 retries.as_consecutive_limit(),
             ),
         }
@@ -118,7 +118,7 @@ impl SdkClient {
     }
 
     pub fn set_run_timing(&mut self, timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>) {
-        self.timing = timing.clone();
+        crate::run_timing::replace_tracked_timing(&mut self.timing, timing);
         sync_timing_to_open_session(self);
     }
 
@@ -163,7 +163,7 @@ impl SdkClient {
     #[must_use]
     pub const fn backend_error_tracker(
         &self,
-    ) -> &super::backend_error_tracker::BackendErrorTracker {
+    ) -> &super::agent_backend::backend_error_tracker::BackendErrorTracker {
         &self.backend_error_tracker
     }
 }

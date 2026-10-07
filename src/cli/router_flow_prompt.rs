@@ -6,14 +6,12 @@ use malvin::prompts::{
 };
 use std::path::Path;
 
-#[path = "router_flow_prompt_summarize.rs"]
-mod router_flow_prompt_summarize;
+pub(crate) use super::router_flow_prompt_summarize as router_flow_prompt_summarize;
 pub(crate) use router_flow_prompt_summarize::{
     RouterSummarizePromptInput, build_router_summarize_prompt,
 };
 
-#[path = "router_flow_prompt_turns.rs"]
-mod router_flow_prompt_turns;
+pub(crate) use super::router_flow_prompt_turns as router_flow_prompt_turns;
 pub(crate) use router_flow_prompt_turns::{
     RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput, RouterKpopCommonPromptInput,
     build_router_a_prompt, build_router_b_prompt, build_router_header_prompt,
@@ -21,8 +19,7 @@ pub(crate) use router_flow_prompt_turns::{
     router_b_prompt_label,
 };
 
-#[path = "router_flow_prompt_initial.rs"]
-mod router_flow_prompt_initial;
+pub(crate) use super::router_flow_prompt_initial as router_flow_prompt_initial;
 #[cfg(test)]
 pub(crate) use router_flow_prompt_initial::RouterInitialPrompt;
 pub(crate) use router_flow_prompt_initial::{

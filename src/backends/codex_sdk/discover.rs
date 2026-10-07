@@ -1,11 +1,8 @@
 use std::path::PathBuf;
 
-#[path = "catalog.rs"]
-pub(crate) mod catalog;
-#[path = "family_alias.rs"]
-mod family_alias;
-#[path = "model_list.rs"]
-mod model_list;
+pub(crate) use super::codex_sdk_catalog as catalog;
+pub(crate) use super::codex_sdk_family_alias as family_alias;
+pub(crate) use super::codex_sdk_model_list as model_list;
 
 use catalog::{CatalogChild, list_models_from_child, spawn_codex_model_server};
 

@@ -2,7 +2,7 @@ use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
-mod worker;
+pub(crate) use super::bridge_sdk_stdout_coalesce_buf_worker as worker;
 
 use crate::agent_process::{
     AgentIoOptions, SessionUpdateChunkKind, TraceChunkCoalescer, TraceChunkEmission,
@@ -10,19 +10,19 @@ use crate::agent_process::{
 
 pub(crate) const STDOUT_COALESCE_IDLE: Duration = Duration::from_millis(250);
 
-struct CoalesceSlot {
-    inner: TraceChunkCoalescer,
-    deadline: Option<Instant>,
-    stop: bool,
+pub(crate) struct CoalesceSlot {
+    pub(crate) inner: TraceChunkCoalescer,
+    pub(crate) deadline: Option<Instant>,
+    pub(crate) stop: bool,
 }
 
-struct Shared {
-    slot: Mutex<CoalesceSlot>,
-    cv: Condvar,
-    idle: Duration,
-    io: AgentIoOptions,
+pub(crate) struct Shared {
+    pub(crate) slot: Mutex<CoalesceSlot>,
+    pub(crate) cv: Condvar,
+    pub(crate) idle: Duration,
+    pub(crate) io: AgentIoOptions,
     #[cfg(test)]
-    test_lines: Mutex<Vec<String>>,
+    pub(crate) test_lines: Mutex<Vec<String>>,
 }
 
 pub(crate) struct StdoutCoalesceBuf {
@@ -142,7 +142,7 @@ fn notify(shared: &Shared, slot: &CoalesceSlot) {
     shared.cv.notify_one();
 }
 
-fn lock_slot(shared: &Shared) -> MutexGuard<'_, CoalesceSlot> {
+pub(crate) fn lock_slot(shared: &Shared) -> MutexGuard<'_, CoalesceSlot> {
     shared.slot.lock().unwrap_or_else(PoisonError::into_inner)
 }
 

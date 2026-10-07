@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use super::session::CodexSession;
+use super::codex_sdk::session::CodexSession;
 use crate::agent_process::AgentError;
 use crate::backends::bridge_sdk::JsonLineSession;
 
@@ -65,7 +65,7 @@ pub(crate) async fn codex_send_prompt(
             )
         }))
         .await?;
-    super::session_turn::consume_codex_turn(session).await
+    super::codex_sdk::session_turn::consume_codex_turn(session).await
 }
 
 pub(crate) async fn codex_delete_thread(session: &CodexSession) -> Result<(), AgentError> {

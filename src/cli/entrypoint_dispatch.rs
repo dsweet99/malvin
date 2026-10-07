@@ -1,5 +1,5 @@
-use super::super::{RouterOpts, SharedOpts, iml_loop, loop_opts, run_do, run_router};
-use super::run_async_cli;
+use super::{RouterOpts, SharedOpts, iml_loop, loop_opts, run_do, run_router};
+use super::entrypoint::run_async_cli;
 use crate::cli::do_flow::DoArgs;
 use crate::cli::request_argv::TaggedRequest;
 

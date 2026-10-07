@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use super::session::CodexSession;
+use super::codex_sdk::session::CodexSession;
 use crate::agent_process::AgentError;
 use crate::backends::cursor_sdk::protocol::BridgeEvent;
 use crate::backends::bridge_sdk::TurnProtocol;
@@ -71,7 +71,7 @@ pub(super) fn handle_codex_event(
         return None;
     }
     if turn_is_complete(method, state, value) {
-        return Some(super::session_turn_done::finish_codex_turn(
+        return Some(super::codex_sdk::session_turn_done::finish_codex_turn(
             session,
             value,
             std::mem::take(state),
@@ -86,7 +86,7 @@ fn remember_turn_id(session: &CodexSession, state: &mut TurnState, id: &str) {
     if state.started.is_none() {
         state.started = Some(Instant::now());
     }
-    super::session_io::set_codex_turn_id(session, Some(id.to_owned()));
+    super::codex_sdk::session_io::set_codex_turn_id(session, Some(id.to_owned()));
 }
 
 pub(super) fn turn_is_complete(method: &str, state: &TurnState, value: &serde_json::Value) -> bool {
@@ -123,7 +123,7 @@ fn emit_turn_stream(
     }
     let method = value.get("method").and_then(|v| v.as_str()).unwrap_or("");
     let params = value.get("params").unwrap_or(&serde_json::Value::Null);
-    for ev in super::map_event::map_codex_stream_events(method, params) {
+    for ev in super::codex_sdk::map_event::map_codex_stream_events(method, params) {
         if let BridgeEvent::Assistant { text } = &ev {
             state.response_text.push_str(text);
             if !state.counted_step {

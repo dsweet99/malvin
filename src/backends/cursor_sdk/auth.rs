@@ -1,3 +1,5 @@
+#![cfg_attr(test, allow(unsafe_code))]
+
 use crate::agent_process::{AuthError, has_api_key};
 
 #[must_use]

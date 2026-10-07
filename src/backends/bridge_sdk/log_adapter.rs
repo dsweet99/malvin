@@ -2,8 +2,8 @@ use crate::agent_process::AcpJsonlTrace;
 use crate::agent_process::SessionUpdateChunkKind;
 use crate::backends::cursor_sdk::protocol::BridgeEvent;
 
-use super::log_adapter_tool::{ToolCallFields, clear_tool_starts, emit_tool};
-use super::stream_log::StreamLog;
+use super::bridge_sdk::log_adapter_tool::{ToolCallFields, clear_tool_starts, emit_tool};
+use super::bridge_sdk::stream_log::StreamLog;
 
 pub fn handle_stream_event(session: &StreamLog, ev: &BridgeEvent) {
     match ev {

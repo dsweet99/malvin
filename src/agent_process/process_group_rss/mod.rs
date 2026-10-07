@@ -1,9 +1,9 @@
 use std::collections::HashSet;
 
 #[cfg(target_os = "linux")]
-mod linux;
+pub(crate) use super::process_group_rss_linux as linux;
 #[cfg(target_os = "macos")]
-mod macos;
+pub(crate) use super::process_group_rss_macos as macos;
 
 #[must_use]
 pub fn pids_sandbox_bytes(pids: &HashSet<u32>) -> Option<u64> {

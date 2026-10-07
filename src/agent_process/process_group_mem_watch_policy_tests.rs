@@ -1,6 +1,6 @@
 #[cfg(all(test, unix))]
 mod policy_tests {
-    use super::super::{MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES, memory_watch_should_terminate};
+    use super::super::process_group_mem_watch::{MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES, memory_watch_should_terminate};
 
     #[test]
     fn memory_watch_should_terminate_on_over_limit() {
@@ -88,7 +88,7 @@ mod policy_tests {
 #[cfg(test)]
 mod kiss_cov_auto {
     #[cfg(unix)]
-    use super::super::{
+    use super::super::process_group_mem_watch::{
         MemWatchHandles, watch_process_group_memory, watch_process_group_memory_with_rss_sampler,
     };
 

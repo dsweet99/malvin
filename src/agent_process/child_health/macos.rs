@@ -1,4 +1,4 @@
-use super::ChildHealth;
+use super::child_health::ChildHealth;
 use errno::errno;
 use libc::ESRCH;
 use libproc::proc_pid::pidinfo;

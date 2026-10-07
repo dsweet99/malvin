@@ -3,10 +3,10 @@ use std::sync::Mutex;
 use crate::agent_process::AgentError;
 use crate::backends::cursor_sdk::protocol::BridgeRequest;
 
-use super::child_process_session::ChildProcessSession;
-use super::session_io::{drain_until_run_done, write_request};
-use super::stdio_child::StdioChild;
-use super::stream_log::StreamLog;
+use super::bridge_sdk::child_process_session::ChildProcessSession;
+use super::bridge_sdk::session_io::{drain_until_run_done, write_request};
+use super::bridge_sdk::stdio_child::StdioChild;
+use super::bridge_sdk::stream_log::StreamLog;
 
 pub struct BridgeSession {
     pub stdio: StdioChild,

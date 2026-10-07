@@ -1,4 +1,4 @@
-use super::ModelListPage;
+use super::codex_sdk::discover::ModelListPage;
 
 pub(super) fn parse_model_list_page(value: &serde_json::Value) -> Result<ModelListPage, String> {
     reject_model_list_error(value)?;

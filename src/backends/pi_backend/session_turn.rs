@@ -1,4 +1,4 @@
-use super::session::NpmPiSession;
+use super::pi_backend::session::NpmPiSession;
 use crate::agent_process::AgentError;
 use crate::backends::cursor_sdk::protocol::{BridgeEvent, RunDoneStatus};
 use crate::backends::bridge_sdk::TurnProtocol;
@@ -58,12 +58,12 @@ async fn handle_line(
         return handle_response(value, state);
     }
     if ty == "extension_ui_request" {
-        if let Err(e) = super::map_event::auto_reply_extension_ui(session, value).await {
+        if let Err(e) = super::pi_backend::map_event::auto_reply_extension_ui(session, value).await {
             return Some(Err(e));
         }
         return None;
     }
-    for ev in super::map_event::map_npm_pi_event(value, state) {
+    for ev in super::pi_backend::map_event::map_npm_pi_event(value, state) {
         if let BridgeEvent::RunDone { .. } = &ev {
             feed_and_handle_run_done(session, &ev);
             return Some(Ok(()));

@@ -1,13 +1,13 @@
 #![cfg_attr(test, allow(unsafe_code))]
 
-mod auth;
-pub mod bridge_install;
-pub(crate) mod bridge_install_npm;
-pub mod bridge_path;
-mod bridge_stderr;
-pub mod node_resolve;
-pub mod protocol;
-mod session_spawn;
+pub(crate) use super::cursor_sdk_auth as auth;
+pub use super::cursor_sdk_bridge_install as bridge_install;
+pub(crate) use super::cursor_sdk_bridge_install_npm as bridge_install_npm;
+pub use super::cursor_sdk_bridge_path as bridge_path;
+pub(crate) use super::cursor_sdk_bridge_stderr as bridge_stderr;
+pub use super::cursor_sdk_node_resolve as node_resolve;
+pub use super::cursor_sdk_protocol as protocol;
+pub(crate) use super::cursor_sdk_session_spawn as session_spawn;
 
 pub use crate::backends::agent_backend::SdkClient as CursorSdkClient;
 pub use auth::{effective_sdk_api_key, ensure_sdk_authenticated};

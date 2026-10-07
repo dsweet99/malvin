@@ -1,8 +1,8 @@
 use malvin::config::model_id::ModelBackend;
 use malvin::output::{MALVIN_WHO, print_stdout_line, print_stdout_text};
 
-use super::models_cmd_cursor::cursor_model_listing;
-use super::{line_matches_prefix, section_may_match};
+use super::models_cmd::models_cmd_cursor::cursor_model_listing;
+use super::models_cmd::{line_matches_prefix, section_may_match};
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub(super) struct ModelListing {

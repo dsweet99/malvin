@@ -1,6 +1,8 @@
 mod acp_usage;
 mod cost;
 mod lifecycle;
+mod process_ledger;
+mod process_ledger_live;
 mod report;
 #[path = "report_cost_line.rs"]
 mod report_cost_line;
@@ -14,6 +16,13 @@ pub const RUN_TIMING_JSON_FILE: &str = "run_timing.json";
 
 pub const RUN_TIMING_SUMMARY_PREFIX: &str = "TIMING: ";
 
+pub use process_ledger::{arm_process_footnotes, note_process_start};
+pub(crate) use process_ledger_live::replace_tracked_timing;
+
+pub fn emit_process_footnotes_if_armed() {
+    process_ledger_live::flush_open_timing();
+    process_ledger::emit_process_footnotes_if_armed();
+}
 pub use report_cost_line::RUN_COST_SUMMARY_PREFIX;
 pub use tokens::ResponseUsage;
 
@@ -48,16 +57,17 @@ pub const fn cost_policy_for_model(_model: &str) -> CostPolicy {
 pub struct RunTiming {
     wall_start: Option<Instant>,
     wall_end: Option<Instant>,
-    llm_wait: Duration,
+    pub(crate) llm_wait: Duration,
     agent_retry_backoff: Duration,
     implement: Duration,
     implement_display_name: &'static str,
-    tool_calls: Duration,
-    tool_calls_read: Duration,
-    tool_calls_search: Duration,
-    tool_calls_edit: Duration,
-    tool_calls_execute: Duration,
-    tool_calls_other: Duration,
+    pub(crate) tool_calls: Duration,
+    pub(crate) tool_calls_read: Duration,
+    pub(crate) tool_calls_search: Duration,
+    pub(crate) tool_calls_edit: Duration,
+    pub(crate) tool_calls_execute: Duration,
+    pub(crate) tool_calls_other: Duration,
+    pub(crate) ledger_cursor: process_ledger::Ledger,
     pub(crate) tx_costs: Vec<f64>,
     pub(crate) unknown_tx_count: u32,
     pub(crate) token_cost_rates: crate::config::malvin_config_file::TokenCostRates,
@@ -98,6 +108,7 @@ impl Default for RunTiming {
             tool_calls_edit: Duration::ZERO,
             tool_calls_execute: Duration::ZERO,
             tool_calls_other: Duration::ZERO,
+            ledger_cursor: process_ledger::Ledger::default(),
             tx_costs: Vec::new(),
             unknown_tx_count: 0,
             token_cost_rates: crate::config::malvin_config_file::TokenCostRates::default(),

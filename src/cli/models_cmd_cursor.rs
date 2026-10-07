@@ -7,8 +7,8 @@ use malvin::ansi_strip::strip_ansi_escapes;
 use malvin::command_output_timeout::{command_output_with_timeout, timeout_ms_from_env};
 use malvin::config::model_id::CURSOR_PREFIX;
 
-use super::models_cmd_catalog::ModelListing;
-use super::models_cmd_parse::{models_display_lines_filtered, trim_trailing_tip_lines};
+use super::models_cmd::models_cmd_catalog::ModelListing;
+use super::models_cmd::models_cmd_parse::{models_display_lines_filtered, trim_trailing_tip_lines};
 
 pub const DEFAULT_CURSOR_LIST_MODELS_TIMEOUT_MS: u64 = 30_000;
 

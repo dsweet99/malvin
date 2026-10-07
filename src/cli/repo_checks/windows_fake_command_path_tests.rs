@@ -3,7 +3,7 @@
 use std::fs;
 use std::process::Command;
 
-use super::{
+use super::repo_checks::command_support::{
     apply_fake_path_if_present, fake_command_dir_for_path_env, run_command_for,
     set_fake_command_dir,
 };

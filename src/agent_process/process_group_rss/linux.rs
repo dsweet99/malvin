@@ -2,11 +2,11 @@ use std::collections::HashSet;
 use std::fs;
 use std::io::ErrorKind;
 
-pub(in crate::agent_process::process_group_rss) fn linux_pids_sandbox_bytes(pids: &HashSet<u32>) -> Option<u64> {
+pub(crate) fn linux_pids_sandbox_bytes(pids: &HashSet<u32>) -> Option<u64> {
     linux_pids_uss_bytes(pids).or_else(|| linux_pids_rss_bytes(pids))
 }
 
-pub(in crate::agent_process::process_group_rss) fn linux_pids_uss_bytes(pids: &HashSet<u32>) -> Option<u64> {
+pub(crate) fn linux_pids_uss_bytes(pids: &HashSet<u32>) -> Option<u64> {
     linux_pids_smaps_rollup_bytes(pids, parse_smaps_rollup_uss_bytes)
 }
 
@@ -32,7 +32,7 @@ fn linux_pids_smaps_rollup_bytes(
     saw.then_some(total)
 }
 
-pub(in crate::agent_process::process_group_rss) fn linux_pids_rss_bytes(pids: &HashSet<u32>) -> Option<u64> {
+pub(crate) fn linux_pids_rss_bytes(pids: &HashSet<u32>) -> Option<u64> {
     let mut total = 0u64;
     let mut saw = false;
     for pid in pids {
@@ -51,16 +51,16 @@ pub(in crate::agent_process::process_group_rss) fn linux_pids_rss_bytes(pids: &H
     saw.then_some(total)
 }
 
-pub(in crate::agent_process::process_group_rss) fn parse_status_vm_rss_bytes(status: &str) -> Option<u64> {
+pub(crate) fn parse_status_vm_rss_bytes(status: &str) -> Option<u64> {
     parse_proc_kib_field(status, "VmRSS:")
 }
 
 #[cfg(test)]
-pub(in crate::agent_process::process_group_rss) fn parse_smaps_rollup_pss_bytes(rollup: &str) -> Option<u64> {
+pub(crate) fn parse_smaps_rollup_pss_bytes(rollup: &str) -> Option<u64> {
     parse_proc_kib_field(rollup, "Pss:")
 }
 
-pub(in crate::agent_process::process_group_rss) fn parse_smaps_rollup_uss_bytes(rollup: &str) -> Option<u64> {
+pub(crate) fn parse_smaps_rollup_uss_bytes(rollup: &str) -> Option<u64> {
     if let Some(uss) = parse_proc_kib_field(rollup, "USS:") {
         return Some(uss);
     }
@@ -77,7 +77,7 @@ pub(in crate::agent_process::process_group_rss) fn parse_smaps_rollup_uss_bytes(
     Some(rss.saturating_sub(shared))
 }
 
-pub(in crate::agent_process::process_group_rss) fn parse_proc_kib_field(text: &str, prefix: &str) -> Option<u64> {
+pub(crate) fn parse_proc_kib_field(text: &str, prefix: &str) -> Option<u64> {
     text.lines().find_map(|line| {
         let rest = line.strip_prefix(prefix)?;
         let kb_str = rest.trim().strip_suffix(" kB")?.trim();

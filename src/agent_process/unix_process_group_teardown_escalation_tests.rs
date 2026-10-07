@@ -4,13 +4,13 @@ use std::os::unix::process::CommandExt;
 use std::process::Command;
 use std::time::Duration;
 
-use super::super::process_group_terminate::terminate_agent_process_group_blocking;
-use super::terminate_agent_process_group;
-use super::terminate_process_group;
+use super::process_group_terminate::terminate_agent_process_group_blocking;
+use super::unix_process_group_teardown::terminate_agent_process_group;
+use super::unix_process_group_teardown::terminate_process_group;
 
 #[test]
 fn teardown_cooperative_sigterm_exits_before_sigkill() {
-    let baseline = super::super::unix_process_group_ps::snapshot_pids();
+    let baseline = super::unix_process_group_ps::snapshot_pids();
     let mut cmd = Command::new("sh");
     cmd.args(["-c", "trap 'exit 0' TERM; while true; do sleep 1; done"]);
     cmd.process_group(0);
@@ -29,7 +29,7 @@ fn teardown_cooperative_sigterm_exits_before_sigkill() {
 /// Flaky under full nextest load; kept as a manual helper (not a `#[test]`).
 #[allow(dead_code)]
 fn teardown_ignoring_sigterm_eventually_killed() {
-    let baseline = super::super::unix_process_group_ps::snapshot_pids();
+    let baseline = super::unix_process_group_ps::snapshot_pids();
     let mut cmd = Command::new("sh");
     cmd.args(["-c", "trap '' TERM; while true; do sleep 1; done"]);
     cmd.process_group(0);
@@ -47,7 +47,7 @@ fn teardown_ignoring_sigterm_eventually_killed() {
 /// Flaky under full nextest load; kept as a manual helper (not a `#[tokio::test]`).
 #[allow(dead_code)]
 async fn teardown_async_ignoring_sigterm_eventually_killed() {
-    let baseline = super::super::unix_process_group_ps::snapshot_pids();
+    let baseline = super::unix_process_group_ps::snapshot_pids();
     let mut cmd = Command::new("sh");
     cmd.args(["-c", "trap '' TERM; while true; do sleep 1; done"]);
     cmd.process_group(0);

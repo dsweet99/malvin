@@ -1,4 +1,4 @@
-use super::session::CodexSession;
+use super::codex_sdk::session::CodexSession;
 use crate::agent_process::AgentError;
 use crate::backends::bridge_sdk::{BridgeSpawnArgs, start_mem_watch};
 
@@ -15,16 +15,16 @@ pub(crate) async fn codex_spawn_bridge(
     Ok(session)
 }
 
-use super::session_process::spawn_codex_session;
-use super::session_protocol::{codex_initialize, codex_start_thread};
+use super::codex_sdk::session_process::spawn_codex_session;
+use super::codex_sdk::session_protocol::{codex_initialize, codex_start_thread};
 
 #[cfg(test)]
 mod tests {
-    use super::super::session_process::{
+    use super::super::codex_sdk::session_process::{
         CodexProcess, build_codex_session, configured_codex_command,
         spawn_codex_process, spawn_codex_session,
     };
-    use super::super::session_protocol::{request, response_error};
+    use super::super::codex_sdk::session_protocol::{request, response_error};
     use super::*;
 
     #[test]

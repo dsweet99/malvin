@@ -1,6 +1,6 @@
 use crate::agent_process::AuthError;
 
-use super::discover::resolve_npm_pi_entry;
+use super::pi_backend::discover::resolve_npm_pi_entry;
 
 pub fn ensure_npm_pi_authenticated(model: &str) -> Result<(), AuthError> {
     resolve_npm_pi_entry().map_err(AuthError)?;

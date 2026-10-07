@@ -3,8 +3,8 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
 use crate::agent_process::AgentError;
 use crate::config::model_id::ModelBackend;
 
-use super::child_process_session::{ChildProcessSession, TurnWait, await_turn_event};
-use super::{DrainIdleLabels, DrainIdleTurn};
+use super::bridge_sdk::child_process_session::{ChildProcessSession, TurnWait, await_turn_event};
+use super::bridge_sdk::{DrainIdleLabels, DrainIdleTurn};
 
 pub(crate) trait JsonLineSession: ChildProcessSession + Sized {
     const BACKEND: ModelBackend;

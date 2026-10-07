@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
-#[path = "unix_process_group_teardown_timing.rs"]
-mod unix_process_group_teardown_timing;
+pub(crate) use super::unix_process_group_teardown_timing as unix_process_group_teardown_timing;
 
 use super::unix_process_group_kill_targets::kill_targets_for_teardown;
 use super::unix_process_group_ps::{signal_pid, signal_process_group};

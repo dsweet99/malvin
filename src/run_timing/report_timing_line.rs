@@ -44,7 +44,7 @@ fn timing_stdout_append_fixed_ms_fields(s: &mut String, first: &mut bool, v: &Va
     timing_stdout_append_tool_calls_by_type(s, first, v);
 }
 
-pub(super) fn format_timing_stdout_line_from_json(v: &Value) -> String {
+pub(crate) fn format_timing_stdout_line_from_json(v: &Value) -> String {
     let mut s = String::from(RUN_TIMING_SUMMARY_PREFIX);
     let mut first = true;
     timing_stdout_append_fixed_ms_fields(&mut s, &mut first, v);

@@ -1,22 +1,21 @@
-mod child_process_session;
-mod child_stderr;
-mod drain_idle;
-mod json_line_session;
-mod turn_protocol;
-mod log_adapter;
-mod log_adapter_tool;
-mod session;
-mod session_handshake;
-mod session_io;
-#[path = "session_io_productive.rs"]
-mod session_io_productive;
-mod spawn_args;
-mod stdio_child;
-mod stdio_teardown;
-mod stdout_coalesce_buf;
-mod stream_log;
-mod timing;
-mod turn_timeout;
+pub(crate) use super::bridge_sdk_child_process_session as child_process_session;
+pub(crate) use super::bridge_sdk_child_stderr as child_stderr;
+pub(crate) use super::bridge_sdk_drain_idle as drain_idle;
+pub(crate) use super::bridge_sdk_json_line_session as json_line_session;
+pub(crate) use super::bridge_sdk_turn_protocol as turn_protocol;
+pub(crate) use super::bridge_sdk_log_adapter as log_adapter;
+pub(crate) use super::bridge_sdk_log_adapter_tool as log_adapter_tool;
+pub(crate) use super::bridge_sdk_session as session;
+pub(crate) use super::bridge_sdk_session_handshake as session_handshake;
+pub(crate) use super::bridge_sdk_session_io as session_io;
+pub(crate) use super::bridge_sdk_session_io_productive as session_io_productive;
+pub(crate) use super::bridge_sdk_spawn_args as spawn_args;
+pub(crate) use super::bridge_sdk_stdio_child as stdio_child;
+pub(crate) use super::bridge_sdk_stdio_teardown as stdio_teardown;
+pub(crate) use super::bridge_sdk_stdout_coalesce_buf as stdout_coalesce_buf;
+pub(crate) use super::bridge_sdk_stream_log as stream_log;
+pub(crate) use super::bridge_sdk_timing as timing;
+pub(crate) use super::bridge_sdk_turn_timeout as turn_timeout;
 
 #[cfg(test)]
 #[path = "child_stderr_tests.rs"]

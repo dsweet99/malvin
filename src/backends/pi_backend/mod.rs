@@ -1,17 +1,17 @@
-mod agent_end_error;
-mod auth;
-mod discover;
-mod extension_ui;
-mod map_event;
-mod map_event_summary;
-mod models_list;
-mod models_rpc;
-pub(crate) mod provider_auth;
-mod session;
-mod session_io;
-mod session_process;
-mod session_spawn;
-mod session_turn;
+pub(crate) use super::pi_backend_agent_end_error as agent_end_error;
+pub(crate) use super::pi_backend_auth as auth;
+pub(crate) use super::pi_backend_discover as discover;
+pub(crate) use super::pi_backend_extension_ui as extension_ui;
+pub(crate) use super::pi_backend_map_event as map_event;
+pub(crate) use super::pi_backend_map_event_summary as map_event_summary;
+pub(crate) use super::pi_backend_models_list as models_list;
+pub(crate) use super::pi_backend_models_rpc as models_rpc;
+pub(crate) use super::pi_backend_provider_auth as provider_auth;
+pub(crate) use super::pi_backend_session as session;
+pub(crate) use super::pi_backend_session_io as session_io;
+pub(crate) use super::pi_backend_session_process as session_process;
+pub(crate) use super::pi_backend_session_spawn as session_spawn;
+pub(crate) use super::pi_backend_session_turn as session_turn;
 
 #[cfg(test)]
 mod issue43_drain_tests;

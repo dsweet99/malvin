@@ -114,11 +114,11 @@ pub async fn evaluate_after_acp_silence(pid: u32, grace: Duration) -> SilenceHea
 }
 
 #[cfg(target_os = "linux")]
-mod linux;
+pub(crate) use super::child_health_linux as linux;
 #[cfg(target_os = "macos")]
-mod macos;
+pub(crate) use super::child_health_macos as macos;
 #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-pub(crate) mod other;
+pub(crate) use super::child_health_other as other;
 
 #[cfg(test)]
 #[path = "tests/child_health_tests_root.rs"]

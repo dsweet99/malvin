@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use super::session::NpmPiSession;
+use super::pi_backend::session::NpmPiSession;
 use crate::agent_process::AgentError;
 use crate::backends::bridge_sdk::JsonLineSession;
 

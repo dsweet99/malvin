@@ -1,18 +1,18 @@
-mod acp_attempt_loop;
-mod backend_error_stop;
-pub mod backend_error_tracker;
-mod backend_lifecycle;
-mod factory;
-mod sdk_client;
-mod sdk_client_active;
-mod sdk_client_header_lifecycle;
-mod sdk_client_prompt;
-mod sdk_client_session;
-mod sdk_client_session_header;
+pub(crate) use super::agent_backend_acp_attempt_loop as acp_attempt_loop;
+pub(crate) use super::agent_backend_backend_error_stop as backend_error_stop;
+pub use super::agent_backend_backend_error_tracker as backend_error_tracker;
+pub(crate) use super::agent_backend_backend_lifecycle as backend_lifecycle;
+pub(crate) use super::agent_backend_factory as factory;
+pub(crate) use super::agent_backend_sdk_client as sdk_client;
+pub(crate) use super::agent_backend_sdk_client_active as sdk_client_active;
+pub(crate) use super::agent_backend_sdk_client_header_lifecycle as sdk_client_header_lifecycle;
+pub(crate) use super::agent_backend_sdk_client_prompt as sdk_client_prompt;
+pub(crate) use super::agent_backend_sdk_client_session as sdk_client_session;
+pub(crate) use super::agent_backend_sdk_client_session_header as sdk_client_session_header;
 #[cfg(test)]
 pub(crate) use sdk_client_session_header::header_prompt_options_for_test;
 pub use sdk_client_session_header::{pending_session_header, session_header_is_satisfied};
-mod sdk_session;
+pub(crate) use super::agent_backend_sdk_session as sdk_session;
 
 #[cfg(test)]
 pub(crate) mod test_support;

@@ -5,7 +5,7 @@ use crate::agent_process::child_health::{
     SilenceHealthOutcome, evaluate_after_acp_silence, silence_grace_for_rpc_timeout,
 };
 
-use super::{DrainHealthVerdict, DrainIdleHealthCtx};
+use super::bridge_sdk::drain_idle::{DrainHealthVerdict, DrainIdleHealthCtx};
 
 pub(crate) async fn sample_drain_health(
     ctx: DrainIdleHealthCtx<'_>,

@@ -6,12 +6,9 @@ use tokio::time::Instant;
 use crate::agent_process::AgentError;
 use crate::sdk_drain_timeout::sdk_drain_idle_slice;
 
-#[path = "drain_idle_health.rs"]
-pub(crate) mod drain_idle_health;
-#[path = "drain_idle_turn.rs"]
-mod drain_idle_turn;
-#[path = "drain_idle_wait.rs"]
-mod drain_idle_wait;
+pub(crate) use super::bridge_sdk_drain_idle_health as drain_idle_health;
+pub(crate) use super::bridge_sdk_drain_idle_turn as drain_idle_turn;
+pub(crate) use super::bridge_sdk_drain_idle_wait as drain_idle_wait;
 use drain_idle_health::sample_drain_health;
 pub(crate) use drain_idle_turn::DrainIdleTurn;
 pub(crate) use drain_idle_wait::{DrainIdleWaitOpts, await_next_with_idle_using};

@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use super::ProcRow;
+use super::unix_process_group_ps::ProcRow;
 
 pub(super) fn snapshot_pids_from_proc() -> Option<HashSet<u32>> {
     let mut pids = HashSet::new();

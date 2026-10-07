@@ -5,14 +5,10 @@ use malvin::backends::agent_backend::{SdkClient, build_agent_backend};
 use malvin::artifacts::{RunArtifacts, is_existing_md_file_path, resolve_user_md_request};
 use malvin::prompts::PromptStore;
 use std::path::PathBuf;
-#[path = "router_flow_acp.rs"]
-pub(crate) mod router_flow_acp;
-#[path = "router_flow_loop.rs"]
-pub(crate) mod router_flow_loop;
-#[path = "router_flow_no_work.rs"]
-pub(crate) mod router_flow_no_work;
-#[path = "router_flow_prompt.rs"]
-pub(crate) mod router_flow_prompt;
+pub(crate) use super::router_flow_acp as router_flow_acp;
+pub(crate) use super::router_flow_loop as router_flow_loop;
+pub(crate) use super::router_flow_no_work as router_flow_no_work;
+pub(crate) use super::router_flow_prompt as router_flow_prompt;
 
 pub use router_flow_prompt::prepare_router_prompt_store;
 
@@ -123,7 +119,7 @@ async fn run_router_body(
         })
         .await?;
 
-    malvin::acp_post_run::merge_acp_restore_check_abort_then_print_timing(
+    malvin::acp_post_run::merge_acp_restore_and_check_abort(
         loop_outcome.last_acp,
         &prep.artifacts,
         &loop_outcome.last_backups,

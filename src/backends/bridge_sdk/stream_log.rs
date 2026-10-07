@@ -5,8 +5,8 @@ use std::time::Instant;
 
 use crate::agent_process::AgentIoOptions;
 
-use super::spawn_args::ToolCallStart;
-use super::stdout_coalesce_buf::StdoutCoalesceBuf;
+use super::bridge_sdk::spawn_args::ToolCallStart;
+use super::bridge_sdk::stdout_coalesce_buf::StdoutCoalesceBuf;
 
 pub struct StreamLog {
     pub io: AgentIoOptions,
@@ -35,7 +35,7 @@ impl StreamLog {
     }
 
     #[must_use]
-    pub fn from_spawn(args: &super::BridgeSpawnArgs<'_>) -> Self {
+    pub fn from_spawn(args: &super::bridge_sdk::BridgeSpawnArgs<'_>) -> Self {
         let mut log = Self::new(args.io);
         log.timing = args.timing.clone();
         log.run_dir = args.run_dir.clone();

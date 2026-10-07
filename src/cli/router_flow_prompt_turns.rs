@@ -7,7 +7,7 @@ use malvin::prompts::{
     router_b_uses_done_note,
 };
 
-use super::{RouterCodeExtraInput, render_router_code_extra};
+use super::router_flow::router_flow_prompt::{RouterCodeExtraInput, render_router_code_extra};
 
 pub(crate) struct RouterHeaderPromptInput<'a> {
     pub store: &'a PromptStore,

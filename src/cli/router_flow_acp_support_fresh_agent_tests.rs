@@ -154,7 +154,7 @@ async fn finish_turn(
     };
     if summarize_now {
         let timing = input.client.attach_run_timing_for_session();
-        super::super::finalize_router_acp_iteration(
+        super::super::router_flow::router_flow_acp::finalize_router_acp_iteration(
             &mut input,
             timing,
             super::RouterExitSummarize::Run,

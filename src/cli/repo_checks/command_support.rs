@@ -6,7 +6,7 @@ use std::process::{Command, Output};
 #[cfg(test)]
 use std::sync::Mutex;
 
-use super::types::{RepoGateCommandFailure, RepoGateFailure};
+use super::repo_checks::types::{RepoGateCommandFailure, RepoGateFailure};
 
 #[cfg(test)]
 static FAKE_COMMAND_DIR_MUTEX: Mutex<()> = Mutex::new(());
@@ -131,5 +131,4 @@ pub fn apply_fake_path_if_present(_: &mut Command) {}
 mod command_support_tests;
 
 #[cfg(all(test, windows))]
-#[path = "windows_fake_command_path_tests.rs"]
-mod windows_fake_command_path_tests;
+pub(crate) use super::repo_checks_windows_fake_command_path_tests as windows_fake_command_path_tests;

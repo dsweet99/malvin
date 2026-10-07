@@ -6,10 +6,8 @@ use std::thread::ThreadId;
 
 use crate::agent_process::acp_spawn_sweep::{acp_spawn_chamber_dir, ensure_acp_spawn_chamber_gitignore};
 
-#[path = "acp_spawn_lock_peer.rs"]
-mod acp_spawn_lock_peer;
-#[path = "acp_spawn_lock_probe.rs"]
-mod acp_spawn_lock_probe;
+pub(crate) use super::acp_spawn_lock_peer as acp_spawn_lock_peer;
+pub(crate) use super::acp_spawn_lock_probe as acp_spawn_lock_probe;
 
 pub use acp_spawn_lock_peer::{
     assert_no_peer_acp_spawn_lock, assert_no_peer_acp_spawn_lock_for_slot,

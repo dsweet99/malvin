@@ -41,12 +41,12 @@ impl JsonLineSession for CodexSession {
 
 impl CodexSession {
     pub async fn send_prompt(&self, prompt: &str) -> Result<(), AgentError> {
-        super::session_io::codex_send_prompt(self, prompt).await
+        super::codex_sdk::session_io::codex_send_prompt(self, prompt).await
     }
 
     pub async fn shutdown(self) -> Result<(), AgentError> {
-        let _ = super::session_io::codex_write_abort(&self).await;
-        let _ = super::session_io::codex_delete_thread(&self).await;
+        let _ = super::codex_sdk::session_io::codex_write_abort(&self).await;
+        let _ = super::codex_sdk::session_io::codex_delete_thread(&self).await;
         self.stdio.shutdown_kill_and_clear().await;
         Ok(())
     }

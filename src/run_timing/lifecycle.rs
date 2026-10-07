@@ -23,12 +23,7 @@ pub fn attach_new_run_timing_with_cost_policy(
     cost_policy: CostPolicy,
     model: &str,
 ) -> Arc<Mutex<RunTiming>> {
-    let prior = timing_slot.as_ref().map(|timing| {
-        timing
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .clone()
-    });
+    let prior = super::process_ledger_live::fold_existing(timing_slot.as_ref());
     let timing = RunTiming::new_arc();
     {
         let mut g = timing
@@ -40,8 +35,11 @@ pub fn attach_new_run_timing_with_cost_policy(
         if let Some(prior) = prior.as_ref() {
             g.carry_token_and_cost_from(prior);
         }
+        super::process_ledger::sync_cursor(&mut g);
+        drop(g);
     }
     *timing_slot = Some(Arc::clone(&timing));
+    super::process_ledger_live::note_live(&timing);
     timing
 }
 
@@ -69,6 +67,7 @@ fn finalize_snapshot(timing: &Arc<Mutex<RunTiming>>) -> RunTiming {
         g.mark_wall_end(Instant::now());
     }
     g.finalize_acp_trailing_assistant_step();
+    super::process_ledger::contribute(&mut g);
     g.clone()
 }
 
@@ -95,6 +94,7 @@ pub fn persist_open_run_timing_json(
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         g.finalize_acp_trailing_assistant_step();
+        super::process_ledger::contribute(&mut g);
         g.clone()
     };
     report::write_json_only(&snapshot, run_dir)

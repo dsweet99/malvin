@@ -3,10 +3,10 @@ use crate::cli::router_flow::router_flow_prompt;
 use malvin::artifacts::{ensure_gate_exp_log_file, RunArtifacts, SessionDotfileBackups};
 use std::path::Path;
 
-use super::router_flow_coder_prompts::{
+use super::router_flow::router_flow_acp::router_flow_coder_prompts::{
     run_router_b_coder_prompt, run_router_initial_coder_prompt, RouterInitialCoderPrompt,
 };
-use super::RouterAcpIterationInput;
+use super::router_flow::router_flow_acp::RouterAcpIterationInput;
 
 pub(crate) struct RouterTurnsOutcome {
     pub iteration_backups: SessionDotfileBackups,
@@ -98,7 +98,7 @@ async fn deliver_router_initial_turn(
     } else {
         let iteration_backups =
             SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)?;
-        super::begin_coder_session_if_needed(input.client, work_dir).await?;
+        super::router_flow::router_flow_acp::begin_coder_session_if_needed(input.client, work_dir).await?;
         run_router_initial_coder_prompt(RouterInitialCoderPrompt {
             client: input.client,
             prompt: &initial.body,

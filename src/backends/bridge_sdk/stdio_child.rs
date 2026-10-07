@@ -7,9 +7,9 @@ use tokio::io::BufReader;
 use tokio::process::{Child, ChildStdin, ChildStdout};
 use tokio::sync::Mutex as AsyncMutex;
 
-use super::session_io::MemWatchArgs;
-use super::stdio_teardown::StdioTeardown;
-use super::stream_log::StreamLog;
+use super::bridge_sdk::session_io::MemWatchArgs;
+use super::bridge_sdk::stdio_teardown::StdioTeardown;
+use super::bridge_sdk::stream_log::StreamLog;
 
 pub(crate) struct SpawnedStdio {
     pub child: Child,

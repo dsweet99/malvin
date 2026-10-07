@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use super::types::RepoGateOutput;
+use super::repo_checks::types::RepoGateOutput;
 
 fn append_quality_gates_log_text(run_dir: &Path, text: &str) -> std::io::Result<()> {
     let path = run_dir.join(malvin::artifacts::QUALITY_GATES_LOG);

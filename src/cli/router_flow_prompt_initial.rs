@@ -2,7 +2,7 @@ use malvin::artifacts::RunArtifacts;
 use malvin::prompt_stratification::{AggregatedInitialPrompt, AggregatedInitialPromptBuilder};
 use malvin::prompts::{PromptStore, header_prompt_file};
 
-use super::{
+use super::router_flow::router_flow_prompt::{
     RouterAPromptInput, RouterHeaderPromptInput, RouterKpopCommonPromptInput,
     build_router_a_prompt, build_router_header_prompt, build_router_kpop_common_prompt,
     build_router_mbc2_prompt, router_a_prompt_label,

@@ -2,7 +2,7 @@ use serde_json::Value;
 
 use crate::backends::cursor_sdk::protocol::BridgeEvent;
 
-use super::map_event_summary::tool_name_summary;
+use super::codex_sdk::map_event_summary::tool_name_summary;
 
 pub(crate) fn map_codex_stream_events(method: &str, params: &Value) -> Vec<BridgeEvent> {
     match method {
@@ -10,7 +10,7 @@ pub(crate) fn map_codex_stream_events(method: &str, params: &Value) -> Vec<Bridg
         "item/reasoning/textDelta" | "item/reasoning/summaryTextDelta" => thinking_delta(params),
         "item/started" => item_tool_event(params, "start"),
         "item/completed" => item_completed_events(params),
-        "thread/tokenUsage/updated" => super::map_event_usage::usage_event(params),
+        "thread/tokenUsage/updated" => super::codex_sdk::map_event_usage::usage_event(params),
         _ => Vec::new(),
     }
 }

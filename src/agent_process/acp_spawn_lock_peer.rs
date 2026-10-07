@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use super::{acp_spawn_lock_path, active_acp_lock_slot};
+use super::acp_spawn_lock::{acp_spawn_lock_path, active_acp_lock_slot};
 
 pub fn assert_no_peer_acp_spawn_lock(work_dir: &Path) -> Result<(), String> {
     assert_no_peer_acp_spawn_lock_for_slot(work_dir, &active_acp_lock_slot())

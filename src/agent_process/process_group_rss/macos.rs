@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::process::Command;
 
-pub(in crate::agent_process::process_group_rss) fn macos_pids_rss_bytes(pids: &HashSet<u32>) -> Option<u64> {
+pub(crate) fn macos_pids_rss_bytes(pids: &HashSet<u32>) -> Option<u64> {
     let pid_list: Vec<String> = pids.iter().map(std::string::ToString::to_string).collect();
     let joined = pid_list.join(",");
     let out = Command::new("ps")

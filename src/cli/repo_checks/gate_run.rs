@@ -1,8 +1,8 @@
 use std::path::{Path, PathBuf};
 
-use super::command_support::{apply_fake_path_if_present, run_command_failure};
-use super::gate_log::{emit_repo_gate_line, try_append_command_output};
-use super::types::{RepoGateFailure, RepoGateOutput, repo_gate_failure_to_string};
+use super::repo_checks::command_support::{apply_fake_path_if_present, run_command_failure};
+use super::repo_checks::gate_log::{emit_repo_gate_line, try_append_command_output};
+use super::repo_checks::types::{RepoGateFailure, RepoGateOutput, repo_gate_failure_to_string};
 
 pub fn run_repo_workspace_gates(
     work_dir: &Path,

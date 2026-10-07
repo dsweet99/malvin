@@ -1,9 +1,9 @@
 use crate::agent_process::AgentError;
 
-use super::TurnWait;
-use super::session::BridgeSession;
-use super::session_handshake::wait_for_ok;
-use super::timing::{note_sdk_step, record_sdk_usage};
+use super::bridge_sdk::TurnWait;
+use super::bridge_sdk::session::BridgeSession;
+use super::bridge_sdk::session_handshake::wait_for_ok;
+use super::bridge_sdk::timing::{note_sdk_step, record_sdk_usage};
 use crate::backends::cursor_sdk::protocol::{BridgeEvent, BridgeRequest, decode_event, encode_request};
 use crate::config::model_id::ModelBackend;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
@@ -85,8 +85,8 @@ pub(crate) async fn read_event(session: &BridgeSession) -> Result<BridgeEvent, A
 }
 
 pub(crate) async fn drain_until_run_done(session: &BridgeSession) -> Result<(), AgentError> {
-    use super::log_adapter::handle_stream_event;
-    let mut turn = super::DrainIdleTurn::new();
+    use super::bridge_sdk::log_adapter::handle_stream_event;
+    let mut turn = super::bridge_sdk::DrainIdleTurn::new();
     let mut last_usage: Option<serde_json::Value> = None;
     loop {
         let ev = read_event_with_idle_timeout(session, "run_done", &mut turn).await?;
@@ -111,13 +111,13 @@ pub(crate) async fn drain_until_run_done(session: &BridgeSession) -> Result<(), 
 async fn read_event_with_idle_timeout(
     session: &BridgeSession,
     waiting_for: &str,
-    turn: &mut super::DrainIdleTurn,
+    turn: &mut super::bridge_sdk::DrainIdleTurn,
 ) -> Result<BridgeEvent, AgentError> {
-    let labels = super::DrainIdleLabels {
+    let labels = super::bridge_sdk::DrainIdleLabels {
         prefix: crate::config::model_id::ModelBackend::Cursor.drain_idle_prefix(),
         waiting_for,
     };
-    super::await_turn_event(TurnWait::of(session), labels, read_event(session), turn).await
+    super::bridge_sdk::await_turn_event(TurnWait::of(session), labels, read_event(session), turn).await
 }
 
 async fn discard_optional_trailing_run_done(session: &BridgeSession) {
@@ -163,9 +163,9 @@ fn finish_run_done(
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = result.clone().unwrap_or_default();
     if let Some(text) = result {
-        super::log_adapter::feed_do_dm_run_result(text);
+        super::bridge_sdk::log_adapter::feed_do_dm_run_result(text);
     }
-    super::log_adapter::handle_stream_event(session, ev);
+    super::bridge_sdk::log_adapter::handle_stream_event(session, ev);
     if *status == crate::backends::cursor_sdk::protocol::RunDoneStatus::Unknown {
         tracing::warn!(
             result = result.as_deref(),

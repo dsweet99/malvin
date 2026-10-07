@@ -1,9 +1,15 @@
 use crate::agent_process::{AgentError, AgentFault};
 
-use super::backend_error_tracker::{
+use super::agent_backend::backend_error_tracker::{
     format_backend_consecutive_error_message, format_local_backend_retry_cap_message,
 };
-use super::sdk_client::SdkClient;
+use super::agent_backend::sdk_client::SdkClient;
+
+impl Drop for SdkClient {
+    fn drop(&mut self) {
+        crate::run_timing::replace_tracked_timing(&mut self.timing, None);
+    }
+}
 
 pub const LOCAL_BACKEND_GPU_MEMORY_HINT: &str =
     "Hint: the local server may be out of GPU memory; see `malvin --doc`, section Local LLMs.";
