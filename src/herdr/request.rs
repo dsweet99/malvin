@@ -107,6 +107,19 @@ pub fn clear_metadata_teardown(pane_id: &str, seq: u64) -> Value {
     )
 }
 
+#[must_use]
+pub fn release_agent(pane_id: &str, seq: u64) -> Value {
+    envelope(
+        "pane.release_agent",
+        json!({
+            "pane_id": pane_id,
+            "source": SOURCE,
+            "agent": AGENT,
+            "seq": seq,
+        }),
+    )
+}
+
 fn envelope(method: &str, params: Value) -> Value {
     json!({
         "id": next_request_id(),
@@ -118,8 +131,8 @@ fn envelope(method: &str, params: Value) -> Value {
 #[cfg(test)]
 mod tests {
     use super::{
-        AGENT, SOURCE, clear_agent_authority, clear_metadata_teardown, rename_agent, report_agent,
-        report_agent_session, report_metadata_sparse,
+        AGENT, SOURCE, clear_agent_authority, clear_metadata_teardown, release_agent, rename_agent,
+        report_agent, report_agent_session, report_metadata_sparse,
     };
 
     #[test]
@@ -150,6 +163,12 @@ mod tests {
         assert_eq!(clear_meta["method"], "pane.report_metadata");
         assert_eq!(clear_meta["params"]["clear_display_agent"], true);
         assert_eq!(clear_meta["params"]["clear_title"], true);
+
+        let release = release_agent("p1", 13);
+        assert_eq!(release["method"], "pane.release_agent");
+        assert_eq!(release["params"]["source"], SOURCE);
+        assert_eq!(release["params"]["agent"], AGENT);
+        assert_eq!(release["params"]["pane_id"], "p1");
 
         let rename = rename_agent("p1", "m4gk60f1m");
         assert_eq!(rename["method"], "agent.rename");

@@ -47,6 +47,7 @@ mod kiss_cov {
         let _ = crate::herdr::request::clear_agent_authority;
         let _ = crate::herdr::request::report_metadata_sparse;
         let _ = crate::herdr::request::clear_metadata_teardown;
+        let _ = crate::herdr::request::release_agent;
         let _ = crate::herdr::request::rename_agent;
         let _ = crate::herdr::send::send_request;
         let _ = crate::herdr::send::send_request_checked;

@@ -46,6 +46,6 @@ Options:
 
 Alias: `rh`.
 
-Set the current herdr pane's malvin agent lifecycle state to idle (not working) and clear display metadata.
+Release the current herdr pane's malvin agent so the agents-list entry goes away, and clear display metadata.
 
-Requires a herdr-hosted environment: `HERDR_ENV=1`, `HERDR_SOCKET_PATH`, and `HERDR_PANE_ID`. Useful when a prior malvin process exited without tearing down and the pane still shows `working`.
+Requires a herdr-hosted environment: `HERDR_ENV=1`, `HERDR_SOCKET_PATH`, and `HERDR_PANE_ID`. Useful when a prior malvin process exited without tearing down and the pane still shows `working` or a leftover idle circle.

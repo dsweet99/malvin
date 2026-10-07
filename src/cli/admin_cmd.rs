@@ -17,7 +17,7 @@ pub enum AdminCommand {
     Models(ModelsArgs),
     /// List remotes for `--remote` and their suboptions
     Remotes(RemotesArgs),
-    /// Reset herdr agent state to idle (not working)
+    /// Reset herdr agent state by releasing the pane
     #[command(name = "reset-herdr", visible_alias = "rh")]
     ResetHerdr,
 }
@@ -36,7 +36,7 @@ pub fn run_admin(args: AdminArgs, current_model: &str) -> Result<(), String> {
             malvin::herdr::reset_to_not_working()?;
             malvin::output::print_stdout_line(
                 malvin::output::MALVIN_WHO,
-                "herdr state reset to idle (not working)",
+                "herdr agent released",
             );
             Ok(())
         }

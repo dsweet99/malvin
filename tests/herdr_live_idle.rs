@@ -106,7 +106,11 @@ fn live_notify_run_end_leaves_pane_idle() {
     malvin::herdr::notify_run_end();
 
     let v = pane_get(&pane);
-    assert_eq!(agent_status(&v), Some("done"), "{v}");
+    assert_eq!(agent_status(&v), Some("unknown"), "{v}");
+    assert!(
+        display_agent(&v).is_none(),
+        "display_agent should be cleared after end: {v}"
+    );
     let _ = sock;
 }
 
@@ -127,7 +131,7 @@ fn live_stuck_unknown_then_do_cycle_leaves_idle() {
 
     malvin::herdr::notify_run_end();
     let end = pane_get(&pane);
-    assert_eq!(agent_status(&end), Some("done"), "after end: {end}");
+    assert_eq!(agent_status(&end), Some("unknown"), "after end: {end}");
     assert!(
         display_agent(&end).is_none(),
         "display_agent should be cleared after end: {end}"
@@ -156,7 +160,7 @@ fn live_stuck_working_then_end_leaves_idle() {
     malvin::herdr::notify_run_end();
 
     let end = pane_get(&pane);
-    assert_eq!(agent_status(&end), Some("done"), "after end: {end}");
+    assert_eq!(agent_status(&end), Some("unknown"), "after end: {end}");
     assert!(
         display_agent(&end).is_none(),
         "display_agent should be cleared after end: {end}"
