@@ -1,7 +1,7 @@
 use crate::cli::router_flow::router_flow_prompt::{
-    RouterAPromptInput, RouterHeaderPromptInput, RouterKpopCommonPromptInput,
     build_router_a_prompt, build_router_header_prompt, build_router_kpop_common_prompt,
-    prepare_router_prompt_store,
+    prepare_router_prompt_store, RouterAPromptInput, RouterHeaderPromptInput,
+    RouterKpopCommonPromptInput,
 };
 use malvin::config::DEFAULT_CLI_MODEL;
 use malvin::flow_prompt_join_test_helpers::flow_test_artifacts;
@@ -151,7 +151,7 @@ fn build_router_kpop_common_prompt_has_no_pi_cwd_note() {
 }
 
 #[test]
-fn build_router_a_prompt_inlines_request_text_only_for_pi() {
+fn build_router_a_prompt_does_not_inline_request_text() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
     std::fs::write(&artifacts.plan_path, "Please fix A5-marker.").expect("write plan");
@@ -167,9 +167,11 @@ fn build_router_a_prompt_inlines_request_text_only_for_pi() {
         })
         .expect("router_a")
     };
-    let pi = render("pi:local/ollama/malvin-llama32:latest");
-    assert!(pi.contains("```text\nPlease fix A5-marker.\n```"), "{pi}");
-    assert!(!render(DEFAULT_CLI_MODEL).contains("A5-marker"));
+    for model in ["pi:local/ollama/malvin-llama32:latest", DEFAULT_CLI_MODEL] {
+        let body = render(model);
+        assert!(!body.contains("A5-marker"), "{model}: {body}");
+        assert!(!body.contains("request_inline"), "{model}: {body}");
+    }
 }
 
 #[cfg(test)]

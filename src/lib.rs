@@ -135,7 +135,6 @@ pub mod command_output_timeout;
 pub mod orchestrator;
 pub mod sdk_drain_timeout;
 pub mod workflow_context;
-pub mod workflow_pi_prompt;
 pub use orchestrator::check_abort;
 #[cfg(test)]
 pub use workflow_context::workflow_context;

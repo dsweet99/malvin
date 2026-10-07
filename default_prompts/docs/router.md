@@ -80,7 +80,6 @@ Gates run **only** when `__MALVIN_DONE__` was seen (in the `router_a` or `router
 | `kpop_insert` | `header.md` | Rendered `kpop_common.md` (router, when KPop on); empty string when `--no-kpop` or non-router header consumers |
 | `agents_insert` | `header.md` | Workspace root `AGENTS.md` body (labeled section), or empty when missing/blank |
 | `user_request_path` | `router_a.md` | run artifacts |
-| `request_inline` | `router_a.md` | For `pi:` models only, the request text in a fence (at most 8 KB; longer requests add a `bash cat` pointer for the rest), which saves small local models a tool call; empty for other backends |
 | `code_extra` | `router_a.md` | `router_code_extra.md` when `--gates` and `code_checks` is non-empty (empty/whitespace `code_checks` → empty `code_extra`) |
 | `audit_directive` | `router_a.md` | `router_a_audit.md` or `router_a_audit_no_kpop.md` |
 | `creative_lead` | `router_b.md` | `router_b_creative_lead.md` when creative and KPop on; else empty |

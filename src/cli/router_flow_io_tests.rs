@@ -93,7 +93,8 @@ fn router_client_uses_router_style_agent_io_not_do_style() {
     use malvin::backends::agent_backend::build_agent_backend;
 
     let shared = SharedOpts {
-        model: malvin::config::model_id::parse_model_id(malvin::config::DEFAULT_CLI_MODEL).expect("model"),
+        model: malvin::config::model_id::parse_model_id(malvin::config::DEFAULT_CLI_MODEL)
+            .expect("model"),
         verbose: false,
         max_acp_retries: malvin::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,

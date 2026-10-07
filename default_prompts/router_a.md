@@ -1,6 +1,7 @@
 
 See user requirements at `{{ user_request_path }}`.
-{{ request_inline }}
+
+See also your trace.json and any notes or artifacts you may have left in {{ workspace_dir }}.
 
 {{ code_extra }}
 
