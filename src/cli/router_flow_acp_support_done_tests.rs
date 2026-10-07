@@ -95,14 +95,14 @@ fn done_marker_in_router_a_reply_skips_router_b() {
 }
 
 #[test]
-fn done_marker_in_router_b_reply_stops_loop() {
+fn done_marker_in_router_b_reply_does_not_stop_loop() {
     let turns = run_mock_router_turns("KPop: Satisfy the requirements");
     assert!(
         turns.router_log.contains("router_b"),
         "{}",
         turns.router_log
     );
-    assert!(turns.done);
+    assert!(!turns.done);
 }
 
 #[test]

@@ -139,7 +139,7 @@ async fn finish_router_a_maybe_b(
         }),
     )
     .await?;
-    Ok(last_response_has_malvin_done(input.client))
+    Ok(false)
 }
 
 pub(crate) fn last_response_has_malvin_done(

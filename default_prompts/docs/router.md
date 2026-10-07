@@ -1,6 +1,6 @@
 # malvin (default route)
 
-Outer agent sessions (`--max-loops`): for each freshly created coder agent, malvin aggregates the initial prompts required by the active options—`header.md` (with KPop folded in via `{{ kpop_insert }}` from `kpop_common.md`, empty when `--no-kpop`), optionally `mbc2.md` when `--creative` samples on, and `router_a.md` (audit wording via `{{ audit_directive }}`)—and sends them as **one** host prompt via `start_coder_session`. When the outer loop continues, the next iteration stops that coder agent and starts a new one, then sends that same aggregated initial prompt again, including `header.md`. A lone-line `__MALVIN_DONE__` in that initial turn's reply can stop the loop (optionally after `--gates` checks). Otherwise the same session receives `router_b.md` (creative / no-kpop wording via template keys); a lone-line `__MALVIN_DONE__` in that reply stops the loop the same way, even though the default `router_b.md` asks the agent not to emit it. If neither reply has the marker, another outer iteration may start when budget remains. When exiting, `router_summarize.md` runs once on the final open session.
+Outer agent sessions (`--max-loops`): for each freshly created coder agent, malvin aggregates the initial prompts required by the active options—`header.md` (with KPop folded in via `{{ kpop_insert }}` from `kpop_common.md`, empty when `--no-kpop`), optionally `mbc2.md` when `--creative` samples on, and `router_a.md` (audit wording via `{{ audit_directive }}`)—and sends them as **one** host prompt via `start_coder_session`. When the outer loop continues, the next iteration stops that coder agent and starts a new one, then sends that same aggregated initial prompt again, including `header.md`. A lone-line `__MALVIN_DONE__` in that initial turn's reply can stop the loop (optionally after `--gates` checks). Otherwise the same session receives `router_b.md` (creative / no-kpop wording via template keys). Malvin does not treat `__MALVIN_DONE__` in the `router_b` reply as a stop. If the initial turn did not emit the marker, another outer iteration may start when budget remains. When exiting, `router_summarize.md` runs once on the final open session.
 
 ## Summary
 
@@ -42,7 +42,7 @@ See `malvin --doc`. Notable for the default route:
 |------|--------|
 | `--max-loops` | Outer agent-session budget (default 9999). |
 | `--max-hypotheses` | Hypothesis budget (default 5). When omitted, `[default_workflow].max_hypotheses` is used. Explicit CLI wins over config. |
-| `-g` / `--gates` | When `router_a` or `router_b` emits `__MALVIN_DONE__`, run workspace `.malvin/gates`. Pass stops success; fail continues (the next outer iteration stops this agent and starts a new one). Exhausted budget with failing gates fails the run after exit summarize. Also injects check text into `router_a.md` via `{{ code_extra }}`. |
+| `-g` / `--gates` | When `router_a` emits `__MALVIN_DONE__`, run workspace `.malvin/gates`. Pass stops success; fail continues (the next outer iteration stops this agent and starts a new one). Exhausted budget with failing gates fails the run after exit summarize. Also injects check text into `router_a.md` via `{{ code_extra }}`. |
 | `--creative[=PROB]` | Applies only to the following REQUEST (repeatable). Per outer iteration of that request, with probability `PROB` (default `1.0` when the flag is set): include `mbc2.md` in the aggregated initial prompt (after header / kpop insert), and fill `router_b.md` creative template keys for the optional work turn |
 | `--watch` | Before each outer loop, re-copy the operator request `.md` onto the run `plan_*.md` (overwrite). No-op for literal-text REQUEST |
 | `--quiet` / `-q` | Stdout shows only `__MALVIN_DM_*__` bodies. Plain `--do` is already DM-body-only without `--verbose` |
@@ -60,18 +60,18 @@ Each outer iteration stops any already-open coder agent, drops a stored Cursor r
 
 ### Stop / continue (without `--gates`)
 
-After the aggregated initial turn, if any line trims to exactly `__MALVIN_DONE__`, skip `router_b` and stop success. Otherwise send `router_b`; if any line of its reply trims to exactly `__MALVIN_DONE__`, stop success. Otherwise, if outer budget remains, do not summarize yet. The next outer iteration stops this agent and starts a new one for `router_a`, including `header.md` again. Exhausting the budget without `--gates` is success (with the single exit summarize on that final session).
+After the aggregated initial turn, if any line trims to exactly `__MALVIN_DONE__`, skip `router_b` and stop success. Otherwise send `router_b`. Malvin does not check that reply for `__MALVIN_DONE__`. If outer budget remains, do not summarize yet. The next outer iteration stops this agent and starts a new one for `router_a`, including `header.md` again. Exhausting the budget without `--gates` is success (with the single exit summarize on that final session).
 
 ### Stop / continue (with `--gates`)
 
-Gates run **only** when `__MALVIN_DONE__` was seen (in the `router_a` or `router_b` reply):
+Gates run **only** when `__MALVIN_DONE__` was seen in the `router_a` reply:
 
 | Condition | Action |
 |-----------|--------|
 | Done + gates pass | Send exit summarize on the open session, tear down, stop success |
 | Done + gates fail, loops remain | Do not summarize. The next outer iteration stops this agent and starts a new one for `router_a` |
 | Done + gates fail, budget exhausted | Send exit summarize on the open session, tear down, fail with a workspace gate error |
-| Not done after `router_a` | Send `router_b`; if its reply is done, apply the rows above; otherwise continue or exit on budget as without gates (gates not run) |
+| Not done after `router_a` | Send `router_b`, then continue or exit on budget as without gates (gates not run). The `router_b` reply is not checked for `__MALVIN_DONE__`. |
 
 ### Required template keys
 
