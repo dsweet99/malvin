@@ -23,7 +23,7 @@ Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`,
 
 | Command | Purpose |
 |---------|---------|
-| *(default)* | Bare `malvin REQUEST` — each outer iteration starts a new agent for aggregated `header` (`kpop_insert` from `kpop_common` unless `--no-kpop`) + optional `mbc2` + `router_a`, then optional `router_b` on that agent; exit `router_summarize` on that same agent; outer `--max-loops` iterations |
+| *(default)* | Bare `malvin REQUEST` — each outer iteration starts a new agent for aggregated `header` + optional `mbc2` + `router_a`, then optional `router_b` on that agent; exit `router_summarize` on that same agent; outer `--max-loops` iterations |
 | `--do` | One-shot agent turn for the following REQUEST (repeatable; other REQUESTs stay on the router) |
 | `--creative[=PROB]` | Creative mode for the following REQUEST only (repeatable; optional probability, default `1.0`) |
 | `malvin -g` | Fix quality gates via the default router with fixed request `Get the gates to pass.` (no positional request) |
@@ -35,7 +35,7 @@ Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prom
 
 `--doc` is a true global: it may appear before or after any subcommand, including `admin`.
 
-Agent-session flags (`--model`, `--gates`, `-q`, `-v`, `--creative[=PROB]`, `--max-acp-retries`, `--iml`, …) apply to bare `malvin REQUEST` and `--do` (`--max-loops`, `--max-hypotheses`, and `--watch` apply only to bare `malvin REQUEST` and `malvin -g`). The `admin` help listing omits them; pass `--model` before `admin models` only when you want to set that command’s `Current:` footer.
+Agent-session flags (`--model`, `--gates`, `-q`, `-v`, `--creative[=PROB]`, `--max-acp-retries`, `--iml`, …) apply to bare `malvin REQUEST` and `--do` (`--max-loops` and `--watch` apply only to bare `malvin REQUEST` and `malvin -g`). The `admin` help listing omits them; pass `--model` before `admin models` only when you want to set that command’s `Current:` footer.
 
 ### `--remote=PROVIDER:SERVICE[KEY=VALUE,...]`
 
@@ -56,10 +56,6 @@ Model id for agent-backed commands. Default: `cursor:auto` (or `[agent].model` i
 
 Outer agent-session budget for bare `malvin REQUEST` and `malvin -g`. `0` is treated as `1`.
 
-### `--max-hypotheses <N>` (default: 5)
-
-Hypothesis budget for bare `malvin REQUEST` and `malvin -g`. When the flag is omitted, `[default_workflow].max_hypotheses` from `~/.malvinconf/config.toml` is used (fallback 5). Explicit CLI wins over config. `0` is treated as `5`.
-
 ### `-g` / `--gates`
 
 Inject workspace check command text into agent prompts and, for workflows that use harness gates as loop criteria, treat failures as loop or exit criteria. Off by default. When `--gates` is set and `.malvin/gates` is missing, malvin runs the init workflow first (default router with request from `init_constraints.md`, harness gates off) to discover and write `.malvin/gates`. On bare `malvin REQUEST`, `-g` / `--gates` also runs workspace `.malvin/gates` after `router_a` emits `__MALVIN_DONE__`: pass stops success; fail continues the outer loop; exhausted budget with failing gates fails the run. `malvin -g` without a request runs the gate-fix workflow with this flag on and fixed request `Get the gates to pass.` When work runs, check text is still injected into the work prompt. Agent prompts may still include available `.malvin/gates` guidance when this option is off.
@@ -76,13 +72,9 @@ Stop after N consecutive identical backend errors (spawn, header, or prompt), wi
 
 ### `--creative[=PROB]`
 
-On the default router (bare `malvin REQUEST` and `malvin -g`), when creative mode is sampled for an outer iteration: include `mbc2.md` in the aggregated initial prompt (after header / kpop insert), and fill `router_b.md` creative template keys (`{{ creative_lead }}`, brief `{{ satisfy_line }}`) for the optional work turn. Both changes share one Bernoulli draw per outer iteration. `--creative` alone uses probability `1.0`; `--creative=0.6` uses `0.6`. Off by default.
+On the default router (bare `malvin REQUEST` and `malvin -g`), when creative mode is sampled for an outer iteration: include `mbc2.md` in the aggregated initial prompt (after the header), and fill `router_b.md` creative template keys (`{{ creative_lead }}`, brief `{{ satisfy_line }}`) for the optional work turn. Both changes share one Bernoulli draw per outer iteration. `--creative` alone uses probability `1.0`; `--creative=0.6` uses `0.6`. Off by default.
 
 Like `--do`, each `--creative` applies only to the `REQUEST` that immediately follows it and may be repeated (at most once per `REQUEST`). Example: `malvin "plain" --creative "spark" "plain2" --creative=0.4 "spark2"`. Intervening global flags (for example `--max-loops`) may appear between `--creative` and its `REQUEST`. A trailing `--creative` after other requests, or `--creative` immediately followed by `--do` (or the reverse), is an error. For `malvin -g` with no positional request, `--creative` still enables creative sampling for that gates-only run.
-
-### `--no-kpop`
-
-Hidden from `malvin --help`. On the default router (bare `malvin REQUEST` and `malvin -g`), turn off the KPop method: `{{ kpop_insert }}` renders empty, and `router_a` / `router_b` use their no-KPop wording. Rejected with pure `--do`. Off by default.
 
 ### `--watch`
 
@@ -214,7 +206,7 @@ The Cursor SDK bridge also emits automatic `{ "event": "progress", "kind": "hear
 
 `~/.malvinconf/` holds malvin's per-user state: `config.toml`, `local_llms.json`, `logs/`, `names/`, and `sdk-bridges/`. Older releases used `~/.malvin_home/`. On startup, when `~/.malvin_home/` is a real directory, malvin renames it to `~/.malvinconf`, or, if `~/.malvinconf` already exists, merges its contents in (files from `~/.malvin_home/` win on conflict). It then leaves a symlink at the old path, so malvin processes still running an older build keep working.
 
-Top-level keys include `mem_limit_gb` and `theme`. Cursor cost rates `usd_per_microtoken_in`, `usd_per_microtoken_out`, `usd_per_microtoken_cache_read`, and `usd_per_microtoken_cache_write` (dollars per million tokens; all default `0`) live under per-model tables such as `[agent.cursor.auto]` (model id `cursor:auto`). Sections include `[agent]`, `[default_workflow]` (`max_hypotheses` for bare `malvin REQUEST` and `malvin -g` when `--max-hypotheses` is omitted, default 5), `[logs]`, and optional `[aliases.models]` (map short unprefixed names to full model ids for `--model` / `[agent].model`, e.g. `astra = "pi:openrouter/openai/gpt-astra"`) and `[aliases.remotes]` (map short names to full `--remote` values, e.g. `big = "modal:sandbox[gpu=A100,mem=32]"`, so `--remote=big` means `--remote=modal:sandbox[gpu=A100,mem=32]`). An alias matches only the whole value: `--remote=big[timeout=2h]` exits 1 with a message saying so, and an alias may not be named after a built-in remote provider such as `modal` or contain `:`, `[`, `]`, `,`, or `=`; model aliases may not contain `:` either. An invalid alias entry is skipped with a warning; the other entries still work. The older `[nicknames]` table was renamed to `[aliases.models]`; malvin rejects a config that still has it, with a message saying to move its entries.
+Top-level keys include `mem_limit_gb` and `theme`. Cursor cost rates `usd_per_microtoken_in`, `usd_per_microtoken_out`, `usd_per_microtoken_cache_read`, and `usd_per_microtoken_cache_write` (dollars per million tokens; all default `0`) live under per-model tables such as `[agent.cursor.auto]` (model id `cursor:auto`). Sections include `[agent]`, `[logs]`, and optional `[aliases.models]` (map short unprefixed names to full model ids for `--model` / `[agent].model`, e.g. `astra = "pi:openrouter/openai/gpt-astra"`) and `[aliases.remotes]` (map short names to full `--remote` values, e.g. `big = "modal:sandbox[gpu=A100,mem=32]"`, so `--remote=big` means `--remote=modal:sandbox[gpu=A100,mem=32]`). An alias matches only the whole value: `--remote=big[timeout=2h]` exits 1 with a message saying so, and an alias may not be named after a built-in remote provider such as `modal` or contain `:`, `[`, `]`, `,`, or `=`; model aliases may not contain `:` either. An invalid alias entry is skipped with a warning; the other entries still work. The older `[nicknames]` table was renamed to `[aliases.models]`; malvin rejects a config that still has it, with a message saying to move its entries.
 
 ## Local LLMs (`~/.malvinconf/local_llms.json`)
 

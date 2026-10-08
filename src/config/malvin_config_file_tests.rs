@@ -2,8 +2,8 @@ use super::{
     ensure_config_parent_dir, load_malvin_config, merge_missing_keys, open_malvin_config,
     parse_agent_config, parse_template_value, read_on_disk_config_value, write_config_value,
 };
-use crate::workspace::support_paths::DEFAULT_CLI_MODEL;
 use crate::test_support::test_utils::with_isolated_home;
+use crate::workspace::support_paths::DEFAULT_CLI_MODEL;
 use crate::workspace::workspace_paths::malvin_config_path;
 use std::collections::BTreeMap;
 
@@ -42,11 +42,8 @@ fn open_malvin_config_creates_file_with_all_sections() {
         assert!(text.contains("[agent.cursor.auto]"));
         assert!(!text.contains("mpc"));
         assert!(!text.contains("max_loops"));
+        assert!(!text.contains("max_hypotheses"));
         assert_eq!(cfg.agent.model.canonical(), DEFAULT_CLI_MODEL);
-        assert_eq!(
-            cfg.agent.max_hypotheses,
-            crate::config::malvin_config_file::DEFAULT_MAX_HYPOTHESES
-        );
         assert!(text.contains("theme"));
         assert_eq!(
             cfg.context_size,
@@ -85,12 +82,10 @@ fn parse_agent_config_reads_values() {
     let text = r#"
 [agent]
 model = "cursor:gpt-5"
-max_hypotheses = 3
 max_acp_retries = 5
 "#;
     let agent = parse_agent(text).expect("parse");
     assert_eq!(agent.model.canonical(), "cursor:gpt-5");
-    assert_eq!(agent.max_hypotheses, 3);
     assert_eq!(agent.max_acp_retries, 5);
 }
 
@@ -98,11 +93,9 @@ fn parse_agent_config_accepts_string_numbers() {
     let text = r#"
 [agent]
 model = "cursor:m"
-max_hypotheses = "2"
 max_acp_retries = "4"
 "#;
     let agent = parse_agent(text).expect("parse");
-    assert_eq!(agent.max_hypotheses, 2);
     assert_eq!(agent.max_acp_retries, 4);
 }
 
@@ -171,14 +164,11 @@ fn parse_agent_config_ignores_legacy_max_loops_keys() {
 model = "cursor:m"
 max_loops = 1
 max_loops_code = 4
+max_hypotheses = 9
 max_acp_retries = 2
 "#;
     let agent = parse_agent(text).expect("parse");
     assert_eq!(agent.max_acp_retries, 2);
-    assert_eq!(
-        agent.max_hypotheses,
-        crate::config::malvin_config_file::DEFAULT_MAX_HYPOTHESES
-    );
 }
 
 fn load_malvin_config_uses_defaults_for_invalid_on_disk_toml() {

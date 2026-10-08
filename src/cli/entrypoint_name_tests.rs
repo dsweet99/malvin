@@ -35,24 +35,23 @@ fn help_lists_creative_flag() {
     assert!(help.contains("--creative"), "help={help}");
 }
 
-fn shared_opts_parses_no_kpop_flag_default_off() {
-    use clap::Parser;
-    let cli = crate::cli::Cli::try_parse_from(["malvin", "--doc"]).expect("parse");
-    assert!(!cli.router.no_kpop);
-}
-
-fn shared_opts_parses_no_kpop_flag_on() {
-    use clap::Parser;
-    let cli = crate::cli::Cli::try_parse_from(["malvin", "--no-kpop", "--doc"]).expect("parse");
-    assert!(cli.router.no_kpop);
-}
-
-fn help_hides_no_kpop_flag() {
+fn help_omits_no_kpop_flag() {
     use clap::CommandFactory;
     let help = crate::cli::Cli::command().render_help().to_string();
     assert!(
         !help.contains("--no-kpop"),
-        "hidden --no-kpop must not appear in help: {help}"
+        "help must not list removed --no-kpop: {help}"
+    );
+}
+
+fn no_kpop_flag_is_rejected_by_clap() {
+    use clap::Parser;
+    let err = crate::cli::Cli::try_parse_from(["malvin", "--no-kpop", "--doc"])
+        .expect_err("--no-kpop must be unknown");
+    let msg = err.to_string();
+    assert!(
+        msg.contains("unexpected") || msg.contains("unknown") || msg.contains("--no-kpop"),
+        "clap must reject --no-kpop; got: {msg}"
     );
 }
 
@@ -142,9 +141,8 @@ fn kiss_bundled_cli_entrypoint_name_tests() {
     shared_opts_parses_creative_flag_default_off();
     shared_opts_parses_creative_flag_on();
     help_lists_creative_flag();
-    shared_opts_parses_no_kpop_flag_default_off();
-    shared_opts_parses_no_kpop_flag_on();
-    help_hides_no_kpop_flag();
+    help_omits_no_kpop_flag();
+    no_kpop_flag_is_rejected_by_clap();
     help_omits_name_flag();
     doc_does_not_create_name_files();
     bare_help_does_not_create_name_files();

@@ -6,9 +6,8 @@ use crate::terminal_palette::TerminalTheme;
 use std::collections::{BTreeMap, BTreeSet};
 
 use super::{
-    AgentConfig, DEFAULT_CONTEXT_SIZE, DefaultWorkflowConfig, MalvinConfig, parse_agent_config,
-    parse_context_size, parse_default_workflow_config,
-    parse_aliases_lenient, parse_model_token_cost_rates, parse_theme,
+    AgentConfig, DEFAULT_CONTEXT_SIZE, MalvinConfig, parse_agent_config, parse_aliases_lenient,
+    parse_context_size, parse_model_token_cost_rates, parse_theme,
 };
 
 pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
@@ -19,7 +18,7 @@ pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
         "[agent.*.*] usd_per_microtoken_*",
         BTreeMap::new(),
     );
-    let (logs, agent, default_workflow) = parse_config_sections(text, &model_aliases);
+    let (logs, agent) = parse_config_sections(text, &model_aliases);
     MalvinConfig {
         mem_limit_gb,
         context_size,
@@ -29,7 +28,6 @@ pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
         token_cost_rates,
         logs,
         agent,
-        default_workflow,
     }
 }
 
@@ -52,7 +50,7 @@ fn parse_top_level_keys(text: &str) -> (u64, u32, TerminalTheme) {
 fn parse_config_sections(
     text: &str,
     model_aliases: &BTreeMap<String, String>,
-) -> (LogsGcConfig, AgentConfig, DefaultWorkflowConfig) {
+) -> (LogsGcConfig, AgentConfig) {
     (
         parse_or_warn(
             parse_logs_gc_config(text),
@@ -63,11 +61,6 @@ fn parse_config_sections(
             parse_agent_config(text, model_aliases),
             "[agent]",
             AgentConfig::default(),
-        ),
-        parse_or_warn(
-            parse_default_workflow_config(text),
-            "[default_workflow]",
-            DefaultWorkflowConfig::default(),
         ),
     )
 }
@@ -100,10 +93,6 @@ fn parse_toml_integer(value: Option<&toml::Value>) -> Option<i64> {
         return Some(i);
     }
     v.as_str()?.parse().ok()
-}
-
-pub(crate) fn read_usize(value: Option<&toml::Value>) -> Option<usize> {
-    parse_toml_integer(value).and_then(|i| usize::try_from(i).ok())
 }
 
 pub(crate) fn read_u32(value: Option<&toml::Value>) -> Option<u32> {

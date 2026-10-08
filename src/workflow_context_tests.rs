@@ -72,10 +72,11 @@ fn insert_quality_gates_log_paths_sets_alias() {
         ctx.get("quality_gates_path").map(String::as_str),
         ctx.get("quality_gates_log").map(String::as_str),
     );
-    assert!(ctx
-        .get("quality_gates_log")
-        .expect("log")
-        .ends_with("quality_gates.log"));
+    assert!(
+        ctx.get("quality_gates_log")
+            .expect("log")
+            .ends_with("quality_gates.log")
+    );
 }
 
 fn insert_artifact_paths_sets_logs_dir_to_home_bucket() {
@@ -128,10 +129,9 @@ fn workflow_context_paths_only_includes_current_state() {
     let ctx = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL);
     assert!(ctx.contains_key("current_state"));
     assert!(ctx.get("current_state").expect("state").contains("User:"));
-    assert_eq!(
-        ctx.get("kpop_insert").map(String::as_str),
-        Some(""),
-        "shared header key defaults empty for non-router consumers"
+    assert!(
+        !ctx.contains_key("kpop_insert"),
+        "shared header context must not carry a KPop insert"
     );
     assert_eq!(
         ctx.get("agents_insert").map(String::as_str),

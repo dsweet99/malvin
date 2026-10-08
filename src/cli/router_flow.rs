@@ -1,14 +1,14 @@
+pub(crate) use super::router_flow_acp;
+pub(crate) use super::router_flow_loop;
+pub(crate) use super::router_flow_no_work;
+pub(crate) use super::router_flow_prompt;
 use crate::cli::cli_request::require_cli_request;
 use crate::cli::run_emit::{RunStartupEmitOpts, emit_run_logs_line, emit_run_startup_banner};
 use crate::cli::{AgentRouteOpts, SharedOpts};
-use malvin::backends::agent_backend::{SdkClient, build_agent_backend};
 use malvin::artifacts::{RunArtifacts, is_existing_md_file_path, resolve_user_md_request};
+use malvin::backends::agent_backend::{SdkClient, build_agent_backend};
 use malvin::prompts::PromptStore;
 use std::path::PathBuf;
-pub(crate) use super::router_flow_acp as router_flow_acp;
-pub(crate) use super::router_flow_loop as router_flow_loop;
-pub(crate) use super::router_flow_no_work as router_flow_no_work;
-pub(crate) use super::router_flow_prompt as router_flow_prompt;
 
 pub use router_flow_prompt::prepare_router_prompt_store;
 
@@ -16,7 +16,6 @@ pub use router_flow_prompt::prepare_router_prompt_store;
 pub struct RouterArgs {
     pub request: Option<String>,
     pub max_loops: usize,
-    pub max_hypotheses: usize,
 }
 
 struct RouterRunPrep {
@@ -114,7 +113,6 @@ async fn run_router_body(
             shared: opts.shared,
             router: opts.router,
             max_loops: router_args.max_loops,
-            max_hypotheses: router_args.max_hypotheses,
             watch_source: prep.watch_source.as_deref(),
         })
         .await?;

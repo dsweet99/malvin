@@ -2,8 +2,7 @@ use std::path::Path;
 
 use super::{
     AgentConfig, MalvinConfig, ensure_config_parent_dir, merge_missing_keys, parse_agent_config,
-    parse_malvin_config, parse_model_aliases, parse_template_value,
-    write_config_value,
+    parse_malvin_config, parse_model_aliases, parse_template_value, write_config_value,
 };
 use crate::workspace::workspace_paths::malvin_config_path;
 
@@ -89,7 +88,10 @@ pub fn load_agent_config_lenient(work_dir: &Path) -> AgentConfig {
 
 fn parse_agent_config_or_warn(text: &str, path: &Path) -> AgentConfig {
     parse_agent_config_text(text).unwrap_or_else(|e| {
-        crate::output::print_log_warning(&format!("ignoring [agent] settings in {}: {e}", path.display()));
+        crate::output::print_log_warning(&format!(
+            "ignoring [agent] settings in {}: {e}",
+            path.display()
+        ));
         AgentConfig::default()
     })
 }

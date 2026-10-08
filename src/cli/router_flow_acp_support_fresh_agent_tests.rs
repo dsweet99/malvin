@@ -1,4 +1,4 @@
-use super::{router_iteration_log_path, run_router_turns, RouterAcpIterationInput};
+use super::{RouterAcpIterationInput, router_iteration_log_path, run_router_turns};
 use crate::cli::{RouterOpts, SharedOpts};
 use malvin::backends::agent_backend::SdkClient;
 
@@ -150,7 +150,6 @@ async fn finish_turn(
         } else {
             malvin::run_timing::acp_post_run::RunTimingSessionEnd::AccumulateRun
         },
-        max_hypotheses: 1,
     };
     if summarize_now {
         let timing = input.client.attach_run_timing_for_session();

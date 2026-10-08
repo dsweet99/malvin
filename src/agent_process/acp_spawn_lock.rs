@@ -4,10 +4,12 @@ use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, Mutex};
 use std::thread::ThreadId;
 
-use crate::agent_process::acp_spawn_sweep::{acp_spawn_chamber_dir, ensure_acp_spawn_chamber_gitignore};
+use crate::agent_process::acp_spawn_sweep::{
+    acp_spawn_chamber_dir, ensure_acp_spawn_chamber_gitignore,
+};
 
-pub(crate) use super::acp_spawn_lock_peer as acp_spawn_lock_peer;
-pub(crate) use super::acp_spawn_lock_probe as acp_spawn_lock_probe;
+pub(crate) use super::acp_spawn_lock_peer;
+pub(crate) use super::acp_spawn_lock_probe;
 
 pub use acp_spawn_lock_peer::{
     assert_no_peer_acp_spawn_lock, assert_no_peer_acp_spawn_lock_for_slot,
@@ -209,7 +211,7 @@ mod tests {
         };
         let work = Path::new(&work);
         let slot =
-            std::env::var("MALVIN_ACP_LOCK_TOCTOU_SLOT").unwrap_or_else(|_| "kpop_toctou".into());
+            std::env::var("MALVIN_ACP_LOCK_TOCTOU_SLOT").unwrap_or_else(|_| "lock_toctou".into());
         let ready_dir = std::env::var("MALVIN_ACP_LOCK_TOCTOU_READY_DIR").expect("ready dir");
         let ready_dir = Path::new(&ready_dir);
         std::fs::create_dir_all(ready_dir).expect("ready dir");
@@ -222,7 +224,7 @@ mod tests {
     #[test]
     fn acp_spawn_lock_toctou_rejects_concurrent_acquire() {
         crate::test_support::test_utils::with_isolated_home(|work| {
-            let slot = "kpop_toctou";
+            let slot = "lock_toctou";
             let barrier = Arc::new(Barrier::new(2));
             let work_path = work.to_path_buf();
             let t0 = spawn_concurrent_acquire(Arc::clone(&barrier), work_path.clone(), slot);

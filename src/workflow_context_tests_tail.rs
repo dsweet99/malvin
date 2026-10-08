@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use super::{
-    format_agents_md_insert, format_pi_extra, insert_current_state, insert_formatted,
-    resolve_user_brief_path, workflow_context_paths_only, AGENTS_MD_FILENAME, PI_HEADER_MD,
+    AGENTS_MD_FILENAME, PI_HEADER_MD, format_agents_md_insert, format_pi_extra,
+    insert_current_state, insert_formatted, resolve_user_brief_path, workflow_context_paths_only,
 };
 use crate::prompt_stratification::WorkflowRenderContext;
 

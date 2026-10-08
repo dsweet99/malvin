@@ -148,7 +148,6 @@ pub fn workflow_context_paths_only(artifacts: &RunArtifacts, model: &str) -> Wor
     insert_artifact_paths(&mut context, artifacts);
     insert_current_state(&mut context, artifacts, &artifacts.work_dir);
     context.insert("malvin_command".to_string(), format_malvin_command(model));
-    context.insert("kpop_insert".to_string(), String::new());
     context.insert("pi_extra".to_string(), format_pi_extra(model));
     context.insert(
         "agents_insert".to_string(),
@@ -168,10 +167,6 @@ pub fn workflow_context(
         "quality_gates".to_string(),
         crate::repo_gates::prompt_quality_gates_markdown_ephemeral(&artifacts.work_dir)
             .map_err(PromptError)?,
-    );
-    context.insert(
-        "max_hypotheses".to_string(),
-        crate::config::malvin_config_file::DEFAULT_MAX_HYPOTHESES.to_string(),
     );
     let _ = prompts;
     Ok(context)

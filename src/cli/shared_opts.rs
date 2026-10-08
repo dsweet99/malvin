@@ -1,7 +1,7 @@
 use clap::{ArgAction, Args};
-pub use malvin::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use malvin::config::malvin_config_file::parse_model_cli_arg;
 use malvin::config::model_id::ParsedModel;
+pub use malvin::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 
 const QUIET_HELPTEXT: &str =
     "Print only `__MALVIN_DM_START__`/`END` bodies on stdout (default router)";
@@ -89,15 +89,9 @@ pub struct RouterOpts {
     /// Re-copy the request `.md` into the run log dir before each outer loop
     #[arg(long, default_value_t = false, help = WATCH_HELPTEXT)]
     pub watch: bool,
-    /// Turn off `KPop`
-    #[arg(long = "no-kpop", default_value_t = false, hide = true)]
-    pub no_kpop: bool,
     /// Outer agent-session budget for bare malvin REQUEST and malvin -g
     #[arg(long, default_value_t = malvin::config::malvin_config_file::DEFAULT_MAX_LOOPS)]
     pub max_loops: usize,
-    /// Hypothesis budget for bare malvin REQUEST and malvin -g
-    #[arg(long, default_value_t = malvin::config::malvin_config_file::DEFAULT_MAX_HYPOTHESES)]
-    pub max_hypotheses: usize,
 }
 
 impl SharedOpts {
@@ -173,9 +167,7 @@ impl RouterOpts {
             gates: false,
             creative: Vec::new(),
             watch: false,
-            no_kpop: false,
             max_loops: malvin::config::malvin_config_file::DEFAULT_MAX_LOOPS,
-            max_hypotheses: malvin::config::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
         }
     }
 }

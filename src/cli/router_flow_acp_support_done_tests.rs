@@ -1,4 +1,4 @@
-use super::{router_iteration_log_path, run_router_turns, RouterAcpIterationInput};
+use super::{RouterAcpIterationInput, router_iteration_log_path, run_router_turns};
 use crate::cli::{RouterOpts, SharedOpts};
 use malvin::run_timing::acp_post_run::RunTimingSessionEnd;
 
@@ -70,7 +70,6 @@ async fn drive_router_turns(workspace: &std::path::Path) -> MockRouterTurns {
         router: &router,
         agent_loop: 1,
         session_end: RunTimingSessionEnd::AccumulateRun,
-        max_hypotheses: 1,
     };
     let done = run_router_turns(&mut input, &log_path)
         .await
@@ -96,7 +95,7 @@ fn done_marker_in_router_a_reply_skips_router_b() {
 
 #[test]
 fn done_marker_in_router_b_reply_does_not_stop_loop() {
-    let turns = run_mock_router_turns("KPop: Satisfy the requirements");
+    let turns = run_mock_router_turns("Satisfy the requirements");
     assert!(
         turns.router_log.contains("router_b"),
         "{}",

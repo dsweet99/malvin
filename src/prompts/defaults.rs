@@ -2,17 +2,13 @@
 mod default_files;
 
 pub use default_files::{
-    ROUTER_A_AUDIT_MD, ROUTER_A_AUDIT_NO_KPOP_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_LEAD_MD,
-    ROUTER_B_DONE_NOTE_MD, ROUTER_B_MD, ROUTER_B_SATISFY_BRIEF_MD, ROUTER_B_SATISFY_MD,
-    ROUTER_B_SATISFY_NO_KPOP_MD, RouterBPromptFlags, default_file, header_prompt_file,
-    kpop_common_prompt_file, router_a_audit_prompt_file, router_a_prompt_file,
-    router_b_prompt_file, router_b_satisfy_prompt_file, router_b_uses_creative_lead,
-    router_b_uses_done_note,
+    ROUTER_A_AUDIT_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_LEAD_MD, ROUTER_B_DONE_NOTE_MD, ROUTER_B_MD,
+    ROUTER_B_SATISFY_BRIEF_MD, ROUTER_B_SATISFY_MD, RouterBPromptFlags, default_file,
+    header_prompt_file, router_a_audit_prompt_file, router_a_prompt_file, router_b_prompt_file,
+    router_b_satisfy_prompt_file, router_b_uses_creative_lead, router_b_uses_done_note,
 };
 
 pub const HEADER_MD: &str = "header.md";
-pub const KPOP_COMMON_MD: &str = "kpop_common.md";
-pub const KPOP_COMMON_NO_KPOP_MD: &str = "kpop_common_no_kpop.md";
 pub const DO_HEADER_MD: &str = "do_header.md";
 pub const ROUTER_CODE_EXTRA_MD: &str = "router_code_extra.md";
 pub const ROUTER_SUMMARIZE_MD: &str = "router_summarize.md";
@@ -23,16 +19,12 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "mbc2.md",
     "init_constraints.md",
     HEADER_MD,
-    KPOP_COMMON_MD,
-    KPOP_COMMON_NO_KPOP_MD,
     DO_HEADER_MD,
     ROUTER_A_MD,
     ROUTER_A_AUDIT_MD,
-    ROUTER_A_AUDIT_NO_KPOP_MD,
     ROUTER_B_MD,
     ROUTER_B_SATISFY_MD,
     ROUTER_B_SATISFY_BRIEF_MD,
-    ROUTER_B_SATISFY_NO_KPOP_MD,
     ROUTER_B_CREATIVE_LEAD_MD,
     ROUTER_B_DONE_NOTE_MD,
     ROUTER_CODE_EXTRA_MD,
@@ -151,9 +143,8 @@ mod router_header_embed_tests {
     use crate::artifacts::create_run_artifacts;
     use crate::cli::router_flow::router_flow_prompt::{
         RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput,
-        RouterKpopCommonPromptInput, RouterSummarizePromptInput, build_router_a_prompt,
-        build_router_b_prompt, build_router_header_prompt, build_router_kpop_common_prompt,
-        build_router_summarize_prompt, prepare_router_prompt_store,
+        RouterSummarizePromptInput, build_router_a_prompt, build_router_b_prompt,
+        build_router_header_prompt, build_router_summarize_prompt, prepare_router_prompt_store,
     };
     use crate::config::DEFAULT_CLI_MODEL;
     use crate::orchestrator::workflow_context_paths_only;
@@ -202,33 +193,20 @@ mod router_header_embed_tests {
             store: &store,
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
-            max_hypotheses: 5,
-            no_kpop: false,
-            gate_iteration: 1,
         })
         .expect("header turn");
         assert!(!header_turn.contains("{{"));
         assert!(
-            header_turn.contains("KPop") || header_turn.contains("Karl Popper"),
-            "router header must embed kpop_insert when no_kpop is false"
+            !header_turn.to_ascii_lowercase().contains("kpop")
+                && !header_turn.contains("Karl Popper"),
+            "router header must not embed the removed KPop method: {header_turn}"
         );
-        let kpop_turn = build_router_kpop_common_prompt(RouterKpopCommonPromptInput {
-            store: &store,
-            artifacts: &artifacts,
-            model: DEFAULT_CLI_MODEL,
-            max_hypotheses: 5,
-            no_kpop: false,
-            gate_iteration: 1,
-        })
-        .expect("kpop common turn");
-        assert!(!kpop_turn.contains("{{"));
         let a = build_router_a_prompt(RouterAPromptInput {
             store: &store,
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
             gates: false,
             gates_just_ran: false,
-            no_kpop: false,
         })
         .expect("router_a");
         assert!(!a.contains("{{"));
@@ -238,7 +216,6 @@ mod router_header_embed_tests {
             model: DEFAULT_CLI_MODEL,
             gates: true,
             gates_just_ran: false,
-            no_kpop: false,
         })
         .expect("router_a gates");
         assert!(!a_gates.contains("{{"));
@@ -247,7 +224,6 @@ mod router_header_embed_tests {
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
             creative: false,
-            no_kpop: false,
         })
         .expect("router_b");
         assert!(!b.contains("{{"));
@@ -256,7 +232,6 @@ mod router_header_embed_tests {
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
             creative: true,
-            no_kpop: false,
         })
         .expect("router_b_creative");
         assert!(!b_creative.contains("{{"));

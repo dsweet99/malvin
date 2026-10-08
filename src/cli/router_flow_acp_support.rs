@@ -1,12 +1,12 @@
 use crate::cli::router_flow::router_flow_no_work::chat_has_malvin_done;
 use crate::cli::router_flow::router_flow_prompt;
-use malvin::artifacts::{ensure_gate_exp_log_file, RunArtifacts, SessionDotfileBackups};
+use malvin::artifacts::{RunArtifacts, SessionDotfileBackups, ensure_gate_exp_log_file};
 use std::path::Path;
 
-use super::router_flow::router_flow_acp::router_flow_coder_prompts::{
-    run_router_b_coder_prompt, run_router_initial_coder_prompt, RouterInitialCoderPrompt,
-};
 use super::router_flow::router_flow_acp::RouterAcpIterationInput;
+use super::router_flow::router_flow_acp::router_flow_coder_prompts::{
+    RouterInitialCoderPrompt, run_router_b_coder_prompt, run_router_initial_coder_prompt,
+};
 
 pub(crate) struct RouterTurnsOutcome {
     pub iteration_backups: SessionDotfileBackups,
@@ -72,11 +72,8 @@ async fn deliver_router_initial_turn(
             model: &model,
             gates: input.router.gates,
             gates_just_ran: malvin::gate_loop_session::quality_gates_just_ran(),
-            no_kpop: input.router.no_kpop,
             creative,
-            max_hypotheses: input.max_hypotheses,
             include_header,
-            gate_iteration: input.agent_loop,
         },
     )?;
 
@@ -98,7 +95,8 @@ async fn deliver_router_initial_turn(
     } else {
         let iteration_backups =
             SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)?;
-        super::router_flow::router_flow_acp::begin_coder_session_if_needed(input.client, work_dir).await?;
+        super::router_flow::router_flow_acp::begin_coder_session_if_needed(input.client, work_dir)
+            .await?;
         run_router_initial_coder_prompt(RouterInitialCoderPrompt {
             client: input.client,
             prompt: &initial.body,
@@ -120,23 +118,18 @@ async fn finish_router_a_maybe_b(
     if last_response_has_malvin_done(input.client) {
         return Ok(true);
     }
-    let no_kpop = input.router.no_kpop;
     let router_b =
         router_flow_prompt::build_router_b_prompt(router_flow_prompt::RouterBPromptInput {
             store: input.prompt_store,
             artifacts: input.artifacts,
             model,
             creative,
-            no_kpop,
         })?;
     run_router_b_coder_prompt(
         input.client,
         &router_b,
         log_path,
-        router_flow_prompt::router_b_prompt_label(malvin::prompts::RouterBPromptFlags {
-            creative,
-            no_kpop,
-        }),
+        router_flow_prompt::router_b_prompt_label(malvin::prompts::RouterBPromptFlags { creative }),
     )
     .await?;
     Ok(false)

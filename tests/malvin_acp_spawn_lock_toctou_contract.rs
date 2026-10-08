@@ -94,14 +94,14 @@ fn peer_acp_spawn_lock_toctou_rejects_dual_acquire_across_processes() {
         let work_path = std::env::var("MALVIN_ACP_LOCK_TOCTOU_WORK").expect("work dir");
         let work = Path::new(&work_path);
         let slot =
-            std::env::var("MALVIN_ACP_LOCK_TOCTOU_SLOT").unwrap_or_else(|_| "kpop_toctou".into());
+            std::env::var("MALVIN_ACP_LOCK_TOCTOU_SLOT").unwrap_or_else(|_| "lock_toctou".into());
         let ready_path = std::env::var("MALVIN_ACP_LOCK_TOCTOU_READY_DIR").expect("ready dir");
         run_toctou_child_probe(work, &slot, Path::new(&ready_path));
         return;
     }
 
     let work = fresh_workdir("malvin_peer_acp_spawn_lock_toctou");
-    let slot = "kpop_toctou_xproc";
+    let slot = "lock_toctou_xproc";
     let ready_dir = work.join(".malvin").join("toctou_ready");
     run_dual_acquire_parent_test(&work, slot, &ready_dir);
 }

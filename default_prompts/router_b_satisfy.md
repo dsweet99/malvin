@@ -1,1 +1,1 @@
-KPop: Satisfy the requirements. Stay in scope.
+Satisfy the requirements. Stay in scope.

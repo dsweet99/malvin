@@ -11,7 +11,9 @@ type AliasEntries = Vec<Result<(String, String), String>>;
 pub(crate) fn parse_model_aliases(text: &str) -> Result<BTreeMap<String, String>, String> {
     let value: toml::Value = text.parse().map_err(|e| format!("invalid TOML: {e}"))?;
     if value.get("nicknames").is_some() {
-        return Err("[nicknames] was renamed to [aliases.models]; move its entries there".to_string());
+        return Err(
+            "[nicknames] was renamed to [aliases.models]; move its entries there".to_string(),
+        );
     }
     model_alias_entries(&value)?.into_iter().collect()
 }
@@ -22,7 +24,9 @@ pub(crate) fn parse_remote_aliases(text: &str) -> Result<BTreeMap<String, String
     remote_alias_entries(&value)?.into_iter().collect()
 }
 
-pub(crate) fn parse_aliases_lenient(text: &str) -> (BTreeMap<String, String>, BTreeMap<String, String>) {
+pub(crate) fn parse_aliases_lenient(
+    text: &str,
+) -> (BTreeMap<String, String>, BTreeMap<String, String>) {
     let Ok(value) = text.parse::<toml::Value>() else {
         return (BTreeMap::new(), BTreeMap::new());
     };
@@ -32,7 +36,10 @@ pub(crate) fn parse_aliases_lenient(text: &str) -> (BTreeMap<String, String>, BT
     )
 }
 
-fn keep_valid_aliases(entries: Result<AliasEntries, String>, label: &str) -> BTreeMap<String, String> {
+fn keep_valid_aliases(
+    entries: Result<AliasEntries, String>,
+    label: &str,
+) -> BTreeMap<String, String> {
     let warn = |msg: &str| super::warn_config_once(&format!("could not parse {label}: {msg}"));
     let entries = entries.unwrap_or_else(|msg| {
         warn(&msg);
@@ -40,7 +47,11 @@ fn keep_valid_aliases(entries: Result<AliasEntries, String>, label: &str) -> BTr
     });
     entries
         .into_iter()
-        .filter_map(|entry| entry.inspect_err(|msg| warn(&format!("{msg}; skipping it"))).ok())
+        .filter_map(|entry| {
+            entry
+                .inspect_err(|msg| warn(&format!("{msg}; skipping it")))
+                .ok()
+        })
         .collect()
 }
 
@@ -63,7 +74,9 @@ fn remote_alias_entries(value: &toml::Value) -> Result<AliasEntries, String> {
             ));
         }
         if BUILTIN_REMOTES.contains(&name) {
-            return Err(format!("remote alias {name:?} must not shadow a built-in remote"));
+            return Err(format!(
+                "remote alias {name:?} must not shadow a built-in remote"
+            ));
         }
         Ok(())
     })

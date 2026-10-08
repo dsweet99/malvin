@@ -59,16 +59,8 @@ fn default_route_carries_quiet_on_router_opts() {
 
 #[test]
 fn default_route_carries_loop_budgets_and_router_opts() {
-    let cli = Cli::try_parse_from([
-        "malvin",
-        "--max-loops",
-        "4",
-        "--max-hypotheses",
-        "7",
-        "--creative=0.5",
-        "build it",
-    ])
-    .expect("parse");
+    let cli = Cli::try_parse_from(["malvin", "--max-loops", "4", "--creative=0.5", "build it"])
+        .expect("parse");
     let workflow = malvin_workflow_from_cli(cli).expect("default route");
     match workflow {
         MalvinWorkflow::DefaultRoute { jobs, router, .. } => {
@@ -76,7 +68,6 @@ fn default_route_carries_loop_budgets_and_router_opts() {
             assert_eq!(jobs[0].text, "build it");
             assert_eq!(jobs[0].creative, Some(0.5));
             assert_eq!(router.max_loops, 4);
-            assert_eq!(router.max_hypotheses, 7);
             assert_eq!(router.creative_probability(), Some(0.5));
             assert!(!router.gates);
         }

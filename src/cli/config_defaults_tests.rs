@@ -57,7 +57,6 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
 
     let agent = AgentConfig {
         model: malvin::config::model_id::parse_model_id("cursor:cfg").expect("model"),
-        max_hypotheses: malvin::config::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
         max_acp_retries: 6,
     };
     let mut shared = SharedOpts {

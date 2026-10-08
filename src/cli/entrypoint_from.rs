@@ -1,17 +1,17 @@
-use super::entrypoint::entrypoint_info_flags::entrypoint_advice_or_doc_exit;
 use super::Exit;
+use super::entrypoint::entrypoint_info_flags::entrypoint_advice_or_doc_exit;
 use super::entrypoint::{
     DefaultRouteDispatch, GatesOnlyDispatch, dispatch_command, dispatch_default_route,
     dispatch_do_workflow, dispatch_gates_only_route, dispatch_mixed_requests, finish_entrypoint,
     prepare_cli_output, print_command_error,
 };
 use crate::cli::args::Cli;
-use malvin::modal_run::options::ModalOptions;
 use crate::cli::config_defaults::is_gates_only_route;
 use crate::cli::entrypoint_checks::{
     ensure_malvin_checks_for_command, ensure_malvin_checks_for_default_route,
     ensure_malvin_checks_for_do_workflow, ensure_malvin_checks_for_gates_only_route,
 };
+use malvin::modal_run::options::ModalOptions;
 
 fn parse_cli_args_or_exit(
     args: impl IntoIterator<Item = impl Into<std::ffi::OsString> + Clone>,
@@ -68,9 +68,7 @@ fn reject_admin_with_workflow_only_flags(cli: &Cli, matches: &clap::ArgMatches) 
         ("quiet", "--quiet / -q"),
         ("gates", "--gates / -g"),
         ("creative", "--creative"),
-        ("no_kpop", "--no-kpop"),
         ("max_loops", "--max-loops"),
-        ("max_hypotheses", "--max-hypotheses"),
         ("verbose", "--verbose / -v"),
         ("max_acp_retries", "--max-acp-retries"),
         ("iml", "--iml"),
@@ -191,7 +189,6 @@ fn dispatch_after_session(cli: Cli, matches: clap::ArgMatches) -> Exit {
         } => finish_entrypoint(dispatch_default_route(DefaultRouteDispatch {
             jobs,
             max_loops: router.max_loops,
-            max_hypotheses: router.max_hypotheses,
             shared: &mut shared,
             router: &mut router,
             matches: &matches,
@@ -211,7 +208,6 @@ fn dispatch_after_session(cli: Cli, matches: clap::ArgMatches) -> Exit {
             mut router,
         } => finish_entrypoint(dispatch_gates_only_route(GatesOnlyDispatch {
             max_loops: router.max_loops,
-            max_hypotheses: router.max_hypotheses,
             shared: &mut shared,
             router: &mut router,
             matches: &matches,

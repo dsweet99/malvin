@@ -100,12 +100,7 @@ fn opt_takes_following_value(arg: &str) -> bool {
     if arg.contains('=') {
         return false;
     }
-    long_name(arg).is_some_and(|n| {
-        matches!(
-            n,
-            "model" | "max-acp-retries" | "max-loops" | "max-hypotheses"
-        )
-    })
+    long_name(arg).is_some_and(|n| matches!(n, "model" | "max-acp-retries" | "max-loops"))
 }
 
 fn advice_takes_following_value(arg: &str, next: Option<&str>) -> bool {

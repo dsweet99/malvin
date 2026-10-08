@@ -1,5 +1,5 @@
-use super::{RouterOpts, SharedOpts, iml_loop, loop_opts, run_do, run_router};
 use super::entrypoint::run_async_cli;
+use super::{RouterOpts, SharedOpts, iml_loop, loop_opts, run_do, run_router};
 use crate::cli::do_flow::DoArgs;
 use crate::cli::request_argv::TaggedRequest;
 
@@ -32,7 +32,6 @@ struct MixedPass<'a> {
     shared: &'a SharedOpts,
     router: &'a RouterOpts,
     max_loops: usize,
-    max_hypotheses: usize,
 }
 
 fn router_opts_for_job(base: &RouterOpts, job: &TaggedRequest) -> RouterOpts {
@@ -59,7 +58,6 @@ async fn run_mixed_jobs_once(pass: MixedPass<'_>) -> Result<(), String> {
                     RouterArgs {
                         request: Some(job.text.clone()),
                         max_loops: pass.max_loops,
-                        max_hypotheses: pass.max_hypotheses,
                     },
                     crate::cli::AgentRouteOpts {
                         shared: pass.shared,
@@ -80,17 +78,13 @@ pub fn dispatch_mixed_requests(
     matches: &clap::ArgMatches,
 ) -> Result<(), String> {
     let mut max_loops = router.max_loops;
-    let max_hypotheses = router.max_hypotheses;
     loop_opts::apply_default_route_tenacious(&mut max_loops, &mut shared.max_acp_retries, matches);
     let iml = shared.iml;
     let shared = shared.clone();
     let router = router.clone();
     run_async_cli(move || async move {
         crate::cli::init_flow::maybe_run_init_bootstrap(
-            crate::cli::init_flow::InitWorkflowOpts {
-                max_loops,
-                max_hypotheses,
-            },
+            crate::cli::init_flow::InitWorkflowOpts { max_loops },
             &shared,
             &router,
         )
@@ -105,7 +99,6 @@ pub fn dispatch_mixed_requests(
                     shared: &shared,
                     router: &router,
                     max_loops,
-                    max_hypotheses,
                 })
                 .await
             }
@@ -117,7 +110,6 @@ pub fn dispatch_mixed_requests(
 pub struct DefaultRouteDispatch<'a> {
     pub jobs: Vec<TaggedRequest>,
     pub max_loops: usize,
-    pub max_hypotheses: usize,
     pub shared: &'a mut SharedOpts,
     pub router: &'a mut RouterOpts,
     pub matches: &'a clap::ArgMatches,
@@ -128,7 +120,6 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
     let DefaultRouteDispatch {
         jobs,
         mut max_loops,
-        max_hypotheses,
         shared,
         router,
         matches,
@@ -139,10 +130,7 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
     let router = router.clone();
     run_async_cli(move || async move {
         crate::cli::init_flow::maybe_run_init_bootstrap(
-            crate::cli::init_flow::InitWorkflowOpts {
-                max_loops,
-                max_hypotheses,
-            },
+            crate::cli::init_flow::InitWorkflowOpts { max_loops },
             &shared,
             &router,
         )
@@ -158,7 +146,6 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
                         RouterArgs {
                             request: Some(job.text),
                             max_loops,
-                            max_hypotheses,
                         },
                         crate::cli::AgentRouteOpts {
                             shared: &shared,

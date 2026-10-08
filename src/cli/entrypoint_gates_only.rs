@@ -7,7 +7,6 @@ use crate::cli::{
 
 pub(crate) struct GatesOnlyDispatch<'a> {
     pub max_loops: usize,
-    pub max_hypotheses: usize,
     pub shared: &'a mut SharedOpts,
     pub router: &'a mut RouterOpts,
     pub matches: &'a clap::ArgMatches,
@@ -16,7 +15,6 @@ pub(crate) struct GatesOnlyDispatch<'a> {
 pub(crate) fn dispatch_gates_only_route(input: GatesOnlyDispatch<'_>) -> Result<(), String> {
     let GatesOnlyDispatch {
         mut max_loops,
-        max_hypotheses,
         shared,
         router,
         matches,
@@ -30,22 +28,14 @@ pub(crate) fn dispatch_gates_only_route(input: GatesOnlyDispatch<'_>) -> Result<
     let shared = shared.clone();
     let router = router.clone();
     run_async_cli(move || async move {
-        init_flow::maybe_run_init_bootstrap(
-            InitWorkflowOpts {
-                max_loops,
-                max_hypotheses,
-            },
-            &shared,
-            &router,
-        )
-        .await?;
+        init_flow::maybe_run_init_bootstrap(InitWorkflowOpts { max_loops }, &shared, &router)
+            .await?;
         crate::cli::iml_loop::run_with_iml(iml, || {
             let shared = shared.clone();
             let router = router.clone();
             async move {
                 run_tidy(
                     max_loops,
-                    max_hypotheses,
                     AgentRouteOpts {
                         shared: &shared,
                         router: &router,

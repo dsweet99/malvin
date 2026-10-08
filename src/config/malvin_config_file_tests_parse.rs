@@ -1,6 +1,6 @@
 use super::{ensure_config_parent_dir, load_malvin_config, read_on_disk_config_value};
-use crate::workspace::support_paths::DEFAULT_CLI_MODEL;
 use crate::test_support::test_utils::with_isolated_home;
+use crate::workspace::support_paths::DEFAULT_CLI_MODEL;
 use crate::workspace::workspace_paths::malvin_config_path;
 
 #[test]
@@ -15,7 +15,7 @@ fn read_on_disk_config_value_rejects_invalid_toml() {
 
 #[test]
 fn parse_malvin_config_falls_back_when_values_invalid_or_missing() {
-    use super::{MalvinConfig, parse_malvin_config, read_string, read_u32, read_usize};
+    use super::{MalvinConfig, parse_malvin_config, read_string, read_u32};
     let cfg = parse_malvin_config("mem_limit_gb = 0\n");
     assert!(cfg.mem_limit_gb >= 1);
     assert_eq!(cfg.context_size, super::DEFAULT_CONTEXT_SIZE);
@@ -33,11 +33,9 @@ fn parse_malvin_config_falls_back_when_values_invalid_or_missing() {
         token_cost_rates: cfg.token_cost_rates.clone(),
         logs: cfg.logs,
         agent: cfg.agent.clone(),
-        default_workflow: cfg.default_workflow.clone(),
     };
     assert_eq!(full.agent, cfg.agent);
     assert_eq!(read_string(None), None);
-    assert_eq!(read_usize(None), None);
     assert_eq!(read_u32(None), None);
 }
 

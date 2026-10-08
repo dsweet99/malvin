@@ -4,14 +4,12 @@ use std::path::Path;
 use crate::config::log_gc_config::LogsGcConfig;
 use crate::config::model_id::{ParsedModel, parse_model_id};
 use crate::output::print_log_warning;
-use crate::workspace::support_paths::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use crate::terminal_palette::TerminalTheme;
+use crate::workspace::support_paths::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use crate::workspace::workspace_paths::malvin_config_path;
 
 #[path = "malvin_config_agent.rs"]
 mod malvin_config_agent;
-#[path = "malvin_config_default_workflow.rs"]
-mod malvin_config_default_workflow;
 #[path = "malvin_config_model_policy.rs"]
 mod malvin_config_model_policy;
 #[path = "malvin_config_open.rs"]
@@ -21,22 +19,20 @@ mod malvin_config_parse;
 #[path = "malvin_config_top.rs"]
 mod malvin_config_top;
 pub(crate) use malvin_config_agent::parse_agent_config;
-pub(crate) use malvin_config_default_workflow::parse_default_workflow_config;
-pub use malvin_config_model_policy::{load_remote_aliases, parse_model_cli_arg};
 #[cfg(test)]
 pub(crate) use malvin_config_model_policy::parse_remote_aliases;
+pub use malvin_config_model_policy::{load_remote_aliases, parse_model_cli_arg};
 pub(crate) use malvin_config_model_policy::{parse_aliases_lenient, parse_model_aliases};
 use malvin_config_open::create_malvin_config_from_template;
 pub use malvin_config_open::{
     ensure_malvin_config_file_if_missing, load_agent_config_lenient, load_agent_config_strict,
 };
 pub(crate) use malvin_config_parse::{
-    parse_malvin_config, read_f64, warn_config_once, read_string, read_u32, read_u64, read_usize,
+    parse_malvin_config, read_f64, read_string, read_u32, read_u64, warn_config_once,
 };
 pub use malvin_config_top::{DEFAULT_CONTEXT_SIZE, TokenCostRates};
 pub(crate) use malvin_config_top::{parse_context_size, parse_model_token_cost_rates, parse_theme};
 
-pub const DEFAULT_MAX_HYPOTHESES: usize = 5;
 pub const DEFAULT_MAX_LOOPS: usize = 9999;
 
 const DEFAULT_MALVIN_CONFIG_TEMPLATE: &str = include_str!(concat!(
@@ -47,7 +43,6 @@ const DEFAULT_MALVIN_CONFIG_TEMPLATE: &str = include_str!(concat!(
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AgentConfig {
     pub model: ParsedModel,
-    pub max_hypotheses: usize,
     pub max_acp_retries: u32,
 }
 
@@ -55,21 +50,8 @@ impl Default for AgentConfig {
     fn default() -> Self {
         Self {
             model: parse_model_id(DEFAULT_CLI_MODEL).expect("DEFAULT_CLI_MODEL must parse"),
-            max_hypotheses: DEFAULT_MAX_HYPOTHESES,
             max_acp_retries: DEFAULT_MAX_ACP_RETRIES,
         }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct DefaultWorkflowConfig {
-    pub max_hypotheses: Option<usize>,
-}
-
-impl DefaultWorkflowConfig {
-    #[must_use]
-    pub fn max_hypotheses_or_default(&self) -> usize {
-        self.max_hypotheses.unwrap_or(DEFAULT_MAX_HYPOTHESES)
     }
 }
 
@@ -83,7 +65,6 @@ pub struct MalvinConfig {
     pub token_cost_rates: BTreeMap<String, TokenCostRates>,
     pub logs: LogsGcConfig,
     pub agent: AgentConfig,
-    pub default_workflow: DefaultWorkflowConfig,
 }
 
 impl MalvinConfig {

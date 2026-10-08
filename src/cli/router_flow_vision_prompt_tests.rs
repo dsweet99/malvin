@@ -49,8 +49,12 @@ fn default_router_prompts_follow_vision_problem_solving_language() {
         "router_a should keep shared audit structure without falsification language"
     );
     assert!(
-        router_a_audit.contains("KPop: Find unsatisfied requirements"),
+        router_a_audit.contains("Find unsatisfied requirements"),
         "router_a_audit should ask for unsatisfied requirements"
+    );
+    assert!(
+        !router_a_audit.contains("KPop"),
+        "router_a_audit must not steer with KPop"
     );
     for name in [
         "router_a_audit.md",
@@ -60,7 +64,7 @@ fn default_router_prompts_follow_vision_problem_solving_language() {
         let body = malvin::prompts::default_file(name)
             .unwrap_or_else(|| panic!("missing {name}"))
             .to_ascii_lowercase();
-        assert!(body.contains("kpop:"), "{name} must keep KPop steering");
+        assert!(!body.contains("kpop"), "{name} must not mention KPop");
         for needle in router_metaphors {
             assert!(!body.contains(needle), "{name} must not contain {needle:?}");
         }
@@ -78,11 +82,15 @@ fn default_router_prompts_follow_vision_problem_solving_language() {
         "router_b skeleton must use template keys without MBC2"
     );
     assert!(
-        satisfy.contains("KPop: Satisfy the requirements.") && !satisfy.contains("MBC2"),
-        "router_b_satisfy must keep KPop satisfy instruction without MBC2"
+        satisfy.contains("Satisfy the requirements.")
+            && !satisfy.contains("MBC2")
+            && !satisfy.contains("KPop"),
+        "router_b_satisfy must keep the satisfy instruction without MBC2 or KPop"
     );
     assert!(
-        satisfy_brief.contains("KPop: Satisfy the requirements.") && creative_lead.contains("MBC2"),
-        "creative fragments must keep KPop satisfy instruction and MBC2"
+        satisfy_brief.contains("Satisfy the requirements.")
+            && !satisfy_brief.contains("KPop")
+            && creative_lead.contains("MBC2"),
+        "creative fragments must keep the satisfy instruction and MBC2"
     );
 }

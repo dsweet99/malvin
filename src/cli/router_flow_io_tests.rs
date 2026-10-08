@@ -76,14 +76,15 @@ fn cli_accepts_watch_option() {
 }
 
 #[test]
-fn cli_accepts_global_no_kpop_option() {
+fn cli_rejects_removed_no_kpop_option() {
     use crate::cli::Cli;
 
-    let cli = Cli::try_parse_from(["malvin", "--no-kpop", "route this task"]).expect("parse");
-    assert!(cli.router.no_kpop);
-    assert_eq!(
-        cli.first_request().map(String::as_str),
-        Some("route this task")
+    let err = Cli::try_parse_from(["malvin", "--no-kpop", "route this task"])
+        .expect_err("--no-kpop removed");
+    let msg = err.to_string();
+    assert!(
+        msg.contains("unexpected") || msg.contains("unknown") || msg.contains("--no-kpop"),
+        "clap must reject --no-kpop; got: {msg}"
     );
 }
 

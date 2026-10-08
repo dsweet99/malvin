@@ -133,6 +133,9 @@ fn load_remote_aliases_reads_home_config() {
         std::fs::write(&path, "[aliases.remotes]\nbig = \"modal:sandbox[gpu=A100]\"\n[agent]\nmodel = \"cursor:auto\"\n")
             .expect("write");
         let aliases = super::load_remote_aliases();
-        assert_eq!(aliases.get("big").map(String::as_str), Some("modal:sandbox[gpu=A100]"));
+        assert_eq!(
+            aliases.get("big").map(String::as_str),
+            Some("modal:sandbox[gpu=A100]")
+        );
     });
 }

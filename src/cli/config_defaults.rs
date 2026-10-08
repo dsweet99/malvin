@@ -34,27 +34,6 @@ fn apply_shared_and_finalize(
     finalize_shared_model(matches, shared)
 }
 
-fn apply_default_route_max_hypotheses(matches: &ArgMatches, cli: &mut Cli) -> Result<(), String> {
-    let requested = if global_flag_from_command_line(matches, "max_hypotheses") {
-        cli.router.max_hypotheses
-    } else {
-        let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-        malvin::config::malvin_config_file::load_malvin_config(&cwd)
-            .default_workflow
-            .max_hypotheses_or_default()
-    };
-    cli.router.max_hypotheses = if requested == 0 {
-        malvin::config::malvin_config_file::DEFAULT_MAX_HYPOTHESES
-    } else {
-        requested
-    };
-    Ok(())
-}
-
-fn is_bare_default_route(cli: &Cli) -> bool {
-    cli.command.is_none() && cli.has_router_request()
-}
-
 #[must_use]
 pub(crate) const fn is_gates_only_route(cli: &Cli) -> bool {
     !cli.do_workflow() && cli.command.is_none() && !cli.has_request() && cli.router.gates
@@ -70,9 +49,7 @@ const ROUTER_ONLY_WITH_PURE_DO: &[(&str, &str)] = &[
     ("quiet", "--quiet / -q"),
     ("gates", "--gates / -g"),
     ("creative", "--creative"),
-    ("no_kpop", "--no-kpop"),
     ("max_loops", "--max-loops"),
-    ("max_hypotheses", "--max-hypotheses"),
     ("watch", "--watch"),
 ];
 
@@ -84,7 +61,9 @@ fn reject_router_only_flags_on_pure_do(matches: &ArgMatches, cli: &Cli) -> Resul
         if global_flag_from_command_line(matches, id) {
             return Err(usage_error(
                 clap::error::ErrorKind::ArgumentConflict,
-                &format!("{flag} cannot be used with `--do` unless another REQUEST uses the router"),
+                &format!(
+                    "{flag} cannot be used with `--do` unless another REQUEST uses the router"
+                ),
             ));
         }
     }
@@ -94,7 +73,6 @@ fn reject_router_only_flags_on_pure_do(matches: &ArgMatches, cli: &Cli) -> Resul
 fn apply_gates_only_workspace_defaults(matches: &ArgMatches, cli: &mut Cli) -> Result<(), String> {
     let agent = load_agent_config(matches)?;
     apply_shared_config_defaults(matches, &mut cli.shared, &agent);
-    apply_default_route_max_hypotheses(matches, cli)?;
     finalize_shared_model(matches, &mut cli.shared)
 }
 
@@ -102,9 +80,6 @@ pub fn apply_workspace_config_defaults(matches: &ArgMatches, cli: &mut Cli) -> R
     if uses_lightweight_config_path(cli) {
         let agent = load_agent_config(matches)?;
         apply_shared_and_finalize(matches, &mut cli.shared, &agent)?;
-        if is_bare_default_route(cli) {
-            apply_default_route_max_hypotheses(matches, cli)?;
-        }
         return Ok(());
     }
     if is_gates_only_route(cli) {

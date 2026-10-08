@@ -30,7 +30,8 @@ fn smoke_cov_cli_cli_units_1b() {
     let _ = crate::cli::do_flow::do_flow_prompt::build_do_coder_run_with_store;
     let _ = crate::cli::session_header::render_malvin_header_body;
     let shared = crate::cli::SharedOpts {
-        model: crate::config::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL).expect("model"),
+        model: crate::config::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL)
+            .expect("model"),
         verbose: false,
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
@@ -106,19 +107,13 @@ fn smoke_cov_cli_cli_symbols_a() {
     let router_args = crate::cli::router_flow::RouterArgs {
         request: None,
         max_loops: 1,
-        max_hypotheses: crate::config::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
     };
     let crate::cli::router_flow::RouterArgs {
         request: router_request,
         max_loops: router_max_loops,
-        max_hypotheses: router_max_hypotheses,
     } = router_args;
     assert!(router_request.is_none());
     assert_eq!(router_max_loops, 1);
-    assert_eq!(
-        router_max_hypotheses,
-        crate::config::malvin_config_file::DEFAULT_MAX_HYPOTHESES
-    );
     let _ = stringify!(RouterRunPrep);
     let _ = crate::cli::router_flow::run_router;
     let _: Option<crate::cli::router_flow::router_flow_acp::RouterAcpIterationInput<'_>> = None;

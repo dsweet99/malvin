@@ -83,7 +83,7 @@ pub(crate) async fn run_router_summarize_coder_prompt(
 #[cfg(test)]
 mod kiss_cov_gate_refs {
     use super::*;
-    use malvin::prompts::{header_prompt_file, kpop_common_prompt_file, router_a_prompt_file};
+    use malvin::prompts::{header_prompt_file, router_a_prompt_file};
 
     #[test]
     fn kiss_cov_unit_names() {
@@ -93,7 +93,6 @@ mod kiss_cov_gate_refs {
         let _ = run_router_summarize_coder_prompt;
         let _ = header_prompt_file;
         let _ = router_a_prompt_file;
-        let _ = kpop_common_prompt_file;
         let _ = malvin::backends::agent_backend::header_prompt_options_for_test;
     }
 
@@ -110,9 +109,6 @@ mod kiss_cov_gate_refs {
     #[test]
     fn router_coder_stdout_labels_match_active_prompt_files() {
         assert_eq!(header_prompt_file(), "header.md");
-        assert_eq!(router_a_prompt_file(false), "router_a.md");
-        assert_eq!(router_a_prompt_file(true), "router_a.md");
-        assert_eq!(kpop_common_prompt_file(false), "kpop_common.md");
-        assert_eq!(kpop_common_prompt_file(true), "kpop_common_no_kpop.md");
+        assert_eq!(router_a_prompt_file(), "router_a.md");
     }
 }

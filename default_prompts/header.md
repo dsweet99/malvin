@@ -117,6 +117,4 @@ __MALVIN_DM_END__
 
 Use DM only when directed to, or in an emergency.
 
-{{ kpop_insert }}
-
 ---- END MALVIN HEADER ----

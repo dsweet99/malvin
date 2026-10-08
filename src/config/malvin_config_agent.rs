@@ -34,8 +34,6 @@ fn agent_config_base(
     let model = crate::config::model_id::require_config_model(expanded)?;
     Ok(AgentConfig {
         model,
-        max_hypotheses: super::read_usize(agent.get("max_hypotheses"))
-            .unwrap_or(defaults.max_hypotheses),
         max_acp_retries: super::read_u32(agent.get("max_acp_retries"))
             .unwrap_or(defaults.max_acp_retries),
     })

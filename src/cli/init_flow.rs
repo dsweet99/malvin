@@ -13,7 +13,6 @@ pub(crate) fn effective_init_max_loops(max_loops: usize) -> usize {
 #[derive(Debug, Clone)]
 pub struct InitWorkflowOpts {
     pub max_loops: usize,
-    pub max_hypotheses: usize,
 }
 
 pub(crate) fn malvin_gates_file_missing() -> Result<bool, String> {
@@ -75,7 +74,6 @@ pub async fn run_init(
         RouterArgs {
             request: Some(request),
             max_loops: effective_init_max_loops(init.max_loops),
-            max_hypotheses: init.max_hypotheses,
         },
         crate::cli::AgentRouteOpts { shared, router },
     )
@@ -181,13 +179,9 @@ mod tests {
 
     #[test]
     fn init_workflow_opts_clone_preserves_fields() {
-        let init = InitWorkflowOpts {
-            max_loops: 4,
-            max_hypotheses: 6,
-        };
+        let init = InitWorkflowOpts { max_loops: 4 };
         let cloned = init.clone();
         assert_eq!(cloned.max_loops, 4);
-        assert_eq!(cloned.max_hypotheses, 6);
     }
 
     #[test]
@@ -243,12 +237,8 @@ mod kiss_cov_gate_refs {
         let _ = stringify!(maybe_run_init_bootstrap);
         let _ = stringify!(render_init_router_request);
         let _ = stringify!(effective_init_max_loops);
-        let init = InitWorkflowOpts {
-            max_loops: 2,
-            max_hypotheses: 4,
-        };
+        let init = InitWorkflowOpts { max_loops: 2 };
         let _ = init.max_loops;
-        let _ = init.max_hypotheses;
         let _: Option<InitWorkflowOpts> = None;
         let _ = effective_init_max_loops;
         let _ = render_init_router_request;

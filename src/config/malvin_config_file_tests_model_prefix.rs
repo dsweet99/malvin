@@ -1,8 +1,8 @@
 use super::malvin_config_agent::parse_agent_config;
 use super::{AgentConfig, open_malvin_config};
 use crate::config::model_id::UNPREFIXED_MODEL_MESSAGE;
-use crate::workspace::support_paths::DEFAULT_CLI_MODEL;
 use crate::test_support::test_utils::with_isolated_home;
+use crate::workspace::support_paths::DEFAULT_CLI_MODEL;
 use crate::workspace::workspace_paths::malvin_config_path;
 use std::collections::BTreeMap;
 
@@ -90,7 +90,6 @@ max_acp_retries = 5
         agent,
         AgentConfig {
             model: crate::config::model_id::parse_model_id("cursor:gpt-5").expect("model"),
-            max_hypotheses: crate::config::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
             max_acp_retries: 5,
         }
     );
