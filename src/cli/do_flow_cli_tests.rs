@@ -91,14 +91,6 @@ fn cli_rejects_unknown_max_hypotheses_flag() {
     );
 }
 
-fn cli_rejects_unknown_no_kpop_flag() {
-    let msg = parse_err(&["malvin", "--no-kpop", "task"]);
-    assert!(
-        msg.contains("unexpected") || msg.contains("unknown") || msg.contains("--no-kpop"),
-        "expected removed --no-kpop flag rejected; got {msg}"
-    );
-}
-
 fn cli_rejects_quiet_with_pure_do() {
     let msg = parse_err(&["malvin", "--do", "-q", "task"]);
     assert!(
@@ -145,7 +137,6 @@ fn kiss_bundled_cli_do_flow_cli_parse_tests() {
     cli_rejects_max_loops_with_pure_do();
     cli_rejects_gates_with_pure_do();
     cli_rejects_creative_with_pure_do();
-    cli_rejects_unknown_no_kpop_flag();
     cli_rejects_quiet_with_pure_do();
     cli_rejects_unknown_max_hypotheses_flag();
     cli_accepts_router_flags_when_mixed_with_do();

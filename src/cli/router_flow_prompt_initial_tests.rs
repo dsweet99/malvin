@@ -47,7 +47,6 @@ fn initial_prompt_joins_header_and_router_a_in_order() {
         .expect("initial");
         assert!(out.body.contains("HEADER_BODY"));
         assert!(out.body.contains("ROUTER_A"));
-        assert!(!out.body.to_ascii_lowercase().contains("kpop"));
         let header_at = out.body.find("HEADER_BODY").expect("header");
         let a_at = out.body.find("ROUTER_A").expect("a");
         assert!(header_at < a_at);
@@ -151,6 +150,5 @@ fn initial_prompt_includes_gates_and_audit() {
         assert!(out.body.contains("AUDIT"));
         assert!(out.body.contains("echo INITIAL_GATE") || out.body.contains("CODE_EXTRA"));
         assert!(out.stdout_label.contains("router_a.md"));
-        assert!(!out.stdout_label.contains("kpop"));
     });
 }

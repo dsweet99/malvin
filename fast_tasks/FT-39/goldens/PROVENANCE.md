@@ -32,12 +32,12 @@ y = 2.0 * x / (3.0 + x) + 1.0
 
 Mid-range: 7 points on `[2.7, 3.6]`, `random.gauss(0, 0.008)`, `random.Random(39)`.
 
-## A/B (cursor:auto, --no-tenacious --max-loops=1, KPop on both arms)
+## A/B (cursor:auto, --no-tenacious --max-loops=1, same loop on both arms)
 
 ### v2–v10 (superseded)
 
 Packed tables, MSE oracles, `.so` disassembly, tight windows, and
-`data/extremes.csv` all let agents recover the law under `kpop_common` without
+`data/extremes.csv` all let agents recover the law under the shared loop prompt without
 `router_b_creative`. See `~/.malvin_home/creative_ab_ft39v*/RESULTS.md`.
 
 ### v11 (coarse holdout; aborted)

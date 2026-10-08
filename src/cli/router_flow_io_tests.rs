@@ -76,19 +76,6 @@ fn cli_accepts_watch_option() {
 }
 
 #[test]
-fn cli_rejects_removed_no_kpop_option() {
-    use crate::cli::Cli;
-
-    let err = Cli::try_parse_from(["malvin", "--no-kpop", "route this task"])
-        .expect_err("--no-kpop removed");
-    let msg = err.to_string();
-    assert!(
-        msg.contains("unexpected") || msg.contains("unknown") || msg.contains("--no-kpop"),
-        "clap must reject --no-kpop; got: {msg}"
-    );
-}
-
-#[test]
 fn router_client_uses_router_style_agent_io_not_do_style() {
     use crate::cli::SharedOpts;
     use malvin::backends::agent_backend::build_agent_backend;

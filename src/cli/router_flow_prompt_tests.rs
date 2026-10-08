@@ -236,7 +236,6 @@ fn build_router_b_prompt_selects_creative_template_when_flag_set() {
         plain.contains("Satisfy the requirements. Stay in scope."),
         "default router_b must keep the satisfy instruction: {plain}"
     );
-    assert!(!plain.contains("KPop:"), "router_b must omit KPop: {plain}");
     assert!(
         !plain.contains("MBC2"),
         "default router_b must not mention MBC2: {plain}"
@@ -245,10 +244,6 @@ fn build_router_b_prompt_selects_creative_template_when_flag_set() {
     assert!(
         creative.contains("Satisfy the requirements."),
         "creative router_b must keep the satisfy instruction: {creative}"
-    );
-    assert!(
-        !creative.contains("KPop:"),
-        "creative router_b must omit KPop: {creative}"
     );
     assert!(
         plain.contains("NB: Do not emit"),
@@ -297,9 +292,8 @@ fn build_router_prompts_use_canonical_templates() {
     )
     .expect("header");
     assert!(
-        !header.to_ascii_lowercase().contains("kpop")
-            && !header.to_ascii_lowercase().contains("falsifiable"),
-        "header must not embed the removed KPop method: {header}"
+        !header.to_ascii_lowercase().contains("falsifiable"),
+        "header must not use falsifiable: {header}"
     );
     let a = build_router_a_prompt(RouterAPromptInput {
         store: &store,

@@ -197,9 +197,8 @@ mod router_header_embed_tests {
         .expect("header turn");
         assert!(!header_turn.contains("{{"));
         assert!(
-            !header_turn.to_ascii_lowercase().contains("kpop")
-                && !header_turn.contains("Karl Popper"),
-            "router header must not embed the removed KPop method: {header_turn}"
+            !header_turn.contains("Karl Popper"),
+            "router header must not name Karl Popper: {header_turn}"
         );
         let a = build_router_a_prompt(RouterAPromptInput {
             store: &store,

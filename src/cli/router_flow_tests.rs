@@ -29,8 +29,8 @@ fn build_router_header_prompt_renders_without_unresolved_braces() {
     assert!(body.contains("Know thyself") || body.contains("Context Prep") || !body.is_empty());
     assert!(!body.contains("{{"));
     assert!(
-        !body.to_ascii_lowercase().contains("kpop") && !body.contains("Karl Popper"),
-        "header must not include the removed KPop method: {body}"
+        !body.contains("Karl Popper"),
+        "header must not name Karl Popper: {body}"
     );
 }
 

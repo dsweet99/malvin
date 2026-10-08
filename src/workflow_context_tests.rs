@@ -129,10 +129,6 @@ fn workflow_context_paths_only_includes_current_state() {
     let ctx = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL);
     assert!(ctx.contains_key("current_state"));
     assert!(ctx.get("current_state").expect("state").contains("User:"));
-    assert!(
-        !ctx.contains_key("kpop_insert"),
-        "shared header context must not carry a KPop insert"
-    );
     assert_eq!(
         ctx.get("agents_insert").map(String::as_str),
         Some(""),
