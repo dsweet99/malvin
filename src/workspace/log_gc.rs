@@ -53,19 +53,18 @@ pub fn dir_size(path: &Path) -> u64 {
 }
 
 pub(crate) fn dir_size_inner(path: &Path) -> std::io::Result<u64> {
+    let meta = std::fs::symlink_metadata(path)?;
+    let ft = meta.file_type();
+    if ft.is_symlink() {
+        return Ok(meta.len());
+    }
+    if !ft.is_dir() {
+        return Ok(if ft.is_file() { meta.len() } else { 0 });
+    }
     let mut total = 0u64;
-    if path.is_dir() {
-        for entry in std::fs::read_dir(path)? {
-            let entry = entry?;
-            let p = entry.path();
-            total = total.saturating_add(if p.is_dir() {
-                dir_size_inner(&p)?
-            } else {
-                entry.metadata()?.len()
-            });
-        }
-    } else if path.is_file() {
-        total = path.metadata()?.len();
+    for entry in std::fs::read_dir(path)? {
+        let entry = entry?;
+        total = total.saturating_add(dir_size_inner(&entry.path())?);
     }
     Ok(total)
 }
