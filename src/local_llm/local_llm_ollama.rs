@@ -4,10 +4,10 @@ use std::time::{Duration, Instant};
 
 use serde::Deserialize;
 
-use crate::http_fetch::{HttpRequest, fetch_text};
 use super::local_context::LOCAL_LLM_BASE_URL_ENV;
 use super::local_endpoint::keyless_local_provider_is_listening;
 use super::local_llm_paths::ollama_bin;
+use crate::http_fetch::{HttpRequest, fetch_text};
 
 pub(crate) const SERVE_WAIT: Duration = Duration::from_secs(20);
 const SERVE_POLL: Duration = Duration::from_millis(200);
@@ -209,21 +209,24 @@ mod tests {
         ));
         assert!(parse_ollama_show_capabilities("not-json").is_none());
     }
-
     #[test]
-    fn parse_tags_lists_model_names() {
-        let body = r#"{"models":[{"name":"qwen2.5:1.5b","size":1},{"name":"llama3.2:3b"}]}"#;
-        assert_eq!(parse_ollama_tags(body), vec!["qwen2.5:1.5b", "llama3.2:3b"]);
-        assert!(parse_ollama_tags("nope").is_empty());
-    }
-
-    #[test]
-    fn show_capabilities_reads_local_server() {
-        let _lock = crate::test_support::test_utils::test_env_lock();
-        let base = crate::http_fetch::serve_once(r#"{"capabilities":["tools"]}"#);
-        crate::agent_process::with_env(LOCAL_LLM_BASE_URL_ENV, Some(&format!("{base}/v1")), || {
-            assert_eq!(ollama_model_supports_tools("m"), Some(true));
-        });
+    fn parse_tags_lists_model_names_and_show_capabilities_reads_local_server() {
+        {
+            let body = r#"{"models":[{"name":"qwen2.5:1.5b","size":1},{"name":"llama3.2:3b"}]}"#;
+            assert_eq!(parse_ollama_tags(body), vec!["qwen2.5:1.5b", "llama3.2:3b"]);
+            assert!(parse_ollama_tags("nope").is_empty());
+        }
+        {
+            let _lock = crate::test_support::test_utils::test_env_lock();
+            let base = crate::http_fetch::serve_once(r#"{"capabilities":["tools"]}"#);
+            crate::agent_process::with_env(
+                LOCAL_LLM_BASE_URL_ENV,
+                Some(&format!("{base}/v1")),
+                || {
+                    assert_eq!(ollama_model_supports_tools("m"), Some(true));
+                },
+            );
+        }
     }
 
     #[test]

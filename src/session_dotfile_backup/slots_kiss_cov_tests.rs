@@ -61,20 +61,19 @@ fn slots_branchy_witness_covers_dotfile_rows() {
         }
     });
 }
-
 #[test]
-fn kiss_cov_slots_static_unit_refs() {
-    let _ = DotfileSpecRow::rel_path;
-    let _ = labels_for_test;
-    let _: [DotfileSpecRow; 2] = DOTFILE_ROWS;
-}
-
-#[test]
-fn kiss_static_type_refs() {
-    let row = &DOTFILE_ROWS[0];
-    assert_eq!(row.rel, crate::MALVIN_CHECKS_REL);
-    assert!(!row.home_subdir.is_empty());
-    let _ = dotfile_source_path(0, Path::new("/tmp"));
+fn kiss_cov_slots_static_unit_refs_and_kiss_static_type_refs() {
+    {
+        let _ = DotfileSpecRow::rel_path;
+        let _ = labels_for_test;
+        let _: [DotfileSpecRow; 2] = DOTFILE_ROWS;
+    }
+    {
+        let row = &DOTFILE_ROWS[0];
+        assert_eq!(row.rel, crate::MALVIN_CHECKS_REL);
+        assert!(!row.home_subdir.is_empty());
+        let _ = dotfile_source_path(0, Path::new("/tmp"));
+    }
 }
 
 #[cfg(unix)]

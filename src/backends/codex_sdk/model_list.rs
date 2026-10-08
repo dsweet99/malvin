@@ -89,44 +89,43 @@ fn parse_next_cursor(result: &serde_json::Value) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
-    fn model_list_page_type_fields_are_constructible() {
-        let page = ModelListPage {
-            models: vec![("gpt-test".into(), "Test".into())],
-            next_cursor: Some("next".into()),
-        };
-        assert_eq!(page.models.len(), 1);
-        assert_eq!(page.next_cursor.as_deref(), Some("next"));
+    fn model_list_page_type_fields_are_constructible_and_model_list_page_reads_next_cursor() {
+        {
+            let page = ModelListPage {
+                models: vec![("gpt-test".into(), "Test".into())],
+                next_cursor: Some("next".into()),
+            };
+            assert_eq!(page.models.len(), 1);
+            assert_eq!(page.next_cursor.as_deref(), Some("next"));
+        }
+        {
+            let value = serde_json::json!({
+                "result": {
+                    "data": [{"id": "gpt-test", "displayName": "Test"}],
+                    "nextCursor": "page-2"
+                }
+            });
+            let page = parse_model_list_page(&value).expect("page");
+            assert_eq!(page.models, vec![("gpt-test".into(), "Test".into())]);
+            assert_eq!(page.next_cursor.as_deref(), Some("page-2"));
+        }
     }
     #[test]
-    fn model_list_page_reads_next_cursor() {
-        let value = serde_json::json!({
-            "result": {
-                "data": [{"id": "gpt-test", "displayName": "Test"}],
-                "nextCursor": "page-2"
-            }
-        });
-        let page = parse_model_list_page(&value).expect("page");
-        assert_eq!(page.models, vec![("gpt-test".into(), "Test".into())]);
-        assert_eq!(page.next_cursor.as_deref(), Some("page-2"));
-    }
-
-    #[test]
-    fn model_list_page_without_cursor_finishes() {
-        let value = serde_json::json!({
-            "result": {"data": [{"id": "gpt-test"}]}
-        });
-        let page = parse_model_list_page(&value).expect("page");
-        assert!(page.next_cursor.is_none());
-        assert_eq!(page.models[0].0, "gpt-test");
-    }
-
-    #[test]
-    fn model_list_page_propagates_error() {
-        let value = serde_json::json!({"error": {"message": "bad"}});
-        let err = parse_model_list_page(&value).expect_err("error");
-        assert!(err.contains("bad"));
+    fn model_list_page_without_cursor_finishes_and_model_list_page_propagates_error() {
+        {
+            let value = serde_json::json!({
+                "result": {"data": [{"id": "gpt-test"}]}
+            });
+            let page = parse_model_list_page(&value).expect("page");
+            assert!(page.next_cursor.is_none());
+            assert_eq!(page.models[0].0, "gpt-test");
+        }
+        {
+            let value = serde_json::json!({"error": {"message": "bad"}});
+            let err = parse_model_list_page(&value).expect_err("error");
+            assert!(err.contains("bad"));
+        }
     }
 
     #[test]
@@ -160,37 +159,37 @@ mod tests {
         let page = parse_model_list_page(&value).expect("page");
         assert_eq!(page.models, vec![("valid".into(), String::new())]);
     }
-
     #[test]
-    fn model_list_row_requires_id_and_defaults_display_name() {
-        assert!(parse_model_row(&serde_json::json!({})).is_none());
-        assert_eq!(
-            parse_model_row(&serde_json::json!({"id": "valid"})),
-            Some(("valid".into(), String::new()))
-        );
-    }
-
-    #[test]
-    fn model_list_row_appends_thinking_service_and_flags() {
-        let row = serde_json::json!({
-            "id": "gpt-terra",
-            "displayName": "Terra",
-            "hidden": true,
-            "isDefault": true,
-            "supportedReasoningEfforts": [
-                {"reasoningEffort": "low"},
-                {"reasoningEffort": "high"}
-            ],
-            "serviceTiers": [{"id": "priority"}]
-        });
-        assert_eq!(
-            parse_model_row(&row),
-            Some((
-                "gpt-terra".into(),
-                "Terra\tthinking=low|high service=priority hidden default".into()
-            ))
-        );
-        assert!(joined_ids(Some(&serde_json::json!([])), "id").is_none());
-        assert!(codex_listing_extras(&serde_json::json!({"id": "x"})).is_empty());
+    fn model_list_row_requires_id_and_defaults_display_name_and_model_list_row_appends_thinking_service_and_flags()
+     {
+        {
+            assert!(parse_model_row(&serde_json::json!({})).is_none());
+            assert_eq!(
+                parse_model_row(&serde_json::json!({"id": "valid"})),
+                Some(("valid".into(), String::new()))
+            );
+        }
+        {
+            let row = serde_json::json!({
+                "id": "gpt-terra",
+                "displayName": "Terra",
+                "hidden": true,
+                "isDefault": true,
+                "supportedReasoningEfforts": [
+                    {"reasoningEffort": "low"},
+                    {"reasoningEffort": "high"}
+                ],
+                "serviceTiers": [{"id": "priority"}]
+            });
+            assert_eq!(
+                parse_model_row(&row),
+                Some((
+                    "gpt-terra".into(),
+                    "Terra\tthinking=low|high service=priority hidden default".into()
+                ))
+            );
+            assert!(joined_ids(Some(&serde_json::json!([])), "id").is_none());
+            assert!(codex_listing_extras(&serde_json::json!({"id": "x"})).is_empty());
+        }
     }
 }

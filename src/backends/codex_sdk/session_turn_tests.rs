@@ -94,7 +94,10 @@ fn run_done_uses_shared_finished_status_and_usage() {
             duration_ms,
             error,
         } => {
-            assert_eq!(status, crate::backends::cursor_sdk::protocol::RunDoneStatus::Finished);
+            assert_eq!(
+                status,
+                crate::backends::cursor_sdk::protocol::RunDoneStatus::Finished
+            );
             assert_eq!(result.as_deref(), Some("hi"));
             assert_eq!(usage.unwrap()["inputTokens"], 1);
             assert_eq!(duration_ms, Some(15));

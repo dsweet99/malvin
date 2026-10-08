@@ -31,7 +31,11 @@ const LOCAL_PROVIDERS: &[LocalProvider] = &[
 const PROVIDER_ENV_KEYS: &[(&str, &[&str])] = &[
     (
         "anthropic",
-        &["ANTHROPIC_API_KEY", "ANTHROPIC_OAUTH_TOKEN", "ANTHROPIC_AUTH_TOKEN"],
+        &[
+            "ANTHROPIC_API_KEY",
+            "ANTHROPIC_OAUTH_TOKEN",
+            "ANTHROPIC_AUTH_TOKEN",
+        ],
     ),
     ("openai", &["OPENAI_API_KEY"]),
     ("deepseek", &["DEEPSEEK_API_KEY"]),
@@ -112,31 +116,39 @@ pub(crate) fn pi_auth_json_path() -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
-    fn keyless_local_matches_aliases_only_for_local_servers() {
-        for id in ["ollama", "llamacpp", "llama.cpp", "MistralRS", "mistral-rs"] {
-            assert!(provider_is_keyless_local(id), "{id}");
+    fn keyless_local_matches_aliases_only_for_local_servers_and_env_keys_cover_common_providers() {
+        {
+            for id in ["ollama", "llamacpp", "llama.cpp", "MistralRS", "mistral-rs"] {
+                assert!(provider_is_keyless_local(id), "{id}");
+            }
+            for id in ["openai", "ollama-cloud", "lmstudio", "nope"] {
+                assert!(!provider_is_keyless_local(id), "{id}");
+            }
+            assert!(provider_ids_match("llama-server", "llamacpp"));
+            assert!(!provider_ids_match("ollama", "llamacpp"));
         }
-        for id in ["openai", "ollama-cloud", "lmstudio", "nope"] {
-            assert!(!provider_is_keyless_local(id), "{id}");
+        {
+            assert_eq!(
+                provider_auth_env_keys("openai"),
+                Some(&["OPENAI_API_KEY"][..])
+            );
+            assert!(provider_auth_env_keys("ollama").is_none());
         }
-        assert!(provider_ids_match("llama-server", "llamacpp"));
-        assert!(!provider_ids_match("ollama", "llamacpp"));
-    }
-
-    #[test]
-    fn env_keys_cover_common_providers() {
-        assert_eq!(provider_auth_env_keys("openai"), Some(&["OPENAI_API_KEY"][..]));
-        assert!(provider_auth_env_keys("ollama").is_none());
     }
 
     #[test]
     fn agent_dir_honors_env_override() {
         let _lock = crate::test_support::test_utils::test_env_lock();
         crate::agent_process::with_env("PI_CODING_AGENT_DIR", Some("/tmp/pi-agent-x"), || {
-            assert_eq!(pi_models_json_path(), PathBuf::from("/tmp/pi-agent-x/models.json"));
-            assert_eq!(pi_auth_json_path(), PathBuf::from("/tmp/pi-agent-x/auth.json"));
+            assert_eq!(
+                pi_models_json_path(),
+                PathBuf::from("/tmp/pi-agent-x/models.json")
+            );
+            assert_eq!(
+                pi_auth_json_path(),
+                PathBuf::from("/tmp/pi-agent-x/auth.json")
+            );
         });
     }
 }

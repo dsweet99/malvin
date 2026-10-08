@@ -3,75 +3,73 @@ use super::{
 };
 use crate::cli::SharedOpts;
 use malvin::test_support::test_utils::with_isolated_home;
-
 #[test]
-fn prepare_cli_output_initializes_output_state() {
-    malvin::output::set_stdout_suppressed(true);
-    let shared = SharedOpts::test_defaults();
-    prepare_cli_output(&shared);
-    assert!(!malvin::output::stdout_suppressed());
-    malvin::output::set_stdout_suppressed(false);
+fn prepare_cli_output_initializes_output_state_and_entrypoint_from_doc_argv_exits_success() {
+    {
+        malvin::output::set_stdout_suppressed(true);
+        let shared = SharedOpts::test_defaults();
+        prepare_cli_output(&shared);
+        assert!(!malvin::output::stdout_suppressed());
+        malvin::output::set_stdout_suppressed(false);
+    }
+    {
+        with_isolated_home(|_| {
+            assert_eq!(entrypoint_from(["malvin", "--doc"]), Exit::Success);
+        });
+    }
 }
-
 #[test]
-fn entrypoint_from_doc_argv_exits_success() {
-    with_isolated_home(|_| {
-        assert_eq!(entrypoint_from(["malvin", "--doc"]), Exit::Success);
-    });
+fn entrypoint_from_advice_doc_design_exits_success_and_entrypoint_from_advice_scholar_exits_success()
+ {
+    {
+        with_isolated_home(|_| {
+            assert_eq!(
+                entrypoint_from(["malvin", "--advice", "doc_design"]),
+                Exit::Success
+            );
+        });
+    }
+    {
+        with_isolated_home(|_| {
+            assert_eq!(
+                entrypoint_from(["malvin", "--advice", "scholar"]),
+                Exit::Success
+            );
+        });
+    }
 }
-
 #[test]
-fn entrypoint_from_advice_doc_design_exits_success() {
-    with_isolated_home(|_| {
-        assert_eq!(
-            entrypoint_from(["malvin", "--advice", "doc_design"]),
-            Exit::Success
-        );
-    });
+fn entrypoint_from_advice_report_exits_success_and_entrypoint_from_advice_list_exits_success() {
+    {
+        with_isolated_home(|_| {
+            assert_eq!(
+                entrypoint_from(["malvin", "--advice", "report"]),
+                Exit::Success
+            );
+        });
+    }
+    {
+        with_isolated_home(|_| {
+            assert_eq!(entrypoint_from(["malvin", "--advice"]), Exit::Success);
+        });
+    }
 }
-
 #[test]
-fn entrypoint_from_advice_scholar_exits_success() {
-    with_isolated_home(|_| {
-        assert_eq!(
-            entrypoint_from(["malvin", "--advice", "scholar"]),
-            Exit::Success
-        );
-    });
-}
-
-#[test]
-fn entrypoint_from_advice_report_exits_success() {
-    with_isolated_home(|_| {
-        assert_eq!(
-            entrypoint_from(["malvin", "--advice", "report"]),
-            Exit::Success
-        );
-    });
-}
-
-#[test]
-fn entrypoint_from_advice_list_exits_success() {
-    with_isolated_home(|_| {
-        assert_eq!(entrypoint_from(["malvin", "--advice"]), Exit::Success);
-    });
-}
-
-#[test]
-fn entrypoint_from_credits_exits_success() {
-    with_isolated_home(|_| {
-        assert_eq!(entrypoint_from(["malvin", "--credits"]), Exit::Success);
-    });
-}
-
-#[test]
-fn entrypoint_from_credits_with_request_exits_without_running_agent() {
-    with_isolated_home(|_| {
-        assert_eq!(
-            entrypoint_from(["malvin", "--credits", "Write a poem"]),
-            Exit::Success
-        );
-    });
+fn entrypoint_from_credits_exits_success_and_entrypoint_from_credits_with_request_exits_without_running_agent()
+ {
+    {
+        with_isolated_home(|_| {
+            assert_eq!(entrypoint_from(["malvin", "--credits"]), Exit::Success);
+        });
+    }
+    {
+        with_isolated_home(|_| {
+            assert_eq!(
+                entrypoint_from(["malvin", "--credits", "Write a poem"]),
+                Exit::Success
+            );
+        });
+    }
 }
 
 #[test]
@@ -95,22 +93,21 @@ fn entrypoint_from_background_is_rejected() {
         "clap must reject --background; got {msg}"
     );
 }
-
 #[test]
-fn entrypoint_from_bare_malvin_exits_success() {
-    with_isolated_home(|_| {
-        assert_eq!(entrypoint_from(["malvin"]), Exit::Success);
-    });
-}
-
-#[test]
-fn entrypoint_from_admin_models_doc_exits_success() {
-    with_isolated_home(|_| {
-        assert_eq!(
-            entrypoint_from(["malvin", "admin", "models", "--doc"]),
-            Exit::Success
-        );
-    });
+fn entrypoint_from_bare_malvin_exits_success_and_entrypoint_from_admin_models_doc_exits_success() {
+    {
+        with_isolated_home(|_| {
+            assert_eq!(entrypoint_from(["malvin"]), Exit::Success);
+        });
+    }
+    {
+        with_isolated_home(|_| {
+            assert_eq!(
+                entrypoint_from(["malvin", "admin", "models", "--doc"]),
+                Exit::Success
+            );
+        });
+    }
 }
 
 #[test]

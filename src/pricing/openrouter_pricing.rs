@@ -3,9 +3,9 @@ use std::time::Duration;
 
 use serde::Deserialize;
 
-use crate::http_fetch::{HttpRequest, fetch_text};
 use super::model_cost::ModelCost;
 use super::pricing_cache_file::PricingCacheFile;
+use crate::http_fetch::{HttpRequest, fetch_text};
 
 const OPENROUTER_MODELS_URL: &str = "https://openrouter.ai/api/v1/models";
 const CACHE: PricingCacheFile =
@@ -88,7 +88,8 @@ pub(crate) fn warm_openrouter_pricing_cache(force: bool) {
     if !force && CACHE.all_fresh() {
         return;
     }
-    let api_key = crate::backends::pi_backend::provider_auth::provider_api_key("openrouter").unwrap_or_default();
+    let api_key = crate::backends::pi_backend::provider_auth::provider_api_key("openrouter")
+        .unwrap_or_default();
     if api_key.trim().is_empty() {
         return;
     }

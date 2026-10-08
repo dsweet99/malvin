@@ -3,9 +3,11 @@ mod common;
 #[cfg(unix)]
 use common::fresh_workdir;
 #[cfg(unix)]
-use malvin::agent_process::snapshot_pids;
+use malvin::agent_process::malvin_sandbox::{
+    clear_active_sandbox_session, note_active_sandbox_session,
+};
 #[cfg(unix)]
-use malvin::agent_process::malvin_sandbox::{clear_active_sandbox_session, note_active_sandbox_session};
+use malvin::agent_process::snapshot_pids;
 #[cfg(unix)]
 use malvin::{active_acp_lock_slot, set_active_acp_lock_slot};
 #[cfg(unix)]

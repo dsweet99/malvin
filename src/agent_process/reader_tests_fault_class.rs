@@ -1,4 +1,6 @@
-use crate::agent_process::{AgentError, AgentFault, AgentRetryOutcome, AttemptCeiling, plan_agent_retry};
+use crate::agent_process::{
+    AgentError, AgentFault, AgentRetryOutcome, AttemptCeiling, plan_agent_retry,
+};
 
 #[test]
 fn constructor_classifies_text_and_retry_uses_the_fault() {

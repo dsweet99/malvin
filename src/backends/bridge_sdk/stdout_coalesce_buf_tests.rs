@@ -34,21 +34,20 @@ fn message(
         false,
     )
 }
-
 #[test]
-fn default_idle_is_250ms() {
-    let buf = StdoutCoalesceBuf::new(sample_io());
-    assert_eq!(idle_of(&buf), STDOUT_COALESCE_IDLE);
-    assert_eq!(STDOUT_COALESCE_IDLE, Duration::from_millis(250));
-}
-
-#[test]
-fn newline_emits_immediately_and_leaves_nothing_pending() {
-    let buf = build(sample_io(), Duration::from_secs(30));
-    let got = feed(&buf, SessionUpdateChunkKind::Message, "Hi\n");
-    assert_eq!(got.len(), 1);
-    assert_eq!(got[0].1, "Hi");
-    assert!(!pending(&buf));
+fn default_idle_is_250ms_and_newline_emits_immediately_and_leaves_nothing_pending() {
+    {
+        let buf = StdoutCoalesceBuf::new(sample_io());
+        assert_eq!(idle_of(&buf), STDOUT_COALESCE_IDLE);
+        assert_eq!(STDOUT_COALESCE_IDLE, Duration::from_millis(250));
+    }
+    {
+        let buf = build(sample_io(), Duration::from_secs(30));
+        let got = feed(&buf, SessionUpdateChunkKind::Message, "Hi\n");
+        assert_eq!(got.len(), 1);
+        assert_eq!(got[0].1, "Hi");
+        assert!(!pending(&buf));
+    }
 }
 
 #[test]
@@ -146,28 +145,27 @@ fn cap_still_emits_without_waiting() {
     assert_eq!(got[0].1, chunk);
     assert!(!pending(&buf));
 }
-
 #[test]
-fn write_coalesced_emissions_prints_message() {
-    enable_stdout_capture();
-    write_coalesced_emissions(sample_io(), vec![message("Hi")]);
-    let shown = take_captured_stdout();
-    assert!(shown.contains("Hi"), "{shown}");
-}
-
-#[test]
-fn write_coalesced_emissions_skips_hidden_thought() {
-    enable_stdout_capture();
-    write_coalesced_emissions(
-        sample_io(),
-        vec![(
-            SessionUpdateChunkKind::Thought,
-            "secret".into(),
-            None,
-            false,
-        )],
-    );
-    assert!(take_captured_stdout().is_empty());
+fn write_coalesced_emissions_prints_message_and_write_coalesced_emissions_skips_hidden_thought() {
+    {
+        enable_stdout_capture();
+        write_coalesced_emissions(sample_io(), vec![message("Hi")]);
+        let shown = take_captured_stdout();
+        assert!(shown.contains("Hi"), "{shown}");
+    }
+    {
+        enable_stdout_capture();
+        write_coalesced_emissions(
+            sample_io(),
+            vec![(
+                SessionUpdateChunkKind::Thought,
+                "secret".into(),
+                None,
+                false,
+            )],
+        );
+        assert!(take_captured_stdout().is_empty());
+    }
 }
 
 #[test]

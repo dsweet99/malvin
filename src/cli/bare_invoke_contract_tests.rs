@@ -46,21 +46,21 @@ fn code_is_not_a_subcommand_and_parses_as_bare_request() {
     assert!(cli.command.is_none());
     assert_eq!(cli.first_request().map(String::as_str), Some("code"));
 }
-
 #[test]
-fn gates_only_route_parses_without_request() {
-    let cli = parse(&["malvin", "-g"]);
-    assert!(cli.command.is_none());
-    assert!(!cli.has_request());
-    assert!(cli.router.gates);
-}
-
-#[test]
-fn bare_request_without_subcommand_parses_as_default_route() {
-    let cli = parse(&["malvin", "investigate"]);
-    assert!(cli.command.is_none());
-    assert!(!cli.do_workflow());
-    assert_eq!(cli.first_request().map(String::as_str), Some("investigate"));
+fn gates_only_route_parses_without_request_and_bare_request_without_subcommand_parses_as_default_route()
+ {
+    {
+        let cli = parse(&["malvin", "-g"]);
+        assert!(cli.command.is_none());
+        assert!(!cli.has_request());
+        assert!(cli.router.gates);
+    }
+    {
+        let cli = parse(&["malvin", "investigate"]);
+        assert!(cli.command.is_none());
+        assert!(!cli.do_workflow());
+        assert_eq!(cli.first_request().map(String::as_str), Some("investigate"));
+    }
 }
 
 #[test]

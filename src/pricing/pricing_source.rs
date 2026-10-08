@@ -12,11 +12,7 @@ pub(super) fn lookup_rates(provider: &str, model: &str) -> Option<ModelCost> {
     first_priced(&PRICING_SOURCES, provider, model)
 }
 
-fn first_priced(
-    sources: &[&dyn PricingSource],
-    provider: &str,
-    model: &str,
-) -> Option<ModelCost> {
+fn first_priced(sources: &[&dyn PricingSource], provider: &str, model: &str) -> Option<ModelCost> {
     sources
         .iter()
         .find_map(|source| source.lookup(provider, model))

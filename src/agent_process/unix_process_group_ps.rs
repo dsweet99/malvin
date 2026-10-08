@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use std::process::Stdio;
 
 #[cfg(unix)]
-pub(crate) use super::unix_process_group_ps_proc as unix_process_group_ps_proc;
+pub(crate) use super::unix_process_group_ps_proc;
 
 #[cfg(unix)]
 pub(crate) const INIT_PID: u32 = 1;

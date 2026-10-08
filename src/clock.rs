@@ -36,18 +36,17 @@ mod tests {
             self.0
         }
     }
-
     #[test]
-    fn system_clock_is_after_2023() {
-        assert!(unix_now_secs() > 1_700_000_000);
-    }
-
-    #[test]
-    fn freshness_boundary_is_exclusive_at_ttl() {
-        let ttl = Duration::from_secs(100);
-        let clock = FixedClock(1_000);
-        assert!(fetched_at_is_fresh(&clock, 901, ttl));
-        assert!(!fetched_at_is_fresh(&clock, 900, ttl));
-        assert!(fetched_at_is_fresh(&clock, 2_000, ttl));
+    fn system_clock_is_after_2023_and_freshness_boundary_is_exclusive_at_ttl() {
+        {
+            assert!(unix_now_secs() > 1_700_000_000);
+        }
+        {
+            let ttl = Duration::from_secs(100);
+            let clock = FixedClock(1_000);
+            assert!(fetched_at_is_fresh(&clock, 901, ttl));
+            assert!(!fetched_at_is_fresh(&clock, 900, ttl));
+            assert!(fetched_at_is_fresh(&clock, 2_000, ttl));
+        }
     }
 }

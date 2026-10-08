@@ -118,18 +118,18 @@ fn create_run_artifacts_from_text_writes_plan_and_exp_log() {
         );
     });
 }
-
 #[test]
-fn work_dir_for_path_uses_parent_or_dot() {
-    assert_eq!(work_dir_for_path(Path::new("a/b.md")), PathBuf::from("a"));
-    assert_eq!(work_dir_for_path(Path::new("plan.md")), PathBuf::from("."));
-}
-
-#[test]
-fn resolve_user_md_request_literal_uses_dot_work_dir_and_trims() {
-    let (text, wd) = resolve_user_md_request("  hello world  ").unwrap();
-    assert_eq!(text, "hello world");
-    assert_eq!(wd, PathBuf::from("."));
+fn work_dir_for_path_uses_parent_or_dot_and_resolve_user_md_request_literal_uses_dot_work_dir_and_trims()
+ {
+    {
+        assert_eq!(work_dir_for_path(Path::new("a/b.md")), PathBuf::from("a"));
+        assert_eq!(work_dir_for_path(Path::new("plan.md")), PathBuf::from("."));
+    }
+    {
+        let (text, wd) = resolve_user_md_request("  hello world  ").unwrap();
+        assert_eq!(text, "hello world");
+        assert_eq!(wd, PathBuf::from("."));
+    }
 }
 
 #[test]

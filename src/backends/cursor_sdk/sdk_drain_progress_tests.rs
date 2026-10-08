@@ -66,10 +66,12 @@ async fn continuous_events_have_no_cumulative_turn_deadline() {
             None,
             async move {
                 tokio::time::sleep(std::time::Duration::from_mins(1)).await;
-                Ok::<_, crate::agent_process::AgentError>(crate::backends::cursor_sdk::protocol::BridgeEvent::Progress {
-                    kind: Some(format!("heartbeat-{i}")),
-                    detail: None,
-                })
+                Ok::<_, crate::agent_process::AgentError>(
+                    crate::backends::cursor_sdk::protocol::BridgeEvent::Progress {
+                        kind: Some(format!("heartbeat-{i}")),
+                        detail: None,
+                    },
+                )
             },
             &mut turn,
         )

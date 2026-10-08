@@ -41,7 +41,11 @@ pub fn parse_gpu_types(markdown: &str) -> Vec<String> {
     let section = after.split("\n## ").next().unwrap_or_default();
     section
         .lines()
-        .filter_map(|line| line.trim_start().strip_prefix("* ").or_else(|| line.trim_start().strip_prefix("- ")))
+        .filter_map(|line| {
+            line.trim_start()
+                .strip_prefix("* ")
+                .or_else(|| line.trim_start().strip_prefix("- "))
+        })
         .flat_map(|item| item.split('`').skip(1).step_by(2).map(str::to_string))
         .filter(|t| !t.is_empty())
         .collect()
@@ -64,7 +68,10 @@ pub fn save_record(path: &Path, record: &GpuTypesRecord) -> Result<(), String> {
 fn fetch_record(url: &str, now_secs: u64) -> Option<GpuTypesRecord> {
     let markdown = fetch_text(&HttpRequest::get(url, FETCH_TIMEOUT))?;
     let types = parse_gpu_types(&markdown);
-    (!types.is_empty()).then_some(GpuTypesRecord { fetched_secs: now_secs, types })
+    (!types.is_empty()).then_some(GpuTypesRecord {
+        fetched_secs: now_secs,
+        types,
+    })
 }
 
 const fn is_fresh(record: &GpuTypesRecord, now_secs: u64) -> bool {
@@ -74,19 +81,34 @@ const fn is_fresh(record: &GpuTypesRecord, now_secs: u64) -> bool {
 #[must_use]
 pub fn load_gpu_types_from(source: &GpuTypesSource<'_>, force: bool) -> GpuTypes {
     let cached = load_record(source.cache_path);
-    if let Some(record) = cached.as_ref().filter(|r| !force && is_fresh(r, source.now_secs)) {
-        return GpuTypes { types: record.types.clone(), note: None };
+    if let Some(record) = cached
+        .as_ref()
+        .filter(|r| !force && is_fresh(r, source.now_secs))
+    {
+        return GpuTypes {
+            types: record.types.clone(),
+            note: None,
+        };
     }
     if let Some(record) = fetch_record(source.url, source.now_secs) {
         let _ = save_record(source.cache_path, &record);
-        return GpuTypes { types: record.types, note: None };
+        return GpuTypes {
+            types: record.types,
+            note: None,
+        };
     }
     let failed = format!("could not fetch GPU types from {}", source.url);
     cached.map_or_else(
-        || GpuTypes { types: Vec::new(), note: Some(failed.clone()) },
+        || GpuTypes {
+            types: Vec::new(),
+            note: Some(failed.clone()),
+        },
         |record| {
             let age_h = source.now_secs.saturating_sub(record.fetched_secs) / 3600;
-            GpuTypes { types: record.types, note: Some(format!("{failed}; showing the list cached {age_h}h ago")) }
+            GpuTypes {
+                types: record.types,
+                note: Some(format!("{failed}; showing the list cached {age_h}h ago")),
+            }
         },
     )
 }
@@ -94,6 +116,10 @@ pub fn load_gpu_types_from(source: &GpuTypesSource<'_>, force: bool) -> GpuTypes
 #[must_use]
 pub fn load_gpu_types(force: bool) -> GpuTypes {
     let path = gpu_types_cache_path();
-    let source = GpuTypesSource { cache_path: &path, url: GPU_TYPES_URL, now_secs: crate::clock::unix_now_secs() };
+    let source = GpuTypesSource {
+        cache_path: &path,
+        url: GPU_TYPES_URL,
+        now_secs: crate::clock::unix_now_secs(),
+    };
     load_gpu_types_from(&source, force)
 }

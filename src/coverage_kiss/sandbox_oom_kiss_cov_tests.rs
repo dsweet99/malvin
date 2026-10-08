@@ -13,7 +13,10 @@ fn kiss_witness_sandbox_oom_types() {
         limit_bytes,
         pgid,
     } = facts;
-    assert_eq!(reason, crate::agent_process::sandbox_oom::OOM_REASON_MEMORY_LIMIT);
+    assert_eq!(
+        reason,
+        crate::agent_process::sandbox_oom::OOM_REASON_MEMORY_LIMIT
+    );
     assert_eq!(rss_bytes, Some(1));
     assert_eq!(limit_bytes, 1);
     assert_eq!(pgid, 1);

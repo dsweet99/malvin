@@ -1,5 +1,3 @@
-#[cfg(any(test, debug_assertions))]
-pub(crate) mod test_poll;
 #[cfg(test)]
 pub(crate) mod malvin_kiss_coverage;
 #[cfg(test)]
@@ -7,9 +5,11 @@ pub(crate) mod malvin_kiss_coverage;
 pub(crate) mod malvin_kiss_coverage_b;
 #[cfg(test)]
 pub(crate) mod malvin_test_seed;
-#[cfg(all(test, unix))]
-pub(crate) mod test_stderr_capture;
 #[cfg(test)]
 pub mod test_agent_client;
+#[cfg(any(test, debug_assertions))]
+pub(crate) mod test_poll;
+#[cfg(all(test, unix))]
+pub(crate) mod test_stderr_capture;
 #[cfg(test)]
 pub mod test_utils;

@@ -79,7 +79,11 @@ mod tests {
 
     #[test]
     fn thinking_only_reply_at_cap_is_an_output_cap_fault() {
-        let msgs = assistant(&json!([{"type": "thinking", "thinking": "hmm"}]), 2048, "length");
+        let msgs = assistant(
+            &json!([{"type": "thinking", "thinking": "hmm"}]),
+            2048,
+            "length",
+        );
         let err = agent_end_error(Some(&msgs), Some(2048)).expect("capped");
         assert_eq!(err.fault, AgentFault::OutputCap);
         assert!(
@@ -93,7 +97,11 @@ mod tests {
     fn visible_text_or_tool_calls_are_not_errors() {
         let text = assistant(&json!([{"type": "text", "text": "done"}]), 4096, "length");
         assert!(agent_end_error(Some(&text), Some(2048)).is_none());
-        let tool = assistant(&json!([{"type": "toolCall", "name": "bash"}]), 4096, "length");
+        let tool = assistant(
+            &json!([{"type": "toolCall", "name": "bash"}]),
+            4096,
+            "length",
+        );
         assert!(agent_end_error(Some(&tool), Some(2048)).is_none());
     }
 
@@ -111,6 +119,9 @@ mod tests {
         msgs[1]["errorMessage"] = json!("You have no credits remaining.");
         let err = agent_end_error(Some(&msgs), None).expect("provider error");
         assert_eq!(err.fault, AgentFault::Ordinary);
-        assert_eq!(err.message, "pi turn failed: You have no credits remaining.");
+        assert_eq!(
+            err.message,
+            "pi turn failed: You have no credits remaining."
+        );
     }
 }

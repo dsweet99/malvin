@@ -5,7 +5,9 @@ use crate::agent_process::AgentError;
 use super::bridge_sdk::session_io_productive::tools_in_flight;
 use super::bridge_sdk::stdio_child::StdioChild;
 use super::bridge_sdk::turn_timeout::TurnTimeoutExtension;
-use super::bridge_sdk::{DrainIdleHealthCtx, DrainIdleLabels, DrainIdleTurn, await_next_with_idle_in_turn};
+use super::bridge_sdk::{
+    DrainIdleHealthCtx, DrainIdleLabels, DrainIdleTurn, await_next_with_idle_in_turn,
+};
 
 pub(crate) trait ChildProcessSession: Sync {
     fn stdio(&self) -> &StdioChild;

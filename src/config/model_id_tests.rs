@@ -155,7 +155,10 @@ fn reject_bare_legacy_and_empty_slug() {
             .contains("local")
     );
     let err = parse_model_id("rpi:local/ollama/qwen2.5:1.5b").expect_err("rpi removed");
-    assert!(err.contains("`rpi:` backend removed") && err.contains("pi:local/ollama/"), "{err}");
+    assert!(
+        err.contains("`rpi:` backend removed") && err.contains("pi:local/ollama/"),
+        "{err}"
+    );
 }
 
 #[test]

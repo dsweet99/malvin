@@ -50,35 +50,34 @@ pub fn model_needs_local_llm(model: &crate::config::model_id::ParsedModel) -> bo
 mod tests {
     use super::*;
     use crate::config::model_id::parse_model_id;
-
     #[test]
-    fn model_needs_local_llm_detects_ollama_and_skips_cursor() {
-        let local = parse_model_id("pi:ollama/tiny").expect("parse");
-        let cursor = parse_model_id("cursor:auto").expect("parse");
-        assert!(model_needs_local_llm(&local));
-        assert!(!model_needs_local_llm(&cursor));
+    fn model_needs_local_llm_detects_ollama_and_skips_cursor_and_prepare_local_llm_is_a_noop_for_cloud_providers()
+     {
+        {
+            let local = parse_model_id("pi:ollama/tiny").expect("parse");
+            let cursor = parse_model_id("cursor:auto").expect("parse");
+            assert!(model_needs_local_llm(&local));
+            assert!(!model_needs_local_llm(&cursor));
+        }
+        {
+            crate::test_support::test_utils::with_isolated_home(|home| {
+                prepare_local_llm(home, "openai", "gpt-4o").expect("noop");
+                assert!(!super::super::provider_metadata::pi_models_json_path().exists());
+            });
+        }
     }
-
     #[test]
-    fn prepare_local_llm_is_a_noop_for_cloud_providers() {
-        crate::test_support::test_utils::with_isolated_home(|home| {
-            prepare_local_llm(home, "openai", "gpt-4o").expect("noop");
-            assert!(!super::super::provider_metadata::pi_models_json_path().exists());
-        });
-    }
-
-    #[test]
-    fn local_output_cap_only_applies_to_keyless_local_providers() {
-        crate::test_support::test_utils::with_isolated_home(|home| {
-            assert!(local_output_cap(home, "openai", "gpt-4o").is_none());
-            let cap = local_output_cap(home, "ollama", "tiny").expect("local cap");
-            assert!(cap > 0);
-        });
-    }
-
-    #[test]
-    fn local_alias_needs_local_llm() {
-        let local = parse_model_id("pi:local/malvin-qwen14:latest").expect("parse");
-        assert!(model_needs_local_llm(&local));
+    fn local_output_cap_only_applies_to_keyless_local_providers_and_local_alias_needs_local_llm() {
+        {
+            crate::test_support::test_utils::with_isolated_home(|home| {
+                assert!(local_output_cap(home, "openai", "gpt-4o").is_none());
+                let cap = local_output_cap(home, "ollama", "tiny").expect("local cap");
+                assert!(cap > 0);
+            });
+        }
+        {
+            let local = parse_model_id("pi:local/malvin-qwen14:latest").expect("parse");
+            assert!(model_needs_local_llm(&local));
+        }
     }
 }

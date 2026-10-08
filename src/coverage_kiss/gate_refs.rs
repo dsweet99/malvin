@@ -1,7 +1,10 @@
 #[test]
 fn kiss_cov_coalesce_trace_flush_helpers() {
     let mut coalescer = crate::agent_process::TraceChunkCoalescer::default();
-    let _ = coalescer.feed(crate::agent_process::SessionUpdateChunkKind::Message, "chunk");
+    let _ = coalescer.feed(
+        crate::agent_process::SessionUpdateChunkKind::Message,
+        "chunk",
+    );
     let _ = coalescer.flush_all();
 }
 

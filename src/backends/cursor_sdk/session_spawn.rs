@@ -10,7 +10,8 @@ pub(crate) async fn cursor_spawn_bridge(
     args: BridgeSpawnArgs<'_>,
     resume_agent_id: Option<&str>,
 ) -> Result<BridgeSession, AgentError> {
-    let ticket = crate::agent_process::malvin_sandbox::take_sandbox_spawn_ticket().map_err(AgentError)?;
+    let ticket =
+        crate::agent_process::malvin_sandbox::take_sandbox_spawn_ticket().map_err(AgentError)?;
     let model = args.wire_model();
     let session = cursor_open_bridge_session(args, ticket)?;
     start_mem_watch(session.stdio.mem_watch_args());
@@ -89,8 +90,13 @@ fn cursor_note_sandbox(
     pgid: Option<u32>,
     baseline: &std::collections::HashSet<u32>,
 ) -> Result<(), AgentError> {
-    crate::agent_process::malvin_sandbox::note_active_sandbox_session(ticket, pgid, baseline.clone(), cwd)
-        .map_err(AgentError)
+    crate::agent_process::malvin_sandbox::note_active_sandbox_session(
+        ticket,
+        pgid,
+        baseline.clone(),
+        cwd,
+    )
+    .map_err(AgentError)
 }
 
 fn cursor_assemble_session(

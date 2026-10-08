@@ -66,7 +66,9 @@ pub fn sweep_stale_acp_spawn_locks(work_dir: &Path) -> Result<usize, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::agent_process::acp_spawn_lock::{acquire_acp_spawn_lock_for_slot, release_acp_spawn_lock};
+    use crate::agent_process::acp_spawn_lock::{
+        acquire_acp_spawn_lock_for_slot, release_acp_spawn_lock,
+    };
 
     fn write_lock(chamber: &Path, name: &str, contents: &str) {
         std::fs::write(chamber.join(name), contents).expect("write lock");

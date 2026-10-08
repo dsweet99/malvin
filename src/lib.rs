@@ -39,16 +39,16 @@ pub use config::workflow_name_aliases::{
     resolve_workspace_malvin_config_path,
 };
 pub mod agent;
-pub mod test_support;
 pub mod backends;
-pub mod workspace;
 mod current_state;
 pub mod gate_loop_session;
-pub use current_state::format_current_state;
+pub mod test_support;
+pub mod workspace;
 pub use agent_process::sandbox_oom::{
     OOM_REASON_MEASUREMENT_FAIL_CLOSED, OOM_REASON_MEMORY_LIMIT, SandboxOomKillFacts,
     SandboxOomKillRecord, gate_iteration_oom_killed, record_sandbox_oom_kill,
 };
+pub use current_state::format_current_state;
 mod session_name;
 pub use agent_process::acp_spawn_lock::{
     acquire_acp_spawn_lock_for_slot, active_acp_lock_slot, assert_no_peer_acp_spawn_lock_for_slot,
@@ -87,10 +87,10 @@ pub use agent_process::active_agent_heartbeat::active_agent_heartbeat_stats;
 pub use workspace::user_home::user_home_dir;
 pub mod agent_process;
 pub mod ansi_strip;
-pub mod modal_run;
-mod npm_bridge_install;
 pub(crate) mod http_fetch;
 pub mod local_llm;
+pub mod modal_run;
+mod npm_bridge_install;
 pub mod pricing;
 #[cfg(test)]
 pub(crate) mod sdk_bridge_build;

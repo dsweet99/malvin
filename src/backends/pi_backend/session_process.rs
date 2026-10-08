@@ -21,8 +21,11 @@ pub(super) fn spawn_npm_pi_process(args: &BridgeSpawnArgs<'_>) -> Result<NpmPiPr
     let mut child = cmd
         .spawn()
         .map_err(|e| AgentError(format!("spawn npm pi rpc: {e}")))?;
-    let (stdin, stdout) = crate::backends::bridge_sdk::take_stdio_forward_stderr(&mut child, "npm pi")?;
-    Ok(crate::backends::bridge_sdk::SpawnedStdio::new(child, stdin, stdout))
+    let (stdin, stdout) =
+        crate::backends::bridge_sdk::take_stdio_forward_stderr(&mut child, "npm pi")?;
+    Ok(crate::backends::bridge_sdk::SpawnedStdio::new(
+        child, stdin, stdout,
+    ))
 }
 
 fn configured_npm_pi_command(
@@ -120,21 +123,20 @@ fn pi_model_pair(model: &crate::config::model_id::ParsedModel) -> Option<(String
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
-    fn rpc_entry_detection() {
-        assert!(entry_is_rpc_entry(std::path::Path::new(
-            "/tmp/dist/bundle/rpc-entry.js"
-        )));
-        assert!(!entry_is_rpc_entry(std::path::Path::new(
-            "/tmp/dist/bundle/cli.js"
-        )));
-    }
-
-    #[test]
-    fn cloud_models_take_no_local_hold() {
-        let model = crate::config::model_id::parse_model_id("pi:openai/gpt-4o").expect("model");
-        assert!(!take_local_hold(&model).expect("no hold"));
+    fn rpc_entry_detection_and_cloud_models_take_no_local_hold() {
+        {
+            assert!(entry_is_rpc_entry(std::path::Path::new(
+                "/tmp/dist/bundle/rpc-entry.js"
+            )));
+            assert!(!entry_is_rpc_entry(std::path::Path::new(
+                "/tmp/dist/bundle/cli.js"
+            )));
+        }
+        {
+            let model = crate::config::model_id::parse_model_id("pi:openai/gpt-4o").expect("model");
+            assert!(!take_local_hold(&model).expect("no hold"));
+        }
     }
 
     #[test]

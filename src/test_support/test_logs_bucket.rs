@@ -67,7 +67,8 @@ fn restore_child_permissions(path: &Path) {
 }
 
 fn sweep_legacy_buckets() {
-    let Ok(entries) = std::fs::read_dir(crate::workspace::workspace_paths::malvin_home_logs_root()) else {
+    let Ok(entries) = std::fs::read_dir(crate::workspace::workspace_paths::malvin_home_logs_root())
+    else {
         return;
     };
     for bucket in entries.flatten().map(|e| e.path()) {

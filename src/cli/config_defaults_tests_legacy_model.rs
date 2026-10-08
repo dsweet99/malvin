@@ -1,30 +1,29 @@
 use super::{Cli, apply_workspace_config_defaults};
 use clap::{CommandFactory, FromArgMatches};
-
 #[test]
-fn mini_flag_is_unknown_argument() {
-    let err = Cli::command()
-        .try_get_matches_from(["malvin", "--mini", "hello"])
-        .expect_err("removed --mini");
-    let msg = err.to_string();
-    assert!(
-        msg.contains("unexpected argument") || msg.contains("--mini"),
-        "{msg}"
-    );
-}
-
-#[test]
-fn mini_model_is_rejected() {
-    let err = Cli::command()
-        .try_get_matches_from([
-            "malvin",
-            "--model",
-            "mini:openrouter/openai/gpt-4o",
-            "hello",
-        ])
-        .expect_err("legacy mini");
-    let msg = err.to_string();
-    assert!(msg.contains("mini:"), "{msg}");
+fn mini_flag_is_unknown_argument_and_mini_model_is_rejected() {
+    {
+        let err = Cli::command()
+            .try_get_matches_from(["malvin", "--mini", "hello"])
+            .expect_err("removed --mini");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("unexpected argument") || msg.contains("--mini"),
+            "{msg}"
+        );
+    }
+    {
+        let err = Cli::command()
+            .try_get_matches_from([
+                "malvin",
+                "--model",
+                "mini:openrouter/openai/gpt-4o",
+                "hello",
+            ])
+            .expect_err("legacy mini");
+        let msg = err.to_string();
+        assert!(msg.contains("mini:"), "{msg}");
+    }
 }
 
 #[test]

@@ -1,7 +1,10 @@
 #![cfg(all(test, unix))]
 
 fn parse_u32_field_parses_integers() {
-    assert_eq!(super::unix_process_group_ps::parse_u32_field(" 42 "), Some(42));
+    assert_eq!(
+        super::unix_process_group_ps::parse_u32_field(" 42 "),
+        Some(42)
+    );
     assert_eq!(super::unix_process_group_ps::parse_u32_field("x"), None);
 }
 
@@ -14,7 +17,9 @@ fn proc_snapshots_without_self_are_rejected() {
     assert!(!super::unix_process_group_ps::proc_pid_snapshot_is_usable(
         &std::collections::HashSet::new()
     ));
-    assert!(!super::unix_process_group_ps::proc_row_snapshot_is_usable(&[]));
+    assert!(!super::unix_process_group_ps::proc_row_snapshot_is_usable(
+        &[]
+    ));
 }
 
 fn proc_snapshots_with_self_are_accepted() {
@@ -22,11 +27,13 @@ fn proc_snapshots_with_self_are_accepted() {
     assert!(super::unix_process_group_ps::proc_pid_snapshot_is_usable(
         &std::iter::once(me).collect()
     ));
-    assert!(super::unix_process_group_ps::proc_row_snapshot_is_usable(&[super::unix_process_group_ps::ProcRow {
-        pid: me,
-        pgid: me,
-        ppid: 1,
-    }]));
+    assert!(super::unix_process_group_ps::proc_row_snapshot_is_usable(
+        &[super::unix_process_group_ps::ProcRow {
+            pid: me,
+            pgid: me,
+            ppid: 1,
+        }]
+    ));
 }
 
 #[cfg(target_os = "linux")]
@@ -93,14 +100,24 @@ fn looks_like_agent_acp_cmdline_matches_malvin_argv() {
     assert!(super::unix_process_group_ps::looks_like_agent_acp_cmdline(
         b"/home/user/.local/bin/agent\0acp\0"
     ));
-    assert!(!super::unix_process_group_ps::looks_like_agent_acp_cmdline(b"sleep\x00120\0"));
-    assert!(!super::unix_process_group_ps::looks_like_agent_acp_cmdline(b"agent\0serve\0"));
+    assert!(!super::unix_process_group_ps::looks_like_agent_acp_cmdline(
+        b"sleep\x00120\0"
+    ));
+    assert!(!super::unix_process_group_ps::looks_like_agent_acp_cmdline(
+        b"agent\0serve\0"
+    ));
 }
 
 fn is_safe_kill_target_rejects_init_and_self() {
     let protected = super::unix_process_group_ps::host_protected_pids(&[]);
-    assert!(!super::unix_process_group_ps::is_safe_kill_target(super::unix_process_group_ps::INIT_PID, &protected));
-    assert!(!super::unix_process_group_ps::is_safe_kill_target(std::process::id(), &protected));
+    assert!(!super::unix_process_group_ps::is_safe_kill_target(
+        super::unix_process_group_ps::INIT_PID,
+        &protected
+    ));
+    assert!(!super::unix_process_group_ps::is_safe_kill_target(
+        std::process::id(),
+        &protected
+    ));
     assert!(super::unix_process_group_ps::is_safe_kill_target(
         std::process::id().saturating_add(1),
         &protected
@@ -129,7 +146,10 @@ fn spawned_pids_since_baseline_excludes_baseline_members() {
 #[cfg(target_os = "linux")]
 fn read_proc_cmdline_and_environ_reads_current_process() {
     let me = std::process::id();
-    assert!(super::unix_process_group_ps::read_proc_cmdline(me).is_some_and(|cmdline| !cmdline.is_empty()));
+    assert!(
+        super::unix_process_group_ps::read_proc_cmdline(me)
+            .is_some_and(|cmdline| !cmdline.is_empty())
+    );
     assert!(super::unix_process_group_ps::read_proc_environ(me).is_some());
 }
 
@@ -179,7 +199,10 @@ fn signal_pid_kill_round_trip_without_kill_binary() {
         .spawn()
         .expect("spawn sleep");
     let child_pid = child.id();
-    assert!(super::unix_process_group_ps::pid_alive(child_pid), "sleep child must start alive");
+    assert!(
+        super::unix_process_group_ps::pid_alive(child_pid),
+        "sleep child must start alive"
+    );
     super::unix_process_group_ps::signal_pid(child_pid, 9); // SIGKILL
     let status = child.wait().expect("wait signaled child");
     assert!(

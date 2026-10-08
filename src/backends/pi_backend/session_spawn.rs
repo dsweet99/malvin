@@ -5,7 +5,8 @@ use crate::backends::bridge_sdk::{BridgeSpawnArgs, start_mem_watch};
 pub(crate) async fn npm_pi_spawn_bridge(
     args: BridgeSpawnArgs<'_>,
 ) -> Result<NpmPiSession, AgentError> {
-    let ticket = crate::agent_process::malvin_sandbox::take_sandbox_spawn_ticket().map_err(AgentError)?;
+    let ticket =
+        crate::agent_process::malvin_sandbox::take_sandbox_spawn_ticket().map_err(AgentError)?;
     if crate::agent_process::test_no_real_agent_enabled() {
         return Err(AgentError(
             "npm pi mock session is not configured for MALVIN_TEST_NO_REAL_AGENT".into(),

@@ -15,7 +15,8 @@ pub fn ensure_codex_authenticated() -> Result<(), AuthError> {
 }
 
 fn has_codex_login() -> bool {
-    crate::agent_process::env_key_nonempty("OPENAI_API_KEY") || auth_file_has_login(&codex_auth_path())
+    crate::agent_process::env_key_nonempty("OPENAI_API_KEY")
+        || auth_file_has_login(&codex_auth_path())
 }
 
 fn codex_auth_path() -> PathBuf {

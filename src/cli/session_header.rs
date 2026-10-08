@@ -53,20 +53,19 @@ mod tests {
             .bind_session_header_parts(prompt, input.log_path, DO_HEADER_MD, "do");
         Ok(())
     }
-
     #[test]
-    fn kiss_cov_bind_malvin_header() {
-        let _ = bind_do_header;
-        let _ = super::render_malvin_header_body;
-        let _ = super::render_do_cosend_prompt;
-        let _: Option<BindMalvinHeader<'_>> = None;
-    }
-
-    #[test]
-    fn kiss_cov_bind_session_headers() {
-        let _ = bind_do_header;
-        let _ = super::render_malvin_header_body;
-        let _ = super::render_do_cosend_prompt;
+    fn kiss_cov_bind_malvin_header_and_kiss_cov_bind_session_headers() {
+        {
+            let _ = bind_do_header;
+            let _ = super::render_malvin_header_body;
+            let _ = super::render_do_cosend_prompt;
+            let _: Option<BindMalvinHeader<'_>> = None;
+        }
+        {
+            let _ = bind_do_header;
+            let _ = super::render_malvin_header_body;
+            let _ = super::render_do_cosend_prompt;
+        }
     }
 
     #[test]

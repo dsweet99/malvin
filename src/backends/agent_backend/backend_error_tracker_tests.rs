@@ -85,7 +85,8 @@ fn tracker_restarts_streak_when_same_error_returns_after_reset_window() {
     assert!(!tracker.record_error_at("rare", t0));
     assert!(!tracker.record_error_at("rare", t0 + Duration::from_secs(1)));
     assert_eq!(tracker.consecutive_count(), 2);
-    let late = t0 + Duration::from_secs(1) + SAME_BACKEND_ERROR_STREAK_RESET + Duration::from_secs(1);
+    let late =
+        t0 + Duration::from_secs(1) + SAME_BACKEND_ERROR_STREAK_RESET + Duration::from_secs(1);
     assert!(!tracker.record_error_at("rare", late));
     assert_eq!(tracker.consecutive_count(), 1);
     assert_eq!(tracker.last_error(), Some("rare"));
@@ -149,8 +150,10 @@ fn tracker_respects_custom_max_consecutive() {
 #[tokio::test]
 async fn client_error_tracking_stops_and_exits_on_consecutive_same_errors() {
     let model = crate::config::model_id::parse_model_id("cursor:auto").expect("model");
-    let mut client =
-        crate::backends::agent_backend::SdkClient::new(model, crate::backends::agent_backend::test_support::test_io());
+    let mut client = crate::backends::agent_backend::SdkClient::new(
+        model,
+        crate::backends::agent_backend::test_support::test_io(),
+    );
     client.max_acp_retries = super::backend_error_tracker::AcpRetryCount::at_least_one(5);
 
     for i in 1..5 {
@@ -170,8 +173,10 @@ async fn client_error_tracking_stops_and_exits_on_consecutive_same_errors() {
 #[tokio::test]
 async fn spawn_style_success_clears_consecutive_streak_before_next_error() {
     let model = crate::config::model_id::parse_model_id("cursor:auto").expect("model");
-    let mut client =
-        crate::backends::agent_backend::SdkClient::new(model, crate::backends::agent_backend::test_support::test_io());
+    let mut client = crate::backends::agent_backend::SdkClient::new(
+        model,
+        crate::backends::agent_backend::test_support::test_io(),
+    );
     client.max_acp_retries = super::backend_error_tracker::AcpRetryCount::at_least_one(3);
     assert!(!client.record_backend_error("spawn failed"));
     assert!(!client.record_backend_error("spawn failed"));

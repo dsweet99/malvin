@@ -29,9 +29,19 @@ fn is_ancestor_pid_from_rows_walks_parent_chain() {
             ppid: 10,
         },
     ];
-    assert!(super::unix_process_ancestor::is_ancestor_pid_from_rows(&rows, 10, 12));
-    assert!(super::unix_process_ancestor::is_ancestor_pid_from_rows(&rows, 11, 12));
-    assert!(super::unix_process_ancestor::is_ancestor_pid_from_rows(&rows, 10, 11));
-    assert!(!super::unix_process_ancestor::is_ancestor_pid_from_rows(&rows, 12, 10));
-    assert!(!super::unix_process_ancestor::is_ancestor_pid_from_rows(&rows, 11, 13));
+    assert!(super::unix_process_ancestor::is_ancestor_pid_from_rows(
+        &rows, 10, 12
+    ));
+    assert!(super::unix_process_ancestor::is_ancestor_pid_from_rows(
+        &rows, 11, 12
+    ));
+    assert!(super::unix_process_ancestor::is_ancestor_pid_from_rows(
+        &rows, 10, 11
+    ));
+    assert!(!super::unix_process_ancestor::is_ancestor_pid_from_rows(
+        &rows, 12, 10
+    ));
+    assert!(!super::unix_process_ancestor::is_ancestor_pid_from_rows(
+        &rows, 11, 13
+    ));
 }

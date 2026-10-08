@@ -36,7 +36,10 @@ fn local_client_stops_on_differing_errors_at_cap_with_hint() {
         assert!(backend_error_stop(&mut client, &format!("Compute error {i}")).is_none());
     }
     let stop = backend_error_stop(&mut client, "Compute error last").expect("local cap stops");
-    assert_eq!(stop.fault, crate::agent_process::AgentFault::BackendRetryLimit);
+    assert_eq!(
+        stop.fault,
+        crate::agent_process::AgentFault::BackendRetryLimit
+    );
     assert!(!stop.requires_coder_session_teardown());
     assert!(stop.message.contains("without a successful turn"), "{stop}");
     assert!(
@@ -74,22 +77,21 @@ fn local_same_error_stop_carries_hint_only_for_matching_errors() {
         "{stop}"
     );
 }
-
 #[test]
-fn gpu_memory_needles_match_reported_errors() {
-    assert!(error_suggests_local_gpu_memory("Compute error"));
-    assert!(error_suggests_local_gpu_memory(
-        "OpenAI API protocol error (HTTP 200): unexpected Content-Type application/x-ndjson (expected text/event-stream)"
-    ));
-    assert!(!error_suggests_local_gpu_memory(
-        "HTTP 500 internal server error"
-    ));
-}
-
-#[test]
-fn local_retry_cap_message_names_limits() {
-    let msg = format_local_backend_retry_cap_message("pi", "boom", 10);
-    assert!(msg.contains("failed 10 times"), "{msg}");
-    assert!(msg.contains("300 s"), "{msg}");
-    assert!(msg.ends_with("Last error:\nboom"), "{msg}");
+fn gpu_memory_needles_match_reported_errors_and_local_retry_cap_message_names_limits() {
+    {
+        assert!(error_suggests_local_gpu_memory("Compute error"));
+        assert!(error_suggests_local_gpu_memory(
+            "OpenAI API protocol error (HTTP 200): unexpected Content-Type application/x-ndjson (expected text/event-stream)"
+        ));
+        assert!(!error_suggests_local_gpu_memory(
+            "HTTP 500 internal server error"
+        ));
+    }
+    {
+        let msg = format_local_backend_retry_cap_message("pi", "boom", 10);
+        assert!(msg.contains("failed 10 times"), "{msg}");
+        assert!(msg.contains("300 s"), "{msg}");
+        assert!(msg.ends_with("Last error:\nboom"), "{msg}");
+    }
 }

@@ -12,19 +12,18 @@ fn install_zero_exit_gate_bins(bin_dir: &std::path::Path) {
     perms.set_mode(0o755);
     std::fs::set_permissions(&path, perms).expect("chmod fake bin");
 }
-
 #[test]
-fn shell_binary_returns_nonempty_names() {
-    let (sh, arg) = shell_binary();
-    assert!(!sh.is_empty());
-    assert!(!arg.is_empty());
-}
-
-#[test]
-fn gate_command_cwd_uses_work_dir_outside_git() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let work = tmp.path();
-    assert_eq!(gate_command_cwd(work), work);
+fn shell_binary_returns_nonempty_names_and_gate_command_cwd_uses_work_dir_outside_git() {
+    {
+        let (sh, arg) = shell_binary();
+        assert!(!sh.is_empty());
+        assert!(!arg.is_empty());
+    }
+    {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let work = tmp.path();
+        assert_eq!(gate_command_cwd(work), work);
+    }
 }
 
 #[cfg(unix)]
@@ -58,22 +57,22 @@ fn gate_commands_run_at_git_toplevel_from_nested_work_dir() {
         root.canonicalize().expect("canon root")
     );
 }
-
 #[test]
-fn prepare_repo_workspace_succeeds_on_empty_dir() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    prepare_repo_workspace(tmp.path(), RepoGateOutput::Tagged, None).expect("prepare");
-}
-
-#[test]
-fn gate_run_private_helpers_succeed_on_empty_workspace() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let work = tmp.path();
-    prepare_repo_workspace_with_details(work).expect("prepare");
-    run_malvin_checks_with_details(work, RepoGateOutput::Tagged, None, &[])
-        .expect("empty malvin_checks");
-    run_shell_command_line_with_details(work, RepoGateOutput::Tagged, None, "")
-        .expect("empty shell line");
+fn prepare_repo_workspace_succeeds_on_empty_dir_and_gate_run_private_helpers_succeed_on_empty_workspace()
+ {
+    {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        prepare_repo_workspace(tmp.path(), RepoGateOutput::Tagged, None).expect("prepare");
+    }
+    {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let work = tmp.path();
+        prepare_repo_workspace_with_details(work).expect("prepare");
+        run_malvin_checks_with_details(work, RepoGateOutput::Tagged, None, &[])
+            .expect("empty malvin_checks");
+        run_shell_command_line_with_details(work, RepoGateOutput::Tagged, None, "")
+            .expect("empty shell line");
+    }
 }
 
 #[cfg(unix)]

@@ -1,6 +1,6 @@
 use super::test_support::test_io;
-use crate::config::model_id::parse_model_id;
 use crate::config::model_id::ModelBackend;
+use crate::config::model_id::parse_model_id;
 
 #[test]
 fn agent_backend_tracks_consecutive_errors_via_ops() {

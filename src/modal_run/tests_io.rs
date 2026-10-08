@@ -30,7 +30,14 @@ fn repo() -> tempfile::TempDir {
     let tmp = tempfile::tempdir().unwrap();
     let d = tmp.path();
     git(d, &["init", "-q"]);
-    write_all(d, &[(".gitignore", "ignored.txt\n"), ("a.txt", "one\n"), ("gone.txt", "x\n")]);
+    write_all(
+        d,
+        &[
+            (".gitignore", "ignored.txt\n"),
+            ("a.txt", "one\n"),
+            ("gone.txt", "x\n"),
+        ],
+    );
     git(d, &["add", "-A"]);
     git(d, &["commit", "-qm", "init"]);
     fs::remove_file(d.join("gone.txt")).unwrap();
@@ -40,7 +47,10 @@ fn repo() -> tempfile::TempDir {
 
 fn tar_names(tar: &Path) -> Vec<String> {
     let out = Command::new("tar").arg("-tzf").arg(tar).output().unwrap();
-    let mut names: Vec<String> = String::from_utf8_lossy(&out.stdout).lines().map(str::to_string).collect();
+    let mut names: Vec<String> = String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .map(str::to_string)
+        .collect();
     names.sort();
     names
 }
@@ -64,7 +74,10 @@ fn pack_workspace_without_git_skips_heavy_dirs() {
     fs::create_dir_all(tmp.path().join("target")).unwrap();
     fs::write(tmp.path().join("target/big"), "x").unwrap();
     fs::write(tmp.path().join("keep.txt"), "k").unwrap();
-    let tar = tmp.path().join("..").join(format!("{}.tgz", std::process::id()));
+    let tar = tmp
+        .path()
+        .join("..")
+        .join(format!("{}.tgz", std::process::id()));
     assert!(!pack_workspace(tmp.path(), &tar).unwrap());
     let names = tar_names(&tar);
     let _ = fs::remove_file(&tar);
@@ -75,7 +88,12 @@ fn pack_workspace_without_git_skips_heavy_dirs() {
 #[test]
 fn recent_run_dirs_are_newest_first_and_packable() {
     let tmp = tempfile::tempdir().unwrap();
-    for name in ["20260101_000000_a", "20260102_000000_b", "20260103_000000_c", "notes"] {
+    for name in [
+        "20260101_000000_a",
+        "20260102_000000_b",
+        "20260103_000000_c",
+        "notes",
+    ] {
         fs::create_dir_all(tmp.path().join(name)).unwrap();
     }
     let names = recent_run_dirs(tmp.path(), 2);
@@ -85,14 +103,24 @@ fn recent_run_dirs_are_newest_first_and_packable() {
     assert!(!pack_logs(tmp.path(), &[], &tar).unwrap());
     let dest = tempfile::tempdir().unwrap();
     let imported = import_logs(&tar, dest.path()).unwrap();
-    assert_eq!(imported, vec![dest.path().join("20260102_000000_b"), dest.path().join("20260103_000000_c")]);
+    assert_eq!(
+        imported,
+        vec![
+            dest.path().join("20260102_000000_b"),
+            dest.path().join("20260103_000000_c")
+        ]
+    );
     assert!(recent_run_dirs(&tmp.path().join("missing"), 5).is_empty());
 }
 
 fn patch_from(dir: &Path, edit: impl Fn(&Path)) -> Vec<u8> {
     edit(dir);
     git(dir, &["add", "-A"]);
-    let out = Command::new("git").args(["diff", "--cached", "--binary", "HEAD"]).current_dir(dir).output().unwrap();
+    let out = Command::new("git")
+        .args(["diff", "--cached", "--binary", "HEAD"])
+        .current_dir(dir)
+        .output()
+        .unwrap();
     git(dir, &["reset", "-q", "--hard", "HEAD"]);
     out.stdout
 }
@@ -107,14 +135,23 @@ fn apply_patch_applies_keeps_or_reports_empty() {
     let stage = tempfile::tempdir().unwrap();
     let file = stage.path().join("p.patch");
     fs::write(&file, &patch).unwrap();
-    assert_eq!(apply_patch(&file, d, stage.path()).unwrap(), PatchOutcome::Applied);
+    assert_eq!(
+        apply_patch(&file, d, stage.path()).unwrap(),
+        PatchOutcome::Applied
+    );
     assert_eq!(fs::read_to_string(d.join("a.txt")).unwrap(), "two\n");
     fs::write(d.join("a.txt"), "local edit\n").unwrap();
     let outcome = apply_patch(&file, d, stage.path()).unwrap();
-    assert!(matches!(outcome, PatchOutcome::Kept(_) | PatchOutcome::Conflicted(_)), "{outcome:?}");
+    assert!(
+        matches!(outcome, PatchOutcome::Kept(_) | PatchOutcome::Conflicted(_)),
+        "{outcome:?}"
+    );
     assert!(stage.path().join(KEPT_PATCH_NAME).is_file());
     fs::write(&file, "").unwrap();
-    assert_eq!(apply_patch(&file, d, stage.path()).unwrap(), PatchOutcome::Empty);
+    assert_eq!(
+        apply_patch(&file, d, stage.path()).unwrap(),
+        PatchOutcome::Empty
+    );
     assert!(describe_outcome(&PatchOutcome::Merged).contains("3-way"));
 }
 
@@ -137,10 +174,16 @@ fn fake_bridge(script: &str) -> ModalBridge {
 
 #[test]
 fn bridge_call_relays_events_and_maps_replies() {
-    let mut ok = fake_bridge(r#"read l; echo '{"id":1,"event":"log","data":"hi"}'; echo '{"id":1,"ok":true,"v":3}'"#);
+    let mut ok = fake_bridge(
+        r#"read l; echo '{"id":1,"event":"log","data":"hi"}'; echo '{"id":1,"ok":true,"v":3}'"#,
+    );
     assert_eq!(ok.call("x", json!({})).unwrap()["v"], 3);
     let mut bad = fake_bridge(r#"read l; echo '{"id":1,"ok":false,"error":"boom"}'"#);
-    assert!(bad.call("y", json!({})).unwrap_err().contains("Modal `y` failed: boom"));
+    assert!(
+        bad.call("y", json!({}))
+            .unwrap_err()
+            .contains("Modal `y` failed: boom")
+    );
     let mut gone = fake_bridge("exit 0");
     assert!(gone.call("z", json!({})).is_err());
     let _ = gone.exited();
@@ -185,7 +228,10 @@ fn bridge_relays_bare_remote_stdout_as_dm_body_in_do_mode() {
     let err = crate::output::take_captured_stderr_lines();
     crate::output::set_do_dm_stdout_mode(false);
     assert_eq!(out, "I am on modal.\n\n- **CPU:** 2");
-    assert!(err.is_empty(), "quiet --do must not print status lines: {err:?}");
+    assert!(
+        err.is_empty(),
+        "quiet --do must not print status lines: {err:?}"
+    );
 }
 
 #[test]
@@ -215,10 +261,24 @@ fn error_lines_are_recognized_by_who_tag() {
 #[test]
 fn remote_lines_with_a_who_tag_are_not_retagged() {
     use super::remote_output::is_tagged;
-    for tagged in ["o|modal: started", "e|boom", "b| thinking", "\x1b[90mo|\x1b[0mx", "r|"] {
+    for tagged in [
+        "o|modal: started",
+        "e|boom",
+        "b| thinking",
+        "\x1b[90mo|\x1b[0mx",
+        "r|",
+    ] {
         assert!(is_tagged(tagged), "{tagged:?}");
     }
-    for bare in ["", "added 11 packages in 3s", "| a | b |", "O|x", "1|x", "ab|c", "- **CPU:** x"] {
+    for bare in [
+        "",
+        "added 11 packages in 3s",
+        "| a | b |",
+        "O|x",
+        "1|x",
+        "ab|c",
+        "- **CPU:** x",
+    ] {
         assert!(!is_tagged(bare), "{bare:?}");
     }
 }
@@ -236,10 +296,18 @@ fn package_embeds_every_non_test_bridge_file() {
         .map(|n| format!("dist/{n}"))
         .collect();
     on_disk.sort();
-    let mut embedded: Vec<String> = PACKAGE.payload.iter().map(|(r, _)| (*r).to_string()).filter(|r| r.starts_with("dist/")).collect();
+    let mut embedded: Vec<String> = PACKAGE
+        .payload
+        .iter()
+        .map(|(r, _)| (*r).to_string())
+        .filter(|r| r.starts_with("dist/"))
+        .collect();
     embedded.sort();
     assert_eq!(embedded, on_disk);
-    let _ = (ensure_installed as fn() -> _, node_bridge_command as fn(&Path) -> _);
+    let _ = (
+        ensure_installed as fn() -> _,
+        node_bridge_command as fn(&Path) -> _,
+    );
 }
 
 #[test]
@@ -247,13 +315,24 @@ fn shared_installer_installs_the_modal_package() {
     let _g = crate::test_support::test_utils::test_env_lock();
     let tmp = tempfile::tempdir().unwrap();
     let npm = tmp.path().join("fake-npm");
-    fs::write(&npm, "#!/bin/sh\nmkdir -p node_modules/modal && echo '{}' > node_modules/modal/package.json\n").unwrap();
+    fs::write(
+        &npm,
+        "#!/bin/sh\nmkdir -p node_modules/modal && echo '{}' > node_modules/modal/package.json\n",
+    )
+    .unwrap();
     let mode = std::os::unix::fs::PermissionsExt::from_mode(0o755);
     fs::set_permissions(&npm, mode).unwrap();
     let dest = tmp.path().join("bridge");
     crate::agent_process::with_env("MALVIN_NPM", Some(npm.to_str().unwrap()), || {
-        assert_eq!(PACKAGE.install_into(&dest).unwrap(), dest.join("dist/bridge.js"));
+        assert_eq!(
+            PACKAGE.install_into(&dest).unwrap(),
+            dest.join("dist/bridge.js")
+        );
     });
     assert!(PACKAGE.npm_deps_current(&dest));
-    assert!(PACKAGE.default_install_dir().ends_with("sdk-bridges/modal-bridge"));
+    assert!(
+        PACKAGE
+            .default_install_dir()
+            .ends_with("sdk-bridges/modal-bridge")
+    );
 }

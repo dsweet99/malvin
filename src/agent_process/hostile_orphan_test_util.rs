@@ -130,10 +130,10 @@ exec sleep 60
     (child, pgid)
 }
 
-pub(crate) use super::hostile_orphan_read_pid as hostile_orphan_read_pid;
+pub(crate) use super::hostile_orphan_read_pid;
 pub use hostile_orphan_read_pid::read_orphan_pid;
 
-pub(crate) use super::hostile_orphan_user_shell as hostile_orphan_user_shell;
+pub(crate) use super::hostile_orphan_user_shell;
 pub use hostile_orphan_user_shell::{
     cleanup_user_coincidental_test, setup_user_init_reparented_daemon, spawn_isolated_agent_sleep,
     spawn_user_coincidental_daemon, spawn_user_shell_cooperator,
@@ -207,10 +207,10 @@ pub fn assert_sibling_monitored_and_blocks_spawn(
     sibling_pid: u32,
     baseline: &std::collections::HashSet<u32>,
 ) {
-    use crate::agent_process::sandbox_monitor_pids;
     use crate::agent_process::malvin_sandbox::{
         assert_dead_before_next_spawn, note_active_sandbox_session, take_sandbox_spawn_ticket,
     };
+    use crate::agent_process::sandbox_monitor_pids;
 
     let work = std::env::temp_dir().join(format!(
         "malvin_hostile_orphan_blocks_spawn_{}",
@@ -234,13 +234,13 @@ pub fn assert_sibling_monitored_and_blocks_spawn(
 #[cfg(test)]
 mod kiss_cov_auto {
     use super::*;
-
     #[test]
-    fn kiss_cov_spawn_hostile_agent_exits_after_orphan_fork() {
-        let _ = spawn_hostile_agent_exits_after_orphan_fork;
-    }
-    #[test]
-    fn kiss_cov_wait_for_init_reparent() {
-        let _ = wait_for_init_reparent;
+    fn kiss_cov_spawn_hostile_agent_exits_after_orphan_fork_and_kiss_cov_wait_for_init_reparent() {
+        {
+            let _ = spawn_hostile_agent_exits_after_orphan_fork;
+        }
+        {
+            let _ = wait_for_init_reparent;
+        }
     }
 }

@@ -37,7 +37,8 @@ pub fn resolve_codex_bin() -> Result<PathBuf, String> {
         }
         return Ok(path);
     }
-    crate::workspace::support_paths::lookup_bin_on_path("codex").ok_or_else(codex_missing_binary_message)
+    crate::workspace::support_paths::lookup_bin_on_path("codex")
+        .ok_or_else(codex_missing_binary_message)
 }
 
 #[must_use]
@@ -109,74 +110,71 @@ impl ModelListPage {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
-    fn model_list_includes_hidden() {
-        let params = model_list_params(None);
-        assert_eq!(params["includeHidden"], true);
-        assert_eq!(params["limit"], 100);
+    fn model_list_includes_hidden_and_models_from_list_response_reads_ids() {
+        {
+            let params = model_list_params(None);
+            assert_eq!(params["includeHidden"], true);
+            assert_eq!(params["limit"], 100);
+        }
+        {
+            let value = serde_json::json!({
+                "result": {"data": [{"id": "gpt-reserve", "displayName": "Reserve"}]}
+            });
+            assert_eq!(
+                models_from_list_response(&value).unwrap(),
+                vec![("gpt-reserve".into(), "Reserve".into())]
+            );
+        }
     }
-
     #[test]
-    fn models_from_list_response_reads_ids() {
-        let value = serde_json::json!({
-            "result": {"data": [{"id": "gpt-reserve", "displayName": "Reserve"}]}
-        });
-        assert_eq!(
-            models_from_list_response(&value).unwrap(),
-            vec![("gpt-reserve".into(), "Reserve".into())]
-        );
+    fn test_codex_missing_binary_message_and_resolve_codex_model_slug_exact_and_family() {
+        {
+            assert!(codex_missing_binary_message().contains("MALVIN_CODEX"));
+        }
+        {
+            let models = vec![
+                ("gpt-5.6-sol".into(), "Sol".into()),
+                ("gpt-5.6-terra".into(), "Terra".into()),
+            ];
+            assert_eq!(
+                resolve_codex_model_slug("gpt-5.6-sol", &models).unwrap(),
+                "gpt-5.6-sol"
+            );
+            assert_eq!(
+                resolve_codex_model_slug("gpt-5.6", &models).unwrap(),
+                "gpt-5.6-sol"
+            );
+            assert!(
+                resolve_codex_model_slug("missing", &models)
+                    .unwrap_err()
+                    .contains("not in the live model catalog")
+            );
+        }
     }
-
     #[test]
-    fn test_codex_missing_binary_message() {
-        assert!(codex_missing_binary_message().contains("MALVIN_CODEX"));
-    }
-
-    #[test]
-    fn resolve_codex_model_slug_exact_and_family() {
-        let models = vec![
-            ("gpt-5.6-sol".into(), "Sol".into()),
-            ("gpt-5.6-terra".into(), "Terra".into()),
-        ];
-        assert_eq!(
-            resolve_codex_model_slug("gpt-5.6-sol", &models).unwrap(),
-            "gpt-5.6-sol"
-        );
-        assert_eq!(
-            resolve_codex_model_slug("gpt-5.6", &models).unwrap(),
-            "gpt-5.6-sol"
-        );
-        assert!(
-            resolve_codex_model_slug("missing", &models)
-                .unwrap_err()
-                .contains("not in the live model catalog")
-        );
-    }
-
-    #[test]
-    fn kiss_cov_discover() {
-        let _ = (
-            ModelListPage::empty,
-            model_list_params,
-            models_from_list_response,
-            list_codex_models,
-            list_codex_display_models,
-            resolve_codex_bin,
-            resolve_codex_model,
-            resolve_codex_model_slug,
-            codex_missing_binary_message,
-        );
-    }
-
-    #[test]
-    fn model_list_page_fields_are_readable() {
-        let page = ModelListPage {
-            models: vec![("gpt-reserve".into(), "Reserve".into())],
-            next_cursor: Some("n".into()),
-        };
-        assert_eq!(page.models[0].0, "gpt-reserve");
-        assert_eq!(page.next_cursor.as_deref(), Some("n"));
+    fn kiss_cov_discover_and_model_list_page_fields_are_readable() {
+        {
+            let _ = (
+                ModelListPage::empty,
+                model_list_params,
+                models_from_list_response,
+                list_codex_models,
+                list_codex_display_models,
+                resolve_codex_bin,
+                resolve_codex_model,
+                resolve_codex_model_slug,
+                codex_missing_binary_message,
+            );
+        }
+        {
+            let page = ModelListPage {
+                models: vec![("gpt-reserve".into(), "Reserve".into())],
+                next_cursor: Some("n".into()),
+            };
+            assert_eq!(page.models[0].0, "gpt-reserve");
+            assert_eq!(page.next_cursor.as_deref(), Some("n"));
+        }
     }
 
     #[cfg(unix)]
@@ -212,12 +210,16 @@ mod tests {
         m.set_mode(0o755);
         std::fs::set_permissions(&p, m).unwrap();
         crate::agent_process::with_env("MALVIN_CODEX", Some(p.to_str().unwrap()), || {
-            crate::agent_process::with_env("MALVIN_CODEX_LIST_MODELS_TIMEOUT_MS", Some("200"), || {
-                let started = Instant::now();
-                let err = list_codex_models().expect_err("must time out");
-                assert!(err.contains("timed out"), "got: {err}");
-                assert!(started.elapsed() < Duration::from_secs(2));
-            });
+            crate::agent_process::with_env(
+                "MALVIN_CODEX_LIST_MODELS_TIMEOUT_MS",
+                Some("200"),
+                || {
+                    let started = Instant::now();
+                    let err = list_codex_models().expect_err("must time out");
+                    assert!(err.contains("timed out"), "got: {err}");
+                    assert!(started.elapsed() < Duration::from_secs(2));
+                },
+            );
         });
     }
 }

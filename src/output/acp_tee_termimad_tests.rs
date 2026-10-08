@@ -50,26 +50,26 @@ fn termimad_inline_bold_when_emit_and_inline_styling_gate_true() {
         "expected markdown markers to be consumed: {s:?}"
     );
 }
-
 #[test]
-fn termimad_inline_plain_when_no_markdown_syntax() {
-    let gate = TermimadStdoutGate {
-        emit_stdout_markdown: true,
-        dim_payload: false,
-        allow_inline_styling: true,
-    };
-    let rendered = termimad_inline_payload_for_stdout("plain", gate).expect("render");
-    assert_eq!(rendered, "plain");
-}
-
-#[test]
-fn termimad_inline_none_when_emit_false_even_if_tty() {
-    let gate = TermimadStdoutGate {
-        emit_stdout_markdown: false,
-        dim_payload: false,
-        allow_inline_styling: true,
-    };
-    assert!(termimad_inline_payload_for_stdout("**m**", gate).is_none());
+fn termimad_inline_plain_when_no_markdown_syntax_and_termimad_inline_none_when_emit_false_even_if_tty()
+ {
+    {
+        let gate = TermimadStdoutGate {
+            emit_stdout_markdown: true,
+            dim_payload: false,
+            allow_inline_styling: true,
+        };
+        let rendered = termimad_inline_payload_for_stdout("plain", gate).expect("render");
+        assert_eq!(rendered, "plain");
+    }
+    {
+        let gate = TermimadStdoutGate {
+            emit_stdout_markdown: false,
+            dim_payload: false,
+            allow_inline_styling: true,
+        };
+        assert!(termimad_inline_payload_for_stdout("**m**", gate).is_none());
+    }
 }
 
 #[test]

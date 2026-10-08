@@ -1,8 +1,8 @@
 use super::record_sandbox_oom_marker;
-use crate::artifacts::create_run_artifacts_from_text;
 use crate::agent_process::sandbox_oom::{
     OOM_REASON_MEASUREMENT_FAIL_CLOSED, SandboxOomKillFacts, gate_iteration_oom_killed,
 };
+use crate::artifacts::create_run_artifacts_from_text;
 
 #[cfg(unix)]
 #[test]

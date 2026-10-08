@@ -6,7 +6,8 @@ pub(crate) async fn codex_spawn_bridge(
     args: BridgeSpawnArgs<'_>,
     service: Option<&str>,
 ) -> Result<CodexSession, AgentError> {
-    let ticket = crate::agent_process::malvin_sandbox::take_sandbox_spawn_ticket().map_err(AgentError)?;
+    let ticket =
+        crate::agent_process::malvin_sandbox::take_sandbox_spawn_ticket().map_err(AgentError)?;
     let session = spawn_codex_session(&args, service, ticket)?;
     start_mem_watch(session.stdio.mem_watch_args());
     codex_initialize(&session).await?;
@@ -21,8 +22,8 @@ use super::codex_sdk::session_protocol::{codex_initialize, codex_start_thread};
 #[cfg(test)]
 mod tests {
     use super::super::codex_sdk::session_process::{
-        CodexProcess, build_codex_session, configured_codex_command,
-        spawn_codex_process, spawn_codex_session,
+        CodexProcess, build_codex_session, configured_codex_command, spawn_codex_process,
+        spawn_codex_session,
     };
     use super::super::codex_sdk::session_protocol::{request, response_error};
     use super::*;

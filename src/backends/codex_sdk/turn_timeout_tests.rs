@@ -2,7 +2,9 @@ use super::session::CodexSession;
 use super::session_process::build_codex_session;
 use super::session_turn::{TurnState, handle_codex_event};
 use crate::agent_process::AgentIoOptions;
-use crate::backends::bridge_sdk::turn_timeout_tests::{assert_dead_session_error, cat_child, script_child};
+use crate::backends::bridge_sdk::turn_timeout_tests::{
+    assert_dead_session_error, cat_child, script_child,
+};
 use crate::backends::bridge_sdk::{BridgeSpawnArgs, DrainIdleTurn, JsonLineSession, TurnWait};
 use serde_json::json;
 

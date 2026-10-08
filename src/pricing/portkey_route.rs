@@ -18,9 +18,9 @@ fn provider_model_entry<'a>(
     provider: &str,
     model_id: &str,
 ) -> Option<(&'a Value, &'a Value)> {
-    let (_, cfg) = object_field(root, "providers")?
-        .iter()
-        .find(|(name, _)| crate::local_llm::provider_metadata::provider_ids_match(name, provider))?;
+    let (_, cfg) = object_field(root, "providers")?.iter().find(|(name, _)| {
+        crate::local_llm::provider_metadata::provider_ids_match(name, provider)
+    })?;
     let model = cfg
         .get("models")?
         .as_array()?
@@ -47,7 +47,8 @@ pub(super) fn route_from_models_json(
 }
 
 pub(super) fn custom_model_route(provider: &str, model_id: &str) -> Option<CustomModelRoute> {
-    let body = std::fs::read_to_string(crate::local_llm::provider_metadata::pi_models_json_path()).ok()?;
+    let body =
+        std::fs::read_to_string(crate::local_llm::provider_metadata::pi_models_json_path()).ok()?;
     let root: Value = serde_json::from_str(&body).ok()?;
     route_from_models_json(&root, provider, model_id)
 }

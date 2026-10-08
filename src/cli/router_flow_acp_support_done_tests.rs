@@ -1,4 +1,4 @@
-use super::{router_iteration_log_path, run_router_turns, RouterAcpIterationInput};
+use super::{RouterAcpIterationInput, router_iteration_log_path, run_router_turns};
 use crate::cli::{RouterOpts, SharedOpts};
 use malvin::run_timing::acp_post_run::RunTimingSessionEnd;
 
@@ -113,30 +113,29 @@ fn done_marker_in_router_a_2_reply_skips_router_b() {
         turns.router_log
     );
 }
-
 #[test]
-fn done_marker_in_router_b_reply_does_not_stop_loop() {
-    let turns = run_mock_router_turns("Satisfy the requirements");
-    assert!(
-        turns.router_log.contains("router_b"),
-        "{}",
-        turns.router_log
-    );
-    assert!(!turns.done);
-}
-
-#[test]
-fn no_done_marker_continues_loop() {
-    let turns = run_mock_router_turns("no prompt contains this needle");
-    assert!(
-        turns.router_log.contains("router_a_2"),
-        "{}",
-        turns.router_log
-    );
-    assert!(
-        turns.router_log.contains("router_b"),
-        "{}",
-        turns.router_log
-    );
-    assert!(!turns.done);
+fn done_marker_in_router_b_reply_does_not_stop_loop_and_no_done_marker_continues_loop() {
+    {
+        let turns = run_mock_router_turns("Satisfy the requirements");
+        assert!(
+            turns.router_log.contains("router_b"),
+            "{}",
+            turns.router_log
+        );
+        assert!(!turns.done);
+    }
+    {
+        let turns = run_mock_router_turns("no prompt contains this needle");
+        assert!(
+            turns.router_log.contains("router_a_2"),
+            "{}",
+            turns.router_log
+        );
+        assert!(
+            turns.router_log.contains("router_b"),
+            "{}",
+            turns.router_log
+        );
+        assert!(!turns.done);
+    }
 }

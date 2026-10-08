@@ -61,7 +61,10 @@ fn current_sandbox_rss_bytes_when_agent_registered() {
     crate::agent_process::active_agent_heartbeat::clear_active_agent_process_groups_for_test();
     let pgid = std::process::id();
     let baseline = crate::agent_process::snapshot_pids();
-    crate::agent_process::active_agent_heartbeat::register_active_agent_process_group(Some(pgid), baseline);
+    crate::agent_process::active_agent_heartbeat::register_active_agent_process_group(
+        Some(pgid),
+        baseline,
+    );
     let line = format_sandbox_memory_line(std::path::Path::new("."));
     assert!(line.contains("in use"));
     crate::agent_process::active_agent_heartbeat::unregister_active_agent_process_group(Some(pgid));
@@ -83,9 +86,7 @@ fn gate_iteration_oom_killed_false_when_marker_missing() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
         .expect("artifacts");
-    assert!(!crate::agent_process::sandbox_oom::gate_iteration_oom_killed(
-        &artifacts, 1
-    ));
+    assert!(!crate::agent_process::sandbox_oom::gate_iteration_oom_killed(&artifacts, 1));
 }
 
 fn format_local_datetime_is_non_empty() {

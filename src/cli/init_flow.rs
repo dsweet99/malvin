@@ -86,21 +86,20 @@ mod tests {
     use crate::cli::RouterOpts;
     use crate::cli::args::Cli;
     use clap::{CommandFactory, FromArgMatches};
-
     #[test]
-    fn init_run_entry_is_covered() {
-        let _ = run_init;
-        let _ = maybe_run_init_bootstrap;
-        let _ = render_init_router_request;
-        let _ = effective_init_max_loops;
-        let _ = malvin_gates_file_missing;
-        let _ = should_bootstrap_gates;
-        let _ = router_for_init_bootstrap;
-    }
-
-    #[test]
-    fn init_effective_max_loops_is_at_least_one() {
-        assert_eq!(effective_init_max_loops(0), 1);
+    fn init_run_entry_is_covered_and_init_effective_max_loops_is_at_least_one() {
+        {
+            let _ = run_init;
+            let _ = maybe_run_init_bootstrap;
+            let _ = render_init_router_request;
+            let _ = effective_init_max_loops;
+            let _ = malvin_gates_file_missing;
+            let _ = should_bootstrap_gates;
+            let _ = router_for_init_bootstrap;
+        }
+        {
+            assert_eq!(effective_init_max_loops(0), 1);
+        }
     }
 
     #[test]
@@ -167,21 +166,20 @@ mod tests {
             std::env::set_current_dir(cwd).expect("restore cwd");
         });
     }
-
     #[test]
-    fn router_for_init_bootstrap_clears_gates_flag() {
-        let mut router = RouterOpts::test_defaults();
-        router.gates = true;
-        let bootstrap = router_for_init_bootstrap(&router);
-        assert!(!bootstrap.gates);
-        assert!(router.gates);
-    }
-
-    #[test]
-    fn init_workflow_opts_clone_preserves_fields() {
-        let init = InitWorkflowOpts { max_loops: 4 };
-        let cloned = init.clone();
-        assert_eq!(cloned.max_loops, 4);
+    fn router_for_init_bootstrap_clears_gates_flag_and_init_workflow_opts_clone_preserves_fields() {
+        {
+            let mut router = RouterOpts::test_defaults();
+            router.gates = true;
+            let bootstrap = router_for_init_bootstrap(&router);
+            assert!(!bootstrap.gates);
+            assert!(router.gates);
+        }
+        {
+            let init = InitWorkflowOpts { max_loops: 4 };
+            let cloned = init.clone();
+            assert_eq!(cloned.max_loops, 4);
+        }
     }
 
     #[test]

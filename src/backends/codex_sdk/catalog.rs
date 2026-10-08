@@ -7,7 +7,9 @@ use std::time::Duration;
 use crate::command_output_timeout::timeout_ms_from_env;
 
 use super::codex_sdk::discover::model_list::parse_model_list_page;
-use super::codex_sdk::discover::{DEFAULT_CODEX_LIST_MODELS_TIMEOUT_MS, ModelListPage, model_list_params};
+use super::codex_sdk::discover::{
+    DEFAULT_CODEX_LIST_MODELS_TIMEOUT_MS, ModelListPage, model_list_params,
+};
 
 pub(crate) struct CatalogChild {
     pub(crate) child: Child,
@@ -192,15 +194,19 @@ mod tests {
         m.set_mode(0o755);
         std::fs::set_permissions(&p, m).unwrap();
         crate::agent_process::with_env("MALVIN_CODEX", Some(p.to_str().unwrap()), || {
-            crate::agent_process::with_env("MALVIN_CODEX_LIST_MODELS_TIMEOUT_MS", Some("200"), || {
-                let started = Instant::now();
-                let mut catalog = CatalogChild::wrap(spawn_codex_model_server().unwrap());
-                let err = list_models_from_child(&mut catalog.child).expect_err("timeout");
-                assert!(err.contains("timed out"), "got: {err}");
-                assert!(started.elapsed() < Duration::from_secs(2));
-                reap_catalog_child(&mut catalog.child);
-                drop(catalog);
-            });
+            crate::agent_process::with_env(
+                "MALVIN_CODEX_LIST_MODELS_TIMEOUT_MS",
+                Some("200"),
+                || {
+                    let started = Instant::now();
+                    let mut catalog = CatalogChild::wrap(spawn_codex_model_server().unwrap());
+                    let err = list_models_from_child(&mut catalog.child).expect_err("timeout");
+                    assert!(err.contains("timed out"), "got: {err}");
+                    assert!(started.elapsed() < Duration::from_secs(2));
+                    reap_catalog_child(&mut catalog.child);
+                    drop(catalog);
+                },
+            );
         });
     }
 }

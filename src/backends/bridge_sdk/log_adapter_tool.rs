@@ -172,26 +172,26 @@ fn tee_tool_line(session: &StreamLog, plain: &str) {
 mod tests {
     use super::{append_tool_error, compose_tool_done_line};
     use std::time::Duration;
-
     #[test]
-    fn append_tool_error_follows_cross_mark_on_one_line() {
-        let line = append_tool_error(
-            "Read plan.md · 3ms · ✗".into(),
-            "error",
-            Some("missing field `path`\n  at line 1"),
-        );
-        assert_eq!(
-            line,
-            "Read plan.md · 3ms · ✗ missing field `path` at line 1"
-        );
-    }
-
-    #[test]
-    fn append_tool_error_ignores_success_and_empty() {
-        let base = "Read a · 1ms".to_string();
-        assert_eq!(append_tool_error(base.clone(), "complete", Some("x")), base);
-        assert_eq!(append_tool_error(base.clone(), "error", Some("  ")), base);
-        assert_eq!(append_tool_error(base.clone(), "error", None), base);
+    fn append_tool_error_follows_cross_mark_on_one_line_and_append_tool_error_ignores_success_and_empty()
+     {
+        {
+            let line = append_tool_error(
+                "Read plan.md · 3ms · ✗".into(),
+                "error",
+                Some("missing field `path`\n  at line 1"),
+            );
+            assert_eq!(
+                line,
+                "Read plan.md · 3ms · ✗ missing field `path` at line 1"
+            );
+        }
+        {
+            let base = "Read a · 1ms".to_string();
+            assert_eq!(append_tool_error(base.clone(), "complete", Some("x")), base);
+            assert_eq!(append_tool_error(base.clone(), "error", Some("  ")), base);
+            assert_eq!(append_tool_error(base.clone(), "error", None), base);
+        }
     }
 
     #[test]

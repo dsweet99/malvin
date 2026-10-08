@@ -4,7 +4,9 @@ use std::time::{Duration, Instant};
 
 use super::{CostPolicy, RunTiming, TimingPhase, report};
 
-fn token_cost_rates_from_home_config(model: &str) -> crate::config::malvin_config_file::TokenCostRates {
+fn token_cost_rates_from_home_config(
+    model: &str,
+) -> crate::config::malvin_config_file::TokenCostRates {
     crate::config::malvin_config_file::load_malvin_config(std::path::Path::new("."))
         .token_cost_rates_for(model)
 }

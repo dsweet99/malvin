@@ -60,19 +60,18 @@ pub(crate) fn with_env(key: &str, value: Option<&str>, f: impl FnOnce()) {
 mod agent_helpers_tests {
     use super::*;
     use std::path::Path;
-
     #[test]
-    fn resolve_acp_session_cwd_expands_dot() {
-        let cwd = std::env::current_dir().expect("cwd");
-        let resolved = resolve_acp_session_cwd(Path::new(".")).expect("resolve");
-        assert!(resolved.is_absolute());
-        assert_eq!(resolved, cwd.canonicalize().unwrap_or(cwd));
-    }
-
-    #[test]
-    fn smoke_agent_helper_symbols() {
-        let _ = test_no_real_agent_enabled();
-        let _ = has_api_key();
-        let _ = env_key_nonempty("CURSOR_API_KEY");
+    fn resolve_acp_session_cwd_expands_dot_and_smoke_agent_helper_symbols() {
+        {
+            let cwd = std::env::current_dir().expect("cwd");
+            let resolved = resolve_acp_session_cwd(Path::new(".")).expect("resolve");
+            assert!(resolved.is_absolute());
+            assert_eq!(resolved, cwd.canonicalize().unwrap_or(cwd));
+        }
+        {
+            let _ = test_no_real_agent_enabled();
+            let _ = has_api_key();
+            let _ = env_key_nonempty("CURSOR_API_KEY");
+        }
     }
 }

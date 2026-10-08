@@ -126,21 +126,21 @@ fn create_run_dir_with_id(
 #[cfg(test)]
 mod short_log_id_tests {
     use super::*;
-
     #[test]
-    fn short_malvin_log_id_takes_hash_and_run() {
-        let path =
-            Path::new("/home/dsweet/.malvinconf/logs/eb7ef333a92a6d41/20260830_024330_estp91hf");
-        assert_eq!(
-            short_malvin_log_id(path).as_deref(),
-            Some("eb7ef333a92a6d41/20260830_024330_estp91hf")
-        );
-    }
-
-    #[test]
-    fn short_malvin_log_id_none_without_parent() {
-        assert!(short_malvin_log_id(Path::new("only_run")).is_none());
-        assert!(short_malvin_log_id(Path::new("/")).is_none());
+    fn short_malvin_log_id_takes_hash_and_run_and_short_malvin_log_id_none_without_parent() {
+        {
+            let path = Path::new(
+                "/home/dsweet/.malvinconf/logs/eb7ef333a92a6d41/20260830_024330_estp91hf",
+            );
+            assert_eq!(
+                short_malvin_log_id(path).as_deref(),
+                Some("eb7ef333a92a6d41/20260830_024330_estp91hf")
+            );
+        }
+        {
+            assert!(short_malvin_log_id(Path::new("only_run")).is_none());
+            assert!(short_malvin_log_id(Path::new("/")).is_none());
+        }
     }
 
     #[test]

@@ -9,29 +9,28 @@ use std::collections::BTreeMap;
 fn parse_agent(text: &str) -> Result<AgentConfig, String> {
     parse_agent_config(text, &BTreeMap::new())
 }
-
 #[test]
-fn parse_agent_config_ignores_legacy_model_key() {
-    let text = r#"
-[agent]
-model = "cursor:gpt-5"
-"model-mini" = "openai/gpt-4o"
-"#;
-    let agent = parse_agent(text).expect("parse");
-    assert_eq!(agent.model.canonical(), "cursor:gpt-5");
-}
-
-#[test]
-fn parse_agent_config_rejects_bare_model() {
-    let text = r#"
-[agent]
-model = "gpt-5"
-"#;
-    let err = parse_agent(text).expect_err("bare");
-    assert!(
-        err.contains("cursor:") || err.contains("mini:") || err == UNPREFIXED_MODEL_MESSAGE,
-        "{err}"
-    );
+fn parse_agent_config_ignores_legacy_model_key_and_parse_agent_config_rejects_bare_model() {
+    {
+        let text = r#"
+        [agent]
+        model = "cursor:gpt-5"
+        "model-mini" = "openai/gpt-4o"
+        "#;
+        let agent = parse_agent(text).expect("parse");
+        assert_eq!(agent.model.canonical(), "cursor:gpt-5");
+    }
+    {
+        let text = r#"
+        [agent]
+        model = "gpt-5"
+        "#;
+        let err = parse_agent(text).expect_err("bare");
+        assert!(
+            err.contains("cursor:") || err.contains("mini:") || err == UNPREFIXED_MODEL_MESSAGE,
+            "{err}"
+        );
+    }
 }
 
 #[test]

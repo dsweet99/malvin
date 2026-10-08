@@ -112,15 +112,10 @@ pub(crate) mod models_cmd_refresh;
 pub(crate) mod models_cmd_resolve;
 #[path = "repo_checks/command_support.rs"]
 pub(super) mod repo_checks_command_support;
-#[cfg(all(test, windows))]
-#[path = "repo_checks/windows_fake_command_path_tests.rs"]
-pub(super) mod repo_checks_windows_fake_command_path_tests;
 #[path = "repo_checks/gate_log.rs"]
 pub(super) mod repo_checks_gate_log;
 #[path = "repo_checks/gate_run.rs"]
 pub(super) mod repo_checks_gate_run;
-#[path = "repo_checks/types.rs"]
-pub(super) mod repo_checks_types;
 #[cfg(all(test, unix))]
 #[path = "repo_checks/tests_gates_common.rs"]
 pub(super) mod repo_checks_tests_gates_common;
@@ -133,14 +128,17 @@ pub(super) mod repo_checks_tests_gates_unix;
 #[cfg(all(test, unix))]
 #[path = "repo_checks/tests_gates_unix_extra.rs"]
 pub(super) mod repo_checks_tests_gates_unix_extra;
+#[path = "repo_checks/types.rs"]
+pub(super) mod repo_checks_types;
+#[cfg(all(test, windows))]
+#[path = "repo_checks/windows_fake_command_path_tests.rs"]
+pub(super) mod repo_checks_windows_fake_command_path_tests;
 #[path = "router_flow_acp.rs"]
 pub(crate) mod router_flow_acp;
 #[path = "router_flow_acp_support.rs"]
 pub(crate) mod router_flow_acp_support;
 #[path = "router_flow_coder_prompts.rs"]
 pub(super) mod router_flow_coder_prompts;
-#[path = "router_flow_summary_line.rs"]
-pub(super) mod router_flow_summary_line;
 #[path = "router_flow_loop.rs"]
 pub(crate) mod router_flow_loop;
 #[path = "router_flow_loop_decide.rs"]
@@ -149,11 +147,13 @@ pub(super) mod router_flow_loop_decide;
 pub(crate) mod router_flow_no_work;
 #[path = "router_flow_prompt.rs"]
 pub(crate) mod router_flow_prompt;
+#[path = "router_flow_prompt_initial.rs"]
+pub(super) mod router_flow_prompt_initial;
 #[path = "router_flow_prompt_summarize.rs"]
 pub(super) mod router_flow_prompt_summarize;
 #[path = "router_flow_prompt_turns.rs"]
 pub(super) mod router_flow_prompt_turns;
-#[path = "router_flow_prompt_initial.rs"]
-pub(super) mod router_flow_prompt_initial;
+#[path = "router_flow_summary_line.rs"]
+pub(super) mod router_flow_summary_line;
 #[path = "tidy_flow/run.rs"]
 pub(super) mod tidy_flow_run;

@@ -30,12 +30,17 @@ fn build_do_coder_run_cosends_headers_with_user_in_non_git_workspace() {
         malvin::workflow_context::PromptModelOpts::new(DEFAULT_CLI_MODEL),
     )
     .expect("build");
+    let ctx = malvin::orchestrator::workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL);
+    let workspace = ctx.get("workspace_dir").expect("workspace_dir");
+    let mode = store
+        .render_prompt_only(DO_HEADER_MD, ctx.as_map())
+        .expect("do header");
     assert!(
-        run.combined.contains("Know thyself") || run.combined.contains("MALVIN HEADER"),
+        run.combined.contains(workspace),
         "coding header must ride in the co-sent prompt"
     );
     assert!(
-        run.combined.contains("malvin --do") || run.combined.contains("do mode"),
+        !mode.trim().is_empty() && run.combined.contains(mode.trim()),
         "do_header.md must ride in the co-sent prompt"
     );
     assert!(

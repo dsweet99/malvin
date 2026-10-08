@@ -114,18 +114,17 @@ fn push_npx_cache(out: &mut Vec<PathBuf>, npx_root: &std::path::Path) {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
-    fn malvin_pi_missing_file_errors() {
-        let _lock = crate::test_support::test_utils::test_env_lock();
-        crate::agent_process::with_env("MALVIN_PI", Some("/no/such/pi-entry.js"), || {
-            let err = resolve_npm_pi_entry().expect_err("missing");
-            assert!(err.contains("MALVIN_PI") && err.contains("missing file"));
-        });
-    }
-
-    #[test]
-    fn hint_mentions_package() {
-        assert!(NPM_PI_MISSING_HINT.contains("@earendil-works/pi-coding-agent"));
+    fn malvin_pi_missing_file_errors_and_hint_mentions_package() {
+        {
+            let _lock = crate::test_support::test_utils::test_env_lock();
+            crate::agent_process::with_env("MALVIN_PI", Some("/no/such/pi-entry.js"), || {
+                let err = resolve_npm_pi_entry().expect_err("missing");
+                assert!(err.contains("MALVIN_PI") && err.contains("missing file"));
+            });
+        }
+        {
+            assert!(NPM_PI_MISSING_HINT.contains("@earendil-works/pi-coding-agent"));
+        }
     }
 }

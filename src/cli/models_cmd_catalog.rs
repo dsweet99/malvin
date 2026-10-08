@@ -52,12 +52,16 @@ impl ModelCatalog for PiCatalog {
     }
 
     fn list_display_models(&self) -> ModelListing {
-        let (models, unavailable) = match malvin::backends::pi_backend::list_npm_pi_display_models() {
+        let (models, unavailable) = match malvin::backends::pi_backend::list_npm_pi_display_models()
+        {
             Ok(models) => (models, None),
             Err(e) => (Vec::new(), Some(e)),
         };
         ModelListing {
-            rows: prefixed_rows(self.prefix(), malvin::local_llm::filter_local_listings(models)),
+            rows: prefixed_rows(
+                self.prefix(),
+                malvin::local_llm::filter_local_listings(models),
+            ),
             unparsed: None,
             unavailable,
         }
@@ -106,7 +110,9 @@ pub(super) fn print_models_sections(filter: Option<&str>) {
 }
 
 fn no_match_hint(filter: &str) -> String {
-    format!("(no model id starts with `{filter}`; PREFIX matches the start of an id, such as `cursor:`, `pi:`, or `codex:`)")
+    format!(
+        "(no model id starts with `{filter}`; PREFIX matches the start of an id, such as `cursor:`, `pi:`, or `codex:`)"
+    )
 }
 
 pub(super) fn print_listing(prefix: &str, listing: &ModelListing, filter: Option<&str>) -> usize {
@@ -115,7 +121,11 @@ pub(super) fn print_listing(prefix: &str, listing: &ModelListing, filter: Option
         print_stdout_line(MALVIN_WHO, &format!("({label} models unavailable: {e})"));
     }
     let mut shown = 0;
-    for row in listing.rows.iter().filter(|row| line_matches_prefix(row, filter)) {
+    for row in listing
+        .rows
+        .iter()
+        .filter(|row| line_matches_prefix(row, filter))
+    {
         print_stdout_line(MALVIN_WHO, row);
         shown += 1;
     }
@@ -152,13 +162,19 @@ mod tests {
         assert_eq!(print_listing("pi:", &listing, Some("pi:z")), 0);
         assert!(no_match_hint("terra").contains("no model id starts with `terra`"));
         let filtered = take_captured_stdout();
-        assert!(filtered.contains("(pi models unavailable: boom)"), "{filtered}");
+        assert!(
+            filtered.contains("(pi models unavailable: boom)"),
+            "{filtered}"
+        );
         assert!(filtered.contains("pi:a/b\tx"), "{filtered}");
         assert!(!filtered.contains("pi:c/d"), "{filtered}");
         assert!(!filtered.contains("raw text"), "{filtered}");
         enable_stdout_capture();
         print_listing("pi:", &listing, None);
         let all = take_captured_stdout();
-        assert!(all.contains("pi:c/d\ty") && all.contains("raw text"), "{all}");
+        assert!(
+            all.contains("pi:c/d\ty") && all.contains("raw text"),
+            "{all}"
+        );
     }
 }

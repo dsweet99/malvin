@@ -37,7 +37,8 @@ fn malvin_data_root_uses_git_toplevel_when_inside_repo() {
     );
     assert!(git_worktree_toplevel(&sub).is_some());
     assert!(
-        crate::workspace::workspace_paths::workspace_paths_data_root::git_worktree_toplevel(&sub).is_some()
+        crate::workspace::workspace_paths::workspace_paths_data_root::git_worktree_toplevel(&sub)
+            .is_some()
     );
 }
 

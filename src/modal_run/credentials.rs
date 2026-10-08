@@ -27,5 +27,6 @@ pub(super) fn env_set(key: &str) -> bool {
 
 #[must_use]
 pub fn modal_credentials_present(home: &Path) -> bool {
-    (env_set("MODAL_TOKEN_ID") && env_set("MODAL_TOKEN_SECRET")) || home.join(".modal.toml").is_file()
+    (env_set("MODAL_TOKEN_ID") && env_set("MODAL_TOKEN_SECRET"))
+        || home.join(".modal.toml").is_file()
 }

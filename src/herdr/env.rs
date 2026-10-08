@@ -55,30 +55,30 @@ pub fn from_values(
 mod tests {
     use super::{HerdrEnv, from_values};
     use std::ffi::OsString;
-
     #[test]
-    fn gate_requires_exact_env_one_and_nonempty_socket_pane() {
-        assert!(from_values(None, Some("s".into()), Some("p".into())).is_none());
-        assert!(from_values(Some("0".into()), Some("s".into()), Some("p".into())).is_none());
-        assert!(from_values(Some("1".into()), Some("".into()), Some("p".into())).is_none());
-        assert!(from_values(Some("1".into()), Some("s".into()), Some("".into())).is_none());
-        assert_eq!(
-            from_values(
-                Some("1".into()),
-                Some("/tmp/h.sock".into()),
-                Some("pane".into())
-            ),
-            Some(HerdrEnv {
-                socket_path: "/tmp/h.sock".into(),
-                pane_id: "pane".into(),
-            })
-        );
-    }
-
-    #[test]
-    fn from_os_env_matches_process_env_snapshot() {
-        let _ = HerdrEnv::from_os_env();
-        let _ = OsString::new();
+    fn gate_requires_exact_env_one_and_nonempty_socket_pane_and_from_os_env_matches_process_env_snapshot()
+     {
+        {
+            assert!(from_values(None, Some("s".into()), Some("p".into())).is_none());
+            assert!(from_values(Some("0".into()), Some("s".into()), Some("p".into())).is_none());
+            assert!(from_values(Some("1".into()), Some("".into()), Some("p".into())).is_none());
+            assert!(from_values(Some("1".into()), Some("s".into()), Some("".into())).is_none());
+            assert_eq!(
+                from_values(
+                    Some("1".into()),
+                    Some("/tmp/h.sock".into()),
+                    Some("pane".into())
+                ),
+                Some(HerdrEnv {
+                    socket_path: "/tmp/h.sock".into(),
+                    pane_id: "pane".into(),
+                })
+            );
+        }
+        {
+            let _ = HerdrEnv::from_os_env();
+            let _ = OsString::new();
+        }
     }
 
     #[test]

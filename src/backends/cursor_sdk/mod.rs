@@ -28,8 +28,11 @@ pub fn cursor_sdk_client_from_raw(
 pub(crate) async fn session_io_write_cancel_for_test(
     session: &crate::backends::bridge_sdk::BridgeSession,
 ) -> Result<(), crate::agent_process::AgentError> {
-    crate::backends::bridge_sdk::write_request(session, &crate::backends::cursor_sdk::protocol::BridgeRequest::Cancel {})
-        .await
+    crate::backends::bridge_sdk::write_request(
+        session,
+        &crate::backends::cursor_sdk::protocol::BridgeRequest::Cancel {},
+    )
+    .await
 }
 
 #[cfg(test)]

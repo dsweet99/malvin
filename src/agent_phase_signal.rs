@@ -58,7 +58,10 @@ fn observe_execute(
             if execute_looks_like_test(parsed, tracker) {
                 state.fixing = execute_failed(parsed);
             }
-            if state.active_tool.is_some_and(|(k, _)| k == ToolKind::Execute) {
+            if state
+                .active_tool
+                .is_some_and(|(k, _)| k == ToolKind::Execute)
+            {
                 state.active_tool = None;
             }
             PhaseSideEffect::None
@@ -67,10 +70,7 @@ fn observe_execute(
     }
 }
 
-fn open_tools(
-    state: &mut PhaseState,
-    kind: ToolKind,
-) -> &mut std::collections::HashSet<String> {
+fn open_tools(state: &mut PhaseState, kind: ToolKind) -> &mut std::collections::HashSet<String> {
     match kind {
         ToolKind::Edit => &mut state.open_edits,
         ToolKind::Read | ToolKind::Search => &mut state.open_reads,
@@ -221,7 +221,10 @@ mod tests {
             );
             assert_eq!(state.running_shells, 0);
             assert!(state.active_tool.is_none());
-            assert!(state.fixing, "failed checks-file command should enter fixing");
+            assert!(
+                state.fixing,
+                "failed checks-file command should enter fixing"
+            );
         });
     }
 

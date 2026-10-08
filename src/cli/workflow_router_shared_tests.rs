@@ -86,7 +86,8 @@ pub(crate) fn gate_failure_fixture(
     malvin::artifacts::SessionDotfileBackups,
 ) {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let (bin, guard) = malvin::test_support::test_agent_client::write_fake_gate(tmp.path(), "false", exit_code);
+    let (bin, guard) =
+        malvin::test_support::test_agent_client::write_fake_gate(tmp.path(), "false", exit_code);
     std::fs::write(malvin::malvin_checks_path(tmp.path()), "false\n").expect("checks");
     let artifacts = malvin::artifacts::create_run_artifacts_from_text("tidy", Some(tmp.path()))
         .expect("artifacts");
@@ -184,7 +185,8 @@ fn run_router_workspace_gates_fails_when_checks_missing() {
 fn run_router_workspace_gates_restores_before_executing_checks() {
     malvin::test_support::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let (_bin, _guard) = malvin::test_support::test_agent_client::write_fake_gate(tmp.path(), "true", 0);
+        let (_bin, _guard) =
+            malvin::test_support::test_agent_client::write_fake_gate(tmp.path(), "true", 0);
         let (artifacts, backups) = router_gates_restore_fixture(tmp.path());
         std::fs::write(malvin::malvin_checks_path(tmp.path()), "false\n").expect("tamper");
         run_router_workspace_gates(&artifacts, &backups, true).expect("gates pass after restore");
@@ -193,7 +195,8 @@ fn run_router_workspace_gates_restores_before_executing_checks() {
 fn run_router_workspace_gates_leaves_session_gitignore_after_post_gate_restore() {
     malvin::test_support::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let (_bin, _guard) = malvin::test_support::test_agent_client::write_fake_gate(tmp.path(), "true", 0);
+        let (_bin, _guard) =
+            malvin::test_support::test_agent_client::write_fake_gate(tmp.path(), "true", 0);
         std::fs::write(tmp.path().join(".gitignore"), "gi\n").expect("drifted gitignore");
         let (artifacts, backups) = router_gates_restore_fixture(tmp.path());
         run_router_workspace_gates(&artifacts, &backups, true).expect("gates pass");

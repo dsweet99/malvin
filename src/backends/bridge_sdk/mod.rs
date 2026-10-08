@@ -2,7 +2,6 @@ pub(crate) use super::bridge_sdk_child_process_session as child_process_session;
 pub(crate) use super::bridge_sdk_child_stderr as child_stderr;
 pub(crate) use super::bridge_sdk_drain_idle as drain_idle;
 pub(crate) use super::bridge_sdk_json_line_session as json_line_session;
-pub(crate) use super::bridge_sdk_turn_protocol as turn_protocol;
 pub(crate) use super::bridge_sdk_log_adapter as log_adapter;
 pub(crate) use super::bridge_sdk_log_adapter_tool as log_adapter_tool;
 pub(crate) use super::bridge_sdk_session as session;
@@ -15,6 +14,7 @@ pub(crate) use super::bridge_sdk_stdio_teardown as stdio_teardown;
 pub(crate) use super::bridge_sdk_stdout_coalesce_buf as stdout_coalesce_buf;
 pub(crate) use super::bridge_sdk_stream_log as stream_log;
 pub(crate) use super::bridge_sdk_timing as timing;
+pub(crate) use super::bridge_sdk_turn_protocol as turn_protocol;
 pub(crate) use super::bridge_sdk_turn_timeout as turn_timeout;
 
 #[cfg(test)]
@@ -46,7 +46,6 @@ pub(crate) use child_stderr::{start_warning_forward_filtered, take_stdio_forward
 pub(crate) use json_line_session::JsonLineSession;
 #[cfg(test)]
 pub(crate) use json_line_session::json_parse_error;
-pub(crate) use turn_protocol::{TurnProtocol, consume_turn};
 pub(crate) use log_adapter::{feed_do_dm_run_result, handle_stream_event};
 pub use session::BridgeSession;
 pub use session_io::write_request;
@@ -58,6 +57,7 @@ pub(crate) use stdio_child::SpawnedStdio;
 pub use stdio_child::StdioChild;
 pub use stream_log::StreamLog;
 pub use timing::{note_sdk_step, record_sdk_usage};
+pub(crate) use turn_protocol::{TurnProtocol, consume_turn};
 
 #[cfg(test)]
 mod protocol_reexport_tests {

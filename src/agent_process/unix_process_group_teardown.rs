@@ -81,7 +81,8 @@ mod kiss_cov_gate_refs {
         #[cfg(unix)]
         #[cfg(unix)]
         #[cfg(unix)]
-        let _ = crate::agent_process::unix_process_group_teardown_poll::reap_fixed_pid_targets_blocking;
+        let _ =
+            crate::agent_process::unix_process_group_teardown_poll::reap_fixed_pid_targets_blocking;
     }
 }
 
@@ -98,6 +99,7 @@ mod kiss_cov_auto {
     fn kiss_cov_teardown_poll_module() {
         let _ = teardown_agent_sandbox_blocking;
         let _ = teardown_agent_sandbox_for_interrupt;
-        let _ = crate::agent_process::unix_process_group_teardown_poll::teardown_agent_sandbox_async;
+        let _ =
+            crate::agent_process::unix_process_group_teardown_poll::teardown_agent_sandbox_async;
     }
 }

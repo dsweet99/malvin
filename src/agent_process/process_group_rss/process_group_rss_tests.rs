@@ -3,19 +3,18 @@ use super::linux::{
     linux_pids_sandbox_bytes, linux_pids_uss_bytes, parse_proc_kib_field,
     parse_smaps_rollup_pss_bytes, parse_smaps_rollup_uss_bytes, parse_status_vm_rss_bytes,
 };
-
 #[test]
-fn pids_sandbox_bytes_includes_current_process() {
-    let mut pids = std::collections::HashSet::new();
-    pids.insert(std::process::id());
-    let bytes = super::pids_sandbox_bytes(&pids).expect("sandbox bytes");
-    assert!(bytes > 0);
-}
-
-#[test]
-fn pids_sandbox_bytes_empty_is_zero() {
-    let pids = std::collections::HashSet::new();
-    assert_eq!(super::pids_sandbox_bytes(&pids), Some(0));
+fn pids_sandbox_bytes_includes_current_process_and_pids_sandbox_bytes_empty_is_zero() {
+    {
+        let mut pids = std::collections::HashSet::new();
+        pids.insert(std::process::id());
+        let bytes = super::pids_sandbox_bytes(&pids).expect("sandbox bytes");
+        assert!(bytes > 0);
+    }
+    {
+        let pids = std::collections::HashSet::new();
+        assert_eq!(super::pids_sandbox_bytes(&pids), Some(0));
+    }
 }
 
 #[cfg(target_os = "linux")]

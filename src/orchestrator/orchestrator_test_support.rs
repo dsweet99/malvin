@@ -48,22 +48,21 @@ pub fn workflow_ctx_for_smoke(
 #[cfg(test)]
 mod tests {
     use super::{empty_dotfile_backups, io_opts, no_session_client, workflow_ctx_for_smoke};
-
     #[test]
-    fn io_opts_disables_tee_and_markdown() {
-        let o = io_opts();
-        assert!(o.no_tee);
-        assert!(!o.emit_stdout_markdown);
-    }
-
-    #[test]
-    fn no_session_client_and_empty_backups_smoke() {
-        let _ = no_session_client();
-        let backups = empty_dotfile_backups();
-        assert!(matches!(
-            backups.malvin_checks,
-            crate::artifacts::MalvinChecksBackup::Missing
-        ));
+    fn io_opts_disables_tee_and_markdown_and_no_session_client_and_empty_backups_smoke() {
+        {
+            let o = io_opts();
+            assert!(o.no_tee);
+            assert!(!o.emit_stdout_markdown);
+        }
+        {
+            let _ = no_session_client();
+            let backups = empty_dotfile_backups();
+            assert!(matches!(
+                backups.malvin_checks,
+                crate::artifacts::MalvinChecksBackup::Missing
+            ));
+        }
     }
 
     #[test]

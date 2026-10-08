@@ -55,30 +55,30 @@ pub(crate) fn format_timing_stdout_line_from_json(v: &Value) -> String {
 mod tests {
     use super::*;
     use serde_json::json;
-
     #[test]
-    fn timing_line_omits_cost_fields_when_present_in_json() {
-        let json = json!({
-            "wall_clock_ms": 1000,
-            "llm_wait_ms": 100,
-            "phases_ms": { "implement": 100 },
-            "cost": {
-                "cost_in": 0.05,
-                "cost_out": 0.03,
-                "cost_read": 0.002,
-                "cost_write": 0.0022,
-                "cost_tot": 0.0842
-            }
-        });
-        let line = format_timing_stdout_line_from_json(&json);
-        assert!(!line.contains("cost_tot"));
-        assert!(!line.contains("cost_in"));
-    }
-
-    #[test]
-    fn format_ms_one_decimal_s_rounds_to_tenths() {
-        assert_eq!(format_ms_one_decimal_s(100), "0.1s");
-        assert_eq!(format_ms_one_decimal_s(23451), "23.5s");
+    fn timing_line_omits_cost_fields_when_present_in_json_and_format_ms_one_decimal_s_rounds_to_tenths()
+     {
+        {
+            let json = json!({
+                "wall_clock_ms": 1000,
+                "llm_wait_ms": 100,
+                "phases_ms": { "implement": 100 },
+                "cost": {
+                    "cost_in": 0.05,
+                    "cost_out": 0.03,
+                    "cost_read": 0.002,
+                    "cost_write": 0.0022,
+                    "cost_tot": 0.0842
+                }
+            });
+            let line = format_timing_stdout_line_from_json(&json);
+            assert!(!line.contains("cost_tot"));
+            assert!(!line.contains("cost_in"));
+        }
+        {
+            assert_eq!(format_ms_one_decimal_s(100), "0.1s");
+            assert_eq!(format_ms_one_decimal_s(23451), "23.5s");
+        }
     }
 
     #[test]

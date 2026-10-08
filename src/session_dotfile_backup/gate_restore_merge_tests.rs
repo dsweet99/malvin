@@ -14,7 +14,10 @@ fn present(bytes: &[u8]) -> MalvinChecksBackup {
 fn gitignore_present(bytes: &[u8]) -> GitignoreBackup {
     GitignoreBackup::Present {
         backup_root: std::path::PathBuf::from("/tmp/test"),
-        files: vec![GitignoreFileBackup::new(std::path::PathBuf::from(".gitignore"), bytes.to_vec())],
+        files: vec![GitignoreFileBackup::new(
+            std::path::PathBuf::from(".gitignore"),
+            bytes.to_vec(),
+        )],
     }
 }
 
@@ -31,7 +34,10 @@ fn bundle_with(gitignore: GitignoreBackup, checks: MalvinChecksBackup) -> Sessio
 fn merge_rejects_deleted_vision() {
     let vision_present = |bytes: &[u8]| crate::session_dotfile_backup::VisionBackup::Present {
         backup_root: std::path::PathBuf::from("/tmp/test"),
-        files: vec![crate::session_dotfile_backup::VisionFileBackup::new(std::path::PathBuf::from("VISION.md"), bytes.to_vec())],
+        files: vec![crate::session_dotfile_backup::VisionFileBackup::new(
+            std::path::PathBuf::from("VISION.md"),
+            bytes.to_vec(),
+        )],
     };
     let mut anchor = bundle_with(GitignoreBackup::Missing, MalvinChecksBackup::Missing);
     anchor.vision = vision_present(b"baseline\n");
@@ -71,7 +77,10 @@ fn merge_rejects_tampered_malvin_checks() {
 fn merge_keeps_agent_edited_vision_content() {
     let vision_present = |bytes: &[u8]| crate::session_dotfile_backup::VisionBackup::Present {
         backup_root: std::path::PathBuf::from("/tmp/test"),
-        files: vec![crate::session_dotfile_backup::VisionFileBackup::new(std::path::PathBuf::from("VISION.md"), bytes.to_vec())],
+        files: vec![crate::session_dotfile_backup::VisionFileBackup::new(
+            std::path::PathBuf::from("VISION.md"),
+            bytes.to_vec(),
+        )],
     };
     let mut anchor = bundle_with(GitignoreBackup::Missing, MalvinChecksBackup::Missing);
     anchor.vision = vision_present(b"baseline\n");
@@ -102,7 +111,10 @@ fn merge_keeps_agent_edited_gitignore_content() {
 fn merge_keeps_progress_when_gitignore_present_without_root_file() {
     let nested_only = GitignoreBackup::Present {
         backup_root: std::path::PathBuf::from("/tmp/test"),
-        files: vec![GitignoreFileBackup::new(std::path::PathBuf::from("pkg/.gitignore"), b"pkg\n".to_vec())],
+        files: vec![GitignoreFileBackup::new(
+            std::path::PathBuf::from("pkg/.gitignore"),
+            b"pkg\n".to_vec(),
+        )],
     };
     let anchor = bundle_with(GitignoreBackup::Missing, present(b"make lint\n"));
     let progress = bundle_with(nested_only, present(b"make lint\n"));
@@ -117,7 +129,10 @@ fn merge_keeps_progress_when_gitignore_present_without_root_file() {
 fn merge_keeps_progress_when_vision_present_without_root_file() {
     let nested_only = crate::session_dotfile_backup::VisionBackup::Present {
         backup_root: std::path::PathBuf::from("/tmp/test"),
-        files: vec![crate::session_dotfile_backup::VisionFileBackup::new(std::path::PathBuf::from("pkg/VISION.md"), b"pkg\n".to_vec())],
+        files: vec![crate::session_dotfile_backup::VisionFileBackup::new(
+            std::path::PathBuf::from("pkg/VISION.md"),
+            b"pkg\n".to_vec(),
+        )],
     };
     let mut anchor = bundle_with(GitignoreBackup::Missing, MalvinChecksBackup::Missing);
     anchor.vision = crate::session_dotfile_backup::VisionBackup::Missing;

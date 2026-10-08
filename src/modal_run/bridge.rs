@@ -117,7 +117,11 @@ impl ModalBridge {
             let msg: Value = serde_json::from_str(&line)
                 .map_err(|e| format!("bad line from the Modal bridge ({e}): {line}"))?;
             if let Some(event) = msg.get("event").and_then(Value::as_str) {
-                relay_event(&mut self.remote, event, msg["data"].as_str().unwrap_or_default());
+                relay_event(
+                    &mut self.remote,
+                    event,
+                    msg["data"].as_str().unwrap_or_default(),
+                );
                 continue;
             }
             return reply_result(op, msg);

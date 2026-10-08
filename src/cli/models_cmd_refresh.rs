@@ -50,19 +50,18 @@ pub fn perform_models_refresh() {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
-    fn parses_record_with_alias_timestamp() {
-        let json = r#"{"timestamp": 123456789}"#;
-        let record: ModelsRefreshRecord = serde_json::from_str(json).expect("parse");
-        assert_eq!(record.last_refresh_secs, 123_456_789);
-    }
-
-    #[test]
-    fn parses_record_with_last_refresh_secs() {
-        let json = r#"{"last_refresh_secs": 987654321}"#;
-        let record: ModelsRefreshRecord = serde_json::from_str(json).expect("parse");
-        assert_eq!(record.last_refresh_secs, 987_654_321);
+    fn parses_record_with_alias_timestamp_and_parses_record_with_last_refresh_secs() {
+        {
+            let json = r#"{"timestamp": 123456789}"#;
+            let record: ModelsRefreshRecord = serde_json::from_str(json).expect("parse");
+            assert_eq!(record.last_refresh_secs, 123_456_789);
+        }
+        {
+            let json = r#"{"last_refresh_secs": 987654321}"#;
+            let record: ModelsRefreshRecord = serde_json::from_str(json).expect("parse");
+            assert_eq!(record.last_refresh_secs, 987_654_321);
+        }
     }
 
     #[test]

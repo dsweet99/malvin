@@ -34,18 +34,18 @@ mod stale_fake_command_path_tests {
         FakeCommandDirGuard, TEST_FAKE_COMMAND_DIR, fake_command_dir_for_path_env,
         restore_fake_command_dir_guard, run_command_for, set_fake_command_dir,
     };
-
     #[test]
-    fn restore_fake_command_dir_guard_restores_previous() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let mut guard: FakeCommandDirGuard = set_fake_command_dir(tmp.path());
-        restore_fake_command_dir_guard(&mut guard);
-        assert_eq!(fake_command_dir_for_path_env(), None);
-    }
-
-    #[test]
-    fn test_fake_command_path_none_without_fake_dir() {
-        assert_eq!(super::super::test_fake_command_path("kiss"), None);
+    fn restore_fake_command_dir_guard_restores_previous_and_test_fake_command_path_none_without_fake_dir()
+     {
+        {
+            let tmp = tempfile::tempdir().expect("tempdir");
+            let mut guard: FakeCommandDirGuard = set_fake_command_dir(tmp.path());
+            restore_fake_command_dir_guard(&mut guard);
+            assert_eq!(fake_command_dir_for_path_env(), None);
+        }
+        {
+            assert_eq!(super::super::test_fake_command_path("kiss"), None);
+        }
     }
 
     #[test]

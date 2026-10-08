@@ -63,15 +63,14 @@ pub fn cleanup_user_coincidental_test(
 #[cfg(test)]
 mod kiss_cov_auto {
     use super::*;
-
     #[test]
-    fn kiss_cov_spawn_isolated_agent_sleep() {
-        let _ = spawn_isolated_agent_sleep;
-    }
-
-    #[test]
-    fn kiss_cov_setup_user_init_reparented_daemon() {
-        let _ = setup_user_init_reparented_daemon;
+    fn kiss_cov_spawn_isolated_agent_sleep_and_kiss_cov_setup_user_init_reparented_daemon() {
+        {
+            let _ = spawn_isolated_agent_sleep;
+        }
+        {
+            let _ = setup_user_init_reparented_daemon;
+        }
     }
 
     #[test]

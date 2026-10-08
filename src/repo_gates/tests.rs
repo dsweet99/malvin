@@ -58,20 +58,19 @@ fn ensure_default_malvin_config_file_writes_template_when_missing() {
         assert_eq!(fs::read_to_string(&config_path).unwrap(), text);
     });
 }
-
 #[test]
-fn should_run_workspace_gates_when_git_present() {
-    let tmp = tempfile::tempdir().unwrap();
-    std::fs::create_dir(tmp.path().join(".git")).unwrap();
-    assert!(should_run_workspace_gates(tmp.path()));
-}
-
-#[test]
-fn format_quality_gates_markdown_lists_commands() {
-    let lines = vec!["make lint".to_string(), "ruff check .".to_string()];
-    let md = format_quality_gates_markdown(&lines);
-    assert!(md.contains("`make lint`"));
-    assert!(md.contains("`ruff check .`"));
+fn should_run_workspace_gates_when_git_present_and_format_quality_gates_markdown_lists_commands() {
+    {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir(tmp.path().join(".git")).unwrap();
+        assert!(should_run_workspace_gates(tmp.path()));
+    }
+    {
+        let lines = vec!["make lint".to_string(), "ruff check .".to_string()];
+        let md = format_quality_gates_markdown(&lines);
+        assert!(md.contains("`make lint`"));
+        assert!(md.contains("`ruff check .`"));
+    }
 }
 
 #[test]

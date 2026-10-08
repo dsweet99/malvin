@@ -33,17 +33,17 @@ fn render_fails_when_double_brace_remains() {
         err.0
     );
 }
-
 #[test]
-fn enforce_no_unresolved_braces_in_reports_prompt_file() {
-    let err = crate::prompts::enforce_no_unresolved_braces_in("x {{ y }} z", Some("header.md"))
-        .expect_err("braces");
-    assert!(err.0.contains("header.md"));
-}
-
-#[test]
-fn enforce_no_unresolved_braces_ok_when_clean() {
-    assert!(crate::prompts::enforce_no_unresolved_braces("no templates").is_ok());
+fn enforce_no_unresolved_braces_in_reports_prompt_file_and_enforce_no_unresolved_braces_ok_when_clean()
+ {
+    {
+        let err = crate::prompts::enforce_no_unresolved_braces_in("x {{ y }} z", Some("header.md"))
+            .expect_err("braces");
+        assert!(err.0.contains("header.md"));
+    }
+    {
+        assert!(crate::prompts::enforce_no_unresolved_braces("no templates").is_ok());
+    }
 }
 
 #[test]

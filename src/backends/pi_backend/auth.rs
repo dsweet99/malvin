@@ -31,23 +31,22 @@ mod tests {
         std::fs::write(&entry, "// fake npm pi entry\n").expect("write entry");
         crate::agent_process::with_env("MALVIN_PI", Some(entry.to_str().expect("utf8")), body);
     }
-
     #[test]
-    fn rejects_when_entry_missing() {
-        let _lock = crate::test_support::test_utils::test_env_lock();
-        crate::agent_process::with_env("MALVIN_PI", Some("/missing/npm-pi.js"), || {
-            let err = ensure_npm_pi_authenticated("pi:openai/gpt-4o").expect_err("missing");
-            assert!(err.0.contains("MALVIN_PI") || err.0.contains("missing"));
-        });
-    }
-
-    #[test]
-    fn allows_extension_providers_without_known_credentials() {
-        let _lock = crate::test_support::test_utils::test_env_lock();
-        with_fake_npm_pi_entry(|| {
-            ensure_npm_pi_authenticated("pi:issue42-ext-provider/some-model")
-                .expect("extension providers must not be false-rejected by the auth gate");
-        });
+    fn rejects_when_entry_missing_and_allows_extension_providers_without_known_credentials() {
+        {
+            let _lock = crate::test_support::test_utils::test_env_lock();
+            crate::agent_process::with_env("MALVIN_PI", Some("/missing/npm-pi.js"), || {
+                let err = ensure_npm_pi_authenticated("pi:openai/gpt-4o").expect_err("missing");
+                assert!(err.0.contains("MALVIN_PI") || err.0.contains("missing"));
+            });
+        }
+        {
+            let _lock = crate::test_support::test_utils::test_env_lock();
+            with_fake_npm_pi_entry(|| {
+                ensure_npm_pi_authenticated("pi:issue42-ext-provider/some-model")
+                    .expect("extension providers must not be false-rejected by the auth gate");
+            });
+        }
     }
 
     #[test]

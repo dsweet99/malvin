@@ -27,22 +27,21 @@ mod tests {
         let model = parse_model_id("cursor:auto").expect("model");
         SdkClient::new(model, test_io())
     }
-
     #[test]
-    fn idle_client_cannot_form_active_coder_session() {
-        let mut client = test_client();
-        let Err(err) = client.active_coder_session() else {
-            panic!("idle client must not form ActiveCoderSession")
-        };
-        assert!(err.message.contains("begin_coder_session was not called"));
-    }
-
-    #[test]
-    fn needs_respawn_forms_active_coder_session() {
-        let mut client = test_client();
-        client.coder = BegunCoderSession::NeedsRespawn {
-            cwd: PathBuf::from("/tmp/work"),
-        };
-        assert!(client.active_coder_session().is_ok());
+    fn idle_client_cannot_form_active_coder_session_and_needs_respawn_forms_active_coder_session() {
+        {
+            let mut client = test_client();
+            let Err(err) = client.active_coder_session() else {
+                panic!("idle client must not form ActiveCoderSession")
+            };
+            assert!(err.message.contains("begin_coder_session was not called"));
+        }
+        {
+            let mut client = test_client();
+            client.coder = BegunCoderSession::NeedsRespawn {
+                cwd: PathBuf::from("/tmp/work"),
+            };
+            assert!(client.active_coder_session().is_ok());
+        }
     }
 }

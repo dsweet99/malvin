@@ -1,10 +1,10 @@
 use serde_json::json;
 
-use super::config::{ModalConfig, parse_modal_config, read_config_root, remote_config_text};
-use super::options::{ModalOptions, parse_modal_spec};
 use super::backend_setup::{preflight, setup_for};
+use super::config::{ModalConfig, parse_modal_config, read_config_root, remote_config_text};
 use super::credentials::{FORWARDED_ENV, forwarded_env};
 use super::image::{DEFAULT_BASE, TOOLCHAIN, crates_io_layer, image_name, image_spec};
+use super::options::{ModalOptions, parse_modal_spec};
 
 fn cfg(text: &str, mem: u64) -> Result<ModalConfig, String> {
     parse_modal_config(&text.parse::<toml::Value>().unwrap(), mem)
@@ -13,7 +13,10 @@ fn cfg(text: &str, mem: u64) -> Result<ModalConfig, String> {
 #[test]
 fn modal_config_defaults_to_8_gib_and_shrinks_the_remote_cap() {
     let c = cfg("mem_limit_gb = 16", 16).unwrap();
-    assert_eq!((c.gpu.as_deref(), c.ncpu, c.memory_gb, c.timeout_s), (None, 1, 8, 1800));
+    assert_eq!(
+        (c.gpu.as_deref(), c.ncpu, c.memory_gb, c.timeout_s),
+        (None, 1, 8, 1800)
+    );
     assert_eq!(c.remote_mem_limit_gb(), 6);
     assert!(c.image.is_none() && c.setup.is_empty());
     assert_eq!(c.describe(), "no GPU, 1 CPU, 8 GiB, timeout 30 min");
@@ -24,7 +27,10 @@ fn modal_config_defaults_to_8_gib_and_shrinks_the_remote_cap() {
 fn modal_config_reads_overrides_and_shrinks_the_remote_cap() {
     let text = "[modal]\ngpu = \"A100\"\nncpu = 4\nmem = 8\ntimeout = \"3h\"\nimage = \"python:3.12\"\nsetup = [\"RUN pip install x\"]";
     let c = cfg(text, 16).unwrap();
-    assert_eq!((c.gpu.as_deref(), c.ncpu, c.memory_gb, c.timeout_s), (Some("A100"), 4, 8, 3 * 3600));
+    assert_eq!(
+        (c.gpu.as_deref(), c.ncpu, c.memory_gb, c.timeout_s),
+        (Some("A100"), 4, 8, 3 * 3600)
+    );
     assert_eq!(c.image.as_deref(), Some("python:3.12"));
     assert_eq!(c.setup, vec!["RUN pip install x".to_string()]);
     assert_eq!(c.remote_mem_limit_gb(), 6);
@@ -34,17 +40,57 @@ fn modal_config_reads_overrides_and_shrinks_the_remote_cap() {
 
 #[test]
 fn modal_config_rejects_bad_values() {
-    assert!(cfg("[modal]\ntimeout = \"25h\"", 4).unwrap_err().contains("24 hours"));
-    assert!(cfg("[modal]\nncpu = 0", 4).unwrap_err().contains("positive"));
+    assert!(
+        cfg("[modal]\ntimeout = \"25h\"", 4)
+            .unwrap_err()
+            .contains("24 hours")
+    );
+    assert!(
+        cfg("[modal]\nncpu = 0", 4)
+            .unwrap_err()
+            .contains("positive")
+    );
     assert!(cfg("[modal]\nmem = 0", 4).unwrap_err().contains("mem `0`"));
-    assert!(cfg("[modal]\nmemory_gb = 8", 4).unwrap_err().contains("renamed to mem;"));
-    assert!(cfg("[modal]\nmemory = 8", 4).unwrap_err().contains("renamed to mem;"));
-    assert!(cfg("[modal]\ngpu = \"A100:0\"", 4).unwrap_err().starts_with("[modal] gpu"));
-    assert!(cfg("[modal]\ntimeout = 1.5", 4).unwrap_err().contains("string or an integer"));
-    assert!(cfg("[modal]\ncpu = 4", 4).unwrap_err().contains("renamed to ncpu"));
-    assert!(cfg("[modal]\ntimeout_h = 3", 4).unwrap_err().contains("renamed to timeout"));
-    assert!(cfg("[modal]\nsetup = \"RUN x\"", 4).unwrap_err().contains("list"));
-    assert!(cfg("[modal]\nsetup = [1]", 4).unwrap_err().contains("strings"));
+    assert!(
+        cfg("[modal]\nmemory_gb = 8", 4)
+            .unwrap_err()
+            .contains("renamed to mem;")
+    );
+    assert!(
+        cfg("[modal]\nmemory = 8", 4)
+            .unwrap_err()
+            .contains("renamed to mem;")
+    );
+    assert!(
+        cfg("[modal]\ngpu = \"A100:0\"", 4)
+            .unwrap_err()
+            .starts_with("[modal] gpu")
+    );
+    assert!(
+        cfg("[modal]\ntimeout = 1.5", 4)
+            .unwrap_err()
+            .contains("string or an integer")
+    );
+    assert!(
+        cfg("[modal]\ncpu = 4", 4)
+            .unwrap_err()
+            .contains("renamed to ncpu")
+    );
+    assert!(
+        cfg("[modal]\ntimeout_h = 3", 4)
+            .unwrap_err()
+            .contains("renamed to timeout")
+    );
+    assert!(
+        cfg("[modal]\nsetup = \"RUN x\"", 4)
+            .unwrap_err()
+            .contains("list")
+    );
+    assert!(
+        cfg("[modal]\nsetup = [1]", 4)
+            .unwrap_err()
+            .contains("strings")
+    );
 }
 
 #[test]
@@ -58,12 +104,19 @@ fn cli_suboptions_override_config_defaults() {
     assert_eq!(c.describe(), "no GPU, 8 CPU, 8 GiB, timeout 90 s");
     let c = c.with_options(&parse_modal_spec("mem=32G").unwrap());
     assert_eq!((c.memory_gb, c.remote_mem_limit_gb()), (32, 4));
-    assert_eq!(c.clone().with_options(&parse_modal_spec("mem=3").unwrap()).remote_mem_limit_gb(), 1);
+    assert_eq!(
+        c.clone()
+            .with_options(&parse_modal_spec("mem=3").unwrap())
+            .remote_mem_limit_gb(),
+        1
+    );
 }
 
 #[test]
 fn remote_config_keeps_settings_and_sets_the_cap() {
-    let root: toml::Value = "theme = \"dark\"\nmem_limit_gb = 16\n[modal]\nmem = \"8GiB\"".parse().unwrap();
+    let root: toml::Value = "theme = \"dark\"\nmem_limit_gb = 16\n[modal]\nmem = \"8GiB\""
+        .parse()
+        .unwrap();
     let c = parse_modal_config(&root, 16).unwrap();
     let text = remote_config_text(&root, &c).unwrap();
     let back: toml::Value = text.parse().unwrap();
@@ -74,7 +127,13 @@ fn remote_config_keeps_settings_and_sets_the_cap() {
 #[test]
 fn read_config_root_treats_a_missing_file_as_empty() {
     let tmp = tempfile::tempdir().unwrap();
-    assert!(read_config_root(&tmp.path().join("nope.toml")).unwrap().as_table().unwrap().is_empty());
+    assert!(
+        read_config_root(&tmp.path().join("nope.toml"))
+            .unwrap()
+            .as_table()
+            .unwrap()
+            .is_empty()
+    );
     std::fs::write(tmp.path().join("bad.toml"), "= x").unwrap();
     assert!(read_config_root(&tmp.path().join("bad.toml")).is_err());
 }
@@ -99,13 +158,19 @@ fn image_spec_layers_toolchain_setup_and_source() {
     c.setup = vec!["RUN extra".to_string()];
     let spec = image_spec(&c, "cursor:auto", Some(bin.clone())).unwrap();
     assert_eq!(spec.base, DEFAULT_BASE);
-    assert_eq!(spec.layers, vec![vec![TOOLCHAIN.to_string()], c.setup.clone()]);
+    assert_eq!(
+        spec.layers,
+        vec![vec![TOOLCHAIN.to_string()], c.setup.clone()]
+    );
     assert_eq!(spec.binary, Some(bin));
     c.image = Some("custom:1".to_string());
     let custom = image_spec(&c, "codex:gpt", None).unwrap();
     assert_eq!(custom.layers.len(), 3);
     assert!(custom.layers[0][0].contains("@openai/codex@"));
-    assert_eq!(custom.layers[1..], [c.setup.clone(), crates_io_layer(env!("CARGO_PKG_VERSION"))]);
+    assert_eq!(
+        custom.layers[1..],
+        [c.setup.clone(), crates_io_layer(env!("CARGO_PKG_VERSION"))]
+    );
     assert!(custom.min_glibc.is_none());
     assert_eq!(custom.request(true)["force"], json!(true));
     assert!(crates_io_layer("9.9.9")[1].contains("--version 9.9.9 --locked"));
@@ -133,9 +198,20 @@ fn file_logins_depend_on_the_backend() {
     std::fs::write(home.join(".codex/auth.json"), "{}").unwrap();
     std::fs::write(home.join(".pi/agent/auth.json"), "{}").unwrap();
     crate::agent_process::with_env("PI_CODING_AGENT_DIR", None, || {
-        assert_eq!(setup_for("codex:x").unwrap().login_files(home), vec![home.join(".codex/auth.json")]);
-        assert_eq!(setup_for("pi:openai/x").unwrap().login_files(home), vec![home.join(".pi/agent/auth.json")]);
-        assert!(setup_for("cursor:auto").unwrap().login_files(home).is_empty());
+        assert_eq!(
+            setup_for("codex:x").unwrap().login_files(home),
+            vec![home.join(".codex/auth.json")]
+        );
+        assert_eq!(
+            setup_for("pi:openai/x").unwrap().login_files(home),
+            vec![home.join(".pi/agent/auth.json")]
+        );
+        assert!(
+            setup_for("cursor:auto")
+                .unwrap()
+                .login_files(home)
+                .is_empty()
+        );
     });
 }
 
@@ -147,7 +223,10 @@ fn preflight_checks_each_backend_credential() {
     std::fs::write(home.join(".modal.toml"), "").unwrap();
     crate::agent_process::with_env("OPENAI_API_KEY", None, || {
         let err = preflight("codex:gpt-5", home).unwrap_err();
-        assert!(err.contains("OPENAI_API_KEY") && err.contains(".codex/auth.json"), "{err}");
+        assert!(
+            err.contains("OPENAI_API_KEY") && err.contains(".codex/auth.json"),
+            "{err}"
+        );
         std::fs::create_dir_all(home.join(".codex")).unwrap();
         std::fs::write(home.join(".codex/auth.json"), "{}").unwrap();
         assert!(preflight("codex:gpt-5", home).is_ok());
@@ -164,7 +243,11 @@ fn backend_setup_rejects_unparseable_models() {
     let tmp = tempfile::tempdir().unwrap();
     std::fs::write(tmp.path().join(".modal.toml"), "").unwrap();
     assert!(setup_for("gpt-5").is_err());
-    assert!(preflight("gpt-5", tmp.path()).unwrap_err().contains("prefix"));
+    assert!(
+        preflight("gpt-5", tmp.path())
+            .unwrap_err()
+            .contains("prefix")
+    );
 }
 
 #[test]
@@ -173,13 +256,20 @@ fn preflight_names_missing_modal_credentials() {
     let tmp = tempfile::tempdir().unwrap();
     crate::agent_process::with_env("MODAL_TOKEN_ID", None, || {
         let err = preflight("pi:openai/x", tmp.path()).unwrap_err();
-        assert!(err.contains("modal setup") && err.contains("MODAL_TOKEN_ID"), "{err}");
+        assert!(
+            err.contains("modal setup") && err.contains("MODAL_TOKEN_ID"),
+            "{err}"
+        );
         std::fs::write(tmp.path().join(".modal.toml"), "").unwrap();
         assert!(preflight("pi:openai/x", tmp.path()).is_ok());
         crate::agent_process::with_env("CURSOR_API_KEY", None, || {
             crate::agent_process::with_env("CURSOR_AGENT_API_KEY", None, || {
                 crate::agent_process::with_env("AGENT_API_KEY", None, || {
-                    assert!(preflight("cursor:auto", tmp.path()).unwrap_err().contains("CURSOR_API_KEY"));
+                    assert!(
+                        preflight("cursor:auto", tmp.path())
+                            .unwrap_err()
+                            .contains("CURSOR_API_KEY")
+                    );
                 });
             });
         });

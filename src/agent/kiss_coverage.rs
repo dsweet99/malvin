@@ -1,7 +1,7 @@
 #[test]
 fn kiss_cov_prompt_options() {
-    use crate::agent_process::CoderPromptOptions;
     use crate::agent::PromptOptions;
+    use crate::agent_process::CoderPromptOptions;
 
     let opts = CoderPromptOptions {
         single_attempt: true,

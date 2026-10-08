@@ -68,18 +68,17 @@ pub(crate) fn serve_once(body: &'static str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
-    fn fetch_text_reads_local_server_body() {
-        let base = serve_once(r#"{"ok":true}"#);
-        let url = format!("{base}/x");
-        let body = fetch_text(&HttpRequest::get(&url, Duration::from_secs(2))).expect("body");
-        assert_eq!(body, r#"{"ok":true}"#);
-    }
-
-    #[test]
-    fn fetch_text_is_none_when_nothing_listens() {
-        let url = "http://127.0.0.1:9/nothing";
-        assert!(fetch_text(&HttpRequest::get(url, Duration::from_millis(500))).is_none());
+    fn fetch_text_reads_local_server_body_and_fetch_text_is_none_when_nothing_listens() {
+        {
+            let base = serve_once(r#"{"ok":true}"#);
+            let url = format!("{base}/x");
+            let body = fetch_text(&HttpRequest::get(&url, Duration::from_secs(2))).expect("body");
+            assert_eq!(body, r#"{"ok":true}"#);
+        }
+        {
+            let url = "http://127.0.0.1:9/nothing";
+            assert!(fetch_text(&HttpRequest::get(url, Duration::from_millis(500))).is_none());
+        }
     }
 }

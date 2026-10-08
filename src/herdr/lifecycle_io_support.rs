@@ -139,10 +139,7 @@ pub fn assert_idle_then_clear_metadata(requests: &[Value]) {
         }),
         "no working after idle: {requests:?}"
     );
-    let release_at = requests
-        .iter()
-        .position(is_release_agent)
-        .expect("release");
+    let release_at = requests.iter().position(is_release_agent).expect("release");
     assert!(
         clear_at < release_at,
         "clear-metadata before release: {requests:?}"

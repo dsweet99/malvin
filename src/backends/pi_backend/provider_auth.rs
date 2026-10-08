@@ -15,7 +15,11 @@ fn models_json_defines_provider(provider: &str) -> bool {
         .as_ref()
         .and_then(|root| root.get("providers"))
         .and_then(Value::as_object)
-        .is_some_and(|providers| providers.keys().any(|name| provider_ids_match(name, provider)))
+        .is_some_and(|providers| {
+            providers
+                .keys()
+                .any(|name| provider_ids_match(name, provider))
+        })
 }
 
 fn stored_credential(provider: &str) -> Option<Value> {
@@ -100,29 +104,37 @@ mod tests {
 
     #[test]
     fn env_key_or_stored_credential_authenticates() {
-        with_pi_dir(None, Some(r#"{"deepseek":{"type":"api_key","key":"sk-x"}}"#), || {
-            crate::agent_process::with_env("OPENAI_API_KEY", None, || {
-                assert!(!is_provider_authenticated("openai"));
-            });
-            crate::agent_process::with_env("OPENAI_API_KEY", Some("test-key"), || {
-                assert!(is_provider_authenticated("openai"));
-                assert_eq!(provider_api_key("openai").as_deref(), Some("test-key"));
-            });
-            crate::agent_process::with_env("DEEPSEEK_API_KEY", None, || {
-                assert!(is_provider_authenticated("deepseek"));
-                assert_eq!(provider_api_key("deepseek").as_deref(), Some("sk-x"));
-            });
-        });
+        with_pi_dir(
+            None,
+            Some(r#"{"deepseek":{"type":"api_key","key":"sk-x"}}"#),
+            || {
+                crate::agent_process::with_env("OPENAI_API_KEY", None, || {
+                    assert!(!is_provider_authenticated("openai"));
+                });
+                crate::agent_process::with_env("OPENAI_API_KEY", Some("test-key"), || {
+                    assert!(is_provider_authenticated("openai"));
+                    assert_eq!(provider_api_key("openai").as_deref(), Some("test-key"));
+                });
+                crate::agent_process::with_env("DEEPSEEK_API_KEY", None, || {
+                    assert!(is_provider_authenticated("deepseek"));
+                    assert_eq!(provider_api_key("deepseek").as_deref(), Some("sk-x"));
+                });
+            },
+        );
     }
 
     #[test]
     fn command_credentials_are_not_returned_as_keys() {
-        with_pi_dir(None, Some(r#"{"openrouter":{"type":"api_key","key":"!pass x"}}"#), || {
-            crate::agent_process::with_env("OPENROUTER_API_KEY", None, || {
-                assert!(is_provider_authenticated("openrouter"));
-                assert!(provider_api_key("openrouter").is_none());
-            });
-        });
+        with_pi_dir(
+            None,
+            Some(r#"{"openrouter":{"type":"api_key","key":"!pass x"}}"#),
+            || {
+                crate::agent_process::with_env("OPENROUTER_API_KEY", None, || {
+                    assert!(is_provider_authenticated("openrouter"));
+                    assert!(provider_api_key("openrouter").is_none());
+                });
+            },
+        );
     }
 
     #[test]

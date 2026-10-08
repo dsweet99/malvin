@@ -2,21 +2,20 @@ use crate::cli::Cli;
 use crate::cli::config_defaults::parse_cli_with_config_defaults;
 use clap::Parser;
 use malvin::test_support::test_utils::with_isolated_home;
-
 #[test]
-fn global_quiet_long_and_short_parse() {
-    let long = Cli::try_parse_from(["malvin", "--quiet", "hello"]).expect("parse");
-    assert!(long.router.quiet);
-    assert_eq!(long.first_request().map(String::as_str), Some("hello"));
-    let short = Cli::try_parse_from(["malvin", "-q", "hello"]).expect("parse");
-    assert!(short.router.quiet);
-}
-
-#[test]
-fn quiet_parses_on_router_wrappers() {
-    let cli = Cli::try_parse_from(["malvin", "-q", "-g"]).expect("parse");
-    assert!(cli.router.quiet);
-    assert!(cli.router.gates);
+fn global_quiet_long_and_short_parse_and_quiet_parses_on_router_wrappers() {
+    {
+        let long = Cli::try_parse_from(["malvin", "--quiet", "hello"]).expect("parse");
+        assert!(long.router.quiet);
+        assert_eq!(long.first_request().map(String::as_str), Some("hello"));
+        let short = Cli::try_parse_from(["malvin", "-q", "hello"]).expect("parse");
+        assert!(short.router.quiet);
+    }
+    {
+        let cli = Cli::try_parse_from(["malvin", "-q", "-g"]).expect("parse");
+        assert!(cli.router.quiet);
+        assert!(cli.router.gates);
+    }
 }
 
 #[test]

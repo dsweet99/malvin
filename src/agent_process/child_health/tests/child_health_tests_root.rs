@@ -14,46 +14,45 @@ fn health_snapshot(t0: Instant, cpu: u64, threads: u32, ctxt: Option<u64>) -> Ch
         sample_time: t0,
     }
 }
-
 #[test]
-fn health_progress_sees_cpu_or_ctxt_changes() {
-    let t0 = Instant::now();
-    assert!(health_indicates_progress(
-        &health_snapshot(t0, 10, 3, Some(100)),
-        &health_snapshot(t0, 11, 3, Some(100)),
-    ));
-    assert!(health_indicates_progress(
-        &health_snapshot(t0, 5, 1, Some(10)),
-        &health_snapshot(t0, 5, 1, Some(11)),
-    ));
+fn health_progress_sees_cpu_or_ctxt_changes_and_silence_grace_clamps() {
+    {
+        let t0 = Instant::now();
+        assert!(health_indicates_progress(
+            &health_snapshot(t0, 10, 3, Some(100)),
+            &health_snapshot(t0, 11, 3, Some(100)),
+        ));
+        assert!(health_indicates_progress(
+            &health_snapshot(t0, 5, 1, Some(10)),
+            &health_snapshot(t0, 5, 1, Some(11)),
+        ));
+    }
+    {
+        assert_eq!(
+            silence_grace_for_rpc_timeout(Duration::from_secs(0)),
+            Duration::from_millis(50)
+        );
+        assert_eq!(
+            silence_grace_for_rpc_timeout(Duration::from_secs(100)),
+            Duration::from_millis(250)
+        );
+    }
 }
-
 #[test]
-fn silence_grace_clamps() {
-    assert_eq!(
-        silence_grace_for_rpc_timeout(Duration::from_secs(0)),
-        Duration::from_millis(50)
-    );
-    assert_eq!(
-        silence_grace_for_rpc_timeout(Duration::from_secs(100)),
-        Duration::from_millis(250)
-    );
-}
-
-#[test]
-fn cannot_sample_is_not_treated_as_absent_process() {
-    assert!(ChildHealth::cannot_sample().exists);
-    assert!(!ChildHealth::process_absent().exists);
-}
-
-#[test]
-fn evaluate_maps_cannot_sample_pair_to_hung_not_not_running() {
-    let first = ChildHealth::cannot_sample();
-    let second = ChildHealth::cannot_sample();
-    assert_eq!(
-        super::silence_outcome_from_pair(&first, &second),
-        SilenceHealthOutcome::AppearsHung
-    );
+fn cannot_sample_is_not_treated_as_absent_process_and_evaluate_maps_cannot_sample_pair_to_hung_not_not_running()
+ {
+    {
+        assert!(ChildHealth::cannot_sample().exists);
+        assert!(!ChildHealth::process_absent().exists);
+    }
+    {
+        let first = ChildHealth::cannot_sample();
+        let second = ChildHealth::cannot_sample();
+        assert_eq!(
+            super::silence_outcome_from_pair(&first, &second),
+            SilenceHealthOutcome::AppearsHung
+        );
+    }
 }
 
 #[test]
@@ -104,21 +103,20 @@ fn silence_second_sample_io_failure_must_not_masquerade_as_progress() {
 #[cfg(target_os = "linux")]
 mod linux_parse {
     use super::linux::{parse_proc_stat_line, parse_status_voluntary_ctxt};
-
     #[test]
-    fn parses_proc_stat_with_parentheses_in_comm() {
-        let line = "12345 (fake (name)) S 1 1 1 0 0 0 0 0 0 0 40 50 0 0 0 0 3";
-        let p = parse_proc_stat_line(line).expect("parse");
-        assert_eq!(p.state, b'S');
-        assert_eq!(p.utime, 40);
-        assert_eq!(p.stime, 50);
-        assert_eq!(p.num_threads, 3);
-    }
-
-    #[test]
-    fn voluntary_ctxt_parsed_from_status() {
-        let s = "Name:\tfoo\nvoluntary_ctxt_switches:\t4242\n";
-        assert_eq!(parse_status_voluntary_ctxt(s), Some(4242));
+    fn parses_proc_stat_with_parentheses_in_comm_and_voluntary_ctxt_parsed_from_status() {
+        {
+            let line = "12345 (fake (name)) S 1 1 1 0 0 0 0 0 0 0 40 50 0 0 0 0 3";
+            let p = parse_proc_stat_line(line).expect("parse");
+            assert_eq!(p.state, b'S');
+            assert_eq!(p.utime, 40);
+            assert_eq!(p.stime, 50);
+            assert_eq!(p.num_threads, 3);
+        }
+        {
+            let s = "Name:\tfoo\nvoluntary_ctxt_switches:\t4242\n";
+            assert_eq!(parse_status_voluntary_ctxt(s), Some(4242));
+        }
     }
 
     #[test]

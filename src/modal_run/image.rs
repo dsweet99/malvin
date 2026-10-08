@@ -21,7 +21,11 @@ pub struct ImageSpec {
 
 #[must_use]
 pub fn uploadable_binary() -> Option<PathBuf> {
-    if cfg!(all(target_os = "linux", target_arch = "x86_64", target_env = "gnu")) {
+    if cfg!(all(
+        target_os = "linux",
+        target_arch = "x86_64",
+        target_env = "gnu"
+    )) {
         std::env::current_exe().ok()
     } else {
         None
@@ -78,8 +82,15 @@ fn config_and_backend_layers(cfg: &ModalConfig, model: &str) -> Result<Vec<Vec<S
     Ok(layers)
 }
 
-pub fn image_spec(cfg: &ModalConfig, model: &str, binary: Option<PathBuf>) -> Result<ImageSpec, String> {
-    let base = cfg.image.clone().unwrap_or_else(|| DEFAULT_BASE.to_string());
+pub fn image_spec(
+    cfg: &ModalConfig,
+    model: &str,
+    binary: Option<PathBuf>,
+) -> Result<ImageSpec, String> {
+    let base = cfg
+        .image
+        .clone()
+        .unwrap_or_else(|| DEFAULT_BASE.to_string());
     let mut layers = config_and_backend_layers(cfg, model)?;
     let payload_hash = if let Some(path) = &binary {
         binary_hash(path)?

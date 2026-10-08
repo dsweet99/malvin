@@ -15,21 +15,19 @@ pub(crate) fn start_filtered_forward(stderr: ChildStderr) {
 #[cfg(test)]
 mod bridge_stderr_tests {
     use super::is_shell_exec_close_warn;
-
     #[test]
-    fn drops_known_close_warn() {
-        let warn =
-            "[shell-exec] Close event did not fire within 5000ms after exit. Proceeding anyway.";
-        assert!(is_shell_exec_close_warn(warn));
-    }
-
-    #[test]
-    fn keeps_other_stderr() {
-        assert!(!is_shell_exec_close_warn("Error: real failure\n"));
-        assert!(!is_shell_exec_close_warn("[shell-exec] something else\n"));
-        assert!(!is_shell_exec_close_warn(
-            "Close event did not fire alone\n"
-        ));
+    fn drops_known_close_warn_and_keeps_other_stderr() {
+        {
+            let warn = "[shell-exec] Close event did not fire within 5000ms after exit. Proceeding anyway.";
+            assert!(is_shell_exec_close_warn(warn));
+        }
+        {
+            assert!(!is_shell_exec_close_warn("Error: real failure\n"));
+            assert!(!is_shell_exec_close_warn("[shell-exec] something else\n"));
+            assert!(!is_shell_exec_close_warn(
+                "Close event did not fire alone\n"
+            ));
+        }
     }
 
     #[test]

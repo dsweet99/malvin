@@ -73,12 +73,16 @@ pub(super) fn bug_set_drain_idle_timeout_ms(ms: u64) {
 }
 
 pub(super) fn bug_bridge_js() -> std::path::PathBuf {
-    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/backends/cursor_sdk/mock_bridge.js")
+    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("src/backends/cursor_sdk/mock_bridge.js")
 }
 
 pub(super) fn bug_client(run_dir: &std::path::Path, retries: u32) -> CursorSdkClient {
-    let mut client =
-        crate::backends::cursor_sdk::cursor_sdk_client_from_raw("cursor:auto", bug_mock_io_forced(), retries);
+    let mut client = crate::backends::cursor_sdk::cursor_sdk_client_from_raw(
+        "cursor:auto",
+        bug_mock_io_forced(),
+        retries,
+    );
     client.prompts_log_run_dir = Some(run_dir.to_path_buf());
     client
 }

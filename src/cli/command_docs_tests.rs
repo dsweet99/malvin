@@ -47,24 +47,23 @@ fn do_doc_parses_with_do_flag() {
     super::print_doc_for_cli_to_writer(&cli, &mut buf).expect("write");
     assert!(buf.starts_with(b"# malvin --do"));
 }
-
 #[test]
-fn admin_doc_parses_with_doc_flag() {
-    let cli = Cli::try_parse_from(["malvin", "admin", "models", "--doc"]).expect("parse");
-    assert!(cli.shared.doc);
-    match cli.command.as_ref() {
-        Some(Commands::Admin(_)) => {}
-        _ => panic!("expected Admin"),
+fn admin_doc_parses_with_doc_flag_and_print_doc_admin_writes_subcommand_md() {
+    {
+        let cli = Cli::try_parse_from(["malvin", "admin", "models", "--doc"]).expect("parse");
+        assert!(cli.shared.doc);
+        match cli.command.as_ref() {
+            Some(Commands::Admin(_)) => {}
+            _ => panic!("expected Admin"),
+        }
     }
-}
-
-#[test]
-fn print_doc_admin_writes_subcommand_md() {
-    let cmd = Commands::Admin(AdminArgs {
-        command: Some(AdminCommand::Models(ModelsArgs::default())),
-    });
-    let out = capture_doc(Some(&cmd)).expect("capture");
-    assert!(out.starts_with(b"# malvin"));
+    {
+        let cmd = Commands::Admin(AdminArgs {
+            command: Some(AdminCommand::Models(ModelsArgs::default())),
+        });
+        let out = capture_doc(Some(&cmd)).expect("capture");
+        assert!(out.starts_with(b"# malvin"));
+    }
 }
 
 #[test]

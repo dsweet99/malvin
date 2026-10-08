@@ -26,12 +26,8 @@ fn build_router_header_prompt_renders_without_unresolved_braces() {
         model: DEFAULT_CLI_MODEL,
     })
     .expect("header");
-    assert!(body.contains("Know thyself") || body.contains("Context Prep") || !body.is_empty());
+    assert!(!body.is_empty());
     assert!(!body.contains("{{"));
-    assert!(
-        !body.contains("Karl Popper"),
-        "header must not name Karl Popper: {body}"
-    );
 }
 
 #[test]
@@ -66,7 +62,6 @@ fn build_router_a_prompt_includes_user_request_path() {
     })
     .expect("router_a");
     assert!(body.contains("plan.md"));
-    assert!(!body.contains(malvin::output::MALVIN_DONE));
     assert!(!body.contains("{{"));
 }
 

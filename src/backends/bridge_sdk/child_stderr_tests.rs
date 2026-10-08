@@ -1,21 +1,20 @@
 use super::child_stderr::{
     backend_stderr_warning_payload, emit_backend_stderr_warning, start_warning_forward,
 };
-
 #[test]
-fn empty_and_whitespace_only_lines_are_not_logged() {
-    assert_eq!(backend_stderr_warning_payload(""), None);
-    assert_eq!(backend_stderr_warning_payload("\n"), None);
-    assert_eq!(backend_stderr_warning_payload("\r\n"), None);
-}
-
-#[test]
-fn payload_strips_trailing_newlines() {
-    assert_eq!(
-        backend_stderr_warning_payload("ERROR boom\n"),
-        Some("ERROR boom")
-    );
-    assert_eq!(backend_stderr_warning_payload("warn\r\n"), Some("warn"));
+fn empty_and_whitespace_only_lines_are_not_logged_and_payload_strips_trailing_newlines() {
+    {
+        assert_eq!(backend_stderr_warning_payload(""), None);
+        assert_eq!(backend_stderr_warning_payload("\n"), None);
+        assert_eq!(backend_stderr_warning_payload("\r\n"), None);
+    }
+    {
+        assert_eq!(
+            backend_stderr_warning_payload("ERROR boom\n"),
+            Some("ERROR boom")
+        );
+        assert_eq!(backend_stderr_warning_payload("warn\r\n"), Some("warn"));
+    }
 }
 
 #[test]

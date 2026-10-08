@@ -69,37 +69,35 @@ mod tests {
     use crate::output::{
         LOG_TAG_INNER_WIDTH, WHO_H, WHO_M, format_log_tag_inner, format_who_tag_prefix,
     };
-
     #[test]
-    fn stdout_line_omits_timestamp_prefix() {
-        let prefix = format_who_tag_prefix(WHO_M);
-        assert_eq!(format_line_stdout(WHO_M, "hello"), format!("{prefix}hello"));
-        assert!(!format_line_stdout(WHO_M, "hello").starts_with("20"));
+    fn stdout_line_omits_timestamp_prefix_and_stdout_ansi_line_omits_timestamp_prefix() {
+        {
+            let prefix = format_who_tag_prefix(WHO_M);
+            assert_eq!(format_line_stdout(WHO_M, "hello"), format!("{prefix}hello"));
+            assert!(!format_line_stdout(WHO_M, "hello").starts_with("20"));
+        }
+        {
+            let plain = format_line_stdout(WHO_M, "hello");
+            let ansi = format_line_stdout_ansi(WHO_M, "hello");
+            assert!(ansi.contains('\x1b'));
+            assert!(ansi.ends_with("hello"));
+            assert!(!plain.contains('\x1b'));
+        }
     }
-
     #[test]
-    fn stdout_ansi_line_omits_timestamp_prefix() {
-        let plain = format_line_stdout(WHO_M, "hello");
-        let ansi = format_line_stdout_ansi(WHO_M, "hello");
-        assert!(ansi.contains('\x1b'));
-        assert!(ansi.ends_with("hello"));
-        assert!(!plain.contains('\x1b'));
-    }
-
-    #[test]
-    fn stdout_display_and_log_splits_timestamp_for_disk() {
-        let (display, log) = crate::output::stdout_log_pair::stdout_tagged_display_and_log_line(
-            WHO_M, "payload", None,
-        );
-        assert!(!display.starts_with("20"));
-        assert!(log.starts_with("20"));
-        assert!(log.contains("|payload"));
-    }
-
-    #[test]
-    fn log_tag_inner_width_is_one() {
-        assert_eq!(LOG_TAG_INNER_WIDTH, 1);
-        assert_eq!(format_log_tag_inner("x").chars().count(), 1);
+    fn stdout_display_and_log_splits_timestamp_for_disk_and_log_tag_inner_width_is_one() {
+        {
+            let (display, log) = crate::output::stdout_log_pair::stdout_tagged_display_and_log_line(
+                WHO_M, "payload", None,
+            );
+            assert!(!display.starts_with("20"));
+            assert!(log.starts_with("20"));
+            assert!(log.contains("|payload"));
+        }
+        {
+            assert_eq!(LOG_TAG_INNER_WIDTH, 1);
+            assert_eq!(format_log_tag_inner("x").chars().count(), 1);
+        }
     }
 
     #[test]

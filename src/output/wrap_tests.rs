@@ -8,53 +8,50 @@ use super::{
 };
 
 static COLUMNS_TEST_LOCK: Mutex<()> = Mutex::new(());
-
 #[test]
-fn wrap_fits_short_line_single_segment() {
-    let v = wrap_words_bounded(72, "hello world");
-    assert_eq!(v, vec!["hello world"]);
+fn wrap_fits_short_line_single_segment_and_wrap_does_not_merge_words_across_line_breaks() {
+    {
+        let v = wrap_words_bounded(72, "hello world");
+        assert_eq!(v, vec!["hello world"]);
+    }
+    {
+        let v = wrap_words_bounded(40, "aa bb\ncc dd");
+        assert_eq!(v, vec!["aa bb", "cc dd"]);
+    }
 }
-
 #[test]
-fn wrap_does_not_merge_words_across_line_breaks() {
-    let v = wrap_words_bounded(40, "aa bb\ncc dd");
-    assert_eq!(v, vec!["aa bb", "cc dd"]);
+fn wrap_splits_at_word_boundary_and_wrap_preserves_repeated_spaces() {
+    {
+        let v = wrap_words_bounded(10, "one two three four five");
+        assert!(
+            v.iter()
+                .all(|s| unicode_width::UnicodeWidthStr::width(s.as_str()) <= 10)
+        );
+        assert_eq!(v.concat(), "one two three four five");
+    }
+    {
+        let v = wrap_words_bounded(6, "aa  bb  cc");
+        assert_eq!(v, vec!["aa  ", "bb  cc"]);
+        assert_eq!(v.concat(), "aa  bb  cc");
+    }
 }
-
 #[test]
-fn wrap_splits_at_word_boundary() {
-    let v = wrap_words_bounded(10, "one two three four five");
-    assert!(
-        v.iter()
-            .all(|s| unicode_width::UnicodeWidthStr::width(s.as_str()) <= 10)
-    );
-    assert_eq!(v.concat(), "one two three four five");
-}
-
-#[test]
-fn wrap_preserves_repeated_spaces() {
-    let v = wrap_words_bounded(6, "aa  bb  cc");
-    assert_eq!(v, vec!["aa  ", "bb  cc"]);
-    assert_eq!(v.concat(), "aa  bb  cc");
-}
-
-#[test]
-fn wrap_preserves_leading_indent() {
-    let v = wrap_words_bounded(8, "    code block");
-    assert_eq!(v, vec!["    ", "code ", "block"]);
-    assert_eq!(v.concat(), "    code block");
-}
-
-#[test]
-fn long_word_splits_by_chars() {
-    let w = "a".repeat(25);
-    let v = wrap_words_bounded(10, &w);
-    assert_eq!(v.len(), 3);
-    assert!(
-        v.iter()
-            .all(|s| unicode_width::UnicodeWidthStr::width(s.as_str()) <= 10)
-    );
-    assert_eq!(v.concat(), w);
+fn wrap_preserves_leading_indent_and_long_word_splits_by_chars() {
+    {
+        let v = wrap_words_bounded(8, "    code block");
+        assert_eq!(v, vec!["    ", "code ", "block"]);
+        assert_eq!(v.concat(), "    code block");
+    }
+    {
+        let w = "a".repeat(25);
+        let v = wrap_words_bounded(10, &w);
+        assert_eq!(v.len(), 3);
+        assert!(
+            v.iter()
+                .all(|s| unicode_width::UnicodeWidthStr::width(s.as_str()) <= 10)
+        );
+        assert_eq!(v.concat(), w);
+    }
 }
 
 #[test]

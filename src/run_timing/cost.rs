@@ -256,34 +256,44 @@ mod tests {
     #[allow(clippy::float_cmp)]
     fn later_session_keeps_earlier_reported_cost() {
         let mut slot = None;
-        let first =
-            super::super::lifecycle::attach_new_run_timing(&mut slot, "pi:openrouter/x-ai/grok-4.6");
-        first.lock().unwrap().record_acp_usage_if_present(&serde_json::json!({
-            "inputTokens": 100,
-            "outputTokens": 10,
-            "cacheReadTokens": 40,
-            "costUsd": {
-                "input": 0.02,
-                "output": 0.01,
-                "cacheRead": 0.004,
-                "cacheWrite": 0.0,
-                "total": 0.034
-            }
-        }));
-        let second =
-            super::super::lifecycle::attach_new_run_timing(&mut slot, "pi:openrouter/x-ai/grok-4.6");
-        second.lock().unwrap().record_acp_usage_if_present(&serde_json::json!({
-            "inputTokens": 50,
-            "outputTokens": 5,
-            "cacheReadTokens": 10,
-            "costUsd": {
-                "input": 0.01,
-                "output": 0.005,
-                "cacheRead": 0.001,
-                "cacheWrite": 0.0,
-                "total": 0.016
-            }
-        }));
+        let first = super::super::lifecycle::attach_new_run_timing(
+            &mut slot,
+            "pi:openrouter/x-ai/grok-4.6",
+        );
+        first
+            .lock()
+            .unwrap()
+            .record_acp_usage_if_present(&serde_json::json!({
+                "inputTokens": 100,
+                "outputTokens": 10,
+                "cacheReadTokens": 40,
+                "costUsd": {
+                    "input": 0.02,
+                    "output": 0.01,
+                    "cacheRead": 0.004,
+                    "cacheWrite": 0.0,
+                    "total": 0.034
+                }
+            }));
+        let second = super::super::lifecycle::attach_new_run_timing(
+            &mut slot,
+            "pi:openrouter/x-ai/grok-4.6",
+        );
+        second
+            .lock()
+            .unwrap()
+            .record_acp_usage_if_present(&serde_json::json!({
+                "inputTokens": 50,
+                "outputTokens": 5,
+                "cacheReadTokens": 10,
+                "costUsd": {
+                    "input": 0.01,
+                    "output": 0.005,
+                    "cacheRead": 0.001,
+                    "cacheWrite": 0.0,
+                    "total": 0.016
+                }
+            }));
         let stats = cost_stats(&second.lock().unwrap()).expect("stats");
         assert!((stats["cost_in"].as_f64().unwrap() - 0.03).abs() < 1e-12);
         assert!((stats["cost_out"].as_f64().unwrap() - 0.015).abs() < 1e-12);

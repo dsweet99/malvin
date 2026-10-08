@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-pub(crate) use super::unix_process_group_teardown_timing as unix_process_group_teardown_timing;
+pub(crate) use super::unix_process_group_teardown_timing;
 
 use super::unix_process_group_kill_targets::kill_targets_for_teardown;
 use super::unix_process_group_ps::{signal_pid, signal_process_group};
@@ -79,17 +79,25 @@ fn teardown_agent_sandbox_slow_blocking(
 ) {
     let mut state = TeardownPollState::default();
     let start = std::time::Instant::now();
-    while crate::agent_process::malvin_sandbox::sandbox_still_alive(process_group_id, baseline_for_alive)
-        && start.elapsed() < teardown_total_cap()
+    while crate::agent_process::malvin_sandbox::sandbox_still_alive(
+        process_group_id,
+        baseline_for_alive,
+    ) && start.elapsed() < teardown_total_cap()
     {
         teardown_poll_tick(process_group_id, baseline_opt, &mut state, false);
-        if !crate::agent_process::malvin_sandbox::sandbox_still_alive(process_group_id, baseline_for_alive) {
+        if !crate::agent_process::malvin_sandbox::sandbox_still_alive(
+            process_group_id,
+            baseline_for_alive,
+        ) {
             break;
         }
         std::thread::sleep(teardown_poll_interval());
         state.polls = state.polls.saturating_add(1);
     }
-    if crate::agent_process::malvin_sandbox::sandbox_still_alive(process_group_id, baseline_for_alive) {
+    if crate::agent_process::malvin_sandbox::sandbox_still_alive(
+        process_group_id,
+        baseline_for_alive,
+    ) {
         teardown_poll_tick(process_group_id, baseline_opt, &mut state, true);
     }
 }
@@ -178,7 +186,11 @@ pub(crate) fn reap_fixed_pid_targets_blocking(targets: &HashSet<u32>) {
     }
     let mut state = TeardownPollState::default();
     let start = std::time::Instant::now();
-    let any_alive = || targets.iter().any(|pid| crate::agent_process::pid_alive(*pid));
+    let any_alive = || {
+        targets
+            .iter()
+            .any(|pid| crate::agent_process::pid_alive(*pid))
+    };
     while any_alive() && start.elapsed() < teardown_total_cap() {
         for pid in targets {
             escalate_pid(*pid, &mut state, false);
@@ -199,33 +211,36 @@ pub(crate) fn reap_fixed_pid_targets_blocking(targets: &HashSet<u32>) {
 #[cfg(test)]
 mod kiss_cov_auto {
     use super::*;
-
     #[test]
-    fn kiss_cov_teardown_agent_sandbox_blocking() {
-        let _ = teardown_agent_sandbox_blocking;
-    }
-    #[test]
-    fn kiss_cov_teardown_agent_sandbox_for_interrupt() {
-        let _ = teardown_agent_sandbox_for_interrupt;
+    fn kiss_cov_teardown_agent_sandbox_blocking_and_kiss_cov_teardown_agent_sandbox_for_interrupt()
+    {
+        {
+            let _ = teardown_agent_sandbox_blocking;
+        }
+        {
+            let _ = teardown_agent_sandbox_for_interrupt;
+        }
     }
     #[test]
     fn kiss_cov_teardown_agent_sandbox_async() {
         let _ = teardown_agent_sandbox_async;
     }
     #[test]
-    fn kiss_cov_teardown_poll_tick() {
-        let _ = teardown_poll_tick;
+    fn kiss_cov_teardown_poll_tick_and_kiss_cov_teardown_poll_state() {
+        {
+            let _ = teardown_poll_tick;
+        }
+        {
+            let _ = std::mem::size_of::<TeardownPollState>();
+        }
     }
     #[test]
-    fn kiss_cov_teardown_poll_state() {
-        let _ = std::mem::size_of::<TeardownPollState>();
-    }
-    #[test]
-    fn kiss_cov_reap_fixed_pid_targets_blocking() {
-        let _ = reap_fixed_pid_targets_blocking;
-    }
-    #[test]
-    fn kiss_cov_escalate_pid() {
-        let _ = escalate_pid;
+    fn kiss_cov_reap_fixed_pid_targets_blocking_and_kiss_cov_escalate_pid() {
+        {
+            let _ = reap_fixed_pid_targets_blocking;
+        }
+        {
+            let _ = escalate_pid;
+        }
     }
 }

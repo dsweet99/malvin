@@ -35,10 +35,11 @@ fn drain_sample_pids_blocking(pgid: Option<u32>, spawn_pid_baseline: &HashSet<u3
     #[cfg(unix)]
     {
         let malvin_pid = std::process::id();
-        let mut pids: Vec<u32> = crate::agent_process::sandbox_monitor_pids(pgid, spawn_pid_baseline)
-            .into_iter()
-            .filter(|&pid| pid != malvin_pid)
-            .collect();
+        let mut pids: Vec<u32> =
+            crate::agent_process::sandbox_monitor_pids(pgid, spawn_pid_baseline)
+                .into_iter()
+                .filter(|&pid| pid != malvin_pid)
+                .collect();
         if pids.is_empty()
             && let Some(id) = pgid
         {

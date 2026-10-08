@@ -1,9 +1,9 @@
 use std::time::Duration;
 
-use crate::http_fetch::{HttpRequest, fetch_text};
 use super::super::model_cost::ModelCost;
 use super::super::pricing_cache_file::PricingCacheFile;
 use super::{model_cost_from_body, urlencoding};
+use crate::http_fetch::{HttpRequest, fetch_text};
 
 const PRICING_URL: &str = "https://api.portkey.ai/model-configs/pricing";
 const CACHE: PricingCacheFile =

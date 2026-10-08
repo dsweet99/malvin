@@ -1,7 +1,7 @@
 use super::pi_backend::session::NpmPiSession;
 use crate::agent_process::AgentError;
-use crate::backends::cursor_sdk::protocol::{BridgeEvent, RunDoneStatus};
 use crate::backends::bridge_sdk::TurnProtocol;
+use crate::backends::cursor_sdk::protocol::{BridgeEvent, RunDoneStatus};
 
 #[derive(Default)]
 pub(crate) struct TurnState {
@@ -58,7 +58,8 @@ async fn handle_line(
         return handle_response(value, state);
     }
     if ty == "extension_ui_request" {
-        if let Err(e) = super::pi_backend::map_event::auto_reply_extension_ui(session, value).await {
+        if let Err(e) = super::pi_backend::map_event::auto_reply_extension_ui(session, value).await
+        {
             return Some(Err(e));
         }
         return None;

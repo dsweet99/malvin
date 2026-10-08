@@ -1,68 +1,70 @@
 #[cfg(all(test, unix))]
 mod policy_tests {
-    use super::super::process_group_mem_watch::{MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES, memory_watch_should_terminate};
-
+    use super::super::process_group_mem_watch::{
+        MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES, memory_watch_should_terminate,
+    };
     #[test]
-    fn memory_watch_should_terminate_on_over_limit() {
-        let mut failures = 0;
-        assert!(memory_watch_should_terminate(
-            Some(100),
-            50,
-            &mut failures,
-            true
-        ));
-        assert_eq!(failures, 0);
-    }
-
-    #[test]
-    fn memory_watch_should_not_terminate_when_under_limit() {
-        let mut failures = 0;
-        assert!(!memory_watch_should_terminate(
-            Some(10),
-            50,
-            &mut failures,
-            true
-        ));
-        assert_eq!(failures, 0);
-    }
-
-    #[test]
-    fn memory_watch_fail_closed_after_consecutive_none_samples() {
-        let mut failures = 0;
-        for _ in 0..MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES - 1 {
+    fn memory_watch_should_terminate_on_over_limit_and_memory_watch_should_not_terminate_when_under_limit()
+     {
+        {
+            let mut failures = 0;
+            assert!(memory_watch_should_terminate(
+                Some(100),
+                50,
+                &mut failures,
+                true
+            ));
+            assert_eq!(failures, 0);
+        }
+        {
+            let mut failures = 0;
             assert!(!memory_watch_should_terminate(
+                Some(10),
+                50,
+                &mut failures,
+                true
+            ));
+            assert_eq!(failures, 0);
+        }
+    }
+    #[test]
+    fn memory_watch_fail_closed_after_consecutive_none_samples_and_memory_watch_no_fail_closed_when_disallowed()
+     {
+        {
+            let mut failures = 0;
+            for _ in 0..MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES - 1 {
+                assert!(!memory_watch_should_terminate(
+                    None,
+                    u64::MAX,
+                    &mut failures,
+                    true
+                ));
+            }
+            assert!(memory_watch_should_terminate(
                 None,
                 u64::MAX,
                 &mut failures,
                 true
             ));
         }
-        assert!(memory_watch_should_terminate(
-            None,
-            u64::MAX,
-            &mut failures,
-            true
-        ));
-    }
-
-    #[test]
-    fn memory_watch_no_fail_closed_when_disallowed() {
-        let mut failures = 0;
-        for _ in 0..MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES + 2 {
-            assert!(!memory_watch_should_terminate(
-                None,
-                u64::MAX,
+        {
+            let mut failures = 0;
+            for _ in 0..MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES + 2 {
+                assert!(!memory_watch_should_terminate(
+                    None,
+                    u64::MAX,
+                    &mut failures,
+                    false
+                ));
+            }
+            assert_eq!(failures, 0);
+            assert!(memory_watch_should_terminate(
+                Some(100),
+                50,
                 &mut failures,
                 false
             ));
         }
-        assert_eq!(failures, 0);
-        assert!(memory_watch_should_terminate(
-            Some(100),
-            50,
-            &mut failures,
-            false
-        ));
     }
 
     #[test]

@@ -31,7 +31,8 @@ fn wrapper_workspace_config_backup_and_restore_round_trip() {
 #[test]
 fn wrapper_workspace_config_backup_with_id_retries_collision() {
     with_isolated_home(|work| {
-        let dir = crate::workspace::workspace_paths::snapshot_category_dir("malvin_config_workspace");
+        let dir =
+            crate::workspace::workspace_paths::snapshot_category_dir("malvin_config_workspace");
         std::fs::create_dir_all(dir.join("aaaaa")).unwrap();
         write_workspace_config(work, "ORIGINAL\n");
         let backup = backup_workspace_malvin_config_workspace_if_present_with_id(work, |attempt| {

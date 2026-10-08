@@ -13,7 +13,8 @@ fn prepare_retry_test_client(
     unsafe {
         std::env::set_var("MOCK_BRIDGE_ONCE_DIR", once_dir);
     }
-    let mut client = crate::backends::cursor_sdk::cursor_sdk_client_from_raw("cursor:auto", mock_io(), 3);
+    let mut client =
+        crate::backends::cursor_sdk::cursor_sdk_client_from_raw("cursor:auto", mock_io(), 3);
     client.prompts_log_run_dir = Some(tmp.path().to_path_buf());
     let _ = client.attach_run_timing_for_session();
     client

@@ -8,17 +8,17 @@ pub(super) fn substantive_check_lines(bytes: &[u8]) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::substantive_check_lines;
-
     #[test]
-    fn substantive_check_lines_skips_comments_and_blank_lines() {
-        assert_eq!(
-            substantive_check_lines(b"# header\n\nmake lint\n"),
-            vec!["make lint".to_string()]
-        );
-    }
-
-    #[test]
-    fn substantive_check_lines_returns_empty_for_non_utf8() {
-        assert!(substantive_check_lines(b"\xff\xfe").is_empty());
+    fn substantive_check_lines_skips_comments_and_blank_lines_and_substantive_check_lines_returns_empty_for_non_utf8()
+     {
+        {
+            assert_eq!(
+                substantive_check_lines(b"# header\n\nmake lint\n"),
+                vec!["make lint".to_string()]
+            );
+        }
+        {
+            assert!(substantive_check_lines(b"\xff\xfe").is_empty());
+        }
     }
 }

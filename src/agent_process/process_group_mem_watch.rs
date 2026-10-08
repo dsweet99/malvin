@@ -50,7 +50,10 @@ async fn watch_session_memory_with_rss_sampler(
     } = handles;
     let mut consecutive_rss_failures = 0u32;
     loop {
-        if !crate::agent_process::malvin_sandbox::sandbox_still_alive(watch_pgid, &spawn_pid_baseline) {
+        if !crate::agent_process::malvin_sandbox::sandbox_still_alive(
+            watch_pgid,
+            &spawn_pid_baseline,
+        ) {
             return;
         }
         let rss = sample_rss(watch_pgid, &spawn_pid_baseline);
@@ -69,7 +72,10 @@ async fn watch_session_memory_with_rss_sampler(
                         consecutive_failures = consecutive_rss_failures,
                         "malvin sandbox cannot measure memory; terminating (fail-closed)"
                     );
-                    (crate::agent_process::sandbox_oom::OOM_REASON_MEASUREMENT_FAIL_CLOSED, None)
+                    (
+                        crate::agent_process::sandbox_oom::OOM_REASON_MEASUREMENT_FAIL_CLOSED,
+                        None,
+                    )
                 },
                 |rss_bytes| {
                     warn!(
@@ -78,7 +84,10 @@ async fn watch_session_memory_with_rss_sampler(
                         pgid = watch_pgid,
                         "malvin sandbox exceeded memory limit; terminating"
                     );
-                    (crate::agent_process::sandbox_oom::OOM_REASON_MEMORY_LIMIT, Some(rss_bytes))
+                    (
+                        crate::agent_process::sandbox_oom::OOM_REASON_MEMORY_LIMIT,
+                        Some(rss_bytes),
+                    )
                 },
             );
             record_sandbox_oom_marker(
@@ -110,7 +119,8 @@ fn record_sandbox_oom_marker(
         return;
     };
     let gate_iteration = crate::gate_loop_session::active_gate_iteration().unwrap_or(0);
-    let record = crate::agent_process::sandbox_oom::SandboxOomKillRecord::from_facts(gate_iteration, facts);
+    let record =
+        crate::agent_process::sandbox_oom::SandboxOomKillRecord::from_facts(gate_iteration, facts);
     if let Err(e) = crate::agent_process::sandbox_oom::record_sandbox_oom_kill(run_dir, record) {
         warn!(error = %e, "failed to write sandbox OOM marker");
     }

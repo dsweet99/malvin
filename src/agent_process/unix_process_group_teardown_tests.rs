@@ -94,20 +94,20 @@ fn terminate_agent_process_group_blocking_noop_without_targets() {
     let empty = HashSet::new();
     terminate_agent_process_group_blocking(None, &empty);
 }
-
 #[test]
-fn kill_targets_empty_baseline_skips_orphan_scan() {
-    let empty = HashSet::new();
-    let targets = kill_targets_for_teardown(None, Some(&empty));
-    assert!(
-        targets.is_empty(),
-        "empty baseline must not scan host orphans"
-    );
-}
-
-#[test]
-fn reap_baseline_amnestied_agent_orphans_blocking_noop_without_orphans() {
-    super::unix_process_group_teardown::reap_baseline_amnestied_agent_orphans_blocking();
+fn kill_targets_empty_baseline_skips_orphan_scan_and_reap_baseline_amnestied_agent_orphans_blocking_noop_without_orphans()
+ {
+    {
+        let empty = HashSet::new();
+        let targets = kill_targets_for_teardown(None, Some(&empty));
+        assert!(
+            targets.is_empty(),
+            "empty baseline must not scan host orphans"
+        );
+    }
+    {
+        super::unix_process_group_teardown::reap_baseline_amnestied_agent_orphans_blocking();
+    }
 }
 
 #[tokio::test]
@@ -160,7 +160,9 @@ async fn baseline_amnestied_agent_acp_orphan_killed_on_teardown() {
 
 #[tokio::test]
 async fn malvin_sibling_outside_agent_pg_killed_on_teardown() {
-    use crate::agent_process::malvin_sandbox::{assert_dead_before_next_spawn, clear_active_sandbox_session};
+    use crate::agent_process::malvin_sandbox::{
+        assert_dead_before_next_spawn, clear_active_sandbox_session,
+    };
 
     crate::test_support::test_utils::enable_test_fast_teardown();
     clear_active_sandbox_session();
@@ -192,8 +194,8 @@ mod kiss_cov_gate_refs {
         let _ = async_teardown_kills_affiliated_pid_without_pgid;
         let _ = descendant_pids_walks_child_chain;
         let _ = terminate_agent_process_group_blocking_noop_without_targets;
-        let _ = kill_targets_empty_baseline_skips_orphan_scan;
-        let _ = reap_baseline_amnestied_agent_orphans_blocking_noop_without_orphans;
+        let _ = kill_targets_empty_baseline_skips_orphan_scan_and_reap_baseline_amnestied_agent_orphans_blocking_noop_without_orphans;
+        let _ = kill_targets_empty_baseline_skips_orphan_scan_and_reap_baseline_amnestied_agent_orphans_blocking_noop_without_orphans;
         let _ = signal_targets_noop_for_empty_set;
         let _ = terminate_process_group_kills_sleep_child;
         let _ = terminate_agent_process_group_kills_sleep_child;
@@ -209,14 +211,15 @@ mod kiss_cov_gate_refs {
 #[cfg(test)]
 mod kiss_cov_auto {
     use super::*;
-
     #[test]
-    fn kiss_cov_signal_targets_noop_for_empty_set() {
-        let _ = signal_targets_noop_for_empty_set;
-    }
-    #[test]
-    fn kiss_cov_terminate_process_group_kills_sleep_child() {
-        let _ = terminate_process_group_kills_sleep_child;
+    fn kiss_cov_signal_targets_noop_for_empty_set_and_kiss_cov_terminate_process_group_kills_sleep_child()
+     {
+        {
+            let _ = signal_targets_noop_for_empty_set;
+        }
+        {
+            let _ = terminate_process_group_kills_sleep_child;
+        }
     }
     #[test]
     fn kiss_cov_terminate_agent_process_group_kills_sleep_child() {

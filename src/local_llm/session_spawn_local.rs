@@ -90,37 +90,35 @@ pub(crate) fn local_cli_args_for_mode(mode: LocalAgentMode) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
-    fn cloud_providers_get_no_extra_flags() {
-        assert!(local_cli_args("openai", "gpt-4o").is_empty());
+    fn cloud_providers_get_no_extra_flags_and_keyless_tool_mode_allows_core_tools() {
+        {
+            assert!(local_cli_args("openai", "gpt-4o").is_empty());
+        }
+        {
+            let args = local_cli_args_for_mode(LocalAgentMode::KeylessTools);
+            assert_eq!(args[0], "--tools");
+            assert_eq!(args[1], "read,bash,edit,write,grep,find,ls");
+            assert_eq!(args[2], "--append-system-prompt");
+            assert!(args[3].contains("tool call"));
+        }
     }
-
     #[test]
-    fn keyless_tool_mode_allows_core_tools() {
-        let args = local_cli_args_for_mode(LocalAgentMode::KeylessTools);
-        assert_eq!(args[0], "--tools");
-        assert_eq!(args[1], "read,bash,edit,write,grep,find,ls");
-        assert_eq!(args[2], "--append-system-prompt");
-        assert!(args[3].contains("tool call"));
-    }
-
-    #[test]
-    fn keyless_text_only_mode_disables_tools() {
-        let args = local_cli_args_for_mode(LocalAgentMode::KeylessTextOnly);
-        assert_eq!(args[0], "--no-tools");
-        assert_eq!(args[2], LOCAL_TEXT_ONLY_APPEND);
-    }
-
-    #[test]
-    fn non_ollama_local_providers_use_tools() {
-        assert_eq!(
-            LocalAgentMode::for_provider_model(true, "llamacpp", "m"),
-            LocalAgentMode::KeylessTools
-        );
-        assert_eq!(
-            LocalAgentMode::for_provider_model(false, "openai", "m"),
-            LocalAgentMode::NonKeyless
-        );
+    fn keyless_text_only_mode_disables_tools_and_non_ollama_local_providers_use_tools() {
+        {
+            let args = local_cli_args_for_mode(LocalAgentMode::KeylessTextOnly);
+            assert_eq!(args[0], "--no-tools");
+            assert_eq!(args[2], LOCAL_TEXT_ONLY_APPEND);
+        }
+        {
+            assert_eq!(
+                LocalAgentMode::for_provider_model(true, "llamacpp", "m"),
+                LocalAgentMode::KeylessTools
+            );
+            assert_eq!(
+                LocalAgentMode::for_provider_model(false, "openai", "m"),
+                LocalAgentMode::NonKeyless
+            );
+        }
     }
 }

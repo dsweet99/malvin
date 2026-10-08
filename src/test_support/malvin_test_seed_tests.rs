@@ -1,6 +1,8 @@
 use super::{seed_malvin_checks, seed_malvin_config};
 use crate::MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION;
-use crate::test_support::test_utils::{revoke_home_malvin_config_mutation_for_test, with_isolated_home};
+use crate::test_support::test_utils::{
+    revoke_home_malvin_config_mutation_for_test, with_isolated_home,
+};
 
 #[test]
 fn kiss_cov_unit_names() {
@@ -40,8 +42,9 @@ fn seed_malvin_checks_skips_git_init_when_repo_exists() {
 
 #[test]
 fn seed_malvin_config_requires_mutation_consent() {
-    let _saved =
-        crate::test_support::test_utils::SavedEnvVars::capture(&[MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION]);
+    let _saved = crate::test_support::test_utils::SavedEnvVars::capture(&[
+        MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION,
+    ]);
     revoke_home_malvin_config_mutation_for_test();
     let tmp = tempfile::tempdir().expect("tempdir");
     let result = std::panic::catch_unwind(|| {

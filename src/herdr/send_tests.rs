@@ -1,4 +1,4 @@
-use super::{classify_reply, send_request, send_request_checked, SOCKET_TIMEOUT};
+use super::{SOCKET_TIMEOUT, classify_reply, send_request, send_request_checked};
 use serde_json::json;
 use std::io::{Read, Write};
 use std::os::unix::net::UnixListener;

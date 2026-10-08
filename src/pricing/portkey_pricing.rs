@@ -106,7 +106,11 @@ pub(super) fn urlencoding(value: &str) -> String {
 }
 
 fn route_is_portkey(route: &CustomModelRoute) -> bool {
-    host_is_portkey(&route.base_url) || route.headers.keys().any(|name| name_is_portkey_header(name))
+    host_is_portkey(&route.base_url)
+        || route
+            .headers
+            .keys()
+            .any(|name| name_is_portkey_header(name))
 }
 
 fn portkey_upstream(provider: &str, model_id: &str) -> Option<String> {

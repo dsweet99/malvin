@@ -2,8 +2,8 @@ use std::io::Write;
 use std::path::Path;
 
 use malvin::artifacts::RunArtifacts;
-use malvin::format_logs_dir;
 use malvin::config::mem_limit_config::format_host_resources_line;
+use malvin::format_logs_dir;
 use malvin::output::{MALVIN_WHO, WHO_U, format_line, print_stdout_line, print_stdout_text};
 
 pub fn emit_command_line(run_dir: &Path, echo_stdout: bool) -> Result<(), String> {
@@ -167,8 +167,7 @@ mod tests {
         let text = std::fs::read_to_string(run_dir.join("command.log")).expect("read");
         let delim = format_who_tag_delim(MALVIN_WHO);
         assert!(
-            text.contains("existing")
-                && text.contains(&format!(" {delim}Model: pi:openai/gpt-4o"))
+            text.contains("existing") && text.contains(&format!(" {delim}Model: pi:openai/gpt-4o"))
         );
     }
 

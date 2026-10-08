@@ -1,11 +1,11 @@
 use super::{Commands, Exit, SharedOpts};
 
-pub(crate) use super::entrypoint_dispatch as entrypoint_dispatch;
-pub(crate) use super::entrypoint_from as entrypoint_from;
-pub(crate) use super::entrypoint_gates_only as entrypoint_gates_only;
-pub(crate) use super::entrypoint_info_flags as entrypoint_info_flags;
-pub(crate) use super::entrypoint_modal as entrypoint_modal;
-pub(crate) use super::entrypoint_short_help as entrypoint_short_help;
+pub(crate) use super::entrypoint_dispatch;
+pub(crate) use super::entrypoint_from;
+pub(crate) use super::entrypoint_gates_only;
+pub(crate) use super::entrypoint_info_flags;
+pub(crate) use super::entrypoint_modal;
+pub(crate) use super::entrypoint_short_help;
 pub use entrypoint_dispatch::{
     DefaultRouteDispatch, dispatch_default_route, dispatch_do_workflow, dispatch_mixed_requests,
 };

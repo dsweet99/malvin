@@ -86,24 +86,25 @@ mod tests {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .token_cost_rates;
-        let expected = crate::config::malvin_config_file::load_malvin_config(std::path::Path::new("."))
-            .token_cost_rates_for("cursor:auto");
+        let expected =
+            crate::config::malvin_config_file::load_malvin_config(std::path::Path::new("."))
+                .token_cost_rates_for("cursor:auto");
         assert_eq!(rates, expected);
     }
-
     #[test]
-    fn build_agent_backend_selects_pi_when_prefixed() {
-        let model = sample_model("pi:openai/gpt-4o");
-        let backend = build_agent_backend(model, 3, false);
-        assert!(matches!(backend.model.backend, ModelBackend::Pi));
-        assert_eq!(backend.model.canonical(), "pi:openai/gpt-4o");
-    }
-
-    #[test]
-    fn build_agent_backend_selects_codex_when_prefixed() {
-        let model = sample_model("codex:gpt-5.6");
-        let backend = build_agent_backend(model, 3, false);
-        assert!(matches!(backend.model.backend, ModelBackend::Codex));
-        assert_eq!(backend.model.canonical(), "codex:gpt-5.6");
+    fn build_agent_backend_selects_pi_when_prefixed_and_build_agent_backend_selects_codex_when_prefixed()
+     {
+        {
+            let model = sample_model("pi:openai/gpt-4o");
+            let backend = build_agent_backend(model, 3, false);
+            assert!(matches!(backend.model.backend, ModelBackend::Pi));
+            assert_eq!(backend.model.canonical(), "pi:openai/gpt-4o");
+        }
+        {
+            let model = sample_model("codex:gpt-5.6");
+            let backend = build_agent_backend(model, 3, false);
+            assert!(matches!(backend.model.backend, ModelBackend::Codex));
+            assert_eq!(backend.model.canonical(), "codex:gpt-5.6");
+        }
     }
 }

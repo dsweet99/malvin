@@ -42,17 +42,17 @@ fn parse_logs_gc_config_max_age_days_contract() {
         assert_eq!(cfg.max_age_days, *want_days, "toml={toml:?}");
     }
 }
-
 #[test]
-fn parse_max_bytes_value_rejects_non_string() {
-    let err = parse_max_bytes_value(&toml::Value::Integer(1)).unwrap_err();
-    assert!(err.contains("string"));
-}
-
-#[test]
-fn parse_max_bytes_value_empty_string_means_unlimited() {
-    assert_eq!(
-        parse_max_bytes_value(&toml::Value::String(String::new())).unwrap(),
-        None
-    );
+fn parse_max_bytes_value_rejects_non_string_and_parse_max_bytes_value_empty_string_means_unlimited()
+{
+    {
+        let err = parse_max_bytes_value(&toml::Value::Integer(1)).unwrap_err();
+        assert!(err.contains("string"));
+    }
+    {
+        assert_eq!(
+            parse_max_bytes_value(&toml::Value::String(String::new())).unwrap(),
+            None
+        );
+    }
 }

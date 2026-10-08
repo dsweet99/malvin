@@ -111,12 +111,13 @@ fn turn_start_params(
 mod tests {
     use super::*;
     #[test]
-    fn test_codex_write_abort() {
-        let _ = codex_write_abort;
-    }
-    #[test]
-    fn test_codex_send_prompt() {
-        let _ = codex_send_prompt;
+    fn test_codex_write_abort_and_test_codex_send_prompt() {
+        {
+            let _ = codex_write_abort;
+        }
+        {
+            let _ = codex_send_prompt;
+        }
     }
     #[test]
     fn test_read_json() {

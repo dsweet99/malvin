@@ -9,7 +9,9 @@ pub(super) const PI_PACKAGE: &str = "@earendil-works/pi-coding-agent";
 pub fn parse_version_token(text: &str) -> Option<String> {
     let token = text.split_whitespace().last()?.trim_start_matches('v');
     let valid = !token.is_empty()
-        && token.split('.').all(|p| !p.is_empty() && p.bytes().all(|b| b.is_ascii_digit()));
+        && token
+            .split('.')
+            .all(|p| !p.is_empty() && p.bytes().all(|b| b.is_ascii_digit()));
     valid.then(|| token.to_string())
 }
 

@@ -7,9 +7,9 @@ pub use crate::agent_process::acp_spawn_lock::assert_no_peer_acp_spawn_lock;
 use crate::agent_process::acp_spawn_lock::{acquire_acp_spawn_lock, release_acp_spawn_lock};
 
 #[cfg(unix)]
-use crate::agent_process::sandbox_monitor_pids;
-#[cfg(unix)]
 use crate::agent_process::process_group_rss::pids_sandbox_bytes;
+#[cfg(unix)]
+use crate::agent_process::sandbox_monitor_pids;
 
 pub use crate::agent_process::parent_death_signal::{
     install_parent_death_signal, install_tokio_parent_death_signal,
@@ -156,8 +156,13 @@ pub fn teardown_active_sandbox_for_interrupt() {
     };
     #[cfg(unix)]
     {
-        crate::agent_process::active_agent_heartbeat::unregister_active_agent_process_group(session.pgid);
-        crate::agent_process::terminate_agent_process_group_for_interrupt(session.pgid, &session.baseline);
+        crate::agent_process::active_agent_heartbeat::unregister_active_agent_process_group(
+            session.pgid,
+        );
+        crate::agent_process::terminate_agent_process_group_for_interrupt(
+            session.pgid,
+            &session.baseline,
+        );
         crate::agent_process::clear_session_spawn_affiliation();
     }
     release_acp_spawn_lock(&session.work_dir, &session.acp_lock_slot);

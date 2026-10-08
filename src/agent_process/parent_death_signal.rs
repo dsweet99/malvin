@@ -28,16 +28,16 @@ pub const fn install_tokio_parent_death_signal(_: &mut tokio::process::Command) 
 #[cfg(test)]
 mod tests {
     #[test]
-    fn parent_death_signal_wired_into_command_builders() {
-        let mut std_cmd = std::process::Command::new("true");
-        super::install_parent_death_signal(&mut std_cmd);
-        let mut tokio_cmd = tokio::process::Command::new("true");
-        super::install_tokio_parent_death_signal(&mut tokio_cmd);
-    }
-
-    #[test]
-    fn kiss_cov_parent_death_symbols() {
-        let _ = super::install_parent_death_signal;
-        let _ = super::install_tokio_parent_death_signal;
+    fn parent_death_signal_wired_into_command_builders_and_kiss_cov_parent_death_symbols() {
+        {
+            let mut std_cmd = std::process::Command::new("true");
+            super::install_parent_death_signal(&mut std_cmd);
+            let mut tokio_cmd = tokio::process::Command::new("true");
+            super::install_tokio_parent_death_signal(&mut tokio_cmd);
+        }
+        {
+            let _ = super::install_parent_death_signal;
+            let _ = super::install_tokio_parent_death_signal;
+        }
     }
 }

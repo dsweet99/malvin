@@ -27,7 +27,8 @@ pub(super) fn clear_mock_bridge_env() {
 }
 
 pub(super) fn mock_client(run_dir: &std::path::Path) -> CursorSdkClient {
-    let mut client = crate::backends::cursor_sdk::cursor_sdk_client_from_raw("cursor:auto", mock_io(), 1);
+    let mut client =
+        crate::backends::cursor_sdk::cursor_sdk_client_from_raw("cursor:auto", mock_io(), 1);
     client.prompts_log_run_dir = Some(run_dir.to_path_buf());
     client
 }
@@ -76,7 +77,8 @@ fn assert_session_timing_synced(client: &CursorSdkClient) {
 }
 
 pub(super) fn mock_bridge_path() -> std::path::PathBuf {
-    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/backends/cursor_sdk/mock_bridge.js")
+    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("src/backends/cursor_sdk/mock_bridge.js")
 }
 
 async fn run_prompt_and_assert_usage(

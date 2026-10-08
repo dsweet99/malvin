@@ -13,7 +13,9 @@ pub fn heartbeat_payload_now() -> String {
     let now = chrono::Local::now();
     let ts = now.format("%Y%m%d.%H%M%S");
     let mut payload = format!("{ts} {}", crate::agent_phase::heartbeat_label());
-    if let Some(stats) = crate::agent_process::active_agent_heartbeat::active_agent_heartbeat_stats() {
+    if let Some(stats) =
+        crate::agent_process::active_agent_heartbeat::active_agent_heartbeat_stats()
+    {
         payload.push_str(", ");
         payload.push_str(&stats);
     }
@@ -42,15 +44,15 @@ pub fn heartbeat_payload_has_wall_clock_prefix(payload: &str) -> bool {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn kiss_cov_timestamp_now_string() {
-        let _ = super::timestamp_now_string;
-        let _ = super::heartbeat_payload_now;
-    }
-
-    #[test]
-    fn heartbeat_payload_now_starts_with_wall_clock_timestamp() {
-        let payload = super::heartbeat_payload_now();
-        assert!(super::heartbeat_payload_has_wall_clock_prefix(&payload));
+    fn kiss_cov_timestamp_now_string_and_heartbeat_payload_now_starts_with_wall_clock_timestamp() {
+        {
+            let _ = super::timestamp_now_string;
+            let _ = super::heartbeat_payload_now;
+        }
+        {
+            let payload = super::heartbeat_payload_now();
+            assert!(super::heartbeat_payload_has_wall_clock_prefix(&payload));
+        }
     }
 
     #[cfg(unix)]
@@ -59,12 +61,17 @@ mod tests {
         crate::agent_process::active_agent_heartbeat::clear_active_agent_process_groups_for_test();
         let pgid = std::process::id();
         let baseline = crate::agent_process::snapshot_pids();
-        crate::agent_process::active_agent_heartbeat::register_active_agent_process_group(Some(pgid), baseline);
+        crate::agent_process::active_agent_heartbeat::register_active_agent_process_group(
+            Some(pgid),
+            baseline,
+        );
         let payload = super::heartbeat_payload_now();
         assert!(payload.contains("sandbox: "));
         assert!(payload.contains("USS"));
         assert!(payload.contains("procs"));
-        crate::agent_process::active_agent_heartbeat::unregister_active_agent_process_group(Some(pgid));
+        crate::agent_process::active_agent_heartbeat::unregister_active_agent_process_group(Some(
+            pgid,
+        ));
         crate::agent_process::active_agent_heartbeat::clear_active_agent_process_groups_for_test();
     }
 

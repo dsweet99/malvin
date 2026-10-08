@@ -3,12 +3,12 @@ mod common;
 #[cfg(unix)]
 use common::{fresh_workdir, sleep_child, write_peer_acp_lock};
 #[cfg(unix)]
-use malvin::agent_process::snapshot_pids;
-#[cfg(unix)]
 use malvin::agent_process::malvin_sandbox::{
     assert_dead_before_next_spawn, assert_no_peer_acp_spawn_lock, clear_active_sandbox_session,
     malvin_std_command, malvin_tokio_command, note_active_sandbox_session,
 };
+#[cfg(unix)]
+use malvin::agent_process::snapshot_pids;
 #[cfg(unix)]
 use std::process::Command;
 

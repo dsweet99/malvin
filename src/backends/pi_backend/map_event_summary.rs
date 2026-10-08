@@ -137,18 +137,18 @@ pub(super) fn flatten_ws(s: &str) -> String {
 #[cfg(test)]
 mod flatten_ws_tests {
     use super::flatten_ws;
-
     #[test]
-    fn flatten_ws_collapses_runs_of_whitespace() {
-        assert_eq!(flatten_ws("echo   \t a\t\tb\n c"), "echo a b c");
-    }
-
-    #[test]
-    fn flatten_ws_trims_and_handles_degenerate_inputs() {
-        assert_eq!(flatten_ws("  padded  "), "padded");
-        assert_eq!(flatten_ws("token"), "token");
-        assert_eq!(flatten_ws(""), "");
-        assert_eq!(flatten_ws(" \t\n "), "");
+    fn flatten_ws_collapses_runs_of_whitespace_and_flatten_ws_trims_and_handles_degenerate_inputs()
+    {
+        {
+            assert_eq!(flatten_ws("echo   \t a\t\tb\n c"), "echo a b c");
+        }
+        {
+            assert_eq!(flatten_ws("  padded  "), "padded");
+            assert_eq!(flatten_ws("token"), "token");
+            assert_eq!(flatten_ws(""), "");
+            assert_eq!(flatten_ws(" \t\n "), "");
+        }
     }
 }
 
@@ -156,30 +156,29 @@ mod flatten_ws_tests {
 mod tool_summary_from_pi_tests {
     use super::tool_summary_from_pi;
     use serde_json::json;
-
     #[test]
-    fn read_includes_path_argument() {
-        let summary = tool_summary_from_pi(Some("read"), Some(&json!({"path": "src/lib.rs"})));
-        assert_eq!(summary.as_deref(), Some("Read src/lib.rs"));
+    fn read_includes_path_argument_and_read_without_args_is_titled_not_read_tool() {
+        {
+            let summary = tool_summary_from_pi(Some("read"), Some(&json!({"path": "src/lib.rs"})));
+            assert_eq!(summary.as_deref(), Some("Read src/lib.rs"));
+        }
+        {
+            let summary = tool_summary_from_pi(Some("read"), None);
+            assert_eq!(summary.as_deref(), Some("Read"));
+            assert!(!summary.unwrap().contains("tool"));
+        }
     }
-
     #[test]
-    fn read_without_args_is_titled_not_read_tool() {
-        let summary = tool_summary_from_pi(Some("read"), None);
-        assert_eq!(summary.as_deref(), Some("Read"));
-        assert!(!summary.unwrap().contains("tool"));
-    }
-
-    #[test]
-    fn bash_includes_command_argument() {
-        let summary = tool_summary_from_pi(Some("bash"), Some(&json!({"command": "ls -la"})));
-        assert_eq!(summary.as_deref(), Some("Run ls -la"));
-    }
-
-    #[test]
-    fn grep_includes_pattern_argument() {
-        let summary = tool_summary_from_pi(Some("grep"), Some(&json!({"pattern": "tool_call"})));
-        assert_eq!(summary.as_deref(), Some("Search tool_call"));
+    fn bash_includes_command_argument_and_grep_includes_pattern_argument() {
+        {
+            let summary = tool_summary_from_pi(Some("bash"), Some(&json!({"command": "ls -la"})));
+            assert_eq!(summary.as_deref(), Some("Run ls -la"));
+        }
+        {
+            let summary =
+                tool_summary_from_pi(Some("grep"), Some(&json!({"pattern": "tool_call"})));
+            assert_eq!(summary.as_deref(), Some("Search tool_call"));
+        }
     }
 
     #[test]

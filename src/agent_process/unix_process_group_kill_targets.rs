@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-pub(crate) use super::session_spawn_affiliation as session_spawn_affiliation;
+pub(crate) use super::session_spawn_affiliation;
 #[cfg(test)]
 #[path = "session_spawn_affiliation_tests.rs"]
 mod session_spawn_affiliation_tests;

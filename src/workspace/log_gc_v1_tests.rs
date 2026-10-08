@@ -182,7 +182,8 @@ fn undeletable_run_in_one_bucket_does_not_stop_later_buckets() {
         max_age_days: Some(1),
         max_bytes: None,
     };
-    let (removed, _) = super::log_gc_buckets::prune_all_log_buckets(&home_logs, &config, None, None);
+    let (removed, _) =
+        super::log_gc_buckets::prune_all_log_buckets(&home_logs, &config, None, None);
     restore_writable(&ro);
     assert_eq!(removed, 1);
     assert!(!later.exists(), "the later bucket must still be pruned");

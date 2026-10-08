@@ -222,20 +222,20 @@ mod unit_tests {
         assert_eq!(cost.input, 0.0);
         assert_eq!(cost.output, 0.0);
     }
-
     #[test]
-    fn usage_payload_is_observable_rejects_empty_object() {
-        let obj = serde_json::Map::new();
-        assert!(!usage_payload_is_observable(&obj));
-    }
-
-    #[test]
-    fn usage_payload_is_observable_accepts_token_fields() {
-        let obj = serde_json::json!({ "inputTokens": 1 })
-            .as_object()
-            .expect("obj")
-            .clone();
-        assert!(usage_payload_is_observable(&obj));
+    fn usage_payload_is_observable_rejects_empty_object_and_usage_payload_is_observable_accepts_token_fields()
+     {
+        {
+            let obj = serde_json::Map::new();
+            assert!(!usage_payload_is_observable(&obj));
+        }
+        {
+            let obj = serde_json::json!({ "inputTokens": 1 })
+                .as_object()
+                .expect("obj")
+                .clone();
+            assert!(usage_payload_is_observable(&obj));
+        }
     }
 }
 

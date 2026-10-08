@@ -1,40 +1,39 @@
 use super::parse_malvin_config;
 use crate::test_support::test_utils::with_isolated_home;
 use crate::workspace::workspace_paths::malvin_config_path;
-
 #[test]
-fn parse_model_aliases_from_config() {
-    let cfg = parse_malvin_config(
-        r#"
-[aliases.models]
-astra = "pi:openrouter/openai/gpt-astra"
-[agent]
-model = "astra"
-"#,
-    );
-    assert_eq!(
-        cfg.model_aliases.get("astra").map(String::as_str),
-        Some("pi:openrouter/openai/gpt-astra")
-    );
-    assert_eq!(
-        cfg.agent.model.canonical(),
-        "pi:openrouter/openai/gpt-astra"
-    );
-}
-
-#[test]
-fn removed_rpi_agent_model_falls_back_to_default() {
-    let cfg = parse_malvin_config(
-        r#"
-disable_rpi = true
-[agent]
-model = "rpi:openai/gpt-4o"
-"#,
-    );
-    assert_eq!(
-        cfg.agent.model.canonical(),
-        crate::workspace::support_paths::DEFAULT_CLI_MODEL
-    );
+fn parse_model_aliases_from_config_and_removed_rpi_agent_model_falls_back_to_default() {
+    {
+        let cfg = parse_malvin_config(
+            r#"
+        [aliases.models]
+        astra = "pi:openrouter/openai/gpt-astra"
+        [agent]
+        model = "astra"
+        "#,
+        );
+        assert_eq!(
+            cfg.model_aliases.get("astra").map(String::as_str),
+            Some("pi:openrouter/openai/gpt-astra")
+        );
+        assert_eq!(
+            cfg.agent.model.canonical(),
+            "pi:openrouter/openai/gpt-astra"
+        );
+    }
+    {
+        let cfg = parse_malvin_config(
+            r#"
+        disable_rpi = true
+        [agent]
+        model = "rpi:openai/gpt-4o"
+        "#,
+        );
+        assert_eq!(
+            cfg.agent.model.canonical(),
+            crate::workspace::support_paths::DEFAULT_CLI_MODEL
+        );
+    }
 }
 
 #[test]
@@ -73,32 +72,31 @@ model = "cursor:auto"
         assert_eq!(model.canonical(), "cursor:gpt-5");
     });
 }
-
 #[test]
-fn legacy_nicknames_table_is_rejected_with_a_rename_error() {
-    let text = "[nicknames]\nastra = \"cursor:gpt-5\"\n[agent]\nmodel = \"cursor:auto\"\n";
-    let err = super::parse_model_aliases(text).expect_err("renamed");
-    assert!(err.contains("[aliases.models]"), "{err}");
-    assert!(parse_malvin_config(text).model_aliases.is_empty());
-}
-
-#[test]
-fn parse_remote_aliases_from_config() {
-    let cfg = parse_malvin_config(
-        r#"
-[aliases.models]
-astra = "cursor:gpt-5"
-[aliases.remotes]
-big = " modal:sandbox[gpu=A100,mem=32] "
-[agent]
-model = "astra"
-"#,
-    );
-    assert_eq!(
-        cfg.remote_aliases.get("big").map(String::as_str),
-        Some("modal:sandbox[gpu=A100,mem=32]")
-    );
-    assert_eq!(cfg.agent.model.canonical(), "cursor:gpt-5");
+fn legacy_nicknames_table_is_rejected_with_a_rename_error_and_parse_remote_aliases_from_config() {
+    {
+        let text = "[nicknames]\nastra = \"cursor:gpt-5\"\n[agent]\nmodel = \"cursor:auto\"\n";
+        let err = super::parse_model_aliases(text).expect_err("renamed");
+        assert!(err.contains("[aliases.models]"), "{err}");
+        assert!(parse_malvin_config(text).model_aliases.is_empty());
+    }
+    {
+        let cfg = parse_malvin_config(
+            r#"
+        [aliases.models]
+        astra = "cursor:gpt-5"
+        [aliases.remotes]
+        big = " modal:sandbox[gpu=A100,mem=32] "
+        [agent]
+        model = "astra"
+        "#,
+        );
+        assert_eq!(
+            cfg.remote_aliases.get("big").map(String::as_str),
+            Some("modal:sandbox[gpu=A100,mem=32]")
+        );
+        assert_eq!(cfg.agent.model.canonical(), "cursor:gpt-5");
+    }
 }
 
 #[test]

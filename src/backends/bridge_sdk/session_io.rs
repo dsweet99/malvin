@@ -4,7 +4,9 @@ use super::bridge_sdk::TurnWait;
 use super::bridge_sdk::session::BridgeSession;
 use super::bridge_sdk::session_handshake::wait_for_ok;
 use super::bridge_sdk::timing::{note_sdk_step, record_sdk_usage};
-use crate::backends::cursor_sdk::protocol::{BridgeEvent, BridgeRequest, decode_event, encode_request};
+use crate::backends::cursor_sdk::protocol::{
+    BridgeEvent, BridgeRequest, decode_event, encode_request,
+};
 use crate::config::model_id::ModelBackend;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
 
@@ -117,7 +119,8 @@ async fn read_event_with_idle_timeout(
         prefix: crate::config::model_id::ModelBackend::Cursor.drain_idle_prefix(),
         waiting_for,
     };
-    super::bridge_sdk::await_turn_event(TurnWait::of(session), labels, read_event(session), turn).await
+    super::bridge_sdk::await_turn_event(TurnWait::of(session), labels, read_event(session), turn)
+        .await
 }
 
 async fn discard_optional_trailing_run_done(session: &BridgeSession) {
@@ -175,7 +178,9 @@ fn finish_run_done(
     }
     if run_done_status_is_failure(*status) {
         return Err(AgentError(error.clone().unwrap_or_else(|| match *status {
-            crate::backends::cursor_sdk::protocol::RunDoneStatus::Cancelled => "run cancelled".into(),
+            crate::backends::cursor_sdk::protocol::RunDoneStatus::Cancelled => {
+                "run cancelled".into()
+            }
             crate::backends::cursor_sdk::protocol::RunDoneStatus::Unknown => {
                 "run finished with unknown status".into()
             }

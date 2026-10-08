@@ -9,10 +9,10 @@ pub(crate) use super::agent_backend_sdk_client_header_lifecycle as sdk_client_he
 pub(crate) use super::agent_backend_sdk_client_prompt as sdk_client_prompt;
 pub(crate) use super::agent_backend_sdk_client_session as sdk_client_session;
 pub(crate) use super::agent_backend_sdk_client_session_header as sdk_client_session_header;
+pub(crate) use super::agent_backend_sdk_session as sdk_session;
 #[cfg(test)]
 pub(crate) use sdk_client_session_header::header_prompt_options_for_test;
 pub use sdk_client_session_header::{pending_session_header, session_header_is_satisfied};
-pub(crate) use super::agent_backend_sdk_session as sdk_session;
 
 #[cfg(test)]
 pub(crate) mod test_support;

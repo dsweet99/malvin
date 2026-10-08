@@ -31,19 +31,18 @@ mod tests {
     use super::{
         MALVIN_SHORT_ID_LEN, is_valid_malvin_short_id, malvin_short_id, validate_malvin_short_id,
     };
-
     #[test]
-    fn malvin_short_id_format() {
-        let id = malvin_short_id();
-        assert_eq!(id.len(), MALVIN_SHORT_ID_LEN);
-        assert!(is_valid_malvin_short_id(&id));
-    }
-
-    #[test]
-    fn validate_rejects_bad_ids() {
-        assert!(validate_malvin_short_id("Ma3bx9").is_ok());
-        assert!(validate_malvin_short_id("ma3bx9").is_err());
-        assert!(validate_malvin_short_id("Ma3bx").is_err());
-        assert!(validate_malvin_short_id("Ma3bx99").is_err());
+    fn malvin_short_id_format_and_validate_rejects_bad_ids() {
+        {
+            let id = malvin_short_id();
+            assert_eq!(id.len(), MALVIN_SHORT_ID_LEN);
+            assert!(is_valid_malvin_short_id(&id));
+        }
+        {
+            assert!(validate_malvin_short_id("Ma3bx9").is_ok());
+            assert!(validate_malvin_short_id("ma3bx9").is_err());
+            assert!(validate_malvin_short_id("Ma3bx").is_err());
+            assert!(validate_malvin_short_id("Ma3bx99").is_err());
+        }
     }
 }

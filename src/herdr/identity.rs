@@ -35,20 +35,19 @@ fn is_pid_fallback_slot(slot: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{display_title, herdr_live_name, is_pid_fallback_slot};
-
     #[test]
-    fn herdr_live_name_prefixes_short_suffix() {
-        let n = herdr_live_name("20260804_140533_4gk60f1m");
-        assert_eq!(n, "m4gk60f1m");
-        assert!(n.chars().next().is_some_and(|c| c.is_ascii_lowercase()));
-        assert!(n.len() <= 32);
-    }
-
-    #[test]
-    fn pid_fallback_slot_detection() {
-        assert!(is_pid_fallback_slot("pid12345"));
-        assert!(!is_pid_fallback_slot("probe"));
-        assert!(!is_pid_fallback_slot("pid"));
-        let _ = display_title();
+    fn herdr_live_name_prefixes_short_suffix_and_pid_fallback_slot_detection() {
+        {
+            let n = herdr_live_name("20260804_140533_4gk60f1m");
+            assert_eq!(n, "m4gk60f1m");
+            assert!(n.chars().next().is_some_and(|c| c.is_ascii_lowercase()));
+            assert!(n.len() <= 32);
+        }
+        {
+            assert!(is_pid_fallback_slot("pid12345"));
+            assert!(!is_pid_fallback_slot("probe"));
+            assert!(!is_pid_fallback_slot("pid"));
+            let _ = display_title();
+        }
     }
 }

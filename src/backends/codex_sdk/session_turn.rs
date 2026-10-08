@@ -2,8 +2,8 @@ use std::time::Instant;
 
 use super::codex_sdk::session::CodexSession;
 use crate::agent_process::AgentError;
-use crate::backends::cursor_sdk::protocol::BridgeEvent;
 use crate::backends::bridge_sdk::TurnProtocol;
+use crate::backends::cursor_sdk::protocol::BridgeEvent;
 
 #[derive(Default)]
 pub(crate) struct TurnState {
@@ -113,11 +113,7 @@ fn event_turn_id(value: &serde_json::Value) -> Option<&str> {
         .and_then(|v| v.as_str())
 }
 
-fn emit_turn_stream(
-    session: &CodexSession,
-    value: &serde_json::Value,
-    state: &mut TurnState,
-) {
+fn emit_turn_stream(session: &CodexSession, value: &serde_json::Value, state: &mut TurnState) {
     if !event_turn_matches(state, value) {
         return;
     }

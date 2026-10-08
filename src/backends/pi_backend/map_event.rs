@@ -111,8 +111,10 @@ fn delta_text(ev: &Value) -> Option<String> {
 }
 
 fn capture_agent_end(value: &Value, state: &mut TurnState) {
-    state.end_error =
-        super::pi_backend::agent_end_error::agent_end_error(value.get("messages"), state.output_cap);
+    state.end_error = super::pi_backend::agent_end_error::agent_end_error(
+        value.get("messages"),
+        state.output_cap,
+    );
     if !state.response_text.is_empty() {
         return;
     }

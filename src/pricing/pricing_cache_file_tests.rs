@@ -3,8 +3,8 @@ use std::time::Duration;
 
 use super::super::model_cost::ModelCost;
 
-use crate::clock::unix_now_secs;
 use super::{PricedEntry, PricingCacheFile};
+use crate::clock::unix_now_secs;
 
 const TTL: Duration = Duration::from_hours(24);
 const CACHE: PricingCacheFile = PricingCacheFile::new("pricing-cache-file-test.json", TTL);

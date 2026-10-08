@@ -16,15 +16,15 @@ use malvin::agent_process::hostile_orphan_test_util::{
     read_orphan_pid, spawn_hostile_agent_acp_orphan, wait_for_init_reparent,
 };
 #[cfg(unix)]
+use malvin::agent_process::malvin_sandbox::{
+    assert_dead_before_next_spawn, clear_active_sandbox_session, malvin_session_rss_bytes,
+};
+#[cfg(unix)]
 use malvin::agent_process::sandbox_monitor_pids;
 #[cfg(unix)]
 use malvin::agent_process::{MemWatchHandles, watch_process_group_memory};
 #[cfg(unix)]
 use malvin::agent_process::{snapshot_pids, terminate_agent_process_group};
-#[cfg(unix)]
-use malvin::agent_process::malvin_sandbox::{
-    assert_dead_before_next_spawn, clear_active_sandbox_session, malvin_session_rss_bytes,
-};
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
 #[cfg(unix)]

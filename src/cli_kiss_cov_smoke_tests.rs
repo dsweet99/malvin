@@ -69,21 +69,20 @@ fn smoke_cov_cli_router_test_units() {
     let tmp = tempfile::tempdir().expect("tmp");
     let _ = crate::cli::workflow_router_shared_tests::gitignore_restore_failure_fixture(tmp.path());
 }
-
 #[test]
-fn smoke_cov_cli_cli_tidy_flow_units() {
-    let _ = crate::cli::tidy_flow::run_tidy;
-    let _ = crate::cli::tidy_flow::effective_tidy_max_loops;
-    let _ = crate::cli::tidy_flow::TIDY_ROUTER_REQUEST;
-    let _ = crate::cli::tidy_flow::tidy_router_with_gates_forced;
-}
-
-#[test]
-fn smoke_cov_cli_cli_admin_units() {
-    let _: Option<crate::cli::AdminArgs> = None;
-    let _ = crate::cli::run_admin;
-    let _ = stringify!(AggregatedInitialPromptBuilder);
-    let _ = crate::prompt_stratification::AggregatedInitialPromptBuilder::new;
+fn smoke_cov_cli_cli_tidy_flow_units_and_smoke_cov_cli_cli_admin_units() {
+    {
+        let _ = crate::cli::tidy_flow::run_tidy;
+        let _ = crate::cli::tidy_flow::effective_tidy_max_loops;
+        let _ = crate::cli::tidy_flow::TIDY_ROUTER_REQUEST;
+        let _ = crate::cli::tidy_flow::tidy_router_with_gates_forced;
+    }
+    {
+        let _: Option<crate::cli::AdminArgs> = None;
+        let _ = crate::cli::run_admin;
+        let _ = stringify!(AggregatedInitialPromptBuilder);
+        let _ = crate::prompt_stratification::AggregatedInitialPromptBuilder::new;
+    }
 }
 
 #[test]
@@ -123,19 +122,18 @@ fn smoke_cov_cli_cli_symbols_a() {
     let _ = stringify!(RouterAcpIterationInput);
     let _ = stringify!(RouterAgentLoopInput);
 }
-
 #[test]
-fn smoke_cov_cli_cli_symbols_b() {
-    let _ = crate::cli::repo_checks::run_repo_workspace_gates;
-    let _ = crate::cli::repo_checks::run_repo_workspace_gates;
-    let _: Option<crate::cli::repo_checks::FakeCommandDirGuard> = None;
-    let _ = stringify!(FakeCommandDirGuard);
-}
-
-#[test]
-fn smoke_cov_cli_cross_file_symbols_a() {
-    let _ = stringify!(test_scan_for_extension_handles_symlink_cycles);
-    let _ = stringify!(doc_text);
-    let _ = stringify!(print_doc_for_cli);
-    let _ = stringify!(try_append_log_line);
+fn smoke_cov_cli_cli_symbols_b_and_smoke_cov_cli_cross_file_symbols_a() {
+    {
+        let _ = crate::cli::repo_checks::run_repo_workspace_gates;
+        let _ = crate::cli::repo_checks::run_repo_workspace_gates;
+        let _: Option<crate::cli::repo_checks::FakeCommandDirGuard> = None;
+        let _ = stringify!(FakeCommandDirGuard);
+    }
+    {
+        let _ = stringify!(test_scan_for_extension_handles_symlink_cycles);
+        let _ = stringify!(doc_text);
+        let _ = stringify!(print_doc_for_cli);
+        let _ = stringify!(try_append_log_line);
+    }
 }

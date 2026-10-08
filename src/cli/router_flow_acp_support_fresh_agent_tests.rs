@@ -1,17 +1,17 @@
 use super::{RouterAcpIterationInput, router_iteration_log_path, run_router_turns};
 use crate::cli::{RouterOpts, SharedOpts};
 use malvin::backends::agent_backend::SdkClient;
-
 #[test]
-fn next_router_a_creates_a_new_agent_instead_of_resuming() {
-    let boots = run_two_router_a_turns();
-    assert_eq!(boots, (2, 0), "second router_a must create, not resume");
-}
-
-#[test]
-fn router_summarize_stays_on_the_open_agent() {
-    let boots = run_router_a_then_summarize();
-    assert_eq!(boots, (1, 0), "summarize must not start another agent");
+fn next_router_a_creates_a_new_agent_instead_of_resuming_and_router_summarize_stays_on_the_open_agent()
+ {
+    {
+        let boots = run_two_router_a_turns();
+        assert_eq!(boots, (2, 0), "second router_a must create, not resume");
+    }
+    {
+        let boots = run_router_a_then_summarize();
+        assert_eq!(boots, (1, 0), "summarize must not start another agent");
+    }
 }
 
 fn boot_counts(dir: &std::path::Path) -> (usize, usize) {

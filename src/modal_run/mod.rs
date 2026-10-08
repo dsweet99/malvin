@@ -55,7 +55,9 @@ const UNSUPPORTED: &[(&str, &str)] = &[
 pub fn reject_unsupported(set_flags: &[&str]) -> Result<(), String> {
     for (flag, reason) in UNSUPPORTED {
         if set_flags.contains(flag) {
-            return Err(format!("`{REMOTE_MODAL_ARG}` cannot be combined with `{flag}`: {reason}"));
+            return Err(format!(
+                "`{REMOTE_MODAL_ARG}` cannot be combined with `{flag}`: {reason}"
+            ));
         }
     }
     Ok(())
@@ -64,23 +66,33 @@ pub fn reject_unsupported(set_flags: &[&str]) -> Result<(), String> {
 fn announce_sweep(result: Result<usize, String>) {
     match result {
         Ok(0) => {}
-        Ok(n) => session::note(&format!("terminated {n} stale Sandbox(es) left by exited malvin runs")),
+        Ok(n) => session::note(&format!(
+            "terminated {n} stale Sandbox(es) left by exited malvin runs"
+        )),
         Err(e) => session::note(&format!("stale Sandbox check failed; continuing: {e}")),
     }
 }
 
 fn load_plan(cwd: &std::path::Path, inv: &ModalInvocation) -> Result<session::Plan, String> {
     let cfg_root = config::read_config_root(&crate::malvin_home_config_path())?;
-    let cfg = config::parse_modal_config(&cfg_root, crate::config::mem_limit_config::load_mem_limit_gb(cwd))?
-        .with_options(&inv.options);
+    let cfg = config::parse_modal_config(
+        &cfg_root,
+        crate::config::mem_limit_config::load_mem_limit_gb(cwd),
+    )?
+    .with_options(&inv.options);
     let spec = image::image_spec(&cfg, &inv.model, image::uploadable_binary())?;
-    Ok(session::Plan { cfg, cfg_root, spec })
+    Ok(session::Plan {
+        cfg,
+        cfg_root,
+        spec,
+    })
 }
 
 fn start_bridge() -> Result<bridge::ModalBridge, String> {
     let bridge_js = bridge::ensure_installed()?;
-    let cmd = bridge::node_bridge_command(&bridge_js)
-        .map_err(|e| format!("malvin --remote=modal:sandbox needs Node.js >= 22.13 to run the Modal bridge: {e}"))?;
+    let cmd = bridge::node_bridge_command(&bridge_js).map_err(|e| {
+        format!("malvin --remote=modal:sandbox needs Node.js >= 22.13 to run the Modal bridge: {e}")
+    })?;
     bridge::ModalBridge::spawn(cmd)
 }
 

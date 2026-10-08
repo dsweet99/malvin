@@ -6,7 +6,9 @@ use crate::config::model_id::ParsedModel;
 
 use super::agent_backend::sdk_session::SdkSession;
 
-pub(crate) use super::agent_backend::sdk_client_header_lifecycle::{CoderSessionHeader, SessionHeaderLifecycle};
+pub(crate) use super::agent_backend::sdk_client_header_lifecycle::{
+    CoderSessionHeader, SessionHeaderLifecycle,
+};
 
 pub(crate) enum BegunCoderSession {
     Idle,
@@ -67,13 +69,18 @@ pub struct SdkClient {
     pub(crate) last_agent_id: Option<String>,
     pub(crate) timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
     pub(crate) header_lifecycle: SessionHeaderLifecycle,
-    pub(crate) backend_error_tracker: super::agent_backend::backend_error_tracker::BackendErrorTracker,
+    pub(crate) backend_error_tracker:
+        super::agent_backend::backend_error_tracker::BackendErrorTracker,
 }
 
 impl SdkClient {
     #[must_use]
     pub const fn new(model: ParsedModel, io: AgentIoOptions) -> Self {
-        Self::with_max_retries(model, io, crate::workspace::support_paths::DEFAULT_MAX_ACP_RETRIES)
+        Self::with_max_retries(
+            model,
+            io,
+            crate::workspace::support_paths::DEFAULT_MAX_ACP_RETRIES,
+        )
     }
 
     #[must_use]
@@ -82,7 +89,9 @@ impl SdkClient {
         io: AgentIoOptions,
         max_acp_retries: u32,
     ) -> Self {
-        let retries = super::agent_backend::backend_error_tracker::AcpRetryCount::at_least_one(max_acp_retries);
+        let retries = super::agent_backend::backend_error_tracker::AcpRetryCount::at_least_one(
+            max_acp_retries,
+        );
         Self {
             model,
             io,
@@ -92,9 +101,10 @@ impl SdkClient {
             last_agent_id: None,
             timing: None,
             header_lifecycle: SessionHeaderLifecycle::Unbound,
-            backend_error_tracker: super::agent_backend::backend_error_tracker::BackendErrorTracker::with_limit(
-                retries.as_consecutive_limit(),
-            ),
+            backend_error_tracker:
+                super::agent_backend::backend_error_tracker::BackendErrorTracker::with_limit(
+                    retries.as_consecutive_limit(),
+                ),
         }
     }
 

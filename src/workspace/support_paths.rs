@@ -119,18 +119,17 @@ mod env_path_tests {
 #[cfg(test)]
 mod invocation_tests {
     use super::*;
-
     #[test]
-    fn init_records_argv() {
-        init_from_env();
-        let line = command_line().expect("command line after init");
-        assert!(!line.is_empty());
-    }
-
-    #[test]
-    fn agent_bin_and_rpc_timeout_from_env() {
-        let _ = agent_or_cursor_agent_bin();
-        assert!(acp_rpc_timeout_secs_from_env() >= 1);
+    fn init_records_argv_and_agent_bin_and_rpc_timeout_from_env() {
+        {
+            init_from_env();
+            let line = command_line().expect("command line after init");
+            assert!(!line.is_empty());
+        }
+        {
+            let _ = agent_or_cursor_agent_bin();
+            assert!(acp_rpc_timeout_secs_from_env() >= 1);
+        }
     }
 
     #[test]

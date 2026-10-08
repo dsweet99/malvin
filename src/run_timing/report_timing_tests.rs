@@ -76,18 +76,18 @@ fn timing_line_uses_one_decimal_and_includes_live_buckets() {
     assert!(!line.contains("concerns = "));
     assert!(!line.contains("check_plan = "));
 }
-
 #[test]
-fn duration_ms_u64_converts_duration_to_milliseconds() {
-    assert_eq!(duration_ms_u64(Duration::from_millis(0)), 0);
-    assert_eq!(duration_ms_u64(Duration::from_millis(123)), 123);
-    assert_eq!(duration_ms_u64(Duration::from_secs(5)), 5000);
-}
-
-#[test]
-fn print_summary_from_run_dir_noops_when_json_missing() {
-    let tmp = tempfile::tempdir().unwrap();
-    crate::run_timing::print_summary_from_run_dir(tmp.path()).expect("noop");
+fn duration_ms_u64_converts_duration_to_milliseconds_and_print_summary_from_run_dir_noops_when_json_missing()
+ {
+    {
+        assert_eq!(duration_ms_u64(Duration::from_millis(0)), 0);
+        assert_eq!(duration_ms_u64(Duration::from_millis(123)), 123);
+        assert_eq!(duration_ms_u64(Duration::from_secs(5)), 5000);
+    }
+    {
+        let tmp = tempfile::tempdir().unwrap();
+        crate::run_timing::print_summary_from_run_dir(tmp.path()).expect("noop");
+    }
 }
 
 #[test]
