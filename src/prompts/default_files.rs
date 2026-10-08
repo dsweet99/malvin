@@ -1,10 +1,10 @@
 use super::{DO_HEADER_MD, HEADER_MD, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD};
 
 pub const ROUTER_A_MD: &str = "router_a.md";
+pub const ROUTER_A_2_MD: &str = "router_a_2.md";
 pub const ROUTER_A_AUDIT_MD: &str = "router_a_audit.md";
 pub const ROUTER_B_MD: &str = "router_b.md";
 pub const ROUTER_B_SATISFY_MD: &str = "router_b_satisfy.md";
-pub const ROUTER_B_SATISFY_BRIEF_MD: &str = "router_b_satisfy_brief.md";
 pub const ROUTER_B_CREATIVE_LEAD_MD: &str = "router_b_creative_lead.md";
 pub const ROUTER_B_DONE_NOTE_MD: &str = "router_b_done_note.md";
 
@@ -24,6 +24,11 @@ pub const fn router_a_prompt_file() -> &'static str {
 }
 
 #[must_use]
+pub const fn router_a_2_prompt_file() -> &'static str {
+    ROUTER_A_2_MD
+}
+
+#[must_use]
 pub const fn router_a_audit_prompt_file() -> &'static str {
     ROUTER_A_AUDIT_MD
 }
@@ -34,12 +39,8 @@ pub const fn router_b_prompt_file(_flags: RouterBPromptFlags) -> &'static str {
 }
 
 #[must_use]
-pub const fn router_b_satisfy_prompt_file(flags: RouterBPromptFlags) -> &'static str {
-    if flags.creative {
-        ROUTER_B_SATISFY_BRIEF_MD
-    } else {
-        ROUTER_B_SATISFY_MD
-    }
+pub const fn router_b_satisfy_prompt_file(_flags: RouterBPromptFlags) -> &'static str {
+    ROUTER_B_SATISFY_MD
 }
 
 #[must_use]
@@ -69,6 +70,7 @@ fn default_mbc2_prompt(name: &str) -> Option<&'static str> {
 fn default_router_a_prompt(name: &str) -> Option<&'static str> {
     match name {
         ROUTER_A_MD => Some(include_str!("../../default_prompts/router_a.md")),
+        ROUTER_A_2_MD => Some(include_str!("../../default_prompts/router_a_2.md")),
         ROUTER_A_AUDIT_MD => Some(include_str!("../../default_prompts/router_a_audit.md")),
         _ => None,
     }
@@ -77,9 +79,6 @@ fn default_router_a_prompt(name: &str) -> Option<&'static str> {
 fn default_router_b_fragment(name: &str) -> Option<&'static str> {
     match name {
         ROUTER_B_SATISFY_MD => Some(include_str!("../../default_prompts/router_b_satisfy.md")),
-        ROUTER_B_SATISFY_BRIEF_MD => Some(include_str!(
-            "../../default_prompts/router_b_satisfy_brief.md"
-        )),
         ROUTER_B_CREATIVE_LEAD_MD => Some(include_str!(
             "../../default_prompts/router_b_creative_lead.md"
         )),
@@ -111,19 +110,20 @@ pub fn default_file(name: &str) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::{
-        HEADER_MD, ROUTER_A_AUDIT_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_LEAD_MD,
-        ROUTER_B_DONE_NOTE_MD, ROUTER_B_MD, ROUTER_B_SATISFY_BRIEF_MD, ROUTER_B_SATISFY_MD,
-        RouterBPromptFlags, default_constraints_prompt, default_file, header_prompt_file,
+        default_constraints_prompt, default_file, header_prompt_file, router_a_2_prompt_file,
         router_a_audit_prompt_file, router_a_prompt_file, router_b_prompt_file,
         router_b_satisfy_prompt_file, router_b_uses_creative_lead, router_b_uses_done_note,
+        RouterBPromptFlags, HEADER_MD, ROUTER_A_2_MD, ROUTER_A_AUDIT_MD, ROUTER_A_MD,
+        ROUTER_B_CREATIVE_LEAD_MD, ROUTER_B_DONE_NOTE_MD, ROUTER_B_MD, ROUTER_B_SATISFY_MD,
     };
 
     #[test]
     fn default_file_covers_router_a_and_b() {
         assert!(default_file("router_a.md").is_some());
+        assert!(default_file(ROUTER_A_2_MD).is_some());
         assert!(default_file("router_b.md").is_some());
         assert!(default_file(ROUTER_A_AUDIT_MD).is_some());
-        assert!(default_file(ROUTER_B_SATISFY_BRIEF_MD).is_some());
+        assert!(default_file(ROUTER_B_SATISFY_MD).is_some());
         assert!(default_file(ROUTER_B_CREATIVE_LEAD_MD).is_some());
         assert!(default_file("router_summarize.md").is_some());
         assert!(default_file("mbc2.md").is_some());
@@ -136,6 +136,7 @@ mod tests {
     fn active_prompt_selectors_use_canonical_templates() {
         assert_eq!(header_prompt_file(), HEADER_MD);
         assert_eq!(router_a_prompt_file(), ROUTER_A_MD);
+        assert_eq!(router_a_2_prompt_file(), ROUTER_A_2_MD);
         assert_eq!(router_a_audit_prompt_file(), ROUTER_A_AUDIT_MD);
         assert_eq!(
             router_b_prompt_file(RouterBPromptFlags { creative: false }),
@@ -151,7 +152,7 @@ mod tests {
         );
         assert_eq!(
             router_b_satisfy_prompt_file(RouterBPromptFlags { creative: true }),
-            ROUTER_B_SATISFY_BRIEF_MD
+            ROUTER_B_SATISFY_MD
         );
         assert!(router_b_uses_creative_lead(RouterBPromptFlags {
             creative: true

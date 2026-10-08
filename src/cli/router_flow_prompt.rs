@@ -1,28 +1,28 @@
 use malvin::artifacts::RunArtifacts;
 use malvin::orchestrator::workflow_context_paths_only;
 use malvin::prompts::{
-    PromptError, PromptStore, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD, RouterBPromptFlags,
-    header_prompt_file, router_a_prompt_file, router_b_prompt_file,
+    header_prompt_file, router_a_prompt_file, router_b_prompt_file, PromptError, PromptStore,
+    RouterBPromptFlags, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD,
 };
 use std::path::Path;
 
 pub(crate) use super::router_flow_prompt_summarize;
 pub(crate) use router_flow_prompt_summarize::{
-    RouterSummarizePromptInput, build_router_summarize_prompt,
+    build_router_summarize_prompt, RouterSummarizePromptInput,
 };
 
 pub(crate) use super::router_flow_prompt_turns;
 pub(crate) use router_flow_prompt_turns::{
-    RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput, build_router_a_prompt,
-    build_router_b_prompt, build_router_header_prompt, build_router_mbc2_prompt,
-    router_a_prompt_label, router_b_prompt_label,
+    build_router_a_2_prompt, build_router_a_prompt, build_router_b_prompt,
+    build_router_header_prompt, build_router_mbc2_prompt, router_a_prompt_label,
+    router_b_prompt_label, RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput,
 };
 
 pub(crate) use super::router_flow_prompt_initial;
 #[cfg(test)]
 pub(crate) use router_flow_prompt_initial::RouterInitialPrompt;
 pub(crate) use router_flow_prompt_initial::{
-    RouterInitialPromptInput, build_router_initial_prompt,
+    build_router_initial_prompt, RouterInitialPromptInput,
 };
 
 pub fn prepare_router_prompt_store() -> Result<PromptStore, String> {
@@ -37,6 +37,7 @@ fn validate_router_required_prompts(store: &PromptStore) -> Result<(), String> {
         header_prompt_file(),
         "mbc2.md",
         router_a_prompt_file(),
+        malvin::prompts::router_a_2_prompt_file(),
         malvin::prompts::router_a_audit_prompt_file(),
         router_b_prompt_file(RouterBPromptFlags { creative: false }),
         malvin::prompts::router_b_satisfy_prompt_file(RouterBPromptFlags { creative: false }),
@@ -117,6 +118,7 @@ mod kiss_cov_gate_refs {
     fn kiss_cov_unit_names() {
         let _ = build_router_header_prompt;
         let _ = build_router_a_prompt;
+        let _ = build_router_a_2_prompt;
         let _ = build_router_b_prompt;
         let _ = build_router_mbc2_prompt;
         let _ = build_router_initial_prompt;

@@ -1,12 +1,13 @@
 use malvin::artifacts::RunArtifacts;
 use malvin::orchestrator::workflow_context_paths_only;
 use malvin::prompts::{
-    PromptError, PromptStore, ROUTER_B_CREATIVE_LEAD_MD, ROUTER_B_DONE_NOTE_MD, RouterBPromptFlags,
-    header_prompt_file, router_a_audit_prompt_file, router_a_prompt_file, router_b_prompt_file,
-    router_b_satisfy_prompt_file, router_b_uses_creative_lead, router_b_uses_done_note,
+    header_prompt_file, router_a_2_prompt_file, router_a_audit_prompt_file, router_a_prompt_file,
+    router_b_prompt_file, router_b_satisfy_prompt_file, router_b_uses_creative_lead,
+    router_b_uses_done_note, PromptError, PromptStore, RouterBPromptFlags,
+    ROUTER_B_CREATIVE_LEAD_MD, ROUTER_B_DONE_NOTE_MD,
 };
 
-use super::router_flow::router_flow_prompt::{RouterCodeExtraInput, render_router_code_extra};
+use super::router_flow::router_flow_prompt::{render_router_code_extra, RouterCodeExtraInput};
 
 pub(crate) struct RouterHeaderPromptInput<'a> {
     pub store: &'a PromptStore,
@@ -72,6 +73,10 @@ pub(crate) fn build_router_a_prompt(input: RouterAPromptInput<'_>) -> Result<Str
         .render_prompt_only(router_a_prompt_file(), ctx.as_map())
         .map_err(|e: PromptError| e.0)?;
     Ok(body.trim().to_string())
+}
+
+pub(crate) fn build_router_a_2_prompt(store: &PromptStore) -> Result<String, String> {
+    prompt_fragment(store, router_a_2_prompt_file())
 }
 
 pub(crate) struct RouterBPromptInput<'a> {

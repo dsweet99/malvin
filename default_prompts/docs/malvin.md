@@ -17,13 +17,13 @@ malvin [OPTION]... [REQUEST]...
 
 These forms are mutually exclusive: pass request(s) **or** a subcommand, not both on one synopsis line. `malvin --help` uses the same two-line usage.
 
-Bare `malvin REQUEST` runs autonomous routing (`router_a` / optional `router_b`, stop on `__MALVIN_DONE__`, exit `router_summarize`). Multiple `REQUEST` arguments each run as an independent default-route invocation (new run directory, full outer loop, summarize). With no request and no subcommand, malvin prints a short command catalog and exits 0. `malvin -g` without a request runs the gate-fix workflow (fixed request `Get the gates to pass.` with `--gates` on). Each `--do` applies only to the `REQUEST` that immediately follows it (one-shot turn); other `REQUEST` args still use the router. Each `--creative[=PROB]` likewise applies only to the `REQUEST` that immediately follows it (repeatable; other `REQUEST` args stay non-creative). The `admin` subcommand covers operator maintenance; `malvin admin` alone likewise prints its command catalog and exits 0. Omitting `REQUEST` after a lone `--do` prints short usage and exits 0.
+Bare `malvin REQUEST` runs autonomous routing (`router_a`, then `router_a_2`, optional `router_b`, stop on `__MALVIN_DONE__` in the `router_a_2` reply, exit `router_summarize`). Multiple `REQUEST` arguments each run as an independent default-route invocation (new run directory, full outer loop, summarize). With no request and no subcommand, malvin prints a short command catalog and exits 0. `malvin -g` without a request runs the gate-fix workflow (fixed request `Get the gates to pass.` with `--gates` on). Each `--do` applies only to the `REQUEST` that immediately follows it (one-shot turn); other `REQUEST` args still use the router. Each `--creative[=PROB]` likewise applies only to the `REQUEST` that immediately follows it (repeatable; other `REQUEST` args stay non-creative). The `admin` subcommand covers operator maintenance; `malvin admin` alone likewise prints its command catalog and exits 0. Omitting `REQUEST` after a lone `--do` prints short usage and exits 0.
 
 ## Commands
 
 | Command | Purpose |
 |---------|---------|
-| *(default)* | Bare `malvin REQUEST` — each outer iteration starts a new agent for aggregated `header` + optional `mbc2` + `router_a`, then optional `router_b` on that agent; exit `router_summarize` on that same agent; outer `--max-loops` iterations |
+| *(default)* | Bare `malvin REQUEST` — each outer iteration starts a new agent for aggregated `header` + optional `mbc2` + `router_a`, then `router_a_2`, then optional `router_b` on that agent; exit `router_summarize` on that same agent; outer `--max-loops` iterations |
 | `--do` | One-shot agent turn for the following REQUEST (repeatable; other REQUESTs stay on the router) |
 | `--creative[=PROB]` | Creative mode for the following REQUEST only (repeatable; optional probability, default `1.0`) |
 | `malvin -g` | Fix quality gates via the default router with fixed request `Get the gates to pass.` (no positional request) |
@@ -58,7 +58,7 @@ Outer agent-session budget for bare `malvin REQUEST` and `malvin -g`. `0` is tre
 
 ### `-g` / `--gates`
 
-Inject workspace check command text into agent prompts and, for workflows that use harness gates as loop criteria, treat failures as loop or exit criteria. Off by default. When `--gates` is set and `.malvin/gates` is missing, malvin runs the init workflow first (default router with request from `init_constraints.md`, harness gates off) to discover and write `.malvin/gates`. On bare `malvin REQUEST`, `-g` / `--gates` also runs workspace `.malvin/gates` after `router_a` emits `__MALVIN_DONE__`: pass stops success; fail continues the outer loop; exhausted budget with failing gates fails the run. `malvin -g` without a request runs the gate-fix workflow with this flag on and fixed request `Get the gates to pass.` When work runs, check text is still injected into the work prompt. Agent prompts may still include available `.malvin/gates` guidance when this option is off.
+Inject workspace check command text into agent prompts and, for workflows that use harness gates as loop criteria, treat failures as loop or exit criteria. Off by default. When `--gates` is set and `.malvin/gates` is missing, malvin runs the init workflow first (default router with request from `init_constraints.md`, harness gates off) to discover and write `.malvin/gates`. On bare `malvin REQUEST`, `-g` / `--gates` also runs workspace `.malvin/gates` after `router_a_2` emits `__MALVIN_DONE__`: pass stops success; fail continues the outer loop; exhausted budget with failing gates fails the run. `malvin -g` without a request runs the gate-fix workflow with this flag on and fixed request `Get the gates to pass.` When work runs, check text is still injected into the work prompt. Agent prompts may still include available `.malvin/gates` guidance when this option is off.
 
 
 
@@ -72,7 +72,7 @@ Stop after N consecutive identical backend errors (spawn, header, or prompt), wi
 
 ### `--creative[=PROB]`
 
-On the default router (bare `malvin REQUEST` and `malvin -g`), when creative mode is sampled for an outer iteration: include `mbc2.md` in the aggregated initial prompt (after the header), and fill `router_b.md` creative template keys (`{{ creative_lead }}`, brief `{{ satisfy_line }}`) for the optional work turn. Both changes share one Bernoulli draw per outer iteration. `--creative` alone uses probability `1.0`; `--creative=0.6` uses `0.6`. Off by default.
+On the default router (bare `malvin REQUEST` and `malvin -g`), when creative mode is sampled for an outer iteration: include `mbc2.md` in the aggregated initial prompt (after the header), and fill `{{ creative_lead }}` in `router_b.md` for the optional work turn. `{{ satisfy_line }}` stays `router_b_satisfy.md` on every work turn. Both creative changes share one Bernoulli draw per outer iteration. `--creative` alone uses probability `1.0`; `--creative=0.6` uses `0.6`. Off by default.
 
 Like `--do`, each `--creative` applies only to the `REQUEST` that immediately follows it and may be repeated (at most once per `REQUEST`). Example: `malvin "plain" --creative "spark" "plain2" --creative=0.4 "spark2"`. Intervening global flags (for example `--max-loops`) may appear between `--creative` and its `REQUEST`. A trailing `--creative` after other requests, or `--creative` immediately followed by `--do` (or the reverse), is an error. For `malvin -g` with no positional request, `--creative` still enables creative sampling for that gates-only run.
 
@@ -129,7 +129,7 @@ When `--gates` is set and `.malvin/gates` is missing, malvin runs the init workf
 
 With `--gates` and an existing `.malvin/gates`, malvin runs workspace quality gates from that file at the repo git root (one shell command per non-empty, non-comment line). Full-line comments starting with `#` are ignored. `malvin -g` without a request always enables this harness.
 
-Other invocations (`--do`, bare `malvin REQUEST`) do not require `.malvin/gates` at startup and may run outside a git repo. With `--gates` on a bare `malvin REQUEST`, malvin runs workspace gates when `router_a` emits `__MALVIN_DONE__` and continues that outer loop when they fail (see the default-route section of `malvin --doc`). Without `--gates` (the default for other commands), malvin does not run those checks directly on the default route. `header.md` notes about gates lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
+Other invocations (`--do`, bare `malvin REQUEST`) do not require `.malvin/gates` at startup and may run outside a git repo. With `--gates` on a bare `malvin REQUEST`, malvin runs workspace gates when `router_a_2` emits `__MALVIN_DONE__` and continues that outer loop when they fail (see the default-route section of `malvin --doc`). Without `--gates` (the default for other commands), malvin does not run those checks directly on the default route. `header.md` notes about gates lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
 
 ### `-h` / `--help`
 

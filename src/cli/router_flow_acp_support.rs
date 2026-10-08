@@ -1,12 +1,13 @@
 use crate::cli::router_flow::router_flow_no_work::chat_has_malvin_done;
 use crate::cli::router_flow::router_flow_prompt;
-use malvin::artifacts::{RunArtifacts, SessionDotfileBackups, ensure_gate_exp_log_file};
+use malvin::artifacts::{ensure_gate_exp_log_file, RunArtifacts, SessionDotfileBackups};
 use std::path::Path;
 
-use super::router_flow::router_flow_acp::RouterAcpIterationInput;
 use super::router_flow::router_flow_acp::router_flow_coder_prompts::{
-    RouterInitialCoderPrompt, run_router_b_coder_prompt, run_router_initial_coder_prompt,
+    run_router_b_coder_prompt, run_router_followup_coder_prompt, run_router_initial_coder_prompt,
+    RouterInitialCoderPrompt,
 };
+use super::router_flow::router_flow_acp::RouterAcpIterationInput;
 
 pub(crate) struct RouterTurnsOutcome {
     pub iteration_backups: SessionDotfileBackups,
@@ -115,6 +116,14 @@ async fn finish_router_a_maybe_b(
     model: &str,
     creative: bool,
 ) -> Result<bool, String> {
+    let router_a_2 = router_flow_prompt::build_router_a_2_prompt(input.prompt_store)?;
+    run_router_followup_coder_prompt(
+        input.client,
+        &router_a_2,
+        log_path,
+        malvin::prompts::router_a_2_prompt_file(),
+    )
+    .await?;
     if last_response_has_malvin_done(input.client) {
         return Ok(true);
     }
@@ -125,13 +134,7 @@ async fn finish_router_a_maybe_b(
             model,
             creative,
         })?;
-    run_router_b_coder_prompt(
-        input.client,
-        &router_b,
-        log_path,
-        router_flow_prompt::router_b_prompt_label(malvin::prompts::RouterBPromptFlags { creative }),
-    )
-    .await?;
+    run_router_b_coder_prompt(input.client, &router_b, log_path).await?;
     Ok(false)
 }
 

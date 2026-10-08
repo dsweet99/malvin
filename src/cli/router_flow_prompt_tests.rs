@@ -242,8 +242,8 @@ fn build_router_b_prompt_selects_creative_template_when_flag_set() {
     );
     assert!(creative.contains("MBC2"));
     assert!(
-        creative.contains("Satisfy the requirements."),
-        "creative router_b must keep the satisfy instruction: {creative}"
+        creative.contains("Satisfy the requirements. Stay in scope."),
+        "creative router_b must keep the same satisfy instruction: {creative}"
     );
     assert!(
         plain.contains("NB: Do not emit"),

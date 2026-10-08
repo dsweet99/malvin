@@ -2,10 +2,11 @@
 mod default_files;
 
 pub use default_files::{
+    default_file, header_prompt_file, router_a_2_prompt_file, router_a_audit_prompt_file,
+    router_a_prompt_file, router_b_prompt_file, router_b_satisfy_prompt_file,
+    router_b_uses_creative_lead, router_b_uses_done_note, RouterBPromptFlags, ROUTER_A_2_MD,
     ROUTER_A_AUDIT_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_LEAD_MD, ROUTER_B_DONE_NOTE_MD, ROUTER_B_MD,
-    ROUTER_B_SATISFY_BRIEF_MD, ROUTER_B_SATISFY_MD, RouterBPromptFlags, default_file,
-    header_prompt_file, router_a_audit_prompt_file, router_a_prompt_file, router_b_prompt_file,
-    router_b_satisfy_prompt_file, router_b_uses_creative_lead, router_b_uses_done_note,
+    ROUTER_B_SATISFY_MD,
 };
 
 pub const HEADER_MD: &str = "header.md";
@@ -21,10 +22,10 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     HEADER_MD,
     DO_HEADER_MD,
     ROUTER_A_MD,
+    ROUTER_A_2_MD,
     ROUTER_A_AUDIT_MD,
     ROUTER_B_MD,
     ROUTER_B_SATISFY_MD,
-    ROUTER_B_SATISFY_BRIEF_MD,
     ROUTER_B_CREATIVE_LEAD_MD,
     ROUTER_B_DONE_NOTE_MD,
     ROUTER_CODE_EXTRA_MD,
@@ -33,8 +34,8 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
 
 #[cfg(test)]
 mod review_plan_embed_tests {
-    use super::DEFAULT_PROMPTS;
     use super::default_file;
+    use super::DEFAULT_PROMPTS;
     use crate::prompts::malformed_brace_placeholders;
 
     #[test]
@@ -77,7 +78,7 @@ mod advice_path_embed_tests {
     use crate::artifacts::create_run_artifacts;
     use crate::config::DEFAULT_CLI_MODEL;
     use crate::orchestrator::workflow_context_paths_only;
-    use crate::prompts::{PromptStore, render_header};
+    use crate::prompts::{render_header, PromptStore};
 
     #[test]
     fn embedded_header_render_without_unresolved_braces() {
@@ -137,18 +138,18 @@ mod router_header_embed_tests {
     use std::path::Path;
 
     use super::{
-        DO_HEADER_MD, HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_LEAD_MD, ROUTER_B_MD,
-        ROUTER_SUMMARIZE_MD, default_file,
+        default_file, DO_HEADER_MD, HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_LEAD_MD, ROUTER_B_MD,
+        ROUTER_SUMMARIZE_MD,
     };
     use crate::artifacts::create_run_artifacts;
     use crate::cli::router_flow::router_flow_prompt::{
-        RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput,
-        RouterSummarizePromptInput, build_router_a_prompt, build_router_b_prompt,
-        build_router_header_prompt, build_router_summarize_prompt, prepare_router_prompt_store,
+        build_router_a_prompt, build_router_b_prompt, build_router_header_prompt,
+        build_router_summarize_prompt, prepare_router_prompt_store, RouterAPromptInput,
+        RouterBPromptInput, RouterHeaderPromptInput, RouterSummarizePromptInput,
     };
     use crate::config::DEFAULT_CLI_MODEL;
     use crate::orchestrator::workflow_context_paths_only;
-    use crate::prompts::{PromptStore, render_header};
+    use crate::prompts::{render_header, PromptStore};
 
     fn embedded_router_fixture() -> (
         tempfile::TempDir,

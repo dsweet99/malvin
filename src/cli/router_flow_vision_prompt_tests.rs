@@ -25,10 +25,10 @@ fn default_router_prompts_follow_vision_problem_solving_language() {
     for name in [
         "header.md",
         "router_a.md",
+        "router_a_2.md",
         "router_a_audit.md",
         "router_b.md",
         "router_b_satisfy.md",
-        "router_b_satisfy_brief.md",
         "router_b_creative_lead.md",
         "router_summarize.md",
     ] {
@@ -40,6 +40,7 @@ fn default_router_prompts_follow_vision_problem_solving_language() {
         }
     }
     let router_a = malvin::prompts::default_file("router_a.md").expect("router_a");
+    let router_a_2 = malvin::prompts::default_file("router_a_2.md").expect("router_a_2");
     let router_a_audit =
         malvin::prompts::default_file("router_a_audit.md").expect("router_a_audit");
     assert!(
@@ -49,14 +50,14 @@ fn default_router_prompts_follow_vision_problem_solving_language() {
         "router_a should keep shared audit structure without falsification language"
     );
     assert!(
+        router_a_2.contains(malvin::output::MALVIN_DONE),
+        "router_a_2 should tell the agent how to stop"
+    );
+    assert!(
         router_a_audit.contains("Find unsatisfied requirements"),
         "router_a_audit should ask for unsatisfied requirements"
     );
-    for name in [
-        "router_a_audit.md",
-        "router_b_satisfy.md",
-        "router_b_satisfy_brief.md",
-    ] {
+    for name in ["router_a_audit.md", "router_b_satisfy.md"] {
         let body = malvin::prompts::default_file(name)
             .unwrap_or_else(|| panic!("missing {name}"))
             .to_ascii_lowercase();
@@ -68,8 +69,6 @@ fn default_router_prompts_follow_vision_problem_solving_language() {
     let satisfy = malvin::prompts::default_file("router_b_satisfy.md").expect("router_b_satisfy");
     let creative_lead =
         malvin::prompts::default_file("router_b_creative_lead.md").expect("creative_lead");
-    let satisfy_brief =
-        malvin::prompts::default_file("router_b_satisfy_brief.md").expect("satisfy_brief");
     assert!(
         router_b.contains("{{ satisfy_line }}")
             && router_b.contains("{{ creative_lead }}")
@@ -81,7 +80,7 @@ fn default_router_prompts_follow_vision_problem_solving_language() {
         "router_b_satisfy must keep the satisfy instruction without MBC2"
     );
     assert!(
-        satisfy_brief.contains("Satisfy the requirements.") && creative_lead.contains("MBC2"),
-        "creative fragments must keep the satisfy instruction and MBC2"
+        creative_lead.contains("MBC2"),
+        "creative lead must keep the MBC2 instruction"
     );
 }
