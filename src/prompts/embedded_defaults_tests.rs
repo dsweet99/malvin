@@ -100,7 +100,7 @@ fn render_default_header(store: &super::PromptStore, context: &HashMap<String, S
 
 #[test]
 fn embedded_router_done_prompts_name_the_done_marker() {
-    for name in [super::ROUTER_A_MD, super::ROUTER_B_DONE_NOTE_MD] {
+    for name in [super::ROUTER_A_2_MD, super::ROUTER_B_DONE_NOTE_MD] {
         let s = super::default_file(name).expect("router prompt must be embedded");
         assert!(s.contains(crate::output::MALVIN_DONE), "{name}");
     }

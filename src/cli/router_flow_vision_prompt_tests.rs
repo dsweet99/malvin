@@ -45,9 +45,10 @@ fn default_router_prompts_follow_vision_problem_solving_language() {
         malvin::prompts::default_file("router_a_audit.md").expect("router_a_audit");
     assert!(
         router_a.contains("{{ audit_directive }}")
-            && router_a.contains(malvin::output::MALVIN_DONE)
+            && router_a.contains("trace.jsonl")
+            && !router_a.contains(malvin::output::MALVIN_DONE)
             && !router_a.to_ascii_lowercase().contains("falsif"),
-        "router_a should keep shared audit structure without falsification language"
+        "router_a keeps the audit placeholder and the trace.jsonl pointer"
     );
     assert!(
         router_a_2.contains(malvin::output::MALVIN_DONE),

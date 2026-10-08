@@ -65,7 +65,8 @@ fn build_router_a_prompt_includes_user_request_path() {
         gates_just_ran: false,
     })
     .expect("router_a");
-    assert!(body.contains(malvin::output::MALVIN_DONE));
+    assert!(body.contains("plan.md"));
+    assert!(!body.contains(malvin::output::MALVIN_DONE));
     assert!(!body.contains("{{"));
 }
 

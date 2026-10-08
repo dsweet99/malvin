@@ -51,7 +51,7 @@ fn build_router_a_prompt_renders_without_unresolved_braces() {
     })
     .expect("router_a");
     assert!(!body.contains("{{"));
-    assert!(body.contains(malvin::output::MALVIN_DONE));
+    assert!(!body.contains(malvin::output::MALVIN_DONE));
 }
 
 #[test]
