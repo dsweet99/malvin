@@ -98,8 +98,12 @@ fn value_parsers_accept_documented_forms_only() {
     }
     assert_eq!(parse_timeout("30"), Ok(1800));
     assert_eq!(parse_timeout("90s"), Ok(90));
+    assert_eq!(parse_timeout("90S"), Ok(90));
     assert_eq!(parse_timeout("45m"), Ok(2700));
+    assert_eq!(parse_timeout("45M"), Ok(2700));
     assert_eq!(parse_timeout("24h"), Ok(86400));
+    assert_eq!(parse_timeout("2H"), Ok(7200));
+    assert_eq!(parse_timeout("24H"), Ok(86400));
     assert!(parse_timeout("25h").unwrap_err().contains("24 hours"));
     for bad in ["0", "", "h", "1.5h", "2d", "-5"] {
         assert!(parse_timeout(bad).is_err(), "{bad}");

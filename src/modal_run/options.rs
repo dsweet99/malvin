@@ -119,11 +119,12 @@ pub fn parse_memory(raw: &str) -> Result<u64, String> {
 
 pub fn parse_timeout(raw: &str) -> Result<u64, String> {
     let text = raw.trim();
-    let (digits, unit_s) = match text.char_indices().last() {
-        Some((i, 's')) => (&text[..i], 1),
-        Some((i, 'm')) => (&text[..i], 60),
-        Some((i, 'h')) => (&text[..i], 3600),
-        _ => (text, 60),
+    let lower = text.to_ascii_lowercase();
+    let (digits, unit_s) = match lower.char_indices().last() {
+        Some((i, 's')) => (&lower[..i], 1),
+        Some((i, 'm')) => (&lower[..i], 60),
+        Some((i, 'h')) => (&lower[..i], 3600),
+        _ => (lower.as_str(), 60),
     };
     let secs = digits
         .parse::<u64>()
