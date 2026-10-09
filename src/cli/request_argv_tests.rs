@@ -61,7 +61,7 @@ fn creative_survives_intervening_global_flags_and_creative_then_do_without_reque
         let tagged = classify_top_level_requests(&os(&[
             "malvin",
             "--creative=0.7",
-            "--max-loops",
+            "--max-acp-retries",
             "3",
             "task",
         ]))
@@ -154,9 +154,14 @@ fn bare_advice_alone_leaves_no_requests_and_advice_equals_form_does_not_skip_nex
 
 #[test]
 fn bare_advice_before_flag_does_not_skip_flag_token_and_double_dash_ends_options() {
-    let tagged =
-        classify_top_level_requests(&os(&["malvin", "--advice", "--max-loops", "2", "Write"]))
-            .expect("ok");
+    let tagged = classify_top_level_requests(&os(&[
+        "malvin",
+        "--advice",
+        "--max-acp-retries",
+        "2",
+        "Write",
+    ]))
+    .expect("ok");
     assert_eq!(tagged.len(), 1);
     assert_eq!(tagged[0].text, "Write");
     let dash = classify_top_level_requests(&os(&["malvin", "--", "-n"])).expect("classify");

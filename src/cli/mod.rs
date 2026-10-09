@@ -25,7 +25,6 @@ pub(crate) mod shared_opts;
 pub(crate) mod tidy_flow;
 
 mod code_flow_a;
-pub(crate) mod loop_opts;
 pub(crate) mod one_shot_session;
 pub(crate) mod workflow_router_shared;
 

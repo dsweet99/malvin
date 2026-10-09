@@ -229,8 +229,6 @@ fn kiss_cov_entrypoint_dispatch_and_commands() {
 #[test]
 fn dispatch_gates_only_route_runs_tenacious_preflight() {
     use crate::cli::SharedOpts;
-    use crate::cli::args::Cli;
-    use clap::CommandFactory;
 
     malvin::test_support::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
@@ -240,14 +238,11 @@ fn dispatch_gates_only_route_runs_tenacious_preflight() {
         router.gates = true;
         shared.model =
             malvin::config::model_id::parse_model_id("pi:some-unknown/foo").expect("model");
-        let matches = Cli::command().get_matches_from(["malvin", "-g"]);
         let mut result = Ok(());
         malvin::agent_process::with_env("MALVIN_PI", Some("/missing/pi-entry.js"), || {
             result = super::dispatch_gates_only_route(super::GatesOnlyDispatch {
-                max_loops: 1,
-                shared: &mut shared,
-                router: &mut router,
-                matches: &matches,
+                shared: &shared,
+                router: &router,
             });
         });
         assert!(

@@ -49,16 +49,16 @@ fn cli_accepts_all_shared_flags_before_subcommand() {
     assert_eq!(cli.first_request().map(String::as_str), Some("z"));
 }
 
-fn cli_rejects_max_loops_with_pure_do() {
+fn cli_rejects_removed_max_loops_flag() {
     let msg = parse_err(&["malvin", "--do", "--max-loops", "5", "task"]);
     assert!(
-        msg.contains("cannot be used with") || msg.contains("--max-loops"),
-        "expected --max-loops conflict rejected; got {msg}"
+        msg.contains("unexpected argument") && msg.contains("--max-loops"),
+        "expected removed --max-loops rejected; got {msg}"
     );
-    let msg2 = parse_err(&["malvin", "--max-loops", "5", "--do", "task"]);
+    let msg2 = parse_err(&["malvin", "--max-loops", "1", "task"]);
     assert!(
-        msg2.contains("cannot be used with") || msg2.contains("--max-loops"),
-        "expected --max-loops conflict rejected; got {msg2}"
+        msg2.contains("unexpected argument") && msg2.contains("--max-loops"),
+        "expected removed --max-loops rejected; got {msg2}"
     );
 }
 
@@ -134,7 +134,7 @@ fn kiss_bundled_cli_do_flow_cli_parse_tests() {
     cli_accepts_do_and_passes_request();
     cli_rejects_do_thoughts_flag();
     cli_accepts_all_shared_flags_before_subcommand();
-    cli_rejects_max_loops_with_pure_do();
+    cli_rejects_removed_max_loops_flag();
     cli_rejects_gates_with_pure_do();
     cli_rejects_creative_with_pure_do();
     cli_rejects_quiet_with_pure_do();

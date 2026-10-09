@@ -66,34 +66,24 @@ fn dispatch_after_session(cli: Cli, matches: clap::ArgMatches) -> Exit {
         )),
         MalvinWorkflow::DefaultRoute {
             jobs,
-            mut shared,
-            mut router,
+            shared,
+            router,
         } => finish_entrypoint(dispatch_default_route(DefaultRouteDispatch {
             jobs,
-            max_loops: router.max_loops,
-            shared: &mut shared,
-            router: &mut router,
-            matches: &matches,
+            shared: &shared,
+            router: &router,
         })),
         MalvinWorkflow::Mixed {
             jobs,
-            mut shared,
-            mut router,
-        } => finish_entrypoint(dispatch_mixed_requests(
-            jobs,
-            &mut shared,
-            &mut router,
-            &matches,
-        )),
-        MalvinWorkflow::GatesOnly {
-            mut shared,
-            mut router,
-        } => finish_entrypoint(dispatch_gates_only_route(GatesOnlyDispatch {
-            max_loops: router.max_loops,
-            shared: &mut shared,
-            router: &mut router,
-            matches: &matches,
-        })),
+            shared,
+            router,
+        } => finish_entrypoint(dispatch_mixed_requests(jobs, &shared, &router)),
+        MalvinWorkflow::GatesOnly { shared, router } => {
+            finish_entrypoint(dispatch_gates_only_route(GatesOnlyDispatch {
+                shared: &shared,
+                router: &router,
+            }))
+        }
     }
 }
 

@@ -49,7 +49,6 @@ const ROUTER_ONLY_WITH_PURE_DO: &[(&str, &str)] = &[
     ("quiet", "--quiet / -q"),
     ("gates", "--gates / -g"),
     ("creative", "--creative"),
-    ("max_loops", "--max-loops"),
     ("watch", "--watch"),
 ];
 

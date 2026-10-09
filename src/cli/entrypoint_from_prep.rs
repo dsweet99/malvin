@@ -63,7 +63,6 @@ fn reject_admin_with_workflow_only_flags(cli: &Cli, matches: &clap::ArgMatches) 
         ("quiet", "--quiet / -q"),
         ("gates", "--gates / -g"),
         ("creative", "--creative"),
-        ("max_loops", "--max-loops"),
         ("verbose", "--verbose / -v"),
         ("max_acp_retries", "--max-acp-retries"),
         ("ml", "--ml"),

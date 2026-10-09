@@ -83,10 +83,6 @@ fn apply_workspace_config_defaults_overrides_unset_flags_for_gates_only() {
         assert_eq!(cli.shared.model.canonical(), "cursor:cfg-model");
         assert_eq!(cli.shared.max_acp_retries, 8);
         assert!(cli.command.is_none());
-        assert_eq!(
-            cli.router.max_loops,
-            malvin::config::malvin_config_file::DEFAULT_MAX_LOOPS
-        );
     });
 }
 
@@ -100,14 +96,11 @@ fn apply_workspace_config_defaults_respects_explicit_cli_flags_for_gates_only() 
             "--max-acp-retries",
             "2",
             "-g",
-            "--max-loops",
-            "3",
         ]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
         assert_eq!(cli.shared.model.canonical(), "cursor:cli-model");
         assert_eq!(cli.shared.max_acp_retries, 2);
-        assert_eq!(cli.router.max_loops, 3);
     });
 }
 
@@ -146,7 +139,6 @@ fn parse_cli_with_config_defaults_gates_only() {
         assert!(cli.command.is_none());
         assert!(!cli.has_request());
         assert!(cli.router.gates);
-        assert!(cli.router.max_loops >= 1);
         std::env::set_current_dir(cwd).expect("restore cwd");
     });
 }

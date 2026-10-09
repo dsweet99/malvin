@@ -58,16 +58,14 @@ fn default_route_carries_quiet_on_router_opts() {
 }
 
 #[test]
-fn default_route_carries_loop_budgets_and_router_opts() {
-    let cli = Cli::try_parse_from(["malvin", "--max-loops", "4", "--creative=0.5", "build it"])
-        .expect("parse");
+fn default_route_carries_router_opts() {
+    let cli = Cli::try_parse_from(["malvin", "--creative=0.5", "build it"]).expect("parse");
     let workflow = malvin_workflow_from_cli(cli).expect("default route");
     match workflow {
         MalvinWorkflow::DefaultRoute { jobs, router, .. } => {
             assert_eq!(jobs.len(), 1);
             assert_eq!(jobs[0].text, "build it");
             assert_eq!(jobs[0].creative, Some(0.5));
-            assert_eq!(router.max_loops, 4);
             assert_eq!(router.creative_probability(), Some(0.5));
             assert!(!router.gates);
         }
@@ -121,13 +119,12 @@ fn each_creative_applies_only_to_following_request_in_workflow() {
 }
 
 #[test]
-fn gates_only_carries_loop_budgets_without_request() {
-    let cli = Cli::try_parse_from(["malvin", "-g", "--max-loops", "2"]).expect("parse");
+fn gates_only_carries_router_opts_without_request() {
+    let cli = Cli::try_parse_from(["malvin", "-g"]).expect("parse");
     let workflow = malvin_workflow_from_cli(cli).expect("gates only");
     match workflow {
         MalvinWorkflow::GatesOnly { router, .. } => {
             assert!(router.gates);
-            assert_eq!(router.max_loops, 2);
         }
         other => panic!("expected GatesOnly, got {other:?}"),
     }

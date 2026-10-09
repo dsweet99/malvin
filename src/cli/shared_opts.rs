@@ -136,9 +136,6 @@ pub struct RouterOpts {
     /// Re-copy the request `.md` into the run log dir before each outer loop
     #[arg(long, default_value_t = false, help = WATCH_HELPTEXT)]
     pub watch: bool,
-    /// Outer agent-session budget for bare malvin REQUEST and malvin -g
-    #[arg(long, default_value_t = malvin::config::malvin_config_file::DEFAULT_MAX_LOOPS)]
-    pub max_loops: usize,
 }
 
 impl SharedOpts {
@@ -214,7 +211,6 @@ impl RouterOpts {
             gates: false,
             creative: Vec::new(),
             watch: false,
-            max_loops: malvin::config::malvin_config_file::DEFAULT_MAX_LOOPS,
         }
     }
 }

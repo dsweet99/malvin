@@ -5,5 +5,5 @@ See also trace.jsonl, which contains your work up to this point (which may or ma
 
 {{ code_extra }}
 
-{{ audit_directive }}
+Check `malvin --advice` for a relevant PWS list.
 

@@ -33,7 +33,7 @@ pub(crate) use malvin_config_parse::{
 pub use malvin_config_top::{DEFAULT_CONTEXT_SIZE, TokenCostRates};
 pub(crate) use malvin_config_top::{parse_context_size, parse_model_token_cost_rates, parse_theme};
 
-pub const DEFAULT_MAX_LOOPS: usize = 9999;
+pub const DEFAULT_MAX_LOOPS: usize = 1;
 
 const DEFAULT_MALVIN_CONFIG_TEMPLATE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
