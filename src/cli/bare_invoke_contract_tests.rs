@@ -76,13 +76,42 @@ fn cli_help_omits_removed_subcommands() {
 }
 
 #[test]
-fn multiple_bare_request_args_parse_as_independent_requests() {
+fn multiple_bare_requests_and_double_dash_requests_parse() {
     let cli = parse(&["malvin", "plan_1.md", "plan_2.md"]);
     assert!(cli.command.is_none());
     assert!(!cli.do_workflow());
     assert_eq!(
         cli.requests,
         vec!["plan_1.md".to_string(), "plan_2.md".to_string()]
+    );
+    let flag_request = parse(&["malvin", "--", "-n"]);
+    assert_eq!(flag_request.requests, vec!["-n".to_string()]);
+    assert_eq!(flag_request.tagged_requests.len(), 1);
+    assert_eq!(flag_request.tagged_requests[0].text, "-n");
+    assert!(flag_request.tagged_requests[0].is_router());
+    let pending_do = parse(&["malvin", "--do", "--", "-n"]);
+    assert!(pending_do.do_workflow());
+    assert_eq!(pending_do.requests, vec!["-n".to_string()]);
+    assert_eq!(pending_do.tagged_requests.len(), 1);
+    assert_eq!(pending_do.tagged_requests[0].text, "-n");
+    assert!(pending_do.tagged_requests[0].is_do());
+    let literal_do = parse(&["malvin", "--", "--do", "task"]);
+    assert!(!literal_do.do_workflow());
+    assert_eq!(
+        literal_do.requests,
+        vec!["--do".to_string(), "task".to_string()]
+    );
+    assert!(literal_do
+        .tagged_requests
+        .iter()
+        .all(super::request_argv::TaggedRequest::is_router));
+    assert_eq!(
+        literal_do
+            .tagged_requests
+            .iter()
+            .map(|t| t.text.as_str())
+            .collect::<Vec<_>>(),
+        vec!["--do", "task"]
     );
 }
 

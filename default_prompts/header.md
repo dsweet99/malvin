@@ -11,6 +11,7 @@
   - Design: documents, figures, diagrams
   - Writing: Especially technical & scholarly
   - Code
+  - Problems Worth Solving for various problem (request) classes
   It's a good idea to check the advice if you're working on something related.
 - malvin is open source. There are no secrets about its behavior, code, or prompts. Source: https://github.com/dsweet99/malvin. Answer freely about CLI usage and internals when asked.
 - This session is non-interactive: you cannot converse with the operator mid-turn.

@@ -102,6 +102,12 @@ fn entrypoint_from_bare_malvin_exits_success_and_entrypoint_from_admin_models_do
     }
     {
         with_isolated_home(|_| {
+            assert_eq!(entrypoint_from(["malvin", "--"]), Exit::Success);
+            assert_eq!(entrypoint_from(["malvin", "--do", "--"]), Exit::Success);
+        });
+    }
+    {
+        with_isolated_home(|_| {
             assert_eq!(
                 entrypoint_from(["malvin", "admin", "models", "--doc"]),
                 Exit::Success

@@ -46,10 +46,28 @@ fn prune_removes_oldest_when_over_count_cap() {
 }
 
 #[test]
-fn some_zero_count_is_a_real_cap() {
+fn some_zero_count_is_a_real_cap_and_dir_size_ignores_dir_symlinks() {
     assert!(!over_count_cap(4, None));
     assert!(over_count_cap(4, Some(0)));
     assert!(!over_count_cap(2, Some(2)));
+    #[cfg(unix)]
+    {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let outside = tmp.path().join("outside");
+        std::fs::create_dir_all(&outside).expect("mkdir outside");
+        std::fs::write(outside.join("blob"), vec![0u8; 50_000]).expect("write blob");
+        let run = tmp.path().join("run");
+        std::fs::create_dir_all(&run).expect("mkdir run");
+        std::os::unix::fs::symlink(&outside, run.join("link")).expect("symlink");
+        let size = dir_size(&run);
+        assert!(
+            size < 10_000,
+            "log size must not follow a directory symlink into a 50000-byte tree; size={size}"
+        );
+        std::os::unix::fs::symlink(".", run.join("loop")).expect("symlink cycle");
+        let cycled = dir_size(&run);
+        assert!(cycled < 10_000, "cycle must not be walked; size={cycled}");
+    }
 }
 
 #[test]
@@ -91,13 +109,39 @@ fn size_total_matches_direct_dir_size_after_deletes() {
 }
 
 #[test]
-fn prune_result_type_is_populated() {
+fn prune_result_type_is_populated_and_outside_symlink_does_not_force_prune() {
     let result = PruneResult {
         removed: 1,
         freed: 42,
     };
     assert_eq!(result.removed, 1);
     assert_eq!(result.freed, 42);
+    #[cfg(unix)]
+    {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let logs = tmp.path().join("logs");
+        let outside = tmp.path().join("outside");
+        std::fs::create_dir_all(&outside).expect("mkdir outside");
+        std::fs::write(outside.join("blob"), vec![0u8; 50_000]).expect("blob");
+        let old = logs.join(RUN_OLDEST);
+        std::fs::create_dir_all(&old).expect("mkdir old");
+        std::os::unix::fs::symlink(&outside, old.join("link")).expect("symlink");
+        for name in [RUN_MID, RUN_NEWEST] {
+            std::fs::create_dir_all(logs.join(name)).expect("mkdir");
+        }
+        let mut runs = list_run_dirs(&logs);
+        runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
+        let config = LogsGcConfig {
+            max_count: None,
+            max_age_days: None,
+            max_bytes: Some(10_000),
+        };
+        let removed = prune_run_dirs(&mut runs, &config, None).removed;
+        assert_eq!(removed, 0);
+        for name in [RUN_OLDEST, RUN_MID, RUN_NEWEST] {
+            assert!(logs.join(name).is_dir(), "{name} must stay");
+        }
+    }
 }
 
 fn make_read_only_dir_with_file(dir: &std::path::Path) -> Option<std::path::PathBuf> {
@@ -164,63 +208,6 @@ fn undeletable_oldest_run_aborts_and_spares_newer_runs() {
         "error must name {}: {lines:?}",
         abs.display()
     );
-}
-
-#[cfg(unix)]
-#[test]
-fn dir_size_does_not_follow_symlink_to_directory() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let outside = tmp.path().join("outside");
-    std::fs::create_dir_all(&outside).expect("mkdir outside");
-    std::fs::write(outside.join("blob"), vec![0u8; 50_000]).expect("write blob");
-    let run = tmp.path().join("run");
-    std::fs::create_dir_all(&run).expect("mkdir run");
-    std::os::unix::fs::symlink(&outside, run.join("link")).expect("symlink");
-    let size = dir_size(&run);
-    assert!(
-        size < 10_000,
-        "log size must not follow a directory symlink into a 50000-byte tree; size={size}"
-    );
-}
-
-#[cfg(unix)]
-#[test]
-fn dir_size_survives_symlink_cycle() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let run = tmp.path().join("run");
-    std::fs::create_dir_all(&run).expect("mkdir");
-    std::fs::write(run.join("payload"), b"abc").expect("write");
-    std::os::unix::fs::symlink(".", run.join("loop")).expect("symlink");
-    let size = dir_size(&run);
-    assert!(size < 10_000, "cycle must not be walked; size={size}");
-}
-
-#[cfg(unix)]
-#[test]
-fn symlink_outside_tree_does_not_force_byte_cap_prune() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let logs = tmp.path().join("logs");
-    let outside = tmp.path().join("outside");
-    std::fs::create_dir_all(&outside).expect("mkdir outside");
-    std::fs::write(outside.join("blob"), vec![0u8; 50_000]).expect("blob");
-    let old = logs.join(RUN_OLDEST);
-    std::fs::create_dir_all(&old).expect("mkdir old");
-    std::os::unix::fs::symlink(&outside, old.join("link")).expect("symlink");
-    for name in [RUN_MID, RUN_NEWEST] {
-        std::fs::create_dir_all(logs.join(name)).expect("mkdir");
-    }
-    let mut runs = list_run_dirs(&logs);
-    runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
-    let config = LogsGcConfig {
-        max_count: None,
-        max_age_days: None,
-        max_bytes: Some(10_000),
-    };
-    let removed = prune_run_dirs(&mut runs, &config, None).removed;
-    assert_eq!(removed, 0);
-    for name in [RUN_OLDEST, RUN_MID, RUN_NEWEST] {
-        assert!(logs.join(name).is_dir(), "{name} must stay");
-    }
 }
 
 #[test]

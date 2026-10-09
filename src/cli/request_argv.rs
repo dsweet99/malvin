@@ -171,9 +171,20 @@ fn classify_arg(
 pub fn classify_top_level_requests(args: &[OsString]) -> Result<Vec<TaggedRequest>, String> {
     let mut out = Vec::new();
     let mut pending = PendingPrefixes::default();
+    let mut positional_only = false;
     let mut i = 1usize;
     while i < args.len() {
         let arg = os_to_str(&args[i])?;
+        if !positional_only && arg == "--" {
+            positional_only = true;
+            i += 1;
+            continue;
+        }
+        if positional_only {
+            push_request(&mut out, arg, &mut pending);
+            i += 1;
+            continue;
+        }
         match classify_arg(arg, i, args, &mut pending)? {
             ArgStep::Break => break,
             ArgStep::Advance(next) => i = next,
