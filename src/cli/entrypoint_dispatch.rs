@@ -1,5 +1,5 @@
 use super::entrypoint::run_async_cli;
-use super::{RouterOpts, SharedOpts, iml_loop, loop_opts, run_do, run_router};
+use super::{RouterOpts, SharedOpts, loop_opts, ml_loop, run_do, run_router};
 use crate::cli::do_flow::DoArgs;
 use crate::cli::request_argv::TaggedRequest;
 
@@ -7,10 +7,10 @@ pub fn dispatch_do_workflow(requests: Vec<String>, shared: &SharedOpts) -> Resul
     if !shared.verbose {
         malvin::run_timing::set_suppress_stdout_footnotes(true);
     }
-    let iml = shared.iml;
+    let ml = shared.ml;
     let shared = shared.clone();
     run_async_cli(move || async move {
-        iml_loop::run_with_iml(iml, || {
+        ml_loop::run_meta_loop(ml, || {
             let shared = shared.clone();
             let requests = requests.clone();
             async move {
@@ -82,7 +82,7 @@ pub fn dispatch_mixed_requests(
 ) -> Result<(), String> {
     let mut max_loops = router.max_loops;
     loop_opts::apply_default_route_tenacious(&mut max_loops, &mut shared.max_acp_retries, matches);
-    let iml = shared.iml;
+    let ml = shared.ml;
     let shared = shared.clone();
     let router = router.clone();
     run_async_cli(move || async move {
@@ -92,7 +92,7 @@ pub fn dispatch_mixed_requests(
             &router,
         )
         .await?;
-        iml_loop::run_with_iml(iml, || {
+        ml_loop::run_meta_loop(ml, || {
             let jobs = jobs.clone();
             let shared = shared.clone();
             let router = router.clone();
@@ -128,7 +128,7 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
         matches,
     } = input;
     loop_opts::apply_default_route_tenacious(&mut max_loops, &mut shared.max_acp_retries, matches);
-    let iml = shared.iml;
+    let ml = shared.ml;
     let shared = shared.clone();
     let router = router.clone();
     run_async_cli(move || async move {
@@ -138,7 +138,7 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
             &router,
         )
         .await?;
-        iml_loop::run_with_iml(iml, || {
+        ml_loop::run_meta_loop(ml, || {
             let jobs = jobs.clone();
             let shared = shared.clone();
             let router = router.clone();

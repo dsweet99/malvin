@@ -37,7 +37,7 @@ fn smoke_cov_cli_cli_units_1b() {
         doc: false,
         advice: None,
         credits: false,
-        iml: false,
+        ml: crate::cli::shared_opts::MetaLoopCount::Times(1),
         remote: None,
     };
     let _ = shared.model;

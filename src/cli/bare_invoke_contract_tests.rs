@@ -101,10 +101,12 @@ fn multiple_bare_requests_and_double_dash_requests_parse() {
         literal_do.requests,
         vec!["--do".to_string(), "task".to_string()]
     );
-    assert!(literal_do
-        .tagged_requests
-        .iter()
-        .all(super::request_argv::TaggedRequest::is_router));
+    assert!(
+        literal_do
+            .tagged_requests
+            .iter()
+            .all(super::request_argv::TaggedRequest::is_router)
+    );
     assert_eq!(
         literal_do
             .tagged_requests

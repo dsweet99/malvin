@@ -13,10 +13,13 @@ pub(crate) fn modal_invocation(
     raw: &[OsString],
     options: ModalOptions,
 ) -> Result<ModalInvocation, String> {
-    let set_flags: Vec<&str> = [("--watch", cli.router.watch), ("--iml", cli.shared.iml)]
-        .into_iter()
-        .filter_map(|(flag, on)| on.then_some(flag))
-        .collect();
+    let mut set_flags = Vec::new();
+    if cli.router.watch {
+        set_flags.push("--watch");
+    }
+    if cli.shared.ml.is_forever() {
+        set_flags.push("--ml=inf");
+    }
     reject_unsupported(&set_flags)?;
     if cli.command.is_some() {
         return Err("`--remote` cannot be combined with a subcommand".to_string());

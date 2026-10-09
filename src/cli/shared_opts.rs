@@ -11,7 +11,48 @@ const CREATIVE_HELPTEXT: &str = "Be (more) creative for the REQUEST that immedia
 const WATCH_HELPTEXT: &str =
     "Re-copy the request `.md` into the run log dir before each outer loop (overwrite)";
 
-const IML_HELPTEXT: &str = "the Infinite Meta-Loop";
+const ML_HELPTEXT: &str = "Run the meta-loop N times (positive integer, or inf to repeat forever)";
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum MetaLoopCount {
+    Times(u64),
+    Forever,
+}
+
+impl Default for MetaLoopCount {
+    fn default() -> Self {
+        Self::Times(1)
+    }
+}
+
+impl std::fmt::Display for MetaLoopCount {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Times(n) => write!(f, "{n}"),
+            Self::Forever => write!(f, "inf"),
+        }
+    }
+}
+
+impl MetaLoopCount {
+    #[must_use]
+    pub(crate) const fn is_forever(self) -> bool {
+        matches!(self, Self::Forever)
+    }
+}
+
+pub(crate) fn parse_meta_loop_count(s: &str) -> Result<MetaLoopCount, String> {
+    if s == "inf" {
+        return Ok(MetaLoopCount::Forever);
+    }
+    let n: u64 = s
+        .parse()
+        .map_err(|_| format!("--ml must be a positive integer or inf, got `{s}`"))?;
+    if n == 0 {
+        return Err(format!("--ml must be a positive integer or inf, got `{s}`"));
+    }
+    Ok(MetaLoopCount::Times(n))
+}
 
 pub(crate) fn parse_creative_probability(s: &str) -> Result<f64, String> {
     let p: f64 = s
@@ -51,9 +92,15 @@ pub struct SharedOpts {
     /// Print credits for ideas malvin builds on and exit (no run logs)
     #[arg(long, default_value_t = false)]
     pub credits: bool,
-    /// Cycle through all REQUEST args forever (as if re-invoking the same command line)
-    #[arg(long = "iml", default_value_t = false, help = IML_HELPTEXT)]
-    pub iml: bool,
+    /// Run every REQUEST this many times (as if re-invoking the same command line)
+    #[arg(
+        long = "ml",
+        value_name = "N",
+        default_value_t = MetaLoopCount::Times(1),
+        value_parser = parse_meta_loop_count,
+        help = ML_HELPTEXT
+    )]
+    pub ml: MetaLoopCount,
     /// Run on a remote machine, as PROVIDER:SERVICE[KEY=VALUE,...] (see `malvin admin remotes`; `[aliases.remotes]` names work too)
     #[arg(
         long,
@@ -152,7 +199,7 @@ impl SharedOpts {
             doc: false,
             advice: None,
             credits: false,
-            iml: false,
+            ml: MetaLoopCount::Times(1),
             remote: None,
         }
     }
@@ -215,23 +262,32 @@ mod overlay_tests {
     }
 
     #[test]
-    fn iml_flag_defaults_off_and_parses() {
+    fn ml_flag_defaults_to_one_and_parses_count_or_inf() {
         use clap::Parser;
         let off = crate::cli::Cli::try_parse_from(["malvin", "--doc"]).expect("parse");
-        assert!(!off.shared.iml);
+        assert_eq!(off.shared.ml, super::MetaLoopCount::Times(1));
 
-        let on = crate::cli::Cli::try_parse_from(["malvin", "--iml", "--doc"]).expect("parse");
-        assert!(on.shared.iml);
+        let thrice = crate::cli::Cli::try_parse_from(["malvin", "--ml=3", "--doc"]).expect("parse");
+        assert_eq!(thrice.shared.ml, super::MetaLoopCount::Times(3));
+
+        let forever =
+            crate::cli::Cli::try_parse_from(["malvin", "--ml=inf", "--doc"]).expect("parse");
+        assert!(forever.shared.ml.is_forever());
+
+        assert!(crate::cli::Cli::try_parse_from(["malvin", "--ml=0", "--doc"]).is_err());
+        assert!(crate::cli::Cli::try_parse_from(["malvin", "--ml=nope", "--doc"]).is_err());
+        assert!(crate::cli::Cli::try_parse_from(["malvin", "--iml", "--doc"]).is_err());
     }
 
     #[test]
-    fn help_lists_iml_as_infinite_meta_loop() {
+    fn help_lists_ml_count() {
         use clap::CommandFactory;
         let help = crate::cli::Cli::command().render_help().to_string();
-        assert!(help.contains("--iml"), "help={help}");
+        assert!(help.contains("--ml"), "help={help}");
+        assert!(!help.contains("--iml"), "help={help}");
         assert!(
-            help.contains("the Infinite Meta-Loop"),
-            "help must label --iml as the Infinite Meta-Loop; got {help}"
+            help.contains("inf"),
+            "help must say inf repeats forever; got {help}"
         );
     }
 }

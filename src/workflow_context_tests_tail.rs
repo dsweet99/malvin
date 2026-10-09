@@ -11,10 +11,14 @@ fn format_agents_md_insert_cases() {
     assert_eq!(format_agents_md_insert(tmp.path()), "");
     std::fs::write(tmp.path().join(AGENTS_MD_FILENAME), "   \n").expect("blank");
     assert_eq!(format_agents_md_insert(tmp.path()), "");
-    std::fs::write(tmp.path().join(AGENTS_MD_FILENAME), "Use ripwire.\n").expect("body");
+    std::fs::write(
+        tmp.path().join(AGENTS_MD_FILENAME),
+        "Use the labeled body.\n",
+    )
+    .expect("body");
     let got = format_agents_md_insert(tmp.path());
     assert!(
-        got.contains("## Workspace `AGENTS.md`") && got.contains("Use ripwire."),
+        got.contains("## Workspace `AGENTS.md`") && got.contains("Use the labeled body."),
         "expected labeled AGENTS.md body, got {got:?}"
     );
 }

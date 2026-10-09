@@ -66,7 +66,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
         doc: false,
         advice: None,
         credits: false,
-        iml: false,
+        ml: crate::cli::shared_opts::MetaLoopCount::Times(1),
         remote: None,
     };
     apply_shared_config_defaults(&matches, &mut shared, &agent);

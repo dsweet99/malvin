@@ -60,9 +60,9 @@ fn remote_args_drop_program_and_modal_flag() {
             .contains("`--watch`")
     );
     assert!(
-        reject_unsupported(&["-g", "--iml"])
+        reject_unsupported(&["-g", "--ml=inf"])
             .unwrap_err()
-            .contains("`--iml`")
+            .contains("`--ml=inf`")
     );
     assert!(reject_unsupported(&["-g"]).is_ok());
 }

@@ -47,8 +47,8 @@ const UNSUPPORTED: &[(&str, &str)] = &[
         "the request is uploaded once, so later local edits would not reach the Sandbox",
     ),
     (
-        "--iml",
-        "results come back only when the remote run ends, and `--iml` never ends",
+        "--ml=inf",
+        "results come back only when the remote run ends, and `--ml=inf` never ends",
     ),
 ];
 

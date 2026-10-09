@@ -24,13 +24,13 @@ pub(crate) fn dispatch_gates_only_route(input: GatesOnlyDispatch<'_>) -> Result<
         &mut shared.max_acp_retries,
         matches,
     );
-    let iml = shared.iml;
+    let ml = shared.ml;
     let shared = shared.clone();
     let router = router.clone();
     run_async_cli(move || async move {
         init_flow::maybe_run_init_bootstrap(InitWorkflowOpts { max_loops }, &shared, &router)
             .await?;
-        crate::cli::iml_loop::run_with_iml(iml, || {
+        crate::cli::ml_loop::run_meta_loop(ml, || {
             let shared = shared.clone();
             let router = router.clone();
             async move {

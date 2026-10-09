@@ -123,11 +123,11 @@ mod advice_path_embed_tests {
             !header.contains("Workspace `AGENTS.md`"),
             "missing AGENTS.md must leave agents_insert empty"
         );
-        std::fs::write(tmp.path().join("AGENTS.md"), "Prefer ripwire for maps.\n").expect("agents");
+        std::fs::write(tmp.path().join("AGENTS.md"), "Record the map scale.\n").expect("agents");
         let ctx_with = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL);
         let header_with = render_header(&store, ctx_with.as_map()).expect("header with agents");
         assert!(
-            header_with.contains("Prefer ripwire for maps."),
+            header_with.contains("Record the map scale."),
             "header must embed workspace AGENTS.md via agents_insert"
         );
     }

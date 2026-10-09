@@ -35,7 +35,7 @@ Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prom
 
 `--doc` is a true global: it may appear before or after any subcommand, including `admin`.
 
-Agent-session flags (`--model`, `--gates`, `-q`, `-v`, `--creative[=PROB]`, `--max-acp-retries`, `--iml`, …) apply to bare `malvin REQUEST` and `--do` (`--max-loops` and `--watch` apply only to bare `malvin REQUEST` and `malvin -g`). The `admin` help listing omits them; pass `--model` before `admin models` only when you want to set that command’s `Current:` footer.
+Agent-session flags (`--model`, `--gates`, `-q`, `-v`, `--creative[=PROB]`, `--max-acp-retries`, `--ml=N`, …) apply to bare `malvin REQUEST` and `--do` (`--max-loops` and `--watch` apply only to bare `malvin REQUEST` and `malvin -g`). The `admin` help listing omits them; pass `--model` before `admin models` only when you want to set that command’s `Current:` footer.
 
 ### `--remote=PROVIDER:SERVICE[KEY=VALUE,...]`
 
@@ -80,9 +80,9 @@ Like `--do`, each `--creative` applies only to the `REQUEST` that immediately fo
 
 On the default router (bare `malvin REQUEST` and `malvin -g`), before each outer loop iteration, re-copy the operator's request `.md` file onto the run's `plan_*.md` artifact (overwrite). No effect when `REQUEST` is literal text (not an existing `.md` path). Has no effect on `--do` requests; when the invocation is pure `--do` (no router REQUEST), `--watch` is rejected.
 
-### `--iml`
+### `--ml=N`
 
-the Infinite Meta-Loop. After every REQUEST in the invocation has run once (preserving `--do` vs router tagging and order), start again from the first REQUEST and repeat forever — as if the same command line were re-invoked. A failing REQUEST stops the process (the loop does not continue past an error). Init bootstrap, when needed, still runs once at the start of the process. Applies to bare `malvin REQUEST…`, mixed/`--do` request lists, and `malvin -g`.
+Run the meta-loop N times. After every REQUEST in the invocation has run once (preserving `--do` vs router tagging and order), start again from the first REQUEST until the sequence has run N times — as if the same command line were re-invoked. `N` is a positive integer. `N=inf` repeats forever. The default is `1` (a single pass). A failing REQUEST stops the process (the loop does not continue past an error). Init bootstrap, when needed, still runs once at the start of the process. Applies to bare `malvin REQUEST…`, mixed/`--do` request lists, and `malvin -g`.
 
 ### Session names
 
@@ -157,7 +157,7 @@ Every agent-backed command creates `~/.malvinconf/logs/<hash>/<timestamp>_<token
 
 ### Session footnotes (`TIMING` / `COST`)
 
-When an agent workflow is about to exit, malvin prints one footnote pair. That print is outside `--iml`: the infinite meta-loop returns only when a request fails, and the lines are also printed on interrupt. They are not printed at the end of each request. `wall` is the elapsed time of this malvin process. Token counts, step counts, tool time, LLM wait, and dollars are the sum across init, every request, and every meta-loop cycle. Carried totals inside one session are not counted twice. The lines go to process stdout under `-q`, and they are appended to the active `stdout.log` when a run directory is open. Plain `malvin --do` omits them on stdout and in `stdout.log` unless `--verbose` is set; with `--verbose`, `--do` prints the same pair:
+When an agent workflow is about to exit, malvin prints one footnote pair. That print is outside `--ml`: a finite count returns after N passes, `--ml=inf` returns only when a request fails, and the lines are also printed on interrupt. They are not printed at the end of each request. `wall` is the elapsed time of this malvin process. Token counts, step counts, tool time, LLM wait, and dollars are the sum across init, every request, and every meta-loop cycle. Carried totals inside one session are not counted twice. The lines go to process stdout under `-q`, and they are appended to the active `stdout.log` when a run directory is open. Plain `malvin --do` omits them on stdout and in `stdout.log` unless `--verbose` is set; with `--verbose`, `--do` prints the same pair:
 
 ```text
 TIMING: wall = … llm_wait = … …
@@ -314,7 +314,7 @@ See the default-route section of `malvin --doc`.
   The brackets are shell glob characters, so quote the flag (`'--remote=modal:sandbox[gpu=T4]'`) if your shell complains or a file name could match it. malvin prints the resources it chose when the Sandbox starts, for example `Sandbox sb-… started (T4, 2 CPU, 8 GiB, timeout 10 min)`.
 - **Remote output**: lines the remote malvin prints with a who-tag (such as `o|`) appear unchanged. Every other remote line, such as npm's `added 11 packages in 3s` or the remote agent's reply, is shown with the who-tag `r|`. With `--do` (and no `--verbose`), malvin prints only the DM body, as in a local `--do`: the remote agent's reply is printed untagged (rendered as markdown when stdout is a terminal), and the `modal:` status lines and other remote output are not shown; only error (`e|`) lines still reach stderr. Add `--verbose` to stream the remote run's log and the status lines.
 - **Lifetime**: Ctrl-C terminates the Sandbox. When the Sandbox reaches its `timeout`, Modal stops it mid-run, so no changes or logs come back, and malvin's error says the timeout was likely reached. At the start of each `--remote=modal:sandbox` run, malvin terminates Sandboxes left by this host's exited `--remote=modal:sandbox` runs.
-- **Rejected**: `--watch`, `--iml`, and the `admin` subcommand exit 1 with an error before anything is uploaded. With `--doc`, only the `admin` combination is still rejected; the others print documentation.
+- **Rejected**: `--watch`, `--ml=inf`, and the `admin` subcommand exit 1 with an error before anything is uploaded. A finite `--ml=N` is allowed. With `--doc`, only the `admin` combination is still rejected; the others print documentation.
 - **Not supported, but not rejected**: local LLMs (`pi:local/…`, `pi:ollama/…`). The Sandbox runs no local model server, so a local-model run is expected to fail inside the Sandbox rather than at startup.
 
 Optional settings in `~/.malvinconf/config.toml`:

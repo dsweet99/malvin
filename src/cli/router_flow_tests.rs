@@ -34,7 +34,7 @@ fn build_router_header_prompt_renders_without_unresolved_braces() {
 fn build_router_header_prompt_embeds_workspace_agents_md() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
-    std::fs::write(tmp.path().join("AGENTS.md"), "Prefer ripwire for maps.\n").expect("agents");
+    std::fs::write(tmp.path().join("AGENTS.md"), "Record the map scale.\n").expect("agents");
     let store = prepare_router_prompt_store().expect("store");
     let body = build_router_header_prompt(RouterHeaderPromptInput {
         store: &store,
@@ -43,7 +43,7 @@ fn build_router_header_prompt_embeds_workspace_agents_md() {
     })
     .expect("header");
     assert!(
-        body.contains("## Workspace `AGENTS.md`") && body.contains("Prefer ripwire for maps."),
+        body.contains("## Workspace `AGENTS.md`") && body.contains("Record the map scale."),
         "router header must embed workspace AGENTS.md via agents_insert: {body}"
     );
 }

@@ -88,7 +88,7 @@ fn router_client_uses_router_style_agent_io_not_do_style() {
         doc: false,
         advice: None,
         credits: false,
-        iml: false,
+        ml: crate::cli::shared_opts::MetaLoopCount::Times(1),
         remote: None,
     };
     let backend = build_agent_backend(
