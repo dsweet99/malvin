@@ -9,12 +9,23 @@ mod report_cost_line;
 mod tokens;
 
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 pub const RUN_TIMING_JSON_FILE: &str = "run_timing.json";
 
 pub const RUN_TIMING_SUMMARY_PREFIX: &str = "TIMING: ";
+
+static SUPPRESS_STDOUT_FOOTNOTES: AtomicBool = AtomicBool::new(false);
+
+pub fn set_suppress_stdout_footnotes(suppress: bool) {
+    SUPPRESS_STDOUT_FOOTNOTES.store(suppress, Ordering::Relaxed);
+}
+
+pub(crate) fn stdout_footnotes_suppressed() -> bool {
+    SUPPRESS_STDOUT_FOOTNOTES.load(Ordering::Relaxed)
+}
 
 pub use process_ledger::{arm_process_footnotes, note_process_start};
 pub(crate) use process_ledger_live::replace_tracked_timing;

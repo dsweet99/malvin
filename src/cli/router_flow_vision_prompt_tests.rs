@@ -31,4 +31,33 @@ fn default_router_prompt_skeletons_keep_template_keys() {
             && router_b.contains("{{ done_note }}"),
         "router_b must keep the keys the router fills"
     );
+    header_advice_bullets_do_not_mention_coding_and_read_as_phrases();
+}
+
+fn header_advice_bullets_do_not_mention_coding_and_read_as_phrases() {
+    let header = malvin::prompts::default_file("header.md").expect("header");
+    let advice = header
+        .split("you can find advice on")
+        .nth(1)
+        .expect("advice intro");
+    let bullets: Vec<&str> = advice
+        .lines()
+        .skip(1)
+        .map(str::trim)
+        .take_while(|line| line.starts_with("- "))
+        .map(|line| line.trim_start_matches("- ").trim())
+        .collect();
+    assert!(!bullets.is_empty(), "header should list advice topics");
+    for bullet in bullets {
+        for word in bullet.split(|c: char| !c.is_ascii_alphanumeric()) {
+            assert!(
+                !word.eq_ignore_ascii_case("code") && !word.eq_ignore_ascii_case("coding"),
+                "VISION.md forbids header.md from mentioning coding; bullet {bullet:?}"
+            );
+        }
+        assert!(
+            !bullet.contains("various problem ("),
+            "advice bullet is not a readable phrase: {bullet:?}"
+        );
+    }
 }

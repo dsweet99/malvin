@@ -44,6 +44,9 @@ pub(crate) fn remote_do_dm_opts(cli: &Cli, interactive: bool) -> malvin::output:
 
 pub(crate) fn run_modal_route(cli: &Cli, raw: &[OsString], options: ModalOptions) -> Exit {
     let interactive = malvin::output::agent_stdout_tee_enabled();
+    if cli.has_do_request() && !cli.shared.verbose {
+        malvin::run_timing::set_suppress_stdout_footnotes(true);
+    }
     malvin::output::set_do_dm_stdout_opts(remote_do_dm_opts(cli, interactive));
     let result = modal_invocation(cli, raw, options).and_then(|inv| run_modal(&inv));
     malvin::output::set_do_dm_stdout_opts(malvin::output::DoDmStdoutOpts::default());

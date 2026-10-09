@@ -130,6 +130,17 @@ mod tests {
         assert!(default_file(ROUTER_B_DONE_NOTE_MD).is_some());
         assert!(default_constraints_prompt("init_constraints.md").is_some());
         assert!(default_file("router_a.md").is_some());
+        shipped_prompts_spell_available_and_techniques();
+    }
+
+    fn shipped_prompts_spell_available_and_techniques() {
+        let header = default_file(HEADER_MD).expect("header");
+        assert!(
+            !header.contains("availble"),
+            "header.md misspells available"
+        );
+        let mbc2 = default_file("mbc2.md").expect("mbc2");
+        assert!(!mbc2.contains("techinques"), "mbc2.md misspells techniques");
     }
 
     #[test]

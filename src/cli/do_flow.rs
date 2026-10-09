@@ -118,6 +118,9 @@ async fn begin_do_session_overlapping_prompt_prep(
 }
 
 pub async fn run_do(do_args: DoArgs, shared: &SharedOpts) -> Result<(), String> {
+    if !shared.verbose {
+        malvin::run_timing::set_suppress_stdout_footnotes(true);
+    }
     let interactive = agent_stdout_tee_enabled();
     let emit_markdown = interactive && shared.acp_stdout_markdown_enabled();
     let dm_only = !shared.verbose;

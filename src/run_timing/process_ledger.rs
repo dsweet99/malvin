@@ -42,6 +42,9 @@ pub fn emit_process_footnotes_if_armed() {
     if !ARMED.swap(false, Ordering::Relaxed) {
         return;
     }
+    if super::stdout_footnotes_suppressed() {
+        return;
+    }
     note_process_start();
     let totals = totals_slot()
         .lock()

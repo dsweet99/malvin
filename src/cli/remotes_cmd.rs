@@ -118,6 +118,22 @@ mod tests {
             assert!(text.contains("GPU types: could not fetch"), "{text}");
             assert!(!text.contains("GPU types: \n"), "{text}");
         }
+        remotes_summary_matches_the_admin_doc_example();
+    }
+
+    fn remotes_summary_matches_the_admin_doc_example() {
+        let doc = include_str!("../../default_prompts/docs/admin.md");
+        let example = doc
+            .split("malvin admin models` (")
+            .nth(1)
+            .and_then(|rest| rest.split("`)").next())
+            .expect("admin doc example");
+        let expected = example.trim_matches('`').replace("<TAB>", "\t");
+        let actual = remotes_lines(&listed())
+            .into_iter()
+            .next()
+            .expect("summary");
+        assert_eq!(actual, expected, "doc example {example:?}");
     }
 
     #[test]

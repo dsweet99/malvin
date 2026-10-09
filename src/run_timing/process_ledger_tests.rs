@@ -118,6 +118,15 @@ fn attach_syncs_the_cursor_to_carried_tokens() {
     assert_eq!(cursor_tokens, Some(10));
 }
 
+fn capture_emit(arm: bool) -> String {
+    crate::output::enable_stdout_capture();
+    if arm {
+        super::arm_process_footnotes();
+    }
+    super::emit_process_footnotes_if_armed();
+    crate::output::take_captured_stdout()
+}
+
 #[test]
 fn armed_emit_prints_timing_and_cost_outside_dm_mode() {
     let _guard = crate::output::STDOUT_LOG_TEST_LOCK
@@ -125,15 +134,21 @@ fn armed_emit_prints_timing_and_cost_outside_dm_mode() {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     crate::output::set_stdout_log_path(None);
     crate::output::set_do_dm_stdout_mode(true);
-    crate::output::enable_stdout_capture();
-    super::arm_process_footnotes();
-    super::emit_process_footnotes_if_armed();
-    let text = crate::output::take_captured_stdout();
-    crate::output::enable_stdout_capture();
-    super::emit_process_footnotes_if_armed();
-    let second = crate::output::take_captured_stdout();
+    crate::run_timing::set_suppress_stdout_footnotes(false);
+    let text = capture_emit(true);
+    let second = capture_emit(false);
+    crate::run_timing::set_suppress_stdout_footnotes(true);
+    let suppressed = capture_emit(true);
+    crate::run_timing::set_suppress_stdout_footnotes(false);
+    let restored = capture_emit(true);
     crate::output::set_do_dm_stdout_mode(false);
     assert!(text.contains("TIMING:"), "{text}");
     assert!(text.contains("COST:"), "{text}");
     assert!(!second.contains("TIMING:"), "{second}");
+    assert!(
+        !suppressed.contains("TIMING:") && !suppressed.contains("COST:"),
+        "{suppressed}"
+    );
+    assert!(restored.contains("TIMING:"), "{restored}");
+    assert!(restored.contains("COST:"), "{restored}");
 }

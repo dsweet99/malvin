@@ -4,6 +4,9 @@ use crate::cli::do_flow::DoArgs;
 use crate::cli::request_argv::TaggedRequest;
 
 pub fn dispatch_do_workflow(requests: Vec<String>, shared: &SharedOpts) -> Result<(), String> {
+    if !shared.verbose {
+        malvin::run_timing::set_suppress_stdout_footnotes(true);
+    }
     let iml = shared.iml;
     let shared = shared.clone();
     run_async_cli(move || async move {

@@ -44,8 +44,8 @@ See `malvin --doc`. Notable for the default route:
 | `-g` / `--gates` | When `router_a_2` emits `__MALVIN_DONE__`, run workspace `.malvin/gates`. Pass stops success; fail continues (the next outer iteration stops this agent and starts a new one). Exhausted budget with failing gates fails the run after exit summarize. Also injects check text into `router_a.md` via `{{ code_extra }}`. |
 | `--creative[=PROB]` | Applies only to the following REQUEST (repeatable). Per outer iteration of that request, with probability `PROB` (default `1.0` when the flag is set): include `mbc2.md` in the aggregated initial prompt (after the header), and fill `router_b.md` creative template keys for the optional work turn |
 | `--watch` | Before each outer loop, re-copy the operator request `.md` onto the run `plan_*.md` (overwrite). No-op for literal-text REQUEST |
-| `--quiet` / `-q` | Stdout shows only `__MALVIN_DM_*__` bodies. Plain `--do` is already DM-body-only without `--verbose` |
-| `--verbose` | Full prompt bodies in `prompts.log`; with `--do`, also same live agent stdout log classes as the default workflow |
+| `--quiet` / `-q` | Stdout shows only `__MALVIN_DM_*__` bodies, plus the closing `TIMING` and `COST` lines. Plain `--do` is already DM-body-only without `--verbose`, and omits `TIMING` and `COST` unless `--verbose` |
+| `--verbose` | Full prompt bodies in `prompts.log`; with `--do`, also same live agent stdout log classes as the default workflow, including `TIMING` and `COST` |
 
 ## Prompt workflow
 

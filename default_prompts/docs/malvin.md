@@ -46,7 +46,7 @@ Run the invocation on a remote machine instead of on this one, then apply its fi
 
 On the **default router** (bare `malvin REQUEST` and `malvin -g`), print only the text between `__MALVIN_DM_START__` and `__MALVIN_DM_END__` fences to process stdout. Startup chrome, agent stream, heartbeats, prompt-name lines, and fence markers are omitted from stdout. Run-dir logs and stderr are unchanged. The process still prints one `TIMING` line and one `COST` line at the end (see session footnotes).
 
-It is also **not** required for plain `malvin --do`: without `--verbose`, `--do` is already DM-body-only on stdout. With `--verbose`, `--do` tees the same live agent log classes as the default workflow (see `-v` / `--verbose` below).
+Plain `malvin --do` is already DM-body-only on stdout without `--verbose`, and that mode omits the `TIMING` and `COST` lines. With `--verbose`, `--do` tees the same live agent log classes as the default workflow and prints the footnote pair (see `-v` / `--verbose` below).
 
 ### `--model <MODEL>`
 
@@ -64,7 +64,7 @@ Inject workspace check command text into agent prompts and, for workflows that u
 
 ### `-v` / `--verbose`
 
-Log **full** outgoing prompt bodies to stdout and `prompts.log`. Default: only the prompt filename is shown. For `malvin --do`, also unlock the same live agent stdout log classes as the default workflow (thought tokens and narrative tee); without `--verbose`, `--do` stays DM-body-only.
+Log **full** outgoing prompt bodies to stdout and `prompts.log`. Default: only the prompt filename is shown. For `malvin --do`, also unlock the same live agent stdout log classes as the default workflow (thought tokens and narrative tee) and print the `TIMING` and `COST` footnotes. Without `--verbose`, `--do` stays DM-body-only and omits those footnotes.
 
 ### `--max-acp-retries <N>` (default: 3)
 
@@ -157,7 +157,7 @@ Every agent-backed command creates `~/.malvinconf/logs/<hash>/<timestamp>_<token
 
 ### Session footnotes (`TIMING` / `COST`)
 
-When an agent workflow is about to exit, malvin prints one footnote pair. That print is outside `--iml`: the infinite meta-loop returns only when a request fails, and the lines are also printed on interrupt. They are not printed at the end of each request. `wall` is the elapsed time of this malvin process. Token counts, step counts, tool time, LLM wait, and dollars are the sum across init, every request, and every meta-loop cycle. Carried totals inside one session are not counted twice. The lines go to process stdout even under `-q` or `--do` direct-message mode, and they are appended to the active `stdout.log` when a run directory is open:
+When an agent workflow is about to exit, malvin prints one footnote pair. That print is outside `--iml`: the infinite meta-loop returns only when a request fails, and the lines are also printed on interrupt. They are not printed at the end of each request. `wall` is the elapsed time of this malvin process. Token counts, step counts, tool time, LLM wait, and dollars are the sum across init, every request, and every meta-loop cycle. Carried totals inside one session are not counted twice. The lines go to process stdout under `-q`, and they are appended to the active `stdout.log` when a run directory is open. Plain `malvin --do` omits them on stdout and in `stdout.log` unless `--verbose` is set; with `--verbose`, `--do` prints the same pair:
 
 ```text
 TIMING: wall = … llm_wait = … …
