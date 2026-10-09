@@ -97,7 +97,7 @@ When addressing the operator:
 ## Macros
 
 - DCC: Don't Change Code
-
+- PWS: Problems Worth Solving
 
 {{ pi_extra }}
 
