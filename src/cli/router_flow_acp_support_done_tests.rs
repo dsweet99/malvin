@@ -100,7 +100,7 @@ fn done_marker_in_router_a_reply_does_not_skip_later_turns() {
 
 #[test]
 fn done_marker_in_router_a_2_reply_skips_router_b() {
-    let turns = run_mock_router_turns("lack of satisfaction");
+    let turns = run_mock_router_turns("obvious impossibility");
     assert!(turns.done);
     assert!(
         turns.router_log.contains("router_a_2"),

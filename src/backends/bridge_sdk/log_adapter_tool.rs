@@ -34,9 +34,6 @@ pub(crate) fn emit_tool(session: &StreamLog, fields: ToolCallFields<'_>) {
         payload["error"] = serde_json::Value::from(error);
     }
     append_trace_line(session, &payload.to_string());
-    if session.io.no_tee || session.io.raw_output {
-        return;
-    }
     let subject = summary.or(name).unwrap_or("tool");
     let phase = match phase {
         "end" | "done" => "complete",
@@ -44,21 +41,27 @@ pub(crate) fn emit_tool(session: &StreamLog, fields: ToolCallFields<'_>) {
     };
     match phase {
         "start" => note_tool_start(session, tool_call_id, subject),
-        "complete" | "error" => {
-            let plain = format_tool_done_line(
-                session,
-                &DoneLineInput {
-                    tool_call_id,
-                    subject,
-                    name,
-                    phase,
-                },
-            );
-            let plain = append_tool_error(plain, phase, error);
-            tee_tool_line(session, &plain);
-        }
+        "complete" | "error" => finish_tool_call(
+            session,
+            &DoneLineInput {
+                tool_call_id,
+                subject,
+                name,
+                phase,
+            },
+            error,
+        ),
         _ => {}
     }
+}
+
+fn finish_tool_call(session: &StreamLog, input: &DoneLineInput<'_>, error: Option<&str>) {
+    let plain = format_tool_done_line(session, input);
+    if session.io.no_tee || session.io.raw_output {
+        return;
+    }
+    let plain = append_tool_error(plain, input.phase, error);
+    tee_tool_line(session, &plain);
 }
 
 pub(crate) fn clear_tool_starts(session: &StreamLog) {
@@ -119,7 +122,28 @@ fn format_tool_done_line(session: &StreamLog, input: &DoneLineInput<'_>) -> Stri
     let elapsed = start
         .as_ref()
         .map_or(Duration::ZERO, |s| s.started.elapsed());
+    record_completed_tool_wall(session, input.name, elapsed);
     compose_tool_done_line(base, input.name, input.phase, elapsed)
+}
+
+fn record_completed_tool_wall(session: &StreamLog, name: Option<&str>, elapsed: Duration) {
+    let Some(timing) = session.timing.as_ref() else {
+        return;
+    };
+    let mut guard = timing
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    guard.add_tool_call_wall(tool_timing_kind(name), elapsed);
+}
+
+fn tool_timing_kind(name: Option<&str>) -> &'static str {
+    match name.unwrap_or("").to_ascii_lowercase().as_str() {
+        "read" | "read_file" | "imageview" => "read",
+        "grep" | "search" | "glob" | "find" | "rg" | "websearch" | "webfetch" => "search",
+        "shell" | "bash" | "powershell" | "execute" => "execute",
+        "edit" | "write" | "strreplace" | "delete" | "applypatch" => "edit",
+        _ => "other",
+    }
 }
 
 pub(super) fn compose_tool_done_line(
@@ -214,6 +238,44 @@ mod tests {
             Duration::from_millis(5),
         );
         assert_eq!(line, "Run false · exit 1 · 5ms · ✗");
+    }
+
+    #[test]
+    fn completed_shell_records_execute_wall_time() {
+        use super::super::bridge_sdk::stream_log::StreamLog;
+        use std::sync::{Arc, Mutex};
+        let timing = Arc::new(Mutex::new(crate::run_timing::RunTiming::default()));
+        let mut session = StreamLog::new(crate::agent_process::AgentIoOptions {
+            no_tee: true,
+            raw_output: true,
+            show_thoughts_on_stdout: false,
+            emit_stdout_markdown: false,
+            log_full_outgoing_prompts: false,
+        });
+        session.timing = Some(Arc::clone(&timing));
+        super::emit_tool(
+            &session,
+            super::ToolCallFields {
+                phase: "start",
+                name: Some("shell"),
+                summary: Some("Run true"),
+                tool_call_id: Some("t-wall"),
+                error: None,
+            },
+        );
+        std::thread::sleep(Duration::from_millis(15));
+        super::emit_tool(
+            &session,
+            super::ToolCallFields {
+                phase: "complete",
+                name: Some("shell"),
+                summary: Some("Run true"),
+                tool_call_id: Some("t-wall"),
+                error: None,
+            },
+        );
+        let ms = timing.lock().unwrap().tool_calls.as_millis();
+        assert!(ms >= 10, "tool wall ms={ms}");
     }
 
     #[test]

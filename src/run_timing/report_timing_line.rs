@@ -3,6 +3,9 @@ use serde_json::Value;
 use crate::run_timing::{RUN_TIMING_SUMMARY_PREFIX, TOOL_CALL_TYPE_MS_KEYS};
 
 fn format_ms_one_decimal_s(ms: u64) -> String {
+    if (1..50).contains(&ms) {
+        return "<0.1s".to_string();
+    }
     let tenth_secs = (ms.saturating_add(50)) / 100;
     let whole = tenth_secs / 10;
     let frac = tenth_secs % 10;
@@ -76,6 +79,10 @@ mod tests {
             assert!(!line.contains("cost_in"));
         }
         {
+            assert_eq!(format_ms_one_decimal_s(0), "0.0s");
+            assert_eq!(format_ms_one_decimal_s(19), "<0.1s");
+            assert_eq!(format_ms_one_decimal_s(49), "<0.1s");
+            assert_eq!(format_ms_one_decimal_s(50), "0.1s");
             assert_eq!(format_ms_one_decimal_s(100), "0.1s");
             assert_eq!(format_ms_one_decimal_s(23451), "23.5s");
         }

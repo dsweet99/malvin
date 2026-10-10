@@ -37,6 +37,72 @@ fn add_optional_f64_sum(slot: &mut Option<f64>, n: f64) {
     *slot = Some(slot.unwrap_or(0.0) + n);
 }
 
+struct FoldedUsage {
+    tokens_in: u64,
+    input_for_rates: u64,
+    output_for_totals: u64,
+    cache: (u64, u64),
+    reasoning_additive: bool,
+    reasoning_n: u64,
+}
+
+fn folded_usage(fields: &AcpUsageFields) -> FoldedUsage {
+    let input_n = fields.input.unwrap_or(0);
+    let output_n = fields.output.unwrap_or(0);
+    let cache_read_n = fields.cache_read.unwrap_or(0);
+    let cache_write_n = fields.cache_write.unwrap_or(0);
+    let reasoning_n = fields.reasoning.unwrap_or(0);
+    let reasoning_additive = reasoning_is_additive(fields);
+    let output_for_totals = if reasoning_additive {
+        output_n.saturating_add(reasoning_n)
+    } else {
+        output_n
+    };
+    let (tokens_in, input_for_rates) = folded_input(fields, input_n, (cache_read_n, cache_write_n));
+    FoldedUsage {
+        tokens_in,
+        input_for_rates,
+        output_for_totals,
+        cache: (cache_read_n, cache_write_n),
+        reasoning_additive,
+        reasoning_n,
+    }
+}
+
+fn folded_input(fields: &AcpUsageFields, input_n: u64, cache: (u64, u64)) -> (u64, u64) {
+    let (cache_read_n, cache_write_n) = cache;
+    if cache_already_in_input(fields) {
+        let uncached = input_n
+            .saturating_sub(cache_read_n)
+            .saturating_sub(cache_write_n);
+        (input_n, uncached)
+    } else {
+        (input_n + cache_read_n + cache_write_n, input_n)
+    }
+}
+
+pub(super) fn cache_already_in_input(fields: &AcpUsageFields) -> bool {
+    let Some(total) = fields.total else {
+        return false;
+    };
+    let cache = fields
+        .cache_read
+        .unwrap_or(0)
+        .saturating_add(fields.cache_write.unwrap_or(0));
+    if cache == 0 {
+        return false;
+    }
+    let input = fields.input.unwrap_or(0);
+    let output = fields.output.unwrap_or(0);
+    let reasoning = fields.reasoning.unwrap_or(0);
+    let plain = input.saturating_add(output);
+    let with_reasoning = plain.saturating_add(reasoning);
+    let excludes_cache = plain == total || with_reasoning == total;
+    let includes_cache =
+        plain.saturating_add(cache) == total || with_reasoning.saturating_add(cache) == total;
+    excludes_cache && !includes_cache
+}
+
 pub(super) fn reasoning_is_additive(fields: &AcpUsageFields) -> bool {
     let Some(total) = fields.total else {
         return false;
@@ -105,20 +171,19 @@ impl RunTiming {
 
     pub(super) fn apply_acp_usage_fields(&mut self, fields: AcpUsageFields) {
         self.usage_tx_count = self.usage_tx_count.saturating_add(1);
-        let input_n = fields.input.unwrap_or(0);
-        let output_n = fields.output.unwrap_or(0);
-        let cache_read_n = fields.cache_read.unwrap_or(0);
-        let cache_write_n = fields.cache_write.unwrap_or(0);
-        let reasoning_n = fields.reasoning.unwrap_or(0);
-        let reasoning_additive = reasoning_is_additive(&fields);
-        let output_for_totals = if reasoning_additive {
-            output_n.saturating_add(reasoning_n)
-        } else {
-            output_n
-        };
-        let tokens_in = input_n + cache_read_n + cache_write_n;
+        let folded = folded_usage(&fields);
+        self.add_folded_token_counts(&fields, &folded);
+        self.record_acp_usage_rate_estimate(
+            fields.skip_rate_estimate,
+            folded.input_for_rates,
+            folded.output_for_totals,
+            folded.cache,
+        );
+    }
+
+    fn add_folded_token_counts(&mut self, fields: &AcpUsageFields, folded: &FoldedUsage) {
         if fields.input.is_some() || fields.cache_read.is_some() || fields.cache_write.is_some() {
-            add_optional_sum(&mut self.tokens_in, tokens_in);
+            add_optional_sum(&mut self.tokens_in, folded.tokens_in);
         }
         if let Some(n) = fields.cache_read {
             add_optional_sum(&mut self.cache_read, n);
@@ -126,18 +191,12 @@ impl RunTiming {
         if let Some(n) = fields.cache_write {
             add_optional_sum(&mut self.cache_write, n);
         }
-        if fields.output.is_some() || reasoning_additive {
-            add_optional_sum(&mut self.tokens_out, output_for_totals);
+        if fields.output.is_some() || folded.reasoning_additive {
+            add_optional_sum(&mut self.tokens_out, folded.output_for_totals);
         }
-        if let Some(n) = fields.reasoning.filter(|_| reasoning_n > 0) {
+        if let Some(n) = fields.reasoning.filter(|_| folded.reasoning_n > 0) {
             add_optional_sum(&mut self.reasoning_tokens, n);
         }
-        self.record_acp_usage_rate_estimate(
-            fields.skip_rate_estimate,
-            input_n,
-            output_for_totals,
-            (cache_read_n, cache_write_n),
-        );
     }
 
     fn record_acp_usage_rate_estimate(

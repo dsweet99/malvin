@@ -128,7 +128,7 @@ fn emit_turn_stream(session: &CodexSession, value: &serde_json::Value, state: &m
             }
         }
         if let BridgeEvent::Usage { usage } = &ev {
-            state.usage = Some(usage.clone());
+            super::codex_sdk::map_event_usage::absorb_usage(&mut state.usage, usage);
         }
         if let BridgeEvent::ToolCall { phase, .. } = &ev
             && phase == "start"
