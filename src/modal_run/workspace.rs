@@ -4,7 +4,11 @@ use std::process::{Command, Stdio};
 
 pub const RECENT_RUN_DIRS: usize = 5;
 pub const MAX_NON_GIT_UPLOAD_BYTES: u64 = 1 << 30;
-const NON_GIT_EXCLUDES: &[&str] = &["--exclude=./.git", "--exclude=./target", "--exclude=./node_modules"];
+const NON_GIT_EXCLUDES: &[&str] = &[
+    "--exclude=./.git",
+    "--exclude=./target",
+    "--exclude=./node_modules",
+];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GitPlacement {
@@ -101,7 +105,10 @@ fn tree_exceeds(dir: &Path, top: bool, cap: u64, total: &mut u64) -> bool {
         return false;
     };
     for entry in entries.flatten() {
-        let excluded = top && NON_GIT_EXCLUDES.iter().any(|x| x.strip_prefix("--exclude=./") == entry.file_name().to_str());
+        let excluded = top
+            && NON_GIT_EXCLUDES
+                .iter()
+                .any(|x| x.strip_prefix("--exclude=./") == entry.file_name().to_str());
         let Ok(meta) = entry.path().symlink_metadata() else {
             continue;
         };

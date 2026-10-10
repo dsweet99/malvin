@@ -1,19 +1,18 @@
 use super::{ToolSummaryDetail, ToolSummaryTracker, shorten_middle, tool_summary_lines};
 use serde_json::json;
-
 #[test]
-fn shorten_middle_preserves_ends() {
-    let s = "src/very/long/path/to/some/deep/module/file.rs";
-    let out = shorten_middle(s, 40);
-    assert!(out.starts_with("src/very"));
-    assert!(out.contains("..."));
-    assert!(out.ends_with("file.rs"));
-    assert!(out.chars().count() <= 40);
-}
-
-#[test]
-fn shorten_middle_short_unchanged() {
-    assert_eq!(shorten_middle("abc", 60), "abc");
+fn shorten_middle_preserves_ends_and_shorten_middle_short_unchanged() {
+    {
+        let s = "src/very/long/path/to/some/deep/module/file.rs";
+        let out = shorten_middle(s, 40);
+        assert!(out.starts_with("src/very"));
+        assert!(out.contains("..."));
+        assert!(out.ends_with("file.rs"));
+        assert!(out.chars().count() <= 40);
+    }
+    {
+        assert_eq!(shorten_middle("abc", 60), "abc");
+    }
 }
 
 #[test]

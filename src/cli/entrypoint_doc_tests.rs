@@ -2,76 +2,74 @@ use super::{
     Exit, dispatch_command, entrypoint_from, finish_entrypoint, prepare_cli_output, run_async_cli,
 };
 use crate::cli::SharedOpts;
-use malvin::test_utils::with_isolated_home;
-
+use malvin::test_support::test_utils::with_isolated_home;
 #[test]
-fn prepare_cli_output_initializes_output_state() {
-    malvin::output::set_stdout_suppressed(true);
-    let shared = SharedOpts::test_defaults();
-    prepare_cli_output(&shared);
-    assert!(!malvin::output::stdout_suppressed());
-    malvin::output::set_stdout_suppressed(false);
+fn prepare_cli_output_initializes_output_state_and_entrypoint_from_doc_argv_exits_success() {
+    {
+        malvin::output::set_stdout_suppressed(true);
+        let shared = SharedOpts::test_defaults();
+        prepare_cli_output(&shared);
+        assert!(!malvin::output::stdout_suppressed());
+        malvin::output::set_stdout_suppressed(false);
+    }
+    {
+        with_isolated_home(|_| {
+            assert_eq!(entrypoint_from(["malvin", "--doc"]), Exit::Success);
+        });
+    }
 }
-
 #[test]
-fn entrypoint_from_doc_argv_exits_success() {
-    with_isolated_home(|_| {
-        assert_eq!(entrypoint_from(["malvin", "--doc"]), Exit::Success);
-    });
+fn entrypoint_from_advice_doc_design_exits_success_and_entrypoint_from_advice_scholar_exits_success()
+ {
+    {
+        with_isolated_home(|_| {
+            assert_eq!(
+                entrypoint_from(["malvin", "--advice", "doc_design"]),
+                Exit::Success
+            );
+        });
+    }
+    {
+        with_isolated_home(|_| {
+            assert_eq!(
+                entrypoint_from(["malvin", "--advice", "scholar"]),
+                Exit::Success
+            );
+        });
+    }
 }
-
 #[test]
-fn entrypoint_from_advice_doc_design_exits_success() {
-    with_isolated_home(|_| {
-        assert_eq!(
-            entrypoint_from(["malvin", "--advice", "doc_design"]),
-            Exit::Success
-        );
-    });
+fn entrypoint_from_advice_report_exits_success_and_entrypoint_from_advice_list_exits_success() {
+    {
+        with_isolated_home(|_| {
+            assert_eq!(
+                entrypoint_from(["malvin", "--advice", "report"]),
+                Exit::Success
+            );
+        });
+    }
+    {
+        with_isolated_home(|_| {
+            assert_eq!(entrypoint_from(["malvin", "--advice"]), Exit::Success);
+        });
+    }
 }
-
 #[test]
-fn entrypoint_from_advice_scholar_exits_success() {
-    with_isolated_home(|_| {
-        assert_eq!(
-            entrypoint_from(["malvin", "--advice", "scholar"]),
-            Exit::Success
-        );
-    });
-}
-
-#[test]
-fn entrypoint_from_advice_report_exits_success() {
-    with_isolated_home(|_| {
-        assert_eq!(
-            entrypoint_from(["malvin", "--advice", "report"]),
-            Exit::Success
-        );
-    });
-}
-
-#[test]
-fn entrypoint_from_advice_list_exits_success() {
-    with_isolated_home(|_| {
-        assert_eq!(entrypoint_from(["malvin", "--advice"]), Exit::Success);
-    });
-}
-
-#[test]
-fn entrypoint_from_credits_exits_success() {
-    with_isolated_home(|_| {
-        assert_eq!(entrypoint_from(["malvin", "--credits"]), Exit::Success);
-    });
-}
-
-#[test]
-fn entrypoint_from_credits_with_request_exits_without_running_agent() {
-    with_isolated_home(|_| {
-        assert_eq!(
-            entrypoint_from(["malvin", "--credits", "Write a poem"]),
-            Exit::Success
-        );
-    });
+fn entrypoint_from_credits_exits_success_and_entrypoint_from_credits_with_request_exits_without_running_agent()
+ {
+    {
+        with_isolated_home(|_| {
+            assert_eq!(entrypoint_from(["malvin", "--credits"]), Exit::Success);
+        });
+    }
+    {
+        with_isolated_home(|_| {
+            assert_eq!(
+                entrypoint_from(["malvin", "--credits", "Write a poem"]),
+                Exit::Success
+            );
+        });
+    }
 }
 
 #[test]
@@ -95,27 +93,32 @@ fn entrypoint_from_background_is_rejected() {
         "clap must reject --background; got {msg}"
     );
 }
-
 #[test]
-fn entrypoint_from_bare_malvin_exits_success() {
-    with_isolated_home(|_| {
-        assert_eq!(entrypoint_from(["malvin"]), Exit::Success);
-    });
-}
-
-#[test]
-fn entrypoint_from_admin_models_doc_exits_success() {
-    with_isolated_home(|_| {
-        assert_eq!(
-            entrypoint_from(["malvin", "admin", "models", "--doc"]),
-            Exit::Success
-        );
-    });
+fn entrypoint_from_bare_malvin_exits_success_and_entrypoint_from_admin_models_doc_exits_success() {
+    {
+        with_isolated_home(|_| {
+            assert_eq!(entrypoint_from(["malvin"]), Exit::Success);
+        });
+    }
+    {
+        with_isolated_home(|_| {
+            assert_eq!(entrypoint_from(["malvin", "--"]), Exit::Success);
+            assert_eq!(entrypoint_from(["malvin", "--do", "--"]), Exit::Success);
+        });
+    }
+    {
+        with_isolated_home(|_| {
+            assert_eq!(
+                entrypoint_from(["malvin", "admin", "models", "--doc"]),
+                Exit::Success
+            );
+        });
+    }
 }
 
 #[test]
 fn entrypoint_from_admin_rejects_gates_flag() {
-    use malvin::test_stderr_capture::capture_stderr_output;
+    use malvin::test_support::test_stderr_capture::capture_stderr_output;
 
     with_isolated_home(|_| {
         let stderr = capture_stderr_output(|| {
@@ -133,7 +136,7 @@ fn entrypoint_from_admin_rejects_gates_flag() {
 
 #[test]
 fn entrypoint_from_admin_rejects_quiet_flag() {
-    use malvin::test_stderr_capture::capture_stderr_output;
+    use malvin::test_support::test_stderr_capture::capture_stderr_output;
 
     with_isolated_home(|_| {
         let stderr = capture_stderr_output(|| {
@@ -151,7 +154,7 @@ fn entrypoint_from_admin_rejects_quiet_flag() {
 
 #[test]
 fn entrypoint_from_admin_rejects_verbose_flag() {
-    use malvin::test_stderr_capture::capture_stderr_output;
+    use malvin::test_support::test_stderr_capture::capture_stderr_output;
 
     with_isolated_home(|_| {
         let stderr = capture_stderr_output(|| {
@@ -169,7 +172,7 @@ fn entrypoint_from_admin_rejects_verbose_flag() {
 
 #[test]
 fn entrypoint_from_admin_rejects_max_acp_retries_flag() {
-    use malvin::test_stderr_capture::capture_stderr_output;
+    use malvin::test_support::test_stderr_capture::capture_stderr_output;
 
     with_isolated_home(|_| {
         let stderr = capture_stderr_output(|| {
@@ -203,7 +206,7 @@ fn entrypoint_from_doc_does_not_suppress_stdout() {
 
 #[test]
 fn finish_entrypoint_success_and_failure_paths() {
-    use malvin::test_stderr_capture::capture_stderr_output;
+    use malvin::test_support::test_stderr_capture::capture_stderr_output;
 
     assert_eq!(finish_entrypoint(Ok(())), Exit::Success);
     let stderr = capture_stderr_output(|| {
@@ -215,6 +218,7 @@ fn finish_entrypoint_success_and_failure_paths() {
 #[test]
 fn run_async_cli_runs_immediate_ok_future() {
     assert!(run_async_cli(|| async { Ok(()) }).is_ok());
+    malvin::run_timing::emit_process_footnotes_if_armed();
 }
 
 #[test]
@@ -225,25 +229,20 @@ fn kiss_cov_entrypoint_dispatch_and_commands() {
 #[test]
 fn dispatch_gates_only_route_runs_tenacious_preflight() {
     use crate::cli::SharedOpts;
-    use crate::cli::args::Cli;
-    use clap::CommandFactory;
 
-    malvin::test_utils::with_isolated_home(|work| {
+    malvin::test_support::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(work).expect("chdir");
         let mut shared = SharedOpts::test_defaults();
         let mut router = crate::cli::RouterOpts::test_defaults();
         router.gates = true;
-        shared.model = malvin::model_id::parse_model_id("pi:some-unknown/foo").expect("model");
-        let matches = Cli::command().get_matches_from(["malvin", "-g"]);
+        shared.model =
+            malvin::config::model_id::parse_model_id("pi:some-unknown/foo").expect("model");
         let mut result = Ok(());
-        malvin::acp::with_env("MALVIN_PI", Some("/missing/pi-entry.js"), || {
+        malvin::agent_process::with_env("MALVIN_PI", Some("/missing/pi-entry.js"), || {
             result = super::dispatch_gates_only_route(super::GatesOnlyDispatch {
-                max_loops: 1,
-                max_hypotheses: 5,
-                shared: &mut shared,
-                router: &mut router,
-                matches: &matches,
+                shared: &shared,
+                router: &router,
             });
         });
         assert!(

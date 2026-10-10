@@ -5,7 +5,7 @@ use crate::cli::format_workspace_gate_failure;
 use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
 use malvin::nested_budget_scopes::BudgetScopeLayer;
 
-use crate::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
+use crate::cli::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
 
 #[must_use]
 pub(crate) fn effective_max_loops(max_loops: usize) -> usize {
@@ -59,7 +59,8 @@ pub(crate) fn run_router_workspace_gates(
     malvin::gate_loop_session::set_quality_gates_just_ran(match &gate_result {
         Ok(()) => true,
         Err(detail) => {
-            crate::repo_checks::is_gate_failure_error(detail) && detail.contains("failed (exit")
+            crate::cli::repo_checks::is_gate_failure_error(detail)
+                && detail.contains("failed (exit")
         }
     });
     let restore_result = restore_session_dotfiles_for_gates(

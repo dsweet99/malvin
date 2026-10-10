@@ -114,36 +114,37 @@ pub fn substitute_template(template: &str, context: &HashMap<String, String>) ->
 #[cfg(test)]
 mod template_kiss {
     #[test]
-    fn unresolved_template_placeholders_detects_missing_context_keys() {
-        let mut ctx = std::collections::HashMap::new();
-        ctx.insert("present".to_string(), "v".to_string());
-        assert_eq!(
-            super::unresolved_template_placeholders("x {{ present }} y {{ missing }} z", &ctx),
-            vec!["{{ missing }}".to_string()]
-        );
+    fn unresolved_template_placeholders_detects_missing_context_keys_and_malformed_brace_placeholders_rejects_unspaced_key()
+     {
+        {
+            let mut ctx = std::collections::HashMap::new();
+            ctx.insert("present".to_string(), "v".to_string());
+            assert_eq!(
+                super::unresolved_template_placeholders("x {{ present }} y {{ missing }} z", &ctx),
+                vec!["{{ missing }}".to_string()]
+            );
+        }
+        {
+            let _ = crate::prompts::render_mbc2_prompt;
+            let _ = crate::prompts::render_header;
+            let _ = super::is_spaced_brace_placeholder_inner;
+            let bad = super::malformed_brace_placeholders("x {{plan_path}} y");
+            assert_eq!(bad.len(), 1);
+        }
     }
-
     #[test]
-    fn malformed_brace_placeholders_rejects_unspaced_key() {
-        let _ = crate::prompts::render_mbc2_prompt;
-        let _ = crate::prompts::render_header;
-        let _ = super::is_spaced_brace_placeholder_inner;
-        let bad = super::malformed_brace_placeholders("x {{plan_path}} y");
-        assert_eq!(bad.len(), 1);
-    }
-
-    #[test]
-    fn malformed_brace_placeholders_accepts_spaced_key() {
-        let bad = super::malformed_brace_placeholders("x {{ plan_path }} y");
-        assert!(bad.is_empty());
-    }
-
-    #[test]
-    fn render_template_replaces_brace_and_dollar_keys() {
-        let mut ctx = std::collections::HashMap::new();
-        ctx.insert("name".to_string(), "world".to_string());
-        let out = super::render_template("Hello {{ name }}", &ctx);
-        assert_eq!(out, "Hello world");
+    fn malformed_brace_placeholders_accepts_spaced_key_and_render_template_replaces_brace_and_dollar_keys()
+     {
+        {
+            let bad = super::malformed_brace_placeholders("x {{ plan_path }} y");
+            assert!(bad.is_empty());
+        }
+        {
+            let mut ctx = std::collections::HashMap::new();
+            ctx.insert("name".to_string(), "world".to_string());
+            let out = super::render_template("Hello {{ name }}", &ctx);
+            assert_eq!(out, "Hello world");
+        }
     }
 
     #[test]

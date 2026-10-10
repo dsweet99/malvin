@@ -1,5 +1,5 @@
 use super::env::HerdrEnv;
-use super::request::{clear_metadata_teardown, next_seq, report_agent};
+use super::request::{clear_metadata_teardown, next_seq, release_agent, report_agent};
 use super::send::send_request_checked;
 
 pub fn reset_to_not_working() -> Result<(), String> {
@@ -20,6 +20,8 @@ pub(crate) fn reset_env_to_not_working(env: &HerdrEnv) -> Result<(), String> {
         &clear_metadata_teardown(&env.pane_id, next_seq()),
     )
     .map_err(|e| format!("herdr reset clear-metadata failed: {e}"))?;
+    send_request_checked(&env.socket_path, &release_agent(&env.pane_id, next_seq()))
+        .map_err(|e| format!("herdr reset release failed: {e}"))?;
     Ok(())
 }
 

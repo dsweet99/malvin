@@ -1,6 +1,7 @@
 #[path = "agent_phase_signal.rs"]
 mod agent_phase_signal;
 
+use std::collections::HashSet;
 use std::sync::Mutex;
 
 use crate::tool_summary::{ParsedToolUpdate, ToolSummaryTracker};
@@ -8,27 +9,17 @@ use crate::tool_summary::{ParsedToolUpdate, ToolSummaryTracker};
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum AgentPhase {
-    Orienting = 0,
-    Researching,
-    Reasoning,
-    Implementing,
-    Executing,
-    Verifying,
-    Debugging,
-    Waiting,
-    Reporting,
+    Starting = 0,
+    Reading,
+    Editing,
+    Running,
+    Checking,
+    Fixing,
+    Thinking,
 }
 
-const PHASE_LABELS: [&str; 9] = [
-    "Orienting",
-    "Researching",
-    "Reasoning",
-    "Implementing",
-    "Executing",
-    "Verifying",
-    "Debugging",
-    "Waiting",
-    "Reporting",
+const PHASE_LABELS: [&str; 7] = [
+    "Starting", "Reading", "Editing", "Running", "Checking", "Fixing", "Thinking",
 ];
 
 impl AgentPhase {
@@ -46,39 +37,58 @@ pub(super) enum ToolKind {
     Execute,
 }
 
-#[allow(clippy::struct_excessive_bools)]
 pub(super) struct PhaseState {
-    pub(super) verifying_depth: u32,
-    pub(super) reporting: bool,
-    pub(super) orienting: bool,
-    pub(super) debugging: bool,
+    pub(super) checking_depth: u32,
+    pub(super) starting: bool,
+    pub(super) fixing: bool,
     pub(super) running_shells: u32,
-    pub(super) reasoning: bool,
     pub(super) active_tool: Option<(ToolKind, u8)>,
+    open_edits: HashSet<String>,
+    open_reads: HashSet<String>,
 }
 
 impl PhaseState {
-    const fn fresh() -> Self {
+    fn fresh() -> Self {
         Self {
-            verifying_depth: 0,
-            reporting: false,
-            orienting: true,
-            debugging: false,
+            checking_depth: 0,
+            starting: true,
+            fixing: false,
             running_shells: 0,
-            reasoning: false,
             active_tool: None,
+            open_edits: HashSet::new(),
+            open_reads: HashSet::new(),
         }
     }
 
+    fn edit_in_flight(&self) -> bool {
+        !self.open_edits.is_empty()
+            || self
+                .active_tool
+                .is_some_and(|(k, _)| active_tool_phase(k) == AgentPhase::Editing)
+    }
+
+    fn read_in_flight(&self) -> bool {
+        !self.open_reads.is_empty()
+            || self
+                .active_tool
+                .is_some_and(|(k, _)| active_tool_phase(k) == AgentPhase::Reading)
+    }
+
+    fn shell_in_flight(&self) -> bool {
+        self.running_shells > 0
+            || self
+                .active_tool
+                .is_some_and(|(k, _)| active_tool_phase(k) == AgentPhase::Running)
+    }
+
     fn resolve(&self) -> AgentPhase {
-        phase_if(self.reporting, AgentPhase::Reporting)
-            .or_else(|| phase_if(self.verifying_depth > 0, AgentPhase::Verifying))
-            .or_else(|| phase_if(self.running_shells > 0, AgentPhase::Waiting))
-            .or_else(|| phase_if(self.debugging, AgentPhase::Debugging))
-            .or_else(|| self.active_tool.map(|(k, _)| active_tool_phase(k)))
-            .or_else(|| phase_if(self.reasoning, AgentPhase::Reasoning))
-            .or_else(|| phase_if(self.orienting, AgentPhase::Orienting))
-            .unwrap_or(AgentPhase::Reasoning)
+        phase_if(self.checking_depth > 0, AgentPhase::Checking)
+            .or_else(|| phase_if(self.shell_in_flight(), AgentPhase::Running))
+            .or_else(|| phase_if(self.edit_in_flight(), AgentPhase::Editing))
+            .or_else(|| phase_if(self.read_in_flight(), AgentPhase::Reading))
+            .or_else(|| phase_if(self.fixing, AgentPhase::Fixing))
+            .or_else(|| phase_if(self.starting, AgentPhase::Starting))
+            .unwrap_or(AgentPhase::Thinking)
     }
 }
 
@@ -88,13 +98,14 @@ fn phase_if(cond: bool, phase: AgentPhase) -> Option<AgentPhase> {
 
 const fn active_tool_phase(kind: ToolKind) -> AgentPhase {
     match kind {
-        ToolKind::Read | ToolKind::Search => AgentPhase::Researching,
-        ToolKind::Edit => AgentPhase::Implementing,
-        ToolKind::Execute => AgentPhase::Executing,
+        ToolKind::Read | ToolKind::Search => AgentPhase::Reading,
+        ToolKind::Edit => AgentPhase::Editing,
+        ToolKind::Execute => AgentPhase::Running,
     }
 }
 
-static STATE: Mutex<PhaseState> = Mutex::new(PhaseState::fresh());
+static STATE: std::sync::LazyLock<Mutex<PhaseState>> =
+    std::sync::LazyLock::new(|| Mutex::new(PhaseState::fresh()));
 
 #[cfg(test)]
 pub(crate) static AGENT_PHASE_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
@@ -110,27 +121,19 @@ pub fn reset_for_run() {
     with_state(|s| *s = PhaseState::fresh());
 }
 
-pub fn note_orienting() {
-    with_state(|s| {
-        s.orienting = true;
-        s.reasoning = false;
-    });
+pub fn note_starting() {
+    with_state(|s| s.starting = true);
 }
 
-pub fn enter_verifying() {
+pub fn enter_checking() {
     with_state(|s| {
-        s.verifying_depth = s.verifying_depth.saturating_add(1);
-        s.orienting = false;
+        s.checking_depth = s.checking_depth.saturating_add(1);
     });
     apply_phase_side_effect(agent_phase_signal::PhaseSideEffect::NotifyWorking);
 }
 
-pub fn leave_verifying() {
-    with_state(|s| s.verifying_depth = s.verifying_depth.saturating_sub(1));
-}
-
-pub fn set_reporting(active: bool) {
-    with_state(|s| s.reporting = active);
+pub fn leave_checking() {
+    with_state(|s| s.checking_depth = s.checking_depth.saturating_sub(1));
 }
 
 pub(crate) fn observe_tool_update(parsed: &ParsedToolUpdate, tracker: &ToolSummaryTracker) {
@@ -176,7 +179,7 @@ pub(crate) mod kiss_cov {
 
     #[must_use]
     pub(crate) fn witness_phase_if(cond: bool) -> Option<super::AgentPhase> {
-        phase_if(cond, super::AgentPhase::Waiting)
+        phase_if(cond, super::AgentPhase::Running)
     }
 
     #[must_use]

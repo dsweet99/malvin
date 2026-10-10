@@ -49,7 +49,10 @@ fn kiss_cov_session_dotfile_backups_construct_destructure() {
 
 #[test]
 fn kiss_cov_gitignore_file_backup_construct_destructure() {
-    let file = super::gitignore_tree::GitignoreFileBackup::new(std::path::PathBuf::from(".gitignore"), b"target/\n".to_vec());
+    let file = super::gitignore_tree::GitignoreFileBackup::new(
+        std::path::PathBuf::from(".gitignore"),
+        b"target/\n".to_vec(),
+    );
     let super::gitignore_tree::GitignoreFileBackup { rel, bytes, .. } = file;
     assert_eq!(rel, std::path::PathBuf::from(".gitignore"));
     assert_eq!(bytes, b"target/\n");
@@ -57,7 +60,10 @@ fn kiss_cov_gitignore_file_backup_construct_destructure() {
 
 #[test]
 fn kiss_cov_vision_file_backup_construct_destructure() {
-    let file = super::vision_tree::VisionFileBackup::new(std::path::PathBuf::from("VISION.md"), b"# Vision\n".to_vec());
+    let file = super::vision_tree::VisionFileBackup::new(
+        std::path::PathBuf::from("VISION.md"),
+        b"# Vision\n".to_vec(),
+    );
     let super::vision_tree::VisionFileBackup { rel, bytes, .. } = file;
     assert_eq!(rel, std::path::PathBuf::from("VISION.md"));
     assert_eq!(bytes, b"# Vision\n");
@@ -99,7 +105,7 @@ fn gitignore_and_vision_file_backups_are_distinct_types() {
 fn kiss_cov_write_merged_default_malvin_config() {
     let _ = super::slots_kiss_cov_shared::write_merged_default_malvin_config;
 
-    crate::test_utils::with_isolated_home(|work| {
+    crate::test_support::test_utils::with_isolated_home(|work| {
         let cfg_path = crate::malvin_config_path(work);
         if let Some(parent) = cfg_path.parent() {
             std::fs::create_dir_all(parent).expect("mkdir home config parent");

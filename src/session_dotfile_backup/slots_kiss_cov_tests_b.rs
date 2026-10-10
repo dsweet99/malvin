@@ -23,20 +23,19 @@ fn kiss_cov_dotfile_spec_row_hash() {
     DOTFILE_ROWS[0].hash(&mut hasher);
     assert_ne!(hasher.finish(), 0);
 }
-
 #[test]
-fn kiss_cov_dotfile_spec_row_partial_eq() {
-    assert_eq!(DOTFILE_ROWS[0], DOTFILE_ROWS[0]);
-    assert_ne!(DOTFILE_ROWS[0], DOTFILE_ROWS[1]);
-}
-
-#[test]
-fn kiss_cov_dotfile_spec_row_copy_clone_traits() {
-    let row = DOTFILE_ROWS[0];
-    let copied = row;
-    let cloned = row;
-    assert_eq!(copied.rel, cloned.rel);
-    assert_eq!(copied.home_subdir, cloned.home_subdir);
+fn kiss_cov_dotfile_spec_row_partial_eq_and_kiss_cov_dotfile_spec_row_copy_clone_traits() {
+    {
+        assert_eq!(DOTFILE_ROWS[0], DOTFILE_ROWS[0]);
+        assert_ne!(DOTFILE_ROWS[0], DOTFILE_ROWS[1]);
+    }
+    {
+        let row = DOTFILE_ROWS[0];
+        let copied = row;
+        let cloned = row;
+        assert_eq!(copied.rel, cloned.rel);
+        assert_eq!(copied.home_subdir, cloned.home_subdir);
+    }
 }
 
 #[test]
@@ -143,7 +142,7 @@ fn kiss_cov_dotfile_spec_row_same_file_value_witness() {
 
 #[test]
 fn kiss_cov_write_merged_default_malvin_config_helper() {
-    crate::test_utils::with_isolated_home(|work| {
+    crate::test_support::test_utils::with_isolated_home(|work| {
         let cfg_path = crate::malvin_config_path(work);
         if let Some(parent) = cfg_path.parent() {
             std::fs::create_dir_all(parent).expect("mkdir home config parent");

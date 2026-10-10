@@ -29,10 +29,10 @@ pub(crate) use stdout_display::{
 
 pub(crate) use do_dm_emit::emit_wrapped_do_dm_line;
 pub use do_dm_filter::feed_do_dm_stdout_text;
-pub use sentinel::{DM_END, DM_START, MALVIN_DONE, is_sentinel_line};
 pub use do_dm_mode::{
     DoDmStdoutOpts, do_dm_stdout_mode, set_do_dm_stdout_mode, set_do_dm_stdout_opts,
 };
+pub use sentinel::{DM_END, DM_START, MALVIN_DONE, is_sentinel_line};
 pub use stdout_display::{
     print_stdout_line, print_stdout_raw_line, print_stdout_raw_line_with_ts, print_stdout_text,
 };
@@ -190,13 +190,13 @@ pub(crate) fn stderr_use_color() -> bool {
     log_use_color() && std::io::stderr().is_terminal()
 }
 
-pub use crate::stdout_log_path::set_stdout_log_path;
+pub use crate::workspace::stdout_log_path::set_stdout_log_path;
 pub(crate) use stdout_log_pair::{
     stdout_heartbeat_display_and_log_line, stdout_tagged_display_and_log_line,
 };
 
 pub(crate) fn append_stdout_log_line(line: &str) {
-    let Some(path) = crate::stdout_log_path::clone_stdout_log_path() else {
+    let Some(path) = crate::workspace::stdout_log_path::clone_stdout_log_path() else {
         return;
     };
     let line = crate::ansi_strip::strip_ansi_escapes(line);

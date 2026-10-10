@@ -51,9 +51,9 @@ pub struct ModalBridge {
 }
 
 pub fn node_bridge_command(bridge_js: &Path) -> Result<Command, String> {
-    let node = crate::cursor_sdk::node_resolve::resolve_node_bin()?;
+    let node = crate::backends::cursor_sdk::node_resolve::resolve_node_bin()?;
     let mut cmd = Command::new(node);
-    crate::cursor_sdk::node_resolve::apply_quiet_node_cli_std(&mut cmd);
+    crate::backends::cursor_sdk::node_resolve::apply_quiet_node_cli_std(&mut cmd);
     cmd.arg(bridge_js);
     Ok(cmd)
 }
@@ -117,7 +117,11 @@ impl ModalBridge {
             let msg: Value = serde_json::from_str(&line)
                 .map_err(|e| format!("bad line from the Modal bridge ({e}): {line}"))?;
             if let Some(event) = msg.get("event").and_then(Value::as_str) {
-                relay_event(&mut self.remote, event, msg["data"].as_str().unwrap_or_default());
+                relay_event(
+                    &mut self.remote,
+                    event,
+                    msg["data"].as_str().unwrap_or_default(),
+                );
                 continue;
             }
             return reply_result(op, msg);

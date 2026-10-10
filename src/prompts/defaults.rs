@@ -2,17 +2,14 @@
 mod default_files;
 
 pub use default_files::{
-    ROUTER_A_AUDIT_MD, ROUTER_A_AUDIT_NO_KPOP_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_LEAD_MD,
-    ROUTER_B_DONE_NOTE_MD, ROUTER_B_MD, ROUTER_B_SATISFY_BRIEF_MD, ROUTER_B_SATISFY_MD,
-    ROUTER_B_SATISFY_NO_KPOP_MD, RouterBPromptFlags, default_file, header_prompt_file,
-    kpop_common_prompt_file, router_a_audit_prompt_file, router_a_prompt_file,
+    ROUTER_A_2_MD, ROUTER_A_AUDIT_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_LEAD_MD,
+    ROUTER_B_DONE_NOTE_MD, ROUTER_B_MD, ROUTER_B_SATISFY_MD, RouterBPromptFlags, default_file,
+    header_prompt_file, router_a_2_prompt_file, router_a_audit_prompt_file, router_a_prompt_file,
     router_b_prompt_file, router_b_satisfy_prompt_file, router_b_uses_creative_lead,
     router_b_uses_done_note,
 };
 
 pub const HEADER_MD: &str = "header.md";
-pub const KPOP_COMMON_MD: &str = "kpop_common.md";
-pub const KPOP_COMMON_NO_KPOP_MD: &str = "kpop_common_no_kpop.md";
 pub const DO_HEADER_MD: &str = "do_header.md";
 pub const ROUTER_CODE_EXTRA_MD: &str = "router_code_extra.md";
 pub const ROUTER_SUMMARIZE_MD: &str = "router_summarize.md";
@@ -23,16 +20,12 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "mbc2.md",
     "init_constraints.md",
     HEADER_MD,
-    KPOP_COMMON_MD,
-    KPOP_COMMON_NO_KPOP_MD,
     DO_HEADER_MD,
     ROUTER_A_MD,
+    ROUTER_A_2_MD,
     ROUTER_A_AUDIT_MD,
-    ROUTER_A_AUDIT_NO_KPOP_MD,
     ROUTER_B_MD,
     ROUTER_B_SATISFY_MD,
-    ROUTER_B_SATISFY_BRIEF_MD,
-    ROUTER_B_SATISFY_NO_KPOP_MD,
     ROUTER_B_CREATIVE_LEAD_MD,
     ROUTER_B_DONE_NOTE_MD,
     ROUTER_CODE_EXTRA_MD,
@@ -130,11 +123,11 @@ mod advice_path_embed_tests {
             !header.contains("Workspace `AGENTS.md`"),
             "missing AGENTS.md must leave agents_insert empty"
         );
-        std::fs::write(tmp.path().join("AGENTS.md"), "Prefer ripwire for maps.\n").expect("agents");
+        std::fs::write(tmp.path().join("AGENTS.md"), "Record the map scale.\n").expect("agents");
         let ctx_with = workflow_context_paths_only(&artifacts, DEFAULT_CLI_MODEL);
         let header_with = render_header(&store, ctx_with.as_map()).expect("header with agents");
         assert!(
-            header_with.contains("Prefer ripwire for maps."),
+            header_with.contains("Record the map scale."),
             "header must embed workspace AGENTS.md via agents_insert"
         );
     }
@@ -145,19 +138,18 @@ mod router_header_embed_tests {
     use std::path::Path;
 
     use super::{
-        DO_HEADER_MD, HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_LEAD_MD, ROUTER_B_MD,
-        ROUTER_SUMMARIZE_MD, default_file,
+        DO_HEADER_MD, HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_LEAD_MD, ROUTER_B_DONE_NOTE_MD,
+        ROUTER_B_MD, ROUTER_B_SATISFY_MD, ROUTER_SUMMARIZE_MD, default_file,
     };
     use crate::artifacts::create_run_artifacts;
+    use crate::cli::router_flow::router_flow_prompt::{
+        RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput,
+        RouterSummarizePromptInput, build_router_a_prompt, build_router_b_prompt,
+        build_router_header_prompt, build_router_summarize_prompt, prepare_router_prompt_store,
+    };
     use crate::config::DEFAULT_CLI_MODEL;
     use crate::orchestrator::workflow_context_paths_only;
     use crate::prompts::{PromptStore, render_header};
-    use crate::router_flow::router_flow_prompt::{
-        RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput,
-        RouterKpopCommonPromptInput, RouterSummarizePromptInput, build_router_a_prompt,
-        build_router_b_prompt, build_router_header_prompt, build_router_kpop_common_prompt,
-        build_router_summarize_prompt, prepare_router_prompt_store,
-    };
 
     fn embedded_router_fixture() -> (
         tempfile::TempDir,
@@ -202,33 +194,16 @@ mod router_header_embed_tests {
             store: &store,
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
-            max_hypotheses: 5,
-            no_kpop: false,
-            gate_iteration: 1,
         })
         .expect("header turn");
         assert!(!header_turn.contains("{{"));
-        assert!(
-            header_turn.contains("KPop") || header_turn.contains("Karl Popper"),
-            "router header must embed kpop_insert when no_kpop is false"
-        );
-        let kpop_turn = build_router_kpop_common_prompt(RouterKpopCommonPromptInput {
-            store: &store,
-            artifacts: &artifacts,
-            model: DEFAULT_CLI_MODEL,
-            max_hypotheses: 5,
-            no_kpop: false,
-            gate_iteration: 1,
-        })
-        .expect("kpop common turn");
-        assert!(!kpop_turn.contains("{{"));
+        assert!(!header_turn.is_empty());
         let a = build_router_a_prompt(RouterAPromptInput {
             store: &store,
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
             gates: false,
             gates_just_ran: false,
-            no_kpop: false,
         })
         .expect("router_a");
         assert!(!a.contains("{{"));
@@ -238,7 +213,6 @@ mod router_header_embed_tests {
             model: DEFAULT_CLI_MODEL,
             gates: true,
             gates_just_ran: false,
-            no_kpop: false,
         })
         .expect("router_a gates");
         assert!(!a_gates.contains("{{"));
@@ -247,7 +221,6 @@ mod router_header_embed_tests {
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
             creative: false,
-            no_kpop: false,
         })
         .expect("router_b");
         assert!(!b.contains("{{"));
@@ -256,18 +229,22 @@ mod router_header_embed_tests {
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
             creative: true,
-            no_kpop: false,
         })
         .expect("router_b_creative");
         assert!(!b_creative.contains("{{"));
-        assert!(
-            b_creative.contains("MBC2"),
-            "creative router_b must mention MBC2: {b_creative}"
-        );
-        assert!(
-            !b.contains("MBC2"),
-            "default router_b must not mention MBC2: {b}"
-        );
+        let satisfy = default_file(ROUTER_B_SATISFY_MD).expect("satisfy").trim();
+        let lead = default_file(ROUTER_B_CREATIVE_LEAD_MD)
+            .expect("lead")
+            .trim();
+        let done = default_file(ROUTER_B_DONE_NOTE_MD).expect("done").trim();
+        assert!(b.contains(satisfy));
+        assert!(b_creative.contains(satisfy));
+        assert!(b.contains(done));
+        assert!(b_creative.contains(done));
+        if !lead.is_empty() && !satisfy.contains(lead) && !done.contains(lead) {
+            assert!(b_creative.contains(lead));
+            assert!(!b.contains(lead));
+        }
         let summarize = build_router_summarize_prompt(RouterSummarizePromptInput {
             store: &store,
             artifacts: &artifacts,
@@ -275,9 +252,14 @@ mod router_header_embed_tests {
         })
         .expect("summarize");
         assert!(!summarize.contains("{{"));
+        let plan_name = artifacts
+            .plan_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .expect("plan file name");
         assert!(
-            summarize.contains("Write a summary of this entire session"),
-            "router_summarize.md body must be rendered: {summarize}"
+            summarize.contains(plan_name),
+            "router_summarize must expand user_request_path: {summarize}"
         );
     }
 }

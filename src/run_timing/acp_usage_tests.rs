@@ -1,5 +1,5 @@
 use super::super::RunTiming;
-use crate::malvin_config_file::TokenCostRates;
+use crate::config::malvin_config_file::TokenCostRates;
 
 #[test]
 #[allow(clippy::float_cmp)]
@@ -25,6 +25,49 @@ fn codex_additive_reasoning_folds_into_tokens_out_and_cost() {
     assert_eq!(r.reasoning_tokens, Some(3));
     let stats = super::super::cost::cost_stats(&r).expect("stats");
     assert!((stats["cost_out"].as_f64().unwrap() - 0.005).abs() < 1e-12);
+}
+
+#[test]
+#[allow(clippy::float_cmp)]
+fn codex_total_keeps_cache_inside_input_tokens() {
+    let mut r = RunTiming {
+        token_cost_rates: TokenCostRates {
+            usd_per_microtoken_in: 1_000_000.0,
+            usd_per_microtoken_out: 0.0,
+            usd_per_microtoken_cache_read: 1_000_000.0,
+            usd_per_microtoken_cache_write: 0.0,
+        },
+        ..Default::default()
+    };
+    r.record_acp_usage_if_present(&serde_json::json!({
+        "inputTokens": 35576,
+        "outputTokens": 101,
+        "cacheReadTokens": 27136,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 37,
+        "totalTokens": 35677
+    }));
+    assert_eq!(r.tokens_in, Some(35576));
+    assert_eq!(r.cache_read, Some(27136));
+    assert_eq!(r.tokens_out, Some(101));
+    assert_eq!(r.reasoning_tokens, Some(37));
+    let stats = super::super::cost::cost_stats(&r).expect("stats");
+    assert!((stats["cost_in"].as_f64().unwrap() - 8440.0).abs() < 1e-6);
+    assert!((stats["cost_read"].as_f64().unwrap() - 27136.0).abs() < 1e-6);
+}
+
+#[test]
+fn cursor_total_still_folds_cache_into_tokens_in() {
+    let mut r = RunTiming::default();
+    r.record_acp_usage_if_present(&serde_json::json!({
+        "inputTokens": 18844,
+        "outputTokens": 54,
+        "cacheReadTokens": 8704,
+        "cacheWriteTokens": 0,
+        "totalTokens": 27602
+    }));
+    assert_eq!(r.tokens_in, Some(27548));
+    assert_eq!(r.cache_read, Some(8704));
 }
 
 #[test]

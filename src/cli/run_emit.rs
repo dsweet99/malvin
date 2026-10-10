@@ -2,8 +2,8 @@ use std::io::Write;
 use std::path::Path;
 
 use malvin::artifacts::RunArtifacts;
+use malvin::config::mem_limit_config::format_host_resources_line;
 use malvin::format_logs_dir;
-use malvin::mem_limit_config::format_host_resources_line;
 use malvin::output::{MALVIN_WHO, WHO_U, format_line, print_stdout_line, print_stdout_text};
 
 pub fn emit_command_line(run_dir: &Path, echo_stdout: bool) -> Result<(), String> {
@@ -11,11 +11,11 @@ pub fn emit_command_line(run_dir: &Path, echo_stdout: bool) -> Result<(), String
     let cmd = malvin::command_line().expect("init_from_env populates argv via OnceLock");
     let line = format!("Command: {cmd}");
     if echo_stdout {
-        print_stdout_line(WHO_U, &line);
+        print_stdout_line(MALVIN_WHO, &line);
         let _ = std::io::stdout().flush();
     }
     let log_path = run_dir.join("command.log");
-    std::fs::write(&log_path, format!("{}\n", format_line(WHO_U, &line)))
+    std::fs::write(&log_path, format!("{}\n", format_line(MALVIN_WHO, &line)))
         .map_err(|e| format!("command.log: {e}"))?;
     Ok(())
 }
@@ -41,10 +41,10 @@ pub fn format_model_line(model: &str) -> String {
 
 fn append_command_log_line(run_dir: &Path, echo_stdout: bool, line: &str) -> Result<(), String> {
     if echo_stdout {
-        print_stdout_line(WHO_U, line);
+        print_stdout_line(MALVIN_WHO, line);
     }
     let log_path = run_dir.join("command.log");
-    let formatted = format!("{}\n", format_line(WHO_U, line));
+    let formatted = format!("{}\n", format_line(MALVIN_WHO, line));
     let mut file = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
@@ -87,9 +87,9 @@ pub fn emit_run_startup_banner(
     _cli_request: &str,
 ) -> Result<(), String> {
     malvin::agent_phase::reset_for_run();
-    malvin::agent_phase::note_orienting();
+    malvin::agent_phase::note_starting();
     emit_command_line(&artifacts.run_dir, opts.tee_stdout)?;
-    if opts.host_resources && !malvin::acp::test_no_real_agent_enabled() {
+    if opts.host_resources && !malvin::agent_process::test_no_real_agent_enabled() {
         emit_host_resources_line(&artifacts.run_dir, opts.tee_stdout)?;
     }
     append_command_log_line(
@@ -115,19 +115,19 @@ mod tests {
         RunStartupEmitOpts, append_command_log_line, emit_host_resources_line, emit_run_logs_line,
         emit_run_startup_banner, format_model_line,
     };
-    use malvin::output::{WHO_U, format_who_tag_delim};
+    use malvin::output::{MALVIN_WHO, format_who_tag_delim};
 
     #[test]
-    fn emit_command_line_uses_user_who_tag() {
+    fn emit_command_line_uses_malvin_who_tag() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let run_dir = tmp.path().join("run");
         std::fs::create_dir_all(&run_dir).expect("mkdir");
         super::emit_command_line(&run_dir, false).expect("emit");
         let text = std::fs::read_to_string(run_dir.join("command.log")).expect("read");
-        let delim = format_who_tag_delim(WHO_U);
+        let delim = format_who_tag_delim(MALVIN_WHO);
         assert!(
             text.contains(&format!(" {delim}Command: ")),
-            "command.log must tag user startup with u|; got {text:?}"
+            "command.log must tag startup with o|; got {text:?}"
         );
     }
 
@@ -139,7 +139,9 @@ mod tests {
         std::fs::write(run_dir.join("command.log"), "existing\n").expect("seed");
         emit_host_resources_line(&run_dir, false).expect("emit");
         let text = std::fs::read_to_string(run_dir.join("command.log")).expect("read");
-        assert!(text.contains("existing") && text.contains("Memory:") && text.contains("CPUs:"));
+        let delim = format_who_tag_delim(MALVIN_WHO);
+        assert!(text.contains("existing") && text.contains("CPUs:"));
+        assert!(text.contains(&format!(" {delim}Memory: ")));
     }
 
     #[test]
@@ -155,7 +157,7 @@ mod tests {
     }
 
     #[test]
-    fn append_model_line_uses_user_who_tag() {
+    fn append_model_line_uses_malvin_who_tag() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let run_dir = tmp.path().join("run");
         std::fs::create_dir_all(&run_dir).expect("mkdir");
@@ -163,17 +165,16 @@ mod tests {
         append_command_log_line(&run_dir, false, &format_model_line("pi:openai/gpt-4o"))
             .expect("emit");
         let text = std::fs::read_to_string(run_dir.join("command.log")).expect("read");
-        let delim = format_who_tag_delim(WHO_U);
+        let delim = format_who_tag_delim(MALVIN_WHO);
         assert!(
-            text.contains("existing")
-                && text.contains(&format!(" {delim}Model: pi:openai/gpt-4o"))
+            text.contains("existing") && text.contains(&format!(" {delim}Model: pi:openai/gpt-4o"))
         );
     }
 
     #[test]
     fn emit_run_startup_banner_writes_command_without_requiring_logs() {
-        malvin::test_utils::with_isolated_home(|_| {
-            malvin::test_utils::clear_test_no_real_agent_env();
+        malvin::test_support::test_utils::with_isolated_home(|_| {
+            malvin::test_support::test_utils::clear_test_no_real_agent_env();
             let tmp = tempfile::tempdir().expect("tempdir");
             let artifacts =
                 malvin::artifacts::create_run_artifacts_from_text("hi", Some(tmp.path()))
@@ -196,8 +197,8 @@ mod tests {
 
     #[test]
     fn emit_run_startup_sequence_includes_host_resources_when_requested() {
-        malvin::test_utils::with_isolated_home(|_| {
-            malvin::test_utils::clear_test_no_real_agent_env();
+        malvin::test_support::test_utils::with_isolated_home(|_| {
+            malvin::test_support::test_utils::clear_test_no_real_agent_env();
             let tmp = tempfile::tempdir().expect("tempdir");
             let artifacts =
                 malvin::artifacts::create_run_artifacts_from_text("hi", Some(tmp.path()))
@@ -221,7 +222,7 @@ mod tests {
 
     #[test]
     fn emit_run_startup_sequence_omits_host_resources_when_disabled() {
-        malvin::test_utils::with_isolated_home(|_| {
+        malvin::test_support::test_utils::with_isolated_home(|_| {
             let tmp = tempfile::tempdir().expect("tempdir");
             let artifacts =
                 malvin::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))

@@ -1,1 +1,0 @@
-KPop: Satisfy the requirements.

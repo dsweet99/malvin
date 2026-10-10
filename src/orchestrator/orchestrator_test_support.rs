@@ -1,8 +1,6 @@
-use crate::acp::AgentIoOptions;
-use crate::artifacts::{
-    MalvinChecksBackup, RunArtifacts, SessionDotfileBackups, create_run_artifacts_from_text,
-};
-use crate::cursor_sdk::CursorSdkClient;
+use crate::agent_process::AgentIoOptions;
+use crate::artifacts::{RunArtifacts, SessionDotfileBackups, create_run_artifacts_from_text};
+use crate::backends::cursor_sdk::CursorSdkClient;
 use crate::orchestrator::workflow_context_paths_only;
 use crate::prompt_stratification::WorkflowRenderContext;
 use crate::prompts::PromptStore;
@@ -20,7 +18,7 @@ pub fn io_opts() -> AgentIoOptions {
 
 #[must_use]
 pub fn no_session_client() -> CursorSdkClient {
-    crate::cursor_sdk::cursor_sdk_client_from_raw("cursor:auto", io_opts(), 1)
+    crate::backends::cursor_sdk::cursor_sdk_client_from_raw("cursor:auto", io_opts(), 1)
 }
 
 #[must_use]
@@ -50,22 +48,21 @@ pub fn workflow_ctx_for_smoke(
 #[cfg(test)]
 mod tests {
     use super::{empty_dotfile_backups, io_opts, no_session_client, workflow_ctx_for_smoke};
-
     #[test]
-    fn io_opts_disables_tee_and_markdown() {
-        let o = io_opts();
-        assert!(o.no_tee);
-        assert!(!o.emit_stdout_markdown);
-    }
-
-    #[test]
-    fn no_session_client_and_empty_backups_smoke() {
-        let _ = no_session_client();
-        let backups = empty_dotfile_backups();
-        assert!(matches!(
-            backups.malvin_checks,
-            crate::artifacts::MalvinChecksBackup::Missing
-        ));
+    fn io_opts_disables_tee_and_markdown_and_no_session_client_and_empty_backups_smoke() {
+        {
+            let o = io_opts();
+            assert!(o.no_tee);
+            assert!(!o.emit_stdout_markdown);
+        }
+        {
+            let _ = no_session_client();
+            let backups = empty_dotfile_backups();
+            assert!(matches!(
+                backups.malvin_checks,
+                crate::artifacts::MalvinChecksBackup::Missing
+            ));
+        }
     }
 
     #[test]

@@ -4,118 +4,116 @@ use std::ffi::OsString;
 fn os(args: &[&str]) -> Vec<OsString> {
     args.iter().map(OsString::from).collect()
 }
-
 #[test]
-fn each_do_tags_only_the_next_request() {
-    let tagged = classify_top_level_requests(&os(&[
-        "malvin",
-        "Write",
-        "--do",
-        "What time",
-        "Find bug",
-        "--do",
-        "Summarize",
-    ]))
-    .expect("classify");
-    assert_eq!(
-        tagged
-            .iter()
-            .map(|t| (t.text.as_str(), t.kind, t.creative))
-            .collect::<Vec<_>>(),
-        vec![
-            ("Write", RequestKind::Router, None),
-            ("What time", RequestKind::Do, None),
-            ("Find bug", RequestKind::Router, None),
-            ("Summarize", RequestKind::Do, None),
-        ]
-    );
+fn each_do_tags_only_the_next_request_and_each_creative_tags_only_the_next_request() {
+    {
+        let tagged = classify_top_level_requests(&os(&[
+            "malvin",
+            "Write",
+            "--do",
+            "What time",
+            "Find bug",
+            "--do",
+            "Summarize",
+        ]))
+        .expect("classify");
+        assert_eq!(
+            tagged
+                .iter()
+                .map(|t| (t.text.as_str(), t.kind, t.creative))
+                .collect::<Vec<_>>(),
+            vec![
+                ("Write", RequestKind::Router, None),
+                ("What time", RequestKind::Do, None),
+                ("Find bug", RequestKind::Router, None),
+                ("Summarize", RequestKind::Do, None),
+            ]
+        );
+    }
+    {
+        let tagged = classify_top_level_requests(&os(&[
+            "malvin",
+            "Write",
+            "--creative",
+            "Explore",
+            "Find bug",
+            "--creative=0.4",
+            "Summarize",
+        ]))
+        .expect("classify");
+        assert_eq!(
+            tagged
+                .iter()
+                .map(|t| (t.text.as_str(), t.kind, t.creative))
+                .collect::<Vec<_>>(),
+            vec![
+                ("Write", RequestKind::Router, None),
+                ("Explore", RequestKind::Router, Some(1.0)),
+                ("Find bug", RequestKind::Router, None),
+                ("Summarize", RequestKind::Router, Some(0.4)),
+            ]
+        );
+    }
 }
-
 #[test]
-fn each_creative_tags_only_the_next_request() {
-    let tagged = classify_top_level_requests(&os(&[
-        "malvin",
-        "Write",
-        "--creative",
-        "Explore",
-        "Find bug",
-        "--creative=0.4",
-        "Summarize",
-    ]))
-    .expect("classify");
-    assert_eq!(
-        tagged
-            .iter()
-            .map(|t| (t.text.as_str(), t.kind, t.creative))
-            .collect::<Vec<_>>(),
-        vec![
-            ("Write", RequestKind::Router, None),
-            ("Explore", RequestKind::Router, Some(1.0)),
-            ("Find bug", RequestKind::Router, None),
-            ("Summarize", RequestKind::Router, Some(0.4)),
-        ]
-    );
+fn creative_survives_intervening_global_flags_and_creative_then_do_without_request_errors() {
+    {
+        let tagged = classify_top_level_requests(&os(&[
+            "malvin",
+            "--creative=0.7",
+            "--max-acp-retries",
+            "3",
+            "task",
+        ]))
+        .expect("classify");
+        assert_eq!(tagged.len(), 1);
+        assert_eq!(tagged[0].creative, Some(0.7));
+        assert_eq!(tagged[0].kind, RequestKind::Router);
+    }
+    {
+        let err =
+            classify_top_level_requests(&os(&["malvin", "--creative", "--do", "x"])).unwrap_err();
+        assert!(err.contains("--creative"), "{err}");
+    }
 }
-
 #[test]
-fn creative_survives_intervening_global_flags() {
-    let tagged = classify_top_level_requests(&os(&[
-        "malvin",
-        "--creative=0.7",
-        "--max-loops",
-        "3",
-        "task",
-    ]))
-    .expect("classify");
-    assert_eq!(tagged.len(), 1);
-    assert_eq!(tagged[0].creative, Some(0.7));
-    assert_eq!(tagged[0].kind, RequestKind::Router);
+fn do_then_creative_without_request_errors_and_do_then_trailing_request_is_router() {
+    {
+        let err =
+            classify_top_level_requests(&os(&["malvin", "--do", "--creative", "x"])).unwrap_err();
+        assert!(err.contains("--do"), "{err}");
+    }
+    {
+        let tagged =
+            classify_top_level_requests(&os(&["malvin", "--do", "Hello", "Research"])).expect("ok");
+        assert_eq!(tagged[0].kind, RequestKind::Do);
+        assert_eq!(tagged[1].kind, RequestKind::Router);
+        assert!(tagged[0].creative.is_none());
+        assert!(tagged[1].creative.is_none());
+    }
 }
-
 #[test]
-fn creative_then_do_without_request_errors() {
-    let err = classify_top_level_requests(&os(&["malvin", "--creative", "--do", "x"])).unwrap_err();
-    assert!(err.contains("--creative"), "{err}");
+fn bare_do_without_request_is_ok_when_empty_and_bare_creative_without_request_is_ok_when_empty() {
+    {
+        let tagged = classify_top_level_requests(&os(&["malvin", "--do"])).expect("ok");
+        assert!(tagged.is_empty());
+    }
+    {
+        let tagged = classify_top_level_requests(&os(&["malvin", "--creative"])).expect("ok");
+        assert!(tagged.is_empty());
+    }
 }
-
 #[test]
-fn do_then_creative_without_request_errors() {
-    let err = classify_top_level_requests(&os(&["malvin", "--do", "--creative", "x"])).unwrap_err();
-    assert!(err.contains("--do"), "{err}");
-}
-
-#[test]
-fn do_then_trailing_request_is_router() {
-    let tagged =
-        classify_top_level_requests(&os(&["malvin", "--do", "Hello", "Research"])).expect("ok");
-    assert_eq!(tagged[0].kind, RequestKind::Do);
-    assert_eq!(tagged[1].kind, RequestKind::Router);
-    assert!(tagged[0].creative.is_none());
-    assert!(tagged[1].creative.is_none());
-}
-
-#[test]
-fn bare_do_without_request_is_ok_when_empty() {
-    let tagged = classify_top_level_requests(&os(&["malvin", "--do"])).expect("ok");
-    assert!(tagged.is_empty());
-}
-
-#[test]
-fn bare_creative_without_request_is_ok_when_empty() {
-    let tagged = classify_top_level_requests(&os(&["malvin", "--creative"])).expect("ok");
-    assert!(tagged.is_empty());
-}
-
-#[test]
-fn do_without_request_after_other_requests_errors() {
-    let err = classify_top_level_requests(&os(&["malvin", "A", "--do"])).unwrap_err();
-    assert!(err.contains("--do"));
-}
-
-#[test]
-fn creative_without_request_after_other_requests_errors() {
-    let err = classify_top_level_requests(&os(&["malvin", "A", "--creative"])).unwrap_err();
-    assert!(err.contains("--creative"));
+fn do_without_request_after_other_requests_errors_and_creative_without_request_after_other_requests_errors()
+ {
+    {
+        let err = classify_top_level_requests(&os(&["malvin", "A", "--do"])).unwrap_err();
+        assert!(err.contains("--do"));
+    }
+    {
+        let err = classify_top_level_requests(&os(&["malvin", "A", "--creative"])).unwrap_err();
+        assert!(err.contains("--creative"));
+    }
 }
 
 #[test]
@@ -140,26 +138,50 @@ fn advice_with_tag_consumes_following_token() {
         classify_top_level_requests(&os(&["malvin", "--advice", "design"])).expect("classify");
     assert!(tagged.is_empty(), "{tagged:?}");
 }
-
 #[test]
-fn bare_advice_alone_leaves_no_requests() {
-    let tagged = classify_top_level_requests(&os(&["malvin", "--advice"])).expect("ok");
-    assert!(tagged.is_empty());
+fn bare_advice_alone_leaves_no_requests_and_advice_equals_form_does_not_skip_next_request() {
+    {
+        let tagged = classify_top_level_requests(&os(&["malvin", "--advice"])).expect("ok");
+        assert!(tagged.is_empty());
+    }
+    {
+        let tagged =
+            classify_top_level_requests(&os(&["malvin", "--advice=design", "Write"])).expect("ok");
+        assert_eq!(tagged.len(), 1);
+        assert_eq!(tagged[0].text, "Write");
+    }
 }
 
 #[test]
-fn advice_equals_form_does_not_skip_next_request() {
-    let tagged =
-        classify_top_level_requests(&os(&["malvin", "--advice=design", "Write"])).expect("ok");
+fn bare_advice_before_flag_does_not_skip_flag_token_and_double_dash_ends_options() {
+    let tagged = classify_top_level_requests(&os(&[
+        "malvin",
+        "--advice",
+        "--max-acp-retries",
+        "2",
+        "Write",
+    ]))
+    .expect("ok");
     assert_eq!(tagged.len(), 1);
     assert_eq!(tagged[0].text, "Write");
-}
-
-#[test]
-fn bare_advice_before_flag_does_not_skip_flag_token() {
-    let tagged =
-        classify_top_level_requests(&os(&["malvin", "--advice", "--max-loops", "2", "Write"]))
-            .expect("ok");
-    assert_eq!(tagged.len(), 1);
-    assert_eq!(tagged[0].text, "Write");
+    let dash = classify_top_level_requests(&os(&["malvin", "--", "-n"])).expect("classify");
+    assert_eq!(dash.len(), 1);
+    assert_eq!(dash[0].text, "-n");
+    assert_eq!(dash[0].kind, RequestKind::Router);
+    let bare = classify_top_level_requests(&os(&["malvin", "--"])).expect("classify");
+    assert!(bare.is_empty());
+    let literal =
+        classify_top_level_requests(&os(&["malvin", "--", "--do", "task"])).expect("classify");
+    assert_eq!(
+        literal
+            .iter()
+            .map(|t| (t.text.as_str(), t.kind))
+            .collect::<Vec<_>>(),
+        vec![("--do", RequestKind::Router), ("task", RequestKind::Router)]
+    );
+    let pending =
+        classify_top_level_requests(&os(&["malvin", "--do", "--", "-n"])).expect("classify");
+    assert_eq!(pending.len(), 1);
+    assert_eq!(pending[0].text, "-n");
+    assert_eq!(pending[0].kind, RequestKind::Do);
 }

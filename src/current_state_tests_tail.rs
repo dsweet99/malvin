@@ -21,12 +21,12 @@ fn format_retry_line_detects_oom_from_sandbox_marker() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
         .expect("artifacts");
-    crate::sandbox_oom::record_sandbox_oom_kill(
+    crate::agent_process::sandbox_oom::record_sandbox_oom_kill(
         &artifacts.run_dir,
-        crate::sandbox_oom::SandboxOomKillRecord::from_facts(
+        crate::agent_process::sandbox_oom::SandboxOomKillRecord::from_facts(
             1,
-            crate::sandbox_oom::SandboxOomKillFacts {
-                reason: crate::sandbox_oom::OOM_REASON_MEMORY_LIMIT,
+            crate::agent_process::sandbox_oom::SandboxOomKillFacts {
+                reason: crate::agent_process::sandbox_oom::OOM_REASON_MEMORY_LIMIT,
                 rss_bytes: Some(999),
                 limit_bytes: 512,
                 pgid: 42,
@@ -58,7 +58,7 @@ fn format_retry_line_gates_failure_after_done() {
 }
 
 fn kiss_cov_current_state_non_unix_branch() {
-    crate::test_utils::with_isolated_home(|_| {
+    crate::test_support::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tempdir");
         let _artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
             .expect("artifacts");
@@ -74,7 +74,7 @@ fn kiss_cov_current_state_non_unix_branch() {
 }
 
 fn append_unsolved_reason_records_missing_marker() {
-    crate::test_utils::with_isolated_home(|_| {
+    crate::test_support::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tempdir");
         let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
             .expect("artifacts");
@@ -96,12 +96,12 @@ fn append_oom_reason_records_memory_kill() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
         .expect("artifacts");
-    crate::sandbox_oom::record_sandbox_oom_kill(
+    crate::agent_process::sandbox_oom::record_sandbox_oom_kill(
         &artifacts.run_dir,
-        crate::sandbox_oom::SandboxOomKillRecord::from_facts(
+        crate::agent_process::sandbox_oom::SandboxOomKillRecord::from_facts(
             1,
-            crate::sandbox_oom::SandboxOomKillFacts {
-                reason: crate::sandbox_oom::OOM_REASON_MEMORY_LIMIT,
+            crate::agent_process::sandbox_oom::SandboxOomKillFacts {
+                reason: crate::agent_process::sandbox_oom::OOM_REASON_MEMORY_LIMIT,
                 rss_bytes: Some(999),
                 limit_bytes: 512,
                 pgid: 42,
@@ -115,7 +115,7 @@ fn append_oom_reason_records_memory_kill() {
 }
 
 fn append_gates_reason_after_done_session() {
-    crate::test_utils::with_isolated_home(|_| {
+    crate::test_support::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tempdir");
         let artifacts = crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path()))
             .expect("artifacts");

@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use crate::model_id::{ModelBackend, parse_model_id};
+use crate::config::model_id::{ModelBackend, parse_model_id};
 
 use super::backends::{PI_DIR, PI_ENTRY, PI_PACKAGE, local_codex_version, local_pi_version};
 use super::credentials::{env_set, modal_credentials_present};
@@ -61,7 +61,7 @@ impl ModalBackendSetup for CursorSetup {
     }
 
     fn credential_preflight(&self, _home: &Path) -> Result<(), String> {
-        if crate::cursor_sdk::effective_sdk_api_key().is_some() {
+        if crate::backends::cursor_sdk::effective_sdk_api_key().is_some() {
             return Ok(());
         }
         Err(

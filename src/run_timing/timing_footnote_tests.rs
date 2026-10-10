@@ -24,7 +24,7 @@ fn stdout_and_phase_test_locks() -> (
 }
 
 pub(crate) fn seed_run_timing_json(run_dir: &std::path::Path) {
-    use crate::llm_transport::ResponseUsage;
+    use crate::run_timing::ResponseUsage;
 
     let timing = RunTiming::new_arc();
     {
@@ -45,9 +45,7 @@ fn capture_timing_then_done_log(run_dir: &std::path::Path) -> String {
     let log_path = run_dir.join("stdout.log");
     crate::output::set_stdout_log_path(Some(log_path.clone()));
     print_summary_from_run_dir(run_dir).expect("timing");
-    crate::agent_phase::set_reporting(true);
     crate::output::print_stdout_line(crate::output::MALVIN_WHO, "DONE");
-    crate::agent_phase::set_reporting(false);
     crate::output::set_stdout_log_path(None);
     std::fs::read_to_string(log_path).unwrap_or_default()
 }

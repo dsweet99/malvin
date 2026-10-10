@@ -1,5 +1,5 @@
 use crate::artifacts::SessionDotfileBackups;
-use crate::test_utils::with_isolated_home;
+use crate::test_support::test_utils::with_isolated_home;
 use crate::{malvin_config_path, seed_malvin_config};
 
 #[test]

@@ -43,7 +43,7 @@ pub(super) fn models_display_lines_filtered(
         } else {
             format!("{prefix}{t}")
         };
-        if super::line_matches_prefix(&row, filter) {
+        if super::models_cmd::line_matches_prefix(&row, filter) {
             out.push(row);
         }
     }

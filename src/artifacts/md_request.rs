@@ -108,7 +108,7 @@ mod tests {
         {
             use super::is_existing_md_file_path;
             use std::os::unix::fs::symlink;
-            let _guard = crate::test_utils::test_env_lock();
+            let _guard = crate::test_support::test_utils::test_env_lock();
             let tmp = tempfile::tempdir().unwrap();
             let outside = tempfile::tempdir().unwrap();
             std::fs::write(outside.path().join("secret.md"), "stolen").unwrap();

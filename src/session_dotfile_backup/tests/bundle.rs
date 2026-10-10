@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use crate::artifacts::SessionDotfileBackups;
 use crate::repo_gates::MALVIN_CHECKS_FILE;
 use crate::seed_malvin_config;
-use crate::test_utils::with_isolated_home;
+use crate::test_support::test_utils::with_isolated_home;
 
 fn workspace_paths(work: &Path) -> (PathBuf, PathBuf, PathBuf) {
     (

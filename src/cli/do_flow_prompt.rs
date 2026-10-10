@@ -6,7 +6,6 @@ use crate::cli::session_header::render_do_cosend_prompt;
 
 pub(crate) struct DoCoderRun {
     pub combined: String,
-    pub header_user_for_trace: (String, String),
 }
 
 pub fn prepare_do_prompt_store() -> Result<PromptStore, String> {
@@ -27,12 +26,8 @@ pub(crate) fn build_do_coder_run_with_store(
     text: &str,
     opts: PromptModelOpts<'_>,
 ) -> Result<DoCoderRun, String> {
-    let (header, combined) = render_do_cosend_prompt(store, artifacts, opts.model, text)?;
-    let user = text.trim_end().to_string();
-    Ok(DoCoderRun {
-        combined,
-        header_user_for_trace: (header, user),
-    })
+    let (_header, combined) = render_do_cosend_prompt(store, artifacts, opts.model, text)?;
+    Ok(DoCoderRun { combined })
 }
 
 #[cfg(test)]

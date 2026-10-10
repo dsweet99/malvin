@@ -1,7 +1,7 @@
 use clap::CommandFactory;
 
 use super::{Cli, parse_cli_with_config_defaults};
-use malvin::test_utils::with_isolated_home;
+use malvin::test_support::test_utils::with_isolated_home;
 
 fn parse(argv: &[&str]) -> Cli {
     let mut out = None;
@@ -46,21 +46,21 @@ fn code_is_not_a_subcommand_and_parses_as_bare_request() {
     assert!(cli.command.is_none());
     assert_eq!(cli.first_request().map(String::as_str), Some("code"));
 }
-
 #[test]
-fn gates_only_route_parses_without_request() {
-    let cli = parse(&["malvin", "-g"]);
-    assert!(cli.command.is_none());
-    assert!(!cli.has_request());
-    assert!(cli.router.gates);
-}
-
-#[test]
-fn bare_request_without_subcommand_parses_as_default_route() {
-    let cli = parse(&["malvin", "investigate"]);
-    assert!(cli.command.is_none());
-    assert!(!cli.do_workflow());
-    assert_eq!(cli.first_request().map(String::as_str), Some("investigate"));
+fn gates_only_route_parses_without_request_and_bare_request_without_subcommand_parses_as_default_route()
+ {
+    {
+        let cli = parse(&["malvin", "-g"]);
+        assert!(cli.command.is_none());
+        assert!(!cli.has_request());
+        assert!(cli.router.gates);
+    }
+    {
+        let cli = parse(&["malvin", "investigate"]);
+        assert!(cli.command.is_none());
+        assert!(!cli.do_workflow());
+        assert_eq!(cli.first_request().map(String::as_str), Some("investigate"));
+    }
 }
 
 #[test]
@@ -76,13 +76,44 @@ fn cli_help_omits_removed_subcommands() {
 }
 
 #[test]
-fn multiple_bare_request_args_parse_as_independent_requests() {
+fn multiple_bare_requests_and_double_dash_requests_parse() {
     let cli = parse(&["malvin", "plan_1.md", "plan_2.md"]);
     assert!(cli.command.is_none());
     assert!(!cli.do_workflow());
     assert_eq!(
         cli.requests,
         vec!["plan_1.md".to_string(), "plan_2.md".to_string()]
+    );
+    let flag_request = parse(&["malvin", "--", "-n"]);
+    assert_eq!(flag_request.requests, vec!["-n".to_string()]);
+    assert_eq!(flag_request.tagged_requests.len(), 1);
+    assert_eq!(flag_request.tagged_requests[0].text, "-n");
+    assert!(flag_request.tagged_requests[0].is_router());
+    let pending_do = parse(&["malvin", "--do", "--", "-n"]);
+    assert!(pending_do.do_workflow());
+    assert_eq!(pending_do.requests, vec!["-n".to_string()]);
+    assert_eq!(pending_do.tagged_requests.len(), 1);
+    assert_eq!(pending_do.tagged_requests[0].text, "-n");
+    assert!(pending_do.tagged_requests[0].is_do());
+    let literal_do = parse(&["malvin", "--", "--do", "task"]);
+    assert!(!literal_do.do_workflow());
+    assert_eq!(
+        literal_do.requests,
+        vec!["--do".to_string(), "task".to_string()]
+    );
+    assert!(
+        literal_do
+            .tagged_requests
+            .iter()
+            .all(super::request_argv::TaggedRequest::is_router)
+    );
+    assert_eq!(
+        literal_do
+            .tagged_requests
+            .iter()
+            .map(|t| t.text.as_str())
+            .collect::<Vec<_>>(),
+        vec!["--do", "task"]
     );
 }
 

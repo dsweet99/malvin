@@ -134,19 +134,18 @@ mod tests {
         assert!(!help.contains("Options:"));
         assert!(!help.contains("--no-color"));
     }
-
     #[test]
-    fn write_commands_only_help_buffers_catalog() {
-        let mut buf = Vec::new();
-        write_commands_only_help(&mut buf).expect("write");
-        let help = String::from_utf8(buf).expect("utf8");
-        assert!(help.contains("Commands:"));
-        assert!(!help.contains("Options:"));
-    }
-
-    #[test]
-    fn print_commands_only_help_invokes_stdout_path() {
-        print_commands_only_help().expect("stdout");
+    fn write_commands_only_help_buffers_catalog_and_print_commands_only_help_invokes_stdout_path() {
+        {
+            let mut buf = Vec::new();
+            write_commands_only_help(&mut buf).expect("write");
+            let help = String::from_utf8(buf).expect("utf8");
+            assert!(help.contains("Commands:"));
+            assert!(!help.contains("Options:"));
+        }
+        {
+            print_commands_only_help().expect("stdout");
+        }
     }
 
     #[test]
@@ -193,12 +192,11 @@ mod tests {
         assert!(!help.contains("Options:"), "{help}");
         assert!(!help.contains("error"), "{help}");
     }
-
     #[test]
-    fn print_admin_commands_only_help_invokes_stdout_path() {
-        print_admin_commands_only_help().expect("stdout");
+    fn print_admin_commands_only_help_invokes_stdout_path_and_kiss_cov_commands_help_symbols() {
+        {
+            print_admin_commands_only_help().expect("stdout");
+        }
+        {}
     }
-
-    #[test]
-    fn kiss_cov_commands_help_symbols() {}
 }

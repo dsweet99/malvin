@@ -83,20 +83,24 @@ pub fn is_clear_metadata_teardown(v: &Value) -> bool {
             == Some(true)
 }
 
+pub fn is_release_agent(v: &Value) -> bool {
+    method_of(v) == "pane.release_agent"
+}
+
 pub fn collect_until_teardown_clear(rx: &Receiver<Value>) -> Vec<Value> {
     let mut requests = Vec::new();
     let deadline = std::time::Instant::now() + Duration::from_secs(2);
     while std::time::Instant::now() < deadline {
         match rx.recv_timeout(Duration::from_millis(100)) {
             Ok(v) => {
-                let done = is_clear_metadata_teardown(&v);
+                let done = is_release_agent(&v);
                 requests.push(v);
                 if done {
                     break;
                 }
             }
             Err(_) => {
-                if requests.iter().any(is_clear_metadata_teardown) {
+                if requests.iter().any(is_release_agent) {
                     break;
                 }
             }
@@ -135,11 +139,10 @@ pub fn assert_idle_then_clear_metadata(requests: &[Value]) {
         }),
         "no working after idle: {requests:?}"
     );
+    let release_at = requests.iter().position(is_release_agent).expect("release");
     assert!(
-        requests
-            .iter()
-            .all(|v| method_of(v) != "pane.release_agent"),
-        "must not release_agent: {requests:?}"
+        clear_at < release_at,
+        "clear-metadata before release: {requests:?}"
     );
 }
 

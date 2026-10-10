@@ -1,12 +1,12 @@
 use std::io::Write;
 
-use malvin::malvin_config_file::parse_model_cli_arg;
-use malvin::model_id::ParsedModel;
+use malvin::config::malvin_config_file::parse_model_cli_arg;
+use malvin::config::model_id::ParsedModel;
 
 #[must_use]
 pub(crate) fn resolved_model_json(model: &ParsedModel) -> String {
     let provider = model.pi_provider_and_model().map(|(provider, _)| provider);
-    let local = provider.is_some_and(malvin::pi_sdk::provider_is_keyless_local);
+    let local = provider.is_some_and(malvin::local_llm::provider_is_keyless_local);
     serde_json::json!({
         "canonical": model.canonical(),
         "backend": model.backend.label(),

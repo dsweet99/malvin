@@ -130,14 +130,13 @@ fn workflow_context_paths_only_includes_current_state() {
     assert!(ctx.contains_key("current_state"));
     assert!(ctx.get("current_state").expect("state").contains("User:"));
     assert_eq!(
-        ctx.get("kpop_insert").map(String::as_str),
-        Some(""),
-        "shared header key defaults empty for non-router consumers"
-    );
-    assert_eq!(
         ctx.get("agents_insert").map(String::as_str),
         Some(""),
         "missing AGENTS.md yields empty agents_insert"
+    );
+    assert!(
+        !ctx.contains_key("request_inline"),
+        "request text is not copied into the prompt context"
     );
 }
 

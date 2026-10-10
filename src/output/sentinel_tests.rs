@@ -21,7 +21,9 @@ fn fixture_cases_match_rule() {
     assert!(!cases.is_empty());
     for case in cases {
         let marker_key = case["marker"].as_str().expect("marker");
-        let marker = fixture["markers"][marker_key].as_str().expect("known marker");
+        let marker = fixture["markers"][marker_key]
+            .as_str()
+            .expect("known marker");
         let line = case["line"].as_str().expect("line");
         let expected = case["matches"].as_bool().expect("matches");
         assert_eq!(

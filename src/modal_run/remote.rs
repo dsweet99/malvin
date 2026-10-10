@@ -73,7 +73,10 @@ impl RemotePaths {
         let mut env = credentials;
         env.insert("HOME".to_string(), self.home.clone());
         env.insert("MALVIN_MODAL_REMOTE".to_string(), "1".to_string());
-        env.insert("NPM_CONFIG_UPDATE_NOTIFIER".to_string(), "false".to_string());
+        env.insert(
+            "NPM_CONFIG_UPDATE_NOTIFIER".to_string(),
+            "false".to_string(),
+        );
         env
     }
 }

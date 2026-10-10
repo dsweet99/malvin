@@ -3,7 +3,7 @@ use super::{
     gate_log::{emit_repo_gate_line, emit_repo_gate_warning},
 };
 use malvin::output::{MALVIN_WHO, WARNING_WHO, format_who_tag_delim};
-use malvin::test_stderr_capture::capture_stderr_output;
+use malvin::test_support::test_stderr_capture::capture_stderr_output;
 
 const GATE_WARN_MSG: &str = "quality gate warning for regression test";
 

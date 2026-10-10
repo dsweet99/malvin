@@ -3,7 +3,7 @@ use std::sync::{Mutex, OnceLock};
 
 use super::bind::emit_bind_reports;
 use super::env::HerdrEnv;
-use super::request::{clear_metadata_teardown, next_seq, report_agent};
+use super::request::{clear_metadata_teardown, next_seq, release_agent, report_agent};
 use super::send::send_request_checked;
 use super::trace::log_herdr_failure;
 use serde_json::Value;
@@ -147,6 +147,7 @@ fn notify_run_end_inner() {
         next_seq(),
     );
     let clear_meta = clear_metadata_teardown(&snap.pane_id, next_seq());
+    let release = release_agent(&snap.pane_id, next_seq());
     let idle_ok = send_end_retry(
         &snap.socket_path,
         snap.run_dir.as_deref(),
@@ -159,7 +160,13 @@ fn notify_run_end_inner() {
         "end-clear",
         &clear_meta,
     );
-    if idle_ok && clear_ok {
+    let release_ok = send_end_retry(
+        &snap.socket_path,
+        snap.run_dir.as_deref(),
+        "end-release",
+        &release,
+    );
+    if idle_ok && clear_ok && release_ok {
         clear_session();
     }
 }

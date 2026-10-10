@@ -58,21 +58,20 @@ pub fn reset_for_independent_run() {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
-    fn active_gate_iteration_round_trip() {
-        set_active_gate_iteration(Some(3));
-        assert_eq!(active_gate_iteration(), Some(3));
-        set_active_gate_iteration(None);
-        assert_eq!(active_gate_iteration(), None);
-    }
-
-    #[test]
-    fn quality_gates_just_ran_round_trip() {
-        set_quality_gates_just_ran(true);
-        assert!(quality_gates_just_ran());
-        set_quality_gates_just_ran(false);
-        assert!(!quality_gates_just_ran());
+    fn active_gate_iteration_round_trip_and_quality_gates_just_ran_round_trip() {
+        {
+            set_active_gate_iteration(Some(3));
+            assert_eq!(active_gate_iteration(), Some(3));
+            set_active_gate_iteration(None);
+            assert_eq!(active_gate_iteration(), None);
+        }
+        {
+            set_quality_gates_just_ran(true);
+            assert!(quality_gates_just_ran());
+            set_quality_gates_just_ran(false);
+            assert!(!quality_gates_just_ran());
+        }
     }
 
     #[test]

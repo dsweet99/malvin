@@ -4,7 +4,7 @@ use super::{
 };
 use crate::cli::{Cli, SharedOpts};
 use clap::{CommandFactory, FromArgMatches};
-use malvin::malvin_config_file::AgentConfig;
+use malvin::config::malvin_config_file::AgentConfig;
 
 pub(super) fn write_agent_config(work_dir: &std::path::Path) {
     let path = malvin::malvin_config_path(work_dir);
@@ -27,10 +27,10 @@ pub(super) fn write_agent_config(work_dir: &std::path::Path) {
 }
 
 pub(super) fn with_seeded_agent_config(f: impl FnOnce()) {
-    malvin::test_utils::with_isolated_home(|work| {
+    malvin::test_support::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(work).expect("chdir");
-        malvin::malvin_config_file::open_malvin_config(work).expect("seed");
+        malvin::config::malvin_config_file::open_malvin_config(work).expect("seed");
         write_agent_config(work);
         f();
         std::env::set_current_dir(cwd).expect("restore cwd");
@@ -39,7 +39,7 @@ pub(super) fn with_seeded_agent_config(f: impl FnOnce()) {
 
 #[test]
 fn write_agent_config_adds_agent_section_to_partial_file() {
-    malvin::test_utils::with_isolated_home(|work| {
+    malvin::test_support::test_utils::with_isolated_home(|work| {
         let path = malvin::malvin_config_path(work);
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
         std::fs::write(&path, "mem_limit_gb = 2\n").expect("write");
@@ -56,18 +56,17 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
     assert!(!global_flag_from_command_line(&matches, "model"));
 
     let agent = AgentConfig {
-        model: malvin::model_id::parse_model_id("cursor:cfg").expect("model"),
-        max_hypotheses: malvin::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
+        model: malvin::config::model_id::parse_model_id("cursor:cfg").expect("model"),
         max_acp_retries: 6,
     };
     let mut shared = SharedOpts {
-        model: malvin::model_id::parse_model_id("cursor:old").expect("model"),
+        model: malvin::config::model_id::parse_model_id("cursor:old").expect("model"),
         verbose: false,
         max_acp_retries: 1,
         doc: false,
         advice: None,
         credits: false,
-        iml: false,
+        ml: crate::cli::shared_opts::MetaLoopCount::Times(1),
         remote: None,
     };
     apply_shared_config_defaults(&matches, &mut shared, &agent);
@@ -84,10 +83,6 @@ fn apply_workspace_config_defaults_overrides_unset_flags_for_gates_only() {
         assert_eq!(cli.shared.model.canonical(), "cursor:cfg-model");
         assert_eq!(cli.shared.max_acp_retries, 8);
         assert!(cli.command.is_none());
-        assert_eq!(
-            cli.router.max_loops,
-            malvin::malvin_config_file::DEFAULT_MAX_LOOPS
-        );
     });
 }
 
@@ -101,14 +96,11 @@ fn apply_workspace_config_defaults_respects_explicit_cli_flags_for_gates_only() 
             "--max-acp-retries",
             "2",
             "-g",
-            "--max-loops",
-            "3",
         ]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
         assert_eq!(cli.shared.model.canonical(), "cursor:cli-model");
         assert_eq!(cli.shared.max_acp_retries, 2);
-        assert_eq!(cli.router.max_loops, 3);
     });
 }
 
@@ -125,7 +117,7 @@ fn apply_workspace_config_defaults_for_admin_command() {
 
 #[test]
 fn apply_workspace_config_defaults_skips_do() {
-    malvin::test_utils::with_isolated_home(|work| {
+    malvin::test_support::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(work).expect("chdir");
         let config_path = malvin::malvin_config_path(work);
@@ -140,14 +132,13 @@ fn apply_workspace_config_defaults_skips_do() {
 
 #[test]
 fn parse_cli_with_config_defaults_gates_only() {
-    malvin::test_utils::with_isolated_home(|work| {
+    malvin::test_support::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(work).expect("chdir");
         let (cli, _) = parse_cli_with_config_defaults(["malvin", "-g"]).expect("parse");
         assert!(cli.command.is_none());
         assert!(!cli.has_request());
         assert!(cli.router.gates);
-        assert!(cli.router.max_loops >= 1);
         std::env::set_current_dir(cwd).expect("restore cwd");
     });
 }

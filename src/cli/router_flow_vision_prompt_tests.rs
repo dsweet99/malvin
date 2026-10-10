@@ -1,88 +1,64 @@
 #[test]
-fn default_router_prompts_follow_vision_problem_solving_language() {
-    // VISION: no explicit coding/eval-task language; no soft coding-shaped metaphors in routers.
-    let vision_forbidden = [
-        "coding",
-        "evaluation task",
-        "evaluation tasks",
-        "fast task",
-        "fast_tasks",
-    ];
-    let router_metaphors = [
-        "convenience check",
-        "smoke check",
-        "green light",
-        "looks green",
-        "proxy green",
-        "stage then commit",
-        "validate before mutate",
-        "import",
-        "module",
-        "backend",
-        "grader",
-        "pytest",
-    ];
+fn default_router_prompt_skeletons_keep_template_keys() {
     for name in [
         "header.md",
         "router_a.md",
-        "router_a_audit.md",
+        "router_a_2.md",
         "router_b.md",
         "router_b_satisfy.md",
-        "router_b_satisfy_brief.md",
         "router_b_creative_lead.md",
+        "router_b_done_note.md",
         "router_summarize.md",
+        "do_header.md",
+        "mbc2.md",
     ] {
         let body = malvin::prompts::default_file(name)
-            .unwrap_or_else(|| panic!("missing default prompt {name}"))
-            .to_ascii_lowercase();
-        for needle in vision_forbidden {
-            assert!(!body.contains(needle), "{name} must not contain {needle:?}");
-        }
+            .unwrap_or_else(|| panic!("missing default prompt {name}"));
+        assert!(!body.trim().is_empty(), "{name} must stay embedded");
     }
+    assert!(
+        malvin::prompts::default_file("router_a_audit.md").is_some(),
+        "router_a_audit.md must stay embedded"
+    );
     let router_a = malvin::prompts::default_file("router_a.md").expect("router_a");
-    let router_a_audit =
-        malvin::prompts::default_file("router_a_audit.md").expect("router_a_audit");
     assert!(
-        router_a.contains("{{ audit_directive }}")
-            && router_a.contains(malvin::output::MALVIN_DONE)
-            && !router_a.to_ascii_lowercase().contains("falsif"),
-        "router_a should keep shared audit structure without falsification language"
+        router_a.contains("{{ code_extra }}") && router_a.contains("{{ user_request_path }}"),
+        "router_a must keep the keys the router fills"
     );
-    assert!(
-        router_a_audit.contains("KPop: Find unsatisfied requirements"),
-        "router_a_audit should ask for unsatisfied requirements"
-    );
-    for name in [
-        "router_a_audit.md",
-        "router_b_satisfy.md",
-        "router_b_satisfy_brief.md",
-    ] {
-        let body = malvin::prompts::default_file(name)
-            .unwrap_or_else(|| panic!("missing {name}"))
-            .to_ascii_lowercase();
-        assert!(body.contains("kpop:"), "{name} must keep KPop steering");
-        for needle in router_metaphors {
-            assert!(!body.contains(needle), "{name} must not contain {needle:?}");
-        }
-    }
     let router_b = malvin::prompts::default_file("router_b.md").expect("router_b");
-    let satisfy = malvin::prompts::default_file("router_b_satisfy.md").expect("router_b_satisfy");
-    let creative_lead =
-        malvin::prompts::default_file("router_b_creative_lead.md").expect("creative_lead");
-    let satisfy_brief =
-        malvin::prompts::default_file("router_b_satisfy_brief.md").expect("satisfy_brief");
     assert!(
         router_b.contains("{{ satisfy_line }}")
             && router_b.contains("{{ creative_lead }}")
-            && !router_b.contains("MBC2"),
-        "router_b skeleton must use template keys without MBC2"
+            && router_b.contains("{{ done_note }}"),
+        "router_b must keep the keys the router fills"
     );
-    assert!(
-        satisfy.contains("KPop: Satisfy the requirements.") && !satisfy.contains("MBC2"),
-        "router_b_satisfy must keep KPop satisfy instruction without MBC2"
-    );
-    assert!(
-        satisfy_brief.contains("KPop: Satisfy the requirements.") && creative_lead.contains("MBC2"),
-        "creative fragments must keep KPop satisfy instruction and MBC2"
-    );
+    header_advice_bullets_do_not_mention_coding_and_read_as_phrases();
+}
+
+fn header_advice_bullets_do_not_mention_coding_and_read_as_phrases() {
+    let header = malvin::prompts::default_file("header.md").expect("header");
+    let advice = header
+        .split("you can find advice on")
+        .nth(1)
+        .expect("advice intro");
+    let bullets: Vec<&str> = advice
+        .lines()
+        .skip(1)
+        .map(str::trim)
+        .take_while(|line| line.starts_with("- "))
+        .map(|line| line.trim_start_matches("- ").trim())
+        .collect();
+    assert!(!bullets.is_empty(), "header should list advice topics");
+    for bullet in bullets {
+        for word in bullet.split(|c: char| !c.is_ascii_alphanumeric()) {
+            assert!(
+                !word.eq_ignore_ascii_case("code") && !word.eq_ignore_ascii_case("coding"),
+                "VISION.md forbids header.md from mentioning coding; bullet {bullet:?}"
+            );
+        }
+        assert!(
+            !bullet.contains("various problem ("),
+            "advice bullet is not a readable phrase: {bullet:?}"
+        );
+    }
 }

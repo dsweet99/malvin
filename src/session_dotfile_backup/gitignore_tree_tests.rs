@@ -1,6 +1,6 @@
 use super::GitignoreBackup;
 use crate::session_dotfile_backup::tree_test_support::init_git_repo;
-use crate::test_utils::with_isolated_home;
+use crate::test_support::test_utils::with_isolated_home;
 use std::path::{Path, PathBuf};
 
 #[test]
@@ -59,13 +59,14 @@ fn nested_gitignore_round_trip_restores_tree_and_removes_agent_created_files() {
     with_isolated_home(|work| {
         seed_nested_gitignore_repo(work);
         let backup =
-            GitignoreBackup::backup_if_present_with_id(work, &mut |n| format!("gi{n}"))
-                .unwrap();
+            GitignoreBackup::backup_if_present_with_id(work, &mut |n| format!("gi{n}")).unwrap();
         let GitignoreBackup::Present { backup_root, files } = &backup else {
             panic!("expected gitignore tree backup");
         };
         assert!(
-            backup_root.starts_with(crate::workspace_paths::snapshot_category_dir("gitignore"))
+            backup_root.starts_with(crate::workspace::workspace_paths::snapshot_category_dir(
+                "gitignore"
+            ))
         );
         assert_eq!(files.len(), 2);
 
@@ -85,10 +86,9 @@ pub(crate) fn assert_gitignore_contents(work: &Path, rel: &str, expected: &str) 
 fn poisoned_disk_snapshot_does_not_change_restored_gitignore_content() {
     with_isolated_home(|work| {
         std::fs::write(work.join(".gitignore"), "ORIGINAL\n").unwrap();
-        let backup = GitignoreBackup::backup_if_present_with_id(work, &mut |n| {
-            format!("poison{n}")
-        })
-        .unwrap();
+        let backup =
+            GitignoreBackup::backup_if_present_with_id(work, &mut |n| format!("poison{n}"))
+                .unwrap();
         let GitignoreBackup::Present { backup_root, .. } = &backup else {
             panic!("expected backup");
         };

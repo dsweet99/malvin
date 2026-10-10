@@ -1,4 +1,6 @@
-use malvin::agent_backend::SdkClient;
+use super::router_flow_prompt::router_b_prompt_label;
+use malvin::backends::agent_backend::SdkClient;
+use malvin::prompts::RouterBPromptFlags;
 
 pub(crate) struct RouterInitialCoderPrompt<'a> {
     pub client: &'a mut SdkClient,
@@ -19,10 +21,35 @@ pub(crate) async fn run_router_initial_coder_prompt(
             input.prompt,
             input.log_path,
             input.log_who,
-            malvin::acp::CoderPromptOptions {
+            malvin::agent_process::CoderPromptOptions {
                 llm_phase: Some(malvin::run_timing::TimingPhase::Implement),
                 do_trace_split: None,
                 stdout_bracket_label: Some(input.stdout_bracket_label),
+                append_trace: true,
+                ..Default::default()
+            },
+        )
+        .await
+        .map_err(|e| e.to_string())
+}
+
+pub(crate) async fn run_router_followup_coder_prompt(
+    client: &mut SdkClient,
+    prompt: &str,
+    log_path: &std::path::Path,
+    prompt_file: &str,
+) -> Result<(), String> {
+    client
+        .active_coder_session()
+        .map_err(|e| e.to_string())?
+        .run_coder_prompt(
+            prompt,
+            log_path,
+            prompt_file,
+            malvin::agent_process::CoderPromptOptions {
+                llm_phase: Some(malvin::run_timing::TimingPhase::Implement),
+                do_trace_split: None,
+                stdout_bracket_label: Some(prompt_file),
                 append_trace: true,
                 ..Default::default()
             },
@@ -35,25 +62,9 @@ pub(crate) async fn run_router_b_coder_prompt(
     client: &mut SdkClient,
     prompt: &str,
     log_path: &std::path::Path,
-    stdout_bracket_label: &str,
 ) -> Result<(), String> {
-    client
-        .active_coder_session()
-        .map_err(|e| e.to_string())?
-        .run_coder_prompt(
-            prompt,
-            log_path,
-            "router_b",
-            malvin::acp::CoderPromptOptions {
-                llm_phase: Some(malvin::run_timing::TimingPhase::Implement),
-                do_trace_split: None,
-                stdout_bracket_label: Some(stdout_bracket_label),
-                append_trace: true,
-                ..Default::default()
-            },
-        )
-        .await
-        .map_err(|e| e.to_string())
+    let prompt_file = router_b_prompt_label(RouterBPromptFlags { creative: false });
+    run_router_followup_coder_prompt(client, prompt, log_path, prompt_file).await
 }
 
 pub(crate) async fn run_router_summarize_coder_prompt(
@@ -68,7 +79,7 @@ pub(crate) async fn run_router_summarize_coder_prompt(
             prompt,
             log_path,
             "router_summarize",
-            malvin::acp::CoderPromptOptions {
+            malvin::agent_process::CoderPromptOptions {
                 llm_phase: Some(malvin::run_timing::TimingPhase::Implement),
                 do_trace_split: None,
                 stdout_bracket_label: Some("router_summarize.md"),
@@ -83,23 +94,23 @@ pub(crate) async fn run_router_summarize_coder_prompt(
 #[cfg(test)]
 mod kiss_cov_gate_refs {
     use super::*;
-    use malvin::prompts::{header_prompt_file, kpop_common_prompt_file, router_a_prompt_file};
+    use malvin::prompts::{header_prompt_file, router_a_prompt_file};
 
     #[test]
     fn kiss_cov_unit_names() {
         let _ = run_router_initial_coder_prompt;
         let _: Option<RouterInitialCoderPrompt<'_>> = None;
         let _ = run_router_b_coder_prompt;
+        let _ = run_router_followup_coder_prompt;
         let _ = run_router_summarize_coder_prompt;
         let _ = header_prompt_file;
         let _ = router_a_prompt_file;
-        let _ = kpop_common_prompt_file;
-        let _ = malvin::agent_backend::header_prompt_options_for_test;
+        let _ = malvin::backends::agent_backend::header_prompt_options_for_test;
     }
 
     #[test]
     fn router_header_retries_use_fresh_agent() {
-        let opts = malvin::agent_backend::header_prompt_options_for_test();
+        let opts = malvin::backends::agent_backend::header_prompt_options_for_test();
         assert!(
             opts.fresh_agent_on_retry,
             "spawn header must not re-send header.md into the same agent on ACP retry"
@@ -110,9 +121,6 @@ mod kiss_cov_gate_refs {
     #[test]
     fn router_coder_stdout_labels_match_active_prompt_files() {
         assert_eq!(header_prompt_file(), "header.md");
-        assert_eq!(router_a_prompt_file(false), "router_a.md");
-        assert_eq!(router_a_prompt_file(true), "router_a.md");
-        assert_eq!(kpop_common_prompt_file(false), "kpop_common.md");
-        assert_eq!(kpop_common_prompt_file(true), "kpop_common_no_kpop.md");
+        assert_eq!(router_a_prompt_file(), "router_a.md");
     }
 }

@@ -12,7 +12,7 @@ pub struct ModelsRefreshRecord {
 
 #[must_use]
 pub fn models_refresh_record_path() -> PathBuf {
-    malvin::workspace_paths::malvin_user_home_root().join("last_models_refresh.json")
+    malvin::workspace::workspace_paths::malvin_user_home_root().join("last_models_refresh.json")
 }
 
 #[must_use]
@@ -43,26 +43,25 @@ pub fn models_refresh_is_due(now_secs: u64) -> bool {
 
 pub fn perform_models_refresh() {
     let now = malvin::clock::unix_now_secs();
-    let _ = malvin::npm_pi_sdk::refresh_npm_pi_models();
+    let _ = malvin::backends::pi_backend::refresh_npm_pi_models();
     let _ = save_last_refresh_secs(now);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
-    fn parses_record_with_alias_timestamp() {
-        let json = r#"{"timestamp": 123456789}"#;
-        let record: ModelsRefreshRecord = serde_json::from_str(json).expect("parse");
-        assert_eq!(record.last_refresh_secs, 123_456_789);
-    }
-
-    #[test]
-    fn parses_record_with_last_refresh_secs() {
-        let json = r#"{"last_refresh_secs": 987654321}"#;
-        let record: ModelsRefreshRecord = serde_json::from_str(json).expect("parse");
-        assert_eq!(record.last_refresh_secs, 987_654_321);
+    fn parses_record_with_alias_timestamp_and_parses_record_with_last_refresh_secs() {
+        {
+            let json = r#"{"timestamp": 123456789}"#;
+            let record: ModelsRefreshRecord = serde_json::from_str(json).expect("parse");
+            assert_eq!(record.last_refresh_secs, 123_456_789);
+        }
+        {
+            let json = r#"{"last_refresh_secs": 987654321}"#;
+            let record: ModelsRefreshRecord = serde_json::from_str(json).expect("parse");
+            assert_eq!(record.last_refresh_secs, 987_654_321);
+        }
     }
 
     #[test]

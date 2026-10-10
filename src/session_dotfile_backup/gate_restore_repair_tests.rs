@@ -59,7 +59,7 @@ fn repair_leaves_valid_checks_unchanged() {
 
 #[test]
 fn repair_recreates_empty_home_malvin_config_from_template() {
-    crate::test_utils::with_isolated_home(|work| {
+    crate::test_support::test_utils::with_isolated_home(|work| {
         let cfg = crate::malvin_config_path(work);
         if let Some(parent) = cfg.parent() {
             std::fs::create_dir_all(parent).expect("mkdir");
@@ -74,7 +74,7 @@ fn repair_recreates_empty_home_malvin_config_from_template() {
 
 #[test]
 fn repair_recreates_invalid_home_malvin_config_from_template() {
-    crate::test_utils::with_isolated_home(|work| {
+    crate::test_support::test_utils::with_isolated_home(|work| {
         let cfg = crate::malvin_config_path(work);
         if let Some(parent) = cfg.parent() {
             std::fs::create_dir_all(parent).expect("mkdir");
@@ -89,7 +89,7 @@ fn repair_recreates_invalid_home_malvin_config_from_template() {
 
 #[test]
 fn ensure_heals_empty_home_config_to_template_keys() {
-    crate::test_utils::with_isolated_home(|work| {
+    crate::test_support::test_utils::with_isolated_home(|work| {
         let cfg = crate::malvin_config_path(work);
         if let Some(parent) = cfg.parent() {
             std::fs::create_dir_all(parent).expect("mkdir");

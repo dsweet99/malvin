@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use malvin::process_group_rss::pids_sandbox_bytes;
+use malvin::agent_process::process_group_rss::pids_sandbox_bytes;
 
 #[test]
 fn macos_host_pids_sandbox_bytes_positive() {

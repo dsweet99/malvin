@@ -1,11 +1,12 @@
-use crate::router_flow::router_flow_no_work::chat_has_malvin_done;
-use crate::router_flow::router_flow_prompt;
+use crate::cli::router_flow::router_flow_no_work::chat_has_malvin_done;
+use crate::cli::router_flow::router_flow_prompt;
 use malvin::artifacts::{RunArtifacts, SessionDotfileBackups, ensure_gate_exp_log_file};
 use std::path::Path;
 
-use super::RouterAcpIterationInput;
-use super::router_flow_coder_prompts::{
-    RouterInitialCoderPrompt, run_router_b_coder_prompt, run_router_initial_coder_prompt,
+use super::router_flow::router_flow_acp::RouterAcpIterationInput;
+use super::router_flow::router_flow_acp::router_flow_coder_prompts::{
+    RouterInitialCoderPrompt, run_router_b_coder_prompt, run_router_followup_coder_prompt,
+    run_router_initial_coder_prompt,
 };
 
 pub(crate) struct RouterTurnsOutcome {
@@ -43,6 +44,11 @@ pub(crate) async fn run_router_turns(
     let creative = input.router.sample_creative_this_iteration();
     let _exp_log =
         ensure_gate_exp_log_file(input.artifacts, input.agent_loop).map_err(|e| e.to_string())?;
+    input
+        .client
+        .force_fresh_coder_agent()
+        .await
+        .map_err(|e| e.to_string())?;
     let iteration_backups = deliver_router_initial_turn(input, log_path, creative).await?;
     let done = finish_router_a_maybe_b(input, log_path, &model, creative).await?;
     Ok(RouterTurnsOutcome {
@@ -58,7 +64,8 @@ async fn deliver_router_initial_turn(
 ) -> Result<SessionDotfileBackups, String> {
     let work_dir = input.artifacts.work_dir.as_path();
     let model = input.shared.model.canonical();
-    let include_header = !malvin::agent_backend::session_header_is_satisfied(input.client);
+    let include_header =
+        !malvin::backends::agent_backend::session_header_is_satisfied(input.client);
     let initial = router_flow_prompt::build_router_initial_prompt(
         router_flow_prompt::RouterInitialPromptInput {
             store: input.prompt_store,
@@ -66,11 +73,8 @@ async fn deliver_router_initial_turn(
             model: &model,
             gates: input.router.gates,
             gates_just_ran: malvin::gate_loop_session::quality_gates_just_ran(),
-            no_kpop: input.router.no_kpop,
             creative,
-            max_hypotheses: input.max_hypotheses,
             include_header,
-            gate_iteration: input.agent_loop,
         },
     )?;
 
@@ -92,7 +96,8 @@ async fn deliver_router_initial_turn(
     } else {
         let iteration_backups =
             SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)?;
-        super::begin_coder_session_if_needed(input.client, work_dir).await?;
+        super::router_flow::router_flow_acp::begin_coder_session_if_needed(input.client, work_dir)
+            .await?;
         run_router_initial_coder_prompt(RouterInitialCoderPrompt {
             client: input.client,
             prompt: &initial.body,
@@ -111,32 +116,31 @@ async fn finish_router_a_maybe_b(
     model: &str,
     creative: bool,
 ) -> Result<bool, String> {
+    let router_a_2 = router_flow_prompt::build_router_a_2_prompt(input.prompt_store)?;
+    run_router_followup_coder_prompt(
+        input.client,
+        &router_a_2,
+        log_path,
+        malvin::prompts::router_a_2_prompt_file(),
+    )
+    .await?;
     if last_response_has_malvin_done(input.client) {
         return Ok(true);
     }
-    let no_kpop = input.router.no_kpop;
     let router_b =
         router_flow_prompt::build_router_b_prompt(router_flow_prompt::RouterBPromptInput {
             store: input.prompt_store,
             artifacts: input.artifacts,
             model,
             creative,
-            no_kpop,
         })?;
-    run_router_b_coder_prompt(
-        input.client,
-        &router_b,
-        log_path,
-        router_flow_prompt::router_b_prompt_label(malvin::prompts::RouterBPromptFlags {
-            creative,
-            no_kpop,
-        }),
-    )
-    .await?;
-    Ok(last_response_has_malvin_done(input.client))
+    run_router_b_coder_prompt(input.client, &router_b, log_path).await?;
+    Ok(false)
 }
 
-pub(crate) fn last_response_has_malvin_done(client: &malvin::agent_backend::SdkClient) -> bool {
+pub(crate) fn last_response_has_malvin_done(
+    client: &malvin::backends::agent_backend::SdkClient,
+) -> bool {
     client
         .last_coder_prompt_agent_response()
         .is_some_and(|chat| chat_has_malvin_done(&chat))
@@ -153,3 +157,7 @@ mod router_flow_acp_support_kiss_cov_tests;
 #[cfg(test)]
 #[path = "router_flow_acp_support_done_tests.rs"]
 mod router_flow_acp_support_done_tests;
+
+#[cfg(test)]
+#[path = "router_flow_acp_support_fresh_agent_tests.rs"]
+mod router_flow_acp_support_fresh_agent_tests;

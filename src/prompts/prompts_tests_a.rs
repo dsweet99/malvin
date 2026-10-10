@@ -1,24 +1,23 @@
 use std::collections::HashMap;
 
 use crate::prompts::*;
-
 #[test]
-fn substitute_replaces_dollar_keys() {
-    let mut m = HashMap::new();
-    m.insert("plan_path".to_string(), "/p".to_string());
-    assert_eq!(
-        crate::prompts::substitute_template("Hello $plan_path end", &m),
-        "Hello /p end"
-    );
-}
-
-#[test]
-fn validate_required_ok_when_header_present() {
-    let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path();
-    std::fs::write(root.join("header.md"), "").unwrap();
-    let store = PromptStore::with_root(root.to_path_buf());
-    store.validate_required().expect("header is present");
+fn substitute_replaces_dollar_keys_and_validate_required_ok_when_header_present() {
+    {
+        let mut m = HashMap::new();
+        m.insert("plan_path".to_string(), "/p".to_string());
+        assert_eq!(
+            crate::prompts::substitute_template("Hello $plan_path end", &m),
+            "Hello /p end"
+        );
+    }
+    {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        std::fs::write(root.join("header.md"), "").unwrap();
+        let store = PromptStore::with_root(root.to_path_buf());
+        store.validate_required().expect("header is present");
+    }
 }
 
 #[test]

@@ -91,7 +91,7 @@ impl<K: NamedFileKind> NamedFileBackup<K> {
             return Ok(Self::Missing);
         }
         let policy = &K::POLICY;
-        let root = crate::workspace_paths::snapshot_category_dir(policy.category);
+        let root = crate::workspace::workspace_paths::snapshot_category_dir(policy.category);
         let dest_dir = allocate_backup_dir(&root, generate_id, &policy.labels)?;
         let files = copy_rels_into_backup(work_dir, &dest_dir, &rels, policy)?;
         Ok(Self::Present {

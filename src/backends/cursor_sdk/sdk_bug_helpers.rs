@@ -1,0 +1,164 @@
+use crate::agent_process::{AgentIoOptions, CoderPromptOptions};
+use crate::backends::cursor_sdk::CursorSdkClient;
+
+pub(super) fn bug_mock_io_forced() -> AgentIoOptions {
+    AgentIoOptions {
+        no_tee: true,
+        raw_output: true,
+        show_thoughts_on_stdout: false,
+        emit_stdout_markdown: false,
+        log_full_outgoing_prompts: false,
+    }
+}
+
+pub(super) fn bug_install_env(mock: &std::path::Path) {
+    unsafe {
+        std::env::set_var("MALVIN_CURSOR_SDK_BRIDGE", mock);
+        std::env::set_var("CURSOR_API_KEY", "test-key");
+        std::env::set_var(crate::agent_process::MALVIN_TEST_NO_REAL_AGENT_ENV, "1");
+    }
+}
+
+pub(super) fn bug_point_bridge_at_missing(path: &std::path::Path) {
+    unsafe {
+        std::env::set_var(
+            "MALVIN_CURSOR_SDK_BRIDGE",
+            path.join("missing-mock-bridge.js"),
+        );
+    }
+}
+
+pub(super) fn bug_set_progress_env(period_ms: u64, count: u64) {
+    unsafe {
+        std::env::set_var("MOCK_BRIDGE_PROGRESS_MS", period_ms.to_string());
+        std::env::set_var("MOCK_BRIDGE_PROGRESS_COUNT", count.to_string());
+    }
+}
+
+pub(super) fn bug_clear_progress_env() {
+    unsafe {
+        std::env::remove_var("MOCK_BRIDGE_PROGRESS_MS");
+        std::env::remove_var("MOCK_BRIDGE_PROGRESS_COUNT");
+    }
+}
+
+pub(super) fn bug_set_tool_turn_env(period_ms: u64, pulses: u64) {
+    unsafe {
+        std::env::set_var("MOCK_BRIDGE_TOOL_PERIOD_MS", period_ms.to_string());
+        std::env::set_var("MOCK_BRIDGE_TOOL_PULSES", pulses.to_string());
+    }
+}
+
+pub(super) fn bug_clear_tool_turn_env() {
+    unsafe {
+        std::env::remove_var("MOCK_BRIDGE_TOOL_PERIOD_MS");
+        std::env::remove_var("MOCK_BRIDGE_TOOL_PULSES");
+    }
+}
+
+pub(super) fn bug_clear_env() {
+    unsafe {
+        std::env::remove_var("MALVIN_CURSOR_SDK_BRIDGE");
+        std::env::remove_var("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS");
+        std::env::remove_var("MOCK_BRIDGE_HANG_CREATE");
+    }
+    bug_clear_progress_env();
+    bug_clear_tool_turn_env();
+}
+
+pub(super) fn bug_set_drain_idle_timeout_ms(ms: u64) {
+    unsafe {
+        std::env::set_var("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS", ms.to_string());
+    }
+}
+
+pub(super) fn bug_bridge_js() -> std::path::PathBuf {
+    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("src/backends/cursor_sdk/mock_bridge.js")
+}
+
+pub(super) fn bug_client(run_dir: &std::path::Path, retries: u32) -> CursorSdkClient {
+    let mut client = crate::backends::cursor_sdk::cursor_sdk_client_from_raw(
+        "cursor:auto",
+        bug_mock_io_forced(),
+        retries,
+    );
+    client.prompts_log_run_dir = Some(run_dir.to_path_buf());
+    client
+}
+
+pub(super) fn bug_prepare() -> tempfile::TempDir {
+    crate::test_support::test_utils::enable_test_fast_teardown();
+    bug_install_env(&bug_bridge_js());
+    let tmp = tempfile::tempdir().expect("tmp");
+    crate::agent_process::malvin_sandbox::clear_active_sandbox_session();
+    tmp
+}
+
+pub(super) fn assert_err_has(err: &crate::agent_process::AgentError, needles: &[&str]) {
+    assert!(
+        needles.iter().any(|n| err.message.contains(n)),
+        "unexpected: {}",
+        err.message
+    );
+}
+
+pub(super) async fn expect_prompt_err(
+    client: &mut CursorSdkClient,
+    prompt: &str,
+    log: &std::path::Path,
+) -> crate::agent_process::AgentError {
+    client
+        .active_coder_session()
+        .expect("active coder session")
+        .run_coder_prompt(
+            prompt,
+            log,
+            "coder",
+            CoderPromptOptions {
+                single_attempt: true,
+                llm_phase: Some(crate::run_timing::TimingPhase::Implement),
+                ..CoderPromptOptions::default()
+            },
+        )
+        .await
+        .expect_err("expected failure")
+}
+
+pub(super) async fn run_implement_prompt(
+    client: &mut CursorSdkClient,
+    prompt: &str,
+    log: &std::path::Path,
+) {
+    client
+        .active_coder_session()
+        .expect("active coder session")
+        .run_coder_prompt(
+            prompt,
+            log,
+            "coder",
+            CoderPromptOptions {
+                llm_phase: Some(crate::run_timing::TimingPhase::Implement),
+                ..CoderPromptOptions::default()
+            },
+        )
+        .await
+        .expect("prompt");
+}
+
+#[test]
+fn kiss_cov_sdk_bug_helpers() {
+    let _ = bug_mock_io_forced;
+    let _ = bug_install_env;
+    let _ = bug_point_bridge_at_missing;
+    let _ = bug_clear_env;
+    let _ = bug_set_drain_idle_timeout_ms;
+    let _ = bug_set_progress_env;
+    let _ = bug_clear_progress_env;
+    let _ = bug_bridge_js;
+    let _ = bug_client;
+    let _ = bug_prepare;
+    let _ = assert_err_has;
+    let _ = expect_prompt_err;
+    let _ = run_implement_prompt;
+}

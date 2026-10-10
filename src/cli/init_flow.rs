@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::path::Path;
 
+use crate::cli::router_flow::{RouterArgs, run_router};
 use crate::cli::{RouterOpts, SharedOpts};
-use crate::router_flow::{RouterArgs, run_router};
 use malvin::prompts::{PromptError, PromptStore};
 
 #[must_use]
@@ -13,7 +13,6 @@ pub(crate) fn effective_init_max_loops(max_loops: usize) -> usize {
 #[derive(Debug, Clone)]
 pub struct InitWorkflowOpts {
     pub max_loops: usize,
-    pub max_hypotheses: usize,
 }
 
 pub(crate) fn malvin_gates_file_missing() -> Result<bool, String> {
@@ -75,7 +74,6 @@ pub async fn run_init(
         RouterArgs {
             request: Some(request),
             max_loops: effective_init_max_loops(init.max_loops),
-            max_hypotheses: init.max_hypotheses,
         },
         crate::cli::AgentRouteOpts { shared, router },
     )
@@ -88,21 +86,20 @@ mod tests {
     use crate::cli::RouterOpts;
     use crate::cli::args::Cli;
     use clap::{CommandFactory, FromArgMatches};
-
     #[test]
-    fn init_run_entry_is_covered() {
-        let _ = run_init;
-        let _ = maybe_run_init_bootstrap;
-        let _ = render_init_router_request;
-        let _ = effective_init_max_loops;
-        let _ = malvin_gates_file_missing;
-        let _ = should_bootstrap_gates;
-        let _ = router_for_init_bootstrap;
-    }
-
-    #[test]
-    fn init_effective_max_loops_is_at_least_one() {
-        assert_eq!(effective_init_max_loops(0), 1);
+    fn init_run_entry_is_covered_and_init_effective_max_loops_is_at_least_one() {
+        {
+            let _ = run_init;
+            let _ = maybe_run_init_bootstrap;
+            let _ = render_init_router_request;
+            let _ = effective_init_max_loops;
+            let _ = malvin_gates_file_missing;
+            let _ = should_bootstrap_gates;
+            let _ = router_for_init_bootstrap;
+        }
+        {
+            assert_eq!(effective_init_max_loops(0), 1);
+        }
     }
 
     #[test]
@@ -132,7 +129,7 @@ mod tests {
 
     #[test]
     fn should_bootstrap_gates_when_gates_flag_on_and_file_missing() {
-        malvin::test_utils::with_isolated_home(|work| {
+        malvin::test_support::test_utils::with_isolated_home(|work| {
             let cwd = std::env::current_dir().expect("cwd");
             std::env::set_current_dir(work).expect("chdir");
             let mut router = RouterOpts::test_defaults();
@@ -147,7 +144,7 @@ mod tests {
 
     #[test]
     fn should_bootstrap_gates_when_legacy_checks_only_and_gates_missing() {
-        malvin::test_utils::with_isolated_home(|work| {
+        malvin::test_support::test_utils::with_isolated_home(|work| {
             let cwd = std::env::current_dir().expect("cwd");
             std::env::set_current_dir(work).expect("chdir");
             assert!(
@@ -169,25 +166,20 @@ mod tests {
             std::env::set_current_dir(cwd).expect("restore cwd");
         });
     }
-
     #[test]
-    fn router_for_init_bootstrap_clears_gates_flag() {
-        let mut router = RouterOpts::test_defaults();
-        router.gates = true;
-        let bootstrap = router_for_init_bootstrap(&router);
-        assert!(!bootstrap.gates);
-        assert!(router.gates);
-    }
-
-    #[test]
-    fn init_workflow_opts_clone_preserves_fields() {
-        let init = InitWorkflowOpts {
-            max_loops: 4,
-            max_hypotheses: 6,
-        };
-        let cloned = init.clone();
-        assert_eq!(cloned.max_loops, 4);
-        assert_eq!(cloned.max_hypotheses, 6);
+    fn router_for_init_bootstrap_clears_gates_flag_and_init_workflow_opts_clone_preserves_fields() {
+        {
+            let mut router = RouterOpts::test_defaults();
+            router.gates = true;
+            let bootstrap = router_for_init_bootstrap(&router);
+            assert!(!bootstrap.gates);
+            assert!(router.gates);
+        }
+        {
+            let init = InitWorkflowOpts { max_loops: 4 };
+            let cloned = init.clone();
+            assert_eq!(cloned.max_loops, 4);
+        }
     }
 
     #[test]
@@ -243,12 +235,8 @@ mod kiss_cov_gate_refs {
         let _ = stringify!(maybe_run_init_bootstrap);
         let _ = stringify!(render_init_router_request);
         let _ = stringify!(effective_init_max_loops);
-        let init = InitWorkflowOpts {
-            max_loops: 2,
-            max_hypotheses: 4,
-        };
+        let init = InitWorkflowOpts { max_loops: 2 };
         let _ = init.max_loops;
-        let _ = init.max_hypotheses;
         let _: Option<InitWorkflowOpts> = None;
         let _ = effective_init_max_loops;
         let _ = render_init_router_request;

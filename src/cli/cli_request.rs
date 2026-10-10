@@ -20,18 +20,17 @@ pub(crate) fn require_cli_request(
 #[cfg(test)]
 mod tests {
     use super::require_cli_request;
-
     #[test]
-    fn errors_when_missing() {
-        let err = require_cli_request(None, "tidy").unwrap_err();
-        assert!(err.contains("tidy") && err.contains("REQUEST"));
-    }
-
-    #[test]
-    fn rejects_whitespace_only_request() {
-        let whitespace = Some("   ".to_string());
-        let err = require_cli_request(whitespace.as_ref(), "tidy").unwrap_err();
-        assert!(err.contains("tidy") && err.contains("REQUEST"));
+    fn errors_when_missing_and_rejects_whitespace_only_request() {
+        {
+            let err = require_cli_request(None, "tidy").unwrap_err();
+            assert!(err.contains("tidy") && err.contains("REQUEST"));
+        }
+        {
+            let whitespace = Some("   ".to_string());
+            let err = require_cli_request(whitespace.as_ref(), "tidy").unwrap_err();
+            assert!(err.contains("tidy") && err.contains("REQUEST"));
+        }
     }
 
     #[test]

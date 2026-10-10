@@ -1,19 +1,18 @@
-use super::router_flow_acp::router_flow_acp_support::empty_iteration_backups;
-use super::router_flow_acp::{
+use super::router_flow::router_flow_acp::router_flow_acp_support::empty_iteration_backups;
+use super::router_flow::router_flow_acp::{
     RouterAcpIterationInput, RouterAcpIterationOutcome, finalize_router_acp_iteration,
     run_router_acp_open_iteration,
 };
 use crate::cli::format_workspace_gate_failure;
 use crate::cli::workflow_router_shared::effective_max_loops;
 use crate::cli::{RouterOpts, SharedOpts};
-use malvin::agent_backend::SdkClient;
 use malvin::artifacts::{RunArtifacts, SessionDotfileBackups, merge_and_sanitize_for_gate_restore};
+use malvin::backends::agent_backend::SdkClient;
 use malvin::prompts::PromptStore;
 use malvin::run_timing::acp_post_run::RunTimingSessionEnd;
 use std::path::Path;
 
-#[path = "router_flow_loop_decide.rs"]
-mod router_flow_loop_decide;
+pub(crate) use super::router_flow_loop_decide;
 pub(crate) use router_flow_loop_decide::{
     RouterLoopDecision, RouterLoopExitInput, decide_router_loop_exit, router_exit_summarize_for,
 };
@@ -25,7 +24,6 @@ pub(crate) struct RouterAgentLoopInput<'a> {
     pub shared: &'a SharedOpts,
     pub router: &'a RouterOpts,
     pub max_loops: usize,
-    pub max_hypotheses: usize,
     pub watch_source: Option<&'a Path>,
 }
 
@@ -98,7 +96,6 @@ async fn run_one_router_loop_step(
         router: input.router,
         agent_loop,
         session_end,
-        max_hypotheses: input.max_hypotheses,
     })
     .await;
     finish_router_loop_step(input, (agent_loop, max_loops, session_end), open).await
@@ -147,7 +144,6 @@ async fn finish_router_loop_step(
             router: input.router,
             agent_loop,
             session_end,
-            max_hypotheses: input.max_hypotheses,
         },
         timing,
         router_exit_summarize_for(&decision),

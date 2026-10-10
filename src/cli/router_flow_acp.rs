@@ -1,20 +1,17 @@
+use crate::cli::router_flow::router_flow_prompt;
 use crate::cli::{RouterOpts, SharedOpts};
-use crate::router_flow::router_flow_prompt;
-use malvin::agent_backend::{SdkClient, set_implement_display_name};
 use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
+use malvin::backends::agent_backend::{SdkClient, set_implement_display_name};
 use malvin::prompts::PromptStore;
 use malvin::run_timing::acp_post_run::RunTimingSessionEnd;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
-#[path = "router_flow_acp_support.rs"]
-pub(crate) mod router_flow_acp_support;
+pub(crate) use super::router_flow_acp_support;
 
-#[path = "router_flow_coder_prompts.rs"]
-mod router_flow_coder_prompts;
+pub(crate) use super::router_flow_coder_prompts;
 
-#[path = "router_flow_summary_line.rs"]
-mod router_flow_summary_line;
+pub(crate) use super::router_flow_summary_line;
 
 pub(crate) use router_flow_acp_support::{RouterExitSummarize, router_iteration_log_path};
 
@@ -42,7 +39,6 @@ pub(crate) struct RouterAcpIterationInput<'a> {
     pub router: &'a RouterOpts,
     pub agent_loop: usize,
     pub session_end: RunTimingSessionEnd,
-    pub max_hypotheses: usize,
 }
 
 pub(crate) type SessionEndParts<'a> = (
@@ -55,7 +51,7 @@ pub(crate) type SessionEndParts<'a> = (
 pub(crate) async fn begin_coder_session_if_needed(
     client: &mut SdkClient,
     work_dir: &Path,
-) -> Result<malvin::agent_backend::CoderSessionEnsure, String> {
+) -> Result<malvin::backends::agent_backend::CoderSessionEnsure, String> {
     client
         .start_coder_session(work_dir)
         .await

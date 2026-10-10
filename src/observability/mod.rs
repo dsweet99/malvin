@@ -41,16 +41,15 @@ impl NarrativeWhoTag {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
-    fn observability_channel_variants_stable() {
-        assert_ne!(ObservabilityChannel::Narrative, ObservabilityChannel::Audit);
-    }
-
-    #[test]
-    fn run_log_aliases_match_malvin_constants() {
-        assert_eq!(RUN_NARRATIVE_LOG, "stdout.log");
-        assert_eq!(RUN_AUDIT_LOG, "trace.jsonl");
+    fn observability_channel_variants_stable_and_run_log_aliases_match_malvin_constants() {
+        {
+            assert_ne!(ObservabilityChannel::Narrative, ObservabilityChannel::Audit);
+        }
+        {
+            assert_eq!(RUN_NARRATIVE_LOG, "stdout.log");
+            assert_eq!(RUN_AUDIT_LOG, "trace.jsonl");
+        }
     }
 
     #[test]

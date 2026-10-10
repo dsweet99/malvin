@@ -6,11 +6,11 @@ static LAST_EMITTED_COMMAND_ERROR: Mutex<Option<String>> = Mutex::new(None);
 
 #[cfg(test)]
 pub fn command_error_run_dir() -> Option<std::path::PathBuf> {
-    malvin::run_id::active_run_dir()
+    malvin::workspace::run_id::active_run_dir()
 }
 
 pub fn clear_command_error_run_dir() {
-    malvin::run_id::deactivate_run();
+    malvin::workspace::run_id::deactivate_run();
     *LAST_EMITTED_COMMAND_ERROR
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
@@ -32,10 +32,10 @@ pub fn note_command_error_emitted(message: &str) {
 }
 
 pub fn append_command_error_to_run_log(message: &str) {
-    if crate::repo_checks::is_gate_failure_error(message) {
+    if crate::cli::repo_checks::is_gate_failure_error(message) {
         return;
     }
-    let Some(dir) = malvin::run_id::active_run_dir() else {
+    let Some(dir) = malvin::workspace::run_id::active_run_dir() else {
         return;
     };
     let path = dir.join("malvin_error.log");
@@ -55,14 +55,14 @@ mod tests {
 
     #[test]
     fn command_error_run_dir_reads_active_binding() {
-        let _lock = malvin::run_id::ACTIVE_RUN_DIR_TEST_LOCK
+        let _lock = malvin::workspace::run_id::ACTIVE_RUN_DIR_TEST_LOCK
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         clear_command_error_run_dir();
         assert_eq!(command_error_run_dir(), None);
         let dir = tempdir().expect("tempdir");
         let path = dir.path().to_path_buf();
-        malvin::run_id::activate_run(path.clone());
+        malvin::workspace::run_id::activate_run(path.clone());
         assert_eq!(command_error_run_dir(), Some(path));
         clear_command_error_run_dir();
         assert_eq!(command_error_run_dir(), None);
@@ -70,11 +70,11 @@ mod tests {
 
     #[test]
     fn append_command_error_writes_malvin_error_log() {
-        let _lock = malvin::run_id::ACTIVE_RUN_DIR_TEST_LOCK
+        let _lock = malvin::workspace::run_id::ACTIVE_RUN_DIR_TEST_LOCK
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         let dir = tempdir().expect("tempdir");
-        malvin::run_id::activate_run(dir.path().to_path_buf());
+        malvin::workspace::run_id::activate_run(dir.path().to_path_buf());
         append_command_error_to_run_log("something went wrong");
         clear_command_error_run_dir();
         let text = std::fs::read_to_string(dir.path().join("malvin_error.log")).expect("read log");

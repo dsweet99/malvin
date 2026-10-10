@@ -20,7 +20,7 @@ pub fn fresh_workdir(name: &str) -> PathBuf {
 
 #[cfg(unix)]
 pub fn sleep_child(seconds: &str) -> std::process::Child {
-    let mut cmd = malvin::malvin_sandbox::malvin_std_command("sleep");
+    let mut cmd = malvin::agent_process::malvin_sandbox::malvin_std_command("sleep");
     cmd.arg(seconds);
     cmd.spawn().expect("spawn sleep")
 }

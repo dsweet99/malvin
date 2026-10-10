@@ -29,7 +29,7 @@ pub(crate) fn fnv1a64(data: &[u8]) -> u64 {
 impl NpmBridgePackage {
     #[must_use]
     pub fn default_install_dir(&self) -> PathBuf {
-        crate::user_home::user_home_dir()
+        crate::workspace::user_home::user_home_dir()
             .join(crate::MALVIN_USER_HOME_DIR)
             .join("sdk-bridges")
             .join(self.dir_name)
@@ -40,7 +40,7 @@ impl NpmBridgePackage {
         let _lock = lock_install_dir(dest)?;
         write_payload(self.payload, dest)?;
         if !self.npm_deps_current(dest) {
-            crate::cursor_sdk::bridge_install_npm::npm_ci(dest, self.npm_label)?;
+            crate::backends::cursor_sdk::bridge_install_npm::npm_ci(dest, self.npm_label)?;
             self.verify_sdk_installed(dest)?;
             self.write_npm_stamp(dest)?;
         }

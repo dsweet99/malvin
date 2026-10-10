@@ -49,7 +49,7 @@ See `malvin --doc`. Notable for `--do`:
 |------|----------------|
 | `--quiet` / `-q` | Not needed without `--verbose`: `--do` is already DM-body-only |
 | `--verbose` / `-v` | Same stdout log classes as the default workflow (thoughts, narrative tee, full prompt bodies); also full bodies in `prompts.log` |
-| `--iml` | the Infinite Meta-Loop: after all REQUEST args finish once, repeat the full sequence forever |
+| `--ml=N` | run the meta-loop N times: after all REQUEST args finish once, repeat the full sequence until it has run N times (`inf` repeats forever; default 1) |
 
 ## Prompt workflow
 

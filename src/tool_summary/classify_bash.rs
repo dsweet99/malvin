@@ -131,72 +131,69 @@ pub fn format_classified_tool_line(input: ClassifiedToolLineInput<'_>) -> String
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
-    fn classify_read_commands() {
-        assert_eq!(classify_bash_command("cat file.txt"), BashToolKind::Read);
-        assert_eq!(classify_bash_command("head -n 5 foo"), BashToolKind::Read);
-        assert_eq!(
-            classify_bash_command("sed -n '1,5p' bar"),
-            BashToolKind::Read
-        );
+    fn classify_read_commands_and_classify_search_commands() {
+        {
+            assert_eq!(classify_bash_command("cat file.txt"), BashToolKind::Read);
+            assert_eq!(classify_bash_command("head -n 5 foo"), BashToolKind::Read);
+            assert_eq!(
+                classify_bash_command("sed -n '1,5p' bar"),
+                BashToolKind::Read
+            );
+        }
+        {
+            assert_eq!(classify_bash_command("rg pattern"), BashToolKind::Search);
+            assert_eq!(classify_bash_command("grep foo *.rs"), BashToolKind::Search);
+            assert_eq!(
+                classify_bash_command("find . -name '*.rs'"),
+                BashToolKind::Search
+            );
+        }
     }
-
     #[test]
-    fn classify_search_commands() {
-        assert_eq!(classify_bash_command("rg pattern"), BashToolKind::Search);
-        assert_eq!(classify_bash_command("grep foo *.rs"), BashToolKind::Search);
-        assert_eq!(
-            classify_bash_command("find . -name '*.rs'"),
-            BashToolKind::Search
-        );
+    fn classify_edit_commands_and_classify_pipeline_falls_back_to_run() {
+        {
+            assert_eq!(
+                classify_bash_command("sed -i 's/a/b/' f"),
+                BashToolKind::Edit
+            );
+            assert_eq!(
+                classify_bash_command("echo x >> out.txt"),
+                BashToolKind::Edit
+            );
+        }
+        {
+            assert_eq!(
+                classify_bash_command("curl https://x | jq ."),
+                BashToolKind::Run
+            );
+        }
     }
-
     #[test]
-    fn classify_edit_commands() {
-        assert_eq!(
-            classify_bash_command("sed -i 's/a/b/' f"),
-            BashToolKind::Edit
-        );
-        assert_eq!(
-            classify_bash_command("echo x >> out.txt"),
-            BashToolKind::Edit
-        );
-    }
-
-    #[test]
-    fn classify_pipeline_falls_back_to_run() {
-        assert_eq!(
-            classify_bash_command("curl https://x | jq ."),
-            BashToolKind::Run
-        );
-    }
-
-    #[test]
-    fn format_read_line() {
-        let line = format_classified_tool_line(ClassifiedToolLineInput {
-            kind: BashToolKind::Read,
-            command: "cat README.md",
-            exit_code: 0,
-            elapsed: Duration::from_millis(10),
-            comment: None,
-        });
-        assert!(line.starts_with("Read README.md"));
-        assert!(line.contains("✓"));
-    }
-
-    #[test]
-    fn tool_comment_log_prefix_truncates_to_30_chars() {
-        let long = "abcdefghijklmnopqrstuvwxyz0123456789";
-        assert_eq!(
-            tool_comment_log_prefix(long).as_deref(),
-            Some("abcdefghijklmnopqrstuvwxyz0123")
-        );
-        assert_eq!(
-            tool_comment_log_prefix("  hi   there  ").as_deref(),
-            Some("hi there")
-        );
-        assert!(tool_comment_log_prefix("   ").is_none());
+    fn format_read_line_and_tool_comment_log_prefix_truncates_to_30_chars() {
+        {
+            let line = format_classified_tool_line(ClassifiedToolLineInput {
+                kind: BashToolKind::Read,
+                command: "cat README.md",
+                exit_code: 0,
+                elapsed: Duration::from_millis(10),
+                comment: None,
+            });
+            assert!(line.starts_with("Read README.md"));
+            assert!(line.contains("✓"));
+        }
+        {
+            let long = "abcdefghijklmnopqrstuvwxyz0123456789";
+            assert_eq!(
+                tool_comment_log_prefix(long).as_deref(),
+                Some("abcdefghijklmnopqrstuvwxyz0123")
+            );
+            assert_eq!(
+                tool_comment_log_prefix("  hi   there  ").as_deref(),
+                Some("hi there")
+            );
+            assert!(tool_comment_log_prefix("   ").is_none());
+        }
     }
 
     #[test]

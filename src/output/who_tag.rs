@@ -114,19 +114,19 @@ mod tests {
         assert_eq!(format_who_tag_prefix(WHO_M), format_who_tag_delim(WHO_M));
         assert_eq!(format_who_tag_prefix(WHO_O), format_who_tag_delim(WHO_O));
     }
-
     #[test]
-    fn bracket_tag_alias_delegates_to_pipe_parser() {
-        let prefix = format_who_tag_prefix(WHO_M);
-        assert_eq!(
-            payload_after_fixed_width_bracket_tag(&format!("{prefix}Command: x")),
-            Some("Command: x")
-        );
-    }
-
-    #[test]
-    fn directional_prefix_maps_to_single_char_tags() {
-        assert_eq!(format_acp_directional_tag_prefix('>', "router"), WHO_U);
-        assert_eq!(format_acp_directional_tag_prefix('<', "router"), WHO_M);
+    fn bracket_tag_alias_delegates_to_pipe_parser_and_directional_prefix_maps_to_single_char_tags()
+    {
+        {
+            let prefix = format_who_tag_prefix(WHO_M);
+            assert_eq!(
+                payload_after_fixed_width_bracket_tag(&format!("{prefix}Command: x")),
+                Some("Command: x")
+            );
+        }
+        {
+            assert_eq!(format_acp_directional_tag_prefix('>', "router"), WHO_U);
+            assert_eq!(format_acp_directional_tag_prefix('<', "router"), WHO_M);
+        }
     }
 }

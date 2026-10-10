@@ -1,6 +1,6 @@
 #[test]
 fn agent_error_fmt_display_roundtrip() {
-    use malvin::acp::AgentError;
+    use malvin::agent_process::AgentError;
     let _ = AgentError;
     let _ = <AgentError as std::fmt::Display>::fmt;
     assert_eq!(format!("{}", AgentError("contract".into())), "contract");
@@ -8,7 +8,7 @@ fn agent_error_fmt_display_roundtrip() {
 
 #[test]
 fn auth_error_fmt_display_roundtrip() {
-    use malvin::acp::AuthError;
+    use malvin::agent_process::AuthError;
     let _ = AuthError;
     let _ = <AuthError as std::fmt::Display>::fmt;
     assert_eq!(format!("{}", AuthError("contract".into())), "contract");
@@ -16,7 +16,7 @@ fn auth_error_fmt_display_roundtrip() {
 
 #[test]
 fn agent_io_options_type_witness() {
-    use malvin::acp::AgentIoOptions;
+    use malvin::agent_process::AgentIoOptions;
     let io = AgentIoOptions {
         no_tee: true,
         raw_output: false,

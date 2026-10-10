@@ -1,5 +1,5 @@
 use super::*;
-use crate::llm_transport::ResponseUsage;
+use crate::run_timing::ResponseUsage;
 use crate::run_timing::{CostPolicy, RunTiming};
 
 fn mini_step_increments_even_without_usage() {

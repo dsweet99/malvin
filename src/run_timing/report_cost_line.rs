@@ -69,40 +69,40 @@ pub fn format_cost_stdout_line_from_json(json: &Value) -> String {
 mod tests {
     use super::*;
     use serde_json::json;
-
     #[test]
-    fn cost_stdout_line_combines_token_and_cost_fields() {
-        let json = json!({
-            "tokens": {
-                "steps": 9,
-                "tokens_in": 221_270,
-                "tokens_out": 15003,
-                "cache_read": 1200,
-                "cache_write": 80
-            },
-            "cost": {
-                "cost_in": 0.05,
-                "cost_out": 0.03,
-                "cost_read": 0.002,
-                "cost_write": 0.0022,
-                "cost_tot": 0.0842
-            }
-        });
-        let line = format_cost_stdout_line_from_json(&json);
-        assert!(line.starts_with(RUN_COST_SUMMARY_PREFIX));
-        assert_eq!(
-            line,
-            "COST: steps = 9 tokens_in = 221270 tokens_out = 15003 cache_read = 1200 cache_write = 80 reasoning = n/a cost_in = 0.0500 cost_out = 0.0300 cost_read = 0.0020 cost_write = 0.0022 cost_tot = 0.0842"
-        );
-    }
-
-    #[test]
-    fn cost_stdout_line_uses_na_when_blocks_absent() {
-        let line = format_cost_stdout_line_from_json(&json!({}));
-        assert_eq!(
-            line,
-            "COST: steps = 0 tokens_in = n/a tokens_out = n/a cache_read = n/a cache_write = n/a reasoning = n/a cost_in = n/a cost_out = n/a cost_read = n/a cost_write = n/a cost_tot = n/a"
-        );
+    fn cost_stdout_line_combines_token_and_cost_fields_and_cost_stdout_line_uses_na_when_blocks_absent()
+     {
+        {
+            let json = json!({
+                "tokens": {
+                    "steps": 9,
+                    "tokens_in": 221_270,
+                    "tokens_out": 15003,
+                    "cache_read": 1200,
+                    "cache_write": 80
+                },
+                "cost": {
+                    "cost_in": 0.05,
+                    "cost_out": 0.03,
+                    "cost_read": 0.002,
+                    "cost_write": 0.0022,
+                    "cost_tot": 0.0842
+                }
+            });
+            let line = format_cost_stdout_line_from_json(&json);
+            assert!(line.starts_with(RUN_COST_SUMMARY_PREFIX));
+            assert_eq!(
+                line,
+                "COST: steps = 9 tokens_in = 221270 tokens_out = 15003 cache_read = 1200 cache_write = 80 reasoning = n/a cost_in = 0.0500 cost_out = 0.0300 cost_read = 0.0020 cost_write = 0.0022 cost_tot = 0.0842"
+            );
+        }
+        {
+            let line = format_cost_stdout_line_from_json(&json!({}));
+            assert_eq!(
+                line,
+                "COST: steps = 0 tokens_in = n/a tokens_out = n/a cache_read = n/a cache_write = n/a reasoning = n/a cost_in = n/a cost_out = n/a cost_read = n/a cost_write = n/a cost_tot = n/a"
+            );
+        }
     }
 
     #[test]

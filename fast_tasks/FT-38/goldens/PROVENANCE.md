@@ -11,7 +11,7 @@ sealed holdout ≈ 1.576. One call to `tools/holdout.py --lr 0.3` falsifies the
 notebook’s equate. The sealed holdout minimum is near `lr ≈ 0.02`
 (loss ≈ 0.383). Local refinement around `0.3` stays bad on holdout.
 
-KPop’s loop should: hypothesize the notebook → predict
+The hypothesize-predict-falsify loop should: hypothesize the notebook → predict
 `holdout.py --lr 0.3 ≈ train_loss` → falsify → reject `0.3` → search → recover
 `≈ 0.02`. Without that loop, shipping the publicly accepted notebook triple is
 the intended fail mode.
@@ -41,12 +41,11 @@ Sealed table: 501 log-spaced points on `[1e-3, 1]`.
 
 ## A/B (cursor:auto, --no-tenacious --max-loops=1)
 
-N=3 (v3): KPop 3/3 vs `--no-kpop` 2/3 (fail kept notebook `lr_star=0.3`,
-`holdout_loss=0.657286`). Artifacts: `~/.malvin_home/kpop_ab_ft38v3/RESULTS.md`.
+N=3 (v3): with that loop 3/3 vs without it 2/3 (fail kept notebook `lr_star=0.3`,
+`holdout_loss=0.657286`).
 
-N=+2 (v4): KPop 2/2 vs `--no-kpop` 1/2 (same notebook fail mode). Cumulative
-N=5: KPop **5/5** vs `--no-kpop` **3/5**. Artifacts:
-`~/.malvin_home/kpop_ab_ft38v4/RESULTS.md`.
+N=+2 (v4): with that loop 2/2 vs without it 1/2 (same notebook fail mode). Cumulative
+N=5: with that loop **5/5** vs without it **3/5**.
 
 ## Not self-referential
 

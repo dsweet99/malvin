@@ -1,8 +1,10 @@
 use std::path::Path;
 
+use crate::agent_process::sandbox_oom::gate_iteration_oom_killed;
 use crate::artifacts::RunArtifacts;
-use crate::mem_limit_config::{format_memory_gib, load_mem_limit_bytes, system_total_memory_bytes};
-use crate::sandbox_oom::gate_iteration_oom_killed;
+use crate::config::mem_limit_config::{
+    format_memory_gib, load_mem_limit_bytes, system_total_memory_bytes,
+};
 
 #[must_use]
 pub fn format_current_state(
@@ -132,8 +134,12 @@ pub fn format_sandbox_memory_line(work_dir: &Path) -> String {
 fn current_sandbox_rss_bytes() -> Option<u64> {
     #[cfg(unix)]
     {
-        let stack = crate::active_agent_heartbeat::active_agent_process_group_for_stats()?;
-        crate::malvin_sandbox::malvin_session_rss_bytes(Some(stack.pgid), &stack.spawn_baseline)
+        let stack =
+            crate::agent_process::active_agent_heartbeat::active_agent_process_group_for_stats()?;
+        crate::agent_process::malvin_sandbox::malvin_session_rss_bytes(
+            Some(stack.pgid),
+            &stack.spawn_baseline,
+        )
     }
     #[cfg(not(unix))]
     {

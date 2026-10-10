@@ -162,15 +162,15 @@ fn print_stdout_acp_tee_line_with_timestamp_payload(
 #[cfg(test)]
 mod kiss_cov_auto {
     use super::*;
-
     #[test]
-    fn kiss_cov_print_acp_tee_stdout_markdown_line() {
-        let _ = print_acp_tee_stdout_markdown_line;
-    }
-
-    #[test]
-    fn kiss_cov_print_acp_tee_stdout_markdown_lines() {
-        let _ = print_acp_tee_stdout_markdown_lines;
+    fn kiss_cov_print_acp_tee_stdout_markdown_line_and_kiss_cov_print_acp_tee_stdout_markdown_lines()
+     {
+        {
+            let _ = print_acp_tee_stdout_markdown_line;
+        }
+        {
+            let _ = print_acp_tee_stdout_markdown_lines;
+        }
     }
 
     #[test]

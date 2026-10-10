@@ -129,22 +129,21 @@ mod tests {
         reset_do_dm_filter();
         out
     }
-
     #[test]
-    fn extracts_body_between_fences() {
-        let out = with_dm_capture(|| {
-            feed_do_dm_stdout_text(&format!("{DM_START}\nhello\n{DM_END}\n"));
-        });
-        assert_eq!(out, "hello");
-    }
-
-    #[test]
-    fn ignores_text_outside_fences() {
-        let out = with_dm_capture(|| {
-            feed_do_dm_stdout_text("noise\n");
-            feed_do_dm_stdout_text(&format!("{DM_START}\nonly\n{DM_END}\n"));
-        });
-        assert_eq!(out, "only");
+    fn extracts_body_between_fences_and_ignores_text_outside_fences() {
+        {
+            let out = with_dm_capture(|| {
+                feed_do_dm_stdout_text(&format!("{DM_START}\nhello\n{DM_END}\n"));
+            });
+            assert_eq!(out, "hello");
+        }
+        {
+            let out = with_dm_capture(|| {
+                feed_do_dm_stdout_text("noise\n");
+                feed_do_dm_stdout_text(&format!("{DM_START}\nonly\n{DM_END}\n"));
+            });
+            assert_eq!(out, "only");
+        }
     }
 
     #[test]
@@ -208,22 +207,22 @@ mod tests {
         });
         assert_eq!(out, format!("see {DM_END}\nalone"));
     }
-
     #[test]
-    fn accepts_markers_with_surrounding_whitespace() {
-        let out = with_dm_capture(|| {
-            feed_do_dm_stdout_text(&format!("  {DM_START}\r\nspaced\n {DM_END} \n"));
-        });
-        assert_eq!(out, "spaced");
-    }
-
-    #[test]
-    fn streaming_leading_whitespace_before_start_marker() {
-        let out = with_dm_capture(|| {
-            feed_do_dm_stdout_text("  ");
-            feed_do_dm_stdout_text(&format!("{DM_START}\nchunked\n{DM_END}\n"));
-        });
-        assert_eq!(out, "chunked");
+    fn accepts_markers_with_surrounding_whitespace_and_streaming_leading_whitespace_before_start_marker()
+     {
+        {
+            let out = with_dm_capture(|| {
+                feed_do_dm_stdout_text(&format!("  {DM_START}\r\nspaced\n {DM_END} \n"));
+            });
+            assert_eq!(out, "spaced");
+        }
+        {
+            let out = with_dm_capture(|| {
+                feed_do_dm_stdout_text("  ");
+                feed_do_dm_stdout_text(&format!("{DM_START}\nchunked\n{DM_END}\n"));
+            });
+            assert_eq!(out, "chunked");
+        }
     }
 
     #[test]

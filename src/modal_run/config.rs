@@ -1,4 +1,4 @@
-use crate::malvin_config_file::read_string;
+use crate::config::malvin_config_file::read_string;
 
 use super::options::{
     DEFAULT_MEMORY_GB, DEFAULT_NCPU, DEFAULT_TIMEOUT_S, GpuChoice, ModalOptions, parse_gpu,
@@ -6,8 +6,12 @@ use super::options::{
 };
 
 const HEADROOM_GB: u64 = 2;
-const RENAMED_KEYS: &[(&str, &str)] =
-    &[("cpu", "ncpu"), ("timeout_h", "timeout"), ("memory_gb", "mem"), ("memory", "mem")];
+const RENAMED_KEYS: &[(&str, &str)] = &[
+    ("cpu", "ncpu"),
+    ("timeout_h", "timeout"),
+    ("memory_gb", "mem"),
+    ("memory", "mem"),
+];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModalConfig {
@@ -46,7 +50,10 @@ impl ModalConfig {
         } else {
             format!("{} s", self.timeout_s)
         };
-        format!("{gpu}, {} CPU, {} GiB, timeout {timeout}", self.ncpu, self.memory_gb)
+        format!(
+            "{gpu}, {} CPU, {} GiB, timeout {timeout}",
+            self.ncpu, self.memory_gb
+        )
     }
 }
 
@@ -86,13 +93,18 @@ fn read_parsed<T>(
 fn reject_renamed(section: Option<&toml::Value>) -> Result<(), String> {
     for (old, new) in RENAMED_KEYS {
         if section.and_then(|s| s.get(*old)).is_some() {
-            return Err(format!("[modal] {old} was renamed to {new}; see `malvin --doc`"));
+            return Err(format!(
+                "[modal] {old} was renamed to {new}; see `malvin --doc`"
+            ));
         }
     }
     Ok(())
 }
 
-pub fn parse_modal_config(root: &toml::Value, local_mem_limit_gb: u64) -> Result<ModalConfig, String> {
+pub fn parse_modal_config(
+    root: &toml::Value,
+    local_mem_limit_gb: u64,
+) -> Result<ModalConfig, String> {
     let section = root.get("modal");
     reject_renamed(section)?;
     Ok(ModalConfig {

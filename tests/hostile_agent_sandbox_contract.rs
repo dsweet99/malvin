@@ -4,15 +4,15 @@ mod common;
 use common::{enable_test_fast_teardown, test_wait_until_async};
 
 #[cfg(unix)]
-use malvin::acp::{snapshot_pids, terminate_agent_process_group};
+use malvin::agent_process::{snapshot_pids, terminate_agent_process_group};
 
 #[cfg(unix)]
-use malvin::acp::hostile_orphan_test_util::{
+use malvin::agent_process::hostile_orphan_test_util::{
     process_alive, read_orphan_pid, spawn_hostile_agent,
     spawn_hostile_agent_exits_after_orphan_fork, spawn_hostile_double_fork_daemon,
 };
 #[cfg(target_os = "linux")]
-use malvin::acp::hostile_orphan_test_util::{
+use malvin::agent_process::hostile_orphan_test_util::{
     spawn_hostile_agent_acp_orphan, wait_for_init_reparent,
 };
 

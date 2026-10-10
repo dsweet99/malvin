@@ -47,24 +47,24 @@ fn format_prompt_path_relative_existing_file_resolves_against_base_not_cwd() {
         "relative paths must resolve against base_dir, not process cwd"
     );
 }
-
 #[test]
-fn check_abort_returns_message_after_prefix_not_entire_file() {
-    let tmp = tempfile::tempdir().unwrap();
-    let p = tmp.path().join("result.md");
-    std::fs::write(&p, "context line\nABORT: stop here\nmore\n").unwrap();
-    assert_eq!(
-        check_abort(&p).expect("read result").as_deref(),
-        Some("stop here")
-    );
-}
-
-#[test]
-fn check_abort_returns_none_when_no_abort_line() {
-    let tmp = tempfile::tempdir().unwrap();
-    let p = tmp.path().join("result.md");
-    std::fs::write(&p, "ok\n").unwrap();
-    assert!(check_abort(&p).expect("read result").is_none());
+fn check_abort_returns_message_after_prefix_not_entire_file_and_check_abort_returns_none_when_no_abort_line()
+ {
+    {
+        let tmp = tempfile::tempdir().unwrap();
+        let p = tmp.path().join("result.md");
+        std::fs::write(&p, "context line\nABORT: stop here\nmore\n").unwrap();
+        assert_eq!(
+            check_abort(&p).expect("read result").as_deref(),
+            Some("stop here")
+        );
+    }
+    {
+        let tmp = tempfile::tempdir().unwrap();
+        let p = tmp.path().join("result.md");
+        std::fs::write(&p, "ok\n").unwrap();
+        assert!(check_abort(&p).expect("read result").is_none());
+    }
 }
 
 #[test]

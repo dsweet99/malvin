@@ -1,17 +1,14 @@
+pub(crate) use super::router_flow_acp;
+pub(crate) use super::router_flow_loop;
+pub(crate) use super::router_flow_no_work;
+pub(crate) use super::router_flow_prompt;
 use crate::cli::cli_request::require_cli_request;
 use crate::cli::run_emit::{RunStartupEmitOpts, emit_run_logs_line, emit_run_startup_banner};
 use crate::cli::{AgentRouteOpts, SharedOpts};
-use malvin::agent_backend::{SdkClient, build_agent_backend};
 use malvin::artifacts::{RunArtifacts, is_existing_md_file_path, resolve_user_md_request};
+use malvin::backends::agent_backend::{SdkClient, build_agent_backend};
 use malvin::prompts::PromptStore;
 use std::path::PathBuf;
-#[path = "router_flow_acp.rs"]
-pub(crate) mod router_flow_acp;
-#[path = "router_flow_loop.rs"]
-pub(crate) mod router_flow_loop;
-#[path = "router_flow_no_work.rs"]
-pub(crate) mod router_flow_no_work;
-pub(crate) mod router_flow_prompt;
 
 pub use router_flow_prompt::prepare_router_prompt_store;
 
@@ -19,7 +16,6 @@ pub use router_flow_prompt::prepare_router_prompt_store;
 pub struct RouterArgs {
     pub request: Option<String>,
     pub max_loops: usize,
-    pub max_hypotheses: usize,
 }
 
 struct RouterRunPrep {
@@ -29,7 +25,7 @@ struct RouterRunPrep {
     watch_source: Option<PathBuf>,
 }
 
-fn new_router_client(shared: &SharedOpts) -> Result<SdkClient, String> {
+fn new_router_client(shared: &SharedOpts) -> SdkClient {
     build_agent_backend(
         shared.model.clone(),
         shared.max_acp_retries,
@@ -46,13 +42,13 @@ fn finish_router_run_artifacts(
     if opts.router.gates {
         malvin::artifacts::init_quality_gates_log_pending(artifacts).map_err(|e| e.to_string())?;
     }
-    malvin::run_id::activate_run(artifacts.run_dir.clone());
+    malvin::workspace::run_id::activate_run(artifacts.run_dir.clone());
     emit_run_startup_banner(
         artifacts,
         RunStartupEmitOpts::from_route(opts, true),
         request,
     )?;
-    malvin::run_id::maybe_gc_after_run_created(&artifacts.work_dir, &artifacts.run_dir);
+    malvin::workspace::run_id::maybe_gc_after_run_created(&artifacts.work_dir, &artifacts.run_dir);
     Ok(())
 }
 
@@ -60,14 +56,14 @@ async fn prepare_router_run(
     router_args: &RouterArgs,
     opts: AgentRouteOpts<'_>,
 ) -> Result<RouterRunPrep, String> {
-    let client = new_router_client(opts.shared)?;
+    let client = new_router_client(opts.shared);
     let request = require_cli_request(router_args.request.as_ref(), "")?;
     let watch_source = is_existing_md_file_path(&request);
     let (text, work_dir) = resolve_user_md_request(&request)?;
     let artifacts = malvin::artifacts::create_run_artifacts_from_text_opts(
         &text,
         Some(work_dir.as_path()),
-        malvin::run_id::RunDirOptions { gc: false },
+        malvin::workspace::run_id::RunDirOptions { gc: false },
     )
     .map_err(|e| e.to_string())?;
     finish_router_run_artifacts(&artifacts, opts, &request)?;
@@ -117,12 +113,11 @@ async fn run_router_body(
             shared: opts.shared,
             router: opts.router,
             max_loops: router_args.max_loops,
-            max_hypotheses: router_args.max_hypotheses,
             watch_source: prep.watch_source.as_deref(),
         })
         .await?;
 
-    malvin::acp_post_run::merge_acp_restore_check_abort_then_print_timing(
+    malvin::acp_post_run::merge_acp_restore_and_check_abort(
         loop_outcome.last_acp,
         &prep.artifacts,
         &loop_outcome.last_backups,

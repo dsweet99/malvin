@@ -35,27 +35,6 @@ fn help_lists_creative_flag() {
     assert!(help.contains("--creative"), "help={help}");
 }
 
-fn shared_opts_parses_no_kpop_flag_default_off() {
-    use clap::Parser;
-    let cli = crate::cli::Cli::try_parse_from(["malvin", "--doc"]).expect("parse");
-    assert!(!cli.router.no_kpop);
-}
-
-fn shared_opts_parses_no_kpop_flag_on() {
-    use clap::Parser;
-    let cli = crate::cli::Cli::try_parse_from(["malvin", "--no-kpop", "--doc"]).expect("parse");
-    assert!(cli.router.no_kpop);
-}
-
-fn help_hides_no_kpop_flag() {
-    use clap::CommandFactory;
-    let help = crate::cli::Cli::command().render_help().to_string();
-    assert!(
-        !help.contains("--no-kpop"),
-        "hidden --no-kpop must not appear in help: {help}"
-    );
-}
-
 fn help_omits_name_flag() {
     use clap::CommandFactory;
     let help = crate::cli::Cli::command().render_help().to_string();
@@ -66,7 +45,7 @@ fn help_omits_name_flag() {
 }
 
 fn doc_does_not_create_name_files() {
-    malvin::test_utils::with_isolated_home(|work| {
+    malvin::test_support::test_utils::with_isolated_home(|work| {
         let _ = work;
         let root = malvin::names_registry_root();
         assert_eq!(entrypoint_from(["malvin", "--doc"]), Exit::Success);
@@ -82,7 +61,7 @@ fn doc_does_not_create_name_files() {
 }
 
 fn bare_help_does_not_create_name_files() {
-    malvin::test_utils::with_isolated_home(|work| {
+    malvin::test_support::test_utils::with_isolated_home(|work| {
         let _ = work;
         let root = malvin::names_registry_root();
         assert_eq!(entrypoint_from(["malvin"]), Exit::Success);
@@ -100,7 +79,7 @@ fn bare_help_does_not_create_name_files() {
 fn do_workflow_parses_without_name_flag() {
     use crate::cli::config_defaults::parse_cli_with_config_defaults;
 
-    malvin::test_utils::with_isolated_home(|_| {
+    malvin::test_support::test_utils::with_isolated_home(|_| {
         let (cli, _) =
             parse_cli_with_config_defaults(["malvin", "--do", "say hello"]).expect("parse --do");
         assert!(cli.do_workflow());
@@ -142,9 +121,6 @@ fn kiss_bundled_cli_entrypoint_name_tests() {
     shared_opts_parses_creative_flag_default_off();
     shared_opts_parses_creative_flag_on();
     help_lists_creative_flag();
-    shared_opts_parses_no_kpop_flag_default_off();
-    shared_opts_parses_no_kpop_flag_on();
-    help_hides_no_kpop_flag();
     help_omits_name_flag();
     doc_does_not_create_name_files();
     bare_help_does_not_create_name_files();

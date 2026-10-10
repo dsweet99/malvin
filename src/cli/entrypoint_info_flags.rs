@@ -1,4 +1,5 @@
-use super::{Exit, print_command_error};
+use super::Exit;
+use super::entrypoint::print_command_error;
 use crate::cli::args::Cli;
 
 fn entrypoint_doc_exit(cli: &Cli) -> Exit {

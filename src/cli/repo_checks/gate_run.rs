@@ -1,8 +1,8 @@
 use std::path::{Path, PathBuf};
 
-use super::command_support::{apply_fake_path_if_present, run_command_failure};
-use super::gate_log::{emit_repo_gate_line, try_append_command_output};
-use super::types::{RepoGateFailure, RepoGateOutput, repo_gate_failure_to_string};
+use super::repo_checks::command_support::{apply_fake_path_if_present, run_command_failure};
+use super::repo_checks::gate_log::{emit_repo_gate_line, try_append_command_output};
+use super::repo_checks::types::{RepoGateFailure, RepoGateOutput, repo_gate_failure_to_string};
 
 pub fn run_repo_workspace_gates(
     work_dir: &Path,
@@ -69,14 +69,14 @@ fn run_malvin_checks_with_details(
     run_log_dir: Option<&Path>,
     commands: &[String],
 ) -> Result<(), RepoGateFailure> {
-    malvin::agent_phase::enter_verifying();
+    malvin::agent_phase::enter_checking();
     let result = (|| {
         for command in commands.iter().filter(|c| !c.trim().is_empty()) {
             run_shell_command_line_with_details(work_dir, output, run_log_dir, command)?;
         }
         Ok(())
     })();
-    malvin::agent_phase::leave_verifying();
+    malvin::agent_phase::leave_checking();
     result
 }
 
@@ -105,7 +105,7 @@ fn run_shell_command_line_with_details(
     }
     emit_repo_gate_line(output, &format!("Running `{command_line}`"), run_log_dir);
     let (shell, arg) = shell_binary();
-    let mut command = malvin::malvin_sandbox::malvin_std_command(shell);
+    let mut command = malvin::agent_process::malvin_sandbox::malvin_std_command(shell);
     command
         .arg(arg)
         .arg(command_line)

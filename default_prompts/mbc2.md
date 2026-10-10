@@ -25,7 +25,7 @@ Helpful expressive techniques that may engage portions of your network that you 
 - Use notation from a relevant (or distant!) field of mathematics in .tex. Maybe read that as a .png, too.
 - Write in rhymes and/or a consistent meter.
 - Draw a cartoon in .svg.
-You don't need to use them all, but you might want to choose randomly from them at times or invent other techinques.
+You don't need to use them all, but you might want to choose randomly from them at times or invent other techniques.
 
 
 ---

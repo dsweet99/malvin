@@ -80,6 +80,7 @@ pub(crate) fn repo_gate_failure_to_string(failure: RepoGateFailure) -> String {
 #[derive(Clone, Copy)]
 pub enum RepoGateOutput {
     Tagged,
+    #[cfg(test)]
     Stderr,
 }
 
@@ -102,15 +103,14 @@ fn repo_gate_failure_into_error_formats_command_exit() {
 #[cfg(test)]
 mod kiss_cov_auto {
     use super::*;
-
     #[test]
-    fn kiss_cov_emit_repo_gate_multiline_stderr() {
-        let _ = emit_repo_gate_multiline_stderr;
-    }
-
-    #[test]
-    fn kiss_cov_is_pure_gate_failure_summary() {
-        let _ = is_pure_gate_failure_summary;
+    fn kiss_cov_emit_repo_gate_multiline_stderr_and_kiss_cov_is_pure_gate_failure_summary() {
+        {
+            let _ = emit_repo_gate_multiline_stderr;
+        }
+        {
+            let _ = is_pure_gate_failure_summary;
+        }
     }
 }
 

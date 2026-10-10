@@ -29,7 +29,7 @@ mod tests {
 
     #[test]
     fn ensure_malvin_checks_for_command_writes_config_not_checks() {
-        malvin::test_utils::with_isolated_home(|work| {
+        malvin::test_support::test_utils::with_isolated_home(|work| {
             assert!(
                 std::process::Command::new("git")
                     .args(["init"])

@@ -120,7 +120,7 @@ pub const PI_HEADER_MD: &str = include_str!("../default_prompts/pi_header.md");
 
 #[must_use]
 pub fn format_pi_extra(model: &str) -> String {
-    if crate::model_id::parse_model_id(model).is_ok_and(|m| m.is_pi()) {
+    if crate::config::model_id::parse_model_id(model).is_ok_and(|m| m.is_pi()) {
         PI_HEADER_MD.to_string()
     } else {
         String::new()
@@ -148,9 +148,7 @@ pub fn workflow_context_paths_only(artifacts: &RunArtifacts, model: &str) -> Wor
     insert_artifact_paths(&mut context, artifacts);
     insert_current_state(&mut context, artifacts, &artifacts.work_dir);
     context.insert("malvin_command".to_string(), format_malvin_command(model));
-    context.insert("kpop_insert".to_string(), String::new());
     context.insert("pi_extra".to_string(), format_pi_extra(model));
-    crate::workflow_pi_prompt::insert_pi_prompt_keys(&mut context, model, &artifacts.plan_path);
     context.insert(
         "agents_insert".to_string(),
         format_agents_md_insert(&artifacts.work_dir),
@@ -169,10 +167,6 @@ pub fn workflow_context(
         "quality_gates".to_string(),
         crate::repo_gates::prompt_quality_gates_markdown_ephemeral(&artifacts.work_dir)
             .map_err(PromptError)?,
-    );
-    context.insert(
-        "max_hypotheses".to_string(),
-        crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES.to_string(),
     );
     let _ = prompts;
     Ok(context)

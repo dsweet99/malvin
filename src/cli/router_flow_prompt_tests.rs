@@ -1,12 +1,13 @@
-use crate::router_flow::router_flow_prompt::{
-    RouterAPromptInput, RouterBPromptInput, RouterKpopCommonPromptInput,
-    RouterSummarizePromptInput, build_router_a_prompt, build_router_b_prompt,
-    build_router_header_prompt, build_router_kpop_common_prompt, build_router_mbc2_prompt,
+use crate::cli::router_flow::router_flow_prompt::{
+    RouterAPromptInput, RouterBPromptInput, RouterSummarizePromptInput, build_router_a_prompt,
+    build_router_b_prompt, build_router_header_prompt, build_router_mbc2_prompt,
     build_router_summarize_prompt, prepare_router_prompt_store, router_b_prompt_label,
 };
 use malvin::config::DEFAULT_CLI_MODEL;
 use malvin::flow_prompt_join_test_helpers::flow_test_artifacts;
-use malvin::prompts::PromptStore;
+use malvin::prompts::{
+    PromptStore, ROUTER_B_CREATIVE_LEAD_MD, ROUTER_B_DONE_NOTE_MD, ROUTER_B_SATISFY_MD,
+};
 
 #[test]
 fn build_router_a_prompt_expands_malvin_command_with_active_model() {
@@ -32,7 +33,6 @@ fn build_router_a_prompt_expands_malvin_command_with_active_model() {
         model: "composer-2",
         gates: false,
         gates_just_ran: false,
-        no_kpop: false,
     })
     .expect("router_a");
     assert!(body.contains("malvin --model=composer-2"));
@@ -50,11 +50,9 @@ fn build_router_a_prompt_renders_without_unresolved_braces() {
         model: DEFAULT_CLI_MODEL,
         gates: false,
         gates_just_ran: false,
-        no_kpop: false,
     })
     .expect("router_a");
     assert!(!body.contains("{{"));
-    assert!(body.contains(malvin::output::MALVIN_DONE));
 }
 
 #[test]
@@ -69,7 +67,6 @@ fn build_router_a_prompt_includes_code_checks_when_gates_enabled() {
         model: DEFAULT_CLI_MODEL,
         gates: true,
         gates_just_ran: false,
-        no_kpop: false,
     })
     .expect("router_a");
     assert!(body.contains("echo ROUTER_CHECK_LINE"));
@@ -88,7 +85,6 @@ fn build_router_a_prompt_omits_code_checks_when_gates_disabled() {
         model: DEFAULT_CLI_MODEL,
         gates: false,
         gates_just_ran: true,
-        no_kpop: false,
     })
     .expect("router_a");
     assert!(!body.contains("echo ROUTER_CHECK_LINE"));
@@ -112,7 +108,6 @@ fn build_router_a_prompt_omits_code_extra_when_gate_commands_empty() {
         model: DEFAULT_CLI_MODEL,
         gates: true,
         gates_just_ran: true,
-        no_kpop: false,
     })
     .expect("router_a");
     assert!(
@@ -138,7 +133,6 @@ fn router_code_extra_note_absent_when_gates_have_not_run() {
         model: DEFAULT_CLI_MODEL,
         gates: true,
         gates_just_ran: false,
-        no_kpop: false,
     })
     .expect("router_a");
     assert!(
@@ -162,7 +156,6 @@ fn router_a_prompt_ignores_process_global_gates_just_ran_flag() {
         model: DEFAULT_CLI_MODEL,
         gates: true,
         gates_just_ran: false,
-        no_kpop: false,
     })
     .expect("router_a");
     malvin::gate_loop_session::set_quality_gates_just_ran(false);
@@ -186,7 +179,6 @@ fn router_code_extra_note_present_after_gates_just_ran() {
         model: DEFAULT_CLI_MODEL,
         gates: true,
         gates_just_ran: true,
-        no_kpop: false,
     })
     .expect("router_a");
     assert!(
@@ -198,10 +190,6 @@ fn router_code_extra_note_present_after_gates_just_ran() {
         "note must name the quality_gates.log path: {body}"
     );
     assert!(!body.contains("{{"));
-    assert!(
-        !body.contains("NB: The code checks may have already been run"),
-        "old unconditional NB line must be gone: {body}"
-    );
 }
 
 #[test]
@@ -216,9 +204,15 @@ fn build_router_summarize_prompt_renders_dm_body_without_unresolved_braces() {
     })
     .expect("router_summarize");
     assert!(!body.contains("{{"));
+    let plan = artifacts.plan_path.display().to_string();
+    let plan_name = artifacts
+        .plan_path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .expect("plan file name");
     assert!(
-        body.contains("Write a summary of this entire session"),
-        "must render router_summarize.md: {body}"
+        body.contains(&plan) || body.contains(plan_name),
+        "summarize must expand user_request_path: {body}"
     );
 }
 
@@ -232,7 +226,6 @@ fn build_router_b_prompt_selects_creative_template_when_flag_set() {
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
         creative: false,
-        no_kpop: false,
     })
     .expect("router_b");
     let creative = build_router_b_prompt(RouterBPromptInput {
@@ -240,48 +233,43 @@ fn build_router_b_prompt_selects_creative_template_when_flag_set() {
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
         creative: true,
-        no_kpop: false,
     })
     .expect("router_b_creative");
+    let satisfy = embedded_fragment(&store, ROUTER_B_SATISFY_MD);
+    let lead = embedded_fragment(&store, ROUTER_B_CREATIVE_LEAD_MD);
+    let done = embedded_fragment(&store, ROUTER_B_DONE_NOTE_MD);
     assert!(
-        plain.contains("KPop: Satisfy the requirements."),
-        "default router_b must keep KPop satisfy instruction: {plain}"
+        plain.contains(&satisfy),
+        "plain router_b must include satisfy: {plain}"
     );
     assert!(
-        !plain.contains("MBC2"),
-        "default router_b must not mention MBC2: {plain}"
+        creative.contains(&satisfy),
+        "creative router_b must include satisfy: {creative}"
     );
-    assert!(creative.contains("MBC2"));
     assert!(
-        creative.contains("KPop: Satisfy the requirements."),
-        "creative router_b must keep KPop satisfy instruction: {creative}"
+        plain.contains(&done),
+        "plain router_b must include done note: {plain}"
     );
+    assert!(
+        creative.contains(&done),
+        "creative router_b must include done note: {creative}"
+    );
+    if !lead.is_empty() && !satisfy.contains(&lead) && !done.contains(&lead) {
+        assert!(
+            creative.contains(&lead),
+            "creative router_b must include the creative lead: {creative}"
+        );
+        assert!(
+            !plain.contains(&lead),
+            "plain router_b must omit the creative lead: {plain}"
+        );
+    }
     assert_eq!(
-        router_b_prompt_label(malvin::prompts::RouterBPromptFlags {
-            creative: false,
-            no_kpop: false,
-        }),
+        router_b_prompt_label(malvin::prompts::RouterBPromptFlags { creative: false }),
         "router_b.md"
     );
     assert_eq!(
-        router_b_prompt_label(malvin::prompts::RouterBPromptFlags {
-            creative: true,
-            no_kpop: false,
-        }),
-        "router_b.md"
-    );
-    assert_eq!(
-        router_b_prompt_label(malvin::prompts::RouterBPromptFlags {
-            creative: false,
-            no_kpop: true,
-        }),
-        "router_b.md"
-    );
-    assert_eq!(
-        router_b_prompt_label(malvin::prompts::RouterBPromptFlags {
-            creative: true,
-            no_kpop: true,
-        }),
+        router_b_prompt_label(malvin::prompts::RouterBPromptFlags { creative: true }),
         "router_b.md"
     );
 }
@@ -293,7 +281,6 @@ fn build_router_mbc2_prompt_embeds_plan_text() {
     let store = prepare_router_prompt_store().expect("store");
     let body = build_router_mbc2_prompt(&store, &artifacts).expect("mbc2");
     assert!(!body.contains("{{"));
-    assert!(body.contains("MBC2"), "must render mbc2.md: {body}");
     let plan = std::fs::read_to_string(&artifacts.plan_path).expect("plan");
     assert!(
         body.contains(plan.trim()),
@@ -302,108 +289,45 @@ fn build_router_mbc2_prompt_embeds_plan_text() {
 }
 
 #[test]
-fn build_router_prompts_select_no_kpop_templates_when_flag_set() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts = flow_test_artifacts(&tmp);
-    let store = prepare_router_prompt_store().expect("store");
-    let kpop = build_router_kpop_common_prompt(RouterKpopCommonPromptInput {
-        store: &store,
-        artifacts: &artifacts,
-        model: DEFAULT_CLI_MODEL,
-        max_hypotheses: 3,
-        no_kpop: true,
-        gate_iteration: 1,
-    })
-    .expect("kpop_common_no_kpop");
-    assert!(
-        kpop.is_empty(),
-        "no_kpop kpop_common must be empty after trim: {kpop:?}"
-    );
-    let a = build_router_a_prompt(RouterAPromptInput {
-        store: &store,
-        artifacts: &artifacts,
-        model: DEFAULT_CLI_MODEL,
-        gates: false,
-        gates_just_ran: false,
-        no_kpop: true,
-    })
-    .expect("router_a_no_kpop");
-    assert!(
-        !a.contains("KPop:"),
-        "no_kpop router_a must omit KPop: prefix: {a}"
-    );
-    assert!(a.contains("Find unsatisfied requirements"));
-    let b = build_router_b_prompt(RouterBPromptInput {
-        store: &store,
-        artifacts: &artifacts,
-        model: DEFAULT_CLI_MODEL,
-        creative: true,
-        no_kpop: true,
-    })
-    .expect("router_b_no_kpop");
-    assert!(
-        !b.contains("KPop:"),
-        "no_kpop router_b must omit KPop: prefix: {b}"
-    );
-    assert!(
-        !b.contains("MBC2"),
-        "no_kpop wins over creative for router_b: {b}"
-    );
-    assert!(b.contains("Satisfy the requirements"));
-}
-
-#[test]
 fn build_router_prompts_use_canonical_templates() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
     let store = prepare_router_prompt_store().expect("store");
     let header = build_router_header_prompt(
-        crate::router_flow::router_flow_prompt::RouterHeaderPromptInput {
+        crate::cli::router_flow::router_flow_prompt::RouterHeaderPromptInput {
             store: &store,
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
-            max_hypotheses: 5,
-            no_kpop: false,
-            gate_iteration: 1,
         },
     )
     .expect("header");
-    assert!(
-        header.to_ascii_lowercase().contains("falsifiable"),
-        "header embeds kpop_common via kpop_insert"
-    );
-    let header_no = build_router_header_prompt(
-        crate::router_flow::router_flow_prompt::RouterHeaderPromptInput {
-            store: &store,
-            artifacts: &artifacts,
-            model: DEFAULT_CLI_MODEL,
-            max_hypotheses: 5,
-            no_kpop: true,
-            gate_iteration: 1,
-        },
-    )
-    .expect("header no_kpop");
-    assert!(
-        !header_no.to_ascii_lowercase().contains("falsifiable"),
-        "no_kpop header must omit kpop method language"
-    );
+    assert!(!header.is_empty());
+    assert!(!header.contains("{{"));
     let a = build_router_a_prompt(RouterAPromptInput {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
         gates: false,
         gates_just_ran: false,
-        no_kpop: false,
     })
     .expect("router_a");
-    assert!(!a.to_ascii_lowercase().contains("falsif"));
+    assert!(!a.is_empty());
+    assert!(!a.contains("{{"));
     let b = build_router_b_prompt(RouterBPromptInput {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
         creative: false,
-        no_kpop: false,
     })
     .expect("router_b");
-    assert!(!b.to_ascii_lowercase().contains("falsif"));
+    assert!(!b.is_empty());
+    assert!(!b.contains("{{"));
+}
+
+fn embedded_fragment(store: &PromptStore, name: &str) -> String {
+    store
+        .render_prompt_only(name, &std::collections::HashMap::new())
+        .unwrap_or_else(|err| panic!("{name}: {}", err.0))
+        .trim()
+        .to_string()
 }

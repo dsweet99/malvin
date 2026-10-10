@@ -2,27 +2,23 @@ use malvin::artifacts::RunArtifacts;
 use malvin::orchestrator::workflow_context_paths_only;
 use malvin::prompts::{
     PromptError, PromptStore, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD, RouterBPromptFlags,
-    header_prompt_file, kpop_common_prompt_file, router_a_prompt_file, router_b_prompt_file,
+    header_prompt_file, router_a_prompt_file, router_b_prompt_file,
 };
 use std::path::Path;
 
-#[path = "router_flow_prompt_summarize.rs"]
-mod router_flow_prompt_summarize;
+pub(crate) use super::router_flow_prompt_summarize;
 pub(crate) use router_flow_prompt_summarize::{
     RouterSummarizePromptInput, build_router_summarize_prompt,
 };
 
-#[path = "router_flow_prompt_turns.rs"]
-mod router_flow_prompt_turns;
+pub(crate) use super::router_flow_prompt_turns;
 pub(crate) use router_flow_prompt_turns::{
-    RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput, RouterKpopCommonPromptInput,
+    RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput, build_router_a_2_prompt,
     build_router_a_prompt, build_router_b_prompt, build_router_header_prompt,
-    build_router_kpop_common_prompt, build_router_mbc2_prompt, router_a_prompt_label,
-    router_b_prompt_label,
+    build_router_mbc2_prompt, router_a_prompt_label, router_b_prompt_label,
 };
 
-#[path = "router_flow_prompt_initial.rs"]
-mod router_flow_prompt_initial;
+pub(crate) use super::router_flow_prompt_initial;
 #[cfg(test)]
 pub(crate) use router_flow_prompt_initial::RouterInitialPrompt;
 pub(crate) use router_flow_prompt_initial::{
@@ -39,28 +35,13 @@ pub fn prepare_router_prompt_store() -> Result<PromptStore, String> {
 fn validate_router_required_prompts(store: &PromptStore) -> Result<(), String> {
     let required = [
         header_prompt_file(),
-        kpop_common_prompt_file(false),
-        kpop_common_prompt_file(true),
         "mbc2.md",
-        router_a_prompt_file(false),
-        malvin::prompts::router_a_audit_prompt_file(false),
-        malvin::prompts::router_a_audit_prompt_file(true),
-        router_b_prompt_file(RouterBPromptFlags {
-            creative: false,
-            no_kpop: false,
-        }),
-        malvin::prompts::router_b_satisfy_prompt_file(RouterBPromptFlags {
-            creative: false,
-            no_kpop: false,
-        }),
-        malvin::prompts::router_b_satisfy_prompt_file(RouterBPromptFlags {
-            creative: true,
-            no_kpop: false,
-        }),
-        malvin::prompts::router_b_satisfy_prompt_file(RouterBPromptFlags {
-            creative: false,
-            no_kpop: true,
-        }),
+        router_a_prompt_file(),
+        malvin::prompts::router_a_2_prompt_file(),
+        malvin::prompts::router_a_audit_prompt_file(),
+        router_b_prompt_file(RouterBPromptFlags { creative: false }),
+        malvin::prompts::router_b_satisfy_prompt_file(RouterBPromptFlags { creative: false }),
+        malvin::prompts::router_b_satisfy_prompt_file(RouterBPromptFlags { creative: true }),
         malvin::prompts::ROUTER_B_CREATIVE_LEAD_MD,
         malvin::prompts::ROUTER_B_DONE_NOTE_MD,
         ROUTER_CODE_EXTRA_MD,
@@ -137,8 +118,8 @@ mod kiss_cov_gate_refs {
     fn kiss_cov_unit_names() {
         let _ = build_router_header_prompt;
         let _ = build_router_a_prompt;
+        let _ = build_router_a_2_prompt;
         let _ = build_router_b_prompt;
-        let _ = build_router_kpop_common_prompt;
         let _ = build_router_mbc2_prompt;
         let _ = build_router_initial_prompt;
         let _: Option<RouterInitialPrompt> = None;

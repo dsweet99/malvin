@@ -4,7 +4,7 @@ pub(crate) mod gate_command_match;
 
 use std::path::Path;
 
-pub use crate::workspace_paths::MALVIN_CHECKS_REL as MALVIN_CHECKS_FILE;
+pub use crate::workspace::workspace_paths::MALVIN_CHECKS_REL as MALVIN_CHECKS_FILE;
 
 #[must_use]
 pub fn should_run_workspace_gates(work_dir: &Path) -> bool {
@@ -27,7 +27,7 @@ pub fn gate_command_lines(work_dir: &Path) -> Result<Vec<String>, String> {
 pub use gate_command_match::command_matches_malvin_checks_gate;
 
 pub fn ensure_default_malvin_config_file(work_dir: &Path) -> Result<(), String> {
-    crate::malvin_config_file::ensure_malvin_config_file(work_dir)
+    crate::config::malvin_config_file::ensure_malvin_config_file(work_dir)
 }
 
 mod prompt_markdown;

@@ -72,7 +72,7 @@ pub(super) fn backup_slot(
     if !src.is_file() {
         return Ok(DotfileBackupState::Missing);
     }
-    let root = crate::workspace_paths::snapshot_category_dir(spec.home_subdir);
+    let root = crate::workspace::workspace_paths::snapshot_category_dir(spec.home_subdir);
     let lbls = labels(spec);
     let dest_dir = allocate_backup_dir(&root, generate_id, &lbls)?;
     let dest_file = dest_dir.join(spec.rel);

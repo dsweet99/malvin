@@ -1,0 +1,64 @@
+#[must_use]
+pub(crate) fn test_fast_acp_teardown_enabled() -> bool {
+    crate::agent_process::test_no_real_agent_enabled()
+}
+
+#[must_use]
+pub(crate) fn teardown_poll_interval() -> std::time::Duration {
+    if test_fast_acp_teardown_enabled() {
+        return std::time::Duration::from_millis(1);
+    }
+    #[cfg(debug_assertions)]
+    {
+        std::time::Duration::from_millis(50)
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        std::time::Duration::from_millis(100)
+    }
+}
+
+#[must_use]
+pub(crate) fn teardown_total_cap() -> std::time::Duration {
+    if test_fast_acp_teardown_enabled() {
+        return std::time::Duration::from_millis(10);
+    }
+    #[cfg(debug_assertions)]
+    {
+        std::time::Duration::from_millis(300)
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        std::time::Duration::from_millis(1500)
+    }
+}
+
+#[must_use]
+pub(crate) fn teardown_kill_after_polls() -> u32 {
+    if test_fast_acp_teardown_enabled() {
+        return 0;
+    }
+    #[cfg(debug_assertions)]
+    {
+        1
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        1
+    }
+}
+
+#[cfg(test)]
+mod kiss_cov_auto {
+    use super::*;
+
+    #[test]
+    fn kiss_cov_teardown_timing_fns() {
+        let _ = (
+            test_fast_acp_teardown_enabled(),
+            teardown_poll_interval(),
+            teardown_total_cap(),
+            teardown_kill_after_polls(),
+        );
+    }
+}

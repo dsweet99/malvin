@@ -39,9 +39,11 @@ fn timing_done_reports_idle_and_never_done() {
         crate::herdr::notify_run_done();
         notify_run_end();
         let reqs = collect_until_teardown_clear(rx);
-        assert!(reqs
-            .iter()
-            .any(|v| { method_of(v) == "pane.report_agent" && agent_state_of(v) == Some("idle") }));
+        assert!(
+            reqs.iter().any(|v| {
+                method_of(v) == "pane.report_agent" && agent_state_of(v) == Some("idle")
+            })
+        );
         assert!(reqs.iter().all(|v| agent_state_of(v) != Some("done")));
     });
     reset_session_for_test();
@@ -112,9 +114,11 @@ fn notify_working_pulses_working_without_clearing_authority() {
         assert!(pulsed.iter().any(|v| {
             method_of(v) == "pane.report_agent" && agent_state_of(v) == Some("working")
         }));
-        assert!(pulsed
-            .iter()
-            .all(|v| method_of(v) != "pane.clear_agent_authority"));
+        assert!(
+            pulsed
+                .iter()
+                .all(|v| method_of(v) != "pane.clear_agent_authority")
+        );
         notify_run_end();
         let _ = collect_until_teardown_clear(rx);
     });

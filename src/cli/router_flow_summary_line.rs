@@ -35,7 +35,7 @@ mod tests {
         let _lock = STDOUT_LOG_TEST_LOCK
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        malvin::test_utils::with_isolated_home(|_| {
+        malvin::test_support::test_utils::with_isolated_home(|_| {
             let tmp = tempfile::tempdir().expect("tempdir");
             let artifacts =
                 malvin::artifacts::create_run_artifacts_from_text("summary", Some(tmp.path()))

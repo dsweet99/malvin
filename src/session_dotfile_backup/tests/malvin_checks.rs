@@ -6,7 +6,7 @@ use crate::artifacts::{
     MalvinChecksBackup, backup_workspace_malvin_checks_if_present,
     backup_workspace_malvin_checks_if_present_with_id, restore_workspace_malvin_checks_backup,
 };
-use crate::test_utils::with_isolated_home;
+use crate::test_support::test_utils::with_isolated_home;
 use crate::{malvin_checks_path, seed_malvin_checks};
 
 #[test]

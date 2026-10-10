@@ -102,7 +102,7 @@ fn wait_child_with_timeout(
             Ok(Some(status)) => return Ok(status),
             Ok(None) => {
                 if Instant::now() >= deadline {
-                    crate::acp::signal_process_group(child.id(), 9);
+                    crate::agent_process::signal_process_group(child.id(), 9);
                     let _ = child.kill();
                     let _ = child.wait();
                     return Err(format!("{label} timed out after {}ms", timeout.as_millis()));
@@ -117,7 +117,7 @@ fn wait_child_with_timeout(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::test_env_lock;
+    use crate::test_support::test_utils::test_env_lock;
     use std::os::unix::fs::PermissionsExt;
     use std::time::Duration;
 
@@ -160,7 +160,7 @@ mod tests {
         perms.set_mode(0o755);
         std::fs::set_permissions(&hang, perms).expect("chmod");
 
-        let cmd = crate::malvin_sandbox::malvin_std_command(&hang);
+        let cmd = crate::agent_process::malvin_sandbox::malvin_std_command(&hang);
         let started = Instant::now();
         let err = command_output_with_timeout(cmd, Duration::from_millis(200), "hang-bin")
             .expect_err("must time out");

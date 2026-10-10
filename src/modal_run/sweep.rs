@@ -52,7 +52,7 @@ pub fn stale_ids(listed: &Value, host: &str, alive: impl Fn(u32) -> bool) -> Vec
 
 #[cfg(unix)]
 fn pid_alive(pid: u32) -> bool {
-    crate::acp::pid_alive(pid)
+    crate::agent_process::pid_alive(pid)
 }
 
 #[cfg(not(unix))]

@@ -47,24 +47,23 @@ fn do_doc_parses_with_do_flag() {
     super::print_doc_for_cli_to_writer(&cli, &mut buf).expect("write");
     assert!(buf.starts_with(b"# malvin --do"));
 }
-
 #[test]
-fn admin_doc_parses_with_doc_flag() {
-    let cli = Cli::try_parse_from(["malvin", "admin", "models", "--doc"]).expect("parse");
-    assert!(cli.shared.doc);
-    match cli.command.as_ref() {
-        Some(Commands::Admin(_)) => {}
-        _ => panic!("expected Admin"),
+fn admin_doc_parses_with_doc_flag_and_print_doc_admin_writes_subcommand_md() {
+    {
+        let cli = Cli::try_parse_from(["malvin", "admin", "models", "--doc"]).expect("parse");
+        assert!(cli.shared.doc);
+        match cli.command.as_ref() {
+            Some(Commands::Admin(_)) => {}
+            _ => panic!("expected Admin"),
+        }
     }
-}
-
-#[test]
-fn print_doc_admin_writes_subcommand_md() {
-    let cmd = Commands::Admin(AdminArgs {
-        command: Some(AdminCommand::Models(ModelsArgs::default())),
-    });
-    let out = capture_doc(Some(&cmd)).expect("capture");
-    assert!(out.starts_with(b"# malvin"));
+    {
+        let cmd = Commands::Admin(AdminArgs {
+            command: Some(AdminCommand::Models(ModelsArgs::default())),
+        });
+        let out = capture_doc(Some(&cmd)).expect("capture");
+        assert!(out.starts_with(b"# malvin"));
+    }
 }
 
 #[test]
@@ -79,7 +78,7 @@ fn bare_admin_doc_writes_admin_md() {
 
 #[test]
 fn bare_admin_without_doc_parses_with_no_subcommand() {
-    malvin::test_utils::with_isolated_home(|_| {
+    malvin::test_support::test_utils::with_isolated_home(|_| {
         let (cli, _) =
             crate::cli::config_defaults::parse_cli_with_config_defaults(["malvin", "admin"])
                 .expect("bare admin parses");

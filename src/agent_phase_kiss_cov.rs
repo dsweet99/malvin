@@ -7,10 +7,12 @@ fn heartbeat_phases_follow_runtime_signals() {
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     crate::agent_phase::reset_phase_state_for_test();
-    assert_eq!(crate::agent_phase::heartbeat_label(), "Orienting");
+    assert_eq!(crate::agent_phase::heartbeat_label(), "Starting");
     crate::agent_phase::reset_for_run();
-    crate::agent_phase::enter_verifying();
-    crate::agent_phase::leave_verifying();
+    crate::agent_phase::enter_checking();
+    assert_eq!(crate::agent_phase::heartbeat_label(), "Checking");
+    crate::agent_phase::leave_checking();
+    assert_eq!(crate::agent_phase::heartbeat_label(), "Starting");
     let mut tracker = crate::tool_summary::ToolSummaryTracker::default();
     let observe = |update: serde_json::Value,
                    tracker: &mut crate::tool_summary::ToolSummaryTracker| {
@@ -31,7 +33,11 @@ fn heartbeat_phases_follow_runtime_signals() {
     );
     assert_eq!(
         crate::agent_phase::current_phase_for_test(),
-        crate::agent_phase::AgentPhase::Researching
+        crate::agent_phase::AgentPhase::Reading
+    );
+    observe(
+        json!({"sessionUpdate":"tool_call_update","toolCallId":"r1","kind":"read","status":"completed"}),
+        &mut tracker,
     );
     observe(
         json!({"sessionUpdate":"tool_call","toolCallId":"x1","kind":"execute","status":"pending","rawInput":{"command":"kiss check"}}),
@@ -43,10 +49,36 @@ fn heartbeat_phases_follow_runtime_signals() {
     );
     assert_eq!(
         crate::agent_phase::current_phase_for_test(),
-        crate::agent_phase::AgentPhase::Debugging
+        crate::agent_phase::AgentPhase::Fixing
     );
-    crate::agent_phase::set_reporting(true);
-    assert_eq!(crate::agent_phase::heartbeat_label(), "Reporting");
+    observe(
+        json!({"sessionUpdate":"tool_call","toolCallId":"r2","kind":"read","status":"pending","rawInput":{"path":"b.rs"}}),
+        &mut tracker,
+    );
+    assert_eq!(
+        crate::agent_phase::current_phase_for_test(),
+        crate::agent_phase::AgentPhase::Reading
+    );
+    observe(
+        json!({"sessionUpdate":"tool_call_update","toolCallId":"r2","kind":"read","status":"completed"}),
+        &mut tracker,
+    );
+    assert_eq!(
+        crate::agent_phase::current_phase_for_test(),
+        crate::agent_phase::AgentPhase::Fixing
+    );
+    observe(
+        json!({"sessionUpdate":"tool_call","toolCallId":"x2","kind":"execute","status":"pending","rawInput":{"command":"kiss check"}}),
+        &mut tracker,
+    );
+    observe(
+        json!({"sessionUpdate":"tool_call_update","toolCallId":"x2","status":"completed","rawOutput":{"exitCode":0}}),
+        &mut tracker,
+    );
+    assert_eq!(
+        crate::agent_phase::current_phase_for_test(),
+        crate::agent_phase::AgentPhase::Thinking
+    );
 }
 
 #[test]
@@ -70,7 +102,7 @@ fn kiss_cov_edit_and_search_tool_phases() {
     );
     assert_eq!(
         crate::agent_phase::current_phase_for_test(),
-        crate::agent_phase::AgentPhase::Implementing
+        crate::agent_phase::AgentPhase::Editing
     );
     observe(
         json!({"sessionUpdate":"tool_call","toolCallId":"s1","kind":"search","status":"pending","rawInput":{"query":"foo"}}),
@@ -78,7 +110,15 @@ fn kiss_cov_edit_and_search_tool_phases() {
     );
     assert_eq!(
         crate::agent_phase::current_phase_for_test(),
-        crate::agent_phase::AgentPhase::Researching
+        crate::agent_phase::AgentPhase::Editing
+    );
+    observe(
+        json!({"sessionUpdate":"tool_call_update","toolCallId":"e1","kind":"edit","status":"completed"}),
+        &mut tracker,
+    );
+    assert_eq!(
+        crate::agent_phase::current_phase_for_test(),
+        crate::agent_phase::AgentPhase::Reading
     );
 }
 
@@ -92,11 +132,11 @@ fn kiss_cov_agent_phase_private_symbol_names() {
     assert_eq!(witness_tool_kinds().len(), 4);
     assert_eq!(
         witness_phase_if(true),
-        Some(crate::agent_phase::AgentPhase::Waiting)
+        Some(crate::agent_phase::AgentPhase::Running)
     );
     assert_eq!(witness_phase_if(false), None);
     assert_eq!(
         witness_active_tool_phase(ToolKind::Edit),
-        crate::agent_phase::AgentPhase::Implementing
+        crate::agent_phase::AgentPhase::Editing
     );
 }

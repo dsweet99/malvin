@@ -2,7 +2,7 @@ use crate::cli::Cli;
 use crate::cli::config_defaults::parse_cli_with_config_defaults;
 use clap::Parser;
 use malvin::config::DEFAULT_MAX_ACP_RETRIES;
-use malvin::test_utils::with_isolated_home;
+use malvin::test_support::test_utils::with_isolated_home;
 
 fn parse_ok(argv: &[&str]) -> Cli {
     let mut out = None;
@@ -49,16 +49,16 @@ fn cli_accepts_all_shared_flags_before_subcommand() {
     assert_eq!(cli.first_request().map(String::as_str), Some("z"));
 }
 
-fn cli_rejects_max_loops_with_pure_do() {
+fn cli_rejects_removed_max_loops_flag() {
     let msg = parse_err(&["malvin", "--do", "--max-loops", "5", "task"]);
     assert!(
-        msg.contains("cannot be used with") || msg.contains("--max-loops"),
-        "expected --max-loops conflict rejected; got {msg}"
+        msg.contains("unexpected argument") && msg.contains("--max-loops"),
+        "expected removed --max-loops rejected; got {msg}"
     );
-    let msg2 = parse_err(&["malvin", "--max-loops", "5", "--do", "task"]);
+    let msg2 = parse_err(&["malvin", "--max-loops", "1", "task"]);
     assert!(
-        msg2.contains("cannot be used with") || msg2.contains("--max-loops"),
-        "expected --max-loops conflict rejected; got {msg2}"
+        msg2.contains("unexpected argument") && msg2.contains("--max-loops"),
+        "expected removed --max-loops rejected; got {msg2}"
     );
 }
 
@@ -83,19 +83,11 @@ fn cli_rejects_creative_with_pure_do() {
     );
 }
 
-fn cli_rejects_max_hypotheses_with_pure_do() {
-    let msg = parse_err(&["malvin", "--do", "--max-hypotheses", "10", "task"]);
+fn cli_rejects_unknown_max_hypotheses_flag() {
+    let msg = parse_err(&["malvin", "--max-hypotheses", "10", "task"]);
     assert!(
-        msg.contains("cannot be used with") || msg.contains("--max-hypotheses"),
-        "expected --max-hypotheses conflict rejected; got {msg}"
-    );
-}
-
-fn cli_rejects_no_kpop_with_pure_do() {
-    let msg = parse_err(&["malvin", "--do", "--no-kpop", "task"]);
-    assert!(
-        msg.contains("cannot be used with") || msg.contains("--no-kpop"),
-        "expected --no-kpop conflict rejected; got {msg}"
+        msg.contains("unexpected") || msg.contains("unknown") || msg.contains("--max-hypotheses"),
+        "expected removed --max-hypotheses flag rejected; got {msg}"
     );
 }
 
@@ -142,12 +134,11 @@ fn kiss_bundled_cli_do_flow_cli_parse_tests() {
     cli_accepts_do_and_passes_request();
     cli_rejects_do_thoughts_flag();
     cli_accepts_all_shared_flags_before_subcommand();
-    cli_rejects_max_loops_with_pure_do();
+    cli_rejects_removed_max_loops_flag();
     cli_rejects_gates_with_pure_do();
     cli_rejects_creative_with_pure_do();
-    cli_rejects_no_kpop_with_pure_do();
     cli_rejects_quiet_with_pure_do();
-    cli_rejects_max_hypotheses_with_pure_do();
+    cli_rejects_unknown_max_hypotheses_flag();
     cli_accepts_router_flags_when_mixed_with_do();
     cli_accepts_max_acp_retries_global_flag();
     cli_accepts_verbose_short_and_long_global_flags();

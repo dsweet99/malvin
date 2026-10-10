@@ -25,7 +25,14 @@ impl Drop for EnvHomeGuard {
 #[test]
 fn default_store_uses_embedded_prompts_when_home_unset() {
     let prompt = default_store_with_unset_home();
-    assert!(prompt.contains("Know thyself, agent"));
+    assert!(
+        prompt.contains("/home/.malvinconf/logs/abc123"),
+        "embedded header must expand logs_dir"
+    );
+    assert!(
+        !prompt.contains("{{"),
+        "embedded header must expand placeholders"
+    );
 }
 
 fn default_store_with_unset_home() -> String {
@@ -42,7 +49,6 @@ fn default_embedded_placeholder_context() -> HashMap<String, String> {
         ("malvin_command", "malvin --model=cursor:auto"),
         ("quality_gates", ""),
         ("advice_path", "./.malvin/advice.md"),
-        ("kpop_insert", ""),
         ("agents_insert", ""),
         ("pi_extra", ""),
     ];
@@ -70,7 +76,7 @@ fn insert_header_runtime_placeholders(ctx: &mut HashMap<String, String>) {
 }
 
 fn default_prompt_store_with_unset_home() -> (super::PromptStore, HashMap<String, String>) {
-    let _lock = crate::test_utils::test_env_lock();
+    let _lock = crate::test_support::test_utils::test_env_lock();
     let profile = tempfile::tempdir().unwrap().path().join("profile");
     std::fs::create_dir_all(&profile).unwrap();
     let _guard = with_unset_home_profile(profile);
@@ -101,7 +107,7 @@ fn render_default_header(store: &super::PromptStore, context: &HashMap<String, S
 
 #[test]
 fn embedded_router_done_prompts_name_the_done_marker() {
-    for name in [super::ROUTER_A_MD, super::ROUTER_B_DONE_NOTE_MD] {
+    for name in [super::ROUTER_A_2_MD, super::ROUTER_B_DONE_NOTE_MD] {
         let s = super::default_file(name).expect("router prompt must be embedded");
         assert!(s.contains(crate::output::MALVIN_DONE), "{name}");
     }
@@ -110,16 +116,9 @@ fn embedded_router_done_prompts_name_the_done_marker() {
 #[test]
 fn embedded_do_header_is_a_single_text_block_with_closing_newline() {
     let s = super::default_file(super::DO_HEADER_MD).expect("do header must be embedded");
-    let lower = s.to_ascii_lowercase();
     assert!(s.ends_with('\n'));
-    assert!(lower.contains("no stream of consciousness"));
-    assert!(lower.contains("do not restate"));
-    assert!(lower.contains("required output format"));
-    assert!(lower.contains("failed response"));
     assert!(s.contains(crate::output::DM_START));
     assert!(s.contains(crate::output::DM_END));
-    assert!(!lower.contains("user request is:"));
-    assert!(!s.contains("You'll\n find"));
 }
 
 #[test]

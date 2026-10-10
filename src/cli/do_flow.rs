@@ -5,15 +5,17 @@ use crate::cli::run_emit::{
     RunStartupEmitOpts, emit_command_line, emit_run_logs_line, emit_run_startup_banner,
 };
 use crate::cli::{AgentStdoutTeeFlags, SharedOpts};
-use malvin::agent_backend::{SdkClient, build_agent_backend, build_agent_backend_with_tee};
 use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
+use malvin::backends::agent_backend::{
+    SdkClient, build_agent_backend, build_agent_backend_with_tee,
+};
 use malvin::output::agent_stdout_tee_enabled;
 
-#[path = "do_flow_acp.rs"]
-mod do_flow_acp;
-pub(crate) mod do_flow_prompt;
+pub(crate) use super::do_flow_acp;
+pub(crate) use super::do_flow_prompt;
 
 use do_flow_acp::run_do_acp;
+#[cfg(test)]
 pub use do_flow_prompt::prepare_do_prompt_store;
 
 #[derive(Debug)]
@@ -28,7 +30,7 @@ struct DoRunPrep {
     session_dotfile_backups: SessionDotfileBackups,
 }
 
-fn new_do_client(shared: &SharedOpts) -> Result<SdkClient, String> {
+fn new_do_client(shared: &SharedOpts) -> SdkClient {
     if shared.verbose {
         return build_agent_backend(
             shared.model.clone(),
@@ -60,11 +62,11 @@ fn new_do_client(shared: &SharedOpts) -> Result<SdkClient, String> {
 }
 
 async fn prepare_do_run(do_args: &DoArgs, shared: &SharedOpts) -> Result<DoRunPrep, String> {
-    let mut client = new_do_client(shared)?;
+    let mut client = new_do_client(shared);
     let (text, artifacts) = resolve_one_shot_request_artifacts(
         do_args.request.as_ref(),
         "--do",
-        Some(malvin::run_id::RunDirOptions { gc: false }),
+        Some(malvin::workspace::run_id::RunDirOptions { gc: false }),
     )?;
     if shared.verbose {
         emit_run_startup_banner(
@@ -75,7 +77,7 @@ async fn prepare_do_run(do_args: &DoArgs, shared: &SharedOpts) -> Result<DoRunPr
     } else {
         emit_command_line(&artifacts.run_dir, false)?;
     }
-    malvin::run_id::maybe_gc_after_run_created(&artifacts.work_dir, &artifacts.run_dir);
+    malvin::workspace::run_id::maybe_gc_after_run_created(&artifacts.work_dir, &artifacts.run_dir);
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     client.prompts_log_run_dir = Some(artifacts.run_dir.clone());
 
@@ -116,6 +118,9 @@ async fn begin_do_session_overlapping_prompt_prep(
 }
 
 pub async fn run_do(do_args: DoArgs, shared: &SharedOpts) -> Result<(), String> {
+    if !shared.verbose {
+        malvin::run_timing::set_suppress_stdout_footnotes(true);
+    }
     let interactive = agent_stdout_tee_enabled();
     let emit_markdown = interactive && shared.acp_stdout_markdown_enabled();
     let dm_only = !shared.verbose;
@@ -149,25 +154,25 @@ async fn run_do_body(do_args: DoArgs, shared: &SharedOpts) -> Result<(), String>
 mod do_snapshot_tests {
     use super::SessionDotfileBackups;
     use malvin::malvin_config_path;
-    use malvin::test_utils::with_isolated_home;
-
+    use malvin::test_support::test_utils::with_isolated_home;
     #[test]
-    fn snapshot_do_session_dotfiles_on_empty_workdir() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        SessionDotfileBackups::snapshot(tmp.path()).expect("snapshot");
-    }
-
-    #[test]
-    fn do_prepare_snapshot_ensures_home_config_exists() {
-        with_isolated_home(|work| {
-            let cfg = malvin_config_path(work);
-            assert!(!cfg.exists());
-            SessionDotfileBackups::snapshot_after_ensuring_home_config(work).expect("snapshot");
-            assert!(
-                cfg.is_file(),
-                "do session snapshot must ensure ~/.malvinconf/config.toml exists"
-            );
-        });
+    fn snapshot_do_session_dotfiles_on_empty_workdir_and_do_prepare_snapshot_ensures_home_config_exists()
+     {
+        {
+            let tmp = tempfile::tempdir().expect("tempdir");
+            SessionDotfileBackups::snapshot(tmp.path()).expect("snapshot");
+        }
+        {
+            with_isolated_home(|work| {
+                let cfg = malvin_config_path(work);
+                assert!(!cfg.exists());
+                SessionDotfileBackups::snapshot_after_ensuring_home_config(work).expect("snapshot");
+                assert!(
+                    cfg.is_file(),
+                    "do session snapshot must ensure ~/.malvinconf/config.toml exists"
+                );
+            });
+        }
     }
 }
 

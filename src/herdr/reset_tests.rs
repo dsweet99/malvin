@@ -50,5 +50,10 @@ fn reset_env_sends_idle_then_clear_metadata() {
             second["params"]["clear_display_agent"].as_bool(),
             Some(true)
         );
+        let third = rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("release req");
+        assert_eq!(method_of(&third), "pane.release_agent");
+        assert_eq!(third["params"]["agent"], "malvin");
     });
 }

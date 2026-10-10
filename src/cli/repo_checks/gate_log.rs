@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use super::types::RepoGateOutput;
+use super::repo_checks::types::RepoGateOutput;
 
 fn append_quality_gates_log_text(run_dir: &Path, text: &str) -> std::io::Result<()> {
     let path = run_dir.join(malvin::artifacts::QUALITY_GATES_LOG);
@@ -47,14 +47,15 @@ pub(crate) fn emit_repo_gate_warning(line: &str, run_log_dir: Option<&Path>) {
 }
 
 pub(crate) fn emit_repo_gate_line(output: RepoGateOutput, line: &str, run_log_dir: Option<&Path>) {
-    use malvin::output::{MALVIN_WHO, print_stderr_line, print_stdout_line};
+    use malvin::output::{MALVIN_WHO, print_stdout_line};
     match output {
         RepoGateOutput::Tagged => {
             print_stdout_line(MALVIN_WHO, line);
             try_append_log_line(run_log_dir, MALVIN_WHO, line);
         }
+        #[cfg(test)]
         RepoGateOutput::Stderr => {
-            print_stderr_line(MALVIN_WHO, line);
+            malvin::output::print_stderr_line(MALVIN_WHO, line);
             try_append_log_line(run_log_dir, MALVIN_WHO, line);
         }
     }
@@ -101,26 +102,26 @@ mod gate_log_tests {
         };
         super::append_quality_gates_command_output(tmp.path(), "kiss", &output).expect("cmd out");
     }
-
     #[test]
-    fn emit_repo_gate_warning_survives_blocked_log_path() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        std::fs::create_dir(tmp.path().join(malvin::artifacts::QUALITY_GATES_LOG))
-            .expect("block log");
-        super::emit_repo_gate_warning("warn", Some(tmp.path()));
-    }
-
-    #[test]
-    fn try_append_command_output_survives_blocked_log_path() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        std::fs::create_dir(tmp.path().join(malvin::artifacts::QUALITY_GATES_LOG))
-            .expect("block log");
-        let output = std::process::Output {
-            status: std::process::ExitStatus::default(),
-            stdout: Vec::new(),
-            stderr: Vec::new(),
-        };
-        super::try_append_command_output(Some(tmp.path()), "kiss check", &output);
+    fn emit_repo_gate_warning_survives_blocked_log_path_and_try_append_command_output_survives_blocked_log_path()
+     {
+        {
+            let tmp = tempfile::tempdir().expect("tempdir");
+            std::fs::create_dir(tmp.path().join(malvin::artifacts::QUALITY_GATES_LOG))
+                .expect("block log");
+            super::emit_repo_gate_warning("warn", Some(tmp.path()));
+        }
+        {
+            let tmp = tempfile::tempdir().expect("tempdir");
+            std::fs::create_dir(tmp.path().join(malvin::artifacts::QUALITY_GATES_LOG))
+                .expect("block log");
+            let output = std::process::Output {
+                status: std::process::ExitStatus::default(),
+                stdout: Vec::new(),
+                stderr: Vec::new(),
+            };
+            super::try_append_command_output(Some(tmp.path()), "kiss check", &output);
+        }
     }
 }
 

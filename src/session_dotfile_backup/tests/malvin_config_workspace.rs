@@ -3,7 +3,7 @@ use crate::artifacts::{
     MalvinConfigWorkspaceBackup, backup_workspace_malvin_config_workspace_if_present,
     restore_workspace_malvin_config_workspace_backup,
 };
-use crate::test_utils::with_isolated_home;
+use crate::test_support::test_utils::with_isolated_home;
 
 #[test]
 fn malvin_config_workspace_backup_skips_when_file_missing() {

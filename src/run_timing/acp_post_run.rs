@@ -96,7 +96,7 @@ pub(crate) fn duplicate_safe_restore_error(merge_error: &str) -> String {
 }
 
 pub struct RunTimingAfterBackend<'a> {
-    pub backend: &'a mut crate::agent_backend::SdkClient,
+    pub backend: &'a mut crate::backends::agent_backend::SdkClient,
     pub run_dir: &'a Path,
     pub timing: &'a Arc<Mutex<RunTiming>>,
     pub agent_result: Result<(), String>,
@@ -119,7 +119,7 @@ pub fn emit_run_timing_after_backend(req: RunTimingAfterBackend<'_>) -> Result<(
 }
 
 pub fn emit_run_timing_json_only_after_backend(
-    backend: &mut crate::agent_backend::SdkClient,
+    backend: &mut crate::backends::agent_backend::SdkClient,
     run_dir: &Path,
     timing: &Arc<Mutex<RunTiming>>,
     agent_result: Result<(), String>,
@@ -133,19 +133,17 @@ pub fn emit_run_timing_json_only_after_backend(
     })
 }
 
-pub fn merge_acp_restore_check_abort_then_print_timing(
+pub fn merge_acp_restore_and_check_abort(
     primary: Result<(), String>,
     artifacts: &crate::artifacts::RunArtifacts,
     session_dotfile_backups: &SessionDotfileBackups,
 ) -> Result<(), String> {
-    let merged = merge_acp_with_workspace_session_restore_and_check_abort(
+    merge_acp_with_workspace_session_restore_and_check_abort(
         primary,
         &artifacts.work_dir,
         session_dotfile_backups,
         &artifacts.artifact_result_md(),
-    );
-    crate::run_timing::print_summary_from_run_dir(&artifacts.run_dir).map_err(|e| e.to_string())?;
-    merged
+    )
 }
 
 #[cfg(test)]

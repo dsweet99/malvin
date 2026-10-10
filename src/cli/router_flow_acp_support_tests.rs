@@ -18,7 +18,7 @@ fn kiss_cov_router_acp_support_unit_names() {
 
 #[test]
 fn snapshot_iteration_backups_returns_bundle() {
-    malvin::test_utils::with_isolated_home(|workspace| {
+    malvin::test_support::test_utils::with_isolated_home(|workspace| {
         let backups = snapshot_iteration_backups(workspace);
         let _ = backups.malvin_checks;
     });
@@ -35,10 +35,10 @@ fn empty_iteration_backups_is_all_missing() {
 
 #[test]
 fn router_error_run_log_binding_survives_snapshot() {
-    malvin::test_utils::with_isolated_home(|workspace| {
+    malvin::test_support::test_utils::with_isolated_home(|workspace| {
         let router_dir = workspace.join("router-run");
         std::fs::create_dir_all(&router_dir).expect("router run dir");
-        malvin::run_id::activate_run(router_dir.clone());
+        malvin::workspace::run_id::activate_run(router_dir.clone());
         let _ = SessionDotfileBackups::snapshot_after_ensuring_home_config(workspace);
         assert_eq!(command_error_run_dir(), Some(router_dir));
         clear_command_error_run_dir();
@@ -47,11 +47,11 @@ fn router_error_run_log_binding_survives_snapshot() {
 
 #[test]
 fn kiss_cov_router_iteration_log_path() {
-    malvin::test_utils::with_isolated_home(|workspace| {
+    malvin::test_support::test_utils::with_isolated_home(|workspace| {
         let artifacts = malvin::artifacts::create_run_artifacts_from_text_opts(
             "kiss cov",
             Some(workspace),
-            malvin::run_id::RunDirOptions::default(),
+            malvin::workspace::run_id::RunDirOptions::default(),
         )
         .expect("artifacts");
         let path = router_iteration_log_path(&artifacts, 1);

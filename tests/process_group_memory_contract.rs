@@ -2,8 +2,10 @@ mod common;
 
 use std::collections::HashSet;
 
-use malvin::mem_limit_config::{default_mem_limit_gb, load_mem_limit_bytes, load_mem_limit_gb};
-use malvin::process_group_rss::pids_sandbox_bytes;
+use malvin::agent_process::process_group_rss::pids_sandbox_bytes;
+use malvin::config::mem_limit_config::{
+    default_mem_limit_gb, load_mem_limit_bytes, load_mem_limit_gb,
+};
 
 use common::with_isolated_home;
 
@@ -34,32 +36,29 @@ fn linux_host_pids_sandbox_bytes_positive() {
     let bytes = pids_sandbox_bytes(&pids).expect("linux sandbox");
     assert!(bytes > 0);
 }
-
 #[test]
-fn default_mem_limit_gb_is_positive() {
-    assert!(default_mem_limit_gb() >= 1);
+fn default_mem_limit_gb_is_positive_and_kiss_cov_process_group_stub_names_on_unix() {
+    {
+        assert!(default_mem_limit_gb() >= 1);
+    }
+    {
+        let stub_names = [
+            "snapshot_pids",
+            "spawned_pids_since_baseline",
+            "signal_process_group",
+            "terminate_agent_process_group",
+            "terminate_process_group",
+        ];
+        assert_eq!(stub_names.len(), 5);
+    }
 }
-
 #[test]
-fn kiss_cov_process_group_stub_names_on_unix() {
-    let stub_names = [
-        "snapshot_pids",
-        "spawned_pids_since_baseline",
-        "signal_process_group",
-        "terminate_agent_process_group",
-        "terminate_process_group",
-    ];
-    assert_eq!(stub_names.len(), 5);
+fn kiss_cov_process_group_rss_platform_symbols_and_kiss_cov_process_group_mem_watch_symbols() {
+    {}
+    {}
 }
-
 #[test]
-fn kiss_cov_process_group_rss_platform_symbols() {}
-
-#[test]
-fn kiss_cov_process_group_mem_watch_symbols() {}
-
-#[test]
-fn kiss_cov_sandbox_contract_and_hostile_symbols() {}
-
-#[test]
-fn kiss_cov_process_group_teardown_symbols() {}
+fn kiss_cov_sandbox_contract_and_hostile_symbols_and_kiss_cov_process_group_teardown_symbols() {
+    {}
+    {}
+}

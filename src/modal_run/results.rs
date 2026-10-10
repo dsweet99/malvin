@@ -61,7 +61,10 @@ fn git_apply(place: &GitPlacement, patch: &Path, three_way: bool) -> bool {
         cmd.arg("--3way");
     }
     if !place.prefix.is_empty() {
-        cmd.arg(format!("--directory={}", place.prefix.trim_end_matches('/')));
+        cmd.arg(format!(
+            "--directory={}",
+            place.prefix.trim_end_matches('/')
+        ));
     }
     cmd.arg(patch)
         .current_dir(&place.toplevel)
@@ -113,7 +116,8 @@ pub fn describe_outcome(outcome: &PatchOutcome) -> String {
         PatchOutcome::Empty => "the remote run changed no files".to_string(),
         PatchOutcome::Applied => "applied the remote changes to the working tree".to_string(),
         PatchOutcome::Merged => {
-            "applied the remote changes with a 3-way merge (they are staged in the index)".to_string()
+            "applied the remote changes with a 3-way merge (they are staged in the index)"
+                .to_string()
         }
         PatchOutcome::Conflicted(p) => format!(
             "the remote changes conflict with local edits; conflict markers are in the working tree and the patch is at {}",

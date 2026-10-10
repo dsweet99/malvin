@@ -11,7 +11,7 @@ fn malvin_home_config_bytes_need_repair(bytes: &[u8]) -> bool {
 }
 
 fn repair_malvin_home_config_on_disk_impl(work_dir: &Path) -> Result<(), String> {
-    if !crate::workspace_paths::home_malvin_config_delete_allowed() {
+    if !crate::workspace::workspace_paths::home_malvin_config_delete_allowed() {
         return Ok(());
     }
     let path = crate::malvin_config_path(work_dir);
@@ -24,7 +24,7 @@ fn repair_malvin_home_config_on_disk_impl(work_dir: &Path) -> Result<(), String>
     }
     super::alloc::remove_if_exists(&path, "malvin home config repair")
         .map_err(|e| format!("remove {}: {e}", path.display()))?;
-    crate::malvin_config_file::ensure_malvin_config_file_if_missing(work_dir)
+    crate::config::malvin_config_file::ensure_malvin_config_file_if_missing(work_dir)
 }
 
 pub fn repair_invalid_malvin_home_config_on_disk(work_dir: &Path) -> Result<(), String> {

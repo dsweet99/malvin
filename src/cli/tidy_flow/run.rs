@@ -1,7 +1,7 @@
+use crate::cli::router_flow::{RouterArgs, run_router};
 use crate::cli::{AgentRouteOpts, RouterOpts};
-use crate::router_flow::{RouterArgs, run_router};
 
-use super::effective_tidy_max_loops;
+use super::tidy_flow::effective_tidy_max_loops;
 
 pub(crate) const TIDY_ROUTER_REQUEST: &str = "Get the gates to pass.";
 
@@ -12,17 +12,12 @@ pub(crate) fn tidy_router_with_gates_forced(router: &RouterOpts) -> RouterOpts {
     forced
 }
 
-pub async fn run_tidy(
-    max_loops: usize,
-    max_hypotheses: usize,
-    opts: AgentRouteOpts<'_>,
-) -> Result<(), String> {
+pub async fn run_tidy(max_loops: usize, opts: AgentRouteOpts<'_>) -> Result<(), String> {
     let router = tidy_router_with_gates_forced(opts.router);
     run_router(
         RouterArgs {
             request: Some(TIDY_ROUTER_REQUEST.to_string()),
             max_loops: effective_tidy_max_loops(max_loops),
-            max_hypotheses,
         },
         AgentRouteOpts {
             shared: opts.shared,

@@ -4,7 +4,8 @@ use std::path::{Path, PathBuf};
 use malvin::modal_run::options::ModalOptions;
 use malvin::modal_run::{ModalInvocation, reject_unsupported, remote_args, run_modal};
 
-use super::{Exit, print_command_error};
+use super::Exit;
+use super::entrypoint::print_command_error;
 use crate::cli::args::Cli;
 
 pub(crate) fn modal_invocation(
@@ -12,10 +13,13 @@ pub(crate) fn modal_invocation(
     raw: &[OsString],
     options: ModalOptions,
 ) -> Result<ModalInvocation, String> {
-    let set_flags: Vec<&str> = [("--watch", cli.router.watch), ("--iml", cli.shared.iml)]
-        .into_iter()
-        .filter_map(|(flag, on)| on.then_some(flag))
-        .collect();
+    let mut set_flags = Vec::new();
+    if cli.router.watch {
+        set_flags.push("--watch");
+    }
+    if cli.shared.ml.is_forever() {
+        set_flags.push("--ml=inf");
+    }
     reject_unsupported(&set_flags)?;
     if cli.command.is_some() {
         return Err("`--remote` cannot be combined with a subcommand".to_string());
@@ -43,6 +47,9 @@ pub(crate) fn remote_do_dm_opts(cli: &Cli, interactive: bool) -> malvin::output:
 
 pub(crate) fn run_modal_route(cli: &Cli, raw: &[OsString], options: ModalOptions) -> Exit {
     let interactive = malvin::output::agent_stdout_tee_enabled();
+    if cli.has_do_request() && !cli.shared.verbose {
+        malvin::run_timing::set_suppress_stdout_footnotes(true);
+    }
     malvin::output::set_do_dm_stdout_opts(remote_do_dm_opts(cli, interactive));
     let result = modal_invocation(cli, raw, options).and_then(|inv| run_modal(&inv));
     malvin::output::set_do_dm_stdout_opts(malvin::output::DoDmStdoutOpts::default());

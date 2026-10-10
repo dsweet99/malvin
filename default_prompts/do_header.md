@@ -1,4 +1,4 @@
-
+---- MALVIN HEADER ----
 # do mode
 You are in `malvin --do` right now.
 

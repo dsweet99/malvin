@@ -74,32 +74,30 @@ mod tests {
 mod kiss_cov_auto {
     use super::*;
     use crate::user_home_dir;
-
     #[test]
-    fn kiss_cov_malvin_home_dir() {
-        let _ = user_home_dir;
+    fn kiss_cov_malvin_home_dir_and_kiss_cov_dotfile_backup_labels() {
+        {
+            let _ = user_home_dir;
+        }
+        {
+            let _: Option<DotfileBackupLabels> = None;
+        }
     }
-
     #[test]
-    fn kiss_cov_dotfile_backup_labels() {
-        let _: Option<DotfileBackupLabels> = None;
-    }
-
-    #[test]
-    fn kiss_cov_allocate_backup_dir() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let labels = DotfileBackupLabels {
-            mkdir: "m",
-            collision: "c",
-            restore: "r",
-        };
-        let mut id = random_backup_id;
-        let _ = allocate_backup_dir(tmp.path(), &mut id, &labels).expect("alloc");
-    }
-
-    #[test]
-    fn kiss_cov_remove_if_exists() {
-        let _ = remove_if_exists;
+    fn kiss_cov_allocate_backup_dir_and_kiss_cov_remove_if_exists() {
+        {
+            let tmp = tempfile::tempdir().expect("tempdir");
+            let labels = DotfileBackupLabels {
+                mkdir: "m",
+                collision: "c",
+                restore: "r",
+            };
+            let mut id = random_backup_id;
+            let _ = allocate_backup_dir(tmp.path(), &mut id, &labels).expect("alloc");
+        }
+        {
+            let _ = remove_if_exists;
+        }
     }
 
     #[test]

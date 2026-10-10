@@ -1,4 +1,4 @@
-use crate::acp::CoderPromptOptions;
+use crate::agent_process::CoderPromptOptions;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct PromptOptions {

@@ -1,30 +1,29 @@
 use super::{Cli, apply_workspace_config_defaults};
 use clap::{CommandFactory, FromArgMatches};
-
 #[test]
-fn mini_flag_is_unknown_argument() {
-    let err = Cli::command()
-        .try_get_matches_from(["malvin", "--mini", "hello"])
-        .expect_err("removed --mini");
-    let msg = err.to_string();
-    assert!(
-        msg.contains("unexpected argument") || msg.contains("--mini"),
-        "{msg}"
-    );
-}
-
-#[test]
-fn mini_model_is_rejected() {
-    let err = Cli::command()
-        .try_get_matches_from([
-            "malvin",
-            "--model",
-            "mini:openrouter/openai/gpt-4o",
-            "hello",
-        ])
-        .expect_err("legacy mini");
-    let msg = err.to_string();
-    assert!(msg.contains("mini:"), "{msg}");
+fn mini_flag_is_unknown_argument_and_mini_model_is_rejected() {
+    {
+        let err = Cli::command()
+            .try_get_matches_from(["malvin", "--mini", "hello"])
+            .expect_err("removed --mini");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("unexpected argument") || msg.contains("--mini"),
+            "{msg}"
+        );
+    }
+    {
+        let err = Cli::command()
+            .try_get_matches_from([
+                "malvin",
+                "--model",
+                "mini:openrouter/openai/gpt-4o",
+                "hello",
+            ])
+            .expect_err("legacy mini");
+        let msg = err.to_string();
+        assert!(msg.contains("mini:"), "{msg}");
+    }
 }
 
 #[test]
@@ -38,8 +37,8 @@ fn bare_cli_model_is_rejected() {
 
 #[test]
 fn bare_config_model_is_rejected() {
-    use malvin::test_utils::with_isolated_home;
-    use malvin::workspace_paths::malvin_config_path;
+    use malvin::test_support::test_utils::with_isolated_home;
+    use malvin::workspace::workspace_paths::malvin_config_path;
     with_isolated_home(|work| {
         let path = malvin_config_path(work);
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
@@ -66,8 +65,8 @@ model = "auto"
 
 #[test]
 fn cli_model_overrides_bare_config_model() {
-    use malvin::test_utils::with_isolated_home;
-    use malvin::workspace_paths::malvin_config_path;
+    use malvin::test_support::test_utils::with_isolated_home;
+    use malvin::workspace::workspace_paths::malvin_config_path;
     with_isolated_home(|work| {
         let path = malvin_config_path(work);
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
