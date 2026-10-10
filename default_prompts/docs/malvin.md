@@ -17,13 +17,13 @@ malvin [OPTION]... [REQUEST]...
 
 These forms are mutually exclusive: pass request(s) **or** a subcommand, not both on one synopsis line. `malvin --help` uses the same two-line usage.
 
-Bare `malvin REQUEST` runs autonomous routing (`router_a`, then `router_a_2`, optional `router_b`, stop on `__MALVIN_DONE__` in the `router_a_2` reply, exit `router_summarize`). Multiple `REQUEST` arguments each run as an independent default-route invocation (new run directory, full outer loop, summarize). With no request and no subcommand, malvin prints a short command catalog and exits 0. `malvin -g` without a request runs the gate-fix workflow (fixed request `Get the gates to pass.` with `--gates` on). Each `--do` applies only to the `REQUEST` that immediately follows it (one-shot turn); other `REQUEST` args still use the router. Each `--creative[=PROB]` likewise applies only to the `REQUEST` that immediately follows it (repeatable; other `REQUEST` args stay non-creative). The `admin` subcommand covers operator maintenance; `malvin admin` alone likewise prints its command catalog and exits 0. Omitting `REQUEST` after a lone `--do` prints short usage and exits 0.
+Bare `malvin REQUEST` runs autonomous routing once (`router_a`, then `router_a_2`, optional `router_b`, then `router_summarize`). A lone-line `__MALVIN_DONE__` in the `router_a_2` reply skips `router_b`. `router_a_2.md` asks for that marker only on an impasse. Multiple `REQUEST` arguments each run as an independent default-route invocation (new run directory, one router pass, summarize). With no request and no subcommand, malvin prints a short command catalog and exits 0. `malvin -g` without a request runs the gate-fix workflow (fixed request `Get the gates to pass.` with `--gates` on). Each `--do` applies only to the `REQUEST` that immediately follows it (one-shot turn); other `REQUEST` args still use the router. Each `--creative[=PROB]` likewise applies only to the `REQUEST` that immediately follows it (repeatable; other `REQUEST` args stay non-creative). The `admin` subcommand covers operator maintenance; `malvin admin` alone likewise prints its command catalog and exits 0. Omitting `REQUEST` after a lone `--do` prints short usage and exits 0.
 
 ## Commands
 
 | Command | Purpose |
 |---------|---------|
-| *(default)* | Bare `malvin REQUEST` — each outer iteration starts a new agent for aggregated `header` + optional `mbc2` + `router_a`, then `router_a_2`, then optional `router_b` on that agent; exit `router_summarize` on that same agent; outer `--max-loops` iterations |
+| *(default)* | Bare `malvin REQUEST` — one outer iteration starts a new agent for aggregated `header` + optional `mbc2` + `router_a`, then `router_a_2`, then optional `router_b` on that agent; exit `router_summarize` on that same agent. There is no `--max-loops` flag (`DEFAULT_MAX_LOOPS` is 1) |
 | `--do` | One-shot agent turn for the following REQUEST (repeatable; other REQUESTs stay on the router) |
 | `--creative[=PROB]` | Creative mode for the following REQUEST only (repeatable; optional probability, default `1.0`) |
 | `malvin -g` | Fix quality gates via the default router with fixed request `Get the gates to pass.` (no positional request) |
@@ -35,7 +35,7 @@ Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prom
 
 `--doc` is a true global: it may appear before or after any subcommand, including `admin`.
 
-Agent-session flags (`--model`, `--gates`, `-q`, `-v`, `--creative[=PROB]`, `--max-acp-retries`, `--ml=N`, …) apply to bare `malvin REQUEST` and `--do` (`--max-loops` and `--watch` apply only to bare `malvin REQUEST` and `malvin -g`). The `admin` help listing omits them; pass `--model` before `admin models` only when you want to set that command’s `Current:` footer.
+Agent-session flags (`--model`, `--gates`, `-q`, `-v`, `--creative[=PROB]`, `--max-acp-retries`, `--ml=N`, …) apply to bare `malvin REQUEST` and `--do` (`--watch` applies only to bare `malvin REQUEST` and `malvin -g`). The `admin` help listing omits them; pass `--model` before `admin models` only when you want to set that command’s `Current:` footer.
 
 ### `--remote=PROVIDER:SERVICE[KEY=VALUE,...]`
 
@@ -52,13 +52,13 @@ Plain `malvin --do` is already DM-body-only on stdout without `--verbose`, and t
 
 Model id for agent-backed commands. Default: `cursor:auto` (or `[agent].model` in `~/.malvinconf/config.toml`). Prefixes: `cursor:` for the Cursor SDK backend; `pi:<provider>/<model>` for the official TypeScript/npm Pi agent (RPC; uses env keys or credentials already stored by Pi; keyless locals are `pi:local/<provider>/<model>`); `codex:<model>` for a local Codex app-server. An unprefixed name is looked up in `[aliases.models]` in the home config. Optional bracket overrides select thinking / speed where the backend supports them, for example `cursor:claude-opus-5[effort=high,fast=true]` or `pi:openai/gpt-5[thinking=high]` (see `malvin admin models --doc`). Legacy `prime:`, `mini:`, and `rpi:` ids are rejected.
 
-### `--max-loops <N>` (default: 9999)
+### Outer router iteration
 
-Outer agent-session budget for bare `malvin REQUEST` and `malvin -g`. `0` is treated as `1`.
+Bare `malvin REQUEST` and `malvin -g` run the outer router once. `DEFAULT_MAX_LOOPS` is 1. Passing `--max-loops` is an unexpected-argument error.
 
 ### `-g` / `--gates`
 
-Inject workspace check command text into agent prompts and, for workflows that use harness gates as loop criteria, treat failures as loop or exit criteria. Off by default. When `--gates` is set and `.malvin/gates` is missing, malvin runs the init workflow first (default router with request from `init_constraints.md`, harness gates off) to discover and write `.malvin/gates`. On bare `malvin REQUEST`, `-g` / `--gates` also runs workspace `.malvin/gates` after `router_a_2` emits `__MALVIN_DONE__`: pass stops success; fail continues the outer loop; exhausted budget with failing gates fails the run. `malvin -g` without a request runs the gate-fix workflow with this flag on and fixed request `Get the gates to pass.` When work runs, check text is still injected into the work prompt. Agent prompts may still include available `.malvin/gates` guidance when this option is off.
+Inject workspace check command text into agent prompts and, when `router_a_2` emits `__MALVIN_DONE__`, run workspace gates as an exit check. Off by default. When `--gates` is set and `.malvin/gates` is missing, malvin runs the init workflow first (default router with request from `init_constraints.md`, harness gates off) to discover and write `.malvin/gates`. On bare `malvin REQUEST`, `-g` / `--gates` runs workspace `.malvin/gates` after that marker: pass ends the run successfully after `router_summarize`; fail ends the run with a workspace gate error after `router_summarize`. The outer router does not start another iteration. `malvin -g` without a request runs the gate-fix workflow with this flag on and fixed request `Get the gates to pass.` When work runs, check text is still injected into the work prompt. Agent prompts may still include available `.malvin/gates` guidance when this option is off.
 
 
 
@@ -74,11 +74,11 @@ Stop after N consecutive identical backend errors (spawn, header, or prompt), wi
 
 On the default router (bare `malvin REQUEST` and `malvin -g`), when creative mode is sampled for an outer iteration: include `mbc2.md` in the aggregated initial prompt (after the header), and fill `{{ creative_lead }}` in `router_b.md` for the optional work turn. `{{ satisfy_line }}` stays `router_b_satisfy.md` on every work turn. Both creative changes share one Bernoulli draw per outer iteration. `--creative` alone uses probability `1.0`; `--creative=0.6` uses `0.6`. Off by default.
 
-Like `--do`, each `--creative` applies only to the `REQUEST` that immediately follows it and may be repeated (at most once per `REQUEST`). Example: `malvin "plain" --creative "spark" "plain2" --creative=0.4 "spark2"`. Intervening global flags (for example `--max-loops`) may appear between `--creative` and its `REQUEST`. A trailing `--creative` after other requests, or `--creative` immediately followed by `--do` (or the reverse), is an error. For `malvin -g` with no positional request, `--creative` still enables creative sampling for that gates-only run.
+Like `--do`, each `--creative` applies only to the `REQUEST` that immediately follows it and may be repeated (at most once per `REQUEST`). Example: `malvin "plain" --creative "spark" "plain2" --creative=0.4 "spark2"`. Intervening global flags (for example `--quiet`) may appear between `--creative` and its `REQUEST`. A trailing `--creative` after other requests, or `--creative` immediately followed by `--do` (or the reverse), is an error. For `malvin -g` with no positional request, `--creative` still enables creative sampling for that gates-only run.
 
 ### `--watch`
 
-On the default router (bare `malvin REQUEST` and `malvin -g`), before each outer loop iteration, re-copy the operator's request `.md` file onto the run's `plan_*.md` artifact (overwrite). No effect when `REQUEST` is literal text (not an existing `.md` path). Has no effect on `--do` requests; when the invocation is pure `--do` (no router REQUEST), `--watch` is rejected.
+On the default router (bare `malvin REQUEST` and `malvin -g`), before the single outer iteration, re-copy the operator's request `.md` file onto the run's `plan_*.md` artifact (overwrite). No effect when `REQUEST` is literal text (not an existing `.md` path). Has no effect on `--do` requests; when the invocation is pure `--do` (no router REQUEST), `--watch` is rejected.
 
 ### `--ml=N`
 
@@ -129,7 +129,7 @@ When `--gates` is set and `.malvin/gates` is missing, malvin runs the init workf
 
 With `--gates` and an existing `.malvin/gates`, malvin runs workspace quality gates from that file at the repo git root (one shell command per non-empty, non-comment line). Full-line comments starting with `#` are ignored. `malvin -g` without a request always enables this harness.
 
-Other invocations (`--do`, bare `malvin REQUEST`) do not require `.malvin/gates` at startup and may run outside a git repo. With `--gates` on a bare `malvin REQUEST`, malvin runs workspace gates when `router_a_2` emits `__MALVIN_DONE__` and continues that outer loop when they fail (see the default-route section of `malvin --doc`). Without `--gates` (the default for other commands), malvin does not run those checks directly on the default route. `header.md` notes about gates lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
+Other invocations (`--do`, bare `malvin REQUEST`) do not require `.malvin/gates` at startup and may run outside a git repo. With `--gates` on a bare `malvin REQUEST`, malvin runs workspace gates when `router_a_2` emits `__MALVIN_DONE__` and fails the run when they fail (see the default-route section of `malvin --doc`). Without `--gates` (the default for other commands), malvin does not run those checks directly on the default route. `header.md` notes about gates lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
 
 ### `-h` / `--help`
 
@@ -146,13 +146,13 @@ Every agent-backed command creates `~/.malvinconf/logs/<hash>/<timestamp>_<token
 | File | Role |
 |------|------|
 | `plan_<random>.md` or `request.md` | Copy of user input for this run |
-| `do.log`, `router_1.log`, `router_2.log`, … | Per-iteration or per-prompt transcripts |
+| `do.log`, `router_1.log` | `--do` transcript, or the single outer-iteration router transcript (`router_a`, `router_a_2`, optional `router_b`, exit summarize) |
 | `stdout.log` | Tee of agent stdout — **narrative** channel |
 | `trace.jsonl` | Audit record (sdk-shaped JSONL; Pi and Codex events are mapped into the same shapes) — **authoritative** for semantics (tool results, shrink/fork, LLM usage) |
 | `prompts.log` | Outgoing prompts (names only, or full bodies with `--verbose`) |
 | `quality_gates.log` | Workspace gate commands and output when gates run |
 | `run_timing.json` | Wall/LLM timing, token/step aggregates, and optional cost |
-| `_run/exp_log_*.md` | Experiment / gate-loop logs (`exp_log_<run>.md` scaffold; `exp_log_<run>_gN.md` per outer router loop — kept, never truncated) |
+| `_run/exp_log_*.md` | Experiment / gate-loop logs (`exp_log_<run>.md` scaffold; `exp_log_<run>_g1.md` for the single outer iteration — kept, never truncated) |
 | `result.md` | `ABORT:` prefix stops workflows that check it |
 
 ### Session footnotes (`TIMING` / `COST`)
@@ -163,6 +163,8 @@ When an agent workflow is about to exit, malvin prints one footnote pair. That p
 TIMING: wall = … llm_wait = … …
 COST: steps = N tokens_in = X tokens_out = Y cache_read = A cache_write = B cost_in = … cost_out = … cost_read = … cost_write = … cost_tot = …
 ```
+
+Durations on the `TIMING` line are seconds. A span of 0 ms prints as `0.0s`. A span from 1 ms through 49 ms prints as `<0.1s`. From 50 ms upward, the value rounds to the nearest tenth of a second (`50` ms is `0.1s`; `23451` ms is `23.5s`).
 
 - **`steps`:** Approximate count of agent steps. Cursor SDK counts SDK `onStep` boundaries; the other backends (`pi:`, `codex:`) derive steps from assistant replies and tool-call batches (one batch of parallel tool calls counts as one step). Raw tool-call counts are not printed as `steps`.
 - **`tokens_in` / `tokens_out`:** Numeric when the backend reports usage. Cursor SDK folds one `result.usage` (`TokenUsage`) per `send` into these fields (cache read/write counted in `tokens_in`). When usage is absent, fields stay `n/a`.
@@ -264,7 +266,7 @@ After most agent-backed commands create a new run directory and emit the startup
 
 ## Request syntax
 
-Several commands accept positional request arguments. Each `<REQUEST>` is **one shell argument**; quote it when the text contains spaces. Malvin does not join multiple unquoted shell words into a single request. On the bare default route, multiple `REQUEST` arguments each run independently (new log directory, full router loop, summarize). Each `--do` tags only the next `REQUEST` as a one-shot session; any other `REQUEST` (before or after) uses the router. Each `--creative[=PROB]` tags only the next `REQUEST` for creative sampling; other `REQUEST` args stay non-creative. You can interleave them, for example `malvin "router task" --do "one-shot" "another router task"` or `malvin "plain" --creative "spark"`.
+Several commands accept positional request arguments. Each `<REQUEST>` is **one shell argument**; quote it when the text contains spaces. Malvin does not join multiple unquoted shell words into a single request. On the bare default route, multiple `REQUEST` arguments each run independently (new log directory, one router pass, summarize). Each `--do` tags only the next `REQUEST` as a one-shot session; any other `REQUEST` (before or after) uses the router. Each `--creative[=PROB]` tags only the next `REQUEST` for creative sampling; other `REQUEST` args stay non-creative. You can interleave them, for example `malvin "router task" --do "one-shot" "another router task"` or `malvin "plain" --creative "spark"`.
 
 | Command | Path argument | Work directory |
 |---------|---------------|----------------|
