@@ -47,13 +47,8 @@ fn creative_survives_intervening_global_flags_and_repeated_creative_without_requ
         assert_eq!(tagged[0].kind, RequestKind::Router);
     }
     {
-        let err = classify_top_level_requests(&os(&[
-            "malvin",
-            "--creative",
-            "--creative",
-            "x",
-        ]))
-        .unwrap_err();
+        let err = classify_top_level_requests(&os(&["malvin", "--creative", "--creative", "x"]))
+            .unwrap_err();
         assert!(err.contains("--creative"), "{err}");
     }
 }

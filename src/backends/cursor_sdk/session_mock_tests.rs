@@ -33,10 +33,7 @@ async fn session_create_send_close_records_usage_and_closes() {
         Some("mock reply"),
         "the session should keep the model reply text"
     );
-    client
-        .end_coder_session()
-        .await
-        .expect("close session");
+    client.end_coder_session().await.expect("close session");
     assert!(
         !client.has_open_coder_session(),
         "close should drop the open coder session"

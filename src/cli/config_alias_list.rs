@@ -5,7 +5,10 @@ use malvin::output::{MALVIN_WHO, print_stdout_line};
 pub(crate) const MODEL_ALIAS_SECTION: &str = "aliases.models";
 pub(crate) const REMOTE_ALIAS_SECTION: &str = "aliases.remotes";
 
-pub(crate) fn alias_section_lines(section: &str, aliases: &BTreeMap<String, String>) -> Vec<String> {
+pub(crate) fn alias_section_lines(
+    section: &str,
+    aliases: &BTreeMap<String, String>,
+) -> Vec<String> {
     if aliases.is_empty() {
         return Vec::new();
     }

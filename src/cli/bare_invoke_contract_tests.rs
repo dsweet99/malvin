@@ -25,10 +25,7 @@ fn help_lists_subcommand_line(help: &str, name: &str) -> bool {
 fn removed_do_flag_is_rejected() {
     let err = parse_cli_with_config_defaults(["malvin", "--do", "task"]).expect_err("removed");
     let msg = err.to_string();
-    assert!(
-        msg.contains("unexpected") || msg.contains("--do"),
-        "{msg}"
-    );
+    assert!(msg.contains("unexpected") || msg.contains("--do"), "{msg}");
 }
 
 #[test]

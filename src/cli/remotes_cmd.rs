@@ -94,14 +94,26 @@ pub(crate) fn remote_listing(gpu: &GpuTypes, aliases: &BTreeMap<String, String>)
     lines
 }
 
+fn load_gpu_types_for_remotes(force: bool, load: impl FnOnce(bool) -> GpuTypes) -> GpuTypes {
+    if malvin::modal_run::gpu_types::gpu_types_auto_refresh_due(force) {
+        super::refresh_notice::print_refreshing();
+    }
+    load(force)
+}
+
 pub fn run_remotes(args: &RemotesArgs) {
+    let gpu = load_gpu_types_for_remotes(args.refresh, load_gpu_types);
     for line in remote_listing(
-        &load_gpu_types(args.refresh),
+        &gpu,
         &malvin::config::malvin_config_file::load_remote_aliases(),
     ) {
         print_stdout_line(MALVIN_WHO, &line);
     }
 }
+
+#[cfg(test)]
+#[path = "remotes_cmd_refresh_tests.rs"]
+mod remotes_cmd_refresh_tests;
 
 #[cfg(test)]
 mod tests {

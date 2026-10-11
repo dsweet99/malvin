@@ -156,11 +156,7 @@ fn entrypoint_from_admin_rejects_quiet_flag() {
 fn entrypoint_from_admin_rejects_removed_verbose_flag() {
     with_isolated_home(|_| {
         let err = crate::cli::config_defaults::parse_cli_with_config_defaults([
-            "malvin",
-            "-v",
-            "admin",
-            "models",
-            "--doc",
+            "malvin", "-v", "admin", "models", "--doc",
         ])
         .expect_err("removed -v");
         let msg = err.to_string();

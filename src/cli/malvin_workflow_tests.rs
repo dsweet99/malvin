@@ -115,4 +115,3 @@ fn admin_workflow_payload_carries_model_only() {
         other => panic!("expected Admin, got {other:?}"),
     }
 }
-

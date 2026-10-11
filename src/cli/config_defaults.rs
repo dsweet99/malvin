@@ -40,8 +40,7 @@ pub(crate) const fn is_gates_only_route(cli: &Cli) -> bool {
 }
 
 const fn uses_lightweight_config_path(cli: &Cli) -> bool {
-    matches!(cli.command, Some(Commands::Admin(_)))
-        || (cli.command.is_none() && cli.has_request())
+    matches!(cli.command, Some(Commands::Admin(_))) || (cli.command.is_none() && cli.has_request())
 }
 
 fn apply_gates_only_workspace_defaults(matches: &ArgMatches, cli: &mut Cli) -> Result<(), String> {

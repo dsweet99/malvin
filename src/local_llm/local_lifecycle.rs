@@ -93,7 +93,9 @@ mod tests {
             &std::process::id().to_string(),
             true,
         );
-        assert!(super::super::local_llm_ollama::process_alive(std::process::id()));
+        assert!(super::super::local_llm_ollama::process_alive(
+            std::process::id()
+        ));
     }
 
     fn housekeep_case(dir: &std::path::Path, pid: &str, keep: bool) {
@@ -109,8 +111,18 @@ mod tests {
                 housekeep_local_llms();
             });
         });
-        assert_eq!(sock.exists(), keep, "socket keep={keep} at {}", sock.display());
-        assert_eq!(lock.exists(), keep, "lock keep={keep} at {}", lock.display());
+        assert_eq!(
+            sock.exists(),
+            keep,
+            "socket keep={keep} at {}",
+            sock.display()
+        );
+        assert_eq!(
+            lock.exists(),
+            keep,
+            "lock keep={keep} at {}",
+            lock.display()
+        );
     }
 
     #[test]
@@ -128,21 +140,27 @@ mod tests {
         let lock_s = lock.to_str().expect("utf8").to_string();
         crate::agent_process::with_env("MALVIN_LOCAL_LLM_MANAGER_SOCK", Some(&sock_s), || {
             crate::agent_process::with_env("MALVIN_LOCAL_LLM_MANAGER_LOCK", Some(&lock_s), || {
-                crate::agent_process::with_env("MALVIN_TIME_SINCE_LAST_CALL_SECONDS", Some("1"), || {
-                    let handle =
-                        std::thread::spawn(super::super::local_llm_daemon::run_local_llm_manager);
-                    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
-                    while std::time::Instant::now() < deadline && !sock.exists() {
-                        std::thread::sleep(std::time::Duration::from_millis(20));
-                    }
-                    assert!(sock.exists(), "manager should create {}", sock.display());
-                    let err = ensure_local_llm(provider, "x").expect_err("down provider");
-                    assert!(
-                        err.contains("auto-start only `ollama`"),
-                        "ensure should report that only ollama can be started: {err}"
-                    );
-                    handle.join().expect("join").expect("manager ok");
-                });
+                crate::agent_process::with_env(
+                    "MALVIN_TIME_SINCE_LAST_CALL_SECONDS",
+                    Some("1"),
+                    || {
+                        let handle = std::thread::spawn(
+                            super::super::local_llm_daemon::run_local_llm_manager,
+                        );
+                        let deadline =
+                            std::time::Instant::now() + std::time::Duration::from_secs(2);
+                        while std::time::Instant::now() < deadline && !sock.exists() {
+                            std::thread::sleep(std::time::Duration::from_millis(20));
+                        }
+                        assert!(sock.exists(), "manager should create {}", sock.display());
+                        let err = ensure_local_llm(provider, "x").expect_err("down provider");
+                        assert!(
+                            err.contains("auto-start only `ollama`"),
+                            "ensure should report that only ollama can be started: {err}"
+                        );
+                        handle.join().expect("join").expect("manager ok");
+                    },
+                );
             });
         });
     }

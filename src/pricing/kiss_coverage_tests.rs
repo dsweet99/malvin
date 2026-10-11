@@ -66,6 +66,8 @@ fn openai_without_a_key_is_not_authenticated() {
             );
         });
     });
-    assert!(crate::backends::pi_backend::provider_has_known_credentials("openai"));
+    assert!(crate::backends::pi_backend::provider_has_known_credentials(
+        "openai"
+    ));
     assert!(!crate::backends::pi_backend::provider_has_known_credentials("not-a-provider"));
 }

@@ -114,6 +114,15 @@ pub fn load_gpu_types_from(source: &GpuTypesSource<'_>, force: bool) -> GpuTypes
 }
 
 #[must_use]
+pub fn gpu_types_auto_refresh_due(force: bool) -> bool {
+    if force {
+        return false;
+    }
+    let now_secs = crate::clock::unix_now_secs();
+    load_record(&gpu_types_cache_path()).is_none_or(|record| !is_fresh(&record, now_secs))
+}
+
+#[must_use]
 pub fn load_gpu_types(force: bool) -> GpuTypes {
     let path = gpu_types_cache_path();
     let source = GpuTypesSource {

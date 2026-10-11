@@ -11,7 +11,7 @@ use super::shared_opts::{RouterOpts, SharedOpts};
     version,
     about = "Non-interactive research and coding agent",
     disable_help_subcommand = true,
-    override_usage = "malvin [OPTION]... [REQUEST]...\n   or: malvin [OPTION]... <COMMAND>",
+    override_usage = "malvin [OPTION]... [REQUEST]...\n   or: malvin [OPTION]... <COMMAND>"
 )]
 pub struct Cli {
     #[command(flatten)]

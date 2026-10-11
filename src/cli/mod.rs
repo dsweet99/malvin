@@ -1,10 +1,10 @@
 pub(crate) mod admin_cmd;
-mod config_alias_list;
 pub(crate) mod advice_cmd;
 pub(crate) mod args;
 pub(crate) mod cli_request;
 pub(crate) mod command_docs;
 mod commands_help;
+mod config_alias_list;
 mod config_defaults;
 pub(crate) mod credits_cmd;
 pub(crate) mod entrypoint;
@@ -15,6 +15,7 @@ pub(crate) mod init_flow;
 pub(crate) mod malvin_workflow;
 pub(crate) mod ml_loop;
 pub(crate) mod models_cmd;
+pub(crate) mod refresh_notice;
 pub(crate) mod remotes_cmd;
 pub(crate) mod repo_checks;
 pub(crate) mod request_argv;
@@ -48,6 +49,8 @@ mod command_log_tests;
 #[cfg(test)]
 #[path = "do_flow_cli_tests.rs"]
 mod do_flow_cli_tests;
+#[cfg(all(test, unix))]
+mod fake_models_agent;
 #[cfg(test)]
 mod gate_error_regression;
 #[cfg(test)]
@@ -57,8 +60,6 @@ mod markdown_flag_parse_tests;
 #[cfg(test)]
 #[path = "models_cmd_tests.rs"]
 mod models_cmd_tests;
-#[cfg(all(test, unix))]
-mod fake_models_agent;
 #[cfg(test)]
 #[path = "router_flow_tests.rs"]
 mod router_flow_tests;

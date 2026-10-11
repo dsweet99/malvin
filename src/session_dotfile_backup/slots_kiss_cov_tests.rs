@@ -22,7 +22,10 @@ fn dotfile_backup_restores_gates_and_workspace_config_bytes() {
         std::fs::write(&config_path, "changed-config\n").expect("clobber config");
         restore_slot(work, gates_backup.as_slot_state(), 0).expect("restore gates");
         restore_slot(work, config_backup.as_slot_state(), 1).expect("restore config");
-        assert_eq!(std::fs::read_to_string(&gates_path).expect("read gates"), gates);
+        assert_eq!(
+            std::fs::read_to_string(&gates_path).expect("read gates"),
+            gates
+        );
         assert_eq!(
             std::fs::read_to_string(&config_path).expect("read config"),
             config

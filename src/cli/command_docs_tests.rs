@@ -41,10 +41,7 @@ fn top_level_doc_parses_without_subcommand() {
 fn removed_do_flag_does_not_select_a_doc() {
     let err = Cli::try_parse_from(["malvin", "--do", "--doc"]).expect_err("removed");
     let msg = err.to_string();
-    assert!(
-        msg.contains("unexpected") || msg.contains("--do"),
-        "{msg}"
-    );
+    assert!(msg.contains("unexpected") || msg.contains("--do"), "{msg}");
 }
 #[test]
 fn admin_doc_parses_with_doc_flag_and_print_doc_admin_writes_subcommand_md() {

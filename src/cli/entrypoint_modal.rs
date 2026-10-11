@@ -45,4 +45,3 @@ pub(crate) fn run_modal_route(cli: &Cli, raw: &[OsString], options: ModalOptions
         }
     }
 }
-
