@@ -22,7 +22,9 @@ pub(crate) use malvin_config_agent::parse_agent_config;
 #[cfg(test)]
 pub(crate) use malvin_config_model_policy::parse_remote_aliases;
 pub use malvin_config_model_policy::{load_remote_aliases, parse_model_cli_arg};
-pub(crate) use malvin_config_model_policy::{parse_aliases_lenient, parse_model_aliases};
+pub(crate) use malvin_config_model_policy::{
+    load_model_aliases, parse_aliases_lenient, parse_model_aliases,
+};
 use malvin_config_open::create_malvin_config_from_template;
 pub use malvin_config_open::{
     ensure_malvin_config_file_if_missing, load_agent_config_lenient, load_agent_config_strict,

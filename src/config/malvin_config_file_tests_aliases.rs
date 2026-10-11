@@ -124,16 +124,24 @@ fn one_bad_alias_entry_is_skipped_and_the_rest_are_kept() {
 }
 
 #[test]
-fn load_remote_aliases_reads_home_config() {
+fn load_aliases_read_home_config() {
     with_isolated_home(|work| {
         let path = malvin_config_path(work);
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
-        std::fs::write(&path, "[aliases.remotes]\nbig = \"modal:sandbox[gpu=A100]\"\n[agent]\nmodel = \"cursor:auto\"\n")
-            .expect("write");
-        let aliases = super::load_remote_aliases();
+        std::fs::write(
+            &path,
+            "[aliases.remotes]\nbig = \"modal:sandbox[gpu=A100]\"\n[aliases.models]\nastra = \"cursor:gpt-5\"\n[agent]\nmodel = \"cursor:auto\"\n",
+        )
+        .expect("write");
+        let remotes = super::load_remote_aliases();
         assert_eq!(
-            aliases.get("big").map(String::as_str),
+            remotes.get("big").map(String::as_str),
             Some("modal:sandbox[gpu=A100]")
+        );
+        let models = super::load_model_aliases();
+        assert_eq!(
+            models.get("astra").map(String::as_str),
+            Some("cursor:gpt-5")
         );
     });
 }

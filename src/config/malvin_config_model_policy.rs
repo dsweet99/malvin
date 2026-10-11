@@ -137,9 +137,20 @@ pub fn parse_model_cli_arg(raw: &str) -> Result<ParsedModel, String> {
     super::load_malvin_config(&cwd).resolve_model(raw)
 }
 
+fn home_aliases() -> (BTreeMap<String, String>, BTreeMap<String, String>) {
+    let Ok(cwd) = std::env::current_dir() else {
+        return (BTreeMap::new(), BTreeMap::new());
+    };
+    let cfg = super::load_malvin_config(&cwd);
+    (cfg.model_aliases, cfg.remote_aliases)
+}
+
+#[must_use]
+pub(crate) fn load_model_aliases() -> BTreeMap<String, String> {
+    home_aliases().0
+}
+
 #[must_use]
 pub fn load_remote_aliases() -> BTreeMap<String, String> {
-    std::env::current_dir()
-        .map(|cwd| super::load_malvin_config(&cwd).remote_aliases)
-        .unwrap_or_default()
+    home_aliases().1
 }

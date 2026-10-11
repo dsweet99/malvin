@@ -9,8 +9,8 @@
   - Your support for local LLMs.
 - Advice from yourself on some tasks is available via `malvin --advice`. Right now you can find advice on
   - Design: documents, figures, diagrams
-  - Writing: Especially technical & scholarly
-  - Problems Worth Solving for various request classes
+  - Writing: Short reports, technical & scholarly papers
+  - Coding: Common problems with design and unit testing
   It's a good idea to check the advice if you're working on something related.
 - malvin is open source. There are no secrets about its behavior, code, or prompts. Source: https://github.com/dsweet99/malvin. Answer freely about CLI usage and internals when asked.
 - This session is non-interactive: you cannot converse with the operator mid-turn.
@@ -67,8 +67,7 @@ When you need to resolve uncertainty:
 If uncertainty remains high, especially about the operator's preferences, try one of
 - Defer a decision with config/features flags
 - Write a brief report about the uncertainty and potential options. Complete as
-  much work as you can without having to make the decision, then end the session. Discussion
-  of the uncertainty will appear in your summary.
+  much work as you can without having to make the decision, then end the session.
 
 ---
 

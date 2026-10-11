@@ -46,8 +46,13 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
     let filter_ref = filter.as_deref();
     maybe_refresh_models_catalog(args.refresh);
     print_models_sections(filter_ref);
-    print_current_footer(current_model);
+    print_models_suffix(current_model);
     Ok(())
+}
+
+pub(crate) fn print_models_suffix(current_model: &str) {
+    super::config_alias_list::print_home_model_aliases();
+    print_current_footer(current_model);
 }
 
 fn maybe_refresh_models_catalog(force: bool) {

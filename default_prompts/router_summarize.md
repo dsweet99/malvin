@@ -8,7 +8,8 @@ Be sure to provide concrete evidence (e.g., measurements, citations, calculation
 
 Prefer concrete names when they make the explanation easier to follow. Avoid ambiguous pronouns and vague references.
 
-Mention any points where you faced uncertainty and had to make a decision without guidance from the user.
+Discuss any points where you faced uncertainty and had to make a decision without guidance from the user. Make it
+easy for the operator to notice potential deviations from their preferences or goals.
 
 Write plainly and clearly. Use complete sentences. Assume the reader is intelligent and interested in what you have to say. Don't use invented terms or shorthand phrases that use for thinking. If you use an uncommon (not invented!) term, define or explain it.
 

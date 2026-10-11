@@ -46,6 +46,7 @@ fn format_advice_list_line(entry: &AdviceEntry) -> String {
 
 const ADVICE_LIST_USAGE: &str = "\
 Type `malvin --advice TAG` to see a full document.
+
 TAG: Description";
 
 pub(crate) fn print_advice_list_to_writer(mut out: impl Write) -> Result<(), String> {
@@ -58,6 +59,7 @@ pub(crate) fn print_advice_list_to_writer(mut out: impl Write) -> Result<(), Str
             .map_err(|e| format!("stdout: {e}"))?;
         out.write_all(b"\n").map_err(|e| format!("stdout: {e}"))?;
     }
+    out.write_all(b"\n").map_err(|e| format!("stdout: {e}"))?;
     Ok(())
 }
 
@@ -150,13 +152,16 @@ mod tests {
             lines[0], "Type `malvin --advice TAG` to see a full document.",
             "{s}"
         );
-        assert_eq!(lines[1], "TAG: Description", "{s}");
+        assert_eq!(lines[1], "", "{s}");
+        assert_eq!(lines[2], "TAG: Description", "{s}");
         assert!(!s.contains("List format"), "{s}");
+        assert!(s.ends_with("\n\n"), "{s}");
         let expected: Vec<String> = ADVICE_ENTRIES
             .iter()
             .map(|e| format!("{}: {}", e.tag, e.description))
             .collect();
-        assert_eq!(lines[2..], expected[..], "{s}");
+        assert_eq!(lines[3..lines.len() - 1], expected[..], "{s}");
+        assert_eq!(lines.last(), Some(&""), "{s}");
     }
 
     #[test]
