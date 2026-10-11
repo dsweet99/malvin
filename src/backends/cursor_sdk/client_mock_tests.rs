@@ -147,10 +147,14 @@ async fn cursor_sdk_warm_start_attach_after_begin_records_usage() {
     clear_mock_bridge_env();
 }
 
+#[allow(clippy::future_not_send)]
 async fn prompt_need_dm_with_capture(
     client: &mut CursorSdkClient,
     log: &std::path::Path,
 ) -> String {
+    let _dm = crate::output::DO_DM_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     crate::output::set_do_dm_stdout_mode(true);
     crate::output::enable_stdout_capture();
     client

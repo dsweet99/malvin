@@ -212,6 +212,9 @@ fn bridge_relays_bare_remote_stdout_as_dm_body_in_do_mode() {
     let _guard = crate::output::STDOUT_LOG_TEST_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dm = crate::output::DO_DM_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     crate::output::set_do_dm_stdout_mode(true);
     crate::output::enable_stdout_capture();
     let mut b = fake_bridge(concat!(
@@ -237,6 +240,9 @@ fn bridge_relays_bare_remote_stdout_as_dm_body_in_do_mode() {
 #[test]
 fn status_lines_reach_stderr_outside_quiet_do_mode() {
     let _guard = crate::output::STDOUT_LOG_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dm = crate::output::DO_DM_TEST_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     crate::output::set_do_dm_stdout_mode(false);

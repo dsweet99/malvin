@@ -3,6 +3,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 static DO_DM_STDOUT: AtomicBool = AtomicBool::new(false);
 static DO_DM_MARKDOWN: AtomicBool = AtomicBool::new(false);
 
+#[cfg(test)]
+pub(crate) static DO_DM_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 #[derive(Debug, Clone, Copy, Default)]
 pub struct DoDmStdoutOpts {
     pub enabled: bool,

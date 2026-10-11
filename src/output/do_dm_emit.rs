@@ -1,5 +1,5 @@
 pub(crate) fn emit_do_dm_body(body: &str) {
-    if body.is_empty() {
+    if body.is_empty() || !super::do_dm_mode::do_dm_stdout_mode() {
         return;
     }
     for line in super::logical_lines(body) {

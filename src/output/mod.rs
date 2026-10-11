@@ -1,5 +1,6 @@
 pub(crate) mod acp_tee;
 mod acp_tee_markdown;
+mod dm_hook;
 mod do_dm_emit;
 mod do_dm_filter;
 mod do_dm_mode;
@@ -27,11 +28,18 @@ pub(crate) use stdout_display::{
     format_heartbeat_stdout_ansi, format_line_stdout, format_line_stdout_ansi, logical_lines,
 };
 
+pub(crate) use dm_hook::{deliver_finished_dm, parse_dm_emit_mark};
+#[cfg(test)]
+pub(crate) use dm_hook::mark_line;
+#[cfg(test)]
+pub(crate) use dm_hook::{reset_dm_hook_state, set_test_dm_hook};
 pub(crate) use do_dm_emit::emit_wrapped_do_dm_line;
 pub use do_dm_filter::feed_do_dm_stdout_text;
 pub use do_dm_mode::{
     DoDmStdoutOpts, do_dm_stdout_mode, set_do_dm_stdout_mode, set_do_dm_stdout_opts,
 };
+#[cfg(test)]
+pub(crate) use do_dm_mode::DO_DM_TEST_LOCK;
 pub use sentinel::{DM_END, DM_START, MALVIN_DONE, is_sentinel_line};
 pub use stdout_display::{
     print_stdout_line, print_stdout_raw_line, print_stdout_raw_line_with_ts, print_stdout_text,

@@ -115,3 +115,5 @@ mod tests_io;
 mod tests_options;
 #[cfg(test)]
 mod tests_remote;
+#[cfg(test)]
+mod tests_dm_mark;
