@@ -6,28 +6,28 @@ use super::slots_kiss_cov_shared::{MALVIN_CONFIG_WORKSPACE_SLOT, dotfile_spec_ro
 use std::path::Path;
 
 #[test]
-fn kiss_cov_dotfile_spec_row_field_count() {
-    for row in DOTFILE_ROWS {
-        assert_eq!(dotfile_spec_row_field_count(&row), 7);
-        let DotfileSpecRow {
-            rel,
-            home_subdir,
-            mkdir_lbl,
-            collision_lbl,
-            restore_lbl,
-            copy_err,
-            restore_copy_err,
-        } = row;
-        let _ = (
-            rel,
-            home_subdir,
-            mkdir_lbl,
-            collision_lbl,
-            restore_lbl,
-            copy_err,
-            restore_copy_err,
+fn dotfile_backup_restores_gates_and_workspace_config_bytes() {
+    crate::test_support::test_utils::with_isolated_home(|work| {
+        std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
+        let gates = "make lint\n";
+        let config = "workspace-config\n";
+        let gates_path = work.join(crate::MALVIN_CHECKS_REL);
+        let config_path = work.join(crate::MALVIN_CONFIG_REL);
+        std::fs::write(&gates_path, gates).expect("gates");
+        std::fs::write(&config_path, config).expect("config");
+        let mut generate_id = |n: usize| format!("bytes-{n}");
+        let gates_backup = backup_slot(0, work, &mut generate_id).expect("gates backup");
+        let config_backup = backup_slot(1, work, &mut generate_id).expect("config backup");
+        std::fs::write(&gates_path, "changed-gates\n").expect("clobber gates");
+        std::fs::write(&config_path, "changed-config\n").expect("clobber config");
+        restore_slot(work, gates_backup.as_slot_state(), 0).expect("restore gates");
+        restore_slot(work, config_backup.as_slot_state(), 1).expect("restore config");
+        assert_eq!(std::fs::read_to_string(&gates_path).expect("read gates"), gates);
+        assert_eq!(
+            std::fs::read_to_string(&config_path).expect("read config"),
+            config
         );
-    }
+    });
 }
 
 #[test]

@@ -59,6 +59,17 @@ Malvin caps sandbox memory (see `Sandbox memory:` under Current state). If USS e
 - When running gates by hand, execute at most one `.malvin/gates` line at a time; wait for exit before starting the next.
 - Prefer narrow checks while iterating.
 
+## Epistemic Uncertainty
+When you need to resolve uncertainty:
+- Run an experiment
+- Do research in files or on the web
+
+If uncertainty remains high, especially about the operator's preferences, try one of
+- Defer a decision with config/features flags
+- Write a brief report about the uncertainty and potential options. Complete as
+  much work as you can without having to make the decision, then end the session. Discussion
+  of the uncertainty will appear in your summary.
+
 ---
 
 ## Communication

@@ -2,7 +2,7 @@ use super::{RouterAcpIterationInput, router_iteration_log_path, run_router_turns
 use crate::cli::{RouterOpts, SharedOpts};
 use malvin::run_timing::acp_post_run::RunTimingSessionEnd;
 
-const DONE_NEEDLE_ENV: &str = "MOCK_BRIDGE_DONE_WHEN_PROMPT_HAS";
+const SCRIPTED_REPLY_ENV: &str = "MOCK_BRIDGE_SCRIPTED_REPLY";
 
 struct MockRouterTurns {
     done: bool,
@@ -18,7 +18,15 @@ fn cache_node_bin_while_real_home_visible() {
     malvin::backends::cursor_sdk::node_resolve::resolve_node_bin().expect("node for mock bridge");
 }
 
-fn run_mock_router_turns(done_needle: &str) -> MockRouterTurns {
+fn scripted_done_reply(when: &str) -> String {
+    serde_json::json!({
+        "when": when,
+        "result": format!("mock reply\n{}", malvin::output::MALVIN_DONE),
+    })
+    .to_string()
+}
+
+fn run_mock_router_turns(reply_when: &str) -> MockRouterTurns {
     cache_node_bin_while_real_home_visible();
     let mut outcome = None;
     malvin::test_support::test_utils::with_isolated_home(|workspace| {
@@ -26,13 +34,13 @@ fn run_mock_router_turns(done_needle: &str) -> MockRouterTurns {
             "MALVIN_CURSOR_SDK_BRIDGE",
             "CURSOR_API_KEY",
             "MALVIN_TEST_NO_REAL_AGENT",
-            DONE_NEEDLE_ENV,
+            SCRIPTED_REPLY_ENV,
         ]);
         #[allow(unsafe_code)]
         unsafe {
             std::env::set_var("MALVIN_CURSOR_SDK_BRIDGE", mock_bridge_js());
             std::env::set_var("CURSOR_API_KEY", "test-key");
-            std::env::set_var(DONE_NEEDLE_ENV, done_needle);
+            std::env::set_var(SCRIPTED_REPLY_ENV, scripted_done_reply(reply_when));
         }
         malvin::test_support::test_utils::enable_test_fast_teardown();
         outcome = Some(malvin::test_support::test_utils::block_on_test_async(

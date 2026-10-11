@@ -140,13 +140,10 @@ fn clear_cursor_api_keys_for_models_test() -> malvin::test_support::test_utils::
 
 #[cfg(unix)]
 fn install_failing_fake_agent(dir: &std::path::Path) {
-    use std::os::unix::fs::PermissionsExt;
-
-    let agent = dir.join("agent");
-    std::fs::write(&agent, "#!/bin/sh\nexit 1\n").expect("write fake agent");
-    let mut perms = std::fs::metadata(&agent).expect("metadata").permissions();
-    perms.set_mode(0o755);
-    std::fs::set_permissions(&agent, perms).expect("chmod");
+    crate::cli::fake_models_agent::install_agent(
+        dir,
+        crate::cli::fake_models_agent::FAILING_AGENT_SCRIPT,
+    );
 }
 
 #[cfg(unix)]
@@ -171,28 +168,33 @@ fn kiss_cov_run_models_soft_fails_cursor_and_continues() {
 #[cfg(unix)]
 #[test]
 fn kiss_cov_run_models_fake_agent_branchy_executable() {
-    use std::os::unix::fs::PermissionsExt;
-
     use super::test_hooks::print_cursor_models_via_cli_for_test;
+    use crate::cli::fake_models_agent::{MODELS_LISTING_SCRIPT, install_agent};
     use crate::cli::repo_checks::set_fake_command_dir;
+    use malvin::output::{enable_stdout_capture, take_captured_stdout};
 
+    let _lock = malvin::test_support::test_utils::test_env_lock();
     let tmp = tempfile::tempdir().expect("tempdir");
-    let agent = tmp.path().join("agent");
-    std::fs::write(
-        &agent,
-        "#!/bin/sh\nif [ \"$1\" = models ]; then printf 'composer-2 — Fast\\nTip: upgrade\\n'; exit 0; fi\nexit 1\n",
-    )
-    .expect("write fake agent");
-    let mut perms = std::fs::metadata(&agent).expect("metadata").permissions();
-    perms.set_mode(0o755);
-    std::fs::set_permissions(&agent, perms).expect("chmod");
+    install_agent(tmp.path(), MODELS_LISTING_SCRIPT);
     let _guard = set_fake_command_dir(tmp.path());
-    if print_cursor_models_via_cli_for_test(Some("cursor:")).is_ok() {
-        let again = print_cursor_models_via_cli_for_test(Some("cursor:"));
-        assert!(again.is_ok() || again.is_err());
-    } else {
-        panic!("fake agent models should succeed");
-    }
+    enable_stdout_capture();
+    print_cursor_models_via_cli_for_test(Some("cursor:")).expect("fake agent models");
+    let listed = take_captured_stdout();
+    assert!(
+        listed.contains("cursor:composer-2\tFast"),
+        "listing should name the model and its speed: {listed}"
+    );
+    assert!(
+        !listed.contains("Tip"),
+        "tip banner should be omitted from the listing: {listed}"
+    );
+    enable_stdout_capture();
+    print_cursor_models_via_cli_for_test(Some("cursor:missing")).expect("filtered listing");
+    let filtered = take_captured_stdout();
+    assert!(
+        !filtered.contains("composer-2"),
+        "a prefix that misses the id should hide that row: {filtered}"
+    );
 }
 
 #[test]

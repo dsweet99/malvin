@@ -61,6 +61,8 @@ mod markdown_flag_parse_tests;
 #[cfg(test)]
 #[path = "models_cmd_tests.rs"]
 mod models_cmd_tests;
+#[cfg(all(test, unix))]
+mod fake_models_agent;
 #[cfg(test)]
 #[path = "router_flow_tests.rs"]
 mod router_flow_tests;

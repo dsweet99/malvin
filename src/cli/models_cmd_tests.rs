@@ -74,18 +74,7 @@ fn models_subcommand_parse_invokes_cli_helpers() {
 
 #[cfg(unix)]
 fn write_fake_models_agent(dir: &std::path::Path) -> std::path::PathBuf {
-    use std::os::unix::fs::PermissionsExt;
-
-    let agent = dir.join("agent");
-    std::fs::write(
-        &agent,
-        "#!/bin/sh\nif [ \"$1\" = models ]; then printf 'composer-2 — Fast\\nTip: upgrade\\n'; exit 0; fi\nexit 1\n",
-    )
-    .expect("write fake agent");
-    let mut perms = std::fs::metadata(&agent).expect("metadata").permissions();
-    perms.set_mode(0o755);
-    std::fs::set_permissions(&agent, perms).expect("chmod fake agent");
-    agent
+    super::fake_models_agent::install_agent(dir, super::fake_models_agent::MODELS_LISTING_SCRIPT)
 }
 
 #[cfg(unix)]

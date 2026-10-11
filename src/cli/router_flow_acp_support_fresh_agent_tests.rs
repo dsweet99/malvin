@@ -75,7 +75,6 @@ fn hold_mock_env(once_dir: &std::path::Path) -> malvin::test_support::test_utils
         "MALVIN_CURSOR_SDK_BRIDGE",
         "CURSOR_API_KEY",
         "MALVIN_TEST_NO_REAL_AGENT",
-        "MOCK_BRIDGE_DONE_WHEN_PROMPT_HAS",
         "MOCK_BRIDGE_ONCE_DIR",
     ]);
     let bridge = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -85,10 +84,6 @@ fn hold_mock_env(once_dir: &std::path::Path) -> malvin::test_support::test_utils
         std::env::set_var("MALVIN_CURSOR_SDK_BRIDGE", bridge);
         std::env::set_var("CURSOR_API_KEY", "test-key");
         std::env::set_var("MALVIN_TEST_NO_REAL_AGENT", "1");
-        std::env::set_var(
-            "MOCK_BRIDGE_DONE_WHEN_PROMPT_HAS",
-            "Find unsatisfied requirements",
-        );
         std::env::set_var("MOCK_BRIDGE_ONCE_DIR", once_dir);
     }
     saved
