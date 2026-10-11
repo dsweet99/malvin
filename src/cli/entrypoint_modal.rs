@@ -14,9 +14,6 @@ pub(crate) fn modal_invocation(
     options: ModalOptions,
 ) -> Result<ModalInvocation, String> {
     let mut set_flags = Vec::new();
-    if cli.router.watch {
-        set_flags.push("--watch");
-    }
     if cli.shared.ml.is_forever() {
         set_flags.push("--ml=inf");
     }
@@ -37,22 +34,8 @@ pub(crate) fn modal_invocation(
     })
 }
 
-pub(crate) fn remote_do_dm_opts(cli: &Cli, interactive: bool) -> malvin::output::DoDmStdoutOpts {
-    let dm_only = cli.has_do_request() && !cli.shared.verbose;
-    malvin::output::DoDmStdoutOpts {
-        enabled: dm_only,
-        emit_markdown: dm_only && interactive && cli.shared.acp_stdout_markdown_enabled(),
-    }
-}
-
 pub(crate) fn run_modal_route(cli: &Cli, raw: &[OsString], options: ModalOptions) -> Exit {
-    let interactive = malvin::output::agent_stdout_tee_enabled();
-    if cli.has_do_request() && !cli.shared.verbose {
-        malvin::run_timing::set_suppress_stdout_footnotes(true);
-    }
-    malvin::output::set_do_dm_stdout_opts(remote_do_dm_opts(cli, interactive));
     let result = modal_invocation(cli, raw, options).and_then(|inv| run_modal(&inv));
-    malvin::output::set_do_dm_stdout_opts(malvin::output::DoDmStdoutOpts::default());
     match result {
         Ok(0) => Exit::Success,
         Ok(_) => Exit::Failure,
@@ -63,24 +46,3 @@ pub(crate) fn run_modal_route(cli: &Cli, raw: &[OsString], options: ModalOptions
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use clap::Parser;
-
-    use super::remote_do_dm_opts;
-    use crate::cli::Cli;
-
-    fn opts(args: &[&str], interactive: bool) -> (bool, bool) {
-        let cli = Cli::try_parse_from(args).expect("parse");
-        let o = remote_do_dm_opts(&cli, interactive);
-        (o.enabled, o.emit_markdown)
-    }
-
-    #[test]
-    fn remote_do_is_dm_only_unless_verbose() {
-        assert_eq!(opts(&["malvin", "--do", "hi"], true), (true, true));
-        assert_eq!(opts(&["malvin", "--do", "hi"], false), (true, false));
-        assert_eq!(opts(&["malvin", "-v", "--do", "hi"], true), (false, false));
-        assert_eq!(opts(&["malvin", "hi"], true), (false, false));
-    }
-}

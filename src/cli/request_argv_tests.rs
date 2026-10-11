@@ -5,31 +5,7 @@ fn os(args: &[&str]) -> Vec<OsString> {
     args.iter().map(OsString::from).collect()
 }
 #[test]
-fn each_do_tags_only_the_next_request_and_each_creative_tags_only_the_next_request() {
-    {
-        let tagged = classify_top_level_requests(&os(&[
-            "malvin",
-            "Write",
-            "--do",
-            "What time",
-            "Find bug",
-            "--do",
-            "Summarize",
-        ]))
-        .expect("classify");
-        assert_eq!(
-            tagged
-                .iter()
-                .map(|t| (t.text.as_str(), t.kind, t.creative))
-                .collect::<Vec<_>>(),
-            vec![
-                ("Write", RequestKind::Router, None),
-                ("What time", RequestKind::Do, None),
-                ("Find bug", RequestKind::Router, None),
-                ("Summarize", RequestKind::Do, None),
-            ]
-        );
-    }
+fn each_creative_tags_only_the_next_request() {
     {
         let tagged = classify_top_level_requests(&os(&[
             "malvin",
@@ -56,7 +32,7 @@ fn each_do_tags_only_the_next_request_and_each_creative_tags_only_the_next_reque
     }
 }
 #[test]
-fn creative_survives_intervening_global_flags_and_creative_then_do_without_request_errors() {
+fn creative_survives_intervening_global_flags_and_repeated_creative_without_request_errors() {
     {
         let tagged = classify_top_level_requests(&os(&[
             "malvin",
@@ -71,62 +47,35 @@ fn creative_survives_intervening_global_flags_and_creative_then_do_without_reque
         assert_eq!(tagged[0].kind, RequestKind::Router);
     }
     {
-        let err =
-            classify_top_level_requests(&os(&["malvin", "--creative", "--do", "x"])).unwrap_err();
+        let err = classify_top_level_requests(&os(&[
+            "malvin",
+            "--creative",
+            "--creative",
+            "x",
+        ]))
+        .unwrap_err();
         assert!(err.contains("--creative"), "{err}");
     }
 }
 #[test]
-fn do_then_creative_without_request_errors_and_do_then_trailing_request_is_router() {
-    {
-        let err =
-            classify_top_level_requests(&os(&["malvin", "--do", "--creative", "x"])).unwrap_err();
-        assert!(err.contains("--do"), "{err}");
-    }
-    {
-        let tagged =
-            classify_top_level_requests(&os(&["malvin", "--do", "Hello", "Research"])).expect("ok");
-        assert_eq!(tagged[0].kind, RequestKind::Do);
-        assert_eq!(tagged[1].kind, RequestKind::Router);
-        assert!(tagged[0].creative.is_none());
-        assert!(tagged[1].creative.is_none());
-    }
-}
-#[test]
-fn bare_do_without_request_is_ok_when_empty_and_bare_creative_without_request_is_ok_when_empty() {
-    {
-        let tagged = classify_top_level_requests(&os(&["malvin", "--do"])).expect("ok");
-        assert!(tagged.is_empty());
-    }
+fn bare_creative_without_request_is_ok_when_empty() {
     {
         let tagged = classify_top_level_requests(&os(&["malvin", "--creative"])).expect("ok");
         assert!(tagged.is_empty());
     }
 }
 #[test]
-fn do_without_request_after_other_requests_errors_and_creative_without_request_after_other_requests_errors()
- {
-    {
-        let err = classify_top_level_requests(&os(&["malvin", "A", "--do"])).unwrap_err();
-        assert!(err.contains("--do"));
-    }
-    {
-        let err = classify_top_level_requests(&os(&["malvin", "A", "--creative"])).unwrap_err();
-        assert!(err.contains("--creative"));
-    }
+fn creative_without_request_after_other_requests_errors() {
+    let err = classify_top_level_requests(&os(&["malvin", "A", "--creative"])).unwrap_err();
+    assert!(err.contains("--creative"));
 }
 
 #[test]
-fn do_then_creative_on_next_router_request() {
-    let tagged = classify_top_level_requests(&os(&[
-        "malvin",
-        "--do",
-        "shot",
-        "--creative=0.5",
-        "route me",
-    ]))
-    .expect("ok");
-    assert_eq!(tagged[0].kind, RequestKind::Do);
+fn creative_on_next_router_request() {
+    let tagged =
+        classify_top_level_requests(&os(&["malvin", "shot", "--creative=0.5", "route me"]))
+            .expect("ok");
+    assert_eq!(tagged[0].kind, RequestKind::Router);
     assert!(tagged[0].creative.is_none());
     assert_eq!(tagged[1].kind, RequestKind::Router);
     assert_eq!(tagged[1].creative, Some(0.5));
@@ -183,5 +132,5 @@ fn bare_advice_before_flag_does_not_skip_flag_token_and_double_dash_ends_options
         classify_top_level_requests(&os(&["malvin", "--do", "--", "-n"])).expect("classify");
     assert_eq!(pending.len(), 1);
     assert_eq!(pending[0].text, "-n");
-    assert_eq!(pending[0].kind, RequestKind::Do);
+    assert_eq!(pending[0].kind, RequestKind::Router);
 }

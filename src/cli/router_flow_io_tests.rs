@@ -1,8 +1,5 @@
 use clap::Parser;
 
-use crate::cli::config_defaults::parse_cli_with_config_defaults;
-use malvin::test_support::test_utils::with_isolated_home;
-
 #[test]
 fn cli_accepts_default_route_request() {
     use crate::cli::Cli;
@@ -53,25 +50,14 @@ fn cli_accepts_global_creative_option() {
 }
 
 #[test]
-fn cli_accepts_watch_option() {
+fn cli_rejects_removed_watch_option() {
     use crate::cli::Cli;
 
-    let off = Cli::try_parse_from(["malvin", "route this task"]).expect("parse");
-    assert!(!off.router.watch);
-
-    let on = Cli::try_parse_from(["malvin", "--watch", "plan.md"]).expect("parse");
-    assert!(on.router.watch);
-    assert_eq!(on.first_request().map(String::as_str), Some("plan.md"));
-
-    let mut watch_err = None;
-    with_isolated_home(|_work| {
-        watch_err = Some(parse_cli_with_config_defaults([
-            "malvin", "--do", "--watch", "plan.md",
-        ]));
-    });
+    let err = Cli::try_parse_from(["malvin", "--watch", "plan.md"]).expect_err("removed");
+    let msg = err.to_string();
     assert!(
-        watch_err.expect("ran").is_err(),
-        "--watch conflicts with pure --do"
+        msg.contains("unexpected") || msg.contains("--watch"),
+        "{msg}"
     );
 }
 
@@ -83,7 +69,6 @@ fn router_client_uses_router_style_agent_io_not_do_style() {
     let shared = SharedOpts {
         model: malvin::config::model_id::parse_model_id(malvin::config::DEFAULT_CLI_MODEL)
             .expect("model"),
-        verbose: false,
         max_acp_retries: malvin::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
         advice: None,

@@ -19,7 +19,7 @@ fn global_quiet_long_and_short_parse_and_quiet_parses_on_router_wrappers() {
 }
 
 #[test]
-fn quiet_conflicts_with_pure_do() {
+fn removed_do_flag_is_rejected_beside_quiet() {
     let mut err = None;
     with_isolated_home(|_work| {
         err = Some(
@@ -30,8 +30,8 @@ fn quiet_conflicts_with_pure_do() {
     });
     let msg = err.expect("err");
     assert!(
-        msg.contains("cannot be used with") || msg.contains("--quiet") || msg.contains("-q"),
-        "expected --quiet conflict with --do; got {msg}"
+        msg.contains("unexpected") || msg.contains("--do"),
+        "expected removed --do rejected; got {msg}"
     );
 }
 
@@ -46,7 +46,7 @@ fn gates_only_short_q_is_router_quiet() {
 #[test]
 fn removed_inverse_flags_are_rejected() {
     for flag in ["--no-color", "--no-tee", "--no-markdown"] {
-        let err = Cli::try_parse_from(["malvin", flag, "--do", "x"]).expect_err("parse");
+        let err = Cli::try_parse_from(["malvin", flag, "x"]).expect_err("parse");
         let msg = err.to_string();
         assert!(
             msg.contains("unexpected argument") || msg.contains(flag),

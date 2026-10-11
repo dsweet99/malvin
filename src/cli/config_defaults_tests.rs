@@ -61,7 +61,6 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
     };
     let mut shared = SharedOpts {
         model: malvin::config::model_id::parse_model_id("cursor:old").expect("model"),
-        verbose: false,
         max_acp_retries: 1,
         doc: false,
         advice: None,
@@ -116,15 +115,15 @@ fn apply_workspace_config_defaults_for_admin_command() {
 }
 
 #[test]
-fn apply_workspace_config_defaults_skips_do() {
+fn apply_workspace_config_defaults_for_request_does_not_create_config() {
     malvin::test_support::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(work).expect("chdir");
         let config_path = malvin::malvin_config_path(work);
         assert!(!config_path.exists());
-        let do_matches = Cli::command().get_matches_from(["malvin", "--do", "hello"]);
-        let mut do_cli = Cli::from_arg_matches(&do_matches).expect("cli");
-        apply_workspace_config_defaults(&do_matches, &mut do_cli).expect("apply");
+        let matches = Cli::command().get_matches_from(["malvin", "hello"]);
+        let mut cli = Cli::from_arg_matches(&matches).expect("cli");
+        apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
         assert!(!config_path.exists());
         std::env::set_current_dir(cwd).expect("restore cwd");
     });

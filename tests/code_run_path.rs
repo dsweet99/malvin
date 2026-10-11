@@ -144,6 +144,6 @@ fn admin_skips_external_linter_preflight() {
 }
 
 #[test]
-fn malvin_do_is_not_kiss_gated_when_kiss_missing_from_path() {
-    assert_malvin_subcommand_not_kiss_gated_without_auth(&["--do", "hello"], None);
+fn malvin_request_is_not_kiss_gated_when_kiss_missing_from_path() {
+    assert_malvin_subcommand_not_kiss_gated_without_auth(&["hello"], None);
 }

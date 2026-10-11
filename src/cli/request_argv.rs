@@ -4,7 +4,6 @@ use super::shared_opts::parse_creative_probability;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RequestKind {
-    Do,
     Router,
 }
 
@@ -17,11 +16,6 @@ pub struct TaggedRequest {
 
 impl TaggedRequest {
     #[must_use]
-    pub const fn is_do(&self) -> bool {
-        matches!(self.kind, RequestKind::Do)
-    }
-
-    #[must_use]
     pub const fn is_router(&self) -> bool {
         matches!(self.kind, RequestKind::Router)
     }
@@ -29,21 +23,12 @@ impl TaggedRequest {
 
 #[derive(Debug, Clone, Copy, Default)]
 struct PendingPrefixes {
-    do_workflow: bool,
     creative: Option<f64>,
 }
 
 impl PendingPrefixes {
-    fn set_do(&mut self) -> Result<(), String> {
-        if self.do_workflow || self.creative.is_some() {
-            return Err(self.conflict_message());
-        }
-        self.do_workflow = true;
-        Ok(())
-    }
-
     fn set_creative(&mut self, prob: f64) -> Result<(), String> {
-        if self.do_workflow || self.creative.is_some() {
+        if self.creative.is_some() {
             return Err(self.conflict_message());
         }
         self.creative = Some(prob);
@@ -51,32 +36,22 @@ impl PendingPrefixes {
     }
 
     fn conflict_message(&self) -> String {
-        if self.do_workflow {
-            "`--do` requires a REQUEST immediately after it".to_string()
-        } else {
-            "`--creative` requires a REQUEST immediately after it".to_string()
-        }
+        "`--creative` requires a REQUEST immediately after it".to_string()
     }
 
     fn finish(self, out: &[TaggedRequest]) -> Result<(), String> {
         if out.is_empty() {
             return Ok(());
         }
-        if self.do_workflow || self.creative.is_some() {
+        if self.creative.is_some() {
             return Err(self.conflict_message());
         }
         Ok(())
     }
 
     const fn take_for_request(&mut self) -> (RequestKind, Option<f64>) {
-        let kind = if self.do_workflow {
-            self.do_workflow = false;
-            RequestKind::Do
-        } else {
-            RequestKind::Router
-        };
         let creative = self.creative.take();
-        (kind, creative)
+        (RequestKind::Router, creative)
     }
 }
 
@@ -153,10 +128,6 @@ fn classify_arg(
 ) -> Result<ArgStep, String> {
     if let Some(p) = parse_creative_flag(arg)? {
         pending.set_creative(p)?;
-        return Ok(ArgStep::Advance(i + 1));
-    }
-    if arg == "--do" {
-        pending.set_do()?;
         return Ok(ArgStep::Advance(i + 1));
     }
     if arg == "admin" {

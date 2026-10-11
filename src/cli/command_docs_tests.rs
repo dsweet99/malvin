@@ -38,14 +38,13 @@ fn top_level_doc_parses_without_subcommand() {
 }
 
 #[test]
-fn do_doc_parses_with_do_flag() {
-    let cli = Cli::try_parse_from(["malvin", "--do", "--doc"]).expect("parse");
-    assert!(cli.shared.doc);
-    assert!(cli.do_workflow());
-    assert!(cli.command.is_none());
-    let mut buf = Vec::new();
-    super::print_doc_for_cli_to_writer(&cli, &mut buf).expect("write");
-    assert!(buf.starts_with(b"# malvin --do"));
+fn removed_do_flag_does_not_select_a_doc() {
+    let err = Cli::try_parse_from(["malvin", "--do", "--doc"]).expect_err("removed");
+    let msg = err.to_string();
+    assert!(
+        msg.contains("unexpected") || msg.contains("--do"),
+        "{msg}"
+    );
 }
 #[test]
 fn admin_doc_parses_with_doc_flag_and_print_doc_admin_writes_subcommand_md() {

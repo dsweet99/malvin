@@ -27,7 +27,7 @@ There is no `router` subcommand. Bare `malvin REQUEST` is the default autonomous
 
 ### `[REQUEST]...`
 
-Required to run the default route. One or more shell arguments; each is a separate request (quote any argument that contains spaces). Literal text, or an existing `.md` file path (same rules as `--do`).
+Required to run the default route. One or more shell arguments; each is a separate request (quote any argument that contains spaces). Literal text, or an existing `.md` file path.
 
 | Form | Work directory | Stored as |
 |------|----------------|-----------|
@@ -42,9 +42,7 @@ See `malvin --doc`. Notable for the default route:
 |------|--------|
 | `-g` / `--gates` | When `router_a_2` emits `__MALVIN_DONE__`, run workspace `.malvin/gates` before exit summarize. Pass stops success; fail stops with a workspace gate error. The outer router does not start another iteration. Also injects check text into `router_a.md` via `{{ code_extra }}`. |
 | `--creative[=PROB]` | Applies only to the following REQUEST (repeatable). For that request's single outer iteration, with probability `PROB` (default `1.0` when the flag is set): include `mbc2.md` in the aggregated initial prompt (after the header), and fill `router_b.md` creative template keys for the optional work turn |
-| `--watch` | Before the single outer iteration, re-copy the operator request `.md` onto the run `plan_*.md` (overwrite). No-op for literal-text REQUEST |
-| `--quiet` / `-q` | Stdout shows only `__MALVIN_DM_*__` bodies, plus the closing `TIMING` and `COST` lines. Plain `--do` is already DM-body-only without `--verbose`, and omits `TIMING` and `COST` unless `--verbose` |
-| `--verbose` | Full prompt bodies in `prompts.log`; with `--do`, also same live agent stdout log classes as the default workflow, including `TIMING` and `COST` |
+| `--quiet` / `-q` | Stdout shows only `__MALVIN_DM_*__` bodies, plus the closing `TIMING` and `COST` lines |
 
 ## Prompt workflow
 

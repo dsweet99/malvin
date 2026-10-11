@@ -188,8 +188,18 @@ fn bare_malvin_shows_commands_only_and_exits_zero() {
         "full help must list options: {help_s}"
     );
     assert!(
-        help_s.contains("--verbose") || help_s.contains("-v"),
+        help_s.contains("--quiet") || help_s.contains("-q"),
         "full help must list global flags: {help_s}"
+    );
+    assert!(
+        !help_s.split_whitespace().any(|w| {
+            w == "--do" || w == "--watch" || w == "--verbose" || w.starts_with("--do,")
+        }),
+        "full help must omit removed flags: {help_s}"
+    );
+    assert!(
+        !help_s.contains("Bare malvin") && !help_s.contains("bare malvin"),
+        "full help must omit bare-malvin notes: {help_s}"
     );
     assert!(
         !help_s.contains("--no-color"),
@@ -227,9 +237,9 @@ fn malvin_help_usage_matches_mutually_exclusive_forms() {
         "full help must not conflate request and command on one usage line: {help_s}"
     );
     assert!(
-        help_s.contains("bare malvin REQUEST")
-            && help_s.contains("--do")
-            && help_s.contains("--gates"),
-        "full help must state supported invocations: {help_s}"
+        help_s.contains("--gates")
+            && !help_s.contains("bare malvin")
+            && !help_s.split_whitespace().any(|w| w == "--do"),
+        "full help must list gates and omit removed notes: {help_s}"
     );
 }

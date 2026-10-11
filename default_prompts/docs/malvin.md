@@ -17,36 +17,33 @@ malvin [OPTION]... [REQUEST]...
 
 These forms are mutually exclusive: pass request(s) **or** a subcommand, not both on one synopsis line. `malvin --help` uses the same two-line usage.
 
-Bare `malvin REQUEST` runs autonomous routing once (`router_a`, then `router_a_2`, optional `router_b`, then `router_summarize`). A lone-line `__MALVIN_DONE__` in the `router_a_2` reply skips `router_b`. `router_a_2.md` asks for that marker only on an impasse. Multiple `REQUEST` arguments each run as an independent default-route invocation (new run directory, one router pass, summarize). With no request and no subcommand, malvin prints a short command catalog and exits 0. `malvin -g` without a request runs the gate-fix workflow (fixed request `Get the gates to pass.` with `--gates` on). Each `--do` applies only to the `REQUEST` that immediately follows it (one-shot turn); other `REQUEST` args still use the router. Each `--creative[=PROB]` likewise applies only to the `REQUEST` that immediately follows it (repeatable; other `REQUEST` args stay non-creative). The `admin` subcommand covers operator maintenance; `malvin admin` alone likewise prints its command catalog and exits 0. Omitting `REQUEST` after a lone `--do` prints short usage and exits 0.
+Bare `malvin REQUEST` runs autonomous routing once (`router_a`, then `router_a_2`, optional `router_b`, then `router_summarize`). A lone-line `__MALVIN_DONE__` in the `router_a_2` reply skips `router_b`. `router_a_2.md` asks for that marker only on an impasse. Multiple `REQUEST` arguments each run as an independent default-route invocation (new run directory, one router pass, summarize). With no request and no subcommand, malvin prints a short command catalog and exits 0. `malvin -g` without a request runs the gate-fix workflow (fixed request `Get the gates to pass.` with `--gates` on). Each `--creative[=PROB]` applies only to the `REQUEST` that immediately follows it (repeatable; other `REQUEST` args stay non-creative). The `admin` subcommand covers operator maintenance; `malvin admin` alone likewise prints its command catalog and exits 0.
 
 ## Commands
 
 | Command | Purpose |
 |---------|---------|
-| *(default)* | Bare `malvin REQUEST` — one outer iteration starts a new agent for aggregated `header` + optional `mbc2` + `router_a`, then `router_a_2`, then optional `router_b` on that agent; exit `router_summarize` on that same agent. There is no `--max-loops` flag (`DEFAULT_MAX_LOOPS` is 1) |
-| `--do` | One-shot agent turn for the following REQUEST (repeatable; other REQUESTs stay on the router) |
+| *(default)* | `malvin REQUEST` — one outer iteration starts a new agent for aggregated `header` + optional `mbc2` + `router_a`, then `router_a_2`, then optional `router_b` on that agent; exit `router_summarize` on that same agent. There is no `--max-loops` flag (`DEFAULT_MAX_LOOPS` is 1) |
 | `--creative[=PROB]` | Creative mode for the following REQUEST only (repeatable; optional probability, default `1.0`) |
 | `malvin -g` | Fix quality gates via the default router with fixed request `Get the gates to pass.` (no positional request) |
 | `admin` | Operator maintenance (`models`, `remotes`, `reset-herdr`/`rh`) |
 
-Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prompts/docs/<command>.md`); for the one-shot workflow use `malvin --do --doc`. The default-route contract (`router.md`) is printed after this overview when you run `malvin --doc`.
+Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prompts/docs/<command>.md`). The default-route contract (`router.md`) is printed after this overview when you run `malvin --doc`.
 
 ## Global options
 
 `--doc` is a true global: it may appear before or after any subcommand, including `admin`.
 
-Agent-session flags (`--model`, `--gates`, `-q`, `-v`, `--creative[=PROB]`, `--max-acp-retries`, `--ml=N`, …) apply to bare `malvin REQUEST` and `--do` (`--watch` applies only to bare `malvin REQUEST` and `malvin -g`). The `admin` help listing omits them; pass `--model` before `admin models` only when you want to set that command’s `Current:` footer.
+Agent-session flags (`--model`, `--gates`, `-q`, `--creative[=PROB]`, `--max-acp-retries`, `--ml=N`, …) apply to `malvin REQUEST` and `malvin -g`. The `admin` help listing omits them; pass `--model` before `admin models` only when you want to set that command’s `Current:` footer.
 
 ### `--remote=PROVIDER:SERVICE[KEY=VALUE,...]`
 
-Run the invocation on a remote machine instead of on this one, then apply its file changes and copy its run logs back. Applies to bare `malvin REQUEST`, `--do`, and `malvin -g`. A remote is written `PROVIDER:SERVICE[KEY=VALUE,...]`, the same shape as a `--model` id (`provider:model[key=value,...]`). `malvin admin remotes` lists the remotes and their suboptions, much as `malvin admin models` lists the ids `--model` accepts. The only remote is `modal:sandbox` (provider `modal`, service `sandbox`), which runs in a Modal Sandbox: `--remote=modal:sandbox` (or `--remote modal:sandbox`) uses default resources, and `--remote=modal:sandbox[gpu=...,ncpu=...,mem=...,timeout=...]` chooses the Sandbox's GPU, CPU count, memory, and lifetime for this run; each suboption is optional and the order does not matter (for example `--remote=modal:sandbox[timeout=2h,gpu=A100]`). A name listed in `[aliases.remotes]` in `~/.malvinconf/config.toml` expands to its value first (see **Home config**). Any other remote exits 1, including a bare `modal` without its service. See **Running on Modal** below for the suboptions, setup, what is uploaded, how results return, and what is rejected.
+Run the invocation on a remote machine instead of on this one, then apply its file changes and copy its run logs back. Applies to `malvin REQUEST` and `malvin -g`. A remote is written `PROVIDER:SERVICE[KEY=VALUE,...]`, the same shape as a `--model` id (`provider:model[key=value,...]`). `malvin admin remotes` lists the remotes and their suboptions, much as `malvin admin models` lists the ids `--model` accepts. The only remote is `modal:sandbox` (provider `modal`, service `sandbox`), which runs in a Modal Sandbox: `--remote=modal:sandbox` (or `--remote modal:sandbox`) uses default resources, and `--remote=modal:sandbox[gpu=...,ncpu=...,mem=...,timeout=...]` chooses the Sandbox's GPU, CPU count, memory, and lifetime for this run; each suboption is optional and the order does not matter (for example `--remote=modal:sandbox[timeout=2h,gpu=A100]`). A name listed in `[aliases.remotes]` in `~/.malvinconf/config.toml` expands to its value first (see **Home config**). Any other remote exits 1, including a bare `modal` without its service. See **Running on Modal** below for the suboptions, setup, what is uploaded, how results return, and what is rejected.
 
 
 ### `-q` / `--quiet`
 
-On the **default router** (bare `malvin REQUEST` and `malvin -g`), print only the text between `__MALVIN_DM_START__` and `__MALVIN_DM_END__` fences to process stdout. Startup chrome, agent stream, heartbeats, prompt-name lines, and fence markers are omitted from stdout. Run-dir logs and stderr are unchanged. The process still prints one `TIMING` line and one `COST` line at the end (see session footnotes).
-
-Plain `malvin --do` is already DM-body-only on stdout without `--verbose`, and that mode omits the `TIMING` and `COST` lines. With `--verbose`, `--do` tees the same live agent log classes as the default workflow and prints the footnote pair (see `-v` / `--verbose` below).
+On the default router (`malvin REQUEST` and `malvin -g`), print only the text between `__MALVIN_DM_START__` and `__MALVIN_DM_END__` fences to process stdout. Startup chrome, agent stream, heartbeats, prompt-name lines, and fence markers are omitted from stdout. Run-dir logs and stderr are unchanged. The process still prints one `TIMING` line and one `COST` line at the end (see session footnotes).
 
 ### `--model <MODEL>`
 
@@ -62,10 +59,6 @@ Inject workspace check command text into agent prompts and, when `router_a_2` em
 
 
 
-### `-v` / `--verbose`
-
-Log **full** outgoing prompt bodies to stdout and `prompts.log`. Default: only the prompt filename is shown. For `malvin --do`, also unlock the same live agent stdout log classes as the default workflow (thought tokens and narrative tee) and print the `TIMING` and `COST` footnotes. Without `--verbose`, `--do` stays DM-body-only and omits those footnotes.
-
 ### `--max-acp-retries <N>` (default: 3)
 
 Stop after N consecutive identical backend errors (spawn, header, or prompt), with 1s / 3s backoff between tries. When the flag is omitted, `[agent].max_acp_retries` from `~/.malvinconf/config.toml` is used. Distinct errors reset the consecutive counter, and so does a gap of more than 60 seconds since the previous error, so a rare error that recurs over a long job does not end it. Among successes, only a successful prompt turn clears it; a successful respawn or header delivery does not. For keyless local providers (`pi:local`, `pi:ollama`, and similar), malvin also stops after 10 backend errors or 5 minutes without a successful turn, even when the errors differ. Fail-fast classes (billing, usage limit, invalid model, and similar) still exit immediately.
@@ -74,19 +67,15 @@ Stop after N consecutive identical backend errors (spawn, header, or prompt), wi
 
 On the default router (bare `malvin REQUEST` and `malvin -g`), when creative mode is sampled for an outer iteration: include `mbc2.md` in the aggregated initial prompt (after the header), and fill `{{ creative_lead }}` in `router_b.md` for the optional work turn. `{{ satisfy_line }}` stays `router_b_satisfy.md` on every work turn. Both creative changes share one Bernoulli draw per outer iteration. `--creative` alone uses probability `1.0`; `--creative=0.6` uses `0.6`. Off by default.
 
-Like `--do`, each `--creative` applies only to the `REQUEST` that immediately follows it and may be repeated (at most once per `REQUEST`). Example: `malvin "plain" --creative "spark" "plain2" --creative=0.4 "spark2"`. Intervening global flags (for example `--quiet`) may appear between `--creative` and its `REQUEST`. A trailing `--creative` after other requests, or `--creative` immediately followed by `--do` (or the reverse), is an error. For `malvin -g` with no positional request, `--creative` still enables creative sampling for that gates-only run.
-
-### `--watch`
-
-On the default router (bare `malvin REQUEST` and `malvin -g`), before the single outer iteration, re-copy the operator's request `.md` file onto the run's `plan_*.md` artifact (overwrite). No effect when `REQUEST` is literal text (not an existing `.md` path). Has no effect on `--do` requests; when the invocation is pure `--do` (no router REQUEST), `--watch` is rejected.
+Each `--creative` applies only to the `REQUEST` that immediately follows it and may be repeated (at most once per `REQUEST`). Example: `malvin "plain" --creative "spark" "plain2" --creative=0.4 "spark2"`. Intervening global flags (for example `--quiet`) may appear between `--creative` and its `REQUEST`. A trailing `--creative` after other requests, or two `--creative` flags with no REQUEST between them, is an error. For `malvin -g` with no positional request, `--creative` still enables creative sampling for that gates-only run.
 
 ### `--ml=N`
 
-Run the meta-loop N times. After every REQUEST in the invocation has run once (preserving `--do` vs router tagging and order), start again from the first REQUEST until the sequence has run N times — as if the same command line were re-invoked. `N` is a positive integer. `N=inf` repeats forever. The default is `1` (a single pass). A failing REQUEST stops the process (the loop does not continue past an error). Init bootstrap, when needed, still runs once at the start of the process. Applies to bare `malvin REQUEST…`, mixed/`--do` request lists, and `malvin -g`.
+Run the meta-loop N times. After every REQUEST in the invocation has run once, start again from the first REQUEST until the sequence has run N times — as if the same command line were re-invoked. `N` is a positive integer. `N=inf` repeats forever. The default is `1` (a single pass). A failing REQUEST stops the process (the loop does not continue past an error). Init bootstrap, when needed, still runs once at the start of the process. Applies to `malvin REQUEST…` and `malvin -g`.
 
 ### Session names
 
-For bare `malvin REQUEST`, `--do`, and `malvin -g`, malvin assigns a unique five-character session id (`[a-z0-9]`) and acquires a session name lock before substantive work.
+For `malvin REQUEST` and `malvin -g`, malvin assigns a unique five-character session id (`[a-z0-9]`) and acquires a session name lock before substantive work.
 
 Malvin registers the top-level process under this id in a per-user registry at `~/.malvinconf/names/<ID>` (one line: holder PID). If another live malvin process already holds the same id, the new invocation exits immediately with status 1. Stale or abandoned name files left by crashes, `SIGKILL`, or partial writes are reclaimed automatically on the next acquire — no manual cleanup under `~/.malvinconf/names/`.
 
@@ -104,9 +93,8 @@ Print built-in documentation and exit. Does not spawn an agent or create a run d
 
 - `malvin --doc` — this overview, then the default-route contract (`router.md`).
 - `malvin <COMMAND> --doc` — documentation for that subcommand (`malvin admin --doc` for `admin`, `malvin admin models --doc` for `models`).
-- `malvin --do --doc` — documentation for the one-shot `--do` workflow.
 
-Other subcommand arguments (for example `<REQUEST>`) are not required when `--doc` is set. Argument validation still runs first: invalid values or combinations (for example `--model foo:bar`, `-g` or `--remote` with `admin`, `--do` with a subcommand, or `--watch` with pure `--do`) exit 1 with the error instead of printing documentation.
+Other subcommand arguments (for example `<REQUEST>`) are not required when `--doc` is set. Argument validation still runs first: invalid values or combinations (for example `--model foo:bar`, or `-g` or `--remote` with `admin`) exit 1 with the error instead of printing documentation.
 
 ### `--advice`
 
@@ -129,7 +117,7 @@ When `--gates` is set and `.malvin/gates` is missing, malvin runs the init workf
 
 With `--gates` and an existing `.malvin/gates`, malvin runs workspace quality gates from that file at the repo git root (one shell command per non-empty, non-comment line). Full-line comments starting with `#` are ignored. `malvin -g` without a request always enables this harness.
 
-Other invocations (`--do`, bare `malvin REQUEST`) do not require `.malvin/gates` at startup and may run outside a git repo. With `--gates` on a bare `malvin REQUEST`, malvin runs workspace gates when `router_a_2` emits `__MALVIN_DONE__` and fails the run when they fail (see the default-route section of `malvin --doc`). Without `--gates` (the default for other commands), malvin does not run those checks directly on the default route. `header.md` notes about gates lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
+`malvin REQUEST` does not require `.malvin/gates` at startup and may run outside a git repo. With `--gates` on `malvin REQUEST`, malvin runs workspace gates when `router_a_2` emits `__MALVIN_DONE__` and fails the run when they fail (see the default-route section of `malvin --doc`). Without `--gates` (the default), malvin does not run those checks directly on the default route. `header.md` notes about gates lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
 
 ### `-h` / `--help`
 
@@ -146,10 +134,10 @@ Every agent-backed command creates `~/.malvinconf/logs/<hash>/<timestamp>_<token
 | File | Role |
 |------|------|
 | `plan_<random>.md` or `request.md` | Copy of user input for this run |
-| `do.log`, `router_1.log` | `--do` transcript, or the single outer-iteration router transcript (`router_a`, `router_a_2`, optional `router_b`, exit summarize) |
+| `router_1.log` | The single outer-iteration router transcript (`router_a`, `router_a_2`, optional `router_b`, exit summarize) |
 | `stdout.log` | Tee of agent stdout — **narrative** channel |
 | `trace.jsonl` | Audit record (sdk-shaped JSONL; Pi and Codex events are mapped into the same shapes) — **authoritative** for semantics (tool results, shrink/fork, LLM usage) |
-| `prompts.log` | Outgoing prompts (names only, or full bodies with `--verbose`) |
+| `prompts.log` | Outgoing prompts (names only) |
 | `quality_gates.log` | Workspace gate commands and output when gates run |
 | `run_timing.json` | Wall/LLM timing, token/step aggregates, and optional cost |
 | `_run/exp_log_*.md` | Experiment / gate-loop logs (`exp_log_<run>.md` scaffold; `exp_log_<run>_g1.md` for the single outer iteration — kept, never truncated) |
@@ -157,7 +145,7 @@ Every agent-backed command creates `~/.malvinconf/logs/<hash>/<timestamp>_<token
 
 ### Session footnotes (`TIMING` / `COST`)
 
-When an agent workflow is about to exit, malvin prints one footnote pair. That print is outside `--ml`: a finite count returns after N passes, `--ml=inf` returns only when a request fails, and the lines are also printed on interrupt. They are not printed at the end of each request. `wall` is the elapsed time of this malvin process. Token counts, step counts, tool time, LLM wait, and dollars are the sum across init, every request, and every meta-loop cycle. Carried totals inside one session are not counted twice. The lines go to process stdout under `-q`, and they are appended to the active `stdout.log` when a run directory is open. Plain `malvin --do` omits them on stdout and in `stdout.log` unless `--verbose` is set; with `--verbose`, `--do` prints the same pair:
+When an agent workflow is about to exit, malvin prints one footnote pair. That print is outside `--ml`: a finite count returns after N passes, `--ml=inf` returns only when a request fails, and the lines are also printed on interrupt. They are not printed at the end of each request. `wall` is the elapsed time of this malvin process. Token counts, step counts, tool time, LLM wait, and dollars are the sum across init, every request, and every meta-loop cycle. Carried totals inside one session are not counted twice. The lines go to process stdout under `-q`, and they are appended to the active `stdout.log` when a run directory is open:
 
 ```text
 TIMING: wall = … llm_wait = … …
@@ -240,18 +228,18 @@ When the operator asks to find, install, or configure a local LLM via the normal
 1. **Research** size and tool support against host RAM (`Sandbox memory` / machine GiB). Prefer Ollama library tags or a Modelfile wrapper with `PARAMETER num_ctx` equal to the model’s effective context size: its `context_size` in `local_llms.json` when set, otherwise `context_size` in `~/.malvinconf/config.toml`. For reasoning models, set a per-model `context_size` large enough that one quarter of it covers thinking plus the answer. Ollama returns thinking in a `reasoning` field that Pi does not display, so a too-small budget can end a turn with an empty answer. When that happens, malvin stops with the error "output cap reached while thinking; raise `context_size` for this model" and a nonzero exit code instead of retrying.
 2. **Install** with the provider CLI (Ollama: `ollama pull <tag>`, or `ollama create <name> -f Modelfile`). Malvin does not bundle a download subcommand.
 3. **Configure** by upserting an entry in `~/.malvinconf/local_llms.json` (create the file with the schema above if missing). Keep only models the operator wants listed.
-4. **Verify** with `malvin admin models pi:local` (keyless-local catalogs are always live-fetched when the provider is listening; cloud providers still use the daily cache / `--refresh`) and a short `malvin --do --model=pi:local/<provider>/<model> …` probe when appropriate.
+4. **Verify** with `malvin admin models pi:local` (keyless-local catalogs are always live-fetched when the provider is listening; cloud providers still use the daily cache / `--refresh`) and a short `malvin --model=pi:local/<provider>/<model> …` probe when appropriate.
 5. **Remove** by deleting the Ollama tag (optional) and removing the matching object from `local_llms.json`.
 
 Runtime auto-start / idle stop for Ollama is separate (local LLM manager under `~/.malvinconf/`); the JSON file is the curated catalog, not the process supervisor. Malvin auto-starts only Ollama. Other keyless providers (`llamacpp` at `http://127.0.0.1:8080/v1`, `mistralrs`) must already be listening, for example under a launchd user agent; use them when a model needs a runtime Ollama cannot provide (such as a vendor fork of llama.cpp).
 
 On a small host, a resident server of one provider can exhaust GPU memory for another (on Apple silicon the log shows `kIOGPUCommandBufferCallbackErrorOutOfMemory`). Malvin then fails with `Compute error` or `unexpected Content-Type application/x-ndjson` (after `--max-acp-retries` identical errors, or the local cap of 10 errors / 5 minutes) and adds a hint pointing here. Stop the other server (for example `launchctl bootout gui/$UID/<label>`), run `ollama stop <model>` to unload the failed runner, and retry.
 
-Small local models have limits of their own. Models below about 7B parameters, or without the `tools` capability (for example Gemma 3 4B), can answer questions but should not be expected to edit files; many of them never make a tool call. Full mode (bare `malvin REQUEST`) sends a long header and runs several turns, so on local models it is slow and often times out; prefer `malvin --do` for them. The default route puts the request text (up to 8 KB) into the prompt for `pi:` models, which saves them a tool call. When a local model spends its whole output budget thinking and returns no answer or tool call, malvin stops the turn with an output-cap error; raise `context_size` for that model.
+Small local models have limits of their own. Models below about 7B parameters, or without the `tools` capability (for example Gemma 3 4B), can answer questions but should not be expected to edit files; many of them never make a tool call. `malvin REQUEST` sends a long header and runs several turns, so on local models it is slow and often times out. The default route puts the request text (up to 8 KB) into the prompt for `pi:` models, which saves them a tool call. When a local model spends its whole output budget thinking and returns no answer or tool call, malvin stops the turn with an output-cap error; raise `context_size` for that model.
 
 ## Log retention
 
-After most agent-backed commands create a new run directory and emit the startup `Command:` line, malvin may prune older directories under `~/.malvinconf/logs/<hash>/` according to `~/.malvinconf/config.toml` `[logs]` settings (`max_count`, `max_age_days`, `max_bytes`). The active run is protected during prune. Set `max_count = 0` for unlimited run count (byte and age caps still apply). Agent-backed commands (including `malvin --do` and `malvin -g`) ensure the home config file exists with defaults. After upgrading to a build with default `max_count = 1000`, the next GC-enabled command may delete excess oldest runs once.
+After most agent-backed commands create a new run directory and emit the startup `Command:` line, malvin may prune older directories under `~/.malvinconf/logs/<hash>/` according to `~/.malvinconf/config.toml` `[logs]` settings (`max_count`, `max_age_days`, `max_bytes`). The active run is protected during prune. Set `max_count = 0` for unlimited run count (byte and age caps still apply). Agent-backed commands (including `malvin REQUEST` and `malvin -g`) ensure the home config file exists with defaults. After upgrading to a build with default `max_count = 1000`, the next GC-enabled command may delete excess oldest runs once.
 
 ## External dependencies
 
@@ -266,18 +254,18 @@ After most agent-backed commands create a new run directory and emit the startup
 
 ## Request syntax
 
-Several commands accept positional request arguments. Each `<REQUEST>` is **one shell argument**; quote it when the text contains spaces. Malvin does not join multiple unquoted shell words into a single request. On the bare default route, multiple `REQUEST` arguments each run independently (new log directory, one router pass, summarize). Each `--do` tags only the next `REQUEST` as a one-shot session; any other `REQUEST` (before or after) uses the router. Each `--creative[=PROB]` tags only the next `REQUEST` for creative sampling; other `REQUEST` args stay non-creative. You can interleave them, for example `malvin "router task" --do "one-shot" "another router task"` or `malvin "plain" --creative "spark"`.
+Several commands accept positional request arguments. Each `<REQUEST>` is **one shell argument**; quote it when the text contains spaces. Malvin does not join multiple unquoted shell words into a single request. Multiple `REQUEST` arguments each run independently (new log directory, one router pass, summarize). Each `--creative[=PROB]` tags only the next `REQUEST` for creative sampling; other `REQUEST` args stay non-creative. You can interleave them, for example `malvin "plain" --creative "spark"`.
 
 | Command | Path argument | Work directory |
 |---------|---------------|----------------|
-| bare `malvin REQUEST…`, `--do REQUEST` | Existing `.md` file path (no whitespace; case-sensitive `.md` suffix) reads that file; nonexistent `.md` paths are literal text | Parent of the file, or `.` for literal text |
+| `malvin REQUEST…` | Existing `.md` file path (no whitespace; case-sensitive `.md` suffix) reads that file; nonexistent `.md` paths are literal text | Parent of the file, or `.` for literal text |
 
 Examples:
 
 ```text
-malvin --do "fix the typo"
-malvin --do "Hello" "Research the topic"
-malvin "Write a function" --do "What time is it?" "Find a bug" --do "Summarize in report.md"
+malvin "fix the typo"
+malvin "Hello" "Research the topic"
+malvin "Write a function" "What time is it?" "Find a bug" "Summarize in report.md"
 malvin --creative "explore API boundaries"
 malvin "plain task" --creative "spark ideas" "another plain" --creative=0.4 "biased spark"
 malvin request_1.md request_2.md
@@ -314,9 +302,9 @@ See the default-route section of `malvin --doc`.
   - `timeout`: the Sandbox's hard lifetime (default 30 minutes, at most 24 hours). A bare number means minutes (`timeout=45`); the suffixes `s`, `m`, and `h` select seconds, minutes, and hours (`90s`, `45m`, `2h`).
 
   The brackets are shell glob characters, so quote the flag (`'--remote=modal:sandbox[gpu=T4]'`) if your shell complains or a file name could match it. malvin prints the resources it chose when the Sandbox starts, for example `Sandbox sb-… started (T4, 2 CPU, 8 GiB, timeout 10 min)`.
-- **Remote output**: lines the remote malvin prints with a who-tag (such as `o|`) appear unchanged. Every other remote line, such as npm's `added 11 packages in 3s` or the remote agent's reply, is shown with the who-tag `r|`. With `--do` (and no `--verbose`), malvin prints only the DM body, as in a local `--do`: the remote agent's reply is printed untagged (rendered as markdown when stdout is a terminal), and the `modal:` status lines and other remote output are not shown; only error (`e|`) lines still reach stderr. Add `--verbose` to stream the remote run's log and the status lines.
+- **Remote output**: lines the remote malvin prints with a who-tag (such as `o|`) appear unchanged. Every other remote line, such as npm's `added 11 packages in 3s` or the remote agent's reply, is shown with the who-tag `r|`.
 - **Lifetime**: Ctrl-C terminates the Sandbox. When the Sandbox reaches its `timeout`, Modal stops it mid-run, so no changes or logs come back, and malvin's error says the timeout was likely reached. At the start of each `--remote=modal:sandbox` run, malvin terminates Sandboxes left by this host's exited `--remote=modal:sandbox` runs.
-- **Rejected**: `--watch`, `--ml=inf`, and the `admin` subcommand exit 1 with an error before anything is uploaded. A finite `--ml=N` is allowed. With `--doc`, only the `admin` combination is still rejected; the others print documentation.
+- **Rejected**: `--ml=inf` and the `admin` subcommand exit 1 with an error before anything is uploaded. A finite `--ml=N` is allowed. With `--doc`, only the `admin` combination is still rejected; `--ml=inf` prints documentation.
 - **Not supported, but not rejected**: local LLMs (`pi:local/…`, `pi:ollama/…`). The Sandbox runs no local model server, so a local-model run is expected to fail inside the Sandbox rather than at startup.
 
 Optional settings in `~/.malvinconf/config.toml`:

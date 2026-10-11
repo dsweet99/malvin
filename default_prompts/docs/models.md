@@ -66,13 +66,13 @@ malvin admin models cursor:
 malvin admin models pi:
 malvin admin models pi:local
 malvin admin models pi:open
-malvin --model 'cursor:claude-opus-5[effort=high,fast=true]' --do "say hi"
-malvin --model 'pi:openai/gpt-5[thinking=high]' --do "say hi"
-malvin --model pi:local/ollama/qwen2.5:1.5b --do "say hi"
+malvin --model 'cursor:claude-opus-5[effort=high,fast=true]' "say hi"
+malvin --model 'pi:openai/gpt-5[thinking=high]' "say hi"
+malvin --model pi:local/ollama/qwen2.5:1.5b "say hi"
 malvin admin models codex:
 malvin admin models --refresh pi:
-malvin --model=codex:gpt-5.6 --do Hello
-malvin --model='codex:gpt-5.6[thinking=high,service=priority]' --do Hello
+malvin --model=codex:gpt-5.6 Hello
+malvin --model='codex:gpt-5.6[thinking=high,service=priority]' Hello
 malvin --model cursor:sonnet-4 admin models             # Current: footer shows cursor:sonnet-4
 malvin --model cursor:sonnet-4 --creative plan.md
 ```

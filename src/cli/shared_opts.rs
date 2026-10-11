@@ -8,9 +8,6 @@ const QUIET_HELPTEXT: &str =
 
 const CREATIVE_HELPTEXT: &str = "Be (more) creative for the REQUEST that immediately follows; optional probability in [0,1] (default 1.0 when set; repeatable)";
 
-const WATCH_HELPTEXT: &str =
-    "Re-copy the request `.md` into the run log dir before each outer loop (overwrite)";
-
 const ML_HELPTEXT: &str = "Run the meta-loop N times (positive integer, or inf to repeat forever)";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -77,9 +74,6 @@ pub struct SharedOpts {
         value_parser = parse_model_cli_arg
     )]
     pub model: ParsedModel,
-    /// Log full outgoing agent prompts to stdout and `prompts.log`
-    #[arg(short, long, default_value_t = false)]
-    pub verbose: bool,
     /// Stop after N consecutive identical backend errors, each within 60 s of the previous one
     #[arg(long = "max-acp-retries", default_value_t = DEFAULT_MAX_ACP_RETRIES)]
     pub max_acp_retries: u32,
@@ -133,17 +127,9 @@ pub struct RouterOpts {
         help = CREATIVE_HELPTEXT
     )]
     pub creative: Vec<f64>,
-    /// Re-copy the request `.md` into the run log dir before each outer loop
-    #[arg(long, default_value_t = false, help = WATCH_HELPTEXT)]
-    pub watch: bool,
 }
 
 impl SharedOpts {
-    #[must_use]
-    pub(crate) fn tee_startup_stdout(&self) -> bool {
-        !malvin::output::stdout_suppressed()
-    }
-
     #[must_use]
     pub(crate) const fn acp_stdout_markdown_enabled(&self) -> bool {
         true
@@ -191,7 +177,6 @@ impl SharedOpts {
         Self {
             model: malvin::config::model_id::parse_model_id(malvin::config::DEFAULT_CLI_MODEL)
                 .expect("default model"),
-            verbose: false,
             max_acp_retries: malvin::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
             advice: None,
@@ -210,7 +195,6 @@ impl RouterOpts {
             quiet: false,
             gates: false,
             creative: Vec::new(),
-            watch: false,
         }
     }
 }

@@ -36,37 +36,12 @@ fn apply_shared_and_finalize(
 
 #[must_use]
 pub(crate) const fn is_gates_only_route(cli: &Cli) -> bool {
-    !cli.do_workflow() && cli.command.is_none() && !cli.has_request() && cli.router.gates
+    cli.command.is_none() && !cli.has_request() && cli.router.gates
 }
 
 const fn uses_lightweight_config_path(cli: &Cli) -> bool {
-    cli.do_workflow()
-        || matches!(cli.command, Some(Commands::Admin(_)))
+    matches!(cli.command, Some(Commands::Admin(_)))
         || (cli.command.is_none() && cli.has_request())
-}
-
-const ROUTER_ONLY_WITH_PURE_DO: &[(&str, &str)] = &[
-    ("quiet", "--quiet / -q"),
-    ("gates", "--gates / -g"),
-    ("creative", "--creative"),
-    ("watch", "--watch"),
-];
-
-fn reject_router_only_flags_on_pure_do(matches: &ArgMatches, cli: &Cli) -> Result<(), clap::Error> {
-    if !cli.do_workflow() || cli.has_router_request() {
-        return Ok(());
-    }
-    for (id, flag) in ROUTER_ONLY_WITH_PURE_DO {
-        if global_flag_from_command_line(matches, id) {
-            return Err(usage_error(
-                clap::error::ErrorKind::ArgumentConflict,
-                &format!(
-                    "{flag} cannot be used with `--do` unless another REQUEST uses the router"
-                ),
-            ));
-        }
-    }
-    Ok(())
 }
 
 fn apply_gates_only_workspace_defaults(matches: &ArgMatches, cli: &mut Cli) -> Result<(), String> {
@@ -113,7 +88,6 @@ pub fn parse_cli_with_config_defaults(
             return Err(usage_error(clap::error::ErrorKind::InvalidValue, &e));
         }
     }
-    reject_router_only_flags_on_pure_do(&matches, &cli)?;
     if let Err(e) = apply_workspace_config_defaults(&matches, &mut cli) {
         return Err(usage_error(clap::error::ErrorKind::InvalidValue, &e));
     }

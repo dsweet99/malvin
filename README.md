@@ -41,10 +41,7 @@ By default, malvin runs an investigation. The larger or more complex the task, t
 ```bash
 malvin "Speed up my_function.py by at least 3x."
 ```
-and expect good results. For a simple one-shot turn:
-```bash
-malvin --do "Hello"
-```
+and expect good results.
 
 You can also pass a request file instead of a string:
 ```bash

@@ -36,13 +36,13 @@ fn duplicate_name_error_on_stderr() {
         std::fs::write(&names, b"not-a-dir").expect("poison names path");
         let stderr = capture_stderr_output(|| {
             assert_eq!(
-                entrypoint_from(["malvin", "--do", "plan.md"]),
+                entrypoint_from(["malvin", "plan.md"]),
                 Exit::Failure
             );
         });
         assert!(
             !stderr.is_empty(),
-            "--do must print session acquire failure on stderr; got: {stderr:?}"
+            "request must print session acquire failure on stderr; got: {stderr:?}"
         );
     });
 }

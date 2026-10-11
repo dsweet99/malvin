@@ -1,8 +1,7 @@
 use super::Exit;
 use super::entrypoint::{
     DefaultRouteDispatch, GatesOnlyDispatch, dispatch_command, dispatch_default_route,
-    dispatch_do_workflow, dispatch_gates_only_route, dispatch_mixed_requests, finish_entrypoint,
-    prepare_cli_output,
+    dispatch_gates_only_route, finish_entrypoint, prepare_cli_output,
 };
 use crate::cli::args::Cli;
 use malvin::modal_run::options::ModalOptions;
@@ -33,8 +32,7 @@ fn run_entrypoint(
     if let Some(exit) = entrypoint_preflight(&cli) {
         return exit;
     }
-    let needs_session = cli.has_do_request()
-        || crate::cli::config_defaults::is_gates_only_route(&cli)
+    let needs_session = crate::cli::config_defaults::is_gates_only_route(&cli)
         || default_route_needs_session_name(&cli);
     if needs_session {
         let _session_name_guard = match entrypoint_acquire_session() {
@@ -56,9 +54,6 @@ fn dispatch_after_session(cli: Cli, matches: clap::ArgMatches) -> Exit {
         return Exit::Success;
     };
     match workflow {
-        MalvinWorkflow::Do { requests, shared } => {
-            finish_entrypoint(dispatch_do_workflow(requests, &shared))
-        }
         MalvinWorkflow::Admin { admin, model } => finish_entrypoint(dispatch_command(
             crate::cli::Commands::Admin(admin),
             &model.canonical(),
@@ -73,11 +68,6 @@ fn dispatch_after_session(cli: Cli, matches: clap::ArgMatches) -> Exit {
             shared: &shared,
             router: &router,
         })),
-        MalvinWorkflow::Mixed {
-            jobs,
-            shared,
-            router,
-        } => finish_entrypoint(dispatch_mixed_requests(jobs, &shared, &router)),
         MalvinWorkflow::GatesOnly { shared, router } => {
             finish_entrypoint(dispatch_gates_only_route(GatesOnlyDispatch {
                 shared: &shared,

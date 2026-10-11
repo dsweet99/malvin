@@ -7,8 +7,6 @@ pub(crate) const MALVIN_OVERVIEW_DOC: &str = include_str!("../../default_prompts
 
 pub(crate) const ROUTER_DOC: &str = include_str!("../../default_prompts/docs/router.md");
 
-pub(crate) const DO_DOC: &str = include_str!("../../default_prompts/docs/do.md");
-
 pub(crate) const fn command_doc_markdown(cmd: &Commands) -> &'static str {
     match cmd {
         Commands::Admin(admin) => match &admin.command {
@@ -41,13 +39,6 @@ pub(crate) fn print_doc_to_writer(
 }
 
 pub(crate) fn print_doc_for_cli_to_writer(cli: &Cli, out: impl Write) -> Result<(), String> {
-    if cli.do_workflow() {
-        let mut out = out;
-        let text = DO_DOC.replace("{{ advice_path }}", malvin::MALVIN_ADVICE_REL);
-        return out
-            .write_all(text.as_bytes())
-            .map_err(|e| format!("stdout: {e}"));
-    }
     print_doc_to_writer(cli.command.as_ref(), out)
 }
 

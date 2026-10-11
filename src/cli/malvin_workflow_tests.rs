@@ -1,7 +1,6 @@
 use super::{MalvinWorkflow, malvin_workflow_from_cli};
 use crate::cli::Cli;
 use crate::cli::config_defaults::parse_cli_with_config_defaults;
-use crate::cli::request_argv::RequestKind;
 use clap::Parser;
 use malvin::test_support::test_utils::with_isolated_home;
 
@@ -11,38 +10,6 @@ fn parse(argv: &[&str]) -> Cli {
         out = Some(parse_cli_with_config_defaults(argv).expect("parse").0);
     });
     out.expect("parsed")
-}
-
-#[test]
-fn do_workflow_omits_loop_budgets_and_router_opts_from_payload() {
-    let cli = Cli::try_parse_from(["malvin", "--do", "fix it"]).expect("parse");
-    let workflow = malvin_workflow_from_cli(cli).expect("do workflow");
-    match workflow {
-        MalvinWorkflow::Do {
-            requests,
-            shared: _,
-        } => {
-            assert_eq!(requests, vec!["fix it".to_string()]);
-        }
-        MalvinWorkflow::Admin { .. }
-        | MalvinWorkflow::DefaultRoute { .. }
-        | MalvinWorkflow::Mixed { .. }
-        | MalvinWorkflow::GatesOnly { .. } => {
-            panic!("expected Do variant without loop-budget or router fields")
-        }
-    }
-}
-
-#[test]
-fn do_workflow_payload_has_no_router_fields() {
-    let cli = Cli::try_parse_from(["malvin", "--do", "x"]).expect("parse");
-    let workflow = malvin_workflow_from_cli(cli).expect("do");
-    let MalvinWorkflow::Do { shared, .. } = workflow else {
-        panic!("expected Do");
-    };
-    let _ = shared.model;
-    let _ = shared.verbose;
-    let _ = shared.max_acp_retries;
 }
 
 #[test]
@@ -149,45 +116,3 @@ fn admin_workflow_payload_carries_model_only() {
     }
 }
 
-#[test]
-fn mixed_do_and_router_requests_preserve_order() {
-    let cli = parse(&[
-        "malvin",
-        "Write",
-        "--do",
-        "What time",
-        "Find bug",
-        "--do",
-        "Summarize",
-    ]);
-    let workflow = malvin_workflow_from_cli(cli).expect("mixed");
-    match workflow {
-        MalvinWorkflow::Mixed { jobs, .. } => {
-            assert_eq!(
-                jobs.iter()
-                    .map(|j| (j.text.as_str(), j.kind))
-                    .collect::<Vec<_>>(),
-                vec![
-                    ("Write", RequestKind::Router),
-                    ("What time", RequestKind::Do),
-                    ("Find bug", RequestKind::Router),
-                    ("Summarize", RequestKind::Do),
-                ]
-            );
-        }
-        other => panic!("expected Mixed, got {other:?}"),
-    }
-}
-
-#[test]
-fn do_then_extra_request_is_mixed() {
-    let cli = parse(&["malvin", "--do", "Hello", "Research"]);
-    let workflow = malvin_workflow_from_cli(cli).expect("mixed");
-    match workflow {
-        MalvinWorkflow::Mixed { jobs, .. } => {
-            assert_eq!(jobs[0].kind, RequestKind::Do);
-            assert_eq!(jobs[1].kind, RequestKind::Router);
-        }
-        other => panic!("expected Mixed, got {other:?}"),
-    }
-}

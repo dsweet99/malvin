@@ -81,8 +81,7 @@ fn do_workflow_parses_without_name_flag() {
 
     malvin::test_support::test_utils::with_isolated_home(|_| {
         let (cli, _) =
-            parse_cli_with_config_defaults(["malvin", "--do", "say hello"]).expect("parse --do");
-        assert!(cli.do_workflow());
+            parse_cli_with_config_defaults(["malvin", "say hello"]).expect("parse request");
         assert_eq!(cli.first_request().map(String::as_str), Some("say hello"));
         assert!(cli.command.is_none());
     });

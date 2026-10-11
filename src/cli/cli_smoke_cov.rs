@@ -129,10 +129,6 @@ fn smoke_print_command_error_writes_run_log() {
     super::error_run_log::clear_command_error_run_dir();
 }
 
-fn smoke_prepare_do_prompt_store_loads_defaults() {
-    assert!(crate::cli::do_flow::prepare_do_prompt_store().is_ok());
-}
-
 fn smoke_prepare_router_prompt_store_loads_defaults() {
     assert!(crate::cli::router_flow::prepare_router_prompt_store().is_ok());
 }
@@ -152,6 +148,5 @@ fn kiss_bundled_cli_cli_smoke_cov() {
     smoke_format_logs_dir_under_run_dir();
     smoke_run_emit_echo_primary_noop_when_not_plain();
     smoke_print_command_error_writes_run_log();
-    smoke_prepare_do_prompt_store_loads_defaults();
     smoke_prepare_router_prompt_store_loads_defaults();
 }
