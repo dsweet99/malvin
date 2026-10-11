@@ -11,6 +11,7 @@ pub(crate) fn split_on_emit(input: &str) -> Result<Vec<String>, String> {
 
 const BODY_WORD: &str = concat!("{", "body", "}");
 
+#[cfg(test)]
 pub(crate) fn bind_body(tokens: &[String], body: &str) -> (Vec<String>, bool) {
     let mut used = false;
     let argv = tokens
@@ -27,22 +28,64 @@ pub(crate) fn bind_body(tokens: &[String], body: &str) -> (Vec<String>, bool) {
     (argv, used)
 }
 
-fn take_token(input: &str) -> Result<(String, &str), String> {
-    let quote = input.chars().next();
-    if matches!(quote, Some('\'' | '"')) {
-        return take_quoted(input, quote.expect("quote"));
+pub(crate) fn substitute_body(input: &str, body: &str) -> Result<(String, bool), String> {
+    let quoted = shell_quote(body);
+    let mut script = String::new();
+    let mut rest = input;
+    let mut used = false;
+    while !rest.is_empty() {
+        let skip = rest.len() - rest.trim_start().len();
+        script.push_str(&rest[..skip]);
+        rest = &rest[skip..];
+        if rest.is_empty() {
+            break;
+        }
+        let (token, consumed) = token_span(rest)?;
+        if token == BODY_WORD {
+            used = true;
+            script.push_str(&quoted);
+        } else {
+            script.push_str(&rest[..consumed]);
+        }
+        rest = &rest[consumed..];
     }
-    let end = input.find(char::is_whitespace).unwrap_or(input.len());
-    Ok((input[..end].to_string(), &input[end..]))
+    Ok((script, used))
 }
 
-fn take_quoted(input: &str, quote: char) -> Result<(String, &str), String> {
+fn shell_quote(text: &str) -> String {
+    let mut quoted = String::from("'");
+    for ch in text.chars() {
+        if ch == '\'' {
+            quoted.push_str("'\\''");
+        } else {
+            quoted.push(ch);
+        }
+    }
+    quoted.push('\'');
+    quoted
+}
+
+fn take_token(input: &str) -> Result<(String, &str), String> {
+    let (token, consumed) = token_span(input)?;
+    Ok((token.to_string(), &input[consumed..]))
+}
+
+fn token_span(input: &str) -> Result<(&str, usize), String> {
+    let quote = input.chars().next();
+    if matches!(quote, Some('\'' | '"')) {
+        return quoted_span(input, quote.expect("quote"));
+    }
+    let end = input.find(char::is_whitespace).unwrap_or(input.len());
+    Ok((&input[..end], end))
+}
+
+fn quoted_span(input: &str, quote: char) -> Result<(&str, usize), String> {
     let body = &input[quote.len_utf8()..];
     let Some(end) = body.find(quote) else {
         return Err("unclosed quote in dm.on_emit".into());
     };
-    let token = body[..end].to_string();
-    Ok((token, &body[end + quote.len_utf8()..]))
+    let consumed = quote.len_utf8() + end + quote.len_utf8();
+    Ok((&body[..end], consumed))
 }
 
 #[cfg(test)]

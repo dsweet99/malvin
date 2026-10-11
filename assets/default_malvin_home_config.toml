@@ -25,9 +25,11 @@ usd_per_microtoken_out = 0
 usd_per_microtoken_cache_read = 0
 usd_per_microtoken_cache_write = 0
 
-# Run a program after each finished direct message. Words split on whitespace.
-# Quote a word to keep spaces. A word that is exactly {body} becomes the DM text.
-# With no {body} word, the text is written to the program's standard input.
+# Shell command run after each finished direct message.
+# A word that is exactly {body} becomes the DM text as one quoted argument,
+# so the shell does not interpret the message. With no {body} word, the text
+# is written to the command's standard input. Redirects and other shell syntax
+# are honored: on_emit = "cat > /tmp/dm"
 # Omit [dm], leave on_emit empty, or set on_emit = [] to run nothing.
 # [dm]
 # on_emit = "slack send {body}"
