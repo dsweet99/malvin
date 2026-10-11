@@ -111,7 +111,13 @@ fn description_for(content: &str, tag: &str) -> String {
         word_count(desc) <= MAX_DESC_WORDS,
         "advice `{tag}`: description has more than {MAX_DESC_WORDS} words: {desc}"
     );
-    desc.to_string()
+    append_file_stats(desc, content)
+}
+
+fn append_file_stats(desc: &str, content: &str) -> String {
+    let lines = content.lines().count();
+    let words = word_count(content);
+    format!("{desc} [{lines} line, {words} words]")
 }
 
 fn strip_optional_quotes(s: &str) -> &str {

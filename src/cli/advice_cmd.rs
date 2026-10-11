@@ -35,6 +35,7 @@ fn is_valid_advice_tag(tag: &str) -> bool {
     chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
 }
 
+#[cfg(test)]
 fn word_count(s: &str) -> usize {
     s.split_whitespace().count()
 }
@@ -52,11 +53,6 @@ pub(crate) fn print_advice_list_to_writer(mut out: impl Write) -> Result<(), Str
         .map_err(|e| format!("stdout: {e}"))?;
     out.write_all(b"\n").map_err(|e| format!("stdout: {e}"))?;
     for entry in ADVICE_ENTRIES {
-        debug_assert!(
-            word_count(entry.description) <= 7,
-            "advice description for `{}` exceeds 7 words",
-            entry.tag
-        );
         let line = format_advice_list_line(entry);
         out.write_all(line.as_bytes())
             .map_err(|e| format!("stdout: {e}"))?;
@@ -166,12 +162,14 @@ mod tests {
     #[test]
     fn all_advice_descriptions_are_at_most_seven_words() {
         for entry in ADVICE_ENTRIES {
-            let n = word_count(entry.description);
+            let Some((base, _)) = entry.description.split_once(" [") else {
+                panic!("{} missing size suffix", entry.tag);
+            };
+            let n = word_count(base);
             assert!(
                 n <= 7,
-                "tag `{}` description has {n} words: {}",
-                entry.tag,
-                entry.description
+                "tag `{}` description has {n} words: {base}",
+                entry.tag
             );
         }
     }
@@ -187,9 +185,12 @@ mod tests {
                 .strip_prefix("description:")
                 .unwrap_or_else(|| panic!("{}: first line must be `description: ...`", entry.tag))
                 .trim();
+            let lines = content.lines().count();
+            let words = content.split_whitespace().count();
+            let expected = format!("{value} [{lines} line, {words} words]");
             assert_eq!(
-                entry.description, value,
-                "registry description must match first-line value for {}",
+                entry.description, expected,
+                "registry description must match first-line value plus file size for {}",
                 entry.tag
             );
             assert!(
