@@ -31,8 +31,7 @@ fn spawn_hook(argv: &[String], pipe_stdin: bool, index: u64) -> Result<Child, St
         use std::os::unix::process::CommandExt;
         cmd.process_group(0);
     }
-    cmd.spawn()
-        .map_err(|err| format!("{err}"))
+    cmd.spawn().map_err(|err| format!("{err}"))
 }
 
 fn apply_hook_env(cmd: &mut Command, index: u64) {
@@ -96,9 +95,10 @@ fn wait_label(child: &mut Child, timeout: Duration) -> String {
 }
 
 fn exit_label(status: std::process::ExitStatus) -> String {
-    status
-        .code()
-        .map_or_else(|| "exited without a status".to_string(), |code| format!("exited {code}"))
+    status.code().map_or_else(
+        || "exited without a status".to_string(),
+        |code| format!("exited {code}"),
+    )
 }
 
 fn kill_child(child: &mut Child) -> String {

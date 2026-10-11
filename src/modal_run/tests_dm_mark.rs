@@ -32,7 +32,8 @@ fn relay_runs_the_hook_from_the_mark_and_keeps_the_mark_off_stdout() {
     assert_eq!(shown, "visible");
     assert_eq!(std::fs::read_to_string(out).expect("body"), "from modal");
     assert!(
-        err.iter().any(|line| line.contains("broken end-of-DM mark")),
+        err.iter()
+            .any(|line| line.contains("broken end-of-DM mark")),
         "{err:?}"
     );
 }

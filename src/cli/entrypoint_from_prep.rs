@@ -42,6 +42,9 @@ pub(super) fn entrypoint_before_dispatch(cli: &Cli, matches: &clap::ArgMatches) 
 fn entrypoint_commands_catalog(cli: &Cli) -> Option<Exit> {
     let _ = match &cli.command {
         None if !cli.has_request() && !is_gates_only_route(cli) => {
+            if cli.router.prints_nothing() {
+                return Some(Exit::Success);
+            }
             crate::cli::commands_help::print_commands_only_help()
         }
         Some(crate::cli::Commands::Admin(admin)) if admin.command.is_none() => {
@@ -57,6 +60,7 @@ fn reject_admin_with_workflow_only_flags(cli: &Cli, matches: &clap::ArgMatches) 
 
     const WORKFLOW_ONLY: &[(&str, &str)] = &[
         ("quiet", "--quiet / -q"),
+        ("very_quiet", "--very-quiet / -qq"),
         ("gates", "--gates / -g"),
         ("creative", "--creative"),
         ("max_acp_retries", "--max-acp-retries"),

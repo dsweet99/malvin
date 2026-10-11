@@ -24,6 +24,9 @@ fn run_entrypoint(
     if let Some(exit) = entrypoint_before_dispatch(&cli, &matches) {
         return exit;
     }
+    if cli.router.prints_nothing() {
+        crate::cli::router_flow::engage_prints_nothing();
+    }
     if cli.shared.remote.is_some() {
         return super::entrypoint::entrypoint_modal::run_modal_route(&cli, raw, modal);
     }

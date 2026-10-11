@@ -99,7 +99,11 @@ fn emit(stream: Stream, line: &str) {
     match (stream, is_tagged(line)) {
         (Stream::Stdout, false) => print_stdout_line(WHO_R, line),
         (Stream::Stderr, false) => print_stderr_line(WHO_R, line),
-        (Stream::Stdout, true) => write_raw(&mut std::io::stdout().lock(), line),
+        (Stream::Stdout, true) => {
+            if !crate::output::stdout_display_discarded() {
+                write_raw(&mut std::io::stdout().lock(), line);
+            }
+        }
         (Stream::Stderr, true) => write_raw(&mut std::io::stderr().lock(), line),
     }
 }

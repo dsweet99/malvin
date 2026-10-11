@@ -11,7 +11,6 @@ pub(crate) fn split_on_emit(input: &str) -> Result<Vec<String>, String> {
 
 const BODY_WORD: &str = concat!("{", "body", "}");
 
-#[cfg(test)]
 pub(crate) fn bind_body(tokens: &[String], body: &str) -> (Vec<String>, bool) {
     let mut used = false;
     let argv = tokens
@@ -26,43 +25,6 @@ pub(crate) fn bind_body(tokens: &[String], body: &str) -> (Vec<String>, bool) {
         })
         .collect();
     (argv, used)
-}
-
-pub(crate) fn substitute_body(input: &str, body: &str) -> Result<(String, bool), String> {
-    let quoted = shell_quote(body);
-    let mut script = String::new();
-    let mut rest = input;
-    let mut used = false;
-    while !rest.is_empty() {
-        let skip = rest.len() - rest.trim_start().len();
-        script.push_str(&rest[..skip]);
-        rest = &rest[skip..];
-        if rest.is_empty() {
-            break;
-        }
-        let (token, consumed) = token_span(rest)?;
-        if token == BODY_WORD {
-            used = true;
-            script.push_str(&quoted);
-        } else {
-            script.push_str(&rest[..consumed]);
-        }
-        rest = &rest[consumed..];
-    }
-    Ok((script, used))
-}
-
-fn shell_quote(text: &str) -> String {
-    let mut quoted = String::from("'");
-    for ch in text.chars() {
-        if ch == '\'' {
-            quoted.push_str("'\\''");
-        } else {
-            quoted.push(ch);
-        }
-    }
-    quoted.push('\'');
-    quoted
 }
 
 fn take_token(input: &str) -> Result<(String, &str), String> {

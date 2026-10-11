@@ -108,6 +108,8 @@ pub fn run_modal(inv: &ModalInvocation) -> Result<i32, String> {
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tests_dm_mark;
+#[cfg(test)]
 mod tests_gpu_types;
 #[cfg(test)]
 mod tests_io;
@@ -115,5 +117,3 @@ mod tests_io;
 mod tests_options;
 #[cfg(test)]
 mod tests_remote;
-#[cfg(test)]
-mod tests_dm_mark;

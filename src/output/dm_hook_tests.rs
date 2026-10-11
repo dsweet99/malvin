@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 
 use super::{
     deliver_finished_dm, dm_hook_config, dm_hook_exec, force_modal_mark, reset_dm_hook_state,
-    set_test_dm_hook, set_test_dm_shell, take_test_marks,
+    set_test_dm_hook, take_test_marks,
 };
 use crate::output::{DM_END, DM_START, feed_do_dm_stdout_text, set_do_dm_stdout_mode};
 
@@ -21,9 +21,21 @@ fn on_emit_string_parses_and_other_shapes_do_not_run() {
         .expect("string")
         .expect("some");
     assert_eq!(tokens, ["slack", "send", "{body}"]);
-    assert!(dm_hook_config::on_emit_tokens("[dm]\non_emit = \"\"\n").unwrap().is_none());
-    assert!(dm_hook_config::on_emit_tokens("[dm]\non_emit = []\n").unwrap().is_none());
-    assert!(dm_hook_config::on_emit_tokens("mem_limit_gb = 4\n").unwrap().is_none());
+    assert!(
+        dm_hook_config::on_emit_tokens("[dm]\non_emit = \"\"\n")
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        dm_hook_config::on_emit_tokens("[dm]\non_emit = []\n")
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        dm_hook_config::on_emit_tokens("mem_limit_gb = 4\n")
+            .unwrap()
+            .is_none()
+    );
     let err = dm_hook_config::on_emit_tokens("[dm]\non_emit = [\"slack\", \"{body}\"]\n")
         .expect_err("array");
     assert!(err.contains("string"), "{err}");
@@ -36,8 +48,11 @@ fn home_config_supplies_the_command_and_workspace_config_does_not() {
         std::fs::create_dir_all(home.parent().expect("parent")).expect("mkdir");
         std::fs::write(&home, "[dm]\non_emit = \"echo {body}\"\n").expect("home");
         std::fs::create_dir_all(work.join(".malvin")).expect("ws dir");
-        std::fs::write(work.join(".malvin/config.toml"), "[dm]\non_emit = \"evil\"\n")
-            .expect("ws");
+        std::fs::write(
+            work.join(".malvin/config.toml"),
+            "[dm]\non_emit = \"evil\"\n",
+        )
+        .expect("ws");
         let tokens = dm_hook_config::load_home_tokens().expect("tokens");
         assert_eq!(tokens, ["echo", "{body}"]);
     });
@@ -66,20 +81,6 @@ fn streamed_body_is_one_argument_and_indexes_count_finished_messages() {
     feed_do_dm_stdout_text(&format!("{DM_START}\nsecond\n{DM_END}\n"));
     let text = std::fs::read_to_string(&out).expect("out");
     assert_eq!(text, "1:line—one\nline—two\n2:second\n");
-}
-
-#[test]
-fn shell_redirect_writes_the_body_without_interpreting_it() {
-    let _reset = Reset;
-    let dir = tempfile::tempdir().expect("temp");
-    let out = dir.path().join("dm");
-    let pwn = dir.path().join("pwned");
-    let spec = format!("echo {{body}} > '{}'", out.display());
-    set_test_dm_shell(Some(spec));
-    let body = format!("a'b $(echo no) > {}", pwn.display());
-    deliver_finished_dm(&body);
-    assert_eq!(std::fs::read_to_string(&out).expect("out"), format!("{body}\n"));
-    assert!(!pwn.exists(), "shell interpreted the body");
 }
 
 fn stdin_carries_the_body_when_the_command_has_no_body_word() {
@@ -130,7 +131,11 @@ fn failure_is_logged_and_success_stays_off_stderr() {
     let log = dir.path().join("stdout.log");
     crate::output::set_stdout_log_path(Some(log.clone()));
     crate::output::clear_captured_stderr_lines();
-    dm_hook_exec::exec_hook(&sh_exit("echo OUTHOOK; echo ERRHOOK >&2; exit 4"), None, secs(2));
+    dm_hook_exec::exec_hook(
+        &sh_exit("echo OUTHOOK; echo ERRHOOK >&2; exit 4"),
+        None,
+        secs(2),
+    );
     let logged = std::fs::read_to_string(&log).expect("log");
     let err = crate::output::take_captured_stderr_lines();
     crate::output::set_stdout_log_path(None);
@@ -155,7 +160,8 @@ fn missing_program_and_timeout_are_reported() {
     dm_hook_exec::exec_hook(&["malvin-missing-dm-hook".into()], None, secs(2));
     let err = crate::output::take_captured_stderr_lines();
     assert!(
-        err.iter().any(|line| line.contains("malvin-missing-dm-hook")),
+        err.iter()
+            .any(|line| line.contains("malvin-missing-dm-hook")),
         "{err:?}"
     );
     let started = Instant::now();

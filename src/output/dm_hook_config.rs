@@ -1,35 +1,18 @@
 use super::dm_hook_split::split_on_emit;
 
-#[cfg(test)]
 pub(crate) fn on_emit_tokens(text: &str) -> Result<Option<Vec<String>>, String> {
-    let Some(spec) = validated_spec(text)? else {
-        return Ok(None);
-    };
-    Ok(Some(split_on_emit(&spec)?))
-}
-
-pub(crate) fn load_home_spec() -> Option<String> {
-    let path = crate::malvin_home_config_path();
-    let Ok(text) = std::fs::read_to_string(&path) else {
-        return None;
-    };
-    match validated_spec(&text) {
-        Ok(spec) => spec,
-        Err(msg) => {
-            super::super::print_log_warning(&msg);
-            None
-        }
-    }
-}
-
-fn validated_spec(text: &str) -> Result<Option<String>, String> {
     let Some(spec) = on_emit_spec(text)? else {
         return Ok(None);
     };
-    if spec.trim().is_empty() || split_on_emit(&spec)?.is_empty() {
+    if spec.trim().is_empty() {
         return Ok(None);
     }
-    Ok(Some(spec))
+    let tokens = split_on_emit(&spec)?;
+    if tokens.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(tokens))
+    }
 }
 
 fn on_emit_spec(text: &str) -> Result<Option<String>, String> {
@@ -48,8 +31,16 @@ fn on_emit_spec(text: &str) -> Result<Option<String>, String> {
         .ok_or_else(|| "dm.on_emit must be a string".to_string())
 }
 
-#[cfg(test)]
 pub(crate) fn load_home_tokens() -> Option<Vec<String>> {
-    let spec = load_home_spec()?;
-    split_on_emit(&spec).ok()
+    let path = crate::malvin_home_config_path();
+    let Ok(text) = std::fs::read_to_string(&path) else {
+        return None;
+    };
+    match on_emit_tokens(&text) {
+        Ok(tokens) => tokens,
+        Err(msg) => {
+            super::super::print_log_warning(&msg);
+            None
+        }
+    }
 }

@@ -96,9 +96,9 @@ fn cli_accepts_clustered_short_gates_and_quiet() {
 
     let cli = Cli::try_parse_from(["malvin", "-gq", "route this task"]).expect("parse -gq");
     assert!(cli.router.gates, "expected -g in -gq cluster");
-    assert!(cli.router.quiet, "expected -q in -gq cluster");
+    assert!(cli.router.dm_stdout_only(), "expected -q in -gq cluster");
 
     let cli = Cli::try_parse_from(["malvin", "-qg", "route this task"]).expect("parse -qg");
     assert!(cli.router.gates);
-    assert!(cli.router.quiet);
+    assert!(cli.router.dm_stdout_only());
 }

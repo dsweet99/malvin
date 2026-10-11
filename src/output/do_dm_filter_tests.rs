@@ -46,10 +46,10 @@ fn streaming_chunks_across_markers() {
 
 #[test]
 fn mode_off_is_noop() {
-        let _dm = crate::output::DO_DM_TEST_LOCK
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        set_do_dm_stdout_mode(false);
+    let _dm = crate::output::DO_DM_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    set_do_dm_stdout_mode(false);
     reset_do_dm_filter();
     enable_stdout_capture();
     feed_do_dm_stdout_text(&format!("{DM_START}\nz\n{DM_END}\n"));
