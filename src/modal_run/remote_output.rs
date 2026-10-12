@@ -71,7 +71,27 @@ fn emit_do_dm(stream: Stream, line: &str) {
     }
 }
 
+fn consume_dm_mark(stream: Stream, line: &str) -> bool {
+    if stream != Stream::Stdout {
+        return false;
+    }
+    match crate::output::parse_dm_emit_mark(line) {
+        None => false,
+        Some(Ok(body)) => {
+            crate::output::deliver_finished_dm(&body);
+            true
+        }
+        Some(Err(())) => {
+            crate::output::print_log_warning("dm hook: ignored a broken end-of-DM mark");
+            true
+        }
+    }
+}
+
 fn emit(stream: Stream, line: &str) {
+    if consume_dm_mark(stream, line) {
+        return;
+    }
     if crate::output::do_dm_stdout_mode() {
         emit_do_dm(stream, line);
         return;
@@ -79,7 +99,11 @@ fn emit(stream: Stream, line: &str) {
     match (stream, is_tagged(line)) {
         (Stream::Stdout, false) => print_stdout_line(WHO_R, line),
         (Stream::Stderr, false) => print_stderr_line(WHO_R, line),
-        (Stream::Stdout, true) => write_raw(&mut std::io::stdout().lock(), line),
+        (Stream::Stdout, true) => {
+            if !crate::output::stdout_display_discarded() {
+                write_raw(&mut std::io::stdout().lock(), line);
+            }
+        }
         (Stream::Stderr, true) => write_raw(&mut std::io::stderr().lock(), line),
     }
 }

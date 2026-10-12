@@ -18,7 +18,7 @@ fn default_route_carries_quiet_on_router_opts() {
     let workflow = malvin_workflow_from_cli(cli).expect("default route");
     match workflow {
         MalvinWorkflow::DefaultRoute { router, .. } => {
-            assert!(router.quiet);
+            assert!(router.dm_stdout_only());
         }
         other => panic!("expected DefaultRoute, got {other:?}"),
     }

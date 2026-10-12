@@ -243,3 +243,15 @@ fn malvin_help_usage_matches_mutually_exclusive_forms() {
         "full help must list gates and omit removed notes: {help_s}"
     );
 }
+
+#[test]
+fn very_quiet_with_no_request_prints_nothing() {
+    let tmp = isolated_home();
+    for args in [["-qq"], ["--very-quiet"]] {
+        let output = malvin_cmd(tmp.path()).args(args).output().expect("spawn");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(output.status.success(), "args={args:?} stderr={stderr}");
+        assert!(stdout.is_empty(), "args={args:?} stdout={stdout}");
+    }
+}

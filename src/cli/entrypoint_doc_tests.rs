@@ -153,6 +153,24 @@ fn entrypoint_from_admin_rejects_quiet_flag() {
 }
 
 #[test]
+fn entrypoint_from_admin_rejects_very_quiet_flag() {
+    use malvin::test_support::test_stderr_capture::capture_stderr_output;
+
+    with_isolated_home(|_| {
+        let stderr = capture_stderr_output(|| {
+            assert_eq!(
+                entrypoint_from(["malvin", "--very-quiet", "admin", "models", "--doc"]),
+                Exit::Failure
+            );
+        });
+        assert!(
+            stderr.contains("admin") && stderr.contains("--very-quiet"),
+            "expected admin+very-quiet rejection; stderr={stderr:?}"
+        );
+    });
+}
+
+#[test]
 fn entrypoint_from_admin_rejects_removed_verbose_flag() {
     with_isolated_home(|_| {
         let err = crate::cli::config_defaults::parse_cli_with_config_defaults([

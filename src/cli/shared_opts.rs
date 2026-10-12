@@ -3,8 +3,9 @@ use malvin::config::malvin_config_file::parse_model_cli_arg;
 use malvin::config::model_id::ParsedModel;
 pub use malvin::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 
-const QUIET_HELPTEXT: &str =
-    "Print only `__MALVIN_DM_START__`/`END` bodies on stdout (default router)";
+const QUIET_HELPTEXT: &str = "Only print DMs";
+
+const VERY_QUIET_HELPTEXT: &str = "Print nothing (-qq)";
 
 const CREATIVE_HELPTEXT: &str = "Be (more) creative for the REQUEST that immediately follows; optional probability in [0,1] (default 1.0 when set; repeatable)";
 
@@ -109,9 +110,12 @@ pub struct SharedOpts {
 #[derive(Args, Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct RouterOpts {
-    /// Print only `__MALVIN_DM_START__`/`END` bodies on stdout (default router)
-    #[arg(short = 'q', long, default_value_t = false, help = QUIET_HELPTEXT)]
-    pub quiet: bool,
+    /// Only print DMs. Repeat the short flag (`-qq`) to print nothing.
+    #[arg(short = 'q', long, action = ArgAction::Count, help = QUIET_HELPTEXT)]
+    pub quiet: u8,
+    /// Print nothing (`-qq` is the short form)
+    #[arg(long = "very-quiet", default_value_t = false, help = VERY_QUIET_HELPTEXT)]
+    pub very_quiet: bool,
     /// Run workspace quality gates; treat failures as loop or exit criteria
     #[arg(short = 'g', long, default_value_t = false)]
     pub gates: bool,
@@ -144,8 +148,18 @@ pub struct AgentRouteOpts<'a> {
 
 impl RouterOpts {
     #[must_use]
+    pub(crate) const fn dm_stdout_only(&self) -> bool {
+        self.quiet == 1 && !self.very_quiet
+    }
+
+    #[must_use]
+    pub(crate) const fn prints_nothing(&self) -> bool {
+        self.very_quiet || self.quiet >= 2
+    }
+
+    #[must_use]
     pub(crate) fn tee_startup_stdout(&self) -> bool {
-        !self.quiet && !malvin::output::stdout_suppressed()
+        !self.dm_stdout_only() && !self.prints_nothing() && !malvin::output::stdout_suppressed()
     }
 
     #[must_use]
@@ -192,7 +206,8 @@ impl RouterOpts {
     #[must_use]
     pub(crate) fn test_defaults() -> Self {
         Self {
-            quiet: false,
+            quiet: 0,
+            very_quiet: false,
             gates: false,
             creative: Vec::new(),
         }
@@ -268,6 +283,28 @@ mod overlay_tests {
         assert!(
             help.contains("inf"),
             "help must say inf repeats forever; got {help}"
+        );
+    }
+
+    #[test]
+    fn help_lists_quiet_and_very_quiet() {
+        use clap::CommandFactory;
+        let help = crate::cli::Cli::command().render_help().to_string();
+        assert!(
+            help.contains("Only print DMs"),
+            "quiet help must say Only print DMs; got {help}"
+        );
+        assert!(
+            !help.contains("bodies on stdout"),
+            "quiet help must drop the old wording; got {help}"
+        );
+        assert!(
+            help.contains("--very-quiet"),
+            "help must list --very-quiet; got {help}"
+        );
+        assert!(
+            help.contains("Print nothing (-qq)"),
+            "very-quiet help must say Print nothing (-qq); got {help}"
         );
     }
 }
