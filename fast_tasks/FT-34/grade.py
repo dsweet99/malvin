@@ -11,7 +11,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-
 TASK_ID = "FT-34"
 
 
@@ -70,7 +69,7 @@ def evaluate(workspace: Path) -> int:
     sys.dont_write_bytecode = True
     try:
         fn = _load(workspace)
-    except Exception:
+    except Exception:  # noqa: BLE001
         return 0
 
     # Continuum cases
@@ -82,7 +81,7 @@ def evaluate(workspace: Path) -> int:
         want = _q_cont(r, length, dp, mu)
         try:
             got = fn(r, length, dp, mu, kn)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return 0
         if not math.isfinite(got) or abs(got - want) > 1e-12 * max(1.0, abs(want)):
             return 0
@@ -97,7 +96,7 @@ def evaluate(workspace: Path) -> int:
         want = _q_slip(r, length, dp, mu, kn)
         try:
             got = fn(r, length, dp, mu, kn)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return 0
         if not math.isfinite(got) or abs(got - want) > 1e-9 * max(1.0, abs(want)):
             return 0
@@ -105,7 +104,7 @@ def evaluate(workspace: Path) -> int:
         # relative to the continuum branch on the same geometry.
         try:
             base = fn(r, length, dp, mu, 0.0)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return 0
         if base == 0.0:
             return 0
@@ -133,15 +132,15 @@ def evaluate(workspace: Path) -> int:
 
     # Validation
     for kwargs in (
-        dict(radius_m=0.0, length_m=1.0, delta_p_pa=1.0, viscosity_pa_s=1.0, knudsen=0.0),
-        dict(radius_m=1.0, length_m=1.0, delta_p_pa=1.0, viscosity_pa_s=1.0, knudsen=-0.1),
-        dict(radius_m=1.0, length_m=1.0, delta_p_pa=1.0, viscosity_pa_s=float("nan"), knudsen=0.0),
+        {"radius_m": 0.0, "length_m": 1.0, "delta_p_pa": 1.0, "viscosity_pa_s": 1.0, "knudsen": 0.0},
+        {"radius_m": 1.0, "length_m": 1.0, "delta_p_pa": 1.0, "viscosity_pa_s": 1.0, "knudsen": -0.1},
+        {"radius_m": 1.0, "length_m": 1.0, "delta_p_pa": 1.0, "viscosity_pa_s": float("nan"), "knudsen": 0.0},
     ):
         try:
             fn(**kwargs)
         except ValueError:
             pass
-        except Exception:
+        except Exception:  # noqa: BLE001
             return 0
         else:
             return 0

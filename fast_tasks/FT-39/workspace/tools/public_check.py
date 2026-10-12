@@ -33,7 +33,7 @@ def load_predict(root: Path):
     spec.loader.exec_module(mod)
     fn = getattr(mod, "predict", None)
     if not callable(fn):
-        raise RuntimeError("predict.py must define callable predict(x)")
+        raise RuntimeError("predict.py must define callable predict(x)")  # noqa: TRY004
     return fn
 
 

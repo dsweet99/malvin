@@ -93,10 +93,11 @@ pub(crate) fn finish_entrypoint(res: Result<(), String>) -> Exit {
 }
 
 pub(crate) fn prepare_cli_output(_shared: &SharedOpts) {
-    let theme = std::env::current_dir()
+    let loaded = std::env::current_dir()
         .ok()
-        .map(|cwd| malvin::config::malvin_config_file::load_malvin_config(&cwd).theme)
-        .unwrap_or_default();
+        .map(|cwd| malvin::config::malvin_config_file::load_malvin_config(&cwd));
+    malvin::output::set_dm_on_emit_command(loaded.as_ref().and_then(|cfg| cfg.dm_on_emit.clone()));
+    let theme = loaded.map(|cfg| cfg.theme).unwrap_or_default();
     malvin::terminal_palette::init_terminal_theme(theme);
     malvin::output::init_stdout_style();
     malvin::output::set_stdout_suppressed(false);

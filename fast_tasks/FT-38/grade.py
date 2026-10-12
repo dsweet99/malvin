@@ -13,7 +13,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-
 TASK_ID = "FT-38"
 GOLD_LR = 0.020044720273651614
 GOLD_LOSS = 0.3831572287722192
@@ -73,6 +72,7 @@ def _probe_loss(workspace: Path, lr: float) -> float | None:
         cwd=workspace,
         capture_output=True,
         text=True,
+        check=False,
     )
     if proc.returncode != 0:
         return None

@@ -1,7 +1,6 @@
 import math
 
 import pytest
-
 from flow import mass_flow_rate
 
 

@@ -5,7 +5,6 @@ import unicodedata
 
 from .r1_linear import _priority
 
-
 Event = tuple[str, int, int, bytes | None]
 Job = tuple[str, int, int, bytes]
 

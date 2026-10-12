@@ -12,14 +12,13 @@ import sys
 import tempfile
 from pathlib import Path
 
-
 TASK_ID = "FT-26"
 PROTECTED = {
     "plan.md": "4a405904dfd18b0e748ebaf8bb898e89d2bfcba73c765e92d07598d60b8eaba0",
     "tests/test_r2_binary.py": "fd65437d6f0417e5c7db9b9904e542a4daa6edcf87e611b16d48519de992f783",
     "wire/__init__.py": "8b2d25ff00018823fdaabd260d702711766b366344145a7969c14e43a8780758",
-    "wire/r1_binary.py": "4935e2723e92166df722f71a889c590ac63bc807ed0f4cbf705e1e551896a6e5",
-    "wire/r1_text.py": "1bb58ae8943842996f94329859775c090fec06acd2b07fcd5e9c29cc0c2d15b3",
+    "wire/r1_binary.py": "2d1822c08d49031c2f6ab076441802a9b8d6bdc7cb8a9d4cf25ba05deb6152fa",
+    "wire/r1_text.py": "83168fa5fabac9fca243ff63f372bc62579a2cec1cd556e633899a094dc1b897",
     "wire/r2_text.py": "b310860805b5a8adca8812663150242ad20ef0a6dc49e0257db28a9da1285fda",
 }
 
@@ -107,7 +106,7 @@ def evaluate(workspace: Path) -> int:
         module = _load(workspace)
         pack = module.pack
         unpack = module.unpack
-    except Exception:
+    except Exception:  # noqa: BLE001
         return 0
 
     cases = _golden_cases()
@@ -125,7 +124,7 @@ def evaluate(workspace: Path) -> int:
         try:
             actual_frame = pack(list(entries))
             actual_records = unpack(expected_frame)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return 0
         if type(actual_frame) is not bytes or actual_frame != expected_frame:
             return 0
@@ -134,7 +133,7 @@ def evaluate(workspace: Path) -> int:
         try:
             if unpack(actual_frame) != expected_records:
                 return 0
-        except Exception:
+        except Exception:  # noqa: BLE001
             return 0
 
     invalid = [
@@ -156,7 +155,7 @@ def evaluate(workspace: Path) -> int:
             unpack(frame)
         except (ValueError, TypeError):
             continue
-        except Exception:
+        except Exception:  # noqa: BLE001
             return 0
         return 0
 
@@ -170,7 +169,7 @@ def evaluate(workspace: Path) -> int:
             pack(entries)
         except (ValueError, TypeError):
             continue
-        except Exception:
+        except Exception:  # noqa: BLE001
             return 0
         return 0
     return 1

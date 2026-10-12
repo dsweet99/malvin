@@ -1,6 +1,6 @@
 """Hidden behavioral tests for FT-30 rolling_mean (grader-only)."""
-from statsutil import rolling_mean
 import pytest
+from statsutil import rolling_mean
 
 
 def test_empty_values() -> None:

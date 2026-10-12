@@ -70,7 +70,6 @@ def _ensure_base_locked(base: Path, packages: tuple[str, ...]) -> None:
         VENV_CACHE_OFFLINE = True
 
 def _resolve_base(packages: tuple[str, ...]) -> Path:
-    global VENV_CACHE_OFFLINE
     token = venv_cache_key_token(packages)
     base = venv_cache_root() / f"base-{token}"
     if packages in _VENV_CACHE:

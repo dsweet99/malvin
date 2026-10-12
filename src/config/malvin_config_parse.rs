@@ -28,6 +28,20 @@ pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
         token_cost_rates,
         logs,
         agent,
+        dm_on_emit: parse_dm_on_emit(text),
+    }
+}
+
+fn parse_dm_on_emit(text: &str) -> Option<String> {
+    let value = text.parse::<toml::Value>().ok()?;
+    let raw = value.get("dm").and_then(|section| section.get("on_emit"))?;
+    match raw.as_str() {
+        Some(command) if !command.trim().is_empty() => Some(command.to_string()),
+        Some(_) => None,
+        None => {
+            warn_config_once("[dm].on_emit must be a string");
+            None
+        }
     }
 }
 

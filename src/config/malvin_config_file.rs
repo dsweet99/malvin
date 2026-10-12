@@ -65,6 +65,7 @@ pub struct MalvinConfig {
     pub token_cost_rates: BTreeMap<String, TokenCostRates>,
     pub logs: LogsGcConfig,
     pub agent: AgentConfig,
+    pub dm_on_emit: Option<String>,
 }
 
 impl MalvinConfig {
@@ -85,7 +86,9 @@ pub fn ensure_malvin_config_file(work_dir: &Path) -> Result<(), String> {
 pub fn load_malvin_config(work_dir: &Path) -> MalvinConfig {
     let path = malvin_config_path(work_dir);
     let Ok(text) = std::fs::read_to_string(&path) else {
-        return parse_malvin_config(DEFAULT_MALVIN_CONFIG_TEMPLATE);
+        let mut cfg = parse_malvin_config(DEFAULT_MALVIN_CONFIG_TEMPLATE);
+        cfg.mem_limit_gb = crate::config::mem_limit_config::default_mem_limit_gb();
+        return cfg;
     };
     let Ok(template) = parse_template_value() else {
         return parse_malvin_config(&text);

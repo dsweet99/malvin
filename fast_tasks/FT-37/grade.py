@@ -11,7 +11,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-
 TASK_ID = "FT-37"
 GOLD_FUNC = "apply_discount"
 VALID_FUNCS = {"round_money", "apply_discount", "add_tax", "cart_total"}
@@ -62,6 +61,7 @@ def _run_hidden(workspace: Path) -> bool:
                 "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
                 "PYTHONPATH": str(td_path),
             },
+            check=False,
         )
         return proc.returncode == 0
 

@@ -9,7 +9,6 @@ import shutil
 import tempfile
 from pathlib import Path
 
-
 TASK_ID = "FT-17"
 
 

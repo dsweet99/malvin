@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import os
 import shutil
 import sys
 import tempfile
-import importlib.util
 from pathlib import Path
-
 
 TASK_ID = "FT-15"
 
@@ -65,12 +64,12 @@ def evaluate(workspace: Path) -> int:
     try:
         mod = _load(workspace)
         fn = mod.merge_intervals
-    except Exception:
+    except Exception:  # noqa: BLE001
         return 0
     for inp, exp in CASES:
         try:
             out = fn([list(x) for x in inp])
-        except Exception:
+        except Exception:  # noqa: BLE001
             return 0
         if out != exp:
             return 0

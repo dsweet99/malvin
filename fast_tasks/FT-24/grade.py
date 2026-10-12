@@ -14,7 +14,6 @@ import time
 from decimal import Decimal, localcontext
 from pathlib import Path
 
-
 TASK_ID = "FT-24"
 
 
@@ -79,13 +78,13 @@ def evaluate(workspace: Path) -> int:
     sys.dont_write_bytecode = True
     try:
         function = _load(workspace).roots
-    except Exception:
+    except Exception:  # noqa: BLE001
         return 0
     for coefficients in CASES:
         expected = _reference(*coefficients)
         try:
             result = function(*coefficients)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return 0
         if not isinstance(result, tuple) or len(result) != 2:
             return 0

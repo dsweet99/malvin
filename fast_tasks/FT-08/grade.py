@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import os
 import shutil
 import sys
 import tempfile
-import importlib.util
 from pathlib import Path
-
 
 TASK_ID = "FT-08"
 
@@ -53,7 +52,7 @@ def evaluate(workspace: Path) -> int:
     try:
         mod = _load(workspace)
         solve = mod.solve
-    except Exception:
+    except Exception:  # noqa: BLE001
         return 0
     # Near-singular but with known solution (1, -1):
     # [1+1e-10, 1] [x] = [1e-10]
@@ -66,7 +65,7 @@ def evaluate(workspace: Path) -> int:
     b2 = a21 * x_true + a22 * y_true
     try:
         x, y = solve(a11, a12, a21, a22, b1, b2)
-    except Exception:
+    except Exception:  # noqa: BLE001
         return 0
     if max(abs(x - 1.0), abs(y + 1.0)) > 1e-9:
         return 0
@@ -76,7 +75,7 @@ def evaluate(workspace: Path) -> int:
     # solution: solve 2x+y=1; x+2y=-1 => x=1, y=-1
     try:
         x, y = solve(a11, a12, a21, a22, b1, b2)
-    except Exception:
+    except Exception:  # noqa: BLE001
         return 0
     if max(abs(x - 1.0), abs(y + 1.0)) > 1e-12:
         return 0

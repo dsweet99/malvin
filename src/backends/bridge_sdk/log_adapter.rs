@@ -42,7 +42,11 @@ pub fn handle_stream_event(session: &StreamLog, ev: &BridgeEvent) {
 }
 
 pub(crate) fn feed_do_dm_run_result(text: &str) {
-    if !crate::output::do_dm_stdout_mode() || text.is_empty() {
+    if text.is_empty() {
+        return;
+    }
+    crate::output::notify_completed_direct_messages(text);
+    if !crate::output::do_dm_stdout_mode() {
         return;
     }
     let mut terminated = String::with_capacity(text.len() + 1);

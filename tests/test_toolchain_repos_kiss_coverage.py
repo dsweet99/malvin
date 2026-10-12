@@ -4,6 +4,7 @@ from pathlib import Path
 
 import toolchain_repos as _mod
 
+
 def test_toolchain_repos_kiss_coverage_witnesses() -> None:
     _ = (
         _mod.malvin_repo_root,

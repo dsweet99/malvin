@@ -13,15 +13,14 @@ import tempfile
 import unicodedata
 from pathlib import Path
 
-
 TASK_ID = "FT-29"
 PROTECTED = {
     "plan.md": "0ea174c4a199dca527d3c84b939d41e9c5ac1554819df5f22f96de35224ba748",
     "tests/test_r2_heap.py": "c1f07bf9de3cac5efadc501f610413741fe47bc5b785dce163792ce665550e59",
     "dispatch/__init__.py": "1706c18f55f31c8edb2c031d93928b62acb4f8ab9c17e1e462fbec5c281333ce",
-    "dispatch/r1_linear.py": "a1d4c90d808199f387c2c28f9c23eb1a1f4efff46dd8a2215e429d4958e6ac8f",
+    "dispatch/r1_linear.py": "4c7339705e69750d32b8ef526f5c2100f1a9d9e021ecdaa3ba6e1e05e79c9f30",
     "dispatch/r1_heap.py": "133be93491f4f47d8096c40b80d32037661336b906e6f5dae30c00a1c38da3b2",
-    "dispatch/r2_linear.py": "f633f3ccb39dd241679c918a82ac414117c912b82726837ee7a93606c6ee8bf3",
+    "dispatch/r2_linear.py": "86d8b5d863a25a54f73d299d1f9b8bda58e0fd34fa2a4356881db53ea33c8e86",
 }
 
 
@@ -153,7 +152,7 @@ def evaluate(workspace: Path) -> int:
     try:
         module = _load(workspace)
         dispatcher_type = module.Dispatcher
-    except Exception:
+    except Exception:  # noqa: BLE001
         return 0
 
     cases = [
@@ -224,7 +223,7 @@ def evaluate(workspace: Path) -> int:
             expected = Model()
             actual_results = _exercise(actual, operations)
             expected_results = _exercise(expected, operations)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return 0
         if actual_results != expected_results:
             return 0
@@ -252,7 +251,7 @@ def evaluate(workspace: Path) -> int:
             if actual.take() != ("safe", 1, 1, b"safe") or actual.take() is not None:
                 return 0
             continue
-        except Exception:
+        except Exception:  # noqa: BLE001
             return 0
         return 0
     return 1

@@ -112,6 +112,6 @@ Your message to the user
 __MALVIN_DM_END__
 ```
 
-Use DM only when directed to or when something cannot wait until the summary at the end of the session (which *will* be a DM).
+IMPORTANT: Use DM only when directed to or in an emergency.
 
 ---- END MALVIN HEADER ----

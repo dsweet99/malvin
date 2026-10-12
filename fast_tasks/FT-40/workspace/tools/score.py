@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import itertools
 from pathlib import Path
 
 X_LO = 25.0
@@ -30,7 +31,7 @@ def score_at(root: Path, x: float) -> float:
         return rows[0][1]
     if x >= rows[-1][0]:
         return rows[-1][1]
-    for (x0, y0), (x1, y1) in zip(rows, rows[1:]):
+    for (x0, y0), (x1, y1) in itertools.pairwise(rows):
         if x0 <= x <= x1:
             t = 0 if x1 == x0 else (x - x0) / (x1 - x0)
             return y0 + t * (y1 - y0)

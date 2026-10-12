@@ -33,6 +33,7 @@ fn parse_malvin_config_falls_back_when_values_invalid_or_missing() {
         token_cost_rates: cfg.token_cost_rates.clone(),
         logs: cfg.logs,
         agent: cfg.agent.clone(),
+        dm_on_emit: cfg.dm_on_emit.clone(),
     };
     assert_eq!(full.agent, cfg.agent);
     assert_eq!(read_string(None), None);
@@ -116,4 +117,16 @@ fn parse_model_token_cost_rates_defaults_and_rejects_negative() {
     )
     .expect("parse");
     assert!(!nested.contains_key("pi:openai/gpt-4o-mini"));
+}
+
+#[test]
+fn parse_dm_on_emit_reads_a_command_and_ignores_blank_or_missing() {
+    let cfg = super::parse_malvin_config("[dm]\non_emit = \"echo {body}\"\n");
+    assert_eq!(cfg.dm_on_emit.as_deref(), Some("echo {body}"));
+    let blank = super::parse_malvin_config("[dm]\non_emit = \"  \"\n");
+    assert_eq!(blank.dm_on_emit, None);
+    let missing = super::parse_malvin_config("mem_limit_gb = 4\n");
+    assert_eq!(missing.dm_on_emit, None);
+    let wrong = super::parse_malvin_config("[dm]\non_emit = 1\n");
+    assert_eq!(wrong.dm_on_emit, None);
 }

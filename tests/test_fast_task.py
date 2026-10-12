@@ -7,6 +7,7 @@ import fast_task
 from click.testing import CliRunner
 from toolchain_repos import load_ops_entry
 
+
 def test_fast_task_self_tests_via_cli() -> None:
     cli = load_ops_entry("fast_task").fast_task_cli
     runner = CliRunner()

@@ -1,9 +1,9 @@
 
 from __future__ import annotations
 
-import json
 import contextlib
 import errno
+import json
 import mmap
 import os
 import shutil
@@ -13,13 +13,12 @@ import sys
 import tempfile
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import click
 from click.testing import CliRunner
-
 from toolchain_repos import malvin_repo_root
 
 REPO_ROOT = malvin_repo_root()
@@ -384,7 +383,7 @@ def ft_agent_timeout_sec(explicit: float | None = None) -> float:
     return float(DEFAULT_AGENT_TIMEOUT_SEC)
 
 def ft_timestamp_dir() -> str:
-    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
 
 def ft_list_task_ids() -> list[str]:
     if not FAST_TASKS_ROOT.is_dir():
@@ -455,9 +454,12 @@ def ft_assert_stage_isolated(staged: Path) -> None:
 def ft_resolve_malvin_binary() -> Path | None:
     installed = _ft_resolve_host_binary("malvin")
     debug = (REPO_ROOT / "target" / "debug" / "malvin").resolve()
-    if debug.is_file() and os.access(debug, os.X_OK):
-        if installed is None or debug.stat().st_mtime >= installed.stat().st_mtime:
-            return debug
+    if (
+        debug.is_file()
+        and os.access(debug, os.X_OK)
+        and (installed is None or debug.stat().st_mtime >= installed.stat().st_mtime)
+    ):
+        return debug
     return installed
 
 def _ft_dry_run_stub_binary(run_root: Path, name: str) -> Path:
@@ -1018,21 +1020,20 @@ def ft_run_solve(
             base_image=base_image,
             dry_run=dry_run,
         )
-    if agent_name == AGENT_MALVIN:
-        if host_malvin is None:
-            if dry_run:
-                stub_name = "malvin-main" if use_main else "malvin"
-                host_malvin = _ft_dry_run_stub_binary(run_root, stub_name)
-            elif use_main:
-                raise click.ClickException(
-                    "No host malvin-main binary found "
-                    "(PATH or ~/.cargo/bin/malvin-main)"
-                )
-            else:
-                raise click.ClickException(
-                    "No host malvin binary found (PATH or ~/.cargo/bin/malvin); "
-                    "build malvin on the host or use --agent=cursor / --main"
-                )
+    if agent_name == AGENT_MALVIN and host_malvin is None:
+        if dry_run:
+            stub_name = "malvin-main" if use_main else "malvin"
+            host_malvin = _ft_dry_run_stub_binary(run_root, stub_name)
+        elif use_main:
+            raise click.ClickException(
+                "No host malvin-main binary found "
+                "(PATH or ~/.cargo/bin/malvin-main)"
+            )
+        else:
+            raise click.ClickException(
+                "No host malvin binary found (PATH or ~/.cargo/bin/malvin); "
+                "build malvin on the host or use --agent=cursor / --main"
+            )
     cmd = ft_docker_agent_cmd(
         image=image,
         workspace=workspace,

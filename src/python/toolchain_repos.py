@@ -10,6 +10,7 @@ from types import ModuleType
 
 import click
 
+
 def malvin_repo_root() -> Path:
     here = Path(__file__).resolve()
     for parent in (here.parent, *here.parents):

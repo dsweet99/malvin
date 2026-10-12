@@ -1,7 +1,6 @@
 """Revision 1 over the text transport."""
 from __future__ import annotations
 
-
 Posting = int
 
 

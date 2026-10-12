@@ -13,7 +13,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-
 TASK_ID = "FT-39"
 HOLD_MSE_MAX = 0.002
 NOTEBOOK_MID_SSE = 0.000217
@@ -67,7 +66,7 @@ def load_predict(workspace: Path):
     spec.loader.exec_module(mod)
     fn = getattr(mod, "predict", None)
     if not callable(fn):
-        raise RuntimeError("predict.py must define callable predict(x)")
+        raise RuntimeError("predict.py must define callable predict(x)")  # noqa: TRY004
     return fn
 
 
@@ -91,6 +90,7 @@ def _agent_holdout_pass(workspace: Path) -> bool | None:
         cwd=workspace,
         capture_output=True,
         text=True,
+        check=False,
     )
     if proc.returncode != 0:
         return None
@@ -122,7 +122,7 @@ def evaluate(workspace: Path) -> int:
         return 0
     try:
         predict = load_predict(workspace)
-    except Exception:
+    except Exception:  # noqa: BLE001
         return 0
     rows = mid_rows(workspace)
     expected = mid_sse(predict, rows)

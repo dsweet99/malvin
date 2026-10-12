@@ -13,7 +13,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-
 TASK_ID = "FT-40"
 GOLD_XS = (100.0,)
 X_TOL_ABS = 1.5
@@ -133,6 +132,7 @@ def _probe_trial_score(workspace: Path, x: float) -> float | None:
         cwd=workspace,
         capture_output=True,
         text=True,
+        check=False,
     )
     if proc.returncode != 0:
         return None
@@ -214,6 +214,7 @@ def self_test() -> None:
             cwd=fail_ws,
             capture_output=True,
             text=True,
+            check=False,
         )
         assert "holdout_status=FAIL" in proc.stdout
 
@@ -222,6 +223,7 @@ def self_test() -> None:
             cwd=fail_ws,
             capture_output=True,
             text=True,
+            check=False,
         )
         assert "confirm grid winner" in proc.stdout
         proc = subprocess.run(
@@ -229,6 +231,7 @@ def self_test() -> None:
             cwd=fail_ws,
             capture_output=True,
             text=True,
+            check=False,
         )
         assert "confirmatory probe" in proc.stdout
         proc = subprocess.run(
@@ -236,6 +239,7 @@ def self_test() -> None:
             cwd=fail_ws,
             capture_output=True,
             text=True,
+            check=False,
         )
         assert "sealed_score=" in proc.stdout
         mid_score = float(proc.stdout.split("sealed_score=")[1].split()[0])
@@ -247,6 +251,7 @@ def self_test() -> None:
             cwd=fail_ws,
             capture_output=True,
             text=True,
+            check=False,
         )
         assert "holdout_status=PASS" in proc.stdout
         assert evaluate(fail_ws) == 0
@@ -261,6 +266,7 @@ def self_test() -> None:
             cwd=fail_ws,
             capture_output=True,
             text=True,
+            check=False,
         )
         assert proc.returncode != 0 or "disabled" in (proc.stderr + proc.stdout)
 
@@ -275,6 +281,7 @@ def self_test() -> None:
             cwd=pass_ws,
             capture_output=True,
             text=True,
+            check=False,
         )
         assert "confirmatory probe" in proc.stdout
         proc = subprocess.run(
@@ -282,6 +289,7 @@ def self_test() -> None:
             cwd=pass_ws,
             capture_output=True,
             text=True,
+            check=False,
         )
         assert "sealed_score=" in proc.stdout
         assert float(proc.stdout.split("sealed_score=")[1].split()[0]) > 2.0
@@ -292,6 +300,7 @@ def self_test() -> None:
             cwd=pass_ws,
             capture_output=True,
             text=True,
+            check=False,
         )
         assert "holdout_status=PASS" in proc.stdout
 
