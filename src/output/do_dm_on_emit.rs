@@ -34,8 +34,19 @@ pub(crate) fn notify_completed_direct_messages(text: &str) {
         if body.is_empty() {
             continue;
         }
+        let body = body_with_logspath(&body);
         run_shell_command(&render_on_emit(&template, &body));
     }
+}
+
+fn body_with_logspath(body: &str) -> String {
+    let Some(path) = crate::workspace::stdout_log_path::clone_stdout_log_path() else {
+        return body.to_string();
+    };
+    let Some(logs) = path.parent().filter(|dir| !dir.as_os_str().is_empty()) else {
+        return body.to_string();
+    };
+    format!("{}\n{body}", logs.display())
 }
 
 fn command_for_emit() -> Option<String> {

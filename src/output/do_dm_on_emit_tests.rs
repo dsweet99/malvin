@@ -1,10 +1,20 @@
+use std::sync::MutexGuard;
 use std::time::Duration;
 
 use super::{
     dm_on_emit_command_for_test, notify_completed_direct_messages, render_on_emit, store_command,
     with_config_lock, with_dm_on_emit,
 };
-use crate::output::{DM_END, DM_START, clear_captured_stderr_lines, take_captured_stderr_lines};
+use crate::output::{
+    DM_END, DM_START, STDOUT_LOG_TEST_LOCK, clear_captured_stderr_lines, set_stdout_log_path,
+    take_captured_stderr_lines,
+};
+
+fn lock_stdout_log() -> MutexGuard<'static, ()> {
+    STDOUT_LOG_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
 
 fn fenced(body: &str) -> String {
     format!("{DM_START}\n{body}\n{DM_END}\n")
@@ -41,6 +51,8 @@ fn render_replaces_quoted_placeholder_and_escapes_apostrophes() {
 
 #[test]
 fn notify_writes_one_body_per_completed_message() {
+    let _guard = lock_stdout_log();
+    set_stdout_log_path(None);
     let dir = tempfile::tempdir().expect("tempdir");
     let path = dir.path().join("dm.txt");
     with_dm_on_emit(&capture_template(&path), None, || {
@@ -56,7 +68,27 @@ fn notify_writes_one_body_per_completed_message() {
 }
 
 #[test]
+fn notify_body_starts_with_the_run_log_directory() {
+    let _guard = lock_stdout_log();
+    let dir = tempfile::tempdir().expect("tempdir");
+    let log = dir.path().join("run").join("stdout.log");
+    set_stdout_log_path(Some(log.clone()));
+    let path = dir.path().join("dm.txt");
+    with_dm_on_emit(&capture_template(&path), None, || {
+        notify_completed_direct_messages(&fenced("hello"));
+    });
+    set_stdout_log_path(None);
+    let logs = log.parent().expect("run dir").display().to_string();
+    assert_eq!(
+        std::fs::read_to_string(&path).expect("read"),
+        format!("{logs}\nhello\n")
+    );
+}
+
+#[test]
 fn notify_runs_when_stdout_dm_mode_is_off() {
+    let _guard = lock_stdout_log();
+    set_stdout_log_path(None);
     let dir = tempfile::tempdir().expect("tempdir");
     let path = dir.path().join("off.txt");
     crate::output::set_do_dm_stdout_mode(false);
