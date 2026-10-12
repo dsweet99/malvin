@@ -1,5 +1,5 @@
 """Hidden tests for FT-37. Not mounted into the agent workspace."""
-from src.invoice import apply_discount, add_tax, cart_total, round_money
+from src.invoice import add_tax, apply_discount, cart_total, round_money
 
 
 def test_round_money_stable():

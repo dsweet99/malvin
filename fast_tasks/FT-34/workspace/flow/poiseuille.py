@@ -23,11 +23,11 @@ def mass_flow_rate(
         ("viscosity_pa_s", viscosity_pa_s),
     ):
         if not isinstance(value, (int, float)) or isinstance(value, bool):
-            raise ValueError(f"{name} must be a real number")
+            raise ValueError(f"{name} must be a real number")  # noqa: TRY004
         if not math.isfinite(float(value)) or float(value) <= 0.0:
             raise ValueError(f"{name} must be finite and positive")
     if not isinstance(knudsen, (int, float)) or isinstance(knudsen, bool):
-        raise ValueError("knudsen must be a real number")
+        raise ValueError("knudsen must be a real number")  # noqa: TRY004
     if not math.isfinite(float(knudsen)) or float(knudsen) < 0.0:
         raise ValueError("knudsen must be finite and >= 0")
 

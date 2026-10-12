@@ -16,15 +16,14 @@ import time
 import unicodedata
 from pathlib import Path
 
-
 TASK_ID = "FT-27"
 PROTECTED = {
     "plan.md": "608049d640b681b94d4e35cbd2f788386048e5f3bc8485af47ac4a7b62d1192f",
     "tests/test_r2_sqlite.py": "f45ebd6fc616fbe5a8007447efab365d448acaafa5553d55b35ea0bb087ade7a",
     "journal/__init__.py": "3d6767ae02447c70ffd26da1a9233b7e4a228c30fbecc63611ddf020f828de3e",
-    "journal/r1_memory.py": "4317d39f53fe6f7528491599d1e6af89079596a2385288fcc08b898320c86a47",
+    "journal/r1_memory.py": "f7425c9cb2f9337aeb4135c33dcfbf5a4f206c08e9e94a6b9582d2c6a1365d40",
     "journal/r1_sqlite.py": "f39a64a544ba6b922d82e008ce5742753d350bba46586358cd3672f5b9fe115a",
-    "journal/r2_memory.py": "a1ee69c52e5610609404b7b29df0ad8ffb0dde9c485c1c376b14cbb74599d381",
+    "journal/r2_memory.py": "8cdae751ca99e66cfdea3922d91de780b69cf2ad8abeabaeb933485a0092c138",
 }
 
 
@@ -122,7 +121,7 @@ def evaluate(workspace: Path) -> int:
         open_db = module.open_db
         apply = module.apply
         snapshot = module.snapshot
-    except Exception:
+    except Exception:  # noqa: BLE001
         return 0
 
     cases = [
@@ -146,7 +145,7 @@ def evaluate(workspace: Path) -> int:
             result = apply(db, iter(events))
             actual_rows = _rows(db)
             actual_visible = snapshot(db)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return 0
         expected_rows, expected_visible = _reference(events)
         if result is not None or actual_rows != expected_rows:
@@ -223,7 +222,7 @@ def evaluate(workspace: Path) -> int:
             return 0
         db.rollback()
         db.close()
-    except Exception:
+    except Exception:  # noqa: BLE001
         return 0
 
     bad_batches = [
@@ -242,7 +241,7 @@ def evaluate(workspace: Path) -> int:
         except (ValueError, TypeError):
             db.close()
             continue
-        except Exception:
+        except Exception:  # noqa: BLE001
             return 0
         return 0
 

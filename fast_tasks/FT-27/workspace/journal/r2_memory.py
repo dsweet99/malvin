@@ -6,7 +6,6 @@ from collections.abc import Iterable
 
 from .r1_memory import Event, _sequence
 
-
 State = dict[str, tuple[int, bytes | None]]
 
 

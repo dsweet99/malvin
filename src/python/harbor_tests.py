@@ -10,7 +10,7 @@ _DIFF_GIT_RE = re.compile(r"^diff --git a/(.+?) b/(.+?)\s*$")
 _PYTEST_INVOCATION_RE = re.compile(
     r"(?:python3?|\$PYTHON|\$\{PYTHON\}|\"\$PYTHON_BIN\"|\$PYTHON_BIN)\s+-m\s+pytest\b(.*)$"
     r"|^\s*pytest\b(.*)$",
-    re.I,
+    re.IGNORECASE,
 )
 
 def embedded_file_body_from_patch(patch_path: Path, relative_path: str) -> str | None:
@@ -79,9 +79,7 @@ def added_python_sources_from_patch(patch_path: Path) -> dict[str, str]:
             continue
         if line.startswith("+") and not line.startswith("+++"):
             new_lines.append(line[1:])
-        elif line.startswith("-") and not line.startswith("---"):
-            continue
-        elif line.startswith("\\"):  
+        elif line.startswith("-") and not line.startswith("---") or line.startswith("\\"):
             continue
         elif line.startswith(" "):
             

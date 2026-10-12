@@ -82,7 +82,7 @@ def holdout_loss(lr: float) -> float:
     ys = _ys()
     t = (math.log10(lr) - math.log10(X_LO)) / (math.log10(X_HI) - math.log10(X_LO))
     pos = t * (N - 1)
-    i0 = int(math.floor(pos))
+    i0 = math.floor(pos)
     i1 = min(i0 + 1, N - 1)
     if i0 == i1:
         return ys[i0]

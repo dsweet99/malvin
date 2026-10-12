@@ -14,7 +14,6 @@ import unicodedata
 import zlib
 from pathlib import Path
 
-
 TASK_ID = "FT-28"
 PROTECTED = {
     "plan.md": "c36f403f6f1c4d2aa396b0c98f367efe0776cd58cc8d0e6b8608e1fbe3614ed0",
@@ -148,7 +147,7 @@ def evaluate(workspace: Path) -> int:
         module = _load(workspace)
         pack = module.pack
         unpack = module.unpack
-    except Exception:
+    except Exception:  # noqa: BLE001
         return 0
 
     cases = [
@@ -168,7 +167,7 @@ def evaluate(workspace: Path) -> int:
             actual_frame = pack(list(entries))
             decoded_expected = unpack(expected_frame)
             decoded_actual = unpack(actual_frame)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return 0
         if type(actual_frame) is not bytes or actual_frame != expected_frame:
             return 0
@@ -188,7 +187,7 @@ def evaluate(workspace: Path) -> int:
             pack(entries)
         except (TypeError, ValueError):
             continue
-        except Exception:
+        except Exception:  # noqa: BLE001
             return 0
         return 0
 
@@ -220,14 +219,14 @@ def evaluate(workspace: Path) -> int:
             unpack(frame)
         except (TypeError, ValueError, UnicodeDecodeError):
             continue
-        except Exception:
+        except Exception:  # noqa: BLE001
             return 0
         return 0
     try:
         unpack(bytearray(valid))
     except TypeError:
         pass
-    except Exception:
+    except Exception:  # noqa: BLE001
         return 0
     else:
         return 0

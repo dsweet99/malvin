@@ -129,9 +129,9 @@ def fast_task_selftest_cmd() -> None:
 
 __all__ = [
     "fast_task_cli",
-    "fast_tasks_list_cmd",
-    "fast_task_solve",
     "fast_task_selftest_cmd",
+    "fast_task_solve",
+    "fast_tasks_list_cmd",
 ]
 
 if __name__ == "__main__":

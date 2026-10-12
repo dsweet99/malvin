@@ -9,7 +9,6 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-
 TASK_ID = "FT-03"
 
 
@@ -36,6 +35,7 @@ def _run(bin_path: Path, args: list[str], cwd: Path):
         cwd=cwd,
         capture_output=True,
         text=True,
+        check=False,
     )
 
 

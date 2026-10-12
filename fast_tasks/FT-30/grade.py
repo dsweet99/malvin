@@ -10,7 +10,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-
 TASK_ID = "FT-30"
 REQUIRED_CHECKS = ("kiss check", "pytest tests")
 

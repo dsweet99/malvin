@@ -13,7 +13,6 @@ import tempfile
 import textwrap
 from pathlib import Path
 
-
 TASK_ID = "FT-32"
 FORBIDDEN_IMPORT_ROOTS = {"sqlite3", "dbm", "shelve", "malvin", "ops", "src"}
 MEM_BUDGET = 8 * 1024 * 1024
@@ -50,9 +49,12 @@ def _check_forbidden_imports(diskmap_py: Path) -> bool:
             for alias in node.names:
                 if alias.name.split(".")[0] in FORBIDDEN_IMPORT_ROOTS:
                     return False
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            if node.module.split(".")[0] in FORBIDDEN_IMPORT_ROOTS:
-                return False
+        elif (
+            isinstance(node, ast.ImportFrom)
+            and node.module
+            and node.module.split(".")[0] in FORBIDDEN_IMPORT_ROOTS
+        ):
+            return False
     return True
 
 

@@ -13,14 +13,13 @@ import tempfile
 import unicodedata
 from pathlib import Path
 
-
 TASK_ID = "FT-25"
 PROTECTED = {
     "plan.md": "2e3ca8982bc01e0612a22a546add04ceeaa40c990f0d85cc5c5f9f3f3f2ea228",
     "tests/test_r2_binary.py": "fd73717b3fb84a5b45bb8e815d0659ebb3c017da4f1a9d9c8929d576ec78390d",
     "wire/__init__.py": "5522c073f89d78188cdca513cd8b82edac945450b377288a158e65985ad1650c",
-    "wire/r1_binary.py": "8db78103369c9bc1e1195a3f70bf8e1b7432f9cf7f436370dfeb72ca97611d8e",
-    "wire/r1_text.py": "1d996216f733ada1555b4007736d6d83bcb2daa84272cddcf5b6a9eac586206e",
+    "wire/r1_binary.py": "83997c00fb591c8109707d34fc896788f8297d87a71a35f5a2832d3789dfdc8b",
+    "wire/r1_text.py": "a1ec319d76083ee89e40592e1d37b5bd470f0ea18b9ca8df7f82abf8fbc093c7",
     "wire/r2_text.py": "0dba6170f1a3f4aca2c33e2e7e99c56246eed84b8306c679a8f97714515d1c73",
 }
 
@@ -120,7 +119,7 @@ def evaluate(workspace: Path) -> int:
         module = _load(workspace)
         pack = module.pack
         unpack = module.unpack
-    except Exception:
+    except Exception:  # noqa: BLE001
         return 0
 
     cases = _golden_cases()
@@ -142,7 +141,7 @@ def evaluate(workspace: Path) -> int:
         try:
             actual_frame = pack(list(fields))
             actual_records = unpack(expected_frame)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return 0
         if type(actual_frame) is not bytes or actual_frame != expected_frame:
             return 0
@@ -151,7 +150,7 @@ def evaluate(workspace: Path) -> int:
         try:
             if unpack(actual_frame) != expected_records:
                 return 0
-        except Exception:
+        except Exception:  # noqa: BLE001
             return 0
 
     invalid = [
@@ -179,7 +178,7 @@ def evaluate(workspace: Path) -> int:
             unpack(frame)
         except (ValueError, TypeError):
             continue
-        except Exception:
+        except Exception:  # noqa: BLE001
             return 0
         return 0
 
@@ -193,7 +192,7 @@ def evaluate(workspace: Path) -> int:
             pack(fields)
         except ValueError:
             continue
-        except Exception:
+        except Exception:  # noqa: BLE001
             return 0
         return 0
     return 1

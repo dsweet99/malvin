@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sandbox_prep as _mod
 
+
 def test_sandbox_prep_kiss_coverage_witnesses() -> None:
     _ = (_mod._remaining_sec, _mod._normalize_run_command, _mod._run_shell, _mod._join_continued_run_lines, _mod.parse_dockerfile_run_commands, _mod.should_replay_run_command, _mod._split_shell_segments, _mod._is_pip_install_segment, _mod._is_editable_pip_segment, _mod._is_bulk_pip_segment,)
     _ = (_mod._offline_editable_command, _mod._is_network_only_segment, _mod._sync_commands_from_runs, _mod.workspace_sync_commands_from_dockerfile, _mod.dockerfile_image_build_commands, _mod.dockerfile_bulk_pip_commands, _mod._is_plausible_distribution_name, _mod._extract_pip_install_commands, _mod.collect_pip_install_intents, _mod._pins_from_requirements_file,)

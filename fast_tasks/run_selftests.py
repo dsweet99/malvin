@@ -88,11 +88,10 @@ def check_imports(grade_py: Path) -> None:
                 root = alias.name.split(".")[0]
                 if root in FORBIDDEN_IMPORT_ROOTS:
                     raise AssertionError(f"{grade_py}: forbidden import {alias.name}")
-        elif isinstance(node, ast.ImportFrom):
-            if node.module:
-                root = node.module.split(".")[0]
-                if root in FORBIDDEN_IMPORT_ROOTS:
-                    raise AssertionError(f"{grade_py}: forbidden import from {node.module}")
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            root = node.module.split(".")[0]
+            if root in FORBIDDEN_IMPORT_ROOTS:
+                raise AssertionError(f"{grade_py}: forbidden import from {node.module}")
 
 
 def check_inventory() -> dict[str, str]:
@@ -132,6 +131,7 @@ def run_selftests() -> None:
             capture_output=True,
             text=True,
             env={**dict(**{k: v for k, v in __import__("os").environ.items()}), "PYTHONPATH": ""},
+            check=False,
         )
         if proc.returncode != 0:
             raise AssertionError(
@@ -163,6 +163,7 @@ def grade_starters_are_zero() -> None:
                 capture_output=True,
                 text=True,
                 env={**dict(**{k: v for k, v in __import__("os").environ.items()}), "PYTHONPATH": ""},
+                check=False,
             )
             assert proc.returncode == 0, (tid, proc.stderr)
             val = reward.read_text(encoding="utf-8").strip()

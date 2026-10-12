@@ -10,7 +10,6 @@ import shutil
 import tempfile
 from pathlib import Path
 
-
 TASK_ID = "FT-36"
 GOLD_CAUSE = "Z"
 GOLD_EFFECT = 2.0

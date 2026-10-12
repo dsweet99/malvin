@@ -3,6 +3,7 @@ mod acp_tee_markdown;
 mod do_dm_emit;
 mod do_dm_filter;
 mod do_dm_mode;
+mod do_dm_on_emit;
 mod sentinel;
 pub(crate) mod stderr_log;
 mod stdout_defer;
@@ -32,6 +33,8 @@ pub use do_dm_filter::feed_do_dm_stdout_text;
 pub use do_dm_mode::{
     DoDmStdoutOpts, do_dm_stdout_mode, set_do_dm_stdout_mode, set_do_dm_stdout_opts,
 };
+pub(crate) use do_dm_on_emit::notify_completed_direct_messages;
+pub use do_dm_on_emit::set_dm_on_emit_command;
 pub use sentinel::{DM_END, DM_START, MALVIN_DONE, is_sentinel_line};
 pub use stdout_display::{
     print_stdout_line, print_stdout_raw_line, print_stdout_raw_line_with_ts, print_stdout_text,

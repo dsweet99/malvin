@@ -11,7 +11,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-
 TASK_ID = "FT-35"
 
 GOLD = {
@@ -68,13 +67,13 @@ def evaluate(workspace: Path) -> int:
     sys.dont_write_bytecode = True
     try:
         alpha_fn, rydberg_fn = _load(workspace)
-    except Exception:
+    except Exception:  # noqa: BLE001
         return 0
 
     try:
         alpha = alpha_fn()
         rydberg = rydberg_fn()
-    except Exception:
+    except Exception:  # noqa: BLE001
         return 0
 
     if not _is_plain_int(alpha) or not _is_plain_int(rydberg):

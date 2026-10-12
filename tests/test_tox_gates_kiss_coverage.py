@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tox_gates as _mod
 
+
 def test_tox_gates_kiss_coverage_witnesses() -> None:
     _ = (
         _mod._expand_tox_envlist_token,

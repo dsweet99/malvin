@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import os
 import shutil
 import statistics
 import sys
 import tempfile
 import time
-import importlib.util
 from pathlib import Path
-
 
 TASK_ID = "FT-20"
 
@@ -55,7 +54,7 @@ def evaluate(workspace: Path) -> int:
     try:
         mod = _load(workspace)
         fn = mod.unique_sorted
-    except Exception:
+    except Exception:  # noqa: BLE001
         return 0
     cases = [
         ([], []),
@@ -66,7 +65,7 @@ def evaluate(workspace: Path) -> int:
     for inp, exp in cases:
         try:
             out = fn(list(inp))
-        except Exception:
+        except Exception:  # noqa: BLE001
             return 0
         if out != exp:
             return 0

@@ -1,7 +1,6 @@
 """Revision 1 over the binary transport."""
 from __future__ import annotations
 
-
 Posting = int
 _MAX_U32 = (1 << 32) - 1
 

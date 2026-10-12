@@ -11,7 +11,6 @@ from pathlib import Path
 
 import pytest
 
-
 TASK_ID = "FT-13"
 
 

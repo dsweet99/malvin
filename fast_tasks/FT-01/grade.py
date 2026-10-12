@@ -10,7 +10,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-
 TASK_ID = "FT-01"
 
 
@@ -54,6 +53,7 @@ def evaluate(workspace: Path) -> int:
             capture_output=True,
             text=True,
             env={**os.environ, "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1", "PYTHONPATH": str(td_path)},
+            check=False,
         )
         return 1 if proc.returncode == 0 else 0
 

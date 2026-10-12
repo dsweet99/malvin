@@ -1,7 +1,6 @@
 """Revision 1 dispatcher using a linear ready list."""
 from __future__ import annotations
 
-
 Job = tuple[str, int, bytes]
 
 

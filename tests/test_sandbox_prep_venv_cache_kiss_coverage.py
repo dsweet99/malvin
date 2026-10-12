@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sandbox_prep_venv_cache as _mod
 
+
 def test_sandbox_prep_venv_cache_kiss_coverage_witnesses() -> None:
     _ = (
         _mod.venv_cache_key_token,

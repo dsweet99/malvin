@@ -32,7 +32,7 @@ def holdout_pass(workspace: Path) -> bool:
         y_mid = float(predict(3.0))
         y_hi = float(predict(100.0))
         y_inf = float(predict(1e6))
-    except Exception:
+    except Exception:  # noqa: BLE001
         return False
 
     if not (0.97 <= y0 <= 1.03):
@@ -42,9 +42,7 @@ def holdout_pass(workspace: Path) -> bool:
     # Capacity must already be visible by x=100 (rejects late hard clips).
     if abs(y_inf - y_hi) > 0.12:
         return False
-    if not (y0 < y_mid < y_inf):
-        return False
-    return True
+    return y0 < y_mid < y_inf
 
 
 def main() -> int:

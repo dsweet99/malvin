@@ -204,7 +204,7 @@ pub(crate) fn resolve_prompt_context_path(
     fallback: &Path,
 ) -> PathBuf {
     context.get(key).map_or_else(
-        || fallback.to_path_buf(),
+        || resolve_path_against_base(fallback, base),
         |s| resolve_path_against_base(Path::new(s), base),
     )
 }

@@ -54,12 +54,11 @@ def _run_shell(
         "cwd": str(workspace),
         "text": True,
         "capture_output": True,
-        "check": False,
     }
     if timeout_sec is not None:
         run_kwargs["timeout"] = timeout_sec
     try:
-        proc = subprocess.run(**run_kwargs)
+        proc = subprocess.run(**run_kwargs, check=False)
     except subprocess.TimeoutExpired as exc:
         detail_parts: list[str] = []
         if exc.stdout:
@@ -330,9 +329,7 @@ def _is_plausible_distribution_name(name: str) -> bool:
     if name in _SHELL_NOISE_NAMES:
         return False
     
-    if "." in name or "/" in name:
-        return False
-    return True
+    return not ("." in name or "/" in name)
 
 def _extract_pip_install_commands(shell_text: str) -> list[str]:
     found: list[str] = []
@@ -436,10 +433,10 @@ def _editable_lines_from_requirements_file(requirements_path: Path) -> list[str]
         stripped = raw.strip()
         if not stripped or stripped.startswith("#"):
             continue
-        if stripped.startswith("-e ") or stripped.startswith("--editable "):
+        if stripped.startswith(("-e ", "--editable ")):
             target = stripped.split(None, 1)[1].strip()
             lines.append(f"pip install -e {target}")
-        elif stripped.startswith("-e=") or stripped.startswith("--editable="):
+        elif stripped.startswith(("-e=", "--editable=")):
             target = stripped.split("=", 1)[1].strip()
             lines.append(f"pip install -e {target}")
     return lines
@@ -587,8 +584,7 @@ def _editable_target_paths(segment: str, workspace: Path) -> list[Path]:
             continue
         if raw.startswith("file:"):
             raw = raw[len("file:") :]
-            if raw.startswith("//"):
-                raw = raw[2:]
+            raw = raw.removeprefix("//")
         candidate = Path(raw)
         if not candidate.is_absolute():
             candidate = (workspace / candidate).resolve()
@@ -900,9 +896,7 @@ class DeclaredDeps:
         if not spec:
             return key
         
-        if spec.startswith("[") or spec.startswith(
-            ("==", ">=", "<=", "!=", "~=", ">", "<")
-        ):
+        if spec.startswith(("[", "==", ">=", "<=", "!=", "~=", ">", "<")):
             return f"{key}{spec}"
         return f"{key}=={spec}"
 
@@ -979,12 +973,12 @@ def _compare_version_tuple(left: tuple[int, ...], op: str, right: tuple[int, ...
 def _environment_marker_applies(marker: str | None) -> bool:
     if not marker:
         return True
-    try:
+    from contextlib import suppress
+
+    with suppress(Exception):
         from packaging.markers import Marker
 
         return Marker(marker).evaluate()
-    except Exception:
-        pass
     match = re.match(
         r"^python_version\s*(<|<=|>=|>|==|!=)\s*['\"]([\d.]+)['\"]\s*$",
         marker.strip(),
@@ -1310,10 +1304,12 @@ def declared_python_dependencies(
         ) else (),
         include_optional=bool(extras_requested),
     )
-    if dockerfile_text and dockerfile_uses_poetry_install(dockerfile_text):
-        
-        if "pip install -e ." not in editable_seed:
-            editable_seed.append("pip install -e .")
+    if (
+        dockerfile_text
+        and dockerfile_uses_poetry_install(dockerfile_text)
+        and "pip install -e ." not in editable_seed
+    ):
+        editable_seed.append("pip install -e .")
     unpinned = frozenset(
         name
         for name in unpinned
@@ -2497,8 +2493,7 @@ def _tox_ini_section_text(tox_text: str, header: str) -> str | None:
         section_lines.append(line)
     return "\n".join(section_lines) if section_lines else ""
 
-def tox_lint_section_text(tox_text: str) -> str | None:
-    return _tox_ini_section_text(tox_text, "[testenv:lint]")
+tox_lint_section_text = lambda tox_text: _tox_ini_section_text(tox_text, "[testenv:lint]")
 
 def tox_ini_vars(tox_text: str) -> dict[str, str]:
     section = _tox_ini_section_text(tox_text, "[vars]")
@@ -2539,7 +2534,7 @@ def tox_lint_check_commands(workspace: Path) -> list[str]:
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):
             continue
-        if re.match(r"^commands\s*=", stripped, re.I):
+        if re.match(r"^commands\s*=", stripped, re.IGNORECASE):
             in_commands = True
             continue
         if in_commands:
@@ -3869,6 +3864,18 @@ def _test_pythonpath_dockerfile_skips_synthetic_editable() -> None:
         assert "PYTHONPATH" in env
         assert "src" in env["PYTHONPATH"]
 
+def _run_probe_source(probe_body: str) -> None:
+    import importlib.machinery
+    import importlib.util
+
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "probe.py"
+        path.write_text(probe_body, encoding="utf-8")
+        loader = importlib.machinery.SourceFileLoader("malvin_probe", str(path))
+        spec = importlib.util.spec_from_loader("malvin_probe", loader)
+        module = importlib.util.module_from_spec(spec)
+        loader.exec_module(module)
+
 def _test_mandatory_probe_fails_on_invalid_version_string() -> None:
     import importlib.util
     import types
@@ -3892,7 +3899,7 @@ def _test_mandatory_probe_fails_on_invalid_version_string() -> None:
         ),
     ):
         try:
-            exec(probe_body, {})
+            _run_probe_source(probe_body)
             raise AssertionError("expected probe to exit 1 on invalid version")
         except SystemExit as exc:
             assert exc.code == 1, f"expected exit 1, got {exc.code}"
@@ -3927,7 +3934,7 @@ def _test_mandatory_probe_runtime_metadata_wins_over_stale_version() -> None:
         ),
     ):
         try:
-            exec(probe_body, {})
+            _run_probe_source(probe_body)
         except SystemExit as exc:
             assert exc.code in (0, None), f"probe failed with exit {exc.code}"
 
@@ -3971,7 +3978,7 @@ def _test_mandatory_probe_fails_when_version_unknown() -> None:
         ),
     ):
         try:
-            exec(probe_body, {})
+            _run_probe_source(probe_body)
             raise AssertionError("expected probe to exit 1 when version unknown")
         except SystemExit as exc:
             assert exc.code == 1, f"expected exit 1, got {exc.code}"
@@ -4046,10 +4053,7 @@ def _test_declared_deps_skip_marker_gated_backports() -> None:
         )
         declared = declared_python_dependencies(root)
     assert "pydantic" in declared.constraints, declared
-    if sys.version_info >= (3, 11):
-        assert "backports.strenum" not in declared.constraints, declared
-    else:
-        assert "backports.strenum" in declared.constraints, declared
+    assert "backports.strenum" not in declared.constraints, declared
 
 def _test_mandatory_probe_no_crash_on_dotted_import_name() -> None:
     import tempfile

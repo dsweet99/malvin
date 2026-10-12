@@ -8,10 +8,10 @@ from pathlib import Path
 _TOX_GATE_ENV_RE = re.compile(
     r"^(?:pep8|format|lint|linters|ruff|style|check|tests?|unit|"
     r"py\d{2,3}|py3\d{1,2})$",
-    re.I,
+    re.IGNORECASE,
 )
-_TOX_ENVLIST_RE = re.compile(r"^envlist\s*=\s*(.+)$", re.I | re.M)
-_TOX_TESTENV_HEADER_RE = re.compile(r"^\[testenv:([^\]]+)\]\s*$", re.M)
+_TOX_ENVLIST_RE = re.compile(r"^envlist\s*=\s*(.+)$", re.IGNORECASE | re.MULTILINE)
+_TOX_TESTENV_HEADER_RE = re.compile(r"^\[testenv:([^\]]+)\]\s*$", re.MULTILINE)
 _TOX_SKIP_FLAGS = ("--skip-env-install", "--skip-pkg-install")
 _TOX_SKIP_MISSING_INTERPRETERS = ("--skip-missing-interpreters", "true")
 
@@ -275,8 +275,8 @@ def _test_tox_gate_env_names_omit_mypy_typecheck() -> None:
         )
         assert tox_gate_env_names(root) == ["lint"]
         assert tox_gate_check_commands(root) == [
-            "tox run -e lint --skip-missing-interpreters true "
-            "--skip-env-install --skip-pkg-install"
+            ("tox run -e lint --skip-missing-interpreters true "
+            "--skip-env-install --skip-pkg-install")
         ]
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)

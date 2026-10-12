@@ -10,7 +10,6 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-
 TASK_ID = "FT-12"
 
 
@@ -44,7 +43,7 @@ def _evaluate_mutable(workspace: Path) -> int:
     port_file = workspace / "var" / "port"
     if port_file.exists():
         port_file.unlink()
-    proc = subprocess.run(["bash", str(start)], cwd=workspace, capture_output=True, text=True)
+    proc = subprocess.run(["bash", str(start)], cwd=workspace, capture_output=True, text=True, check=False)
     if proc.returncode != 0:
         return 0
     if not port_file.is_file():
@@ -58,6 +57,7 @@ def _evaluate_mutable(workspace: Path) -> int:
         cwd=workspace,
         capture_output=True,
         text=True,
+        check=False,
     )
     if proc2.returncode != 0:
         return 0
