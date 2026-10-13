@@ -52,3 +52,18 @@ at `target/debug/malvin` is used in preference to an older installed `malvin`.
 ```bash
 ./ops/fast_task.py solve --model=codex:gpt-5.6-terra FT-01
 ```
+
+## Modal sandbox
+
+```bash
+./ops/fast_task.py solve FT-01 --modal
+```
+
+`--modal` runs malvin in a Modal sandbox (`--remote=modal:sandbox`) with the
+staged workspace as the work directory, then grades on the host. It does not
+use local Docker. The sandbox lifetime matches the agent timeout
+(`MALVIN_FT_AGENT_TIMEOUT_SEC`, default 600 seconds). The local process waits
+30 seconds longer than that so a finished sandbox can return its patch.
+`--modal` cannot be combined with `--agent=cursor`, `--remote`, or a local
+`pi:` model. Credentials and the Node.js bridge are the same as for
+`malvin --remote=modal:sandbox`.

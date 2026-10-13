@@ -12,6 +12,7 @@ Usage::
     python ops/fast_task.py solve FT-01 --model pi:openrouter/x-ai/grok-4.6
     python ops/fast_task.py solve FT-01 --model codex:gpt-5.6-terra
     python ops/fast_task.py solve FT-01 --creative
+    python ops/fast_task.py solve FT-01 --modal
     python ops/fast_task.py tasks
     python ops/fast_task.py self-test
 
@@ -35,17 +36,13 @@ _lib = importlib.import_module("_ops_bootstrap").load_library("fast_task")
 
 @click.group()
 def fast_task_cli() -> None:
-    """Run malvin on a fast task in local Docker; grade on the host."""
+    """Run malvin on a fast task in local Docker or a Modal sandbox; grade on the host."""
 
 @fast_task_cli.command("tasks")
 def fast_tasks_list_cmd() -> None:
     """List available fast task ids."""
     _lib.ft_cli_list_tasks()
 
-@fast_task_cli.command(
-    "solve",
-    context_settings={"ignore_unknown_options": True, "allow_extra_args": True},
-)
 @click.argument("task_id")
 @click.option(
     "--results-dir",
@@ -105,9 +102,10 @@ def fast_tasks_list_cmd() -> None:
 def fast_task_solve(
     task_id: str,
     creative: bool,
+    modal: bool,
     **options: Any,
 ) -> None:
-    """Run malvin on TASK_ID in Docker; report host-graded reward."""
+    """Run malvin on TASK_ID in Docker or Modal; report host-graded reward."""
     ctx = click.get_current_context()
     malvin_args = tuple(ctx.args)
     model = options.pop("model")
@@ -115,12 +113,31 @@ def fast_task_solve(
         malvin_args = ("--model", model, *malvin_args)
     if creative:
         malvin_args = ("--creative", *malvin_args)
+    if modal:
+        malvin_args = _lib.ft_with_modal_remote(
+            malvin_args, _lib.ft_agent_timeout_sec(None)
+        )
     _lib.ft_cli_solve(
         task_id,
         malvin_args=malvin_args,
         timeout_sec=None,
         **options,
     )
+
+fast_task_solve = click.option(
+    "--modal",
+    is_flag=True,
+    help=(
+        "Run malvin in a Modal sandbox instead of local Docker "
+        "(--remote=modal:sandbox). Incompatible with --agent=cursor, "
+        "--remote, and local pi: models. Sandbox lifetime matches the "
+        "agent timeout. Docker image options are not used."
+    ),
+)(fast_task_solve)
+fast_task_solve = fast_task_cli.command(
+    "solve",
+    context_settings={"ignore_unknown_options": True, "allow_extra_args": True},
+)(fast_task_solve)
 
 @fast_task_cli.command("self-test")
 def fast_task_selftest_cmd() -> None:
