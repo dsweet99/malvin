@@ -17,13 +17,13 @@ malvin [OPTION]... [REQUEST]...
 
 These forms are mutually exclusive: pass request(s) **or** a subcommand, not both on one synopsis line. `malvin --help` uses the same two-line usage.
 
-Bare `malvin REQUEST` runs autonomous routing once (`router_a`, then `router_a_2`, optional `router_b`, then `router_summarize`). A lone-line `__MALVIN_DONE__` in the `router_a_2` reply skips `router_b`. `router_a_2.md` asks for that marker only on an impasse. Multiple `REQUEST` arguments each run as an independent default-route invocation (new run directory, one router pass, summarize). With no request and no subcommand, malvin prints a short command catalog and exits 0. `malvin -g` without a request runs the gate-fix workflow (fixed request `Get the gates to pass.` with `--gates` on). Each `--creative[=PROB]` applies only to the `REQUEST` that immediately follows it (repeatable; other `REQUEST` args stay non-creative). The `admin` subcommand covers operator maintenance; `malvin admin` alone likewise prints its command catalog and exits 0.
+Bare `malvin REQUEST` runs autonomous routing (`router_a`, then `router_a_2`, optional `router_b`, then `router_summarize`). Without `--gates` that sequence runs once. With `--gates`, a gate failure starts another full iteration until `DEFAULT_MAX_LOOPS` (3) is spent. A lone-line `__MALVIN_DONE__` in the `router_a_2` reply skips `router_b`. `router_a_2.md` asks for that marker only on an impasse. Multiple `REQUEST` arguments each run as an independent default-route invocation (new run directory, its own router run, summarize). With no request and no subcommand, malvin prints a short command catalog and exits 0. `malvin -g` without a request runs the gate-fix workflow (fixed request `Get the gates to pass.` with `--gates` on). Each `--creative[=PROB]` applies only to the `REQUEST` that immediately follows it (repeatable; other `REQUEST` args stay non-creative). The `admin` subcommand covers operator maintenance; `malvin admin` alone likewise prints its command catalog and exits 0.
 
 ## Commands
 
 | Command | Purpose |
 |---------|---------|
-| *(default)* | `malvin REQUEST` — one outer iteration starts a new agent for aggregated `header` + optional `mbc2` + `router_a`, then `router_a_2`, then optional `router_b` on that agent; exit `router_summarize` on that same agent. There is no `--max-loops` flag (`DEFAULT_MAX_LOOPS` is 1) |
+| *(default)* | `malvin REQUEST` — each outer iteration starts a new agent for aggregated `header` + optional `mbc2` + `router_a`, then `router_a_2`, then optional `router_b` on that agent; exit `router_summarize` on the iteration that ends the run. There is no `--max-loops` flag (`DEFAULT_MAX_LOOPS` is 3) |
 | `--creative[=PROB]` | Creative mode for the following REQUEST only (repeatable; optional probability, default `1.0`) |
 | `malvin -g` | Fix quality gates via the default router with fixed request `Get the gates to pass.` (no positional request) |
 | `admin` | Operator maintenance (`models`, `remotes`, `reset-herdr`/`rh`) |
@@ -51,11 +51,11 @@ Model id for agent-backed commands. Default: `cursor:auto` (or `[agent].model` i
 
 ### Outer router iteration
 
-Bare `malvin REQUEST` and `malvin -g` run the outer router once. `DEFAULT_MAX_LOOPS` is 1. Passing `--max-loops` is an unexpected-argument error.
+Bare `malvin REQUEST` and `malvin -g` use an outer-loop budget of 3 (`DEFAULT_MAX_LOOPS`). Without `--gates` the router runs one iteration and stops. With `--gates`, a gate failure starts another full iteration until that budget is spent. Passing `--max-loops` is an unexpected-argument error.
 
 ### `-g` / `--gates`
 
-Inject workspace check command text into agent prompts and, when `router_a_2` emits `__MALVIN_DONE__`, run workspace gates as an exit check. Off by default. When `--gates` is set and `.malvin/gates` is missing, malvin runs the init workflow first (default router with request from `init_constraints.md`, harness gates off) to discover and write `.malvin/gates`. On bare `malvin REQUEST`, `-g` / `--gates` runs workspace `.malvin/gates` after that marker: pass ends the run successfully after `router_summarize`; fail ends the run with a workspace gate error after `router_summarize`. The outer router does not start another iteration. `malvin -g` without a request runs the gate-fix workflow with this flag on and fixed request `Get the gates to pass.` When work runs, check text is still injected into the work prompt. Agent prompts may still include available `.malvin/gates` guidance when this option is off.
+Inject workspace check command text into agent prompts and run workspace gates after `router_a_2` emits `__MALVIN_DONE__` or after `router_b`. Off by default. When `--gates` is set and `.malvin/gates` is missing, malvin runs the init workflow first (default router with request from `init_constraints.md`, harness gates off) to discover and write `.malvin/gates`. On bare `malvin REQUEST`, `-g` / `--gates` runs workspace `.malvin/gates` at those points. A pass ends the run successfully after `router_summarize` and does not start another iteration. A failure starts another full router iteration while the outer loop count is below `max_loops`, and on the last iteration ends the run with a workspace gate error after `router_summarize`. `DEFAULT_MAX_LOOPS` is 3, so a default run retries after a gate failure until three iterations have run. `malvin -g` without a request runs the gate-fix workflow with this flag on and fixed request `Get the gates to pass.` When work runs, check text is still injected into the work prompt. Agent prompts may still include available `.malvin/gates` guidance when this option is off.
 
 
 
@@ -117,7 +117,7 @@ When `--gates` is set and `.malvin/gates` is missing, malvin runs the init workf
 
 With `--gates` and an existing `.malvin/gates`, malvin runs workspace quality gates from that file at the repo git root (one shell command per non-empty, non-comment line). Full-line comments starting with `#` are ignored. `malvin -g` without a request always enables this harness.
 
-`malvin REQUEST` does not require `.malvin/gates` at startup and may run outside a git repo. With `--gates` on `malvin REQUEST`, malvin runs workspace gates when `router_a_2` emits `__MALVIN_DONE__` and fails the run when they fail (see the default-route section of `malvin --doc`). Without `--gates` (the default), malvin does not run those checks directly on the default route. `header.md` notes about gates lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
+`malvin REQUEST` does not require `.malvin/gates` at startup and may run outside a git repo. With `--gates` on `malvin REQUEST`, malvin runs workspace gates after `router_a_2` emits `__MALVIN_DONE__` or after `router_b`. A pass stops the run. A failure repeats the full router iteration until `max_loops` (default 3) and then fails the run (see the default-route section of `malvin --doc`). Without `--gates` (the default), malvin does not run those checks on the default route and does not start another iteration. `header.md` notes about gates lines remain advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
 
 ### `-h` / `--help`
 
@@ -134,13 +134,13 @@ Every agent-backed command creates `~/.malvinconf/logs/<hash>/<timestamp>_<token
 | File | Role |
 |------|------|
 | `plan_<random>.md` or `request.md` | Copy of user input for this run |
-| `router_1.log` | The single outer-iteration router transcript (`router_a`, `router_a_2`, optional `router_b`, exit summarize) |
+| `router_<n>.log` | Transcript for outer iteration n (`router_a`, `router_a_2`, optional `router_b`, and exit summarize when that iteration ends the run). The first file is `router_1.log` |
 | `stdout.log` | Tee of agent stdout — **narrative** channel |
 | `trace.jsonl` | Audit record (sdk-shaped JSONL; Pi and Codex events are mapped into the same shapes) — **authoritative** for semantics (tool results, shrink/fork, LLM usage) |
 | `prompts.log` | Outgoing prompts (names only) |
 | `quality_gates.log` | Workspace gate commands and output when gates run |
 | `run_timing.json` | Wall/LLM timing, token/step aggregates, and optional cost |
-| `_run/exp_log_*.md` | Experiment / gate-loop logs (`exp_log_<run>.md` scaffold; `exp_log_<run>_g1.md` for the single outer iteration — kept, never truncated) |
+| `_run/exp_log_*.md` | Experiment / gate-loop logs (`exp_log_<run>.md` scaffold; `exp_log_<run>_g<n>.md` for outer iteration n — kept, never truncated) |
 | `result.md` | `ABORT:` prefix stops workflows that check it |
 
 ### Session footnotes (`TIMING` / `COST`)

@@ -3,8 +3,8 @@ use clap::{CommandFactory, Parser};
 use malvin::config::malvin_config_file::DEFAULT_MAX_LOOPS;
 
 #[test]
-fn outer_loop_budget_is_fixed_at_one() {
-    assert_eq!(DEFAULT_MAX_LOOPS, 1);
+fn outer_loop_budget_defaults_to_three() {
+    assert_eq!(DEFAULT_MAX_LOOPS, 3);
 }
 
 #[test]

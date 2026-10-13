@@ -1,6 +1,6 @@
 # malvin (default route)
 
-The default route runs one outer iteration (`DEFAULT_MAX_LOOPS` is 1; passing `--max-loops` is an unexpected-argument error). Malvin starts a coder agent and sends the prompts for that iteration as **one** host prompt via `start_coder_session`: `header.md`, optionally `mbc2.md` when `--creative` samples on, and `router_a.md`. The same session then receives `router_a_2.md` and waits. A lone-line `__MALVIN_DONE__` in that `router_a_2` reply skips `router_b` (and, with `--gates`, runs workspace gates before exit). Otherwise the same session receives `router_b.md` (creative wording via template keys). Malvin does not treat `__MALVIN_DONE__` in the `router_a` reply or the `router_b` reply as a stop. `router_a_2.md` asks for the marker only on an impasse (a contradiction or an obvious impossibility). When the iteration ends, `router_summarize.md` runs once on that open session.
+The default route allows up to three outer iterations (`DEFAULT_MAX_LOOPS` is 3; passing `--max-loops` is an unexpected-argument error). Each iteration starts a coder agent and sends the prompts as **one** host prompt via `start_coder_session`: `header.md`, optionally `mbc2.md` when `--creative` samples on, and `router_a.md`. The same session then receives `router_a_2.md` and waits. A lone-line `__MALVIN_DONE__` in that `router_a_2` reply skips `router_b`. Otherwise the same session receives `router_b.md` (creative wording via template keys). Malvin does not treat `__MALVIN_DONE__` in the `router_a` reply or the `router_b` reply as a stop. `router_a_2.md` asks for the marker only on an impasse (a contradiction or an obvious impossibility). With `--gates`, workspace `.malvin/gates` run after that `__MALVIN_DONE__` or after `router_b`. A pass stops the run. A failure starts another full iteration while the outer loop count is below `max_loops`, and fails the run on the last iteration. The shipped default is three iterations, so a default `--gates` run retries after a failure until the third iteration. When the iteration ends for good, `router_summarize.md` runs once on that open session.
 
 ## Summary
 
@@ -8,12 +8,12 @@ The default route runs one outer iteration (`DEFAULT_MAX_LOOPS` is 1; passing `-
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
 | Output | Styled stdout on a TTY (same startup chrome as other agent workflows); with `--quiet` / `-q`, only `__MALVIN_DM_*__` bodies |
-| Logs | `router_1.log` under `~/.malvinconf/logs/<hash>/<run>/` (one file for the single outer iteration and its coder agent) |
+| Logs | `router_<n>.log` under `~/.malvinconf/logs/<hash>/<run>/` (one file per outer iteration and its coder agent; the first is `router_1.log`) |
 | Requires | No `.malvin/gates` at startup (unless `--gates` later needs them) |
 
 ## Intention
 
-Read the user request (on disk as `plan_*.md` / `{{ user_request_path }}`). `router_a.md` points at that file and at `trace.jsonl` in the run directory, and it tells the agent to check `malvin --advice` for a relevant Problems Worth Solving list (header macro `PWS`). It does not ask whether the request is already satisfied. Then send `router_a_2.md`. On an impasse the agent writes `__MALVIN_DONE__` alone on a line, and malvin skips `router_b`. Otherwise send `router_b.md`. A creative sample fills `{{ creative_lead }}` from `router_b_creative_lead.md` (use the MBC2 ideas while satisfying the request). `{{ satisfy_line }}` is `router_b_satisfy.md` on every work turn: satisfy the requirements, stay in scope, and, because the session is non-interactive, decide under uncertainty and record both the decision and the rationale. `{{ done_note }}` is `router_b_done_note.md` on every work turn: do not emit `__MALVIN_DONE__`. After that single iteration, send `router_summarize.md` once on the already-open coder session before teardown. Do not start a new agent for summarize.
+Read the user request (on disk as `plan_*.md` / `{{ user_request_path }}`). `router_a.md` points at that file and at `trace.jsonl` in the run directory, and it tells the agent to check `malvin --advice` for a relevant Problems Worth Solving list (header macro `PWS`). It does not ask whether the request is already satisfied. Then send `router_a_2.md`. On an impasse the agent writes `__MALVIN_DONE__` alone on a line, and malvin skips `router_b`. Otherwise send `router_b.md`. A creative sample fills `{{ creative_lead }}` from `router_b_creative_lead.md` (use the MBC2 ideas while satisfying the request). `{{ satisfy_line }}` is `router_b_satisfy.md` on every work turn: satisfy the requirements, stay in scope, and, because the session is non-interactive, decide under uncertainty and record both the decision and the rationale. `{{ done_note }}` is `router_b_done_note.md` on every work turn: do not emit `__MALVIN_DONE__`. When the run ends, send `router_summarize.md` once on the already-open coder session before teardown. Do not start a new agent for summarize.
 
 ## Usage
 
@@ -21,7 +21,7 @@ Read the user request (on disk as `plan_*.md` / `{{ user_request_path }}`). `rou
 malvin [OPTION]... [REQUEST]...
 ```
 
-There is no `router` subcommand. Bare `malvin REQUEST` is the default autonomous routing workflow. Multiple `REQUEST` args each run as an independent invocation (new run directory under `~/.malvinconf/logs/`, one router pass, exit `router_summarize`). If `REQUEST` is omitted (and no subcommand is given), malvin prints the command catalog on stdout and exits 0.
+There is no `router` subcommand. Bare `malvin REQUEST` is the default autonomous routing workflow. Multiple `REQUEST` args each run as an independent invocation (new run directory under `~/.malvinconf/logs/`, its own router run, exit `router_summarize`). If `REQUEST` is omitted (and no subcommand is given), malvin prints the command catalog on stdout and exits 0.
 
 ## Arguments
 
@@ -40,13 +40,13 @@ See `malvin --doc`. Notable for the default route:
 
 | Flag | Effect |
 |------|--------|
-| `-g` / `--gates` | When `router_a_2` emits `__MALVIN_DONE__`, run workspace `.malvin/gates` before exit summarize. Pass stops success; fail stops with a workspace gate error. The outer router does not start another iteration. Also injects check text into `router_a.md` via `{{ code_extra }}`. |
-| `--creative[=PROB]` | Applies only to the following REQUEST (repeatable). For that request's single outer iteration, with probability `PROB` (default `1.0` when the flag is set): include `mbc2.md` in the aggregated initial prompt (after the header), and fill `router_b.md` creative template keys for the optional work turn |
+| `-g` / `--gates` | After `__MALVIN_DONE__` in the `router_a_2` reply, or after `router_b`, run workspace `.malvin/gates`. A pass stops success and does not start another iteration. A failure starts another full router iteration while iterations remain, and fails the run on the last iteration (`DEFAULT_MAX_LOOPS` is 3, so a default run retries after a gate failure until three iterations have run). Also injects check text into `router_a.md` via `{{ code_extra }}`. |
+| `--creative[=PROB]` | Applies only to the following REQUEST (repeatable). On each outer iteration of that request, with probability `PROB` (default `1.0` when the flag is set): include `mbc2.md` in the aggregated initial prompt (after the header), and fill `router_b.md` creative template keys for the optional work turn |
 | `--quiet` / `-q` | Stdout shows only `__MALVIN_DM_*__` bodies, plus the closing `TIMING` and `COST` lines |
 
 ## Prompt workflow
 
-The single outer iteration stops any already-open coder agent, drops a stored Cursor resume id, and starts a new agent. It then binds and sends one aggregated initial prompt (composition respects `--gates` and the creative sample), including `header.md`. ACP retries of the spawn delivery also create a fresh agent so the aggregated header is not re-delivered into the prior conversation.
+Each outer iteration stops any already-open coder agent, drops a stored Cursor resume id, and starts a new agent. It then binds and sends one aggregated initial prompt (composition respects `--gates` and the creative sample), including `header.md`. ACP retries of the spawn delivery also create a fresh agent so the aggregated header is not re-delivered into the prior conversation.
 
 | Turn | Piece | Role |
 |------|-------|------|
@@ -57,17 +57,19 @@ The single outer iteration stops any already-open coder agent, drops a stored Cu
 
 ### Stop (without `--gates`)
 
-After `router_a_2`, if any line trims to exactly `__MALVIN_DONE__`, skip `router_b`, send exit summarize on the open session, and stop success. Otherwise send `router_b`, then send exit summarize and stop success. Malvin does not check the `router_a` reply or the `router_b` reply for `__MALVIN_DONE__`. The outer iteration count is 1, so the run does not start another agent for `router_a`.
+After `router_a_2`, if any line trims to exactly `__MALVIN_DONE__`, skip `router_b`, send exit summarize on the open session, and stop success. Otherwise send `router_b`, then send exit summarize and stop success. Malvin does not check the `router_a` reply or the `router_b` reply for `__MALVIN_DONE__`. Workspace gates are not run. The router does not start another iteration.
 
 ### Stop (with `--gates`)
 
-Gates run **only** when `__MALVIN_DONE__` was seen in the `router_a_2` reply, and they run before `router_summarize`:
+Gates run after `__MALVIN_DONE__` in the `router_a_2` reply, and after `router_b` when that turn ran. They run before the exit decision. `router_summarize.md` runs on the iteration that ends the run (a pass, or a failure on the last loop). A failure with loops remaining skips summarize and starts another full iteration (`router_a`, `router_a_2`, and `router_b` unless `__MALVIN_DONE__`).
 
 | Condition | Action |
 |-----------|--------|
-| Done + gates pass | Send exit summarize on the open session, tear down, stop success |
-| Done + gates fail | Send exit summarize on the open session, tear down, fail with a workspace gate error |
-| Not done after `router_a_2` | Send `router_b`, then send exit summarize and stop success. Gates are not run. The `router_a` reply and the `router_b` reply are not checked for `__MALVIN_DONE__`. |
+| Gates pass | Send exit summarize on the open session, tear down, stop success. Do not start another iteration. |
+| Gates fail, and this iteration is below `max_loops` | Skip exit summarize. Start another full router iteration. |
+| Gates fail on the last iteration | Send exit summarize on the open session, tear down, fail with a workspace gate error |
+
+`DEFAULT_MAX_LOOPS` is 3, so a default `malvin --gates` run takes the continue row on the first two failures and the last-iteration row on the third. The `router_a` reply and the `router_b` reply are not checked for `__MALVIN_DONE__`.
 
 ### Required template keys
 
