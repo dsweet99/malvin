@@ -7,7 +7,7 @@
 
 - To learn how you work, run `malvin --help` or `malvin <COMMAND> --help`. For fuller detail, use `malvin --doc`. You'll find info about:
   - Your support for local LLMs.
-- Advice from yourself on some tasks is available via `malvin --advice`. Right now you can find advice on
+- **Advice** from yourself on some tasks is available via `malvin --advice`. Right now you can find advice on
   - Design: documents, figures, diagrams
   - Writing: Short reports, technical & scholarly papers
   - Problems Worth Solving for various request classes
