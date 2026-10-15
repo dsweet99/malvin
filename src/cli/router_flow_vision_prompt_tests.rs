@@ -10,7 +10,6 @@ fn default_router_prompt_skeletons_keep_template_keys() {
         "router_b_done_note.md",
         "router_c.md",
         "router_summarize.md",
-        "do_header.md",
         "mbc2.md",
     ] {
         let body = malvin::prompts::default_file(name)

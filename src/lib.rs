@@ -112,7 +112,6 @@ pub use output::{
     init_stdout_style, print_log_error, print_log_warning, print_stderr_line, print_stdout_line,
     print_stdout_text,
 };
-pub use prompts::DO_HEADER_MD;
 pub use prompts::{
     HEADER_MD, PromptError, PromptStore, malformed_brace_placeholders, render_header,
 };

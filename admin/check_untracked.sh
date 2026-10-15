@@ -22,10 +22,4 @@ if [ "$have_untracked" -eq 1 ]; then
     exit 1
 fi
 
-req_md="default_prompts/do_header.md"
-if [ -f "$req_md" ] && [ -z "$(git ls-files -- "$req_md" 2>/dev/null || true)" ]; then
-    echo "Error: $req_md exists on disk but is not tracked. It is required for the build (include_str! in src/prompts/defaults.rs). Run: git add $req_md"
-    exit 1
-fi
-
 exit 0

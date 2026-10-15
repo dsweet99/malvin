@@ -10,7 +10,6 @@ pub use default_files::{
 };
 
 pub const HEADER_MD: &str = "header.md";
-pub const DO_HEADER_MD: &str = "do_header.md";
 pub const ROUTER_CODE_EXTRA_MD: &str = "router_code_extra.md";
 pub const ROUTER_SUMMARIZE_MD: &str = "router_summarize.md";
 
@@ -20,7 +19,6 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "mbc2.md",
     "init_constraints.md",
     HEADER_MD,
-    DO_HEADER_MD,
     ROUTER_A_MD,
     ROUTER_A_2_MD,
     ROUTER_A_AUDIT_MD,
@@ -139,7 +137,7 @@ mod router_header_embed_tests {
     use std::path::Path;
 
     use super::{
-        DO_HEADER_MD, HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_LEAD_MD, ROUTER_B_DONE_NOTE_MD,
+        HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_LEAD_MD, ROUTER_B_DONE_NOTE_MD,
         ROUTER_B_MD, ROUTER_B_SATISFY_MD, ROUTER_SUMMARIZE_MD, default_file,
     };
     use crate::artifacts::create_run_artifacts;
@@ -178,7 +176,6 @@ mod router_header_embed_tests {
         assert!(default_file(ROUTER_B_MD).is_some());
         assert!(default_file(ROUTER_B_CREATIVE_LEAD_MD).is_some());
         assert!(default_file(ROUTER_SUMMARIZE_MD).is_some());
-        assert!(default_file(DO_HEADER_MD).is_some());
         assert!(default_file(HEADER_MD).is_some());
     }
 

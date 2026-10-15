@@ -1,4 +1,4 @@
-use super::{DO_HEADER_MD, HEADER_MD, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD};
+use super::{HEADER_MD, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD};
 
 pub const ROUTER_A_MD: &str = "router_a.md";
 pub const ROUTER_A_2_MD: &str = "router_a_2.md";
@@ -104,7 +104,6 @@ pub fn default_file(name: &str) -> Option<&'static str> {
         .or_else(|| default_router_prompt(name))
         .or_else(|| match name {
             HEADER_MD => Some(include_str!("../../default_prompts/header.md")),
-            DO_HEADER_MD => Some(include_str!("../../default_prompts/do_header.md")),
             _ => None,
         })
 }
