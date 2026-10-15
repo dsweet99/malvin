@@ -1,5 +1,5 @@
 use clap::{ArgAction, Args};
-use malvin::config::malvin_config_file::parse_model_cli_arg;
+use malvin::config::malvin_config_file::{DEFAULT_MAX_LOOPS, parse_model_cli_arg};
 use malvin::config::model_id::ParsedModel;
 pub use malvin::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 
@@ -10,6 +10,16 @@ const VERY_QUIET_HELPTEXT: &str = "Print nothing (-qq)";
 const CREATIVE_HELPTEXT: &str = "Be (more) creative for the REQUEST that immediately follows; optional probability in [0,1] (default 1.0 when set; repeatable)";
 
 const ML_HELPTEXT: &str = "Run the meta-loop N times (positive integer, or inf to repeat forever)";
+
+const MAX_LOOPS_HELPTEXT: &str =
+    "Outer-loop budget for the default route and gates-only runs (positive integer)";
+
+pub(crate) fn parse_max_loops(s: &str) -> Result<usize, String> {
+    s.parse::<usize>()
+        .ok()
+        .filter(|n| *n > 0)
+        .ok_or_else(|| format!("--max-loops must be a positive integer, got `{s}`"))
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum MetaLoopCount {
@@ -119,6 +129,14 @@ pub struct RouterOpts {
     /// Run workspace quality gates; treat failures as loop or exit criteria
     #[arg(short = 'g', long, default_value_t = false)]
     pub gates: bool,
+    /// Outer-loop budget for the default route and gates-only runs
+    #[arg(
+        long = "max-loops",
+        default_value_t = DEFAULT_MAX_LOOPS,
+        value_parser = parse_max_loops,
+        help = MAX_LOOPS_HELPTEXT
+    )]
+    pub max_loops: usize,
     /// Be (more) creative for the REQUEST that immediately follows (repeatable)
     #[arg(
         long,
@@ -209,6 +227,7 @@ impl RouterOpts {
             quiet: 0,
             very_quiet: false,
             gates: false,
+            max_loops: DEFAULT_MAX_LOOPS,
             creative: Vec::new(),
         }
     }

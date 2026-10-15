@@ -25,6 +25,26 @@ fn default_route_carries_quiet_on_router_opts() {
 }
 
 #[test]
+fn default_route_carries_max_loops() {
+    let cli = Cli::try_parse_from(["malvin", "--max-loops", "7", "build it"]).expect("parse");
+    let workflow = malvin_workflow_from_cli(cli).expect("default route");
+    match workflow {
+        MalvinWorkflow::DefaultRoute { router, .. } => {
+            assert_eq!(router.max_loops, 7);
+        }
+        other => panic!("expected DefaultRoute, got {other:?}"),
+    }
+    let gates = parse(&["malvin", "--max-loops", "6", "-g"]);
+    let workflow = malvin_workflow_from_cli(gates).expect("gates only");
+    match workflow {
+        MalvinWorkflow::GatesOnly { router, .. } => {
+            assert_eq!(router.max_loops, 6);
+        }
+        other => panic!("expected GatesOnly, got {other:?}"),
+    }
+}
+
+#[test]
 fn default_route_carries_router_opts() {
     let cli = Cli::try_parse_from(["malvin", "--creative=0.5", "build it"]).expect("parse");
     let workflow = malvin_workflow_from_cli(cli).expect("default route");

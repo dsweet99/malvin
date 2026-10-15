@@ -4,7 +4,6 @@ use crate::cli::{
     init_flow::{self, InitWorkflowOpts},
     run_tidy,
 };
-use malvin::config::malvin_config_file::DEFAULT_MAX_LOOPS;
 
 pub(crate) struct GatesOnlyDispatch<'a> {
     pub shared: &'a SharedOpts,
@@ -19,7 +18,7 @@ pub(crate) fn dispatch_gates_only_route(input: GatesOnlyDispatch<'_>) -> Result<
     run_async_cli(move || async move {
         init_flow::maybe_run_init_bootstrap(
             InitWorkflowOpts {
-                max_loops: DEFAULT_MAX_LOOPS,
+                max_loops: router.max_loops,
             },
             &shared,
             &router,
@@ -30,7 +29,7 @@ pub(crate) fn dispatch_gates_only_route(input: GatesOnlyDispatch<'_>) -> Result<
             let router = router.clone();
             async move {
                 run_tidy(
-                    DEFAULT_MAX_LOOPS,
+                    router.max_loops,
                     AgentRouteOpts {
                         shared: &shared,
                         router: &router,

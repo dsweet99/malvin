@@ -77,6 +77,18 @@ fn creative_on_next_router_request() {
 }
 
 #[test]
+fn max_loops_value_is_not_a_request() {
+    let tagged = classify_top_level_requests(&os(&["malvin", "--max-loops", "2", "task"]))
+        .expect("classify");
+    assert_eq!(tagged.len(), 1);
+    assert_eq!(tagged[0].text, "task");
+    let eq =
+        classify_top_level_requests(&os(&["malvin", "--max-loops=4", "other"])).expect("classify");
+    assert_eq!(eq.len(), 1);
+    assert_eq!(eq[0].text, "other");
+}
+
+#[test]
 fn advice_with_tag_consumes_following_token() {
     let tagged =
         classify_top_level_requests(&os(&["malvin", "--advice", "design"])).expect("classify");

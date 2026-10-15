@@ -1,7 +1,6 @@
 use super::entrypoint::run_async_cli;
 use super::{RouterOpts, SharedOpts, ml_loop, run_router};
 use crate::cli::request_argv::TaggedRequest;
-use malvin::config::malvin_config_file::DEFAULT_MAX_LOOPS;
 
 fn router_opts_for_job(base: &RouterOpts, job: &TaggedRequest) -> RouterOpts {
     base.clone().with_creative_probability(job.creative)
@@ -26,7 +25,7 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
     run_async_cli(move || async move {
         crate::cli::init_flow::maybe_run_init_bootstrap(
             crate::cli::init_flow::InitWorkflowOpts {
-                max_loops: DEFAULT_MAX_LOOPS,
+                max_loops: router.max_loops,
             },
             &shared,
             &router,
@@ -42,7 +41,7 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
                     run_router(
                         RouterArgs {
                             request: Some(job.text),
-                            max_loops: DEFAULT_MAX_LOOPS,
+                            max_loops: job_router.max_loops,
                         },
                         crate::cli::AgentRouteOpts {
                             shared: &shared,

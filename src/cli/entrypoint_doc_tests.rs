@@ -186,6 +186,24 @@ fn entrypoint_from_admin_rejects_removed_verbose_flag() {
 }
 
 #[test]
+fn entrypoint_from_admin_rejects_max_loops_flag() {
+    use malvin::test_support::test_stderr_capture::capture_stderr_output;
+
+    with_isolated_home(|_| {
+        let stderr = capture_stderr_output(|| {
+            assert_eq!(
+                entrypoint_from(["malvin", "--max-loops", "2", "admin", "models", "--doc",]),
+                Exit::Failure
+            );
+        });
+        assert!(
+            stderr.contains("admin") && stderr.contains("--max-loops"),
+            "expected admin+max-loops rejection; stderr={stderr:?}"
+        );
+    });
+}
+
+#[test]
 fn entrypoint_from_admin_rejects_max_acp_retries_flag() {
     use malvin::test_support::test_stderr_capture::capture_stderr_output;
 
