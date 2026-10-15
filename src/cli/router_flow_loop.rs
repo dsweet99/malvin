@@ -110,11 +110,16 @@ async fn finish_router_loop_step(
         RouterAcpIterationOutcome::Open {
             iteration_backups,
             done,
+            request_open,
             timing,
-        } => (Ok(()), iteration_backups, Some((done, timing))),
+        } => (
+            Ok(()),
+            iteration_backups,
+            Some((done, request_open, timing)),
+        ),
     };
     let last_backups = restore_router_iteration_dotfiles(work_dir, &iteration_backups)?;
-    let Some((done, timing)) = open_session else {
+    let Some((done, request_open, timing)) = open_session else {
         return Ok(RouterLoopStepResult {
             last_acp: acp_result,
             last_backups,
@@ -125,6 +130,7 @@ async fn finish_router_loop_step(
         artifacts: input.artifacts,
         backups: &last_backups,
         done,
+        request_open,
         gates: input.router.gates,
         agent_loop,
         max_loops,

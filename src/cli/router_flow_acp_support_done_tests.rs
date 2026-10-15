@@ -6,6 +6,7 @@ const SCRIPTED_REPLY_ENV: &str = "MOCK_BRIDGE_SCRIPTED_REPLY";
 
 struct MockRouterTurns {
     done: bool,
+    request_open: bool,
     router_log: String,
 }
 
@@ -79,13 +80,13 @@ async fn drive_router_turns(workspace: &std::path::Path) -> MockRouterTurns {
         agent_loop: 1,
         session_end: RunTimingSessionEnd::AccumulateRun,
     };
-    let done = run_router_turns(&mut input, &log_path)
+    let turns = run_router_turns(&mut input, &log_path)
         .await
-        .expect("router turns")
-        .done;
+        .expect("router turns");
     let _ = client.end_coder_session().await;
     MockRouterTurns {
-        done,
+        done: turns.done,
+        request_open: turns.request_open,
         router_log: std::fs::read_to_string(&log_path).unwrap_or_default(),
     }
 }
@@ -104,6 +105,12 @@ fn done_marker_in_router_a_reply_does_not_skip_later_turns() {
         "{}",
         turns.router_log
     );
+    assert!(
+        turns.router_log.contains("router_c"),
+        "{}",
+        turns.router_log
+    );
+    assert!(turns.request_open, "{}", turns.router_log);
 }
 
 #[test]
@@ -120,6 +127,12 @@ fn done_marker_in_router_a_2_reply_skips_router_b() {
         "{}",
         turns.router_log
     );
+    assert!(
+        !turns.router_log.contains("router_c"),
+        "{}",
+        turns.router_log
+    );
+    assert!(!turns.request_open);
 }
 #[test]
 fn done_marker_in_router_b_reply_does_not_stop_loop_and_no_done_marker_continues_loop() {
@@ -131,6 +144,12 @@ fn done_marker_in_router_b_reply_does_not_stop_loop_and_no_done_marker_continues
             turns.router_log
         );
         assert!(!turns.done);
+        assert!(turns.request_open, "{}", turns.router_log);
+        assert!(
+            turns.router_log.contains("router_c"),
+            "{}",
+            turns.router_log
+        );
     }
     {
         let turns = run_mock_router_turns("no prompt contains this needle");
@@ -145,5 +164,23 @@ fn done_marker_in_router_b_reply_does_not_stop_loop_and_no_done_marker_continues
             turns.router_log
         );
         assert!(!turns.done);
+        assert!(turns.request_open);
+        assert!(
+            turns.router_log.contains("router_c"),
+            "{}",
+            turns.router_log
+        );
     }
+}
+
+#[test]
+fn done_marker_in_router_c_reply_closes_the_request() {
+    let turns = run_mock_router_turns("Has the request been satisfied?");
+    assert!(!turns.done);
+    assert!(!turns.request_open, "{}", turns.router_log);
+    assert!(
+        turns.router_log.contains("router_c"),
+        "{}",
+        turns.router_log
+    );
 }

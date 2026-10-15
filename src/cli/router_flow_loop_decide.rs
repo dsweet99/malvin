@@ -12,6 +12,7 @@ pub(crate) struct RouterLoopExitInput<'a> {
     pub artifacts: &'a RunArtifacts,
     pub backups: &'a SessionDotfileBackups,
     pub done: bool,
+    pub request_open: bool,
     pub gates: bool,
     pub agent_loop: usize,
     pub max_loops: usize,
@@ -20,6 +21,9 @@ pub(crate) struct RouterLoopExitInput<'a> {
 pub(crate) fn decide_router_loop_exit(input: RouterLoopExitInput<'_>) -> RouterLoopDecision {
     if input.done {
         malvin::herdr::notify_working();
+    }
+    if input.request_open {
+        return open_request_exit(input.agent_loop, input.max_loops);
     }
     if !input.gates {
         return RouterLoopDecision::Exit;
@@ -30,6 +34,14 @@ pub(crate) fn decide_router_loop_exit(input: RouterLoopExitInput<'_>) -> RouterL
         input.agent_loop,
         input.max_loops,
     )
+}
+
+const fn open_request_exit(agent_loop: usize, max_loops: usize) -> RouterLoopDecision {
+    if agent_loop < max_loops {
+        RouterLoopDecision::Continue
+    } else {
+        RouterLoopDecision::Exit
+    }
 }
 
 pub(crate) fn decide_router_gates_exit(

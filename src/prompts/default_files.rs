@@ -7,6 +7,7 @@ pub const ROUTER_B_MD: &str = "router_b.md";
 pub const ROUTER_B_SATISFY_MD: &str = "router_b_satisfy.md";
 pub const ROUTER_B_CREATIVE_LEAD_MD: &str = "router_b_creative_lead.md";
 pub const ROUTER_B_DONE_NOTE_MD: &str = "router_b_done_note.md";
+pub const ROUTER_C_MD: &str = "router_c.md";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct RouterBPromptFlags {
@@ -90,6 +91,7 @@ fn default_router_b_fragment(name: &str) -> Option<&'static str> {
 fn default_router_prompt(name: &str) -> Option<&'static str> {
     match name {
         ROUTER_B_MD => Some(include_str!("../../default_prompts/router_b.md")),
+        ROUTER_C_MD => Some(include_str!("../../default_prompts/router_c.md")),
         ROUTER_CODE_EXTRA_MD => Some(include_str!("../../default_prompts/router_code_extra.md")),
         ROUTER_SUMMARIZE_MD => Some(include_str!("../../default_prompts/router_summarize.md")),
         _ => default_router_a_prompt(name).or_else(|| default_router_b_fragment(name)),
@@ -111,7 +113,7 @@ pub fn default_file(name: &str) -> Option<&'static str> {
 mod tests {
     use super::{
         HEADER_MD, ROUTER_A_2_MD, ROUTER_A_AUDIT_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_LEAD_MD,
-        ROUTER_B_DONE_NOTE_MD, ROUTER_B_MD, ROUTER_B_SATISFY_MD, RouterBPromptFlags,
+        ROUTER_B_DONE_NOTE_MD, ROUTER_B_MD, ROUTER_B_SATISFY_MD, ROUTER_C_MD, RouterBPromptFlags,
         default_constraints_prompt, default_file, header_prompt_file, router_a_2_prompt_file,
         router_a_audit_prompt_file, router_a_prompt_file, router_b_prompt_file,
         router_b_satisfy_prompt_file, router_b_uses_creative_lead, router_b_uses_done_note,
@@ -122,6 +124,7 @@ mod tests {
         assert!(default_file("router_a.md").is_some());
         assert!(default_file(ROUTER_A_2_MD).is_some());
         assert!(default_file("router_b.md").is_some());
+        assert!(default_file(ROUTER_C_MD).is_some());
         assert!(default_file(ROUTER_A_AUDIT_MD).is_some());
         assert!(default_file(ROUTER_B_SATISFY_MD).is_some());
         assert!(default_file(ROUTER_B_CREATIVE_LEAD_MD).is_some());

@@ -12,6 +12,7 @@ use super::router_flow::router_flow_acp::router_flow_coder_prompts::{
 pub(crate) struct RouterTurnsOutcome {
     pub iteration_backups: SessionDotfileBackups,
     pub done: bool,
+    pub request_open: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -50,11 +51,17 @@ pub(crate) async fn run_router_turns(
         .await
         .map_err(|e| e.to_string())?;
     let iteration_backups = deliver_router_initial_turn(input, log_path, creative).await?;
-    let done = finish_router_a_maybe_b(input, log_path, &model, creative).await?;
+    let followup = finish_router_a_maybe_b(input, log_path, &model, creative).await?;
     Ok(RouterTurnsOutcome {
         iteration_backups,
-        done,
+        done: followup.done,
+        request_open: followup.request_open,
     })
+}
+
+struct RouterFollowupFlags {
+    done: bool,
+    request_open: bool,
 }
 
 async fn deliver_router_initial_turn(
@@ -115,7 +122,7 @@ async fn finish_router_a_maybe_b(
     log_path: &Path,
     model: &str,
     creative: bool,
-) -> Result<bool, String> {
+) -> Result<RouterFollowupFlags, String> {
     let router_a_2 = router_flow_prompt::build_router_a_2_prompt(input.prompt_store)?;
     run_router_followup_coder_prompt(
         input.client,
@@ -125,7 +132,10 @@ async fn finish_router_a_maybe_b(
     )
     .await?;
     if last_response_has_malvin_done(input.client) {
-        return Ok(true);
+        return Ok(RouterFollowupFlags {
+            done: true,
+            request_open: false,
+        });
     }
     let router_b =
         router_flow_prompt::build_router_b_prompt(router_flow_prompt::RouterBPromptInput {
@@ -135,7 +145,25 @@ async fn finish_router_a_maybe_b(
             creative,
         })?;
     run_router_b_coder_prompt(input.client, &router_b, log_path).await?;
-    Ok(false)
+    send_router_c(input, log_path).await
+}
+
+async fn send_router_c(
+    input: &mut RouterAcpIterationInput<'_>,
+    log_path: &Path,
+) -> Result<RouterFollowupFlags, String> {
+    let router_c = router_flow_prompt::build_router_c_prompt(input.prompt_store)?;
+    run_router_followup_coder_prompt(
+        input.client,
+        &router_c,
+        log_path,
+        malvin::prompts::ROUTER_C_MD,
+    )
+    .await?;
+    Ok(RouterFollowupFlags {
+        done: false,
+        request_open: !last_response_has_malvin_done(input.client),
+    })
 }
 
 pub(crate) fn last_response_has_malvin_done(

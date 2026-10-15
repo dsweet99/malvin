@@ -14,8 +14,9 @@ pub(crate) use router_flow_prompt_summarize::{
 pub(crate) use super::router_flow_prompt_turns;
 pub(crate) use router_flow_prompt_turns::{
     RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput, build_router_a_2_prompt,
-    build_router_a_prompt, build_router_b_prompt, build_router_header_prompt,
-    build_router_mbc2_prompt, router_a_prompt_label, router_b_prompt_label,
+    build_router_a_prompt, build_router_b_prompt, build_router_c_prompt,
+    build_router_header_prompt, build_router_mbc2_prompt, router_a_prompt_label,
+    router_b_prompt_label,
 };
 
 pub(crate) use super::router_flow_prompt_initial;
@@ -44,6 +45,7 @@ fn validate_router_required_prompts(store: &PromptStore) -> Result<(), String> {
         malvin::prompts::router_b_satisfy_prompt_file(RouterBPromptFlags { creative: true }),
         malvin::prompts::ROUTER_B_CREATIVE_LEAD_MD,
         malvin::prompts::ROUTER_B_DONE_NOTE_MD,
+        malvin::prompts::ROUTER_C_MD,
         ROUTER_CODE_EXTRA_MD,
         ROUTER_SUMMARIZE_MD,
     ];
@@ -120,6 +122,7 @@ mod kiss_cov_gate_refs {
         let _ = build_router_a_prompt;
         let _ = build_router_a_2_prompt;
         let _ = build_router_b_prompt;
+        let _ = build_router_c_prompt;
         let _ = build_router_mbc2_prompt;
         let _ = build_router_initial_prompt;
         let _: Option<RouterInitialPrompt> = None;

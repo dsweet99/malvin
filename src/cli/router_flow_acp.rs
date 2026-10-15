@@ -27,6 +27,7 @@ pub(crate) enum RouterAcpIterationOutcome {
     Open {
         iteration_backups: SessionDotfileBackups,
         done: bool,
+        request_open: bool,
         timing: Arc<Mutex<malvin::run_timing::RunTiming>>,
     },
 }
@@ -71,6 +72,7 @@ pub(crate) async fn run_router_acp_open_iteration(
         Ok(turns) => RouterAcpIterationOutcome::Open {
             iteration_backups: turns.iteration_backups,
             done: turns.done,
+            request_open: turns.request_open,
             timing,
         },
         Err(e) => {

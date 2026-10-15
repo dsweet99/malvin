@@ -7,7 +7,7 @@ pub use template::*;
 pub use defaults::{
     DO_HEADER_MD, HEADER_MD, ROUTER_A_2_MD, ROUTER_A_AUDIT_MD, ROUTER_A_MD,
     ROUTER_B_CREATIVE_LEAD_MD, ROUTER_B_DONE_NOTE_MD, ROUTER_B_MD, ROUTER_B_SATISFY_MD,
-    ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD, RouterBPromptFlags, header_prompt_file,
+    ROUTER_C_MD, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD, RouterBPromptFlags, header_prompt_file,
     router_a_2_prompt_file, router_a_audit_prompt_file, router_a_prompt_file, router_b_prompt_file,
     router_b_satisfy_prompt_file, router_b_uses_creative_lead, router_b_uses_done_note,
 };

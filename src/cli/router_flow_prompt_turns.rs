@@ -79,6 +79,10 @@ pub(crate) fn build_router_a_2_prompt(store: &PromptStore) -> Result<String, Str
     prompt_fragment(store, router_a_2_prompt_file())
 }
 
+pub(crate) fn build_router_c_prompt(store: &PromptStore) -> Result<String, String> {
+    prompt_fragment(store, malvin::prompts::ROUTER_C_MD)
+}
+
 pub(crate) struct RouterBPromptInput<'a> {
     pub store: &'a PromptStore,
     pub artifacts: &'a RunArtifacts,
