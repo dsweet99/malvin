@@ -72,15 +72,17 @@ fn outgoing_prompt_log_uses_p_tag_and_drops_md_extension() {
         "expected p| and stem without .md: {text:?}"
     );
     assert!(
-        text.contains(&format!("{delim}header+router_a")),
-        "expected each prompt file stem: {text:?}"
+        text.contains(&format!("{delim}header")) && text.contains(&format!("{delim}router_a")),
+        "expected each internal prompt on its own line: {text:?}"
     );
     assert!(
-        !text.contains(".md"),
-        "prompt file log must drop the .md extension: {text:?}"
+        !text.contains('+') && !text.contains(".md"),
+        "prompt file log must split stems and drop .md: {text:?}"
     );
+    let header_at = live.find("p|header").expect("live header");
+    let router_at = live.find("p|router_a").expect("live router_a");
     assert!(
-        live.contains("p|bug_fix") && live.contains("p|header+router_a"),
-        "prompt file name must show on the live terminal: {live:?}"
+        live.contains("p|bug_fix") && header_at < router_at && !live.contains('+'),
+        "each internal prompt must show on the live terminal: {live:?}"
     );
 }

@@ -117,15 +117,18 @@ pub fn clear_captured_stderr_lines() {
 }
 
 pub fn print_outgoing_prompt_log(_trace_who: &str, bracket_label: &str) {
-    print_stdout_line(who_tag::WHO_P, &prompt_file_log_name(bracket_label));
+    for name in prompt_file_stems(bracket_label) {
+        print_stdout_line(who_tag::WHO_P, name);
+    }
 }
 
-fn prompt_file_log_name(label: &str) -> String {
-    label
-        .split('+')
-        .map(|part| part.strip_suffix(".md").unwrap_or(part))
-        .collect::<Vec<_>>()
-        .join("+")
+fn prompt_file_stems(label: &str) -> impl Iterator<Item = &str> {
+    label.split('+').filter_map(prompt_file_stem)
+}
+
+fn prompt_file_stem(part: &str) -> Option<&str> {
+    let stem = part.strip_suffix(".md").unwrap_or(part);
+    (!stem.is_empty()).then_some(stem)
 }
 
 pub fn append_outgoing_prompt_log_lines(body: &str) {
