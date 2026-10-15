@@ -117,13 +117,15 @@ pub fn clear_captured_stderr_lines() {
 }
 
 pub fn print_outgoing_prompt_log(_trace_who: &str, bracket_label: &str) {
-    let bracket_payload = format!("[{bracket_label}...]");
-    let ts = timestamp_now_string();
-    append_stdout_log_line(&stdout_log_pair::tagged_log_line(
-        &ts,
-        who_tag::WHO_U,
-        &bracket_payload,
-    ));
+    print_stdout_line(who_tag::WHO_P, &prompt_file_log_name(bracket_label));
+}
+
+fn prompt_file_log_name(label: &str) -> String {
+    label
+        .split('+')
+        .map(|part| part.strip_suffix(".md").unwrap_or(part))
+        .collect::<Vec<_>>()
+        .join("+")
 }
 
 pub fn append_outgoing_prompt_log_lines(body: &str) {
@@ -134,7 +136,7 @@ pub fn append_outgoing_prompt_log_lines(body: &str) {
 }
 
 pub use who_tag::{
-    LOG_TAG_INNER_WIDTH, WHO_A, WHO_B, WHO_H, WHO_M, WHO_O, WHO_R, WHO_T, WHO_U,
+    LOG_TAG_INNER_WIDTH, WHO_A, WHO_B, WHO_H, WHO_M, WHO_O, WHO_P, WHO_R, WHO_T, WHO_U,
     format_acp_directional_tag_prefix, format_log_tag_inner, format_who_tag_delim,
     format_who_tag_prefix, is_command_prelude_line,
 };

@@ -137,8 +137,8 @@ mod router_header_embed_tests {
     use std::path::Path;
 
     use super::{
-        HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_LEAD_MD, ROUTER_B_DONE_NOTE_MD,
-        ROUTER_B_MD, ROUTER_B_SATISFY_MD, ROUTER_SUMMARIZE_MD, default_file,
+        HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_LEAD_MD, ROUTER_B_DONE_NOTE_MD, ROUTER_B_MD,
+        ROUTER_B_SATISFY_MD, ROUTER_SUMMARIZE_MD, default_file,
     };
     use crate::artifacts::create_run_artifacts;
     use crate::cli::router_flow::router_flow_prompt::{
