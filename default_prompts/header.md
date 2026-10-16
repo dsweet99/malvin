@@ -89,7 +89,7 @@ If uncertainty remains high, especially about the operator's preferences, try on
 - Evidence is ideally based on direct observation -- measurements of some kind. Reference to a prior
   publication of good evidence is acceptable, too (although you should state how confident you are
   in the publication's evidence)
-
+- Keep an evidence log in {{ exp_log }} for reference by you and by future agents.
 
 ## Style
 
