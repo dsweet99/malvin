@@ -3,7 +3,10 @@ use serde_json::json;
 use super::backend_setup::{preflight, setup_for};
 use super::config::{ModalConfig, parse_modal_config, read_config_root, remote_config_text};
 use super::credentials::{FORWARDED_ENV, forwarded_env};
-use super::image::{DEFAULT_BASE, TOOLCHAIN, crates_io_layer, image_name, image_spec};
+use super::image::{
+    DEFAULT_BASE, TOOLCHAIN, base_for_host_glibc, crates_io_layer, image_name, image_spec,
+    toolchain_commands,
+};
 use super::options::{ModalOptions, parse_modal_spec};
 
 fn cfg(text: &str, mem: u64) -> Result<ModalConfig, String> {
@@ -157,10 +160,13 @@ fn image_spec_layers_toolchain_setup_and_source() {
     let mut c = cfg("", 4).unwrap();
     c.setup = vec!["RUN extra".to_string()];
     let spec = image_spec(&c, "cursor:auto", Some(bin.clone())).unwrap();
-    assert_eq!(spec.base, DEFAULT_BASE);
+    assert_eq!(spec.base, base_for_host_glibc(spec.min_glibc.as_deref()));
     assert_eq!(
         spec.layers,
-        vec![vec![TOOLCHAIN.to_string()], c.setup.clone()]
+        vec![
+            toolchain_commands(spec.base == DEFAULT_BASE),
+            c.setup.clone()
+        ]
     );
     assert_eq!(spec.binary, Some(bin));
     c.image = Some("custom:1".to_string());
@@ -174,6 +180,19 @@ fn image_spec_layers_toolchain_setup_and_source() {
     assert!(custom.min_glibc.is_none());
     assert_eq!(custom.request(true)["force"], json!(true));
     assert!(crates_io_layer("9.9.9")[1].contains("--version 9.9.9 --locked"));
+}
+
+#[test]
+fn base_follows_host_glibc_and_ubuntu_images_install_node() {
+    assert_eq!(base_for_host_glibc(None), DEFAULT_BASE);
+    assert_eq!(base_for_host_glibc(Some("2.41")), DEFAULT_BASE);
+    assert_eq!(base_for_host_glibc(Some("2.42")), "ubuntu:26.04");
+    assert_eq!(base_for_host_glibc(Some("2.43")), "ubuntu:26.04");
+    assert_eq!(base_for_host_glibc(Some("2.44")), "ubuntu:26.10");
+    assert_eq!(base_for_host_glibc(Some("2.45")), "ubuntu:26.10");
+    assert_eq!(toolchain_commands(true), vec![TOOLCHAIN.to_string()]);
+    let ubuntu = toolchain_commands(false);
+    assert!(ubuntu[0].contains("xz-utils") && ubuntu[1].contains("nodejs.org/dist/v22.23.3"));
 }
 
 #[test]

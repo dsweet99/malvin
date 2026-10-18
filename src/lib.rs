@@ -85,6 +85,10 @@ pub(crate) mod time_format;
 mod tracing_init;
 pub use agent_process::active_agent_heartbeat::active_agent_heartbeat_stats;
 pub use workspace::user_home::user_home_dir;
+#[cfg(test)]
+#[allow(dead_code)]
+#[path = "advice_registry_build.rs"]
+mod advice_registry_build;
 pub mod agent_process;
 pub mod ansi_strip;
 pub(crate) mod http_fetch;
@@ -92,10 +96,6 @@ pub mod local_llm;
 pub mod modal_run;
 mod npm_bridge_install;
 pub mod pricing;
-#[cfg(test)]
-#[allow(dead_code)]
-#[path = "advice_registry_build.rs"]
-mod advice_registry_build;
 #[cfg(test)]
 pub(crate) mod sdk_bridge_build;
 pub mod tool_summary;
