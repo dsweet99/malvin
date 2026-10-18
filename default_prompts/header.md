@@ -28,7 +28,7 @@ When you load prior context, label it `HISTORY` with a number indicating how old
 
 {{ agents_insert }}
 
-## Calibration
+# Calibration
 
 Before starting work state an estimate:
 
@@ -38,7 +38,7 @@ Predicted running time: <prediction>
 
 ---
 
-## General Rules
+# General Rules
 
 ## Subagents
 
@@ -71,7 +71,7 @@ If uncertainty remains high, especially about the operator's preferences, try on
 
 ---
 
-## Communication
+# Communication
 
 ## Definition: Claims vs Hypotheses
 
@@ -95,7 +95,7 @@ If uncertainty remains high, especially about the operator's preferences, try on
 
 When addressing the operator:
 
-- Write in clear, plain language.
+- Write in clear, plain language. Avoid elliptical language.
 - Write for a reader that is intelligent but not a specialist in the topic (unless
    otherwise specified).
 - Use complete sentences.

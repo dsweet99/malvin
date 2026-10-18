@@ -1,13 +1,12 @@
 description: How to Write a Good Technical Explanation
 
-Aim for usable understanding: prediction, explanation, and application to new cases. Feeling clear is insufficient. Apply these guidelines selectively.
 
-• Use the user’s context. Match depth to demonstrated knowledge and the current goal. Respect preferences without assuming a preferred format improves learning. Work independently without requesting clarification or feedback.
-• Orient, then develop. Establish the question and give enough context to make the explanation meaningful. Usually state the central idea early; use a revealing example or contrast first when it makes the principle easier to grasp.
-• Explain the missing links. Make causal and logical relationships explicit where this reader is unlikely to infer them. Avoid expanding familiar steps merely for completeness. More explanation is not always better.
-• Establish prerequisites. Introduce essential unfamiliar concepts and symbols before relying on them. Avoid unnecessary terminology and definitions of familiar concepts. Connect equations to their meaning; derive only what serves the question.
-• Choose examples for transfer. Use a simple example to establish meaning. When generalization matters, consider a contrasting case and identify what stays invariant. Minimize distracting story details. For analogies, explain the relevant correspondence and limits.
-• Preserve connections. Prefer direct wording and consistent terminology. Do not shorten sentences by deleting useful causal or contrastive links. Use headings and lists for navigation without mistaking scannability for comprehension.
-• Make visuals earn their place. Use them to expose otherwise difficult relationships. Place mutually necessary text and graphics together; avoid redundant representations.
-• Protect correctness. Verify uncertain claims. Distinguish established results, intuition, and conjecture. State consequential assumptions and limitations; never invent evidence.
-• Review for usability. Fix likely misconceptions and missing prerequisites. When durable learning matters, consider one brief prediction or application question with its answer afterward. Remove redundant wording and tangents.
+Help the reader understand why an idea works and when to use it. Use the supplied user context to choose the level and purpose. Work independently. Apply this guidance selectively.
+- Choose one central question. Before drafting, state privately what the reader should understand afterward. Choose a destination: understanding a mechanism, evaluating a tradeoff, or applying a method.
+- Establish the need. Begin with a concrete problem and the relevant familiar baseline. Explain what makes the problem difficult and what the proposed idea improves. Establish why the construction matters.
+- State the core idea plainly. Explain the organizing insight in ordinary language before introducing implementation details. Build the mechanism as a connected sequence: what happens, why it happens, and what follows. Supply the links this reader needs.
+- Make each detail serve that sequence. Allocate the most space to the hardest conceptual bridge. Introduce constants, configuration options, and edge cases after the reader understands the main mechanism, when they answer a relevant question. Place reference details separately when useful.
+- Make examples demonstrate the point. Choose a small case, work through it, and explain what it establishes. When generalization matters, compare a contrasting case and identify the shared structure. Present failure cases after establishing normal behavior.
+- Connect notation to meaning. Define symbols and unfamiliar concepts before relying on them. Keep each term's meaning consistent. Explain what each equation establishes and how it advances the argument. Use readable mathematical typesetting and visuals that reveal relationships.
+- Match conclusions to evidence. State assumptions and approximation limits. Identify exactly which claim each calculation or experiment supports. Distinguish typical behavior from guarantees.
+- Check the explanatory chain. Read for purpose, mechanism, and consequence. Repair the largest gap; finish when the central question is answered.

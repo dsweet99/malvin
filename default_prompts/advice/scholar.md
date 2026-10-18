@@ -45,4 +45,5 @@ Every major front section answers the same spine:
 - No copy-paste from other papers except verbatim quotes.
 - Consistent EN-US or EN-GB; consistent bold/italic convention; no random Capitalization; no AI anthropomorphism; no subjective adjectives as claims.
 - Avoid synonym drift for paper-specific terms; if a term collides with common usage, disambiguate once with an example.
+- To make comparison visuals easier to interpret, notate with "X is better", e.g., "Lower is better", "Right is better", etc.
 
