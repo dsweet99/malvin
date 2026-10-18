@@ -114,10 +114,15 @@ fn description_for(content: &str, tag: &str) -> String {
     append_file_stats(desc, content)
 }
 
+const fn count_noun<'a>(n: usize, singular: &'a str, plural: &'a str) -> &'a str {
+    if n == 1 { singular } else { plural }
+}
+
 fn append_file_stats(desc: &str, content: &str) -> String {
     let lines = content.lines().count();
     let words = word_count(content);
-    format!("{desc} [{lines} line, {words} words]")
+    let line_word = count_noun(lines, "line", "lines");
+    format!("{desc} [{lines} {line_word}, {words} words]")
 }
 
 fn strip_optional_quotes(s: &str) -> &str {
@@ -171,4 +176,23 @@ fn escape_rust_str(s: &str) -> String {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::append_file_stats;
+
+    #[test]
+    fn file_stats_use_line_when_count_is_one() {
+        let stats = append_file_stats("One", "only one\n");
+        assert_eq!(stats, "One [1 line, 2 words]");
+    }
+
+    #[test]
+    fn file_stats_use_lines_when_count_is_not_one() {
+        let many = append_file_stats("Many", "a\nb\n");
+        assert_eq!(many, "Many [2 lines, 2 words]");
+        let none = append_file_stats("None", "");
+        assert_eq!(none, "None [0 lines, 0 words]");
+    }
 }

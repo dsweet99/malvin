@@ -192,7 +192,8 @@ mod tests {
                 .trim();
             let lines = content.lines().count();
             let words = content.split_whitespace().count();
-            let expected = format!("{value} [{lines} line, {words} words]");
+            let line_word = if lines == 1 { "line" } else { "lines" };
+            let expected = format!("{value} [{lines} {line_word}, {words} words]");
             assert_eq!(
                 entry.description, expected,
                 "registry description must match first-line value plus file size for {}",

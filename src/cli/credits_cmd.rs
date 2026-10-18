@@ -20,7 +20,10 @@ mod tests {
         let mut buf = Vec::new();
         print_credits_to_writer(&mut buf).expect("print");
         let text = String::from_utf8(buf).expect("utf8");
-        assert!(!text.contains("Karl Popper"));
+        assert!(text.contains("Karl Popper"));
+        assert!(text.contains("The Logic of Scientific Discovery"));
+        assert!(text.contains("Michael Timothy Bennett"));
+        assert!(text.contains("2301.12987"));
         assert!(text.contains("Margaret Boden"));
         assert!(text.contains("Exploratory Creativity"));
         assert!(text.contains("The Creative Mind: Myths and Mechanisms"));

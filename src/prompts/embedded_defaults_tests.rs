@@ -73,6 +73,10 @@ fn insert_header_runtime_placeholders(ctx: &mut HashMap<String, String>) {
         "current_state".to_string(),
         "User: test\nDate/time: now\nSandbox memory: limit 4 GiB\nRetry: not a retry".to_string(),
     );
+    ctx.insert(
+        "exp_log".to_string(),
+        "/home/.malvinconf/logs/abc123/_run/exp_log_test.md".to_string(),
+    );
 }
 
 fn default_prompt_store_with_unset_home() -> (super::PromptStore, HashMap<String, String>) {

@@ -93,6 +93,10 @@ pub mod modal_run;
 mod npm_bridge_install;
 pub mod pricing;
 #[cfg(test)]
+#[allow(dead_code)]
+#[path = "advice_registry_build.rs"]
+mod advice_registry_build;
+#[cfg(test)]
 pub(crate) mod sdk_bridge_build;
 pub mod tool_summary;
 pub use agent_process::{AgentError, AgentFault, AgentIoOptions, AuthError, CoderPromptOptions};
