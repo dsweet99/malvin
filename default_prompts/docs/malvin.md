@@ -109,7 +109,7 @@ Other subcommand arguments are not required when `--advice` is set.
 
 ### `--credits`
 
-Print credits for the published ideas malvin builds on (embedded from `default_prompts/credits.md`) to stdout and exit. Does not spawn an agent or create a run directory under `~/.malvinconf/logs/`. Other arguments (for example `<REQUEST>`) are ignored when `--credits` is set.
+Print credits for the published ideas malvin builds on (embedded from `default_prompts/docs/credits.md`) to stdout and exit. Does not spawn an agent or create a run directory under `~/.malvinconf/logs/`. Other arguments (for example `<REQUEST>`) are ignored when `--credits` is set.
 
 ## Quality gates (`.malvin/gates`)
 
