@@ -110,22 +110,32 @@ fn a_second_separator_starts_another_table() {
 }
 
 #[test]
-fn stdout_log_records_bordered_table_rows() {
+fn stdout_log_keeps_raw_table_and_display_draws_borders() {
+    use crate::output::{
+        DO_DM_TEST_LOCK, enable_stdout_capture, set_do_dm_stdout_mode, take_captured_stdout,
+    };
+    let _dm = DO_DM_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let _guard = STDOUT_LOG_TEST_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
+    set_do_dm_stdout_mode(false);
     let tmp = tempfile::tempdir().expect("tempdir");
     let path = tmp.path().join("stdout.log");
     set_stdout_log_path(Some(path.clone()));
     init_stdout_style_for_test(false);
+    enable_stdout_capture();
     print_stdout_line_with_markdown(WHO_M, "| A | B |", true);
     print_stdout_line_with_markdown(WHO_M, "| --- | --- |", true);
     print_stdout_line_with_markdown(WHO_M, "| c | d |", true);
     flush_formatted_markdown_tables();
+    let display = take_captured_stdout();
     set_stdout_log_path(None);
     let text = std::fs::read_to_string(path).expect("read");
-    assert!(text.contains("+---+---+"), "{text}");
+    assert!(display.contains("+---+---+"), "{display}");
     assert!(text.contains("| A | B |"), "{text}");
+    assert!(text.contains("| --- | --- |"), "{text}");
     assert!(text.contains("| c | d |"), "{text}");
-    assert!(!text.contains("| --- |"), "{text}");
+    assert!(!text.contains("+---+---+"), "{text}");
 }

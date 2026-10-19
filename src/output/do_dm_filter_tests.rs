@@ -1,6 +1,7 @@
 use super::{DM_END, DM_START, feed_do_dm_stdout_text, reset_do_dm_filter};
 use crate::output::{
-    do_dm_stdout_mode, enable_stdout_capture, set_do_dm_stdout_mode, take_captured_stdout,
+    DoDmStdoutOpts, do_dm_stdout_mode, enable_stdout_capture, set_do_dm_stdout_mode,
+    set_do_dm_stdout_opts, take_captured_stdout,
 };
 
 fn with_dm_capture(f: impl FnOnce()) -> String {
@@ -114,6 +115,49 @@ fn accepts_markers_with_surrounding_whitespace_and_streaming_leading_whitespace_
         });
         assert_eq!(out, "chunked");
     }
+}
+
+#[test]
+#[allow(unsafe_code)]
+fn markdown_dm_renders_termimad_on_stdout() {
+    let _dm = crate::output::DO_DM_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _stdout = crate::output::STDOUT_LOG_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let prev = std::env::var_os("NO_COLOR");
+    unsafe {
+        std::env::remove_var("NO_COLOR");
+    }
+    crate::output::reset_dm_hook_state();
+    reset_do_dm_filter();
+    crate::output::init_stdout_style_for_test(true);
+    set_do_dm_stdout_opts(DoDmStdoutOpts {
+        enabled: true,
+        emit_markdown: true,
+    });
+    enable_stdout_capture();
+    feed_do_dm_stdout_text(&format!(
+        "{DM_START}\n# Hello\n\n**bold** item\n\n| A | B |\n| --- | --- |\n| c | d |\n{DM_END}\n"
+    ));
+    let out = take_captured_stdout();
+    set_do_dm_stdout_mode(false);
+    reset_do_dm_filter();
+    unsafe {
+        match prev {
+            Some(v) => std::env::set_var("NO_COLOR", v),
+            None => std::env::remove_var("NO_COLOR"),
+        }
+    }
+    let shown = crate::ansi_strip::strip_ansi_escapes(&out);
+    assert!(shown.contains("Hello"), "{shown}");
+    assert!(
+        shown.contains("bold") && !shown.contains("**bold**"),
+        "{shown}"
+    );
+    assert!(shown.contains('+'), "{shown}");
+    assert!(!shown.contains("| --- |"), "{shown}");
 }
 
 #[test]
