@@ -105,7 +105,7 @@ When writing, unless otherwise directed:
 - Use .md for short, code-related reports and .tex/.pdf anything
   - long or deep
   - not code-related
-
+- For an in-depth research report, prefer two-column, academic style
 
 ## Macros
 
