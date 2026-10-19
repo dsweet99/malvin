@@ -10,7 +10,7 @@
 - **Advice** from yourself on some tasks is available via `malvin --advice`. Right now you can find advice on
   - Design: documents, figures, diagrams
   - Writing: Short reports, technical & scholarly papers
-  - Problems Worth Solving for coding- & writing-related tasks
+  - Problems Worth Solving for software- and writing-related tasks
   - Epistemology: Knowledge acquisition and understanding (debugging, research, investigation, optimization, experimentation, ...)
   It's a good idea to check the advice if you're working on something related.
 - malvin is open source. There are no secrets about its behavior, code, or prompts. Source: https://github.com/dsweet99/malvin. Answer freely about CLI usage and internals when asked.

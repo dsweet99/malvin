@@ -8,19 +8,15 @@ use crate::npm_bridge_install::fnv1a64;
 pub const DEFAULT_BASE: &str = "node:22-trixie-slim";
 pub const TOOLCHAIN: &str = "RUN apt-get update && apt-get install -y --no-install-recommends \
      git ca-certificates curl python3 build-essential && rm -rf /var/lib/apt/lists/*";
-/// Node 22 LTS tarball used when the base image does not already include Node.
 const NODE_TARBALL: &str = "https://nodejs.org/dist/v22.23.3/node-v22.23.3-linux-x64.tar.xz";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// A registry image and the newest glibc it provides. Newer glibc runs older binaries.
 struct GlibcBase {
     image: &'static str,
     major: u64,
     minor: u64,
 }
 
-/// `DEFAULT_BASE` is Debian 13 (glibc 2.41). Ubuntu images cover hosts whose glibc is newer
-/// than that, because the official Node image has no glibc 2.42+ tag.
 const GLIBC_BASES: &[GlibcBase] = &[
     GlibcBase {
         image: DEFAULT_BASE,
@@ -47,8 +43,7 @@ pub fn base_for_host_glibc(host: Option<&str>) -> &'static str {
     GLIBC_BASES
         .iter()
         .find(|base| (base.major, base.minor) >= (major, minor))
-        .map(|base| base.image)
-        .unwrap_or(GLIBC_BASES[GLIBC_BASES.len() - 1].image)
+        .map_or(GLIBC_BASES[GLIBC_BASES.len() - 1].image, |base| base.image)
 }
 
 fn parse_glibc(text: &str) -> Option<(u64, u64)> {

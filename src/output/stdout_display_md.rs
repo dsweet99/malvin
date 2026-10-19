@@ -1,3 +1,4 @@
+use super::md_table::{MdPiece, ReadyLine, flush_stdout_markdown, push_stdout_markdown};
 use super::stdout_display::print_stdout_rendered_line;
 use super::stdout_line_wrap_meta;
 use super::{
@@ -6,15 +7,53 @@ use super::{
 };
 
 pub fn print_stdout_line_with_markdown(who: &str, line: &str, emit_stdout_markdown: bool) {
-    for para in line.split('\n') {
-        let ts = super::timestamp_now_string();
-        print_stdout_para(who, para, ts.as_str(), emit_stdout_markdown);
+    if !emit_stdout_markdown {
+        emit_ready_lines(flush_stdout_markdown());
+        print_plain_parts(who, line);
+        return;
+    }
+    let parts = paragraphs(line);
+    let multiline = parts.len() > 1;
+    for para in parts {
+        let (width, _) = stdout_line_wrap_meta(who, para);
+        emit_ready_lines(push_stdout_markdown(who, para, width));
+    }
+    if multiline {
+        emit_ready_lines(flush_stdout_markdown());
     }
 }
 
 pub fn print_stdout_text_with_markdown(who: &str, text: &str, emit_stdout_markdown: bool) {
-    for line in super::stdout_display::logical_lines(text) {
-        print_stdout_line_with_markdown(who, line, emit_stdout_markdown);
+    print_stdout_line_with_markdown(who, text, emit_stdout_markdown);
+}
+
+pub fn flush_formatted_markdown_tables() {
+    emit_ready_lines(flush_stdout_markdown());
+}
+
+fn paragraphs(line: &str) -> Vec<&str> {
+    let parts: Vec<&str> = super::logical_lines(line).collect();
+    if parts.is_empty() { vec![""] } else { parts }
+}
+
+fn print_plain_parts(who: &str, line: &str) {
+    for para in paragraphs(line) {
+        let ts = super::timestamp_now_string();
+        print_stdout_para(who, para, ts.as_str(), false);
+    }
+}
+
+fn emit_ready_lines(lines: Vec<ReadyLine>) {
+    for ready in lines {
+        emit_ready(&ready.who, ready.piece);
+    }
+}
+
+fn emit_ready(who: &str, piece: MdPiece) {
+    let ts = super::timestamp_now_string();
+    match piece {
+        MdPiece::Rendered(line) => emit_tagged_rendered(who, &line, ts.as_str()),
+        MdPiece::Source(line) => print_stdout_para(who, &line, ts.as_str(), true),
     }
 }
 

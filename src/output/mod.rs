@@ -5,6 +5,7 @@ mod do_dm_emit;
 mod do_dm_filter;
 mod do_dm_mode;
 mod do_dm_on_emit;
+mod md_table;
 mod sentinel;
 pub(crate) mod stderr_log;
 mod stdout_defer;
@@ -47,7 +48,10 @@ pub use sentinel::{DM_END, DM_START, MALVIN_DONE, is_sentinel_line};
 pub use stdout_display::{
     print_stdout_line, print_stdout_raw_line, print_stdout_raw_line_with_ts, print_stdout_text,
 };
-pub use stdout_display_md::{print_stdout_line_with_markdown, print_stdout_text_with_markdown};
+pub use stdout_display_md::{
+    flush_formatted_markdown_tables, print_stdout_line_with_markdown,
+    print_stdout_text_with_markdown,
+};
 pub use stdout_heartbeat::{heartbeat_stdout_suppressed, set_heartbeat_stdout_suppressed};
 pub use stdout_terminal::{
     set_stdout_display_discarded, set_stdout_suppressed, stdout_display_discarded,
