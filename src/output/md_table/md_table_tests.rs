@@ -24,12 +24,12 @@ fn aligned_table_matches_mdless_borders_and_rules() {
     assert_eq!(
         lines,
         vec![
-            "+------------------+--------+--------+------+",
-            "| Just             | a      | header | row  |",
-            "|------------------|--------|-------:|:----:|",
-            "| a something long | short  | medium |      |",
-            "| a                | little |   more | data |",
-            "+------------------+--------+--------+------+",
+            "┌──────────────────┬────────┬────────┬──────┐",
+            "│ Just             │ a      │ header │ row  │",
+            "├──────────────────┼────────┼────────┼──────┤",
+            "│ a something long │ short  │ medium │      │",
+            "│ a                │ little │   more │ data │",
+            "└──────────────────┴────────┴────────┴──────┘",
         ]
     );
 }
@@ -43,14 +43,14 @@ fn wide_cell_wraps_inside_the_terminal_budget() {
     assert_eq!(
         lines,
         vec![
-            "+-----------+--------+--------+------+",
-            "| Just      | a      | header | row  |",
-            "|-----------|--------|-------:|:----:|",
-            "| a         | short  | medium |      |",
-            "| something |        |        |      |",
-            "| long      |        |        |      |",
-            "| a         | little |   more | data |",
-            "+-----------+--------+--------+------+",
+            "┌───────────┬────────┬────────┬──────┐",
+            "│ Just      │ a      │ header │ row  │",
+            "├───────────┼────────┼────────┼──────┤",
+            "│ a         │ short  │ medium │      │",
+            "│ something │        │        │      │",
+            "│ long      │        │        │      │",
+            "│ a         │ little │   more │ data │",
+            "└───────────┴────────┴────────┴──────┘",
         ]
     );
 }
@@ -62,7 +62,7 @@ fn right_aligned_amount_is_padded_on_the_left() {
         .iter()
         .find(|line| line.contains("12"))
         .expect("amount");
-    let cell = amount.split('|').nth(2).expect("cell");
+    let cell = amount.split('│').nth(2).expect("cell");
     assert!(
         cell.trim_end() == "    12" || cell.contains("12"),
         "amount not right aligned: {amount}"
@@ -78,7 +78,12 @@ fn fenced_pipe_rows_stay_literal() {
     assert!(
         pieces
             .iter()
-            .all(|piece| matches!(piece, MdPiece::Source(_)))
+            .any(|piece| matches!(piece, MdPiece::Code { .. }))
+    );
+    assert!(
+        pieces
+            .iter()
+            .all(|piece| !matches!(piece, MdPiece::Rendered(_)))
     );
 }
 
@@ -101,10 +106,16 @@ fn a_second_separator_starts_another_table() {
         .iter()
         .filter_map(|piece| match piece {
             MdPiece::Rendered(line) => Some(line.as_str()),
-            MdPiece::Source(_) => None,
+            MdPiece::Source(_) | MdPiece::Code { .. } => None,
         })
         .collect();
-    assert!(rendered.iter().filter(|line| line.starts_with('+')).count() >= 4);
+    assert!(
+        rendered
+            .iter()
+            .filter(|line| line.starts_with('┌') || line.starts_with('└'))
+            .count()
+            >= 4
+    );
     assert!(rendered.iter().any(|line| line.contains('1')));
     assert!(rendered.iter().any(|line| line.contains('3')));
 }
@@ -133,9 +144,9 @@ fn stdout_log_keeps_raw_table_and_display_draws_borders() {
     let display = take_captured_stdout();
     set_stdout_log_path(None);
     let text = std::fs::read_to_string(path).expect("read");
-    assert!(display.contains("+---+---+"), "{display}");
+    assert!(display.contains("┌───┬───┐"), "{display}");
     assert!(text.contains("| A | B |"), "{text}");
     assert!(text.contains("| --- | --- |"), "{text}");
     assert!(text.contains("| c | d |"), "{text}");
-    assert!(!text.contains("+---+---+"), "{text}");
+    assert!(!text.contains("┌───┬───┐"), "{text}");
 }

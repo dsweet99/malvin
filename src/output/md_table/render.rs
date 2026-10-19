@@ -9,16 +9,16 @@ pub(crate) fn render_table(lines: &[String], max_width: usize) -> Option<Vec<Str
 }
 
 fn paint(rows: &[Vec<String>], aligns: &[Align], widths: &[usize]) -> Vec<String> {
-    let mut out = vec![border(widths)];
+    let mut out = vec![rule(widths, '┌', '┬', '┐')];
     let mut body = rows.iter();
     if let Some(header) = body.next() {
         out.extend(paint_row(header, aligns, widths));
     }
-    out.push(header_rule(aligns, widths));
+    out.push(rule(widths, '├', '┼', '┤'));
     for row in body {
         out.extend(paint_row(row, aligns, widths));
     }
-    out.push(border(widths));
+    out.push(rule(widths, '└', '┴', '┘'));
     out
 }
 
@@ -48,7 +48,7 @@ fn paint_wrapped_line(
             pad(text, aligns[idx], widths[idx])
         })
         .collect();
-    format!("| {} |", parts.join(" | "))
+    format!("│ {} │", parts.join(" │ "))
 }
 
 fn pad(text: &str, align: Align, width: usize) -> String {
@@ -65,28 +65,9 @@ const fn pad_split(align: Align, extra: usize) -> (usize, usize) {
     }
 }
 
-fn border(widths: &[usize]) -> String {
-    let parts: Vec<String> = widths.iter().map(|width| "-".repeat(width + 2)).collect();
-    format!("+{}+", parts.join("+"))
-}
-
-fn header_rule(aligns: &[Align], widths: &[usize]) -> String {
-    let parts: Vec<String> = aligns
-        .iter()
-        .zip(widths)
-        .map(|(align, width)| rule_piece(*align, *width))
-        .collect();
-    format!("|{}|", parts.join("|"))
-}
-
-fn rule_piece(align: Align, width: usize) -> String {
-    let dashes = "-".repeat(width);
-    match align {
-        Align::Center => format!(":{dashes}:"),
-        Align::Right => format!("-{dashes}:"),
-        Align::Left => format!(":{dashes}-"),
-        Align::Just => format!("-{dashes}-"),
-    }
+fn rule(widths: &[usize], left: char, mid: char, right: char) -> String {
+    let parts: Vec<String> = widths.iter().map(|width| "─".repeat(width + 2)).collect();
+    format!("{left}{}{right}", parts.join(&mid.to_string()))
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Align {

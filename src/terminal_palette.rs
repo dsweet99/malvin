@@ -83,6 +83,10 @@ pub(crate) fn ansi_body() -> &'static str {
     active_palette().body
 }
 
+pub(crate) fn theme_is_light() -> bool {
+    ACTIVE_THEME.load(Ordering::Relaxed) == THEME_LIGHT
+}
+
 #[cfg(test)]
 #[path = "terminal_palette_tests.rs"]
 mod terminal_palette_tests;

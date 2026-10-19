@@ -156,7 +156,7 @@ fn markdown_dm_renders_termimad_on_stdout() {
         shown.contains("bold") && !shown.contains("**bold**"),
         "{shown}"
     );
-    assert!(shown.contains('+'), "{shown}");
+    assert!(shown.contains('┌'), "{shown}");
     assert!(!shown.contains("| --- |"), "{shown}");
 }
 

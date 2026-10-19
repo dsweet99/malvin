@@ -22,6 +22,10 @@ fn emit_markdown_body(body: &str) {
         match piece {
             MdPiece::Source(line) => emit_markdown_do_dm_line(&line),
             MdPiece::Rendered(line) => super::stdout_terminal::emit_do_dm_body_line(&line),
+            MdPiece::Code { lang, text } => {
+                let shown = super::code_hl::show_code_line(&lang, &text, super::log_use_color());
+                super::stdout_terminal::emit_do_dm_body_line(&shown);
+            }
         }
     }
 }

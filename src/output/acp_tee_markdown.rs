@@ -1,6 +1,5 @@
 use super::{ANSI_DIM, ANSI_RESET};
 use crate::terminal_palette::ansi_body;
-use termimad::MadSkin;
 
 #[derive(Clone, Copy, Debug)]
 pub struct TermimadStdoutGate {
@@ -14,7 +13,7 @@ pub fn termimad_inline_payload_for_stdout(line: &str, gate: TermimadStdoutGate) 
     if !gate.emit_stdout_markdown || line.is_empty() || !gate.allow_inline_styling {
         return None;
     }
-    let inner = termimad::inline(line).to_string();
+    let inner = super::code_hl::recolor_termimad_inline(line);
     if gate.dim_payload {
         Some(dim_rendered_markup_payload(&inner))
     } else {
@@ -42,9 +41,7 @@ fn render_markdown_lines_for_stdout(
     gate: TermimadStdoutGate,
     width: usize,
 ) -> Vec<String> {
-    let rendered = MadSkin::default()
-        .text(line, Some(width.max(3)))
-        .to_string();
+    let rendered = super::code_hl::recolor_termimad_text(line, width.max(3));
     let mut lines: Vec<String> = rendered
         .trim_end_matches('\n')
         .split('\n')

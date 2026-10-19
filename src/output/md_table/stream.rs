@@ -4,22 +4,22 @@ use super::render::{is_pipe_row, is_separator_line, render_table};
 pub(crate) enum MdPiece {
     Source(String),
     Rendered(String),
+    Code { lang: String, text: String },
 }
 
 #[derive(Default)]
 pub(crate) struct MdTableStream {
     rows: Vec<String>,
-    in_fence: bool,
+    fence: Option<String>,
 }
 
 impl MdTableStream {
     pub(crate) fn push(&mut self, line: &str, width: usize) -> Vec<MdPiece> {
-        if self.in_fence {
-            self.in_fence = !is_fence(line);
-            return source_piece(line);
+        if self.fence.is_some() {
+            return self.push_fenced(line);
         }
         if is_fence(line) {
-            self.in_fence = true;
+            self.fence = Some(fence_lang(line));
             return self.finish_then_source(line, width);
         }
         if self.wants_row(line) {
@@ -61,6 +61,18 @@ impl MdTableStream {
         out
     }
 
+    fn push_fenced(&mut self, line: &str) -> Vec<MdPiece> {
+        if is_fence(line) {
+            self.fence = None;
+            return source_piece(line);
+        }
+        let lang = self.fence.clone().unwrap_or_default();
+        vec![MdPiece::Code {
+            lang,
+            text: line.to_string(),
+        }]
+    }
+
     fn finish_then_source(&mut self, line: &str, width: usize) -> Vec<MdPiece> {
         let mut out = self.finish(width);
         out.extend(source_piece(line));
@@ -82,6 +94,11 @@ fn source_piece(line: &str) -> Vec<MdPiece> {
 
 fn is_fence(line: &str) -> bool {
     line.trim_start().starts_with("```")
+}
+
+fn fence_lang(line: &str) -> String {
+    let rest = line.trim_start().trim_start_matches('`').trim();
+    rest.split_whitespace().next().unwrap_or("").to_string()
 }
 
 pub(crate) fn format_markdown_document(text: &str, width: usize) -> Vec<MdPiece> {

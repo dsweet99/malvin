@@ -59,6 +59,10 @@ fn emit_ready(who: &str, piece: MdPiece) {
     let ts = super::timestamp_now_string();
     match piece {
         MdPiece::Rendered(line) => emit_one_segment(who, &line, ts.as_str(), false),
+        MdPiece::Code { lang, text } => {
+            let shown = super::code_hl::show_code_line(&lang, &text, super::log_use_color());
+            emit_one_segment(who, &shown, ts.as_str(), false);
+        }
         MdPiece::Source(line) => {
             if !print_stdout_para_markdown(who, &line, ts.as_str()) {
                 emit_para_segments(who, &line, ts.as_str(), false);
@@ -170,6 +174,28 @@ mod tests {
         assert!(bold_shown.contains("57 commits") && !bold_shown.contains("**57 commits**"));
         let list_shown = strip_ansi_escapes(&list_display);
         assert!(list_shown.contains("Removed") && !list_shown.contains("**Removed**"));
+    }
+
+    #[test]
+    #[allow(unsafe_code)]
+    fn fenced_rust_is_highlighted_and_log_keeps_the_source() {
+        let prev = std::env::var_os("NO_COLOR");
+        unsafe {
+            std::env::remove_var("NO_COLOR");
+        }
+        let (display, log) = capture_log(true, true, "```rust\nfn main() {}\n```");
+        unsafe {
+            match prev {
+                Some(v) => std::env::set_var("NO_COLOR", v),
+                None => std::env::remove_var("NO_COLOR"),
+            }
+        }
+        assert!(log.contains("```rust"), "{log}");
+        assert!(log.contains("fn main() {}"), "{log}");
+        assert!(!log.contains('\u{1b}'), "{log}");
+        let shown = strip_ansi_escapes(&display);
+        assert!(shown.contains("fn main()"), "{shown}");
+        assert!(display.contains("\x1b[38;2;203;166;247m"), "{display:?}");
     }
 
     #[test]
