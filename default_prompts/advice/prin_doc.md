@@ -1,4 +1,4 @@
-description: Design a beautiful document
+description: Principles of document design
 
 
 # Five Principles of Document Design

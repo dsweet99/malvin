@@ -1,7 +1,4 @@
-description: Design beautiful, effective figures
-
-
-# Principles of Scientific Visualization
+description: Principles of scientific visualization design
 
 # Principles of Scientific Visualization
 
