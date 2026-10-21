@@ -1,4 +1,4 @@
-description: Principles of bug fixing for coding / SWE
+description: Principles of bug fixing for coding
 
 
 
