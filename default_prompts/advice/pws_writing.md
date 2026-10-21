@@ -17,3 +17,4 @@ description: Problems Worth Solving for writing
     Example: "The new runner is faster, safer, and more reliable" Better: "The new runner finishes in 40 seconds instead of 90."
 - **Inflated style vocabulary**: These are fancy verbs and adjectives that add tone but no content. (The word "delves" comes up a lot.)
     Example: "This study delves into the intricate interplay between caching and latency, underscoring its crucial role." Better: "This study measures how caching changes latency."
+- **List of sentences**: Each sentence in a paragraph is individually clear and relevant but lacks a logical connection to the next. (This often happens during editing, when sentences are polished independently, destroying the paragraph’s natural progression of ideas. ) Transition words won't fix the underlying problem. Try given-new information flow, thematic progression, entity continuation, or rhetorical relation.

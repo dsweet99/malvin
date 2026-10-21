@@ -7,5 +7,7 @@ See also trace.jsonl, which contains your work up to this point (which may or ma
 
 Check `malvin --advice` for a relevant advice.
 
-User-request-relevant Problems Worth Solving should be considered additional requirements.
+User-request-relevant Problems Worth Solving should be considered additional requirements inasmuch as they are relevant to the scope as already defined.
+
+
 
