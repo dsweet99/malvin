@@ -83,8 +83,6 @@ fn smoke_cov_cli_cli_symbols_a() {
     let _: Option<crate::cli::AgentRouteOpts<'_>> = None;
     let _: Option<crate::cli::Cli> = None;
     let _: Option<crate::cli::Commands> = None;
-    let _ = crate::prompts::build_mbc2_render_context;
-    let _ = crate::prompts::render_mbc2_prompt;
     let _: Option<crate::cli::models_cmd::ModelsArgs> = None;
     let _: Option<crate::cli::AgentStdoutTeeFlags> = None;
     let _ = crate::cli::router_flow::prepare_router_prompt_store;

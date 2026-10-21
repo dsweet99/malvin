@@ -1,4 +1,4 @@
-description: Problems Worth Solving for coding
+description: Problems Worth Solving for coding / SWE
 
 
 1. **Diffuse concept**

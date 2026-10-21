@@ -11,7 +11,6 @@ Usage::
     python ops/fast_task.py solve FT-01 --model pi:openrouter/~x-ai/grok-latest
     python ops/fast_task.py solve FT-01 --model pi:openrouter/x-ai/grok-4.6
     python ops/fast_task.py solve FT-01 --model codex:gpt-5.6-terra
-    python ops/fast_task.py solve FT-01 --creative
     python ops/fast_task.py solve FT-01 --modal
     python ops/fast_task.py tasks
     python ops/fast_task.py self-test
@@ -91,17 +90,8 @@ def fast_tasks_list_cmd() -> None:
         "the Codex npm package and Node.js"
     ),
 )
-@click.option(
-    "--creative",
-    is_flag=True,
-    help=(
-        "Pass --creative through to malvin (creative router_b); "
-        "incompatible with --cursor and --agent=cursor"
-    ),
-)
 def fast_task_solve(
     task_id: str,
-    creative: bool,
     modal: bool,
     **options: Any,
 ) -> None:
@@ -111,8 +101,6 @@ def fast_task_solve(
     model = options.pop("model")
     if model is not None:
         malvin_args = ("--model", model, *malvin_args)
-    if creative:
-        malvin_args = ("--creative", *malvin_args)
     if modal:
         malvin_args = _lib.ft_with_modal_remote(
             malvin_args, _lib.ft_agent_timeout_sec(None)

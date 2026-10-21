@@ -318,9 +318,6 @@ def ft_host_agent_cmd(
         run_args = ["--do", *run_args]
     return [str(malvin_binary.resolve()), *run_args, "plan.md"]
 
-def ft_malvin_args_request_creative(malvin_args: tuple[str, ...]) -> bool:
-    return any(a == "--creative" or a.startswith("--creative=") for a in malvin_args)
-
 def ft_modal_remote_arg(malvin_args: tuple[str, ...]) -> str | None:
     for i, arg in enumerate(malvin_args):
         value = None
@@ -358,18 +355,6 @@ def ft_assert_modal_compatible(agent_name: str, malvin_args: tuple[str, ...]) ->
     if ft_malvin_args_request_local_pi(malvin_args):
         raise click.ClickException(
             "--modal cannot run a local model; the Modal sandbox has no local model server"
-        )
-
-def ft_assert_creative_compatible(agent: str, malvin_args: tuple[str, ...]) -> None:
-    if not ft_malvin_args_request_creative(malvin_args):
-        return
-    if ft_normalize_agent(agent) == AGENT_CURSOR:
-        raise click.ClickException(
-            "--creative and --agent=cursor are mutually exclusive"
-        )
-    if "--cursor" in malvin_args:
-        raise click.ClickException(
-            "--creative and --cursor are mutually exclusive"
         )
 
 def ft_normalize_agent(agent: str) -> str:
@@ -1102,7 +1087,6 @@ def ft_run_solve(
         raise click.ClickException(
             f"--agent={agent_name} and --main are mutually exclusive"
         )
-    ft_assert_creative_compatible(agent_name, malvin_args)
     if timeout_sec <= 0:
         raise click.ClickException("timeout_sec must be positive")
     task_dir = ft_resolve_task_dir(task_id)
@@ -1749,9 +1733,8 @@ def _ft_test_solve_help_and_dry_run() -> None:
     assert not any(line.startswith("  --cursor") for line in option_lines)
     assert "--main" in help_result.output
     assert "--model" in help_result.output
-    assert "--creative" in help_result.output
+    assert "--creative" not in help_result.output
     assert "--modal" in help_result.output
-    assert "--cursor" in help_result.output
     assert DEFAULT_AGENT_TIMEOUT_SEC == 600
     with tempfile.TemporaryDirectory(prefix="ft-dry-") as tmp:
         result = runner.invoke(
@@ -1908,103 +1891,6 @@ def _ft_assert_solve_model_and_agent_dry_runs(cli, runner, tmp: Path) -> None:
     assert rejected.exit_code != 0
     assert "prime" in rejected.output.lower() or "Invalid" in rejected.output
 
-    _ft_assert_solve_creative_dry_runs(cli, runner, tmp)
-
-def _ft_assert_solve_creative_dry_runs(cli, runner, tmp: Path) -> None:
-    creative_tmp = tmp / "creative"
-    creative_tmp.mkdir()
-    creative_result = runner.invoke(
-        cli,
-        [
-            "solve",
-            "FT-01",
-            "--creative",
-            "--dry-run",
-            "--skip-grade",
-            "--results-dir",
-            str(creative_tmp),
-        ],
-        catch_exceptions=False,
-    )
-    assert creative_result.exit_code == 0, creative_result.output
-    creative_metas = list(creative_tmp.glob("FT-01/*/metadata.json"))
-    assert creative_metas, creative_result.output
-    creative_cmd = json.loads(creative_metas[0].read_text(encoding="utf-8"))[
-        "docker_cmd"
-    ]
-    assert "malvin" in creative_cmd
-    mi = creative_cmd.index("malvin")
-    assert "--creative" in creative_cmd[mi:]
-    assert creative_cmd[-1] == "plan.md"
-
-    for label, extra in (
-        ("agent-cursor", ["--agent=cursor"]),
-        ("flag-cursor", ["--cursor"]),
-    ):
-        conflict = runner.invoke(
-            cli,
-            [
-                "solve",
-                "FT-01",
-                "--creative",
-                *extra,
-                "--dry-run",
-                "--skip-grade",
-                "--results-dir",
-                str(tmp / f"creative-{label}"),
-            ],
-        )
-        assert conflict.exit_code != 0, (label, conflict.output)
-        assert "mutually exclusive" in conflict.output, (label, conflict.output)
-
-    pi_creative_tmp = tmp / "creative-pi"
-    pi_creative_tmp.mkdir()
-    with _ft_stub_npm_pi(tmp / "stub-pi_creative"):
-        pi_creative = runner.invoke(
-            cli,
-            [
-                "solve",
-                "FT-01",
-                "--creative",
-                "--model",
-                "pi:openai/gpt-4o",
-                "--dry-run",
-                "--skip-grade",
-                "--results-dir",
-                str(pi_creative_tmp),
-            ],
-            catch_exceptions=False,
-        )
-    assert pi_creative.exit_code == 0, pi_creative.output
-    pi_metas = list(pi_creative_tmp.glob("FT-01/*/metadata.json"))
-    assert pi_metas, pi_creative.output
-    pi_cmd = json.loads(pi_metas[0].read_text(encoding="utf-8"))["docker_cmd"]
-    assert "malvin" in pi_cmd
-    pmi = pi_cmd.index("malvin")
-    assert "--creative" in pi_cmd[pmi:]
-    assert "--model" in pi_cmd[pmi:]
-    assert "pi:openai/gpt-4o" in pi_cmd[pmi:]
-
-    assert ft_malvin_args_request_creative(()) is False
-    assert ft_malvin_args_request_creative(("--creative",)) is True
-    assert ft_malvin_args_request_creative(("--creative=0.6",)) is True
-    try:
-        ft_assert_creative_compatible(AGENT_CURSOR, ("--creative",))
-        raise AssertionError("expected creative/cursor rejection")
-    except click.ClickException as exc:
-        assert "mutually exclusive" in str(exc)
-    try:
-        ft_assert_creative_compatible(AGENT_MALVIN, ("--creative", "--cursor"))
-        raise AssertionError("expected creative/--cursor rejection")
-    except click.ClickException as exc:
-        assert "mutually exclusive" in str(exc)
-    ft_assert_creative_compatible(AGENT_MALVIN, ("--creative",))
-    ft_assert_creative_compatible(
-        AGENT_MALVIN, ("--creative", "--model", "pi:openai/gpt-4o")
-    )
-    ft_assert_creative_compatible(AGENT_MALVIN, ("--creative", "--pi"))
-    ft_assert_creative_compatible(AGENT_CURSOR, ())
-
 def _ft_test_modal_remote_helpers() -> None:
     assert ft_modal_remote_arg(()) is None
     assert ft_modal_remote_arg(("--model", "cursor:auto")) is None
@@ -2036,7 +1922,6 @@ def _ft_test_modal_remote_helpers() -> None:
     except click.ClickException as exc:
         assert "local" in str(exc).lower()
     ft_assert_modal_compatible(AGENT_MALVIN, ("--model", "pi:openai/gpt-4o"))
-    ft_assert_modal_compatible(AGENT_MALVIN, ("--creative",))
     assert (
         ft_resolve_run_image(
             use_modal=True,

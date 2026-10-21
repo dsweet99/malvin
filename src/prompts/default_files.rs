@@ -5,14 +5,8 @@ pub const ROUTER_A_2_MD: &str = "router_a_2.md";
 pub const ROUTER_A_AUDIT_MD: &str = "router_a_audit.md";
 pub const ROUTER_B_MD: &str = "router_b.md";
 pub const ROUTER_B_SATISFY_MD: &str = "router_b_satisfy.md";
-pub const ROUTER_B_CREATIVE_LEAD_MD: &str = "router_b_creative_lead.md";
 pub const ROUTER_B_DONE_NOTE_MD: &str = "router_b_done_note.md";
 pub const ROUTER_C_MD: &str = "router_c.md";
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct RouterBPromptFlags {
-    pub creative: bool,
-}
 
 #[must_use]
 pub const fn header_prompt_file() -> &'static str {
@@ -35,35 +29,18 @@ pub const fn router_a_audit_prompt_file() -> &'static str {
 }
 
 #[must_use]
-pub const fn router_b_prompt_file(_flags: RouterBPromptFlags) -> &'static str {
+pub const fn router_b_prompt_file() -> &'static str {
     ROUTER_B_MD
 }
 
 #[must_use]
-pub const fn router_b_satisfy_prompt_file(_flags: RouterBPromptFlags) -> &'static str {
+pub const fn router_b_satisfy_prompt_file() -> &'static str {
     ROUTER_B_SATISFY_MD
-}
-
-#[must_use]
-pub const fn router_b_uses_creative_lead(flags: RouterBPromptFlags) -> bool {
-    flags.creative
-}
-
-#[must_use]
-pub const fn router_b_uses_done_note(_flags: RouterBPromptFlags) -> bool {
-    true
 }
 
 fn default_constraints_prompt(name: &str) -> Option<&'static str> {
     match name {
         "init_constraints.md" => Some(include_str!("../../default_prompts/init_constraints.md")),
-        _ => None,
-    }
-}
-
-fn default_mbc2_prompt(name: &str) -> Option<&'static str> {
-    match name {
-        "mbc2.md" => Some(include_str!("../../default_prompts/mbc2.md")),
         _ => None,
     }
 }
@@ -80,9 +57,6 @@ fn default_router_a_prompt(name: &str) -> Option<&'static str> {
 fn default_router_b_fragment(name: &str) -> Option<&'static str> {
     match name {
         ROUTER_B_SATISFY_MD => Some(include_str!("../../default_prompts/router_b_satisfy.md")),
-        ROUTER_B_CREATIVE_LEAD_MD => Some(include_str!(
-            "../../default_prompts/router_b_creative_lead.md"
-        )),
         ROUTER_B_DONE_NOTE_MD => Some(include_str!("../../default_prompts/router_b_done_note.md")),
         _ => None,
     }
@@ -100,7 +74,6 @@ fn default_router_prompt(name: &str) -> Option<&'static str> {
 
 pub fn default_file(name: &str) -> Option<&'static str> {
     default_constraints_prompt(name)
-        .or_else(|| default_mbc2_prompt(name))
         .or_else(|| default_router_prompt(name))
         .or_else(|| match name {
             HEADER_MD => Some(include_str!("../../default_prompts/header.md")),
@@ -111,11 +84,10 @@ pub fn default_file(name: &str) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::{
-        HEADER_MD, ROUTER_A_2_MD, ROUTER_A_AUDIT_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_LEAD_MD,
-        ROUTER_B_DONE_NOTE_MD, ROUTER_B_MD, ROUTER_B_SATISFY_MD, ROUTER_C_MD, RouterBPromptFlags,
-        default_constraints_prompt, default_file, header_prompt_file, router_a_2_prompt_file,
-        router_a_audit_prompt_file, router_a_prompt_file, router_b_prompt_file,
-        router_b_satisfy_prompt_file, router_b_uses_creative_lead, router_b_uses_done_note,
+        HEADER_MD, ROUTER_A_2_MD, ROUTER_A_AUDIT_MD, ROUTER_A_MD, ROUTER_B_DONE_NOTE_MD,
+        ROUTER_B_MD, ROUTER_B_SATISFY_MD, ROUTER_C_MD, default_constraints_prompt, default_file,
+        header_prompt_file, router_a_2_prompt_file, router_a_audit_prompt_file,
+        router_a_prompt_file, router_b_prompt_file, router_b_satisfy_prompt_file,
     };
 
     #[test]
@@ -126,9 +98,7 @@ mod tests {
         assert!(default_file(ROUTER_C_MD).is_some());
         assert!(default_file(ROUTER_A_AUDIT_MD).is_some());
         assert!(default_file(ROUTER_B_SATISFY_MD).is_some());
-        assert!(default_file(ROUTER_B_CREATIVE_LEAD_MD).is_some());
         assert!(default_file("router_summarize.md").is_some());
-        assert!(default_file("mbc2.md").is_some());
         assert!(default_file(ROUTER_B_DONE_NOTE_MD).is_some());
         assert!(default_constraints_prompt("init_constraints.md").is_some());
         assert!(default_file("router_a.md").is_some());
@@ -141,8 +111,6 @@ mod tests {
             !header.contains("availble"),
             "header.md misspells available"
         );
-        let mbc2 = default_file("mbc2.md").expect("mbc2");
-        assert!(!mbc2.contains("techinques"), "mbc2.md misspells techniques");
     }
 
     #[test]
@@ -151,33 +119,7 @@ mod tests {
         assert_eq!(router_a_prompt_file(), ROUTER_A_MD);
         assert_eq!(router_a_2_prompt_file(), ROUTER_A_2_MD);
         assert_eq!(router_a_audit_prompt_file(), ROUTER_A_AUDIT_MD);
-        assert_eq!(
-            router_b_prompt_file(RouterBPromptFlags { creative: false }),
-            ROUTER_B_MD
-        );
-        assert_eq!(
-            router_b_prompt_file(RouterBPromptFlags { creative: true }),
-            ROUTER_B_MD
-        );
-        assert_eq!(
-            router_b_satisfy_prompt_file(RouterBPromptFlags { creative: false }),
-            ROUTER_B_SATISFY_MD
-        );
-        assert_eq!(
-            router_b_satisfy_prompt_file(RouterBPromptFlags { creative: true }),
-            ROUTER_B_SATISFY_MD
-        );
-        assert!(router_b_uses_creative_lead(RouterBPromptFlags {
-            creative: true
-        }));
-        assert!(!router_b_uses_creative_lead(RouterBPromptFlags {
-            creative: false
-        }));
-        assert!(router_b_uses_done_note(RouterBPromptFlags {
-            creative: false
-        }));
-        assert!(router_b_uses_done_note(RouterBPromptFlags {
-            creative: true
-        }));
+        assert_eq!(router_b_prompt_file(), ROUTER_B_MD);
+        assert_eq!(router_b_satisfy_prompt_file(), ROUTER_B_SATISFY_MD);
     }
 }

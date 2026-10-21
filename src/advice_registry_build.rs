@@ -41,7 +41,7 @@ fn collect_entries(advice_dir: &Path) -> Vec<AdviceBuildEntry> {
     for entry in read {
         let entry = entry.unwrap_or_else(|e| panic!("dir entry: {e}"));
         let path = entry.path();
-        if path.extension().and_then(|e| e.to_str()) != Some("md") {
+        if !is_advice_markdown(&path) {
             continue;
         }
         println!("cargo:rerun-if-changed={}", path.display());
@@ -65,6 +65,16 @@ fn collect_entries(advice_dir: &Path) -> Vec<AdviceBuildEntry> {
         advice_dir.display()
     );
     entries
+}
+
+pub fn is_advice_markdown(path: &Path) -> bool {
+    let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+        return false;
+    };
+    if name.starts_with('.') {
+        return false;
+    }
+    path.extension().and_then(|e| e.to_str()) == Some("md")
 }
 
 fn validate_tag(tag: &str) {
@@ -180,7 +190,8 @@ fn escape_rust_str(s: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::append_file_stats;
+    use super::{append_file_stats, is_advice_markdown};
+    use std::path::Path;
 
     #[test]
     fn file_stats_use_line_when_count_is_one() {
@@ -194,5 +205,18 @@ mod tests {
         assert_eq!(many, "Many [2 lines, 2 words]");
         let none = append_file_stats("None", "");
         assert_eq!(none, "None [0 lines, 0 words]");
+    }
+
+    #[test]
+    fn editor_lock_files_are_not_advice_sources() {
+        assert!(is_advice_markdown(Path::new(
+            "default_prompts/advice/fig_design.md"
+        )));
+        assert!(!is_advice_markdown(Path::new(
+            "default_prompts/advice/.#fig_design.md"
+        )));
+        assert!(!is_advice_markdown(Path::new(
+            "default_prompts/advice/fig_design.md~"
+        )));
     }
 }

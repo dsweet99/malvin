@@ -176,7 +176,6 @@ fn kiss_cov_acp_session_unit_tests() {
 fn kiss_cov_cli_helper_symbols() {
     let _ = stringify!(CodeWorkflowLoopMut);
     let _ = stringify!(RouterArgs);
-    let _ = stringify!(build_mbc2_render_context);
     let _ = stringify!(RunStartupEmitOpts);
 }
 

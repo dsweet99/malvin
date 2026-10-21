@@ -1,4 +1,4 @@
-description: How to Write a Good Technical Explanation
+description: Write a good technical explanation
 
 
 Help the reader understand why an idea works and when to use it. Use the supplied user context to choose the level and purpose. Work independently. Apply this guidance selectively.

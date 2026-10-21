@@ -181,10 +181,8 @@ mod tests {
 
     #[test]
     fn advice_descriptions_come_from_first_line_without_prefix() {
-        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("default_prompts/advice");
         for entry in ADVICE_ENTRIES {
-            let path = dir.join(format!("{}.md", entry.tag));
-            let content = fs::read_to_string(&path).expect("read advice md");
+            let content = entry.body;
             let first = content.lines().next().expect("non-empty advice md");
             let value = first
                 .strip_prefix("description:")
@@ -196,7 +194,7 @@ mod tests {
             let expected = format!("{value} [{lines} {line_word}, {words} words]");
             assert_eq!(
                 entry.description, expected,
-                "registry description must match first-line value plus file size for {}",
+                "registry description must match first-line value plus embedded file size for {}",
                 entry.tag
             );
             assert!(
@@ -214,7 +212,7 @@ mod tests {
         for entry in fs::read_dir(&dir).expect("read advice dir") {
             let entry = entry.expect("dir entry");
             let path = entry.path();
-            if path.extension().and_then(|e| e.to_str()) != Some("md") {
+            if !crate::advice_registry_build::is_advice_markdown(&path) {
                 continue;
             }
             let stem = path

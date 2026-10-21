@@ -125,7 +125,6 @@ mod template_kiss {
             );
         }
         {
-            let _ = crate::prompts::render_mbc2_prompt;
             let _ = crate::prompts::render_header;
             let _ = super::is_spaced_brace_placeholder_inner;
             let bad = super::malformed_brace_placeholders("x {{plan_path}} y");

@@ -42,7 +42,6 @@ pub(crate) async fn run_router_turns(
     log_path: &Path,
 ) -> Result<RouterTurnsOutcome, String> {
     let model = input.shared.model.canonical();
-    let creative = input.router.sample_creative_this_iteration();
     let _exp_log =
         ensure_gate_exp_log_file(input.artifacts, input.agent_loop).map_err(|e| e.to_string())?;
     input
@@ -50,8 +49,8 @@ pub(crate) async fn run_router_turns(
         .force_fresh_coder_agent()
         .await
         .map_err(|e| e.to_string())?;
-    let iteration_backups = deliver_router_initial_turn(input, log_path, creative).await?;
-    let followup = finish_router_a_maybe_b(input, log_path, &model, creative).await?;
+    let iteration_backups = deliver_router_initial_turn(input, log_path).await?;
+    let followup = finish_router_a_maybe_b(input, log_path, &model).await?;
     Ok(RouterTurnsOutcome {
         iteration_backups,
         done: followup.done,
@@ -67,7 +66,6 @@ struct RouterFollowupFlags {
 async fn deliver_router_initial_turn(
     input: &mut RouterAcpIterationInput<'_>,
     log_path: &Path,
-    creative: bool,
 ) -> Result<SessionDotfileBackups, String> {
     let work_dir = input.artifacts.work_dir.as_path();
     let model = input.shared.model.canonical();
@@ -80,7 +78,6 @@ async fn deliver_router_initial_turn(
             model: &model,
             gates: input.router.gates,
             gates_just_ran: malvin::gate_loop_session::quality_gates_just_ran(),
-            creative,
             include_header,
         },
     )?;
@@ -121,7 +118,6 @@ async fn finish_router_a_maybe_b(
     input: &mut RouterAcpIterationInput<'_>,
     log_path: &Path,
     model: &str,
-    creative: bool,
 ) -> Result<RouterFollowupFlags, String> {
     let router_a_2 = router_flow_prompt::build_router_a_2_prompt(input.prompt_store)?;
     run_router_followup_coder_prompt(
@@ -142,7 +138,6 @@ async fn finish_router_a_maybe_b(
             store: input.prompt_store,
             artifacts: input.artifacts,
             model,
-            creative,
         })?;
     run_router_b_coder_prompt(input.client, &router_b, log_path).await?;
     send_router_c(input, log_path).await

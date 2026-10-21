@@ -17,22 +17,21 @@ fn help_omits_git_flag() {
     assert!(!help.contains("--git"), "help={help}");
 }
 
-fn shared_opts_parses_creative_flag_default_off() {
+fn creative_flag_is_rejected_by_clap() {
     use clap::Parser;
-    let cli = crate::cli::Cli::try_parse_from(["malvin", "--doc"]).expect("parse");
-    assert!(cli.router.creative_probability().is_none());
+    let err = crate::cli::Cli::try_parse_from(["malvin", "--creative", "--doc"])
+        .expect_err("--creative must be rejected");
+    let msg = err.to_string();
+    assert!(
+        msg.contains("unexpected") || msg.contains("unknown") || msg.contains("--creative"),
+        "clap must reject --creative; got {msg}"
+    );
 }
 
-fn shared_opts_parses_creative_flag_on() {
-    use clap::Parser;
-    let cli = crate::cli::Cli::try_parse_from(["malvin", "--creative", "--doc"]).expect("parse");
-    assert_eq!(cli.router.creative_probability(), Some(1.0));
-}
-
-fn help_lists_creative_flag() {
+fn help_omits_creative_flag() {
     use clap::CommandFactory;
     let help = crate::cli::Cli::command().render_help().to_string();
-    assert!(help.contains("--creative"), "help={help}");
+    assert!(!help.contains("--creative"), "help={help}");
 }
 
 fn help_omits_name_flag() {
@@ -117,9 +116,8 @@ fn name_flag_is_rejected_by_clap() {
 fn kiss_bundled_cli_entrypoint_name_tests() {
     git_flag_is_rejected_by_clap();
     help_omits_git_flag();
-    shared_opts_parses_creative_flag_default_off();
-    shared_opts_parses_creative_flag_on();
-    help_lists_creative_flag();
+    creative_flag_is_rejected_by_clap();
+    help_omits_creative_flag();
     help_omits_name_flag();
     doc_does_not_create_name_files();
     bare_help_does_not_create_name_files();

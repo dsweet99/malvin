@@ -151,17 +151,3 @@ pub fn render_header(
     enforce_template_placeholders_resolved_in(&header_raw, context, Some(HEADER_MD))?;
     Ok(render_template(&header_raw, context))
 }
-
-#[must_use]
-pub fn build_mbc2_render_context(user_prompt: &str) -> std::collections::HashMap<String, String> {
-    std::collections::HashMap::from([("user_prompt".into(), user_prompt.to_string())])
-}
-
-pub fn render_mbc2_prompt(
-    store: &PromptStore,
-    context: &std::collections::HashMap<String, String>,
-) -> Result<String, PromptError> {
-    let mut ctx = context.clone();
-    ctx.insert("coding_rules".to_string(), String::new());
-    store.render_prompt_only("mbc2.md", &ctx)
-}

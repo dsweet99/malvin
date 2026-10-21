@@ -1,6 +1,7 @@
-# MBC2
+description: Generate creative ideas, especially for problem-solving
 
-You are stuck producing small local variations of the same idea.
+
+You may be stuck producing small local variations of the same idea.
 
 Do NOT introduce new frameworks, objectives, or representations.
 
@@ -26,16 +27,3 @@ Helpful expressive techniques that may engage portions of your network that you 
 - Write in rhymes and/or a consistent meter.
 - Draw a cartoon in .svg.
 You don't need to use them all, but you might want to choose randomly from them at times or invent other techniques.
-
-
----
-
-Communication: Write complete sentences or explicit bulleted lists. Don't write terse fragments. Write clearly.
-
-MBC2: Generate ideas based on the user's prompt:
-
-```text
-{{ user_prompt }}
-```
-
-If the user does not specify a number of ideas, generate 3.

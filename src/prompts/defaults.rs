@@ -2,11 +2,10 @@
 mod default_files;
 
 pub use default_files::{
-    ROUTER_A_2_MD, ROUTER_A_AUDIT_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_LEAD_MD,
-    ROUTER_B_DONE_NOTE_MD, ROUTER_B_MD, ROUTER_B_SATISFY_MD, ROUTER_C_MD, RouterBPromptFlags,
-    default_file, header_prompt_file, router_a_2_prompt_file, router_a_audit_prompt_file,
-    router_a_prompt_file, router_b_prompt_file, router_b_satisfy_prompt_file,
-    router_b_uses_creative_lead, router_b_uses_done_note,
+    ROUTER_A_2_MD, ROUTER_A_AUDIT_MD, ROUTER_A_MD, ROUTER_B_DONE_NOTE_MD, ROUTER_B_MD,
+    ROUTER_B_SATISFY_MD, ROUTER_C_MD, default_file, header_prompt_file, router_a_2_prompt_file,
+    router_a_audit_prompt_file, router_a_prompt_file, router_b_prompt_file,
+    router_b_satisfy_prompt_file,
 };
 
 pub const HEADER_MD: &str = "header.md";
@@ -16,7 +15,6 @@ pub const ROUTER_SUMMARIZE_MD: &str = "router_summarize.md";
 pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD];
 
 pub const DEFAULT_PROMPTS: &[&str] = &[
-    "mbc2.md",
     "init_constraints.md",
     HEADER_MD,
     ROUTER_A_MD,
@@ -24,7 +22,6 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     ROUTER_A_AUDIT_MD,
     ROUTER_B_MD,
     ROUTER_B_SATISFY_MD,
-    ROUTER_B_CREATIVE_LEAD_MD,
     ROUTER_B_DONE_NOTE_MD,
     ROUTER_C_MD,
     ROUTER_CODE_EXTRA_MD,
@@ -137,8 +134,8 @@ mod router_header_embed_tests {
     use std::path::Path;
 
     use super::{
-        HEADER_MD, ROUTER_A_MD, ROUTER_B_CREATIVE_LEAD_MD, ROUTER_B_DONE_NOTE_MD, ROUTER_B_MD,
-        ROUTER_B_SATISFY_MD, ROUTER_SUMMARIZE_MD, default_file,
+        HEADER_MD, ROUTER_A_MD, ROUTER_B_DONE_NOTE_MD, ROUTER_B_MD, ROUTER_B_SATISFY_MD,
+        ROUTER_SUMMARIZE_MD, default_file,
     };
     use crate::artifacts::create_run_artifacts;
     use crate::cli::router_flow::router_flow_prompt::{
@@ -174,7 +171,6 @@ mod router_header_embed_tests {
     fn embedded_default_files_cover_router_templates() {
         assert!(default_file(ROUTER_A_MD).is_some());
         assert!(default_file(ROUTER_B_MD).is_some());
-        assert!(default_file(ROUTER_B_CREATIVE_LEAD_MD).is_some());
         assert!(default_file(ROUTER_SUMMARIZE_MD).is_some());
         assert!(default_file(HEADER_MD).is_some());
     }
@@ -218,31 +214,13 @@ mod router_header_embed_tests {
             store: &store,
             artifacts: &artifacts,
             model: DEFAULT_CLI_MODEL,
-            creative: false,
         })
         .expect("router_b");
         assert!(!b.contains("{{"));
-        let b_creative = build_router_b_prompt(RouterBPromptInput {
-            store: &store,
-            artifacts: &artifacts,
-            model: DEFAULT_CLI_MODEL,
-            creative: true,
-        })
-        .expect("router_b_creative");
-        assert!(!b_creative.contains("{{"));
         let satisfy = default_file(ROUTER_B_SATISFY_MD).expect("satisfy").trim();
-        let lead = default_file(ROUTER_B_CREATIVE_LEAD_MD)
-            .expect("lead")
-            .trim();
         let done = default_file(ROUTER_B_DONE_NOTE_MD).expect("done").trim();
         assert!(b.contains(satisfy));
-        assert!(b_creative.contains(satisfy));
         assert!(b.contains(done));
-        assert!(b_creative.contains(done));
-        if !lead.is_empty() && !satisfy.contains(lead) && !done.contains(lead) {
-            assert!(b_creative.contains(lead));
-            assert!(!b.contains(lead));
-        }
         let summarize = build_router_summarize_prompt(RouterSummarizePromptInput {
             store: &store,
             artifacts: &artifacts,

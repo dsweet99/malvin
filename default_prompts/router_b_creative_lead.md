@@ -1,2 +1,2 @@
-Use the creative ideas from the MBC2 exploration to help you satisfy the requirements.
+Follow MBC2 to help you satisfy the requirements.
 

@@ -10,7 +10,6 @@ fn write_minimal_router_prompts(prompt_root: &std::path::Path) {
 fn write_router_prompt_files(prompt_root: &std::path::Path) {
     let files = [
         (HEADER_MD, "HEADER_BODY\n"),
-        ("mbc2.md", "MBC2 {{ user_prompt }}\n"),
         (
             ROUTER_A_MD,
             "ROUTER_A {{ user_request_path }} {{ code_extra }} {{ audit_directive }}\n",
@@ -41,7 +40,6 @@ fn initial_prompt_joins_header_and_router_a_in_order() {
             model: "cursor:auto",
             gates: false,
             gates_just_ran: false,
-            creative: false,
             include_header: true,
         })
         .expect("initial");
@@ -57,37 +55,6 @@ fn initial_prompt_joins_header_and_router_a_in_order() {
         assert_eq!(out.stdout_label, "header.md+router_a.md");
         assert_eq!(out.log_who, "router_initial");
         assert!(!out.body.contains("MBC2"));
-    });
-}
-
-#[test]
-fn initial_prompt_adds_mbc2_when_creative() {
-    with_isolated_home(|work| {
-        let artifacts = malvin::artifacts::create_run_artifacts_from_text_opts(
-            "creative request",
-            Some(work),
-            malvin::workspace::run_id::RunDirOptions::default(),
-        )
-        .expect("artifacts");
-        let prompt_root = artifacts.run_dir.join("prompts");
-        write_minimal_router_prompts(&prompt_root);
-        let store = PromptStore::with_root(prompt_root);
-        let out = build_router_initial_prompt(RouterInitialPromptInput {
-            store: &store,
-            artifacts: &artifacts,
-            model: "cursor:auto",
-            gates: false,
-            gates_just_ran: false,
-            creative: true,
-            include_header: true,
-        })
-        .expect("initial");
-        assert!(out.body.contains("MBC2"));
-        assert!(out.stdout_label.contains("mbc2.md"));
-        let header_at = out.body.find("HEADER_BODY").expect("header");
-        let mbc2_at = out.body.find("MBC2").expect("mbc2");
-        let a_at = out.body.find("ROUTER_A").expect("a");
-        assert!(header_at < mbc2_at && mbc2_at < a_at);
     });
 }
 
@@ -109,7 +76,6 @@ fn initial_prompt_omits_header_when_not_included() {
             model: "cursor:auto",
             gates: false,
             gates_just_ran: false,
-            creative: false,
             include_header: false,
         })
         .expect("initial");
@@ -141,7 +107,6 @@ fn initial_prompt_includes_gates_and_audit() {
             model: "cursor:auto",
             gates: true,
             gates_just_ran: false,
-            creative: false,
             include_header: true,
         })
         .expect("initial");

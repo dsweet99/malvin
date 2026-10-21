@@ -30,23 +30,20 @@ fn cli_accepts_short_gates_option() {
 }
 
 #[test]
-fn cli_accepts_global_creative_option() {
+fn cli_rejects_removed_creative_option() {
     use crate::cli::Cli;
 
-    let cli = Cli::try_parse_from(["malvin", "--creative", "route this task"]).expect("parse");
-    assert_eq!(cli.router.creative_probability(), Some(1.0));
-    assert_eq!(
-        cli.first_request().map(String::as_str),
-        Some("route this task")
-    );
-
-    let with_p =
-        Cli::try_parse_from(["malvin", "--creative=0.6", "route this task"]).expect("parse");
-    assert_eq!(with_p.router.creative_probability(), Some(0.6));
-    assert_eq!(
-        with_p.first_request().map(String::as_str),
-        Some("route this task")
-    );
+    for argv in [
+        ["malvin", "--creative", "route this task"],
+        ["malvin", "--creative=0.6", "route this task"],
+    ] {
+        let err = Cli::try_parse_from(argv).expect_err("removed flag");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("unexpected") || msg.contains("unknown") || msg.contains("--creative"),
+            "{argv:?}: {msg}"
+        );
+    }
 }
 
 #[test]

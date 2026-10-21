@@ -7,8 +7,6 @@ const QUIET_HELPTEXT: &str = "Only print DMs";
 
 const VERY_QUIET_HELPTEXT: &str = "Print nothing (-qq)";
 
-const CREATIVE_HELPTEXT: &str = "Be (more) creative for the REQUEST that immediately follows; optional probability in [0,1] (default 1.0 when set; repeatable)";
-
 const ML_HELPTEXT: &str = "Run the meta-loop N times (positive integer, or inf to repeat forever)";
 
 const MAX_LOOPS_HELPTEXT: &str =
@@ -60,18 +58,6 @@ pub(crate) fn parse_meta_loop_count(s: &str) -> Result<MetaLoopCount, String> {
         return Err(format!("--ml must be a positive integer or inf, got `{s}`"));
     }
     Ok(MetaLoopCount::Times(n))
-}
-
-pub(crate) fn parse_creative_probability(s: &str) -> Result<f64, String> {
-    let p: f64 = s
-        .parse()
-        .map_err(|e| format!("invalid --creative probability `{s}`: {e}"))?;
-    if !(0.0..=1.0).contains(&p) || !p.is_finite() {
-        return Err(format!(
-            "--creative probability must be a finite value in [0.0, 1.0], got {p}"
-        ));
-    }
-    Ok(p)
 }
 
 /// Options shared across workflows (model, logging, retries, docs).
@@ -137,18 +123,6 @@ pub struct RouterOpts {
         help = MAX_LOOPS_HELPTEXT
     )]
     pub max_loops: usize,
-    /// Be (more) creative for the REQUEST that immediately follows (repeatable)
-    #[arg(
-        long,
-        num_args = 0..=1,
-        default_missing_value = "1.0",
-        require_equals = true,
-        value_name = "PROB",
-        value_parser = parse_creative_probability,
-        action = ArgAction::Append,
-        help = CREATIVE_HELPTEXT
-    )]
-    pub creative: Vec<f64>,
 }
 
 impl SharedOpts {
@@ -179,27 +153,6 @@ impl RouterOpts {
     pub(crate) fn tee_startup_stdout(&self) -> bool {
         !self.dm_stdout_only() && !self.prints_nothing() && !malvin::output::stdout_suppressed()
     }
-
-    #[must_use]
-    pub(crate) fn creative_probability(&self) -> Option<f64> {
-        self.creative.last().copied()
-    }
-
-    #[must_use]
-    pub(crate) fn with_creative_probability(mut self, creative: Option<f64>) -> Self {
-        self.creative = creative.map_or_else(Vec::new, |p| vec![p]);
-        self
-    }
-
-    #[must_use]
-    pub(crate) fn sample_creative_this_iteration(&self) -> bool {
-        match self.creative_probability() {
-            None => false,
-            Some(p) if p <= 0.0 => false,
-            Some(p) if p >= 1.0 => true,
-            Some(p) => fastrand::f64() < p,
-        }
-    }
 }
 
 #[cfg(test)]
@@ -228,7 +181,6 @@ impl RouterOpts {
             very_quiet: false,
             gates: false,
             max_loops: DEFAULT_MAX_LOOPS,
-            creative: Vec::new(),
         }
     }
 }
@@ -236,43 +188,16 @@ impl RouterOpts {
 #[cfg(test)]
 mod overlay_tests {
     #[test]
-    fn creative_flag_defaults_off_and_accepts_probability() {
+    fn creative_flag_is_rejected() {
         use clap::Parser;
-        let off = crate::cli::Cli::try_parse_from(["malvin", "--doc"]).expect("parse");
-        assert!(off.router.creative_probability().is_none());
-        assert!(!off.router.sample_creative_this_iteration());
-
-        let on = crate::cli::Cli::try_parse_from(["malvin", "--creative", "--doc"]).expect("parse");
-        assert_eq!(on.router.creative_probability(), Some(1.0));
-        assert!(on.router.sample_creative_this_iteration());
-
-        let p =
-            crate::cli::Cli::try_parse_from(["malvin", "--creative=0.6", "--doc"]).expect("parse");
-        assert_eq!(p.router.creative_probability(), Some(0.6));
-
-        let zero =
-            crate::cli::Cli::try_parse_from(["malvin", "--creative=0", "--doc"]).expect("parse");
-        assert_eq!(zero.router.creative_probability(), Some(0.0));
-        assert!(!zero.router.sample_creative_this_iteration());
-
-        let multi = crate::cli::Cli::try_parse_from([
-            "malvin",
-            "--creative",
-            "a",
-            "--creative=0.5",
-            "b",
-            "--doc",
-        ])
-        .expect("parse");
-        assert_eq!(multi.router.creative, vec![1.0, 0.5]);
-    }
-
-    #[test]
-    fn creative_probability_rejects_out_of_range() {
-        assert!(super::parse_creative_probability("1.1").is_err());
-        assert!(super::parse_creative_probability("-0.1").is_err());
-        assert!(super::parse_creative_probability("nope").is_err());
-        assert_eq!(super::parse_creative_probability("0.5").ok(), Some(0.5));
+        let err = crate::cli::Cli::try_parse_from(["malvin", "--creative", "--doc"])
+            .expect_err("removed flag");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("unexpected") || msg.contains("unknown") || msg.contains("--creative"),
+            "{msg}"
+        );
+        assert!(crate::cli::Cli::try_parse_from(["malvin", "--creative=0.6", "task"]).is_err());
     }
 
     #[test]

@@ -25,13 +25,11 @@ fn synthesize_tagged(cli: &Cli) -> Vec<TaggedRequest> {
     if !cli.tagged_requests.is_empty() {
         return cli.tagged_requests.clone();
     }
-    let creative = cli.router.creative_probability();
     cli.requests
         .iter()
         .map(|text| TaggedRequest {
             text: text.clone(),
             kind: RequestKind::Router,
-            creative,
         })
         .collect()
 }

@@ -2,10 +2,6 @@ use super::entrypoint::run_async_cli;
 use super::{RouterOpts, SharedOpts, ml_loop, run_router};
 use crate::cli::request_argv::TaggedRequest;
 
-fn router_opts_for_job(base: &RouterOpts, job: &TaggedRequest) -> RouterOpts {
-    base.clone().with_creative_probability(job.creative)
-}
-
 pub struct DefaultRouteDispatch<'a> {
     pub jobs: Vec<TaggedRequest>,
     pub shared: &'a SharedOpts,
@@ -37,15 +33,14 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
             let router = router.clone();
             async move {
                 for job in jobs {
-                    let job_router = router_opts_for_job(&router, &job);
                     run_router(
                         RouterArgs {
                             request: Some(job.text),
-                            max_loops: job_router.max_loops,
+                            max_loops: router.max_loops,
                         },
                         crate::cli::AgentRouteOpts {
                             shared: &shared,
-                            router: &job_router,
+                            router: &router,
                         },
                     )
                     .await?;

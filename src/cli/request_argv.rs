@@ -1,57 +1,20 @@
 use std::ffi::OsString;
 
-use super::shared_opts::parse_creative_probability;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RequestKind {
     Router,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TaggedRequest {
     pub text: String,
     pub kind: RequestKind,
-    pub creative: Option<f64>,
 }
 
 impl TaggedRequest {
     #[must_use]
     pub const fn is_router(&self) -> bool {
         matches!(self.kind, RequestKind::Router)
-    }
-}
-
-#[derive(Debug, Clone, Copy, Default)]
-struct PendingPrefixes {
-    creative: Option<f64>,
-}
-
-impl PendingPrefixes {
-    fn set_creative(&mut self, prob: f64) -> Result<(), String> {
-        if self.creative.is_some() {
-            return Err(self.conflict_message());
-        }
-        self.creative = Some(prob);
-        Ok(())
-    }
-
-    fn conflict_message(&self) -> String {
-        "`--creative` requires a REQUEST immediately after it".to_string()
-    }
-
-    fn finish(self, out: &[TaggedRequest]) -> Result<(), String> {
-        if out.is_empty() {
-            return Ok(());
-        }
-        if self.creative.is_some() {
-            return Err(self.conflict_message());
-        }
-        Ok(())
-    }
-
-    const fn take_for_request(&mut self) -> (RequestKind, Option<f64>) {
-        let creative = self.creative.take();
-        (RequestKind::Router, creative)
     }
 }
 
@@ -101,47 +64,25 @@ fn skip_option(i: usize, arg: &str, args: &[OsString]) -> usize {
     }
 }
 
-fn parse_creative_flag(arg: &str) -> Result<Option<f64>, String> {
-    if arg == "--creative" {
-        return Ok(Some(1.0));
-    }
-    if let Some(rest) = arg.strip_prefix("--creative=") {
-        return parse_creative_probability(rest).map(Some);
-    }
-    Ok(None)
-}
-
-fn push_request(out: &mut Vec<TaggedRequest>, text: &str, pending: &mut PendingPrefixes) {
-    let (kind, creative) = pending.take_for_request();
+fn push_request(out: &mut Vec<TaggedRequest>, text: &str) {
     out.push(TaggedRequest {
         text: text.to_string(),
-        kind,
-        creative,
+        kind: RequestKind::Router,
     });
 }
 
-fn classify_arg(
-    arg: &str,
-    i: usize,
-    args: &[OsString],
-    pending: &mut PendingPrefixes,
-) -> Result<ArgStep, String> {
-    if let Some(p) = parse_creative_flag(arg)? {
-        pending.set_creative(p)?;
-        return Ok(ArgStep::Advance(i + 1));
-    }
+fn classify_arg(arg: &str, i: usize, args: &[OsString]) -> ArgStep {
     if arg == "admin" {
-        return Ok(ArgStep::Break);
+        return ArgStep::Break;
     }
     if is_option_token(arg) {
-        return Ok(ArgStep::Advance(skip_option(i, arg, args)));
+        return ArgStep::Advance(skip_option(i, arg, args));
     }
-    Ok(ArgStep::Request)
+    ArgStep::Request
 }
 
 pub fn classify_top_level_requests(args: &[OsString]) -> Result<Vec<TaggedRequest>, String> {
     let mut out = Vec::new();
-    let mut pending = PendingPrefixes::default();
     let mut positional_only = false;
     let mut i = 1usize;
     while i < args.len() {
@@ -152,20 +93,19 @@ pub fn classify_top_level_requests(args: &[OsString]) -> Result<Vec<TaggedReques
             continue;
         }
         if positional_only {
-            push_request(&mut out, arg, &mut pending);
+            push_request(&mut out, arg);
             i += 1;
             continue;
         }
-        match classify_arg(arg, i, args, &mut pending)? {
+        match classify_arg(arg, i, args) {
             ArgStep::Break => break,
             ArgStep::Advance(next) => i = next,
             ArgStep::Request => {
-                push_request(&mut out, arg, &mut pending);
+                push_request(&mut out, arg);
                 i += 1;
             }
         }
     }
-    pending.finish(&out)?;
     Ok(out)
 }
 

@@ -1,8 +1,8 @@
 use malvin::artifacts::RunArtifacts;
 use malvin::orchestrator::workflow_context_paths_only;
 use malvin::prompts::{
-    PromptError, PromptStore, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD, RouterBPromptFlags,
-    header_prompt_file, router_a_prompt_file, router_b_prompt_file,
+    PromptError, PromptStore, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD, header_prompt_file,
+    router_a_prompt_file, router_b_prompt_file,
 };
 use std::path::Path;
 
@@ -15,8 +15,7 @@ pub(crate) use super::router_flow_prompt_turns;
 pub(crate) use router_flow_prompt_turns::{
     RouterAPromptInput, RouterBPromptInput, RouterHeaderPromptInput, build_router_a_2_prompt,
     build_router_a_prompt, build_router_b_prompt, build_router_c_prompt,
-    build_router_header_prompt, build_router_mbc2_prompt, router_a_prompt_label,
-    router_b_prompt_label,
+    build_router_header_prompt, router_a_prompt_label, router_b_prompt_label,
 };
 
 pub(crate) use super::router_flow_prompt_initial;
@@ -36,14 +35,11 @@ pub fn prepare_router_prompt_store() -> Result<PromptStore, String> {
 fn validate_router_required_prompts(store: &PromptStore) -> Result<(), String> {
     let required = [
         header_prompt_file(),
-        "mbc2.md",
         router_a_prompt_file(),
         malvin::prompts::router_a_2_prompt_file(),
         malvin::prompts::router_a_audit_prompt_file(),
-        router_b_prompt_file(RouterBPromptFlags { creative: false }),
-        malvin::prompts::router_b_satisfy_prompt_file(RouterBPromptFlags { creative: false }),
-        malvin::prompts::router_b_satisfy_prompt_file(RouterBPromptFlags { creative: true }),
-        malvin::prompts::ROUTER_B_CREATIVE_LEAD_MD,
+        router_b_prompt_file(),
+        malvin::prompts::router_b_satisfy_prompt_file(),
         malvin::prompts::ROUTER_B_DONE_NOTE_MD,
         malvin::prompts::ROUTER_C_MD,
         ROUTER_CODE_EXTRA_MD,
@@ -123,7 +119,6 @@ mod kiss_cov_gate_refs {
         let _ = build_router_a_2_prompt;
         let _ = build_router_b_prompt;
         let _ = build_router_c_prompt;
-        let _ = build_router_mbc2_prompt;
         let _ = build_router_initial_prompt;
         let _: Option<RouterInitialPrompt> = None;
         let _ = router_b_prompt_label;

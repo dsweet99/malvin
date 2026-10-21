@@ -193,7 +193,12 @@ fn bare_malvin_shows_commands_only_and_exits_zero() {
     );
     assert!(
         !help_s.split_whitespace().any(|w| {
-            w == "--do" || w == "--watch" || w == "--verbose" || w.starts_with("--do,")
+            w == "--do"
+                || w == "--watch"
+                || w == "--verbose"
+                || w == "--creative"
+                || w.starts_with("--creative=")
+                || w.starts_with("--do,")
         }),
         "full help must omit removed flags: {help_s}"
     );
