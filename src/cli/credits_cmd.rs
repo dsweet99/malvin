@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-pub(crate) const CREDITS_DOC: &str = include_str!("../../default_prompts/docs/credits.md");
+pub(crate) const CREDITS_DOC: &str = include_str!("../../assets/prompts/docs/credits.md");
 
 pub(crate) fn print_credits_to_writer(mut out: impl Write) -> Result<(), String> {
     out.write_all(CREDITS_DOC.as_bytes())

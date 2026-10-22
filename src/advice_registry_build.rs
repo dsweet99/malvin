@@ -3,7 +3,7 @@ use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const ADVICE_DIR: &str = "default_prompts/advice";
+const ADVICE_DIR: &str = "assets/prompts/advice";
 const MAX_TAG_LEN: usize = 32;
 const MAX_DESC_WORDS: usize = 7;
 
@@ -210,13 +210,13 @@ mod tests {
     #[test]
     fn editor_lock_files_are_not_advice_sources() {
         assert!(is_advice_markdown(Path::new(
-            "default_prompts/advice/fig_design.md"
+            "assets/prompts/advice/fig_design.md"
         )));
         assert!(!is_advice_markdown(Path::new(
-            "default_prompts/advice/.#fig_design.md"
+            "assets/prompts/advice/.#fig_design.md"
         )));
         assert!(!is_advice_markdown(Path::new(
-            "default_prompts/advice/fig_design.md~"
+            "assets/prompts/advice/fig_design.md~"
         )));
     }
 }

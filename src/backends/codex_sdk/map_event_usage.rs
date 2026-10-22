@@ -65,29 +65,18 @@ fn usage_object(params: &Value) -> Option<&serde_json::Map<String, Value>> {
         .and_then(Value::as_object)
 }
 
-pub(super) fn absorb_usage(slot: &mut Option<Value>, next: &Value) {
-    match slot {
-        None => *slot = Some(next.clone()),
-        Some(prior) if usage_dominates(next, prior) => *prior = next.clone(),
-        Some(prior) => add_usage_counts(prior, next),
-    }
+#[derive(Clone, Copy)]
+pub(super) enum UsageUpdateKind {
+    Cumulative,
+    PerRequest,
 }
 
-fn usage_dominates(next: &Value, prior: &Value) -> bool {
-    let (Some(next), Some(prior)) = (next.as_object(), prior.as_object()) else {
-        return false;
-    };
-    if prior.is_empty() {
-        return true;
+pub(super) fn absorb_usage(slot: &mut Option<Value>, next: &Value, kind: UsageUpdateKind) {
+    match slot {
+        None => *slot = Some(next.clone()),
+        Some(prior) if matches!(kind, UsageUpdateKind::Cumulative) => *prior = next.clone(),
+        Some(prior) => add_usage_counts(prior, next),
     }
-    prior.iter().all(|(key, value)| {
-        let Some(old) = value.as_u64() else {
-            return true;
-        };
-        next.get(key)
-            .and_then(Value::as_u64)
-            .is_some_and(|n| n >= old)
-    })
 }
 
 fn add_usage_counts(prior: &mut Value, next: &Value) {
@@ -122,7 +111,10 @@ fn copy_num(
 
 #[cfg(test)]
 mod tests {
-    use super::{absorb_usage, cumulative_usage_delta, has_cumulative_usage, usage_from_codex};
+    use super::{
+        UsageUpdateKind, absorb_usage, cumulative_usage_delta, has_cumulative_usage,
+        usage_from_codex,
+    };
     use serde_json::json;
 
     #[test]
@@ -156,10 +148,12 @@ mod tests {
         absorb_usage(
             &mut slot,
             &json!({"inputTokens": 10, "outputTokens": 4, "reasoningTokens": 3}),
+            UsageUpdateKind::PerRequest,
         );
         absorb_usage(
             &mut slot,
             &json!({"inputTokens": 12, "outputTokens": 1, "reasoningTokens": 0}),
+            UsageUpdateKind::PerRequest,
         );
         let usage = slot.expect("usage");
         assert_eq!(usage["inputTokens"], 22);
@@ -168,10 +162,36 @@ mod tests {
     }
 
     #[test]
-    fn cumulative_snapshot_replaces_instead_of_summing() {
+    fn separate_larger_last_usage_records_are_summed() {
         let mut slot = None;
-        absorb_usage(&mut slot, &json!({"inputTokens": 10, "outputTokens": 4}));
-        absorb_usage(&mut slot, &json!({"inputTokens": 25, "outputTokens": 9}));
+        absorb_usage(
+            &mut slot,
+            &json!({"inputTokens": 10, "outputTokens": 4}),
+            UsageUpdateKind::PerRequest,
+        );
+        absorb_usage(
+            &mut slot,
+            &json!({"inputTokens": 25, "outputTokens": 9}),
+            UsageUpdateKind::PerRequest,
+        );
+        let usage = slot.expect("usage");
+        assert_eq!(usage["inputTokens"], 35);
+        assert_eq!(usage["outputTokens"], 13);
+    }
+
+    #[test]
+    fn cumulative_snapshots_replace_instead_of_summing() {
+        let mut slot = None;
+        absorb_usage(
+            &mut slot,
+            &json!({"inputTokens": 10, "outputTokens": 4}),
+            UsageUpdateKind::Cumulative,
+        );
+        absorb_usage(
+            &mut slot,
+            &json!({"inputTokens": 25, "outputTokens": 9}),
+            UsageUpdateKind::Cumulative,
+        );
         let usage = slot.expect("usage");
         assert_eq!(usage["inputTokens"], 25);
         assert_eq!(usage["outputTokens"], 9);

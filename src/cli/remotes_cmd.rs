@@ -148,7 +148,7 @@ mod tests {
     }
 
     fn remotes_summary_matches_the_admin_doc_example() {
-        let doc = include_str!("../../default_prompts/docs/admin.md");
+        let doc = include_str!("../../assets/prompts/docs/admin.md");
         let example = doc
             .split("malvin admin models` (")
             .nth(1)

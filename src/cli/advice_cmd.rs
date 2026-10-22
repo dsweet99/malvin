@@ -222,7 +222,7 @@ mod tests {
 
     #[test]
     fn every_advice_md_stem_is_registered_as_tag() {
-        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("default_prompts/advice");
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/prompts/advice");
         let mut stems = HashSet::new();
         for entry in fs::read_dir(&dir).expect("read advice dir") {
             let entry = entry.expect("dir entry");

@@ -42,8 +42,8 @@ mod review_plan_embed_tests {
                 "DEFAULT_PROMPTS must not embed mpc_block files: {name}"
             );
         }
-        let count = std::fs::read_dir("default_prompts")
-            .expect("default_prompts dir")
+        let count = std::fs::read_dir("assets/prompts")
+            .expect("assets/prompts dir")
             .filter_map(Result::ok)
             .filter(|e| {
                 e.file_name()
@@ -53,12 +53,12 @@ mod review_plan_embed_tests {
             .count();
         assert_eq!(
             count, 0,
-            "default_prompts/ must contain no mpc_block_*.md files"
+            "assets/prompts/ must contain no mpc_block_*.md files"
         );
     }
 
     #[test]
-    fn embedded_default_prompts_use_spaced_brace_placeholders() {
+    fn embedded_prompt_assets_use_spaced_brace_placeholders() {
         for name in DEFAULT_PROMPTS {
             let text = default_file(name).unwrap_or_else(|| panic!("{name} must be embedded"));
             let bad = malformed_brace_placeholders(text);

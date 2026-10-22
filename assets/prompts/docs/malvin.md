@@ -28,7 +28,7 @@ Bare `malvin REQUEST` runs autonomous routing (`router_a`, then `router_a_2`, op
 | `malvin -g` | Fix quality gates via the default router with fixed request `Get the gates to pass.` (no positional request) |
 | `admin` | Operator maintenance (`models`, `remotes`, `reset-herdr`/`rh`) |
 
-Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prompts/docs/<command>.md`). The default-route contract (`router.md`) is printed after this overview when you run `malvin --doc`.
+Per-command documentation: `malvin <COMMAND> --doc` (embedded from `assets/prompts/docs/<command>.md`). The default-route contract (`router.md`) is printed after this overview when you run `malvin --doc`.
 
 ## Global options
 
@@ -101,7 +101,7 @@ Other subcommand arguments (for example `<REQUEST>`) are not required when `--do
 Print an embedded advice document for `TAG` to stdout and exit, or list available tags when `TAG` is omitted. Does not spawn an agent or create a run directory under `~/.malvinconf/logs/`.
 
 - `malvin --advice` — prints how to open a full document (`malvin --advice TAG`), then a `TAG: Description` heading line, then one `<tag>: <description>` line per TAG (description at most 7 words).
-- `malvin --advice TAG` — body of the matching file under `default_prompts/advice/*.md`.
+- `malvin --advice TAG` — body of the matching file under `assets/prompts/advice/*.md`.
 - Each document’s TAG is the filename without `.md`: lowercase letters, digits, and underscores, starting with a letter, at most 32 characters (examples: `doc_design` for `doc_design.md`; `scholar` for `scholar.md`; `report` for `report.md`). Every `.md` file in that directory is listed; rebuild absorbs added or renamed files.
 - The first line of each advice file must be `description: ...` (value at most 7 words). The build fails if that line is missing or malformed; the listed description is the value after `description:`.
 
@@ -109,7 +109,7 @@ Other subcommand arguments are not required when `--advice` is set.
 
 ### `--credits`
 
-Print credits for the published ideas malvin builds on (embedded from `default_prompts/docs/credits.md`) to stdout and exit. Does not spawn an agent or create a run directory under `~/.malvinconf/logs/`. Other arguments (for example `<REQUEST>`) are ignored when `--credits` is set.
+Print credits for the published ideas malvin builds on (embedded from `assets/prompts/docs/credits.md`) to stdout and exit. Does not spawn an agent or create a run directory under `~/.malvinconf/logs/`. Other arguments (for example `<REQUEST>`) are ignored when `--credits` is set.
 
 ## Quality gates (`.malvin/gates`)
 

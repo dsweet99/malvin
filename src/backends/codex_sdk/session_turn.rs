@@ -129,9 +129,15 @@ fn emit_turn_stream(session: &CodexSession, value: &serde_json::Value, state: &m
             }
         }
         if let BridgeEvent::Usage { usage } = &ev {
-            super::codex_sdk::map_event_usage::absorb_usage(&mut state.usage, usage);
-            state.usage_is_cumulative |=
+            let usage_is_cumulative =
                 super::codex_sdk::map_event_usage::has_cumulative_usage(params);
+            let usage_kind = if usage_is_cumulative {
+                super::codex_sdk::map_event_usage::UsageUpdateKind::Cumulative
+            } else {
+                super::codex_sdk::map_event_usage::UsageUpdateKind::PerRequest
+            };
+            super::codex_sdk::map_event_usage::absorb_usage(&mut state.usage, usage, usage_kind);
+            state.usage_is_cumulative |= usage_is_cumulative;
         }
         if let BridgeEvent::ToolCall { phase, .. } = &ev
             && phase == "start"

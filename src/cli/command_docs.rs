@@ -3,18 +3,18 @@ use std::io::{self, Write};
 use super::Commands;
 use crate::cli::args::Cli;
 
-pub(crate) const MALVIN_OVERVIEW_DOC: &str = include_str!("../../default_prompts/docs/malvin.md");
+pub(crate) const MALVIN_OVERVIEW_DOC: &str = include_str!("../../assets/prompts/docs/malvin.md");
 
-pub(crate) const ROUTER_DOC: &str = include_str!("../../default_prompts/docs/router.md");
+pub(crate) const ROUTER_DOC: &str = include_str!("../../assets/prompts/docs/router.md");
 
 pub(crate) const fn command_doc_markdown(cmd: &Commands) -> &'static str {
     match cmd {
         Commands::Admin(admin) => match &admin.command {
             Some(super::AdminCommand::Models(_)) => {
-                include_str!("../../default_prompts/docs/models.md")
+                include_str!("../../assets/prompts/docs/models.md")
             }
             None | Some(super::AdminCommand::ResetHerdr | super::AdminCommand::Remotes(_)) => {
-                include_str!("../../default_prompts/docs/admin.md")
+                include_str!("../../assets/prompts/docs/admin.md")
             }
         },
     }

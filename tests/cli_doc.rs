@@ -1,5 +1,5 @@
-const MALVIN_MD: &str = include_str!("../default_prompts/docs/malvin.md");
-const ROUTER_MD: &str = include_str!("../default_prompts/docs/router.md");
+const MALVIN_MD: &str = include_str!("../assets/prompts/docs/malvin.md");
+const ROUTER_MD: &str = include_str!("../assets/prompts/docs/router.md");
 
 fn isolated_home() -> tempfile::TempDir {
     let tmp = tempfile::tempdir().expect("tempdir");

@@ -41,34 +41,34 @@ pub const fn router_b_satisfy_prompt_file() -> &'static str {
 
 fn default_constraints_prompt(name: &str) -> Option<&'static str> {
     match name {
-        "init_constraints.md" => Some(include_str!("../../default_prompts/init_constraints.md")),
+        "init_constraints.md" => Some(include_str!("../../assets/prompts/init_constraints.md")),
         _ => None,
     }
 }
 
 fn default_router_a_prompt(name: &str) -> Option<&'static str> {
     match name {
-        ROUTER_A_MD => Some(include_str!("../../default_prompts/router_a.md")),
-        ROUTER_A_2_MD => Some(include_str!("../../default_prompts/router_a_2.md")),
-        ROUTER_A_AUDIT_MD => Some(include_str!("../../default_prompts/router_a_audit.md")),
+        ROUTER_A_MD => Some(include_str!("../../assets/prompts/router_a.md")),
+        ROUTER_A_2_MD => Some(include_str!("../../assets/prompts/router_a_2.md")),
+        ROUTER_A_AUDIT_MD => Some(include_str!("../../assets/prompts/router_a_audit.md")),
         _ => None,
     }
 }
 
 fn default_router_b_fragment(name: &str) -> Option<&'static str> {
     match name {
-        ROUTER_B_SATISFY_MD => Some(include_str!("../../default_prompts/router_b_satisfy.md")),
-        ROUTER_B_DONE_NOTE_MD => Some(include_str!("../../default_prompts/router_b_done_note.md")),
+        ROUTER_B_SATISFY_MD => Some(include_str!("../../assets/prompts/router_b_satisfy.md")),
+        ROUTER_B_DONE_NOTE_MD => Some(include_str!("../../assets/prompts/router_b_done_note.md")),
         _ => None,
     }
 }
 
 fn default_router_prompt(name: &str) -> Option<&'static str> {
     match name {
-        ROUTER_B_MD => Some(include_str!("../../default_prompts/router_b.md")),
-        ROUTER_C_MD => Some(include_str!("../../default_prompts/router_c.md")),
-        ROUTER_CODE_EXTRA_MD => Some(include_str!("../../default_prompts/router_code_extra.md")),
-        ROUTER_SUMMARIZE_MD => Some(include_str!("../../default_prompts/router_summarize.md")),
+        ROUTER_B_MD => Some(include_str!("../../assets/prompts/router_b.md")),
+        ROUTER_C_MD => Some(include_str!("../../assets/prompts/router_c.md")),
+        ROUTER_CODE_EXTRA_MD => Some(include_str!("../../assets/prompts/router_code_extra.md")),
+        ROUTER_SUMMARIZE_MD => Some(include_str!("../../assets/prompts/router_summarize.md")),
         _ => default_router_a_prompt(name).or_else(|| default_router_b_fragment(name)),
     }
 }
@@ -77,7 +77,7 @@ fn default_header_prompt() -> &'static str {
     static HEADER: OnceLock<String> = OnceLock::new();
     HEADER
         .get_or_init(|| {
-            include_str!("../../default_prompts/header.md")
+            include_str!("../../assets/prompts/header.md")
                 .replace("- Coding / SWE", "- Technical problem-solving")
         })
         .as_str()
