@@ -68,6 +68,9 @@ fn usage_limit_substring_is_detected_case_insensitively() {
     assert!(agent_string_is_usage_limit(
         "Error: YOU'VE HIT YOUR USAGE LIMIT\nSwitch to a different model"
     ));
+    assert!(agent_string_is_usage_limit(
+        "Increase limits for faster responses YOU'RE OUT OF USAGE. Switch to Auto."
+    ));
     assert!(!agent_string_is_usage_limit("timed out"));
     assert!(!agent_string_is_usage_limit("usage is fine"));
 }
@@ -76,6 +79,12 @@ fn usage_limit_errors_do_not_retry_even_with_high_max() {
     let msg =
         "You've hit your usage limit\nYou've saved $2502 on API model usage this month with Ultra.";
     let err = plan_text_retry(msg, 1, 9999).expect_err("usage limit must fail fast");
+    assert_eq!(err.message, msg);
+}
+
+fn cursor_out_of_usage_errors_do_not_retry_even_with_high_max() {
+    let msg = "Increase limits for faster responses You're out of usage. Switch to Auto, or ask your admin to increase your limit to continue.";
+    let err = plan_text_retry(msg, 1, 9999).expect_err("Cursor usage exhaustion must fail fast");
     assert_eq!(err.message, msg);
 }
 
@@ -183,6 +192,7 @@ fn kiss_bundled_acp_reader_tests_retry_policy() {
     model_does_not_support_tools_errors_do_not_retry();
     usage_limit_substring_is_detected_case_insensitively();
     usage_limit_errors_do_not_retry_even_with_high_max();
+    cursor_out_of_usage_errors_do_not_retry_even_with_high_max();
     cannot_use_model_fails_fast_even_when_error_also_looks_retriable();
     transient_errors_retry_with_backoff();
     unknown_errors_retry_with_backoff();
