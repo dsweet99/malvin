@@ -12,7 +12,7 @@ there. The build does not run npm, so commit `dist/` after changing `src/`.
 For a manual in-tree rebuild:
 
 ```bash
-cd cursor-sdk-bridge
+cd bridges/cursor-sdk-bridge
 npm ci
 npm run build
 ```

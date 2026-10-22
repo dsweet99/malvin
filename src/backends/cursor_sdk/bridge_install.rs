@@ -11,7 +11,7 @@ macro_rules! payload_file {
             $rel,
             include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/cursor-sdk-bridge/",
+                "/bridges/cursor-sdk-bridge/",
                 $rel
             ))
             .as_slice(),

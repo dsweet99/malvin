@@ -76,7 +76,7 @@ def _ft_cursor_sdk_bridge_ready(path: Path) -> bool:
     ).is_file()
 
 def ft_resolve_cursor_sdk_bridge_dir() -> Path | None:
-    repo_bridge = (REPO_ROOT / "cursor-sdk-bridge").resolve()
+    repo_bridge = (REPO_ROOT / "bridges" / "cursor-sdk-bridge").resolve()
     if _ft_cursor_sdk_bridge_ready(repo_bridge):
         return repo_bridge
     installed = ft_installed_cursor_sdk_bridge_dir().resolve()
@@ -717,10 +717,10 @@ def ft_docker_agent_cmd(
         host_bridge = ft_resolve_cursor_sdk_bridge_dir()
         if host_bridge is None:
             raise click.ClickException(
-                "cursor-sdk-bridge/dist/bridge.js not found under the repo "
+                "bridges/cursor-sdk-bridge/dist/bridge.js not found under the repo "
                 "or ~/.malvinconf/sdk-bridges/cursor-sdk-bridge; "
                 "run a `cursor:` model with malvin once, or run "
-                "`npm ci && npm run build` in cursor-sdk-bridge/ "
+                "`npm ci && npm run build` in bridges/cursor-sdk-bridge/ "
                 "(required for cursor: models inside the agent container)"
             )
         volume_mounts = [
@@ -2208,7 +2208,7 @@ def _ft_test_resolve_agent_helpers() -> None:
 def _ft_test_bridge_prefers_installed_sdk_when_repo_lacks_modules() -> None:
     with tempfile.TemporaryDirectory(prefix="ft-bridge-sdk-") as tmp:
         root = Path(tmp)
-        repo = root / "cursor-sdk-bridge"
+        repo = root / "bridges" / "cursor-sdk-bridge"
         (repo / "dist").mkdir(parents=True)
         (repo / "dist" / "bridge.js").write_text("// stub\n", encoding="utf-8")
         installed = root / "installed"

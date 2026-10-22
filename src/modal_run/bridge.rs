@@ -11,7 +11,12 @@ macro_rules! payload_file {
     ($rel:literal) => {
         (
             $rel,
-            include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/modal-bridge/", $rel)).as_slice(),
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/bridges/modal-bridge/",
+                $rel
+            ))
+            .as_slice(),
         )
     };
 }

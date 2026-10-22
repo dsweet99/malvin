@@ -14,7 +14,7 @@ fn package_json(bridge: &str) -> Value {
 
 #[test]
 fn cursor_bridge_depends_on_cursor_sdk() {
-    let pkg = package_json("cursor-sdk-bridge");
+    let pkg = package_json("bridges/cursor-sdk-bridge");
     let deps = pkg["dependencies"]
         .as_object()
         .expect("dependencies object");

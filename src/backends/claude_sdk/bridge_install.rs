@@ -9,7 +9,7 @@ macro_rules! payload_file {
             $rel,
             include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/claude-sdk-bridge/",
+                "/bridges/claude-sdk-bridge/",
                 $rel
             ))
             .as_slice(),

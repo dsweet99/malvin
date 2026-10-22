@@ -25,7 +25,7 @@ fn fnv1a64_is_stable() {
 
 #[test]
 fn payload_lists_every_non_test_dist_file() {
-    let dist = Path::new(env!("CARGO_MANIFEST_DIR")).join("cursor-sdk-bridge/dist");
+    let dist = Path::new(env!("CARGO_MANIFEST_DIR")).join("bridges/cursor-sdk-bridge/dist");
     let mut on_disk: Vec<String> = fs::read_dir(&dist)
         .unwrap()
         .filter_map(Result::ok)

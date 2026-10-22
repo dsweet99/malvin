@@ -291,7 +291,7 @@ fn remote_lines_with_a_who_tag_are_not_retagged() {
 
 #[test]
 fn package_embeds_every_non_test_bridge_file() {
-    let dist = Path::new(env!("CARGO_MANIFEST_DIR")).join("modal-bridge/dist");
+    let dist = Path::new(env!("CARGO_MANIFEST_DIR")).join("bridges/modal-bridge/dist");
     let mut on_disk: Vec<String> = fs::read_dir(&dist)
         .unwrap()
         .filter_map(Result::ok)

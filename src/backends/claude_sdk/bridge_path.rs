@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
 const ENV_BRIDGE: &str = "MALVIN_CLAUDE_SDK_BRIDGE";
-const BRIDGE_JS: &str = "claude-sdk-bridge/dist/bridge.js";
+const BRIDGE_JS: &str = "bridges/claude-sdk-bridge/dist/bridge.js";
 const SDK_MARKER: &str =
-    "claude-sdk-bridge/node_modules/@anthropic-ai/claude-agent-sdk/package.json";
+    "bridges/claude-sdk-bridge/node_modules/@anthropic-ai/claude-agent-sdk/package.json";
 
 pub fn resolve_bridge_js() -> Result<PathBuf, String> {
     if let Some(value) = std::env::var_os(ENV_BRIDGE).filter(|value| !value.is_empty()) {

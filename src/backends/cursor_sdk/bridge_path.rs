@@ -1,8 +1,8 @@
 use std::path::{Path, PathBuf};
 
 const ENV_BRIDGE: &str = "MALVIN_CURSOR_SDK_BRIDGE";
-const BRIDGE_JS: &str = "cursor-sdk-bridge/dist/bridge.js";
-const SDK_MARKER: &str = "cursor-sdk-bridge/node_modules/@cursor/sdk/package.json";
+const BRIDGE_JS: &str = "bridges/cursor-sdk-bridge/dist/bridge.js";
+const SDK_MARKER: &str = "bridges/cursor-sdk-bridge/node_modules/@cursor/sdk/package.json";
 
 pub fn resolve_bridge_js() -> Result<PathBuf, String> {
     if let Some(p) = std::env::var_os(ENV_BRIDGE).filter(|v| !v.is_empty()) {
