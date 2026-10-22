@@ -65,18 +65,3 @@ Flag reference: `malvin --help`. Behavioral contracts: `malvin --doc` and `malvi
 
 `malvin` allows all tool calls by default.
 
-## Speed
-
-`malvin` likes to run linters and unit tests. It does its best to only run what's necessary, but these tools can help speed things up:
-
-- [Python] [pytest-testmon](https://www.testmon.org) Runs only unit tests affected by code changes
-- [Rust] [cargo-nextest](https://nexte.st) Faster than `cargo test`
-- [Rust] [cargo-difftests](https://github.com/dnbln/cargo-difftests) Re-runs only tests whose executed code changed (LLVM coverage indexes)
-
-
-# EXPERIMENTAL - USE AT YOUR OWN RISK
-
-- pi: models (TypeScript/npm `@earendil-works/pi-coding-agent` RPC; set `MALVIN_PI` or install the package). Local models run as `pi:local/<provider>/<model>` (Ollama, llama.cpp, mistral.rs); malvin starts Ollama when needed and writes a context-capped entry to Pi's `models.json`.
-- Anthropic Claude models run through Pi with `pi:anthropic/<model>`, for example `malvin --model pi:anthropic/claude-sonnet-4-5 "Review this change"`. Authenticate with `ANTHROPIC_API_KEY`, `ANTHROPIC_OAUTH_TOKEN`, or `ANTHROPIC_AUTH_TOKEN` (or Pi's `auth.json`). These credentials and Pi's auth file are available to Modal sandbox runs.
-- Claude Agent SDK models use `claude:<model>`, for example `malvin --model claude:sonnet "Review this change"`. This is a direct Claude integration and uses Claude Code's agent tools in the workspace.
-- Codex: models (requires an externally installed `codex` binary; local stdio app-server)
