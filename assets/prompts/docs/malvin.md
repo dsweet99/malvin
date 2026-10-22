@@ -51,7 +51,7 @@ Model id for agent-backed commands. Default: `cursor:auto` (or `[agent].model` i
 
 ### `--no-auto-costs`
 
-Do not run the optional nested cost-setup request for this invocation. It also prevents that nested request from recursing.
+Skip the in-process cost-setup workflow for this invocation. When `auto_setup_costs` is enabled and the selected model has no per-token rates, `malvin REQUEST` otherwise renders `set_costs.md` and runs that request on the default router, with harness gates off, before init bootstrap and before the request. The workflow runs inside the current process and edits `~/.malvinconf/config.toml` only. If it fails, malvin warns and continues with the configured rates.
 
 ### Outer router iteration
 
@@ -75,7 +75,7 @@ Each `--creative` applies only to the `REQUEST` that immediately follows it and 
 
 ### `--ml=N`
 
-Run the meta-loop N times. After every REQUEST in the invocation has run once, start again from the first REQUEST until the sequence has run N times — as if the same command line were re-invoked. `N` is a positive integer. `N=inf` repeats forever. The default is `1` (a single pass). A failing REQUEST stops the process (the loop does not continue past an error). Init bootstrap, when needed, still runs once at the start of the process. Applies to `malvin REQUEST…` and `malvin -g`.
+Run the meta-loop N times. After every REQUEST in the invocation has run once, start again from the first REQUEST until the sequence has run N times — as if the same command line were re-invoked. `N` is a positive integer. `N=inf` repeats forever. The default is `1` (a single pass). A failing REQUEST stops the process (the loop does not continue past an error). Cost setup, when needed, and init bootstrap, when needed, each run once at the start of the process. Applies to `malvin REQUEST…` and `malvin -g`.
 
 ### Session names
 
@@ -200,7 +200,7 @@ The Cursor SDK bridge also emits automatic `{ "event": "progress", "kind": "hear
 
 `~/.malvinconf/` holds malvin's per-user state: `config.toml`, `local_llms.json`, `logs/`, `names/`, and `sdk-bridges/`. Older releases used `~/.malvin_home/`. On startup, when `~/.malvin_home/` is a real directory, malvin renames it to `~/.malvinconf`, or, if `~/.malvinconf` already exists, merges its contents in (files from `~/.malvin_home/` win on conflict). It then leaves a symlink at the old path, so malvin processes still running an older build keep working.
 
-Top-level keys include `mem_limit_gb`, `theme`, and `auto_setup_costs` (default `true`). When enabled, a run with missing rates asks a nested malvin run to populate rates for its selected model; `--no-auto-costs` disables that for one run. Cursor cost rates `usd_per_microtoken_in`, `usd_per_microtoken_out`, `usd_per_microtoken_cache_read`, and `usd_per_microtoken_cache_write` (dollars per million tokens; all default `0`) live under per-model tables such as `[agent.cursor.auto]` (model id `cursor:auto`). Sections include `[agent]`, `[logs]`, and optional `[aliases.models]` (map short unprefixed names to full model ids for `--model` / `[agent].model`, e.g. `astra = "pi:openrouter/openai/gpt-astra"`) and `[aliases.remotes]` (map short names to full `--remote` values, e.g. `big = "modal:sandbox[gpu=A100,mem=32]"`, so `--remote=big` means `--remote=modal:sandbox[gpu=A100,mem=32]`). An alias matches only the whole value: `--remote=big[timeout=2h]` exits 1 with a message saying so, and an alias may not be named after a built-in remote provider such as `modal` or contain `:`, `[`, `]`, `,`, or `=`; model aliases may not contain `:` either. An invalid alias entry is skipped with a warning; the other entries still work. The older `[nicknames]` table was renamed to `[aliases.models]`; malvin rejects a config that still has it, with a message saying to move its entries.
+Top-level keys include `mem_limit_gb`, `theme`, and `auto_setup_costs` (default `true`). When enabled, a `malvin REQUEST` run with missing rates for its selected model renders `set_costs.md` and runs that request on the default router (harness gates off) before the main request; `--no-auto-costs` skips that workflow for one run. Cursor cost rates `usd_per_microtoken_in`, `usd_per_microtoken_out`, `usd_per_microtoken_cache_read`, and `usd_per_microtoken_cache_write` (dollars per million tokens; all default `0`) live under per-model tables such as `[agent.cursor.auto]` (model id `cursor:auto`). Sections include `[agent]`, `[logs]`, and optional `[aliases.models]` (map short unprefixed names to full model ids for `--model` / `[agent].model`, e.g. `astra = "pi:openrouter/openai/gpt-astra"`) and `[aliases.remotes]` (map short names to full `--remote` values, e.g. `big = "modal:sandbox[gpu=A100,mem=32]"`, so `--remote=big` means `--remote=modal:sandbox[gpu=A100,mem=32]`). An alias matches only the whole value: `--remote=big[timeout=2h]` exits 1 with a message saying so, and an alias may not be named after a built-in remote provider such as `modal` or contain `:`, `[`, `]`, `,`, or `=`; model aliases may not contain `:` either. An invalid alias entry is skipped with a warning; the other entries still work. The older `[nicknames]` table was renamed to `[aliases.models]`; malvin rejects a config that still has it, with a message saying to move its entries.
 
 ## Local LLMs (`~/.malvinconf/local_llms.json`)
 

@@ -71,7 +71,7 @@ pub struct SharedOpts {
         value_parser = parse_model_cli_arg
     )]
     pub model: ParsedModel,
-    /// Do not ask a nested malvin run to configure missing token costs
+    /// Skip the in-process workflow that fills missing token-cost rates
     #[arg(long, default_value_t = false)]
     pub no_auto_costs: bool,
     /// Stop after N consecutive identical backend errors, each within 60 s of the previous one

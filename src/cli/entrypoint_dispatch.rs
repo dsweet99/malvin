@@ -15,11 +15,11 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
         shared,
         router,
     } = input;
-    super::auto_costs::maybe_setup_costs(&shared.model, shared.no_auto_costs);
     let ml = shared.ml;
     let shared = shared.clone();
     let router = router.clone();
     run_async_cli(move || async move {
+        crate::cli::auto_costs::maybe_run_cost_setup(&shared, &router).await;
         crate::cli::init_flow::maybe_run_init_bootstrap(
             crate::cli::init_flow::InitWorkflowOpts {
                 max_loops: router.max_loops,
