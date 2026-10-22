@@ -14,11 +14,7 @@ import click
 def malvin_repo_root() -> Path:
     here = Path(__file__).resolve()
     for parent in (here.parent, *here.parents):
-        if (
-            (parent / "Cargo.toml").is_file()
-            and (parent / "VISION.md").is_file()
-            and (parent / "ops").is_dir()
-        ):
+        if (parent / "Cargo.toml").is_file() and (parent / "ops").is_dir():
             return parent
     raise RuntimeError(f"malvin repo root not found from {here}")
 

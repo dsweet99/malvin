@@ -15,7 +15,10 @@ def test_toolchain_repos_kiss_coverage_witnesses() -> None:
     assert True
 
 def test_load_ops_entry_does_not_write_ops_pycache(tmp_path: Path) -> None:
-    ops = _mod.malvin_repo_root() / "ops"
+    root = _mod.malvin_repo_root()
+    assert (root / "Cargo.toml").is_file()
+    assert not (root / "VISION.md").exists()
+    ops = root / "ops"
     for stale in ops.rglob("__pycache__"):
         if stale.is_dir():
             for child in stale.iterdir():
