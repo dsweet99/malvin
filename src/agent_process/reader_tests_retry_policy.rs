@@ -71,6 +71,12 @@ fn usage_limit_substring_is_detected_case_insensitively() {
     assert!(agent_string_is_usage_limit(
         "Increase limits for faster responses YOU'RE OUT OF USAGE. Switch to Auto."
     ));
+    assert!(agent_string_is_usage_limit(
+        "You\u{2019}ve hit your usage limit."
+    ));
+    assert!(agent_string_is_usage_limit(
+        "codex RPC error: {\"codexErrorInfo\":\"usageLimitExceeded\"}"
+    ));
     assert!(!agent_string_is_usage_limit("timed out"));
     assert!(!agent_string_is_usage_limit("usage is fine"));
 }
@@ -80,6 +86,9 @@ fn usage_limit_errors_do_not_retry_even_with_high_max() {
         "You've hit your usage limit\nYou've saved $2502 on API model usage this month with Ultra.";
     let err = plan_text_retry(msg, 1, 9999).expect_err("usage limit must fail fast");
     assert_eq!(err.message, msg);
+    let codex = "codex RPC error: {\"method\":\"error\",\"params\":{\"error\":{\"codexErrorInfo\":\"usageLimitExceeded\",\"message\":\"You\u{2019}ve hit your usage limit.\"}}}";
+    let codex_err = plan_text_retry(codex, 1, 9999).expect_err("codex usage limit must abort");
+    assert_eq!(codex_err.message, codex);
 }
 
 fn cursor_out_of_usage_errors_do_not_retry_even_with_high_max() {
