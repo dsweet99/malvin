@@ -44,7 +44,7 @@ pub(crate) fn build_router_initial_prompt(
     })?;
     builder.push_nonempty(router_a_prompt_label(), router_a);
 
-    Ok(builder.finish(ROUTER_INITIAL_LOG_WHO))
+    builder.finish(ROUTER_INITIAL_LOG_WHO)
 }
 
 #[cfg(test)]

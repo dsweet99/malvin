@@ -20,20 +20,23 @@ impl AggregatedInitialPromptBuilder {
     }
 
     pub fn push_nonempty(&mut self, label: &'static str, body: String) {
-        if body.is_empty() {
+        if body.trim().is_empty() {
             return;
         }
         self.parts.push(body);
         self.labels.push(label);
     }
 
-    #[must_use]
-    pub fn finish(self, log_who: &'static str) -> AggregatedInitialPrompt {
-        AggregatedInitialPrompt {
-            body: join_strata(self.parts),
+    pub fn finish(self, log_who: &'static str) -> Result<AggregatedInitialPrompt, String> {
+        let body = join_strata(self.parts);
+        if body.is_empty() {
+            return Err("initial prompt has no non-whitespace content".to_string());
+        }
+        Ok(AggregatedInitialPrompt {
+            body,
             stdout_label: self.labels.join("+"),
             log_who,
-        }
+        })
     }
 }
 
