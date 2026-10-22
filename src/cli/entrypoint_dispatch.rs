@@ -15,6 +15,7 @@ pub fn dispatch_default_route(input: DefaultRouteDispatch<'_>) -> Result<(), Str
         shared,
         router,
     } = input;
+    super::auto_costs::maybe_setup_costs(&shared.model, shared.no_auto_costs);
     let ml = shared.ml;
     let shared = shared.clone();
     let router = router.clone();

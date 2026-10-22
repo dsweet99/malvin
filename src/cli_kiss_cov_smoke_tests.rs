@@ -24,6 +24,7 @@ fn smoke_cov_cli_cli_units_1b() {
     let shared = crate::cli::SharedOpts {
         model: crate::config::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL)
             .expect("model"),
+        no_auto_costs: false,
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
         advice: None,

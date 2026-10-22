@@ -71,6 +71,9 @@ pub struct SharedOpts {
         value_parser = parse_model_cli_arg
     )]
     pub model: ParsedModel,
+    /// Do not ask a nested malvin run to configure missing token costs
+    #[arg(long, default_value_t = false)]
+    pub no_auto_costs: bool,
     /// Stop after N consecutive identical backend errors, each within 60 s of the previous one
     #[arg(long = "max-acp-retries", default_value_t = DEFAULT_MAX_ACP_RETRIES)]
     pub max_acp_retries: u32,
@@ -162,6 +165,7 @@ impl SharedOpts {
         Self {
             model: malvin::config::model_id::parse_model_id(malvin::config::DEFAULT_CLI_MODEL)
                 .expect("default model"),
+            no_auto_costs: false,
             max_acp_retries: malvin::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
             advice: None,

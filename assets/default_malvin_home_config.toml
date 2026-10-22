@@ -3,6 +3,9 @@ mem_limit_gb = 4
 time_since_last_call_seconds = 600
 # Terminal color palette: "dark" (default) or "light" (for pale backgrounds).
 theme = "dark"
+# Ask a nested malvin run to populate missing per-model token prices before a run.
+# Set false to leave unset rates at zero; --no-auto-costs disables it for one run.
+auto_setup_costs = true
 
 # Short names for `--model` / `[agent].model` (no ':' in the key).
 # [aliases.models]

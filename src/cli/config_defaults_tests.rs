@@ -61,6 +61,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
     };
     let mut shared = SharedOpts {
         model: malvin::config::model_id::parse_model_id("cursor:old").expect("model"),
+        no_auto_costs: false,
         max_acp_retries: 1,
         doc: false,
         advice: None,

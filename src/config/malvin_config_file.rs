@@ -62,6 +62,7 @@ pub struct MalvinConfig {
     pub mem_limit_gb: u64,
     pub context_size: u32,
     pub theme: TerminalTheme,
+    pub auto_setup_costs: bool,
     pub model_aliases: BTreeMap<String, String>,
     pub remote_aliases: BTreeMap<String, String>,
     pub token_cost_rates: BTreeMap<String, TokenCostRates>,
