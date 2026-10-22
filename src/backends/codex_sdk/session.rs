@@ -8,6 +8,7 @@ pub struct CodexSession {
     pub stdio: StdioChild,
     pub thread_id: Mutex<Option<String>>,
     pub turn_id: Mutex<Option<String>>,
+    pub thread_usage_total: Mutex<Option<serde_json::Value>>,
     pub service: Option<String>,
 }
 

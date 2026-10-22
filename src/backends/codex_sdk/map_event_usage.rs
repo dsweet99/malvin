@@ -13,6 +13,31 @@ pub(super) fn usage_from_turn(value: &Value) -> Option<Value> {
     usage_from_codex(value.get("params").unwrap_or(value))
 }
 
+pub(super) fn has_cumulative_usage(value: &Value) -> bool {
+    let params = value.get("params").unwrap_or(value);
+    params.pointer("/tokenUsage/total").is_some()
+        || params.pointer("/turn/tokenUsage/total").is_some()
+}
+
+pub(super) fn cumulative_usage_delta(slot: &mut Option<Value>, next: &Value) -> Value {
+    let prior = slot.replace(next.clone());
+    let Some(prior) = prior else {
+        return next.clone();
+    };
+    let (Some(previous), Some(current)) = (prior.as_object(), next.as_object()) else {
+        return next.clone();
+    };
+    let delta = current
+        .iter()
+        .filter_map(|(key, value)| {
+            let current = value.as_u64()?;
+            let previous = previous.get(key).and_then(Value::as_u64).unwrap_or(0);
+            Some((key.clone(), Value::from(current.saturating_sub(previous))))
+        })
+        .collect();
+    Value::Object(delta)
+}
+
 fn usage_from_codex(params: &Value) -> Option<Value> {
     let last = usage_object(params)?;
     let mut out = serde_json::Map::new();
@@ -97,7 +122,7 @@ fn copy_num(
 
 #[cfg(test)]
 mod tests {
-    use super::{absorb_usage, usage_from_codex};
+    use super::{absorb_usage, cumulative_usage_delta, has_cumulative_usage, usage_from_codex};
     use serde_json::json;
 
     #[test]
@@ -107,6 +132,8 @@ mod tests {
         let _ = stringify!(usage_from_codex);
         let _ = stringify!(usage_object);
         let _ = stringify!(copy_num);
+        let _ = stringify!(has_cumulative_usage);
+        let _ = stringify!(cumulative_usage_delta);
     }
 
     #[test]
@@ -148,5 +175,29 @@ mod tests {
         let usage = slot.expect("usage");
         assert_eq!(usage["inputTokens"], 25);
         assert_eq!(usage["outputTokens"], 9);
+    }
+
+    #[test]
+    fn cumulative_thread_usage_records_only_each_turns_increment() {
+        let mut total = None;
+        let first = cumulative_usage_delta(
+            &mut total,
+            &json!({"inputTokens": 31_867, "cacheReadTokens": 28_937}),
+        );
+        let second = cumulative_usage_delta(
+            &mut total,
+            &json!({"inputTokens": 49_088, "cacheReadTokens": 44_712}),
+        );
+        let final_turn = cumulative_usage_delta(
+            &mut total,
+            &json!({"inputTokens": 101_620, "cacheReadTokens": 90_496}),
+        );
+        assert_eq!(first["inputTokens"], 31_867);
+        assert_eq!(second["inputTokens"], 17_221);
+        assert_eq!(final_turn["inputTokens"], 52_532);
+        assert_eq!(final_turn["cacheReadTokens"], 45_784);
+        assert_eq!(total.unwrap()["inputTokens"], 101_620);
+        assert!(has_cumulative_usage(&json!({"tokenUsage": {"total": {}}})));
+        assert!(!has_cumulative_usage(&json!({"tokenUsage": {"last": {}}})));
     }
 }

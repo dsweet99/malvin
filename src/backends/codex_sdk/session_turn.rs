@@ -10,6 +10,7 @@ pub(crate) struct TurnState {
     pub(super) response_text: String,
     pub(super) turn_id: Option<String>,
     pub(super) usage: Option<serde_json::Value>,
+    pub(super) usage_is_cumulative: bool,
     pub(super) started: Option<Instant>,
     pub(super) counted_step: bool,
 }
@@ -129,6 +130,8 @@ fn emit_turn_stream(session: &CodexSession, value: &serde_json::Value, state: &m
         }
         if let BridgeEvent::Usage { usage } = &ev {
             super::codex_sdk::map_event_usage::absorb_usage(&mut state.usage, usage);
+            state.usage_is_cumulative |=
+                super::codex_sdk::map_event_usage::has_cumulative_usage(params);
         }
         if let BridgeEvent::ToolCall { phase, .. } = &ev
             && phase == "start"

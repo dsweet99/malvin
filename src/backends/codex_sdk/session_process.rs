@@ -37,6 +37,7 @@ pub(super) fn build_codex_session(
         ),
         thread_id: std::sync::Mutex::new(None),
         turn_id: std::sync::Mutex::new(None),
+        thread_usage_total: std::sync::Mutex::new(None),
         service: service.map(str::to_owned),
     }
 }
