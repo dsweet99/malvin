@@ -8,16 +8,31 @@ struct AdviceEntry {
 
 include!(concat!(env!("OUT_DIR"), "/advice_registry.rs"));
 
+const LEGACY_ADVICE_ALIASES: &[(&str, &str)] = &[("doc_design", "prin_doc")];
+
+fn canonical_advice_tag(tag: &str) -> &str {
+    LEGACY_ADVICE_ALIASES
+        .iter()
+        .find_map(|(legacy, canonical)| (*legacy == tag).then_some(*canonical))
+        .unwrap_or(tag)
+}
+
 fn advice_entry(tag: &str) -> Result<&'static AdviceEntry, String> {
     if !is_valid_advice_tag(tag) {
         return Err(format!(
             "invalid --advice TAG `{tag}`: must be lowercase letters/digits/underscores, start with a letter, at most 32 characters"
         ));
     }
-    ADVICE_ENTRIES.iter().find(|e| e.tag == tag).ok_or_else(|| {
-        let known: Vec<&str> = ADVICE_ENTRIES.iter().map(|e| e.tag).collect();
-        format!("unknown --advice TAG `{tag}` (known: {})", known.join(", "))
-    })
+    let canonical = canonical_advice_tag(tag);
+    ADVICE_ENTRIES
+        .iter()
+        .find(|e| e.tag == canonical)
+        .ok_or_else(|| {
+            let mut known: Vec<&str> = ADVICE_ENTRIES.iter().map(|e| e.tag).collect();
+            known.extend(LEGACY_ADVICE_ALIASES.iter().map(|(legacy, _)| *legacy));
+            known.sort_unstable();
+            format!("unknown --advice TAG `{tag}` (known: {})", known.join(", "))
+        })
 }
 
 pub(crate) fn advice_text(tag: &str) -> Result<&'static str, String> {
@@ -93,8 +108,8 @@ mod tests {
         let mut buf = Vec::new();
         print_advice_to_writer("doc_design", &mut buf).expect("print");
         let s = String::from_utf8(buf).expect("utf8");
-        assert!(s.contains("C.R.A.P."));
-        assert!(s.contains("Contrast"));
+        assert!(s.contains("Design for the Reader"));
+        assert!(s.contains("Make Structure Visible"));
     }
 
     #[test]

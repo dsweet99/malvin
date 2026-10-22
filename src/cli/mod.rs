@@ -91,6 +91,8 @@ pub(super) mod entrypoint_info_flags;
 pub(super) mod entrypoint_modal;
 #[path = "models_cmd_catalog.rs"]
 pub(super) mod models_cmd_catalog;
+#[path = "models_cmd_claude_catalog.rs"]
+pub(super) mod models_cmd_claude_catalog;
 #[path = "models_cmd_cursor.rs"]
 pub(super) mod models_cmd_cursor;
 #[path = "models_cmd_filter.rs"]

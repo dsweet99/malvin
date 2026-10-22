@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 const LOCK_JSON: &str = "package-lock.json";
 const NPM_STAMP: &str = ".malvin-npm-stamp";
@@ -79,6 +80,15 @@ impl NpmBridgePackage {
         fs::write(&path, format!("{}\n", self.lock_stamp()))
             .map_err(|e| format!("write {}: {e}", path.display()))
     }
+}
+
+pub fn ensure_installed_cached(
+    package: &NpmBridgePackage,
+    cache: &OnceLock<Result<PathBuf, String>>,
+) -> Result<PathBuf, String> {
+    cache
+        .get_or_init(|| package.install_into(&package.default_install_dir()))
+        .clone()
 }
 
 fn lock_install_dir(dest: &Path) -> Result<fs::File, String> {

@@ -152,7 +152,7 @@ fn parse_provider_slash_model(
     })
 }
 
-fn parsed(backend: ModelBackend, slug: &str) -> Result<ParsedModel, String> {
+pub(super) fn parsed(backend: ModelBackend, slug: &str) -> Result<ParsedModel, String> {
     let (slug, params) = split_bracket_params(slug)?;
     if slug.is_empty() {
         return Err(UNPREFIXED_MODEL_MESSAGE.to_string());

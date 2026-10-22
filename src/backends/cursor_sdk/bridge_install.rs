@@ -45,9 +45,7 @@ pub fn default_install_dir() -> PathBuf {
 
 pub fn ensure_installed() -> Result<PathBuf, String> {
     static CACHED: OnceLock<Result<PathBuf, String>> = OnceLock::new();
-    CACHED
-        .get_or_init(|| install_into(&default_install_dir()))
-        .clone()
+    crate::npm_bridge_install::ensure_installed_cached(&PACKAGE, &CACHED)
 }
 
 pub fn install_into(dest: &Path) -> Result<PathBuf, String> {

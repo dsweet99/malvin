@@ -30,6 +30,7 @@ pub(crate) trait BackendLifecycle: Sync {
 struct CursorLifecycle;
 struct PiLifecycle;
 struct CodexLifecycle;
+struct ClaudeLifecycle;
 
 #[must_use]
 pub(crate) const fn backend_lifecycle(backend: ModelBackend) -> &'static dyn BackendLifecycle {
@@ -37,6 +38,7 @@ pub(crate) const fn backend_lifecycle(backend: ModelBackend) -> &'static dyn Bac
         ModelBackend::Cursor => &CursorLifecycle,
         ModelBackend::Pi => &PiLifecycle,
         ModelBackend::Codex => &CodexLifecycle,
+        ModelBackend::Claude => &ClaudeLifecycle,
     }
 }
 
@@ -130,6 +132,36 @@ impl BackendLifecycle for CodexLifecycle {
     ) -> SpawnFuture<'a> {
         Box::pin(async move {
             crate::backends::codex_sdk::spawn_bridge(args, service)
+                .await
+                .map(SdkSession::new)
+        })
+    }
+}
+
+impl BackendLifecycle for ClaudeLifecycle {
+    fn supports_thinking_wire(&self) -> bool {
+        false
+    }
+    fn supports_service_wire(&self) -> bool {
+        false
+    }
+    fn tracks_resume_agent_id(&self) -> bool {
+        false
+    }
+
+    fn ensure_authenticated(&self, model: &ParsedModel) -> Result<(), AuthError> {
+        debug_assert_eq!(model.backend, ModelBackend::Claude);
+        crate::backends::claude_sdk::ensure_claude_authenticated()
+    }
+
+    fn spawn_session<'a>(
+        &self,
+        args: BridgeSpawnArgs<'a>,
+        _resume_agent_id: Option<&'a str>,
+        _service: Option<&'a str>,
+    ) -> SpawnFuture<'a> {
+        Box::pin(async move {
+            crate::backends::claude_sdk::spawn_bridge(args)
                 .await
                 .map(SdkSession::new)
         })

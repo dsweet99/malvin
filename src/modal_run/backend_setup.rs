@@ -23,6 +23,7 @@ pub trait ModalBackendSetup: Sync {
 struct CursorSetup;
 struct PiSetup;
 struct CodexSetup;
+struct ClaudeSetup;
 
 #[must_use]
 pub const fn modal_backend_setup(backend: ModelBackend) -> &'static dyn ModalBackendSetup {
@@ -30,6 +31,7 @@ pub const fn modal_backend_setup(backend: ModelBackend) -> &'static dyn ModalBac
         ModelBackend::Cursor => &CursorSetup,
         ModelBackend::Pi => &PiSetup,
         ModelBackend::Codex => &CodexSetup,
+        ModelBackend::Claude => &ClaudeSetup,
     }
 }
 
@@ -116,5 +118,31 @@ impl ModalBackendSetup for CodexSetup {
             return Ok(());
         }
         Err("malvin --remote=modal:sandbox with a codex: model needs OPENAI_API_KEY or ~/.codex/auth.json.".to_string())
+    }
+}
+
+impl ModalBackendSetup for ClaudeSetup {
+    fn image_layer(&self, _home: &Path) -> Option<Vec<String>> {
+        None
+    }
+
+    fn sandbox_env(&self) -> BTreeMap<String, String> {
+        BTreeMap::new()
+    }
+
+    fn login_candidates(&self, home: &Path) -> Vec<PathBuf> {
+        crate::backends::claude_sdk::auth::claude_login_candidates(home)
+    }
+
+    fn credential_preflight(&self, home: &Path) -> Result<(), String> {
+        if env_set("ANTHROPIC_API_KEY")
+            || env_set("ANTHROPIC_OAUTH_TOKEN")
+            || env_set("ANTHROPIC_AUTH_TOKEN")
+            || env_set("CLAUDE_CODE_OAUTH_TOKEN")
+            || !self.login_files(home).is_empty()
+        {
+            return Ok(());
+        }
+        Err("malvin --remote=modal:sandbox with a claude: model needs ANTHROPIC_API_KEY, ANTHROPIC_OAUTH_TOKEN, ANTHROPIC_AUTH_TOKEN, CLAUDE_CODE_OAUTH_TOKEN, or a Claude Code login.".to_string())
     }
 }

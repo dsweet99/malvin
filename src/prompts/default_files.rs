@@ -1,4 +1,5 @@
 use super::{HEADER_MD, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD};
+use std::sync::OnceLock;
 
 pub const ROUTER_A_MD: &str = "router_a.md";
 pub const ROUTER_A_2_MD: &str = "router_a_2.md";
@@ -72,11 +73,21 @@ fn default_router_prompt(name: &str) -> Option<&'static str> {
     }
 }
 
+fn default_header_prompt() -> &'static str {
+    static HEADER: OnceLock<String> = OnceLock::new();
+    HEADER
+        .get_or_init(|| {
+            include_str!("../../default_prompts/header.md")
+                .replace("- Coding / SWE", "- Technical problem-solving")
+        })
+        .as_str()
+}
+
 pub fn default_file(name: &str) -> Option<&'static str> {
     default_constraints_prompt(name)
         .or_else(|| default_router_prompt(name))
         .or_else(|| match name {
-            HEADER_MD => Some(include_str!("../../default_prompts/header.md")),
+            HEADER_MD => Some(default_header_prompt()),
             _ => None,
         })
 }

@@ -196,15 +196,22 @@ fn base_follows_host_glibc_and_ubuntu_images_install_node() {
 }
 
 #[test]
-fn forwarded_env_keeps_only_set_provider_keys() {
+fn forwarded_env_keeps_only_set_provider_credentials() {
     let env = forwarded_env(|k| match k {
         "OPENAI_API_KEY" => Some("sk".to_string()),
+        "ANTHROPIC_OAUTH_TOKEN" => Some("oauth-token".to_string()),
         "CURSOR_API_KEY" => Some("  ".to_string()),
         "PATH" => Some("/bin".to_string()),
         _ => None,
     });
-    assert_eq!(env.keys().collect::<Vec<_>>(), vec!["OPENAI_API_KEY"]);
+    assert_eq!(
+        env.keys().collect::<Vec<_>>(),
+        vec!["ANTHROPIC_OAUTH_TOKEN", "OPENAI_API_KEY"]
+    );
     assert!(FORWARDED_ENV.contains(&"OPENROUTER_API_KEY"));
+    assert!(FORWARDED_ENV.contains(&"ANTHROPIC_API_KEY"));
+    assert!(FORWARDED_ENV.contains(&"ANTHROPIC_OAUTH_TOKEN"));
+    assert!(FORWARDED_ENV.contains(&"ANTHROPIC_AUTH_TOKEN"));
 }
 
 #[test]

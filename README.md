@@ -14,6 +14,12 @@ The build needs neither Node nor network access beyond crates.io.
 `cursor:` model runs, malvin installs the Cursor SDK (`@cursor/sdk`) under
 `~/.malvinconf/sdk-bridges/` with `npm ci`.
 
+`claude:` models need Node.js ≥ 22.13 with npm. The first time a `claude:` model
+runs, malvin installs the Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`)
+under `~/.malvinconf/sdk-bridges/`. Set `ANTHROPIC_API_KEY`,
+`ANTHROPIC_OAUTH_TOKEN`, `ANTHROPIC_AUTH_TOKEN`, or `CLAUDE_CODE_OAUTH_TOKEN`
+before running one.
+
 `pi:` models also need Node (≥ 22.19 for Pi 1.x), plus the npm Pi agent
 (`npm install @earendil-works/pi-coding-agent` in `~/.malvinconf/sdk-bridges/`, or
 set `MALVIN_PI`). `codex:` models do not need Node.
@@ -71,4 +77,6 @@ Flag reference: `malvin --help`. Behavioral contracts: `malvin --doc` and `malvi
 # EXPERIMENTAL - USE AT YOUR OWN RISK
 
 - pi: models (TypeScript/npm `@earendil-works/pi-coding-agent` RPC; set `MALVIN_PI` or install the package). Local models run as `pi:local/<provider>/<model>` (Ollama, llama.cpp, mistral.rs); malvin starts Ollama when needed and writes a context-capped entry to Pi's `models.json`.
+- Anthropic Claude models run through Pi with `pi:anthropic/<model>`, for example `malvin --model pi:anthropic/claude-sonnet-4-5 "Review this change"`. Authenticate with `ANTHROPIC_API_KEY`, `ANTHROPIC_OAUTH_TOKEN`, or `ANTHROPIC_AUTH_TOKEN` (or Pi's `auth.json`). These credentials and Pi's auth file are available to Modal sandbox runs.
+- Claude Agent SDK models use `claude:<model>`, for example `malvin --model claude:sonnet "Review this change"`. This is a direct Claude integration and uses Claude Code's agent tools in the workspace.
 - Codex: models (requires an externally installed `codex` binary; local stdio app-server)

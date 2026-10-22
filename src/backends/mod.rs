@@ -1,5 +1,6 @@
 pub mod agent_backend;
 pub mod bridge_sdk;
+pub mod claude_sdk;
 pub mod codex_sdk;
 pub mod cursor_sdk;
 pub mod pi_backend;
@@ -74,6 +75,14 @@ pub(super) mod bridge_sdk_timing;
 pub(super) mod bridge_sdk_turn_protocol;
 #[path = "bridge_sdk/turn_timeout.rs"]
 pub(super) mod bridge_sdk_turn_timeout;
+#[path = "claude_sdk/auth.rs"]
+pub(super) mod claude_sdk_auth;
+#[path = "claude_sdk/bridge_install.rs"]
+pub mod claude_sdk_bridge_install;
+#[path = "claude_sdk/bridge_path.rs"]
+pub mod claude_sdk_bridge_path;
+#[path = "claude_sdk/session_spawn.rs"]
+pub(super) mod claude_sdk_session_spawn;
 #[path = "codex_sdk/auth.rs"]
 pub(super) mod codex_sdk_auth;
 #[path = "codex_sdk/catalog.rs"]

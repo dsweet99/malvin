@@ -34,6 +34,15 @@ fn resolved_json_reports_backend_provider_and_locality() {
     assert_eq!(cloud["backend"], "pi");
     assert_eq!(cloud["provider"], "openrouter");
     assert_eq!(cloud["local"], false);
+
+    let claude = json_for("pi:anthropic/claude-sonnet-4-5[thinking=high]");
+    assert_eq!(
+        claude["canonical"],
+        "pi:anthropic/claude-sonnet-4-5[thinking=high]"
+    );
+    assert_eq!(claude["backend"], "pi");
+    assert_eq!(claude["provider"], "anthropic");
+    assert_eq!(claude["local"], false);
 }
 
 #[test]
