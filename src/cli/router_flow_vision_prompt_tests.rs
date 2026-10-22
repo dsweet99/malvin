@@ -51,7 +51,7 @@ fn header_advice_bullets_do_not_mention_coding_and_read_as_phrases() {
         for word in bullet.split(|c: char| !c.is_ascii_alphanumeric()) {
             assert!(
                 !word.eq_ignore_ascii_case("code") && !word.eq_ignore_ascii_case("coding"),
-                "VISION.md forbids header.md from mentioning coding; bullet {bullet:?}"
+                "header.md advice bullets must not mention coding; bullet {bullet:?}"
             );
         }
         assert!(
