@@ -5,10 +5,9 @@ pub(crate) use super::router_flow_prompt;
 use crate::cli::cli_request::require_cli_request;
 use crate::cli::run_emit::{RunStartupEmitOpts, emit_run_logs_line, emit_run_startup_banner};
 use crate::cli::{AgentRouteOpts, SharedOpts};
-use malvin::artifacts::{RunArtifacts, is_existing_md_file_path, resolve_user_md_request};
+use malvin::artifacts::{RunArtifacts, resolve_user_md_request};
 use malvin::backends::agent_backend::{SdkClient, build_agent_backend};
 use malvin::prompts::PromptStore;
-use std::path::PathBuf;
 
 pub use router_flow_prompt::prepare_router_prompt_store;
 
@@ -22,7 +21,6 @@ struct RouterRunPrep {
     client: SdkClient,
     artifacts: RunArtifacts,
     prompt_store: PromptStore,
-    watch_source: Option<PathBuf>,
 }
 
 fn new_router_client(shared: &SharedOpts) -> SdkClient {
@@ -58,7 +56,6 @@ async fn prepare_router_run(
 ) -> Result<RouterRunPrep, String> {
     let client = new_router_client(opts.shared);
     let request = require_cli_request(router_args.request.as_ref(), "")?;
-    let watch_source = is_existing_md_file_path(&request);
     let (text, work_dir) = resolve_user_md_request(&request)?;
     let artifacts = malvin::artifacts::create_run_artifacts_from_text_opts(
         &text,
@@ -73,13 +70,19 @@ async fn prepare_router_run(
         client,
         artifacts,
         prompt_store,
-        watch_source,
     })
+}
+
+pub(crate) fn engage_prints_nothing() {
+    malvin::output::set_stdout_display_discarded(true);
+    malvin::output::set_heartbeat_stdout_suppressed(true);
 }
 
 pub async fn run_router(router_args: RouterArgs, opts: AgentRouteOpts<'_>) -> Result<(), String> {
     let request = require_cli_request(router_args.request.as_ref(), "")?;
-    if opts.router.quiet {
+    if opts.router.prints_nothing() {
+        engage_prints_nothing();
+    } else if opts.router.dm_stdout_only() {
         let interactive = malvin::output::agent_stdout_tee_enabled();
         let emit_markdown = interactive && opts.shared.acp_stdout_markdown_enabled();
         malvin::output::set_do_dm_stdout_opts(malvin::output::DoDmStdoutOpts {
@@ -89,7 +92,7 @@ pub async fn run_router(router_args: RouterArgs, opts: AgentRouteOpts<'_>) -> Re
         malvin::output::set_heartbeat_stdout_suppressed(true);
     }
     let result = run_router_body(router_args, opts, &request).await;
-    if opts.router.quiet {
+    if opts.router.dm_stdout_only() {
         malvin::output::set_do_dm_stdout_opts(malvin::output::DoDmStdoutOpts::default());
         malvin::output::set_heartbeat_stdout_suppressed(false);
     }
@@ -113,7 +116,6 @@ async fn run_router_body(
             shared: opts.shared,
             router: opts.router,
             max_loops: router_args.max_loops,
-            watch_source: prep.watch_source.as_deref(),
         })
         .await?;
 
@@ -126,12 +128,62 @@ async fn run_router_body(
 
 #[cfg(test)]
 mod kiss_static_fn_item_refs {
-    use super::{run_router, run_router_body};
+    use super::{engage_prints_nothing, run_router, run_router_body};
 
     #[test]
     fn kiss_static_fn_item_refs() {
         let _ = run_router;
         let _ = run_router_body;
+        let _ = engage_prints_nothing;
+    }
+}
+
+#[cfg(test)]
+mod very_quiet_stdout_tests {
+    use super::engage_prints_nothing;
+
+    struct Reset;
+
+    impl Drop for Reset {
+        fn drop(&mut self) {
+            malvin::output::set_stdout_display_discarded(false);
+            malvin::output::set_heartbeat_stdout_suppressed(false);
+            malvin::run_timing::set_suppress_stdout_footnotes(false);
+            malvin::output::set_do_dm_stdout_mode(false);
+        }
+    }
+
+    #[test]
+    fn very_quiet_discards_stdout_including_dm_bodies_and_footnotes() {
+        let _log = malvin::output::STDOUT_LOG_TEST_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _dm = malvin::output::DO_DM_TEST_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _reset = Reset;
+        malvin::output::set_stdout_log_path(None);
+        engage_prints_nothing();
+        malvin::output::enable_stdout_capture();
+        malvin::output::print_stdout_line(malvin::output::MALVIN_WHO, "startup");
+        malvin::output::set_do_dm_stdout_mode(true);
+        let fenced = format!(
+            "{}\nsecret\n{}\n",
+            malvin::output::DM_START,
+            malvin::output::DM_END
+        );
+        malvin::output::feed_do_dm_stdout_text(&fenced);
+        malvin::run_timing::arm_process_footnotes();
+        malvin::run_timing::emit_process_footnotes_if_armed();
+        let silenced = malvin::output::take_captured_stdout();
+        assert!(silenced.is_empty(), "{silenced}");
+
+        malvin::output::set_stdout_display_discarded(false);
+        malvin::run_timing::set_suppress_stdout_footnotes(false);
+        malvin::output::enable_stdout_capture();
+        malvin::output::feed_do_dm_stdout_text(&fenced);
+        let restored = malvin::output::take_captured_stdout();
+        assert!(restored.contains("secret"), "{restored}");
     }
 }
 

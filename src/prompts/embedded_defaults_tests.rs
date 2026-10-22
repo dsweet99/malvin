@@ -73,6 +73,10 @@ fn insert_header_runtime_placeholders(ctx: &mut HashMap<String, String>) {
         "current_state".to_string(),
         "User: test\nDate/time: now\nSandbox memory: limit 4 GiB\nRetry: not a retry".to_string(),
     );
+    ctx.insert(
+        "exp_log".to_string(),
+        "/home/.malvinconf/logs/abc123/_run/exp_log_test.md".to_string(),
+    );
 }
 
 fn default_prompt_store_with_unset_home() -> (super::PromptStore, HashMap<String, String>) {
@@ -107,18 +111,14 @@ fn render_default_header(store: &super::PromptStore, context: &HashMap<String, S
 
 #[test]
 fn embedded_router_done_prompts_name_the_done_marker() {
-    for name in [super::ROUTER_A_2_MD, super::ROUTER_B_DONE_NOTE_MD] {
+    for name in [
+        super::ROUTER_A_2_MD,
+        super::ROUTER_B_DONE_NOTE_MD,
+        super::ROUTER_C_MD,
+    ] {
         let s = super::default_file(name).expect("router prompt must be embedded");
         assert!(s.contains(crate::output::MALVIN_DONE), "{name}");
     }
-}
-
-#[test]
-fn embedded_do_header_is_a_single_text_block_with_closing_newline() {
-    let s = super::default_file(super::DO_HEADER_MD).expect("do header must be embedded");
-    assert!(s.ends_with('\n'));
-    assert!(s.contains(crate::output::DM_START));
-    assert!(s.contains(crate::output::DM_END));
 }
 
 #[test]

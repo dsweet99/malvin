@@ -2476,7 +2476,9 @@ _LINT_GATE_TOOLS = ("ruff", "mypy", "pre-commit")
 _TOX_RUNNER_TOOLS = ("tox", "invoke")
 _TOX_VARS_RE = re.compile(r"\{\[vars\]([^\}]+)\}")
 
-def _tox_ini_section_text(tox_text: str, header: str) -> str | None:
+def _tox_ini_section_text(
+    tox_text: str, header: str = "[testenv:lint]"
+) -> str | None:
     lines = tox_text.splitlines()
     start: int | None = None
     for index, line in enumerate(lines):
@@ -2493,7 +2495,7 @@ def _tox_ini_section_text(tox_text: str, header: str) -> str | None:
         section_lines.append(line)
     return "\n".join(section_lines) if section_lines else ""
 
-tox_lint_section_text = lambda tox_text: _tox_ini_section_text(tox_text, "[testenv:lint]")
+tox_lint_section_text = _tox_ini_section_text
 
 def tox_ini_vars(tox_text: str) -> dict[str, str]:
     section = _tox_ini_section_text(tox_text, "[vars]")

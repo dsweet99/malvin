@@ -7,11 +7,6 @@ pub fn ensure_malvin_checks_for_gates_only_route() -> Result<(), String> {
     malvin::repo_gates::ensure_default_malvin_config_file(&cwd)
 }
 
-pub fn ensure_malvin_checks_for_do_workflow() -> Result<(), String> {
-    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    malvin::repo_gates::ensure_default_malvin_config_file(&cwd)
-}
-
 pub fn ensure_malvin_checks_for_default_route() -> Result<(), String> {
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
     malvin::repo_gates::ensure_default_malvin_config_file(&cwd)
@@ -20,7 +15,7 @@ pub fn ensure_malvin_checks_for_default_route() -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        ensure_malvin_checks_for_command, ensure_malvin_checks_for_do_workflow,
+        ensure_malvin_checks_for_command, ensure_malvin_checks_for_default_route,
         ensure_malvin_checks_for_gates_only_route,
     };
     use crate::cli::Commands;
@@ -56,7 +51,8 @@ mod tests {
             );
 
             std::fs::remove_file(&config).expect("remove config");
-            ensure_malvin_checks_for_do_workflow().expect("do must materialize home config");
+            ensure_malvin_checks_for_default_route()
+                .expect("default route must materialize home config");
             assert!(!checks.exists());
             assert!(config.is_file());
             assert!(

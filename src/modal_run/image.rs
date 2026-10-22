@@ -8,7 +8,64 @@ use crate::npm_bridge_install::fnv1a64;
 pub const DEFAULT_BASE: &str = "node:22-trixie-slim";
 pub const TOOLCHAIN: &str = "RUN apt-get update && apt-get install -y --no-install-recommends \
      git ca-certificates curl python3 build-essential && rm -rf /var/lib/apt/lists/*";
+const NODE_TARBALL: &str = "https://nodejs.org/dist/v22.23.3/node-v22.23.3-linux-x64.tar.xz";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+struct GlibcBase {
+    image: &'static str,
+    major: u64,
+    minor: u64,
+}
+
+const GLIBC_BASES: &[GlibcBase] = &[
+    GlibcBase {
+        image: DEFAULT_BASE,
+        major: 2,
+        minor: 41,
+    },
+    GlibcBase {
+        image: "ubuntu:26.04",
+        major: 2,
+        minor: 43,
+    },
+    GlibcBase {
+        image: "ubuntu:26.10",
+        major: 2,
+        minor: 44,
+    },
+];
+
+#[must_use]
+pub fn base_for_host_glibc(host: Option<&str>) -> &'static str {
+    let Some((major, minor)) = host.and_then(parse_glibc) else {
+        return DEFAULT_BASE;
+    };
+    GLIBC_BASES
+        .iter()
+        .find(|base| (base.major, base.minor) >= (major, minor))
+        .map_or(GLIBC_BASES[GLIBC_BASES.len() - 1].image, |base| base.image)
+}
+
+fn parse_glibc(text: &str) -> Option<(u64, u64)> {
+    let mut parts = text.split('.');
+    let major = parts.next()?.parse().ok()?;
+    let minor = parts.next()?.parse().ok()?;
+    Some((major, minor))
+}
+
+#[must_use]
+pub fn toolchain_commands(base_includes_node: bool) -> Vec<String> {
+    if base_includes_node {
+        return vec![TOOLCHAIN.to_string()];
+    }
+    vec![
+        "RUN apt-get update && apt-get install -y --no-install-recommends \
+         git ca-certificates curl python3 build-essential xz-utils \
+         && rm -rf /var/lib/apt/lists/*"
+            .to_string(),
+        format!("RUN curl -fsSL {NODE_TARBALL} | tar -xJ -C /usr/local --strip-components=1"),
+    ]
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImageSpec {
@@ -70,10 +127,14 @@ fn binary_hash(path: &Path) -> Result<u64, String> {
     Ok(fnv1a64(&bytes))
 }
 
-fn config_and_backend_layers(cfg: &ModalConfig, model: &str) -> Result<Vec<Vec<String>>, String> {
+fn config_and_backend_layers(
+    cfg: &ModalConfig,
+    model: &str,
+    base_includes_node: bool,
+) -> Result<Vec<Vec<String>>, String> {
     let mut layers = Vec::new();
     if cfg.image.is_none() {
-        layers.push(vec![TOOLCHAIN.to_string()]);
+        layers.push(toolchain_commands(base_includes_node));
     }
     layers.extend(super::backend_setup::setup_for(model)?.image_layer(&crate::user_home_dir()));
     if !cfg.setup.is_empty() {
@@ -87,11 +148,15 @@ pub fn image_spec(
     model: &str,
     binary: Option<PathBuf>,
 ) -> Result<ImageSpec, String> {
-    let base = cfg
-        .image
-        .clone()
-        .unwrap_or_else(|| DEFAULT_BASE.to_string());
-    let mut layers = config_and_backend_layers(cfg, model)?;
+    let host = binary.as_ref().and_then(|_| host_glibc());
+    let base = cfg.image.clone().unwrap_or_else(|| {
+        if binary.is_some() {
+            base_for_host_glibc(host.as_deref()).to_string()
+        } else {
+            DEFAULT_BASE.to_string()
+        }
+    });
+    let mut layers = config_and_backend_layers(cfg, model, base == DEFAULT_BASE)?;
     let payload_hash = if let Some(path) = &binary {
         binary_hash(path)?
     } else {
@@ -100,7 +165,7 @@ pub fn image_spec(
     };
     Ok(ImageSpec {
         name: image_name(&base, &layers, payload_hash),
-        min_glibc: binary.as_ref().and_then(|_| host_glibc()),
+        min_glibc: host,
         base,
         layers,
         binary,

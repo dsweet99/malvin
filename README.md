@@ -14,6 +14,12 @@ The build needs neither Node nor network access beyond crates.io.
 `cursor:` model runs, malvin installs the Cursor SDK (`@cursor/sdk`) under
 `~/.malvinconf/sdk-bridges/` with `npm ci`.
 
+`claude:` models need Node.js ≥ 22.13 with npm. The first time a `claude:` model
+runs, malvin installs the Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`)
+under `~/.malvinconf/sdk-bridges/`. Set `ANTHROPIC_API_KEY`,
+`ANTHROPIC_OAUTH_TOKEN`, `ANTHROPIC_AUTH_TOKEN`, or `CLAUDE_CODE_OAUTH_TOKEN`
+before running one.
+
 `pi:` models also need Node (≥ 22.19 for Pi 1.x), plus the npm Pi agent
 (`npm install @earendil-works/pi-coding-agent` in `~/.malvinconf/sdk-bridges/`, or
 set `MALVIN_PI`). `codex:` models do not need Node.
@@ -41,10 +47,7 @@ By default, malvin runs an investigation. The larger or more complex the task, t
 ```bash
 malvin "Speed up my_function.py by at least 3x."
 ```
-and expect good results. For a simple one-shot turn:
-```bash
-malvin --do "Hello"
-```
+and expect good results.
 
 You can also pass a request file instead of a string:
 ```bash
@@ -62,16 +65,3 @@ Flag reference: `malvin --help`. Behavioral contracts: `malvin --doc` and `malvi
 
 `malvin` allows all tool calls by default.
 
-## Speed
-
-`malvin` likes to run linters and unit tests. It does its best to only run what's necessary, but these tools can help speed things up:
-
-- [Python] [pytest-testmon](https://www.testmon.org) Runs only unit tests affected by code changes
-- [Rust] [cargo-nextest](https://nexte.st) Faster than `cargo test`
-- [Rust] [cargo-difftests](https://github.com/dnbln/cargo-difftests) Re-runs only tests whose executed code changed (LLVM coverage indexes)
-
-
-# EXPERIMENTAL - USE AT YOUR OWN RISK
-
-- pi: models (TypeScript/npm `@earendil-works/pi-coding-agent` RPC; set `MALVIN_PI` or install the package). Local models run as `pi:local/<provider>/<model>` (Ollama, llama.cpp, mistral.rs); malvin starts Ollama when needed and writes a context-capped entry to Pi's `models.json`.
-- Codex: models (requires an externally installed `codex` binary; local stdio app-server)

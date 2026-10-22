@@ -8,16 +8,31 @@ struct AdviceEntry {
 
 include!(concat!(env!("OUT_DIR"), "/advice_registry.rs"));
 
+const LEGACY_ADVICE_ALIASES: &[(&str, &str)] = &[("doc_design", "prin_doc")];
+
+fn canonical_advice_tag(tag: &str) -> &str {
+    LEGACY_ADVICE_ALIASES
+        .iter()
+        .find_map(|(legacy, canonical)| (*legacy == tag).then_some(*canonical))
+        .unwrap_or(tag)
+}
+
 fn advice_entry(tag: &str) -> Result<&'static AdviceEntry, String> {
     if !is_valid_advice_tag(tag) {
         return Err(format!(
             "invalid --advice TAG `{tag}`: must be lowercase letters/digits/underscores, start with a letter, at most 32 characters"
         ));
     }
-    ADVICE_ENTRIES.iter().find(|e| e.tag == tag).ok_or_else(|| {
-        let known: Vec<&str> = ADVICE_ENTRIES.iter().map(|e| e.tag).collect();
-        format!("unknown --advice TAG `{tag}` (known: {})", known.join(", "))
-    })
+    let canonical = canonical_advice_tag(tag);
+    ADVICE_ENTRIES
+        .iter()
+        .find(|e| e.tag == canonical)
+        .ok_or_else(|| {
+            let mut known: Vec<&str> = ADVICE_ENTRIES.iter().map(|e| e.tag).collect();
+            known.extend(LEGACY_ADVICE_ALIASES.iter().map(|(legacy, _)| *legacy));
+            known.sort_unstable();
+            format!("unknown --advice TAG `{tag}` (known: {})", known.join(", "))
+        })
 }
 
 pub(crate) fn advice_text(tag: &str) -> Result<&'static str, String> {
@@ -35,6 +50,7 @@ fn is_valid_advice_tag(tag: &str) -> bool {
     chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
 }
 
+#[cfg(test)]
 fn word_count(s: &str) -> usize {
     s.split_whitespace().count()
 }
@@ -45,6 +61,7 @@ fn format_advice_list_line(entry: &AdviceEntry) -> String {
 
 const ADVICE_LIST_USAGE: &str = "\
 Type `malvin --advice TAG` to see a full document.
+
 TAG: Description";
 
 pub(crate) fn print_advice_list_to_writer(mut out: impl Write) -> Result<(), String> {
@@ -52,16 +69,12 @@ pub(crate) fn print_advice_list_to_writer(mut out: impl Write) -> Result<(), Str
         .map_err(|e| format!("stdout: {e}"))?;
     out.write_all(b"\n").map_err(|e| format!("stdout: {e}"))?;
     for entry in ADVICE_ENTRIES {
-        debug_assert!(
-            word_count(entry.description) <= 7,
-            "advice description for `{}` exceeds 7 words",
-            entry.tag
-        );
         let line = format_advice_list_line(entry);
         out.write_all(line.as_bytes())
             .map_err(|e| format!("stdout: {e}"))?;
         out.write_all(b"\n").map_err(|e| format!("stdout: {e}"))?;
     }
+    out.write_all(b"\n").map_err(|e| format!("stdout: {e}"))?;
     Ok(())
 }
 
@@ -95,8 +108,8 @@ mod tests {
         let mut buf = Vec::new();
         print_advice_to_writer("doc_design", &mut buf).expect("print");
         let s = String::from_utf8(buf).expect("utf8");
-        assert!(s.contains("C.R.A.P."));
-        assert!(s.contains("Contrast"));
+        assert!(s.contains("Design for the Reader"));
+        assert!(s.contains("Make Structure Visible"));
     }
 
     #[test]
@@ -154,42 +167,49 @@ mod tests {
             lines[0], "Type `malvin --advice TAG` to see a full document.",
             "{s}"
         );
-        assert_eq!(lines[1], "TAG: Description", "{s}");
+        assert_eq!(lines[1], "", "{s}");
+        assert_eq!(lines[2], "TAG: Description", "{s}");
         assert!(!s.contains("List format"), "{s}");
+        assert!(s.ends_with("\n\n"), "{s}");
         let expected: Vec<String> = ADVICE_ENTRIES
             .iter()
             .map(|e| format!("{}: {}", e.tag, e.description))
             .collect();
-        assert_eq!(lines[2..], expected[..], "{s}");
+        assert_eq!(lines[3..lines.len() - 1], expected[..], "{s}");
+        assert_eq!(lines.last(), Some(&""), "{s}");
     }
 
     #[test]
     fn all_advice_descriptions_are_at_most_seven_words() {
         for entry in ADVICE_ENTRIES {
-            let n = word_count(entry.description);
+            let Some((base, _)) = entry.description.split_once(" [") else {
+                panic!("{} missing size suffix", entry.tag);
+            };
+            let n = word_count(base);
             assert!(
                 n <= 7,
-                "tag `{}` description has {n} words: {}",
-                entry.tag,
-                entry.description
+                "tag `{}` description has {n} words: {base}",
+                entry.tag
             );
         }
     }
 
     #[test]
     fn advice_descriptions_come_from_first_line_without_prefix() {
-        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("default_prompts/advice");
         for entry in ADVICE_ENTRIES {
-            let path = dir.join(format!("{}.md", entry.tag));
-            let content = fs::read_to_string(&path).expect("read advice md");
+            let content = entry.body;
             let first = content.lines().next().expect("non-empty advice md");
             let value = first
                 .strip_prefix("description:")
                 .unwrap_or_else(|| panic!("{}: first line must be `description: ...`", entry.tag))
                 .trim();
+            let lines = content.lines().count();
+            let words = content.split_whitespace().count();
+            let line_word = if lines == 1 { "line" } else { "lines" };
+            let expected = format!("{value} [{lines} {line_word}, {words} words]");
             assert_eq!(
-                entry.description, value,
-                "registry description must match first-line value for {}",
+                entry.description, expected,
+                "registry description must match first-line value plus embedded file size for {}",
                 entry.tag
             );
             assert!(
@@ -202,12 +222,12 @@ mod tests {
 
     #[test]
     fn every_advice_md_stem_is_registered_as_tag() {
-        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("default_prompts/advice");
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/prompts/advice");
         let mut stems = HashSet::new();
         for entry in fs::read_dir(&dir).expect("read advice dir") {
             let entry = entry.expect("dir entry");
             let path = entry.path();
-            if path.extension().and_then(|e| e.to_str()) != Some("md") {
+            if !crate::advice_registry_build::is_advice_markdown(&path) {
                 continue;
             }
             let stem = path

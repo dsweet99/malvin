@@ -178,6 +178,9 @@ mod tests {
 
     #[test]
     fn feed_run_done_dm_extracts_fenced_body() {
+        let _dm = crate::output::DO_DM_TEST_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         set_do_dm_stdout_mode(true);
         enable_stdout_capture();
         let ev = BridgeEvent::RunDone {

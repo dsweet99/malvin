@@ -85,6 +85,10 @@ pub(crate) mod time_format;
 mod tracing_init;
 pub use agent_process::active_agent_heartbeat::active_agent_heartbeat_stats;
 pub use workspace::user_home::user_home_dir;
+#[cfg(test)]
+#[allow(dead_code)]
+#[path = "advice_registry_build.rs"]
+mod advice_registry_build;
 pub mod agent_process;
 pub mod ansi_strip;
 pub(crate) mod http_fetch;
@@ -112,7 +116,6 @@ pub use output::{
     init_stdout_style, print_log_error, print_log_warning, print_stderr_line, print_stdout_line,
     print_stdout_text,
 };
-pub use prompts::DO_HEADER_MD;
 pub use prompts::{
     HEADER_MD, PromptError, PromptStore, malformed_brace_placeholders, render_header,
 };

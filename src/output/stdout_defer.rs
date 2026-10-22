@@ -30,11 +30,11 @@ mod tests {
     use super::{register_defer_stdout_hooks, try_defer_heartbeat, try_defer_tagged_stdout};
 
     fn noop_tagged(_display: &str, _log: &str) -> bool {
-        true
+        false
     }
 
     fn noop_heartbeat(_display: &str, _log: &str) -> bool {
-        true
+        false
     }
 
     #[test]

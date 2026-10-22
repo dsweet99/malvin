@@ -1,13 +1,11 @@
 use crate::cli::router_flow::router_flow_prompt::{
     RouterAPromptInput, RouterBPromptInput, RouterSummarizePromptInput, build_router_a_prompt,
-    build_router_b_prompt, build_router_header_prompt, build_router_mbc2_prompt,
-    build_router_summarize_prompt, prepare_router_prompt_store, router_b_prompt_label,
+    build_router_b_prompt, build_router_header_prompt, build_router_summarize_prompt,
+    prepare_router_prompt_store, router_b_prompt_label,
 };
 use malvin::config::DEFAULT_CLI_MODEL;
 use malvin::flow_prompt_join_test_helpers::flow_test_artifacts;
-use malvin::prompts::{
-    PromptStore, ROUTER_B_CREATIVE_LEAD_MD, ROUTER_B_DONE_NOTE_MD, ROUTER_B_SATISFY_MD,
-};
+use malvin::prompts::{PromptStore, ROUTER_B_DONE_NOTE_MD, ROUTER_B_SATISFY_MD};
 
 #[test]
 fn build_router_a_prompt_expands_malvin_command_with_active_model() {
@@ -217,7 +215,7 @@ fn build_router_summarize_prompt_renders_dm_body_without_unresolved_braces() {
 }
 
 #[test]
-fn build_router_b_prompt_selects_creative_template_when_flag_set() {
+fn build_router_b_prompt_includes_satisfy_and_done_note() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = flow_test_artifacts(&tmp);
     let store = prepare_router_prompt_store().expect("store");
@@ -225,67 +223,19 @@ fn build_router_b_prompt_selects_creative_template_when_flag_set() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        creative: false,
     })
     .expect("router_b");
-    let creative = build_router_b_prompt(RouterBPromptInput {
-        store: &store,
-        artifacts: &artifacts,
-        model: DEFAULT_CLI_MODEL,
-        creative: true,
-    })
-    .expect("router_b_creative");
     let satisfy = embedded_fragment(&store, ROUTER_B_SATISFY_MD);
-    let lead = embedded_fragment(&store, ROUTER_B_CREATIVE_LEAD_MD);
     let done = embedded_fragment(&store, ROUTER_B_DONE_NOTE_MD);
     assert!(
         plain.contains(&satisfy),
-        "plain router_b must include satisfy: {plain}"
-    );
-    assert!(
-        creative.contains(&satisfy),
-        "creative router_b must include satisfy: {creative}"
+        "router_b must include satisfy: {plain}"
     );
     assert!(
         plain.contains(&done),
-        "plain router_b must include done note: {plain}"
+        "router_b must include done note: {plain}"
     );
-    assert!(
-        creative.contains(&done),
-        "creative router_b must include done note: {creative}"
-    );
-    if !lead.is_empty() && !satisfy.contains(&lead) && !done.contains(&lead) {
-        assert!(
-            creative.contains(&lead),
-            "creative router_b must include the creative lead: {creative}"
-        );
-        assert!(
-            !plain.contains(&lead),
-            "plain router_b must omit the creative lead: {plain}"
-        );
-    }
-    assert_eq!(
-        router_b_prompt_label(malvin::prompts::RouterBPromptFlags { creative: false }),
-        "router_b.md"
-    );
-    assert_eq!(
-        router_b_prompt_label(malvin::prompts::RouterBPromptFlags { creative: true }),
-        "router_b.md"
-    );
-}
-
-#[test]
-fn build_router_mbc2_prompt_embeds_plan_text() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts = flow_test_artifacts(&tmp);
-    let store = prepare_router_prompt_store().expect("store");
-    let body = build_router_mbc2_prompt(&store, &artifacts).expect("mbc2");
-    assert!(!body.contains("{{"));
-    let plan = std::fs::read_to_string(&artifacts.plan_path).expect("plan");
-    assert!(
-        body.contains(plan.trim()),
-        "mbc2 must embed plan text; body={body}"
-    );
+    assert_eq!(router_b_prompt_label(), "router_b.md");
 }
 
 #[test]
@@ -317,7 +267,6 @@ fn build_router_prompts_use_canonical_templates() {
         store: &store,
         artifacts: &artifacts,
         model: DEFAULT_CLI_MODEL,
-        creative: false,
     })
     .expect("router_b");
     assert!(!b.is_empty());

@@ -2,9 +2,19 @@ use std::cell::RefCell;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 static STDOUT_SUPPRESSED: AtomicBool = AtomicBool::new(false);
+static STDOUT_DISPLAY_DISCARDED: AtomicBool = AtomicBool::new(false);
 
 pub fn set_stdout_suppressed(suppress: bool) {
     STDOUT_SUPPRESSED.store(suppress, Ordering::Relaxed);
+}
+
+pub fn set_stdout_display_discarded(discard: bool) {
+    STDOUT_DISPLAY_DISCARDED.store(discard, Ordering::Relaxed);
+}
+
+#[must_use]
+pub fn stdout_display_discarded() -> bool {
+    STDOUT_DISPLAY_DISCARDED.load(Ordering::Relaxed)
 }
 
 #[must_use]
@@ -30,7 +40,7 @@ pub(crate) fn take_captured_stdout() -> String {
 }
 
 pub(crate) fn print_stdout_display_line(display: &str) {
-    if stdout_suppressed() {
+    if stdout_suppressed() || stdout_display_discarded() {
         return;
     }
     if super::do_dm_mode::do_dm_stdout_mode() {
@@ -40,7 +50,7 @@ pub(crate) fn print_stdout_display_line(display: &str) {
 }
 
 pub(crate) fn emit_do_dm_body_line(line: &str) {
-    if stdout_suppressed() {
+    if stdout_suppressed() || stdout_display_discarded() {
         return;
     }
     emit_stdout_display_line_raw(line);

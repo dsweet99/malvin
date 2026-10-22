@@ -3,20 +3,18 @@ use std::io::{self, Write};
 use super::Commands;
 use crate::cli::args::Cli;
 
-pub(crate) const MALVIN_OVERVIEW_DOC: &str = include_str!("../../default_prompts/docs/malvin.md");
+pub(crate) const MALVIN_OVERVIEW_DOC: &str = include_str!("../../assets/prompts/docs/malvin.md");
 
-pub(crate) const ROUTER_DOC: &str = include_str!("../../default_prompts/docs/router.md");
-
-pub(crate) const DO_DOC: &str = include_str!("../../default_prompts/docs/do.md");
+pub(crate) const ROUTER_DOC: &str = include_str!("../../assets/prompts/docs/router.md");
 
 pub(crate) const fn command_doc_markdown(cmd: &Commands) -> &'static str {
     match cmd {
         Commands::Admin(admin) => match &admin.command {
             Some(super::AdminCommand::Models(_)) => {
-                include_str!("../../default_prompts/docs/models.md")
+                include_str!("../../assets/prompts/docs/models.md")
             }
             None | Some(super::AdminCommand::ResetHerdr | super::AdminCommand::Remotes(_)) => {
-                include_str!("../../default_prompts/docs/admin.md")
+                include_str!("../../assets/prompts/docs/admin.md")
             }
         },
     }
@@ -41,13 +39,6 @@ pub(crate) fn print_doc_to_writer(
 }
 
 pub(crate) fn print_doc_for_cli_to_writer(cli: &Cli, out: impl Write) -> Result<(), String> {
-    if cli.do_workflow() {
-        let mut out = out;
-        let text = DO_DOC.replace("{{ advice_path }}", malvin::MALVIN_ADVICE_REL);
-        return out
-            .write_all(text.as_bytes())
-            .map_err(|e| format!("stdout: {e}"));
-    }
     print_doc_to_writer(cli.command.as_ref(), out)
 }
 

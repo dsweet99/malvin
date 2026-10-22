@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use clap::Args;
 use malvin::modal_run::gpu_types::{GPU_TYPES_URL, GpuTypes, load_gpu_types};
 use malvin::modal_run::options::{SUBOPTIONS, Suboption};
@@ -83,15 +85,39 @@ pub fn remotes_lines(gpu: &GpuTypes) -> Vec<String> {
     lines
 }
 
+pub(crate) fn remote_listing(gpu: &GpuTypes, aliases: &BTreeMap<String, String>) -> Vec<String> {
+    let mut lines = remotes_lines(gpu);
+    lines.extend(super::config_alias_list::alias_section_lines(
+        super::config_alias_list::REMOTE_ALIAS_SECTION,
+        aliases,
+    ));
+    lines
+}
+
+fn load_gpu_types_for_remotes(force: bool, load: impl FnOnce(bool) -> GpuTypes) -> GpuTypes {
+    if malvin::modal_run::gpu_types::gpu_types_auto_refresh_due(force) {
+        super::refresh_notice::print_refreshing();
+    }
+    load(force)
+}
+
 pub fn run_remotes(args: &RemotesArgs) {
-    for line in remotes_lines(&load_gpu_types(args.refresh)) {
+    let gpu = load_gpu_types_for_remotes(args.refresh, load_gpu_types);
+    for line in remote_listing(
+        &gpu,
+        &malvin::config::malvin_config_file::load_remote_aliases(),
+    ) {
         print_stdout_line(MALVIN_WHO, &line);
     }
 }
 
 #[cfg(test)]
+#[path = "remotes_cmd_refresh_tests.rs"]
+mod remotes_cmd_refresh_tests;
+
+#[cfg(test)]
 mod tests {
-    use super::{GpuTypes, remotes_lines};
+    use super::{GpuTypes, remote_listing, remotes_lines};
 
     fn listed() -> GpuTypes {
         GpuTypes {
@@ -122,7 +148,7 @@ mod tests {
     }
 
     fn remotes_summary_matches_the_admin_doc_example() {
-        let doc = include_str!("../../default_prompts/docs/admin.md");
+        let doc = include_str!("../../assets/prompts/docs/admin.md");
         let example = doc
             .split("malvin admin models` (")
             .nth(1)
@@ -156,5 +182,29 @@ mod tests {
         ] {
             assert!(text.contains(needle), "missing {needle}: {text}");
         }
+    }
+
+    #[test]
+    fn remotes_listing_appends_config_aliases_after_the_example() {
+        use std::collections::BTreeMap;
+        let gpu = listed();
+        assert_eq!(remote_listing(&gpu, &BTreeMap::new()), remotes_lines(&gpu));
+        let aliases = BTreeMap::from([
+            ("big".to_string(), "modal:sandbox[gpu=A100]".to_string()),
+            ("small".to_string(), "modal:sandbox[ncpu=1]".to_string()),
+        ]);
+        let lines = remote_listing(&gpu, &aliases);
+        let example = lines
+            .iter()
+            .position(|line| line.starts_with("Example:"))
+            .expect("example");
+        let header = lines
+            .iter()
+            .position(|line| line.contains("[aliases.remotes]"))
+            .expect("alias header");
+        assert!(header > example, "{lines:?}");
+        assert_eq!(lines[header + 1], "big\tmodal:sandbox[gpu=A100]");
+        assert_eq!(lines[header + 2], "small\tmodal:sandbox[ncpu=1]");
+        assert_eq!(lines.len(), header + 3);
     }
 }

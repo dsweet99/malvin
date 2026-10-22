@@ -97,9 +97,13 @@ fn print_acp_tee_stdout_markdown_line(
     rendered_payload: &str,
     prelude: StdoutRenderPrelude,
 ) {
-    let (display, log) =
+    let (display, _) =
         super::stdout_log_pair::stdout_acp_prefix_rendered_line(ctx, rendered_payload);
-    route_acp_rendered(&display, &log, prelude);
+    route_acp_rendered(&display, "", prelude);
+}
+
+fn route_acp_source_log(ctx: &AcpTeeLineFmt<'_>, prelude: StdoutRenderPrelude) {
+    route_acp_rendered("", &acp_tee_log_line(ctx), prelude);
 }
 
 fn print_acp_tee_stdout_markdown_lines(
@@ -117,6 +121,9 @@ fn print_stdout_acp_tee_line_with_timestamp_payload(
     emit_stdout_markdown: bool,
     prelude: StdoutRenderPrelude,
 ) {
+    if emit_stdout_markdown {
+        route_acp_source_log(ctx, prelude);
+    }
     let line_gate = TermimadStdoutGate {
         emit_stdout_markdown,
         dim_payload: ctx.dim_payload,
@@ -138,8 +145,7 @@ fn print_stdout_acp_tee_line_with_timestamp_payload(
             print_acp_tee_stdout_markdown_line(ctx, &rendered, prelude);
             return;
         }
-        let (display, log) = super::stdout_log_pair::stdout_acp_display_and_log(ctx, ctx);
-        route_acp_rendered(&display, &log, prelude);
+        route_acp_plain_line(ctx, prelude, emit_stdout_markdown);
         return;
     }
     for seg in super::terminal_wrap::wrap_words_bounded(max_payload, ctx.line) {
@@ -154,9 +160,14 @@ fn print_stdout_acp_tee_line_with_timestamp_payload(
             print_acp_tee_stdout_markdown_line(&seg_ctx, &rendered, prelude);
             continue;
         }
-        let (display, log) = super::stdout_log_pair::stdout_acp_display_and_log(&seg_ctx, &seg_ctx);
-        route_acp_rendered(&display, &log, prelude);
+        route_acp_plain_line(&seg_ctx, prelude, emit_stdout_markdown);
     }
+}
+
+fn route_acp_plain_line(ctx: &AcpTeeLineFmt<'_>, prelude: StdoutRenderPrelude, skip_log: bool) {
+    let (display, log) = super::stdout_log_pair::stdout_acp_display_and_log(ctx, ctx);
+    let log = if skip_log { String::new() } else { log };
+    route_acp_rendered(&display, &log, prelude);
 }
 
 #[cfg(test)]

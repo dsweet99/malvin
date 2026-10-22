@@ -63,15 +63,6 @@ pub struct RunStartupEmitOpts {
 
 impl RunStartupEmitOpts {
     #[must_use]
-    pub fn from_shared(shared: &super::SharedOpts, host_resources: bool) -> Self {
-        Self {
-            tee_stdout: shared.tee_startup_stdout(),
-            host_resources,
-            model: shared.model.canonical(),
-        }
-    }
-
-    #[must_use]
     pub fn from_route(opts: super::AgentRouteOpts<'_>, host_resources: bool) -> Self {
         Self {
             tee_stdout: opts.router.tee_startup_stdout(),

@@ -141,7 +141,7 @@ fn entrypoint_duplicate_name_via_binary() {
             .env_remove("HERDR_ENV")
             .env_remove("HERDR_SOCKET_PATH")
             .env_remove("HERDR_PANE_ID")
-            .args(["--name", "probe", "--do", "plan.md"])
+            .args(["--name", "probe", "plan.md"])
             .output()
             .expect("malvin");
         assert_eq!(out.status.code(), Some(1), "unknown --name must fail");

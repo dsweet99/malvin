@@ -132,6 +132,9 @@ fn armed_emit_prints_timing_and_cost_outside_dm_mode() {
     let _guard = crate::output::STDOUT_LOG_TEST_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dm = crate::output::DO_DM_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     crate::output::set_stdout_log_path(None);
     crate::output::set_do_dm_stdout_mode(true);
     crate::run_timing::set_suppress_stdout_footnotes(false);

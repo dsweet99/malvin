@@ -5,11 +5,10 @@ mod template;
 pub use template::*;
 
 pub use defaults::{
-    DO_HEADER_MD, HEADER_MD, ROUTER_A_2_MD, ROUTER_A_AUDIT_MD, ROUTER_A_MD,
-    ROUTER_B_CREATIVE_LEAD_MD, ROUTER_B_DONE_NOTE_MD, ROUTER_B_MD, ROUTER_B_SATISFY_MD,
-    ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD, RouterBPromptFlags, header_prompt_file,
-    router_a_2_prompt_file, router_a_audit_prompt_file, router_a_prompt_file, router_b_prompt_file,
-    router_b_satisfy_prompt_file, router_b_uses_creative_lead, router_b_uses_done_note,
+    HEADER_MD, ROUTER_A_2_MD, ROUTER_A_AUDIT_MD, ROUTER_A_MD, ROUTER_B_DONE_NOTE_MD, ROUTER_B_MD,
+    ROUTER_B_SATISFY_MD, ROUTER_C_MD, ROUTER_CODE_EXTRA_MD, ROUTER_SUMMARIZE_MD,
+    header_prompt_file, router_a_2_prompt_file, router_a_audit_prompt_file, router_a_prompt_file,
+    router_b_prompt_file, router_b_satisfy_prompt_file,
 };
 
 #[allow(unused_imports)]
@@ -58,7 +57,7 @@ fn unresolved_braces_error(prompt_file: Option<&str>) -> PromptError {
 pub struct PromptError(pub String);
 
 pub use crate::workspace::user_home::user_home_dir;
-pub use store::{PromptStore, build_mbc2_render_context, render_header, render_mbc2_prompt};
+pub use store::{PromptStore, render_header};
 
 #[cfg(test)]
 mod embedded_defaults_tests;

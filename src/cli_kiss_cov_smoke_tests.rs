@@ -21,18 +21,10 @@ fn smoke_cov_cli_cli_units_1a() {
 
 #[test]
 fn smoke_cov_cli_cli_units_1b() {
-    let run = crate::cli::do_flow::do_flow_prompt::DoCoderRun {
-        combined: "body".into(),
-    };
-    let crate::cli::do_flow::do_flow_prompt::DoCoderRun { combined } = run;
-    assert_eq!(combined, "body");
-    let _ = crate::cli::do_flow::do_flow_prompt::prepare_do_prompt_store;
-    let _ = crate::cli::do_flow::do_flow_prompt::build_do_coder_run_with_store;
-    let _ = crate::cli::session_header::render_malvin_header_body;
     let shared = crate::cli::SharedOpts {
         model: crate::config::model_id::parse_model_id(crate::config::DEFAULT_CLI_MODEL)
             .expect("model"),
-        verbose: false,
+        no_auto_costs: false,
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
         advice: None,
@@ -92,16 +84,8 @@ fn smoke_cov_cli_cli_symbols_a() {
     let _: Option<crate::cli::AgentRouteOpts<'_>> = None;
     let _: Option<crate::cli::Cli> = None;
     let _: Option<crate::cli::Commands> = None;
-    let do_args = crate::cli::do_flow::DoArgs { request: None };
-    let crate::cli::do_flow::DoArgs { request } = do_args;
-    assert!(request.is_none());
-    let _ = stringify!(DoRunPrep);
-    let _ = stringify!(new_do_client);
-    let _ = crate::prompts::build_mbc2_render_context;
-    let _ = crate::prompts::render_mbc2_prompt;
     let _: Option<crate::cli::models_cmd::ModelsArgs> = None;
     let _: Option<crate::cli::AgentStdoutTeeFlags> = None;
-    let _ = crate::cli::do_flow::prepare_do_prompt_store;
     let _ = crate::cli::router_flow::prepare_router_prompt_store;
     let router_args = crate::cli::router_flow::RouterArgs {
         request: None,

@@ -55,9 +55,13 @@ pub(crate) struct DrainIdleClock {
 
 impl DrainIdleClock {
     pub(crate) fn new(idle: Duration) -> Self {
+        Self::at(idle, Instant::now())
+    }
+
+    pub(crate) fn at(idle: Duration, now: Instant) -> Self {
         Self {
             idle,
-            idle_deadline: Instant::now() + idle,
+            idle_deadline: now + idle,
         }
     }
 
@@ -75,7 +79,10 @@ impl DrainIdleClock {
     }
 
     pub(crate) fn apply_verdict(&mut self, verdict: DrainHealthVerdict) -> Result<(), ()> {
-        let now = Instant::now();
+        self.decide(verdict, Instant::now())
+    }
+
+    pub(crate) fn decide(&mut self, verdict: DrainHealthVerdict, now: Instant) -> Result<(), ()> {
         match verdict {
             DrainHealthVerdict::DeadOrZombie => Err(()),
             DrainHealthVerdict::StillBusy => {

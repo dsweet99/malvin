@@ -86,6 +86,7 @@ const fn catalog_for(backend: ModelBackend) -> &'static dyn ModelCatalog {
         ModelBackend::Cursor => &CursorCatalog,
         ModelBackend::Pi => &PiCatalog,
         ModelBackend::Codex => &CodexCatalog,
+        ModelBackend::Claude => &super::models_cmd_claude_catalog::ClaudeCatalog,
     }
 }
 

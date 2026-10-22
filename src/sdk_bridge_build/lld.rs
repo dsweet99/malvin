@@ -4,6 +4,9 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 pub(super) fn emit_fast_bin_linker_args() {
+    if !target_is_linux() {
+        return;
+    }
     if env::var_os("MALVIN_DISABLE_LLD").is_some() {
         return;
     }
@@ -11,6 +14,16 @@ pub(super) fn emit_fast_bin_linker_args() {
         return;
     }
     emit_rustup_lld_bin_linker_args();
+}
+
+fn target_is_linux() -> bool {
+    env::var("TARGET")
+        .map(|target| target_is_linux_for(&target))
+        .unwrap_or(cfg!(target_os = "linux"))
+}
+
+pub(super) fn target_is_linux_for(target: &str) -> bool {
+    target.split('-').any(|part| part == "linux")
 }
 
 pub(super) fn emit_dev_dynamic_rpaths() {

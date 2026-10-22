@@ -11,7 +11,7 @@ use super::{
 };
 
 pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
-    let (mem_limit_gb, context_size, theme) = parse_top_level_keys(text);
+    let (mem_limit_gb, context_size, theme, auto_setup_costs) = parse_top_level_keys(text);
     let (model_aliases, remote_aliases) = parse_aliases_lenient(text);
     let token_cost_rates = parse_or_warn(
         parse_model_token_cost_rates(text),
@@ -23,6 +23,7 @@ pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
         mem_limit_gb,
         context_size,
         theme,
+        auto_setup_costs,
         model_aliases,
         remote_aliases,
         token_cost_rates,
@@ -45,7 +46,7 @@ fn parse_dm_on_emit(text: &str) -> Option<String> {
     }
 }
 
-fn parse_top_level_keys(text: &str) -> (u64, u32, TerminalTheme) {
+fn parse_top_level_keys(text: &str) -> (u64, u32, TerminalTheme, bool) {
     (
         parse_or_warn(
             parse_mem_limit_gb(text),
@@ -58,7 +59,20 @@ fn parse_top_level_keys(text: &str) -> (u64, u32, TerminalTheme) {
             DEFAULT_CONTEXT_SIZE,
         ),
         parse_or_warn(parse_theme(text), "theme", TerminalTheme::Dark),
+        parse_auto_setup_costs(text),
     )
+}
+
+fn parse_auto_setup_costs(text: &str) -> bool {
+    let Ok(value) = text.parse::<toml::Value>() else {
+        return true;
+    };
+    value.get("auto_setup_costs").is_none_or(|value| {
+        value.as_bool().unwrap_or_else(|| {
+            warn_config_once("could not parse auto_setup_costs: must be a boolean");
+            true
+        })
+    })
 }
 
 fn parse_config_sections(

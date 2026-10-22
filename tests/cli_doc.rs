@@ -1,5 +1,5 @@
-const MALVIN_MD: &str = include_str!("../default_prompts/docs/malvin.md");
-const ROUTER_MD: &str = include_str!("../default_prompts/docs/router.md");
+const MALVIN_MD: &str = include_str!("../assets/prompts/docs/malvin.md");
+const ROUTER_MD: &str = include_str!("../assets/prompts/docs/router.md");
 
 fn isolated_home() -> tempfile::TempDir {
     let tmp = tempfile::tempdir().expect("tempdir");
@@ -188,8 +188,23 @@ fn bare_malvin_shows_commands_only_and_exits_zero() {
         "full help must list options: {help_s}"
     );
     assert!(
-        help_s.contains("--verbose") || help_s.contains("-v"),
+        help_s.contains("--quiet") || help_s.contains("-q"),
         "full help must list global flags: {help_s}"
+    );
+    assert!(
+        !help_s.split_whitespace().any(|w| {
+            w == "--do"
+                || w == "--watch"
+                || w == "--verbose"
+                || w == "--creative"
+                || w.starts_with("--creative=")
+                || w.starts_with("--do,")
+        }),
+        "full help must omit removed flags: {help_s}"
+    );
+    assert!(
+        !help_s.contains("Bare malvin") && !help_s.contains("bare malvin"),
+        "full help must omit bare-malvin notes: {help_s}"
     );
     assert!(
         !help_s.contains("--no-color"),
@@ -227,9 +242,21 @@ fn malvin_help_usage_matches_mutually_exclusive_forms() {
         "full help must not conflate request and command on one usage line: {help_s}"
     );
     assert!(
-        help_s.contains("bare malvin REQUEST")
-            && help_s.contains("--do")
-            && help_s.contains("--gates"),
-        "full help must state supported invocations: {help_s}"
+        help_s.contains("--gates")
+            && !help_s.contains("bare malvin")
+            && !help_s.split_whitespace().any(|w| w == "--do"),
+        "full help must list gates and omit removed notes: {help_s}"
     );
+}
+
+#[test]
+fn very_quiet_with_no_request_prints_nothing() {
+    let tmp = isolated_home();
+    for args in [["-qq"], ["--very-quiet"]] {
+        let output = malvin_cmd(tmp.path()).args(args).output().expect("spawn");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(output.status.success(), "args={args:?} stderr={stderr}");
+        assert!(stdout.is_empty(), "args={args:?} stdout={stdout}");
+    }
 }

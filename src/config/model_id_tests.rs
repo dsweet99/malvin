@@ -31,6 +31,11 @@ fn parse_cursor_and_pi() {
     let codex = parse_model_id("codex:gpt-5.6").expect("codex");
     assert!(codex.is_codex());
     assert_eq!(codex.canonical(), "codex:gpt-5.6");
+
+    let claude = parse_model_id("claude:sonnet").expect("claude");
+    assert!(claude.is_claude());
+    assert_eq!(claude.canonical(), "claude:sonnet");
+    assert!(parse_model_id("claude:sonnet[thinking=high]").is_err());
 }
 
 #[test]

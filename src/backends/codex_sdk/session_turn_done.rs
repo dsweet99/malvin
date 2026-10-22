@@ -9,9 +9,20 @@ pub(super) fn finish_codex_turn(
     value: &serde_json::Value,
     state: TurnState,
 ) -> Result<(), AgentError> {
+    let usage_is_cumulative =
+        state.usage_is_cumulative || super::codex_sdk::map_event_usage::has_cumulative_usage(value);
     let ev = run_done_from_turn(value, state)?;
     if let BridgeEvent::RunDone { usage: Some(u), .. } = &ev {
-        crate::backends::bridge_sdk::record_sdk_usage(session.timing.as_ref(), u);
+        let usage = if usage_is_cumulative {
+            let mut total = session
+                .thread_usage_total
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            super::codex_sdk::map_event_usage::cumulative_usage_delta(&mut total, u)
+        } else {
+            u.clone()
+        };
+        crate::backends::bridge_sdk::record_sdk_usage(session.timing.as_ref(), &usage);
     }
     if let BridgeEvent::RunDone {
         result: Some(text), ..

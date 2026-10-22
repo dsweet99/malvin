@@ -21,10 +21,20 @@ fn aggregated_builder_skips_empty_and_joins_labels() {
     b.push_nonempty("a.md", String::new());
     b.push_nonempty("b.md", "B".into());
     b.push_nonempty("c.md", "C".into());
-    let out = b.finish("who");
+    let out = b.finish("who").expect("nonempty prompt");
     assert_eq!(out.log_who, "who");
     assert_eq!(out.stdout_label, "b.md+c.md");
     assert!(out.body.contains('B'));
     assert!(out.body.contains('C'));
     assert!(!out.body.contains("a.md"));
+}
+
+#[test]
+fn aggregated_builder_rejects_whitespace_only_parts() {
+    let mut b = AggregatedInitialPromptBuilder::new();
+    b.push_nonempty("header.md", " \n\t ".into());
+    b.push_nonempty("router_a.md", "\n".into());
+
+    let err = b.finish("who").expect_err("empty prompt must be rejected");
+    assert_eq!(err, "initial prompt has no non-whitespace content");
 }

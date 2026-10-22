@@ -4,7 +4,7 @@ use malvin::prompts::{PromptStore, header_prompt_file};
 
 use super::router_flow::router_flow_prompt::{
     RouterAPromptInput, RouterHeaderPromptInput, build_router_a_prompt, build_router_header_prompt,
-    build_router_mbc2_prompt, router_a_prompt_label,
+    router_a_prompt_label,
 };
 
 #[allow(clippy::struct_excessive_bools)]
@@ -14,7 +14,6 @@ pub(crate) struct RouterInitialPromptInput<'a> {
     pub model: &'a str,
     pub gates: bool,
     pub gates_just_ran: bool,
-    pub creative: bool,
     pub include_header: bool,
 }
 
@@ -36,11 +35,6 @@ pub(crate) fn build_router_initial_prompt(
         builder.push_nonempty(header_prompt_file(), header);
     }
 
-    if input.creative {
-        let mbc2 = build_router_mbc2_prompt(input.store, input.artifacts)?;
-        builder.push_nonempty("mbc2.md", mbc2);
-    }
-
     let router_a = build_router_a_prompt(RouterAPromptInput {
         store: input.store,
         artifacts: input.artifacts,
@@ -50,7 +44,7 @@ pub(crate) fn build_router_initial_prompt(
     })?;
     builder.push_nonempty(router_a_prompt_label(), router_a);
 
-    Ok(builder.finish(ROUTER_INITIAL_LOG_WHO))
+    builder.finish(ROUTER_INITIAL_LOG_WHO)
 }
 
 #[cfg(test)]

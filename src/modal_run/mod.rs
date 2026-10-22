@@ -41,16 +41,10 @@ pub fn remote_args(raw: &[OsString]) -> Vec<OsString> {
         .collect()
 }
 
-const UNSUPPORTED: &[(&str, &str)] = &[
-    (
-        "--watch",
-        "the request is uploaded once, so later local edits would not reach the Sandbox",
-    ),
-    (
-        "--ml=inf",
-        "results come back only when the remote run ends, and `--ml=inf` never ends",
-    ),
-];
+const UNSUPPORTED: &[(&str, &str)] = &[(
+    "--ml=inf",
+    "results come back only when the remote run ends, and `--ml=inf` never ends",
+)];
 
 pub fn reject_unsupported(set_flags: &[&str]) -> Result<(), String> {
     for (flag, reason) in UNSUPPORTED {
@@ -113,6 +107,8 @@ pub fn run_modal(inv: &ModalInvocation) -> Result<i32, String> {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_dm_mark;
 #[cfg(test)]
 mod tests_gpu_types;
 #[cfg(test)]

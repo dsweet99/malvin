@@ -116,7 +116,7 @@ impl<'a> PromptModelOpts<'a> {
     }
 }
 
-pub const PI_HEADER_MD: &str = include_str!("../default_prompts/pi_header.md");
+pub const PI_HEADER_MD: &str = include_str!("../assets/prompts/pi_header.md");
 
 #[must_use]
 pub fn format_pi_extra(model: &str) -> String {

@@ -6,11 +6,9 @@ fn default_router_prompt_skeletons_keep_template_keys() {
         "router_a_2.md",
         "router_b.md",
         "router_b_satisfy.md",
-        "router_b_creative_lead.md",
         "router_b_done_note.md",
+        "router_c.md",
         "router_summarize.md",
-        "do_header.md",
-        "mbc2.md",
     ] {
         let body = malvin::prompts::default_file(name)
             .unwrap_or_else(|| panic!("missing default prompt {name}"));

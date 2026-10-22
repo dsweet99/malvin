@@ -1,12 +1,13 @@
 pub(crate) mod admin_cmd;
 pub(crate) mod advice_cmd;
 pub(crate) mod args;
+mod auto_costs;
 pub(crate) mod cli_request;
 pub(crate) mod command_docs;
 mod commands_help;
+mod config_alias_list;
 mod config_defaults;
 pub(crate) mod credits_cmd;
-pub(crate) mod do_flow;
 pub(crate) mod entrypoint;
 mod entrypoint_checks;
 pub(crate) mod error_run_log;
@@ -15,20 +16,20 @@ pub(crate) mod init_flow;
 pub(crate) mod malvin_workflow;
 pub(crate) mod ml_loop;
 pub(crate) mod models_cmd;
+pub(crate) mod refresh_notice;
 pub(crate) mod remotes_cmd;
 pub(crate) mod repo_checks;
 pub(crate) mod request_argv;
 pub(crate) mod router_flow;
 pub(crate) mod run_emit;
-pub(crate) mod session_header;
 pub(crate) mod shared_opts;
 pub(crate) mod tidy_flow;
 
 mod code_flow_a;
-pub(crate) mod one_shot_session;
 pub(crate) mod workflow_router_shared;
 
 pub use code_flow_a::format_workspace_gate_failure;
+#[cfg(test)]
 pub use malvin::backends::agent_backend::AgentStdoutTeeFlags;
 
 #[cfg(test)]
@@ -49,9 +50,8 @@ mod command_log_tests;
 #[cfg(test)]
 #[path = "do_flow_cli_tests.rs"]
 mod do_flow_cli_tests;
-#[cfg(test)]
-#[path = "do_flow_tests.rs"]
-mod do_flow_tests;
+#[cfg(all(test, unix))]
+mod fake_models_agent;
 #[cfg(test)]
 mod gate_error_regression;
 #[cfg(test)]
@@ -68,7 +68,6 @@ mod router_flow_tests;
 #[path = "workflow_router_shared_tests.rs"]
 pub(crate) mod workflow_router_shared_tests;
 
-pub use crate::cli::do_flow::run_do;
 pub use crate::cli::router_flow::run_router;
 #[cfg(test)]
 pub use admin_cmd::AdminArgs;
@@ -81,10 +80,6 @@ pub use exit::Exit;
 pub use shared_opts::{AgentRouteOpts, RouterOpts, SharedOpts};
 pub use tidy_flow::run_tidy;
 
-#[path = "do_flow_acp.rs"]
-pub(super) mod do_flow_acp;
-#[path = "do_flow_prompt.rs"]
-pub(crate) mod do_flow_prompt;
 #[path = "entrypoint_dispatch.rs"]
 pub(super) mod entrypoint_dispatch;
 #[path = "entrypoint_from.rs"]
@@ -95,10 +90,10 @@ pub(super) mod entrypoint_gates_only;
 pub(super) mod entrypoint_info_flags;
 #[path = "entrypoint_modal.rs"]
 pub(super) mod entrypoint_modal;
-#[path = "entrypoint_short_help.rs"]
-pub(super) mod entrypoint_short_help;
 #[path = "models_cmd_catalog.rs"]
 pub(super) mod models_cmd_catalog;
+#[path = "models_cmd_claude_catalog.rs"]
+pub(super) mod models_cmd_claude_catalog;
 #[path = "models_cmd_cursor.rs"]
 pub(super) mod models_cmd_cursor;
 #[path = "models_cmd_filter.rs"]

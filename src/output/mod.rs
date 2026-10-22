@@ -1,9 +1,14 @@
 pub(crate) mod acp_tee;
 mod acp_tee_markdown;
+mod code_hl;
+mod code_lex;
+mod code_paint;
+mod dm_hook;
 mod do_dm_emit;
 mod do_dm_filter;
 mod do_dm_mode;
 mod do_dm_on_emit;
+mod md_table;
 mod sentinel;
 pub(crate) mod stderr_log;
 mod stdout_defer;
@@ -28,8 +33,15 @@ pub(crate) use stdout_display::{
     format_heartbeat_stdout_ansi, format_line_stdout, format_line_stdout_ansi, logical_lines,
 };
 
+#[cfg(test)]
+pub(crate) use dm_hook::mark_line;
+pub(crate) use dm_hook::{deliver_finished_dm, parse_dm_emit_mark};
+#[cfg(test)]
+pub(crate) use dm_hook::{reset_dm_hook_state, set_test_dm_hook};
 pub(crate) use do_dm_emit::emit_wrapped_do_dm_line;
 pub use do_dm_filter::feed_do_dm_stdout_text;
+#[cfg(test)]
+pub(crate) use do_dm_mode::DO_DM_TEST_LOCK;
 pub use do_dm_mode::{
     DoDmStdoutOpts, do_dm_stdout_mode, set_do_dm_stdout_mode, set_do_dm_stdout_opts,
 };
@@ -39,9 +51,15 @@ pub use sentinel::{DM_END, DM_START, MALVIN_DONE, is_sentinel_line};
 pub use stdout_display::{
     print_stdout_line, print_stdout_raw_line, print_stdout_raw_line_with_ts, print_stdout_text,
 };
-pub use stdout_display_md::{print_stdout_line_with_markdown, print_stdout_text_with_markdown};
+pub use stdout_display_md::{
+    flush_formatted_markdown_tables, print_stdout_line_with_markdown,
+    print_stdout_text_with_markdown,
+};
 pub use stdout_heartbeat::{heartbeat_stdout_suppressed, set_heartbeat_stdout_suppressed};
-pub use stdout_terminal::{set_stdout_suppressed, stdout_suppressed};
+pub use stdout_terminal::{
+    set_stdout_display_discarded, set_stdout_suppressed, stdout_display_discarded,
+    stdout_suppressed,
+};
 
 pub use acp_tee::{
     AcpTeeDirection, AcpTeeLineFmt, AcpTeeStdoutEvent, TermimadStdoutGate, acp_tee_display_line,
@@ -106,13 +124,18 @@ pub fn clear_captured_stderr_lines() {
 }
 
 pub fn print_outgoing_prompt_log(_trace_who: &str, bracket_label: &str) {
-    let bracket_payload = format!("[{bracket_label}...]");
-    let ts = timestamp_now_string();
-    append_stdout_log_line(&stdout_log_pair::tagged_log_line(
-        &ts,
-        who_tag::WHO_U,
-        &bracket_payload,
-    ));
+    for name in prompt_file_stems(bracket_label) {
+        print_stdout_line(who_tag::WHO_P, name);
+    }
+}
+
+fn prompt_file_stems(label: &str) -> impl Iterator<Item = &str> {
+    label.split('+').filter_map(prompt_file_stem)
+}
+
+fn prompt_file_stem(part: &str) -> Option<&str> {
+    let stem = part.strip_suffix(".md").unwrap_or(part);
+    (!stem.is_empty()).then_some(stem)
 }
 
 pub fn append_outgoing_prompt_log_lines(body: &str) {
@@ -123,7 +146,7 @@ pub fn append_outgoing_prompt_log_lines(body: &str) {
 }
 
 pub use who_tag::{
-    LOG_TAG_INNER_WIDTH, WHO_A, WHO_B, WHO_H, WHO_M, WHO_O, WHO_R, WHO_T, WHO_U,
+    LOG_TAG_INNER_WIDTH, WHO_A, WHO_B, WHO_H, WHO_M, WHO_O, WHO_P, WHO_R, WHO_T, WHO_U,
     format_acp_directional_tag_prefix, format_log_tag_inner, format_who_tag_delim,
     format_who_tag_prefix, is_command_prelude_line,
 };

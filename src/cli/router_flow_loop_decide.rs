@@ -12,6 +12,7 @@ pub(crate) struct RouterLoopExitInput<'a> {
     pub artifacts: &'a RunArtifacts,
     pub backups: &'a SessionDotfileBackups,
     pub done: bool,
+    pub request_open: bool,
     pub gates: bool,
     pub agent_loop: usize,
     pub max_loops: usize,
@@ -20,17 +21,27 @@ pub(crate) struct RouterLoopExitInput<'a> {
 pub(crate) fn decide_router_loop_exit(input: RouterLoopExitInput<'_>) -> RouterLoopDecision {
     if input.done {
         malvin::herdr::notify_working();
-        if input.gates {
-            return decide_router_gates_exit(
-                input.artifacts,
-                input.backups,
-                input.agent_loop,
-                input.max_loops,
-            );
-        }
+    }
+    if input.request_open {
+        return open_request_exit(input.agent_loop, input.max_loops);
+    }
+    if !input.gates {
         return RouterLoopDecision::Exit;
     }
-    decide_router_loop_exit_not_done(input.agent_loop, input.max_loops)
+    decide_router_gates_exit(
+        input.artifacts,
+        input.backups,
+        input.agent_loop,
+        input.max_loops,
+    )
+}
+
+const fn open_request_exit(agent_loop: usize, max_loops: usize) -> RouterLoopDecision {
+    if agent_loop < max_loops {
+        RouterLoopDecision::Continue
+    } else {
+        RouterLoopDecision::Exit
+    }
 }
 
 pub(crate) fn decide_router_gates_exit(
@@ -47,17 +58,6 @@ pub(crate) fn decide_router_gates_exit(
     };
     malvin::gate_loop_session::set_active_gate_iteration(None);
     decision
-}
-
-pub(crate) const fn decide_router_loop_exit_not_done(
-    agent_loop: usize,
-    max_loops: usize,
-) -> RouterLoopDecision {
-    if agent_loop == max_loops {
-        RouterLoopDecision::Exit
-    } else {
-        RouterLoopDecision::Continue
-    }
 }
 
 pub(crate) fn prefer_exit_gates_over_acp(

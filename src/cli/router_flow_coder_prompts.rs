@@ -1,6 +1,5 @@
 use super::router_flow_prompt::router_b_prompt_label;
 use malvin::backends::agent_backend::SdkClient;
-use malvin::prompts::RouterBPromptFlags;
 
 pub(crate) struct RouterInitialCoderPrompt<'a> {
     pub client: &'a mut SdkClient,
@@ -63,7 +62,7 @@ pub(crate) async fn run_router_b_coder_prompt(
     prompt: &str,
     log_path: &std::path::Path,
 ) -> Result<(), String> {
-    let prompt_file = router_b_prompt_label(RouterBPromptFlags { creative: false });
+    let prompt_file = router_b_prompt_label();
     run_router_followup_coder_prompt(client, prompt, log_path, prompt_file).await
 }
 

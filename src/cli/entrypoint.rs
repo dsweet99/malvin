@@ -5,10 +5,7 @@ pub(crate) use super::entrypoint_from;
 pub(crate) use super::entrypoint_gates_only;
 pub(crate) use super::entrypoint_info_flags;
 pub(crate) use super::entrypoint_modal;
-pub(crate) use super::entrypoint_short_help;
-pub use entrypoint_dispatch::{
-    DefaultRouteDispatch, dispatch_default_route, dispatch_do_workflow, dispatch_mixed_requests,
-};
+pub use entrypoint_dispatch::{DefaultRouteDispatch, dispatch_default_route};
 pub use entrypoint_from::entrypoint_from;
 pub(crate) use entrypoint_gates_only::{GatesOnlyDispatch, dispatch_gates_only_route};
 

@@ -11,17 +11,21 @@ fn parse(argv: &[&str]) -> Cli {
     out.expect("parsed under isolated home")
 }
 
+fn help_has_token(help: &str, flag: &str) -> bool {
+    help.split(|c: char| c.is_whitespace() || matches!(c, ',' | '=' | '[' | ']'))
+        .any(|tok| tok == flag)
+}
+
 fn help_lists_subcommand_line(help: &str, name: &str) -> bool {
     help.lines()
         .any(|line| line.starts_with(&format!("  {name} ")))
 }
 
 #[test]
-fn do_flag_parses() {
-    let cli = parse(&["malvin", "--do", "task"]);
-    assert!(cli.do_workflow());
-    assert_eq!(cli.first_request().map(String::as_str), Some("task"));
-    assert!(cli.command.is_none());
+fn removed_do_flag_is_rejected() {
+    let err = parse_cli_with_config_defaults(["malvin", "--do", "task"]).expect_err("removed");
+    let msg = err.to_string();
+    assert!(msg.contains("unexpected") || msg.contains("--do"), "{msg}");
 }
 
 #[test]
@@ -29,7 +33,6 @@ fn do_subcommand_is_removed() {
     // Former `do` subcommand is gone; `do` / `task` are ordinary bare requests.
     let cli = parse(&["malvin", "do", "task"]);
     assert!(cli.command.is_none());
-    assert!(!cli.do_workflow());
     assert_eq!(cli.requests, vec!["do".to_string(), "task".to_string()]);
 }
 
@@ -58,7 +61,6 @@ fn gates_only_route_parses_without_request_and_bare_request_without_subcommand_p
     {
         let cli = parse(&["malvin", "investigate"]);
         assert!(cli.command.is_none());
-        assert!(!cli.do_workflow());
         assert_eq!(cli.first_request().map(String::as_str), Some("investigate"));
     }
 }
@@ -70,7 +72,12 @@ fn cli_help_omits_removed_subcommands() {
     assert!(!help_lists_subcommand_line(&help, "code"));
     assert!(!help_lists_subcommand_line(&help, "do"));
     assert!(!help_lists_subcommand_line(&help, "delight"));
-    assert!(help.contains("--do"));
+    assert!(!help_has_token(&help, "--do"), "{help}");
+    assert!(!help_has_token(&help, "--watch"), "{help}");
+    assert!(!help_has_token(&help, "--verbose"), "{help}");
+    assert!(!help_has_token(&help, "-v"), "{help}");
+    assert!(!help.contains("Bare malvin"), "{help}");
+    assert!(!help.contains("bare malvin"), "{help}");
     assert!(!help_lists_subcommand_line(&help, "router"));
     assert!(!help.contains("@code"));
 }
@@ -79,7 +86,6 @@ fn cli_help_omits_removed_subcommands() {
 fn multiple_bare_requests_and_double_dash_requests_parse() {
     let cli = parse(&["malvin", "plan_1.md", "plan_2.md"]);
     assert!(cli.command.is_none());
-    assert!(!cli.do_workflow());
     assert_eq!(
         cli.requests,
         vec!["plan_1.md".to_string(), "plan_2.md".to_string()]
@@ -89,14 +95,7 @@ fn multiple_bare_requests_and_double_dash_requests_parse() {
     assert_eq!(flag_request.tagged_requests.len(), 1);
     assert_eq!(flag_request.tagged_requests[0].text, "-n");
     assert!(flag_request.tagged_requests[0].is_router());
-    let pending_do = parse(&["malvin", "--do", "--", "-n"]);
-    assert!(pending_do.do_workflow());
-    assert_eq!(pending_do.requests, vec!["-n".to_string()]);
-    assert_eq!(pending_do.tagged_requests.len(), 1);
-    assert_eq!(pending_do.tagged_requests[0].text, "-n");
-    assert!(pending_do.tagged_requests[0].is_do());
     let literal_do = parse(&["malvin", "--", "--do", "task"]);
-    assert!(!literal_do.do_workflow());
     assert_eq!(
         literal_do.requests,
         vec!["--do".to_string(), "task".to_string()]

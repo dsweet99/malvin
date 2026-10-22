@@ -1,9 +1,32 @@
 pub(crate) fn emit_do_dm_body(body: &str) {
-    if body.is_empty() {
+    if body.is_empty() || !super::do_dm_mode::do_dm_stdout_mode() {
+        return;
+    }
+    if super::do_dm_mode::do_dm_stdout_markdown() {
+        emit_markdown_body(body);
         return;
     }
     for line in super::logical_lines(body) {
         emit_wrapped_do_dm_line(line);
+    }
+}
+
+fn emit_markdown_body(body: &str) {
+    use super::md_table::{MdPiece, format_markdown_document};
+    let (width, _) = super::terminal_wrap::line_wrap_for_prefix_len(
+        0,
+        "",
+        super::terminal_wrap::stdout_allows_log_word_wrap(),
+    );
+    for piece in format_markdown_document(body, width) {
+        match piece {
+            MdPiece::Source(line) => emit_markdown_do_dm_line(&line),
+            MdPiece::Rendered(line) => super::stdout_terminal::emit_do_dm_body_line(&line),
+            MdPiece::Code { lang, text } => {
+                let shown = super::code_hl::show_code_line(&lang, &text, super::log_use_color());
+                super::stdout_terminal::emit_do_dm_body_line(&shown);
+            }
+        }
     }
 }
 

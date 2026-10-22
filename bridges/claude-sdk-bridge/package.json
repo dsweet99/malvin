@@ -1,0 +1,25 @@
+{
+  "name": "claude-sdk-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Malvin JSONL bridge to the Claude Agent SDK for claude: models",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "bin": {
+    "malvin-claude-sdk-bridge": "./dist/bridge.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/bridge.js",
+    "test": "node --test dist/*_test.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.308"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "typescript": "^5.8.0"
+  }
+}

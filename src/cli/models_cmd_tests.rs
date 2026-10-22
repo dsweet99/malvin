@@ -74,18 +74,7 @@ fn models_subcommand_parse_invokes_cli_helpers() {
 
 #[cfg(unix)]
 fn write_fake_models_agent(dir: &std::path::Path) -> std::path::PathBuf {
-    use std::os::unix::fs::PermissionsExt;
-
-    let agent = dir.join("agent");
-    std::fs::write(
-        &agent,
-        "#!/bin/sh\nif [ \"$1\" = models ]; then printf 'composer-2 — Fast\\nTip: upgrade\\n'; exit 0; fi\nexit 1\n",
-    )
-    .expect("write fake agent");
-    let mut perms = std::fs::metadata(&agent).expect("metadata").permissions();
-    perms.set_mode(0o755);
-    std::fs::set_permissions(&agent, perms).expect("chmod fake agent");
-    agent
+    super::fake_models_agent::install_agent(dir, super::fake_models_agent::MODELS_LISTING_SCRIPT)
 }
 
 #[cfg(unix)]
@@ -102,6 +91,37 @@ fn run_models_reads_fake_agent_models_output() {
     assert!(!out.contains("Tip"), "{out}");
     let path = resolve_models_cli().expect("fake agent on fake PATH");
     assert_eq!(path, agent);
+}
+
+fn model_list_suffix_places_config_aliases_above_current() {
+    use super::models_cmd::print_models_suffix;
+    use malvin::output::{enable_stdout_capture, take_captured_stdout};
+    use malvin::test_support::test_utils::with_isolated_home;
+    use malvin::workspace::workspace_paths::malvin_config_path;
+
+    with_isolated_home(|work| {
+        let path = malvin_config_path(work);
+        std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+        std::fs::write(&path, "[agent]\nmodel = \"cursor:auto\"\n").expect("write");
+        enable_stdout_capture();
+        print_models_suffix("cursor:auto");
+        let empty = take_captured_stdout();
+        assert!(!empty.contains("[aliases.models]"), "{empty}");
+        assert!(empty.contains("Current: cursor:auto"), "{empty}");
+        std::fs::write(
+            &path,
+            "[aliases.models]\nnova = \"pi:openai/gpt-5\"\nastra = \"cursor:gpt-5\"\n[agent]\nmodel = \"cursor:auto\"\n",
+        )
+        .expect("write");
+        enable_stdout_capture();
+        print_models_suffix("cursor:auto");
+        let out = take_captured_stdout();
+        let header = out.find("[aliases.models]").expect("header");
+        let astra = out.find("astra\tcursor:gpt-5").expect("astra");
+        let nova = out.find("nova\tpi:openai/gpt-5").expect("nova");
+        let current = out.find("Current: cursor:auto").expect("current");
+        assert!(header < astra && astra < nova && nova < current, "{out}");
+    });
 }
 
 fn current_model_label_reads_config_or_default() {
@@ -165,6 +185,7 @@ fn kiss_bundled_cli_models_cmd_tests() {
     models_subcommand_parse_invokes_cli_helpers();
     run_models_reads_fake_agent_models_output();
     current_model_label_reads_config_or_default();
+    model_list_suffix_places_config_aliases_above_current();
     cursor_list_models_timeout_honors_env();
     sdk_catalog_empty_is_detected_even_when_auto_would_be_injected();
 }

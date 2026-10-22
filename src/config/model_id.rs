@@ -1,6 +1,8 @@
 #[path = "model_id_params.rs"]
 mod model_id_params;
 pub use model_id_params::{format_bracket_params, split_bracket_params};
+#[path = "model_id_claude_spec.rs"]
+mod model_id_claude_spec;
 #[path = "model_id_legacy.rs"]
 mod model_id_legacy;
 #[path = "model_id_spec.rs"]
@@ -10,6 +12,7 @@ pub use model_id_spec::BackendSpec;
 pub const CURSOR_PREFIX: &str = "cursor:";
 pub const PI_PREFIX: &str = "pi:";
 pub const CODEX_PREFIX: &str = "codex:";
+pub const CLAUDE_PREFIX: &str = "claude:";
 
 pub const MINI_PREFIX: &str = "mini:";
 pub const RPI_PREFIX: &str = "rpi:";
@@ -17,7 +20,7 @@ pub const OPENROUTER_PREFIX: &str = "openrouter:";
 pub const LOCAL_PREFIX: &str = "local:";
 pub const PRIME_PREFIX: &str = "prime:";
 
-pub const UNPREFIXED_MODEL_MESSAGE: &str = "model id must use a `cursor:`, `pi:`, or `codex:` prefix (for example `cursor:auto`, `pi:openai/gpt-4o`, or `codex:gpt-5.6`)";
+pub const UNPREFIXED_MODEL_MESSAGE: &str = "model id must use a `cursor:`, `pi:`, `codex:`, or `claude:` prefix (for example `cursor:auto`, `pi:openai/gpt-4o`, `codex:gpt-5.6`, or `claude:sonnet`)";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModelParam {
@@ -30,10 +33,11 @@ pub enum ModelBackend {
     Cursor,
     Pi,
     Codex,
+    Claude,
 }
 
 impl ModelBackend {
-    pub const ALL: [Self; 3] = [Self::Cursor, Self::Pi, Self::Codex];
+    pub const ALL: [Self; 4] = [Self::Cursor, Self::Pi, Self::Codex, Self::Claude];
 
     #[must_use]
     pub const fn spec(self) -> &'static dyn BackendSpec {
@@ -41,6 +45,7 @@ impl ModelBackend {
             Self::Cursor => &model_id_spec::CursorSpec,
             Self::Pi => &model_id_spec::PiSpec,
             Self::Codex => &model_id_spec::CodexSpec,
+            Self::Claude => &model_id_claude_spec::ClaudeSpec,
         }
     }
 
@@ -98,6 +103,11 @@ impl ParsedModel {
     #[must_use]
     pub const fn is_codex(&self) -> bool {
         matches!(self.backend, ModelBackend::Codex)
+    }
+
+    #[must_use]
+    pub const fn is_claude(&self) -> bool {
+        matches!(self.backend, ModelBackend::Claude)
     }
 
     #[must_use]

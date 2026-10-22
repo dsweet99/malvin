@@ -21,7 +21,7 @@ pub fn format_line_stdout_ansi(who: &str, line: &str) -> String {
         WARNING_WHO => format!("{}{prefix}{line}{ANSI_RESET}", ansi_warning()),
         ERROR_WHO => format!("{}{prefix}{line}{ANSI_RESET}", ansi_error()),
         WHO_B => format!("{}{prefix}{line}{ANSI_RESET}", super::ANSI_DIM),
-        super::WHO_A => {
+        super::WHO_A | super::WHO_P => {
             let tag_color = who_tag_ansi(who);
             format!(
                 "{tag_color}{prefix}{ANSI_RESET}{ANSI_BOLD}{}{line}{ANSI_RESET}",
@@ -200,6 +200,16 @@ mod tests {
             ansi_tool_name(),
             "who_tag and tool_name slots must differ"
         );
+    }
+
+    #[test]
+    fn prompt_file_ansi_matches_agent_start_colors() {
+        use crate::output::WHO_P;
+
+        let prompt = format_line_stdout_ansi(WHO_P, "router_a");
+        let agent = format_line_stdout_ansi(crate::output::WHO_A, "router_a");
+        assert_eq!(prompt.replacen("p|", "a|", 1), agent);
+        assert_eq!(format_line_stdout(WHO_P, "router_a"), "p|router_a");
     }
 
     #[test]

@@ -24,7 +24,6 @@ pub(crate) struct RouterAgentLoopInput<'a> {
     pub shared: &'a SharedOpts,
     pub router: &'a RouterOpts,
     pub max_loops: usize,
-    pub watch_source: Option<&'a Path>,
 }
 
 pub(crate) struct RouterAgentLoopOutcome {
@@ -78,11 +77,6 @@ async fn run_one_router_loop_step(
     agent_loop: usize,
     max_loops: usize,
 ) -> Result<RouterLoopStepResult, String> {
-    malvin::artifacts::maybe_refresh_watched_plan(
-        input.router.watch,
-        input.watch_source,
-        input.artifacts.plan_path.as_path(),
-    )?;
     let session_end = if agent_loop == max_loops {
         RunTimingSessionEnd::Finalize
     } else {
@@ -116,11 +110,16 @@ async fn finish_router_loop_step(
         RouterAcpIterationOutcome::Open {
             iteration_backups,
             done,
+            request_open,
             timing,
-        } => (Ok(()), iteration_backups, Some((done, timing))),
+        } => (
+            Ok(()),
+            iteration_backups,
+            Some((done, request_open, timing)),
+        ),
     };
     let last_backups = restore_router_iteration_dotfiles(work_dir, &iteration_backups)?;
-    let Some((done, timing)) = open_session else {
+    let Some((done, request_open, timing)) = open_session else {
         return Ok(RouterLoopStepResult {
             last_acp: acp_result,
             last_backups,
@@ -131,6 +130,7 @@ async fn finish_router_loop_step(
         artifacts: input.artifacts,
         backups: &last_backups,
         done,
+        request_open,
         gates: input.router.gates,
         agent_loop,
         max_loops,

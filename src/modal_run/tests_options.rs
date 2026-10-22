@@ -111,6 +111,16 @@ fn value_parsers_accept_documented_forms_only() {
 }
 
 #[test]
+fn parse_timeout_bare_minutes_stops_at_24_hours() {
+    assert_eq!(parse_timeout("1440"), Ok(86_400));
+    let over = parse_timeout("1441").expect_err("1441 minutes is past 24 hours");
+    assert!(
+        over.contains("24 hours"),
+        "bare minutes just over 24 hours should name the cap: {over}"
+    );
+}
+
+#[test]
 fn bracketed_flag_is_rewritten_for_clap() {
     let normalized = args(&["malvin", "--remote=modal:sandbox", "--do", "x"]);
     let (out, opts) = extract_modal_options(

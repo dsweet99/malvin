@@ -25,6 +25,12 @@ fn run_build_script_runs_on_docs_rs() {
 }
 
 #[test]
+fn bundled_lld_is_selected_only_for_linux_targets() {
+    assert!(lld::target_is_linux_for("aarch64-unknown-linux-gnu"));
+    assert!(!lld::target_is_linux_for("aarch64-apple-darwin"));
+}
+
+#[test]
 fn kiss_bundled_sdk_bridge_build_tests() {
     run_build_script_honors_lld_opt_out();
     run_build_script_runs_on_docs_rs();

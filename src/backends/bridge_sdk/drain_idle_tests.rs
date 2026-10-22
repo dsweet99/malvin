@@ -7,6 +7,7 @@ use crate::agent_process::AgentError;
 use crate::agent_process::child_health::SilenceHealthOutcome;
 use std::collections::HashSet;
 use std::time::{Duration, Instant as WallInstant};
+use tokio::time::Instant;
 
 fn set_idle_ms(ms: u64) -> Option<std::ffi::OsString> {
     let prior = std::env::var_os("MALVIN_SDK_DRAIN_IDLE_TIMEOUT_MS");
@@ -53,16 +54,27 @@ async fn await_next_delivers_when_read_completes() {
 
 #[test]
 fn clock_busy_extends_with_no_turn_cap() {
-    let idle = Duration::from_millis(20);
-    let mut clock = DrainIdleClock::new(idle);
-    let until = WallInstant::now() + idle * 5;
-    while WallInstant::now() < until {
+    let idle = Duration::from_secs(20);
+    let start = Instant::now();
+    let mut clock = DrainIdleClock::at(idle, start);
+    let mut now = start;
+    for _ in 0..5 {
+        now += idle;
         assert!(
-            clock.apply_verdict(DrainHealthVerdict::StillBusy).is_ok(),
+            clock.decide(DrainHealthVerdict::StillBusy, now).is_ok(),
             "StillBusy must keep extending the idle window"
         );
-        std::thread::sleep(Duration::from_millis(5));
+        assert!(
+            clock.decide(DrainHealthVerdict::AppearsHung, now).is_ok(),
+            "AppearsHung inside the extended window must still wait"
+        );
     }
+    assert!(
+        clock
+            .decide(DrainHealthVerdict::AppearsHung, now + idle)
+            .is_err(),
+        "AppearsHung at the end of the last extension must fail"
+    );
 }
 
 #[test]
@@ -77,13 +89,19 @@ fn clock_dead_fails_immediately() {
 
 #[test]
 fn clock_hung_fails_only_after_idle_deadline() {
-    let idle = Duration::from_millis(50);
-    let mut clock = DrainIdleClock::new(idle);
-    assert!(clock.apply_verdict(DrainHealthVerdict::AppearsHung).is_ok());
-    std::thread::sleep(idle + Duration::from_millis(10));
+    let idle = Duration::from_secs(50);
+    let start = Instant::now();
+    let mut clock = DrainIdleClock::at(idle, start);
+    assert!(clock.decide(DrainHealthVerdict::AppearsHung, start).is_ok());
+    let just_before = start + idle - Duration::from_nanos(1);
     assert!(
         clock
-            .apply_verdict(DrainHealthVerdict::AppearsHung)
+            .decide(DrainHealthVerdict::AppearsHung, just_before)
+            .is_ok()
+    );
+    assert!(
+        clock
+            .decide(DrainHealthVerdict::AppearsHung, start + idle)
             .is_err()
     );
 }
@@ -161,14 +179,13 @@ fn silence_error_labels_bridge_quiet() {
 
 #[test]
 fn drain_idle_turn_reset_reopens_expired_idle_window() {
-    let _guard = crate::test_support::test_utils::test_env_lock();
-    let prior = set_idle_ms(10);
+    let idle = Duration::from_secs(10);
+    let now = Instant::now();
     let mut turn = DrainIdleTurn::new();
-    std::thread::sleep(Duration::from_millis(25));
+    turn.clock = DrainIdleClock::at(idle, now - idle - Duration::from_secs(1));
     assert!(turn.clock.slice_duration().is_none());
     turn.clock.reset_idle_window();
     assert!(turn.clock.slice_duration().is_some());
-    crate::sdk_drain_timeout::tests_restore_idle_ms_for_test(prior);
 }
 
 #[test]

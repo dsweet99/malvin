@@ -103,7 +103,7 @@ fn entrypoint_from_bare_malvin_exits_success_and_entrypoint_from_admin_models_do
     {
         with_isolated_home(|_| {
             assert_eq!(entrypoint_from(["malvin", "--"]), Exit::Success);
-            assert_eq!(entrypoint_from(["malvin", "--do", "--"]), Exit::Success);
+            assert_eq!(entrypoint_from(["malvin", "--do", "--"]), Exit::Failure);
         });
     }
     {
@@ -153,19 +153,52 @@ fn entrypoint_from_admin_rejects_quiet_flag() {
 }
 
 #[test]
-fn entrypoint_from_admin_rejects_verbose_flag() {
+fn entrypoint_from_admin_rejects_very_quiet_flag() {
     use malvin::test_support::test_stderr_capture::capture_stderr_output;
 
     with_isolated_home(|_| {
         let stderr = capture_stderr_output(|| {
             assert_eq!(
-                entrypoint_from(["malvin", "-v", "admin", "models", "--doc"]),
+                entrypoint_from(["malvin", "--very-quiet", "admin", "models", "--doc"]),
                 Exit::Failure
             );
         });
         assert!(
-            stderr.contains("admin") && (stderr.contains("--verbose") || stderr.contains("-v")),
-            "expected admin+verbose rejection; stderr={stderr:?}"
+            stderr.contains("admin") && stderr.contains("--very-quiet"),
+            "expected admin+very-quiet rejection; stderr={stderr:?}"
+        );
+    });
+}
+
+#[test]
+fn entrypoint_from_admin_rejects_removed_verbose_flag() {
+    with_isolated_home(|_| {
+        let err = crate::cli::config_defaults::parse_cli_with_config_defaults([
+            "malvin", "-v", "admin", "models", "--doc",
+        ])
+        .expect_err("removed -v");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("unexpected") || msg.contains("-v"),
+            "expected removed -v rejection; got {msg}"
+        );
+    });
+}
+
+#[test]
+fn entrypoint_from_admin_rejects_max_loops_flag() {
+    use malvin::test_support::test_stderr_capture::capture_stderr_output;
+
+    with_isolated_home(|_| {
+        let stderr = capture_stderr_output(|| {
+            assert_eq!(
+                entrypoint_from(["malvin", "--max-loops", "2", "admin", "models", "--doc",]),
+                Exit::Failure
+            );
+        });
+        assert!(
+            stderr.contains("admin") && stderr.contains("--max-loops"),
+            "expected admin+max-loops rejection; stderr={stderr:?}"
         );
     });
 }

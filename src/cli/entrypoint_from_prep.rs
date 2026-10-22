@@ -5,7 +5,7 @@ use crate::cli::args::Cli;
 use crate::cli::config_defaults::is_gates_only_route;
 use crate::cli::entrypoint_checks::{
     ensure_malvin_checks_for_command, ensure_malvin_checks_for_default_route,
-    ensure_malvin_checks_for_do_workflow, ensure_malvin_checks_for_gates_only_route,
+    ensure_malvin_checks_for_gates_only_route,
 };
 
 pub(super) fn parse_cli_args_or_exit(
@@ -26,10 +26,6 @@ pub(super) fn parse_cli_args_or_exit(
 }
 
 pub(super) fn entrypoint_before_dispatch(cli: &Cli, matches: &clap::ArgMatches) -> Option<Exit> {
-    if cli.do_workflow() && cli.command.is_some() {
-        print_command_error("`--do` cannot be combined with a subcommand");
-        return Some(Exit::Failure);
-    }
     if let Some(msg) = reject_admin_with_workflow_only_flags(cli, matches) {
         print_command_error(&msg);
         return Some(Exit::Failure);
@@ -40,12 +36,15 @@ pub(super) fn entrypoint_before_dispatch(cli: &Cli, matches: &clap::ArgMatches) 
     if let Some(exit) = entrypoint_commands_catalog(cli) {
         return Some(exit);
     }
-    super::super::entrypoint::entrypoint_short_help::entrypoint_request_missing_short_help(cli)
+    None
 }
 
 fn entrypoint_commands_catalog(cli: &Cli) -> Option<Exit> {
     let _ = match &cli.command {
-        None if !cli.has_request() && !cli.do_workflow() && !is_gates_only_route(cli) => {
+        None if !cli.has_request() && !is_gates_only_route(cli) => {
+            if cli.router.prints_nothing() {
+                return Some(Exit::Success);
+            }
             crate::cli::commands_help::print_commands_only_help()
         }
         Some(crate::cli::Commands::Admin(admin)) if admin.command.is_none() => {
@@ -61,10 +60,11 @@ fn reject_admin_with_workflow_only_flags(cli: &Cli, matches: &clap::ArgMatches) 
 
     const WORKFLOW_ONLY: &[(&str, &str)] = &[
         ("quiet", "--quiet / -q"),
+        ("very_quiet", "--very-quiet / -qq"),
         ("gates", "--gates / -g"),
-        ("creative", "--creative"),
-        ("verbose", "--verbose / -v"),
         ("max_acp_retries", "--max-acp-retries"),
+        ("no_auto_costs", "--no-auto-costs"),
+        ("max_loops", "--max-loops"),
         ("ml", "--ml"),
         ("remote", "--remote"),
     ];
@@ -81,12 +81,6 @@ fn reject_admin_with_workflow_only_flags(cli: &Cli, matches: &clap::ArgMatches) 
 }
 
 pub(super) fn entrypoint_preflight(cli: &Cli) -> Option<Exit> {
-    if cli.has_do_request()
-        && let Err(e) = ensure_malvin_checks_for_do_workflow()
-    {
-        print_command_error(&e);
-        return Some(Exit::Failure);
-    }
     if let Some(command) = cli.command.as_ref() {
         ensure_malvin_checks_for_command(command);
     }

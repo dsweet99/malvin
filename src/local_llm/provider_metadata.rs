@@ -133,6 +133,16 @@ mod tests {
                 provider_auth_env_keys("openai"),
                 Some(&["OPENAI_API_KEY"][..])
             );
+            assert_eq!(
+                provider_auth_env_keys("anthropic"),
+                Some(
+                    &[
+                        "ANTHROPIC_API_KEY",
+                        "ANTHROPIC_OAUTH_TOKEN",
+                        "ANTHROPIC_AUTH_TOKEN",
+                    ][..]
+                )
+            );
             assert!(provider_auth_env_keys("ollama").is_none());
         }
     }

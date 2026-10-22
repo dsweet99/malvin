@@ -29,6 +29,8 @@ DEFAULT_AGENT_TIMEOUT_SEC = 10 * 60
 TIMEOUT_EXIT_CODE = 124
 _KILL_GRACE_SEC = 2.0
 _POLL_INTERVAL_SEC = 0.1
+MODAL_REMOTE_ID = "modal:sandbox"
+MODAL_RETURN_GRACE_SEC = 30.0
 
 AGENT_TIMEOUT_ENV = "MALVIN_FT_AGENT_TIMEOUT_SEC"
 MALVIN_BIN_REMOTE = "/root/.cargo/bin/malvin"
@@ -74,7 +76,7 @@ def _ft_cursor_sdk_bridge_ready(path: Path) -> bool:
     ).is_file()
 
 def ft_resolve_cursor_sdk_bridge_dir() -> Path | None:
-    repo_bridge = (REPO_ROOT / "cursor-sdk-bridge").resolve()
+    repo_bridge = (REPO_ROOT / "bridges" / "cursor-sdk-bridge").resolve()
     if _ft_cursor_sdk_bridge_ready(repo_bridge):
         return repo_bridge
     installed = ft_installed_cursor_sdk_bridge_dir().resolve()
@@ -316,19 +318,43 @@ def ft_host_agent_cmd(
         run_args = ["--do", *run_args]
     return [str(malvin_binary.resolve()), *run_args, "plan.md"]
 
-def ft_malvin_args_request_creative(malvin_args: tuple[str, ...]) -> bool:
-    return any(a == "--creative" or a.startswith("--creative=") for a in malvin_args)
+def ft_modal_remote_arg(malvin_args: tuple[str, ...]) -> str | None:
+    for i, arg in enumerate(malvin_args):
+        value = None
+        if arg == "--remote" and i + 1 < len(malvin_args):
+            value = malvin_args[i + 1]
+        elif arg.startswith("--remote="):
+            value = arg.split("=", 1)[1]
+        if value is None:
+            continue
+        if value.split("[", 1)[0] == MODAL_REMOTE_ID:
+            return value
+    return None
 
-def ft_assert_creative_compatible(agent: str, malvin_args: tuple[str, ...]) -> None:
-    if not ft_malvin_args_request_creative(malvin_args):
-        return
-    if ft_normalize_agent(agent) == AGENT_CURSOR:
+def _ft_whole_seconds(timeout_sec: float) -> int:
+    if timeout_sec <= 0:
+        raise click.ClickException("timeout_sec must be positive")
+    whole = int(timeout_sec)
+    if timeout_sec > whole:
+        whole += 1
+    return whole
+
+def ft_with_modal_remote(
+    malvin_args: tuple[str, ...], timeout_sec: float
+) -> tuple[str, ...]:
+    if any(a == "--remote" or a.startswith("--remote=") for a in malvin_args):
+        raise click.ClickException("--modal cannot be combined with --remote")
+    seconds = _ft_whole_seconds(timeout_sec)
+    return (f"--remote={MODAL_REMOTE_ID}[timeout={seconds}s]", *malvin_args)
+
+def ft_assert_modal_compatible(agent_name: str, malvin_args: tuple[str, ...]) -> None:
+    if ft_normalize_agent(agent_name) != AGENT_MALVIN:
         raise click.ClickException(
-            "--creative and --agent=cursor are mutually exclusive"
+            "--modal and --agent=cursor are mutually exclusive"
         )
-    if "--cursor" in malvin_args:
+    if ft_malvin_args_request_local_pi(malvin_args):
         raise click.ClickException(
-            "--creative and --cursor are mutually exclusive"
+            "--modal cannot run a local model; the Modal sandbox has no local model server"
         )
 
 def ft_normalize_agent(agent: str) -> str:
@@ -506,6 +532,77 @@ def ft_assert_dockerfile_nonleak(text: str) -> None:
                 f"Agent Dockerfile must not reference {marker!r}"
             )
 
+def ft_assert_docker_ready(
+    *,
+    skip_docker: bool,
+    dry_run: bool,
+    malvin_binary: Path | None,
+) -> None:
+    if dry_run or skip_docker:
+        return
+    if not ft_docker_available():
+        raise click.ClickException("Docker daemon is not available")
+    ft_assert_docker_malvin_runnable(malvin_binary)
+
+def ft_resolve_run_image(
+    *,
+    use_modal: bool,
+    skip_docker: bool,
+    docker_image: str | None,
+    base_image: str,
+    dry_run: bool,
+) -> str:
+    if use_modal:
+        return MODAL_REMOTE_ID
+    if skip_docker:
+        return docker_image or DEFAULT_IMAGE
+    return ft_ensure_agent_image(
+        image=docker_image or DEFAULT_IMAGE,
+        base_image=base_image,
+        dry_run=dry_run,
+    )
+
+def ft_choose_agent_cmd(
+    *,
+    use_modal: bool,
+    skip_docker: bool,
+    image: str,
+    workspace: Path,
+    malvin_binary: Path | None,
+    malvin_args: tuple[str, ...],
+    agent_name: str,
+) -> tuple[list[str], bool]:
+    if use_modal:
+        if malvin_binary is None:
+            raise click.ClickException("malvin_binary is required when --modal is set")
+        return (
+            ft_host_agent_cmd(
+                workspace=workspace,
+                malvin_binary=malvin_binary,
+                malvin_args=malvin_args,
+            ),
+            True,
+        )
+    cmd = ft_docker_agent_cmd(
+        image=image,
+        workspace=workspace,
+        malvin_binary=malvin_binary,
+        malvin_args=malvin_args,
+        agent=agent_name,
+    )
+    if not skip_docker:
+        return cmd, False
+    if malvin_binary is None:
+        raise click.ClickException("malvin_binary is required")
+    return (
+        ft_host_agent_cmd(
+            workspace=workspace,
+            malvin_binary=malvin_binary,
+            malvin_args=malvin_args,
+        ),
+        True,
+    )
+
 def ft_docker_available() -> bool:
     try:
         proc = subprocess.run(
@@ -620,10 +717,10 @@ def ft_docker_agent_cmd(
         host_bridge = ft_resolve_cursor_sdk_bridge_dir()
         if host_bridge is None:
             raise click.ClickException(
-                "cursor-sdk-bridge/dist/bridge.js not found under the repo "
+                "bridges/cursor-sdk-bridge/dist/bridge.js not found under the repo "
                 "or ~/.malvinconf/sdk-bridges/cursor-sdk-bridge; "
                 "run a `cursor:` model with malvin once, or run "
-                "`npm ci && npm run build` in cursor-sdk-bridge/ "
+                "`npm ci && npm run build` in bridges/cursor-sdk-bridge/ "
                 "(required for cursor: models inside the agent container)"
             )
         volume_mounts = [
@@ -990,7 +1087,6 @@ def ft_run_solve(
         raise click.ClickException(
             f"--agent={agent_name} and --main are mutually exclusive"
         )
-    ft_assert_creative_compatible(agent_name, malvin_args)
     if timeout_sec <= 0:
         raise click.ClickException("timeout_sec must be positive")
     task_dir = ft_resolve_task_dir(task_id)
@@ -1001,25 +1097,28 @@ def ft_run_solve(
         )
     if host_malvin is not None:
         malvin_args = ft_canonicalize_model_args(host_malvin, malvin_args)
-    skip_docker = ft_local_pi_needs_host_agent(
+    use_modal = ft_modal_remote_arg(malvin_args) is not None
+    if use_modal:
+        ft_assert_modal_compatible(agent_name, malvin_args)
+    skip_docker = use_modal or ft_local_pi_needs_host_agent(
         agent_name=agent_name,
         malvin_args=malvin_args,
         malvin_binary=host_malvin,
     )
-    if not dry_run and not skip_docker and not ft_docker_available():
-        raise click.ClickException("Docker daemon is not available")
-    if not dry_run and not skip_docker:
-        ft_assert_docker_malvin_runnable(host_malvin)
+    ft_assert_docker_ready(
+        skip_docker=skip_docker,
+        dry_run=dry_run,
+        malvin_binary=host_malvin,
+    )
     run_root = ft_run_root(task_id, results_dir)
     workspace = ft_stage_workspace(task_dir, run_root)
-    if skip_docker:
-        image = docker_image or DEFAULT_IMAGE
-    else:
-        image = ft_ensure_agent_image(
-            image=docker_image or DEFAULT_IMAGE,
-            base_image=base_image,
-            dry_run=dry_run,
-        )
+    image = ft_resolve_run_image(
+        use_modal=use_modal,
+        skip_docker=skip_docker,
+        docker_image=docker_image,
+        base_image=base_image,
+        dry_run=dry_run,
+    )
     if agent_name == AGENT_MALVIN and host_malvin is None:
         if dry_run:
             stub_name = "malvin-main" if use_main else "malvin"
@@ -1034,28 +1133,22 @@ def ft_run_solve(
                 "No host malvin binary found (PATH or ~/.cargo/bin/malvin); "
                 "build malvin on the host or use --agent=cursor / --main"
             )
-    cmd = ft_docker_agent_cmd(
+    cmd, host_agent = ft_choose_agent_cmd(
+        use_modal=use_modal,
+        skip_docker=skip_docker,
         image=image,
         workspace=workspace,
         malvin_binary=host_malvin,
         malvin_args=malvin_args,
-        agent=agent_name,
+        agent_name=agent_name,
     )
-    host_agent = skip_docker
-    if host_agent:
-        assert host_malvin is not None
-        cmd = ft_host_agent_cmd(
-            workspace=workspace,
-            malvin_binary=host_malvin,
-            malvin_args=malvin_args,
-        )
     click.echo(f"Staged workspace: {workspace}")
     click.echo(f"Agent command: {ft_redact_cmd_for_display(cmd)}")
     click.echo(f"Agent timeout: {timeout_sec:.0f}s")
 
     t0 = time.monotonic()
     if dry_run:
-        click.echo("Dry run: skipping docker run")
+        click.echo("Dry run: skipping agent run")
         agent_result: dict[str, Any] = {
             "exit_code": 0,
             "agent_seconds": 0.0,
@@ -1066,10 +1159,13 @@ def ft_run_solve(
         }
     else:
         if host_agent:
-            click.echo(
-                "Running malvin on host for local pi: "
-                "(host binary is not a Linux ELF; Docker would fail with exec format error)"
-            )
+            if use_modal:
+                click.echo("Running malvin in a Modal sandbox...")
+            else:
+                click.echo(
+                    "Running malvin on host for local pi: "
+                    "(host binary is not a Linux ELF; Docker would fail with exec format error)"
+                )
             host_env = os.environ.copy()
             if ft_malvin_args_request_ollama_pi(malvin_args):
                 host_env.setdefault(
@@ -1078,7 +1174,9 @@ def ft_run_solve(
                 )
             code, captured, timed_out = ft_relay_subprocess_stdout(
                 cmd,
-                timeout_sec=timeout_sec,
+                timeout_sec=(
+                    timeout_sec + MODAL_RETURN_GRACE_SEC if use_modal else timeout_sec
+                ),
                 cwd=str(workspace),
                 env=host_env,
             )
@@ -1119,6 +1217,7 @@ def ft_run_solve(
         "task_id": task_id,
         "workspace": str(workspace),
         "image": image,
+        "modal": use_modal,
         "agent": agent_result,
         "agent_name": agent_name,
         "grade": grade_result,
@@ -1184,6 +1283,7 @@ def run_fast_task_self_tests() -> None:
     _ft_test_grade_on_host_starter_reward_zero()
     _ft_test_solve_checks_docker_before_build()
     _ft_test_solve_help_and_dry_run()
+    _ft_test_solve_modal_dry_run()
     _ft_test_solve_main_dry_run()
     _ft_test_resolve_malvin_binary_prefers_current_repo_build()
     _ft_test_resolve_malvin_main_binary()
@@ -1633,8 +1733,8 @@ def _ft_test_solve_help_and_dry_run() -> None:
     assert not any(line.startswith("  --cursor") for line in option_lines)
     assert "--main" in help_result.output
     assert "--model" in help_result.output
-    assert "--creative" in help_result.output
-    assert "--cursor" in help_result.output
+    assert "--creative" not in help_result.output
+    assert "--modal" in help_result.output
     assert DEFAULT_AGENT_TIMEOUT_SEC == 600
     with tempfile.TemporaryDirectory(prefix="ft-dry-") as tmp:
         result = runner.invoke(
@@ -1791,102 +1891,154 @@ def _ft_assert_solve_model_and_agent_dry_runs(cli, runner, tmp: Path) -> None:
     assert rejected.exit_code != 0
     assert "prime" in rejected.output.lower() or "Invalid" in rejected.output
 
-    _ft_assert_solve_creative_dry_runs(cli, runner, tmp)
-
-def _ft_assert_solve_creative_dry_runs(cli, runner, tmp: Path) -> None:
-    creative_tmp = tmp / "creative"
-    creative_tmp.mkdir()
-    creative_result = runner.invoke(
-        cli,
-        [
-            "solve",
-            "FT-01",
-            "--creative",
-            "--dry-run",
-            "--skip-grade",
-            "--results-dir",
-            str(creative_tmp),
-        ],
-        catch_exceptions=False,
+def _ft_test_modal_remote_helpers() -> None:
+    assert ft_modal_remote_arg(()) is None
+    assert ft_modal_remote_arg(("--model", "cursor:auto")) is None
+    assert ft_modal_remote_arg(("--remote=modal:sandbox",)) == "modal:sandbox"
+    assert (
+        ft_modal_remote_arg(("--remote", "modal:sandbox[gpu=T4]"))
+        == "modal:sandbox[gpu=T4]"
     )
-    assert creative_result.exit_code == 0, creative_result.output
-    creative_metas = list(creative_tmp.glob("FT-01/*/metadata.json"))
-    assert creative_metas, creative_result.output
-    creative_cmd = json.loads(creative_metas[0].read_text(encoding="utf-8"))[
-        "docker_cmd"
-    ]
-    assert "malvin" in creative_cmd
-    mi = creative_cmd.index("malvin")
-    assert "--creative" in creative_cmd[mi:]
-    assert creative_cmd[-1] == "plan.md"
+    assert ft_modal_remote_arg(("--remote=other:sandbox",)) is None
+    wrapped = ft_with_modal_remote(("--model", "cursor:auto"), 600)
+    assert wrapped[0] == "--remote=modal:sandbox[timeout=600s]"
+    assert wrapped[1:] == ("--model", "cursor:auto")
+    assert ft_with_modal_remote((), 90.2) == (
+        "--remote=modal:sandbox[timeout=91s]",
+    )
+    try:
+        ft_with_modal_remote(("--remote=modal:sandbox",), 60)
+        raise AssertionError("expected explicit remote rejection")
+    except click.ClickException as exc:
+        assert "--remote" in str(exc)
+    try:
+        ft_assert_modal_compatible(AGENT_CURSOR, ())
+        raise AssertionError("expected cursor rejection")
+    except click.ClickException as exc:
+        assert "mutually exclusive" in str(exc)
+    try:
+        ft_assert_modal_compatible(AGENT_MALVIN, ("--model", "pi:ollama/x"))
+        raise AssertionError("expected local model rejection")
+    except click.ClickException as exc:
+        assert "local" in str(exc).lower()
+    ft_assert_modal_compatible(AGENT_MALVIN, ("--model", "pi:openai/gpt-4o"))
+    assert (
+        ft_resolve_run_image(
+            use_modal=True,
+            skip_docker=True,
+            docker_image="custom:latest",
+            base_image=DEFAULT_BASE_IMAGE,
+            dry_run=True,
+        )
+        == MODAL_REMOTE_ID
+    )
 
-    for label, extra in (
-        ("agent-cursor", ["--agent=cursor"]),
-        ("flag-cursor", ["--cursor"]),
-    ):
+def _ft_test_solve_modal_dry_run() -> None:
+    from toolchain_repos import load_ops_entry
+
+    _ft_test_modal_remote_helpers()
+    cli = load_ops_entry("fast_task").fast_task_cli
+    runner = CliRunner()
+    with tempfile.TemporaryDirectory(prefix="ft-modal-") as tmp:
+        tmp_path = Path(tmp)
+        result = runner.invoke(
+            cli,
+            [
+                "solve",
+                "FT-01",
+                "--modal",
+                "--dry-run",
+                "--skip-grade",
+                "--results-dir",
+                tmp,
+            ],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.output
+        assert "Would ensure agent image" not in result.output
+        assert "Dry run: skipping agent run" in result.output
+        assert f"Agent timeout: {DEFAULT_AGENT_TIMEOUT_SEC}s" in result.output
+        meta_paths = list(tmp_path.glob("FT-01/*/metadata.json"))
+        assert meta_paths, result.output
+        meta = json.loads(meta_paths[0].read_text(encoding="utf-8"))
+        assert meta["modal"] is True
+        assert meta["image"] == MODAL_REMOTE_ID
+        cmd = meta["docker_cmd"]
+        assert "docker" not in cmd
+        assert f"--remote={MODAL_REMOTE_ID}[timeout={DEFAULT_AGENT_TIMEOUT_SEC}s]" in cmd
+        assert cmd[-1] == "plan.md"
+        assert "grade.py" not in " ".join(cmd)
+        assert "goldens" not in " ".join(cmd)
+
         conflict = runner.invoke(
             cli,
             [
                 "solve",
                 "FT-01",
-                "--creative",
-                *extra,
+                "--modal",
+                "--agent=cursor",
                 "--dry-run",
                 "--skip-grade",
                 "--results-dir",
-                str(tmp / f"creative-{label}"),
+                str(tmp_path / "cursor"),
             ],
         )
-        assert conflict.exit_code != 0, (label, conflict.output)
-        assert "mutually exclusive" in conflict.output, (label, conflict.output)
+        assert conflict.exit_code != 0, conflict.output
+        assert "mutually exclusive" in conflict.output
 
-    pi_creative_tmp = tmp / "creative-pi"
-    pi_creative_tmp.mkdir()
-    with _ft_stub_npm_pi(tmp / "stub-pi_creative"):
-        pi_creative = runner.invoke(
+        local = runner.invoke(
             cli,
             [
                 "solve",
                 "FT-01",
-                "--creative",
+                "--modal",
                 "--model",
-                "pi:openai/gpt-4o",
+                "pi:ollama/x",
                 "--dry-run",
                 "--skip-grade",
                 "--results-dir",
-                str(pi_creative_tmp),
+                str(tmp_path / "local"),
+            ],
+        )
+        assert local.exit_code != 0, local.output
+        assert "local" in local.output.lower()
+
+        doubled = runner.invoke(
+            cli,
+            [
+                "solve",
+                "FT-01",
+                "--modal",
+                "--dry-run",
+                "--skip-grade",
+                "--results-dir",
+                str(tmp_path / "doubled"),
+                "--remote=modal:sandbox",
+            ],
+        )
+        assert doubled.exit_code != 0, doubled.output
+        assert "--remote" in doubled.output
+
+        passed = runner.invoke(
+            cli,
+            [
+                "solve",
+                "FT-01",
+                "--dry-run",
+                "--skip-grade",
+                "--results-dir",
+                str(tmp_path / "passed-remote"),
+                "--remote=modal:sandbox[gpu=T4]",
             ],
             catch_exceptions=False,
         )
-    assert pi_creative.exit_code == 0, pi_creative.output
-    pi_metas = list(pi_creative_tmp.glob("FT-01/*/metadata.json"))
-    assert pi_metas, pi_creative.output
-    pi_cmd = json.loads(pi_metas[0].read_text(encoding="utf-8"))["docker_cmd"]
-    assert "malvin" in pi_cmd
-    pmi = pi_cmd.index("malvin")
-    assert "--creative" in pi_cmd[pmi:]
-    assert "--model" in pi_cmd[pmi:]
-    assert "pi:openai/gpt-4o" in pi_cmd[pmi:]
-
-    assert ft_malvin_args_request_creative(()) is False
-    assert ft_malvin_args_request_creative(("--creative",)) is True
-    assert ft_malvin_args_request_creative(("--creative=0.6",)) is True
-    try:
-        ft_assert_creative_compatible(AGENT_CURSOR, ("--creative",))
-        raise AssertionError("expected creative/cursor rejection")
-    except click.ClickException as exc:
-        assert "mutually exclusive" in str(exc)
-    try:
-        ft_assert_creative_compatible(AGENT_MALVIN, ("--creative", "--cursor"))
-        raise AssertionError("expected creative/--cursor rejection")
-    except click.ClickException as exc:
-        assert "mutually exclusive" in str(exc)
-    ft_assert_creative_compatible(AGENT_MALVIN, ("--creative",))
-    ft_assert_creative_compatible(
-        AGENT_MALVIN, ("--creative", "--model", "pi:openai/gpt-4o")
-    )
-    ft_assert_creative_compatible(AGENT_MALVIN, ("--creative", "--pi"))
-    ft_assert_creative_compatible(AGENT_CURSOR, ())
+        assert passed.exit_code == 0, passed.output
+        assert "Would ensure agent image" not in passed.output
+        passed_meta = list((tmp_path / "passed-remote").glob("FT-01/*/metadata.json"))
+        assert passed_meta, passed.output
+        passed_cmd = json.loads(passed_meta[0].read_text(encoding="utf-8"))["docker_cmd"]
+        assert "--remote=modal:sandbox[gpu=T4]" in passed_cmd
+        assert "docker" not in passed_cmd
 
 def _ft_test_solve_main_dry_run() -> None:
     from toolchain_repos import load_ops_entry
@@ -2056,7 +2208,7 @@ def _ft_test_resolve_agent_helpers() -> None:
 def _ft_test_bridge_prefers_installed_sdk_when_repo_lacks_modules() -> None:
     with tempfile.TemporaryDirectory(prefix="ft-bridge-sdk-") as tmp:
         root = Path(tmp)
-        repo = root / "cursor-sdk-bridge"
+        repo = root / "bridges" / "cursor-sdk-bridge"
         (repo / "dist").mkdir(parents=True)
         (repo / "dist" / "bridge.js").write_text("// stub\n", encoding="utf-8")
         installed = root / "installed"

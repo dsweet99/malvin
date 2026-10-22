@@ -1,10 +1,9 @@
 use malvin::artifacts::RunArtifacts;
 use malvin::orchestrator::workflow_context_paths_only;
 use malvin::prompts::{
-    PromptError, PromptStore, ROUTER_B_CREATIVE_LEAD_MD, ROUTER_B_DONE_NOTE_MD, RouterBPromptFlags,
-    header_prompt_file, router_a_2_prompt_file, router_a_audit_prompt_file, router_a_prompt_file,
-    router_b_prompt_file, router_b_satisfy_prompt_file, router_b_uses_creative_lead,
-    router_b_uses_done_note,
+    PromptError, PromptStore, ROUTER_B_DONE_NOTE_MD, header_prompt_file, router_a_2_prompt_file,
+    router_a_audit_prompt_file, router_a_prompt_file, router_b_prompt_file,
+    router_b_satisfy_prompt_file,
 };
 
 use super::router_flow::router_flow_prompt::{RouterCodeExtraInput, render_router_code_extra};
@@ -24,22 +23,6 @@ pub(crate) fn build_router_header_prompt(
         .render_prompt_only(header_prompt_file(), ctx.as_map())
         .map_err(|e: PromptError| e.0)?;
     Ok(body.trim().to_string())
-}
-
-pub(crate) fn build_router_mbc2_prompt(
-    store: &PromptStore,
-    artifacts: &RunArtifacts,
-) -> Result<String, String> {
-    let user_prompt = std::fs::read_to_string(&artifacts.plan_path).map_err(|e| {
-        format!(
-            "failed to read user request for mbc2 ({}): {e}",
-            artifacts.plan_path.display()
-        )
-    })?;
-    let ctx = malvin::prompts::build_mbc2_render_context(&user_prompt);
-    malvin::prompts::render_mbc2_prompt(store, &ctx)
-        .map_err(|e: PromptError| e.0)
-        .map(|body| body.trim().to_string())
 }
 
 pub(crate) struct RouterAPromptInput<'a> {
@@ -79,11 +62,14 @@ pub(crate) fn build_router_a_2_prompt(store: &PromptStore) -> Result<String, Str
     prompt_fragment(store, router_a_2_prompt_file())
 }
 
+pub(crate) fn build_router_c_prompt(store: &PromptStore) -> Result<String, String> {
+    prompt_fragment(store, malvin::prompts::ROUTER_C_MD)
+}
+
 pub(crate) struct RouterBPromptInput<'a> {
     pub store: &'a PromptStore,
     pub artifacts: &'a RunArtifacts,
     pub model: &'a str,
-    pub creative: bool,
 }
 
 fn prompt_fragment(store: &PromptStore, name: &str) -> Result<String, String> {
@@ -93,59 +79,27 @@ fn prompt_fragment(store: &PromptStore, name: &str) -> Result<String, String> {
         .map(|body| body.trim().to_string())
 }
 
-fn router_b_creative_lead(
-    store: &PromptStore,
-    flags: RouterBPromptFlags,
-) -> Result<String, String> {
-    if !router_b_uses_creative_lead(flags) {
-        return Ok(String::new());
-    }
-    let lead = prompt_fragment(store, ROUTER_B_CREATIVE_LEAD_MD)?;
-    if lead.is_empty() {
-        Ok(String::new())
-    } else {
-        Ok(format!("{lead}\n\n"))
-    }
-}
-
-fn router_b_done_note(store: &PromptStore, flags: RouterBPromptFlags) -> Result<String, String> {
-    if router_b_uses_done_note(flags) {
-        prompt_fragment(store, ROUTER_B_DONE_NOTE_MD)
-    } else {
-        Ok(String::new())
-    }
-}
-
-fn router_b_template_keys(
-    store: &PromptStore,
-    flags: RouterBPromptFlags,
-) -> Result<(String, String, String), String> {
-    Ok((
-        router_b_creative_lead(store, flags)?,
-        prompt_fragment(store, router_b_satisfy_prompt_file(flags))?,
-        router_b_done_note(store, flags)?,
-    ))
-}
-
 pub(crate) fn build_router_b_prompt(input: RouterBPromptInput<'_>) -> Result<String, String> {
-    let flags = RouterBPromptFlags {
-        creative: input.creative,
-    };
     let mut ctx = workflow_context_paths_only(input.artifacts, input.model);
-    let (creative_lead, satisfy_line, done_note) = router_b_template_keys(input.store, flags)?;
-    ctx.insert("creative_lead".to_string(), creative_lead);
-    ctx.insert("satisfy_line".to_string(), satisfy_line);
-    ctx.insert("done_note".to_string(), done_note);
+    ctx.insert("creative_lead".to_string(), String::new());
+    ctx.insert(
+        "satisfy_line".to_string(),
+        prompt_fragment(input.store, router_b_satisfy_prompt_file())?,
+    );
+    ctx.insert(
+        "done_note".to_string(),
+        prompt_fragment(input.store, ROUTER_B_DONE_NOTE_MD)?,
+    );
     let body = input
         .store
-        .render_prompt_only(router_b_prompt_file(flags), ctx.as_map())
+        .render_prompt_only(router_b_prompt_file(), ctx.as_map())
         .map_err(|e: PromptError| e.0)?;
     Ok(body.trim().to_string())
 }
 
 #[must_use]
-pub(crate) const fn router_b_prompt_label(flags: RouterBPromptFlags) -> &'static str {
-    router_b_prompt_file(flags)
+pub(crate) const fn router_b_prompt_label() -> &'static str {
+    router_b_prompt_file()
 }
 
 #[must_use]

@@ -1,17 +1,23 @@
 use clap::{ArgAction, Args};
-use malvin::config::malvin_config_file::parse_model_cli_arg;
+use malvin::config::malvin_config_file::{DEFAULT_MAX_LOOPS, parse_model_cli_arg};
 use malvin::config::model_id::ParsedModel;
 pub use malvin::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 
-const QUIET_HELPTEXT: &str =
-    "Print only `__MALVIN_DM_START__`/`END` bodies on stdout (default router)";
+const QUIET_HELPTEXT: &str = "Only print DMs";
 
-const CREATIVE_HELPTEXT: &str = "Be (more) creative for the REQUEST that immediately follows; optional probability in [0,1] (default 1.0 when set; repeatable)";
-
-const WATCH_HELPTEXT: &str =
-    "Re-copy the request `.md` into the run log dir before each outer loop (overwrite)";
+const VERY_QUIET_HELPTEXT: &str = "Print nothing (-qq)";
 
 const ML_HELPTEXT: &str = "Run the meta-loop N times (positive integer, or inf to repeat forever)";
+
+const MAX_LOOPS_HELPTEXT: &str =
+    "Outer-loop budget for the default route and gates-only runs (positive integer)";
+
+pub(crate) fn parse_max_loops(s: &str) -> Result<usize, String> {
+    s.parse::<usize>()
+        .ok()
+        .filter(|n| *n > 0)
+        .ok_or_else(|| format!("--max-loops must be a positive integer, got `{s}`"))
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum MetaLoopCount {
@@ -54,18 +60,6 @@ pub(crate) fn parse_meta_loop_count(s: &str) -> Result<MetaLoopCount, String> {
     Ok(MetaLoopCount::Times(n))
 }
 
-pub(crate) fn parse_creative_probability(s: &str) -> Result<f64, String> {
-    let p: f64 = s
-        .parse()
-        .map_err(|e| format!("invalid --creative probability `{s}`: {e}"))?;
-    if !(0.0..=1.0).contains(&p) || !p.is_finite() {
-        return Err(format!(
-            "--creative probability must be a finite value in [0.0, 1.0], got {p}"
-        ));
-    }
-    Ok(p)
-}
-
 /// Options shared across workflows (model, logging, retries, docs).
 #[derive(Args, Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
@@ -77,9 +71,9 @@ pub struct SharedOpts {
         value_parser = parse_model_cli_arg
     )]
     pub model: ParsedModel,
-    /// Log full outgoing agent prompts to stdout and `prompts.log`
-    #[arg(short, long, default_value_t = false)]
-    pub verbose: bool,
+    /// Do not ask a nested malvin run to configure missing token costs
+    #[arg(long, default_value_t = false)]
+    pub no_auto_costs: bool,
     /// Stop after N consecutive identical backend errors, each within 60 s of the previous one
     #[arg(long = "max-acp-retries", default_value_t = DEFAULT_MAX_ACP_RETRIES)]
     pub max_acp_retries: u32,
@@ -115,35 +109,26 @@ pub struct SharedOpts {
 #[derive(Args, Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct RouterOpts {
-    /// Print only `__MALVIN_DM_START__`/`END` bodies on stdout (default router)
-    #[arg(short = 'q', long, default_value_t = false, help = QUIET_HELPTEXT)]
-    pub quiet: bool,
+    /// Only print DMs. Repeat the short flag (`-qq`) to print nothing.
+    #[arg(short = 'q', long, action = ArgAction::Count, help = QUIET_HELPTEXT)]
+    pub quiet: u8,
+    /// Print nothing (`-qq` is the short form)
+    #[arg(long = "very-quiet", default_value_t = false, help = VERY_QUIET_HELPTEXT)]
+    pub very_quiet: bool,
     /// Run workspace quality gates; treat failures as loop or exit criteria
     #[arg(short = 'g', long, default_value_t = false)]
     pub gates: bool,
-    /// Be (more) creative for the REQUEST that immediately follows (repeatable)
+    /// Outer-loop budget for the default route and gates-only runs
     #[arg(
-        long,
-        num_args = 0..=1,
-        default_missing_value = "1.0",
-        require_equals = true,
-        value_name = "PROB",
-        value_parser = parse_creative_probability,
-        action = ArgAction::Append,
-        help = CREATIVE_HELPTEXT
+        long = "max-loops",
+        default_value_t = DEFAULT_MAX_LOOPS,
+        value_parser = parse_max_loops,
+        help = MAX_LOOPS_HELPTEXT
     )]
-    pub creative: Vec<f64>,
-    /// Re-copy the request `.md` into the run log dir before each outer loop
-    #[arg(long, default_value_t = false, help = WATCH_HELPTEXT)]
-    pub watch: bool,
+    pub max_loops: usize,
 }
 
 impl SharedOpts {
-    #[must_use]
-    pub(crate) fn tee_startup_stdout(&self) -> bool {
-        !malvin::output::stdout_suppressed()
-    }
-
     #[must_use]
     pub(crate) const fn acp_stdout_markdown_enabled(&self) -> bool {
         true
@@ -158,29 +143,18 @@ pub struct AgentRouteOpts<'a> {
 
 impl RouterOpts {
     #[must_use]
+    pub(crate) const fn dm_stdout_only(&self) -> bool {
+        self.quiet == 1 && !self.very_quiet
+    }
+
+    #[must_use]
+    pub(crate) const fn prints_nothing(&self) -> bool {
+        self.very_quiet || self.quiet >= 2
+    }
+
+    #[must_use]
     pub(crate) fn tee_startup_stdout(&self) -> bool {
-        !self.quiet && !malvin::output::stdout_suppressed()
-    }
-
-    #[must_use]
-    pub(crate) fn creative_probability(&self) -> Option<f64> {
-        self.creative.last().copied()
-    }
-
-    #[must_use]
-    pub(crate) fn with_creative_probability(mut self, creative: Option<f64>) -> Self {
-        self.creative = creative.map_or_else(Vec::new, |p| vec![p]);
-        self
-    }
-
-    #[must_use]
-    pub(crate) fn sample_creative_this_iteration(&self) -> bool {
-        match self.creative_probability() {
-            None => false,
-            Some(p) if p <= 0.0 => false,
-            Some(p) if p >= 1.0 => true,
-            Some(p) => fastrand::f64() < p,
-        }
+        !self.dm_stdout_only() && !self.prints_nothing() && !malvin::output::stdout_suppressed()
     }
 }
 
@@ -191,7 +165,7 @@ impl SharedOpts {
         Self {
             model: malvin::config::model_id::parse_model_id(malvin::config::DEFAULT_CLI_MODEL)
                 .expect("default model"),
-            verbose: false,
+            no_auto_costs: false,
             max_acp_retries: malvin::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
             advice: None,
@@ -207,10 +181,10 @@ impl RouterOpts {
     #[must_use]
     pub(crate) fn test_defaults() -> Self {
         Self {
-            quiet: false,
+            quiet: 0,
+            very_quiet: false,
             gates: false,
-            creative: Vec::new(),
-            watch: false,
+            max_loops: DEFAULT_MAX_LOOPS,
         }
     }
 }
@@ -218,43 +192,16 @@ impl RouterOpts {
 #[cfg(test)]
 mod overlay_tests {
     #[test]
-    fn creative_flag_defaults_off_and_accepts_probability() {
+    fn creative_flag_is_rejected() {
         use clap::Parser;
-        let off = crate::cli::Cli::try_parse_from(["malvin", "--doc"]).expect("parse");
-        assert!(off.router.creative_probability().is_none());
-        assert!(!off.router.sample_creative_this_iteration());
-
-        let on = crate::cli::Cli::try_parse_from(["malvin", "--creative", "--doc"]).expect("parse");
-        assert_eq!(on.router.creative_probability(), Some(1.0));
-        assert!(on.router.sample_creative_this_iteration());
-
-        let p =
-            crate::cli::Cli::try_parse_from(["malvin", "--creative=0.6", "--doc"]).expect("parse");
-        assert_eq!(p.router.creative_probability(), Some(0.6));
-
-        let zero =
-            crate::cli::Cli::try_parse_from(["malvin", "--creative=0", "--doc"]).expect("parse");
-        assert_eq!(zero.router.creative_probability(), Some(0.0));
-        assert!(!zero.router.sample_creative_this_iteration());
-
-        let multi = crate::cli::Cli::try_parse_from([
-            "malvin",
-            "--creative",
-            "a",
-            "--creative=0.5",
-            "b",
-            "--doc",
-        ])
-        .expect("parse");
-        assert_eq!(multi.router.creative, vec![1.0, 0.5]);
-    }
-
-    #[test]
-    fn creative_probability_rejects_out_of_range() {
-        assert!(super::parse_creative_probability("1.1").is_err());
-        assert!(super::parse_creative_probability("-0.1").is_err());
-        assert!(super::parse_creative_probability("nope").is_err());
-        assert_eq!(super::parse_creative_probability("0.5").ok(), Some(0.5));
+        let err = crate::cli::Cli::try_parse_from(["malvin", "--creative", "--doc"])
+            .expect_err("removed flag");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("unexpected") || msg.contains("unknown") || msg.contains("--creative"),
+            "{msg}"
+        );
+        assert!(crate::cli::Cli::try_parse_from(["malvin", "--creative=0.6", "task"]).is_err());
     }
 
     #[test]
@@ -284,6 +231,28 @@ mod overlay_tests {
         assert!(
             help.contains("inf"),
             "help must say inf repeats forever; got {help}"
+        );
+    }
+
+    #[test]
+    fn help_lists_quiet_and_very_quiet() {
+        use clap::CommandFactory;
+        let help = crate::cli::Cli::command().render_help().to_string();
+        assert!(
+            help.contains("Only print DMs"),
+            "quiet help must say Only print DMs; got {help}"
+        );
+        assert!(
+            !help.contains("bodies on stdout"),
+            "quiet help must drop the old wording; got {help}"
+        );
+        assert!(
+            help.contains("--very-quiet"),
+            "help must list --very-quiet; got {help}"
+        );
+        assert!(
+            help.contains("Print nothing (-qq)"),
+            "very-quiet help must say Print nothing (-qq); got {help}"
         );
     }
 }

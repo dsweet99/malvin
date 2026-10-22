@@ -89,6 +89,23 @@ async function handleResume(req) {
   emit({ event: "ok", agentId });
 }
 
+function scriptedModelReply(prompt) {
+  const raw = process.env.MOCK_BRIDGE_SCRIPTED_REPLY;
+  if (!raw) {
+    return null;
+  }
+  let script;
+  try {
+    script = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (typeof script.when !== "string" || !prompt.includes(script.when)) {
+    return null;
+  }
+  return typeof script.result === "string" ? script.result : null;
+}
+
 async function handleSend(req) {
   if (!created) {
     emit({ event: "fatal", message: "create before send", retryable: false });
@@ -297,13 +314,12 @@ async function handleSend(req) {
   }
 
   const fenced = prompt.includes("NEED_DM");
-  const doneNeedle = process.env.MOCK_BRIDGE_DONE_WHEN_PROMPT_HAS;
-  const done = Boolean(doneNeedle) && prompt.includes(doneNeedle);
+  const scripted = scriptedModelReply(prompt);
   const result = fenced
     ? "__MALVIN_DM_START__\nHello.\n__MALVIN_DM_END__"
-    : done
-      ? "mock reply\n__MALVIN_DONE__"
-      : "mock reply";
+    : scripted === null
+      ? "mock reply"
+      : scripted;
   emit({ event: "assistant", text: fenced ? "Hello" : "mock reply" });
   emit({ event: "step", kind: "onStep" });
   emit({

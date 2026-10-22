@@ -46,15 +46,28 @@ pub fn run_models(args: ModelsArgs, current_model: &str) -> Result<(), String> {
     let filter_ref = filter.as_deref();
     maybe_refresh_models_catalog(args.refresh);
     print_models_sections(filter_ref);
-    print_current_footer(current_model);
+    print_models_suffix(current_model);
     Ok(())
 }
 
+pub(crate) fn print_models_suffix(current_model: &str) {
+    super::config_alias_list::print_home_model_aliases();
+    print_current_footer(current_model);
+}
+
 fn maybe_refresh_models_catalog(force: bool) {
-    let now = malvin::clock::unix_now_secs();
-    if force || models_cmd_refresh::models_refresh_is_due(now) {
-        models_cmd_refresh::perform_models_refresh();
+    refresh_models_catalog(force, models_cmd_refresh::perform_models_refresh);
+}
+
+fn refresh_models_catalog(force: bool, refresh: impl FnOnce()) {
+    let due = models_cmd_refresh::models_refresh_is_due(malvin::clock::unix_now_secs());
+    if !force && !due {
+        return;
     }
+    if !force {
+        super::refresh_notice::print_refreshing();
+    }
+    refresh();
 }
 
 #[cfg(test)]
@@ -171,3 +184,7 @@ pub(crate) mod test_hooks {
 #[cfg(test)]
 #[path = "models_cmd_kiss_cov_tests.rs"]
 mod models_cmd_kiss_cov_tests;
+
+#[cfg(test)]
+#[path = "models_cmd_refresh_notice_tests.rs"]
+mod models_cmd_refresh_notice_tests;

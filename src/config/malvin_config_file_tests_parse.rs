@@ -28,6 +28,7 @@ fn parse_malvin_config_falls_back_when_values_invalid_or_missing() {
         mem_limit_gb: cfg.mem_limit_gb,
         context_size: cfg.context_size,
         theme: cfg.theme,
+        auto_setup_costs: cfg.auto_setup_costs,
         model_aliases: cfg.model_aliases.clone(),
         remote_aliases: cfg.remote_aliases.clone(),
         token_cost_rates: cfg.token_cost_rates.clone(),
@@ -38,6 +39,13 @@ fn parse_malvin_config_falls_back_when_values_invalid_or_missing() {
     assert_eq!(full.agent, cfg.agent);
     assert_eq!(read_string(None), None);
     assert_eq!(read_u32(None), None);
+}
+
+#[test]
+fn auto_setup_costs_defaults_to_true_and_accepts_false() {
+    assert!(super::parse_malvin_config("").auto_setup_costs);
+    assert!(!super::parse_malvin_config("auto_setup_costs = false").auto_setup_costs);
+    assert!(super::parse_malvin_config("auto_setup_costs = \"no\"").auto_setup_costs);
 }
 
 #[test]

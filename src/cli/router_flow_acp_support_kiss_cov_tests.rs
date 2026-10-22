@@ -12,6 +12,8 @@ fn kiss_cov_router_acp_support_fn_names() {
     let _: Option<super::RouterTurnsOutcome> = None;
     let _ = stringify!(iteration_backups);
     let _ = stringify!(done);
+    let _ = stringify!(request_open);
+    let _ = super::send_router_c;
 }
 
 #[test]
@@ -20,10 +22,13 @@ fn kiss_cov_router_turns_outcome_destructure() {
         iteration_backups: SessionDotfileBackups::snapshot(std::path::Path::new("/tmp"))
             .expect("snapshot"),
         done: true,
+        request_open: false,
     };
     let super::RouterTurnsOutcome {
         iteration_backups: _,
         done,
+        request_open,
     } = outcome;
     assert!(done);
+    assert!(!request_open);
 }

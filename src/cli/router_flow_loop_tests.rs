@@ -55,6 +55,192 @@ fn kiss_witness_restore_router_iteration_dotfiles() {
     let _ = VisionFileBackup::new(std::path::PathBuf::from("VISION.md"), b"x".to_vec());
 }
 
+struct LoopExitCase {
+    done: bool,
+    request_open: bool,
+    gates: bool,
+    agent_loop: usize,
+    max_loops: usize,
+}
+
+fn decide_loop_case(
+    artifacts: &malvin::artifacts::RunArtifacts,
+    backups: &malvin::artifacts::SessionDotfileBackups,
+    case: LoopExitCase,
+) -> super::RouterLoopDecision {
+    super::decide_router_loop_exit(super::RouterLoopExitInput {
+        artifacts,
+        backups,
+        done: case.done,
+        request_open: case.request_open,
+        gates: case.gates,
+        agent_loop: case.agent_loop,
+        max_loops: case.max_loops,
+    })
+}
+
+fn router_loop_artifacts(
+    work: &std::path::Path,
+) -> (
+    malvin::artifacts::RunArtifacts,
+    malvin::artifacts::SessionDotfileBackups,
+) {
+    let artifacts =
+        malvin::artifacts::create_run_artifacts_from_text("router loop exit", Some(work))
+            .expect("artifacts");
+    let backups = malvin::artifacts::SessionDotfileBackups::snapshot(work).expect("snapshot");
+    (artifacts, backups)
+}
+
+#[test]
+fn without_gates_router_loop_exits_after_done_or_router_b() {
+    malvin::test_support::test_utils::with_isolated_home(|_| {
+        let tmp = tempfile::tempdir().expect("tmpdir");
+        let (artifacts, backups) = router_loop_artifacts(tmp.path());
+        for done in [false, true] {
+            let decision = decide_loop_case(
+                &artifacts,
+                &backups,
+                LoopExitCase {
+                    done,
+                    request_open: false,
+                    gates: false,
+                    agent_loop: 1,
+                    max_loops: 3,
+                },
+            );
+            assert!(
+                matches!(decision, super::RouterLoopDecision::Exit),
+                "gates off must not start another iteration (done={done})"
+            );
+        }
+    });
+}
+
+#[test]
+fn gates_failure_continues_until_the_last_loop_after_done_or_router_b() {
+    malvin::test_support::test_utils::with_isolated_home(|_| {
+        let tmp = tempfile::tempdir().expect("tmpdir");
+        let (_bin, _guard) =
+            malvin::test_support::test_agent_client::write_fake_gate(tmp.path(), "false", 1);
+        let (artifacts, backups) = router_loop_artifacts(tmp.path());
+        for done in [false, true] {
+            let mid = decide_loop_case(
+                &artifacts,
+                &backups,
+                LoopExitCase {
+                    done,
+                    request_open: false,
+                    gates: true,
+                    agent_loop: 1,
+                    max_loops: 3,
+                },
+            );
+            assert!(
+                matches!(mid, super::RouterLoopDecision::Continue),
+                "a failed gate with loops left must rerun (done={done})"
+            );
+            let last = decide_loop_case(
+                &artifacts,
+                &backups,
+                LoopExitCase {
+                    done,
+                    request_open: false,
+                    gates: true,
+                    agent_loop: 3,
+                    max_loops: 3,
+                },
+            );
+            assert!(
+                matches!(last, super::RouterLoopDecision::ExitGatesFailed(_)),
+                "the last failed gate must stop the run (done={done})"
+            );
+        }
+    });
+}
+
+#[test]
+fn gates_pass_exits_after_done_or_router_b() {
+    malvin::test_support::test_utils::with_isolated_home(|_| {
+        let tmp = tempfile::tempdir().expect("tmpdir");
+        let (_bin, _guard) =
+            malvin::test_support::test_agent_client::write_fake_gate(tmp.path(), "true", 0);
+        let (artifacts, backups) = router_loop_artifacts(tmp.path());
+        for done in [false, true] {
+            let decision = decide_loop_case(
+                &artifacts,
+                &backups,
+                LoopExitCase {
+                    done,
+                    request_open: false,
+                    gates: true,
+                    agent_loop: 1,
+                    max_loops: 3,
+                },
+            );
+            assert!(
+                matches!(decision, super::RouterLoopDecision::Exit),
+                "a passing gate must not start another iteration (done={done})"
+            );
+        }
+    });
+}
+
+#[test]
+fn open_request_restarts_until_the_last_loop_and_skips_gates() {
+    malvin::test_support::test_utils::with_isolated_home(|_| {
+        let tmp = tempfile::tempdir().expect("tmpdir");
+        let (_bin, _guard) =
+            malvin::test_support::test_agent_client::write_fake_gate(tmp.path(), "false", 1);
+        let (artifacts, backups) = router_loop_artifacts(tmp.path());
+        let without_gates = decide_loop_case(
+            &artifacts,
+            &backups,
+            LoopExitCase {
+                done: false,
+                request_open: true,
+                gates: false,
+                agent_loop: 1,
+                max_loops: 3,
+            },
+        );
+        assert!(
+            matches!(without_gates, super::RouterLoopDecision::Continue),
+            "a missing router_c marker restarts even when gates are off"
+        );
+        let mid = decide_loop_case(
+            &artifacts,
+            &backups,
+            LoopExitCase {
+                done: false,
+                request_open: true,
+                gates: true,
+                agent_loop: 1,
+                max_loops: 3,
+            },
+        );
+        assert!(
+            matches!(mid, super::RouterLoopDecision::Continue),
+            "a missing router_c marker must start another iteration"
+        );
+        let last = decide_loop_case(
+            &artifacts,
+            &backups,
+            LoopExitCase {
+                done: false,
+                request_open: true,
+                gates: true,
+                agent_loop: 3,
+                max_loops: 3,
+            },
+        );
+        assert!(
+            matches!(last, super::RouterLoopDecision::Exit),
+            "the last iteration must stop without treating a missing marker as a gate failure"
+        );
+    });
+}
+
 #[test]
 fn exit_gates_failed_outranks_finalize_error() {
     use super::RouterLoopDecision;

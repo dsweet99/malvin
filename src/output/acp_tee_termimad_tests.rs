@@ -3,35 +3,7 @@ use super::acp_tee::{
 };
 use super::acp_tee_markdown::termimad_text_lines_for_stdout;
 use super::{TermimadStdoutGate, termimad_inline_payload_for_stdout};
-use crate::output::stdout_log_pair::{
-    acp_tee_payload_prefix, acp_tee_payload_prefix_width, stdout_acp_prefix_rendered_line,
-};
-
-fn markdown_rendered_tee_pairs(ts: &str, who: &str, line: &str) -> Vec<(String, String)> {
-    let gate = TermimadStdoutGate {
-        emit_stdout_markdown: true,
-        dim_payload: false,
-        allow_inline_styling: true,
-    };
-    let prefix_ctx = AcpTeeLineFmt {
-        ts,
-        direction: AcpTeeDirection::FromAgent,
-        who,
-        line: "",
-        dim_payload: false,
-    };
-    let prefix_len = acp_tee_payload_prefix_width(&acp_tee_payload_prefix(&prefix_ctx));
-    let (max_payload, _) = super::terminal_wrap::line_wrap_for_prefix_len(
-        prefix_len,
-        line,
-        super::terminal_wrap::stdout_allows_log_word_wrap(),
-    );
-    termimad_text_lines_for_stdout(line, gate, max_payload)
-        .expect("markdown should render")
-        .into_iter()
-        .map(|rendered| stdout_acp_prefix_rendered_line(&prefix_ctx, &rendered))
-        .collect()
-}
+use crate::output::stdout_log_pair::acp_tee_payload_prefix;
 
 #[test]
 fn termimad_inline_bold_when_emit_and_inline_styling_gate_true() {
@@ -163,7 +135,13 @@ fn acp_tee_markdown_tee_path_omits_wall_clock_prefix_on_live_display() {
     super::init_stdout_style_for_test(true);
     let ts = "20260413.121314.015";
     let line = "# Title";
-    let expected_pairs = markdown_rendered_tee_pairs(ts, "<md", line);
+    let ctx = AcpTeeLineFmt {
+        ts,
+        direction: AcpTeeDirection::FromAgent,
+        who: "<md",
+        line,
+        dim_payload: false,
+    };
     print_stdout_acp_tee_line_with_timestamp(&AcpTeeStdoutEvent {
         direction: AcpTeeDirection::FromAgent,
         who: "<md",
@@ -180,17 +158,24 @@ fn acp_tee_markdown_tee_path_omits_wall_clock_prefix_on_live_display() {
         }
     }
     let log_text = std::fs::read_to_string(path).unwrap();
-    for (display, log) in expected_pairs {
-        assert!(
-            !strip_ansi_escapes(&display).starts_with(ts),
-            "rendered markdown tee display must omit wall-clock prefix; got {display:?}"
-        );
-        let expected_log = strip_ansi_escapes(&log);
-        assert!(
-            log_text.lines().any(|file_line| file_line == expected_log),
-            "stdout.log should contain rendered markdown log segment; expected={expected_log:?} file={log_text:?}"
-        );
-    }
+    let prefix_ctx = AcpTeeLineFmt {
+        ts,
+        direction: AcpTeeDirection::FromAgent,
+        who: "<md",
+        line: "",
+        dim_payload: false,
+    };
+    let prefix = acp_tee_payload_prefix(&prefix_ctx);
+    assert!(
+        !strip_ansi_escapes(&prefix).starts_with(ts),
+        "rendered markdown tee display must omit wall-clock prefix; got {prefix:?}"
+    );
+    let expected_log = crate::output::stdout_log_pair::acp_tee_log_line(&ctx);
+    assert!(
+        log_text.lines().any(|file_line| file_line == expected_log),
+        "stdout.log should keep raw markdown; expected={expected_log:?} file={log_text:?}"
+    );
+    assert_eq!(log_text.lines().count(), 1, "{log_text}");
 }
 
 #[test]

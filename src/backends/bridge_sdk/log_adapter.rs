@@ -121,6 +121,9 @@ mod tests {
 
     #[test]
     fn feed_do_dm_run_result_extracts_fenced_body() {
+        let _dm = crate::output::DO_DM_TEST_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         set_do_dm_stdout_mode(true);
         enable_stdout_capture();
         feed_do_dm_run_result(&format!("{DM_START}\nHello.\n{DM_END}"));
@@ -131,6 +134,9 @@ mod tests {
 
     #[test]
     fn feed_do_dm_run_result_noop_when_mode_off() {
+        let _dm = crate::output::DO_DM_TEST_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         set_do_dm_stdout_mode(false);
         enable_stdout_capture();
         feed_do_dm_run_result(&format!("{DM_START}\nHello.\n{DM_END}"));

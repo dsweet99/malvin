@@ -44,6 +44,9 @@ impl StdoutCoalesceBuf {
     pub(crate) fn flush_and_write(&self) {
         let emissions = flush(self);
         write_coalesced_emissions(self.shared.io, emissions);
+        if !self.shared.io.no_tee {
+            crate::output::flush_formatted_markdown_tables();
+        }
     }
 }
 

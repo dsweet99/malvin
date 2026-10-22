@@ -2,10 +2,11 @@ use super::{RouterAcpIterationInput, router_iteration_log_path, run_router_turns
 use crate::cli::{RouterOpts, SharedOpts};
 use malvin::run_timing::acp_post_run::RunTimingSessionEnd;
 
-const DONE_NEEDLE_ENV: &str = "MOCK_BRIDGE_DONE_WHEN_PROMPT_HAS";
+const SCRIPTED_REPLY_ENV: &str = "MOCK_BRIDGE_SCRIPTED_REPLY";
 
 struct MockRouterTurns {
     done: bool,
+    request_open: bool,
     router_log: String,
 }
 
@@ -18,7 +19,15 @@ fn cache_node_bin_while_real_home_visible() {
     malvin::backends::cursor_sdk::node_resolve::resolve_node_bin().expect("node for mock bridge");
 }
 
-fn run_mock_router_turns(done_needle: &str) -> MockRouterTurns {
+fn scripted_done_reply(when: &str) -> String {
+    serde_json::json!({
+        "when": when,
+        "result": format!("mock reply\n{}", malvin::output::MALVIN_DONE),
+    })
+    .to_string()
+}
+
+fn run_mock_router_turns(reply_when: &str) -> MockRouterTurns {
     cache_node_bin_while_real_home_visible();
     let mut outcome = None;
     malvin::test_support::test_utils::with_isolated_home(|workspace| {
@@ -26,13 +35,13 @@ fn run_mock_router_turns(done_needle: &str) -> MockRouterTurns {
             "MALVIN_CURSOR_SDK_BRIDGE",
             "CURSOR_API_KEY",
             "MALVIN_TEST_NO_REAL_AGENT",
-            DONE_NEEDLE_ENV,
+            SCRIPTED_REPLY_ENV,
         ]);
         #[allow(unsafe_code)]
         unsafe {
             std::env::set_var("MALVIN_CURSOR_SDK_BRIDGE", mock_bridge_js());
             std::env::set_var("CURSOR_API_KEY", "test-key");
-            std::env::set_var(DONE_NEEDLE_ENV, done_needle);
+            std::env::set_var(SCRIPTED_REPLY_ENV, scripted_done_reply(reply_when));
         }
         malvin::test_support::test_utils::enable_test_fast_teardown();
         outcome = Some(malvin::test_support::test_utils::block_on_test_async(
@@ -71,13 +80,13 @@ async fn drive_router_turns(workspace: &std::path::Path) -> MockRouterTurns {
         agent_loop: 1,
         session_end: RunTimingSessionEnd::AccumulateRun,
     };
-    let done = run_router_turns(&mut input, &log_path)
+    let turns = run_router_turns(&mut input, &log_path)
         .await
-        .expect("router turns")
-        .done;
+        .expect("router turns");
     let _ = client.end_coder_session().await;
     MockRouterTurns {
-        done,
+        done: turns.done,
+        request_open: turns.request_open,
         router_log: std::fs::read_to_string(&log_path).unwrap_or_default(),
     }
 }
@@ -96,6 +105,12 @@ fn done_marker_in_router_a_reply_does_not_skip_later_turns() {
         "{}",
         turns.router_log
     );
+    assert!(
+        turns.router_log.contains("router_c"),
+        "{}",
+        turns.router_log
+    );
+    assert!(turns.request_open, "{}", turns.router_log);
 }
 
 #[test]
@@ -112,6 +127,12 @@ fn done_marker_in_router_a_2_reply_skips_router_b() {
         "{}",
         turns.router_log
     );
+    assert!(
+        !turns.router_log.contains("router_c"),
+        "{}",
+        turns.router_log
+    );
+    assert!(!turns.request_open);
 }
 #[test]
 fn done_marker_in_router_b_reply_does_not_stop_loop_and_no_done_marker_continues_loop() {
@@ -123,6 +144,12 @@ fn done_marker_in_router_b_reply_does_not_stop_loop_and_no_done_marker_continues
             turns.router_log
         );
         assert!(!turns.done);
+        assert!(turns.request_open, "{}", turns.router_log);
+        assert!(
+            turns.router_log.contains("router_c"),
+            "{}",
+            turns.router_log
+        );
     }
     {
         let turns = run_mock_router_turns("no prompt contains this needle");
@@ -137,5 +164,23 @@ fn done_marker_in_router_b_reply_does_not_stop_loop_and_no_done_marker_continues
             turns.router_log
         );
         assert!(!turns.done);
+        assert!(turns.request_open);
+        assert!(
+            turns.router_log.contains("router_c"),
+            "{}",
+            turns.router_log
+        );
     }
+}
+
+#[test]
+fn done_marker_in_router_c_reply_closes_the_request() {
+    let turns = run_mock_router_turns("Has the request been satisfied?");
+    assert!(!turns.done);
+    assert!(!turns.request_open, "{}", turns.router_log);
+    assert!(
+        turns.router_log.contains("router_c"),
+        "{}",
+        turns.router_log
+    );
 }

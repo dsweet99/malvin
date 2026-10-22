@@ -1,8 +1,5 @@
 use clap::Parser;
 
-use crate::cli::config_defaults::parse_cli_with_config_defaults;
-use malvin::test_support::test_utils::with_isolated_home;
-
 #[test]
 fn cli_accepts_default_route_request() {
     use crate::cli::Cli;
@@ -33,45 +30,31 @@ fn cli_accepts_short_gates_option() {
 }
 
 #[test]
-fn cli_accepts_global_creative_option() {
+fn cli_rejects_removed_creative_option() {
     use crate::cli::Cli;
 
-    let cli = Cli::try_parse_from(["malvin", "--creative", "route this task"]).expect("parse");
-    assert_eq!(cli.router.creative_probability(), Some(1.0));
-    assert_eq!(
-        cli.first_request().map(String::as_str),
-        Some("route this task")
-    );
-
-    let with_p =
-        Cli::try_parse_from(["malvin", "--creative=0.6", "route this task"]).expect("parse");
-    assert_eq!(with_p.router.creative_probability(), Some(0.6));
-    assert_eq!(
-        with_p.first_request().map(String::as_str),
-        Some("route this task")
-    );
+    for argv in [
+        ["malvin", "--creative", "route this task"],
+        ["malvin", "--creative=0.6", "route this task"],
+    ] {
+        let err = Cli::try_parse_from(argv).expect_err("removed flag");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("unexpected") || msg.contains("unknown") || msg.contains("--creative"),
+            "{argv:?}: {msg}"
+        );
+    }
 }
 
 #[test]
-fn cli_accepts_watch_option() {
+fn cli_rejects_removed_watch_option() {
     use crate::cli::Cli;
 
-    let off = Cli::try_parse_from(["malvin", "route this task"]).expect("parse");
-    assert!(!off.router.watch);
-
-    let on = Cli::try_parse_from(["malvin", "--watch", "plan.md"]).expect("parse");
-    assert!(on.router.watch);
-    assert_eq!(on.first_request().map(String::as_str), Some("plan.md"));
-
-    let mut watch_err = None;
-    with_isolated_home(|_work| {
-        watch_err = Some(parse_cli_with_config_defaults([
-            "malvin", "--do", "--watch", "plan.md",
-        ]));
-    });
+    let err = Cli::try_parse_from(["malvin", "--watch", "plan.md"]).expect_err("removed");
+    let msg = err.to_string();
     assert!(
-        watch_err.expect("ran").is_err(),
-        "--watch conflicts with pure --do"
+        msg.contains("unexpected") || msg.contains("--watch"),
+        "{msg}"
     );
 }
 
@@ -83,7 +66,7 @@ fn router_client_uses_router_style_agent_io_not_do_style() {
     let shared = SharedOpts {
         model: malvin::config::model_id::parse_model_id(malvin::config::DEFAULT_CLI_MODEL)
             .expect("model"),
-        verbose: false,
+        no_auto_costs: false,
         max_acp_retries: malvin::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
         advice: None,
@@ -111,9 +94,9 @@ fn cli_accepts_clustered_short_gates_and_quiet() {
 
     let cli = Cli::try_parse_from(["malvin", "-gq", "route this task"]).expect("parse -gq");
     assert!(cli.router.gates, "expected -g in -gq cluster");
-    assert!(cli.router.quiet, "expected -q in -gq cluster");
+    assert!(cli.router.dm_stdout_only(), "expected -q in -gq cluster");
 
     let cli = Cli::try_parse_from(["malvin", "-qg", "route this task"]).expect("parse -qg");
     assert!(cli.router.gates);
-    assert!(cli.router.quiet);
+    assert!(cli.router.dm_stdout_only());
 }

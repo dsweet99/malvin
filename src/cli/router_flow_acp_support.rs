@@ -12,6 +12,7 @@ use super::router_flow::router_flow_acp::router_flow_coder_prompts::{
 pub(crate) struct RouterTurnsOutcome {
     pub iteration_backups: SessionDotfileBackups,
     pub done: bool,
+    pub request_open: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -41,7 +42,6 @@ pub(crate) async fn run_router_turns(
     log_path: &Path,
 ) -> Result<RouterTurnsOutcome, String> {
     let model = input.shared.model.canonical();
-    let creative = input.router.sample_creative_this_iteration();
     let _exp_log =
         ensure_gate_exp_log_file(input.artifacts, input.agent_loop).map_err(|e| e.to_string())?;
     input
@@ -49,18 +49,23 @@ pub(crate) async fn run_router_turns(
         .force_fresh_coder_agent()
         .await
         .map_err(|e| e.to_string())?;
-    let iteration_backups = deliver_router_initial_turn(input, log_path, creative).await?;
-    let done = finish_router_a_maybe_b(input, log_path, &model, creative).await?;
+    let iteration_backups = deliver_router_initial_turn(input, log_path).await?;
+    let followup = finish_router_a_maybe_b(input, log_path, &model).await?;
     Ok(RouterTurnsOutcome {
         iteration_backups,
-        done,
+        done: followup.done,
+        request_open: followup.request_open,
     })
+}
+
+struct RouterFollowupFlags {
+    done: bool,
+    request_open: bool,
 }
 
 async fn deliver_router_initial_turn(
     input: &mut RouterAcpIterationInput<'_>,
     log_path: &Path,
-    creative: bool,
 ) -> Result<SessionDotfileBackups, String> {
     let work_dir = input.artifacts.work_dir.as_path();
     let model = input.shared.model.canonical();
@@ -73,7 +78,6 @@ async fn deliver_router_initial_turn(
             model: &model,
             gates: input.router.gates,
             gates_just_ran: malvin::gate_loop_session::quality_gates_just_ran(),
-            creative,
             include_header,
         },
     )?;
@@ -114,8 +118,7 @@ async fn finish_router_a_maybe_b(
     input: &mut RouterAcpIterationInput<'_>,
     log_path: &Path,
     model: &str,
-    creative: bool,
-) -> Result<bool, String> {
+) -> Result<RouterFollowupFlags, String> {
     let router_a_2 = router_flow_prompt::build_router_a_2_prompt(input.prompt_store)?;
     run_router_followup_coder_prompt(
         input.client,
@@ -125,17 +128,37 @@ async fn finish_router_a_maybe_b(
     )
     .await?;
     if last_response_has_malvin_done(input.client) {
-        return Ok(true);
+        return Ok(RouterFollowupFlags {
+            done: true,
+            request_open: false,
+        });
     }
     let router_b =
         router_flow_prompt::build_router_b_prompt(router_flow_prompt::RouterBPromptInput {
             store: input.prompt_store,
             artifacts: input.artifacts,
             model,
-            creative,
         })?;
     run_router_b_coder_prompt(input.client, &router_b, log_path).await?;
-    Ok(false)
+    send_router_c(input, log_path).await
+}
+
+async fn send_router_c(
+    input: &mut RouterAcpIterationInput<'_>,
+    log_path: &Path,
+) -> Result<RouterFollowupFlags, String> {
+    let router_c = router_flow_prompt::build_router_c_prompt(input.prompt_store)?;
+    run_router_followup_coder_prompt(
+        input.client,
+        &router_c,
+        log_path,
+        malvin::prompts::ROUTER_C_MD,
+    )
+    .await?;
+    Ok(RouterFollowupFlags {
+        done: false,
+        request_open: !last_response_has_malvin_done(input.client),
+    })
 }
 
 pub(crate) fn last_response_has_malvin_done(

@@ -130,6 +130,28 @@ fn warm_openrouter_pricing_cache_skips_when_cache_is_fresh() {
 }
 
 #[test]
+fn fetch_live_pricing_rejects_a_body_that_is_not_a_catalog() {
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
+    let addr = listener.local_addr().expect("addr");
+    std::thread::spawn(move || {
+        if let Ok((mut socket, _)) = listener.accept() {
+            let _ = socket.read(&mut [0_u8; 256]);
+            let body = "not-json";
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            );
+            let _ = socket.write_all(response.as_bytes());
+        }
+    });
+    let url = format!("http://{addr}/models");
+    assert!(fetch_live_pricing_sync("test-key", &url).is_none());
+}
+
+#[test]
 fn warm_openrouter_pricing_cache_noops_without_api_key() {
     crate::test_support::test_utils::with_isolated_home(|_| {
         crate::agent_process::with_env("OPENROUTER_API_KEY", None, || {

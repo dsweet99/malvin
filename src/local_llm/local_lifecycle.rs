@@ -80,4 +80,88 @@ mod tests {
             assert!(model_needs_local_llm(&local));
         }
     }
+
+    #[test]
+    fn housekeep_removes_stale_manager_files_and_keeps_a_live_lock() {
+        let _guard = crate::local_llm::local_llm_test_lock::local_llm_test_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let tmp = tempfile::tempdir().expect("tmp");
+        housekeep_case(&tmp.path().join("stale"), "999999999", false);
+        housekeep_case(
+            &tmp.path().join("live"),
+            &std::process::id().to_string(),
+            true,
+        );
+        assert!(super::super::local_llm_ollama::process_alive(
+            std::process::id()
+        ));
+    }
+
+    fn housekeep_case(dir: &std::path::Path, pid: &str, keep: bool) {
+        std::fs::create_dir_all(dir).expect("dir");
+        let sock = dir.join("manager.sock");
+        let lock = dir.join("manager.lock");
+        std::fs::write(&sock, b"sock").expect("sock");
+        std::fs::write(&lock, format!("{pid}\n")).expect("lock");
+        let sock_s = sock.to_str().expect("utf8").to_string();
+        let lock_s = lock.to_str().expect("utf8").to_string();
+        crate::agent_process::with_env("MALVIN_LOCAL_LLM_MANAGER_SOCK", Some(&sock_s), || {
+            crate::agent_process::with_env("MALVIN_LOCAL_LLM_MANAGER_LOCK", Some(&lock_s), || {
+                housekeep_local_llms();
+            });
+        });
+        assert_eq!(
+            sock.exists(),
+            keep,
+            "socket keep={keep} at {}",
+            sock.display()
+        );
+        assert_eq!(
+            lock.exists(),
+            keep,
+            "lock keep={keep} at {}",
+            lock.display()
+        );
+    }
+
+    #[test]
+    fn ensure_local_llm_returns_the_managers_down_provider_error() {
+        let Some(provider) = super::super::local_llm_ollama::down_non_ollama_provider() else {
+            return;
+        };
+        let _guard = crate::local_llm::local_llm_test_lock::local_llm_test_env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let tmp = tempfile::tempdir().expect("tmp");
+        let sock = tmp.path().join("ensure.sock");
+        let lock = tmp.path().join("ensure.lock");
+        let sock_s = sock.to_str().expect("utf8").to_string();
+        let lock_s = lock.to_str().expect("utf8").to_string();
+        crate::agent_process::with_env("MALVIN_LOCAL_LLM_MANAGER_SOCK", Some(&sock_s), || {
+            crate::agent_process::with_env("MALVIN_LOCAL_LLM_MANAGER_LOCK", Some(&lock_s), || {
+                crate::agent_process::with_env(
+                    "MALVIN_TIME_SINCE_LAST_CALL_SECONDS",
+                    Some("1"),
+                    || {
+                        let handle = std::thread::spawn(
+                            super::super::local_llm_daemon::run_local_llm_manager,
+                        );
+                        let deadline =
+                            std::time::Instant::now() + std::time::Duration::from_secs(2);
+                        while std::time::Instant::now() < deadline && !sock.exists() {
+                            std::thread::sleep(std::time::Duration::from_millis(20));
+                        }
+                        assert!(sock.exists(), "manager should create {}", sock.display());
+                        let err = ensure_local_llm(provider, "x").expect_err("down provider");
+                        assert!(
+                            err.contains("auto-start only `ollama`"),
+                            "ensure should report that only ollama can be started: {err}"
+                        );
+                        handle.join().expect("join").expect("manager ok");
+                    },
+                );
+            });
+        });
+    }
 }

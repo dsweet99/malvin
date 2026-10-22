@@ -115,6 +115,25 @@ mod tests {
                     assert!(is_provider_authenticated("openai"));
                     assert_eq!(provider_api_key("openai").as_deref(), Some("test-key"));
                 });
+                crate::agent_process::with_env("ANTHROPIC_API_KEY", None, || {
+                    crate::agent_process::with_env("ANTHROPIC_AUTH_TOKEN", None, || {
+                        crate::agent_process::with_env(
+                            "ANTHROPIC_OAUTH_TOKEN",
+                            Some("oauth-test-token"),
+                            || {
+                                assert!(is_provider_authenticated("anthropic"));
+                                assert_eq!(
+                                    provider_api_key("anthropic").as_deref(),
+                                    Some("oauth-test-token")
+                                );
+                                assert!(
+                                    missing_credentials_hint("anthropic")
+                                        .contains("ANTHROPIC_API_KEY")
+                                );
+                            },
+                        );
+                    });
+                });
                 crate::agent_process::with_env("DEEPSEEK_API_KEY", None, || {
                     assert!(is_provider_authenticated("deepseek"));
                     assert_eq!(provider_api_key("deepseek").as_deref(), Some("sk-x"));

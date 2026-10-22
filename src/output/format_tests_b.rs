@@ -1,6 +1,6 @@
 use super::format_line_stdout_ansi;
 use super::{
-    WHO_B, WHO_U, init_stdout_style_for_test, print_outgoing_prompt_log, set_stdout_log_path,
+    WHO_B, WHO_P, init_stdout_style_for_test, print_outgoing_prompt_log, set_stdout_log_path,
 };
 
 #[test]
@@ -52,7 +52,7 @@ fn ansi_thought_tag_uses_uniform_dim_grey() {
 }
 
 #[test]
-fn outgoing_prompt_log_who_tag_uses_stem_bracket_keeps_md() {
+fn outgoing_prompt_log_uses_p_tag_and_drops_md_extension() {
     let _guard = super::STDOUT_LOG_TEST_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -62,20 +62,27 @@ fn outgoing_prompt_log_who_tag_uses_stem_bracket_keeps_md() {
     init_stdout_style_for_test(false);
     crate::output::enable_stdout_capture();
     print_outgoing_prompt_log("bug_fix", "bug_fix.md");
+    print_outgoing_prompt_log("router_initial", "header.md+router_a.md");
     let live = crate::output::take_captured_stdout();
     set_stdout_log_path(None);
     let text = std::fs::read_to_string(path).expect("read stdout log");
-    let delim = super::format_who_tag_delim(WHO_U);
+    let delim = super::format_who_tag_delim(WHO_P);
     assert!(
-        text.contains(&format!("{delim}[bug_fix.md...]")),
-        "expected user who tag and .md bracket payload: {text:?}"
+        text.contains(&format!("{delim}bug_fix")),
+        "expected p| and stem without .md: {text:?}"
     );
     assert!(
-        !text.contains(">bug_fix"),
-        "who tag must not include legacy directional stem: {text:?}"
+        text.contains(&format!("{delim}header")) && text.contains(&format!("{delim}router_a")),
+        "expected each internal prompt on its own line: {text:?}"
     );
     assert!(
-        live.is_empty(),
-        "print_outgoing_prompt_log must not print live terminal lines; got {live:?}"
+        !text.contains('+') && !text.contains(".md"),
+        "prompt file log must split stems and drop .md: {text:?}"
+    );
+    let header_at = live.find("p|header").expect("live header");
+    let router_at = live.find("p|router_a").expect("live router_a");
+    assert!(
+        live.contains("p|bug_fix") && header_at < router_at && !live.contains('+'),
+        "each internal prompt must show on the live terminal: {live:?}"
     );
 }

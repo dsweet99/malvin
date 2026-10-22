@@ -21,8 +21,10 @@ mod malvin_config_top;
 pub(crate) use malvin_config_agent::parse_agent_config;
 #[cfg(test)]
 pub(crate) use malvin_config_model_policy::parse_remote_aliases;
+pub(crate) use malvin_config_model_policy::{
+    load_model_aliases, parse_aliases_lenient, parse_model_aliases,
+};
 pub use malvin_config_model_policy::{load_remote_aliases, parse_model_cli_arg};
-pub(crate) use malvin_config_model_policy::{parse_aliases_lenient, parse_model_aliases};
 use malvin_config_open::create_malvin_config_from_template;
 pub use malvin_config_open::{
     ensure_malvin_config_file_if_missing, load_agent_config_lenient, load_agent_config_strict,
@@ -33,7 +35,7 @@ pub(crate) use malvin_config_parse::{
 pub use malvin_config_top::{DEFAULT_CONTEXT_SIZE, TokenCostRates};
 pub(crate) use malvin_config_top::{parse_context_size, parse_model_token_cost_rates, parse_theme};
 
-pub const DEFAULT_MAX_LOOPS: usize = 1;
+pub const DEFAULT_MAX_LOOPS: usize = 999;
 
 const DEFAULT_MALVIN_CONFIG_TEMPLATE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -60,6 +62,7 @@ pub struct MalvinConfig {
     pub mem_limit_gb: u64,
     pub context_size: u32,
     pub theme: TerminalTheme,
+    pub auto_setup_costs: bool,
     pub model_aliases: BTreeMap<String, String>,
     pub remote_aliases: BTreeMap<String, String>,
     pub token_cost_rates: BTreeMap<String, TokenCostRates>,
