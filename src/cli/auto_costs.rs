@@ -3,7 +3,12 @@ use std::process::Command;
 use crate::config::malvin_config_file::{MalvinConfig, TokenCostRates, load_malvin_config};
 use crate::config::model_id::ParsedModel;
 
-const SETUP_REQUEST: &str = "Set up the per-token USD cost rates for the selected model in ~/.malvinconf/config.toml. Research the current rates, then edit only that configuration. Do not change repository files. Finish after the configuration is saved.";
+fn setup_request(model: &ParsedModel) -> String {
+    format!(
+        "Set up the per-token USD cost rates for {} in ~/.malvinconf/config.toml. Research the current rates, then edit only that configuration. Do not change repository files. Finish after the configuration is saved.",
+        model.canonical()
+    )
+}
 
 fn rates_are_unset(rates: TokenCostRates) -> bool {
     rates == TokenCostRates::default()
@@ -41,7 +46,7 @@ pub(super) fn maybe_setup_costs(model: &ParsedModel, disabled: bool) {
     let status = Command::new(executable)
         .arg(format!("--model={}", model.canonical()))
         .arg("--no-auto-costs")
-        .arg(SETUP_REQUEST)
+        .arg(setup_request(model))
         .status();
     if !status.is_ok_and(|status| status.success()) {
         crate::output::print_log_warning(
@@ -64,6 +69,16 @@ mod tests {
         crate::config::malvin_config_file::parse_malvin_config(&format!(
             "auto_setup_costs = {auto_setup_costs}"
         ))
+    }
+
+    #[test]
+    fn setup_request_names_the_canonical_model() {
+        let model = parse_model_id("cursor:auto").expect("model");
+
+        assert_eq!(
+            setup_request(&model),
+            "Set up the per-token USD cost rates for cursor:auto in ~/.malvinconf/config.toml. Research the current rates, then edit only that configuration. Do not change repository files. Finish after the configuration is saved."
+        );
     }
 
     #[test]
