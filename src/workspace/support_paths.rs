@@ -5,12 +5,26 @@ use std::sync::OnceLock;
 
 static COMMAND_LINE: OnceLock<String> = OnceLock::new();
 
+#[cfg(unix)]
+fn is_executable_file(candidate: &Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+
+    candidate.is_file()
+        && std::fs::metadata(candidate)
+            .is_ok_and(|metadata| metadata.permissions().mode() & 0o111 != 0)
+}
+
+#[cfg(not(unix))]
+fn is_executable_file(candidate: &Path) -> bool {
+    candidate.is_file()
+}
+
 #[must_use]
 pub fn lookup_bin_on_path(bin: &str) -> Option<PathBuf> {
     let path = std::env::var_os("PATH")?;
     std::env::split_paths(&path)
         .map(|dir| dir.join(bin))
-        .find(|candidate| candidate.is_file())
+        .find(|candidate| is_executable_file(candidate))
 }
 
 #[must_use]
@@ -88,18 +102,32 @@ mod env_path_tests {
     use super::*;
 
     #[test]
-    fn lookup_bin_on_path_accepts_first_is_file_even_without_execute_bit() {
+    fn lookup_bin_on_path_skips_non_executable_file_for_later_executable() {
         let _guard = test_env_lock();
         let tmp = tempdir().unwrap();
         let probe_name = "malvin_path_probe_bin";
-        let candidate = tmp.path().join(probe_name);
-        fs::write(&candidate, "").unwrap();
-        fs::set_permissions(&candidate, fs::Permissions::from_mode(0o644)).unwrap();
+        let first = tmp.path().join("first");
+        let second = tmp.path().join("second");
+        fs::create_dir_all(&first).unwrap();
+        fs::create_dir_all(&second).unwrap();
+        let non_executable = first.join(probe_name);
+        let executable = second.join(probe_name);
+        fs::write(&non_executable, "").unwrap();
+        fs::set_permissions(&non_executable, fs::Permissions::from_mode(0o644)).unwrap();
+        fs::write(&executable, "").unwrap();
+        fs::set_permissions(&executable, fs::Permissions::from_mode(0o755)).unwrap();
 
         let old_path = std::env::var_os("PATH");
         let combined = old_path.as_ref().map_or_else(
-            || tmp.path().display().to_string(),
-            |rest| format!("{}:{}", tmp.path().display(), rest.to_string_lossy()),
+            || format!("{}:{}", first.display(), second.display()),
+            |rest| {
+                format!(
+                    "{}:{}:{}",
+                    first.display(),
+                    second.display(),
+                    rest.to_string_lossy()
+                )
+            },
         );
 
         let got = unsafe {
@@ -112,7 +140,7 @@ mod env_path_tests {
             out
         };
 
-        assert_eq!(got, Some(candidate));
+        assert_eq!(got, Some(executable));
     }
 }
 
