@@ -3,6 +3,7 @@ mod acp_tee_markdown;
 mod code_hl;
 mod code_lex;
 mod code_paint;
+mod dm_attachment;
 mod dm_hook;
 mod do_dm_emit;
 mod do_dm_filter;

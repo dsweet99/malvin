@@ -3,9 +3,10 @@ use std::process::{Child, Command, ExitStatus, Stdio};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-use super::sentinel::{DM_END, DM_START, is_sentinel_line};
+use super::dm_attachment::completed_direct_messages;
 
 const PLACEHOLDER: &str = "{body}";
+const ATTACHMENT_PLACEHOLDER: &str = "{attachment}";
 const ON_EMIT_TIMEOUT: Duration = Duration::from_secs(20);
 
 static COMMAND: Mutex<Option<String>> = Mutex::new(None);
@@ -30,12 +31,16 @@ pub(crate) fn notify_completed_direct_messages(text: &str) {
     let Some(template) = command_for_emit() else {
         return;
     };
-    for body in completed_dm_bodies(text) {
-        if body.is_empty() {
+    for message in completed_direct_messages(text) {
+        if message.body.is_empty() && message.attachment.is_none() {
             continue;
         }
-        let body = body_with_logspath(&body);
-        run_shell_command(&render_on_emit(&template, &body));
+        let body = body_with_logspath(&message.body);
+        run_shell_command(&render_on_emit(
+            &template,
+            &body,
+            message.attachment.as_deref().unwrap_or(""),
+        ));
     }
 }
 
@@ -69,58 +74,44 @@ fn lock_command() -> std::sync::MutexGuard<'static, Option<String>> {
         .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
-fn completed_dm_bodies(text: &str) -> Vec<String> {
-    let mut out = Vec::new();
-    let mut inside = false;
-    let mut body = String::new();
-    for raw in text.split_inclusive('\n') {
-        let line = raw.trim_end_matches(['\r', '\n']);
-        if take_marker(&mut inside, &mut body, &mut out, line) {
-            continue;
-        }
-        if inside {
-            body.push_str(raw);
-        }
-    }
-    out
-}
-
-fn take_marker(inside: &mut bool, body: &mut String, out: &mut Vec<String>, line: &str) -> bool {
-    if !*inside && is_sentinel_line(line, DM_START) {
-        *inside = true;
-        body.clear();
-        return true;
-    }
-    if *inside && is_sentinel_line(line, DM_END) {
-        if body.ends_with('\n') {
-            body.pop();
-        }
-        if body.ends_with('\r') {
-            body.pop();
-        }
-        out.push(std::mem::take(body));
-        *inside = false;
-        return true;
-    }
-    false
-}
-
-fn render_on_emit(template: &str, body: &str) -> String {
-    let quoted = shell_single_quote(body);
+fn render_on_emit(template: &str, body: &str, attachment: &str) -> String {
     let mut rendered = String::new();
     let mut rest = template;
-    while let Some(index) = rest.find(PLACEHOLDER) {
-        let (start, stop) = placeholder_span(rest, index);
+    while let Some((index, placeholder, value)) = next_placeholder(rest, body, attachment) {
+        let (start, stop) = placeholder_span(rest, index, placeholder);
         rendered.push_str(&rest[..start]);
-        rendered.push_str(&quoted);
+        rendered.push_str(&shell_single_quote(value));
         rest = &rest[stop..];
     }
     rendered.push_str(rest);
     rendered
 }
 
-fn placeholder_span(rest: &str, index: usize) -> (usize, usize) {
-    let end = index + PLACEHOLDER.len();
+fn next_placeholder<'a>(
+    template: &'a str,
+    body: &'a str,
+    attachment: &'a str,
+) -> Option<(usize, &'static str, &'a str)> {
+    match (
+        template.find(PLACEHOLDER),
+        template.find(ATTACHMENT_PLACEHOLDER),
+    ) {
+        (Some(body_index), Some(attachment_index)) if body_index <= attachment_index => {
+            Some((body_index, PLACEHOLDER, body))
+        }
+        (Some(_), Some(attachment_index)) => {
+            Some((attachment_index, ATTACHMENT_PLACEHOLDER, attachment))
+        }
+        (Some(body_index), None) => Some((body_index, PLACEHOLDER, body)),
+        (None, Some(attachment_index)) => {
+            Some((attachment_index, ATTACHMENT_PLACEHOLDER, attachment))
+        }
+        (None, None) => None,
+    }
+}
+
+fn placeholder_span(rest: &str, index: usize, placeholder: &str) -> (usize, usize) {
+    let end = index + placeholder.len();
     if index > 0 {
         let open = rest.as_bytes()[index - 1];
         let close = rest.as_bytes().get(end).copied();

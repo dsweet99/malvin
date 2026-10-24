@@ -128,6 +128,17 @@ Your message to the user
 __MALVIN_DM_END__
 ```
 
+You may attach up to one file to the DM. To do that you should write
+```
+__ATTACH__: path/to/file
+```
+as the last line of the the DM, just before __MALVIN_DM_END__. You are
+not required to attach a file, but you might want to if
+- the user explicitly asked you to
+- the user asked you to write a report or
+  create some other file
+- maybe other good reasons
+
 IMPORTANT: Use DM only when directed to or in an emergency.
 
 ---- END MALVIN_HEADER ----

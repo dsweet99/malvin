@@ -30,6 +30,8 @@ usd_per_microtoken_cache_write = 0
 
 # Run a program after each finished direct message. Words split on whitespace.
 # Quote a word to keep spaces. A word that is exactly {body} becomes the DM text.
+# A word that is exactly {attachment} becomes the optional attachment path.
+# The attachment comes from a final DM line of the form `__ATTACH__: path/to/file`.
 # With no {body} word, the text is written to the program's standard input.
 # Omit [dm], leave on_emit empty, or set on_emit = [] to run nothing.
 # [dm]
