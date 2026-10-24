@@ -1,9 +1,9 @@
-use std::io::Read;
 use std::process::{Child, Command, ExitStatus, Stdio};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use super::dm_attachment::completed_direct_messages;
+use super::dm_stderr::stderr_snippet;
 
 const PLACEHOLDER: &str = "{body}";
 const ATTACHMENT_PLACEHOLDER: &str = "{attachment}";
@@ -77,14 +77,47 @@ fn lock_command() -> std::sync::MutexGuard<'static, Option<String>> {
 fn render_on_emit(template: &str, body: &str, attachment: &str) -> String {
     let mut rendered = String::new();
     let mut rest = template;
+    let mut quote = None;
     while let Some((index, placeholder, value)) = next_placeholder(rest, body, attachment) {
         let (start, stop) = placeholder_span(rest, index, placeholder);
         rendered.push_str(&rest[..start]);
-        rendered.push_str(&shell_single_quote(value));
+        quote = quote_after(&rest[..start], quote);
+        rendered.push_str(&render_placeholder(value, quote));
         rest = &rest[stop..];
     }
     rendered.push_str(rest);
     rendered
+}
+
+fn quote_after(text: &str, mut quote: Option<char>) -> Option<char> {
+    for ch in text.chars() {
+        if quote == Some(ch) {
+            quote = None;
+        } else if quote.is_none() && matches!(ch, '\'' | '"') {
+            quote = Some(ch);
+        }
+    }
+    quote
+}
+
+fn render_placeholder(value: &str, quote: Option<char>) -> String {
+    match quote {
+        Some('\'') => value.replace('\'', "'\\\\''"),
+        Some('"') => double_quote_content(value),
+        None => shell_single_quote(value),
+        _ => shell_single_quote(value),
+    }
+}
+
+fn double_quote_content(value: &str) -> String {
+    let mut content = String::new();
+    for ch in value.chars() {
+        if matches!(ch, '\\' | '$' | '`' | '"') {
+            content.push('\\');
+        }
+        content.push(ch);
+    }
+    content
 }
 
 fn next_placeholder<'a>(
@@ -192,23 +225,6 @@ fn warn_if_failed(child: &mut Child, status: ExitStatus) {
     }
     let detail = stderr_snippet(child);
     super::print_log_warning(&format!("dm.on_emit exited {status}{detail}"));
-}
-
-fn stderr_snippet(child: &mut Child) -> String {
-    let Some(mut stderr) = child.stderr.take() else {
-        return String::new();
-    };
-    let mut bytes = [0_u8; 180];
-    let Ok(n) = stderr.read(&mut bytes) else {
-        return String::new();
-    };
-    let text = String::from_utf8_lossy(&bytes[..n]);
-    let line = text.lines().next().unwrap_or("").trim();
-    if line.is_empty() {
-        String::new()
-    } else {
-        format!(": {line}")
-    }
 }
 
 #[cfg(test)]

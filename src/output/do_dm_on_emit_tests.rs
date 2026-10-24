@@ -60,6 +60,18 @@ fn render_replaces_quoted_placeholder_and_escapes_apostrophes() {
         ),
         "send 'literal {attachment}' 'report.pdf'"
     );
+    assert_eq!(
+        render_on_emit(
+            "curl -d '{body}\n{attachment}' 'https://example.test/topic'",
+            "first line\nsecond line",
+            "/tmp/report.pdf",
+        ),
+        "curl -d 'first line\nsecond line\n/tmp/report.pdf' 'https://example.test/topic'"
+    );
+    assert_eq!(
+        render_on_emit("echo \"prefix {body}\"", "$HOME\\`\"", ""),
+        "echo \"prefix \\$HOME\\\\\\`\\\"\""
+    );
 }
 
 #[test]
@@ -113,6 +125,22 @@ fn notify_omits_attachment_marker_from_body_and_substitutes_attachment() {
         std::fs::read_to_string(path).expect("read"),
         "hello|report.pdf\n"
     );
+}
+
+#[test]
+fn notify_substitutes_empty_attachment_when_marker_is_absent() {
+    let _guard = lock_stdout_log();
+    set_stdout_log_path(None);
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = dir.path().join("dm.txt");
+    let template = format!(
+        "printf '%s|%s\\n' {{body}} {{attachment}} >> '{}'",
+        path.display()
+    );
+    with_dm_on_emit(&template, None, || {
+        notify_completed_direct_messages(&fenced("hello"));
+    });
+    assert_eq!(std::fs::read_to_string(path).expect("read"), "hello|\n");
 }
 
 #[test]

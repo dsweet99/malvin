@@ -28,3 +28,4 @@ __MALVIN_DM_START__
 Your summary
 __MALVIN_DM_END__
 ```
+and optionally `__ATTACH__` a file.

@@ -130,10 +130,14 @@ __MALVIN_DM_END__
 
 You may attach up to one file to the DM. To do that you should write
 ```
-__ATTACH__: path/to/file
+__ATTACH__: <path/to/file>
 ```
-as the last line of the the DM, just before __MALVIN_DM_END__. You are
-not required to attach a file, but you might want to if
+as the last line of the the DM, just before __MALVIN_DM_END__.
+- `__ATTACH__: ` is the key string that makes this work.
+- `<path/to/file>`  should be replace with the absolute path
+  to the file that you want to attach.
+
+You are not required to attach a file, but you might want to if
 - the user explicitly asked you to
 - the user asked you to write a report or
   create some other file
