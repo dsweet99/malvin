@@ -1,4 +1,8 @@
+use crate::agent_process::AcpJsonlTrace;
 use crate::cli::router_flow::router_flow_acp::RouterExitSummarize;
+use crate::cli::router_machine::{
+    Completion, Effect, Iteration, RouterEvent, RouterState, transition,
+};
 use crate::cli::workflow_router_shared::run_router_workspace_gates;
 use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
 
@@ -11,36 +15,49 @@ pub(crate) enum RouterLoopDecision {
 pub(crate) struct RouterLoopExitInput<'a> {
     pub artifacts: &'a RunArtifacts,
     pub backups: &'a SessionDotfileBackups,
-    pub done: bool,
-    pub request_open: bool,
+    pub completion: Completion,
     pub gates: bool,
     pub agent_loop: usize,
     pub max_loops: usize,
 }
 
 pub(crate) fn decide_router_loop_exit(input: RouterLoopExitInput<'_>) -> RouterLoopDecision {
-    if input.done {
+    if matches!(input.completion, Completion::Impasse) {
         malvin::herdr::notify_working();
     }
-    if input.request_open {
-        return open_request_exit(input.agent_loop, input.max_loops);
-    }
-    if !input.gates {
-        return RouterLoopDecision::Exit;
-    }
-    decide_router_gates_exit(
-        input.artifacts,
-        input.backups,
-        input.agent_loop,
-        input.max_loops,
+    let iteration = Iteration::new(input.agent_loop, input.max_loops)
+        .expect("router loop bounds are validated before iteration");
+    let state = RouterState::Restoring {
+        iteration,
+        completion: input.completion,
+    };
+    let policy = transition(
+        state.clone(),
+        RouterEvent::FilesRestored {
+            gates_enabled: input.gates,
+        },
     )
-}
-
-const fn open_request_exit(agent_loop: usize, max_loops: usize) -> RouterLoopDecision {
-    if agent_loop < max_loops {
-        RouterLoopDecision::Continue
-    } else {
-        RouterLoopDecision::Exit
+    .expect("files restored is valid after a router iteration");
+    let trace = AcpJsonlTrace::new(input.artifacts.run_dir.join("trace.jsonl"), "router".into());
+    trace.append_line(
+        "internal",
+        &serde_json::json!({
+            "event": "router_transition",
+            "from": format!("{state:?}"),
+            "to": format!("{:?}", policy.next),
+        })
+        .to_string(),
+    );
+    match policy.effect {
+        Some(Effect::RunGates) => decide_router_gates_exit(
+            input.artifacts,
+            input.backups,
+            input.agent_loop,
+            input.max_loops,
+        ),
+        Some(Effect::CloseSession) => RouterLoopDecision::Continue,
+        Some(Effect::SendSummary) => RouterLoopDecision::Exit,
+        effect => panic!("unexpected router policy effect after restore: {effect:?}"),
     }
 }
 
@@ -62,15 +79,13 @@ pub(crate) fn decide_router_gates_exit(
 
 pub(crate) fn prefer_exit_gates_over_acp(
     last_acp: &Result<(), String>,
-    decision: Option<RouterLoopDecision>,
+    decision: RouterLoopDecision,
 ) -> RouterLoopDecision {
     match decision {
-        Some(RouterLoopDecision::ExitGatesFailed(detail)) => {
-            RouterLoopDecision::ExitGatesFailed(detail)
-        }
+        RouterLoopDecision::ExitGatesFailed(detail) => RouterLoopDecision::ExitGatesFailed(detail),
         _ if last_acp.is_err() => RouterLoopDecision::Exit,
-        Some(RouterLoopDecision::Continue) => RouterLoopDecision::Continue,
-        Some(RouterLoopDecision::Exit) | None => RouterLoopDecision::Exit,
+        RouterLoopDecision::Continue => RouterLoopDecision::Continue,
+        RouterLoopDecision::Exit => RouterLoopDecision::Exit,
     }
 }
 

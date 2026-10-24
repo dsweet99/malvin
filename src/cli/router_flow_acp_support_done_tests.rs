@@ -5,8 +5,7 @@ use malvin::run_timing::acp_post_run::RunTimingSessionEnd;
 const SCRIPTED_REPLY_ENV: &str = "MOCK_BRIDGE_SCRIPTED_REPLY";
 
 struct MockRouterTurns {
-    done: bool,
-    request_open: bool,
+    completion: crate::cli::router_machine::Completion,
     router_log: String,
 }
 
@@ -85,8 +84,7 @@ async fn drive_router_turns(workspace: &std::path::Path) -> MockRouterTurns {
         .expect("router turns");
     let _ = client.end_coder_session().await;
     MockRouterTurns {
-        done: turns.done,
-        request_open: turns.request_open,
+        completion: turns.completion,
         router_log: std::fs::read_to_string(&log_path).unwrap_or_default(),
     }
 }
@@ -94,7 +92,10 @@ async fn drive_router_turns(workspace: &std::path::Path) -> MockRouterTurns {
 #[test]
 fn done_marker_in_router_a_reply_does_not_skip_later_turns() {
     let turns = run_mock_router_turns("Find unsatisfied requirements");
-    assert!(!turns.done);
+    assert_eq!(
+        turns.completion,
+        crate::cli::router_machine::Completion::StillOpen
+    );
     assert!(
         turns.router_log.contains("router_a_2"),
         "{}",
@@ -110,13 +111,15 @@ fn done_marker_in_router_a_reply_does_not_skip_later_turns() {
         "{}",
         turns.router_log
     );
-    assert!(turns.request_open, "{}", turns.router_log);
 }
 
 #[test]
 fn done_marker_in_router_a_2_reply_skips_router_b() {
     let turns = run_mock_router_turns("obvious impossibility");
-    assert!(turns.done);
+    assert_eq!(
+        turns.completion,
+        crate::cli::router_machine::Completion::Impasse
+    );
     assert!(
         turns.router_log.contains("router_a_2"),
         "{}",
@@ -132,7 +135,6 @@ fn done_marker_in_router_a_2_reply_skips_router_b() {
         "{}",
         turns.router_log
     );
-    assert!(!turns.request_open);
 }
 #[test]
 fn done_marker_in_router_b_reply_does_not_stop_loop_and_no_done_marker_continues_loop() {
@@ -143,8 +145,12 @@ fn done_marker_in_router_b_reply_does_not_stop_loop_and_no_done_marker_continues
             "{}",
             turns.router_log
         );
-        assert!(!turns.done);
-        assert!(turns.request_open, "{}", turns.router_log);
+        assert_eq!(
+            turns.completion,
+            crate::cli::router_machine::Completion::StillOpen,
+            "{}",
+            turns.router_log
+        );
         assert!(
             turns.router_log.contains("router_c"),
             "{}",
@@ -163,8 +169,10 @@ fn done_marker_in_router_b_reply_does_not_stop_loop_and_no_done_marker_continues
             "{}",
             turns.router_log
         );
-        assert!(!turns.done);
-        assert!(turns.request_open);
+        assert_eq!(
+            turns.completion,
+            crate::cli::router_machine::Completion::StillOpen
+        );
         assert!(
             turns.router_log.contains("router_c"),
             "{}",
@@ -176,8 +184,12 @@ fn done_marker_in_router_b_reply_does_not_stop_loop_and_no_done_marker_continues
 #[test]
 fn done_marker_in_router_c_reply_closes_the_request() {
     let turns = run_mock_router_turns("Has the request been satisfied?");
-    assert!(!turns.done);
-    assert!(!turns.request_open, "{}", turns.router_log);
+    assert_eq!(
+        turns.completion,
+        crate::cli::router_machine::Completion::Satisfied,
+        "{}",
+        turns.router_log
+    );
     assert!(
         turns.router_log.contains("router_c"),
         "{}",

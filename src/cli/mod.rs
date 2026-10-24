@@ -149,5 +149,7 @@ pub(super) mod router_flow_prompt_summarize;
 pub(super) mod router_flow_prompt_turns;
 #[path = "router_flow_summary_line.rs"]
 pub(super) mod router_flow_summary_line;
+#[path = "router_machine.rs"]
+pub(crate) mod router_machine;
 #[path = "tidy_flow/run.rs"]
 pub(super) mod tidy_flow_run;
