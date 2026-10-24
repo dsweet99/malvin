@@ -28,7 +28,7 @@ fn run_two_router_a_turns() -> (usize, usize) {
             let _ = run_turns(&mut client, workspace, 1).await;
             let second = run_turns(&mut client, workspace, 2).await;
             assert!(
-                second.contains("BEGIN MALVIN HEADER"),
+                second.contains("BEGIN MALVIN_HEADER"),
                 "second router_a must include header.md: {second}"
             );
             let _ = client.end_coder_session().await;
