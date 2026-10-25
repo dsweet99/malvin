@@ -27,7 +27,7 @@ When you load prior context, label it `HISTORY-n` with a number, `n`. The
  first time you mention in, pair it with its full log path.
 
 ### Current state
-`{{ current_state }}`
+{{ current_state }}
 
 {{ agents_insert }}
 
