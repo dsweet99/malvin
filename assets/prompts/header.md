@@ -33,10 +33,10 @@ When you load prior context, label it `HISTORY-n` with a number, `n`. The
 
 # Calibration
 
-Before starting work state an estimate:
+Before starting work state a prediction, in seconds, of the total running time:
 
 ```text
-Predicted running time: <prediction>
+__PREDICTED_RUNNING_TIME_SECONDS__: <prediction>
 ```
 
 ---
