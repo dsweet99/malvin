@@ -212,3 +212,9 @@ fn notify_warns_when_command_fails_or_times_out() {
         "{timed_out:?}"
     );
 }
+
+#[test]
+fn render_escapes_apostrophe_inside_larger_single_quoted_word() {
+    let rendered = render_on_emit("echo 'x {body} y'", "it's ✓", "");
+    assert_eq!(rendered, "echo 'x it'\\''s ✓ y'");
+}

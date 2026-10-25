@@ -102,7 +102,7 @@ fn quote_after(text: &str, mut quote: Option<char>) -> Option<char> {
 
 fn render_placeholder(value: &str, quote: Option<char>) -> String {
     match quote {
-        Some('\'') => value.replace('\'', "'\\\\''"),
+        Some('\'') => value.replace('\'', "'\\''"),
         Some('"') => double_quote_content(value),
         None => shell_single_quote(value),
         _ => shell_single_quote(value),
