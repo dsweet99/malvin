@@ -4,7 +4,7 @@ use std::sync::{Mutex, OnceLock};
 use super::bind::emit_bind_reports;
 use super::env::HerdrEnv;
 use super::request::{clear_metadata_teardown, next_seq, release_agent, report_agent};
-use super::send::send_request_checked;
+use super::send::send_request_with_retry;
 use super::trace::log_herdr_failure;
 use serde_json::Value;
 
@@ -120,10 +120,7 @@ pub(super) fn report_active_state(state: &str) {
         snap.agent_session_id.as_deref(),
         next_seq(),
     );
-    if send_request_checked(&snap.socket_path, &request).is_ok() {
-        return;
-    }
-    if let Err(detail) = send_request_checked(&snap.socket_path, &request) {
+    if let Err(detail) = send_request_with_retry(&snap.socket_path, &request) {
         log_herdr_failure(snap.run_dir.as_deref(), state, &detail);
     }
 }
@@ -172,10 +169,7 @@ fn notify_run_end_inner() {
 }
 
 fn send_end_retry(sock: &Path, run_dir: Option<&Path>, phase: &str, request: &Value) -> bool {
-    if send_request_checked(sock, request).is_ok() {
-        return true;
-    }
-    match send_request_checked(sock, request) {
+    match send_request_with_retry(sock, request) {
         Ok(()) => true,
         Err(detail) => {
             log_herdr_failure(run_dir, phase, &detail);
