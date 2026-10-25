@@ -31,14 +31,6 @@ When you load prior context, label it `HISTORY-n` with a number, `n`. The
 
 {{ agents_insert }}
 
-# Calibration
-
-Before starting work state a prediction, in seconds, of the total running time:
-
-```text
-__PREDICTED_RUNNING_TIME_SECONDS__: <prediction>
-```
-
 ---
 
 # General Rules
