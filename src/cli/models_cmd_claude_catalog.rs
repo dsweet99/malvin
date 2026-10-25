@@ -11,9 +11,9 @@ impl ModelCatalog for ClaudeCatalog {
 
     fn list_display_models(&self) -> ModelListing {
         ModelListing::rows(vec![
-            "claude:sonnet\tClaude Sonnet".into(),
-            "claude:opus\tClaude Opus".into(),
-            "claude:haiku\tClaude Haiku".into(),
+            "claude:sonnet\tClaude Sonnet effort=low|medium|high|xhigh|max".into(),
+            "claude:opus\tClaude Opus effort=low|medium|high|xhigh|max fast=true|false".into(),
+            "claude:haiku\tClaude Haiku effort=low|medium|high|xhigh|max".into(),
         ])
     }
 }

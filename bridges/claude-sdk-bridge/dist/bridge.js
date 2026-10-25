@@ -42,6 +42,12 @@ function optionsFromBoot(request) {
         permissionMode: "bypassPermissions",
         allowDangerouslySkipPermissions: true,
     };
+    const effort = process.env.MALVIN_CLAUDE_EFFORT;
+    if (effort)
+        options.effort = effort;
+    const fast = process.env.MALVIN_CLAUDE_FAST;
+    if (fast)
+        options.settings = { fastMode: fast === "true" };
     if (request.op === "resume")
         options.resume = request.agentId;
     return options;
