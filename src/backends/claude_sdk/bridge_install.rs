@@ -21,8 +21,10 @@ pub(crate) const PAYLOAD: &[(&str, &[u8])] = &[
     payload_file!("package.json"),
     payload_file!("package-lock.json"),
     payload_file!("dist/bridge.js"),
+    payload_file!("dist/message_map.js"),
     payload_file!("dist/parent_death.js"),
     payload_file!("dist/protocol.js"),
+    payload_file!("dist/tool_summary.js"),
     payload_file!("dist/usage.js"),
 ];
 
