@@ -56,8 +56,7 @@ fn kiss_witness_restore_router_iteration_dotfiles() {
 }
 
 struct LoopExitCase {
-    done: bool,
-    request_open: bool,
+    completion: crate::cli::router_machine::Completion,
     gates: bool,
     agent_loop: usize,
     max_loops: usize,
@@ -71,8 +70,7 @@ fn decide_loop_case(
     super::decide_router_loop_exit(super::RouterLoopExitInput {
         artifacts,
         backups,
-        done: case.done,
-        request_open: case.request_open,
+        completion: case.completion,
         gates: case.gates,
         agent_loop: case.agent_loop,
         max_loops: case.max_loops,
@@ -97,13 +95,15 @@ fn without_gates_router_loop_exits_after_done_or_router_b() {
     malvin::test_support::test_utils::with_isolated_home(|_| {
         let tmp = tempfile::tempdir().expect("tmpdir");
         let (artifacts, backups) = router_loop_artifacts(tmp.path());
-        for done in [false, true] {
+        for completion in [
+            crate::cli::router_machine::Completion::Impasse,
+            crate::cli::router_machine::Completion::Satisfied,
+        ] {
             let decision = decide_loop_case(
                 &artifacts,
                 &backups,
                 LoopExitCase {
-                    done,
-                    request_open: false,
+                    completion,
                     gates: false,
                     agent_loop: 1,
                     max_loops: 3,
@@ -111,7 +111,7 @@ fn without_gates_router_loop_exits_after_done_or_router_b() {
             );
             assert!(
                 matches!(decision, super::RouterLoopDecision::Exit),
-                "gates off must not start another iteration (done={done})"
+                "gates off must not start another iteration ({completion:?})"
             );
         }
     });
@@ -124,13 +124,15 @@ fn gates_failure_continues_until_the_last_loop_after_done_or_router_b() {
         let (_bin, _guard) =
             malvin::test_support::test_agent_client::write_fake_gate(tmp.path(), "false", 1);
         let (artifacts, backups) = router_loop_artifacts(tmp.path());
-        for done in [false, true] {
+        for completion in [
+            crate::cli::router_machine::Completion::Impasse,
+            crate::cli::router_machine::Completion::Satisfied,
+        ] {
             let mid = decide_loop_case(
                 &artifacts,
                 &backups,
                 LoopExitCase {
-                    done,
-                    request_open: false,
+                    completion,
                     gates: true,
                     agent_loop: 1,
                     max_loops: 3,
@@ -138,14 +140,13 @@ fn gates_failure_continues_until_the_last_loop_after_done_or_router_b() {
             );
             assert!(
                 matches!(mid, super::RouterLoopDecision::Continue),
-                "a failed gate with loops left must rerun (done={done})"
+                "a failed gate with loops left must rerun ({completion:?})"
             );
             let last = decide_loop_case(
                 &artifacts,
                 &backups,
                 LoopExitCase {
-                    done,
-                    request_open: false,
+                    completion,
                     gates: true,
                     agent_loop: 3,
                     max_loops: 3,
@@ -153,7 +154,7 @@ fn gates_failure_continues_until_the_last_loop_after_done_or_router_b() {
             );
             assert!(
                 matches!(last, super::RouterLoopDecision::ExitGatesFailed(_)),
-                "the last failed gate must stop the run (done={done})"
+                "the last failed gate must stop the run ({completion:?})"
             );
         }
     });
@@ -166,13 +167,15 @@ fn gates_pass_exits_after_done_or_router_b() {
         let (_bin, _guard) =
             malvin::test_support::test_agent_client::write_fake_gate(tmp.path(), "true", 0);
         let (artifacts, backups) = router_loop_artifacts(tmp.path());
-        for done in [false, true] {
+        for completion in [
+            crate::cli::router_machine::Completion::Impasse,
+            crate::cli::router_machine::Completion::Satisfied,
+        ] {
             let decision = decide_loop_case(
                 &artifacts,
                 &backups,
                 LoopExitCase {
-                    done,
-                    request_open: false,
+                    completion,
                     gates: true,
                     agent_loop: 1,
                     max_loops: 3,
@@ -180,7 +183,7 @@ fn gates_pass_exits_after_done_or_router_b() {
             );
             assert!(
                 matches!(decision, super::RouterLoopDecision::Exit),
-                "a passing gate must not start another iteration (done={done})"
+                "a passing gate must not start another iteration ({completion:?})"
             );
         }
     });
@@ -197,8 +200,7 @@ fn open_request_restarts_until_the_last_loop_and_skips_gates() {
             &artifacts,
             &backups,
             LoopExitCase {
-                done: false,
-                request_open: true,
+                completion: crate::cli::router_machine::Completion::StillOpen,
                 gates: false,
                 agent_loop: 1,
                 max_loops: 3,
@@ -212,8 +214,7 @@ fn open_request_restarts_until_the_last_loop_and_skips_gates() {
             &artifacts,
             &backups,
             LoopExitCase {
-                done: false,
-                request_open: true,
+                completion: crate::cli::router_machine::Completion::StillOpen,
                 gates: true,
                 agent_loop: 1,
                 max_loops: 3,
@@ -227,8 +228,7 @@ fn open_request_restarts_until_the_last_loop_and_skips_gates() {
             &artifacts,
             &backups,
             LoopExitCase {
-                done: false,
-                request_open: true,
+                completion: crate::cli::router_machine::Completion::StillOpen,
                 gates: true,
                 agent_loop: 3,
                 max_loops: 3,
@@ -245,19 +245,17 @@ fn open_request_restarts_until_the_last_loop_and_skips_gates() {
 fn exit_gates_failed_outranks_finalize_error() {
     use super::RouterLoopDecision;
     use super::router_flow_loop_decide::prefer_exit_gates_over_acp;
-    let gates = Some(RouterLoopDecision::ExitGatesFailed(
-        "gate detail".to_string(),
-    ));
+    let gates = RouterLoopDecision::ExitGatesFailed("gate detail".to_string());
     let acp_err = Err("finalize failed".to_string());
     let decided = prefer_exit_gates_over_acp(&acp_err, gates);
     assert!(matches!(
         decided,
         RouterLoopDecision::ExitGatesFailed(detail) if detail == "gate detail"
     ));
-    let continued = prefer_exit_gates_over_acp(&acp_err, Some(RouterLoopDecision::Continue));
+    let continued = prefer_exit_gates_over_acp(&acp_err, RouterLoopDecision::Continue);
     assert!(matches!(continued, RouterLoopDecision::Exit));
-    let proceed = prefer_exit_gates_over_acp(&Ok(()), Some(RouterLoopDecision::Continue));
+    let proceed = prefer_exit_gates_over_acp(&Ok(()), RouterLoopDecision::Continue);
     assert!(matches!(proceed, RouterLoopDecision::Continue));
-    let stop = prefer_exit_gates_over_acp(&Ok(()), None);
+    let stop = prefer_exit_gates_over_acp(&Ok(()), RouterLoopDecision::Exit);
     assert!(matches!(stop, RouterLoopDecision::Exit));
 }

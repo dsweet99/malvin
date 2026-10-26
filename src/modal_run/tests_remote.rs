@@ -130,3 +130,25 @@ fn non_git_upload_over_the_cap_is_refused_and_git_trees_are_not_measured() {
     assert!(git.success());
     assert!(check_upload_size(d, 2000).is_ok());
 }
+
+#[test]
+fn model_lists_prepare_each_backend_once_and_copy_all_login_files() {
+    use super::backend_setup::{login_files_for, setups_for};
+    let tmp = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(tmp.path().join(".codex")).unwrap();
+    let auth = tmp.path().join(".codex/auth.json");
+    std::fs::write(&auth, "{}").unwrap();
+    let models =
+        "cursor:auto,codex:gpt-5.6[thinking=high,service=priority],codex:gpt-5,pi:openai/x";
+    assert_eq!(setups_for(models).unwrap().len(), 3);
+    let layers: Vec<_> = setups_for(models)
+        .unwrap()
+        .iter()
+        .filter_map(|setup| setup.image_layer(tmp.path()))
+        .collect();
+    assert_eq!(layers.len(), 2);
+    assert!(layers[0][0].contains("@openai/codex@"));
+    assert!(layers[1][0].contains("pi-coding-agent@"));
+    assert!(login_files_for(models, tmp.path()).unwrap().contains(&auth));
+    assert!(setups_for("cursor:auto,").is_err());
+}

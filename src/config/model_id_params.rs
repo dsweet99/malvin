@@ -119,6 +119,23 @@ pub(super) fn validate_codex_params(params: &[ModelParam]) -> Result<(), String>
     Ok(())
 }
 
+const CLAUDE_EFFORT_LEVELS: &[&str] = &["low", "medium", "high", "xhigh", "max"];
+
+pub(super) fn validate_claude_params(params: &[ModelParam]) -> Result<(), String> {
+    for p in params {
+        match p.id.as_str() {
+            "effort" => require_known_value("effort", CLAUDE_EFFORT_LEVELS, &p.value)?,
+            "fast" => require_known_value("fast", &["true", "false"], &p.value)?,
+            other => {
+                return Err(format!(
+                    "claude model bracket overrides only support `effort` and `fast` (got `{other}`)",
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
 fn require_known_value(label: &str, allowed: &[&str], value: &str) -> Result<(), String> {
     if allowed.contains(&value) {
         Ok(())
@@ -151,6 +168,7 @@ mod model_id_params_kiss_cov {
         let _ = stringify!(kv_error);
         let _ = stringify!(validate_pi_thinking_params);
         let _ = super::validate_codex_params;
+        let _ = super::validate_claude_params;
         let _ = super::require_known_value;
         let _ = super::require_nonempty_service;
     }

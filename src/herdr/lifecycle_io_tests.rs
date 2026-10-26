@@ -101,6 +101,52 @@ fn working_pulse_retries_after_a_dropped_reply() {
     reset_session_for_test();
 }
 
+#[test]
+fn startup_working_report_retries_after_a_dropped_reply() {
+    let _g = herdr_test_env_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    reset_session_for_test();
+    let dir = tempfile::tempdir().expect("tempdir");
+    let sock = dir.path().join("herdr.sock");
+    let Some(listener) = bind_test_socket_or_skip(&sock) else {
+        return;
+    };
+    let old = install_test_herdr_env(&sock);
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        for request_index in 0..6 {
+            let (mut conn, _) = listener.accept().expect("request connection");
+            let mut line = String::new();
+            BufReader::new(&mut conn)
+                .read_line(&mut line)
+                .expect("request line");
+            tx.send(line).expect("record request");
+            if request_index != 2 {
+                conn.write_all(br#"{"result":{"type":"ok"}}"#)
+                    .expect("success reply");
+            }
+        }
+    });
+    let run_dir = dir.path().join("retry_startup_working");
+    std::fs::create_dir_all(&run_dir).expect("mkdir");
+    notify_run_start(&run_dir);
+    let requests: Vec<String> = (0..6)
+        .map(|_| rx.recv_timeout(Duration::from_secs(1)).expect("request"))
+        .collect();
+    let working_count = requests
+        .iter()
+        .filter(|line| line.contains("\"state\":\"working\""))
+        .count();
+    assert_eq!(working_count, 2, "requests: {requests:?}");
+    let log = std::fs::read_to_string(run_dir.join("herdr.log")).unwrap_or_default();
+    assert!(!log.contains("working failed"), "{log}");
+    notify_run_end();
+    restore_test_herdr_env(old);
+    reset_session_for_test();
+}
+
+#[test]
 fn notify_working_pulses_working_without_clearing_authority() {
     let _g = herdr_test_env_lock()
         .lock()

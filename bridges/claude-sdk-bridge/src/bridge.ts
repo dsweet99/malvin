@@ -1,6 +1,6 @@
 import "./parent_death.js";
 import * as readline from "node:readline";
-import { query, type Options, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
+import { query, type EffortLevel, type Options, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import { emit, parseRequest, type BridgeRequest, type CreateOp, type ResumeOp } from "./protocol.js";
 import { mapMessage } from "./message_map.js";
 
@@ -46,6 +46,10 @@ function optionsFromBoot(request: CreateOp | ResumeOp): Options {
     permissionMode: "bypassPermissions",
     allowDangerouslySkipPermissions: true,
   };
+  const effort = process.env.MALVIN_CLAUDE_EFFORT;
+  if (effort) options.effort = effort as EffortLevel;
+  const fast = process.env.MALVIN_CLAUDE_FAST;
+  if (fast) options.settings = { fastMode: fast === "true" };
   if (request.op === "resume") options.resume = request.agentId;
   return options;
 }

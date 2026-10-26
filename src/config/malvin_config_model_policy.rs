@@ -154,3 +154,13 @@ pub(crate) fn load_model_aliases() -> BTreeMap<String, String> {
 pub fn load_remote_aliases() -> BTreeMap<String, String> {
     home_aliases().1
 }
+
+pub fn parse_model_list_cli_arg(raw: &str) -> Result<crate::config::model_list::ModelList, String> {
+    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
+    let config = super::load_malvin_config(&cwd);
+    let models = crate::config::model_list::split_model_list(raw)?
+        .into_iter()
+        .map(|model| config.resolve_model(model))
+        .collect::<Result<Vec<_>, _>>()?;
+    crate::config::model_list::ModelList::new(models)
+}

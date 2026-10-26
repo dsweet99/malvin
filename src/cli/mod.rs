@@ -21,6 +21,7 @@ pub(crate) mod remotes_cmd;
 pub(crate) mod repo_checks;
 pub(crate) mod request_argv;
 pub(crate) mod router_flow;
+mod router_flow_fallback;
 pub(crate) mod run_emit;
 pub(crate) mod shared_opts;
 pub(crate) mod tidy_flow;
@@ -149,5 +150,7 @@ pub(super) mod router_flow_prompt_summarize;
 pub(super) mod router_flow_prompt_turns;
 #[path = "router_flow_summary_line.rs"]
 pub(super) mod router_flow_summary_line;
+#[path = "router_machine.rs"]
+pub(crate) mod router_machine;
 #[path = "tidy_flow/run.rs"]
 pub(super) mod tidy_flow_run;

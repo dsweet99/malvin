@@ -1,7 +1,6 @@
 use super::{recolor_termimad_inline, recolor_termimad_text, show_code_line};
 
 const KEYWORD: &str = "\x1b[38;2;203;166;247m";
-const CODE: &str = "\x1b[38;2;137;180;250m";
 const STRING: &str = "\x1b[38;2;166;227;161m";
 const COMMENT: &str = "\x1b[38;2;108;112;134m";
 
@@ -34,7 +33,7 @@ fn keyword_phrase_without_punctuation_is_highlighted() {
 fn plain_backtick_span_uses_code_color() {
     let shown = recolor_termimad_inline("see `src/lib.rs`");
     assert!(!shown.contains('`'), "{shown:?}");
-    assert!(shown.contains(CODE), "{shown:?}");
+    assert!(shown.contains(crate::terminal_palette::ansi_accent()), "{shown:?}");
     assert!(!shown.contains(KEYWORD), "{shown:?}");
 }
 

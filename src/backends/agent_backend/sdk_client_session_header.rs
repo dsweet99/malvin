@@ -90,7 +90,7 @@ async fn recover_header_send_failure(
     client: &mut SdkClient,
     err: AgentError,
 ) -> Result<AgentError, AgentError> {
-    if err.fault == AgentFault::OutputCap {
+    if matches!(err.fault, AgentFault::OutputCap | AgentFault::NonRetryable) {
         return Err(err);
     }
     teardown_sdk_session_after_transport_error(client, &err).await;

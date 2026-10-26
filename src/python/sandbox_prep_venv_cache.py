@@ -30,8 +30,10 @@ def minimal_venv_dir(dest: Path) -> Path:
     bin_dir = dest / "bin"
     bin_dir.mkdir(exist_ok=True)
     python = bin_dir / "python"
-    if not python.exists():
+    try:
         python.symlink_to(sys.executable)
+    except FileExistsError:
+        pass
     return dest
 
 def _venv_python_ready(base: Path) -> bool:

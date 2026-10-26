@@ -5,9 +5,10 @@ use super::{
     dm_on_emit_command_for_test, notify_completed_direct_messages, render_on_emit, store_command,
     with_config_lock, with_dm_on_emit,
 };
+use crate::output::dm_attachment::completed_direct_messages;
 use crate::output::{
-    DM_END, DM_START, STDOUT_LOG_TEST_LOCK, clear_captured_stderr_lines, set_stdout_log_path,
-    take_captured_stderr_lines,
+    clear_captured_stderr_lines, set_stdout_log_path, take_captured_stderr_lines, DM_END, DM_START,
+    STDOUT_LOG_TEST_LOCK,
 };
 
 fn lock_stdout_log() -> MutexGuard<'static, ()> {
@@ -40,13 +41,53 @@ fn blank_on_emit_is_unset_and_a_command_is_kept() {
 #[test]
 fn render_replaces_quoted_placeholder_and_escapes_apostrophes() {
     let template = "curl -H 'Title: malvin' -d '{body}' 'https://example.test/topic'";
-    let rendered = render_on_emit(template, "it's\nline");
+    let rendered = render_on_emit(template, "it's\nline", "report.pdf");
     assert_eq!(
         rendered,
         "curl -H 'Title: malvin' -d 'it'\\''s\nline' 'https://example.test/topic'"
     );
-    assert_eq!(render_on_emit("echo {body}", "a b"), "echo 'a b'");
-    assert_eq!(render_on_emit("echo \"{body}\"", "a b"), "echo 'a b'");
+    assert_eq!(render_on_emit("echo {body}", "a b", ""), "echo 'a b'");
+    assert_eq!(render_on_emit("echo \"{body}\"", "a b", ""), "echo 'a b'");
+    assert_eq!(
+        render_on_emit("send '{attachment}'", "ignored", "a report.pdf"),
+        "send 'a report.pdf'"
+    );
+    assert_eq!(
+        render_on_emit(
+            "send {body} {attachment}",
+            "literal {attachment}",
+            "report.pdf"
+        ),
+        "send 'literal {attachment}' 'report.pdf'"
+    );
+    assert_eq!(
+        render_on_emit(
+            "curl -d '{body}\n{attachment}' 'https://example.test/topic'",
+            "first line\nsecond line",
+            "/tmp/report.pdf",
+        ),
+        "curl -d 'first line\nsecond line\n/tmp/report.pdf' 'https://example.test/topic'"
+    );
+    assert_eq!(
+        render_on_emit("echo \"prefix {body}\"", "$HOME\\`\"", ""),
+        "echo \"prefix \\$HOME\\\\\\`\\\"\""
+    );
+}
+
+#[test]
+fn completed_message_separates_only_a_final_attachment_marker() {
+    let messages = completed_direct_messages(&fenced("hello\n__ATTACH__: report.pdf"));
+    assert_eq!(messages.len(), 1);
+    assert_eq!(messages[0].body, "hello");
+    assert_eq!(messages[0].attachment.as_deref(), Some("report.pdf"));
+
+    let messages = completed_direct_messages(&fenced("__ATTACH__: first\nhello"));
+    assert_eq!(messages[0].body, "__ATTACH__: first\nhello");
+    assert_eq!(messages[0].attachment, None);
+
+    let messages = completed_direct_messages(&fenced("hello\n__ATTACH__: "));
+    assert_eq!(messages[0].body, "hello\n__ATTACH__: ");
+    assert_eq!(messages[0].attachment, None);
 }
 
 #[test]
@@ -65,6 +106,53 @@ fn notify_writes_one_body_per_completed_message() {
         std::fs::read_to_string(&path).expect("read"),
         "it's done\nsecond\n"
     );
+}
+
+#[test]
+fn notify_omits_attachment_marker_from_body_and_substitutes_attachment() {
+    let _guard = lock_stdout_log();
+    set_stdout_log_path(None);
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = dir.path().join("dm.txt");
+    let template = format!(
+        "printf '%s|%s\\n' {{body}} {{attachment}} >> '{}'",
+        path.display()
+    );
+    with_dm_on_emit(&template, None, || {
+        notify_completed_direct_messages(&fenced("hello\n__ATTACH__: report.pdf"));
+    });
+    assert_eq!(
+        std::fs::read_to_string(path).expect("read"),
+        "hello|report.pdf\n"
+    );
+}
+
+#[test]
+fn notify_substitutes_empty_attachment_when_marker_is_absent() {
+    let _guard = lock_stdout_log();
+    set_stdout_log_path(None);
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = dir.path().join("dm.txt");
+    let template = format!(
+        "printf '%s|%s\\n' {{body}} {{attachment}} >> '{}'",
+        path.display()
+    );
+    with_dm_on_emit(&template, None, || {
+        notify_completed_direct_messages(&fenced("hello"));
+    });
+    assert_eq!(std::fs::read_to_string(path).expect("read"), "hello|\n");
+}
+
+#[test]
+fn notify_ignores_an_attachment_when_template_does_not_use_it() {
+    let _guard = lock_stdout_log();
+    set_stdout_log_path(None);
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = dir.path().join("dm.txt");
+    with_dm_on_emit(&capture_template(&path), None, || {
+        notify_completed_direct_messages(&fenced("hello\n__ATTACH__: report.pdf"));
+    });
+    assert_eq!(std::fs::read_to_string(path).expect("read"), "hello\n");
 }
 
 #[test]
@@ -123,4 +211,10 @@ fn notify_warns_when_command_fails_or_times_out() {
             .any(|line| line.contains("dm.on_emit timed out")),
         "{timed_out:?}"
     );
+}
+
+#[test]
+fn render_escapes_apostrophe_inside_larger_single_quoted_word() {
+    let rendered = render_on_emit("echo 'x {body} y'", "it's ✓", "");
+    assert_eq!(rendered, "echo 'x it'\\''s ✓ y'");
 }

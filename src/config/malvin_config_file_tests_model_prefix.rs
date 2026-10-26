@@ -18,7 +18,7 @@ fn parse_agent_config_ignores_legacy_model_key_and_parse_agent_config_rejects_ba
         "model-mini" = "openai/gpt-4o"
         "#;
         let agent = parse_agent(text).expect("parse");
-        assert_eq!(agent.model.canonical(), "cursor:gpt-5");
+        assert_eq!(agent.model.first().canonical(), "cursor:gpt-5");
     }
     {
         let text = r#"
@@ -55,7 +55,7 @@ max_loops = 5
             before, after,
             "existing config.toml must never be rewritten"
         );
-        assert_eq!(cfg.agent.model.canonical(), DEFAULT_CLI_MODEL);
+        assert_eq!(cfg.agent.model.first().canonical(), DEFAULT_CLI_MODEL);
         assert!(after.contains("model = \"auto\""));
     });
 }
@@ -68,7 +68,7 @@ fn open_malvin_config_writes_prefixed_model_on_fresh_init() {
         open_malvin_config(work).expect("open");
         let text = std::fs::read_to_string(&path).expect("read");
         assert!(
-            text.contains("model = \"cursor:auto\""),
+            text.contains("model = [\"cursor:auto\"]"),
             "expected prefixed model in config, got:\n{text}"
         );
         assert!(!text.contains("model-mini"));
@@ -88,7 +88,9 @@ max_acp_retries = 5
     assert_eq!(
         agent,
         AgentConfig {
-            model: crate::config::model_id::parse_model_id("cursor:gpt-5").expect("model"),
+            model: crate::config::model_id::parse_model_id("cursor:gpt-5")
+                .expect("model")
+                .into(),
             max_acp_retries: 5,
         }
     );

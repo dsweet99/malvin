@@ -36,6 +36,9 @@ fn parse_cursor_and_pi() {
     assert!(claude.is_claude());
     assert_eq!(claude.canonical(), "claude:sonnet");
     assert!(parse_model_id("claude:sonnet[thinking=high]").is_err());
+    let tuned = parse_model_id("claude:opus[effort=high,fast=true]").expect("claude params");
+    assert_eq!(tuned.canonical(), "claude:opus[effort=high,fast=true]");
+    assert!(parse_model_id("claude:opus[effort=bogus]").is_err());
 }
 
 #[test]

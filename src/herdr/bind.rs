@@ -8,7 +8,7 @@ use super::request::{
     clear_agent_authority, next_seq, rename_agent, report_agent, report_agent_session,
     report_metadata_sparse,
 };
-use super::send::send_request_checked;
+use super::send::send_request_with_retry;
 use super::trace::log_herdr_failure;
 
 pub fn emit_bind_reports(env: &HerdrEnv, session_id: Option<&str>, run_dir: Option<&Path>) {
@@ -47,7 +47,7 @@ fn bind_requests(
 }
 
 fn verified(sock: &Path, run_dir: Option<&Path>, phase: &str, request: &Value) {
-    if let Err(detail) = send_request_checked(sock, request) {
+    if let Err(detail) = send_request_with_retry(sock, request) {
         log_herdr_failure(run_dir, phase, &detail);
     }
 }

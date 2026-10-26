@@ -16,6 +16,7 @@ pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD];
 
 pub const DEFAULT_PROMPTS: &[&str] = &[
     "init_constraints.md",
+    "set_costs.md",
     HEADER_MD,
     ROUTER_A_MD,
     ROUTER_A_2_MD,

@@ -1,6 +1,9 @@
 description: Problems Worth Solving for coding / SWE
 
 
+0. **Bug**
+   Code does not actually do what you intended it to do.
+   
 1. **Diffuse concept**
    A coherent concept is used wholly or partially in multiple places but has no explicit representation. It should probably be represented by a named type, module, interface, function, or other abstraction.
 

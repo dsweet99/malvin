@@ -26,6 +26,13 @@ pub(crate) fn send_request_checked(socket_path: &Path, request: &Value) -> Resul
     classify_reply(&buf[..n])
 }
 
+pub(crate) fn send_request_with_retry(socket_path: &Path, request: &Value) -> Result<(), String> {
+    if send_request_checked(socket_path, request).is_ok() {
+        return Ok(());
+    }
+    send_request_checked(socket_path, request)
+}
+
 fn read_reply_bytes(stream: &mut UnixStream, buf: &mut [u8]) -> Result<usize, String> {
     match stream.read(buf) {
         Ok(0) => Err("herdr reply empty".into()),

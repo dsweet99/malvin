@@ -1,4 +1,5 @@
 use crate::cli::router_flow::router_flow_prompt;
+use crate::cli::router_machine::Completion;
 use crate::cli::{RouterOpts, SharedOpts};
 use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
 use malvin::backends::agent_backend::{SdkClient, set_implement_display_name};
@@ -26,8 +27,7 @@ pub(crate) enum RouterAcpIterationOutcome {
     },
     Open {
         iteration_backups: SessionDotfileBackups,
-        done: bool,
-        request_open: bool,
+        completion: Completion,
         timing: Arc<Mutex<malvin::run_timing::RunTiming>>,
     },
 }
@@ -71,8 +71,7 @@ pub(crate) async fn run_router_acp_open_iteration(
     match run_router_turns(&mut input, log_path.as_path()).await {
         Ok(turns) => RouterAcpIterationOutcome::Open {
             iteration_backups: turns.iteration_backups,
-            done: turns.done,
-            request_open: turns.request_open,
+            completion: turns.completion,
             timing,
         },
         Err(e) => {
@@ -106,7 +105,7 @@ async fn run_exit_summarize_then_log_summary(
     input: &mut RouterAcpIterationInput<'_>,
     log_path: &Path,
 ) -> Result<(), String> {
-    let model = input.shared.model.canonical();
+    let model = input.shared.model.first().canonical();
     let body = router_flow_prompt::build_router_summarize_prompt(
         router_flow_prompt::RouterSummarizePromptInput {
             store: input.prompt_store,

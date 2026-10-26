@@ -1,4 +1,6 @@
+import { toolSummary } from "./tool_summary.js";
 import { claudeUsageRecord } from "./usage.js";
+const pendingTools = new Map();
 export function mapMessage(message) {
     const events = [];
     mapAssistant(message, events);
@@ -32,7 +34,9 @@ function mapAssistant(message, events) {
         if (block.type === "thinking" && block.thinking)
             events.push({ event: "thinking", text: block.thinking });
         if (block.type === "tool_use") {
-            events.push({ event: "tool_call", phase: "start", name: block.name, toolCallId: block.id, summary: block.name });
+            const summary = toolSummary(block.name, block.input);
+            pendingTools.set(block.id, { name: block.name, summary });
+            events.push({ event: "tool_call", phase: "start", name: block.name, toolCallId: block.id, summary });
         }
     }
 }
@@ -42,10 +46,13 @@ function mapToolResults(message, events) {
     for (const block of message.message.content) {
         if (block.type !== "tool_result")
             continue;
+        const known = pendingTools.get(block.tool_use_id);
+        pendingTools.delete(block.tool_use_id);
         events.push({
             event: "tool_call",
             phase: block.is_error ? "error" : "complete",
             toolCallId: block.tool_use_id,
+            ...(known ? { name: known.name, summary: known.summary } : {}),
         });
     }
 }

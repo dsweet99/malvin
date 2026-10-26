@@ -45,7 +45,7 @@ fn cli_rejects_do_thoughts_flag() {
 
 fn cli_accepts_all_shared_flags_before_subcommand() {
     let cli = parse_ok(&["malvin", "--model", "cursor:composer-2", "z"]);
-    assert_eq!(cli.shared.model.canonical(), "cursor:composer-2");
+    assert_eq!(cli.shared.model.first().canonical(), "cursor:composer-2");
     assert_eq!(cli.first_request().map(String::as_str), Some("z"));
 }
 

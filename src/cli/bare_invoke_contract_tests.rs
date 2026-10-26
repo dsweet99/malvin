@@ -117,6 +117,50 @@ fn multiple_bare_requests_and_double_dash_requests_parse() {
 }
 
 #[test]
+fn meta_loop_values_are_never_dispatched_as_requests() {
+    for argv in [
+        vec!["malvin", "--ml", "3", "first", "second"],
+        vec!["malvin", "first", "--ml", "inf", "second"],
+        vec!["malvin", "--ml=3", "first", "second"],
+    ] {
+        let cli = parse(&argv);
+        assert_eq!(cli.requests, ["first", "second"]);
+        assert_eq!(
+            cli.tagged_requests
+                .iter()
+                .map(|r| r.text.as_str())
+                .collect::<Vec<_>>(),
+            ["first", "second"],
+            "argv={argv:?}"
+        );
+    }
+    let cli = parse(&["malvin", "-g", "--ml", "3"]);
+    assert!(super::config_defaults::is_gates_only_route(&cli));
+    assert!(cli.tagged_requests.is_empty());
+}
+
+#[test]
+fn option_values_and_admin_arguments_are_never_dispatched_as_requests() {
+    for argv in [
+        vec!["malvin", "--remote", "modal:sandbox", "task"],
+        vec!["malvin", "--max-loops", "2", "task"],
+        vec!["malvin", "--max-acp-retries=2", "task"],
+        vec!["malvin", "--advice=design", "task"],
+    ] {
+        let cli = parse(&argv);
+        assert_eq!(cli.tagged_requests.len(), 1, "argv={argv:?}");
+        assert_eq!(cli.tagged_requests[0].text, "task", "argv={argv:?}");
+    }
+    for argv in [
+        vec!["malvin", "--advice", "design"],
+        vec!["malvin", "--advice"],
+        vec!["malvin", "admin", "models"],
+    ] {
+        assert!(parse(&argv).tagged_requests.is_empty(), "argv={argv:?}");
+    }
+}
+
+#[test]
 fn adaptix_subcommand_is_removed() {
     assert!(
         !Cli::command()

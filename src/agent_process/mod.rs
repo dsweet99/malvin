@@ -12,6 +12,9 @@ pub(crate) mod parent_death_signal;
 pub mod process_group_rss;
 pub(crate) mod sandbox_oom;
 
+mod billing;
+pub use billing::agent_string_is_insufficient_funds;
+
 mod jsonl_trace;
 mod outgoing_prompt_trace;
 pub use outgoing_prompt_trace::CoderPromptOptions;

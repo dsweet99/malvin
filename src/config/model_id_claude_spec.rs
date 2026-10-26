@@ -1,3 +1,4 @@
+use super::model_id_params::validate_claude_params;
 use super::model_id_spec::{BackendSpec, parsed};
 use super::{CLAUDE_PREFIX, ModelBackend, ParsedModel};
 
@@ -24,10 +25,7 @@ impl BackendSpec for ClaudeSpec {
     }
     fn parse_slug(&self, rest: &str) -> Result<ParsedModel, String> {
         let model = parsed(ModelBackend::Claude, rest)?;
-        if model.params.is_empty() {
-            Ok(model)
-        } else {
-            Err("claude: model ids do not support bracket parameters".to_string())
-        }
+        validate_claude_params(&model.params)?;
+        Ok(model)
     }
 }

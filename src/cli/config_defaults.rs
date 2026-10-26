@@ -13,7 +13,7 @@ pub(crate) fn global_flag_from_command_line(matches: &ArgMatches, id: &str) -> b
 
 fn finalize_shared_model(matches: &ArgMatches, shared: &mut SharedOpts) -> Result<(), String> {
     let _ = matches;
-    let _ = require_prefixed_model(&shared.model.canonical())?;
+    let _ = require_prefixed_model(&shared.model.first().canonical())?;
     Ok(())
 }
 
@@ -79,14 +79,9 @@ pub fn parse_cli_with_config_defaults(
 ) -> Result<(Cli, ArgMatches), clap::Error> {
     let args: Vec<std::ffi::OsString> = args.into_iter().map(Into::into).collect();
     let cmd = Cli::command();
-    let matches = cmd.try_get_matches_from(args.clone())?;
+    let matches = cmd.try_get_matches_from(args)?;
     let mut cli = Cli::from_arg_matches(&matches)?;
-    match crate::cli::request_argv::classify_top_level_requests(&args) {
-        Ok(tagged) => cli.tagged_requests = tagged,
-        Err(e) => {
-            return Err(usage_error(clap::error::ErrorKind::InvalidValue, &e));
-        }
-    }
+    cli.tagged_requests = crate::cli::request_argv::tag_requests(&cli.requests);
     if let Err(e) = apply_workspace_config_defaults(&matches, &mut cli) {
         return Err(usage_error(clap::error::ErrorKind::InvalidValue, &e));
     }

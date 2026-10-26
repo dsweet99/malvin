@@ -46,7 +46,10 @@ pub fn preflight(model: &str, home: &Path) -> Result<(), String> {
                 .to_string(),
         );
     }
-    setup_for(model)?.credential_preflight(home)
+    for setup in setups_for(model)? {
+        setup.credential_preflight(home)?;
+    }
+    Ok(())
 }
 
 impl ModalBackendSetup for CursorSetup {
@@ -145,4 +148,24 @@ impl ModalBackendSetup for ClaudeSetup {
         }
         Err("malvin --remote=modal:sandbox with a claude: model needs ANTHROPIC_API_KEY, ANTHROPIC_OAUTH_TOKEN, ANTHROPIC_AUTH_TOKEN, CLAUDE_CODE_OAUTH_TOKEN, or a Claude Code login.".to_string())
     }
+}
+
+pub fn setups_for(models: &str) -> Result<Vec<&'static dyn ModalBackendSetup>, String> {
+    let mut backends = Vec::new();
+    let mut setups = Vec::new();
+    for model in crate::config::model_list::split_model_list(models)? {
+        let backend = parse_model_id(model)?.backend;
+        if !backends.contains(&backend) {
+            backends.push(backend);
+            setups.push(setup_for(model)?);
+        }
+    }
+    Ok(setups)
+}
+
+pub fn login_files_for(models: &str, home: &Path) -> Result<Vec<PathBuf>, String> {
+    Ok(setups_for(models)?
+        .iter()
+        .flat_map(|setup| setup.login_files(home))
+        .collect())
 }

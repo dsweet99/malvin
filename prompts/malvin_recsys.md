@@ -1,5 +1,5 @@
 
-Understand VISION.md, the codebase, and recent feedback from the user (./malvin/feedback).
+Understand VISION.md, the codebase, and notes from the user (./malvin-recsys/notes.md).
 
 Propose a PR-sized project that you think will delight the user.
 - Feature
@@ -23,7 +23,7 @@ Implement your proposal
 QA-test it until you find a bug. Fix the bug. Repeat until the
  implementation is rock solid.
 
-Write a brief description of your new project in `reports/MRnnnn-some-meaningful-name.md` (the
+Write a brief description of your new project in `./malvin-recsys/reports/MRnnnn-some-meaningful-name.md` (the
  same name as the branch). `nnnn` should expand to an incrementing id number: 0001, 0002, 0003, ... Put a
  title at the top of the report. Follow it with a tl;dr. Then
  a short (max 5 sentences) summary. Then the full description.

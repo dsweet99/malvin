@@ -28,7 +28,7 @@ fn run_two_router_a_turns() -> (usize, usize) {
             let _ = run_turns(&mut client, workspace, 1).await;
             let second = run_turns(&mut client, workspace, 2).await;
             assert!(
-                second.contains("BEGIN MALVIN HEADER"),
+                second.contains("BEGIN MALVIN_HEADER"),
                 "second router_a must include header.md: {second}"
             );
             let _ = client.end_coder_session().await;
@@ -98,7 +98,7 @@ fn open_client(workspace: &std::path::Path) -> SdkClient {
         emit_stdout_markdown: false,
         log_full_outgoing_prompts: true,
     };
-    let mut client = SdkClient::new(shared.model, io);
+    let mut client = SdkClient::new(shared.model.first().clone(), io);
     client.prompts_log_run_dir = Some(workspace.to_path_buf());
     let _ = client.attach_run_timing_for_session();
     client

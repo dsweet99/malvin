@@ -67,7 +67,7 @@ impl RunStartupEmitOpts {
         Self {
             tee_stdout: opts.router.tee_startup_stdout(),
             host_resources,
-            model: opts.shared.model.canonical(),
+            model: opts.shared.model.first().canonical(),
         }
     }
 }

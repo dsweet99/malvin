@@ -43,7 +43,7 @@ fn open_malvin_config_creates_file_with_all_sections() {
         assert!(!text.contains("mpc"));
         assert!(!text.contains("max_loops"));
         assert!(!text.contains("max_hypotheses"));
-        assert_eq!(cfg.agent.model.canonical(), DEFAULT_CLI_MODEL);
+        assert_eq!(cfg.agent.model.first().canonical(), DEFAULT_CLI_MODEL);
         assert!(text.contains("theme"));
         assert_eq!(
             cfg.context_size,
@@ -74,7 +74,7 @@ fn open_malvin_config_merges_missing_agent_in_memory_only() {
             cfg.context_size,
             crate::config::malvin_config_file::DEFAULT_CONTEXT_SIZE
         );
-        assert_eq!(cfg.agent.model.canonical(), DEFAULT_CLI_MODEL);
+        assert_eq!(cfg.agent.model.first().canonical(), DEFAULT_CLI_MODEL);
     });
 }
 
@@ -85,7 +85,7 @@ model = "cursor:gpt-5"
 max_acp_retries = 5
 "#;
     let agent = parse_agent(text).expect("parse");
-    assert_eq!(agent.model.canonical(), "cursor:gpt-5");
+    assert_eq!(agent.model.first().canonical(), "cursor:gpt-5");
     assert_eq!(agent.max_acp_retries, 5);
 }
 
@@ -177,7 +177,7 @@ fn load_malvin_config_uses_defaults_for_invalid_on_disk_toml() {
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
         std::fs::write(&path, "not valid {{{ toml").expect("write");
         let cfg = load_malvin_config(work);
-        assert_eq!(cfg.agent.model.canonical(), DEFAULT_CLI_MODEL);
+        assert_eq!(cfg.agent.model.first().canonical(), DEFAULT_CLI_MODEL);
     });
 }
 

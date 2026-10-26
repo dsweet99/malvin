@@ -42,6 +42,7 @@ pub const fn router_b_satisfy_prompt_file() -> &'static str {
 fn default_constraints_prompt(name: &str) -> Option<&'static str> {
     match name {
         "init_constraints.md" => Some(include_str!("../../assets/prompts/init_constraints.md")),
+        "set_costs.md" => Some(include_str!("../../assets/prompts/set_costs.md")),
         _ => None,
     }
 }
@@ -112,6 +113,8 @@ mod tests {
         assert!(default_file("router_summarize.md").is_some());
         assert!(default_file(ROUTER_B_DONE_NOTE_MD).is_some());
         assert!(default_constraints_prompt("init_constraints.md").is_some());
+        assert!(default_constraints_prompt("set_costs.md").is_some());
+        assert!(default_file("set_costs.md").is_some());
         assert!(default_file("router_a.md").is_some());
         shipped_prompts_spell_available_and_techniques();
     }

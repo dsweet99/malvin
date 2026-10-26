@@ -9,6 +9,7 @@ orphan_allowed = []
 
 [test]
 num_jobs = 4
+orphan_detection = true
 watch_settle_seconds = 1.0
 pytest_plugins = []
 ignore = [
@@ -19,6 +20,7 @@ ignore = [
 
 [python]
 max_num_tests = 500
+num_jobs_pytest = 4
 statements_per_function = 86
 positional_args = 4
 keyword_only_args = 9
@@ -45,6 +47,7 @@ cycle_size = 0
 
 [rust]
 max_num_tests = 1200
+num_jobs_nextest = 4
 statements_per_function = 26
 arguments = 4
 max_indentation = 4

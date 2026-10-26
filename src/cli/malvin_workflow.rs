@@ -1,6 +1,6 @@
 use crate::cli::admin_cmd::AdminArgs;
 use crate::cli::args::{Cli, Commands};
-use crate::cli::request_argv::{RequestKind, TaggedRequest};
+use crate::cli::request_argv::{TaggedRequest, tag_requests};
 use crate::cli::shared_opts::{RouterOpts, SharedOpts};
 use malvin::config::model_id::ParsedModel;
 
@@ -25,13 +25,7 @@ fn synthesize_tagged(cli: &Cli) -> Vec<TaggedRequest> {
     if !cli.tagged_requests.is_empty() {
         return cli.tagged_requests.clone();
     }
-    cli.requests
-        .iter()
-        .map(|text| TaggedRequest {
-            text: text.clone(),
-            kind: RequestKind::Router,
-        })
-        .collect()
+    tag_requests(&cli.requests)
 }
 
 #[must_use]
@@ -39,7 +33,7 @@ pub(crate) fn malvin_workflow_from_cli(cli: Cli) -> Option<MalvinWorkflow> {
     if let Some(Commands::Admin(admin)) = cli.command {
         return Some(MalvinWorkflow::Admin {
             admin,
-            model: cli.shared.model,
+            model: cli.shared.model.first().clone(),
         });
     }
     let jobs = synthesize_tagged(&cli);

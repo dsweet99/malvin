@@ -23,9 +23,9 @@ struct RouterRunPrep {
     prompt_store: PromptStore,
 }
 
-fn new_router_client(shared: &SharedOpts) -> SdkClient {
+pub(super) fn new_router_client(shared: &SharedOpts) -> SdkClient {
     build_agent_backend(
-        shared.model.clone(),
+        shared.model.first().clone(),
         shared.max_acp_retries,
         shared.acp_stdout_markdown_enabled(),
     )
@@ -64,7 +64,6 @@ async fn prepare_router_run(
     )
     .map_err(|e| e.to_string())?;
     finish_router_run_artifacts(&artifacts, opts, &request)?;
-    client.ensure_authenticated().map_err(|e| e.to_string())?;
     let prompt_store = prepare_router_prompt_store()?;
     Ok(RouterRunPrep {
         client,
@@ -108,22 +107,15 @@ async fn run_router_body(
     prep.client.prompts_log_run_dir = Some(prep.artifacts.run_dir.clone());
     emit_run_logs_line(&prep.artifacts)?;
 
-    let loop_outcome =
-        router_flow_loop::run_router_agent_loops(router_flow_loop::RouterAgentLoopInput {
-            client: &mut prep.client,
-            artifacts: &prep.artifacts,
-            prompt_store: &prep.prompt_store,
-            shared: opts.shared,
-            router: opts.router,
-            max_loops: router_args.max_loops,
-        })
-        .await?;
-
-    malvin::acp_post_run::merge_acp_restore_and_check_abort(
-        loop_outcome.last_acp,
-        &prep.artifacts,
-        &loop_outcome.last_backups,
-    )
+    super::router_flow_fallback::run_router_models(router_flow_loop::RouterAgentLoopInput {
+        client: &mut prep.client,
+        artifacts: &prep.artifacts,
+        prompt_store: &prep.prompt_store,
+        shared: opts.shared,
+        router: opts.router,
+        max_loops: router_args.max_loops,
+    })
+    .await
 }
 
 #[cfg(test)]

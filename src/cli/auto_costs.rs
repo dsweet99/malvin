@@ -1,15 +1,13 @@
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::collections::HashMap;
+use std::path::Path;
 
+use crate::cli::router_flow::{RouterArgs, run_router};
+use crate::cli::{RouterOpts, SharedOpts};
 use crate::config::malvin_config_file::{MalvinConfig, TokenCostRates, load_malvin_config};
 use crate::config::model_id::ParsedModel;
+use malvin::prompts::{PromptError, PromptStore};
 
-fn setup_request(model: &ParsedModel) -> String {
-    format!(
-        "Set up the per-token USD cost rates for {} in ~/.malvinconf/config.toml. Research the current rates, then edit only that configuration. Do not change repository files. Finish after the configuration is saved.",
-        model.canonical()
-    )
-}
+const SET_COSTS_PROMPT: &str = "set_costs.md";
 
 fn rates_are_unset(rates: TokenCostRates) -> bool {
     rates == TokenCostRates::default()
@@ -34,53 +32,27 @@ struct CostSetupEnv<'a> {
     disabled: bool,
 }
 
-#[derive(Clone, Copy)]
-enum CostSetupSpawn {
-    Unlocatable,
+enum CostSetupOutcome {
     Completed,
-    Failed,
-}
-
-struct CostSetupChild {
-    program: PathBuf,
-    args: Vec<String>,
+    Failed(String),
 }
 
 fn skip_automatic_cost_setup() -> bool {
     cfg!(test) || crate::agent_process::test_no_real_agent_enabled()
 }
 
-fn cost_setup_args(model: &ParsedModel) -> Vec<String> {
-    vec![
-        format!("--model={}", model.canonical()),
-        "--no-auto-costs".to_string(),
-        setup_request(model),
-    ]
-}
-
-fn cost_setup_child(model: &ParsedModel) -> Option<CostSetupChild> {
-    Some(CostSetupChild {
-        program: std::env::current_exe().ok()?,
-        args: cost_setup_args(model),
-    })
-}
-
-fn command_for_cost_setup(child: &CostSetupChild) -> Command {
-    let mut cmd = Command::new(&child.program);
-    cmd.args(&child.args);
-    cmd
-}
-
-fn spawn_real_cost_setup(model: &ParsedModel) -> CostSetupSpawn {
-    let Some(child) = cost_setup_child(model) else {
-        return CostSetupSpawn::Unlocatable;
-    };
-    let status = command_for_cost_setup(&child).status();
-    if status.is_ok_and(|status| status.success()) {
-        CostSetupSpawn::Completed
-    } else {
-        CostSetupSpawn::Failed
-    }
+fn render_set_costs_request(model: &ParsedModel) -> Result<String, String> {
+    let store = PromptStore::default_store();
+    store.ensure_defaults().map_err(|e: PromptError| e.0)?;
+    store
+        .validate_exists(SET_COSTS_PROMPT)
+        .map_err(|e: PromptError| e.0)?;
+    let mut ctx = HashMap::new();
+    ctx.insert("model_id".to_string(), model.canonical());
+    store
+        .render_prompt_only(SET_COSTS_PROMPT, &ctx)
+        .map(|text| text.trim().to_string())
+        .map_err(|e: PromptError| e.0)
 }
 
 fn warn_if_reloaded_rates_unset<L>(env: &CostSetupEnv<'_>, load: &mut L)
@@ -93,30 +65,53 @@ where
     }
 }
 
-fn drive_cost_setup<S, L>(env: &CostSetupEnv<'_>, mut spawn: S, mut load: L)
+fn record_cost_setup_outcome<L>(env: &CostSetupEnv<'_>, outcome: CostSetupOutcome, mut load: L)
 where
-    S: FnMut(&ParsedModel) -> CostSetupSpawn,
+    L: FnMut(&Path) -> MalvinConfig,
+{
+    if let CostSetupOutcome::Failed(err) = &outcome {
+        let line = if err.is_empty() {
+            "automatic token-cost setup did not complete; continuing with configured rates"
+                .to_string()
+        } else {
+            format!(
+                "automatic token-cost setup did not complete; continuing with configured rates: {err}"
+            )
+        };
+        crate::output::print_log_warning(&line);
+    }
+    warn_if_reloaded_rates_unset(env, &mut load);
+}
+
+fn prepare_cost_setup<L>(env: &CostSetupEnv<'_>, load: &mut L) -> bool
+where
     L: FnMut(&Path) -> MalvinConfig,
 {
     let config = load(env.work_dir);
-    if !should_setup_costs(&config, env.model, env.disabled) {
-        return;
-    }
-    match spawn(env.model) {
-        CostSetupSpawn::Unlocatable => {
-            crate::output::print_log_warning("could not locate malvin to set up token costs");
-        }
-        CostSetupSpawn::Failed => {
-            crate::output::print_log_warning(
-                "automatic token-cost setup did not complete; continuing with configured rates",
-            );
-            warn_if_reloaded_rates_unset(env, &mut load);
-        }
-        CostSetupSpawn::Completed => warn_if_reloaded_rates_unset(env, &mut load),
-    }
+    should_setup_costs(&config, env.model, env.disabled)
 }
 
-pub(super) fn maybe_setup_costs(model: &ParsedModel, disabled: bool) {
+fn router_for_cost_setup(router: &RouterOpts) -> RouterOpts {
+    crate::cli::init_flow::router_for_init_bootstrap(router)
+}
+
+async fn run_set_costs_workflow(shared: &SharedOpts, router: &RouterOpts) -> Result<(), String> {
+    let request = render_set_costs_request(shared.model.first())?;
+    let setup_router = router_for_cost_setup(router);
+    run_router(
+        RouterArgs {
+            request: Some(request),
+            max_loops: crate::cli::init_flow::effective_init_max_loops(router.max_loops),
+        },
+        crate::cli::AgentRouteOpts {
+            shared,
+            router: &setup_router,
+        },
+    )
+    .await
+}
+
+pub(super) async fn maybe_run_cost_setup(shared: &SharedOpts, router: &RouterOpts) {
     if skip_automatic_cost_setup() {
         return;
     }
@@ -124,53 +119,20 @@ pub(super) fn maybe_setup_costs(model: &ParsedModel, disabled: bool) {
         return;
     };
     let env = CostSetupEnv {
-        model,
+        model: shared.model.first(),
         work_dir: &work_dir,
-        disabled,
+        disabled: shared.no_auto_costs,
     };
-    drive_cost_setup(&env, spawn_real_cost_setup, load_malvin_config);
+    if !prepare_cost_setup(&env, &mut load_malvin_config) {
+        return;
+    }
+    let outcome = match run_set_costs_workflow(shared, router).await {
+        Ok(()) => CostSetupOutcome::Completed,
+        Err(err) => CostSetupOutcome::Failed(err),
+    };
+    record_cost_setup_outcome(&env, outcome, load_malvin_config);
 }
 
 #[cfg(test)]
-#[path = "auto_costs_spawn_tests.rs"]
-mod auto_costs_spawn_tests;
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::config::model_id::parse_model_id;
-
-    fn config(auto_setup_costs: bool) -> MalvinConfig {
-        crate::config::malvin_config_file::parse_malvin_config(&format!(
-            "auto_setup_costs = {auto_setup_costs}"
-        ))
-    }
-
-    #[test]
-    fn setup_request_names_the_canonical_model() {
-        let model = parse_model_id("cursor:auto").expect("model");
-
-        assert_eq!(
-            setup_request(&model),
-            "Set up the per-token USD cost rates for cursor:auto in ~/.malvinconf/config.toml. Research the current rates, then edit only that configuration. Do not change repository files. Finish after the configuration is saved."
-        );
-    }
-
-    #[test]
-    fn setup_is_guarded_by_switches_live_prices_and_configured_rates() {
-        let cursor = parse_model_id("cursor:auto").expect("model");
-        assert!(should_setup_costs(&config(true), &cursor, false));
-        assert!(!should_setup_costs(&config(false), &cursor, false));
-        assert!(!should_setup_costs(&config(true), &cursor, true));
-
-        let openrouter = parse_model_id("pi:openrouter/openai/gpt-4o-mini").expect("model");
-        let portkey = parse_model_id("pi:portkey/openai/gpt-4o-mini").expect("model");
-        assert!(!should_setup_costs(&config(true), &openrouter, false));
-        assert!(!should_setup_costs(&config(true), &portkey, false));
-
-        let priced = crate::config::malvin_config_file::parse_malvin_config(
-            "[agent.cursor.auto]\nusd_per_microtoken_in = 1.0",
-        );
-        assert!(!should_setup_costs(&priced, &cursor, false));
-    }
-}
+#[path = "auto_costs_flow_tests.rs"]
+mod auto_costs_flow_tests;

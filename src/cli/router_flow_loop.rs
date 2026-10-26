@@ -34,7 +34,12 @@ pub(crate) struct RouterAgentLoopOutcome {
 struct RouterLoopStepResult {
     last_acp: Result<(), String>,
     last_backups: SessionDotfileBackups,
-    decision: Option<RouterLoopDecision>,
+    outcome: RouterLoopStepOutcome,
+}
+
+enum RouterLoopStepOutcome {
+    ClosedEarly,
+    Decided(RouterLoopDecision),
 }
 
 pub(crate) fn restore_router_iteration_dotfiles(
@@ -58,7 +63,10 @@ pub(crate) async fn run_router_agent_loops(
         let step = run_one_router_loop_step(&mut input, agent_loop, max_loops).await?;
         last_acp = step.last_acp;
         last_backups = step.last_backups;
-        match router_flow_loop_decide::prefer_exit_gates_over_acp(&last_acp, step.decision) {
+        let RouterLoopStepOutcome::Decided(decision) = step.outcome else {
+            break;
+        };
+        match router_flow_loop_decide::prefer_exit_gates_over_acp(&last_acp, decision) {
             RouterLoopDecision::Continue => {}
             RouterLoopDecision::Exit => break,
             RouterLoopDecision::ExitGatesFailed(detail) => {
@@ -109,28 +117,22 @@ async fn finish_router_loop_step(
         } => (acp_result, iteration_backups, None),
         RouterAcpIterationOutcome::Open {
             iteration_backups,
-            done,
-            request_open,
+            completion,
             timing,
-        } => (
-            Ok(()),
-            iteration_backups,
-            Some((done, request_open, timing)),
-        ),
+        } => (Ok(()), iteration_backups, Some((completion, timing))),
     };
     let last_backups = restore_router_iteration_dotfiles(work_dir, &iteration_backups)?;
-    let Some((done, request_open, timing)) = open_session else {
+    let Some((completion, timing)) = open_session else {
         return Ok(RouterLoopStepResult {
             last_acp: acp_result,
             last_backups,
-            decision: None,
+            outcome: RouterLoopStepOutcome::ClosedEarly,
         });
     };
     let decision = decide_router_loop_exit(RouterLoopExitInput {
         artifacts: input.artifacts,
         backups: &last_backups,
-        done,
-        request_open,
+        completion,
         gates: input.router.gates,
         agent_loop,
         max_loops,
@@ -152,7 +154,7 @@ async fn finish_router_loop_step(
     Ok(RouterLoopStepResult {
         last_acp,
         last_backups,
-        decision: Some(decision),
+        outcome: RouterLoopStepOutcome::Decided(decision),
     })
 }
 

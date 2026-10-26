@@ -269,8 +269,9 @@ fn dispatch_gates_only_route_runs_tenacious_preflight() {
         let mut shared = SharedOpts::test_defaults();
         let mut router = crate::cli::RouterOpts::test_defaults();
         router.gates = true;
-        shared.model =
-            malvin::config::model_id::parse_model_id("pi:some-unknown/foo").expect("model");
+        shared.model = malvin::config::model_id::parse_model_id("pi:some-unknown/foo")
+            .expect("model")
+            .into();
         let mut result = Ok(());
         malvin::agent_process::with_env("MALVIN_PI", Some("/missing/pi-entry.js"), || {
             result = super::dispatch_gates_only_route(super::GatesOnlyDispatch {
