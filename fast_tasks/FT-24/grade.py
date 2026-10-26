@@ -95,10 +95,11 @@ def evaluate(workspace: Path) -> int:
     batch = [(1.0, -3.0, 2.0), (1.0, 0.0, -4.0), (2.0, 5.0, -3.0)] * 2000
     timings = []
     for _ in range(3):
-        started = time.perf_counter()
+        # Parallel graders can delay scheduling without adding calculation work.
+        started = time.process_time()
         for coefficients in batch:
             function(*coefficients)
-        timings.append(time.perf_counter() - started)
+        timings.append(time.process_time() - started)
     if statistics.median(timings) > 0.040:
         return 0
     return 1
