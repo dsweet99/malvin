@@ -84,7 +84,7 @@ max_loops = 9
             Cli::command().get_matches_from(["malvin", "--model", "cursor:composer-2", "-g"]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         apply_workspace_config_defaults(&matches, &mut cli).expect("cli model wins");
-        assert_eq!(cli.shared.model.canonical(), "cursor:composer-2");
+        assert_eq!(cli.shared.model.first().canonical(), "cursor:composer-2");
         let after = std::fs::read_to_string(&path).expect("read");
         assert!(
             after.contains("model = \"auto\""),

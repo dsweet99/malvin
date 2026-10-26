@@ -65,3 +65,20 @@ Flag reference: `malvin --help`. Behavioral contracts: `malvin --doc` and `malvi
 
 `malvin` allows all tool calls by default.
 
+
+Model selection uses an ordered list in `~/.malvinconf/config.toml`:
+
+```toml
+[agent]
+model = ["cursor:auto", "claude:sonnet", "codex:gpt-5.6"]
+```
+
+Each task starts with the first model. If it fails because funds or credits are
+insufficient, malvin tries the next model. Other failures retain their existing
+error handling. If every model runs out of funds, the last error is reported.
+Existing single-string model settings remain supported.
+
+`--model=claude:sonnet` uses only that model. A comma-separated override, such as
+`--model=claude:sonnet,cursor:auto`, replaces the entire configured list. Commas
+inside bracket parameters remain part of the model, for example
+`--model='codex:gpt-5.6[thinking=high,service=priority],cursor:auto'`.

@@ -68,7 +68,8 @@ async fn drive_router_turns(workspace: &std::path::Path) -> MockRouterTurns {
         emit_stdout_markdown: false,
         log_full_outgoing_prompts: false,
     };
-    let mut client = malvin::backends::agent_backend::SdkClient::new(shared.model.clone(), io);
+    let mut client =
+        malvin::backends::agent_backend::SdkClient::new(shared.model.first().clone(), io);
     let log_path = router_iteration_log_path(&artifacts, 1);
     let mut input = RouterAcpIterationInput {
         client: &mut client,

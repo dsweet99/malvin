@@ -105,7 +105,7 @@ async fn run_exit_summarize_then_log_summary(
     input: &mut RouterAcpIterationInput<'_>,
     log_path: &Path,
 ) -> Result<(), String> {
-    let model = input.shared.model.canonical();
+    let model = input.shared.model.first().canonical();
     let body = router_flow_prompt::build_router_summarize_prompt(
         router_flow_prompt::RouterSummarizePromptInput {
             store: input.prompt_store,

@@ -98,7 +98,7 @@ fn open_client(workspace: &std::path::Path) -> SdkClient {
         emit_stdout_markdown: false,
         log_full_outgoing_prompts: true,
     };
-    let mut client = SdkClient::new(shared.model, io);
+    let mut client = SdkClient::new(shared.model.first().clone(), io);
     client.prompts_log_run_dir = Some(workspace.to_path_buf());
     let _ = client.attach_run_timing_for_session();
     client

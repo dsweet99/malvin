@@ -118,7 +118,7 @@ mod tests {
         let mut msgs = assistant(&json!([]), 0, "error");
         msgs[1]["errorMessage"] = json!("You have no credits remaining.");
         let err = agent_end_error(Some(&msgs), None).expect("provider error");
-        assert_eq!(err.fault, AgentFault::Ordinary);
+        assert_eq!(err.fault, AgentFault::NonRetryable);
         assert_eq!(
             err.message,
             "pi turn failed: You have no credits remaining."

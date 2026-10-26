@@ -136,7 +136,9 @@ fn config_and_backend_layers(
     if cfg.image.is_none() {
         layers.push(toolchain_commands(base_includes_node));
     }
-    layers.extend(super::backend_setup::setup_for(model)?.image_layer(&crate::user_home_dir()));
+    for setup in super::backend_setup::setups_for(model)? {
+        layers.extend(setup.image_layer(&crate::user_home_dir()));
+    }
     if !cfg.setup.is_empty() {
         layers.push(cfg.setup.clone());
     }

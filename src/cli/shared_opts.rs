@@ -1,6 +1,6 @@
 use clap::{ArgAction, Args};
-use malvin::config::malvin_config_file::{DEFAULT_MAX_LOOPS, parse_model_cli_arg};
-use malvin::config::model_id::ParsedModel;
+use malvin::config::malvin_config_file::{DEFAULT_MAX_LOOPS, parse_model_list_cli_arg};
+use malvin::config::model_list::ModelList;
 pub use malvin::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 
 const QUIET_HELPTEXT: &str = "Only print DMs";
@@ -64,13 +64,13 @@ pub(crate) fn parse_meta_loop_count(s: &str) -> Result<MetaLoopCount, String> {
 #[derive(Args, Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct SharedOpts {
-    /// Model id (`cursor:`, `pi:`, `codex:`, or an `[aliases.models]` name)
+    /// Model ids or aliases, comma-separated; try the next model on insufficient funds
     #[arg(
         long,
         default_value = DEFAULT_CLI_MODEL,
-        value_parser = parse_model_cli_arg
+        value_parser = parse_model_list_cli_arg
     )]
-    pub model: ParsedModel,
+    pub model: ModelList,
     /// Skip the in-process workflow that fills missing token-cost rates
     #[arg(long, default_value_t = false)]
     pub no_auto_costs: bool,
@@ -164,7 +164,8 @@ impl SharedOpts {
     pub(crate) fn test_defaults() -> Self {
         Self {
             model: malvin::config::model_id::parse_model_id(malvin::config::DEFAULT_CLI_MODEL)
-                .expect("default model"),
+                .expect("default model")
+                .into(),
             no_auto_costs: false,
             max_acp_retries: malvin::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,

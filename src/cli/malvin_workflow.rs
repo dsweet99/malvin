@@ -39,7 +39,7 @@ pub(crate) fn malvin_workflow_from_cli(cli: Cli) -> Option<MalvinWorkflow> {
     if let Some(Commands::Admin(admin)) = cli.command {
         return Some(MalvinWorkflow::Admin {
             admin,
-            model: cli.shared.model,
+            model: cli.shared.model.first().clone(),
         });
     }
     let jobs = synthesize_tagged(&cli);

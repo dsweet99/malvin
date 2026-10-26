@@ -96,7 +96,7 @@ fn router_for_cost_setup(router: &RouterOpts) -> RouterOpts {
 }
 
 async fn run_set_costs_workflow(shared: &SharedOpts, router: &RouterOpts) -> Result<(), String> {
-    let request = render_set_costs_request(&shared.model)?;
+    let request = render_set_costs_request(shared.model.first())?;
     let setup_router = router_for_cost_setup(router);
     run_router(
         RouterArgs {
@@ -119,7 +119,7 @@ pub(super) async fn maybe_run_cost_setup(shared: &SharedOpts, router: &RouterOpt
         return;
     };
     let env = CostSetupEnv {
-        model: &shared.model,
+        model: shared.model.first(),
         work_dir: &work_dir,
         disabled: shared.no_auto_costs,
     };

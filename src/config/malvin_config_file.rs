@@ -2,7 +2,8 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use crate::config::log_gc_config::LogsGcConfig;
-use crate::config::model_id::{ParsedModel, parse_model_id};
+use crate::config::model_id::parse_model_id;
+use crate::config::model_list::ModelList;
 use crate::output::print_log_warning;
 use crate::terminal_palette::TerminalTheme;
 use crate::workspace::support_paths::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
@@ -24,7 +25,9 @@ pub(crate) use malvin_config_model_policy::parse_remote_aliases;
 pub(crate) use malvin_config_model_policy::{
     load_model_aliases, parse_aliases_lenient, parse_model_aliases,
 };
-pub use malvin_config_model_policy::{load_remote_aliases, parse_model_cli_arg};
+pub use malvin_config_model_policy::{
+    load_remote_aliases, parse_model_cli_arg, parse_model_list_cli_arg,
+};
 use malvin_config_open::create_malvin_config_from_template;
 pub use malvin_config_open::{
     ensure_malvin_config_file_if_missing, load_agent_config_lenient, load_agent_config_strict,
@@ -44,14 +47,16 @@ const DEFAULT_MALVIN_CONFIG_TEMPLATE: &str = include_str!(concat!(
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AgentConfig {
-    pub model: ParsedModel,
+    pub model: ModelList,
     pub max_acp_retries: u32,
 }
 
 impl Default for AgentConfig {
     fn default() -> Self {
         Self {
-            model: parse_model_id(DEFAULT_CLI_MODEL).expect("DEFAULT_CLI_MODEL must parse"),
+            model: parse_model_id(DEFAULT_CLI_MODEL)
+                .expect("DEFAULT_CLI_MODEL must parse")
+                .into(),
             max_acp_retries: DEFAULT_MAX_ACP_RETRIES,
         }
     }

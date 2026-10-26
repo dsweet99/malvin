@@ -36,7 +36,7 @@ fn upload_all(
         &stage.join("config.toml"),
         &prep.paths.config_path(),
     )?;
-    for file in super::super::backend_setup::setup_for(&inv.model)?.login_files(&prep.home) {
+    for file in super::super::backend_setup::login_files_for(&inv.model, &prep.home)? {
         note(&format!(
             "copying {} into the Sandbox for this run",
             file.display()
@@ -81,7 +81,9 @@ fn run_malvin(
             .map(|a| a.to_string_lossy().into_owned()),
     );
     let mut forwarded = super::super::credentials::forwarded_env(|k| std::env::var(k).ok());
-    forwarded.extend(super::super::backend_setup::setup_for(&inv.model)?.sandbox_env());
+    for setup in super::super::backend_setup::setups_for(&inv.model)? {
+        forwarded.extend(setup.sandbox_env());
+    }
     let env = prep.paths.malvin_env(forwarded);
     let reply = bridge.call(
         "exec",

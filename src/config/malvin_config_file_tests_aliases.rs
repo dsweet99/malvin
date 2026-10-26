@@ -17,7 +17,7 @@ fn parse_model_aliases_from_config_and_removed_rpi_agent_model_falls_back_to_def
             Some("pi:openrouter/openai/gpt-astra")
         );
         assert_eq!(
-            cfg.agent.model.canonical(),
+            cfg.agent.model.first().canonical(),
             "pi:openrouter/openai/gpt-astra"
         );
     }
@@ -30,7 +30,7 @@ fn parse_model_aliases_from_config_and_removed_rpi_agent_model_falls_back_to_def
         "#,
         );
         assert_eq!(
-            cfg.agent.model.canonical(),
+            cfg.agent.model.first().canonical(),
             crate::workspace::support_paths::DEFAULT_CLI_MODEL
         );
     }
@@ -95,7 +95,7 @@ fn legacy_nicknames_table_is_rejected_with_a_rename_error_and_parse_remote_alias
             cfg.remote_aliases.get("big").map(String::as_str),
             Some("modal:sandbox[gpu=A100,mem=32]")
         );
-        assert_eq!(cfg.agent.model.canonical(), "cursor:gpt-5");
+        assert_eq!(cfg.agent.model.first().canonical(), "cursor:gpt-5");
     }
 }
 

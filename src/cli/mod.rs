@@ -21,6 +21,7 @@ pub(crate) mod remotes_cmd;
 pub(crate) mod repo_checks;
 pub(crate) mod request_argv;
 pub(crate) mod router_flow;
+mod router_flow_fallback;
 pub(crate) mod run_emit;
 pub(crate) mod shared_opts;
 pub(crate) mod tidy_flow;

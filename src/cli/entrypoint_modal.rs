@@ -23,7 +23,7 @@ pub(crate) fn modal_invocation(
     }
     Ok(ModalInvocation {
         remote_args: remote_args(raw),
-        model: cli.shared.model.canonical(),
+        model: cli.shared.model.cli_value(),
         request_files: cli
             .requests
             .iter()

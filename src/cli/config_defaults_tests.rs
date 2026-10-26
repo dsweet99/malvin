@@ -56,11 +56,15 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
     assert!(!global_flag_from_command_line(&matches, "model"));
 
     let agent = AgentConfig {
-        model: malvin::config::model_id::parse_model_id("cursor:cfg").expect("model"),
+        model: malvin::config::model_id::parse_model_id("cursor:cfg")
+            .expect("model")
+            .into(),
         max_acp_retries: 6,
     };
     let mut shared = SharedOpts {
-        model: malvin::config::model_id::parse_model_id("cursor:old").expect("model"),
+        model: malvin::config::model_id::parse_model_id("cursor:old")
+            .expect("model")
+            .into(),
         no_auto_costs: false,
         max_acp_retries: 1,
         doc: false,
@@ -70,7 +74,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
         remote: None,
     };
     apply_shared_config_defaults(&matches, &mut shared, &agent);
-    assert_eq!(shared.model.canonical(), "cursor:cfg");
+    assert_eq!(shared.model.first().canonical(), "cursor:cfg");
     assert_eq!(shared.max_acp_retries, 6);
 }
 
@@ -80,7 +84,7 @@ fn apply_workspace_config_defaults_overrides_unset_flags_for_gates_only() {
         let matches = Cli::command().get_matches_from(["malvin", "-g"]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
-        assert_eq!(cli.shared.model.canonical(), "cursor:cfg-model");
+        assert_eq!(cli.shared.model.first().canonical(), "cursor:cfg-model");
         assert_eq!(cli.shared.max_acp_retries, 8);
         assert!(cli.command.is_none());
     });
@@ -99,7 +103,7 @@ fn apply_workspace_config_defaults_respects_explicit_cli_flags_for_gates_only() 
         ]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
-        assert_eq!(cli.shared.model.canonical(), "cursor:cli-model");
+        assert_eq!(cli.shared.model.first().canonical(), "cursor:cli-model");
         assert_eq!(cli.shared.max_acp_retries, 2);
     });
 }
@@ -110,7 +114,7 @@ fn apply_workspace_config_defaults_for_admin_command() {
         let matches = Cli::command().get_matches_from(["malvin", "admin", "models"]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
-        assert_eq!(cli.shared.model.canonical(), "cursor:cfg-model");
+        assert_eq!(cli.shared.model.first().canonical(), "cursor:cfg-model");
         assert!(matches!(cli.command, Some(crate::cli::Commands::Admin(_))));
     });
 }
@@ -140,5 +144,26 @@ fn parse_cli_with_config_defaults_gates_only() {
         assert!(!cli.has_request());
         assert!(cli.router.gates);
         std::env::set_current_dir(cwd).expect("restore cwd");
+    });
+}
+
+#[test]
+fn model_list_config_and_cli_override_preserve_order() {
+    malvin::test_support::test_utils::with_isolated_home(|work| {
+        let path = malvin::malvin_config_path(work);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, "[agent]\nmodel = ['cursor:primary', 'claude:sonnet']\n[aliases.models]\nbackup = 'codex:gpt-5.6'\n").unwrap();
+        let (configured, _) = parse_cli_with_config_defaults(["malvin", "task"]).unwrap();
+        assert_eq!(
+            configured.shared.model.cli_value(),
+            "cursor:primary,claude:sonnet"
+        );
+        let (single, _) =
+            parse_cli_with_config_defaults(["malvin", "--model=backup", "task"]).unwrap();
+        assert_eq!(single.shared.model.cli_value(), "codex:gpt-5.6");
+        let (list, _) =
+            parse_cli_with_config_defaults(["malvin", "--model=backup,cursor:auto", "task"])
+                .unwrap();
+        assert_eq!(list.shared.model.cli_value(), "codex:gpt-5.6,cursor:auto");
     });
 }

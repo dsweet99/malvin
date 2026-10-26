@@ -31,9 +31,7 @@ pub(crate) fn agent_string_is_usage_limit(msg: &str) -> bool {
 }
 
 pub(crate) fn agent_string_is_openrouter_billing_failure(msg: &str) -> bool {
-    let text = msg.to_ascii_lowercase();
-    text.contains("openrouter billing/credit failure")
-        || text.contains("insufficient credits")
+    agent_string_is_insufficient_funds(msg)
 }
 
 pub(crate) fn agent_string_is_openrouter_missing_content(msg: &str) -> bool {

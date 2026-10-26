@@ -2,6 +2,7 @@ pub(crate) mod log_gc_config;
 pub mod malvin_config_file;
 pub mod mem_limit_config;
 pub mod model_id;
+pub mod model_list;
 pub(crate) mod workflow_name_aliases;
 
 pub use crate::sdk_drain_timeout::{

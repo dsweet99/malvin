@@ -16,7 +16,8 @@ auto_setup_costs = true
 # big = "modal:sandbox[gpu=A100,mem=32,timeout=2h]"
 
 [agent]
-model = "cursor:auto"
+# Try models in order; move to the next only when funds or credits are insufficient.
+model = ["cursor:auto"]
 max_acp_retries = 3
 
 # Cursor-mode USD cost rates ($ per million tokens) for model `cursor:auto`.

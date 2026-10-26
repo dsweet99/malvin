@@ -13,7 +13,7 @@ pub(crate) fn global_flag_from_command_line(matches: &ArgMatches, id: &str) -> b
 
 fn finalize_shared_model(matches: &ArgMatches, shared: &mut SharedOpts) -> Result<(), String> {
     let _ = matches;
-    let _ = require_prefixed_model(&shared.model.canonical())?;
+    let _ = require_prefixed_model(&shared.model.first().canonical())?;
     Ok(())
 }
 

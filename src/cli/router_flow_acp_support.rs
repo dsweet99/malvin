@@ -41,7 +41,7 @@ pub(crate) async fn run_router_turns(
     input: &mut RouterAcpIterationInput<'_>,
     log_path: &Path,
 ) -> Result<RouterTurnsOutcome, String> {
-    let model = input.shared.model.canonical();
+    let model = input.shared.model.first().canonical();
     let _exp_log =
         ensure_gate_exp_log_file(input.artifacts, input.agent_loop).map_err(|e| e.to_string())?;
     input
@@ -62,7 +62,7 @@ async fn deliver_router_initial_turn(
     log_path: &Path,
 ) -> Result<SessionDotfileBackups, String> {
     let work_dir = input.artifacts.work_dir.as_path();
-    let model = input.shared.model.canonical();
+    let model = input.shared.model.first().canonical();
     let include_header =
         !malvin::backends::agent_backend::session_header_is_satisfied(input.client);
     let initial = router_flow_prompt::build_router_initial_prompt(
