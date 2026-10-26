@@ -126,8 +126,7 @@ __ATTACH__: <path/to/file>
 ```
 as the last line of the the DM, just before __MALVIN_DM_END__.
 - `__ATTACH__: ` is the key string that makes this work.
-- `<path/to/file>`  should be replace with the absolute path
-  to the file that you want to attach.
+- `<path/to/file>`  should be replaced with the absolute path to the file that you want to attach.
 
 You are not required to attach a file, but you might want to if
 - the user explicitly asked you to
@@ -135,6 +134,7 @@ You are not required to attach a file, but you might want to if
   create some other file
 - maybe other good reasons
 
-IMPORTANT: Use DM only when directed to or in an emergency.
+
+**IMPORTANT**: Use DM only when directed to or in an emergency.
 
 ---- END MALVIN_HEADER ----
