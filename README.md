@@ -12,7 +12,7 @@ The build needs neither Node nor network access beyond crates.io.
 `cursor:` models (including the default, `cursor:auto`) need
 [Node.js](https://nodejs.org/) ≥ 22.13 with `npm` at run time. The first time a
 `cursor:` model runs, malvin installs the Cursor SDK (`@cursor/sdk`) under
-`~/.malvinconf/sdk-bridges/` with `npm ci`.
+`~/.malvinconf/sdk-bridges/` with `npm ci`. Set `CURSOR_API_KEY`.
 
 `claude:` models need Node.js ≥ 22.13 with npm. The first time a `claude:` model
 runs, malvin installs the Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`)
@@ -38,9 +38,12 @@ Most of the time, just ask for what you want:
 malvin "What time is it?"
 ```
 
-By default malvin prints a full agent stream. For the final answer only:
+By default, malvin prints a full agent stream. Use `-q` (or `--quiet`) to print
+only direct messages (DMs), plus the closing `TIMING` and `COST` lines. A DM is
+text the agent places between `__MALVIN_DM_START__` and `__MALVIN_DM_END__`
+fences; the fence markers are omitted from stdout. Ask for a DM in your request:
 ```bash
-malvin -q "Where (geographically) am I?"
+malvin -q "Where (geographically) am I? Send the answer in a DM."
 ```
 
 By default, malvin runs an investigation. The larger or more complex the task, the more helpful this is. You can ask difficult questions or request complex changes somewhat tersely:
@@ -53,9 +56,10 @@ You can also pass a request file instead of a string:
 ```bash
 malvin code_review.md
 ```
-That works well in CI or cron. For quieter stdout on the default router, use `-q` (DM bodies only). For no process stdout at all, redirect:
+That works well in CI or cron. Use `-qq` (or `--very-quiet`) to suppress all
+process stdout, including DMs and the closing `TIMING` and `COST` lines:
 ```bash
-malvin overnight_logs_alerter.md >/dev/null
+malvin -qq overnight_logs_alerter.md
 ```
 For example, `overnight_logs_alerter.md` might tell malvin to scan prod logs and report oddities via Slack. Malvin *always* writes run logs under `~/.malvinconf/logs` (useful for process improvement and as later context).
 

@@ -7,7 +7,7 @@ The default route allows up to three outer iterations (`DEFAULT_MAX_LOOPS` is 3;
 | | |
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
-| Output | Styled stdout on a TTY (same startup chrome as other agent workflows); with `--quiet` / `-q`, only `__MALVIN_DM_*__` bodies |
+| Output | Styled stdout on a TTY (same startup chrome as other agent workflows); with `--quiet` / `-q`, direct-message bodies plus closing `TIMING` and `COST` lines; with `-qq` / `--very-quiet`, no stdout |
 | Logs | `router_<n>.log` under `~/.malvinconf/logs/<hash>/<run>/` (one file per outer iteration and its coder agent; the first is `router_1.log`) |
 | Requires | No `.malvin/gates` at startup (unless `--gates` later needs them) |
 
@@ -42,7 +42,8 @@ See `malvin --doc`. Notable for the default route:
 |------|--------|
 | `-g` / `--gates` | After `__MALVIN_DONE__` in the `router_a_2` reply, or after `__MALVIN_DONE__` in the `router_c` reply, run workspace `.malvin/gates`. A pass stops success and does not start another iteration. A failure starts another full router iteration while iterations remain, and fails the run on the last iteration (`DEFAULT_MAX_LOOPS` is 3, so a default run retries after a gate failure until three iterations have run). A `router_c` reply that omits the marker restarts the iteration without running gates. Also injects check text into `router_a.md` via `{{ code_extra }}`. |
 | `--creative[=PROB]` | Applies only to the following REQUEST (repeatable). On each outer iteration of that request, with probability `PROB` (default `1.0` when the flag is set): include `mbc2.md` in the aggregated initial prompt (after the header), and fill `router_b.md` creative template keys for the optional work turn |
-| `--quiet` / `-q` | Stdout shows only `__MALVIN_DM_*__` bodies, plus the closing `TIMING` and `COST` lines |
+| `--quiet` / `-q` | Stdout shows direct-message bodies between `__MALVIN_DM_START__` and `__MALVIN_DM_END__` fences (without the markers), plus the closing `TIMING` and `COST` lines. Ask for a DM in the request; this flag does not select the final answer automatically. |
+| `-qq` / `--very-quiet` | Suppress all process stdout, including DMs and closing `TIMING` and `COST` lines. Run-dir logs and stderr are unchanged. |
 
 ## Prompt workflow
 

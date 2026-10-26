@@ -43,7 +43,11 @@ Run the invocation on a remote machine instead of on this one, then apply its fi
 
 ### `-q` / `--quiet`
 
-On the default router (`malvin REQUEST` and `malvin -g`), print only the text between `__MALVIN_DM_START__` and `__MALVIN_DM_END__` fences to process stdout. Startup chrome, agent stream, heartbeats, prompt-name lines, and fence markers are omitted from stdout. Run-dir logs and stderr are unchanged. The process still prints one `TIMING` line and one `COST` line at the end (see session footnotes).
+On the default router (`malvin REQUEST` and `malvin -g`), print only the text between `__MALVIN_DM_START__` and `__MALVIN_DM_END__` fences to process stdout. Startup chrome, agent stream, heartbeats, prompt-name lines, and fence markers are omitted from stdout. The process still prints one `TIMING` line and one `COST` line at the end (see session footnotes). A DM is a direct message explicitly fenced by the agent; `-q` does not select the final answer automatically. Ask the agent to send its answer in a DM when you want that answer on stdout. Run-dir logs and stderr are unchanged.
+
+### `-qq` / `--very-quiet`
+
+On the default router (`malvin REQUEST` and `malvin -g`), suppress all process stdout, including DMs and the closing `TIMING` and `COST` lines. Repeat `-q` as `-qq`, or use `--very-quiet`. Run-dir logs and stderr are unchanged.
 
 ### `--model <MODEL>`
 
@@ -149,7 +153,7 @@ Every agent-backed command creates `~/.malvinconf/logs/<hash>/<timestamp>_<token
 
 ### Session footnotes (`TIMING` / `COST`)
 
-When an agent workflow is about to exit, malvin prints one footnote pair. That print is outside `--ml`: a finite count returns after N passes, `--ml=inf` returns only when a request fails, and the lines are also printed on interrupt. They are not printed at the end of each request. `wall` is the elapsed time of this malvin process. Token counts, step counts, tool time, LLM wait, and dollars are the sum across init, every request, and every meta-loop cycle. Carried totals inside one session are not counted twice. The lines go to process stdout under `-q`, and they are appended to the active `stdout.log` when a run directory is open:
+When an agent workflow is about to exit, malvin prints one footnote pair. That print is outside `--ml`: a finite count returns after N passes, `--ml=inf` returns only when a request fails, and the lines are also printed on interrupt. They are not printed at the end of each request. `wall` is the elapsed time of this malvin process. Token counts, step counts, tool time, LLM wait, and dollars are the sum across init, every request, and every meta-loop cycle. Carried totals inside one session are not counted twice. The lines go to process stdout under `-q`; `-qq` / `--very-quiet` suppresses them on stdout. They are appended to the active `stdout.log` when a run directory is open:
 
 ```text
 TIMING: wall = … llm_wait = … …
