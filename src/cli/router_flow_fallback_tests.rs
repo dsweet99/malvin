@@ -18,7 +18,14 @@ for await (const line of readline.createInterface({input: process.stdin})) {
         emit({event: 'ok', agentId: 'test-agent'});
     } else if (req.op === 'send') {
         turns += 1;
-        if (model.startsWith('poor') || (model.startsWith('late-poor') && turns === 2)) {
+        if (model === 'metered-poor' || model === 'metered-error') {
+            emit({event: 'usage', usage: {inputTokens: 70, outputTokens: 7}});
+            if (model === 'metered-poor') {
+                emit({event: 'fatal', message: 'Insufficient funds', retryable: false});
+            } else {
+                emit({event: 'run_done', status: 'error', error: 'Insufficient funds'});
+            }
+        } else if (model.startsWith('poor') || (model.startsWith('late-poor') && turns === 2)) {
             emit({event: 'fatal', message: 'Insufficient funds: ' + model, retryable: false});
         } else if (model === 'summary-poor' && turns === 3) {
             emit({event: 'fatal', message: 'Insufficient funds', retryable: false});

@@ -87,19 +87,30 @@ pub(crate) async fn read_event(session: &BridgeSession) -> Result<BridgeEvent, A
 }
 
 pub(crate) async fn drain_until_run_done(session: &BridgeSession) -> Result<(), AgentError> {
+    let mut last_usage = None;
+    let result = drain_turn(session, &mut last_usage).await;
+    if let Some(usage) = last_usage {
+        record_sdk_usage(session.timing.as_ref(), &usage);
+    }
+    result
+}
+
+async fn drain_turn(
+    session: &BridgeSession,
+    last_usage: &mut Option<serde_json::Value>,
+) -> Result<(), AgentError> {
     use super::bridge_sdk::log_adapter::handle_stream_event;
     let mut turn = super::bridge_sdk::DrainIdleTurn::new();
-    let mut last_usage: Option<serde_json::Value> = None;
     loop {
         let ev = read_event_with_idle_timeout(session, "run_done", &mut turn).await?;
         match &ev {
             BridgeEvent::Step { .. } => note_sdk_step(session.timing.as_ref()),
             BridgeEvent::Usage { usage } => {
-                last_usage = Some(usage.clone());
+                *last_usage = Some(usage.clone());
                 handle_stream_event(session, &ev);
             }
             BridgeEvent::RunDone { .. } => {
-                return finish_run_done(session, &ev, last_usage.as_ref());
+                return finish_run_done(session, &ev, last_usage.take().as_ref());
             }
             BridgeEvent::Fatal { message, .. } => {
                 discard_optional_trailing_run_done(session).await;

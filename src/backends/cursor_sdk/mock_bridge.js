@@ -113,6 +113,11 @@ async function handleSend(req) {
   }
   const prompt = String(req.prompt || "");
 
+  if (prompt.startsWith("USAGE_BEFORE_")) {
+    emit({ event: "usage", usage: { inputTokens: 20, outputTokens: 2 } });
+    emit({ event: "usage", usage: { inputTokens: 70, outputTokens: 7 } });
+  }
+
   if (prompt.includes("NON_TEARDOWN_TIMEOUT_ONCE") && consumeOnceFlag("non_teardown_timeout_once")) {
     emit({
       event: "fatal",
