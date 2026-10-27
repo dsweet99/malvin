@@ -31,6 +31,17 @@ fn text_is_throughput_limit(text: &str) -> bool {
     text.contains("rate limit") || text.contains("requests per")
 }
 
+fn text_is_storage_quota(text: &str) -> bool {
+    [
+        "disk quota",
+        "storage quota",
+        "filesystem quota",
+        "file system quota",
+    ]
+    .iter()
+    .any(|marker| text.contains(marker))
+}
+
 fn text_has_payment_words(text: &str) -> bool {
     text.contains("credit")
         || text.contains("funds")
@@ -63,6 +74,9 @@ fn text_has_named_funds_marker(text: &str) -> bool {
 }
 
 fn text_is_funds_exhausted(text: &str) -> bool {
+    if text_is_storage_quota(text) {
+        return false;
+    }
     if text_is_throughput_limit(text) && !text_has_payment_words(text) {
         return false;
     }
@@ -149,6 +163,20 @@ mod tests {
             "The balance was breached",
         ] {
             assert!(!agent_string_is_insufficient_funds(message), "{message}");
+        }
+    }
+
+    #[test]
+    fn storage_quota_failures_are_not_account_denials() {
+        for message in [
+            "Disk quota exceeded (os error 122)",
+            "Provider error: DISK QUOTA EXCEEDED (os error 122)",
+            "Storage quota exhausted",
+            "Filesystem quota reached",
+            "File system quota exceeded",
+            "Failed to write billing.json: Disk quota exceeded (os error 122)",
+        ] {
+            assert_eq!(account_denial(message), None, "{message}");
         }
     }
 

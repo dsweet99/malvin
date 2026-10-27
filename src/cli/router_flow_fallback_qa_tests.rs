@@ -17,6 +17,7 @@ fn check_model_switch(message: &str, expect_backup: bool) {
         if expect_backup {
             assert_eq!(attempts, "poor\ngood\n", "{message} {result:?}");
         } else {
+            assert!(result.as_ref().unwrap_err().contains(message), "{result:?}");
             let stayed = attempts.lines().all(|line| line == "poor");
             assert!(
                 stayed && attempts.lines().next().is_some(),
@@ -93,4 +94,9 @@ fn credential_and_throughput_failures_stay_on_the_first_model() {
         "Rate limit reached for requests per min. Limit: 20 / min.",
         false,
     );
+}
+
+#[test]
+fn disk_quota_exceeded_must_not_try_backup() {
+    check_model_switch("Disk quota exceeded (os error 122)", false);
 }
