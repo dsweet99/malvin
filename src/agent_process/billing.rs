@@ -38,6 +38,11 @@ fn text_has_payment_words(text: &str) -> bool {
         || text.contains("payment required")
 }
 
+fn text_has_word(text: &str, word: &str) -> bool {
+    text.split(|c: char| !c.is_ascii_alphanumeric())
+        .any(|token| token == word)
+}
+
 fn text_has_shortfall(text: &str) -> bool {
     text.contains("insufficient")
         || text.contains("exceeded")
@@ -45,6 +50,8 @@ fn text_has_shortfall(text: &str) -> bool {
         || text.contains("out of")
         || text.contains("no credit")
         || text.contains("more credit")
+        || text_has_word(text, "exhausted")
+        || text_has_word(text, "reached")
 }
 
 fn text_mentions_billable(text: &str) -> bool {
@@ -123,6 +130,8 @@ mod tests {
             "Upgrade your plan to use this model",
             "This request requires more credits, or fewer max_tokens.",
             "You exceeded your current quota, please check your plan and billing details.",
+            "Billing hard limit has been reached",
+            "Quota exhausted",
         ] {
             assert!(agent_string_is_insufficient_funds(message), "{message}");
         }
@@ -135,6 +144,9 @@ mod tests {
             "Upgrade your",
             "Rate limit reached for requests per min. Limit: 20 / min.",
             "You exceeded your current quota of requests per min.",
+            "output cap reached while thinking; raise `context_size` for this model",
+            "no credentials",
+            "The balance was breached",
         ] {
             assert!(!agent_string_is_insufficient_funds(message), "{message}");
         }
@@ -160,6 +172,15 @@ mod tests {
             ),
             Some(AccountDenial::Funds)
         );
+        assert_eq!(
+            account_denial("Billing hard limit has been reached"),
+            Some(AccountDenial::Funds)
+        );
+        assert_eq!(
+            account_denial("Quota exhausted"),
+            Some(AccountDenial::Funds)
+        );
         assert_eq!(account_denial("rate limit exceeded"), None);
+        assert_eq!(account_denial("The balance was breached"), None);
     }
 }

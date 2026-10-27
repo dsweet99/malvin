@@ -1,6 +1,10 @@
 use super::super::{BRIDGE, run_models, with_bridge};
 
 fn check_credit_error(message: &str) {
+    check_model_switch(message, true);
+}
+
+fn check_model_switch(message: &str, expect_backup: bool) {
     with_bridge(|work| {
         let bridge = BRIDGE.replace(
             "'Insufficient funds: ' + model",
@@ -9,11 +13,16 @@ fn check_credit_error(message: &str) {
         std::fs::write(work.join("bridge.mjs"), bridge).unwrap();
         let result = run_models(work, "cursor:poor,cursor:good");
         let attempts = std::fs::read_to_string(work.join("attempts")).unwrap();
-        assert_eq!(
-            attempts, "poor\ngood\n",
-            "Credit exhaustion must try the backup; message={message:?}, result={result:?}"
-        );
-        assert!(result.is_ok(), "{result:?}");
+        assert_eq!(result.is_ok(), expect_backup, "{message} {result:?}");
+        if expect_backup {
+            assert_eq!(attempts, "poor\ngood\n", "{message} {result:?}");
+        } else {
+            let stayed = attempts.lines().all(|line| line == "poor");
+            assert!(
+                stayed && attempts.lines().next().is_some(),
+                "message={message:?}, attempts={attempts:?}, result={result:?}"
+            );
+        }
     });
 }
 
@@ -67,4 +76,21 @@ fn more_credits_sentence_tries_backup() {
 #[test]
 fn singular_insufficient_credit_tries_backup() {
     check_credit_error("Insufficient credit.");
+}
+
+#[test]
+fn reached_or_exhausted_account_limits_try_backup() {
+    check_model_switch("You've hit your usage limit", true);
+    check_model_switch("Billing hard limit has been reached", true);
+    check_model_switch("Quota exhausted", true);
+}
+
+#[test]
+fn credential_and_throughput_failures_stay_on_the_first_model() {
+    check_model_switch("no credentials", false);
+    check_model_switch("rate limit exceeded", false);
+    check_model_switch(
+        "Rate limit reached for requests per min. Limit: 20 / min.",
+        false,
+    );
 }
