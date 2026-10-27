@@ -6,6 +6,7 @@ pub fn agent_string_is_insufficient_funds(message: &str) -> bool {
     [
         "openrouter billing/credit failure",
         "insufficient credits",
+        "insufficient credit balance",
         "insufficient funds",
         "insufficient balance",
         "credit balance is too low",
@@ -30,6 +31,8 @@ mod tests {
         for message in [
             "Insufficient funds",
             "INSUFFICIENT CREDITS",
+            "Insufficient credit balance",
+            "Provider error: INSUFFICIENT CREDIT BALANCE. Please top up.",
             "Your credit balance is too low",
             "You have no credits remaining.",
             "no credits",

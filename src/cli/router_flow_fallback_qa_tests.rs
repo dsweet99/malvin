@@ -26,3 +26,13 @@ fn recognized_credit_exhaustion_tries_backup_control() {
 fn short_credit_exhaustion_tries_backup() {
     check_credit_error("no credits");
 }
+
+#[test]
+fn plural_insufficient_credits_tries_backup_control() {
+    check_credit_error("Insufficient credits");
+}
+
+#[test]
+fn singular_insufficient_credit_balance_tries_backup() {
+    check_credit_error("Insufficient credit balance");
+}
