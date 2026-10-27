@@ -1,0 +1,28 @@
+use super::super::{BRIDGE, run_models, with_bridge};
+
+fn check_credit_error(message: &str) {
+    with_bridge(|work| {
+        let bridge = BRIDGE.replace(
+            "'Insufficient funds: ' + model",
+            &serde_json::to_string(message).unwrap(),
+        );
+        std::fs::write(work.join("bridge.mjs"), bridge).unwrap();
+        let result = run_models(work, "cursor:poor,cursor:good");
+        let attempts = std::fs::read_to_string(work.join("attempts")).unwrap();
+        assert_eq!(
+            attempts, "poor\ngood\n",
+            "Credit exhaustion must try the backup; message={message:?}, result={result:?}"
+        );
+        assert!(result.is_ok(), "{result:?}");
+    });
+}
+
+#[test]
+fn recognized_credit_exhaustion_tries_backup_control() {
+    check_credit_error("no credits remaining");
+}
+
+#[test]
+fn short_credit_exhaustion_tries_backup() {
+    check_credit_error("no credits");
+}

@@ -68,3 +68,6 @@ fn terminal_summary_failure_without_fallback_preserves_usage() {
 fn successful_backup_control_persists_usage() {
     check_terminal_case("cursor:poor,cursor:good", "poor\ngood\n", true);
 }
+
+#[path = "router_flow_fallback_qa_tests.rs"]
+mod qa_tests;
