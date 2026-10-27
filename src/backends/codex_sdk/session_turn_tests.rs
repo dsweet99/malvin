@@ -2,6 +2,7 @@ use super::session_turn::{
     TurnState, agent_message_from_turn, rpc_error, thread_became_idle, turn_is_complete,
 };
 use super::session_turn_done::{finish_codex_status, turn_duration_ms};
+use crate::agent_process::agent_string_is_insufficient_funds;
 use serde_json::json;
 
 #[test]
@@ -13,6 +14,47 @@ fn failed_and_interrupted_turns_are_errors() {
     assert!(finish_codex_status(&json!({}), "completed").is_ok());
     assert!(rpc_error(&json!({"error":{"message":"bad"}})).is_some());
     assert!(rpc_error(&json!({"method":"error"})).is_none());
+}
+
+#[test]
+fn failed_turn_preserves_quota_code_for_fallback() {
+    use crate::backends::cursor_sdk::protocol::BridgeEvent;
+    for error in [
+        json!({"message":"Quota exhausted","codexErrorInfo":"usageLimitExceeded"}),
+        json!({"codexErrorInfo":"usageLimitExceeded"}),
+    ] {
+        let value = json!({"params":{"turn":{"status":"failed","error":error}}});
+        let err = finish_codex_status(&value, "failed").unwrap_err();
+        assert!(agent_string_is_insufficient_funds(&err.message), "{err}");
+        if let Some(message) = error["message"].as_str() {
+            assert!(err.message.contains(message), "{err}");
+        }
+        let event = super::session_turn_done::run_done_from_turn(&value, TurnState::default())
+            .expect("failed turn event");
+        let BridgeEvent::RunDone {
+            error: Some(detail),
+            ..
+        } = event
+        else {
+            panic!("failed turn must include error details");
+        };
+        assert!(agent_string_is_insufficient_funds(&detail));
+    }
+}
+
+#[test]
+fn ordinary_turn_errors_do_not_trigger_quota_fallback() {
+    for error in [
+        json!({"message":"Invalid request","codexErrorInfo":"badRequest"}),
+        json!({"message":"Invalid request","codexErrorInfo":null}),
+        json!({"message":"Invalid request"}),
+        json!(null),
+    ] {
+        let value = json!({"params":{"turn":{"status":"failed","error":error}}});
+        let err = finish_codex_status(&value, "failed").unwrap_err();
+        assert!(!agent_string_is_insufficient_funds(&err.message), "{err}");
+        assert!(finish_codex_status(&value, "completed").is_ok());
+    }
 }
 
 #[test]

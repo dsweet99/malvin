@@ -101,6 +101,10 @@ fn record_codex_result(session: &CodexSession, text: &str) {
 
 fn turn_error_message(value: &serde_json::Value, status: RunDoneStatus) -> Option<String> {
     status.is_failure().then(|| {
+        let error = value.pointer("/params/turn/error");
+        if let Some(error) = error.filter(|e| !e["codexErrorInfo"].is_null()) {
+            return error.to_string();
+        }
         value
             .pointer("/params/turn/error/message")
             .and_then(|v| v.as_str())
