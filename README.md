@@ -77,9 +77,10 @@ Model selection uses an ordered list in `~/.malvinconf/config.toml`:
 model = ["cursor:auto", "claude:sonnet", "codex:gpt-5.6"]
 ```
 
-Each task starts with the first model. If it fails because funds or credits are
-insufficient, malvin tries the next model. Other failures retain their existing
-error handling. If every model runs out of funds, the last error is reported.
+Each task starts with the first model. If it fails for lack of funds or credits,
+including a usage limit or a plan-upgrade error, malvin tries the next model.
+Other failures retain their existing error handling. If every model fails for
+one of those reasons, the last error is reported.
 Existing single-string model settings remain supported.
 
 `--model=claude:sonnet` uses only that model. A comma-separated override, such as

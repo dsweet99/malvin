@@ -1,4 +1,4 @@
-use super::sentinel::{is_sentinel_line, DM_END, DM_START};
+use super::sentinel::{DM_END, DM_START, is_sentinel_line};
 
 pub(crate) struct CompletedDirectMessage {
     pub(crate) body: String,

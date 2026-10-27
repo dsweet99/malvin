@@ -64,7 +64,7 @@ pub(crate) fn parse_meta_loop_count(s: &str) -> Result<MetaLoopCount, String> {
 #[derive(Args, Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct SharedOpts {
-    /// Model ids or aliases, comma-separated; try the next model on insufficient funds
+    /// Model ids or aliases, comma-separated; try the next model on insufficient funds, including a usage limit or plan upgrade
     #[arg(
         long,
         default_value = DEFAULT_CLI_MODEL,

@@ -20,6 +20,8 @@ for await (const line of readline.createInterface({input: process.stdin})) {
         turns += 1;
         if (model.startsWith('poor') || (model === 'late-poor' && turns === 2)) {
             emit({event: 'fatal', message: 'Insufficient funds: ' + model, retryable: false});
+        } else if (model === 'limited') {
+            emit({event: 'fatal', message: 'codex RPC error: {"codexErrorInfo":"usageLimitExceeded","message":"You\u2019ve hit your usage limit."}', retryable: false});
         } else if (model === 'invalid') {
             emit({event: 'fatal', message: 'cannot use this model', retryable: false});
         } else {
@@ -129,6 +131,27 @@ fn other_failures_and_single_model_do_not_fallback() {
     assert!(!should_fallback(
         "Insufficient funds; workspace session restore failed"
     ));
+    assert!(!should_fallback("ABORT: You've hit your usage limit"));
+    assert!(!should_fallback("rate limit exceeded"));
+    assert!(should_fallback(
+        "codex RPC error: {\"codexErrorInfo\":\"usageLimitExceeded\",\"message\":\"You\u{2019}ve hit your usage limit.\"}"
+    ));
+    assert!(should_fallback("You're out of usage"));
+    assert!(should_fallback("You've hit your usage limit"));
+    assert!(should_fallback("Upgrade your plan to continue"));
+}
+
+#[test]
+fn usage_limit_tries_next_model() {
+    with_bridge(|work| {
+        run_models(work, "cursor:limited,cursor:good").unwrap();
+        let err = run_models(work, "cursor:limited").unwrap_err();
+        assert!(err.contains("usageLimitExceeded"), "{err}");
+        assert_eq!(
+            std::fs::read_to_string(work.join("attempts")).unwrap(),
+            "limited\ngood\nlimited\n"
+        );
+    });
 }
 
 #[test]

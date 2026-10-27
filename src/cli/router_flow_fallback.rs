@@ -31,10 +31,14 @@ pub(super) async fn run_router_models(input: RouterAgentLoopInput<'_>) -> Result
 }
 
 fn should_fallback(error: &str) -> bool {
-    agent_string_is_insufficient_funds(error)
+    model_quota_exhausted(error)
         && !error.contains(" restore:")
         && !error.starts_with("ABORT:")
         && !error.contains("workspace session restore failed")
+}
+
+fn model_quota_exhausted(error: &str) -> bool {
+    agent_string_is_insufficient_funds(error)
 }
 
 async fn run_selected_model(input: &mut RouterAgentLoopInput<'_>) -> Result<(), String> {
