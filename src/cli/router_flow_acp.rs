@@ -23,6 +23,7 @@ use router_flow_summary_line::emit_router_summary_line;
 pub(crate) enum RouterAcpIterationOutcome {
     Closed {
         acp_result: Result<(), String>,
+        timing: Arc<Mutex<malvin::run_timing::RunTiming>>,
         iteration_backups: SessionDotfileBackups,
     },
     Open {
@@ -78,6 +79,7 @@ pub(crate) async fn run_router_acp_open_iteration(
             let parts: SessionEndParts<'_> = (input.client, &run_dir, &timing, session_end);
             RouterAcpIterationOutcome::Closed {
                 acp_result: abort_router_acp_session(parts, e).await,
+                timing,
                 iteration_backups: snapshot_iteration_backups(work_dir),
             }
         }
@@ -90,14 +92,17 @@ pub(crate) async fn finalize_router_acp_iteration(
     exit_summarize: RouterExitSummarize,
 ) -> Result<(), String> {
     let log_path = router_iteration_log_path(input.artifacts, input.agent_loop);
-    if matches!(exit_summarize, RouterExitSummarize::Run) {
-        run_exit_summarize_then_log_summary(input, log_path.as_path()).await?;
-    }
+    let summary_result = match exit_summarize {
+        RouterExitSummarize::Run => {
+            run_exit_summarize_then_log_summary(input, log_path.as_path()).await
+        }
+        RouterExitSummarize::Skip => Ok(()),
+    };
     let run_dir = input.artifacts.run_dir.clone();
     let parts: SessionEndParts<'_> = (input.client, run_dir.as_path(), &timing, input.session_end);
     match exit_summarize {
-        RouterExitSummarize::Run => end_router_acp_session(parts, Ok(())).await,
-        RouterExitSummarize::Skip => emit_router_acp_timing(parts, Ok(())),
+        RouterExitSummarize::Run => end_router_acp_session(parts, summary_result).await,
+        RouterExitSummarize::Skip => emit_router_acp_timing(parts, summary_result),
     }
 }
 

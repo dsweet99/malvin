@@ -25,18 +25,19 @@ pub fn attach_new_run_timing_with_cost_policy(
     cost_policy: CostPolicy,
     model: &str,
 ) -> Arc<Mutex<RunTiming>> {
-    let prior = super::process_ledger_live::fold_existing(timing_slot.as_ref());
-    let timing = RunTiming::new_arc();
+    let prior = super::process_ledger_live::fold_existing(timing_slot.as_ref()).unwrap_or_default();
+    let timing = Arc::new(Mutex::new(RunTiming {
+        wall_start: Some(prior.wall_start.unwrap_or_else(Instant::now)),
+        wall_end: None,
+        acp_step_proxy: super::AcpStepProxy::Idle,
+        ..prior
+    }));
     {
         let mut g = timing
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        g.mark_wall_start(Instant::now());
         g.token_cost_rates = token_cost_rates_from_home_config(model);
         g.cost_policy = cost_policy;
-        if let Some(prior) = prior.as_ref() {
-            g.carry_token_and_cost_from(prior);
-        }
         super::process_ledger::sync_cursor(&mut g);
         drop(g);
     }
@@ -101,3 +102,7 @@ pub fn persist_open_run_timing_json(
     };
     report::write_json_only(&snapshot, run_dir)
 }
+
+#[cfg(test)]
+#[path = "lifecycle_tests.rs"]
+mod tests;

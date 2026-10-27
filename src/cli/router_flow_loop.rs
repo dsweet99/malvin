@@ -9,8 +9,10 @@ use crate::cli::{RouterOpts, SharedOpts};
 use malvin::artifacts::{RunArtifacts, SessionDotfileBackups, merge_and_sanitize_for_gate_restore};
 use malvin::backends::agent_backend::SdkClient;
 use malvin::prompts::PromptStore;
+use malvin::run_timing::RunTiming;
 use malvin::run_timing::acp_post_run::RunTimingSessionEnd;
 use std::path::Path;
+use std::sync::{Arc, Mutex};
 
 pub(crate) use super::router_flow_loop_decide;
 pub(crate) use router_flow_loop_decide::{
@@ -29,11 +31,13 @@ pub(crate) struct RouterAgentLoopInput<'a> {
 pub(crate) struct RouterAgentLoopOutcome {
     pub last_acp: Result<(), String>,
     pub last_backups: SessionDotfileBackups,
+    pub timing: Option<Arc<Mutex<RunTiming>>>,
 }
 
 struct RouterLoopStepResult {
     last_acp: Result<(), String>,
     last_backups: SessionDotfileBackups,
+    timing: Arc<Mutex<RunTiming>>,
     outcome: RouterLoopStepOutcome,
 }
 
@@ -59,10 +63,12 @@ pub(crate) async fn run_router_agent_loops(
     let max_loops = effective_max_loops(input.max_loops);
     let mut last_acp = Ok(());
     let mut last_backups = empty_iteration_backups();
+    let mut last_timing = None;
     for agent_loop in 1..=max_loops {
         let step = run_one_router_loop_step(&mut input, agent_loop, max_loops).await?;
         last_acp = step.last_acp;
         last_backups = step.last_backups;
+        last_timing = Some(step.timing);
         let RouterLoopStepOutcome::Decided(decision) = step.outcome else {
             break;
         };
@@ -77,6 +83,7 @@ pub(crate) async fn run_router_agent_loops(
     Ok(RouterAgentLoopOutcome {
         last_acp,
         last_backups,
+        timing: last_timing,
     })
 }
 
@@ -110,22 +117,24 @@ async fn finish_router_loop_step(
 ) -> Result<RouterLoopStepResult, String> {
     let (agent_loop, max_loops, session_end) = ids;
     let work_dir = input.artifacts.work_dir.as_path();
-    let (acp_result, iteration_backups, open_session) = match open {
+    let (acp_result, iteration_backups, timing, completion) = match open {
         RouterAcpIterationOutcome::Closed {
             acp_result,
             iteration_backups,
-        } => (acp_result, iteration_backups, None),
+            timing,
+        } => (acp_result, iteration_backups, timing, None),
         RouterAcpIterationOutcome::Open {
             iteration_backups,
             completion,
             timing,
-        } => (Ok(()), iteration_backups, Some((completion, timing))),
+        } => (Ok(()), iteration_backups, timing, Some(completion)),
     };
     let last_backups = restore_router_iteration_dotfiles(work_dir, &iteration_backups)?;
-    let Some((completion, timing)) = open_session else {
+    let Some(completion) = completion else {
         return Ok(RouterLoopStepResult {
             last_acp: acp_result,
             last_backups,
+            timing,
             outcome: RouterLoopStepOutcome::ClosedEarly,
         });
     };
@@ -147,13 +156,14 @@ async fn finish_router_loop_step(
             agent_loop,
             session_end,
         },
-        timing,
+        Arc::clone(&timing),
         router_exit_summarize_for(&decision),
     )
     .await;
     Ok(RouterLoopStepResult {
         last_acp,
         last_backups,
+        timing,
         outcome: RouterLoopStepOutcome::Decided(decision),
     })
 }

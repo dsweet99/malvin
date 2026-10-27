@@ -57,16 +57,16 @@ fn parse_smaps_rollup_uss_bytes_derives_from_shared_subtraction() {
 
 #[cfg(target_os = "linux")]
 #[test]
-fn linux_pids_sandbox_bytes_uses_self_uss_or_rss() {
+fn linux_pids_sandbox_bytes_counts_private_allocation() {
+    let allocation = vec![0x5a_u8; 8 * 1024 * 1024];
     let mut pids = std::collections::HashSet::new();
     pids.insert(std::process::id());
     let sandbox = linux_pids_sandbox_bytes(&pids).expect("sandbox bytes");
-    assert!(sandbox > 0);
+    // Private/shared accounting can change between reads as peer processes exit.
+    // Each sample must include the touched allocation while it remains live.
+    assert!(sandbox >= allocation.len() as u64, "sandbox={sandbox}");
     if let Some(uss) = linux_pids_uss_bytes(&pids) {
-        let slack = 4 * 1024 * 1024;
-        assert!(
-            sandbox.abs_diff(uss) <= slack,
-            "sandbox={sandbox} uss={uss}"
-        );
+        assert!(uss >= allocation.len() as u64, "uss={uss}");
     }
+    std::hint::black_box(&allocation);
 }

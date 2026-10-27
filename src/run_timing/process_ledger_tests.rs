@@ -7,7 +7,7 @@ use crate::run_timing::report::format_timing_stdout_line_from_json;
 use crate::run_timing::report_cost_line::format_cost_stdout_line_from_json;
 
 #[test]
-fn absorb_sums_new_work_without_recounting_carried_tokens() {
+fn absorb_sums_new_work_without_recounting_carried_totals() {
     let mut totals = Ledger::default();
     let mut first = RunTiming {
         tokens_in: Some(10),
@@ -18,12 +18,11 @@ fn absorb_sums_new_work_without_recounting_carried_tokens() {
     };
     absorb(&mut first, &mut totals);
 
-    let mut second = RunTiming::default();
-    second.carry_token_and_cost_from(&first);
+    let mut second = first.clone();
     sync_cursor(&mut second);
     second.tokens_in = Some(15);
-    second.llm_wait = Duration::from_millis(40);
-    second.tool_calls = Duration::from_millis(7);
+    second.llm_wait += Duration::from_millis(40);
+    second.tool_calls += Duration::from_millis(7);
     second.tool_calls_edit = Duration::from_millis(7);
     absorb(&mut second, &mut totals);
 

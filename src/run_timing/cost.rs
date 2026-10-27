@@ -2,45 +2,7 @@ use crate::run_timing::ResponseUsage;
 
 use super::RunTiming;
 
-fn carry_u64(slot: &mut Option<u64>, prior: Option<u64>) {
-    let Some(n) = prior else {
-        return;
-    };
-    *slot = Some(slot.unwrap_or(0).saturating_add(n));
-}
-
-fn carry_f64(slot: &mut Option<f64>, prior: Option<f64>) {
-    let Some(n) = prior else {
-        return;
-    };
-    *slot = Some(slot.unwrap_or(0.0) + n);
-}
-
 impl RunTiming {
-    pub(crate) fn carry_token_and_cost_from(&mut self, prior: &Self) {
-        carry_u64(&mut self.tokens_in, prior.tokens_in);
-        carry_u64(&mut self.tokens_out, prior.tokens_out);
-        carry_u64(&mut self.cache_read, prior.cache_read);
-        carry_u64(&mut self.cache_write, prior.cache_write);
-        carry_u64(&mut self.reasoning_tokens, prior.reasoning_tokens);
-        carry_f64(&mut self.reported_cost_in, prior.reported_cost_in);
-        carry_f64(&mut self.reported_cost_out, prior.reported_cost_out);
-        carry_f64(&mut self.reported_cost_read, prior.reported_cost_read);
-        carry_f64(&mut self.reported_cost_write, prior.reported_cost_write);
-        carry_f64(&mut self.reported_cost_total, prior.reported_cost_total);
-        carry_f64(&mut self.estimated_cost_in, prior.estimated_cost_in);
-        carry_f64(&mut self.estimated_cost_out, prior.estimated_cost_out);
-        carry_f64(&mut self.estimated_cost_read, prior.estimated_cost_read);
-        carry_f64(&mut self.estimated_cost_write, prior.estimated_cost_write);
-        self.tx_costs.extend_from_slice(&prior.tx_costs);
-        self.unknown_tx_count = self.unknown_tx_count.saturating_add(prior.unknown_tx_count);
-        self.usage_tx_count = self.usage_tx_count.saturating_add(prior.usage_tx_count);
-        self.unknown_usage_tx_count = self
-            .unknown_usage_tx_count
-            .saturating_add(prior.unknown_usage_tx_count);
-        self.steps = self.steps.saturating_add(prior.steps);
-    }
-
     pub fn record_completion_cost(&mut self, usage: &ResponseUsage) {
         if matches!(self.cost_policy, super::CostPolicy::Zero) {
             return;
@@ -128,11 +90,14 @@ pub fn cost_stats(r: &RunTiming) -> Option<serde_json::Value> {
     if !has_cost_observation(r) {
         return None;
     }
-    if has_reported_cost_components(r) {
-        let source = if has_estimated_cost_components(r) {
-            "mixed"
-        } else {
-            "reported"
+    if has_reported_cost_components(r) || has_estimated_cost_components(r) {
+        let source = match (
+            has_reported_cost_components(r),
+            has_estimated_cost_components(r),
+        ) {
+            (true, true) => "mixed",
+            (true, false) => "reported",
+            _ => "estimated",
         };
         return Some(merged_cost_stats(r, source));
     }

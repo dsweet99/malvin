@@ -18,14 +18,17 @@ for await (const line of readline.createInterface({input: process.stdin})) {
         emit({event: 'ok', agentId: 'test-agent'});
     } else if (req.op === 'send') {
         turns += 1;
-        if (model.startsWith('poor') || (model === 'late-poor' && turns === 2)) {
+        if (model.startsWith('poor') || (model.startsWith('late-poor') && turns === 2)) {
             emit({event: 'fatal', message: 'Insufficient funds: ' + model, retryable: false});
+        } else if (model === 'summary-poor' && turns === 3) {
+            emit({event: 'fatal', message: 'Insufficient funds', retryable: false});
         } else if (model === 'limited') {
             emit({event: 'fatal', message: 'codex RPC error: {"codexErrorInfo":"usageLimitExceeded","message":"You\u2019ve hit your usage limit."}', retryable: false});
         } else if (model === 'invalid') {
             emit({event: 'fatal', message: 'cannot use this model', retryable: false});
         } else {
-            emit({event: 'run_done', status: 'finished', result: 'MALVIN_DONE', durationMs: 1});
+            emit({event: 'usage', usage: {inputTokens: model.startsWith('late-poor') ? 100 : 10, outputTokens: 1}});
+            emit({event: 'run_done', status: 'finished', result: '__MALVIN_DONE__', durationMs: 1});
         }
     } else if (req.op === 'close') {
         break;
@@ -56,6 +59,14 @@ fn with_bridge(body: impl FnOnce(&std::path::Path)) {
 }
 
 fn run_models(work: &std::path::Path, models: &str) -> Result<(), String> {
+    run_models_with_gates(work, models, false).map(|_| ())
+}
+
+fn run_models_with_gates(
+    work: &std::path::Path,
+    models: &str,
+    gates: bool,
+) -> Result<malvin::artifacts::RunArtifacts, String> {
     let mut shared = SharedOpts::test_defaults();
     shared.model = malvin::config::malvin_config_file::parse_model_list_cli_arg(models).unwrap();
     let artifacts = malvin::artifacts::create_run_artifacts_from_text_opts(
@@ -66,14 +77,17 @@ fn run_models(work: &std::path::Path, models: &str) -> Result<(), String> {
     .unwrap();
     let store = prepare_router_prompt_store().unwrap();
     let mut client = new_router_client(&shared);
+    let mut router = RouterOpts::test_defaults();
+    router.gates = gates;
     block_on_test_async(run_router_models(RouterAgentLoopInput {
         client: &mut client,
         artifacts: &artifacts,
         prompt_store: &store,
         shared: &shared,
-        router: &RouterOpts::test_defaults(),
+        router: &router,
         max_loops: 1,
     }))
+    .map(|()| artifacts)
 }
 
 #[test]
@@ -175,3 +189,42 @@ fn payment_failure_after_initial_turn_still_falls_back() {
         );
     });
 }
+
+#[test]
+fn gate_failure_with_payment_words_must_not_switch_models() {
+    with_bridge(|work| {
+        std::fs::create_dir_all(work.join(".malvin")).unwrap();
+        std::fs::write(
+            work.join(".malvin/gates"),
+            "sh -c 'exit 1' # regression: Insufficient funds\n",
+        )
+        .unwrap();
+        let err = run_models_with_gates(work, "cursor:good,cursor:unused", true).unwrap_err();
+        let attempts = std::fs::read_to_string(work.join("attempts")).unwrap();
+        assert!(err.contains("Workspace checks did not pass"), "{err}");
+        assert_eq!(
+            attempts, "good\n",
+            "A failed workspace gate must not consume backup models"
+        );
+    });
+}
+
+#[test]
+fn gate_failure_control_does_not_switch_models() {
+    with_bridge(|work| {
+        std::fs::create_dir_all(work.join(".malvin")).unwrap();
+        std::fs::write(work.join(".malvin/gates"), "sh -c 'exit 1'\n").unwrap();
+        let err = run_models_with_gates(work, "cursor:good,cursor:unused", true).unwrap_err();
+        assert!(err.contains("Workspace checks did not pass"), "{err}");
+        assert_eq!(
+            std::fs::read_to_string(work.join("attempts")).unwrap(),
+            "good\n"
+        );
+    });
+}
+
+#[path = "router_flow_fallback_usage_tests.rs"]
+mod usage_tests;
+
+#[path = "router_flow_fallback_terminal_tests.rs"]
+mod terminal_tests;
