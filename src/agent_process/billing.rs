@@ -1,13 +1,83 @@
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum AccountDenial {
+    UsageLimit,
+    PlanUpgrade,
+    Funds,
+}
+
 fn normalized_agent_text(message: &str) -> String {
     message
         .to_ascii_lowercase()
         .replace(['\u{2019}', '\u{2018}'], "'")
 }
 
+fn text_has_usage_words(text: &str) -> bool {
+    text.contains("usage limit") || text.contains("you're out of usage")
+}
+
+fn text_has_usage_code(text: &str) -> bool {
+    text.contains("\"codexerrorinfo\":\"usagelimitexceeded\"")
+}
+
 fn text_is_usage_limit(text: &str) -> bool {
-    text.contains("usage limit")
-        || text.contains("you're out of usage")
-        || text.contains("\"codexerrorinfo\":\"usagelimitexceeded\"")
+    text_has_usage_words(text) || text_has_usage_code(text)
+}
+
+fn text_is_plan_upgrade(text: &str) -> bool {
+    text.contains("upgrade your plan")
+}
+
+fn text_is_throughput_limit(text: &str) -> bool {
+    text.contains("rate limit") || text.contains("requests per")
+}
+
+fn text_has_payment_words(text: &str) -> bool {
+    text.contains("credit")
+        || text.contains("funds")
+        || text.contains("billing")
+        || text.contains("payment required")
+}
+
+fn text_has_shortfall(text: &str) -> bool {
+    text.contains("insufficient")
+        || text.contains("exceeded")
+        || text.contains("too low")
+        || text.contains("out of")
+        || text.contains("no credit")
+        || text.contains("more credit")
+}
+
+fn text_mentions_billable(text: &str) -> bool {
+    text_has_payment_words(text) || text.contains("quota") || text.contains("balance")
+}
+
+fn text_has_named_funds_marker(text: &str) -> bool {
+    text.contains("payment required") || text.contains("openrouter billing/credit failure")
+}
+
+fn text_is_funds_exhausted(text: &str) -> bool {
+    if text_is_throughput_limit(text) && !text_has_payment_words(text) {
+        return false;
+    }
+    if text_has_named_funds_marker(text) {
+        return true;
+    }
+    text_mentions_billable(text) && text_has_shortfall(text)
+}
+
+#[must_use]
+pub(crate) fn account_denial(message: &str) -> Option<AccountDenial> {
+    let text = normalized_agent_text(message);
+    if text_is_usage_limit(&text) {
+        return Some(AccountDenial::UsageLimit);
+    }
+    if text_is_plan_upgrade(&text) {
+        return Some(AccountDenial::PlanUpgrade);
+    }
+    if text_is_funds_exhausted(&text) {
+        return Some(AccountDenial::Funds);
+    }
+    None
 }
 
 #[must_use]
@@ -16,28 +86,18 @@ pub(crate) fn agent_string_is_usage_limit(message: &str) -> bool {
 }
 
 #[must_use]
+pub(crate) fn agent_string_is_upgrade_plan(message: &str) -> bool {
+    text_is_plan_upgrade(&normalized_agent_text(message))
+}
+
+#[must_use]
 pub fn agent_string_is_insufficient_funds(message: &str) -> bool {
-    let text = normalized_agent_text(message);
-    [
-        "openrouter billing/credit failure",
-        "insufficient credits",
-        "insufficient credit balance",
-        "insufficient funds",
-        "insufficient balance",
-        "credit balance is too low",
-        "no credits",
-        "out of credits",
-        "payment required",
-        "upgrade your plan to continue",
-    ]
-    .iter()
-    .any(|phrase| text.contains(phrase))
-        || text_is_usage_limit(&text)
+    account_denial(message).is_some()
 }
 
 #[cfg(test)]
 mod tests {
-    use super::agent_string_is_insufficient_funds;
+    use super::{AccountDenial, account_denial, agent_string_is_insufficient_funds};
 
     #[test]
     fn explicit_payment_failures_only() {
@@ -59,6 +119,10 @@ mod tests {
             "You\u{2019}re out of usage",
             "codex RPC error: {\"codexErrorInfo\":\"usageLimitExceeded\"}",
             "Upgrade your plan to continue",
+            "Insufficient credit.",
+            "Upgrade your plan to use this model",
+            "This request requires more credits, or fewer max_tokens.",
+            "You exceeded your current quota, please check your plan and billing details.",
         ] {
             assert!(agent_string_is_insufficient_funds(message), "{message}");
         }
@@ -68,8 +132,34 @@ mod tests {
             "invalid model",
             "timeout",
             "usage is fine",
+            "Upgrade your",
+            "Rate limit reached for requests per min. Limit: 20 / min.",
+            "You exceeded your current quota of requests per min.",
         ] {
             assert!(!agent_string_is_insufficient_funds(message), "{message}");
         }
+    }
+
+    #[test]
+    fn account_denial_names_the_payment_kind() {
+        assert_eq!(
+            account_denial("Usage limit exceeded"),
+            Some(AccountDenial::UsageLimit)
+        );
+        assert_eq!(
+            account_denial("Upgrade your plan to use this model"),
+            Some(AccountDenial::PlanUpgrade)
+        );
+        assert_eq!(
+            account_denial("Insufficient credit."),
+            Some(AccountDenial::Funds)
+        );
+        assert_eq!(
+            account_denial(
+                "You exceeded your current quota, please check your plan and billing details."
+            ),
+            Some(AccountDenial::Funds)
+        );
+        assert_eq!(account_denial("rate limit exceeded"), None);
     }
 }

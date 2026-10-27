@@ -1,6 +1,6 @@
 use super::router_flow::new_router_client;
 use super::router_flow_loop::{RouterAgentLoopInput, run_router_agent_loops};
-use malvin::agent_process::agent_string_is_insufficient_funds;
+use malvin::agent_process::account_denial;
 use malvin::run_timing::RunTiming;
 use std::sync::{Arc, Mutex};
 
@@ -54,7 +54,7 @@ fn should_fallback(error: &str) -> bool {
 }
 
 fn model_quota_exhausted(error: &str) -> bool {
-    agent_string_is_insufficient_funds(error)
+    account_denial(error).is_some()
 }
 
 async fn run_selected_model(

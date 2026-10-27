@@ -3,11 +3,6 @@ pub(crate) const fn retries_noun(n: u32) -> &'static str {
     if n == 1 { "retry" } else { "retries" }
 }
 
-pub(crate) fn agent_string_is_upgrade_plan(msg: &str) -> bool {
-    msg.to_ascii_lowercase()
-        .contains("upgrade your plan to continue")
-}
-
 #[must_use]
 pub(crate) fn upgrade_plan_stream_from_buffer(buf: &str) -> bool {
     agent_string_is_upgrade_plan(buf)
@@ -87,11 +82,11 @@ pub(crate) fn agent_retry_should_stop(last_error: &str) -> bool {
 }
 
 pub(crate) fn agent_text_is_non_retryable(msg: &str) -> bool {
-    agent_string_is_upgrade_plan(msg)
+    agent_string_is_usage_limit(msg)
+        || agent_string_is_upgrade_plan(msg)
+        || agent_string_is_openrouter_billing_failure(msg)
         || agent_string_is_cannot_use_model(msg)
         || agent_string_is_model_does_not_support_tools(msg)
-        || agent_string_is_usage_limit(msg)
-        || agent_string_is_openrouter_billing_failure(msg)
         || agent_string_is_openrouter_missing_content(msg)
 }
 

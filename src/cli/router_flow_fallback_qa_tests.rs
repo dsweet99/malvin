@@ -46,3 +46,25 @@ fn usage_limit_exceeded_tries_backup() {
 fn reached_usage_limit_tries_backup() {
     check_credit_error("Your usage limit has been reached");
 }
+
+#[test]
+fn quota_billing_sentence_tries_backup() {
+    check_credit_error(
+        "You exceeded your current quota, please check your plan and billing details.",
+    );
+}
+
+#[test]
+fn plan_upgrade_without_continue_tries_backup() {
+    check_credit_error("Upgrade your plan to use this model");
+}
+
+#[test]
+fn more_credits_sentence_tries_backup() {
+    check_credit_error("This request requires more credits, or fewer max_tokens.");
+}
+
+#[test]
+fn singular_insufficient_credit_tries_backup() {
+    check_credit_error("Insufficient credit.");
+}
