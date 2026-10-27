@@ -154,6 +154,8 @@ fn other_failures_and_single_model_do_not_fallback() {
     ));
     assert!(!should_fallback("ABORT: You've hit your usage limit"));
     assert!(!should_fallback("rate limit exceeded"));
+    assert!(should_fallback("Usage limit exceeded"));
+    assert!(should_fallback("Your usage limit has been reached"));
     assert!(should_fallback(
         "codex RPC error: {\"codexErrorInfo\":\"usageLimitExceeded\",\"message\":\"You\u{2019}ve hit your usage limit.\"}"
     ));

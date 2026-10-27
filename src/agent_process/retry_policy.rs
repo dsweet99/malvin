@@ -21,15 +21,6 @@ pub(crate) fn agent_string_is_model_does_not_support_tools(msg: &str) -> bool {
     msg.to_ascii_lowercase().contains("does not support tools")
 }
 
-pub(crate) fn agent_string_is_usage_limit(msg: &str) -> bool {
-    let text = msg
-        .to_ascii_lowercase()
-        .replace(['\u{2019}', '\u{2018}'], "'");
-    text.contains("you've hit your usage limit")
-        || text.contains("you're out of usage")
-        || text.contains("\"codexerrorinfo\":\"usagelimitexceeded\"")
-}
-
 pub(crate) fn agent_string_is_openrouter_billing_failure(msg: &str) -> bool {
     agent_string_is_insufficient_funds(msg)
 }

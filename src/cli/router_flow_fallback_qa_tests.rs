@@ -36,3 +36,13 @@ fn plural_insufficient_credits_tries_backup_control() {
 fn singular_insufficient_credit_balance_tries_backup() {
     check_credit_error("Insufficient credit balance");
 }
+
+#[test]
+fn usage_limit_exceeded_tries_backup() {
+    check_credit_error("Usage limit exceeded");
+}
+
+#[test]
+fn reached_usage_limit_tries_backup() {
+    check_credit_error("Your usage limit has been reached");
+}

@@ -77,8 +77,13 @@ fn usage_limit_substring_is_detected_case_insensitively() {
     assert!(agent_string_is_usage_limit(
         "codex RPC error: {\"codexErrorInfo\":\"usageLimitExceeded\"}"
     ));
+    assert!(agent_string_is_usage_limit("Usage limit exceeded"));
+    assert!(agent_string_is_usage_limit(
+        "Your usage limit has been reached"
+    ));
     assert!(!agent_string_is_usage_limit("timed out"));
     assert!(!agent_string_is_usage_limit("usage is fine"));
+    assert!(!agent_string_is_usage_limit("rate limit exceeded"));
 }
 
 fn usage_limit_errors_do_not_retry_even_with_high_max() {
@@ -89,6 +94,17 @@ fn usage_limit_errors_do_not_retry_even_with_high_max() {
     let codex = "codex RPC error: {\"method\":\"error\",\"params\":{\"error\":{\"codexErrorInfo\":\"usageLimitExceeded\",\"message\":\"You\u{2019}ve hit your usage limit.\"}}}";
     let codex_err = plan_text_retry(codex, 1, 9999).expect_err("codex usage limit must abort");
     assert_eq!(codex_err.message, codex);
+    for msg in ["Usage limit exceeded", "Your usage limit has been reached"] {
+        let err = plan_text_retry(msg, 1, 9999).expect_err("usage exhaustion must fail fast");
+        assert_eq!(err.message, msg);
+    }
+    assert!(
+        matches!(
+            plan_text_retry("rate limit exceeded", 1, 9999).unwrap(),
+            AgentRetryOutcome::Sleep(_)
+        ),
+        "a transient rate limit stays retriable"
+    );
 }
 
 fn cursor_out_of_usage_errors_do_not_retry_even_with_high_max() {

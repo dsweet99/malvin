@@ -14,6 +14,7 @@ pub(crate) mod sandbox_oom;
 
 mod billing;
 pub use billing::agent_string_is_insufficient_funds;
+pub(crate) use billing::agent_string_is_usage_limit;
 
 mod jsonl_trace;
 mod outgoing_prompt_trace;
