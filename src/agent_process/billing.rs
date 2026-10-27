@@ -1,6 +1,8 @@
 #[must_use]
 pub fn agent_string_is_insufficient_funds(message: &str) -> bool {
-    let text = message.to_ascii_lowercase();
+    let text = message
+        .to_ascii_lowercase()
+        .replace(['\u{2019}', '\u{2018}'], "'");
     [
         "openrouter billing/credit failure",
         "insufficient credits",
@@ -10,6 +12,10 @@ pub fn agent_string_is_insufficient_funds(message: &str) -> bool {
         "no credits remaining",
         "out of credits",
         "payment required",
+        "you've hit your usage limit",
+        "you're out of usage",
+        "\"codexerrorinfo\":\"usagelimitexceeded\"",
+        "upgrade your plan to continue",
     ]
     .iter()
     .any(|phrase| text.contains(phrase))
@@ -30,16 +36,18 @@ mod tests {
             "insufficient balance",
             "out of credits",
             "OpenRouter billing/credit failure",
+            "You've hit your usage limit",
+            "You\u{2019}re out of usage",
+            "codex RPC error: {\"codexErrorInfo\":\"usageLimitExceeded\"}",
+            "Upgrade your plan to continue",
         ] {
             assert!(agent_string_is_insufficient_funds(message), "{message}");
         }
         for message in [
             "rate limit exceeded",
-            "you've hit your usage limit",
             "authentication failed",
             "invalid model",
             "timeout",
-            "upgrade your plan to continue",
         ] {
             assert!(!agent_string_is_insufficient_funds(message), "{message}");
         }

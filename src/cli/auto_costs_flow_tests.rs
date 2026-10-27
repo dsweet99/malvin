@@ -3,8 +3,7 @@ use std::path::Path;
 
 use super::{
     CostSetupEnv, CostSetupOutcome, prepare_cost_setup, record_cost_setup_outcome,
-    render_set_costs_request, router_for_cost_setup, should_setup_costs,
-    skip_automatic_cost_setup,
+    render_set_costs_request, router_for_cost_setup, should_setup_costs, skip_automatic_cost_setup,
 };
 use crate::config::malvin_config_file::{MalvinConfig, parse_malvin_config};
 use crate::config::model_id::{ParsedModel, parse_model_id};
@@ -213,7 +212,10 @@ fn unit_tests_skip_the_real_cost_workflow() {
 #[test]
 fn cost_setup_runs_in_process_router_before_init() {
     let src = include_str!("auto_costs.rs");
-    assert!(src.contains("run_router"), "cost setup must call run_router");
+    assert!(
+        src.contains("run_router"),
+        "cost setup must call run_router"
+    );
     assert!(
         src.contains("set_costs.md"),
         "cost setup must render set_costs.md"

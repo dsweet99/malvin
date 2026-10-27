@@ -33,7 +33,10 @@ fn keyword_phrase_without_punctuation_is_highlighted() {
 fn plain_backtick_span_uses_code_color() {
     let shown = recolor_termimad_inline("see `src/lib.rs`");
     assert!(!shown.contains('`'), "{shown:?}");
-    assert!(shown.contains(crate::terminal_palette::ansi_accent()), "{shown:?}");
+    assert!(
+        shown.contains(crate::terminal_palette::ansi_accent()),
+        "{shown:?}"
+    );
     assert!(!shown.contains(KEYWORD), "{shown:?}");
 }
 

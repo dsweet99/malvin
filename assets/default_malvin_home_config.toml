@@ -16,7 +16,7 @@ auto_setup_costs = true
 # big = "modal:sandbox[gpu=A100,mem=32,timeout=2h]"
 
 [agent]
-# Try models in order; move to the next only when funds or credits are insufficient.
+# Try models in order; move to the next when funds are insufficient, including a usage limit or plan upgrade.
 model = ["cursor:auto"]
 max_acp_retries = 3
 

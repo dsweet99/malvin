@@ -7,8 +7,8 @@ use super::{
 };
 use crate::output::dm_attachment::completed_direct_messages;
 use crate::output::{
-    clear_captured_stderr_lines, set_stdout_log_path, take_captured_stderr_lines, DM_END, DM_START,
-    STDOUT_LOG_TEST_LOCK,
+    DM_END, DM_START, STDOUT_LOG_TEST_LOCK, clear_captured_stderr_lines, set_stdout_log_path,
+    take_captured_stderr_lines,
 };
 
 fn lock_stdout_log() -> MutexGuard<'static, ()> {
