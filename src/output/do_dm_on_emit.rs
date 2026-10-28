@@ -28,6 +28,9 @@ fn config_lock() -> std::sync::MutexGuard<'static, ()> {
 }
 
 pub(crate) fn notify_completed_direct_messages(text: &str) {
+    if !super::dm_hook::dm_emit_enabled() {
+        return;
+    }
     let Some(template) = command_for_emit() else {
         return;
     };
@@ -273,3 +276,7 @@ pub(crate) fn dm_on_emit_command_for_test() -> Option<String> {
 #[cfg(test)]
 #[path = "do_dm_on_emit_tests.rs"]
 mod do_dm_on_emit_tests;
+
+#[cfg(test)]
+#[path = "dm_emit_option_tests.rs"]
+mod dm_emit_option_tests;

@@ -66,6 +66,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
             .expect("model")
             .into(),
         no_auto_costs: false,
+        no_emit: false,
         max_acp_retries: 1,
         doc: false,
         advice: None,

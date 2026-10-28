@@ -26,6 +26,7 @@ fn smoke_cov_cli_cli_units_1b() {
             .expect("model")
             .into(),
         no_auto_costs: false,
+        no_emit: false,
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
         advice: None,

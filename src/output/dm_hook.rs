@@ -8,7 +8,18 @@ mod dm_hook_mark;
 mod dm_hook_split;
 
 use std::cell::Cell;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
+
+static EMIT_ENABLED: AtomicBool = AtomicBool::new(true);
+
+pub fn set_dm_emit_enabled(enabled: bool) {
+    EMIT_ENABLED.store(enabled, Ordering::Relaxed);
+}
+
+pub(super) fn dm_emit_enabled() -> bool {
+    EMIT_ENABLED.load(Ordering::Relaxed)
+}
 
 #[cfg(test)]
 pub(crate) use dm_hook_mark::mark_line;
@@ -27,7 +38,7 @@ thread_local! {
 }
 
 pub(crate) fn deliver_finished_dm(body: &str) {
-    if body.is_empty() {
+    if body.is_empty() || !dm_emit_enabled() {
         return;
     }
     if in_modal_sandbox() {

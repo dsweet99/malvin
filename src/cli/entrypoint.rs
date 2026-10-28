@@ -89,7 +89,8 @@ pub(crate) fn finish_entrypoint(res: Result<(), String>) -> Exit {
     }
 }
 
-pub(crate) fn prepare_cli_output(_shared: &SharedOpts) {
+pub(crate) fn prepare_cli_output(shared: &SharedOpts) {
+    malvin::output::set_dm_emit_enabled(!shared.no_emit);
     let loaded = std::env::current_dir()
         .ok()
         .map(|cwd| malvin::config::malvin_config_file::load_malvin_config(&cwd));

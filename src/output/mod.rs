@@ -5,6 +5,7 @@ mod code_lex;
 mod code_paint;
 mod dm_attachment;
 mod dm_hook;
+pub use dm_hook::set_dm_emit_enabled;
 mod dm_stderr;
 mod do_dm_emit;
 mod do_dm_filter;

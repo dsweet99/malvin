@@ -46,6 +46,9 @@ fences; the fence markers are omitted from stdout. Ask for a DM in your request:
 malvin -q "Where (geographically) am I? Send the answer in a DM."
 ```
 
+Use `--no-emit` to disable the configured `[dm].on_emit` command for one
+invocation. Direct messages still appear in the normal output and logs.
+
 By default, malvin runs an investigation. The larger or more complex the task, the more helpful this is. You can ask difficult questions or request complex changes somewhat tersely:
 ```bash
 malvin "Speed up my_function.py by at least 3x."
