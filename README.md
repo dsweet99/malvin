@@ -78,7 +78,7 @@ Model selection uses an ordered list in `~/.malvinconf/config.toml`:
 ```toml
 [agent]
 model = ["cursor:auto", "claude:sonnet", "codex:gpt-5.6"]
-# Optional fast, cheap models for a five-word request summary:
+# Optional fast, cheap models for 30-character herdr task and status summaries:
 # model_lite = ["cursor:auto"]
 ```
 
@@ -89,11 +89,15 @@ one of those reasons, the last error is reported.
 Existing single-string model settings remain supported.
 
 The optional `agent.model_lite` list accepts the same model IDs, aliases, and quota
-fallback order. It generates a five-word request summary in the background, shown
-after the run ID on `h|` lines and as the herdr status. Until it is ready, the
-heartbeat adds no text and herdr displays `malvin`. Missing configuration or a
-failed summary leaves those defaults in place. Summary work never delays the main
-run and is cancelled when that run ends.
+fallback order. When it is set, malvin summarizes the user request in the background
+into at most 30 characters. A request that already fits is used as written. A longer
+request is summarized by `model_lite`. That summary appears after the run ID on `h|`
+lines and is reported as the herdr `task` token. Five minutes after the run starts,
+and every ten minutes after that, `model_lite` summarizes the recent run output into
+at most 30 characters and reports it as the herdr `status` token. Until the task
+summary is ready, the heartbeat adds no text. Missing configuration or a failed
+summary leaves the heartbeat unchanged and leaves the tokens unset. This work never
+delays the main run and is cancelled when that run ends.
 
 `--model=claude:sonnet` uses only that model. A comma-separated override, such as
 `--model=claude:sonnet,cursor:auto`, replaces the entire configured list. Commas

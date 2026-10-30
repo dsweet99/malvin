@@ -25,10 +25,14 @@ for await (const line of readline.createInterface({input: process.stdin})) {
             emit({event: 'run_done', status: 'finished', result: '__MALVIN_DONE__'});
         } else if (model === 'slow') {
             fs.writeFileSync('started', '');
-        } else if (model === 'echo') {
-            emit({event: 'run_done', status: 'finished', result: 'Summarize request in five words.'});
         } else {
-            const result = model === 'malformed' ? 'too short' : 'Add cheap request summary models';
+            const prompt = req.prompt || '';
+            const result = model === 'echo' ? 'Use 30 characters now'
+                : model === 'malformed' ? 'one two three four five six seven eight'
+                : model === 'brief' ? 'Fix the parser'
+                : model === 'live' && prompt.includes('current status')
+                    ? (prompt.includes('EDITING') ? 'Editing the parser' : 'Reading the plan')
+                : 'Add cheap request summaries';
             emit({event: 'run_done', status: 'finished', result});
         }
     } else if (req.op === 'close') {
@@ -46,7 +50,7 @@ fn prepare(work: &Path, models: &str) {
     .unwrap();
     std::fs::write(
         work.join("request.md"),
-        "Please implement request summaries.",
+        "Please implement background request summaries for the herdr status line right now.",
     )
     .unwrap();
     std::fs::write(work.join("bridge.mjs"), BRIDGE).unwrap();
@@ -85,30 +89,77 @@ async fn finish(child: &mut tokio::process::Child) -> std::process::ExitStatus {
         .unwrap()
 }
 
+async fn run_worker(work: &Path) -> (std::process::ExitStatus, Option<String>) {
+    let mut child = worker(work);
+    let stdin = child.stdin.take();
+    let summary = work.join("request_summary.txt");
+    let status = tokio::time::timeout(Duration::from_secs(3), async move {
+        loop {
+            if let Some(status) = child.try_wait().unwrap() {
+                return status;
+            }
+            if summary.exists() {
+                drop(stdin);
+                return child.wait().await.unwrap();
+            }
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+    })
+    .await
+    .unwrap();
+    (
+        status,
+        std::fs::read_to_string(work.join("request_summary.txt")).ok(),
+    )
+}
+
+async fn wait_for_text(path: &Path, expected: &str) {
+    tokio::time::timeout(Duration::from_secs(3), async {
+        loop {
+            if std::fs::read_to_string(path).ok().as_deref() == Some(expected) {
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+    })
+    .await
+    .unwrap();
+}
+
 #[tokio::test]
 async fn summary_worker_falls_back_only_on_quota_and_rejects_malformed_output() {
-    for (models, attempts, success) in [
-        ("['cursor:poor', 'cursor:cheap']", "poor\ncheap\n", true),
-        ("['cursor:broken', 'cursor:cheap']", "broken\n", false),
-        ("['cursor:malformed']", "malformed\n", false),
-        ("['cursor:echo']", "echo\n", false),
+    for (models, attempts, summary) in [
+        (
+            "['cursor:poor', 'cursor:cheap']",
+            "poor\ncheap\n",
+            Some("Add cheap request summaries"),
+        ),
+        ("['cursor:broken', 'cursor:cheap']", "broken\n", None),
+        ("['cursor:malformed']", "malformed\n", None),
+        ("['cursor:echo']", "echo\n", None),
+        ("['cursor:brief']", "brief\n", Some("Fix the parser")),
     ] {
         let dir = tempfile::tempdir().unwrap();
         prepare(dir.path(), models);
-        let mut child = worker(dir.path());
-        let _connection = child.stdin.take();
-        assert_eq!(finish(&mut child).await.success(), success);
+        let (status, stored) = run_worker(dir.path()).await;
+        assert_eq!(status.success(), summary.is_some());
         assert_eq!(
             std::fs::read_to_string(dir.path().join("attempts")).unwrap(),
             attempts
         );
-        let summary = std::fs::read_to_string(dir.path().join("request_summary.txt"));
-        if success {
-            assert_eq!(summary.unwrap(), "Add cheap request summary models");
-        } else {
-            assert!(summary.is_err());
-        }
+        assert_eq!(stored.as_deref(), summary);
     }
+}
+
+#[tokio::test]
+async fn short_request_is_trimmed_without_calling_the_model() {
+    let dir = tempfile::tempdir().unwrap();
+    prepare(dir.path(), "['cursor:cheap']");
+    std::fs::write(dir.path().join("request.md"), "Fix the parser tonight.").unwrap();
+    let (status, stored) = run_worker(dir.path()).await;
+    assert!(status.success());
+    assert!(!dir.path().join("attempts").exists());
+    assert_eq!(stored.as_deref(), Some("Fix the parser tonight."));
 }
 
 #[tokio::test]
@@ -135,10 +186,35 @@ async fn disconnected_parent_cancels_a_pending_summary() {
     })
     .await
     .unwrap();
-    assert!(child.try_wait().unwrap().is_none());
     drop(child.stdin.take());
     assert!(finish(&mut child).await.success());
     assert!(!dir.path().join("request_summary.txt").exists());
+}
+
+#[tokio::test]
+async fn status_token_tracks_recent_output_on_the_test_schedule() {
+    let dir = tempfile::tempdir().unwrap();
+    prepare(dir.path(), "['cursor:live']");
+    std::fs::write(dir.path().join("stdout.log"), "Gathering context\n").unwrap();
+    let mut child = command(dir.path())
+        .env(
+            "MALVIN_SUMMARY_WORKER_REQUEST",
+            dir.path().join("request.md"),
+        )
+        .env("MALVIN_TEST_STATUS_SCHEDULE_MS", "80,120")
+        .spawn()
+        .unwrap();
+    let stdin = child.stdin.take();
+    let status_path = dir.path().join("status_summary.txt");
+    wait_for_text(&status_path, "Reading the plan").await;
+    std::fs::write(dir.path().join("stdout.log"), "EDITING the parser\n").unwrap();
+    wait_for_text(&status_path, "Editing the parser").await;
+    drop(stdin);
+    assert!(finish(&mut child).await.success());
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("request_summary.txt")).unwrap(),
+        "Add cheap request summaries"
+    );
 }
 
 #[tokio::test]
@@ -151,14 +227,11 @@ async fn main_agent_finishes_while_summary_is_still_pending() {
             "--no-emit",
             "--model=cursor:main",
             "--max-loops=1",
-            "Implement summaries",
+            "Implement herdr task and status tokens for this request now",
         ])
         .spawn()
         .unwrap();
     assert!(finish(&mut child).await.success());
-    assert!(
-        dir.path().join("started").exists(),
-        "main waited for the summary to start"
-    );
+    assert!(dir.path().join("started").exists());
     assert!(!dir.path().join("request_summary.txt").exists());
 }

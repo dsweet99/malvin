@@ -2,19 +2,14 @@ use std::io::Read;
 use std::process::Stdio;
 
 use crate::artifacts::RunArtifacts;
+use crate::config::model_list::ModelList;
 
 const WORKER_REQUEST: &str = "MALVIN_SUMMARY_WORKER_REQUEST";
 
-pub(super) async fn launch(artifacts: &RunArtifacts) -> Result<(), String> {
+pub(super) fn spawn(artifacts: &RunArtifacts) -> Result<tokio::process::Child, String> {
     let mut command = worker_command(artifacts)?;
-    let mut child = command.spawn().map_err(|e| e.to_string())?;
-    let _connection = child.stdin.take();
-    let status = child.wait().await.map_err(|e| e.to_string())?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err(format!("summary worker: {status}"))
-    }
+    command.kill_on_drop(true);
+    command.spawn().map_err(|e| e.to_string())
 }
 
 fn worker_command(artifacts: &RunArtifacts) -> Result<tokio::process::Command, String> {
@@ -67,12 +62,46 @@ fn run(plan_path: std::path::PathBuf) -> Result<(), String> {
         let _ = closed.send(());
     });
     let runtime = worker_runtime()?;
-    runtime.block_on(async {
+    runtime.block_on(session(&artifacts, &models, disconnected))
+}
+
+async fn session(
+    artifacts: &RunArtifacts,
+    models: &ModelList,
+    mut disconnected: tokio::sync::oneshot::Receiver<()>,
+) -> Result<(), String> {
+    let started = std::time::Instant::now();
+    let task = tokio::select! {
+        _ = &mut disconnected => return Ok(()),
+        result = super::generate_task(artifacts, models) => result,
+    };
+    task?;
+    status_loop(artifacts, models, started, &mut disconnected).await
+}
+
+async fn status_loop(
+    artifacts: &RunArtifacts,
+    models: &ModelList,
+    started: std::time::Instant,
+    disconnected: &mut tokio::sync::oneshot::Receiver<()>,
+) -> Result<(), String> {
+    let (first, period) = super::schedule::status_delays();
+    let mut due = started + first;
+    loop {
+        let wait = due.saturating_duration_since(std::time::Instant::now());
         tokio::select! {
-            result = super::generate(&artifacts, &models) => result,
-            _ = disconnected => Ok(()),
+            _ = &mut *disconnected => return Ok(()),
+            () = tokio::time::sleep(wait) => {}
         }
-    })
+        let result = tokio::select! {
+            _ = &mut *disconnected => return Ok(()),
+            result = super::generate_status(artifacts, models) => result,
+        };
+        if let Err(error) = result {
+            eprintln!("{error}");
+        }
+        due = super::schedule::next_due(due, period, std::time::Instant::now());
+    }
 }
 
 fn worker_runtime() -> Result<tokio::runtime::Runtime, String> {
