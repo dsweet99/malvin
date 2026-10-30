@@ -108,7 +108,7 @@ pub fn metadata_tokens() -> Option<serde_json::Value> {
     if let Some(task) = stored_task() {
         map.insert("task".into(), serde_json::Value::String(task));
     }
-    if let Some(status) = stored_status() {
+    if let Some(status) = current_status() {
         map.insert("status".into(), serde_json::Value::String(status));
     }
     if map.is_empty() {
@@ -122,7 +122,8 @@ fn stored_task() -> Option<String> {
     stored_file(text::task_path)
 }
 
-fn stored_status() -> Option<String> {
+#[must_use]
+pub fn current_status() -> Option<String> {
     stored_file(text::status_path)
 }
 
@@ -146,8 +147,11 @@ mod tests {
         std::fs::create_dir_all(&run).unwrap();
         crate::workspace::run_id::set_active_run_dir(Some(run.clone()));
         std::fs::write(text::task_path(&run), "Return only that summary").unwrap();
+        std::fs::write(text::status_path(&run), "Return only that summary").unwrap();
         assert_eq!(current(), "");
+        assert_eq!(current_status(), None);
         assert!(metadata_tokens().is_none());
+        assert!(crate::time_format::heartbeat_payload_now().ends_with(" · hash/run"));
         crate::workspace::run_id::set_active_run_dir(None);
     }
 
@@ -165,12 +169,17 @@ mod tests {
         std::fs::write(text::task_path(&run), "Add cheap request summaries").unwrap();
         assert!(crate::time_format::heartbeat_payload_now()
             .ends_with("hash/run Add cheap request summaries"));
-        std::fs::write(text::status_path(&run), "Reading the plan").unwrap();
-        let tokens = metadata_tokens().unwrap();
-        assert_eq!(tokens["task"], "Add cheap request summaries");
-        assert_eq!(tokens["status"], "Reading the plan");
+        for status in ["Reading the plan", "Running checks"] {
+            std::fs::write(text::status_path(&run), status).unwrap();
+            let tokens = metadata_tokens().unwrap();
+            assert_eq!(tokens["task"], "Add cheap request summaries");
+            assert_eq!(tokens["status"], status);
+            assert!(crate::time_format::heartbeat_payload_now()
+                .ends_with(&format!("hash/run Add cheap request summaries · {status}")));
+        }
         crate::workspace::run_id::set_active_run_dir(None);
         assert_eq!(current(), "");
+        assert_eq!(current_status(), None);
         assert!(metadata_tokens().is_none());
     }
 }

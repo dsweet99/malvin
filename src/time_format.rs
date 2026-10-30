@@ -30,6 +30,10 @@ pub fn heartbeat_payload_now() -> String {
             payload.push(' ');
             payload.push_str(&summary);
         }
+        if let Some(status) = crate::task_summary::current_status() {
+            payload.push_str(" · ");
+            payload.push_str(&status);
+        }
     }
     payload
 }
