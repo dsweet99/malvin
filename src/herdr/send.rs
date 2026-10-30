@@ -3,11 +3,12 @@ use std::os::unix::net::UnixStream;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use serde_json::Value;
 
 pub const SOCKET_TIMEOUT: Duration = Duration::from_millis(500);
+const MAX_REPLY_BYTES: usize = 64 * 1024;
 
 #[cfg(test)]
 pub fn send_request(socket_path: &Path, request: &Value) {
@@ -21,9 +22,7 @@ pub(crate) fn send_request_checked(socket_path: &Path, request: &Value) -> Resul
     stream
         .write_all(line.as_bytes())
         .map_err(|e| e.to_string())?;
-    let mut buf = [0_u8; 4096];
-    let n = read_reply_bytes(&mut stream, &mut buf)?;
-    classify_reply(&buf[..n])
+    classify_reply(&read_reply_bytes(&mut stream)?)
 }
 
 pub(crate) fn send_request_with_retry(socket_path: &Path, request: &Value) -> Result<(), String> {
@@ -33,9 +32,37 @@ pub(crate) fn send_request_with_retry(socket_path: &Path, request: &Value) -> Re
     send_request_checked(socket_path, request)
 }
 
-fn read_reply_bytes(stream: &mut UnixStream, buf: &mut [u8]) -> Result<usize, String> {
+fn read_reply_bytes(stream: &mut UnixStream) -> Result<Vec<u8>, String> {
+    let deadline = Instant::now() + SOCKET_TIMEOUT;
+    let mut reply = Vec::new();
+    let mut buf = [0_u8; 4096];
+    loop {
+        let n = read_reply_chunk(stream, &mut buf, deadline)?;
+        let newline = buf[..n].iter().position(|&byte| byte == b'\n');
+        let end = newline.map_or(n, |index| index + 1);
+        if reply.len() + end > MAX_REPLY_BYTES {
+            return Err("herdr reply too large".into());
+        }
+        reply.extend_from_slice(&buf[..end]);
+        if n == 0 || newline.is_some() {
+            return Ok(reply);
+        }
+    }
+}
+
+fn read_reply_chunk(
+    stream: &mut UnixStream,
+    buf: &mut [u8],
+    deadline: Instant,
+) -> Result<usize, String> {
+    let remaining = deadline
+        .checked_duration_since(Instant::now())
+        .filter(|duration| !duration.is_zero())
+        .ok_or_else(|| "herdr read timed out".to_string())?;
+    stream
+        .set_read_timeout(Some(remaining))
+        .map_err(|e| e.to_string())?;
     match stream.read(buf) {
-        Ok(0) => Err("herdr reply empty".into()),
         Ok(n) => Ok(n),
         Err(e)
             if e.kind() == std::io::ErrorKind::TimedOut
@@ -111,3 +138,7 @@ fn connect_with_timeout(socket_path: &Path, timeout: Duration) -> Result<UnixStr
 #[cfg(test)]
 #[path = "send_tests.rs"]
 mod send_tests;
+
+#[cfg(test)]
+#[path = "send_reply_tests.rs"]
+mod send_reply_tests;
