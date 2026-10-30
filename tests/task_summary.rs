@@ -25,6 +25,8 @@ for await (const line of readline.createInterface({input: process.stdin})) {
             emit({event: 'run_done', status: 'finished', result: '__MALVIN_DONE__'});
         } else if (model === 'slow') {
             fs.writeFileSync('started', '');
+        } else if (model === 'echo') {
+            emit({event: 'run_done', status: 'finished', result: 'Summarize request in five words.'});
         } else {
             const result = model === 'malformed' ? 'too short' : 'Add cheap request summary models';
             emit({event: 'run_done', status: 'finished', result});
@@ -89,6 +91,7 @@ async fn summary_worker_falls_back_only_on_quota_and_rejects_malformed_output() 
         ("['cursor:poor', 'cursor:cheap']", "poor\ncheap\n", true),
         ("['cursor:broken', 'cursor:cheap']", "broken\n", false),
         ("['cursor:malformed']", "malformed\n", false),
+        ("['cursor:echo']", "echo\n", false),
     ] {
         let dir = tempfile::tempdir().unwrap();
         prepare(dir.path(), models);
@@ -106,6 +109,18 @@ async fn summary_worker_falls_back_only_on_quota_and_rejects_malformed_output() 
             assert!(summary.is_err());
         }
     }
+}
+
+#[tokio::test]
+async fn blank_request_does_not_call_the_summary_model() {
+    let dir = tempfile::tempdir().unwrap();
+    prepare(dir.path(), "['cursor:cheap']");
+    std::fs::write(dir.path().join("request.md"), " \n").unwrap();
+    let mut child = worker(dir.path());
+    let _connection = child.stdin.take();
+    assert!(!finish(&mut child).await.success());
+    assert!(!dir.path().join("attempts").exists());
+    assert!(!dir.path().join("request_summary.txt").exists());
 }
 
 #[tokio::test]
