@@ -127,6 +127,10 @@ async fn cursor_sdk_client_mock_bridge_reuses_one_process_for_many_prompts() {
     assert!(steps >= 2);
     assert_eq!(tokens_in, Some(22));
     assert_eq!(tokens_out, Some(14));
+    assert_eq!(
+        std::fs::read(tmp.path().join(crate::malvin_constants::PROMPT_SENDS)).unwrap(),
+        b"\n\n"
+    );
     client.end_coder_session().await.expect("end");
     assert!(!client.has_open_coder_session());
     clear_mock_bridge_env();

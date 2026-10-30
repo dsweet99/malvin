@@ -150,6 +150,8 @@ pub(super) fn append_prompt_files(
     append_prompt_log_bytes(log_path, line.as_bytes())?;
     if let Some(run_dir) = client.prompts_log_run_dir.as_ref() {
         let _ = append_prompt_log_bytes(&run_dir.join("prompts.log"), line.as_bytes());
+        let sends = run_dir.join(crate::malvin_constants::PROMPT_SENDS);
+        let _ = append_prompt_log_bytes(&sends, b"\n");
     }
     Ok(())
 }

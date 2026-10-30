@@ -149,6 +149,79 @@ async fn status_token_tracks_recent_output_on_the_test_schedule() {
 }
 
 #[tokio::test]
+async fn status_token_refreshes_when_a_main_agent_prompt_is_sent() {
+    let dir = tempfile::tempdir().unwrap();
+    prepare(dir.path(), "['cursor:live']");
+    let mut child = command(dir.path())
+        .env(
+            "MALVIN_SUMMARY_WORKER_REQUEST",
+            dir.path().join("request.md"),
+        )
+        .env("MALVIN_TEST_STATUS_SCHEDULE_MS", "60000,60000")
+        .spawn()
+        .unwrap();
+    let stdin = child.stdin.take();
+    let status_path = dir.path().join("status_summary.txt");
+    let prompts = dir.path().join("prompt_sends");
+    wait_for_text(
+        &dir.path().join("request_summary.txt"),
+        "Add cheap request summaries",
+    )
+    .await;
+    std::fs::write(dir.path().join("stdout.log"), "Gathering context\n").unwrap();
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert!(!status_path.exists());
+    std::fs::write(&prompts, "\n").unwrap();
+    wait_for_text(&status_path, "Reading the plan").await;
+    std::fs::write(dir.path().join("stdout.log"), "EDITING the parser\n").unwrap();
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert_eq!(
+        std::fs::read_to_string(&status_path).unwrap(),
+        "Reading the plan"
+    );
+    let mut prompts_file = std::fs::OpenOptions::new()
+        .append(true)
+        .open(&prompts)
+        .unwrap();
+    std::io::Write::write_all(&mut prompts_file, b"\n").unwrap();
+    wait_for_text(&status_path, "Editing the parser").await;
+    drop(stdin);
+    assert!(finish(&mut child).await.success());
+}
+
+#[tokio::test]
+async fn each_queued_prompt_send_is_summarized() {
+    let dir = tempfile::tempdir().unwrap();
+    prepare(dir.path(), "['cursor:live']");
+    let mut child = command(dir.path())
+        .env(
+            "MALVIN_SUMMARY_WORKER_REQUEST",
+            dir.path().join("request.md"),
+        )
+        .env("MALVIN_TEST_STATUS_SCHEDULE_MS", "60000,60000")
+        .spawn()
+        .unwrap();
+    let stdin = child.stdin.take();
+    let attempts = dir.path().join("attempts");
+    wait_for_text(
+        &dir.path().join("request_summary.txt"),
+        "Add cheap request summaries",
+    )
+    .await;
+    assert_eq!(std::fs::read_to_string(&attempts).unwrap(), "live\n");
+    std::fs::write(dir.path().join("stdout.log"), "EDITING the parser\n").unwrap();
+    std::fs::write(dir.path().join("prompt_sends"), "\n\n").unwrap();
+    wait_for_text(&attempts, "live\nlive\nlive\n").await;
+    wait_for_text(
+        &dir.path().join("status_summary.txt"),
+        "Editing the parser",
+    )
+    .await;
+    drop(stdin);
+    assert!(finish(&mut child).await.success());
+}
+
+#[tokio::test]
 async fn main_agent_finishes_while_summary_is_still_pending() {
     let dir = tempfile::tempdir().unwrap();
     prepare(dir.path(), "['cursor:slow']");

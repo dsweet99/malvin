@@ -95,12 +95,14 @@ into at most 30 characters. Requests with fewer than ten words use their first
 A request that already fits is also used as written. Other requests are summarized
 by `model_lite`. Model output that exceeds the limit is
 shortened at a word boundary when possible. That summary appears after the run ID on `h|`
-lines and is reported as the herdr `task` token. Five minutes after the run starts,
-and every ten minutes after that, `model_lite` summarizes the recent run output into
-at most 30 characters and reports it as the herdr `status` token. Until the task
-summary is ready, the heartbeat adds no text. A longer request without configuration or a failed
-summary leaves the heartbeat unchanged and leaves the tokens unset. This work never
-delays the main run and is cancelled when that run ends.
+lines and is reported as the herdr `task` token. Each time malvin sends a prompt to the
+main agent, `model_lite` summarizes the recent run output into at most 30 characters and
+reports it as the herdr `status` token. The same summary also runs five minutes after the
+run starts, and every ten minutes after that, so a long turn still refreshes while that
+prompt is in progress. Until the task summary is ready, the heartbeat adds no text. A
+longer request without configuration or a failed summary leaves the heartbeat unchanged
+and leaves the tokens unset. This work never delays the main run and is cancelled when
+that run ends.
 
 The Herdr agent name stays `malvin`. The summaries are only the `task` and
 `status` tokens. Herdr's default Agent sidebar shows that name on its agent row.
@@ -131,7 +133,8 @@ See [Herdr's configuration guide](https://herdr.dev/docs/configuration/).
 If only `malvin` appears, inspect `herdr pane get "$HERDR_PANE_ID"` from the
 terminal running malvin. Its `tokens` map shows whether Herdr received `task` and
 `status`, independently of the sidebar layout. A missing `status` is expected
-during the first five minutes. Summary errors are recorded in the run directory's
+until the task summary is ready and either a prompt has been sent or the first
+scheduled summary has run. Summary errors are recorded in the run directory's
 `request_summary.log`; delivery errors are recorded in `herdr.log`.
 
 `--model=claude:sonnet` uses only that model. A comma-separated override, such as
