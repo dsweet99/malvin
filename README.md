@@ -102,13 +102,18 @@ summary is ready, the heartbeat adds no text. A longer request without configura
 summary leaves the heartbeat unchanged and leaves the tokens unset. This work never
 delays the main run and is cancelled when that run ends.
 
-To display those tokens in Herdr's expanded desktop Agent sidebar, add rows to
+The summary also appears in Herdr's default Agent sidebar: the display label uses
+the latest status summary, or the task summary until a status is available. It
+uses `malvin` before either summary is ready. The lifecycle agent identity stays
+`malvin`, and the `task` and `status` tokens remain available independently.
+
+To display both tokens in Herdr's expanded desktop Agent sidebar, add rows to
 Herdr's configuration on the machine running the viewing client:
 
 ```toml
 [ui.sidebar.agents]
 rows = [
-    ["state_icon", "agent", "state_text"],
+    ["state_icon", "workspace", "state_text"],
     ["$task"],
     ["$status"],
 ]

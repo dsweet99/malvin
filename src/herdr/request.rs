@@ -1,4 +1,4 @@
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 pub const SOURCE: &str = "herdr:malvin";
 pub const AGENT: &str = "malvin";
@@ -91,6 +91,9 @@ pub fn report_metadata_sparse(pane_id: &str, title: Option<&str>, seq: u64) -> V
         params["title"] = json!(t);
     }
     if let Some(tokens) = crate::task_summary::metadata_tokens() {
+        if let Some(label) = tokens.get("status").or_else(|| tokens.get("task")) {
+            params["display_agent"] = label.clone();
+        }
         params["tokens"] = tokens;
     }
     envelope("pane.report_metadata", params)
@@ -135,8 +138,8 @@ fn envelope(method: &str, params: Value) -> Value {
 #[cfg(test)]
 mod tests {
     use super::{
-        clear_agent_authority, clear_metadata_teardown, release_agent, rename_agent, report_agent,
-        report_agent_session, report_metadata_sparse, AGENT, SOURCE,
+        AGENT, SOURCE, clear_agent_authority, clear_metadata_teardown, release_agent, rename_agent,
+        report_agent, report_agent_session, report_metadata_sparse,
     };
 
     #[test]
@@ -196,14 +199,29 @@ mod tests {
             "Add cheap request summaries",
         )
         .unwrap();
+        let task_meta = report_metadata_sparse("p1", None, 9);
+        assert_eq!(
+            task_meta["params"]["display_agent"],
+            "Add cheap request summaries"
+        );
         std::fs::write(run.join("status_summary.txt"), "Reading the plan").unwrap();
         let meta = report_metadata_sparse("p1", None, 10);
-        assert_eq!(meta["params"]["display_agent"], AGENT);
+        assert_eq!(meta["params"]["display_agent"], "Reading the plan");
         assert_eq!(
             meta["params"]["tokens"]["task"],
             "Add cheap request summaries"
         );
         assert_eq!(meta["params"]["tokens"]["status"], "Reading the plan");
+        std::fs::write(run.join("status_summary.txt"), "Return only that summary").unwrap();
+        let invalid_status = report_metadata_sparse("p1", None, 11);
+        assert_eq!(
+            invalid_status["params"]["display_agent"],
+            "Add cheap request summaries"
+        );
         crate::workspace::run_id::set_active_run_dir(None);
+        assert_eq!(
+            report_metadata_sparse("p1", None, 12)["params"]["display_agent"],
+            AGENT
+        );
     }
 }
