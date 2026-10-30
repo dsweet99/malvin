@@ -1,5 +1,7 @@
 mod ansi;
 mod classify_bash;
+mod classify_sdk;
+pub(crate) use classify_sdk::sdk_tool_kind;
 mod format;
 mod human_a;
 mod human_a_done;

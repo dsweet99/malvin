@@ -1,5 +1,9 @@
+#[path = "agent_phase_sdk.rs"]
+mod agent_phase_sdk;
 #[path = "agent_phase_signal.rs"]
 mod agent_phase_signal;
+
+pub(crate) use agent_phase_sdk::observe_stream_event;
 
 use std::collections::HashSet;
 use std::sync::Mutex;
@@ -41,7 +45,7 @@ pub(super) struct PhaseState {
     pub(super) checking_depth: u32,
     pub(super) starting: bool,
     pub(super) fixing: bool,
-    pub(super) running_shells: u32,
+    pub(super) running_shells: HashSet<String>,
     pub(super) active_tool: Option<(ToolKind, u8)>,
     open_edits: HashSet<String>,
     open_reads: HashSet<String>,
@@ -53,7 +57,7 @@ impl PhaseState {
             checking_depth: 0,
             starting: true,
             fixing: false,
-            running_shells: 0,
+            running_shells: HashSet::new(),
             active_tool: None,
             open_edits: HashSet::new(),
             open_reads: HashSet::new(),
@@ -75,7 +79,7 @@ impl PhaseState {
     }
 
     fn shell_in_flight(&self) -> bool {
-        self.running_shells > 0
+        !self.running_shells.is_empty()
             || self
                 .active_tool
                 .is_some_and(|(k, _)| active_tool_phase(k) == AgentPhase::Running)

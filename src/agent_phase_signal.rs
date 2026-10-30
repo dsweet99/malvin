@@ -45,16 +45,17 @@ fn observe_execute(
 ) -> PhaseSideEffect {
     match parsed.phase {
         TOOL_PHASE_START => {
-            state.running_shells = state.running_shells.saturating_add(1);
+            state.running_shells.insert(parsed.id.clone());
             state.active_tool = Some((ToolKind::Execute, parsed.phase));
             PhaseSideEffect::NotifyWorking
         }
         TOOL_PHASE_RUNNING => {
+            state.running_shells.insert(parsed.id.clone());
             state.active_tool = Some((ToolKind::Execute, parsed.phase));
             PhaseSideEffect::None
         }
         TOOL_PHASE_DONE => {
-            state.running_shells = state.running_shells.saturating_sub(1);
+            state.running_shells.remove(&parsed.id);
             if execute_looks_like_test(parsed, tracker) {
                 state.fixing = execute_failed(parsed);
             }
@@ -200,7 +201,7 @@ mod tests {
                 tracker,
                 &execute_update("ex1", "pending", "pytest tests", None),
             );
-            assert_eq!(state.running_shells, 1);
+            assert_eq!(state.running_shells.len(), 1);
             assert_eq!(
                 state.active_tool,
                 Some((ToolKind::Execute, TOOL_PHASE_START))
@@ -219,7 +220,7 @@ mod tests {
                 tracker,
                 &execute_update("ex1", "completed", "pytest tests", Some(1)),
             );
-            assert_eq!(state.running_shells, 0);
+            assert!(state.running_shells.is_empty());
             assert!(state.active_tool.is_none());
             assert!(
                 state.fixing,
@@ -345,7 +346,7 @@ mod tests {
         assert_eq!(state.resolve(), AgentPhase::Starting);
 
         state.checking_depth = 1;
-        state.running_shells = 1;
+        state.running_shells.insert("test".into());
         state.fixing = true;
         state.active_tool = Some((ToolKind::Edit, TOOL_PHASE_START));
         assert_eq!(state.resolve(), AgentPhase::Checking);
@@ -353,7 +354,7 @@ mod tests {
         state.checking_depth = 0;
         assert_eq!(state.resolve(), AgentPhase::Running);
 
-        state.running_shells = 0;
+        state.running_shells.clear();
         assert_eq!(state.resolve(), AgentPhase::Editing);
 
         state.active_tool = Some((ToolKind::Read, TOOL_PHASE_START));

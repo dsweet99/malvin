@@ -6,6 +6,7 @@ use super::bridge_sdk::log_adapter_tool::{ToolCallFields, clear_tool_starts, emi
 use super::bridge_sdk::stream_log::StreamLog;
 
 pub fn handle_stream_event(session: &StreamLog, ev: &BridgeEvent) {
+    crate::agent_phase::observe_stream_event(ev);
     match ev {
         BridgeEvent::Assistant { text } => emit_assistant(session, text),
         BridgeEvent::Thinking { text } => emit_thinking(session, text),
