@@ -91,6 +91,7 @@ max_acp_retries = 5
             model: crate::config::model_id::parse_model_id("cursor:gpt-5")
                 .expect("model")
                 .into(),
+            model_lite: None,
             max_acp_retries: 5,
         }
     );

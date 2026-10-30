@@ -60,3 +60,34 @@ fn cli_models_parse_single_and_multiple_models() {
         assert!(parse_model_list_cli_arg("cursor:auto,bad").is_err());
     });
 }
+
+#[test]
+fn lite_models_use_the_same_order_aliases_and_validation_as_models() {
+    let aliases = BTreeMap::from([("cheap".into(), "cursor:auto".into())]);
+    let config =
+        parse_agent_config("[agent]\nmodel_lite = ['cheap', 'claude:sonnet']", &aliases).unwrap();
+    assert_eq!(
+        config.model_lite.unwrap().cli_value(),
+        "cursor:auto,claude:sonnet"
+    );
+    assert!(
+        parse_agent_config("[agent]", &aliases)
+            .unwrap()
+            .model_lite
+            .is_none()
+    );
+    assert_eq!(
+        parse_agent_config("[agent]\nmodel_lite = 'cheap'", &aliases)
+            .unwrap()
+            .model_lite
+            .unwrap()
+            .cli_value(),
+        "cursor:auto"
+    );
+    for value in ["[]", "['']", "['unknown']", "[1]", "true"] {
+        assert!(
+            parse_agent_config(&format!("[agent]\nmodel_lite = {value}"), &aliases).is_err(),
+            "{value}"
+        );
+    }
+}

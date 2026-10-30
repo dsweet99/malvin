@@ -105,6 +105,7 @@ async fn run_router_body(
 ) -> Result<(), String> {
     let mut prep = prepare_router_run(&router_args, opts).await?;
     prep.client.prompts_log_run_dir = Some(prep.artifacts.run_dir.clone());
+    let _summary = malvin::task_summary::start(&prep.artifacts);
     emit_run_logs_line(&prep.artifacts)?;
 
     super::router_flow_fallback::run_router_models(router_flow_loop::RouterAgentLoopInput {

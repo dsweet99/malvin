@@ -1,0 +1,84 @@
+use std::io::Read;
+use std::process::Stdio;
+
+use crate::artifacts::RunArtifacts;
+
+const WORKER_REQUEST: &str = "MALVIN_SUMMARY_WORKER_REQUEST";
+
+pub(super) async fn launch(artifacts: &RunArtifacts) -> Result<(), String> {
+    let mut command = worker_command(artifacts)?;
+    let mut child = command.spawn().map_err(|e| e.to_string())?;
+    let _connection = child.stdin.take();
+    let status = child.wait().await.map_err(|e| e.to_string())?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!("summary worker: {status}"))
+    }
+}
+
+fn worker_command(artifacts: &RunArtifacts) -> Result<tokio::process::Command, String> {
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let log = std::fs::File::create(artifacts.run_dir.join("request_summary.log"))
+        .map_err(|e| e.to_string())?;
+    let mut command = tokio::process::Command::new(exe);
+    command
+        .current_dir(&artifacts.work_dir)
+        .env(WORKER_REQUEST, &artifacts.plan_path)
+        .env("MALVIN_NO_HERDR", "1")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(log);
+    crate::herdr::strip_herdr_env_tokio(&mut command);
+    Ok(command)
+}
+
+pub fn run_if_worker() -> Option<crate::Exit> {
+    let request = std::env::var_os(WORKER_REQUEST)?;
+    let result = run(std::path::PathBuf::from(request));
+    Some(match result {
+        Ok(()) => crate::Exit::Success,
+        Err(error) => {
+            eprintln!("{error}");
+            crate::Exit::Failure
+        }
+    })
+}
+
+fn run(plan_path: std::path::PathBuf) -> Result<(), String> {
+    let work_dir = std::env::current_dir().map_err(|e| e.to_string())?;
+    let run_dir = plan_path
+        .parent()
+        .ok_or("request has no parent directory")?
+        .to_path_buf();
+    let config = crate::config::malvin_config_file::load_malvin_config(&work_dir);
+    let models = config
+        .agent
+        .model_lite
+        .ok_or("model_lite is not configured")?;
+    let artifacts = RunArtifacts {
+        run_dir,
+        plan_path,
+        work_dir,
+    };
+    let (closed, disconnected) = tokio::sync::oneshot::channel();
+    std::thread::spawn(move || {
+        let _ = std::io::stdin().read_to_end(&mut Vec::new());
+        let _ = closed.send(());
+    });
+    let runtime = worker_runtime()?;
+    runtime.block_on(async {
+        tokio::select! {
+            result = super::generate(&artifacts, &models) => result,
+            _ = disconnected => Ok(()),
+        }
+    })
+}
+
+fn worker_runtime() -> Result<tokio::runtime::Runtime, String> {
+    tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .map_err(|e| e.to_string())
+}

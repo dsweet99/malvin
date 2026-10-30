@@ -84,7 +84,7 @@ pub fn report_metadata_sparse(pane_id: &str, title: Option<&str>, seq: u64) -> V
     let mut params = json!({
         "pane_id": pane_id,
         "source": SOURCE,
-        "display_agent": AGENT,
+        "display_agent": crate::task_summary::herdr_status(),
         "seq": seq,
     });
     if let Some(t) = title {

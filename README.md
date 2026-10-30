@@ -78,6 +78,8 @@ Model selection uses an ordered list in `~/.malvinconf/config.toml`:
 ```toml
 [agent]
 model = ["cursor:auto", "claude:sonnet", "codex:gpt-5.6"]
+# Optional fast, cheap models for a five-word request summary:
+# model_lite = ["cursor:auto"]
 ```
 
 Each task starts with the first model. If it fails for lack of funds or credits,
@@ -85,6 +87,13 @@ including a usage limit or a plan-upgrade error, malvin tries the next model.
 Other failures retain their existing error handling. If every model fails for
 one of those reasons, the last error is reported.
 Existing single-string model settings remain supported.
+
+The optional `agent.model_lite` list accepts the same model IDs, aliases, and quota
+fallback order. It generates a five-word request summary in the background, shown
+after the run ID on `h|` lines and as the herdr status. Until it is ready, the
+heartbeat adds no text and herdr displays `malvin`. Missing configuration or a
+failed summary leaves those defaults in place. Summary work never delays the main
+run and is cancelled when that run ends.
 
 `--model=claude:sonnet` uses only that model. A comma-separated override, such as
 `--model=claude:sonnet,cursor:auto`, replaces the entire configured list. Commas

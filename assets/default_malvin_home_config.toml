@@ -18,6 +18,8 @@ auto_setup_costs = true
 [agent]
 # Try models in order; move to the next when funds are insufficient, including a usage limit or plan upgrade.
 model = ["cursor:auto"]
+# Optional cheap models for a five-word request summary; same aliases and quota fallback as model.
+# model_lite = ["cursor:auto"]
 max_acp_retries = 3
 
 # Cursor-mode USD cost rates ($ per million tokens) for model `cursor:auto`.

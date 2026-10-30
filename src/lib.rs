@@ -81,6 +81,7 @@ pub use workspace::run_id::{RunDirOptions, build_identifier, create_run_dir};
 pub mod agent_phase;
 pub mod herdr;
 pub mod session_dotfile_backup;
+pub mod task_summary;
 pub(crate) mod time_format;
 mod tracing_init;
 pub use agent_process::active_agent_heartbeat::active_agent_heartbeat_stats;

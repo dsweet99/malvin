@@ -25,6 +25,11 @@ pub fn heartbeat_payload_now() -> String {
     {
         payload.push_str(" · ");
         payload.push_str(&id);
+        let summary = crate::task_summary::current();
+        if !summary.is_empty() {
+            payload.push(' ');
+            payload.push_str(&summary);
+        }
     }
     payload
 }
