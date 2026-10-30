@@ -90,13 +90,15 @@ Existing single-string model settings remain supported.
 
 The optional `agent.model_lite` list accepts the same model IDs, aliases, and quota
 fallback order. When it is set, malvin summarizes the user request in the background
-into at most 30 characters. A request that already fits is used as written. A longer
-request is summarized by `model_lite`. Model output that exceeds the limit is
+into at most 30 characters. Requests with fewer than ten words use their first
+30 characters without calling a model, even when `model_lite` is not configured.
+A request that already fits is also used as written. Other requests are summarized
+by `model_lite`. Model output that exceeds the limit is
 shortened at a word boundary when possible. That summary appears after the run ID on `h|`
 lines and is reported as the herdr `task` token. Five minutes after the run starts,
 and every ten minutes after that, `model_lite` summarizes the recent run output into
 at most 30 characters and reports it as the herdr `status` token. Until the task
-summary is ready, the heartbeat adds no text. Missing configuration or a failed
+summary is ready, the heartbeat adds no text. A longer request without configuration or a failed
 summary leaves the heartbeat unchanged and leaves the tokens unset. This work never
 delays the main run and is cancelled when that run ends.
 

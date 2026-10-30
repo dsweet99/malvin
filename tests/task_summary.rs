@@ -1,131 +1,8 @@
-use std::path::Path;
-use std::process::Stdio;
 use std::time::Duration;
 
-const BRIDGE: &str = r#"
-import fs from 'node:fs';
-import readline from 'node:readline';
-let model;
-const emit = obj => process.stdout.write(JSON.stringify(obj) + '\n');
-for await (const line of readline.createInterface({input: process.stdin})) {
-    const req = JSON.parse(line);
-    if (req.op === 'create') {
-        model = req.model;
-        fs.appendFileSync('attempts', model + '\n');
-        emit({event: 'ok', agentId: 'summary'});
-    } else if (req.op === 'send') {
-        if (model === 'poor') {
-            emit({event: 'fatal', message: 'Insufficient funds', retryable: false});
-        } else if (model === 'broken') {
-            emit({event: 'fatal', message: 'invalid model', retryable: false});
-        } else if (model === 'main') {
-            while (!fs.existsSync('started')) {
-                await new Promise(resolve => setTimeout(resolve, 5));
-            }
-            emit({event: 'run_done', status: 'finished', result: '__MALVIN_DONE__'});
-        } else if (model === 'slow') {
-            fs.writeFileSync('started', '');
-        } else {
-            const prompt = req.prompt || '';
-            const result = model === 'echo' ? 'Use 30 characters now'
-                : model === 'malformed' ? 'Editing \u001b[31mthe parser'
-                : model === 'verbose' ? 'Add cheap request summaries today'
-                : model === 'brief' ? 'Fix the parser'
-                : model === 'live' && prompt.includes('current status')
-                    ? (prompt.includes('EDITING') ? 'Editing the parser' : 'Reading the plan comprehensively')
-                : 'Add cheap request summaries';
-            emit({event: 'run_done', status: 'finished', result});
-        }
-    } else if (req.op === 'close') {
-        break;
-    }
-}
-"#;
-
-fn prepare(work: &Path, models: &str) {
-    std::fs::create_dir_all(work.join(".malvinconf")).unwrap();
-    std::fs::write(
-        work.join(".malvinconf/config.toml"),
-        format!("[agent]\nmodel = ['cursor:auto']\nmodel_lite = {models}\n"),
-    )
-    .unwrap();
-    std::fs::write(
-        work.join("request.md"),
-        "Please implement background request summaries for the herdr status line right now.",
-    )
-    .unwrap();
-    std::fs::write(work.join("bridge.mjs"), BRIDGE).unwrap();
-}
-
-fn command(work: &Path) -> tokio::process::Command {
-    let mut command = tokio::process::Command::new(env!("CARGO_BIN_EXE_malvin"));
-    command
-        .current_dir(work)
-        .env("HOME", work)
-        .env("MALVIN_TEST_HOME", work)
-        .env("MALVIN_CURSOR_SDK_BRIDGE", work.join("bridge.mjs"))
-        .env("CURSOR_API_KEY", "test-key")
-        .env("MALVIN_TEST_NO_REAL_AGENT", "1")
-        .env("MALVIN_TEST_FAST_TEARDOWN", "1")
-        .env("MALVIN_NO_HERDR", "1")
-        .env_remove("MALVIN_SUMMARY_WORKER_REQUEST")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::null())
-        .stderr(Stdio::piped())
-        .kill_on_drop(true);
-    command
-}
-
-fn worker(work: &Path) -> tokio::process::Child {
-    command(work)
-        .env("MALVIN_SUMMARY_WORKER_REQUEST", work.join("request.md"))
-        .spawn()
-        .unwrap()
-}
-
-async fn finish(child: &mut tokio::process::Child) -> std::process::ExitStatus {
-    tokio::time::timeout(Duration::from_secs(3), child.wait())
-        .await
-        .unwrap()
-        .unwrap()
-}
-
-async fn run_worker(work: &Path) -> (std::process::ExitStatus, Option<String>) {
-    let mut child = worker(work);
-    let stdin = child.stdin.take();
-    let summary = work.join("request_summary.txt");
-    let status = tokio::time::timeout(Duration::from_secs(3), async move {
-        loop {
-            if let Some(status) = child.try_wait().unwrap() {
-                return status;
-            }
-            if summary.exists() {
-                drop(stdin);
-                return child.wait().await.unwrap();
-            }
-            tokio::time::sleep(Duration::from_millis(5)).await;
-        }
-    })
-    .await
-    .unwrap();
-    (
-        status,
-        std::fs::read_to_string(work.join("request_summary.txt")).ok(),
-    )
-}
-
-async fn wait_for_text(path: &Path, expected: &str) {
-    tokio::time::timeout(Duration::from_secs(3), async {
-        loop {
-            if std::fs::read_to_string(path).ok().as_deref() == Some(expected) {
-                return;
-            }
-            tokio::time::sleep(Duration::from_millis(5)).await;
-        }
-    })
-    .await
-    .unwrap();
-}
+#[path = "task_summary/support.rs"]
+mod support;
+use support::*;
 
 #[tokio::test]
 async fn summary_worker_falls_back_only_on_quota_and_rejects_malformed_output() {
@@ -166,6 +43,54 @@ async fn short_request_is_trimmed_without_calling_the_model() {
     assert!(status.success());
     assert!(!dir.path().join("attempts").exists());
     assert_eq!(stored.as_deref(), Some("Fix the parser tonight."));
+}
+
+#[tokio::test]
+async fn requests_under_ten_words_use_the_first_thirty_characters() {
+    for request in [
+        "Investigate extraordinarily complicated parsing failures",
+        "One two three four five six seven eight nine",
+        "Réparer immédiatement les caractères Unicode du résumé",
+    ] {
+        let dir = tempfile::tempdir().unwrap();
+        prepare(dir.path(), "['cursor:cheap']");
+        std::fs::write(dir.path().join("request.md"), request).unwrap();
+        let (status, stored) = run_worker(dir.path()).await;
+        assert!(status.success());
+        assert_eq!(stored, Some(request.chars().take(30).collect()));
+        assert!(!dir.path().join("attempts").exists());
+    }
+}
+
+#[tokio::test]
+async fn ten_word_request_calls_the_summary_model() {
+    let dir = tempfile::tempdir().unwrap();
+    prepare(dir.path(), "['cursor:cheap']");
+    std::fs::write(
+        dir.path().join("request.md"),
+        "One two three four five six seven eight nine ten",
+    )
+    .unwrap();
+    let (status, stored) = run_worker(dir.path()).await;
+    assert!(status.success());
+    assert_eq!(stored.as_deref(), Some("Add cheap request summaries"));
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("attempts")).unwrap(),
+        "cheap\n"
+    );
+}
+
+#[tokio::test]
+async fn short_request_works_without_model_lite_configuration() {
+    let dir = tempfile::tempdir().unwrap();
+    prepare(dir.path(), "['cursor:cheap']");
+    std::fs::write(dir.path().join(".malvinconf/config.toml"), "").unwrap();
+    let request = "Investigate extraordinarily complicated parsing failures";
+    std::fs::write(dir.path().join("request.md"), request).unwrap();
+    let (status, stored) = run_worker(dir.path()).await;
+    assert!(status.success());
+    assert_eq!(stored, Some(request.chars().take(30).collect()));
+    assert!(!dir.path().join("attempts").exists());
 }
 
 #[tokio::test]

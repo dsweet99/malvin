@@ -47,10 +47,7 @@ fn run(plan_path: std::path::PathBuf) -> Result<(), String> {
         .ok_or("request has no parent directory")?
         .to_path_buf();
     let config = crate::config::malvin_config_file::load_malvin_config(&work_dir);
-    let models = config
-        .agent
-        .model_lite
-        .ok_or("model_lite is not configured")?;
+    let models = config.agent.model_lite;
     let artifacts = RunArtifacts {
         run_dir,
         plan_path,
@@ -62,12 +59,12 @@ fn run(plan_path: std::path::PathBuf) -> Result<(), String> {
         let _ = closed.send(());
     });
     let runtime = worker_runtime()?;
-    runtime.block_on(session(&artifacts, &models, disconnected))
+    runtime.block_on(session(&artifacts, models.as_ref(), disconnected))
 }
 
 async fn session(
     artifacts: &RunArtifacts,
-    models: &ModelList,
+    models: Option<&ModelList>,
     mut disconnected: tokio::sync::oneshot::Receiver<()>,
 ) -> Result<(), String> {
     let started = std::time::Instant::now();
@@ -76,7 +73,10 @@ async fn session(
         result = super::generate_task(artifacts, models) => result,
     };
     task?;
-    status_loop(artifacts, models, started, &mut disconnected).await
+    if let Some(models) = models {
+        status_loop(artifacts, models, started, &mut disconnected).await?;
+    }
+    Ok(())
 }
 
 async fn status_loop(

@@ -21,7 +21,10 @@ impl Drop for SummaryTask {
 
 pub fn start(artifacts: &RunArtifacts) -> Option<SummaryTask> {
     let config = crate::config::malvin_config_file::load_malvin_config(&artifacts.work_dir);
-    config.agent.model_lite.as_ref()?;
+    if config.agent.model_lite.is_none() {
+        let request = std::fs::read_to_string(&artifacts.plan_path).ok()?;
+        text::local_task(&request)?;
+    }
     let artifacts = artifacts.clone();
     Some(SummaryTask(tokio::spawn(async move {
         if let Ok(child) = worker::spawn(&artifacts) {
@@ -32,7 +35,7 @@ pub fn start(artifacts: &RunArtifacts) -> Option<SummaryTask> {
 
 pub(super) async fn generate_task(
     artifacts: &RunArtifacts,
-    models: &ModelList,
+    models: Option<&ModelList>,
 ) -> Result<(), String> {
     let request = tokio::fs::read_to_string(&artifacts.plan_path)
         .await
@@ -40,10 +43,11 @@ pub(super) async fn generate_task(
     if request.trim().is_empty() {
         return Err("request is empty".into());
     }
-    let summary = if let Some(summary) = text::normalize(&request) {
+    let summary = if let Some(summary) = text::local_task(&request) {
         summary
     } else {
         let directions = text::directions("user request");
+        let models = models.ok_or("model_lite is not configured")?;
         model::summarize(models, &artifacts.work_dir, &request, &directions).await?
     };
     store(&text::task_path(&artifacts.run_dir), &summary).await

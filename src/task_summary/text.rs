@@ -22,6 +22,15 @@ pub(super) fn normalize(text: &str) -> Option<String> {
     cleaned(text).filter(|summary| summary.chars().count() <= MAX_CHARS)
 }
 
+pub(super) fn local_task(request: &str) -> Option<String> {
+    let request = cleaned(request)?;
+    if request.split_whitespace().count() < 10 {
+        Some(request.chars().take(MAX_CHARS).collect())
+    } else {
+        normalize(&request)
+    }
+}
+
 fn cleaned(text: &str) -> Option<String> {
     let text = text.trim().trim_matches(['"', '\'']);
     if text.chars().any(|c| c.is_control() && !c.is_whitespace()) {
