@@ -91,13 +91,38 @@ Existing single-string model settings remain supported.
 The optional `agent.model_lite` list accepts the same model IDs, aliases, and quota
 fallback order. When it is set, malvin summarizes the user request in the background
 into at most 30 characters. A request that already fits is used as written. A longer
-request is summarized by `model_lite`. That summary appears after the run ID on `h|`
+request is summarized by `model_lite`. Model output that exceeds the limit is
+shortened at a word boundary when possible. That summary appears after the run ID on `h|`
 lines and is reported as the herdr `task` token. Five minutes after the run starts,
 and every ten minutes after that, `model_lite` summarizes the recent run output into
 at most 30 characters and reports it as the herdr `status` token. Until the task
 summary is ready, the heartbeat adds no text. Missing configuration or a failed
 summary leaves the heartbeat unchanged and leaves the tokens unset. This work never
 delays the main run and is cancelled when that run ends.
+
+To display those tokens in Herdr's expanded desktop Agent sidebar, add rows to
+Herdr's configuration on the machine running the viewing client:
+
+```toml
+[ui.sidebar.agents]
+rows = [
+    ["state_icon", "agent", "state_text"],
+    ["$task"],
+    ["$status"],
+]
+```
+
+Use Herdr's UI **reload config** action after editing the file. With an SSH
+connection, the sidebar uses the viewing client's local configuration; changing
+the remote server's configuration does not configure that sidebar. Herdr's
+collapsed and mobile views keep their compact layouts and do not use these rows.
+See [Herdr's configuration guide](https://herdr.dev/docs/configuration/).
+
+If only `malvin` appears, inspect `herdr pane get "$HERDR_PANE_ID"` from the
+terminal running malvin. Its `tokens` map shows whether Herdr received `task` and
+`status`, independently of the sidebar layout. A missing `status` is expected
+during the first five minutes. Summary errors are recorded in the run directory's
+`request_summary.log`; delivery errors are recorded in `herdr.log`.
 
 `--model=claude:sonnet` uses only that model. A comma-separated override, such as
 `--model=claude:sonnet,cursor:auto`, replaces the entire configured list. Commas

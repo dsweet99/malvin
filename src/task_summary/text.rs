@@ -19,6 +19,10 @@ pub(super) fn status_path(run_dir: &Path) -> PathBuf {
 }
 
 pub(super) fn normalize(text: &str) -> Option<String> {
+    cleaned(text).filter(|summary| summary.chars().count() <= MAX_CHARS)
+}
+
+fn cleaned(text: &str) -> Option<String> {
     let text = text.trim().trim_matches(['"', '\'']);
     if text.chars().any(|c| c.is_control() && !c.is_whitespace()) {
         return None;
@@ -27,16 +31,12 @@ pub(super) fn normalize(text: &str) -> Option<String> {
     if words.is_empty() {
         return None;
     }
-    let summary = words.join(" ");
-    if summary.chars().count() > MAX_CHARS {
-        return None;
-    }
-    Some(summary)
+    Some(words.join(" "))
 }
 
 pub(super) fn accept(source: &str, text: &str, directions: &str) -> Result<String, &'static str> {
-    let Some(summary) = normalize(text) else {
-        return Err("expected at most 30 characters");
+    let Some(summary) = cleaned(text) else {
+        return Err("summary is empty or contains control characters");
     };
     if only_directions(&summary, directions) {
         return Err("summary echoes the directions");
@@ -44,7 +44,21 @@ pub(super) fn accept(source: &str, text: &str, directions: &str) -> Result<Strin
     if instruction_echo(&summary) && !instruction_echo(source) {
         return Err("summary echoes the directions");
     }
-    Ok(summary)
+    let summary = shortened(&summary);
+    publishable(&summary).ok_or("summary echoes the directions")
+}
+
+fn shortened(summary: &str) -> String {
+    let Some((boundary, _)) = summary.char_indices().nth(MAX_CHARS) else {
+        return summary.to_string();
+    };
+    let (mut prefix, rest) = summary.split_at(boundary);
+    if !rest.starts_with(char::is_whitespace)
+        && let Some((words, _)) = prefix.rsplit_once(' ')
+    {
+        prefix = words;
+    }
+    prefix.trim_end().to_string()
 }
 
 pub(super) fn publishable(text: &str) -> Option<String> {
@@ -159,6 +173,33 @@ mod tests {
             publishable("Add cheap request summaries"),
             Some("Add cheap request summaries".into())
         );
+    }
+
+    #[test]
+    fn model_summaries_fit_at_word_and_unicode_boundaries() {
+        let directions = directions("agent's current status");
+        assert_eq!(
+            accept(
+                "Inspecting code",
+                "Investigating missing Herdr status messages",
+                &directions
+            ),
+            Ok("Investigating missing Herdr".into())
+        );
+        assert_eq!(
+            accept("Inspecting code", &"é".repeat(31), &directions),
+            Ok("é".repeat(30))
+        );
+        assert!(
+            accept(
+                "Inspecting code",
+                "Return only that summary on one line in 30 characters",
+                &directions
+            )
+            .is_err()
+        );
+        assert!(accept("Inspecting code", " \n", &directions).is_err());
+        assert!(accept("Inspecting code", "Editing \x1b[31mthe parser", &directions).is_err());
     }
 
     #[test]

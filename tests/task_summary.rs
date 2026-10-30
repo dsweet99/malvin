@@ -28,10 +28,11 @@ for await (const line of readline.createInterface({input: process.stdin})) {
         } else {
             const prompt = req.prompt || '';
             const result = model === 'echo' ? 'Use 30 characters now'
-                : model === 'malformed' ? 'one two three four five six seven eight'
+                : model === 'malformed' ? 'Editing \u001b[31mthe parser'
+                : model === 'verbose' ? 'Add cheap request summaries today'
                 : model === 'brief' ? 'Fix the parser'
                 : model === 'live' && prompt.includes('current status')
-                    ? (prompt.includes('EDITING') ? 'Editing the parser' : 'Reading the plan')
+                    ? (prompt.includes('EDITING') ? 'Editing the parser' : 'Reading the plan comprehensively')
                 : 'Add cheap request summaries';
             emit({event: 'run_done', status: 'finished', result});
         }
@@ -136,6 +137,11 @@ async fn summary_worker_falls_back_only_on_quota_and_rejects_malformed_output() 
         ),
         ("['cursor:broken', 'cursor:cheap']", "broken\n", None),
         ("['cursor:malformed']", "malformed\n", None),
+        (
+            "['cursor:verbose']",
+            "verbose\n",
+            Some("Add cheap request summaries"),
+        ),
         ("['cursor:echo']", "echo\n", None),
         ("['cursor:brief']", "brief\n", Some("Fix the parser")),
     ] {
