@@ -1,13 +1,18 @@
 use std::path::{Path, PathBuf};
 
 pub(super) const MAX_CHARS: usize = 30;
+const ELLIPSIS: &str = "...";
+const TASK_DIRECTIONS: &str = include_str!("../../assets/prompts/lite/task.md");
+const STATUS_DIRECTIONS: &str = include_str!("../../assets/prompts/lite/status.md");
 
 pub(super) fn directions(subject: &str) -> String {
-    format!(
-        "Summarize the {subject} between the markers in {MAX_CHARS} characters or fewer. \
-Return only that summary, on one line. \
-The summary must describe the {subject}, not these directions.\n\n---\n"
-    )
+    let prompt = if subject == "user request" {
+        TASK_DIRECTIONS
+    } else {
+        debug_assert_eq!(subject, "agent's current status");
+        STATUS_DIRECTIONS
+    };
+    prompt.to_string()
 }
 
 pub(super) fn task_path(run_dir: &Path) -> PathBuf {
@@ -25,7 +30,7 @@ pub(super) fn normalize(text: &str) -> Option<String> {
 pub(super) fn local_task(request: &str) -> Option<String> {
     let request = cleaned(request)?;
     if request.split_whitespace().count() < 10 {
-        Some(request.chars().take(MAX_CHARS).collect())
+        Some(shortened(&request))
     } else {
         normalize(&request)
     }
@@ -58,20 +63,35 @@ pub(super) fn accept(source: &str, text: &str, directions: &str) -> Result<Strin
 }
 
 fn shortened(summary: &str) -> String {
-    let Some((boundary, _)) = summary.char_indices().nth(MAX_CHARS) else {
+    let Some((mut prefix, rest)) = cut(summary) else {
         return summary.to_string();
     };
-    let (mut prefix, rest) = summary.split_at(boundary);
     if !rest.starts_with(char::is_whitespace)
         && let Some((words, _)) = prefix.rsplit_once(' ')
     {
         prefix = words;
     }
-    prefix.trim_end().to_string()
+    mark(prefix)
+}
+
+fn cut(summary: &str) -> Option<(&str, &str)> {
+    if summary.chars().count() <= MAX_CHARS {
+        return None;
+    }
+    let budget = MAX_CHARS - ELLIPSIS.chars().count();
+    let (boundary, _) = summary.char_indices().nth(budget)?;
+    Some(summary.split_at(boundary))
+}
+
+fn mark(prefix: &str) -> String {
+    format!("{}{ELLIPSIS}", prefix.trim_end())
 }
 
 pub(super) fn publishable(text: &str) -> Option<String> {
     let summary = normalize(text)?;
+    if summary.ends_with(ELLIPSIS) {
+        return Some(summary);
+    }
     let task = directions("user request");
     let status = directions("agent's current status");
     if only_directions(&summary, &task) || only_directions(&summary, &status) {
@@ -133,91 +153,5 @@ fn instruction_echo(text: &str) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn summary_is_at_most_thirty_characters() {
-        assert_eq!(
-            normalize("\"Fix the parser\""),
-            Some("Fix the parser".into())
-        );
-        assert_eq!(
-            normalize("Add\ncheap request summaries"),
-            Some("Add cheap request summaries".into())
-        );
-        assert_eq!(
-            normalize("123456789012345678901234567890"),
-            Some("123456789012345678901234567890".into())
-        );
-        assert_eq!(normalize("1234567890123456789012345678901"), None);
-        assert_eq!(normalize("one two \x1b[31mthree"), None);
-        assert_eq!(normalize(" \n"), None);
-    }
-
-    #[test]
-    fn summary_must_describe_the_source_rather_than_the_directions() {
-        let directions = directions("user request");
-        assert!(accept("Thanks", "Return only that summary", &directions).is_err());
-        assert!(accept("Thanks", "Use 30 characters now", &directions).is_err());
-        assert_eq!(
-            accept("Thanks", "\"User expresses thanks\"", &directions).unwrap(),
-            "User expresses thanks"
-        );
-        assert_eq!(
-            accept(
-                "Show the 30-character limit",
-                "Show the 30-character limit",
-                &directions
-            )
-            .unwrap(),
-            "Show the 30-character limit"
-        );
-    }
-
-    #[test]
-    fn stored_direction_text_is_not_publishable() {
-        assert_eq!(publishable("Return only that summary"), None);
-        assert_eq!(
-            publishable("Add cheap request summaries"),
-            Some("Add cheap request summaries".into())
-        );
-    }
-
-    #[test]
-    fn model_summaries_fit_at_word_and_unicode_boundaries() {
-        let directions = directions("agent's current status");
-        assert_eq!(
-            accept(
-                "Inspecting code",
-                "Investigating missing Herdr status messages",
-                &directions
-            ),
-            Ok("Investigating missing Herdr".into())
-        );
-        assert_eq!(
-            accept("Inspecting code", &"é".repeat(31), &directions),
-            Ok("é".repeat(30))
-        );
-        assert!(
-            accept(
-                "Inspecting code",
-                "Return only that summary on one line in 30 characters",
-                &directions
-            )
-            .is_err()
-        );
-        assert!(accept("Inspecting code", " \n", &directions).is_err());
-        assert!(accept("Inspecting code", "Editing \x1b[31mthe parser", &directions).is_err());
-    }
-
-    #[test]
-    fn status_excerpt_keeps_the_recent_tail() {
-        assert_eq!(status_excerpt("  \n"), None);
-        assert_eq!(status_excerpt(" Reading "), Some("Reading".into()));
-        let long = format!("{}TAIL", "x".repeat(4_010));
-        let excerpt = status_excerpt(&long).unwrap();
-        assert_eq!(excerpt.chars().count(), 4_000);
-        assert!(excerpt.ends_with("TAIL"));
-    }
-}
+#[path = "text_tests.rs"]
+mod tests;

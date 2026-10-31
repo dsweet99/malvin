@@ -1,11 +1,11 @@
 mod model;
 mod schedule;
+mod stdout_tail;
 mod text;
 mod watch;
 mod worker;
 pub use worker::run_if_worker;
 
-use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 
 use crate::artifacts::RunArtifacts;
@@ -66,25 +66,8 @@ pub(super) async fn generate_status(
 }
 
 fn status_source(run_dir: &Path) -> Option<String> {
-    let mut file = std::fs::File::open(run_dir.join(crate::malvin_constants::STDOUT_LOG)).ok()?;
-    let len = file.metadata().ok()?.len();
-    if len == 0 {
-        return None;
-    }
-    let start = len.saturating_sub(8_192);
-    file.seek(SeekFrom::Start(start)).ok()?;
-    let mut bytes = Vec::new();
-    file.read_to_end(&mut bytes).ok()?;
-    let owned = String::from_utf8_lossy(&bytes).into_owned();
-    let sliced = if start == 0 {
-        owned
-    } else {
-        match owned.split_once('\n') {
-            Some((_, rest)) => rest.to_string(),
-            None => owned,
-        }
-    };
-    text::status_excerpt(&sliced)
+    let path = run_dir.join(crate::malvin_constants::STDOUT_LOG);
+    text::status_excerpt(&stdout_tail::read(&path)?)
 }
 
 async fn store(path: &Path, summary: &str) -> Result<(), String> {
@@ -153,6 +136,38 @@ mod tests {
         assert!(metadata_tokens().is_none());
         assert!(crate::time_format::heartbeat_payload_now().ends_with(" · hash/run"));
         crate::workspace::run_id::set_active_run_dir(None);
+    }
+
+    #[test]
+    fn long_stdout_line_still_yields_a_status_source() {
+        let dir = tempfile::tempdir().unwrap();
+        for count in [8_191, 10_000] {
+            let mut body = b"HEAD\n".to_vec();
+            body.extend(std::iter::repeat_n(b'B', count));
+            body.push(b'\n');
+            std::fs::write(dir.path().join("stdout.log"), &body).unwrap();
+            let source = status_source(dir.path()).expect("long last line");
+            assert_eq!(source.len(), 4_000, "{count}");
+            assert!(source.bytes().all(|byte| byte == b'B'), "{count}");
+        }
+    }
+
+    #[test]
+    fn status_source_keeps_a_short_line_after_a_partial_prefix() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut body = vec![b'A'; 20_000];
+        body.extend(b"\nTAIL\n");
+        std::fs::write(dir.path().join("stdout.log"), body).unwrap();
+        assert_eq!(status_source(dir.path()).as_deref(), Some("TAIL"));
+    }
+
+    #[test]
+    fn model_lite_directions_match_the_prompt_files() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let task = std::fs::read_to_string(root.join("assets/prompts/lite/task.md")).unwrap();
+        let status = std::fs::read_to_string(root.join("assets/prompts/lite/status.md")).unwrap();
+        assert_eq!(text::directions("user request"), task);
+        assert_eq!(text::directions("agent's current status"), status);
     }
 
     #[test]
