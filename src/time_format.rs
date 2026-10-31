@@ -12,7 +12,7 @@ pub fn timestamp_now_string() -> String {
 pub fn heartbeat_payload_now() -> String {
     let now = chrono::Local::now();
     let ts = now.format("%Y%m%d.%H%M%S");
-    let mut payload = format!("{ts} {}", crate::agent_phase::heartbeat_label());
+    let mut payload = ts.to_string();
     if let Some(stats) =
         crate::agent_process::active_agent_heartbeat::active_agent_heartbeat_stats()
     {
@@ -27,7 +27,7 @@ pub fn heartbeat_payload_now() -> String {
         payload.push_str(&id);
         let summary = crate::task_summary::current();
         if !summary.is_empty() {
-            payload.push(' ');
+            payload.push_str(" · ");
             payload.push_str(&summary);
         }
         if let Some(status) = crate::task_summary::current_status() {
@@ -47,7 +47,8 @@ pub fn heartbeat_payload_has_wall_clock_prefix(payload: &str) -> bool {
     if ts.len() != 15 || ts.as_bytes().get(8) != Some(&b'.') {
         return false;
     }
-    ts.chars().all(|c| c.is_ascii_digit() || c == '.') && payload.get(15..16) == Some(" ")
+    ts.chars().all(|c| c.is_ascii_digit() || c == '.')
+        && matches!(payload.as_bytes().get(15), None | Some(b' ' | b','))
 }
 
 #[cfg(test)]
@@ -85,17 +86,27 @@ mod tests {
     }
 
     #[test]
-    fn heartbeat_payload_uses_agent_phase_label() {
-        let _guard = crate::agent_phase::AGENT_PHASE_TEST_LOCK
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        crate::agent_phase::reset_phase_state_for_test();
+    fn heartbeat_payload_has_no_fixed_activity_word() {
         let payload = super::heartbeat_payload_now();
-        assert!(payload.contains("Starting"));
+        let rest = payload.get(15..).unwrap_or("");
+        for word in [
+            "Starting", "Reading", "Editing", "Running", "Checking", "Fixing", "Thinking",
+        ] {
+            assert!(
+                !rest.starts_with(word),
+                "heartbeat must not lead with a fixed activity word; payload={payload}"
+            );
+        }
     }
 
     #[test]
     fn heartbeat_payload_has_wall_clock_prefix_accepts_new_shape() {
+        assert!(super::heartbeat_payload_has_wall_clock_prefix(
+            "20260524.000000"
+        ));
+        assert!(super::heartbeat_payload_has_wall_clock_prefix(
+            "20260524.000000, sandbox: 1"
+        ));
         assert!(super::heartbeat_payload_has_wall_clock_prefix(
             "20260524.000000 Still alive."
         ));

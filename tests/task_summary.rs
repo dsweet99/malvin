@@ -212,11 +212,7 @@ async fn each_queued_prompt_send_is_summarized() {
     std::fs::write(dir.path().join("stdout.log"), "EDITING the parser\n").unwrap();
     std::fs::write(dir.path().join("prompt_sends"), "\n\n").unwrap();
     wait_for_text(&attempts, "live\nlive\nlive\n").await;
-    wait_for_text(
-        &dir.path().join("status_summary.txt"),
-        "Editing the parser",
-    )
-    .await;
+    wait_for_text(&dir.path().join("status_summary.txt"), "Editing the parser").await;
     drop(stdin);
     assert!(finish(&mut child).await.success());
 }

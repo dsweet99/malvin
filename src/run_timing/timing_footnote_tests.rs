@@ -3,24 +3,17 @@ use std::time::Instant;
 
 #[test]
 fn success_footnotes_emit_timing_before_done_and_done_is_last() {
-    let _locks = stdout_and_phase_test_locks();
+    let _stdout = stdout_log_test_lock();
     let run_dir = tempfile::tempdir().expect("run_dir");
     seed_run_timing_json(run_dir.path());
     let log = capture_timing_then_done_log(run_dir.path());
     assert_timing_precedes_done_and_done_is_last(&log);
 }
 
-fn stdout_and_phase_test_locks() -> (
-    std::sync::MutexGuard<'static, ()>,
-    std::sync::MutexGuard<'static, ()>,
-) {
-    let stdout = crate::output::STDOUT_LOG_TEST_LOCK
+fn stdout_log_test_lock() -> std::sync::MutexGuard<'static, ()> {
+    crate::output::STDOUT_LOG_TEST_LOCK
         .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let phase = crate::agent_phase::AGENT_PHASE_TEST_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    (stdout, phase)
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 pub(crate) fn seed_run_timing_json(run_dir: &std::path::Path) {

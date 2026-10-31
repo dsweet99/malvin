@@ -167,15 +167,20 @@ mod tests {
         assert_eq!(current(), "");
         assert!(metadata_tokens().is_none());
         std::fs::write(text::task_path(&run), "Add cheap request summaries").unwrap();
-        assert!(crate::time_format::heartbeat_payload_now()
-            .ends_with("hash/run Add cheap request summaries"));
+        assert!(
+            crate::time_format::heartbeat_payload_now()
+                .ends_with("hash/run · Add cheap request summaries")
+        );
         for status in ["Reading the plan", "Running checks"] {
             std::fs::write(text::status_path(&run), status).unwrap();
             let tokens = metadata_tokens().unwrap();
             assert_eq!(tokens["task"], "Add cheap request summaries");
             assert_eq!(tokens["status"], status);
-            assert!(crate::time_format::heartbeat_payload_now()
-                .ends_with(&format!("hash/run Add cheap request summaries · {status}")));
+            assert!(
+                crate::time_format::heartbeat_payload_now().ends_with(&format!(
+                    "hash/run · Add cheap request summaries · {status}"
+                ))
+            );
         }
         crate::workspace::run_id::set_active_run_dir(None);
         assert_eq!(current(), "");

@@ -9,17 +9,6 @@ fn smoke_active_agent_heartbeat_stats() {
     assert!(crate::active_agent_heartbeat_stats().is_none());
 }
 
-fn smoke_agent_phase_checking() {
-    let _guard = crate::agent_phase::AGENT_PHASE_TEST_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    crate::agent_phase::reset_phase_state_for_test();
-    crate::agent_phase::enter_checking();
-    assert_eq!(crate::agent_phase::heartbeat_label(), "Checking");
-    crate::agent_phase::leave_checking();
-    assert_eq!(crate::agent_phase::heartbeat_label(), "Starting");
-}
-
 fn smoke_emit_without_log_path_skips_disk_append() {
     let _guard = crate::output::STDOUT_LOG_TEST_LOCK
         .lock()
@@ -40,11 +29,10 @@ fn smoke_emit_without_log_path_skips_disk_append() {
 
 fn smoke_time_format_and_stdout_log_path() {
     assert!(!crate::time_format::timestamp_now_string().is_empty());
-    let _guard = crate::agent_phase::AGENT_PHASE_TEST_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    crate::agent_phase::reset_phase_state_for_test();
-    assert!(crate::time_format::heartbeat_payload_now().contains("Starting"));
+    let payload = crate::time_format::heartbeat_payload_now();
+    assert!(crate::time_format::heartbeat_payload_has_wall_clock_prefix(
+        &payload
+    ));
     let tmp = tempfile::tempdir().expect("tempdir");
     let path = tmp.path().join("out.log");
     crate::workspace::stdout_log_path::set_stdout_log_path(Some(path.clone()));
@@ -191,7 +179,6 @@ fn kiss_cov_ops_spawn() {
 #[test]
 fn kiss_bundled_malvin_kiss_coverage() {
     smoke_active_agent_heartbeat_stats();
-    smoke_agent_phase_checking();
     smoke_emit_without_log_path_skips_disk_append();
     smoke_time_format_and_stdout_log_path();
     smoke_artifacts_create();

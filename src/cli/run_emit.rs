@@ -77,8 +77,6 @@ pub fn emit_run_startup_banner(
     opts: RunStartupEmitOpts,
     _cli_request: &str,
 ) -> Result<(), String> {
-    malvin::agent_phase::reset_for_run();
-    malvin::agent_phase::note_starting();
     emit_command_line(&artifacts.run_dir, opts.tee_stdout)?;
     if opts.host_resources && !malvin::agent_process::test_no_real_agent_enabled() {
         emit_host_resources_line(&artifacts.run_dir, opts.tee_stdout)?;

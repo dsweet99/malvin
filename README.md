@@ -94,7 +94,8 @@ into at most 30 characters. Requests with fewer than ten words use their first
 30 characters without calling a model, even when `model_lite` is not configured.
 A request that already fits is also used as written. Other requests are summarized
 by `model_lite`. Model output that exceeds the limit is
-shortened at a word boundary when possible. That summary appears after the run ID on `h|`
+shortened at a word boundary when possible. That summary appears after the run ID,
+separated by a center dot, on `h|`
 lines and is reported as the herdr `task` token. Each time malvin sends a prompt to the
 main agent, `model_lite` summarizes the recent run output into at most 30 characters and
 reports it as the herdr `status` token. The same summary also runs five minutes after the

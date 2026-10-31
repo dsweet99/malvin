@@ -78,7 +78,6 @@ pub use workspace::workspace_paths::{
 };
 pub mod terminal_palette;
 pub use workspace::run_id::{RunDirOptions, build_identifier, create_run_dir};
-pub mod agent_phase;
 pub mod herdr;
 pub mod session_dotfile_backup;
 pub mod task_summary;
@@ -160,8 +159,6 @@ pub mod acp_post_run {
 }
 #[cfg(test)]
 mod acp_tests;
-#[cfg(test)]
-mod agent_phase_kiss_cov;
 #[cfg(test)]
 mod coverage_kiss;
 #[cfg(test)]

@@ -126,4 +126,3 @@ pub(super) async fn wait_for_text(path: &Path, expected: &str) {
     .await
     .unwrap();
 }
-

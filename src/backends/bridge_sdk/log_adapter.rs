@@ -5,8 +5,16 @@ use crate::backends::cursor_sdk::protocol::BridgeEvent;
 use super::bridge_sdk::log_adapter_tool::{ToolCallFields, clear_tool_starts, emit_tool};
 use super::bridge_sdk::stream_log::StreamLog;
 
+fn notify_herdr_on_sdk_tool_activity(ev: &BridgeEvent) {
+    if let BridgeEvent::ToolCall { phase, .. } = ev
+        && matches!(phase.as_str(), "start" | "running")
+    {
+        crate::herdr::notify_working();
+    }
+}
+
 pub fn handle_stream_event(session: &StreamLog, ev: &BridgeEvent) {
-    crate::agent_phase::observe_stream_event(ev);
+    notify_herdr_on_sdk_tool_activity(ev);
     match ev {
         BridgeEvent::Assistant { text } => emit_assistant(session, text),
         BridgeEvent::Thinking { text } => emit_thinking(session, text),
