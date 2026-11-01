@@ -40,7 +40,7 @@ fn tagged_log_line_omits_space_after_who_pipe_for_all_tags() {
 }
 
 #[test]
-fn display_log_metamorphic_pipe_space_only_for_thought_and_tool() {
+fn display_log_metamorphic_pipe_space_only_for_thought() {
     const TAGS: &[&str] = &[WHO_O, WHO_M, WHO_B, WHO_T];
     let ts = "20260524.000000.000";
     for who in TAGS {

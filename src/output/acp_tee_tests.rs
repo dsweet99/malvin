@@ -3,6 +3,7 @@ use super::acp_tee::{
     format_line_acp_ansi_payload, print_stdout_acp_tee_line,
     print_stdout_acp_tee_line_with_timestamp, print_stdout_acp_tool_summary_tee,
 };
+use crate::ansi_strip::strip_ansi_escapes;
 use crate::output::stdout_log_pair::acp_tee_log_prefix;
 use crate::terminal_palette::ansi_body;
 
@@ -79,6 +80,32 @@ fn acp_display_and_log_helpers_include_timestamp_on_stdout_formatted_lines() {
             dim_payload: false,
         },
         "Run cargo test · 1.0s · ✓",
+    );
+}
+
+#[test]
+fn tool_line_display_has_no_space_after_pipe_while_thought_keeps_it() {
+    let tee_line = |who, line| AcpTeeLineFmt {
+        ts: "20260413.121314.015",
+        direction: AcpTeeDirection::FromAgent,
+        who,
+        line,
+        dim_payload: false,
+    };
+    let tool = tee_line(crate::output::WHO_T, "Read a.rs · 22ms");
+    let thought = tee_line(crate::output::WHO_B, "thinking");
+
+    assert_eq!(
+        strip_ansi_escapes(&format_line_acp_ansi_payload(&tool)),
+        "t|Read a.rs · 22ms"
+    );
+    assert_eq!(
+        crate::output::format_line_stdout(tool.who, tool.line),
+        "t|Read a.rs · 22ms"
+    );
+    assert_eq!(
+        strip_ansi_escapes(&format_line_acp_ansi_payload(&thought)),
+        "b| thinking"
     );
 }
 
