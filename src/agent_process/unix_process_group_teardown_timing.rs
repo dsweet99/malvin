@@ -40,7 +40,7 @@ pub(crate) fn teardown_kill_after_polls() -> u32 {
     }
     #[cfg(debug_assertions)]
     {
-        1
+        4
     }
     #[cfg(not(debug_assertions))]
     {

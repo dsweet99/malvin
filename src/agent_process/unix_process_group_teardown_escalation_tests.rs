@@ -1,6 +1,6 @@
 #![cfg(all(test, unix))]
 
-use std::os::unix::process::CommandExt;
+use std::os::unix::process::{CommandExt, ExitStatusExt};
 use std::process::Command;
 use std::time::Duration;
 
@@ -22,7 +22,8 @@ fn teardown_cooperative_sigterm_exits_before_sigkill() {
     assert_eq!(
         status.code(),
         Some(0),
-        "cooperative TERM handler should exit with status 0, not SIGKILL"
+        "cooperative TERM handler should exit with status 0, but the terminating signal was {:?}",
+        status.signal()
     );
 }
 
