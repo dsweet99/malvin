@@ -113,17 +113,15 @@ When writing, unless otherwise directed:
 ## Direct Messages
 
 Most output goes to logs. To reach the operator directly, use a DM fence:
-
-```
 __MALVIN_DM_START__
 Your message to the user
 __MALVIN_DM_END__
-```
+
 
 You may attach up to one file to the DM. To do that you should write
-```
 __ATTACH__: <path/to/file>
-```
+
+
 as the last line of the the DM, just before __MALVIN_DM_END__.
 - `__ATTACH__: ` is the key string that makes this work.
 - `<path/to/file>`  should be replaced with the absolute path to the file that you want to attach.
