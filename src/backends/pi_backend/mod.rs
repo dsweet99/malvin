@@ -28,5 +28,5 @@ pub(crate) use session::NpmPiSession;
 pub(crate) use session_spawn::npm_pi_spawn_bridge as spawn_bridge;
 
 pub(crate) use map_event_summary::tool_summary_from_pi;
-pub(crate) use provider_auth::missing_credentials_hint;
+pub(crate) use provider_auth::provider_auth_problem;
 pub use provider_auth::{is_provider_authenticated, provider_has_known_credentials};

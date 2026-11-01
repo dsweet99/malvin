@@ -7,6 +7,7 @@ use super::{
 use crate::ansi_strip::strip_ansi_escapes;
 use crate::output::WHO_B;
 use crate::terminal_palette::{ANSI_DIM, ANSI_RESET};
+use crate::time_format::HEARTBEAT_FIELD_SEPARATOR;
 use unicode_width::UnicodeWidthStr;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -126,7 +127,7 @@ pub(crate) fn tagged_display_and_log_line(
 pub(crate) fn heartbeat_shown_payload(payload: &str, emoji: Option<&str>) -> String {
     match emoji {
         Some(emoji) if crate::time_format::heartbeat_payload_has_wall_clock_prefix(payload) => {
-            format!("{emoji} {payload}")
+            payload.replacen(HEARTBEAT_FIELD_SEPARATOR, &format!(" {emoji} "), 1)
         }
         _ => payload.to_string(),
     }

@@ -1,3 +1,5 @@
+pub(crate) const HEARTBEAT_FIELD_SEPARATOR: &str = " · ";
+
 #[must_use]
 pub fn timestamp_now_string() -> String {
     let now = chrono::Local::now();
@@ -23,15 +25,15 @@ pub fn heartbeat_payload_now() -> String {
         .as_deref()
         .and_then(crate::workspace::run_id::short_malvin_log_id)
     {
-        payload.push_str(" · ");
+        payload.push_str(HEARTBEAT_FIELD_SEPARATOR);
         payload.push_str(&id);
         let summary = crate::task_summary::current();
         if !summary.is_empty() {
-            payload.push_str(" · ");
+            payload.push_str(HEARTBEAT_FIELD_SEPARATOR);
             payload.push_str(&summary);
         }
         if let Some(status) = crate::task_summary::current_status() {
-            payload.push_str(" · ");
+            payload.push_str(HEARTBEAT_FIELD_SEPARATOR);
             payload.push_str(&status);
         }
     }

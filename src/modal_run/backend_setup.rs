@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use crate::config::model_id::{ModelBackend, parse_model_id};
+use crate::config::model_id::{ModelBackend, ParsedModel, parse_model_id};
 
 use super::backends::{PI_DIR, PI_ENTRY, PI_PACKAGE, local_codex_version, local_pi_version};
 use super::credentials::{env_set, modal_credentials_present};
@@ -10,7 +10,7 @@ pub trait ModalBackendSetup: Sync {
     fn image_layer(&self, home: &Path) -> Option<Vec<String>>;
     fn sandbox_env(&self) -> BTreeMap<String, String>;
     fn login_candidates(&self, home: &Path) -> Vec<PathBuf>;
-    fn credential_preflight(&self, home: &Path) -> Result<(), String>;
+    fn credential_preflight(&self, model: &ParsedModel, home: &Path) -> Result<(), String>;
 
     fn login_files(&self, home: &Path) -> Vec<PathBuf> {
         self.login_candidates(home)
@@ -46,8 +46,9 @@ pub fn preflight(model: &str, home: &Path) -> Result<(), String> {
                 .to_string(),
         );
     }
-    for setup in setups_for(model)? {
-        setup.credential_preflight(home)?;
+    for raw in crate::config::model_list::split_model_list(model)? {
+        let parsed = parse_model_id(raw)?;
+        modal_backend_setup(parsed.backend).credential_preflight(&parsed, home)?;
     }
     Ok(())
 }
@@ -65,7 +66,7 @@ impl ModalBackendSetup for CursorSetup {
         Vec::new()
     }
 
-    fn credential_preflight(&self, _home: &Path) -> Result<(), String> {
+    fn credential_preflight(&self, _model: &ParsedModel, _home: &Path) -> Result<(), String> {
         if crate::backends::cursor_sdk::effective_sdk_api_key().is_some() {
             return Ok(());
         }
@@ -95,8 +96,15 @@ impl ModalBackendSetup for PiSetup {
         vec![dir.join("auth.json"), dir.join("models.json")]
     }
 
-    fn credential_preflight(&self, _home: &Path) -> Result<(), String> {
-        Ok(())
+    fn credential_preflight(&self, model: &ParsedModel, _home: &Path) -> Result<(), String> {
+        let Some((provider, _)) = model.pi_provider_and_model() else {
+            return Ok(());
+        };
+        crate::backends::pi_backend::provider_auth_problem(provider).map_or(Ok(()), |problem| {
+            Err(format!(
+                "malvin --remote=modal:sandbox with {model} cannot start: {problem}"
+            ))
+        })
     }
 }
 
@@ -116,7 +124,7 @@ impl ModalBackendSetup for CodexSetup {
         vec![home.join(".codex/auth.json")]
     }
 
-    fn credential_preflight(&self, home: &Path) -> Result<(), String> {
+    fn credential_preflight(&self, _model: &ParsedModel, home: &Path) -> Result<(), String> {
         if env_set("OPENAI_API_KEY") || !self.login_files(home).is_empty() {
             return Ok(());
         }
@@ -137,7 +145,7 @@ impl ModalBackendSetup for ClaudeSetup {
         crate::backends::claude_sdk::auth::claude_login_candidates(home)
     }
 
-    fn credential_preflight(&self, home: &Path) -> Result<(), String> {
+    fn credential_preflight(&self, _model: &ParsedModel, home: &Path) -> Result<(), String> {
         if env_set("ANTHROPIC_API_KEY")
             || env_set("ANTHROPIC_OAUTH_TOKEN")
             || env_set("ANTHROPIC_AUTH_TOKEN")

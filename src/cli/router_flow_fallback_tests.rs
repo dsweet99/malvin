@@ -1,4 +1,4 @@
-use super::{run_router_models, should_fallback};
+use super::{fallback_denial, run_router_models};
 use crate::cli::router_flow::{new_router_client, prepare_router_prompt_store};
 use crate::cli::router_flow_loop::RouterAgentLoopInput;
 use crate::cli::{RouterOpts, SharedOpts};
@@ -123,6 +123,27 @@ fn exhausted_models_return_last_error() {
             "poor\npoor-again\n"
         );
     });
+}
+
+fn should_fallback(error: &str) -> bool {
+    fallback_denial(error).is_some()
+}
+
+#[test]
+fn fallback_denial_keeps_the_denial_kind() {
+    use malvin::agent_process::AccountDenial;
+    assert_eq!(
+        fallback_denial("You've hit your usage limit"),
+        Some(AccountDenial::UsageLimit)
+    );
+    assert_eq!(
+        fallback_denial("Insufficient funds"),
+        Some(AccountDenial::Funds)
+    );
+    assert_eq!(
+        fallback_denial("HTTP 503 from load balancer: upstream timeout exceeded"),
+        None
+    );
 }
 
 #[test]

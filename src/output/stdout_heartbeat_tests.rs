@@ -122,20 +122,51 @@ fn heartbeat_logs_during_stdout_silence_when_interval_elapsed() {
 }
 
 #[test]
-fn celebration_emoji_precedes_the_datetime_only_on_a_colored_heartbeat() {
+fn celebration_emoji_replaces_only_the_first_center_dot() {
+    use crate::output::stdout_log_pair::heartbeat_shown_payload;
+
+    assert_eq!(
+        heartbeat_shown_payload("20260524.000000 · hash/run · task · status", Some("🎃")),
+        "20260524.000000 🎃 hash/run · task · status"
+    );
+    assert_eq!(
+        heartbeat_shown_payload(
+            "20260524.000000, sandbox: 1 GiB USS, 3 procs · hash/run",
+            Some("🎃")
+        ),
+        "20260524.000000, sandbox: 1 GiB USS, 3 procs 🎃 hash/run"
+    );
+}
+
+#[test]
+fn heartbeat_payload_is_unchanged_without_a_dot_to_replace_or_an_emoji() {
+    use crate::output::stdout_log_pair::heartbeat_shown_payload;
+
+    for payload in [
+        "20260524.000000",
+        "20260524.000000, sandbox: 1 GiB USS, 3 procs",
+    ] {
+        assert_eq!(heartbeat_shown_payload(payload, Some("🎃")), payload);
+    }
+    assert_eq!(
+        heartbeat_shown_payload("HB: note · hash/run", Some("🎃")),
+        "HB: note · hash/run"
+    );
+    assert_eq!(
+        heartbeat_shown_payload("20260524.000000 · hash/run", None),
+        "20260524.000000 · hash/run"
+    );
+}
+
+#[test]
+fn celebration_emoji_appears_only_on_a_colored_heartbeat_and_never_in_the_log() {
     use crate::output::stdout_log_pair::{
-        heartbeat_display_and_log_line_for_color, heartbeat_shown_payload, tagged_log_line,
+        heartbeat_display_and_log_line_for_color, tagged_log_line,
     };
     use crate::output::{format_heartbeat_stdout_ansi, format_line_stdout};
 
-    let payload = "20260524.000000 Still alive.";
+    let payload = "20260524.000000 · hash/run";
     let ts = "20260524.000000.000";
-    assert_eq!(
-        heartbeat_shown_payload(payload, Some("🎃")),
-        "🎃 20260524.000000 Still alive."
-    );
-    assert_eq!(heartbeat_shown_payload("HB: note", Some("🎃")), "HB: note");
-    assert_eq!(heartbeat_shown_payload(payload, None), payload);
 
     let (plain, plain_log) =
         heartbeat_display_and_log_line_for_color(WHO_H, payload, Some(ts), false);
@@ -152,7 +183,11 @@ fn celebration_emoji_precedes_the_datetime_only_on_a_colored_heartbeat() {
         display == format_heartbeat_stdout_ansi(WHO_H, payload)
     } else {
         pool.iter().any(|emoji| {
-            display == format_heartbeat_stdout_ansi(WHO_H, &format!("{emoji} {payload}"))
+            display
+                == format_heartbeat_stdout_ansi(
+                    WHO_H,
+                    &format!("20260524.000000 {emoji} hash/run"),
+                )
         })
     };
     assert!(matched, "{display}");

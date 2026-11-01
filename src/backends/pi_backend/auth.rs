@@ -10,15 +10,8 @@ pub fn ensure_npm_pi_authenticated(model: &str) -> Result<(), AuthError> {
             "pi model id must be `pi:<provider>/<model>` (got `{model}`)"
         )));
     };
-    if crate::backends::pi_backend::is_provider_authenticated(provider)
-        || !crate::backends::pi_backend::provider_has_known_credentials(provider)
-    {
-        return Ok(());
-    }
-    Err(AuthError(format!(
-        "pi backend is not authenticated for provider `{provider}`. {}.",
-        crate::backends::pi_backend::missing_credentials_hint(provider)
-    )))
+    crate::backends::pi_backend::provider_auth_problem(provider)
+        .map_or(Ok(()), |problem| Err(AuthError(problem)))
 }
 
 #[cfg(test)]
