@@ -156,8 +156,11 @@ mod tests {
                 Some("20260524.000000.000"),
                 true,
             );
-        let expected = super::format_heartbeat_stdout_ansi(WHO_H, payload);
-        assert_eq!(display, expected);
+        assert!(display.contains(payload));
+        assert_eq!(
+            log,
+            crate::output::stdout_log_pair::tagged_log_line("20260524.000000.000", WHO_H, payload)
+        );
         assert!(display.contains('\x1b'));
         assert!(!display.starts_with("20"));
         assert!(log.starts_with("20260524.000000.000"));

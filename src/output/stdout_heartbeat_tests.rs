@@ -122,6 +122,43 @@ fn heartbeat_logs_during_stdout_silence_when_interval_elapsed() {
 }
 
 #[test]
+fn celebration_emoji_precedes_the_datetime_only_on_a_colored_heartbeat() {
+    use crate::output::stdout_log_pair::{
+        heartbeat_display_and_log_line_for_color, heartbeat_shown_payload, tagged_log_line,
+    };
+    use crate::output::{format_heartbeat_stdout_ansi, format_line_stdout};
+
+    let payload = "20260524.000000 Still alive.";
+    let ts = "20260524.000000.000";
+    assert_eq!(
+        heartbeat_shown_payload(payload, Some("🎃")),
+        "🎃 20260524.000000 Still alive."
+    );
+    assert_eq!(heartbeat_shown_payload("HB: note", Some("🎃")), "HB: note");
+    assert_eq!(heartbeat_shown_payload(payload, None), payload);
+
+    let (plain, plain_log) =
+        heartbeat_display_and_log_line_for_color(WHO_H, payload, Some(ts), false);
+    assert_eq!(plain, format_line_stdout(WHO_H, payload));
+    assert_eq!(plain_log, tagged_log_line(ts, WHO_H, payload));
+
+    let (display, log) = heartbeat_display_and_log_line_for_color(WHO_H, payload, Some(ts), true);
+    assert_eq!(log, tagged_log_line(ts, WHO_H, payload));
+    let pool: Vec<&str> = crate::holidays::celebrations(chrono::Local::now().date_naive())
+        .into_iter()
+        .flat_map(|holiday| holiday.emoji().iter().copied())
+        .collect();
+    let matched = if pool.is_empty() {
+        display == format_heartbeat_stdout_ansi(WHO_H, payload)
+    } else {
+        pool.iter().any(|emoji| {
+            display == format_heartbeat_stdout_ansi(WHO_H, &format!("{emoji} {payload}"))
+        })
+    };
+    assert!(matched, "{display}");
+}
+
+#[test]
 fn heartbeat_suppressed_for_do_plain_stdout() {
     let (terminal, text) = due_heartbeat_render_capture_test(|| {
         crate::output::set_heartbeat_stdout_suppressed(true);
