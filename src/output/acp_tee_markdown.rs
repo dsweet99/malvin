@@ -71,8 +71,9 @@ fn is_markdown_ordered_list_item(line: &str) -> bool {
 }
 
 fn is_markdown_heading(line: &str) -> bool {
-    line.trim_start_matches(char::is_whitespace)
-        .starts_with('#')
+    let t = line.trim_start_matches(char::is_whitespace);
+    let hashes = t.bytes().take_while(|&b| b == b'#').count();
+    (1..=6).contains(&hashes) && t[hashes..].chars().next().is_none_or(char::is_whitespace)
 }
 
 fn needs_block_markdown_render(line: &str) -> bool {
@@ -101,6 +102,9 @@ mod termimad_tests {
     #[test]
     fn termimad_gate_and_markdown_helpers() {
         assert!(is_markdown_heading("# h"));
+        assert!(is_markdown_heading("###### h"));
+        assert!(!is_markdown_heading("####### seven"));
+        assert!(!is_markdown_heading("#include <x>"));
         assert!(is_markdown_list_item("- x"));
         assert!(is_markdown_ordered_list_item("1. x"));
         assert!(needs_block_markdown_render("# h"));
@@ -132,3 +136,4 @@ mod termimad_tests {
         assert!(rendered[0].contains(super::ANSI_DIM));
     }
 }
+
