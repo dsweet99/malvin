@@ -95,13 +95,14 @@ pub fn emit_run_logs_line(artifacts: &RunArtifacts) -> Result<(), String> {
         MALVIN_WHO,
         &format!("Logs: {}", format_logs_dir(&artifacts.run_dir)?),
     );
+    malvin::output::stdout_heartbeat::emit_stdout_heartbeat_now();
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        RunStartupEmitOpts, append_command_log_line, emit_host_resources_line, emit_run_logs_line,
+        RunStartupEmitOpts, append_command_log_line, emit_host_resources_line,
         emit_run_startup_banner, format_model_line,
     };
     use malvin::output::{MALVIN_WHO, format_who_tag_delim};
@@ -180,7 +181,6 @@ mod tests {
             .expect("banner");
             let log = std::fs::read_to_string(artifacts.run_dir.join("command.log")).expect("log");
             assert!(log.contains("Command:") && log.contains("Memory:") && log.contains("Model:"));
-            emit_run_logs_line(&artifacts).expect("logs");
         });
     }
 

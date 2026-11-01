@@ -57,13 +57,13 @@ pub(crate) fn heartbeat_rendered_if_due(
         return None;
     }
     drop(guard);
+    Some(render_heartbeat_line())
+}
+
+fn render_heartbeat_line() -> (String, String) {
     let ts = timestamp_now_string();
     let payload = heartbeat_payload_now();
-    Some(stdout_heartbeat_display_and_log_line(
-        WHO_H,
-        &payload,
-        Some(ts.as_str()),
-    ))
+    stdout_heartbeat_display_and_log_line(WHO_H, &payload, Some(ts.as_str()))
 }
 
 pub(crate) fn heartbeat_due(last: Instant, now: Instant) -> bool {
@@ -83,6 +83,14 @@ pub(crate) fn try_emit_heartbeat_if_due(now: Instant, arm_if_unarmed: bool) {
 
 pub(crate) fn maybe_emit_stdout_heartbeat() {
     try_emit_heartbeat_if_due(Instant::now(), true);
+}
+
+pub(crate) fn emit_stdout_heartbeat_now() {
+    if heartbeat_stdout_suppressed() {
+        return;
+    }
+    let (display, log) = render_heartbeat_line();
+    write_heartbeat_log_line(&display, &log);
 }
 
 fn maybe_pulse_herdr_working(now: Instant) {
@@ -162,6 +170,7 @@ mod inline_tests {
 
     #[test]
     fn mark_heartbeat_emitted_prevents_immediate_rerender() {
+        let _ = super::render_heartbeat_line;
         reset_stdout_heartbeat_for_test();
         test_set_last_heartbeat_elapsed(Duration::from_secs(61));
         mark_heartbeat_emitted(Instant::now());

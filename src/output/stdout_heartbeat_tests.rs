@@ -11,7 +11,7 @@ use crate::output::{
 use crate::time_format::heartbeat_payload_has_wall_clock_prefix;
 
 use super::stdout_heartbeat_test_support::{
-    due_heartbeat_render_capture_test, heartbeat_test_guards,
+    due_heartbeat_render_capture_test, fresh_heartbeat_log_capture_test, heartbeat_test_guards,
 };
 
 #[test]
@@ -174,4 +174,36 @@ fn heartbeat_suppressed_for_do_plain_stdout() {
         text.is_empty(),
         "do plain must not emit h| to stdout.log; got {text:?}"
     );
+}
+
+#[test]
+fn logs_line_is_followed_by_one_heartbeat() {
+    let text = fresh_heartbeat_log_capture_test(|| {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let artifacts =
+            crate::artifacts::create_run_artifacts_from_text("hi", Some(tmp.path())).expect("art");
+        crate::cli::run_emit::emit_run_logs_line(&artifacts).expect("logs");
+        try_emit_heartbeat_if_due(Instant::now(), false);
+    });
+    let lines: Vec<&str> = text.lines().collect();
+    let last_o = lines
+        .iter()
+        .rposition(|line| line.contains(" o|"))
+        .expect("logs line");
+    let hb = lines[last_o + 1];
+    let payload = hb
+        .split_once(&format_who_tag_delim(WHO_H))
+        .map_or("", |(_, rest)| rest);
+    assert!(heartbeat_payload_has_wall_clock_prefix(payload), "{text}");
+    assert_eq!(lines.len(), last_o + 2, "{text}");
+}
+
+#[test]
+fn emit_stdout_heartbeat_now_writes_nothing_when_suppressed() {
+    let text = fresh_heartbeat_log_capture_test(|| {
+        crate::output::set_heartbeat_stdout_suppressed(true);
+        crate::output::stdout_heartbeat::emit_stdout_heartbeat_now();
+        crate::output::set_heartbeat_stdout_suppressed(false);
+    });
+    assert!(text.is_empty(), "{text}");
 }

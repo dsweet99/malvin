@@ -17,7 +17,7 @@ pub(crate) mod stderr_log;
 mod stdout_defer;
 mod stdout_display;
 mod stdout_display_md;
-mod stdout_heartbeat;
+pub(crate) mod stdout_heartbeat;
 pub(crate) mod stdout_log_pair;
 mod stdout_render;
 pub(crate) mod stdout_tee_env;
