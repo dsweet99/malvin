@@ -72,6 +72,16 @@ fn repair_recreates_empty_home_malvin_config_from_template() {
     });
 }
 
+fn invalid_config_backups(cfg: &std::path::Path) -> Vec<std::path::PathBuf> {
+    let parent = cfg.parent().expect("config parent");
+    std::fs::read_dir(parent)
+        .expect("list config dir")
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| path.as_path() != cfg)
+        .collect()
+}
+
 #[test]
 fn repair_recreates_invalid_home_malvin_config_from_template() {
     crate::test_support::test_utils::with_isolated_home(|work| {
@@ -84,6 +94,53 @@ fn repair_recreates_invalid_home_malvin_config_from_template() {
         let text = std::fs::read_to_string(&cfg).expect("read home config");
         assert!(text.contains("mem_limit_gb"));
         assert!(!text.contains("not valid"));
+    });
+}
+
+#[test]
+fn repair_preserves_invalid_config_bytes_in_a_backup_and_warns() {
+    crate::test_support::test_utils::with_isolated_home(|work| {
+        let cfg = crate::malvin_config_path(work);
+        std::fs::create_dir_all(cfg.parent().expect("parent")).expect("mkdir");
+        let original = b"# my settings\n[dm]\non_emit = \"hook\"\n[agent\n\xff";
+        std::fs::write(&cfg, original).expect("invalid home config");
+
+        crate::output::clear_captured_stderr_lines();
+        repair_invalid_malvin_home_config_on_disk(work).expect("repair");
+        let lines = crate::output::take_captured_stderr_lines();
+
+        let backups = invalid_config_backups(&cfg);
+        assert_eq!(backups.len(), 1, "{backups:?}");
+        assert_eq!(std::fs::read(&backups[0]).expect("read backup"), original);
+        let backup = backups[0].display().to_string();
+        assert!(
+            lines.iter().any(|line| line.contains(&backup)),
+            "warning must name {backup}: {lines:?}"
+        );
+    });
+}
+
+#[test]
+fn repeated_repairs_keep_every_invalid_config() {
+    crate::test_support::test_utils::with_isolated_home(|work| {
+        let cfg = crate::malvin_config_path(work);
+        std::fs::create_dir_all(cfg.parent().expect("parent")).expect("mkdir");
+        for damage in ["first {{{", "second {{{"] {
+            std::fs::write(&cfg, damage).expect("invalid home config");
+            repair_invalid_malvin_home_config_on_disk(work).expect("repair");
+        }
+        assert_eq!(invalid_config_backups(&cfg).len(), 2);
+    });
+}
+
+#[test]
+fn repair_of_empty_config_makes_no_backup() {
+    crate::test_support::test_utils::with_isolated_home(|work| {
+        let cfg = crate::malvin_config_path(work);
+        std::fs::create_dir_all(cfg.parent().expect("parent")).expect("mkdir");
+        std::fs::write(&cfg, b"").expect("empty home config");
+        repair_invalid_malvin_home_config_on_disk(work).expect("repair");
+        assert!(invalid_config_backups(&cfg).is_empty());
     });
 }
 

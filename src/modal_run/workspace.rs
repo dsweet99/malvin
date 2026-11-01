@@ -1,4 +1,6 @@
+use std::ffi::OsStr;
 use std::io::Write;
+use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -36,18 +38,39 @@ pub fn git_placement(dir: &Path) -> Option<GitPlacement> {
     })
 }
 
-#[must_use]
-pub fn selected_files(dir: &Path) -> Option<Vec<u8>> {
-    let listed = git_stdout(dir, &["ls-files", "-co", "--exclude-standard", "-z"])?;
+fn inside_git_work_tree(dir: &Path) -> Result<bool, String> {
+    let answer = git_stdout(dir, &["rev-parse", "--is-inside-work-tree"]);
+    if answer.is_some_and(|out| out.trim_ascii() == b"true") {
+        return Ok(true);
+    }
+    let git_root = dir
+        .ancestors()
+        .find(|ancestor| ancestor.join(".git").symlink_metadata().is_ok());
+    git_root.map_or(Ok(false), |root| {
+        Err(format!(
+            "{} has git metadata, but git could not read it as a work tree, so `--remote` refuses to upload {} because gitignored files could be included; run `git status` there to see the problem",
+            root.display(),
+            dir.display()
+        ))
+    })
+}
+
+pub fn selected_files(dir: &Path) -> Result<Vec<u8>, String> {
+    let listed = git_stdout(dir, &["ls-files", "-co", "--exclude-standard", "-z"])
+        .ok_or_else(|| {
+            format!(
+                "git could not list the files in {}, so `--remote` refuses to upload it because gitignored files could be included; run `git status` there to see the problem",
+                dir.display()
+            )
+        })?;
     let mut kept = Vec::with_capacity(listed.len());
     for name in listed.split(|b| *b == 0).filter(|n| !n.is_empty()) {
-        let rel = Path::new(std::str::from_utf8(name).ok()?);
-        if dir.join(rel).symlink_metadata().is_ok() {
+        if dir.join(OsStr::from_bytes(name)).symlink_metadata().is_ok() {
             kept.extend_from_slice(name);
             kept.push(0);
         }
     }
-    Some(kept)
+    Ok(kept)
 }
 
 fn tar_from_list(dir: &Path, list: &[u8], out: &Path) -> Result<(), String> {
@@ -86,7 +109,7 @@ fn run_tar(args: &[&str], dir: &Path, out: &Path) -> Result<(), String> {
 }
 
 pub fn check_upload_size(dir: &Path, cap_bytes: u64) -> Result<(), String> {
-    if git_stdout(dir, &["rev-parse", "--is-inside-work-tree"]).is_some() {
+    if inside_git_work_tree(dir)? {
         return Ok(());
     }
     let mut total = 0;
@@ -127,8 +150,8 @@ fn tree_exceeds(dir: &Path, top: bool, cap: u64, total: &mut u64) -> bool {
 }
 
 pub fn pack_workspace(dir: &Path, out: &Path) -> Result<bool, String> {
-    if let Some(list) = selected_files(dir) {
-        tar_from_list(dir, &list, out)?;
+    if inside_git_work_tree(dir)? {
+        tar_from_list(dir, &selected_files(dir)?, out)?;
         return Ok(true);
     }
     let mut args = NON_GIT_EXCLUDES.to_vec();
