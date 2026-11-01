@@ -1,4 +1,6 @@
-use super::md_table::{MdPiece, ReadyLine, flush_stdout_markdown, push_stdout_markdown};
+use super::md_table::{
+    MdPiece, ReadyLine, end_stdout_markdown_message, flush_stdout_markdown, push_stdout_markdown,
+};
 use super::stdout_display::print_stdout_rendered_line;
 use super::stdout_line_wrap_meta;
 use super::{
@@ -29,7 +31,7 @@ pub fn print_stdout_text_with_markdown(who: &str, text: &str, emit_stdout_markdo
 }
 
 pub fn flush_formatted_markdown_tables() {
-    emit_ready_lines(flush_stdout_markdown());
+    emit_ready_lines(end_stdout_markdown_message());
 }
 
 fn paragraphs(line: &str) -> Vec<&str> {

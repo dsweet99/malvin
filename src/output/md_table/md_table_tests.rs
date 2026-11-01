@@ -150,3 +150,30 @@ fn stdout_log_keeps_raw_table_and_display_draws_borders() {
     assert!(text.contains("| c | d |"), "{text}");
     assert!(!text.contains("┌───┬───┐"), "{text}");
 }
+
+#[test]
+fn end_message_drops_an_unclosed_fence() {
+    let mut stream = MdTableStream::default();
+    stream.push("```", 80);
+    assert!(matches!(stream.push("a", 80)[0], MdPiece::Code { .. }));
+    stream.flush(80);
+    assert!(matches!(stream.push("b", 80)[0], MdPiece::Code { .. }));
+    stream.end_message(80);
+    assert_eq!(stream.push("c", 80), vec![MdPiece::Source("c".into())]);
+}
+
+#[test]
+fn end_message_on_another_thread_clears_a_fence_opened_on_a_worker() {
+    use super::{end_stdout_markdown_message, push_stdout_markdown};
+    let _guard = STDOUT_LOG_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    end_stdout_markdown_message();
+    std::thread::spawn(|| push_stdout_markdown(WHO_M, "```", 80))
+        .join()
+        .expect("worker");
+    end_stdout_markdown_message();
+    let out = push_stdout_markdown(WHO_M, "prose", 80);
+    assert!(matches!(out[0].piece, MdPiece::Source(_)), "prose rendered as code");
+    end_stdout_markdown_message();
+}
