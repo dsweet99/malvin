@@ -193,29 +193,29 @@ mod tests {
         crate::workspace::run_id::set_active_run_dir(Some(run.clone()));
         std::fs::write(
             run.join("request_summary.txt"),
-            "Add cheap request summaries",
+            "Add cheap summaries",
         )
         .unwrap();
         let task_meta = report_metadata_sparse("p1", None, 9);
         assert_eq!(task_meta["params"]["display_agent"], AGENT);
         assert_eq!(
             task_meta["params"]["tokens"]["task"],
-            "Add cheap request summaries"
+            "Add cheap summaries"
         );
         std::fs::write(run.join("status_summary.txt"), "Reading the plan").unwrap();
         let meta = report_metadata_sparse("p1", None, 10);
         assert_eq!(meta["params"]["display_agent"], AGENT);
         assert_eq!(
             meta["params"]["tokens"]["task"],
-            "Add cheap request summaries"
+            "Add cheap summaries"
         );
         assert_eq!(meta["params"]["tokens"]["status"], "Reading the plan");
-        std::fs::write(run.join("status_summary.txt"), "Return only that summary").unwrap();
+        std::fs::write(run.join("status_summary.txt"), "Return only that").unwrap();
         let invalid_status = report_metadata_sparse("p1", None, 11);
         assert_eq!(invalid_status["params"]["display_agent"], AGENT);
         assert_eq!(
             invalid_status["params"]["tokens"]["task"],
-            "Add cheap request summaries"
+            "Add cheap summaries"
         );
         assert!(invalid_status["params"]["tokens"].get("status").is_none());
         crate::workspace::run_id::set_active_run_dir(None);

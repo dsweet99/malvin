@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
-pub(super) const MAX_CHARS: usize = 30;
+pub(super) const MAX_CHARS: usize = 20;
+const MAX_CHARS_WORD: &str = "twenty";
 const ELLIPSIS: &str = "...";
 const TASK_DIRECTIONS: &str = include_str!("../../assets/prompts/lite/task.md");
 const STATUS_DIRECTIONS: &str = include_str!("../../assets/prompts/lite/status.md");
@@ -141,11 +142,12 @@ fn direction_word(key: &str, directions: &str) -> bool {
 }
 
 fn instruction_echo(text: &str) -> bool {
+    let limit_digits = MAX_CHARS.to_string();
     let mut limit = false;
     let mut character = false;
     for word in text.split_whitespace() {
         for key in parts(word) {
-            limit |= key == "30" || key == "thirty";
+            limit |= key == limit_digits || key == MAX_CHARS_WORD;
             character |= key == "character" || key == "characters";
         }
     }

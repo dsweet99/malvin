@@ -129,8 +129,8 @@ mod tests {
         let run = dir.path().join("hash/run");
         std::fs::create_dir_all(&run).unwrap();
         crate::workspace::run_id::set_active_run_dir(Some(run.clone()));
-        std::fs::write(text::task_path(&run), "Return only that summary").unwrap();
-        std::fs::write(text::status_path(&run), "Return only that summary").unwrap();
+        std::fs::write(text::task_path(&run), "Return only that").unwrap();
+        std::fs::write(text::status_path(&run), "Return only that").unwrap();
         assert_eq!(current(), "");
         assert_eq!(current_status(), None);
         assert!(metadata_tokens().is_none());
@@ -181,19 +181,19 @@ mod tests {
         crate::workspace::run_id::set_active_run_dir(Some(run.clone()));
         assert_eq!(current(), "");
         assert!(metadata_tokens().is_none());
-        std::fs::write(text::task_path(&run), "Add cheap request summaries").unwrap();
+        std::fs::write(text::task_path(&run), "Add cheap summaries").unwrap();
         assert!(
             crate::time_format::heartbeat_payload_now()
-                .ends_with("hash/run · Add cheap request summaries")
+                .ends_with("hash/run · Add cheap summaries")
         );
         for status in ["Reading the plan", "Running checks"] {
             std::fs::write(text::status_path(&run), status).unwrap();
             let tokens = metadata_tokens().unwrap();
-            assert_eq!(tokens["task"], "Add cheap request summaries");
+            assert_eq!(tokens["task"], "Add cheap summaries");
             assert_eq!(tokens["status"], status);
             assert!(
                 crate::time_format::heartbeat_payload_now().ends_with(&format!(
-                    "hash/run · Add cheap request summaries · {status}"
+                    "hash/run · Add cheap summaries · {status}"
                 ))
             );
         }

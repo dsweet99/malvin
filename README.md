@@ -78,7 +78,7 @@ Model selection uses an ordered list in `~/.malvinconf/config.toml`:
 ```toml
 [agent]
 model = ["cursor:auto", "claude:sonnet", "codex:gpt-5.6"]
-# Optional fast, cheap models for 30-character herdr task and status summaries:
+# Optional fast, cheap models for 20-character herdr task and status summaries:
 # model_lite = ["cursor:auto"]
 ```
 
@@ -90,7 +90,7 @@ Existing single-string model settings remain supported.
 
 The optional `agent.model_lite` list accepts the same model IDs, aliases, and quota
 fallback order. When it is set, malvin summarizes the user request in the background
-into at most 30 characters. Requests with fewer than ten words are shortened
+into at most 20 characters. Requests with fewer than ten words are shortened
 without calling a model, even when `model_lite` is not configured.
 A request that already fits is also used as written. Other requests are summarized
 by `model_lite`. Text that exceeds the limit is
@@ -98,7 +98,7 @@ shortened at a word boundary when possible. A task or status that was shortened
 ends with `...`. That summary appears after the run ID,
 separated by a center dot, on `h|`
 lines and is reported as the herdr `task` token. Each time malvin sends a prompt to the
-main agent, `model_lite` summarizes the recent run output into at most 30 characters and
+main agent, `model_lite` summarizes the recent run output into at most 20 characters and
 reports it as the herdr `status` token. The same summary also runs five minutes after the
 run starts, and every ten minutes after that, so a long turn still refreshes while that
 prompt is in progress. Until the task summary is ready, the heartbeat adds no text. A

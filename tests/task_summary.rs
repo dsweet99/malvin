@@ -10,14 +10,14 @@ async fn summary_worker_falls_back_only_on_quota_and_rejects_malformed_output() 
         (
             "['cursor:poor', 'cursor:cheap']",
             "poor\ncheap\n",
-            Some("Add cheap request summaries"),
+            Some("Add cheap summaries"),
         ),
         ("['cursor:broken', 'cursor:cheap']", "broken\n", None),
         ("['cursor:malformed']", "malformed\n", None),
         (
             "['cursor:verbose']",
             "verbose\n",
-            Some("Add cheap request summaries..."),
+            Some("Add cheap request..."),
         ),
         ("['cursor:echo']", "echo\n", None),
         ("['cursor:brief']", "brief\n", Some("Fix the parser")),
@@ -38,22 +38,22 @@ async fn summary_worker_falls_back_only_on_quota_and_rejects_malformed_output() 
 async fn short_request_is_trimmed_without_calling_the_model() {
     let dir = tempfile::tempdir().unwrap();
     prepare(dir.path(), "['cursor:cheap']");
-    std::fs::write(dir.path().join("request.md"), "Fix the parser tonight.").unwrap();
+    std::fs::write(dir.path().join("request.md"), "Fix the parser now.").unwrap();
     let (status, stored) = run_worker(dir.path()).await;
     assert!(status.success());
     assert!(!dir.path().join("attempts").exists());
-    assert_eq!(stored.as_deref(), Some("Fix the parser tonight."));
+    assert_eq!(stored.as_deref(), Some("Fix the parser now."));
 }
 
 #[tokio::test]
-async fn requests_under_ten_words_use_the_first_thirty_characters() {
+async fn requests_under_ten_words_use_the_first_twenty_characters() {
     let dir = tempfile::tempdir().unwrap();
     prepare(dir.path(), "['cursor:cheap']");
     let request = "Investigate extraordinarily complicated parsing failures";
     std::fs::write(dir.path().join("request.md"), request).unwrap();
     let (status, stored) = run_worker(dir.path()).await;
     assert!(status.success());
-    assert_eq!(stored.as_deref(), Some("Investigate extraordinarily..."));
+    assert_eq!(stored.as_deref(), Some("Investigate..."));
     assert!(!dir.path().join("attempts").exists());
 }
 
@@ -68,7 +68,7 @@ async fn ten_word_request_calls_the_summary_model() {
     .unwrap();
     let (status, stored) = run_worker(dir.path()).await;
     assert!(status.success());
-    assert_eq!(stored.as_deref(), Some("Add cheap request summaries"));
+    assert_eq!(stored.as_deref(), Some("Add cheap summaries"));
     assert_eq!(
         std::fs::read_to_string(dir.path().join("attempts")).unwrap(),
         "cheap\n"
@@ -84,7 +84,7 @@ async fn short_request_works_without_model_lite_configuration() {
     std::fs::write(dir.path().join("request.md"), request).unwrap();
     let (status, stored) = run_worker(dir.path()).await;
     assert!(status.success());
-    assert_eq!(stored.as_deref(), Some("Investigate extraordinarily..."));
+    assert_eq!(stored.as_deref(), Some("Investigate..."));
     assert!(!dir.path().join("attempts").exists());
 }
 
@@ -139,7 +139,7 @@ async fn status_token_tracks_recent_output_on_the_test_schedule() {
     assert!(finish(&mut child).await.success());
     assert_eq!(
         std::fs::read_to_string(dir.path().join("request_summary.txt")).unwrap(),
-        "Add cheap request summaries"
+        "Add cheap summaries"
     );
 }
 
@@ -160,7 +160,7 @@ async fn status_token_refreshes_when_a_main_agent_prompt_is_sent() {
     let prompts = dir.path().join("prompt_sends");
     wait_for_text(
         &dir.path().join("request_summary.txt"),
-        "Add cheap request summaries",
+        "Add cheap summaries",
     )
     .await;
     std::fs::write(dir.path().join("stdout.log"), "Gathering context\n").unwrap();
@@ -200,7 +200,7 @@ async fn each_queued_prompt_send_is_summarized() {
     let attempts = dir.path().join("attempts");
     wait_for_text(
         &dir.path().join("request_summary.txt"),
-        "Add cheap request summaries",
+        "Add cheap summaries",
     )
     .await;
     assert_eq!(std::fs::read_to_string(&attempts).unwrap(), "live\n");

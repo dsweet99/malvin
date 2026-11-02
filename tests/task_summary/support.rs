@@ -27,13 +27,13 @@ for await (const line of readline.createInterface({input: process.stdin})) {
             fs.writeFileSync('started', '');
         } else {
             const prompt = req.prompt || '';
-            const result = model === 'echo' ? 'Use 30 characters now'
+            const result = model === 'echo' ? 'Use 20 characters now'
                 : model === 'malformed' ? 'Editing \u001b[31mthe parser'
                 : model === 'verbose' ? 'Add cheap request summaries today'
                 : model === 'brief' ? 'Fix the parser'
                 : model === 'live' && prompt.includes('current status')
                     ? (prompt.includes('EDITING') ? 'Editing the parser' : 'Reading the plan comprehensively')
-                : 'Add cheap request summaries';
+                : 'Add cheap summaries';
             emit({event: 'run_done', status: 'finished', result});
         }
     } else if (req.op === 'close') {
