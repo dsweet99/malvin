@@ -9,4 +9,7 @@ Check `malvin --advice` for a relevant advice.
 
 User-request-relevant Problems Worth Solving should be considered additional requirements inasmuch as they are relevant to the scope as already defined.
 
+Your task now is to understand what needs to be done, not to do it.
+
+
 
