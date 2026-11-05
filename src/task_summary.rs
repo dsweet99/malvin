@@ -74,6 +74,8 @@ pub(super) async fn generate_btw(
     let mut context = std::collections::HashMap::new();
     let lite = crate::artifacts::AgentDirs(artifacts).lite();
     context.insert("lite_trace_path".to_string(), lite.display().to_string());
+    let main = crate::artifacts::AgentDirs(artifacts).main();
+    context.insert("main_trace_path".to_string(), main.display().to_string());
     let prompt = crate::prompts::render_template(STATUS_B_PROMPT, &context);
     let reply = model::ask(models, artifacts, &prompt).await?;
     if let Some(note) = crate::btw::extract_fence(&reply) {
@@ -188,6 +190,7 @@ mod tests {
         let file = std::fs::read_to_string(root.join("assets/prompts/lite/status_b.md")).unwrap();
         assert_eq!(STATUS_B_PROMPT, file);
         assert!(STATUS_B_PROMPT.contains("{{ lite_trace_path }}"));
+        assert!(STATUS_B_PROMPT.contains("{{ main_trace_path }}"));
     }
 
     #[test]

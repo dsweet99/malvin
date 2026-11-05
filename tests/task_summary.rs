@@ -170,7 +170,12 @@ async fn status_b_fence_is_forwarded_over_btw_and_traced_in_lite() {
     .unwrap();
     drop(stdin);
     assert!(finish(&mut child).await.success());
-    let note = std::fs::read_dir(&btw).unwrap().next().unwrap().unwrap().path();
+    let note = std::fs::read_dir(&btw)
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .path();
     assert_eq!(
         std::fs::read_to_string(note).unwrap().trim(),
         "Run `malvin --advice kpop`"

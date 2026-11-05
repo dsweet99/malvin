@@ -45,7 +45,10 @@ async fn btw_note_survives_failed_first_attempt() {
     crate::btw::send(tmp.path(), "NOTE_XYZ").expect("send note");
     run_fresh_agent_retry_prompt(&mut client, tmp.path()).await;
     let prompts = std::fs::read_to_string(once_dir.join("prompts")).expect("prompts");
-    let lines: Vec<&str> = prompts.lines().filter(|l| l.contains("NON_TEARDOWN")).collect();
+    let lines: Vec<&str> = prompts
+        .lines()
+        .filter(|l| l.contains("NON_TEARDOWN"))
+        .collect();
     assert!(lines.len() >= 2, "expected a retry; got {prompts:?}");
     assert!(
         lines.last().is_some_and(|l| l.contains("[btw] NOTE_XYZ")),

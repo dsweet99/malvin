@@ -1,4 +1,5 @@
 Could the main agent benefit from any of the advice in `malvin --advice`?
+See its work in {{ main_trace_path }}.
 
 If it could benefit from any advice tag other than `facts`, output
 __MALVIN_BTW_START__

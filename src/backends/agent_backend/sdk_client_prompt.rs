@@ -107,6 +107,7 @@ async fn run_one(
     let result = session.send_prompt(&pending.prompt).await;
     if result.is_ok() {
         pending.mark_delivered();
+        pending.log_delivered(client.trace_path.as_deref());
     }
     if let Some(p) = phase {
         crate::run_timing::record_llm(client.timing.as_ref(), p, started.elapsed());

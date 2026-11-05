@@ -2,6 +2,7 @@ use std::sync::atomic::{AtomicU8, Ordering};
 
 pub(crate) const ANSI_BOLD: &str = "\x1b[1m";
 pub(crate) const ANSI_DIM: &str = "\x1b[90m";
+pub(crate) const ANSI_ITALIC: &str = "\x1b[3m";
 pub(crate) const ANSI_RESET: &str = "\x1b[0m";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]

@@ -1,4 +1,3 @@
-
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -9,7 +8,9 @@ const BTW_SUBDIR: &str = "btw";
 static COUNTER: AtomicU64 = AtomicU64::new(0);
 
 fn dir(run_dir: &Path) -> PathBuf {
-    run_dir.join(crate::malvin_constants::MAIN_DIR).join(BTW_SUBDIR)
+    run_dir
+        .join(crate::malvin_constants::MAIN_DIR)
+        .join(BTW_SUBDIR)
 }
 
 #[must_use]
@@ -51,6 +52,7 @@ pub(crate) fn send(run_dir: &Path, text: &str) -> Result<PathBuf, String> {
 
 pub(crate) struct Pending {
     paths: Vec<PathBuf>,
+    notes: Vec<String>,
     pub(crate) prompt: String,
 }
 
@@ -58,6 +60,17 @@ impl Pending {
     pub(crate) fn mark_delivered(&self) {
         for path in &self.paths {
             let _ = std::fs::rename(path, path.with_extension("delivered"));
+        }
+    }
+
+    pub(crate) fn log_delivered(&self, trace_path: Option<&Path>) {
+        for note in &self.notes {
+            crate::output::print_stdout_italic_text(crate::output::WHO_B, note);
+            if let Some(path) = trace_path {
+                let line = serde_json::json!({ "event": "btw", "text": note }).to_string();
+                crate::agent_process::AcpJsonlTrace::new(path.to_path_buf(), "btw".into())
+                    .append_line("in", &line);
+            }
         }
     }
 }
@@ -79,16 +92,19 @@ fn pending_paths(run_dir: Option<&Path>) -> Vec<PathBuf> {
 pub(crate) fn with_pending(run_dir: Option<&Path>, prompt: &str) -> Pending {
     let mut out = String::new();
     let mut taken = Vec::new();
+    let mut notes = Vec::new();
     for path in pending_paths(run_dir) {
         let Ok(text) = std::fs::read_to_string(&path) else {
             continue;
         };
         out.extend(["[btw] ", text.trim(), "\n\n"]);
+        notes.push(text.trim().to_string());
         taken.push(path);
     }
     out.push_str(prompt);
     Pending {
         paths: taken,
+        notes,
         prompt: out,
     }
 }
@@ -117,9 +133,22 @@ mod tests {
         assert_eq!(first.prompt, "[btw] one\n\n[btw] two\n\nPROMPT");
         let again = with_pending(Some(tmp.path()), "PROMPT");
         assert_eq!(again.prompt, first.prompt);
+        assert_eq!(again.notes, ["one", "two"]);
         again.mark_delivered();
         assert_eq!(with_pending(Some(tmp.path()), "P").prompt, "P");
         assert!(a.with_extension("delivered").is_file());
         assert_eq!(with_pending(None, "P").prompt, "P");
+    }
+
+    #[test]
+    fn log_delivered_appends_trace_record() {
+        let tmp = tempfile::tempdir().unwrap();
+        send(tmp.path(), "hello").unwrap();
+        let pending = with_pending(Some(tmp.path()), "P");
+        let trace = tmp.path().join("trace.jsonl");
+        pending.log_delivered(Some(&trace));
+        let body = std::fs::read_to_string(&trace).unwrap();
+        assert!(body.contains("\"event\":\"btw\""), "{body}");
+        assert!(body.contains("hello"), "{body}");
     }
 }

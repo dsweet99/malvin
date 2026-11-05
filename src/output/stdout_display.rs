@@ -1,5 +1,7 @@
 use super::{ANSI_RESET, ERROR_WHO, WARNING_WHO, WHO_B, format_who_tag_prefix};
-use crate::terminal_palette::{ANSI_BOLD, ansi_error, ansi_tool_name, ansi_warning, ansi_who_tag};
+use crate::terminal_palette::{
+    ANSI_BOLD, ANSI_ITALIC, ansi_error, ansi_tool_name, ansi_warning, ansi_who_tag,
+};
 
 pub(crate) use super::stdout_render::print_stdout_rendered_line;
 pub(crate) use super::who_tag_ansi;
@@ -46,6 +48,22 @@ pub fn format_heartbeat_stdout_ansi(who: &str, line: &str) -> String {
 
 pub fn print_stdout_line(who: &str, line: &str) {
     super::stdout_display_md::print_stdout_line_with_markdown(who, line, false);
+}
+
+pub fn print_stdout_italic_text(who: &str, text: &str) {
+    for line in logical_lines(text) {
+        let ts = super::timestamp_now_string();
+        let (plain, log) =
+            super::stdout_log_pair::stdout_tagged_display_and_log_line(who, line, Some(&ts));
+        let display = if super::log_use_color() {
+            let prefix = format_who_tag_prefix(who);
+            let dim = super::ANSI_DIM;
+            format!("{dim}{prefix}{ANSI_ITALIC}{line}{ANSI_RESET}")
+        } else {
+            plain
+        };
+        print_stdout_rendered_line(&display, &log);
+    }
 }
 
 pub fn print_stdout_text(who: &str, text: &str) {
@@ -245,5 +263,17 @@ mod tests {
         assert!(heartbeat_rendered_if_due(Instant::now(), false).is_none());
         test_set_last_heartbeat_elapsed(Duration::from_secs(61));
         assert!(heartbeat_rendered_if_due(Instant::now(), false).is_some());
+    }
+}
+
+#[cfg(test)]
+mod italic_tests {
+    #[test]
+    fn italic_text_is_tagged_b_and_logged() {
+        crate::output::enable_stdout_capture();
+        crate::output::print_stdout_italic_text(crate::output::WHO_B, "note one");
+        let out = crate::output::take_captured_stdout();
+        assert!(out.contains("b| "), "{out}");
+        assert!(out.contains("note one"), "{out}");
     }
 }
