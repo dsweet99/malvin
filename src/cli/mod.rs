@@ -1,5 +1,6 @@
 pub(crate) mod admin_cmd;
 pub(crate) mod advice_cmd;
+mod advice_facts;
 pub(crate) mod args;
 mod auto_costs;
 pub(crate) mod cli_request;

@@ -109,7 +109,9 @@ Other subcommand arguments (for example `<REQUEST>`) are not required when `--do
 Print an embedded advice document for `TAG` to stdout and exit, or list available tags when `TAG` is omitted. Does not spawn an agent or create a run directory under `~/.malvinconf/logs/`.
 
 - `malvin --advice` — prints how to open a full document (`malvin --advice TAG`), then a `TAG: Description` heading line, then one `<tag>: <description>` line per TAG (description at most 7 words).
+- The list ends with `facts: Time-saving facts you've discovered [n facts]`, where `n` is the number of lines in `~/.malvinconf/facts.jsonl`, counted each time the list prints (0 when the file is missing).
 - `malvin --advice TAG` — body of the matching file under `assets/prompts/advice/*.md`.
+- `malvin --advice facts` — prints `~/.malvinconf/facts.jsonl` as is; exits 1 with an error naming the path when the file cannot be read.
 - Each document’s TAG is the filename without `.md`: lowercase letters, digits, and underscores, starting with a letter, at most 32 characters (examples: `doc_design` for `doc_design.md`; `scholar` for `scholar.md`; `report` for `report.md`). Every `.md` file in that directory is listed; rebuild absorbs added or renamed files.
 - The first line of each advice file must be `description: ...` (value at most 7 words). The build fails if that line is missing or malformed; the listed description is the value after `description:`.
 
