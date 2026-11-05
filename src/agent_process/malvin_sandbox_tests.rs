@@ -2,6 +2,7 @@ use std::ffi::OsStr;
 
 #[test]
 fn kiss_cov_malvin_sandbox_symbols() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     let _ = stringify!(crate::agent_process::malvin_sandbox::init_malvin_spawn_baseline);
     let _ = crate::agent_process::reap_baseline_amnestied_agent_orphans_blocking;
     let _ = stringify!(crate::agent_process::malvin_sandbox::malvin_std_command);
@@ -27,6 +28,7 @@ fn with_env_set(key: &str, value: &str, f: impl FnOnce()) {
 
 #[test]
 fn sandbox_commands_do_not_force_cargo_build_jobs() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     with_env_set("CARGO_BUILD_JOBS", "8", || {
         let std_cmd = crate::agent_process::malvin_sandbox::malvin_std_command("true");
         let jobs = std_cmd
@@ -38,6 +40,7 @@ fn sandbox_commands_do_not_force_cargo_build_jobs() {
 
 #[test]
 fn sandbox_commands_do_not_force_nextest_test_threads() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     with_env_set("NEXTEST_TEST_THREADS", "8", || {
         let std_cmd = crate::agent_process::malvin_sandbox::malvin_std_command("true");
         let threads = std_cmd
@@ -49,6 +52,7 @@ fn sandbox_commands_do_not_force_nextest_test_threads() {
 
 #[test]
 fn sandbox_commands_do_not_force_rust_test_threads() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     with_env_set("RUST_TEST_THREADS", "8", || {
         let std_cmd = crate::agent_process::malvin_sandbox::malvin_std_command("true");
         let threads = std_cmd
@@ -60,6 +64,7 @@ fn sandbox_commands_do_not_force_rust_test_threads() {
 
 #[test]
 fn sandbox_commands_force_malloc_arena_max_to_two() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     with_env_set("MALLOC_ARENA_MAX", "8", || {
         let std_cmd = crate::agent_process::malvin_sandbox::malvin_std_command("true");
         let arenas = std_cmd
@@ -77,6 +82,7 @@ fn sandbox_commands_force_malloc_arena_max_to_two() {
 
 #[test]
 fn note_active_sandbox_session_cleared_after_end() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     let tmp = tempfile::tempdir().expect("tempdir");
     crate::agent_process::malvin_sandbox::clear_active_sandbox_session_for_test();
     let ticket = crate::agent_process::malvin_sandbox::take_sandbox_spawn_ticket().expect("ticket");

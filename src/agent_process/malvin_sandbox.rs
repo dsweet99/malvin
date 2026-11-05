@@ -226,6 +226,7 @@ mod tests {
 
     #[test]
     fn sandbox_spawn_ticket_requires_clear_gate() {
+        let _env_guard = crate::test_support::test_utils::test_env_lock();
         let ticket = super::take_sandbox_spawn_ticket().expect("clear");
         super::note_active_sandbox_session(
             ticket,

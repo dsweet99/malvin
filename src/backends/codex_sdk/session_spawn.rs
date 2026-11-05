@@ -97,6 +97,7 @@ mod unix_tests {
 
     #[test]
     fn kiss_cov_codex_spawn_unix() {
+        let _lock = crate::test_support::test_utils::test_env_lock();
         let tmp = tempfile::tempdir().unwrap();
         assert!(write_codex_mock_bin(tmp.path()).is_file());
         restore_codex_env(None);

@@ -17,6 +17,7 @@ fn affiliate_proven_fixture_pid(pid: u32, start_ppid: u32, ctx: &AffiliationCtx<
 
 #[test]
 fn affiliated_pid_survives_reparent_to_init_in_store() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     clear_session_spawn_affiliation_for_test();
     let malvin_pid = std::process::id();
     let agent_pgid = 500;
@@ -53,6 +54,7 @@ fn affiliated_pid_survives_reparent_to_init_in_store() {
 
 #[test]
 fn unrelated_init_orphan_not_affiliated() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     clear_session_spawn_affiliation_for_test();
     let malvin_pid = std::process::id();
     let baseline = HashSet::from([malvin_pid, 1, 2, 50]);
@@ -86,6 +88,7 @@ fn unrelated_init_orphan_not_affiliated() {
 
 #[test]
 fn reparented_init_orphans_skips_unaffiliated_user_daemon() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     clear_session_spawn_affiliation_for_test();
     let baseline = HashSet::from([10, 50]);
     let rows = vec![
@@ -115,6 +118,7 @@ fn reparented_init_orphans_skips_unaffiliated_user_daemon() {
 
 #[test]
 fn reparented_init_orphans_includes_proven_affiliated_setsid_and_double_fork() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     clear_session_spawn_affiliation_for_test();
     let malvin_pid = std::process::id();
     let agent_pgid = 500;
@@ -173,6 +177,7 @@ fn reparented_init_orphans_includes_proven_affiliated_setsid_and_double_fork() {
 
 #[test]
 fn malvin_session_spawn_pids_includes_proven_same_pg_descendant() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     clear_session_spawn_affiliation_for_test();
     let malvin_pid = std::process::id();
     let baseline = HashSet::from([malvin_pid, 999_999]);
@@ -216,6 +221,7 @@ fn malvin_session_spawn_pids_includes_proven_same_pg_descendant() {
 
 #[test]
 fn kiss_cov_affiliation_unit_names() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     let _ = affiliated_pid_survives_reparent_to_init_in_store;
     let _ = unrelated_init_orphan_not_affiliated;
     let _ = reparented_init_orphans_skips_unaffiliated_user_daemon;

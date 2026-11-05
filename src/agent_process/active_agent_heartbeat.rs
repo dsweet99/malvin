@@ -35,6 +35,17 @@ pub(crate) fn unregister_active_agent_process_group(pgid: Option<u32>) {
 }
 
 #[cfg(test)]
+static ACTIVE_AGENT_TEST_LOCK: Mutex<()> = Mutex::new(());
+
+/// Serializes tests that register, read, or clear the process-wide active-agent registry.
+#[cfg(test)]
+pub(crate) fn lock_active_agent_registry_for_test() -> std::sync::MutexGuard<'static, ()> {
+    ACTIVE_AGENT_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+#[cfg(test)]
 pub(crate) fn clear_active_agent_process_groups_for_test() {
     ACTIVE_AGENT_SANDBOX
         .lock()
@@ -106,12 +117,14 @@ mod kiss_cov_auto {
 mod tests {
     use super::{
         active_agent_heartbeat_stats, clear_active_agent_process_groups_for_test,
-        register_active_agent_process_group, unregister_active_agent_process_group,
+        lock_active_agent_registry_for_test, register_active_agent_process_group,
+        unregister_active_agent_process_group,
     };
     use crate::agent_process::snapshot_pids;
 
     #[test]
     fn nested_register_unregister_restores_outer_pgid() {
+        let _guard = lock_active_agent_registry_for_test();
         clear_active_agent_process_groups_for_test();
         let pgid = std::process::id();
         let baseline = snapshot_pids();
@@ -127,6 +140,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn active_agent_heartbeat_stats_reports_current_process_group() {
+        let _guard = lock_active_agent_registry_for_test();
         clear_active_agent_process_groups_for_test();
         let pgid = std::process::id();
         let baseline = snapshot_pids();
@@ -143,6 +157,7 @@ mod tests {
 
     #[test]
     fn active_agent_process_group_for_stats_none_when_unregistered() {
+        let _guard = lock_active_agent_registry_for_test();
         clear_active_agent_process_groups_for_test();
         assert!(super::active_agent_process_group_for_stats().is_none());
     }

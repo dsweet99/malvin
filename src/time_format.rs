@@ -69,6 +69,8 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn heartbeat_payload_now_includes_agent_stats_when_session_registered() {
+        let _registry_guard =
+            crate::agent_process::active_agent_heartbeat::lock_active_agent_registry_for_test();
         crate::agent_process::active_agent_heartbeat::clear_active_agent_process_groups_for_test();
         let pgid = std::process::id();
         let baseline = crate::agent_process::snapshot_pids();

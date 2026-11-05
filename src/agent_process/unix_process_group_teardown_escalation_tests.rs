@@ -10,6 +10,7 @@ use super::unix_process_group_teardown::terminate_process_group;
 
 #[test]
 fn teardown_cooperative_sigterm_exits_before_sigkill() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     let baseline = super::unix_process_group_ps::snapshot_pids();
     let mut cmd = Command::new("sh");
     cmd.args(["-c", "trap 'exit 0' TERM; while true; do sleep 1; done"]);
@@ -62,6 +63,7 @@ async fn teardown_async_ignoring_sigterm_eventually_killed() {
 
 #[tokio::test]
 async fn terminate_process_group_noop_without_pgid_or_baseline() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     terminate_process_group(None).await;
 }
 

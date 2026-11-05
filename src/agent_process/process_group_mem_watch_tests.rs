@@ -42,6 +42,7 @@ fn prepare_oom_marker_test() -> (
 #[cfg(unix)]
 #[tokio::test]
 async fn watch_process_group_memory_fail_closed_when_rss_unavailable() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     let (mut child, pgid, baseline) = spawn_sleep_child_in_new_process_group();
     let reader_dead = Arc::new(AtomicBool::new(false));
     watch_process_group_memory_with_rss_sampler(
@@ -64,6 +65,7 @@ async fn watch_process_group_memory_fail_closed_when_rss_unavailable() {
 #[cfg(unix)]
 #[tokio::test]
 async fn watch_process_group_memory_no_fail_closed_when_reader_dead() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     let (mut child, pgid, baseline) = spawn_std_sleep_child_in_new_process_group();
     let reader_dead = Arc::new(AtomicBool::new(true));
     let watch = watch_process_group_memory_with_rss_sampler(
@@ -91,6 +93,7 @@ async fn watch_process_group_memory_no_fail_closed_when_reader_dead() {
 #[cfg(unix)]
 #[tokio::test]
 async fn watch_process_group_memory_still_kills_over_limit_when_reader_dead() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     let (mut child, pgid, baseline) = spawn_sleep_child_in_new_process_group();
     let reader_dead = Arc::new(AtomicBool::new(true));
     watch_process_group_memory_with_rss_sampler(

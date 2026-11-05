@@ -1,4 +1,6 @@
 fn smoke_active_agent_heartbeat_stats() {
+    let _registry_guard =
+        crate::agent_process::active_agent_heartbeat::lock_active_agent_registry_for_test();
     let _ = stringify!(ActiveAgentSandbox);
     let _ = stringify!(ActiveAgentStatsSource);
     let _ = crate::agent_process::active_agent_heartbeat::register_active_agent_process_group;
