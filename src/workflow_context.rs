@@ -78,8 +78,8 @@ fn insert_run_meta_and_workspace_paths(
     insert_formatted(context, "malvin_output_path", &artifacts.run_dir, base);
     insert_formatted(context, "workspace_dir", &artifacts.run_dir, base);
     let dirs = AgentDirs(artifacts);
-    insert_formatted(context, "main_trace_path", &dirs.trace(), base);
-    insert_formatted(context, "lite_trace_path", &dirs.lite_trace(), base);
+    insert_formatted(context, "main_trace_path", &dirs.main(), base);
+    insert_formatted(context, "lite_trace_path", &dirs.lite(), base);
     insert_formatted(context, "logs_dir", &crate::malvin_logs_root(base), base);
 }
 

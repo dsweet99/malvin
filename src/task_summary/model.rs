@@ -11,11 +11,18 @@ pub(super) async fn summarize(
     source: &str,
     directions: &str,
 ) -> Result<String, String> {
-    let trace_path = crate::artifacts::AgentDirs(artifacts).lite_trace();
-    let work_dir = artifacts.work_dir.as_path();
     let prompt = format!("{directions}{source}\n---\n");
-    let text = generate_with_fallback(models, work_dir, &prompt, &trace_path).await?;
+    let text = ask(models, artifacts, &prompt).await?;
     text::accept(source, &text, directions).map_err(str::to_string)
+}
+
+pub(super) async fn ask(
+    models: &ModelList,
+    artifacts: &crate::artifacts::RunArtifacts,
+    prompt: &str,
+) -> Result<String, String> {
+    let trace_path = crate::artifacts::AgentDirs(artifacts).lite_trace();
+    generate_with_fallback(models, artifacts.work_dir.as_path(), prompt, &trace_path).await
 }
 
 async fn generate_with_fallback(

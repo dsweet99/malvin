@@ -25,6 +25,10 @@ for await (const line of readline.createInterface({input: process.stdin})) {
             emit({event: 'run_done', status: 'finished', result: '__MALVIN_DONE__'});
         } else if (model === 'slow') {
             fs.writeFileSync('started', '');
+        } else if (req.prompt && req.prompt.includes('malvin --advice') && model !== 'btw') {
+            emit({event: 'run_done', status: 'finished', result: 'No advice'});
+        } else if (model === 'btw' && req.prompt && req.prompt.includes('malvin --advice')) {
+            emit({event: 'run_done', status: 'finished', result: 'x\n__MALVIN_BTW_START__\nRun `malvin --advice kpop`\n__MALVIN_BTW_END__\n'});
         } else if (model === 'lag') {
             const prompt = req.prompt || '';
             if (prompt.includes('current status')) {
