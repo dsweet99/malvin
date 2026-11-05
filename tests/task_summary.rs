@@ -146,43 +146,6 @@ async fn status_token_tracks_recent_output_on_the_test_schedule() {
 }
 
 #[tokio::test]
-async fn status_b_fence_is_forwarded_over_btw_and_traced_in_lite() {
-    let dir = tempfile::tempdir().unwrap();
-    prepare(dir.path(), "['cursor:btw']");
-    std::fs::create_dir_all(dir.path().join("main")).unwrap();
-    std::fs::write(dir.path().join("main/stdout.log"), "EDITING the parser\n").unwrap();
-    let mut child = command(dir.path())
-        .env(
-            "MALVIN_SUMMARY_WORKER_REQUEST",
-            dir.path().join("request.md"),
-        )
-        .env("MALVIN_TEST_STATUS_SCHEDULE_MS", "50,50")
-        .spawn()
-        .unwrap();
-    let stdin = child.stdin.take();
-    let btw = dir.path().join("main/btw");
-    tokio::time::timeout(Duration::from_secs(5), async {
-        while !std::fs::read_dir(&btw).is_ok_and(|mut d| d.next().is_some()) {
-            tokio::time::sleep(Duration::from_millis(5)).await;
-        }
-    })
-    .await
-    .unwrap();
-    drop(stdin);
-    assert!(finish(&mut child).await.success());
-    let note = std::fs::read_dir(&btw)
-        .unwrap()
-        .next()
-        .unwrap()
-        .unwrap()
-        .path();
-    assert_eq!(
-        std::fs::read_to_string(note).unwrap().trim(),
-        "Run `malvin --advice kpop`"
-    );
-}
-
-#[tokio::test]
 async fn status_schedule_is_measured_from_worker_start_without_skipping() {
     let dir = tempfile::tempdir().unwrap();
     prepare(dir.path(), "['cursor:lag']");

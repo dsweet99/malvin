@@ -41,10 +41,6 @@ impl JsonLineSession for CodexSession {
 }
 
 impl CodexSession {
-    pub async fn inject_mid_turn(&self, text: &str) -> Result<bool, AgentError> {
-        super::codex_sdk::session_io::codex_steer(self, text).await
-    }
-
     pub async fn send_prompt(&self, prompt: &str) -> Result<(), AgentError> {
         super::codex_sdk::session_io::codex_send_prompt(self, prompt).await
     }

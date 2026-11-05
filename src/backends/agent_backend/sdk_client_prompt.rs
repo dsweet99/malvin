@@ -103,59 +103,11 @@ async fn run_one(
     let session = super::agent_backend::sdk_client::live_session(client)
         .ok_or_else(|| AgentError("begin_coder_session was not called".into()))?;
     let started = std::time::Instant::now();
-    let pending = crate::btw::with_pending(client.prompts_log_run_dir.as_deref(), prompt);
-    let result = send_with_mid_turn_btw(
-        session,
-        &pending,
-        client.prompts_log_run_dir.as_deref(),
-        client.trace_path.as_deref(),
-    )
-    .await;
-    if result.is_ok() {
-        pending.mark_delivered();
-        pending.log_delivered(client.trace_path.as_deref());
-    }
+    let result = session.send_prompt(prompt).await;
     if let Some(p) = phase {
         crate::run_timing::record_llm(client.timing.as_ref(), p, started.elapsed());
     }
     result
-}
-
-const BTW_POLL: std::time::Duration = std::time::Duration::from_secs(1);
-
-async fn send_with_mid_turn_btw(
-    session: &super::agent_backend::sdk_session::SdkSession,
-    pending: &crate::btw::Pending,
-    run_dir: Option<&Path>,
-    trace_path: Option<&Path>,
-) -> Result<(), AgentError> {
-    let send = session.send_prompt(&pending.prompt);
-    tokio::pin!(send);
-    let mut tick = tokio::time::interval(BTW_POLL);
-    loop {
-        tokio::select! {
-            result = &mut send => return result,
-            _ = tick.tick() => {
-                inject_new_notes(session, pending, run_dir, trace_path).await;
-            }
-        }
-    }
-}
-
-async fn inject_new_notes(
-    session: &super::agent_backend::sdk_session::SdkSession,
-    already_in_prompt: &crate::btw::Pending,
-    run_dir: Option<&Path>,
-    trace_path: Option<&Path>,
-) {
-    let fresh = crate::btw::with_pending_except(run_dir, "", already_in_prompt.paths());
-    if fresh.is_empty() {
-        return;
-    }
-    if matches!(session.inject_mid_turn(fresh.prompt.trim()).await, Ok(true)) {
-        fresh.mark_delivered();
-        fresh.log_delivered(trace_path);
-    }
 }
 
 async fn ensure_open_session(client: &mut SdkClient) -> Result<(), AgentError> {

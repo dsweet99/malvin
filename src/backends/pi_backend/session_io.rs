@@ -25,17 +25,6 @@ pub(crate) async fn npm_pi_send_prompt(
     super::pi_backend::session_turn::consume_npm_pi_turn(session, &id).await
 }
 
-pub(crate) async fn npm_pi_steer(session: &NpmPiSession, text: &str) -> Result<bool, AgentError> {
-    session
-        .write_json(&serde_json::json!({
-            "id": format!("btw-{}", next_id()),
-            "type": "steer",
-            "message": text,
-        }))
-        .await?;
-    Ok(true)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

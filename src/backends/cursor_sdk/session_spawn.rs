@@ -117,7 +117,6 @@ fn cursor_assemble_session(
             crate::backends::bridge_sdk::StreamLog::from_spawn(&args),
         ),
         agent_id: std::sync::Mutex::new(None),
-        accepts_mid_turn_send: false,
     }
 }
 

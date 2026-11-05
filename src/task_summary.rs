@@ -65,25 +65,6 @@ pub(super) async fn generate_status(
     store(&text::status_path(&artifacts.run_dir), &summary).await
 }
 
-const STATUS_B_PROMPT: &str = include_str!("../assets/prompts/lite/status_b.md");
-
-pub(super) async fn generate_btw(
-    artifacts: &RunArtifacts,
-    models: &ModelList,
-) -> Result<(), String> {
-    let mut context = std::collections::HashMap::new();
-    let lite = crate::artifacts::AgentDirs(artifacts).lite();
-    context.insert("lite_trace_path".to_string(), lite.display().to_string());
-    let main = crate::artifacts::AgentDirs(artifacts).main();
-    context.insert("main_trace_path".to_string(), main.display().to_string());
-    let prompt = crate::prompts::render_template(STATUS_B_PROMPT, &context);
-    let reply = model::ask(models, artifacts, &prompt).await?;
-    if let Some(note) = crate::btw::extract_fence(&reply) {
-        crate::btw::send(&artifacts.run_dir, &note)?;
-    }
-    Ok(())
-}
-
 fn status_source(run_dir: &Path) -> Option<String> {
     let path = run_dir
         .join(crate::malvin_constants::MAIN_DIR)
@@ -182,15 +163,6 @@ mod tests {
         std::fs::create_dir_all(dir.path().join("main")).unwrap();
         std::fs::write(dir.path().join("main/stdout.log"), body).unwrap();
         assert_eq!(status_source(dir.path()).as_deref(), Some("TAIL"));
-    }
-
-    #[test]
-    fn status_b_prompt_matches_file_and_names_lite_dir() {
-        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-        let file = std::fs::read_to_string(root.join("assets/prompts/lite/status_b.md")).unwrap();
-        assert_eq!(STATUS_B_PROMPT, file);
-        assert!(STATUS_B_PROMPT.contains("{{ lite_trace_path }}"));
-        assert!(STATUS_B_PROMPT.contains("{{ main_trace_path }}"));
     }
 
     #[test]

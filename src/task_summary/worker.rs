@@ -111,13 +111,6 @@ async fn run_status_once(
     if let Err(error) = result {
         eprintln!("{error}");
     }
-    let btw = tokio::select! {
-        _ = &mut *disconnected => return Ok(true),
-        result = super::generate_btw(artifacts, models) => result,
-    };
-    if let Err(error) = btw {
-        eprintln!("{error}");
-    }
     Ok(false)
 }
 

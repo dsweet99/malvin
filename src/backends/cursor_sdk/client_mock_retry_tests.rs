@@ -34,30 +34,6 @@ async fn fresh_agent_on_retry_recreates_after_non_teardown_timeout() {
     clear_mock_bridge_env();
 }
 
-#[tokio::test]
-async fn btw_note_survives_failed_first_attempt() {
-    let _guard = crate::test_support::test_utils::test_env_lock();
-    install_mock_bridge_env(&mock_bridge_path());
-    let tmp = tempfile::tempdir().expect("tmp");
-    let once_dir = tmp.path().join("once");
-    let mut client = prepare_retry_test_client(&tmp, &once_dir);
-    client.begin_coder_session(tmp.path()).await.expect("begin");
-    crate::btw::send(tmp.path(), "NOTE_XYZ").expect("send note");
-    run_fresh_agent_retry_prompt(&mut client, tmp.path()).await;
-    let prompts = std::fs::read_to_string(once_dir.join("prompts")).expect("prompts");
-    let lines: Vec<&str> = prompts
-        .lines()
-        .filter(|l| l.contains("NON_TEARDOWN"))
-        .collect();
-    assert!(lines.len() >= 2, "expected a retry; got {prompts:?}");
-    assert!(
-        lines.last().is_some_and(|l| l.contains("[btw] NOTE_XYZ")),
-        "retried prompt must carry the note; got {prompts:?}"
-    );
-    client.end_coder_session().await.expect("end");
-    clear_mock_bridge_env();
-}
-
 async fn run_fresh_agent_retry_prompt(client: &mut CursorSdkClient, tmp_path: &std::path::Path) {
     client
         .active_coder_session()
