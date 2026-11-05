@@ -1,10 +1,17 @@
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
-const FIRST_STATUS: Duration = Duration::from_mins(5);
-const STATUS_PERIOD: Duration = Duration::from_mins(5);
+const RAMP_DELTAS_SECS: [u64; 6] = [5, 10, 20, 40, 80, 160];
+const STEADY_SECS: u64 = 300;
 
-pub(super) fn status_delays() -> (Duration, Duration) {
-    test_delays().unwrap_or((FIRST_STATUS, STATUS_PERIOD))
+pub(super) fn status_offset(index: usize) -> Duration {
+    if let Some((first, period)) = test_delays() {
+        return first + period * u32::try_from(index).unwrap_or(u32::MAX);
+    }
+    let ramp_len = RAMP_DELTAS_SECS.len();
+    let ramp_used = (index + 1).min(ramp_len);
+    let ramp: u64 = RAMP_DELTAS_SECS[..ramp_used].iter().sum();
+    let steady_runs = u64::try_from((index + 1).saturating_sub(ramp_len)).unwrap_or(u64::MAX);
+    Duration::from_secs(ramp.saturating_add(STEADY_SECS.saturating_mul(steady_runs)))
 }
 
 fn test_delays() -> Option<(Duration, Duration)> {
@@ -23,22 +30,18 @@ pub(super) fn parse_schedule_ms(spec: &str) -> Option<(Duration, Duration)> {
     Some((Duration::from_millis(first), Duration::from_millis(period)))
 }
 
-pub(super) fn next_due(due: Instant, period: Duration, now: Instant) -> Instant {
-    let mut next = due + period;
-    while next <= now {
-        next += period;
-    }
-    next
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn status_schedule_starts_at_five_minutes_and_repeats_every_five() {
-        assert_eq!(FIRST_STATUS, Duration::from_secs(300));
-        assert_eq!(STATUS_PERIOD, Duration::from_secs(300));
+    fn status_offsets_are_cumulative_sums_of_the_deltas() {
+        let secs: Vec<u64> = (0..10).map(|i| status_offset(i).as_secs()).collect();
+        assert_eq!(secs, [5, 15, 35, 75, 155, 315, 615, 915, 1215, 1515]);
+    }
+
+    #[test]
+    fn parse_schedule_ms_validates_input() {
         assert_eq!(
             parse_schedule_ms("80,120"),
             Some((Duration::from_millis(80), Duration::from_millis(120)))
@@ -46,15 +49,5 @@ mod tests {
         assert_eq!(parse_schedule_ms("0,120"), None);
         assert_eq!(parse_schedule_ms("80,0"), None);
         assert_eq!(parse_schedule_ms("80"), None);
-    }
-
-    #[test]
-    fn next_due_skips_deadlines_already_passed() {
-        let start = Instant::now();
-        let due = start + Duration::from_secs(300);
-        let period = Duration::from_secs(300);
-        assert_eq!(next_due(due, period, start), due + period);
-        let late = due + period + Duration::from_secs(1);
-        assert_eq!(next_due(due, period, late), due + period * 2);
     }
 }

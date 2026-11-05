@@ -183,7 +183,7 @@ async fn status_b_fence_is_forwarded_over_btw_and_traced_in_lite() {
 }
 
 #[tokio::test]
-async fn status_schedule_starts_when_the_task_summary_completes() {
+async fn status_schedule_is_measured_from_worker_start_without_skipping() {
     let dir = tempfile::tempdir().unwrap();
     prepare(dir.path(), "['cursor:lag']");
     std::fs::create_dir_all(dir.path().join("main")).unwrap();
@@ -217,8 +217,14 @@ async fn status_schedule_starts_when_the_task_summary_completes() {
         .lines()
         .map(|line| line.parse().unwrap())
         .collect();
-    assert!(stamps[0] >= task_done + 250, "{task_done} {stamps:?}");
-    assert!(stamps[1] >= stamps[0] + 250, "{stamps:?}");
+    // Offsets are 300ms and 600ms from the worker start. The 400ms task summary
+    // overruns the first, so that status run happens right after it (not
+    // skipped); the second still lands at 600ms, i.e. under one period after
+    // the first run, proving it is not measured from the previous run.
+    assert!(stamps[0] >= task_done, "{task_done} {stamps:?}");
+    assert!(stamps[0] < task_done + 150, "{task_done} {stamps:?}");
+    assert!(stamps[1] > stamps[0], "{stamps:?}");
+    assert!(stamps[1] < stamps[0] + 290, "{stamps:?}");
     assert_eq!(
         std::fs::read_to_string(dir.path().join("status_summary.txt")).unwrap(),
         "Editing the parser"

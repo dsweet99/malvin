@@ -68,13 +68,14 @@ async fn session(
     models: Option<&ModelList>,
     mut disconnected: tokio::sync::oneshot::Receiver<()>,
 ) -> Result<(), String> {
+    let origin = Instant::now();
     let task = tokio::select! {
         _ = &mut disconnected => return Ok(()),
         result = super::generate_task(artifacts, models) => result,
     };
     task?;
     if let Some(models) = models {
-        status_loop(artifacts, models, Instant::now(), &mut disconnected).await?;
+        status_loop(artifacts, models, origin, &mut disconnected).await?;
     }
     Ok(())
 }
@@ -82,12 +83,11 @@ async fn session(
 async fn status_loop(
     artifacts: &RunArtifacts,
     models: &ModelList,
-    task_done: Instant,
+    origin: Instant,
     disconnected: &mut tokio::sync::oneshot::Receiver<()>,
 ) -> Result<(), String> {
-    let (first, period) = super::schedule::status_delays();
-    let mut due = task_done + first;
-    loop {
+    for index in 0.. {
+        let due = origin + super::schedule::status_offset(index);
         tokio::select! {
             _ = &mut *disconnected => return Ok(()),
             () = tokio::time::sleep_until(due.into()) => {}
@@ -95,8 +95,8 @@ async fn status_loop(
         if run_status_once(artifacts, models, disconnected).await? {
             return Ok(());
         }
-        due = super::schedule::next_due(due, period, Instant::now());
     }
+    Ok(())
 }
 
 async fn run_status_once(
