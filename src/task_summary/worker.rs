@@ -1,19 +1,9 @@
 use std::io::Read;
-use std::path::Path;
 use std::process::Stdio;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use crate::artifacts::RunArtifacts;
 use crate::config::model_list::ModelList;
-
-const PROMPT_POLL: Duration = Duration::from_millis(50);
-
-struct StatusClock {
-    due: Instant,
-    period: Duration,
-    seen_prompts: u64,
-    timer_due: bool,
-}
 
 const WORKER_REQUEST: &str = "MALVIN_SUMMARY_WORKER_REQUEST";
 
@@ -78,76 +68,34 @@ async fn session(
     models: Option<&ModelList>,
     mut disconnected: tokio::sync::oneshot::Receiver<()>,
 ) -> Result<(), String> {
-    let started = std::time::Instant::now();
     let task = tokio::select! {
         _ = &mut disconnected => return Ok(()),
         result = super::generate_task(artifacts, models) => result,
     };
     task?;
     if let Some(models) = models {
-        status_loop(artifacts, models, started, &mut disconnected).await?;
+        status_loop(artifacts, models, Instant::now(), &mut disconnected).await?;
     }
     Ok(())
-}
-
-fn status_clock(started: Instant) -> StatusClock {
-    let (first, period) = super::schedule::status_delays();
-    StatusClock {
-        due: started + first,
-        period,
-        seen_prompts: 0,
-        timer_due: false,
-    }
-}
-
-fn prompt_send_count(run_dir: &Path) -> u64 {
-    let path = run_dir.join(crate::malvin_constants::PROMPT_SENDS);
-    std::fs::metadata(path).map_or(0, |meta| meta.len())
 }
 
 async fn status_loop(
     artifacts: &RunArtifacts,
     models: &ModelList,
-    started: Instant,
+    task_done: Instant,
     disconnected: &mut tokio::sync::oneshot::Receiver<()>,
 ) -> Result<(), String> {
-    let mut clock = status_clock(started);
+    let (first, period) = super::schedule::status_delays();
+    let mut due = task_done + first;
     loop {
-        if wait_until_status_due(artifacts, &mut clock, disconnected).await? {
-            return Ok(());
+        tokio::select! {
+            _ = &mut *disconnected => return Ok(()),
+            () = tokio::time::sleep_until(due.into()) => {}
         }
         if run_status_once(artifacts, models, disconnected).await? {
             return Ok(());
         }
-        if clock.timer_due {
-            clock.due = super::schedule::next_due(clock.due, clock.period, Instant::now());
-        }
-    }
-}
-
-async fn wait_until_status_due(
-    artifacts: &RunArtifacts,
-    clock: &mut StatusClock,
-    disconnected: &mut tokio::sync::oneshot::Receiver<()>,
-) -> Result<bool, String> {
-    loop {
-        let now = Instant::now();
-        let wake = super::schedule::status_wake(super::schedule::StatusSample {
-            now,
-            due: clock.due,
-            seen_prompts: clock.seen_prompts,
-            prompt_count: prompt_send_count(&artifacts.run_dir),
-        });
-        clock.seen_prompts = wake.seen_prompts;
-        clock.timer_due = wake.timer_due;
-        if wake.generate {
-            return Ok(false);
-        }
-        let wait = clock.due.saturating_duration_since(now).min(PROMPT_POLL);
-        tokio::select! {
-            _ = &mut *disconnected => return Ok(true),
-            () = tokio::time::sleep(wait) => {}
-        }
+        due = super::schedule::next_due(due, period, Instant::now());
     }
 }
 

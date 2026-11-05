@@ -307,16 +307,22 @@ def ft_assert_docker_malvin_runnable(malvin_binary: Path | None) -> None:
     )
 
 
+def ft_malvin_run_args(malvin_args: tuple[str, ...]) -> list[str]:
+    run_args = list(malvin_args)
+    if ft_malvin_args_request_local_pi(malvin_args) and "--do" not in run_args:
+        run_args = ["--do", *run_args]
+    if "--no-emit" not in run_args:
+        run_args.append("--no-emit")
+    return run_args
+
+
 def ft_host_agent_cmd(
     *,
     workspace: Path,
     malvin_binary: Path,
     malvin_args: tuple[str, ...],
 ) -> list[str]:
-    run_args = list(malvin_args)
-    if ft_malvin_args_request_local_pi(malvin_args) and "--do" not in run_args:
-        run_args = ["--do", *run_args]
-    return [str(malvin_binary.resolve()), *run_args, "plan.md"]
+    return [str(malvin_binary.resolve()), *ft_malvin_run_args(malvin_args), "plan.md"]
 
 def ft_modal_remote_arg(malvin_args: tuple[str, ...]) -> str | None:
     for i, arg in enumerate(malvin_args):
@@ -781,10 +787,7 @@ def ft_docker_agent_cmd(
         
         cmd.extend(["sh", "-c", CURSOR_AGENT_SHELL])
     else:
-        run_args = list(malvin_args)
-        if ft_malvin_args_request_local_pi(malvin_args) and "--do" not in run_args:
-            run_args = ["--do", *run_args]
-        cmd.extend(["malvin", *run_args, "plan.md"])
+        cmd.extend(["malvin", *ft_malvin_run_args(malvin_args), "plan.md"])
     ft_assert_agent_cmd_nonleak(cmd, task_parent=ws.parent)
     return cmd
 
@@ -1350,6 +1353,7 @@ def _ft_test_docker_agent_cmd_nonleak() -> None:
         assert cmd[0] == "docker"
         assert "plan.md" in cmd
         assert "malvin" in cmd
+        assert cmd[-2:] == ["--no-emit", "plan.md"]
         assert "cursor-agent" not in " ".join(cmd)
         mounts = [cmd[i + 1] for i, token in enumerate(cmd) if token == "-v"]
         assert len(mounts) == 4
@@ -1412,6 +1416,7 @@ def _ft_test_docker_agent_cmd_cursor() -> None:
         assert "cursor-agent --force -p < plan.md" in joined
         assert "malvin" not in cmd
         assert "--verbose" not in cmd
+        assert "--no-emit" not in cmd
 
 def _ft_test_docker_agent_cmd_pi() -> None:
     assert ft_malvin_args_request_pi(()) is False
@@ -1464,7 +1469,12 @@ def _ft_test_docker_agent_cmd_pi() -> None:
         )
         assert host_cmd[0] == str(mach.resolve())
         assert "--do" in host_cmd
-        assert host_cmd[-1] == "plan.md"
+        assert host_cmd[-2:] == ["--no-emit", "plan.md"]
+        assert ft_host_agent_cmd(
+            workspace=Path(tmp),
+            malvin_binary=mach,
+            malvin_args=("--no-emit",),
+        ).count("--no-emit") == 1
 
     with tempfile.TemporaryDirectory(prefix="ft-pi-") as tmp, _ft_stub_npm_pi(Path(tmp)):
         ws = Path(tmp) / "workspace"
@@ -1823,7 +1833,7 @@ def _ft_assert_solve_model_and_agent_dry_runs(cli, runner, tmp: Path) -> None:
     assert "malvin" in model_cmd
     mi = model_cmd.index("malvin")
     assert model_cmd[mi + 1 : mi + 3] == ["--model", "cursor:composer"]
-    assert model_cmd[-1] == "plan.md"
+    assert model_cmd[-2:] == ["--no-emit", "plan.md"]
 
     pi_tmp = tmp / "pi-model"
     pi_tmp.mkdir()
@@ -1966,7 +1976,7 @@ def _ft_test_solve_modal_dry_run() -> None:
         cmd = meta["docker_cmd"]
         assert "docker" not in cmd
         assert f"--remote={MODAL_REMOTE_ID}[timeout={DEFAULT_AGENT_TIMEOUT_SEC}s]" in cmd
-        assert cmd[-1] == "plan.md"
+        assert cmd[-2:] == ["--no-emit", "plan.md"]
         assert "grade.py" not in " ".join(cmd)
         assert "goldens" not in " ".join(cmd)
 

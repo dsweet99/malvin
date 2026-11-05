@@ -25,6 +25,16 @@ for await (const line of readline.createInterface({input: process.stdin})) {
             emit({event: 'run_done', status: 'finished', result: '__MALVIN_DONE__'});
         } else if (model === 'slow') {
             fs.writeFileSync('started', '');
+        } else if (model === 'lag') {
+            const prompt = req.prompt || '';
+            if (prompt.includes('current status')) {
+                fs.appendFileSync('status_at', Date.now() + '\n');
+                emit({event: 'run_done', status: 'finished', result: 'Editing the parser'});
+            } else {
+                await new Promise(resolve => setTimeout(resolve, 400));
+                fs.writeFileSync('task_done_at', String(Date.now()));
+                emit({event: 'run_done', status: 'finished', result: 'Add cheap summaries'});
+            }
         } else {
             const prompt = req.prompt || '';
             const result = model === 'echo' ? 'Use 20 characters now'

@@ -99,6 +99,10 @@ fn backend_layers_install_the_cli_each_model_needs() {
     );
     assert!(setup_for("cursor:auto").unwrap().sandbox_env().is_empty());
     assert_eq!(
+        setup_for("claude:opus").unwrap().sandbox_env()["IS_SANDBOX"],
+        "1"
+    );
+    assert_eq!(
         parse_version_token("codex-cli 0.155.0\n").as_deref(),
         Some("0.155.0")
     );

@@ -97,11 +97,9 @@ by `model_lite`. Text that exceeds the limit is
 shortened at a word boundary when possible. A task or status that was shortened
 ends with `...`. That summary appears after the run ID,
 separated by a center dot, on `h|`
-lines and is reported as the herdr `task` token. Each time malvin sends a prompt to the
-main agent, `model_lite` summarizes the recent run output into at most 20 characters and
-reports it as the herdr `status` token. The same summary also runs five minutes after the
-run starts, and every ten minutes after that, so a long turn still refreshes while that
-prompt is in progress. Until the task summary is ready, the heartbeat adds no text. A
+lines and is reported as the herdr `task` token. Five minutes after the task summary
+finishes, and every five minutes after that, `model_lite` summarizes the recent run output
+into at most 20 characters and reports it as the herdr `status` token. Until the task summary is ready, the heartbeat adds no text. A
 longer request without configuration or a failed summary leaves the heartbeat unchanged
 and leaves the tokens unset. This work never delays the main run and is cancelled when
 that run ends.

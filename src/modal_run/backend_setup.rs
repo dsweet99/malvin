@@ -138,7 +138,7 @@ impl ModalBackendSetup for ClaudeSetup {
     }
 
     fn sandbox_env(&self) -> BTreeMap<String, String> {
-        BTreeMap::new()
+        BTreeMap::from([("IS_SANDBOX".to_string(), "1".to_string())])
     }
 
     fn login_candidates(&self, home: &Path) -> Vec<PathBuf> {
