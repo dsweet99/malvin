@@ -46,6 +46,36 @@ pub(crate) async fn codex_write_abort(session: &CodexSession) -> Result<(), Agen
         .await
 }
 
+pub(crate) const STEER_ID_PREFIX: &str = "btw-";
+
+pub(crate) fn is_steer_reply(value: &serde_json::Value) -> bool {
+    value
+        .get("id")
+        .and_then(serde_json::Value::as_str)
+        .is_some_and(|id| id.starts_with(STEER_ID_PREFIX))
+}
+
+pub(crate) async fn codex_steer(session: &CodexSession, text: &str) -> Result<bool, AgentError> {
+    let (Some(thread_id), Some(turn_id)) = (
+        session_string(&session.thread_id),
+        session_string(&session.turn_id),
+    ) else {
+        return Ok(false);
+    };
+    session
+        .write_json(&serde_json::json!({
+            "method": "turn/steer",
+            "id": format!("{STEER_ID_PREFIX}{}", next_id()),
+            "params": {
+                "threadId": thread_id,
+                "expectedTurnId": turn_id,
+                "input": [{"type": "text", "text": text}],
+            }
+        }))
+        .await?;
+    Ok(true)
+}
+
 pub(crate) async fn codex_send_prompt(
     session: &CodexSession,
     prompt: &str,

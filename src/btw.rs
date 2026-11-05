@@ -57,6 +57,14 @@ pub(crate) struct Pending {
 }
 
 impl Pending {
+    pub(crate) fn paths(&self) -> &[PathBuf] {
+        &self.paths
+    }
+
+    pub(crate) const fn is_empty(&self) -> bool {
+        self.paths.is_empty()
+    }
+
     pub(crate) fn mark_delivered(&self) {
         for path in &self.paths {
             let _ = std::fs::rename(path, path.with_extension("delivered"));
@@ -90,10 +98,22 @@ fn pending_paths(run_dir: Option<&Path>) -> Vec<PathBuf> {
 
 #[must_use]
 pub(crate) fn with_pending(run_dir: Option<&Path>, prompt: &str) -> Pending {
+    with_pending_except(run_dir, prompt, &[])
+}
+
+#[must_use]
+pub(crate) fn with_pending_except(
+    run_dir: Option<&Path>,
+    prompt: &str,
+    skip: &[PathBuf],
+) -> Pending {
     let mut out = String::new();
     let mut taken = Vec::new();
     let mut notes = Vec::new();
     for path in pending_paths(run_dir) {
+        if skip.contains(&path) {
+            continue;
+        }
         let Ok(text) = std::fs::read_to_string(&path) else {
             continue;
         };
@@ -138,6 +158,23 @@ mod tests {
         assert_eq!(with_pending(Some(tmp.path()), "P").prompt, "P");
         assert!(a.with_extension("delivered").is_file());
         assert_eq!(with_pending(None, "P").prompt, "P");
+    }
+
+    #[test]
+    fn except_skips_already_claimed_notes() {
+        let tmp = tempfile::tempdir().unwrap();
+        send(tmp.path(), "one").unwrap();
+        let first = with_pending(Some(tmp.path()), "P");
+        send(tmp.path(), "two").unwrap();
+        let rest = with_pending_except(Some(tmp.path()), "", first.paths());
+        assert_eq!(rest.prompt.trim(), "[btw] two");
+        assert!(!rest.is_empty());
+        let none = with_pending_except(
+            Some(tmp.path()),
+            "",
+            &[first.paths(), rest.paths()].concat(),
+        );
+        assert!(none.is_empty());
     }
 
     #[test]

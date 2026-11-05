@@ -10,9 +10,16 @@ use crate::backends::pi_backend::NpmPiSession;
 pub(crate) type SessionFuture<'a> =
     Pin<Box<dyn Future<Output = Result<(), AgentError>> + Send + 'a>>;
 
+pub(crate) type InjectFuture<'a> =
+    Pin<Box<dyn Future<Output = Result<bool, AgentError>> + Send + 'a>>;
+
 pub(crate) trait BackendSession: ChildProcessSession + Send {
     fn send_prompt<'a>(&'a self, prompt: &'a str) -> SessionFuture<'a>;
     fn shutdown(self: Box<Self>) -> SessionFuture<'static>;
+
+    fn inject_mid_turn<'a>(&'a self, _text: &'a str) -> InjectFuture<'a> {
+        Box::pin(std::future::ready(Ok(false)))
+    }
 
     fn as_cursor(&self) -> Option<&BridgeSession> {
         None
@@ -33,6 +40,10 @@ impl BackendSession for BridgeSession {
         Box::pin(Self::shutdown(*self))
     }
 
+    fn inject_mid_turn<'a>(&'a self, text: &'a str) -> InjectFuture<'a> {
+        Box::pin(Self::inject_mid_turn(self, text))
+    }
+
     fn as_cursor(&self) -> Option<&BridgeSession> {
         Some(self)
     }
@@ -51,6 +62,10 @@ impl BackendSession for NpmPiSession {
     fn shutdown(self: Box<Self>) -> SessionFuture<'static> {
         Box::pin(Self::shutdown(*self))
     }
+
+    fn inject_mid_turn<'a>(&'a self, text: &'a str) -> InjectFuture<'a> {
+        Box::pin(Self::inject_mid_turn(self, text))
+    }
 }
 
 impl BackendSession for CodexSession {
@@ -60,6 +75,10 @@ impl BackendSession for CodexSession {
 
     fn shutdown(self: Box<Self>) -> SessionFuture<'static> {
         Box::pin(Self::shutdown(*self))
+    }
+
+    fn inject_mid_turn<'a>(&'a self, text: &'a str) -> InjectFuture<'a> {
+        Box::pin(Self::inject_mid_turn(self, text))
     }
 }
 
@@ -72,6 +91,10 @@ impl SdkSession {
 
     pub(crate) async fn send_prompt(&self, prompt: &str) -> Result<(), AgentError> {
         self.0.send_prompt(prompt).await
+    }
+
+    pub(crate) async fn inject_mid_turn(&self, text: &str) -> Result<bool, AgentError> {
+        self.0.inject_mid_turn(text).await
     }
 
     pub(crate) async fn shutdown(self) -> Result<(), AgentError> {

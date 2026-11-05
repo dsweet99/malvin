@@ -37,7 +37,7 @@ pub(super) async fn consume_codex_turn(session: &CodexSession) -> Result<(), Age
 }
 
 pub(super) fn rpc_error(value: &serde_json::Value) -> Option<AgentError> {
-    if value.get("method").is_some() {
+    if value.get("method").is_some() || super::codex_sdk::session_io::is_steer_reply(value) {
         return None;
     }
     value

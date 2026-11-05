@@ -40,6 +40,7 @@ fn open_session(
             StreamLog::from_spawn(args),
         ),
         agent_id: std::sync::Mutex::new(None),
+        accepts_mid_turn_send: true,
     })
 }
 

@@ -66,6 +66,7 @@ fn cat_bridge_session() -> BridgeSession {
     BridgeSession {
         stdio: stdio_child_from(cat_child()),
         agent_id: Mutex::new(None),
+        accepts_mid_turn_send: false,
     }
 }
 
@@ -104,4 +105,12 @@ fn kiss_cov_turn_timeout() {
     let _ = stringify!(TurnTimeoutExtension);
     let _ = stringify!(await_turn_event);
     let _ = stringify!(health);
+}
+
+#[tokio::test]
+async fn mid_turn_send_only_when_bridge_accepts_it() {
+    let mut session = cat_bridge_session();
+    assert!(!session.inject_mid_turn("note").await.unwrap());
+    session.accepts_mid_turn_send = true;
+    assert!(session.inject_mid_turn("note").await.unwrap());
 }

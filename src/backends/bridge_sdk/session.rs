@@ -11,6 +11,7 @@ use super::bridge_sdk::stream_log::StreamLog;
 pub struct BridgeSession {
     pub stdio: StdioChild,
     pub agent_id: Mutex<Option<String>>,
+    pub accepts_mid_turn_send: bool,
 }
 
 impl std::ops::Deref for BridgeSession {
@@ -44,6 +45,17 @@ impl BridgeSession {
         };
         write_request(self, &req).await?;
         drain_until_run_done(self).await
+    }
+
+    pub async fn inject_mid_turn(&self, text: &str) -> Result<bool, AgentError> {
+        if !self.accepts_mid_turn_send {
+            return Ok(false);
+        }
+        let req = BridgeRequest::Send {
+            prompt: text.to_string(),
+        };
+        write_request(self, &req).await?;
+        Ok(true)
     }
 
     pub async fn shutdown(self) -> Result<(), AgentError> {

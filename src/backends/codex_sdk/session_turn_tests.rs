@@ -14,6 +14,7 @@ fn failed_and_interrupted_turns_are_errors() {
     assert!(finish_codex_status(&json!({}), "completed").is_ok());
     assert!(rpc_error(&json!({"error":{"message":"bad"}})).is_some());
     assert!(rpc_error(&json!({"method":"error"})).is_none());
+    assert!(rpc_error(&json!({"id":"btw-3","error":{"message":"turn finished"}})).is_none());
 }
 
 #[test]

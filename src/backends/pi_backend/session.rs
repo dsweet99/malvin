@@ -38,6 +38,10 @@ impl JsonLineSession for NpmPiSession {
 }
 
 impl NpmPiSession {
+    pub async fn inject_mid_turn(&self, text: &str) -> Result<bool, AgentError> {
+        super::pi_backend::session_io::npm_pi_steer(self, text).await
+    }
+
     pub async fn send_prompt(&self, prompt: &str) -> Result<(), AgentError> {
         super::pi_backend::session_io::npm_pi_send_prompt(self, prompt).await
     }
