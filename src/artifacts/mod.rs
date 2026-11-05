@@ -1,4 +1,5 @@
 mod create;
+mod layout;
 mod md_request;
 mod startup_tag;
 
@@ -21,12 +22,15 @@ pub use crate::session_dotfile_backup::{
     restore_workspace_malvin_config_workspace_backup, restore_workspace_session_dotfiles,
 };
 
+pub use layout::AgentDirs;
 pub use md_request::{
     is_existing_md_file_path, looks_like_md_file_path_arg, resolve_user_md_request,
 };
 pub use startup_tag::startup_request_tag_label;
 
-pub use crate::malvin_constants::{QUALITY_GATES_LOG, SANDBOX_OOM_JSON, STDOUT_LOG, TRACE_JSONL};
+pub use crate::malvin_constants::{
+    LITE_DIR, MAIN_DIR, QUALITY_GATES_LOG, SANDBOX_OOM_JSON, STDOUT_LOG, TRACE_JSONL,
+};
 
 #[derive(Debug, Clone)]
 pub struct RunArtifacts {
@@ -84,7 +88,7 @@ impl RunArtifacts {
 
     #[must_use]
     pub fn stdout_log_path(&self) -> PathBuf {
-        self.run_dir.join(STDOUT_LOG)
+        AgentDirs(self).main().join(STDOUT_LOG)
     }
 
     #[must_use]

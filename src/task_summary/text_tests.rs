@@ -49,12 +49,7 @@ fn summary_must_describe_the_source_rather_than_the_directions() {
         "User says thanks"
     );
     assert_eq!(
-        accept(
-            "Set 20-character cap",
-            "Set 20-character cap",
-            &directions
-        )
-        .unwrap(),
+        accept("Set 20-character cap", "Set 20-character cap", &directions).unwrap(),
         "Set 20-character cap"
     );
 }

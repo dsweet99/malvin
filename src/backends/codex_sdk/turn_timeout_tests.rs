@@ -32,6 +32,7 @@ fn codex_session_from(
             log_full_outgoing_prompts: false,
         },
         run_dir: None,
+        trace_path: None,
         timing: None,
     };
     build_codex_session(

@@ -136,4 +136,3 @@ mod termimad_tests {
         assert!(rendered[0].contains(super::ANSI_DIM));
     }
 }
-

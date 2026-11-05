@@ -48,7 +48,7 @@ pub(super) async fn generate_task(
     } else {
         let directions = text::directions("user request");
         let models = models.ok_or("model_lite is not configured")?;
-        model::summarize(models, &artifacts.work_dir, &request, &directions).await?
+        model::summarize(models, artifacts, &request, &directions).await?
     };
     store(&text::task_path(&artifacts.run_dir), &summary).await
 }
@@ -61,12 +61,14 @@ pub(super) async fn generate_status(
         return Ok(());
     };
     let directions = text::directions("agent's current status");
-    let summary = model::summarize(models, &artifacts.work_dir, &source, &directions).await?;
+    let summary = model::summarize(models, artifacts, &source, &directions).await?;
     store(&text::status_path(&artifacts.run_dir), &summary).await
 }
 
 fn status_source(run_dir: &Path) -> Option<String> {
-    let path = run_dir.join(crate::malvin_constants::STDOUT_LOG);
+    let path = run_dir
+        .join(crate::malvin_constants::MAIN_DIR)
+        .join(crate::malvin_constants::STDOUT_LOG);
     text::status_excerpt(&stdout_tail::read(&path)?)
 }
 
@@ -145,7 +147,8 @@ mod tests {
             let mut body = b"HEAD\n".to_vec();
             body.extend(std::iter::repeat_n(b'B', count));
             body.push(b'\n');
-            std::fs::write(dir.path().join("stdout.log"), &body).unwrap();
+            std::fs::create_dir_all(dir.path().join("main")).unwrap();
+            std::fs::write(dir.path().join("main/stdout.log"), &body).unwrap();
             let source = status_source(dir.path()).expect("long last line");
             assert_eq!(source.len(), 4_000, "{count}");
             assert!(source.bytes().all(|byte| byte == b'B'), "{count}");
@@ -157,7 +160,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let mut body = vec![b'A'; 20_000];
         body.extend(b"\nTAIL\n");
-        std::fs::write(dir.path().join("stdout.log"), body).unwrap();
+        std::fs::create_dir_all(dir.path().join("main")).unwrap();
+        std::fs::write(dir.path().join("main/stdout.log"), body).unwrap();
         assert_eq!(status_source(dir.path()).as_deref(), Some("TAIL"));
     }
 
@@ -183,8 +187,7 @@ mod tests {
         assert!(metadata_tokens().is_none());
         std::fs::write(text::task_path(&run), "Add cheap summaries").unwrap();
         assert!(
-            crate::time_format::heartbeat_payload_now()
-                .ends_with("hash/run · Add cheap summaries")
+            crate::time_format::heartbeat_payload_now().ends_with("hash/run · Add cheap summaries")
         );
         for status in ["Reading the plan", "Running checks"] {
             std::fs::write(text::status_path(&run), status).unwrap();
@@ -192,9 +195,8 @@ mod tests {
             assert_eq!(tokens["task"], "Add cheap summaries");
             assert_eq!(tokens["status"], status);
             assert!(
-                crate::time_format::heartbeat_payload_now().ends_with(&format!(
-                    "hash/run · Add cheap summaries · {status}"
-                ))
+                crate::time_format::heartbeat_payload_now()
+                    .ends_with(&format!("hash/run · Add cheap summaries · {status}"))
             );
         }
         crate::workspace::run_id::set_active_run_dir(None);

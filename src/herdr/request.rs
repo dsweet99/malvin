@@ -191,24 +191,14 @@ mod tests {
         let run = dir.path().join("hash/run");
         std::fs::create_dir_all(&run).unwrap();
         crate::workspace::run_id::set_active_run_dir(Some(run.clone()));
-        std::fs::write(
-            run.join("request_summary.txt"),
-            "Add cheap summaries",
-        )
-        .unwrap();
+        std::fs::write(run.join("request_summary.txt"), "Add cheap summaries").unwrap();
         let task_meta = report_metadata_sparse("p1", None, 9);
         assert_eq!(task_meta["params"]["display_agent"], AGENT);
-        assert_eq!(
-            task_meta["params"]["tokens"]["task"],
-            "Add cheap summaries"
-        );
+        assert_eq!(task_meta["params"]["tokens"]["task"], "Add cheap summaries");
         std::fs::write(run.join("status_summary.txt"), "Reading the plan").unwrap();
         let meta = report_metadata_sparse("p1", None, 10);
         assert_eq!(meta["params"]["display_agent"], AGENT);
-        assert_eq!(
-            meta["params"]["tokens"]["task"],
-            "Add cheap summaries"
-        );
+        assert_eq!(meta["params"]["tokens"]["task"], "Add cheap summaries");
         assert_eq!(meta["params"]["tokens"]["status"], "Reading the plan");
         std::fs::write(run.join("status_summary.txt"), "Return only that").unwrap();
         let invalid_status = report_metadata_sparse("p1", None, 11);

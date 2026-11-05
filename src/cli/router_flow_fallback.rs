@@ -1,5 +1,6 @@
 use super::router_flow::new_router_client;
 use super::router_flow_loop::{RouterAgentLoopInput, run_router_agent_loops};
+use crate::artifacts::AgentDirs;
 use malvin::agent_process::{AccountDenial, account_denial};
 use malvin::run_timing::RunTiming;
 use std::sync::{Arc, Mutex};
@@ -66,6 +67,7 @@ async fn run_selected_model(
     *input.client = new_router_client(input.shared);
     input.client.set_run_timing(prior_timing.clone());
     input.client.prompts_log_run_dir = Some(input.artifacts.run_dir.clone());
+    input.client.trace_path = Some(AgentDirs(&input.artifacts).trace());
     input
         .client
         .ensure_authenticated()

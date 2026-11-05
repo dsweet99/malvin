@@ -184,10 +184,7 @@ fn celebration_emoji_appears_only_on_a_colored_heartbeat_and_never_in_the_log() 
     } else {
         pool.iter().any(|emoji| {
             display
-                == format_heartbeat_stdout_ansi(
-                    WHO_H,
-                    &format!("20260524.000000 {emoji} hash/run"),
-                )
+                == format_heartbeat_stdout_ansi(WHO_H, &format!("20260524.000000 {emoji} hash/run"))
         })
     };
     assert!(matched, "{display}");

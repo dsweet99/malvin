@@ -1,4 +1,5 @@
 use crate::agent_process::AcpJsonlTrace;
+use crate::artifacts::AgentDirs;
 use crate::cli::router_flow::router_flow_acp::RouterExitSummarize;
 use crate::cli::router_machine::{
     Completion, Effect, Iteration, RouterEvent, RouterState, transition,
@@ -38,7 +39,7 @@ pub(crate) fn decide_router_loop_exit(input: RouterLoopExitInput<'_>) -> RouterL
         },
     )
     .expect("files restored is valid after a router iteration");
-    let trace = AcpJsonlTrace::new(input.artifacts.run_dir.join("trace.jsonl"), "router".into());
+    let trace = AcpJsonlTrace::new(AgentDirs(&input.artifacts).trace(), "router".into());
     trace.append_line(
         "internal",
         &serde_json::json!({

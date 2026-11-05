@@ -13,6 +13,7 @@ pub struct StreamLog {
     pub last_response: Arc<Mutex<String>>,
     pub timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
     pub run_dir: Option<PathBuf>,
+    pub trace_path: Option<PathBuf>,
     pub started_at: Instant,
     pub(crate) stdout_coalesce: StdoutCoalesceBuf,
     pub tool_starts: Mutex<HashMap<String, ToolCallStart>>,
@@ -27,6 +28,7 @@ impl StreamLog {
             last_response: Arc::new(Mutex::new(String::new())),
             timing: None,
             run_dir: None,
+            trace_path: None,
             started_at: Instant::now(),
             stdout_coalesce: StdoutCoalesceBuf::new(io),
             tool_starts: Mutex::new(HashMap::new()),
@@ -39,6 +41,11 @@ impl StreamLog {
         let mut log = Self::new(args.io);
         log.timing = args.timing.clone();
         log.run_dir = args.run_dir.clone();
+        log.trace_path = args.trace_path.clone().or_else(|| {
+            args.run_dir
+                .as_ref()
+                .map(|dir| dir.join(crate::malvin_constants::TRACE_JSONL))
+        });
         log.thinking = args.thinking.map(str::to_string);
         log
     }

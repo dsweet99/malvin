@@ -113,10 +113,10 @@ fn append_trace_raw(session: &StreamLog, kind: &str, text: &str) {
 }
 
 pub(crate) fn append_trace_line(session: &StreamLog, line: &str) {
-    let Some(run_dir) = session.run_dir.as_ref() else {
+    let Some(path) = session.trace_path.as_ref() else {
         return;
     };
-    let trace = AcpJsonlTrace::new(run_dir.join("trace.jsonl"), "sdk".into());
+    let trace = AcpJsonlTrace::new(path.clone(), "sdk".into());
     trace.append_line("in", line);
 }
 

@@ -7,12 +7,14 @@ use super::text;
 
 pub(super) async fn summarize(
     models: &ModelList,
-    work_dir: &Path,
+    artifacts: &crate::artifacts::RunArtifacts,
     source: &str,
     directions: &str,
 ) -> Result<String, String> {
+    let trace_path = crate::artifacts::AgentDirs(artifacts).lite_trace();
+    let work_dir = artifacts.work_dir.as_path();
     let prompt = format!("{directions}{source}\n---\n");
-    let text = generate_with_fallback(models, work_dir, &prompt).await?;
+    let text = generate_with_fallback(models, work_dir, &prompt, &trace_path).await?;
     text::accept(source, &text, directions).map_err(str::to_string)
 }
 
@@ -20,10 +22,11 @@ async fn generate_with_fallback(
     models: &ModelList,
     work_dir: &Path,
     prompt: &str,
+    trace_path: &Path,
 ) -> Result<String, String> {
     let mut last_error = String::new();
     for model in models {
-        match generate_one(model, work_dir, prompt).await {
+        match generate_one(model, work_dir, prompt, trace_path).await {
             Ok(text) => return Ok(text),
             Err(error) => {
                 if crate::agent_process::account_denial(&error).is_none() {
@@ -36,7 +39,12 @@ async fn generate_with_fallback(
     Err(last_error)
 }
 
-async fn generate_one(model: &ParsedModel, cwd: &Path, prompt: &str) -> Result<String, String> {
+async fn generate_one(
+    model: &ParsedModel,
+    cwd: &Path,
+    prompt: &str,
+    trace_path: &Path,
+) -> Result<String, String> {
     use crate::backends::agent_backend::backend_lifecycle::backend_lifecycle;
     let backend = backend_lifecycle(model.backend);
     backend
@@ -56,6 +64,7 @@ async fn generate_one(model: &ParsedModel, cwd: &Path, prompt: &str) -> Result<S
                     log_full_outgoing_prompts: false,
                 },
                 run_dir: None,
+                trace_path: Some(trace_path.to_path_buf()),
                 timing: None,
             },
             None,

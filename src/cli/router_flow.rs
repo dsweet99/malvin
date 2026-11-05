@@ -2,6 +2,7 @@ pub(crate) use super::router_flow_acp;
 pub(crate) use super::router_flow_loop;
 pub(crate) use super::router_flow_no_work;
 pub(crate) use super::router_flow_prompt;
+use crate::artifacts::AgentDirs;
 use crate::cli::cli_request::require_cli_request;
 use crate::cli::run_emit::{RunStartupEmitOpts, emit_run_logs_line, emit_run_startup_banner};
 use crate::cli::{AgentRouteOpts, SharedOpts};
@@ -105,6 +106,7 @@ async fn run_router_body(
 ) -> Result<(), String> {
     let mut prep = prepare_router_run(&router_args, opts).await?;
     prep.client.prompts_log_run_dir = Some(prep.artifacts.run_dir.clone());
+    prep.client.trace_path = Some(AgentDirs(&prep.artifacts).trace());
     let _summary = malvin::task_summary::start(&prep.artifacts);
     emit_run_logs_line(&prep.artifacts)?;
 

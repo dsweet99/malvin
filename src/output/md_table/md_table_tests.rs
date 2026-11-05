@@ -174,6 +174,9 @@ fn end_message_on_another_thread_clears_a_fence_opened_on_a_worker() {
         .expect("worker");
     end_stdout_markdown_message();
     let out = push_stdout_markdown(WHO_M, "prose", 80);
-    assert!(matches!(out[0].piece, MdPiece::Source(_)), "prose rendered as code");
+    assert!(
+        matches!(out[0].piece, MdPiece::Source(_)),
+        "prose rendered as code"
+    );
     end_stdout_markdown_message();
 }

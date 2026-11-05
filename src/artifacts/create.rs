@@ -1,6 +1,7 @@
 use std::io::{Error, ErrorKind};
 use std::path::{Path, PathBuf};
 
+use super::AgentDirs;
 use super::RunArtifacts;
 
 const RANDOM_PLAN_ID_LEN: usize = 5;
@@ -76,6 +77,7 @@ pub fn create_run_artifacts_opts(
             .filter(|p| !p.as_os_str().is_empty())
             .map_or_else(|| PathBuf::from("."), Path::to_path_buf),
     };
+    AgentDirs(&artifacts).create()?;
     ensure_exp_log_file(&artifacts)?;
     ensure_quality_gates_log_file(&artifacts)?;
     crate::write_work_dir_manifest(&artifacts.run_dir, &artifacts.work_dir)?;
@@ -109,6 +111,7 @@ pub fn create_run_artifacts_from_text_opts(
         plan_path: plan_target,
         work_dir,
     };
+    AgentDirs(&artifacts).create()?;
     ensure_exp_log_file(&artifacts)?;
     ensure_quality_gates_log_file(&artifacts)?;
     crate::write_work_dir_manifest(&artifacts.run_dir, &artifacts.work_dir)?;
