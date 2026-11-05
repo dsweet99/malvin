@@ -49,43 +49,48 @@ pub(crate) fn send(run_dir: &Path, text: &str) -> Result<PathBuf, String> {
     Ok(path)
 }
 
-#[must_use]
-pub(crate) fn take_pending(run_dir: &Path) -> Vec<String> {
-    let Ok(entries) = std::fs::read_dir(dir(run_dir)) else {
-        return Vec::new();
-    };
-    let mut paths: Vec<PathBuf> = entries
+pub(crate) struct Pending {
+    paths: Vec<PathBuf>,
+    pub(crate) prompt: String,
+}
+
+impl Pending {
+    pub(crate) fn mark_delivered(&self) {
+        for path in &self.paths {
+            let _ = std::fs::rename(path, path.with_extension("delivered"));
+        }
+    }
+}
+
+fn pending_paths(run_dir: Option<&Path>) -> Vec<PathBuf> {
+    let mut paths: Vec<PathBuf> = run_dir
+        .and_then(|d| std::fs::read_dir(dir(d)).ok())
+        .into_iter()
+        .flatten()
         .filter_map(Result::ok)
         .map(|e| e.path())
         .filter(|p| p.extension().is_some_and(|x| x == "txt"))
         .collect();
     paths.sort();
-    let mut notes = Vec::new();
-    for path in paths {
-        let Ok(text) = std::fs::read_to_string(&path) else {
-            continue;
-        };
-        if std::fs::rename(&path, path.with_extension("delivered")).is_ok() {
-            notes.push(text.trim().to_string());
-        }
-    }
-    notes
+    paths
 }
 
 #[must_use]
-pub(crate) fn with_pending(run_dir: Option<&Path>, prompt: &str) -> String {
-    let notes = run_dir.map(take_pending).unwrap_or_default();
-    if notes.is_empty() {
-        return prompt.to_string();
-    }
+pub(crate) fn with_pending(run_dir: Option<&Path>, prompt: &str) -> Pending {
     let mut out = String::new();
-    for note in notes {
-        out.push_str("[btw] ");
-        out.push_str(&note);
-        out.push_str("\n\n");
+    let mut taken = Vec::new();
+    for path in pending_paths(run_dir) {
+        let Ok(text) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+        out.extend(["[btw] ", text.trim(), "\n\n"]);
+        taken.push(path);
     }
     out.push_str(prompt);
-    out
+    Pending {
+        paths: taken,
+        prompt: out,
+    }
 }
 
 #[cfg(test)]
@@ -108,10 +113,13 @@ mod tests {
         let a = send(tmp.path(), "one").unwrap();
         let b = send(tmp.path(), "two").unwrap();
         assert_ne!(a, b);
-        let prompt = with_pending(Some(tmp.path()), "PROMPT");
-        assert_eq!(prompt, "[btw] one\n\n[btw] two\n\nPROMPT");
-        assert_eq!(with_pending(Some(tmp.path()), "P"), "P");
+        let first = with_pending(Some(tmp.path()), "PROMPT");
+        assert_eq!(first.prompt, "[btw] one\n\n[btw] two\n\nPROMPT");
+        let again = with_pending(Some(tmp.path()), "PROMPT");
+        assert_eq!(again.prompt, first.prompt);
+        again.mark_delivered();
+        assert_eq!(with_pending(Some(tmp.path()), "P").prompt, "P");
         assert!(a.with_extension("delivered").is_file());
-        assert_eq!(with_pending(None, "P"), "P");
+        assert_eq!(with_pending(None, "P").prompt, "P");
     }
 }

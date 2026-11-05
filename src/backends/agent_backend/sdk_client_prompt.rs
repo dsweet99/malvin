@@ -103,8 +103,11 @@ async fn run_one(
     let session = super::agent_backend::sdk_client::live_session(client)
         .ok_or_else(|| AgentError("begin_coder_session was not called".into()))?;
     let started = std::time::Instant::now();
-    let prompt = crate::btw::with_pending(client.prompts_log_run_dir.as_deref(), prompt);
-    let result = session.send_prompt(&prompt).await;
+    let pending = crate::btw::with_pending(client.prompts_log_run_dir.as_deref(), prompt);
+    let result = session.send_prompt(&pending.prompt).await;
+    if result.is_ok() {
+        pending.mark_delivered();
+    }
     if let Some(p) = phase {
         crate::run_timing::record_llm(client.timing.as_ref(), p, started.elapsed());
     }
