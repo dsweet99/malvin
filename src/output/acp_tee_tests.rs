@@ -196,6 +196,6 @@ fn ansi_acp_tee_can_dim_payload_text() {
         line: "[thinking]",
         dim_payload: true,
     });
-    assert!(line.contains("\x1b[90m[thinking]\x1b[0m"));
+    assert!(line.contains("\x1b[38;2;128;132;148m[thinking]\x1b[0m"));
     assert!(!line.starts_with("20260413"));
 }
