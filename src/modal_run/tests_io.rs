@@ -324,7 +324,7 @@ fn remote_lines_with_a_who_tag_are_not_retagged() {
         "o|modal: started",
         "e|boom",
         "b| thinking",
-        "\x1b[90mo|\x1b[0mx",
+        "\x1b[38;2;128;132;148mo|\x1b[0mx",
         "r|",
     ] {
         assert!(is_tagged(tagged), "{tagged:?}");
