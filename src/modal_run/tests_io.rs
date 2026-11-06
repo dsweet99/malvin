@@ -90,7 +90,15 @@ fn pack_workspace_keeps_ignored_files_out_when_a_name_is_not_utf8() {
     use std::os::unix::ffi::OsStrExt;
     let tmp = repo_with_ignored_secret();
     let non_utf8 = std::ffi::OsStr::from_bytes(b"caf\xe9.txt");
-    fs::write(tmp.path().join(non_utf8), "x").unwrap();
+    if let Err(error) = fs::write(tmp.path().join(non_utf8), "x") {
+        // APFS rejects names that are not valid Unicode (EILSEQ). The
+        // exclusion rule is still exercised on filesystems that store the name.
+        if error.raw_os_error() == Some(libc::EILSEQ) {
+            eprintln!("skipping non-UTF-8 filename test: filesystem rejected the name: {error}");
+            return;
+        }
+        panic!("write non-utf8 name: {error}");
+    }
     let out = tempfile::tempdir().unwrap();
     let tar = out.path().join("w.tar.gz");
     assert!(pack_workspace(tmp.path(), &tar).unwrap());

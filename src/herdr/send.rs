@@ -59,9 +59,7 @@ fn read_reply_chunk(
         .checked_duration_since(Instant::now())
         .filter(|duration| !duration.is_zero())
         .ok_or_else(|| "herdr read timed out".to_string())?;
-    stream
-        .set_read_timeout(Some(remaining))
-        .map_err(|e| e.to_string())?;
+    let _ = stream.set_read_timeout(Some(remaining));
     match stream.read(buf) {
         Ok(n) => Ok(n),
         Err(e)
