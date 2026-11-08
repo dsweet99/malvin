@@ -28,6 +28,18 @@ function noteBoot(kind) {
   }
 }
 
+function notePrompt(prompt) {
+  const dir = process.env.MOCK_BRIDGE_ONCE_DIR;
+  if (!dir) {
+    return;
+  }
+  try {
+    fs.appendFileSync(path.join(dir, "prompts"), `${JSON.stringify(prompt)}\n`);
+  } catch {
+    // ignore logging failures in mock
+  }
+}
+
 function consumeOnceFlag(name) {
   const dir = process.env.MOCK_BRIDGE_ONCE_DIR;
   if (!dir) {
@@ -112,6 +124,7 @@ async function handleSend(req) {
     return;
   }
   const prompt = String(req.prompt || "");
+  notePrompt(prompt);
 
   if (prompt.startsWith("USAGE_BEFORE_")) {
     emit({ event: "usage", usage: { inputTokens: 20, outputTokens: 2 } });

@@ -1,4 +1,6 @@
 fn smoke_active_agent_heartbeat_stats() {
+    let _registry_guard =
+        crate::agent_process::active_agent_heartbeat::lock_active_agent_registry_for_test();
     let _ = stringify!(ActiveAgentSandbox);
     let _ = stringify!(ActiveAgentStatsSource);
     let _ = crate::agent_process::active_agent_heartbeat::register_active_agent_process_group;
@@ -7,17 +9,6 @@ fn smoke_active_agent_heartbeat_stats() {
     let _ = crate::agent_process::malvin_sandbox::malvin_session_rss_bytes;
     crate::agent_process::active_agent_heartbeat::clear_active_agent_process_groups_for_test();
     assert!(crate::active_agent_heartbeat_stats().is_none());
-}
-
-fn smoke_agent_phase_checking() {
-    let _guard = crate::agent_phase::AGENT_PHASE_TEST_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    crate::agent_phase::reset_phase_state_for_test();
-    crate::agent_phase::enter_checking();
-    assert_eq!(crate::agent_phase::heartbeat_label(), "Checking");
-    crate::agent_phase::leave_checking();
-    assert_eq!(crate::agent_phase::heartbeat_label(), "Starting");
 }
 
 fn smoke_emit_without_log_path_skips_disk_append() {
@@ -40,11 +31,10 @@ fn smoke_emit_without_log_path_skips_disk_append() {
 
 fn smoke_time_format_and_stdout_log_path() {
     assert!(!crate::time_format::timestamp_now_string().is_empty());
-    let _guard = crate::agent_phase::AGENT_PHASE_TEST_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    crate::agent_phase::reset_phase_state_for_test();
-    assert!(crate::time_format::heartbeat_payload_now().contains("Starting"));
+    let payload = crate::time_format::heartbeat_payload_now();
+    assert!(crate::time_format::heartbeat_payload_has_wall_clock_prefix(
+        &payload
+    ));
     let tmp = tempfile::tempdir().expect("tempdir");
     let path = tmp.path().join("out.log");
     crate::workspace::stdout_log_path::set_stdout_log_path(Some(path.clone()));
@@ -191,7 +181,6 @@ fn kiss_cov_ops_spawn() {
 #[test]
 fn kiss_bundled_malvin_kiss_coverage() {
     smoke_active_agent_heartbeat_stats();
-    smoke_agent_phase_checking();
     smoke_emit_without_log_path_skips_disk_append();
     smoke_time_format_and_stdout_log_path();
     smoke_artifacts_create();

@@ -125,6 +125,19 @@ pub(super) fn report_active_state(state: &str) {
     }
 }
 
+pub fn notify_summary_ready(run_dir: &Path) {
+    if !live_io_allowed() {
+        return;
+    }
+    let Some(snap) = active_snapshot().filter(|s| s.run_dir.as_deref() == Some(run_dir)) else {
+        return;
+    };
+    let req = super::request::report_metadata_sparse(&snap.pane_id, None, next_seq());
+    if let Err(detail) = send_request_with_retry(&snap.socket_path, &req) {
+        log_herdr_failure(Some(run_dir), "summary", &detail);
+    }
+}
+
 pub fn notify_run_end() {
     let _ = std::panic::catch_unwind(notify_run_end_inner);
 }

@@ -32,6 +32,11 @@ impl MdTableStream {
         self.finish(width)
     }
 
+    pub(crate) fn end_message(&mut self, width: usize) -> Vec<MdPiece> {
+        self.fence = None;
+        self.finish(width)
+    }
+
     fn wants_row(&self, line: &str) -> bool {
         if self.rows.is_empty() {
             return is_pipe_row(line);

@@ -7,6 +7,7 @@ use super::{
 use crate::ansi_strip::strip_ansi_escapes;
 use crate::output::WHO_B;
 use crate::terminal_palette::{ANSI_DIM, ANSI_RESET};
+use crate::time_format::HEARTBEAT_FIELD_SEPARATOR;
 use unicode_width::UnicodeWidthStr;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -123,6 +124,15 @@ pub(crate) fn tagged_display_and_log_line(
     tagged_log_pair!(who, payload, ts, style)
 }
 
+pub(crate) fn heartbeat_shown_payload(payload: &str, emoji: Option<&str>) -> String {
+    match emoji {
+        Some(emoji) if crate::time_format::heartbeat_payload_has_wall_clock_prefix(payload) => {
+            payload.replacen(HEARTBEAT_FIELD_SEPARATOR, &format!(" {emoji} "), 1)
+        }
+        _ => payload.to_string(),
+    }
+}
+
 pub(crate) fn heartbeat_display_and_log_line(
     who: &str,
     payload: &str,
@@ -134,7 +144,15 @@ pub(crate) fn heartbeat_display_and_log_line(
     } else {
         TaggedDisplayStyle::Plain
     };
-    tagged_log_pair!(who, payload, ts, style)
+    let stamped = resolve_log_timestamp(ts);
+    let log = tagged_log_line(&stamped, who, payload);
+    let emoji = if use_color {
+        crate::holidays::random_celebration_emoji(chrono::Local::now().date_naive())
+    } else {
+        None
+    };
+    let shown = heartbeat_shown_payload(payload, emoji);
+    (tagged_stdout_display(who, &shown, style), log)
 }
 
 pub(crate) fn stdout_raw_display_and_log_line(line: &str, ts: Option<&str>) -> (String, String) {

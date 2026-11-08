@@ -57,6 +57,84 @@ fn prune_logs_after_run_created_removes_empty_orphan_hash_buckets() {
     });
 }
 
+const NO_LIMITS: LogsGcConfig = LogsGcConfig {
+    max_count: None,
+    max_age_days: None,
+    max_bytes: None,
+};
+const MISSING_PROJECT_OUTSIDE_TEMP: &str = "/nonexistent-malvin-gc-test/project";
+
+fn seed_run_for_work_dir(
+    home_logs: &std::path::Path,
+    run: &str,
+    work: &std::path::Path,
+) -> PathBuf {
+    let run_dir = home_logs.join(OTHER_HASH).join(run);
+    std::fs::create_dir_all(&run_dir).expect("seed run");
+    write_work_dir_manifest(&run_dir, work).expect("manifest");
+    run_dir
+}
+
+#[test]
+fn logs_of_a_missing_project_outside_temp_are_kept_without_a_retention_limit() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let home_logs = tmp.path().join("logs");
+    let work = std::path::Path::new(MISSING_PROJECT_OUTSIDE_TEMP);
+    let run = seed_run_for_work_dir(&home_logs, RUN_NEWEST, work);
+
+    let (removed, _) =
+        super::log_gc_buckets::prune_all_log_buckets(&home_logs, &NO_LIMITS, None, None);
+
+    assert_eq!(removed, 0);
+    assert!(run.is_dir(), "an unmounted project must keep its logs");
+}
+
+#[test]
+fn logs_of_a_missing_project_outside_temp_still_age_out() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let home_logs = tmp.path().join("logs");
+    let work = std::path::Path::new(MISSING_PROJECT_OUTSIDE_TEMP);
+    let old = seed_run_for_work_dir(&home_logs, RUN_OLD_AGE, work);
+    let recent_name = format!("{}_recent01", chrono::Utc::now().format("%Y%m%d_%H%M%S"));
+    let recent = seed_run_for_work_dir(&home_logs, &recent_name, work);
+    let config = LogsGcConfig {
+        max_age_days: Some(30),
+        ..NO_LIMITS
+    };
+
+    let (removed, _) =
+        super::log_gc_buckets::prune_all_log_buckets(&home_logs, &config, None, None);
+
+    assert_eq!(removed, 1);
+    assert!(!old.exists(), "the over-age run must go");
+    assert!(recent.is_dir(), "the recent run must stay");
+}
+
+#[test]
+fn logs_are_kept_when_a_temp_work_dir_cannot_be_checked() {
+    use std::os::unix::fs::PermissionsExt;
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let home_logs = tmp.path().join("logs");
+    let locked = tmp.path().join("locked");
+    let work = locked.join("project");
+    std::fs::create_dir_all(&work).expect("mkdir work");
+    let run = seed_run_for_work_dir(&home_logs, RUN_NEWEST, &work);
+    std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o000)).expect("lock");
+    let unreadable = work.try_exists().is_err();
+
+    let (removed, _) =
+        super::log_gc_buckets::prune_all_log_buckets(&home_logs, &NO_LIMITS, None, None);
+
+    std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o700)).expect("unlock");
+    if unreadable {
+        assert_eq!(removed, 0);
+        assert!(
+            run.is_dir(),
+            "an unreadable parent is not a missing project"
+        );
+    }
+}
+
 #[test]
 fn prune_logs_after_run_created_removes_ephemeral_workspace_hash_buckets() {
     crate::test_support::test_utils::with_isolated_home(|work| {

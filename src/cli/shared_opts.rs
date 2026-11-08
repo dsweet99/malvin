@@ -74,13 +74,16 @@ pub struct SharedOpts {
     /// Skip the in-process workflow that fills missing token-cost rates
     #[arg(long, default_value_t = false)]
     pub no_auto_costs: bool,
+    /// Disable delivery of direct messages through the configured `dm.on_emit` hook
+    #[arg(long, default_value_t = false)]
+    pub no_emit: bool,
     /// Stop after N consecutive identical backend errors, each within 60 s of the previous one
     #[arg(long = "max-acp-retries", default_value_t = DEFAULT_MAX_ACP_RETRIES)]
     pub max_acp_retries: u32,
     /// Print built-in documentation and exit
     #[arg(long, global = true, default_value_t = false)]
     pub doc: bool,
-    /// Print full advice for TAG, or list tags (tag then description) if TAG is omitted (no run logs)
+    /// Print full advice for TAG (`facts` prints ~/.malvinconf/facts.jsonl), or list tags if TAG is omitted (no run logs)
     #[arg(long, value_name = "TAG", num_args = 0..=1, default_missing_value = "")]
     pub advice: Option<String>,
     /// Print credits for ideas malvin builds on and exit (no run logs)
@@ -167,6 +170,7 @@ impl SharedOpts {
                 .expect("default model")
                 .into(),
             no_auto_costs: false,
+            no_emit: false,
             max_acp_retries: malvin::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
             advice: None,

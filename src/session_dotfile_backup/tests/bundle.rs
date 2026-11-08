@@ -123,12 +123,16 @@ fn gitignore_missing_at_snapshot_removes_agent_created_file() {
 }
 
 #[test]
-fn workspace_malvin_config_missing_at_snapshot_removes_agent_created_file() {
+fn workspace_malvin_config_is_not_snapshotted_or_restored() {
     with_isolated_home(|work| {
         std::fs::create_dir_all(work.join(".malvin")).unwrap();
-        let bundle = SessionDotfileBackups::snapshot(work).unwrap();
         let cfg = work.join(crate::MALVIN_CONFIG_REL);
-        std::fs::write(&cfg, b"agent-created\n").unwrap();
+        std::fs::write(&cfg, b"original\n").unwrap();
+        let bundle = SessionDotfileBackups::snapshot(work).unwrap();
+        std::fs::write(&cfg, b"agent-edited\n").unwrap();
+        bundle.restore(work).unwrap();
+        assert_eq!(std::fs::read_to_string(&cfg).unwrap(), "agent-edited\n");
+        std::fs::remove_file(&cfg).unwrap();
         bundle.restore(work).unwrap();
         assert!(!cfg.exists());
     });

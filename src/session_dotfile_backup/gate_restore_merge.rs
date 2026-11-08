@@ -2,8 +2,7 @@ use std::path::Path;
 
 use super::gate_restore_checks::substantive_check_lines;
 use super::{
-    DotfileBackupStateRef, GitignoreBackup, MalvinChecksBackup, MalvinConfigWorkspaceBackup,
-    SessionDotfileBackups, VisionBackup,
+    DotfileBackupStateRef, GitignoreBackup, MalvinChecksBackup, SessionDotfileBackups, VisionBackup,
 };
 
 pub(crate) const fn slot_deleted(
@@ -19,24 +18,6 @@ pub(crate) const fn slot_bytes(value: DotfileBackupStateRef<'_>) -> Option<&[u8]
         DotfileBackupStateRef::Present(payload) => Some(payload.bytes.as_slice()),
         DotfileBackupStateRef::Missing => None,
     }
-}
-
-pub(crate) fn slot_content_regressed(
-    anchor: DotfileBackupStateRef<'_>,
-    progress: DotfileBackupStateRef<'_>,
-) -> bool {
-    let (Some(anchor_bytes), Some(progress_bytes)) = (slot_bytes(anchor), slot_bytes(progress))
-    else {
-        return false;
-    };
-    anchor_bytes != progress_bytes
-}
-
-pub(crate) fn slot_regressed(
-    anchor: DotfileBackupStateRef<'_>,
-    progress: DotfileBackupStateRef<'_>,
-) -> bool {
-    slot_deleted(anchor, progress) || slot_content_regressed(anchor, progress)
 }
 
 pub(crate) fn checks_lines_are_superset(anchor_bytes: &[u8], progress_bytes: &[u8]) -> bool {
@@ -65,13 +46,6 @@ pub(crate) fn malvin_checks_regressed(
         return false;
     }
     !checks_lines_are_superset(anchor_bytes, progress_bytes)
-}
-
-fn config_workspace_regressed(
-    anchor: &MalvinConfigWorkspaceBackup,
-    progress: &MalvinConfigWorkspaceBackup,
-) -> bool {
-    slot_regressed(anchor.as_slot_state(), progress.as_slot_state())
 }
 
 fn pick_typed<T: Clone>(anchor: &T, progress: &T, regress_probe: fn(&T, &T) -> bool) -> T {
@@ -144,11 +118,6 @@ pub fn merge_for_gate_restore(
         ),
         gitignore: pick_typed(&anchor.gitignore, &progress.gitignore, gitignore_regressed),
         vision: pick_typed(&anchor.vision, &progress.vision, vision_regressed),
-        malvin_config_workspace: pick_typed(
-            &anchor.malvin_config_workspace,
-            &progress.malvin_config_workspace,
-            config_workspace_regressed,
-        ),
     }
 }
 

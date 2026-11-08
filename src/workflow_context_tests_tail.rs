@@ -37,6 +37,16 @@ fn workflow_context_paths_only_embeds_agents_md() {
     let ctx = workflow_context_paths_only(&artifacts, crate::config::DEFAULT_CLI_MODEL);
     let insert = ctx.get("agents_insert").expect("agents_insert");
     assert!(
+        ctx.get("main_trace_path").expect("main").ends_with("/main"),
+        "{:?}",
+        ctx.get("main_trace_path").expect("main")
+    );
+    assert!(
+        ctx.get("lite_trace_path").expect("lite").ends_with("/lite"),
+        "{:?}",
+        ctx.get("lite_trace_path").expect("lite")
+    );
+    assert!(
         insert.contains("Prefer narrow checks."),
         "workspace AGENTS.md must populate agents_insert: {insert:?}"
     );

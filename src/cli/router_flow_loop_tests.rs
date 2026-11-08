@@ -1,7 +1,6 @@
 use super::restore_router_iteration_dotfiles;
 use malvin::session_dotfile_backup::{
-    GitignoreBackup, MalvinChecksBackup, MalvinConfigWorkspaceBackup, SessionDotfileBackups,
-    VisionBackup, VisionFileBackup,
+    GitignoreBackup, MalvinChecksBackup, SessionDotfileBackups, VisionBackup, VisionFileBackup,
 };
 
 #[test]
@@ -49,7 +48,6 @@ fn kiss_witness_restore_router_iteration_dotfiles() {
         malvin_checks: MalvinChecksBackup::Missing,
         gitignore: GitignoreBackup::Missing,
         vision: VisionBackup::Missing,
-        malvin_config_workspace: MalvinConfigWorkspaceBackup::Missing,
     };
     let _ = matches!(empty.vision, VisionBackup::Missing);
     let _ = VisionFileBackup::new(std::path::PathBuf::from("VISION.md"), b"x".to_vec());

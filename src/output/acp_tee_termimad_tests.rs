@@ -52,14 +52,17 @@ fn termimad_inline_wraps_dim_when_dim_with_emit() {
         allow_inline_styling: true,
     };
     let s = termimad_inline_payload_for_stdout("**m** tail", gate).expect("render");
-    assert!(s.starts_with("\x1b[90m"), "expected outer dim wrap: {s:?}");
+    assert!(
+        s.starts_with("\x1b[38;2;128;132;148m"),
+        "expected outer dim wrap: {s:?}"
+    );
     assert!(
         s.ends_with("\x1b[0m"),
         "expected reset after dim wrap: {s:?}"
     );
     assert!(!s.contains("**m**"), "expected markdown consumed: {s:?}");
     assert!(
-        s.contains("\x1b[0m\x1b[90m tail"),
+        s.contains("\x1b[0m\x1b[38;2;128;132;148m tail"),
         "expected dim to resume after inner reset: {s:?}"
     );
 }
@@ -108,11 +111,11 @@ fn termimad_text_lines_keep_dim_across_inner_resets() {
     assert_eq!(lines.len(), 1, "unexpected wrap for short input: {lines:?}");
     let line = &lines[0];
     assert!(
-        line.starts_with("\x1b[90m"),
+        line.starts_with("\x1b[38;2;128;132;148m"),
         "expected outer dim wrap: {line:?}"
     );
     assert!(
-        line.contains("\x1b[0m\x1b[90m tail"),
+        line.contains("\x1b[0m\x1b[38;2;128;132;148m tail"),
         "expected dim to resume after inner reset: {line:?}"
     );
 }

@@ -41,12 +41,22 @@ pub(crate) fn remove_bucket_if_empty(bucket: &Path, keep: Option<&Path>) {
     }
 }
 
+fn is_under_system_temp(path: &Path) -> bool {
+    let temp = std::env::temp_dir();
+    path.starts_with(&temp) || temp.canonicalize().is_ok_and(|real| path.starts_with(real))
+}
+
+fn work_dir_was_temporary_and_is_gone(work: &Path) -> bool {
+    is_under_system_temp(work) && matches!(work.try_exists(), Ok(false))
+}
+
 pub(crate) fn bucket_is_ephemeral_orphan(runs: &[PathBuf]) -> bool {
     if runs.is_empty() {
         return false;
     }
-    runs.iter()
-        .all(|run| read_work_dir_manifest(run).is_some_and(|work| !work.exists()))
+    runs.iter().all(|run| {
+        read_work_dir_manifest(run).is_some_and(|work| work_dir_was_temporary_and_is_gone(&work))
+    })
 }
 
 fn remove_orphan_bucket(bucket: &Path, runs: &[PathBuf]) -> PruneTally {

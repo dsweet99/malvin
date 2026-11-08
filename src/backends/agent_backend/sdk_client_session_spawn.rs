@@ -103,6 +103,7 @@ fn bridge_spawn_args<'a>(
         thinking,
         io: client.io,
         run_dir: client.prompts_log_run_dir.clone(),
+        trace_path: client.trace_path.clone(),
         timing: client.timing.clone(),
     }
 }

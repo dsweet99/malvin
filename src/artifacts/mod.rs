@@ -1,4 +1,5 @@
 mod create;
+mod layout;
 mod md_request;
 mod startup_tag;
 
@@ -11,22 +12,22 @@ pub use create::{
 };
 
 pub use crate::session_dotfile_backup::{
-    GitignoreBackup, MalvinChecksBackup, MalvinConfigWorkspaceBackup, SessionDotfileBackups,
-    VisionBackup, backup_workspace_malvin_checks_if_present,
-    backup_workspace_malvin_checks_if_present_with_id,
-    backup_workspace_malvin_config_workspace_if_present,
-    backup_workspace_malvin_config_workspace_if_present_with_id,
+    GitignoreBackup, MalvinChecksBackup, SessionDotfileBackups, VisionBackup,
+    backup_workspace_malvin_checks_if_present, backup_workspace_malvin_checks_if_present_with_id,
     merge_and_sanitize_for_gate_restore, merge_for_gate_restore,
     repair_invalid_malvin_home_config_on_disk, restore_workspace_malvin_checks_backup,
-    restore_workspace_malvin_config_workspace_backup, restore_workspace_session_dotfiles,
+    restore_workspace_session_dotfiles,
 };
 
+pub use layout::AgentDirs;
 pub use md_request::{
     is_existing_md_file_path, looks_like_md_file_path_arg, resolve_user_md_request,
 };
 pub use startup_tag::startup_request_tag_label;
 
-pub use crate::malvin_constants::{QUALITY_GATES_LOG, SANDBOX_OOM_JSON, STDOUT_LOG, TRACE_JSONL};
+pub use crate::malvin_constants::{
+    LITE_DIR, MAIN_DIR, QUALITY_GATES_LOG, SANDBOX_OOM_JSON, STDOUT_LOG, TRACE_JSONL,
+};
 
 #[derive(Debug, Clone)]
 pub struct RunArtifacts {
@@ -84,7 +85,7 @@ impl RunArtifacts {
 
     #[must_use]
     pub fn stdout_log_path(&self) -> PathBuf {
-        self.run_dir.join(STDOUT_LOG)
+        AgentDirs(self).main().join(STDOUT_LOG)
     }
 
     #[must_use]

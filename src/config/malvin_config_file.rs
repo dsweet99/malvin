@@ -48,6 +48,7 @@ const DEFAULT_MALVIN_CONFIG_TEMPLATE: &str = include_str!(concat!(
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AgentConfig {
     pub model: ModelList,
+    pub model_lite: Option<ModelList>,
     pub max_acp_retries: u32,
 }
 
@@ -57,6 +58,7 @@ impl Default for AgentConfig {
             model: parse_model_id(DEFAULT_CLI_MODEL)
                 .expect("DEFAULT_CLI_MODEL must parse")
                 .into(),
+            model_lite: None,
             max_acp_retries: DEFAULT_MAX_ACP_RETRIES,
         }
     }

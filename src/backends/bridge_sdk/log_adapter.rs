@@ -5,7 +5,16 @@ use crate::backends::cursor_sdk::protocol::BridgeEvent;
 use super::bridge_sdk::log_adapter_tool::{ToolCallFields, clear_tool_starts, emit_tool};
 use super::bridge_sdk::stream_log::StreamLog;
 
+fn notify_herdr_on_sdk_tool_activity(ev: &BridgeEvent) {
+    if let BridgeEvent::ToolCall { phase, .. } = ev
+        && matches!(phase.as_str(), "start" | "running")
+    {
+        crate::herdr::notify_working();
+    }
+}
+
 pub fn handle_stream_event(session: &StreamLog, ev: &BridgeEvent) {
+    notify_herdr_on_sdk_tool_activity(ev);
     match ev {
         BridgeEvent::Assistant { text } => emit_assistant(session, text),
         BridgeEvent::Thinking { text } => emit_thinking(session, text),
@@ -104,10 +113,10 @@ fn append_trace_raw(session: &StreamLog, kind: &str, text: &str) {
 }
 
 pub(crate) fn append_trace_line(session: &StreamLog, line: &str) {
-    let Some(run_dir) = session.run_dir.as_ref() else {
+    let Some(path) = session.trace_path.as_ref() else {
         return;
     };
-    let trace = AcpJsonlTrace::new(run_dir.join("trace.jsonl"), "sdk".into());
+    let trace = AcpJsonlTrace::new(path.clone(), "sdk".into());
     trace.append_line("in", line);
 }
 

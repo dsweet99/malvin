@@ -5,6 +5,7 @@ mod code_lex;
 mod code_paint;
 mod dm_attachment;
 mod dm_hook;
+pub use dm_hook::set_dm_emit_enabled;
 mod dm_stderr;
 mod do_dm_emit;
 mod do_dm_filter;
@@ -16,7 +17,7 @@ pub(crate) mod stderr_log;
 mod stdout_defer;
 mod stdout_display;
 mod stdout_display_md;
-mod stdout_heartbeat;
+pub(crate) mod stdout_heartbeat;
 pub(crate) mod stdout_log_pair;
 mod stdout_render;
 pub(crate) mod stdout_tee_env;
@@ -51,7 +52,8 @@ pub(crate) use do_dm_on_emit::notify_completed_direct_messages;
 pub use do_dm_on_emit::set_dm_on_emit_command;
 pub use sentinel::{DM_END, DM_START, MALVIN_DONE, is_sentinel_line};
 pub use stdout_display::{
-    print_stdout_line, print_stdout_raw_line, print_stdout_raw_line_with_ts, print_stdout_text,
+    print_stdout_italic_text, print_stdout_line, print_stdout_raw_line,
+    print_stdout_raw_line_with_ts, print_stdout_text,
 };
 pub use stdout_display_md::{
     flush_formatted_markdown_tables, print_stdout_line_with_markdown,

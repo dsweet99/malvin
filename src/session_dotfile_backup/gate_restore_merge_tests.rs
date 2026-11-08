@@ -1,7 +1,7 @@
 use crate::session_dotfile_backup::gate_restore_merge::merge_for_gate_restore;
 use crate::session_dotfile_backup::{
     DotfileBackupPayload, GitignoreBackup, GitignoreFileBackup, MalvinChecksBackup,
-    MalvinConfigWorkspaceBackup, SessionDotfileBackups,
+    SessionDotfileBackups,
 };
 
 fn present(bytes: &[u8]) -> MalvinChecksBackup {
@@ -26,7 +26,6 @@ fn bundle_with(gitignore: GitignoreBackup, checks: MalvinChecksBackup) -> Sessio
         malvin_checks: checks,
         gitignore,
         vision: crate::session_dotfile_backup::VisionBackup::Missing,
-        malvin_config_workspace: MalvinConfigWorkspaceBackup::Missing,
     }
 }
 

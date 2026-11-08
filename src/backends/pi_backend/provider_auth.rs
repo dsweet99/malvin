@@ -73,6 +73,17 @@ pub(crate) fn missing_credentials_hint(provider: &str) -> String {
     )
 }
 
+#[must_use]
+pub(crate) fn provider_auth_problem(provider: &str) -> Option<String> {
+    if is_provider_authenticated(provider) || !provider_has_known_credentials(provider) {
+        return None;
+    }
+    Some(format!(
+        "pi backend is not authenticated for provider `{provider}`. {}.",
+        missing_credentials_hint(provider)
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -165,6 +176,8 @@ mod tests {
             assert!(!provider_has_known_credentials("portkey"));
             assert!(provider_has_known_credentials("openai"));
             assert!(missing_credentials_hint("openai").contains("OPENAI_API_KEY"));
+            assert_eq!(provider_auth_problem("portkey"), None);
+            assert_eq!(provider_auth_problem("some-unknown"), None);
         });
     }
 }

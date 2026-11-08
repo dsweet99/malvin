@@ -23,9 +23,9 @@ First the summary.
 Then write a tl;dr of the summary; 1-2 sentences.
 
 Oh, and don't forget to put it all between the DM fences, like this:
-```
 __MALVIN_DM_START__
 Your summary
 __MALVIN_DM_END__
-```
+
+
 and optionally `__ATTACH__` a file.

@@ -68,6 +68,67 @@ fn pack_workspace_selects_tracked_and_unignored_files() {
     assert_eq!(placement.prefix, "");
 }
 
+fn repo_with_ignored_secret() -> tempfile::TempDir {
+    let tmp = repo();
+    write_all(
+        tmp.path(),
+        &[(".gitignore", "ignored.txt\n.env\n"), (".env", "KEY=x\n")],
+    );
+    tmp
+}
+
+fn assert_refused_without_archive(dir: &Path, expected: &str) {
+    let out = tempfile::tempdir().unwrap();
+    let tar = out.path().join("w.tar.gz");
+    let err = pack_workspace(dir, &tar).unwrap_err();
+    assert!(err.contains(expected), "{err}");
+    assert!(!tar.exists(), "a refused upload must not leave an archive");
+}
+
+#[test]
+fn pack_workspace_keeps_ignored_files_out_when_a_name_is_not_utf8() {
+    use std::os::unix::ffi::OsStrExt;
+    let tmp = repo_with_ignored_secret();
+    let non_utf8 = std::ffi::OsStr::from_bytes(b"caf\xe9.txt");
+    if let Err(error) = fs::write(tmp.path().join(non_utf8), "x") {
+        // APFS rejects names that are not valid Unicode (EILSEQ). The
+        // exclusion rule is still exercised on filesystems that store the name.
+        if error.raw_os_error() == Some(libc::EILSEQ) {
+            eprintln!("skipping non-UTF-8 filename test: filesystem rejected the name: {error}");
+            return;
+        }
+        panic!("write non-utf8 name: {error}");
+    }
+    let out = tempfile::tempdir().unwrap();
+    let tar = out.path().join("w.tar.gz");
+    assert!(pack_workspace(tmp.path(), &tar).unwrap());
+    let names = tar_names(&tar);
+    assert!(names.iter().any(|n| n.starts_with("caf")), "{names:?}");
+    assert!(names.contains(&"a.txt".to_string()), "{names:?}");
+    assert!(!names.iter().any(|n| n.contains(".env")), "{names:?}");
+    assert!(!names.iter().any(|n| n.contains("ignored")), "{names:?}");
+    assert!(!names.iter().any(|n| n.contains(".git/")), "{names:?}");
+}
+
+#[test]
+fn pack_workspace_refuses_a_work_tree_git_cannot_list() {
+    let tmp = repo_with_ignored_secret();
+    fs::write(tmp.path().join(".git/index"), "not an index").unwrap();
+    assert_refused_without_archive(tmp.path(), "could not list");
+}
+
+#[test]
+fn upload_is_refused_when_git_metadata_exists_but_git_cannot_read_it() {
+    use super::workspace::check_upload_size;
+    let tmp = tempfile::tempdir().unwrap();
+    let nested = tmp.path().join("sub");
+    fs::create_dir_all(&nested).unwrap();
+    fs::write(tmp.path().join(".git"), "not a gitfile").unwrap();
+    assert_refused_without_archive(&nested, "git could not read");
+    let err = check_upload_size(&nested, 1 << 30).unwrap_err();
+    assert!(err.contains("git could not read"), "{err}");
+}
+
 #[test]
 fn pack_workspace_without_git_skips_heavy_dirs() {
     let tmp = tempfile::tempdir().unwrap();
@@ -271,7 +332,7 @@ fn remote_lines_with_a_who_tag_are_not_retagged() {
         "o|modal: started",
         "e|boom",
         "b| thinking",
-        "\x1b[90mo|\x1b[0mx",
+        "\x1b[38;2;128;132;148mo|\x1b[0mx",
         "r|",
     ] {
         assert!(is_tagged(tagged), "{tagged:?}");

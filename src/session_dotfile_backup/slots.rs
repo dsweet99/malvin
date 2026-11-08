@@ -38,28 +38,16 @@ pub(super) fn dotfile_source_path(slot: usize, work_dir: &Path) -> PathBuf {
 }
 
 pub(super) const MALVIN_CHECKS_SLOT: usize = 0;
-pub(super) const MALVIN_CONFIG_WORKSPACE_SLOT: usize = 1;
 
-pub(super) const DOTFILE_ROWS: [DotfileSpecRow; 2] = [
-    DotfileSpecRow {
-        rel: crate::MALVIN_CHECKS_REL,
-        home_subdir: "malvin_checks",
-        mkdir_lbl: "malvin_checks backup mkdir",
-        collision_lbl: "malvin_checks backup mkdir",
-        restore_lbl: "malvin_checks restore",
-        copy_err: ".malvin/gates backup copy",
-        restore_copy_err: "malvin_checks restore",
-    },
-    DotfileSpecRow {
-        rel: crate::MALVIN_CONFIG_REL,
-        home_subdir: "malvin_config_workspace",
-        mkdir_lbl: "malvin_config_workspace backup mkdir",
-        collision_lbl: "malvin_config_workspace backup mkdir",
-        restore_lbl: "malvin_config_workspace restore",
-        copy_err: "workspace .malvin/config.toml backup copy",
-        restore_copy_err: "malvin_config_workspace restore",
-    },
-];
+pub(super) const DOTFILE_ROWS: [DotfileSpecRow; 1] = [DotfileSpecRow {
+    rel: crate::MALVIN_CHECKS_REL,
+    home_subdir: "malvin_checks",
+    mkdir_lbl: "malvin_checks backup mkdir",
+    collision_lbl: "malvin_checks backup mkdir",
+    restore_lbl: "malvin_checks restore",
+    copy_err: ".malvin/gates backup copy",
+    restore_copy_err: "malvin_checks restore",
+}];
 
 pub(super) fn backup_slot(
     slot: usize,

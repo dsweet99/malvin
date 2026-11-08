@@ -11,7 +11,7 @@ use crate::output::{
 use crate::time_format::heartbeat_payload_has_wall_clock_prefix;
 
 use super::stdout_heartbeat_test_support::{
-    due_heartbeat_render_capture_test, heartbeat_test_guards,
+    due_heartbeat_render_capture_test, fresh_heartbeat_log_capture_test, heartbeat_test_guards,
 };
 
 #[test]
@@ -122,6 +122,75 @@ fn heartbeat_logs_during_stdout_silence_when_interval_elapsed() {
 }
 
 #[test]
+fn celebration_emoji_replaces_only_the_first_center_dot() {
+    use crate::output::stdout_log_pair::heartbeat_shown_payload;
+
+    assert_eq!(
+        heartbeat_shown_payload("20260524.000000 · hash/run · task · status", Some("🎃")),
+        "20260524.000000 🎃 hash/run · task · status"
+    );
+    assert_eq!(
+        heartbeat_shown_payload(
+            "20260524.000000, sandbox: 1 GiB USS, 3 procs · hash/run",
+            Some("🎃")
+        ),
+        "20260524.000000, sandbox: 1 GiB USS, 3 procs 🎃 hash/run"
+    );
+}
+
+#[test]
+fn heartbeat_payload_is_unchanged_without_a_dot_to_replace_or_an_emoji() {
+    use crate::output::stdout_log_pair::heartbeat_shown_payload;
+
+    for payload in [
+        "20260524.000000",
+        "20260524.000000, sandbox: 1 GiB USS, 3 procs",
+    ] {
+        assert_eq!(heartbeat_shown_payload(payload, Some("🎃")), payload);
+    }
+    assert_eq!(
+        heartbeat_shown_payload("HB: note · hash/run", Some("🎃")),
+        "HB: note · hash/run"
+    );
+    assert_eq!(
+        heartbeat_shown_payload("20260524.000000 · hash/run", None),
+        "20260524.000000 · hash/run"
+    );
+}
+
+#[test]
+fn celebration_emoji_appears_only_on_a_colored_heartbeat_and_never_in_the_log() {
+    use crate::output::stdout_log_pair::{
+        heartbeat_display_and_log_line_for_color, tagged_log_line,
+    };
+    use crate::output::{format_heartbeat_stdout_ansi, format_line_stdout};
+
+    let payload = "20260524.000000 · hash/run";
+    let ts = "20260524.000000.000";
+
+    let (plain, plain_log) =
+        heartbeat_display_and_log_line_for_color(WHO_H, payload, Some(ts), false);
+    assert_eq!(plain, format_line_stdout(WHO_H, payload));
+    assert_eq!(plain_log, tagged_log_line(ts, WHO_H, payload));
+
+    let (display, log) = heartbeat_display_and_log_line_for_color(WHO_H, payload, Some(ts), true);
+    assert_eq!(log, tagged_log_line(ts, WHO_H, payload));
+    let pool: Vec<&str> = crate::holidays::celebrations(chrono::Local::now().date_naive())
+        .into_iter()
+        .flat_map(|holiday| holiday.emoji().iter().copied())
+        .collect();
+    let matched = if pool.is_empty() {
+        display == format_heartbeat_stdout_ansi(WHO_H, payload)
+    } else {
+        pool.iter().any(|emoji| {
+            display
+                == format_heartbeat_stdout_ansi(WHO_H, &format!("20260524.000000 {emoji} hash/run"))
+        })
+    };
+    assert!(matched, "{display}");
+}
+
+#[test]
 fn heartbeat_suppressed_for_do_plain_stdout() {
     let (terminal, text) = due_heartbeat_render_capture_test(|| {
         crate::output::set_heartbeat_stdout_suppressed(true);
@@ -137,4 +206,36 @@ fn heartbeat_suppressed_for_do_plain_stdout() {
         text.is_empty(),
         "do plain must not emit h| to stdout.log; got {text:?}"
     );
+}
+
+#[test]
+fn logs_line_is_followed_by_one_heartbeat() {
+    let text = fresh_heartbeat_log_capture_test(|| {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let artifacts =
+            crate::artifacts::create_run_artifacts_from_text("hi", Some(tmp.path())).expect("art");
+        crate::cli::run_emit::emit_run_logs_line(&artifacts).expect("logs");
+        try_emit_heartbeat_if_due(Instant::now(), false);
+    });
+    let lines: Vec<&str> = text.lines().collect();
+    let last_o = lines
+        .iter()
+        .rposition(|line| line.contains(" o|"))
+        .expect("logs line");
+    let hb = lines[last_o + 1];
+    let payload = hb
+        .split_once(&format_who_tag_delim(WHO_H))
+        .map_or("", |(_, rest)| rest);
+    assert!(heartbeat_payload_has_wall_clock_prefix(payload), "{text}");
+    assert_eq!(lines.len(), last_o + 2, "{text}");
+}
+
+#[test]
+fn emit_stdout_heartbeat_now_writes_nothing_when_suppressed() {
+    let text = fresh_heartbeat_log_capture_test(|| {
+        crate::output::set_heartbeat_stdout_suppressed(true);
+        crate::output::stdout_heartbeat::emit_stdout_heartbeat_now();
+        crate::output::set_heartbeat_stdout_suppressed(false);
+    });
+    assert!(text.is_empty(), "{text}");
 }

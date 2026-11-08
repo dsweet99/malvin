@@ -2,7 +2,7 @@ use serde_json::json;
 
 use super::backend_setup::{preflight, setup_for};
 use super::config::{ModalConfig, parse_modal_config, read_config_root, remote_config_text};
-use super::credentials::{FORWARDED_ENV, forwarded_env};
+use super::credentials::forwarded_env;
 use super::image::{
     DEFAULT_BASE, TOOLCHAIN, base_for_host_glibc, crates_io_layer, image_name, image_spec,
     toolchain_commands,
@@ -208,10 +208,98 @@ fn forwarded_env_keeps_only_set_provider_credentials() {
         env.keys().collect::<Vec<_>>(),
         vec!["ANTHROPIC_OAUTH_TOKEN", "OPENAI_API_KEY"]
     );
-    assert!(FORWARDED_ENV.contains(&"OPENROUTER_API_KEY"));
-    assert!(FORWARDED_ENV.contains(&"ANTHROPIC_API_KEY"));
-    assert!(FORWARDED_ENV.contains(&"ANTHROPIC_OAUTH_TOKEN"));
-    assert!(FORWARDED_ENV.contains(&"ANTHROPIC_AUTH_TOKEN"));
+    let all = forwarded_env(|_| Some("set".to_string()));
+    for key in [
+        "CURSOR_API_KEY",
+        "CURSOR_AGENT_API_KEY",
+        "AGENT_API_KEY",
+        "CLAUDE_CODE_OAUTH_TOKEN",
+        "OPENAI_API_KEY",
+        "OPENROUTER_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_OAUTH_TOKEN",
+        "ANTHROPIC_AUTH_TOKEN",
+    ] {
+        assert!(all.contains_key(key), "{key}");
+    }
+}
+
+#[test]
+fn every_pi_provider_key_is_forwarded_to_the_sandbox() {
+    let env = forwarded_env(|k| Some(format!("value-of-{k}")));
+    for key in [
+        "DEEPSEEK_API_KEY",
+        "GEMINI_API_KEY",
+        "MISTRAL_API_KEY",
+        "GROQ_API_KEY",
+        "CEREBRAS_API_KEY",
+        "XAI_API_KEY",
+        "ZAI_API_KEY",
+        "FIREWORKS_API_KEY",
+        "TOGETHER_API_KEY",
+        "MOONSHOT_API_KEY",
+        "MINIMAX_API_KEY",
+        "HF_TOKEN",
+    ] {
+        assert_eq!(env.get(key), Some(&format!("value-of-{key}")), "{key}");
+    }
+}
+
+fn with_modal_home_and_pi_dir(body: impl FnOnce(&std::path::Path, &std::path::Path)) {
+    let _g = crate::test_support::test_utils::test_env_lock();
+    let home = tempfile::tempdir().unwrap();
+    let pi_dir = tempfile::tempdir().unwrap();
+    std::fs::write(home.path().join(".modal.toml"), "").unwrap();
+    crate::agent_process::with_env(
+        "PI_CODING_AGENT_DIR",
+        Some(pi_dir.path().to_str().unwrap()),
+        || body(home.path(), pi_dir.path()),
+    );
+}
+
+#[test]
+fn pi_preflight_rejects_a_provider_without_credentials() {
+    with_modal_home_and_pi_dir(|home, _| {
+        crate::agent_process::with_env("DEEPSEEK_API_KEY", None, || {
+            let err = preflight("pi:deepseek/deepseek-chat", home).unwrap_err();
+            assert!(
+                err.contains("deepseek") && err.contains("DEEPSEEK_API_KEY"),
+                "{err}"
+            );
+        });
+    });
+}
+
+#[test]
+fn pi_preflight_checks_every_pi_model_in_the_list() {
+    with_modal_home_and_pi_dir(|home, _| {
+        crate::agent_process::with_env("DEEPSEEK_API_KEY", None, || {
+            crate::agent_process::with_env("OPENAI_API_KEY", Some("sk-test"), || {
+                let models = "pi:openai/gpt-5,pi:deepseek/deepseek-chat";
+                let err = preflight(models, home).unwrap_err();
+                assert!(err.contains("DEEPSEEK_API_KEY"), "{err}");
+            });
+        });
+    });
+}
+
+#[test]
+fn pi_preflight_accepts_each_local_credential_source() {
+    with_modal_home_and_pi_dir(|home, pi_dir| {
+        crate::agent_process::with_env("DEEPSEEK_API_KEY", None, || {
+            assert!(preflight("pi:ollama/llama3", home).is_ok());
+            std::fs::write(
+                pi_dir.join("auth.json"),
+                r#"{"deepseek":{"type":"api_key","key":"sk-x"}}"#,
+            )
+            .unwrap();
+            assert!(preflight("pi:deepseek/deepseek-chat", home).is_ok());
+            std::fs::remove_file(pi_dir.join("auth.json")).unwrap();
+        });
+        crate::agent_process::with_env("DEEPSEEK_API_KEY", Some("sk-env"), || {
+            assert!(preflight("pi:deepseek/deepseek-chat", home).is_ok());
+        });
+    });
 }
 
 #[test]
@@ -256,7 +344,6 @@ fn preflight_checks_each_backend_credential() {
         std::fs::create_dir_all(home.join(".codex")).unwrap();
         std::fs::write(home.join(".codex/auth.json"), "{}").unwrap();
         assert!(preflight("codex:gpt-5", home).is_ok());
-        assert!(preflight("pi:openai/x", home).is_ok());
     });
     crate::agent_process::with_env("OPENAI_API_KEY", Some("sk-test"), || {
         std::fs::remove_file(home.join(".codex/auth.json")).unwrap();
@@ -287,7 +374,7 @@ fn preflight_names_missing_modal_credentials() {
             "{err}"
         );
         std::fs::write(tmp.path().join(".modal.toml"), "").unwrap();
-        assert!(preflight("pi:openai/x", tmp.path()).is_ok());
+        assert!(preflight("pi:ollama/x", tmp.path()).is_ok());
         crate::agent_process::with_env("CURSOR_API_KEY", None, || {
             crate::agent_process::with_env("CURSOR_AGENT_API_KEY", None, || {
                 crate::agent_process::with_env("AGENT_API_KEY", None, || {

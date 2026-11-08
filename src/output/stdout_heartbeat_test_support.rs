@@ -21,6 +21,18 @@ pub(super) fn heartbeat_test_guards() -> (
     )
 }
 
+pub(super) fn fresh_heartbeat_log_capture_test<F: FnOnce()>(run: F) -> String {
+    let (_guard, _stdout_guard) = heartbeat_test_guards();
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("stdout.log");
+    set_stdout_log_path(Some(path.clone()));
+    reset_stdout_heartbeat_for_test();
+    crate::output::set_heartbeat_stdout_suppressed(false);
+    run();
+    set_stdout_log_path(None);
+    std::fs::read_to_string(path).unwrap_or_default()
+}
+
 pub(super) fn due_heartbeat_render_capture_test<F: FnOnce()>(run: F) -> (String, String) {
     let (_guard, _stdout_guard) = heartbeat_test_guards();
     let tmp = tempfile::tempdir().expect("tempdir");

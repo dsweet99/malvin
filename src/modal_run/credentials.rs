@@ -1,25 +1,24 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-pub const FORWARDED_ENV: &[&str] = &[
+use crate::local_llm::provider_metadata::all_provider_auth_env_keys;
+
+const NON_PI_LOGIN_ENV: &[&str] = &[
     "CURSOR_API_KEY",
     "CURSOR_AGENT_API_KEY",
     "AGENT_API_KEY",
-    "OPENAI_API_KEY",
-    "ANTHROPIC_API_KEY",
-    "ANTHROPIC_OAUTH_TOKEN",
-    "ANTHROPIC_AUTH_TOKEN",
     "CLAUDE_CODE_OAUTH_TOKEN",
-    "OPENROUTER_API_KEY",
 ];
 
 #[must_use]
 pub fn forwarded_env(lookup: impl Fn(&str) -> Option<String>) -> BTreeMap<String, String> {
-    FORWARDED_ENV
+    NON_PI_LOGIN_ENV
         .iter()
+        .copied()
+        .chain(all_provider_auth_env_keys())
         .filter_map(|k| {
             let v = lookup(k)?;
-            (!v.trim().is_empty()).then(|| ((*k).to_string(), v))
+            (!v.trim().is_empty()).then(|| (k.to_string(), v))
         })
         .collect()
 }

@@ -22,6 +22,7 @@ use super::unix_process_group_teardown::{
 
 #[test]
 fn terminate_blocking_kills_note_affiliated_pid_without_pgid() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     crate::test_support::test_utils::enable_test_fast_teardown();
     let baseline = crate::agent_process::malvin_sandbox::malvin_spawn_baseline();
     let mut cmd = Command::new("sleep");
@@ -45,6 +46,7 @@ fn terminate_blocking_kills_note_affiliated_pid_without_pgid() {
 
 #[tokio::test]
 async fn async_teardown_kills_affiliated_pid_without_pgid() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     crate::test_support::test_utils::enable_test_fast_teardown();
     let baseline = HashSet::new();
     let mut cmd = Command::new("sleep");
@@ -65,6 +67,7 @@ async fn async_teardown_kills_affiliated_pid_without_pgid() {
 
 #[test]
 fn descendant_pids_walks_child_chain() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     let rows = vec![
         ProcRow {
             pid: 10,
@@ -91,12 +94,14 @@ fn descendant_pids_walks_child_chain() {
 
 #[test]
 fn terminate_agent_process_group_blocking_noop_without_targets() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     let empty = HashSet::new();
     terminate_agent_process_group_blocking(None, &empty);
 }
 #[test]
 fn kill_targets_empty_baseline_skips_orphan_scan_and_reap_baseline_amnestied_agent_orphans_blocking_noop_without_orphans()
  {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     {
         let empty = HashSet::new();
         let targets = kill_targets_for_teardown(None, Some(&empty));
@@ -112,11 +117,13 @@ fn kill_targets_empty_baseline_skips_orphan_scan_and_reap_baseline_amnestied_age
 
 #[tokio::test]
 async fn signal_targets_noop_for_empty_set() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     super::unix_process_group_teardown::signal_targets(&HashSet::new(), None, 15).await;
 }
 
 #[tokio::test]
 async fn terminate_process_group_kills_sleep_child() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     crate::test_support::test_utils::clear_test_no_real_agent_env();
     let mut cmd = Command::new("sleep");
     cmd.arg("120").process_group(0);
@@ -128,6 +135,7 @@ async fn terminate_process_group_kills_sleep_child() {
 
 #[tokio::test]
 async fn terminate_agent_process_group_kills_sleep_child() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     crate::test_support::test_utils::clear_test_no_real_agent_env();
     let baseline = super::unix_process_group_ps::snapshot_pids();
     let mut cmd = Command::new("sleep");
@@ -141,6 +149,7 @@ async fn terminate_agent_process_group_kills_sleep_child() {
 #[cfg(target_os = "linux")]
 #[tokio::test]
 async fn baseline_amnestied_agent_acp_orphan_killed_on_teardown() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     crate::test_support::test_utils::enable_test_fast_teardown();
     let tmp = tempfile::tempdir().expect("tempdir");
     let orphan_pid_file = tmp.path().join("orphan.pid");
@@ -160,6 +169,7 @@ async fn baseline_amnestied_agent_acp_orphan_killed_on_teardown() {
 
 #[tokio::test]
 async fn malvin_sibling_outside_agent_pg_killed_on_teardown() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     use crate::agent_process::malvin_sandbox::{
         assert_dead_before_next_spawn, clear_active_sandbox_session,
     };

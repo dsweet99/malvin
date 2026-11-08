@@ -1,5 +1,7 @@
 use std::io::{self, Write};
 
+use super::advice_facts::{FACTS_TAG, facts_list_line, write_facts};
+
 struct AdviceEntry {
     tag: &'static str,
     body: &'static str,
@@ -30,6 +32,7 @@ fn advice_entry(tag: &str) -> Result<&'static AdviceEntry, String> {
         .ok_or_else(|| {
             let mut known: Vec<&str> = ADVICE_ENTRIES.iter().map(|e| e.tag).collect();
             known.extend(LEGACY_ADVICE_ALIASES.iter().map(|(legacy, _)| *legacy));
+            known.push(FACTS_TAG);
             known.sort_unstable();
             format!("unknown --advice TAG `{tag}` (known: {})", known.join(", "))
         })
@@ -74,6 +77,7 @@ pub(crate) fn print_advice_list_to_writer(mut out: impl Write) -> Result<(), Str
             .map_err(|e| format!("stdout: {e}"))?;
         out.write_all(b"\n").map_err(|e| format!("stdout: {e}"))?;
     }
+    writeln!(out, "{}", facts_list_line()).map_err(|e| format!("stdout: {e}"))?;
     out.write_all(b"\n").map_err(|e| format!("stdout: {e}"))?;
     Ok(())
 }
@@ -83,6 +87,9 @@ pub(crate) fn print_advice_list() -> Result<(), String> {
 }
 
 pub(crate) fn print_advice_to_writer(tag: &str, mut out: impl Write) -> Result<(), String> {
+    if tag == FACTS_TAG {
+        return write_facts(out);
+    }
     let text = advice_text(tag)?;
     out.write_all(text.as_bytes())
         .map_err(|e| format!("stdout: {e}"))?;
@@ -137,6 +144,7 @@ mod tests {
         assert!(err.contains("doc_design"), "{err}");
         assert!(err.contains("report"), "{err}");
         assert!(err.contains("scholar"), "{err}");
+        assert!(err.contains("facts"), "{err}");
     }
 
     #[test]
@@ -175,7 +183,13 @@ mod tests {
             .iter()
             .map(|e| format!("{}: {}", e.tag, e.description))
             .collect();
-        assert_eq!(lines[3..lines.len() - 1], expected[..], "{s}");
+        assert_eq!(lines[3..lines.len() - 2], expected[..], "{s}");
+        let facts = lines[lines.len() - 2];
+        assert!(
+            facts.starts_with("facts: Time-saving facts you've discovered [")
+                && facts.ends_with(" facts]"),
+            "{s}"
+        );
         assert_eq!(lines.last(), Some(&""), "{s}");
     }
 

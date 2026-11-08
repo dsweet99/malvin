@@ -1,6 +1,7 @@
 use super::router_flow::new_router_client;
 use super::router_flow_loop::{RouterAgentLoopInput, run_router_agent_loops};
-use malvin::agent_process::account_denial;
+use crate::artifacts::AgentDirs;
+use malvin::agent_process::{AccountDenial, account_denial};
 use malvin::run_timing::RunTiming;
 use std::sync::{Arc, Mutex};
 
@@ -28,33 +29,35 @@ pub(super) async fn run_router_models(input: RouterAgentLoopInput<'_>) -> Result
         )
         .await;
         match result {
-            Err(RouterModelError::Model(error))
-                if should_fallback(&error) && models.peek().is_some() =>
-            {
+            Err(RouterModelError::Model(error)) => {
+                let Some(next) = models.peek() else {
+                    return Err(error);
+                };
+                let Some(denial) = fallback_denial(&error) else {
+                    return Err(error);
+                };
                 malvin::output::print_log_warning(&format!(
-                    "{} failed due to insufficient funds; switching to {}: {error}",
+                    "{} failed due to {}; switching to {}: {error}",
                     model.canonical(),
-                    models.peek().expect("next model").canonical(),
+                    denial.reason(),
+                    next.canonical(),
                 ));
             }
             Ok(()) => return Ok(()),
-            Err(RouterModelError::Model(error) | RouterModelError::Workflow(error)) => {
-                return Err(error);
-            }
+            Err(RouterModelError::Workflow(error)) => return Err(error),
         }
     }
     unreachable!("ModelList is nonempty")
 }
 
-fn should_fallback(error: &str) -> bool {
-    model_quota_exhausted(error)
-        && !error.contains(" restore:")
-        && !error.starts_with("ABORT:")
-        && !error.contains("workspace session restore failed")
-}
-
-fn model_quota_exhausted(error: &str) -> bool {
-    account_denial(error).is_some()
+fn fallback_denial(error: &str) -> Option<AccountDenial> {
+    let run_was_aborted = error.contains(" restore:")
+        || error.starts_with("ABORT:")
+        || error.contains("workspace session restore failed");
+    if run_was_aborted {
+        return None;
+    }
+    account_denial(error)
 }
 
 async fn run_selected_model(
@@ -64,6 +67,7 @@ async fn run_selected_model(
     *input.client = new_router_client(input.shared);
     input.client.set_run_timing(prior_timing.clone());
     input.client.prompts_log_run_dir = Some(input.artifacts.run_dir.clone());
+    input.client.trace_path = Some(AgentDirs(&input.artifacts).trace());
     input
         .client
         .ensure_authenticated()

@@ -133,17 +133,7 @@ fn record_completed_tool_wall(session: &StreamLog, name: Option<&str>, elapsed: 
     let mut guard = timing
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    guard.add_tool_call_wall(tool_timing_kind(name), elapsed);
-}
-
-fn tool_timing_kind(name: Option<&str>) -> &'static str {
-    match name.unwrap_or("").to_ascii_lowercase().as_str() {
-        "read" | "read_file" | "imageview" => "read",
-        "grep" | "search" | "glob" | "find" | "rg" | "websearch" | "webfetch" => "search",
-        "shell" | "bash" | "powershell" | "execute" => "execute",
-        "edit" | "write" | "strreplace" | "delete" | "applypatch" => "edit",
-        _ => "other",
-    }
+    guard.add_tool_call_wall(crate::tool_summary::sdk_tool_kind(name), elapsed);
 }
 
 pub(super) fn compose_tool_done_line(

@@ -58,6 +58,8 @@ fn format_user_identity_includes_gecos_full_name_when_distinct() {
 
 #[cfg(unix)]
 fn current_sandbox_rss_bytes_when_agent_registered() {
+    let _registry_guard =
+        crate::agent_process::active_agent_heartbeat::lock_active_agent_registry_for_test();
     crate::agent_process::active_agent_heartbeat::clear_active_agent_process_groups_for_test();
     let pgid = std::process::id();
     let baseline = crate::agent_process::snapshot_pids();

@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use super::stream::{MdPiece, MdTableStream};
 
@@ -8,8 +8,10 @@ struct Pending {
     stream: MdTableStream,
 }
 
-thread_local! {
-    static PENDING: RefCell<Option<Pending>> = const { RefCell::new(None) };
+static PENDING: Mutex<Option<Pending>> = Mutex::new(None);
+
+fn pending_slot() -> MutexGuard<'static, Option<Pending>> {
+    PENDING.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 pub(crate) struct ReadyLine {
@@ -18,34 +20,40 @@ pub(crate) struct ReadyLine {
 }
 
 pub(crate) fn push_stdout_markdown(who: &str, line: &str, width: usize) -> Vec<ReadyLine> {
-    PENDING.with(|slot| {
-        let mut slot = slot.borrow_mut();
-        let mut out = switch_who(&mut slot, who);
-        if slot.is_none() {
-            *slot = Some(Pending {
-                who: who.to_string(),
-                width,
-                stream: MdTableStream::default(),
-            });
-        }
-        let pending = slot.as_mut().expect("pending markdown table");
-        pending.width = width;
-        let pieces = pending.stream.push(line, width);
-        out.extend(ready_lines(who, pieces));
-        out
-    })
+    let mut slot = pending_slot();
+    let mut out = switch_who(&mut slot, who);
+    let pending = slot.get_or_insert_with(|| Pending {
+        who: who.to_string(),
+        width,
+        stream: MdTableStream::default(),
+    });
+    pending.width = width;
+    let pieces = pending.stream.push(line, width);
+    drop(slot);
+    out.extend(ready_lines(who, pieces));
+    out
 }
 
 pub(crate) fn flush_stdout_markdown() -> Vec<ReadyLine> {
-    PENDING.with(|slot| {
-        let mut slot = slot.borrow_mut();
-        let Some(pending) = slot.as_mut() else {
-            return Vec::new();
-        };
-        let who = pending.who.clone();
-        let pieces = pending.stream.flush(pending.width);
-        ready_lines(&who, pieces)
-    })
+    let mut slot = pending_slot();
+    let Some(pending) = slot.as_mut() else {
+        return Vec::new();
+    };
+    let who = pending.who.clone();
+    let pieces = pending.stream.flush(pending.width);
+    drop(slot);
+    ready_lines(&who, pieces)
+}
+
+pub(crate) fn end_stdout_markdown_message() -> Vec<ReadyLine> {
+    let mut slot = pending_slot();
+    let Some(pending) = slot.as_mut() else {
+        return Vec::new();
+    };
+    let who = pending.who.clone();
+    let pieces = pending.stream.end_message(pending.width);
+    drop(slot);
+    ready_lines(&who, pieces)
 }
 
 fn switch_who(slot: &mut Option<Pending>, who: &str) -> Vec<ReadyLine> {

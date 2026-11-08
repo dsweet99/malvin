@@ -76,6 +76,25 @@ fn delayed_reply_is_a_timeout_not_an_empty_body() {
 }
 
 #[test]
+fn reply_still_counts_when_peer_closes_before_timeout_refresh() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let sock = dir.path().join("eof-ok.sock");
+    let Some(listener) = bind_or_skip(&sock) else {
+        return;
+    };
+    thread::spawn(move || {
+        let (mut conn, _) = listener.accept().expect("accept");
+        let mut buf = [0_u8; 256];
+        let _ = conn.read(&mut buf);
+        let _ = conn.write_all(br#"{"result":{"type":"ok"}}"#);
+    });
+    assert_eq!(
+        send_request_checked(&sock, &json!({"id":"t","method":"ping","params":{}})),
+        Ok(())
+    );
+}
+
+#[test]
 fn peer_close_without_bytes_is_an_empty_reply() {
     let dir = tempfile::tempdir().expect("tempdir");
     let sock = dir.path().join("eof.sock");

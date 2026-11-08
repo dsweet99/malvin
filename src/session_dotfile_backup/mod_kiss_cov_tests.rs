@@ -1,7 +1,4 @@
-use super::{
-    DotfileBackupPayload, DotfileBackupState, MalvinChecksBackup, MalvinConfigWorkspaceBackup,
-    SessionDotfileBackups,
-};
+use super::{DotfileBackupPayload, DotfileBackupState, MalvinChecksBackup, SessionDotfileBackups};
 
 #[test]
 fn kiss_cov_dotfile_backup_payload_construct_destructure() {
@@ -21,29 +18,18 @@ fn kiss_cov_session_dotfile_backups_construct_destructure() {
         malvin_checks: MalvinChecksBackup::Missing,
         gitignore: super::GitignoreBackup::Missing,
         vision: super::VisionBackup::Missing,
-        malvin_config_workspace: MalvinConfigWorkspaceBackup::Missing,
     };
     let touched = std::hint::black_box(backups);
     let SessionDotfileBackups {
         malvin_checks,
         gitignore,
         vision,
-        malvin_config_workspace,
     } = touched;
     assert!(matches!(malvin_checks, MalvinChecksBackup::Missing));
     assert!(matches!(gitignore, super::GitignoreBackup::Missing));
     assert!(matches!(vision, super::VisionBackup::Missing));
-    assert!(matches!(
-        malvin_config_workspace,
-        MalvinConfigWorkspaceBackup::Missing
-    ));
     let empty = SessionDotfileBackups::all_missing();
     assert!(matches!(empty.malvin_checks, MalvinChecksBackup::Missing));
-    // Cross-kind assignment requires an explicit DotfileBackupState bridge; the field
-    // types themselves are distinct (representable-invalid-state fix).
-    let checks = MalvinChecksBackup::Missing;
-    let config: MalvinConfigWorkspaceBackup = DotfileBackupState::from(checks).into();
-    assert!(matches!(config, MalvinConfigWorkspaceBackup::Missing));
     let _ = DotfileBackupState::Missing;
 }
 

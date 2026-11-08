@@ -20,16 +20,11 @@ use std::path::Path;
 pub use dotfile_backup_state::{DotfileBackupPayload, DotfileBackupState, DotfileBackupStateRef};
 pub use gitignore_tree::{GitignoreBackup, GitignoreFileBackup, GitignoreKind};
 pub use named_file_tree::{NamedFile, NamedFileBackup, NamedFileKind};
-pub use typed_slot_backups::{
-    MalvinChecksBackup, MalvinChecksSlot, MalvinConfigWorkspaceBackup, MalvinConfigWorkspaceSlot,
-    SlotBackup, SlotKind,
-};
+pub use typed_slot_backups::{MalvinChecksBackup, MalvinChecksSlot, SlotBackup, SlotKind};
 pub use vision_tree::{VisionBackup, VisionFileBackup, VisionKind};
 pub use wrappers::{
     backup_workspace_malvin_checks_if_present, backup_workspace_malvin_checks_if_present_with_id,
-    backup_workspace_malvin_config_workspace_if_present,
-    backup_workspace_malvin_config_workspace_if_present_with_id,
-    restore_workspace_malvin_checks_backup, restore_workspace_malvin_config_workspace_backup,
+    restore_workspace_malvin_checks_backup,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -37,7 +32,6 @@ pub struct SessionDotfileBackups {
     pub malvin_checks: MalvinChecksBackup,
     pub gitignore: GitignoreBackup,
     pub vision: VisionBackup,
-    pub malvin_config_workspace: MalvinConfigWorkspaceBackup,
 }
 
 impl SessionDotfileBackups {
@@ -47,7 +41,6 @@ impl SessionDotfileBackups {
             malvin_checks: MalvinChecksBackup::Missing,
             gitignore: GitignoreBackup::Missing,
             vision: VisionBackup::Missing,
-            malvin_config_workspace: MalvinConfigWorkspaceBackup::Missing,
         }
     }
 
@@ -72,10 +65,6 @@ impl SessionDotfileBackups {
             malvin_checks: MalvinChecksBackup::backup(work_dir, &mut generate_id)?,
             gitignore: GitignoreBackup::backup(work_dir, &mut generate_id)?,
             vision: VisionBackup::backup(work_dir, &mut generate_id)?,
-            malvin_config_workspace: MalvinConfigWorkspaceBackup::backup(
-                work_dir,
-                &mut generate_id,
-            )?,
         })
     }
 
@@ -108,8 +97,7 @@ pub fn restore_workspace_session_dotfiles_excluding_malvin_checks(
     bundle: &SessionDotfileBackups,
 ) -> Result<(), String> {
     bundle.gitignore.restore(work_dir)?;
-    bundle.vision.restore(work_dir)?;
-    bundle.malvin_config_workspace.restore(work_dir)
+    bundle.vision.restore(work_dir)
 }
 
 #[cfg(test)]

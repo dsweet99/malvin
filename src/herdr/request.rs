@@ -90,6 +90,9 @@ pub fn report_metadata_sparse(pane_id: &str, title: Option<&str>, seq: u64) -> V
     if let Some(t) = title {
         params["title"] = json!(t);
     }
+    if let Some(tokens) = crate::task_summary::metadata_tokens() {
+        params["tokens"] = tokens;
+    }
     envelope("pane.report_metadata", params)
 }
 
@@ -103,6 +106,7 @@ pub fn clear_metadata_teardown(pane_id: &str, seq: u64) -> Value {
             "seq": seq,
             "clear_display_agent": true,
             "clear_title": true,
+            "tokens": {"task": null, "status": null},
         }),
     )
 }
@@ -163,6 +167,8 @@ mod tests {
         assert_eq!(clear_meta["method"], "pane.report_metadata");
         assert_eq!(clear_meta["params"]["clear_display_agent"], true);
         assert_eq!(clear_meta["params"]["clear_title"], true);
+        assert!(clear_meta["params"]["tokens"]["task"].is_null());
+        assert!(clear_meta["params"]["tokens"]["status"].is_null());
 
         let release = release_agent("p1", 13);
         assert_eq!(release["method"], "pane.release_agent");
@@ -174,5 +180,38 @@ mod tests {
         assert_eq!(rename["method"], "agent.rename");
         assert_eq!(rename["params"]["target"], "p1");
         assert_eq!(rename["params"]["name"], "m4gk60f1m");
+    }
+
+    #[test]
+    fn metadata_report_carries_task_and_status_tokens() {
+        let _guard = crate::workspace::run_id::ACTIVE_RUN_DIR_TEST_LOCK
+            .lock()
+            .unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let run = dir.path().join("hash/run");
+        std::fs::create_dir_all(&run).unwrap();
+        crate::workspace::run_id::set_active_run_dir(Some(run.clone()));
+        std::fs::write(run.join("request_summary.txt"), "Add cheap summaries").unwrap();
+        let task_meta = report_metadata_sparse("p1", None, 9);
+        assert_eq!(task_meta["params"]["display_agent"], AGENT);
+        assert_eq!(task_meta["params"]["tokens"]["task"], "Add cheap summaries");
+        std::fs::write(run.join("status_summary.txt"), "Reading the plan").unwrap();
+        let meta = report_metadata_sparse("p1", None, 10);
+        assert_eq!(meta["params"]["display_agent"], AGENT);
+        assert_eq!(meta["params"]["tokens"]["task"], "Add cheap summaries");
+        assert_eq!(meta["params"]["tokens"]["status"], "Reading the plan");
+        std::fs::write(run.join("status_summary.txt"), "Return only that").unwrap();
+        let invalid_status = report_metadata_sparse("p1", None, 11);
+        assert_eq!(invalid_status["params"]["display_agent"], AGENT);
+        assert_eq!(
+            invalid_status["params"]["tokens"]["task"],
+            "Add cheap summaries"
+        );
+        assert!(invalid_status["params"]["tokens"].get("status").is_none());
+        crate::workspace::run_id::set_active_run_dir(None);
+        assert_eq!(
+            report_metadata_sparse("p1", None, 12)["params"]["display_agent"],
+            AGENT
+        );
     }
 }

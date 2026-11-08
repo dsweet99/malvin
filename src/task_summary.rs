@@ -1,0 +1,207 @@
+mod model;
+mod schedule;
+mod stdout_tail;
+mod text;
+mod watch;
+mod worker;
+pub use worker::run_if_worker;
+
+use std::path::Path;
+
+use crate::artifacts::RunArtifacts;
+use crate::config::model_list::ModelList;
+
+pub struct SummaryTask(tokio::task::JoinHandle<()>);
+
+impl Drop for SummaryTask {
+    fn drop(&mut self) {
+        self.0.abort();
+    }
+}
+
+pub fn start(artifacts: &RunArtifacts) -> Option<SummaryTask> {
+    let config = crate::config::malvin_config_file::load_malvin_config(&artifacts.work_dir);
+    if config.agent.model_lite.is_none() {
+        let request = std::fs::read_to_string(&artifacts.plan_path).ok()?;
+        text::local_task(&request)?;
+    }
+    let artifacts = artifacts.clone();
+    Some(SummaryTask(tokio::spawn(async move {
+        if let Ok(child) = worker::spawn(&artifacts) {
+            watch::until_exit(child, &artifacts.run_dir).await;
+        }
+    })))
+}
+
+pub(super) async fn generate_task(
+    artifacts: &RunArtifacts,
+    models: Option<&ModelList>,
+) -> Result<(), String> {
+    let request = tokio::fs::read_to_string(&artifacts.plan_path)
+        .await
+        .map_err(|e| e.to_string())?;
+    if request.trim().is_empty() {
+        return Err("request is empty".into());
+    }
+    let summary = if let Some(summary) = text::local_task(&request) {
+        summary
+    } else {
+        let directions = text::directions("user request");
+        let models = models.ok_or("model_lite is not configured")?;
+        model::summarize(models, artifacts, &request, &directions).await?
+    };
+    store(&text::task_path(&artifacts.run_dir), &summary).await
+}
+
+pub(super) async fn generate_status(
+    artifacts: &RunArtifacts,
+    models: &ModelList,
+) -> Result<(), String> {
+    let Some(source) = status_source(&artifacts.run_dir) else {
+        return Ok(());
+    };
+    let directions = text::directions("agent's current status");
+    let summary = model::summarize(models, artifacts, &source, &directions).await?;
+    store(&text::status_path(&artifacts.run_dir), &summary).await
+}
+
+fn status_source(run_dir: &Path) -> Option<String> {
+    let path = run_dir
+        .join(crate::malvin_constants::MAIN_DIR)
+        .join(crate::malvin_constants::STDOUT_LOG);
+    text::status_excerpt(&stdout_tail::read(&path)?)
+}
+
+async fn store(path: &Path, summary: &str) -> Result<(), String> {
+    let tmp = path.with_extension("tmp");
+    tokio::fs::write(&tmp, summary)
+        .await
+        .map_err(|e| e.to_string())?;
+    tokio::fs::rename(&tmp, path)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[must_use]
+pub fn current() -> String {
+    stored_task().unwrap_or_default()
+}
+
+#[must_use]
+pub fn metadata_tokens() -> Option<serde_json::Value> {
+    let mut map = serde_json::Map::new();
+    if let Some(task) = stored_task() {
+        map.insert("task".into(), serde_json::Value::String(task));
+    }
+    if let Some(status) = current_status() {
+        map.insert("status".into(), serde_json::Value::String(status));
+    }
+    if map.is_empty() {
+        None
+    } else {
+        Some(serde_json::Value::Object(map))
+    }
+}
+
+fn stored_task() -> Option<String> {
+    stored_file(text::task_path)
+}
+
+#[must_use]
+pub fn current_status() -> Option<String> {
+    stored_file(text::status_path)
+}
+
+fn stored_file(path: fn(&Path) -> std::path::PathBuf) -> Option<String> {
+    let run = crate::workspace::run_id::active_run_dir()?;
+    let text = std::fs::read_to_string(path(&run)).ok()?;
+    text::publishable(&text)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stored_direction_echo_does_not_become_a_token() {
+        let _guard = crate::workspace::run_id::ACTIVE_RUN_DIR_TEST_LOCK
+            .lock()
+            .unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let run = dir.path().join("hash/run");
+        std::fs::create_dir_all(&run).unwrap();
+        crate::workspace::run_id::set_active_run_dir(Some(run.clone()));
+        std::fs::write(text::task_path(&run), "Return only that").unwrap();
+        std::fs::write(text::status_path(&run), "Return only that").unwrap();
+        assert_eq!(current(), "");
+        assert_eq!(current_status(), None);
+        assert!(metadata_tokens().is_none());
+        assert!(crate::time_format::heartbeat_payload_now().ends_with(" · hash/run"));
+        crate::workspace::run_id::set_active_run_dir(None);
+    }
+
+    #[test]
+    fn long_stdout_line_still_yields_a_status_source() {
+        let dir = tempfile::tempdir().unwrap();
+        for count in [8_191, 10_000] {
+            let mut body = b"HEAD\n".to_vec();
+            body.extend(std::iter::repeat_n(b'B', count));
+            body.push(b'\n');
+            std::fs::create_dir_all(dir.path().join("main")).unwrap();
+            std::fs::write(dir.path().join("main/stdout.log"), &body).unwrap();
+            let source = status_source(dir.path()).expect("long last line");
+            assert_eq!(source.len(), 4_000, "{count}");
+            assert!(source.bytes().all(|byte| byte == b'B'), "{count}");
+        }
+    }
+
+    #[test]
+    fn status_source_keeps_a_short_line_after_a_partial_prefix() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut body = vec![b'A'; 20_000];
+        body.extend(b"\nTAIL\n");
+        std::fs::create_dir_all(dir.path().join("main")).unwrap();
+        std::fs::write(dir.path().join("main/stdout.log"), body).unwrap();
+        assert_eq!(status_source(dir.path()).as_deref(), Some("TAIL"));
+    }
+
+    #[test]
+    fn model_lite_directions_match_the_prompt_files() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let task = std::fs::read_to_string(root.join("assets/prompts/lite/task.md")).unwrap();
+        let status = std::fs::read_to_string(root.join("assets/prompts/lite/status.md")).unwrap();
+        assert_eq!(text::directions("user request"), task);
+        assert_eq!(text::directions("agent's current status"), status);
+    }
+
+    #[test]
+    fn ready_summaries_follow_the_run_and_fill_both_tokens() {
+        let _guard = crate::workspace::run_id::ACTIVE_RUN_DIR_TEST_LOCK
+            .lock()
+            .unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let run = dir.path().join("hash/run");
+        std::fs::create_dir_all(&run).unwrap();
+        crate::workspace::run_id::set_active_run_dir(Some(run.clone()));
+        assert_eq!(current(), "");
+        assert!(metadata_tokens().is_none());
+        std::fs::write(text::task_path(&run), "Add cheap summaries").unwrap();
+        assert!(
+            crate::time_format::heartbeat_payload_now().ends_with("hash/run · Add cheap summaries")
+        );
+        for status in ["Reading the plan", "Running checks"] {
+            std::fs::write(text::status_path(&run), status).unwrap();
+            let tokens = metadata_tokens().unwrap();
+            assert_eq!(tokens["task"], "Add cheap summaries");
+            assert_eq!(tokens["status"], status);
+            assert!(
+                crate::time_format::heartbeat_payload_now()
+                    .ends_with(&format!("hash/run · Add cheap summaries · {status}"))
+            );
+        }
+        crate::workspace::run_id::set_active_run_dir(None);
+        assert_eq!(current(), "");
+        assert_eq!(current_status(), None);
+        assert!(metadata_tokens().is_none());
+    }
+}

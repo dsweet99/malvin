@@ -22,7 +22,7 @@ pub fn format_who_tag_delim(label: &str) -> String {
 
 #[must_use]
 pub(crate) fn who_tag_display_space_after_pipe(label: &str) -> bool {
-    matches!(format_log_tag_inner(label).as_str(), WHO_B | WHO_T)
+    format_log_tag_inner(label) == WHO_B
 }
 
 #[must_use]
@@ -99,7 +99,7 @@ mod tests {
         };
 
         assert!(who_tag_display_space_after_pipe(WHO_B));
-        assert!(who_tag_display_space_after_pipe(WHO_T));
+        assert!(!who_tag_display_space_after_pipe(WHO_T));
         assert!(!who_tag_display_space_after_pipe(WHO_M));
         assert!(!who_tag_display_space_after_pipe(WHO_O));
         assert!(!who_tag_display_space_after_pipe(WHO_H));
@@ -109,11 +109,11 @@ mod tests {
     }
 
     #[test]
-    fn display_prefix_adds_space_after_pipe_for_thought_and_tool_only() {
+    fn display_prefix_adds_space_after_pipe_for_thought_only() {
         use super::{WHO_B, WHO_M, WHO_O, WHO_T, format_who_tag_delim};
 
         assert_eq!(format_who_tag_prefix(WHO_B), "b| ");
-        assert_eq!(format_who_tag_prefix(WHO_T), "t| ");
+        assert_eq!(format_who_tag_prefix(WHO_T), "t|");
         assert_eq!(format_who_tag_prefix(WHO_M), format_who_tag_delim(WHO_M));
         assert_eq!(format_who_tag_prefix(WHO_O), format_who_tag_delim(WHO_O));
     }

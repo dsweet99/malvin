@@ -1,5 +1,7 @@
 mod ansi;
 mod classify_bash;
+mod classify_sdk;
+pub(crate) use classify_sdk::sdk_tool_kind;
 mod format;
 mod human_a;
 mod human_a_done;
@@ -56,7 +58,7 @@ pub fn tool_summary_lines(
     if is_new_start {
         tracker.note_tool_call_start_for_steps();
     }
-    crate::agent_phase::observe_tool_update(&parsed, tracker);
+    notify_herdr_on_tracked_tool_start(&parsed, tracker);
     let log = format_tool_line(&parsed, tracker, ToolSummaryDetail::Log);
     let mut stdout_deferred = None;
     let stdout = match detail {
@@ -74,6 +76,18 @@ pub fn tool_summary_lines(
         stdout,
         stdout_deferred,
     })
+}
+
+fn notify_herdr_on_tracked_tool_start(parsed: &ParsedToolUpdate, tracker: &ToolSummaryTracker) {
+    if parsed.phase != TOOL_PHASE_START {
+        return;
+    }
+    let kind = tracker
+        .record(&parsed.id)
+        .map_or(parsed.kind.as_str(), |record| record.kind.as_str());
+    if matches!(kind, "read" | "search" | "edit" | "execute") {
+        crate::herdr::notify_working();
+    }
 }
 
 fn new_tool_call_record(parsed: &ParsedToolUpdate) -> ToolCallRecord {

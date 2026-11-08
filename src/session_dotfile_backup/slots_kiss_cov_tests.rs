@@ -2,33 +2,23 @@ use super::DotfileBackupState;
 use super::slots::{
     DOTFILE_ROWS, DotfileSpecRow, backup_slot, dotfile_source_path, labels_for_test, restore_slot,
 };
-use super::slots_kiss_cov_shared::{MALVIN_CONFIG_WORKSPACE_SLOT, dotfile_spec_row_field_count};
+use super::slots_kiss_cov_shared::dotfile_spec_row_field_count;
 use std::path::Path;
 
 #[test]
-fn dotfile_backup_restores_gates_and_workspace_config_bytes() {
+fn dotfile_backup_restores_gates_bytes() {
     crate::test_support::test_utils::with_isolated_home(|work| {
         std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
         let gates = "make lint\n";
-        let config = "workspace-config\n";
         let gates_path = work.join(crate::MALVIN_CHECKS_REL);
-        let config_path = work.join(crate::MALVIN_CONFIG_REL);
         std::fs::write(&gates_path, gates).expect("gates");
-        std::fs::write(&config_path, config).expect("config");
         let mut generate_id = |n: usize| format!("bytes-{n}");
         let gates_backup = backup_slot(0, work, &mut generate_id).expect("gates backup");
-        let config_backup = backup_slot(1, work, &mut generate_id).expect("config backup");
         std::fs::write(&gates_path, "changed-gates\n").expect("clobber gates");
-        std::fs::write(&config_path, "changed-config\n").expect("clobber config");
         restore_slot(work, gates_backup.as_slot_state(), 0).expect("restore gates");
-        restore_slot(work, config_backup.as_slot_state(), 1).expect("restore config");
         assert_eq!(
             std::fs::read_to_string(&gates_path).expect("read gates"),
             gates
-        );
-        assert_eq!(
-            std::fs::read_to_string(&config_path).expect("read config"),
-            config
         );
     });
 }
@@ -69,7 +59,7 @@ fn kiss_cov_slots_static_unit_refs_and_kiss_static_type_refs() {
     {
         let _ = DotfileSpecRow::rel_path;
         let _ = labels_for_test;
-        let _: [DotfileSpecRow; 2] = DOTFILE_ROWS;
+        let _: [DotfileSpecRow; 1] = DOTFILE_ROWS;
     }
     {
         let row = &DOTFILE_ROWS[0];
@@ -79,31 +69,11 @@ fn kiss_cov_slots_static_unit_refs_and_kiss_static_type_refs() {
     }
 }
 
-#[cfg(unix)]
-#[test]
-fn kiss_cov_slots_workspace_config_slot_roundtrip() {
-    crate::test_support::test_utils::with_isolated_home(|work| {
-        std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
-        std::fs::write(work.join(crate::MALVIN_CONFIG_REL), "workspace-config\n").expect("write");
-        let mut generate_id = |n: usize| format!("kiss-cfg-{n}");
-        let backup =
-            backup_slot(MALVIN_CONFIG_WORKSPACE_SLOT, work, &mut generate_id).expect("backup");
-        match &backup {
-            DotfileBackupState::Present(_) => {
-                restore_slot(work, backup.as_slot_state(), MALVIN_CONFIG_WORKSPACE_SLOT)
-                    .expect("restore");
-            }
-            DotfileBackupState::Missing => panic!("workspace config slot should backup"),
-        }
-    });
-}
-
 #[test]
 fn kiss_cov_slots_backup_restore_roundtrip() {
     crate::test_support::test_utils::with_isolated_home(|work| {
         std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
         std::fs::write(work.join(".malvin/gates"), "make lint\n").expect("gates");
-        std::fs::write(work.join(crate::MALVIN_CONFIG_REL), "workspace-config\n").expect("config");
         let mut generate_id = |n: usize| format!("kiss-slot-{n}");
         for slot in 0..DOTFILE_ROWS.len() {
             let backup = backup_slot(slot, work, &mut generate_id).expect("backup");

@@ -80,6 +80,12 @@ pub(crate) fn provider_auth_env_keys(provider: &str) -> Option<&'static [&'stati
         .map(|(_, keys)| *keys)
 }
 
+pub(crate) fn all_provider_auth_env_keys() -> impl Iterator<Item = &'static str> {
+    PROVIDER_ENV_KEYS
+        .iter()
+        .flat_map(|(_, keys)| keys.iter().copied())
+}
+
 #[must_use]
 pub(crate) fn provider_ids_match(left: &str, right: &str) -> bool {
     let (left, right) = (left.trim(), right.trim());

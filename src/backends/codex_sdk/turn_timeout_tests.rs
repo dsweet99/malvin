@@ -32,6 +32,7 @@ fn codex_session_from(
             log_full_outgoing_prompts: false,
         },
         run_dir: None,
+        trace_path: None,
         timing: None,
     };
     build_codex_session(
@@ -86,6 +87,7 @@ async fn codex_non_tool_event_leaves_tools_idle() {
 
 #[tokio::test]
 async fn codex_json_line_round_trips_through_child() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     let session = cat_codex_session();
     let sent = json!({"method": "ping", "id": 7});
     session.write_json(&sent).await.expect("write");
@@ -99,6 +101,7 @@ async fn codex_json_line_round_trips_through_child() {
 
 #[tokio::test]
 async fn codex_json_line_accepts_crlf() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     let session = codex_session_from(script_child("printf '{\"a\":1}\\r\\n'; exec cat"));
     let mut turn = DrainIdleTurn::new();
     let got = session
@@ -110,6 +113,7 @@ async fn codex_json_line_accepts_crlf() {
 
 #[tokio::test]
 async fn codex_json_line_failures_are_dead_session_errors() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     let closed = codex_session_from(script_child("exit 0"));
     let mut turn = DrainIdleTurn::new();
     let err = closed
@@ -128,6 +132,7 @@ async fn codex_json_line_failures_are_dead_session_errors() {
 
 #[tokio::test]
 async fn codex_session_drop_marks_reader_dead() {
+    let _env_guard = crate::test_support::test_utils::test_env_lock();
     let session = cat_codex_session();
     let reader_dead = std::sync::Arc::clone(&session.stdio.reader_dead);
     drop(session);
