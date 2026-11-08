@@ -52,7 +52,10 @@ fn termimad_inline_wraps_dim_when_dim_with_emit() {
         allow_inline_styling: true,
     };
     let s = termimad_inline_payload_for_stdout("**m** tail", gate).expect("render");
-    assert!(s.starts_with("\x1b[38;2;128;132;148m"), "expected outer dim wrap: {s:?}");
+    assert!(
+        s.starts_with("\x1b[38;2;128;132;148m"),
+        "expected outer dim wrap: {s:?}"
+    );
     assert!(
         s.ends_with("\x1b[0m"),
         "expected reset after dim wrap: {s:?}"

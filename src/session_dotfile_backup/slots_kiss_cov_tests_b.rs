@@ -1,7 +1,6 @@
 use super::slots::{DOTFILE_ROWS, DotfileSpecRow, dotfile_source_path, labels_for_test};
 use super::slots_kiss_cov_shared::{
-    MALVIN_CONFIG_WORKSPACE_SLOT, ROW_WITNESS_0, ROW_WITNESS_1, dotfile_spec_row_field_count,
-    write_merged_default_malvin_config,
+    ROW_WITNESS_0, dotfile_spec_row_field_count, write_merged_default_malvin_config,
 };
 use std::path::Path;
 
@@ -27,7 +26,6 @@ fn kiss_cov_dotfile_spec_row_hash() {
 fn kiss_cov_dotfile_spec_row_partial_eq_and_kiss_cov_dotfile_spec_row_copy_clone_traits() {
     {
         assert_eq!(DOTFILE_ROWS[0], DOTFILE_ROWS[0]);
-        assert_ne!(DOTFILE_ROWS[0], DOTFILE_ROWS[1]);
     }
     {
         let row = DOTFILE_ROWS[0];
@@ -40,7 +38,7 @@ fn kiss_cov_dotfile_spec_row_partial_eq_and_kiss_cov_dotfile_spec_row_copy_clone
 
 #[test]
 fn kiss_cov_dotfile_spec_row_const_eval_witnesses() {
-    let witnesses = [&ROW_WITNESS_0, &ROW_WITNESS_1];
+    let witnesses = [&ROW_WITNESS_0];
     for row in witnesses {
         let &DotfileSpecRow {
             rel,
@@ -112,15 +110,15 @@ fn kiss_cov_dotfile_spec_row_all_literal_forms() {
         };
         assert_eq!(built.rel, expected.rel);
         assert_eq!(built.mkdir_lbl, expected.mkdir_lbl);
-        if slot == MALVIN_CONFIG_WORKSPACE_SLOT {
-            assert!(built.copy_err.contains("malvin"));
+        if slot == 0 {
+            assert!(built.copy_err.contains("gates"));
         }
     }
 }
 
 #[test]
 fn kiss_cov_dotfile_spec_row_same_file_value_witness() {
-    let row = DOTFILE_ROWS[MALVIN_CONFIG_WORKSPACE_SLOT];
+    let row = DOTFILE_ROWS[0];
     let DotfileSpecRow {
         rel,
         home_subdir,

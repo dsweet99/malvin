@@ -90,7 +90,7 @@ If uncertainty remains high, especially about the operator's preferences, try on
 
 When addressing the operator:
 
-- Write in clear, plain language. Avoid elliptical language.
+- Write in clear, precise, plain language. Avoid elliptical language.
 - Write for a reader that is intelligent but not a specialist in the topic (unless
    otherwise specified).
 - Use complete sentences.

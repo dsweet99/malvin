@@ -4,7 +4,7 @@ use std::path::Path;
 use super::dotfile_backup_state::{
     DotfileBackupPayload, DotfileBackupState, DotfileBackupStateRef, slot_state_ref,
 };
-use super::slots::{MALVIN_CHECKS_SLOT, MALVIN_CONFIG_WORKSPACE_SLOT, backup_slot, restore_slot};
+use super::slots::{MALVIN_CHECKS_SLOT, backup_slot, restore_slot};
 
 pub trait SlotKind {
     const SLOT: usize;
@@ -67,12 +67,4 @@ impl SlotKind for MalvinChecksSlot {
     const SLOT: usize = MALVIN_CHECKS_SLOT;
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct MalvinConfigWorkspaceSlot;
-
-impl SlotKind for MalvinConfigWorkspaceSlot {
-    const SLOT: usize = MALVIN_CONFIG_WORKSPACE_SLOT;
-}
-
 pub type MalvinChecksBackup = SlotBackup<MalvinChecksSlot>;
-pub type MalvinConfigWorkspaceBackup = SlotBackup<MalvinConfigWorkspaceSlot>;
