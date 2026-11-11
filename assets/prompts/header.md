@@ -71,7 +71,7 @@ If uncertainty remains high, especially about the operator's preferences, try on
 ## Definition: Claims vs Hypotheses
 
 - Mark uncertain reasoning as Hypothesis.
-- Make claims only with explicit evidence.
+- Make claims only with explicit evidence. (You do not need to label claims explicitly.)
 - A claim must cite evidence. Without that, call it a Hypothesis.
  - Language:
    - Hypothesis: “suggests”, “may”, “indicates”.
